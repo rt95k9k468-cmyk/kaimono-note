@@ -10,6 +10,11 @@
    Writes:
      dist/kaimono-note.html            full document, save & open anywhere
      dist/kaimono-note.fragment.html   body-only, for hosts that supply <head>
+     dist/web/index.html               same app, but registers the worker below
+     dist/web/sw.js                    offline cache for the two-file deploy
+
+   The dist/web pair is the whole app in two files — drop them at the root of
+   any static host for an installable, offline-capable PWA.
    ========================================================= */
 
 const fs = require("fs");
@@ -109,10 +114,69 @@ ${css}
 ${bodyContent}
 `;
 
+/* ---- two-file deploy: index.html + sw.js ---- */
+
+// Same document, minus the standalone flag, so app.js registers ./sw.js.
+const webIndex = fullDoc.replace(
+  '<script>window.KN_STANDALONE = true;</script>\n',
+  ""
+);
+
+const webSw = `/* かいものノート — offline cache for the two-file deploy. */
+const CACHE = "kaimono-note-inline-v1";
+
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(["./", "./index.html"]))
+      .catch(() => {})
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (e) => {
+  const req = e.request;
+  if (req.method !== "GET") return;
+  if (new URL(req.url).origin !== self.location.origin) return;
+
+  // Everything the app needs is inside index.html, so serve that for any
+  // navigation and fall back to the cached copy when the network is gone.
+  if (req.mode === "navigate") {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put("./index.html", copy));
+          return res;
+        })
+        .catch(() => caches.match("./index.html").then((r) => r || caches.match("./")))
+    );
+    return;
+  }
+
+  e.respondWith(caches.match(req).then((c) => c || fetch(req)));
+});
+`;
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
+fs.mkdirSync(path.join(OUT_DIR, "web"), { recursive: true });
 fs.writeFileSync(path.join(OUT_DIR, "kaimono-note.html"), fullDoc);
 fs.writeFileSync(path.join(OUT_DIR, "kaimono-note.fragment.html"), fragment);
+fs.writeFileSync(path.join(OUT_DIR, "web", "index.html"), webIndex);
+fs.writeFileSync(path.join(OUT_DIR, "web", "sw.js"), webSw);
 
 const kb = (s) => (Buffer.byteLength(s, "utf8") / 1024).toFixed(0) + " KB";
 console.log("dist/kaimono-note.html          ", kb(fullDoc));
 console.log("dist/kaimono-note.fragment.html ", kb(fragment));
+console.log("dist/web/index.html             ", kb(webIndex));
+console.log("dist/web/sw.js                  ", kb(webSw));
