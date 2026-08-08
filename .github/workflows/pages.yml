@@ -31,6 +31,15 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      # Browsers only reinstall a service worker when sw.js itself changes, and
+      # the worker serves css/js cache-first. With a hardcoded VERSION the cache
+      # name never moves, so an installed app would keep running the old code
+      # forever. Stamping the commit into it makes every deploy a fresh cache.
+      - name: Stamp the build into the service worker
+        run: |
+          sed -i "s|^const VERSION = .*|const VERSION = \"${GITHUB_SHA}\";|" sw.js
+          grep -n '^const VERSION' sw.js
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
