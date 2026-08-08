@@ -2,7 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<!-- No maximum-scale: every text field is 16px or larger, so iOS has no
+     reason to zoom on focus, and capping the scale would only take
+     pinch-zoom away from people who need to enlarge the text. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>かいものノート</title>
 <meta name="description" content="買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。">
 <meta name="theme-color" content="#2f8f5b" media="(prefers-color-scheme: light)">
