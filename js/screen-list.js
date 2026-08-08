@@ -34,6 +34,16 @@
           </div>
         </header>
 
+        <div class="progress-wrap js-progress-wrap" hidden>
+          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
+        </div>
+
+        <div class="js-filter"></div>
+        <div class="js-body"></div>
+
+        <!-- Last in the stack, and pinned to the bottom by CSS. Adding an item
+             is the one thing done one-handed while walking a shop aisle, and
+             the top of a large phone is out of a thumb's reach. -->
         <div class="quick-add">
           <form class="quick-add-bar js-form">
             ${icon("cart")}
@@ -44,13 +54,6 @@
           </form>
           <div class="js-ac"></div>
         </div>
-
-        <div class="progress-wrap js-progress-wrap" hidden>
-          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
-        </div>
-
-        <div class="js-filter"></div>
-        <div class="js-body"></div>
       </div>
     `);
 
@@ -484,7 +487,7 @@
         <div class="empty-art">🛒</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
         <p class="empty-text">
-          上の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
+          下の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
           お店ごとの値段を登録すると「どこが一番安いか」が分かります。
         </p>
         <button class="btn btn-soft js-sample" style="margin-top:8px">サンプルを入れて試す</button>

@@ -4,10 +4,27 @@
 
 /* ================= LIST SCREEN ================= */
 
+/* Docked to the bottom of the list screen, where a thumb can reach it.
+   `margin-top:auto` handles a short list (pushes it down), `sticky` handles
+   a long one (keeps it in view while the items scroll underneath), and
+   --kb lifts it clear of the soft keyboard. */
 .quick-add {
-  position: relative;
-  padding: 0 var(--sp-4) var(--sp-3);
+  position: sticky;
+  bottom: var(--kb, 0px);
+  margin-top: auto;
+  z-index: 20;
+  padding: var(--sp-3) var(--sp-4);
+  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--c-border);
 }
+
+/* The stack has to fill the scrollport, otherwise `margin-top:auto` has no
+   spare space to push the bar into on a nearly empty list. */
+.screen[data-screen="list"] .stack { min-height: 100%; }
+/* The docked bar already occupies the space this padding was reserving. */
+.screen[data-screen="list"] { padding-bottom: 0; }
 
 .quick-add-bar {
   display: flex;
@@ -62,11 +79,13 @@
 .quick-add-btn:disabled { opacity: .35; pointer-events: none; }
 
 /* autocomplete */
+/* Opens upward: the bar it belongs to now sits at the bottom of the screen,
+   so a downward panel would be off-screen or under the keyboard. */
 .ac {
   position: absolute;
   left: var(--sp-4);
   right: var(--sp-4);
-  top: calc(100% - var(--sp-2));
+  bottom: calc(100% - var(--sp-2));
   background: var(--c-bg-elev);
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
@@ -78,7 +97,7 @@
   animation: ac-in .16s var(--ease-out);
 }
 
-@keyframes ac-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes ac-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .ac-item {
   display: flex;
