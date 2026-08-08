@@ -520,13 +520,30 @@
 
   // Only one row may sit open; a second one opening closes the first.
   function closeOpenRow() {
-    if (openWrap) openWrap.classList.remove("is-open");
+    if (openWrap) {
+      openWrap.classList.remove("is-open");
+      holdPanelDuringClose(openWrap);
+    }
     openWrap = null;
   }
 
+  /* The row slides back over 0.22s. Hiding the panel the instant the class goes
+     would leave a bare strip of background trailing the row for that moment, so
+     keep it on screen until the row has finished covering it again. */
+  function holdPanelDuringClose(wrap) {
+    const row = wrap.querySelector(".item");
+    if (!row) return;
+    wrap.classList.add("is-closing");
+    const done = () => wrap.classList.remove("is-closing");
+    row.addEventListener("transitionend", done, { once: true });
+    // A transition that never runs (already at rest) would otherwise strand it.
+    setTimeout(done, 400);
+  }
+
   function attachSwipe(wrap, row) {
-    const REVEAL = 88;     // width of the delete panel
-    const SLOP = 8;        // movement before a drag is a drag and not a tap
+    const REVEAL = 88;      // width of the delete panel
+    const SLOP = 14;        // travel before a drag counts as a drag and not a tap
+    const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
     let startX = 0, startY = 0, dx = 0;
     let dragging = false, decided = false, pointerId = null, swallowClick = false;
 
@@ -538,7 +555,8 @@
       dx = 0;
       dragging = false;
       decided = false;
-      row.style.transition = "none";
+      // Deliberately touches no styles: a press that never becomes a swipe
+      // should leave the row exactly as it was.
     });
 
     row.addEventListener("pointermove", (e) => {
@@ -548,11 +566,14 @@
 
       if (!decided) {
         if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
-        // Vertical wins: let the list scroll and stay out of the way.
         decided = true;
-        dragging = Math.abs(mx) > Math.abs(my);
-        if (!dragging) { row.style.transition = ""; return; }
+        // Has to be a clearly sideways movement, not a drifting scroll. A
+        // diagonal belongs to the list, which stays scrollable throughout.
+        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
+        if (!dragging) return;
         row.setPointerCapture(pointerId);
+        row.style.transition = "none";
+        wrap.classList.add("is-swiping");
         if (openWrap && openWrap !== wrap) closeOpenRow();
       }
       if (!dragging) return;
@@ -566,12 +587,14 @@
     const finish = (e) => {
       if (e.pointerId !== pointerId) return;
       pointerId = null;
-      row.style.transition = "";
-      row.style.transform = "";
       if (!dragging) return;
 
+      row.style.transition = "";
+      row.style.transform = "";
+      wrap.classList.remove("is-swiping");
       const open = dx < -REVEAL / 2;
       wrap.classList.toggle("is-open", open);
+      if (!open) holdPanelDuringClose(wrap);
       openWrap = open ? wrap : (openWrap === wrap ? null : openWrap);
       dragging = false;
       // A pointer sequence still emits a click afterwards. Left alone it would

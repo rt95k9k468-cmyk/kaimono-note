@@ -166,12 +166,18 @@
   animation: item-in .24s var(--ease-out);
 }
 
+/* Kept out of the layer entirely until a swipe is genuinely under way. Merely
+   resting a finger on a row must not hint at a delete button. */
 .item-actions {
   position: absolute;
   top: 0; right: 0; bottom: 0;
   width: 88px;
   display: flex;
+  visibility: hidden;
 }
+.item-wrap.is-swiping .item-actions,
+.item-wrap.is-closing .item-actions,
+.item-wrap.is-open .item-actions { visibility: visible; }
 
 .item-del {
   flex: 1;
@@ -203,9 +209,22 @@
 
 .item-wrap.is-open .item { transform: translateX(-88px); }
 
+/* The row's rounded right corners would leave two crescent gaps against the
+   delete panel's straight edge. Square them off for as long as the panel is
+   showing; the wrapper keeps the outer silhouette rounded. */
+.item-wrap.is-swiping .item,
+.item-wrap.is-closing .item,
+.item-wrap.is-open .item {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
-.item:active { transform: scale(.995); }
+/* No press-scale on the row. Shrinking it by even half a percent pulled its
+   right edge inwards and exposed the delete panel sitting behind — the row
+   must not move until a swipe moves it. The controls inside give their own
+   feedback on press. */
 .item.is-checked { opacity: .55; background: var(--c-surface-2); box-shadow: none; }
 
 /* checkbox */
