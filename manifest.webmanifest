@@ -1,0 +1,32 @@
+{
+  "name": "かいものノート",
+  "short_name": "かいもの",
+  "description": "買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f3",
+  "theme_color": "#2f8f5b",
+  "categories": ["shopping", "productivity", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon.svg",          "sizes": "any",     "type": "image/svg+xml" },
+    { "src": "icons/icon-192.png",      "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png",      "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png",  "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "買い物リスト",
+      "short_name": "リスト",
+      "url": "./#list"
+    },
+    {
+      "name": "お店くらべ",
+      "short_name": "お店",
+      "url": "./#compare"
+    }
+  ]
+}

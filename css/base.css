@@ -1,0 +1,341 @@
+/* =========================================================
+   かいものノート — design tokens, reset, base layout
+   ========================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* --- surfaces --- */
+  --c-bg:          #f4f6f3;
+  --c-bg-elev:     #ffffff;
+  --c-surface:     #ffffff;
+  --c-surface-2:   #eef2ed;
+  --c-surface-3:   #e4eae3;
+
+  /* --- text --- */
+  --c-text:        #171d19;
+  --c-text-2:      #5a655e;
+  --c-text-3:      #8d968f;
+  --c-text-on:     #ffffff;
+
+  /* --- lines --- */
+  --c-border:      #e0e6df;
+  --c-border-2:    #cdd6cb;
+
+  /* --- brand --- */
+  --c-primary:     #2f8f5b;
+  --c-primary-2:   #26744a;
+  --c-primary-soft:#e4f2ea;
+  --c-primary-ink: #1d5b39;
+
+  /* --- accent = "best price" --- */
+  --c-accent:      #d8722f;
+  --c-accent-soft: #fdefe3;
+  --c-accent-ink:  #9c4c14;
+
+  --c-danger:      #cf4f45;
+  --c-danger-soft: #fdecea;
+  --c-warn:        #c98a12;
+
+  /* --- effects --- */
+  --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
+  --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
+  --shadow-3: 0 8px 24px rgba(20, 40, 28, .12), 0 2px 8px rgba(20, 40, 28, .08);
+  --shadow-up: 0 -2px 16px rgba(20, 40, 28, .07);
+
+  /* --- radii --- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-full: 999px;
+
+  /* --- spacing --- */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* --- type --- */
+  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium",
+          "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 11px; --fs-sm: 12.5px; --fs-md: 14px;
+  --fs-lg: 16px; --fs-xl: 19px;  --fs-2xl: 24px;
+
+  /* --- motion --- */
+  --ease: cubic-bezier(.2, .8, .3, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dur: .22s;
+
+  /* --- layout --- */
+  --tabbar-h: 60px;
+  --maxw: 620px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-bg:          #10140f;
+    --c-bg-elev:     #181d17;
+    --c-surface:     #1b211a;
+    --c-surface-2:   #232a22;
+    --c-surface-3:   #2c342b;
+    --c-text:        #e8eee7;
+    --c-text-2:      #a4b0a2;
+    --c-text-3:      #788477;
+    --c-border:      #2b332a;
+    --c-border-2:    #3b453a;
+    --c-primary:     #57b681;
+    --c-primary-2:   #6cc794;
+    --c-primary-soft:#1d2f24;
+    --c-primary-ink: #9ddcb8;
+    --c-accent:      #f0955a;
+    --c-accent-soft: #33241a;
+    --c-accent-ink:  #f5b489;
+    --c-danger:      #e8776c;
+    --c-danger-soft: #33201e;
+    --c-warn:        #dcae4a;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-2: 0 2px 8px rgba(0,0,0,.45);
+    --shadow-3: 0 10px 30px rgba(0,0,0,.55);
+    --shadow-up: 0 -2px 18px rgba(0,0,0,.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg:          #10140f;
+  --c-bg-elev:     #181d17;
+  --c-surface:     #1b211a;
+  --c-surface-2:   #232a22;
+  --c-surface-3:   #2c342b;
+  --c-text:        #e8eee7;
+  --c-text-2:      #a4b0a2;
+  --c-text-3:      #788477;
+  --c-border:      #2b332a;
+  --c-border-2:    #3b453a;
+  --c-primary:     #57b681;
+  --c-primary-2:   #6cc794;
+  --c-primary-soft:#1d2f24;
+  --c-primary-ink: #9ddcb8;
+  --c-accent:      #f0955a;
+  --c-accent-soft: #33241a;
+  --c-accent-ink:  #f5b489;
+  --c-danger:      #e8776c;
+  --c-danger-soft: #33201e;
+  --c-warn:        #dcae4a;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 2px 8px rgba(0,0,0,.45);
+  --shadow-3: 0 10px 30px rgba(0,0,0,.55);
+  --shadow-up: 0 -2px 18px rgba(0,0,0,.4);
+}
+
+/* ---------------- reset ---------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--c-text);
+  background: var(--c-bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+h1, h2, h3, h4, p, figure { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; background: none; border: none; padding: 0; }
+
+/* The `hidden` attribute is a UA style, so any `display` set by a class would
+   otherwise win and leave the element visible. */
+[hidden] { display: none !important; }
+
+a { color: var(--c-primary); }
+
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ---------------- app shell ---------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  background: var(--c-bg);
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  body { background: var(--c-surface-2); }
+  .app {
+    box-shadow: 0 0 0 1px var(--c-border);
+  }
+}
+
+.screens {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: none;
+  flex-direction: column;
+  padding-bottom: calc(var(--sp-8) + var(--sp-6));
+  scrollbar-width: thin;
+}
+
+.screen.is-active {
+  display: flex;
+  animation: screen-in .26s var(--ease-out);
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.screen::-webkit-scrollbar { width: 8px; }
+.screen::-webkit-scrollbar-thumb {
+  background: var(--c-border-2);
+  border-radius: var(--r-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---------------- top bar ---------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: calc(var(--safe-t) + var(--sp-4)) var(--sp-4) var(--sp-3);
+  background: color-mix(in srgb, var(--c-bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.topbar.is-stuck { border-bottom-color: var(--c-border); }
+
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.topbar-title {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-sub {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  margin-top: 2px;
+}
+
+/* ---------------- tab bar ---------------- */
+
+.tabbar {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: stretch;
+  height: calc(var(--tabbar-h) + var(--safe-b));
+  padding-bottom: var(--safe-b);
+  background: color-mix(in srgb, var(--c-bg-elev) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--c-border);
+  box-shadow: var(--shadow-up);
+  z-index: 30;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .01em;
+  transition: color .18s var(--ease);
+  position: relative;
+  padding-top: 2px;
+}
+
+.tab svg { width: 23px; height: 23px; stroke-width: 1.9; }
+
+.tab .tab-ico {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 26px;
+  border-radius: var(--r-full);
+  transition: background .2s var(--ease), transform .2s var(--ease-out);
+}
+
+.tab[aria-selected="true"] { color: var(--c-primary); }
+.tab[aria-selected="true"] .tab-ico {
+  background: var(--c-primary-soft);
+  transform: translateY(-1px);
+}
+.tab[aria-selected="true"] svg { stroke-width: 2.3; }
+
+.tab-badge {
+  position: absolute;
+  top: 0; left: 50%;
+  translate: 6px 0;
+  min-width: 17px; height: 17px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
