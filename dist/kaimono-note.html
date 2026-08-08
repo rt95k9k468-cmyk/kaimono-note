@@ -1737,19 +1737,29 @@ a { color: var(--c-primary); }
     ["c-clean",  ["洗剤", "せんざい", "掃除", "そうじ", "トイレットペーパー", "ティッシュ", "ゴミ袋", "ごみ袋", "漂白", "柔軟剤", "スポンジ", "ワイパー", "クリーナー", "キッチンペーパー"]],
     ["c-health", ["薬", "くすり", "マスク", "絆創膏", "ばんそうこう", "消毒", "サプリ", "ビタミン", "湿布", "体温計", "生理用品", "オムツ", "おむつ"]],
     ["c-daily",  ["シャンプー", "リンス", "石鹸", "せっけん", "ボディソープ", "歯ブラシ", "歯磨き", "はみがき", "タオル", "電池", "ラップ", "アルミホイル", "洗顔", "化粧", "髭剃り", "ひげそり", "カミソリ"]],
-    ["c-food",   ["米", "こめ", "パン", "麺", "めん", "パスタ", "うどん", "そば", "ラーメン", "醤油", "しょうゆ", "味噌", "みそ", "砂糖", "塩", "しお", "油", "あぶら", "小麦粉", "缶詰", "レトルト", "カレー", "お菓子", "おかし", "スナック", "調味料", "だし", "ソース", "マヨネーズ", "ケチャップ", "シリアル"]],
+    ["c-food",   ["米", "こめ", "パン", "麺", "めん", "パスタ", "うどん", "そば", "ラーメン", "醤油", "しょうゆ", "味噌", "みそ", "砂糖", "塩", "しお", "油", "あぶら", "小麦粉", "サラダ油", "缶詰", "レトルト", "カレー", "お菓子", "おかし", "スナック", "調味料", "だし", "ソース", "マヨネーズ", "ケチャップ", "シリアル"]],
   ];
 
-  /** Best-guess category id for a product name; falls back to その他. */
+  /** Best-guess category id for a product name; falls back to その他.
+   *  The longest matching keyword wins rather than the first category listed,
+   *  so 「牛乳」beats 「牛」and 「化粧水」beats 「水」. */
   function guessCategory(name) {
     const n = String(name || "");
     if (!n.trim()) return OTHER_CATEGORY;
+
+    let bestId = OTHER_CATEGORY;
+    let bestLen = 0;
     for (const [catId, words] of CATEGORY_HINTS) {
-      if (words.some((w) => n.includes(w))) {
-        if (state.categories.some((c) => c.id === catId)) return catId;
+      // A category the user deleted must not shadow a still-valid match.
+      if (!state.categories.some((c) => c.id === catId)) continue;
+      for (const w of words) {
+        if (w.length > bestLen && n.includes(w)) {
+          bestId = catId;
+          bestLen = w.length;
+        }
       }
     }
-    return OTHER_CATEGORY;
+    return bestId;
   }
 
   function findProductByName(name) {
