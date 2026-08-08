@@ -4586,11 +4586,45 @@ button, [role="tab"] {
     if (window.KN_STANDALONE) return;
     if (!("serviceWorker" in navigator)) return;
     if (location.protocol !== "https:" && location.hostname !== "localhost") return;
+
+    // A new worker calls skipWaiting() and takes over while this page is still
+    // running the previous build's scripts. Reload once so the new code is
+    // actually the code in use — otherwise the app sits a version behind until
+    // it happens to be launched again, which on a home-screen app resumed from
+    // the switcher may not be for days.
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      if (isBusy()) {
+        // Don't pull the page out from under someone mid-entry; wait until
+        // they put the app away.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") location.reload();
+        }, { once: true });
+        return;
+      }
+      location.reload();
+    });
+
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch((err) => {
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        // An installed app can stay open for days, so look for a new build
+        // every time it comes back to the foreground rather than only at boot.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update().catch(() => {});
+        });
+      }).catch((err) => {
         console.warn("service worker registration failed", err);
       });
     });
+  }
+
+  /** True while the user is part-way through something a reload would lose. */
+  function isBusy() {
+    if (document.querySelector(".sheet")) return true;
+    const el = document.activeElement;
+    return !!(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value);
   }
 
   if (document.readyState === "loading") {
