@@ -11,7 +11,7 @@
   const TABS = [
     { id: "list",     label: "リスト",   icon: "list"  },
     { id: "prices",   label: "価格",     icon: "tag"   },
-    { id: "compare",  label: "お店",     icon: "scale" },
+    { id: "compare",  label: "お店",     icon: "shop"  },
     { id: "settings", label: "設定",     icon: "gear"  },
   ];
 
