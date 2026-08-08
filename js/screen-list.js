@@ -274,14 +274,22 @@
   function render() {
     const st = store.get();
     const items = st.items;
-    const done = items.filter((i) => i.checked).length;
 
+    // Once anything is starred the header tracks that trip rather than the whole
+    // list, so it agrees with the tab badge instead of quoting a second number.
+    const scope = items.some((i) => i.fav) ? items.filter((i) => i.fav) : items;
+    const done = scope.filter((i) => i.checked).length;
+    const label = scope === items ? "" : "今回買うもの ";
+
+    // 「N件中M件購入済み」rather than「N件・M件購入済み」: the section heading
+    // below counts what is left, and two different numbers under the same
+    // wording read as a contradiction.
     els.sub.textContent = items.length
-      ? `${items.length}件 ・ ${done}件購入済み`
+      ? (scope.length ? `${label}${scope.length}件中 ${done}件購入済み` : "今回買うものは未選択です")
       : "リストは空です";
 
-    els.progWrap.hidden = items.length === 0;
-    els.progress.style.width = items.length ? `${(done / items.length) * 100}%` : "0%";
+    els.progWrap.hidden = scope.length === 0;
+    els.progress.style.width = scope.length ? `${(done / scope.length) * 100}%` : "0%";
 
     renderFilter(items);
     renderBody(items);
@@ -337,10 +345,40 @@
 
     const active = items.filter((i) => !i.checked);
     const checked = items.filter((i) => i.checked);
+    const trip = active.filter((i) => i.fav);
 
-    // group active items by category
+    if (!trip.length) {
+      // Nothing starred yet: one plain list with one total, as before. Splitting
+      // the screen the moment favourites exist as a concept would leave anyone
+      // not using them staring at an empty「今回買うもの」and a — total.
+      const shown = appendGroups(active);
+      if (!shown && categoryFilter) els.body.append(noneInCategory());
+      if (checked.length) els.body.append(checkedSection(checked));
+      els.body.append(summaryCard(active));
+      return;
+    }
+
+    const rest = active.filter((i) => !i.fav);
+
+    els.body.append(sectionHead("今回買うもの", trip.length, "trip"));
+    const tripShown = appendGroups(trip);
+    if (!tripShown && categoryFilter) els.body.append(noneInCategory());
+    // The total belongs to the trip, so it sits directly under it — everything
+    // below this line is explicitly not being bought today.
+    els.body.append(summaryCard(trip, { trip: true }));
+
+    if (rest.length) {
+      els.body.append(sectionHead("そのほか", rest.length, "rest"));
+      appendGroups(rest);
+    }
+
+    if (checked.length) els.body.append(checkedSection(checked));
+  }
+
+  /** Renders category groups for the given items. Returns whether anything showed. */
+  function appendGroups(list) {
     const groups = new Map();
-    active.forEach((item) => {
+    list.forEach((item) => {
       const p = store.getProduct(item.productId);
       if (!p) return;
       if (categoryFilter && p.categoryId !== categoryFilter) return;
@@ -361,21 +399,30 @@
           <div class="item-list"></div>
         </section>
       `);
-      const list = group.querySelector(".item-list");
-      entries.forEach(({ item, product }) => list.append(itemRow(item, product)));
+      const listEl = group.querySelector(".item-list");
+      entries.forEach(({ item, product }) => listEl.append(itemRow(item, product)));
       els.body.append(group);
     });
 
-    if (!groups.size && categoryFilter) {
-      els.body.append(node(html`
-        <p style="text-align:center;color:var(--c-text-3);padding:32px 16px">
-          このカテゴリに未購入の商品はありません
-        </p>
-      `));
-    }
+    return groups.size > 0;
+  }
 
-    if (checked.length) els.body.append(checkedSection(checked));
-    els.body.append(summaryCard(active));
+  function sectionHead(label, count, kind) {
+    return node(html`
+      <h2 class="trip-head trip-head-${kind}">
+        ${kind === "trip" ? icon("star") : ""}
+        <span>${label}</span>
+        <span class="cat-head-count">${count}</span>
+      </h2>
+    `);
+  }
+
+  function noneInCategory() {
+    return node(html`
+      <p style="text-align:center;color:var(--c-text-3);padding:32px 16px">
+        このカテゴリに未購入の商品はありません
+      </p>
+    `);
   }
 
   function itemRow(item, product) {
@@ -396,6 +443,8 @@
           </span>
         </button>
         <div class="item-price"></div>
+        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
+                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
       </article>
     `);
 
@@ -416,6 +465,14 @@
           rec.checked = !rec.checked;
           rec.checkedAt = rec.checked ? KN.util.today() : null;
         }
+      });
+      haptic(12);
+    });
+
+    row.querySelector(".fav").addEventListener("click", () => {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === item.id);
+        if (rec) rec.fav = !rec.fav;
       });
       haptic(12);
     });
@@ -453,7 +510,7 @@
     return section;
   }
 
-  function summaryCard(active) {
+  function summaryCard(active, { trip = false } = {}) {
     let total = 0;
     let unknown = 0;
 
@@ -466,6 +523,7 @@
 
     if (!active.length) return document.createDocumentFragment();
 
+    const scope = trip ? "今回買うもの" : "未購入";
     return node(html`
       <div class="list-summary">
         <div class="summary-row">
@@ -475,7 +533,7 @@
         <p class="summary-note">
           ${unknown > 0
             ? html`${unknown}品は値段が未登録です。商品をタップして登録すると合計に反映されます。`
-            : html`未購入 ${active.length}品を、それぞれいちばん安いお店で買った場合の合計です。`}
+            : html`${scope} ${active.length}品を、それぞれいちばん安いお店で買った場合の合計です。`}
         </p>
       </div>
     `);
