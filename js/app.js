@@ -1,0 +1,138 @@
+/* =========================================================
+   かいものノート — app shell: tabs, routing, theme, PWA
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic } = KN.util;
+  const store = KN.store;
+
+  const TABS = [
+    { id: "list",     label: "リスト",   icon: "list"  },
+    { id: "prices",   label: "価格",     icon: "tag"   },
+    { id: "compare",  label: "お店",     icon: "scale" },
+    { id: "settings", label: "設定",     icon: "gear"  },
+  ];
+
+  let active = "list";
+  const mounted = new Set();
+
+  /* ---------------- theme ---------------- */
+
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
+    else root.removeAttribute("data-theme");
+  }
+  KN.applyTheme = applyTheme;
+
+  /* ---------------- tabs ---------------- */
+
+  function buildTabs() {
+    const bar = document.getElementById("tabbar");
+    bar.innerHTML = "";
+
+    TABS.forEach((t) => {
+      const btn = node(html`
+        <button class="tab" role="tab" data-tab="${t.id}"
+                aria-selected="${String(t.id === active)}"
+                aria-controls="screen-${t.id}">
+          <span class="tab-ico">${icon(t.icon)}</span>
+          <span>${t.label}</span>
+        </button>
+      `);
+      btn.addEventListener("click", () => show(t.id));
+      bar.append(btn);
+    });
+  }
+
+  function paintTabs() {
+    document.querySelectorAll(".tab").forEach((b) => {
+      b.setAttribute("aria-selected", String(b.dataset.tab === active));
+    });
+
+    // Badge the list tab with how many items are still unchecked.
+    const listTab = document.querySelector('.tab[data-tab="list"]');
+    if (!listTab) return;
+    const pending = store.get().items.filter((i) => !i.checked).length;
+    const existing = listTab.querySelector(".tab-badge");
+    if (pending > 0) {
+      const text = pending > 99 ? "99+" : String(pending);
+      if (existing) existing.textContent = text;
+      else listTab.append(node(html`<span class="tab-badge">${text}</span>`));
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+
+  function show(id) {
+    if (!KN.screens[id]) return;
+    active = id;
+
+    document.querySelectorAll(".screen").forEach((s) => {
+      const on = s.dataset.screen === id;
+      s.classList.toggle("is-active", on);
+      s.hidden = !on;
+    });
+
+    ensureMounted(id);
+    KN.screens[id].render();
+    paintTabs();
+    haptic();
+
+    if (location.hash.slice(1) !== id) {
+      history.replaceState(null, "", "#" + id);
+    }
+  }
+
+  function ensureMounted(id) {
+    if (mounted.has(id)) return;
+    KN.screens[id].mount(document.getElementById("screen-" + id));
+    mounted.add(id);
+  }
+
+  /* ---------------- boot ---------------- */
+
+  function boot() {
+    applyTheme(store.get().settings.theme || "auto");
+    buildTabs();
+
+    const fromHash = location.hash.slice(1);
+    show(KN.screens[fromHash] ? fromHash : "list");
+
+    // Re-render whichever screen is visible whenever state changes.
+    store.subscribe(() => {
+      if (KN.screens[active]) KN.screens[active].render();
+      paintTabs();
+    });
+
+    window.addEventListener("hashchange", () => {
+      const id = location.hash.slice(1);
+      if (KN.screens[id] && id !== active) show(id);
+    });
+
+    // Keep two tabs of the same app in sync.
+    window.addEventListener("storage", (e) => {
+      if (e.key === store.KEY) location.reload();
+    });
+
+    registerServiceWorker();
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    if (location.protocol !== "https:" && location.hostname !== "localhost") return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((err) => {
+        console.warn("service worker registration failed", err);
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();

@@ -2,71 +2,45 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
 <title>かいものノート</title>
-<link rel="stylesheet" href="style.css">
+<meta name="description" content="買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。">
+<meta name="theme-color" content="#2f8f5b" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12171400" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="かいものノート">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/screens.css">
 </head>
 <body>
-<div class="app">
-  <header class="app-header">
-    <h1>🛒 かいものノート</h1>
-    <p class="subtitle">買い物リストと、店ごとの値段くらべ</p>
-  </header>
 
-  <nav class="tabs" role="tablist">
-    <button class="tab-btn active" data-tab="list" role="tab" aria-selected="true">買い物リスト</button>
-    <button class="tab-btn" data-tab="products" role="tab" aria-selected="false">価格くらべ</button>
-  </nav>
+<div class="app" id="app">
+  <main class="screens" id="screens">
+    <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="買い物リスト"></section>
+    <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="商品と価格" hidden></section>
+    <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
+    <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
+  </main>
 
-  <!-- 買い物リスト -->
-  <section id="tab-list" class="tab-panel active">
-    <form id="add-item-form" class="add-form">
-      <input list="product-names" id="item-name" placeholder="商品名（例：食器用洗剤）" autocomplete="off" required>
-      <datalist id="product-names"></datalist>
-      <input list="category-names" id="item-category" placeholder="カテゴリ（例：日用品）" autocomplete="off">
-      <datalist id="category-names"></datalist>
-      <input type="number" id="item-qty" placeholder="数量" min="1" value="1" required>
-      <input type="text" id="item-memo" placeholder="メモ（任意）">
-      <button type="submit">追加</button>
-    </form>
-
-    <div class="list-toolbar">
-      <span id="list-summary"></span>
-      <button id="clear-checked" class="ghost-btn" type="button">購入済みを削除</button>
-    </div>
-
-    <div id="category-filter" class="category-filter"></div>
-
-    <div id="shopping-list" class="shopping-list"></div>
-    <p id="list-empty" class="empty-msg">まだ何もリストにありません。上の欄から追加してみましょう。</p>
-  </section>
-
-  <!-- 価格くらべ -->
-  <section id="tab-products" class="tab-panel">
-    <form id="add-product-form" class="add-form">
-      <input id="product-name-input" placeholder="商品名（例：食器用洗剤）" required>
-      <input list="category-names" id="product-category-input" placeholder="カテゴリ（任意・例：日用品）">
-      <button type="submit">商品を登録</button>
-    </form>
-
-    <div class="search-row">
-      <input id="product-search" placeholder="商品名で検索">
-    </div>
-
-    <ul id="product-list" class="product-list"></ul>
-    <p id="product-empty" class="empty-msg">まだ商品が登録されていません。</p>
-  </section>
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="メインナビゲーション"></nav>
 </div>
 
-<template id="price-row-template">
-  <li class="price-row">
-    <span class="price-store"></span>
-    <span class="price-amount"></span>
-    <span class="price-date"></span>
-    <button class="icon-btn delete-price-btn" title="削除">✕</button>
-  </li>
-</template>
+<div id="sheet-root"></div>
+<div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
 
-<script src="app.js"></script>
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/product-sheet.js"></script>
+<script src="js/screen-list.js"></script>
+<script src="js/screen-prices.js"></script>
+<script src="js/screen-compare.js"></script>
+<script src="js/screen-settings.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
