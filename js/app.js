@@ -117,7 +117,20 @@
       if (e.key === store.KEY) location.reload();
     });
 
+    requestPersistentStorage();
+    KN.backup.init();
     registerServiceWorker();
+  }
+
+  /* Shopping history lives only in localStorage, which browsers are free to
+     evict under storage pressure or after a long idle stretch — months of
+     price records would go with it. Asking for persistent storage exempts the
+     app from that sweep; installed PWAs are usually granted it silently. */
+  function requestPersistentStorage() {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    navigator.storage.persisted()
+      .then((already) => (already ? true : navigator.storage.persist()))
+      .catch(() => { /* not fatal — the app works either way */ });
   }
 
   function registerServiceWorker() {

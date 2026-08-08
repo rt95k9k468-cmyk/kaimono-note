@@ -5,7 +5,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, haptic } = KN.util;
+  const { html, node, icon, haptic, formatDate } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -286,6 +286,83 @@
 
   /* ---------------- data ---------------- */
 
+  function exportSub(st) {
+    const last = KN.backup.lastExportAt();
+    const size = `${st.products.length}商品・${st.stores.length}店舗`;
+    if (!last) return `${size}をJSONで書き出します`;
+    return `${size}／前回 ${formatDate(last)}`;
+  }
+
+  /** Several snapshots can land on one day (削除前, 復元前…), so the clock
+      time is what actually tells them apart when recovering from a slip. */
+  function snapStamp(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${formatDate(iso)} ${hh}:${mm}`;
+  }
+
+  function snapshotSub() {
+    const snaps = KN.backup.list();
+    if (!snaps.length) return "アプリ内に自動保存された控えはまだありません";
+    return `${snaps.length}件・最新 ${snapStamp(snaps[0].at)}`;
+  }
+
+  /** Pick one of the app's own rolling snapshots and roll back to it. */
+  function openSnapshots() {
+    const snaps = KN.backup.list();
+    if (!snaps.length) {
+      KN.ui.toast("まだ控えがありません");
+      return;
+    }
+
+    const body = node(html`
+      <div class="stack">
+        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:0 0 8px">
+          アプリが自動で残している控えです。この端末の中にだけ保存されるため、
+          機種変更や端末の紛失には備えられません。そなえるには「バックアップを保存」で
+          ファイルを書き出してください。
+        </p>
+        <div class="rows js-snaps"></div>
+      </div>
+    `);
+
+    let sheetHandle = null;
+    const rows = body.querySelector(".js-snaps");
+    snaps.forEach((s) => {
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${snapStamp(s.at)}（${s.reason}）</span>
+            <span class="row-sub">${s.summary.products}商品・${s.summary.stores}店舗・リスト${s.summary.items}件</span>
+          </span>
+          <span class="row-chevron">${icon("chevron")}</span>
+        </button>
+      `);
+      row.addEventListener("click", async () => {
+        const ok = await KN.ui.confirm({
+          title: "この時点に戻しますか？",
+          message: "いまのデータは置き換わります。戻す直前の状態も控えに残すので、やり直せます。",
+          okLabel: "戻す",
+          danger: true,
+        });
+        if (!ok) return;
+        try {
+          KN.backup.restore(s.at);
+          KN.ui.toast(`${snapStamp(s.at)} の状態に戻しました`);
+          if (sheetHandle) sheetHandle.close();
+        } catch (err) {
+          console.error(err);
+          KN.ui.toast("戻せませんでした");
+        }
+      });
+      rows.append(row);
+    });
+
+    sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
+  }
+
   function dataGroup() {
     const st = store.get();
     const wrap = node(html`
@@ -295,7 +372,7 @@
           <button class="row js-export">
             <span class="row-main">
               <span class="row-title">バックアップを保存</span>
-              <span class="row-sub">${st.products.length}商品・${st.stores.length}店舗をJSONで書き出します</span>
+              <span class="row-sub">${exportSub(st)}</span>
             </span>
             <span class="row-chevron">${icon("download")}</span>
           </button>
@@ -303,6 +380,13 @@
             <span class="row-main">
               <span class="row-title">バックアップから復元</span>
               <span class="row-sub">書き出したJSONを読み込みます</span>
+            </span>
+            <span class="row-chevron">${icon("upload")}</span>
+          </button>
+          <button class="row js-snapshots">
+            <span class="row-main">
+              <span class="row-title">自動バックアップから戻す</span>
+              <span class="row-sub">${snapshotSub()}</span>
             </span>
             <span class="row-chevron">${icon("upload")}</span>
           </button>
@@ -337,8 +421,11 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      KN.backup.markExported();
       KN.ui.toast("バックアップを保存しました");
     });
+
+    wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());
@@ -347,13 +434,14 @@
       if (!f) return;
       const ok = await KN.ui.confirm({
         title: "復元しますか？",
-        message: "いまのデータはすべて置き換わります。この操作は取り消せません。",
+        message: "いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。",
         okLabel: "復元する",
         danger: true,
       });
       file.value = "";
       if (!ok) return;
       try {
+        KN.backup.snapshot("復元前");
         store.importJSON(await f.text());
         KN.ui.toast("復元しました");
       } catch (err) {
@@ -370,6 +458,7 @@
         danger: true,
       });
       if (!ok) return;
+      KN.backup.snapshot("サンプル読込前");
       store.loadSample();
       KN.ui.toast("サンプルを読み込みました");
     });
@@ -377,11 +466,12 @@
     wrap.querySelector(".js-reset").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
         title: "すべて削除しますか？",
-        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。この操作は取り消せません。",
+        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
         okLabel: "削除する",
         danger: true,
       });
       if (!ok) return;
+      KN.backup.snapshot("削除前");
       store.reset();
       KN.ui.toast("すべて削除しました");
     });

@@ -2216,6 +2216,156 @@ a { color: var(--c-primary); }
   KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker };
 })();
 
+/* ---- js/backup.js ---- */
+/* =========================================================
+   かいものノート — automatic local snapshots
+
+   A page cannot write files to the phone on its own, so "automatic
+   backup" here means rolling copies kept in the app's own storage.
+   They cover the accidents that actually happen — a stray「すべて削除」,
+   a restore from the wrong file — but not a lost or wiped phone, so the
+   manual export is still nudged once the data is worth protecting.
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { today } = KN.util;
+  const store = KN.store;
+
+  // Kept apart from the live data so「すべて削除」cannot take the snapshots with it.
+  const SNAP_KEY = "kaimono-note-snapshots";
+  const KEEP = 7;
+  const REMIND_AFTER_DAYS = 30;
+  const REMIND_MIN_PRODUCTS = 5;
+
+  function read() {
+    try {
+      const list = JSON.parse(localStorage.getItem(SNAP_KEY) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function write(list) {
+    // Snapshots must never crowd out the live shopping data. If the quota is
+    // full, drop the oldest and retry instead of letting the write throw.
+    let keep = list.slice(-KEEP);
+    while (keep.length) {
+      try {
+        localStorage.setItem(SNAP_KEY, JSON.stringify(keep));
+        return true;
+      } catch (err) {
+        keep = keep.slice(1);
+      }
+    }
+    try { localStorage.removeItem(SNAP_KEY); } catch (err) { /* nothing left to do */ }
+    return false;
+  }
+
+  function summarize(state) {
+    return {
+      products: (state.products || []).length,
+      stores: (state.stores || []).length,
+      items: (state.items || []).length,
+    };
+  }
+
+  function isEmpty(state) {
+    const s = summarize(state);
+    return !s.products && !s.stores && !s.items;
+  }
+
+  /** Store the current state. Returns false when there was nothing worth keeping. */
+  function snapshot(reason) {
+    const state = store.get();
+    if (isEmpty(state)) return false;
+
+    const list = read();
+    const payload = JSON.stringify(state);
+
+    // Skip an identical repeat, otherwise simply opening the app on quiet days
+    // would push the genuinely different older snapshots out of the window.
+    const last = list[list.length - 1];
+    if (last && last.payload === payload) return false;
+
+    list.push({ at: today(), reason: reason || "自動", payload, summary: summarize(state) });
+    return write(list);
+  }
+
+  /** One snapshot per calendar day, taken at boot. */
+  function maybeDaily() {
+    const list = read();
+    const last = list[list.length - 1];
+    if (last) {
+      const a = new Date(last.at);
+      const b = new Date();
+      const sameDay =
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
+      if (sameDay) return false;
+    }
+    return snapshot("自動");
+  }
+
+  /** Newest first. */
+  function list() {
+    return read().slice().reverse();
+  }
+
+  function restore(at) {
+    const found = read().find((s) => s.at === at);
+    if (!found) throw new Error("その控えが見つかりません");
+    // Take one first so that restoring is itself undoable.
+    snapshot("復元前");
+    store.importJSON(found.payload);
+  }
+
+  function clear() {
+    try { localStorage.removeItem(SNAP_KEY); } catch (err) { /* already gone */ }
+  }
+
+  /* ---------------- off-device export nudge ---------------- */
+
+  function lastExportAt() {
+    const st = store.get();
+    return (st.settings && st.settings.lastExportAt) || null;
+  }
+
+  function markExported() {
+    store.update((s) => { s.settings.lastExportAt = today(); });
+  }
+
+  /** True once there is real data and no file has been written out in a while. */
+  function exportDue() {
+    const st = store.get();
+    if ((st.products || []).length < REMIND_MIN_PRODUCTS) return false;
+    const last = lastExportAt();
+    if (!last) return true;
+    const days = (Date.now() - new Date(last).getTime()) / 86400000;
+    return !(days < REMIND_AFTER_DAYS);
+  }
+
+  function init() {
+    maybeDaily();
+    if (exportDue()) {
+      // Late enough that it does not collide with the first paint.
+      setTimeout(() => {
+        KN.ui && KN.ui.toast("設定からバックアップを書き出しておくと安心です");
+      }, 2500);
+    }
+  }
+
+  KN.backup = {
+    SNAP_KEY, KEEP,
+    snapshot, maybeDaily, list, restore, clear,
+    lastExportAt, markExported, exportDue,
+    init,
+  };
+})();
+
 /* ---- js/product-sheet.js ---- */
 /* =========================================================
    かいものノート — shared product / item detail sheet
@@ -3654,7 +3804,7 @@ a { color: var(--c-primary); }
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, haptic } = KN.util;
+  const { html, node, icon, haptic, formatDate } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -3935,6 +4085,83 @@ a { color: var(--c-primary); }
 
   /* ---------------- data ---------------- */
 
+  function exportSub(st) {
+    const last = KN.backup.lastExportAt();
+    const size = `${st.products.length}商品・${st.stores.length}店舗`;
+    if (!last) return `${size}をJSONで書き出します`;
+    return `${size}／前回 ${formatDate(last)}`;
+  }
+
+  /** Several snapshots can land on one day (削除前, 復元前…), so the clock
+      time is what actually tells them apart when recovering from a slip. */
+  function snapStamp(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${formatDate(iso)} ${hh}:${mm}`;
+  }
+
+  function snapshotSub() {
+    const snaps = KN.backup.list();
+    if (!snaps.length) return "アプリ内に自動保存された控えはまだありません";
+    return `${snaps.length}件・最新 ${snapStamp(snaps[0].at)}`;
+  }
+
+  /** Pick one of the app's own rolling snapshots and roll back to it. */
+  function openSnapshots() {
+    const snaps = KN.backup.list();
+    if (!snaps.length) {
+      KN.ui.toast("まだ控えがありません");
+      return;
+    }
+
+    const body = node(html`
+      <div class="stack">
+        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:0 0 8px">
+          アプリが自動で残している控えです。この端末の中にだけ保存されるため、
+          機種変更や端末の紛失には備えられません。そなえるには「バックアップを保存」で
+          ファイルを書き出してください。
+        </p>
+        <div class="rows js-snaps"></div>
+      </div>
+    `);
+
+    let sheetHandle = null;
+    const rows = body.querySelector(".js-snaps");
+    snaps.forEach((s) => {
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${snapStamp(s.at)}（${s.reason}）</span>
+            <span class="row-sub">${s.summary.products}商品・${s.summary.stores}店舗・リスト${s.summary.items}件</span>
+          </span>
+          <span class="row-chevron">${icon("chevron")}</span>
+        </button>
+      `);
+      row.addEventListener("click", async () => {
+        const ok = await KN.ui.confirm({
+          title: "この時点に戻しますか？",
+          message: "いまのデータは置き換わります。戻す直前の状態も控えに残すので、やり直せます。",
+          okLabel: "戻す",
+          danger: true,
+        });
+        if (!ok) return;
+        try {
+          KN.backup.restore(s.at);
+          KN.ui.toast(`${snapStamp(s.at)} の状態に戻しました`);
+          if (sheetHandle) sheetHandle.close();
+        } catch (err) {
+          console.error(err);
+          KN.ui.toast("戻せませんでした");
+        }
+      });
+      rows.append(row);
+    });
+
+    sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
+  }
+
   function dataGroup() {
     const st = store.get();
     const wrap = node(html`
@@ -3944,7 +4171,7 @@ a { color: var(--c-primary); }
           <button class="row js-export">
             <span class="row-main">
               <span class="row-title">バックアップを保存</span>
-              <span class="row-sub">${st.products.length}商品・${st.stores.length}店舗をJSONで書き出します</span>
+              <span class="row-sub">${exportSub(st)}</span>
             </span>
             <span class="row-chevron">${icon("download")}</span>
           </button>
@@ -3952,6 +4179,13 @@ a { color: var(--c-primary); }
             <span class="row-main">
               <span class="row-title">バックアップから復元</span>
               <span class="row-sub">書き出したJSONを読み込みます</span>
+            </span>
+            <span class="row-chevron">${icon("upload")}</span>
+          </button>
+          <button class="row js-snapshots">
+            <span class="row-main">
+              <span class="row-title">自動バックアップから戻す</span>
+              <span class="row-sub">${snapshotSub()}</span>
             </span>
             <span class="row-chevron">${icon("upload")}</span>
           </button>
@@ -3986,8 +4220,11 @@ a { color: var(--c-primary); }
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      KN.backup.markExported();
       KN.ui.toast("バックアップを保存しました");
     });
+
+    wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());
@@ -3996,13 +4233,14 @@ a { color: var(--c-primary); }
       if (!f) return;
       const ok = await KN.ui.confirm({
         title: "復元しますか？",
-        message: "いまのデータはすべて置き換わります。この操作は取り消せません。",
+        message: "いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。",
         okLabel: "復元する",
         danger: true,
       });
       file.value = "";
       if (!ok) return;
       try {
+        KN.backup.snapshot("復元前");
         store.importJSON(await f.text());
         KN.ui.toast("復元しました");
       } catch (err) {
@@ -4019,6 +4257,7 @@ a { color: var(--c-primary); }
         danger: true,
       });
       if (!ok) return;
+      KN.backup.snapshot("サンプル読込前");
       store.loadSample();
       KN.ui.toast("サンプルを読み込みました");
     });
@@ -4026,11 +4265,12 @@ a { color: var(--c-primary); }
     wrap.querySelector(".js-reset").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
         title: "すべて削除しますか？",
-        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。この操作は取り消せません。",
+        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
         okLabel: "削除する",
         danger: true,
       });
       if (!ok) return;
+      KN.backup.snapshot("削除前");
       store.reset();
       KN.ui.toast("すべて削除しました");
     });
@@ -4175,7 +4415,20 @@ a { color: var(--c-primary); }
       if (e.key === store.KEY) location.reload();
     });
 
+    requestPersistentStorage();
+    KN.backup.init();
     registerServiceWorker();
+  }
+
+  /* Shopping history lives only in localStorage, which browsers are free to
+     evict under storage pressure or after a long idle stretch — months of
+     price records would go with it. Asking for persistent storage exempts the
+     app from that sweep; installed PWAs are usually granted it silently. */
+  function requestPersistentStorage() {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    navigator.storage.persisted()
+      .then((already) => (already ? true : navigator.storage.persist()))
+      .catch(() => { /* not fatal — the app works either way */ });
   }
 
   function registerServiceWorker() {
