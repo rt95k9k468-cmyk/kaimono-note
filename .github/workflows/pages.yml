@@ -31,21 +31,15 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      # Browsers only reinstall a service worker when sw.js itself changes, and
-      # the worker serves css/js cache-first. With a hardcoded VERSION the cache
-      # name never moves, so an installed app would keep running the old code
-      # forever. Stamping the commit into it makes every deploy a fresh cache.
-      - name: Stamp the build into the service worker
-        run: |
-          sed -i "s|^const VERSION = .*|const VERSION = \"${GITHUB_SHA}\";|" sw.js
-          # Fail loudly if the substitution missed. Without this guard a rename
-          # in sw.js would silently freeze the cache name again, and installed
-          # apps would quietly stop receiving updates.
-          grep -q "^const VERSION = \"${GITHUB_SHA}\";" sw.js || {
-            echo "::error::sw.js was not stamped — installed apps would stop updating."
-            exit 1
-          }
-          grep -n '^const VERSION' sw.js
+      # Names the worker's cache after the commit and versions every css/js URL.
+      # The URL versioning is what reaches an app already carrying an older
+      # worker: that worker fetches navigations from the network, so it picks up
+      # the new index.html, and the versioned asset URLs then miss its
+      # cache-first lookup and go to the network too. The script exits non-zero
+      # if any part of the stamping fails to match, so a rename cannot silently
+      # freeze installed apps on an old build again.
+      - name: Stamp the build into the service worker and asset URLs
+        run: node stamp-build.js
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
