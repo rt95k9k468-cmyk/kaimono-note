@@ -85,6 +85,8 @@
     });
     // Drop items whose product vanished.
     out.items = out.items.filter((i) => out.products.some((p) => p.id === i.productId));
+    // Lists saved before favourites existed carry no flag; absent means off.
+    out.items.forEach((i) => { i.fav = i.fav === true; });
     out.schema = SCHEMA;
     return out;
   }
@@ -315,6 +317,8 @@
       qty: Math.max(1, Math.round(qty) || 1),
       memo,
       checked: false,
+      // Marks the item as part of the trip being shopped right now.
+      fav: false,
       addedAt: today(),
     };
     update((s) => { s.items.unshift(rec); });
