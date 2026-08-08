@@ -991,7 +991,35 @@ button, [role="tab"] {
 
 .item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 
+/* Swipe container: the delete panel sits behind the row and is revealed by
+   sliding the row left. `overflow:hidden` keeps the panel out of sight until
+   then, so it also owns the rounded corners. */
+.item-wrap {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  animation: item-in .24s var(--ease-out);
+}
+
+.item-actions {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 88px;
+  display: flex;
+}
+
+.item-del {
+  flex: 1;
+  background: var(--c-danger);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+
 .item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -1000,9 +1028,15 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
-  transition: opacity .2s var(--ease), background .16s var(--ease), transform .12s var(--ease);
-  animation: item-in .24s var(--ease-out);
+  transition: opacity .2s var(--ease), background .16s var(--ease), transform .22s var(--ease-out);
+  /* Vertical stays with the list so it can still scroll; horizontal comes to
+     the swipe handler. The buttons inside need it too, otherwise a swipe that
+     starts on the star is claimed by the browser as a pan. */
+  touch-action: pan-y;
 }
+.item button { touch-action: pan-y; }
+
+.item-wrap.is-open .item { transform: translateX(-88px); }
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
@@ -2917,6 +2951,7 @@ button, [role="tab"] {
   let categoryFilter = null;   // categoryId or null = all
   let acIndex = -1;            // active autocomplete row
   let acMatches = [];
+  let openWrap = null;         // the one row currently swiped open, if any
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -3240,6 +3275,8 @@ button, [role="tab"] {
   }
 
   function renderBody(items) {
+    // Rows are rebuilt from scratch, so any remembered open row is now detached.
+    openWrap = null;
     els.body.innerHTML = "";
 
     if (!items.length) {
@@ -3333,8 +3370,16 @@ button, [role="tab"] {
     const best = store.bestPrice(product);
     const bestStore = best ? store.getStore(best.storeId) : null;
 
+    const wrap = node(html`
+      <article class="item-wrap">
+        <div class="item-actions">
+          <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
+        </div>
+      </article>
+    `);
+
     const row = node(html`
-      <article class="item ${item.checked ? "is-checked" : ""}">
+      <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
                 aria-label="${product.name} を購入済みにする">${icon("check")}</button>
         <button class="item-body">
@@ -3349,8 +3394,9 @@ button, [role="tab"] {
         <div class="item-price"></div>
         <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
                 aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
-      </article>
+      </div>
     `);
+    wrap.append(row);
 
     const priceBox = row.querySelector(".item-price");
     if (best && bestStore) {
@@ -3385,7 +3431,109 @@ button, [role="tab"] {
       KN.productSheet.open(product.id, { itemId: item.id });
     });
 
-    return row;
+    wrap.querySelector(".item-del").addEventListener("click", () => {
+      const removed = store.get().items.find((i) => i.id === item.id);
+      const at = store.get().items.indexOf(removed);
+      store.update((s) => { s.items = s.items.filter((i) => i.id !== item.id); });
+      haptic(12);
+      // Deleting straight from a swipe is the platform convention, so the safety
+      // net is an undo rather than a dialog standing between every removal.
+      KN.ui.toast(`「${product.name}」を削除しました`, {
+        action: {
+          label: "元に戻す",
+          onClick: () => store.update((s) => {
+            const next = s.items.slice();
+            next.splice(Math.max(0, Math.min(at, next.length)), 0, removed);
+            s.items = next;
+          }),
+        },
+      });
+    });
+
+    attachSwipe(wrap, row);
+    return wrap;
+  }
+
+  /* ---------------- swipe to reveal delete ---------------- */
+
+  // Only one row may sit open; a second one opening closes the first.
+  function closeOpenRow() {
+    if (openWrap) openWrap.classList.remove("is-open");
+    openWrap = null;
+  }
+
+  function attachSwipe(wrap, row) {
+    const REVEAL = 88;     // width of the delete panel
+    const SLOP = 8;        // movement before a drag is a drag and not a tap
+    let startX = 0, startY = 0, dx = 0;
+    let dragging = false, decided = false, pointerId = null, swallowClick = false;
+
+    row.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      dragging = false;
+      decided = false;
+      row.style.transition = "none";
+    });
+
+    row.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      const mx = e.clientX - startX;
+      const my = e.clientY - startY;
+
+      if (!decided) {
+        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
+        // Vertical wins: let the list scroll and stay out of the way.
+        decided = true;
+        dragging = Math.abs(mx) > Math.abs(my);
+        if (!dragging) { row.style.transition = ""; return; }
+        row.setPointerCapture(pointerId);
+        if (openWrap && openWrap !== wrap) closeOpenRow();
+      }
+      if (!dragging) return;
+
+      const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
+      // Rubber-band past the ends so the row cannot be dragged off screen.
+      dx = Math.max(-REVEAL - 16, Math.min(16, base + mx));
+      row.style.transform = `translateX(${dx}px)`;
+    });
+
+    const finish = (e) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      row.style.transition = "";
+      row.style.transform = "";
+      if (!dragging) return;
+
+      const open = dx < -REVEAL / 2;
+      wrap.classList.toggle("is-open", open);
+      openWrap = open ? wrap : (openWrap === wrap ? null : openWrap);
+      dragging = false;
+      // A pointer sequence still emits a click afterwards. Left alone it would
+      // press whatever the finger lifted over, and — because the row is open by
+      // then — immediately close the row the swipe just opened.
+      swallowClick = true;
+    };
+    row.addEventListener("pointerup", finish);
+    row.addEventListener("pointercancel", finish);
+
+    row.addEventListener("click", (e) => {
+      if (swallowClick) {
+        swallowClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      // With the delete panel showing, a tap on the row means "put it back".
+      if (wrap.classList.contains("is-open")) {
+        e.stopPropagation();
+        e.preventDefault();
+        closeOpenRow();
+      }
+    }, true);
   }
 
   function checkedSection(checked) {
@@ -4562,14 +4710,13 @@ button, [role="tab"] {
       b.setAttribute("aria-selected", String(b.dataset.tab === active));
     });
 
-    // Badge the list tab with how much is left to buy. Once anything is starred
-    // the badge counts only that trip — the star is what says "buying this now",
-    // so an unstarred backlog should not inflate the number.
+    // The badge counts what is left to buy on this trip, and the star is what
+    // puts something on the trip. Nothing starred means nothing planned, so no
+    // badge — falling back to the whole list here would report a backlog the
+    // user never said they were buying.
     const listTab = document.querySelector('.tab[data-tab="list"]');
     if (!listTab) return;
-    const items = store.get().items;
-    const scope = items.some((i) => i.fav) ? items.filter((i) => i.fav) : items;
-    const pending = scope.filter((i) => !i.checked).length;
+    const pending = store.get().items.filter((i) => i.fav && !i.checked).length;
     const existing = listTab.querySelector(".tab-badge");
     if (pending > 0) {
       const text = pending > 99 ? "99+" : String(pending);

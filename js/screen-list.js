@@ -13,6 +13,7 @@
   let categoryFilter = null;   // categoryId or null = all
   let acIndex = -1;            // active autocomplete row
   let acMatches = [];
+  let openWrap = null;         // the one row currently swiped open, if any
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -336,6 +337,8 @@
   }
 
   function renderBody(items) {
+    // Rows are rebuilt from scratch, so any remembered open row is now detached.
+    openWrap = null;
     els.body.innerHTML = "";
 
     if (!items.length) {
@@ -429,8 +432,16 @@
     const best = store.bestPrice(product);
     const bestStore = best ? store.getStore(best.storeId) : null;
 
+    const wrap = node(html`
+      <article class="item-wrap">
+        <div class="item-actions">
+          <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
+        </div>
+      </article>
+    `);
+
     const row = node(html`
-      <article class="item ${item.checked ? "is-checked" : ""}">
+      <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
                 aria-label="${product.name} を購入済みにする">${icon("check")}</button>
         <button class="item-body">
@@ -445,8 +456,9 @@
         <div class="item-price"></div>
         <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
                 aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
-      </article>
+      </div>
     `);
+    wrap.append(row);
 
     const priceBox = row.querySelector(".item-price");
     if (best && bestStore) {
@@ -481,7 +493,109 @@
       KN.productSheet.open(product.id, { itemId: item.id });
     });
 
-    return row;
+    wrap.querySelector(".item-del").addEventListener("click", () => {
+      const removed = store.get().items.find((i) => i.id === item.id);
+      const at = store.get().items.indexOf(removed);
+      store.update((s) => { s.items = s.items.filter((i) => i.id !== item.id); });
+      haptic(12);
+      // Deleting straight from a swipe is the platform convention, so the safety
+      // net is an undo rather than a dialog standing between every removal.
+      KN.ui.toast(`「${product.name}」を削除しました`, {
+        action: {
+          label: "元に戻す",
+          onClick: () => store.update((s) => {
+            const next = s.items.slice();
+            next.splice(Math.max(0, Math.min(at, next.length)), 0, removed);
+            s.items = next;
+          }),
+        },
+      });
+    });
+
+    attachSwipe(wrap, row);
+    return wrap;
+  }
+
+  /* ---------------- swipe to reveal delete ---------------- */
+
+  // Only one row may sit open; a second one opening closes the first.
+  function closeOpenRow() {
+    if (openWrap) openWrap.classList.remove("is-open");
+    openWrap = null;
+  }
+
+  function attachSwipe(wrap, row) {
+    const REVEAL = 88;     // width of the delete panel
+    const SLOP = 8;        // movement before a drag is a drag and not a tap
+    let startX = 0, startY = 0, dx = 0;
+    let dragging = false, decided = false, pointerId = null, swallowClick = false;
+
+    row.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      dragging = false;
+      decided = false;
+      row.style.transition = "none";
+    });
+
+    row.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      const mx = e.clientX - startX;
+      const my = e.clientY - startY;
+
+      if (!decided) {
+        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
+        // Vertical wins: let the list scroll and stay out of the way.
+        decided = true;
+        dragging = Math.abs(mx) > Math.abs(my);
+        if (!dragging) { row.style.transition = ""; return; }
+        row.setPointerCapture(pointerId);
+        if (openWrap && openWrap !== wrap) closeOpenRow();
+      }
+      if (!dragging) return;
+
+      const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
+      // Rubber-band past the ends so the row cannot be dragged off screen.
+      dx = Math.max(-REVEAL - 16, Math.min(16, base + mx));
+      row.style.transform = `translateX(${dx}px)`;
+    });
+
+    const finish = (e) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      row.style.transition = "";
+      row.style.transform = "";
+      if (!dragging) return;
+
+      const open = dx < -REVEAL / 2;
+      wrap.classList.toggle("is-open", open);
+      openWrap = open ? wrap : (openWrap === wrap ? null : openWrap);
+      dragging = false;
+      // A pointer sequence still emits a click afterwards. Left alone it would
+      // press whatever the finger lifted over, and — because the row is open by
+      // then — immediately close the row the swipe just opened.
+      swallowClick = true;
+    };
+    row.addEventListener("pointerup", finish);
+    row.addEventListener("pointercancel", finish);
+
+    row.addEventListener("click", (e) => {
+      if (swallowClick) {
+        swallowClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      // With the delete panel showing, a tap on the row means "put it back".
+      if (wrap.classList.contains("is-open")) {
+        e.stopPropagation();
+        e.preventDefault();
+        closeOpenRow();
+      }
+    }, true);
   }
 
   function checkedSection(checked) {
