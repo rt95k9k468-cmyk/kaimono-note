@@ -118,8 +118,33 @@
     });
 
     requestPersistentStorage();
+    trackKeyboard();
     KN.backup.init();
     registerServiceWorker();
+  }
+
+  /* The soft keyboard shrinks the visual viewport but leaves the layout
+     viewport alone, so the bottom-docked add bar would end up behind it.
+     Publishing the covered height as --kb lets the bar ride above the
+     keyboard, and the tab bar steps aside while typing — nobody switches
+     tabs mid-word, and hiding it means the bar's offset is simply --kb. */
+  function trackKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;   // Without it the bar stays at the bottom, as before.
+    const root = document.documentElement;
+
+    const apply = () => {
+      const covered = window.innerHeight - vv.height - vv.offsetTop;
+      // Browser chrome sliding in and out moves this by a few dozen pixels;
+      // only a keyboard takes this much of the screen.
+      const kb = covered > 120 ? Math.round(covered) : 0;
+      root.style.setProperty("--kb", kb + "px");
+      root.classList.toggle("kb-open", kb > 0);
+    };
+
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    apply();
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

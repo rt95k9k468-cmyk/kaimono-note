@@ -308,6 +308,11 @@ a { color: var(--c-primary); }
   z-index: 30;
 }
 
+/* While the keyboard is up the tab bar is unreachable anyway, and dropping it
+   lets the screens area run to the bottom of the layout viewport — which is
+   what makes the add bar's --kb offset land exactly on the keyboard. */
+.kb-open .tabbar { display: none; }
+
 .tab {
   display: flex;
   flex-direction: column;
@@ -847,10 +852,27 @@ button, [role="tab"] {
 
 /* ================= LIST SCREEN ================= */
 
+/* Docked to the bottom of the list screen, where a thumb can reach it.
+   `margin-top:auto` handles a short list (pushes it down), `sticky` handles
+   a long one (keeps it in view while the items scroll underneath), and
+   --kb lifts it clear of the soft keyboard. */
 .quick-add {
-  position: relative;
-  padding: 0 var(--sp-4) var(--sp-3);
+  position: sticky;
+  bottom: var(--kb, 0px);
+  margin-top: auto;
+  z-index: 20;
+  padding: var(--sp-3) var(--sp-4);
+  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--c-border);
 }
+
+/* The stack has to fill the scrollport, otherwise `margin-top:auto` has no
+   spare space to push the bar into on a nearly empty list. */
+.screen[data-screen="list"] .stack { min-height: 100%; }
+/* The docked bar already occupies the space this padding was reserving. */
+.screen[data-screen="list"] { padding-bottom: 0; }
 
 .quick-add-bar {
   display: flex;
@@ -905,11 +927,13 @@ button, [role="tab"] {
 .quick-add-btn:disabled { opacity: .35; pointer-events: none; }
 
 /* autocomplete */
+/* Opens upward: the bar it belongs to now sits at the bottom of the screen,
+   so a downward panel would be off-screen or under the keyboard. */
 .ac {
   position: absolute;
   left: var(--sp-4);
   right: var(--sp-4);
-  top: calc(100% - var(--sp-2));
+  bottom: calc(100% - var(--sp-2));
   background: var(--c-bg-elev);
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
@@ -921,7 +945,7 @@ button, [role="tab"] {
   animation: ac-in .16s var(--ease-out);
 }
 
-@keyframes ac-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes ac-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .ac-item {
   display: flex;
@@ -2876,6 +2900,16 @@ button, [role="tab"] {
           </div>
         </header>
 
+        <div class="progress-wrap js-progress-wrap" hidden>
+          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
+        </div>
+
+        <div class="js-filter"></div>
+        <div class="js-body"></div>
+
+        <!-- Last in the stack, and pinned to the bottom by CSS. Adding an item
+             is the one thing done one-handed while walking a shop aisle, and
+             the top of a large phone is out of a thumb's reach. -->
         <div class="quick-add">
           <form class="quick-add-bar js-form">
             ${icon("cart")}
@@ -2886,13 +2920,6 @@ button, [role="tab"] {
           </form>
           <div class="js-ac"></div>
         </div>
-
-        <div class="progress-wrap js-progress-wrap" hidden>
-          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
-        </div>
-
-        <div class="js-filter"></div>
-        <div class="js-body"></div>
       </div>
     `);
 
@@ -3326,7 +3353,7 @@ button, [role="tab"] {
         <div class="empty-art">🛒</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
         <p class="empty-text">
-          上の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
+          下の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
           お店ごとの値段を登録すると「どこが一番安いか」が分かります。
         </p>
         <button class="btn btn-soft js-sample" style="margin-top:8px">サンプルを入れて試す</button>
@@ -4505,8 +4532,33 @@ button, [role="tab"] {
     });
 
     requestPersistentStorage();
+    trackKeyboard();
     KN.backup.init();
     registerServiceWorker();
+  }
+
+  /* The soft keyboard shrinks the visual viewport but leaves the layout
+     viewport alone, so the bottom-docked add bar would end up behind it.
+     Publishing the covered height as --kb lets the bar ride above the
+     keyboard, and the tab bar steps aside while typing — nobody switches
+     tabs mid-word, and hiding it means the bar's offset is simply --kb. */
+  function trackKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;   // Without it the bar stays at the bottom, as before.
+    const root = document.documentElement;
+
+    const apply = () => {
+      const covered = window.innerHeight - vv.height - vv.offsetTop;
+      // Browser chrome sliding in and out moves this by a few dozen pixels;
+      // only a keyboard takes this much of the screen.
+      const kb = covered > 120 ? Math.round(covered) : 0;
+      root.style.setProperty("--kb", kb + "px");
+      root.classList.toggle("kb-open", kb > 0);
+    };
+
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    apply();
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

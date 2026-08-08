@@ -292,6 +292,11 @@ a { color: var(--c-primary); }
   z-index: 30;
 }
 
+/* While the keyboard is up the tab bar is unreachable anyway, and dropping it
+   lets the screens area run to the bottom of the layout viewport — which is
+   what makes the add bar's --kb offset land exactly on the keyboard. */
+.kb-open .tabbar { display: none; }
+
 .tab {
   display: flex;
   flex-direction: column;
