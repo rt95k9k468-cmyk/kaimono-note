@@ -40,13 +40,16 @@
 
 ## スマホにインストールする
 
-### 1. GitHub Pagesを有効にする（最初の1回だけ）
+### 1. GitHub Pagesを有効にする（最初の1回だけ・手動）
 
 1. このリポジトリの **Settings → Pages** を開く
-2. **Source** を **GitHub Actions** に変更する
+2. **Build and deployment** の **Source** を **GitHub Actions** に変更する
+3. **Actions** タブ → 「Deploy to GitHub Pages」→ **Re-run all jobs**
 
-これだけで、`main` に push されるたび自動で公開されます。
-（`.github/workflows/pages.yml` が入っています）
+この1手順だけは手作業が必要です。ワークフローから自動で有効化することは
+できません（`GITHUB_TOKEN` にPagesサイトを作成する権限がないため）。
+
+一度有効にすれば、あとは `main` に push するたび自動で公開されます。
 
 ### 2. スマホで開く
 
