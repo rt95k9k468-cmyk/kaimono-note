@@ -1,0 +1,4190 @@
+<title>かいものノート</title>
+<style>
+/* ---- css/base.css ---- */
+/* =========================================================
+   かいものノート — design tokens, reset, base layout
+   ========================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* --- surfaces --- */
+  --c-bg:          #f4f6f3;
+  --c-bg-elev:     #ffffff;
+  --c-surface:     #ffffff;
+  --c-surface-2:   #eef2ed;
+  --c-surface-3:   #e4eae3;
+
+  /* --- text --- */
+  --c-text:        #171d19;
+  --c-text-2:      #5a655e;
+  --c-text-3:      #8d968f;
+  --c-text-on:     #ffffff;
+
+  /* --- lines --- */
+  --c-border:      #e0e6df;
+  --c-border-2:    #cdd6cb;
+
+  /* --- brand --- */
+  --c-primary:     #2f8f5b;
+  --c-primary-2:   #26744a;
+  --c-primary-soft:#e4f2ea;
+  --c-primary-ink: #1d5b39;
+
+  /* --- accent = "best price" --- */
+  --c-accent:      #d8722f;
+  --c-accent-soft: #fdefe3;
+  --c-accent-ink:  #9c4c14;
+
+  --c-danger:      #cf4f45;
+  --c-danger-soft: #fdecea;
+  --c-warn:        #c98a12;
+
+  /* --- effects --- */
+  --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
+  --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
+  --shadow-3: 0 8px 24px rgba(20, 40, 28, .12), 0 2px 8px rgba(20, 40, 28, .08);
+  --shadow-up: 0 -2px 16px rgba(20, 40, 28, .07);
+
+  /* --- radii --- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-full: 999px;
+
+  /* --- spacing --- */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* --- type --- */
+  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium",
+          "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 11px; --fs-sm: 12.5px; --fs-md: 14px;
+  --fs-lg: 16px; --fs-xl: 19px;  --fs-2xl: 24px;
+
+  /* --- motion --- */
+  --ease: cubic-bezier(.2, .8, .3, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dur: .22s;
+
+  /* --- layout --- */
+  --tabbar-h: 60px;
+  --maxw: 620px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-bg:          #10140f;
+    --c-bg-elev:     #181d17;
+    --c-surface:     #1b211a;
+    --c-surface-2:   #232a22;
+    --c-surface-3:   #2c342b;
+    --c-text:        #e8eee7;
+    --c-text-2:      #a4b0a2;
+    --c-text-3:      #788477;
+    --c-border:      #2b332a;
+    --c-border-2:    #3b453a;
+    --c-primary:     #57b681;
+    --c-primary-2:   #6cc794;
+    --c-primary-soft:#1d2f24;
+    --c-primary-ink: #9ddcb8;
+    --c-accent:      #f0955a;
+    --c-accent-soft: #33241a;
+    --c-accent-ink:  #f5b489;
+    --c-danger:      #e8776c;
+    --c-danger-soft: #33201e;
+    --c-warn:        #dcae4a;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-2: 0 2px 8px rgba(0,0,0,.45);
+    --shadow-3: 0 10px 30px rgba(0,0,0,.55);
+    --shadow-up: 0 -2px 18px rgba(0,0,0,.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg:          #10140f;
+  --c-bg-elev:     #181d17;
+  --c-surface:     #1b211a;
+  --c-surface-2:   #232a22;
+  --c-surface-3:   #2c342b;
+  --c-text:        #e8eee7;
+  --c-text-2:      #a4b0a2;
+  --c-text-3:      #788477;
+  --c-border:      #2b332a;
+  --c-border-2:    #3b453a;
+  --c-primary:     #57b681;
+  --c-primary-2:   #6cc794;
+  --c-primary-soft:#1d2f24;
+  --c-primary-ink: #9ddcb8;
+  --c-accent:      #f0955a;
+  --c-accent-soft: #33241a;
+  --c-accent-ink:  #f5b489;
+  --c-danger:      #e8776c;
+  --c-danger-soft: #33201e;
+  --c-warn:        #dcae4a;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 2px 8px rgba(0,0,0,.45);
+  --shadow-3: 0 10px 30px rgba(0,0,0,.55);
+  --shadow-up: 0 -2px 18px rgba(0,0,0,.4);
+}
+
+/* ---------------- reset ---------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--c-text);
+  background: var(--c-bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+h1, h2, h3, h4, p, figure { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; background: none; border: none; padding: 0; }
+
+/* The `hidden` attribute is a UA style, so any `display` set by a class would
+   otherwise win and leave the element visible. */
+[hidden] { display: none !important; }
+
+a { color: var(--c-primary); }
+
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ---------------- app shell ---------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  background: var(--c-bg);
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  body { background: var(--c-surface-2); }
+  .app {
+    box-shadow: 0 0 0 1px var(--c-border);
+  }
+}
+
+.screens {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: none;
+  flex-direction: column;
+  padding-bottom: calc(var(--sp-8) + var(--sp-6));
+  scrollbar-width: thin;
+}
+
+.screen.is-active {
+  display: flex;
+  animation: screen-in .26s var(--ease-out);
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.screen::-webkit-scrollbar { width: 8px; }
+.screen::-webkit-scrollbar-thumb {
+  background: var(--c-border-2);
+  border-radius: var(--r-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---------------- top bar ---------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: calc(var(--safe-t) + var(--sp-4)) var(--sp-4) var(--sp-3);
+  background: color-mix(in srgb, var(--c-bg) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.topbar.is-stuck { border-bottom-color: var(--c-border); }
+
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.topbar-title {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-sub {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  margin-top: 2px;
+}
+
+/* ---------------- tab bar ---------------- */
+
+.tabbar {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: stretch;
+  height: calc(var(--tabbar-h) + var(--safe-b));
+  padding-bottom: var(--safe-b);
+  background: color-mix(in srgb, var(--c-bg-elev) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--c-border);
+  box-shadow: var(--shadow-up);
+  z-index: 30;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .01em;
+  transition: color .18s var(--ease);
+  position: relative;
+  padding-top: 2px;
+}
+
+.tab svg { width: 23px; height: 23px; stroke-width: 1.9; }
+
+.tab .tab-ico {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 26px;
+  border-radius: var(--r-full);
+  transition: background .2s var(--ease), transform .2s var(--ease-out);
+}
+
+.tab[aria-selected="true"] { color: var(--c-primary); }
+.tab[aria-selected="true"] .tab-ico {
+  background: var(--c-primary-soft);
+  transform: translateY(-1px);
+}
+.tab[aria-selected="true"] svg { stroke-width: 2.3; }
+
+.tab-badge {
+  position: absolute;
+  top: 0; left: 50%;
+  translate: 6px 0;
+  min-width: 17px; height: 17px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+/* ---- css/components.css ---- */
+/* =========================================================
+   かいものノート — reusable components
+   ========================================================= */
+
+/* ---------------- buttons ---------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 44px;
+  padding: 0 var(--sp-5);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background .16s var(--ease), transform .12s var(--ease), opacity .16s;
+  user-select: none;
+}
+
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; pointer-events: none; }
+
+/* Inline icons inside a text button must not inherit the SVG's intrinsic box. */
+.btn svg { width: 18px; height: 18px; flex: none; stroke-width: 2.2; }
+.btn-sm svg { width: 16px; height: 16px; }
+
+.btn-primary { background: var(--c-primary); color: #fff; box-shadow: var(--shadow-1); }
+.btn-primary:hover { background: var(--c-primary-2); }
+
+.btn-soft { background: var(--c-surface-2); color: var(--c-text); }
+.btn-soft:hover { background: var(--c-surface-3); }
+
+.btn-ghost { color: var(--c-text-2); }
+.btn-ghost:hover { background: var(--c-surface-2); }
+
+.btn-danger { background: var(--c-danger-soft); color: var(--c-danger); }
+.btn-danger:hover { background: color-mix(in srgb, var(--c-danger) 16%, transparent); }
+
+.btn-block { width: 100%; }
+.btn-sm { height: 36px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px; height: 38px;
+  border-radius: var(--r-full);
+  color: var(--c-text-2);
+  transition: background .16s var(--ease), color .16s var(--ease), transform .12s;
+  flex: none;
+}
+.icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
+.icon-btn:active { transform: scale(.92); }
+.icon-btn svg { width: 20px; height: 20px; stroke-width: 2; }
+.icon-btn.is-danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
+
+/* ---------------- fields ---------------- */
+
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.field-label {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text-2);
+  letter-spacing: .01em;
+}
+
+.input, .select, .textarea {
+  width: 100%;
+  height: 46px;
+  padding: 0 var(--sp-4);
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  font-size: var(--fs-lg);
+  color: var(--c-text);
+  transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+  min-width: 0;
+}
+
+.textarea { height: auto; padding: var(--sp-3) var(--sp-4); resize: vertical; line-height: 1.5; }
+
+.input::placeholder, .textarea::placeholder { color: var(--c-text-3); }
+
+.input:focus, .select:focus, .textarea:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 18%, transparent);
+}
+
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a655e' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 38px;
+}
+
+.input-group { display: flex; gap: var(--sp-2); }
+.input-group > * { min-width: 0; }
+
+/* number input: strip spinners */
+.input[type="number"] { -moz-appearance: textfield; }
+.input[type="number"]::-webkit-outer-spin-button,
+.input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ---------------- chips ---------------- */
+
+.chip-row {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px var(--sp-4);
+  margin-inline: calc(var(--sp-4) * -1);
+  scroll-padding-inline: var(--sp-4);
+}
+.chip-row::-webkit-scrollbar { display: none; }
+
+.chip-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  flex: none;
+  transition: background .16s var(--ease), color .16s var(--ease),
+              border-color .16s var(--ease), transform .12s;
+}
+
+.chip:active { transform: scale(.95); }
+.chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
+
+.chip[aria-pressed="true"], .chip.is-on {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+
+.chip-count {
+  font-size: var(--fs-xs);
+  opacity: .75;
+  font-weight: 700;
+}
+
+.chip-emoji { font-size: 15px; line-height: 1; }
+
+/* ---------------- cards ---------------- */
+
+.card {
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  border: 1px solid var(--c-border);
+}
+
+.section { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.section-title {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-text-2);
+  letter-spacing: .04em;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ---------------- badges ---------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.badge-best { background: var(--c-accent-soft); color: var(--c-accent-ink); }
+.badge-cat  { background: var(--c-surface-2);   color: var(--c-text-2); }
+.badge-muted{ background: var(--c-surface-2);   color: var(--c-text-3); }
+.badge-store{ color: #fff; }
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: var(--r-full);
+  flex: none;
+}
+
+/* ---------------- empty state ---------------- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-3);
+  padding: var(--sp-10) var(--sp-6);
+  color: var(--c-text-2);
+}
+
+.empty-art {
+  width: 92px; height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--c-primary-soft);
+  font-size: 40px;
+  margin-bottom: var(--sp-1);
+}
+
+.empty-title { font-size: var(--fs-lg); font-weight: 800; color: var(--c-text); }
+.empty-text  { font-size: var(--fs-md); max-width: 30ch; line-height: 1.6; }
+
+/* ---------------- sheet (bottom modal) ---------------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 14, .42);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+.sheet-backdrop.is-open { opacity: 1; }
+
+/* Horizontal centring lives in `transform` only — adding the standalone
+   `translate` property as well would shift the sheet twice. */
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  width: min(100%, var(--maxw));
+  max-height: min(90dvh, 780px);
+  background: var(--c-bg-elev);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--shadow-3);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  transform: translate(-50%, 100%);
+  transition: transform .3s var(--ease-out);
+  padding-bottom: var(--safe-b);
+}
+
+.sheet.is-open { transform: translate(-50%, 0); }
+
+@media (min-width: 640px) {
+  .sheet {
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -46%) scale(.97);
+    opacity: 0;
+    border-radius: var(--r-xl);
+    max-height: min(86dvh, 760px);
+    width: min(100% - 32px, 520px);
+    transition: transform .28s var(--ease-out), opacity .2s var(--ease);
+  }
+  .sheet.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .sheet-handle { display: none; }
+}
+
+.sheet-handle {
+  width: 40px; height: 4px;
+  border-radius: var(--r-full);
+  background: var(--c-border-2);
+  margin: var(--sp-2) auto 0;
+  flex: none;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-5);
+  flex: none;
+}
+
+.sheet-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-body {
+  overflow-y: auto;
+  padding: 0 var(--sp-5) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  overscroll-behavior: contain;
+}
+
+.sheet-foot {
+  flex: none;
+  padding: var(--sp-3) var(--sp-5) var(--sp-5);
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  gap: var(--sp-2);
+  background: var(--c-bg-elev);
+}
+
+/* ---------------- toast ---------------- */
+
+.toast-root {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--sp-3));
+  translate: -50% 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: min(100% - 24px, 440px);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: #232a24;
+  color: #f2f6f1;
+  box-shadow: var(--shadow-3);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  pointer-events: auto;
+  animation: toast-in .3s var(--ease-out);
+}
+
+:root[data-theme="dark"] .toast { background: #333d33; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .toast { background: #333d33; }
+}
+
+.toast.is-out { animation: toast-out .22s var(--ease) forwards; }
+.toast-msg { flex: 1; min-width: 0; }
+.toast-action {
+  color: #8fe0b0;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  flex: none;
+}
+.toast-action:hover { background: rgba(255,255,255,.1); }
+
+@keyframes toast-in  { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to   { opacity: 0; transform: translateY(8px) scale(.98); } }
+
+/* On wide screens the sheet is a centred dialog, so a centred toast would
+   sit on top of its footer buttons. Tuck it into the corner instead. */
+@media (min-width: 640px) {
+  .toast-root {
+    left: var(--sp-4);
+    right: auto;
+    translate: none;
+    bottom: var(--sp-4);
+    width: min(100% - 32px, 380px);
+  }
+}
+
+/* ---------------- list rows (generic) ---------------- */
+
+.rows {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  border-bottom: 1px solid var(--c-border);
+  transition: background .14s var(--ease);
+  min-height: 52px;
+}
+
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--c-surface-2); }
+.row-main { flex: 1; min-width: 0; }
+.row-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
+.row-value { color: var(--c-text-2); font-weight: 700; flex: none; }
+.row-chevron { color: var(--c-text-3); flex: none; display: grid; place-items: center; }
+.row-chevron svg { width: 18px; height: 18px; stroke-width: 2.4; }
+
+/* ---------------- misc ---------------- */
+
+.divider { height: 1px; background: var(--c-border); }
+
+.spread { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+
+.stack { display: flex; flex-direction: column; }
+
+.mono-num { font-variant-numeric: tabular-nums; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ---- css/screens.css ---- */
+/* =========================================================
+   かいものノート — screen specific
+   ========================================================= */
+
+/* ================= LIST SCREEN ================= */
+
+.quick-add {
+  position: relative;
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+
+.quick-add-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding-left: var(--sp-3);
+  transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+}
+
+.quick-add-bar:focus-within {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 16%, transparent);
+}
+
+.quick-add-bar svg { width: 20px; height: 20px; color: var(--c-text-3); flex: none; stroke-width: 2.2; }
+
+.quick-add-input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  border: none;
+  background: none;
+  font-size: var(--fs-lg);
+  outline: none;
+}
+.quick-add-input::placeholder { color: var(--c-text-3); }
+
+.quick-add-btn {
+  flex: none;
+  width: 36px; height: 36px;
+  margin-right: 5px;
+  border-radius: var(--r-sm);
+  background: var(--c-primary);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  transition: transform .12s var(--ease), opacity .16s;
+}
+.quick-add-btn svg { width: 20px; height: 20px; stroke-width: 2.6; color: #fff; }
+.quick-add-btn:active { transform: scale(.9); }
+.quick-add-btn:disabled { opacity: .35; pointer-events: none; }
+
+/* autocomplete */
+.ac {
+  position: absolute;
+  left: var(--sp-4);
+  right: var(--sp-4);
+  top: calc(100% - var(--sp-2));
+  background: var(--c-bg-elev);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-3);
+  z-index: 40;
+  overflow: hidden;
+  max-height: 300px;
+  overflow-y: auto;
+  animation: ac-in .16s var(--ease-out);
+}
+
+@keyframes ac-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.ac-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  border-bottom: 1px solid var(--c-border);
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.is-active { background: var(--c-primary-soft); }
+.ac-emoji { font-size: 20px; flex: none; }
+.ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ac-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-sub {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-new { color: var(--c-primary); font-weight: 700; }
+
+/* progress */
+.progress-wrap { padding: 0 var(--sp-4) var(--sp-3); }
+.progress {
+  height: 6px;
+  background: var(--c-surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--c-primary), var(--c-primary-2));
+  border-radius: var(--r-full);
+  transition: width .45s var(--ease-out);
+}
+
+/* category group */
+.cat-group { margin-bottom: var(--sp-5); }
+
+.cat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-text-2);
+  letter-spacing: .02em;
+}
+
+.cat-head-emoji { font-size: 16px; }
+.cat-head-count { color: var(--c-text-3); font-weight: 700; }
+
+.item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  box-shadow: var(--shadow-1);
+  transition: opacity .2s var(--ease), background .16s var(--ease), transform .12s var(--ease);
+  animation: item-in .24s var(--ease-out);
+}
+
+@keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.item:active { transform: scale(.995); }
+.item.is-checked { opacity: .55; background: var(--c-surface-2); box-shadow: none; }
+
+/* checkbox */
+.check {
+  flex: none;
+  width: 26px; height: 26px;
+  border-radius: var(--r-full);
+  border: 2px solid var(--c-border-2);
+  display: grid;
+  place-items: center;
+  transition: background .18s var(--ease), border-color .18s var(--ease), transform .14s var(--ease-out);
+  background: transparent;
+}
+.check svg { width: 15px; height: 15px; stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
+.check:hover { border-color: var(--c-primary); }
+.check:active { transform: scale(.85); }
+.check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
+.check[aria-checked="true"] svg { opacity: 1; transform: scale(1); }
+
+.item-body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.item-name-row { display: flex; align-items: baseline; gap: var(--sp-2); }
+
+.item-name {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  transition: color .2s var(--ease);
+}
+
+.is-checked .item-name { text-decoration: line-through; color: var(--c-text-2); }
+
+.item-qty {
+  flex: none;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-text-2);
+  background: var(--c-surface-2);
+  padding: 1px 7px;
+  border-radius: var(--r-sm);
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  min-height: 18px;
+}
+
+.item-memo { color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.item-price {
+  flex: none;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding-left: var(--sp-1);
+}
+
+.item-price-amount {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--c-accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+
+.item-price-store {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  font-weight: 700;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-price-none { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 600; }
+
+/* checked section toggle */
+.done-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-text-2);
+}
+.done-head svg { width: 16px; height: 16px; stroke-width: 2.6; transition: transform .2s var(--ease); }
+.done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
+
+/* list footer summary */
+.list-summary {
+  margin: var(--sp-2) var(--sp-4) 0;
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, var(--c-primary-soft), color-mix(in srgb, var(--c-accent-soft) 70%, transparent));
+  border: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.summary-total { font-size: var(--fs-2xl); font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.summary-note { font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.5; }
+
+/* ================= PRICES SCREEN ================= */
+
+.search-wrap { padding: 0 var(--sp-4) var(--sp-3); }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--c-surface-2);
+  border-radius: var(--r-md);
+  padding: 0 var(--sp-3);
+  height: 42px;
+}
+.search-bar svg { width: 18px; height: 18px; color: var(--c-text-3); flex: none; stroke-width: 2.2; }
+.search-input { flex: 1; min-width: 0; border: none; background: none; outline: none; font-size: var(--fs-md); height: 100%; }
+
+.product-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.product {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  text-align: left;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  box-shadow: var(--shadow-1);
+  transition: background .14s var(--ease), transform .12s;
+}
+.product:hover { background: var(--c-surface-2); }
+.product:active { transform: scale(.995); }
+
+.product-emoji {
+  flex: none;
+  width: 42px; height: 42px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+}
+
+.product-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.product-name { font-size: var(--fs-lg); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
+
+/* price rows inside sheet */
+.price-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  transition: background .16s var(--ease);
+}
+
+.price-row.is-best {
+  background: var(--c-accent-soft);
+  border-color: color-mix(in srgb, var(--c-accent) 35%, transparent);
+}
+
+.price-store-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
+.price-store { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.price-figures { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.price-amount { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.is-best .price-amount { color: var(--c-accent-ink); }
+.price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: 600; }
+.price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+.crown { font-size: 13px; flex: none; }
+
+/* history sparkline */
+.spark { display: block; width: 100%; height: 48px; }
+.spark-line { fill: none; stroke: var(--c-primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spark-area { fill: color-mix(in srgb, var(--c-primary) 14%, transparent); stroke: none; }
+.spark-dot { fill: var(--c-primary); }
+
+/* ================= COMPARE SCREEN ================= */
+
+.compare-hero {
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  background: linear-gradient(140deg, var(--c-primary), var(--c-primary-2));
+  color: #fff;
+  box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.hero-label { font-size: var(--fs-sm); font-weight: 700; opacity: .88; }
+.hero-total { font-size: 34px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.hero-note { font-size: var(--fs-sm); opacity: .9; line-height: 1.5; }
+
+.hero-save {
+  margin-top: var(--sp-2);
+  align-self: flex-start;
+  background: rgba(255,255,255,.2);
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.store-rank { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.rank-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  text-align: left;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  box-shadow: var(--shadow-1);
+  transition: background .14s var(--ease);
+}
+.rank-card:hover { background: var(--c-surface-2); }
+
+.rank-card.is-first {
+  border-color: color-mix(in srgb, var(--c-accent) 45%, transparent);
+  background: linear-gradient(120deg, var(--c-accent-soft), var(--c-surface) 70%);
+}
+
+.rank-no {
+  flex: none;
+  width: 28px; height: 28px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+.is-first .rank-no { background: var(--c-accent); color: #fff; }
+
+.rank-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rank-name { font-weight: 700; display: flex; align-items: center; gap: var(--sp-2); }
+.rank-cover { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-2); }
+
+.cover-bar {
+  flex: 1;
+  max-width: 96px;
+  height: 4px;
+  background: var(--c-surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+/* A span is inline by default, where height/width percentages do not apply. */
+.cover-fill {
+  display: block;
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: var(--r-full);
+  transition: width .4s var(--ease-out);
+}
+
+.rank-total { flex: none; text-align: right; }
+.rank-amount { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.rank-sub { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+/* best-combo breakdown */
+.combo-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.combo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+}
+.combo-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-store { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); flex: none; }
+.combo-price { font-weight: 800; font-variant-numeric: tabular-nums; flex: none; min-width: 62px; text-align: right; }
+
+/* ================= SETTINGS SCREEN ================= */
+
+.settings-group { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  background: var(--c-surface-2);
+  padding: 3px;
+  border-radius: var(--r-md);
+}
+
+.seg-btn {
+  padding: 8px;
+  border-radius: 9px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text-2);
+  transition: background .16s var(--ease), color .16s var(--ease);
+}
+.seg-btn[aria-pressed="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
+
+.about {
+  padding: var(--sp-6) var(--sp-4) var(--sp-4);
+  text-align: center;
+  color: var(--c-text-3);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+/* sortable manage rows */
+.manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
+.manage-emoji { font-size: 19px; flex: none; width: 28px; text-align: center; }
+.manage-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* store color swatches */
+.swatches { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.swatch {
+  width: 32px; height: 32px;
+  border-radius: var(--r-full);
+  border: 3px solid transparent;
+  transition: transform .14s var(--ease), border-color .14s;
+}
+.swatch:hover { transform: scale(1.1); }
+.swatch[aria-pressed="true"] { border-color: var(--c-text); transform: scale(1.1); }
+
+</style>
+
+<div class="app" id="app">
+  <main class="screens" id="screens">
+    <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="買い物リスト"></section>
+    <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="商品と価格" hidden></section>
+    <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
+    <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
+  </main>
+
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="メインナビゲーション"></nav>
+</div>
+
+<div id="sheet-root"></div>
+<div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
+
+<script>window.KN_STANDALONE = true;</script>
+<script>
+/* ---- js/util.js ---- */
+/* =========================================================
+   かいものノート — utilities
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = (window.KN = window.KN || {});
+
+  /* ---------- safe HTML templating ---------- */
+
+  class Raw {
+    constructor(s) { this.value = String(s); }
+    toString() { return this.value; }
+  }
+
+  function raw(s) { return new Raw(s); }
+
+  function escapeHtml(v) {
+    return String(v).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  function interp(v) {
+    if (v == null || v === false || v === true) return "";
+    if (v instanceof Raw) return v.value;
+    if (Array.isArray(v)) return v.map(interp).join("");
+    return escapeHtml(v);
+  }
+
+  /** Tagged template that escapes interpolated values unless wrapped in raw(). */
+  function html(strings, ...values) {
+    let out = "";
+    for (let i = 0; i < strings.length; i++) {
+      out += strings[i];
+      if (i < values.length) out += interp(values[i]);
+    }
+    return raw(out);
+  }
+
+  /** Build a single element from a template result. Extra roots would be
+   *  silently dropped, so surface that as a loud mistake instead. */
+  function node(h) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = String(h).trim();
+    if (tpl.content.childElementCount > 1) {
+      console.error(
+        "node() received %d root elements — only the first is kept. Use frag().",
+        tpl.content.childElementCount, tpl.content.firstElementChild
+      );
+    }
+    return tpl.content.firstElementChild;
+  }
+
+  /** Build a document fragment (multiple roots) from a template result. */
+  function frag(h) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = String(h);
+    return tpl.content;
+  }
+
+  /* ---------- ids & misc ---------- */
+
+  function uid(prefix) {
+    const rnd = (crypto && crypto.randomUUID)
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+    return (prefix ? prefix + "-" : "") + Date.now().toString(36) + rnd;
+  }
+
+  function clamp(n, min, max) { return Math.min(max, Math.max(min, n)); }
+
+  function debounce(fn, ms) {
+    let t;
+    return function (...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+
+  /* ---------- numbers & money ---------- */
+
+  /** ¥1,280 — rounded to whole yen. */
+  function yen(n) {
+    if (!isFinite(n)) return "—";
+    return "¥" + Math.round(n).toLocaleString("ja-JP");
+  }
+
+  /** Keeps one decimal for small values (unit prices like ¥0.6). */
+  function yenFine(n) {
+    if (!isFinite(n)) return "—";
+    if (Math.abs(n) >= 100) return yen(n);
+    const r = Math.round(n * 10) / 10;
+    return "¥" + r.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
+  }
+
+  function parseNum(v) {
+    const n = parseFloat(String(v).replace(/[^\d.\-]/g, ""));
+    return isFinite(n) ? n : NaN;
+  }
+
+  /* ---------- dates ---------- */
+
+  function today() { return new Date().toISOString(); }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const now = new Date();
+    const md = `${d.getMonth() + 1}/${d.getDate()}`;
+    return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}/${md}`;
+  }
+
+  function relativeDate(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const days = Math.round((startOf(new Date()) - startOf(d)) / 86400000);
+    if (days <= 0) return "今日";
+    if (days === 1) return "昨日";
+    if (days < 7) return `${days}日前`;
+    if (days < 30) return `${Math.floor(days / 7)}週間前`;
+    return formatDate(iso);
+  }
+
+  /* ---------- unit price ---------- */
+
+  const UNITS = ["ml", "L", "g", "kg", "個", "枚", "本", "袋", "ロール", "パック"];
+
+  /**
+   * Normalised unit price. ml/L → per 100ml, g/kg → per 100g,
+   * countable units → per 1.
+   * Returns { text, value } where `value` is comparable within a unit family.
+   */
+  function unitPrice(price, amount, unit) {
+    if (!isFinite(price) || !isFinite(amount) || amount <= 0 || !unit) return null;
+
+    let base = amount;
+    let label = unit;
+    if (unit === "L")  { base = amount * 1000; label = "ml"; }
+    if (unit === "kg") { base = amount * 1000; label = "g"; }
+
+    if (label === "ml" || label === "g") {
+      const per100 = (price / base) * 100;
+      return { text: `100${label} ${yenFine(per100)}`, value: price / base, label };
+    }
+    const per1 = price / amount;
+    return { text: `1${label} ${yenFine(per1)}`, value: per1, label };
+  }
+
+  /** "500ml" / "3個" — human readable size of a product. */
+  function formatSize(amount, unit) {
+    if (!isFinite(amount) || amount <= 0 || !unit) return "";
+    const n = Math.round(amount * 100) / 100;
+    return `${n.toLocaleString("ja-JP")}${unit}`;
+  }
+
+  /* ---------- icons (inline SVG) ---------- */
+
+  const ICON_PATHS = {
+    list:      '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.5"/><circle cx="3.5" cy="12" r="1.5"/><circle cx="3.5" cy="18" r="1.5"/>',
+    tag:       '<path d="M20.6 13.4 12 22l-9-9V4h9l8.6 8.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
+    scale:     '<path d="M12 3v18M6 7l-3 7h6L6 7ZM18 7l-3 7h6l-3-7ZM6 7l12-2"/><path d="M8 21h8"/>',
+    gear:      '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+    plus:      '<path d="M12 5v14M5 12h14"/>',
+    check:     '<path d="M20 6 9 17l-5-5"/>',
+    search:    '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    close:     '<path d="M18 6 6 18M6 6l12 12"/>',
+    chevron:   '<path d="m9 18 6-6-6-6"/>',
+    trash:     '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+    edit:      '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    store:     '<path d="M3 9 4.5 4h15L21 9M3 9h18M3 9v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>',
+    minus:     '<path d="M5 12h14"/>',
+    download:  '<path d="M12 3v12M7 11l5 5 5-5M4 21h16"/>',
+    upload:    '<path d="M12 21V9M7 13l5-5 5 5M4 3h16"/>',
+    sparkles:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/>',
+    undo:      '<path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/>',
+    cart:      '<circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.77L21 8H6"/>',
+  };
+
+  /** Inline stroke icon. */
+  function icon(name, cls) {
+    const p = ICON_PATHS[name] || "";
+    return raw(
+      `<svg class="${cls || ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`
+    );
+  }
+
+  /* ---------- feedback ---------- */
+
+  function haptic(ms) {
+    if (navigator.vibrate) { try { navigator.vibrate(ms || 8); } catch (_) {} }
+  }
+
+  KN.util = {
+    raw, html, node, frag, escapeHtml,
+    uid, clamp, debounce,
+    yen, yenFine, parseNum,
+    today, formatDate, relativeDate,
+    unitPrice, formatSize, UNITS,
+    icon, haptic,
+  };
+})();
+
+/* ---- js/store.js ---- */
+/* =========================================================
+   かいものノート — state, persistence, selectors
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { uid, today } = KN.util;
+
+  const KEY = "kaimono-note-v2";
+  const LEGACY_KEY = "kaimono-note-v1";
+  const SCHEMA = 2;
+
+  /* ---------------- defaults ---------------- */
+
+  const DEFAULT_CATEGORIES = [
+    { id: "c-veg",    name: "野菜・くだもの", emoji: "🥬" },
+    { id: "c-meat",   name: "肉・魚",         emoji: "🐟" },
+    { id: "c-food",   name: "食品",           emoji: "🍞" },
+    { id: "c-cold",   name: "冷蔵・冷凍",     emoji: "🧊" },
+    { id: "c-drink",  name: "飲みもの",       emoji: "🥤" },
+    { id: "c-daily",  name: "日用品",         emoji: "🧴" },
+    { id: "c-clean",  name: "掃除・洗剤",     emoji: "🧻" },
+    { id: "c-health", name: "薬・衛生",       emoji: "💊" },
+    { id: "c-other",  name: "その他",         emoji: "📦" },
+  ];
+
+  const STORE_COLORS = [
+    "#3b82f6", "#f59e0b", "#10b981", "#ef4444",
+    "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
+    "#6366f1", "#84cc16",
+  ];
+
+  const OTHER_CATEGORY = "c-other";
+
+  function emptyState() {
+    return {
+      schema: SCHEMA,
+      categories: DEFAULT_CATEGORIES.map((c, i) => ({ ...c, order: i })),
+      stores: [],
+      products: [],
+      items: [],
+      settings: { theme: "auto", showChecked: true },
+    };
+  }
+
+  /* ---------------- persistence ---------------- */
+
+  let migratedOnLoad = false;
+  let state = load();
+  const listeners = new Set();
+
+  function load() {
+    try {
+      const rawV2 = localStorage.getItem(KEY);
+      if (rawV2) return reconcile(JSON.parse(rawV2));
+
+      const rawV1 = localStorage.getItem(LEGACY_KEY);
+      if (rawV1) {
+        migratedOnLoad = true;
+        return migrateV1(JSON.parse(rawV1));
+      }
+    } catch (err) {
+      console.warn("state load failed, starting fresh", err);
+    }
+    return emptyState();
+  }
+
+  /** Fill in anything a older/partial save is missing so the app never crashes. */
+  function reconcile(s) {
+    const base = emptyState();
+    const out = { ...base, ...s };
+    out.settings = { ...base.settings, ...(s.settings || {}) };
+    out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
+    out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
+    out.products = Array.isArray(s.products) ? s.products : [];
+    out.items    = Array.isArray(s.items)    ? s.items    : [];
+
+    out.categories.forEach((c, i) => { if (typeof c.order !== "number") c.order = i; });
+    out.products.forEach((p) => {
+      if (!Array.isArray(p.prices)) p.prices = [];
+      if (!p.categoryId || !out.categories.some((c) => c.id === p.categoryId)) {
+        p.categoryId = OTHER_CATEGORY;
+      }
+    });
+    // Drop items whose product vanished.
+    out.items = out.items.filter((i) => out.products.some((p) => p.id === i.productId));
+    out.schema = SCHEMA;
+    return out;
+  }
+
+  /** v1 stored store names inline on each price; lift them into real store records. */
+  function migrateV1(old) {
+    const s = emptyState();
+    const storeByName = new Map();
+    const catByName = new Map(s.categories.map((c) => [c.name, c.id]));
+
+    function storeIdFor(name) {
+      const key = String(name).trim();
+      if (!key) return null;
+      if (storeByName.has(key)) return storeByName.get(key);
+      const rec = {
+        id: uid("s"),
+        name: key,
+        color: STORE_COLORS[storeByName.size % STORE_COLORS.length],
+        order: storeByName.size,
+      };
+      s.stores.push(rec);
+      storeByName.set(key, rec.id);
+      return rec.id;
+    }
+
+    function categoryIdFor(name) {
+      const key = String(name || "").trim();
+      if (!key) return OTHER_CATEGORY;
+      if (catByName.has(key)) return catByName.get(key);
+      const rec = { id: uid("c"), name: key, emoji: "🏷️", order: s.categories.length };
+      s.categories.push(rec);
+      catByName.set(key, rec.id);
+      return rec.id;
+    }
+
+    (old.products || []).forEach((p) => {
+      s.products.push({
+        id: p.id || uid("p"),
+        name: p.name,
+        categoryId: categoryIdFor(p.category),
+        amount: null,
+        unit: "",
+        note: "",
+        prices: (p.prices || []).map((pr) => ({
+          id: pr.id || uid("pr"),
+          storeId: storeIdFor(pr.store),
+          price: Number(pr.price) || 0,
+          amount: null,
+          date: pr.date || today(),
+        })).filter((pr) => pr.storeId),
+      });
+    });
+
+    (old.listItems || []).forEach((i) => {
+      if (!s.products.some((p) => p.id === i.productId)) return;
+      s.items.push({
+        id: i.id || uid("i"),
+        productId: i.productId,
+        qty: Number(i.qty) || 1,
+        memo: i.memo || "",
+        checked: !!i.checked,
+        addedAt: i.addedAt || today(),
+      });
+    });
+
+    return s;
+  }
+
+  let saveTimer = null;
+  function persist() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(state));
+      } catch (err) {
+        console.error("save failed", err);
+        KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+      }
+    }, 120);
+  }
+
+  function emit() {
+    listeners.forEach((fn) => fn(state));
+  }
+
+  /** Apply a mutation, persist, and notify. */
+  function update(mutator) {
+    mutator(state);
+    persist();
+    emit();
+  }
+
+  function subscribe(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  }
+
+  // A v1 upgrade only lived in memory until the first edit; write it out now so
+  // the converted data survives even if the user just looks and leaves.
+  if (migratedOnLoad) persist();
+
+  /* ---------------- selectors ---------------- */
+
+  const get = () => state;
+
+  const getProduct  = (id) => state.products.find((p) => p.id === id) || null;
+  const getStore    = (id) => state.stores.find((s) => s.id === id) || null;
+  const getCategory = (id) => state.categories.find((c) => c.id === id)
+                              || state.categories.find((c) => c.id === OTHER_CATEGORY)
+                              || state.categories[0];
+
+  function sortedCategories() {
+    return [...state.categories].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }
+
+  function sortedStores() {
+    return [...state.stores].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }
+
+  /* Keyword hints so a freshly typed item lands in a sensible category. */
+  const CATEGORY_HINTS = [
+    ["c-veg",    ["野菜", "やさい", "トマト", "きゅうり", "キュウリ", "レタス", "キャベツ", "玉ねぎ", "たまねぎ", "じゃがいも", "ジャガイモ", "にんじん", "ニンジン", "人参", "ねぎ", "ネギ", "白菜", "もやし", "きのこ", "しめじ", "りんご", "リンゴ", "バナナ", "みかん", "いちご", "ぶどう", "果物", "フルーツ", "サラダ"]],
+    ["c-meat",   ["肉", "にく", "牛", "豚", "鶏", "とり", "ひき肉", "ミンチ", "ハム", "ベーコン", "ソーセージ", "ウインナー", "魚", "さかな", "鮭", "さけ", "まぐろ", "マグロ", "刺身", "さしみ", "えび", "エビ", "いか", "イカ", "貝"]],
+    ["c-cold",   ["牛乳", "ぎゅうにゅう", "ミルク", "卵", "たまご", "タマゴ", "ヨーグルト", "チーズ", "バター", "豆腐", "とうふ", "納豆", "なっとう", "アイス", "冷凍", "れいとう", "冷蔵", "プリン", "生クリーム"]],
+    ["c-drink",  ["水", "みず", "お茶", "おちゃ", "茶", "コーヒー", "珈琲", "ジュース", "ビール", "酒", "さけ", "ワイン", "炭酸", "コーラ", "牛乳パック", "飲料", "ドリンク"]],
+    ["c-clean",  ["洗剤", "せんざい", "掃除", "そうじ", "トイレットペーパー", "ティッシュ", "ゴミ袋", "ごみ袋", "漂白", "柔軟剤", "スポンジ", "ワイパー", "クリーナー", "キッチンペーパー"]],
+    ["c-health", ["薬", "くすり", "マスク", "絆創膏", "ばんそうこう", "消毒", "サプリ", "ビタミン", "湿布", "体温計", "生理用品", "オムツ", "おむつ"]],
+    ["c-daily",  ["シャンプー", "リンス", "石鹸", "せっけん", "ボディソープ", "歯ブラシ", "歯磨き", "はみがき", "タオル", "電池", "ラップ", "アルミホイル", "洗顔", "化粧", "髭剃り", "ひげそり", "カミソリ"]],
+    ["c-food",   ["米", "こめ", "パン", "麺", "めん", "パスタ", "うどん", "そば", "ラーメン", "醤油", "しょうゆ", "味噌", "みそ", "砂糖", "塩", "しお", "油", "あぶら", "小麦粉", "缶詰", "レトルト", "カレー", "お菓子", "おかし", "スナック", "調味料", "だし", "ソース", "マヨネーズ", "ケチャップ", "シリアル"]],
+  ];
+
+  /** Best-guess category id for a product name; falls back to その他. */
+  function guessCategory(name) {
+    const n = String(name || "");
+    if (!n.trim()) return OTHER_CATEGORY;
+    for (const [catId, words] of CATEGORY_HINTS) {
+      if (words.some((w) => n.includes(w))) {
+        if (state.categories.some((c) => c.id === catId)) return catId;
+      }
+    }
+    return OTHER_CATEGORY;
+  }
+
+  function findProductByName(name) {
+    const n = String(name).trim().toLowerCase();
+    return state.products.find((p) => p.name.trim().toLowerCase() === n) || null;
+  }
+
+  function findStoreByName(name) {
+    const n = String(name).trim().toLowerCase();
+    return state.stores.find((s) => s.name.trim().toLowerCase() === n) || null;
+  }
+
+  /**
+   * Latest recorded price per store for a product, cheapest first.
+   * Older entries for the same store are treated as history, not offers.
+   */
+  function currentPrices(product) {
+    if (!product) return [];
+    const latest = new Map();
+    [...product.prices]
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach((pr) => latest.set(pr.storeId, pr));
+    return [...latest.values()]
+      .filter((pr) => getStore(pr.storeId))
+      .sort((a, b) => a.price - b.price);
+  }
+
+  function bestPrice(product) {
+    const list = currentPrices(product);
+    return list.length ? list[0] : null;
+  }
+
+  /** Price of `product` at `storeId` right now, or null. */
+  function priceAt(product, storeId) {
+    return currentPrices(product).find((pr) => pr.storeId === storeId) || null;
+  }
+
+  /* ---------------- mutations ---------------- */
+
+  function addStore(name, color) {
+    const clean = String(name).trim();
+    if (!clean) return null;
+    const existing = findStoreByName(clean);
+    if (existing) return existing;
+    const rec = {
+      id: uid("s"),
+      name: clean,
+      color: color || STORE_COLORS[state.stores.length % STORE_COLORS.length],
+      order: state.stores.length,
+    };
+    update((s) => { s.stores.push(rec); });
+    return rec;
+  }
+
+  function addProduct({ name, categoryId, amount, unit, note }) {
+    const clean = String(name).trim();
+    if (!clean) return null;
+    const existing = findProductByName(clean);
+    if (existing) return existing;
+    const rec = {
+      id: uid("p"),
+      name: clean,
+      categoryId: categoryId || OTHER_CATEGORY,
+      amount: isFinite(amount) && amount > 0 ? amount : null,
+      unit: unit || "",
+      note: note || "",
+      prices: [],
+    };
+    update((s) => { s.products.push(rec); });
+    return rec;
+  }
+
+  function addItem(productId, { qty = 1, memo = "" } = {}) {
+    const rec = {
+      id: uid("i"),
+      productId,
+      qty: Math.max(1, Math.round(qty) || 1),
+      memo,
+      checked: false,
+      addedAt: today(),
+    };
+    update((s) => { s.items.unshift(rec); });
+    return rec;
+  }
+
+  function addPrice(productId, { storeId, price, amount, date }) {
+    const rec = {
+      id: uid("pr"),
+      storeId,
+      price: Number(price),
+      amount: isFinite(amount) && amount > 0 ? amount : null,
+      date: date || today(),
+    };
+    update((s) => {
+      const p = s.products.find((x) => x.id === productId);
+      if (p) p.prices.push(rec);
+    });
+    return rec;
+  }
+
+  /* ---------------- import / export ---------------- */
+
+  function exportJSON() {
+    return JSON.stringify({ ...state, exportedAt: today(), app: "kaimono-note" }, null, 2);
+  }
+
+  function importJSON(text) {
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") throw new Error("形式が正しくありません");
+    const next = parsed.schema >= 2 ? reconcile(parsed) : migrateV1(parsed);
+    update((s) => {
+      s.schema = SCHEMA;
+      s.categories = next.categories;
+      s.stores = next.stores;
+      s.products = next.products;
+      s.items = next.items;
+      s.settings = next.settings;
+    });
+  }
+
+  function reset() {
+    update((s) => {
+      const fresh = emptyState();
+      Object.keys(s).forEach((k) => delete s[k]);
+      Object.assign(s, fresh);
+    });
+  }
+
+  /* ---------------- sample data ---------------- */
+
+  function loadSample() {
+    const fresh = emptyState();
+    const mk = (name, color, order) => ({ id: uid("s"), name, color, order });
+    const aeon   = mk("イオン",        STORE_COLORS[0], 0);
+    const gyomu  = mk("業務スーパー",  STORE_COLORS[2], 1);
+    const drug   = mk("ドラッグ100",   STORE_COLORS[1], 2);
+    fresh.stores = [aeon, gyomu, drug];
+
+    const P = (name, categoryId, amount, unit, prices) => {
+      const p = {
+        id: uid("p"), name, categoryId,
+        amount: amount || null, unit: unit || "", note: "", prices: [],
+      };
+      prices.forEach(([store, price]) => {
+        p.prices.push({ id: uid("pr"), storeId: store.id, price, amount: null, date: today() });
+      });
+      fresh.products.push(p);
+      return p;
+    };
+
+    const soap  = P("食器用洗剤",         "c-clean", 500, "ml", [[aeon, 298], [drug, 258], [gyomu, 320]]);
+    const paper = P("トイレットペーパー", "c-clean", 12,  "ロール", [[aeon, 398], [drug, 358]]);
+    const milk  = P("牛乳",               "c-cold",  1,   "L",  [[aeon, 218], [gyomu, 188]]);
+    const egg   = P("卵",                 "c-cold",  10,  "個", [[aeon, 268], [gyomu, 228]]);
+    const rice  = P("お米",               "c-food",  5,   "kg", [[aeon, 2480], [gyomu, 2280]]);
+    const onion = P("玉ねぎ",             "c-veg",   3,   "個", [[gyomu, 158]]);
+    const tea   = P("お茶",               "c-drink", 2,   "L",  [[drug, 138], [aeon, 158]]);
+
+    [[soap, 1, "詰め替え用"], [paper, 1, ""], [milk, 2, ""], [egg, 1, ""],
+     [rice, 1, ""], [onion, 1, ""], [tea, 3, ""]].forEach(([p, qty, memo]) => {
+      fresh.items.push({
+        id: uid("i"), productId: p.id, qty, memo,
+        checked: false, addedAt: today(),
+      });
+    });
+
+    update((s) => {
+      Object.keys(s).forEach((k) => delete s[k]);
+      Object.assign(s, fresh);
+    });
+  }
+
+  KN.store = {
+    KEY, SCHEMA, STORE_COLORS, OTHER_CATEGORY,
+    get, update, subscribe,
+    getProduct, getStore, getCategory,
+    sortedCategories, sortedStores,
+    findProductByName, findStoreByName, guessCategory,
+    currentPrices, bestPrice, priceAt,
+    addStore, addProduct, addItem, addPrice,
+    exportJSON, importJSON, reset, loadSample,
+  };
+})();
+
+/* ---- js/ui.js ---- */
+/* =========================================================
+   かいものノート — UI primitives (sheet, toast, dialogs)
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic } = KN.util;
+
+  const sheetRoot = () => document.getElementById("sheet-root");
+  const toastRoot = () => document.getElementById("toast-root");
+
+  const openSheets = [];
+
+  /* ---------------- bottom sheet ---------------- */
+
+  /**
+   * Open a modal sheet.
+   * @param {object} opts
+   * @param {string} opts.title
+   * @param {Node|DocumentFragment} opts.content
+   * @param {Node} [opts.footer]
+   * @param {Function} [opts.onClose]
+   * @returns {{close: Function, el: HTMLElement}}
+   */
+  function sheet({ title, content, footer, onClose }) {
+    const backdrop = node(html`<div class="sheet-backdrop"></div>`);
+    const el = node(html`
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="${title || ""}">
+        <div class="sheet-handle"></div>
+        <header class="sheet-head">
+          <h2 class="sheet-title">${title || ""}</h2>
+          <button class="icon-btn js-close" aria-label="閉じる">${icon("close")}</button>
+        </header>
+        <div class="sheet-body"></div>
+      </div>
+    `);
+
+    el.querySelector(".sheet-body").append(content);
+    if (footer) {
+      const foot = node(html`<div class="sheet-foot"></div>`);
+      foot.append(footer);
+      el.append(foot);
+    }
+
+    sheetRoot().append(backdrop, el);
+    document.body.style.overflow = "hidden";
+
+    // Next frame so the transition runs.
+    requestAnimationFrame(() => {
+      backdrop.classList.add("is-open");
+      el.classList.add("is-open");
+    });
+
+    let closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      backdrop.classList.remove("is-open");
+      el.classList.remove("is-open");
+      const idx = openSheets.indexOf(handle);
+      if (idx >= 0) openSheets.splice(idx, 1);
+      if (!openSheets.length) document.body.style.overflow = "";
+      setTimeout(() => { backdrop.remove(); el.remove(); }, 300);
+      onClose && onClose();
+    }
+
+    backdrop.addEventListener("click", close);
+    el.querySelector(".js-close").addEventListener("click", close);
+
+    // Drag-down-to-dismiss, only while the sheet is anchored to the bottom
+    // (above 640px it becomes a centred dialog with a different transform).
+    const isBottomSheet = () => window.matchMedia("(max-width: 639px)").matches;
+    let startY = null;
+    const head = el.querySelector(".sheet-head");
+    const handleBar = el.querySelector(".sheet-handle");
+    [head, handleBar].forEach((zone) => {
+      zone.addEventListener("touchstart", (e) => {
+        startY = isBottomSheet() ? e.touches[0].clientY : null;
+      }, { passive: true });
+      zone.addEventListener("touchmove", (e) => {
+        if (startY == null) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > 0) el.style.transform = `translate(-50%, ${dy}px)`;
+      }, { passive: true });
+      zone.addEventListener("touchend", (e) => {
+        if (startY == null) return;
+        const dy = (e.changedTouches[0] || {}).clientY - startY;
+        el.style.transform = "";
+        if (dy > 90) close();
+        startY = null;
+      });
+    });
+
+    const handle = { close, el };
+    openSheets.push(handle);
+
+    // Focus the first meaningful control.
+    setTimeout(() => {
+      const target = el.querySelector("input, textarea, select, button:not(.js-close)");
+      if (target && !("ontouchstart" in window)) target.focus();
+    }, 320);
+
+    return handle;
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && openSheets.length) {
+      openSheets[openSheets.length - 1].close();
+    }
+  });
+
+  /* ---------------- toast ---------------- */
+
+  let toastTimer = null;
+
+  function toast(message, { action, duration = 3600 } = {}) {
+    const root = toastRoot();
+    root.innerHTML = "";
+    clearTimeout(toastTimer);
+
+    const el = node(html`
+      <div class="toast">
+        <span class="toast-msg">${message}</span>
+        ${action ? html`<button class="toast-action">${action.label}</button>` : ""}
+      </div>
+    `);
+
+    if (action) {
+      el.querySelector(".toast-action").addEventListener("click", () => {
+        action.onClick();
+        dismiss();
+      });
+    }
+
+    function dismiss() {
+      clearTimeout(toastTimer);
+      el.classList.add("is-out");
+      setTimeout(() => el.remove(), 220);
+    }
+
+    root.append(el);
+    toastTimer = setTimeout(dismiss, duration);
+    return { dismiss };
+  }
+
+  /* ---------------- confirm ---------------- */
+
+  function confirm({ title, message, okLabel = "OK", cancelLabel = "キャンセル", danger = false }) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const body = node(html`<div class="stack" style="gap:8px"><p style="color:var(--c-text-2);line-height:1.6">${message || ""}</p></div>`);
+      const foot = node(html`
+        <div style="display:flex;gap:8px;width:100%">
+          <button class="btn btn-soft js-cancel" style="flex:1">${cancelLabel}</button>
+          <button class="btn ${danger ? "btn-danger" : "btn-primary"} js-ok" style="flex:1">${okLabel}</button>
+        </div>
+      `);
+
+      const h = sheet({
+        title, content: body, footer: foot,
+        onClose: () => { if (!settled) { settled = true; resolve(false); } },
+      });
+
+      foot.querySelector(".js-cancel").addEventListener("click", () => h.close());
+      foot.querySelector(".js-ok").addEventListener("click", () => {
+        settled = true;
+        resolve(true);
+        h.close();
+      });
+    });
+  }
+
+  /* ---------------- prompt ---------------- */
+
+  function prompt({ title, label, value = "", placeholder = "", okLabel = "保存", inputMode }) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const body = node(html`
+        <label class="field">
+          ${label ? html`<span class="field-label">${label}</span>` : ""}
+          <input class="input js-input" value="${value}" placeholder="${placeholder}"
+                 ${inputMode ? KN.util.raw(`inputmode="${inputMode}"`) : ""}>
+        </label>
+      `);
+      const foot = node(html`
+        <div style="display:flex;gap:8px;width:100%">
+          <button class="btn btn-soft js-cancel" style="flex:1">キャンセル</button>
+          <button class="btn btn-primary js-ok" style="flex:1">${okLabel}</button>
+        </div>
+      `);
+
+      const h = sheet({
+        title, content: body, footer: foot,
+        onClose: () => { if (!settled) { settled = true; resolve(null); } },
+      });
+
+      const input = body.querySelector(".js-input");
+      function submit() {
+        settled = true;
+        resolve(input.value.trim());
+        h.close();
+      }
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      foot.querySelector(".js-ok").addEventListener("click", submit);
+      foot.querySelector(".js-cancel").addEventListener("click", () => h.close());
+    });
+  }
+
+  /* ---------------- store picker ---------------- */
+
+  /** Chips of known stores + inline "new store" field. Resolves to a storeId. */
+  function storePicker(container, { selectedId, onSelect }) {
+    const stores = KN.store.sortedStores();
+    let current = selectedId || (stores[0] && stores[0].id) || null;
+
+    function render() {
+      container.innerHTML = "";
+      const wrap = node(html`<div class="chip-wrap"></div>`);
+      stores.forEach((s) => {
+        const chip = node(html`
+          <button type="button" class="chip" aria-pressed="${String(s.id === current)}">
+            <span class="dot" style="background:${s.color}"></span>${s.name}
+          </button>
+        `);
+        chip.addEventListener("click", () => {
+          current = s.id;
+          onSelect(current);
+          render();
+        });
+        wrap.append(chip);
+      });
+
+      const addChip = node(html`<button type="button" class="chip">＋ お店を追加</button>`);
+      addChip.addEventListener("click", async () => {
+        const name = await prompt({ title: "お店を追加", label: "お店の名前", placeholder: "例：イオン 〇〇店" });
+        if (!name) return;
+        const rec = KN.store.addStore(name);
+        stores.length = 0;
+        KN.store.sortedStores().forEach((s) => stores.push(s));
+        current = rec.id;
+        onSelect(current);
+        render();
+      });
+      wrap.append(addChip);
+      container.append(wrap);
+    }
+
+    render();
+    if (current) onSelect(current);
+    return { get current() { return current; } };
+  }
+
+  /* ---------------- category picker ---------------- */
+
+  function categoryPicker(container, { selectedId, onSelect }) {
+    let current = selectedId || KN.store.OTHER_CATEGORY;
+
+    function render() {
+      container.innerHTML = "";
+      const wrap = node(html`<div class="chip-wrap"></div>`);
+      KN.store.sortedCategories().forEach((c) => {
+        const chip = node(html`
+          <button type="button" class="chip" aria-pressed="${String(c.id === current)}">
+            <span class="chip-emoji">${c.emoji}</span>${c.name}
+          </button>
+        `);
+        chip.addEventListener("click", () => {
+          current = c.id;
+          haptic();
+          onSelect(current);
+          render();
+        });
+        wrap.append(chip);
+      });
+      container.append(wrap);
+    }
+
+    render();
+    return { get current() { return current; } };
+  }
+
+  KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker };
+})();
+
+/* ---- js/product-sheet.js ---- */
+/* =========================================================
+   かいものノート — shared product / item detail sheet
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, yen, unitPrice, formatSize, relativeDate, UNITS, parseNum, debounce, haptic } = KN.util;
+  const store = KN.store;
+
+  /**
+   * Open the detail sheet for a product.
+   * @param {string} productId
+   * @param {object} [opts]
+   * @param {string} [opts.itemId] when opened from the shopping list, shows qty/memo controls
+   */
+  function open(productId, { itemId } = {}) {
+    const product = store.getProduct(productId);
+    if (!product) return;
+
+    const body = node(html`<div class="stack" style="gap:20px"></div>`);
+
+    const pricesWrap = node(html`<div class="stack" style="gap:12px"></div>`);
+    const rerenderPrices = () => renderPrices(pricesWrap, productId);
+
+    body.append(nameField(productId));
+    if (itemId) body.append(itemSection(itemId));
+    body.append(categoryField(productId));
+    body.append(sizeField(productId, rerenderPrices));
+    body.append(pricesWrap);
+    rerenderPrices();
+
+    body.append(historySection(productId));
+    body.append(dangerSection(productId, () => sheetHandle.close()));
+
+    const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
+
+    const sheetHandle = KN.ui.sheet({
+      title: product.name,
+      content: body,
+      footer: foot,
+    });
+
+    foot.addEventListener("click", () => sheetHandle.close());
+    return sheetHandle;
+  }
+
+  /* ---------------- fields ---------------- */
+
+  function nameField(productId) {
+    const p = store.getProduct(productId);
+    const wrap = node(html`
+      <label class="field">
+        <span class="field-label">商品名</span>
+        <input class="input js-name" value="${p.name}" placeholder="商品名">
+      </label>
+    `);
+    const input = wrap.querySelector(".js-name");
+    const save = debounce(() => {
+      const v = input.value.trim();
+      if (!v) return;
+      store.update((s) => {
+        const rec = s.products.find((x) => x.id === productId);
+        if (rec) rec.name = v;
+      });
+    }, 350);
+    input.addEventListener("input", save);
+    return wrap;
+  }
+
+  function itemSection(itemId) {
+    const item = store.get().items.find((i) => i.id === itemId);
+    if (!item) return document.createDocumentFragment();
+
+    const wrap = node(html`
+      <div class="stack" style="gap:12px">
+        <div class="field">
+          <span class="field-label">数量</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="icon-btn js-minus" aria-label="減らす" style="background:var(--c-surface-2)">${icon("minus")}</button>
+            <span class="js-qty mono-num" style="font-size:22px;font-weight:800;min-width:44px;text-align:center">${item.qty}</span>
+            <button class="icon-btn js-plus" aria-label="増やす" style="background:var(--c-surface-2)">${icon("plus")}</button>
+            <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
+          </div>
+        </div>
+        <label class="field">
+          <span class="field-label">メモ</span>
+          <input class="input js-memo" value="${item.memo || ""}" placeholder="例：詰め替え用・特売のとき">
+        </label>
+      </div>
+    `);
+
+    const qtyEl = wrap.querySelector(".js-qty");
+    function setQty(delta) {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === itemId);
+        if (rec) rec.qty = Math.max(1, rec.qty + delta);
+      });
+      const rec = store.get().items.find((i) => i.id === itemId);
+      qtyEl.textContent = rec ? rec.qty : 1;
+      haptic();
+    }
+    wrap.querySelector(".js-minus").addEventListener("click", () => setQty(-1));
+    wrap.querySelector(".js-plus").addEventListener("click", () => setQty(1));
+
+    const memo = wrap.querySelector(".js-memo");
+    memo.addEventListener("input", debounce(() => {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === itemId);
+        if (rec) rec.memo = memo.value;
+      });
+    }, 350));
+
+    wrap.querySelector(".js-remove").addEventListener("click", () => {
+      const snapshot = store.get().items.find((i) => i.id === itemId);
+      store.update((s) => { s.items = s.items.filter((i) => i.id !== itemId); });
+      KN.ui.toast("リストから外しました", {
+        action: {
+          label: "元に戻す",
+          onClick: () => store.update((s) => { s.items.unshift(snapshot); }),
+        },
+      });
+      const sheetEl = wrap.closest(".sheet");
+      if (sheetEl) sheetEl.querySelector(".js-close").click();
+    });
+
+    return wrap;
+  }
+
+  function categoryField(productId) {
+    const p = store.getProduct(productId);
+    const wrap = node(html`
+      <div class="field">
+        <span class="field-label">カテゴリ</span>
+        <div class="js-picker"></div>
+      </div>
+    `);
+    KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
+      selectedId: p.categoryId,
+      onSelect: (categoryId) => {
+        store.update((s) => {
+          const rec = s.products.find((x) => x.id === productId);
+          if (rec) rec.categoryId = categoryId;
+        });
+      },
+    });
+    return wrap;
+  }
+
+  function sizeField(productId, onChanged) {
+    const p = store.getProduct(productId);
+    const wrap = node(html`
+      <div class="field">
+        <span class="field-label">内容量（単価の計算に使います）</span>
+        <div class="input-group">
+          <input class="input js-amount" style="flex:1" type="number" inputmode="decimal" min="0" step="any"
+                 value="${p.amount != null ? p.amount : ""}" placeholder="500">
+          <select class="select js-unit" style="flex:0 0 110px">
+            <option value="">単位なし</option>
+            ${UNITS.map((u) => html`<option value="${u}" ${p.unit === u ? KN.util.raw("selected") : ""}>${u}</option>`)}
+          </select>
+        </div>
+      </div>
+    `);
+
+    const amountEl = wrap.querySelector(".js-amount");
+    const unitEl = wrap.querySelector(".js-unit");
+
+    function save() {
+      const amount = parseNum(amountEl.value);
+      store.update((s) => {
+        const rec = s.products.find((x) => x.id === productId);
+        if (!rec) return;
+        rec.amount = isFinite(amount) && amount > 0 ? amount : null;
+        rec.unit = unitEl.value;
+      });
+      onChanged && onChanged();
+    }
+
+    amountEl.addEventListener("input", debounce(save, 400));
+    unitEl.addEventListener("change", save);
+    return wrap;
+  }
+
+  /* ---------------- prices ---------------- */
+
+  function renderPrices(container, productId) {
+    container.innerHTML = "";
+    container.classList.add("js-prices-host");
+
+    const p = store.getProduct(productId);
+    const prices = store.currentPrices(p);
+    const best = prices[0] || null;
+
+    const section = node(html`
+      <div class="stack js-prices" style="gap:10px">
+        <span class="field-label">お店ごとの値段</span>
+      </div>
+    `);
+
+    if (!prices.length) {
+      section.append(node(html`
+        <p style="color:var(--c-text-3);font-size:13px;line-height:1.6">
+          まだ登録がありません。下のフォームからお店と値段を追加すると、いちばん安いお店が分かります。
+        </p>
+      `));
+    } else {
+      const list = node(html`<div class="price-list"></div>`);
+      prices.forEach((pr) => {
+        const st = store.getStore(pr.storeId);
+        const amount = pr.amount || p.amount;
+        const up = unitPrice(pr.price, amount, p.unit);
+        const isBest = best && pr.id === best.id && prices.length > 1;
+
+        const row = node(html`
+          <div class="price-row ${isBest ? "is-best" : ""}">
+            <span class="dot" style="background:${st.color}"></span>
+            <div class="price-store-wrap">
+              <span class="price-store">${st.name}</span>
+              ${isBest ? html`<span class="crown">🏆</span>` : ""}
+            </div>
+            <div class="price-figures">
+              <span class="price-amount">${yen(pr.price)}</span>
+              ${up ? html`<span class="price-unit">${up.text}</span>` : ""}
+              <span class="price-date">${relativeDate(pr.date)}</span>
+            </div>
+            <button class="icon-btn is-danger js-del" aria-label="この価格を削除">${icon("trash")}</button>
+          </div>
+        `);
+
+        row.querySelector(".js-del").addEventListener("click", () => {
+          store.update((s) => {
+            const rec = s.products.find((x) => x.id === productId);
+            if (rec) rec.prices = rec.prices.filter((x) => x.id !== pr.id);
+          });
+          renderPrices(container, productId);
+          KN.ui.toast("価格を削除しました", {
+            action: {
+              label: "元に戻す",
+              onClick: () => {
+                store.update((s) => {
+                  const rec = s.products.find((x) => x.id === productId);
+                  if (rec) rec.prices.push(pr);
+                });
+                renderPrices(container, productId);
+              },
+            },
+          });
+        });
+
+        list.append(row);
+      });
+      section.append(list);
+    }
+
+    section.append(addPriceForm(productId, () => renderPrices(container, productId)));
+    container.append(section);
+  }
+
+  function addPriceForm(productId, onAdded) {
+    const p = store.getProduct(productId);
+    const hasStores = store.get().stores.length > 0;
+
+    const form = node(html`
+      <form class="stack" style="gap:10px;padding:12px;border:1.5px dashed var(--c-border-2);border-radius:12px">
+        <span class="field-label">値段を追加</span>
+        <div class="js-stores"></div>
+        <div class="input-group">
+          <input class="input js-price" type="number" inputmode="numeric" min="0" step="1"
+                 placeholder="値段" style="flex:1.2" required>
+          <input class="input js-size" type="number" inputmode="decimal" min="0" step="any"
+                 placeholder="${p.unit ? `内容量(${p.unit})` : "内容量"}" style="flex:1"
+                 ${p.unit ? "" : KN.util.raw("disabled")}>
+          <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
+        </div>
+        <p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
+          ${p.unit
+            ? html`内容量は、その店だけ容量が違うときに入れてください（空なら ${formatSize(p.amount, p.unit) || "商品の内容量"} を使います）`
+            : html`上の「内容量」を設定すると、100gあたりなどの単価でも比べられます`}
+        </p>
+      </form>
+    `);
+
+    let selectedStore = null;
+    KN.ui.storePicker(form.querySelector(".js-stores"), {
+      selectedId: null,
+      onSelect: (id) => { selectedStore = id; },
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const priceEl = form.querySelector(".js-price");
+      const sizeEl = form.querySelector(".js-size");
+      const price = parseNum(priceEl.value);
+
+      if (!hasStores && !selectedStore) {
+        KN.ui.toast("先に「＋ お店を追加」でお店を登録してください");
+        return;
+      }
+      if (!selectedStore) { KN.ui.toast("お店を選んでください"); return; }
+      if (!isFinite(price) || price < 0) { KN.ui.toast("値段を入力してください"); return; }
+
+      store.addPrice(productId, {
+        storeId: selectedStore,
+        price,
+        amount: parseNum(sizeEl.value),
+      });
+      haptic(12);
+      priceEl.value = "";
+      sizeEl.value = "";
+      onAdded();
+    });
+
+    return form;
+  }
+
+  /* ---------------- history ---------------- */
+
+  function historySection(productId) {
+    const p = store.getProduct(productId);
+    if (!p.prices || p.prices.length < 3) return document.createDocumentFragment();
+
+    const sorted = [...p.prices].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const values = sorted.map((x) => x.price);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min || 1;
+
+    const W = 300, H = 48, PAD = 4;
+    const pts = sorted.map((pr, i) => {
+      const x = sorted.length === 1 ? W / 2 : (i / (sorted.length - 1)) * (W - PAD * 2) + PAD;
+      const y = H - PAD - ((pr.price - min) / span) * (H - PAD * 2);
+      return [x, y];
+    });
+
+    const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+    const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`;
+
+    return node(html`
+      <div class="field">
+        <span class="field-label">値段の記録（${sorted.length}件）</span>
+        <div class="card" style="padding:12px">
+          <svg class="spark" viewBox="0 0 ${String(W)} ${String(H)}" preserveAspectRatio="none" aria-hidden="true">
+            <path class="spark-area" d="${area}"></path>
+            <path class="spark-line" d="${line}"></path>
+          </svg>
+          <div class="spread" style="margin-top:6px">
+            <span style="font-size:11px;color:var(--c-text-3)">いちばん安いとき ${yen(min)}</span>
+            <span style="font-size:11px;color:var(--c-text-3)">高いとき ${yen(max)}</span>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  /* ---------------- danger ---------------- */
+
+  function dangerSection(productId, closeSheet) {
+    const btn = node(html`
+      <button class="btn btn-danger btn-block">${icon("trash")} この商品を削除</button>
+    `);
+    btn.addEventListener("click", async () => {
+      const p = store.getProduct(productId);
+      const ok = await KN.ui.confirm({
+        title: "商品を削除しますか？",
+        message: `「${p.name}」の価格記録と、買い物リストの項目もまとめて削除されます。`,
+        okLabel: "削除する",
+        danger: true,
+      });
+      if (!ok) return;
+      store.update((s) => {
+        s.products = s.products.filter((x) => x.id !== productId);
+        s.items = s.items.filter((i) => i.productId !== productId);
+      });
+      KN.ui.toast("削除しました");
+      closeSheet();
+    });
+    return btn;
+  }
+
+  KN.productSheet = { open };
+})();
+
+/* ---- js/screen-list.js ---- */
+/* =========================================================
+   かいものノート — shopping list screen
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, frag, icon, yen, haptic } = KN.util;
+  const store = KN.store;
+
+  let root = null;
+  let els = {};
+  let categoryFilter = null;   // categoryId or null = all
+  let acIndex = -1;            // active autocomplete row
+  let acMatches = [];
+
+  /* ---------------- mount (static chrome) ---------------- */
+
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+
+    const chrome = node(html`
+      <div class="stack">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div style="flex:1;min-width:0">
+              <h1 class="topbar-title">買い物リスト</h1>
+              <div class="topbar-sub js-sub"></div>
+            </div>
+            <button class="icon-btn js-clear" aria-label="購入済みをまとめて削除" title="購入済みをまとめて削除">
+              ${icon("trash")}
+            </button>
+          </div>
+        </header>
+
+        <div class="quick-add">
+          <form class="quick-add-bar js-form">
+            ${icon("cart")}
+            <input class="quick-add-input js-input" placeholder="商品を追加（例：食器用洗剤）"
+                   autocomplete="off" autocapitalize="off" spellcheck="false"
+                   aria-label="商品を追加" aria-autocomplete="list">
+            <button class="quick-add-btn js-add" type="submit" aria-label="追加" disabled>${icon("plus")}</button>
+          </form>
+          <div class="js-ac"></div>
+        </div>
+
+        <div class="progress-wrap js-progress-wrap" hidden>
+          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
+        </div>
+
+        <div class="js-filter"></div>
+        <div class="js-body"></div>
+      </div>
+    `);
+
+    root.append(chrome);
+
+    els = {
+      sub:        chrome.querySelector(".js-sub"),
+      clear:      chrome.querySelector(".js-clear"),
+      form:       chrome.querySelector(".js-form"),
+      input:      chrome.querySelector(".js-input"),
+      addBtn:     chrome.querySelector(".js-add"),
+      ac:         chrome.querySelector(".js-ac"),
+      progWrap:   chrome.querySelector(".js-progress-wrap"),
+      progress:   chrome.querySelector(".js-progress"),
+      filter:     chrome.querySelector(".js-filter"),
+      body:       chrome.querySelector(".js-body"),
+      topbar:     chrome.querySelector(".topbar"),
+    };
+
+    wireQuickAdd();
+
+    els.clear.addEventListener("click", clearChecked);
+
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    });
+  }
+
+  /* ---------------- quick add + autocomplete ---------------- */
+
+  function wireQuickAdd() {
+    const { input, form, addBtn, ac } = els;
+
+    input.addEventListener("input", () => {
+      addBtn.disabled = !input.value.trim();
+      renderAutocomplete();
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (!acMatches.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        acIndex = (acIndex + 1) % acMatches.length;
+        paintActive();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        acIndex = acIndex <= 0 ? acMatches.length - 1 : acIndex - 1;
+        paintActive();
+      } else if (e.key === "Escape") {
+        closeAutocomplete();
+      }
+    });
+
+    input.addEventListener("blur", () => setTimeout(closeAutocomplete, 140));
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const picked = acIndex >= 0 ? acMatches[acIndex] : null;
+      if (picked && picked.product) {
+        addExisting(picked.product);
+      } else {
+        addByName(input.value);
+      }
+    });
+  }
+
+  function renderAutocomplete() {
+    const q = els.input.value.trim().toLowerCase();
+    els.ac.innerHTML = "";
+    acIndex = -1;
+    acMatches = [];
+    if (!q) return;
+
+    const onList = new Set(store.get().items.map((i) => i.productId));
+    const found = store.get().products
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStarts - bStarts || a.name.localeCompare(b.name, "ja");
+      })
+      .slice(0, 6);
+
+    const exact = store.findProductByName(q);
+    acMatches = found.map((p) => ({ product: p }));
+    if (!exact) acMatches.push({ product: null, name: els.input.value.trim() });
+    if (!acMatches.length) return;
+
+    const box = node(html`<div class="ac" role="listbox"></div>`);
+
+    acMatches.forEach((m, idx) => {
+      let row;
+      if (m.product) {
+        const cat = store.getCategory(m.product.categoryId);
+        const best = store.bestPrice(m.product);
+        const bestStore = best ? store.getStore(best.storeId) : null;
+        row = node(html`
+          <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
+            <span class="ac-emoji">${cat.emoji}</span>
+            <span class="ac-main">
+              <span class="ac-name">${m.product.name}</span>
+              <span class="ac-sub">
+                ${best && bestStore ? html`${bestStore.name} ${yen(best.price)} が最安` : "価格の記録なし"}
+                ${onList.has(m.product.id) ? html` ・<b>リストにあります</b>` : ""}
+              </span>
+            </span>
+          </button>
+        `);
+      } else {
+        row = node(html`
+          <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
+            <span class="ac-emoji">✨</span>
+            <span class="ac-main">
+              <span class="ac-name ac-new">「${m.name}」を新しく追加</span>
+              <span class="ac-sub">カテゴリは自動で振り分けます</span>
+            </span>
+          </button>
+        `);
+      }
+
+      row.addEventListener("mousedown", (e) => e.preventDefault());
+      row.addEventListener("click", () => {
+        if (m.product) addExisting(m.product);
+        else addByName(m.name);
+      });
+      box.append(row);
+    });
+
+    els.ac.append(box);
+  }
+
+  function paintActive() {
+    els.ac.querySelectorAll(".ac-item").forEach((r, i) => {
+      r.classList.toggle("is-active", i === acIndex);
+    });
+  }
+
+  function closeAutocomplete() {
+    els.ac.innerHTML = "";
+    acIndex = -1;
+    acMatches = [];
+  }
+
+  function resetInput() {
+    els.input.value = "";
+    els.addBtn.disabled = true;
+    closeAutocomplete();
+    els.input.focus();
+  }
+
+  function addExisting(product) {
+    const already = store.get().items.find((i) => i.productId === product.id && !i.checked);
+    if (already) {
+      // `already` points at the live record, so read the new quantity back
+      // after the update rather than adding one to a value that already moved.
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === already.id);
+        if (rec) rec.qty += 1;
+      });
+      const updated = store.get().items.find((i) => i.id === already.id);
+      KN.ui.toast(`${product.name} を ${updated ? updated.qty : already.qty} 個にしました`);
+    } else {
+      store.addItem(product.id);
+    }
+    haptic(10);
+    resetInput();
+  }
+
+  function addByName(rawName) {
+    const name = String(rawName).trim();
+    if (!name) return;
+
+    const existing = store.findProductByName(name);
+    if (existing) { addExisting(existing); return; }
+
+    const product = store.addProduct({ name, categoryId: store.guessCategory(name) });
+    store.addItem(product.id);
+    haptic(10);
+    resetInput();
+
+    const cat = store.getCategory(product.categoryId);
+    KN.ui.toast(`${cat.emoji} ${cat.name} に追加しました`, {
+      action: {
+        label: "編集",
+        onClick: () => {
+          const item = store.get().items.find((i) => i.productId === product.id);
+          KN.productSheet.open(product.id, { itemId: item && item.id });
+        },
+      },
+    });
+  }
+
+  /* ---------------- clear checked ---------------- */
+
+  async function clearChecked() {
+    const checked = store.get().items.filter((i) => i.checked);
+    if (!checked.length) { KN.ui.toast("購入済みの商品はありません"); return; }
+
+    const ok = await KN.ui.confirm({
+      title: "購入済みを削除",
+      message: `${checked.length}件の購入済み商品をリストから消します。商品と価格の記録は残ります。`,
+      okLabel: "削除する",
+      danger: true,
+    });
+    if (!ok) return;
+
+    store.update((s) => { s.items = s.items.filter((i) => !i.checked); });
+    KN.ui.toast(`${checked.length}件を削除しました`, {
+      action: {
+        label: "元に戻す",
+        onClick: () => store.update((s) => { s.items = [...checked, ...s.items]; }),
+      },
+    });
+  }
+
+  /* ---------------- render ---------------- */
+
+  function render() {
+    const st = store.get();
+    const items = st.items;
+    const done = items.filter((i) => i.checked).length;
+
+    els.sub.textContent = items.length
+      ? `${items.length}件 ・ ${done}件購入済み`
+      : "リストは空です";
+
+    els.progWrap.hidden = items.length === 0;
+    els.progress.style.width = items.length ? `${(done / items.length) * 100}%` : "0%";
+
+    renderFilter(items);
+    renderBody(items);
+  }
+
+  function renderFilter(items) {
+    els.filter.innerHTML = "";
+    const counts = new Map();
+    items.filter((i) => !i.checked).forEach((i) => {
+      const p = store.getProduct(i.productId);
+      if (!p) return;
+      counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1);
+    });
+
+    if (counts.size < 2) { categoryFilter = null; return; }
+    if (categoryFilter && !counts.has(categoryFilter)) categoryFilter = null;
+
+    const row = node(html`<div class="chip-row"></div>`);
+
+    const all = node(html`
+      <button type="button" class="chip" aria-pressed="${String(!categoryFilter)}">すべて</button>
+    `);
+    all.addEventListener("click", () => { categoryFilter = null; render(); });
+    row.append(all);
+
+    store.sortedCategories()
+      .filter((c) => counts.has(c.id))
+      .forEach((c) => {
+        const chip = node(html`
+          <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}">
+            <span class="chip-emoji">${c.emoji}</span>${c.name}
+            <span class="chip-count">${counts.get(c.id)}</span>
+          </button>
+        `);
+        chip.addEventListener("click", () => {
+          categoryFilter = categoryFilter === c.id ? null : c.id;
+          haptic();
+          render();
+        });
+        row.append(chip);
+      });
+
+    els.filter.append(row);
+  }
+
+  function renderBody(items) {
+    els.body.innerHTML = "";
+
+    if (!items.length) {
+      els.body.append(emptyState());
+      return;
+    }
+
+    const active = items.filter((i) => !i.checked);
+    const checked = items.filter((i) => i.checked);
+
+    // group active items by category
+    const groups = new Map();
+    active.forEach((item) => {
+      const p = store.getProduct(item.productId);
+      if (!p) return;
+      if (categoryFilter && p.categoryId !== categoryFilter) return;
+      if (!groups.has(p.categoryId)) groups.set(p.categoryId, []);
+      groups.get(p.categoryId).push({ item, product: p });
+    });
+
+    store.sortedCategories().forEach((cat) => {
+      const entries = groups.get(cat.id);
+      if (!entries || !entries.length) return;
+
+      const group = node(html`
+        <section class="cat-group">
+          <h2 class="cat-head">
+            <span class="cat-head-emoji">${cat.emoji}</span>${cat.name}
+            <span class="cat-head-count">${entries.length}</span>
+          </h2>
+          <div class="item-list"></div>
+        </section>
+      `);
+      const list = group.querySelector(".item-list");
+      entries.forEach(({ item, product }) => list.append(itemRow(item, product)));
+      els.body.append(group);
+    });
+
+    if (!groups.size && categoryFilter) {
+      els.body.append(node(html`
+        <p style="text-align:center;color:var(--c-text-3);padding:32px 16px">
+          このカテゴリに未購入の商品はありません
+        </p>
+      `));
+    }
+
+    if (checked.length) els.body.append(checkedSection(checked));
+    els.body.append(summaryCard(active));
+  }
+
+  function itemRow(item, product) {
+    const best = store.bestPrice(product);
+    const bestStore = best ? store.getStore(best.storeId) : null;
+
+    const row = node(html`
+      <article class="item ${item.checked ? "is-checked" : ""}">
+        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
+                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
+        <button class="item-body">
+          <span class="item-name-row">
+            <span class="item-name">${product.name}</span>
+            ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
+          </span>
+          <span class="item-meta">
+            ${item.memo ? html`<span class="item-memo">${item.memo}</span>` : ""}
+          </span>
+        </button>
+        <div class="item-price"></div>
+      </article>
+    `);
+
+    const priceBox = row.querySelector(".item-price");
+    if (best && bestStore) {
+      priceBox.append(frag(html`
+        <span class="item-price-amount">${yen(best.price * item.qty)}</span>
+        <span class="item-price-store">🏆 ${bestStore.name}</span>
+      `));
+    } else {
+      priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
+    }
+
+    row.querySelector(".check").addEventListener("click", () => {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === item.id);
+        if (rec) {
+          rec.checked = !rec.checked;
+          rec.checkedAt = rec.checked ? KN.util.today() : null;
+        }
+      });
+      haptic(12);
+    });
+
+    row.querySelector(".item-body").addEventListener("click", () => {
+      KN.productSheet.open(product.id, { itemId: item.id });
+    });
+
+    return row;
+  }
+
+  function checkedSection(checked) {
+    const st = store.get();
+    const open = st.settings.showChecked !== false;
+
+    const section = node(html`
+      <section class="cat-group">
+        <button class="done-head" aria-expanded="${String(open)}">
+          ${icon("chevron")} 購入済み <span class="cat-head-count">${checked.length}</span>
+        </button>
+        <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
+      </section>
+    `);
+
+    const list = section.querySelector(".js-done");
+    checked.forEach((item) => {
+      const p = store.getProduct(item.productId);
+      if (p) list.append(itemRow(item, p));
+    });
+
+    section.querySelector(".done-head").addEventListener("click", () => {
+      store.update((s) => { s.settings.showChecked = !open; });
+    });
+
+    return section;
+  }
+
+  function summaryCard(active) {
+    let total = 0;
+    let unknown = 0;
+
+    active.forEach((item) => {
+      const p = store.getProduct(item.productId);
+      const best = p && store.bestPrice(p);
+      if (best) total += best.price * item.qty;
+      else unknown += 1;
+    });
+
+    if (!active.length) return document.createDocumentFragment();
+
+    return node(html`
+      <div class="list-summary">
+        <div class="summary-row">
+          <span class="summary-label">最安値で買うと</span>
+          <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
+        </div>
+        <p class="summary-note">
+          ${unknown > 0
+            ? html`${unknown}品は値段が未登録です。商品をタップして登録すると合計に反映されます。`
+            : html`未購入 ${active.length}品を、それぞれいちばん安いお店で買った場合の合計です。`}
+        </p>
+      </div>
+    `);
+  }
+
+  function emptyState() {
+    const wrap = node(html`
+      <div class="empty">
+        <div class="empty-art">🛒</div>
+        <h2 class="empty-title">買うものを追加しましょう</h2>
+        <p class="empty-text">
+          上の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
+          お店ごとの値段を登録すると「どこが一番安いか」が分かります。
+        </p>
+        <button class="btn btn-soft js-sample" style="margin-top:8px">サンプルを入れて試す</button>
+      </div>
+    `);
+    wrap.querySelector(".js-sample").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "サンプルを入れますか？",
+        message: "3つのお店と7つの商品・価格が入ったサンプルデータを読み込みます。あとから設定画面で全部消せます。",
+        okLabel: "入れる",
+      });
+      if (ok) { store.loadSample(); KN.ui.toast("サンプルを読み込みました"); }
+    });
+    return wrap;
+  }
+
+  KN.screens = KN.screens || {};
+  KN.screens.list = { mount, render };
+})();
+
+/* ---- js/screen-prices.js ---- */
+/* =========================================================
+   かいものノート — products & prices screen
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, yen, unitPrice, formatSize, haptic } = KN.util;
+  const store = KN.store;
+
+  let root = null;
+  let els = {};
+  let query = "";
+  let categoryFilter = null;
+
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+
+    const chrome = node(html`
+      <div class="stack">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div style="flex:1;min-width:0">
+              <h1 class="topbar-title">商品と価格</h1>
+              <div class="topbar-sub js-sub"></div>
+            </div>
+            <button class="icon-btn js-new" aria-label="商品を追加" title="商品を追加"
+                    style="background:var(--c-primary);color:#fff">${icon("plus")}</button>
+          </div>
+        </header>
+
+        <div class="search-wrap">
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-clear" aria-label="検索をクリア" style="width:28px;height:28px" hidden>
+              ${icon("close")}
+            </button>
+          </div>
+        </div>
+
+        <div class="js-filter"></div>
+        <div class="js-body"></div>
+      </div>
+    `);
+
+    root.append(chrome);
+
+    els = {
+      sub:     chrome.querySelector(".js-sub"),
+      search:  chrome.querySelector(".js-search"),
+      clear:   chrome.querySelector(".js-clear"),
+      newBtn:  chrome.querySelector(".js-new"),
+      filter:  chrome.querySelector(".js-filter"),
+      body:    chrome.querySelector(".js-body"),
+      topbar:  chrome.querySelector(".topbar"),
+    };
+
+    els.search.addEventListener("input", () => {
+      query = els.search.value.trim().toLowerCase();
+      els.clear.hidden = !query;
+      renderBody();
+    });
+
+    els.clear.addEventListener("click", () => {
+      query = "";
+      els.search.value = "";
+      els.clear.hidden = true;
+      renderBody();
+    });
+
+    els.newBtn.addEventListener("click", createProduct);
+
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    });
+  }
+
+  async function createProduct() {
+    const name = await KN.ui.prompt({
+      title: "商品を追加",
+      label: "商品名",
+      placeholder: "例：食器用洗剤",
+      okLabel: "追加",
+    });
+    if (!name) return;
+
+    const existing = store.findProductByName(name);
+    if (existing) {
+      KN.ui.toast("すでに登録されています");
+      KN.productSheet.open(existing.id);
+      return;
+    }
+    const p = store.addProduct({ name, categoryId: store.guessCategory(name) });
+    haptic(10);
+    KN.productSheet.open(p.id);
+  }
+
+  function render() {
+    const st = store.get();
+    els.sub.textContent = `${st.products.length}商品 ・ ${st.stores.length}店舗`;
+    renderFilter();
+    renderBody();
+  }
+
+  function renderFilter() {
+    els.filter.innerHTML = "";
+    const counts = new Map();
+    store.get().products.forEach((p) => {
+      counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1);
+    });
+    if (counts.size < 2) { categoryFilter = null; return; }
+    if (categoryFilter && !counts.has(categoryFilter)) categoryFilter = null;
+
+    const row = node(html`<div class="chip-row"></div>`);
+    const all = node(html`<button type="button" class="chip" aria-pressed="${String(!categoryFilter)}">すべて</button>`);
+    all.addEventListener("click", () => { categoryFilter = null; renderFilter(); renderBody(); });
+    row.append(all);
+
+    store.sortedCategories().filter((c) => counts.has(c.id)).forEach((c) => {
+      const chip = node(html`
+        <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}">
+          <span class="chip-emoji">${c.emoji}</span>${c.name}
+          <span class="chip-count">${counts.get(c.id)}</span>
+        </button>
+      `);
+      chip.addEventListener("click", () => {
+        categoryFilter = categoryFilter === c.id ? null : c.id;
+        haptic();
+        renderFilter();
+        renderBody();
+      });
+      row.append(chip);
+    });
+
+    els.filter.append(row);
+  }
+
+  function renderBody() {
+    els.body.innerHTML = "";
+    const all = store.get().products;
+
+    if (!all.length) {
+      els.body.append(node(html`
+        <div class="empty">
+          <div class="empty-art">🏷️</div>
+          <h2 class="empty-title">商品がまだありません</h2>
+          <p class="empty-text">
+            買い物リストに追加した商品はここに自動で並びます。
+            お店ごとの値段を登録すると、いちばん安いお店が分かります。
+          </p>
+        </div>
+      `));
+      return;
+    }
+
+    const matched = all
+      .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
+      .filter((p) => !query || p.name.toLowerCase().includes(query))
+      .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+
+    if (!matched.length) {
+      els.body.append(node(html`
+        <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
+          「${query}」に一致する商品はありません
+        </p>
+      `));
+      return;
+    }
+
+    const list = node(html`<div class="product-list"></div>`);
+    matched.forEach((p) => list.append(productCard(p)));
+    els.body.append(list);
+  }
+
+  function productCard(product) {
+    const cat = store.getCategory(product.categoryId);
+    const prices = store.currentPrices(product);
+    const best = prices[0] || null;
+    const bestStore = best ? store.getStore(best.storeId) : null;
+    const size = formatSize(product.amount, product.unit);
+    const up = best ? unitPrice(best.price, best.amount || product.amount, product.unit) : null;
+
+    const card = node(html`
+      <button class="product">
+        <span class="product-emoji">${cat.emoji}</span>
+        <span class="product-main">
+          <span class="product-name">${product.name}</span>
+          <span class="product-meta">
+            ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
+            ${prices.length
+              ? html`<span>${prices.length}店舗で比較中</span>`
+              : html`<span style="color:var(--c-text-3)">値段は未登録</span>`}
+            ${up ? html`<span style="color:var(--c-text-3)">${up.text}</span>` : ""}
+          </span>
+        </span>
+        <span class="item-price">
+          ${best && bestStore
+            ? html`
+                <span class="item-price-amount">${yen(best.price)}</span>
+                <span class="item-price-store">🏆 ${bestStore.name}</span>
+              `
+            : html`<span class="item-price-none">—</span>`}
+        </span>
+      </button>
+    `);
+
+    card.addEventListener("click", () => KN.productSheet.open(product.id));
+    return card;
+  }
+
+  KN.screens = KN.screens || {};
+  KN.screens.prices = { mount, render };
+})();
+
+/* ---- js/screen-compare.js ---- */
+/* =========================================================
+   かいものノート — store comparison screen
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, yen } = KN.util;
+  const store = KN.store;
+
+  let root = null;
+  let els = {};
+
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+
+    const chrome = node(html`
+      <div class="stack">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div style="flex:1;min-width:0">
+              <h1 class="topbar-title">お店くらべ</h1>
+              <div class="topbar-sub js-sub"></div>
+            </div>
+          </div>
+        </header>
+        <div class="js-body"></div>
+      </div>
+    `);
+
+    root.append(chrome);
+    els = {
+      sub:    chrome.querySelector(".js-sub"),
+      body:   chrome.querySelector(".js-body"),
+      topbar: chrome.querySelector(".topbar"),
+    };
+
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    });
+  }
+
+  /* ---------------- computation ---------------- */
+
+  /** Items still to buy (falls back to the whole list once everything is checked). */
+  function targetItems() {
+    const items = store.get().items;
+    const active = items.filter((i) => !i.checked);
+    return active.length ? active : items;
+  }
+
+  function analyse() {
+    const entries = targetItems()
+      .map((item) => ({ item, product: store.getProduct(item.productId) }))
+      .filter((e) => e.product);
+
+    // Only items with at least one recorded price can take part in a comparison.
+    const priced = entries.filter((e) => store.bestPrice(e.product));
+    const unpriced = entries.length - priced.length;
+
+    // Cheapest achievable: every item bought at its own cheapest store.
+    const combo = [];
+    let comboTotal = 0;
+    priced.forEach(({ item, product }) => {
+      const best = store.bestPrice(product);
+      const st = store.getStore(best.storeId);
+      const line = best.price * item.qty;
+      comboTotal += line;
+      combo.push({ product, item, store: st, price: best.price, line });
+    });
+    combo.sort((a, b) => b.line - a.line);
+
+    /* Per-store figures over the SAME basket, so the totals are comparable:
+       buy what the store carries there, and anything it lacks at its own
+       cheapest store. `anchored` is therefore a realistic trip total. */
+    const rankings = store.sortedStores().map((st) => {
+      let ownTotal = 0;
+      let anchored = 0;
+      let covered = 0;
+      const missing = [];
+
+      priced.forEach(({ item, product }) => {
+        const here = store.priceAt(product, st.id);
+        if (here) {
+          ownTotal += here.price * item.qty;
+          anchored += here.price * item.qty;
+          covered += 1;
+        } else {
+          const best = store.bestPrice(product);
+          anchored += best.price * item.qty;
+          missing.push({ product, item, best });
+        }
+      });
+
+      return {
+        store: st,
+        ownTotal,
+        anchored,
+        covered,
+        missing,
+        full: priced.length > 0 && covered === priced.length,
+        ratio: priced.length ? covered / priced.length : 0,
+      };
+    }).filter((r) => r.covered > 0);
+
+    rankings.sort((a, b) => a.anchored - b.anchored || b.covered - a.covered);
+
+    // Cheapest store that carries the whole basket on its own, if one exists.
+    const fullCover = rankings.filter((r) => r.full).sort((a, b) => a.ownTotal - b.ownTotal);
+    const bestSingle = fullCover.length ? fullCover[0] : null;
+
+    return {
+      entries, priced, unpriced, rankings, combo, comboTotal, bestSingle,
+      storeCount: new Set(combo.map((c) => c.store && c.store.id)).size,
+    };
+  }
+
+  /* ---------------- render ---------------- */
+
+  function render() {
+    const st = store.get();
+    const data = analyse();
+
+    els.sub.textContent = data.entries.length
+      ? `未購入 ${data.entries.length}品で比較`
+      : "リストが空です";
+
+    els.body.innerHTML = "";
+
+    if (!data.entries.length) {
+      els.body.append(node(html`
+        <div class="empty">
+          <div class="empty-art">⚖️</div>
+          <h2 class="empty-title">リストに商品を追加すると比べられます</h2>
+          <p class="empty-text">
+            買い物リストの商品それぞれに、お店ごとの値段を登録してください。
+            合計でどのお店が安いかを自動で計算します。
+          </p>
+        </div>
+      `));
+      return;
+    }
+
+    if (!st.stores.length || !data.combo.length) {
+      els.body.append(node(html`
+        <div class="empty">
+          <div class="empty-art">🏪</div>
+          <h2 class="empty-title">まだ値段の記録がありません</h2>
+          <p class="empty-text">
+            「商品と価格」から、お店ごとの値段を登録してみてください。
+            2店舗以上あると、合計でどちらが安いかが分かります。
+          </p>
+        </div>
+      `));
+      return;
+    }
+
+    els.body.append(hero(data));
+    els.body.append(rankingSection(data));
+    els.body.append(comboSection(data));
+  }
+
+  function hero(data) {
+    const saving = data.bestSingle ? data.bestSingle.ownTotal - data.comboTotal : 0;
+
+    return node(html`
+      <div class="compare-hero">
+        <span class="hero-label">最安の組み合わせで買うと</span>
+        <span class="hero-total">${yen(data.comboTotal)}</span>
+        <span class="hero-note">
+          ${data.combo.length}品を、それぞれいちばん安いお店で買った合計
+          ${data.storeCount > 1 ? html`（${data.storeCount}店をまわった場合）` : ""}
+          ${data.unpriced > 0 ? html`<br>※ ${data.unpriced}品は値段が未登録のため含みません` : ""}
+        </span>
+        ${saving > 0
+          ? html`<span class="hero-save">${data.bestSingle.store.name}だけで買うより ${yen(saving)} おトク</span>`
+          : ""}
+      </div>
+    `);
+  }
+
+  function rankingSection(data) {
+    const section = node(html`
+      <section class="section" style="padding-top:0">
+        <h2 class="section-title">この店を中心に買うと</h2>
+        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:-4px 0 4px">
+          同じ${data.priced.length}品を、その店にある物はその店で、ない物は最安の店で買った場合の合計です。
+        </p>
+        <div class="store-rank"></div>
+      </section>
+    `);
+    const list = section.querySelector(".store-rank");
+
+    data.rankings.forEach((r, idx) => {
+      const card = node(html`
+        <button class="rank-card ${idx === 0 ? "is-first" : ""}">
+          <span class="rank-no">${idx + 1}</span>
+          <span class="rank-main">
+            <span class="rank-name">
+              <span class="dot" style="background:${r.store.color}"></span>${r.store.name}
+            </span>
+            <span class="rank-cover">
+              <span class="cover-bar"><span class="cover-fill" style="width:${String(Math.round(r.ratio * 100))}%"></span></span>
+              ${r.full
+                ? html`<b style="color:var(--c-primary)">全品そろう</b>`
+                : html`${r.covered}/${data.priced.length}品`}
+            </span>
+          </span>
+          <span class="rank-total">
+            <span class="rank-amount">${yen(r.anchored)}</span>
+            <span class="rank-sub">${r.full ? "この店だけで" : `${r.missing.length}品は他店で`}</span>
+          </span>
+        </button>
+      `);
+      card.addEventListener("click", () => openStoreDetail(r, data));
+      list.append(card);
+    });
+
+    if (data.rankings.length < 2) {
+      section.append(node(html`
+        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6">
+          お店をもう1つ登録すると、合計金額を比べられるようになります。
+        </p>
+      `));
+    }
+
+    return section;
+  }
+
+  function openStoreDetail(rank, data) {
+    const lines = data.priced
+      .map(({ item, product }) => ({
+        product, item,
+        pr: store.priceAt(product, rank.store.id),
+      }))
+      .sort((a, b) => (a.pr ? 0 : 1) - (b.pr ? 0 : 1));
+
+    const body = node(html`<div class="stack" style="gap:14px"></div>`);
+
+    body.append(node(html`
+      <div class="stack" style="gap:6px">
+        <div class="spread">
+          <span class="summary-label">この店で買える分</span>
+          <span class="summary-total">${yen(rank.ownTotal)}</span>
+        </div>
+        ${rank.full
+          ? html`<p style="font-size:12px;color:var(--c-text-2)">リストの品はすべてこの店でそろいます。</p>`
+          : html`
+              <div class="spread">
+                <span class="summary-label">残り${rank.missing.length}品を最安店で買うと</span>
+                <span style="font-weight:800">＋${yen(rank.anchored - rank.ownTotal)}</span>
+              </div>
+              <div class="divider" style="margin:4px 0"></div>
+              <div class="spread">
+                <span class="summary-label">合計</span>
+                <span class="summary-total">${yen(rank.anchored)}</span>
+              </div>
+            `}
+      </div>
+    `));
+
+    const list = node(html`<div class="combo-list"></div>`);
+    lines.forEach(({ item, product, pr }) => {
+      const best = store.bestPrice(product);
+      const isCheapestHere = pr && best && pr.price <= best.price;
+      const bestStore = best ? store.getStore(best.storeId) : null;
+      list.append(node(html`
+        <div class="combo-row">
+          <span class="combo-name">${product.name}${item.qty > 1 ? html` <span style="color:var(--c-text-3)">×${item.qty}</span>` : ""}</span>
+          ${pr
+            ? html`
+                ${isCheapestHere ? html`<span class="crown">🏆</span>` : ""}
+                <span class="combo-price">${yen(pr.price * item.qty)}</span>
+              `
+            : html`
+                <span class="combo-store" style="color:var(--c-text-3)">
+                  取扱なし → ${bestStore ? bestStore.name : ""}
+                </span>
+                <span class="combo-price" style="color:var(--c-text-3)">${yen(best.price * item.qty)}</span>
+              `}
+        </div>
+      `));
+    });
+    body.append(list);
+
+    KN.ui.sheet({ title: rank.store.name, content: body });
+  }
+
+  function comboSection(data) {
+    const section = node(html`
+      <section class="section">
+        <h2 class="section-title">商品ごとの最安店</h2>
+        <div class="combo-list"></div>
+      </section>
+    `);
+    const list = section.querySelector(".combo-list");
+
+    data.combo.forEach(({ product, item, store: st, line }) => {
+      const row = node(html`
+        <button class="combo-row" style="text-align:left;width:100%">
+          <span class="combo-name">${product.name}${item.qty > 1 ? html` <span style="color:var(--c-text-3)">×${item.qty}</span>` : ""}</span>
+          <span class="combo-store">
+            <span class="dot" style="background:${st.color};display:inline-block;margin-right:4px"></span>${st.name}
+          </span>
+          <span class="combo-price">${yen(line)}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => KN.productSheet.open(product.id, { itemId: item.id }));
+      list.append(row);
+    });
+
+    return section;
+  }
+
+  KN.screens = KN.screens || {};
+  KN.screens.compare = { mount, render };
+})();
+
+/* ---- js/screen-settings.js ---- */
+/* =========================================================
+   かいものノート — settings screen
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic } = KN.util;
+  const store = KN.store;
+
+  let root = null;
+  let els = {};
+
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+
+    const chrome = node(html`
+      <div class="stack">
+        <header class="topbar">
+          <div class="topbar-row">
+            <h1 class="topbar-title">設定</h1>
+          </div>
+        </header>
+        <div class="js-body"></div>
+      </div>
+    `);
+
+    root.append(chrome);
+    els = { body: chrome.querySelector(".js-body"), topbar: chrome.querySelector(".topbar") };
+
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    });
+  }
+
+  function render() {
+    els.body.innerHTML = "";
+    els.body.append(themeGroup());
+    els.body.append(storesGroup());
+    els.body.append(categoriesGroup());
+    els.body.append(dataGroup());
+    els.body.append(aboutBlock());
+  }
+
+  /* ---------------- theme ---------------- */
+
+  function themeGroup() {
+    const current = store.get().settings.theme || "auto";
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">表示</h2>
+        <div class="seg">
+          <button class="seg-btn" data-theme="auto"  aria-pressed="${String(current === "auto")}">自動</button>
+          <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
+          <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
+        </div>
+      </section>
+    `);
+
+    wrap.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const theme = btn.dataset.theme;
+        store.update((s) => { s.settings.theme = theme; });
+        KN.applyTheme(theme);
+        haptic();
+      });
+    });
+    return wrap;
+  }
+
+  /* ---------------- stores ---------------- */
+
+  function storesGroup() {
+    const stores = store.sortedStores();
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">お店 <span style="font-weight:600;color:var(--c-text-3)">${stores.length}件</span></h2>
+        <div class="stack js-rows" style="gap:8px"></div>
+        <button class="btn btn-soft btn-sm js-add">${icon("plus")} お店を追加</button>
+      </section>
+    `);
+
+    const rows = wrap.querySelector(".js-rows");
+    if (!stores.length) {
+      rows.append(node(html`
+        <p style="font-size:13px;color:var(--c-text-3);line-height:1.6">
+          お店を登録すると、商品ごとに値段を記録して比べられます。
+        </p>
+      `));
+    }
+
+    stores.forEach((st) => {
+      const usage = store.get().products.reduce(
+        (n, p) => n + p.prices.filter((pr) => pr.storeId === st.id).length, 0
+      );
+      const row = node(html`
+        <div class="manage-row">
+          <span class="dot" style="background:${st.color};width:14px;height:14px"></span>
+          <span class="manage-name">${st.name}</span>
+          <span style="font-size:11px;color:var(--c-text-3);flex:none">${usage}件の価格</span>
+          <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
+          <button class="icon-btn is-danger js-del" aria-label="削除">${icon("trash")}</button>
+        </div>
+      `);
+
+      row.querySelector(".js-edit").addEventListener("click", () => editStore(st));
+      row.querySelector(".js-del").addEventListener("click", async () => {
+        const ok = await KN.ui.confirm({
+          title: "お店を削除しますか？",
+          message: `「${st.name}」と、この店で登録した${usage}件の価格が削除されます。`,
+          okLabel: "削除する",
+          danger: true,
+        });
+        if (!ok) return;
+        store.update((s) => {
+          s.stores = s.stores.filter((x) => x.id !== st.id);
+          s.products.forEach((p) => { p.prices = p.prices.filter((pr) => pr.storeId !== st.id); });
+        });
+        KN.ui.toast("削除しました");
+      });
+
+      rows.append(row);
+    });
+
+    wrap.querySelector(".js-add").addEventListener("click", async () => {
+      const name = await KN.ui.prompt({ title: "お店を追加", label: "お店の名前", placeholder: "例：イオン 〇〇店" });
+      if (!name) return;
+      if (store.findStoreByName(name)) { KN.ui.toast("同じ名前のお店があります"); return; }
+      store.addStore(name);
+      KN.ui.toast("追加しました");
+    });
+
+    return wrap;
+  }
+
+  function editStore(st) {
+    const body = node(html`
+      <div class="stack" style="gap:18px">
+        <label class="field">
+          <span class="field-label">お店の名前</span>
+          <input class="input js-name" value="${st.name}">
+        </label>
+        <div class="field">
+          <span class="field-label">色</span>
+          <div class="swatches js-swatches"></div>
+        </div>
+      </div>
+    `);
+
+    let color = st.color;
+    const sw = body.querySelector(".js-swatches");
+    function paint() {
+      sw.innerHTML = "";
+      store.STORE_COLORS.forEach((c) => {
+        const b = node(html`<button type="button" class="swatch" style="background:${c}" aria-pressed="${String(c === color)}" aria-label="色"></button>`);
+        b.addEventListener("click", () => { color = c; paint(); });
+        sw.append(b);
+      });
+    }
+    paint();
+
+    const foot = node(html`<button class="btn btn-primary btn-block">保存</button>`);
+    const h = KN.ui.sheet({ title: "お店の編集", content: body, footer: foot });
+
+    foot.addEventListener("click", () => {
+      const name = body.querySelector(".js-name").value.trim();
+      store.update((s) => {
+        const rec = s.stores.find((x) => x.id === st.id);
+        if (rec) { if (name) rec.name = name; rec.color = color; }
+      });
+      h.close();
+      KN.ui.toast("保存しました");
+    });
+  }
+
+  /* ---------------- categories ---------------- */
+
+  function categoriesGroup() {
+    const cats = store.sortedCategories();
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">カテゴリ <span style="font-weight:600;color:var(--c-text-3)">${cats.length}件</span></h2>
+        <div class="stack js-rows" style="gap:8px"></div>
+        <button class="btn btn-soft btn-sm js-add">${icon("plus")} カテゴリを追加</button>
+      </section>
+    `);
+
+    const rows = wrap.querySelector(".js-rows");
+    cats.forEach((c, idx) => {
+      const used = store.get().products.filter((p) => p.categoryId === c.id).length;
+      const row = node(html`
+        <div class="manage-row">
+          <span class="manage-emoji">${c.emoji}</span>
+          <span class="manage-name">${c.name}</span>
+          <span style="font-size:11px;color:var(--c-text-3);flex:none">${used}商品</span>
+          <button class="icon-btn js-up" aria-label="上へ" ${idx === 0 ? KN.util.raw("disabled") : ""}
+                  style="${idx === 0 ? "opacity:.3" : ""}">${icon("chevron", "rot-up")}</button>
+          <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
+          ${c.id === store.OTHER_CATEGORY
+            ? ""
+            : html`<button class="icon-btn is-danger js-del" aria-label="削除">${icon("trash")}</button>`}
+        </div>
+      `);
+
+      row.querySelector(".js-up").style.transform = "rotate(-90deg)";
+
+      row.querySelector(".js-up").addEventListener("click", () => {
+        if (idx === 0) return;
+        const prev = cats[idx - 1];
+        store.update((s) => {
+          const a = s.categories.find((x) => x.id === c.id);
+          const b = s.categories.find((x) => x.id === prev.id);
+          if (a && b) { const t = a.order; a.order = b.order; b.order = t; }
+        });
+      });
+
+      row.querySelector(".js-edit").addEventListener("click", () => editCategory(c));
+
+      const del = row.querySelector(".js-del");
+      if (del) {
+        del.addEventListener("click", async () => {
+          const ok = await KN.ui.confirm({
+            title: "カテゴリを削除しますか？",
+            message: used > 0
+              ? `${used}件の商品は「その他」に移動します。`
+              : "このカテゴリを削除します。",
+            okLabel: "削除する",
+            danger: true,
+          });
+          if (!ok) return;
+          store.update((s) => {
+            s.categories = s.categories.filter((x) => x.id !== c.id);
+            s.products.forEach((p) => {
+              if (p.categoryId === c.id) p.categoryId = store.OTHER_CATEGORY;
+            });
+          });
+          KN.ui.toast("削除しました");
+        });
+      }
+
+      rows.append(row);
+    });
+
+    wrap.querySelector(".js-add").addEventListener("click", () => editCategory(null));
+    return wrap;
+  }
+
+  function editCategory(cat) {
+    const body = node(html`
+      <div class="stack" style="gap:18px">
+        <label class="field">
+          <span class="field-label">名前</span>
+          <input class="input js-name" value="${cat ? cat.name : ""}" placeholder="例：おやつ">
+        </label>
+        <label class="field">
+          <span class="field-label">絵文字（1文字）</span>
+          <input class="input js-emoji" value="${cat ? cat.emoji : ""}" placeholder="🍪" maxlength="4" style="width:100px;text-align:center;font-size:24px">
+        </label>
+      </div>
+    `);
+
+    const foot = node(html`<button class="btn btn-primary btn-block">${cat ? "保存" : "追加"}</button>`);
+    const h = KN.ui.sheet({ title: cat ? "カテゴリの編集" : "カテゴリを追加", content: body, footer: foot });
+
+    foot.addEventListener("click", () => {
+      const name = body.querySelector(".js-name").value.trim();
+      const emoji = body.querySelector(".js-emoji").value.trim() || "🏷️";
+      if (!name) { KN.ui.toast("名前を入力してください"); return; }
+
+      store.update((s) => {
+        if (cat) {
+          const rec = s.categories.find((x) => x.id === cat.id);
+          if (rec) { rec.name = name; rec.emoji = emoji; }
+        } else {
+          s.categories.push({
+            id: KN.util.uid("c"), name, emoji,
+            order: Math.max(-1, ...s.categories.map((x) => x.order ?? 0)) + 1,
+          });
+        }
+      });
+      h.close();
+      KN.ui.toast(cat ? "保存しました" : "追加しました");
+    });
+  }
+
+  /* ---------------- data ---------------- */
+
+  function dataGroup() {
+    const st = store.get();
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">データ</h2>
+        <div class="rows">
+          <button class="row js-export">
+            <span class="row-main">
+              <span class="row-title">バックアップを保存</span>
+              <span class="row-sub">${st.products.length}商品・${st.stores.length}店舗をJSONで書き出します</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-import">
+            <span class="row-main">
+              <span class="row-title">バックアップから復元</span>
+              <span class="row-sub">書き出したJSONを読み込みます</span>
+            </span>
+            <span class="row-chevron">${icon("upload")}</span>
+          </button>
+          <button class="row js-sample">
+            <span class="row-main">
+              <span class="row-title">サンプルデータを入れる</span>
+              <span class="row-sub">お試し用のお店と商品を読み込みます</span>
+            </span>
+            <span class="row-chevron">${icon("sparkles")}</span>
+          </button>
+          <button class="row js-reset">
+            <span class="row-main">
+              <span class="row-title" style="color:var(--c-danger)">すべて削除</span>
+              <span class="row-sub">リスト・商品・価格・お店をすべて消します</span>
+            </span>
+            <span class="row-chevron">${icon("trash")}</span>
+          </button>
+        </div>
+        <input type="file" accept="application/json,.json" class="js-file" hidden>
+      </section>
+    `);
+
+    wrap.querySelector(".js-export").addEventListener("click", () => {
+      const blob = new Blob([store.exportJSON()], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      a.href = url;
+      a.download = `kaimono-note-${stamp}.json`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      KN.ui.toast("バックアップを保存しました");
+    });
+
+    const file = wrap.querySelector(".js-file");
+    wrap.querySelector(".js-import").addEventListener("click", () => file.click());
+    file.addEventListener("change", async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const ok = await KN.ui.confirm({
+        title: "復元しますか？",
+        message: "いまのデータはすべて置き換わります。この操作は取り消せません。",
+        okLabel: "復元する",
+        danger: true,
+      });
+      file.value = "";
+      if (!ok) return;
+      try {
+        store.importJSON(await f.text());
+        KN.ui.toast("復元しました");
+      } catch (err) {
+        console.error(err);
+        KN.ui.toast("読み込めませんでした（ファイル形式を確認してください）");
+      }
+    });
+
+    wrap.querySelector(".js-sample").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "サンプルを入れますか？",
+        message: "いまのデータはすべて置き換わります。",
+        okLabel: "入れる",
+        danger: true,
+      });
+      if (!ok) return;
+      store.loadSample();
+      KN.ui.toast("サンプルを読み込みました");
+    });
+
+    wrap.querySelector(".js-reset").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "すべて削除しますか？",
+        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。この操作は取り消せません。",
+        okLabel: "削除する",
+        danger: true,
+      });
+      if (!ok) return;
+      store.reset();
+      KN.ui.toast("すべて削除しました");
+    });
+
+    return wrap;
+  }
+
+  function aboutBlock() {
+    return node(html`
+      <div class="about">
+        <div style="font-size:28px;margin-bottom:4px">🛒</div>
+        <div style="font-weight:700;color:var(--c-text-2)">かいものノート</div>
+        <div>データはこの端末の中だけに保存されます</div>
+        <div style="margin-top:8px">
+          スマホのブラウザで「ホーム画面に追加」すると、<br>アプリのように使えます
+        </div>
+      </div>
+    `);
+  }
+
+  KN.screens = KN.screens || {};
+  KN.screens.settings = { mount, render };
+})();
+
+/* ---- js/app.js ---- */
+/* =========================================================
+   かいものノート — app shell: tabs, routing, theme, PWA
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic } = KN.util;
+  const store = KN.store;
+
+  const TABS = [
+    { id: "list",     label: "リスト",   icon: "list"  },
+    { id: "prices",   label: "価格",     icon: "tag"   },
+    { id: "compare",  label: "お店",     icon: "scale" },
+    { id: "settings", label: "設定",     icon: "gear"  },
+  ];
+
+  let active = "list";
+  const mounted = new Set();
+
+  /* ---------------- theme ---------------- */
+
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
+    else root.removeAttribute("data-theme");
+  }
+  KN.applyTheme = applyTheme;
+
+  /* ---------------- tabs ---------------- */
+
+  function buildTabs() {
+    const bar = document.getElementById("tabbar");
+    bar.innerHTML = "";
+
+    TABS.forEach((t) => {
+      const btn = node(html`
+        <button class="tab" role="tab" data-tab="${t.id}"
+                aria-selected="${String(t.id === active)}"
+                aria-controls="screen-${t.id}">
+          <span class="tab-ico">${icon(t.icon)}</span>
+          <span>${t.label}</span>
+        </button>
+      `);
+      btn.addEventListener("click", () => show(t.id));
+      bar.append(btn);
+    });
+  }
+
+  function paintTabs() {
+    document.querySelectorAll(".tab").forEach((b) => {
+      b.setAttribute("aria-selected", String(b.dataset.tab === active));
+    });
+
+    // Badge the list tab with how many items are still unchecked.
+    const listTab = document.querySelector('.tab[data-tab="list"]');
+    if (!listTab) return;
+    const pending = store.get().items.filter((i) => !i.checked).length;
+    const existing = listTab.querySelector(".tab-badge");
+    if (pending > 0) {
+      const text = pending > 99 ? "99+" : String(pending);
+      if (existing) existing.textContent = text;
+      else listTab.append(node(html`<span class="tab-badge">${text}</span>`));
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+
+  function show(id) {
+    if (!KN.screens[id]) return;
+    active = id;
+
+    document.querySelectorAll(".screen").forEach((s) => {
+      const on = s.dataset.screen === id;
+      s.classList.toggle("is-active", on);
+      s.hidden = !on;
+    });
+
+    ensureMounted(id);
+    KN.screens[id].render();
+    paintTabs();
+    haptic();
+
+    if (location.hash.slice(1) !== id) {
+      history.replaceState(null, "", "#" + id);
+    }
+  }
+
+  function ensureMounted(id) {
+    if (mounted.has(id)) return;
+    KN.screens[id].mount(document.getElementById("screen-" + id));
+    mounted.add(id);
+  }
+
+  /* ---------------- boot ---------------- */
+
+  function boot() {
+    applyTheme(store.get().settings.theme || "auto");
+    buildTabs();
+
+    const fromHash = location.hash.slice(1);
+    show(KN.screens[fromHash] ? fromHash : "list");
+
+    // Re-render whichever screen is visible whenever state changes.
+    store.subscribe(() => {
+      if (KN.screens[active]) KN.screens[active].render();
+      paintTabs();
+    });
+
+    window.addEventListener("hashchange", () => {
+      const id = location.hash.slice(1);
+      if (KN.screens[id] && id !== active) show(id);
+    });
+
+    // Keep two tabs of the same app in sync.
+    window.addEventListener("storage", (e) => {
+      if (e.key === store.KEY) location.reload();
+    });
+
+    registerServiceWorker();
+  }
+
+  function registerServiceWorker() {
+    // The single-file build has no sw.js alongside it to register.
+    if (window.KN_STANDALONE) return;
+    if (!("serviceWorker" in navigator)) return;
+    if (location.protocol !== "https:" && location.hostname !== "localhost") return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((err) => {
+        console.warn("service worker registration failed", err);
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+
+</script>
