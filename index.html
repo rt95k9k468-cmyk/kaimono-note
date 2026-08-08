@@ -23,6 +23,8 @@
     <form id="add-item-form" class="add-form">
       <input list="product-names" id="item-name" placeholder="商品名（例：食器用洗剤）" autocomplete="off" required>
       <datalist id="product-names"></datalist>
+      <input list="category-names" id="item-category" placeholder="カテゴリ（例：日用品）" autocomplete="off">
+      <datalist id="category-names"></datalist>
       <input type="number" id="item-qty" placeholder="数量" min="1" value="1" required>
       <input type="text" id="item-memo" placeholder="メモ（任意）">
       <button type="submit">追加</button>
@@ -33,7 +35,9 @@
       <button id="clear-checked" class="ghost-btn" type="button">購入済みを削除</button>
     </div>
 
-    <ul id="shopping-list" class="shopping-list"></ul>
+    <div id="category-filter" class="category-filter"></div>
+
+    <div id="shopping-list" class="shopping-list"></div>
     <p id="list-empty" class="empty-msg">まだ何もリストにありません。上の欄から追加してみましょう。</p>
   </section>
 
@@ -41,7 +45,7 @@
   <section id="tab-products" class="tab-panel">
     <form id="add-product-form" class="add-form">
       <input id="product-name-input" placeholder="商品名（例：食器用洗剤）" required>
-      <input id="product-category-input" placeholder="カテゴリ（任意・例：日用品）">
+      <input list="category-names" id="product-category-input" placeholder="カテゴリ（任意・例：日用品）">
       <button type="submit">商品を登録</button>
     </form>
 
