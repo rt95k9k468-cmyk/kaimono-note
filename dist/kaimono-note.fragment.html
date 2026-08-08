@@ -365,6 +365,42 @@ a { color: var(--c-primary); }
   user-select: none;
 }
 
+/* =========================================================
+   Touch targets
+
+   Thumbs need about 44px; several controls here are deliberately
+   smaller than that because the design wants a small dot or a compact
+   pill. Rather than inflate the artwork, `.hit-44` centres an invisible
+   44px box over the control. Every place it is used was checked against
+   the surrounding gap so the enlarged area lands in padding and never
+   steals a tap from the neighbouring control.
+   ========================================================= */
+.hit-44 { position: relative; }
+.hit-44::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Removes the double-tap-to-zoom wait and stops a mistimed second tap
+   from zooming the page instead of pressing the control again. */
+button, [role="tab"], .chip, .swatch, .check, input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* A thumb resting a moment too long on a row should do nothing. Without
+   this iOS starts a text selection or raises the callout menu over the
+   list — controls only, so prose stays selectable. */
+button, [role="tab"] {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .45; pointer-events: none; }
 
@@ -385,9 +421,10 @@ a { color: var(--c-primary); }
 .btn-danger:hover { background: color-mix(in srgb, var(--c-danger) 16%, transparent); }
 
 .btn-block { width: 100%; }
-.btn-sm { height: 36px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
+.btn-sm { height: 40px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
 
 .icon-btn {
+  position: relative;   /* anchors the 44px touch box below */
   display: grid;
   place-items: center;
   width: 38px; height: 38px;
@@ -396,6 +433,17 @@ a { color: var(--c-primary); }
   transition: background .16s var(--ease), color .16s var(--ease), transform .12s;
   flex: none;
 }
+/* 38px of artwork, 44px of reach. Rows that stack these use a 12px gap,
+   so the 3px of growth per side stays clear of the next button — hitting
+   「削除」when aiming for「編集」would be worse than a small target. */
+.icon-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+
 .icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
 .icon-btn:active { transform: scale(.92); }
 .icon-btn svg { width: 20px; height: 20px; stroke-width: 2; }
@@ -459,7 +507,9 @@ a { color: var(--c-primary); }
   gap: var(--sp-2);
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px var(--sp-4);
+  /* Vertical room so the taller chips are not clipped by the scroller
+     (overflow-x:auto makes the cross axis clip too). */
+  padding: 4px var(--sp-4);
   margin-inline: calc(var(--sp-4) * -1);
   scroll-padding-inline: var(--sp-4);
 }
@@ -471,7 +521,9 @@ a { color: var(--c-primary); }
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 34px;
+  /* Grown from 34px: a horizontal scroller cannot host an overflowing
+     touch box, so here the control itself has to carry the height. */
+  height: 40px;
   padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   background: var(--c-surface);
@@ -817,6 +869,7 @@ a { color: var(--c-primary); }
 .quick-add-input::placeholder { color: var(--c-text-3); }
 
 .quick-add-btn {
+  position: relative;   /* anchors the 44px touch box below */
   flex: none;
   width: 36px; height: 36px;
   margin-right: 5px;
@@ -826,6 +879,13 @@ a { color: var(--c-primary); }
   display: grid;
   place-items: center;
   transition: transform .12s var(--ease), opacity .16s;
+}
+.quick-add-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .quick-add-btn svg { width: 20px; height: 20px; stroke-width: 2.6; color: #fff; }
 .quick-add-btn:active { transform: scale(.9); }
@@ -927,6 +987,11 @@ a { color: var(--c-primary); }
 
 /* checkbox */
 .check {
+  /* The most-tapped control in the app, and the smallest. The dot stays
+     26px because the design wants it quiet; the reachable area is 44px.
+     The row's 12px padding and 12px gap absorb the 9px of growth per
+     side, so it never eats a tap meant for the product name. */
+  position: relative;
   flex: none;
   width: 26px; height: 26px;
   border-radius: var(--r-full);
@@ -935,6 +1000,13 @@ a { color: var(--c-primary); }
   place-items: center;
   transition: background .18s var(--ease), border-color .18s var(--ease), transform .14s var(--ease-out);
   background: transparent;
+}
+.check::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .check svg { width: 15px; height: 15px; stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
 .check:hover { border-color: var(--c-primary); }
@@ -1059,10 +1131,12 @@ a { color: var(--c-primary); }
   background: var(--c-surface-2);
   border-radius: var(--r-md);
   padding: 0 var(--sp-3);
-  height: 42px;
+  height: 46px;
 }
 .search-bar svg { width: 18px; height: 18px; color: var(--c-text-3); flex: none; stroke-width: 2.2; }
-.search-input { flex: 1; min-width: 0; border: none; background: none; outline: none; font-size: var(--fs-md); height: 100%; }
+/* 16px is the floor: below it iOS zooms the page in on focus and the
+   layout lurches. Every text field in the app sits at or above it. */
+.search-input { flex: 1; min-width: 0; border: none; background: none; outline: none; font-size: var(--fs-lg); height: 100%; }
 
 .product-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 
@@ -1251,6 +1325,7 @@ a { color: var(--c-primary); }
 
 .seg-btn {
   padding: 8px;
+  min-height: 40px;
   border-radius: 9px;
   font-size: var(--fs-sm);
   font-weight: 700;
