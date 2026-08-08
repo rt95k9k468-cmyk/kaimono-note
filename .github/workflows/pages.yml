@@ -38,6 +38,13 @@ jobs:
       - name: Stamp the build into the service worker
         run: |
           sed -i "s|^const VERSION = .*|const VERSION = \"${GITHUB_SHA}\";|" sw.js
+          # Fail loudly if the substitution missed. Without this guard a rename
+          # in sw.js would silently freeze the cache name again, and installed
+          # apps would quietly stop receiving updates.
+          grep -q "^const VERSION = \"${GITHUB_SHA}\";" sw.js || {
+            echo "::error::sw.js was not stamped — installed apps would stop updating."
+            exit 1
+          }
           grep -n '^const VERSION' sw.js
 
       - name: Upload artifact
