@@ -14,6 +14,7 @@ const ASSETS = [
   "js/util.js",
   "js/store.js",
   "js/ui.js",
+  "js/backup.js",
   "js/product-sheet.js",
   "js/screen-list.js",
   "js/screen-prices.js",
