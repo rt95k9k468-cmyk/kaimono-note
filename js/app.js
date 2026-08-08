@@ -52,14 +52,13 @@
       b.setAttribute("aria-selected", String(b.dataset.tab === active));
     });
 
-    // Badge the list tab with how much is left to buy. Once anything is starred
-    // the badge counts only that trip — the star is what says "buying this now",
-    // so an unstarred backlog should not inflate the number.
+    // The badge counts what is left to buy on this trip, and the star is what
+    // puts something on the trip. Nothing starred means nothing planned, so no
+    // badge — falling back to the whole list here would report a backlog the
+    // user never said they were buying.
     const listTab = document.querySelector('.tab[data-tab="list"]');
     if (!listTab) return;
-    const items = store.get().items;
-    const scope = items.some((i) => i.fav) ? items.filter((i) => i.fav) : items;
-    const pending = scope.filter((i) => !i.checked).length;
+    const pending = store.get().items.filter((i) => i.fav && !i.checked).length;
     const existing = listTab.querySelector(".tab-badge");
     if (pending > 0) {
       const text = pending > 99 ? "99+" : String(pending);
