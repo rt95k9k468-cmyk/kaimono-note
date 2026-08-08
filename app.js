@@ -37,10 +37,20 @@
     if (!product) {
       product = { id: uid(), name: cleanName, category: category.trim(), prices: [] };
       state.products.push(product);
-    } else if (category.trim() && !product.category) {
+    } else if (category.trim()) {
       product.category = category.trim();
     }
     return product;
+  }
+
+  const UNCATEGORIZED = "その他";
+
+  function categoryLabel(product) {
+    return product.category || UNCATEGORIZED;
+  }
+
+  function allCategories() {
+    return [...new Set(state.products.map(p => p.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
   }
 
   function getProduct(id) {
@@ -80,11 +90,15 @@
   const listSummaryEl = document.getElementById("list-summary");
   const addItemForm = document.getElementById("add-item-form");
   const itemNameInput = document.getElementById("item-name");
+  const itemCategoryInput = document.getElementById("item-category");
   const itemQtyInput = document.getElementById("item-qty");
   const itemMemoInput = document.getElementById("item-memo");
   const productNamesDatalist = document.getElementById("product-names");
+  const categoryFilterEl = document.getElementById("category-filter");
+  const categoryNamesDatalist = document.getElementById("category-names");
 
   const expandedItems = new Set();
+  let activeCategoryFilter = null;
 
   addItemForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -92,7 +106,7 @@
     if (!normalizeName(name)) return;
     const qty = Math.max(1, parseInt(itemQtyInput.value, 10) || 1);
     const memo = itemMemoInput.value.trim();
-    const product = findOrCreateProduct(name);
+    const product = findOrCreateProduct(name, itemCategoryInput.value);
     state.listItems.unshift({
       id: uid(),
       productId: product.id,
@@ -114,7 +128,114 @@
     renderAll();
   });
 
+  function renderCategoryFilter() {
+    const present = new Map(); // label -> count
+    state.listItems.forEach(item => {
+      const product = getProduct(item.productId);
+      if (!product) return;
+      const label = categoryLabel(product);
+      present.set(label, (present.get(label) || 0) + 1);
+    });
+
+    if (present.size === 0) {
+      categoryFilterEl.innerHTML = "";
+      return;
+    }
+    if (activeCategoryFilter && !present.has(activeCategoryFilter)) {
+      activeCategoryFilter = null;
+    }
+
+    const labels = [...present.keys()].sort((a, b) => {
+      if (a === UNCATEGORIZED) return 1;
+      if (b === UNCATEGORIZED) return -1;
+      return a.localeCompare(b, "ja");
+    });
+
+    const chips = [`<button type="button" class="category-chip${activeCategoryFilter ? "" : " active"}" data-category="">すべて</button>`]
+      .concat(labels.map(label => `<button type="button" class="category-chip${activeCategoryFilter === label ? " active" : ""}" data-category="${escapeHtml(label)}">${escapeHtml(label)} (${present.get(label)})</button>`));
+
+    categoryFilterEl.innerHTML = chips.join("");
+    categoryFilterEl.querySelectorAll(".category-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeCategoryFilter = btn.dataset.category || null;
+        renderShoppingList();
+      });
+    });
+  }
+
+  function buildItemCard(item, product) {
+    const li = document.createElement("li");
+    li.className = "item-card" + (item.checked ? " item-checked" : "");
+
+    const best = bestPrice(product);
+
+    li.innerHTML = `
+      <div class="item-row">
+        <input type="checkbox" class="item-check" ${item.checked ? "checked" : ""} title="購入済みにする">
+        <div class="item-main">
+          <div class="item-name">${escapeHtml(product.name)} <span style="font-weight:400;color:var(--text-muted);font-size:0.85rem;">× ${item.qty}</span></div>
+          ${item.memo ? `<div class="item-meta">📝 ${escapeHtml(item.memo)}</div>` : ""}
+          ${best
+            ? `<div class="best-price-badge">🏆 ${escapeHtml(best.store)} ${formatYen(best.price)} が最安</div>`
+            : `<div class="no-price-hint">価格情報なし・タップして登録できます</div>`}
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn expand-btn" title="価格を見る/登録">💰</button>
+          <button class="icon-btn delete-item-btn" title="削除">🗑️</button>
+        </div>
+      </div>
+      <div class="item-detail ${expandedItems.has(item.id) ? "open" : ""}">
+        <ul class="price-list"></ul>
+        <form class="add-price-form">
+          <input type="text" class="price-store-input" placeholder="店名" required>
+          <input type="number" class="price-amount-input" placeholder="価格" min="0" required>
+          <button type="submit">登録</button>
+        </form>
+      </div>
+    `;
+
+    li.querySelector(".item-check").addEventListener("change", (e) => {
+      item.checked = e.target.checked;
+      saveState();
+      renderShoppingList();
+    });
+
+    li.querySelector(".delete-item-btn").addEventListener("click", () => {
+      state.listItems = state.listItems.filter(i => i.id !== item.id);
+      saveState();
+      renderAll();
+    });
+
+    const detail = li.querySelector(".item-detail");
+    li.querySelector(".expand-btn").addEventListener("click", () => {
+      if (expandedItems.has(item.id)) {
+        expandedItems.delete(item.id);
+      } else {
+        expandedItems.add(item.id);
+      }
+      detail.classList.toggle("open");
+    });
+
+    renderPriceList(li.querySelector(".price-list"), product);
+
+    li.querySelector(".add-price-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const storeInput = li.querySelector(".price-store-input");
+      const amountInput = li.querySelector(".price-amount-input");
+      const store = storeInput.value.trim();
+      const price = parseFloat(amountInput.value);
+      if (!store || isNaN(price)) return;
+      product.prices.push({ id: uid(), store, price, date: new Date().toISOString() });
+      saveState();
+      expandedItems.add(item.id);
+      renderAll();
+    });
+
+    return li;
+  }
+
   function renderShoppingList() {
+    renderCategoryFilter();
     shoppingListEl.innerHTML = "";
     const items = state.listItems;
     listEmptyEl.classList.toggle("show", items.length === 0);
@@ -123,77 +244,32 @@
     const done = items.filter(i => i.checked).length;
     listSummaryEl.textContent = total ? `${done} / ${total} 購入済み` : "";
 
+    const groups = new Map(); // label -> {items: []}
     items.forEach(item => {
       const product = getProduct(item.productId);
       if (!product) return;
-      const li = document.createElement("li");
-      li.className = "item-card" + (item.checked ? " item-checked" : "");
+      const label = categoryLabel(product);
+      if (activeCategoryFilter && label !== activeCategoryFilter) return;
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push({ item, product });
+    });
 
-      const best = bestPrice(product);
+    const labels = [...groups.keys()].sort((a, b) => {
+      if (a === UNCATEGORIZED) return 1;
+      if (b === UNCATEGORIZED) return -1;
+      return a.localeCompare(b, "ja");
+    });
 
-      li.innerHTML = `
-        <div class="item-row">
-          <input type="checkbox" class="item-check" ${item.checked ? "checked" : ""} title="購入済みにする">
-          <div class="item-main">
-            <div class="item-name">${escapeHtml(product.name)} <span style="font-weight:400;color:var(--text-muted);font-size:0.85rem;">× ${item.qty}</span></div>
-            ${item.memo ? `<div class="item-meta">📝 ${escapeHtml(item.memo)}</div>` : ""}
-            ${best
-              ? `<div class="best-price-badge">🏆 ${escapeHtml(best.store)} ${formatYen(best.price)} が最安</div>`
-              : `<div class="no-price-hint">価格情報なし・タップして登録できます</div>`}
-          </div>
-          <div class="item-actions">
-            <button class="icon-btn expand-btn" title="価格を見る/登録">💰</button>
-            <button class="icon-btn delete-item-btn" title="削除">🗑️</button>
-          </div>
-        </div>
-        <div class="item-detail ${expandedItems.has(item.id) ? "open" : ""}">
-          <ul class="price-list"></ul>
-          <form class="add-price-form">
-            <input type="text" class="price-store-input" placeholder="店名" required>
-            <input type="number" class="price-amount-input" placeholder="価格" min="0" required>
-            <button type="submit">登録</button>
-          </form>
-        </div>
-      `;
-
-      li.querySelector(".item-check").addEventListener("change", (e) => {
-        item.checked = e.target.checked;
-        saveState();
-        renderShoppingList();
-      });
-
-      li.querySelector(".delete-item-btn").addEventListener("click", () => {
-        state.listItems = state.listItems.filter(i => i.id !== item.id);
-        saveState();
-        renderAll();
-      });
-
-      const detail = li.querySelector(".item-detail");
-      li.querySelector(".expand-btn").addEventListener("click", () => {
-        if (expandedItems.has(item.id)) {
-          expandedItems.delete(item.id);
-        } else {
-          expandedItems.add(item.id);
-        }
-        detail.classList.toggle("open");
-      });
-
-      renderPriceList(li.querySelector(".price-list"), product);
-
-      li.querySelector(".add-price-form").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const storeInput = li.querySelector(".price-store-input");
-        const amountInput = li.querySelector(".price-amount-input");
-        const store = storeInput.value.trim();
-        const price = parseFloat(amountInput.value);
-        if (!store || isNaN(price)) return;
-        product.prices.push({ id: uid(), store, price, date: new Date().toISOString() });
-        saveState();
-        expandedItems.add(item.id);
-        renderAll();
-      });
-
-      shoppingListEl.appendChild(li);
+    labels.forEach(label => {
+      const entries = groups.get(label);
+      const groupEl = document.createElement("div");
+      groupEl.className = "category-group";
+      groupEl.innerHTML = `<h3 class="category-heading">🏷️ ${escapeHtml(label)} <span class="category-count">${entries.length}</span></h3>`;
+      const ul = document.createElement("ul");
+      ul.className = "category-items";
+      entries.forEach(({ item, product }) => ul.appendChild(buildItemCard(item, product)));
+      groupEl.appendChild(ul);
+      shoppingListEl.appendChild(groupEl);
     });
   }
 
@@ -324,6 +400,9 @@
   function renderProductDatalist() {
     productNamesDatalist.innerHTML = state.products
       .map(p => `<option value="${escapeHtml(p.name)}">`)
+      .join("");
+    categoryNamesDatalist.innerHTML = allCategories()
+      .map(c => `<option value="${escapeHtml(c)}">`)
       .join("");
   }
 
