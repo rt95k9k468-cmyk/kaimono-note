@@ -1180,6 +1180,22 @@ button, [role="tab"] {
 }
 .item button { touch-action: pan-y; }
 
+/* The emoji stands in for a product photo — see PRODUCT_EMOJI in store.js for
+   why it is not one. `:empty` collapses the column entirely when neither the
+   name nor the category yielded anything, rather than leaving a gap. */
+.item-emoji {
+  flex: none;
+  /* Deliberately narrow. The name beside it is what the row is for, and
+     「トイレットペーパー」 lands 4px inside this width — any wider and the
+     longest everyday names start being cut off. */
+  width: 20px;
+  font-size: 19px;
+  line-height: 1;
+  text-align: center;
+}
+.item-emoji:empty { display: none; }
+.is-checked .item-emoji { filter: grayscale(1); }
+
 .item-wrap.is-open .item { transform: translateX(-88px); }
 
 /* Hand the row its own compositor layer for the duration of the gesture, so
@@ -2168,6 +2184,145 @@ button, [role="tab"] {
     return bestId;
   }
 
+  /* A picture per product, without a product database.
+
+     Real photographs would mean an outside API — a key that cannot be kept
+     secret on a public static site, a network round trip per item, and a
+     guess at which 「エマール」 the search meant. An emoji chosen from the name
+     costs nothing, is right the moment the item is typed, and works on a
+     train with no signal. It is not a photo, but on a list being scanned at
+     arm's length in an aisle it does the job a photo would.
+
+     Matched on the folded name, so each word is listed once in hiragana and
+     カタカナ・全角 spellings all land on it. Kanji pass through folding
+     unchanged, so they are listed as themselves. */
+  const PRODUCT_EMOJI = [
+    ["🥛", ["牛乳", "ぎゅうにゅう", "みるく", "豆乳", "とうにゅう"]],
+    ["🥚", ["卵", "たまご", "玉子"]],
+    ["🧀", ["ちーず", "とろけるちーず"]],
+    ["🧈", ["ばたー", "まーがりん"]],
+    ["🥣", ["よーぐると", "しりある", "ぐらのーら"]],
+    ["🍨", ["あいす", "あいすくりーむ"]],
+    ["🍮", ["ぷりん"]],
+
+    ["🍅", ["とまと", "ぷちとまと", "みにとまと"]],
+    ["🥒", ["きゅうり", "胡瓜"]],
+    ["🥬", ["きゃべつ", "白菜", "はくさい", "れたす", "ほうれん草", "ほうれんそう", "小松菜", "こまつな", "水菜", "みずな", "にら", "春菊", "青梗菜", "ちんげん菜"]],
+    ["🧅", ["玉ねぎ", "たまねぎ", "玉葱", "ねぎ", "長ねぎ", "長葱", "万能ねぎ"]],
+    ["🥕", ["にんじん", "人参", "きゃろっと"]],
+    ["🥔", ["じゃがいも", "馬鈴薯", "ぽてと", "里芋", "さといも"]],
+    ["🍠", ["さつまいも", "薩摩芋", "焼き芋"]],
+    ["🍄", ["きのこ", "しめじ", "えのき", "まいたけ", "舞茸", "しいたけ", "椎茸", "えりんぎ", "なめこ", "まっしゅるーむ"]],
+    ["🌽", ["とうもろこし", "こーん"]],
+    ["🍆", ["なす", "茄子"]],
+    ["🫑", ["ぴーまん", "ぱぷりか"]],
+    ["🥦", ["ぶろっこりー", "かりふらわー"]],
+    ["🥗", ["さらだ", "かっとやさい"]],
+    ["🧄", ["にんにく", "がーりっく"]],
+    ["🥑", ["あぼかど"]],
+    ["🫘", ["大豆", "だいず", "枝豆", "えだまめ", "もやし"]],
+
+    ["🍎", ["りんご", "林檎", "あっぷる"]],
+    ["🍌", ["ばなな"]],
+    ["🍊", ["みかん", "蜜柑", "おれんじ"]],
+    ["🍓", ["いちご", "苺", "すとろべりー"]],
+    ["🍇", ["ぶどう", "葡萄", "ますかっと"]],
+    ["🍑", ["桃", "ぴーち"]],
+    ["🍉", ["すいか", "西瓜"]],
+    ["🍐", ["梨"]],
+    ["🍍", ["ぱいなっぷる"]],
+    ["🥝", ["きうい"]],
+    ["🍈", ["めろん"]],
+    ["🍋", ["れもん"]],
+
+    ["🥩", ["肉", "にく", "牛肉", "豚肉", "ぎゅうにく", "ぶたにく", "すてーき", "ひき肉", "みんち", "挽肉", "しゃぶしゃぶ", "焼肉"]],
+    ["🍗", ["鶏", "鶏肉", "とり肉", "とりにく", "もも肉", "むね肉", "手羽", "からあげ", "唐揚げ", "ちきん", "ささみ"]],
+    ["🥓", ["べーこん"]],
+    ["🌭", ["そーせーじ", "ういんなー"]],
+    ["🍖", ["はむ"]],
+    ["🐟", ["魚", "さかな", "鮭", "しゃけ", "さば", "鯖", "鰺", "ぶり", "鰤", "鱈", "ひらめ", "白身魚", "切り身", "ししゃも", "干物"]],
+    ["🍣", ["刺身", "さしみ", "寿司", "すし", "まぐろ", "鮪", "ねぎとろ", "サーモン"]],
+    ["🍤", ["えび", "海老"]],
+    ["🦑", ["いか", "烏賊"]],
+    ["🐙", ["たこ", "蛸"]],
+    ["🦪", ["あさり", "しじみ", "ほたて", "帆立", "牡蠣"]],
+
+    ["🍚", ["米", "こめ", "ごはん", "ご飯", "らいす", "無洗米"]],
+    ["🍞", ["ぱん", "食パン", "しょくぱん", "ぶれっど"]],
+    ["🥐", ["くろわっさん", "でにっしゅ"]],
+    ["🍜", ["らーめん", "中華麺", "かっぷ麺", "かっぷらーめん", "そば", "うどん", "そうめん", "焼きそば"]],
+    ["🍝", ["ぱすた", "すぱげってぃ", "まかろに"]],
+    ["🍲", ["鍋", "おでん", "しちゅー", "味噌", "みそ"]],
+    ["🍛", ["かれー"]],
+    ["🥟", ["餃子", "ぎょうざ", "しゅうまい", "焼売", "春巻"]],
+    ["🍱", ["弁当", "べんとう", "惣菜", "そうざい", "おにぎり"]],
+    ["🧊", ["冷凍", "れいとう", "氷", "こおり"]],
+
+    ["🧂", ["塩", "しお", "胡椒", "こしょう", "砂糖", "さとう", "調味料", "だし", "出汁"]],
+    ["🥫", ["缶詰", "かんづめ", "つな缶", "とまと缶", "れとると", "醤油", "しょうゆ", "そーす", "けちゃっぷ", "まよねーず", "どれっしんぐ", "ぽん酢", "酢", "みりん", "味醂"]],
+    ["🫒", ["油", "あぶら", "さらだ油", "おりーぶおいる", "ごま油"]],
+    ["🌾", ["小麦粉", "こむぎこ", "薄力粉", "強力粉", "片栗粉", "ぱん粉", "ほっとけーきみっくす"]],
+    ["🍯", ["はちみつ", "蜂蜜", "じゃむ"]],
+
+    ["🍫", ["ちょこ", "ちょこれーと"]],
+    ["🍪", ["くっきー", "びすけっと", "お菓子", "おかし", "菓子"]],
+    ["🍘", ["せんべい", "煎餅", "おかき"]],
+    ["🍬", ["飴", "あめ", "きゃんでぃ", "ぐみ", "がむ"]],
+    ["🍿", ["ぽっぷこーん", "すなっく", "ぽてとちっぷす", "ぽてち"]],
+    ["🧁", ["けーき", "まふぃん", "どーなつ", "しゅーくりーむ"]],
+    ["🥜", ["なっつ", "あーもんど", "ぴーなっつ"]],
+
+    ["💧", ["水", "みず", "みねらるうぉーたー", "天然水", "炭酸水"]],
+    ["🍵", ["お茶", "おちゃ", "茶", "緑茶", "麦茶", "紅茶", "ほうじ茶"]],
+    ["☕", ["こーひー", "珈琲", "かふぇおれ"]],
+    ["🧃", ["じゅーす", "おれんじじゅーす", "りんごじゅーす", "野菜じゅーす"]],
+    ["🥤", ["こーら", "炭酸", "さいだー", "すぽーつどりんく", "清涼飲料"]],
+    ["🍺", ["びーる", "発泡酒", "ちゅーはい", "はいぼーる"]],
+    ["🍶", ["酒", "日本酒", "焼酎", "料理酒"]],
+    ["🍷", ["わいん"]],
+
+    ["🧻", ["といれっとぺーぱー", "てぃっしゅ", "きっちんぺーぱー", "ぺーぱー"]],
+    ["🧴", ["洗剤", "せんざい", "しゃんぷー", "りんす", "こんでぃしょなー", "ぼでぃそーぷ", "柔軟剤", "はんどそーぷ", "化粧水", "乳液", "日焼け止め", "除菌"]],
+    ["🧺", ["洗濯", "せんたく", "洗濯洗剤", "漂白剤", "はいたー"]],
+    ["🧼", ["石鹸", "せっけん", "そーぷ", "洗顔"]],
+    ["🧽", ["すぽんじ", "たわし"]],
+    ["🧹", ["掃除", "そうじ", "ほうき", "わいぱー", "くいっくる"]],
+    ["🗑️", ["ごみ袋", "ゴミ袋", "ごみぶくろ"]],
+    ["🪥", ["歯ぶらし", "はぶらし", "歯磨き", "はみがき", "歯磨き粉"]],
+    ["🪒", ["髭剃り", "ひげそり", "かみそり", "しぇーばー"]],
+    ["🧷", ["おむつ", "紙おむつ", "おしりふき"]],
+    ["📦", ["らっぷ", "あるみほいる", "ほいる", "じっぷろっく", "保存袋", "食品保存"]],
+    ["🔋", ["電池", "でんち", "乾電池"]],
+    ["💡", ["電球", "でんきゅう", "らいと"]],
+    ["🧦", ["靴下", "くつした"]],
+
+    ["💊", ["薬", "くすり", "さぷり", "びたみん", "錠剤", "風邪薬", "胃薬"]],
+    ["😷", ["ますく"]],
+    ["🩹", ["絆創膏", "ばんそうこう", "湿布", "しっぷ"]],
+    ["🌡️", ["体温計", "たいおんけい"]],
+    ["🐾", ["どっぐふーど", "きゃっとふーど", "ぺっとふーど", "猫砂", "ねこ砂"]],
+  ];
+
+  /* Flattened once and sorted longest first, so the first hit is the longest
+     match: 「牛乳」 beats 「牛」, 「もも肉」 beats 「桃」, 「洗濯洗剤」 beats 「洗剤」. */
+  const EMOJI_KEYS = PRODUCT_EMOJI
+    .flatMap(([emoji, words]) => words.map((w) => [KN.util.foldKana(w), emoji]))
+    .sort((a, b) => b[0].length - a[0].length);
+
+  /** Emoji suggested by a product name alone, or "" when nothing fits. */
+  function guessEmoji(name) {
+    const n = KN.util.foldKana(String(name || ""));
+    if (!n) return "";
+    for (const [key, emoji] of EMOJI_KEYS) if (n.includes(key)) return emoji;
+    return "";
+  }
+
+  /** What to show next to a product: its own emoji, else its category's. */
+  function productEmoji(product) {
+    if (!product) return "";
+    return guessEmoji(product.name) || getCategory(product.categoryId).emoji;
+  }
+
   function findProductByName(name) {
     const n = String(name).trim().toLowerCase();
     return state.products.find((p) => p.name.trim().toLowerCase() === n) || null;
@@ -2346,6 +2501,7 @@ button, [role="tab"] {
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
+    guessEmoji, productEmoji,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice,
     exportJSON, importJSON, reset, loadSample,
@@ -3233,7 +3389,7 @@ button, [role="tab"] {
     const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
 
     const sheetHandle = KN.ui.sheet({
-      title: product.name,
+      title: `${store.productEmoji(product)} ${product.name}`.trim(),
       content: body,
       footer: foot,
     });
@@ -3754,7 +3910,7 @@ button, [role="tab"] {
         const bestStore = best ? store.getStore(best.storeId) : null;
         row = node(html`
           <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
-            <span class="ac-emoji">${cat.emoji}</span>
+            <span class="ac-emoji">${store.productEmoji(m.product)}</span>
             <span class="ac-main">
               <span class="ac-name">${m.product.name}</span>
               <span class="ac-sub">
@@ -4045,6 +4201,7 @@ button, [role="tab"] {
       <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
                 aria-label="${product.name} を購入済みにする">${icon("check")}</button>
+        <span class="item-emoji" aria-hidden="true">${store.productEmoji(product)}</span>
         <button class="item-body">
           <span class="item-name-row">
             <span class="item-name">${product.name}</span>
@@ -4553,7 +4710,7 @@ button, [role="tab"] {
 
     const card = node(html`
       <button class="product">
-        <span class="product-emoji">${cat.emoji}</span>
+        <span class="product-emoji">${store.productEmoji(product)}</span>
         <span class="product-main">
           <span class="product-name">${product.name}</span>
           <span class="product-meta">
