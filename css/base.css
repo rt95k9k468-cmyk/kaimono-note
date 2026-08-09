@@ -245,8 +245,10 @@ a { color: var(--c-primary); }
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Its own bounce is what pull-to-refresh replaces, and letting both run at
-     once made the list wobble under the chip. */
+  /* The browser's own bounce is off at both ends: at the top it fought the
+     pull-to-refresh chip and the list wobbled under it. pull-refresh.js hands
+     both edges their give back — the chip at the top, a plain band at the
+     bottom — so nothing here stops dead against nothing. */
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   display: none;
@@ -316,10 +318,9 @@ a { color: var(--c-primary); }
 
 .ptr.is-ready .ptr-ring { color: var(--c-primary); }
 
-/* Only while releasing or settling — during the drag the chip has to track
-   the finger exactly, so no transition may sit between the two. */
-.ptr.is-settling { transition: transform .32s var(--ease-out), opacity .32s var(--ease-out); }
-.screen.is-settling { transition: transform .32s var(--ease-out); }
+/* No transition anywhere on these two. Every frame of both the pull and the
+   settle is written by pull-refresh.js, and a transition sitting in between
+   would be a second animation arguing with the first. */
 
 .ptr.is-busy .ptr-ring { color: var(--c-primary); }
 .ptr.is-busy .ptr-arc,
