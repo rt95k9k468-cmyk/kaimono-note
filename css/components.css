@@ -170,6 +170,74 @@ button, [role="tab"] {
 .input-group { display: flex; gap: var(--sp-2); }
 .input-group > * { min-width: 0; }
 
+/* ---------------- picking a product's picture ---------------- */
+
+/* The row on the product sheet that opens the picker: the picture as it
+   stands, what chose it, and a chevron. */
+.icon-pick, .icon-auto {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-3);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  transition: background .16s var(--ease), border-color .16s var(--ease);
+}
+.icon-auto.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
+
+.icon-pick-mark {
+  flex: none;
+  width: 44px; height: 44px;
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  display: grid;
+  place-items: center;
+}
+.icon-pick-mark .p-icon { width: 26px; height: 26px; vertical-align: 0; }
+
+.icon-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.icon-pick-name { font-weight: 700; }
+.icon-pick-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
+
+/* Six across on a phone: big enough to tell a jug from a bottle, small
+   enough that the whole set is a few flicks rather than a scroll. */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: var(--sp-2);
+}
+
+.icon-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: var(--sp-2) 2px;
+  border-radius: var(--r-md);
+  border: 1.5px solid transparent;
+  background: var(--c-surface-2);
+  transition: background .14s var(--ease), border-color .14s var(--ease), transform .12s;
+}
+.icon-cell:active { transform: scale(.94); }
+.icon-cell.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
+.icon-cell-mark { display: grid; place-items: center; height: 30px; }
+.icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }
+.icon-cell-label {
+  font-size: 10px;
+  line-height: 1.15;
+  color: var(--c-text-2);
+  text-align: center;
+  /* Two lines at most: 「ほっとけーきみっくす」 must not push the grid about. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+
 /* − 1 ＋. A count on a shopping list is almost always one or two, and typing
    a digit for that means raising a keyboard over the form; two big targets
    are quicker and never cover anything. */

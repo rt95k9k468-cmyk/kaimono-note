@@ -939,5 +939,95 @@
     <rect x="10.9" y="9.8" width="2.2" height="10.2" fill="#000000" opacity=".13"/>
   `);
 
-  KN.productIcons = { find, fallback, ICONS };
+  /* ---------------- choosing one by hand ---------------- */
+
+  /* The guess is right most of the time, and wrong in ways only the owner of
+     the cupboard can see: 「コンソメ」 is a box to this table and a stock cube
+     to the person buying it. So the picture can be set by hand — and for that
+     every icon needs a name to be listed under. The first keyword is it: it
+     is the plainest word for the thing, which is why it was written first. */
+  const LABELS = { package: "むじるしの箱" };
+  KEYS.forEach(([key, words]) => { if (!LABELS[key]) LABELS[key] = words[0]; });
+
+  /** Every icon, in the order KEYS groups them. */
+  const ORDER = KEYS.map(([key]) => key)
+    .concat(Object.keys(ICONS).filter((k) => !KEYS.some(([key]) => key === k)));
+
+  const list = () => ORDER.map((key) => ({ key, label: LABELS[key] || key, svg: ICONS[key] }));
+
+  /** The icon a key names, or "" for a key that is not one. */
+  const byKey = (key) => (key && ICONS[key]) || "";
+
+  /** The longest run of characters two strings share. */
+  function sharedRun(a, b) {
+    let best = 0, end = 0;
+    const row = new Array(b.length + 1).fill(0);
+    for (let i = 1; i <= a.length; i++) {
+      let prev = 0;
+      for (let j = 1; j <= b.length; j++) {
+        const cur = row[j];
+        row[j] = a[i - 1] === b[j - 1] ? prev + 1 : 0;
+        if (row[j] > best) { best = row[j]; end = i; }
+        prev = cur;
+      }
+    }
+    return a.slice(end - best, end);
+  }
+
+  const KANJI = /[㐀-鿿]/;
+
+  /* How much a shared run is worth saying out loud. Two kana together mean
+     almost nothing — 「こんそめ」 and 「べーこん」 share こん, and one is not a
+     hint about the other — while two kanji usually name a thing: 洗剤 shared
+     between 食器用洗剤 and 洗濯洗剤 is the whole point. So kana need three,
+     kanji need two. */
+  const runIsWorthIt = (run) => run.length >= 3 || (run.length >= 2 && KANJI.test(run));
+
+  /**
+   * Icons this name might mean, best first.
+   *
+   * Three tiers, and the reason there are three: an exact hit is what `find`
+   * already picks and belongs at the top; a name that is *part* of a keyword
+   * (「トイレ」 against 「トイレットペーパー」) is nearly as good; and after
+   * that, sharing a run of characters is worth offering — 「食器用洗剤」 and
+   * 「洗濯洗剤」 share 洗剤, which is exactly the pair a guess is most likely
+   * to get the wrong way round.
+   */
+  function suggest(name, limit) {
+    const n = KN.util.foldKana(String(name || ""));
+    if (!n) return [];
+    const score = new Map();
+    const bump = (key, v) => { if ((score.get(key) || 0) < v) score.set(key, v); };
+
+    KEYS.forEach(([key, words]) => {
+      words.forEach((w) => {
+        const k = KN.util.foldKana(w);
+        if (!k) return;
+        if (n.includes(k)) bump(key, 2000 + k.length * 10);
+        else if (n.length >= 2 && k.includes(n)) bump(key, 1000 + n.length * 10);
+        else {
+          const run = sharedRun(n, k);
+          if (runIsWorthIt(run)) bump(key, run.length * 10 + (KANJI.test(run) ? 5 : 0));
+        }
+      });
+    });
+
+    return [...score.entries()]
+      .sort((a, b) => b[1] - a[1] || ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]))
+      .slice(0, limit || 8)
+      .map(([key]) => key);
+  }
+
+  /** Icons whose name or keywords contain the query. */
+  function search(query) {
+    const q = KN.util.foldKana(String(query || ""));
+    if (!q) return list();
+    return list().filter(({ key, label }) => {
+      if (KN.util.foldKana(label).includes(q)) return true;
+      const entry = KEYS.find(([k]) => k === key);
+      return !!entry && entry[1].some((w) => KN.util.foldKana(w).includes(q));
+    });
+  }
+
+  KN.productIcons = { find, fallback, ICONS, list, byKey, suggest, search, LABELS };
 })();

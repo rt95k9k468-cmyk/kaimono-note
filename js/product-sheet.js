@@ -24,8 +24,14 @@
     const rerenderPrices = () => renderPrices(pricesWrap, productId);
 
     const category = categoryField(productId);
-    body.append(nameField(productId, category.recheck));
+    const mark = iconField(productId, () => {
+      // The picture is on the sheet's own title too; keep the two agreeing.
+      const head = sheetHandle && sheetHandle.el.querySelector(".sheet-mark");
+      if (head) head.innerHTML = store.productMark(store.getProduct(productId));
+    });
+    body.append(nameField(productId, category.recheck, mark.recheck));
     if (itemId) body.append(itemSection(itemId));
+    body.append(mark.el);
     body.append(category.el);
     body.append(sizeField(productId, rerenderPrices));
     body.append(pricesWrap);
@@ -49,7 +55,7 @@
 
   /* ---------------- fields ---------------- */
 
-  function nameField(productId, onRecategorised) {
+  function nameField(productId, onRecategorised, onRenamed) {
     const p = store.getProduct(productId);
     const wrap = node(html`
       <label class="field">
@@ -85,6 +91,9 @@
         }
       });
 
+      // The picture follows the name too, whether or not the category moved.
+      onRenamed && onRenamed();
+
       if (moved) {
         onRecategorised && onRecategorised();
         KN.ui.toast(`「${store.getCategory(moved).name}」に移しました`);
@@ -94,6 +103,145 @@
 
     input.addEventListener("input", save);
     return wrap;
+  }
+
+  /* ---------------- the picture ---------------- */
+
+  /* The guess reads the name and is usually right. Where it is wrong it is
+     wrong in a way only the person who buys the thing can see — 「コンソメ」
+     is a box to the app and a stock cube in the cupboard — so the picture can
+     be set by hand, and once set nothing overrules it. */
+  function iconField(productId, onChanged) {
+    const wrap = node(html`
+      <div class="field">
+        <span class="field-label">アイコン</span>
+        <button type="button" class="icon-pick js-pick">
+          <span class="icon-pick-mark js-mark"></span>
+          <span class="icon-pick-text">
+            <span class="icon-pick-name js-lbl"></span>
+            <span class="icon-pick-sub js-sub"></span>
+          </span>
+          <span class="price-chevron">${icon("chevron")}</span>
+        </button>
+      </div>
+    `);
+
+    function paint() {
+      const p = store.getProduct(productId);
+      if (!p) return;
+      const own = KN.productIcons.byKey(p.icon);
+      wrap.querySelector(".js-mark").innerHTML = store.productMark(p);
+      wrap.querySelector(".js-lbl").textContent =
+        own ? (KN.productIcons.LABELS[p.icon] || p.icon) : "おまかせ";
+      wrap.querySelector(".js-sub").textContent =
+        own ? "自分で選んだ絵です" : "名前とカテゴリから選んでいます";
+    }
+    paint();
+
+    wrap.querySelector(".js-pick").addEventListener("click", () => {
+      openIconPicker(productId, () => { paint(); onChanged && onChanged(); });
+    });
+
+    return { el: wrap, recheck: paint };
+  }
+
+  /* 「もしかして」 first, then everything. The guess already had its go at the
+     name; what is useful here is the *near* misses — the pictures the name
+     brushes against without landing on, which is where the right one usually
+     is. Below that the whole set, because sometimes the right picture has
+     nothing to do with the name at all. */
+  function openIconPicker(productId, onChanged) {
+    const body = node(html`
+      <div class="stack" style="gap:14px">
+        <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
+               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
+        <div class="stack js-grids" style="gap:14px"></div>
+      </div>
+    `);
+    const grids = body.querySelector(".js-grids");
+    const q = body.querySelector(".js-q");
+
+    const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
+
+    function choose(key) {
+      store.update((s) => {
+        const rec = s.products.find((x) => x.id === productId);
+        if (rec) rec.icon = key || null;
+      });
+      haptic(12);
+      onChanged && onChanged();
+      handle.close();
+    }
+
+    function grid(items) {
+      const current = store.getProduct(productId).icon || "";
+      const g = node(html`<div class="icon-grid"></div>`);
+      items.forEach(({ key, label, svg }) => {
+        const cell = node(html`
+          <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
+                  data-key="${key}" aria-pressed="${String(key === current)}">
+            <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
+            <span class="icon-cell-label">${label}</span>
+          </button>
+        `);
+        cell.addEventListener("click", () => choose(key));
+        g.append(cell);
+      });
+      return g;
+    }
+
+    const heading = (text) => node(html`<span class="field-label">${text}</span>`);
+
+    function paint() {
+      const rec = store.getProduct(productId);
+      if (!rec) return;
+      grids.innerHTML = "";
+      const query = q.value.trim();
+
+      if (query) {
+        const hits = KN.productIcons.search(query);
+        if (!hits.length) {
+          grids.append(node(html`
+            <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
+              「${query}」に合う絵はありません
+            </p>
+          `));
+          return;
+        }
+        grids.append(grid(hits));
+        return;
+      }
+
+      /* Back to the guess. Shown with the picture it would land on, so it is
+         a choice between two pictures rather than a choice with the lights
+         off. */
+      const auto = node(html`
+        <button type="button" class="icon-auto js-auto ${rec.icon ? "" : "is-on"}"
+                aria-pressed="${String(!rec.icon)}">
+          <span class="icon-pick-mark">${store.autoMark(rec)}</span>
+          <span class="icon-pick-text">
+            <span class="icon-pick-name">おまかせにする</span>
+            <span class="icon-pick-sub">名前とカテゴリから選びます</span>
+          </span>
+        </button>
+      `);
+      auto.addEventListener("click", () => choose(null));
+      grids.append(auto);
+
+      const maybe = KN.productIcons.suggest(rec.name, 8);
+      if (maybe.length) {
+        grids.append(heading("もしかして"));
+        grids.append(grid(KN.productIcons.list().filter((x) => maybe.includes(x.key))
+          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
+      }
+
+      grids.append(heading("ぜんぶ"));
+      grids.append(grid(KN.productIcons.list()));
+    }
+
+    q.addEventListener("input", debounce(paint, 160));
+    paint();
+    return handle;
   }
 
   function itemSection(itemId) {
