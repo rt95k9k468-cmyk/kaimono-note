@@ -139,6 +139,17 @@
      is following the window itself — size the shell to what is visible and
      move it to wherever that visible region currently is. Then the bottom of
      the app is the top of the keyboard by construction. */
+  /** True while a text field holds focus — i.e. while the keyboard is showing. */
+  function isTyping() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === "TEXTAREA") return true;
+    if (tag !== "INPUT") return false;
+    return !["checkbox", "radio", "button", "submit", "reset", "file", "range", "color"]
+      .includes(el.type);
+  }
+
   function trackKeyboard() {
     const vv = window.visualViewport;
     if (!vv) return;   // Falls back to the CSS 100dvh, as before.
@@ -158,14 +169,19 @@
       app.style.height = h + "px";
       app.style.transform = top ? `translateY(${top}px)` : "";
 
-      // How much of the screen the keyboard took. Deliberately ignores
-      // offsetTop: how far the window has been slid says nothing about the
-      // keyboard's height, and subtracting it made a fully-slid viewport —
-      // exactly what iOS produces — look like no keyboard at all.
-      const covered = window.innerHeight - vv.height;
-      // Browser chrome sliding in and out moves this by a few dozen pixels;
-      // only a keyboard takes this much.
-      root.classList.toggle("kb-open", covered > 120);
+      // Whether the keyboard is up cannot be read from the viewport at all.
+      // A reading from an iPhone with the keyboard fully open:
+      //
+      //   innerH 465   可視 h 465   offsetTop 414   pageTop 414
+      //
+      // iOS shrinks the layout viewport along with the visual one, so the gap
+      // between them is zero at the exact moment the keyboard covers half the
+      // screen. Every arithmetic test on those two numbers reports "no
+      // keyboard", the tab bar stays up, and it pushes the input bar 94px
+      // clear of the keyboard — which is the shift that kept coming back.
+      //
+      // A focused text field, on a phone, *is* the keyboard being up.
+      root.classList.toggle("kb-open", isTyping());
     };
 
     vv.addEventListener("resize", fit);
@@ -231,7 +247,9 @@
             : "visualViewport なし\n") +
         `app  top ${r(a.top)}  h ${r(a.height)}\n` +
         (b ? `bar  top ${r(b.top)}  bottom ${r(b.bottom)}` : "bar なし") +
-        (document.documentElement.classList.contains("kb-open") ? "\nkb-open" : "");
+        `\n入力中 ${isTyping() ? "はい" : "いいえ"}` +
+        `  kb-open ${document.documentElement.classList.contains("kb-open") ? "はい" : "いいえ"}` +
+        `  タブバー ${getComputedStyle(document.querySelector(".tabbar")).display}`;
       requestAnimationFrame(paint);
     };
     paint();
