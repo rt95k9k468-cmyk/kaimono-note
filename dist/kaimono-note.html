@@ -3132,6 +3132,8 @@ button, [role="tab"] {
       stores: [],
       products: [],
       items: [],
+      // Corrections the user has made by hand: folded product name → category.
+      learned: {},
       settings: { theme: "auto", showChecked: true },
     };
   }
@@ -3167,6 +3169,14 @@ button, [role="tab"] {
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
     out.items    = Array.isArray(s.items)    ? s.items    : [];
+    out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
+    // Each entry keeps the name as it was typed as well as the folded key it is
+    // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
+    Object.keys(out.learned).forEach((k) => {
+      const v = out.learned[k];
+      if (typeof v === "string") out.learned[k] = { category: v, label: k };
+      else if (!v || !v.category) delete out.learned[k];
+    });
 
     out.categories.forEach((c, i) => {
       if (typeof c.order !== "number") c.order = i;
@@ -3333,9 +3343,82 @@ button, [role="tab"] {
   /** Best-guess category id for a product name; falls back to その他.
    *  The longest matching keyword wins rather than the first category listed,
    *  so 「牛乳」beats 「牛」and 「化粧水」beats 「水」. */
+  /* Corrections, longest key first — same rule as everything else here, so a
+     learned 「コンソメ」 also catches 「味の素 コンソメ」. Entries pointing at a
+     category that has since been deleted are skipped rather than dropped: the
+     category might come back, and silently forgetting is worse than ignoring. */
+  function learnedPairs() {
+    return Object.entries(state.learned || {})
+      .filter(([, v]) => v && state.categories.some((c) => c.id === v.category))
+      .map(([key, v]) => [key, v.category])
+      .sort((a, b) => b[0].length - a[0].length);
+  }
+
+  /** Everything learned, for showing in 設定. */
+  function learnedList() {
+    return Object.entries(state.learned || {}).map(([key, v]) => ({
+      key,
+      label: (v && v.label) || key,
+      categoryId: v && v.category,
+      category: state.categories.find((c) => c.id === (v && v.category)) || null,
+    }));
+  }
+
+  /** Remember that this product belongs in this category, for next time. */
+  function learnCategory(name, categoryId) {
+    const label = String(name || "").trim();
+    const key = KN.util.foldKana(label);
+    if (!key || !categoryId) return;
+    update((s) => {
+      if (!s.learned) s.learned = {};
+      s.learned[key] = { category: categoryId, label };
+    });
+  }
+
+  function forgetCategory(key) {
+    update((s) => { if (s.learned) delete s.learned[key]; });
+  }
+
+  function forgetAllCategories() {
+    update((s) => { s.learned = {}; });
+  }
+
+  /**
+   * Best-guess category id for a product name; falls back to その他.
+   *
+   * Three sources, in order of how much they know:
+   *
+   *  1. What the user corrected by hand. If they once moved 「コンソメ」 into
+   *     調味料, that is not a guess any more, and nothing below may overrule it.
+   *  2. The categories' own names. 「コンソメ(調味料)」 says where it goes, and
+   *     this is what makes renaming work for someone who threw the built-in
+   *     categories away and wrote their own — the keyword table below is keyed
+   *     to the default ids and knows nothing about a category called 調味料.
+   *  3. The built-in keyword table.
+   *
+   * Within each source the longest match wins rather than the first listed, so
+   * 「牛乳」 beats 「牛」 and 「化粧水」 beats 「水」.
+   */
   function guessCategory(name) {
-    const n = String(name || "");
-    if (!n.trim()) return OTHER_CATEGORY;
+    const raw = String(name || "");
+    if (!raw.trim()) return OTHER_CATEGORY;
+    const folded = KN.util.foldKana(raw);
+
+    for (const [key, id] of learnedPairs()) {
+      if (folded.includes(key)) return id;
+    }
+
+    let namedId = null, namedLen = 0;
+    state.categories.forEach((c) => {
+      const key = KN.util.foldKana(c.name);
+      // One character is too little to go on — a category called 「肉」 would
+      // claim 「肉まん」 and everything else that happens to contain it.
+      if (key.length >= 2 && key.length > namedLen && folded.includes(key)) {
+        namedId = c.id;
+        namedLen = key.length;
+      }
+    });
+    if (namedId) return namedId;
 
     let bestId = OTHER_CATEGORY;
     let bestLen = 0;
@@ -3343,7 +3426,7 @@ button, [role="tab"] {
       // A category the user deleted must not shadow a still-valid match.
       if (!state.categories.some((c) => c.id === catId)) continue;
       for (const w of words) {
-        if (w.length > bestLen && n.includes(w)) {
+        if (w.length > bestLen && raw.includes(w)) {
           bestId = catId;
           bestLen = w.length;
         }
@@ -3550,6 +3633,7 @@ button, [role="tab"] {
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
+    learnCategory, forgetCategory, forgetAllCategories, learnedList,
     productMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice,
@@ -3845,7 +3929,8 @@ button, [role="tab"] {
       const wrap = node(html`<div class="chip-wrap"></div>`);
       KN.store.sortedCategories().forEach((c) => {
         const chip = node(html`
-          <button type="button" class="chip" aria-pressed="${String(c.id === current)}">
+          <button type="button" class="chip" aria-pressed="${String(c.id === current)}"
+                  style="--cat:${c.color || ""}">
             <span class="chip-emoji">${c.emoji}</span>${c.name}
           </button>
         `);
@@ -3861,7 +3946,12 @@ button, [role="tab"] {
     }
 
     render();
-    return { get current() { return current; } };
+    return {
+      get current() { return current; },
+      /** Move the selection without firing onSelect — for when something else
+       *  changed the category, e.g. a rename that re-guessed it. */
+      set(id) { if (id && id !== current) { current = id; render(); } },
+    };
   }
 
   KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker };
@@ -4724,9 +4814,10 @@ button, [role="tab"] {
     const pricesWrap = node(html`<div class="stack" style="gap:12px"></div>`);
     const rerenderPrices = () => renderPrices(pricesWrap, productId);
 
-    body.append(nameField(productId));
+    const category = categoryField(productId);
+    body.append(nameField(productId, category.recheck));
     if (itemId) body.append(itemSection(itemId));
-    body.append(categoryField(productId));
+    body.append(category.el);
     body.append(sizeField(productId, rerenderPrices));
     body.append(pricesWrap);
     rerenderPrices();
@@ -4749,7 +4840,7 @@ button, [role="tab"] {
 
   /* ---------------- fields ---------------- */
 
-  function nameField(productId) {
+  function nameField(productId, onRecategorised) {
     const p = store.getProduct(productId);
     const wrap = node(html`
       <label class="field">
@@ -4758,14 +4849,40 @@ button, [role="tab"] {
       </label>
     `);
     const input = wrap.querySelector(".js-name");
+
     const save = debounce(() => {
       const v = input.value.trim();
       if (!v) return;
+
+      /* A rename is very often a correction. 「コンソメ」 came out as その他,
+         so it gets renamed 「コンソメ(調味料)」 — and the new name now says
+         plainly where it goes. Re-reading it costs nothing and saves a second
+         trip to the picker.
+
+         Two limits. A category picked by hand is never overruled: that was a
+         decision, and this is a guess. And a guess that lands on その他 is
+         thrown away rather than applied — a name we cannot place must not
+         demote a category that is already right. */
+      let moved = null;
       store.update((s) => {
         const rec = s.products.find((x) => x.id === productId);
-        if (rec) rec.name = v;
+        if (!rec) return;
+        rec.name = v;
+        if (rec.catManual) return;
+        const guess = store.guessCategory(v);
+        if (guess !== store.OTHER_CATEGORY && guess !== rec.categoryId) {
+          rec.categoryId = guess;
+          moved = guess;
+        }
       });
+
+      if (moved) {
+        onRecategorised && onRecategorised();
+        KN.ui.toast(`「${store.getCategory(moved).name}」に移しました`);
+        haptic();
+      }
     }, 350);
+
     input.addEventListener("input", save);
     return wrap;
   }
@@ -4837,16 +4954,34 @@ button, [role="tab"] {
         <div class="js-picker"></div>
       </div>
     `);
-    KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
+
+    const picker = KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
       selectedId: p.categoryId,
       onSelect: (categoryId) => {
         store.update((s) => {
           const rec = s.products.find((x) => x.id === productId);
-          if (rec) rec.categoryId = categoryId;
+          if (!rec) return;
+          rec.categoryId = categoryId;
+          // Chosen by hand. Nothing guessed from the name may move it again.
+          rec.catManual = true;
         });
+
+        /* And remember it. Being told 「コンソメ is 調味料」 once should be
+           enough — the next 「コンソメ」 typed into the list goes straight
+           there, and so does 「味の素 コンソメ」. Shown in 設定 so it is not a
+           machine quietly making decisions nobody can see or undo. */
+        const rec = store.getProduct(productId);
+        const known = store.learnedList().some((l) => l.key === KN.util.foldKana(rec.name) && l.categoryId === categoryId);
+        store.learnCategory(rec.name, categoryId);
+        if (!known) {
+          KN.ui.toast(`「${rec.name}」は${store.getCategory(categoryId).name}、と覚えました`);
+        }
       },
     });
-    return wrap;
+
+    // Called after a rename moved the category out from under the picker.
+    const recheck = () => picker.set(store.getProduct(productId).categoryId);
+    return { el: wrap, recheck };
   }
 
   function sizeField(productId, onChanged) {
@@ -6848,6 +6983,77 @@ button, [role="tab"] {
     return `${formatDate(iso)} ${hh}:${mm}`;
   }
 
+  function learnedSub() {
+    const n = store.learnedList().length;
+    return n
+      ? `${n}件。カテゴリを手で選ぶたびに増えます`
+      : "商品のカテゴリを手で選ぶと、次から同じ名前をそこに入れます";
+  }
+
+  /* What the app has been taught, and a way to take it back. Guessing on the
+     user's behalf is only reasonable if they can see what it decided. */
+  function openLearned() {
+    const rules = store.learnedList();
+    if (!rules.length) {
+      KN.ui.toast("まだ何も覚えていません");
+      return;
+    }
+
+    const body = node(html`
+      <div class="stack">
+        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:0 0 8px">
+          商品のカテゴリを手で選ぶと、その名前を覚えます。次から同じ名前や、
+          それを含む名前は、はじめからそのカテゴリに入ります。
+        </p>
+        <div class="stack js-rules" style="gap:8px"></div>
+        <button class="btn btn-soft btn-sm js-forget-all" style="margin-top:4px">すべて忘れる</button>
+      </div>
+    `);
+
+    let handle = null;
+    const rows = body.querySelector(".js-rules");
+
+    function paint() {
+      rows.innerHTML = "";
+      const list = store.learnedList();
+      if (!list.length) { handle && handle.close(); return; }
+      list.forEach((r) => {
+        const row = node(html`
+          <div class="manage-row" style="--cat:${(r.category && r.category.color) || ""}">
+            <span class="manage-swatch" style="background:${(r.category && r.category.color) || "transparent"}"></span>
+            <span class="manage-name">${r.label}</span>
+            <span style="font-size:11px;color:var(--c-text-3);flex:none">
+              → ${r.category ? r.category.name : "（消えたカテゴリ）"}
+            </span>
+            <button class="icon-btn is-danger js-forget" aria-label="この振り分けを忘れる">${icon("close")}</button>
+          </div>
+        `);
+        row.querySelector(".js-forget").addEventListener("click", () => {
+          store.forgetCategory(r.key);
+          KN.ui.toast(`「${r.label}」を忘れました`);
+          paint();
+        });
+        rows.append(row);
+      });
+    }
+    paint();
+
+    body.querySelector(".js-forget-all").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "覚えた振り分けを全部忘れますか？",
+        message: "商品そのものは消えません。カテゴリの自動判定が、はじめの状態に戻ります。",
+        okLabel: "忘れる",
+        danger: true,
+      });
+      if (!ok) return;
+      store.forgetAllCategories();
+      KN.ui.toast("忘れました");
+      handle && handle.close();
+    });
+
+    handle = KN.ui.sheet({ title: "おぼえた振り分け", content: body });
+  }
+
   function snapshotSub() {
     const snaps = KN.backup.list();
     if (!snaps.length) return "アプリ内に自動保存された控えはまだありません";
@@ -6935,6 +7141,13 @@ button, [role="tab"] {
             </span>
             <span class="row-chevron">${icon("upload")}</span>
           </button>
+          <button class="row js-learned">
+            <span class="row-main">
+              <span class="row-title">おぼえた振り分け</span>
+              <span class="row-sub">${learnedSub()}</span>
+            </span>
+            <span class="row-chevron">${icon("sparkles")}</span>
+          </button>
           <button class="row js-sample">
             <span class="row-main">
               <span class="row-title">サンプルデータを入れる</span>
@@ -6971,6 +7184,7 @@ button, [role="tab"] {
     });
 
     wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
+    wrap.querySelector(".js-learned").addEventListener("click", openLearned);
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());

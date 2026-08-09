@@ -50,6 +50,8 @@
       stores: [],
       products: [],
       items: [],
+      // Corrections the user has made by hand: folded product name → category.
+      learned: {},
       settings: { theme: "auto", showChecked: true },
     };
   }
@@ -85,6 +87,14 @@
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
     out.items    = Array.isArray(s.items)    ? s.items    : [];
+    out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
+    // Each entry keeps the name as it was typed as well as the folded key it is
+    // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
+    Object.keys(out.learned).forEach((k) => {
+      const v = out.learned[k];
+      if (typeof v === "string") out.learned[k] = { category: v, label: k };
+      else if (!v || !v.category) delete out.learned[k];
+    });
 
     out.categories.forEach((c, i) => {
       if (typeof c.order !== "number") c.order = i;
@@ -251,9 +261,82 @@
   /** Best-guess category id for a product name; falls back to その他.
    *  The longest matching keyword wins rather than the first category listed,
    *  so 「牛乳」beats 「牛」and 「化粧水」beats 「水」. */
+  /* Corrections, longest key first — same rule as everything else here, so a
+     learned 「コンソメ」 also catches 「味の素 コンソメ」. Entries pointing at a
+     category that has since been deleted are skipped rather than dropped: the
+     category might come back, and silently forgetting is worse than ignoring. */
+  function learnedPairs() {
+    return Object.entries(state.learned || {})
+      .filter(([, v]) => v && state.categories.some((c) => c.id === v.category))
+      .map(([key, v]) => [key, v.category])
+      .sort((a, b) => b[0].length - a[0].length);
+  }
+
+  /** Everything learned, for showing in 設定. */
+  function learnedList() {
+    return Object.entries(state.learned || {}).map(([key, v]) => ({
+      key,
+      label: (v && v.label) || key,
+      categoryId: v && v.category,
+      category: state.categories.find((c) => c.id === (v && v.category)) || null,
+    }));
+  }
+
+  /** Remember that this product belongs in this category, for next time. */
+  function learnCategory(name, categoryId) {
+    const label = String(name || "").trim();
+    const key = KN.util.foldKana(label);
+    if (!key || !categoryId) return;
+    update((s) => {
+      if (!s.learned) s.learned = {};
+      s.learned[key] = { category: categoryId, label };
+    });
+  }
+
+  function forgetCategory(key) {
+    update((s) => { if (s.learned) delete s.learned[key]; });
+  }
+
+  function forgetAllCategories() {
+    update((s) => { s.learned = {}; });
+  }
+
+  /**
+   * Best-guess category id for a product name; falls back to その他.
+   *
+   * Three sources, in order of how much they know:
+   *
+   *  1. What the user corrected by hand. If they once moved 「コンソメ」 into
+   *     調味料, that is not a guess any more, and nothing below may overrule it.
+   *  2. The categories' own names. 「コンソメ(調味料)」 says where it goes, and
+   *     this is what makes renaming work for someone who threw the built-in
+   *     categories away and wrote their own — the keyword table below is keyed
+   *     to the default ids and knows nothing about a category called 調味料.
+   *  3. The built-in keyword table.
+   *
+   * Within each source the longest match wins rather than the first listed, so
+   * 「牛乳」 beats 「牛」 and 「化粧水」 beats 「水」.
+   */
   function guessCategory(name) {
-    const n = String(name || "");
-    if (!n.trim()) return OTHER_CATEGORY;
+    const raw = String(name || "");
+    if (!raw.trim()) return OTHER_CATEGORY;
+    const folded = KN.util.foldKana(raw);
+
+    for (const [key, id] of learnedPairs()) {
+      if (folded.includes(key)) return id;
+    }
+
+    let namedId = null, namedLen = 0;
+    state.categories.forEach((c) => {
+      const key = KN.util.foldKana(c.name);
+      // One character is too little to go on — a category called 「肉」 would
+      // claim 「肉まん」 and everything else that happens to contain it.
+      if (key.length >= 2 && key.length > namedLen && folded.includes(key)) {
+        namedId = c.id;
+        namedLen = key.length;
+      }
+    });
+    if (namedId) return namedId;
 
     let bestId = OTHER_CATEGORY;
     let bestLen = 0;
@@ -261,7 +344,7 @@
       // A category the user deleted must not shadow a still-valid match.
       if (!state.categories.some((c) => c.id === catId)) continue;
       for (const w of words) {
-        if (w.length > bestLen && n.includes(w)) {
+        if (w.length > bestLen && raw.includes(w)) {
           bestId = catId;
           bestLen = w.length;
         }
@@ -468,6 +551,7 @@
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
+    learnCategory, forgetCategory, forgetAllCategories, learnedList,
     productMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice,

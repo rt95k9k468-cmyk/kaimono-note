@@ -321,6 +321,77 @@
     return `${formatDate(iso)} ${hh}:${mm}`;
   }
 
+  function learnedSub() {
+    const n = store.learnedList().length;
+    return n
+      ? `${n}件。カテゴリを手で選ぶたびに増えます`
+      : "商品のカテゴリを手で選ぶと、次から同じ名前をそこに入れます";
+  }
+
+  /* What the app has been taught, and a way to take it back. Guessing on the
+     user's behalf is only reasonable if they can see what it decided. */
+  function openLearned() {
+    const rules = store.learnedList();
+    if (!rules.length) {
+      KN.ui.toast("まだ何も覚えていません");
+      return;
+    }
+
+    const body = node(html`
+      <div class="stack">
+        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:0 0 8px">
+          商品のカテゴリを手で選ぶと、その名前を覚えます。次から同じ名前や、
+          それを含む名前は、はじめからそのカテゴリに入ります。
+        </p>
+        <div class="stack js-rules" style="gap:8px"></div>
+        <button class="btn btn-soft btn-sm js-forget-all" style="margin-top:4px">すべて忘れる</button>
+      </div>
+    `);
+
+    let handle = null;
+    const rows = body.querySelector(".js-rules");
+
+    function paint() {
+      rows.innerHTML = "";
+      const list = store.learnedList();
+      if (!list.length) { handle && handle.close(); return; }
+      list.forEach((r) => {
+        const row = node(html`
+          <div class="manage-row" style="--cat:${(r.category && r.category.color) || ""}">
+            <span class="manage-swatch" style="background:${(r.category && r.category.color) || "transparent"}"></span>
+            <span class="manage-name">${r.label}</span>
+            <span style="font-size:11px;color:var(--c-text-3);flex:none">
+              → ${r.category ? r.category.name : "（消えたカテゴリ）"}
+            </span>
+            <button class="icon-btn is-danger js-forget" aria-label="この振り分けを忘れる">${icon("close")}</button>
+          </div>
+        `);
+        row.querySelector(".js-forget").addEventListener("click", () => {
+          store.forgetCategory(r.key);
+          KN.ui.toast(`「${r.label}」を忘れました`);
+          paint();
+        });
+        rows.append(row);
+      });
+    }
+    paint();
+
+    body.querySelector(".js-forget-all").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "覚えた振り分けを全部忘れますか？",
+        message: "商品そのものは消えません。カテゴリの自動判定が、はじめの状態に戻ります。",
+        okLabel: "忘れる",
+        danger: true,
+      });
+      if (!ok) return;
+      store.forgetAllCategories();
+      KN.ui.toast("忘れました");
+      handle && handle.close();
+    });
+
+    handle = KN.ui.sheet({ title: "おぼえた振り分け", content: body });
+  }
+
   function snapshotSub() {
     const snaps = KN.backup.list();
     if (!snaps.length) return "アプリ内に自動保存された控えはまだありません";
@@ -408,6 +479,13 @@
             </span>
             <span class="row-chevron">${icon("upload")}</span>
           </button>
+          <button class="row js-learned">
+            <span class="row-main">
+              <span class="row-title">おぼえた振り分け</span>
+              <span class="row-sub">${learnedSub()}</span>
+            </span>
+            <span class="row-chevron">${icon("sparkles")}</span>
+          </button>
           <button class="row js-sample">
             <span class="row-main">
               <span class="row-title">サンプルデータを入れる</span>
@@ -444,6 +522,7 @@
     });
 
     wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
+    wrap.querySelector(".js-learned").addEventListener("click", openLearned);
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());

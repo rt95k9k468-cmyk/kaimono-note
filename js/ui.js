@@ -285,7 +285,8 @@
       const wrap = node(html`<div class="chip-wrap"></div>`);
       KN.store.sortedCategories().forEach((c) => {
         const chip = node(html`
-          <button type="button" class="chip" aria-pressed="${String(c.id === current)}">
+          <button type="button" class="chip" aria-pressed="${String(c.id === current)}"
+                  style="--cat:${c.color || ""}">
             <span class="chip-emoji">${c.emoji}</span>${c.name}
           </button>
         `);
@@ -301,7 +302,12 @@
     }
 
     render();
-    return { get current() { return current; } };
+    return {
+      get current() { return current; },
+      /** Move the selection without firing onSelect — for when something else
+       *  changed the category, e.g. a rename that re-guessed it. */
+      set(id) { if (id && id !== current) { current = id; render(); } },
+    };
   }
 
   KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker };
