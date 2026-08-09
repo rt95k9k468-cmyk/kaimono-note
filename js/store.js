@@ -184,6 +184,21 @@
     return () => listeners.delete(fn);
   }
 
+  /* Re-read what is actually on disk. Each tab — or the same installed app
+     opened in two places — keeps its own copy in memory, and the `storage`
+     event only reaches tabs that were already open. Pulling to refresh is how
+     you ask for whatever the other one wrote. Our own pending save goes out
+     first, so a refresh can never discard an edit that had not landed yet. */
+  function reload() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* the next save reports it */ }
+    }
+    state = load();
+    emit();
+  }
+
   // A v1 upgrade only lived in memory until the first edit; write it out now so
   // the converted data survives even if the user just looks and leaves.
   if (migratedOnLoad) persist();
@@ -414,7 +429,7 @@
 
   KN.store = {
     KEY, SCHEMA, STORE_COLORS, OTHER_CATEGORY,
-    get, update, subscribe,
+    get, update, subscribe, reload,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,

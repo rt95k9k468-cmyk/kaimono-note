@@ -226,11 +226,17 @@ a { color: var(--c-primary); }
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Its own bounce is what pull-to-refresh replaces, and letting both run at
+     once made the list wobble under the chip. */
+  overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   display: none;
   flex-direction: column;
   padding-bottom: calc(var(--sp-8) + var(--sp-6));
   scrollbar-width: thin;
+  /* Opaque, so the refresh chip parked above the screen stays hidden until a
+     pull slides the screen off it. */
+  background: var(--c-bg);
 }
 
 .screen.is-active {
@@ -242,6 +248,47 @@ a { color: var(--c-primary); }
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
+
+/* ---------------- pull to refresh ---------------- */
+
+/* The chip lives behind the screens and is dragged into the gap a pull opens
+   above them. `.ptr` itself has no height, so it never takes room from the
+   list when nothing is being pulled. */
+.ptr {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.ptr-ring {
+  position: absolute;
+  top: -42px;
+  width: 34px; height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--c-bg-elev);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-2);
+  color: var(--c-text-3);
+  transition: color .18s var(--ease);
+}
+
+.ptr-ring svg { width: 18px; height: 18px; stroke-width: 2.1; }
+.ptr.is-ready .ptr-ring { color: var(--c-primary); }
+
+/* Only while releasing or settling — during the drag the chip has to track
+   the finger exactly, so no transition may sit between the two. */
+.ptr.is-settling { transition: transform .32s var(--ease-out), opacity .32s var(--ease-out); }
+.screen.is-settling { transition: transform .32s var(--ease-out); }
+
+.ptr.is-busy .ptr-ring { color: var(--c-primary); }
+.ptr.is-busy .ptr-ring svg { animation: ptr-spin .9s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
 
 .screen::-webkit-scrollbar { width: 8px; }
 .screen::-webkit-scrollbar-thumb {
@@ -310,6 +357,37 @@ a { color: var(--c-primary); }
 /* Nobody switches tabs mid-word, and the room is better spent on the list
    while the keyboard has the bottom half of the screen. */
 .kb-open .tabbar { display: none; }
+
+/* ---------------- portrait only ---------------- */
+
+/* The manifest asks for `orientation: portrait`, which settles Android and
+   anything else that honours it. iOS ignores it in a home-screen app and
+   offers no way to lock the screen from a web page, so the app says so rather
+   than laying a one-column shopping list out sideways.
+
+   Scoped to a phone held sideways: a short landscape viewport with a wide
+   aspect. A desktop window and an iPad are landscape too, and both are fine
+   as they are. */
+.rotate-note { display: none; }
+
+@media (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) {
+  .app, #sheet-root, .toast-root { display: none; }
+
+  .rotate-note {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-6);
+    text-align: center;
+    background: var(--c-bg);
+  }
+  .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
+  .rotate-note b { font-size: var(--fs-xl); font-weight: 800; }
+  .rotate-note span { font-size: var(--fs-sm); color: var(--c-text-2); }
+}
 
 .tab {
   display: flex;
