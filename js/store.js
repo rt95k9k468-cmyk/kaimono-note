@@ -388,10 +388,24 @@
     return "";
   }
 
-  /** What to show next to a product: its own emoji, else its category's. */
+  /** The emoji standing in for a product: its own, else its category's. */
   function productEmoji(product) {
     if (!product) return "";
     return guessEmoji(product.name) || getCategory(product.categoryId).emoji;
+  }
+
+  /**
+   * What to actually show beside a product. A drawn icon when there is one for
+   * this kind of thing (see product-icons.js — emoji have no 洗剤), otherwise
+   * the emoji. Drawn icons come first because they are the more specific of
+   * the two: they exist precisely where the emoji set gives up and reuses one
+   * picture for six products.
+   * @returns raw HTML, ready to drop into an html`` template
+   */
+  function productMark(product) {
+    if (!product) return "";
+    const icon = KN.productIcons.find(product.name);
+    return icon ? KN.util.raw(icon) : productEmoji(product);
   }
 
   function findProductByName(name) {
@@ -572,7 +586,7 @@
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
-    guessEmoji, productEmoji,
+    guessEmoji, productEmoji, productMark,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice,
     exportJSON, importJSON, reset, loadSample,

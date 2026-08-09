@@ -389,6 +389,24 @@ button, [role="tab"] {
   background: var(--c-bg-elev);
 }
 
+/* Drawn product icons stand in for emoji, so they size themselves off the
+   surrounding font-size exactly as a glyph would — every place that already
+   sets a size for the emoji gets the icon at the same size for free. */
+.p-icon {
+  display: inline-block;
+  /* Emoji glyphs fill more of their em box than a 24-grid drawing does, so the
+     icons are set slightly larger to carry the same visual weight beside them. */
+  width: 1.26em;
+  height: 1.26em;
+  vertical-align: -.24em;
+}
+
+.sheet-mark {
+  font-size: 21px;
+  line-height: 1;
+  margin-right: var(--sp-2);
+}
+
 /* ---------------- reorder (long press to lift) ---------------- */
 
 /* The rows not being carried glide aside to open the gap. Scoped to a drag in

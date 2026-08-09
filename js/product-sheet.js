@@ -36,7 +36,8 @@
     const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
 
     const sheetHandle = KN.ui.sheet({
-      title: `${store.productEmoji(product)} ${product.name}`.trim(),
+      title: product.name,
+      titleMark: store.productMark(product),
       content: body,
       footer: foot,
     });

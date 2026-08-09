@@ -12,6 +12,7 @@ const ASSETS = [
   "css/components.css",
   "css/screens.css",
   "js/util.js",
+  "js/product-icons.js",
   "js/store.js",
   "js/ui.js",
   "js/reorder.js",

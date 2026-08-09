@@ -173,7 +173,7 @@
         const bestStore = best ? store.getStore(best.storeId) : null;
         row = node(html`
           <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
-            <span class="ac-emoji">${store.productEmoji(m.product)}</span>
+            <span class="ac-emoji">${store.productMark(m.product)}</span>
             <span class="ac-main">
               <span class="ac-name">${m.product.name}</span>
               <span class="ac-sub">
@@ -495,7 +495,7 @@
       <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
                 aria-label="${product.name} を購入済みにする">${icon("check")}</button>
-        <span class="item-emoji" aria-hidden="true">${store.productEmoji(product)}</span>
+        <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="item-body">
           <span class="item-name-row">
             <span class="item-name">${product.name}</span>
