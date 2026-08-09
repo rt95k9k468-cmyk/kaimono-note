@@ -235,16 +235,36 @@
   /** True when this looks like a sum rather than a plain number. */
   function isExpression(v) {
     const s = normalizeExpr(v);
-    return /\d[+\-*/]/.test(s);
+    return /\d[+\-*/]/.test(s) || s.indexOf("%") >= 0;
   }
 
+  /* A discount is written on the shelf as 「398円 −12%」, and that is how it is
+     written here: the price, then the rate, with the % at the end. Keeping it
+     in the text rather than in a hidden mode means the field still shows the
+     whole story and ⌫ takes it apart a character at a time. The answer drops
+     the fraction of a yen, the way the till does. */
+  const DISCOUNT = /^(.+?)([+-])(\d+(?:\.\d+)?)%$/;
+
   /**
-   * Evaluate `1+2*3` and friends. Returns null for anything that is not a
-   * complete, well-formed sum — a trailing operator while you are still typing
-   * is not an error, it just has no answer yet.
+   * Evaluate `1+2*3`, `398-12%` and friends. Returns null for anything that is
+   * not a complete, well-formed sum — a trailing operator, or a % with no rate
+   * behind it yet, is not an error while you are still typing, it just has no
+   * answer yet.
    */
   function calc(v) {
     const src = normalizeExpr(v);
+    const off = src.match(DISCOUNT);
+    if (off) {
+      const base = plainCalc(off[1]);
+      if (base == null) return null;
+      const rate = parseFloat(off[3]) / 100;
+      const out = base * (off[2] === "-" ? 1 - rate : 1 + rate);
+      return isFinite(out) ? Math.floor(out) : null;
+    }
+    return plainCalc(src);
+  }
+
+  function plainCalc(src) {
     if (!src || !/^[\d.+\-*/]+$/.test(src)) return null;
 
     const tokens = src.match(/\d+(?:\.\d+)?|\.\d+|[+\-*/]/g);

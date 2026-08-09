@@ -37,6 +37,12 @@
   --c-danger-soft: #fdecea;
   --c-warn:        #c98a12;
 
+  /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
+         the warm 税 keys on the pad, and one adds while the other takes
+         away — the two must never be pressed by mistake for each other. --- */
+  --c-cool-soft:   #dfeaf7;
+  --c-cool-ink:    #21527e;
+
   /* --- effects --- */
   --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
   --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
@@ -95,6 +101,8 @@
     --c-danger:      #e8776c;
     --c-danger-soft: #33201e;
     --c-warn:        #dcae4a;
+    --c-cool-soft:   #1f3346;
+    --c-cool-ink:    #97c6ec;
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 2px 8px rgba(0,0,0,.45);
     --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -124,6 +132,8 @@
   --c-danger:      #e8776c;
   --c-danger-soft: #33201e;
   --c-warn:        #dcae4a;
+  --c-cool-soft:   #1f3346;
+  --c-cool-ink:    #97c6ec;
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);
