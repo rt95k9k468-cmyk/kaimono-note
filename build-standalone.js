@@ -31,6 +31,7 @@ const JS = [
   "js/store.js",
   "js/ui.js",
   "js/backup.js",
+  "js/insights.js",
   "js/product-sheet.js",
   "js/screen-list.js",
   "js/screen-prices.js",
@@ -73,7 +74,7 @@ const manifestUri =
 
 const head = `
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>かいものノート</title>
 <meta name="description" content="買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。">
 <meta name="theme-color" content="#2f8f5b">
