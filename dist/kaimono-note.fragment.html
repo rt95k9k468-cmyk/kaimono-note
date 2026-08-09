@@ -5342,6 +5342,18 @@ button, [role="tab"] {
   let engaged = false;   // it turned out to be a pull rather than a scroll
   let busy = false;
   let loop = 0;
+  let bare = false;      // a band with no chip on it — the fling below
+  let out = false;       // the fling is still on its way out, not yet coming back
+
+  /* A flick that runs out of list stops against the boundary as if it had hit
+     a wall, because the browser's own overscroll is off. Catching how fast it
+     was going as it arrives lets the same band carry it a little past the end
+     and bring it back — the give a finger gets, given to a throw as well. */
+  const FLING_MIN  = 0.35;   // px/ms; below this it is a drift, not a throw
+  const FLING_GAIN = 9;      // how much of the speed becomes travel
+  const FLING_MAX  = 46;     // and how far that is ever allowed to reach
+  const FLING_OUT  = 0.34;   // it goes out briskly and comes back gently
+  let lastEl = null, lastTop = 0, lastAt = 0;
 
   function init() {
     host = document.getElementById("screens");
@@ -5359,6 +5371,9 @@ button, [role="tab"] {
     host.addEventListener("touchmove", onMove, { passive: false });
     host.addEventListener("touchend", onEnd);
     host.addEventListener("touchcancel", onEnd);
+    // scroll does not bubble; the capture phase is how one listener covers
+    // every screen, including ones mounted later.
+    host.addEventListener("scroll", onScroll, true);
   }
 
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */
@@ -5410,6 +5425,9 @@ button, [role="tab"] {
       else if (dy < 0 && couldBottom && atBottom(screenEl)) edge = "bottom";
       else { armed = false; return; }
       engaged = true;
+      // A finger arriving over a flick's band takes it over from here.
+      out = false;
+      bare = false;
       begin();
     }
 
@@ -5428,6 +5446,36 @@ button, [role="tab"] {
     else { target = 0; spin(); }
   }
 
+  /* ---------------- carrying a flick past the end ---------------- */
+
+  function onScroll(e) {
+    const el = e.target;
+    if (!el || !el.classList || !el.classList.contains("screen")) return;
+
+    const now = performance.now();
+    // Only consecutive samples of the same screen say anything about speed;
+    // a long gap or a change of tab is a fresh start, not a fast one.
+    const ok = el === lastEl && now - lastAt > 0 && now - lastAt < 120;
+    const v = ok ? (el.scrollTop - lastTop) / (now - lastAt) : 0;
+    lastEl = el; lastTop = el.scrollTop; lastAt = now;
+
+    // A finger, a refresh, or a band already running owns the screen.
+    if (engaged || armed || busy || loop) return;
+    if (Math.abs(v) < FLING_MIN) return;
+    if (v > 0 ? atBottom(el) : atTop(el)) fling(el, v);
+  }
+
+  function fling(el, v) {
+    const dist = Math.min(FLING_MAX, Math.abs(v) * FLING_GAIN);
+    if (dist < 4) return;
+    screenEl = el;
+    bare = true;              // no chip: a throw must never arm the refresh
+    out = true;
+    shown = 0;
+    target = v > 0 ? -dist : dist;
+    begin();
+  }
+
   /* ---------------- the motion ---------------- */
 
   function begin() {
@@ -5442,17 +5490,27 @@ button, [role="tab"] {
 
   function tick() {
     loop = 0;
-    shown += (target - shown) * (engaged ? FOLLOW : SETTLE);
+    const k = engaged ? FOLLOW : (out ? FLING_OUT : SETTLE);
+    shown += (target - shown) * k;
+
+    // The flick's band turns round once it has nearly reached its furthest
+    // point, rather than creeping the last pixel — out briskly, back gently.
+    if (out && Math.abs(target - shown) < Math.abs(target) * 0.12) {
+      out = false;
+      target = 0;
+    }
     // Close enough is home: without this the last hundredth of a pixel keeps
     // a frame running forever.
-    if (!engaged && Math.abs(target - shown) < 0.25) shown = target;
+    if (!engaged && !out && Math.abs(target - shown) < 0.25) shown = target;
+
     paint();
-    if (engaged || shown !== target) spin();
+    if (engaged || out || shown !== target) spin();
     else rest();
   }
 
   function rest() {
     ptr.style.willChange = "";
+    bare = false;
     if (screenEl) {
       screenEl.style.willChange = "";
       if (shown === 0) screenEl.style.transform = "";
@@ -5462,8 +5520,9 @@ button, [role="tab"] {
   function paint() {
     if (screenEl) screenEl.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
 
-    // The chip belongs to the top edge only; the bottom band is bare give.
-    if (shown <= 0) {
+    // The chip belongs to a finger at the top edge only. The bottom band and
+    // the band a flick leaves behind are bare give, with nothing to arm.
+    if (shown <= 0 || bare) {
       ptr.style.opacity = "0";
       return;
     }
