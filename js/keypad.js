@@ -51,7 +51,7 @@
               <span class="key-tax-cap">税</span><span class="key-tax-rate">+${Math.round(r * 100)}%</span>
             </button>
           `)}
-          <button type="button" class="key key-ok js-ok">確定</button>
+          <button type="button" class="key key-ok js-ok" aria-label="確定">確定</button>
           <button type="button" class="key key-back js-back" aria-label="1文字消す">${icon("backspace")}</button>
         </div>
       </div>
@@ -71,7 +71,15 @@
     pad.querySelectorAll(".js-tax").forEach((k) => {
       k.addEventListener("click", () => applyTax(parseFloat(k.dataset.rate)));
     });
-    pad.querySelector(".js-ok").addEventListener("click", commit);
+    /* One key, two jobs, and never both at once: while a sum is on screen it
+       is ＝ and works the answer out in place; once the field holds a plain
+       number it is 確定 and puts the pad away. Pressing 確定 on a half-typed
+       sum used to swallow the working and close in the same motion, which
+       gave you no chance to look at what it came to. */
+    pad.querySelector(".js-ok").addEventListener("click", () => {
+      if (field && KN.util.isExpression(field.value)) equals();
+      else commit();
+    });
 
     /* Nothing on the pad may steal the caret — not the keys, and not the gaps
        between them. Landing a fast thumb a few pixels wide of a key used to
@@ -99,6 +107,32 @@
 
   function fire() {
     field.dispatchEvent(new Event("input", { bubbles: true }));
+    refreshOk();
+  }
+
+  /** Keep the big green key showing whichever of its two jobs applies now. */
+  function refreshOk() {
+    if (!pad) return;
+    const ok = pad.querySelector(".js-ok");
+    if (!ok) return;
+    const sum = !!field && KN.util.isExpression(field.value);
+    ok.classList.toggle("is-equals", sum);
+    ok.textContent = sum ? "＝" : "確定";
+    ok.setAttribute("aria-label", sum ? "計算する" : "確定");
+  }
+
+  /* Work the sum out and leave it on screen. The pad stays up and the caret
+     stays put, so the answer can be read, taxed, or typed over before
+     anything is committed. */
+  function equals() {
+    if (!field) return;
+    const n = KN.util.calc(field.value);
+    // 「198+」 is not wrong, it is unfinished — say nothing and wait.
+    if (n == null) { haptic(20); return; }
+    field.value = String(Math.round(n * 100) / 100);
+    setCaret(field.value.length);
+    haptic(14);
+    fire();
   }
 
   function insert(text) {
@@ -168,6 +202,7 @@
     field = input;
     opts = options || {};
     pad.hidden = false;
+    refreshOk();
     // Published so a sheet can sit above the pad exactly as it sits above a
     // real keyboard — same mechanism, see --kb in app.js.
     requestAnimationFrame(() => {
