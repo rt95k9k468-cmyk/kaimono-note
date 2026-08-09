@@ -372,6 +372,14 @@
    */
   function productMark(product) {
     if (!product) return "";
+    // Chosen by hand: nothing else gets to argue with it.
+    const own = KN.productIcons.byKey(product.icon);
+    return own ? KN.util.raw(own) : autoMark(product);
+  }
+
+  /** What the picture would be if nobody had chosen one. */
+  function autoMark(product) {
+    if (!product) return "";
     const cat = getCategory(product.categoryId);
     return KN.util.raw(
       KN.productIcons.find(product.name)
@@ -559,7 +567,7 @@
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
     learnCategory, forgetCategory, forgetAllCategories, learnedList,
-    productMark, productColor,
+    productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice,
     exportJSON, importJSON, reset, loadSample,
