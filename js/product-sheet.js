@@ -533,9 +533,18 @@
       }
     }
 
+    /* The readout sits under the field, which is exactly where the sheet's
+       own scroller runs out — opening the pad on the last field in a long
+       product left the running total below the fold, so the sum was being
+       worked out somewhere the user could not see. Bring it up as the pad
+       arrives, and again once the sheet has finished resizing around it. */
+    const revealStrip = () => [180, 400, 680].forEach((ms) => setTimeout(() => {
+      if (!strip.hidden) strip.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, ms));
+
     fields.forEach((f) => {
       KN.keypad.bind(f, {
-        onOpen: () => { last = f; strip.hidden = false; paint(); },
+        onOpen: () => { last = f; strip.hidden = false; paint(); revealStrip(); },
         onCommit: () => { strip.hidden = true; },
       });
       f.addEventListener("input", () => { last = f; paint(); });
