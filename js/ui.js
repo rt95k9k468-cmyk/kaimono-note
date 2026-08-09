@@ -23,13 +23,13 @@
    * @param {Function} [opts.onClose]
    * @returns {{close: Function, el: HTMLElement}}
    */
-  function sheet({ title, content, footer, onClose }) {
+  function sheet({ title, titleMark, content, footer, onClose }) {
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     const el = node(html`
       <div class="sheet" role="dialog" aria-modal="true" aria-label="${title || ""}">
         <div class="sheet-handle"></div>
         <header class="sheet-head">
-          <h2 class="sheet-title">${title || ""}</h2>
+          <h2 class="sheet-title">${titleMark ? html`<span class="sheet-mark">${titleMark}</span>` : ""}${title || ""}</h2>
           <button class="icon-btn js-close" aria-label="閉じる">${icon("close")}</button>
         </header>
         <div class="sheet-body"></div>

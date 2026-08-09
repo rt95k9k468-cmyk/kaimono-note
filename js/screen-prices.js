@@ -187,7 +187,7 @@
 
     const card = node(html`
       <button class="product">
-        <span class="product-emoji">${store.productEmoji(product)}</span>
+        <span class="product-emoji">${store.productMark(product)}</span>
         <span class="product-main">
           <span class="product-name">${product.name}</span>
           <span class="product-meta">
