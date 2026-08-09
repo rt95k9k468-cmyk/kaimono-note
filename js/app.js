@@ -167,6 +167,21 @@
       // Size first: the shell ends where the keyboard begins.
       app.style.height = Math.round(vv.height) + "px";
 
+      /* Publish the same two numbers to CSS, for the things that are not the
+         shell. A sheet is `position: fixed` and sized in dvh, and neither of
+         those knows about a keyboard: the sheet stays as tall as the whole
+         screen and its top half — where the price fields are — ends up above
+         the top edge with no way to reach it.
+
+         --vvh is what is actually visible. --kb is how much of the layout
+         viewport the keyboard covers, which is zero on iOS in an installed
+         app (it shrinks the layout viewport instead) and the keyboard's height
+         on the browsers that do not. Anything anchored to the bottom of the
+         window needs the second one; anything sized to the window needs the
+         first. */
+      root.style.setProperty("--vvh", Math.round(vv.height) + "px");
+      root.style.setProperty("--kb", Math.max(0, Math.round(window.innerHeight - vv.height)) + "px");
+
       /* Then put the document back. iOS scrolls it to reveal the focused
          field while the shell is still full height; once it is not, that
          scroll is left over and the app rides above the screen.

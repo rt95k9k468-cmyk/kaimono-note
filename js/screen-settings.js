@@ -76,6 +76,9 @@
     const wrap = node(html`
       <section class="settings-group">
         <h2 class="section-title">お店 <span style="font-weight:600;color:var(--c-text-3)">${stores.length}件</span></h2>
+        ${stores.length > 1
+          ? html`<p class="section-hint">長押しすると持ち上がります。そのまま動かして並べ替えられます。</p>`
+          : ""}
         <div class="stack js-rows" style="gap:8px"></div>
         <button class="btn btn-soft btn-sm js-add">${icon("plus")} お店を追加</button>
       </section>
@@ -121,6 +124,11 @@
       });
 
       rows.append(row);
+    });
+
+    KN.reorder.attach(rows, {
+      item: ".manage-row",
+      onDrop: (from, to) => KN.reorder.applyOrder(stores, from, to, (s) => s.stores),
     });
 
     wrap.querySelector(".js-add").addEventListener("click", async () => {
@@ -181,6 +189,7 @@
     const wrap = node(html`
       <section class="settings-group">
         <h2 class="section-title">カテゴリ <span style="font-weight:600;color:var(--c-text-3)">${cats.length}件</span></h2>
+        <p class="section-hint">長押しすると持ち上がります。そのまま動かして並べ替えられます。</p>
         <div class="stack js-rows" style="gap:8px"></div>
         <button class="btn btn-soft btn-sm js-add">${icon("plus")} カテゴリを追加</button>
       </section>
@@ -240,6 +249,11 @@
       }
 
       rows.append(row);
+    });
+
+    KN.reorder.attach(rows, {
+      item: ".manage-row",
+      onDrop: (from, to) => KN.reorder.applyOrder(cats, from, to, (s) => s.categories),
     });
 
     wrap.querySelector(".js-add").addEventListener("click", () => editCategory(null));

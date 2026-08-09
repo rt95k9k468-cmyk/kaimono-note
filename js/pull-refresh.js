@@ -85,6 +85,7 @@
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */
   function blocked() {
     if (busy) return true;
+    if (KN.reorder.isActive()) return true;
     if (document.documentElement.classList.contains("kb-open")) return true;
     if (document.querySelector(".sheet")) return true;
     if (document.querySelector(".item-wrap.is-open")) return true;
@@ -107,6 +108,8 @@
 
   function onMove(e) {
     if (!armed) return;
+    // A row lifted out of the list mid-press: that gesture is now a reorder.
+    if (KN.reorder.isActive()) { armed = false; return; }
     const t = e.touches[0];
     const dy = t.clientY - startY;
     const dx = t.clientX - startX;
