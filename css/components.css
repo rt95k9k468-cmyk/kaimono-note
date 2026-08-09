@@ -162,9 +162,11 @@ button, [role="tab"] {
   overflow-x: auto;
   scrollbar-width: none;
   /* Vertical room so the taller chips are not clipped by the scroller
-     (overflow-x:auto makes the cross axis clip too). */
+     (overflow-x:auto makes the cross axis clip too). The horizontal padding
+     lines the first chip up with the cards below; there is deliberately no
+     negative margin, since that trick needs a padded parent and this one has
+     none — it just pushed the row a further 16px off the screen edge. */
   padding: 4px var(--sp-4);
-  margin-inline: calc(var(--sp-4) * -1);
   scroll-padding-inline: var(--sp-4);
 }
 .chip-row::-webkit-scrollbar { display: none; }
