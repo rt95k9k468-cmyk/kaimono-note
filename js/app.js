@@ -221,6 +221,38 @@
     window.addEventListener("focusout", settle);
     window.addEventListener("orientationchange", settle);
     fit();
+    dismissKeyboardOnSwipeDown();
+  }
+
+  /* The add bar has no "done" of its own: on iOS the only way out of it was
+     the keyboard's own ✓, which is a small target in a corner and not where
+     the hand already is. A downward swipe anywhere on the app — the same
+     motion that puts a sheet away — now ends it too.
+     A drag that starts inside the field is included on purpose: flicking the
+     bar itself downwards is the most obvious way to push it out of sight. */
+  function dismissKeyboardOnSwipeDown() {
+    const DROP = 34;   // far enough that a tap with a wobble is not a swipe
+    const SIDE = 40;   // and straight enough not to be a swipe across a row
+    let y0 = 0, x0 = 0, live = false;
+
+    document.addEventListener("touchstart", (e) => {
+      live = e.touches.length === 1 && document.documentElement.classList.contains("kb-open");
+      if (!live) return;
+      y0 = e.touches[0].clientY;
+      x0 = e.touches[0].clientX;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", (e) => {
+      if (!live) return;
+      const dy = e.touches[0].clientY - y0;
+      if (Math.abs(e.touches[0].clientX - x0) > SIDE) { live = false; return; }
+      if (dy < DROP) return;
+      live = false;
+      const el = document.activeElement;
+      if (el && el.blur) el.blur();
+    }, { passive: true });
+
+    document.addEventListener("touchend", () => { live = false; }, { passive: true });
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

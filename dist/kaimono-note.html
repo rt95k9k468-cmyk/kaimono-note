@@ -261,8 +261,10 @@ a { color: var(--c-primary); }
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Its own bounce is what pull-to-refresh replaces, and letting both run at
-     once made the list wobble under the chip. */
+  /* The browser's own bounce is off at both ends: at the top it fought the
+     pull-to-refresh chip and the list wobbled under it. pull-refresh.js hands
+     both edges their give back — the chip at the top, a plain band at the
+     bottom — so nothing here stops dead against nothing. */
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   display: none;
@@ -332,10 +334,9 @@ a { color: var(--c-primary); }
 
 .ptr.is-ready .ptr-ring { color: var(--c-primary); }
 
-/* Only while releasing or settling — during the drag the chip has to track
-   the finger exactly, so no transition may sit between the two. */
-.ptr.is-settling { transition: transform .32s var(--ease-out), opacity .32s var(--ease-out); }
-.screen.is-settling { transition: transform .32s var(--ease-out); }
+/* No transition anywhere on these two. Every frame of both the pull and the
+   settle is written by pull-refresh.js, and a transition sitting in between
+   would be a second animation arguing with the first. */
 
 .ptr.is-busy .ptr-ring { color: var(--c-primary); }
 .ptr.is-busy .ptr-arc,
@@ -1395,9 +1396,33 @@ button, [role="tab"] {
   display: flex;
   visibility: hidden;
 }
-.item-wrap.is-swiping .item-actions,
+.item-wrap.is-deleting .item-actions,
 .item-wrap.is-closing .item-actions,
 .item-wrap.is-open .item-actions { visibility: visible; }
+
+/* The other way: a rightward swipe stars the item for this trip, and springs
+   straight back — nothing stays open, because there is nothing to confirm.
+   The star's own colour, so the panel and the ★ it toggles are the same
+   thing seen twice. */
+.item-star {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+  background: var(--c-warn);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  visibility: hidden;
+}
+.item-star svg { width: 18px; height: 18px; stroke-width: 2.2; fill: currentColor; }
+/* Understated until the row has travelled far enough — full strength is the
+   signal that letting go will do something. */
+.item-star > * { opacity: .55; transform: translateX(-4px); transition: opacity .14s var(--ease), transform .18s var(--ease-out); }
+.item-wrap.is-armed .item-star > * { opacity: 1; transform: none; }
+.item-wrap.is-starring .item-star { visibility: visible; }
 
 .item-del {
   flex: 1;
@@ -1456,14 +1481,18 @@ button, [role="tab"] {
    each frame is a transform rather than a repaint of the whole row. */
 .item-wrap.is-swiping .item { will-change: transform; }
 
-/* The row's rounded right corners would leave two crescent gaps against the
-   delete panel's straight edge. Square them off for as long as the panel is
-   showing; the wrapper keeps the outer silhouette rounded. */
-.item-wrap.is-swiping .item,
+/* The row's rounded corners would leave two crescent gaps against a panel's
+   straight edge. Square off whichever side is showing; the wrapper keeps the
+   outer silhouette rounded. */
+.item-wrap.is-deleting .item,
 .item-wrap.is-closing .item,
 .item-wrap.is-open .item {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+}
+.item-wrap.is-starring .item {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
@@ -5198,7 +5227,8 @@ button, [role="tab"] {
 
 /* ---- js/pull-refresh.js ---- */
 /* =========================================================
-   かいものノート — pull to refresh
+   かいものノート — the edges of a scroll: pull to refresh, and the give
+   at the bottom
 
    There is no server behind this app, so a refresh cannot fetch anything.
    What it can do is real, if small: write out any save still in flight,
@@ -5207,6 +5237,19 @@ button, [role="tab"] {
    deployed. The gesture is mostly there because reaching the top of a list
    and pulling is what a phone user does; this makes that mean something
    instead of nothing.
+
+   The screens turn the browser's own overscroll off (see overscroll-behavior
+   in base.css) because its bounce fought this gesture at the top. That left
+   the bottom of a list stopping dead against nothing, so the same engine
+   gives the bottom edge a band too — no chip, no action, just the give that
+   tells a finger it has reached the end.
+
+   Both edges are painted by one loop that eases what is on screen towards
+   where the finger is, rather than writing the finger's position straight
+   out. Touch points do not arrive evenly, and copying them frame for frame
+   put every gap in the stream on the screen. Chasing them smooths the whole
+   thing out — a few frames behind the finger, which nobody sees, and no
+   steps, which everybody does.
    ========================================================= */
 (function () {
   "use strict";
@@ -5246,8 +5289,16 @@ button, [role="tab"] {
   const TRIGGER = 56;    // pull the chip this far down to arm the refresh
   const HOLD    = 52;    // where it parks while the refresh runs
   const MAX     = 96;    // it never stretches further than this
+  const FOOT    = 76;    // and the band at the bottom never further than this
   const MIN_RUN = 550;   // keep the spinner up long enough to be read
   const SLOP    = 10;    // finger travel before we decide what this gesture is
+
+  /* How hard the painted position is pulled towards the finger each frame,
+     and towards home once the finger is gone. Low numbers on purpose: a
+     little lag is invisible, whereas an uneven touch stream copied straight
+     to the screen is not. */
+  const FOLLOW  = 0.22;
+  const SETTLE  = 0.13;
 
   let host = null;       // #screens
   let ptr = null;        // the chip
@@ -5257,11 +5308,14 @@ button, [role="tab"] {
 
   let screenEl = null;   // the screen being pulled
   let startY = 0, startX = 0;
-  let pull = 0;
-  let armed = false;     // the touch started somewhere a pull could begin
-  let engaged = false;   // it turned out to be a downward pull
+  let target = 0;        // where the finger says the screen should be
+  let shown = 0;         // where it actually is, chasing target
+  let edge = null;       // "top" | "bottom" — which end this gesture belongs to
+  let couldTop = false, couldBottom = false;
+  let armed = false;     // the touch started somewhere an edge could give
+  let engaged = false;   // it turned out to be a pull rather than a scroll
   let busy = false;
-  let frame = 0;
+  let loop = 0;
 
   function init() {
     host = document.getElementById("screens");
@@ -5291,18 +5345,25 @@ button, [role="tab"] {
     return false;
   }
 
+  const atTop = (el) => el.scrollTop <= 0;
+  const atBottom = (el) => el.scrollHeight - el.clientHeight - el.scrollTop <= 1;
+
   function onStart(e) {
     armed = engaged = false;
+    edge = null;
     if (e.touches.length !== 1 || blocked()) return;
 
     screenEl = host.querySelector(".screen.is-active");
-    // Only from the very top: anywhere else, a downward drag is a scroll.
-    if (!screenEl || screenEl.scrollTop > 0) return;
+    if (!screenEl) return;
+    // Which ends have any give in them. Anywhere in the middle of a list, a
+    // drag either way is just a scroll.
+    couldTop = atTop(screenEl);
+    couldBottom = atBottom(screenEl);
+    if (!couldTop && !couldBottom) return;
 
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
     armed = true;
-    screenEl.classList.remove("is-settling");
   }
 
   function onMove(e) {
@@ -5314,60 +5375,83 @@ button, [role="tab"] {
     const dx = t.clientX - startX;
 
     if (!engaged) {
-      // Give up on anything that is not a straight pull downwards — an upward
-      // scroll, or the sideways drag that deletes a row.
-      if (dy < -SLOP / 2 || Math.abs(dx) > SLOP) { armed = false; return; }
-      if (dy < SLOP || Math.abs(dy) < Math.abs(dx) * 1.5) return;
-      if (screenEl.scrollTop > 0) { armed = false; return; }
+      // Give up on the sideways drag that deletes a row or stars it.
+      if (Math.abs(dx) > SLOP) { armed = false; return; }
+      if (Math.abs(dy) < SLOP || Math.abs(dy) < Math.abs(dx) * 1.5) return;
+      // Down at the top, up at the bottom — anything else is a scroll, and
+      // the scroller has to have it.
+      if (dy > 0 && couldTop && atTop(screenEl)) edge = "top";
+      else if (dy < 0 && couldBottom && atBottom(screenEl)) edge = "bottom";
+      else { armed = false; return; }
       engaged = true;
+      begin();
     }
 
     // Taking the gesture means the scroller must not also act on it.
     e.preventDefault();
     // Rubber band: the first pixels come easily, the last ones barely move.
-    pull = MAX * (1 - Math.exp(-Math.max(0, dy) / MAX));
-    paint();
+    target = edge === "top"
+      ? MAX * (1 - Math.exp(-Math.max(0, dy) / MAX))
+      : -FOOT * (1 - Math.exp(-Math.max(0, -dy) / FOOT));
   }
 
   function onEnd() {
     if (!engaged) { armed = false; return; }
     armed = engaged = false;
-    if (pull >= TRIGGER) run();
-    else settle(0);
+    if (edge === "top" && shown >= TRIGGER) run();
+    else { target = 0; spin(); }
+  }
+
+  /* ---------------- the motion ---------------- */
+
+  function begin() {
+    ptr.style.willChange = "transform, opacity";
+    if (screenEl) screenEl.style.willChange = "transform";
+    spin();
+  }
+
+  function spin() {
+    if (!loop) loop = requestAnimationFrame(tick);
+  }
+
+  function tick() {
+    loop = 0;
+    shown += (target - shown) * (engaged ? FOLLOW : SETTLE);
+    // Close enough is home: without this the last hundredth of a pixel keeps
+    // a frame running forever.
+    if (!engaged && Math.abs(target - shown) < 0.25) shown = target;
+    paint();
+    if (engaged || shown !== target) spin();
+    else rest();
+  }
+
+  function rest() {
+    ptr.style.willChange = "";
+    if (screenEl) {
+      screenEl.style.willChange = "";
+      if (shown === 0) screenEl.style.transform = "";
+    }
   }
 
   function paint() {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
-      const p = pull / TRIGGER;
-      const ready = pull >= TRIGGER && !busy;
-      ptr.classList.toggle("is-ready", ready);
-      ptr.style.transform = `translate3d(0, ${pull.toFixed(1)}px, 0)`;
-      ptr.style.opacity = String(Math.min(1, pull / 26));
-      if (screenEl) screenEl.style.transform = `translate3d(0, ${pull.toFixed(1)}px, 0)`;
-      if (busy) return;   // from here on the spinner has the mark
+    if (screenEl) screenEl.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
 
-      // The ring draws itself on, the head lands at the end of it, and the
-      // whole mark turns once by the time the pull is armed.
-      const drawn = Math.min(1, p);
-      arc.style.strokeDashoffset = (ARC_LEN * (1 - drawn)).toFixed(2);
-      head.style.opacity = String(Math.max(0, Math.min(1, (p - 0.72) / 0.28)));
-      mark.style.transform = `rotate(${Math.round(Math.min(p, 1.2) * 300)}deg)`;
-    });
-  }
+    // The chip belongs to the top edge only; the bottom band is bare give.
+    if (shown <= 0) {
+      ptr.style.opacity = "0";
+      return;
+    }
+    ptr.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
+    ptr.style.opacity = String(Math.min(1, shown / 26));
+    if (busy) return;   // from here on the spinner has the mark
 
-  /** Animate the chip and the screen to `to`, then stop transitioning. */
-  function settle(to) {
-    pull = to;
-    ptr.classList.add("is-settling");
-    if (screenEl) screenEl.classList.add("is-settling");
-    paint();
-    setTimeout(() => {
-      ptr.classList.remove("is-settling");
-      if (screenEl) screenEl.classList.remove("is-settling");
-      if (to === 0 && screenEl) screenEl.style.transform = "";
-    }, 340);
+    // The ring draws itself on, the head lands at the end of it, and the
+    // whole mark turns once by the time the pull is armed.
+    const p = shown / TRIGGER;
+    ptr.classList.toggle("is-ready", shown >= TRIGGER);
+    arc.style.strokeDashoffset = (ARC_LEN * (1 - Math.min(1, p))).toFixed(2);
+    head.style.opacity = String(Math.max(0, Math.min(1, (p - 0.72) / 0.28)));
+    mark.style.transform = `rotate(${(Math.min(p, 1.2) * 300).toFixed(1)}deg)`;
   }
 
   function run() {
@@ -5379,7 +5463,8 @@ button, [role="tab"] {
     // way down, and inline beats the `is-busy` rules that would hide them.
     mark.style.transform = "";
     head.style.opacity = "0";
-    settle(HOLD);
+    target = HOLD;
+    spin();
 
     const started = Date.now();
     Promise.all([refreshData(), checkForNewBuild()])
@@ -5389,7 +5474,8 @@ button, [role="tab"] {
         setTimeout(() => {
           busy = false;
           ptr.classList.remove("is-busy");
-          settle(0);
+          target = 0;
+          spin();
         }, left);
       });
   }
@@ -6578,6 +6664,9 @@ button, [role="tab"] {
         <div class="item-actions">
           <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
         </div>
+        <div class="item-star">
+          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
+        </div>
       </article>
     `);
 
@@ -6623,13 +6712,7 @@ button, [role="tab"] {
       haptic(12);
     });
 
-    row.querySelector(".fav").addEventListener("click", () => {
-      store.update((s) => {
-        const rec = s.items.find((i) => i.id === item.id);
-        if (rec) rec.fav = !rec.fav;
-      });
-      haptic(12);
-    });
+    row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));
 
     row.querySelector(".item-body").addEventListener("click", () => {
       KN.productSheet.open(product.id, { itemId: item.id });
@@ -6654,11 +6737,20 @@ button, [role="tab"] {
       });
     });
 
-    attachSwipe(wrap, row);
+    attachSwipe(wrap, row, item);
     return wrap;
   }
 
-  /* ---------------- swipe to reveal delete ---------------- */
+  /* ---------------- swipe: left to delete, right to star ---------------- */
+
+  /** ★ marks an item as part of the trip being shopped right now. */
+  function toggleFav(itemId) {
+    store.update((s) => {
+      const rec = s.items.find((i) => i.id === itemId);
+      if (rec) rec.fav = !rec.fav;
+    });
+    haptic(12);
+  }
 
   // Only one row may sit open; a second one opening closes the first.
   function closeOpenRow() {
@@ -6683,13 +6775,19 @@ button, [role="tab"] {
     setTimeout(done, 900);
   }
 
-  function attachSwipe(wrap, row) {
+  function attachSwipe(wrap, row, item) {
     const REVEAL = 88;      // width of the delete panel
     const SLOP = 14;        // travel before a drag counts as a drag and not a tap
     const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
+    const STAR = 68;        // how far right before the ★ is armed
+    const STAR_MAX = 104;   // and how far it will stretch at all
     let startX = 0, startY = 0, dx = 0;
     let dragging = false, decided = false, pointerId = null, swallowClick = false;
     let pendingDx = null, rafId = 0;
+    // "del" reveals the delete panel and stays open; "star" springs straight
+    // back and toggles ★ — same gesture as the price screen's list swipe.
+    let mode = "del";
+    let starArmed = false;
 
     // Pointer moves arrive faster than the screen refreshes. Painting once per
     // frame instead of once per event keeps the row gliding rather than
@@ -6736,19 +6834,32 @@ button, [role="tab"] {
         decided = true;
         // Has to be a clearly sideways movement, not a drifting scroll. A
         // diagonal belongs to the list, which stays scrollable throughout.
-        // Rightwards only counts on an open row, where it means "put it back";
-        // on a closed row there is nothing to the right to reach for.
         const isOpen = wrap.classList.contains("is-open");
-        dragging = Math.abs(mx) >= SLOP
-          && Math.abs(mx) > Math.abs(my) * DOMINANCE
-          && (isOpen || mx < 0);
+        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
         if (!dragging) return;
+        // Rightwards on an open row still means "put it back"; on a closed one
+        // it is the ★.
+        mode = (mx > 0 && !isOpen) ? "star" : "del";
         row.setPointerCapture(pointerId);
         row.style.transition = "none";
-        wrap.classList.add("is-swiping");
+        wrap.classList.add("is-swiping", mode === "star" ? "is-starring" : "is-deleting");
         if (openWrap && openWrap !== wrap) closeOpenRow();
       }
       if (!dragging) return;
+
+      if (mode === "star") {
+        // Past the trigger the row only creeps, so the finger feels the edge.
+        dx = mx <= STAR ? mx : STAR + (mx - STAR) * 0.32;
+        dx = Math.min(STAR_MAX, Math.max(0, dx));
+        const now = dx >= STAR;
+        if (now !== starArmed) {
+          starArmed = now;
+          wrap.classList.toggle("is-armed", now);
+          if (now) haptic(10);
+        }
+        schedule(dx);
+        return;
+      }
 
       const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
       // Bounded by the panel at both ends. Going further left than the panel is
@@ -6768,7 +6879,22 @@ button, [role="tab"] {
       pendingDx = null;
       row.style.transition = "";
       row.style.transform = "";
-      wrap.classList.remove("is-swiping");
+
+      if (mode === "star") {
+        const fired = starArmed;
+        starArmed = false;
+        dragging = false;
+        swallowClick = true;
+        // Let the row glide home before the store change rebuilds the list;
+        // toggling on the spot would swap it out mid-flight.
+        setTimeout(() => {
+          wrap.classList.remove("is-swiping", "is-starring", "is-armed");
+          if (fired) toggleFav(item.id);
+        }, 200);
+        return;
+      }
+
+      wrap.classList.remove("is-swiping", "is-deleting");
       const open = dx < -REVEAL / 2;
       wrap.classList.toggle("is-open", open);
       if (!open) holdPanelDuringClose(wrap);
@@ -8402,6 +8528,38 @@ button, [role="tab"] {
     window.addEventListener("focusout", settle);
     window.addEventListener("orientationchange", settle);
     fit();
+    dismissKeyboardOnSwipeDown();
+  }
+
+  /* The add bar has no "done" of its own: on iOS the only way out of it was
+     the keyboard's own ✓, which is a small target in a corner and not where
+     the hand already is. A downward swipe anywhere on the app — the same
+     motion that puts a sheet away — now ends it too.
+     A drag that starts inside the field is included on purpose: flicking the
+     bar itself downwards is the most obvious way to push it out of sight. */
+  function dismissKeyboardOnSwipeDown() {
+    const DROP = 34;   // far enough that a tap with a wobble is not a swipe
+    const SIDE = 40;   // and straight enough not to be a swipe across a row
+    let y0 = 0, x0 = 0, live = false;
+
+    document.addEventListener("touchstart", (e) => {
+      live = e.touches.length === 1 && document.documentElement.classList.contains("kb-open");
+      if (!live) return;
+      y0 = e.touches[0].clientY;
+      x0 = e.touches[0].clientX;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", (e) => {
+      if (!live) return;
+      const dy = e.touches[0].clientY - y0;
+      if (Math.abs(e.touches[0].clientX - x0) > SIDE) { live = false; return; }
+      if (dy < DROP) return;
+      live = false;
+      const el = document.activeElement;
+      if (el && el.blur) el.blur();
+    }, { passive: true });
+
+    document.addEventListener("touchend", () => { live = false; }, { passive: true });
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

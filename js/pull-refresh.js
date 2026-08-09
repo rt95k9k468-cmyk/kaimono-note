@@ -1,5 +1,6 @@
 /* =========================================================
-   かいものノート — pull to refresh
+   かいものノート — the edges of a scroll: pull to refresh, and the give
+   at the bottom
 
    There is no server behind this app, so a refresh cannot fetch anything.
    What it can do is real, if small: write out any save still in flight,
@@ -8,6 +9,19 @@
    deployed. The gesture is mostly there because reaching the top of a list
    and pulling is what a phone user does; this makes that mean something
    instead of nothing.
+
+   The screens turn the browser's own overscroll off (see overscroll-behavior
+   in base.css) because its bounce fought this gesture at the top. That left
+   the bottom of a list stopping dead against nothing, so the same engine
+   gives the bottom edge a band too — no chip, no action, just the give that
+   tells a finger it has reached the end.
+
+   Both edges are painted by one loop that eases what is on screen towards
+   where the finger is, rather than writing the finger's position straight
+   out. Touch points do not arrive evenly, and copying them frame for frame
+   put every gap in the stream on the screen. Chasing them smooths the whole
+   thing out — a few frames behind the finger, which nobody sees, and no
+   steps, which everybody does.
    ========================================================= */
 (function () {
   "use strict";
@@ -47,8 +61,16 @@
   const TRIGGER = 56;    // pull the chip this far down to arm the refresh
   const HOLD    = 52;    // where it parks while the refresh runs
   const MAX     = 96;    // it never stretches further than this
+  const FOOT    = 76;    // and the band at the bottom never further than this
   const MIN_RUN = 550;   // keep the spinner up long enough to be read
   const SLOP    = 10;    // finger travel before we decide what this gesture is
+
+  /* How hard the painted position is pulled towards the finger each frame,
+     and towards home once the finger is gone. Low numbers on purpose: a
+     little lag is invisible, whereas an uneven touch stream copied straight
+     to the screen is not. */
+  const FOLLOW  = 0.22;
+  const SETTLE  = 0.13;
 
   let host = null;       // #screens
   let ptr = null;        // the chip
@@ -58,11 +80,14 @@
 
   let screenEl = null;   // the screen being pulled
   let startY = 0, startX = 0;
-  let pull = 0;
-  let armed = false;     // the touch started somewhere a pull could begin
-  let engaged = false;   // it turned out to be a downward pull
+  let target = 0;        // where the finger says the screen should be
+  let shown = 0;         // where it actually is, chasing target
+  let edge = null;       // "top" | "bottom" — which end this gesture belongs to
+  let couldTop = false, couldBottom = false;
+  let armed = false;     // the touch started somewhere an edge could give
+  let engaged = false;   // it turned out to be a pull rather than a scroll
   let busy = false;
-  let frame = 0;
+  let loop = 0;
 
   function init() {
     host = document.getElementById("screens");
@@ -92,18 +117,25 @@
     return false;
   }
 
+  const atTop = (el) => el.scrollTop <= 0;
+  const atBottom = (el) => el.scrollHeight - el.clientHeight - el.scrollTop <= 1;
+
   function onStart(e) {
     armed = engaged = false;
+    edge = null;
     if (e.touches.length !== 1 || blocked()) return;
 
     screenEl = host.querySelector(".screen.is-active");
-    // Only from the very top: anywhere else, a downward drag is a scroll.
-    if (!screenEl || screenEl.scrollTop > 0) return;
+    if (!screenEl) return;
+    // Which ends have any give in them. Anywhere in the middle of a list, a
+    // drag either way is just a scroll.
+    couldTop = atTop(screenEl);
+    couldBottom = atBottom(screenEl);
+    if (!couldTop && !couldBottom) return;
 
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
     armed = true;
-    screenEl.classList.remove("is-settling");
   }
 
   function onMove(e) {
@@ -115,60 +147,83 @@
     const dx = t.clientX - startX;
 
     if (!engaged) {
-      // Give up on anything that is not a straight pull downwards — an upward
-      // scroll, or the sideways drag that deletes a row.
-      if (dy < -SLOP / 2 || Math.abs(dx) > SLOP) { armed = false; return; }
-      if (dy < SLOP || Math.abs(dy) < Math.abs(dx) * 1.5) return;
-      if (screenEl.scrollTop > 0) { armed = false; return; }
+      // Give up on the sideways drag that deletes a row or stars it.
+      if (Math.abs(dx) > SLOP) { armed = false; return; }
+      if (Math.abs(dy) < SLOP || Math.abs(dy) < Math.abs(dx) * 1.5) return;
+      // Down at the top, up at the bottom — anything else is a scroll, and
+      // the scroller has to have it.
+      if (dy > 0 && couldTop && atTop(screenEl)) edge = "top";
+      else if (dy < 0 && couldBottom && atBottom(screenEl)) edge = "bottom";
+      else { armed = false; return; }
       engaged = true;
+      begin();
     }
 
     // Taking the gesture means the scroller must not also act on it.
     e.preventDefault();
     // Rubber band: the first pixels come easily, the last ones barely move.
-    pull = MAX * (1 - Math.exp(-Math.max(0, dy) / MAX));
-    paint();
+    target = edge === "top"
+      ? MAX * (1 - Math.exp(-Math.max(0, dy) / MAX))
+      : -FOOT * (1 - Math.exp(-Math.max(0, -dy) / FOOT));
   }
 
   function onEnd() {
     if (!engaged) { armed = false; return; }
     armed = engaged = false;
-    if (pull >= TRIGGER) run();
-    else settle(0);
+    if (edge === "top" && shown >= TRIGGER) run();
+    else { target = 0; spin(); }
+  }
+
+  /* ---------------- the motion ---------------- */
+
+  function begin() {
+    ptr.style.willChange = "transform, opacity";
+    if (screenEl) screenEl.style.willChange = "transform";
+    spin();
+  }
+
+  function spin() {
+    if (!loop) loop = requestAnimationFrame(tick);
+  }
+
+  function tick() {
+    loop = 0;
+    shown += (target - shown) * (engaged ? FOLLOW : SETTLE);
+    // Close enough is home: without this the last hundredth of a pixel keeps
+    // a frame running forever.
+    if (!engaged && Math.abs(target - shown) < 0.25) shown = target;
+    paint();
+    if (engaged || shown !== target) spin();
+    else rest();
+  }
+
+  function rest() {
+    ptr.style.willChange = "";
+    if (screenEl) {
+      screenEl.style.willChange = "";
+      if (shown === 0) screenEl.style.transform = "";
+    }
   }
 
   function paint() {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
-      const p = pull / TRIGGER;
-      const ready = pull >= TRIGGER && !busy;
-      ptr.classList.toggle("is-ready", ready);
-      ptr.style.transform = `translate3d(0, ${pull.toFixed(1)}px, 0)`;
-      ptr.style.opacity = String(Math.min(1, pull / 26));
-      if (screenEl) screenEl.style.transform = `translate3d(0, ${pull.toFixed(1)}px, 0)`;
-      if (busy) return;   // from here on the spinner has the mark
+    if (screenEl) screenEl.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
 
-      // The ring draws itself on, the head lands at the end of it, and the
-      // whole mark turns once by the time the pull is armed.
-      const drawn = Math.min(1, p);
-      arc.style.strokeDashoffset = (ARC_LEN * (1 - drawn)).toFixed(2);
-      head.style.opacity = String(Math.max(0, Math.min(1, (p - 0.72) / 0.28)));
-      mark.style.transform = `rotate(${Math.round(Math.min(p, 1.2) * 300)}deg)`;
-    });
-  }
+    // The chip belongs to the top edge only; the bottom band is bare give.
+    if (shown <= 0) {
+      ptr.style.opacity = "0";
+      return;
+    }
+    ptr.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
+    ptr.style.opacity = String(Math.min(1, shown / 26));
+    if (busy) return;   // from here on the spinner has the mark
 
-  /** Animate the chip and the screen to `to`, then stop transitioning. */
-  function settle(to) {
-    pull = to;
-    ptr.classList.add("is-settling");
-    if (screenEl) screenEl.classList.add("is-settling");
-    paint();
-    setTimeout(() => {
-      ptr.classList.remove("is-settling");
-      if (screenEl) screenEl.classList.remove("is-settling");
-      if (to === 0 && screenEl) screenEl.style.transform = "";
-    }, 340);
+    // The ring draws itself on, the head lands at the end of it, and the
+    // whole mark turns once by the time the pull is armed.
+    const p = shown / TRIGGER;
+    ptr.classList.toggle("is-ready", shown >= TRIGGER);
+    arc.style.strokeDashoffset = (ARC_LEN * (1 - Math.min(1, p))).toFixed(2);
+    head.style.opacity = String(Math.max(0, Math.min(1, (p - 0.72) / 0.28)));
+    mark.style.transform = `rotate(${(Math.min(p, 1.2) * 300).toFixed(1)}deg)`;
   }
 
   function run() {
@@ -180,7 +235,8 @@
     // way down, and inline beats the `is-busy` rules that would hide them.
     mark.style.transform = "";
     head.style.opacity = "0";
-    settle(HOLD);
+    target = HOLD;
+    spin();
 
     const started = Date.now();
     Promise.all([refreshData(), checkForNewBuild()])
@@ -190,7 +246,8 @@
         setTimeout(() => {
           busy = false;
           ptr.classList.remove("is-busy");
-          settle(0);
+          target = 0;
+          spin();
         }, left);
       });
   }

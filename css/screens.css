@@ -187,9 +187,33 @@
   display: flex;
   visibility: hidden;
 }
-.item-wrap.is-swiping .item-actions,
+.item-wrap.is-deleting .item-actions,
 .item-wrap.is-closing .item-actions,
 .item-wrap.is-open .item-actions { visibility: visible; }
+
+/* The other way: a rightward swipe stars the item for this trip, and springs
+   straight back — nothing stays open, because there is nothing to confirm.
+   The star's own colour, so the panel and the ★ it toggles are the same
+   thing seen twice. */
+.item-star {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+  background: var(--c-warn);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  visibility: hidden;
+}
+.item-star svg { width: 18px; height: 18px; stroke-width: 2.2; fill: currentColor; }
+/* Understated until the row has travelled far enough — full strength is the
+   signal that letting go will do something. */
+.item-star > * { opacity: .55; transform: translateX(-4px); transition: opacity .14s var(--ease), transform .18s var(--ease-out); }
+.item-wrap.is-armed .item-star > * { opacity: 1; transform: none; }
+.item-wrap.is-starring .item-star { visibility: visible; }
 
 .item-del {
   flex: 1;
@@ -248,14 +272,18 @@
    each frame is a transform rather than a repaint of the whole row. */
 .item-wrap.is-swiping .item { will-change: transform; }
 
-/* The row's rounded right corners would leave two crescent gaps against the
-   delete panel's straight edge. Square them off for as long as the panel is
-   showing; the wrapper keeps the outer silhouette rounded. */
-.item-wrap.is-swiping .item,
+/* The row's rounded corners would leave two crescent gaps against a panel's
+   straight edge. Square off whichever side is showing; the wrapper keeps the
+   outer silhouette rounded. */
+.item-wrap.is-deleting .item,
 .item-wrap.is-closing .item,
 .item-wrap.is-open .item {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+}
+.item-wrap.is-starring .item {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }

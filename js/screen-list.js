@@ -474,6 +474,9 @@
         <div class="item-actions">
           <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
         </div>
+        <div class="item-star">
+          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
+        </div>
       </article>
     `);
 
@@ -519,13 +522,7 @@
       haptic(12);
     });
 
-    row.querySelector(".fav").addEventListener("click", () => {
-      store.update((s) => {
-        const rec = s.items.find((i) => i.id === item.id);
-        if (rec) rec.fav = !rec.fav;
-      });
-      haptic(12);
-    });
+    row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));
 
     row.querySelector(".item-body").addEventListener("click", () => {
       KN.productSheet.open(product.id, { itemId: item.id });
@@ -550,11 +547,20 @@
       });
     });
 
-    attachSwipe(wrap, row);
+    attachSwipe(wrap, row, item);
     return wrap;
   }
 
-  /* ---------------- swipe to reveal delete ---------------- */
+  /* ---------------- swipe: left to delete, right to star ---------------- */
+
+  /** ★ marks an item as part of the trip being shopped right now. */
+  function toggleFav(itemId) {
+    store.update((s) => {
+      const rec = s.items.find((i) => i.id === itemId);
+      if (rec) rec.fav = !rec.fav;
+    });
+    haptic(12);
+  }
 
   // Only one row may sit open; a second one opening closes the first.
   function closeOpenRow() {
@@ -579,13 +585,19 @@
     setTimeout(done, 900);
   }
 
-  function attachSwipe(wrap, row) {
+  function attachSwipe(wrap, row, item) {
     const REVEAL = 88;      // width of the delete panel
     const SLOP = 14;        // travel before a drag counts as a drag and not a tap
     const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
+    const STAR = 68;        // how far right before the ★ is armed
+    const STAR_MAX = 104;   // and how far it will stretch at all
     let startX = 0, startY = 0, dx = 0;
     let dragging = false, decided = false, pointerId = null, swallowClick = false;
     let pendingDx = null, rafId = 0;
+    // "del" reveals the delete panel and stays open; "star" springs straight
+    // back and toggles ★ — same gesture as the price screen's list swipe.
+    let mode = "del";
+    let starArmed = false;
 
     // Pointer moves arrive faster than the screen refreshes. Painting once per
     // frame instead of once per event keeps the row gliding rather than
@@ -632,19 +644,32 @@
         decided = true;
         // Has to be a clearly sideways movement, not a drifting scroll. A
         // diagonal belongs to the list, which stays scrollable throughout.
-        // Rightwards only counts on an open row, where it means "put it back";
-        // on a closed row there is nothing to the right to reach for.
         const isOpen = wrap.classList.contains("is-open");
-        dragging = Math.abs(mx) >= SLOP
-          && Math.abs(mx) > Math.abs(my) * DOMINANCE
-          && (isOpen || mx < 0);
+        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
         if (!dragging) return;
+        // Rightwards on an open row still means "put it back"; on a closed one
+        // it is the ★.
+        mode = (mx > 0 && !isOpen) ? "star" : "del";
         row.setPointerCapture(pointerId);
         row.style.transition = "none";
-        wrap.classList.add("is-swiping");
+        wrap.classList.add("is-swiping", mode === "star" ? "is-starring" : "is-deleting");
         if (openWrap && openWrap !== wrap) closeOpenRow();
       }
       if (!dragging) return;
+
+      if (mode === "star") {
+        // Past the trigger the row only creeps, so the finger feels the edge.
+        dx = mx <= STAR ? mx : STAR + (mx - STAR) * 0.32;
+        dx = Math.min(STAR_MAX, Math.max(0, dx));
+        const now = dx >= STAR;
+        if (now !== starArmed) {
+          starArmed = now;
+          wrap.classList.toggle("is-armed", now);
+          if (now) haptic(10);
+        }
+        schedule(dx);
+        return;
+      }
 
       const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
       // Bounded by the panel at both ends. Going further left than the panel is
@@ -664,7 +689,22 @@
       pendingDx = null;
       row.style.transition = "";
       row.style.transform = "";
-      wrap.classList.remove("is-swiping");
+
+      if (mode === "star") {
+        const fired = starArmed;
+        starArmed = false;
+        dragging = false;
+        swallowClick = true;
+        // Let the row glide home before the store change rebuilds the list;
+        // toggling on the spot would swap it out mid-flight.
+        setTimeout(() => {
+          wrap.classList.remove("is-swiping", "is-starring", "is-armed");
+          if (fired) toggleFav(item.id);
+        }, 200);
+        return;
+      }
+
+      wrap.classList.remove("is-swiping", "is-deleting");
       const open = dx < -REVEAL / 2;
       wrap.classList.toggle("is-open", open);
       if (!open) holdPanelDuringClose(wrap);
