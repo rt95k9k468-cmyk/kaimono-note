@@ -288,6 +288,35 @@
 .fav.is-on { color: var(--c-warn); }
 .fav.is-on svg { fill: currentColor; }
 
+/* Insights card: quieter than the total above it, since it is commentary
+   rather than the number the screen exists for. */
+.insights {
+  margin: var(--sp-3) var(--sp-4) 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+}
+
+.insights-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-text-2);
+  margin-bottom: var(--sp-2);
+}
+.insights-head svg { width: 15px; height: 15px; stroke-width: 2; color: var(--c-primary); flex: none; }
+
+.insights-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.insight { display: flex; gap: var(--sp-3); align-items: flex-start; }
+.insight-ico { font-size: 17px; line-height: 1.35; flex: none; }
+.insight-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.insight-title { font-weight: 700; font-size: var(--fs-md); }
+.insight-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.55; }
+
 /* Section divider between the trip and everything else. */
 .trip-head {
   display: flex;

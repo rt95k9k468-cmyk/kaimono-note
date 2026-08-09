@@ -391,6 +391,7 @@
       if (!shown && categoryFilter) els.body.append(noneInCategory());
       if (checked.length) els.body.append(checkedSection(checked));
       els.body.append(summaryCard(active));
+      els.body.append(insightsCard(active));
       return;
     }
 
@@ -402,6 +403,7 @@
     // The total belongs to the trip, so it sits directly under it — everything
     // below this line is explicitly not being bought today.
     els.body.append(summaryCard(trip, { trip: true }));
+    els.body.append(insightsCard(trip));
 
     if (rest.length) {
       els.body.append(sectionHead("そのほか", rest.length, "rest"));
@@ -739,6 +741,33 @@
         </p>
       </div>
     `);
+  }
+
+  /* Whatever the numbers happen to be worth saying out loud. Renders nothing
+     at all when there is nothing to say, which is most of the time early on. */
+  function insightsCard(items) {
+    const found = KN.insights.forItems(items);
+    if (!found.length) return document.createDocumentFragment();
+
+    const card = node(html`
+      <section class="insights">
+        <h2 class="insights-head">${icon("sparkles")} 気づいたこと</h2>
+        <div class="insights-list"></div>
+      </section>
+    `);
+    const listEl = card.querySelector(".insights-list");
+    found.forEach((f) => {
+      listEl.append(node(html`
+        <div class="insight">
+          <span class="insight-ico">${f.icon}</span>
+          <span class="insight-main">
+            <span class="insight-title">${f.title}</span>
+            <span class="insight-body">${f.body}</span>
+          </span>
+        </div>
+      `));
+    });
+    return card;
   }
 
   function emptyState() {
