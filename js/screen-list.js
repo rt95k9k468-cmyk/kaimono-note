@@ -11,8 +11,6 @@
   let root = null;
   let els = {};
   let categoryFilter = null;   // categoryId or null = all
-  let acIndex = -1;            // active autocomplete row
-  let acMatches = [];
   let openWrap = null;         // the one row currently swiped open, if any
 
   /* ---------------- mount (static chrome) ---------------- */
@@ -46,31 +44,27 @@
 
     root.append(chrome);
 
-    /* The add bar sits in the shell's dock, not in this screen. Adding an item
-       is the one thing done one-handed in a shop aisle, so it belongs at the
-       bottom — but as a plain element there, not a sticky one in here. */
+    /* The add button sits in the shell's dock, not in this screen. Adding
+       something is the one thing done one-handed in a shop aisle, so it
+       belongs at the bottom, in the middle, where a thumb already is.
+
+       It used to be a text field here, with the suggestions opening upward
+       over the list. That got you a name and nothing else: quantity and
+       category had to be fixed afterwards in the product sheet. One button
+       and one form is fewer steps for anything beyond a bare name, and the
+       same suggestions still turn a name into an existing product. */
     const dock = document.getElementById("dock");
     dock.innerHTML = "";
     dock.append(node(html`
       <div class="quick-add">
-        <form class="quick-add-bar js-form">
-          ${icon("cart")}
-          <input class="quick-add-input js-input" placeholder="商品を追加（例：食器用洗剤）"
-                 autocomplete="off" autocapitalize="off" spellcheck="false"
-                 aria-label="商品を追加" aria-autocomplete="list">
-          <button class="quick-add-btn js-add" type="submit" aria-label="追加" disabled>${icon("plus")}</button>
-        </form>
-        <div class="js-ac"></div>
+        <button class="add-fab js-open-add" aria-label="買うものを追加">${icon("plus")}</button>
       </div>
     `));
 
     els = {
       sub:        chrome.querySelector(".js-sub"),
       clear:      chrome.querySelector(".js-clear"),
-      form:       dock.querySelector(".js-form"),
-      input:      dock.querySelector(".js-input"),
-      addBtn:     dock.querySelector(".js-add"),
-      ac:         dock.querySelector(".js-ac"),
+      addFab:     dock.querySelector(".js-open-add"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
@@ -78,7 +72,7 @@
       topbar:     chrome.querySelector(".topbar"),
     };
 
-    wireQuickAdd();
+    els.addFab.addEventListener("click", openAddSheet);
 
     els.clear.addEventListener("click", clearChecked);
 
@@ -87,54 +81,193 @@
     });
   }
 
-  /* ---------------- quick add + autocomplete ---------------- */
+  /* ---------------- the add sheet ---------------- */
 
-  function wireQuickAdd() {
-    const { input, form, addBtn, ac } = els;
+  /* One form for everything a new line on the list needs: what it is, how
+     many, and which aisle it belongs to. The name field still suggests as you
+     type — tapping a suggestion is what turns 「ぎゅうにゅう」 into the 牛乳
+     already on file, with its prices and its category, instead of a second
+     product with the same name.
 
-    input.addEventListener("input", () => {
-      addBtn.disabled = !input.value.trim();
-      renderAutocomplete();
+     It stays open after each add. A shopping list is written in one sitting,
+     and closing the sheet only to press ＋ again is the kind of ceremony that
+     makes a list feel like paperwork. */
+  function openAddSheet() {
+    haptic(10);
+
+    let picked = null;        // an existing product chosen from the suggestions
+    let catTouched = false;   // the category was set by hand, so stop guessing
+    let qty = 1;
+
+    const body = node(html`
+      <div class="stack" style="gap:18px">
+        <div class="field">
+          <span class="field-label">商品名</span>
+          <input class="input js-name" placeholder="例：食器用洗剤"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 aria-autocomplete="list">
+          <div class="js-ac"></div>
+          <span class="field-hint js-known" hidden></span>
+        </div>
+
+        <div class="field">
+          <span class="field-label">個数</span>
+          <div class="stepper">
+            <button type="button" class="stepper-btn js-minus" aria-label="1つ減らす">${icon("minus")}</button>
+            <span class="stepper-value js-qty" aria-live="polite">1</span>
+            <button type="button" class="stepper-btn js-plus" aria-label="1つ増やす">${icon("plus")}</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">カテゴリ</span>
+          <div class="js-cat"></div>
+        </div>
+
+        <label class="field">
+          <span class="field-label">メモ（任意）</span>
+          <input class="input js-memo" placeholder="例：詰め替え用" autocomplete="off">
+        </label>
+      </div>
+    `);
+
+    const nameEl = body.querySelector(".js-name");
+    const memoEl = body.querySelector(".js-memo");
+    const qtyEl  = body.querySelector(".js-qty");
+    const acHost = body.querySelector(".js-ac");
+    const known  = body.querySelector(".js-known");
+
+    const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
+    const addBtn = foot;
+
+    const handle = KN.ui.sheet({ title: "買うものを追加", content: body, footer: foot });
+
+    const cat = KN.ui.categoryPicker(body.querySelector(".js-cat"), {
+      selectedId: store.OTHER_CATEGORY,
+      onSelect: () => { catTouched = true; },
     });
 
-    input.addEventListener("keydown", (e) => {
-      if (!acMatches.length) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        acIndex = (acIndex + 1) % acMatches.length;
-        paintActive();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        acIndex = acIndex <= 0 ? acMatches.length - 1 : acIndex - 1;
-        paintActive();
-      } else if (e.key === "Escape") {
-        closeAutocomplete();
+    const paintQty = () => { qtyEl.textContent = String(qty); };
+    body.querySelector(".js-minus").addEventListener("click", () => {
+      if (qty <= 1) { haptic(20); return; }
+      qty -= 1; paintQty(); haptic();
+    });
+    body.querySelector(".js-plus").addEventListener("click", () => {
+      qty += 1; paintQty(); haptic();
+    });
+
+    /* Everything the name field drives: the button, the suggestions, and —
+       until the category is touched by hand — the guess underneath it. */
+    function onName() {
+      const typed = nameEl.value.trim();
+      addBtn.disabled = !typed;
+      // Typing on past a chosen suggestion means it is no longer that product.
+      if (picked && KN.util.foldKana(picked.name) !== KN.util.foldKana(typed)) {
+        picked = null;
+        known.hidden = true;
       }
-    });
+      if (!picked && !catTouched) cat.set(typed ? store.guessCategory(typed) : store.OTHER_CATEGORY);
+      renderSuggestions(nameEl, acHost, typed, choose);
+    }
 
-    input.addEventListener("blur", () => setTimeout(closeAutocomplete, 140));
+    /* A suggestion tapped: from here the form is about that product, so its
+       category comes along and the sheet says which one it landed on. */
+    function choose(product) {
+      picked = product;
+      nameEl.value = product.name;
+      addBtn.disabled = false;
+      catTouched = false;
+      cat.set(product.categoryId);
+      const best = store.bestPrice(product);
+      const st = best ? store.getStore(best.storeId) : null;
+      known.hidden = false;
+      known.textContent = best && st
+        ? `登録済みの商品です・${st.name} ${yen(best.price)} が最安`
+        : "登録済みの商品です";
+      acHost.innerHTML = "";
+      nameEl.focus();
+    }
 
-    form.addEventListener("submit", (e) => {
+    nameEl.addEventListener("input", onName);
+    nameEl.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
       e.preventDefault();
-      const picked = acIndex >= 0 ? acMatches[acIndex] : null;
-      if (picked && picked.product) {
-        addExisting(picked.product);
-      } else {
-        addByName(input.value);
-      }
+      submit();
     });
+    memoEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); submit(); }
+    });
+    addBtn.addEventListener("click", submit);
+
+    function submit() {
+      const name = nameEl.value.trim();
+      if (!name) { nameEl.focus(); return; }
+
+      const product = picked || store.findProductByName(name)
+        || store.addProduct({ name, categoryId: cat.current });
+
+      /* A category chosen by hand outranks the guess, and is remembered — the
+         next 「コンソメ」 lands where this one did without being told again.
+         Applied even when the product was just created with that category:
+         the guess and the choice agreeing does not make it a guess. */
+      if (catTouched) {
+        store.update((s) => {
+          const rec = s.products.find((x) => x.id === product.id);
+          if (rec) { rec.categoryId = cat.current; rec.catManual = true; }
+        });
+        store.learnCategory(product.name, cat.current);
+      }
+
+      const memo = memoEl.value.trim();
+      const already = store.get().items.find((i) => i.productId === product.id && !i.checked);
+      if (already) {
+        store.update((s) => {
+          const rec = s.items.find((i) => i.id === already.id);
+          if (!rec) return;
+          rec.qty += qty;
+          if (memo) rec.memo = memo;
+        });
+        const now = store.get().items.find((i) => i.id === already.id);
+        KN.ui.toast(`${product.name} を ${now ? now.qty : already.qty} 個にしました`);
+      } else {
+        store.addItem(product.id, { qty, memo });
+        const c = store.getCategory(product.categoryId);
+        KN.ui.toast(`${c.emoji} ${c.name} に「${product.name}」を追加しました`);
+      }
+      haptic(12);
+      reset();
+    }
+
+    /* Cleared and ready for the next one, rather than closed. */
+    function reset() {
+      picked = null;
+      catTouched = false;
+      qty = 1;
+      paintQty();
+      nameEl.value = "";
+      memoEl.value = "";
+      known.hidden = true;
+      addBtn.disabled = true;
+      acHost.innerHTML = "";
+      cat.set(store.OTHER_CATEGORY);
+      nameEl.focus();
+    }
+
+    // The sheet focuses its first control after its own animation; on a phone
+    // it deliberately does not, so the keyboard does not fly up over it.
+    setTimeout(() => { if (!("ontouchstart" in window)) nameEl.focus(); }, 340);
+    return handle;
   }
 
-  function renderAutocomplete() {
-    const typed = els.input.value.trim();
-    const q = KN.util.foldKana(typed);
-    acIndex = -1;
-    acMatches = [];
-    if (!q) { closeAutocomplete(); return; }
+  /* ---------------- suggestions ---------------- */
 
-    const onList = new Set(store.get().items.map((i) => i.productId));
-    // Matched on the folded name, so a single「え」already surfaces
-    // 「エマール」— nobody switches to katakana just to search their own list.
+  /* Matched on the folded name, so a single 「え」 already surfaces
+     「エマール」 — nobody switches to katakana to search their own list. */
+  function renderSuggestions(input, host, typed, onPick) {
+    const q = KN.util.foldKana(typed);
+    if (!q) { host.innerHTML = ""; return; }
+
+    const onList = new Set(store.get().items.filter((i) => !i.checked).map((i) => i.productId));
     const found = store.get().products
       .map((p) => ({ p, key: KN.util.foldKana(p.name) }))
       .filter((r) => r.key.includes(q))
@@ -146,122 +279,37 @@
       .slice(0, 6)
       .map((r) => r.p);
 
-    // Against what was actually typed, not the folded form — this decides
-    // whether we are looking at an existing product or offering a new one.
-    const exact = store.findProductByName(typed);
-    acMatches = found.map((p) => ({ product: p }));
-    if (!exact) acMatches.push({ product: null, name: typed });
-    if (!acMatches.length) { closeAutocomplete(); return; }
+    if (!found.length) { host.innerHTML = ""; return; }
 
-    /* Reuse the panel across keystrokes. Rebuilding it meant the open
-       animation — a fade up from transparent — restarted on every character,
-       which read as the list flickering while you typed. The panel is created
-       once, when it opens from nothing, and after that only its rows change. */
-    let box = els.ac.querySelector(".ac");
+    /* Reuse the panel across keystrokes. Rebuilding it restarted the open
+       animation on every character, which read as the list flickering. */
+    let box = host.querySelector(".ac");
     if (!box) {
       box = node(html`<div class="ac" role="listbox"></div>`);
-      els.ac.append(box);
+      host.append(box);
     } else {
       box.innerHTML = "";
     }
 
-    acMatches.forEach((m, idx) => {
-      let row;
-      if (m.product) {
-        const cat = store.getCategory(m.product.categoryId);
-        const best = store.bestPrice(m.product);
-        const bestStore = best ? store.getStore(best.storeId) : null;
-        row = node(html`
-          <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
-            <span class="ac-emoji">${store.productMark(m.product)}</span>
-            <span class="ac-main">
-              <span class="ac-name">${m.product.name}</span>
-              <span class="ac-sub">
-                ${best && bestStore ? html`${bestStore.name} ${yen(best.price)} が最安` : "価格の記録なし"}
-                ${onList.has(m.product.id) ? html` ・<b>リストにあります</b>` : ""}
-              </span>
+    found.forEach((p) => {
+      const best = store.bestPrice(p);
+      const bestStore = best ? store.getStore(best.storeId) : null;
+      const row = node(html`
+        <button type="button" class="ac-item" role="option">
+          <span class="ac-emoji">${store.productMark(p)}</span>
+          <span class="ac-main">
+            <span class="ac-name">${p.name}</span>
+            <span class="ac-sub">
+              ${best && bestStore ? html`${bestStore.name} ${yen(best.price)} が最安` : "価格の記録なし"}
+              ${onList.has(p.id) ? html` ・<b>リストにあります</b>` : ""}
             </span>
-          </button>
-        `);
-      } else {
-        row = node(html`
-          <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
-            <span class="ac-emoji ac-new-mark">${icon("sparkles")}</span>
-            <span class="ac-main">
-              <span class="ac-name ac-new">「${m.name}」を新しく追加</span>
-              <span class="ac-sub">カテゴリは自動で振り分けます</span>
-            </span>
-          </button>
-        `);
-      }
-
+          </span>
+        </button>
+      `);
+      // Keep the caret where it is; a suggestion is not somewhere to move to.
       row.addEventListener("mousedown", (e) => e.preventDefault());
-      row.addEventListener("click", () => {
-        if (m.product) addExisting(m.product);
-        else addByName(m.name);
-      });
+      row.addEventListener("click", () => onPick(p));
       box.append(row);
-    });
-  }
-
-  function paintActive() {
-    els.ac.querySelectorAll(".ac-item").forEach((r, i) => {
-      r.classList.toggle("is-active", i === acIndex);
-    });
-  }
-
-  function closeAutocomplete() {
-    els.ac.innerHTML = "";
-    acIndex = -1;
-    acMatches = [];
-  }
-
-  function resetInput() {
-    els.input.value = "";
-    els.addBtn.disabled = true;
-    closeAutocomplete();
-    els.input.focus();
-  }
-
-  function addExisting(product) {
-    const already = store.get().items.find((i) => i.productId === product.id && !i.checked);
-    if (already) {
-      // `already` points at the live record, so read the new quantity back
-      // after the update rather than adding one to a value that already moved.
-      store.update((s) => {
-        const rec = s.items.find((i) => i.id === already.id);
-        if (rec) rec.qty += 1;
-      });
-      const updated = store.get().items.find((i) => i.id === already.id);
-      KN.ui.toast(`${product.name} を ${updated ? updated.qty : already.qty} 個にしました`);
-    } else {
-      store.addItem(product.id);
-    }
-    haptic(10);
-    resetInput();
-  }
-
-  function addByName(rawName) {
-    const name = String(rawName).trim();
-    if (!name) return;
-
-    const existing = store.findProductByName(name);
-    if (existing) { addExisting(existing); return; }
-
-    const product = store.addProduct({ name, categoryId: store.guessCategory(name) });
-    store.addItem(product.id);
-    haptic(10);
-    resetInput();
-
-    const cat = store.getCategory(product.categoryId);
-    KN.ui.toast(`${cat.emoji} ${cat.name} に追加しました`, {
-      action: {
-        label: "編集",
-        onClick: () => {
-          const item = store.get().items.find((i) => i.productId === product.id);
-          KN.productSheet.open(product.id, { itemId: item && item.id });
-        },
-      },
     });
   }
 

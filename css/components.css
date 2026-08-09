@@ -170,6 +170,38 @@ button, [role="tab"] {
 .input-group { display: flex; gap: var(--sp-2); }
 .input-group > * { min-width: 0; }
 
+/* − 1 ＋. A count on a shopping list is almost always one or two, and typing
+   a digit for that means raising a keyboard over the form; two big targets
+   are quicker and never cover anything. */
+.stepper {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--sp-2);
+  background: var(--c-surface-2);
+  border-radius: var(--r-md);
+  padding: var(--sp-1);
+}
+.stepper-btn {
+  width: 44px; height: 44px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-1);
+  transition: transform .12s var(--ease), background .16s var(--ease);
+}
+.stepper-btn svg { width: 20px; height: 20px; stroke-width: 2.6; }
+.stepper-btn:active { transform: scale(.9); }
+.stepper-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 /* number input: strip spinners */
 .input[type="number"] { -moz-appearance: textfield; }
 .input[type="number"]::-webkit-outer-spin-button,

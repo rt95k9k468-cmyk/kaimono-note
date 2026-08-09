@@ -15,82 +15,42 @@
 }
 
 .quick-add {
-  position: relative;   /* anchors the suggestions panel */
   padding: var(--sp-3) var(--sp-4);
   background: var(--c-bg);
   border-top: 1px solid var(--c-border);
+  display: flex;
+  justify-content: center;
 }
 
 /* Room under the last card so it clears the dock as you reach the end. */
 .screen[data-screen="list"] { padding-bottom: var(--sp-4); }
 
-.quick-add-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  background: var(--c-surface);
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--r-md);
-  padding-left: var(--sp-3);
-  transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
-}
-
-.quick-add-bar:focus-within {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 16%, transparent);
-}
-
-.quick-add-bar svg { width: 20px; height: 20px; color: var(--c-text-3); flex: none; stroke-width: 2.2; }
-
-.quick-add-input {
-  flex: 1;
-  min-width: 0;
-  height: 46px;
-  border: none;
-  background: none;
-  font-size: var(--fs-lg);
-  outline: none;
-}
-.quick-add-input::placeholder { color: var(--c-text-3); }
-
-.quick-add-btn {
-  position: relative;   /* anchors the 44px touch box below */
-  flex: none;
-  width: 36px; height: 36px;
-  margin-right: 5px;
-  border-radius: var(--r-sm);
+/* The one button on the list screen. Middle and bottom, because that is
+   where a thumb is while the other hand is holding a basket. */
+.add-fab {
+  width: 56px; height: 56px;
+  border-radius: var(--r-full);
   background: var(--c-primary);
   color: #fff;
   display: grid;
   place-items: center;
-  transition: transform .12s var(--ease), opacity .16s;
+  box-shadow: var(--shadow-2);
+  transition: transform .12s var(--ease), background .16s var(--ease);
 }
-.quick-add-btn::after {
-  content: "";
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 44px; height: 44px;
-  transform: translate(-50%, -50%);
+.add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; }
+.add-fab:active { transform: scale(.92); }
+@media (hover: hover) {
+  .add-fab:hover { background: var(--c-primary-2); }
 }
-.quick-add-btn svg { width: 20px; height: 20px; stroke-width: 2.6; color: #fff; }
-.quick-add-btn:active { transform: scale(.9); }
-.quick-add-btn:disabled { opacity: .35; pointer-events: none; }
 
-/* autocomplete */
-/* Opens upward: the bar it belongs to now sits at the bottom of the screen,
-   so a downward panel would be off-screen or under the keyboard. */
+/* suggestions, under the name field in the add sheet */
 .ac {
-  position: absolute;
-  left: var(--sp-4);
-  right: var(--sp-4);
-  bottom: calc(100% - var(--sp-2));
+  margin-top: var(--sp-2);
   background: var(--c-bg-elev);
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
-  box-shadow: var(--shadow-3);
-  z-index: 40;
   overflow: hidden;
-  max-height: 300px;
+  max-height: 260px;
   overflow-y: auto;
   animation: ac-in .16s var(--ease-out);
 }
