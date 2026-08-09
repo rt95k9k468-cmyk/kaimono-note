@@ -158,16 +158,20 @@
     if (!app) return;
 
     const fit = () => {
-      const h = Math.round(vv.height);
-      // pageTop, not offsetTop. offsetTop only counts how far the visible
-      // window sits inside the layout; if iOS reveals the field by scrolling
-      // the document instead, that shift lands in scrollY and offsetTop stays
-      // 0 — the app moves off screen and nothing here notices. pageTop is the
-      // window's position measured from the top of the document, so it carries
-      // both, whichever way the shove happened to arrive.
-      const top = Math.round(vv.pageTop);
-      app.style.height = h + "px";
-      app.style.transform = top ? `translateY(${top}px)` : "";
+      // Size first: the shell ends where the keyboard begins.
+      app.style.height = Math.round(vv.height) + "px";
+
+      /* Then put the document back. iOS scrolls it to reveal the focused
+         field while the shell is still full height; once it is not, that
+         scroll is left over and the app rides above the screen.
+
+         A transform would line it up just as well, and did — but iOS paints
+         the text caret from the element's *untransformed* position, so the
+         cursor floated hundreds of pixels above the field it belonged to
+         while the field itself looked correct. Scrolling moves the real
+         geometry, and the caret comes along. */
+      if (window.scrollY) window.scrollTo(0, 0);
+      app.style.transform = "";
 
       // Whether the keyboard is up cannot be read from the viewport at all.
       // A reading from an iPhone with the keyboard fully open:
