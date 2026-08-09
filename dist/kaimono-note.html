@@ -315,6 +315,21 @@ a { color: var(--c-primary); }
    while the keyboard has the bottom half of the screen. */
 .kb-open .tabbar { display: none; }
 
+/* Diagnostic read-out, off unless switched on in 設定. Deliberately plain. */
+.vv-debug {
+  position: absolute;
+  top: 0; left: 0;
+  margin: 0;
+  padding: 6px 8px;
+  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #fff;
+  background: rgba(0, 0, 0, .78);
+  white-space: pre;
+  z-index: 500;
+  pointer-events: none;
+  border-bottom-right-radius: 8px;
+}
+
 .tab {
   display: flex;
   flex-direction: column;
@@ -3290,45 +3305,12 @@ button, [role="tab"] {
     };
 
     wireQuickAdd();
-    wireKeyboardDismiss();
 
     els.clear.addEventListener("click", clearChecked);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
     });
-  }
-
-  /* ---------------- dismissing the keyboard ---------------- */
-
-  /* On a phone the keyboard covers half the screen and, left to itself, stays
-     up until something else takes focus. Two ways out, both of which people
-     already expect: touch anywhere that is not the add bar, or flick the list
-     downwards the way the keyboard would go.
-
-     A touch cannot be seen while it is on the keyboard itself — that belongs to
-     the OS, not the page — so the downward flick is read from the list area. */
-  function wireKeyboardDismiss() {
-    const typing = () => document.activeElement === els.input;
-    const inAddBar = (t) => !!(t && t.closest && t.closest(".quick-add"));
-
-    document.addEventListener("pointerdown", (e) => {
-      if (!typing() || inAddBar(e.target)) return;
-      els.input.blur();
-    }, true);
-
-    let downY = null;
-    root.addEventListener("pointerdown", (e) => {
-      downY = inAddBar(e.target) ? null : e.clientY;
-    }, true);
-    root.addEventListener("pointermove", (e) => {
-      if (downY === null || !typing()) return;
-      if (e.clientY - downY > 40) {   // a deliberate downward flick
-        els.input.blur();
-        downY = null;
-      }
-    }, true);
-    root.addEventListener("pointerup", () => { downY = null; }, true);
   }
 
   /* ---------------- quick add + autocomplete ---------------- */
@@ -4959,6 +4941,15 @@ button, [role="tab"] {
             </span>
             <span class="row-chevron">${icon("sparkles")}</span>
           </button>
+          <button class="row js-vvdebug">
+            <span class="row-main">
+              <span class="row-title">画面サイズの数値を出す</span>
+              <span class="row-sub">${KN.vvDebugOn && KN.vvDebugOn()
+                ? "表示中。入力欄をタップした状態のスクリーンショットが手がかりになります"
+                : "入力バーの位置ずれを調べるための一時的な表示です"}</span>
+            </span>
+            <span class="row-chevron">${icon("search")}</span>
+          </button>
           <button class="row js-reset">
             <span class="row-main">
               <span class="row-title" style="color:var(--c-danger)">すべて削除</span>
@@ -4988,6 +4979,10 @@ button, [role="tab"] {
     });
 
     wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
+
+    wrap.querySelector(".js-vvdebug").addEventListener("click", () => {
+      KN.setVvDebug(!(KN.vvDebugOn && KN.vvDebugOn()));
+    });
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());
@@ -5185,6 +5180,7 @@ button, [role="tab"] {
     trackKeyboard();
     KN.backup.init();
     registerServiceWorker();
+    mountVvDebug();
   }
 
   /* iOS does not resize the page when the keyboard appears. It shrinks the
@@ -5239,6 +5235,50 @@ button, [role="tab"] {
     navigator.storage.persisted()
       .then((already) => (already ? true : navigator.storage.persist()))
       .catch(() => { /* not fatal — the app works either way */ });
+  }
+
+  /* ---------------- viewport read-out (diagnostic) ---------------- */
+
+  /* Temporary. Three attempts at the shifting input bar were made from guesses
+     about what the keyboard does, because none of it can be reproduced away
+     from the device. This prints the numbers the layout is computed from, so
+     the next attempt starts from what actually happens. Toggle from 設定. */
+  const VV_DEBUG_KEY = "kaimono-note-vvdebug";
+
+  function vvDebugOn() {
+    try { return localStorage.getItem(VV_DEBUG_KEY) === "1"; } catch (e) { return false; }
+  }
+  KN.setVvDebug = (on) => {
+    try { localStorage.setItem(VV_DEBUG_KEY, on ? "1" : "0"); } catch (e) { /* ignore */ }
+    location.reload();
+  };
+  KN.vvDebugOn = vvDebugOn;
+
+  function mountVvDebug() {
+    if (!vvDebugOn()) return;
+    const app = document.getElementById("app");
+    if (!app) return;
+
+    const box = document.createElement("pre");
+    box.className = "vv-debug";
+    app.append(box);
+
+    const vv = window.visualViewport;
+    const r = (n) => Math.round(n);
+    const paint = () => {
+      const a = app.getBoundingClientRect();
+      const bar = document.querySelector(".quick-add");
+      const b = bar && bar.getBoundingClientRect();
+      box.textContent =
+        `画面 innerH ${window.innerHeight}  scrollY ${r(window.scrollY)}\n` +
+        (vv ? `可視 h ${r(vv.height)}  offsetTop ${r(vv.offsetTop)}  pageTop ${r(vv.pageTop)}  scale ${vv.scale.toFixed(2)}\n`
+            : "visualViewport なし\n") +
+        `app  top ${r(a.top)}  h ${r(a.height)}\n` +
+        (b ? `bar  top ${r(b.top)}  bottom ${r(b.bottom)}` : "bar なし") +
+        (document.documentElement.classList.contains("kb-open") ? "\nkb-open" : "");
+      requestAnimationFrame(paint);
+    };
+    paint();
   }
 
   function registerServiceWorker() {

@@ -124,6 +124,7 @@
     trackKeyboard();
     KN.backup.init();
     registerServiceWorker();
+    mountVvDebug();
   }
 
   /* iOS does not resize the page when the keyboard appears. It shrinks the
@@ -178,6 +179,50 @@
     navigator.storage.persisted()
       .then((already) => (already ? true : navigator.storage.persist()))
       .catch(() => { /* not fatal — the app works either way */ });
+  }
+
+  /* ---------------- viewport read-out (diagnostic) ---------------- */
+
+  /* Temporary. Three attempts at the shifting input bar were made from guesses
+     about what the keyboard does, because none of it can be reproduced away
+     from the device. This prints the numbers the layout is computed from, so
+     the next attempt starts from what actually happens. Toggle from 設定. */
+  const VV_DEBUG_KEY = "kaimono-note-vvdebug";
+
+  function vvDebugOn() {
+    try { return localStorage.getItem(VV_DEBUG_KEY) === "1"; } catch (e) { return false; }
+  }
+  KN.setVvDebug = (on) => {
+    try { localStorage.setItem(VV_DEBUG_KEY, on ? "1" : "0"); } catch (e) { /* ignore */ }
+    location.reload();
+  };
+  KN.vvDebugOn = vvDebugOn;
+
+  function mountVvDebug() {
+    if (!vvDebugOn()) return;
+    const app = document.getElementById("app");
+    if (!app) return;
+
+    const box = document.createElement("pre");
+    box.className = "vv-debug";
+    app.append(box);
+
+    const vv = window.visualViewport;
+    const r = (n) => Math.round(n);
+    const paint = () => {
+      const a = app.getBoundingClientRect();
+      const bar = document.querySelector(".quick-add");
+      const b = bar && bar.getBoundingClientRect();
+      box.textContent =
+        `画面 innerH ${window.innerHeight}  scrollY ${r(window.scrollY)}\n` +
+        (vv ? `可視 h ${r(vv.height)}  offsetTop ${r(vv.offsetTop)}  pageTop ${r(vv.pageTop)}  scale ${vv.scale.toFixed(2)}\n`
+            : "visualViewport なし\n") +
+        `app  top ${r(a.top)}  h ${r(a.height)}\n` +
+        (b ? `bar  top ${r(b.top)}  bottom ${r(b.bottom)}` : "bar なし") +
+        (document.documentElement.classList.contains("kb-open") ? "\nkb-open" : "");
+      requestAnimationFrame(paint);
+    };
+    paint();
   }
 
   function registerServiceWorker() {
