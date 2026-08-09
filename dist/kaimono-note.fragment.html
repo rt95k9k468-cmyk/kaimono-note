@@ -5190,7 +5190,13 @@ button, [role="tab"] {
 
     const fit = () => {
       const h = Math.round(vv.height);
-      const top = Math.round(vv.offsetTop);
+      // pageTop, not offsetTop. offsetTop only counts how far the visible
+      // window sits inside the layout; if iOS reveals the field by scrolling
+      // the document instead, that shift lands in scrollY and offsetTop stays
+      // 0 — the app moves off screen and nothing here notices. pageTop is the
+      // window's position measured from the top of the document, so it carries
+      // both, whichever way the shove happened to arrive.
+      const top = Math.round(vv.pageTop);
       app.style.height = h + "px";
       app.style.transform = top ? `translateY(${top}px)` : "";
 
@@ -5206,9 +5212,15 @@ button, [role="tab"] {
 
     vv.addEventListener("resize", fit);
     vv.addEventListener("scroll", fit);
-    // The slide can land a frame or two after the viewport itself settles.
-    window.addEventListener("focusin", () => setTimeout(fit, 350));
-    window.addEventListener("orientationchange", () => setTimeout(fit, 350));
+
+    // The keyboard slides in over a few hundred milliseconds and the numbers
+    // keep moving the whole time; the last event does not always coincide with
+    // the last position. Re-read across the animation rather than trusting one
+    // moment of it.
+    const settle = () => [60, 180, 360, 600].forEach((ms) => setTimeout(fit, ms));
+    window.addEventListener("focusin", settle);
+    window.addEventListener("focusout", settle);
+    window.addEventListener("orientationchange", settle);
     fit();
   }
 
