@@ -209,6 +209,10 @@
 
 .item-wrap.is-open .item { transform: translateX(-88px); }
 
+/* Hand the row its own compositor layer for the duration of the gesture, so
+   each frame is a transform rather than a repaint of the whole row. */
+.item-wrap.is-swiping .item { will-change: transform; }
+
 /* The row's rounded right corners would leave two crescent gaps against the
    delete panel's straight edge. Square them off for as long as the panel is
    showing; the wrapper keeps the outer silhouette rounded. */

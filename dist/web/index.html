@@ -1057,6 +1057,10 @@ button, [role="tab"] {
 
 .item-wrap.is-open .item { transform: translateX(-88px); }
 
+/* Hand the row its own compositor layer for the duration of the gesture, so
+   each frame is a transform rather than a repaint of the whole row. */
+.item-wrap.is-swiping .item { will-change: transform; }
+
 /* The row's rounded right corners would leave two crescent gaps against the
    delete panel's straight edge. Square them off for as long as the panel is
    showing; the wrapper keeps the outer silhouette rounded. */
@@ -3045,12 +3049,45 @@ button, [role="tab"] {
     };
 
     wireQuickAdd();
+    wireKeyboardDismiss();
 
     els.clear.addEventListener("click", clearChecked);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
     });
+  }
+
+  /* ---------------- dismissing the keyboard ---------------- */
+
+  /* On a phone the keyboard covers half the screen and, left to itself, stays
+     up until something else takes focus. Two ways out, both of which people
+     already expect: touch anywhere that is not the add bar, or flick the list
+     downwards the way the keyboard would go.
+
+     A touch cannot be seen while it is on the keyboard itself — that belongs to
+     the OS, not the page — so the downward flick is read from the list area. */
+  function wireKeyboardDismiss() {
+    const typing = () => document.activeElement === els.input;
+    const inAddBar = (t) => !!(t && t.closest && t.closest(".quick-add"));
+
+    document.addEventListener("pointerdown", (e) => {
+      if (!typing() || inAddBar(e.target)) return;
+      els.input.blur();
+    }, true);
+
+    let downY = null;
+    root.addEventListener("pointerdown", (e) => {
+      downY = inAddBar(e.target) ? null : e.clientY;
+    }, true);
+    root.addEventListener("pointermove", (e) => {
+      if (downY === null || !typing()) return;
+      if (e.clientY - downY > 40) {   // a deliberate downward flick
+        els.input.blur();
+        downY = null;
+      }
+    }, true);
+    root.addEventListener("pointerup", () => { downY = null; }, true);
   }
 
   /* ---------------- quick add + autocomplete ---------------- */
@@ -3516,6 +3553,27 @@ button, [role="tab"] {
     const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
     let startX = 0, startY = 0, dx = 0;
     let dragging = false, decided = false, pointerId = null, swallowClick = false;
+    let pendingDx = null, rafId = 0;
+
+    // Pointer moves arrive faster than the screen refreshes. Painting once per
+    // frame instead of once per event keeps the row gliding rather than
+    // stuttering under a quick finger.
+    const paint = () => {
+      rafId = 0;
+      if (pendingDx === null) return;
+      row.style.transform = `translate3d(${pendingDx}px, 0, 0)`;
+    };
+    const schedule = (v) => {
+      pendingDx = v;
+      if (!rafId) rafId = requestAnimationFrame(paint);
+    };
+
+    // touch-action keeps the list scrollable up to the moment a swipe is
+    // recognised; from then on the browser has to be told to stop, or the list
+    // scrolls under the finger while the row slides sideways.
+    row.addEventListener("touchmove", (e) => {
+      if (dragging) e.preventDefault();
+    }, { passive: false });
 
     row.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -3539,7 +3597,12 @@ button, [role="tab"] {
         decided = true;
         // Has to be a clearly sideways movement, not a drifting scroll. A
         // diagonal belongs to the list, which stays scrollable throughout.
-        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
+        // Rightwards only counts on an open row, where it means "put it back";
+        // on a closed row there is nothing to the right to reach for.
+        const isOpen = wrap.classList.contains("is-open");
+        dragging = Math.abs(mx) >= SLOP
+          && Math.abs(mx) > Math.abs(my) * DOMINANCE
+          && (isOpen || mx < 0);
         if (!dragging) return;
         row.setPointerCapture(pointerId);
         row.style.transition = "none";
@@ -3549,9 +3612,11 @@ button, [role="tab"] {
       if (!dragging) return;
 
       const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
-      // Rubber-band past the ends so the row cannot be dragged off screen.
-      dx = Math.max(-REVEAL - 16, Math.min(16, base + mx));
-      row.style.transform = `translateX(${dx}px)`;
+      // Never past 0: dragging a row rightwards would expose bare background on
+      // its left with nothing to show there. Left has a little give so the row
+      // does not stop dead against the end of the panel.
+      dx = Math.min(0, Math.max(-REVEAL - 16, base + mx));
+      schedule(dx);
     });
 
     const finish = (e) => {
@@ -3559,6 +3624,8 @@ button, [role="tab"] {
       pointerId = null;
       if (!dragging) return;
 
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      pendingDx = null;
       row.style.transition = "";
       row.style.transform = "";
       wrap.classList.remove("is-swiping");
