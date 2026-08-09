@@ -515,8 +515,8 @@
   visibility: hidden;
 }
 .product-hint svg { width: 18px; height: 18px; stroke-width: 2.6; }
-/* Already on the list: the panel still appears, so the gesture is never a
-   dead end, but it says so plainly and in a colour that promises nothing. */
+/* Already on the list: the same swipe takes it off again, so the panel says
+   so — and in a colour that is plainly not the green of adding. */
 .product-wrap.is-there .product-hint { background: var(--c-surface-3); color: var(--c-text-2); }
 /* Until the card has travelled far enough, the panel stays understated —
    full strength is the signal that letting go will do something. */
@@ -534,7 +534,9 @@
   background: color-mix(in srgb, var(--cat, transparent) var(--cat-fill), var(--c-surface));
   border: 1px solid color-mix(in srgb, var(--cat, transparent) var(--cat-line), var(--c-border));
   border-radius: var(--r-md);
-  padding: var(--sp-3);
+  /* Room down the left for the painted edge below. Kept on every card,
+     listed or not, so nothing shifts sideways when one is added. */
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) 17px;
   box-shadow: var(--shadow-1);
   transition: background .14s var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
@@ -552,11 +554,21 @@
 }
 .product:hover { background: var(--c-surface-2); }
 
-/* On the shopping list: the circle on the left is already filled, and the
-   border picks up the same green so a glance down the column separates the
-   ones in play from the ones merely on record. */
+/* On the shopping list: the left edge of the card is painted. Deliberately a
+   mark and not a control — a checkbox here read as the list screen's 「買った」
+   box, which is one tab away and means the opposite. A stripe cannot be
+   pressed, so it can only be telling you something. */
 .product.is-listed {
   border-color: color-mix(in srgb, var(--c-primary) 42%, var(--c-border));
+}
+.product.is-listed::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 7px;
+  background: var(--c-primary);
+  /* Follows the card's own corners on the left, square against the content. */
+  border-radius: var(--r-md) 0 0 var(--r-md);
 }
 
 .product-emoji {

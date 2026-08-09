@@ -184,18 +184,22 @@
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
         <div class="product-hint">
-          ${listed ? icon("check") : icon("plus")}<span>${listed ? "リストにあります" : "リストへ"}</span>
+          ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
         </div>
       </article>
     `);
 
+    /* Being on the shopping list is shown by painting the card's left edge,
+       not by a control. A checkbox here looked exactly like the list screen's
+       「買った」 checkbox one tab over, and the two mean opposite things —
+       so this one stopped being a button and became a mark. Putting it on
+       or taking it off is the swipe's job. */
     const card = node(html`
       <div class="product ${listed ? "is-listed" : ""}">
-        <button class="check js-pick" role="checkbox" aria-checked="${String(!!listed)}"
-                aria-label="${product.name} を買うものリストに${listed ? "入れない" : "入れる"}">${icon("check")}</button>
         <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="product-main js-open">
           <span class="product-name">${product.name}</span>
+          ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
           <span class="product-meta">
             ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
             ${prices.length
@@ -217,18 +221,14 @@
     wrap.append(card);
 
     card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
-    card.querySelector(".js-pick").addEventListener("click", () => toggleListed(product));
-    attachAddSwipe(wrap, card, product);
+    attachListSwipe(wrap, card, product);
     return wrap;
   }
 
-  /* The circle on the left says whether this product is on the shopping list,
-     and puts it on or takes it off. Same control as the list screen's
-     checkbox — there it means 買った, here it means 買う — so the two screens
-     read the same way round: filled means "this one is in play". */
+  /** Put this product on the shopping list, or take it off. */
   function toggleListed(product) {
     const item = listedItem(product.id);
-    haptic(12);
+    haptic(14);
     if (!item) {
       store.addItem(product.id);
       KN.ui.toast(`「${product.name}」をリストに追加しました`);
@@ -248,12 +248,14 @@
     });
   }
 
-  /* ---------------- swipe right to put it on the list ---------------- */
+  /* ---------------- swipe right to put it on the list, or take it off ---------------- */
 
   /* Rightwards, and it springs straight back — nothing stays open, because
      there is no second step to confirm. The pull is deliberately heavy past
-     the trigger so the card tells you when it has gone far enough. */
-  function attachAddSwipe(wrap, card, product) {
+     the trigger so the card tells you when it has gone far enough. The same
+     swipe undoes itself: on a product already on the list it takes it off,
+     which is what the panel underneath says it will do. */
+  function attachListSwipe(wrap, card, product) {
     const TRIGGER = 68;
     const MAX = 104;
     const SLOP = 14;
@@ -330,14 +332,7 @@
       // committing on the spot would swap it out mid-flight.
       setTimeout(() => {
         wrap.classList.remove("is-swiping", "is-armed");
-        if (!fired) return;
-        if (listedItem(product.id)) {
-          KN.ui.toast(`「${product.name}」はもうリストにあります`);
-          return;
-        }
-        store.addItem(product.id);
-        haptic(14);
-        KN.ui.toast(`「${product.name}」をリストに追加しました`);
+        if (fired) toggleListed(product);
       }, 200);
     };
     card.addEventListener("pointerup", finish);

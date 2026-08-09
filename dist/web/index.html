@@ -1723,8 +1723,8 @@ button, [role="tab"] {
   visibility: hidden;
 }
 .product-hint svg { width: 18px; height: 18px; stroke-width: 2.6; }
-/* Already on the list: the panel still appears, so the gesture is never a
-   dead end, but it says so plainly and in a colour that promises nothing. */
+/* Already on the list: the same swipe takes it off again, so the panel says
+   so — and in a colour that is plainly not the green of adding. */
 .product-wrap.is-there .product-hint { background: var(--c-surface-3); color: var(--c-text-2); }
 /* Until the card has travelled far enough, the panel stays understated —
    full strength is the signal that letting go will do something. */
@@ -1742,7 +1742,9 @@ button, [role="tab"] {
   background: color-mix(in srgb, var(--cat, transparent) var(--cat-fill), var(--c-surface));
   border: 1px solid color-mix(in srgb, var(--cat, transparent) var(--cat-line), var(--c-border));
   border-radius: var(--r-md);
-  padding: var(--sp-3);
+  /* Room down the left for the painted edge below. Kept on every card,
+     listed or not, so nothing shifts sideways when one is added. */
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) 17px;
   box-shadow: var(--shadow-1);
   transition: background .14s var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
@@ -1760,11 +1762,21 @@ button, [role="tab"] {
 }
 .product:hover { background: var(--c-surface-2); }
 
-/* On the shopping list: the circle on the left is already filled, and the
-   border picks up the same green so a glance down the column separates the
-   ones in play from the ones merely on record. */
+/* On the shopping list: the left edge of the card is painted. Deliberately a
+   mark and not a control — a checkbox here read as the list screen's 「買った」
+   box, which is one tab away and means the opposite. A stripe cannot be
+   pressed, so it can only be telling you something. */
 .product.is-listed {
   border-color: color-mix(in srgb, var(--c-primary) 42%, var(--c-border));
+}
+.product.is-listed::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 7px;
+  background: var(--c-primary);
+  /* Follows the card's own corners on the left, square against the content. */
+  border-radius: var(--r-md) 0 0 var(--r-md);
 }
 
 .product-emoji {
@@ -7081,18 +7093,22 @@ button, [role="tab"] {
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
         <div class="product-hint">
-          ${listed ? icon("check") : icon("plus")}<span>${listed ? "リストにあります" : "リストへ"}</span>
+          ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
         </div>
       </article>
     `);
 
+    /* Being on the shopping list is shown by painting the card's left edge,
+       not by a control. A checkbox here looked exactly like the list screen's
+       「買った」 checkbox one tab over, and the two mean opposite things —
+       so this one stopped being a button and became a mark. Putting it on
+       or taking it off is the swipe's job. */
     const card = node(html`
       <div class="product ${listed ? "is-listed" : ""}">
-        <button class="check js-pick" role="checkbox" aria-checked="${String(!!listed)}"
-                aria-label="${product.name} を買うものリストに${listed ? "入れない" : "入れる"}">${icon("check")}</button>
         <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="product-main js-open">
           <span class="product-name">${product.name}</span>
+          ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
           <span class="product-meta">
             ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
             ${prices.length
@@ -7114,18 +7130,14 @@ button, [role="tab"] {
     wrap.append(card);
 
     card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
-    card.querySelector(".js-pick").addEventListener("click", () => toggleListed(product));
-    attachAddSwipe(wrap, card, product);
+    attachListSwipe(wrap, card, product);
     return wrap;
   }
 
-  /* The circle on the left says whether this product is on the shopping list,
-     and puts it on or takes it off. Same control as the list screen's
-     checkbox — there it means 買った, here it means 買う — so the two screens
-     read the same way round: filled means "this one is in play". */
+  /** Put this product on the shopping list, or take it off. */
   function toggleListed(product) {
     const item = listedItem(product.id);
-    haptic(12);
+    haptic(14);
     if (!item) {
       store.addItem(product.id);
       KN.ui.toast(`「${product.name}」をリストに追加しました`);
@@ -7145,12 +7157,14 @@ button, [role="tab"] {
     });
   }
 
-  /* ---------------- swipe right to put it on the list ---------------- */
+  /* ---------------- swipe right to put it on the list, or take it off ---------------- */
 
   /* Rightwards, and it springs straight back — nothing stays open, because
      there is no second step to confirm. The pull is deliberately heavy past
-     the trigger so the card tells you when it has gone far enough. */
-  function attachAddSwipe(wrap, card, product) {
+     the trigger so the card tells you when it has gone far enough. The same
+     swipe undoes itself: on a product already on the list it takes it off,
+     which is what the panel underneath says it will do. */
+  function attachListSwipe(wrap, card, product) {
     const TRIGGER = 68;
     const MAX = 104;
     const SLOP = 14;
@@ -7227,14 +7241,7 @@ button, [role="tab"] {
       // committing on the spot would swap it out mid-flight.
       setTimeout(() => {
         wrap.classList.remove("is-swiping", "is-armed");
-        if (!fired) return;
-        if (listedItem(product.id)) {
-          KN.ui.toast(`「${product.name}」はもうリストにあります`);
-          return;
-        }
-        store.addItem(product.id);
-        haptic(14);
-        KN.ui.toast(`「${product.name}」をリストに追加しました`);
+        if (fired) toggleListed(product);
       }, 200);
     };
     card.addEventListener("pointerup", finish);
