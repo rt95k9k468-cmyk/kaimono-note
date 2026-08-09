@@ -128,6 +128,7 @@
 
     requestPersistentStorage();
     trackKeyboard();
+    KN.pullRefresh.init();
     KN.backup.init();
     registerServiceWorker();
   }

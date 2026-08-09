@@ -39,6 +39,19 @@
   <nav class="tabbar" id="tabbar" role="tablist" aria-label="メインナビゲーション"></nav>
 </div>
 
+<!-- Shown only when a phone is held sideways. See the portrait-only block in
+     base.css for why an app that asks for portrait in its manifest still
+     needs this. -->
+<div class="rotate-note">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="7" y="2" width="10" height="20" rx="2.4"/>
+    <path d="M10.4 18.8h3.2"/>
+  </svg>
+  <b>縦向きでお使いください</b>
+  <span>画面を縦に戻すと続きから使えます</span>
+</div>
+
 <div id="sheet-root"></div>
 <div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
 
@@ -47,6 +60,7 @@
 <script src="js/ui.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/insights.js"></script>
+<script src="js/pull-refresh.js"></script>
 <script src="js/product-sheet.js"></script>
 <script src="js/screen-list.js"></script>
 <script src="js/screen-prices.js"></script>

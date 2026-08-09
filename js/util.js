@@ -200,6 +200,10 @@
     sparkles:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/>',
     undo:      '<path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/>',
     cart:      '<circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.77L21 8H6"/>',
+    // `undo` mirrored about x=12, so it turns clockwise: same arc, same corner,
+    // reads as "again" rather than "back". Drawn as a mirror rather than by
+    // eye so the two cannot end up at different radii.
+    refresh:   '<path d="M21 7v6h-6"/><path d="M20.5 13a9 9 0 1 1-2.3-9.3L21 7"/>',
   };
 
   /** Inline stroke icon. */
