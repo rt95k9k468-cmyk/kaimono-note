@@ -5,7 +5,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, yen, unitPrice, formatSize, relativeDate, formatDate, UNITS, debounce, haptic } = KN.util;
+  const { html, node, icon, yen, perItemPrice, isCounted, formatSize, relativeDate, formatDate, UNITS, debounce, haptic } = KN.util;
   const store = KN.store;
 
   /**
@@ -197,7 +197,7 @@
     const p = store.getProduct(productId);
     const wrap = node(html`
       <div class="field">
-        <span class="field-label">内容量（単価の計算に使います）</span>
+        <span class="field-label">内容量・入数</span>
         <div class="input-group">
           <input class="input js-amount" style="flex:1" type="text" inputmode="none"
                  autocomplete="off" autocorrect="off" spellcheck="false"
@@ -207,11 +207,21 @@
             ${UNITS.map((u) => html`<option value="${u}" ${p.unit === u ? KN.util.raw("selected") : ""}>${u}</option>`)}
           </select>
         </div>
+        <span class="field-hint js-size-hint"></span>
       </div>
     `);
 
     const amountEl = wrap.querySelector(".js-amount");
     const unitEl = wrap.querySelector(".js-unit");
+    const hintEl = wrap.querySelector(".js-size-hint");
+
+    /* 「10個」なら 1個あたりに割る。「500ml」は割らない — そう書いてあると
+       見分けがつくというだけで、値段は 1本ぶんの値段のまま。 */
+    function paintHint() {
+      hintEl.textContent = isCounted(unitEl.value)
+        ? `この数で割って、1${unitEl.value}あたりの値段も出します`
+        : "値段は 1つぶんとして比べます。ここは目印として書いておくだけです";
+    }
 
     function save() {
       const amount = KN.util.calc(amountEl.value);
@@ -221,12 +231,14 @@
         rec.amount = isFinite(amount) && amount > 0 ? amount : null;
         rec.unit = unitEl.value;
       });
+      paintHint();
       onChanged && onChanged();
     }
 
     KN.keypad.bind(amountEl);
     amountEl.addEventListener("input", debounce(save, 400));
     unitEl.addEventListener("change", save);
+    paintHint();
     return wrap;
   }
 
@@ -256,8 +268,7 @@
       const list = node(html`<div class="price-list"></div>`);
       prices.forEach((pr) => {
         const st = store.getStore(pr.storeId);
-        const amount = pr.amount || p.amount;
-        const up = unitPrice(pr.price, amount, p.unit);
+        const up = perItemPrice(pr.price, p.amount, p.unit);
         const isBest = best && pr.id === best.id && prices.length > 1;
 
         const row = node(html`
@@ -315,11 +326,11 @@
   /* ---------------- one store's price, in full ---------------- */
 
   /* The row in 「お店ごとの値段」 shows what fits on a line: the price, the
-     unit price, how long ago. Everything else about that record — the size
-     that shop sells it in, the day it was seen, how far off the cheapest it
-     is, what it used to cost there — needs a page of its own, and this is it.
-     Also the only place any of it can be corrected: until now a wrong price
-     could only be deleted and typed again. */
+     price of one, how long ago. Everything else about that record — the day
+     it was seen, how far off the cheapest it is, what it used to cost there
+     — needs a page of its own, and this is it. Also the only place any of it
+     can be corrected: until now a wrong price could only be deleted and
+     typed again. */
   function openPriceDetail(productId, priceId, onChanged) {
     const p = store.getProduct(productId);
     const pr = p && p.prices.find((x) => x.id === priceId);
@@ -333,20 +344,6 @@
           <span class="field-label">値段</span>
           <input class="input js-price" type="text" autocomplete="off" value="${String(pr.price)}">
         </label>
-
-        <div class="field">
-          <span class="field-label">このお店での内容量</span>
-          <div class="input-group">
-            <input class="input js-amount" style="flex:1" type="text" autocomplete="off"
-                   value="${pr.amount != null ? String(pr.amount) : ""}"
-                   placeholder="${p.amount != null ? String(p.amount) : "指定なし"}">
-            <span class="input js-unit-label"
-                  style="flex:0 0 92px;display:grid;place-items:center;background:var(--c-surface-2);color:var(--c-text-2)">
-              ${p.unit || "単位なし"}
-            </span>
-          </div>
-          <span class="field-hint">空のままなら、商品の内容量（${formatSize(p.amount, p.unit) || "未設定"}）で計算します</span>
-        </div>
 
         <label class="field">
           <span class="field-label">記録した日</span>
@@ -364,11 +361,9 @@
       </div>
     `);
 
-    const priceEl  = body.querySelector(".js-price");
-    const amountEl = body.querySelector(".js-amount");
-    const dateEl   = body.querySelector(".js-date");
+    const priceEl = body.querySelector(".js-price");
+    const dateEl  = body.querySelector(".js-date");
     KN.keypad.bind(priceEl);
-    KN.keypad.bind(amountEl);
 
     const handle = KN.ui.sheet({
       title: st.name,
@@ -380,13 +375,11 @@
 
     function save() {
       const price = KN.util.calc(priceEl.value);
-      const amount = KN.util.calc(amountEl.value);
       store.update((s) => {
         const prod = s.products.find((x) => x.id === productId);
         const rec = prod && prod.prices.find((x) => x.id === priceId);
         if (!rec) return;
         if (isFinite(price) && price >= 0) rec.price = price;
-        rec.amount = isFinite(amount) && amount > 0 ? amount : null;
         const day = dateEl.value;
         if (day) rec.date = dayToIso(day, rec.date);
       });
@@ -395,7 +388,6 @@
     }
 
     priceEl.addEventListener("input", debounce(save, 400));
-    amountEl.addEventListener("input", debounce(save, 400));
     dateEl.addEventListener("change", save);
 
     function paint() {
@@ -427,10 +419,11 @@
     return handle;
   }
 
-  /* How this record stands against the others — first on the price as it is,
-     then, when there is an amount to divide by, on the same quantity. The two
-     answers differ whenever the shops sell different sizes, and that is the
-     whole reason the app exists. */
+  /* How this record stands against the others. The comparison is on the price
+     as it is — what you actually hand over at the till — because the same
+     thing in the same size is what gets bought week after week. When it is
+     sold by the pack the price of one is shown underneath, but it never
+     changes which shop is cheapest: every shop is divided by the same count. */
   function paintCompare(host, productId, priceId) {
     const p = store.getProduct(productId);
     const pr = p.prices.find((x) => x.id === priceId);
@@ -447,22 +440,11 @@
                  <b class="cmp-bad">${yen(diff)} 高い</b></span>`);
     }
 
-    const up = unitPrice(pr.price, pr.amount || p.amount, p.unit);
+    const up = perItemPrice(pr.price, p.amount, p.unit);
     if (up) {
-      const all = others
-        .map((x) => ({ x, u: unitPrice(x.price, x.amount || p.amount, p.unit) }))
-        .filter((r) => r.u)
-        .sort((a, b) => a.u.value - b.u.value);
-      const bestUnit = all[0];
-      rows.push(html`<span>同じ量あたり <b>${up.text}</b></span>`);
-      if (bestUnit && all.length > 1) {
-        rows.push(bestUnit.x.id === priceId
-          ? html`<span class="cmp-good">量あたりでもいちばん安い</span>`
-          : html`<span>量あたりで安いのは
-                   <b>${store.getStore(bestUnit.x.storeId).name}</b>（${bestUnit.u.text}）</span>`);
-      }
-    } else if (!p.unit) {
-      rows.push(html`<span style="color:var(--c-text-3)">商品に内容量を設定すると、量あたりでも比べられます</span>`);
+      rows.push(html`<span>${formatSize(p.amount, p.unit)}入りなので <b>${up.text}</b></span>`);
+    } else if (isCounted(p.unit)) {
+      rows.push(html`<span style="color:var(--c-text-3)">入数を入れると、1${p.unit}あたりの値段も出ます</span>`);
     }
 
     host.innerHTML = "";
@@ -484,14 +466,14 @@
     host.append(node(html`<span class="field-label">このお店での記録（${String(log.length)}件）</span>`));
     const list = node(html`<div class="stack" style="gap:6px"></div>`);
     log.forEach((x) => {
-      const up = unitPrice(x.price, x.amount || p.amount, p.unit);
+      const up = perItemPrice(x.price, p.amount, p.unit);
       const row = node(html`
         <div class="log-row ${x.id === currentId ? "is-current" : ""}">
           <span class="log-date">${formatDate(x.date)}</span>
           <span class="log-price">${yen(x.price)}</span>
           <span class="log-unit">${up ? up.text : ""}</span>
           ${x.id === currentId
-            ? html`<span class="log-tag">いま見ている記録</span>`
+            ? html`<span class="log-tag">いま見ている</span>`
             : html`<button class="icon-btn is-danger js-drop" aria-label="この記録を削除">${icon("close")}</button>`}
         </div>
       `);
@@ -527,20 +509,20 @@
     return out.toISOString();
   }
 
-  /* The two fields take a sum, not just a number, and the pad supplies the
+  /* The price field takes a sum, not just a number, and the pad supplies the
      operators the system keypad does not have. This is the readout for it:
      what the sum comes to, live, right above the pad. */
   function wireCalculator(form) {
     const strip = form.querySelector(".js-calc");
     const out = form.querySelector(".js-calc-out");
-    const fields = [form.querySelector(".js-price"), form.querySelector(".js-size")].filter(Boolean);
+    const fields = [form.querySelector(".js-price")].filter(Boolean);
     let last = fields[0];
 
     function paint() {
       const v = last && last.value;
       const n = KN.util.calc(v);
       if (KN.util.isExpression(v) && n != null) {
-        out.textContent = last === fields[1] ? `= ${Math.round(n * 100) / 100}` : `= ${yen(n)}`;
+        out.textContent = `= ${yen(n)}`;
         out.classList.remove("is-idle");
       } else if (KN.util.isExpression(v)) {
         out.textContent = "…";
@@ -580,20 +562,16 @@
           <input class="input js-price" type="text"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="値段" style="flex:1.2" required>
-          <input class="input js-size" type="text"
-                 autocomplete="off" autocorrect="off" spellcheck="false"
-                 placeholder="${p.unit ? `内容量(${p.unit})` : "内容量"}" style="flex:1"
-                 ${p.unit ? "" : KN.util.raw("disabled")}>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
         </div>
         <div class="calc-row js-calc" hidden>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
-        <p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
-          ${p.unit
-            ? html`内容量は、その店だけ容量が違うときに入れてください（空なら ${formatSize(p.amount, p.unit) || "商品の内容量"} を使います）`
-            : html`上の「内容量」を設定すると、100gあたりなどの単価でも比べられます`}
-        </p>
+        ${perItemPrice(1, p.amount, p.unit)
+          ? html`<p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
+                   ${formatSize(p.amount, p.unit)}入りとして、1${p.unit}あたりの値段も出します
+                 </p>`
+          : ""}
       </form>
     `);
 
@@ -608,7 +586,6 @@
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const priceEl = form.querySelector(".js-price");
-      const sizeEl = form.querySelector(".js-size");
       // 「198+250」 is stored as 448. calc() returns null for a plain number,
       // so a straight price still goes through parseNum as before.
       const price = KN.util.calc(priceEl.value);
@@ -620,14 +597,9 @@
       if (!selectedStore) { KN.ui.toast("お店を選んでください"); return; }
       if (!isFinite(price) || price < 0) { KN.ui.toast("値段を入力してください"); return; }
 
-      store.addPrice(productId, {
-        storeId: selectedStore,
-        price,
-        amount: KN.util.calc(sizeEl.value),
-      });
+      store.addPrice(productId, { storeId: selectedStore, price });
       haptic(12);
       priceEl.value = "";
-      sizeEl.value = "";
       onAdded();
     });
 

@@ -5,7 +5,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, yen, unitPrice, formatSize, haptic } = KN.util;
+  const { html, node, icon, yen, perItemPrice, formatSize, haptic } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -184,7 +184,7 @@
     const best = prices[0] || null;
     const bestStore = best ? store.getStore(best.storeId) : null;
     const size = formatSize(product.amount, product.unit);
-    const up = best ? unitPrice(best.price, best.amount || product.amount, product.unit) : null;
+    const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
 
     const card = node(html`
       <button class="product" style="--cat:${store.productColor(product)}">
