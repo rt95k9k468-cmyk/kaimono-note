@@ -63,16 +63,33 @@ button, [role="tab"] {
 .btn-sm svg { width: 16px; height: 16px; }
 
 .btn-primary { background: var(--c-primary); color: #fff; box-shadow: var(--shadow-1); }
-.btn-primary:hover { background: var(--c-primary-2); }
+/* =========================================================
+   Hover, only where a pointer can actually hover
+
+   A touch screen has no hover state to leave. iOS fakes one on tap and then
+   leaves it there until something else is tapped — so a long press on a card
+   lit it up and it stayed lit long after the finger had gone. Every :hover
+   rule in this app is gated behind `@media (hover: hover)`; the feedback a
+   finger gets is :active, which ends with the press.
+   ========================================================= */
+@media (hover: hover) {
+  .btn-primary:hover { background: var(--c-primary-2); }
+}
 
 .btn-soft { background: var(--c-surface-2); color: var(--c-text); }
-.btn-soft:hover { background: var(--c-surface-3); }
+@media (hover: hover) {
+  .btn-soft:hover { background: var(--c-surface-3); }
+}
 
 .btn-ghost { color: var(--c-text-2); }
-.btn-ghost:hover { background: var(--c-surface-2); }
+@media (hover: hover) {
+  .btn-ghost:hover { background: var(--c-surface-2); }
+}
 
 .btn-danger { background: var(--c-danger-soft); color: var(--c-danger); }
-.btn-danger:hover { background: color-mix(in srgb, var(--c-danger) 16%, transparent); }
+@media (hover: hover) {
+  .btn-danger:hover { background: color-mix(in srgb, var(--c-danger) 16%, transparent); }
+}
 
 .btn-block { width: 100%; }
 .btn-sm { height: 40px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
@@ -98,10 +115,14 @@ button, [role="tab"] {
   transform: translate(-50%, -50%);
 }
 
-.icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
+@media (hover: hover) {
+  .icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
+}
 .icon-btn:active { transform: scale(.92); }
 .icon-btn svg { width: 20px; height: 20px; stroke-width: 2; }
-.icon-btn.is-danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
+@media (hover: hover) {
+  .icon-btn.is-danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
+}
 
 /* ---------------- fields ---------------- */
 
@@ -194,7 +215,9 @@ button, [role="tab"] {
 }
 
 .chip:active { transform: scale(.95); }
-.chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
+@media (hover: hover) {
+  .chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
+}
 
 /* A selected category chip wears that category's own colour, so the filter and
    the rows it leaves on screen say the same thing. Chips with no category
@@ -526,7 +549,9 @@ button, [role="tab"] {
   border-radius: var(--r-sm);
   flex: none;
 }
-.toast-action:hover { background: rgba(255,255,255,.1); }
+@media (hover: hover) {
+  .toast-action:hover { background: rgba(255,255,255,.1); }
+}
 
 @keyframes toast-in  { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to   { opacity: 0; transform: translateY(8px) scale(.98); } }
@@ -565,7 +590,9 @@ button, [role="tab"] {
 }
 
 .row:last-child { border-bottom: none; }
-.row:hover { background: var(--c-surface-2); }
+@media (hover: hover) {
+  .row:hover { background: var(--c-surface-2); }
+}
 .row-main { flex: 1; min-width: 0; }
 .row-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
