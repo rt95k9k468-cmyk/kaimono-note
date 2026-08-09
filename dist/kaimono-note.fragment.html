@@ -189,7 +189,12 @@ a { color: var(--c-primary); }
 .app {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* The app ends where the keyboard begins. Shrinking the whole shell is far
+     steadier than leaving it full height and lifting the add bar by --kb:
+     with nothing left underneath, iOS has no room to scroll the page in order
+     to reveal the focused field, which is what used to leave the bar sitting
+     somewhere unrelated to the keyboard. */
+  height: calc(100dvh - var(--kb, 0px));
   max-width: var(--maxw);
   margin-inline: auto;
   background: var(--c-bg);
@@ -842,12 +847,13 @@ button, [role="tab"] {
 /* ================= LIST SCREEN ================= */
 
 /* Docked to the bottom of the list screen, where a thumb can reach it.
-   `margin-top:auto` handles a short list (pushes it down), `sticky` handles
-   a long one (keeps it in view while the items scroll underneath), and
-   --kb lifts it clear of the soft keyboard. */
+   `margin-top:auto` handles a short list (pushes it down) and `sticky` handles
+   a long one (keeps it in view while the items scroll underneath). No keyboard
+   offset here — the shell above is already sized to stop at the keyboard, so
+   the bottom of this screen is the top of the keyboard. */
 .quick-add {
   position: sticky;
-  bottom: var(--kb, 0px);
+  bottom: 0;
   margin-top: auto;
   z-index: 20;
   padding: var(--sp-3) var(--sp-4);
