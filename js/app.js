@@ -126,36 +126,47 @@
     registerServiceWorker();
   }
 
-  /* The soft keyboard shrinks the visual viewport but leaves the layout
-     viewport alone, so the bottom-docked add bar would end up behind it.
-     Publishing the covered height as --kb lets the bar ride above the
-     keyboard, and the tab bar steps aside while typing — nobody switches
-     tabs mid-word, and hiding it means the bar's offset is simply --kb. */
+  /* iOS does not resize the page when the keyboard appears. It shrinks the
+     *visual* viewport — the window you are looking through — and slides that
+     window down the page to bring the focused field into it. The page keeps
+     its full height, so the app now starts above what you can see, which
+     reads as the whole thing having slid off the top of the screen.
+
+     Chasing that with arithmetic on the keyboard's height was the wrong idea
+     twice over: the page never moved, so there was no page scroll to undo,
+     and shortening the app did not stop the window from sliding. What works
+     is following the window itself — size the shell to what is visible and
+     move it to wherever that visible region currently is. Then the bottom of
+     the app is the top of the keyboard by construction. */
   function trackKeyboard() {
     const vv = window.visualViewport;
-    if (!vv) return;   // Without it the bar stays at the bottom, as before.
+    if (!vv) return;   // Falls back to the CSS 100dvh, as before.
     const root = document.documentElement;
+    const app = document.getElementById("app");
+    if (!app) return;
 
-    const apply = () => {
-      const covered = window.innerHeight - vv.height - vv.offsetTop;
+    const fit = () => {
+      const h = Math.round(vv.height);
+      const top = Math.round(vv.offsetTop);
+      app.style.height = h + "px";
+      app.style.transform = top ? `translateY(${top}px)` : "";
+
+      // How much of the screen the keyboard took. Deliberately ignores
+      // offsetTop: how far the window has been slid says nothing about the
+      // keyboard's height, and subtracting it made a fully-slid viewport —
+      // exactly what iOS produces — look like no keyboard at all.
+      const covered = window.innerHeight - vv.height;
       // Browser chrome sliding in and out moves this by a few dozen pixels;
-      // only a keyboard takes this much of the screen.
-      const kb = covered > 120 ? Math.round(covered) : 0;
-      root.style.setProperty("--kb", kb + "px");
-      root.classList.toggle("kb-open", kb > 0);
-
-      // iOS shoves the document upwards to reveal the focused field before the
-      // shell has had a chance to shrink out of the keyboard's way. Once it
-      // has, the page has nowhere left to go, so put it back — otherwise that
-      // borrowed scroll stays behind and the whole app looks shifted up.
-      if (window.scrollY || window.pageYOffset) window.scrollTo(0, 0);
+      // only a keyboard takes this much.
+      root.classList.toggle("kb-open", covered > 120);
     };
 
-    vv.addEventListener("resize", apply);
-    vv.addEventListener("scroll", apply);
-    // The shove can also land a frame or two after the viewport settles.
-    window.addEventListener("focusin", () => setTimeout(apply, 300));
-    apply();
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    // The slide can land a frame or two after the viewport itself settles.
+    window.addEventListener("focusin", () => setTimeout(fit, 350));
+    window.addEventListener("orientationchange", () => setTimeout(fit, 350));
+    fit();
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

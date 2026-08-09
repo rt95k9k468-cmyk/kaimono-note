@@ -138,12 +138,6 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  /* The app is exactly one screenful and every list scrolls inside itself, so
-     the page must never scroll. Without this iOS slides the whole document up
-     to reveal a focused field and leaves it there, which reads as the app
-     having drifted off the top of the screen. */
-  overflow: hidden;
-  overscroll-behavior: none;
 }
 
 body {
@@ -192,12 +186,10 @@ a { color: var(--c-primary); }
 .app {
   display: flex;
   flex-direction: column;
-  /* The app ends where the keyboard begins. Shrinking the whole shell is far
-     steadier than leaving it full height and lifting the add bar by --kb:
-     with nothing left underneath, iOS has no room to scroll the page in order
-     to reveal the focused field, which is what used to leave the bar sitting
-     somewhere unrelated to the keyboard. */
-  height: calc(100dvh - var(--kb, 0px));
+  /* Starting size only. Once the page is running, app.js keeps this matched to
+     the visual viewport — the part of the page actually on screen — because
+     that is what the keyboard changes on iOS. */
+  height: 100dvh;
   max-width: var(--maxw);
   margin-inline: auto;
   background: var(--c-bg);
@@ -303,9 +295,8 @@ a { color: var(--c-primary); }
   z-index: 30;
 }
 
-/* While the keyboard is up the tab bar is unreachable anyway, and dropping it
-   lets the screens area run to the bottom of the layout viewport — which is
-   what makes the add bar's --kb offset land exactly on the keyboard. */
+/* Nobody switches tabs mid-word, and the room is better spent on the list
+   while the keyboard has the bottom half of the screen. */
 .kb-open .tabbar { display: none; }
 
 .tab {
