@@ -75,45 +75,12 @@
     };
 
     wireQuickAdd();
-    wireKeyboardDismiss();
 
     els.clear.addEventListener("click", clearChecked);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
     });
-  }
-
-  /* ---------------- dismissing the keyboard ---------------- */
-
-  /* On a phone the keyboard covers half the screen and, left to itself, stays
-     up until something else takes focus. Two ways out, both of which people
-     already expect: touch anywhere that is not the add bar, or flick the list
-     downwards the way the keyboard would go.
-
-     A touch cannot be seen while it is on the keyboard itself — that belongs to
-     the OS, not the page — so the downward flick is read from the list area. */
-  function wireKeyboardDismiss() {
-    const typing = () => document.activeElement === els.input;
-    const inAddBar = (t) => !!(t && t.closest && t.closest(".quick-add"));
-
-    document.addEventListener("pointerdown", (e) => {
-      if (!typing() || inAddBar(e.target)) return;
-      els.input.blur();
-    }, true);
-
-    let downY = null;
-    root.addEventListener("pointerdown", (e) => {
-      downY = inAddBar(e.target) ? null : e.clientY;
-    }, true);
-    root.addEventListener("pointermove", (e) => {
-      if (downY === null || !typing()) return;
-      if (e.clientY - downY > 40) {   // a deliberate downward flick
-        els.input.blur();
-        downY = null;
-      }
-    }, true);
-    root.addEventListener("pointerup", () => { downY = null; }, true);
   }
 
   /* ---------------- quick add + autocomplete ---------------- */
