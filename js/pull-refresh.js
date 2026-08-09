@@ -120,6 +120,33 @@
     // scroll does not bubble; the capture phase is how one listener covers
     // every screen, including ones mounted later.
     host.addEventListener("scroll", onScroll, true);
+
+    /* Switching apps mid-gesture can take the touch away without a touchend
+       ever arriving, and the page is suspended before the band can spring
+       back. On the way in it would then still be held open — a screen sitting
+       an inch off the top with no way to put it back. Whatever was in flight
+       when the app left is over; drop it and start square. */
+    document.addEventListener("visibilitychange", clear);
+    window.addEventListener("pageshow", clear);
+  }
+
+  /** Abandon any band, gesture or animation, and put the screen back. */
+  function clear() {
+    armed = engaged = out = bare = false;
+    edge = null;
+    if (loop) { cancelAnimationFrame(loop); loop = 0; }
+    target = shown = 0;
+    lastEl = null;
+    if (ptr) {
+      ptr.style.opacity = "0";
+      ptr.style.transform = "";
+    }
+    // The refresh keeps running if it was mid-flight; only the motion stops.
+    host.querySelectorAll(".screen").forEach((el) => {
+      el.style.transform = "";
+      el.style.willChange = "";
+    });
+    if (ptr) ptr.style.willChange = "";
   }
 
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */

@@ -220,6 +220,25 @@
     window.addEventListener("focusin", settle);
     window.addEventListener("focusout", settle);
     window.addEventListener("orientationchange", settle);
+
+    /* Coming back from the app switcher is the other moment these numbers go
+       stale. iOS suspends the page as it leaves, and on the way back it
+       restores the window without necessarily firing a resize or a scroll on
+       the visual viewport — so the shell keeps whatever height it was pinned
+       to when it went away (the keyboard's, if a field had focus), and any
+       document scroll iOS left behind stays applied. Both read on screen as
+       the whole app sitting too high.
+
+       So: measure again on the way back, immediately and then across the next
+       second, because the window keeps moving for a while after the app is
+       handed back. */
+    const resume = () => { fit(); settle(); setTimeout(fit, 1000); };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") resume();
+    });
+    window.addEventListener("pageshow", resume);
+    window.addEventListener("focus", resume);
+
     fit();
     dismissKeyboardOnSwipeDown();
   }
