@@ -764,12 +764,18 @@ button, [role="tab"] {
 
 /* ---------------- sheet (bottom modal) ---------------- */
 
+/* All the blurring happens here rather than on the sheet itself. The sheet is
+   moved by `transform`, and a backdrop-filter inside a transformed element is
+   unreliable — Safari has shipped versions where it samples nothing at all.
+   This layer is untransformed and covers the whole window, so blurring it once
+   and letting the translucent sheet sit on top gives the frosted look with
+   nothing depending on that. */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 20, 14, .42);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(10, 20, 14, .24);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
   z-index: 100;
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
@@ -788,7 +794,11 @@ button, [role="tab"] {
   bottom: var(--kb, 0px);
   width: min(100%, var(--maxw));
   max-height: min(90dvh, 780px, var(--vvh, 100dvh));
-  background: var(--c-bg-elev);
+  /* Tinted, not opaque. With a keyboard up the sheet is as tall as everything
+     still visible, and a solid panel that size stops reading as a sheet over
+     the app and starts reading as a blank screen. The blur it sits on comes
+     from .sheet-backdrop above. */
+  background: color-mix(in srgb, var(--c-bg-elev) 76%, transparent);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--shadow-3);
   z-index: 101;
@@ -858,7 +868,8 @@ button, [role="tab"] {
   border-top: 1px solid var(--c-border);
   display: flex;
   gap: var(--sp-2);
-  background: var(--c-bg-elev);
+  /* Nothing scrolls under it — .sheet-body is its own flex child — so it can
+     stay clear and let the sheet's own tint show through. */
 }
 
 /* Drawn product icons stand in for emoji, so they size themselves off the
