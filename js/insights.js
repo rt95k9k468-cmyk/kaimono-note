@@ -10,7 +10,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { yen, formatDate, unitPrice } = KN.util;
+  const { yen, formatDate } = KN.util;
   const store = KN.store;
 
   const STALE_DAYS = 90;
@@ -53,36 +53,9 @@
     return out;
   }
 
-  /* Cheapest sticker price is not always cheapest per millilitre — the whole
-     reason the app records sizes at all. */
-  function unitPriceUpsets(products) {
-    const out = [];
-    products.forEach((p) => {
-      if (!p.unit) return;
-      const rows = store.currentPrices(p)
-        .map((pr) => {
-          const amount = pr.amount || p.amount;
-          const u = unitPrice(pr.price, amount, p.unit);
-          return u ? { pr, u, st: store.getStore(pr.storeId) } : null;
-        })
-        .filter((r) => r && r.st);
-      if (rows.length < 2) return;
-
-      const byPrice = rows.slice().sort((a, b) => a.pr.price - b.pr.price)[0];
-      const byUnit  = rows.slice().sort((a, b) => a.u.value - b.u.value)[0];
-      if (byPrice === byUnit) return;
-
-      out.push({
-        kind: "unit-price",
-        weight: 70,
-        icon: "⚖️",
-        title: `${p.name}は${byUnit.st.name}の方が割安`,
-        body: `${byPrice.st.name} ${yen(byPrice.pr.price)}（${byPrice.u.text}）より、`
-            + `${byUnit.st.name} ${yen(byUnit.pr.price)}（${byUnit.u.text}）の方が量あたりは安く済みます`,
-      });
-    });
-    return out;
-  }
+  /* 「値段は高いが量あたりは安い」 という指摘はもう出ない。同じものを同じ
+     大きさで買うのだから、比べるのは値段そのもの。入数で割るときも全店を
+     同じ数で割るので、順番は変わらない。 */
 
   /* Is this trip worth splitting across shops, or is one stop good enough? */
   function tripRouting(items) {
@@ -169,7 +142,6 @@
     const found = [
       ...tripRouting(items),
       ...priceMoves(products),
-      ...unitPriceUpsets(products),
       ...stalePrices(products),
     ];
 

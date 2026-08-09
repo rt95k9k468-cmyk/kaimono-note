@@ -136,29 +136,28 @@
     return formatDate(iso);
   }
 
-  /* ---------- unit price ---------- */
+  /* ---------- price per item ---------- */
 
-  const UNITS = ["ml", "L", "g", "kg", "個", "枚", "本", "袋", "ロール", "パック"];
+  /* Counted units first: those are the ones the price gets divided by.
+     Volume and weight are kept because writing 「500ml」 on a product is
+     useful as a note to self, but nobody shops by the 100ml — a bottle of
+     detergent is one bottle whatever it holds. */
+  const COUNTED_UNITS = ["個", "袋", "本", "枚", "ロール", "パック"];
+  const UNITS = [...COUNTED_UNITS, "ml", "L", "g", "kg"];
+
+  const isCounted = (unit) => COUNTED_UNITS.indexOf(unit) >= 0;
 
   /**
-   * Normalised unit price. ml/L → per 100ml, g/kg → per 100g,
-   * countable units → per 1.
-   * Returns { text, value } where `value` is comparable within a unit family.
+   * Price of one of them. Only counted units divide: 「10個 ¥298」 is
+   * ¥29.8 each, while 「500ml ¥298」 is just ¥298 — there is nothing to
+   * split. Returns null when the price is already the price of one, so a
+   * caller can simply skip the line.
    */
-  function unitPrice(price, amount, unit) {
-    if (!isFinite(price) || !isFinite(amount) || amount <= 0 || !unit) return null;
-
-    let base = amount;
-    let label = unit;
-    if (unit === "L")  { base = amount * 1000; label = "ml"; }
-    if (unit === "kg") { base = amount * 1000; label = "g"; }
-
-    if (label === "ml" || label === "g") {
-      const per100 = (price / base) * 100;
-      return { text: `100${label} ${yenFine(per100)}`, value: price / base, label };
-    }
+  function perItemPrice(price, amount, unit) {
+    if (!isFinite(price) || !isCounted(unit)) return null;
+    if (!isFinite(amount) || amount < 2) return null;
     const per1 = price / amount;
-    return { text: `1${label} ${yenFine(per1)}`, value: per1, label };
+    return { text: `1${unit}あたり ${yenFine(per1)}`, value: per1, label: unit, count: amount };
   }
 
   /** "500ml" / "3個" — human readable size of a product. */
@@ -287,7 +286,7 @@
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, relativeDate, foldKana,
-    unitPrice, formatSize, UNITS,
+    perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,
   };
