@@ -5374,6 +5374,33 @@ button, [role="tab"] {
     // scroll does not bubble; the capture phase is how one listener covers
     // every screen, including ones mounted later.
     host.addEventListener("scroll", onScroll, true);
+
+    /* Switching apps mid-gesture can take the touch away without a touchend
+       ever arriving, and the page is suspended before the band can spring
+       back. On the way in it would then still be held open — a screen sitting
+       an inch off the top with no way to put it back. Whatever was in flight
+       when the app left is over; drop it and start square. */
+    document.addEventListener("visibilitychange", clear);
+    window.addEventListener("pageshow", clear);
+  }
+
+  /** Abandon any band, gesture or animation, and put the screen back. */
+  function clear() {
+    armed = engaged = out = bare = false;
+    edge = null;
+    if (loop) { cancelAnimationFrame(loop); loop = 0; }
+    target = shown = 0;
+    lastEl = null;
+    if (ptr) {
+      ptr.style.opacity = "0";
+      ptr.style.transform = "";
+    }
+    // The refresh keeps running if it was mid-flight; only the motion stops.
+    host.querySelectorAll(".screen").forEach((el) => {
+      el.style.transform = "";
+      el.style.willChange = "";
+    });
+    if (ptr) ptr.style.willChange = "";
   }
 
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */
@@ -8612,6 +8639,25 @@ button, [role="tab"] {
     window.addEventListener("focusin", settle);
     window.addEventListener("focusout", settle);
     window.addEventListener("orientationchange", settle);
+
+    /* Coming back from the app switcher is the other moment these numbers go
+       stale. iOS suspends the page as it leaves, and on the way back it
+       restores the window without necessarily firing a resize or a scroll on
+       the visual viewport — so the shell keeps whatever height it was pinned
+       to when it went away (the keyboard's, if a field had focus), and any
+       document scroll iOS left behind stays applied. Both read on screen as
+       the whole app sitting too high.
+
+       So: measure again on the way back, immediately and then across the next
+       second, because the window keeps moving for a while after the app is
+       handed back. */
+    const resume = () => { fit(); settle(); setTimeout(fit, 1000); };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") resume();
+    });
+    window.addEventListener("pageshow", resume);
+    window.addEventListener("focus", resume);
+
     fit();
     dismissKeyboardOnSwipeDown();
   }
