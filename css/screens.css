@@ -493,7 +493,39 @@
 
 .product-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 
+.product-wrap {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+/* What a rightward swipe uncovers. Hidden until the gesture starts, so
+   resting a finger on a card never hints at it. */
+.product-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+  background: var(--c-primary);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  visibility: hidden;
+}
+.product-hint svg { width: 18px; height: 18px; stroke-width: 2.6; }
+/* Already on the list: the panel still appears, so the gesture is never a
+   dead end, but it says so plainly and in a colour that promises nothing. */
+.product-wrap.is-there .product-hint { background: var(--c-surface-3); color: var(--c-text-2); }
+/* Until the card has travelled far enough, the panel stays understated —
+   full strength is the signal that letting go will do something. */
+.product-hint > * { opacity: .55; transform: translateX(-4px); transition: opacity .14s var(--ease), transform .18s var(--ease-out); }
+.product-wrap.is-armed .product-hint > * { opacity: 1; transform: none; }
+.product-wrap.is-swiping .product-hint { visibility: visible; }
+
 .product {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -504,10 +536,28 @@
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
-  transition: background .14s var(--ease), transform .12s;
+  transition: background .14s var(--ease),
+              transform .52s cubic-bezier(.16, .84, .24, 1);
+  /* Vertical stays with the screen so it can still scroll; horizontal comes
+     to the swipe handler — the buttons inside included. */
+  touch-action: pan-y;
+}
+.product button { touch-action: pan-y; }
+.product-wrap.is-swiping .product { will-change: transform; }
+/* Square off the left corners while the panel behind is showing, or two
+   crescent gaps open up against its straight edge. */
+.product-wrap.is-swiping .product {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 .product:hover { background: var(--c-surface-2); }
-.product:active { transform: scale(.995); }
+
+/* On the shopping list: the circle on the left is already filled, and the
+   border picks up the same green so a glance down the column separates the
+   ones in play from the ones merely on record. */
+.product.is-listed {
+  border-color: color-mix(in srgb, var(--c-primary) 42%, var(--c-border));
+}
 
 .product-emoji {
   flex: none;
@@ -519,7 +569,13 @@
   font-size: 21px;
 }
 
-.product-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+/* Also a <button> — the part of the card that opens the product. */
+.product-main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: left;
+  border: none; background: none; padding: 0;
+}
 .product-name { font-size: var(--fs-lg); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
 

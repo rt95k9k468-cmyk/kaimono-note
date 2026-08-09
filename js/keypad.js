@@ -73,11 +73,24 @@
     });
     pad.querySelector(".js-ok").addEventListener("click", commit);
 
-    // A key must never steal the caret. Cancelling the press keeps focus, and
-    // the field stays lit as though a real keyboard were open.
-    pad.addEventListener("pointerdown", (e) => {
-      if (e.target.closest(".key")) e.preventDefault();
-    });
+    /* Nothing on the pad may steal the caret — not the keys, and not the gaps
+       between them. Landing a fast thumb a few pixels wide of a key used to
+       blur the field, and the blur handler below then put the pad away
+       mid-sum. Cancelling the press on the whole pad keeps focus wherever the
+       finger lands; clicks still fire, so the keys work exactly as before. */
+    pad.addEventListener("pointerdown", (e) => e.preventDefault());
+    pad.addEventListener("mousedown", (e) => e.preventDefault());
+
+    /* Since a lost caret no longer takes the pad down with it (see
+       restoreOrClose), there has to be a deliberate way out other than 確定:
+       a press anywhere that is neither the pad nor the field it is typing
+       into means the user is done with it. */
+    document.addEventListener("pointerdown", (e) => {
+      if (!isOpen()) return;
+      if (pad.contains(e.target)) return;
+      if (field && (e.target === field || field.contains(e.target))) return;
+      close();
+    }, true);
 
     document.getElementById("sheet-root").append(pad);
   }
@@ -175,6 +188,22 @@
 
   const isOpen = () => !!(pad && !pad.hidden);
 
+  /* Focus left the field — but where did it go? Onto another control is a
+     real exit and the pad goes away. Nowhere at all (activeElement back on
+     <body>, or on the pad itself) means the tap simply fell off the edge of a
+     key, and taking the pad down there loses the sum the user is halfway
+     through typing. Hand the caret back and stay open. */
+  function restoreOrClose(input) {
+    const a = document.activeElement;
+    const wentNowhere = !a || a === document.body || a === document.documentElement
+      || (pad && pad.contains(a));
+    if (isOpen() && field === input && wentNowhere && input.isConnected) {
+      input.focus({ preventScroll: true });
+      return;
+    }
+    close();
+  }
+
   /**
    * Give a field this pad instead of the system keyboard.
    * @param {HTMLInputElement} input
@@ -193,9 +222,9 @@
     // so tapping a field the pad was dismissed over has to bring it back too.
     input.addEventListener("click", () => { if (!isOpen()) open(input, options); });
     input.addEventListener("blur", () => {
-      // A tap on a key cancels its own press, so focus never actually leaves
-      // while the pad is in use. Anything that does get here is a real exit.
-      setTimeout(() => { if (document.activeElement !== input) close(); }, 60);
+      setTimeout(() => {
+        if (document.activeElement !== input) restoreOrClose(input);
+      }, 60);
     });
   }
 

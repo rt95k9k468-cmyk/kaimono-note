@@ -178,18 +178,33 @@
     els.body.append(list);
   }
 
+  /** The item on the shopping list for this product, if it is on it. */
+  const listedItem = (productId) => store.get().items.find((i) => i.productId === productId) || null;
+
   function productCard(product) {
-    const cat = store.getCategory(product.categoryId);
     const prices = store.currentPrices(product);
     const best = prices[0] || null;
     const bestStore = best ? store.getStore(best.storeId) : null;
     const size = formatSize(product.amount, product.unit);
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
+    const listed = listedItem(product.id);
+
+    /* Two layers, like the rows on the list screen: the panel underneath is
+       what the swipe uncovers, the card on top is what moves. */
+    const wrap = node(html`
+      <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
+        <div class="product-hint">
+          ${listed ? icon("check") : icon("plus")}<span>${listed ? "リストにあります" : "リストへ"}</span>
+        </div>
+      </article>
+    `);
 
     const card = node(html`
-      <button class="product" style="--cat:${store.productColor(product)}">
-        <span class="product-emoji">${store.productMark(product)}</span>
-        <span class="product-main">
+      <div class="product ${listed ? "is-listed" : ""}">
+        <button class="check js-pick" role="checkbox" aria-checked="${String(!!listed)}"
+                aria-label="${product.name} を買うものリストに${listed ? "入れない" : "入れる"}">${icon("check")}</button>
+        <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
+        <button class="product-main js-open">
           <span class="product-name">${product.name}</span>
           <span class="product-meta">
             ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
@@ -198,7 +213,7 @@
               : html`<span style="color:var(--c-text-3)">値段は未登録</span>`}
             ${up ? html`<span style="color:var(--c-text-3)">${up.text}</span>` : ""}
           </span>
-        </span>
+        </button>
         <span class="item-price">
           ${best && bestStore
             ? html`
@@ -207,11 +222,145 @@
               `
             : html`<span class="item-price-none">—</span>`}
         </span>
-      </button>
+      </div>
     `);
+    wrap.append(card);
 
-    card.addEventListener("click", () => KN.productSheet.open(product.id));
-    return card;
+    card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
+    card.querySelector(".js-pick").addEventListener("click", () => toggleListed(product));
+    attachAddSwipe(wrap, card, product);
+    return wrap;
+  }
+
+  /* The circle on the left says whether this product is on the shopping list,
+     and puts it on or takes it off. Same control as the list screen's
+     checkbox — there it means 買った, here it means 買う — so the two screens
+     read the same way round: filled means "this one is in play". */
+  function toggleListed(product) {
+    const item = listedItem(product.id);
+    haptic(12);
+    if (!item) {
+      store.addItem(product.id);
+      KN.ui.toast(`「${product.name}」をリストに追加しました`);
+      return;
+    }
+    const at = store.get().items.indexOf(item);
+    store.update((s) => { s.items = s.items.filter((i) => i.id !== item.id); });
+    KN.ui.toast(`「${product.name}」をリストから外しました`, {
+      action: {
+        label: "元に戻す",
+        onClick: () => store.update((s) => {
+          const next = s.items.slice();
+          next.splice(Math.max(0, Math.min(at, next.length)), 0, item);
+          s.items = next;
+        }),
+      },
+    });
+  }
+
+  /* ---------------- swipe right to put it on the list ---------------- */
+
+  /* Rightwards, and it springs straight back — nothing stays open, because
+     there is no second step to confirm. The pull is deliberately heavy past
+     the trigger so the card tells you when it has gone far enough. */
+  function attachAddSwipe(wrap, card, product) {
+    const TRIGGER = 68;
+    const MAX = 104;
+    const SLOP = 14;
+    const DOMINANCE = 1.6;
+    let startX = 0, startY = 0, dx = 0;
+    let dragging = false, decided = false, pointerId = null, swallowClick = false;
+    let armed = false, pending = null, rafId = 0;
+
+    const paint = () => {
+      rafId = 0;
+      if (pending === null) return;
+      card.style.transform = `translate3d(${pending}px, 0, 0)`;
+    };
+    const schedule = (v) => {
+      pending = v;
+      if (!rafId) rafId = requestAnimationFrame(paint);
+    };
+
+    card.addEventListener("touchmove", (e) => { if (dragging) e.preventDefault(); }, { passive: false });
+
+    card.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      dragging = false;
+      decided = false;
+      armed = false;
+    });
+
+    card.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      const mx = e.clientX - startX;
+      const my = e.clientY - startY;
+
+      if (!decided) {
+        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
+        decided = true;
+        dragging = mx >= SLOP && mx > Math.abs(my) * DOMINANCE;
+        if (!dragging) return;
+        card.setPointerCapture(pointerId);
+        card.style.transition = "none";
+        wrap.classList.add("is-swiping");
+      }
+      if (!dragging) return;
+
+      // Past the trigger the card only creeps, so the finger feels the edge.
+      dx = mx <= TRIGGER ? mx : TRIGGER + (mx - TRIGGER) * 0.32;
+      dx = Math.min(MAX, dx);
+      const nowArmed = dx >= TRIGGER;
+      if (nowArmed !== armed) {
+        armed = nowArmed;
+        wrap.classList.toggle("is-armed", armed);
+        if (armed) haptic(10);
+      }
+      schedule(dx);
+    });
+
+    const finish = (e) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      if (!dragging) return;
+
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      pending = null;
+      card.style.transition = "";
+      card.style.transform = "";
+      const fired = armed;
+      dragging = false;
+      armed = false;
+      swallowClick = true;
+      // Let the card glide home before the store change rebuilds the list;
+      // committing on the spot would swap it out mid-flight.
+      setTimeout(() => {
+        wrap.classList.remove("is-swiping", "is-armed");
+        if (!fired) return;
+        if (listedItem(product.id)) {
+          KN.ui.toast(`「${product.name}」はもうリストにあります`);
+          return;
+        }
+        store.addItem(product.id);
+        haptic(14);
+        KN.ui.toast(`「${product.name}」をリストに追加しました`);
+      }, 200);
+    };
+    card.addEventListener("pointerup", finish);
+    card.addEventListener("pointercancel", finish);
+
+    // A pointer sequence still fires a click afterwards; left alone it would
+    // open the product sheet at the end of every swipe.
+    card.addEventListener("click", (e) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
   }
 
   KN.screens = KN.screens || {};
