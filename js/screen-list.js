@@ -315,7 +315,6 @@
   }
 
   function renderFilter(items) {
-    els.filter.innerHTML = "";
     const counts = new Map();
     items.filter((i) => !i.checked).forEach((i) => {
       const p = store.getProduct(i.productId);
@@ -323,36 +322,22 @@
       counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1);
     });
 
-    if (counts.size < 2) { categoryFilter = null; return; }
+    if (counts.size < 2) { categoryFilter = null; els.filter.innerHTML = ""; return; }
     if (categoryFilter && !counts.has(categoryFilter)) categoryFilter = null;
 
-    const row = node(html`<div class="chip-row"></div>`);
+    const chips = [{ id: "", label: "すべて" }].concat(
+      store.sortedCategories().filter((c) => counts.has(c.id)).map((c) => ({
+        id: c.id, label: c.name, emoji: c.emoji, color: c.color, count: counts.get(c.id),
+      })));
 
-    const all = node(html`
-      <button type="button" class="chip" aria-pressed="${String(!categoryFilter)}">すべて</button>
-    `);
-    all.addEventListener("click", () => { categoryFilter = null; render(); });
-    row.append(all);
-
-    store.sortedCategories()
-      .filter((c) => counts.has(c.id))
-      .forEach((c) => {
-        const chip = node(html`
-          <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}"
-                  style="--cat:${c.color || ""}">
-            <span class="chip-emoji">${c.emoji}</span>${c.name}
-            <span class="chip-count">${counts.get(c.id)}</span>
-          </button>
-        `);
-        chip.addEventListener("click", () => {
-          categoryFilter = categoryFilter === c.id ? null : c.id;
-          haptic();
-          render();
-        });
-        row.append(chip);
-      });
-
-    els.filter.append(row);
+    KN.ui.chipRow(els.filter, chips, {
+      activeId: categoryFilter || "",
+      onPick: (id) => {
+        categoryFilter = id && id !== categoryFilter ? id : null;
+        haptic();
+        render();
+      },
+    });
   }
 
   function renderBody(items) {
