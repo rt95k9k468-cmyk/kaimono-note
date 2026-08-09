@@ -285,6 +285,61 @@
     return { get current() { return current; } };
   }
 
+  /* ---------------- horizontal chip filter ---------------- */
+
+  /**
+   * A sideways-scrolling row of filter chips that survives a re-render.
+   *
+   * Rebuilding the row from scratch on every tap threw its scroll position
+   * away, so choosing a category that had been scrolled into view sent the
+   * whole row back to the left and the chip just pressed could end up off
+   * the screen. Here the row is kept: while the chips themselves are
+   * unchanged only `aria-pressed` moves, and the scroller is never touched.
+   * A real change — a category gaining items, or disappearing — does rebuild,
+   * and puts the scroll position back where it was.
+   *
+   * @param {HTMLElement} host
+   * @param {Array<{id:string,label:string,emoji?:string,color?:string,count?:number}>} chips
+   * @param {{activeId:string, onPick:Function}} opts
+   */
+  function chipRow(host, chips, { activeId, onPick }) {
+    const sig = chips.map((c) => `${c.id} ${c.label} ${c.count == null ? "" : c.count}`).join("|");
+    let row = host.querySelector(".chip-row");
+
+    if (row && row.dataset.sig === sig) {
+      row.querySelectorAll(".chip").forEach((el) => {
+        el.setAttribute("aria-pressed", String(el.dataset.id === String(activeId)));
+      });
+      return row;
+    }
+
+    const left = row ? row.scrollLeft : 0;
+    host.innerHTML = "";
+    row = node(html`<div class="chip-row"></div>`);
+    row.dataset.sig = sig;
+
+    chips.forEach((c) => {
+      /* Only written when there is a colour: `--cat:` with nothing after it is
+         an empty value, not an absent one, so `var(--cat, var(--c-primary))`
+         would substitute nothing and the selected 「すべて」 chip would lose
+         its green rather than fall back to it. */
+      const el = node(html`
+        <button type="button" class="chip" data-id="${c.id}"
+                aria-pressed="${String(c.id === activeId)}"
+                ${c.color ? KN.util.raw(`style="--cat:${c.color}"`) : ""}>
+          ${c.emoji ? html`<span class="chip-emoji">${c.emoji}</span>` : ""}${c.label}
+          ${c.count != null ? html`<span class="chip-count">${String(c.count)}</span>` : ""}
+        </button>
+      `);
+      el.addEventListener("click", () => onPick(c.id));
+      row.append(el);
+    });
+
+    host.append(row);
+    row.scrollLeft = left;
+    return row;
+  }
+
   /* ---------------- category picker ---------------- */
 
   function categoryPicker(container, { selectedId, onSelect }) {
@@ -320,5 +375,5 @@
     };
   }
 
-  KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker };
+  KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow };
 })();
