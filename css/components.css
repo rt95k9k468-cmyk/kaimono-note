@@ -610,6 +610,11 @@ button, [role="tab"] {
   border-top: 1px solid var(--c-border);
   box-shadow: var(--shadow-3);
   transition: transform .24s var(--ease-out);
+  /* Fast repeated taps must not be read as a double-tap: without this iOS
+     holds each press back to see whether a zoom is coming, and a quick
+     「1」「1」 can lose its second half. The keys carry it too, but the gaps
+     between them are part of the pad and need it just as much. */
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -632,6 +637,7 @@ button, [role="tab"] {
 }
 
 .key {
+  position: relative;
   height: 52px;
   border-radius: var(--r-md);
   background: var(--c-surface-2);
@@ -642,6 +648,16 @@ button, [role="tab"] {
   place-items: center;
   line-height: 1;
   transition: background .1s var(--ease), transform .08s;
+}
+
+/* The gaps between the keys were dead pixels: a fast thumb landing in one
+   pressed nothing at all. Each key reaches half a gap further in every
+   direction — neighbours meet exactly in the middle, so the pad has no gaps
+   left to miss, while the keys still look separated. */
+.key::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--sp-2) / -2);
 }
 .key:active { background: var(--c-surface-3); transform: scale(.95); }
 

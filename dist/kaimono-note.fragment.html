@@ -1091,6 +1091,11 @@ button, [role="tab"] {
   border-top: 1px solid var(--c-border);
   box-shadow: var(--shadow-3);
   transition: transform .24s var(--ease-out);
+  /* Fast repeated taps must not be read as a double-tap: without this iOS
+     holds each press back to see whether a zoom is coming, and a quick
+     「1」「1」 can lose its second half. The keys carry it too, but the gaps
+     between them are part of the pad and need it just as much. */
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1113,6 +1118,7 @@ button, [role="tab"] {
 }
 
 .key {
+  position: relative;
   height: 52px;
   border-radius: var(--r-md);
   background: var(--c-surface-2);
@@ -1123,6 +1129,16 @@ button, [role="tab"] {
   place-items: center;
   line-height: 1;
   transition: background .1s var(--ease), transform .08s;
+}
+
+/* The gaps between the keys were dead pixels: a fast thumb landing in one
+   pressed nothing at all. Each key reaches half a gap further in every
+   direction — neighbours meet exactly in the middle, so the pad has no gaps
+   left to miss, while the keys still look separated. */
+.key::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--sp-2) / -2);
 }
 .key:active { background: var(--c-surface-3); transform: scale(.95); }
 
@@ -1646,7 +1662,39 @@ button, [role="tab"] {
 
 .product-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 
+.product-wrap {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+/* What a rightward swipe uncovers. Hidden until the gesture starts, so
+   resting a finger on a card never hints at it. */
+.product-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+  background: var(--c-primary);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  visibility: hidden;
+}
+.product-hint svg { width: 18px; height: 18px; stroke-width: 2.6; }
+/* Already on the list: the panel still appears, so the gesture is never a
+   dead end, but it says so plainly and in a colour that promises nothing. */
+.product-wrap.is-there .product-hint { background: var(--c-surface-3); color: var(--c-text-2); }
+/* Until the card has travelled far enough, the panel stays understated —
+   full strength is the signal that letting go will do something. */
+.product-hint > * { opacity: .55; transform: translateX(-4px); transition: opacity .14s var(--ease), transform .18s var(--ease-out); }
+.product-wrap.is-armed .product-hint > * { opacity: 1; transform: none; }
+.product-wrap.is-swiping .product-hint { visibility: visible; }
+
 .product {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -1657,10 +1705,28 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
-  transition: background .14s var(--ease), transform .12s;
+  transition: background .14s var(--ease),
+              transform .52s cubic-bezier(.16, .84, .24, 1);
+  /* Vertical stays with the screen so it can still scroll; horizontal comes
+     to the swipe handler — the buttons inside included. */
+  touch-action: pan-y;
+}
+.product button { touch-action: pan-y; }
+.product-wrap.is-swiping .product { will-change: transform; }
+/* Square off the left corners while the panel behind is showing, or two
+   crescent gaps open up against its straight edge. */
+.product-wrap.is-swiping .product {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 .product:hover { background: var(--c-surface-2); }
-.product:active { transform: scale(.995); }
+
+/* On the shopping list: the circle on the left is already filled, and the
+   border picks up the same green so a glance down the column separates the
+   ones in play from the ones merely on record. */
+.product.is-listed {
+  border-color: color-mix(in srgb, var(--c-primary) 42%, var(--c-border));
+}
 
 .product-emoji {
   flex: none;
@@ -1672,7 +1738,13 @@ button, [role="tab"] {
   font-size: 21px;
 }
 
-.product-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+/* Also a <button> — the part of the card that opens the product. */
+.product-main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: left;
+  border: none; background: none; padding: 0;
+}
 .product-name { font-size: var(--fs-lg); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
 
@@ -4460,11 +4532,24 @@ button, [role="tab"] {
     });
     pad.querySelector(".js-ok").addEventListener("click", commit);
 
-    // A key must never steal the caret. Cancelling the press keeps focus, and
-    // the field stays lit as though a real keyboard were open.
-    pad.addEventListener("pointerdown", (e) => {
-      if (e.target.closest(".key")) e.preventDefault();
-    });
+    /* Nothing on the pad may steal the caret — not the keys, and not the gaps
+       between them. Landing a fast thumb a few pixels wide of a key used to
+       blur the field, and the blur handler below then put the pad away
+       mid-sum. Cancelling the press on the whole pad keeps focus wherever the
+       finger lands; clicks still fire, so the keys work exactly as before. */
+    pad.addEventListener("pointerdown", (e) => e.preventDefault());
+    pad.addEventListener("mousedown", (e) => e.preventDefault());
+
+    /* Since a lost caret no longer takes the pad down with it (see
+       restoreOrClose), there has to be a deliberate way out other than 確定:
+       a press anywhere that is neither the pad nor the field it is typing
+       into means the user is done with it. */
+    document.addEventListener("pointerdown", (e) => {
+      if (!isOpen()) return;
+      if (pad.contains(e.target)) return;
+      if (field && (e.target === field || field.contains(e.target))) return;
+      close();
+    }, true);
 
     document.getElementById("sheet-root").append(pad);
   }
@@ -4562,6 +4647,22 @@ button, [role="tab"] {
 
   const isOpen = () => !!(pad && !pad.hidden);
 
+  /* Focus left the field — but where did it go? Onto another control is a
+     real exit and the pad goes away. Nowhere at all (activeElement back on
+     <body>, or on the pad itself) means the tap simply fell off the edge of a
+     key, and taking the pad down there loses the sum the user is halfway
+     through typing. Hand the caret back and stay open. */
+  function restoreOrClose(input) {
+    const a = document.activeElement;
+    const wentNowhere = !a || a === document.body || a === document.documentElement
+      || (pad && pad.contains(a));
+    if (isOpen() && field === input && wentNowhere && input.isConnected) {
+      input.focus({ preventScroll: true });
+      return;
+    }
+    close();
+  }
+
   /**
    * Give a field this pad instead of the system keyboard.
    * @param {HTMLInputElement} input
@@ -4580,9 +4681,9 @@ button, [role="tab"] {
     // so tapping a field the pad was dismissed over has to bring it back too.
     input.addEventListener("click", () => { if (!isOpen()) open(input, options); });
     input.addEventListener("blur", () => {
-      // A tap on a key cancels its own press, so focus never actually leaves
-      // while the pad is in use. Anything that does get here is a real exit.
-      setTimeout(() => { if (document.activeElement !== input) close(); }, 60);
+      setTimeout(() => {
+        if (document.activeElement !== input) restoreOrClose(input);
+      }, 60);
     });
   }
 
@@ -6798,18 +6899,33 @@ button, [role="tab"] {
     els.body.append(list);
   }
 
+  /** The item on the shopping list for this product, if it is on it. */
+  const listedItem = (productId) => store.get().items.find((i) => i.productId === productId) || null;
+
   function productCard(product) {
-    const cat = store.getCategory(product.categoryId);
     const prices = store.currentPrices(product);
     const best = prices[0] || null;
     const bestStore = best ? store.getStore(best.storeId) : null;
     const size = formatSize(product.amount, product.unit);
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
+    const listed = listedItem(product.id);
+
+    /* Two layers, like the rows on the list screen: the panel underneath is
+       what the swipe uncovers, the card on top is what moves. */
+    const wrap = node(html`
+      <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
+        <div class="product-hint">
+          ${listed ? icon("check") : icon("plus")}<span>${listed ? "リストにあります" : "リストへ"}</span>
+        </div>
+      </article>
+    `);
 
     const card = node(html`
-      <button class="product" style="--cat:${store.productColor(product)}">
-        <span class="product-emoji">${store.productMark(product)}</span>
-        <span class="product-main">
+      <div class="product ${listed ? "is-listed" : ""}">
+        <button class="check js-pick" role="checkbox" aria-checked="${String(!!listed)}"
+                aria-label="${product.name} を買うものリストに${listed ? "入れない" : "入れる"}">${icon("check")}</button>
+        <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
+        <button class="product-main js-open">
           <span class="product-name">${product.name}</span>
           <span class="product-meta">
             ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
@@ -6818,7 +6934,7 @@ button, [role="tab"] {
               : html`<span style="color:var(--c-text-3)">値段は未登録</span>`}
             ${up ? html`<span style="color:var(--c-text-3)">${up.text}</span>` : ""}
           </span>
-        </span>
+        </button>
         <span class="item-price">
           ${best && bestStore
             ? html`
@@ -6827,11 +6943,145 @@ button, [role="tab"] {
               `
             : html`<span class="item-price-none">—</span>`}
         </span>
-      </button>
+      </div>
     `);
+    wrap.append(card);
 
-    card.addEventListener("click", () => KN.productSheet.open(product.id));
-    return card;
+    card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
+    card.querySelector(".js-pick").addEventListener("click", () => toggleListed(product));
+    attachAddSwipe(wrap, card, product);
+    return wrap;
+  }
+
+  /* The circle on the left says whether this product is on the shopping list,
+     and puts it on or takes it off. Same control as the list screen's
+     checkbox — there it means 買った, here it means 買う — so the two screens
+     read the same way round: filled means "this one is in play". */
+  function toggleListed(product) {
+    const item = listedItem(product.id);
+    haptic(12);
+    if (!item) {
+      store.addItem(product.id);
+      KN.ui.toast(`「${product.name}」をリストに追加しました`);
+      return;
+    }
+    const at = store.get().items.indexOf(item);
+    store.update((s) => { s.items = s.items.filter((i) => i.id !== item.id); });
+    KN.ui.toast(`「${product.name}」をリストから外しました`, {
+      action: {
+        label: "元に戻す",
+        onClick: () => store.update((s) => {
+          const next = s.items.slice();
+          next.splice(Math.max(0, Math.min(at, next.length)), 0, item);
+          s.items = next;
+        }),
+      },
+    });
+  }
+
+  /* ---------------- swipe right to put it on the list ---------------- */
+
+  /* Rightwards, and it springs straight back — nothing stays open, because
+     there is no second step to confirm. The pull is deliberately heavy past
+     the trigger so the card tells you when it has gone far enough. */
+  function attachAddSwipe(wrap, card, product) {
+    const TRIGGER = 68;
+    const MAX = 104;
+    const SLOP = 14;
+    const DOMINANCE = 1.6;
+    let startX = 0, startY = 0, dx = 0;
+    let dragging = false, decided = false, pointerId = null, swallowClick = false;
+    let armed = false, pending = null, rafId = 0;
+
+    const paint = () => {
+      rafId = 0;
+      if (pending === null) return;
+      card.style.transform = `translate3d(${pending}px, 0, 0)`;
+    };
+    const schedule = (v) => {
+      pending = v;
+      if (!rafId) rafId = requestAnimationFrame(paint);
+    };
+
+    card.addEventListener("touchmove", (e) => { if (dragging) e.preventDefault(); }, { passive: false });
+
+    card.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      dragging = false;
+      decided = false;
+      armed = false;
+    });
+
+    card.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      const mx = e.clientX - startX;
+      const my = e.clientY - startY;
+
+      if (!decided) {
+        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
+        decided = true;
+        dragging = mx >= SLOP && mx > Math.abs(my) * DOMINANCE;
+        if (!dragging) return;
+        card.setPointerCapture(pointerId);
+        card.style.transition = "none";
+        wrap.classList.add("is-swiping");
+      }
+      if (!dragging) return;
+
+      // Past the trigger the card only creeps, so the finger feels the edge.
+      dx = mx <= TRIGGER ? mx : TRIGGER + (mx - TRIGGER) * 0.32;
+      dx = Math.min(MAX, dx);
+      const nowArmed = dx >= TRIGGER;
+      if (nowArmed !== armed) {
+        armed = nowArmed;
+        wrap.classList.toggle("is-armed", armed);
+        if (armed) haptic(10);
+      }
+      schedule(dx);
+    });
+
+    const finish = (e) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      if (!dragging) return;
+
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      pending = null;
+      card.style.transition = "";
+      card.style.transform = "";
+      const fired = armed;
+      dragging = false;
+      armed = false;
+      swallowClick = true;
+      // Let the card glide home before the store change rebuilds the list;
+      // committing on the spot would swap it out mid-flight.
+      setTimeout(() => {
+        wrap.classList.remove("is-swiping", "is-armed");
+        if (!fired) return;
+        if (listedItem(product.id)) {
+          KN.ui.toast(`「${product.name}」はもうリストにあります`);
+          return;
+        }
+        store.addItem(product.id);
+        haptic(14);
+        KN.ui.toast(`「${product.name}」をリストに追加しました`);
+      }, 200);
+    };
+    card.addEventListener("pointerup", finish);
+    card.addEventListener("pointercancel", finish);
+
+    // A pointer sequence still fires a click afterwards; left alone it would
+    // open the product sheet at the end of every swipe.
+    card.addEventListener("click", (e) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
   }
 
   KN.screens = KN.screens || {};
