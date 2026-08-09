@@ -13,7 +13,36 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, haptic } = KN.util;
+  const { html, node, raw, haptic } = KN.util;
+
+  /* The mark, drawn rather than borrowed from the icon set, because it has to
+     do two different things.
+
+     While you pull it is a redo mark: a ring with a gap, an arrowhead at the
+     leading end that never quite closes the circle, and the whole thing turns
+     as you go — one full revolution by the time it is armed. The ring is not
+     just revealed, it is drawn: the stroke runs on from the gap and the head
+     fades in as the last of it lands.
+
+     Once you let go the arrowhead goes and a second arc takes over, chasing
+     itself around the ring. Same circle, same weight, so it reads as the mark
+     carrying on rather than a different thing appearing.
+
+     Geometry, so the numbers are not mysterious: r=9 about (12,12). The arc
+     runs clockwise from -60° to 240°, i.e. 300° of the circle, leaving the
+     gap across the top. Its length is 2·π·9·(300/360) = 47.12, which is the
+     dash pattern the drawing-on relies on. The head is a triangle centred on
+     the arc's end and turned to its tangent there. */
+  const MARK = raw(`
+    <svg class="ptr-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+      <path class="ptr-arc" d="M16.5 4.21A9 9 0 1 1 7.5 4.21"/>
+      <path class="ptr-head" d="M10.1 2.71 7.3 6.86 5.1 3.05Z" fill="currentColor" stroke="none"/>
+      <circle class="ptr-spin" cx="12" cy="12" r="9"/>
+    </svg>
+  `);
+
+  const ARC_LEN = 47.12;
 
   const TRIGGER = 56;    // pull the chip this far down to arm the refresh
   const HOLD    = 52;    // where it parks while the refresh runs
@@ -23,7 +52,9 @@
 
   let host = null;       // #screens
   let ptr = null;        // the chip
-  let arrow = null;      // the svg inside it
+  let mark = null;       // the svg inside it
+  let arc = null;        // the redo ring, drawn on as you pull
+  let head = null;       // its arrowhead
 
   let screenEl = null;   // the screen being pulled
   let startY = 0, startX = 0;
@@ -37,8 +68,10 @@
     host = document.getElementById("screens");
     if (!host) return;
 
-    ptr = node(html`<div class="ptr"><span class="ptr-ring">${icon("refresh")}</span></div>`);
-    arrow = ptr.querySelector("svg");
+    ptr = node(html`<div class="ptr"><span class="ptr-ring">${MARK}</span></div>`);
+    mark = ptr.querySelector(".ptr-mark");
+    arc = ptr.querySelector(".ptr-arc");
+    head = ptr.querySelector(".ptr-head");
     // First child, so the screens paint over it. It only ever shows in the
     // gap a pull opens up above them.
     host.prepend(ptr);
@@ -105,13 +138,20 @@
     if (frame) return;
     frame = requestAnimationFrame(() => {
       frame = 0;
+      const p = pull / TRIGGER;
       const ready = pull >= TRIGGER && !busy;
       ptr.classList.toggle("is-ready", ready);
       ptr.style.transform = `translate3d(0, ${pull.toFixed(1)}px, 0)`;
       ptr.style.opacity = String(Math.min(1, pull / 26));
       if (screenEl) screenEl.style.transform = `translate3d(0, ${pull.toFixed(1)}px, 0)`;
-      // A full turn by the time it is armed, then the spinner takes over.
-      if (!busy) arrow.style.transform = `rotate(${Math.round((pull / TRIGGER) * 300)}deg)`;
+      if (busy) return;   // from here on the spinner has the mark
+
+      // The ring draws itself on, the head lands at the end of it, and the
+      // whole mark turns once by the time the pull is armed.
+      const drawn = Math.min(1, p);
+      arc.style.strokeDashoffset = (ARC_LEN * (1 - drawn)).toFixed(2);
+      head.style.opacity = String(Math.max(0, Math.min(1, (p - 0.72) / 0.28)));
+      mark.style.transform = `rotate(${Math.round(Math.min(p, 1.2) * 300)}deg)`;
     });
   }
 
@@ -133,7 +173,10 @@
     haptic();
     ptr.classList.add("is-busy");
     ptr.classList.remove("is-ready");
-    arrow.style.transform = "";
+    // Hand the mark over to the spinner. Both of these were set inline on the
+    // way down, and inline beats the `is-busy` rules that would hide them.
+    mark.style.transform = "";
+    head.style.opacity = "0";
     settle(HOLD);
 
     const started = Date.now();
