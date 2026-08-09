@@ -266,8 +266,8 @@ a { color: var(--c-primary); }
 
 .ptr-ring {
   position: absolute;
-  top: -42px;
-  width: 34px; height: 34px;
+  top: -44px;
+  width: 36px; height: 36px;
   display: grid;
   place-items: center;
   border-radius: var(--r-full);
@@ -278,7 +278,23 @@ a { color: var(--c-primary); }
   transition: color .18s var(--ease);
 }
 
-.ptr-ring svg { width: 18px; height: 18px; stroke-width: 2.1; }
+/* Explicit, because the initial `transform-origin` for SVG content is its
+   origin corner, not its middle — a rotation about 0,0 throws the mark clean
+   out of the chip. */
+.ptr-mark { width: 21px; height: 21px; transform-origin: 50% 50%; }
+
+/* Drawn on from the gap as the pull deepens; pull-refresh.js moves the offset.
+   Its whole length is the dash, so there is exactly one stroke to reveal. */
+.ptr-arc {
+  stroke-dasharray: 47.12;
+  stroke-dashoffset: 47.12;
+}
+
+.ptr-head { opacity: 0; }
+
+/* Idle until the release, then it chases itself around the ring. */
+.ptr-spin { opacity: 0; }
+
 .ptr.is-ready .ptr-ring { color: var(--c-primary); }
 
 /* Only while releasing or settling — during the drag the chip has to track
@@ -287,8 +303,21 @@ a { color: var(--c-primary); }
 .screen.is-settling { transition: transform .32s var(--ease-out); }
 
 .ptr.is-busy .ptr-ring { color: var(--c-primary); }
-.ptr.is-busy .ptr-ring svg { animation: ptr-spin .9s linear infinite; }
+.ptr.is-busy .ptr-arc,
+.ptr.is-busy .ptr-head { opacity: 0; }
+.ptr.is-busy .ptr-spin { opacity: 1; animation: ptr-dash 1.4s var(--ease) infinite; }
+.ptr.is-busy .ptr-mark { animation: ptr-spin .9s linear infinite; }
+
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+/* 56.55 is the full circumference at r=9. The arc grows and shrinks against a
+   sliding offset, so the two ends move at different speeds and it never looks
+   like a rigid segment being spun. */
+@keyframes ptr-dash {
+  0%   { stroke-dasharray: 2 54.6;    stroke-dashoffset: 0; }
+  50%  { stroke-dasharray: 36 20.6;   stroke-dashoffset: -12; }
+  100% { stroke-dasharray: 2 54.6;    stroke-dashoffset: -55; }
+}
 
 .screen::-webkit-scrollbar { width: 8px; }
 .screen::-webkit-scrollbar-thumb {
