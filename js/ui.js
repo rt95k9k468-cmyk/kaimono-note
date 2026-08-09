@@ -58,6 +58,8 @@
       closed = true;
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
+      // The pad belongs to a field in this sheet; it has no business outliving it.
+      KN.keypad && KN.keypad.close();
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";

@@ -361,15 +361,22 @@
 
   /**
    * The picture beside a product — always a drawn one (see product-icons.js).
-   * When the name matches nothing, that is a plain package in the category's
-   * own colour, so the row is still grouped by sight even where the name told
-   * us nothing.
+   *
+   * Three tries, each less specific than the last. The name first. Then the
+   * category's name, because a category is a thing with a picture too: once
+   * 「コンソメ」 is known to be 調味料, a salt cellar says far more than a
+   * blank carton did. Only when neither says anything does it fall back to a
+   * plain package, painted in the category's colour so the row still belongs
+   * to a group by sight.
    * @returns raw HTML, ready to drop into an html`` template
    */
   function productMark(product) {
     if (!product) return "";
+    const cat = getCategory(product.categoryId);
     return KN.util.raw(
-      KN.productIcons.find(product.name) || KN.productIcons.fallback(productColor(product))
+      KN.productIcons.find(product.name)
+      || (cat && KN.productIcons.find(cat.name))
+      || KN.productIcons.fallback(productColor(product))
     );
   }
 

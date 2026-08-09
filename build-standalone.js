@@ -32,6 +32,7 @@ const JS = [
   "js/store.js",
   "js/ui.js",
   "js/reorder.js",
+  "js/keypad.js",
   "js/backup.js",
   "js/insights.js",
   "js/pull-refresh.js",

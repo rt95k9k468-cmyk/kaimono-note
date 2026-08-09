@@ -199,7 +199,8 @@
       <div class="field">
         <span class="field-label">内容量（単価の計算に使います）</span>
         <div class="input-group">
-          <input class="input js-amount" style="flex:1" type="number" inputmode="decimal" min="0" step="any"
+          <input class="input js-amount" style="flex:1" type="text" inputmode="none"
+                 autocomplete="off" autocorrect="off" spellcheck="false"
                  value="${p.amount != null ? p.amount : ""}" placeholder="500">
           <select class="select js-unit" style="flex:0 0 110px">
             <option value="">単位なし</option>
@@ -213,7 +214,7 @@
     const unitEl = wrap.querySelector(".js-unit");
 
     function save() {
-      const amount = parseNum(amountEl.value);
+      const amount = KN.util.calc(amountEl.value);
       store.update((s) => {
         const rec = s.products.find((x) => x.id === productId);
         if (!rec) return;
@@ -223,6 +224,7 @@
       onChanged && onChanged();
     }
 
+    KN.keypad.bind(amountEl);
     amountEl.addEventListener("input", debounce(save, 400));
     unitEl.addEventListener("change", save);
     return wrap;
@@ -303,21 +305,17 @@
     container.append(section);
   }
 
-  /* iOS has no calculator keyboard to ask for, and its numeric keypad has no
-     operators, so the operators come from the page. The strip below the fields
-     types into whichever of the two has focus and shows the running answer, so
-     「198+250」 can be entered without leaving the keypad or doing the sum in
-     your head at the shelf. It only appears while one of them is being used. */
+  /* The two fields take a sum, not just a number, and the pad supplies the
+     operators the system keypad does not have. This is the readout for it:
+     what the sum comes to, live, right above the pad. */
   function wireCalculator(form) {
     const strip = form.querySelector(".js-calc");
     const out = form.querySelector(".js-calc-out");
-    const fields = [form.querySelector(".js-price"), form.querySelector(".js-size")];
+    const fields = [form.querySelector(".js-price"), form.querySelector(".js-size")].filter(Boolean);
     let last = fields[0];
 
-    const value = () => last && last.value;
-
     function paint() {
-      const v = value();
+      const v = last && last.value;
       const n = KN.util.calc(v);
       if (KN.util.isExpression(v) && n != null) {
         out.textContent = last === fields[1] ? `= ${Math.round(n * 100) / 100}` : `= ${yen(n)}`;
@@ -326,41 +324,20 @@
         out.textContent = "…";
         out.classList.add("is-idle");
       } else {
-        out.textContent = "計算もできます（198+250 など）";
+        out.textContent = "＋ − × ÷ と「税」で計算できます";
         out.classList.add("is-idle");
       }
     }
 
     fields.forEach((f) => {
-      if (!f) return;
-      f.addEventListener("focus", () => { last = f; strip.hidden = false; paint(); });
-      f.addEventListener("input", paint);
-      f.addEventListener("blur", () => {
-        // Long enough for a tap on an operator to land; that tap refocuses the
-        // field, so the strip stays put while it is actually being used.
-        setTimeout(() => {
-          if (!fields.includes(document.activeElement)) strip.hidden = true;
-        }, 180);
+      KN.keypad.bind(f, {
+        onOpen: () => { last = f; strip.hidden = false; paint(); },
+        onCommit: () => { strip.hidden = true; },
       });
-    });
-
-    strip.querySelectorAll(".calc-key").forEach((key) => {
-      // Keep the keyboard up: losing focus would close it and the keypad would
-      // have to be summoned again between every two numbers.
-      key.addEventListener("mousedown", (e) => e.preventDefault());
-      key.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
-      key.addEventListener("click", () => {
-        if (!last) return;
-        const at = last.selectionStart != null ? last.selectionStart : last.value.length;
-        const end = last.selectionEnd != null ? last.selectionEnd : at;
-        const op = key.dataset.op;
-        last.value = last.value.slice(0, at) + op + last.value.slice(end);
-        const caret = at + op.length;
-        last.focus();
-        try { last.setSelectionRange(caret, caret); } catch (err) { /* not all types allow it */ }
-        haptic();
-        paint();
-      });
+      f.addEventListener("input", () => { last = f; paint(); });
+      f.addEventListener("blur", () => setTimeout(() => {
+        if (!KN.keypad.isOpen()) strip.hidden = true;
+      }, 120));
     });
 
     paint();
@@ -378,20 +355,16 @@
           <!-- Text, not number: a number field throws away「198+250」 the moment
                it is typed, and that sum is the whole point of the row of
                operators below. inputmode still asks for the numeric keypad. -->
-          <input class="input js-price" type="text" inputmode="decimal"
+          <input class="input js-price" type="text"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="値段" style="flex:1.2" required>
-          <input class="input js-size" type="text" inputmode="decimal"
+          <input class="input js-size" type="text"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="${p.unit ? `内容量(${p.unit})` : "内容量"}" style="flex:1"
                  ${p.unit ? "" : KN.util.raw("disabled")}>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
         </div>
         <div class="calc-row js-calc" hidden>
-          <button type="button" class="calc-key" data-op="+" aria-label="たす">＋</button>
-          <button type="button" class="calc-key" data-op="-" aria-label="ひく">−</button>
-          <button type="button" class="calc-key" data-op="*" aria-label="かける">×</button>
-          <button type="button" class="calc-key" data-op="/" aria-label="わる">÷</button>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
         <p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">

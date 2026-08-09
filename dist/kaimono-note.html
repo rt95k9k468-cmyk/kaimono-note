@@ -816,9 +816,9 @@ button, [role="tab"] {
      and --kb in app.js: dvh does not shrink for a keyboard, so without the cap
      a sheet stays 90% of the whole screen tall and the fields near its top —
      「値段を追加」 among them — sit above the top edge, unreachable. */
-  bottom: var(--kb, 0px);
+  bottom: calc(var(--kb, 0px) + var(--pad, 0px));
   width: min(100%, var(--maxw));
-  max-height: min(90dvh, 780px, var(--vvh, 100dvh));
+  max-height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   /* Tinted, not opaque. With a keyboard up the sheet is as tall as everything
      still visible, and a solid panel that size stops reading as a sheet over
      the app and starts reading as a blank screen. The blur it sits on comes
@@ -1077,6 +1077,81 @@ button, [role="tab"] {
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
+
+
+/* ---------------- number pad ---------------- */
+
+/* Stands in for the system keyboard on the number fields — see keypad.js for
+   why there is one at all. Fixed to the bottom like a keyboard, above the
+   sheet, and it publishes its height as --pad so the sheet sits on top of it
+   exactly as it sits on top of a real keyboard. */
+.keypad {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 100%);
+  width: min(100%, var(--maxw));
+  z-index: 120;
+  padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + var(--safe-b));
+  background: var(--c-bg-elev);
+  border-top: 1px solid var(--c-border);
+  box-shadow: var(--shadow-3);
+  transition: transform .24s var(--ease-out);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.keypad.is-open { transform: translate(-50%, 0); }
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+
+.keypad-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.key {
+  height: 52px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font-size: 22px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  transition: background .1s var(--ease), transform .08s;
+}
+.key:active { background: var(--c-surface-3); transform: scale(.95); }
+
+.key-op { color: var(--c-primary); font-weight: 700; }
+
+/* 税 carries its rate on the key. A button that silently multiplies by
+   something is a button you have to remember the meaning of. */
+.key-tax {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--c-accent-ink);
+  background: var(--c-accent-soft);
+  flex-direction: column;
+  gap: 1px;
+}
+.key-tax span { font-size: 10px; font-weight: 700; opacity: .8; }
+
+.key-ok {
+  background: var(--c-primary);
+  color: #fff;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+.key-ok:active { background: var(--c-primary-2); }
+
+.key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
 
 /* ---- css/screens.css ---- */
 /* =========================================================
@@ -1805,31 +1880,14 @@ button, [role="tab"] {
 
 /* ---------------- calculator strip ---------------- */
 
-/* Four operators the iOS numeric keypad does not have, plus the running
-   answer. See wireCalculator() in product-sheet.js. */
+/* What the sum comes to, live, while the number pad is up. The operators are
+   on the pad itself (keypad.js); this is only the answer. */
 .calc-row {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  min-height: 22px;
 }
-
-.calc-key {
-  flex: none;
-  width: 40px;
-  height: 34px;
-  border-radius: var(--r-sm);
-  background: var(--c-surface-2);
-  border: 1px solid var(--c-border);
-  color: var(--c-text);
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  transition: background .14s var(--ease), transform .1s;
-}
-.calc-key:hover { background: var(--c-surface-3); }
-.calc-key:active { transform: scale(.92); }
 
 .calc-out {
   flex: 1;
@@ -2088,6 +2146,9 @@ button, [role="tab"] {
     upload:    '<path d="M12 21V9M7 13l5-5 5 5M4 3h16"/>',
     sparkles:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/>',
     undo:      '<path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/>',
+    // Delete-left. A plain ✕ on that key reads as "close", which is the one
+    // thing it must not be mistaken for while a pad is open.
+    backspace: '<path d="M20.4 4.6H9.7a2 2 0 0 0-1.55.74L2.9 12l5.25 6.66a2 2 0 0 0 1.55.74h10.7a2 2 0 0 0 2-2V6.6a2 2 0 0 0-2-2Z"/><path d="M12.4 9.6l5 4.8M17.4 9.6l-5 4.8"/>',
     cart:      '<circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.77L21 8H6"/>',
   };
 
@@ -2909,6 +2970,43 @@ button, [role="tab"] {
       <path d="M8.6 3.6h2.2v5.2H8.6z" fill="#ffffff" opacity=".45"/>
     `),
 
+    /* ================= まとまりを表す絵 =================
+       ある品物そのものではなく、そのくくり全体を指す絵。名前からは何も分か
+       らなかった品物が、せめて自分のカテゴリの絵を借りられるように置いてある
+       ——「コンソメ」が調味料だと分かっているなら、無地の箱よりは塩の容器の
+       ほうがずっと近い。 */
+    groceries: S(`
+      <path d="M2.6 9.4h18.8l-1.7 9.4A3 3 0 0 1 16.7 21.4H7.3a3 3 0 0 1-3-2.6z" fill="#c9713f"/>
+      <rect x="1.8" y="7.8" width="20.4" height="2.6" rx="1.3" fill="#a9752f"/>
+      <path d="M7.6 7.8 9.4 3.2M16.4 7.8 14.6 3.2" stroke="#a9752f" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="8.6" cy="13.6" r="2.2" fill="#6cbb5c"/>
+      <circle cx="13.6" cy="13" r="2.4" fill="#e0574d"/>
+      <circle cx="17" cy="15.4" r="1.8" fill="#f2c14e"/>
+    `),
+    household: S(`
+      <path d="M12.6 3.4h4.2v2.2h-4.2z" fill="#6d7a72"/>
+      <path d="M6.6 6.6h6.4l3.4 2.6-3.4 2.6H6.6z" fill="#8d968f" opacity="0"/>
+      <rect x="12.4" y="5.4" width="2" height="3" fill="#6d7a72"/>
+      <path d="M8 11c0-1.9 1.1-3.5 2.8-4.2h5.6c1.7.7 2.8 2.3 2.8 4.2v8.6a2.2 2.2 0 0 1-2.2 2.2h-6.8A2.2 2.2 0 0 1 8 19.6z" fill="#7aa8d4"/>
+      <rect x="9.6" y="12.6" width="7.6" height="5.4" rx="1" fill="#ffffff" opacity=".9"/>
+      <path d="M12.6 4.4 8.2 2.6v3.6z" fill="#6d7a72"/>
+      <circle cx="20.4" cy="4.6" r="1.5" fill="#a9dcf3"/>
+      <circle cx="21.4" cy="8" r="1" fill="#a9dcf3"/>
+    `),
+    baby: S(`
+      <path d="M9.6 2.6h4.8v2.2H9.6z" fill="#f2b9c9"/>
+      <path d="M8.4 8.4c0-1.9 1.1-3.1 2.4-3.6h2.4c1.3.5 2.4 1.7 2.4 3.6v11.2a2.2 2.2 0 0 1-2.2 2.2h-2.8a2.2 2.2 0 0 1-2.2-2.2z" fill="#f7f4ee"/>
+      <path d="M8.4 12.4h7.2v4.6H8.4z" fill="#f2b9c9"/>
+      <path d="M10.4 1c.5-.7 1-1 1.6-1s1.1.3 1.6 1z" fill="#f2b9c9"/>
+      <path d="M9.8 2.6h4.4l.6-1.6H9.2z" fill="#e88fa9"/>
+    `),
+    drink: S(`
+      <path d="M5.4 7.6h13.2l-1.5 12A2.8 2.8 0 0 1 14.4 22H9.6a2.8 2.8 0 0 1-2.7-2.4z" fill="#8fd0e0"/>
+      <rect x="4.4" y="5.4" width="15.2" height="2.6" rx="1.3" fill="#4fb3c4"/>
+      <path d="M14.4 5.4 17.8 1.6l1.4 1.2-2.6 2.6z" fill="#e0574d"/>
+      <path d="M6.6 12.2h10.8l-.5 4H7.1z" fill="#ffffff" opacity=".35"/>
+    `),
+
     /* ================= その他 ================= */
     package: box("#d3a86e", "#b5793f",
       `<path d="M11 9.6h2v10.4h-2z" fill="#b5793f" opacity=".5"/>`),
@@ -2951,6 +3049,13 @@ button, [role="tab"] {
     ["bulb",     ["電球", "でんきゅう", "らいと"]],
     ["socks",    ["靴下", "くつした", "たおる", "したぎ", "下着"]],
     ["petFood",  ["どっぐふーど", "きゃっとふーど", "ぺっとふーど", "猫砂", "ねこ砂", "ぺっと"]],
+
+    /* くくりを指す言い方。品物の名前としては当たらないが、カテゴリの名前と
+       しては当たる——これがあるので、名前の分からない品物もカテゴリの絵を
+       借りられる。 */
+    ["groceries", ["食材", "食料品", "食料", "食品", "生鮮"]],
+    ["household", ["日用品", "雑貨", "消耗品"]],
+    ["baby",      ["赤ちゃん", "べびー", "乳児", "育児"]],
 
     /* 薬・衛生 */
     ["medicine",    ["薬", "くすり", "さぷり", "びたみん", "錠剤"]],
@@ -3047,6 +3152,7 @@ button, [role="tab"] {
 
     /* 飲みもの */
     ["water",  ["水", "みず", "みねらるうぉーたー", "天然水", "炭酸水"]],
+    ["drink",  ["飲みもの", "飲み物", "飲物", "飲料", "どりんく"]],
     ["tea",    ["お茶", "おちゃ", "茶", "緑茶", "麦茶", "紅茶", "ほうじ茶"]],
     ["coffee", ["こーひー", "珈琲", "かふぇおれ"]],
     ["juice",  ["じゅーす", "野菜じゅーす"]],
@@ -3443,15 +3549,22 @@ button, [role="tab"] {
 
   /**
    * The picture beside a product — always a drawn one (see product-icons.js).
-   * When the name matches nothing, that is a plain package in the category's
-   * own colour, so the row is still grouped by sight even where the name told
-   * us nothing.
+   *
+   * Three tries, each less specific than the last. The name first. Then the
+   * category's name, because a category is a thing with a picture too: once
+   * 「コンソメ」 is known to be 調味料, a salt cellar says far more than a
+   * blank carton did. Only when neither says anything does it fall back to a
+   * plain package, painted in the category's colour so the row still belongs
+   * to a group by sight.
    * @returns raw HTML, ready to drop into an html`` template
    */
   function productMark(product) {
     if (!product) return "";
+    const cat = getCategory(product.categoryId);
     return KN.util.raw(
-      KN.productIcons.find(product.name) || KN.productIcons.fallback(productColor(product))
+      KN.productIcons.find(product.name)
+      || (cat && KN.productIcons.find(cat.name))
+      || KN.productIcons.fallback(productColor(product))
     );
   }
 
@@ -3702,6 +3815,8 @@ button, [role="tab"] {
       closed = true;
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
+      // The pad belongs to a field in this sheet; it has no business outliving it.
+      KN.keypad && KN.keypad.close();
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";
@@ -4227,6 +4342,200 @@ button, [role="tab"] {
   }
 
   KN.reorder = { attach, isActive, applyOrder };
+})();
+
+/* ---- js/keypad.js ---- */
+/* =========================================================
+   かいものノート — the number pad
+
+   iOS will hand you a numeric keypad, but it has no operators, no 税 key, and
+   a system toolbar above it that a web page cannot remove. So the field asks
+   for no keyboard at all (`inputmode="none"`) and this pad slides up instead:
+   digits, the four operators, a 税 key, a backspace and a 確定.
+
+   The field itself is the display. There is no second readout to keep in sync,
+   the caret goes where you tap, and what you see is exactly what is stored
+   once 確定 works the sum out.
+
+   Nothing here takes focus. Every key cancels the press that would move it, so
+   the caret stays in the field the whole time and the pad never has to put it
+   back afterwards.
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic } = KN.util;
+
+  const TAX = 1.1;   // 税 — see the note on the key below
+
+  let pad = null;      // the element, built once
+  let field = null;    // the input it is typing into
+  let opts = {};
+
+  /* ---------------- building ---------------- */
+
+  const KEYS = [
+    ["7", "8", "9", { op: "/", label: "÷" }],
+    ["4", "5", "6", { op: "*", label: "×" }],
+    ["1", "2", "3", { op: "-", label: "−" }],
+    ["00", "0", ".", { op: "+", label: "＋" }],
+  ];
+
+  function build() {
+    pad = node(html`
+      <div class="keypad" role="group" aria-label="数字キーボード" hidden>
+        <div class="keypad-grid js-grid"></div>
+        <div class="keypad-actions">
+          <button type="button" class="key key-tax js-tax">税 <span>+10%</span></button>
+          <button type="button" class="key key-ok js-ok">確定</button>
+          <button type="button" class="key key-back js-back" aria-label="1文字消す">${icon("backspace")}</button>
+        </div>
+      </div>
+    `);
+
+    const grid = pad.querySelector(".js-grid");
+    KEYS.forEach((row) => row.forEach((k) => {
+      const isOp = typeof k === "object";
+      const btn = node(html`
+        <button type="button" class="key ${isOp ? "key-op" : ""}">${isOp ? k.label : k}</button>
+      `);
+      btn.addEventListener("click", () => insert(isOp ? k.op : k));
+      grid.append(btn);
+    }));
+
+    pad.querySelector(".js-back").addEventListener("click", backspace);
+    pad.querySelector(".js-tax").addEventListener("click", applyTax);
+    pad.querySelector(".js-ok").addEventListener("click", commit);
+
+    // A key must never steal the caret. Cancelling the press keeps focus, and
+    // the field stays lit as though a real keyboard were open.
+    pad.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".key")) e.preventDefault();
+    });
+
+    document.getElementById("sheet-root").append(pad);
+  }
+
+  /* ---------------- editing ---------------- */
+
+  function fire() {
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function insert(text) {
+    if (!field) return;
+    const at = field.selectionStart != null ? field.selectionStart : field.value.length;
+    const end = field.selectionEnd != null ? field.selectionEnd : at;
+    field.value = field.value.slice(0, at) + text + field.value.slice(end);
+    setCaret(at + text.length);
+    haptic();
+    fire();
+  }
+
+  function backspace() {
+    if (!field) return;
+    const at = field.selectionStart != null ? field.selectionStart : field.value.length;
+    const end = field.selectionEnd != null ? field.selectionEnd : at;
+    if (end > at) {
+      field.value = field.value.slice(0, at) + field.value.slice(end);
+      setCaret(at);
+    } else if (at > 0) {
+      field.value = field.value.slice(0, at - 1) + field.value.slice(at);
+      setCaret(at - 1);
+    }
+    haptic();
+    fire();
+  }
+
+  /* 税. Works the sum out first, so 「198+250」 becomes the tax on the total
+     rather than on whatever was typed last, then rounds down — which is what a
+     Japanese shelf price does with the fraction of a yen. 10%; food is 8% under
+     軽減税率, and that is a second key if it turns out to be wanted. */
+  function applyTax() {
+    if (!field) return;
+    const n = KN.util.calc(field.value);
+    if (n == null) { haptic(20); return; }
+    field.value = String(Math.floor(n * TAX));
+    setCaret(field.value.length);
+    haptic(14);
+    fire();
+  }
+
+  /** Replace the expression with its answer and put the pad away. */
+  function commit() {
+    if (!field) return;
+    const n = KN.util.calc(field.value);
+    if (n != null) {
+      field.value = String(Math.round(n * 100) / 100);
+      fire();
+    }
+    haptic(12);
+    const done = opts.onCommit;
+    const input = field;
+    close();
+    // Let the caret go too. Otherwise the field is still focused, and the next
+    // tap on it fires no `focus` — the pad would refuse to come back.
+    input.blur();
+    done && done();
+  }
+
+  function setCaret(i) {
+    try { field.setSelectionRange(i, i); } catch (err) { /* not every type allows it */ }
+  }
+
+  /* ---------------- showing and hiding ---------------- */
+
+  function open(input, options) {
+    if (!pad) build();
+    field = input;
+    opts = options || {};
+    pad.hidden = false;
+    // Published so a sheet can sit above the pad exactly as it sits above a
+    // real keyboard — same mechanism, see --kb in app.js.
+    requestAnimationFrame(() => {
+      document.documentElement.style.setProperty("--pad", pad.offsetHeight + "px");
+      pad.classList.add("is-open");
+      opts.onOpen && opts.onOpen();
+    });
+  }
+
+  function close() {
+    if (!pad || pad.hidden) return;
+    pad.classList.remove("is-open");
+    pad.hidden = true;
+    field = null;
+    opts = {};
+    document.documentElement.style.setProperty("--pad", "0px");
+  }
+
+  const isOpen = () => !!(pad && !pad.hidden);
+
+  /**
+   * Give a field this pad instead of the system keyboard.
+   * @param {HTMLInputElement} input
+   * @param {object} [options]
+   * @param {Function} [options.onOpen]    after the pad is up and measured
+   * @param {Function} [options.onCommit]  after 確定
+   */
+  function bind(input, options) {
+    // `none` is the whole trick: the field still focuses, still shows a caret,
+    // still takes a tap to position it — iOS just does not raise a keyboard,
+    // so there is no system toolbar above it either.
+    input.setAttribute("inputmode", "none");
+    input.setAttribute("autocomplete", "off");
+    input.addEventListener("focus", () => open(input, options));
+    // Focus alone is not enough: a field that never lost it fires no `focus`,
+    // so tapping a field the pad was dismissed over has to bring it back too.
+    input.addEventListener("click", () => { if (!isOpen()) open(input, options); });
+    input.addEventListener("blur", () => {
+      // A tap on a key cancels its own press, so focus never actually leaves
+      // while the pad is in use. Anything that does get here is a real exit.
+      setTimeout(() => { if (document.activeElement !== input) close(); }, 60);
+    });
+  }
+
+  KN.keypad = { bind, open, close, isOpen };
 })();
 
 /* ---- js/backup.js ---- */
@@ -4990,7 +5299,8 @@ button, [role="tab"] {
       <div class="field">
         <span class="field-label">内容量（単価の計算に使います）</span>
         <div class="input-group">
-          <input class="input js-amount" style="flex:1" type="number" inputmode="decimal" min="0" step="any"
+          <input class="input js-amount" style="flex:1" type="text" inputmode="none"
+                 autocomplete="off" autocorrect="off" spellcheck="false"
                  value="${p.amount != null ? p.amount : ""}" placeholder="500">
           <select class="select js-unit" style="flex:0 0 110px">
             <option value="">単位なし</option>
@@ -5004,7 +5314,7 @@ button, [role="tab"] {
     const unitEl = wrap.querySelector(".js-unit");
 
     function save() {
-      const amount = parseNum(amountEl.value);
+      const amount = KN.util.calc(amountEl.value);
       store.update((s) => {
         const rec = s.products.find((x) => x.id === productId);
         if (!rec) return;
@@ -5014,6 +5324,7 @@ button, [role="tab"] {
       onChanged && onChanged();
     }
 
+    KN.keypad.bind(amountEl);
     amountEl.addEventListener("input", debounce(save, 400));
     unitEl.addEventListener("change", save);
     return wrap;
@@ -5094,21 +5405,17 @@ button, [role="tab"] {
     container.append(section);
   }
 
-  /* iOS has no calculator keyboard to ask for, and its numeric keypad has no
-     operators, so the operators come from the page. The strip below the fields
-     types into whichever of the two has focus and shows the running answer, so
-     「198+250」 can be entered without leaving the keypad or doing the sum in
-     your head at the shelf. It only appears while one of them is being used. */
+  /* The two fields take a sum, not just a number, and the pad supplies the
+     operators the system keypad does not have. This is the readout for it:
+     what the sum comes to, live, right above the pad. */
   function wireCalculator(form) {
     const strip = form.querySelector(".js-calc");
     const out = form.querySelector(".js-calc-out");
-    const fields = [form.querySelector(".js-price"), form.querySelector(".js-size")];
+    const fields = [form.querySelector(".js-price"), form.querySelector(".js-size")].filter(Boolean);
     let last = fields[0];
 
-    const value = () => last && last.value;
-
     function paint() {
-      const v = value();
+      const v = last && last.value;
       const n = KN.util.calc(v);
       if (KN.util.isExpression(v) && n != null) {
         out.textContent = last === fields[1] ? `= ${Math.round(n * 100) / 100}` : `= ${yen(n)}`;
@@ -5117,41 +5424,20 @@ button, [role="tab"] {
         out.textContent = "…";
         out.classList.add("is-idle");
       } else {
-        out.textContent = "計算もできます（198+250 など）";
+        out.textContent = "＋ − × ÷ と「税」で計算できます";
         out.classList.add("is-idle");
       }
     }
 
     fields.forEach((f) => {
-      if (!f) return;
-      f.addEventListener("focus", () => { last = f; strip.hidden = false; paint(); });
-      f.addEventListener("input", paint);
-      f.addEventListener("blur", () => {
-        // Long enough for a tap on an operator to land; that tap refocuses the
-        // field, so the strip stays put while it is actually being used.
-        setTimeout(() => {
-          if (!fields.includes(document.activeElement)) strip.hidden = true;
-        }, 180);
+      KN.keypad.bind(f, {
+        onOpen: () => { last = f; strip.hidden = false; paint(); },
+        onCommit: () => { strip.hidden = true; },
       });
-    });
-
-    strip.querySelectorAll(".calc-key").forEach((key) => {
-      // Keep the keyboard up: losing focus would close it and the keypad would
-      // have to be summoned again between every two numbers.
-      key.addEventListener("mousedown", (e) => e.preventDefault());
-      key.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
-      key.addEventListener("click", () => {
-        if (!last) return;
-        const at = last.selectionStart != null ? last.selectionStart : last.value.length;
-        const end = last.selectionEnd != null ? last.selectionEnd : at;
-        const op = key.dataset.op;
-        last.value = last.value.slice(0, at) + op + last.value.slice(end);
-        const caret = at + op.length;
-        last.focus();
-        try { last.setSelectionRange(caret, caret); } catch (err) { /* not all types allow it */ }
-        haptic();
-        paint();
-      });
+      f.addEventListener("input", () => { last = f; paint(); });
+      f.addEventListener("blur", () => setTimeout(() => {
+        if (!KN.keypad.isOpen()) strip.hidden = true;
+      }, 120));
     });
 
     paint();
@@ -5169,20 +5455,16 @@ button, [role="tab"] {
           <!-- Text, not number: a number field throws away「198+250」 the moment
                it is typed, and that sum is the whole point of the row of
                operators below. inputmode still asks for the numeric keypad. -->
-          <input class="input js-price" type="text" inputmode="decimal"
+          <input class="input js-price" type="text"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="値段" style="flex:1.2" required>
-          <input class="input js-size" type="text" inputmode="decimal"
+          <input class="input js-size" type="text"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="${p.unit ? `内容量(${p.unit})` : "内容量"}" style="flex:1"
                  ${p.unit ? "" : KN.util.raw("disabled")}>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
         </div>
         <div class="calc-row js-calc" hidden>
-          <button type="button" class="calc-key" data-op="+" aria-label="たす">＋</button>
-          <button type="button" class="calc-key" data-op="-" aria-label="ひく">−</button>
-          <button type="button" class="calc-key" data-op="*" aria-label="かける">×</button>
-          <button type="button" class="calc-key" data-op="/" aria-label="わる">÷</button>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
         <p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
