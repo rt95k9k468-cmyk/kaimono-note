@@ -37,7 +37,10 @@
     ["7", "8", "9", { op: "/", label: "÷" }],
     ["4", "5", "6", { op: "*", label: "×" }],
     ["1", "2", "3", { op: "-", label: "−" }],
-    ["00", "0", ".", { op: "+", label: "＋" }],
+    /* 「00」 was here. It saved one press on prices ending in two zeros, which
+       a grocery list almost never has — 「298」「1,480」 — while the discount
+       on the shelf tag is something this pad could work out and could not. */
+    [{ pct: true }, "0", ".", { op: "+", label: "＋" }],
   ];
 
   function build() {
@@ -59,6 +62,16 @@
 
     const grid = pad.querySelector(".js-grid");
     KEYS.forEach((row) => row.forEach((k) => {
+      if (k && k.pct) {
+        const btn = node(html`
+          <button type="button" class="key key-off js-off" aria-label="割引の率を入れる">
+            <span class="key-off-cap">割引</span><span class="key-off-main">−％</span>
+          </button>
+        `);
+        btn.addEventListener("click", discount);
+        grid.append(btn);
+        return;
+      }
       const isOp = typeof k === "object";
       const btn = node(html`
         <button type="button" class="key ${isOp ? "key-op" : ""}">${isOp ? k.label : k}</button>
@@ -157,6 +170,26 @@
       setCaret(at - 1);
     }
     haptic();
+    fire();
+  }
+
+  /* 「20%引き」 on the shelf tag. Press this after the sticker price and the
+     field reads 「398-%」 with the caret parked between the two, so the rate
+     you type next lands where it belongs and the whole thing stays readable
+     as 「398-12%」. The answer comes from ＝, like any other sum. */
+  function discount() {
+    if (!field) return;
+    const at = field.selectionStart != null ? field.selectionStart : field.value.length;
+    const end = field.selectionEnd != null ? field.selectionEnd : at;
+    const before = field.value.slice(0, at);
+    // Nothing to take the discount off yet, or a rate already waiting for one.
+    if (!before || /[+\-*/%]$/.test(before) || field.value.indexOf("%") >= 0) {
+      haptic(20);
+      return;
+    }
+    field.value = before + "-%" + field.value.slice(end);
+    setCaret(at + 1);
+    haptic(12);
     fire();
   }
 

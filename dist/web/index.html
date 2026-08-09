@@ -53,6 +53,12 @@
   --c-danger-soft: #fdecea;
   --c-warn:        #c98a12;
 
+  /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
+         the warm 税 keys on the pad, and one adds while the other takes
+         away — the two must never be pressed by mistake for each other. --- */
+  --c-cool-soft:   #dfeaf7;
+  --c-cool-ink:    #21527e;
+
   /* --- effects --- */
   --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
   --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
@@ -111,6 +117,8 @@
     --c-danger:      #e8776c;
     --c-danger-soft: #33201e;
     --c-warn:        #dcae4a;
+    --c-cool-soft:   #1f3346;
+    --c-cool-ink:    #97c6ec;
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 2px 8px rgba(0,0,0,.45);
     --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -140,6 +148,8 @@
   --c-danger:      #e8776c;
   --c-danger-soft: #33201e;
   --c-warn:        #dcae4a;
+  --c-cool-soft:   #1f3346;
+  --c-cool-ink:    #97c6ec;
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -1168,6 +1178,18 @@ button, [role="tab"] {
 }
 .key-tax-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
 .key-tax-rate { font-size: var(--fs-lg); font-weight: 800; }
+
+/* 割引: the shelf tag's 「−20%」. Built like the 税 keys because it does the
+   same kind of job — a rate applied to what is already typed — but cool
+   rather than warm, since this one takes money off. */
+.key-off {
+  color: var(--c-cool-ink);
+  background: var(--c-cool-soft);
+  gap: 0;
+  line-height: 1.05;
+}
+.key-off-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
+.key-off-main { font-size: var(--fs-lg); font-weight: 800; }
 
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same
    colour and same place, because it is the same "big green key" throughout —
@@ -2304,16 +2326,36 @@ button, [role="tab"] {
   /** True when this looks like a sum rather than a plain number. */
   function isExpression(v) {
     const s = normalizeExpr(v);
-    return /\d[+\-*/]/.test(s);
+    return /\d[+\-*/]/.test(s) || s.indexOf("%") >= 0;
   }
 
+  /* A discount is written on the shelf as 「398円 −12%」, and that is how it is
+     written here: the price, then the rate, with the % at the end. Keeping it
+     in the text rather than in a hidden mode means the field still shows the
+     whole story and ⌫ takes it apart a character at a time. The answer drops
+     the fraction of a yen, the way the till does. */
+  const DISCOUNT = /^(.+?)([+-])(\d+(?:\.\d+)?)%$/;
+
   /**
-   * Evaluate `1+2*3` and friends. Returns null for anything that is not a
-   * complete, well-formed sum — a trailing operator while you are still typing
-   * is not an error, it just has no answer yet.
+   * Evaluate `1+2*3`, `398-12%` and friends. Returns null for anything that is
+   * not a complete, well-formed sum — a trailing operator, or a % with no rate
+   * behind it yet, is not an error while you are still typing, it just has no
+   * answer yet.
    */
   function calc(v) {
     const src = normalizeExpr(v);
+    const off = src.match(DISCOUNT);
+    if (off) {
+      const base = plainCalc(off[1]);
+      if (base == null) return null;
+      const rate = parseFloat(off[3]) / 100;
+      const out = base * (off[2] === "-" ? 1 - rate : 1 + rate);
+      return isFinite(out) ? Math.floor(out) : null;
+    }
+    return plainCalc(src);
+  }
+
+  function plainCalc(src) {
     if (!src || !/^[\d.+\-*/]+$/.test(src)) return null;
 
     const tokens = src.match(/\d+(?:\.\d+)?|\.\d+|[+\-*/]/g);
@@ -4568,7 +4610,10 @@ button, [role="tab"] {
     ["7", "8", "9", { op: "/", label: "÷" }],
     ["4", "5", "6", { op: "*", label: "×" }],
     ["1", "2", "3", { op: "-", label: "−" }],
-    ["00", "0", ".", { op: "+", label: "＋" }],
+    /* 「00」 was here. It saved one press on prices ending in two zeros, which
+       a grocery list almost never has — 「298」「1,480」 — while the discount
+       on the shelf tag is something this pad could work out and could not. */
+    [{ pct: true }, "0", ".", { op: "+", label: "＋" }],
   ];
 
   function build() {
@@ -4590,6 +4635,16 @@ button, [role="tab"] {
 
     const grid = pad.querySelector(".js-grid");
     KEYS.forEach((row) => row.forEach((k) => {
+      if (k && k.pct) {
+        const btn = node(html`
+          <button type="button" class="key key-off js-off" aria-label="割引の率を入れる">
+            <span class="key-off-cap">割引</span><span class="key-off-main">−％</span>
+          </button>
+        `);
+        btn.addEventListener("click", discount);
+        grid.append(btn);
+        return;
+      }
       const isOp = typeof k === "object";
       const btn = node(html`
         <button type="button" class="key ${isOp ? "key-op" : ""}">${isOp ? k.label : k}</button>
@@ -4688,6 +4743,26 @@ button, [role="tab"] {
       setCaret(at - 1);
     }
     haptic();
+    fire();
+  }
+
+  /* 「20%引き」 on the shelf tag. Press this after the sticker price and the
+     field reads 「398-%」 with the caret parked between the two, so the rate
+     you type next lands where it belongs and the whole thing stays readable
+     as 「398-12%」. The answer comes from ＝, like any other sum. */
+  function discount() {
+    if (!field) return;
+    const at = field.selectionStart != null ? field.selectionStart : field.value.length;
+    const end = field.selectionEnd != null ? field.selectionEnd : at;
+    const before = field.value.slice(0, at);
+    // Nothing to take the discount off yet, or a rate already waiting for one.
+    if (!before || /[+\-*/%]$/.test(before) || field.value.indexOf("%") >= 0) {
+      haptic(20);
+      return;
+    }
+    field.value = before + "-%" + field.value.slice(end);
+    setCaret(at + 1);
+    haptic(12);
     fire();
   }
 
@@ -5859,7 +5934,7 @@ button, [role="tab"] {
         out.textContent = "…";
         out.classList.add("is-idle");
       } else {
-        out.textContent = "＋ − × ÷ と「税」で計算できます";
+        out.textContent = "＋ − × ÷ と「税」「割引」で計算できます";
         out.classList.add("is-idle");
       }
     }

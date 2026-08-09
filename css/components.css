@@ -675,6 +675,18 @@ button, [role="tab"] {
 .key-tax-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
 .key-tax-rate { font-size: var(--fs-lg); font-weight: 800; }
 
+/* 割引: the shelf tag's 「−20%」. Built like the 税 keys because it does the
+   same kind of job — a rate applied to what is already typed — but cool
+   rather than warm, since this one takes money off. */
+.key-off {
+  color: var(--c-cool-ink);
+  background: var(--c-cool-soft);
+  gap: 0;
+  line-height: 1.05;
+}
+.key-off-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
+.key-off-main { font-size: var(--fs-lg); font-weight: 800; }
+
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same
    colour and same place, because it is the same "big green key" throughout —
    only the glyph changes, and it changes the moment an operator is typed. */

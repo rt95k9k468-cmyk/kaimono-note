@@ -528,7 +528,7 @@
         out.textContent = "…";
         out.classList.add("is-idle");
       } else {
-        out.textContent = "＋ − × ÷ と「税」で計算できます";
+        out.textContent = "＋ − × ÷ と「税」「割引」で計算できます";
         out.classList.add("is-idle");
       }
     }
