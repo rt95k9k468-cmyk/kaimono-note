@@ -130,6 +130,15 @@
   --shadow-up: 0 -2px 18px rgba(0,0,0,.4);
 }
 
+/* Category tints: the same mix reads as almost nothing against a dark surface,
+   so the dark theme takes a stronger dose. Declared here beside the tokens
+   rather than in the rules, so both themes are set in one place. */
+:root { --cat-fill: 11%; --cat-line: 26%; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --cat-fill: 20%; --cat-line: 38%; }
+}
+:root[data-theme="dark"] { --cat-fill: 20%; --cat-line: 38%; }
+
 /* ---------------- reset ---------------- */
 
 *, *::before, *::after { box-sizing: border-box; }

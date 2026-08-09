@@ -2,9 +2,10 @@
    かいものノート — long-press to lift, drag to reorder
 
    Press and hold a row and it lifts off the list — a shadow under it, a
-   fraction larger, following your finger. The rows it passes slide aside to
-   open the gap it would drop into, so the outcome is visible before you let
-   go rather than after. Let go and it settles into that gap.
+   fraction larger, following your finger. The rows it passes glide aside, and
+   a faded copy of the row itself sits in the gap they open, showing exactly
+   where it will land while you are still holding it. Let go and it settles
+   onto its own ghost.
 
    Holding still is what starts it. Moving first means you meant to scroll the
    list or swipe the row away, and those keep working untouched: the lift is
@@ -82,6 +83,25 @@
     const gap = Math.max(0, rects[1].top - rects[0].bottom);
     const scroller = findScroller(container);
 
+    /* A faded stand-in for the row, parked in whichever gap it would drop into.
+       Without it the gap is just a hole in the list and you have to picture
+       what goes there; with it, the answer is on screen the whole time.
+
+       Positioned rather than laid out, and sized from the measurement above, so
+       adding it to the container cannot disturb the rows it is standing among.
+       Inert too — aria-hidden, untabbable — because it is a picture of a row
+       that already exists a couple of hundred pixels further up. */
+    const contRect = container.getBoundingClientRect();
+    const ghost = el.cloneNode(true);
+    ghost.classList.add("reorder-ghost");
+    ghost.removeAttribute("id");
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.querySelectorAll("button, input, a, [tabindex]").forEach((c) => c.setAttribute("tabindex", "-1"));
+    ghost.style.left = Math.round(rects[from].left - contRect.left) + "px";
+    ghost.style.width = Math.round(rects[from].width) + "px";
+    ghost.style.height = Math.round(rects[from].height) + "px";
+    container.append(ghost);
+
     drag = {
       container, opts, el, kids, rects, from, to: from,
       // What the rows in between move by is the lifted row's own height —
@@ -90,6 +110,7 @@
       step: rects[from].height + gap,
       scroller, startScroll: scroller ? scroller.scrollTop : 0,
       startY, clientY: startY, pointerId, raf: 0,
+      ghost, contTop: contRect.top,
     };
 
     container.classList.add("is-reordering");
@@ -150,6 +171,7 @@
       if (mid > d.rects[i].top + d.rects[i].height / 2) to = i; else break;
     }
     if (to !== d.to) { d.to = to; haptic(8); }
+    placeGhost();
 
     d.kids.forEach((k, i) => {
       if (i === d.from) return;
@@ -158,6 +180,22 @@
       else if (d.to < d.from && i >= d.to && i < d.from) shift = d.step;
       k.style.transform = shift ? `translate3d(0, ${shift}px, 0)` : "";
     });
+  }
+
+  /** Put the stand-in where the row would land — the same slot the gap opens. */
+  function placeGhost() {
+    const d = drag;
+    if (!d.ghost) return;
+    d.ghost.style.top = Math.round(slotTop(d) - d.contTop) + "px";
+  }
+
+  /** Viewport-space top of the gap for the current target, measured against the
+   *  positions everything had when the lift started. */
+  function slotTop(d) {
+    const a = d.rects[d.from];
+    if (d.to > d.from) return d.rects[d.to].bottom - a.height;
+    if (d.to < d.from) return d.rects[d.to].top;
+    return a.top;
   }
 
   /* ---------------- the drop ---------------- */
@@ -173,11 +211,8 @@
     document.removeEventListener("pointercancel", onUp);
     document.removeEventListener("touchmove", swallowTouch);
 
-    // Where the gap is: below its old place the row takes the space ending at
-    // the target's bottom edge; above it, the space starting at its top.
     const a = d.rects[d.from];
-    const t = d.rects[d.to];
-    const landing = d.to > d.from ? t.bottom - a.height : d.to < d.from ? t.top : a.top;
+    const landing = slotTop(d);
     const scrolled = d.scroller ? d.scroller.scrollTop - d.startScroll : 0;
 
     d.el.classList.remove("reorder-lift");
@@ -191,8 +226,13 @@
     document.addEventListener("click", eatClick, true);
     setTimeout(() => document.removeEventListener("click", eatClick, true), 350);
 
+    // The stand-in fades out from under the row settling onto it, so the two
+    // are never both solid in the same place.
+    if (d.ghost) d.ghost.classList.add("is-going");
+
     setTimeout(() => {
       d.container.classList.remove("is-reordering");
+      if (d.ghost) d.ghost.remove();
       d.kids.forEach((k) => {
         k.style.transform = "";
         k.classList.remove("reorder-drop");

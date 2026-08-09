@@ -123,7 +123,8 @@
 
     store.sortedCategories().filter((c) => counts.has(c.id)).forEach((c) => {
       const chip = node(html`
-        <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}">
+        <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}"
+                style="--cat:${c.color || ""}">
           <span class="chip-emoji">${c.emoji}</span>${c.name}
           <span class="chip-count">${counts.get(c.id)}</span>
         </button>
@@ -186,7 +187,7 @@
     const up = best ? unitPrice(best.price, best.amount || product.amount, product.unit) : null;
 
     const card = node(html`
-      <button class="product">
+      <button class="product" style="--cat:${store.productColor(product)}">
         <span class="product-emoji">${store.productMark(product)}</span>
         <span class="product-main">
           <span class="product-name">${product.name}</span>

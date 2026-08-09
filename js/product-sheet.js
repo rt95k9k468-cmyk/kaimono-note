@@ -258,6 +258,69 @@
     container.append(section);
   }
 
+  /* iOS has no calculator keyboard to ask for, and its numeric keypad has no
+     operators, so the operators come from the page. The strip below the fields
+     types into whichever of the two has focus and shows the running answer, so
+     「198+250」 can be entered without leaving the keypad or doing the sum in
+     your head at the shelf. It only appears while one of them is being used. */
+  function wireCalculator(form) {
+    const strip = form.querySelector(".js-calc");
+    const out = form.querySelector(".js-calc-out");
+    const fields = [form.querySelector(".js-price"), form.querySelector(".js-size")];
+    let last = fields[0];
+
+    const value = () => last && last.value;
+
+    function paint() {
+      const v = value();
+      const n = KN.util.calc(v);
+      if (KN.util.isExpression(v) && n != null) {
+        out.textContent = last === fields[1] ? `= ${Math.round(n * 100) / 100}` : `= ${yen(n)}`;
+        out.classList.remove("is-idle");
+      } else if (KN.util.isExpression(v)) {
+        out.textContent = "…";
+        out.classList.add("is-idle");
+      } else {
+        out.textContent = "計算もできます（198+250 など）";
+        out.classList.add("is-idle");
+      }
+    }
+
+    fields.forEach((f) => {
+      if (!f) return;
+      f.addEventListener("focus", () => { last = f; strip.hidden = false; paint(); });
+      f.addEventListener("input", paint);
+      f.addEventListener("blur", () => {
+        // Long enough for a tap on an operator to land; that tap refocuses the
+        // field, so the strip stays put while it is actually being used.
+        setTimeout(() => {
+          if (!fields.includes(document.activeElement)) strip.hidden = true;
+        }, 180);
+      });
+    });
+
+    strip.querySelectorAll(".calc-key").forEach((key) => {
+      // Keep the keyboard up: losing focus would close it and the keypad would
+      // have to be summoned again between every two numbers.
+      key.addEventListener("mousedown", (e) => e.preventDefault());
+      key.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
+      key.addEventListener("click", () => {
+        if (!last) return;
+        const at = last.selectionStart != null ? last.selectionStart : last.value.length;
+        const end = last.selectionEnd != null ? last.selectionEnd : at;
+        const op = key.dataset.op;
+        last.value = last.value.slice(0, at) + op + last.value.slice(end);
+        const caret = at + op.length;
+        last.focus();
+        try { last.setSelectionRange(caret, caret); } catch (err) { /* not all types allow it */ }
+        haptic();
+        paint();
+      });
+    });
+
+    paint();
+  }
+
   function addPriceForm(productId, onAdded) {
     const p = store.getProduct(productId);
     const hasStores = store.get().stores.length > 0;
@@ -267,12 +330,24 @@
         <span class="field-label">値段を追加</span>
         <div class="js-stores"></div>
         <div class="input-group">
-          <input class="input js-price" type="number" inputmode="numeric" min="0" step="1"
+          <!-- Text, not number: a number field throws away「198+250」 the moment
+               it is typed, and that sum is the whole point of the row of
+               operators below. inputmode still asks for the numeric keypad. -->
+          <input class="input js-price" type="text" inputmode="decimal"
+                 autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="値段" style="flex:1.2" required>
-          <input class="input js-size" type="number" inputmode="decimal" min="0" step="any"
+          <input class="input js-size" type="text" inputmode="decimal"
+                 autocomplete="off" autocorrect="off" spellcheck="false"
                  placeholder="${p.unit ? `内容量(${p.unit})` : "内容量"}" style="flex:1"
                  ${p.unit ? "" : KN.util.raw("disabled")}>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
+        </div>
+        <div class="calc-row js-calc" hidden>
+          <button type="button" class="calc-key" data-op="+" aria-label="たす">＋</button>
+          <button type="button" class="calc-key" data-op="-" aria-label="ひく">−</button>
+          <button type="button" class="calc-key" data-op="*" aria-label="かける">×</button>
+          <button type="button" class="calc-key" data-op="/" aria-label="わる">÷</button>
+          <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
         <p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
           ${p.unit
@@ -288,11 +363,15 @@
       onSelect: (id) => { selectedStore = id; },
     });
 
+    wireCalculator(form);
+
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const priceEl = form.querySelector(".js-price");
       const sizeEl = form.querySelector(".js-size");
-      const price = parseNum(priceEl.value);
+      // 「198+250」 is stored as 448. calc() returns null for a plain number,
+      // so a straight price still goes through parseNum as before.
+      const price = KN.util.calc(priceEl.value);
 
       if (!hasStores && !selectedStore) {
         KN.ui.toast("先に「＋ お店を追加」でお店を登録してください");
@@ -304,7 +383,7 @@
       store.addPrice(productId, {
         storeId: selectedStore,
         price,
-        amount: parseNum(sizeEl.value),
+        amount: KN.util.calc(sizeEl.value),
       });
       haptic(12);
       priceEl.value = "";

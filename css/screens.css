@@ -108,7 +108,10 @@
 }
 .ac-item:last-child { border-bottom: none; }
 .ac-item:hover, .ac-item.is-active { background: var(--c-primary-soft); }
-.ac-emoji { font-size: 20px; flex: none; }
+.ac-emoji { font-size: 20px; flex: none; display: flex; align-items: center; }
+.ac-new-mark { width: 25px; color: var(--c-primary); }
+.ac-new-mark svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9;
+                   fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ac-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ac-sub {
@@ -150,6 +153,17 @@
 }
 
 .cat-head-emoji { font-size: 16px; }
+
+/* The heading wears the same colour as the rows under it, so the tint reads as
+   "this group" rather than as decoration. */
+.cat-head::before {
+  content: "";
+  width: 3px;
+  align-self: stretch;
+  border-radius: var(--r-full);
+  background: var(--cat, var(--c-border-2));
+  margin-right: 2px;
+}
 .cat-head-count { color: var(--c-text-3); font-weight: 700; }
 
 .item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -191,9 +205,15 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
+  /* 10 rather than 12: the icon column below wants a little more room, and the
+     name is what the row is for — this pays for the icon out of the gaps. */
+  gap: 10px;
+  /* Tinted with the category's colour — a glance down the list groups itself
+     without reading a word. Mixed into the card surface at a low percentage so
+     the text keeps its full contrast; --cat is set per row by screen-list.js,
+     and `transparent` as the fallback leaves the plain surface untouched. */
+  background: color-mix(in srgb, var(--cat, transparent) var(--cat-fill), var(--c-surface));
+  border: 1px solid color-mix(in srgb, var(--cat, transparent) var(--cat-line), var(--c-border));
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
@@ -209,15 +229,12 @@
 }
 .item button { touch-action: pan-y; }
 
-/* The emoji stands in for a product photo — see PRODUCT_EMOJI in store.js for
-   why it is not one. `:empty` collapses the column entirely when neither the
-   name nor the category yielded anything, rather than leaving a gap. */
+/* The product's picture. Every one is drawn (product-icons.js), so this column
+   is never empty — a name that matches nothing still gets a plain package in
+   the category's colour. */
 .item-emoji {
   flex: none;
-  /* Deliberately narrow. The name beside it is what the row is for, and
-     「トイレットペーパー」 lands 4px inside this width — any wider and the
-     longest everyday names start being cut off. */
-  width: 20px;
+  width: 24px;
   font-size: 19px;
   line-height: 1;
   text-align: center;
@@ -247,7 +264,13 @@
    right edge inwards and exposed the delete panel sitting behind — the row
    must not move until a swipe moves it. The controls inside give their own
    feedback on press. */
-.item.is-checked { opacity: .55; background: var(--c-surface-2); box-shadow: none; }
+/* Bought: the colour has done its job, so the row goes quiet and neutral. */
+.item.is-checked {
+  opacity: .55;
+  background: var(--c-surface-2);
+  border-color: var(--c-border);
+  box-shadow: none;
+}
 
 /* checkbox */
 .check {
@@ -476,8 +499,8 @@
   gap: var(--sp-3);
   width: 100%;
   text-align: left;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
+  background: color-mix(in srgb, var(--cat, transparent) var(--cat-fill), var(--c-surface));
+  border: 1px solid color-mix(in srgb, var(--cat, transparent) var(--cat-line), var(--c-border));
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
@@ -675,6 +698,16 @@
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
 .manage-emoji { font-size: 19px; flex: none; width: 28px; text-align: center; }
+
+/* The colour the category paints its rows with, shown where it is chosen. */
+.manage-swatch {
+  flex: none;
+  width: 6px;
+  align-self: stretch;
+  min-height: 26px;
+  border-radius: var(--r-full);
+  margin-right: -2px;
+}
 .manage-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* store color swatches */
@@ -687,3 +720,49 @@
 }
 .swatch:hover { transform: scale(1.1); }
 .swatch[aria-pressed="true"] { border-color: var(--c-text); transform: scale(1.1); }
+
+
+/* ---------------- calculator strip ---------------- */
+
+/* Four operators the iOS numeric keypad does not have, plus the running
+   answer. See wireCalculator() in product-sheet.js. */
+.calc-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.calc-key {
+  flex: none;
+  width: 40px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: background .14s var(--ease), transform .1s;
+}
+.calc-key:hover { background: var(--c-surface-3); }
+.calc-key:active { transform: scale(.92); }
+
+.calc-out {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--c-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calc-out.is-idle {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+}
