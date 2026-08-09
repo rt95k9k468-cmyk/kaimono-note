@@ -231,6 +231,15 @@ button, [role="tab"] {
   gap: var(--sp-2);
 }
 
+/* One line under a section title, for a gesture that has nothing on screen to
+   advertise it. */
+.section-hint {
+  margin: -2px 0 2px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--c-text-3);
+}
+
 /* ---------------- badges ---------------- */
 
 .badge {
@@ -300,9 +309,13 @@ button, [role="tab"] {
 .sheet {
   position: fixed;
   left: 50%;
-  bottom: 0;
+  /* Both of these keep the sheet inside what the keyboard leaves. See --vvh
+     and --kb in app.js: dvh does not shrink for a keyboard, so without the cap
+     a sheet stays 90% of the whole screen tall and the fields near its top —
+     「値段を追加」 among them — sit above the top edge, unreachable. */
+  bottom: var(--kb, 0px);
   width: min(100%, var(--maxw));
-  max-height: min(90dvh, 780px);
+  max-height: min(90dvh, 780px, var(--vvh, 100dvh));
   background: var(--c-bg-elev);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--shadow-3);
@@ -323,7 +336,7 @@ button, [role="tab"] {
     transform: translate(-50%, -46%) scale(.97);
     opacity: 0;
     border-radius: var(--r-xl);
-    max-height: min(86dvh, 760px);
+    max-height: min(86dvh, 760px, var(--vvh, 100dvh));
     width: min(100% - 32px, 520px);
     transition: transform .28s var(--ease-out), opacity .2s var(--ease);
   }
@@ -374,6 +387,35 @@ button, [role="tab"] {
   display: flex;
   gap: var(--sp-2);
   background: var(--c-bg-elev);
+}
+
+/* ---------------- reorder (long press to lift) ---------------- */
+
+/* The rows not being carried glide aside to open the gap. Scoped to a drag in
+   progress, so an ordinary re-render never animates rows into place. */
+.is-reordering > * {
+  transition: transform .18s var(--ease-out);
+}
+
+/* Off the surface: a shadow under it and a hair larger, with no transition at
+   all so it sits exactly under the finger rather than chasing it. `scale` is
+   its own property here, which leaves `transform` free for the drag. */
+.reorder-lift {
+  position: relative;
+  z-index: 6;
+  scale: 1.025;
+  box-shadow: var(--shadow-3);
+  transition: none !important;
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Landing: still above the rest until it is down, but settling now. */
+.reorder-drop {
+  position: relative;
+  z-index: 6;
+  transition: transform .19s var(--ease-out), scale .19s var(--ease-out);
 }
 
 /* ---------------- toast ---------------- */

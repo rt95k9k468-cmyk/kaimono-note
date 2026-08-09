@@ -424,10 +424,41 @@
       `);
       const listEl = group.querySelector(".item-list");
       entries.forEach(({ item, product }) => listEl.append(itemRow(item, product)));
+      wireReorder(listEl);
       els.body.append(group);
     });
 
     return groups.size > 0;
+  }
+
+  /* Reordering is within a group, because a group is exactly the set of rows
+     that are interchangeable: same category, same side of the「今回買うもの」
+     line. Dragging a row into another category's group would have to silently
+     recategorise it, which is not what picking it up looks like it means. */
+  function wireReorder(listEl) {
+    KN.reorder.attach(listEl, {
+      item: ".item-wrap",
+      // A row already swiped open is mid-gesture; picking it up on top of that
+      // would leave the delete panel hanging in the air.
+      blocked: () => !!openWrap,
+      onDrop: (from, to) => {
+        const ids = Array.prototype.map.call(listEl.children, (w) => w.dataset.itemId);
+        const [moved] = ids.splice(from, 1);
+        ids.splice(to, 0, moved);
+
+        // The group's order is its members' order within the whole list, so
+        // the move writes them back into the same slots they already occupy —
+        // everything not in this group stays exactly where it was.
+        store.update((s) => {
+          const inGroup = new Set(ids);
+          const slots = [];
+          s.items.forEach((it, i) => { if (inGroup.has(it.id)) slots.push(i); });
+          const byId = new Map(s.items.map((it) => [it.id, it]));
+          ids.forEach((id, k) => { s.items[slots[k]] = byId.get(id); });
+        });
+        KN.util.haptic(12);
+      },
+    });
   }
 
   function sectionHead(label, count, kind) {
@@ -453,7 +484,7 @@
     const bestStore = best ? store.getStore(best.storeId) : null;
 
     const wrap = node(html`
-      <article class="item-wrap">
+      <article class="item-wrap" data-item-id="${item.id}">
         <div class="item-actions">
           <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
         </div>
@@ -604,6 +635,9 @@
 
     row.addEventListener("pointermove", (e) => {
       if (e.pointerId !== pointerId) return;
+      // Held still long enough to lift the row out of the list — from here the
+      // gesture belongs to the reorder, not to the delete swipe.
+      if (KN.reorder.isActive()) return;
       const mx = e.clientX - startX;
       const my = e.clientY - startY;
 

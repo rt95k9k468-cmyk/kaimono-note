@@ -68,6 +68,30 @@
     backdrop.addEventListener("click", close);
     el.querySelector(".js-close").addEventListener("click", close);
 
+    /* Capping the sheet at the visible height (see --vvh) keeps it on screen,
+       but the field you tapped can end up below the fold of the sheet's own
+       scroller — which is exactly what happens entering a price near the
+       bottom of a long product. Bring it back into view once the keyboard has
+       finished arriving; it takes a few hundred milliseconds, and the sheet is
+       still resizing the whole time, so this checks back rather than trusting
+       one moment of it. */
+    const scrollFieldIntoView = (field) => {
+      const scroller = el.querySelector(".sheet-body");
+      if (!scroller) return;
+      const f = field.getBoundingClientRect();
+      const s = scroller.getBoundingClientRect();
+      if (f.top >= s.top + 4 && f.bottom <= s.bottom - 4) return;   // already visible
+      field.scrollIntoView({ block: "center", behavior: "smooth" });
+    };
+
+    el.addEventListener("focusin", (e) => {
+      const field = e.target.closest("input, textarea, select");
+      if (!field) return;
+      [140, 340, 620].forEach((ms) => setTimeout(() => {
+        if (document.activeElement === field) scrollFieldIntoView(field);
+      }, ms));
+    });
+
     // Drag-down-to-dismiss, only while the sheet is anchored to the bottom
     // (above 640px it becomes a centred dialog with a different transform).
     const isBottomSheet = () => window.matchMedia("(max-width: 639px)").matches;
