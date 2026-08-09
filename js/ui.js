@@ -43,6 +43,14 @@
       el.append(foot);
     }
 
+    /* Each sheet opened over another gets its own storey. Without this every
+       sheet sits at the same z-index and the new sheet's backdrop lands
+       *under* the old sheet — so the one underneath stays sharp and bright and
+       you end up reading two forms at once through the frosted glass. */
+    const depth = openSheets.length;
+    backdrop.style.zIndex = String(100 + depth * 2);
+    el.style.zIndex = String(101 + depth * 2);
+
     sheetRoot().append(backdrop, el);
     document.body.style.overflow = "hidden";
 

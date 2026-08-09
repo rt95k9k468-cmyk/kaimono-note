@@ -542,6 +542,21 @@
   border-color: color-mix(in srgb, var(--c-accent) 35%, transparent);
 }
 
+/* The row opens the record; the bin deletes it. Two jobs, two targets — the
+   same split the shopping list uses between its body and its star. */
+.price-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: left;
+  transition: transform .12s;
+}
+.price-main:active { transform: scale(.985); }
+.price-chevron { flex: none; color: var(--c-text-3); display: flex; }
+.price-chevron svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
 .price-store-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
 .price-store { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -552,6 +567,28 @@
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 .crown { font-size: 13px; flex: none; }
+
+/* one store's price, in full */
+.field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.5; }
+
+.cmp { font-size: var(--fs-md); color: var(--c-text-2); line-height: 1.6; }
+.cmp b { color: var(--c-text); }
+.cmp .cmp-good { color: var(--c-primary); font-weight: 700; }
+.cmp .cmp-bad  { color: var(--c-accent-ink); }
+
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.log-row.is-current { background: var(--c-primary-soft); }
+.log-date  { flex: none; width: 56px; font-size: var(--fs-sm); color: var(--c-text-2); }
+.log-price { flex: none; width: 74px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.log-unit  { flex: 1; min-width: 0; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-tag   { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink); }
 
 /* history sparkline */
 .spark { display: block; width: 100%; height: 48px; }

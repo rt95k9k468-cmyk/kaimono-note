@@ -263,9 +263,11 @@ button, [role="tab"] {
 .badge-store{ color: #fff; }
 
 .dot {
+  display: inline-block;
   width: 8px; height: 8px;
   border-radius: var(--r-full);
   flex: none;
+  vertical-align: middle;
 }
 
 /* ---------------- empty state ---------------- */
@@ -421,6 +423,9 @@ button, [role="tab"] {
   font-size: 21px;
   line-height: 1;
   margin-right: var(--sp-2);
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
 }
 
 /* ---------------- reorder (long press to lift) ---------------- */
@@ -597,7 +602,9 @@ button, [role="tab"] {
   bottom: 0;
   transform: translate(-50%, 100%);
   width: min(100%, var(--maxw));
-  z-index: 120;
+  /* Above every sheet, however deep they are stacked (see the z-index each
+     sheet is given as it opens). */
+  z-index: 400;
   padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + var(--safe-b));
   background: var(--c-bg-elev);
   border-top: 1px solid var(--c-border);

@@ -757,9 +757,11 @@ button, [role="tab"] {
 .badge-store{ color: #fff; }
 
 .dot {
+  display: inline-block;
   width: 8px; height: 8px;
   border-radius: var(--r-full);
   flex: none;
+  vertical-align: middle;
 }
 
 /* ---------------- empty state ---------------- */
@@ -915,6 +917,9 @@ button, [role="tab"] {
   font-size: 21px;
   line-height: 1;
   margin-right: var(--sp-2);
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
 }
 
 /* ---------------- reorder (long press to lift) ---------------- */
@@ -1091,7 +1096,9 @@ button, [role="tab"] {
   bottom: 0;
   transform: translate(-50%, 100%);
   width: min(100%, var(--maxw));
-  z-index: 120;
+  /* Above every sheet, however deep they are stacked (see the z-index each
+     sheet is given as it opens). */
+  z-index: 400;
   padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + var(--safe-b));
   background: var(--c-bg-elev);
   border-top: 1px solid var(--c-border);
@@ -1701,6 +1708,21 @@ button, [role="tab"] {
   border-color: color-mix(in srgb, var(--c-accent) 35%, transparent);
 }
 
+/* The row opens the record; the bin deletes it. Two jobs, two targets — the
+   same split the shopping list uses between its body and its star. */
+.price-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: left;
+  transition: transform .12s;
+}
+.price-main:active { transform: scale(.985); }
+.price-chevron { flex: none; color: var(--c-text-3); display: flex; }
+.price-chevron svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
 .price-store-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
 .price-store { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1711,6 +1733,28 @@ button, [role="tab"] {
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 .crown { font-size: 13px; flex: none; }
+
+/* one store's price, in full */
+.field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.5; }
+
+.cmp { font-size: var(--fs-md); color: var(--c-text-2); line-height: 1.6; }
+.cmp b { color: var(--c-text); }
+.cmp .cmp-good { color: var(--c-primary); font-weight: 700; }
+.cmp .cmp-bad  { color: var(--c-accent-ink); }
+
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.log-row.is-current { background: var(--c-primary-soft); }
+.log-date  { flex: none; width: 56px; font-size: var(--fs-sm); color: var(--c-text-2); }
+.log-price { flex: none; width: 74px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.log-unit  { flex: 1; min-width: 0; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-tag   { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink); }
 
 /* history sparkline */
 .spark { display: block; width: 100%; height: 48px; }
@@ -3802,6 +3846,14 @@ button, [role="tab"] {
       el.append(foot);
     }
 
+    /* Each sheet opened over another gets its own storey. Without this every
+       sheet sits at the same z-index and the new sheet's backdrop lands
+       *under* the old sheet — so the one underneath stays sharp and bright and
+       you end up reading two forms at once through the frosted glass. */
+    const depth = openSheets.length;
+    backdrop.style.zIndex = String(100 + depth * 2);
+    el.style.zIndex = String(101 + depth * 2);
+
     sheetRoot().append(backdrop, el);
     document.body.style.overflow = "hidden";
 
@@ -5118,7 +5170,7 @@ button, [role="tab"] {
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, yen, unitPrice, formatSize, relativeDate, UNITS, parseNum, debounce, haptic } = KN.util;
+  const { html, node, icon, yen, unitPrice, formatSize, relativeDate, formatDate, UNITS, debounce, haptic } = KN.util;
   const store = KN.store;
 
   /**
@@ -5375,19 +5427,26 @@ button, [role="tab"] {
 
         const row = node(html`
           <div class="price-row ${isBest ? "is-best" : ""}">
-            <span class="dot" style="background:${st.color}"></span>
-            <div class="price-store-wrap">
-              <span class="price-store">${st.name}</span>
-              ${isBest ? html`<span class="crown">🏆</span>` : ""}
-            </div>
-            <div class="price-figures">
-              <span class="price-amount">${yen(pr.price)}</span>
-              ${up ? html`<span class="price-unit">${up.text}</span>` : ""}
-              <span class="price-date">${relativeDate(pr.date)}</span>
-            </div>
+            <button class="price-main js-open" aria-label="${st.name} の値段をくわしく見る">
+              <span class="dot" style="background:${st.color}"></span>
+              <span class="price-store-wrap">
+                <span class="price-store">${st.name}</span>
+                ${isBest ? html`<span class="crown">🏆</span>` : ""}
+              </span>
+              <span class="price-figures">
+                <span class="price-amount">${yen(pr.price)}</span>
+                ${up ? html`<span class="price-unit">${up.text}</span>` : ""}
+                <span class="price-date">${relativeDate(pr.date)}</span>
+              </span>
+              <span class="price-chevron">${icon("chevron")}</span>
+            </button>
             <button class="icon-btn is-danger js-del" aria-label="この価格を削除">${icon("trash")}</button>
           </div>
         `);
+
+        row.querySelector(".js-open").addEventListener("click", () => {
+          openPriceDetail(productId, pr.id, () => renderPrices(container, productId));
+        });
 
         row.querySelector(".js-del").addEventListener("click", () => {
           store.update((s) => {
@@ -5416,6 +5475,221 @@ button, [role="tab"] {
 
     section.append(addPriceForm(productId, () => renderPrices(container, productId)));
     container.append(section);
+  }
+
+  /* ---------------- one store's price, in full ---------------- */
+
+  /* The row in 「お店ごとの値段」 shows what fits on a line: the price, the
+     unit price, how long ago. Everything else about that record — the size
+     that shop sells it in, the day it was seen, how far off the cheapest it
+     is, what it used to cost there — needs a page of its own, and this is it.
+     Also the only place any of it can be corrected: until now a wrong price
+     could only be deleted and typed again. */
+  function openPriceDetail(productId, priceId, onChanged) {
+    const p = store.getProduct(productId);
+    const pr = p && p.prices.find((x) => x.id === priceId);
+    if (!pr) return;
+    const st = store.getStore(pr.storeId);
+    if (!st) return;
+
+    const body = node(html`
+      <div class="stack" style="gap:18px">
+        <label class="field">
+          <span class="field-label">値段</span>
+          <input class="input js-price" type="text" autocomplete="off" value="${String(pr.price)}">
+        </label>
+
+        <div class="field">
+          <span class="field-label">このお店での内容量</span>
+          <div class="input-group">
+            <input class="input js-amount" style="flex:1" type="text" autocomplete="off"
+                   value="${pr.amount != null ? String(pr.amount) : ""}"
+                   placeholder="${p.amount != null ? String(p.amount) : "指定なし"}">
+            <span class="input js-unit-label"
+                  style="flex:0 0 92px;display:grid;place-items:center;background:var(--c-surface-2);color:var(--c-text-2)">
+              ${p.unit || "単位なし"}
+            </span>
+          </div>
+          <span class="field-hint">空のままなら、商品の内容量（${formatSize(p.amount, p.unit) || "未設定"}）で計算します</span>
+        </div>
+
+        <label class="field">
+          <span class="field-label">記録した日</span>
+          <input class="input js-date" type="date" value="${isoToDay(pr.date)}">
+        </label>
+
+        <div class="field">
+          <span class="field-label">くらべる</span>
+          <div class="card js-compare" style="padding:12px"></div>
+        </div>
+
+        <div class="field js-log-wrap"></div>
+
+        <button class="btn btn-danger btn-block js-del">${icon("trash")} この記録を削除</button>
+      </div>
+    `);
+
+    const priceEl  = body.querySelector(".js-price");
+    const amountEl = body.querySelector(".js-amount");
+    const dateEl   = body.querySelector(".js-date");
+    KN.keypad.bind(priceEl);
+    KN.keypad.bind(amountEl);
+
+    const handle = KN.ui.sheet({
+      title: st.name,
+      titleMark: KN.util.raw(`<span class="dot" style="background:${st.color};width:14px;height:14px"></span>`),
+      content: body,
+      footer: node(html`<button class="btn btn-primary btn-block js-done">完了</button>`),
+    });
+    handle.el.querySelector(".js-done").addEventListener("click", () => handle.close());
+
+    function save() {
+      const price = KN.util.calc(priceEl.value);
+      const amount = KN.util.calc(amountEl.value);
+      store.update((s) => {
+        const prod = s.products.find((x) => x.id === productId);
+        const rec = prod && prod.prices.find((x) => x.id === priceId);
+        if (!rec) return;
+        if (isFinite(price) && price >= 0) rec.price = price;
+        rec.amount = isFinite(amount) && amount > 0 ? amount : null;
+        const day = dateEl.value;
+        if (day) rec.date = dayToIso(day, rec.date);
+      });
+      paint();
+      onChanged && onChanged();
+    }
+
+    priceEl.addEventListener("input", debounce(save, 400));
+    amountEl.addEventListener("input", debounce(save, 400));
+    dateEl.addEventListener("change", save);
+
+    function paint() {
+      paintCompare(body.querySelector(".js-compare"), productId, priceId);
+      paintLog(body.querySelector(".js-log-wrap"), productId, pr.storeId, priceId, () => {
+        paint();
+        onChanged && onChanged();
+      });
+    }
+    paint();
+
+    body.querySelector(".js-del").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "この記録を削除しますか？",
+        message: `${st.name} の ${yen(pr.price)} を消します。`,
+        okLabel: "削除する",
+        danger: true,
+      });
+      if (!ok) return;
+      store.update((s) => {
+        const prod = s.products.find((x) => x.id === productId);
+        if (prod) prod.prices = prod.prices.filter((x) => x.id !== priceId);
+      });
+      handle.close();
+      onChanged && onChanged();
+      KN.ui.toast("削除しました");
+    });
+
+    return handle;
+  }
+
+  /* How this record stands against the others — first on the price as it is,
+     then, when there is an amount to divide by, on the same quantity. The two
+     answers differ whenever the shops sell different sizes, and that is the
+     whole reason the app exists. */
+  function paintCompare(host, productId, priceId) {
+    const p = store.getProduct(productId);
+    const pr = p.prices.find((x) => x.id === priceId);
+    const others = store.currentPrices(p);
+    const mine = others.find((x) => x.id === priceId);
+    const cheapest = others[0] || null;
+
+    const rows = [];
+    if (mine && cheapest && others.length > 1) {
+      const diff = pr.price - cheapest.price;
+      rows.push(diff === 0
+        ? html`<span class="cmp-good">いちばん安い値段です</span>`
+        : html`<span>いちばん安い ${store.getStore(cheapest.storeId).name} より
+                 <b class="cmp-bad">${yen(diff)} 高い</b></span>`);
+    }
+
+    const up = unitPrice(pr.price, pr.amount || p.amount, p.unit);
+    if (up) {
+      const all = others
+        .map((x) => ({ x, u: unitPrice(x.price, x.amount || p.amount, p.unit) }))
+        .filter((r) => r.u)
+        .sort((a, b) => a.u.value - b.u.value);
+      const bestUnit = all[0];
+      rows.push(html`<span>同じ量あたり <b>${up.text}</b></span>`);
+      if (bestUnit && all.length > 1) {
+        rows.push(bestUnit.x.id === priceId
+          ? html`<span class="cmp-good">量あたりでもいちばん安い</span>`
+          : html`<span>量あたりで安いのは
+                   <b>${store.getStore(bestUnit.x.storeId).name}</b>（${bestUnit.u.text}）</span>`);
+      }
+    } else if (!p.unit) {
+      rows.push(html`<span style="color:var(--c-text-3)">商品に内容量を設定すると、量あたりでも比べられます</span>`);
+    }
+
+    host.innerHTML = "";
+    host.append(node(html`
+      <div class="stack cmp" style="gap:6px">${rows.length ? rows : html`<span style="color:var(--c-text-3)">ほかのお店の値段がまだありません</span>`}</div>
+    `));
+  }
+
+  /** Every price ever recorded at this shop for this product. */
+  function paintLog(host, productId, storeId, currentId, onChanged) {
+    const p = store.getProduct(productId);
+    const log = p.prices
+      .filter((x) => x.storeId === storeId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    host.innerHTML = "";
+    if (log.length < 2) return;
+
+    host.append(node(html`<span class="field-label">このお店での記録（${String(log.length)}件）</span>`));
+    const list = node(html`<div class="stack" style="gap:6px"></div>`);
+    log.forEach((x) => {
+      const up = unitPrice(x.price, x.amount || p.amount, p.unit);
+      const row = node(html`
+        <div class="log-row ${x.id === currentId ? "is-current" : ""}">
+          <span class="log-date">${formatDate(x.date)}</span>
+          <span class="log-price">${yen(x.price)}</span>
+          <span class="log-unit">${up ? up.text : ""}</span>
+          ${x.id === currentId
+            ? html`<span class="log-tag">いま見ている記録</span>`
+            : html`<button class="icon-btn is-danger js-drop" aria-label="この記録を削除">${icon("close")}</button>`}
+        </div>
+      `);
+      const drop = row.querySelector(".js-drop");
+      if (drop) {
+        drop.addEventListener("click", () => {
+          store.update((s) => {
+            const prod = s.products.find((y) => y.id === productId);
+            if (prod) prod.prices = prod.prices.filter((y) => y.id !== x.id);
+          });
+          onChanged && onChanged();
+        });
+      }
+      list.append(row);
+    });
+    host.append(list);
+  }
+
+  /** ISO timestamp → the YYYY-MM-DD an <input type="date"> wants. */
+  function isoToDay(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  /** YYYY-MM-DD back to a timestamp, keeping the original time of day. */
+  function dayToIso(day, previousIso) {
+    const [y, m, d] = day.split("-").map(Number);
+    const prev = new Date(previousIso);
+    const out = new Date(isNaN(prev.getTime()) ? Date.now() : prev.getTime());
+    out.setFullYear(y, m - 1, d);
+    return out.toISOString();
   }
 
   /* The two fields take a sum, not just a number, and the pad supplies the
