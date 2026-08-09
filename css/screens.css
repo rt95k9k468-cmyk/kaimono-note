@@ -107,7 +107,12 @@
   border-bottom: 1px solid var(--c-border);
 }
 .ac-item:last-child { border-bottom: none; }
-.ac-item:hover, .ac-item.is-active { background: var(--c-primary-soft); }
+.ac-item.is-active { background: var(--c-primary-soft); }
+/* :hover is gated behind `@media (hover: hover)` throughout — see the note in
+   components.css. On a touch screen the faked hover state never gets cleared. */
+@media (hover: hover) {
+  .ac-item:hover { background: var(--c-primary-soft); }
+}
 .ac-emoji { font-size: 20px; flex: none; display: flex; align-items: center; }
 .ac-new-mark { width: 25px; color: var(--c-primary); }
 .ac-new-mark svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9;
@@ -324,7 +329,9 @@
   transform: translate(-50%, -50%);
 }
 .check svg { width: 15px; height: 15px; stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
-.check:hover { border-color: var(--c-primary); }
+@media (hover: hover) {
+  .check:hover { border-color: var(--c-primary); }
+}
 .check:active { transform: scale(.85); }
 .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
 .check[aria-checked="true"] svg { opacity: 1; transform: scale(1); }
@@ -580,7 +587,9 @@
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
-.product:hover { background: var(--c-surface-2); }
+@media (hover: hover) {
+  .product:hover { background: var(--c-surface-2); }
+}
 
 /* On the shopping list: the left edge of the card is painted. Deliberately a
    mark and not a control — a checkbox here read as the list screen's 「買った」
@@ -735,7 +744,9 @@
   box-shadow: var(--shadow-1);
   transition: background .14s var(--ease);
 }
-.rank-card:hover { background: var(--c-surface-2); }
+@media (hover: hover) {
+  .rank-card:hover { background: var(--c-surface-2); }
+}
 
 .rank-card.is-first {
   border-color: color-mix(in srgb, var(--c-accent) 45%, transparent);
@@ -851,7 +862,9 @@
   border: 3px solid transparent;
   transition: transform .14s var(--ease), border-color .14s;
 }
-.swatch:hover { transform: scale(1.1); }
+@media (hover: hover) {
+  .swatch:hover { transform: scale(1.1); }
+}
 .swatch[aria-pressed="true"] { border-color: var(--c-text); transform: scale(1.1); }
 
 
