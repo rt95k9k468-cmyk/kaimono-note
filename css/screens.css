@@ -209,6 +209,22 @@
 }
 .item button { touch-action: pan-y; }
 
+/* The emoji stands in for a product photo — see PRODUCT_EMOJI in store.js for
+   why it is not one. `:empty` collapses the column entirely when neither the
+   name nor the category yielded anything, rather than leaving a gap. */
+.item-emoji {
+  flex: none;
+  /* Deliberately narrow. The name beside it is what the row is for, and
+     「トイレットペーパー」 lands 4px inside this width — any wider and the
+     longest everyday names start being cut off. */
+  width: 20px;
+  font-size: 19px;
+  line-height: 1;
+  text-align: center;
+}
+.item-emoji:empty { display: none; }
+.is-checked .item-emoji { filter: grayscale(1); }
+
 .item-wrap.is-open .item { transform: translateX(-88px); }
 
 /* Hand the row its own compositor layer for the duration of the gesture, so
