@@ -140,13 +140,17 @@ html, body {
   height: 100%;
 }
 
-/* While a field has focus the shell is sized to the space above the keyboard,
-   so there is nothing below it to reveal. Without this the document keeps the
-   scroll iOS applied on the way in and the app sits above the screen. Lists go
-   on scrolling inside themselves; only the page is pinned, and only while
-   typing. */
-html.kb-open, html.kb-open body {
+/* The shell is exactly as tall as the visible viewport, so the page itself has
+   nothing to scroll to — every list scrolls inside its own screen. Left to its
+   own devices the document still drags up and down under your finger anyway:
+   iOS rubber-bands the page on any gesture that a scroller does not claim, and
+   with the keyboard up it also leaves behind the scroll it applied to reveal
+   the field, which parks the app above the top of the screen. Pinning the
+   document settles both. Screens keep `overflow-y: auto`, so scrolling the
+   list is untouched. */
+html, body {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -157,7 +161,6 @@ body {
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
 }
 
 h1, h2, h3, h4, p, figure { margin: 0; }
@@ -307,21 +310,6 @@ a { color: var(--c-primary); }
 /* Nobody switches tabs mid-word, and the room is better spent on the list
    while the keyboard has the bottom half of the screen. */
 .kb-open .tabbar { display: none; }
-
-/* Diagnostic read-out, off unless switched on in 設定. Deliberately plain. */
-.vv-debug {
-  position: absolute;
-  top: 0; left: 0;
-  margin: 0;
-  padding: 6px 8px;
-  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #fff;
-  background: rgba(0, 0, 0, .78);
-  white-space: pre;
-  z-index: 500;
-  pointer-events: none;
-  border-bottom-right-radius: 8px;
-}
 
 .tab {
   display: flex;

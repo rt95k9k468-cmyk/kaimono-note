@@ -397,15 +397,6 @@
             </span>
             <span class="row-chevron">${icon("sparkles")}</span>
           </button>
-          <button class="row js-vvdebug">
-            <span class="row-main">
-              <span class="row-title">画面サイズの数値を出す</span>
-              <span class="row-sub">${KN.vvDebugOn && KN.vvDebugOn()
-                ? "表示中。入力欄をタップした状態のスクリーンショットが手がかりになります"
-                : "入力バーの位置ずれを調べるための一時的な表示です"}</span>
-            </span>
-            <span class="row-chevron">${icon("search")}</span>
-          </button>
           <button class="row js-reset">
             <span class="row-main">
               <span class="row-title" style="color:var(--c-danger)">すべて削除</span>
@@ -435,10 +426,6 @@
     });
 
     wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
-
-    wrap.querySelector(".js-vvdebug").addEventListener("click", () => {
-      KN.setVvDebug(!(KN.vvDebugOn && KN.vvDebugOn()));
-    });
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());

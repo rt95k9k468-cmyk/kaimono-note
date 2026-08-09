@@ -143,13 +143,17 @@ html, body {
   height: 100%;
 }
 
-/* While a field has focus the shell is sized to the space above the keyboard,
-   so there is nothing below it to reveal. Without this the document keeps the
-   scroll iOS applied on the way in and the app sits above the screen. Lists go
-   on scrolling inside themselves; only the page is pinned, and only while
-   typing. */
-html.kb-open, html.kb-open body {
+/* The shell is exactly as tall as the visible viewport, so the page itself has
+   nothing to scroll to — every list scrolls inside its own screen. Left to its
+   own devices the document still drags up and down under your finger anyway:
+   iOS rubber-bands the page on any gesture that a scroller does not claim, and
+   with the keyboard up it also leaves behind the scroll it applied to reveal
+   the field, which parks the app above the top of the screen. Pinning the
+   document settles both. Screens keep `overflow-y: auto`, so scrolling the
+   list is untouched. */
+html, body {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -160,7 +164,6 @@ body {
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
 }
 
 h1, h2, h3, h4, p, figure { margin: 0; }
@@ -310,21 +313,6 @@ a { color: var(--c-primary); }
 /* Nobody switches tabs mid-word, and the room is better spent on the list
    while the keyboard has the bottom half of the screen. */
 .kb-open .tabbar { display: none; }
-
-/* Diagnostic read-out, off unless switched on in 設定. Deliberately plain. */
-.vv-debug {
-  position: absolute;
-  top: 0; left: 0;
-  margin: 0;
-  padding: 6px 8px;
-  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #fff;
-  background: rgba(0, 0, 0, .78);
-  white-space: pre;
-  z-index: 500;
-  pointer-events: none;
-  border-bottom-right-radius: 8px;
-}
 
 .tab {
   display: flex;
@@ -3356,10 +3344,9 @@ button, [role="tab"] {
   function renderAutocomplete() {
     const typed = els.input.value.trim();
     const q = KN.util.foldKana(typed);
-    els.ac.innerHTML = "";
     acIndex = -1;
     acMatches = [];
-    if (!q) return;
+    if (!q) { closeAutocomplete(); return; }
 
     const onList = new Set(store.get().items.map((i) => i.productId));
     // Matched on the folded name, so a single「え」already surfaces
@@ -3380,9 +3367,19 @@ button, [role="tab"] {
     const exact = store.findProductByName(typed);
     acMatches = found.map((p) => ({ product: p }));
     if (!exact) acMatches.push({ product: null, name: typed });
-    if (!acMatches.length) return;
+    if (!acMatches.length) { closeAutocomplete(); return; }
 
-    const box = node(html`<div class="ac" role="listbox"></div>`);
+    /* Reuse the panel across keystrokes. Rebuilding it meant the open
+       animation — a fade up from transparent — restarted on every character,
+       which read as the list flickering while you typed. The panel is created
+       once, when it opens from nothing, and after that only its rows change. */
+    let box = els.ac.querySelector(".ac");
+    if (!box) {
+      box = node(html`<div class="ac" role="listbox"></div>`);
+      els.ac.append(box);
+    } else {
+      box.innerHTML = "";
+    }
 
     acMatches.forEach((m, idx) => {
       let row;
@@ -3421,8 +3418,6 @@ button, [role="tab"] {
       });
       box.append(row);
     });
-
-    els.ac.append(box);
   }
 
   function paintActive() {
@@ -4943,15 +4938,6 @@ button, [role="tab"] {
             </span>
             <span class="row-chevron">${icon("sparkles")}</span>
           </button>
-          <button class="row js-vvdebug">
-            <span class="row-main">
-              <span class="row-title">画面サイズの数値を出す</span>
-              <span class="row-sub">${KN.vvDebugOn && KN.vvDebugOn()
-                ? "表示中。入力欄をタップした状態のスクリーンショットが手がかりになります"
-                : "入力バーの位置ずれを調べるための一時的な表示です"}</span>
-            </span>
-            <span class="row-chevron">${icon("search")}</span>
-          </button>
           <button class="row js-reset">
             <span class="row-main">
               <span class="row-title" style="color:var(--c-danger)">すべて削除</span>
@@ -4981,10 +4967,6 @@ button, [role="tab"] {
     });
 
     wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
-
-    wrap.querySelector(".js-vvdebug").addEventListener("click", () => {
-      KN.setVvDebug(!(KN.vvDebugOn && KN.vvDebugOn()));
-    });
 
     const file = wrap.querySelector(".js-file");
     wrap.querySelector(".js-import").addEventListener("click", () => file.click());
@@ -5188,7 +5170,6 @@ button, [role="tab"] {
     trackKeyboard();
     KN.backup.init();
     registerServiceWorker();
-    mountVvDebug();
   }
 
   /* iOS does not resize the page when the keyboard appears. It shrinks the
@@ -5275,52 +5256,6 @@ button, [role="tab"] {
     navigator.storage.persisted()
       .then((already) => (already ? true : navigator.storage.persist()))
       .catch(() => { /* not fatal — the app works either way */ });
-  }
-
-  /* ---------------- viewport read-out (diagnostic) ---------------- */
-
-  /* Temporary. Three attempts at the shifting input bar were made from guesses
-     about what the keyboard does, because none of it can be reproduced away
-     from the device. This prints the numbers the layout is computed from, so
-     the next attempt starts from what actually happens. Toggle from 設定. */
-  const VV_DEBUG_KEY = "kaimono-note-vvdebug";
-
-  function vvDebugOn() {
-    try { return localStorage.getItem(VV_DEBUG_KEY) === "1"; } catch (e) { return false; }
-  }
-  KN.setVvDebug = (on) => {
-    try { localStorage.setItem(VV_DEBUG_KEY, on ? "1" : "0"); } catch (e) { /* ignore */ }
-    location.reload();
-  };
-  KN.vvDebugOn = vvDebugOn;
-
-  function mountVvDebug() {
-    if (!vvDebugOn()) return;
-    const app = document.getElementById("app");
-    if (!app) return;
-
-    const box = document.createElement("pre");
-    box.className = "vv-debug";
-    app.append(box);
-
-    const vv = window.visualViewport;
-    const r = (n) => Math.round(n);
-    const paint = () => {
-      const a = app.getBoundingClientRect();
-      const bar = document.querySelector(".quick-add");
-      const b = bar && bar.getBoundingClientRect();
-      box.textContent =
-        `画面 innerH ${window.innerHeight}  scrollY ${r(window.scrollY)}\n` +
-        (vv ? `可視 h ${r(vv.height)}  offsetTop ${r(vv.offsetTop)}  pageTop ${r(vv.pageTop)}  scale ${vv.scale.toFixed(2)}\n`
-            : "visualViewport なし\n") +
-        `app  top ${r(a.top)}  h ${r(a.height)}\n` +
-        (b ? `bar  top ${r(b.top)}  bottom ${r(b.bottom)}` : "bar なし") +
-        `\n入力中 ${isTyping() ? "はい" : "いいえ"}` +
-        `  kb-open ${document.documentElement.classList.contains("kb-open") ? "はい" : "いいえ"}` +
-        `  タブバー ${getComputedStyle(document.querySelector(".tabbar")).display}`;
-      requestAnimationFrame(paint);
-    };
-    paint();
   }
 
   function registerServiceWorker() {
