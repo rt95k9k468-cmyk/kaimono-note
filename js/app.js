@@ -81,6 +81,12 @@
 
     ensureMounted(id);
     KN.screens[id].render();
+
+    // The add bar belongs to the list; on the other screens there is nothing
+    // to add to, so the dock steps out of the way entirely.
+    const dock = document.getElementById("dock");
+    if (dock) dock.hidden = id !== "list" || !dock.childElementCount;
+
     paintTabs();
     haptic();
 

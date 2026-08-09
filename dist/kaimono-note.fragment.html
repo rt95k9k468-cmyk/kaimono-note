@@ -867,28 +867,25 @@ button, [role="tab"] {
 
 /* ================= LIST SCREEN ================= */
 
-/* Docked to the bottom of the list screen, where a thumb can reach it.
-   `margin-top:auto` handles a short list (pushes it down) and `sticky` handles
-   a long one (keeps it in view while the items scroll underneath). No keyboard
-   offset here — the shell above is already sized to stop at the keyboard, so
-   the bottom of this screen is the top of the keyboard. */
-.quick-add {
-  position: sticky;
-  bottom: 0;
-  margin-top: auto;
+/* The dock is a plain row at the bottom of the shell, below the scrolling
+   screens and above the tab bar. Nothing sticky, nothing transformed, nothing
+   overlapping the list — the caret has no offset to disagree with, and the
+   shell is already sized to end at the keyboard. */
+.dock {
+  flex: none;
+  position: relative;
   z-index: 20;
+}
+
+.quick-add {
+  position: relative;   /* anchors the suggestions panel */
   padding: var(--sp-3) var(--sp-4);
-  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: var(--c-bg);
   border-top: 1px solid var(--c-border);
 }
 
-/* The stack has to fill the scrollport, otherwise `margin-top:auto` has no
-   spare space to push the bar into on a nearly empty list. */
-.screen[data-screen="list"] .stack { min-height: 100%; }
-/* The docked bar already occupies the space this padding was reserving. */
-.screen[data-screen="list"] { padding-bottom: 0; }
+/* Room under the last card so it clears the dock as you reach the end. */
+.screen[data-screen="list"] { padding-bottom: var(--sp-4); }
 
 .quick-add-bar {
   display: flex;
@@ -1547,6 +1544,12 @@ button, [role="tab"] {
     <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
     <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
   </main>
+
+  <!-- The add bar lives here, outside the scrolling screens. It used to be a
+       sticky element inside the list, and iOS painted the text caret way above
+       the field it belonged to. A plain flex child at the bottom of the shell
+       has no sticky offset for the caret to disagree with. -->
+  <div class="dock" id="dock" hidden></div>
 
   <nav class="tabbar" id="tabbar" role="tablist" aria-label="メインナビゲーション"></nav>
 </div>
@@ -3266,32 +3269,36 @@ button, [role="tab"] {
 
         <div class="js-filter"></div>
         <div class="js-body"></div>
-
-        <!-- Last in the stack, and pinned to the bottom by CSS. Adding an item
-             is the one thing done one-handed while walking a shop aisle, and
-             the top of a large phone is out of a thumb's reach. -->
-        <div class="quick-add">
-          <form class="quick-add-bar js-form">
-            ${icon("cart")}
-            <input class="quick-add-input js-input" placeholder="商品を追加（例：食器用洗剤）"
-                   autocomplete="off" autocapitalize="off" spellcheck="false"
-                   aria-label="商品を追加" aria-autocomplete="list">
-            <button class="quick-add-btn js-add" type="submit" aria-label="追加" disabled>${icon("plus")}</button>
-          </form>
-          <div class="js-ac"></div>
-        </div>
       </div>
     `);
 
     root.append(chrome);
 
+    /* The add bar sits in the shell's dock, not in this screen. Adding an item
+       is the one thing done one-handed in a shop aisle, so it belongs at the
+       bottom — but as a plain element there, not a sticky one in here. */
+    const dock = document.getElementById("dock");
+    dock.innerHTML = "";
+    dock.append(node(html`
+      <div class="quick-add">
+        <form class="quick-add-bar js-form">
+          ${icon("cart")}
+          <input class="quick-add-input js-input" placeholder="商品を追加（例：食器用洗剤）"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 aria-label="商品を追加" aria-autocomplete="list">
+          <button class="quick-add-btn js-add" type="submit" aria-label="追加" disabled>${icon("plus")}</button>
+        </form>
+        <div class="js-ac"></div>
+      </div>
+    `));
+
     els = {
       sub:        chrome.querySelector(".js-sub"),
       clear:      chrome.querySelector(".js-clear"),
-      form:       chrome.querySelector(".js-form"),
-      input:      chrome.querySelector(".js-input"),
-      addBtn:     chrome.querySelector(".js-add"),
-      ac:         chrome.querySelector(".js-ac"),
+      form:       dock.querySelector(".js-form"),
+      input:      dock.querySelector(".js-input"),
+      addBtn:     dock.querySelector(".js-add"),
+      ac:         dock.querySelector(".js-ac"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
@@ -5132,6 +5139,12 @@ button, [role="tab"] {
 
     ensureMounted(id);
     KN.screens[id].render();
+
+    // The add bar belongs to the list; on the other screens there is nothing
+    // to add to, so the dock steps out of the way entirely.
+    const dock = document.getElementById("dock");
+    if (dock) dock.hidden = id !== "list" || !dock.childElementCount;
+
     paintTabs();
     haptic();
 

@@ -41,32 +41,36 @@
 
         <div class="js-filter"></div>
         <div class="js-body"></div>
-
-        <!-- Last in the stack, and pinned to the bottom by CSS. Adding an item
-             is the one thing done one-handed while walking a shop aisle, and
-             the top of a large phone is out of a thumb's reach. -->
-        <div class="quick-add">
-          <form class="quick-add-bar js-form">
-            ${icon("cart")}
-            <input class="quick-add-input js-input" placeholder="商品を追加（例：食器用洗剤）"
-                   autocomplete="off" autocapitalize="off" spellcheck="false"
-                   aria-label="商品を追加" aria-autocomplete="list">
-            <button class="quick-add-btn js-add" type="submit" aria-label="追加" disabled>${icon("plus")}</button>
-          </form>
-          <div class="js-ac"></div>
-        </div>
       </div>
     `);
 
     root.append(chrome);
 
+    /* The add bar sits in the shell's dock, not in this screen. Adding an item
+       is the one thing done one-handed in a shop aisle, so it belongs at the
+       bottom — but as a plain element there, not a sticky one in here. */
+    const dock = document.getElementById("dock");
+    dock.innerHTML = "";
+    dock.append(node(html`
+      <div class="quick-add">
+        <form class="quick-add-bar js-form">
+          ${icon("cart")}
+          <input class="quick-add-input js-input" placeholder="商品を追加（例：食器用洗剤）"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 aria-label="商品を追加" aria-autocomplete="list">
+          <button class="quick-add-btn js-add" type="submit" aria-label="追加" disabled>${icon("plus")}</button>
+        </form>
+        <div class="js-ac"></div>
+      </div>
+    `));
+
     els = {
       sub:        chrome.querySelector(".js-sub"),
       clear:      chrome.querySelector(".js-clear"),
-      form:       chrome.querySelector(".js-form"),
-      input:      chrome.querySelector(".js-input"),
-      addBtn:     chrome.querySelector(".js-add"),
-      ac:         chrome.querySelector(".js-ac"),
+      form:       dock.querySelector(".js-form"),
+      input:      dock.querySelector(".js-input"),
+      addBtn:     dock.querySelector(".js-add"),
+      ac:         dock.querySelector(".js-ac"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),

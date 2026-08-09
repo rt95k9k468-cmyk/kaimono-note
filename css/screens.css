@@ -4,28 +4,25 @@
 
 /* ================= LIST SCREEN ================= */
 
-/* Docked to the bottom of the list screen, where a thumb can reach it.
-   `margin-top:auto` handles a short list (pushes it down) and `sticky` handles
-   a long one (keeps it in view while the items scroll underneath). No keyboard
-   offset here — the shell above is already sized to stop at the keyboard, so
-   the bottom of this screen is the top of the keyboard. */
-.quick-add {
-  position: sticky;
-  bottom: 0;
-  margin-top: auto;
+/* The dock is a plain row at the bottom of the shell, below the scrolling
+   screens and above the tab bar. Nothing sticky, nothing transformed, nothing
+   overlapping the list — the caret has no offset to disagree with, and the
+   shell is already sized to end at the keyboard. */
+.dock {
+  flex: none;
+  position: relative;
   z-index: 20;
+}
+
+.quick-add {
+  position: relative;   /* anchors the suggestions panel */
   padding: var(--sp-3) var(--sp-4);
-  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: var(--c-bg);
   border-top: 1px solid var(--c-border);
 }
 
-/* The stack has to fill the scrollport, otherwise `margin-top:auto` has no
-   spare space to push the bar into on a nearly empty list. */
-.screen[data-screen="list"] .stack { min-height: 100%; }
-/* The docked bar already occupies the space this padding was reserving. */
-.screen[data-screen="list"] { padding-bottom: 0; }
+/* Room under the last card so it clears the dock as you reach the end. */
+.screen[data-screen="list"] { padding-bottom: var(--sp-4); }
 
 .quick-add-bar {
   display: flex;

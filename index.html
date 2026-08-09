@@ -30,6 +30,12 @@
     <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
   </main>
 
+  <!-- The add bar lives here, outside the scrolling screens. It used to be a
+       sticky element inside the list, and iOS painted the text caret way above
+       the field it belonged to. A plain flex child at the bottom of the shell
+       has no sticky offset for the caret to disagree with. -->
+  <div class="dock" id="dock" hidden></div>
+
   <nav class="tabbar" id="tabbar" role="tablist" aria-label="メインナビゲーション"></nav>
 </div>
 
