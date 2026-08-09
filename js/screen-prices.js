@@ -59,7 +59,9 @@
     };
 
     els.search.addEventListener("input", () => {
-      query = els.search.value.trim().toLowerCase();
+      // Folded so this behaves like the list screen's suggestions:
+      // 「え」finds「エマール」.
+      query = KN.util.foldKana(els.search.value);
       els.clear.hidden = !query;
       renderBody();
     });
@@ -158,7 +160,7 @@
 
     const matched = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
-      .filter((p) => !query || p.name.toLowerCase().includes(query))
+      .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
       .sort((a, b) => a.name.localeCompare(b.name, "ja"));
 
     if (!matched.length) {

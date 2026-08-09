@@ -143,10 +143,18 @@
       const kb = covered > 120 ? Math.round(covered) : 0;
       root.style.setProperty("--kb", kb + "px");
       root.classList.toggle("kb-open", kb > 0);
+
+      // iOS shoves the document upwards to reveal the focused field before the
+      // shell has had a chance to shrink out of the keyboard's way. Once it
+      // has, the page has nowhere left to go, so put it back — otherwise that
+      // borrowed scroll stays behind and the whole app looks shifted up.
+      if (window.scrollY || window.pageYOffset) window.scrollTo(0, 0);
     };
 
     vv.addEventListener("resize", apply);
     vv.addEventListener("scroll", apply);
+    // The shove can also land a frame or two after the viewport settles.
+    window.addEventListener("focusin", () => setTimeout(apply, 300));
     apply();
   }
 

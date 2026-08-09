@@ -138,6 +138,12 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* The app is exactly one screenful and every list scrolls inside itself, so
+     the page must never scroll. Without this iOS slides the whole document up
+     to reveal a focused field and leaves it there, which reads as the app
+     having drifted off the top of the screen. */
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {

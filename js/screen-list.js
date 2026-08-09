@@ -155,25 +155,32 @@
   }
 
   function renderAutocomplete() {
-    const q = els.input.value.trim().toLowerCase();
+    const typed = els.input.value.trim();
+    const q = KN.util.foldKana(typed);
     els.ac.innerHTML = "";
     acIndex = -1;
     acMatches = [];
     if (!q) return;
 
     const onList = new Set(store.get().items.map((i) => i.productId));
+    // Matched on the folded name, so a single「え」already surfaces
+    // 「エマール」— nobody switches to katakana just to search their own list.
     const found = store.get().products
-      .filter((p) => p.name.toLowerCase().includes(q))
+      .map((p) => ({ p, key: KN.util.foldKana(p.name) }))
+      .filter((r) => r.key.includes(q))
       .sort((a, b) => {
-        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
-        return aStarts - bStarts || a.name.localeCompare(b.name, "ja");
+        const aStarts = a.key.startsWith(q) ? 0 : 1;
+        const bStarts = b.key.startsWith(q) ? 0 : 1;
+        return aStarts - bStarts || a.p.name.localeCompare(b.p.name, "ja");
       })
-      .slice(0, 6);
+      .slice(0, 6)
+      .map((r) => r.p);
 
-    const exact = store.findProductByName(q);
+    // Against what was actually typed, not the folded form — this decides
+    // whether we are looking at an existing product or offering a new one.
+    const exact = store.findProductByName(typed);
     acMatches = found.map((p) => ({ product: p }));
-    if (!exact) acMatches.push({ product: null, name: els.input.value.trim() });
+    if (!exact) acMatches.push({ product: null, name: typed });
     if (!acMatches.length) return;
 
     const box = node(html`<div class="ac" role="listbox"></div>`);
