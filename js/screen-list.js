@@ -570,7 +570,8 @@
     const done = () => wrap.classList.remove("is-closing");
     row.addEventListener("transitionend", done, { once: true });
     // A transition that never runs (already at rest) would otherwise strand it.
-    setTimeout(done, 400);
+    // Comfortably longer than the slide, or the panel vanishes mid-flight.
+    setTimeout(done, 900);
   }
 
   function attachSwipe(wrap, row) {
@@ -638,10 +639,11 @@
       if (!dragging) return;
 
       const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
-      // Never past 0: dragging a row rightwards would expose bare background on
-      // its left with nothing to show there. Left has a little give so the row
-      // does not stop dead against the end of the panel.
-      dx = Math.min(0, Math.max(-REVEAL - 16, base + mx));
+      // Bounded by the panel at both ends. Going further left than the panel is
+      // wide opened a strip of bare background beyond it — very visible on a
+      // second swipe of an already-open row — and going right of 0 would show
+      // the same on the other side.
+      dx = Math.min(0, Math.max(-REVEAL, base + mx));
       schedule(dx);
     });
 

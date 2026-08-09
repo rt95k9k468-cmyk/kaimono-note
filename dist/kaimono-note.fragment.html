@@ -513,9 +513,11 @@ button, [role="tab"] {
   overflow-x: auto;
   scrollbar-width: none;
   /* Vertical room so the taller chips are not clipped by the scroller
-     (overflow-x:auto makes the cross axis clip too). */
+     (overflow-x:auto makes the cross axis clip too). The horizontal padding
+     lines the first chip up with the cards below; there is deliberately no
+     negative margin, since that trick needs a padded parent and this one has
+     none — it just pushed the row a further 16px off the screen edge. */
   padding: 4px var(--sp-4);
-  margin-inline: calc(var(--sp-4) * -1);
   scroll-padding-inline: var(--sp-4);
 }
 .chip-row::-webkit-scrollbar { display: none; }
@@ -1034,7 +1036,11 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
-  transition: opacity .2s var(--ease), background .16s var(--ease), transform .22s var(--ease-out);
+  /* The row settling into place is deliberately unhurried — long enough to
+     read as the row gliding, with an easing that keeps almost all the travel
+     up front and lets the last few pixels drift in. */
+  transition: opacity .2s var(--ease), background .16s var(--ease),
+              transform .52s cubic-bezier(.16, .84, .24, 1);
   /* Vertical stays with the list so it can still scroll; horizontal comes to
      the swipe handler. The buttons inside need it too, otherwise a swipe that
      starts on the star is claimed by the browser as a pan. */
@@ -3531,7 +3537,8 @@ button, [role="tab"] {
     const done = () => wrap.classList.remove("is-closing");
     row.addEventListener("transitionend", done, { once: true });
     // A transition that never runs (already at rest) would otherwise strand it.
-    setTimeout(done, 400);
+    // Comfortably longer than the slide, or the panel vanishes mid-flight.
+    setTimeout(done, 900);
   }
 
   function attachSwipe(wrap, row) {
@@ -3599,10 +3606,11 @@ button, [role="tab"] {
       if (!dragging) return;
 
       const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
-      // Never past 0: dragging a row rightwards would expose bare background on
-      // its left with nothing to show there. Left has a little give so the row
-      // does not stop dead against the end of the panel.
-      dx = Math.min(0, Math.max(-REVEAL - 16, base + mx));
+      // Bounded by the panel at both ends. Going further left than the panel is
+      // wide opened a strip of bare background beyond it — very visible on a
+      // second swipe of an already-open row — and going right of 0 would show
+      // the same on the other side.
+      dx = Math.min(0, Math.max(-REVEAL, base + mx));
       schedule(dx);
     });
 

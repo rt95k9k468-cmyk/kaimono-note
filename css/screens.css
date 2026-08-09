@@ -199,7 +199,11 @@
   border-radius: var(--r-md);
   padding: var(--sp-3);
   box-shadow: var(--shadow-1);
-  transition: opacity .2s var(--ease), background .16s var(--ease), transform .22s var(--ease-out);
+  /* The row settling into place is deliberately unhurried — long enough to
+     read as the row gliding, with an easing that keeps almost all the travel
+     up front and lets the last few pixels drift in. */
+  transition: opacity .2s var(--ease), background .16s var(--ease),
+              transform .52s cubic-bezier(.16, .84, .24, 1);
   /* Vertical stays with the list so it can still scroll; horizontal comes to
      the swipe handler. The buttons inside need it too, otherwise a swipe that
      starts on the star is claimed by the browser as a pan. */
