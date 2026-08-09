@@ -23,9 +23,10 @@
     const pricesWrap = node(html`<div class="stack" style="gap:12px"></div>`);
     const rerenderPrices = () => renderPrices(pricesWrap, productId);
 
-    body.append(nameField(productId));
+    const category = categoryField(productId);
+    body.append(nameField(productId, category.recheck));
     if (itemId) body.append(itemSection(itemId));
-    body.append(categoryField(productId));
+    body.append(category.el);
     body.append(sizeField(productId, rerenderPrices));
     body.append(pricesWrap);
     rerenderPrices();
@@ -48,7 +49,7 @@
 
   /* ---------------- fields ---------------- */
 
-  function nameField(productId) {
+  function nameField(productId, onRecategorised) {
     const p = store.getProduct(productId);
     const wrap = node(html`
       <label class="field">
@@ -57,14 +58,40 @@
       </label>
     `);
     const input = wrap.querySelector(".js-name");
+
     const save = debounce(() => {
       const v = input.value.trim();
       if (!v) return;
+
+      /* A rename is very often a correction. 「コンソメ」 came out as その他,
+         so it gets renamed 「コンソメ(調味料)」 — and the new name now says
+         plainly where it goes. Re-reading it costs nothing and saves a second
+         trip to the picker.
+
+         Two limits. A category picked by hand is never overruled: that was a
+         decision, and this is a guess. And a guess that lands on その他 is
+         thrown away rather than applied — a name we cannot place must not
+         demote a category that is already right. */
+      let moved = null;
       store.update((s) => {
         const rec = s.products.find((x) => x.id === productId);
-        if (rec) rec.name = v;
+        if (!rec) return;
+        rec.name = v;
+        if (rec.catManual) return;
+        const guess = store.guessCategory(v);
+        if (guess !== store.OTHER_CATEGORY && guess !== rec.categoryId) {
+          rec.categoryId = guess;
+          moved = guess;
+        }
       });
+
+      if (moved) {
+        onRecategorised && onRecategorised();
+        KN.ui.toast(`「${store.getCategory(moved).name}」に移しました`);
+        haptic();
+      }
     }, 350);
+
     input.addEventListener("input", save);
     return wrap;
   }
@@ -136,16 +163,34 @@
         <div class="js-picker"></div>
       </div>
     `);
-    KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
+
+    const picker = KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
       selectedId: p.categoryId,
       onSelect: (categoryId) => {
         store.update((s) => {
           const rec = s.products.find((x) => x.id === productId);
-          if (rec) rec.categoryId = categoryId;
+          if (!rec) return;
+          rec.categoryId = categoryId;
+          // Chosen by hand. Nothing guessed from the name may move it again.
+          rec.catManual = true;
         });
+
+        /* And remember it. Being told 「コンソメ is 調味料」 once should be
+           enough — the next 「コンソメ」 typed into the list goes straight
+           there, and so does 「味の素 コンソメ」. Shown in 設定 so it is not a
+           machine quietly making decisions nobody can see or undo. */
+        const rec = store.getProduct(productId);
+        const known = store.learnedList().some((l) => l.key === KN.util.foldKana(rec.name) && l.categoryId === categoryId);
+        store.learnCategory(rec.name, categoryId);
+        if (!known) {
+          KN.ui.toast(`「${rec.name}」は${store.getCategory(categoryId).name}、と覚えました`);
+        }
       },
     });
-    return wrap;
+
+    // Called after a rename moved the category out from under the picker.
+    const recheck = () => picker.set(store.getProduct(productId).categoryId);
+    return { el: wrap, recheck };
   }
 
   function sizeField(productId, onChanged) {
