@@ -101,6 +101,19 @@
 
   /* ---------- dates ---------- */
 
+  /* Folds text down to one comparable form so searching does not depend on
+     which kana the shopper happened to reach for. 「え」finds「エマール」,
+     half-width ﾏ finds マ, and case stops mattering for latin names. */
+  function foldKana(s) {
+    return String(s || "")
+      .normalize("NFKC")            // ﾏ → マ, Ａ → A, ㍑ → リットル
+      .toLowerCase()
+      // Katakana to hiragana. Long vowel marks and small kana come along
+      // unchanged, so ロール and ろーる still meet.
+      .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
+      .replace(/\s+/g, "");
+  }
+
   function today() { return new Date().toISOString(); }
 
   function formatDate(iso) {
@@ -208,7 +221,7 @@
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
     yen, yenFine, parseNum,
-    today, formatDate, relativeDate,
+    today, formatDate, relativeDate, foldKana,
     unitPrice, formatSize, UNITS,
     icon, haptic,
   };
