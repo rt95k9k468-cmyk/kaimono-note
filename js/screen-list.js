@@ -128,10 +128,9 @@
   function renderAutocomplete() {
     const typed = els.input.value.trim();
     const q = KN.util.foldKana(typed);
-    els.ac.innerHTML = "";
     acIndex = -1;
     acMatches = [];
-    if (!q) return;
+    if (!q) { closeAutocomplete(); return; }
 
     const onList = new Set(store.get().items.map((i) => i.productId));
     // Matched on the folded name, so a single「え」already surfaces
@@ -152,9 +151,19 @@
     const exact = store.findProductByName(typed);
     acMatches = found.map((p) => ({ product: p }));
     if (!exact) acMatches.push({ product: null, name: typed });
-    if (!acMatches.length) return;
+    if (!acMatches.length) { closeAutocomplete(); return; }
 
-    const box = node(html`<div class="ac" role="listbox"></div>`);
+    /* Reuse the panel across keystrokes. Rebuilding it meant the open
+       animation — a fade up from transparent — restarted on every character,
+       which read as the list flickering while you typed. The panel is created
+       once, when it opens from nothing, and after that only its rows change. */
+    let box = els.ac.querySelector(".ac");
+    if (!box) {
+      box = node(html`<div class="ac" role="listbox"></div>`);
+      els.ac.append(box);
+    } else {
+      box.innerHTML = "";
+    }
 
     acMatches.forEach((m, idx) => {
       let row;
@@ -193,8 +202,6 @@
       });
       box.append(row);
     });
-
-    els.ac.append(box);
   }
 
   function paintActive() {
