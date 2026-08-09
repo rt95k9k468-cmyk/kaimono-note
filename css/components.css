@@ -322,9 +322,9 @@ button, [role="tab"] {
      and --kb in app.js: dvh does not shrink for a keyboard, so without the cap
      a sheet stays 90% of the whole screen tall and the fields near its top —
      「値段を追加」 among them — sit above the top edge, unreachable. */
-  bottom: var(--kb, 0px);
+  bottom: calc(var(--kb, 0px) + var(--pad, 0px));
   width: min(100%, var(--maxw));
-  max-height: min(90dvh, 780px, var(--vvh, 100dvh));
+  max-height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   /* Tinted, not opaque. With a keyboard up the sheet is as tall as everything
      still visible, and a solid panel that size stops reading as a sheet over
      the app and starts reading as a blank screen. The blur it sits on comes
@@ -583,3 +583,78 @@ button, [role="tab"] {
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
+
+
+/* ---------------- number pad ---------------- */
+
+/* Stands in for the system keyboard on the number fields — see keypad.js for
+   why there is one at all. Fixed to the bottom like a keyboard, above the
+   sheet, and it publishes its height as --pad so the sheet sits on top of it
+   exactly as it sits on top of a real keyboard. */
+.keypad {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 100%);
+  width: min(100%, var(--maxw));
+  z-index: 120;
+  padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + var(--safe-b));
+  background: var(--c-bg-elev);
+  border-top: 1px solid var(--c-border);
+  box-shadow: var(--shadow-3);
+  transition: transform .24s var(--ease-out);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.keypad.is-open { transform: translate(-50%, 0); }
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+
+.keypad-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.key {
+  height: 52px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font-size: 22px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  transition: background .1s var(--ease), transform .08s;
+}
+.key:active { background: var(--c-surface-3); transform: scale(.95); }
+
+.key-op { color: var(--c-primary); font-weight: 700; }
+
+/* 税 carries its rate on the key. A button that silently multiplies by
+   something is a button you have to remember the meaning of. */
+.key-tax {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--c-accent-ink);
+  background: var(--c-accent-soft);
+  flex-direction: column;
+  gap: 1px;
+}
+.key-tax span { font-size: 10px; font-weight: 700; opacity: .8; }
+
+.key-ok {
+  background: var(--c-primary);
+  color: #fff;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+.key-ok:active { background: var(--c-primary-2); }
+
+.key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }

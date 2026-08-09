@@ -724,31 +724,14 @@
 
 /* ---------------- calculator strip ---------------- */
 
-/* Four operators the iOS numeric keypad does not have, plus the running
-   answer. See wireCalculator() in product-sheet.js. */
+/* What the sum comes to, live, while the number pad is up. The operators are
+   on the pad itself (keypad.js); this is only the answer. */
 .calc-row {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  min-height: 22px;
 }
-
-.calc-key {
-  flex: none;
-  width: 40px;
-  height: 34px;
-  border-radius: var(--r-sm);
-  background: var(--c-surface-2);
-  border: 1px solid var(--c-border);
-  color: var(--c-text);
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  transition: background .14s var(--ease), transform .1s;
-}
-.calc-key:hover { background: var(--c-surface-3); }
-.calc-key:active { transform: scale(.92); }
 
 .calc-out {
   flex: 1;
