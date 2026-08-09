@@ -13,16 +13,26 @@
 
   /* ---------------- defaults ---------------- */
 
+  /* Each category carries a colour. It tints the rows of everything in it, so
+     a glance down the list groups itself without reading a word. Mid-tone
+     hues on purpose: they are mixed into the card surface at a low percentage,
+     and a colour that is already pale has nothing left to give in light mode
+     while a dark one goes muddy against the dark surface. */
+  const CATEGORY_COLORS = [
+    "#5ea55a", "#d4695f", "#d79a4a", "#5b9bd5", "#4fb3c4",
+    "#9b7ede", "#48b39a", "#e07fa8", "#8d968f", "#c2853f", "#7a8fd4",
+  ];
+
   const DEFAULT_CATEGORIES = [
-    { id: "c-veg",    name: "野菜・くだもの", emoji: "🥬" },
-    { id: "c-meat",   name: "肉・魚",         emoji: "🐟" },
-    { id: "c-food",   name: "食品",           emoji: "🍞" },
-    { id: "c-cold",   name: "冷蔵・冷凍",     emoji: "🧊" },
-    { id: "c-drink",  name: "飲みもの",       emoji: "🥤" },
-    { id: "c-daily",  name: "日用品",         emoji: "🧴" },
-    { id: "c-clean",  name: "掃除・洗剤",     emoji: "🧻" },
-    { id: "c-health", name: "薬・衛生",       emoji: "💊" },
-    { id: "c-other",  name: "その他",         emoji: "📦" },
+    { id: "c-veg",    name: "野菜・くだもの", emoji: "🥬", color: "#5ea55a" },
+    { id: "c-meat",   name: "肉・魚",         emoji: "🐟", color: "#d4695f" },
+    { id: "c-food",   name: "食品",           emoji: "🍞", color: "#d79a4a" },
+    { id: "c-cold",   name: "冷蔵・冷凍",     emoji: "🧊", color: "#5b9bd5" },
+    { id: "c-drink",  name: "飲みもの",       emoji: "🥤", color: "#4fb3c4" },
+    { id: "c-daily",  name: "日用品",         emoji: "🧴", color: "#9b7ede" },
+    { id: "c-clean",  name: "掃除・洗剤",     emoji: "🧻", color: "#48b39a" },
+    { id: "c-health", name: "薬・衛生",       emoji: "💊", color: "#e07fa8" },
+    { id: "c-other",  name: "その他",         emoji: "📦", color: "#8d968f" },
   ];
 
   const STORE_COLORS = [
@@ -76,7 +86,12 @@
     out.products = Array.isArray(s.products) ? s.products : [];
     out.items    = Array.isArray(s.items)    ? s.items    : [];
 
-    out.categories.forEach((c, i) => { if (typeof c.order !== "number") c.order = i; });
+    out.categories.forEach((c, i) => {
+      if (typeof c.order !== "number") c.order = i;
+      // Lists saved before categories had colours, and any the user made by
+      // hand, get one off the palette rather than none.
+      if (!c.color) c.color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+    });
     out.products.forEach((p) => {
       if (!Array.isArray(p.prices)) p.prices = [];
       if (!p.categoryId || !out.categories.some((c) => c.id === p.categoryId)) {
@@ -255,157 +270,24 @@
     return bestId;
   }
 
-  /* A picture per product, without a product database.
-
-     Real photographs would mean an outside API — a key that cannot be kept
-     secret on a public static site, a network round trip per item, and a
-     guess at which 「エマール」 the search meant. An emoji chosen from the name
-     costs nothing, is right the moment the item is typed, and works on a
-     train with no signal. It is not a photo, but on a list being scanned at
-     arm's length in an aisle it does the job a photo would.
-
-     Matched on the folded name, so each word is listed once in hiragana and
-     カタカナ・全角 spellings all land on it. Kanji pass through folding
-     unchanged, so they are listed as themselves. */
-  const PRODUCT_EMOJI = [
-    ["🥛", ["牛乳", "ぎゅうにゅう", "みるく", "豆乳", "とうにゅう"]],
-    ["🥚", ["卵", "たまご", "玉子"]],
-    ["🧀", ["ちーず", "とろけるちーず"]],
-    ["🧈", ["ばたー", "まーがりん"]],
-    ["🥣", ["よーぐると", "しりある", "ぐらのーら"]],
-    ["🍨", ["あいす", "あいすくりーむ"]],
-    ["🍮", ["ぷりん"]],
-
-    ["🍅", ["とまと", "ぷちとまと", "みにとまと"]],
-    ["🥒", ["きゅうり", "胡瓜"]],
-    ["🥬", ["きゃべつ", "白菜", "はくさい", "れたす", "ほうれん草", "ほうれんそう", "小松菜", "こまつな", "水菜", "みずな", "にら", "春菊", "青梗菜", "ちんげん菜"]],
-    ["🧅", ["玉ねぎ", "たまねぎ", "玉葱", "ねぎ", "長ねぎ", "長葱", "万能ねぎ"]],
-    ["🥕", ["にんじん", "人参", "きゃろっと"]],
-    ["🥔", ["じゃがいも", "馬鈴薯", "ぽてと", "里芋", "さといも"]],
-    ["🍠", ["さつまいも", "薩摩芋", "焼き芋"]],
-    ["🍄", ["きのこ", "しめじ", "えのき", "まいたけ", "舞茸", "しいたけ", "椎茸", "えりんぎ", "なめこ", "まっしゅるーむ"]],
-    ["🌽", ["とうもろこし", "こーん"]],
-    ["🍆", ["なす", "茄子"]],
-    ["🫑", ["ぴーまん", "ぱぷりか"]],
-    ["🥦", ["ぶろっこりー", "かりふらわー"]],
-    ["🥗", ["さらだ", "かっとやさい"]],
-    ["🧄", ["にんにく", "がーりっく"]],
-    ["🥑", ["あぼかど"]],
-    ["🫘", ["大豆", "だいず", "枝豆", "えだまめ", "もやし"]],
-
-    ["🍎", ["りんご", "林檎", "あっぷる"]],
-    ["🍌", ["ばなな"]],
-    ["🍊", ["みかん", "蜜柑", "おれんじ"]],
-    ["🍓", ["いちご", "苺", "すとろべりー"]],
-    ["🍇", ["ぶどう", "葡萄", "ますかっと"]],
-    ["🍑", ["桃", "ぴーち"]],
-    ["🍉", ["すいか", "西瓜"]],
-    ["🍐", ["梨"]],
-    ["🍍", ["ぱいなっぷる"]],
-    ["🥝", ["きうい"]],
-    ["🍈", ["めろん"]],
-    ["🍋", ["れもん"]],
-
-    ["🥩", ["肉", "にく", "牛肉", "豚肉", "ぎゅうにく", "ぶたにく", "すてーき", "ひき肉", "みんち", "挽肉", "しゃぶしゃぶ", "焼肉"]],
-    ["🍗", ["鶏", "鶏肉", "とり肉", "とりにく", "もも肉", "むね肉", "手羽", "からあげ", "唐揚げ", "ちきん", "ささみ"]],
-    ["🥓", ["べーこん"]],
-    ["🌭", ["そーせーじ", "ういんなー"]],
-    ["🍖", ["はむ"]],
-    ["🐟", ["魚", "さかな", "鮭", "しゃけ", "さば", "鯖", "鰺", "ぶり", "鰤", "鱈", "ひらめ", "白身魚", "切り身", "ししゃも", "干物"]],
-    ["🍣", ["刺身", "さしみ", "寿司", "すし", "まぐろ", "鮪", "ねぎとろ", "サーモン"]],
-    ["🍤", ["えび", "海老"]],
-    ["🦑", ["いか", "烏賊"]],
-    ["🐙", ["たこ", "蛸"]],
-    ["🦪", ["あさり", "しじみ", "ほたて", "帆立", "牡蠣"]],
-
-    ["🍚", ["米", "こめ", "ごはん", "ご飯", "らいす", "無洗米"]],
-    ["🍞", ["ぱん", "食パン", "しょくぱん", "ぶれっど"]],
-    ["🥐", ["くろわっさん", "でにっしゅ"]],
-    ["🍜", ["らーめん", "中華麺", "かっぷ麺", "かっぷらーめん", "そば", "うどん", "そうめん", "焼きそば"]],
-    ["🍝", ["ぱすた", "すぱげってぃ", "まかろに"]],
-    ["🍲", ["鍋", "おでん", "しちゅー", "味噌", "みそ"]],
-    ["🍛", ["かれー"]],
-    ["🥟", ["餃子", "ぎょうざ", "しゅうまい", "焼売", "春巻"]],
-    ["🍱", ["弁当", "べんとう", "惣菜", "そうざい", "おにぎり"]],
-    ["🧊", ["冷凍", "れいとう", "氷", "こおり"]],
-
-    ["🧂", ["塩", "しお", "胡椒", "こしょう", "砂糖", "さとう", "調味料", "だし", "出汁"]],
-    ["🥫", ["缶詰", "かんづめ", "つな缶", "とまと缶", "れとると", "醤油", "しょうゆ", "そーす", "けちゃっぷ", "まよねーず", "どれっしんぐ", "ぽん酢", "酢", "みりん", "味醂"]],
-    ["🫒", ["油", "あぶら", "さらだ油", "おりーぶおいる", "ごま油"]],
-    ["🌾", ["小麦粉", "こむぎこ", "薄力粉", "強力粉", "片栗粉", "ぱん粉", "ほっとけーきみっくす"]],
-    ["🍯", ["はちみつ", "蜂蜜", "じゃむ"]],
-
-    ["🍫", ["ちょこ", "ちょこれーと"]],
-    ["🍪", ["くっきー", "びすけっと", "お菓子", "おかし", "菓子"]],
-    ["🍘", ["せんべい", "煎餅", "おかき"]],
-    ["🍬", ["飴", "あめ", "きゃんでぃ", "ぐみ", "がむ"]],
-    ["🍿", ["ぽっぷこーん", "すなっく", "ぽてとちっぷす", "ぽてち"]],
-    ["🧁", ["けーき", "まふぃん", "どーなつ", "しゅーくりーむ"]],
-    ["🥜", ["なっつ", "あーもんど", "ぴーなっつ"]],
-
-    ["💧", ["水", "みず", "みねらるうぉーたー", "天然水", "炭酸水"]],
-    ["🍵", ["お茶", "おちゃ", "茶", "緑茶", "麦茶", "紅茶", "ほうじ茶"]],
-    ["☕", ["こーひー", "珈琲", "かふぇおれ"]],
-    ["🧃", ["じゅーす", "おれんじじゅーす", "りんごじゅーす", "野菜じゅーす"]],
-    ["🥤", ["こーら", "炭酸", "さいだー", "すぽーつどりんく", "清涼飲料"]],
-    ["🍺", ["びーる", "発泡酒", "ちゅーはい", "はいぼーる"]],
-    ["🍶", ["酒", "日本酒", "焼酎", "料理酒"]],
-    ["🍷", ["わいん"]],
-
-    ["🧻", ["といれっとぺーぱー", "てぃっしゅ", "きっちんぺーぱー", "ぺーぱー"]],
-    ["🧴", ["洗剤", "せんざい", "しゃんぷー", "りんす", "こんでぃしょなー", "ぼでぃそーぷ", "柔軟剤", "はんどそーぷ", "化粧水", "乳液", "日焼け止め", "除菌"]],
-    ["🧺", ["洗濯", "せんたく", "洗濯洗剤", "漂白剤", "はいたー"]],
-    ["🧼", ["石鹸", "せっけん", "そーぷ", "洗顔"]],
-    ["🧽", ["すぽんじ", "たわし"]],
-    ["🧹", ["掃除", "そうじ", "ほうき", "わいぱー", "くいっくる"]],
-    ["🗑️", ["ごみ袋", "ゴミ袋", "ごみぶくろ"]],
-    ["🪥", ["歯ぶらし", "はぶらし", "歯磨き", "はみがき", "歯磨き粉"]],
-    ["🪒", ["髭剃り", "ひげそり", "かみそり", "しぇーばー"]],
-    ["🧷", ["おむつ", "紙おむつ", "おしりふき"]],
-    ["📦", ["らっぷ", "あるみほいる", "ほいる", "じっぷろっく", "保存袋", "食品保存"]],
-    ["🔋", ["電池", "でんち", "乾電池"]],
-    ["💡", ["電球", "でんきゅう", "らいと"]],
-    ["🧦", ["靴下", "くつした"]],
-
-    ["💊", ["薬", "くすり", "さぷり", "びたみん", "錠剤", "風邪薬", "胃薬"]],
-    ["😷", ["ますく"]],
-    ["🩹", ["絆創膏", "ばんそうこう", "湿布", "しっぷ"]],
-    ["🌡️", ["体温計", "たいおんけい"]],
-    ["🐾", ["どっぐふーど", "きゃっとふーど", "ぺっとふーど", "猫砂", "ねこ砂"]],
-  ];
-
-  /* Flattened once and sorted longest first, so the first hit is the longest
-     match: 「牛乳」 beats 「牛」, 「もも肉」 beats 「桃」, 「洗濯洗剤」 beats 「洗剤」. */
-  const EMOJI_KEYS = PRODUCT_EMOJI
-    .flatMap(([emoji, words]) => words.map((w) => [KN.util.foldKana(w), emoji]))
-    .sort((a, b) => b[0].length - a[0].length);
-
-  /** Emoji suggested by a product name alone, or "" when nothing fits. */
-  function guessEmoji(name) {
-    const n = KN.util.foldKana(String(name || ""));
-    if (!n) return "";
-    for (const [key, emoji] of EMOJI_KEYS) if (n.includes(key)) return emoji;
-    return "";
-  }
-
-  /** The emoji standing in for a product: its own, else its category's. */
-  function productEmoji(product) {
+  /** The colour a product's rows are tinted with — its category's. */
+  function productColor(product) {
     if (!product) return "";
-    return guessEmoji(product.name) || getCategory(product.categoryId).emoji;
+    return getCategory(product.categoryId).color || "";
   }
 
   /**
-   * What to actually show beside a product. A drawn icon when there is one for
-   * this kind of thing (see product-icons.js — emoji have no 洗剤), otherwise
-   * the emoji. Drawn icons come first because they are the more specific of
-   * the two: they exist precisely where the emoji set gives up and reuses one
-   * picture for six products.
+   * The picture beside a product — always a drawn one (see product-icons.js).
+   * When the name matches nothing, that is a plain package in the category's
+   * own colour, so the row is still grouped by sight even where the name told
+   * us nothing.
    * @returns raw HTML, ready to drop into an html`` template
    */
   function productMark(product) {
     if (!product) return "";
-    const icon = KN.productIcons.find(product.name);
-    return icon ? KN.util.raw(icon) : productEmoji(product);
+    return KN.util.raw(
+      KN.productIcons.find(product.name) || KN.productIcons.fallback(productColor(product))
+    );
   }
 
   function findProductByName(name) {
@@ -581,12 +463,12 @@
   }
 
   KN.store = {
-    KEY, SCHEMA, STORE_COLORS, OTHER_CATEGORY,
+    KEY, SCHEMA, STORE_COLORS, CATEGORY_COLORS, OTHER_CATEGORY,
     get, update, subscribe, reload,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
-    guessEmoji, productEmoji, productMark,
+    productMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice,
     exportJSON, importJSON, reset, loadSample,

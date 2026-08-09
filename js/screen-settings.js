@@ -196,33 +196,20 @@
     `);
 
     const rows = wrap.querySelector(".js-rows");
-    cats.forEach((c, idx) => {
+    cats.forEach((c) => {
       const used = store.get().products.filter((p) => p.categoryId === c.id).length;
       const row = node(html`
-        <div class="manage-row">
+        <div class="manage-row" style="--cat:${c.color || ""}">
+          <span class="manage-swatch" style="background:${c.color || "transparent"}"></span>
           <span class="manage-emoji">${c.emoji}</span>
           <span class="manage-name">${c.name}</span>
           <span style="font-size:11px;color:var(--c-text-3);flex:none">${used}商品</span>
-          <button class="icon-btn js-up" aria-label="上へ" ${idx === 0 ? KN.util.raw("disabled") : ""}
-                  style="${idx === 0 ? "opacity:.3" : ""}">${icon("chevron", "rot-up")}</button>
           <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
           ${c.id === store.OTHER_CATEGORY
             ? ""
             : html`<button class="icon-btn is-danger js-del" aria-label="削除">${icon("trash")}</button>`}
         </div>
       `);
-
-      row.querySelector(".js-up").style.transform = "rotate(-90deg)";
-
-      row.querySelector(".js-up").addEventListener("click", () => {
-        if (idx === 0) return;
-        const prev = cats[idx - 1];
-        store.update((s) => {
-          const a = s.categories.find((x) => x.id === c.id);
-          const b = s.categories.find((x) => x.id === prev.id);
-          if (a && b) { const t = a.order; a.order = b.order; b.order = t; }
-        });
-      });
 
       row.querySelector(".js-edit").addEventListener("click", () => editCategory(c));
 
@@ -271,8 +258,25 @@
           <span class="field-label">絵文字（1文字）</span>
           <input class="input js-emoji" value="${cat ? cat.emoji : ""}" placeholder="🍪" maxlength="4" style="width:100px;text-align:center;font-size:24px">
         </label>
+        <div class="field">
+          <span class="field-label">色（このカテゴリの品物の背景になります）</span>
+          <div class="swatches js-swatches"></div>
+        </div>
       </div>
     `);
+
+    let color = (cat && cat.color) || store.CATEGORY_COLORS[0];
+    const sw = body.querySelector(".js-swatches");
+    function paintSwatches() {
+      sw.innerHTML = "";
+      store.CATEGORY_COLORS.forEach((c) => {
+        const b = node(html`<button type="button" class="swatch" style="background:${c}"
+                              aria-pressed="${String(c === color)}" aria-label="色"></button>`);
+        b.addEventListener("click", () => { color = c; paintSwatches(); });
+        sw.append(b);
+      });
+    }
+    paintSwatches();
 
     const foot = node(html`<button class="btn btn-primary btn-block">${cat ? "保存" : "追加"}</button>`);
     const h = KN.ui.sheet({ title: cat ? "カテゴリの編集" : "カテゴリを追加", content: body, footer: foot });
@@ -285,10 +289,10 @@
       store.update((s) => {
         if (cat) {
           const rec = s.categories.find((x) => x.id === cat.id);
-          if (rec) { rec.name = name; rec.emoji = emoji; }
+          if (rec) { rec.name = name; rec.emoji = emoji; rec.color = color; }
         } else {
           s.categories.push({
-            id: KN.util.uid("c"), name, emoji,
+            id: KN.util.uid("c"), name, emoji, color,
             order: Math.max(-1, ...s.categories.map((x) => x.order ?? 0)) + 1,
           });
         }

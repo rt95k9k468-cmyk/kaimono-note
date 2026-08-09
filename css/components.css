@@ -196,9 +196,12 @@ button, [role="tab"] {
 .chip:active { transform: scale(.95); }
 .chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
 
+/* A selected category chip wears that category's own colour, so the filter and
+   the rows it leaves on screen say the same thing. Chips with no category
+   behind them (「すべて」and the store pickers) keep the app's green. */
 .chip[aria-pressed="true"], .chip.is-on {
-  background: var(--c-primary);
-  border-color: var(--c-primary);
+  background: var(--cat, var(--c-primary));
+  border-color: var(--cat, var(--c-primary));
   color: #fff;
 }
 
@@ -400,16 +403,18 @@ button, [role="tab"] {
      stay clear and let the sheet's own tint show through. */
 }
 
-/* Drawn product icons stand in for emoji, so they size themselves off the
-   surrounding font-size exactly as a glyph would — every place that already
-   sets a size for the emoji gets the icon at the same size for free. */
+/* Product icons size themselves off the surrounding font-size, so every place
+   that sets a size for the mark gets the icon at that size for free. Slightly
+   over 1em because the drawings keep a margin inside their 24-grid. */
 .p-icon {
   display: inline-block;
-  /* Emoji glyphs fill more of their em box than a 24-grid drawing does, so the
-     icons are set slightly larger to carry the same visual weight beside them. */
-  width: 1.26em;
-  height: 1.26em;
-  vertical-align: -.24em;
+  width: 1.32em;
+  height: 1.32em;
+  vertical-align: -.26em;
+  /* A hair of shadow. Several icons are mostly white — a milk carton, an egg,
+     a bowl of rice — and the rows they sit on are tinted with the category
+     colour, so without this they dissolve into the card. */
+  filter: drop-shadow(0 .5px .5px rgba(20, 40, 28, .22));
 }
 
 .sheet-mark {
@@ -421,10 +426,35 @@ button, [role="tab"] {
 /* ---------------- reorder (long press to lift) ---------------- */
 
 /* The rows not being carried glide aside to open the gap. Scoped to a drag in
-   progress, so an ordinary re-render never animates rows into place. */
-.is-reordering > * {
-  transition: transform .18s var(--ease-out);
+   progress, so an ordinary re-render never animates rows into place. Slow
+   enough to read as sliding rather than snapping, with an easing that starts
+   and ends soft — these are rows getting out of the way, not something being
+   thrown. */
+.is-reordering {
+  position: relative;   /* the stand-in below is positioned against this */
 }
+
+.is-reordering > * {
+  transition: transform .24s cubic-bezier(.32, .72, .24, 1);
+}
+
+/* The faded copy of the row, sitting in the gap it will drop into. Its own
+   transition is on `top`, matched to the rows moving aside, so the gap and the
+   preview in it arrive together. */
+/* Scoped under the container so it outranks whatever `position` the row it was
+   cloned from carries — .item-wrap is `relative`, and a relative ghost would
+   offset from wherever it happened to land in the flow instead of from the
+   gap. */
+.is-reordering > .reorder-ghost {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  opacity: .34;
+  filter: saturate(.7);
+  animation: none !important;
+  transition: top .24s cubic-bezier(.32, .72, .24, 1), opacity .18s var(--ease);
+}
+.is-reordering > .reorder-ghost.is-going { opacity: 0; }
 
 /* Off the surface: a shadow under it and a hair larger, with no transition at
    all so it sits exactly under the finger rather than chasing it. `scale` is

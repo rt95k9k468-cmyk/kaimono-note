@@ -211,6 +211,68 @@
     );
   }
 
+  /* ---------- arithmetic in a text field ---------- */
+
+  /* iOS gives a numeric keypad and no operator keys, and there is no way to ask
+     it for a calculator. So the field takes an expression and this works it
+     out: 「198+250」、「128*3」、「980/2」. Written out rather than handed to
+     eval — a shopping note has no business running code, and the grammar here
+     is four operators and a number, which is a dozen lines. */
+  const FULLWIDTH = "０１２３４５６７８９．＋－×÷／";
+  const ASCII     = "0123456789.+-*/ /";
+
+  function normalizeExpr(v) {
+    return String(v == null ? "" : v)
+      .replace(/[０-９．＋－×÷／]/g, (c) => ASCII[FULLWIDTH.indexOf(c)])
+      .replace(/[×✕✖]/g, "*")
+      .replace(/÷/g, "/")
+      .replace(/[−–—ー]/g, "-")
+      .replace(/[\s,、¥￥円]/g, "");
+  }
+
+  /** True when this looks like a sum rather than a plain number. */
+  function isExpression(v) {
+    const s = normalizeExpr(v);
+    return /\d[+\-*/]/.test(s);
+  }
+
+  /**
+   * Evaluate `1+2*3` and friends. Returns null for anything that is not a
+   * complete, well-formed sum — a trailing operator while you are still typing
+   * is not an error, it just has no answer yet.
+   */
+  function calc(v) {
+    const src = normalizeExpr(v);
+    if (!src || !/^[\d.+\-*/]+$/.test(src)) return null;
+
+    const tokens = src.match(/\d+(?:\.\d+)?|\.\d+|[+\-*/]/g);
+    if (!tokens) return null;
+
+    const nums = [], ops = [];
+    let wantNumber = true;
+    for (const t of tokens) {
+      const isOp = /^[+\-*/]$/.test(t);
+      if (isOp === wantNumber) return null;   // two in a row, either way
+      if (isOp) ops.push(t);
+      else nums.push(parseFloat(t));
+      wantNumber = isOp;
+    }
+    if (wantNumber) return null;              // ends on an operator
+
+    for (let i = 0; i < ops.length; ) {
+      if (ops[i] === "*" || ops[i] === "/") {
+        const r = ops[i] === "*" ? nums[i] * nums[i + 1] : nums[i] / nums[i + 1];
+        nums.splice(i, 2, r);
+        ops.splice(i, 1);
+      } else i++;
+    }
+    let out = nums[0];
+    for (let i = 0; i < ops.length; i++) {
+      out = ops[i] === "+" ? out + nums[i + 1] : out - nums[i + 1];
+    }
+    return isFinite(out) ? out : null;
+  }
+
   /* ---------- feedback ---------- */
 
   function haptic(ms) {
@@ -223,6 +285,7 @@
     yen, yenFine, parseNum,
     today, formatDate, relativeDate, foldKana,
     unitPrice, formatSize, UNITS,
+    calc, isExpression,
     icon, haptic,
   };
 })();

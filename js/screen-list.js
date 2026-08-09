@@ -186,7 +186,7 @@
       } else {
         row = node(html`
           <button type="button" class="ac-item" role="option" data-idx="${String(idx)}">
-            <span class="ac-emoji">✨</span>
+            <span class="ac-emoji ac-new-mark">${icon("sparkles")}</span>
             <span class="ac-main">
               <span class="ac-name ac-new">「${m.name}」を新しく追加</span>
               <span class="ac-sub">カテゴリは自動で振り分けます</span>
@@ -338,7 +338,8 @@
       .filter((c) => counts.has(c.id))
       .forEach((c) => {
         const chip = node(html`
-          <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}">
+          <button type="button" class="chip" aria-pressed="${String(categoryFilter === c.id)}"
+                  style="--cat:${c.color || ""}">
             <span class="chip-emoji">${c.emoji}</span>${c.name}
             <span class="chip-count">${counts.get(c.id)}</span>
           </button>
@@ -414,7 +415,7 @@
       if (!entries || !entries.length) return;
 
       const group = node(html`
-        <section class="cat-group">
+        <section class="cat-group" style="--cat:${cat.color || ""}">
           <h2 class="cat-head">
             <span class="cat-head-emoji">${cat.emoji}</span>${cat.name}
             <span class="cat-head-count">${entries.length}</span>
@@ -484,7 +485,7 @@
     const bestStore = best ? store.getStore(best.storeId) : null;
 
     const wrap = node(html`
-      <article class="item-wrap" data-item-id="${item.id}">
+      <article class="item-wrap" data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
         <div class="item-actions">
           <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
         </div>
