@@ -616,7 +616,10 @@ button, [role="tab"] {
 
 .keypad-actions {
   display: grid;
-  grid-template-columns: 1fr 1.6fr 1fr;
+  /* 税8% · 税10% · 確定 · ⌫ — the two rates are narrow because they are read
+     rather than aimed at from a distance, and 確定 keeps the width because it
+     is the one pressed without looking. */
+  grid-template-columns: 1fr 1fr 2fr 1.1fr;
   gap: var(--sp-2);
   margin-top: var(--sp-2);
 }
@@ -637,17 +640,17 @@ button, [role="tab"] {
 
 .key-op { color: var(--c-primary); font-weight: 700; }
 
-/* 税 carries its rate on the key. A button that silently multiplies by
-   something is a button you have to remember the meaning of. */
+/* Each 税 key carries its own rate. A button that silently multiplies by
+   something is a button you have to remember the meaning of, and with two of
+   them side by side the number is the whole point. */
 .key-tax {
-  font-size: var(--fs-lg);
-  font-weight: 800;
   color: var(--c-accent-ink);
   background: var(--c-accent-soft);
-  flex-direction: column;
-  gap: 1px;
+  gap: 0;
+  line-height: 1.05;
 }
-.key-tax span { font-size: 10px; font-weight: 700; opacity: .8; }
+.key-tax-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
+.key-tax-rate { font-size: var(--fs-lg); font-weight: 800; }
 
 .key-ok {
   background: var(--c-primary);

@@ -1,10 +1,10 @@
 /* =========================================================
    かいものノート — the number pad
 
-   iOS will hand you a numeric keypad, but it has no operators, no 税 key, and
+   iOS will hand you a numeric keypad, but it has no operators, no 税 keys, and
    a system toolbar above it that a web page cannot remove. So the field asks
    for no keyboard at all (`inputmode="none"`) and this pad slides up instead:
-   digits, the four operators, a 税 key, a backspace and a 確定.
+   digits, the four operators, both tax rates, a backspace and a 確定.
 
    The field itself is the display. There is no second readout to keep in sync,
    the caret goes where you tap, and what you see is exactly what is stored
@@ -20,7 +20,12 @@
   const KN = window.KN;
   const { html, node, icon, haptic } = KN.util;
 
-  const TAX = 1.1;   // 税 — see the note on the key below
+  /* Both rates, because Japan has both and a grocery list meets both in the
+     same basket: 8% on food under 軽減税率, 10% on everything else. One key
+     would be wrong about half the shelf, and which half is not something the
+     app can work out from a price. 8% first — it is the one a food shop
+     reaches for most. */
+  const TAX_RATES = [0.08, 0.1];
 
   let pad = null;      // the element, built once
   let field = null;    // the input it is typing into
@@ -40,7 +45,12 @@
       <div class="keypad" role="group" aria-label="数字キーボード" hidden>
         <div class="keypad-grid js-grid"></div>
         <div class="keypad-actions">
-          <button type="button" class="key key-tax js-tax">税 <span>+10%</span></button>
+          ${TAX_RATES.map((r) => html`
+            <button type="button" class="key key-tax js-tax" data-rate="${String(r)}"
+                    aria-label="税${Math.round(r * 100)}パーセントを足す">
+              <span class="key-tax-cap">税</span><span class="key-tax-rate">+${Math.round(r * 100)}%</span>
+            </button>
+          `)}
           <button type="button" class="key key-ok js-ok">確定</button>
           <button type="button" class="key key-back js-back" aria-label="1文字消す">${icon("backspace")}</button>
         </div>
@@ -58,7 +68,9 @@
     }));
 
     pad.querySelector(".js-back").addEventListener("click", backspace);
-    pad.querySelector(".js-tax").addEventListener("click", applyTax);
+    pad.querySelectorAll(".js-tax").forEach((k) => {
+      k.addEventListener("click", () => applyTax(parseFloat(k.dataset.rate)));
+    });
     pad.querySelector(".js-ok").addEventListener("click", commit);
 
     // A key must never steal the caret. Cancelling the press keeps focus, and
@@ -101,15 +113,14 @@
     fire();
   }
 
-  /* 税. Works the sum out first, so 「198+250」 becomes the tax on the total
-     rather than on whatever was typed last, then rounds down — which is what a
-     Japanese shelf price does with the fraction of a yen. 10%; food is 8% under
-     軽減税率, and that is a second key if it turns out to be wanted. */
-  function applyTax() {
+  /* Works the sum out first, so 「198+250」 gets the tax on the total rather
+     than on whatever was typed last, then rounds down — which is what a
+     Japanese shelf price does with the fraction of a yen. */
+  function applyTax(rate) {
     if (!field) return;
     const n = KN.util.calc(field.value);
     if (n == null) { haptic(20); return; }
-    field.value = String(Math.floor(n * TAX));
+    field.value = String(Math.floor(n * (1 + rate)));
     setCaret(field.value.length);
     haptic(14);
     fire();
