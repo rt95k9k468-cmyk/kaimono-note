@@ -105,12 +105,13 @@
     /* Since a lost caret no longer takes the pad down with it (see
        restoreOrClose), there has to be a deliberate way out other than 確定:
        a press anywhere that is neither the pad nor the field it is typing
-       into means the user is done with it. */
+       into means the user is done with it. But not this instant — see
+       closeAfterTap: the finger is still on the glass. */
     document.addEventListener("pointerdown", (e) => {
       if (!isOpen()) return;
       if (pad.contains(e.target)) return;
       if (field && (e.target === field || field.contains(e.target))) return;
-      close();
+      closeAfterTap();
     }, true);
 
     document.getElementById("sheet-root").append(pad);
@@ -252,7 +253,75 @@
     field = null;
     opts = {};
     document.documentElement.style.setProperty("--pad", "0px");
+    guardGhostClick();
   }
+
+  /* ---------------- the click that lands somewhere else ----------------
+
+     The pad is a third of the screen. Closing it hands all of that height
+     back at once, and everything above slides down into it — while a finger
+     is still on the glass. A tap is not one event but three: press, release,
+     click. If the pad goes away on the press, the layout has moved by the
+     time the click is worked out, and the browser hands it to whatever is
+     under the point *now*.
+
+     On the price sheet this was a data loss: with the pad up, 「追加」 sat
+     where a saved row's 🗑 landed once the pad was gone. Pressing 追加
+     deleted a price and recorded nothing.
+
+     So a press outside the pad no longer closes it — it arms the close, and
+     the pad stays up until the tap it belongs to has been delivered in full.
+     Nothing moves under the finger, and 追加 gets its own click. */
+
+  let armed = false;
+
+  function closeAfterTap() {
+    if (armed) return;
+    armed = true;
+    // Capture, so this runs before the button's own handler and can hand the
+    // close to the end of the queue — after the whole click has been
+    // dispatched, whatever it turns out to do.
+    document.addEventListener("click", onTapEnd, true);
+    document.addEventListener("pointerup", onTapEnd, true);
+    document.addEventListener("pointercancel", onTapEnd, true);
+    document.addEventListener("touchend", onTapEnd, true);
+  }
+
+  function onTapEnd() {
+    if (!armed) return;
+    armed = false;
+    document.removeEventListener("click", onTapEnd, true);
+    document.removeEventListener("pointerup", onTapEnd, true);
+    document.removeEventListener("pointercancel", onTapEnd, true);
+    document.removeEventListener("touchend", onTapEnd, true);
+    // A release is not the end of the tap: the click still has to be worked
+    // out and delivered. Wait past it before giving the height back.
+    setTimeout(() => { if (!armed) close(); }, 90);
+  }
+
+  /* Belt and braces for the same failure. If anything else takes the pad down
+     mid-tap — a blur, a sheet closing, a handler calling close() — a click
+     that ends up somewhere other than where the finger went down is not a
+     tap the user made. Throw it away. */
+
+  let downTarget = null;
+  document.addEventListener("pointerdown", (e) => { downTarget = e.target; }, true);
+  document.addEventListener("touchstart", (e) => {
+    downTarget = (e.touches[0] && e.touches[0].target) || downTarget;
+  }, true);
+
+  let guardUntil = 0;
+  function guardGhostClick() { guardUntil = Date.now() + 400; }
+
+  document.addEventListener("click", (e) => {
+    if (!guardUntil || Date.now() > guardUntil) return;
+    const from = downTarget;
+    // Same element, or one contains the other: the tap stayed where it began.
+    if (from && (from === e.target || from.contains(e.target) || e.target.contains(from))) return;
+    guardUntil = 0;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 
   const isOpen = () => !!(pad && !pad.hidden);
 
