@@ -10376,13 +10376,20 @@ button, [role="tab"] {
       const sub = wrap.querySelector(".js-badge-sub");
       rows.hidden = false;
 
+      /* An 「オン」 that is not on is the worst of the three states: the app
+         says it is doing something the icon is not showing. iOS drops the
+         badge permission on its own — a reset, a tap in 設定 → 通知 — and
+         tells the page nothing, so the switch has to be able to say so. */
       const paint = () => {
         const on = badge.enabled();
-        state.textContent = on ? "オン" : "オフ";
-        state.style.color = on ? "var(--c-primary)" : "var(--c-text-3)";
-        sub.textContent = on
-          ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
-          : "iPhone では、通知の許可を求められます（通知は送りません）";
+        const blocked = on && badge.blocked && badge.blocked();
+        state.textContent = blocked ? "許可が必要" : (on ? "オン" : "オフ");
+        state.style.color = blocked ? "var(--c-danger)"
+          : (on ? "var(--c-primary)" : "var(--c-text-3)");
+        sub.textContent = blocked
+          ? "端末の設定で、このアプリの通知を許可すると出るようになります"
+          : (on ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
+                : "iPhone では、通知の許可を求められます（通知は送りません）");
       };
       paint();
 
@@ -11020,19 +11027,46 @@ button, [role="tab"] {
 
   const badgeSupported = () => typeof navigator !== "undefined" && !!navigator.setAppBadge;
 
-  let badgeShown = null;   // what the icon is currently showing
+  let badgeShown = null;    // what we last asked the icon to show
+  let badgeRefused = false; // the last ask was turned down
 
-  function paintAppBadge() {
+  /**
+   * @param force  re-state the number even if it has not changed.
+   *
+   * The cache exists so an ordinary repaint does not fire a promise per
+   * keystroke. But the icon is not ours to remember: iOS drops the badge on a
+   * reboot, on a force quit, and when the notification permission is taken
+   * away — and tells the page nothing. Left to the cache, the app would then
+   * skip the one call that would put it back, forever. So a refused call
+   * forgets the cache, and coming back to the app re-states the number
+   * instead of assuming it stuck.
+   */
+  function paintAppBadge(force) {
     if (!badgeSupported()) return;
     const want = store.get().settings.appBadge === true ? pendingCount() : 0;
-    if (want === badgeShown) return;
+    if (!force && want === badgeShown) return;
     badgeShown = want;
-    // Both calls return promises that reject when the permission is not
-    // there. Nothing here is worth an unhandled rejection in the console.
+    const refused = () => { badgeShown = null; badgeRefused = true; };
     try {
-      if (want > 0) navigator.setAppBadge(want).catch(() => {});
-      else navigator.clearAppBadge().catch(() => {});
-    } catch (err) { /* an API that refuses is the same as one that is absent */ }
+      const done = want > 0 ? navigator.setAppBadge(want) : navigator.clearAppBadge();
+      Promise.resolve(done).then(() => { badgeRefused = false; }, refused);
+    } catch (err) { refused(); }
+  }
+
+  /** The icon is showing nothing although the setting says it should. */
+  function badgeBlocked() {
+    if (store.get().settings.appBadge !== true) return false;
+    if (window.Notification && Notification.permission === "denied") return true;
+    return badgeRefused;
+  }
+
+  function watchAppBadge() {
+    const restate = () => paintAppBadge(true);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") restate();
+    });
+    window.addEventListener("pageshow", restate);
+    window.addEventListener("focus", restate);
   }
 
   /** Ask for what the badge needs, and turn it on if it is given. */
@@ -11063,6 +11097,7 @@ button, [role="tab"] {
   KN.appBadge = {
     supported: badgeSupported,
     enabled: () => store.get().settings.appBadge === true,
+    blocked: badgeBlocked,
     enable: enableAppBadge,
     disable: disableAppBadge,
   };
@@ -11126,6 +11161,7 @@ button, [role="tab"] {
 
     requestPersistentStorage();
     trackKeyboard();
+    watchAppBadge();
     KN.pullRefresh.init();
     KN.backup.init();
     registerServiceWorker();
