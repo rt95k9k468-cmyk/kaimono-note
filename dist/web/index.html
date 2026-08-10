@@ -6491,9 +6491,16 @@ button, [role="tab"] {
   /* ---------------- store picker ---------------- */
 
   /** Chips of known stores + inline "new store" field. Resolves to a storeId. */
-  function storePicker(container, { selectedId, onSelect }) {
+  /**
+   * @param opts.selectedId  the shop to start on, or null
+   * @param opts.autoPick    fall back to the first shop when nothing is given.
+   *   Off where landing on a shop by default would be a decision made for the
+   *   user — recording a price against whichever shop happens to sort first
+   *   is not a thing anyone asked for.
+   */
+  function storePicker(container, { selectedId, onSelect, autoPick = true }) {
     const stores = KN.store.sortedStores();
-    let current = selectedId || (stores[0] && stores[0].id) || null;
+    let current = selectedId || (autoPick ? (stores[0] && stores[0].id) : null) || null;
 
     function render() {
       container.innerHTML = "";
@@ -8746,6 +8753,7 @@ button, [role="tab"] {
                  placeholder="値段" style="flex:1.2" required>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
         </div>
+        <p class="js-store-note" style="font-size:11px;color:var(--c-warn);margin:0;line-height:1.5" hidden></p>
         <div class="calc-row js-calc" hidden>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
@@ -8757,10 +8765,46 @@ button, [role="tab"] {
       </form>
     `);
 
-    let selectedStore = null;
+    /* Which shop this form should start on.
+       Not simply the first one. The form is rebuilt after every add, and the
+       first shop is usually the one whose price was just entered — so the
+       next price would land on it again, quietly, and 「イオン ¥298」 would
+       turn into 「イオン ¥248」 in front of someone who believed they were
+       recording a second shop. (The ¥298 is still in the history; the row
+       list only ever shows each shop's current price. But the row vanishing
+       is not something to learn by watching it happen.)
+       So: start on the first shop that has no price for this product yet,
+       and if they all have one, start on none and let the tap say it. */
+    const already = new Set(store.currentPrices(p).map((x) => x.storeId));
+    const firstFree = store.sortedStores().find((s) => !already.has(s.id));
+
+    let selectedStore = firstFree ? firstFree.id : null;
+
+    /* Choosing a shop that already has a price is a perfectly good thing to
+       do — it is how a price gets updated — but it should be the thing you
+       meant, so the button and the line under it say which one it is.
+       Declared before the picker: the picker announces its starting choice
+       as it is built, and this is what listens. */
+    const note = form.querySelector(".js-store-note");
+    const addBtn = form.querySelector(".js-add");
+    function paintStore() {
+      const has = selectedStore
+        ? store.currentPrices(p).find((x) => x.storeId === selectedStore)
+        : null;
+      addBtn.textContent = has ? "更新" : "追加";
+      note.hidden = !has;
+      if (has) {
+        const st = store.getStore(selectedStore);
+        note.textContent = `${st ? st.name : "この店"}にはすでに ${yen(has.price)} が入っています。`
+          + "上書きではなく、新しい記録として今の値段になります";
+      }
+    }
+    paintStore();
+
     KN.ui.storePicker(form.querySelector(".js-stores"), {
-      selectedId: null,
-      onSelect: (id) => { selectedStore = id; },
+      selectedId: selectedStore,
+      autoPick: false,
+      onSelect: (id) => { selectedStore = id; paintStore(); },
     });
 
     wireCalculator(form);
@@ -8779,9 +8823,16 @@ button, [role="tab"] {
       if (!selectedStore) { KN.ui.toast("お店を選んでください"); return; }
       if (!isFinite(price) || price < 0) { KN.ui.toast("値段を入力してください"); return; }
 
+      const st = store.getStore(selectedStore);
+      const had = store.currentPrices(p).find((x) => x.storeId === selectedStore);
       store.addPrice(productId, { storeId: selectedStore, price });
       haptic(12);
       priceEl.value = "";
+      // Which shop it went to, out loud. A price is only ever meaningful with
+      // a shop attached, and this is the moment the wrong one would be caught.
+      KN.ui.toast(had
+        ? `${st ? st.name : "この店"}を ${yen(had.price)} → ${yen(price)} にしました`
+        : `${st ? st.name : "この店"}に ${yen(price)} を記録しました`);
       onAdded();
     });
 

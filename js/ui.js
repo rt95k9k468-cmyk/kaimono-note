@@ -254,9 +254,16 @@
   /* ---------------- store picker ---------------- */
 
   /** Chips of known stores + inline "new store" field. Resolves to a storeId. */
-  function storePicker(container, { selectedId, onSelect }) {
+  /**
+   * @param opts.selectedId  the shop to start on, or null
+   * @param opts.autoPick    fall back to the first shop when nothing is given.
+   *   Off where landing on a shop by default would be a decision made for the
+   *   user — recording a price against whichever shop happens to sort first
+   *   is not a thing anyone asked for.
+   */
+  function storePicker(container, { selectedId, onSelect, autoPick = true }) {
     const stores = KN.store.sortedStores();
-    let current = selectedId || (stores[0] && stores[0].id) || null;
+    let current = selectedId || (autoPick ? (stores[0] && stores[0].id) : null) || null;
 
     function render() {
       container.innerHTML = "";
