@@ -91,9 +91,9 @@
      already on file, with its prices and its category, instead of a second
      product with the same name.
 
-     It stays open after each add. A shopping list is written in one sitting,
-     and closing the sheet only to press ＋ again is the kind of ceremony that
-     makes a list feel like paperwork. */
+     It closes after each add. Staying open saved a tap, and cost the sight of
+     the row that had just appeared — the sheet sat over the list it had
+     changed. One add, one close; the ＋ is under the thumb for the next. */
   function openAddSheet() {
     haptic(10);
 
@@ -123,7 +123,7 @@
             <span class="icon-pick-mark js-fav-mark">${icon("star")}</span>
             <span class="icon-pick-text">
               <span class="icon-pick-name">今回買う</span>
-              <span class="icon-pick-sub js-fav-sub">★を付けると、この買い物の合計に入ります</span>
+              <span class="icon-pick-sub js-fav-sub">★を付けると、今回の買い物としてまとまります</span>
             </span>
           </button>
         </div>
@@ -162,8 +162,8 @@
       favBtn.classList.toggle("is-on", fav);
       favBtn.setAttribute("aria-pressed", String(fav));
       favSub.textContent = fav
-        ? "この買い物の合計に入ります"
-        : "★を付けると、この買い物の合計に入ります";
+        ? "今回の買い物としてまとまります"
+        : "★を付けると、今回の買い物としてまとまります";
       haptic(10);
     });
 
@@ -425,16 +425,20 @@
     /* 今回買うもの gets a box of its own rather than a heading of its own. A
        heading is a line above a list, and a line above a list is easy to lose
        track of once you are three rows down; a panel the rows sit *inside*
-       is unmistakable at any scroll position. The total goes at the bottom of
-       the same panel, because it is the total of exactly what the panel
-       holds — everything outside it is explicitly not being bought today. */
+       is unmistakable at any scroll position.
+
+       No total at the foot of it. It could only ever be the total of the
+       items whose price happens to be on file, which is not the total of the
+       basket — and a number sitting under a list looks like the sum of that
+       list. 「4品は値段が未登録」 next to it was an admission that the figure
+       above was answering a different question. Each row still says what that
+       one costs, which is a fact rather than an estimate. */
     const box = node(html`<section class="trip"></section>`);
     box.append(sectionHead("今回買うもの", trip.length, "trip"));
     const inner = node(html`<div class="trip-body"></div>`);
     const tripShown = appendGroups(trip, inner);
     if (!tripShown && categoryFilter) inner.append(noneInCategory());
     box.append(inner);
-    box.append(summaryTotal(trip));
     els.body.append(box);
     els.body.append(insightsCard(trip));
 
@@ -687,35 +691,6 @@
     });
 
     return section;
-  }
-
-  /* Just the number. What it is the total *of* is now said by where it sits —
-     at the foot of the panel holding those rows — so the paragraph that used
-     to explain it has gone. The one thing kept is the count of items with no
-     price yet, because without it a total that looks too small looks wrong
-     rather than incomplete. */
-  function summaryTotal(active) {
-    let total = 0;
-    let unknown = 0;
-
-    active.forEach((item) => {
-      const p = store.getProduct(item.productId);
-      const best = p && store.bestPrice(p);
-      if (best) total += best.price * item.qty;
-      else unknown += 1;
-    });
-
-    if (!active.length) return document.createDocumentFragment();
-
-    return node(html`
-      <div class="summary-row">
-        <span class="summary-label">
-          最安値で買うと
-          ${unknown > 0 ? html`<span class="summary-missing">${unknown}品は値段が未登録</span>` : ""}
-        </span>
-        <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
-      </div>
-    `);
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing

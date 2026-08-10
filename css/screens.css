@@ -351,6 +351,24 @@
   color: var(--c-accent);
   font-variant-numeric: tabular-nums;
 }
+
+/* The cheapest shop, under its price. Truncated rather than wrapped: two lines
+   of shop name would push the picture out of the tile, and half a name you
+   already know is enough to recognise it. */
+.tile-store {
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* With a shop line under it the price tile has four things to fit, so the name
+   gives up its third line. Two is still enough for 「トイレットペーパー」. */
+.product.is-tile .product-name { -webkit-line-clamp: 2; }
 .item.is-tile .item-qty {
   font-size: var(--fs-xs);
   font-weight: 800;
@@ -593,12 +611,10 @@
 .done-head svg { width: 16px; height: 16px; stroke-width: 2.6; transition: transform .2s var(--ease); }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
 
-/* list footer summary */
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
    them: at three rows down a heading has scrolled away and the two halves of
    the list look alike again, whereas an edge is visible from anywhere in it.
-   The wash is the one the total already wore — it is the same idea, so it
-   keeps the same colour, and the total simply moved to the foot of it. */
+   The wash is the one the old total card wore — same idea, same colour. */
 .trip {
   margin: var(--sp-2) var(--sp-4) var(--sp-4);
   /* Barely any gutter of its own: the rows inside are the point, and every
@@ -612,12 +628,11 @@
    them in a column of their own, narrower than the panel for no reason. */
 .trip .item-list { padding: 0; }
 .trip .trip-head { padding: var(--sp-1) var(--sp-2) var(--sp-3); }
-.trip .cat-group:last-of-type { margin-bottom: 0; }
-.trip .summary-row { padding: var(--sp-3) var(--sp-2) var(--sp-1); }
+.trip .cat-group:last-of-type { margin-bottom: var(--sp-1); }
 
-.summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
-.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); display: flex; flex-direction: column; gap: 1px; }
-.summary-missing { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
+/* Still used by the compare screen's own totals, which are totals of a basket
+   whose prices are all known — that is what makes them safe to add up. */
+.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
 .summary-total { font-size: var(--fs-2xl); font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 
 /* ================= PRICES SCREEN ================= */
