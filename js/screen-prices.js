@@ -312,20 +312,16 @@
   /** Put this product out of the way, or bring it back. */
   function toggleArchived(product) {
     const to = !product.archived;
+    // Said out loud when it happens, because the row on the other tab
+    // disappearing without a word would look like a bug.
+    const wasListed = to && !!listedItem(product.id);
     haptic(14);
-    store.update((s) => {
-      const rec = s.products.find((x) => x.id === product.id);
-      if (rec) rec.archived = to;
-    });
-    KN.ui.toast(to ? `「${product.name}」をアーカイブしました` : `「${product.name}」を戻しました`, {
-      action: {
-        label: "元に戻す",
-        onClick: () => store.update((s) => {
-          const rec = s.products.find((x) => x.id === product.id);
-          if (rec) rec.archived = !to;
-        }),
-      },
-    });
+    const undo = store.setArchived(product.id, to);
+    const said = to
+      ? (wasListed ? `「${product.name}」をアーカイブし、リストから外しました`
+                   : `「${product.name}」をアーカイブしました`)
+      : `「${product.name}」を戻しました`;
+    KN.ui.toast(said, { action: { label: "元に戻す", onClick: undo } });
   }
 
   /* ---------------- swipe: right for the list, left for the archive ---------------- */

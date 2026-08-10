@@ -626,18 +626,31 @@ button, [role="tab"] {
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
-  background: #232a24;
+  /* See-through, because it lands on top of the very rows it is talking about
+     — 「「牛乳」を削除しました」 sits over the place 牛乳 just left. Blurred
+     behind, so the text stays readable over anything underneath. */
+  background: rgba(35, 42, 36, .78);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
   color: #f2f6f1;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);
   font-weight: 600;
   pointer-events: auto;
+  /* Anywhere on it dismisses it, so it is never in the way longer than it
+     takes to read. */
+  cursor: pointer;
   animation: toast-in .3s var(--ease-out);
 }
 
-:root[data-theme="dark"] .toast { background: #333d33; }
+/* Without the blur, transparency alone would run the list through the text. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .toast { background: #232a24; }
+}
+
+:root[data-theme="dark"] .toast { background: rgba(51, 61, 51, .78); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .toast { background: #333d33; }
+  :root:not([data-theme="light"]) .toast { background: rgba(51, 61, 51, .78); }
 }
 
 .toast.is-out { animation: toast-out .22s var(--ease) forwards; }
