@@ -469,7 +469,14 @@
       fav: false,
       addedAt: today(),
     };
-    update((s) => { s.items.unshift(rec); });
+    update((s) => {
+      s.items.unshift(rec);
+      // Putting something on the list is using it again, so it comes back out
+      // of the archive. Otherwise it would sit on the list and be missing
+      // from the price screen at the same time.
+      const prod = s.products.find((x) => x.id === productId);
+      if (prod && prod.archived) prod.archived = false;
+    });
     return rec;
   }
 
