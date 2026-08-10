@@ -416,12 +416,20 @@
 
     const rest = active.filter((i) => !i.fav);
 
-    els.body.append(sectionHead("今回買うもの", trip.length, "trip"));
-    const tripShown = appendGroups(trip);
-    if (!tripShown && categoryFilter) els.body.append(noneInCategory());
-    // The total belongs to the trip, so it sits directly under it — everything
-    // below this line is explicitly not being bought today.
-    els.body.append(summaryCard(trip, { trip: true }));
+    /* 今回買うもの gets a box of its own rather than a heading of its own. A
+       heading is a line above a list, and a line above a list is easy to lose
+       track of once you are three rows down; a panel the rows sit *inside*
+       is unmistakable at any scroll position. The total goes at the bottom of
+       the same panel, because it is the total of exactly what the panel
+       holds — everything outside it is explicitly not being bought today. */
+    const box = node(html`<section class="trip"></section>`);
+    box.append(sectionHead("今回買うもの", trip.length, "trip"));
+    const inner = node(html`<div class="trip-body"></div>`);
+    const tripShown = appendGroups(trip, inner);
+    if (!tripShown && categoryFilter) inner.append(noneInCategory());
+    box.append(inner);
+    box.append(summaryTotal(trip));
+    els.body.append(box);
     els.body.append(insightsCard(trip));
 
     if (rest.length) {
@@ -433,7 +441,8 @@
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
-  function appendGroups(list) {
+  function appendGroups(list, host) {
+    const into = host || els.body;
     const groups = new Map();
     list.forEach((item) => {
       const p = store.getProduct(item.productId);
@@ -447,19 +456,20 @@
       const entries = groups.get(cat.id);
       if (!entries || !entries.length) return;
 
+      /* No heading. The category is written down the left edge of every row
+         instead (see .item::before) — a word above each handful of rows was
+         more furniture than the list could carry, and the colour says the
+         same thing without taking a line. The grouping stays: it is what
+         makes the colours run in blocks, and what a drag reorders within. */
       const group = node(html`
         <section class="cat-group" style="--cat:${cat.color || ""}">
-          <h2 class="cat-head">
-            <span class="cat-head-emoji">${cat.emoji}</span>${cat.name}
-            <span class="cat-head-count">${entries.length}</span>
-          </h2>
           <div class="item-list"></div>
         </section>
       `);
       const listEl = group.querySelector(".item-list");
       entries.forEach(({ item, product }) => listEl.append(itemRow(item, product)));
       wireReorder(listEl);
-      els.body.append(group);
+      into.append(group);
     });
 
     return groups.size > 0;
@@ -808,7 +818,12 @@
     return section;
   }
 
-  function summaryCard(active, { trip = false } = {}) {
+  /* Just the number. What it is the total *of* is now said by where it sits —
+     at the foot of the panel holding those rows — so the paragraph that used
+     to explain it has gone. The one thing kept is the count of items with no
+     price yet, because without it a total that looks too small looks wrong
+     rather than incomplete. */
+  function summaryTotal(active) {
     let total = 0;
     let unknown = 0;
 
@@ -821,20 +836,23 @@
 
     if (!active.length) return document.createDocumentFragment();
 
-    const scope = trip ? "今回買うもの" : "未購入";
     return node(html`
-      <div class="list-summary">
-        <div class="summary-row">
-          <span class="summary-label">最安値で買うと</span>
-          <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
-        </div>
-        <p class="summary-note">
-          ${unknown > 0
-            ? html`${unknown}品は値段が未登録です。商品をタップして登録すると合計に反映されます。`
-            : html`${scope} ${active.length}品を、それぞれいちばん安いお店で買った場合の合計です。`}
-        </p>
+      <div class="summary-row">
+        <span class="summary-label">
+          最安値で買うと
+          ${unknown > 0 ? html`<span class="summary-missing">${unknown}品は値段が未登録</span>` : ""}
+        </span>
+        <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
       </div>
     `);
+  }
+
+  /** The same total, on its own card, for a list with nothing starred. */
+  function summaryCard(active) {
+    if (!active.length) return document.createDocumentFragment();
+    const card = node(html`<div class="list-summary"></div>`);
+    card.append(summaryTotal(active));
+    return card;
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing

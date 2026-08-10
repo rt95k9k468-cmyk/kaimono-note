@@ -1439,32 +1439,12 @@ button, [role="tab"] {
   transition: width .45s var(--ease-out);
 }
 
-/* category group */
-.cat-group { margin-bottom: var(--sp-5); }
+/* category group — no heading any more, just a run of rows wearing the same
+   colour down their left edge. The gap is what still separates one run from
+   the next. */
+.cat-group { margin-bottom: var(--sp-3); }
+.cat-group:last-child { margin-bottom: 0; }
 
-.cat-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-4) var(--sp-2);
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  color: var(--c-text-2);
-  letter-spacing: .02em;
-}
-
-.cat-head-emoji { font-size: 16px; }
-
-/* The heading wears the same colour as the rows under it, so the tint reads as
-   "this group" rather than as decoration. */
-.cat-head::before {
-  content: "";
-  width: 3px;
-  align-self: stretch;
-  border-radius: var(--r-full);
-  background: var(--cat, var(--c-border-2));
-  margin-right: 2px;
-}
 .cat-head-count { color: var(--c-text-3); font-weight: 700; }
 
 .item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -1540,7 +1520,8 @@ button, [role="tab"] {
   background: color-mix(in srgb, var(--cat, transparent) var(--cat-fill), var(--c-surface));
   border: 1px solid color-mix(in srgb, var(--cat, transparent) var(--cat-line), var(--c-border));
   border-radius: var(--r-md);
-  padding: var(--sp-3);
+  /* Room down the left for the painted edge above. */
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
   box-shadow: var(--shadow-1);
   /* The row settling into place is deliberately unhurried — long enough to
      read as the row gliding, with an easing that keeps almost all the travel
@@ -1566,6 +1547,19 @@ button, [role="tab"] {
 }
 .item-emoji:empty { display: none; }
 .is-checked .item-emoji { filter: grayscale(1); }
+
+/* The category, written down the edge of the row. Same mark as the price
+   screen uses for「on the list」, in the same place, so the two screens agree
+   about what a painted edge means: this row belongs to that colour. */
+.item::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  border-radius: var(--r-md) 0 0 var(--r-md);
+  background: var(--cat, var(--c-border-2));
+}
+.item.is-checked::before { opacity: .4; }
 
 .item-wrap.is-open .item { transform: translateX(-88px); }
 
@@ -1788,21 +1782,39 @@ button, [role="tab"] {
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
 
 /* list footer summary */
+/* 今回買うもの. A panel the rows sit inside, rather than a heading above
+   them: at three rows down a heading has scrolled away and the two halves of
+   the list look alike again, whereas an edge is visible from anywhere in it.
+   The wash is the one the total already wore — it is the same idea, so it
+   keeps the same colour, and the total simply moved to the foot of it. */
+.trip {
+  margin: var(--sp-2) var(--sp-4) var(--sp-4);
+  /* Barely any gutter of its own: the rows inside are the point, and every
+     pixel spent framing them is a pixel off a product name. */
+  padding: var(--sp-2) var(--sp-1);
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, var(--c-primary-soft), color-mix(in srgb, var(--c-accent-soft) 70%, transparent));
+  border: 1px solid var(--c-border);
+}
+/* The rows are already inside something padded; their own gutter would put
+   them in a column of their own, narrower than the panel for no reason. */
+.trip .item-list { padding: 0; }
+.trip .trip-head { padding: var(--sp-1) var(--sp-2) var(--sp-3); }
+.trip .cat-group:last-of-type { margin-bottom: 0; }
+.trip .summary-row { padding: var(--sp-3) var(--sp-2) var(--sp-1); }
+
 .list-summary {
   margin: var(--sp-2) var(--sp-4) 0;
   padding: var(--sp-4);
   border-radius: var(--r-lg);
   background: linear-gradient(135deg, var(--c-primary-soft), color-mix(in srgb, var(--c-accent-soft) 70%, transparent));
   border: 1px solid var(--c-border);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
 }
 
 .summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
-.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); display: flex; flex-direction: column; gap: 1px; }
+.summary-missing { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
 .summary-total { font-size: var(--fs-2xl); font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.summary-note { font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.5; }
 
 /* ================= PRICES SCREEN ================= */
 
@@ -1867,7 +1879,7 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   /* Room down the left for the painted edge below. Kept on every card,
      listed or not, so nothing shifts sideways when one is added. */
-  padding: var(--sp-3) var(--sp-3) var(--sp-3) 17px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
   box-shadow: var(--shadow-1);
   transition: background .14s var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
@@ -1891,15 +1903,15 @@ button, [role="tab"] {
    mark and not a control — a checkbox here read as the list screen's 「買った」
    box, which is one tab away and means the opposite. A stripe cannot be
    pressed, so it can only be telling you something. */
-.product.is-listed {
-  border-color: color-mix(in srgb, var(--c-primary) 42%, var(--c-border));
-}
 .product.is-listed::before {
   content: "";
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 7px;
-  background: var(--c-primary);
+  width: 6px;
+  /* The category's own colour, the same edge the list screen paints on every
+     row. There it says which aisle; here it says which aisle *and* that this
+     one is on the list, because only the listed cards get an edge at all. */
+  background: var(--cat, var(--c-primary));
   /* Follows the card's own corners on the left, square against the content. */
   border-radius: var(--r-md) 0 0 var(--r-md);
 }
@@ -7038,12 +7050,20 @@ button, [role="tab"] {
 
     const rest = active.filter((i) => !i.fav);
 
-    els.body.append(sectionHead("今回買うもの", trip.length, "trip"));
-    const tripShown = appendGroups(trip);
-    if (!tripShown && categoryFilter) els.body.append(noneInCategory());
-    // The total belongs to the trip, so it sits directly under it — everything
-    // below this line is explicitly not being bought today.
-    els.body.append(summaryCard(trip, { trip: true }));
+    /* 今回買うもの gets a box of its own rather than a heading of its own. A
+       heading is a line above a list, and a line above a list is easy to lose
+       track of once you are three rows down; a panel the rows sit *inside*
+       is unmistakable at any scroll position. The total goes at the bottom of
+       the same panel, because it is the total of exactly what the panel
+       holds — everything outside it is explicitly not being bought today. */
+    const box = node(html`<section class="trip"></section>`);
+    box.append(sectionHead("今回買うもの", trip.length, "trip"));
+    const inner = node(html`<div class="trip-body"></div>`);
+    const tripShown = appendGroups(trip, inner);
+    if (!tripShown && categoryFilter) inner.append(noneInCategory());
+    box.append(inner);
+    box.append(summaryTotal(trip));
+    els.body.append(box);
     els.body.append(insightsCard(trip));
 
     if (rest.length) {
@@ -7055,7 +7075,8 @@ button, [role="tab"] {
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
-  function appendGroups(list) {
+  function appendGroups(list, host) {
+    const into = host || els.body;
     const groups = new Map();
     list.forEach((item) => {
       const p = store.getProduct(item.productId);
@@ -7069,19 +7090,20 @@ button, [role="tab"] {
       const entries = groups.get(cat.id);
       if (!entries || !entries.length) return;
 
+      /* No heading. The category is written down the left edge of every row
+         instead (see .item::before) — a word above each handful of rows was
+         more furniture than the list could carry, and the colour says the
+         same thing without taking a line. The grouping stays: it is what
+         makes the colours run in blocks, and what a drag reorders within. */
       const group = node(html`
         <section class="cat-group" style="--cat:${cat.color || ""}">
-          <h2 class="cat-head">
-            <span class="cat-head-emoji">${cat.emoji}</span>${cat.name}
-            <span class="cat-head-count">${entries.length}</span>
-          </h2>
           <div class="item-list"></div>
         </section>
       `);
       const listEl = group.querySelector(".item-list");
       entries.forEach(({ item, product }) => listEl.append(itemRow(item, product)));
       wireReorder(listEl);
-      els.body.append(group);
+      into.append(group);
     });
 
     return groups.size > 0;
@@ -7430,7 +7452,12 @@ button, [role="tab"] {
     return section;
   }
 
-  function summaryCard(active, { trip = false } = {}) {
+  /* Just the number. What it is the total *of* is now said by where it sits —
+     at the foot of the panel holding those rows — so the paragraph that used
+     to explain it has gone. The one thing kept is the count of items with no
+     price yet, because without it a total that looks too small looks wrong
+     rather than incomplete. */
+  function summaryTotal(active) {
     let total = 0;
     let unknown = 0;
 
@@ -7443,20 +7470,23 @@ button, [role="tab"] {
 
     if (!active.length) return document.createDocumentFragment();
 
-    const scope = trip ? "今回買うもの" : "未購入";
     return node(html`
-      <div class="list-summary">
-        <div class="summary-row">
-          <span class="summary-label">最安値で買うと</span>
-          <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
-        </div>
-        <p class="summary-note">
-          ${unknown > 0
-            ? html`${unknown}品は値段が未登録です。商品をタップして登録すると合計に反映されます。`
-            : html`${scope} ${active.length}品を、それぞれいちばん安いお店で買った場合の合計です。`}
-        </p>
+      <div class="summary-row">
+        <span class="summary-label">
+          最安値で買うと
+          ${unknown > 0 ? html`<span class="summary-missing">${unknown}品は値段が未登録</span>` : ""}
+        </span>
+        <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
       </div>
     `);
+  }
+
+  /** The same total, on its own card, for a list with nothing starred. */
+  function summaryCard(active) {
+    if (!active.length) return document.createDocumentFragment();
+    const card = node(html`<div class="list-summary"></div>`);
+    card.append(summaryTotal(active));
+    return card;
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing
