@@ -127,78 +127,14 @@
 
 .item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 
-/* Swipe container: the delete panel sits behind the row and is revealed by
-   sliding the row left. `overflow:hidden` keeps the panel out of sight until
-   then, so it also owns the rounded corners. */
+/* Swipe container: both panels sit behind the row, inset:0, and whichever way
+   the row is going is the one made visible. `overflow:hidden` keeps them out
+   of sight until then, so it also owns the rounded corners. */
 .item-wrap {
   position: relative;
   border-radius: var(--r-md);
   overflow: hidden;
   animation: item-in .24s var(--ease-out);
-  /* How far the row slides, and how wide the panel behind it is — one number,
-     read back by screen-list.js so the gesture and the layout cannot disagree.
-     Two buttons wide now that archiving lives here as well. */
-  --reveal: 176px;
-}
-
-/* Kept out of the layer entirely until a swipe is genuinely under way. Merely
-   resting a finger on a row must not hint at a delete button. */
-.item-actions {
-  position: absolute;
-  top: 0; right: 0; bottom: 0;
-  width: var(--reveal);
-  display: flex;
-  visibility: hidden;
-}
-.item-wrap.is-deleting .item-actions,
-.item-wrap.is-closing .item-actions,
-.item-wrap.is-open .item-actions { visibility: visible; }
-
-/* The other way: a rightward swipe stars the item for this trip, and springs
-   straight back — nothing stays open, because there is nothing to confirm.
-   The star's own colour, so the panel and the ★ it toggles are the same
-   thing seen twice. */
-.item-star {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding-left: var(--sp-4);
-  background: var(--c-warn);
-  color: #fff;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  visibility: hidden;
-}
-.item-star svg { width: 18px; height: 18px; stroke-width: 2.2; fill: currentColor; }
-/* Understated until the row has travelled far enough — full strength is the
-   signal that letting go will do something. */
-.item-star > * { opacity: .55; transform: translateX(-4px); transition: opacity .14s var(--ease), transform .18s var(--ease-out); }
-.item-wrap.is-armed .item-star > * { opacity: 1; transform: none; }
-.item-wrap.is-starring .item-star { visibility: visible; }
-
-/* Two ways out of a row, ordered by how much they mean. アーカイブ is the mild
-   one and sits nearer the row, in a neutral colour; 削除 keeps the far edge and
-   the red, so a swipe that runs to the end of the panel still lands on the same
-   button it always did. */
-.item-arch,
-.item-del {
-  flex: 1;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  display: grid;
-  place-items: center;
-}
-/* The secondary text colour as a background, the surface as its ink — the pair
-   is legible by construction in either theme, which a fixed grey is not. */
-.item-arch {
-  background: var(--c-text-2);
-  color: var(--c-surface);
-}
-.item-del {
-  background: var(--c-danger);
-  color: #fff;
 }
 
 .item {
@@ -256,27 +192,87 @@
 }
 .item.is-checked::before { opacity: .4; }
 
-.item-wrap.is-open .item { transform: translateX(calc(var(--reveal) * -1)); }
-
 /* Hand the row its own compositor layer for the duration of the gesture, so
    each frame is a transform rather than a repaint of the whole row. */
 .item-wrap.is-swiping .item { will-change: transform; }
 
-/* The row's rounded corners would leave two crescent gaps against a panel's
-   straight edge. Square off whichever side is showing; the wrapper keeps the
-   outer silhouette rounded. */
-.item-wrap.is-deleting .item,
-.item-wrap.is-closing .item,
-.item-wrap.is-open .item {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+@keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ================= SWIPE PANELS (both screens) ================= */
+
+/* One gesture, two screens, two layouts: right is the tab's positive action,
+   left is always the archive. Both panels lie at inset:0 behind the card, and
+   only the one the card is heading for is made visible — showing both would
+   stack one on the other.
+
+   The right panel wears the row's own category colour rather than a fixed
+   green or amber. Under a swipe the panel is the row for a moment, and a row
+   that changes colour when you push it is a different row. */
+.swipe-yes,
+.swipe-arch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  visibility: hidden;
 }
-.item-wrap.is-starring .item {
+.swipe-yes {
+  padding-left: var(--sp-4);
+  background: var(--cat, var(--c-primary));
+  color: #fff;
+}
+/* Already on the list: the same swipe takes it off again, so the panel drops
+   the category colour — taking off is not the same act as putting on, and
+   should not look like it. */
+.is-there .swipe-yes { background: var(--c-surface-3); color: var(--c-text-2); }
+.is-there .swipe-yes svg { fill: none; }
+
+/* Quiet on purpose: nothing is lost, it is only being put down the bottom. */
+.swipe-arch {
+  justify-content: flex-end;
+  padding-right: var(--sp-4);
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+}
+.swipe-yes svg, .swipe-arch svg { width: 18px; height: 18px; stroke-width: 2.4; flex: none; }
+.swipe-yes svg { fill: currentColor; }
+
+/* Understated until the card has travelled far enough — full strength is the
+   signal that letting go will do something. */
+.swipe-yes > *, .swipe-arch > * {
+  opacity: .55;
+  transition: opacity .14s var(--ease), transform .18s var(--ease-out);
+}
+.swipe-yes > * { transform: translateX(-4px); }
+.swipe-arch > * { transform: translateX(4px); }
+.is-armed .swipe-yes > *, .is-armed .swipe-arch > * { opacity: 1; transform: none; }
+
+.is-swiping.is-right .swipe-yes { visibility: visible; }
+.is-swiping.is-left .swipe-arch { visibility: visible; }
+
+/* The card's rounded corners would leave two crescent gaps against a panel's
+   straight edge. Square off whichever side it is sliding away from; the
+   wrapper keeps the outer silhouette rounded. */
+.is-swiping.is-right .item, .is-swiping.is-right .product {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
+.is-swiping.is-left .item, .is-swiping.is-left .product {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
 
-@keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+/* A tile is a third of a screen across. The words do not fit and would only be
+   half-read, so the icon carries it — and it sits where the card's edge is
+   about to be rather than out at the margin. */
+.is-tile-wrap .swipe-yes span,
+.is-tile-wrap .swipe-arch span { display: none; }
+.is-tile-wrap .swipe-yes { padding-left: 10px; }
+.is-tile-wrap .swipe-arch { padding-right: 10px; }
+.is-tile-wrap .swipe-yes svg, .is-tile-wrap .swipe-arch svg { width: 20px; height: 20px; }
 
 /* ================= TILES ================= */
 
@@ -378,11 +374,13 @@
 }
 .product.is-tile.is-listed::before { background: var(--cat, var(--c-primary)); }
 
-/* The two controls the rows keep at their ends, moved to the corners. */
+/* The two controls the rows keep at their ends, moved to the corners — below
+   the category's painted top edge, not on it: a tick sitting half on a 5px
+   stripe reads as a smudge on the stripe. */
 .item.is-tile .check,
 .item.is-tile .fav {
   position: absolute;
-  top: 5px;
+  top: 11px;
   z-index: 1;
 }
 .item.is-tile .check { left: 4px; }
@@ -648,52 +646,6 @@
   overflow: hidden;
 }
 
-/* What a rightward swipe uncovers. Hidden until the gesture starts, so
-   resting a finger on a card never hints at it. */
-.product-hint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding-left: var(--sp-4);
-  background: var(--c-primary);
-  color: #fff;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  visibility: hidden;
-}
-.product-hint svg { width: 18px; height: 18px; stroke-width: 2.6; }
-/* Already on the list: the same swipe takes it off again, so the panel says
-   so — and in a colour that is plainly not the green of adding. */
-.product-wrap.is-there .product-hint { background: var(--c-surface-3); color: var(--c-text-2); }
-
-/* The other way: out of sight rather than onto the list. Quiet on purpose —
-   nothing is lost, it is only being put down the bottom. */
-.product-hint-archive {
-  justify-content: flex-end;
-  padding-left: 0;
-  padding-right: var(--sp-4);
-  background: var(--c-surface-3);
-  color: var(--c-text-2);
-}
-/* Only the panel the swipe is heading for. Both sit at inset:0, so showing
-   them together would put one on top of the other. */
-.product-wrap.is-swiping.is-right .product-hint { visibility: visible; }
-.product-wrap.is-swiping.is-right .product-hint-archive { visibility: hidden; }
-.product-wrap.is-swiping.is-left .product-hint { visibility: hidden; }
-.product-wrap.is-swiping.is-left .product-hint-archive { visibility: visible; }
-.product-hint-archive > * { transform: translateX(4px); }
-.product-wrap.is-armed .product-hint-archive > * { transform: none; }
-
-/* Square off whichever side the card is sliding away from. */
-.product-wrap.is-swiping.is-left .product {
-  border-top-left-radius: var(--r-md);
-  border-bottom-left-radius: var(--r-md);
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
 /* ---- the archive itself ---- */
 
 .archive { margin: var(--sp-5) var(--sp-4) 0; }
@@ -721,12 +673,6 @@
 /* Already put away: the cards say so by being quieter than the ones above. */
 .archive .product { opacity: .72; box-shadow: none; }
 .archive .product-list { padding: 0; }
-/* Until the card has travelled far enough, the panel stays understated —
-   full strength is the signal that letting go will do something. */
-.product-hint > * { opacity: .55; transform: translateX(-4px); transition: opacity .14s var(--ease), transform .18s var(--ease-out); }
-.product-wrap.is-armed .product-hint > * { opacity: 1; transform: none; }
-.product-wrap.is-swiping .product-hint { visibility: visible; }
-
 .product {
   position: relative;
   display: flex;
@@ -752,12 +698,6 @@
 }
 .product button { touch-action: pan-y; }
 .product-wrap.is-swiping .product { will-change: transform; }
-/* Square off the left corners while the panel behind is showing, or two
-   crescent gaps open up against its straight edge. */
-.product-wrap.is-swiping .product {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-}
 @media (hover: hover) {
   .product:hover { background: var(--c-surface-2); }
 }

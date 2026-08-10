@@ -11,7 +11,6 @@
   let root = null;
   let els = {};
   let categoryFilter = null;   // categoryId or null = all
-  let openWrap = null;         // the one row currently swiped open, if any
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -394,8 +393,6 @@
   }
 
   function renderBody(items) {
-    // Rows are rebuilt from scratch, so any remembered open row is now detached.
-    openWrap = null;
     els.body.innerHTML = "";
 
     if (!items.length) {
@@ -507,9 +504,6 @@
   function wireReorder(listEl) {
     KN.reorder.attach(listEl, {
       item: ".item-wrap",
-      // A row already swiped open is mid-gesture; picking it up on top of that
-      // would leave the delete panel hanging in the air.
-      blocked: () => !!openWrap,
       onDrop: (from, to) => {
         const ids = Array.prototype.map.call(listEl.children, (w) => w.dataset.itemId);
         const [moved] = ids.splice(from, 1);
@@ -553,21 +547,19 @@
     const bestStore = best ? store.getStore(best.storeId) : null;
     const tiles = KN.ui.isTiles();
 
-    /* A tile is a third of a screen across — narrower than either swipe panel
-       and the words on it — so tiles carry no panels and take no swipe. What
-       stays is everything the rows have as buttons: the tick, the ★, and the
-       body that opens the item. */
+    /* Both ways spring back and land as they go, the same as the price
+       screen: right is ★, left is the archive. Tiles swipe too, on a shorter
+       throw and with the icons alone — a third of a screen has no room for
+       the wording. */
     const wrap = node(html`
-      <article class="item-wrap" data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
-        ${tiles ? "" : html`
-          <div class="item-actions">
-            <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
-            <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
-          </div>
-          <div class="item-star">
-            ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
-          </div>
-        `}
+      <article class="item-wrap ${tiles ? "is-tile-wrap" : ""}"
+               data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
+        <div class="swipe-yes">
+          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
+        </div>
+        <div class="swipe-arch">
+          <span>アーカイブ</span>${icon("download")}
+        </div>
       </article>
     `);
 
@@ -632,45 +624,31 @@
       KN.productSheet.open(product.id, { itemId: item.id });
     });
 
-    /* Archiving from here is the same one archive as the price screen's, not a
-       second one: the product goes into the drawer at the bottom of 価格, and
-       this row leaves the list — which is also what makes the painted left
-       edge over there go out. Deleting only clears the row; archiving says
-       「しばらく買わない」about the product itself. */
-    if (tiles) return wrap;
-
-    wrap.querySelector(".item-arch").addEventListener("click", () => {
-      haptic(12);
-      const undo = store.setArchived(product.id, true);
-      KN.ui.toast(`「${product.name}」をアーカイブしました`, {
-        action: { label: "元に戻す", onClick: undo },
-      });
+    KN.ui.swipeActions(wrap, row, {
+      tiles,
+      onRight: () => toggleFav(item.id),
+      onLeft: () => archive(product),
     });
-
-    wrap.querySelector(".item-del").addEventListener("click", () => {
-      const removed = store.get().items.find((i) => i.id === item.id);
-      const at = store.get().items.indexOf(removed);
-      store.update((s) => { s.items = s.items.filter((i) => i.id !== item.id); });
-      haptic(12);
-      // Deleting straight from a swipe is the platform convention, so the safety
-      // net is an undo rather than a dialog standing between every removal.
-      KN.ui.toast(`「${product.name}」を削除しました`, {
-        action: {
-          label: "元に戻す",
-          onClick: () => store.update((s) => {
-            const next = s.items.slice();
-            next.splice(Math.max(0, Math.min(at, next.length)), 0, removed);
-            s.items = next;
-          }),
-        },
-      });
-    });
-
-    attachSwipe(wrap, row, item);
     return wrap;
   }
 
-  /* ---------------- swipe: left to delete, right to star ---------------- */
+  /* The same one archive as the price screen's, not a second one: the product
+     goes into the drawer at the bottom of 価格, and this row leaves the list —
+     which is also what puts out the painted edge over there.
+
+     It is also how a row leaves the list without being bought. There used to
+     be a 「削除」 next to it, which only cleared the row and left the product
+     sitting in the price list as though nothing had been decided about it;
+     saying 「しばらく買わない」 once, in one place, is the honest version. */
+  function archive(product) {
+    haptic(12);
+    const undo = store.setArchived(product.id, true);
+    KN.ui.toast(`「${product.name}」をアーカイブしました`, {
+      action: { label: "元に戻す", onClick: undo },
+    });
+  }
+
+  /* ---------------- ★ ---------------- */
 
   /** ★ marks an item as part of the trip being shopped right now. */
   function toggleFav(itemId) {
@@ -679,181 +657,6 @@
       if (rec) rec.fav = !rec.fav;
     });
     haptic(12);
-  }
-
-  // Only one row may sit open; a second one opening closes the first.
-  function closeOpenRow() {
-    if (openWrap) {
-      openWrap.classList.remove("is-open");
-      holdPanelDuringClose(openWrap);
-    }
-    openWrap = null;
-  }
-
-  /* The row slides back over 0.22s. Hiding the panel the instant the class goes
-     would leave a bare strip of background trailing the row for that moment, so
-     keep it on screen until the row has finished covering it again. */
-  function holdPanelDuringClose(wrap) {
-    const row = wrap.querySelector(".item");
-    if (!row) return;
-    wrap.classList.add("is-closing");
-    const done = () => wrap.classList.remove("is-closing");
-    row.addEventListener("transitionend", done, { once: true });
-    // A transition that never runs (already at rest) would otherwise strand it.
-    // Comfortably longer than the slide, or the panel vanishes mid-flight.
-    setTimeout(done, 900);
-  }
-
-  function attachSwipe(wrap, row, item) {
-    // Read from the stylesheet rather than written twice: the panel's width and
-    // how far the row travels to uncover it are the same number, and CSS is
-    // where the panel is laid out.
-    const REVEAL = parseFloat(getComputedStyle(wrap).getPropertyValue("--reveal")) || 176;
-    const SLOP = 14;        // travel before a drag counts as a drag and not a tap
-    const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
-    const STAR = 68;        // how far right before the ★ is armed
-    const STAR_MAX = 104;   // and how far it will stretch at all
-    let startX = 0, startY = 0, dx = 0;
-    let dragging = false, decided = false, pointerId = null, swallowClick = false;
-    let pendingDx = null, rafId = 0;
-    // "del" reveals the delete panel and stays open; "star" springs straight
-    // back and toggles ★ — same gesture as the price screen's list swipe.
-    let mode = "del";
-    let starArmed = false;
-
-    // Pointer moves arrive faster than the screen refreshes. Painting once per
-    // frame instead of once per event keeps the row gliding rather than
-    // stuttering under a quick finger.
-    const paint = () => {
-      rafId = 0;
-      if (pendingDx === null) return;
-      row.style.transform = `translate3d(${pendingDx}px, 0, 0)`;
-    };
-    const schedule = (v) => {
-      pendingDx = v;
-      if (!rafId) rafId = requestAnimationFrame(paint);
-    };
-
-    // touch-action keeps the list scrollable up to the moment a swipe is
-    // recognised; from then on the browser has to be told to stop, or the list
-    // scrolls under the finger while the row slides sideways.
-    row.addEventListener("touchmove", (e) => {
-      if (dragging) e.preventDefault();
-    }, { passive: false });
-
-    row.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      pointerId = e.pointerId;
-      startX = e.clientX;
-      startY = e.clientY;
-      dx = 0;
-      dragging = false;
-      decided = false;
-      // Deliberately touches no styles: a press that never becomes a swipe
-      // should leave the row exactly as it was.
-    });
-
-    row.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== pointerId) return;
-      // Held still long enough to lift the row out of the list — from here the
-      // gesture belongs to the reorder, not to the delete swipe.
-      if (KN.reorder.isActive()) return;
-      const mx = e.clientX - startX;
-      const my = e.clientY - startY;
-
-      if (!decided) {
-        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
-        decided = true;
-        // Has to be a clearly sideways movement, not a drifting scroll. A
-        // diagonal belongs to the list, which stays scrollable throughout.
-        const isOpen = wrap.classList.contains("is-open");
-        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
-        if (!dragging) return;
-        // Rightwards on an open row still means "put it back"; on a closed one
-        // it is the ★.
-        mode = (mx > 0 && !isOpen) ? "star" : "del";
-        row.setPointerCapture(pointerId);
-        row.style.transition = "none";
-        wrap.classList.add("is-swiping", mode === "star" ? "is-starring" : "is-deleting");
-        if (openWrap && openWrap !== wrap) closeOpenRow();
-      }
-      if (!dragging) return;
-
-      if (mode === "star") {
-        // Past the trigger the row only creeps, so the finger feels the edge.
-        dx = mx <= STAR ? mx : STAR + (mx - STAR) * 0.32;
-        dx = Math.min(STAR_MAX, Math.max(0, dx));
-        const now = dx >= STAR;
-        if (now !== starArmed) {
-          starArmed = now;
-          wrap.classList.toggle("is-armed", now);
-          if (now) haptic(10);
-        }
-        schedule(dx);
-        return;
-      }
-
-      const base = wrap.classList.contains("is-open") ? -REVEAL : 0;
-      // Bounded by the panel at both ends. Going further left than the panel is
-      // wide opened a strip of bare background beyond it — very visible on a
-      // second swipe of an already-open row — and going right of 0 would show
-      // the same on the other side.
-      dx = Math.min(0, Math.max(-REVEAL, base + mx));
-      schedule(dx);
-    });
-
-    const finish = (e) => {
-      if (e.pointerId !== pointerId) return;
-      pointerId = null;
-      if (!dragging) return;
-
-      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-      pendingDx = null;
-      row.style.transition = "";
-      row.style.transform = "";
-
-      if (mode === "star") {
-        const fired = starArmed;
-        starArmed = false;
-        dragging = false;
-        swallowClick = true;
-        // Let the row glide home before the store change rebuilds the list;
-        // toggling on the spot would swap it out mid-flight.
-        setTimeout(() => {
-          wrap.classList.remove("is-swiping", "is-starring", "is-armed");
-          if (fired) toggleFav(item.id);
-        }, 200);
-        return;
-      }
-
-      wrap.classList.remove("is-swiping", "is-deleting");
-      const open = dx < -REVEAL / 2;
-      wrap.classList.toggle("is-open", open);
-      if (!open) holdPanelDuringClose(wrap);
-      openWrap = open ? wrap : (openWrap === wrap ? null : openWrap);
-      dragging = false;
-      // A pointer sequence still emits a click afterwards. Left alone it would
-      // press whatever the finger lifted over, and — because the row is open by
-      // then — immediately close the row the swipe just opened.
-      swallowClick = true;
-    };
-    row.addEventListener("pointerup", finish);
-    row.addEventListener("pointercancel", finish);
-
-    row.addEventListener("click", (e) => {
-      if (swallowClick) {
-        swallowClick = false;
-        e.stopPropagation();
-        e.preventDefault();
-        return;
-      }
-      // With the delete panel showing, a tap on the row means "put it back".
-      if (wrap.classList.contains("is-open")) {
-        e.stopPropagation();
-        e.preventDefault();
-        closeOpenRow();
-      }
-    }, true);
   }
 
   function checkedSection(checked) {
