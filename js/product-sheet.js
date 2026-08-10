@@ -812,6 +812,10 @@
          its going away is what moves the layout, so it goes now, before the
          list below is rebuilt. */
       KN.keypad.close();
+      // And the caret with it. onAdded() rebuilds this form, and a field that
+      // is removed while focused is never blurred — the app would still think
+      // something was being typed into a field that no longer exists.
+      priceEl.blur();
       const st = store.getStore(selectedStore);
       const had = store.currentPrices(p).find((x) => x.storeId === selectedStore);
       store.addPrice(productId, { storeId: selectedStore, price });

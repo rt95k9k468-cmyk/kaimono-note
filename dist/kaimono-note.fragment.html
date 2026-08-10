@@ -6292,6 +6292,12 @@ button, [role="tab"] {
       el.classList.remove("is-open");
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
+      /* Nor does the caret. A field removed while still focused is never
+         blurred on WebKit, so the app goes on believing a keyboard is up —
+         which is what left the tab bar hidden after a sheet was closed.
+         Say goodbye while the field is still there to hear it. */
+      if (el.contains(document.activeElement)) document.activeElement.blur();
+      KN.remeasure && KN.remeasure();
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";
@@ -7293,10 +7299,18 @@ button, [role="tab"] {
     if (!pad || pad.hidden) return;
     pad.classList.remove("is-open");
     pad.hidden = true;
+    // The field is what the app reads to decide whether a keyboard is up (and
+    // whether to hide the tab bar behind it). Let it go with the pad — if it
+    // is still there. A form that has been rebuilt underneath us has not.
+    const was = field;
     field = null;
     opts = {};
+    if (was && was.isConnected && document.activeElement === was) was.blur();
     document.documentElement.style.setProperty("--pad", "0px");
     guardGhostClick();
+    // The pad standing in for the keyboard means the app's idea of one has to
+    // be re-read now, whether or not a blur was there to announce it.
+    KN.remeasure && KN.remeasure();
   }
 
   /* ---------------- the click that lands somewhere else ----------------
@@ -8912,6 +8926,10 @@ button, [role="tab"] {
          its going away is what moves the layout, so it goes now, before the
          list below is rebuilt. */
       KN.keypad.close();
+      // And the caret with it. onAdded() rebuilds this form, and a field that
+      // is removed while focused is never blurred — the app would still think
+      // something was being typed into a field that no longer exists.
+      priceEl.blur();
       const st = store.getStore(selectedStore);
       const had = store.currentPrices(p).find((x) => x.storeId === selectedStore);
       store.addPrice(productId, { storeId: selectedStore, price });
@@ -11405,6 +11423,19 @@ button, [role="tab"] {
        So: measure again on the way back, immediately and then across the next
        second, because the window keeps moving for a while after the app is
        handed back. */
+    /* The one moment none of these events cover: a focused field that is
+       *removed* rather than blurred. Recording a price rebuilds the form the
+       price was typed into, and WebKit fires no blur for a node that simply
+       stops existing — so 「入力中」 stayed true with nothing left to type
+       into, and the tab bar that hides behind it stayed hidden even after the
+       sheet was closed. Anything that takes a field away can say so here. */
+    KN.remeasure = () => { fit(); settle(); };
+
+    /* And a net under that: every tap re-reads it. If whatever had focus is
+       gone, this is where it gets noticed — one cheap measurement, on a
+       gesture the user was making anyway. */
+    document.addEventListener("click", () => setTimeout(fit, 0), true);
+
     const resume = () => { fit(); settle(); setTimeout(fit, 1000); };
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") resume();

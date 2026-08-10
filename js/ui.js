@@ -68,6 +68,12 @@
       el.classList.remove("is-open");
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
+      /* Nor does the caret. A field removed while still focused is never
+         blurred on WebKit, so the app goes on believing a keyboard is up —
+         which is what left the tab bar hidden after a sheet was closed.
+         Say goodbye while the field is still there to hear it. */
+      if (el.contains(document.activeElement)) document.activeElement.blur();
+      KN.remeasure && KN.remeasure();
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";

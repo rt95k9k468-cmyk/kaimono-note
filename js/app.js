@@ -325,6 +325,19 @@
        So: measure again on the way back, immediately and then across the next
        second, because the window keeps moving for a while after the app is
        handed back. */
+    /* The one moment none of these events cover: a focused field that is
+       *removed* rather than blurred. Recording a price rebuilds the form the
+       price was typed into, and WebKit fires no blur for a node that simply
+       stops existing — so 「入力中」 stayed true with nothing left to type
+       into, and the tab bar that hides behind it stayed hidden even after the
+       sheet was closed. Anything that takes a field away can say so here. */
+    KN.remeasure = () => { fit(); settle(); };
+
+    /* And a net under that: every tap re-reads it. If whatever had focus is
+       gone, this is where it gets noticed — one cheap measurement, on a
+       gesture the user was making anyway. */
+    document.addEventListener("click", () => setTimeout(fit, 0), true);
+
     const resume = () => { fit(); settle(); setTimeout(fit, 1000); };
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") resume();

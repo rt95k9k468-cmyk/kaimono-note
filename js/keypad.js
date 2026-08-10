@@ -250,10 +250,18 @@
     if (!pad || pad.hidden) return;
     pad.classList.remove("is-open");
     pad.hidden = true;
+    // The field is what the app reads to decide whether a keyboard is up (and
+    // whether to hide the tab bar behind it). Let it go with the pad — if it
+    // is still there. A form that has been rebuilt underneath us has not.
+    const was = field;
     field = null;
     opts = {};
+    if (was && was.isConnected && document.activeElement === was) was.blur();
     document.documentElement.style.setProperty("--pad", "0px");
     guardGhostClick();
+    // The pad standing in for the keyboard means the app's idea of one has to
+    // be re-read now, whether or not a blur was there to announce it.
+    KN.remeasure && KN.remeasure();
   }
 
   /* ---------------- the click that lands somewhere else ----------------
