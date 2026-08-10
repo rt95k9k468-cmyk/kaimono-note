@@ -769,6 +769,17 @@
     }
     paintStore();
 
+    /* Pressing a button in this form must not first take the caret off the
+       price field: that closes the pad, the pad closing hands back a third of
+       the screen, and everything moves before the click has been delivered.
+       Keeping focus keeps the geometry still — the pad goes away afterwards,
+       once the button has done what it was pressed for. */
+    ["pointerdown", "mousedown"].forEach((type) => {
+      form.addEventListener(type, (e) => {
+        if (e.target.closest("button")) e.preventDefault();
+      });
+    });
+
     KN.ui.storePicker(form.querySelector(".js-stores"), {
       selectedId: selectedStore,
       autoPick: false,
@@ -789,8 +800,18 @@
         return;
       }
       if (!selectedStore) { KN.ui.toast("お店を選んでください"); return; }
-      if (!isFinite(price) || price < 0) { KN.ui.toast("値段を入力してください"); return; }
+      // `price == null` is the empty field and the half-typed sum alike —
+      // and it has to be checked on its own, because isFinite(null) is true
+      // and would have let a priceless price through.
+      if (price == null || !isFinite(price) || price < 0) {
+        KN.ui.toast("値段を入力してください");
+        return;
+      }
 
+      /* The pad has no business outliving the form it was typing into — and
+         its going away is what moves the layout, so it goes now, before the
+         list below is rebuilt. */
+      KN.keypad.close();
       const st = store.getStore(selectedStore);
       const had = store.currentPrices(p).find((x) => x.storeId === selectedStore);
       store.addPrice(productId, { storeId: selectedStore, price });
