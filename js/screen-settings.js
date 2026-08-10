@@ -254,10 +254,17 @@
           <span class="field-label">名前</span>
           <input class="input js-name" value="${cat ? cat.name : ""}" placeholder="例：おやつ">
         </label>
-        <label class="field">
+        <div class="field">
           <span class="field-label">絵文字（1文字）</span>
-          <input class="input js-emoji" value="${cat ? cat.emoji : ""}" placeholder="🍪" maxlength="4" style="width:100px;text-align:center;font-size:24px">
-        </label>
+          <!-- No placeholder here. An emoji placeholder paints itself in its
+               own colours whatever ::placeholder says, so 🍪 sat in the box
+               looking exactly like a value someone had already typed. The
+               example belongs outside the box, where nothing can be mistaken
+               for the field's contents. -->
+          <input class="input js-emoji" value="${cat ? cat.emoji : ""}" maxlength="4"
+                 aria-label="絵文字" style="width:100px;text-align:center;font-size:24px">
+          <span class="field-hint">例：🍪 🧺 🥫 ／ 空のままなら 🏷️ になります</span>
+        </div>
         <div class="field">
           <span class="field-label">色（このカテゴリの品物の背景になります）</span>
           <div class="swatches js-swatches"></div>

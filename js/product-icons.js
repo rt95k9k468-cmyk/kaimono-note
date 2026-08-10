@@ -289,6 +289,59 @@
       <circle cx="12" cy="17.6" r="1.5" fill="#f0d3a6"/>
     `),
 
+    /* 保存袋: the zip is the whole picture. */
+    zipBag: S(`
+      <path d="M5 6.8h14v12.6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z" fill="#b3d3e4"/>
+      <rect x="4.2" y="3.8" width="15.6" height="3.4" rx="1.2" fill="#5f96bb"/>
+      <rect x="5.8" y="5.1" width="12.4" height="1" rx=".5" fill="#ffffff" opacity=".9"/>
+      <rect x="7.4" y="10.4" width="9.2" height="6.4" rx="1" fill="#ffffff" opacity=".55"/>
+    `),
+
+    razor: S(`
+      <rect x="10.6" y="9.4" width="2.8" height="11.8" rx="1.4" fill="#5f7f9c"/>
+      <rect x="10.6" y="15.4" width="2.8" height="2.2" fill="#4a6379"/>
+      <path d="M6.4 4.2h11.2a1.4 1.4 0 0 1 1.4 1.4v3.4a1.4 1.4 0 0 1-1.4 1.4H6.4A1.4 1.4 0 0 1 5 9V5.6a1.4 1.4 0 0 1 1.4-1.4z" fill="#7fb3d5"/>
+      <rect x="5" y="7.9" width="14" height="1.5" fill="#dfe7ec"/>
+    `),
+
+    cottonSwab: S(`
+      <rect x="7.9" y="6.6" width="1.1" height="5.2" fill="#c4bda9"/>
+      <rect x="11.45" y="5.8" width="1.1" height="6" fill="#c4bda9"/>
+      <rect x="15" y="6.6" width="1.1" height="5.2" fill="#c4bda9"/>
+      <circle cx="8.45" cy="6.4" r="1.7" fill="#f4f1e6"/>
+      <circle cx="12" cy="5.6" r="1.7" fill="#f4f1e6"/>
+      <circle cx="15.55" cy="6.4" r="1.7" fill="#f4f1e6"/>
+      <rect x="5.4" y="10.6" width="13.2" height="10.2" rx="1.8" fill="#7fb3d5"/>
+      <rect x="5.4" y="10.6" width="13.2" height="2.8" rx="1.4" fill="#5f96bb"/>
+    `),
+
+    /* 消臭剤: the gel pot, with the smell going the right way for once. */
+    deodorant: S(`
+      <path d="M6.4 10.6h11.2v8.2A2.4 2.4 0 0 1 15.2 21.2H8.8a2.4 2.4 0 0 1-2.4-2.4z" fill="#cbdde8"/>
+      <rect x="5.4" y="8.6" width="13.2" height="2.6" rx="1.2" fill="#7fb3d5"/>
+      <path d="M8.4 13.2h7.2v4.4a1.6 1.6 0 0 1-1.6 1.6h-4a1.6 1.6 0 0 1-1.6-1.6z" fill="#8fd0c4"/>
+      <rect x="8.9" y="2.6" width="1.4" height="4.4" rx=".7" fill="#9dbccd" transform="rotate(-16 9.6 4.8)"/>
+      <rect x="13.7" y="2.6" width="1.4" height="4.4" rx=".7" fill="#9dbccd" transform="rotate(16 14.4 4.8)"/>
+    `),
+
+    /* 蚊取り線香. Nothing else in a Japanese cupboard is a green spiral. */
+    insect: S(`
+      <path d="M12 3.2A8.8 8.8 0 1 1 3.2 12 8.81 8.81 0 0 1 12 3.2zm0 2.5A6.3 6.3 0 1 0 18.3 12 6.3 6.3 0 0 0 12 5.7z" fill="#5cb85c"/>
+      <path d="M12 7.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2.3A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8z" fill="#3f9440"/>
+      <circle cx="12" cy="12" r="1.1" fill="#5cb85c"/>
+    `),
+
+    stationery: S(`
+      <rect x="3.6" y="4.6" width="11.6" height="15.4" rx="1.6" fill="#f7f4ea"/>
+      <rect x="3.6" y="4.6" width="2.6" height="15.4" rx="1.3" fill="#5f96bb"/>
+      <rect x="7.8" y="8.4" width="5.4" height="1.3" rx=".65" fill="#cfd9e0"/>
+      <rect x="7.8" y="11.4" width="5.4" height="1.3" rx=".65" fill="#cfd9e0"/>
+      <path d="M18.4 4.4 20.6 6l-6.5 8.9-2.7.9.5-2.8z" fill="#e0a94f"/>
+      <path d="M11.9 15.1l-.5 2.8 2.7-.9z" fill="#3f3a2f"/>
+    `),
+
+    cream: carton("#fbf7ec", "#e0574d", "#e0574d"),
+
     /* ================= 薬・衛生 ================= */
     medicine: S(`
       <rect x="2.6" y="8.6" width="18.8" height="6.8" rx="3.4" fill="#e0574d" transform="rotate(-28 12 12)"/>
@@ -342,6 +395,88 @@
       <path d="M4.6 10.4h14.8c0 5.6-2.7 9.4-7.4 9.4S4.6 16 4.6 10.4z" fill="#f2d07a"/>
       <path d="M6.4 6.6h11.2c1 0 1.8.8 1.8 1.8v2.4c0 .6-.5 1-1 1H5.6c-.6 0-1-.4-1-1V8.4c0-1 .8-1.8 1.8-1.8z" fill="#b5793f"/>
       <path d="M8.4 16.2c1 1.2 2.2 1.8 3.6 1.8" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
+    `),
+
+    /* ================= 大豆製品・和のもの ================= */
+
+    /* The styrofoam tray with its lid still on. Beans are what says 納豆
+       rather than 豆腐 — same tray, quite different contents. */
+    natto: S(`
+      <rect x="3.6" y="8.2" width="16.8" height="10.4" rx="1.6" fill="#f4f1ea"/>
+      <rect x="5.6" y="10" width="12.8" height="6.8" rx="1" fill="#8c5a2b"/>
+      <circle cx="8.4" cy="12.4" r="1.1" fill="#b5793f"/>
+      <circle cx="11.8" cy="14.2" r="1.1" fill="#b5793f"/>
+      <circle cx="15.2" cy="12.1" r="1.1" fill="#c08a4c"/>
+      <circle cx="16.2" cy="14.8" r=".9" fill="#b5793f"/>
+      <rect x="2.8" y="5.4" width="18.4" height="3" rx="1.2" fill="#c9463d"/>
+    `),
+
+    /* The block, sitting in its water. Almost white, so the tray behind it
+       carries the shape — a white square on a white card is nothing. */
+    tofu: S(`
+      <rect x="2.8" y="7" width="18.4" height="12.4" rx="2" fill="#8fbdd4"/>
+      <rect x="4.4" y="8.6" width="15.2" height="9.2" rx="1.2" fill="#cfe4ee"/>
+      <rect x="6" y="5.4" width="12" height="11.8" rx="1.2" fill="#e2ddcb"/>
+      <rect x="6" y="5.4" width="12" height="8.6" rx="1.2" fill="#fdfcf5"/>
+    `),
+
+    /* 海苔: sheets, stacked slightly out of true. */
+    nori: S(`
+      <rect x="5" y="6.8" width="15" height="11.4" rx=".8" fill="#41604f"/>
+      <rect x="4" y="5.8" width="15" height="11.4" rx=".8" fill="#2b4237"/>
+      <path d="M6 8h11v1.3H6zM6 10.8h11v1.3H6zM6 13.6h11v1.3H6z" fill="#ffffff" opacity=".1"/>
+    `),
+
+    konjac: S(`
+      <rect x="3.6" y="7.8" width="16.8" height="9.2" rx="2.2" fill="#bfb49b"/>
+      <rect x="3.6" y="7.8" width="16.8" height="3" rx="2.2" fill="#cec5af"/>
+      <circle cx="7.6" cy="13.2" r=".85" fill="#6f6552"/>
+      <circle cx="11.4" cy="14.6" r=".7" fill="#6f6552"/>
+      <circle cx="14.8" cy="12.6" r=".85" fill="#6f6552"/>
+      <circle cx="17.2" cy="14.8" r=".6" fill="#6f6552"/>
+    `),
+
+    /* かまぼこ on its board: the pink rim is the whole recognition. */
+    fishCake: S(`
+      <path d="M5 16.4a7 7 0 0 1 14 0z" fill="#fbfaf3"/>
+      <path d="M5 16.4a7 7 0 0 1 14 0h-1.9a5.1 5.1 0 0 0-10.2 0z" fill="#f0929c"/>
+      <rect x="2.8" y="16.4" width="18.4" height="3.2" rx="1.3" fill="#c9a45c"/>
+    `),
+
+    pickles: jar("#e8dfc4", "#c9463d",
+      `<path d="M8 12.2c1.4-.7 2.6.3 4-.1s2.6-1 4 .3v3.4c-1.4-.8-2.6.2-4 .6s-2.6-.6-4-.2z" fill="#d9552f"/>
+       <circle cx="10.2" cy="14.8" r=".7" fill="#8fce7c"/>
+       <circle cx="14.4" cy="13.6" r=".6" fill="#8fce7c"/>`),
+
+    mochi: S(`
+      <ellipse cx="12" cy="16.4" rx="7.8" ry="4.6" fill="#d4c9a8"/>
+      <ellipse cx="12" cy="15.4" rx="7.8" ry="3.8" fill="#fdfcf5"/>
+      <ellipse cx="12" cy="10.2" rx="5.6" ry="3.6" fill="#d4c9a8"/>
+      <ellipse cx="12" cy="9.4" rx="5.6" ry="3" fill="#fdfcf5"/>
+      <ellipse cx="9.8" cy="8.4" rx="1.8" ry=".9" fill="#ffffff"/>
+    `),
+
+    /* だしパック・鰹節: the paper sachet with flakes showing through. */
+    dashiPack: S(`
+      <rect x="4.8" y="5.2" width="14.4" height="15.6" rx="1.4" fill="#efe6d2"/>
+      <rect x="4.8" y="5.2" width="14.4" height="3" rx="1.4" fill="#8c5a2b"/>
+      <rect x="7.2" y="10.2" width="9.6" height="1.5" rx=".75" fill="#a9752f"/>
+      <circle cx="9.4" cy="15.2" r="1.1" fill="#c9a45c"/>
+      <circle cx="13.2" cy="16.8" r="1" fill="#c9a45c"/>
+      <circle cx="15.4" cy="14.4" r=".85" fill="#d4b478"/>
+    `),
+
+    /* ふりかけ: the foil sachet, and what makes it worth buying showing
+       through the window. */
+    furikake: S(`
+      <rect x="4.8" y="6.4" width="14.4" height="14.4" rx="1.3" fill="#5c8f6f"/>
+      <rect x="4" y="3.6" width="16" height="3.2" rx=".8" fill="#3f5b4a"/>
+      <rect x="6.6" y="10" width="10.8" height="7.4" rx="1" fill="#f7f4ea"/>
+      <circle cx="9" cy="12.4" r=".8" fill="#e0574d"/>
+      <circle cx="12.4" cy="13.8" r=".7" fill="#3f5b4a"/>
+      <circle cx="15" cy="11.9" r=".7" fill="#e0a94f"/>
+      <circle cx="10.6" cy="15.6" r=".6" fill="#e0a94f"/>
+      <circle cx="14.2" cy="15.4" r=".6" fill="#e0574d"/>
     `),
 
     /* ================= 野菜 ================= */
@@ -786,7 +921,7 @@
     ["bodySoap",   ["ぼでぃそーぷ", "ぼでぃーそーぷ"]],
     ["handSoap",   ["はんどそーぷ", "消毒液", "消毒"]],
     ["soapBar",    ["石鹸", "石けん", "せっけん", "そーぷ"]],
-    ["toothpaste", ["歯磨き粉", "歯みがき粉", "はみがき粉", "歯磨き", "はみがき"]],
+    ["toothpaste", ["歯磨き粉", "歯みがき粉", "はみがき粉", "歯磨き", "はみがき", "まうすうぉっしゅ", "洗口液", "ふろす"]],
     ["toothbrush", ["歯ぶらし", "はぶらし", "歯ブラシ"]],
     ["faceWash",   ["洗顔", "せんがん", "くれんじんぐ"]],
     ["sunscreen",  ["日焼け止め", "ひやけどめ", "日やけ止め"]],
@@ -806,6 +941,12 @@
     ["bulb",     ["電球", "でんきゅう", "らいと"]],
     ["socks",    ["靴下", "くつした", "たおる", "したぎ", "下着"]],
     ["petFood",  ["どっぐふーど", "きゃっとふーど", "ぺっとふーど", "猫砂", "ねこ砂", "ぺっと"]],
+    ["zipBag",     ["保存袋", "じっぷろっく", "ふりーざーばっぐ", "ちゃっく袋", "密閉袋"]],
+    ["razor",      ["かみそり", "剃刀", "髭剃り", "ひげそり", "しぇーばー", "しぇーびんぐ"]],
+    ["cottonSwab", ["綿棒", "めんぼう", "こっとん", "ぱふ"]],
+    ["deodorant",  ["消臭剤", "しょうしゅう", "芳香剤", "ほうこうざい", "除湿剤", "ふぁぶりーず"]],
+    ["insect",     ["虫よけ", "虫除け", "殺虫剤", "蚊取り", "かとり", "防虫", "ごきぶり"]],
+    ["stationery", ["文房具", "ぼーるぺん", "えんぴつ", "鉛筆", "のーと", "せろてーぷ", "はさみ", "ぺん"]],
 
     /* くくりを指す言い方。品物の名前としては当たらないが、カテゴリの名前と
        しては当たる——これがあるので、名前の分からない品物もカテゴリの絵を
@@ -815,19 +956,31 @@
     ["baby",      ["赤ちゃん", "べびー", "乳児", "育児"]],
 
     /* 薬・衛生 */
-    ["medicine",    ["薬", "くすり", "さぷり", "びたみん", "錠剤"]],
+    ["medicine",    ["薬", "くすり", "さぷり", "びたみん", "錠剤", "目薬", "めぐすり", "風邪薬", "胃薬"]],
     ["plaster",     ["絆創膏", "ばんそうこう", "湿布", "しっぷ"]],
     ["thermometer", ["体温計", "たいおんけい"]],
 
     /* 乳製品・卵 */
     ["milk",    ["牛乳", "ぎゅうにゅう", "みるく"]],
     ["soyMilk", ["豆乳", "とうにゅう"]],
-    ["egg",     ["卵", "たまご", "玉子"]],
+    ["egg",     ["卵", "たまご", "玉子", "うずら"]],
     ["cheese",  ["ちーず"]],
     ["butter",  ["ばたー", "まーがりん"]],
+    ["cream",   ["生くりーむ", "ほいっぷ", "こんでんすみるく", "れんにゅう"]],
     ["yogurt",  ["よーぐると", "しりある", "ぐらのーら"]],
     ["iceCream",["あいす", "あいすくりーむ"]],
     ["pudding", ["ぷりん", "ぜりー"]],
+
+    /* 大豆製品・和のもの */
+    ["natto",     ["納豆", "なっとう"]],
+    ["tofu",      ["豆腐", "とうふ", "厚揚げ", "あつあげ", "油揚げ", "あぶらあげ", "がんもどき"]],
+    ["nori",      ["海苔", "のり", "焼きのり", "味付けのり", "わかめ", "若布", "昆布", "こんぶ", "ひじき", "もずく", "とろろ昆布"]],
+    ["konjac",    ["こんにゃく", "蒟蒻", "しらたき", "糸こん"]],
+    ["fishCake",  ["かまぼこ", "蒲鉾", "ちくわ", "竹輪", "はんぺん", "さつま揚げ", "練り物", "かにかま", "つみれ"]],
+    ["pickles",   ["漬物", "つけもの", "きむち", "梅干", "うめぼし", "たくあん", "らっきょう", "しば漬け", "ぬか漬け"]],
+    ["mochi",     ["餅", "もち", "切り餅", "白玉", "おしるこ"]],
+    ["dashiPack", ["だし", "出汁", "鰹節", "かつおぶし", "かつお節", "だしぱっく", "煮干し", "にぼし", "ほんだし", "鶏がら"]],
+    ["furikake",  ["ふりかけ", "お茶漬け", "おちゃづけ", "ゆかり", "のりたま"]],
 
     /* 野菜 */
     ["tomato",  ["とまと"]],
@@ -875,10 +1028,10 @@
     ["shellfish",["あさり", "しじみ", "ほたて", "帆立", "牡蠣", "貝"]],
 
     /* 主食 */
-    ["rice",     ["米", "こめ", "ごはん", "ご飯", "らいす", "無洗米", "ぱっくご飯"]],
+    ["rice",     ["米", "こめ", "ごはん", "ご飯", "らいす", "無洗米", "ぱっくご飯", "もち米", "玄米"]],
     ["bread",    ["ぱん", "食パン", "しょくぱん", "ぶれっど", "ろーるぱん"]],
     ["croissant",["くろわっさん", "でにっしゅ", "べーぐる"]],
-    ["noodles",  ["らーめん", "中華麺", "かっぷ麺", "かっぷらーめん", "そば", "うどん", "そうめん", "焼きそば", "麺"]],
+    ["noodles",  ["らーめん", "中華麺", "かっぷ麺", "かっぷらーめん", "そば", "うどん", "そうめん", "焼きそば", "麺", "春雨", "はるさめ", "びーふん"]],
     ["pasta",    ["ぱすた", "すぱげってぃ", "まかろに"]],
     ["pot",      ["鍋", "おでん", "しちゅー", "すーぷ"]],
     ["curry",    ["かれー", "はやしらいす"]],
@@ -887,8 +1040,8 @@
     ["frozen",   ["冷凍", "れいとう", "氷", "こおり", "冷蔵"]],
 
     /* 調味料・粉 */
-    ["salt",        ["塩", "しお", "胡椒", "こしょう", "砂糖", "さとう", "調味料", "だし", "出汁"]],
-    ["sauceBottle", ["醤油", "しょうゆ", "そーす", "ぽん酢", "めんつゆ", "つゆ"]],
+    ["salt",        ["塩", "しお", "胡椒", "こしょう", "砂糖", "さとう", "調味料", "こんそめ", "七味", "一味"]],
+    ["sauceBottle", ["醤油", "しょうゆ", "そーす", "ぽん酢", "めんつゆ", "つゆ", "うすたーそーす", "おいすたーそーす", "焼肉のたれ"]],
     ["ketchup",     ["けちゃっぷ"]],
     ["mayo",        ["まよねーず", "どれっしんぐ"]],
     ["tin",         ["缶詰", "かんづめ", "つな缶", "とまと缶", "れとると", "缶"]],
@@ -910,7 +1063,7 @@
     /* 飲みもの */
     ["water",  ["水", "みず", "みねらるうぉーたー", "天然水", "炭酸水"]],
     ["drink",  ["飲みもの", "飲み物", "飲物", "飲料", "どりんく"]],
-    ["tea",    ["お茶", "おちゃ", "茶", "緑茶", "麦茶", "紅茶", "ほうじ茶"]],
+    ["tea",    ["お茶", "おちゃ", "茶", "緑茶", "麦茶", "紅茶", "ほうじ茶", "てぃーばっぐ"]],
     ["coffee", ["こーひー", "珈琲", "かふぇおれ"]],
     ["juice",  ["じゅーす", "野菜じゅーす"]],
     ["soda",   ["こーら", "炭酸", "さいだー", "すぽーつどりんく", "清涼飲料"]],
