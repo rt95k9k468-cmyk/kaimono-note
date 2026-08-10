@@ -109,7 +109,9 @@
 
   function renderFilter() {
     const counts = new Map();
-    store.get().products.forEach((p) => {
+    // Archived products are out of the way, so they are out of the counts too:
+    // a chip saying 「調味料 8」 over a list of three is just wrong.
+    store.get().products.filter((p) => !p.archived).forEach((p) => {
       counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1);
     });
     if (counts.size < 2) { categoryFilter = null; els.filter.innerHTML = ""; return; }
@@ -157,13 +159,16 @@
        read, and guessing would be worse than being consistent. */
     const order = new Map(store.sortedCategories().map((c, i) => [c.id, i]));
     const rank = (p) => (order.has(p.categoryId) ? order.get(p.categoryId) : order.size);
-    const matched = all
+    const shown = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
       .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
       .sort((a, b) => rank(a) - rank(b)
         || KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja"));
 
-    if (!matched.length) {
+    const matched = shown.filter((p) => !p.archived);
+    const archived = shown.filter((p) => p.archived);
+
+    if (!matched.length && !archived.length) {
       els.body.append(node(html`
         <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
           「${query}」に一致する商品はありません
@@ -172,9 +177,51 @@
       return;
     }
 
-    const list = node(html`<div class="product-list"></div>`);
-    matched.forEach((p) => list.append(productCard(p)));
-    els.body.append(list);
+    if (matched.length) {
+      const list = node(html`<div class="product-list"></div>`);
+      matched.forEach((p) => list.append(productCard(p)));
+      els.body.append(list);
+    }
+
+    if (archived.length) els.body.append(archiveSection(archived));
+  }
+
+  /* ---------------- archive ---------------- */
+
+  /* Things bought once a year still have prices worth keeping, and they still
+     get in the way of the ten things bought every week. Archived is neither
+     deleted nor listed: the records stay, the card moves to the bottom, and
+     the same swipe brings it back.
+
+     Left open or shut as it was last time, except while searching — a name
+     typed into the box is a question, and answering it with a closed drawer
+     that happens to contain the answer would be a poor joke. */
+  function archiveSection(list) {
+    const open = query ? true : store.get().settings.showArchived === true;
+
+    const section = node(html`
+      <section class="archive ${open ? "is-open" : ""}">
+        <button class="archive-head js-toggle" aria-expanded="${String(open)}">
+          ${icon("chevron")}
+          <span>アーカイブ</span>
+          <span class="cat-head-count">${String(list.length)}</span>
+        </button>
+        <div class="archive-body js-body" ${open ? "" : KN.util.raw("hidden")}></div>
+      </section>
+    `);
+
+    if (open) {
+      const box = node(html`<div class="product-list"></div>`);
+      list.forEach((p) => box.append(productCard(p)));
+      section.querySelector(".js-body").append(box);
+    }
+
+    section.querySelector(".js-toggle").addEventListener("click", () => {
+      haptic();
+      store.update((s) => { s.settings.showArchived = !open; });
+    });
+
+    return section;
   }
 
   /** The item on the shopping list for this product, if it is on it. */
@@ -188,12 +235,17 @@
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
     const listed = listedItem(product.id);
 
-    /* Two layers, like the rows on the list screen: the panel underneath is
-       what the swipe uncovers, the card on top is what moves. */
+    /* Two layers, like the rows on the list screen: the panels underneath are
+       what a swipe uncovers, the card on top is what moves. Right is the
+       shopping list, left is the archive — opposite directions for opposite
+       kinds of "put this somewhere else". */
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
         <div class="product-hint">
           ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
+        </div>
+        <div class="product-hint product-hint-archive">
+          <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
         </div>
       </article>
     `);
@@ -257,19 +309,39 @@
     });
   }
 
-  /* ---------------- swipe right to put it on the list, or take it off ---------------- */
+  /** Put this product out of the way, or bring it back. */
+  function toggleArchived(product) {
+    const to = !product.archived;
+    haptic(14);
+    store.update((s) => {
+      const rec = s.products.find((x) => x.id === product.id);
+      if (rec) rec.archived = to;
+    });
+    KN.ui.toast(to ? `「${product.name}」をアーカイブしました` : `「${product.name}」を戻しました`, {
+      action: {
+        label: "元に戻す",
+        onClick: () => store.update((s) => {
+          const rec = s.products.find((x) => x.id === product.id);
+          if (rec) rec.archived = !to;
+        }),
+      },
+    });
+  }
 
-  /* Rightwards, and it springs straight back — nothing stays open, because
-     there is no second step to confirm. The pull is deliberately heavy past
-     the trigger so the card tells you when it has gone far enough. The same
-     swipe undoes itself: on a product already on the list it takes it off,
-     which is what the panel underneath says it will do. */
+  /* ---------------- swipe: right for the list, left for the archive ---------------- */
+
+  /* Either way it springs straight back — nothing stays open, because there
+     is no second step to confirm. The pull is deliberately heavy past the
+     trigger so the card tells you when it has gone far enough. Both swipes
+     undo themselves: on a product already listed the right one takes it off,
+     and on an archived one the left one brings it back — which is what the
+     panel underneath says it will do. */
   function attachListSwipe(wrap, card, product) {
     const TRIGGER = 68;
     const MAX = 104;
     const SLOP = 14;
     const DOMINANCE = 1.6;
-    let startX = 0, startY = 0, dx = 0;
+    let startX = 0, startY = 0, dx = 0, dir = 1;
     let dragging = false, decided = false, pointerId = null, swallowClick = false;
     let armed = false, pending = null, rafId = 0;
 
@@ -304,18 +376,20 @@
       if (!decided) {
         if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
         decided = true;
-        dragging = mx >= SLOP && mx > Math.abs(my) * DOMINANCE;
+        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
         if (!dragging) return;
+        dir = mx > 0 ? 1 : -1;
         card.setPointerCapture(pointerId);
         card.style.transition = "none";
-        wrap.classList.add("is-swiping");
+        wrap.classList.add("is-swiping", dir > 0 ? "is-right" : "is-left");
       }
       if (!dragging) return;
 
       // Past the trigger the card only creeps, so the finger feels the edge.
-      dx = mx <= TRIGGER ? mx : TRIGGER + (mx - TRIGGER) * 0.32;
-      dx = Math.min(MAX, dx);
-      const nowArmed = dx >= TRIGGER;
+      const travel = mx * dir;
+      dx = dir * Math.min(MAX, travel <= TRIGGER ? Math.max(0, travel)
+        : TRIGGER + (travel - TRIGGER) * 0.32);
+      const nowArmed = Math.abs(dx) >= TRIGGER;
       if (nowArmed !== armed) {
         armed = nowArmed;
         wrap.classList.toggle("is-armed", armed);
@@ -334,14 +408,17 @@
       card.style.transition = "";
       card.style.transform = "";
       const fired = armed;
+      const way = dir;
       dragging = false;
       armed = false;
       swallowClick = true;
       // Let the card glide home before the store change rebuilds the list;
       // committing on the spot would swap it out mid-flight.
       setTimeout(() => {
-        wrap.classList.remove("is-swiping", "is-armed");
-        if (fired) toggleListed(product);
+        wrap.classList.remove("is-swiping", "is-armed", "is-left", "is-right");
+        if (!fired) return;
+        if (way > 0) toggleListed(product);
+        else toggleArchived(product);
       }, 200);
     };
     card.addEventListener("pointerup", finish);
