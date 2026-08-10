@@ -1198,7 +1198,9 @@ button, [role="tab"] {
 @media (hover: hover) {
   .row:hover { background: var(--c-surface-2); }
 }
-.row-main { flex: 1; min-width: 0; }
+/* Title over subtitle. As a plain inline span the two ran together on one
+   line, and the title's ellipsis never had a box to overflow. */
+.row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .row-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
 .row-value { color: var(--c-text-2); font-weight: 700; flex: none; }
@@ -8438,6 +8440,15 @@ button, [role="tab"] {
           <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
           <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
         </div>
+        <div class="rows js-badge-rows" hidden style="margin-top:12px">
+          <button class="row js-badge">
+            <span class="row-main">
+              <span class="row-title">アイコンにも数を出す</span>
+              <span class="row-sub js-badge-sub"></span>
+            </span>
+            <span class="row-value js-badge-state"></span>
+          </button>
+        </div>
       </section>
     `);
 
@@ -8449,6 +8460,37 @@ button, [role="tab"] {
         haptic();
       });
     });
+
+    /* Only where there is an icon to badge. In a browser tab the API is not
+       there at all, and a switch that does nothing is worse than no switch. */
+    const badge = KN.appBadge;
+    if (badge && badge.supported()) {
+      const rows = wrap.querySelector(".js-badge-rows");
+      const state = wrap.querySelector(".js-badge-state");
+      const sub = wrap.querySelector(".js-badge-sub");
+      rows.hidden = false;
+
+      const paint = () => {
+        const on = badge.enabled();
+        state.textContent = on ? "オン" : "オフ";
+        state.style.color = on ? "var(--c-primary)" : "var(--c-text-3)";
+        sub.textContent = on
+          ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
+          : "iPhone では、通知の許可を求められます（通知は送りません）";
+      };
+      paint();
+
+      wrap.querySelector(".js-badge").addEventListener("click", async () => {
+        haptic();
+        if (badge.enabled()) { badge.disable(); paint(); return; }
+        const ok = await badge.enable();
+        paint();
+        if (!ok) {
+          KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+        }
+      });
+    }
+
     return wrap;
   }
 
@@ -9042,9 +9084,11 @@ button, [role="tab"] {
     // puts something on the trip. Nothing starred means nothing planned, so no
     // badge — falling back to the whole list here would report a backlog the
     // user never said they were buying.
+    paintAppBadge();
+
     const listTab = document.querySelector('.tab[data-tab="list"]');
     if (!listTab) return;
-    const pending = store.get().items.filter((i) => i.fav && !i.checked).length;
+    const pending = pendingCount();
     const existing = listTab.querySelector(".tab-badge");
     if (pending > 0) {
       const text = pending > 99 ? "99+" : String(pending);
@@ -9054,6 +9098,68 @@ button, [role="tab"] {
       existing.remove();
     }
   }
+
+  /* ---------------- the same number, on the home screen ---------------- */
+
+  /* iOS has carried the Badging API for installed web apps since 16.4, so the
+     count on the リスト tab can be the count on the app icon — the one number
+     worth seeing without opening anything.
+
+     Two things make this a setting rather than something that just happens.
+     It only works from the Home Screen, not in the browser; and iOS hangs the
+     badge off the *notification* permission, so switching it on means asking
+     for a permission whose dialog talks about notifications this app will
+     never send. That is not a prompt to spring on anyone unasked. */
+  const pendingCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+
+  const badgeSupported = () => typeof navigator !== "undefined" && !!navigator.setAppBadge;
+
+  let badgeShown = null;   // what the icon is currently showing
+
+  function paintAppBadge() {
+    if (!badgeSupported()) return;
+    const want = store.get().settings.appBadge === true ? pendingCount() : 0;
+    if (want === badgeShown) return;
+    badgeShown = want;
+    // Both calls return promises that reject when the permission is not
+    // there. Nothing here is worth an unhandled rejection in the console.
+    try {
+      if (want > 0) navigator.setAppBadge(want).catch(() => {});
+      else navigator.clearAppBadge().catch(() => {});
+    } catch (err) { /* an API that refuses is the same as one that is absent */ }
+  }
+
+  /** Ask for what the badge needs, and turn it on if it is given. */
+  function enableAppBadge() {
+    if (!badgeSupported()) return Promise.resolve(false);
+    const ask = (window.Notification && Notification.requestPermission)
+      ? Notification.requestPermission()
+      : Promise.resolve("granted");
+    return Promise.resolve(ask)
+      .then((res) => {
+        // Chrome badges an installed app without asking anything; iOS wants
+        // the notification permission first and simply does nothing without.
+        if (res === "denied") return false;
+        store.update((s) => { s.settings.appBadge = true; });
+        badgeShown = null;
+        paintAppBadge();
+        return true;
+      })
+      .catch(() => false);
+  }
+
+  function disableAppBadge() {
+    store.update((s) => { s.settings.appBadge = false; });
+    badgeShown = null;
+    paintAppBadge();
+  }
+
+  KN.appBadge = {
+    supported: badgeSupported,
+    enabled: () => store.get().settings.appBadge === true,
+    enable: enableAppBadge,
+    disable: disableAppBadge,
+  };
 
   function show(id) {
     if (!KN.screens[id]) return;
