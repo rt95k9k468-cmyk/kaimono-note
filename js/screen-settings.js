@@ -55,6 +55,15 @@
           <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
           <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
         </div>
+        <div class="rows js-badge-rows" hidden style="margin-top:12px">
+          <button class="row js-badge">
+            <span class="row-main">
+              <span class="row-title">アイコンにも数を出す</span>
+              <span class="row-sub js-badge-sub"></span>
+            </span>
+            <span class="row-value js-badge-state"></span>
+          </button>
+        </div>
       </section>
     `);
 
@@ -66,6 +75,37 @@
         haptic();
       });
     });
+
+    /* Only where there is an icon to badge. In a browser tab the API is not
+       there at all, and a switch that does nothing is worse than no switch. */
+    const badge = KN.appBadge;
+    if (badge && badge.supported()) {
+      const rows = wrap.querySelector(".js-badge-rows");
+      const state = wrap.querySelector(".js-badge-state");
+      const sub = wrap.querySelector(".js-badge-sub");
+      rows.hidden = false;
+
+      const paint = () => {
+        const on = badge.enabled();
+        state.textContent = on ? "オン" : "オフ";
+        state.style.color = on ? "var(--c-primary)" : "var(--c-text-3)";
+        sub.textContent = on
+          ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
+          : "iPhone では、通知の許可を求められます（通知は送りません）";
+      };
+      paint();
+
+      wrap.querySelector(".js-badge").addEventListener("click", async () => {
+        haptic();
+        if (badge.enabled()) { badge.disable(); paint(); return; }
+        const ok = await badge.enable();
+        paint();
+        if (!ok) {
+          KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+        }
+      });
+    }
+
     return wrap;
   }
 

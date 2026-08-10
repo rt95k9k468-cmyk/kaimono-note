@@ -56,9 +56,11 @@
     // puts something on the trip. Nothing starred means nothing planned, so no
     // badge — falling back to the whole list here would report a backlog the
     // user never said they were buying.
+    paintAppBadge();
+
     const listTab = document.querySelector('.tab[data-tab="list"]');
     if (!listTab) return;
-    const pending = store.get().items.filter((i) => i.fav && !i.checked).length;
+    const pending = pendingCount();
     const existing = listTab.querySelector(".tab-badge");
     if (pending > 0) {
       const text = pending > 99 ? "99+" : String(pending);
@@ -68,6 +70,68 @@
       existing.remove();
     }
   }
+
+  /* ---------------- the same number, on the home screen ---------------- */
+
+  /* iOS has carried the Badging API for installed web apps since 16.4, so the
+     count on the リスト tab can be the count on the app icon — the one number
+     worth seeing without opening anything.
+
+     Two things make this a setting rather than something that just happens.
+     It only works from the Home Screen, not in the browser; and iOS hangs the
+     badge off the *notification* permission, so switching it on means asking
+     for a permission whose dialog talks about notifications this app will
+     never send. That is not a prompt to spring on anyone unasked. */
+  const pendingCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+
+  const badgeSupported = () => typeof navigator !== "undefined" && !!navigator.setAppBadge;
+
+  let badgeShown = null;   // what the icon is currently showing
+
+  function paintAppBadge() {
+    if (!badgeSupported()) return;
+    const want = store.get().settings.appBadge === true ? pendingCount() : 0;
+    if (want === badgeShown) return;
+    badgeShown = want;
+    // Both calls return promises that reject when the permission is not
+    // there. Nothing here is worth an unhandled rejection in the console.
+    try {
+      if (want > 0) navigator.setAppBadge(want).catch(() => {});
+      else navigator.clearAppBadge().catch(() => {});
+    } catch (err) { /* an API that refuses is the same as one that is absent */ }
+  }
+
+  /** Ask for what the badge needs, and turn it on if it is given. */
+  function enableAppBadge() {
+    if (!badgeSupported()) return Promise.resolve(false);
+    const ask = (window.Notification && Notification.requestPermission)
+      ? Notification.requestPermission()
+      : Promise.resolve("granted");
+    return Promise.resolve(ask)
+      .then((res) => {
+        // Chrome badges an installed app without asking anything; iOS wants
+        // the notification permission first and simply does nothing without.
+        if (res === "denied") return false;
+        store.update((s) => { s.settings.appBadge = true; });
+        badgeShown = null;
+        paintAppBadge();
+        return true;
+      })
+      .catch(() => false);
+  }
+
+  function disableAppBadge() {
+    store.update((s) => { s.settings.appBadge = false; });
+    badgeShown = null;
+    paintAppBadge();
+  }
+
+  KN.appBadge = {
+    supported: badgeSupported,
+    enabled: () => store.get().settings.appBadge === true,
+    enable: enableAppBadge,
+    disable: disableAppBadge,
+  };
 
   function show(id) {
     if (!KN.screens[id]) return;
