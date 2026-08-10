@@ -202,6 +202,10 @@
     // thing it must not be mistaken for while a pad is open.
     backspace: '<path d="M20.4 4.6H9.7a2 2 0 0 0-1.55.74L2.9 12l5.25 6.66a2 2 0 0 0 1.55.74h10.7a2 2 0 0 0 2-2V6.6a2 2 0 0 0-2-2Z"/><path d="M12.4 9.6l5 4.8M17.4 9.6l-5 4.8"/>',
     cart:      '<circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.77L21 8H6"/>',
+    // The two layouts, drawn as what they are: stacked rows, and a 3×3 of
+    // squares. Each button shows the layout it switches *to*.
+    rows:      '<rect x="3" y="4.5" width="18" height="4.4" rx="1.4"/><rect x="3" y="15.1" width="18" height="4.4" rx="1.4"/>',
+    tiles:     '<rect x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/>',
   };
 
   /** Inline stroke icon. */

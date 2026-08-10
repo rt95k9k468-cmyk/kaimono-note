@@ -1616,6 +1616,125 @@ button, [role="tab"] {
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* ================= TILES ================= */
+
+/* Three to a row, square, name allowed to wrap. A row is better at reading —
+   name, price and shop on one line, and a swipe to act on it — but a grid is
+   better at finding, because the picture does the work and twelve things fit
+   where four did. Both lists take the same setting, switched from either
+   topbar.
+
+   A tile is about 107px across on a phone, which is why the swipe panels and
+   the drag-to-reorder are not here: neither fits, and neither means anything
+   in a grid. Everything that was a button still is. */
+.item-list.is-tiles,
+.product-list.is-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+
+.item.is-tile,
+.product.is-tile {
+  aspect-ratio: 1;
+  display: block;
+  padding: 0;
+  /* The whole tile is the target; the corner buttons sit on top of it. */
+  overflow: hidden;
+}
+
+.item.is-tile .item-body,
+.product.is-tile .product-main {
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: var(--sp-2) 6px 6px;
+  text-align: center;
+}
+
+/* The picture carries the tile, so it is given the room a 42px chip had and
+   then some — at this size it is what you actually navigate by. */
+.item.is-tile .item-emoji,
+.product.is-tile .product-emoji {
+  width: 34px; height: 34px;
+  background: none;
+  font-size: 27px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* Wrapped, not cut off: a tile has the height for three lines, and 「トイレット
+   ペーパー」 truncated to 「トイレット…」 is the one thing a picture cannot
+   disambiguate. Past three lines it does give up, or a long name would push
+   the price out of its own tile. */
+.item.is-tile .item-name,
+.product.is-tile .product-name {
+  /* Bound to the tile, or the box below stretches to the longest word and the
+     name runs out over the neighbour. */
+  max-width: 100%;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.tile-price {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-accent);
+  font-variant-numeric: tabular-nums;
+}
+.item.is-tile .item-qty {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  color: var(--c-text-2);
+}
+
+/* The category edge runs across the top rather than down the side: on a square
+   the left edge is a third of the perimeter and reads as a border, not a mark.
+   Same rule as the rows — the price screen paints it only for what is on the
+   list, the shopping list paints it always. */
+.item.is-tile::before,
+.product.is-tile.is-listed::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  bottom: auto;
+  width: auto;
+  height: 5px;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--cat, var(--c-border-2));
+}
+.product.is-tile.is-listed::before { background: var(--cat, var(--c-primary)); }
+
+/* The two controls the rows keep at their ends, moved to the corners. */
+.item.is-tile .check,
+.item.is-tile .fav {
+  position: absolute;
+  top: 5px;
+  z-index: 1;
+}
+.item.is-tile .check { left: 4px; }
+.item.is-tile .fav { right: 4px; }
+.item.is-tile .check { width: 22px; height: 22px; }
+.item.is-tile .check svg { width: 13px; height: 13px; }
+.item.is-tile .fav svg { width: 17px; height: 17px; }
+
+/* Bought: the tile steps back rather than striking a line through a name that
+   is already wrapping across three lines. */
+.item.is-tile.is-checked { opacity: .55; }
+
+.item-wrap:has(.is-tile) { animation: none; }
+
 /* No press-scale on the row. Shrinking it by even half a percent pulled its
    right edge inwards and exposed the delete panel sitting behind — the row
    must not move until a swipe moves it. The controls inside give their own
@@ -2528,6 +2647,10 @@ button, [role="tab"] {
     // thing it must not be mistaken for while a pad is open.
     backspace: '<path d="M20.4 4.6H9.7a2 2 0 0 0-1.55.74L2.9 12l5.25 6.66a2 2 0 0 0 1.55.74h10.7a2 2 0 0 0 2-2V6.6a2 2 0 0 0-2-2Z"/><path d="M12.4 9.6l5 4.8M17.4 9.6l-5 4.8"/>',
     cart:      '<circle cx="9" cy="20" r="1.6"/><circle cx="18" cy="20" r="1.6"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.77L21 8H6"/>',
+    // The two layouts, drawn as what they are: stacked rows, and a 3×3 of
+    // squares. Each button shows the layout it switches *to*.
+    rows:      '<rect x="3" y="4.5" width="18" height="4.4" rx="1.4"/><rect x="3" y="15.1" width="18" height="4.4" rx="1.4"/>',
+    tiles:     '<rect x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/>',
   };
 
   /** Inline stroke icon. */
@@ -3881,7 +4004,10 @@ button, [role="tab"] {
       items: [],
       // Corrections the user has made by hand: folded product name → category.
       learned: {},
-      settings: { theme: "auto", showChecked: true },
+      // layout: "rows" | "tiles" — one setting for both lists, because a
+      // person who wants square tiles wants them on the screen they are
+      // looking at, not on one of the two.
+      settings: { theme: "auto", showChecked: true, layout: "rows" },
     };
   }
 
@@ -4833,7 +4959,35 @@ button, [role="tab"] {
     };
   }
 
-  KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow };
+  /* ---------------- layout: rows or tiles ---------------- */
+
+  /* Both lists are laid out the same way, from one setting. Two screens
+     disagreeing about how a product looks would be a setting the app keeps
+     rather than a way of looking at it. */
+
+  const isTiles = () => KN.store.get().settings.layout === "tiles";
+
+  function toggleLayout() {
+    const to = isTiles() ? "rows" : "tiles";
+    haptic(10);
+    KN.store.update((s) => { s.settings.layout = to; });
+  }
+
+  /** Paints a topbar button with the layout it switches *to*. */
+  function paintLayoutButton(btn) {
+    if (!btn) return;
+    const toTiles = !isTiles();
+    btn.innerHTML = "";
+    btn.append(node(html`${icon(toTiles ? "tiles" : "rows")}`));
+    const label = toTiles ? "タイル表示にする" : "リスト表示にする";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  }
+
+  KN.ui = {
+    sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    isTiles, toggleLayout, paintLayoutButton,
+  };
 })();
 
 /* ---- js/reorder.js ---- */
@@ -6947,6 +7101,7 @@ button, [role="tab"] {
               <h1 class="topbar-title">買い物リスト</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-clear" aria-label="購入済みをまとめて削除" title="購入済みをまとめて削除">
               ${icon("trash")}
             </button>
@@ -6984,6 +7139,7 @@ button, [role="tab"] {
     els = {
       sub:        chrome.querySelector(".js-sub"),
       clear:      chrome.querySelector(".js-clear"),
+      layout:     chrome.querySelector(".js-layout"),
       addFab:     dock.querySelector(".js-open-add"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
@@ -6995,6 +7151,7 @@ button, [role="tab"] {
     els.addFab.addEventListener("click", openAddSheet);
 
     els.clear.addEventListener("click", clearChecked);
+    els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -7278,6 +7435,8 @@ button, [role="tab"] {
     els.progWrap.hidden = scope.length === 0;
     els.progress.style.width = scope.length ? `${(done / scope.length) * 100}%` : "0%";
 
+    KN.ui.paintLayoutButton(els.layout);
+
     renderFilter(items);
     renderBody(items);
   }
@@ -7372,6 +7531,26 @@ button, [role="tab"] {
       groups.get(p.categoryId).push({ item, product: p });
     });
 
+    /* Tiles are one grid for the lot. A separate grid per category would give
+       a category of one item a row of its own and two empty cells beside it —
+       which is exactly the wasted space the layout is for. The order still
+       runs category by category, and each tile wears its own colour, so the
+       run is still visible; it just wraps instead of starting a new block. */
+    if (KN.ui.isTiles()) {
+      const grid = node(html`<div class="item-list is-tiles"></div>`);
+      store.sortedCategories().forEach((cat) => {
+        (groups.get(cat.id) || []).forEach(({ item, product }) => {
+          grid.append(itemRow(item, product));
+        });
+      });
+      if (grid.childElementCount) {
+        const section = node(html`<section class="cat-group"></section>`);
+        section.append(grid);
+        into.append(section);
+      }
+      return groups.size > 0;
+    }
+
     store.sortedCategories().forEach((cat) => {
       const entries = groups.get(cat.id);
       if (!entries || !entries.length) return;
@@ -7446,20 +7625,40 @@ button, [role="tab"] {
   function itemRow(item, product) {
     const best = store.bestPrice(product);
     const bestStore = best ? store.getStore(best.storeId) : null;
+    const tiles = KN.ui.isTiles();
 
+    /* A tile is a third of a screen across — narrower than either swipe panel
+       and the words on it — so tiles carry no panels and take no swipe. What
+       stays is everything the rows have as buttons: the tick, the ★, and the
+       body that opens the item. */
     const wrap = node(html`
       <article class="item-wrap" data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
-        <div class="item-actions">
-          <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
-          <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
-        </div>
-        <div class="item-star">
-          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
-        </div>
+        ${tiles ? "" : html`
+          <div class="item-actions">
+            <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
+            <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
+          </div>
+          <div class="item-star">
+            ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
+          </div>
+        `}
       </article>
     `);
 
-    const row = node(html`
+    const row = tiles ? node(html`
+      <div class="item is-tile ${item.checked ? "is-checked" : ""}">
+        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
+                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
+        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
+                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
+        <button class="item-body">
+          <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
+          <span class="item-name">${product.name}</span>
+          ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
+          <span class="tile-price">${best ? yen(best.price * item.qty) : "—"}</span>
+        </button>
+      </div>
+    `) : node(html`
       <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
                 aria-label="${product.name} を購入済みにする">${icon("check")}</button>
@@ -7481,12 +7680,12 @@ button, [role="tab"] {
     wrap.append(row);
 
     const priceBox = row.querySelector(".item-price");
-    if (best && bestStore) {
+    if (priceBox && best && bestStore) {
       priceBox.append(frag(html`
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
         <span class="item-price-store">🏆 ${bestStore.name}</span>
       `));
-    } else {
+    } else if (priceBox) {
       priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
     }
 
@@ -7512,6 +7711,8 @@ button, [role="tab"] {
        this row leaves the list — which is also what makes the painted left
        edge over there go out. Deleting only clears the row; archiving says
        「しばらく買わない」about the product itself. */
+    if (tiles) return wrap;
+
     wrap.querySelector(".item-arch").addEventListener("click", () => {
       haptic(12);
       const undo = store.setArchived(product.id, true);
@@ -7866,6 +8067,7 @@ button, [role="tab"] {
               <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-new" aria-label="商品を追加" title="商品を追加"
                     style="background:var(--c-primary);color:#fff">${icon("plus")}</button>
           </div>
@@ -7894,6 +8096,7 @@ button, [role="tab"] {
       search:  chrome.querySelector(".js-search"),
       clear:   chrome.querySelector(".js-clear"),
       newBtn:  chrome.querySelector(".js-new"),
+      layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
@@ -7915,6 +8118,7 @@ button, [role="tab"] {
     });
 
     els.newBtn.addEventListener("click", createProduct);
+    els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -7944,6 +8148,7 @@ button, [role="tab"] {
   function render() {
     const st = store.get();
     els.sub.textContent = `${st.products.length}商品 ・ ${st.stores.length}店舗`;
+    KN.ui.paintLayoutButton(els.layout);
     renderFilter();
     renderBody();
   }
@@ -8019,7 +8224,7 @@ button, [role="tab"] {
     }
 
     if (matched.length) {
-      const list = node(html`<div class="product-list"></div>`);
+      const list = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
       matched.forEach((p) => list.append(productCard(p)));
       els.body.append(list);
     }
@@ -8052,7 +8257,7 @@ button, [role="tab"] {
     `);
 
     if (open) {
-      const box = node(html`<div class="product-list"></div>`);
+      const box = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
       list.forEach((p) => box.append(productCard(p)));
       section.querySelector(".js-body").append(box);
     }
@@ -8075,19 +8280,25 @@ button, [role="tab"] {
     const size = formatSize(product.amount, product.unit);
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
     const listed = listedItem(product.id);
+    const tiles = KN.ui.isTiles();
 
     /* Two layers, like the rows on the list screen: the panels underneath are
        what a swipe uncovers, the card on top is what moves. Right is the
        shopping list, left is the archive — opposite directions for opposite
-       kinds of "put this somewhere else". */
+       kinds of "put this somewhere else".
+
+       Tiles are a third of a screen wide, which is narrower than either panel
+       and its wording, so they carry no panels and take no swipe. */
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
-        <div class="product-hint">
-          ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
-        </div>
-        <div class="product-hint product-hint-archive">
-          <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
-        </div>
+        ${tiles ? "" : html`
+          <div class="product-hint">
+            ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
+          </div>
+          <div class="product-hint product-hint-archive">
+            <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
+          </div>
+        `}
       </article>
     `);
 
@@ -8096,19 +8307,32 @@ button, [role="tab"] {
        「買った」 checkbox one tab over, and the two mean opposite things —
        so this one stopped being a button and became a mark. Putting it on
        or taking it off is the swipe's job. */
-    const card = node(html`
+    const card = tiles ? node(html`
+      <div class="product is-tile ${listed ? "is-listed" : ""}">
+        <button class="product-main js-open">
+          <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
+          <span class="product-name">${product.name}</span>
+          ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
+          <span class="tile-price">${best ? yen(best.price) : "—"}</span>
+        </button>
+      </div>
+    `) : node(html`
       <div class="product ${listed ? "is-listed" : ""}">
         <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="product-main js-open">
           <span class="product-name">${product.name}</span>
           ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
-          <span class="product-meta">
-            ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
-            ${prices.length
-              ? html`<span>${prices.length}店舗で比較中</span>`
-              : html`<span style="color:var(--c-text-3)">値段は未登録</span>`}
-            ${up ? html`<span style="color:var(--c-text-3)">${up.text}</span>` : ""}
-          </span>
+          ${/* Only facts about the product itself. 「3店舗で比較中」 counted the
+                app's own records rather than saying anything about the thing on
+                the shelf, and 「値段は未登録」 repeated the — already sitting in
+                the price column. What is left is the name, in the size of the
+                thing the row is for. */""}
+          ${size || up ? html`
+            <span class="product-meta">
+              ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
+              ${up ? html`<span>${up.text}</span>` : ""}
+            </span>
+          ` : ""}
         </button>
         <span class="item-price">
           ${best && bestStore
@@ -8123,7 +8347,7 @@ button, [role="tab"] {
     wrap.append(card);
 
     card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
-    attachListSwipe(wrap, card, product);
+    if (!tiles) attachListSwipe(wrap, card, product);
     return wrap;
   }
 
