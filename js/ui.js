@@ -161,13 +161,23 @@
     `);
 
     if (action) {
-      el.querySelector(".toast-action").addEventListener("click", () => {
+      el.querySelector(".toast-action").addEventListener("click", (e) => {
+        // Stop it reaching the tap-to-dismiss below: the action closes the
+        // toast itself, and running both would be doing the same work twice.
+        e.stopPropagation();
         action.onClick();
         dismiss();
       });
     }
 
+    /* Tapped anywhere else: gone. It is an aside, not a question, and sitting
+       out its 3.6 seconds to see the row underneath is a poor deal. */
+    el.addEventListener("click", () => dismiss());
+
+    let gone = false;
     function dismiss() {
+      if (gone) return;
+      gone = true;
       clearTimeout(toastTimer);
       el.classList.add("is-out");
       setTimeout(() => el.remove(), 220);

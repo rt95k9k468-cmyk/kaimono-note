@@ -1131,18 +1131,31 @@ button, [role="tab"] {
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
-  background: #232a24;
+  /* See-through, because it lands on top of the very rows it is talking about
+     — 「「牛乳」を削除しました」 sits over the place 牛乳 just left. Blurred
+     behind, so the text stays readable over anything underneath. */
+  background: rgba(35, 42, 36, .78);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
   color: #f2f6f1;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);
   font-weight: 600;
   pointer-events: auto;
+  /* Anywhere on it dismisses it, so it is never in the way longer than it
+     takes to read. */
+  cursor: pointer;
   animation: toast-in .3s var(--ease-out);
 }
 
-:root[data-theme="dark"] .toast { background: #333d33; }
+/* Without the blur, transparency alone would run the list through the text. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .toast { background: #232a24; }
+}
+
+:root[data-theme="dark"] .toast { background: rgba(51, 61, 51, .78); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .toast { background: #333d33; }
+  :root:not([data-theme="light"]) .toast { background: rgba(51, 61, 51, .78); }
 }
 
 .toast.is-out { animation: toast-out .22s var(--ease) forwards; }
@@ -1459,6 +1472,10 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   overflow: hidden;
   animation: item-in .24s var(--ease-out);
+  /* How far the row slides, and how wide the panel behind it is — one number,
+     read back by screen-list.js so the gesture and the layout cannot disagree.
+     Two buttons wide now that archiving lives here as well. */
+  --reveal: 176px;
 }
 
 /* Kept out of the layer entirely until a swipe is genuinely under way. Merely
@@ -1466,7 +1483,7 @@ button, [role="tab"] {
 .item-actions {
   position: absolute;
   top: 0; right: 0; bottom: 0;
-  width: 88px;
+  width: var(--reveal);
   display: flex;
   visibility: hidden;
 }
@@ -1498,14 +1515,27 @@ button, [role="tab"] {
 .item-wrap.is-armed .item-star > * { opacity: 1; transform: none; }
 .item-wrap.is-starring .item-star { visibility: visible; }
 
+/* Two ways out of a row, ordered by how much they mean. アーカイブ is the mild
+   one and sits nearer the row, in a neutral colour; 削除 keeps the far edge and
+   the red, so a swipe that runs to the end of the panel still lands on the same
+   button it always did. */
+.item-arch,
 .item-del {
   flex: 1;
-  background: var(--c-danger);
-  color: #fff;
   font-size: var(--fs-sm);
   font-weight: 800;
   display: grid;
   place-items: center;
+}
+/* The secondary text colour as a background, the surface as its ink — the pair
+   is legible by construction in either theme, which a fixed grey is not. */
+.item-arch {
+  background: var(--c-text-2);
+  color: var(--c-surface);
+}
+.item-del {
+  background: var(--c-danger);
+  color: #fff;
 }
 
 .item {
@@ -1563,7 +1593,7 @@ button, [role="tab"] {
 }
 .item.is-checked::before { opacity: .4; }
 
-.item-wrap.is-open .item { transform: translateX(-88px); }
+.item-wrap.is-open .item { transform: translateX(calc(var(--reveal) * -1)); }
 
 /* Hand the row its own compositor layer for the duration of the gesture, so
    each frame is a transform rather than a repaint of the whole row. */
@@ -4286,6 +4316,41 @@ button, [role="tab"] {
     return rec;
   }
 
+  /**
+   * Put a product away, or bring it back.
+   *
+   * Archived means "not in play", and that has to be true on both screens at
+   * once: the card leaves the price list's main run, and the product also
+   * comes off the shopping list, because something being bought today is not
+   * something put away. (The reverse already holds — addItem un-archives.)
+   *
+   * @returns {() => void} undoes exactly this call, list rows and all.
+   */
+  function setArchived(productId, on) {
+    const prev = getProduct(productId);
+    const was = !!(prev && prev.archived);
+    // Kept with their positions so an undo puts the rows back where they were,
+    // not at the top of the list.
+    const dropped = [];
+    get().items.forEach((it, i) => { if (it.productId === productId) dropped.push({ at: i, item: it }); });
+
+    update((s) => {
+      const p = s.products.find((x) => x.id === productId);
+      if (p) p.archived = on;
+      if (on) s.items = s.items.filter((i) => i.productId !== productId);
+    });
+
+    return () => update((s) => {
+      const p = s.products.find((x) => x.id === productId);
+      if (p) p.archived = was;
+      if (!on) return;
+      const next = s.items.slice();
+      // Ascending, so each splice lands in the slot the one before it made.
+      dropped.forEach(({ at, item }) => next.splice(Math.min(at, next.length), 0, item));
+      s.items = next;
+    });
+  }
+
   function addPrice(productId, { storeId, price, amount, date }) {
     const rec = {
       id: uid("pr"),
@@ -4382,7 +4447,7 @@ button, [role="tab"] {
     learnCategory, forgetCategory, forgetAllCategories, learnedList,
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
-    addStore, addProduct, addItem, addPrice,
+    addStore, addProduct, addItem, addPrice, setArchived,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -4551,13 +4616,23 @@ button, [role="tab"] {
     `);
 
     if (action) {
-      el.querySelector(".toast-action").addEventListener("click", () => {
+      el.querySelector(".toast-action").addEventListener("click", (e) => {
+        // Stop it reaching the tap-to-dismiss below: the action closes the
+        // toast itself, and running both would be doing the same work twice.
+        e.stopPropagation();
         action.onClick();
         dismiss();
       });
     }
 
+    /* Tapped anywhere else: gone. It is an aside, not a question, and sitting
+       out its 3.6 seconds to see the row underneath is a poor deal. */
+    el.addEventListener("click", () => dismiss());
+
+    let gone = false;
     function dismiss() {
+      if (gone) return;
+      gone = true;
       clearTimeout(toastTimer);
       el.classList.add("is-out");
       setTimeout(() => el.remove(), 220);
@@ -7382,6 +7457,7 @@ button, [role="tab"] {
     const wrap = node(html`
       <article class="item-wrap" data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
         <div class="item-actions">
+          <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
           <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
         </div>
         <div class="item-star">
@@ -7436,6 +7512,19 @@ button, [role="tab"] {
 
     row.querySelector(".item-body").addEventListener("click", () => {
       KN.productSheet.open(product.id, { itemId: item.id });
+    });
+
+    /* Archiving from here is the same one archive as the price screen's, not a
+       second one: the product goes into the drawer at the bottom of 価格, and
+       this row leaves the list — which is also what makes the painted left
+       edge over there go out. Deleting only clears the row; archiving says
+       「しばらく買わない」about the product itself. */
+    wrap.querySelector(".item-arch").addEventListener("click", () => {
+      haptic(12);
+      const undo = store.setArchived(product.id, true);
+      KN.ui.toast(`「${product.name}」をアーカイブしました`, {
+        action: { label: "元に戻す", onClick: undo },
+      });
     });
 
     wrap.querySelector(".item-del").addEventListener("click", () => {
@@ -7496,7 +7585,10 @@ button, [role="tab"] {
   }
 
   function attachSwipe(wrap, row, item) {
-    const REVEAL = 88;      // width of the delete panel
+    // Read from the stylesheet rather than written twice: the panel's width and
+    // how far the row travels to uncover it are the same number, and CSS is
+    // where the panel is laid out.
+    const REVEAL = parseFloat(getComputedStyle(wrap).getPropertyValue("--reveal")) || 176;
     const SLOP = 14;        // travel before a drag counts as a drag and not a tap
     const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
     const STAR = 68;        // how far right before the ★ is armed
@@ -8076,20 +8168,16 @@ button, [role="tab"] {
   /** Put this product out of the way, or bring it back. */
   function toggleArchived(product) {
     const to = !product.archived;
+    // Said out loud when it happens, because the row on the other tab
+    // disappearing without a word would look like a bug.
+    const wasListed = to && !!listedItem(product.id);
     haptic(14);
-    store.update((s) => {
-      const rec = s.products.find((x) => x.id === product.id);
-      if (rec) rec.archived = to;
-    });
-    KN.ui.toast(to ? `「${product.name}」をアーカイブしました` : `「${product.name}」を戻しました`, {
-      action: {
-        label: "元に戻す",
-        onClick: () => store.update((s) => {
-          const rec = s.products.find((x) => x.id === product.id);
-          if (rec) rec.archived = !to;
-        }),
-      },
-    });
+    const undo = store.setArchived(product.id, to);
+    const said = to
+      ? (wasListed ? `「${product.name}」をアーカイブし、リストから外しました`
+                   : `「${product.name}」をアーカイブしました`)
+      : `「${product.name}」を戻しました`;
+    KN.ui.toast(said, { action: { label: "元に戻す", onClick: undo } });
   }
 
   /* ---------------- swipe: right for the list, left for the archive ---------------- */

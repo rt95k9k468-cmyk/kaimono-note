@@ -480,6 +480,41 @@
     return rec;
   }
 
+  /**
+   * Put a product away, or bring it back.
+   *
+   * Archived means "not in play", and that has to be true on both screens at
+   * once: the card leaves the price list's main run, and the product also
+   * comes off the shopping list, because something being bought today is not
+   * something put away. (The reverse already holds — addItem un-archives.)
+   *
+   * @returns {() => void} undoes exactly this call, list rows and all.
+   */
+  function setArchived(productId, on) {
+    const prev = getProduct(productId);
+    const was = !!(prev && prev.archived);
+    // Kept with their positions so an undo puts the rows back where they were,
+    // not at the top of the list.
+    const dropped = [];
+    get().items.forEach((it, i) => { if (it.productId === productId) dropped.push({ at: i, item: it }); });
+
+    update((s) => {
+      const p = s.products.find((x) => x.id === productId);
+      if (p) p.archived = on;
+      if (on) s.items = s.items.filter((i) => i.productId !== productId);
+    });
+
+    return () => update((s) => {
+      const p = s.products.find((x) => x.id === productId);
+      if (p) p.archived = was;
+      if (!on) return;
+      const next = s.items.slice();
+      // Ascending, so each splice lands in the slot the one before it made.
+      dropped.forEach(({ at, item }) => next.splice(Math.min(at, next.length), 0, item));
+      s.items = next;
+    });
+  }
+
   function addPrice(productId, { storeId, price, amount, date }) {
     const rec = {
       id: uid("pr"),
@@ -576,7 +611,7 @@
     learnCategory, forgetCategory, forgetAllCategories, learnedList,
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
-    addStore, addProduct, addItem, addPrice,
+    addStore, addProduct, addItem, addPrice, setArchived,
     exportJSON, importJSON, reset, loadSample,
   };
 })();

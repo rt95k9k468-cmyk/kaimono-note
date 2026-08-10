@@ -121,6 +121,10 @@
   border-radius: var(--r-md);
   overflow: hidden;
   animation: item-in .24s var(--ease-out);
+  /* How far the row slides, and how wide the panel behind it is — one number,
+     read back by screen-list.js so the gesture and the layout cannot disagree.
+     Two buttons wide now that archiving lives here as well. */
+  --reveal: 176px;
 }
 
 /* Kept out of the layer entirely until a swipe is genuinely under way. Merely
@@ -128,7 +132,7 @@
 .item-actions {
   position: absolute;
   top: 0; right: 0; bottom: 0;
-  width: 88px;
+  width: var(--reveal);
   display: flex;
   visibility: hidden;
 }
@@ -160,14 +164,27 @@
 .item-wrap.is-armed .item-star > * { opacity: 1; transform: none; }
 .item-wrap.is-starring .item-star { visibility: visible; }
 
+/* Two ways out of a row, ordered by how much they mean. アーカイブ is the mild
+   one and sits nearer the row, in a neutral colour; 削除 keeps the far edge and
+   the red, so a swipe that runs to the end of the panel still lands on the same
+   button it always did. */
+.item-arch,
 .item-del {
   flex: 1;
-  background: var(--c-danger);
-  color: #fff;
   font-size: var(--fs-sm);
   font-weight: 800;
   display: grid;
   place-items: center;
+}
+/* The secondary text colour as a background, the surface as its ink — the pair
+   is legible by construction in either theme, which a fixed grey is not. */
+.item-arch {
+  background: var(--c-text-2);
+  color: var(--c-surface);
+}
+.item-del {
+  background: var(--c-danger);
+  color: #fff;
 }
 
 .item {
@@ -225,7 +242,7 @@
 }
 .item.is-checked::before { opacity: .4; }
 
-.item-wrap.is-open .item { transform: translateX(-88px); }
+.item-wrap.is-open .item { transform: translateX(calc(var(--reveal) * -1)); }
 
 /* Hand the row its own compositor layer for the duration of the gesture, so
    each frame is a transform rather than a repaint of the whole row. */

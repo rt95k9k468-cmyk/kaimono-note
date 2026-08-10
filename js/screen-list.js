@@ -530,6 +530,7 @@
     const wrap = node(html`
       <article class="item-wrap" data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
         <div class="item-actions">
+          <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
           <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
         </div>
         <div class="item-star">
@@ -584,6 +585,19 @@
 
     row.querySelector(".item-body").addEventListener("click", () => {
       KN.productSheet.open(product.id, { itemId: item.id });
+    });
+
+    /* Archiving from here is the same one archive as the price screen's, not a
+       second one: the product goes into the drawer at the bottom of 価格, and
+       this row leaves the list — which is also what makes the painted left
+       edge over there go out. Deleting only clears the row; archiving says
+       「しばらく買わない」about the product itself. */
+    wrap.querySelector(".item-arch").addEventListener("click", () => {
+      haptic(12);
+      const undo = store.setArchived(product.id, true);
+      KN.ui.toast(`「${product.name}」をアーカイブしました`, {
+        action: { label: "元に戻す", onClick: undo },
+      });
     });
 
     wrap.querySelector(".item-del").addEventListener("click", () => {
@@ -644,7 +658,10 @@
   }
 
   function attachSwipe(wrap, row, item) {
-    const REVEAL = 88;      // width of the delete panel
+    // Read from the stylesheet rather than written twice: the panel's width and
+    // how far the row travels to uncover it are the same number, and CSS is
+    // where the panel is laid out.
+    const REVEAL = parseFloat(getComputedStyle(wrap).getPropertyValue("--reveal")) || 176;
     const SLOP = 14;        // travel before a drag counts as a drag and not a tap
     const DOMINANCE = 1.6;  // how much horizontal has to beat vertical by
     const STAR = 68;        // how far right before the ★ is armed
