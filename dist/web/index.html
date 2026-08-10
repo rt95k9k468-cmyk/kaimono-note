@@ -1355,26 +1355,36 @@ button, [role="tab"] {
 
 /* ================= LIST SCREEN ================= */
 
-/* The dock is a plain row at the bottom of the shell, below the scrolling
-   screens and above the tab bar. Nothing sticky, nothing transformed, nothing
-   overlapping the list — the caret has no offset to disagree with, and the
-   shell is already sized to end at the keyboard. */
+/* The dock floats over the list, just above the tab bar, rather than being a
+   row of its own. As a row it was a 56px button in an 80px band with a rule
+   across the top — a strip of empty background the width of the screen, paid
+   for out of the list. Floating, it costs only what it covers.
+
+   It takes no clicks itself, so the list underneath stays draggable and
+   scrollable right up to the button's own edge.
+
+   (It used to be a text field, which is why this sat outside the scrolling
+   screens with nothing sticky about it: iOS painted the caret far above a
+   sticky field. Now that adding happens in a sheet, there is no caret here to
+   go wrong.) */
 .dock {
-  flex: none;
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--sp-3));
   z-index: 20;
+  pointer-events: none;
 }
 
-.quick-add {
-  padding: var(--sp-3) var(--sp-4);
-  background: var(--c-bg);
-  border-top: 1px solid var(--c-border);
-  display: flex;
-  justify-content: center;
-}
+/* With the keyboard up the tab bar steps out, so the button follows it down
+   rather than hovering over a gap that is no longer there. */
+.kb-open .dock { bottom: var(--sp-3); }
 
-/* Room under the last card so it clears the dock as you reach the end. */
-.screen[data-screen="list"] { padding-bottom: var(--sp-4); }
+.quick-add { display: flex; justify-content: center; }
+
+/* Room under the last card so the button is never sitting on top of the thing
+   you are trying to read — one button's height plus the gap it floats by. */
+.screen[data-screen="list"] { padding-bottom: calc(56px + var(--sp-6)); }
 
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket. */
@@ -1385,7 +1395,11 @@ button, [role="tab"] {
   color: #fff;
   display: grid;
   place-items: center;
-  box-shadow: var(--shadow-2);
+  /* Deeper than a card's, because it is genuinely above the page now and the
+     shadow is the only thing saying so. */
+  box-shadow: var(--shadow-3);
+  /* The one thing in the dock that is meant to be pressed. */
+  pointer-events: auto;
   transition: transform .12s var(--ease), background .16s var(--ease);
 }
 .add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; }
