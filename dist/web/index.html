@@ -7664,10 +7664,19 @@ button, [role="tab"] {
       return;
     }
 
+    /* Same order as the aisles: categories in the order they are set to, and
+       within one, 五十音順. Folded first so かな and カナ and ｶﾅ sort as the
+       same letters — 「ｷｭｳﾘ」 belongs next to 「きゅうり」, not off in a
+       corner of the code chart. Names that start with a kanji land after the
+       kana together, in a stable order: nothing here knows how 「牛乳」 is
+       read, and guessing would be worse than being consistent. */
+    const order = new Map(store.sortedCategories().map((c, i) => [c.id, i]));
+    const rank = (p) => (order.has(p.categoryId) ? order.get(p.categoryId) : order.size);
     const matched = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
       .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
-      .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+      .sort((a, b) => rank(a) - rank(b)
+        || KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja"));
 
     if (!matched.length) {
       els.body.append(node(html`
