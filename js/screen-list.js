@@ -403,14 +403,14 @@
     const trip = active.filter((i) => i.fav);
 
     if (!trip.length) {
-      // Nothing starred yet: one plain list with one total, as before. Splitting
-      // the screen the moment favourites exist as a concept would leave anyone
-      // not using them staring at an empty「今回買うもの」and a — total.
+      /* Nothing starred: just the list. A total and a 「今回は◯◯だけで足ります」
+         underneath would be answering a question nobody asked — the whole list
+         is a standing note of things to buy sometime, not a shopping trip, and
+         adding up a year of sometime gives a number with no occasion. Both come
+         back the moment something is starred, where they mean this trip. */
       const shown = appendGroups(active);
       if (!shown && categoryFilter) els.body.append(noneInCategory());
       if (checked.length) els.body.append(checkedSection(checked));
-      els.body.append(summaryCard(active));
-      els.body.append(insightsCard(active));
       return;
     }
 
@@ -862,14 +862,6 @@
         <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
       </div>
     `);
-  }
-
-  /** The same total, on its own card, for a list with nothing starred. */
-  function summaryCard(active) {
-    if (!active.length) return document.createDocumentFragment();
-    const card = node(html`<div class="list-summary"></div>`);
-    card.append(summaryTotal(active));
-    return card;
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing

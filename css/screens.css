@@ -484,14 +484,6 @@
 .trip .cat-group:last-of-type { margin-bottom: 0; }
 .trip .summary-row { padding: var(--sp-3) var(--sp-2) var(--sp-1); }
 
-.list-summary {
-  margin: var(--sp-2) var(--sp-4) 0;
-  padding: var(--sp-4);
-  border-radius: var(--r-lg);
-  background: linear-gradient(135deg, var(--c-primary-soft), color-mix(in srgb, var(--c-accent-soft) 70%, transparent));
-  border: 1px solid var(--c-border);
-}
-
 .summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
 .summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); display: flex; flex-direction: column; gap: 1px; }
 .summary-missing { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
