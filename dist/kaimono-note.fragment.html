@@ -680,6 +680,15 @@ button, [role="tab"] {
 }
 .icon-auto.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
 
+/* 「今回買う」in the add sheet. Wears the star's own colour rather than the
+   app's green, so it is plainly the same ★ that appears on the row. */
+.fav-toggle .icon-pick-mark svg { width: 24px; height: 24px; stroke-width: 2.2; color: var(--c-text-3); }
+.fav-toggle.is-on {
+  border-color: var(--c-warn);
+  background: color-mix(in srgb, var(--c-warn) 13%, var(--c-surface));
+}
+.fav-toggle.is-on .icon-pick-mark svg { color: var(--c-warn); fill: currentColor; }
+
 .icon-pick-mark {
   flex: none;
   width: 44px; height: 44px;
@@ -8920,8 +8929,14 @@ button, [role="tab"] {
 
     let picked = null;        // an existing product chosen from the suggestions
     let catTouched = false;   // the category was set by hand, so stop guessing
-    let qty = 1;
+    let fav = false;          // ★ — part of the trip being shopped now
 
+    /* No 個数 here. It was a stepper that said 1 nearly every time, in a form
+       whose whole job is to be over quickly; the quantity is a detail about a
+       line that already exists, and the row's own sheet is where it belongs.
+       The ★ took its place, because *that* is a decision made while writing
+       the list — this trip or sometime — and going back to set it afterwards
+       is the trip through the list the button was meant to save. */
     const body = node(html`
       <div class="stack" style="gap:18px">
         <div class="field">
@@ -8934,12 +8949,13 @@ button, [role="tab"] {
         </div>
 
         <div class="field">
-          <span class="field-label">個数</span>
-          <div class="stepper">
-            <button type="button" class="stepper-btn js-minus" aria-label="1つ減らす">${icon("minus")}</button>
-            <span class="stepper-value js-qty" aria-live="polite">1</span>
-            <button type="button" class="stepper-btn js-plus" aria-label="1つ増やす">${icon("plus")}</button>
-          </div>
+          <button type="button" class="icon-auto fav-toggle js-fav" aria-pressed="false">
+            <span class="icon-pick-mark js-fav-mark">${icon("star")}</span>
+            <span class="icon-pick-text">
+              <span class="icon-pick-name">今回買う</span>
+              <span class="icon-pick-sub js-fav-sub">★を付けると、この買い物の合計に入ります</span>
+            </span>
+          </button>
         </div>
 
         <div class="field">
@@ -8956,9 +8972,10 @@ button, [role="tab"] {
 
     const nameEl = body.querySelector(".js-name");
     const memoEl = body.querySelector(".js-memo");
-    const qtyEl  = body.querySelector(".js-qty");
     const acHost = body.querySelector(".js-ac");
     const known  = body.querySelector(".js-known");
+    const favBtn = body.querySelector(".js-fav");
+    const favSub = body.querySelector(".js-fav-sub");
 
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
@@ -8970,13 +8987,14 @@ button, [role="tab"] {
       onSelect: () => { catTouched = true; },
     });
 
-    const paintQty = () => { qtyEl.textContent = String(qty); };
-    body.querySelector(".js-minus").addEventListener("click", () => {
-      if (qty <= 1) { haptic(20); return; }
-      qty -= 1; paintQty(); haptic();
-    });
-    body.querySelector(".js-plus").addEventListener("click", () => {
-      qty += 1; paintQty(); haptic();
+    favBtn.addEventListener("click", () => {
+      fav = !fav;
+      favBtn.classList.toggle("is-on", fav);
+      favBtn.setAttribute("aria-pressed", String(fav));
+      favSub.textContent = fav
+        ? "この買い物の合計に入ります"
+        : "★を付けると、この買い物の合計に入ります";
+      haptic(10);
     });
 
     /* Everything the name field drives: the button, the suggestions, and —
@@ -9044,36 +9062,31 @@ button, [role="tab"] {
       const memo = memoEl.value.trim();
       const already = store.get().items.find((i) => i.productId === product.id && !i.checked);
       if (already) {
+        // Already on the list: nothing to add, but the ★ and the memo are
+        // still what was just said about it.
         store.update((s) => {
           const rec = s.items.find((i) => i.id === already.id);
           if (!rec) return;
-          rec.qty += qty;
           if (memo) rec.memo = memo;
+          if (fav) rec.fav = true;
         });
-        const now = store.get().items.find((i) => i.id === already.id);
-        KN.ui.toast(`${product.name} を ${now ? now.qty : already.qty} 個にしました`);
+        KN.ui.toast(`「${product.name}」はもうリストにあります`);
       } else {
-        store.addItem(product.id, { qty, memo });
+        const rec = store.addItem(product.id, { memo });
+        if (fav) store.update((s) => {
+          const it = s.items.find((i) => i.id === rec.id);
+          if (it) it.fav = true;
+        });
         const c = store.getCategory(product.categoryId);
         KN.ui.toast(`${c.emoji} ${c.name} に「${product.name}」を追加しました`);
       }
       haptic(12);
-      reset();
-    }
-
-    /* Cleared and ready for the next one, rather than closed. */
-    function reset() {
-      picked = null;
-      catTouched = false;
-      qty = 1;
-      paintQty();
-      nameEl.value = "";
-      memoEl.value = "";
-      known.hidden = true;
-      addBtn.disabled = true;
-      acHost.innerHTML = "";
-      cat.set(store.OTHER_CATEGORY);
-      nameEl.focus();
+      /* Closed, not cleared. Staying open was meant to save a tap on a long
+         list written in one sitting, but it left the sheet covering the very
+         list it had just changed — so every add ended with a look at a form
+         instead of at the line that appeared. One add, one close, and the ＋
+         is right there under the thumb for the next one. */
+      handle.close();
     }
 
     // The sheet focuses its first control after its own animation; on a phone

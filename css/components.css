@@ -188,6 +188,15 @@ button, [role="tab"] {
 }
 .icon-auto.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
 
+/* 「今回買う」in the add sheet. Wears the star's own colour rather than the
+   app's green, so it is plainly the same ★ that appears on the row. */
+.fav-toggle .icon-pick-mark svg { width: 24px; height: 24px; stroke-width: 2.2; color: var(--c-text-3); }
+.fav-toggle.is-on {
+  border-color: var(--c-warn);
+  background: color-mix(in srgb, var(--c-warn) 13%, var(--c-surface));
+}
+.fav-toggle.is-on .icon-pick-mark svg { color: var(--c-warn); fill: currentColor; }
+
 .icon-pick-mark {
   flex: none;
   width: 44px; height: 44px;
