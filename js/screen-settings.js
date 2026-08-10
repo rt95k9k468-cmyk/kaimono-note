@@ -85,13 +85,20 @@
       const sub = wrap.querySelector(".js-badge-sub");
       rows.hidden = false;
 
+      /* An 「オン」 that is not on is the worst of the three states: the app
+         says it is doing something the icon is not showing. iOS drops the
+         badge permission on its own — a reset, a tap in 設定 → 通知 — and
+         tells the page nothing, so the switch has to be able to say so. */
       const paint = () => {
         const on = badge.enabled();
-        state.textContent = on ? "オン" : "オフ";
-        state.style.color = on ? "var(--c-primary)" : "var(--c-text-3)";
-        sub.textContent = on
-          ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
-          : "iPhone では、通知の許可を求められます（通知は送りません）";
+        const blocked = on && badge.blocked && badge.blocked();
+        state.textContent = blocked ? "許可が必要" : (on ? "オン" : "オフ");
+        state.style.color = blocked ? "var(--c-danger)"
+          : (on ? "var(--c-primary)" : "var(--c-text-3)");
+        sub.textContent = blocked
+          ? "端末の設定で、このアプリの通知を許可すると出るようになります"
+          : (on ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
+                : "iPhone では、通知の許可を求められます（通知は送りません）");
       };
       paint();
 
