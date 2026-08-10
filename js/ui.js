@@ -385,5 +385,33 @@
     };
   }
 
-  KN.ui = { sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow };
+  /* ---------------- layout: rows or tiles ---------------- */
+
+  /* Both lists are laid out the same way, from one setting. Two screens
+     disagreeing about how a product looks would be a setting the app keeps
+     rather than a way of looking at it. */
+
+  const isTiles = () => KN.store.get().settings.layout === "tiles";
+
+  function toggleLayout() {
+    const to = isTiles() ? "rows" : "tiles";
+    haptic(10);
+    KN.store.update((s) => { s.settings.layout = to; });
+  }
+
+  /** Paints a topbar button with the layout it switches *to*. */
+  function paintLayoutButton(btn) {
+    if (!btn) return;
+    const toTiles = !isTiles();
+    btn.innerHTML = "";
+    btn.append(node(html`${icon(toTiles ? "tiles" : "rows")}`));
+    const label = toTiles ? "タイル表示にする" : "リスト表示にする";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  }
+
+  KN.ui = {
+    sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    isTiles, toggleLayout, paintLayoutButton,
+  };
 })();

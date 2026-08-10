@@ -52,7 +52,10 @@
       items: [],
       // Corrections the user has made by hand: folded product name → category.
       learned: {},
-      settings: { theme: "auto", showChecked: true },
+      // layout: "rows" | "tiles" — one setting for both lists, because a
+      // person who wants square tiles wants them on the screen they are
+      // looking at, not on one of the two.
+      settings: { theme: "auto", showChecked: true, layout: "rows" },
     };
   }
 

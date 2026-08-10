@@ -27,6 +27,7 @@
               <h1 class="topbar-title">買い物リスト</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-clear" aria-label="購入済みをまとめて削除" title="購入済みをまとめて削除">
               ${icon("trash")}
             </button>
@@ -64,6 +65,7 @@
     els = {
       sub:        chrome.querySelector(".js-sub"),
       clear:      chrome.querySelector(".js-clear"),
+      layout:     chrome.querySelector(".js-layout"),
       addFab:     dock.querySelector(".js-open-add"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
@@ -75,6 +77,7 @@
     els.addFab.addEventListener("click", openAddSheet);
 
     els.clear.addEventListener("click", clearChecked);
+    els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -358,6 +361,8 @@
     els.progWrap.hidden = scope.length === 0;
     els.progress.style.width = scope.length ? `${(done / scope.length) * 100}%` : "0%";
 
+    KN.ui.paintLayoutButton(els.layout);
+
     renderFilter(items);
     renderBody(items);
   }
@@ -452,6 +457,26 @@
       groups.get(p.categoryId).push({ item, product: p });
     });
 
+    /* Tiles are one grid for the lot. A separate grid per category would give
+       a category of one item a row of its own and two empty cells beside it —
+       which is exactly the wasted space the layout is for. The order still
+       runs category by category, and each tile wears its own colour, so the
+       run is still visible; it just wraps instead of starting a new block. */
+    if (KN.ui.isTiles()) {
+      const grid = node(html`<div class="item-list is-tiles"></div>`);
+      store.sortedCategories().forEach((cat) => {
+        (groups.get(cat.id) || []).forEach(({ item, product }) => {
+          grid.append(itemRow(item, product));
+        });
+      });
+      if (grid.childElementCount) {
+        const section = node(html`<section class="cat-group"></section>`);
+        section.append(grid);
+        into.append(section);
+      }
+      return groups.size > 0;
+    }
+
     store.sortedCategories().forEach((cat) => {
       const entries = groups.get(cat.id);
       if (!entries || !entries.length) return;
@@ -526,20 +551,40 @@
   function itemRow(item, product) {
     const best = store.bestPrice(product);
     const bestStore = best ? store.getStore(best.storeId) : null;
+    const tiles = KN.ui.isTiles();
 
+    /* A tile is a third of a screen across — narrower than either swipe panel
+       and the words on it — so tiles carry no panels and take no swipe. What
+       stays is everything the rows have as buttons: the tick, the ★, and the
+       body that opens the item. */
     const wrap = node(html`
       <article class="item-wrap" data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
-        <div class="item-actions">
-          <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
-          <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
-        </div>
-        <div class="item-star">
-          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
-        </div>
+        ${tiles ? "" : html`
+          <div class="item-actions">
+            <button class="item-arch" tabindex="-1" aria-label="${product.name} をアーカイブ">アーカイブ</button>
+            <button class="item-del" tabindex="-1" aria-label="${product.name} をリストから削除">削除</button>
+          </div>
+          <div class="item-star">
+            ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
+          </div>
+        `}
       </article>
     `);
 
-    const row = node(html`
+    const row = tiles ? node(html`
+      <div class="item is-tile ${item.checked ? "is-checked" : ""}">
+        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
+                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
+        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
+                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
+        <button class="item-body">
+          <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
+          <span class="item-name">${product.name}</span>
+          ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
+          <span class="tile-price">${best ? yen(best.price * item.qty) : "—"}</span>
+        </button>
+      </div>
+    `) : node(html`
       <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
                 aria-label="${product.name} を購入済みにする">${icon("check")}</button>
@@ -561,12 +606,12 @@
     wrap.append(row);
 
     const priceBox = row.querySelector(".item-price");
-    if (best && bestStore) {
+    if (priceBox && best && bestStore) {
       priceBox.append(frag(html`
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
         <span class="item-price-store">🏆 ${bestStore.name}</span>
       `));
-    } else {
+    } else if (priceBox) {
       priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
     }
 
@@ -592,6 +637,8 @@
        this row leaves the list — which is also what makes the painted left
        edge over there go out. Deleting only clears the row; archiving says
        「しばらく買わない」about the product itself. */
+    if (tiles) return wrap;
+
     wrap.querySelector(".item-arch").addEventListener("click", () => {
       haptic(12);
       const undo = store.setArchived(product.id, true);

@@ -25,6 +25,7 @@
               <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-new" aria-label="商品を追加" title="商品を追加"
                     style="background:var(--c-primary);color:#fff">${icon("plus")}</button>
           </div>
@@ -53,6 +54,7 @@
       search:  chrome.querySelector(".js-search"),
       clear:   chrome.querySelector(".js-clear"),
       newBtn:  chrome.querySelector(".js-new"),
+      layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
@@ -74,6 +76,7 @@
     });
 
     els.newBtn.addEventListener("click", createProduct);
+    els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -103,6 +106,7 @@
   function render() {
     const st = store.get();
     els.sub.textContent = `${st.products.length}商品 ・ ${st.stores.length}店舗`;
+    KN.ui.paintLayoutButton(els.layout);
     renderFilter();
     renderBody();
   }
@@ -178,7 +182,7 @@
     }
 
     if (matched.length) {
-      const list = node(html`<div class="product-list"></div>`);
+      const list = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
       matched.forEach((p) => list.append(productCard(p)));
       els.body.append(list);
     }
@@ -211,7 +215,7 @@
     `);
 
     if (open) {
-      const box = node(html`<div class="product-list"></div>`);
+      const box = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
       list.forEach((p) => box.append(productCard(p)));
       section.querySelector(".js-body").append(box);
     }
@@ -234,19 +238,25 @@
     const size = formatSize(product.amount, product.unit);
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
     const listed = listedItem(product.id);
+    const tiles = KN.ui.isTiles();
 
     /* Two layers, like the rows on the list screen: the panels underneath are
        what a swipe uncovers, the card on top is what moves. Right is the
        shopping list, left is the archive — opposite directions for opposite
-       kinds of "put this somewhere else". */
+       kinds of "put this somewhere else".
+
+       Tiles are a third of a screen wide, which is narrower than either panel
+       and its wording, so they carry no panels and take no swipe. */
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
-        <div class="product-hint">
-          ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
-        </div>
-        <div class="product-hint product-hint-archive">
-          <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
-        </div>
+        ${tiles ? "" : html`
+          <div class="product-hint">
+            ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
+          </div>
+          <div class="product-hint product-hint-archive">
+            <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
+          </div>
+        `}
       </article>
     `);
 
@@ -255,19 +265,32 @@
        「買った」 checkbox one tab over, and the two mean opposite things —
        so this one stopped being a button and became a mark. Putting it on
        or taking it off is the swipe's job. */
-    const card = node(html`
+    const card = tiles ? node(html`
+      <div class="product is-tile ${listed ? "is-listed" : ""}">
+        <button class="product-main js-open">
+          <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
+          <span class="product-name">${product.name}</span>
+          ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
+          <span class="tile-price">${best ? yen(best.price) : "—"}</span>
+        </button>
+      </div>
+    `) : node(html`
       <div class="product ${listed ? "is-listed" : ""}">
         <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="product-main js-open">
           <span class="product-name">${product.name}</span>
           ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
-          <span class="product-meta">
-            ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
-            ${prices.length
-              ? html`<span>${prices.length}店舗で比較中</span>`
-              : html`<span style="color:var(--c-text-3)">値段は未登録</span>`}
-            ${up ? html`<span style="color:var(--c-text-3)">${up.text}</span>` : ""}
-          </span>
+          ${/* Only facts about the product itself. 「3店舗で比較中」 counted the
+                app's own records rather than saying anything about the thing on
+                the shelf, and 「値段は未登録」 repeated the — already sitting in
+                the price column. What is left is the name, in the size of the
+                thing the row is for. */""}
+          ${size || up ? html`
+            <span class="product-meta">
+              ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
+              ${up ? html`<span>${up.text}</span>` : ""}
+            </span>
+          ` : ""}
         </button>
         <span class="item-price">
           ${best && bestStore
@@ -282,7 +305,7 @@
     wrap.append(card);
 
     card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
-    attachListSwipe(wrap, card, product);
+    if (!tiles) attachListSwipe(wrap, card, product);
     return wrap;
   }
 

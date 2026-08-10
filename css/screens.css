@@ -278,6 +278,125 @@
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* ================= TILES ================= */
+
+/* Three to a row, square, name allowed to wrap. A row is better at reading —
+   name, price and shop on one line, and a swipe to act on it — but a grid is
+   better at finding, because the picture does the work and twelve things fit
+   where four did. Both lists take the same setting, switched from either
+   topbar.
+
+   A tile is about 107px across on a phone, which is why the swipe panels and
+   the drag-to-reorder are not here: neither fits, and neither means anything
+   in a grid. Everything that was a button still is. */
+.item-list.is-tiles,
+.product-list.is-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+
+.item.is-tile,
+.product.is-tile {
+  aspect-ratio: 1;
+  display: block;
+  padding: 0;
+  /* The whole tile is the target; the corner buttons sit on top of it. */
+  overflow: hidden;
+}
+
+.item.is-tile .item-body,
+.product.is-tile .product-main {
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: var(--sp-2) 6px 6px;
+  text-align: center;
+}
+
+/* The picture carries the tile, so it is given the room a 42px chip had and
+   then some — at this size it is what you actually navigate by. */
+.item.is-tile .item-emoji,
+.product.is-tile .product-emoji {
+  width: 34px; height: 34px;
+  background: none;
+  font-size: 27px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* Wrapped, not cut off: a tile has the height for three lines, and 「トイレット
+   ペーパー」 truncated to 「トイレット…」 is the one thing a picture cannot
+   disambiguate. Past three lines it does give up, or a long name would push
+   the price out of its own tile. */
+.item.is-tile .item-name,
+.product.is-tile .product-name {
+  /* Bound to the tile, or the box below stretches to the longest word and the
+     name runs out over the neighbour. */
+  max-width: 100%;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.tile-price {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-accent);
+  font-variant-numeric: tabular-nums;
+}
+.item.is-tile .item-qty {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  color: var(--c-text-2);
+}
+
+/* The category edge runs across the top rather than down the side: on a square
+   the left edge is a third of the perimeter and reads as a border, not a mark.
+   Same rule as the rows — the price screen paints it only for what is on the
+   list, the shopping list paints it always. */
+.item.is-tile::before,
+.product.is-tile.is-listed::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  bottom: auto;
+  width: auto;
+  height: 5px;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--cat, var(--c-border-2));
+}
+.product.is-tile.is-listed::before { background: var(--cat, var(--c-primary)); }
+
+/* The two controls the rows keep at their ends, moved to the corners. */
+.item.is-tile .check,
+.item.is-tile .fav {
+  position: absolute;
+  top: 5px;
+  z-index: 1;
+}
+.item.is-tile .check { left: 4px; }
+.item.is-tile .fav { right: 4px; }
+.item.is-tile .check { width: 22px; height: 22px; }
+.item.is-tile .check svg { width: 13px; height: 13px; }
+.item.is-tile .fav svg { width: 17px; height: 17px; }
+
+/* Bought: the tile steps back rather than striking a line through a name that
+   is already wrapping across three lines. */
+.item.is-tile.is-checked { opacity: .55; }
+
+.item-wrap:has(.is-tile) { animation: none; }
+
 /* No press-scale on the row. Shrinking it by even half a percent pulled its
    right edge inwards and exposed the delete panel sitting behind — the row
    must not move until a swipe moves it. The controls inside give their own
