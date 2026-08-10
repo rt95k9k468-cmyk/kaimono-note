@@ -7331,10 +7331,14 @@ button, [role="tab"] {
      Nothing moves under the finger, and 追加 gets its own click. */
 
   let armed = false;
+  let armedFor = null;
 
   function closeAfterTap() {
     if (armed) return;
     armed = true;
+    // Which field this close belongs to. If the tap turns out to open the pad
+    // on something else, the close is stale and must not take the new one down.
+    armedFor = field;
     // Capture, so this runs before the button's own handler and can hand the
     // close to the end of the queue — after the whole click has been
     // dispatched, whatever it turns out to do.
@@ -7353,7 +7357,12 @@ button, [role="tab"] {
     document.removeEventListener("touchend", onTapEnd, true);
     // A release is not the end of the tap: the click still has to be worked
     // out and delivered. Wait past it before giving the height back.
-    setTimeout(() => { if (!armed) close(); }, 90);
+    const was = armedFor;
+    setTimeout(() => {
+      if (armed) return;              // another tap is in flight
+      if (field && field !== was) return; // the pad moved to another field
+      close();
+    }, 90);
   }
 
   /* Belt and braces for the same failure. If anything else takes the pad down
@@ -7388,6 +7397,9 @@ button, [role="tab"] {
      key, and taking the pad down there loses the sum the user is halfway
      through typing. Hand the caret back and stay open. */
   function restoreOrClose(input) {
+    // The pad has already been handed to another field — this blur is the tail
+    // end of leaving the old one, not a reason to take the new one down.
+    if (field && field !== input) return;
     const a = document.activeElement;
     const wentNowhere = !a || a === document.body || a === document.documentElement
       || (pad && pad.contains(a));
