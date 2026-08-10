@@ -410,8 +410,129 @@
     btn.title = label;
   }
 
+  /* ---------------- swipe: right to take, left to archive ---------------- */
+
+  /* One gesture for both screens and both layouts. Right is the tab's own
+     positive action — ★ on the list, onto the list on the price screen — and
+     left is always the archive. Nothing stays open, because neither has a
+     second step to confirm; the card springs back and the change lands as it
+     goes, with the toast holding the undo.
+
+     Past the trigger the card only creeps, so the finger can feel where the
+     edge is instead of watching for it. A tile is a third of a screen across,
+     so it gets its own shorter throw — the same gesture, scaled to what is
+     actually under the thumb.
+
+     @param wrap  the positioned container holding the panels
+     @param card  the part that moves
+     @param opts  {onRight, onLeft, tiles} */
+  function swipeActions(wrap, card, { onRight, onLeft, tiles }) {
+    const TRIGGER = tiles ? 34 : 68;
+    const MAX = tiles ? 52 : 104;
+    const SLOP = tiles ? 10 : 14;
+    const DOMINANCE = 1.6;
+
+    let startX = 0, startY = 0, dx = 0, dir = 1;
+    let dragging = false, decided = false, pointerId = null, swallowClick = false;
+    let armed = false, pending = null, rafId = 0;
+
+    // Pointer moves arrive faster than the screen refreshes; painting once per
+    // frame is the difference between gliding and stuttering.
+    const paint = () => {
+      rafId = 0;
+      if (pending === null) return;
+      card.style.transform = `translate3d(${pending}px, 0, 0)`;
+    };
+    const schedule = (v) => {
+      pending = v;
+      if (!rafId) rafId = requestAnimationFrame(paint);
+    };
+
+    card.addEventListener("touchmove", (e) => { if (dragging) e.preventDefault(); }, { passive: false });
+
+    card.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      dragging = false;
+      decided = false;
+      armed = false;
+    });
+
+    card.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      // Held still long enough to lift the row out of the list — from there the
+      // gesture belongs to the reorder.
+      if (KN.reorder && KN.reorder.isActive && KN.reorder.isActive()) return;
+      const mx = e.clientX - startX;
+      const my = e.clientY - startY;
+
+      if (!decided) {
+        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
+        decided = true;
+        // Clearly sideways, not a drifting scroll: a diagonal belongs to the
+        // list, which stays scrollable throughout.
+        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
+        if (!dragging) return;
+        dir = mx > 0 ? 1 : -1;
+        card.setPointerCapture(pointerId);
+        card.style.transition = "none";
+        wrap.classList.add("is-swiping", dir > 0 ? "is-right" : "is-left");
+      }
+      if (!dragging) return;
+
+      const travel = mx * dir;
+      dx = dir * Math.min(MAX, travel <= TRIGGER ? Math.max(0, travel)
+        : TRIGGER + (travel - TRIGGER) * 0.32);
+      const now = Math.abs(dx) >= TRIGGER;
+      if (now !== armed) {
+        armed = now;
+        wrap.classList.toggle("is-armed", armed);
+        if (armed) haptic(10);
+      }
+      schedule(dx);
+    });
+
+    const finish = (e) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      if (!dragging) return;
+
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      pending = null;
+      card.style.transition = "";
+      card.style.transform = "";
+      const fired = armed;
+      const way = dir;
+      dragging = false;
+      armed = false;
+      swallowClick = true;
+      // Let the card glide home before the store change rebuilds the list;
+      // committing on the spot would swap it out mid-flight.
+      setTimeout(() => {
+        wrap.classList.remove("is-swiping", "is-armed", "is-left", "is-right");
+        if (!fired) return;
+        if (way > 0) { if (onRight) onRight(); }
+        else if (onLeft) onLeft();
+      }, 200);
+    };
+    card.addEventListener("pointerup", finish);
+    card.addEventListener("pointercancel", finish);
+
+    // A pointer sequence still fires a click afterwards; left alone it would
+    // press whatever the finger lifted over at the end of every swipe.
+    card.addEventListener("click", (e) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+  }
+
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
-    isTiles, toggleLayout, paintLayoutButton,
+    isTiles, toggleLayout, paintLayoutButton, swipeActions,
   };
 })();

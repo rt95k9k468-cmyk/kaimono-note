@@ -245,18 +245,17 @@
        shopping list, left is the archive — opposite directions for opposite
        kinds of "put this somewhere else".
 
-       Tiles are a third of a screen wide, which is narrower than either panel
-       and its wording, so they carry no panels and take no swipe. */
+       Tiles swipe too, on a shorter throw. There is no room for the wording on
+       a third of a screen, so the tile panels are the icons alone. */
     const wrap = node(html`
-      <article class="product-wrap ${listed ? "is-there" : ""}" style="--cat:${store.productColor(product)}">
-        ${tiles ? "" : html`
-          <div class="product-hint">
-            ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
-          </div>
-          <div class="product-hint product-hint-archive">
-            <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
-          </div>
-        `}
+      <article class="product-wrap ${listed ? "is-there" : ""} ${tiles ? "is-tile-wrap" : ""}"
+               style="--cat:${store.productColor(product)}">
+        <div class="swipe-yes">
+          ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
+        </div>
+        <div class="swipe-arch">
+          <span>${product.archived ? "戻す" : "アーカイブ"}</span>${icon(product.archived ? "undo" : "download")}
+        </div>
       </article>
     `);
 
@@ -305,7 +304,11 @@
     wrap.append(card);
 
     card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
-    if (!tiles) attachListSwipe(wrap, card, product);
+    KN.ui.swipeActions(wrap, card, {
+      tiles,
+      onRight: () => toggleListed(product),
+      onLeft: () => toggleArchived(product),
+    });
     return wrap;
   }
 
@@ -345,112 +348,6 @@
                    : `「${product.name}」をアーカイブしました`)
       : `「${product.name}」を戻しました`;
     KN.ui.toast(said, { action: { label: "元に戻す", onClick: undo } });
-  }
-
-  /* ---------------- swipe: right for the list, left for the archive ---------------- */
-
-  /* Either way it springs straight back — nothing stays open, because there
-     is no second step to confirm. The pull is deliberately heavy past the
-     trigger so the card tells you when it has gone far enough. Both swipes
-     undo themselves: on a product already listed the right one takes it off,
-     and on an archived one the left one brings it back — which is what the
-     panel underneath says it will do. */
-  function attachListSwipe(wrap, card, product) {
-    const TRIGGER = 68;
-    const MAX = 104;
-    const SLOP = 14;
-    const DOMINANCE = 1.6;
-    let startX = 0, startY = 0, dx = 0, dir = 1;
-    let dragging = false, decided = false, pointerId = null, swallowClick = false;
-    let armed = false, pending = null, rafId = 0;
-
-    const paint = () => {
-      rafId = 0;
-      if (pending === null) return;
-      card.style.transform = `translate3d(${pending}px, 0, 0)`;
-    };
-    const schedule = (v) => {
-      pending = v;
-      if (!rafId) rafId = requestAnimationFrame(paint);
-    };
-
-    card.addEventListener("touchmove", (e) => { if (dragging) e.preventDefault(); }, { passive: false });
-
-    card.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      pointerId = e.pointerId;
-      startX = e.clientX;
-      startY = e.clientY;
-      dx = 0;
-      dragging = false;
-      decided = false;
-      armed = false;
-    });
-
-    card.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== pointerId) return;
-      const mx = e.clientX - startX;
-      const my = e.clientY - startY;
-
-      if (!decided) {
-        if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
-        decided = true;
-        dragging = Math.abs(mx) >= SLOP && Math.abs(mx) > Math.abs(my) * DOMINANCE;
-        if (!dragging) return;
-        dir = mx > 0 ? 1 : -1;
-        card.setPointerCapture(pointerId);
-        card.style.transition = "none";
-        wrap.classList.add("is-swiping", dir > 0 ? "is-right" : "is-left");
-      }
-      if (!dragging) return;
-
-      // Past the trigger the card only creeps, so the finger feels the edge.
-      const travel = mx * dir;
-      dx = dir * Math.min(MAX, travel <= TRIGGER ? Math.max(0, travel)
-        : TRIGGER + (travel - TRIGGER) * 0.32);
-      const nowArmed = Math.abs(dx) >= TRIGGER;
-      if (nowArmed !== armed) {
-        armed = nowArmed;
-        wrap.classList.toggle("is-armed", armed);
-        if (armed) haptic(10);
-      }
-      schedule(dx);
-    });
-
-    const finish = (e) => {
-      if (e.pointerId !== pointerId) return;
-      pointerId = null;
-      if (!dragging) return;
-
-      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-      pending = null;
-      card.style.transition = "";
-      card.style.transform = "";
-      const fired = armed;
-      const way = dir;
-      dragging = false;
-      armed = false;
-      swallowClick = true;
-      // Let the card glide home before the store change rebuilds the list;
-      // committing on the spot would swap it out mid-flight.
-      setTimeout(() => {
-        wrap.classList.remove("is-swiping", "is-armed", "is-left", "is-right");
-        if (!fired) return;
-        if (way > 0) toggleListed(product);
-        else toggleArchived(product);
-      }, 200);
-    };
-    card.addEventListener("pointerup", finish);
-    card.addEventListener("pointercancel", finish);
-
-    // A pointer sequence still fires a click afterwards; left alone it would
-    // open the product sheet at the end of every swipe.
-    card.addEventListener("click", (e) => {
-      if (!swallowClick) return;
-      swallowClick = false;
-      e.stopPropagation();
-      e.preventDefault();
-    }, true);
   }
 
   KN.screens = KN.screens || {};
