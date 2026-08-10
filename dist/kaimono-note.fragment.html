@@ -1698,6 +1698,24 @@ button, [role="tab"] {
   color: var(--c-accent);
   font-variant-numeric: tabular-nums;
 }
+
+/* The cheapest shop, under its price. Truncated rather than wrapped: two lines
+   of shop name would push the picture out of the tile, and half a name you
+   already know is enough to recognise it. */
+.tile-store {
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* With a shop line under it the price tile has four things to fit, so the name
+   gives up its third line. Two is still enough for 「トイレットペーパー」. */
+.product.is-tile .product-name { -webkit-line-clamp: 2; }
 .item.is-tile .item-qty {
   font-size: var(--fs-xs);
   font-weight: 800;
@@ -1940,12 +1958,10 @@ button, [role="tab"] {
 .done-head svg { width: 16px; height: 16px; stroke-width: 2.6; transition: transform .2s var(--ease); }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
 
-/* list footer summary */
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
    them: at three rows down a heading has scrolled away and the two halves of
    the list look alike again, whereas an edge is visible from anywhere in it.
-   The wash is the one the total already wore — it is the same idea, so it
-   keeps the same colour, and the total simply moved to the foot of it. */
+   The wash is the one the old total card wore — same idea, same colour. */
 .trip {
   margin: var(--sp-2) var(--sp-4) var(--sp-4);
   /* Barely any gutter of its own: the rows inside are the point, and every
@@ -1959,12 +1975,11 @@ button, [role="tab"] {
    them in a column of their own, narrower than the panel for no reason. */
 .trip .item-list { padding: 0; }
 .trip .trip-head { padding: var(--sp-1) var(--sp-2) var(--sp-3); }
-.trip .cat-group:last-of-type { margin-bottom: 0; }
-.trip .summary-row { padding: var(--sp-3) var(--sp-2) var(--sp-1); }
+.trip .cat-group:last-of-type { margin-bottom: var(--sp-1); }
 
-.summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
-.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); display: flex; flex-direction: column; gap: 1px; }
-.summary-missing { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
+/* Still used by the compare screen's own totals, which are totals of a basket
+   whose prices are all known — that is what makes them safe to add up. */
+.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
 .summary-total { font-size: var(--fs-2xl); font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 
 /* ================= PRICES SCREEN ================= */
@@ -8921,9 +8936,9 @@ button, [role="tab"] {
      already on file, with its prices and its category, instead of a second
      product with the same name.
 
-     It stays open after each add. A shopping list is written in one sitting,
-     and closing the sheet only to press ＋ again is the kind of ceremony that
-     makes a list feel like paperwork. */
+     It closes after each add. Staying open saved a tap, and cost the sight of
+     the row that had just appeared — the sheet sat over the list it had
+     changed. One add, one close; the ＋ is under the thumb for the next. */
   function openAddSheet() {
     haptic(10);
 
@@ -8953,7 +8968,7 @@ button, [role="tab"] {
             <span class="icon-pick-mark js-fav-mark">${icon("star")}</span>
             <span class="icon-pick-text">
               <span class="icon-pick-name">今回買う</span>
-              <span class="icon-pick-sub js-fav-sub">★を付けると、この買い物の合計に入ります</span>
+              <span class="icon-pick-sub js-fav-sub">★を付けると、今回の買い物としてまとまります</span>
             </span>
           </button>
         </div>
@@ -8992,8 +9007,8 @@ button, [role="tab"] {
       favBtn.classList.toggle("is-on", fav);
       favBtn.setAttribute("aria-pressed", String(fav));
       favSub.textContent = fav
-        ? "この買い物の合計に入ります"
-        : "★を付けると、この買い物の合計に入ります";
+        ? "今回の買い物としてまとまります"
+        : "★を付けると、今回の買い物としてまとまります";
       haptic(10);
     });
 
@@ -9255,16 +9270,20 @@ button, [role="tab"] {
     /* 今回買うもの gets a box of its own rather than a heading of its own. A
        heading is a line above a list, and a line above a list is easy to lose
        track of once you are three rows down; a panel the rows sit *inside*
-       is unmistakable at any scroll position. The total goes at the bottom of
-       the same panel, because it is the total of exactly what the panel
-       holds — everything outside it is explicitly not being bought today. */
+       is unmistakable at any scroll position.
+
+       No total at the foot of it. It could only ever be the total of the
+       items whose price happens to be on file, which is not the total of the
+       basket — and a number sitting under a list looks like the sum of that
+       list. 「4品は値段が未登録」 next to it was an admission that the figure
+       above was answering a different question. Each row still says what that
+       one costs, which is a fact rather than an estimate. */
     const box = node(html`<section class="trip"></section>`);
     box.append(sectionHead("今回買うもの", trip.length, "trip"));
     const inner = node(html`<div class="trip-body"></div>`);
     const tripShown = appendGroups(trip, inner);
     if (!tripShown && categoryFilter) inner.append(noneInCategory());
     box.append(inner);
-    box.append(summaryTotal(trip));
     els.body.append(box);
     els.body.append(insightsCard(trip));
 
@@ -9517,35 +9536,6 @@ button, [role="tab"] {
     });
 
     return section;
-  }
-
-  /* Just the number. What it is the total *of* is now said by where it sits —
-     at the foot of the panel holding those rows — so the paragraph that used
-     to explain it has gone. The one thing kept is the count of items with no
-     price yet, because without it a total that looks too small looks wrong
-     rather than incomplete. */
-  function summaryTotal(active) {
-    let total = 0;
-    let unknown = 0;
-
-    active.forEach((item) => {
-      const p = store.getProduct(item.productId);
-      const best = p && store.bestPrice(p);
-      if (best) total += best.price * item.qty;
-      else unknown += 1;
-    });
-
-    if (!active.length) return document.createDocumentFragment();
-
-    return node(html`
-      <div class="summary-row">
-        <span class="summary-label">
-          最安値で買うと
-          ${unknown > 0 ? html`<span class="summary-missing">${unknown}品は値段が未登録</span>` : ""}
-        </span>
-        <span class="summary-total">${total > 0 ? yen(total) : "—"}</span>
-      </div>
-    `);
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing
@@ -9876,6 +9866,11 @@ button, [role="tab"] {
           <span class="product-name">${product.name}</span>
           ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
           <span class="tile-price">${best ? yen(best.price) : "—"}</span>
+          ${/* A price with no shop attached is half an answer — which shop it
+                was is the whole reason the figure was written down. Under the
+                figure rather than beside it: a third of a screen has no
+                beside. */""}
+          ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
         </button>
       </div>
     `) : node(html`

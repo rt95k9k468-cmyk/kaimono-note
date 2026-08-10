@@ -271,6 +271,11 @@
           <span class="product-name">${product.name}</span>
           ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
           <span class="tile-price">${best ? yen(best.price) : "—"}</span>
+          ${/* A price with no shop attached is half an answer — which shop it
+                was is the whole reason the figure was written down. Under the
+                figure rather than beside it: a third of a screen has no
+                beside. */""}
+          ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
         </button>
       </div>
     `) : node(html`
