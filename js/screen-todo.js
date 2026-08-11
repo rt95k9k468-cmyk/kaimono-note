@@ -28,7 +28,22 @@
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
   ];
-  const repeatLabel = (id) => (REPEATS.find((r) => r.id === id) || REPEATS[0]).label;
+  const WD = KN.util.WEEKDAYS;
+
+  /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. The rows are
+     read at a glance, so they carry the whole rule rather than the frequency
+     with the details hidden in a sheet. */
+  function repeatText(t) {
+    if (!t.repeat) return "";
+    if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "weekly") {
+      const d = t.repeatDays || [];
+      return d.length ? `毎週 ${d.map((n) => WD[n]).join("・")}` : "毎週";
+    }
+    const n = t.repeatNth;
+    if (!n) return "毎月";
+    return n.nth === -1 ? `毎月 最終${WD[n.weekday]}` : `毎月 第${n.nth}${WD[n.weekday]}`;
+  }
 
   /* ---------------- mount ---------------- */
 
@@ -96,6 +111,8 @@
 
     let due = editing ? t.due : null;
     let repeat = editing ? t.repeat : null;
+    let repeatDays = editing ? (t.repeatDays || []).slice() : [];
+    let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
     let flagged = editing ? !!t.flagged : false;
     haptic(10);
 
@@ -119,6 +136,10 @@
         <div class="field">
           <span class="field-label">くりかえし</span>
           <div class="js-repeat"></div>
+          ${/* Which days, once 毎週 or 毎月 is chosen. Hidden otherwise —
+                「なし」 has no days to ask about. */""}
+          <div class="js-repeat-detail" hidden></div>
+          <span class="field-hint js-repeat-hint" hidden></span>
         </div>
 
         <div class="field">
@@ -181,6 +202,7 @@
           dueEl.value = due || "";
           paintDueChips();
           paintHint();
+          paintRepeatDetail();
           haptic();
         },
       });
@@ -225,15 +247,90 @@
       due = dueEl.value || null;
       paintDueChips();
       paintHint();
+      paintRepeatDetail();
     });
+
+    const detailEl = body.querySelector(".js-repeat-detail");
+    const repeatHint = body.querySelector(".js-repeat-hint");
 
     function paintRepeat() {
       KN.ui.chipRow(body.querySelector(".js-repeat"),
         REPEATS.map((r) => ({ id: r.id || "", label: r.label })), {
           activeId: repeat || "",
-          onPick: (id) => { repeat = id || null; paintRepeat(); haptic(); },
+          onPick: (id) => {
+            repeat = id || null;
+            if (repeat !== "weekly") repeatDays = [];
+            if (repeat !== "monthly") repeatNth = null;
+            paintRepeat();
+            haptic();
+          },
         });
+      paintRepeatDetail();
     }
+
+    /* 毎週 asks which days — more than one, because 「燃えるゴミは火と金」 is
+       one rule, not two todos. 毎月 asks whether it is a date or a 「第2火曜」,
+       and both of those are read off the day already chosen above, so the
+       question is a choice between two readings rather than a form. */
+    function paintRepeatDetail() {
+      detailEl.innerHTML = "";
+      detailEl.hidden = repeat !== "weekly" && repeat !== "monthly";
+      repeatHint.hidden = detailEl.hidden;
+      if (detailEl.hidden) return;
+
+      if (repeat === "weekly") {
+        const row = node(html`<div class="chip-row js-days"></div>`);
+        KN.util.WEEKDAYS.forEach((label, n) => {
+          const on = repeatDays.includes(n);
+          const chip = node(html`
+            <button type="button" class="chip ${on ? "is-on" : ""}" aria-pressed="${String(on)}"
+                    data-day="${String(n)}">${label}</button>
+          `);
+          chip.addEventListener("click", () => {
+            repeatDays = repeatDays.includes(n)
+              ? repeatDays.filter((x) => x !== n)
+              : repeatDays.concat(n).sort((a, b) => a - b);
+            paintRepeatDetail();
+            haptic();
+          });
+          row.append(chip);
+        });
+        detailEl.append(row);
+        repeatHint.textContent = repeatDays.length
+          ? `毎週 ${repeatDays.map((n) => KN.util.WEEKDAYS[n]).join("・")} にくり返します`
+          : "曜日を選ばないと、いまの日付と同じ曜日で1週間ごとにくり返します";
+        return;
+      }
+
+      const base = due || KN.util.todayKey();
+      const info = KN.util.weekdayNth(base);
+      const d = KN.util.dayDate(base);
+      const opts = [
+        { id: "day", label: `毎月${d.getDate()}日` },
+        { id: `nth:${info.nth}`, label: `第${info.nth}${KN.util.WEEKDAYS[info.weekday]}曜日` },
+      ];
+      if (info.last) opts.push({ id: "nth:-1", label: `最終${KN.util.WEEKDAYS[info.weekday]}曜日` });
+
+      const active = repeatNth ? `nth:${repeatNth.nth}` : "day";
+      const row = node(html`<div class="chip-row"></div>`);
+      opts.forEach((o) => {
+        const on = o.id === active;
+        const chip = node(html`
+          <button type="button" class="chip ${on ? "is-on" : ""}" aria-pressed="${String(on)}">${o.label}</button>
+        `);
+        chip.addEventListener("click", () => {
+          repeatNth = o.id === "day" ? null : { nth: Number(o.id.slice(4)), weekday: info.weekday };
+          paintRepeatDetail();
+          haptic();
+        });
+        row.append(chip);
+      });
+      detailEl.append(row);
+      repeatHint.textContent = repeatNth
+        ? "月によって日付は変わります（31日のない月も飛ばしません）"
+        : "その月に無い日は、その月の最後の日になります";
+    }
+
     paintRepeat();
 
     flagBtn.classList.toggle("is-on", flagged);
@@ -250,13 +347,18 @@
       const title = titleEl.value.trim();
       if (!title) return;
       const memo = body.querySelector(".js-memo").value;
+      /* 「毎週 火・金」 with a Monday on it is a rule and a date that disagree.
+         The rule is the one that was just chosen on purpose, so the date moves
+         to the first day the rule actually falls on. */
+      const rule = { repeat, repeatDays, repeatNth };
+      const fixed = due ? store.snapToRule(rule, due) : due;
       if (editing) {
-        store.updateTodo(todoId, { title, due, repeat, memo, flagged });
-        KN.ui.toast("直しました");
+        store.updateTodo(todoId, { title, due: fixed, repeat, repeatDays, repeatNth, memo, flagged });
+        KN.ui.toast(fixed !== due ? `${formatDay(fixed)}にしました` : "直しました");
       } else {
-        store.addTodo({ title, due, repeat, memo, flagged });
-        KN.ui.toast(due
-          ? `「${title}」を${formatDay(due)}までに`
+        store.addTodo({ title, due: fixed, repeat, repeatDays, repeatNth, memo, flagged });
+        KN.ui.toast(fixed
+          ? `「${title}」を${formatDay(fixed)}までに`
           : `「${title}」を追加しました`);
       }
       haptic(12);
@@ -344,7 +446,7 @@
         <button class="item-body">
           <span class="item-name">${t.title}</span>
           <span class="tile-when">${closed ? KN.util.formatDate(when) : (t.due ? formatDay(t.due) : "いつか")}</span>
-          ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatLabel(t.repeat)}</span>` : ""}
+          ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
         </button>
       </div>
     `) : node(html`
@@ -361,7 +463,7 @@
               : (t.due ? html`<span class="item-when ${g.id === "late" ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
             ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
             ${t.repeat
-              ? html`<span class="todo-repeat">${icon("repeat")}${repeatLabel(t.repeat)}</span>` : ""}
+              ? html`<span class="todo-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
             ${t.memo ? html`<span class="item-memo">${t.memo}</span>` : ""}
           </span>
         </button>

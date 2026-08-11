@@ -181,6 +181,35 @@
 
   const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
   const weekdayJa = (key) => { const d = dayDate(key); return d ? WEEKDAYS[d.getDay()] : ""; };
+  const dayOfWeek = (key) => { const d = dayDate(key); return d ? d.getDay() : null; };
+
+  /* ---------- 第◯◯曜日 ----------
+
+     「第2火曜」 and 「最終金曜」 are how a bin day or a rent day is actually
+     said, and they are not the same as a date: the second Tuesday moves every
+     month. nth is 1..5, or -1 for 「最終」. */
+
+  /** The nth weekday of a given month, or "" when that month has no such day. */
+  function nthWeekdayOf(year, monthIndex, nth, weekday) {
+    if (nth === -1) {
+      const last = new Date(year, monthIndex + 1, 0);
+      last.setDate(last.getDate() - ((last.getDay() - weekday + 7) % 7));
+      return dayKey(last);
+    }
+    const first = new Date(year, monthIndex, 1);
+    const forward = (weekday - first.getDay() + 7) % 7;
+    const d = new Date(year, monthIndex, 1 + forward + (nth - 1) * 7);
+    return d.getMonth() === monthIndex ? dayKey(d) : "";
+  }
+
+  /** Which 「第◯」 this day is in its own month, and whether it is the last one. */
+  function weekdayNth(key) {
+    const d = dayDate(key);
+    if (!d) return null;
+    const nth = Math.floor((d.getDate() - 1) / 7) + 1;
+    const last = d.getDate() + 7 > new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return { nth, last, weekday: d.getDay() };
+  }
 
   /* Near days by name, the rest by number. 「明日」 is read faster than a date
      and needs no arithmetic; 「9/2(火)」 needs no calendar. */
@@ -394,6 +423,7 @@
     yen, yenFine, parseNum,
     today, formatDate, relativeDate, foldKana,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
+    dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,
