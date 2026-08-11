@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* =========================================================
-   かいものノート — single-file build
+   くらしノート — single-file build
 
    Inlines every stylesheet, script and icon into one .html
    file that runs straight from disk (no server, no network).
@@ -64,7 +64,7 @@ if (!bodyMatch) throw new Error("could not locate the app shell in index.html");
 const shell = bodyMatch[1].trim();
 
 const manifest = {
-  name: "かいものノート",
+  name: "くらしノート",
   short_name: "かいもの",
   start_url: ".",
   scope: ".",
@@ -80,12 +80,12 @@ const manifestUri =
 const head = `
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>かいものノート</title>
+<title>くらしノート</title>
 <meta name="description" content="買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。">
 <meta name="theme-color" content="#2f8f5b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="かいものノート">
+<meta name="apple-mobile-web-app-title" content="くらしノート">
 <link rel="manifest" href="${manifestUri}">
 <link rel="icon" href="${iconSvg}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${iconPng}">
@@ -113,7 +113,7 @@ ${bodyContent}
 `;
 
 // Fragment build: no <head>, so carry the title and styles inline instead.
-const fragment = `<title>かいものノート</title>
+const fragment = `<title>くらしノート</title>
 <style>
 ${css}
 </style>
@@ -129,7 +129,7 @@ const webIndex = fullDoc.replace(
   ""
 );
 
-const webSw = `/* かいものノート — offline cache for the two-file deploy. */
+const webSw = `/* くらしノート — offline cache for the two-file deploy. */
 const CACHE = "kaimono-note-inline-v1";
 
 self.addEventListener("install", (e) => {

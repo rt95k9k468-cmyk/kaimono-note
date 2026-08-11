@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — automatic local snapshots
+   くらしノート — automatic local snapshots
 
    A page cannot write files to the phone on its own, so "automatic
    backup" here means rolling copies kept in the app's own storage.

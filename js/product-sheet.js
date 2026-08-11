@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — shared product / item detail sheet
+   くらしノート — shared product / item detail sheet
    ========================================================= */
 (function () {
   "use strict";

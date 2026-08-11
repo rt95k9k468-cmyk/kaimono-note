@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — long-press to lift, drag to reorder
+   くらしノート — long-press to lift, drag to reorder
 
    Press and hold a row and it lifts off the list — a shadow under it, a
    fraction larger, following your finger. The rows it passes glide aside, and
@@ -35,6 +35,10 @@
    * @param {string} opts.item   selector for the rows
    * @param {Function} opts.onDrop  (fromIndex, toIndex) — commit the new order
    * @param {Function} [opts.blocked]  return true to refuse to start
+   * @param {Function} [opts.onCross]  (clientY) => target|null, asked every frame
+   *        while dragging; a truthy target means the row is over somewhere
+   *        else and the drop belongs to that instead of to this list
+   * @param {Function} [opts.onDropCross]  (target) — commit that move
    */
   function attach(container, opts) {
     container.addEventListener("pointerdown", (e) => arm(e, container, opts));
@@ -74,13 +78,17 @@
   function lift({ container, opts, el, pointerId, startY }) {
     const kids = Array.prototype.filter.call(container.children, (k) => k.matches(opts.item));
     const from = kids.indexOf(el);
-    if (from < 0 || kids.length < 2) return;
+    if (from < 0) return;
+    /* One row on its own has nowhere to go *within* its list — but if the
+       screen accepts drops elsewhere (the todo groups are days), picking it up
+       is exactly how it gets there, so a group of one still lifts. */
+    if (kids.length < 2 && !opts.onCross) return;
 
     // Measured once, before anything moves. Everything after this is arithmetic
     // on these numbers, so a row half way through its own transition cannot
     // feed a wrong position back in.
     const rects = kids.map((k) => k.getBoundingClientRect());
-    const gap = Math.max(0, rects[1].top - rects[0].bottom);
+    const gap = rects.length > 1 ? Math.max(0, rects[1].top - rects[0].bottom) : 0;
     const scroller = findScroller(container);
 
     /* A faded stand-in for the row, parked in whichever gap it would drop into.
@@ -157,6 +165,11 @@
 
   function paint() {
     const d = drag;
+    /* Carried out of its own list and over another one. The todo screen uses
+       this to reschedule by dragging: the groups are days, so dropping a row
+       into 「明日」 is how a thing becomes tomorrow's. Asked every frame, so
+       the target can light up while the finger is still over it. */
+    if (d.opts.onCross) d.cross = d.opts.onCross(d.clientY) || null;
     // Scrolling moves the row's own layout position along with everything
     // else, so it has to be added back in for the row to stay under the finger.
     const delta = (d.clientY - d.startY) + (d.scroller ? d.scroller.scrollTop - d.startScroll : 0);
@@ -239,7 +252,8 @@
       });
       // Committing last means the re-render it triggers replaces rows that are
       // already sitting where they belong, so nothing jumps at the swap.
-      if (d.to !== d.from) d.opts.onDrop(d.from, d.to);
+      if (d.cross) d.opts.onDropCross(d.cross);
+      else if (d.to !== d.from) d.opts.onDrop(d.from, d.to);
     }, DROP);
   }
 

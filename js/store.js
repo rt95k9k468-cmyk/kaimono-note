@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — state, persistence, selectors
+   くらしノート — state, persistence, selectors
    ========================================================= */
 (function () {
   "use strict";
@@ -134,6 +134,8 @@
       flagged: t.flagged === true,
       done: t.done === true,
       doneAt: t.doneAt || null,
+      archived: t.archived === true,
+      archivedAt: t.archivedAt || null,
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title);
@@ -514,6 +516,8 @@
       flagged: !!flagged,
       done: false,
       doneAt: null,
+      archived: false,
+      archivedAt: null,
       createdAt: today(),
       order: 0,
     };
@@ -597,6 +601,8 @@
       } else {
         t.done = !t.done;
         t.doneAt = t.done ? today() : null;
+        // Un-ticking is 「まだだった」, which also means it is back on the list.
+        if (!t.done) { t.archived = false; t.archivedAt = null; }
       }
     });
 
@@ -627,9 +633,39 @@
       || (a.order || 0) - (b.order || 0));
   }
 
-  /** Not done, and wanted today or already late — what the badge counts. */
+  /* Put away without doing it. 「もうやらない」 and 「やった」 are different
+     things about the same line, so they are different flags — but they end in
+     the same drawer, because what both mean to the list is 「片づいた」. */
+  function archiveTodo(id, on) {
+    const before = getTodo(id);
+    if (!before) return () => {};
+    const was = { archived: !!before.archived, archivedAt: before.archivedAt || null };
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      t.archived = !!on;
+      t.archivedAt = on ? today() : null;
+    });
+    return () => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      t.archived = was.archived;
+      t.archivedAt = was.archivedAt;
+    });
+  }
+
+  /** Still on the list: neither done nor put away. */
+  const openTodos = () => get().todos.filter((t) => !t.done && !t.archived);
+
+  /** Done or put away — the drawer at the bottom. */
+  const closedTodos = () => get().todos.filter((t) => t.done || t.archived);
+
+  /** The day a closed todo was closed, whichever way it closed. */
+  const todoClosedAt = (t) => t.doneAt || t.archivedAt || null;
+
+  /** Not done, not put away, and wanted today or already late — the badge. */
   function todosDue() {
-    return get().todos.filter((t) => !t.done && t.due && KN.util.daysUntil(t.due) <= 0);
+    return openTodos().filter((t) => t.due && KN.util.daysUntil(t.due) <= 0);
   }
 
   function addItem(productId, { qty = 1, memo = "" } = {}) {
@@ -804,6 +840,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue,
+    archiveTodo, openTodos, closedTodos, todoClosedAt,
     exportJSON, importJSON, reset, loadSample,
   };
 })();

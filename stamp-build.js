@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* =========================================================
-   かいものノート — stamp the build id into the deployed files
+   くらしノート — stamp the build id into the deployed files
 
      GITHUB_SHA=<sha> node stamp-build.js
 

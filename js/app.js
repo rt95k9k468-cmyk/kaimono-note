@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — app shell: tabs, routing, theme, PWA
+   くらしノート — app shell: tabs, routing, theme, PWA
    ========================================================= */
 (function () {
   "use strict";
@@ -8,17 +8,23 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
-  /* お店くらべ is not among these any more. It is a thing you do a few times
-     while deciding where to go, not a place you live in, and a quarter of the
-     bar is a lot of permanent furniture for that — it opens from the shop
-     button on リスト and 価格 instead. やること takes the freed place, at the
+  /* お店くらべ is not among these. It is a thing you do a few times while
+     deciding where to go, not a place you live in — it opens from the shop
+     button on 買うもの and 価格 instead. やること took the freed place, at the
      left, because it is the screen you open first when the question is 「今日
-     なにをするんだっけ」 rather than 「何を買うんだっけ」. */
+     なにをするんだっけ」 rather than 「何を買うんだっけ」.
+
+     Three groups, not four buttons in a row. 買うもの and 価格 are two views of
+     the same shopping — the same products, the same archive, the same tiles —
+     while やること is a different kind of thing that happens to live in the
+     same app, and 設定 is not a place at all. The bar says so with a hairline
+     between the groups and by tinting the shopping pair, so the eye finds
+     「買い物のほう」 without reading either word. */
   const TABS = [
-    { id: "todo",     label: "やること", icon: "checklist" },
-    { id: "list",     label: "リスト",   icon: "list"  },
-    { id: "prices",   label: "価格",     icon: "tag"   },
-    { id: "settings", label: "設定",     icon: "gear"  },
+    { id: "todo",     label: "やること", icon: "checklist", group: "todo" },
+    { id: "list",     label: "買うもの", icon: "list",      group: "shop" },
+    { id: "prices",   label: "価格",     icon: "tag",       group: "shop" },
+    { id: "settings", label: "設定",     icon: "gear",      group: "app" },
   ];
 
   let active = "list";
@@ -39,9 +45,14 @@
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
 
-    TABS.forEach((t) => {
+    TABS.forEach((t, i) => {
+      const prev = TABS[i - 1];
+      const next = TABS[i + 1];
+      if (prev && prev.group !== t.group) bar.append(node(html`<span class="tab-split"></span>`));
+      const edge = [!prev || prev.group !== t.group ? "is-group-start" : "",
+                    !next || next.group !== t.group ? "is-group-end" : ""].join(" ").trim();
       const btn = node(html`
-        <button class="tab" role="tab" data-tab="${t.id}"
+        <button class="tab tab-${t.group} ${edge}" role="tab" data-tab="${t.id}"
                 aria-selected="${String(t.id === active)}"
                 aria-controls="screen-${t.id}">
           <span class="tab-ico">${icon(t.icon)}</span>
@@ -87,7 +98,7 @@
   /* ---------------- the same number, on the home screen ---------------- */
 
   /* iOS has carried the Badging API for installed web apps since 16.4, so the
-     count on the リスト tab can be the count on the app icon — the one number
+     counts on the tabs can be the count on the app icon — the one number
      worth seeing without opening anything.
 
      Two things make this a setting rather than something that just happens.
@@ -146,6 +157,10 @@
     });
     window.addEventListener("pageshow", restate);
     window.addEventListener("focus", restate);
+    /* And on the way out. The icon is read while the app is closed, so the
+       last thing it is told before the app goes away had better be the number
+       that was on screen. */
+    window.addEventListener("pagehide", restate);
   }
 
   /** Ask for what the badge needs, and turn it on if it is given. */

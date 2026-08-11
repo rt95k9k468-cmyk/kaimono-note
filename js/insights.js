@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — insights
+   くらしノート — insights
 
    Reads the shopping data and says something useful about it. Everything
    here is arithmetic on the user's own records: no network, no key, works

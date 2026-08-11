@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — drawn product icons
+   くらしノート — drawn product icons
 
    Every product mark in the app is drawn here. Emoji were the starting point
    and they were good at food and bad at everything else: there is no 洗剤

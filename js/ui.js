@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — UI primitives (sheet, toast, dialogs)
+   くらしノート — UI primitives (sheet, toast, dialogs)
    ========================================================= */
 (function () {
   "use strict";
