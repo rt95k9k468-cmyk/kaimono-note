@@ -657,6 +657,43 @@ button, [role="tab"] {
 
 .input::placeholder, .textarea::placeholder { color: var(--c-text-3); }
 
+/* ---- a memo: read by default, written on request ----
+
+   Sits in a box the same width and shape as the field it turns into, so the
+   pencil swaps one for the other without the sheet jumping. */
+.memo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  min-height: 46px;
+}
+
+.memo-text {
+  flex: 1;
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  color: var(--c-text);
+  white-space: pre-wrap;      /* the line breaks were typed on purpose */
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.memo-text.is-empty { color: var(--c-text-3); }
+
+.memo .icon-btn { flex: none; width: 34px; height: 34px; margin-top: -2px; }
+
+.memo-input {
+  height: auto;
+  padding: var(--sp-3) var(--sp-4);
+  resize: vertical;
+  line-height: 1.55;
+}
+
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
   border-color: var(--c-primary);
@@ -1392,8 +1429,10 @@ button, [role="tab"] {
 .quick-add { display: flex; justify-content: center; }
 
 /* Room under the last card so the button is never sitting on top of the thing
-   you are trying to read — one button's height plus the gap it floats by. */
-.screen[data-screen="list"] { padding-bottom: calc(56px + var(--sp-6)); }
+   you are trying to read — one button's height plus the gap it floats by.
+   Both screens that carry a ＋ pay it. */
+.screen[data-screen="list"],
+.screen[data-screen="prices"] { padding-bottom: calc(56px + var(--sp-6)); }
 
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket. */
@@ -1925,7 +1964,39 @@ button, [role="tab"] {
   min-height: 18px;
 }
 
-.item-memo { color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Two lines rather than one clipped one. A memo on a shopping list is short
+   and worth reading — 「詰め替え用、青いほう」 cut off at 「詰め替え」 is the
+   half that tells you nothing. Anything longer is in the row's own sheet,
+   whole and wrapped. */
+.item-memo {
+  color: var(--c-text-3);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* The day a row went into an archive — the day it was bought on the list, the
+   day it was put away on the price screen. A fact, so it is quiet, and the
+   figures line up. */
+.item-when {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+  background: var(--c-surface-2);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.tile-when {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+}
 
 .item-price {
   flex: none;
@@ -7122,6 +7193,10 @@ button, [role="tab"] {
   function setArchived(productId, on) {
     const prev = getProduct(productId);
     const was = !!(prev && prev.archived);
+    // The day it went in, so the drawer reads as a record of when rather than
+    // an undated heap. Restored exactly on undo — an undone archiving never
+    // happened, and should not leave a date behind saying it did.
+    const wasAt = (prev && prev.archivedAt) || null;
     // Kept with their positions so an undo puts the rows back where they were,
     // not at the top of the list.
     const dropped = [];
@@ -7129,13 +7204,13 @@ button, [role="tab"] {
 
     update((s) => {
       const p = s.products.find((x) => x.id === productId);
-      if (p) p.archived = on;
+      if (p) { p.archived = on; p.archivedAt = on ? today() : null; }
       if (on) s.items = s.items.filter((i) => i.productId !== productId);
     });
 
     return () => update((s) => {
       const p = s.products.find((x) => x.id === productId);
-      if (p) p.archived = was;
+      if (p) { p.archived = was; p.archivedAt = wasAt; }
       if (!on) return;
       const next = s.items.slice();
       // Ascending, so each splice lands in the slot the one before it made.
@@ -9397,10 +9472,20 @@ button, [role="tab"] {
             <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
           </div>
         </div>
-        <label class="field">
+        ${/* A memo is read far more often than it is written, and a text
+              input can only ever show one line of it — a memo two lines long
+              was a memo you had to scroll a field sideways to read. So the
+              resting state is the note itself, wrapped and whole, and the
+              pencil is what turns it back into something you can type in. */""}
+        <div class="field">
           <span class="field-label">メモ</span>
-          <input class="input js-memo" value="${item.memo || ""}" placeholder="例：詰め替え用・特売のとき">
-        </label>
+          <div class="memo js-memo-view">
+            <p class="memo-text js-memo-text"></p>
+            <button type="button" class="icon-btn js-memo-edit" aria-label="メモを書く">${icon("edit")}</button>
+          </div>
+          <textarea class="input memo-input js-memo" rows="3"
+                    placeholder="例：詰め替え用・特売のとき" hidden></textarea>
+        </div>
       </div>
     `);
 
@@ -9418,12 +9503,49 @@ button, [role="tab"] {
     wrap.querySelector(".js-plus").addEventListener("click", () => setQty(1));
 
     const memo = wrap.querySelector(".js-memo");
-    memo.addEventListener("input", debounce(() => {
+    const memoView = wrap.querySelector(".js-memo-view");
+    const memoText = wrap.querySelector(".js-memo-text");
+
+    function paintMemo() {
+      const now = store.get().items.find((i) => i.id === itemId);
+      const text = (now && now.memo) || "";
+      memo.value = text;
+      memoText.textContent = text || "メモはまだありません";
+      memoText.classList.toggle("is-empty", !text);
+    }
+    paintMemo();
+
+    function editMemo() {
+      memoView.hidden = true;
+      memo.hidden = false;
+      memo.focus();
+      // The caret at the end, so the pencil means 「書き足す」 rather than
+      // 「頭から打ち直す」 — which is what a memo is usually opened for.
+      const end = memo.value.length;
+      try { memo.setSelectionRange(end, end); } catch (err) { /* not every browser */ }
+    }
+
+    wrap.querySelector(".js-memo-edit").addEventListener("click", editMemo);
+    // Tapping the note itself is the other obvious way in.
+    memoText.addEventListener("click", editMemo);
+
+    const save = debounce(() => {
       store.update((s) => {
         const rec = s.items.find((i) => i.id === itemId);
         if (rec) rec.memo = memo.value;
       });
-    }, 350));
+    }, 350);
+    memo.addEventListener("input", save);
+
+    memo.addEventListener("blur", () => {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === itemId);
+        if (rec) rec.memo = memo.value;
+      });
+      memo.hidden = true;
+      memoView.hidden = false;
+      paintMemo();
+    });
 
     wrap.querySelector(".js-remove").addEventListener("click", () => {
       const snapshot = store.get().items.find((i) => i.id === itemId);
@@ -10066,10 +10188,12 @@ button, [role="tab"] {
               <h1 class="topbar-title">買い物リスト</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            ${/* No 「まとめて削除」 on this bar any more. Having bought
+                 something is not a reason to throw the record of it away, and
+                 there is no moment in a shop where that is the thing you
+                 reach for. What is bought drops into the archive below,
+                 dated, and stays there. */""}
             <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-clear" aria-label="購入済みをまとめて削除" title="購入済みをまとめて削除">
-              ${icon("trash")}
-            </button>
           </div>
         </header>
 
@@ -10084,28 +10208,9 @@ button, [role="tab"] {
 
     root.append(chrome);
 
-    /* The add button sits in the shell's dock, not in this screen. Adding
-       something is the one thing done one-handed in a shop aisle, so it
-       belongs at the bottom, in the middle, where a thumb already is.
-
-       It used to be a text field here, with the suggestions opening upward
-       over the list. That got you a name and nothing else: quantity and
-       category had to be fixed afterwards in the product sheet. One button
-       and one form is fewer steps for anything beyond a bare name, and the
-       same suggestions still turn a name into an existing product. */
-    const dock = document.getElementById("dock");
-    dock.innerHTML = "";
-    dock.append(node(html`
-      <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="買うものを追加">${icon("plus")}</button>
-      </div>
-    `));
-
     els = {
       sub:        chrome.querySelector(".js-sub"),
-      clear:      chrome.querySelector(".js-clear"),
       layout:     chrome.querySelector(".js-layout"),
-      addFab:     dock.querySelector(".js-open-add"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
@@ -10113,9 +10218,6 @@ button, [role="tab"] {
       topbar:     chrome.querySelector(".topbar"),
     };
 
-    els.addFab.addEventListener("click", openAddSheet);
-
-    els.clear.addEventListener("click", clearChecked);
     els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
@@ -10356,29 +10458,6 @@ button, [role="tab"] {
       row.addEventListener("mousedown", (e) => e.preventDefault());
       row.addEventListener("click", () => onPick(p));
       box.append(row);
-    });
-  }
-
-  /* ---------------- clear checked ---------------- */
-
-  async function clearChecked() {
-    const checked = store.get().items.filter((i) => i.checked);
-    if (!checked.length) { KN.ui.toast("購入済みの商品はありません"); return; }
-
-    const ok = await KN.ui.confirm({
-      title: "購入済みを削除",
-      message: `${checked.length}件の購入済み商品をリストから消します。商品と価格の記録は残ります。`,
-      okLabel: "削除する",
-      danger: true,
-    });
-    if (!ok) return;
-
-    store.update((s) => { s.items = s.items.filter((i) => !i.checked); });
-    KN.ui.toast(`${checked.length}件を削除しました`, {
-      action: {
-        label: "元に戻す",
-        onClick: () => store.update((s) => { s.items = [...checked, ...s.items]; }),
-      },
     });
   }
 
@@ -10635,6 +10714,11 @@ button, [role="tab"] {
             ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
           </span>
           <span class="item-meta">
+            ${/* The day it was bought, on the rows that have been. An archive
+                 of undated lines says only 「いつか買った」, which is not a
+                 record of anything. */""}
+            ${item.checked && item.checkedAt
+              ? html`<span class="item-when">${KN.util.formatDate(item.checkedAt)}</span>` : ""}
             ${item.memo ? html`<span class="item-memo">${item.memo}</span>` : ""}
           </span>
         </button>
@@ -10707,6 +10791,11 @@ button, [role="tab"] {
     haptic(12);
   }
 
+  /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
+     uses. They are the same idea — done with, kept, dated, out of the way of
+     what is still to do — and calling one of them something else made them
+     look like two different mechanisms. Newest first: an archive is read from
+     the most recent end. */
   function checkedSection(checked) {
     const st = store.get();
     const open = st.settings.showChecked !== false;
@@ -10714,14 +10803,16 @@ button, [role="tab"] {
     const section = node(html`
       <section class="cat-group">
         <button class="done-head" aria-expanded="${String(open)}">
-          ${icon("chevron")} 購入済み <span class="cat-head-count">${checked.length}</span>
+          ${icon("chevron")} アーカイブ <span class="cat-head-count">${checked.length}</span>
         </button>
         <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
     `);
 
     const list = section.querySelector(".js-done");
-    checked.forEach((item) => {
+    const newestFirst = checked.slice().sort((a, b) =>
+      String(b.checkedAt || "").localeCompare(String(a.checkedAt || "")));
+    newestFirst.forEach((item) => {
       const p = store.getProduct(item.productId);
       if (p) list.append(itemRow(item, p));
     });
@@ -10783,8 +10874,27 @@ button, [role="tab"] {
     return wrap;
   }
 
+  /* The ＋ the shell floats over this screen. Adding something is the one
+     thing done one-handed in a shop aisle, so it belongs at the bottom, in the
+     middle, where a thumb already is.
+
+     It used to be a text field at the top, with the suggestions opening upward
+     over the list. That got you a name and nothing else: category and memo had
+     to be fixed afterwards in the product sheet. One button and one form is
+     fewer steps for anything beyond a bare name, and the same suggestions
+     still turn a name into an existing product. */
+  function dockButton() {
+    const fab = node(html`
+      <div class="quick-add">
+        <button class="add-fab js-open-add" aria-label="買うものを追加">${icon("plus")}</button>
+      </div>
+    `);
+    fab.querySelector(".js-open-add").addEventListener("click", openAddSheet);
+    return fab;
+  }
+
   KN.screens = KN.screens || {};
-  KN.screens.list = { mount, render };
+  KN.screens.list = { mount, render, dockButton };
 })();
 
 /* ---- js/screen-prices.js ---- */
@@ -10815,9 +10925,12 @@ button, [role="tab"] {
               <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            ${/* The ＋ is not up here any more — it is the same floating
+                 button the list screen has, in the dock at the bottom
+                 middle. Two screens that both add a thing should add it with
+                 the same motion, and the corner of a top bar is the far end
+                 of a phone from where the hand is. */""}
             <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-new" aria-label="商品を追加" title="商品を追加"
-                    style="background:var(--c-primary);color:#fff">${icon("plus")}</button>
           </div>
         </header>
 
@@ -10843,7 +10956,6 @@ button, [role="tab"] {
       sub:     chrome.querySelector(".js-sub"),
       search:  chrome.querySelector(".js-search"),
       clear:   chrome.querySelector(".js-clear"),
-      newBtn:  chrome.querySelector(".js-new"),
       layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
@@ -10865,7 +10977,6 @@ button, [role="tab"] {
       renderBody();
     });
 
-    els.newBtn.addEventListener("click", createProduct);
     els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
@@ -11006,7 +11117,12 @@ button, [role="tab"] {
 
     if (open) {
       const box = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
-      list.forEach((p) => box.append(productCard(p)));
+      // Newest first, and each card says when — the same as the list screen's
+      // archive. Products archived before there was a date to record keep
+      // their place at the end and simply say nothing.
+      list.slice()
+        .sort((a, b) => String(b.archivedAt || "").localeCompare(String(a.archivedAt || "")))
+        .forEach((p) => box.append(productCard(p)));
       section.querySelector(".js-body").append(box);
     }
 
@@ -11077,6 +11193,8 @@ button, [role="tab"] {
                 figure rather than beside it: a third of a screen has no
                 beside. */""}
           ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
+          ${product.archived && product.archivedAt
+            ? html`<span class="tile-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
         </button>
       </div>
     `) : node(html`
@@ -11090,8 +11208,10 @@ button, [role="tab"] {
                 the shelf, and 「値段は未登録」 repeated the — already sitting in
                 the price column. What is left is the name, in the size of the
                 thing the row is for. */""}
-          ${size || up ? html`
+          ${size || up || (product.archived && product.archivedAt) ? html`
             <span class="product-meta">
+              ${product.archived && product.archivedAt
+                ? html`<span class="item-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
               ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
               ${up ? html`<span>${up.text}</span>` : ""}
             </span>
@@ -11176,8 +11296,19 @@ button, [role="tab"] {
     KN.ui.toast(said, { action: { label: "元に戻す", onClick: undo } });
   }
 
+  /** The ＋ the shell floats over this screen — the list screen's, in kind. */
+  function dockButton() {
+    const fab = node(html`
+      <div class="quick-add">
+        <button class="add-fab js-new" aria-label="商品を追加">${icon("plus")}</button>
+      </div>
+    `);
+    fab.querySelector(".js-new").addEventListener("click", createProduct);
+    return fab;
+  }
+
   KN.screens = KN.screens || {};
-  KN.screens.prices = { mount, render };
+  KN.screens.prices = { mount, render, dockButton };
 })();
 
 /* ---- js/screen-compare.js ---- */
@@ -12327,10 +12458,22 @@ button, [role="tab"] {
     ensureMounted(id);
     KN.screens[id].render();
 
-    // The add bar belongs to the list; on the other screens there is nothing
-    // to add to, so the dock steps out of the way entirely.
+    /* The ＋ lives in the dock — floating over the screen just above the tab
+       bar, where a thumb already is — rather than in the top corner of each
+       screen. Both the list and the price screen have something to add, and
+       adding it is the same motion on both; the screens that have nothing to
+       add leave the dock empty and it steps out of the way entirely.
+
+       Rebuilt on every switch rather than kept per screen: one dock, one
+       button, and no chance of the list's ＋ opening over the price screen. */
     const dock = document.getElementById("dock");
-    if (dock) dock.hidden = id !== "list" || !dock.childElementCount;
+    if (dock) {
+      dock.innerHTML = "";
+      const make = KN.screens[id] && KN.screens[id].dockButton;
+      const fab = make ? make() : null;
+      if (fab) dock.append(fab);
+      dock.hidden = !dock.childElementCount;
+    }
 
     paintTabs();
     haptic();

@@ -259,10 +259,20 @@
             <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
           </div>
         </div>
-        <label class="field">
+        ${/* A memo is read far more often than it is written, and a text
+              input can only ever show one line of it — a memo two lines long
+              was a memo you had to scroll a field sideways to read. So the
+              resting state is the note itself, wrapped and whole, and the
+              pencil is what turns it back into something you can type in. */""}
+        <div class="field">
           <span class="field-label">メモ</span>
-          <input class="input js-memo" value="${item.memo || ""}" placeholder="例：詰め替え用・特売のとき">
-        </label>
+          <div class="memo js-memo-view">
+            <p class="memo-text js-memo-text"></p>
+            <button type="button" class="icon-btn js-memo-edit" aria-label="メモを書く">${icon("edit")}</button>
+          </div>
+          <textarea class="input memo-input js-memo" rows="3"
+                    placeholder="例：詰め替え用・特売のとき" hidden></textarea>
+        </div>
       </div>
     `);
 
@@ -280,12 +290,49 @@
     wrap.querySelector(".js-plus").addEventListener("click", () => setQty(1));
 
     const memo = wrap.querySelector(".js-memo");
-    memo.addEventListener("input", debounce(() => {
+    const memoView = wrap.querySelector(".js-memo-view");
+    const memoText = wrap.querySelector(".js-memo-text");
+
+    function paintMemo() {
+      const now = store.get().items.find((i) => i.id === itemId);
+      const text = (now && now.memo) || "";
+      memo.value = text;
+      memoText.textContent = text || "メモはまだありません";
+      memoText.classList.toggle("is-empty", !text);
+    }
+    paintMemo();
+
+    function editMemo() {
+      memoView.hidden = true;
+      memo.hidden = false;
+      memo.focus();
+      // The caret at the end, so the pencil means 「書き足す」 rather than
+      // 「頭から打ち直す」 — which is what a memo is usually opened for.
+      const end = memo.value.length;
+      try { memo.setSelectionRange(end, end); } catch (err) { /* not every browser */ }
+    }
+
+    wrap.querySelector(".js-memo-edit").addEventListener("click", editMemo);
+    // Tapping the note itself is the other obvious way in.
+    memoText.addEventListener("click", editMemo);
+
+    const save = debounce(() => {
       store.update((s) => {
         const rec = s.items.find((i) => i.id === itemId);
         if (rec) rec.memo = memo.value;
       });
-    }, 350));
+    }, 350);
+    memo.addEventListener("input", save);
+
+    memo.addEventListener("blur", () => {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === itemId);
+        if (rec) rec.memo = memo.value;
+      });
+      memo.hidden = true;
+      memoView.hidden = false;
+      paintMemo();
+    });
 
     wrap.querySelector(".js-remove").addEventListener("click", () => {
       const snapshot = store.get().items.find((i) => i.id === itemId);

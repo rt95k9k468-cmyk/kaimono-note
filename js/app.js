@@ -174,10 +174,22 @@
     ensureMounted(id);
     KN.screens[id].render();
 
-    // The add bar belongs to the list; on the other screens there is nothing
-    // to add to, so the dock steps out of the way entirely.
+    /* The ＋ lives in the dock — floating over the screen just above the tab
+       bar, where a thumb already is — rather than in the top corner of each
+       screen. Both the list and the price screen have something to add, and
+       adding it is the same motion on both; the screens that have nothing to
+       add leave the dock empty and it steps out of the way entirely.
+
+       Rebuilt on every switch rather than kept per screen: one dock, one
+       button, and no chance of the list's ＋ opening over the price screen. */
     const dock = document.getElementById("dock");
-    if (dock) dock.hidden = id !== "list" || !dock.childElementCount;
+    if (dock) {
+      dock.innerHTML = "";
+      const make = KN.screens[id] && KN.screens[id].dockButton;
+      const fab = make ? make() : null;
+      if (fab) dock.append(fab);
+      dock.hidden = !dock.childElementCount;
+    }
 
     paintTabs();
     haptic();

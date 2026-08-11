@@ -26,10 +26,12 @@
               <h1 class="topbar-title">買い物リスト</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            ${/* No 「まとめて削除」 on this bar any more. Having bought
+                 something is not a reason to throw the record of it away, and
+                 there is no moment in a shop where that is the thing you
+                 reach for. What is bought drops into the archive below,
+                 dated, and stays there. */""}
             <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-clear" aria-label="購入済みをまとめて削除" title="購入済みをまとめて削除">
-              ${icon("trash")}
-            </button>
           </div>
         </header>
 
@@ -44,28 +46,9 @@
 
     root.append(chrome);
 
-    /* The add button sits in the shell's dock, not in this screen. Adding
-       something is the one thing done one-handed in a shop aisle, so it
-       belongs at the bottom, in the middle, where a thumb already is.
-
-       It used to be a text field here, with the suggestions opening upward
-       over the list. That got you a name and nothing else: quantity and
-       category had to be fixed afterwards in the product sheet. One button
-       and one form is fewer steps for anything beyond a bare name, and the
-       same suggestions still turn a name into an existing product. */
-    const dock = document.getElementById("dock");
-    dock.innerHTML = "";
-    dock.append(node(html`
-      <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="買うものを追加">${icon("plus")}</button>
-      </div>
-    `));
-
     els = {
       sub:        chrome.querySelector(".js-sub"),
-      clear:      chrome.querySelector(".js-clear"),
       layout:     chrome.querySelector(".js-layout"),
-      addFab:     dock.querySelector(".js-open-add"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
@@ -73,9 +56,6 @@
       topbar:     chrome.querySelector(".topbar"),
     };
 
-    els.addFab.addEventListener("click", openAddSheet);
-
-    els.clear.addEventListener("click", clearChecked);
     els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
@@ -316,29 +296,6 @@
       row.addEventListener("mousedown", (e) => e.preventDefault());
       row.addEventListener("click", () => onPick(p));
       box.append(row);
-    });
-  }
-
-  /* ---------------- clear checked ---------------- */
-
-  async function clearChecked() {
-    const checked = store.get().items.filter((i) => i.checked);
-    if (!checked.length) { KN.ui.toast("購入済みの商品はありません"); return; }
-
-    const ok = await KN.ui.confirm({
-      title: "購入済みを削除",
-      message: `${checked.length}件の購入済み商品をリストから消します。商品と価格の記録は残ります。`,
-      okLabel: "削除する",
-      danger: true,
-    });
-    if (!ok) return;
-
-    store.update((s) => { s.items = s.items.filter((i) => !i.checked); });
-    KN.ui.toast(`${checked.length}件を削除しました`, {
-      action: {
-        label: "元に戻す",
-        onClick: () => store.update((s) => { s.items = [...checked, ...s.items]; }),
-      },
     });
   }
 
@@ -595,6 +552,11 @@
             ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
           </span>
           <span class="item-meta">
+            ${/* The day it was bought, on the rows that have been. An archive
+                 of undated lines says only 「いつか買った」, which is not a
+                 record of anything. */""}
+            ${item.checked && item.checkedAt
+              ? html`<span class="item-when">${KN.util.formatDate(item.checkedAt)}</span>` : ""}
             ${item.memo ? html`<span class="item-memo">${item.memo}</span>` : ""}
           </span>
         </button>
@@ -667,6 +629,11 @@
     haptic(12);
   }
 
+  /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
+     uses. They are the same idea — done with, kept, dated, out of the way of
+     what is still to do — and calling one of them something else made them
+     look like two different mechanisms. Newest first: an archive is read from
+     the most recent end. */
   function checkedSection(checked) {
     const st = store.get();
     const open = st.settings.showChecked !== false;
@@ -674,14 +641,16 @@
     const section = node(html`
       <section class="cat-group">
         <button class="done-head" aria-expanded="${String(open)}">
-          ${icon("chevron")} 購入済み <span class="cat-head-count">${checked.length}</span>
+          ${icon("chevron")} アーカイブ <span class="cat-head-count">${checked.length}</span>
         </button>
         <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
     `);
 
     const list = section.querySelector(".js-done");
-    checked.forEach((item) => {
+    const newestFirst = checked.slice().sort((a, b) =>
+      String(b.checkedAt || "").localeCompare(String(a.checkedAt || "")));
+    newestFirst.forEach((item) => {
       const p = store.getProduct(item.productId);
       if (p) list.append(itemRow(item, p));
     });
@@ -743,6 +712,25 @@
     return wrap;
   }
 
+  /* The ＋ the shell floats over this screen. Adding something is the one
+     thing done one-handed in a shop aisle, so it belongs at the bottom, in the
+     middle, where a thumb already is.
+
+     It used to be a text field at the top, with the suggestions opening upward
+     over the list. That got you a name and nothing else: category and memo had
+     to be fixed afterwards in the product sheet. One button and one form is
+     fewer steps for anything beyond a bare name, and the same suggestions
+     still turn a name into an existing product. */
+  function dockButton() {
+    const fab = node(html`
+      <div class="quick-add">
+        <button class="add-fab js-open-add" aria-label="買うものを追加">${icon("plus")}</button>
+      </div>
+    `);
+    fab.querySelector(".js-open-add").addEventListener("click", openAddSheet);
+    return fab;
+  }
+
   KN.screens = KN.screens || {};
-  KN.screens.list = { mount, render };
+  KN.screens.list = { mount, render, dockButton };
 })();
