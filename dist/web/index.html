@@ -11021,13 +11021,24 @@ button, [role="tab"] {
   /** The item on the shopping list for this product, if it is on it. */
   const listedItem = (productId) => store.get().items.find((i) => i.productId === productId) || null;
 
+  /* …and only while it is still something to buy. A row that has been ticked
+     off is done: it stays on the list screen under 「購入済み」 until it is
+     cleared, but it is no longer a thing to pick up, and the painted edge over
+     here means exactly that. Leaving it painted told you to buy what was
+     already in the basket. (The list screen has always read it this way —
+     「今回買うもの」 counts only the unticked.) */
+  const buying = (productId) => {
+    const item = listedItem(productId);
+    return item && !item.checked ? item : null;
+  };
+
   function productCard(product) {
     const prices = store.currentPrices(product);
     const best = prices[0] || null;
     const bestStore = best ? store.getStore(best.storeId) : null;
     const size = formatSize(product.amount, product.unit);
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
-    const listed = listedItem(product.id);
+    const listed = buying(product.id);
     const tiles = KN.ui.isTiles();
 
     /* Two layers, like the rows on the list screen: the panels underneath are
@@ -11114,6 +11125,26 @@ button, [role="tab"] {
     if (!item) {
       store.addItem(product.id);
       KN.ui.toast(`「${product.name}」をリストに追加しました`);
+      return;
+    }
+    /* Already bought this trip. The swipe says 「リストへ」 because that is
+       what the card looks like — unpainted — so it has to mean it: the tick
+       comes off and the row goes back to being something to buy, rather than
+       deleting a row the eye says is not there. */
+    if (item.checked) {
+      store.update((s) => {
+        const rec = s.items.find((i) => i.id === item.id);
+        if (rec) rec.checked = false;
+      });
+      KN.ui.toast(`「${product.name}」をまた買うものに戻しました`, {
+        action: {
+          label: "元に戻す",
+          onClick: () => store.update((s) => {
+            const rec = s.items.find((i) => i.id === item.id);
+            if (rec) rec.checked = true;
+          }),
+        },
+      });
       return;
     }
     const at = store.get().items.indexOf(item);
