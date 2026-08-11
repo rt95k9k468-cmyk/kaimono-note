@@ -17,8 +17,15 @@
 
     const chrome = node(html`
       <div class="stack">
+        ${/* No tab of its own any more — comparing shops is something done a
+              few times while deciding where to go, not a place to live in. It
+              opens from the shop button on リスト and 価格, and carries its
+              own way back to whichever of them asked for it. */""}
         <header class="topbar">
           <div class="topbar-row">
+            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
+              ${icon("chevron", "flip-x")}
+            </button>
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">お店くらべ</h1>
               <div class="topbar-sub js-sub"></div>
@@ -35,6 +42,8 @@
       body:   chrome.querySelector(".js-body"),
       topbar: chrome.querySelector(".topbar"),
     };
+
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

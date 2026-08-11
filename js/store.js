@@ -50,6 +50,9 @@
       stores: [],
       products: [],
       items: [],
+      // やること。買い物とは別の暮らしの用事で、値段も店も持たない代わりに
+      // 日付と繰り返しを持つ。
+      todos: [],
       // Corrections the user has made by hand: folded product name → category.
       learned: {},
       // layout: "rows" | "tiles" — one setting for both lists, because a
@@ -90,6 +93,7 @@
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
     out.items    = Array.isArray(s.items)    ? s.items    : [];
+    out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
     out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
@@ -115,6 +119,25 @@
     out.items = out.items.filter((i) => out.products.some((p) => p.id === i.productId));
     // Lists saved before favourites existed carry no flag; absent means off.
     out.items.forEach((i) => { i.fav = i.fav === true; });
+
+    /* Todos, filled in rather than trusted: this list is also what an imported
+       backup lands in, and a half-written todo would take the screen down. A
+       due date is either a 「YYYY-MM-DD」 day or nothing at all — anything
+       else (an old ISO timestamp, a typo) is dropped rather than shown as
+       「Invalid Date」. */
+    out.todos = out.todos.filter((t) => t && typeof t === "object").map((t, i) => ({
+      id: t.id || uid("t"),
+      title: String(t.title || "").trim(),
+      due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : null,
+      repeat: ["daily", "weekly", "monthly"].includes(t.repeat) ? t.repeat : null,
+      memo: typeof t.memo === "string" ? t.memo : "",
+      flagged: t.flagged === true,
+      done: t.done === true,
+      doneAt: t.doneAt || null,
+      createdAt: t.createdAt || today(),
+      order: typeof t.order === "number" ? t.order : i,
+    })).filter((t) => t.title);
+
     out.schema = SCHEMA;
     return out;
   }
@@ -473,6 +496,142 @@
     return rec;
   }
 
+  /* ---------------- やること ----------------
+
+     A todo is a much smaller thing than a product: a line of text, and at most
+     a day it is wanted by. Everything else here exists because of that day —
+     what is overdue, what repeats, what the icon should count. */
+
+  function addTodo({ title, due = null, repeat = null, memo = "", flagged = false } = {}) {
+    const name = String(title || "").trim();
+    if (!name) return null;
+    const rec = {
+      id: uid("t"),
+      title: name,
+      due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
+      repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
+      memo: String(memo || ""),
+      flagged: !!flagged,
+      done: false,
+      doneAt: null,
+      createdAt: today(),
+      order: 0,
+    };
+    update((s) => {
+      s.todos.forEach((t) => { t.order = (t.order || 0) + 1; });
+      s.todos.unshift(rec);
+    });
+    return rec;
+  }
+
+  function getTodo(id) { return get().todos.find((t) => t.id === id) || null; }
+
+  function updateTodo(id, patch) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      if ("title" in patch) t.title = String(patch.title || "").trim() || t.title;
+      if ("due" in patch) t.due = /^\d{4}-\d{2}-\d{2}$/.test(patch.due) ? patch.due : null;
+      if ("repeat" in patch) {
+        t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
+      }
+      if ("memo" in patch) t.memo = String(patch.memo || "");
+      if ("flagged" in patch) t.flagged = !!patch.flagged;
+    });
+  }
+
+  /** @returns {() => void} puts it back, in its place. */
+  function removeTodo(id) {
+    const at = get().todos.findIndex((t) => t.id === id);
+    if (at < 0) return () => {};
+    const snapshot = { ...get().todos[at] };
+    update((s) => { s.todos = s.todos.filter((t) => t.id !== id); });
+    return () => update((s) => {
+      const next = s.todos.slice();
+      next.splice(Math.min(at, next.length), 0, snapshot);
+      s.todos = next;
+    });
+  }
+
+  /** The day after this one for a repeating todo, counted from the due date. */
+  function nextDue(todo) {
+    const from = todo.due || KN.util.todayKey();
+    /* Counted from the due date, then walked forward past any dates already
+       gone: ticking off a bin day three weeks late should set the next one to
+       the coming week, not to a date still in the past. */
+    let next = from;
+    const step = () => {
+      if (todo.repeat === "daily") next = KN.util.shiftDay(next, 1);
+      else if (todo.repeat === "weekly") next = KN.util.shiftDay(next, 7);
+      else next = KN.util.shiftMonth(next, 1);
+    };
+    step();
+    let guard = 0;
+    while (KN.util.daysUntil(next) < 0 && guard++ < 500) step();
+    return next;
+  }
+
+  /**
+   * Tick a todo off, or put it back.
+   *
+   * A repeating one is never finished: ticking it moves it to its next day and
+   * leaves it on the list, which is the whole point of 「毎週」. Undo has to
+   * know which of the two happened, so it is handed back rather than guessed.
+   *
+   * @returns {{repeated: boolean, due: string|null, undo: () => void}}
+   */
+  function toggleTodo(id) {
+    const before = getTodo(id);
+    if (!before) return { repeated: false, due: null, undo: () => {} };
+    const was = { done: before.done, doneAt: before.doneAt, due: before.due };
+    const repeating = !before.done && !!before.repeat;
+    const due = repeating ? nextDue(before) : before.due;
+
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      if (repeating) {
+        t.due = due;
+        t.done = false;
+        t.doneAt = null;
+      } else {
+        t.done = !t.done;
+        t.doneAt = t.done ? today() : null;
+      }
+    });
+
+    return {
+      repeated: repeating,
+      due: repeating ? due : null,
+      undo: () => update((s) => {
+        const t = s.todos.find((x) => x.id === id);
+        if (!t) return;
+        t.done = was.done;
+        t.doneAt = was.doneAt;
+        t.due = was.due;
+      }),
+    };
+  }
+
+  /* Overdue first, then by day, then by hand-order. Undated ones come last:
+     they are things to do, not things due, and a list that mixed them in
+     would bury the ones with a day on them. */
+  function sortedTodos() {
+    const rank = (t) => {
+      if (!t.due) return Number.MAX_SAFE_INTEGER;
+      return KN.util.daysUntil(t.due);
+    };
+    return get().todos.slice().sort((a, b) =>
+      rank(a) - rank(b)
+      || (b.flagged === true) - (a.flagged === true)
+      || (a.order || 0) - (b.order || 0));
+  }
+
+  /** Not done, and wanted today or already late — what the badge counts. */
+  function todosDue() {
+    return get().todos.filter((t) => !t.done && t.due && KN.util.daysUntil(t.due) <= 0);
+  }
+
   function addItem(productId, { qty = 1, memo = "" } = {}) {
     const rec = {
       id: uid("i"),
@@ -565,6 +724,7 @@
       s.stores = next.stores;
       s.products = next.products;
       s.items = next.items;
+      s.todos = next.todos;
       s.settings = next.settings;
     });
   }
@@ -615,6 +775,18 @@
       });
     });
 
+    /* A few やること too, so the sample shows what the day-grouping is for:
+       one for today that comes round every week, one already late, one with
+       no day at all. */
+    const T = (title, due, repeat) => fresh.todos.push({
+      id: uid("t"), title, due: due || null, repeat: repeat || null,
+      memo: "", flagged: false, done: false, doneAt: null,
+      createdAt: today(), order: fresh.todos.length,
+    });
+    T("ゴミ出し", KN.util.todayKey(), "weekly");
+    T("電球を買いに行く", KN.util.shiftDay(KN.util.todayKey(), -1), null);
+    T("写真を整理する", null, null);
+
     update((s) => {
       Object.keys(s).forEach((k) => delete s[k]);
       Object.assign(s, fresh);
@@ -631,6 +803,7 @@
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue,
     exportJSON, importJSON, reset, loadSample,
   };
 })();

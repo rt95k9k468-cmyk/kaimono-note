@@ -544,8 +544,56 @@
     }, true);
   }
 
+  /* ---------------- search: a button, and the bar it opens ----------------
+
+     A search bar is worth its height only while it is being used. Left up
+     permanently it costs a row of the list on every screen, every day, to
+     answer a question asked once a week — so it lives behind the magnifier
+     next to the layout button, and folds away again when the query is
+     cleared. Same three parts on every screen that has one, wired here so
+     they cannot drift apart.
+
+     @param els  { searchBtn, searchWrap, search, searchClear }
+     @param onChange  called after the query changes; repaint the list
+     @param setQuery  hands the folded query back to the screen
+  */
+  function wireSearch(els, onChange, setQuery) {
+    const paint = () => {
+      const open = !els.searchWrap.hidden;
+      els.searchBtn.classList.toggle("is-on", open);
+      els.searchBtn.setAttribute("aria-expanded", String(open));
+    };
+
+    const clear = () => {
+      els.search.value = "";
+      els.searchClear.hidden = true;
+      setQuery("");
+      onChange();
+    };
+
+    els.searchBtn.addEventListener("click", () => {
+      const opening = els.searchWrap.hidden;
+      els.searchWrap.hidden = !opening;
+      if (opening) setTimeout(() => els.search.focus(), 30);
+      else clear();
+      paint();
+      KN.util.haptic();
+    });
+
+    els.search.addEventListener("input", () => {
+      // Folded, so 「え」 finds 「エマール」 — the same rule the suggestions use.
+      els.searchClear.hidden = !els.search.value;
+      setQuery(KN.util.foldKana(els.search.value));
+      onChange();
+    });
+
+    els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });
+
+    paint();
+  }
+
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
-    isTiles, toggleLayout, paintLayoutButton, swipeActions,
+    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch,
   };
 })();

@@ -1597,6 +1597,56 @@ button, [role="tab"] {
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* ================= TODO SCREEN =================
+
+   Borrows the list screen's rows wholesale — same card, same check, same
+   swipe — because they are the same gesture on the same kind of line, and a
+   second set of row styles is a second set of things to keep in step. What is
+   different is the day: the groups it is filed under, and the chip that says
+   which day it is. */
+
+.todo-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--c-text);
+}
+/* 期限切れ is the one group that is not just a heading but a problem. */
+.todo-head.is-late { color: var(--c-danger); }
+.todo-head.is-late .cat-head-count { color: var(--c-danger); }
+
+/* A todo has no category, so its left edge is free to say the one thing about
+   a todo that a colour can: this one has run out of time. */
+.todo-wrap { --cat: var(--c-primary-soft, var(--c-border-2)); }
+.todo-wrap.is-late { --cat: var(--c-danger); }
+
+.item-when.is-late { color: #fff; background: var(--c-danger); }
+
+.todo-flag { display: inline-flex; color: var(--c-warn); flex: none; }
+.todo-flag svg { width: 14px; height: 14px; stroke-width: 2.2; fill: currentColor; }
+
+.todo-repeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.todo-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
+
+/* The swipe that deletes rather than files. Red, because it is the one action
+   on any of these screens that does not keep what it takes. */
+.swipe-arch.is-danger { background: var(--c-danger); color: #fff; }
+.swipe-arch.is-danger svg { color: #fff; }
+
+/* A chevron pointing the other way, for 「戻る」. */
+.flip-x { transform: scaleX(-1); }
+
 /* ================= SWIPE PANELS (both screens) ================= */
 
 /* One gesture, two screens, two layouts: right is the tab's positive action,
@@ -2458,6 +2508,7 @@ button, [role="tab"] {
 <body>
 <div class="app" id="app">
   <main class="screens" id="screens">
+    <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="やること" hidden></section>
     <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="買い物リスト"></section>
     <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="商品と価格" hidden></section>
     <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
@@ -2617,6 +2668,79 @@ button, [role="tab"] {
     return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}/${md}`;
   }
 
+  /* ---------- a day, without a time ----------
+
+     A due date is a day, not an instant: 「金曜まで」 means the whole of
+     Friday wherever you are standing. Stored as 「2026-08-14」 — local, no
+     zone, no hour — so it cannot slide a day backwards the way a UTC
+     timestamp does for anyone east of Greenwich. */
+
+  const pad2 = (n) => (n < 10 ? "0" + n : String(n));
+
+  /** The local day of a Date, as 「YYYY-MM-DD」. */
+  function dayKey(d) {
+    const x = d instanceof Date ? d : new Date(d);
+    if (isNaN(x.getTime())) return "";
+    return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
+  }
+
+  const todayKey = () => dayKey(new Date());
+
+  /** A day key back into a Date at local midnight. */
+  function dayDate(key) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ""));
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+
+  /** Days from today to this day: negative is past, 0 is today. */
+  function daysUntil(key) {
+    const d = dayDate(key);
+    if (!d) return null;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((d.getTime() - start.getTime()) / 86400000);
+  }
+
+  /** Shift a day key by n days. */
+  function shiftDay(key, n) {
+    const d = dayDate(key);
+    if (!d) return "";
+    d.setDate(d.getDate() + n);
+    return dayKey(d);
+  }
+
+  /** Same date n months on, clamped to the month's last day — 1/31 monthly is
+   *  2/28, not 3/3. */
+  function shiftMonth(key, n) {
+    const d = dayDate(key);
+    if (!d) return "";
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + n);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return dayKey(d);
+  }
+
+  const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+  const weekdayJa = (key) => { const d = dayDate(key); return d ? WEEKDAYS[d.getDay()] : ""; };
+
+  /* Near days by name, the rest by number. 「明日」 is read faster than a date
+     and needs no arithmetic; 「9/2(火)」 needs no calendar. */
+  function formatDay(key) {
+    const d = dayDate(key);
+    if (!d) return "";
+    const n = daysUntil(key);
+    if (n === 0) return "今日";
+    if (n === 1) return "明日";
+    if (n === 2) return "明後日";
+    if (n === -1) return "昨日";
+    const md = `${d.getMonth() + 1}/${d.getDate()}`;
+    const wd = `(${WEEKDAYS[d.getDay()]})`;
+    return d.getFullYear() === new Date().getFullYear() ? md + wd : `${d.getFullYear()}/${md}${wd}`;
+  }
+
   function relativeDate(iso) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";
@@ -2699,6 +2823,16 @@ button, [role="tab"] {
     // squares. Each button shows the layout it switches *to*.
     rows:      '<rect x="3" y="4.5" width="18" height="4.4" rx="1.4"/><rect x="3" y="15.1" width="18" height="4.4" rx="1.4"/>',
     tiles:     '<rect x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/>',
+    /* The shop, with the thing it is for drawn on it: two bars of different
+       heights. Without the mark it is just a shop, and the button does not
+       open a shop — it opens a comparison between them. */
+    shopCompare: '<path d="M3.4 8.6 5 4.2h14L20.6 8.6"/><path d="M2.8 8.6h18.4"/><path d="M4.6 8.6v11.2h14.8V8.6"/><path d="M9 17.4v-3.6M12 17.4v-5.8M15 17.4v-2.2"/>',
+    /* A list with things ticked off it. Deliberately not the shopping list's
+       icon — the two tabs sit side by side and must not read as one. */
+    checklist: '<path d="M3.2 6.4 4.9 8.1 8 5"/><path d="M3.2 12.4 4.9 14.1 8 11"/><path d="M3.2 18.4 4.9 20.1 8 17"/><path d="M11 6.6h9.8M11 12.6h9.8M11 18.6h6.4"/>',
+    calendar:  '<rect x="3" y="5" width="18" height="16" rx="2.4"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    repeat:    '<path d="M4 9.4V8a3 3 0 0 1 3-3h11"/><path d="m15 2 3 3-3 3"/><path d="M20 14.6V16a3 3 0 0 1-3 3H6"/><path d="m9 22-3-3 3-3"/>',
+    flag:      '<path d="M5 21V4"/><path d="M5 4.6h11.6l-2 3.6 2 3.6H5"/>',
   };
 
   /** Inline stroke icon. */
@@ -2803,6 +2937,7 @@ button, [role="tab"] {
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, relativeDate, foldKana,
+    dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,
@@ -6735,6 +6870,9 @@ button, [role="tab"] {
       stores: [],
       products: [],
       items: [],
+      // やること。買い物とは別の暮らしの用事で、値段も店も持たない代わりに
+      // 日付と繰り返しを持つ。
+      todos: [],
       // Corrections the user has made by hand: folded product name → category.
       learned: {},
       // layout: "rows" | "tiles" — one setting for both lists, because a
@@ -6775,6 +6913,7 @@ button, [role="tab"] {
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
     out.items    = Array.isArray(s.items)    ? s.items    : [];
+    out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
     out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
@@ -6800,6 +6939,25 @@ button, [role="tab"] {
     out.items = out.items.filter((i) => out.products.some((p) => p.id === i.productId));
     // Lists saved before favourites existed carry no flag; absent means off.
     out.items.forEach((i) => { i.fav = i.fav === true; });
+
+    /* Todos, filled in rather than trusted: this list is also what an imported
+       backup lands in, and a half-written todo would take the screen down. A
+       due date is either a 「YYYY-MM-DD」 day or nothing at all — anything
+       else (an old ISO timestamp, a typo) is dropped rather than shown as
+       「Invalid Date」. */
+    out.todos = out.todos.filter((t) => t && typeof t === "object").map((t, i) => ({
+      id: t.id || uid("t"),
+      title: String(t.title || "").trim(),
+      due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : null,
+      repeat: ["daily", "weekly", "monthly"].includes(t.repeat) ? t.repeat : null,
+      memo: typeof t.memo === "string" ? t.memo : "",
+      flagged: t.flagged === true,
+      done: t.done === true,
+      doneAt: t.doneAt || null,
+      createdAt: t.createdAt || today(),
+      order: typeof t.order === "number" ? t.order : i,
+    })).filter((t) => t.title);
+
     out.schema = SCHEMA;
     return out;
   }
@@ -7158,6 +7316,142 @@ button, [role="tab"] {
     return rec;
   }
 
+  /* ---------------- やること ----------------
+
+     A todo is a much smaller thing than a product: a line of text, and at most
+     a day it is wanted by. Everything else here exists because of that day —
+     what is overdue, what repeats, what the icon should count. */
+
+  function addTodo({ title, due = null, repeat = null, memo = "", flagged = false } = {}) {
+    const name = String(title || "").trim();
+    if (!name) return null;
+    const rec = {
+      id: uid("t"),
+      title: name,
+      due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
+      repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
+      memo: String(memo || ""),
+      flagged: !!flagged,
+      done: false,
+      doneAt: null,
+      createdAt: today(),
+      order: 0,
+    };
+    update((s) => {
+      s.todos.forEach((t) => { t.order = (t.order || 0) + 1; });
+      s.todos.unshift(rec);
+    });
+    return rec;
+  }
+
+  function getTodo(id) { return get().todos.find((t) => t.id === id) || null; }
+
+  function updateTodo(id, patch) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      if ("title" in patch) t.title = String(patch.title || "").trim() || t.title;
+      if ("due" in patch) t.due = /^\d{4}-\d{2}-\d{2}$/.test(patch.due) ? patch.due : null;
+      if ("repeat" in patch) {
+        t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
+      }
+      if ("memo" in patch) t.memo = String(patch.memo || "");
+      if ("flagged" in patch) t.flagged = !!patch.flagged;
+    });
+  }
+
+  /** @returns {() => void} puts it back, in its place. */
+  function removeTodo(id) {
+    const at = get().todos.findIndex((t) => t.id === id);
+    if (at < 0) return () => {};
+    const snapshot = { ...get().todos[at] };
+    update((s) => { s.todos = s.todos.filter((t) => t.id !== id); });
+    return () => update((s) => {
+      const next = s.todos.slice();
+      next.splice(Math.min(at, next.length), 0, snapshot);
+      s.todos = next;
+    });
+  }
+
+  /** The day after this one for a repeating todo, counted from the due date. */
+  function nextDue(todo) {
+    const from = todo.due || KN.util.todayKey();
+    /* Counted from the due date, then walked forward past any dates already
+       gone: ticking off a bin day three weeks late should set the next one to
+       the coming week, not to a date still in the past. */
+    let next = from;
+    const step = () => {
+      if (todo.repeat === "daily") next = KN.util.shiftDay(next, 1);
+      else if (todo.repeat === "weekly") next = KN.util.shiftDay(next, 7);
+      else next = KN.util.shiftMonth(next, 1);
+    };
+    step();
+    let guard = 0;
+    while (KN.util.daysUntil(next) < 0 && guard++ < 500) step();
+    return next;
+  }
+
+  /**
+   * Tick a todo off, or put it back.
+   *
+   * A repeating one is never finished: ticking it moves it to its next day and
+   * leaves it on the list, which is the whole point of 「毎週」. Undo has to
+   * know which of the two happened, so it is handed back rather than guessed.
+   *
+   * @returns {{repeated: boolean, due: string|null, undo: () => void}}
+   */
+  function toggleTodo(id) {
+    const before = getTodo(id);
+    if (!before) return { repeated: false, due: null, undo: () => {} };
+    const was = { done: before.done, doneAt: before.doneAt, due: before.due };
+    const repeating = !before.done && !!before.repeat;
+    const due = repeating ? nextDue(before) : before.due;
+
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      if (repeating) {
+        t.due = due;
+        t.done = false;
+        t.doneAt = null;
+      } else {
+        t.done = !t.done;
+        t.doneAt = t.done ? today() : null;
+      }
+    });
+
+    return {
+      repeated: repeating,
+      due: repeating ? due : null,
+      undo: () => update((s) => {
+        const t = s.todos.find((x) => x.id === id);
+        if (!t) return;
+        t.done = was.done;
+        t.doneAt = was.doneAt;
+        t.due = was.due;
+      }),
+    };
+  }
+
+  /* Overdue first, then by day, then by hand-order. Undated ones come last:
+     they are things to do, not things due, and a list that mixed them in
+     would bury the ones with a day on them. */
+  function sortedTodos() {
+    const rank = (t) => {
+      if (!t.due) return Number.MAX_SAFE_INTEGER;
+      return KN.util.daysUntil(t.due);
+    };
+    return get().todos.slice().sort((a, b) =>
+      rank(a) - rank(b)
+      || (b.flagged === true) - (a.flagged === true)
+      || (a.order || 0) - (b.order || 0));
+  }
+
+  /** Not done, and wanted today or already late — what the badge counts. */
+  function todosDue() {
+    return get().todos.filter((t) => !t.done && t.due && KN.util.daysUntil(t.due) <= 0);
+  }
+
   function addItem(productId, { qty = 1, memo = "" } = {}) {
     const rec = {
       id: uid("i"),
@@ -7250,6 +7544,7 @@ button, [role="tab"] {
       s.stores = next.stores;
       s.products = next.products;
       s.items = next.items;
+      s.todos = next.todos;
       s.settings = next.settings;
     });
   }
@@ -7300,6 +7595,18 @@ button, [role="tab"] {
       });
     });
 
+    /* A few やること too, so the sample shows what the day-grouping is for:
+       one for today that comes round every week, one already late, one with
+       no day at all. */
+    const T = (title, due, repeat) => fresh.todos.push({
+      id: uid("t"), title, due: due || null, repeat: repeat || null,
+      memo: "", flagged: false, done: false, doneAt: null,
+      createdAt: today(), order: fresh.todos.length,
+    });
+    T("ゴミ出し", KN.util.todayKey(), "weekly");
+    T("電球を買いに行く", KN.util.shiftDay(KN.util.todayKey(), -1), null);
+    T("写真を整理する", null, null);
+
     update((s) => {
       Object.keys(s).forEach((k) => delete s[k]);
       Object.assign(s, fresh);
@@ -7316,6 +7623,7 @@ button, [role="tab"] {
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -7867,9 +8175,57 @@ button, [role="tab"] {
     }, true);
   }
 
+  /* ---------------- search: a button, and the bar it opens ----------------
+
+     A search bar is worth its height only while it is being used. Left up
+     permanently it costs a row of the list on every screen, every day, to
+     answer a question asked once a week — so it lives behind the magnifier
+     next to the layout button, and folds away again when the query is
+     cleared. Same three parts on every screen that has one, wired here so
+     they cannot drift apart.
+
+     @param els  { searchBtn, searchWrap, search, searchClear }
+     @param onChange  called after the query changes; repaint the list
+     @param setQuery  hands the folded query back to the screen
+  */
+  function wireSearch(els, onChange, setQuery) {
+    const paint = () => {
+      const open = !els.searchWrap.hidden;
+      els.searchBtn.classList.toggle("is-on", open);
+      els.searchBtn.setAttribute("aria-expanded", String(open));
+    };
+
+    const clear = () => {
+      els.search.value = "";
+      els.searchClear.hidden = true;
+      setQuery("");
+      onChange();
+    };
+
+    els.searchBtn.addEventListener("click", () => {
+      const opening = els.searchWrap.hidden;
+      els.searchWrap.hidden = !opening;
+      if (opening) setTimeout(() => els.search.focus(), 30);
+      else clear();
+      paint();
+      KN.util.haptic();
+    });
+
+    els.search.addEventListener("input", () => {
+      // Folded, so 「え」 finds 「エマール」 — the same rule the suggestions use.
+      els.searchClear.hidden = !els.search.value;
+      setQuery(KN.util.foldKana(els.search.value));
+      onChange();
+    });
+
+    els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });
+
+    paint();
+  }
+
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
-    isTiles, toggleLayout, paintLayoutButton, swipeActions,
+    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch,
   };
 })();
 
@@ -10159,6 +10515,443 @@ button, [role="tab"] {
   KN.productSheet = { open };
 })();
 
+/* ---- js/screen-todo.js ---- */
+/* =========================================================
+   かいものノート — やること
+
+   The shopping list answers 「何を買う」. This one answers 「いつまでに何を
+   する」, which is a different question with a different shape: no prices, no
+   shops, no categories — a line of text and, when it matters, the day it is
+   wanted by.
+
+   Everything on this screen is arranged around that day. The list is grouped
+   by it (late / today / tomorrow / this week / later / no date), the app icon
+   counts what is due by it, and 「毎週」 is what keeps a day from being a
+   one-off — ticking a repeating todo does not finish it, it moves it to its
+   next day.
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic, formatDay, todayKey, daysUntil, shiftDay } = KN.util;
+  const store = KN.store;
+
+  let root = null;
+  let els = {};
+  let query = "";
+
+  const REPEATS = [
+    { id: null,      label: "なし" },
+    { id: "daily",   label: "毎日" },
+    { id: "weekly",  label: "毎週" },
+    { id: "monthly", label: "毎月" },
+  ];
+  const repeatLabel = (id) => (REPEATS.find((r) => r.id === id) || REPEATS[0]).label;
+
+  /* ---------------- mount ---------------- */
+
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+
+    const chrome = node(html`
+      <div class="stack">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div style="flex:1;min-width:0">
+              <h1 class="topbar-title">やること</h1>
+              <div class="topbar-sub js-sub"></div>
+            </div>
+            <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
+          </div>
+        </header>
+
+        <div class="search-wrap js-search-wrap" hidden>
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-search" placeholder="やることを探す" aria-label="やることを探す"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+          </div>
+        </div>
+
+        <div class="js-body"></div>
+      </div>
+    `);
+
+    root.append(chrome);
+
+    els = {
+      sub:       chrome.querySelector(".js-sub"),
+      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
+      search:    chrome.querySelector(".js-search"),
+      searchClear: chrome.querySelector(".js-search-clear"),
+      body:      chrome.querySelector(".js-body"),
+      topbar:    chrome.querySelector(".topbar"),
+    };
+
+    KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
+
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    });
+  }
+
+  /* ---------------- the add / edit sheet ---------------- */
+
+  /* One sheet for both, because a todo written in a hurry is the same object
+     as a todo corrected later, and two forms that differ by a title bar is two
+     places for a field to go missing from. */
+  function openSheet(todoId) {
+    const editing = !!todoId;
+    const t = editing ? store.getTodo(todoId) : null;
+    if (editing && !t) return;
+
+    let due = editing ? t.due : null;
+    let repeat = editing ? t.repeat : null;
+    let flagged = editing ? !!t.flagged : false;
+    haptic(10);
+
+    const body = node(html`
+      <div class="stack" style="gap:18px">
+        <div class="field">
+          <span class="field-label">やること</span>
+          <input class="input js-title" placeholder="例：ゴミ出し・電球を替える"
+                 value="${editing ? t.title : ""}"
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+
+        <div class="field">
+          <span class="field-label">いつまでに</span>
+          <div class="js-due-chips"></div>
+          <input class="input js-due" type="date" value="${editing && t.due ? t.due : ""}"
+                 aria-label="日付を選ぶ">
+          <span class="field-hint">日付を決めると、その日からアプリのアイコンに数が出ます</span>
+        </div>
+
+        <div class="field">
+          <span class="field-label">くりかえし</span>
+          <div class="js-repeat"></div>
+        </div>
+
+        <div class="field">
+          <button type="button" class="icon-auto fav-toggle js-flag" aria-pressed="${String(flagged)}">
+            <span class="icon-pick-mark js-flag-mark">${icon("flag")}</span>
+            <span class="icon-pick-text">
+              <span class="icon-pick-name">目印を付ける</span>
+              <span class="icon-pick-sub js-flag-sub">同じ日のなかで先に出てきます</span>
+            </span>
+          </button>
+        </div>
+
+        <label class="field">
+          <span class="field-label">メモ（任意）</span>
+          <textarea class="input memo-input js-memo" rows="3"
+                    placeholder="例：可燃ごみ・8時まで">${editing ? t.memo || "" : ""}</textarea>
+        </label>
+
+        ${editing ? html`
+          <button type="button" class="btn btn-soft js-delete" style="color:var(--c-danger)">
+            このやることを削除
+          </button>` : ""}
+      </div>
+    `);
+
+    const titleEl = body.querySelector(".js-title");
+    const dueEl = body.querySelector(".js-due");
+    const flagBtn = body.querySelector(".js-flag");
+    const foot = node(html`
+      <button class="btn btn-primary btn-block js-save" ${editing ? "" : KN.util.raw("disabled")}>
+        ${editing ? "保存" : "追加"}
+      </button>
+    `);
+
+    const handle = KN.ui.sheet({
+      title: editing ? "やることを直す" : "やることを追加",
+      content: body,
+      footer: foot,
+    });
+
+    /* The three days a todo is nearly always for, then the calendar for the
+       rest. Typing a date into a date field is four taps that 「今日」 does in
+       one, and 「今日」 is what most of these are. */
+    function paintDueChips() {
+      const opts = [
+        { id: todayKey(), label: "今日" },
+        { id: shiftDay(todayKey(), 1), label: "明日" },
+        { id: shiftDay(todayKey(), 7), label: "1週間後" },
+        { id: "", label: "なし" },
+      ];
+      KN.ui.chipRow(body.querySelector(".js-due-chips"), opts.map((o) => ({ id: o.id, label: o.label })), {
+        activeId: due || "",
+        onPick: (id) => {
+          due = id || null;
+          dueEl.value = due || "";
+          paintDueChips();
+          haptic();
+        },
+      });
+    }
+    paintDueChips();
+
+    dueEl.addEventListener("change", () => {
+      due = dueEl.value || null;
+      paintDueChips();
+    });
+
+    function paintRepeat() {
+      KN.ui.chipRow(body.querySelector(".js-repeat"),
+        REPEATS.map((r) => ({ id: r.id || "", label: r.label })), {
+          activeId: repeat || "",
+          onPick: (id) => { repeat = id || null; paintRepeat(); haptic(); },
+        });
+    }
+    paintRepeat();
+
+    flagBtn.classList.toggle("is-on", flagged);
+    flagBtn.addEventListener("click", () => {
+      flagged = !flagged;
+      flagBtn.classList.toggle("is-on", flagged);
+      flagBtn.setAttribute("aria-pressed", String(flagged));
+      haptic(10);
+    });
+
+    titleEl.addEventListener("input", () => { foot.disabled = !titleEl.value.trim(); });
+
+    foot.addEventListener("click", () => {
+      const title = titleEl.value.trim();
+      if (!title) return;
+      const memo = body.querySelector(".js-memo").value;
+      if (editing) {
+        store.updateTodo(todoId, { title, due, repeat, memo, flagged });
+        KN.ui.toast("直しました");
+      } else {
+        store.addTodo({ title, due, repeat, memo, flagged });
+        KN.ui.toast(due
+          ? `「${title}」を${formatDay(due)}までに`
+          : `「${title}」を追加しました`);
+      }
+      haptic(12);
+      handle.close();
+    });
+
+    const del = body.querySelector(".js-delete");
+    if (del) {
+      del.addEventListener("click", () => {
+        const undo = store.removeTodo(todoId);
+        haptic(14);
+        handle.close();
+        KN.ui.toast("削除しました", { action: { label: "元に戻す", onClick: undo } });
+      });
+    }
+
+    if (!editing) setTimeout(() => titleEl.focus(), 120);
+  }
+
+  /* ---------------- rows ---------------- */
+
+  function todoRow(t) {
+    const late = !t.done && t.due && daysUntil(t.due) < 0;
+    const wrap = node(html`
+      <article class="item-wrap todo-wrap ${late ? "is-late" : ""}" data-todo-id="${t.id}">
+        <div class="swipe-yes">
+          ${icon("calendar")}<span>今日にする</span>
+        </div>
+        <div class="swipe-arch is-danger">
+          <span>削除</span>${icon("trash")}
+        </div>
+      </article>
+    `);
+
+    const row = node(html`
+      <div class="item todo ${t.done ? "is-checked" : ""} ${late ? "is-late" : ""}">
+        <button class="check" role="checkbox" aria-checked="${String(t.done)}"
+                aria-label="${t.title} を終わりにする">${icon("check")}</button>
+        <button class="item-body">
+          <span class="item-name-row">
+            ${t.flagged ? html`<span class="todo-flag" aria-label="目印">${icon("flag")}</span>` : ""}
+            <span class="item-name">${t.title}</span>
+          </span>
+          <span class="item-meta">
+            ${t.due
+              ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>`
+              : ""}
+            ${t.repeat
+              ? html`<span class="todo-repeat">${icon("repeat")}${repeatLabel(t.repeat)}</span>` : ""}
+            ${t.done && t.doneAt
+              ? html`<span class="item-when">${KN.util.formatDate(t.doneAt)}</span>` : ""}
+            ${t.memo ? html`<span class="item-memo">${t.memo}</span>` : ""}
+          </span>
+        </button>
+      </div>
+    `);
+    wrap.append(row);
+
+    row.querySelector(".check").addEventListener("click", () => tick(t.id));
+    row.querySelector(".item-body").addEventListener("click", () => openSheet(t.id));
+
+    KN.ui.swipeActions(wrap, row, {
+      onRight: () => {
+        store.updateTodo(t.id, { due: todayKey() });
+        haptic(12);
+        KN.ui.toast(`「${t.title}」を今日にしました`);
+      },
+      onLeft: () => {
+        const undo = store.removeTodo(t.id);
+        haptic(14);
+        KN.ui.toast(`「${t.title}」を削除しました`, { action: { label: "元に戻す", onClick: undo } });
+      },
+    });
+    return wrap;
+  }
+
+  /* A repeating todo says out loud where it went. Otherwise ticking 「ゴミ出し」
+     looks like nothing happened — the row stays, because the next one is due. */
+  function tick(id) {
+    const t = store.getTodo(id);
+    const res = store.toggleTodo(id);
+    haptic(12);
+    if (res.repeated) {
+      KN.ui.toast(`「${t.title}」は次は ${formatDay(res.due)}`, {
+        action: { label: "元に戻す", onClick: res.undo },
+      });
+    }
+  }
+
+  /* ---------------- render ---------------- */
+
+  function render() {
+    const todos = store.get().todos;
+    const left = todos.filter((t) => !t.done).length;
+    const dueNow = store.todosDue().length;
+    els.sub.textContent = todos.length
+      ? (dueNow ? `残り${left}件 ・ 今日までが${dueNow}件` : `残り${left}件`)
+      : "";
+    renderBody();
+  }
+
+  /* Groups, in the order a day is lived: what is already late, then today,
+     then what is coming, then the things with no day at all. Empty groups are
+     not drawn — a heading over nothing is a heading that has to be read and
+     then dismissed. */
+  const GROUPS = [
+    { id: "late",  label: "期限切れ",  match: (n) => n !== null && n < 0 },
+    { id: "today", label: "今日",      match: (n) => n === 0 },
+    { id: "tom",   label: "明日",      match: (n) => n === 1 },
+    { id: "week",  label: "今週",      match: (n) => n !== null && n >= 2 && n <= 7 },
+    { id: "later", label: "それ以降",  match: (n) => n !== null && n > 7 },
+    { id: "none",  label: "日付なし",  match: (n) => n === null },
+  ];
+
+  function renderBody() {
+    els.body.innerHTML = "";
+    const all = store.sortedTodos();
+    const q = query;
+    const hit = (t) => !q
+      || KN.util.foldKana(t.title).includes(q)
+      || KN.util.foldKana(t.memo || "").includes(q);
+
+    const shown = all.filter(hit);
+    const open = shown.filter((t) => !t.done);
+    const done = shown.filter((t) => t.done);
+
+    if (!all.length) {
+      els.body.append(node(html`
+        <div class="empty">
+          <div class="empty-art">✅</div>
+          <h2 class="empty-title">やることはありません</h2>
+          <p class="empty-text">
+            下の＋から追加できます。日付を決めておくと、その日が来たときに
+            アプリのアイコンに数が出ます。
+          </p>
+        </div>
+      `));
+      return;
+    }
+
+    if (!shown.length) {
+      els.body.append(node(html`
+        <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
+          見つかりませんでした
+        </p>
+      `));
+      return;
+    }
+
+    GROUPS.forEach((g) => {
+      const rows = open.filter((t) => g.match(t.due ? daysUntil(t.due) : null));
+      if (!rows.length) return;
+      const section = node(html`
+        <section class="cat-group">
+          <h2 class="todo-head ${g.id === "late" ? "is-late" : ""}">
+            <span>${g.label}</span>
+            <span class="cat-head-count">${rows.length}</span>
+          </h2>
+          <div class="item-list js-rows"></div>
+        </section>
+      `);
+      const box = section.querySelector(".js-rows");
+      rows.forEach((t) => box.append(todoRow(t)));
+      els.body.append(section);
+    });
+
+    if (!open.length) {
+      els.body.append(node(html`
+        <p style="text-align:center;color:var(--c-text-3);padding:28px 16px">
+          やることは全部おわりました
+        </p>
+      `));
+    }
+
+    if (done.length) els.body.append(archiveSection(done));
+  }
+
+  /* Finished todos, dated, newest first — the same drawer, in the same words,
+     as the shopping list's and the price screen's. */
+  function archiveSection(done) {
+    const open = store.get().settings.showTodoArchive === true;
+
+    const section = node(html`
+      <section class="cat-group">
+        <button class="done-head" aria-expanded="${String(open)}">
+          ${icon("chevron")} アーカイブ <span class="cat-head-count">${done.length}</span>
+        </button>
+        <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
+      </section>
+    `);
+
+    if (open) {
+      const box = section.querySelector(".js-done");
+      done.slice()
+        .sort((a, b) => String(b.doneAt || "").localeCompare(String(a.doneAt || "")))
+        .forEach((t) => box.append(todoRow(t)));
+    }
+
+    section.querySelector(".done-head").addEventListener("click", () => {
+      store.update((s) => { s.settings.showTodoArchive = !open; });
+    });
+
+    return section;
+  }
+
+  /** The ＋ the shell floats over this screen. */
+  function dockButton() {
+    const fab = node(html`
+      <div class="quick-add">
+        <button class="add-fab js-open-add" aria-label="やることを追加">${icon("plus")}</button>
+      </div>
+    `);
+    fab.querySelector(".js-open-add").addEventListener("click", () => openSheet(null));
+    return fab;
+  }
+
+  KN.screens = KN.screens || {};
+  KN.screens.todo = { mount, render, dockButton };
+})();
+
 /* ---- js/screen-list.js ---- */
 /* =========================================================
    かいものノート — shopping list screen
@@ -10173,6 +10966,7 @@ button, [role="tab"] {
   let root = null;
   let els = {};
   let categoryFilter = null;   // categoryId or null = all
+  let query = "";              // folded, from the search bar
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -10192,10 +10986,27 @@ button, [role="tab"] {
                  something is not a reason to throw the record of it away, and
                  there is no moment in a shop where that is the thing you
                  reach for. What is bought drops into the archive below,
-                 dated, and stays there. */""}
+                 dated, and stays there.
+
+                 The three that are here are the same three, in the same
+                 order, on this screen and on 価格: くらべる・並べ方・さがす. */""}
+            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
+              ${icon("shopCompare")}
+            </button>
             <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
           </div>
         </header>
+
+        <div class="search-wrap js-search-wrap" hidden>
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-search" placeholder="リストの中を探す" aria-label="リストの中を探す"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+          </div>
+        </div>
 
         <div class="progress-wrap js-progress-wrap" hidden>
           <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
@@ -10211,6 +11022,11 @@ button, [role="tab"] {
     els = {
       sub:        chrome.querySelector(".js-sub"),
       layout:     chrome.querySelector(".js-layout"),
+      compare:    chrome.querySelector(".js-compare"),
+      searchBtn:  chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
+      search:     chrome.querySelector(".js-search"),
+      searchClear: chrome.querySelector(".js-search-clear"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
@@ -10219,6 +11035,8 @@ button, [role="tab"] {
     };
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
+    els.compare.addEventListener("click", () => KN.showScreen("compare"));
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -10486,7 +11304,20 @@ button, [role="tab"] {
     KN.ui.paintLayoutButton(els.layout);
 
     renderFilter(items);
-    renderBody(items);
+    /* Searching narrows the rows, not the header: the counts above still
+       describe the whole trip, because a search is a way of looking at the
+       list rather than a change to it. */
+    renderBody(query ? items.filter(matchesQuery) : items);
+  }
+
+  /** Name, memo, or category — whichever the query happens to be. */
+  function matchesQuery(item) {
+    const p = store.getProduct(item.productId);
+    if (!p) return false;
+    const cat = store.getCategory(p.categoryId);
+    return KN.util.foldKana(p.name).includes(query)
+      || KN.util.foldKana(item.memo || "").includes(query)
+      || (!!cat && KN.util.foldKana(cat.name).includes(query));
   }
 
   function renderFilter(items) {
@@ -10519,7 +11350,15 @@ button, [role="tab"] {
     els.body.innerHTML = "";
 
     if (!items.length) {
-      els.body.append(emptyState());
+      // An empty search is not an empty list, and offering 「サンプルを入れて
+      // 試す」 to someone who just typed a name would be answering the wrong
+      // question entirely.
+      els.body.append(query
+        ? node(html`
+            <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
+              見つかりませんでした
+            </p>`)
+        : emptyState());
       return;
     }
 
@@ -10929,19 +11768,28 @@ button, [role="tab"] {
                  button the list screen has, in the dock at the bottom
                  middle. Two screens that both add a thing should add it with
                  the same motion, and the corner of a top bar is the far end
-                 of a phone from where the hand is. */""}
+                 of a phone from where the hand is.
+
+                 What is here is the same three, in the same order, as on
+                 リスト: くらべる・並べ方・さがす. */""}
+            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
+              ${icon("shopCompare")}
+            </button>
             <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
           </div>
         </header>
 
-        <div class="search-wrap">
+        ${/* Folded away until asked for. It used to sit open under the title on
+              every visit, spending a row of the screen on a question asked
+              once in a while. */""}
+        <div class="search-wrap js-search-wrap" hidden>
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-clear" aria-label="検索をクリア" style="width:28px;height:28px" hidden>
-              ${icon("close")}
-            </button>
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
           </div>
         </div>
 
@@ -10954,29 +11802,19 @@ button, [role="tab"] {
 
     els = {
       sub:     chrome.querySelector(".js-sub"),
+      compare: chrome.querySelector(".js-compare"),
+      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
-      clear:   chrome.querySelector(".js-clear"),
+      searchClear: chrome.querySelector(".js-search-clear"),
       layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
     };
 
-    els.search.addEventListener("input", () => {
-      // Folded so this behaves like the list screen's suggestions:
-      // 「え」finds「エマール」.
-      query = KN.util.foldKana(els.search.value);
-      els.clear.hidden = !query;
-      renderBody();
-    });
-
-    els.clear.addEventListener("click", () => {
-      query = "";
-      els.search.value = "";
-      els.clear.hidden = true;
-      renderBody();
-    });
-
+    KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
+    els.compare.addEventListener("click", () => KN.showScreen("compare"));
     els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
@@ -11331,8 +12169,15 @@ button, [role="tab"] {
 
     const chrome = node(html`
       <div class="stack">
+        ${/* No tab of its own any more — comparing shops is something done a
+              few times while deciding where to go, not a place to live in. It
+              opens from the shop button on リスト and 価格, and carries its
+              own way back to whichever of them asked for it. */""}
         <header class="topbar">
           <div class="topbar-row">
+            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
+              ${icon("chevron", "flip-x")}
+            </button>
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">お店くらべ</h1>
               <div class="topbar-sub js-sub"></div>
@@ -11349,6 +12194,8 @@ button, [role="tab"] {
       body:   chrome.querySelector(".js-body"),
       topbar: chrome.querySelector(".topbar"),
     };
+
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -11731,7 +12578,7 @@ button, [role="tab"] {
           : (on ? "var(--c-primary)" : "var(--c-text-3)");
         sub.textContent = blocked
           ? "端末の設定で、このアプリの通知を許可すると出るようになります"
-          : (on ? "ホーム画面のアイコンに、今回買うものの残りが出ます"
+          : (on ? "ホーム画面のアイコンに、今回買うものと、今日までのやることの数が出ます"
                 : "iPhone では、通知の許可を求められます（通知は送りません）");
       };
       paint();
@@ -12292,10 +13139,16 @@ button, [role="tab"] {
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
+  /* お店くらべ is not among these any more. It is a thing you do a few times
+     while deciding where to go, not a place you live in, and a quarter of the
+     bar is a lot of permanent furniture for that — it opens from the shop
+     button on リスト and 価格 instead. やること takes the freed place, at the
+     left, because it is the screen you open first when the question is 「今日
+     なにをするんだっけ」 rather than 「何を買うんだっけ」. */
   const TABS = [
+    { id: "todo",     label: "やること", icon: "checklist" },
     { id: "list",     label: "リスト",   icon: "list"  },
     { id: "prices",   label: "価格",     icon: "tag"   },
-    { id: "compare",  label: "お店",     icon: "shop"  },
     { id: "settings", label: "設定",     icon: "gear"  },
   ];
 
@@ -12342,14 +13195,21 @@ button, [role="tab"] {
     // user never said they were buying.
     paintAppBadge();
 
-    const listTab = document.querySelector('.tab[data-tab="list"]');
-    if (!listTab) return;
-    const pending = pendingCount();
-    const existing = listTab.querySelector(".tab-badge");
-    if (pending > 0) {
-      const text = pending > 99 ? "99+" : String(pending);
+    paintTabBadge("list", tripCount());
+    // やること counts what is wanted today or already late. Something due next
+    // week is not a number you can act on today, and a tab that counts the
+    // whole backlog is a tab you learn to ignore.
+    paintTabBadge("todo", store.todosDue().length);
+  }
+
+  function paintTabBadge(tabId, count) {
+    const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+    if (!tab) return;
+    const existing = tab.querySelector(".tab-badge");
+    if (count > 0) {
+      const text = count > 99 ? "99+" : String(count);
       if (existing) existing.textContent = text;
-      else listTab.append(node(html`<span class="tab-badge">${text}</span>`));
+      else tab.append(node(html`<span class="tab-badge">${text}</span>`));
     } else if (existing) {
       existing.remove();
     }
@@ -12366,7 +13226,14 @@ button, [role="tab"] {
      badge off the *notification* permission, so switching it on means asking
      for a permission whose dialog talks about notifications this app will
      never send. That is not a prompt to spring on anyone unasked. */
-  const pendingCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+  /** Left to buy on the trip being shopped now. */
+  const tripCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+
+  /* What the home-screen icon counts: this trip's shopping, plus the やること
+     that are wanted today or are already late. Both are 「things I said I
+     would do and have not」, which is the only kind of number worth putting on
+     an app icon; a todo due next Friday is not one of them yet. */
+  const pendingCount = () => tripCount() + store.todosDue().length;
 
   const badgeSupported = () => typeof navigator !== "undefined" && !!navigator.setAppBadge;
 
@@ -12445,8 +13312,13 @@ button, [role="tab"] {
     disable: disableAppBadge,
   };
 
+  /* Where the shop button came from, so 「戻る」 on お店くらべ goes back to the
+     screen that opened it rather than always to リスト. */
+  let cameFrom = "list";
+
   function show(id) {
     if (!KN.screens[id]) return;
+    if (id === "compare" && active !== "compare") cameFrom = active;
     active = id;
 
     document.querySelectorAll(".screen").forEach((s) => {
@@ -12513,6 +13385,20 @@ button, [role="tab"] {
     window.addEventListener("storage", (e) => {
       if (e.key === store.KEY) location.reload();
     });
+
+    /* Sunrise. A due date is only 「今日」 until midnight, and a phone that
+       sits open on the kitchen counter overnight would otherwise still be
+       showing yesterday's groupings and yesterday's badge. Checked once a
+       minute, and only acted on when the day actually turns. */
+    let dayNow = KN.util.todayKey();
+    setInterval(() => {
+      const key = KN.util.todayKey();
+      if (key === dayNow) return;
+      dayNow = key;
+      if (KN.screens[active]) KN.screens[active].render();
+      paintTabs();
+      paintAppBadge(true);
+    }, 60000);
 
     requestPersistentStorage();
     trackKeyboard();
@@ -12725,6 +13611,11 @@ button, [role="tab"] {
       });
     });
   }
+
+  /* Screens off the tab bar — お店くらべ — are opened by name from the screens
+     that link to them, and hand the way back with them. */
+  KN.showScreen = show;
+  KN.backScreen = () => show(cameFrom === "compare" ? "list" : cameFrom);
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {
