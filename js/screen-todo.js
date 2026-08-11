@@ -30,6 +30,17 @@
   ];
   const WD = KN.util.WEEKDAYS;
 
+  /* 朝・午後・夜。The three shelves 今日 is divided into, and the three a todo
+     can be filed under when it has a day. Not a clock: 「朝」 is where a bin
+     day belongs, and a time would be a promise the app cannot keep — it sends
+     no alarms. */
+  const PARTS = [
+    { id: "am",    label: "朝",   color: "#e05a3a" },
+    { id: "pm",    label: "午後", color: "#e0703a" },
+    { id: "night", label: "夜",   color: "#e08a3a" },
+  ];
+  const partLabel = (id) => (PARTS.find((p) => p.id === id) || {}).label || "";
+
   /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. The rows are
      read at a glance, so they carry the whole rule rather than the frequency
      with the details hidden in a sheet. */
@@ -110,6 +121,7 @@
     if (editing && !t) return;
 
     let due = editing ? t.due : null;
+    let part = editing ? t.part : null;
     let repeat = editing ? t.repeat : null;
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
@@ -130,6 +142,10 @@
           <div class="js-due-chips"></div>
           <input class="input js-due" type="date" value="${editing && t.due ? t.due : ""}"
                  aria-label="日付を選ぶ">
+          ${/* Which part of the day, for the ones where it matters. Not a
+                clock: 「朝」 is where a bin day belongs, and a time would be a
+                promise the app cannot keep — it sends no alarms. */""}
+          <div class="js-part"></div>
           <span class="field-hint js-due-hint"></span>
         </div>
 
@@ -201,6 +217,7 @@
           due = id || null;
           dueEl.value = due || "";
           paintDueChips();
+          paintPart();
           paintHint();
           paintRepeatDetail();
           haptic();
@@ -240,12 +257,25 @@
       hintEl.append(b);
     }
 
+    function paintPart() {
+      const host = body.querySelector(".js-part");
+      host.hidden = !due;
+      if (host.hidden) return;
+      KN.ui.chipRow(host,
+        [{ id: "", label: "いつでも" }].concat(PARTS.map((p) => ({ id: p.id, label: p.label }))), {
+          activeId: part || "",
+          onPick: (id) => { part = id || null; paintPart(); haptic(); },
+        });
+    }
+
     paintDueChips();
+    paintPart();
     paintHint();
 
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
       paintDueChips();
+      paintPart();
       paintHint();
       paintRepeatDetail();
     });
@@ -353,10 +383,12 @@
       const rule = { repeat, repeatDays, repeatNth };
       const fixed = due ? store.snapToRule(rule, due) : due;
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, repeat, repeatDays, repeatNth, memo, flagged });
+        store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null,
+          repeat, repeatDays, repeatNth, memo, flagged });
         KN.ui.toast(fixed !== due ? `${formatDay(fixed)}にしました` : "直しました");
       } else {
-        store.addTodo({ title, due: fixed, repeat, repeatDays, repeatNth, memo, flagged });
+        store.addTodo({ title, due: fixed, part: fixed ? part : null,
+          repeat, repeatDays, repeatNth, memo, flagged });
         KN.ui.toast(fixed
           ? `「${title}」を${formatDay(fixed)}までに`
           : `「${title}」を追加しました`);
@@ -378,53 +410,130 @@
     if (!editing) setTimeout(() => titleEl.focus(), 120);
   }
 
-  /* ---------------- the day this belongs to ----------------
+  /* ---------------- when, as a set of shelves ----------------
 
-     Six buckets and a name each. The names are what the screen is read by, so
-     they say when rather than how far: 「明後日」 rather than 「2日後」, and
-     「いつか」 rather than 「日付なし」 — a todo with no day is not missing a
-     field, it is a thing to do sometime.
+     Not six buckets any more but a calendar laid out downwards, the way the
+     Reminders app does it: 今日 split into 朝・午後・夜, then tomorrow, the day
+     after, the days of the coming week one by one, then whole weeks, then whole
+     months, then 「いつか」.
 
-     Each carries the day something lands on when it is dragged into it, which
-     is what makes the dividers rescheduling handles rather than labels. 期限切れ
-     is the exception: a day that has already gone is not a day to move
-     something *to*, so nothing can be dropped there.
+     They are drawn even when empty, as thin labelled lines. That is the whole
+     point of them: an empty shelf is a place to put something, and rescheduling
+     is meant to be picking a row up and dropping it two lines down rather than
+     opening a sheet and reading a date field. A slot you cannot see is a slot
+     you cannot aim at.
 
-     The colour is the other half. It runs from the red of today out through
-     orange and green to the blue of things far off, and grey for the ones with
-     no day — near is hot, far is cool, undecided is neither. */
-  const GROUPS = [
-    { id: "late",  label: "期限切れ",  color: "#b23a2e", drop: null,
-      match: (n) => n !== null && n < 0 },
-    { id: "today", label: "今日",      color: "#e05a3a", drop: () => todayKey(),
-      match: (n) => n === 0 },
-    { id: "tom",   label: "明日",      color: "#e08a3a", drop: () => shiftDay(todayKey(), 1),
-      match: (n) => n === 1 },
-    { id: "tom2",  label: "明後日",    color: "#cfa93c", drop: () => shiftDay(todayKey(), 2),
-      match: (n) => n === 2 },
-    { id: "week",  label: "1週間以内", color: "#5aa55a", drop: () => shiftDay(todayKey(), 3),
-      match: (n) => n !== null && n >= 3 && n <= 7 },
-    { id: "later", label: "先の予定",  color: "#4a8fd9", drop: () => shiftDay(todayKey(), 8),
-      match: (n) => n !== null && n > 7 },
-    { id: "none",  label: "いつか",    color: "#9aa4a0", drop: () => null,
-      match: (n) => n === null },
-  ];
+     The colour runs from the red of today out to the blue of things far off,
+     and grey for what has no day at all — near is hot, far is cool, undecided
+     is neither. */
 
-  const groupOf = (t) => {
-    const n = t.due ? daysUntil(t.due) : null;
-    return GROUPS.find((g) => g.match(n)) || GROUPS[GROUPS.length - 1];
+  const DAY_COLORS = ["#e05a3a", "#e08a3a", "#cfa93c", "#8bb34a", "#6aae55", "#5aa55a", "#4fa17a", "#49a0a0"];
+  const WEEK_COLOR = "#4a8fd9";
+  const MONTH_COLOR = "#6a7fd0";
+  const NONE_COLOR = "#9aa4a0";
+
+  /* Built fresh on every render, because every one of them is 「how far from
+     today」 and today moves. */
+  function buildGroups() {
+    const today = todayKey();
+    const U = KN.util;
+    const out = [];
+
+    out.push({ id: "late", label: "期限切れ", color: "#b23a2e", late: true, drop: null });
+
+    // 今日 — the panel, and the three parts of the day inside it.
+    out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
+      drop: () => ({ due: today, part: null }) });
+    PARTS.forEach((p) => out.push({
+      id: "today-" + p.id, label: p.label, color: p.color, today: true, day: today, part: p.id,
+      drop: () => ({ due: today, part: p.id }),
+    }));
+
+    // The coming week, a day at a time.
+    for (let i = 1; i <= 7; i++) {
+      const day = U.shiftDay(today, i);
+      const d = U.dayDate(day);
+      const label = i === 1 ? "明日" : i === 2 ? "明後日"
+        : `${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}`;
+      out.push({ id: "d" + i, label, color: DAY_COLORS[Math.min(i, DAY_COLORS.length - 1)],
+        day, drop: () => ({ due: day }) });
+    }
+
+    /* Then whole weeks. 「8月 第3週」 is how a week gets referred to out loud,
+       and it is close enough to aim at without being a date you have to decide
+       on yet — dropping into one lands on its first day that has not gone. */
+    for (let w = 0; w < 3; w++) {
+      const from = U.shiftDay(today, 8 + w * 7);
+      const to = U.shiftDay(from, 6);
+      const d = U.dayDate(from);
+      const nth = Math.floor((d.getDate() - 1) / 7) + 1;
+      out.push({
+        id: "w" + w, label: `${d.getMonth() + 1}月 第${nth}週`, color: WEEK_COLOR,
+        from, to, drop: () => ({ due: from }),
+      });
+    }
+
+    // And then whole months, from the one after the last week shown.
+    const afterWeeks = U.shiftDay(today, 8 + 2 * 7 + 7);
+    const aw = U.dayDate(afterWeeks);
+    for (let m = 0; m < 3; m++) {
+      const first = new Date(aw.getFullYear(), aw.getMonth() + m, 1);
+      const year = first.getFullYear(), month = first.getMonth();
+      const start = m === 0 ? afterWeeks : U.dayKey(first);
+      out.push({
+        id: `m${year}-${month}`, label: `${month + 1}月`, color: MONTH_COLOR,
+        year, month, from: start, drop: () => ({ due: start }),
+      });
+    }
+
+    const lastMonth = out[out.length - 1];
+    out.push({
+      id: "far", label: "もっと先", color: MONTH_COLOR, far: true, onlyWhenFull: true,
+      drop: () => ({ due: U.dayKey(new Date(lastMonth.year, lastMonth.month + 1, 1)) }),
+    });
+
+    out.push({ id: "none", label: "いつか", color: NONE_COLOR, none: true,
+      drop: () => ({ due: null }) });
+
+    return out;
+  }
+
+  /** Which shelf a todo sits on. */
+  function groupIdOf(t, groups) {
+    if (!t.due) return "none";
+    const n = daysUntil(t.due);
+    if (n < 0) return "late";
+    if (n === 0) return t.part ? "today-" + t.part : "today";
+    if (n <= 7) return "d" + n;
+    const week = groups.find((g) => g.from && g.to && t.due >= g.from && t.due <= g.to);
+    if (week) return week.id;
+    const d = KN.util.dayDate(t.due);
+    const month = groups.find((g) => g.year === d.getFullYear() && g.month === d.getMonth());
+    if (month) return month.id;
+    return "far";
+  }
+
+  const colorOf = (t, groups) => {
+    const g = groups.find((x) => x.id === groupIdOf(t, groups));
+    return (g && g.color) || NONE_COLOR;
   };
 
   /* ---------------- rows ---------------- */
 
-  function todoRow(t, tiles) {
-    const g = groupOf(t);
+  function todoRow(t, tiles, groups, shelf) {
     const closed = t.done || t.archived;
     const when = closed ? store.todoClosedAt(t) : null;
+    const late = !closed && t.due && daysUntil(t.due) < 0;
+    /* The shelf already says which day, and often which part of it, so the row
+       does not repeat it. 「今日」 written on a row sitting under a heading that
+       says 今日 is a word that has to be read to learn nothing. Kept where the
+       shelf is vaguer than the row: a week, a month, the archive, a search. */
+    const sameDay = !!(shelf && shelf.day && !closed);
+    const samePart = !!(shelf && shelf.part && shelf.part === t.part);
 
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
-               data-todo-id="${t.id}" style="--cat:${g.color}">
+               data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}">
         <div class="swipe-yes">
           ${icon("calendar")}<span>今日にする</span>
         </div>
@@ -445,7 +554,8 @@
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
         <button class="item-body">
           <span class="item-name">${t.title}</span>
-          <span class="tile-when">${closed ? KN.util.formatDate(when) : (t.due ? formatDay(t.due) : "いつか")}</span>
+          <span class="tile-when">${closed ? KN.util.formatDate(when)
+            : (t.due ? formatDay(t.due) + (t.part ? " " + partLabel(t.part) : "") : "いつか")}</span>
           ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
         </button>
       </div>
@@ -460,7 +570,9 @@
           <span class="item-meta">
             ${closed && when
               ? html`<span class="item-when">${KN.util.formatDate(when)}</span>`
-              : (t.due ? html`<span class="item-when ${g.id === "late" ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
+              : (t.due && !sameDay
+                  ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
+            ${!closed && t.part && !samePart ? html`<span class="todo-part">${partLabel(t.part)}</span>` : ""}
             ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
             ${t.repeat
               ? html`<span class="todo-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
@@ -534,9 +646,12 @@
     renderBody();
   }
 
+  let groups = [];
+
   function renderBody() {
     els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
+    groups = buildGroups();
     const all = store.sortedTodos();
     const q = query;
     const hit = (t) => !q
@@ -570,74 +685,88 @@
       return;
     }
 
-    GROUPS.forEach((g) => {
-      const rows = open.filter((t) => groupOf(t).id === g.id);
-      // 今日 keeps its heading even when empty: it is the one group the screen
-      // is really about, and an empty 今日 is worth seeing.
-      if (!rows.length && g.id !== "today") return;
-      els.body.append(g.id === "today" ? todaySection(g, rows, tiles) : groupSection(g, rows, tiles));
-    });
+    const rowsOf = (id) => open.filter((t) => groupIdOf(t, groups) === id);
 
-    if (!open.length) {
-      els.body.append(node(html`
-        <p style="text-align:center;color:var(--c-text-3);padding:20px 16px">
-          やることは全部かたづきました
-        </p>
-      `));
-    }
+    /* 期限切れ and 「もっと先」 are the two that only appear when they have
+       something in them: one is a problem rather than a place, and the other is
+       an overflow rather than a shelf. */
+    const late = groups.find((g) => g.late);
+    if (rowsOf("late").length) els.body.append(groupSection(late, rowsOf("late"), tiles));
+
+    els.body.append(todayPanel(rowsOf, tiles));
+
+    groups.filter((g) => !g.late && !g.today).forEach((g) => {
+      const rows = rowsOf(g.id);
+      if (!rows.length && g.onlyWhenFull) return;
+      els.body.append(groupSection(g, rows, tiles));
+    });
 
     if (closed.length) els.body.append(archiveSection(closed, tiles));
   }
 
   function head(g, count) {
     return node(html`
-      <h2 class="todo-head ${g.id === "late" ? "is-late" : ""}" style="--cat:${g.color}">
+      <h2 class="todo-head ${g.late ? "is-late" : ""} ${count ? "" : "is-empty"}" style="--cat:${g.color}">
         <span class="todo-head-dot"></span>
         <span>${g.label}</span>
-        <span class="cat-head-count">${count}</span>
+        ${count ? html`<span class="cat-head-count">${count}</span>` : ""}
       </h2>
     `);
   }
 
   function groupSection(g, rows, tiles) {
     const section = node(html`
-      <section class="cat-group todo-group" data-group="${g.id}"></section>
+      <section class="cat-group todo-group ${rows.length ? "" : "is-empty"}"
+               data-group="${g.id}"></section>
     `);
     section.append(head(g, rows.length));
-    const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-    rows.forEach((t) => box.append(todoRow(t, tiles)));
-    section.append(box);
-    if (!tiles) wireReorder(box, g);
+    if (rows.length) {
+      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+      rows.forEach((t) => box.append(todoRow(t, tiles, groups, g)));
+      section.append(box);
+      if (!tiles) wireReorder(box, g);
+    }
     return section;
   }
 
-  /* 今日 gets the panel that 今回買うもの has on the shopping list: the rows sit
-     *inside* something rather than under a heading, and an edge is visible from
-     anywhere in it while a heading three rows up is not. It is the same idea on
-     both screens — 「これが今日ぶんです」. */
-  function todaySection(g, rows, tiles) {
-    const section = node(html`
-      <section class="trip todo-today todo-group" data-group="today"></section>
+  /* 今日 gets the panel 今回買うもの has on the shopping list: the rows sit
+     *inside* something rather than under a heading that scrolls away. Inside it
+     are the three parts of a day — and, above them, whatever is for today
+     without being for any particular part of it. */
+  function todayPanel(rowsOf, tiles) {
+    const panel = node(html`<section class="trip todo-today"></section>`);
+    const plain = groups.find((g) => g.id === "today");
+
+    const anyToday = rowsOf("today").length
+      + PARTS.reduce((n, p) => n + rowsOf("today-" + p.id).length, 0);
+
+    const top = node(html`
+      <section class="todo-group todo-today-any ${rowsOf("today").length ? "" : "is-empty"}"
+               data-group="today"></section>
     `);
-    section.append(head(g, rows.length));
-    if (!rows.length) {
-      section.append(node(html`
-        <p class="todo-today-empty">今日のぶんはありません</p>
-      `));
-      return section;
+    top.append(head(plain, rowsOf("today").length));
+    if (rowsOf("today").length) {
+      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+      rowsOf("today").forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+      top.append(box);
+      if (!tiles) wireReorder(box, plain);
+    } else if (!anyToday) {
+      top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
-    const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-    rows.forEach((t) => box.append(todoRow(t, tiles)));
-    section.append(box);
-    if (!tiles) wireReorder(box, g);
-    return section;
+    panel.append(top);
+
+    PARTS.forEach((p) => {
+      const g = groups.find((x) => x.id === "today-" + p.id);
+      panel.append(groupSection(g, rowsOf(g.id), tiles));
+    });
+    return panel;
   }
 
   /* ---------------- picking one up ----------------
 
      Within a group a drag reorders, exactly as it does on the shopping list.
      Across a divider it reschedules: the groups *are* the days, so carrying a
-     row from 今日 down into 明日 is the plainest way of saying 「明日にする」 —
+     row from 今日 down into 「8月14日 金」 is the plainest way of saying so —
      no sheet, no date field, one gesture.
 
      The group under the finger lights up while it is being carried, because a
@@ -672,10 +801,16 @@
         const todoId = dragging;
         if (!todoId) return;
         const t = store.getTodo(todoId);
-        store.updateTodo(todoId, { due: target.drop() });
+        const to = target.drop();
+        const patch = { due: to.due };
+        // A day-shelf says nothing about which part of the day, so it leaves
+        // that alone; 朝 and 午後 and 夜 set it, and 「いつか」 clears it.
+        if ("part" in to) patch.part = to.part;
+        else if (to.due === null) patch.part = null;
+        store.updateTodo(todoId, patch);
         haptic(14);
         if (t) {
-          KN.ui.toast(target.id === "none"
+          KN.ui.toast(target.none
             ? `「${t.title}」の日付をはずしました`
             : `「${t.title}」を${target.label}に`);
         }
@@ -692,13 +827,13 @@
 
   let dragging = null;
 
-  /** Which group's section is under this point, if any. */
+  /** Which shelf is under this point, if any. */
   function groupUnder(clientY) {
     const sections = els.body.querySelectorAll(".todo-group");
     for (const sec of sections) {
       const r = sec.getBoundingClientRect();
       if (clientY >= r.top && clientY <= r.bottom) {
-        return GROUPS.find((x) => x.id === sec.dataset.group) || null;
+        return groups.find((x) => x.id === sec.dataset.group) || null;
       }
     }
     return null;
@@ -728,7 +863,7 @@
       const box = section.querySelector(".js-done");
       closed.slice()
         .sort((a, b) => String(store.todoClosedAt(b) || "").localeCompare(String(store.todoClosedAt(a) || "")))
-        .forEach((t) => box.append(todoRow(t, tiles)));
+        .forEach((t) => box.append(todoRow(t, tiles, groups)));
     }
 
     section.querySelector(".done-head").addEventListener("click", () => {

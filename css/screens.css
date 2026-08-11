@@ -229,10 +229,29 @@
 .todo-head.is-late { color: var(--c-danger); }
 .todo-head.is-late .cat-head-count { color: var(--c-danger); }
 
+/* An empty shelf is still a shelf — it is where a row goes when it is carried
+   there, so it has to be visible and aimable. But it is not news, so it costs
+   one thin line rather than a heading's worth of room. */
+.todo-head.is-empty {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.todo-head.is-empty .todo-head-dot { opacity: .5; width: 7px; height: 7px; }
+.todo-group.is-empty { margin-bottom: 0; }
+.todo-group.is-empty + .todo-group.is-empty .todo-head { border-top: 1px solid var(--c-border); }
+
 /* 今日 gets the panel 今回買うもの has: the rows sit inside something rather
    than under a heading that scrolls away. The wash is 今日's own colour rather
    than the shopping panel's green — the rows inside it are red-edged, and a
    green frame around red rows reads as two different ideas. */
+/* The three parts of today live inside the panel, so their headings pull in to
+   its gutter rather than the screen's. */
+.todo-today .todo-head { padding-left: var(--sp-2); padding-right: var(--sp-2); }
+.todo-today .item-list { padding: 0; }
+.todo-today .todo-group { margin-bottom: var(--sp-1); }
+
 .trip.todo-today {
   padding-top: var(--sp-1);
   background: linear-gradient(135deg,
@@ -270,6 +289,18 @@
 .todo-repeat svg, .tile-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
+/* 朝 / 午後 / 夜, on the row itself. Quiet: the shelf it sits on says it too,
+   and this is for when the row is read somewhere else — the archive, a search. */
+.todo-part {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--cat, var(--c-text-2));
+  border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
 .todo-tag {
   flex: none;
   font-size: 11px;

@@ -133,6 +133,8 @@
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
+      // 朝 / 午後 / 夜。日のなかのどのあたりか、というだけで、時刻ではない。
+      part: ["am", "pm", "night"].includes(t.part) ? t.part : null,
       memo: typeof t.memo === "string" ? t.memo : "",
       flagged: t.flagged === true,
       done: t.done === true,
@@ -523,7 +525,7 @@
      a day it is wanted by. Everything else here exists because of that day —
      what is overdue, what repeats, what the icon should count. */
 
-  function addTodo({ title, due = null, repeat = null, repeatDays = [], repeatNth = null,
+  function addTodo({ title, due = null, part = null, repeat = null, repeatDays = [], repeatNth = null,
                      memo = "", flagged = false } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
@@ -534,6 +536,7 @@
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
+      part: ["am", "pm", "night"].includes(part) ? part : null,
       memo: String(memo || ""),
       flagged: !!flagged,
       done: false,
@@ -561,6 +564,7 @@
       if ("repeat" in patch) {
         t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
       }
+      if ("part" in patch) t.part = ["am", "pm", "night"].includes(patch.part) ? patch.part : null;
       if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
@@ -697,13 +701,17 @@
   /* Overdue first, then by day, then by hand-order. Undated ones come last:
      they are things to do, not things due, and a list that mixed them in
      would bury the ones with a day on them. */
+  const PART_ORDER = { am: 0, pm: 1, night: 2 };
+
   function sortedTodos() {
-    const rank = (t) => {
-      if (!t.due) return Number.MAX_SAFE_INTEGER;
-      return KN.util.daysUntil(t.due);
-    };
+    const rank = (t) => (t.due ? KN.util.daysUntil(t.due) : Number.MAX_SAFE_INTEGER);
+    // Within a day, 朝 before 午後 before 夜 — the order the day happens in.
+    // Something with no part is not 「早い」, it is 「いつでも」, so it sits first
+    // where nothing competes with it.
+    const part = (t) => (t.part ? PART_ORDER[t.part] + 1 : 0);
     return get().todos.slice().sort((a, b) =>
       rank(a) - rank(b)
+      || part(a) - part(b)
       || (b.flagged === true) - (a.flagged === true)
       || (a.order || 0) - (b.order || 0));
   }
