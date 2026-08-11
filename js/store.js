@@ -130,6 +130,9 @@
       title: String(t.title || "").trim(),
       due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : null,
       repeat: ["daily", "weekly", "monthly"].includes(t.repeat) ? t.repeat : null,
+      // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
+      repeatDays: cleanDays(t.repeatDays),
+      repeatNth: cleanNth(t.repeatNth),
       memo: typeof t.memo === "string" ? t.memo : "",
       flagged: t.flagged === true,
       done: t.done === true,
@@ -142,6 +145,22 @@
 
     out.schema = SCHEMA;
     return out;
+  }
+
+  /** 0..6, no repeats, in week order — anything else is not a set of days. */
+  function cleanDays(v) {
+    if (!Array.isArray(v)) return [];
+    const out = [...new Set(v.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))];
+    return out.sort((a, b) => a - b);
+  }
+
+  /** 「第◯◯曜日」: nth is 1..5 or -1 for 最終. */
+  function cleanNth(v) {
+    if (!v || typeof v !== "object") return null;
+    const nth = Number(v.nth), weekday = Number(v.weekday);
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) return null;
+    if (!(nth === -1 || (Number.isInteger(nth) && nth >= 1 && nth <= 5))) return null;
+    return { nth, weekday };
   }
 
   /** v1 stored store names inline on each price; lift them into real store records. */
@@ -504,7 +523,8 @@
      a day it is wanted by. Everything else here exists because of that day —
      what is overdue, what repeats, what the icon should count. */
 
-  function addTodo({ title, due = null, repeat = null, memo = "", flagged = false } = {}) {
+  function addTodo({ title, due = null, repeat = null, repeatDays = [], repeatNth = null,
+                     memo = "", flagged = false } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const rec = {
@@ -512,6 +532,8 @@
       title: name,
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
+      repeatDays: cleanDays(repeatDays),
+      repeatNth: cleanNth(repeatNth),
       memo: String(memo || ""),
       flagged: !!flagged,
       done: false,
@@ -539,6 +561,8 @@
       if ("repeat" in patch) {
         t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
       }
+      if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
+      if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
     });
@@ -559,20 +583,71 @@
 
   /** The day after this one for a repeating todo, counted from the due date. */
   function nextDue(todo) {
-    const from = todo.due || KN.util.todayKey();
+    const U = KN.util;
+    const from = todo.due || U.todayKey();
+
     /* Counted from the due date, then walked forward past any dates already
        gone: ticking off a bin day three weeks late should set the next one to
        the coming week, not to a date still in the past. */
     let next = from;
     const step = () => {
-      if (todo.repeat === "daily") next = KN.util.shiftDay(next, 1);
-      else if (todo.repeat === "weekly") next = KN.util.shiftDay(next, 7);
-      else next = KN.util.shiftMonth(next, 1);
+      if (todo.repeat === "daily") { next = U.shiftDay(next, 1); return; }
+
+      if (todo.repeat === "weekly") {
+        const days = todo.repeatDays || [];
+        // 「毎週 火・金」 is two bin days a week, not one every seven — so the
+        // next one is the next named day, which may be two days away.
+        if (days.length) {
+          for (let i = 1; i <= 7; i++) {
+            const cand = U.shiftDay(next, i);
+            if (days.includes(U.dayOfWeek(cand))) { next = cand; return; }
+          }
+        }
+        next = U.shiftDay(next, 7);
+        return;
+      }
+
+      /* 「第2火曜」 is not a date: it moves every month, so the next one is
+         worked out in the next month rather than added to this one. A month
+         with no fifth Tuesday is skipped rather than rounded. */
+      const nth = todo.repeatNth;
+      if (nth) {
+        const d = U.dayDate(next) || new Date();
+        for (let m = 1; m <= 12; m++) {
+          const probe = new Date(d.getFullYear(), d.getMonth() + m, 1);
+          const key = U.nthWeekdayOf(probe.getFullYear(), probe.getMonth(), nth.nth, nth.weekday);
+          if (key && key > next) { next = key; return; }
+        }
+      }
+      next = U.shiftMonth(next, 1);
     };
+
     step();
     let guard = 0;
-    while (KN.util.daysUntil(next) < 0 && guard++ < 500) step();
+    while (U.daysUntil(next) < 0 && guard++ < 500) step();
     return next;
+  }
+
+  /** The first day on or after `from` that the repeat rule actually falls on. */
+  function snapToRule(todo, from) {
+    const U = KN.util;
+    if (!from) return from;
+    if (todo.repeat === "weekly" && (todo.repeatDays || []).length) {
+      for (let i = 0; i <= 7; i++) {
+        const cand = U.shiftDay(from, i);
+        if (todo.repeatDays.includes(U.dayOfWeek(cand))) return cand;
+      }
+    }
+    if (todo.repeat === "monthly" && todo.repeatNth) {
+      const d = U.dayDate(from) || new Date();
+      for (let m = 0; m <= 12; m++) {
+        const probe = new Date(d.getFullYear(), d.getMonth() + m, 1);
+        const key = U.nthWeekdayOf(probe.getFullYear(), probe.getMonth(),
+          todo.repeatNth.nth, todo.repeatNth.weekday);
+        if (key && key >= from) return key;
+      }
+    }
+    return from;
   }
 
   /**
@@ -839,7 +914,7 @@
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt,
     exportJSON, importJSON, reset, loadSample,
   };
