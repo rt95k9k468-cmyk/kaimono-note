@@ -25,9 +25,12 @@
               <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
+            ${/* The ＋ is not up here any more — it is the same floating
+                 button the list screen has, in the dock at the bottom
+                 middle. Two screens that both add a thing should add it with
+                 the same motion, and the corner of a top bar is the far end
+                 of a phone from where the hand is. */""}
             <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-new" aria-label="商品を追加" title="商品を追加"
-                    style="background:var(--c-primary);color:#fff">${icon("plus")}</button>
           </div>
         </header>
 
@@ -53,7 +56,6 @@
       sub:     chrome.querySelector(".js-sub"),
       search:  chrome.querySelector(".js-search"),
       clear:   chrome.querySelector(".js-clear"),
-      newBtn:  chrome.querySelector(".js-new"),
       layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
@@ -75,7 +77,6 @@
       renderBody();
     });
 
-    els.newBtn.addEventListener("click", createProduct);
     els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
@@ -216,7 +217,12 @@
 
     if (open) {
       const box = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
-      list.forEach((p) => box.append(productCard(p)));
+      // Newest first, and each card says when — the same as the list screen's
+      // archive. Products archived before there was a date to record keep
+      // their place at the end and simply say nothing.
+      list.slice()
+        .sort((a, b) => String(b.archivedAt || "").localeCompare(String(a.archivedAt || "")))
+        .forEach((p) => box.append(productCard(p)));
       section.querySelector(".js-body").append(box);
     }
 
@@ -287,6 +293,8 @@
                 figure rather than beside it: a third of a screen has no
                 beside. */""}
           ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
+          ${product.archived && product.archivedAt
+            ? html`<span class="tile-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
         </button>
       </div>
     `) : node(html`
@@ -300,8 +308,10 @@
                 the shelf, and 「値段は未登録」 repeated the — already sitting in
                 the price column. What is left is the name, in the size of the
                 thing the row is for. */""}
-          ${size || up ? html`
+          ${size || up || (product.archived && product.archivedAt) ? html`
             <span class="product-meta">
+              ${product.archived && product.archivedAt
+                ? html`<span class="item-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
               ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
               ${up ? html`<span>${up.text}</span>` : ""}
             </span>
@@ -386,6 +396,17 @@
     KN.ui.toast(said, { action: { label: "元に戻す", onClick: undo } });
   }
 
+  /** The ＋ the shell floats over this screen — the list screen's, in kind. */
+  function dockButton() {
+    const fab = node(html`
+      <div class="quick-add">
+        <button class="add-fab js-new" aria-label="商品を追加">${icon("plus")}</button>
+      </div>
+    `);
+    fab.querySelector(".js-new").addEventListener("click", createProduct);
+    return fab;
+  }
+
   KN.screens = KN.screens || {};
-  KN.screens.prices = { mount, render };
+  KN.screens.prices = { mount, render, dockButton };
 })();

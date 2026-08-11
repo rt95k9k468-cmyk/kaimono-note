@@ -152,6 +152,43 @@ button, [role="tab"] {
 
 .input::placeholder, .textarea::placeholder { color: var(--c-text-3); }
 
+/* ---- a memo: read by default, written on request ----
+
+   Sits in a box the same width and shape as the field it turns into, so the
+   pencil swaps one for the other without the sheet jumping. */
+.memo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  min-height: 46px;
+}
+
+.memo-text {
+  flex: 1;
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  color: var(--c-text);
+  white-space: pre-wrap;      /* the line breaks were typed on purpose */
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.memo-text.is-empty { color: var(--c-text-3); }
+
+.memo .icon-btn { flex: none; width: 34px; height: 34px; margin-top: -2px; }
+
+.memo-input {
+  height: auto;
+  padding: var(--sp-3) var(--sp-4);
+  resize: vertical;
+  line-height: 1.55;
+}
+
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
   border-color: var(--c-primary);

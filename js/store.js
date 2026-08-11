@@ -508,6 +508,10 @@
   function setArchived(productId, on) {
     const prev = getProduct(productId);
     const was = !!(prev && prev.archived);
+    // The day it went in, so the drawer reads as a record of when rather than
+    // an undated heap. Restored exactly on undo — an undone archiving never
+    // happened, and should not leave a date behind saying it did.
+    const wasAt = (prev && prev.archivedAt) || null;
     // Kept with their positions so an undo puts the rows back where they were,
     // not at the top of the list.
     const dropped = [];
@@ -515,13 +519,13 @@
 
     update((s) => {
       const p = s.products.find((x) => x.id === productId);
-      if (p) p.archived = on;
+      if (p) { p.archived = on; p.archivedAt = on ? today() : null; }
       if (on) s.items = s.items.filter((i) => i.productId !== productId);
     });
 
     return () => update((s) => {
       const p = s.products.find((x) => x.id === productId);
-      if (p) p.archived = was;
+      if (p) { p.archived = was; p.archivedAt = wasAt; }
       if (!on) return;
       const next = s.items.slice();
       // Ascending, so each splice lands in the slot the one before it made.
