@@ -200,6 +200,56 @@
 
 @keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* ================= TODO SCREEN =================
+
+   Borrows the list screen's rows wholesale — same card, same check, same
+   swipe — because they are the same gesture on the same kind of line, and a
+   second set of row styles is a second set of things to keep in step. What is
+   different is the day: the groups it is filed under, and the chip that says
+   which day it is. */
+
+.todo-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--c-text);
+}
+/* 期限切れ is the one group that is not just a heading but a problem. */
+.todo-head.is-late { color: var(--c-danger); }
+.todo-head.is-late .cat-head-count { color: var(--c-danger); }
+
+/* A todo has no category, so its left edge is free to say the one thing about
+   a todo that a colour can: this one has run out of time. */
+.todo-wrap { --cat: var(--c-primary-soft, var(--c-border-2)); }
+.todo-wrap.is-late { --cat: var(--c-danger); }
+
+.item-when.is-late { color: #fff; background: var(--c-danger); }
+
+.todo-flag { display: inline-flex; color: var(--c-warn); flex: none; }
+.todo-flag svg { width: 14px; height: 14px; stroke-width: 2.2; fill: currentColor; }
+
+.todo-repeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.todo-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
+
+/* The swipe that deletes rather than files. Red, because it is the one action
+   on any of these screens that does not keep what it takes. */
+.swipe-arch.is-danger { background: var(--c-danger); color: #fff; }
+.swipe-arch.is-danger svg { color: #fff; }
+
+/* A chevron pointing the other way, for 「戻る」. */
+.flip-x { transform: scaleX(-1); }
+
 /* ================= SWIPE PANELS (both screens) ================= */
 
 /* One gesture, two screens, two layouts: right is the tab's positive action,

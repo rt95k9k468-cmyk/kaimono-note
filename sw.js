@@ -21,6 +21,7 @@ const ASSETS = [
   "js/insights.js",
   "js/pull-refresh.js",
   "js/product-sheet.js",
+  "js/screen-todo.js",
   "js/screen-list.js",
   "js/screen-prices.js",
   "js/screen-compare.js",

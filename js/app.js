@@ -8,10 +8,16 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
+  /* お店くらべ is not among these any more. It is a thing you do a few times
+     while deciding where to go, not a place you live in, and a quarter of the
+     bar is a lot of permanent furniture for that — it opens from the shop
+     button on リスト and 価格 instead. やること takes the freed place, at the
+     left, because it is the screen you open first when the question is 「今日
+     なにをするんだっけ」 rather than 「何を買うんだっけ」. */
   const TABS = [
+    { id: "todo",     label: "やること", icon: "checklist" },
     { id: "list",     label: "リスト",   icon: "list"  },
     { id: "prices",   label: "価格",     icon: "tag"   },
-    { id: "compare",  label: "お店",     icon: "shop"  },
     { id: "settings", label: "設定",     icon: "gear"  },
   ];
 
@@ -58,14 +64,21 @@
     // user never said they were buying.
     paintAppBadge();
 
-    const listTab = document.querySelector('.tab[data-tab="list"]');
-    if (!listTab) return;
-    const pending = pendingCount();
-    const existing = listTab.querySelector(".tab-badge");
-    if (pending > 0) {
-      const text = pending > 99 ? "99+" : String(pending);
+    paintTabBadge("list", tripCount());
+    // やること counts what is wanted today or already late. Something due next
+    // week is not a number you can act on today, and a tab that counts the
+    // whole backlog is a tab you learn to ignore.
+    paintTabBadge("todo", store.todosDue().length);
+  }
+
+  function paintTabBadge(tabId, count) {
+    const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+    if (!tab) return;
+    const existing = tab.querySelector(".tab-badge");
+    if (count > 0) {
+      const text = count > 99 ? "99+" : String(count);
       if (existing) existing.textContent = text;
-      else listTab.append(node(html`<span class="tab-badge">${text}</span>`));
+      else tab.append(node(html`<span class="tab-badge">${text}</span>`));
     } else if (existing) {
       existing.remove();
     }
@@ -82,7 +95,14 @@
      badge off the *notification* permission, so switching it on means asking
      for a permission whose dialog talks about notifications this app will
      never send. That is not a prompt to spring on anyone unasked. */
-  const pendingCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+  /** Left to buy on the trip being shopped now. */
+  const tripCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+
+  /* What the home-screen icon counts: this trip's shopping, plus the やること
+     that are wanted today or are already late. Both are 「things I said I
+     would do and have not」, which is the only kind of number worth putting on
+     an app icon; a todo due next Friday is not one of them yet. */
+  const pendingCount = () => tripCount() + store.todosDue().length;
 
   const badgeSupported = () => typeof navigator !== "undefined" && !!navigator.setAppBadge;
 
@@ -161,8 +181,13 @@
     disable: disableAppBadge,
   };
 
+  /* Where the shop button came from, so 「戻る」 on お店くらべ goes back to the
+     screen that opened it rather than always to リスト. */
+  let cameFrom = "list";
+
   function show(id) {
     if (!KN.screens[id]) return;
+    if (id === "compare" && active !== "compare") cameFrom = active;
     active = id;
 
     document.querySelectorAll(".screen").forEach((s) => {
@@ -229,6 +254,20 @@
     window.addEventListener("storage", (e) => {
       if (e.key === store.KEY) location.reload();
     });
+
+    /* Sunrise. A due date is only 「今日」 until midnight, and a phone that
+       sits open on the kitchen counter overnight would otherwise still be
+       showing yesterday's groupings and yesterday's badge. Checked once a
+       minute, and only acted on when the day actually turns. */
+    let dayNow = KN.util.todayKey();
+    setInterval(() => {
+      const key = KN.util.todayKey();
+      if (key === dayNow) return;
+      dayNow = key;
+      if (KN.screens[active]) KN.screens[active].render();
+      paintTabs();
+      paintAppBadge(true);
+    }, 60000);
 
     requestPersistentStorage();
     trackKeyboard();
@@ -441,6 +480,11 @@
       });
     });
   }
+
+  /* Screens off the tab bar — お店くらべ — are opened by name from the screens
+     that link to them, and hand the way back with them. */
+  KN.showScreen = show;
+  KN.backScreen = () => show(cameFrom === "compare" ? "list" : cameFrom);
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {

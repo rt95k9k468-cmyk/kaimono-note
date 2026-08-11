@@ -11,6 +11,7 @@
   let root = null;
   let els = {};
   let categoryFilter = null;   // categoryId or null = all
+  let query = "";              // folded, from the search bar
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -30,10 +31,27 @@
                  something is not a reason to throw the record of it away, and
                  there is no moment in a shop where that is the thing you
                  reach for. What is bought drops into the archive below,
-                 dated, and stays there. */""}
+                 dated, and stays there.
+
+                 The three that are here are the same three, in the same
+                 order, on this screen and on 価格: くらべる・並べ方・さがす. */""}
+            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
+              ${icon("shopCompare")}
+            </button>
             <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
           </div>
         </header>
+
+        <div class="search-wrap js-search-wrap" hidden>
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-search" placeholder="リストの中を探す" aria-label="リストの中を探す"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+          </div>
+        </div>
 
         <div class="progress-wrap js-progress-wrap" hidden>
           <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
@@ -49,6 +67,11 @@
     els = {
       sub:        chrome.querySelector(".js-sub"),
       layout:     chrome.querySelector(".js-layout"),
+      compare:    chrome.querySelector(".js-compare"),
+      searchBtn:  chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
+      search:     chrome.querySelector(".js-search"),
+      searchClear: chrome.querySelector(".js-search-clear"),
       progWrap:   chrome.querySelector(".js-progress-wrap"),
       progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
@@ -57,6 +80,8 @@
     };
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
+    els.compare.addEventListener("click", () => KN.showScreen("compare"));
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -324,7 +349,20 @@
     KN.ui.paintLayoutButton(els.layout);
 
     renderFilter(items);
-    renderBody(items);
+    /* Searching narrows the rows, not the header: the counts above still
+       describe the whole trip, because a search is a way of looking at the
+       list rather than a change to it. */
+    renderBody(query ? items.filter(matchesQuery) : items);
+  }
+
+  /** Name, memo, or category — whichever the query happens to be. */
+  function matchesQuery(item) {
+    const p = store.getProduct(item.productId);
+    if (!p) return false;
+    const cat = store.getCategory(p.categoryId);
+    return KN.util.foldKana(p.name).includes(query)
+      || KN.util.foldKana(item.memo || "").includes(query)
+      || (!!cat && KN.util.foldKana(cat.name).includes(query));
   }
 
   function renderFilter(items) {
@@ -357,7 +395,15 @@
     els.body.innerHTML = "";
 
     if (!items.length) {
-      els.body.append(emptyState());
+      // An empty search is not an empty list, and offering 「サンプルを入れて
+      // 試す」 to someone who just typed a name would be answering the wrong
+      // question entirely.
+      els.body.append(query
+        ? node(html`
+            <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
+              見つかりませんでした
+            </p>`)
+        : emptyState());
       return;
     }
 

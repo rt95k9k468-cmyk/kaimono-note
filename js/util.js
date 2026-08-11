@@ -124,6 +124,79 @@
     return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}/${md}`;
   }
 
+  /* ---------- a day, without a time ----------
+
+     A due date is a day, not an instant: 「金曜まで」 means the whole of
+     Friday wherever you are standing. Stored as 「2026-08-14」 — local, no
+     zone, no hour — so it cannot slide a day backwards the way a UTC
+     timestamp does for anyone east of Greenwich. */
+
+  const pad2 = (n) => (n < 10 ? "0" + n : String(n));
+
+  /** The local day of a Date, as 「YYYY-MM-DD」. */
+  function dayKey(d) {
+    const x = d instanceof Date ? d : new Date(d);
+    if (isNaN(x.getTime())) return "";
+    return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
+  }
+
+  const todayKey = () => dayKey(new Date());
+
+  /** A day key back into a Date at local midnight. */
+  function dayDate(key) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ""));
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+
+  /** Days from today to this day: negative is past, 0 is today. */
+  function daysUntil(key) {
+    const d = dayDate(key);
+    if (!d) return null;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((d.getTime() - start.getTime()) / 86400000);
+  }
+
+  /** Shift a day key by n days. */
+  function shiftDay(key, n) {
+    const d = dayDate(key);
+    if (!d) return "";
+    d.setDate(d.getDate() + n);
+    return dayKey(d);
+  }
+
+  /** Same date n months on, clamped to the month's last day — 1/31 monthly is
+   *  2/28, not 3/3. */
+  function shiftMonth(key, n) {
+    const d = dayDate(key);
+    if (!d) return "";
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + n);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return dayKey(d);
+  }
+
+  const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+  const weekdayJa = (key) => { const d = dayDate(key); return d ? WEEKDAYS[d.getDay()] : ""; };
+
+  /* Near days by name, the rest by number. 「明日」 is read faster than a date
+     and needs no arithmetic; 「9/2(火)」 needs no calendar. */
+  function formatDay(key) {
+    const d = dayDate(key);
+    if (!d) return "";
+    const n = daysUntil(key);
+    if (n === 0) return "今日";
+    if (n === 1) return "明日";
+    if (n === 2) return "明後日";
+    if (n === -1) return "昨日";
+    const md = `${d.getMonth() + 1}/${d.getDate()}`;
+    const wd = `(${WEEKDAYS[d.getDay()]})`;
+    return d.getFullYear() === new Date().getFullYear() ? md + wd : `${d.getFullYear()}/${md}${wd}`;
+  }
+
   function relativeDate(iso) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";
@@ -206,6 +279,16 @@
     // squares. Each button shows the layout it switches *to*.
     rows:      '<rect x="3" y="4.5" width="18" height="4.4" rx="1.4"/><rect x="3" y="15.1" width="18" height="4.4" rx="1.4"/>',
     tiles:     '<rect x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/>',
+    /* The shop, with the thing it is for drawn on it: two bars of different
+       heights. Without the mark it is just a shop, and the button does not
+       open a shop — it opens a comparison between them. */
+    shopCompare: '<path d="M3.4 8.6 5 4.2h14L20.6 8.6"/><path d="M2.8 8.6h18.4"/><path d="M4.6 8.6v11.2h14.8V8.6"/><path d="M9 17.4v-3.6M12 17.4v-5.8M15 17.4v-2.2"/>',
+    /* A list with things ticked off it. Deliberately not the shopping list's
+       icon — the two tabs sit side by side and must not read as one. */
+    checklist: '<path d="M3.2 6.4 4.9 8.1 8 5"/><path d="M3.2 12.4 4.9 14.1 8 11"/><path d="M3.2 18.4 4.9 20.1 8 17"/><path d="M11 6.6h9.8M11 12.6h9.8M11 18.6h6.4"/>',
+    calendar:  '<rect x="3" y="5" width="18" height="16" rx="2.4"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    repeat:    '<path d="M4 9.4V8a3 3 0 0 1 3-3h11"/><path d="m15 2 3 3-3 3"/><path d="M20 14.6V16a3 3 0 0 1-3 3H6"/><path d="m9 22-3-3 3-3"/>',
+    flag:      '<path d="M5 21V4"/><path d="M5 4.6h11.6l-2 3.6 2 3.6H5"/>',
   };
 
   /** Inline stroke icon. */
@@ -310,6 +393,7 @@
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, relativeDate, foldKana,
+    dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,

@@ -29,19 +29,28 @@
                  button the list screen has, in the dock at the bottom
                  middle. Two screens that both add a thing should add it with
                  the same motion, and the corner of a top bar is the far end
-                 of a phone from where the hand is. */""}
+                 of a phone from where the hand is.
+
+                 What is here is the same three, in the same order, as on
+                 リスト: くらべる・並べ方・さがす. */""}
+            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
+              ${icon("shopCompare")}
+            </button>
             <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
           </div>
         </header>
 
-        <div class="search-wrap">
+        ${/* Folded away until asked for. It used to sit open under the title on
+              every visit, spending a row of the screen on a question asked
+              once in a while. */""}
+        <div class="search-wrap js-search-wrap" hidden>
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-clear" aria-label="検索をクリア" style="width:28px;height:28px" hidden>
-              ${icon("close")}
-            </button>
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
           </div>
         </div>
 
@@ -54,29 +63,19 @@
 
     els = {
       sub:     chrome.querySelector(".js-sub"),
+      compare: chrome.querySelector(".js-compare"),
+      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
-      clear:   chrome.querySelector(".js-clear"),
+      searchClear: chrome.querySelector(".js-search-clear"),
       layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
     };
 
-    els.search.addEventListener("input", () => {
-      // Folded so this behaves like the list screen's suggestions:
-      // 「え」finds「エマール」.
-      query = KN.util.foldKana(els.search.value);
-      els.clear.hidden = !query;
-      renderBody();
-    });
-
-    els.clear.addEventListener("click", () => {
-      query = "";
-      els.search.value = "";
-      els.clear.hidden = true;
-      renderBody();
-    });
-
+    KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
+    els.compare.addEventListener("click", () => KN.showScreen("compare"));
     els.layout.addEventListener("click", KN.ui.toggleLayout);
 
     root.addEventListener("scroll", () => {
