@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — design tokens, reset, base layout
+   くらしノート — design tokens, reset, base layout
    ========================================================= */
 
 :root {
@@ -390,8 +390,11 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Flex rather than four equal columns, because the bar is no longer four of
+     the same thing: the two shopping tabs are one group with a hairline on
+     either side of it. Each tab still takes an equal share (flex:1), and the
+     splits take only their own hair's width. */
+  display: flex;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
@@ -402,6 +405,23 @@ a { color: var(--c-primary); }
   box-shadow: var(--shadow-up);
   z-index: 30;
 }
+
+/* The hairline between groups: やること │ 買うもの 価格 │ 設定. Short, centred,
+   and quiet — it is a seam, not a border. */
+.tab-split {
+  flex: none;
+  width: 1px;
+  align-self: center;
+  height: 26px;
+  background: var(--c-border);
+}
+
+/* The shopping pair reads as a pair: a wash behind the two of them, faint
+   enough to be a grouping rather than a selection. The selected tab still
+   colours itself on top of it. */
+.tab-shop { background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
+.tab-shop.is-group-start { border-radius: var(--r-md) 0 0 var(--r-md); }
+.tab-shop.is-group-end { border-radius: 0 var(--r-md) var(--r-md) 0; }
 
 /* Nobody switches tabs mid-word, and the room is better spent on the list
    while the keyboard has the bottom half of the screen. */
@@ -439,6 +459,8 @@ a { color: var(--c-primary); }
 }
 
 .tab {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

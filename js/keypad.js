@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — the number pad
+   くらしノート — the number pad
 
    iOS will hand you a numeric keypad, but it has no operators, no 税 keys, and
    a system toolbar above it that a web page cannot remove. So the field asks

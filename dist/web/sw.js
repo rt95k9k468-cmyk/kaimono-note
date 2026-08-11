@@ -1,4 +1,4 @@
-/* かいものノート — offline cache for the two-file deploy. */
+/* くらしノート — offline cache for the two-file deploy. */
 const CACHE = "kaimono-note-inline-v1";
 
 self.addEventListener("install", (e) => {

@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — screen specific
+   くらしノート — screen specific
    ========================================================= */
 
 /* ================= LIST SCREEN ================= */
@@ -34,6 +34,7 @@
 /* Room under the last card so the button is never sitting on top of the thing
    you are trying to read — one button's height plus the gap it floats by.
    Both screens that carry a ＋ pay it. */
+.screen[data-screen="todo"],
 .screen[data-screen="list"],
 .screen[data-screen="prices"] { padding-bottom: calc(56px + var(--sp-6)); }
 
@@ -202,36 +203,62 @@
 
 /* ================= TODO SCREEN =================
 
-   Borrows the list screen's rows wholesale — same card, same check, same
-   swipe — because they are the same gesture on the same kind of line, and a
-   second set of row styles is a second set of things to keep in step. What is
-   different is the day: the groups it is filed under, and the chip that says
-   which day it is. */
+   Borrows the list screen's rows wholesale — same card, same check, same ★,
+   same swipe — because they are the same gesture on the same kind of line. The
+   difference is the day: the groups it is filed under, the colour of its edge,
+   and the panel 今日 sits in. */
 
 .todo-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   padding: var(--sp-4) var(--sp-4) var(--sp-2);
   font-size: var(--fs-md);
   font-weight: 800;
   color: var(--c-text);
 }
-/* 期限切れ is the one group that is not just a heading but a problem. */
+/* The group's colour, as a dot beside its name. The rows below wear the same
+   one down their left edge, so a heading and its rows are visibly one thing —
+   and the run from red to blue is legible as a run. */
+.todo-head-dot {
+  width: 9px; height: 9px;
+  border-radius: var(--r-full);
+  background: var(--cat, var(--c-border-2));
+  flex: none;
+}
 .todo-head.is-late { color: var(--c-danger); }
 .todo-head.is-late .cat-head-count { color: var(--c-danger); }
 
-/* A todo has no category, so its left edge is free to say the one thing about
-   a todo that a colour can: this one has run out of time. */
-.todo-wrap { --cat: var(--c-primary-soft, var(--c-border-2)); }
-.todo-wrap.is-late { --cat: var(--c-danger); }
+/* 今日 gets the panel 今回買うもの has: the rows sit inside something rather
+   than under a heading that scrolls away. The wash is 今日's own colour rather
+   than the shopping panel's green — the rows inside it are red-edged, and a
+   green frame around red rows reads as two different ideas. */
+.trip.todo-today {
+  padding-top: var(--sp-1);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #e05a3a 13%, transparent),
+    color-mix(in srgb, #e08a3a 7%, transparent));
+}
+.todo-today .todo-head { padding: var(--sp-1) var(--sp-2) var(--sp-2); }
+.todo-today-empty {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-2) var(--sp-3);
+  color: var(--c-text-3);
+  font-size: var(--fs-sm);
+}
+
+/* Carried over a group that is not its own: that group is where it will land,
+   and a drop that changes a date has to be visibly aimed. */
+.todo-group.is-drop-target {
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  outline: 2px dashed color-mix(in srgb, var(--c-primary) 55%, transparent);
+  outline-offset: -2px;
+}
 
 .item-when.is-late { color: #fff; background: var(--c-danger); }
 
-.todo-flag { display: inline-flex; color: var(--c-warn); flex: none; }
-.todo-flag svg { width: 14px; height: 14px; stroke-width: 2.2; fill: currentColor; }
-
-.todo-repeat {
+.todo-repeat, .tile-repeat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -240,15 +267,34 @@
   font-weight: 700;
   color: var(--c-text-3);
 }
-.todo-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
+.todo-repeat svg, .tile-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
 
-/* The swipe that deletes rather than files. Red, because it is the one action
-   on any of these screens that does not keep what it takes. */
-.swipe-arch.is-danger { background: var(--c-danger); color: #fff; }
-.swipe-arch.is-danger svg { color: #fff; }
+/* Put away rather than done — worth saying, because the drawer holds both. */
+.todo-tag {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  padding: 0 6px;
+}
 
-/* A chevron pointing the other way, for 「戻る」. */
-.flip-x { transform: scaleX(-1); }
+.tile-when {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A link inside a hint line: a button that reads as a sentence, because that
+   is where the reason for pressing it is. */
+.link-btn {
+  color: var(--c-primary);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* ================= SWIPE PANELS (both screens) ================= */
 

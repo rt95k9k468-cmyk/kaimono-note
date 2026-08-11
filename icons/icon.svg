@@ -12,14 +12,28 @@
 
   <rect width="512" height="512" rx="114" fill="url(#bg)"/>
 
-  <!-- shopping basket -->
-  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M170 168V139a86 86 0 0 1 172 0v29"/>
-    <path d="M124 186h264l-22 174a34 34 0 0 1-34 30H180a34 34 0 0 1-34-30z"/>
+  <!-- The note itself: what the app is, rather than what one of its tabs is.
+       Two lines ticked off and one still to do — the same picture whether the
+       line is 「ゴミ出し」 or 「食器用洗剤」. -->
+  <g transform="translate(0 -6)">
+    <rect x="104" y="96" width="304" height="316" rx="40" fill="#ffffff"/>
+
+    <g stroke="#2f8f5b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M150 178l24 24 44-46"/>
+      <path d="M150 264l24 24 44-46"/>
+    </g>
+    <circle cx="174" cy="332" r="24" fill="none" stroke="#c3d3ca" stroke-width="18"/>
+
+    <g fill="#d7e2da">
+      <rect x="244" y="180" width="120" height="22" rx="11"/>
+      <rect x="244" y="266" width="120" height="22" rx="11"/>
+      <rect x="244" y="322" width="86" height="22" rx="11"/>
+    </g>
   </g>
 
-  <!-- price tag badge -->
-  <g transform="translate(268 250)">
+  <!-- The price tag stays: the shopping half of the app is still half of it,
+       and it is what the icon has always had a corner of. -->
+  <g transform="translate(286 268)">
     <path d="M0 22A22 22 0 0 1 22 0h74a22 22 0 0 1 15.6 6.4l54 54a22 22 0 0 1 0 31.2l-74 74a22 22 0 0 1-31.2 0l-54-54A22 22 0 0 1 0 96z"
           fill="url(#tag)" stroke="#ffffff" stroke-width="16" stroke-linejoin="round"/>
     <circle cx="40" cy="40" r="14" fill="#ffffff"/>

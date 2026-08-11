@@ -1,7 +1,7 @@
 {
-  "name": "かいものノート",
-  "short_name": "かいもの",
-  "description": "買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。",
+  "name": "くらしノート",
+  "short_name": "くらし",
+  "description": "やることと買うものを一冊に。日付つきのTodoと、買い物リスト、店ごとの値段くらべ。",
   "lang": "ja",
   "dir": "ltr",
   "start_url": "./",
@@ -19,8 +19,13 @@
   ],
   "shortcuts": [
     {
-      "name": "買い物リスト",
-      "short_name": "リスト",
+      "name": "やること",
+      "short_name": "やること",
+      "url": "./#todo"
+    },
+    {
+      "name": "買うもの",
+      "short_name": "買うもの",
       "url": "./#list"
     },
     {

@@ -1,5 +1,5 @@
 /* =========================================================
-   かいものノート — the edges of a scroll: pull to refresh, and the give
+   くらしノート — the edges of a scroll: pull to refresh, and the give
    at the bottom
 
    There is no server behind this app, so a refresh cannot fetch anything.
