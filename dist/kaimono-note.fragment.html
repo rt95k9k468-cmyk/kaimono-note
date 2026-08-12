@@ -2766,6 +2766,22 @@ button, [role="tab"] {
     return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}/${md}`;
   }
 
+  /** 「8/12 14:05」 — the date, plus the clock time it happened at.
+      Several things get archived on one day, and the order they went in is
+      most of what tells them apart afterwards. A stored value that is only a
+      day (older records, or a due date) has no hour to show, so it stays a
+      plain date rather than pretending to be midnight. */
+  function formatStamp(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const date = formatDate(iso);
+    if (!/\d{1,2}:\d{2}/.test(String(iso))) return date;
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${date} ${hh}:${mm}`;
+  }
+
   /* ---------- a day, without a time ----------
 
      A due date is a day, not an instant: 「金曜まで」 means the whole of
@@ -3063,7 +3079,7 @@ button, [role="tab"] {
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
     yen, yenFine, parseNum,
-    today, formatDate, relativeDate, foldKana,
+    today, formatDate, formatStamp, relativeDate, foldKana,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
@@ -11293,7 +11309,12 @@ button, [role="tab"] {
     return "far";
   }
 
+  /* The painted edge says when this is due. Once it is done or put away there
+     is no 「when」 left to say, and a red edge on a finished row goes on
+     shouting 今日 at something nobody has to do — so the archive drops to the
+     same neutral grey the undated rows wear. */
   const colorOf = (t, groups) => {
+    if (t.done || t.archived) return NONE_COLOR;
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   };
@@ -11334,7 +11355,7 @@ button, [role="tab"] {
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
         <button class="item-body">
           <span class="item-name">${t.title}</span>
-          <span class="tile-when">${closed ? KN.util.formatDate(when)
+          <span class="tile-when">${closed ? KN.util.formatStamp(when)
             : (t.due ? formatDay(t.due) + (t.part ? " " + partLabel(t.part) : "") : "いつか")}</span>
           ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
         </button>
@@ -11349,7 +11370,7 @@ button, [role="tab"] {
           </span>
           <span class="item-meta">
             ${closed && when
-              ? html`<span class="item-when">${KN.util.formatDate(when)}</span>`
+              ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
               : (t.due && !sameDay
                   ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
             ${!closed && t.part && !samePart ? html`<span class="todo-part">${partLabel(t.part)}</span>` : ""}
@@ -12269,11 +12290,12 @@ button, [role="tab"] {
             ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
           </span>
           <span class="item-meta">
-            ${/* The day it was bought, on the rows that have been. An archive
+            ${/* When it was bought, on the rows that have been. An archive
                  of undated lines says only 「いつか買った」, which is not a
-                 record of anything. */""}
+                 record of anything — and on a day of several trips the clock
+                 time is what separates them. */""}
             ${item.checked && item.checkedAt
-              ? html`<span class="item-when">${KN.util.formatDate(item.checkedAt)}</span>` : ""}
+              ? html`<span class="item-when">${KN.util.formatStamp(item.checkedAt)}</span>` : ""}
             ${item.memo ? html`<span class="item-memo">${item.memo}</span>` : ""}
           </span>
         </button>
@@ -12748,7 +12770,7 @@ button, [role="tab"] {
                 beside. */""}
           ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
           ${product.archived && product.archivedAt
-            ? html`<span class="tile-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
+            ? html`<span class="tile-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
         </button>
       </div>
     `) : node(html`
@@ -12765,7 +12787,7 @@ button, [role="tab"] {
           ${size || up || (product.archived && product.archivedAt) ? html`
             <span class="product-meta">
               ${product.archived && product.archivedAt
-                ? html`<span class="item-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
+                ? html`<span class="item-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
               ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
               ${up ? html`<span>${up.text}</span>` : ""}
             </span>

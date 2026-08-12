@@ -293,7 +293,7 @@
                 beside. */""}
           ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
           ${product.archived && product.archivedAt
-            ? html`<span class="tile-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
+            ? html`<span class="tile-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
         </button>
       </div>
     `) : node(html`
@@ -310,7 +310,7 @@
           ${size || up || (product.archived && product.archivedAt) ? html`
             <span class="product-meta">
               ${product.archived && product.archivedAt
-                ? html`<span class="item-when">${KN.util.formatDate(product.archivedAt)}</span>` : ""}
+                ? html`<span class="item-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
               ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
               ${up ? html`<span>${up.text}</span>` : ""}
             </span>

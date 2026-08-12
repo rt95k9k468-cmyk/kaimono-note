@@ -598,11 +598,12 @@
             ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
           </span>
           <span class="item-meta">
-            ${/* The day it was bought, on the rows that have been. An archive
+            ${/* When it was bought, on the rows that have been. An archive
                  of undated lines says only 「いつか買った」, which is not a
-                 record of anything. */""}
+                 record of anything — and on a day of several trips the clock
+                 time is what separates them. */""}
             ${item.checked && item.checkedAt
-              ? html`<span class="item-when">${KN.util.formatDate(item.checkedAt)}</span>` : ""}
+              ? html`<span class="item-when">${KN.util.formatStamp(item.checkedAt)}</span>` : ""}
             ${item.memo ? html`<span class="item-memo">${item.memo}</span>` : ""}
           </span>
         </button>
