@@ -240,7 +240,26 @@
 }
 .todo-head.is-empty .todo-head-dot { opacity: .5; width: 7px; height: 7px; }
 .todo-group.is-empty { margin-bottom: 0; }
-.todo-group.is-empty + .todo-group.is-empty .todo-head { border-top: 1px solid var(--c-border); }
+
+/* One shelf, one band.
+
+   Fifteen headings down a screen, most of them thin and empty, ran together
+   into a list of dates — you could not see where 明日 stopped and 明後日
+   started, which matters most in the moment you are carrying a row between
+   them. So each shelf is drawn as a band: a rule across the full width above
+   its heading, and the heading itself washed in that shelf's own colour. The
+   wash is faint (7%), but fifteen faint washes in a row from red to blue is
+   the ramp made visible rather than fifteen identical grey lines. */
+.js-body > .todo-group { border-top: 1px solid var(--c-border); }
+.js-body > .todo-group > .todo-head {
+  background: color-mix(in srgb, var(--cat, var(--c-border)) 7%, transparent);
+  padding-top: var(--sp-3);
+  padding-bottom: var(--sp-3);
+}
+.js-body > .todo-group:not(.is-empty) > .todo-head { padding-bottom: var(--sp-2); }
+/* The band is the heading's, so a shelf holding rows keeps them below it on
+   the page's own ground rather than inside a tinted block. */
+.js-body > .todo-group > .item-list { padding-top: var(--sp-2); }
 
 /* 今日 gets the panel 今回買うもの has: the rows sit inside something rather
    than under a heading that scrolls away. The wash is 今日's own colour rather
@@ -277,16 +296,47 @@
 
 .item-when.is-late { color: #fff; background: var(--c-danger); }
 
+/* 「毎週 火・金」 is a standing fact about the row, not news about today. It
+   has to be readable when looked for and easy to look past when not, so it
+   sits well back — lighter than the date beside it, and the ↻ lighter still.
+   It was competing with the title on rows that already carry a coloured
+   wash. */
 .todo-repeat, .tile-repeat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   flex: none;
   font-size: 11px;
-  font-weight: 700;
-  color: var(--c-text-3);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
 }
-.todo-repeat svg, .tile-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
+.todo-repeat svg, .tile-repeat svg {
+  width: 12px; height: 12px;
+  stroke-width: 1.75;
+  opacity: .75;
+}
+
+/* The clock, when a row has one. Same pill as 朝/午後/夜 and in the same place,
+   because it answers the same question — just exactly rather than roughly. */
+.todo-at {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--cat, var(--c-text-2));
+  border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
+  background: color-mix(in srgb, var(--cat, var(--c-border)) 10%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+/* 時刻 in the sheet. Optional, and one line rather than a full-width field
+   under the chips — a block the size of the date field reads as something you
+   are expected to fill in, and most todos do not happen at a time. */
+.time-row { display: flex; align-items: center; gap: var(--sp-2); }
+.time-label { flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }
+.time-row .chip { flex: none; height: 34px; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
 /* 朝 / 午後 / 夜, on the row itself. Quiet: the shelf it sits on says it too,

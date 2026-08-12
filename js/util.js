@@ -140,6 +140,29 @@
     return `${date} ${hh}:${mm}`;
   }
 
+  /* ---------- a time of day ----------
+
+     Stored as 「19:30」 — local, no date, no zone, because it belongs to
+     whatever day the todo is for and moves with it when the day does. A
+     repeating 「毎週火曜 19:30」 keeps its half past seven whichever Tuesday
+     it lands on. */
+
+  const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || ""));
+
+  /** 「19:30」 → 夜. The three parts of the day, read off the clock, so a time
+      and a 朝/午後/夜 never have to be kept in step by hand. */
+  function partOfTime(hhmm) {
+    if (!isTime(hhmm)) return null;
+    const h = Number(String(hhmm).slice(0, 2));
+    if (h < 12) return "am";
+    if (h < 18) return "pm";
+    return "night";
+  }
+
+  /** 「19:30」 as it is written on a row. Kept 24-hour: 「19:30」 is one glance
+      and 「午後7時30分」 is a sentence. */
+  const formatTime = (hhmm) => (isTime(hhmm) ? String(hhmm) : "");
+
   /* ---------- a day, without a time ----------
 
      A due date is a day, not an instant: 「金曜まで」 means the whole of
@@ -438,6 +461,7 @@
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana,
+    isTime, partOfTime, formatTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
