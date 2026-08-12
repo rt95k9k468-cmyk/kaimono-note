@@ -2252,8 +2252,20 @@ button, [role="tab"] {
 }
 .archive.is-open .archive-head svg { transform: rotate(90deg); }
 .archive-body { padding-top: var(--sp-2); }
-/* Already put away: the cards say so by being quieter than the ones above. */
-.archive .product { opacity: .72; box-shadow: none; }
+/* Already put away — said the same way the shopping list says 「買った」:
+   the colour has done its job, so the card goes quiet and neutral and the name
+   is ruled through. Two screens, one meaning, one look. */
+.archive .product {
+  opacity: .55;
+  background: var(--c-surface-2);
+  border-color: var(--c-border);
+  box-shadow: none;
+}
+.archive .product-name { text-decoration: line-through; color: var(--c-text-2); }
+.archive .product-emoji { filter: grayscale(1); }
+.archive .product::before { opacity: .4; }
+.archive .item-price-amount,
+.archive .tile-price { color: var(--c-text-2); }
 .archive .product-list { padding: 0; }
 .product {
   position: relative;
