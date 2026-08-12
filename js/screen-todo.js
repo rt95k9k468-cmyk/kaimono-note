@@ -31,13 +31,18 @@
   const WD = KN.util.WEEKDAYS;
 
   /* 朝・午後・夜。The three shelves 今日 is divided into, and the three a todo
-     can be filed under when it has a day. Not a clock: 「朝」 is where a bin
-     day belongs, and a time would be a promise the app cannot keep — it sends
-     no alarms. */
+     can be filed under when it has a day. Rough on purpose: 「朝」 is where a
+     bin day belongs, and most things do not happen at a time.
+
+     For the ones that do, a todo can carry a clock time instead, and the part
+     is then read off it (store.todoPart) rather than kept in step by hand —
+     19:30 is 夜 and there is nothing to decide. What the time does not do is
+     ring: this app sends no alarms, and the sheet says so rather than letting
+     a written-down time be mistaken for one. */
   const PARTS = [
-    { id: "am",    label: "朝",   color: "#e05a3a" },
-    { id: "pm",    label: "午後", color: "#e0703a" },
-    { id: "night", label: "夜",   color: "#e08a3a" },
+    { id: "am",    label: "朝",   color: "#e05a3a", from: "00:00" },
+    { id: "pm",    label: "午後", color: "#e0703a", from: "12:00" },
+    { id: "night", label: "夜",   color: "#e08a3a", from: "18:00" },
   ];
   const partLabel = (id) => (PARTS.find((p) => p.id === id) || {}).label || "";
 
@@ -122,6 +127,7 @@
 
     let due = editing ? t.due : null;
     let part = editing ? t.part : null;
+    let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
@@ -142,10 +148,16 @@
           <div class="js-due-chips"></div>
           <input class="input js-due" type="date" value="${editing && t.due ? t.due : ""}"
                  aria-label="日付を選ぶ">
-          ${/* Which part of the day, for the ones where it matters. Not a
-                clock: 「朝」 is where a bin day belongs, and a time would be a
-                promise the app cannot keep — it sends no alarms. */""}
+          ${/* Which part of the day, for the ones where it matters, and the
+                clock itself for the ones that happen at a time. Choosing
+                either drops the other — 「19:30」 and 「朝」 together is two
+                answers to one question. */""}
           <div class="js-part"></div>
+          <div class="time-row js-time-row" hidden>
+            <span class="time-label">時刻</span>
+            <input class="input js-time" type="time" aria-label="時刻を選ぶ">
+            <button type="button" class="chip js-time-clear" hidden>はずす</button>
+          </div>
           <span class="field-hint js-due-hint"></span>
         </div>
 
@@ -215,6 +227,7 @@
         activeId: due || "",
         onPick: (id) => {
           due = id || null;
+          if (!due) { part = null; time = null; }
           dueEl.value = due || "";
           paintDueChips();
           paintPart();
@@ -234,6 +247,12 @@
       hintEl.innerHTML = "";
       if (!due) {
         hintEl.textContent = "日付を決めると、その日からアプリのアイコンに数が出ます";
+        return;
+      }
+      /* Said plainly, and said here rather than discovered at 19:30. A written
+         time sorts the row and shows on it; it does not ring. */
+      if (time) {
+        hintEl.textContent = `${formatDay(due)} ${time}に並びます（アラームは鳴りません）`;
         return;
       }
       if (!badge || !badge.supported()) {
@@ -257,16 +276,52 @@
       hintEl.append(b);
     }
 
+    /* 朝・午後・夜 and the clock are one question with two grains, so they are
+       drawn as one control: the chips say roughly when, the field says exactly
+       when, and whichever was touched last is the answer. A time lights up the
+       part it falls in, so 19:30 visibly *is* 夜 rather than something else
+       sitting beside it. */
+    const timeRow = body.querySelector(".js-time-row");
+    const timeEl = body.querySelector(".js-time");
+    const timeClear = body.querySelector(".js-time-clear");
+
     function paintPart() {
       const host = body.querySelector(".js-part");
       host.hidden = !due;
-      if (host.hidden) return;
+      timeRow.hidden = !due;
+      if (!due) return;
+      const shown = time ? KN.util.partOfTime(time) : part;
       KN.ui.chipRow(host,
         [{ id: "", label: "いつでも" }].concat(PARTS.map((p) => ({ id: p.id, label: p.label }))), {
-          activeId: part || "",
-          onPick: (id) => { part = id || null; paintPart(); haptic(); },
+          activeId: shown || "",
+          onPick: (id) => {
+            part = id || null;
+            /* Tapping 朝 after writing 19:30 is a correction, so the clock
+               goes — except when the time already falls in the part tapped,
+               where nothing was corrected and 19:30 should survive a stray
+               tap on 夜. */
+            if (time && KN.util.partOfTime(time) !== part) time = null;
+            paintPart();
+            paintHint();
+            haptic();
+          },
         });
+      timeEl.value = time || "";
+      timeClear.hidden = !time;
     }
+
+    timeEl.addEventListener("change", () => {
+      time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
+      if (time) part = null;
+      paintPart();
+      paintHint();
+    });
+    timeClear.addEventListener("click", () => {
+      time = null;
+      paintPart();
+      paintHint();
+      haptic();
+    });
 
     paintDueChips();
     paintPart();
@@ -274,6 +329,7 @@
 
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
+      if (!due) { part = null; time = null; }
       paintDueChips();
       paintPart();
       paintHint();
@@ -382,15 +438,17 @@
          to the first day the rule actually falls on. */
       const rule = { repeat, repeatDays, repeatNth };
       const fixed = due ? store.snapToRule(rule, due) : due;
+      const at = fixed ? time : null;
+      const when = fixed ? formatDay(fixed) + (at ? ` ${at}` : "") : "";
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null,
+        store.updateTodo(todoId, { title, due: fixed, part: fixed && !at ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged });
-        KN.ui.toast(fixed !== due ? `${formatDay(fixed)}にしました` : "直しました");
+        KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
-        store.addTodo({ title, due: fixed, part: fixed ? part : null,
+        store.addTodo({ title, due: fixed, part: fixed && !at ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged });
         KN.ui.toast(fixed
-          ? `「${title}」を${formatDay(fixed)}までに`
+          ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
       }
       haptic(12);
@@ -442,11 +500,15 @@
     out.push({ id: "late", label: "期限切れ", color: "#b23a2e", late: true, drop: null });
 
     // 今日 — the panel, and the three parts of the day inside it.
+    /* Dropping onto one of these is a statement about the time of day, so it
+       clears any clock time as well — otherwise 19:30 carried up to 朝 would
+       file itself straight back under 夜 and the drop would look ignored.
+       Dropping onto a *day* leaves the time alone: only the day changed. */
     out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
-      drop: () => ({ due: today, part: null }) });
+      drop: () => ({ due: today, part: null, time: null }) });
     PARTS.forEach((p) => out.push({
       id: "today-" + p.id, label: p.label, color: p.color, today: true, day: today, part: p.id,
-      drop: () => ({ due: today, part: p.id }),
+      drop: () => ({ due: today, part: p.id, time: null }),
     }));
 
     // The coming week, a day at a time.
@@ -503,7 +565,10 @@
     if (!t.due) return "none";
     const n = daysUntil(t.due);
     if (n < 0) return "late";
-    if (n === 0) return t.part ? "today-" + t.part : "today";
+    /* Read off the clock when there is one: 19:30 belongs on the 夜 shelf
+       without anyone having said 夜. */
+    const p = store.todoPart(t);
+    if (n === 0) return p ? "today-" + p : "today";
     if (n <= 7) return "d" + n;
     const week = groups.find((g) => g.from && g.to && t.due >= g.from && t.due <= g.to);
     if (week) return week.id;
@@ -534,7 +599,11 @@
        says 今日 is a word that has to be read to learn nothing. Kept where the
        shelf is vaguer than the row: a week, a month, the archive, a search. */
     const sameDay = !!(shelf && shelf.day && !closed);
-    const samePart = !!(shelf && shelf.part && shelf.part === t.part);
+    const samePart = !!(shelf && shelf.part && shelf.part === store.todoPart(t));
+    /* A time is never redundant with its shelf: 夜 says which third of the
+       evening block this is in, 19:30 says when. So it is shown wherever it
+       exists, and it takes the place the part label would have had. */
+    const at = !closed && t.due ? t.time : null;
 
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
@@ -560,7 +629,9 @@
         <button class="item-body">
           <span class="item-name">${t.title}</span>
           <span class="tile-when">${closed ? KN.util.formatStamp(when)
-            : (t.due ? formatDay(t.due) + (t.part ? " " + partLabel(t.part) : "") : "いつか")}</span>
+            : (t.due
+                ? formatDay(t.due) + (at ? " " + at : (t.part ? " " + partLabel(t.part) : ""))
+                : "いつか")}</span>
           ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
         </button>
       </div>
@@ -577,7 +648,9 @@
               ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
               : (t.due && !sameDay
                   ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
-            ${!closed && t.part && !samePart ? html`<span class="todo-part">${partLabel(t.part)}</span>` : ""}
+            ${at ? html`<span class="todo-at">${at}</span>`
+              : (!closed && t.part && !samePart
+                  ? html`<span class="todo-part">${partLabel(t.part)}</span>` : "")}
             ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
             ${t.repeat
               ? html`<span class="todo-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
@@ -809,9 +882,11 @@
         const to = target.drop();
         const patch = { due: to.due };
         // A day-shelf says nothing about which part of the day, so it leaves
-        // that alone; 朝 and 午後 and 夜 set it, and 「いつか」 clears it.
+        // that and any clock time alone; 朝 and 午後 and 夜 set the part and
+        // drop the time, and 「いつか」 clears both.
         if ("part" in to) patch.part = to.part;
         else if (to.due === null) patch.part = null;
+        if ("time" in to) patch.time = to.time;
         store.updateTodo(todoId, patch);
         haptic(14);
         if (t) {

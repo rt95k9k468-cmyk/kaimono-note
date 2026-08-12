@@ -27,7 +27,13 @@
     { id: "settings", label: "設定",     icon: "gear",      group: "app" },
   ];
 
-  let active = "list";
+  /* The app opens on やること. The question on picking the phone up is 「今日
+     なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
+     list is what you open once you are already standing in a shop, and it is
+     one tap away. */
+  const HOME = "todo";
+
+  let active = HOME;
   const mounted = new Set();
 
   /* ---------------- theme ---------------- */
@@ -252,7 +258,16 @@
     buildTabs();
 
     const fromHash = location.hash.slice(1);
-    show(KN.screens[fromHash] ? fromHash : "list");
+    show(KN.screens[fromHash] ? fromHash : HOME);
+
+    /* The hash is how the back button knows where it is, but it is also what
+       iOS hands back when it restores a standalone app it had killed — and a
+       restore is a fresh open, which should land on やること like any other.
+       So the hash is wiped on the way out and only ever survives a reload
+       inside one sitting. */
+    window.addEventListener("pagehide", () => {
+      if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    });
 
     // Re-render whichever screen is visible whenever state changes.
     store.subscribe(() => {

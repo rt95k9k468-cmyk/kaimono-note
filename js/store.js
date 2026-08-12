@@ -133,8 +133,10 @@
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
-      // 朝 / 午後 / 夜。日のなかのどのあたりか、というだけで、時刻ではない。
+      // 朝 / 午後 / 夜。決まっているなら、時刻そのものも。どちらか一方だけを
+      // 持ちます——両方あると食い違えるので、todoPart() が時刻から読みます。
       part: ["am", "pm", "night"].includes(t.part) ? t.part : null,
+      time: KN.util.isTime(t.time) ? t.time : null,
       memo: typeof t.memo === "string" ? t.memo : "",
       flagged: t.flagged === true,
       done: t.done === true,
@@ -525,10 +527,11 @@
      a day it is wanted by. Everything else here exists because of that day —
      what is overdue, what repeats, what the icon should count. */
 
-  function addTodo({ title, due = null, part = null, repeat = null, repeatDays = [], repeatNth = null,
-                     memo = "", flagged = false } = {}) {
+  function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
+                     repeatNth = null, memo = "", flagged = false } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
+    const at = KN.util.isTime(time) ? time : null;
     const rec = {
       id: uid("t"),
       title: name,
@@ -536,7 +539,8 @@
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
-      part: ["am", "pm", "night"].includes(part) ? part : null,
+      part: at ? null : (["am", "pm", "night"].includes(part) ? part : null),
+      time: at,
       memo: String(memo || ""),
       flagged: !!flagged,
       done: false,
@@ -564,7 +568,18 @@
       if ("repeat" in patch) {
         t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
       }
-      if ("part" in patch) t.part = ["am", "pm", "night"].includes(patch.part) ? patch.part : null;
+      /* 時刻と 朝/午後/夜 は、どちらか一方だけ。決めたほうが残り、もう一方は
+         降ります——「19:30」と「朝」を両方持たせると、どちらが本当かを毎回
+         決めなおすことになるので。あとから来た指定が勝ちます。 */
+      if ("time" in patch) {
+        t.time = KN.util.isTime(patch.time) ? patch.time : null;
+        if (t.time) t.part = null;
+      }
+      if ("part" in patch) {
+        t.part = ["am", "pm", "night"].includes(patch.part) ? patch.part : null;
+        if (t.part && !("time" in patch)) t.time = null;
+      }
+      if (!t.due) { t.part = null; t.time = null; }
       if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
@@ -703,15 +718,27 @@
      would bury the ones with a day on them. */
   const PART_ORDER = { am: 0, pm: 1, night: 2 };
 
+  /** 朝 / 午後 / 夜 — from the clock when there is one, otherwise from what was
+      chosen by hand. Which shelf a todo lands on is read from here, so a
+      「19:30」 files itself under 夜 without anyone having said 夜. */
+  const todoPart = (t) => (t && t.time ? KN.util.partOfTime(t.time) : (t && t.part) || null);
+
   function sortedTodos() {
     const rank = (t) => (t.due ? KN.util.daysUntil(t.due) : Number.MAX_SAFE_INTEGER);
     // Within a day, 朝 before 午後 before 夜 — the order the day happens in.
     // Something with no part is not 「早い」, it is 「いつでも」, so it sits first
     // where nothing competes with it.
-    const part = (t) => (t.part ? PART_ORDER[t.part] + 1 : 0);
+    const part = (t) => { const p = todoPart(t); return p ? PART_ORDER[p] + 1 : 0; };
+    /* And within one part of a day, the clock decides. A row that says 19:30
+       sits above one that says 21:00 whatever order they were typed in — that
+       is what writing a time down was for. The ones with no time keep their
+       hand-order and follow, since 「いつでも」 cannot be early. */
+    const at = (t) => (t.time ? 0 : 1);
     return get().todos.slice().sort((a, b) =>
       rank(a) - rank(b)
       || part(a) - part(b)
+      || at(a) - at(b)
+      || String(a.time || "").localeCompare(String(b.time || ""))
       || (b.flagged === true) - (a.flagged === true)
       || (a.order || 0) - (b.order || 0));
   }
@@ -923,7 +950,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
-    archiveTodo, openTodos, closedTodos, todoClosedAt,
+    archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     exportJSON, importJSON, reset, loadSample,
   };
 })();

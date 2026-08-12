@@ -338,6 +338,30 @@ button, [role="tab"] {
 }
 .chip-row::-webkit-scrollbar { display: none; }
 
+/* In a sheet, chips wrap instead of scrolling sideways.
+
+   A sideways scroller is right on a filter bar: the chips are one long menu
+   you sweep through, and what is off the edge is more of the same. In a form
+   it hides answers. On a 390px phone 「いつまでに」 ran 1週間後 off the right
+   edge and put 1か月後 and 「なし」 past it entirely, so clearing a date meant
+   knowing there was something over there to scroll to. Wrapping costs a line
+   and shows the whole question. */
+.sheet .chip-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: var(--sp-2);
+  padding-inline: 0;
+}
+
+/* The seven weekdays are one row whatever the screen: single characters that
+   would look broken split 6 + 1. Equal columns fit them down to 320px. */
+.sheet .chip-row.js-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.sheet .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
+
 .chip-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 .chip {

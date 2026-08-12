@@ -852,6 +852,30 @@ button, [role="tab"] {
 }
 .chip-row::-webkit-scrollbar { display: none; }
 
+/* In a sheet, chips wrap instead of scrolling sideways.
+
+   A sideways scroller is right on a filter bar: the chips are one long menu
+   you sweep through, and what is off the edge is more of the same. In a form
+   it hides answers. On a 390px phone 「いつまでに」 ran 1週間後 off the right
+   edge and put 1か月後 and 「なし」 past it entirely, so clearing a date meant
+   knowing there was something over there to scroll to. Wrapping costs a line
+   and shows the whole question. */
+.sheet .chip-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: var(--sp-2);
+  padding-inline: 0;
+}
+
+/* The seven weekdays are one row whatever the screen: single characters that
+   would look broken split 6 + 1. Equal columns fit them down to 320px. */
+.sheet .chip-row.js-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.sheet .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
+
 .chip-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 .chip {
@@ -1646,7 +1670,26 @@ button, [role="tab"] {
 }
 .todo-head.is-empty .todo-head-dot { opacity: .5; width: 7px; height: 7px; }
 .todo-group.is-empty { margin-bottom: 0; }
-.todo-group.is-empty + .todo-group.is-empty .todo-head { border-top: 1px solid var(--c-border); }
+
+/* One shelf, one band.
+
+   Fifteen headings down a screen, most of them thin and empty, ran together
+   into a list of dates — you could not see where 明日 stopped and 明後日
+   started, which matters most in the moment you are carrying a row between
+   them. So each shelf is drawn as a band: a rule across the full width above
+   its heading, and the heading itself washed in that shelf's own colour. The
+   wash is faint (7%), but fifteen faint washes in a row from red to blue is
+   the ramp made visible rather than fifteen identical grey lines. */
+.js-body > .todo-group { border-top: 1px solid var(--c-border); }
+.js-body > .todo-group > .todo-head {
+  background: color-mix(in srgb, var(--cat, var(--c-border)) 7%, transparent);
+  padding-top: var(--sp-3);
+  padding-bottom: var(--sp-3);
+}
+.js-body > .todo-group:not(.is-empty) > .todo-head { padding-bottom: var(--sp-2); }
+/* The band is the heading's, so a shelf holding rows keeps them below it on
+   the page's own ground rather than inside a tinted block. */
+.js-body > .todo-group > .item-list { padding-top: var(--sp-2); }
 
 /* 今日 gets the panel 今回買うもの has: the rows sit inside something rather
    than under a heading that scrolls away. The wash is 今日's own colour rather
@@ -1683,16 +1726,47 @@ button, [role="tab"] {
 
 .item-when.is-late { color: #fff; background: var(--c-danger); }
 
+/* 「毎週 火・金」 is a standing fact about the row, not news about today. It
+   has to be readable when looked for and easy to look past when not, so it
+   sits well back — lighter than the date beside it, and the ↻ lighter still.
+   It was competing with the title on rows that already carry a coloured
+   wash. */
 .todo-repeat, .tile-repeat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   flex: none;
   font-size: 11px;
-  font-weight: 700;
-  color: var(--c-text-3);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
 }
-.todo-repeat svg, .tile-repeat svg { width: 13px; height: 13px; stroke-width: 2; }
+.todo-repeat svg, .tile-repeat svg {
+  width: 12px; height: 12px;
+  stroke-width: 1.75;
+  opacity: .75;
+}
+
+/* The clock, when a row has one. Same pill as 朝/午後/夜 and in the same place,
+   because it answers the same question — just exactly rather than roughly. */
+.todo-at {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--cat, var(--c-text-2));
+  border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
+  background: color-mix(in srgb, var(--cat, var(--c-border)) 10%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+/* 時刻 in the sheet. Optional, and one line rather than a full-width field
+   under the chips — a block the size of the date field reads as something you
+   are expected to fill in, and most todos do not happen at a time. */
+.time-row { display: flex; align-items: center; gap: var(--sp-2); }
+.time-label { flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }
+.time-row .chip { flex: none; height: 34px; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
 /* 朝 / 午後 / 夜, on the row itself. Quiet: the shelf it sits on says it too,
@@ -2782,6 +2856,29 @@ button, [role="tab"] {
     return `${date} ${hh}:${mm}`;
   }
 
+  /* ---------- a time of day ----------
+
+     Stored as 「19:30」 — local, no date, no zone, because it belongs to
+     whatever day the todo is for and moves with it when the day does. A
+     repeating 「毎週火曜 19:30」 keeps its half past seven whichever Tuesday
+     it lands on. */
+
+  const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || ""));
+
+  /** 「19:30」 → 夜. The three parts of the day, read off the clock, so a time
+      and a 朝/午後/夜 never have to be kept in step by hand. */
+  function partOfTime(hhmm) {
+    if (!isTime(hhmm)) return null;
+    const h = Number(String(hhmm).slice(0, 2));
+    if (h < 12) return "am";
+    if (h < 18) return "pm";
+    return "night";
+  }
+
+  /** 「19:30」 as it is written on a row. Kept 24-hour: 「19:30」 is one glance
+      and 「午後7時30分」 is a sentence. */
+  const formatTime = (hhmm) => (isTime(hhmm) ? String(hhmm) : "");
+
   /* ---------- a day, without a time ----------
 
      A due date is a day, not an instant: 「金曜まで」 means the whole of
@@ -3080,6 +3177,7 @@ button, [role="tab"] {
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana,
+    isTime, partOfTime, formatTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
@@ -7097,8 +7195,10 @@ button, [role="tab"] {
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
-      // 朝 / 午後 / 夜。日のなかのどのあたりか、というだけで、時刻ではない。
+      // 朝 / 午後 / 夜。決まっているなら、時刻そのものも。どちらか一方だけを
+      // 持ちます——両方あると食い違えるので、todoPart() が時刻から読みます。
       part: ["am", "pm", "night"].includes(t.part) ? t.part : null,
+      time: KN.util.isTime(t.time) ? t.time : null,
       memo: typeof t.memo === "string" ? t.memo : "",
       flagged: t.flagged === true,
       done: t.done === true,
@@ -7489,10 +7589,11 @@ button, [role="tab"] {
      a day it is wanted by. Everything else here exists because of that day —
      what is overdue, what repeats, what the icon should count. */
 
-  function addTodo({ title, due = null, part = null, repeat = null, repeatDays = [], repeatNth = null,
-                     memo = "", flagged = false } = {}) {
+  function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
+                     repeatNth = null, memo = "", flagged = false } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
+    const at = KN.util.isTime(time) ? time : null;
     const rec = {
       id: uid("t"),
       title: name,
@@ -7500,7 +7601,8 @@ button, [role="tab"] {
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
-      part: ["am", "pm", "night"].includes(part) ? part : null,
+      part: at ? null : (["am", "pm", "night"].includes(part) ? part : null),
+      time: at,
       memo: String(memo || ""),
       flagged: !!flagged,
       done: false,
@@ -7528,7 +7630,18 @@ button, [role="tab"] {
       if ("repeat" in patch) {
         t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
       }
-      if ("part" in patch) t.part = ["am", "pm", "night"].includes(patch.part) ? patch.part : null;
+      /* 時刻と 朝/午後/夜 は、どちらか一方だけ。決めたほうが残り、もう一方は
+         降ります——「19:30」と「朝」を両方持たせると、どちらが本当かを毎回
+         決めなおすことになるので。あとから来た指定が勝ちます。 */
+      if ("time" in patch) {
+        t.time = KN.util.isTime(patch.time) ? patch.time : null;
+        if (t.time) t.part = null;
+      }
+      if ("part" in patch) {
+        t.part = ["am", "pm", "night"].includes(patch.part) ? patch.part : null;
+        if (t.part && !("time" in patch)) t.time = null;
+      }
+      if (!t.due) { t.part = null; t.time = null; }
       if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
@@ -7667,15 +7780,27 @@ button, [role="tab"] {
      would bury the ones with a day on them. */
   const PART_ORDER = { am: 0, pm: 1, night: 2 };
 
+  /** 朝 / 午後 / 夜 — from the clock when there is one, otherwise from what was
+      chosen by hand. Which shelf a todo lands on is read from here, so a
+      「19:30」 files itself under 夜 without anyone having said 夜. */
+  const todoPart = (t) => (t && t.time ? KN.util.partOfTime(t.time) : (t && t.part) || null);
+
   function sortedTodos() {
     const rank = (t) => (t.due ? KN.util.daysUntil(t.due) : Number.MAX_SAFE_INTEGER);
     // Within a day, 朝 before 午後 before 夜 — the order the day happens in.
     // Something with no part is not 「早い」, it is 「いつでも」, so it sits first
     // where nothing competes with it.
-    const part = (t) => (t.part ? PART_ORDER[t.part] + 1 : 0);
+    const part = (t) => { const p = todoPart(t); return p ? PART_ORDER[p] + 1 : 0; };
+    /* And within one part of a day, the clock decides. A row that says 19:30
+       sits above one that says 21:00 whatever order they were typed in — that
+       is what writing a time down was for. The ones with no time keep their
+       hand-order and follow, since 「いつでも」 cannot be early. */
+    const at = (t) => (t.time ? 0 : 1);
     return get().todos.slice().sort((a, b) =>
       rank(a) - rank(b)
       || part(a) - part(b)
+      || at(a) - at(b)
+      || String(a.time || "").localeCompare(String(b.time || ""))
       || (b.flagged === true) - (a.flagged === true)
       || (a.order || 0) - (b.order || 0));
   }
@@ -7887,7 +8012,7 @@ button, [role="tab"] {
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
-    archiveTodo, openTodos, closedTodos, todoClosedAt,
+    archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -10827,13 +10952,18 @@ button, [role="tab"] {
   const WD = KN.util.WEEKDAYS;
 
   /* 朝・午後・夜。The three shelves 今日 is divided into, and the three a todo
-     can be filed under when it has a day. Not a clock: 「朝」 is where a bin
-     day belongs, and a time would be a promise the app cannot keep — it sends
-     no alarms. */
+     can be filed under when it has a day. Rough on purpose: 「朝」 is where a
+     bin day belongs, and most things do not happen at a time.
+
+     For the ones that do, a todo can carry a clock time instead, and the part
+     is then read off it (store.todoPart) rather than kept in step by hand —
+     19:30 is 夜 and there is nothing to decide. What the time does not do is
+     ring: this app sends no alarms, and the sheet says so rather than letting
+     a written-down time be mistaken for one. */
   const PARTS = [
-    { id: "am",    label: "朝",   color: "#e05a3a" },
-    { id: "pm",    label: "午後", color: "#e0703a" },
-    { id: "night", label: "夜",   color: "#e08a3a" },
+    { id: "am",    label: "朝",   color: "#e05a3a", from: "00:00" },
+    { id: "pm",    label: "午後", color: "#e0703a", from: "12:00" },
+    { id: "night", label: "夜",   color: "#e08a3a", from: "18:00" },
   ];
   const partLabel = (id) => (PARTS.find((p) => p.id === id) || {}).label || "";
 
@@ -10918,6 +11048,7 @@ button, [role="tab"] {
 
     let due = editing ? t.due : null;
     let part = editing ? t.part : null;
+    let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
@@ -10938,10 +11069,16 @@ button, [role="tab"] {
           <div class="js-due-chips"></div>
           <input class="input js-due" type="date" value="${editing && t.due ? t.due : ""}"
                  aria-label="日付を選ぶ">
-          ${/* Which part of the day, for the ones where it matters. Not a
-                clock: 「朝」 is where a bin day belongs, and a time would be a
-                promise the app cannot keep — it sends no alarms. */""}
+          ${/* Which part of the day, for the ones where it matters, and the
+                clock itself for the ones that happen at a time. Choosing
+                either drops the other — 「19:30」 and 「朝」 together is two
+                answers to one question. */""}
           <div class="js-part"></div>
+          <div class="time-row js-time-row" hidden>
+            <span class="time-label">時刻</span>
+            <input class="input js-time" type="time" aria-label="時刻を選ぶ">
+            <button type="button" class="chip js-time-clear" hidden>はずす</button>
+          </div>
           <span class="field-hint js-due-hint"></span>
         </div>
 
@@ -11011,6 +11148,7 @@ button, [role="tab"] {
         activeId: due || "",
         onPick: (id) => {
           due = id || null;
+          if (!due) { part = null; time = null; }
           dueEl.value = due || "";
           paintDueChips();
           paintPart();
@@ -11030,6 +11168,12 @@ button, [role="tab"] {
       hintEl.innerHTML = "";
       if (!due) {
         hintEl.textContent = "日付を決めると、その日からアプリのアイコンに数が出ます";
+        return;
+      }
+      /* Said plainly, and said here rather than discovered at 19:30. A written
+         time sorts the row and shows on it; it does not ring. */
+      if (time) {
+        hintEl.textContent = `${formatDay(due)} ${time}に並びます（アラームは鳴りません）`;
         return;
       }
       if (!badge || !badge.supported()) {
@@ -11053,16 +11197,52 @@ button, [role="tab"] {
       hintEl.append(b);
     }
 
+    /* 朝・午後・夜 and the clock are one question with two grains, so they are
+       drawn as one control: the chips say roughly when, the field says exactly
+       when, and whichever was touched last is the answer. A time lights up the
+       part it falls in, so 19:30 visibly *is* 夜 rather than something else
+       sitting beside it. */
+    const timeRow = body.querySelector(".js-time-row");
+    const timeEl = body.querySelector(".js-time");
+    const timeClear = body.querySelector(".js-time-clear");
+
     function paintPart() {
       const host = body.querySelector(".js-part");
       host.hidden = !due;
-      if (host.hidden) return;
+      timeRow.hidden = !due;
+      if (!due) return;
+      const shown = time ? KN.util.partOfTime(time) : part;
       KN.ui.chipRow(host,
         [{ id: "", label: "いつでも" }].concat(PARTS.map((p) => ({ id: p.id, label: p.label }))), {
-          activeId: part || "",
-          onPick: (id) => { part = id || null; paintPart(); haptic(); },
+          activeId: shown || "",
+          onPick: (id) => {
+            part = id || null;
+            /* Tapping 朝 after writing 19:30 is a correction, so the clock
+               goes — except when the time already falls in the part tapped,
+               where nothing was corrected and 19:30 should survive a stray
+               tap on 夜. */
+            if (time && KN.util.partOfTime(time) !== part) time = null;
+            paintPart();
+            paintHint();
+            haptic();
+          },
         });
+      timeEl.value = time || "";
+      timeClear.hidden = !time;
     }
+
+    timeEl.addEventListener("change", () => {
+      time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
+      if (time) part = null;
+      paintPart();
+      paintHint();
+    });
+    timeClear.addEventListener("click", () => {
+      time = null;
+      paintPart();
+      paintHint();
+      haptic();
+    });
 
     paintDueChips();
     paintPart();
@@ -11070,6 +11250,7 @@ button, [role="tab"] {
 
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
+      if (!due) { part = null; time = null; }
       paintDueChips();
       paintPart();
       paintHint();
@@ -11178,15 +11359,17 @@ button, [role="tab"] {
          to the first day the rule actually falls on. */
       const rule = { repeat, repeatDays, repeatNth };
       const fixed = due ? store.snapToRule(rule, due) : due;
+      const at = fixed ? time : null;
+      const when = fixed ? formatDay(fixed) + (at ? ` ${at}` : "") : "";
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null,
+        store.updateTodo(todoId, { title, due: fixed, part: fixed && !at ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged });
-        KN.ui.toast(fixed !== due ? `${formatDay(fixed)}にしました` : "直しました");
+        KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
-        store.addTodo({ title, due: fixed, part: fixed ? part : null,
+        store.addTodo({ title, due: fixed, part: fixed && !at ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged });
         KN.ui.toast(fixed
-          ? `「${title}」を${formatDay(fixed)}までに`
+          ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
       }
       haptic(12);
@@ -11238,11 +11421,15 @@ button, [role="tab"] {
     out.push({ id: "late", label: "期限切れ", color: "#b23a2e", late: true, drop: null });
 
     // 今日 — the panel, and the three parts of the day inside it.
+    /* Dropping onto one of these is a statement about the time of day, so it
+       clears any clock time as well — otherwise 19:30 carried up to 朝 would
+       file itself straight back under 夜 and the drop would look ignored.
+       Dropping onto a *day* leaves the time alone: only the day changed. */
     out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
-      drop: () => ({ due: today, part: null }) });
+      drop: () => ({ due: today, part: null, time: null }) });
     PARTS.forEach((p) => out.push({
       id: "today-" + p.id, label: p.label, color: p.color, today: true, day: today, part: p.id,
-      drop: () => ({ due: today, part: p.id }),
+      drop: () => ({ due: today, part: p.id, time: null }),
     }));
 
     // The coming week, a day at a time.
@@ -11299,7 +11486,10 @@ button, [role="tab"] {
     if (!t.due) return "none";
     const n = daysUntil(t.due);
     if (n < 0) return "late";
-    if (n === 0) return t.part ? "today-" + t.part : "today";
+    /* Read off the clock when there is one: 19:30 belongs on the 夜 shelf
+       without anyone having said 夜. */
+    const p = store.todoPart(t);
+    if (n === 0) return p ? "today-" + p : "today";
     if (n <= 7) return "d" + n;
     const week = groups.find((g) => g.from && g.to && t.due >= g.from && t.due <= g.to);
     if (week) return week.id;
@@ -11330,7 +11520,11 @@ button, [role="tab"] {
        says 今日 is a word that has to be read to learn nothing. Kept where the
        shelf is vaguer than the row: a week, a month, the archive, a search. */
     const sameDay = !!(shelf && shelf.day && !closed);
-    const samePart = !!(shelf && shelf.part && shelf.part === t.part);
+    const samePart = !!(shelf && shelf.part && shelf.part === store.todoPart(t));
+    /* A time is never redundant with its shelf: 夜 says which third of the
+       evening block this is in, 19:30 says when. So it is shown wherever it
+       exists, and it takes the place the part label would have had. */
+    const at = !closed && t.due ? t.time : null;
 
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
@@ -11356,7 +11550,9 @@ button, [role="tab"] {
         <button class="item-body">
           <span class="item-name">${t.title}</span>
           <span class="tile-when">${closed ? KN.util.formatStamp(when)
-            : (t.due ? formatDay(t.due) + (t.part ? " " + partLabel(t.part) : "") : "いつか")}</span>
+            : (t.due
+                ? formatDay(t.due) + (at ? " " + at : (t.part ? " " + partLabel(t.part) : ""))
+                : "いつか")}</span>
           ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
         </button>
       </div>
@@ -11373,7 +11569,9 @@ button, [role="tab"] {
               ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
               : (t.due && !sameDay
                   ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
-            ${!closed && t.part && !samePart ? html`<span class="todo-part">${partLabel(t.part)}</span>` : ""}
+            ${at ? html`<span class="todo-at">${at}</span>`
+              : (!closed && t.part && !samePart
+                  ? html`<span class="todo-part">${partLabel(t.part)}</span>` : "")}
             ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
             ${t.repeat
               ? html`<span class="todo-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
@@ -11605,9 +11803,11 @@ button, [role="tab"] {
         const to = target.drop();
         const patch = { due: to.due };
         // A day-shelf says nothing about which part of the day, so it leaves
-        // that alone; 朝 and 午後 and 夜 set it, and 「いつか」 clears it.
+        // that and any clock time alone; 朝 and 午後 and 夜 set the part and
+        // drop the time, and 「いつか」 clears both.
         if ("part" in to) patch.part = to.part;
         else if (to.due === null) patch.part = null;
+        if ("time" in to) patch.time = to.time;
         store.updateTodo(todoId, patch);
         haptic(14);
         if (t) {
@@ -13896,7 +14096,13 @@ button, [role="tab"] {
     { id: "settings", label: "設定",     icon: "gear",      group: "app" },
   ];
 
-  let active = "list";
+  /* The app opens on やること. The question on picking the phone up is 「今日
+     なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
+     list is what you open once you are already standing in a shop, and it is
+     one tap away. */
+  const HOME = "todo";
+
+  let active = HOME;
   const mounted = new Set();
 
   /* ---------------- theme ---------------- */
@@ -14121,7 +14327,16 @@ button, [role="tab"] {
     buildTabs();
 
     const fromHash = location.hash.slice(1);
-    show(KN.screens[fromHash] ? fromHash : "list");
+    show(KN.screens[fromHash] ? fromHash : HOME);
+
+    /* The hash is how the back button knows where it is, but it is also what
+       iOS hands back when it restores a standalone app it had killed — and a
+       restore is a fresh open, which should land on やること like any other.
+       So the hash is wiped on the way out and only ever survives a reload
+       inside one sitting. */
+    window.addEventListener("pagehide", () => {
+      if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    });
 
     // Re-render whichever screen is visible whenever state changes.
     store.subscribe(() => {
