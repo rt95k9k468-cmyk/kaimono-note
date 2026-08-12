@@ -513,7 +513,12 @@
     return "far";
   }
 
+  /* The painted edge says when this is due. Once it is done or put away there
+     is no 「when」 left to say, and a red edge on a finished row goes on
+     shouting 今日 at something nobody has to do — so the archive drops to the
+     same neutral grey the undated rows wear. */
   const colorOf = (t, groups) => {
+    if (t.done || t.archived) return NONE_COLOR;
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   };
@@ -554,7 +559,7 @@
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
         <button class="item-body">
           <span class="item-name">${t.title}</span>
-          <span class="tile-when">${closed ? KN.util.formatDate(when)
+          <span class="tile-when">${closed ? KN.util.formatStamp(when)
             : (t.due ? formatDay(t.due) + (t.part ? " " + partLabel(t.part) : "") : "いつか")}</span>
           ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
         </button>
@@ -569,7 +574,7 @@
           </span>
           <span class="item-meta">
             ${closed && when
-              ? html`<span class="item-when">${KN.util.formatDate(when)}</span>`
+              ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
               : (t.due && !sameDay
                   ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
             ${!closed && t.part && !samePart ? html`<span class="todo-part">${partLabel(t.part)}</span>` : ""}

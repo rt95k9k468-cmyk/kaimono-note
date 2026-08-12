@@ -124,6 +124,22 @@
     return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}/${md}`;
   }
 
+  /** 「8/12 14:05」 — the date, plus the clock time it happened at.
+      Several things get archived on one day, and the order they went in is
+      most of what tells them apart afterwards. A stored value that is only a
+      day (older records, or a due date) has no hour to show, so it stays a
+      plain date rather than pretending to be midnight. */
+  function formatStamp(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const date = formatDate(iso);
+    if (!/\d{1,2}:\d{2}/.test(String(iso))) return date;
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${date} ${hh}:${mm}`;
+  }
+
   /* ---------- a day, without a time ----------
 
      A due date is a day, not an instant: 「金曜まで」 means the whole of
@@ -421,7 +437,7 @@
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
     yen, yenFine, parseNum,
-    today, formatDate, relativeDate, foldKana,
+    today, formatDate, formatStamp, relativeDate, foldKana,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
