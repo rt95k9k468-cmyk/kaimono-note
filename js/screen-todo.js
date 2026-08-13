@@ -73,7 +73,6 @@
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">やること</h1>
-              <div class="topbar-sub js-sub"></div>
             </div>
             <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
@@ -97,7 +96,6 @@
     root.append(chrome);
 
     els = {
-      sub:       chrome.querySelector(".js-sub"),
       layout:    chrome.querySelector(".js-layout"),
       searchBtn: chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -751,12 +749,10 @@
 
   /* ---------------- render ---------------- */
 
+  /* No count under the title. 「残り7件」 is a fact about the app rather than
+     about the day, and the number that matters — what is wanted now — is
+     already on the tab, on the icon, and beside every heading below. */
   function render() {
-    const open = store.openTodos();
-    const dueNow = store.todosDue().length;
-    els.sub.textContent = store.get().todos.length
-      ? (dueNow ? `残り${open.length}件 ・ 今日までが${dueNow}件` : `残り${open.length}件`)
-      : "";
     KN.ui.paintLayoutButton(els.layout);
     renderBody();
   }
@@ -776,6 +772,12 @@
     const shown = all.filter(hit);
     const open = shown.filter((t) => !t.done && !t.archived);
     const closed = shown.filter((t) => t.done || t.archived);
+
+    /* The month, above everything. The shelves below are a calendar unrolled
+       downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
+       いるのか」 not at all — 8月17日 four screens down is a date without a
+       shape. Left out while searching: a filtered list is not a month. */
+    if (!query) els.body.append(monthCalendar(store.openTodos()));
 
     if (!all.length) {
       els.body.append(node(html`
@@ -827,6 +829,94 @@
         ${count ? html`<span class="cat-head-count">${count}</span>` : ""}
       </h2>
     `);
+  }
+
+  /* ---------------- この月 ----------------
+
+     The shelves below are a calendar unrolled downwards: excellent at 「次は
+     何か」, useless at 「今月のどのあたりにいるのか」. A month is a shape —
+     which week today falls in, how much of it is left, where the busy days
+     sit — and a shape is the one thing a list cannot draw.
+
+     Read-only, and only this month. Paging back and forth turns it into a
+     second way of navigating the app, and the shelves already are that; this
+     is a picture of where you are, with today circled. */
+
+  /** Which shelf a bare date belongs to — the same reading groupIdOf does. */
+  function groupIdOfDay(day) {
+    const n = daysUntil(day);
+    if (n < 0) return "late";
+    if (n === 0) return "today";
+    if (n <= 7) return "d" + n;
+    const week = groups.find((g) => g.from && g.to && day >= g.from && day <= g.to);
+    if (week) return week.id;
+    const d = KN.util.dayDate(day);
+    const month = groups.find((g) => g.year === d.getFullYear() && g.month === d.getMonth());
+    return month ? month.id : "far";
+  }
+
+  const dayColor = (day) => {
+    const g = groups.find((x) => x.id === groupIdOfDay(day));
+    return (g && g.color) || NONE_COLOR;
+  };
+
+  function monthCalendar(open) {
+    const U = KN.util;
+    const today = todayKey();
+    const now = U.dayDate(today);
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const total = new Date(year, month + 1, 0).getDate();
+    const lead = new Date(year, month, 1).getDay();
+
+    /* How many are wanted on each day. Dots rather than numerals: at a glance
+       it is 「その週は詰まっている」 that reads, not 「3件」. */
+    const load = new Map();
+    open.forEach((t) => { if (t.due) load.set(t.due, (load.get(t.due) || 0) + 1); });
+
+    const sec = node(html`
+      <section class="cal" aria-label="${month + 1}月">
+        <h2 class="cal-head">
+          <span class="cal-month">${month + 1}月</span>
+          <span class="cal-year">${year}</span>
+        </h2>
+        <div class="cal-grid"></div>
+      </section>
+    `);
+    const grid = sec.querySelector(".cal-grid");
+
+    U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
+      <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
+    `)));
+    for (let i = 0; i < lead; i++) grid.append(node(html`<span class="cal-pad"></span>`));
+
+    for (let d = 1; d <= total; d++) {
+      const key = U.dayKey(new Date(year, month, d));
+      const wd = (lead + d - 1) % 7;
+      const n = load.get(key) || 0;
+      const isToday = key === today;
+      const cell = node(html`
+        <button class="cal-day ${isToday ? "is-today" : ""} ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
+                data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
+                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${n ? ` やること${n}件` : ""}">
+          <span class="cal-n">${String(d)}</span>
+          <span class="cal-dots" style="--cat:${dayColor(key)}"></span>
+        </button>
+      `);
+      const dots = cell.querySelector(".cal-dots");
+      for (let i = 0; i < Math.min(n, 3); i++) dots.append(node(html`<i class="cal-dot"></i>`));
+      /* Tapping a date goes to that date's shelf. Otherwise the month is a
+         picture of somewhere you cannot get to — 8月17日 is visible up here
+         and four screens down there, with nothing joining them. */
+      cell.addEventListener("click", () => {
+        const target = els.body.querySelector(`.todo-group[data-group="${groupIdOfDay(key)}"]`)
+          || els.body.querySelector(".trip.todo-today");
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        haptic();
+      });
+      grid.append(cell);
+    }
+    return sec;
   }
 
   function groupSection(g, rows, tiles) {

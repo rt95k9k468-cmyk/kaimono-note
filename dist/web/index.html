@@ -1658,6 +1658,100 @@ button, [role="tab"] {
    difference is the day: the groups it is filed under, the colour of its edge,
    and the panel 今日 sits in. */
 
+/* ---------------- この月 ----------------
+
+   A month drawn as a month, above the shelves. It is small and quiet: the
+   work of the screen is underneath, and this is the map, not the territory.
+   Today is a filled disc in 今日's own red, so the mark here and the shelf
+   below say the same colour. */
+
+.cal {
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+}
+
+.cal-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 var(--sp-2);
+  padding: 0 2px;
+}
+.cal-month { font-size: var(--fs-lg); font-weight: 800; color: var(--c-text); }
+.cal-year { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px 0;
+}
+
+.cal-wd {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  padding-bottom: 3px;
+}
+.cal-wd.is-sun { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-3)); }
+.cal-wd.is-sat { color: color-mix(in srgb, #4a8fd9 70%, var(--c-text-3)); }
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 2px 0 3px;
+  background: none;
+  border: 0;
+  border-radius: var(--r-md);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .14s var(--ease);
+}
+.cal-day:active { background: var(--c-surface-2); }
+
+.cal-n {
+  display: grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--c-text-2);
+}
+.cal-day.is-sun .cal-n { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
+.cal-day.is-sat .cal-n { color: color-mix(in srgb, #4a8fd9 62%, var(--c-text-2)); }
+
+/* Today, circled. Filled rather than outlined: an outline is one more ring
+   among 30 numbers, and the one thing this calendar has to answer without
+   being read is 「今日はどこ」. */
+.cal-day.is-today .cal-n {
+  background: #e05a3a;
+  color: #fff;
+  font-weight: 800;
+}
+.cal-day.is-today.is-sun .cal-n,
+.cal-day.is-today.is-sat .cal-n { color: #fff; }
+
+/* Days that have something on them, in that day's own shelf colour — so the
+   red-to-blue run below is visible up here as well. Up to three: past that it
+   is 「詰まっている」 either way, and four dots in a 40px cell is a smudge.
+   The row keeps its height with none, or the numbers jog as todos move. */
+.cal-dots {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  align-items: center;
+}
+.cal-dot {
+  width: 4px; height: 4px;
+  border-radius: var(--r-full);
+  background: var(--cat, var(--c-border-2));
+}
+
 .todo-head {
   display: flex;
   align-items: center;
@@ -11259,7 +11353,6 @@ button, [role="tab"] {
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">やること</h1>
-              <div class="topbar-sub js-sub"></div>
             </div>
             <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
@@ -11283,7 +11376,6 @@ button, [role="tab"] {
     root.append(chrome);
 
     els = {
-      sub:       chrome.querySelector(".js-sub"),
       layout:    chrome.querySelector(".js-layout"),
       searchBtn: chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -11937,12 +12029,10 @@ button, [role="tab"] {
 
   /* ---------------- render ---------------- */
 
+  /* No count under the title. 「残り7件」 is a fact about the app rather than
+     about the day, and the number that matters — what is wanted now — is
+     already on the tab, on the icon, and beside every heading below. */
   function render() {
-    const open = store.openTodos();
-    const dueNow = store.todosDue().length;
-    els.sub.textContent = store.get().todos.length
-      ? (dueNow ? `残り${open.length}件 ・ 今日までが${dueNow}件` : `残り${open.length}件`)
-      : "";
     KN.ui.paintLayoutButton(els.layout);
     renderBody();
   }
@@ -11962,6 +12052,12 @@ button, [role="tab"] {
     const shown = all.filter(hit);
     const open = shown.filter((t) => !t.done && !t.archived);
     const closed = shown.filter((t) => t.done || t.archived);
+
+    /* The month, above everything. The shelves below are a calendar unrolled
+       downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
+       いるのか」 not at all — 8月17日 four screens down is a date without a
+       shape. Left out while searching: a filtered list is not a month. */
+    if (!query) els.body.append(monthCalendar(store.openTodos()));
 
     if (!all.length) {
       els.body.append(node(html`
@@ -12013,6 +12109,94 @@ button, [role="tab"] {
         ${count ? html`<span class="cat-head-count">${count}</span>` : ""}
       </h2>
     `);
+  }
+
+  /* ---------------- この月 ----------------
+
+     The shelves below are a calendar unrolled downwards: excellent at 「次は
+     何か」, useless at 「今月のどのあたりにいるのか」. A month is a shape —
+     which week today falls in, how much of it is left, where the busy days
+     sit — and a shape is the one thing a list cannot draw.
+
+     Read-only, and only this month. Paging back and forth turns it into a
+     second way of navigating the app, and the shelves already are that; this
+     is a picture of where you are, with today circled. */
+
+  /** Which shelf a bare date belongs to — the same reading groupIdOf does. */
+  function groupIdOfDay(day) {
+    const n = daysUntil(day);
+    if (n < 0) return "late";
+    if (n === 0) return "today";
+    if (n <= 7) return "d" + n;
+    const week = groups.find((g) => g.from && g.to && day >= g.from && day <= g.to);
+    if (week) return week.id;
+    const d = KN.util.dayDate(day);
+    const month = groups.find((g) => g.year === d.getFullYear() && g.month === d.getMonth());
+    return month ? month.id : "far";
+  }
+
+  const dayColor = (day) => {
+    const g = groups.find((x) => x.id === groupIdOfDay(day));
+    return (g && g.color) || NONE_COLOR;
+  };
+
+  function monthCalendar(open) {
+    const U = KN.util;
+    const today = todayKey();
+    const now = U.dayDate(today);
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const total = new Date(year, month + 1, 0).getDate();
+    const lead = new Date(year, month, 1).getDay();
+
+    /* How many are wanted on each day. Dots rather than numerals: at a glance
+       it is 「その週は詰まっている」 that reads, not 「3件」. */
+    const load = new Map();
+    open.forEach((t) => { if (t.due) load.set(t.due, (load.get(t.due) || 0) + 1); });
+
+    const sec = node(html`
+      <section class="cal" aria-label="${month + 1}月">
+        <h2 class="cal-head">
+          <span class="cal-month">${month + 1}月</span>
+          <span class="cal-year">${year}</span>
+        </h2>
+        <div class="cal-grid"></div>
+      </section>
+    `);
+    const grid = sec.querySelector(".cal-grid");
+
+    U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
+      <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
+    `)));
+    for (let i = 0; i < lead; i++) grid.append(node(html`<span class="cal-pad"></span>`));
+
+    for (let d = 1; d <= total; d++) {
+      const key = U.dayKey(new Date(year, month, d));
+      const wd = (lead + d - 1) % 7;
+      const n = load.get(key) || 0;
+      const isToday = key === today;
+      const cell = node(html`
+        <button class="cal-day ${isToday ? "is-today" : ""} ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
+                data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
+                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${n ? ` やること${n}件` : ""}">
+          <span class="cal-n">${String(d)}</span>
+          <span class="cal-dots" style="--cat:${dayColor(key)}"></span>
+        </button>
+      `);
+      const dots = cell.querySelector(".cal-dots");
+      for (let i = 0; i < Math.min(n, 3); i++) dots.append(node(html`<i class="cal-dot"></i>`));
+      /* Tapping a date goes to that date's shelf. Otherwise the month is a
+         picture of somewhere you cannot get to — 8月17日 is visible up here
+         and four screens down there, with nothing joining them. */
+      cell.addEventListener("click", () => {
+        const target = els.body.querySelector(`.todo-group[data-group="${groupIdOfDay(key)}"]`)
+          || els.body.querySelector(".trip.todo-today");
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        haptic();
+      });
+      grid.append(cell);
+    }
+    return sec;
   }
 
   function groupSection(g, rows, tiles) {
