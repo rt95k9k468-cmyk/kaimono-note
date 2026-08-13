@@ -36,6 +36,7 @@ const JS = [
   "js/backup.js",
   "js/insights.js",
   "js/pull-refresh.js",
+  "js/notify.js",
   "js/product-sheet.js",
   "js/screen-todo.js",
   "js/screen-list.js",

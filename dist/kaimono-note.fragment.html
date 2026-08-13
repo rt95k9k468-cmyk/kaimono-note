@@ -2879,6 +2879,13 @@ button, [role="tab"] {
       and 「午後7時30分」 is a sentence. */
   const formatTime = (hhmm) => (isTime(hhmm) ? String(hhmm) : "");
 
+  /** The clock right now, in the same 「19:30」 shape, so 「もう過ぎたか」 is a
+      string comparison rather than two Date objects and a timezone. */
+  function nowTime() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
   /* ---------- a day, without a time ----------
 
      A due date is a day, not an instant: 「金曜まで」 means the whole of
@@ -3177,7 +3184,7 @@ button, [role="tab"] {
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana,
-    isTime, partOfTime, formatTime,
+    isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
@@ -7199,6 +7206,8 @@ button, [role="tab"] {
       // 持ちます——両方あると食い違えるので、todoPart() が時刻から読みます。
       part: ["am", "pm", "night"].includes(t.part) ? t.part : null,
       time: KN.util.isTime(t.time) ? t.time : null,
+      // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
+      notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
       flagged: t.flagged === true,
       done: t.done === true,
@@ -7603,6 +7612,7 @@ button, [role="tab"] {
       repeatNth: cleanNth(repeatNth),
       part: at ? null : (["am", "pm", "night"].includes(part) ? part : null),
       time: at,
+      notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
       done: false,
@@ -7835,9 +7845,64 @@ button, [role="tab"] {
   /** The day a closed todo was closed, whichever way it closed. */
   const todoClosedAt = (t) => t.doneAt || t.archivedAt || null;
 
-  /** Not done, not put away, and wanted today or already late — the badge. */
+  /**
+   * Not done, not put away, and wanted *now* — the badge.
+   *
+   * A time on a todo is a statement about when it starts being your problem.
+   * 「19:30 に薬」 is not something the icon should be nagging about over
+   * breakfast: a 1 sitting there all day for a thing that cannot be done yet
+   * is the kind of number you learn to stop reading. So a timed todo joins the
+   * count when its clock comes round, and yesterday's stays counted whatever
+   * time it said — being late is not a thing that waits for an hour.
+   */
   function todosDue() {
-    return openTodos().filter((t) => t.due && KN.util.daysUntil(t.due) <= 0);
+    const now = KN.util.nowTime();
+    return openTodos().filter((t) => {
+      if (!t.due) return false;
+      const n = KN.util.daysUntil(t.due);
+      if (n < 0) return true;
+      if (n > 0) return false;
+      return !t.time || t.time <= now;
+    });
+  }
+
+  /** Today's timed todos whose time has not come round yet — waiting, not due. */
+  function todosWaiting() {
+    const now = KN.util.nowTime();
+    return openTodos().filter((t) =>
+      t.due && t.time && KN.util.daysUntil(t.due) === 0 && t.time > now);
+  }
+
+  /* ---- 「もう言った」 ----
+
+     A todo is announced once per occurrence, and an occurrence is the day and
+     the time it was for. Storing that pair rather than a flag means a repeating
+     todo announces itself again next Tuesday, and moving 19:30 to 20:00 makes
+     it a new thing to say — without anyone having to remember to clear a flag.
+     Written into the record so a closed app does not forget and repeat itself
+     on the way back in. */
+  const occurrenceOf = (t) => (t.due && t.time ? `${t.due} ${t.time}` : null);
+
+  /** Timed todos whose time has come and which have not been announced yet. */
+  function todosToAnnounce() {
+    const now = KN.util.nowTime();
+    return openTodos().filter((t) => {
+      if (!t.due || !t.time) return false;
+      if (KN.util.daysUntil(t.due) !== 0) return false;   // 今日のぶんだけ
+      if (t.time > now) return false;
+      return t.notifiedFor !== occurrenceOf(t);
+    });
+  }
+
+  /** Remember that these were announced, so they are not announced twice. */
+  function markAnnounced(ids) {
+    const want = new Set(ids);
+    if (!want.size) return;
+    update((s) => {
+      s.todos.forEach((t) => {
+        if (want.has(t.id)) t.notifiedFor = occurrenceOf(t);
+      });
+    });
   }
 
   function addItem(productId, { qty = 1, memo = "" } = {}) {
@@ -8013,6 +8078,7 @@ button, [role="tab"] {
     addStore, addProduct, addItem, addPrice, setArchived,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
+    todosWaiting, todosToAnnounce, markAnnounced,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -9969,6 +10035,155 @@ button, [role="tab"] {
   KN.pullRefresh = { init };
 })();
 
+/* ---- js/notify.js ---- */
+/* =========================================================
+   くらしノート — 時刻のお知らせ
+
+   What this can and cannot do, said plainly, because the difference matters
+   to whoever relies on it:
+
+   It CAN put a notification on the phone the moment a todo's time comes round
+   while the app is running, and it CAN tell you on the way in about the ones
+   whose time passed while you were away.
+
+   It CANNOT wake the app to ring at 19:30 while the app is closed. That takes
+   a push from a server — iOS 16.4 onwards will deliver Web Push to an
+   installed PWA, but something has to send it, and this app has no server and
+   no account; it is a folder of files on GitHub Pages and a copy of your data
+   on your own phone. There is no local scheduled-notification API on iOS
+   either (no Notification Triggers), so a timer in the page dies with the
+   page. Anything claiming otherwise here would be a promise the app breaks
+   silently, at the exact moment you were counting on it.
+
+   So: an alarm while you are holding the phone, and a catch-up when you pick
+   it up. The settings row says as much rather than saying 「通知」 and letting
+   it be assumed.
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const store = KN.store;
+
+  const hasAPI = () => typeof window !== "undefined" && "Notification" in window;
+
+  /** Only where a notification could actually be shown. */
+  function supported() {
+    if (!hasAPI()) return false;
+    // iOS only permits this from an installed app; asking in a Safari tab
+    // throws or silently does nothing.
+    return typeof navigator !== "undefined" && "serviceWorker" in navigator;
+  }
+
+  const enabled = () => supported() && store.get().settings.todoNotify === true;
+
+  /** Switched on in the app, but the phone is not letting anything through. */
+  function blocked() {
+    if (!enabled()) return false;
+    return hasAPI() && Notification.permission !== "granted";
+  }
+
+  function enable() {
+    if (!supported()) return Promise.resolve(false);
+    const ask = Notification.requestPermission
+      ? Notification.requestPermission()
+      : Promise.resolve(Notification.permission);
+    return Promise.resolve(ask)
+      .then((res) => {
+        if (res !== "granted") return false;
+        store.update((s) => { s.settings.todoNotify = true; });
+        /* Anything already past at the moment it is switched on is history,
+           not news — announcing four things from this morning as the switch
+           flips is the app shouting about its own settings screen. */
+        store.markAnnounced(store.todosToAnnounce().map((t) => t.id));
+        return true;
+      })
+      .catch(() => false);
+  }
+
+  function disable() {
+    store.update((s) => { s.settings.todoNotify = false; });
+  }
+
+  /* ---------------- showing one ---------------- */
+
+  /* iOS shows nothing for `new Notification()` in a standalone app; it wants
+     the service worker's registration to do it. Desktop browsers take either,
+     so the registration is tried first and the constructor is the fallback. */
+  function show(title, body, tag) {
+    const opts = {
+      body,
+      tag: tag || "kn-todo",
+      icon: "icons/icon-192.png",
+      badge: "icons/icon-192.png",
+      lang: "ja",
+      renotify: true,
+      data: { screen: "todo" },
+    };
+    const viaSW = navigator.serviceWorker && navigator.serviceWorker.ready;
+    if (viaSW) {
+      return viaSW
+        .then((reg) => reg.showNotification(title, opts))
+        .catch(() => fallback(title, opts));
+    }
+    return Promise.resolve(fallback(title, opts));
+  }
+
+  function fallback(title, opts) {
+    try { new Notification(title, opts); } catch (_) { /* nothing more to try */ }
+  }
+
+  /* ---------------- the round ---------------- */
+
+  /**
+   * Say whatever has come round since the last look, and remember saying it.
+   *
+   * One notification however many are due: four separate banners for 19:30 is
+   * four things to dismiss for one moment in the day.
+   */
+  function tick() {
+    if (!enabled() || blocked()) return Promise.resolve(0);
+    const due = store.todosToAnnounce();
+    if (!due.length) return Promise.resolve(0);
+
+    const first = due[0];
+    const title = due.length === 1
+      ? `${first.time} ${first.title}`
+      : `${first.time} ${first.title} ほか${due.length - 1}件`;
+    const body = due.length === 1
+      ? (first.memo || "やることの時刻です")
+      : due.map((t) => `${t.time} ${t.title}`).join("\n");
+
+    store.markAnnounced(due.map((t) => t.id));
+    return show(title, body, "kn-todo-time").then(() => due.length, () => due.length);
+  }
+
+  /* ---------------- keeping watch ---------------- */
+
+  let timer = null;
+
+  function init() {
+    if (!supported()) return;
+
+    /* Once a minute is as fine as the clock the times are written in. It is
+       also what makes the badge correct: 19:30 arriving has to change the
+       number on the icon whether or not anyone is looking at the screen. */
+    const beat = () => { tick(); if (KN.onMinute) KN.onMinute(); };
+    if (timer) clearInterval(timer);
+    timer = setInterval(beat, 30000);
+
+    /* And on the way back in — this is the path that actually carries most of
+       them, since the app is usually not running at 19:30. */
+    const wake = () => { if (document.visibilityState !== "hidden") beat(); };
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("pageshow", wake);
+    window.addEventListener("focus", wake);
+    wake();
+  }
+
+  KN.notify = { supported, enabled, blocked, enable, disable, tick, init };
+})();
+
 /* ---- js/product-sheet.js ---- */
 /* =========================================================
    くらしノート — shared product / item detail sheet
@@ -11170,10 +11385,30 @@ button, [role="tab"] {
         hintEl.textContent = "日付を決めると、その日からアプリのアイコンに数が出ます";
         return;
       }
-      /* Said plainly, and said here rather than discovered at 19:30. A written
-         time sorts the row and shows on it; it does not ring. */
+      /* Said here rather than discovered at 19:30. Two different sentences,
+         because with the switch on the app really does say something at the
+         time — just not while it is closed, which is the part that has to be
+         written down rather than assumed. */
       if (time) {
-        hintEl.textContent = `${formatDay(due)} ${time}に並びます（アラームは鳴りません）`;
+        const nt = KN.notify;
+        if (nt && nt.supported() && nt.enabled() && !nt.blocked()) {
+          hintEl.textContent =
+            `${time}になったらお知らせします（閉じているあいだは、次に開いたときに）`;
+          return;
+        }
+        hintEl.textContent = `${formatDay(due)} ${time}まではアイコンの数に入りません`;
+        if (nt && nt.supported() && !nt.enabled()) {
+          const b = node(html`
+            <span>　その時刻に知らせるには
+              <button type="button" class="link-btn js-notify-on">オンにする</button></span>
+          `);
+          b.querySelector(".js-notify-on").addEventListener("click", async () => {
+            const ok = await nt.enable();
+            paintHint();
+            if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+          });
+          hintEl.append(b);
+        }
         return;
       }
       if (!badge || !badge.supported()) {
@@ -13483,6 +13718,15 @@ button, [role="tab"] {
             <span class="row-value js-badge-state"></span>
           </button>
         </div>
+        <div class="rows js-notify-rows" hidden style="margin-top:12px">
+          <button class="row js-notify">
+            <span class="row-main">
+              <span class="row-title">やることの時刻を知らせる</span>
+              <span class="row-sub js-notify-sub"></span>
+            </span>
+            <span class="row-value js-notify-state"></span>
+          </button>
+        </div>
       </section>
     `);
 
@@ -13516,8 +13760,8 @@ button, [role="tab"] {
           : (on ? "var(--c-primary)" : "var(--c-text-3)");
         sub.textContent = blocked
           ? "端末の設定で、このアプリの通知を許可すると出るようになります"
-          : (on ? "ホーム画面のアイコンに、今回買うものと、今日までのやることの数が出ます"
-                : "iPhone では、通知の許可を求められます（通知は送りません）");
+          : (on ? "ホーム画面のアイコンに、今回買うものと、いま手をつけられるやることの数が出ます。時刻を決めたものは、その時刻から数に入ります"
+                : "iPhone では、通知の許可を求められます（この設定は数を出すだけです）");
       };
       paint();
 
@@ -13529,6 +13773,40 @@ button, [role="tab"] {
         if (!ok) {
           KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
         }
+      });
+    }
+
+    /* 時刻のお知らせ。The sub-line says what it actually does, at both
+       settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —
+       and it does not ring while the app is closed. Saying that here is the
+       difference between a feature and a thing that quietly lets you down. */
+    const notify = KN.notify;
+    if (notify && notify.supported()) {
+      const rows = wrap.querySelector(".js-notify-rows");
+      const state = wrap.querySelector(".js-notify-state");
+      const sub = wrap.querySelector(".js-notify-sub");
+      rows.hidden = false;
+
+      const paint = () => {
+        const on = notify.enabled();
+        const blocked = on && notify.blocked();
+        state.textContent = blocked ? "許可が必要" : (on ? "オン" : "オフ");
+        state.style.color = blocked ? "var(--c-danger)"
+          : (on ? "var(--c-primary)" : "var(--c-text-3)");
+        sub.textContent = blocked
+          ? "端末の設定で、このアプリの通知を許可すると出るようになります"
+          : (on
+              ? "時刻を決めたやることをお知らせします。アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます"
+              : "アプリを開いているときにお知らせし、閉じていたぶんは開いたときにまとめて出ます");
+      };
+      paint();
+
+      wrap.querySelector(".js-notify").addEventListener("click", async () => {
+        haptic();
+        if (notify.enabled()) { notify.disable(); paint(); return; }
+        const ok = await notify.enable();
+        paint();
+        if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
       });
     }
 
@@ -14354,25 +14632,37 @@ button, [role="tab"] {
       if (e.key === store.KEY) location.reload();
     });
 
-    /* Sunrise. A due date is only 「今日」 until midnight, and a phone that
-       sits open on the kitchen counter overnight would otherwise still be
-       showing yesterday's groupings and yesterday's badge. Checked once a
-       minute, and only acted on when the day actually turns. */
+    /* The clock moving is a thing that changes the screen.
+
+       Midnight is the obvious one: a due date is only 「今日」 until it is not,
+       and a phone left open on the kitchen counter overnight would otherwise
+       still be showing yesterday's groupings and yesterday's badge.
+
+       19:30 is the other. A todo with a time on it is not counted until its
+       time comes round, so the number on the icon has to change by itself when
+       it does — nobody is going to be holding the phone at the moment that
+       matters. Both are checked by looking at what the answer *is* rather than
+       by arithmetic on when it should next change. */
     let dayNow = KN.util.todayKey();
-    setInterval(() => {
+    let dueNow = store.todosDue().length;
+    KN.onMinute = () => {
       const key = KN.util.todayKey();
-      if (key === dayNow) return;
+      const due = store.todosDue().length;
+      if (key === dayNow && due === dueNow) return;
       dayNow = key;
+      dueNow = due;
       if (KN.screens[active]) KN.screens[active].render();
       paintTabs();
       paintAppBadge(true);
-    }, 60000);
+    };
+    setInterval(KN.onMinute, 30000);
 
     requestPersistentStorage();
     trackKeyboard();
     watchAppBadge();
     KN.pullRefresh.init();
     KN.backup.init();
+    KN.notify.init();
     registerServiceWorker();
   }
 

@@ -285,25 +285,37 @@
       if (e.key === store.KEY) location.reload();
     });
 
-    /* Sunrise. A due date is only 「今日」 until midnight, and a phone that
-       sits open on the kitchen counter overnight would otherwise still be
-       showing yesterday's groupings and yesterday's badge. Checked once a
-       minute, and only acted on when the day actually turns. */
+    /* The clock moving is a thing that changes the screen.
+
+       Midnight is the obvious one: a due date is only 「今日」 until it is not,
+       and a phone left open on the kitchen counter overnight would otherwise
+       still be showing yesterday's groupings and yesterday's badge.
+
+       19:30 is the other. A todo with a time on it is not counted until its
+       time comes round, so the number on the icon has to change by itself when
+       it does — nobody is going to be holding the phone at the moment that
+       matters. Both are checked by looking at what the answer *is* rather than
+       by arithmetic on when it should next change. */
     let dayNow = KN.util.todayKey();
-    setInterval(() => {
+    let dueNow = store.todosDue().length;
+    KN.onMinute = () => {
       const key = KN.util.todayKey();
-      if (key === dayNow) return;
+      const due = store.todosDue().length;
+      if (key === dayNow && due === dueNow) return;
       dayNow = key;
+      dueNow = due;
       if (KN.screens[active]) KN.screens[active].render();
       paintTabs();
       paintAppBadge(true);
-    }, 60000);
+    };
+    setInterval(KN.onMinute, 30000);
 
     requestPersistentStorage();
     trackKeyboard();
     watchAppBadge();
     KN.pullRefresh.init();
     KN.backup.init();
+    KN.notify.init();
     registerServiceWorker();
   }
 

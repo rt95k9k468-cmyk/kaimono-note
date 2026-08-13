@@ -20,6 +20,7 @@ const ASSETS = [
   "js/backup.js",
   "js/insights.js",
   "js/pull-refresh.js",
+  "js/notify.js",
   "js/product-sheet.js",
   "js/screen-todo.js",
   "js/screen-list.js",
@@ -87,6 +88,26 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || network;
+    })
+  );
+});
+
+/* Tapping the notification should land in the app, on the screen the
+   notification was about — and in the copy already running if there is one,
+   rather than opening a second one beside it. */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const screen = (event.notification.data && event.notification.data.screen) || "todo";
+  const target = new URL("./#" + screen, self.location.href).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.startsWith(self.registration.scope) && "focus" in client) {
+          if ("navigate" in client) client.navigate(target).catch(() => {});
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
     })
   );
 });
