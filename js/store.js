@@ -133,9 +133,10 @@
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
-      // 朝 / 午後 / 夜。決まっているなら、時刻そのものも。どちらか一方だけを
-      // 持ちます——両方あると食い違えるので、todoPart() が時刻から読みます。
-      part: ["am", "pm", "night"].includes(t.part) ? t.part : null,
+      // 毎朝 / 朝 / 午後 / 夜 / 毎晩。決まっているなら、時刻そのものも。どちら
+      // か一方だけを持ちます——両方あると食い違えるので、todoPart() が時刻から
+      // 読みます。
+      part: cleanPart(t.part),
       time: KN.util.isTime(t.time) ? t.time : null,
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
@@ -147,10 +148,36 @@
       archivedAt: t.archivedAt || null,
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
-    })).filter((t) => t.title);
+    })).filter((t) => t.title).map(fixBookend);
 
     out.schema = SCHEMA;
     return out;
+  }
+
+  /* 朝・午後・夜のほかに、日の両端に立つ二つ。「毎朝」と「毎晩」は、その日の
+     どこかではなく、その日の *はじめ* と *おわり* — 起きてすること、寝る前に
+     すること。だから同じ日のほかの用事は、この二つに挟まれて並びます。
+
+     「毎」と名乗る以上くり返しなので、選べば毎日になります。そこを別々の欄に
+     しておくと「毎朝だが一度きり」が作れてしまい、それは言葉と食い違います。 */
+  /* Function declarations, not consts: reconcile() runs while this module is
+     still being evaluated (`let state = load()` below the definitions), so a
+     `const` down here would still be in its dead zone and every load would
+     throw — quietly, into load()'s catch, and come back as an empty app. */
+  function isBookendPart(p) { return p === "dawn" || p === "dusk"; }
+  function cleanPart(v) {
+    return ["dawn", "am", "pm", "night", "dusk"].includes(v) ? v : null;
+  }
+
+  /** Hold a 毎朝／毎晩 to what it says: every day, on a day, at no clock time. */
+  function fixBookend(t) {
+    if (!isBookendPart(t.part)) return t;
+    t.repeat = "daily";
+    t.repeatDays = [];
+    t.repeatNth = null;
+    t.time = null;
+    if (!t.due) t.due = KN.util.todayKey();
+    return t;
   }
 
   /** 0..6, no repeats, in week order — anything else is not a set of days. */
@@ -541,7 +568,7 @@
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
-      part: at ? null : (["am", "pm", "night"].includes(part) ? part : null),
+      part: at ? null : cleanPart(part),
       time: at,
       notifiedFor: null,
       memo: String(memo || ""),
@@ -553,6 +580,7 @@
       createdAt: today(),
       order: 0,
     };
+    fixBookend(rec);
     update((s) => {
       s.todos.forEach((t) => { t.order = (t.order || 0) + 1; });
       s.todos.unshift(rec);
@@ -579,10 +607,11 @@
         if (t.time) t.part = null;
       }
       if ("part" in patch) {
-        t.part = ["am", "pm", "night"].includes(patch.part) ? patch.part : null;
+        t.part = cleanPart(patch.part);
         if (t.part && !("time" in patch)) t.time = null;
       }
       if (!t.due) { t.part = null; t.time = null; }
+      fixBookend(t);
       if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
@@ -719,7 +748,12 @@
   /* Overdue first, then by day, then by hand-order. Undated ones come last:
      they are things to do, not things due, and a list that mixed them in
      would bury the ones with a day on them. */
-  const PART_ORDER = { am: 0, pm: 1, night: 2 };
+  /* 毎朝 at one end of the day and 毎晩 at the other, with everything else
+     between them. 「いつでも」 sits ahead of 朝 rather than behind it: it is
+     not early, it is unplaced, and unplaced things belong where nothing else
+     is competing for the slot. */
+  const PART_ORDER = { dawn: 0, am: 2, pm: 3, night: 4, dusk: 5 };
+  const NO_PART_ORDER = 1;
 
   /** 朝 / 午後 / 夜 — from the clock when there is one, otherwise from what was
       chosen by hand. Which shelf a todo lands on is read from here, so a
@@ -731,7 +765,7 @@
     // Within a day, 朝 before 午後 before 夜 — the order the day happens in.
     // Something with no part is not 「早い」, it is 「いつでも」, so it sits first
     // where nothing competes with it.
-    const part = (t) => { const p = todoPart(t); return p ? PART_ORDER[p] + 1 : 0; };
+    const part = (t) => { const p = todoPart(t); return p ? PART_ORDER[p] : NO_PART_ORDER; };
     /* And within one part of a day, the clock decides. A row that says 19:30
        sits above one that says 21:00 whatever order they were typed in — that
        is what writing a time down was for. The ones with no time keep their

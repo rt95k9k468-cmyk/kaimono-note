@@ -221,13 +221,44 @@
 
 .cal-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   margin: 0 0 var(--sp-2);
   padding: 0 2px;
 }
 .cal-month { font-size: var(--fs-lg); font-weight: 800; color: var(--c-text); }
 .cal-year { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
+
+/* ‹ › at the far end, and — only once you have wandered — the way back. The
+   arrows are the same chevron the app uses everywhere, turned. */
+.cal-nav { margin-left: auto; display: flex; gap: 2px; }
+.cal-arrow {
+  width: 34px; height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--c-text-2);
+  transition: background .14s var(--ease), color .14s var(--ease);
+}
+.cal-arrow svg { width: 18px; height: 18px; stroke-width: 2.2; }
+/* The shared chevron points right, so 「次の月」 is it as drawn and
+   「前の月」 is it turned all the way round. */
+.cal-arrow.js-prev svg { transform: rotate(180deg); }
+.cal-arrow:active { background: var(--c-surface-2); color: var(--c-text); }
+@media (hover: hover) {
+  .cal-arrow:hover { background: var(--c-surface-2); color: var(--c-text); }
+}
+
+.cal-now {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--c-primary);
+  padding: 4px 8px;
+  border-radius: var(--r-full);
+  background: var(--c-primary-soft);
+}
+.cal-now + .cal-nav { margin-left: 0; }
 
 .cal-grid {
   display: grid;
@@ -300,6 +331,25 @@
   width: 4px; height: 4px;
   border-radius: var(--r-full);
   background: var(--cat, var(--c-border-2));
+}
+
+/* Arriving from the calendar, the rows for the day you tapped say so once.
+
+   The shelf a date lands on is often wider than the date — a week, a month —
+   so without this you arrive at a list and have to work out which line you
+   asked for. Twice, quickly, then gone: a highlight that stayed would be a
+   state to dismiss, and there is nothing here to dismiss. */
+@keyframes row-flash {
+  0%, 100% { box-shadow: var(--shadow-1); }
+  18%, 62% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat, var(--c-primary)) 55%, transparent),
+                var(--shadow-2);
+  }
+}
+.item-wrap.is-flash .item { animation: row-flash 1.4s var(--ease) 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .item-wrap.is-flash .item { animation-duration: .01ms; }
 }
 
 .todo-head {

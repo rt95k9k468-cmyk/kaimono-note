@@ -325,12 +325,125 @@
     setInterval(KN.onMinute, 30000);
 
     requestPersistentStorage();
+    watchTopTap();
     trackKeyboard();
     watchAppBadge();
     KN.pullRefresh.init();
     KN.backup.init();
     KN.notify.init();
     registerServiceWorker();
+  }
+
+  /* ---------------- back to the top ----------------
+
+     Tapping the status bar — the strip beside the notch — sends you to the top
+     of a list. It is the oldest gesture on the phone and it is free, except
+     that this app cannot hear it.
+
+     What iOS actually does is scroll *the document* to the top, and this
+     document does not scroll: the shell is exactly viewport height and every
+     list scrolls inside its own screen (see base.css, which pins it on purpose
+     — a scrollable document rubber-banded under every gesture and kept the
+     scroll iOS applied to reveal a focused field). There is no event for the
+     tap itself; nothing is delivered to a page under the status bar.
+
+     So the document is given one pixel of travel and parked on it. That single
+     pixel is the only thing iOS can take, and taking it is the signal. The
+     pixel is hidden under the status bar, the keyboard handler still owns
+     window.scrollY while a field is focused, and if the tap never arrives the
+     app is exactly as it was.
+
+     The header does the same thing on purpose, for every other device and as
+     the one that certainly works: a tap on the title, away from the buttons,
+     goes to the top. */
+
+  /* The one pixel the document is given, and where it rests. */
+  const TOP_TAP_PARK = 1;
+  const topTapOn = () => document.documentElement.classList.contains("has-top-tap");
+
+  const activeScreen = () => document.querySelector(".screen.is-active");
+
+  /* Quick — a slide, not a journey. Native smooth scrolling paces itself by
+     distance, so a screen 20 lists long took seconds; this is the same 260ms
+     whether you are 300px down or 30,000. */
+  function glideTo(el, to) {
+    if (!el) return;
+    const max = Math.max(0, el.scrollHeight - el.clientHeight);
+    const want = Math.max(0, Math.min(max, to));
+    const from = el.scrollTop;
+    if (Math.abs(want - from) < 1) return;
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / 260);
+      const e = 1 - Math.pow(1 - t, 3);
+      el.scrollTop = from + (want - from) * e;
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  const glideToTop = (el) => glideTo(el, 0);
+  KN.glideTo = glideTo;
+  KN.glideToTop = glideToTop;
+
+  function watchTopTap() {
+    /* The header, everywhere. Buttons and fields keep their own taps. */
+    document.addEventListener("click", (e) => {
+      const bar = e.target.closest && e.target.closest(".topbar");
+      if (!bar) return;
+      if (e.target.closest("button, a, input, textarea, select, label")) return;
+      glideToTop(activeScreen());
+    });
+
+    /* And the status bar — only on a touch screen, which is the only place
+       there is one. On a desktop the pixel would just be a pixel of wheel
+       travel that jumps the list to the top for no reason. */
+    if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) return;
+
+    const root = document.documentElement;
+    root.classList.add("has-top-tap");
+    const park = () => {
+      // Never while a field is focused: window.scrollY belongs to the keyboard
+      // then, and fit() moves it for reasons of its own.
+      if (root.classList.contains("kb-open")) return;
+      if (window.scrollY < TOP_TAP_PARK) window.scrollTo(0, TOP_TAP_PARK);
+    };
+    park();
+
+    /* What must never reach here is a *collateral* pull to zero. `scrollIntoView`
+       on a row asks every ancestor to bring it into view, the document included,
+       and that would read as a tap and jump the screen to the top underneath
+       whatever was being done to it. The app therefore scrolls its screens by
+       setting scrollTop rather than by asking the browser to reveal an element
+       (see jumpToDay), which leaves the document out of it entirely.
+
+       Timing cannot tell the two apart: a tap during a flick's coast looks
+       exactly like collateral, and refusing it would break the one moment the
+       gesture is most wanted. So the rule is 「起こさない」 rather than
+       「見分ける」. */
+    let touching = false;
+    const down = () => { touching = true; };
+    const up = () => { touching = false; };
+    document.addEventListener("pointerdown", down, true);
+    document.addEventListener("pointerup", up, true);
+    document.addEventListener("pointercancel", up, true);
+    document.addEventListener("touchstart", down, { capture: true, passive: true });
+    document.addEventListener("touchend", up, { capture: true, passive: true });
+
+    window.addEventListener("scroll", () => {
+      if (root.classList.contains("kb-open")) return;
+      if (window.scrollY !== 0) return;
+      const quiet = !touching && !(KN.reorder && KN.reorder.isActive());
+      const el = quiet ? activeScreen() : null;
+      // The pixel goes back either way, so the next tap has something to take.
+      window.scrollTo(0, TOP_TAP_PARK);
+      if (el && el.scrollTop > 0) { glideToTop(el); haptic(); }
+    }, { passive: true });
+
+    window.addEventListener("resize", park);
+    window.addEventListener("orientationchange", () => setTimeout(park, 250));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") setTimeout(park, 60);
+    });
   }
 
   /* iOS does not resize the page when the keyboard appears. It shrinks the
@@ -391,7 +504,10 @@
          cursor floated hundreds of pixels above the field it belonged to
          while the field itself looked correct. Scrolling moves the real
          geometry, and the caret comes along. */
-      if (window.scrollY) window.scrollTo(0, 0);
+      /* Anything past the parked pixel is the keyboard's doing and has to go;
+         the pixel itself is the status-bar tap's and stays. */
+      const rest = topTapOn() ? TOP_TAP_PARK : 0;
+      if (window.scrollY > rest) window.scrollTo(0, rest);
       app.style.transform = "";
 
       // Whether the keyboard is up cannot be read from the viewport at all.

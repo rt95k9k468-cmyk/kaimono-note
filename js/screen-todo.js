@@ -44,13 +44,31 @@
     { id: "pm",    label: "午後", color: "#e0703a", from: "12:00" },
     { id: "night", label: "夜",   color: "#e08a3a", from: "18:00" },
   ];
-  const partLabel = (id) => (PARTS.find((p) => p.id === id) || {}).label || "";
+
+  /* 毎朝 and 毎晩 are not a fourth and fifth part of the day — they are its two
+     ends. Not 「今日の朝に」 but 「起きてすること」 and 「寝る前にすること」,
+     which is why everything else for that day is listed between them rather
+     than among them. Both are daily by definition, and the store holds them to
+     it (a 「毎朝」 that happens once is not a 毎朝).
+
+     Grey, like every other repeat: the ramp says how near a deadline is, and a
+     thing you do every morning has no deadline to be near. */
+  const BOOKEND_COLOR = "#9aa4a0";
+  const BOOKENDS = [
+    { id: "dawn", label: "毎朝", color: BOOKEND_COLOR },
+    { id: "dusk", label: "毎晩", color: BOOKEND_COLOR },
+  ];
+  const ALL_PARTS = [BOOKENDS[0]].concat(PARTS, BOOKENDS[1]);
+  const partLabel = (id) => (ALL_PARTS.find((p) => p.id === id) || {}).label || "";
+  const isBookend = (id) => id === "dawn" || id === "dusk";
 
   /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. The rows are
      read at a glance, so they carry the whole rule rather than the frequency
      with the details hidden in a sheet. */
   function repeatText(t) {
     if (!t.repeat) return "";
+    // 「毎朝」 already says both how often and when; 「毎日 毎朝」 says it twice.
+    if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
     if (t.repeat === "weekly") {
       const d = t.repeatDays || [];
@@ -273,6 +291,12 @@
         }
         return;
       }
+      if (isBookend(part)) {
+        hintEl.textContent = part === "dawn"
+          ? "毎日くり返して、その日のいちばん上に出ます"
+          : "毎日くり返して、その日のいちばん下に出ます";
+        return;
+      }
       if (!badge || !badge.supported()) {
         hintEl.textContent = `${formatDay(due)}までのやることとして数えます`;
         return;
@@ -309,21 +333,37 @@
       timeRow.hidden = !due;
       if (!due) return;
       const shown = time ? KN.util.partOfTime(time) : part;
-      KN.ui.chipRow(host,
-        [{ id: "", label: "いつでも" }].concat(PARTS.map((p) => ({ id: p.id, label: p.label }))), {
-          activeId: shown || "",
-          onPick: (id) => {
-            part = id || null;
-            /* Tapping 朝 after writing 19:30 is a correction, so the clock
-               goes — except when the time already falls in the part tapped,
-               where nothing was corrected and 19:30 should survive a stray
-               tap on 夜. */
-            if (time && KN.util.partOfTime(time) !== part) time = null;
-            paintPart();
-            paintHint();
-            haptic();
-          },
-        });
+      /* 毎朝 … いつでも 朝 午後 夜 … 毎晩 — laid out in the order the day
+         runs, with its two ends on the outside, because that is also the order
+         the shelves put them in. */
+      const chips = [{ id: "dawn", label: "毎朝" }, { id: "", label: "いつでも" }]
+        .concat(PARTS.map((p) => ({ id: p.id, label: p.label })), { id: "dusk", label: "毎晩" });
+      KN.ui.chipRow(host, chips, {
+        activeId: shown || "",
+        onPick: (id) => {
+          part = id || null;
+          /* Tapping 朝 after writing 19:30 is a correction, so the clock
+             goes — except when the time already falls in the part tapped,
+             where nothing was corrected and 19:30 should survive a stray
+             tap on 夜. */
+          if (time && KN.util.partOfTime(time) !== part) time = null;
+          /* 「毎朝」 is a daily thing by the meaning of the word, so choosing
+             it sets くりかえし rather than leaving a 「毎朝だが一度きり」 for
+             the store to quietly correct later. */
+          if (isBookend(part)) {
+            time = null;
+            repeat = "daily";
+            repeatDays = [];
+            repeatNth = null;
+            paintRepeat();
+          }
+          paintPart();
+          paintHint();
+          haptic();
+        },
+      });
+      // A clock and 「毎朝」 are different answers to the same question.
+      timeRow.hidden = isBookend(part);
       timeEl.value = time || "";
       timeClear.hidden = !time;
     }
@@ -365,6 +405,9 @@
             repeat = id || null;
             if (repeat !== "weekly") repeatDays = [];
             if (repeat !== "monthly") repeatNth = null;
+            /* 「毎朝」で「毎週」は矛盾。あとから決めたほうが勝つので、
+               時間帯のほうが「いつでも」に降ります。 */
+            if (isBookend(part) && repeat !== "daily") { part = null; paintPart(); }
             paintRepeat();
             haptic();
           },
@@ -522,12 +565,22 @@
        clears any clock time as well — otherwise 19:30 carried up to 朝 would
        file itself straight back under 夜 and the drop would look ignored.
        Dropping onto a *day* leaves the time alone: only the day changed. */
+    /* 毎朝 opens the day and 毎晩 closes it, with the rest of today between —
+       so the panel reads down the day the way the day is lived. Both only
+       appear when something is in them: an empty 「毎朝」 line every morning is
+       a shelf for a routine nobody has. */
+    out.push({ id: "today-dawn", label: BOOKENDS[0].label, color: BOOKENDS[0].color,
+      today: true, day: today, part: "dawn", onlyWhenFull: true,
+      drop: () => ({ due: today, part: "dawn", time: null }) });
     out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
       drop: () => ({ due: today, part: null, time: null }) });
     PARTS.forEach((p) => out.push({
       id: "today-" + p.id, label: p.label, color: p.color, today: true, day: today, part: p.id,
       drop: () => ({ due: today, part: p.id, time: null }),
     }));
+    out.push({ id: "today-dusk", label: BOOKENDS[1].label, color: BOOKENDS[1].color,
+      today: true, day: today, part: "dusk", onlyWhenFull: true,
+      drop: () => ({ due: today, part: "dusk", time: null }) });
 
     // The coming week, a day at a time.
     for (let i = 1; i <= 7; i++) {
@@ -838,9 +891,12 @@
      which week today falls in, how much of it is left, where the busy days
      sit — and a shape is the one thing a list cannot draw.
 
-     Read-only, and only this month. Paging back and forth turns it into a
-     second way of navigating the app, and the shelves already are that; this
-     is a picture of where you are, with today circled. */
+     Today is circled, and the months turn — 「来月の第2週」 is a thing the
+     shelves name but cannot show you the shape of. Which month is on screen is
+     kept between renders, so ticking something off does not snap you back to
+     August while you are looking at October. */
+
+  let calMonth = null;    // {year, month}, or null for 「this one」
 
   /** Which shelf a bare date belongs to — the same reading groupIdOf does. */
   function groupIdOfDay(day) {
@@ -860,30 +916,93 @@
     return (g && g.color) || NONE_COLOR;
   };
 
+  /**
+   * Go to a date's shelf, and say which rows were meant.
+   *
+   * The shelf a date lands on is often wider than the date — a week, a month,
+   * 「もっと先」 — so arriving leaves you looking at a list and guessing which
+   * line you asked for. The rows for that exact day light up once: long enough
+   * to find, short enough not to be a state anyone has to dismiss.
+   */
+  function jumpToDay(day) {
+    const target = els.body.querySelector(`.todo-group[data-group="${groupIdOfDay(day)}"]`)
+      || els.body.querySelector(".trip.todo-today");
+    /* Scrolled by hand rather than with scrollIntoView. That asks *every*
+       ancestor to bring the row into view, the document included — and the
+       document's one spare pixel is what the status-bar tap listens on, so
+       revealing a row here would read as 「上へ戻れ」 and do the opposite
+       (app.js). Setting the screen's own scrollTop leaves the document alone. */
+    if (target) {
+      const bar = root.querySelector(".topbar");
+      const inset = bar ? bar.getBoundingClientRect().height : 0;
+      const top = root.scrollTop
+        + target.getBoundingClientRect().top - root.getBoundingClientRect().top - inset;
+      KN.glideTo(root, top);
+    }
+
+    const ids = new Set(store.openTodos().filter((t) => t.due === day).map((t) => t.id));
+    if (!ids.size) return;
+    // After the scroll, or the flash is spent on rows nobody is looking at yet.
+    setTimeout(() => {
+      els.body.querySelectorAll(".item-wrap").forEach((w) => {
+        if (!ids.has(w.dataset.todoId)) return;
+        w.classList.remove("is-flash");
+        void w.offsetWidth;            // restart the animation on a second tap
+        w.classList.add("is-flash");
+        setTimeout(() => w.classList.remove("is-flash"), 1500);
+      });
+    }, 320);
+  }
+
   function monthCalendar(open) {
     const U = KN.util;
     const today = todayKey();
     const now = U.dayDate(today);
-    const year = now.getFullYear();
-    const month = now.getMonth();
+    const year = calMonth ? calMonth.year : now.getFullYear();
+    const month = calMonth ? calMonth.month : now.getMonth();
+    const thisMonth = year === now.getFullYear() && month === now.getMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
 
     /* How many are wanted on each day. Dots rather than numerals: at a glance
-       it is 「その週は詰まっている」 that reads, not 「3件」. */
+       it is 「その週は詰まっている」 that reads, not 「3件」.
+
+       Repeats are left out. 「ゴミ出し」 every Tuesday and Friday would put a
+       dot on nine days of the month, which is true and useless — the dots are
+       for spotting the days that are unlike the others, and a thing that
+       happens every week is exactly what all the days have in common. */
     const load = new Map();
-    open.forEach((t) => { if (t.due) load.set(t.due, (load.get(t.due) || 0) + 1); });
+    open.forEach((t) => {
+      if (!t.due || t.repeat) return;
+      load.set(t.due, (load.get(t.due) || 0) + 1);
+    });
 
     const sec = node(html`
-      <section class="cal" aria-label="${month + 1}月">
+      <section class="cal" aria-label="${year}年${month + 1}月">
         <h2 class="cal-head">
           <span class="cal-month">${month + 1}月</span>
           <span class="cal-year">${year}</span>
+          ${thisMonth ? "" : html`<button type="button" class="cal-now js-now">今日へ</button>`}
+          <span class="cal-nav">
+            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
+          </span>
         </h2>
         <div class="cal-grid"></div>
       </section>
     `);
     const grid = sec.querySelector(".cal-grid");
+
+    const goTo = (delta) => {
+      const d = new Date(year, month + delta, 1);
+      calMonth = { year: d.getFullYear(), month: d.getMonth() };
+      haptic();
+      renderBody();
+    };
+    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
+    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
+    const nowBtn = sec.querySelector(".js-now");
+    if (nowBtn) nowBtn.addEventListener("click", () => { calMonth = null; haptic(); renderBody(); });
 
     U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
@@ -908,12 +1027,7 @@
       /* Tapping a date goes to that date's shelf. Otherwise the month is a
          picture of somewhere you cannot get to — 8月17日 is visible up here
          and four screens down there, with nothing joining them. */
-      cell.addEventListener("click", () => {
-        const target = els.body.querySelector(`.todo-group[data-group="${groupIdOfDay(key)}"]`)
-          || els.body.querySelector(".trip.todo-today");
-        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-        haptic();
-      });
+      cell.addEventListener("click", () => { jumpToDay(key); haptic(); });
       grid.append(cell);
     }
     return sec;
@@ -935,15 +1049,25 @@
   }
 
   /* 今日 gets the panel 今回買うもの has on the shopping list: the rows sit
-     *inside* something rather than under a heading that scrolls away. Inside it
-     are the three parts of a day — and, above them, whatever is for today
-     without being for any particular part of it. */
+     *inside* something rather than under a heading that scrolls away.
+
+     Inside, the day runs top to bottom the way it is lived: 毎朝 first, then
+     whatever is for today without being for any particular part of it, then
+     朝・午後・夜, then 毎晩. The two ends are only drawn when something is
+     standing in them — an empty 「毎朝」 line every morning is a shelf for a
+     routine nobody has. */
   function todayPanel(rowsOf, tiles) {
     const panel = node(html`<section class="trip todo-today"></section>`);
     const plain = groups.find((g) => g.id === "today");
+    const bookend = (id) => groups.find((g) => g.id === id);
 
     const anyToday = rowsOf("today").length
+      + rowsOf("today-dawn").length + rowsOf("today-dusk").length
       + PARTS.reduce((n, p) => n + rowsOf("today-" + p.id).length, 0);
+
+    if (rowsOf("today-dawn").length) {
+      panel.append(groupSection(bookend("today-dawn"), rowsOf("today-dawn"), tiles));
+    }
 
     const top = node(html`
       <section class="todo-group todo-today-any ${rowsOf("today").length ? "" : "is-empty"}"
@@ -964,6 +1088,10 @@
       const g = groups.find((x) => x.id === "today-" + p.id);
       panel.append(groupSection(g, rowsOf(g.id), tiles));
     });
+
+    if (rowsOf("today-dusk").length) {
+      panel.append(groupSection(bookend("today-dusk"), rowsOf("today-dusk"), tiles));
+    }
     return panel;
   }
 

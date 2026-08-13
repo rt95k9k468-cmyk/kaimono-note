@@ -172,6 +172,17 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Except for one pixel, once the app is running.
+
+   Tapping the status bar sends iOS's scroll-to-top to the *document*, and a
+   document with nothing to scroll hears nothing — see the note in app.js. One
+   pixel of travel gives the tap something to take, which is the only signal
+   there is. It sits under the status bar and the app is parked past it, so
+   nothing moves and nothing bounces: `overscroll-behavior: none` above still
+   holds, and a single pixel has no rubber in it. */
+html.has-top-tap { overflow-y: auto; }
+html.has-top-tap::after { content: ""; display: block; height: 1px; }
+
 body {
   font-family: var(--font);
   font-size: var(--fs-md);
