@@ -208,6 +208,100 @@
    difference is the day: the groups it is filed under, the colour of its edge,
    and the panel 今日 sits in. */
 
+/* ---------------- この月 ----------------
+
+   A month drawn as a month, above the shelves. It is small and quiet: the
+   work of the screen is underneath, and this is the map, not the territory.
+   Today is a filled disc in 今日's own red, so the mark here and the shelf
+   below say the same colour. */
+
+.cal {
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+}
+
+.cal-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 var(--sp-2);
+  padding: 0 2px;
+}
+.cal-month { font-size: var(--fs-lg); font-weight: 800; color: var(--c-text); }
+.cal-year { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px 0;
+}
+
+.cal-wd {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  padding-bottom: 3px;
+}
+.cal-wd.is-sun { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-3)); }
+.cal-wd.is-sat { color: color-mix(in srgb, #4a8fd9 70%, var(--c-text-3)); }
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 2px 0 3px;
+  background: none;
+  border: 0;
+  border-radius: var(--r-md);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .14s var(--ease);
+}
+.cal-day:active { background: var(--c-surface-2); }
+
+.cal-n {
+  display: grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--c-text-2);
+}
+.cal-day.is-sun .cal-n { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
+.cal-day.is-sat .cal-n { color: color-mix(in srgb, #4a8fd9 62%, var(--c-text-2)); }
+
+/* Today, circled. Filled rather than outlined: an outline is one more ring
+   among 30 numbers, and the one thing this calendar has to answer without
+   being read is 「今日はどこ」. */
+.cal-day.is-today .cal-n {
+  background: #e05a3a;
+  color: #fff;
+  font-weight: 800;
+}
+.cal-day.is-today.is-sun .cal-n,
+.cal-day.is-today.is-sat .cal-n { color: #fff; }
+
+/* Days that have something on them, in that day's own shelf colour — so the
+   red-to-blue run below is visible up here as well. Up to three: past that it
+   is 「詰まっている」 either way, and four dots in a 40px cell is a smudge.
+   The row keeps its height with none, or the numbers jog as todos move. */
+.cal-dots {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  align-items: center;
+}
+.cal-dot {
+  width: 4px; height: 4px;
+  border-radius: var(--r-full);
+  background: var(--cat, var(--c-border-2));
+}
+
 .todo-head {
   display: flex;
   align-items: center;
