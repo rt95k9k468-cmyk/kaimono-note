@@ -249,10 +249,30 @@
         hintEl.textContent = "日付を決めると、その日からアプリのアイコンに数が出ます";
         return;
       }
-      /* Said plainly, and said here rather than discovered at 19:30. A written
-         time sorts the row and shows on it; it does not ring. */
+      /* Said here rather than discovered at 19:30. Two different sentences,
+         because with the switch on the app really does say something at the
+         time — just not while it is closed, which is the part that has to be
+         written down rather than assumed. */
       if (time) {
-        hintEl.textContent = `${formatDay(due)} ${time}に並びます（アラームは鳴りません）`;
+        const nt = KN.notify;
+        if (nt && nt.supported() && nt.enabled() && !nt.blocked()) {
+          hintEl.textContent =
+            `${time}になったらお知らせします（閉じているあいだは、次に開いたときに）`;
+          return;
+        }
+        hintEl.textContent = `${formatDay(due)} ${time}まではアイコンの数に入りません`;
+        if (nt && nt.supported() && !nt.enabled()) {
+          const b = node(html`
+            <span>　その時刻に知らせるには
+              <button type="button" class="link-btn js-notify-on">オンにする</button></span>
+          `);
+          b.querySelector(".js-notify-on").addEventListener("click", async () => {
+            const ok = await nt.enable();
+            paintHint();
+            if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+          });
+          hintEl.append(b);
+        }
         return;
       }
       if (!badge || !badge.supported()) {

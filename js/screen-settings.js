@@ -64,6 +64,15 @@
             <span class="row-value js-badge-state"></span>
           </button>
         </div>
+        <div class="rows js-notify-rows" hidden style="margin-top:12px">
+          <button class="row js-notify">
+            <span class="row-main">
+              <span class="row-title">やることの時刻を知らせる</span>
+              <span class="row-sub js-notify-sub"></span>
+            </span>
+            <span class="row-value js-notify-state"></span>
+          </button>
+        </div>
       </section>
     `);
 
@@ -97,8 +106,8 @@
           : (on ? "var(--c-primary)" : "var(--c-text-3)");
         sub.textContent = blocked
           ? "端末の設定で、このアプリの通知を許可すると出るようになります"
-          : (on ? "ホーム画面のアイコンに、今回買うものと、今日までのやることの数が出ます"
-                : "iPhone では、通知の許可を求められます（通知は送りません）");
+          : (on ? "ホーム画面のアイコンに、今回買うものと、いま手をつけられるやることの数が出ます。時刻を決めたものは、その時刻から数に入ります"
+                : "iPhone では、通知の許可を求められます（この設定は数を出すだけです）");
       };
       paint();
 
@@ -110,6 +119,40 @@
         if (!ok) {
           KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
         }
+      });
+    }
+
+    /* 時刻のお知らせ。The sub-line says what it actually does, at both
+       settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —
+       and it does not ring while the app is closed. Saying that here is the
+       difference between a feature and a thing that quietly lets you down. */
+    const notify = KN.notify;
+    if (notify && notify.supported()) {
+      const rows = wrap.querySelector(".js-notify-rows");
+      const state = wrap.querySelector(".js-notify-state");
+      const sub = wrap.querySelector(".js-notify-sub");
+      rows.hidden = false;
+
+      const paint = () => {
+        const on = notify.enabled();
+        const blocked = on && notify.blocked();
+        state.textContent = blocked ? "許可が必要" : (on ? "オン" : "オフ");
+        state.style.color = blocked ? "var(--c-danger)"
+          : (on ? "var(--c-primary)" : "var(--c-text-3)");
+        sub.textContent = blocked
+          ? "端末の設定で、このアプリの通知を許可すると出るようになります"
+          : (on
+              ? "時刻を決めたやることをお知らせします。アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます"
+              : "アプリを開いているときにお知らせし、閉じていたぶんは開いたときにまとめて出ます");
+      };
+      paint();
+
+      wrap.querySelector(".js-notify").addEventListener("click", async () => {
+        haptic();
+        if (notify.enabled()) { notify.disable(); paint(); return; }
+        const ok = await notify.enable();
+        paint();
+        if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
       });
     }
 

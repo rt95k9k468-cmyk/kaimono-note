@@ -163,6 +163,13 @@
       and 「午後7時30分」 is a sentence. */
   const formatTime = (hhmm) => (isTime(hhmm) ? String(hhmm) : "");
 
+  /** The clock right now, in the same 「19:30」 shape, so 「もう過ぎたか」 is a
+      string comparison rather than two Date objects and a timezone. */
+  function nowTime() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
   /* ---------- a day, without a time ----------
 
      A due date is a day, not an instant: 「金曜まで」 means the whole of
@@ -461,7 +468,7 @@
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana,
-    isTime, partOfTime, formatTime,
+    isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,

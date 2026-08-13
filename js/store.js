@@ -137,6 +137,8 @@
       // 持ちます——両方あると食い違えるので、todoPart() が時刻から読みます。
       part: ["am", "pm", "night"].includes(t.part) ? t.part : null,
       time: KN.util.isTime(t.time) ? t.time : null,
+      // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
+      notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
       flagged: t.flagged === true,
       done: t.done === true,
@@ -541,6 +543,7 @@
       repeatNth: cleanNth(repeatNth),
       part: at ? null : (["am", "pm", "night"].includes(part) ? part : null),
       time: at,
+      notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
       done: false,
@@ -773,9 +776,64 @@
   /** The day a closed todo was closed, whichever way it closed. */
   const todoClosedAt = (t) => t.doneAt || t.archivedAt || null;
 
-  /** Not done, not put away, and wanted today or already late — the badge. */
+  /**
+   * Not done, not put away, and wanted *now* — the badge.
+   *
+   * A time on a todo is a statement about when it starts being your problem.
+   * 「19:30 に薬」 is not something the icon should be nagging about over
+   * breakfast: a 1 sitting there all day for a thing that cannot be done yet
+   * is the kind of number you learn to stop reading. So a timed todo joins the
+   * count when its clock comes round, and yesterday's stays counted whatever
+   * time it said — being late is not a thing that waits for an hour.
+   */
   function todosDue() {
-    return openTodos().filter((t) => t.due && KN.util.daysUntil(t.due) <= 0);
+    const now = KN.util.nowTime();
+    return openTodos().filter((t) => {
+      if (!t.due) return false;
+      const n = KN.util.daysUntil(t.due);
+      if (n < 0) return true;
+      if (n > 0) return false;
+      return !t.time || t.time <= now;
+    });
+  }
+
+  /** Today's timed todos whose time has not come round yet — waiting, not due. */
+  function todosWaiting() {
+    const now = KN.util.nowTime();
+    return openTodos().filter((t) =>
+      t.due && t.time && KN.util.daysUntil(t.due) === 0 && t.time > now);
+  }
+
+  /* ---- 「もう言った」 ----
+
+     A todo is announced once per occurrence, and an occurrence is the day and
+     the time it was for. Storing that pair rather than a flag means a repeating
+     todo announces itself again next Tuesday, and moving 19:30 to 20:00 makes
+     it a new thing to say — without anyone having to remember to clear a flag.
+     Written into the record so a closed app does not forget and repeat itself
+     on the way back in. */
+  const occurrenceOf = (t) => (t.due && t.time ? `${t.due} ${t.time}` : null);
+
+  /** Timed todos whose time has come and which have not been announced yet. */
+  function todosToAnnounce() {
+    const now = KN.util.nowTime();
+    return openTodos().filter((t) => {
+      if (!t.due || !t.time) return false;
+      if (KN.util.daysUntil(t.due) !== 0) return false;   // 今日のぶんだけ
+      if (t.time > now) return false;
+      return t.notifiedFor !== occurrenceOf(t);
+    });
+  }
+
+  /** Remember that these were announced, so they are not announced twice. */
+  function markAnnounced(ids) {
+    const want = new Set(ids);
+    if (!want.size) return;
+    update((s) => {
+      s.todos.forEach((t) => {
+        if (want.has(t.id)) t.notifiedFor = occurrenceOf(t);
+      });
+    });
   }
 
   function addItem(productId, { qty = 1, memo = "" } = {}) {
@@ -951,6 +1009,7 @@
     addStore, addProduct, addItem, addPrice, setArchived,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
+    todosWaiting, todosToAnnounce, markAnnounced,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
