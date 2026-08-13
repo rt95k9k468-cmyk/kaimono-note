@@ -298,22 +298,16 @@
 
 /* 「毎週 火・金」 is a standing fact about the row, not news about today. It
    has to be readable when looked for and easy to look past when not, so it
-   sits well back — lighter than the date beside it, and the ↻ lighter still.
-   It was competing with the title on rows that already carry a coloured
-   wash. */
+   sits well back. No ↻ of its own any more — the circle carries that now, and
+   two arrows on one row is one arrow too many; what is left here is the part
+   an icon cannot say, which is *which* days. */
 .todo-repeat, .tile-repeat {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
   flex: none;
   font-size: 11px;
   font-weight: 600;
   color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
-}
-.todo-repeat svg, .tile-repeat svg {
-  width: 12px; height: 12px;
-  stroke-width: 1.75;
-  opacity: .75;
 }
 
 /* The clock, when a row has one. Same pill as 朝/午後/夜 and in the same place,
@@ -580,6 +574,13 @@
   top: 11px;
   z-index: 1;
 }
+/* And the tile's own content keeps clear of them. Centred content on a tile
+   with a two-line name rose until the first line ran under the tick — the
+   corner buttons float above the body, so the body has to be told they are
+   there. Reserved at the top only; the content still centres in what is
+   left. */
+.item.is-tile .item-body { padding-top: 34px; }
+
 .item.is-tile .check { left: 4px; }
 .item.is-tile .fav { right: 4px; }
 .item.is-tile .check { width: 22px; height: 22px; }
@@ -634,6 +635,35 @@
 .check:active { transform: scale(.85); }
 .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
 .check[aria-checked="true"] svg { opacity: 1; transform: scale(1); }
+
+/* ↻ inside the circle, for a repeating todo.
+
+   This is the button whose meaning is different: pressing it does not finish
+   the thing, it moves it on to Friday. The mark belongs where the consequence
+   is rather than off in the meta line. It sits in the empty middle of the
+   circle and steps aside the moment the tick arrives — two symbols in one
+   26px ring is a smudge. */
+.check-repeat {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transition: opacity .16s var(--ease), transform .2s var(--ease-out);
+}
+.check-repeat svg {
+  width: 13px; height: 13px;
+  stroke-width: 2.4;
+  /* Darker than the wording in the meta line: this is now the mark that says
+     「これはくり返し」 at a glance, and the words underneath are the detail. */
+  color: var(--c-text-2);
+  opacity: 1;
+  transform: none;
+}
+.check[aria-checked="true"] .check-repeat { opacity: 0; transform: scale(.6); }
+@media (hover: hover) {
+  .check.is-repeat:hover .check-repeat svg { color: var(--c-primary); }
+}
 
 /* Star: outline when off, filled when the item is part of this trip. Same
    trick as the checkbox — 24px of artwork, 44px of reach, and the row's 12px

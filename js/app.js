@@ -47,26 +47,40 @@
 
   /* ---------------- tabs ---------------- */
 
+  /* Built as three groups rather than four buttons, because that is what the
+     bar means: one thing on the left, one thing on the right, and two views of
+     the same shopping in the middle. Each group gets a third of the bar and
+     the pair inside the middle third sits shoulder to shoulder — the gap
+     between 買うもの and 価格 is smaller than the gap to anything else, which
+     is the whole statement, and it is made by spacing rather than by a tint
+     behind them. */
   function buildTabs() {
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
 
-    TABS.forEach((t, i) => {
-      const prev = TABS[i - 1];
-      const next = TABS[i + 1];
-      if (prev && prev.group !== t.group) bar.append(node(html`<span class="tab-split"></span>`));
-      const edge = [!prev || prev.group !== t.group ? "is-group-start" : "",
-                    !next || next.group !== t.group ? "is-group-end" : ""].join(" ").trim();
-      const btn = node(html`
-        <button class="tab tab-${t.group} ${edge}" role="tab" data-tab="${t.id}"
-                aria-selected="${String(t.id === active)}"
-                aria-controls="screen-${t.id}">
-          <span class="tab-ico">${icon(t.icon)}</span>
-          <span>${t.label}</span>
-        </button>
-      `);
-      btn.addEventListener("click", () => show(t.id));
-      bar.append(btn);
+    const groups = [];
+    TABS.forEach((t) => {
+      const last = groups[groups.length - 1];
+      if (last && last.id === t.group) last.tabs.push(t);
+      else groups.push({ id: t.group, tabs: [t] });
+    });
+
+    groups.forEach((g, i) => {
+      if (i) bar.append(node(html`<span class="tab-split"></span>`));
+      const box = node(html`<div class="tab-group tab-group-${g.id}"></div>`);
+      g.tabs.forEach((t) => {
+        const btn = node(html`
+          <button class="tab tab-${t.group}" role="tab" data-tab="${t.id}"
+                  aria-selected="${String(t.id === active)}"
+                  aria-controls="screen-${t.id}">
+            <span class="tab-ico">${icon(t.icon)}</span>
+            <span class="tab-label">${t.label}</span>
+          </button>
+        `);
+        btn.addEventListener("click", () => show(t.id));
+        box.append(btn);
+      });
+      bar.append(box);
     });
   }
 
