@@ -604,6 +604,12 @@
      same neutral grey the undated rows wear. */
   const colorOf = (t, groups) => {
     if (t.done || t.archived) return NONE_COLOR;
+    /* A repeating todo wears the same grey. The ramp answers 「あとどれくらい
+       で締切か」, and 「ゴミ出し」 has no such answer — it comes round again on
+       Friday whatever happens today. Painting it red among the things that
+       really do have to happen today makes the red mean less. Its own mark is
+       the ↻ in the circle. */
+    if (t.repeat) return NONE_COLOR;
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   };
@@ -625,6 +631,15 @@
        exists, and it takes the place the part label would have had. */
     const at = !closed && t.due ? t.time : null;
 
+    /* The circle carries the ↻ for a repeating todo. It is the one control on
+       the row whose meaning actually changes: pressing it does not finish the
+       thing, it moves it on to Friday. Saying so on the button itself puts the
+       mark where the consequence is, and the tick replaces it the moment it is
+       pressed. */
+    const checkMark = () => (t.repeat
+      ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
+      : icon("check"));
+
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
                data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}">
@@ -642,8 +657,9 @@
        sentence, and the row's own sheet has the whole of it. */
     const row = tiles ? node(html`
       <div class="item todo is-tile ${closed ? "is-checked" : ""}">
-        <button class="check" role="checkbox" aria-checked="${String(!!t.done)}"
-                aria-label="${t.title} を終わりにする">${icon("check")}</button>
+        <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                aria-checked="${String(!!t.done)}"
+                aria-label="${t.title} を終わりにする">${checkMark()}</button>
         <button class="fav ${t.flagged ? "is-on" : ""}" aria-pressed="${String(!!t.flagged)}"
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
         <button class="item-body">
@@ -652,13 +668,14 @@
             : (t.due
                 ? formatDay(t.due) + (at ? " " + at : (t.part ? " " + partLabel(t.part) : ""))
                 : "いつか")}</span>
-          ${t.repeat ? html`<span class="tile-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
+          ${t.repeat ? html`<span class="tile-repeat">${repeatText(t)}</span>` : ""}
         </button>
       </div>
     `) : node(html`
       <div class="item todo ${closed ? "is-checked" : ""}">
-        <button class="check" role="checkbox" aria-checked="${String(!!t.done)}"
-                aria-label="${t.title} を終わりにする">${icon("check")}</button>
+        <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                aria-checked="${String(!!t.done)}"
+                aria-label="${t.title} を終わりにする">${checkMark()}</button>
         <button class="item-body">
           <span class="item-name-row">
             <span class="item-name">${t.title}</span>
@@ -673,7 +690,7 @@
                   ? html`<span class="todo-part">${partLabel(t.part)}</span>` : "")}
             ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
             ${t.repeat
-              ? html`<span class="todo-repeat">${icon("repeat")}${repeatText(t)}</span>` : ""}
+              ? html`<span class="todo-repeat">${repeatText(t)}</span>` : ""}
             ${t.memo ? html`<span class="item-memo">${t.memo}</span>` : ""}
           </span>
         </button>

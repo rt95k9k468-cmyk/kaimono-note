@@ -390,11 +390,13 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  /* Flex rather than four equal columns, because the bar is no longer four of
-     the same thing: the two shopping tabs are one group with a hairline on
-     either side of it. Each tab still takes an equal share (flex:1), and the
-     splits take only their own hair's width. */
-  display: flex;
+  /* Three equal columns, not four equal tabs. The bar is not four of the same
+     thing: やること is one place, 設定 is another, and 買うもの and 価格 are
+     two views of a third — so the pair shares one third between them instead
+     of taking half the bar. The splits are hairlines and cost only their own
+     width. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
@@ -409,19 +411,24 @@ a { color: var(--c-primary); }
 /* The hairline between groups: やること │ 買うもの 価格 │ 設定. Short, centred,
    and quiet — it is a seam, not a border. */
 .tab-split {
-  flex: none;
   width: 1px;
   align-self: center;
   height: 26px;
   background: var(--c-border);
 }
 
-/* The shopping pair reads as a pair: a wash behind the two of them, faint
-   enough to be a grouping rather than a selection. The selected tab still
-   colours itself on top of it. */
-.tab-shop { background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
-.tab-shop.is-group-start { border-radius: var(--r-md) 0 0 var(--r-md); }
-.tab-shop.is-group-end { border-radius: 0 var(--r-md) var(--r-md) 0; }
+/* One third each. Inside the middle one the pair sits shoulder to shoulder:
+   nothing between them, and a margin on the outside, so the gap that separates
+   買うもの from 価格 is visibly smaller than the gap to anything else. That
+   spacing is the whole statement — no wash behind them, which read as a
+   selection more than as a grouping. */
+.tab-group {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 0;
+}
+.tab-group-shop { padding: 0 var(--sp-2); }
 
 /* Nobody switches tabs mid-word, and the room is better spent on the list
    while the keyboard has the bottom half of the screen. */
