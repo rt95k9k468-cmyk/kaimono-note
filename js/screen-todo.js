@@ -55,9 +55,22 @@
   const partLabel = (id) => (BOOKENDS.find((p) => p.id === id) || {}).label || "";
   const isBookend = (id) => id === "dawn" || id === "dusk";
 
-  /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. The rows are
-     read at a glance, so they carry the whole rule rather than the frequency
-     with the details hidden in a sheet. */
+  /** The rule in as few characters as fit under a circle: 火・金, 第2火, 毎日. */
+  function repeatShort(t) {
+    if (!t.repeat) return "";
+    if (isBookend(t.part)) return partLabel(t.part);
+    if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "weekly") {
+      const d = t.repeatDays || [];
+      return d.length ? d.map((n) => WD[n]).join("・") : "毎週";
+    }
+    const n = t.repeatNth;
+    if (!n) return "毎月";
+    return n.nth === -1 ? `最終${WD[n.weekday]}` : `第${n.nth}${WD[n.weekday]}`;
+  }
+
+  /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. Used where
+     there is room for the whole rule — the tiles and the sheet. */
   function repeatText(t) {
     if (!t.repeat) return "";
     // 「毎朝」 already says both how often and when; 「毎日 毎朝」 says it twice.
@@ -519,7 +532,11 @@
       });
     }
 
-    if (!editing) setTimeout(() => titleEl.focus(), 120);
+    /* New ones open ready to type — see focusNow: the focus has to happen in
+       the same beat as the tap or iOS leaves the keyboard down. Editing an
+       existing todo does not, because the thing you came to change is as
+       likely to be the date as the words. */
+    if (!editing) KN.ui.focusNow(titleEl);
   }
 
   /* ---------------- when, as a set of shelves ----------------
@@ -678,6 +695,28 @@
       ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
       : icon("check"));
 
+    /* Short enough to live under a 26px circle: the ↻ there already says 「くり
+       返し」, so the words only have to say *which* — 火・金, 第2火, 毎日. And
+       not at all when the shelf overhead is already saying it. */
+    const every = (!closed && t.repeat && !(shelf && shelf.part && shelf.part === t.part))
+      ? repeatShort(t) : "";
+
+    /* Whatever is left goes beside the title, on the same line, so the row
+       does not grow a second one: the day (where the shelf is vaguer than the
+       row), 「しまった」, the memo, and the archive's stamp. */
+    /* The day goes last, hard against the star. The line is right-aligned and
+       clipped from the left when it will not fit, so whatever is first is what
+       gets cut — and a half-eaten date reads as a different date (「8/26」
+       clipped to 「6」 is a lie you cannot see). A clipped memo is only a
+       shorter memo, so the memo takes the squeeze. */
+    const meta = [];
+    if (t.memo) meta.push(html`<span class="item-memo">${t.memo}</span>`);
+    if (t.archived && !t.done) meta.push(html`<span class="todo-tag">しまった</span>`);
+    if (closed && when) meta.push(html`<span class="item-when">${KN.util.formatStamp(when)}</span>`);
+    else if (t.due && !sameDay) {
+      meta.push(html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>`);
+    }
+
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
                data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}">
@@ -711,24 +750,20 @@
       </div>
     `) : node(html`
       <div class="item todo ${closed ? "is-checked" : ""}">
-        <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
-                aria-checked="${String(!!t.done)}"
-                aria-label="${t.title} を終わりにする">${checkMark()}</button>
+        ${/* The circle, with its own two shelves. What a row says about *when*
+              — 19:30 above, 毎週火・金 below — stacks around the button rather
+              than under the title, so the title keeps the middle of the row to
+              itself and the row stays one line tall. */""}
+        <span class="todo-lead">
+          ${at ? html`<span class="todo-at">${at}</span>` : ""}
+          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                  aria-checked="${String(!!t.done)}"
+                  aria-label="${t.title} を終わりにする">${checkMark()}</button>
+          ${every ? html`<span class="todo-every">${every}</span>` : ""}
+        </span>
         <button class="item-body">
-          <span class="item-name-row">
-            <span class="item-name">${t.title}</span>
-          </span>
-          <span class="item-meta">
-            ${closed && when
-              ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
-              : (t.due && !sameDay
-                  ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
-            ${at ? html`<span class="todo-at">${at}</span>` : ""}
-            ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
-            ${t.repeat
-              ? html`<span class="todo-repeat">${repeatText(t)}</span>` : ""}
-            ${t.memo ? html`<span class="item-memo">${t.memo}</span>` : ""}
-          </span>
+          <span class="item-name">${t.title}</span>
+          ${meta.length ? html`<span class="item-meta">${meta}</span>` : ""}
         </button>
         <button class="fav ${t.flagged ? "is-on" : ""}" aria-pressed="${String(!!t.flagged)}"
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
