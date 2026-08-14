@@ -133,9 +133,8 @@
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
-      // 毎朝 / 朝 / 午後 / 夜 / 毎晩。決まっているなら、時刻そのものも。どちら
-      // か一方だけを持ちます——両方あると食い違えるので、todoPart() が時刻から
-      // 読みます。
+      // 毎朝 / 毎晩、または時刻そのもの。どちらか一方だけを持ちます——両方ある
+      // と食い違えるので。日のなかの並びは todoPart() が時刻から読みます。
       part: cleanPart(t.part),
       time: KN.util.isTime(t.time) ? t.time : null,
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
@@ -165,9 +164,14 @@
      `const` down here would still be in its dead zone and every load would
      throw — quietly, into load()'s catch, and come back as an empty app. */
   function isBookendPart(p) { return p === "dawn" || p === "dusk"; }
-  function cleanPart(v) {
-    return ["dawn", "am", "pm", "night", "dusk"].includes(v) ? v : null;
-  }
+
+  /* Only the two ends are stored any more. 朝・午後・夜 were a way of saying
+     roughly when in the day something belonged, and a written clock time says
+     it better; anything saved under the old names is dropped on load, because
+     nothing shows it and nothing can set it. A *time* still reads as one of
+     them for sorting (todoPart below) — that is arithmetic, not a stored
+     choice. */
+  function cleanPart(v) { return isBookendPart(v) ? v : null; }
 
   /** Hold a 毎朝／毎晩 to what it says: every day, on a day, at no clock time. */
   function fixBookend(t) {
@@ -749,9 +753,11 @@
      they are things to do, not things due, and a list that mixed them in
      would bury the ones with a day on them. */
   /* 毎朝 at one end of the day and 毎晩 at the other, with everything else
-     between them. 「いつでも」 sits ahead of 朝 rather than behind it: it is
-     not early, it is unplaced, and unplaced things belong where nothing else
-     is competing for the slot. */
+     between them — and inside that middle, whatever carries a clock sorts by
+     it. The am/pm/night keys are never stored: they are what a *time* reads
+     as, so 08:00 lands ahead of 14:30 ahead of 21:00 without a second field.
+     「いつでも」 sits ahead of all of them: it is not early, it is unplaced,
+     and unplaced things go where nothing is competing for the slot. */
   const PART_ORDER = { dawn: 0, am: 2, pm: 3, night: 4, dusk: 5 };
   const NO_PART_ORDER = 1;
 

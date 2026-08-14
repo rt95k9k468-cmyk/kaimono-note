@@ -30,26 +30,20 @@
   ];
   const WD = KN.util.WEEKDAYS;
 
-  /* 朝・午後・夜。The three shelves 今日 is divided into, and the three a todo
-     can be filed under when it has a day. Rough on purpose: 「朝」 is where a
-     bin day belongs, and most things do not happen at a time.
+  /* 今日 is one shelf, not four.
 
-     For the ones that do, a todo can carry a clock time instead, and the part
-     is then read off it (store.todoPart) rather than kept in step by hand —
-     19:30 is 夜 and there is nothing to decide. What the time does not do is
-     ring: this app sends no alarms, and the sheet says so rather than letting
-     a written-down time be mistaken for one. */
-  const PARTS = [
-    { id: "am",    label: "朝",   color: "#e05a3a", from: "00:00" },
-    { id: "pm",    label: "午後", color: "#e0703a", from: "12:00" },
-    { id: "night", label: "夜",   color: "#e08a3a", from: "18:00" },
-  ];
+     It used to be split into 朝・午後・夜, from a time when that was the only
+     way to say when in the day something belonged. Two things replaced it: a
+     todo can carry the clock itself (19:30 rather than 「夜」), and rows can be
+     picked up and put where you want them. Three headings that a row could
+     only be sorted into, in a panel you can now simply arrange, were three
+     lines of furniture — 「午後」 with nothing under it, every day.
 
-  /* 毎朝 and 毎晩 are not a fourth and fifth part of the day — they are its two
-     ends. Not 「今日の朝に」 but 「起きてすること」 and 「寝る前にすること」,
-     which is why everything else for that day is listed between them rather
-     than among them. Both are daily by definition, and the store holds them to
-     it (a 「毎朝」 that happens once is not a 毎朝).
+     What is left is the two ends of the day. 毎朝 and 毎晩 are not parts of it:
+     not 「今日の朝に」 but 「起きてすること」 and 「寝る前にすること」, which is
+     why everything else for the day is listed *between* them rather than among
+     them. Both are daily by definition, and the store holds them to it (a
+     「毎朝」 that happens once is not a 毎朝).
 
      Grey, like every other repeat: the ramp says how near a deadline is, and a
      thing you do every morning has no deadline to be near. */
@@ -58,8 +52,7 @@
     { id: "dawn", label: "毎朝", color: BOOKEND_COLOR },
     { id: "dusk", label: "毎晩", color: BOOKEND_COLOR },
   ];
-  const ALL_PARTS = [BOOKENDS[0]].concat(PARTS, BOOKENDS[1]);
-  const partLabel = (id) => (ALL_PARTS.find((p) => p.id === id) || {}).label || "";
+  const partLabel = (id) => (BOOKENDS.find((p) => p.id === id) || {}).label || "";
   const isBookend = (id) => id === "dawn" || id === "dusk";
 
   /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. The rows are
@@ -332,24 +325,24 @@
       host.hidden = !due;
       timeRow.hidden = !due;
       if (!due) return;
-      const shown = time ? KN.util.partOfTime(time) : part;
-      /* 毎朝 … いつでも 朝 午後 夜 … 毎晩 — laid out in the order the day
-         runs, with its two ends on the outside, because that is also the order
-         the shelves put them in. */
-      const chips = [{ id: "dawn", label: "毎朝" }, { id: "", label: "いつでも" }]
-        .concat(PARTS.map((p) => ({ id: p.id, label: p.label })), { id: "dusk", label: "毎晩" });
+      /* Only the two ends are choices now, so a clock time lights nothing —
+         it is not a third bookend, it is the answer instead of one. */
+      const shown = part;
+      /* 毎朝 … いつでも … 毎晩, in the order the day runs. 朝・午後・夜 are
+         gone: the clock below says when precisely, and dragging says where. */
+      const chips = [
+        { id: "dawn", label: "毎朝" },
+        { id: "", label: "いつでも" },
+        { id: "dusk", label: "毎晩" },
+      ];
       KN.ui.chipRow(host, chips, {
         activeId: shown || "",
         onPick: (id) => {
           part = id || null;
-          /* Tapping 朝 after writing 19:30 is a correction, so the clock
-             goes — except when the time already falls in the part tapped,
-             where nothing was corrected and 19:30 should survive a stray
-             tap on 夜. */
-          if (time && KN.util.partOfTime(time) !== part) time = null;
-          /* 「毎朝」 is a daily thing by the meaning of the word, so choosing
-             it sets くりかえし rather than leaving a 「毎朝だが一度きり」 for
-             the store to quietly correct later. */
+          /* 「毎朝」 and a clock time are two answers to one question, so the
+             newer one wins. 「毎朝」 is also daily by the meaning of the word,
+             so choosing it sets くりかえし rather than leaving a 「毎朝だが
+             一度きり」 for the store to correct quietly later. */
           if (isBookend(part)) {
             time = null;
             repeat = "daily";
@@ -573,11 +566,7 @@
       today: true, day: today, part: "dawn", onlyWhenFull: true,
       drop: () => ({ due: today, part: "dawn", time: null }) });
     out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
-      drop: () => ({ due: today, part: null, time: null }) });
-    PARTS.forEach((p) => out.push({
-      id: "today-" + p.id, label: p.label, color: p.color, today: true, day: today, part: p.id,
-      drop: () => ({ due: today, part: p.id, time: null }),
-    }));
+      drop: () => ({ due: today, part: null }) });
     out.push({ id: "today-dusk", label: BOOKENDS[1].label, color: BOOKENDS[1].color,
       today: true, day: today, part: "dusk", onlyWhenFull: true,
       drop: () => ({ due: today, part: "dusk", time: null }) });
@@ -636,10 +625,9 @@
     if (!t.due) return "none";
     const n = daysUntil(t.due);
     if (n < 0) return "late";
-    /* Read off the clock when there is one: 19:30 belongs on the 夜 shelf
-       without anyone having said 夜. */
-    const p = store.todoPart(t);
-    if (n === 0) return p ? "today-" + p : "today";
+    /* Only the two ends of the day are shelves of their own now; everything
+       else for today sits in 今日 and is ordered by the clock and by hand. */
+    if (n === 0) return isBookend(t.part) ? "today-" + t.part : "today";
     if (n <= 7) return "d" + n;
     const week = groups.find((g) => g.from && g.to && t.due >= g.from && t.due <= g.to);
     if (week) return week.id;
@@ -676,7 +664,6 @@
        says 今日 is a word that has to be read to learn nothing. Kept where the
        shelf is vaguer than the row: a week, a month, the archive, a search. */
     const sameDay = !!(shelf && shelf.day && !closed);
-    const samePart = !!(shelf && shelf.part && shelf.part === store.todoPart(t));
     /* A time is never redundant with its shelf: 夜 says which third of the
        evening block this is in, 19:30 says when. So it is shown wherever it
        exists, and it takes the place the part label would have had. */
@@ -717,7 +704,7 @@
           <span class="item-name">${t.title}</span>
           <span class="tile-when">${closed ? KN.util.formatStamp(when)
             : (t.due
-                ? formatDay(t.due) + (at ? " " + at : (t.part ? " " + partLabel(t.part) : ""))
+                ? formatDay(t.due) + (at ? " " + at : "")
                 : "いつか")}</span>
           ${t.repeat ? html`<span class="tile-repeat">${repeatText(t)}</span>` : ""}
         </button>
@@ -736,9 +723,7 @@
               ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
               : (t.due && !sameDay
                   ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
-            ${at ? html`<span class="todo-at">${at}</span>`
-              : (!closed && t.part && !samePart
-                  ? html`<span class="todo-part">${partLabel(t.part)}</span>` : "")}
+            ${at ? html`<span class="todo-at">${at}</span>` : ""}
             ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
             ${t.repeat
               ? html`<span class="todo-repeat">${repeatText(t)}</span>` : ""}
@@ -954,6 +939,73 @@
     }, 320);
   }
 
+  /* Flicked sideways, the month turns.
+
+     The arrows stay — they are what says it can be done — but a month grid is
+     a page, and a page is turned by pushing it. The grid follows the finger so
+     the gesture is answered while it is happening rather than only at the end,
+     and a push that stops short slides back to where it was, which is how you
+     find out that half a push is not enough without having to undo anything.
+
+     Vertical wins ties: the whole screen scrolls under this, and a calendar
+     that swallowed a downward flick would be a calendar you had to scroll
+     around. The direction is decided once, on the first few pixels, and holds
+     for the rest of the gesture. */
+  function wireMonthSwipe(sec, grid, goTo) {
+    const THRESHOLD = 52;
+    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
+
+    const paint = () => {
+      frame = 0;
+      grid.style.transform = dx ? `translateX(${dx}px)` : "";
+      grid.style.opacity = dx ? String(Math.max(.35, 1 - Math.abs(dx) / 260)) : "";
+    };
+    const reset = () => {
+      grid.style.transition = "transform .22s var(--ease-out), opacity .22s";
+      dx = 0;
+      paint();
+      setTimeout(() => { grid.style.transition = ""; }, 240);
+    };
+
+    sec.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // The arrows and 「今日へ」 are buttons; let them be pressed.
+      if (e.target.closest("button.cal-arrow, button.cal-now")) return;
+      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
+      grid.style.transition = "";
+    });
+
+    sec.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== id) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!axis) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+        if (axis === "x") sec.setPointerCapture(id);
+      }
+      if (axis !== "x") return;
+      e.preventDefault();
+      // Past the threshold it stiffens: the page is already committed, and the
+      // remaining travel is only the finger carrying on.
+      dx = Math.abs(mx) <= THRESHOLD ? mx : Math.sign(mx) * (THRESHOLD + (Math.abs(mx) - THRESHOLD) * .3);
+      if (!frame) frame = requestAnimationFrame(paint);
+    });
+
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      const moved = dx;
+      id = null; axis = null;
+      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
+      // Pushed left, the next month comes in from the right.
+      grid.style.transition = "";
+      dx = 0;
+      paint();
+      goTo(moved < 0 ? 1 : -1);
+    };
+    sec.addEventListener("pointerup", end);
+    sec.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
+  }
+
   function monthCalendar(open) {
     const U = KN.util;
     const today = todayKey();
@@ -1003,6 +1055,8 @@
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     const nowBtn = sec.querySelector(".js-now");
     if (nowBtn) nowBtn.addEventListener("click", () => { calMonth = null; haptic(); renderBody(); });
+
+    wireMonthSwipe(sec, grid, goTo);
 
     U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
@@ -1062,8 +1116,7 @@
     const bookend = (id) => groups.find((g) => g.id === id);
 
     const anyToday = rowsOf("today").length
-      + rowsOf("today-dawn").length + rowsOf("today-dusk").length
-      + PARTS.reduce((n, p) => n + rowsOf("today-" + p.id).length, 0);
+      + rowsOf("today-dawn").length + rowsOf("today-dusk").length;
 
     if (rowsOf("today-dawn").length) {
       panel.append(groupSection(bookend("today-dawn"), rowsOf("today-dawn"), tiles));
@@ -1083,11 +1136,6 @@
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
     panel.append(top);
-
-    PARTS.forEach((p) => {
-      const g = groups.find((x) => x.id === "today-" + p.id);
-      panel.append(groupSection(g, rowsOf(g.id), tiles));
-    });
 
     if (rowsOf("today-dusk").length) {
       panel.append(groupSection(bookend("today-dusk"), rowsOf("today-dusk"), tiles));
