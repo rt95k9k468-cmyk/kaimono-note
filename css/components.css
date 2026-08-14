@@ -317,6 +317,60 @@ button, [role="tab"] {
 }
 
 /* number input: strip spinners */
+/* ---- date and time fields ----
+
+   Safari sizes these from the control it wants to draw rather than from the
+   box they are in, and on an iPhone that control is wider than the sheet: the
+   date field ran off the right edge with 「2026/08/13」 pushed past the screen.
+   `width: 100%` does not reach it while the native appearance is on, and the
+   inner value box carries a minimum width of its own.
+
+   Turning the appearance off hands the sizing back, so the field becomes an
+   ordinary box that obeys the sheet. What it also removes is Safari's little
+   calendar glyph, so one is drawn back in as a background — the same grey in
+   both themes, since a background image cannot take a custom property. */
+.input[type="date"],
+.input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-right: 40px;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px 18px;
+}
+.input[type="date"] {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+}
+.input[type="time"] {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+}
+/* The value itself, which Safari lays out in a box of its own. Left-aligned
+   and free to shrink, or it holds the field open from the inside. */
+.input[type="date"]::-webkit-date-and-time-value,
+.input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-width: 0;
+}
+.input[type="date"]::-webkit-datetime-edit,
+.input[type="time"]::-webkit-datetime-edit { padding: 0; }
+/* Chromium draws its own picker button; ours is the background, so that one
+   goes — two calendars in one field is one too many. */
+.input[type="date"]::-webkit-calendar-picker-indicator,
+.input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  cursor: pointer;
+}
+.input[type="date"], .input[type="time"] { position: relative; }
+
 .input[type="number"] { -moz-appearance: textfield; }
 .input[type="number"]::-webkit-outer-spin-button,
 .input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

@@ -264,7 +264,12 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px 0;
+  /* The grid is pushed sideways to turn the month, so the browser must hand
+     horizontal gestures over while keeping the vertical ones for the list
+     underneath. */
+  touch-action: pan-y;
 }
+.cal { touch-action: pan-y; }
 
 .cal-wd {
   text-align: center;
