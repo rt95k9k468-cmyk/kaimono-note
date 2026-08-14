@@ -592,8 +592,28 @@
     paint();
   }
 
+  /**
+   * Put the cursor in a field and bring the keyboard with it.
+   *
+   * Must be called synchronously from the tap that opened the sheet. iOS only
+   * raises the keyboard for a focus it can trace back to a gesture, and a
+   * setTimeout — even one frame — has already broken that trail: the field
+   * takes the caret and the keyboard stays down, so the first thing you do
+   * after tapping ＋ is tap again.
+   *
+   * The second call, after the sheet has finished sliding, is for the browsers
+   * that have no such rule and would otherwise focus a moving element.
+   */
+  function focusNow(el) {
+    if (!el) return;
+    try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
+    setTimeout(() => {
+      if (document.activeElement !== el && el.isConnected) el.focus();
+    }, 320);
+  }
+
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
-    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch,
+    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
   };
 })();

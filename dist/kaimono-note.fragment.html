@@ -1961,18 +1961,118 @@ button, [role="tab"] {
   color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
 }
 
-/* The clock, when a row has one. Same pill as 朝/午後/夜 and in the same place,
-   because it answers the same question — just exactly rather than roughly. */
+/* ---- a やること row, at two thirds ----
+
+   The shopping list's row carries a picture, a size, a price and a shop, and
+   is built to hold them. A todo is a line of text and, at most, a when — and
+   it was renting the same three-storey box: name on one floor, everything else
+   on a second, half of it empty most of the time.
+
+   So the *when* moves out of the middle and stacks around the circle instead —
+   19:30 above it, 火・金 under it — which is where it belongs anyway, since
+   ticking the circle is what those two facts are about. The title takes the
+   whole middle, vertically centred, and what is left over (the day, a memo,
+   「しまった」) sits beside it on the same line rather than under it. One line
+   instead of two, and about two thirds the height. */
+/* Rows only. A tile is a square with its buttons in the corners and its own
+   rules for all of this; sharing the row's padding turned the title loose over
+   the tick. */
+.item.todo:not(.is-tile) {
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 46px;
+  padding: 4px var(--sp-3) 4px 10px;
+}
+
+.todo-lead {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  /* Wide enough for 「19:30」 and 「月・水・金」; anything longer is not a rule
+     anyone reads off a row. */
+  width: 50px;
+}
+
+/* Across, not down: the name and whatever is left of the meta share one line
+   (the base row stacks them, which is what made the box three storeys tall). */
+.item.todo:not(.is-tile) .item-body {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.item.todo:not(.is-tile) .item-name {
+  /* Basis zero: the name takes whatever the line has left rather than
+     claiming its natural width and squeezing the date out. */
+  flex: 1 1 0;
+  min-width: 0;
+  /* Two lines for the long ones, then it gives up — a name that needs three is
+     a memo. The row grows by one line for those and no further. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  line-height: 1.3;
+}
+/* No overflow:hidden here. Clipping the *box* eats whichever child is first,
+   and the box is right-aligned, so 「8/26(水)」 lost its left half. Letting the
+   memo shrink instead keeps every fixed thing whole. */
+.item.todo:not(.is-tile) .item-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+/* The one part of the line that may be shortened, and the only one that can
+   be shortened without changing what it says. */
+.item.todo:not(.is-tile) .item-memo {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: 1;
+  max-width: 42vw;
+}
+.item.todo:not(.is-tile) .item-when,
+.item.todo:not(.is-tile) .todo-tag { flex: none; }
+
+/* The clock, above the circle. Still the pill it was, in the day's own colour,
+   only now it sits where 「いつ」 is answered rather than in a queue of chips
+   under the name. */
 .todo-at {
   flex: none;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  line-height: 1.4;
   color: var(--cat, var(--c-text-2));
   border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
   background: color-mix(in srgb, var(--cat, var(--c-border)) 10%, transparent);
   border-radius: 999px;
-  padding: 0 6px;
+  padding: 0 5px;
+}
+
+/* And the rule under it. No ↻ — the circle it is sitting beneath has one. */
+.todo-every {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  color: color-mix(in srgb, var(--c-text-3) 80%, transparent);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 時刻 in the sheet. Optional, and one line rather than a full-width field
@@ -8969,9 +9069,29 @@ button, [role="tab"] {
     paint();
   }
 
+  /**
+   * Put the cursor in a field and bring the keyboard with it.
+   *
+   * Must be called synchronously from the tap that opened the sheet. iOS only
+   * raises the keyboard for a focus it can trace back to a gesture, and a
+   * setTimeout — even one frame — has already broken that trail: the field
+   * takes the caret and the keyboard stays down, so the first thing you do
+   * after tapping ＋ is tap again.
+   *
+   * The second call, after the sheet has finished sliding, is for the browsers
+   * that have no such rule and would otherwise focus a moving element.
+   */
+  function focusNow(el) {
+    if (!el) return;
+    try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
+    setTimeout(() => {
+      if (document.activeElement !== el && el.isConnected) el.focus();
+    }, 320);
+  }
+
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
-    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch,
+    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
   };
 })();
 
@@ -11482,9 +11602,22 @@ button, [role="tab"] {
   const partLabel = (id) => (BOOKENDS.find((p) => p.id === id) || {}).label || "";
   const isBookend = (id) => id === "dawn" || id === "dusk";
 
-  /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. The rows are
-     read at a glance, so they carry the whole rule rather than the frequency
-     with the details hidden in a sheet. */
+  /** The rule in as few characters as fit under a circle: 火・金, 第2火, 毎日. */
+  function repeatShort(t) {
+    if (!t.repeat) return "";
+    if (isBookend(t.part)) return partLabel(t.part);
+    if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "weekly") {
+      const d = t.repeatDays || [];
+      return d.length ? d.map((n) => WD[n]).join("・") : "毎週";
+    }
+    const n = t.repeatNth;
+    if (!n) return "毎月";
+    return n.nth === -1 ? `最終${WD[n.weekday]}` : `第${n.nth}${WD[n.weekday]}`;
+  }
+
+  /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. Used where
+     there is room for the whole rule — the tiles and the sheet. */
   function repeatText(t) {
     if (!t.repeat) return "";
     // 「毎朝」 already says both how often and when; 「毎日 毎朝」 says it twice.
@@ -11946,7 +12079,11 @@ button, [role="tab"] {
       });
     }
 
-    if (!editing) setTimeout(() => titleEl.focus(), 120);
+    /* New ones open ready to type — see focusNow: the focus has to happen in
+       the same beat as the tap or iOS leaves the keyboard down. Editing an
+       existing todo does not, because the thing you came to change is as
+       likely to be the date as the words. */
+    if (!editing) KN.ui.focusNow(titleEl);
   }
 
   /* ---------------- when, as a set of shelves ----------------
@@ -12105,6 +12242,28 @@ button, [role="tab"] {
       ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
       : icon("check"));
 
+    /* Short enough to live under a 26px circle: the ↻ there already says 「くり
+       返し」, so the words only have to say *which* — 火・金, 第2火, 毎日. And
+       not at all when the shelf overhead is already saying it. */
+    const every = (!closed && t.repeat && !(shelf && shelf.part && shelf.part === t.part))
+      ? repeatShort(t) : "";
+
+    /* Whatever is left goes beside the title, on the same line, so the row
+       does not grow a second one: the day (where the shelf is vaguer than the
+       row), 「しまった」, the memo, and the archive's stamp. */
+    /* The day goes last, hard against the star. The line is right-aligned and
+       clipped from the left when it will not fit, so whatever is first is what
+       gets cut — and a half-eaten date reads as a different date (「8/26」
+       clipped to 「6」 is a lie you cannot see). A clipped memo is only a
+       shorter memo, so the memo takes the squeeze. */
+    const meta = [];
+    if (t.memo) meta.push(html`<span class="item-memo">${t.memo}</span>`);
+    if (t.archived && !t.done) meta.push(html`<span class="todo-tag">しまった</span>`);
+    if (closed && when) meta.push(html`<span class="item-when">${KN.util.formatStamp(when)}</span>`);
+    else if (t.due && !sameDay) {
+      meta.push(html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>`);
+    }
+
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
                data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}">
@@ -12138,24 +12297,20 @@ button, [role="tab"] {
       </div>
     `) : node(html`
       <div class="item todo ${closed ? "is-checked" : ""}">
-        <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
-                aria-checked="${String(!!t.done)}"
-                aria-label="${t.title} を終わりにする">${checkMark()}</button>
+        ${/* The circle, with its own two shelves. What a row says about *when*
+              — 19:30 above, 毎週火・金 below — stacks around the button rather
+              than under the title, so the title keeps the middle of the row to
+              itself and the row stays one line tall. */""}
+        <span class="todo-lead">
+          ${at ? html`<span class="todo-at">${at}</span>` : ""}
+          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                  aria-checked="${String(!!t.done)}"
+                  aria-label="${t.title} を終わりにする">${checkMark()}</button>
+          ${every ? html`<span class="todo-every">${every}</span>` : ""}
+        </span>
         <button class="item-body">
-          <span class="item-name-row">
-            <span class="item-name">${t.title}</span>
-          </span>
-          <span class="item-meta">
-            ${closed && when
-              ? html`<span class="item-when">${KN.util.formatStamp(when)}</span>`
-              : (t.due && !sameDay
-                  ? html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>` : "")}
-            ${at ? html`<span class="todo-at">${at}</span>` : ""}
-            ${t.archived && !t.done ? html`<span class="todo-tag">しまった</span>` : ""}
-            ${t.repeat
-              ? html`<span class="todo-repeat">${repeatText(t)}</span>` : ""}
-            ${t.memo ? html`<span class="item-memo">${t.memo}</span>` : ""}
-          </span>
+          <span class="item-name">${t.title}</span>
+          ${meta.length ? html`<span class="item-meta">${meta}</span>` : ""}
         </button>
         <button class="fav ${t.flagged ? "is-on" : ""}" aria-pressed="${String(!!t.flagged)}"
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
@@ -12965,9 +13120,15 @@ button, [role="tab"] {
       handle.close();
     }
 
-    // The sheet focuses its first control after its own animation; on a phone
-    // it deliberately does not, so the keyboard does not fly up over it.
-    setTimeout(() => { if (!("ontouchstart" in window)) nameEl.focus(); }, 340);
+    /* Straight into the field, keyboard and all.
+
+       It has to happen *here* — synchronously, still inside the tap that
+       opened the sheet. iOS only raises the keyboard for a focus that belongs
+       to a gesture it can see, so the same call one frame later (or after the
+       sheet's own animation, which is where it used to live) focuses the field
+       and leaves the keyboard down: a caret blinking in a box you then have to
+       tap anyway. */
+    KN.ui.focusNow(nameEl);
     return handle;
   }
 
