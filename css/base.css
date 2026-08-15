@@ -401,11 +401,11 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  /* Two equal halves. The bar is two places: what to do, and shopping — and
-     shopping's two faces share one button rather than taking one each. The
-     split is a hairline and costs only its own width. */
+  /* Three equal thirds. The bar is three places: the day, the shopping, the
+     body — and shopping's two faces share one button rather than taking one
+     each. Each split is a hairline and costs only its own width. */
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
@@ -417,8 +417,8 @@ a { color: var(--c-primary); }
   z-index: 30;
 }
 
-/* The hairline between groups: やること │ 買うもの 価格 │ 設定. Short, centred,
-   and quiet — it is a seam, not a border. */
+/* The hairline between buttons: やること │ 買うもの・価格 │ ダイエット.
+   Short, centred, and quiet — it is a seam, not a border. */
 .tab-split {
   width: 1px;
   align-self: center;

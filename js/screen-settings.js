@@ -47,6 +47,7 @@
     els.body.append(themeGroup());
     els.body.append(storesGroup());
     els.body.append(categoriesGroup());
+    els.body.append(dietGroup());
     els.body.append(dataGroup());
     els.body.append(aboutBlock());
   }
@@ -555,6 +556,104 @@
     });
 
     sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
+  }
+
+  /* ---------------- ダイエット ---------------- */
+
+  function dietGroup() {
+    const d = store.get().diet;
+    const aiOn = KN.dietAI.configured();
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">ダイエット</h2>
+        <div class="rows">
+          <button class="row js-goal">
+            <span class="row-main">
+              <span class="row-title">目標</span>
+              <span class="row-sub">${d.goal.targetKg == null ? "決めていません"
+                : `${d.goal.targetKg}kg${d.goal.targetDay ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <button class="row js-sync">
+            <span class="row-main">
+              <span class="row-title">ヘルスケアから取り込む</span>
+              <span class="row-sub">${d.sync.lastAt ? `最後の取り込み：${KN.util.formatStamp(d.sync.lastAt)}` : "ショートカットで書き出したものを読みます"}</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-ai">
+            <span class="row-main">
+              <span class="row-title">AIの窓口</span>
+              <span class="row-sub">${aiOn ? KN.util.escapeHtml(KN.dietAI.url()) : "未設定（写真の推定とAI相談に使います）"}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <button class="row js-diet-clear">
+            <span class="row-main">
+              <span class="row-title" style="color:var(--c-danger)">ダイエットの記録を消す</span>
+              <span class="row-sub">体重 ${d.weights.length}件・食事 ${d.meals.length}件・ヘルスケア ${d.health.length}件</span>
+            </span>
+            <span class="row-chevron">${icon("trash")}</span>
+          </button>
+        </div>
+      </section>
+    `);
+
+    wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet.openGoalSheet());
+    wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet.openSyncSheet());
+    wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
+    wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "ダイエットの記録を消す",
+        message: "体重・食事・ヘルスケアの記録がすべて消えます。買い物リストとやることはそのままです。直前の状態は自動バックアップに残ります。",
+        okLabel: "消す", danger: true,
+      });
+      if (!ok) return;
+      store.clearDiet();
+      render();
+      KN.ui.toast("消しました");
+    });
+    return wrap;
+  }
+
+  /* 鍵ではなくURLを預かります。ここに鍵を書かせないのは方針ではなく事実で、
+     このページの中身は誰でも読めるからです。そのことを画面にも書きます。 */
+  function openAiSheet() {
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">窓口のURL（https://…）</span>
+          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="https://example.workers.dev/kurashi"
+                 value="${KN.dietAI.url()}">
+        </label>
+        <p class="diet-note">
+          APIキーはこのアプリには入れません。ここは静的なページなので、書いた鍵は
+          誰にでも読めてしまいます。鍵は窓口の向こう側（Cloudflare Workers など）に
+          置いてください。このアプリが送るのは、ダイエットの記録だけです——
+          買い物リストとやることは送りません。
+        </p>
+        <p class="diet-note">窓口が受ける形は README の「AIの窓口」に書いてあります。</p>
+      </div>
+    `);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-clear" style="flex:1">外す</button>
+        <button class="btn btn-primary js-save" style="flex:1">保存</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "AIの窓口", content: body, footer: foot });
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      const v = body.querySelector(".js-url").value.trim();
+      if (v && !/^https:\/\//.test(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      KN.dietAI.setUrl(v);
+      h.close(); render();
+      KN.ui.toast(v ? "保存しました" : "外しました");
+    });
+    foot.querySelector(".js-clear").addEventListener("click", () => {
+      KN.dietAI.setUrl(""); h.close(); render(); KN.ui.toast("外しました");
+    });
   }
 
   function dataGroup() {

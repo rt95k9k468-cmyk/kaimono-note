@@ -8,12 +8,13 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
-  /* Two buttons. Not four, and not three.
+  /* Three buttons — one per thing this book is about: the day, the shopping,
+     the body.
 
      お店くらべ left the bar a while ago: it is a thing you do a few times while
-     deciding where to go, not a place you live in. 設定 has now gone the same
-     way, for a plainer reason — it is not a place at all. Both open by name
-     from the screens that link to them, and hand back the way they came.
+     deciding where to go, not a place you live in. 設定 went the same way, for
+     a plainer reason — it is not a place at all. Both open by name from the
+     screens that link to them, and hand back the way they came.
 
      買うもの and 価格 kept a button each until they were sitting side by side
      under one hairline, which is a bar admitting they are one thing and drawing
@@ -27,6 +28,7 @@
       { id: "list",   label: "買うもの", icon: "list" },
       { id: "prices", label: "価格",     icon: "tag" },
     ] },
+    { id: "diet", label: "ダイエット", icon: "scale" },
   ];
 
   /** Which of the shopping pair the shared button is showing. */
@@ -121,6 +123,8 @@
     paintAppBadge();
 
     paintTabBadge("shop", tripCount());
+    /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
+       体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。 */
     // やること counts what is wanted today or already late. Something due next
     // week is not a number you can act on today, and a tab that counts the
     // whole backlog is a tab you learn to ignore.

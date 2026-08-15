@@ -7,7 +7,7 @@
      pinch-zoom away from people who need to enlarge the text. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>くらしノート</title>
-<meta name="description" content="やることと買うものを一冊に。日付つきのTodoと、買い物リスト、店ごとの値段くらべ。">
+<meta name="description" content="やることと買うものとからだを一冊に。日付つきのTodo、買い物リスト、店ごとの値段くらべ、体重と食事の記録。">
 <meta name="theme-color" content="#2f8f5b" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#12171400" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,6 +27,7 @@
     <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="やること" hidden></section>
     <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="買い物リスト"></section>
     <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="商品と価格" hidden></section>
+    <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="ダイエット" hidden></section>
     <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
     <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
   </main>
@@ -66,8 +67,13 @@
 <script src="js/insights.js"></script>
 <script src="js/pull-refresh.js"></script>
 <script src="js/notify.js"></script>
+<script src="js/food-data.js"></script>
+<script src="js/diet.js"></script>
+<script src="js/diet-ai.js"></script>
+<script src="js/health-sync.js"></script>
 <script src="js/product-sheet.js"></script>
 <script src="js/screen-todo.js"></script>
+<script src="js/screen-diet.js"></script>
 <script src="js/screen-list.js"></script>
 <script src="js/screen-prices.js"></script>
 <script src="js/screen-compare.js"></script>
