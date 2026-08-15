@@ -417,11 +417,11 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  /* Two equal halves. The bar is two places: what to do, and shopping — and
-     shopping's two faces share one button rather than taking one each. The
-     split is a hairline and costs only its own width. */
+  /* Three equal thirds. The bar is three places: the day, the shopping, the
+     body — and shopping's two faces share one button rather than taking one
+     each. Each split is a hairline and costs only its own width. */
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
@@ -433,8 +433,8 @@ a { color: var(--c-primary); }
   z-index: 30;
 }
 
-/* The hairline between groups: やること │ 買うもの 価格 │ 設定. Short, centred,
-   and quiet — it is a seam, not a border. */
+/* The hairline between buttons: やること │ 買うもの・価格 │ ダイエット.
+   Short, centred, and quiet — it is a seam, not a border. */
 .tab-split {
   width: 1px;
   align-self: center;
@@ -1033,6 +1033,11 @@ button, [role="tab"] {
   align-items: center;
   gap: var(--sp-2);
 }
+
+/* An inline icon in a section heading has no box of its own to be sized by —
+   without this it inherits the 24-unit viewBox at font size and fills the
+   card. */
+.section-title svg { width: 16px; height: 16px; flex: none; stroke-width: 2.2; }
 
 /* One line under a section title, for a gesture that has nothing on screen to
    advertise it. */
@@ -3047,6 +3052,171 @@ button, [role="tab"] {
   color: var(--c-text-3);
 }
 
+/* =========================================================
+   ダイエット
+   =========================================================
+
+   新しい見た目は作りません。カード、行、チップ、数字の等幅——ぜんぶ
+   買い物とやることが使っているものです。ここで足しているのは、
+   「大きい数字ひとつ」と「グラフ」の二つだけ。 */
+
+.diet { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-6); }
+
+/* ---- 今日 ---- */
+
+.diet-hero { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.diet-hero-main {
+  display: flex; flex-direction: column; gap: 2px;
+  text-align: left; width: 100%;
+  padding: 0; background: none; border: 0;
+}
+.diet-hero-label { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; }
+.diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+.diet-hero-value b {
+  font-size: 40px; line-height: 1.05; font-weight: 800; color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.diet-hero-value small { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text-2); }
+.diet-hero-fat { font-size: var(--fs-sm); color: var(--c-text-2); margin-left: auto; }
+.diet-hero-cta { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+.diet-hero-side {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2);
+  border-top: 1px solid var(--c-border); padding-top: var(--sp-3);
+}
+.diet-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); }
+.diet-stat-value { font-size: var(--fs-xl); font-weight: 800; }
+.diet-stat-value.is-good { color: var(--c-primary); }
+.diet-stat-value.is-warn { color: var(--c-accent); }
+.diet-stat-unit { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+.diet-hero-note, .diet-note {
+  font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.65; margin: 0;
+}
+.diet-note b { color: var(--c-text); }
+.diet-note.is-warn { color: var(--c-danger); }
+
+/* ---- グラフ ---- */
+
+.diet-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.diet-gridline { stroke: var(--c-border); stroke-width: 1; }
+.diet-axis { fill: var(--c-text-3); font-size: 8px; font-family: var(--font); }
+.diet-goal-line { stroke: var(--c-accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .75; }
+.diet-ma7 { fill: none; stroke: var(--c-primary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.diet-ma14 { fill: none; stroke: var(--c-text-3); stroke-width: 1.2; opacity: .6; stroke-linecap: round; }
+.diet-dot { fill: var(--c-text-3); opacity: .75; }
+/* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
+.diet-dot.is-health { fill: none; stroke: var(--c-text-3); stroke-width: 1; }
+
+.diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
+.diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.diet-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
+.diet-legend-item i.dot-ma7 { background: var(--c-primary); }
+.diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
+.diet-legend-item i.dot-goal { background: repeating-linear-gradient(90deg, var(--c-accent) 0 4px, transparent 4px 7px); }
+
+.diet-empty { padding: var(--sp-4) var(--sp-2); }
+.diet-empty .empty-text { font-size: var(--fs-sm); line-height: 1.7; }
+
+/* ---- からだ ---- */
+
+/* 4つ横に並ぶのは幅があるときだけ。320pxの画面では3つ＋1つに折り返します
+   ——「7時間00分」は、四等分した枠には収まりません。 */
+.diet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: var(--sp-2); }
+.diet-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: var(--sp-2) 2px; background: var(--c-surface-2);
+  border-radius: var(--r-md); min-width: 0;
+}
+.diet-cell-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+.diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
+.diet-cell-unit { font-size: 10px; color: var(--c-text-3); }
+.diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+/* ---- 食事 ---- */
+
+.diet-kcal { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.diet-kcal-main { display: flex; align-items: baseline; gap: 6px; }
+.diet-kcal-main b { font-size: 30px; font-weight: 800; line-height: 1; }
+.diet-kcal-main small { font-size: var(--fs-md); color: var(--c-text-2); font-weight: 700; }
+.diet-kcal-rem { font-size: var(--fs-sm); color: var(--c-text-2); text-align: right; }
+.diet-kcal-rem b { font-size: var(--fs-lg); color: var(--c-primary); }
+.diet-kcal-rem.is-over b { color: var(--c-danger); }
+.diet-kcal-target { display: block; font-size: var(--fs-xs); color: var(--c-text-3); }
+
+.diet-pfc { display: flex; flex-direction: column; gap: 5px; }
+.diet-pfc-row { display: flex; align-items: center; gap: var(--sp-2); }
+.diet-pfc-name { font-size: var(--fs-xs); color: var(--c-text-2); width: 82px; flex: none; }
+.diet-pfc-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--c-surface-3); overflow: hidden; }
+.diet-pfc-bar i { display: block; height: 100%; border-radius: 3px; }
+.diet-pfc-bar i.is-p { background: var(--c-primary); }
+.diet-pfc-bar i.is-f { background: var(--c-accent); }
+.diet-pfc-bar i.is-c { background: var(--c-cool-ink); }
+/* 目安を越えた棒は、満ちきったことが分かるように縁を付けます。 */
+.diet-pfc-bar.is-over { box-shadow: inset 0 0 0 1px var(--c-accent); }
+.diet-pfc-num { font-size: var(--fs-xs); color: var(--c-text-2); width: 78px; text-align: right; flex: none; }
+
+.diet-slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
+.diet-slot {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  padding: var(--sp-3); background: var(--c-surface-2);
+  border: 1px solid var(--c-border); border-radius: var(--r-md);
+  min-height: 62px;
+}
+.diet-slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.diet-slot-head b { font-size: var(--fs-sm); }
+.diet-slot-kcal { font-size: var(--fs-xs); color: var(--c-text-2); }
+.diet-slot-body {
+  font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.diet-total {
+  display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
+  padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
+}
+.diet-total b { font-size: var(--fs-2xl); font-weight: 800; }
+.diet-total small { font-size: var(--fs-sm); color: var(--c-text-2); }
+.diet-total span { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); }
+.diet-items .row-title { display: flex; align-items: center; gap: 6px; }
+.diet-suggest { margin-top: -4px; }
+
+/* ---- 気づいたこと ---- */
+
+.diet-findings { display: flex; flex-direction: column; gap: var(--sp-2); }
+.diet-finding {
+  padding: var(--sp-3); border-radius: var(--r-md);
+  background: var(--c-surface-2); border-left: 3px solid var(--c-border-2);
+}
+.diet-finding.is-good { border-left-color: var(--c-primary); }
+.diet-finding.is-warn { border-left-color: var(--c-accent); }
+.diet-finding b { font-size: var(--fs-sm); display: block; margin-bottom: 2px; }
+.diet-finding p { margin: 0; font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.7; }
+
+.diet-ai-out {
+  padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
+  font-size: var(--fs-sm); line-height: 1.8; white-space: pre-wrap;
+}
+
+/* ---- 取り込みの説明 ---- */
+
+.diet-steps { margin: 0; padding-left: 1.3em; font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.8; }
+.diet-steps b { color: var(--c-text); }
+.diet-code {
+  margin: 0; padding: var(--sp-3); background: var(--c-surface-2);
+  border-radius: var(--r-md); font-size: 11.5px; line-height: 1.6;
+  overflow-x: auto; white-space: pre; color: var(--c-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.diet-suggest-box { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* 横にならぶ入力欄。iPhoneの幅でも折り返して収まるように。 */
+.field-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.field-row > .field { min-width: 96px; }
+
 </style>
 </head>
 <body>
@@ -3055,6 +3225,7 @@ button, [role="tab"] {
     <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="やること" hidden></section>
     <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="買い物リスト"></section>
     <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="商品と価格" hidden></section>
+    <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="ダイエット" hidden></section>
     <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
     <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
   </main>
@@ -3452,6 +3623,17 @@ button, [role="tab"] {
     calendar:  '<rect x="3" y="5" width="18" height="16" rx="2.4"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     repeat:    '<path d="M4 9.4V8a3 3 0 0 1 3-3h11"/><path d="m15 2 3 3-3 3"/><path d="M20 14.6V16a3 3 0 0 1-3 3H6"/><path d="m9 22-3-3 3-3"/>',
     flag:      '<path d="M5 21V4"/><path d="M5 4.6h11.6l-2 3.6 2 3.6H5"/>',
+
+    /* ダイエット。体重計は「四角い台と、真ん中の目盛り窓」——秤の絵にすると
+       買い物の 天びん と紛れるので、乗るほうの秤にしてあります。 */
+    scale:     '<rect x="2.8" y="4.4" width="18.4" height="15.2" rx="3"/><path d="M12 8.2a4.6 4.6 0 0 0-4.35 3.1h8.7A4.6 4.6 0 0 0 12 8.2Z"/><path d="M12 11.3 14.2 9"/><path d="M8.6 15.6h6.8"/>',
+    flame:     '<path d="M12 2.6s5.2 4.3 5.2 9.1a5.2 5.2 0 0 1-10.4 0C6.8 9.4 8.4 7.6 9.4 6.4c.3 1.5 1 2.4 1.9 2.9.9-1.5.9-4.6.7-6.7Z"/><path d="M12 21.4a2.6 2.6 0 0 0 2.6-2.6c0-1.5-1.6-2.6-2.6-4-1 1.4-2.6 2.5-2.6 4a2.6 2.6 0 0 0 2.6 2.6Z"/>',
+    steps:     '<path d="M7.2 3.4c1.6 0 2.6 1.3 2.6 3 0 1.4-.5 2.6-.5 3.8 0 1.1.6 1.7.6 2.7 0 1.3-1.1 2.1-2.7 2.1s-2.7-.8-2.7-2.1c0-1 .6-1.6.6-2.7 0-1.2-.5-2.4-.5-3.8 0-1.7 1-3 2.6-3Z"/><path d="M4.6 17.4c0 1.7 1.1 3.2 2.6 3.2s2.6-1.5 2.6-3.2"/><path d="M16.8 6.6c1.6 0 2.6 1.3 2.6 3 0 1.4-.5 2.6-.5 3.8 0 1.1.6 1.7.6 2.7 0 1.3-1.1 2.1-2.7 2.1s-2.7-.8-2.7-2.1c0-1 .6-1.6.6-2.7 0-1.2-.5-2.4-.5-3.8 0-1.7 1-3 2.6-3Z"/>',
+    moon:      '<path d="M20.4 14.6A8.6 8.6 0 0 1 9.4 3.6a8.6 8.6 0 1 0 11 11Z"/>',
+    meal:      '<path d="M6.2 2.8v7.4a2.2 2.2 0 0 0 4.4 0V2.8"/><path d="M8.4 10.2V21.2"/><path d="M16.6 21.2V13.6c-1.6 0-2.4-1-2.4-3.4 0-4 1.2-6.4 3.2-7.4 1.6.9 2.4 3.4 2.4 7.4 0 2.4-.8 3.4-2.4 3.4v7.6"/>',
+    camera:    '<path d="M3.4 8.4a2 2 0 0 1 2-2h1.9l1.3-2.2h6.8l1.3 2.2h1.9a2 2 0 0 1 2 2v9.2a2 2 0 0 1-2 2H5.4a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.6" r="3.6"/>',
+    chart:     '<path d="M3.4 20.6h17.2"/><path d="M4.4 16.2 9 10.8l3.6 3.2 6.4-7.4"/><circle cx="9" cy="10.8" r="1.3"/><circle cx="12.6" cy="14" r="1.3"/>',
+    heart:     '<path d="M12 20.4S3.4 15.2 3.4 9.2A4.6 4.6 0 0 1 12 6.8a4.6 4.6 0 0 1 8.6 2.4c0 6-8.6 11.2-8.6 11.2Z"/>',
   };
 
   /** Inline stroke icon. */
@@ -7496,11 +7678,191 @@ button, [role="tab"] {
       todos: [],
       // Corrections the user has made by hand: folded product name → category.
       learned: {},
+      /* ダイエット。買い物ともやることとも混ざらない、体の記録の置き場です。
+         中身をひとつの入れ物にまとめてあるのは、「体重だけ消す」「食事だけ
+         書き出す」がひとまとまりで済むから——そして、この機能を使わない人の
+         保存データに、空の配列が五つも散らばらないためです。 */
+      diet: emptyDiet(),
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
       // looking at, not on one of the two.
       settings: { theme: "auto", showChecked: true, layout: "rows" },
     };
+  }
+
+  /* ---------------- ダイエット ----------------
+
+     入れ物を四つに分けてあります。分けているのは種類ではなく **出どころ** です。
+
+       weights  … 体重・体脂肪。手で書いたものと、ヘルスケアから来たものが
+                  同じ並びに入りますが、source でどちらか分かります。
+       meals    … 食事。人が書くものしかありません。
+       foods    … その人だけの食品（表の値を直したもの、市販商品、AIの推定）。
+       health   … 歩数・睡眠・運動など、機械が測ったもの。
+
+     手で書いたものと機械が測ったものを、ひとつの配列に混ぜて後から
+     見分けようとしないこと。混ぜると、取り込みのたびに「これは前に自分で
+     書いたやつだろうか」を値で当てにいく羽目になり、いつか必ず外します。 */
+  function emptyDiet() {
+    return {
+      weights: [],
+      meals: [],
+      foods: [],
+      health: [],
+      goal: {
+        heightCm: null,
+        targetKg: null,
+        targetDay: null,
+        // 一日の目安。null なら画面は「残り」を出しません——目標が無いのに
+        // 「残り1800kcal」と出すのは、勝手に決めた線を事実のように言うことです。
+        kcalTarget: null, pTarget: null, fTarget: null, cTarget: null,
+      },
+      // 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
+      sync: { lastAt: null, added: 0, updated: 0 },
+    };
+  }
+
+  const HEALTH_TYPES = [
+    "steps", "distance", "activeEnergy", "restingEnergy",
+    "workout", "sleep", "heartRate",
+    /* 体脂肪率は、ふつうは体重の記録に寄り添って weights に入ります。
+       ここにも居場所があるのは、体重を測らずに体脂肪だけ取れた日を
+       捨てないためです。 */
+    "bodyFat",
+  ];
+  /* 一日ぶんで一つに決まるもの。同じ日のぶんが二度来たら、後から来た
+     ほうが正しい——朝7時に取り込んだ歩数より、夜に取り込んだ歩数の
+     ほうが一日を写しています。逆にワークアウトは一日に何度もあるので、
+     こちらは足していきます。 */
+  const DAILY_TYPES = ["steps", "distance", "activeEnergy", "restingEnergy", "sleep", "heartRate", "bodyFat"];
+
+  function num(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+  function posNum(v) { const n = num(v); return n != null && n > 0 ? n : null; }
+  function dayStr(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
+
+  function cleanWeight(w, i) {
+    const kg = posNum(w.kg);
+    if (!kg || kg > 400) return null;
+    return {
+      id: w.id || uid("w"),
+      day: dayStr(w.day) || today(),
+      time: KN.util.isTime(w.time) ? w.time : null,
+      kg: Math.round(kg * 100) / 100,
+      // 体脂肪率。0 は「測れなかった」であって 0% ではないので、null に倒します。
+      fat: (() => { const f = posNum(w.fat); return f != null && f < 80 ? Math.round(f * 10) / 10 : null; })(),
+      memo: typeof w.memo === "string" ? w.memo : "",
+      source: w.source === "health" ? "health" : "manual",
+      externalId: typeof w.externalId === "string" ? w.externalId : null,
+      importedAt: w.importedAt || null,
+      createdAt: w.createdAt || new Date().toISOString(),
+      order: typeof w.order === "number" ? w.order : i,
+    };
+  }
+
+  const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+
+  function cleanMealItem(it) {
+    const name = String(it && it.name || "").trim();
+    if (!name) return null;
+    return {
+      name,
+      grams: posNum(it.grams),
+      kcal: Math.max(0, Math.round(num(it.kcal) || 0)),
+      p: Math.max(0, Math.round((num(it.p) || 0) * 10) / 10),
+      f: Math.max(0, Math.round((num(it.f) || 0) * 10) / 10),
+      c: Math.max(0, Math.round((num(it.c) || 0) * 10) / 10),
+      // どこから来た値か。base=成分表, user=自分で直した, product=市販品,
+      // ai=写真からの推定。数字の重みが違うので、捨てずに持ちます。
+      from: ["base", "user", "product", "ai", "manual"].includes(it.from) ? it.from : "manual",
+      foodId: typeof it.foodId === "string" ? it.foodId : null,
+      // 推定値かどうか。UIで「約」を付けるのはこの旗ひとつで決めます。
+      estimated: it.estimated === true,
+    };
+  }
+
+  function cleanMeal(m, i) {
+    const items = (Array.isArray(m.items) ? m.items : []).map(cleanMealItem).filter(Boolean);
+    if (!items.length && !String(m.memo || "").trim()) return null;
+    return {
+      id: m.id || uid("m"),
+      day: dayStr(m.day) || today(),
+      time: KN.util.isTime(m.time) ? m.time : null,
+      slot: MEAL_SLOTS.includes(m.slot) ? m.slot : "snack",
+      items,
+      memo: typeof m.memo === "string" ? m.memo : "",
+      // 写真そのものは持ちません（localStorage に画像は入りません）。
+      // 解析にかけたかどうかだけを覚えておきます。
+      photoAnalyzed: m.photoAnalyzed === true,
+      createdAt: m.createdAt || new Date().toISOString(),
+      order: typeof m.order === "number" ? m.order : i,
+    };
+  }
+
+  function cleanUserFood(f) {
+    const name = String(f && f.name || "").trim();
+    if (!name) return null;
+    return {
+      id: f.id || uid("uf"),
+      name,
+      kind: ["user", "product", "ai"].includes(f.kind) ? f.kind : "user",
+      kcal: Math.max(0, num(f.kcal) || 0),
+      p: Math.max(0, num(f.p) || 0),
+      f: Math.max(0, num(f.f) || 0),
+      c: Math.max(0, num(f.c) || 0),
+      // 市販品はパッケージの表示が「1個あたり」のことも多いので、
+      // 100g あたりか 1つあたりかを持ちます。
+      per: f.per === "unit" ? "unit" : "100g",
+      unitName: typeof f.unitName === "string" ? f.unitName : "個",
+      unitGrams: posNum(f.unitGrams),
+      barcode: typeof f.barcode === "string" ? f.barcode : null,
+      // 表の値を直したものは、どれを直したのかを覚えておきます。
+      basedOn: typeof f.basedOn === "string" ? f.basedOn : null,
+      createdAt: f.createdAt || new Date().toISOString(),
+    };
+  }
+
+  function cleanHealth(h) {
+    if (!HEALTH_TYPES.includes(h && h.type)) return null;
+    const value = num(h.value);
+    if (value == null) return null;
+    return {
+      id: h.id || uid("h"),
+      type: h.type,
+      day: dayStr(h.day) || today(),
+      time: KN.util.isTime(h.time) ? h.time : null,
+      value,
+      unit: typeof h.unit === "string" ? h.unit : "",
+      // ワークアウトの種目名など、その一件にだけ付く名前。
+      label: typeof h.label === "string" ? h.label : "",
+      /* ワークアウトの消費カロリー。その一本に付いている数なので、ここに
+         持ちます——一日のアクティブエネルギーの列に流し込むと、同じ熱量が
+         二度数えられるか、その日の合計を上書きするかのどちらかになります。 */
+      kcal: (() => { const n = num(h.kcal); return n != null && n >= 0 ? Math.round(n) : null; })(),
+      // 何が測ったのか（Apple Watch、iPhone、手入力）。取り込み元の申告です。
+      source: typeof h.source === "string" ? h.source : "health",
+      // ヘルスケア側の一意な印。重複を弾く唯一まともな手がかりなので、
+      // 来ていれば必ず残します。
+      externalId: typeof h.externalId === "string" ? h.externalId : null,
+      importedAt: h.importedAt || null,
+    };
+  }
+
+  function reconcileDiet(d) {
+    const base = emptyDiet();
+    const src = (d && typeof d === "object") ? d : {};
+    const out = {
+      weights: (Array.isArray(src.weights) ? src.weights : []).map(cleanWeight).filter(Boolean),
+      meals: (Array.isArray(src.meals) ? src.meals : []).map(cleanMeal).filter(Boolean),
+      foods: (Array.isArray(src.foods) ? src.foods : []).map(cleanUserFood).filter(Boolean),
+      health: (Array.isArray(src.health) ? src.health : []).map(cleanHealth).filter(Boolean),
+      goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
+      sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },
+    };
+    out.goal.heightCm = posNum(out.goal.heightCm);
+    out.goal.targetKg = posNum(out.goal.targetKg);
+    out.goal.targetDay = dayStr(out.goal.targetDay);
+    ["kcalTarget", "pTarget", "fTarget", "cTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    return out;
   }
 
   /* ---------------- persistence ---------------- */
@@ -7589,6 +7951,8 @@ button, [role="tab"] {
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
+
+    out.diet = reconcileDiet(s.diet);
 
     out.schema = SCHEMA;
     return out;
@@ -8393,6 +8757,183 @@ button, [role="tab"] {
     return rec;
   }
 
+  /* ---------------- ダイエットの出し入れ ---------------- */
+
+  const diet = () => state.diet;
+
+  /* --- 体重 --- */
+
+  function addWeight({ day, time, kg, fat, memo, source, externalId } = {}) {
+    const rec = cleanWeight({
+      day: day || KN.util.todayKey(),
+      time: time || KN.util.nowTime(),
+      kg, fat, memo, source, externalId,
+      importedAt: source === "health" ? new Date().toISOString() : null,
+    }, 0);
+    if (!rec) return null;
+    update((s) => { s.diet.weights.push(rec); });
+    return rec;
+  }
+
+  function updateWeight(id, patch) {
+    update((s) => {
+      const w = s.diet.weights.find((x) => x.id === id);
+      if (!w) return;
+      const next = cleanWeight({ ...w, ...patch }, 0);
+      if (next) Object.assign(w, next, { id: w.id });
+    });
+  }
+
+  function removeWeight(id) {
+    update((s) => { s.diet.weights = s.diet.weights.filter((w) => w.id !== id); });
+  }
+
+  /** 新しい順。同じ日に何度も乗ることがあるので、日だけでなく時刻まで見ます。 */
+  function sortedWeights() {
+    return [...diet().weights].sort((a, b) =>
+      (b.day + " " + (b.time || "00:00")).localeCompare(a.day + " " + (a.time || "00:00")));
+  }
+
+  /** その日の代表値。一日に何度も測った日は、最初の一回を採ります——
+      起き抜けの体重がいちばん条件がそろっているので。 */
+  function weightOfDay(day) {
+    const list = diet().weights.filter((w) => w.day === day)
+      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+    return list.length ? list[0] : null;
+  }
+
+  function latestWeight() {
+    const list = sortedWeights();
+    return list.length ? list[0] : null;
+  }
+
+  /* --- 食事 --- */
+
+  function addMeal({ day, time, slot, items, memo } = {}) {
+    const rec = cleanMeal({
+      day: day || KN.util.todayKey(),
+      time: time || KN.util.nowTime(),
+      slot, items, memo,
+    }, 0);
+    if (!rec) return null;
+    update((s) => { s.diet.meals.push(rec); });
+    return rec;
+  }
+
+  function updateMeal(id, patch) {
+    update((s) => {
+      const m = s.diet.meals.find((x) => x.id === id);
+      if (!m) return;
+      const next = cleanMeal({ ...m, ...patch }, 0);
+      if (next) Object.assign(m, next, { id: m.id });
+    });
+  }
+
+  function removeMeal(id) {
+    update((s) => { s.diet.meals = s.diet.meals.filter((m) => m.id !== id); });
+  }
+
+  function mealsOfDay(day) {
+    const order = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
+    return diet().meals.filter((m) => m.day === day)
+      .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
+  }
+
+  /* --- その人の食品 --- */
+
+  function addUserFood(food) {
+    const rec = cleanUserFood(food);
+    if (!rec) return null;
+    update((s) => { s.diet.foods.push(rec); });
+    return rec;
+  }
+
+  function removeUserFood(id) {
+    update((s) => { s.diet.foods = s.diet.foods.filter((f) => f.id !== id); });
+  }
+
+  /** その人の食品を先に、無ければ成分表から。直した値のほうが本人には正しい。 */
+  function findFood(name) {
+    const key = KN.util.foldKana(String(name || "").trim());
+    if (!key) return null;
+    const mine = diet().foods.find((f) => KN.util.foldKana(f.name) === key);
+    if (mine) return mine;
+    return KN.foodData.lookup(name);
+  }
+
+  /* --- 機械が測ったもの --- */
+
+  /**
+   * ヘルスケアからの一件を入れる。同じものが二度入らないようにするのが
+   * ここの仕事です。見分け方は二段構え——
+   *   1. externalId が来ていれば、それが同じなら同じもの（上書き）
+   *   2. 一日ぶんで一つに決まる種目（歩数など）は、その日のぶんを差し替え
+   * どちらでもなければ新しい一件として足します。
+   * @returns "added" | "updated" | null
+   */
+  function putHealth(sample) {
+    const rec = cleanHealth({ ...sample, importedAt: new Date().toISOString() });
+    if (!rec) return null;
+    let result = "added";
+    update((s) => {
+      const list = s.diet.health;
+      let at = -1;
+      if (rec.externalId) {
+        at = list.findIndex((h) => h.externalId && h.externalId === rec.externalId);
+      }
+      /* 日ごとに一つの種目でも、外の印を持っている一件は差し替えの相手に
+         しません。印があるということは「その一件」を指しているので、
+         その日ぜんぶの代表として上書きしてよいものではありません。 */
+      if (at < 0 && !rec.externalId && DAILY_TYPES.includes(rec.type)) {
+        at = list.findIndex((h) => h.type === rec.type && h.day === rec.day && !h.externalId);
+      }
+      if (at >= 0) {
+        const keepId = list[at].id;
+        list[at] = { ...rec, id: keepId };
+        result = "updated";
+      } else {
+        list.push(rec);
+      }
+    });
+    return result;
+  }
+
+  function removeHealth(id) {
+    update((s) => { s.diet.health = s.diet.health.filter((h) => h.id !== id); });
+  }
+
+  /** その日のその種目。日ごとに一つのものは一件、ワークアウトは全部。 */
+  function healthOfDay(day, type) {
+    return diet().health.filter((h) => h.day === day && (!type || h.type === type));
+  }
+
+  /** その日のその種目の合計。無ければ null——0 と「測っていない」は違います。 */
+  function healthValue(day, type) {
+    const list = healthOfDay(day, type);
+    if (!list.length) return null;
+    if (DAILY_TYPES.includes(type)) {
+      // 日ごとに一つのはずですが、外から入ったものが並んだときは最大を採ります
+      // （一日の途中で取り込んだ半端な歩数が、夜のぶんを消さないように）。
+      return list.reduce((max, h) => Math.max(max, h.value), 0);
+    }
+    return list.reduce((sum, h) => sum + h.value, 0);
+  }
+
+  function setGoal(patch) {
+    update((s) => { s.diet.goal = { ...s.diet.goal, ...patch }; });
+  }
+
+  function markSynced(counts) {
+    update((s) => {
+      s.diet.sync = { lastAt: new Date().toISOString(), added: counts.added || 0, updated: counts.updated || 0 };
+    });
+  }
+
+  /** ダイエットの記録だけを消す。買い物とやることには触れません。 */
+  function clearDiet() {
+    update((s) => { s.diet = emptyDiet(); });
+  }
+
   /* ---------------- import / export ---------------- */
 
   function exportJSON() {
@@ -8410,6 +8951,7 @@ button, [role="tab"] {
       s.products = next.products;
       s.items = next.items;
       s.todos = next.todos;
+      s.diet = next.diet;
       s.settings = next.settings;
     });
   }
@@ -8491,6 +9033,12 @@ button, [role="tab"] {
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
+    HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
+    addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
+    addMeal, updateMeal, removeMeal, mealsOfDay,
+    addUserFood, removeUserFood, findFood,
+    putHealth, removeHealth, healthOfDay, healthValue,
+    setGoal, markSynced, clearDiet,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -10614,6 +11162,1380 @@ button, [role="tab"] {
   }
 
   KN.notify = { supported, enabled, blocked, enable, disable, tick, init };
+})();
+
+/* ---- js/food-data.js ---- */
+/* =========================================================
+   くらしノート — 食品成分（基本食品）と、書いた一行の読み取り
+   =========================================================
+
+   ここに置くのは「基本食品」だけです。ご飯、鶏むね肉、卵、牛乳——だいたい
+   どこで買っても中身が同じもの。値は日本食品標準成分表2020年版（八訂）を
+   もとにした**可食部100gあたりの概数**で、小数第一位まで丸めてあります。
+
+   概数だと断っておくのは大事なことです。同じ「鶏むね肉」でも部位の取り方で
+   1割は動きますし、炊いたご飯は水加減で変わります。ここの数字は
+   「毎回1gずつ量るかわりに、だいたいの線を引く」ためのもので、
+   検査値ではありません。だからこの表の値は**いつでも直せる**ようにしてあり、
+   直した値はその人の食品（kind: "user"）として保存されます。
+
+   市販商品（コンビニのおにぎり、特定メーカーのヨーグルト）はここには
+   入れません。あれは商品ごとに違い、リニューアルで変わり、いずれ
+   バーコードから引くものなので、別の入れ物（kind: "product"）にします。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { foldKana } = KN.util;
+
+  /* 100gあたり [kcal, たんぱく質g, 脂質g, 炭水化物g]。
+     炭水化物は差引き法の総量——食物繊維も含んだ、いわゆる「炭水化物」です
+     （糖質ではありません）。市販の栄養成分表示と同じ土俵に乗せるため。 */
+  const F = (id, name, cat, kcal, p, f, c, extra) =>
+    Object.assign({ id: "f-" + id, name, cat, kcal, p, f, c, kind: "base" }, extra || {});
+
+  /* unit: 「1個」「1枚」で数えるものの、1つあたりのグラム（可食部）。
+     ここが空の食品は、グラムでしか数えられません——「レタス1個」と言われて
+     も、それが何グラムかは人によって違いすぎるので。 */
+
+  const FOODS = [
+    /* ---------------- 主食 ---------------- */
+    F("gohan",      "ご飯",              "shushoku", 156, 2.0,  0.3, 37.1, { units: { 杯: 150, 膳: 150 } }),
+    F("gohan-genmai", "玄米ご飯",        "shushoku", 152, 2.8,  1.0, 35.6, { units: { 杯: 150 } }),
+    F("okayu",      "おかゆ",            "shushoku",  65, 1.1,  0.1, 15.7, { units: { 杯: 220 } }),
+    F("mochi",      "もち",              "shushoku", 223, 4.0,  0.6, 50.8, { units: { 個: 50, 切れ: 50 } }),
+    F("shokupan",   "食パン",            "shushoku", 248, 8.9,  4.1, 46.4, { units: { 枚: 60 } }),
+    F("roll-pan",   "ロールパン",        "shushoku", 309, 10.1, 9.0, 48.6, { units: { 個: 30 } }),
+    F("croissant",  "クロワッサン",      "shushoku", 438, 7.9, 26.8, 43.9, { units: { 個: 40 } }),
+    F("udon",       "うどん（ゆで）",    "shushoku",  95, 2.6,  0.4, 21.6, { units: { 玉: 230, 袋: 230 } }),
+    F("soba",       "そば（ゆで）",      "shushoku", 130, 4.8,  1.0, 26.0, { units: { 玉: 180 } }),
+    F("somen",      "そうめん（ゆで）",  "shushoku", 114, 3.5,  0.4, 25.8),
+    F("pasta",      "スパゲッティ（ゆで）", "shushoku", 150, 5.8, 0.9, 32.2),
+    F("pasta-dry",  "スパゲッティ（乾）",   "shushoku", 347, 12.9, 1.8, 73.1),
+    F("chuka-men",  "中華めん（ゆで）",  "shushoku", 133, 4.9,  0.6, 27.9, { units: { 玉: 200 } }),
+    F("ramen-inst", "即席中華めん（油揚げ）", "shushoku", 458, 10.1, 19.1, 61.4, { units: { 袋: 100, 個: 100 } }),
+    F("cornflakes", "コーンフレーク",    "shushoku", 380, 7.8,  1.7, 83.6),
+    F("oatmeal",    "オートミール",      "shushoku", 350, 13.7, 5.7, 69.1),
+
+    /* ---------------- 肉 ---------------- */
+    F("toriMuneNP", "鶏むね肉（皮なし）", "niku", 105, 23.3, 1.9, 0.1),
+    F("toriMune",   "鶏むね肉（皮つき）", "niku", 133, 21.3, 5.9, 0.1),
+    F("toriMomoNP", "鶏もも肉（皮なし）", "niku", 113, 19.0, 5.0, 0.0),
+    F("toriMomo",   "鶏もも肉（皮つき）", "niku", 190, 16.6, 14.2, 0.0),
+    F("sasami",     "ささみ",            "niku",  98, 23.9, 0.8, 0.1, { units: { 本: 45 } }),
+    F("tebasaki",   "手羽先",            "niku", 207, 17.4, 14.6, 0.0, { units: { 本: 35 } }),
+    F("toriHikiniku", "鶏ひき肉",        "niku", 171, 17.5, 12.0, 0.0),
+    F("butaRosu",   "豚ロース",          "niku", 248, 19.3, 19.2, 0.2),
+    F("butaBara",   "豚バラ肉",          "niku", 366, 14.4, 35.4, 0.1),
+    F("butaMomo",   "豚もも肉",          "niku", 171, 20.5, 10.2, 0.2),
+    F("butaHire",   "豚ヒレ肉",          "niku", 118, 22.2, 3.7,  0.3),
+    F("butaHiki",   "豚ひき肉",          "niku", 209, 17.7, 17.2, 0.1),
+    F("gyuMomo",    "牛もも肉（輸入）",  "niku", 148, 19.6, 8.6,  0.4),
+    F("gyuKata",    "牛肩ロース（輸入）", "niku", 221, 17.9, 17.4, 0.1),
+    F("gyuBara",    "牛バラ肉（輸入）",  "niku", 338, 14.4, 32.9, 0.2),
+    F("gyuHiki",    "牛ひき肉",          "niku", 251, 17.1, 21.1, 0.3),
+    F("aibiki",     "合いびき肉",        "niku", 230, 17.4, 19.2, 0.2),
+    F("ham",        "ロースハム",        "niku", 211, 18.6, 14.5, 2.0, { units: { 枚: 20 } }),
+    F("bacon",      "ベーコン",          "niku", 400, 12.9, 39.1, 0.3, { units: { 枚: 17 } }),
+    F("wiener",     "ウインナー",        "niku", 319, 11.5, 30.6, 3.3, { units: { 本: 20 } }),
+    F("sasami-jerky", "サラダチキン",    "niku", 105, 21.7, 1.2,  1.0, { units: { 個: 110, パック: 110 } }),
+
+    /* ---------------- 魚 ---------------- */
+    F("sake",       "鮭",                "sakana", 124, 22.3, 4.1, 0.1, { units: { 切れ: 80 } }),
+    F("saba",       "さば",              "sakana", 211, 20.6, 16.8, 0.3, { units: { 切れ: 80 } }),
+    F("sabaKan",    "さば水煮缶",        "sakana", 174, 20.9, 10.7, 0.2, { units: { 缶: 190 } }),
+    F("sanma",      "さんま",            "sakana", 287, 18.1, 25.6, 0.1, { units: { 尾: 100 } }),
+    F("aji",        "あじ",              "sakana", 112, 19.7, 4.5, 0.1, { units: { 尾: 70 } }),
+    F("buri",       "ぶり",              "sakana", 222, 21.4, 17.6, 0.3, { units: { 切れ: 80 } }),
+    F("maguro",     "まぐろ赤身",        "sakana", 115, 26.4, 1.4, 0.1),
+    F("katsuo",     "かつお",            "sakana", 108, 25.8, 0.5, 0.1),
+    F("tara",       "たら",              "sakana",  72, 17.6, 0.2, 0.1, { units: { 切れ: 80 } }),
+    F("ebi",        "えび",              "sakana",  82, 19.6, 0.6, 0.3, { units: { 尾: 15 } }),
+    F("ika",        "いか",              "sakana",  76, 17.9, 0.8, 0.1),
+    F("tuna-water", "ツナ缶（水煮）",    "sakana",  70, 16.0, 0.7, 0.2, { units: { 缶: 70 } }),
+    F("tuna-oil",   "ツナ缶（油漬）",    "sakana", 265, 17.7, 21.7, 0.1, { units: { 缶: 70 } }),
+    F("shirasu",    "しらす干し",        "sakana", 113, 24.5, 2.1, 0.1),
+    F("chikuwa",    "ちくわ",            "sakana", 119, 12.2, 2.0, 13.5, { units: { 本: 30 } }),
+    F("kamaboko",   "かまぼこ",          "sakana",  93, 12.0, 0.9, 9.7),
+
+    /* ---------------- 卵・豆・乳 ---------------- */
+    F("tamago",     "卵",                "tamago", 142, 12.2, 10.2, 0.4, { units: { 個: 60 } }),
+    F("shiromi",    "卵白",              "tamago",  44,  9.5,  0.0, 0.4, { units: { 個: 35 } }),
+    F("kimi",       "卵黄",              "tamago", 336, 16.5, 34.3, 0.2, { units: { 個: 17 } }),
+    F("momen",      "木綿豆腐",          "mame",    73,  7.0,  4.9, 1.5, { units: { 丁: 300, パック: 150 } }),
+    F("kinugoshi",  "絹ごし豆腐",        "mame",    56,  5.3,  3.5, 2.0, { units: { 丁: 300, パック: 150 } }),
+    F("natto",      "納豆",              "mame",   184, 16.5, 10.0, 12.1, { units: { パック: 45 } }),
+    F("aburaage",   "油揚げ",            "mame",   377, 23.4, 34.4, 0.4, { units: { 枚: 30 } }),
+    F("atsuage",    "厚揚げ",            "mame",   143, 10.7, 11.3, 0.9, { units: { 枚: 120 } }),
+    F("edamame",    "枝豆（ゆで）",      "mame",   118, 11.5,  6.1, 8.9),
+    F("hiyayakko",  "きなこ",            "mame",   451, 36.7, 25.7, 28.5),
+    F("gyunyu",     "牛乳",              "nyu",     61,  3.3,  3.8, 4.8, { ml: 1.03, units: { 杯: 200, 本: 200 } }),
+    F("teishibo",   "低脂肪牛乳",        "nyu",     42,  3.8,  1.0, 5.5, { ml: 1.03, units: { 杯: 200 } }),
+    F("tonyu",      "豆乳（無調整）",    "nyu",     44,  3.6,  2.0, 3.1, { ml: 1.03, units: { 杯: 200 } }),
+    F("tonyu-choi", "調製豆乳",          "nyu",     63,  3.2,  3.6, 4.8, { ml: 1.03, units: { 杯: 200 } }),
+    F("yogurt",     "ヨーグルト（無糖）", "nyu",     56,  3.6,  3.0, 4.9, { units: { 個: 100, カップ: 100 } }),
+    F("yogurt-greek", "ギリシャヨーグルト", "nyu",   99, 10.2,  0.2, 12.0, { units: { 個: 100 } }),
+    F("cheese",     "プロセスチーズ",    "nyu",    313, 22.7, 26.0, 1.3, { units: { 枚: 18, 個: 18 } }),
+    F("camembert",  "カマンベールチーズ", "nyu",    291, 19.1, 24.7, 0.9),
+    F("butter",     "バター",            "nyu",    700,  0.6, 81.0, 0.2, { units: { 個: 8 } }),
+
+    /* ---------------- 野菜 ---------------- */
+    F("cabbage",    "キャベツ",          "yasai",  21, 1.3, 0.2, 5.2),
+    F("lettuce",    "レタス",            "yasai",  11, 0.6, 0.1, 2.8),
+    F("tomato",     "トマト",            "yasai",  20, 0.7, 0.1, 4.7, { units: { 個: 150 } }),
+    F("mini-tomato", "ミニトマト",       "yasai",  30, 1.1, 0.1, 7.2, { units: { 個: 15 } }),
+    F("kyuri",      "きゅうり",          "yasai",  13, 1.0, 0.1, 3.0, { units: { 本: 100 } }),
+    F("ninjin",     "にんじん",          "yasai",  35, 0.7, 0.2, 9.3, { units: { 本: 150 } }),
+    F("tamanegi",   "玉ねぎ",            "yasai",  33, 1.0, 0.1, 8.4, { units: { 個: 200 } }),
+    F("jagaimo",    "じゃがいも",        "yasai",  59, 1.8, 0.1, 17.3, { units: { 個: 130 } }),
+    F("satsumaimo", "さつまいも",        "yasai", 126, 1.2, 0.2, 31.9, { units: { 本: 200 } }),
+    F("daikon",     "大根",              "yasai",  15, 0.4, 0.1, 4.1),
+    F("hakusai",    "白菜",              "yasai",  13, 0.8, 0.1, 3.2),
+    F("horenso",    "ほうれん草",        "yasai",  18, 2.2, 0.4, 3.1, { units: { 束: 200 } }),
+    F("komatsuna",  "小松菜",            "yasai",  13, 1.5, 0.2, 2.4, { units: { 束: 200 } }),
+    F("burokkori",  "ブロッコリー",      "yasai",  37, 5.4, 0.6, 6.6),
+    F("piman",      "ピーマン",          "yasai",  20, 0.9, 0.2, 5.1, { units: { 個: 35 } }),
+    F("nasu",       "なす",              "yasai",  18, 1.1, 0.1, 5.1, { units: { 本: 80 } }),
+    F("kabocha",    "かぼちゃ",          "yasai",  78, 1.9, 0.3, 20.6),
+    F("moyashi",    "もやし",            "yasai",  15, 1.7, 0.1, 2.6, { units: { 袋: 200 } }),
+    F("negi",       "ねぎ",              "yasai",  35, 1.4, 0.1, 8.3, { units: { 本: 100 } }),
+    F("goboh",      "ごぼう",            "yasai",  58, 1.8, 0.1, 15.4),
+    F("renkon",     "れんこん",          "yasai",  66, 1.9, 0.1, 15.5),
+    F("shiitake",   "しいたけ",          "yasai",  25, 3.1, 0.3, 6.4, { units: { 個: 15 } }),
+    F("enoki",      "えのき",            "yasai",  34, 2.7, 0.2, 7.6, { units: { 袋: 100 } }),
+    F("shimeji",    "しめじ",            "yasai",  26, 2.7, 0.5, 4.8, { units: { 袋: 100 } }),
+    F("wakame",     "わかめ（生）",      "yasai",  24, 1.9, 0.2, 5.6),
+    F("hijiki",     "ひじき（乾）",      "yasai", 180, 9.2, 3.2, 58.4),
+    F("nori",       "焼きのり",          "yasai", 297, 41.4, 3.7, 44.3, { units: { 枚: 3 } }),
+    F("kimchi",     "キムチ",            "yasai",  27, 2.3, 0.1, 5.4),
+
+    /* ---------------- くだもの ---------------- */
+    F("banana",     "バナナ",            "kudamono",  93, 1.1, 0.2, 22.5, { units: { 本: 90 } }),
+    F("ringo",      "りんご",            "kudamono",  56, 0.2, 0.3, 16.2, { units: { 個: 250 } }),
+    F("mikan",      "みかん",            "kudamono",  49, 0.7, 0.1, 12.0, { units: { 個: 80 } }),
+    F("ichigo",     "いちご",            "kudamono",  31, 0.9, 0.1, 8.5, { units: { 個: 15 } }),
+    F("budou",      "ぶどう",            "kudamono",  58, 0.4, 0.1, 15.7),
+    F("kiwi",       "キウイ",            "kudamono",  51, 1.0, 0.2, 13.4, { units: { 個: 85 } }),
+    F("nashi",      "なし",              "kudamono",  38, 0.3, 0.1, 11.3, { units: { 個: 250 } }),
+    F("momo",       "もも",              "kudamono",  38, 0.6, 0.1, 10.2, { units: { 個: 170 } }),
+    F("suika",      "すいか",            "kudamono",  41, 0.6, 0.1, 9.5),
+    F("avocado",    "アボカド",          "kudamono", 176, 2.1, 17.5, 7.9, { units: { 個: 140 } }),
+    F("blueberry",  "ブルーベリー",      "kudamono",  48, 0.5, 0.1, 12.9),
+
+    /* ---------------- 調味料・油 ---------------- */
+    F("abura",      "サラダ油",          "chomi",  886, 0.0, 100.0, 0.0, { units: { 大さじ: 12, 小さじ: 4 } }),
+    F("olive",      "オリーブオイル",    "chomi",  894, 0.0, 100.0, 0.0, { units: { 大さじ: 12, 小さじ: 4 } }),
+    F("goma-abura", "ごま油",            "chomi",  890, 0.0, 100.0, 0.0, { units: { 大さじ: 12, 小さじ: 4 } }),
+    F("mayo",       "マヨネーズ",        "chomi",  668, 1.4, 72.5, 4.5, { units: { 大さじ: 12, 小さじ: 4 } }),
+    F("ketchup",    "ケチャップ",        "chomi",  106, 1.6, 0.2, 27.6, { units: { 大さじ: 15, 小さじ: 5 } }),
+    F("shoyu",      "しょうゆ",          "chomi",   77, 7.7, 0.0, 7.9, { units: { 大さじ: 18, 小さじ: 6 } }),
+    F("miso",       "みそ",              "chomi",  182, 12.5, 6.0, 21.9, { units: { 大さじ: 18, 小さじ: 6 } }),
+    F("sato",       "砂糖",              "chomi",  391, 0.0, 0.0, 99.3, { units: { 大さじ: 9, 小さじ: 3 } }),
+    F("mirin",      "みりん",            "chomi",  241, 0.3, 0.0, 43.2, { units: { 大さじ: 18, 小さじ: 6 } }),
+    F("sake-chomi", "料理酒",            "chomi",  109, 0.4, 0.0, 4.9, { units: { 大さじ: 15, 小さじ: 5 } }),
+    F("su",         "酢",                "chomi",   37, 0.1, 0.0, 2.4, { units: { 大さじ: 15, 小さじ: 5 } }),
+    F("dressing",   "ドレッシング（和風）", "chomi", 179, 3.1, 14.5, 9.0, { units: { 大さじ: 15 } }),
+    F("men-tsuyu",  "めんつゆ（ストレート）", "chomi", 44, 2.2, 0.0, 8.7),
+    F("curry-roux", "カレールウ",        "chomi",  474, 6.5, 34.1, 44.7, { units: { 皿: 20 } }),
+
+    /* ---------------- 飲みもの ---------------- */
+    F("mizu",       "水",                "nomi",     0, 0.0, 0.0, 0.0, { ml: 1.0, units: { 杯: 200 } }),
+    F("ocha",       "お茶",              "nomi",     0, 0.0, 0.0, 0.1, { ml: 1.0, units: { 杯: 200 } }),
+    F("coffee",     "コーヒー（無糖）",  "nomi",     4, 0.2, 0.0, 0.7, { ml: 1.0, units: { 杯: 150 } }),
+    F("cafe-latte", "カフェラテ",        "nomi",    38, 2.1, 2.3, 3.0, { ml: 1.02, units: { 杯: 200 } }),
+    F("orange-j",   "オレンジジュース",  "nomi",    42, 0.7, 0.1, 10.7, { ml: 1.04, units: { 杯: 200 } }),
+    F("cola",       "コーラ",            "nomi",    46, 0.1, 0.0, 11.4, { ml: 1.04, units: { 本: 500, 杯: 200 } }),
+    F("sports-d",   "スポーツドリンク",  "nomi",    21, 0.0, 0.0, 5.1, { ml: 1.02, units: { 本: 500 } }),
+    F("beer",       "ビール",            "nomi",    39, 0.3, 0.0, 3.1, { ml: 1.01, units: { 本: 350, 缶: 350, 杯: 350 } }),
+    F("highball",   "ハイボール",        "nomi",    50, 0.0, 0.0, 0.0, { ml: 1.0, units: { 缶: 350, 杯: 350 } }),
+    F("chuhai",     "チューハイ",        "nomi",    51, 0.0, 0.0, 3.4, { ml: 1.01, units: { 缶: 350 } }),
+    F("nihonshu",   "日本酒",            "nomi",   107, 0.4, 0.0, 4.9, { ml: 1.0, units: { 合: 180, 杯: 180 } }),
+    F("wine-red",   "赤ワイン",          "nomi",    68, 0.2, 0.0, 1.5, { ml: 0.99, units: { 杯: 120 } }),
+    F("shochu",     "焼酎",              "nomi",   146, 0.0, 0.0, 0.0, { ml: 0.97, units: { 杯: 100 } }),
+    F("whisky",     "ウイスキー",        "nomi",   234, 0.0, 0.0, 0.0, { ml: 0.95, units: { 杯: 30 } }),
+
+    /* ---------------- おかず・料理 ---------------- */
+    F("misoshiru",  "みそ汁",            "ryori",   36, 2.2, 1.2, 4.2, { ml: 1.0, units: { 杯: 200, 椀: 200 } }),
+    F("karaage",    "からあげ",          "ryori",  290, 16.6, 18.1, 13.3, { units: { 個: 25 } }),
+    F("tonkatsu",   "とんかつ",          "ryori",  429, 22.0, 30.0, 14.4, { units: { 枚: 130 } }),
+    F("korokke",    "コロッケ",          "ryori",  226, 5.3, 12.6, 23.6, { units: { 個: 70 } }),
+    F("gyoza",      "餃子",              "ryori",  209, 6.9, 11.3, 21.0, { units: { 個: 25 } }),
+    F("hamburg",    "ハンバーグ",        "ryori",  223, 13.4, 13.4, 11.2, { units: { 個: 120 } }),
+    F("omuretsu",   "オムレツ",          "ryori",  186, 10.4, 14.6, 1.4),
+    F("tamagoyaki", "卵焼き",            "ryori",  146, 10.5, 9.2, 4.8, { units: { 切れ: 30 } }),
+    F("curry-rice", "カレーライス",      "ryori",  130, 3.4, 3.8, 20.5, { units: { 皿: 450 } }),
+    F("gyudon",     "牛丼",              "ryori",  148, 5.6, 4.7, 20.7, { units: { 杯: 400 } }),
+    F("ramen",      "ラーメン（醤油）",  "ryori",   57, 2.6, 1.5, 8.4, { units: { 杯: 700 } }),
+    F("yakisoba",   "焼きそば",          "ryori",  185, 5.1, 6.1, 27.0, { units: { 皿: 250 } }),
+    F("chahan",     "チャーハン",        "ryori",  188, 4.8, 6.6, 26.6, { units: { 皿: 300 } }),
+    F("onigiri",    "おにぎり",          "ryori",  170, 3.1, 0.5, 37.4, { units: { 個: 110 } }),
+    F("sandwich",   "サンドイッチ",      "ryori",  230, 9.0, 10.4, 25.0, { units: { 個: 150 } }),
+    F("pizza",      "ピザ",              "ryori",  268, 11.0, 11.0, 30.5, { units: { 枚: 100, 切れ: 100 } }),
+    F("salad",      "サラダ（野菜のみ）", "ryori",   18, 0.9, 0.1, 3.8, { units: { 皿: 100 } }),
+    F("nikujaga",   "肉じゃが",          "ryori",  103, 4.3, 3.4, 13.6, { units: { 皿: 200 } }),
+    F("gratin",     "グラタン",          "ryori",  128, 5.3, 6.4, 12.1, { units: { 皿: 250 } }),
+    F("stew",       "シチュー",          "ryori",   93, 4.0, 4.6, 8.8, { units: { 皿: 250 } }),
+    F("oden",       "おでん",            "ryori",   70, 6.0, 2.5, 6.0, { units: { 皿: 300 } }),
+    F("sushi",      "にぎり寿司",        "ryori",  145, 8.0, 1.0, 25.0, { units: { 貫: 25, 個: 25 } }),
+
+    /* ---------------- 間食 ---------------- */
+    F("chocolate",  "チョコレート",      "kanshoku", 550, 6.9, 34.1, 55.8, { units: { 枚: 50, 個: 5 } }),
+    F("potato-chip", "ポテトチップス",   "kanshoku", 541, 4.7, 35.2, 54.7, { units: { 袋: 60 } }),
+    F("senbei",     "せんべい",          "kanshoku", 373, 7.3, 1.0, 83.1, { units: { 枚: 20 } }),
+    F("cookie",     "クッキー",          "kanshoku", 512, 5.4, 27.6, 62.0, { units: { 枚: 10 } }),
+    F("shortcake",  "ショートケーキ",    "kanshoku", 314, 4.4, 14.7, 41.7, { units: { 個: 110 } }),
+    F("purin",      "プリン",            "kanshoku", 116, 5.5, 5.5, 14.0, { units: { 個: 100 } }),
+    F("ice",        "アイスクリーム",    "kanshoku", 178, 3.9, 8.0, 23.2, { units: { 個: 100 } }),
+    F("donut",      "ドーナツ",          "kanshoku", 375, 7.2, 20.4, 42.0, { units: { 個: 60 } }),
+    F("anpan",      "あんぱん",          "kanshoku", 253, 6.8, 3.6, 50.2, { units: { 個: 100 } }),
+    F("melonpan",   "メロンパン",        "kanshoku", 349, 8.0, 10.5, 56.2, { units: { 個: 90 } }),
+    F("daifuku",    "大福",              "kanshoku", 223, 4.6, 0.5, 50.3, { units: { 個: 70 } }),
+    F("wagashi",    "どら焼き",          "kanshoku", 292, 6.6, 3.2, 59.9, { units: { 個: 70 } }),
+    F("nuts",       "ミックスナッツ",    "kanshoku", 607, 20.0, 52.0, 20.0, { units: { 袋: 25 } }),
+    F("almond",     "アーモンド",        "kanshoku", 609, 19.6, 51.8, 20.9, { units: { 個: 1 } }),
+    F("protein-bar", "プロテインバー",   "kanshoku", 400, 20.0, 18.0, 40.0, { units: { 本: 40 } }),
+    F("protein",    "プロテイン（粉）",  "kanshoku", 380, 75.0, 5.0, 8.0, { units: { 杯: 30, 回: 30 } }),
+  ];
+
+  /* 呼び名。表の名前で書く人はいないので——「鶏むね」「ごはん」「たまご」で
+     引けないと、この機能は最初の一行で見放されます。 */
+  const ALIASES = {
+    "f-gohan": ["ごはん", "白米", "米", "ライス", "ご飯茶碗"],
+    "f-gohan-genmai": ["玄米"],
+    "f-shokupan": ["パン", "トースト", "食パン6枚切り"],
+    "f-toriMuneNP": ["鶏むね", "とりむね", "鶏胸肉", "むね肉", "鶏むね肉"],
+    "f-toriMomo": ["鶏もも", "とりもも", "もも肉", "鶏もも肉"],
+    "f-sasami": ["鶏ささみ", "ササミ"],
+    "f-butaBara": ["豚バラ", "バラ肉"],
+    "f-butaRosu": ["豚ロース", "豚肉"],
+    "f-butaHiki": ["豚挽き肉", "豚ミンチ"],
+    "f-gyuHiki": ["牛挽き肉", "牛ミンチ"],
+    "f-aibiki": ["合挽き肉", "合いびき", "ひき肉", "挽き肉", "ミンチ"],
+    "f-tamago": ["たまご", "玉子", "鶏卵", "生卵", "ゆで卵"],
+    "f-gyunyu": ["ミルク", "牛乳コップ"],
+    "f-natto": ["なっとう"],
+    "f-momen": ["豆腐", "とうふ"],
+    "f-sake": ["さけ", "しゃけ", "サーモン", "焼き鮭", "塩鮭"],
+    "f-maguro": ["まぐろ", "マグロ", "刺身"],
+    "f-yogurt": ["ヨーグルト"],
+    "f-cheese": ["チーズ", "スライスチーズ"],
+    "f-banana": ["ばなな"],
+    "f-jagaimo": ["ジャガイモ", "馬鈴薯", "ポテト"],
+    "f-tamanegi": ["たまねぎ", "オニオン"],
+    "f-ninjin": ["人参", "にんじん"],
+    "f-cabbage": ["きゃべつ"],
+    "f-misoshiru": ["味噌汁", "みそしる", "お味噌汁"],
+    "f-karaage": ["唐揚げ", "から揚げ", "鶏の唐揚げ"],
+    "f-ramen": ["らーめん", "中華そば"],
+    "f-curry-rice": ["カレー"],
+    "f-udon": ["うどん"],
+    "f-soba": ["そば", "蕎麦"],
+    "f-pasta": ["パスタ", "スパゲティ"],
+    "f-ramen-inst": ["カップ麺", "インスタントラーメン", "袋麺"],
+    "f-onigiri": ["おむすび", "塩むすび"],
+    "f-beer": ["ビール缶", "生ビール"],
+    "f-salad": ["サラダ", "野菜サラダ"],
+    "f-protein": ["プロテイン", "ホエイプロテイン"],
+    "f-sasami-jerky": ["サラダチキン"],
+    "f-abura": ["油", "サラダ油", "炒め油"],
+  };
+
+  const CATS = {
+    shushoku: "主食",  niku: "肉",       sakana: "魚",     tamago: "卵",
+    mame: "豆・大豆",  nyu: "乳製品",    yasai: "野菜",    kudamono: "くだもの",
+    chomi: "調味料",   nomi: "飲みもの", ryori: "料理",    kanshoku: "間食",
+  };
+
+  /* ---------------- 引き当て ---------------- */
+
+  const byId = new Map(FOODS.map((f) => [f.id, f]));
+  const index = new Map();   // 畳んだ呼び名 → 食品
+
+  function put(key, food) {
+    const k = foldKana(String(key || "").trim());
+    if (!k) return;
+    // 先に入れたほうが勝ち。表の名前 → 別名の順に入れるので、
+    // 「豆腐」で引いたときに油揚げが出てくるようなことにはなりません。
+    if (!index.has(k)) index.set(k, food);
+  }
+
+  FOODS.forEach((f) => {
+    put(f.name, f);
+    // 「ご飯（150g）」のような括弧書きは、括弧の前だけでも引けるように
+    const bare = f.name.replace(/[（(].*$/, "").trim();
+    if (bare && bare !== f.name) put(bare, f);
+  });
+  Object.keys(ALIASES).forEach((id) => {
+    const f = byId.get(id);
+    if (f) ALIASES[id].forEach((a) => put(a, f));
+  });
+
+  /** 名前から基本食品を引く。ユーザーの食品は store 側で先に見ます。 */
+  function lookup(name) {
+    const k = foldKana(String(name || "").trim());
+    if (!k) return null;
+    if (index.has(k)) return index.get(k);
+    /* 完全一致で駄目なら、いちばん長く一致する見出しを探します。
+       「鶏むね肉のソテー」→「鶏むね肉」。短い見出しから先に当たると
+       「肉」で何にでも当たってしまうので、長いものから。 */
+    let best = null;
+    index.forEach((food, key) => {
+      if (key.length < 2) return;
+      if (k.includes(key) && (!best || key.length > best.key.length)) best = { key, food };
+    });
+    return best ? best.food : null;
+  }
+
+  /** 探すための一覧（前方一致を先、部分一致を後）。 */
+  function search(query, limit) {
+    const k = foldKana(String(query || "").trim());
+    if (!k) return FOODS.slice(0, limit || 20);
+    const head = [], mid = [];
+    FOODS.forEach((f) => {
+      const keys = [f.name].concat(ALIASES[f.id] || []).map(foldKana);
+      if (keys.some((x) => x.startsWith(k))) head.push(f);
+      else if (keys.some((x) => x.includes(k))) mid.push(f);
+    });
+    return head.concat(mid).slice(0, limit || 20);
+  }
+
+  /* ---------------- 一行の読み取り ---------------- */
+
+  const UNIT_WORDS = [
+    "g", "ｇ", "グラム", "kg", "ml", "ｍｌ", "cc", "l", "リットル",
+    "個", "こ", "枚", "本", "杯", "膳", "椀", "皿", "袋", "缶", "パック",
+    "切れ", "切", "丁", "尾", "玉", "束", "貫", "合", "回", "大さじ", "小さじ", "カップ",
+  ];
+
+  const NUM = "(\\d+(?:[.．]\\d+)?|[０-９]+(?:[.．][０-９]+)?|半|[一二三四五六七八九十]+)";
+
+  function toNumber(raw) {
+    const s = String(raw).replace(/[０-９]/g, (c) => "0123456789"[c.charCodeAt(0) - 0xff10])
+      .replace(/．/g, ".");
+    if (s === "半") return 0.5;
+    if (/^\d/.test(s)) return parseFloat(s);
+    const KAN = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+    if (s === "十") return 10;
+    if (/^十./.test(s)) return 10 + (KAN[s[1]] || 0);
+    if (/^.十$/.test(s)) return (KAN[s[0]] || 0) * 10;
+    if (/^.十.$/.test(s)) return (KAN[s[0]] || 0) * 10 + (KAN[s[2]] || 0);
+    return KAN[s] || null;
+  }
+
+  const UNIT_RE = new RegExp(
+    "^(.*?)\\s*" + NUM + "\\s*(" + UNIT_WORDS.map((u) => u.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")\\s*$"
+  );
+  /* 「大さじ1」のように、数のほうが後ろに来る書き方も通します。 */
+  const UNIT_RE_PRE = new RegExp(
+    "^(.*?)\\s*(大さじ|小さじ|カップ)\\s*" + NUM + "\\s*$"
+  );
+
+  /**
+   * 「ご飯150g」「卵2個」「オリーブオイル大さじ1」を、名前と量に割ります。
+   * 量が書いていなければ qty は null——そのときは 1食ぶんの目安を当てます。
+   */
+  function parseLine(text) {
+    const line = String(text || "").trim().replace(/[、,]\s*$/, "");
+    if (!line) return null;
+
+    let m = UNIT_RE_PRE.exec(line);
+    if (m) return { name: m[1].trim(), qty: toNumber(m[3]), unit: m[2] };
+
+    m = UNIT_RE.exec(line);
+    if (m) return { name: m[1].trim(), qty: toNumber(m[2]), unit: normalizeUnit(m[3]) };
+
+    // 単位なしの数だけ（「卵2」）は「個」とみなします。
+    m = new RegExp("^(.*?)\\s*" + NUM + "\\s*$").exec(line);
+    if (m && m[1].trim()) return { name: m[1].trim(), qty: toNumber(m[2]), unit: "個" };
+
+    return { name: line, qty: null, unit: null };
+  }
+
+  function normalizeUnit(u) {
+    const map = { "ｇ": "g", "グラム": "g", "ｍｌ": "ml", "cc": "ml", "リットル": "l", "こ": "個", "切": "切れ" };
+    return map[u] || u;
+  }
+
+  /**
+   * その食品を qty×unit だけ食べたときのグラム数。
+   * 引けなければ null——分からないものを 100g と決めつけると、
+   * 一日の合計がしずかに嘘になります。
+   */
+  function gramsOf(food, qty, unit) {
+    if (!food) return null;
+    if (qty == null) return defaultServing(food);
+    switch (unit) {
+      case "g":  return qty;
+      case "kg": return qty * 1000;
+      case "ml": return qty * (food.ml || 1);
+      case "l":  return qty * 1000 * (food.ml || 1);
+      default: break;
+    }
+    const units = food.units || {};
+    if (unit && units[unit] != null) return qty * units[unit];
+    // 単位は書いてあるが、この食品はその数え方を知らない
+    if (unit) return null;
+    return qty * (defaultServing(food) || 100);
+  }
+
+  /** 量を書かなかったときの一食ぶん。数えられるものは1つぶん、あとは100g。 */
+  function defaultServing(food) {
+    const units = food.units || {};
+    const order = ["杯", "膳", "個", "枚", "本", "パック", "丁", "切れ", "袋", "皿", "缶", "尾", "玉", "束", "椀", "貫"];
+    for (const u of order) if (units[u] != null) return units[u];
+    return 100;
+  }
+
+  /** 100gあたりの値 → grams ぶんの値。 */
+  function nutrientsOf(food, grams) {
+    const r = (grams || 0) / 100;
+    return {
+      kcal: Math.round(food.kcal * r),
+      p: Math.round(food.p * r * 10) / 10,
+      f: Math.round(food.f * r * 10) / 10,
+      c: Math.round(food.c * r * 10) / 10,
+    };
+  }
+
+  KN.foodData = {
+    FOODS, CATS, byId: (id) => byId.get(id) || null,
+    lookup, search, parseLine, gramsOf, defaultServing, nutrientsOf, normalizeUnit,
+    /** 表そのものの出どころ。画面にもこの一文を出します。 */
+    SOURCE: "日本食品標準成分表2020年版（八訂）をもとにした概数",
+  };
+})();
+
+/* ---- js/diet.js ---- */
+/* =========================================================
+   くらしノート — ダイエットの計算
+   =========================================================
+
+   ここには画面がありません。体重の並び、移動平均、傾き、今日の合計、
+   そして「関連が見られる」の言い方——数だけを扱います。
+
+   ひとつ約束があります。**分からないときは null を返す**こと。
+   データが足りないところに 0 を置くと、画面は「今日は0kcal」「歩数0歩」と
+   平然と言います。それは記録ではなく作り話です。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const U = KN.util;
+  const store = KN.store;
+
+  const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
+  const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+  /* ---------------- 体重の並び ---------------- */
+
+  /** 古い順に day を並べる（from と to を含む）。 */
+  function daysBetween(from, to) {
+    const out = [];
+    let d = from;
+    for (let i = 0; i < 4000 && d <= to; i++) { out.push(d); d = U.shiftDay(d, 1); }
+    return out;
+  }
+
+  /**
+   * 一日一点の体重の並び。値のある日だけを返します。
+   * 測っていない日を前日の値で埋めることはしません——埋めた点は
+   * 「測らなかった」という事実を消したうえ、移動平均をなだらかに見せます。
+   */
+  function weightPoints(fromDay, toDay) {
+    const seen = new Map();
+    store.get().diet.weights.forEach((w) => {
+      if (fromDay && w.day < fromDay) return;
+      if (toDay && w.day > toDay) return;
+      const cur = seen.get(w.day);
+      // その日の最初の一回（起き抜け）を代表にします。
+      if (!cur || (w.time || "00:00") < (cur.time || "00:00")) seen.set(w.day, w);
+    });
+    return [...seen.values()]
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source, id: w.id }));
+  }
+
+  /**
+   * 後ろ向き移動平均。窓は「日数」であって「点の数」ではありません——
+   * 三日に一度しか乗らない人の「7日平均」が、実際には三週間ぶんを
+   * 均したものになってしまうので。
+   * @param minPoints 窓の中にこれだけ点が無ければ null（薄い平均は嘘に近い）
+   */
+  function movingAverage(points, windowDays, minPoints) {
+    const need = minPoints || Math.max(2, Math.ceil(windowDays / 3));
+    // 窓ぜんぶが記録の中に入っている日から先が「満ちた」平均です。
+    const firstFull = points.length ? U.shiftDay(points[0].day, windowDays - 1) : null;
+    return points.map((pt) => {
+      const from = U.shiftDay(pt.day, -(windowDays - 1));
+      const inWin = points.filter((q) => q.day >= from && q.day <= pt.day);
+      if (inWin.length < need) return { day: pt.day, value: null, full: false };
+      return {
+        day: pt.day,
+        value: round(mean(inWin.map((q) => q.kg)), 2),
+        /* 記録の頭のほうは、窓が record の外にはみ出していて、実際には
+           3日ぶんや4日ぶんの平均です。出すことは出しますが（毎日は乗らない
+           人にも線を見せたいので）、傾きを当てる材料からは外します——
+           助走ぶんの短い平均が混ざると、傾きが実際より寝ます。 */
+        full: firstFull != null && pt.day >= firstFull,
+      };
+    });
+  }
+
+  /**
+   * 最小二乗の傾き。返すのは kg/週。
+   * 点が3つ未満、または期間が短すぎるときは null。
+   */
+  function slopePerWeek(points) {
+    const pts = points.filter((p) => p.value != null || p.kg != null)
+      .map((p) => ({ t: U.dayDate(p.day).getTime() / 86400000, v: p.value != null ? p.value : p.kg }));
+    if (pts.length < 3) return null;
+    const span = pts[pts.length - 1].t - pts[0].t;
+    if (span < 6) return null;   // 一週間に満たない傾きは、傾きというより揺れ
+    const mt = mean(pts.map((p) => p.t)), mv = mean(pts.map((p) => p.v));
+    let num = 0, den = 0;
+    pts.forEach((p) => { num += (p.t - mt) * (p.v - mv); den += (p.t - mt) ** 2; });
+    if (!den) return null;
+    return round((num / den) * 7, 3);
+  }
+
+  /** 画面ひとつぶんの体重まわり。無い数は null のまま渡します。 */
+  function weightSummary(windowDays) {
+    const today = U.todayKey();
+    const win = windowDays || 90;
+    const pts = weightPoints(U.shiftDay(today, -(win - 1)), today);
+    const ma7 = movingAverage(pts, 7);
+    const ma14 = movingAverage(pts, 14);
+    const last = pts.length ? pts[pts.length - 1] : null;
+    const prev = pts.length > 1 ? pts[pts.length - 2] : null;
+    const lastMa = [...ma7].reverse().find((m) => m.value != null) || null;
+
+    const goal = store.get().diet.goal;
+    const height = goal.heightCm;
+    return {
+      points: pts,
+      ma7, ma14,
+      latest: last,
+      // 前回比。前の「日」との差であって、前の「回」との差ではありません
+      // ——同じ日の朝と夜を比べても、それは一日の中の水の出入りです。
+      delta: last && prev ? round(last.kg - prev.kg, 2) : null,
+      deltaDays: last && prev ? Math.round((U.dayDate(last.day) - U.dayDate(prev.day)) / 86400000) : null,
+      ma7Now: lastMa ? lastMa.value : null,
+      trendPerWeek: (() => {
+        const full = ma7.filter((m) => m.value != null && m.full);
+        if (full.length >= 3) return slopePerWeek(full);
+        const any = ma7.filter((m) => m.value != null);
+        return slopePerWeek(any.length >= 3 ? any : pts);
+      })(),
+      bmi: last && height ? round(last.kg / (height / 100) ** 2, 1) : null,
+      toGoal: last && goal.targetKg != null ? round(last.kg - goal.targetKg, 2) : null,
+      goal,
+    };
+  }
+
+  /**
+   * 目標に届く日の見込み。断定しません——返すのは
+   * 「いまの傾きが続いたとき」の話で、そう書いてある名前にしてあります。
+   */
+  function projection() {
+    const s = weightSummary(90);
+    const base = s.ma7Now != null ? s.ma7Now : (s.latest ? s.latest.kg : null);
+    const target = s.goal.targetKg;
+    const rate = s.trendPerWeek;   // kg/週（減っていれば負）
+    if (base == null || target == null || rate == null) return null;
+    const gap = base - target;
+    if (Math.abs(gap) < 0.05) return { reached: true };
+    // 向きが合っていなければ、日付は出しません。「このままでは着かない」と
+    // だけ言うほうが、遠い未来の日付を出すより正直です。
+    if (gap > 0 && rate >= -0.01) return { stalled: true, rate };
+    if (gap < 0 && rate <= 0.01) return { stalled: true, rate };
+    const weeks = gap / -rate;
+    if (!Number.isFinite(weeks) || weeks <= 0 || weeks > 520) return { far: true, rate };
+    const days = Math.round(weeks * 7);
+    return { day: U.shiftDay(U.todayKey(), days), days, weeks: round(weeks, 1), rate };
+  }
+
+  /** 目標日までに必要な週あたりのペース。 */
+  function neededPace() {
+    const g = store.get().diet.goal;
+    const last = store.latestWeight();
+    if (!last || g.targetKg == null || !g.targetDay) return null;
+    const days = U.daysUntil(g.targetDay);
+    if (days == null || days <= 0) return null;
+    return round((g.targetKg - last.kg) / (days / 7), 2);
+  }
+
+  /* ---------------- 食事 ---------------- */
+
+  /** その日に食べたものの合計。食事が一件も無ければ null（0 ではなく）。 */
+  function dayTotals(day) {
+    const meals = store.mealsOfDay(day);
+    if (!meals.length) return null;
+    const sum = { kcal: 0, p: 0, f: 0, c: 0, estimated: false, items: 0 };
+    meals.forEach((m) => m.items.forEach((it) => {
+      sum.kcal += it.kcal; sum.p += it.p; sum.f += it.f; sum.c += it.c;
+      sum.items += 1;
+      if (it.estimated) sum.estimated = true;
+    }));
+    sum.kcal = Math.round(sum.kcal);
+    sum.p = round(sum.p, 1); sum.f = round(sum.f, 1); sum.c = round(sum.c, 1);
+    return sum;
+  }
+
+  /** 目標があるときだけ「残り」を出します。 */
+  function remaining(day) {
+    const g = store.get().diet.goal;
+    if (g.kcalTarget == null) return null;
+    const t = dayTotals(day);
+    return { kcal: Math.round(g.kcalTarget - (t ? t.kcal : 0)), target: g.kcalTarget, eaten: t ? t.kcal : 0 };
+  }
+
+  /** PFCの熱量比（%）。合計が0なら null。 */
+  function pfcRatio(totals) {
+    if (!totals) return null;
+    const kp = totals.p * 4, kf = totals.f * 9, kc = totals.c * 4;
+    const all = kp + kf + kc;
+    if (all <= 0) return null;
+    return { p: Math.round(kp / all * 100), f: Math.round(kf / all * 100), c: Math.round(kc / all * 100) };
+  }
+
+  /* ---------------- 一日ぶんのまとめ ---------------- */
+
+  /** ホームが一目で読むもの。取れていないものは null のまま。 */
+  function dayCard(day) {
+    const d = day || U.todayKey();
+    const w = store.weightOfDay(d);
+    const totals = dayTotals(d);
+    const workouts = store.healthOfDay(d, "workout");
+    return {
+      day: d,
+      weight: w,
+      totals,
+      remaining: remaining(d),
+      pfc: pfcRatio(totals),
+      steps: store.healthValue(d, "steps"),
+      distance: store.healthValue(d, "distance"),
+      activeEnergy: store.healthValue(d, "activeEnergy"),
+      restingEnergy: store.healthValue(d, "restingEnergy"),
+      // 睡眠は前の晩のもの。日付は「起きた日」に付いている前提です
+      // （ショートカット側でもそう書き出します）。
+      sleep: store.healthValue(d, "sleep"),
+      heartRate: store.healthValue(d, "heartRate"),
+      workouts,
+    };
+  }
+
+  /* ---------------- 統合分析 ----------------
+
+     ここがこの機能の芯です。そして、いちばん嘘をつきやすいところでもあります。
+
+     二つだけ守ります。
+       1. 少ない標本で言い切らない。件数が足りなければ、その項目は出しません。
+       2. 「原因」と言わない。出てくるのは並んだ二つの数の関係だけで、
+          どちらがどちらを動かしたのかは、この計算では分かりません。
+     だから文は「〜な傾向があります」「関連が見られます」で終わり、
+     必ず何件ぶんの話かを添えます。 */
+
+  const MIN_GROUP = 3;   // 片側にこれだけ無ければ、比べません
+
+  function weeksOf(days) {
+    // 直近から7日ずつ区切る。週の切れ目は曜日ではなく「今日から数えて」。
+    const out = [];
+    for (let i = 0; i < days; i += 7) {
+      out.push({
+        to: U.shiftDay(U.todayKey(), -i),
+        from: U.shiftDay(U.todayKey(), -(i + 6)),
+      });
+    }
+    return out;
+  }
+
+  function analyze(windowDays) {
+    const win = windowDays || 30;
+    const today = U.todayKey();
+    const from = U.shiftDay(today, -(win - 1));
+    const out = [];
+    const pts = weightPoints(from, today);
+
+    /* --- 期間の増減 --- */
+    if (pts.length >= 2) {
+      const ma = movingAverage(pts, 7).filter((m) => m.value != null);
+      let first, last, basis;
+      if (ma.length >= 2) { first = ma[0].value; last = ma[ma.length - 1].value; basis = "7日平均"; }
+      else { first = pts[0].kg; last = pts[pts.length - 1].kg; basis = "実測"; }
+      const diff = round(last - first, 2);
+      out.push({
+        id: "change",
+        title: `${win}日間の変化`,
+        text: diff === 0
+          ? `${basis}で見て、ほぼ変わっていません（${pts.length}日ぶんの記録）。`
+          : `${basis}で ${diff > 0 ? "+" : ""}${diff}kg です（${pts.length}日ぶんの記録）。`,
+        value: diff, tone: diff < 0 ? "good" : diff > 0 ? "warn" : "flat", n: pts.length,
+      });
+    }
+
+    /* --- 歩数と、体重が動いた向き --- */
+    const weekRows = weeksOf(win).map((wk) => {
+      const inWk = pts.filter((p) => p.day >= wk.from && p.day <= wk.to);
+      if (inWk.length < 2) return null;
+      const stepsDays = daysBetween(wk.from, wk.to)
+        .map((d) => store.healthValue(d, "steps")).filter((v) => v != null);
+      if (!stepsDays.length) return null;
+      return {
+        delta: inWk[inWk.length - 1].kg - inWk[0].kg,
+        steps: mean(stepsDays),
+        kcal: mean(daysBetween(wk.from, wk.to).map((d) => {
+          const t = dayTotals(d); return t ? t.kcal : null;
+        }).filter((v) => v != null)),
+      };
+    }).filter(Boolean);
+
+    const down = weekRows.filter((r) => r.delta < 0);
+    const up = weekRows.filter((r) => r.delta > 0);
+    if (down.length >= 2 && up.length >= 2) {
+      const ds = Math.round(mean(down.map((r) => r.steps)));
+      const us = Math.round(mean(up.map((r) => r.steps)));
+      out.push({
+        id: "steps-weeks",
+        title: "歩数と体重の動き",
+        text: `体重が減った週の平均は ${ds.toLocaleString()}歩、増えた週は ${us.toLocaleString()}歩でした`
+          + `（減った週 ${down.length}週 / 増えた週 ${up.length}週）。`
+          + (Math.abs(ds - us) < 500 ? "差はほとんどありません。" : "関連が見られます。"),
+        tone: "info", n: weekRows.length,
+      });
+      const dk = down.map((r) => r.kcal).filter((v) => v != null);
+      const uk = up.map((r) => r.kcal).filter((v) => v != null);
+      if (dk.length >= 2 && uk.length >= 2) {
+        out.push({
+          id: "kcal-weeks",
+          title: "摂取カロリーと体重の動き",
+          text: `減った週の平均は ${Math.round(mean(dk)).toLocaleString()}kcal/日、`
+            + `増えた週は ${Math.round(mean(uk)).toLocaleString()}kcal/日でした`
+            + `（食事を記録した日だけの平均）。`,
+          tone: "info", n: dk.length + uk.length,
+        });
+      }
+    }
+
+    /* --- 睡眠が短かった日の、翌日の体重 ---
+       素の体重どうしを比べても、長い減量の途中なら後の日ほど軽いに決まって
+       います。なので、その日の7日平均からの **ずれ** を比べます。 */
+    const maMap = new Map(movingAverage(pts, 7).map((m) => [m.day, m.value]));
+    const short = [], normal = [];
+    pts.forEach((p) => {
+      const ma = maMap.get(p.day);
+      if (ma == null) return;
+      const sleepPrev = store.healthValue(p.day, "sleep");   // その朝までの睡眠
+      if (sleepPrev == null) return;
+      (sleepPrev < 360 ? short : normal).push(p.kg - ma);
+    });
+    if (short.length >= MIN_GROUP && normal.length >= MIN_GROUP) {
+      const diff = round(mean(short) - mean(normal), 2);
+      out.push({
+        id: "sleep",
+        title: "睡眠と体重",
+        text: Math.abs(diff) < 0.1
+          ? `睡眠6時間未満の日（${short.length}日）と、それ以外の日（${normal.length}日）で、`
+            + `その週の平均からのずれに目立った差はありません。`
+          : `睡眠6時間未満の日は、その週の平均より ${diff > 0 ? "+" : ""}${diff}kg でした`
+            + `（6時間未満 ${short.length}日 / それ以外 ${normal.length}日）。傾向が見られます。`,
+        tone: "info", n: short.length + normal.length,
+      });
+    }
+
+    /* --- 平日と休日 --- */
+    const wd = [], we = [];
+    pts.forEach((p) => {
+      const ma = maMap.get(p.day);
+      if (ma == null) return;
+      const dow = U.dayOfWeek(p.day);
+      (dow === 0 || dow === 6 ? we : wd).push(p.kg - ma);
+    });
+    if (wd.length >= MIN_GROUP && we.length >= MIN_GROUP) {
+      const diff = round(mean(we) - mean(wd), 2);
+      out.push({
+        id: "weekend",
+        title: "平日と休日",
+        text: Math.abs(diff) < 0.1
+          ? `休日（${we.length}日）と平日（${wd.length}日）で、平均からのずれはほぼ同じです。`
+          : `休日は平日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
+            + `（休日 ${we.length}日 / 平日 ${wd.length}日）。`,
+        tone: "info", n: wd.length + we.length,
+      });
+    }
+
+    /* --- 直近7日のPFC --- */
+    const week = daysBetween(U.shiftDay(today, -6), today)
+      .map((d) => dayTotals(d)).filter(Boolean);
+    if (week.length >= 3) {
+      const avg = {
+        kcal: mean(week.map((t) => t.kcal)),
+        p: mean(week.map((t) => t.p)),
+        f: mean(week.map((t) => t.f)),
+        c: mean(week.map((t) => t.c)),
+      };
+      const r = pfcRatio(avg);
+      out.push({
+        id: "pfc",
+        title: "直近7日のPFC",
+        text: `1日あたり ${Math.round(avg.kcal).toLocaleString()}kcal、`
+          + `P ${Math.round(avg.p)}g・F ${Math.round(avg.f)}g・C ${Math.round(avg.c)}g`
+          + (r ? `（熱量比 P${r.p}% F${r.f}% C${r.c}%）` : "")
+          + `。記録があったのは ${week.length}日ぶんです。`,
+        tone: "info", n: week.length,
+      });
+    }
+
+    return out;
+  }
+
+  /** 分析が何も出せないとき、何が足りないのかを言うために。 */
+  function coverage(windowDays) {
+    const win = windowDays || 30;
+    const today = U.todayKey();
+    const days = daysBetween(U.shiftDay(today, -(win - 1)), today);
+    return {
+      days: win,
+      weight: weightPoints(days[0], today).length,
+      meals: days.filter((d) => store.mealsOfDay(d).length).length,
+      steps: days.filter((d) => store.healthValue(d, "steps") != null).length,
+      sleep: days.filter((d) => store.healthValue(d, "sleep") != null).length,
+    };
+  }
+
+  KN.diet = {
+    daysBetween, weightPoints, movingAverage, slopePerWeek,
+    weightSummary, projection, neededPace,
+    dayTotals, remaining, pfcRatio, dayCard,
+    analyze, coverage,
+    MIN_GROUP,
+  };
+})();
+
+/* ---- js/diet-ai.js ---- */
+/* =========================================================
+   くらしノート — AIに渡す口
+   =========================================================
+
+   鍵はこのアプリに置きません。置けないからではなく、置いてはいけないから
+   です。ここはブラウザで動く静的なページで、埋めた文字列は誰でも読めます。
+   APIキーを埋めるのは、鍵を玄関マットの下に置いて出かけるのと同じです。
+
+   そのかわり、**窓口のURLをひとつ**設定に持ちます。その先（Cloudflare
+   Workers でも、自分のサーバでも）に鍵を置き、そこがAIを呼びます。
+   このファイルがするのは、送る中身を組み立てて、返ってきたものを
+   読むところまでです。
+
+   窓口が満たすべき約束（これだけです）:
+
+     POST <窓口のURL>
+     Content-Type: application/json
+
+     ① 相談  { "kind": "coach", "question": "…", "data": { …本人の記録… } }
+        → { "text": "…" }
+
+     ② 写真  { "kind": "photo", "image": "data:image/jpeg;base64,…", "hint": "…" }
+        → { "items": [ { "name":"ご飯", "grams":180,
+                         "kcal":281, "p":4.5, "f":0.5, "c":66.8 } ],
+            "note": "…" }
+
+   写真から返ってくる数は **推定** です。このアプリはそれを estimated: true
+   の印つきで保存し、画面でも「約」と書きます。計算した値と推定した値が
+   同じ顔で並ぶと、記録全体の信頼度が、いちばん低いところまで落ちます。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const store = KN.store;
+
+  const url = () => String(store.get().settings.dietAiUrl || "").trim();
+  const configured = () => /^https:\/\/\S+$/.test(url());
+
+  function setUrl(v) {
+    const clean = String(v || "").trim();
+    store.update((s) => { s.settings.dietAiUrl = clean; });
+    return clean;
+  }
+
+  function post(body, timeoutMs) {
+    if (!configured()) return Promise.reject(new Error("AIの窓口が設定されていません"));
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs || 45000) : null;
+    return fetch(url(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`窓口が ${res.status} を返しました`);
+        return res.json();
+      })
+      .finally(() => { if (timer) clearTimeout(timer); });
+  }
+
+  /**
+   * 相談に渡す本人の記録。一般論ではなく本人のデータで答えてもらうための
+   * 材料なので、生の記録そのものを渡します——ただし渡すのは
+   * **ダイエットの数字だけ**。買い物リストもやることも、ここには入りません。
+   */
+  function payload(days) {
+    const U = KN.util;
+    const D = KN.diet;
+    const n = days || 30;
+    const today = U.todayKey();
+    const list = D.daysBetween(U.shiftDay(today, -(n - 1)), today);
+    const g = store.get().diet.goal;
+
+    return {
+      today,
+      goal: {
+        heightCm: g.heightCm, targetKg: g.targetKg, targetDay: g.targetDay,
+        kcalTarget: g.kcalTarget, pTarget: g.pTarget, fTarget: g.fTarget, cTarget: g.cTarget,
+      },
+      summary: (() => {
+        const s = D.weightSummary(n);
+        return { latestKg: s.latest ? s.latest.kg : null, ma7: s.ma7Now,
+                 trendPerWeek: s.trendPerWeek, bmi: s.bmi, toGoal: s.toGoal };
+      })(),
+      days: list.map((d) => {
+        const w = store.weightOfDay(d);
+        const t = D.dayTotals(d);
+        return {
+          day: d,
+          weightKg: w ? w.kg : null,
+          bodyFat: w ? w.fat : null,
+          kcal: t ? t.kcal : null,
+          p: t ? t.p : null, f: t ? t.f : null, c: t ? t.c : null,
+          steps: store.healthValue(d, "steps"),
+          sleepMin: store.healthValue(d, "sleep"),
+          activeEnergy: store.healthValue(d, "activeEnergy"),
+          workouts: store.healthOfDay(d, "workout").map((h) => ({ label: h.label, min: h.value, kcal: h.kcal })),
+        };
+      }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null || r.sleepMin != null),
+      // 相関を因果と言わせないための一言。窓口側のプロンプトにも
+      // 同じことを書きますが、材料にも添えておきます。
+      note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。",
+    };
+  }
+
+  function coach(question, days) {
+    return post({ kind: "coach", question: String(question || ""), data: payload(days) })
+      .then((r) => String(r && r.text || "").trim() || "返事が空でした");
+  }
+
+  /** @returns {Promise<{items:Array, note:string}>} 値はすべて推定です。 */
+  function analyzePhoto(dataUrl, hint) {
+    return post({ kind: "photo", image: dataUrl, hint: String(hint || "") }, 60000)
+      .then((r) => {
+        const rows = Array.isArray(r && r.items) ? r.items : [];
+        return {
+          items: rows.map((it) => ({
+            name: String(it.name || "").trim() || "食べたもの",
+            grams: Number(it.grams) > 0 ? Math.round(Number(it.grams)) : null,
+            kcal: Math.max(0, Math.round(Number(it.kcal) || 0)),
+            p: Math.max(0, Math.round((Number(it.p) || 0) * 10) / 10),
+            f: Math.max(0, Math.round((Number(it.f) || 0) * 10) / 10),
+            c: Math.max(0, Math.round((Number(it.c) || 0) * 10) / 10),
+            from: "ai",
+            estimated: true,
+          })).filter((it) => it.name),
+          note: String(r && r.note || ""),
+        };
+      });
+  }
+
+  /* 写真は送る前に縮めます。4000pxの写真をそのまま投げても、返ってくる
+     推定は良くなりませんし、通信と料金だけが増えます。 */
+  function shrink(file, maxSide) {
+    return new Promise((resolve, reject) => {
+      const side = maxSide || 1024;
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("写真を読めませんでした"));
+      reader.onload = () => {
+        img.onerror = () => reject(new Error("写真を開けませんでした"));
+        img.onload = () => {
+          const scale = Math.min(1, side / Math.max(img.width, img.height));
+          const cv = document.createElement("canvas");
+          cv.width = Math.round(img.width * scale);
+          cv.height = Math.round(img.height * scale);
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          resolve(cv.toDataURL("image/jpeg", 0.82));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  KN.dietAI = { configured, url, setUrl, coach, analyzePhoto, shrink, payload };
+})();
+
+/* ---- js/health-sync.js ---- */
+/* =========================================================
+   くらしノート — ヘルスケアの取り込み
+   =========================================================
+
+   WebアプリからHealthKitは読めません。読めるふりもしません。
+   代わりに、iPhoneの「ショートカット」に読ませて、その結果をここで受けます。
+
+   受け口はひとつの関数 importText() です。渡ってくるのは次の二つのどちらか。
+
+   ① かんたん書式（ショートカットで手で組むならこちら）
+
+        くらしノート健康データ v1
+        day=2026-08-15
+        steps=8432
+        distance=6.1km
+        activeEnergy=430
+        sleep=7:12
+        weight=68.4
+        bodyFat=21.3
+        workout=ウォーキング,42,210
+
+      「key=value を並べただけ」なのには理由があります。ショートカットの
+      なかでJSONを組み立てるのは、配列とテキスト結合の格闘になります。
+      テキスト1個に変数を差し込むだけなら、誰でも10分で作れます。
+
+   ② JSON（別のアプリや、あとで作るネイティブ側から送るならこちら）
+
+        { "app":"kurashi-note-health", "version":1,
+          "samples":[ {"type":"steps","day":"2026-08-14","value":8432}, … ] }
+
+   どちらで来ても、入る先と重複の弾き方は同じです。
+
+   空の値は **入れません**。ショートカットは、その日のデータが無いとき
+   空文字を差し込みます。それを 0 として保存すると、「その日は一歩も
+   歩かなかった」という記録が静かに出来上がります。無かったものは無かった
+   ままにしておきます。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const U = KN.util;
+  const store = KN.store;
+
+  const HEADER = /くらしノート|kurashi-?note/i;
+
+  /* 受け取る名前と、内側の名前の対応。ショートカットの日本語名でも、
+     HealthKitの識別子でも通るようにしてあります——どちらで書くかは
+     作る人が決めることで、こちらが決めることではありません。 */
+  const KEY_MAP = {
+    steps: "steps", 歩数: "steps", stepcount: "steps", hkquantitytypeidentifierstepcount: "steps",
+    distance: "distance", 距離: "distance", 歩行距離: "distance",
+    distancewalkingrunning: "distance", hkquantitytypeidentifierdistancewalkingrunning: "distance",
+    activeenergy: "activeEnergy", アクティブエネルギー: "activeEnergy", 活動エネルギー: "activeEnergy",
+    activeenergyburned: "activeEnergy", hkquantitytypeidentifieractiveenergyburned: "activeEnergy",
+    restingenergy: "restingEnergy", 安静時エネルギー: "restingEnergy", basalenergy: "restingEnergy",
+    basalenergyburned: "restingEnergy", hkquantitytypeidentifierbasalenergyburned: "restingEnergy",
+    sleep: "sleep", 睡眠: "sleep", sleepanalysis: "sleep", 睡眠時間: "sleep",
+    weight: "weight", 体重: "weight", bodymass: "weight", hkquantitytypeidentifierbodymass: "weight",
+    bodyfat: "bodyFat", 体脂肪: "bodyFat", 体脂肪率: "bodyFat", bodyfatpercentage: "bodyFat",
+    heartrate: "heartRate", 心拍数: "heartRate", 心拍: "heartRate",
+    workout: "workout", ワークアウト: "workout", 運動: "workout",
+    day: "day", 日付: "day", date: "day",
+    time: "time", 時刻: "time",
+    source: "source", ソース: "source",
+  };
+
+  const normKey = (k) => KEY_MAP[String(k || "").trim().toLowerCase().replace(/[\s_-]/g, "")] || null;
+
+  /* ---------------- 値の読み方 ---------------- */
+
+  /** 「8,432」「8432歩」「6.1km」→ 数。読めなければ null。 */
+  function toNum(raw) {
+    if (raw == null) return null;
+    const s = String(raw).replace(/[０-９．]/g, (c) => "0123456789."["０１２３４５６７８９．".indexOf(c)])
+      .replace(/,/g, "").trim();
+    if (!s) return null;
+    const m = /-?\d+(\.\d+)?/.exec(s);
+    if (!m) return null;
+    const n = parseFloat(m[0]);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** 睡眠は「412」「7:12」「7時間12分」「7h12m」のどれで来ても分に直します。 */
+  function toMinutes(raw) {
+    const s = String(raw == null ? "" : raw).trim();
+    if (!s) return null;
+    let m = /^(\d+)\s*[:：]\s*(\d+)$/.exec(s);
+    if (m) return Number(m[1]) * 60 + Number(m[2]);
+    m = /(\d+(?:\.\d+)?)\s*(?:時間|hr?|h)\s*(?:(\d+)\s*(?:分|min|m)?)?/i.exec(s);
+    if (m) return Math.round(Number(m[1]) * 60 + Number(m[2] || 0));
+    m = /^(\d+(?:\.\d+)?)\s*(?:分|min|m)$/i.exec(s);
+    if (m) return Math.round(Number(m[1]));
+    const n = toNum(s);
+    if (n == null) return null;
+    /* 単位なしの数。24以下なら時間、それより大きければ分と読みます——
+       「8」を8分の睡眠と読むより、8時間と読むほうがまず当たります。 */
+    return n <= 24 ? Math.round(n * 60) : Math.round(n);
+  }
+
+  /** 距離はkmで持ちます。単位が書いてあればそれに従い、無ければ大きさで判じます。 */
+  function toKm(raw) {
+    const s = String(raw == null ? "" : raw).trim();
+    const n = toNum(s);
+    if (n == null) return null;
+    if (/km/i.test(s)) return n;
+    if (/\bm\b|メートル/i.test(s)) return n / 1000;
+    // 単位なし。100を超える値をkmと読むと、毎日ウルトラマラソンになります。
+    return n > 100 ? n / 1000 : n;
+  }
+
+  /* ---------------- かんたん書式 ---------------- */
+
+  function parsePlain(text) {
+    const out = [];
+    let day = U.todayKey();
+    let time = null;
+    let source = "ヘルスケア";
+    let unknown = 0;
+
+    String(text).split(/\r?\n/).forEach((lineRaw) => {
+      const line = lineRaw.trim();
+      if (!line || HEADER.test(line) && !line.includes("=")) return;
+      const at = line.indexOf("=");
+      if (at < 0) return;
+      const key = normKey(line.slice(0, at));
+      const value = line.slice(at + 1).trim();
+      if (!key) { unknown++; return; }
+      // 空欄は「取れなかった」。書かなかったのと同じ扱いにします。
+      if (!value) return;
+
+      if (key === "day") {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : U.dayKey(new Date(value));
+        if (d) day = d;
+        return;
+      }
+      if (key === "time") { time = U.isTime(value) ? value : null; return; }
+      if (key === "source") { source = value; return; }
+
+      if (key === "workout") {
+        // 名前,分,kcal — 後ろ二つは無くても通します
+        const parts = value.split(/[,、]/).map((x) => x.trim());
+        const minutes = toMinutes(parts[1] != null && parts[1] !== "" ? parts[1] : parts[0]);
+        const label = /[^\d:：.時間分hm]/i.test(parts[0]) ? parts[0] : "ワークアウト";
+        if (minutes == null) return;
+        out.push({ type: "workout", day, time, value: minutes, unit: "分",
+                   label, kcal: toNum(parts[2]), source });
+        return;
+      }
+
+      const v = key === "sleep" ? toMinutes(value)
+        : key === "distance" ? toKm(value)
+        : toNum(value);
+      if (v == null) return;
+      out.push({ type: key, day, time, value: v, source });
+    });
+
+    return { samples: out, unknown };
+  }
+
+  /* ---------------- JSON ---------------- */
+
+  function parseJson(obj) {
+    const rows = Array.isArray(obj) ? obj
+      : Array.isArray(obj.samples) ? obj.samples
+      : Array.isArray(obj.data) ? obj.data : null;
+    if (!rows) return null;
+    const out = [];
+    rows.forEach((r) => {
+      if (!r || typeof r !== "object") return;
+      const type = normKey(r.type || r.name || r.identifier);
+      if (!type || type === "day" || type === "time" || type === "source") return;
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(r.day) ? r.day
+        : (r.date || r.start || r.startDate ? U.dayKey(new Date(r.date || r.start || r.startDate)) : U.todayKey());
+      const raw = r.value != null ? r.value : r.qty != null ? r.qty : r.amount;
+      const value = type === "sleep" ? toMinutes(raw)
+        : type === "distance" ? toKm(raw)
+        : toNum(raw);
+      if (value == null) return;
+      out.push({
+        type, day,
+        time: U.isTime(r.time) ? r.time : null,
+        value,
+        unit: typeof r.unit === "string" ? r.unit : "",
+        label: typeof r.label === "string" ? r.label : (typeof r.workoutType === "string" ? r.workoutType : ""),
+        kcal: toNum(r.kcal != null ? r.kcal : r.energy),
+        source: typeof r.source === "string" ? r.source : "ヘルスケア",
+        externalId: typeof r.uuid === "string" ? r.uuid
+          : (typeof r.externalId === "string" ? r.externalId : null),
+      });
+    });
+    return { samples: out, unknown: rows.length - out.length };
+  }
+
+  /* ---------------- 取り込み ---------------- */
+
+  const UNITS = {
+    steps: "歩", distance: "km", activeEnergy: "kcal", restingEnergy: "kcal",
+    sleep: "分", heartRate: "bpm", workout: "分", weight: "kg", bodyFat: "%",
+  };
+
+  /**
+   * @returns {{ok:boolean, error?:string, added:number, updated:number,
+   *            skipped:number, days:string[], byType:Object}}
+   */
+  function importText(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return { ok: false, error: "中身がありません", added: 0, updated: 0, skipped: 0 };
+
+    let parsed = null;
+    if (/^[[{]/.test(raw)) {
+      try { parsed = parseJson(JSON.parse(raw)); } catch (err) { parsed = null; }
+      if (!parsed) return { ok: false, error: "JSONの形が読めません", added: 0, updated: 0, skipped: 0 };
+    } else {
+      parsed = parsePlain(raw);
+    }
+
+    if (!parsed.samples.length) {
+      return { ok: false, error: "取り込めるデータが見つかりません", added: 0, updated: 0, skipped: parsed.unknown || 0 };
+    }
+
+    let added = 0, updated = 0, skipped = 0;
+    const days = new Set();
+    const byType = {};
+    const count = (t, how) => { byType[t] = byType[t] || { added: 0, updated: 0 }; byType[t][how]++; };
+
+    /* 体脂肪率は、その日の体重の記録に寄り添わせます。別々に持つと
+       「体重68.4kg」と「体脂肪21.3%」が並んで、同じ一回の計測だったことが
+       画面から分からなくなるので。相手がいなければ単独で残します。 */
+    const fats = [];
+
+    parsed.samples.forEach((s) => {
+      days.add(s.day);
+      if (s.type === "bodyFat") { fats.push(s); return; }
+
+      if (s.type === "weight") {
+        const res = putWeight(s);
+        if (res === "added") { added++; count("weight", "added"); }
+        else if (res === "updated") { updated++; count("weight", "updated"); }
+        else skipped++;
+        return;
+      }
+
+      const rec = {
+        type: s.type, day: s.day, time: s.time, value: s.value,
+        unit: s.unit || UNITS[s.type] || "",
+        label: s.label || "", kcal: s.kcal, source: s.source || "ヘルスケア",
+        externalId: s.externalId || (s.type === "workout" && !s.externalId
+          // ワークアウトは一日に何本もあるので、日と時刻と長さで一本と見ます。
+          ? `wk:${s.day}:${s.time || "?"}:${s.value}` : null),
+      };
+      const res = store.putHealth(rec);
+      if (res === "added") { added++; count(s.type, "added"); }
+      else if (res === "updated") { updated++; count(s.type, "updated"); }
+      else skipped++;
+
+    });
+
+    fats.forEach((s) => {
+      const res = putBodyFat(s);
+      if (res === "added") { added++; count("bodyFat", "added"); }
+      else if (res === "updated") { updated++; count("bodyFat", "updated"); }
+      else skipped++;
+    });
+
+    store.markSynced({ added, updated });
+    return { ok: true, added, updated, skipped: skipped + (parsed.unknown || 0),
+             days: [...days].sort(), byType };
+  }
+
+  /** 体重は weights に入ります。同じ計測が二度入らないよう、印と時刻で見ます。 */
+  function putWeight(s) {
+    const list = store.get().diet.weights;
+    /* 時刻が書かれていない取り込みは「その日の体重」の申告です。だから
+       相手はその日の一件——時刻まで一致するものを探すと、記録側が
+       持っている時刻（取り込んだ時刻で埋まる）と噛み合わず、朝と夜で
+       同じ体重が二つ並びます。 */
+    const sameDay = (w) => w.day === s.day
+      && (s.time == null || (w.time || null) === s.time);
+    const same = list.find((w) =>
+      (s.externalId && w.externalId === s.externalId)
+      || (w.source === "health" && sameDay(w)));
+    if (same) {
+      if (Math.abs(same.kg - s.value) < 0.005) return null;   // 変わっていない
+      store.updateWeight(same.id, { kg: s.value });
+      return "updated";
+    }
+    /* 同じ日に自分で書いた記録があるなら、そちらを消しません。手で書いた値は
+       「その人が正しいと思った値」で、体重計の生値より優先されます。
+       ただし記録としては残したいので、時刻が違えば別の一件として入れます。 */
+    const manualSame = list.find((w) => w.source === "manual" && sameDay(w));
+    if (manualSame) return null;
+    return store.addWeight({
+      day: s.day, time: s.time, kg: s.value,
+      source: "health", externalId: s.externalId || null,
+    }) ? "added" : null;
+  }
+
+  function putBodyFat(s) {
+    const list = store.get().diet.weights.filter((w) => w.day === s.day);
+    // 同じ時刻のものを最優先、無ければその日のいちばん早い記録に添えます。
+    const target = list.find((w) => (w.time || null) === (s.time || null))
+      || list.sort((a, b) => (a.time || "").localeCompare(b.time || ""))[0];
+    if (target) {
+      if (target.fat != null && Math.abs(target.fat - s.value) < 0.05) return null;
+      store.updateWeight(target.id, { fat: s.value });
+      return "updated";
+    }
+    // 体重がないのに体脂肪だけある日。捨てずに、単体の測定として残します。
+    return store.putHealth({
+      type: "bodyFat", day: s.day, time: s.time, value: s.value, unit: "%",
+      source: s.source || "ヘルスケア", externalId: s.externalId || null,
+    });
+  }
+
+  /* ---------------- 受け口 ---------------- */
+
+  /** クリップボードから。iOSは貼り付けの確認を1回出します（それでいい）。 */
+  function importFromClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      return Promise.resolve({ ok: false, error: "この端末ではクリップボードを読めません", added: 0, updated: 0, skipped: 0 });
+    }
+    return navigator.clipboard.readText()
+      .then((t) => importText(t))
+      .catch(() => ({ ok: false, error: "クリップボードを読ませてもらえませんでした", added: 0, updated: 0, skipped: 0 }));
+  }
+
+  /**
+   * アドレスの #health=… から。ショートカットが「URLを開く」で渡す道です。
+   * ホーム画面のアプリとSafariは別々の保存領域なので、この道が効くのは
+   * Safariで開いているときだけ——それでも、最初の一回を試すには十分です。
+   */
+  function importFromHash() {
+    const m = /[#&]health=([^&]+)/.exec(location.hash || "");
+    if (!m) return null;
+    let text = "";
+    try { text = decodeURIComponent(m[1]); } catch (err) { text = m[1]; }
+    // 二重に隠したいときのために base64 も受けます
+    if (/^[A-Za-z0-9+/=]+$/.test(text) && text.length > 24) {
+      try { text = decodeURIComponent(escape(atob(text))); } catch (err) { /* そのまま */ }
+    }
+    const res = importText(text);
+    // 読んだら消す。同じURLで開き直すたびに入れ直すのは、取り込みではなく事故です。
+    history.replaceState(null, "", location.pathname + location.search + "#diet");
+    return res;
+  }
+
+  /** 取り込みの結果を、そのまま人に読ませられる一行に。 */
+  function describe(res) {
+    if (!res) return "";
+    if (!res.ok) return res.error || "取り込めませんでした";
+    const parts = [];
+    if (res.added) parts.push(`${res.added}件を追加`);
+    if (res.updated) parts.push(`${res.updated}件を更新`);
+    if (!parts.length) parts.push("新しいデータはありません");
+    const days = res.days || [];
+    const span = days.length === 1 ? U.formatDay(days[0])
+      : days.length > 1 ? `${U.formatDay(days[0])}〜${U.formatDay(days[days.length - 1])}` : "";
+    return parts.join("・") + (span ? `（${span}）` : "");
+  }
+
+  KN.healthSync = {
+    importText, importFromClipboard, importFromHash, describe,
+    parsePlain, parseJson, toMinutes, toKm, UNITS,
+  };
 })();
 
 /* ---- js/product-sheet.js ---- */
@@ -12880,6 +14802,1158 @@ button, [role="tab"] {
   KN.screens.todo = { mount, render, dockButton };
 })();
 
+/* ---- js/screen-diet.js ---- */
+/* =========================================================
+   くらしノート — ダイエット
+   =========================================================
+
+   一枚の画面に、上から順に
+
+     今日     … 体重と、その一歩ぶんの動き
+     グラフ   … 実測と7日平均、そして目標線
+     からだ   … 歩数・距離・消費・睡眠・運動（ヘルスケアから）
+     食事     … 今日の合計と、朝昼夕間食
+     気づき   … 溜まった記録から読める「関連」
+     目標     … 身長・目標・見込み
+
+   ぜんぶを毎日読むためではありません。上の二つで「いまどうなっているか」
+   が終わり、下は用があるときだけ降りていくところです。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const { html, node, icon, haptic } = KN.util;
+  const U = KN.util;
+  const store = KN.store;
+  const D = KN.diet;
+
+  let root = null;
+  let els = {};
+  let range = 30;             // グラフの期間（日）。0 は全期間。
+  let analysisWindow = 30;
+
+  const SLOTS = [
+    { id: "breakfast", label: "朝食" },
+    { id: "lunch",     label: "昼食" },
+    { id: "dinner",    label: "夕食" },
+    { id: "snack",     label: "間食" },
+  ];
+  const slotLabel = (id) => (SLOTS.find((s) => s.id === id) || {}).label || "間食";
+
+  /** いま時刻なら、たぶんこの食事。夜遅くに開いたら間食です。 */
+  function guessSlot() {
+    const h = new Date().getHours();
+    if (h < 10) return "breakfast";
+    if (h < 15) return "lunch";
+    if (h < 21) return "dinner";
+    return "snack";
+  }
+
+  const kg = (v) => (v == null ? "—" : v.toFixed(1));
+  const n0 = (v) => (v == null ? "—" : Math.round(v).toLocaleString());
+  /* 0 は「±0.0」と書きます。「0.0」だけだと、増減の欄なのか実測の欄なのかが
+     ぱっと読めません。 */
+  const signed = (v, d) => {
+    if (v == null) return "—";
+    const s = v.toFixed(d == null ? 1 : d);
+    return /^-?0(\.0+)?$/.test(s) ? "±" + s.replace("-", "") : (v > 0 ? "+" + s : s);
+  };
+  const hhmm = (min) => (min == null ? "—" : `${Math.floor(min / 60)}時間${String(Math.round(min % 60)).padStart(2, "0")}分`);
+
+  /* ---------------- 組み立て ---------------- */
+
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+
+    const chrome = node(html`
+      <div class="stack">
+        <header class="topbar">
+          <div class="topbar-row">
+            <div style="flex:1;min-width:0">
+              <h1 class="topbar-title">ダイエット</h1>
+              <div class="topbar-sub js-sub"></div>
+            </div>
+            ${/* 右端から 設定・取り込み。ほかの画面と同じ並べ方で、
+                 いちばん右がいつも設定です。 */""}
+            <button class="icon-btn js-sync" aria-label="ヘルスケアから取り込む" title="ヘルスケアから取り込む">
+              ${icon("download")}
+            </button>
+            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
+          </div>
+        </header>
+        <div class="js-body"></div>
+      </div>
+    `);
+    root.append(chrome);
+
+    els = {
+      sub: chrome.querySelector(".js-sub"),
+      body: chrome.querySelector(".js-body"),
+      sync: chrome.querySelector(".js-sync"),
+      settings: chrome.querySelector(".js-settings"),
+      topbar: chrome.querySelector(".topbar"),
+    };
+
+    els.sync.addEventListener("click", openSyncSheet);
+    els.settings.addEventListener("click", () => KN.showScreen("settings"));
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    });
+  }
+
+  function render() {
+    const today = U.todayKey();
+    const card = D.dayCard(today);
+    const sum = D.weightSummary(Math.max(range || 365, 30));
+
+    els.sub.textContent = U.formatDate(new Date());
+
+    els.body.innerHTML = "";
+    els.body.append(node(html`
+      <div class="diet">
+        <div class="js-today"></div>
+        <div class="js-graph"></div>
+        <div class="js-body-stats"></div>
+        <div class="js-meals"></div>
+        <div class="js-insight"></div>
+        <div class="js-goal"></div>
+      </div>
+    `));
+
+    renderToday(els.body.querySelector(".js-today"), card, sum);
+    renderGraph(els.body.querySelector(".js-graph"));
+    renderBodyStats(els.body.querySelector(".js-body-stats"), card);
+    renderMeals(els.body.querySelector(".js-meals"), card);
+    renderInsight(els.body.querySelector(".js-insight"));
+    renderGoal(els.body.querySelector(".js-goal"), sum);
+  }
+
+  /* ---------------- 今日 ---------------- */
+
+  function renderToday(host, card, sum) {
+    const w = card.weight;
+    const g = sum.goal;
+    const pace = D.neededPace();
+
+    const sec = node(html`
+      <section class="card diet-hero">
+        <button class="diet-hero-main js-weight">
+          <span class="diet-hero-label">${w ? (w.source === "health" ? "今日の体重（ヘルスケア）" : "今日の体重") : "今日はまだ量っていません"}</span>
+          <span class="diet-hero-value">
+            <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
+            ${w && w.fat != null ? html`<span class="diet-hero-fat mono-num">体脂肪 ${w.fat.toFixed(1)}%</span>` : ""}
+          </span>
+          <span class="diet-hero-cta">${w ? "タップして直す" : "タップして記録する"}</span>
+        </button>
+        <div class="diet-hero-side">
+          <div class="diet-stat">
+            <span class="diet-stat-label">前回比</span>
+            <b class="diet-stat-value mono-num ${sum.delta == null ? "" : sum.delta < 0 ? "is-good" : sum.delta > 0 ? "is-warn" : ""}">${signed(sum.delta)}</b>
+            <span class="diet-stat-unit">kg${sum.deltaDays > 1 ? `・${sum.deltaDays}日ぶり` : ""}</span>
+          </div>
+          <div class="diet-stat">
+            <span class="diet-stat-label">7日平均</span>
+            <b class="diet-stat-value mono-num">${sum.ma7Now == null ? "—" : sum.ma7Now.toFixed(2)}</b>
+            <span class="diet-stat-unit">kg</span>
+          </div>
+          <div class="diet-stat">
+            <span class="diet-stat-label">${g.targetKg == null ? "目標" : "目標まで"}</span>
+            <b class="diet-stat-value mono-num">${g.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
+            <span class="diet-stat-unit">${g.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
+          </div>
+        </div>
+        ${pace != null ? html`
+          <p class="diet-hero-note">目標日まで、週 ${signed(pace, 2)}kg のペースが要ります。</p>` : ""}
+      </section>
+    `);
+    sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight));
+    host.append(sec);
+  }
+
+  /* ---------------- グラフ ---------------- */
+
+  const RANGES = [
+    { id: 7, label: "7日" }, { id: 30, label: "30日" }, { id: 90, label: "90日" },
+    { id: 365, label: "1年" }, { id: 0, label: "全部" },
+  ];
+
+  function renderGraph(host) {
+    const sec = node(html`
+      <section class="card section diet-graph-card">
+        <div class="section-title">${icon("chart")}体重の推移</div>
+        <div class="js-range"></div>
+        <div class="js-chart"></div>
+        <div class="diet-legend">
+          <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
+          <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
+          ${range === 0 || range >= 30 ? html`<span class="diet-legend-item"><i class="dot-ma14"></i>14日平均</span>` : ""}
+          ${store.get().diet.goal.targetKg != null ? html`<span class="diet-legend-item"><i class="dot-goal"></i>目標</span>` : ""}
+        </div>
+      </section>
+    `);
+
+    KN.ui.chipRow(sec.querySelector(".js-range"), RANGES.map((r) => ({ id: r.id, label: r.label })), {
+      activeId: range,
+      onPick: (id) => { range = Number(id); render(); },
+    });
+
+    sec.querySelector(".js-chart").append(chart());
+    host.append(sec);
+  }
+
+  /**
+   * SVGのおりがみ。ライブラリは入れません——線が2本と点が並ぶだけのものに
+   * 数十KBを積むと、電波の無いところで開くのが遅くなります。
+   */
+  function chart() {
+    const today = U.todayKey();
+    const all = D.weightPoints(null, today);
+    const from = range === 0
+      ? (all.length ? all[0].day : today)
+      : U.shiftDay(today, -(range - 1));
+    const pts = all.filter((p) => p.day >= from);
+
+    if (pts.length < 2) {
+      return node(html`
+        <div class="empty diet-empty">
+          <div class="empty-text">${pts.length ? "まだ1日ぶんです。" : "この期間の記録がありません。"}
+            線が引けるのは2日ぶんからです。</div>
+        </div>
+      `);
+    }
+
+    const W = 320, H = 132, padL = 34, padR = 8, padT = 10, padB = 18;
+    const ma7 = D.movingAverage(pts, 7).filter((m) => m.value != null);
+    const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
+    const goal = store.get().diet.goal.targetKg;
+
+    const t0 = U.dayDate(pts[0].day).getTime();
+    const t1 = U.dayDate(pts[pts.length - 1].day).getTime();
+    const span = Math.max(1, t1 - t0);
+
+    const values = pts.map((p) => p.kg)
+      .concat(ma7.map((m) => m.value), ma14.map((m) => m.value));
+    let lo = Math.min(...values), hi = Math.max(...values);
+    /* 目標線は、近ければ枠に入れます。20kg先の目標まで無理に収めると、
+       実測の線が一本の水平線に潰れて、何も読めなくなります。 */
+    if (goal != null && goal >= lo - 6 && goal <= hi + 6) { lo = Math.min(lo, goal); hi = Math.max(hi, goal); }
+    if (hi - lo < 1) { const mid = (hi + lo) / 2; lo = mid - 0.6; hi = mid + 0.6; }
+    const padY = (hi - lo) * 0.12;
+    lo -= padY; hi += padY;
+
+    const x = (day) => padL + ((U.dayDate(day).getTime() - t0) / span) * (W - padL - padR);
+    const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
+    const path = (rows, get) => rows.map((r, i) => `${i ? "L" : "M"}${x(r.day).toFixed(1)} ${y(get(r)).toFixed(1)}`).join(" ");
+
+    const gridVals = [hi - padY, (hi + lo) / 2, lo + padY];
+    const svg = node(html`
+      <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
+           aria-label="体重の推移のグラフ">
+        ${KN.util.raw(gridVals.map((v) =>
+          `<line class="diet-gridline" x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}"/>`
+          + `<text class="diet-axis" x="${padL - 5}" y="${(y(v) + 3.4).toFixed(1)}" text-anchor="end">${v.toFixed(1)}</text>`
+        ).join(""))}
+        ${goal != null && goal >= lo && goal <= hi
+          ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`)
+          : ""}
+        ${ma14.length > 1 ? KN.util.raw(`<path class="diet-ma14" d="${path(ma14, (m) => m.value)}"/>`) : ""}
+        ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" d="${path(ma7, (m) => m.value)}"/>`) : ""}
+        ${KN.util.raw(pts.map((p) =>
+          `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""}" cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="1.9"/>`
+        ).join(""))}
+        <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(pts[0].day).replace("今日", "")}</text>
+        <text class="diet-axis" x="${W - padR}" y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
+      </svg>
+    `);
+    return svg;
+  }
+
+  /* ---------------- からだ ---------------- */
+
+  function renderBodyStats(host, card) {
+    const sync = store.get().diet.sync;
+    const rows = [
+      { icon: "steps", label: "歩数",   value: n0(card.steps), unit: "歩" },
+      { icon: "steps", label: "歩行距離", value: card.distance == null ? "—" : card.distance.toFixed(1), unit: "km" },
+      { icon: "flame", label: "アクティブ", value: n0(card.activeEnergy), unit: "kcal" },
+      { icon: "moon",  label: "睡眠",   value: hhmm(card.sleep), unit: "" },
+    ];
+    const nothing = rows.every((r) => r.value === "—");
+
+    const sec = node(html`
+      <section class="card section">
+        <div class="section-title">${icon("heart")}今日のからだ</div>
+        <div class="diet-grid">
+          ${KN.util.raw(rows.map((r) => `
+            <div class="diet-cell">
+              <span class="diet-cell-label">${r.label}</span>
+              <b class="diet-cell-value mono-num">${r.value}</b>
+              ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
+            </div>`).join(""))}
+        </div>
+        ${card.workouts.length ? html`
+          <div class="diet-workouts">
+            ${KN.util.raw(card.workouts.map((w) =>
+              `<span class="badge">${KN.util.escapeHtml(w.label || "ワークアウト")} ${Math.round(w.value)}分`
+              + `${w.kcal != null ? ` ・ ${Math.round(w.kcal)}kcal` : ""}</span>`).join(""))}
+          </div>` : ""}
+        ${nothing ? html`
+          <button class="btn btn-soft btn-block js-import">
+            ${icon("download")}ヘルスケアから取り込む
+          </button>
+          <p class="diet-note">歩数や睡眠は、iPhoneの「ショートカット」で書き出したものを読み込みます。
+            やり方は取り込み画面に書いてあります。</p>` : html`
+          <p class="diet-note">${sync.lastAt ? `最後の取り込み：${U.formatStamp(sync.lastAt)}` : ""}</p>`}
+      </section>
+    `);
+    const btn = sec.querySelector(".js-import");
+    if (btn) btn.addEventListener("click", openSyncSheet);
+    host.append(sec);
+  }
+
+  /* ---------------- 食事 ---------------- */
+
+  function renderMeals(host, card) {
+    const t = card.totals;
+    const rem = card.remaining;
+    const pfc = card.pfc;
+    const meals = store.mealsOfDay(card.day);
+
+    const sec = node(html`
+      <section class="card section">
+        <div class="section-title">${icon("meal")}今日の食事</div>
+
+        <div class="diet-kcal">
+          <div class="diet-kcal-main">
+            <b class="mono-num">${t ? t.kcal.toLocaleString() : "—"}</b><small>kcal</small>
+            ${t && t.estimated ? html`<span class="badge badge-muted">推定を含む</span>` : ""}
+          </div>
+          ${rem ? html`
+            <div class="diet-kcal-rem ${rem.kcal < 0 ? "is-over" : ""}">
+              ${rem.kcal >= 0 ? html`残り <b class="mono-num">${rem.kcal.toLocaleString()}</b> kcal`
+                              : html`<b class="mono-num">${Math.abs(rem.kcal).toLocaleString()}</b> kcal 超過`}
+              <span class="diet-kcal-target">/ 目標 ${rem.target.toLocaleString()}</span>
+            </div>` : ""}
+        </div>
+
+        ${t ? html`
+          <div class="diet-pfc">
+            ${/* 棒が何を言っているかは一つに決めます。目標があるならその進み具合、
+                 無いなら熱量の内わけ。同じ棒に二つの意味を持たせると、
+                 「Pの棒が短いのは足りないから? それとも脂質が多いから?」
+                 が毎回わからなくなります。 */""}
+            ${KN.util.raw(["p", "f", "c"].map((k) => {
+              const name = { p: "P たんぱく質", f: "F 脂質", c: "C 炭水化物" }[k];
+              const goalV = store.get().diet.goal[k + "Target"];
+              const pct = goalV ? Math.min(100, Math.round(t[k] / goalV * 100))
+                                : (pfc ? pfc[k] : 0);
+              const over = goalV && t[k] > goalV;
+              return `
+                <div class="diet-pfc-row">
+                  <span class="diet-pfc-name">${name}</span>
+                  <span class="diet-pfc-bar ${over ? "is-over" : ""}"><i class="is-${k}" style="width:${pct}%"></i></span>
+                  <span class="diet-pfc-num mono-num">${t[k]}g${goalV ? ` / ${goalV}` : ""}</span>
+                </div>`;
+            }).join(""))}
+            <p class="diet-note">${store.get().diet.goal.pTarget
+              ? "棒は一日の目安に対する進み具合です。"
+              : "棒は熱量の内わけです（目安を決めると、進み具合に変わります）。"}
+              ${pfc ? `熱量比 P${pfc.p}% F${pfc.f}% C${pfc.c}%` : ""}</p>
+          </div>` : ""}
+
+        <div class="diet-slots">
+          ${KN.util.raw(SLOTS.map((s) => {
+            const mine = meals.filter((m) => m.slot === s.id);
+            const kcal = mine.reduce((a, m) => a + m.items.reduce((x, i) => x + i.kcal, 0), 0);
+            const names = mine.flatMap((m) => m.items.map((i) => i.name)).join("・");
+            return `
+              <button class="diet-slot js-slot" data-slot="${s.id}">
+                <span class="diet-slot-head">
+                  <b>${s.label}</b>
+                  <span class="diet-slot-kcal mono-num">${mine.length ? kcal.toLocaleString() + " kcal" : ""}</span>
+                </span>
+                <span class="diet-slot-body">${mine.length ? KN.util.escapeHtml(names) : "＋ 記録する"}</span>
+              </button>`;
+          }).join(""))}
+        </div>
+      </section>
+    `);
+
+    sec.querySelectorAll(".js-slot").forEach((b) => {
+      b.addEventListener("click", () => {
+        const slot = b.dataset.slot;
+        const mine = meals.filter((m) => m.slot === slot);
+        if (mine.length === 1) openMealSheet(mine[0]);
+        else if (mine.length > 1) pickMeal(mine, slot);
+        else openMealSheet(null, slot);
+      });
+    });
+    host.append(sec);
+  }
+
+  function pickMeal(list, slot) {
+    const body = node(html`<div class="rows"></div>`);
+    list.forEach((m) => {
+      const kcal = m.items.reduce((a, i) => a + i.kcal, 0);
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${m.items.map((i) => i.name).join("・") || "（メモだけ）"}</span>
+            <span class="row-sub">${m.time || ""}</span>
+          </span>
+          <span class="row-value mono-num">${kcal.toLocaleString()} kcal</span>
+        </button>
+      `);
+      row.addEventListener("click", () => { h.close(); openMealSheet(m); });
+      body.append(row);
+    });
+    const add = node(html`<button class="btn btn-primary btn-block">${icon("plus")}この時間にもう一つ</button>`);
+    add.addEventListener("click", () => { h.close(); openMealSheet(null, slot); });
+    body.append(add);
+    const h = KN.ui.sheet({ title: slotLabel(slot), content: body });
+  }
+
+  /* ---------------- 気づいたこと ---------------- */
+
+  function renderInsight(host) {
+    const found = D.analyze(analysisWindow);
+    const cov = D.coverage(analysisWindow);
+    const aiOn = KN.dietAI.configured();
+
+    const sec = node(html`
+      <section class="card section">
+        <div class="section-title">${icon("sparkles")}気づいたこと</div>
+        <div class="js-win"></div>
+        ${found.length ? html`
+          <div class="diet-findings">
+            ${KN.util.raw(found.map((f) => `
+              <div class="diet-finding is-${f.tone || "info"}">
+                <b>${KN.util.escapeHtml(f.title)}</b>
+                <p>${KN.util.escapeHtml(f.text)}</p>
+              </div>`).join(""))}
+          </div>
+          <p class="diet-note">ここに出るのは、並んだ数どうしの<b>関連</b>です。
+            どちらがどちらを動かしたのかは、この計算では分かりません。</p>
+        ` : html`
+          <div class="empty diet-empty">
+            <div class="empty-text">まだ言えることがありません。<br>
+              直近${cov.days}日のうち、体重 ${cov.weight}日・食事 ${cov.meals}日・歩数 ${cov.steps}日ぶんの記録です。</div>
+          </div>`}
+        ${aiOn ? html`
+          <button class="btn btn-soft btn-block js-ai">${icon("sparkles")}AIに相談する</button>
+        ` : html`
+          <p class="diet-note">AIの分析を使うには、設定で<b>窓口のURL</b>を決めます。
+            APIキーはこのアプリには置きません（このページの中身は誰でも読めるので）。</p>`}
+      </section>
+    `);
+
+    KN.ui.chipRow(sec.querySelector(".js-win"),
+      [{ id: 14, label: "14日" }, { id: 30, label: "30日" }, { id: 90, label: "90日" }],
+      { activeId: analysisWindow, onPick: (id) => { analysisWindow = Number(id); render(); } });
+
+    const ai = sec.querySelector(".js-ai");
+    if (ai) ai.addEventListener("click", askAI);
+    host.append(sec);
+  }
+
+  function askAI() {
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">聞きたいこと</span>
+          <input class="input js-q" value="ここ2週間の傾向と、来週やるといいことを教えて">
+        </label>
+        <p class="diet-note">直近30日ぶんの体重・食事・歩数・睡眠を窓口へ送ります。
+          買い物リストとやることは送りません。</p>
+        <div class="js-out"></div>
+      </div>
+    `);
+    const foot = node(html`<button class="btn btn-primary btn-block js-go">相談する</button>`);
+    const h = KN.ui.sheet({ title: "AIに相談", content: body, footer: foot });
+    foot.querySelector(".js-go").addEventListener("click", () => {
+      const out = body.querySelector(".js-out");
+      out.innerHTML = "";
+      out.append(node(html`<p class="diet-note">考えています…</p>`));
+      KN.dietAI.coach(body.querySelector(".js-q").value, 30)
+        .then((text) => {
+          out.innerHTML = "";
+          out.append(node(html`<div class="diet-ai-out">${text}</div>`));
+        })
+        .catch((err) => {
+          out.innerHTML = "";
+          out.append(node(html`<p class="diet-note is-warn">うまくいきませんでした：${err.message}</p>`));
+        });
+    });
+  }
+
+  /* ---------------- 目標 ---------------- */
+
+  function renderGoal(host, sum) {
+    const g = sum.goal;
+    const proj = D.projection();
+    const sec = node(html`
+      <section class="card section">
+        <div class="section-title">${icon("flag")}目標</div>
+        <div class="rows">
+          <button class="row js-goal">
+            <span class="row-main">
+              <span class="row-title">目標体重</span>
+              <span class="row-sub">${g.targetKg == null ? "決めていません"
+                : `${g.targetKg.toFixed(1)}kg${g.targetDay ? ` ・ ${U.formatDay(g.targetDay)}まで` : ""}`}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <div class="row">
+            <span class="row-main">
+              <span class="row-title">BMI</span>
+              <span class="row-sub">${g.heightCm ? `身長 ${g.heightCm}cm` : "身長を入れると出ます"}</span>
+            </span>
+            <span class="row-value mono-num">${sum.bmi == null ? "—" : sum.bmi.toFixed(1)}</span>
+          </div>
+          <div class="row">
+            <span class="row-main">
+              <span class="row-title">いまの傾き</span>
+              <span class="row-sub">7日平均の直線あてはめ</span>
+            </span>
+            <span class="row-value mono-num">${sum.trendPerWeek == null ? "—" : `${signed(sum.trendPerWeek, 2)} kg/週`}</span>
+          </div>
+        </div>
+        ${proj ? html`<p class="diet-note">${projText(proj)}</p>` : ""}
+      </section>
+    `);
+    sec.querySelector(".js-goal").addEventListener("click", openGoalSheet);
+    host.append(sec);
+  }
+
+  function projText(p) {
+    if (p.reached) return "目標の重さに届いています。";
+    if (p.stalled) return "いまの傾きのままだと、目標には近づきません（傾きが目標と逆か、ほぼ横ばいです）。";
+    if (p.far) return "いまの傾きだと、目標まで数年かかる計算になります。ペースか目標を見直す頃かもしれません。";
+    return `いまの傾き（週 ${signed(p.rate, 2)}kg）が続いた場合、${U.formatDay(p.day)}ごろに目標の重さになる計算です。`
+      + "これは予測ではなく、いまの傾きをそのまま伸ばした線です。";
+  }
+
+  /* ---------------- 体重を書く ---------------- */
+
+  function openWeightSheet(existing) {
+    const w = existing || null;
+    const body = node(html`
+      <div class="stack">
+        <div class="field-row">
+          <label class="field" style="flex:1">
+            <span class="field-label">日付</span>
+            <input type="date" class="input js-day" value="${w ? w.day : U.todayKey()}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">時刻</span>
+            <input type="time" class="input js-time" value="${w && w.time ? w.time : U.nowTime()}">
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field" style="flex:1">
+            <span class="field-label">体重 (kg)</span>
+            <input class="input js-kg" inputmode="decimal" placeholder="例：68.4"
+                   value="${w ? String(w.kg) : ""}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">体脂肪率 (%)</span>
+            <input class="input js-fat" inputmode="decimal" placeholder="任意"
+                   value="${w && w.fat != null ? String(w.fat) : ""}">
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">メモ</span>
+          <input class="input js-memo" placeholder="例：飲んだ翌日" value="${w ? w.memo : ""}">
+        </label>
+        ${w && w.source === "health" ? html`
+          <p class="diet-note">これはヘルスケアから入った記録です。ここで直すと、
+            手で書いた値として扱われます（次の取り込みで上書きされません）。</p>` : ""}
+      </div>
+    `);
+
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        ${w ? html`<button class="btn btn-soft js-del" aria-label="削除">${icon("trash")}</button>` : ""}
+        <button class="btn btn-primary js-save" style="flex:1">${w ? "保存" : "記録する"}</button>
+      </div>
+    `);
+
+    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot });
+    const kgEl = body.querySelector(".js-kg");
+    if (!w) KN.ui.focusNow(kgEl);
+
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      const val = parseFloat(String(kgEl.value).replace(/[^\d.]/g, ""));
+      if (!(val > 0)) { KN.ui.toast("体重を入れてください"); return; }
+      const fatRaw = parseFloat(String(body.querySelector(".js-fat").value).replace(/[^\d.]/g, ""));
+      const patch = {
+        day: body.querySelector(".js-day").value || U.todayKey(),
+        time: body.querySelector(".js-time").value || null,
+        kg: val,
+        fat: Number.isFinite(fatRaw) && fatRaw > 0 ? fatRaw : null,
+        memo: body.querySelector(".js-memo").value.trim(),
+        // 手が入ったものは手が入ったものです。次の取り込みで機械の値に
+        // 戻されないよう、出どころを書き換えます。
+        source: "manual",
+      };
+      if (w) store.updateWeight(w.id, patch);
+      else store.addWeight(patch);
+      haptic(10);
+      h.close();
+      render();
+      KN.ui.toast(w ? "直しました" : "記録しました");
+    });
+
+    const del = foot.querySelector(".js-del");
+    if (del) del.addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({ title: "この記録を消す", message: "元に戻せません。", okLabel: "消す", danger: true });
+      if (!ok) return;
+      store.removeWeight(w.id);
+      h.close();
+      render();
+    });
+  }
+
+  /* ---------------- 食事を書く ---------------- */
+
+  function openMealSheet(existing, slotHint) {
+    const meal = existing || null;
+    let items = meal ? meal.items.map((i) => ({ ...i })) : [];
+    let slot = meal ? meal.slot : (slotHint || guessSlot());
+
+    const body = node(html`
+      <div class="stack">
+        <div class="js-slots"></div>
+        <div class="field-row">
+          <label class="field" style="flex:1">
+            <span class="field-label">日付</span>
+            <input type="date" class="input js-day" value="${meal ? meal.day : U.todayKey()}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">時刻</span>
+            <input type="time" class="input js-time" value="${meal && meal.time ? meal.time : U.nowTime()}">
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field-label">食べたもの</span>
+          <div class="input-group">
+            <input class="input js-food" placeholder="例：ご飯150g / 卵2個 / 鶏むね肉100g"
+                   autocomplete="off" spellcheck="false" enterkeyhint="done">
+            <button class="btn btn-primary btn-sm js-add">${icon("plus")}</button>
+          </div>
+        </label>
+        <div class="js-suggest"></div>
+        <p class="diet-note">量を書かないと、一食ぶんの目安で入ります。あとから数字は直せます。
+          値の出どころは${KN.foodData.SOURCE}です。</p>
+
+        <div class="js-items"></div>
+        <div class="js-total"></div>
+
+        ${KN.dietAI.configured() ? html`
+          <button class="btn btn-soft btn-block js-photo">${icon("camera")}写真から推定する</button>
+        ` : ""}
+
+        <label class="field">
+          <span class="field-label">メモ</span>
+          <input class="input js-memo" placeholder="任意" value="${meal ? meal.memo : ""}">
+        </label>
+      </div>
+    `);
+
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        ${meal ? html`<button class="btn btn-soft js-del" aria-label="削除">${icon("trash")}</button>` : ""}
+        <button class="btn btn-primary js-save" style="flex:1">${meal ? "保存" : "記録する"}</button>
+      </div>
+    `);
+
+    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot });
+
+    KN.ui.chipRow(body.querySelector(".js-slots"), SLOTS, {
+      activeId: slot,
+      onPick: (id) => { slot = id; KN.ui.chipRow(body.querySelector(".js-slots"), SLOTS, { activeId: slot, onPick: () => {} }); },
+    });
+
+    const foodEl = body.querySelector(".js-food");
+    const itemsEl = body.querySelector(".js-items");
+    const totalEl = body.querySelector(".js-total");
+    const sugEl = body.querySelector(".js-suggest");
+
+    if (!meal) KN.ui.focusNow(foodEl);
+
+    function paint() {
+      itemsEl.innerHTML = "";
+      if (!items.length) {
+        itemsEl.append(node(html`<p class="diet-note">まだ何も入っていません。</p>`));
+      } else {
+        const rows = node(html`<div class="rows diet-items"></div>`);
+        items.forEach((it, i) => {
+          const row = node(html`
+            <div class="row">
+              <button class="row-main js-edit">
+                <span class="row-title">${it.name}${it.estimated ? html`<span class="badge badge-muted">推定</span>` : ""}</span>
+                <span class="row-sub">${it.grams != null ? `${Math.round(it.grams)}g ・ ` : ""}P${it.p} F${it.f} C${it.c}</span>
+              </button>
+              <span class="row-value mono-num">${it.estimated ? "約" : ""}${it.kcal.toLocaleString()}</span>
+              <button class="icon-btn js-drop" aria-label="外す">${icon("close")}</button>
+            </div>
+          `);
+          row.querySelector(".js-drop").addEventListener("click", () => { items.splice(i, 1); paint(); });
+          row.querySelector(".js-edit").addEventListener("click", () => editItem(i));
+          rows.append(row);
+        });
+        itemsEl.append(rows);
+      }
+
+      const sum = items.reduce((a, i) => ({
+        kcal: a.kcal + i.kcal, p: a.p + i.p, f: a.f + i.f, c: a.c + i.c,
+      }), { kcal: 0, p: 0, f: 0, c: 0 });
+      totalEl.innerHTML = "";
+      totalEl.append(node(html`
+        <div class="diet-total">
+          <b class="mono-num">${Math.round(sum.kcal).toLocaleString()}</b><small>kcal</small>
+          <span class="mono-num">P ${sum.p.toFixed(1)} ・ F ${sum.f.toFixed(1)} ・ C ${sum.c.toFixed(1)}</span>
+        </div>
+      `));
+    }
+
+    function editItem(i) {
+      const it = items[i];
+      const b = node(html`
+        <div class="stack">
+          <label class="field"><span class="field-label">名前</span>
+            <input class="input js-n" value="${it.name}"></label>
+          <div class="field-row">
+            <label class="field" style="flex:1"><span class="field-label">量 (g)</span>
+              <input class="input js-g" inputmode="decimal" value="${it.grams == null ? "" : it.grams}"></label>
+            <label class="field" style="flex:1"><span class="field-label">kcal</span>
+              <input class="input js-k" inputmode="numeric" value="${it.kcal}"></label>
+          </div>
+          <div class="field-row">
+            <label class="field" style="flex:1"><span class="field-label">P (g)</span>
+              <input class="input js-p" inputmode="decimal" value="${it.p}"></label>
+            <label class="field" style="flex:1"><span class="field-label">F (g)</span>
+              <input class="input js-f" inputmode="decimal" value="${it.f}"></label>
+            <label class="field" style="flex:1"><span class="field-label">C (g)</span>
+              <input class="input js-c" inputmode="decimal" value="${it.c}"></label>
+          </div>
+          ${it.estimated ? html`<p class="diet-note">この数は推定です。直すと推定の印は外れます。</p>` : ""}
+        </div>
+      `);
+      const f = node(html`<button class="btn btn-primary btn-block">直す</button>`);
+      const hh = KN.ui.sheet({ title: "数を直す", content: b, footer: f });
+      f.addEventListener("click", () => {
+        const num = (sel, d) => {
+          const v = parseFloat(String(b.querySelector(sel).value).replace(/[^\d.]/g, ""));
+          return Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : 0;
+        };
+        const before = { kcal: it.kcal, p: it.p, f: it.f, c: it.c };
+        it.name = b.querySelector(".js-n").value.trim() || it.name;
+        const gv = parseFloat(String(b.querySelector(".js-g").value).replace(/[^\d.]/g, ""));
+        it.grams = Number.isFinite(gv) && gv > 0 ? gv : null;
+        it.kcal = num(".js-k", 0); it.p = num(".js-p", 1); it.f = num(".js-f", 1); it.c = num(".js-c", 1);
+        // 数に手が入ったのなら、それはもう推定ではなくその人の申告です。
+        if (it.estimated && (before.kcal !== it.kcal || before.p !== it.p || before.f !== it.f || before.c !== it.c)) {
+          it.estimated = false;
+          it.from = "user";
+        }
+        hh.close();
+        paint();
+      });
+    }
+
+    /** 一行を食品に当てて、明細に足します。 */
+    function addLine(text) {
+      const parsed = KN.foodData.parseLine(text);
+      if (!parsed || !parsed.name) return false;
+      const food = store.findFood(parsed.name);
+      if (!food) {
+        // 引けなかったものも捨てません。名前だけ入れて、数は本人に任せます。
+        items.push({ name: parsed.name, grams: null, kcal: 0, p: 0, f: 0, c: 0, from: "manual", estimated: false, foodId: null });
+        paint();
+        KN.ui.toast(`「${parsed.name}」は表にありません。数を入れてください`);
+        editItem(items.length - 1);
+        return true;
+      }
+      const per100 = food.per !== "unit";
+      let grams = KN.foodData.gramsOf(food, parsed.qty, parsed.unit);
+      if (grams == null) {
+        grams = KN.foodData.defaultServing(food);
+        KN.ui.toast(`「${parsed.unit}」では数えられないので、${Math.round(grams)}gにしました`);
+      }
+      const nut = per100
+        ? KN.foodData.nutrientsOf(food, grams)
+        // 市販品などで「1個あたり」で登録されているものは、個数ぶん掛けます。
+        : (() => {
+            const q = parsed.qty == null ? 1 : parsed.qty;
+            return { kcal: Math.round(food.kcal * q), p: Math.round(food.p * q * 10) / 10,
+                     f: Math.round(food.f * q * 10) / 10, c: Math.round(food.c * q * 10) / 10 };
+          })();
+      items.push({
+        name: food.name, grams: per100 ? Math.round(grams) : (food.unitGrams || null),
+        kcal: nut.kcal, p: nut.p, f: nut.f, c: nut.c,
+        from: food.kind === "base" ? "base" : food.kind,
+        foodId: food.id, estimated: false,
+      });
+      paint();
+      return true;
+    }
+
+    function commitInput() {
+      const raw = foodEl.value;
+      if (!raw.trim()) return;
+      // 何行かまとめて貼られたら、行ごとに読みます。
+      const lines = raw.split(/[\n,、]/).map((x) => x.trim()).filter(Boolean);
+      lines.forEach(addLine);
+      foodEl.value = "";
+      sugEl.innerHTML = "";
+      foodEl.focus();
+    }
+
+    body.querySelector(".js-add").addEventListener("click", commitInput);
+    foodEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); commitInput(); }
+    });
+
+    /* 打っているそばから候補を出します。名前の部分だけで探すので、
+       「ご飯150」まで打っても候補は消えません。 */
+    foodEl.addEventListener("input", () => {
+      const parsed = KN.foodData.parseLine(foodEl.value);
+      const q = parsed ? parsed.name : "";
+      sugEl.innerHTML = "";
+      if (q.length < 1) return;
+      const mine = store.get().diet.foods
+        .filter((f) => U.foldKana(f.name).includes(U.foldKana(q))).slice(0, 3);
+      const found = mine.concat(KN.foodData.search(q, 8)).slice(0, 8);
+      if (!found.length) return;
+      const row = node(html`<div class="chip-row diet-suggest"></div>`);
+      found.forEach((f) => {
+        const b = node(html`<button type="button" class="chip">${f.name}<span class="chip-count">${Math.round(f.kcal)}</span></button>`);
+        b.addEventListener("click", () => {
+          // 打った量はそのまま活かします——「とりむね200g」の「200g」は、
+          // 候補を押した瞬間に消えていい情報ではありません。
+          const tail = parsed && parsed.qty != null ? `${parsed.qty}${parsed.unit || "g"}` : "";
+          foodEl.value = f.name + tail;
+          commitInput();
+        });
+        row.append(b);
+      });
+      sugEl.append(row);
+    });
+
+    const photo = body.querySelector(".js-photo");
+    if (photo) photo.addEventListener("click", () => pickPhoto((res) => {
+      res.items.forEach((it) => items.push(it));
+      paint();
+      if (res.note) KN.ui.toast(res.note);
+    }));
+
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      const memo = body.querySelector(".js-memo").value.trim();
+      if (!items.length && !memo) { KN.ui.toast("食べたものを入れてください"); return; }
+      const patch = {
+        day: body.querySelector(".js-day").value || U.todayKey(),
+        time: body.querySelector(".js-time").value || null,
+        slot, items, memo,
+      };
+      if (meal) store.updateMeal(meal.id, patch);
+      else store.addMeal(patch);
+      haptic(10);
+      h.close();
+      render();
+      KN.ui.toast(meal ? "直しました" : "記録しました");
+    });
+
+    const del = foot.querySelector(".js-del");
+    if (del) del.addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({ title: "この食事を消す", message: "元に戻せません。", okLabel: "消す", danger: true });
+      if (!ok) return;
+      store.removeMeal(meal.id);
+      h.close();
+      render();
+    });
+
+    paint();
+  }
+
+  /** 写真を選んで、窓口に投げて、推定を受け取る。 */
+  function pickPhoto(onDone) {
+    const input = node(html`<input type="file" accept="image/*" capture="environment" hidden>`);
+    document.body.append(input);
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      input.remove();
+      if (!file) return;
+      const t = KN.ui.toast("写真を見ています…", { duration: 60000 });
+      KN.dietAI.shrink(file)
+        .then((dataUrl) => KN.dietAI.analyzePhoto(dataUrl))
+        .then((res) => {
+          t.dismiss();
+          if (!res.items.length) { KN.ui.toast("何も読み取れませんでした"); return; }
+          onDone(res);
+        })
+        .catch((err) => { t.dismiss(); KN.ui.toast(`うまくいきませんでした：${err.message}`); });
+    });
+    input.click();
+  }
+
+  /* ---------------- 目標を決める ---------------- */
+
+  function openGoalSheet() {
+    const g = store.get().diet.goal;
+    const body = node(html`
+      <div class="stack">
+        <div class="field-row">
+          <label class="field" style="flex:1">
+            <span class="field-label">身長 (cm)</span>
+            <input class="input js-h" inputmode="decimal" placeholder="例：170"
+                   value="${g.heightCm == null ? "" : String(g.heightCm)}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">目標体重 (kg)</span>
+            <input class="input js-tw" inputmode="decimal" placeholder="例：65"
+                   value="${g.targetKg == null ? "" : String(g.targetKg)}">
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">目標日</span>
+          <input type="date" class="input js-td" value="${g.targetDay || ""}">
+        </label>
+
+        <div class="divider"></div>
+        <div class="section-title">一日の目安</div>
+        <div class="field-row">
+          <label class="field" style="flex:1">
+            <span class="field-label">kcal</span>
+            <input class="input js-kcal" inputmode="numeric" value="${g.kcalTarget == null ? "" : String(g.kcalTarget)}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">P (g)</span>
+            <input class="input js-p" inputmode="numeric" value="${g.pTarget == null ? "" : String(g.pTarget)}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">F (g)</span>
+            <input class="input js-f" inputmode="numeric" value="${g.fTarget == null ? "" : String(g.fTarget)}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">C (g)</span>
+            <input class="input js-c" inputmode="numeric" value="${g.cTarget == null ? "" : String(g.cTarget)}">
+          </label>
+        </div>
+        <div class="js-suggest-box"></div>
+      </div>
+    `);
+
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
+    const h = KN.ui.sheet({ title: "目標", content: body, footer: foot });
+
+    renderKcalSuggestion(body.querySelector(".js-suggest-box"), body);
+
+    foot.addEventListener("click", () => {
+      const num = (sel) => {
+        const v = parseFloat(String(body.querySelector(sel).value).replace(/[^\d.]/g, ""));
+        return Number.isFinite(v) && v > 0 ? v : null;
+      };
+      store.setGoal({
+        heightCm: num(".js-h"),
+        targetKg: num(".js-tw"),
+        targetDay: body.querySelector(".js-td").value || null,
+        kcalTarget: num(".js-kcal"),
+        pTarget: num(".js-p"),
+        fTarget: num(".js-f"),
+        cTarget: num(".js-c"),
+      });
+      h.close();
+      render();
+      KN.ui.toast("保存しました");
+    });
+  }
+
+  /**
+   * kcalの目安。年齢も性別も持っていないので、式では出しません——
+   * 代わりに、この人のヘルスケアが実際に記録した消費から出します。
+   * 実測が無ければ、この案内自体を出しません。
+   */
+  function renderKcalSuggestion(host, body) {
+    const today = U.todayKey();
+    const days = D.daysBetween(U.shiftDay(today, -13), today);
+    const burn = days.map((d) => {
+      const a = store.healthValue(d, "activeEnergy");
+      const r = store.healthValue(d, "restingEnergy");
+      return a != null && r != null ? a + r : null;
+    }).filter((v) => v != null);
+    if (burn.length < 3) return;
+
+    const avg = Math.round(burn.reduce((a, b) => a + b, 0) / burn.length);
+    const pace = D.neededPace();
+    // 体脂肪1kgぶんの熱量はおよそ7,200〜7,700kcal。真ん中を採ります。
+    const perKg = 7450;
+    const deficit = pace != null ? Math.round((-pace * perKg) / 7) : null;
+    const suggest = deficit != null ? Math.max(1200, avg - deficit) : null;
+
+    const el = node(html`
+      <div class="diet-suggest-box">
+        <p class="diet-note">直近${burn.length}日の消費は、1日あたり平均 <b>${avg.toLocaleString()}kcal</b> でした
+          （ヘルスケアのアクティブ＋安静時）。
+          ${suggest != null ? html`目標日までのペースから逆算すると、摂取の目安は
+            <b>${Math.round(suggest).toLocaleString()}kcal</b> あたりです。` : ""}
+          あくまで目安で、体調や測り方で動きます。</p>
+        ${suggest != null ? html`<button class="btn btn-soft btn-sm js-use">この目安を入れる</button>` : ""}
+      </div>
+    `);
+    const use = el.querySelector(".js-use");
+    if (use) use.addEventListener("click", () => {
+      const k = Math.round(suggest);
+      body.querySelector(".js-kcal").value = String(k);
+      // PFCは、たんぱく質を体重×1.6g、脂質を熱量の25%、残りを炭水化物に。
+      // 減量中のよくある置き方で、そう決めたことは画面にも書いてあります。
+      const last = store.latestWeight();
+      if (last) {
+        const p = Math.round(last.kg * 1.6);
+        const f = Math.round((k * 0.25) / 9);
+        const c = Math.max(0, Math.round((k - p * 4 - f * 9) / 4));
+        body.querySelector(".js-p").value = String(p);
+        body.querySelector(".js-f").value = String(f);
+        body.querySelector(".js-c").value = String(c);
+        KN.ui.toast("P=体重×1.6g、F=熱量の25%、残りをCにしました");
+      }
+    });
+    host.append(el);
+  }
+
+  /* ---------------- ヘルスケアの取り込み ---------------- */
+
+  const SHORTCUT_SAMPLE = [
+    "くらしノート健康データ v1",
+    "day=2026-08-15",
+    "steps=8432",
+    "distance=6.1km",
+    "activeEnergy=430",
+    "restingEnergy=1520",
+    "sleep=7:12",
+    "weight=68.4",
+    "bodyFat=21.3",
+    "heartRate=62",
+    "workout=ウォーキング,42,210",
+  ].join("\n");
+
+  function openSyncSheet() {
+    const sync = store.get().diet.sync;
+    const body = node(html`
+      <div class="stack">
+        <p class="diet-note">
+          iPhoneのヘルスケアは、Webアプリから直接は読めません。あいだに
+          <b>ショートカット</b>を一つ置いて、その結果をここへ渡します。
+        </p>
+        <div class="rows">
+          <button class="row js-paste">
+            <span class="row-main">
+              <span class="row-title">コピーしたものを取り込む</span>
+              <span class="row-sub">ショートカットがコピーした中身を読みます</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <button class="row js-file">
+            <span class="row-main">
+              <span class="row-title">ファイルから取り込む</span>
+              <span class="row-sub">「ファイルに保存」したテキストやJSON</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <button class="row js-type">
+            <span class="row-main">
+              <span class="row-title">貼り付けて取り込む</span>
+              <span class="row-sub">うまく読めないときの手動</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+        </div>
+        ${sync.lastAt ? html`<p class="diet-note">最後の取り込み：${U.formatStamp(sync.lastAt)}</p>` : ""}
+
+        <div class="divider"></div>
+        <div class="section-title">ショートカットの作り方</div>
+        <ol class="diet-steps">
+          <li>ショートカットアプリで新規作成。</li>
+          <li>「ヘルスサンプルを検索」を置き、種類を<b>歩数</b>、期間を<b>今日</b>、
+            「すべての結果」を<b>合計</b>にします。</li>
+          <li>同じものを、距離・アクティブエネルギー・安静時エネルギー・睡眠・
+            体重・体脂肪率ぶん並べます。</li>
+          <li>最後に「テキスト」を置き、下の形に各結果を差し込みます。</li>
+          <li>「クリップボードにコピー」を足して完成。オートメーションで
+            毎朝走らせれば、あとはこの画面で一度押すだけです。</li>
+        </ol>
+        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
+        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
+        <p class="diet-note">値が取れなかった行は、空のままで大丈夫です（空はそのまま「無かった」として扱います）。
+          JSON形式（<code>{"samples":[…]}</code>）でも読めます。</p>
+      </div>
+    `);
+
+    const h = KN.ui.sheet({ title: "ヘルスケアから取り込む", content: body });
+
+    const done = (res) => {
+      KN.ui.toast(KN.healthSync.describe(res));
+      if (res && res.ok) { h.close(); render(); }
+    };
+
+    body.querySelector(".js-paste").addEventListener("click", () => {
+      KN.healthSync.importFromClipboard().then(done);
+    });
+    body.querySelector(".js-file").addEventListener("click", () => {
+      const input = node(html`<input type="file" accept=".txt,.json,text/plain,application/json" hidden>`);
+      document.body.append(input);
+      input.addEventListener("change", () => {
+        const f = input.files && input.files[0];
+        input.remove();
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => done(KN.healthSync.importText(String(r.result || "")));
+        r.onerror = () => KN.ui.toast("ファイルを読めませんでした");
+        r.readAsText(f);
+      });
+      input.click();
+    });
+    body.querySelector(".js-type").addEventListener("click", () => {
+      const b = node(html`
+        <div class="stack">
+          <textarea class="textarea js-t" rows="8" placeholder="${SHORTCUT_SAMPLE}"></textarea>
+        </div>
+      `);
+      const f = node(html`<button class="btn btn-primary btn-block">取り込む</button>`);
+      const hh = KN.ui.sheet({ title: "貼り付けて取り込む", content: b, footer: f });
+      f.addEventListener("click", () => {
+        const res = KN.healthSync.importText(b.querySelector(".js-t").value);
+        hh.close();
+        done(res);
+      });
+    });
+    body.querySelector(".js-copy").addEventListener("click", () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(SHORTCUT_SAMPLE);
+      KN.ui.toast("コピーしました");
+    });
+  }
+
+  /* ---------------- ＋ ---------------- */
+
+  function dockButton() {
+    const fab = node(html`
+      <div class="quick-add">
+        <button class="add-fab js-open-add" aria-label="食事を記録">${icon("plus")}</button>
+      </div>
+    `);
+    // いちばん多い操作は食事です。体重は日に一度で、画面の一番上にあります。
+    fab.querySelector(".js-open-add").addEventListener("click", () => openMealSheet(null));
+    return fab;
+  }
+
+  KN.screens = KN.screens || {};
+  KN.screens.diet = { mount, render, dockButton,
+    // 設定やテストから開けるように
+    openWeightSheet, openMealSheet, openGoalSheet, openSyncSheet };
+})();
+
 /* ---- js/screen-list.js ---- */
 /* =========================================================
    くらしノート — shopping list screen
@@ -14469,6 +17543,7 @@ button, [role="tab"] {
     els.body.append(themeGroup());
     els.body.append(storesGroup());
     els.body.append(categoriesGroup());
+    els.body.append(dietGroup());
     els.body.append(dataGroup());
     els.body.append(aboutBlock());
   }
@@ -14979,6 +18054,104 @@ button, [role="tab"] {
     sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
   }
 
+  /* ---------------- ダイエット ---------------- */
+
+  function dietGroup() {
+    const d = store.get().diet;
+    const aiOn = KN.dietAI.configured();
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">ダイエット</h2>
+        <div class="rows">
+          <button class="row js-goal">
+            <span class="row-main">
+              <span class="row-title">目標</span>
+              <span class="row-sub">${d.goal.targetKg == null ? "決めていません"
+                : `${d.goal.targetKg}kg${d.goal.targetDay ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <button class="row js-sync">
+            <span class="row-main">
+              <span class="row-title">ヘルスケアから取り込む</span>
+              <span class="row-sub">${d.sync.lastAt ? `最後の取り込み：${KN.util.formatStamp(d.sync.lastAt)}` : "ショートカットで書き出したものを読みます"}</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-ai">
+            <span class="row-main">
+              <span class="row-title">AIの窓口</span>
+              <span class="row-sub">${aiOn ? KN.util.escapeHtml(KN.dietAI.url()) : "未設定（写真の推定とAI相談に使います）"}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+          <button class="row js-diet-clear">
+            <span class="row-main">
+              <span class="row-title" style="color:var(--c-danger)">ダイエットの記録を消す</span>
+              <span class="row-sub">体重 ${d.weights.length}件・食事 ${d.meals.length}件・ヘルスケア ${d.health.length}件</span>
+            </span>
+            <span class="row-chevron">${icon("trash")}</span>
+          </button>
+        </div>
+      </section>
+    `);
+
+    wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet.openGoalSheet());
+    wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet.openSyncSheet());
+    wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
+    wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({
+        title: "ダイエットの記録を消す",
+        message: "体重・食事・ヘルスケアの記録がすべて消えます。買い物リストとやることはそのままです。直前の状態は自動バックアップに残ります。",
+        okLabel: "消す", danger: true,
+      });
+      if (!ok) return;
+      store.clearDiet();
+      render();
+      KN.ui.toast("消しました");
+    });
+    return wrap;
+  }
+
+  /* 鍵ではなくURLを預かります。ここに鍵を書かせないのは方針ではなく事実で、
+     このページの中身は誰でも読めるからです。そのことを画面にも書きます。 */
+  function openAiSheet() {
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">窓口のURL（https://…）</span>
+          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="https://example.workers.dev/kurashi"
+                 value="${KN.dietAI.url()}">
+        </label>
+        <p class="diet-note">
+          APIキーはこのアプリには入れません。ここは静的なページなので、書いた鍵は
+          誰にでも読めてしまいます。鍵は窓口の向こう側（Cloudflare Workers など）に
+          置いてください。このアプリが送るのは、ダイエットの記録だけです——
+          買い物リストとやることは送りません。
+        </p>
+        <p class="diet-note">窓口が受ける形は README の「AIの窓口」に書いてあります。</p>
+      </div>
+    `);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-clear" style="flex:1">外す</button>
+        <button class="btn btn-primary js-save" style="flex:1">保存</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "AIの窓口", content: body, footer: foot });
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      const v = body.querySelector(".js-url").value.trim();
+      if (v && !/^https:\/\//.test(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      KN.dietAI.setUrl(v);
+      h.close(); render();
+      KN.ui.toast(v ? "保存しました" : "外しました");
+    });
+    foot.querySelector(".js-clear").addEventListener("click", () => {
+      KN.dietAI.setUrl(""); h.close(); render(); KN.ui.toast("外しました");
+    });
+  }
+
   function dataGroup() {
     const st = store.get();
     const wrap = node(html`
@@ -15131,12 +18304,13 @@ button, [role="tab"] {
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
-  /* Two buttons. Not four, and not three.
+  /* Three buttons — one per thing this book is about: the day, the shopping,
+     the body.
 
      お店くらべ left the bar a while ago: it is a thing you do a few times while
-     deciding where to go, not a place you live in. 設定 has now gone the same
-     way, for a plainer reason — it is not a place at all. Both open by name
-     from the screens that link to them, and hand back the way they came.
+     deciding where to go, not a place you live in. 設定 went the same way, for
+     a plainer reason — it is not a place at all. Both open by name from the
+     screens that link to them, and hand back the way they came.
 
      買うもの and 価格 kept a button each until they were sitting side by side
      under one hairline, which is a bar admitting they are one thing and drawing
@@ -15150,6 +18324,7 @@ button, [role="tab"] {
       { id: "list",   label: "買うもの", icon: "list" },
       { id: "prices", label: "価格",     icon: "tag" },
     ] },
+    { id: "diet", label: "ダイエット", icon: "scale" },
   ];
 
   /** Which of the shopping pair the shared button is showing. */
@@ -15244,6 +18419,8 @@ button, [role="tab"] {
     paintAppBadge();
 
     paintTabBadge("shop", tripCount());
+    /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
+       体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。 */
     // やること counts what is wanted today or already late. Something due next
     // week is not a number you can act on today, and a tab that counts the
     // whole backlog is a tab you learn to ignore.

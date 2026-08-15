@@ -55,11 +55,191 @@
       todos: [],
       // Corrections the user has made by hand: folded product name → category.
       learned: {},
+      /* ダイエット。買い物ともやることとも混ざらない、体の記録の置き場です。
+         中身をひとつの入れ物にまとめてあるのは、「体重だけ消す」「食事だけ
+         書き出す」がひとまとまりで済むから——そして、この機能を使わない人の
+         保存データに、空の配列が五つも散らばらないためです。 */
+      diet: emptyDiet(),
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
       // looking at, not on one of the two.
       settings: { theme: "auto", showChecked: true, layout: "rows" },
     };
+  }
+
+  /* ---------------- ダイエット ----------------
+
+     入れ物を四つに分けてあります。分けているのは種類ではなく **出どころ** です。
+
+       weights  … 体重・体脂肪。手で書いたものと、ヘルスケアから来たものが
+                  同じ並びに入りますが、source でどちらか分かります。
+       meals    … 食事。人が書くものしかありません。
+       foods    … その人だけの食品（表の値を直したもの、市販商品、AIの推定）。
+       health   … 歩数・睡眠・運動など、機械が測ったもの。
+
+     手で書いたものと機械が測ったものを、ひとつの配列に混ぜて後から
+     見分けようとしないこと。混ぜると、取り込みのたびに「これは前に自分で
+     書いたやつだろうか」を値で当てにいく羽目になり、いつか必ず外します。 */
+  function emptyDiet() {
+    return {
+      weights: [],
+      meals: [],
+      foods: [],
+      health: [],
+      goal: {
+        heightCm: null,
+        targetKg: null,
+        targetDay: null,
+        // 一日の目安。null なら画面は「残り」を出しません——目標が無いのに
+        // 「残り1800kcal」と出すのは、勝手に決めた線を事実のように言うことです。
+        kcalTarget: null, pTarget: null, fTarget: null, cTarget: null,
+      },
+      // 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
+      sync: { lastAt: null, added: 0, updated: 0 },
+    };
+  }
+
+  const HEALTH_TYPES = [
+    "steps", "distance", "activeEnergy", "restingEnergy",
+    "workout", "sleep", "heartRate",
+    /* 体脂肪率は、ふつうは体重の記録に寄り添って weights に入ります。
+       ここにも居場所があるのは、体重を測らずに体脂肪だけ取れた日を
+       捨てないためです。 */
+    "bodyFat",
+  ];
+  /* 一日ぶんで一つに決まるもの。同じ日のぶんが二度来たら、後から来た
+     ほうが正しい——朝7時に取り込んだ歩数より、夜に取り込んだ歩数の
+     ほうが一日を写しています。逆にワークアウトは一日に何度もあるので、
+     こちらは足していきます。 */
+  const DAILY_TYPES = ["steps", "distance", "activeEnergy", "restingEnergy", "sleep", "heartRate", "bodyFat"];
+
+  function num(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+  function posNum(v) { const n = num(v); return n != null && n > 0 ? n : null; }
+  function dayStr(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
+
+  function cleanWeight(w, i) {
+    const kg = posNum(w.kg);
+    if (!kg || kg > 400) return null;
+    return {
+      id: w.id || uid("w"),
+      day: dayStr(w.day) || today(),
+      time: KN.util.isTime(w.time) ? w.time : null,
+      kg: Math.round(kg * 100) / 100,
+      // 体脂肪率。0 は「測れなかった」であって 0% ではないので、null に倒します。
+      fat: (() => { const f = posNum(w.fat); return f != null && f < 80 ? Math.round(f * 10) / 10 : null; })(),
+      memo: typeof w.memo === "string" ? w.memo : "",
+      source: w.source === "health" ? "health" : "manual",
+      externalId: typeof w.externalId === "string" ? w.externalId : null,
+      importedAt: w.importedAt || null,
+      createdAt: w.createdAt || new Date().toISOString(),
+      order: typeof w.order === "number" ? w.order : i,
+    };
+  }
+
+  const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+
+  function cleanMealItem(it) {
+    const name = String(it && it.name || "").trim();
+    if (!name) return null;
+    return {
+      name,
+      grams: posNum(it.grams),
+      kcal: Math.max(0, Math.round(num(it.kcal) || 0)),
+      p: Math.max(0, Math.round((num(it.p) || 0) * 10) / 10),
+      f: Math.max(0, Math.round((num(it.f) || 0) * 10) / 10),
+      c: Math.max(0, Math.round((num(it.c) || 0) * 10) / 10),
+      // どこから来た値か。base=成分表, user=自分で直した, product=市販品,
+      // ai=写真からの推定。数字の重みが違うので、捨てずに持ちます。
+      from: ["base", "user", "product", "ai", "manual"].includes(it.from) ? it.from : "manual",
+      foodId: typeof it.foodId === "string" ? it.foodId : null,
+      // 推定値かどうか。UIで「約」を付けるのはこの旗ひとつで決めます。
+      estimated: it.estimated === true,
+    };
+  }
+
+  function cleanMeal(m, i) {
+    const items = (Array.isArray(m.items) ? m.items : []).map(cleanMealItem).filter(Boolean);
+    if (!items.length && !String(m.memo || "").trim()) return null;
+    return {
+      id: m.id || uid("m"),
+      day: dayStr(m.day) || today(),
+      time: KN.util.isTime(m.time) ? m.time : null,
+      slot: MEAL_SLOTS.includes(m.slot) ? m.slot : "snack",
+      items,
+      memo: typeof m.memo === "string" ? m.memo : "",
+      // 写真そのものは持ちません（localStorage に画像は入りません）。
+      // 解析にかけたかどうかだけを覚えておきます。
+      photoAnalyzed: m.photoAnalyzed === true,
+      createdAt: m.createdAt || new Date().toISOString(),
+      order: typeof m.order === "number" ? m.order : i,
+    };
+  }
+
+  function cleanUserFood(f) {
+    const name = String(f && f.name || "").trim();
+    if (!name) return null;
+    return {
+      id: f.id || uid("uf"),
+      name,
+      kind: ["user", "product", "ai"].includes(f.kind) ? f.kind : "user",
+      kcal: Math.max(0, num(f.kcal) || 0),
+      p: Math.max(0, num(f.p) || 0),
+      f: Math.max(0, num(f.f) || 0),
+      c: Math.max(0, num(f.c) || 0),
+      // 市販品はパッケージの表示が「1個あたり」のことも多いので、
+      // 100g あたりか 1つあたりかを持ちます。
+      per: f.per === "unit" ? "unit" : "100g",
+      unitName: typeof f.unitName === "string" ? f.unitName : "個",
+      unitGrams: posNum(f.unitGrams),
+      barcode: typeof f.barcode === "string" ? f.barcode : null,
+      // 表の値を直したものは、どれを直したのかを覚えておきます。
+      basedOn: typeof f.basedOn === "string" ? f.basedOn : null,
+      createdAt: f.createdAt || new Date().toISOString(),
+    };
+  }
+
+  function cleanHealth(h) {
+    if (!HEALTH_TYPES.includes(h && h.type)) return null;
+    const value = num(h.value);
+    if (value == null) return null;
+    return {
+      id: h.id || uid("h"),
+      type: h.type,
+      day: dayStr(h.day) || today(),
+      time: KN.util.isTime(h.time) ? h.time : null,
+      value,
+      unit: typeof h.unit === "string" ? h.unit : "",
+      // ワークアウトの種目名など、その一件にだけ付く名前。
+      label: typeof h.label === "string" ? h.label : "",
+      /* ワークアウトの消費カロリー。その一本に付いている数なので、ここに
+         持ちます——一日のアクティブエネルギーの列に流し込むと、同じ熱量が
+         二度数えられるか、その日の合計を上書きするかのどちらかになります。 */
+      kcal: (() => { const n = num(h.kcal); return n != null && n >= 0 ? Math.round(n) : null; })(),
+      // 何が測ったのか（Apple Watch、iPhone、手入力）。取り込み元の申告です。
+      source: typeof h.source === "string" ? h.source : "health",
+      // ヘルスケア側の一意な印。重複を弾く唯一まともな手がかりなので、
+      // 来ていれば必ず残します。
+      externalId: typeof h.externalId === "string" ? h.externalId : null,
+      importedAt: h.importedAt || null,
+    };
+  }
+
+  function reconcileDiet(d) {
+    const base = emptyDiet();
+    const src = (d && typeof d === "object") ? d : {};
+    const out = {
+      weights: (Array.isArray(src.weights) ? src.weights : []).map(cleanWeight).filter(Boolean),
+      meals: (Array.isArray(src.meals) ? src.meals : []).map(cleanMeal).filter(Boolean),
+      foods: (Array.isArray(src.foods) ? src.foods : []).map(cleanUserFood).filter(Boolean),
+      health: (Array.isArray(src.health) ? src.health : []).map(cleanHealth).filter(Boolean),
+      goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
+      sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },
+    };
+    out.goal.heightCm = posNum(out.goal.heightCm);
+    out.goal.targetKg = posNum(out.goal.targetKg);
+    out.goal.targetDay = dayStr(out.goal.targetDay);
+    ["kcalTarget", "pTarget", "fTarget", "cTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    return out;
   }
 
   /* ---------------- persistence ---------------- */
@@ -148,6 +328,8 @@
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
+
+    out.diet = reconcileDiet(s.diet);
 
     out.schema = SCHEMA;
     return out;
@@ -952,6 +1134,183 @@
     return rec;
   }
 
+  /* ---------------- ダイエットの出し入れ ---------------- */
+
+  const diet = () => state.diet;
+
+  /* --- 体重 --- */
+
+  function addWeight({ day, time, kg, fat, memo, source, externalId } = {}) {
+    const rec = cleanWeight({
+      day: day || KN.util.todayKey(),
+      time: time || KN.util.nowTime(),
+      kg, fat, memo, source, externalId,
+      importedAt: source === "health" ? new Date().toISOString() : null,
+    }, 0);
+    if (!rec) return null;
+    update((s) => { s.diet.weights.push(rec); });
+    return rec;
+  }
+
+  function updateWeight(id, patch) {
+    update((s) => {
+      const w = s.diet.weights.find((x) => x.id === id);
+      if (!w) return;
+      const next = cleanWeight({ ...w, ...patch }, 0);
+      if (next) Object.assign(w, next, { id: w.id });
+    });
+  }
+
+  function removeWeight(id) {
+    update((s) => { s.diet.weights = s.diet.weights.filter((w) => w.id !== id); });
+  }
+
+  /** 新しい順。同じ日に何度も乗ることがあるので、日だけでなく時刻まで見ます。 */
+  function sortedWeights() {
+    return [...diet().weights].sort((a, b) =>
+      (b.day + " " + (b.time || "00:00")).localeCompare(a.day + " " + (a.time || "00:00")));
+  }
+
+  /** その日の代表値。一日に何度も測った日は、最初の一回を採ります——
+      起き抜けの体重がいちばん条件がそろっているので。 */
+  function weightOfDay(day) {
+    const list = diet().weights.filter((w) => w.day === day)
+      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+    return list.length ? list[0] : null;
+  }
+
+  function latestWeight() {
+    const list = sortedWeights();
+    return list.length ? list[0] : null;
+  }
+
+  /* --- 食事 --- */
+
+  function addMeal({ day, time, slot, items, memo } = {}) {
+    const rec = cleanMeal({
+      day: day || KN.util.todayKey(),
+      time: time || KN.util.nowTime(),
+      slot, items, memo,
+    }, 0);
+    if (!rec) return null;
+    update((s) => { s.diet.meals.push(rec); });
+    return rec;
+  }
+
+  function updateMeal(id, patch) {
+    update((s) => {
+      const m = s.diet.meals.find((x) => x.id === id);
+      if (!m) return;
+      const next = cleanMeal({ ...m, ...patch }, 0);
+      if (next) Object.assign(m, next, { id: m.id });
+    });
+  }
+
+  function removeMeal(id) {
+    update((s) => { s.diet.meals = s.diet.meals.filter((m) => m.id !== id); });
+  }
+
+  function mealsOfDay(day) {
+    const order = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
+    return diet().meals.filter((m) => m.day === day)
+      .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
+  }
+
+  /* --- その人の食品 --- */
+
+  function addUserFood(food) {
+    const rec = cleanUserFood(food);
+    if (!rec) return null;
+    update((s) => { s.diet.foods.push(rec); });
+    return rec;
+  }
+
+  function removeUserFood(id) {
+    update((s) => { s.diet.foods = s.diet.foods.filter((f) => f.id !== id); });
+  }
+
+  /** その人の食品を先に、無ければ成分表から。直した値のほうが本人には正しい。 */
+  function findFood(name) {
+    const key = KN.util.foldKana(String(name || "").trim());
+    if (!key) return null;
+    const mine = diet().foods.find((f) => KN.util.foldKana(f.name) === key);
+    if (mine) return mine;
+    return KN.foodData.lookup(name);
+  }
+
+  /* --- 機械が測ったもの --- */
+
+  /**
+   * ヘルスケアからの一件を入れる。同じものが二度入らないようにするのが
+   * ここの仕事です。見分け方は二段構え——
+   *   1. externalId が来ていれば、それが同じなら同じもの（上書き）
+   *   2. 一日ぶんで一つに決まる種目（歩数など）は、その日のぶんを差し替え
+   * どちらでもなければ新しい一件として足します。
+   * @returns "added" | "updated" | null
+   */
+  function putHealth(sample) {
+    const rec = cleanHealth({ ...sample, importedAt: new Date().toISOString() });
+    if (!rec) return null;
+    let result = "added";
+    update((s) => {
+      const list = s.diet.health;
+      let at = -1;
+      if (rec.externalId) {
+        at = list.findIndex((h) => h.externalId && h.externalId === rec.externalId);
+      }
+      /* 日ごとに一つの種目でも、外の印を持っている一件は差し替えの相手に
+         しません。印があるということは「その一件」を指しているので、
+         その日ぜんぶの代表として上書きしてよいものではありません。 */
+      if (at < 0 && !rec.externalId && DAILY_TYPES.includes(rec.type)) {
+        at = list.findIndex((h) => h.type === rec.type && h.day === rec.day && !h.externalId);
+      }
+      if (at >= 0) {
+        const keepId = list[at].id;
+        list[at] = { ...rec, id: keepId };
+        result = "updated";
+      } else {
+        list.push(rec);
+      }
+    });
+    return result;
+  }
+
+  function removeHealth(id) {
+    update((s) => { s.diet.health = s.diet.health.filter((h) => h.id !== id); });
+  }
+
+  /** その日のその種目。日ごとに一つのものは一件、ワークアウトは全部。 */
+  function healthOfDay(day, type) {
+    return diet().health.filter((h) => h.day === day && (!type || h.type === type));
+  }
+
+  /** その日のその種目の合計。無ければ null——0 と「測っていない」は違います。 */
+  function healthValue(day, type) {
+    const list = healthOfDay(day, type);
+    if (!list.length) return null;
+    if (DAILY_TYPES.includes(type)) {
+      // 日ごとに一つのはずですが、外から入ったものが並んだときは最大を採ります
+      // （一日の途中で取り込んだ半端な歩数が、夜のぶんを消さないように）。
+      return list.reduce((max, h) => Math.max(max, h.value), 0);
+    }
+    return list.reduce((sum, h) => sum + h.value, 0);
+  }
+
+  function setGoal(patch) {
+    update((s) => { s.diet.goal = { ...s.diet.goal, ...patch }; });
+  }
+
+  function markSynced(counts) {
+    update((s) => {
+      s.diet.sync = { lastAt: new Date().toISOString(), added: counts.added || 0, updated: counts.updated || 0 };
+    });
+  }
+
+  /** ダイエットの記録だけを消す。買い物とやることには触れません。 */
+  function clearDiet() {
+    update((s) => { s.diet = emptyDiet(); });
+  }
+
   /* ---------------- import / export ---------------- */
 
   function exportJSON() {
@@ -969,6 +1328,7 @@
       s.products = next.products;
       s.items = next.items;
       s.todos = next.todos;
+      s.diet = next.diet;
       s.settings = next.settings;
     });
   }
@@ -1050,6 +1410,12 @@
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
+    HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
+    addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
+    addMeal, updateMeal, removeMeal, mealsOfDay,
+    addUserFood, removeUserFood, findFood,
+    putHealth, removeHealth, healthOfDay, healthValue,
+    setGoal, markSynced, clearDiet,
     exportJSON, importJSON, reset, loadSample,
   };
 })();

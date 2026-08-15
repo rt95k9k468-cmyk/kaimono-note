@@ -486,6 +486,11 @@ button, [role="tab"] {
   gap: var(--sp-2);
 }
 
+/* An inline icon in a section heading has no box of its own to be sized by —
+   without this it inherits the 24-unit viewBox at font size and fills the
+   card. */
+.section-title svg { width: 16px; height: 16px; flex: none; stroke-width: 2.2; }
+
 /* One line under a section title, for a gesture that has nothing on screen to
    advertise it. */
 .section-hint {
