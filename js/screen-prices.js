@@ -31,13 +31,14 @@
                  the same motion, and the corner of a top bar is the far end
                  of a phone from where the hand is.
 
-                 What is here is the same three, in the same order, as on
-                 リスト: くらべる・並べ方・さがす. */""}
+                 What is here is the same four, in the same order, as on
+                 買うもの — right to left: 設定・並べ方・さがす・くらべる. */""}
             <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
               ${icon("shopCompare")}
             </button>
-            <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
+            <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -69,6 +70,7 @@
       search:  chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       layout:  chrome.querySelector(".js-layout"),
+      settings: chrome.querySelector(".js-settings"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
@@ -77,6 +79,7 @@
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
     els.compare.addEventListener("click", () => KN.showScreen("compare"));
     els.layout.addEventListener("click", KN.ui.toggleLayout);
+    els.settings.addEventListener("click", () => KN.showScreen("settings"));
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

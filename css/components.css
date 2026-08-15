@@ -94,6 +94,11 @@ button, [role="tab"] {
 .btn-block { width: 100%; }
 .btn-sm { height: 40px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
 
+/* The shared chevron points right, so anything meaning 「戻る」 turns it over.
+   The class was being asked for by the back buttons and never existed, which is
+   why お店くらべ has been pointing forwards to go back. */
+.flip-x { transform: scaleX(-1); }
+
 .icon-btn {
   position: relative;   /* anchors the 44px touch box below */
   display: grid;

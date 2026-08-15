@@ -98,8 +98,12 @@
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">やること</h1>
             </div>
-            <button class="icon-btn js-layout"></button>
+            ${/* Right to left: 設定, 並べ方, さがす — the same three, in the
+                  same places, on every screen that has them. 設定 is last on
+                  the right because it is the one that leaves. */""}
             <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
+            <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -121,6 +125,7 @@
 
     els = {
       layout:    chrome.querySelector(".js-layout"),
+      settings:  chrome.querySelector(".js-settings"),
       searchBtn: chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:    chrome.querySelector(".js-search"),
@@ -131,6 +136,7 @@
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
     els.layout.addEventListener("click", KN.ui.toggleLayout);
+    els.settings.addEventListener("click", () => KN.showScreen("settings"));
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
