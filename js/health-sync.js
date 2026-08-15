@@ -198,6 +198,73 @@
     sleep: "分", heartRate: "bpm", workout: "分", weight: "kg", bodyFat: "%",
   };
 
+  const TYPE_LABEL = {
+    steps: "歩数", distance: "歩行距離", activeEnergy: "アクティブエネルギー",
+    restingEnergy: "安静時エネルギー", sleep: "睡眠", heartRate: "心拍数",
+    workout: "ワークアウト", weight: "体重", bodyFat: "体脂肪率",
+  };
+
+  /* 同じ日の同じ種目が何行も来たとき、足すのが正しいもの。
+     ショートカットで「統計を計算」を挟まずに、時間ごとのサンプルを
+     そのまま並べてしまっても、合計になって入ります。 */
+  const ADDITIVE = ["steps", "distance", "activeEnergy", "restingEnergy", "sleep"];
+
+  /**
+   * 一回の取り込みの中で、同じ日の同じ種目をまとめます。
+   * ただし **印（externalId）を持つ一件は、そのまま**——印があるということは
+   * 「その一件」を指しているので、ほかと足してよいものではありません。
+   * ワークアウトも一本ずつ残します（同じ日の朝と夜のランは別の運動です）。
+   * 心拍数は足しても意味がないので、平均を採ります。
+   */
+  function foldSamples(list) {
+    const out = [];
+    const bag = new Map();
+    list.forEach((s) => {
+      const foldable = !s.externalId
+        && (ADDITIVE.includes(s.type) || s.type === "heartRate");
+      if (!foldable) { out.push(s); return; }
+      const key = s.type + "|" + s.day;
+      const cur = bag.get(key);
+      if (!cur) { bag.set(key, { ...s, _n: 1 }); return; }
+      cur.value += s.value;
+      cur._n += 1;
+      if (!cur.time) cur.time = s.time;
+    });
+    bag.forEach((s) => {
+      if (s.type === "heartRate" && s._n > 1) s.value = Math.round(s.value / s._n);
+      delete s._n;
+      out.push(s);
+    });
+    return out;
+  }
+
+  /** 保存せずに「何が読めたか」だけ返す。ショートカットを直すための窓です。 */
+  function preview(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return { ok: false, error: "中身がありません", rows: [] };
+    let parsed = null;
+    if (/^[[{]/.test(raw)) {
+      try { parsed = parseJson(JSON.parse(raw)); } catch (err) { parsed = null; }
+      if (!parsed) return { ok: false, error: "JSONの形が読めません", rows: [] };
+    } else {
+      parsed = parsePlain(raw);
+    }
+    const rows = foldSamples(parsed.samples).map((s) => ({
+      type: s.type,
+      label: TYPE_LABEL[s.type] || s.type,
+      day: s.day,
+      value: s.type === "sleep" || s.type === "workout"
+        ? `${Math.floor(s.value / 60)}時間${String(Math.round(s.value % 60)).padStart(2, "0")}分`
+        : `${s.value.toLocaleString()}${UNITS[s.type] || ""}`,
+      extra: s.type === "workout"
+        ? (s.label || "") + (s.kcal != null ? ` ・ ${s.kcal}kcal` : "") : "",
+    }));
+    if (!rows.length) {
+      return { ok: false, error: "読めるものがありませんでした", rows: [], unknown: parsed.unknown || 0 };
+    }
+    return { ok: true, rows, unknown: parsed.unknown || 0 };
+  }
+
   /**
    * @returns {{ok:boolean, error?:string, added:number, updated:number,
    *            skipped:number, days:string[], byType:Object}}
@@ -217,6 +284,7 @@
     if (!parsed.samples.length) {
       return { ok: false, error: "取り込めるデータが見つかりません", added: 0, updated: 0, skipped: parsed.unknown || 0 };
     }
+    parsed = { ...parsed, samples: foldSamples(parsed.samples) };
 
     let added = 0, updated = 0, skipped = 0;
     const days = new Set();
@@ -320,7 +388,10 @@
       return Promise.resolve({ ok: false, error: "この端末ではクリップボードを読めません", added: 0, updated: 0, skipped: 0 });
     }
     return navigator.clipboard.readText()
-      .then((t) => importText(t))
+      /* 読めなかったときは、読んだ中身も返します。画面がそれを出せれば、
+         「取り込めませんでした」の一言で終わらずに、どの行が悪いのかを
+         その場で見られます。 */
+      .then((t) => ({ ...importText(t), text: t }))
       .catch(() => ({ ok: false, error: "クリップボードを読ませてもらえませんでした", added: 0, updated: 0, skipped: 0 }));
   }
 
@@ -359,7 +430,7 @@
   }
 
   KN.healthSync = {
-    importText, importFromClipboard, importFromHash, describe,
-    parsePlain, parseJson, toMinutes, toKm, UNITS,
+    importText, importFromClipboard, importFromHash, describe, preview,
+    parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
   };
 })();
