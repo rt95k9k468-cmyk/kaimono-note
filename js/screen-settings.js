@@ -17,8 +17,15 @@
 
     const chrome = node(html`
       <div class="stack">
+        ${/* No tab of its own any more. 設定 is not a place you live in — it
+              is a drawer you open, change one thing in, and shut. It opens
+              from the gear at the right-hand end of every screen's top bar and
+              carries its own way back to whichever asked for it. */""}
         <header class="topbar">
           <div class="topbar-row">
+            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
+              ${icon("chevron", "flip-x")}
+            </button>
             <h1 class="topbar-title">設定</h1>
           </div>
         </header>
@@ -28,6 +35,7 @@
 
     root.append(chrome);
     els = { body: chrome.querySelector(".js-body"), topbar: chrome.querySelector(".topbar") };
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

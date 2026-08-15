@@ -401,13 +401,11 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  /* Three equal columns, not four equal tabs. The bar is not four of the same
-     thing: やること is one place, 設定 is another, and 買うもの and 価格 are
-     two views of a third — so the pair shares one third between them instead
-     of taking half the bar. The splits are hairlines and cost only their own
-     width. */
+  /* Two equal halves. The bar is two places: what to do, and shopping — and
+     shopping's two faces share one button rather than taking one each. The
+     split is a hairline and costs only its own width. */
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
@@ -428,18 +426,23 @@ a { color: var(--c-primary); }
   background: var(--c-border);
 }
 
-/* One third each. Inside the middle one the pair sits shoulder to shoulder:
-   nothing between them, and a margin on the outside, so the gap that separates
-   買うもの from 価格 is visibly smaller than the gap to anything else. That
-   spacing is the whole statement — no wash behind them, which read as a
-   selection more than as a grouping. */
-.tab-group {
+/* The shopping button names both of its faces. The one you are looking at is
+   lit and the other is dim — which is at the same time a label for what
+   pressing it again does, so the second screen is not something you have to be
+   told about. */
+.tab-label {
   display: flex;
-  align-items: stretch;
-  justify-content: center;
-  min-width: 0;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
 }
-.tab-group-shop { padding: 0 var(--sp-2); }
+.tab-face { transition: color .18s var(--ease), opacity .18s var(--ease); }
+.tab-face:not(.is-on) {
+  color: var(--c-text-3);
+  opacity: .8;
+  font-weight: 500;
+}
+.tab[aria-selected="true"] .tab-face.is-on { color: var(--c-primary); }
 
 /* Nobody switches tabs mid-word, and the room is better spent on the list
    while the keyboard has the bottom half of the screen. */

@@ -38,8 +38,9 @@
             <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
               ${icon("shopCompare")}
             </button>
-            <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
+            <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -67,6 +68,7 @@
     els = {
       sub:        chrome.querySelector(".js-sub"),
       layout:     chrome.querySelector(".js-layout"),
+      settings:   chrome.querySelector(".js-settings"),
       compare:    chrome.querySelector(".js-compare"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -80,6 +82,7 @@
     };
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
+    els.settings.addEventListener("click", () => KN.showScreen("settings"));
     els.compare.addEventListener("click", () => KN.showScreen("compare"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 

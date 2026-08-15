@@ -8,24 +8,31 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
-  /* お店くらべ is not among these. It is a thing you do a few times while
-     deciding where to go, not a place you live in — it opens from the shop
-     button on 買うもの and 価格 instead. やること took the freed place, at the
-     left, because it is the screen you open first when the question is 「今日
-     なにをするんだっけ」 rather than 「何を買うんだっけ」.
+  /* Two buttons. Not four, and not three.
 
-     Three groups, not four buttons in a row. 買うもの and 価格 are two views of
-     the same shopping — the same products, the same archive, the same tiles —
-     while やること is a different kind of thing that happens to live in the
-     same app, and 設定 is not a place at all. The bar says so with a hairline
-     between the groups and by tinting the shopping pair, so the eye finds
-     「買い物のほう」 without reading either word. */
+     お店くらべ left the bar a while ago: it is a thing you do a few times while
+     deciding where to go, not a place you live in. 設定 has now gone the same
+     way, for a plainer reason — it is not a place at all. Both open by name
+     from the screens that link to them, and hand back the way they came.
+
+     買うもの and 価格 kept a button each until they were sitting side by side
+     under one hairline, which is a bar admitting they are one thing and drawing
+     them as two. They *are* one thing: the same products, the same archive,
+     the same tiles, read once as a list to carry round a shop and once as a
+     table of prices. So they share a button, and pressing it while you are
+     already there turns it over. */
   const TABS = [
-    { id: "todo",     label: "やること", icon: "checklist", group: "todo" },
-    { id: "list",     label: "買うもの", icon: "list",      group: "shop" },
-    { id: "prices",   label: "価格",     icon: "tag",       group: "shop" },
-    { id: "settings", label: "設定",     icon: "gear",      group: "app" },
+    { id: "todo", label: "やること", icon: "checklist" },
+    { id: "shop", label: "買い物", faces: [
+      { id: "list",   label: "買うもの", icon: "list" },
+      { id: "prices", label: "価格",     icon: "tag" },
+    ] },
   ];
+
+  /** Which of the shopping pair the shared button is showing. */
+  let shopFace = "list";
+  const facesOf = (t) => t.faces || [t];
+  const tabOwning = (id) => TABS.find((t) => facesOf(t).some((f) => f.id === id));
 
   /* The app opens on やること. The question on picking the phone up is 「今日
      なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
@@ -47,46 +54,64 @@
 
   /* ---------------- tabs ---------------- */
 
-  /* Built as three groups rather than four buttons, because that is what the
-     bar means: one thing on the left, one thing on the right, and two views of
-     the same shopping in the middle. Each group gets a third of the bar and
-     the pair inside the middle third sits shoulder to shoulder — the gap
-     between 買うもの and 価格 is smaller than the gap to anything else, which
-     is the whole statement, and it is made by spacing rather than by a tint
-     behind them. */
+  /* Half the bar each. The shopping button wears whichever of its two faces is
+     on screen, and names both so the second one is not a secret: the face you
+     are looking at is bright and the other is dim, which is also the label for
+     what pressing it again will do. */
   function buildTabs() {
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
 
-    const groups = [];
-    TABS.forEach((t) => {
-      const last = groups[groups.length - 1];
-      if (last && last.id === t.group) last.tabs.push(t);
-      else groups.push({ id: t.group, tabs: [t] });
-    });
-
-    groups.forEach((g, i) => {
+    TABS.forEach((t, i) => {
       if (i) bar.append(node(html`<span class="tab-split"></span>`));
-      const box = node(html`<div class="tab-group tab-group-${g.id}"></div>`);
-      g.tabs.forEach((t) => {
-        const btn = node(html`
-          <button class="tab tab-${t.group}" role="tab" data-tab="${t.id}"
-                  aria-selected="${String(t.id === active)}"
-                  aria-controls="screen-${t.id}">
-            <span class="tab-ico">${icon(t.icon)}</span>
-            <span class="tab-label">${t.label}</span>
-          </button>
-        `);
-        btn.addEventListener("click", () => show(t.id));
-        box.append(btn);
-      });
-      bar.append(box);
+      const btn = node(html`
+        <button class="tab tab-${t.id}" role="tab" data-tab="${t.id}"
+                aria-controls="screen-${facesOf(t)[0].id}">
+          <span class="tab-ico"></span>
+          <span class="tab-label"></span>
+        </button>
+      `);
+      btn.addEventListener("click", () => pressTab(t));
+      bar.append(btn);
     });
+    paintTabs();
+  }
+
+  /* Pressing the button you are already on turns it over — but only where
+     there are two sides. On やること it does nothing, which is what a tab bar
+     has always done. */
+  function pressTab(t) {
+    const faces = facesOf(t);
+    if (faces.length > 1 && faces.some((f) => f.id === active)) {
+      const next = faces[(faces.findIndex((f) => f.id === active) + 1) % faces.length];
+      shopFace = next.id;
+      show(next.id);
+      return;
+    }
+    show(faces.length > 1 ? shopFace : faces[0].id);
   }
 
   function paintTabs() {
-    document.querySelectorAll(".tab").forEach((b) => {
-      b.setAttribute("aria-selected", String(b.dataset.tab === active));
+    TABS.forEach((t) => {
+      const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
+      if (!btn) return;
+      const faces = facesOf(t);
+      const here = faces.some((f) => f.id === active);
+      const face = faces.find((f) => f.id === (here ? active : shopFace)) || faces[0];
+
+      btn.setAttribute("aria-selected", String(here));
+      btn.setAttribute("aria-controls", "screen-" + face.id);
+      const ico = btn.querySelector(".tab-ico");
+      if (ico.dataset.face !== face.id) {
+        ico.dataset.face = face.id;
+        ico.replaceChildren(node(html`<span>${icon(face.icon)}</span>`).firstChild);
+      }
+
+      const label = btn.querySelector(".tab-label");
+      const want = faces.length > 1
+        ? faces.map((f) => `<span class="tab-face ${f.id === face.id ? "is-on" : ""}">${f.label}</span>`).join("")
+        : t.label;
+      if (label.dataset.sig !== want) { label.dataset.sig = want; label.innerHTML = want; }
     });
 
     // The badge counts what is left to buy on this trip, and the star is what
@@ -95,7 +120,7 @@
     // user never said they were buying.
     paintAppBadge();
 
-    paintTabBadge("list", tripCount());
+    paintTabBadge("shop", tripCount());
     // やること counts what is wanted today or already late. Something due next
     // week is not a number you can act on today, and a tab that counts the
     // whole backlog is a tab you learn to ignore.
@@ -222,7 +247,8 @@
 
   function show(id) {
     if (!KN.screens[id]) return;
-    if (id === "compare" && active !== "compare") cameFrom = active;
+    if ((id === "compare" || id === "settings") && active !== id) cameFrom = active;
+    if (id === "list" || id === "prices") shopFace = id;
     active = id;
 
     document.querySelectorAll(".screen").forEach((s) => {
@@ -656,7 +682,8 @@
   /* Screens off the tab bar — お店くらべ — are opened by name from the screens
      that link to them, and hand the way back with them. */
   KN.showScreen = show;
-  KN.backScreen = () => show(cameFrom === "compare" ? "list" : cameFrom);
+  const OFF_BAR = ["compare", "settings"];
+  KN.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {
