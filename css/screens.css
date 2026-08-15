@@ -1675,7 +1675,14 @@
 
 /* ---- 取り込みの説明 ---- */
 
-.diet-steps { margin: 0; padding-left: 1.3em; font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.8; }
+/* base.css は ol の印を消しています（アプリの中の箇条書きは、たいてい
+   自前の行だから）。ここは手順そのものなので、番号を返します。 */
+.diet-steps {
+  margin: 0; padding-left: 1.6em; list-style: decimal;
+  font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.8;
+}
+.diet-steps li { margin-bottom: 2px; }
+.diet-steps li::marker { color: var(--c-text-3); font-weight: 700; }
 .diet-steps b { color: var(--c-text); }
 .diet-code {
   margin: 0; padding: var(--sp-3); background: var(--c-surface-2);
@@ -1688,3 +1695,32 @@
 /* 横にならぶ入力欄。iPhoneの幅でも折り返して収まるように。 */
 .field-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .field-row > .field { min-width: 96px; }
+
+/* ---- 取り込みの、読めたもの一覧 ---- */
+
+.diet-read {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
+}
+.diet-read-row { display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm); }
+.diet-read-name { color: var(--c-text-2); width: 8.5em; flex: none; }
+.diet-read-row b { color: var(--c-text); }
+.diet-read-day { font-size: var(--fs-xs); color: var(--c-text-3); margin-left: auto; text-align: right; }
+
+.diet-keys { display: flex; flex-direction: column; gap: 3px; }
+/* 表なので、行ごとに折り返しても柱はそろっていてほしい。flexだと長い名前が
+   右の例を押し出すので、grid で三本の柱にします。 */
+.diet-key {
+  display: grid; grid-template-columns: 7.8em minmax(0, 1fr) auto;
+  align-items: baseline; gap: var(--sp-2); font-size: var(--fs-xs);
+}
+.diet-key code { justify-self: start; }
+.diet-key-name { color: var(--c-text-2); }
+.diet-key-ex { color: var(--c-text-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 説明のなかの短いコード。地の文に混ざっても読めるだけの下地を敷きます。 */
+.diet-note code, .diet-steps code, .diet-key code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .92em; padding: 1px 5px; border-radius: 5px;
+  background: var(--c-surface-3); color: var(--c-text);
+}

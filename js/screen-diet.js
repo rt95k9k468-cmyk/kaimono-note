@@ -1018,11 +1018,21 @@
     host.append(el);
   }
 
-  /* ---------------- ヘルスケアの取り込み ---------------- */
+  /* ---------------- ヘルスケアの取り込み ----------------
+
+     ここは説明の画面でもあります。iPhoneのヘルスケアはWebアプリからは
+     読めないので、あいだにショートカットを一つ挟むことになる——その
+     「なぜ」と「どうやって」を、外のどこかではなくここに置きます。
+
+     並べる順は、作る順です。まず手で一行打って動くのを見て、それから
+     その一行を機械に書かせる。16個のアクションを先に並べてから動かない
+     理由を探すのは、いちばん心の折れる順番なので。 */
+
+  const SAMPLE_MIN = ["day=" + U.todayKey(), "steps=8432", "sleep=7:12"].join("\n");
 
   const SHORTCUT_SAMPLE = [
     "くらしノート健康データ v1",
-    "day=2026-08-15",
+    "day=" + U.todayKey(),
     "steps=8432",
     "distance=6.1km",
     "activeEnergy=430",
@@ -1034,14 +1044,71 @@
     "workout=ウォーキング,42,210",
   ].join("\n");
 
+  const KEY_HELP = [
+    ["steps", "歩数", "8432"],
+    ["distance", "歩行距離", "6.1km / 6100m"],
+    ["activeEnergy", "アクティブエネルギー", "430"],
+    ["restingEnergy", "安静時エネルギー", "1520"],
+    ["sleep", "睡眠", "7:12 / 432 / 7時間12分"],
+    ["weight", "体重", "68.4"],
+    ["bodyFat", "体脂肪率", "21.3"],
+    ["heartRate", "心拍数", "62"],
+    ["workout", "ワークアウト", "ウォーキング,42,210"],
+    ["day", "どの日のぶんか", U.todayKey()],
+  ];
+
   function openSyncSheet() {
     const sync = store.get().diet.sync;
     const body = node(html`
       <div class="stack">
         <p class="diet-note">
-          iPhoneのヘルスケアは、Webアプリから直接は読めません。あいだに
-          <b>ショートカット</b>を一つ置いて、その結果をここへ渡します。
+          iPhoneのヘルスケアは、Webアプリから直接は読めません（Safariにその窓口が
+          無いためで、設定の問題ではありません）。かわりに<b>ショートカット</b>に
+          読み出させて、その結果をここへ渡します。
         </p>
+
+        <div class="divider"></div>
+        <div class="section-title">① まず、手で試す</div>
+        <p class="diet-note">
+          ショートカットを作る前に、<b>入る形</b>を先に見ておくのがいちばん近道です。
+          下の欄に打つと、読めたものがその場に出ます。
+        </p>
+        <textarea class="textarea js-t" rows="4" spellcheck="false"
+                  autocapitalize="off" autocorrect="off">${SAMPLE_MIN}</textarea>
+        <div class="js-preview"></div>
+        <button class="btn btn-primary btn-block js-take">これを取り込む</button>
+
+        <div class="divider"></div>
+        <div class="section-title">② 毎日を楽にする（ショートカット）</div>
+        <p class="diet-note">
+          ①と同じ文字を、ショートカットに書かせます。<b>まず「歩数」だけで作って、
+          動いたら残りを足す</b>——先に全部並べると、動かないときにどこが悪いのか
+          分からなくなります。
+        </p>
+        <ol class="diet-steps">
+          <li>「ショートカット」アプリ →「＋」で新規作成</li>
+          <li><b>「ヘルスサンプルを検索」</b>を追加。
+            <b>種類</b>を「歩数」、<b>フィルタ</b>を「開始日」が「今日」に</li>
+          <li><b>「統計を計算」</b>を追加。<b>合計</b>を選び、対象は上の結果</li>
+          <li><b>「テキスト」</b>を追加して、こう打つ：<br>
+            <code>steps=</code> と打ち、その右に一つ前の結果の変数を差し込む</li>
+          <li><b>「クリップボードにコピー」</b>を追加</li>
+          <li>実行 → このアプリに戻って、下の<b>「コピーしたものを取り込む」</b></li>
+        </ol>
+        <p class="diet-note">
+          動いたら、2〜4をもう一度ずつ足していけば種類が増えます。「テキスト」は
+          <b>一つにまとめて</b>、行ごとに <code>distance=</code> <code>sleep=</code> …と
+          並べてください。全部そろうとこうなります。
+        </p>
+        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
+        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
+        <p class="diet-note">
+          最後に<b>オートメーション</b>（毎朝7時など）に登録しておけば、あとは
+          このアプリで一度押すだけになります。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">取り込む</div>
         <div class="rows">
           <button class="row js-paste">
             <span class="row-main">
@@ -1057,32 +1124,24 @@
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
-          <button class="row js-type">
-            <span class="row-main">
-              <span class="row-title">貼り付けて取り込む</span>
-              <span class="row-sub">うまく読めないときの手動</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
         </div>
         ${sync.lastAt ? html`<p class="diet-note">最後の取り込み：${U.formatStamp(sync.lastAt)}</p>` : ""}
 
         <div class="divider"></div>
-        <div class="section-title">ショートカットの作り方</div>
-        <ol class="diet-steps">
-          <li>ショートカットアプリで新規作成。</li>
-          <li>「ヘルスサンプルを検索」を置き、種類を<b>歩数</b>、期間を<b>今日</b>、
-            「すべての結果」を<b>合計</b>にします。</li>
-          <li>同じものを、距離・アクティブエネルギー・安静時エネルギー・睡眠・
-            体重・体脂肪率ぶん並べます。</li>
-          <li>最後に「テキスト」を置き、下の形に各結果を差し込みます。</li>
-          <li>「クリップボードにコピー」を足して完成。オートメーションで
-            毎朝走らせれば、あとはこの画面で一度押すだけです。</li>
-        </ol>
-        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
-        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
-        <p class="diet-note">値が取れなかった行は、空のままで大丈夫です（空はそのまま「無かった」として扱います）。
-          JSON形式（<code>{"samples":[…]}</code>）でも読めます。</p>
+        <div class="section-title">書ける言葉</div>
+        <div class="diet-keys">
+          ${KN.util.raw(KEY_HELP.map(([k, name, ex]) => `
+            <div class="diet-key">
+              <code>${k}</code>
+              <span class="diet-key-name">${name}</span>
+              <span class="diet-key-ex">${KN.util.escapeHtml(ex)}</span>
+            </div>`).join(""))}
+        </div>
+        <p class="diet-note">
+          値が取れなかった行は<b>空のままで大丈夫</b>です（空は「無かった」として扱い、
+          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数や距離のように
+          足せるものは<b>合計</b>されます。JSON形式でも読めます。
+        </p>
       </div>
     `);
 
@@ -1093,8 +1152,43 @@
       if (res && res.ok) { h.close(); render(); }
     };
 
+    /* ① 打つそばから「何が読めたか」を出します。ショートカットを直すのは
+       だいたいここで、返ってくるのが「取り込めませんでした」の一言だけだと、
+       どの行が悪いのか永久に分かりません。 */
+    const ta = body.querySelector(".js-t");
+    const pv = body.querySelector(".js-preview");
+    function paintPreview() {
+      const res = KN.healthSync.preview(ta.value);
+      pv.innerHTML = "";
+      if (!res.ok) {
+        pv.append(node(html`<p class="diet-note is-warn">${res.error}</p>`));
+        return;
+      }
+      pv.append(node(html`
+        <div class="diet-read">
+          ${KN.util.raw(res.rows.map((r) => `
+            <div class="diet-read-row">
+              <span class="diet-read-name">${r.label}</span>
+              <b class="mono-num">${KN.util.escapeHtml(r.value)}</b>
+              <span class="diet-read-day">${KN.util.escapeHtml(U.formatDay(r.day))}
+                ${r.extra ? "・" + KN.util.escapeHtml(r.extra) : ""}</span>
+            </div>`).join(""))}
+          ${res.unknown ? `<p class="diet-note">読めなかった行が ${res.unknown} 行あります。</p>` : ""}
+        </div>
+      `));
+    }
+    ta.addEventListener("input", paintPreview);
+    paintPreview();
+
+    body.querySelector(".js-take").addEventListener("click", () => {
+      done(KN.healthSync.importText(ta.value));
+    });
     body.querySelector(".js-paste").addEventListener("click", () => {
-      KN.healthSync.importFromClipboard().then(done);
+      KN.healthSync.importFromClipboard().then((res) => {
+        // 読めなかったときは、中身を①の欄に落として見えるようにします。
+        if (!res.ok && res.text) { ta.value = res.text; paintPreview(); }
+        done(res);
+      });
     });
     body.querySelector(".js-file").addEventListener("click", () => {
       const input = node(html`<input type="file" accept=".txt,.json,text/plain,application/json" hidden>`);
@@ -1104,25 +1198,16 @@
         input.remove();
         if (!f) return;
         const r = new FileReader();
-        r.onload = () => done(KN.healthSync.importText(String(r.result || "")));
+        r.onload = () => {
+          const text = String(r.result || "");
+          const res = KN.healthSync.importText(text);
+          if (!res.ok) { ta.value = text.slice(0, 4000); paintPreview(); }
+          done(res);
+        };
         r.onerror = () => KN.ui.toast("ファイルを読めませんでした");
         r.readAsText(f);
       });
       input.click();
-    });
-    body.querySelector(".js-type").addEventListener("click", () => {
-      const b = node(html`
-        <div class="stack">
-          <textarea class="textarea js-t" rows="8" placeholder="${SHORTCUT_SAMPLE}"></textarea>
-        </div>
-      `);
-      const f = node(html`<button class="btn btn-primary btn-block">取り込む</button>`);
-      const hh = KN.ui.sheet({ title: "貼り付けて取り込む", content: b, footer: f });
-      f.addEventListener("click", () => {
-        const res = KN.healthSync.importText(b.querySelector(".js-t").value);
-        hh.close();
-        done(res);
-      });
     });
     body.querySelector(".js-copy").addEventListener("click", () => {
       if (navigator.clipboard) navigator.clipboard.writeText(SHORTCUT_SAMPLE);
