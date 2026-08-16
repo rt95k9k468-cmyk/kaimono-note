@@ -266,26 +266,52 @@
 
   /* ---------------- からだ ---------------- */
 
+  /* 数の並びは、見るためだけのものにしません。取り込んだ値を直せず消せず、
+     今日より前の日にも触れないと、一度入った間違いがそのまま残ります。
+     どの枠を押しても、その日の記録の画面が開きます。 */
+  const BODY_ROWS = [
+    { type: "steps",         label: "歩数",       unit: "歩",   hint: "8432" },
+    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1" },
+    { type: "activeEnergy",  label: "アクティブ", unit: "kcal", hint: "430" },
+    { type: "restingEnergy", label: "安静時",     unit: "kcal", hint: "1520" },
+    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12" },
+    { type: "heartRate",     label: "心拍数",     unit: "bpm",  hint: "62" },
+  ];
+
+  const showValue = (type, v) => {
+    if (v == null) return "—";
+    if (type === "sleep") return hhmm(v);
+    if (type === "distance") return v.toFixed(1);
+    return n0(v);
+  };
+
+  /** その日のその種目が手で書かれたものか。 */
+  const isManual = (day, type) =>
+    store.healthOfDay(day, type).some((h) => h.source === "manual");
+
   function renderBodyStats(host, card) {
     const sync = store.get().diet.sync;
-    const rows = [
-      { icon: "steps", label: "歩数",   value: n0(card.steps), unit: "歩" },
-      { icon: "steps", label: "歩行距離", value: card.distance == null ? "—" : card.distance.toFixed(1), unit: "km" },
-      { icon: "flame", label: "アクティブ", value: n0(card.activeEnergy), unit: "kcal" },
-      { icon: "moon",  label: "睡眠",   value: hhmm(card.sleep), unit: "" },
-    ];
-    const nothing = rows.every((r) => r.value === "—");
+    /* カードに出す四つ。安静時エネルギーは記録の画面にはありますが、ここには
+       出しません——毎日ほとんど同じ数で、見て何かが変わるものではないので。
+       そのぶんを睡眠に譲ります。 */
+    const CARD = ["steps", "distance", "activeEnergy", "sleep"];
+    const rows = CARD.map((t) => BODY_ROWS.find((r) => r.type === t)).map((r) => ({
+      ...r,
+      value: showValue(r.type, card[r.type]),
+      manual: isManual(card.day, r.type),
+    }));
+    const nothing = rows.every((r) => r.value === "—") && !card.workouts.length;
 
     const sec = node(html`
       <section class="card section">
         <div class="section-title">${icon("heart")}今日のからだ</div>
         <div class="diet-grid">
           ${KN.util.raw(rows.map((r) => `
-            <div class="diet-cell">
-              <span class="diet-cell-label">${r.label}</span>
+            <button class="diet-cell js-cell" data-type="${r.type}">
+              <span class="diet-cell-label">${r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
               <b class="diet-cell-value mono-num">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
-            </div>`).join(""))}
+            </button>`).join(""))}
         </div>
         ${card.workouts.length ? html`
           <div class="diet-workouts">
@@ -298,13 +324,173 @@
             ${icon("download")}ヘルスケアから取り込む
           </button>
           <p class="diet-note">歩数や睡眠は、iPhoneの「ショートカット」で書き出したものを読み込みます。
-            やり方は取り込み画面に書いてあります。</p>` : html`
-          <p class="diet-note">${sync.lastAt ? `最後の取り込み：${U.formatStamp(sync.lastAt)}` : ""}</p>`}
+            やり方は取り込み画面に書いてあります。枠を押せば手で書くこともできます。</p>` : html`
+          <div class="diet-foot">
+            <button class="btn btn-ghost btn-sm js-log">${icon("edit")}記録を見る・直す</button>
+            <span class="diet-note">${sync.lastAt ? `最後の取り込み：${U.formatStamp(sync.lastAt)}` : ""}</span>
+          </div>`}
       </section>
     `);
     const btn = sec.querySelector(".js-import");
     if (btn) btn.addEventListener("click", openSyncSheet);
+    const log = sec.querySelector(".js-log");
+    if (log) log.addEventListener("click", () => openBodySheet(card.day));
+    sec.querySelectorAll(".js-cell").forEach((c) => {
+      c.addEventListener("click", () => openBodySheet(card.day, c.dataset.type));
+    });
     host.append(sec);
+  }
+
+  /* ---------------- からだの記録を直す ----------------
+
+     一枚で、見る・直す・消す・別の日へ移る、を全部やります。別々の画面に
+     割ると「昨日の歩数を直したい」がどこにあるのか分からなくなるので。 */
+  function openBodySheet(day0, focusType) {
+    let day = day0 || U.todayKey();
+
+    const body = node(html`<div class="stack"><div class="js-inner"></div></div>`);
+    const h = KN.ui.sheet({ title: "からだの記録", content: body });
+
+    function paint() {
+      const inner = body.querySelector(".js-inner");
+      inner.innerHTML = "";
+      const workouts = store.healthOfDay(day, "workout");
+      const isToday = day === U.todayKey();
+
+      const el = node(html`
+        <div class="stack">
+          <div class="diet-daynav">
+            <button class="icon-btn js-prev" aria-label="前の日">${icon("chevron", "flip-x")}</button>
+            <b>${U.formatDay(day)}</b>
+            <button class="icon-btn js-next" aria-label="次の日" ${isToday ? "disabled" : ""}>${icon("chevron")}</button>
+            ${isToday ? "" : html`<button class="btn btn-soft btn-sm js-today">今日へ</button>`}
+          </div>
+
+          <div class="diet-edit">
+            ${KN.util.raw(BODY_ROWS.map((r) => {
+              const v = store.healthValue(day, r.type);
+              const mine = isManual(day, r.type);
+              const rec = store.healthOfDay(day, r.type)[0];
+              const shown = v == null ? ""
+                : r.type === "sleep" ? `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, "0")}`
+                : String(v);
+              return `
+                <label class="diet-edit-row">
+                  <span class="diet-edit-name">${r.label}</span>
+                  <input class="input js-v" data-type="${r.type}" inputmode="${r.type === "sleep" ? "text" : "decimal"}"
+                         value="${shown}" placeholder="${r.hint}">
+                  <span class="diet-edit-unit">${r.unit}</span>
+                  <span class="diet-edit-src">${v == null ? ""
+                    : mine ? "手入力"
+                    : rec && rec.importedAt ? "ヘルスケア" : "ヘルスケア"}</span>
+                </label>`;
+            }).join(""))}
+          </div>
+          <p class="diet-note">
+            欄を<b>空にして保存すると、その値は消えます</b>。消せば、次の取り込みで
+            またヘルスケアの値が入ります。<br>
+            手で書いた値には「手入力」と付き、<b>取り込みでは上書きされません</b>。
+          </p>
+
+          <div class="section-title">ワークアウト</div>
+          ${workouts.length ? html`
+            <div class="rows">
+              ${KN.util.raw(workouts.map((w) => `
+                <div class="row">
+                  <span class="row-main">
+                    <span class="row-title">${KN.util.escapeHtml(w.label || "ワークアウト")}</span>
+                    <span class="row-sub">${Math.round(w.value)}分${w.kcal != null ? ` ・ ${Math.round(w.kcal)}kcal` : ""}${w.time ? ` ・ ${w.time}` : ""}</span>
+                  </span>
+                  <button class="icon-btn js-wdel" data-id="${w.id}" aria-label="消す">${icon("trash")}</button>
+                </div>`).join(""))}
+            </div>` : html`<p class="diet-note">この日のワークアウトはありません。</p>`}
+          <button class="btn btn-soft btn-sm js-wadd">${icon("plus")}ワークアウトを足す</button>
+
+          <button class="btn btn-primary btn-block js-save">保存</button>
+        </div>
+      `);
+      inner.append(el);
+
+      el.querySelector(".js-prev").addEventListener("click", () => { day = U.shiftDay(day, -1); paint(); });
+      const next = el.querySelector(".js-next");
+      if (!isToday) next.addEventListener("click", () => { day = U.shiftDay(day, 1); paint(); });
+      const todayBtn = el.querySelector(".js-today");
+      if (todayBtn) todayBtn.addEventListener("click", () => { day = U.todayKey(); paint(); });
+
+      el.querySelectorAll(".js-wdel").forEach((b) => b.addEventListener("click", () => {
+        store.removeHealth(b.dataset.id);
+        paint();
+        render();
+      }));
+      el.querySelector(".js-wadd").addEventListener("click", () => addWorkout(day, paint));
+
+      el.querySelector(".js-save").addEventListener("click", () => {
+        let changed = 0;
+        el.querySelectorAll(".js-v").forEach((inp) => {
+          const type = inp.dataset.type;
+          const raw = inp.value.trim();
+          const before = store.healthValue(day, type);
+          if (!raw) {
+            if (before != null) { store.clearHealth(day, type); changed++; }
+            return;
+          }
+          const v = type === "sleep" ? KN.healthSync.toMinutes(raw)
+            : type === "distance" ? KN.healthSync.toKm(raw)
+            : parseFloat(raw.replace(/[^\d.]/g, ""));
+          if (v == null || !Number.isFinite(v)) return;
+          if (before != null && Math.abs(before - v) < 0.0001) return;
+          store.setHealth(day, type, v, { unit: KN.healthSync.UNITS[type] || "" });
+          changed++;
+        });
+        h.close();
+        render();
+        KN.ui.toast(changed ? `${changed}件を直しました` : "変わりはありません");
+      });
+
+      if (focusType) {
+        const target = el.querySelector(`.js-v[data-type="${focusType}"]`);
+        if (target) KN.ui.focusNow(target);
+        focusType = null;
+      }
+    }
+
+    paint();
+  }
+
+  function addWorkout(day, after) {
+    const b = node(html`
+      <div class="stack">
+        <label class="field"><span class="field-label">種目</span>
+          <input class="input js-n" placeholder="例：ウォーキング"></label>
+        <div class="field-row">
+          <label class="field" style="flex:1"><span class="field-label">時間（分）</span>
+            <input class="input js-m" inputmode="numeric" placeholder="42"></label>
+          <label class="field" style="flex:1"><span class="field-label">kcal</span>
+            <input class="input js-k" inputmode="numeric" placeholder="任意"></label>
+          <label class="field" style="flex:1"><span class="field-label">時刻</span>
+            <input type="time" class="input js-t2" value="${U.nowTime()}"></label>
+        </div>
+      </div>
+    `);
+    const f = node(html`<button class="btn btn-primary btn-block">足す</button>`);
+    const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f });
+    KN.ui.focusNow(b.querySelector(".js-n"));
+    f.addEventListener("click", () => {
+      const min = parseFloat(String(b.querySelector(".js-m").value).replace(/[^\d.]/g, ""));
+      if (!(min > 0)) { KN.ui.toast("時間を入れてください"); return; }
+      const kcal = parseFloat(String(b.querySelector(".js-k").value).replace(/[^\d.]/g, ""));
+      const time = b.querySelector(".js-t2").value || null;
+      store.putHealth({
+        type: "workout", day, time, value: min, unit: "分",
+        label: b.querySelector(".js-n").value.trim() || "ワークアウト",
+        kcal: Number.isFinite(kcal) ? kcal : null,
+        source: "manual",
+        externalId: `manual:${day}:${time || "?"}:${min}`,
+      });
+      hh.close();
+      after();
+      render();
+    });
   }
 
   /* ---------------- 食事 ---------------- */

@@ -286,7 +286,7 @@
     }
     parsed = { ...parsed, samples: foldSamples(parsed.samples) };
 
-    let added = 0, updated = 0, skipped = 0;
+    let added = 0, updated = 0, skipped = 0, kept = 0;
     const days = new Set();
     const byType = {};
     const count = (t, how) => { byType[t] = byType[t] || { added: 0, updated: 0 }; byType[t][how]++; };
@@ -319,6 +319,7 @@
       const res = store.putHealth(rec);
       if (res === "added") { added++; count(s.type, "added"); }
       else if (res === "updated") { updated++; count(s.type, "updated"); }
+      else if (store.healthOfDay(s.day, s.type).some((h) => h.source === "manual")) kept++;
       else skipped++;
 
     });
@@ -331,7 +332,7 @@
     });
 
     store.markSynced({ added, updated });
-    return { ok: true, added, updated, skipped: skipped + (parsed.unknown || 0),
+    return { ok: true, added, updated, kept, skipped: skipped + (parsed.unknown || 0),
              days: [...days].sort(), byType };
   }
 
@@ -422,6 +423,9 @@
     const parts = [];
     if (res.added) parts.push(`${res.added}件を追加`);
     if (res.updated) parts.push(`${res.updated}件を更新`);
+    /* 手で書いた値を守って入れなかったぶんは、黙って落とさずに言います。
+       言わないと「取り込んだのに変わらない」に見えます。 */
+    if (res.kept) parts.push(`${res.kept}件は手入力のまま`);
     if (!parts.length) parts.push("新しいデータはありません");
     const days = res.days || [];
     const span = days.length === 1 ? U.formatDay(days[0])

@@ -1264,6 +1264,14 @@
       if (at < 0 && !rec.externalId && DAILY_TYPES.includes(rec.type)) {
         at = list.findIndex((h) => h.type === rec.type && h.day === rec.day && !h.externalId);
       }
+      /* 手で書いた値は、取り込みで消しません——体重と同じ扱いです。
+         打ったということは、その人がその数を正しいと思ったということ。
+         また機械に任せたくなったら、記録の画面でその値を消せば、次の
+         取り込みからまた入ってくるようになります。 */
+      if (at >= 0 && list[at].source === "manual" && rec.source !== "manual") {
+        result = "kept";
+        return;
+      }
       if (at >= 0) {
         const keepId = list[at].id;
         list[at] = { ...rec, id: keepId };
@@ -1272,7 +1280,33 @@
         list.push(rec);
       }
     });
-    return result;
+    return result === "kept" ? null : result;
+  }
+
+  /** 手で書く／直す。取り込みとは別の入口です。 */
+  function setHealth(day, type, value, extra) {
+    const rec = cleanHealth({
+      type, day, value,
+      unit: (extra && extra.unit) || "",
+      label: (extra && extra.label) || "",
+      kcal: extra && extra.kcal,
+      time: extra && extra.time,
+      source: "manual",
+    });
+    if (!rec) return null;
+    update((s) => {
+      const at = s.diet.health.findIndex((h) => h.type === type && h.day === day && !h.externalId);
+      if (at >= 0) s.diet.health[at] = { ...rec, id: s.diet.health[at].id };
+      else s.diet.health.push(rec);
+    });
+    return rec;
+  }
+
+  /** その日のその種目を消す。消せば、次の取り込みでまた機械の値が入ります。 */
+  function clearHealth(day, type) {
+    update((s) => {
+      s.diet.health = s.diet.health.filter((h) => !(h.day === day && h.type === type));
+    });
   }
 
   function removeHealth(id) {
@@ -1414,7 +1448,7 @@
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     addMeal, updateMeal, removeMeal, mealsOfDay,
     addUserFood, removeUserFood, findFood,
-    putHealth, removeHealth, healthOfDay, healthValue,
+    putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, clearDiet,
     exportJSON, importJSON, reset, loadSample,
   };
