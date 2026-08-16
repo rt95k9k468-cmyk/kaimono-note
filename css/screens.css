@@ -1724,3 +1724,31 @@
   font-size: .92em; padding: 1px 5px; border-radius: 5px;
   background: var(--c-surface-3); color: var(--c-text);
 }
+
+/* ---- からだの記録を直す ---- */
+
+/* 数の枠は押せます。押せることが見た目でも分かるように、行と同じ
+   「押したら沈む」を持たせます。 */
+.diet-cell { border: 0; text-align: center; transition: background .14s var(--ease); }
+.diet-cell:active { background: var(--c-surface-3); }
+.diet-hand {
+  font-style: normal; font-size: 9px; color: var(--c-text-3);
+  margin-left: 2px; vertical-align: 1px;
+}
+
+.diet-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.diet-foot .diet-note { margin-left: auto; text-align: right; }
+
+.diet-daynav { display: flex; align-items: center; gap: var(--sp-2); }
+.diet-daynav b { font-size: var(--fs-lg); }
+.diet-daynav .js-today { margin-left: auto; }
+.diet-daynav .icon-btn[disabled] { opacity: .3; }
+
+.diet-edit { display: flex; flex-direction: column; gap: var(--sp-2); }
+.diet-edit-row {
+  display: grid; grid-template-columns: 5.2em minmax(0, 1fr) 2.6em 4.4em;
+  align-items: center; gap: var(--sp-2);
+}
+.diet-edit-name { font-size: var(--fs-sm); color: var(--c-text-2); }
+.diet-edit-unit { font-size: var(--fs-xs); color: var(--c-text-3); }
+.diet-edit-src { font-size: 10px; color: var(--c-text-3); text-align: right; }
