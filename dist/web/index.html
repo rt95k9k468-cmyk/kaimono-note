@@ -7894,6 +7894,15 @@ button, [role="tab"] {
       // 体脂肪率。0 は「測れなかった」であって 0% ではないので、null に倒します。
       fat: (() => { const f = posNum(w.fat); return f != null && f < 80 ? Math.round(f * 10) / 10 : null; })(),
       memo: typeof w.memo === "string" ? w.memo : "",
+      /* どんな条件で量ったか。体重は、食前か食後かで1kg近く、着ているか
+         いないかで0.5kg以上ふつうに動きます。条件を書き留めておかないと、
+         その差が「増えた」「減った」として並びに混ざります。
+
+         書かなかったときは **null のまま** です——たいてい食前だろう、と
+         こちらで埋めると、埋めた値がそのまま統計の材料になります。
+         分からないものは分からないままにしておきます。 */
+      meal: (w.meal === "before" || w.meal === "after") ? w.meal : null,
+      clothed: w.clothed === true ? true : (w.clothed === false ? false : null),
       source: w.source === "health" ? "health" : "manual",
       externalId: typeof w.externalId === "string" ? w.externalId : null,
       importedAt: w.importedAt || null,
@@ -8906,11 +8915,11 @@ button, [role="tab"] {
 
   /* --- 体重 --- */
 
-  function addWeight({ day, time, kg, fat, memo, source, externalId } = {}) {
+  function addWeight({ day, time, kg, fat, memo, meal, clothed, source, externalId } = {}) {
     const rec = cleanWeight({
       day: day || KN.util.todayKey(),
       time: time || KN.util.nowTime(),
-      kg, fat, memo, source, externalId,
+      kg, fat, memo, meal, clothed, source, externalId,
       importedAt: source === "health" ? new Date().toISOString() : null,
     }, 0);
     if (!rec) return null;
@@ -8948,6 +8957,17 @@ button, [role="tab"] {
   function latestWeight() {
     const list = sortedWeights();
     return list.length ? list[0] : null;
+  }
+
+  /**
+   * 前回どんな条件で量ったか。次の一件にそのまま出しておくためのものです。
+   * 量る条件はふつう毎日おなじなので、毎回二つ選ばせるのは手数の無駄。
+   * それでも **既定では埋めません**——一度も選んでいない人に、こちらが
+   * 決めた条件を書き込むのは、記録ではなく作り話なので。
+   */
+  function lastWeightCondition() {
+    const found = sortedWeights().find((w) => w.meal != null || w.clothed != null);
+    return found ? { meal: found.meal, clothed: found.clothed } : { meal: null, clothed: null };
   }
 
   /* --- 食事 --- */
@@ -9212,6 +9232,7 @@ button, [role="tab"] {
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
+    lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
@@ -11829,7 +11850,8 @@ button, [role="tab"] {
     });
     return [...seen.values()]
       .sort((a, b) => a.day.localeCompare(b.day))
-      .map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source, id: w.id }));
+      .map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source, id: w.id,
+                     meal: w.meal, clothed: w.clothed }));
   }
 
   /**
@@ -12119,6 +12141,105 @@ button, [role="tab"] {
       });
     }
 
+    /* --- 量る条件 ---
+
+       ここは、ほかの項目より効きます。食前と食後、着ているかいないかは、
+       体そのものの変化ではなく **測り方の差** なので、混ざったまま並ぶと
+       増減として読めてしまいます。どれだけ違うのかを数で出しておけば、
+       次からは差し引いて読めます。
+
+       比べるのは素の体重ではなく、その日の7日平均からの **ずれ** です。
+       素で比べると、減量の途中なら後の日ほど軽いという当たり前しか
+       出てきません。 */
+    /* ここだけは、7日平均ではなく **期間ぜんぶに引いた直線** からのずれで
+       比べます。理由があります。7日平均はその点自身を含む後ろ向きの窓
+       なので、一日おきに着衣ありなしを繰り返す人だと、窓の中に自分と同じ
+       条件の日が多め（7日なら4日対3日）に入ります。すると平均が自分の
+       ほうへ寄って、差が実際より小さく出ます——0.8kgの差が0.69kgに見える。
+       量り方の差を数で出すのがここの仕事なので、それでは足りません。
+       直線なら、条件は傾きに乗らず、まとめて切片に吸われるので、
+       二つの組のずれの差がそのまま量り方の差になります。
+
+       睡眠や休日のほうを7日平均のままにしてあるのは、あちらが訊いている
+       のが「その前後の日と比べて重かったか」だからです。問いが違えば、
+       比べる相手も違います。 */
+    const line = (() => {
+      const xs = pts.map((p) => U.dayDate(p.day).getTime() / 86400000);
+      const mx = mean(xs), my = mean(pts.map((p) => p.kg));
+      let num = 0, den = 0;
+      xs.forEach((x, i) => { num += (x - mx) * (pts[i].kg - my); den += (x - mx) ** 2; });
+      const slope = den ? num / den : 0;
+      return (day) => my + slope * (U.dayDate(day).getTime() / 86400000 - mx);
+    })();
+
+    const splitBy = (pick) => {
+      const a = [], b = [];
+      pts.forEach((p) => {
+        const side = pick(p);
+        if (side === true) a.push(p.kg - line(p.day));
+        else if (side === false) b.push(p.kg - line(p.day));
+      });
+      return { a, b };
+    };
+
+    const condition = (id, title, pick, nameA, nameB) => {
+      const { a, b } = splitBy(pick);
+      if (a.length < MIN_GROUP || b.length < MIN_GROUP) return;
+      const diff = round(mean(a) - mean(b), 2);
+      out.push({
+        id, title,
+        text: Math.abs(diff) < 0.1
+          ? `${nameA}（${a.length}日）と${nameB}（${b.length}日）で、`
+            + `その週の平均からのずれに目立った差はありません。`
+          : `${nameA}は${nameB}より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
+            + `（${nameA} ${a.length}日 / ${nameB} ${b.length}日）。`
+            + `体の変化ではなく、量り方の差として読めます。`,
+        value: diff, tone: "info", n: a.length + b.length,
+      });
+    };
+
+    condition("meal", "食前と食後",
+      (p) => (p.meal === "after" ? true : (p.meal === "before" ? false : null)), "食後", "食前");
+    condition("clothed", "服装",
+      (p) => (p.clothed === true ? true : (p.clothed === false ? false : null)), "着衣あり", "着衣なし");
+
+    /* 二つの条件が一緒に動いていたら、そう言います。
+       食後にはいつも服を着ていて、食前にはいつも脱いでいる人の記録では、
+       出てくる二つの数はどちらも「食後の差」と「着衣の差」の合計です。
+       そのまま並べると、両方を二重に数えたことになります。
+       切り分けられないことは、切り分けられないと書くのが唯一正しい。 */
+    const both = pts.filter((p) => p.meal != null && p.clothed != null);
+    if (both.length >= MIN_GROUP * 2 && out.some((f) => f.id === "meal") && out.some((f) => f.id === "clothed")) {
+      const after = both.filter((p) => p.meal === "after");
+      const before = both.filter((p) => p.meal === "before");
+      const rate = (xs) => (xs.length ? xs.filter((p) => p.clothed).length / xs.length : null);
+      const ra = rate(after), rb = rate(before);
+      if (ra != null && rb != null && Math.abs(ra - rb) > 0.5) {
+        const note = `なお、この期間は食前・食後と服装がほとんど一緒に動いています`
+          + `（食後の${Math.round(ra * 100)}%、食前の${Math.round(rb * 100)}%が着衣あり）。`
+          + `上の二つの差は切り分けられていないので、それぞれ多めに出ています。`;
+        ["meal", "clothed"].forEach((id) => {
+          const f = out.find((x) => x.id === id);
+          if (f) { f.text += note; f.tone = "warn"; f.entangled = true; }
+        });
+      }
+    }
+
+    /* 条件が混ざっているのに、まだ比べられるほど溜まっていないとき。
+       黙っていると、その混ざりが増減として読まれ続けます。 */
+    const withCond = pts.filter((p) => p.meal != null || p.clothed != null);
+    const kinds = new Set(pts.map((p) => `${p.meal || "?"}/${p.clothed == null ? "?" : p.clothed}`));
+    if (withCond.length >= 2 && kinds.size > 1 && !out.some((f) => f.id === "meal" || f.id === "clothed")) {
+      out.push({
+        id: "mixed",
+        title: "量り方が混ざっています",
+        text: `この期間の記録には、条件の違う量り方が ${kinds.size} 通り混ざっています。`
+          + `食前と食後、着衣のあるなしは、体の変化ではなく量り方の差として並びに入ります。`
+          + `同じ条件が片側 ${MIN_GROUP} 日ぶん貯まると、その差を数で出します。`,
+        tone: "warn", n: withCond.length,
+      });
+    }
+
     /* --- 平日と休日 --- */
     const wd = [], we = [];
     pts.forEach((p) => {
@@ -12173,6 +12294,8 @@ button, [role="tab"] {
     return {
       days: win,
       weight: weightPoints(days[0], today).length,
+      // 量る条件まで書いてある日。統計に効くのはこちらなので、別に数えます。
+      condition: weightPoints(days[0], today).filter((p) => p.meal != null || p.clothed != null).length,
       meals: days.filter((d) => store.mealsOfDay(d).length).length,
       steps: days.filter((d) => store.healthValue(d, "steps") != null).length,
       sleep: days.filter((d) => store.healthValue(d, "sleep") != null).length,
@@ -12281,6 +12404,10 @@ button, [role="tab"] {
           day: d,
           weightKg: w ? w.kg : null,
           bodyFat: w ? w.fat : null,
+          // 量った条件。食前/食後・着衣のあるなしで、体重は体の変化と
+          // 同じくらい動きます。渡さないと、量り方の差を増減と読まれます。
+          weighedMeal: w ? w.meal : null,
+          weighedClothed: w ? w.clothed : null,
           kcal: t ? t.kcal : null,
           p: t ? t.p : null, f: t ? t.f : null, c: t ? t.c : null,
           steps: store.healthValue(d, "steps"),
@@ -12291,7 +12418,9 @@ button, [role="tab"] {
       }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null || r.sleepMin != null),
       // 相関を因果と言わせないための一言。窓口側のプロンプトにも
       // 同じことを書きますが、材料にも添えておきます。
-      note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。",
+      note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。"
+        + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
+        + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };
   }
 
@@ -15472,7 +15601,7 @@ button, [role="tab"] {
             <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
             ${w && w.fat != null ? html`<span class="diet-hero-fat mono-num">体脂肪 ${w.fat.toFixed(1)}%</span>` : ""}
           </span>
-          <span class="diet-hero-cta">${w ? "タップして直す" : "タップして記録する"}</span>
+          <span class="diet-hero-cta">${w && condText(w) ? condText(w) + "　" : ""}${w ? "タップして直す" : "タップして記録する"}</span>
         </button>
         <div class="diet-hero-side">
           <div class="diet-stat">
@@ -16050,8 +16179,34 @@ button, [role="tab"] {
 
   /* ---------------- 体重を書く ---------------- */
 
+  /* 量る条件。体重は、食前か食後かで1kg近く、着ているかいないかで0.5kg
+     以上ふつうに動きます。同じ人の同じ日でも、条件が違えば別の数です。
+     ここを書き留めておくと、あとで「増えた」と「着替えなかった」を
+     分けて読めます。 */
+  const MEAL_CHIPS = [
+    { id: "before", label: "食前" },
+    { id: "after", label: "食後" },
+    { id: "", label: "未記入" },
+  ];
+  const WEAR_CHIPS = [
+    { id: "no", label: "着衣なし" },
+    { id: "yes", label: "着衣あり" },
+    { id: "", label: "未記入" },
+  ];
+  const mealLabel = (v) => (v === "before" ? "食前" : v === "after" ? "食後" : "");
+  const wearLabel = (v) => (v === true ? "着衣あり" : v === false ? "着衣なし" : "");
+  /** 行に添える一言。書いていない条件は言いません。 */
+  const condText = (w) => [mealLabel(w && w.meal), wearLabel(w && w.clothed)].filter(Boolean).join("・");
+
   function openWeightSheet(existing) {
     const w = existing || null;
+    /* 新しく書くときは、前回と同じ条件を出しておきます。量る条件は
+       ふつう毎日おなじなので、毎回二つ選ばせるのは手数の無駄。
+       一度も選んでいなければ、どちらも未記入のままです。 */
+    const seed = w || store.lastWeightCondition();
+    let meal = seed.meal || null;
+    let clothed = seed.clothed == null ? null : seed.clothed;
+
     const body = node(html`
       <div class="stack">
         <div class="field-row">
@@ -16076,6 +16231,20 @@ button, [role="tab"] {
                    value="${w && w.fat != null ? String(w.fat) : ""}">
           </label>
         </div>
+        <div class="field">
+          <span class="field-label">量ったとき</span>
+          <div class="js-meal"></div>
+        </div>
+        <div class="field">
+          <span class="field-label">服装</span>
+          <div class="js-wear"></div>
+        </div>
+        <p class="diet-note">
+          食前か食後かで1kg近く、着ているかどうかで0.5kg以上動きます。
+          書いておくと、その差を分けて読めます（<b>次からは前回と同じものが
+          選ばれます</b>）。
+        </p>
+
         <label class="field">
           <span class="field-label">メモ</span>
           <input class="input js-memo" placeholder="例：飲んだ翌日" value="${w ? w.memo : ""}">
@@ -16097,6 +16266,17 @@ button, [role="tab"] {
     const kgEl = body.querySelector(".js-kg");
     if (!w) KN.ui.focusNow(kgEl);
 
+    const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
+      activeId: meal || "",
+      onPick: (id) => { meal = id || null; paintMeal(); },
+    });
+    const paintWear = () => KN.ui.chipRow(body.querySelector(".js-wear"), WEAR_CHIPS, {
+      activeId: clothed == null ? "" : (clothed ? "yes" : "no"),
+      onPick: (id) => { clothed = id === "yes" ? true : (id === "no" ? false : null); paintWear(); },
+    });
+    paintMeal();
+    paintWear();
+
     foot.querySelector(".js-save").addEventListener("click", () => {
       const val = parseFloat(String(kgEl.value).replace(/[^\d.]/g, ""));
       if (!(val > 0)) { KN.ui.toast("体重を入れてください"); return; }
@@ -16107,6 +16287,7 @@ button, [role="tab"] {
         kg: val,
         fat: Number.isFinite(fatRaw) && fatRaw > 0 ? fatRaw : null,
         memo: body.querySelector(".js-memo").value.trim(),
+        meal, clothed,
         // 手が入ったものは手が入ったものです。次の取り込みで機械の値に
         // 戻されないよう、出どころを書き換えます。
         source: "manual",
