@@ -383,17 +383,93 @@
 
   /* ---------------- 受け口 ---------------- */
 
-  /** クリップボードから。iOSは貼り付けの確認を1回出します（それでいい）。 */
+  /* ---------------- クリップボード ----------------
+
+     navigator.clipboard.readText() は「読めたら儲けもの」の道です。
+     iOSでは、ホーム画面から起動したアプリ（standalone）だと拒まれることが
+     あり、Safariで開いていても、画面に焦点が無い・ジェスチャの一拍を
+     またいだ・ユーザーが「ペースト」を押さなかった、のどれでも失敗します。
+
+     だから失敗を異常扱いしません。**確実な道は別にあります**——欄を出して、
+     iOSの「ペースト」で貼ってもらう。あちらは権限もAPIも要りません。
+     ここが返すのは「読めたか」と、読めなかったときに**なぜ**を言うための
+     材料です。曖昧なエラー一行で行き止まりにしないために。 */
+
+  /** いま置かれている条件。読めなかったときに、どこを疑えばいいかの手がかり。 */
+  function clipboardState() {
+    const nav = typeof navigator !== "undefined" ? navigator : {};
+    return {
+      api: !!(nav.clipboard && nav.clipboard.readText),
+      secure: typeof isSecureContext !== "undefined" ? !!isSecureContext : null,
+      focused: typeof document !== "undefined" && document.hasFocus ? document.hasFocus() : null,
+      standalone: (typeof window !== "undefined" && window.matchMedia
+        && window.matchMedia("(display-mode: standalone)").matches) || nav.standalone === true,
+      permission: null,   // 下で埋まることがあります
+    };
+  }
+
+  /** 条件を、そのまま画面に出せる一行に。 */
+  function explain(state, err) {
+    const bits = [];
+    if (!state.api) bits.push("このブラウザに読み取りのAPIがありません");
+    else if (err) bits.push(`${err.name || "エラー"}：${err.message || "理由なし"}`);
+    if (state.secure === false) bits.push("保護されていない接続（http）では読めません");
+    if (state.focused === false) bits.push("画面に焦点がありません");
+    if (state.standalone) bits.push("ホーム画面から起動したアプリでは、iOSが読み取りを断ることがあります");
+    if (state.permission === "denied") bits.push("貼り付けの許可が拒否されています");
+    return bits.join(" / ");
+  }
+
+  /**
+   * クリップボードから読んで、手入力とまったく同じ importText() に渡します。
+   * @returns 取り込み結果に加えて
+   *   text  … 読めた文字列そのもの（読めなければ null）
+   *   why   … 読めなかった理由の説明
+   *   state … そのときの条件
+   */
   function importFromClipboard() {
-    if (!navigator.clipboard || !navigator.clipboard.readText) {
-      return Promise.resolve({ ok: false, error: "この端末ではクリップボードを読めません", added: 0, updated: 0, skipped: 0 });
+    const state = clipboardState();
+
+    if (!state.api) {
+      return Promise.resolve({ ok: false, error: "クリップボードを読み取れませんでした",
+        why: explain(state, null), state, text: null, added: 0, updated: 0, skipped: 0 });
     }
-    return navigator.clipboard.readText()
-      /* 読めなかったときは、読んだ中身も返します。画面がそれを出せれば、
-         「取り込めませんでした」の一言で終わらずに、どの行が悪いのかを
-         その場で見られます。 */
-      .then((t) => ({ ...importText(t), text: t }))
-      .catch(() => ({ ok: false, error: "クリップボードを読ませてもらえませんでした", added: 0, updated: 0, skipped: 0 }));
+
+    /* readText() はユーザーの操作と同じ一拍のうちに呼ばないと拒まれます。
+       だから権限の問い合わせを **先に待ちません** ——待つと一拍をまたぎます。
+       権限は、失敗したあとで手がかりとして読みます。 */
+    let promise;
+    try {
+      promise = navigator.clipboard.readText();
+    } catch (err) {
+      return Promise.resolve({ ok: false, error: "クリップボードを読み取れませんでした",
+        why: explain(state, err), state, text: null, added: 0, updated: 0, skipped: 0 });
+    }
+
+    return Promise.resolve(promise)
+      .then((t) => {
+        const text = String(t == null ? "" : t);
+        if (!text.trim()) {
+          return { ok: false, error: "クリップボードが空でした", why: "読み取れましたが、中身がありません",
+                   state, text, added: 0, updated: 0, skipped: 0 };
+        }
+        // 手入力とまったく同じ道を通します。
+        return { ...importText(text), text, state };
+      })
+      .catch((err) => askPermission().then((perm) => {
+        state.permission = perm;
+        return { ok: false, error: "クリップボードを読み取れませんでした",
+                 why: explain(state, err), state, text: null, added: 0, updated: 0, skipped: 0 };
+      }));
+  }
+
+  /** 失敗したあとにだけ聞く。対応していないブラウザでは黙って null。 */
+  function askPermission() {
+    try {
+      if (!navigator.permissions || !navigator.permissions.query) return Promise.resolve(null);
+      return navigator.permissions.query({ name: "clipboard-read" })
+        .then((s) => s.state).catch(() => null);
+    } catch (err) { return Promise.resolve(null); }
   }
 
   /**
@@ -435,6 +511,7 @@
 
   KN.healthSync = {
     importText, importFromClipboard, importFromHash, describe, preview,
+    clipboardState, explain,
     parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
   };
 })();
