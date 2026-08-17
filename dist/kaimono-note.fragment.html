@@ -13046,6 +13046,137 @@ button, [role="tab"] {
   };
 })();
 
+/* ---- js/health-relay.js ---- */
+/* =========================================================
+   くらしノート — 中継所ごしの取り込み
+   =========================================================
+
+   ホーム画面のアプリと Safari は、保存領域が別々です。だからショートカット
+   から「URLを開く」でデータを渡しても、それは Safari のほうのくらしノートに
+   入り、ホーム画面のほうからは見えません。URLスキームもユニバーサルリンクも
+   ネイティブアプリのための仕組みで、Webアプリには使えません。Web Share
+   Target は Safari が実装していません。
+
+   端末の中だけで渡す道が全部ふさがっているので、**外を一周させます**。
+
+     ショートカット（無人・毎朝）
+       ↓ POST（本文は手入力とまったく同じ「steps=8432」の形）
+     中継所（自分で立てる小さな郵便受け。relay/ にコードがあります）
+       ↓ GET（取ったら郵便受けからは消える）
+     くらしノート
+
+   受け取ったあとは、手入力・貼り付けと **同じ importText() に渡すだけ** です。
+   ここが増やすのは入口であって、読み方ではありません。
+
+   窓口のURLそのものが合言葉です。だから設定に置くのは一つだけ。
+   ヘッダを足さないのにも理由があって、追加のヘッダを付けるとブラウザが
+   事前問い合わせ（preflight）を挟み、中継所側で受け止める作りが要ります。
+   合言葉をURLに含めれば、ただの GET で済みます。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const store = KN.store;
+
+  const TIMEOUT = 8000;
+
+  const url = () => String(store.get().settings.healthRelayUrl || "").trim();
+  const configured = () => /^https:\/\/\S+$/.test(url());
+
+  /** 設定の画面に出す用。合言葉ごと出さずに、どこに繋がっているかだけ。 */
+  function host() {
+    try { return new URL(url()).host; } catch (err) { return ""; }
+  }
+
+  function setUrl(v) {
+    const clean = String(v || "").trim();
+    store.update((s) => { s.settings.healthRelayUrl = clean; });
+    return clean;
+  }
+
+  /**
+   * 郵便受けを覗きます。
+   * @returns {Promise<{ok:boolean, text:string|null, error?:string}>}
+   *   text が null なら「繋がったが、届いていない」。
+   *   ok が false なら「繋がらなかった」——理由を添えます。
+   */
+  function pull() {
+    if (!configured()) {
+      return Promise.resolve({ ok: false, text: null, error: "中継所が設定されていません" });
+    }
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT) : null;
+
+    return fetch(url(), {
+      method: "GET",
+      // 途中の誰かが覚えていた古い便を渡してこないように。
+      cache: "no-store",
+      signal: ctrl ? ctrl.signal : undefined,
+    })
+      .then((res) => {
+        // 204 は「郵便受けは空」。異常ではありません。
+        if (res.status === 204) return { ok: true, text: null };
+        if (!res.ok) return { ok: false, text: null, error: `中継所が ${res.status} を返しました` };
+        return res.text().then((t) => ({ ok: true, text: String(t == null ? "" : t) }));
+      })
+      .catch((err) => ({
+        ok: false, text: null,
+        error: err && err.name === "AbortError"
+          ? "中継所が時間内に答えませんでした"
+          : "中継所に繋がりませんでした（電波か、URLか、中継所の設定）",
+      }))
+      .finally(() => { if (timer) clearTimeout(timer); });
+  }
+
+  /**
+   * 郵便受けから取って、そのまま取り込みます。
+   * 読み方は手入力とまったく同じ道です。
+   * @returns {Promise<{ok:boolean, empty?:boolean, error?:string, …importTextの結果}>}
+   */
+  function pullAndImport() {
+    return pull().then((res) => {
+      if (!res.ok) return { ok: false, error: res.error, added: 0, updated: 0, skipped: 0 };
+      if (res.text == null || !res.text.trim()) {
+        return { ok: false, empty: true, error: "中継所に新しいデータはありません",
+                 added: 0, updated: 0, skipped: 0 };
+      }
+      return { ...KN.healthSync.importText(res.text), text: res.text };
+    });
+  }
+
+  /**
+   * 設定の画面から「つないでみる」。
+   *
+   * 覗くだけにはできません。中継所は **渡したら消す** 作りなので、
+   * 「試しに取ってきて、中身は捨てる」はその日のデータを捨てることに
+   * なります。だから届いていた場合はそのまま取り込み、取り込んだと
+   * 言います。試したせいで一日ぶん失くすほうが、よほど困ります。
+   */
+  function test() {
+    return pull().then((res) => {
+      if (!res.ok) return { ok: false, message: res.error };
+      if (res.text == null || !res.text.trim()) {
+        return { ok: true, empty: true,
+                 message: "繋がりました。いまは空です（ショートカットを一度走らせてください）" };
+      }
+      const look = KN.healthSync.preview(res.text);
+      if (!look.ok) {
+        return { ok: true, message: `繋がりましたが、中身が読めません（${look.error}）`, text: res.text };
+      }
+      const done = KN.healthSync.importText(res.text);
+      return {
+        ok: true,
+        imported: done,
+        message: `繋がりました。${look.rows.length}件が届いていたので、そのまま取り込みました（`
+          + KN.healthSync.describe(done) + "）",
+        text: res.text,
+      };
+    });
+  }
+
+  KN.healthRelay = { configured, url, setUrl, host, pull, pullAndImport, test };
+})();
+
 /* ---- js/product-sheet.js ---- */
 /* =========================================================
    くらしノート — shared product / item detail sheet
@@ -16844,8 +16975,33 @@ button, [role="tab"] {
         </p>
 
         <div class="divider"></div>
+        <div class="section-title">③ コピーもやめる（中継所）</div>
+        <p class="diet-note">
+          ②まで来ると、残る手間は「アプリに戻って一度押す」だけです。それも
+          消したいときは、<b>中継所</b>を一つ立てます。ショートカットの最後を
+          「クリップボードにコピー」から<b>「URLの内容を取得」（POST）</b>に変えると、
+          データはいったん自分の中継所に置かれ、次にこのタブを開いた時に
+          くらしノートが自分で受け取ります。受け取ったら中継所からは消えます。
+        </p>
+        <p class="diet-note">
+          ${KN.healthRelay.configured()
+            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>（設定 → ダイエット → 中継所で変えられます）`
+            : html`まだ設定していません。建て方は README の「中継所」に、
+                   置き場所は<b>設定 → ダイエット → 中継所</b>にあります。`}
+        </p>
+
+        <div class="divider"></div>
         <div class="section-title">取り込む</div>
         <div class="rows">
+          <button class="row js-relay">
+            <span class="row-main">
+              <span class="row-title">中継所から取り込む</span>
+              <span class="row-sub">${KN.healthRelay.configured()
+                ? "ショートカットが置いたデータを受け取ります"
+                : "未設定（設定 → ダイエット → 中継所）"}</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
           <button class="row js-paste">
             <span class="row-main">
               <span class="row-title">コピーしたものを取り込む</span>
@@ -16922,6 +17078,28 @@ button, [role="tab"] {
     body.querySelector(".js-take").addEventListener("click", () => {
       done(KN.healthSync.importText(ta.value));
     });
+    /* 「中継所から取り込む」。自動のときと違って、ここでは黙りません——
+       押したのに何も言われないのが、いちばん困ります。 */
+    body.querySelector(".js-relay").addEventListener("click", () => {
+      if (!KN.healthRelay.configured()) {
+        KN.ui.toast("設定 → ダイエット → 中継所 でURLを入れてください");
+        return;
+      }
+      const btn = body.querySelector(".js-relay");
+      btn.disabled = true;
+      KN.healthRelay.pullAndImport().then((res) => {
+        if (res.text != null) showGot(res.text);
+        if (res.ok) { done(res); return; }
+        if (res.text != null) {          // 受け取れたが、中身が読めなかった
+          ta.value = res.text;
+          paintPreview();
+        }
+        KN.ui.toast(res.error || "取り込めませんでした");
+      }).catch((err) => {
+        KN.ui.toast("中継所につなげませんでした（" + (err && err.message || err) + "）");
+      }).finally(() => { btn.disabled = false; });
+    });
+
     /* 「コピーしたものを取り込む」。
        読めればそのまま、読めなければ **貼り付けの欄** に切り替えます。
        クリップボードのAPIは環境しだいで断られる道なので、断られたときに
@@ -17091,14 +17269,24 @@ button, [role="tab"] {
        3. **切れる。** クリップボードを覗く動きなので、設定で止められます。
 
      読み取りそのものはタブを押した一拍のうちに始めます——そこを外すと、
-     ブラウザは「操作のない読み取り」として断ります。 */
+     ブラウザは「操作のない読み取り」として断ります。
+
+     中継所を設定してあれば、まずそちらを覗きます。クリップボードと違って
+     こちらは操作の一拍を必要としないので、非同期でも構いません。中継所に
+     届いていなければ、これまでどおりクリップボードを見にいきます——
+     どちらか一方に寄せると、片方しか使っていない日に取りこぼします。 */
 
   let lastAuto = "";
 
   /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
   function onEnter() {
     const st = store.get().settings;
-    if (st.dietAutoSync === false || st.clipboardBlocked) return;
+    if (st.dietAutoSync === false) return;
+    // 中継所は「操作のうち」に縛られないので、先に走らせて構いません。
+    // ただしクリップボードの読み取りは一拍のうちに始める必要があるので、
+    // 中継所の返事を待たずに、同じ拍で並べて始めます。
+    if (KN.healthRelay.configured()) pullRelay();
+    if (st.clipboardBlocked) return;
     const state = KN.healthSync.clipboardState();
     if (!state.api) return;
 
@@ -17114,6 +17302,20 @@ button, [role="tab"] {
       if (!res.added && !res.updated) return;   // 何も変わらなかった
       render();
       KN.ui.toast("ヘルスケア：" + KN.healthSync.describe(res));
+    }).catch(() => { /* 黙って引く */ });
+  }
+
+  /* 中継所からの自動取り込み。ここも「黙って失敗する」を守ります——
+     電波の悪いところでタブを開くたびに赤い字が出るのは、報告ではなく
+     邪魔です。中継所の不調を確かめたいときは、設定の「つないでみる」か
+     取り込みシートの「中継所から取り込む」を押します。そこでは黙りません。 */
+  function pullRelay() {
+    KN.healthRelay.pullAndImport().then((res) => {
+      if (!res.ok) return;                      // 空も、繋がらないも、黙って引く
+      if (!res.added && !res.updated) return;
+      lastAuto = res.text || lastAuto;          // 同じ中身を貼り付けからも読まない
+      render();
+      KN.ui.toast("中継所：" + KN.healthSync.describe(res));
     }).catch(() => { /* 黙って引く */ });
   }
 
@@ -19318,7 +19520,9 @@ button, [role="tab"] {
               <span class="row-title">開いたときに自動で読む</span>
               <span class="row-sub">${store.get().settings.dietAutoSync === false
                 ? "オフ"
-                : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
+                : KN.healthRelay.configured()
+                  ? "ダイエットを開いた時に、中継所に届いているデータを取り込みます"
+                  : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
             </span>
             <span class="row-value">${store.get().settings.dietAutoSync === false ? "オフ" : "オン"}</span>
           </button>
@@ -19328,6 +19532,15 @@ button, [role="tab"] {
               <span class="row-sub">${d.sync.lastAt ? `最後の取り込み：${KN.util.formatStamp(d.sync.lastAt)}` : "ショートカットで書き出したものを読みます"}</span>
             </span>
             <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-relay">
+            <span class="row-main">
+              <span class="row-title">中継所</span>
+              <span class="row-sub">${KN.healthRelay.configured()
+                ? `${KN.util.escapeHtml(KN.healthRelay.host())} ・ コピーと貼り付けなしで受け取ります`
+                : "未設定（ショートカットを走らせるだけで取り込めるようになります）"}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
           </button>
           <button class="row js-ai">
             <span class="row-main">
@@ -19355,6 +19568,7 @@ button, [role="tab"] {
       render();
       KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
     });
+    wrap.querySelector(".js-relay").addEventListener("click", openRelaySheet);
     wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
     wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
@@ -19368,6 +19582,82 @@ button, [role="tab"] {
       KN.ui.toast("消しました");
     });
     return wrap;
+  }
+
+  /* 中継所のURLそのものが合言葉です。だから預かるのは一つだけ。
+     長くて当てられない道（/kn-a7f3…）にしてくださいと画面にも書きます。 */
+  function openRelaySheet() {
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">中継所のURL（https://…）</span>
+          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="https://example.workers.dev/kn-a7f3c1d9e2"
+                 value="${KN.healthRelay.url()}">
+        </label>
+        <p class="diet-note js-said">
+          ショートカットがここへ健康データを置き、くらしノートが受け取ります。
+          受け取ったら中継所からは消えるので、同じものを二度読むことはありません。
+          読み方は手入力とまったく同じで、増えるのは入口だけです。
+        </p>
+        <p class="diet-note">
+          <b>このURLが合言葉です。</b>当てられない長い道にしてください
+          （例：<code>/kn-</code> のあとに適当な英数字を十数文字）。
+          知られると、その人も同じ郵便受けを開けられます。
+        </p>
+        <p class="diet-note">
+          「つないでみる」は、届いていればそのまま取り込みます。中継所は渡したら
+          消す作りなので、覗くだけにするとその日のぶんを捨てることになるためです。
+        </p>
+        <p class="diet-note">中継所の建て方とショートカットの作り方は README の「中継所」にあります。</p>
+      </div>
+    `);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-test" style="flex:1">つないでみる</button>
+        <button class="btn btn-primary js-save" style="flex:1">保存</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "中継所", content: body, footer: foot });
+    const said = body.querySelector(".js-said");
+
+    const readUrl = () => body.querySelector(".js-url").value.trim();
+    const bad = (v) => v && !/^https:\/\//.test(v);
+
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      const v = readUrl();
+      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      KN.healthRelay.setUrl(v);
+      h.close(); render();
+      KN.ui.toast(v ? "中継所を覚えました" : "中継所を外しました");
+    });
+
+    /* 試すときは、まだ保存していない入力欄の値で試します。打ち間違えた
+       URLを保存させてから試させるのは順番が逆です。
+
+       なお「つないでみる」は、届いていれば取り込みます。中継所は渡したら
+       消す作りなので、覗いて捨てるとその日のデータが失くなるからです。 */
+    foot.querySelector(".js-test").addEventListener("click", () => {
+      const v = readUrl();
+      if (!v) { KN.ui.toast("URLを入れてください"); return; }
+      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      const keep = KN.healthRelay.url();
+      const btn = foot.querySelector(".js-test");
+      btn.disabled = true;
+      said.textContent = "つないでいます…";
+      KN.healthRelay.setUrl(v);
+      KN.healthRelay.test()
+        .then((r) => {
+          said.textContent = r.message;
+          if (r.imported && r.imported.ok) KN.screens.diet.render();
+        })
+        .catch((err) => { said.textContent = "つなげませんでした（" + (err && err.message || err) + "）"; })
+        .finally(() => {
+          btn.disabled = false;
+          // 試しただけで保存はしない。保存は「保存」を押したときだけ。
+          if (!keep) KN.healthRelay.setUrl(""); else KN.healthRelay.setUrl(keep);
+        });
+    });
   }
 
   /* 鍵ではなくURLを預かります。ここに鍵を書かせないのは方針ではなく事実で、

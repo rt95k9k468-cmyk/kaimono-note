@@ -1346,8 +1346,33 @@
         </p>
 
         <div class="divider"></div>
+        <div class="section-title">③ コピーもやめる（中継所）</div>
+        <p class="diet-note">
+          ②まで来ると、残る手間は「アプリに戻って一度押す」だけです。それも
+          消したいときは、<b>中継所</b>を一つ立てます。ショートカットの最後を
+          「クリップボードにコピー」から<b>「URLの内容を取得」（POST）</b>に変えると、
+          データはいったん自分の中継所に置かれ、次にこのタブを開いた時に
+          くらしノートが自分で受け取ります。受け取ったら中継所からは消えます。
+        </p>
+        <p class="diet-note">
+          ${KN.healthRelay.configured()
+            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>（設定 → ダイエット → 中継所で変えられます）`
+            : html`まだ設定していません。建て方は README の「中継所」に、
+                   置き場所は<b>設定 → ダイエット → 中継所</b>にあります。`}
+        </p>
+
+        <div class="divider"></div>
         <div class="section-title">取り込む</div>
         <div class="rows">
+          <button class="row js-relay">
+            <span class="row-main">
+              <span class="row-title">中継所から取り込む</span>
+              <span class="row-sub">${KN.healthRelay.configured()
+                ? "ショートカットが置いたデータを受け取ります"
+                : "未設定（設定 → ダイエット → 中継所）"}</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
           <button class="row js-paste">
             <span class="row-main">
               <span class="row-title">コピーしたものを取り込む</span>
@@ -1424,6 +1449,28 @@
     body.querySelector(".js-take").addEventListener("click", () => {
       done(KN.healthSync.importText(ta.value));
     });
+    /* 「中継所から取り込む」。自動のときと違って、ここでは黙りません——
+       押したのに何も言われないのが、いちばん困ります。 */
+    body.querySelector(".js-relay").addEventListener("click", () => {
+      if (!KN.healthRelay.configured()) {
+        KN.ui.toast("設定 → ダイエット → 中継所 でURLを入れてください");
+        return;
+      }
+      const btn = body.querySelector(".js-relay");
+      btn.disabled = true;
+      KN.healthRelay.pullAndImport().then((res) => {
+        if (res.text != null) showGot(res.text);
+        if (res.ok) { done(res); return; }
+        if (res.text != null) {          // 受け取れたが、中身が読めなかった
+          ta.value = res.text;
+          paintPreview();
+        }
+        KN.ui.toast(res.error || "取り込めませんでした");
+      }).catch((err) => {
+        KN.ui.toast("中継所につなげませんでした（" + (err && err.message || err) + "）");
+      }).finally(() => { btn.disabled = false; });
+    });
+
     /* 「コピーしたものを取り込む」。
        読めればそのまま、読めなければ **貼り付けの欄** に切り替えます。
        クリップボードのAPIは環境しだいで断られる道なので、断られたときに
@@ -1593,14 +1640,24 @@
        3. **切れる。** クリップボードを覗く動きなので、設定で止められます。
 
      読み取りそのものはタブを押した一拍のうちに始めます——そこを外すと、
-     ブラウザは「操作のない読み取り」として断ります。 */
+     ブラウザは「操作のない読み取り」として断ります。
+
+     中継所を設定してあれば、まずそちらを覗きます。クリップボードと違って
+     こちらは操作の一拍を必要としないので、非同期でも構いません。中継所に
+     届いていなければ、これまでどおりクリップボードを見にいきます——
+     どちらか一方に寄せると、片方しか使っていない日に取りこぼします。 */
 
   let lastAuto = "";
 
   /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
   function onEnter() {
     const st = store.get().settings;
-    if (st.dietAutoSync === false || st.clipboardBlocked) return;
+    if (st.dietAutoSync === false) return;
+    // 中継所は「操作のうち」に縛られないので、先に走らせて構いません。
+    // ただしクリップボードの読み取りは一拍のうちに始める必要があるので、
+    // 中継所の返事を待たずに、同じ拍で並べて始めます。
+    if (KN.healthRelay.configured()) pullRelay();
+    if (st.clipboardBlocked) return;
     const state = KN.healthSync.clipboardState();
     if (!state.api) return;
 
@@ -1616,6 +1673,20 @@
       if (!res.added && !res.updated) return;   // 何も変わらなかった
       render();
       KN.ui.toast("ヘルスケア：" + KN.healthSync.describe(res));
+    }).catch(() => { /* 黙って引く */ });
+  }
+
+  /* 中継所からの自動取り込み。ここも「黙って失敗する」を守ります——
+     電波の悪いところでタブを開くたびに赤い字が出るのは、報告ではなく
+     邪魔です。中継所の不調を確かめたいときは、設定の「つないでみる」か
+     取り込みシートの「中継所から取り込む」を押します。そこでは黙りません。 */
+  function pullRelay() {
+    KN.healthRelay.pullAndImport().then((res) => {
+      if (!res.ok) return;                      // 空も、繋がらないも、黙って引く
+      if (!res.added && !res.updated) return;
+      lastAuto = res.text || lastAuto;          // 同じ中身を貼り付けからも読まない
+      render();
+      KN.ui.toast("中継所：" + KN.healthSync.describe(res));
     }).catch(() => { /* 黙って引く */ });
   }
 
