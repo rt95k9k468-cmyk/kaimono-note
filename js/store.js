@@ -300,6 +300,10 @@
     });
     out.products.forEach((p) => {
       if (!Array.isArray(p.prices)) p.prices = [];
+      /* 手で並べた順。触っていないカテゴリの商品は null のままで、
+         そこは五十音のままです（並べた覚えのない棚が勝手に並び替わって
+         いるほうが、よほど分からない）。 */
+      if (typeof p.order !== "number" || !isFinite(p.order)) p.order = null;
       if (!p.categoryId || !out.categories.some((c) => c.id === p.categoryId)) {
         p.categoryId = OTHER_CATEGORY;
       }
@@ -736,6 +740,8 @@
       id: uid("p"),
       name: clean,
       categoryId: categoryId || OTHER_CATEGORY,
+      // 並べたことのない商品。並べ替えた棚に入るときは、いちばん後ろへ。
+      order: null,
       amount: isFinite(amount) && amount > 0 ? amount : null,
       unit: unit || "",
       note: note || "",
@@ -1143,6 +1149,43 @@
     return rec;
   }
 
+  /**
+   * カテゴリの中の並び順。
+   *
+   * 触っていないうちは五十音のままです——並べた覚えのない棚が勝手に
+   * 並び替わっているのは、便利ではなく不気味なので。一度でも持ち上げて
+   * 動かしたら、その棚は **並べたとおり** になります。あとから増えた商品は
+   * 順番を持たないので、いちばん後ろに付きます。
+   */
+  function productOrder(a, b) {
+    const ao = typeof a.order === "number" ? a.order : Infinity;
+    const bo = typeof b.order === "number" ? b.order : Infinity;
+    if (ao !== bo) return ao - bo;
+    return KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja");
+  }
+
+  /**
+   * ひとつのカテゴリを、渡された並びに固定します。
+   * そのカテゴリの商品を **ぜんぶ** 番号で振り直すので、一度並べれば
+   * その棚は以後ずっと並べたとおり。ほかのカテゴリには触りません。
+   * @returns 初めてその棚に手を入れたなら true
+   */
+  function reorderProducts(ids) {
+    let first = false;
+    update((s) => {
+      const byId = new Map(s.products.map((p) => [p.id, p]));
+      first = ids.every((id) => {
+        const p = byId.get(id);
+        return p && typeof p.order !== "number";
+      });
+      ids.forEach((id, i) => {
+        const p = byId.get(id);
+        if (p) p.order = i;
+      });
+    });
+    return first;
+  }
+
   /* ---------------- ダイエットの出し入れ ---------------- */
 
   const diet = () => state.diet;
@@ -1461,6 +1504,7 @@
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
+    productOrder, reorderProducts,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,

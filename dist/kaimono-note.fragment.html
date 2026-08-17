@@ -522,15 +522,20 @@ a { color: var(--c-primary); }
 
 /* ふた面のボタン。表は真ん中で大きく、裏は脇で小さく灰色。押すと
    二つが中心を通ってすれ違います——同じ持ち場を分け合っていることが、
-   その動きで分かります。 */
-.tab.is-pair .tab-ico { width: 46px; }
+   その動きで分かります。
+
+   脇に置くぶんは、**表に重ねません**。11pxでは表の絵（22px）の縁に
+   食い込んで、二つが重なった一つの絵に見えていました。22px離して
+   0.52倍まで落とすと、あいだに5pxの隙ができます。丸い下地（40px）から
+   はみ出しますが、それでいい——下地は「いま居るほう」の印なので、
+   待っているほうが外にいるのは正しい絵です。 */
 .tab.is-pair .tab-ico-face {
   transition: transform .26s var(--ease-out), opacity .26s var(--ease), color .2s var(--ease);
   color: var(--c-text-3);
   opacity: .55;
 }
-.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-11px) scale(.62); }
-.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(11px)  scale(.62); }
+.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-22px) scale(.52); }
+.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(22px)  scale(.52); }
 .tab.is-pair .tab-ico-face.is-on {
   transform: translateX(0) scale(1);
   opacity: 1;
@@ -8053,6 +8058,10 @@ button, [role="tab"] {
     });
     out.products.forEach((p) => {
       if (!Array.isArray(p.prices)) p.prices = [];
+      /* 手で並べた順。触っていないカテゴリの商品は null のままで、
+         そこは五十音のままです（並べた覚えのない棚が勝手に並び替わって
+         いるほうが、よほど分からない）。 */
+      if (typeof p.order !== "number" || !isFinite(p.order)) p.order = null;
       if (!p.categoryId || !out.categories.some((c) => c.id === p.categoryId)) {
         p.categoryId = OTHER_CATEGORY;
       }
@@ -8489,6 +8498,8 @@ button, [role="tab"] {
       id: uid("p"),
       name: clean,
       categoryId: categoryId || OTHER_CATEGORY,
+      // 並べたことのない商品。並べ替えた棚に入るときは、いちばん後ろへ。
+      order: null,
       amount: isFinite(amount) && amount > 0 ? amount : null,
       unit: unit || "",
       note: note || "",
@@ -8896,6 +8907,43 @@ button, [role="tab"] {
     return rec;
   }
 
+  /**
+   * カテゴリの中の並び順。
+   *
+   * 触っていないうちは五十音のままです——並べた覚えのない棚が勝手に
+   * 並び替わっているのは、便利ではなく不気味なので。一度でも持ち上げて
+   * 動かしたら、その棚は **並べたとおり** になります。あとから増えた商品は
+   * 順番を持たないので、いちばん後ろに付きます。
+   */
+  function productOrder(a, b) {
+    const ao = typeof a.order === "number" ? a.order : Infinity;
+    const bo = typeof b.order === "number" ? b.order : Infinity;
+    if (ao !== bo) return ao - bo;
+    return KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja");
+  }
+
+  /**
+   * ひとつのカテゴリを、渡された並びに固定します。
+   * そのカテゴリの商品を **ぜんぶ** 番号で振り直すので、一度並べれば
+   * その棚は以後ずっと並べたとおり。ほかのカテゴリには触りません。
+   * @returns 初めてその棚に手を入れたなら true
+   */
+  function reorderProducts(ids) {
+    let first = false;
+    update((s) => {
+      const byId = new Map(s.products.map((p) => [p.id, p]));
+      first = ids.every((id) => {
+        const p = byId.get(id);
+        return p && typeof p.order !== "number";
+      });
+      ids.forEach((id, i) => {
+        const p = byId.get(id);
+        if (p) p.order = i;
+      });
+    });
+    return first;
+  }
+
   /* ---------------- ダイエットの出し入れ ---------------- */
 
   const diet = () => state.diet;
@@ -9214,6 +9262,7 @@ button, [role="tab"] {
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
+    productOrder, reorderProducts,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
@@ -18053,8 +18102,8 @@ button, [role="tab"] {
     const shown = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
       .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
-      .sort((a, b) => rank(a) - rank(b)
-        || KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja"));
+      // カテゴリの中は、手で並べていればその順、まだなら五十音。
+      .sort((a, b) => rank(a) - rank(b) || store.productOrder(a, b));
 
     const matched = shown.filter((p) => !p.archived);
     const archived = shown.filter((p) => p.archived);
@@ -18069,12 +18118,71 @@ button, [role="tab"] {
     }
 
     if (matched.length) {
-      const list = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
-      matched.forEach((p) => list.append(productCard(p)));
-      els.body.append(list);
+      /* カテゴリごとに、別々の入れ物に分けます。見出しは付けません——
+         買うものの画面と同じで、どの仲間かはカードの左端の色が言います。
+         分ける理由は見た目ではなく、**持ち上げて動かせる範囲** をここで
+         区切るためです。別のカテゴリへ運べてしまうと、運んだだけで
+         商品の仲間分けが黙って変わることになります。 */
+      const tiles = KN.ui.isTiles();
+
+      /* タイルのときは、今までどおり一枚の格子です。三つ並びの格子を
+         カテゴリで割ると、二つしかない仲間のうしろに穴が空き、次の仲間が
+         新しい行から始まります。割る理由は並べ替えの範囲を区切ることに
+         あって、タイルは並べ替えないので、割る理由がありません。 */
+      if (tiles) {
+        const list = node(html`<div class="product-list is-tiles"></div>`);
+        matched.forEach((p) => list.append(productCard(p)));
+        els.body.append(list);
+        if (archived.length) els.body.append(archiveSection(archived));
+        return;
+      }
+
+      const groups = new Map();
+      matched.forEach((p) => {
+        const key = order.has(p.categoryId) ? p.categoryId : "__other";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(p);
+      });
+      groups.forEach((rows, key) => {
+        const cat = store.getCategory(key);
+        const group = node(html`
+          <section class="cat-group" style="--cat:${(cat && cat.color) || ""}">
+            <div class="product-list"></div>
+          </section>
+        `);
+        const listEl = group.querySelector(".product-list");
+        rows.forEach((p) => listEl.append(productCard(p)));
+        wireReorder(listEl);
+        els.body.append(group);
+      });
     }
 
     if (archived.length) els.body.append(archiveSection(archived));
+  }
+
+  /* 長押しで持ち上げて、同じカテゴリの中で場所を入れ替えます。
+
+     並べ替えられるのは **同じカテゴリの中だけ** です。カテゴリをまたいで
+     運べてしまうと、運んだこと自体が「この商品は野菜ではなく飲みものだ」
+     という宣言になってしまう——それは持ち上げる動きが意味していることでは
+     ありません（仲間分けは商品の画面で変えます）。
+
+     タイルのときは並べ替えません。買うものの画面と同じ約束で、正方形が
+     三つ並んだ格子は、行のように「上下に差し込む」場所が読めないので。 */
+  function wireReorder(listEl) {
+    if (KN.ui.isTiles()) return;
+    KN.reorder.attach(listEl, {
+      item: ".product-wrap",
+      onDrop: (from, to) => {
+        const ids = Array.prototype.map.call(listEl.children, (w) => w.dataset.productId);
+        const [moved] = ids.splice(from, 1);
+        ids.splice(to, 0, moved);
+        const first = store.reorderProducts(ids);
+        haptic(12);
+        // 初めてその棚に手を入れたときだけ、これから何が起きるかを言います。
+        if (first) KN.ui.toast("この並びで覚えました（あとから増えた商品は後ろに付きます）");
+      },
+    });
   }
 
   /* ---------------- archive ---------------- */
@@ -18152,6 +18260,7 @@ button, [role="tab"] {
        a third of a screen, so the tile panels are the icons alone. */
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""} ${tiles ? "is-tile-wrap" : ""}"
+               data-product-id="${product.id}"
                style="--cat:${store.productColor(product)}">
         <div class="swipe-yes">
           ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>

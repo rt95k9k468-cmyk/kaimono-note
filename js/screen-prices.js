@@ -169,8 +169,8 @@
     const shown = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
       .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
-      .sort((a, b) => rank(a) - rank(b)
-        || KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja"));
+      // カテゴリの中は、手で並べていればその順、まだなら五十音。
+      .sort((a, b) => rank(a) - rank(b) || store.productOrder(a, b));
 
     const matched = shown.filter((p) => !p.archived);
     const archived = shown.filter((p) => p.archived);
@@ -185,12 +185,71 @@
     }
 
     if (matched.length) {
-      const list = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
-      matched.forEach((p) => list.append(productCard(p)));
-      els.body.append(list);
+      /* カテゴリごとに、別々の入れ物に分けます。見出しは付けません——
+         買うものの画面と同じで、どの仲間かはカードの左端の色が言います。
+         分ける理由は見た目ではなく、**持ち上げて動かせる範囲** をここで
+         区切るためです。別のカテゴリへ運べてしまうと、運んだだけで
+         商品の仲間分けが黙って変わることになります。 */
+      const tiles = KN.ui.isTiles();
+
+      /* タイルのときは、今までどおり一枚の格子です。三つ並びの格子を
+         カテゴリで割ると、二つしかない仲間のうしろに穴が空き、次の仲間が
+         新しい行から始まります。割る理由は並べ替えの範囲を区切ることに
+         あって、タイルは並べ替えないので、割る理由がありません。 */
+      if (tiles) {
+        const list = node(html`<div class="product-list is-tiles"></div>`);
+        matched.forEach((p) => list.append(productCard(p)));
+        els.body.append(list);
+        if (archived.length) els.body.append(archiveSection(archived));
+        return;
+      }
+
+      const groups = new Map();
+      matched.forEach((p) => {
+        const key = order.has(p.categoryId) ? p.categoryId : "__other";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(p);
+      });
+      groups.forEach((rows, key) => {
+        const cat = store.getCategory(key);
+        const group = node(html`
+          <section class="cat-group" style="--cat:${(cat && cat.color) || ""}">
+            <div class="product-list"></div>
+          </section>
+        `);
+        const listEl = group.querySelector(".product-list");
+        rows.forEach((p) => listEl.append(productCard(p)));
+        wireReorder(listEl);
+        els.body.append(group);
+      });
     }
 
     if (archived.length) els.body.append(archiveSection(archived));
+  }
+
+  /* 長押しで持ち上げて、同じカテゴリの中で場所を入れ替えます。
+
+     並べ替えられるのは **同じカテゴリの中だけ** です。カテゴリをまたいで
+     運べてしまうと、運んだこと自体が「この商品は野菜ではなく飲みものだ」
+     という宣言になってしまう——それは持ち上げる動きが意味していることでは
+     ありません（仲間分けは商品の画面で変えます）。
+
+     タイルのときは並べ替えません。買うものの画面と同じ約束で、正方形が
+     三つ並んだ格子は、行のように「上下に差し込む」場所が読めないので。 */
+  function wireReorder(listEl) {
+    if (KN.ui.isTiles()) return;
+    KN.reorder.attach(listEl, {
+      item: ".product-wrap",
+      onDrop: (from, to) => {
+        const ids = Array.prototype.map.call(listEl.children, (w) => w.dataset.productId);
+        const [moved] = ids.splice(from, 1);
+        ids.splice(to, 0, moved);
+        const first = store.reorderProducts(ids);
+        haptic(12);
+        // 初めてその棚に手を入れたときだけ、これから何が起きるかを言います。
+        if (first) KN.ui.toast("この並びで覚えました（あとから増えた商品は後ろに付きます）");
+      },
+    });
   }
 
   /* ---------------- archive ---------------- */
@@ -268,6 +327,7 @@
        a third of a screen, so the tile panels are the icons alone. */
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""} ${tiles ? "is-tile-wrap" : ""}"
+               data-product-id="${product.id}"
                style="--cat:${store.productColor(product)}">
         <div class="swipe-yes">
           ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>

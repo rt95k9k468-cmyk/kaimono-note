@@ -519,15 +519,20 @@ a { color: var(--c-primary); }
 
 /* ふた面のボタン。表は真ん中で大きく、裏は脇で小さく灰色。押すと
    二つが中心を通ってすれ違います——同じ持ち場を分け合っていることが、
-   その動きで分かります。 */
-.tab.is-pair .tab-ico { width: 46px; }
+   その動きで分かります。
+
+   脇に置くぶんは、**表に重ねません**。11pxでは表の絵（22px）の縁に
+   食い込んで、二つが重なった一つの絵に見えていました。22px離して
+   0.52倍まで落とすと、あいだに5pxの隙ができます。丸い下地（40px）から
+   はみ出しますが、それでいい——下地は「いま居るほう」の印なので、
+   待っているほうが外にいるのは正しい絵です。 */
 .tab.is-pair .tab-ico-face {
   transition: transform .26s var(--ease-out), opacity .26s var(--ease), color .2s var(--ease);
   color: var(--c-text-3);
   opacity: .55;
 }
-.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-11px) scale(.62); }
-.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(11px)  scale(.62); }
+.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-22px) scale(.52); }
+.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(22px)  scale(.52); }
 .tab.is-pair .tab-ico-face.is-on {
   transform: translateX(0) scale(1);
   opacity: 1;
