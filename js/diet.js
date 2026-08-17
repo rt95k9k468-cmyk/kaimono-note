@@ -44,7 +44,8 @@
     });
     return [...seen.values()]
       .sort((a, b) => a.day.localeCompare(b.day))
-      .map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source, id: w.id }));
+      .map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source, id: w.id,
+                     meal: w.meal, clothed: w.clothed }));
   }
 
   /**
@@ -334,6 +335,105 @@
       });
     }
 
+    /* --- 量る条件 ---
+
+       ここは、ほかの項目より効きます。食前と食後、着ているかいないかは、
+       体そのものの変化ではなく **測り方の差** なので、混ざったまま並ぶと
+       増減として読めてしまいます。どれだけ違うのかを数で出しておけば、
+       次からは差し引いて読めます。
+
+       比べるのは素の体重ではなく、その日の7日平均からの **ずれ** です。
+       素で比べると、減量の途中なら後の日ほど軽いという当たり前しか
+       出てきません。 */
+    /* ここだけは、7日平均ではなく **期間ぜんぶに引いた直線** からのずれで
+       比べます。理由があります。7日平均はその点自身を含む後ろ向きの窓
+       なので、一日おきに着衣ありなしを繰り返す人だと、窓の中に自分と同じ
+       条件の日が多め（7日なら4日対3日）に入ります。すると平均が自分の
+       ほうへ寄って、差が実際より小さく出ます——0.8kgの差が0.69kgに見える。
+       量り方の差を数で出すのがここの仕事なので、それでは足りません。
+       直線なら、条件は傾きに乗らず、まとめて切片に吸われるので、
+       二つの組のずれの差がそのまま量り方の差になります。
+
+       睡眠や休日のほうを7日平均のままにしてあるのは、あちらが訊いている
+       のが「その前後の日と比べて重かったか」だからです。問いが違えば、
+       比べる相手も違います。 */
+    const line = (() => {
+      const xs = pts.map((p) => U.dayDate(p.day).getTime() / 86400000);
+      const mx = mean(xs), my = mean(pts.map((p) => p.kg));
+      let num = 0, den = 0;
+      xs.forEach((x, i) => { num += (x - mx) * (pts[i].kg - my); den += (x - mx) ** 2; });
+      const slope = den ? num / den : 0;
+      return (day) => my + slope * (U.dayDate(day).getTime() / 86400000 - mx);
+    })();
+
+    const splitBy = (pick) => {
+      const a = [], b = [];
+      pts.forEach((p) => {
+        const side = pick(p);
+        if (side === true) a.push(p.kg - line(p.day));
+        else if (side === false) b.push(p.kg - line(p.day));
+      });
+      return { a, b };
+    };
+
+    const condition = (id, title, pick, nameA, nameB) => {
+      const { a, b } = splitBy(pick);
+      if (a.length < MIN_GROUP || b.length < MIN_GROUP) return;
+      const diff = round(mean(a) - mean(b), 2);
+      out.push({
+        id, title,
+        text: Math.abs(diff) < 0.1
+          ? `${nameA}（${a.length}日）と${nameB}（${b.length}日）で、`
+            + `その週の平均からのずれに目立った差はありません。`
+          : `${nameA}は${nameB}より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
+            + `（${nameA} ${a.length}日 / ${nameB} ${b.length}日）。`
+            + `体の変化ではなく、量り方の差として読めます。`,
+        value: diff, tone: "info", n: a.length + b.length,
+      });
+    };
+
+    condition("meal", "食前と食後",
+      (p) => (p.meal === "after" ? true : (p.meal === "before" ? false : null)), "食後", "食前");
+    condition("clothed", "服装",
+      (p) => (p.clothed === true ? true : (p.clothed === false ? false : null)), "着衣あり", "着衣なし");
+
+    /* 二つの条件が一緒に動いていたら、そう言います。
+       食後にはいつも服を着ていて、食前にはいつも脱いでいる人の記録では、
+       出てくる二つの数はどちらも「食後の差」と「着衣の差」の合計です。
+       そのまま並べると、両方を二重に数えたことになります。
+       切り分けられないことは、切り分けられないと書くのが唯一正しい。 */
+    const both = pts.filter((p) => p.meal != null && p.clothed != null);
+    if (both.length >= MIN_GROUP * 2 && out.some((f) => f.id === "meal") && out.some((f) => f.id === "clothed")) {
+      const after = both.filter((p) => p.meal === "after");
+      const before = both.filter((p) => p.meal === "before");
+      const rate = (xs) => (xs.length ? xs.filter((p) => p.clothed).length / xs.length : null);
+      const ra = rate(after), rb = rate(before);
+      if (ra != null && rb != null && Math.abs(ra - rb) > 0.5) {
+        const note = `なお、この期間は食前・食後と服装がほとんど一緒に動いています`
+          + `（食後の${Math.round(ra * 100)}%、食前の${Math.round(rb * 100)}%が着衣あり）。`
+          + `上の二つの差は切り分けられていないので、それぞれ多めに出ています。`;
+        ["meal", "clothed"].forEach((id) => {
+          const f = out.find((x) => x.id === id);
+          if (f) { f.text += note; f.tone = "warn"; f.entangled = true; }
+        });
+      }
+    }
+
+    /* 条件が混ざっているのに、まだ比べられるほど溜まっていないとき。
+       黙っていると、その混ざりが増減として読まれ続けます。 */
+    const withCond = pts.filter((p) => p.meal != null || p.clothed != null);
+    const kinds = new Set(pts.map((p) => `${p.meal || "?"}/${p.clothed == null ? "?" : p.clothed}`));
+    if (withCond.length >= 2 && kinds.size > 1 && !out.some((f) => f.id === "meal" || f.id === "clothed")) {
+      out.push({
+        id: "mixed",
+        title: "量り方が混ざっています",
+        text: `この期間の記録には、条件の違う量り方が ${kinds.size} 通り混ざっています。`
+          + `食前と食後、着衣のあるなしは、体の変化ではなく量り方の差として並びに入ります。`
+          + `同じ条件が片側 ${MIN_GROUP} 日ぶん貯まると、その差を数で出します。`,
+        tone: "warn", n: withCond.length,
+      });
+    }
+
     /* --- 平日と休日 --- */
     const wd = [], we = [];
     pts.forEach((p) => {
@@ -388,6 +488,8 @@
     return {
       days: win,
       weight: weightPoints(days[0], today).length,
+      // 量る条件まで書いてある日。統計に効くのはこちらなので、別に数えます。
+      condition: weightPoints(days[0], today).filter((p) => p.meal != null || p.clothed != null).length,
       meals: days.filter((d) => store.mealsOfDay(d).length).length,
       steps: days.filter((d) => store.healthValue(d, "steps") != null).length,
       sleep: days.filter((d) => store.healthValue(d, "sleep") != null).length,

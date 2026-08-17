@@ -139,7 +139,7 @@
             <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
             ${w && w.fat != null ? html`<span class="diet-hero-fat mono-num">体脂肪 ${w.fat.toFixed(1)}%</span>` : ""}
           </span>
-          <span class="diet-hero-cta">${w ? "タップして直す" : "タップして記録する"}</span>
+          <span class="diet-hero-cta">${w && condText(w) ? condText(w) + "　" : ""}${w ? "タップして直す" : "タップして記録する"}</span>
         </button>
         <div class="diet-hero-side">
           <div class="diet-stat">
@@ -717,8 +717,34 @@
 
   /* ---------------- 体重を書く ---------------- */
 
+  /* 量る条件。体重は、食前か食後かで1kg近く、着ているかいないかで0.5kg
+     以上ふつうに動きます。同じ人の同じ日でも、条件が違えば別の数です。
+     ここを書き留めておくと、あとで「増えた」と「着替えなかった」を
+     分けて読めます。 */
+  const MEAL_CHIPS = [
+    { id: "before", label: "食前" },
+    { id: "after", label: "食後" },
+    { id: "", label: "未記入" },
+  ];
+  const WEAR_CHIPS = [
+    { id: "no", label: "着衣なし" },
+    { id: "yes", label: "着衣あり" },
+    { id: "", label: "未記入" },
+  ];
+  const mealLabel = (v) => (v === "before" ? "食前" : v === "after" ? "食後" : "");
+  const wearLabel = (v) => (v === true ? "着衣あり" : v === false ? "着衣なし" : "");
+  /** 行に添える一言。書いていない条件は言いません。 */
+  const condText = (w) => [mealLabel(w && w.meal), wearLabel(w && w.clothed)].filter(Boolean).join("・");
+
   function openWeightSheet(existing) {
     const w = existing || null;
+    /* 新しく書くときは、前回と同じ条件を出しておきます。量る条件は
+       ふつう毎日おなじなので、毎回二つ選ばせるのは手数の無駄。
+       一度も選んでいなければ、どちらも未記入のままです。 */
+    const seed = w || store.lastWeightCondition();
+    let meal = seed.meal || null;
+    let clothed = seed.clothed == null ? null : seed.clothed;
+
     const body = node(html`
       <div class="stack">
         <div class="field-row">
@@ -743,6 +769,20 @@
                    value="${w && w.fat != null ? String(w.fat) : ""}">
           </label>
         </div>
+        <div class="field">
+          <span class="field-label">量ったとき</span>
+          <div class="js-meal"></div>
+        </div>
+        <div class="field">
+          <span class="field-label">服装</span>
+          <div class="js-wear"></div>
+        </div>
+        <p class="diet-note">
+          食前か食後かで1kg近く、着ているかどうかで0.5kg以上動きます。
+          書いておくと、その差を分けて読めます（<b>次からは前回と同じものが
+          選ばれます</b>）。
+        </p>
+
         <label class="field">
           <span class="field-label">メモ</span>
           <input class="input js-memo" placeholder="例：飲んだ翌日" value="${w ? w.memo : ""}">
@@ -764,6 +804,17 @@
     const kgEl = body.querySelector(".js-kg");
     if (!w) KN.ui.focusNow(kgEl);
 
+    const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
+      activeId: meal || "",
+      onPick: (id) => { meal = id || null; paintMeal(); },
+    });
+    const paintWear = () => KN.ui.chipRow(body.querySelector(".js-wear"), WEAR_CHIPS, {
+      activeId: clothed == null ? "" : (clothed ? "yes" : "no"),
+      onPick: (id) => { clothed = id === "yes" ? true : (id === "no" ? false : null); paintWear(); },
+    });
+    paintMeal();
+    paintWear();
+
     foot.querySelector(".js-save").addEventListener("click", () => {
       const val = parseFloat(String(kgEl.value).replace(/[^\d.]/g, ""));
       if (!(val > 0)) { KN.ui.toast("体重を入れてください"); return; }
@@ -774,6 +825,7 @@
         kg: val,
         fat: Number.isFinite(fatRaw) && fatRaw > 0 ? fatRaw : null,
         memo: body.querySelector(".js-memo").value.trim(),
+        meal, clothed,
         // 手が入ったものは手が入ったものです。次の取り込みで機械の値に
         // 戻されないよう、出どころを書き換えます。
         source: "manual",

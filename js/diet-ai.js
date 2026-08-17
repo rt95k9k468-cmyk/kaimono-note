@@ -90,6 +90,10 @@
           day: d,
           weightKg: w ? w.kg : null,
           bodyFat: w ? w.fat : null,
+          // 量った条件。食前/食後・着衣のあるなしで、体重は体の変化と
+          // 同じくらい動きます。渡さないと、量り方の差を増減と読まれます。
+          weighedMeal: w ? w.meal : null,
+          weighedClothed: w ? w.clothed : null,
           kcal: t ? t.kcal : null,
           p: t ? t.p : null, f: t ? t.f : null, c: t ? t.c : null,
           steps: store.healthValue(d, "steps"),
@@ -100,7 +104,9 @@
       }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null || r.sleepMin != null),
       // 相関を因果と言わせないための一言。窓口側のプロンプトにも
       // 同じことを書きますが、材料にも添えておきます。
-      note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。",
+      note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。"
+        + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
+        + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };
   }
 

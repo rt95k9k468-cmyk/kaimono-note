@@ -128,6 +128,15 @@
       // 体脂肪率。0 は「測れなかった」であって 0% ではないので、null に倒します。
       fat: (() => { const f = posNum(w.fat); return f != null && f < 80 ? Math.round(f * 10) / 10 : null; })(),
       memo: typeof w.memo === "string" ? w.memo : "",
+      /* どんな条件で量ったか。体重は、食前か食後かで1kg近く、着ているか
+         いないかで0.5kg以上ふつうに動きます。条件を書き留めておかないと、
+         その差が「増えた」「減った」として並びに混ざります。
+
+         書かなかったときは **null のまま** です——たいてい食前だろう、と
+         こちらで埋めると、埋めた値がそのまま統計の材料になります。
+         分からないものは分からないままにしておきます。 */
+      meal: (w.meal === "before" || w.meal === "after") ? w.meal : null,
+      clothed: w.clothed === true ? true : (w.clothed === false ? false : null),
       source: w.source === "health" ? "health" : "manual",
       externalId: typeof w.externalId === "string" ? w.externalId : null,
       importedAt: w.importedAt || null,
@@ -1140,11 +1149,11 @@
 
   /* --- 体重 --- */
 
-  function addWeight({ day, time, kg, fat, memo, source, externalId } = {}) {
+  function addWeight({ day, time, kg, fat, memo, meal, clothed, source, externalId } = {}) {
     const rec = cleanWeight({
       day: day || KN.util.todayKey(),
       time: time || KN.util.nowTime(),
-      kg, fat, memo, source, externalId,
+      kg, fat, memo, meal, clothed, source, externalId,
       importedAt: source === "health" ? new Date().toISOString() : null,
     }, 0);
     if (!rec) return null;
@@ -1182,6 +1191,17 @@
   function latestWeight() {
     const list = sortedWeights();
     return list.length ? list[0] : null;
+  }
+
+  /**
+   * 前回どんな条件で量ったか。次の一件にそのまま出しておくためのものです。
+   * 量る条件はふつう毎日おなじなので、毎回二つ選ばせるのは手数の無駄。
+   * それでも **既定では埋めません**——一度も選んでいない人に、こちらが
+   * 決めた条件を書き込むのは、記録ではなく作り話なので。
+   */
+  function lastWeightCondition() {
+    const found = sortedWeights().find((w) => w.meal != null || w.clothed != null);
+    return found ? { meal: found.meal, clothed: found.clothed } : { meal: null, clothed: null };
   }
 
   /* --- 食事 --- */
@@ -1446,6 +1466,7 @@
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
+    lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
