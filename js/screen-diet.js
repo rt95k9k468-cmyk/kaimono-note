@@ -1525,6 +1525,48 @@
     });
   }
 
+  /* ---------------- タブを押したら、そのまま読む ----------------
+
+     ダイエットを開くのは、たいてい「ショートカットを走らせた直後」です。
+     だったら開いた時点で一度読みにいけば、押すボタンが一つ減ります。
+
+     三つだけ気をつけます。
+
+       1. **黙って失敗する。** クリップボードに買い物のURLが入っている日の
+          ほうが多いので、読めなかった・健康データでなかったときは何も
+          言いません。知らせるのは入ったときだけ。
+       2. **同じものを何度も知らせない。** 一度読んだ中身は覚えておいて、
+          変わっていなければ触りません（タブを行き来するたびに
+          「1件を更新」と出るのは、報告ではなく騒音です）。
+       3. **切れる。** クリップボードを覗く動きなので、設定で止められます。
+
+     読み取りそのものはタブを押した一拍のうちに始めます——そこを外すと、
+     ブラウザは「操作のない読み取り」として断ります。 */
+
+  let lastAuto = "";
+
+  /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
+  function onEnter() {
+    const st = store.get().settings;
+    if (st.dietAutoSync === false || st.clipboardBlocked) return;
+    const state = KN.healthSync.clipboardState();
+    if (!state.api) return;
+
+    KN.healthSync.readClipboard().then((text) => {
+      if (text == null) return;                 // 読めなかった：黙って引く
+      if (text === lastAuto) return;            // さっきと同じ中身
+      // 健康データの形をしていなければ、触りません。
+      const look = KN.healthSync.preview(text);
+      if (!look.ok) return;
+      lastAuto = text;
+      const res = KN.healthSync.importText(text);
+      if (!res.ok) return;
+      if (!res.added && !res.updated) return;   // 何も変わらなかった
+      render();
+      KN.ui.toast("ヘルスケア：" + KN.healthSync.describe(res));
+    }).catch(() => { /* 黙って引く */ });
+  }
+
   /* ---------------- ＋ ---------------- */
 
   function dockButton() {
@@ -1539,7 +1581,7 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.diet = { mount, render, dockButton,
+  KN.screens.diet = { mount, render, dockButton, onEnter,
     // 設定やテストから開けるように
     openWeightSheet, openMealSheet, openGoalSheet, openSyncSheet };
 })();

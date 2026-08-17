@@ -138,9 +138,112 @@
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.showScreen("settings"));
 
+    /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
+       高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
+       焼き込むと、機種が変わった日にずれます。 */
+    const fitCal = () => {
+      const h = els.topbar.getBoundingClientRect().height;
+      root.style.setProperty("--topbar-h", Math.round(h) + "px");
+    };
+    fitCal();
+    window.addEventListener("resize", fitCal);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
+
+    let lastTop = 0;
     root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+      const top = root.scrollTop;
+      const stuck = top > 4;
+      els.topbar.classList.toggle("is-stuck", stuck);
+      /* 貼りついているあいだは、カレンダーを一段小さくします。月の形は
+         残したまま、リストに返す高さを稼ぐため。 */
+      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
+
+      /* 月を追いかけるのは、**位置が変わったとき** だけ。scroll は、行が
+         増えて高さが変わっただけでも飛んできます。 */
+      const moved = Math.abs(top - lastTop) > 0.5;
+      lastTop = top;
+      if (!moved) return;
+      /* そして、動かしたのが自分でないときだけ、留めを外します。
+         自分で滑らせているあいだと、描き直しで位置を戻したぶんは
+         「その人が動いた」ではないので、そのぶんは基準のほうをずらします。
+         残りが指のぶんで、そちらが一目ぶん（24px）を超えたら外れます——
+         滑り終わりの数pxの揺れで外れると、めくった月がすぐ書き戻ります。 */
+      if (restoring || (KN.isGliding && KN.isGliding())) pinTop = top;
+      else if (calPinned && Math.abs(top - pinTop) > 24) calPinned = false;
+      followScroll();
+    }, { passive: true });
+  }
+
+  /* ---------------- スクロールに月がついていく ----------------
+
+     下の棚はカレンダーをほどいて縦に並べたものなので、いま画面の上に来て
+     いる棚が何月かは分かります。9月の棚まで下りたら、上のカレンダーも9月に
+     する——同じ場所を、上と下の二つの描き方で見ているだけにしたい。
+
+     逆向きも同じで、カレンダーを払って月を変えたら、リストもその月の頭へ
+     動きます。片方だけが動くと、二つは別々のものになってしまいます。 */
+
+  let followFrame = 0;
+  /* 手でめくった月は、留めます。その月の棚がまだ無いことはよくあり
+     （10月に一件も無ければ10月の棚は出ません）、そのとき位置から月を
+     読み直すと、めくった先が「いま見えている月」に上書きされて、
+     ‹ › が効かなくなります。留めは、その人がじっさいにスクロールした
+     ときに外れます。 */
+  let calPinned = false;
+  let pinTop = 0;
+  let restoring = false;
+
+  function followScroll() {
+    if (followFrame) return;
+    followFrame = requestAnimationFrame(() => {
+      followFrame = 0;
+      if (!root || !els.cal || query || calPinned) return;
+      /* 自分で滑らせているあいだは、ついていきません。こちらが運んでいる
+         最中に位置から月を読み直すと、めくったばかりの月が、通り道の月に
+         書き換わります。 */
+      if (KN.isGliding && KN.isGliding()) return;
+      const line = els.cal.getBoundingClientRect().bottom + 1;
+      let want = "";
+      const secs = els.body.querySelectorAll("[data-month]");
+      for (let i = 0; i < secs.length; i++) {
+        const m = secs[i].getAttribute("data-month");
+        if (!m) continue;
+        const r = secs[i].getBoundingClientRect();
+        // 画面の上端をまたいでいる棚。まだ来ていないものは相手にしません。
+        if (r.top <= line) want = m;
+        else break;
+      }
+      if (!want) {
+        // まだどの棚にも届いていない＝いちばん上。最初の棚の月に戻します。
+        for (let i = 0; i < secs.length; i++) {
+          const m = secs[i].getAttribute("data-month");
+          if (m) { want = m; break; }
+        }
+      }
+      if (!want) return;
+      const [y, mo] = want.split("-").map(Number);
+      const cur = shownMonth();
+      if (cur.year === y && cur.month === mo - 1) return;
+      setCalMonth(y, mo - 1);
     });
+  }
+
+  /** いまカレンダーが出している月。 */
+  function shownMonth() {
+    const now = KN.util.dayDate(todayKey());
+    return calMonth || { year: now.getFullYear(), month: now.getMonth() };
+  }
+
+  /**
+   * カレンダーだけを描き直します。スクロールのたびに画面ぜんぶを組み直すと
+   * 指の下で列が跳ねるので、ここは差し替えるものを最小にします。
+   */
+  function setCalMonth(year, month, manual) {
+    const now = KN.util.dayDate(todayKey());
+    calMonth = (year === now.getFullYear() && month === now.getMonth())
+      ? null : { year, month };
+    if (manual) { calPinned = true; pinTop = root ? root.scrollTop : 0; }
+    fillCalendar(els.cal, store.openTodos());
   }
 
   /* ---------------- the add / edit sheet ---------------- */
@@ -153,7 +256,9 @@
     const t = editing ? store.getTodo(todoId) : null;
     if (editing && !t) return;
 
-    let due = editing ? t.due : null;
+    /* 新しく書くものは、まず今日のこと。日付なしで足すと「いつか」の棚に
+       落ちて、そこは見に行かないと目に入りません。あとから外せます。 */
+    let due = editing ? t.due : todayKey();
     let part = editing ? t.part : null;
     let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
@@ -174,7 +279,7 @@
         <div class="field">
           <span class="field-label">いつまでに</span>
           <div class="js-due-chips"></div>
-          <input class="input js-due" type="date" value="${editing && t.due ? t.due : ""}"
+          <input class="input js-due" type="date" value="${due || ""}"
                  aria-label="日付を選ぶ">
           ${/* Which part of the day, for the ones where it matters, and the
                 clock itself for the ones that happen at a time. Choosing
@@ -581,25 +686,23 @@
        clears any clock time as well — otherwise 19:30 carried up to 朝 would
        file itself straight back under 夜 and the drop would look ignored.
        Dropping onto a *day* leaves the time alone: only the day changed. */
-    /* 毎朝 opens the day and 毎晩 closes it, with the rest of today between —
-       so the panel reads down the day the way the day is lived. Both only
-       appear when something is in them: an empty 「毎朝」 line every morning is
-       a shelf for a routine nobody has. */
-    out.push({ id: "today-dawn", label: BOOKENDS[0].label, color: BOOKENDS[0].color,
-      today: true, day: today, part: "dawn", onlyWhenFull: true,
-      drop: () => ({ due: today, part: "dawn", time: null }) });
+    /* 今日は一枚。毎朝と毎晩は、かつてそれぞれ見出しを持っていましたが、
+       やめました——ほかの日はどれも見出しが一つで、今日だけ三つあるのは、
+       同じ「一日」を別の作りで描いていることになります。毎朝と毎晩は
+       いまも日の両端に並びますが、それは並び順が言うことで、見出しが
+       言うことではありません（行の左に「毎朝」と出ます）。 */
     out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
       drop: () => ({ due: today, part: null }) });
-    out.push({ id: "today-dusk", label: BOOKENDS[1].label, color: BOOKENDS[1].color,
-      today: true, day: today, part: "dusk", onlyWhenFull: true,
-      drop: () => ({ due: today, part: "dusk", time: null }) });
 
     // The coming week, a day at a time.
     for (let i = 1; i <= 7; i++) {
       const day = U.shiftDay(today, i);
       const d = U.dayDate(day);
-      const label = i === 1 ? "明日" : i === 2 ? "明後日"
-        : `${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}`;
+      /* どの日も、まず日付。「明日」だけが日付を持たないと、下に並ぶ
+         「8月20日 木」と読み方が変わってしまいます。呼び名はそのうしろに
+         添えるもの。 */
+      const date = `${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}`;
+      const label = i === 1 ? `${date} 明日` : i === 2 ? `${date} 明後日` : date;
       out.push({ id: "d" + i, label, color: DAY_COLORS[Math.min(i, DAY_COLORS.length - 1)],
         day, drop: () => ({ due: day }) });
     }
@@ -648,9 +751,8 @@
     if (!t.due) return "none";
     const n = daysUntil(t.due);
     if (n < 0) return "late";
-    /* Only the two ends of the day are shelves of their own now; everything
-       else for today sits in 今日 and is ordered by the clock and by hand. */
-    if (n === 0) return isBookend(t.part) ? "today-" + t.part : "today";
+    // 今日はひと棚。毎朝も毎晩もここに入り、並び順だけが日の両端に置きます。
+    if (n === 0) return "today";
     if (n <= 7) return "d" + n;
     const week = groups.find((g) => g.from && g.to && t.due >= g.from && t.due <= g.to);
     if (week) return week.id;
@@ -839,6 +941,10 @@
   let groups = [];
 
   function renderBody() {
+    /* 書き替えても、読んでいた場所は動かしません。中身を空にすると
+       スクロールは0へ落ちるので、組み直したあとに返します——一件
+       片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
+    const keepTop = root ? root.scrollTop : 0;
     els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
@@ -856,7 +962,12 @@
        downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
        いるのか」 not at all — 8月17日 four screens down is a date without a
        shape. Left out while searching: a filtered list is not a month. */
-    if (!query) els.body.append(monthCalendar(store.openTodos()));
+    els.cal = null;
+    if (!query) {
+      els.cal = monthCalendar(store.openTodos());
+      if (root && root.scrollTop > 4) els.cal.classList.add("is-stuck");
+      els.body.append(els.cal);
+    }
 
     if (!all.length) {
       els.body.append(node(html`
@@ -869,6 +980,7 @@
           </p>
         </div>
       `));
+      restoreTop(keepTop);
       return;
     }
 
@@ -878,6 +990,7 @@
           見つかりませんでした
         </p>
       `));
+      restoreTop(keepTop);
       return;
     }
 
@@ -898,6 +1011,16 @@
     });
 
     if (closed.length) els.body.append(archiveSection(closed, tiles));
+    restoreTop(keepTop);
+  }
+
+  /** 組み直したあとに、読んでいた場所へ戻します。 */
+  function restoreTop(top) {
+    if (!root || !top) return;
+    restoring = true;
+    root.scrollTop = Math.min(top, Math.max(0, root.scrollHeight - root.clientHeight));
+    // 戻したことが「その人が動いた」と読まれないよう、ひと呼吸だけ伏せます。
+    setTimeout(() => { restoring = false; }, 60);
   }
 
   function head(g, count) {
@@ -923,6 +1046,22 @@
      August while you are looking at October. */
 
   let calMonth = null;    // {year, month}, or null for 「this one」
+
+  /**
+   * どの月の棚か。「YYYY-MM」、決められないものは空。
+   * 期限切れ・いつか・もっと先は、どの月のものでもありません——そこを通っても
+   * 上のカレンダーは動かないほうがいい（月の無いものを見ているあいだに
+   * 勝手に月が変わるのは、ただの誤作動に見えます）。
+   */
+  function monthKeyOf(g) {
+    if (!g) return "";
+    const U = KN.util;
+    if (g.year != null && g.month != null) return `${g.year}-${String(g.month + 1).padStart(2, "0")}`;
+    const day = g.day || g.from;
+    if (!day) return "";
+    const d = U.dayDate(day);
+    return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "";
+  }
 
   /** Which shelf a bare date belongs to — the same reading groupIdOf does. */
   function groupIdOfDay(day) {
@@ -950,6 +1089,41 @@
    * line you asked for. The rows for that exact day light up once: long enough
    * to find, short enough not to be a state anyone has to dismiss.
    */
+  /** 上に貼りついているもの（バーと、いまはカレンダー）の厚み。 */
+  function chromeInset() {
+    const bar = root.querySelector(".topbar");
+    let h = bar ? bar.getBoundingClientRect().height : 0;
+    // 貼りついている（＝すでに上にいる）カレンダーのぶんだけ、さらに下げます。
+    if (els.cal && els.cal.classList.contains("is-stuck")) {
+      h += els.cal.getBoundingClientRect().height;
+    }
+    return h;
+  }
+
+  function scrollToSection(target) {
+    /* Scrolled by hand rather than with scrollIntoView. That asks *every*
+       ancestor to bring the row into view, the document included — and the
+       document's one spare pixel is what the status-bar tap listens on, so
+       revealing a row here would read as 「上へ戻れ」 and do the opposite
+       (app.js). Setting the screen's own scrollTop leaves the document alone. */
+    const top = root.scrollTop
+      + target.getBoundingClientRect().top - root.getBoundingClientRect().top - chromeInset();
+    KN.glideTo(root, Math.max(0, top));
+  }
+
+  /**
+   * その月の、いちばん上の棚まで。
+   * **その月の棚が無ければ、動かしません。** 近くの棚で代用すると、
+   * 見たかった月とは関係のない場所へ運んだうえ、そこの月がカレンダーに
+   * 跳ね返ってきて、めくったことが取り消されます。
+   */
+  function scrollToMonth(year, month) {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+    const target = [...els.body.querySelectorAll("[data-month]")]
+      .find((x) => x.getAttribute("data-month") === key);
+    if (target) scrollToSection(target);
+  }
+
   function jumpToDay(day) {
     const target = els.body.querySelector(`.todo-group[data-group="${groupIdOfDay(day)}"]`)
       || els.body.querySelector(".trip.todo-today");
@@ -958,13 +1132,7 @@
        document's one spare pixel is what the status-bar tap listens on, so
        revealing a row here would read as 「上へ戻れ」 and do the opposite
        (app.js). Setting the screen's own scrollTop leaves the document alone. */
-    if (target) {
-      const bar = root.querySelector(".topbar");
-      const inset = bar ? bar.getBoundingClientRect().height : 0;
-      const top = root.scrollTop
-        + target.getBoundingClientRect().top - root.getBoundingClientRect().top - inset;
-      KN.glideTo(root, top);
-    }
+    if (target) scrollToSection(target);
 
     const ids = new Set(store.openTodos().filter((t) => t.due === day).map((t) => t.id));
     if (!ids.size) return;
@@ -1047,12 +1215,62 @@
     sec.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
   }
 
+  /* 骨組みは一度だけ作り、月が変わったら中身だけ描き直します。
+
+     節そのものを作り直さないのは、これが position:sticky の要素だから
+     です。貼りついている節を差し替えると、ブラウザはスクロールの
+     つなぎ目を取り直そうとして文書のほうを1pxだけ動かします——そして
+     その1pxは、ノッチのタップを聞くために置いてある1pxです（app.js）。
+     つまり月をめくるたびに「上へ戻れ」と言ったことになり、画面が
+     いちばん上まで飛びます。中身だけ入れ替えれば、節は動きません。 */
   function monthCalendar(open) {
+    const U = KN.util;
+    const sec = node(html`
+      <section class="cal">
+        <h2 class="cal-head">
+          <span class="cal-month"></span>
+          <span class="cal-year"></span>
+          <button type="button" class="cal-now js-now" hidden>今日へ</button>
+          <span class="cal-nav">
+            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
+          </span>
+        </h2>
+        <div class="cal-grid"></div>
+      </section>
+    `);
+    const grid = sec.querySelector(".cal-grid");
+
+    /* 月を変えたら、下のリストもその月の頭へ運びます。上だけが動くと、
+       カレンダーと棚が別々のものを指したまま並ぶことになります。 */
+    const goTo = (delta) => {
+      const m = shownMonth();
+      const d = new Date(m.year, m.month + delta, 1);
+      haptic();
+      setCalMonth(d.getFullYear(), d.getMonth(), true);
+      scrollToMonth(d.getFullYear(), d.getMonth());
+    };
+    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
+    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
+    sec.querySelector(".js-now").addEventListener("click", () => {
+      const now = U.dayDate(todayKey());
+      haptic();
+      setCalMonth(now.getFullYear(), now.getMonth(), true);
+      scrollToMonth(now.getFullYear(), now.getMonth());
+    });
+
+    wireMonthSwipe(sec, grid, goTo);
+    fillCalendar(sec, open);
+    return sec;
+  }
+
+  /** その月の顔を描く。節と grid の要素はそのまま使い回します。 */
+  function fillCalendar(sec, open) {
+    if (!sec) return;
     const U = KN.util;
     const today = todayKey();
     const now = U.dayDate(today);
-    const year = calMonth ? calMonth.year : now.getFullYear();
-    const month = calMonth ? calMonth.month : now.getMonth();
+    const { year, month } = shownMonth();
     const thisMonth = year === now.getFullYear() && month === now.getMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
@@ -1065,39 +1283,18 @@
        for spotting the days that are unlike the others, and a thing that
        happens every week is exactly what all the days have in common. */
     const load = new Map();
-    open.forEach((t) => {
+    (open || []).forEach((t) => {
       if (!t.due || t.repeat) return;
       load.set(t.due, (load.get(t.due) || 0) + 1);
     });
 
-    const sec = node(html`
-      <section class="cal" aria-label="${year}年${month + 1}月">
-        <h2 class="cal-head">
-          <span class="cal-month">${month + 1}月</span>
-          <span class="cal-year">${year}</span>
-          ${thisMonth ? "" : html`<button type="button" class="cal-now js-now">今日へ</button>`}
-          <span class="cal-nav">
-            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
-          </span>
-        </h2>
-        <div class="cal-grid"></div>
-      </section>
-    `);
+    sec.setAttribute("aria-label", `${year}年${month + 1}月`);
+    sec.querySelector(".cal-month").textContent = `${month + 1}月`;
+    sec.querySelector(".cal-year").textContent = String(year);
+    sec.querySelector(".js-now").hidden = thisMonth;
+
     const grid = sec.querySelector(".cal-grid");
-
-    const goTo = (delta) => {
-      const d = new Date(year, month + delta, 1);
-      calMonth = { year: d.getFullYear(), month: d.getMonth() };
-      haptic();
-      renderBody();
-    };
-    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
-    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
-    const nowBtn = sec.querySelector(".js-now");
-    if (nowBtn) nowBtn.addEventListener("click", () => { calMonth = null; haptic(); renderBody(); });
-
-    wireMonthSwipe(sec, grid, goTo);
+    grid.innerHTML = "";
 
     U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
@@ -1125,13 +1322,12 @@
       cell.addEventListener("click", () => { jumpToDay(key); haptic(); });
       grid.append(cell);
     }
-    return sec;
   }
 
   function groupSection(g, rows, tiles) {
     const section = node(html`
       <section class="cat-group todo-group ${rows.length ? "" : "is-empty"}"
-               data-group="${g.id}"></section>
+               data-group="${g.id}" data-month="${monthKeyOf(g)}"></section>
     `);
     section.append(head(g, rows.length));
     if (rows.length) {
@@ -1154,33 +1350,22 @@
   function todayPanel(rowsOf, tiles) {
     const panel = node(html`<section class="trip todo-today"></section>`);
     const plain = groups.find((g) => g.id === "today");
-    const bookend = (id) => groups.find((g) => g.id === id);
-
-    const anyToday = rowsOf("today").length
-      + rowsOf("today-dawn").length + rowsOf("today-dusk").length;
-
-    if (rowsOf("today-dawn").length) {
-      panel.append(groupSection(bookend("today-dawn"), rowsOf("today-dawn"), tiles));
-    }
+    const rows = rowsOf("today");
 
     const top = node(html`
-      <section class="todo-group todo-today-any ${rowsOf("today").length ? "" : "is-empty"}"
-               data-group="today"></section>
+      <section class="todo-group todo-today-any ${rows.length ? "" : "is-empty"}"
+               data-group="today" data-month="${monthKeyOf(plain)}"></section>
     `);
-    top.append(head(plain, rowsOf("today").length));
-    if (rowsOf("today").length) {
+    top.append(head(plain, rows.length));
+    if (rows.length) {
       const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rowsOf("today").forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+      rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
       top.append(box);
       if (!tiles) wireReorder(box, plain);
-    } else if (!anyToday) {
+    } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
     panel.append(top);
-
-    if (rowsOf("today-dusk").length) {
-      panel.append(groupSection(bookend("today-dusk"), rowsOf("today-dusk"), tiles));
-    }
     return panel;
   }
 

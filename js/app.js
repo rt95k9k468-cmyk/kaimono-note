@@ -66,13 +66,25 @@
 
     TABS.forEach((t, i) => {
       if (i) bar.append(node(html`<span class="tab-split"></span>`));
+      /* ふた面ある buttons は、絵も二つ持ちます。いま見ているほうが真ん中で
+         色つき、もう一方は脇に小さく灰色。押すと二つが入れ替わりながら
+         中心を通るので、「押したら裏返る」が動きとして見えます——
+         絵が一枚だけ差し替わるのでは、何が起きたのか読めません。 */
+      const faces = facesOf(t);
       const btn = node(html`
-        <button class="tab tab-${t.id}" role="tab" data-tab="${t.id}"
-                aria-controls="screen-${facesOf(t)[0].id}">
-          <span class="tab-ico"></span>
+        <button class="tab tab-${t.id} ${faces.length > 1 ? "is-pair" : ""}" role="tab"
+                data-tab="${t.id}" aria-controls="screen-${faces[0].id}">
+          <span class="tab-ico">
+            ${KN.util.raw(faces.map((f, n) => `<span class="tab-ico-face" data-face="${f.id}"
+              data-side="${faces.length > 1 ? (n === 0 ? "left" : "right") : "only"}"></span>`).join(""))}
+          </span>
           <span class="tab-label"></span>
         </button>
       `);
+      faces.forEach((f) => {
+        btn.querySelector(`.tab-ico-face[data-face="${f.id}"]`)
+          .append(node(html`<span>${icon(f.icon)}</span>`).firstChild);
+      });
       btn.addEventListener("click", () => pressTab(t));
       bar.append(btn);
     });
@@ -104,10 +116,13 @@
       btn.setAttribute("aria-selected", String(here));
       btn.setAttribute("aria-controls", "screen-" + face.id);
       const ico = btn.querySelector(".tab-ico");
-      if (ico.dataset.face !== face.id) {
-        ico.dataset.face = face.id;
-        ico.replaceChildren(node(html`<span>${icon(face.icon)}</span>`).firstChild);
-      }
+      ico.dataset.face = face.id;
+      /* 位置と大きさと色はCSSが持ちます。ここが決めるのは「どちらが表か」
+         だけ——動きをJSで書くと、指を離した瞬間に飛ぶか、跳ねるかの
+         どちらかになります。 */
+      ico.querySelectorAll(".tab-ico-face").forEach((el) => {
+        el.classList.toggle("is-on", el.dataset.face === face.id);
+      });
 
       const label = btn.querySelector(".tab-label");
       const want = faces.length > 1
@@ -264,6 +279,12 @@
     ensureMounted(id);
     KN.screens[id].render();
 
+    /* 画面によっては、開いたこと自体が合図になります。呼ぶのはここ——
+       タブを押した一拍のうちなので、ブラウザの「操作のうちに」を満たします。 */
+    if (KN.screens[id].onEnter) {
+      try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
+    }
+
     /* The ＋ lives in the dock — floating over the screen just above the tab
        bar, where a thumb already is — rather than in the top corner of each
        screen. Both the list and the price screen have something to add, and
@@ -396,6 +417,12 @@
   /* Quick — a slide, not a journey. Native smooth scrolling paces itself by
      distance, so a screen 20 lists long took seconds; this is the same 260ms
      whether you are 300px down or 30,000. */
+  /* 動いているあいだは、ノッチのタップを聞きません。滑らせている最中に
+     文書が0へ寄ることがあり（貼りついた要素があると、ブラウザが位置を
+     取り直します）、それを合図と読むと、自分が始めた動きを自分で
+     打ち消して上へ飛びます。 */
+  let gliding = 0;
+
   function glideTo(el, to) {
     if (!el) return;
     const max = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -403,14 +430,19 @@
     const from = el.scrollTop;
     if (Math.abs(want - from) < 1) return;
     const start = performance.now();
+    gliding = start + 420;
     const step = (now) => {
       const t = Math.min(1, (now - start) / 260);
       const e = 1 - Math.pow(1 - t, 3);
       el.scrollTop = from + (want - from) * e;
       if (t < 1) requestAnimationFrame(step);
+      else gliding = performance.now() + 120;   // 着地の直後もひと呼吸
     };
     requestAnimationFrame(step);
   }
+
+  const isGliding = () => performance.now() < gliding;
+  KN.isGliding = isGliding;
   const glideToTop = (el) => glideTo(el, 0);
   KN.glideTo = glideTo;
   KN.glideToTop = glideToTop;
@@ -462,7 +494,7 @@
     window.addEventListener("scroll", () => {
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
-      const quiet = !touching && !(KN.reorder && KN.reorder.isActive());
+      const quiet = !touching && !isGliding() && !(KN.reorder && KN.reorder.isActive());
       const el = quiet ? activeScreen() : null;
       // The pixel goes back either way, so the next tap has something to take.
       window.scrollTo(0, TOP_TAP_PARK);

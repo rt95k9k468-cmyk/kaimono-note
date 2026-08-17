@@ -186,6 +186,13 @@ html, body {
 html.has-top-tap { overflow-y: auto; }
 html.has-top-tap::after { content: ""; display: block; height: 1px; }
 
+/* その1pxに、ブラウザの「スクロールの錨」を働かせません。
+   画面の中で貼りつくもの（やることの月）が動くたび、ブラウザは文書のほうの
+   位置を取り直そうとして、この1pxを0へ寄せます。0はノッチのタップの合図
+   なので、月をめくるだけで「上へ戻れ」と言ったことになります。
+   ここに錨で守るべき中身は無い——1pxしかないので、外します。 */
+html.has-top-tap { overflow-anchor: none; }
+
 body {
   font-family: var(--font);
   font-size: var(--fs-md);
@@ -509,12 +516,41 @@ a { color: var(--c-primary); }
   transition: background .2s var(--ease), transform .2s var(--ease-out);
 }
 
+/* 一枚しか無いボタンは、いままでどおり真ん中に一つ。 */
+.tab-ico-face { grid-area: 1 / 1; display: grid; place-items: center; }
+.tab-ico-face svg { width: 22px; height: 22px; }
+
+/* ふた面のボタン。表は真ん中で大きく、裏は脇で小さく灰色。押すと
+   二つが中心を通ってすれ違います——同じ持ち場を分け合っていることが、
+   その動きで分かります。 */
+.tab.is-pair .tab-ico { width: 46px; }
+.tab.is-pair .tab-ico-face {
+  transition: transform .26s var(--ease-out), opacity .26s var(--ease), color .2s var(--ease);
+  color: var(--c-text-3);
+  opacity: .55;
+}
+.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-11px) scale(.62); }
+.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(11px)  scale(.62); }
+.tab.is-pair .tab-ico-face.is-on {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+  color: inherit;
+}
+.tab.is-pair[aria-selected="true"] .tab-ico-face.is-on { color: var(--c-primary); }
+/* 裏は、表になったときだけ線を太らせます（表が薄いと小さい絵が潰れる）。 */
+.tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab.is-pair .tab-ico-face { transition: opacity .1s linear; }
+}
+
 .tab[aria-selected="true"] { color: var(--c-primary); }
 .tab[aria-selected="true"] .tab-ico {
   background: var(--c-primary-soft);
   transform: translateY(-1px);
 }
 .tab[aria-selected="true"] svg { stroke-width: 2.3; }
+.tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
 
 .tab-badge {
   position: absolute;
@@ -1730,9 +1766,31 @@ button, [role="tab"] {
    Today is a filled disc in 今日's own red, so the mark here and the shelf
    below say the same colour. */
 
+/* 月は、下までスクロールしても消えません。棚は月をほどいて縦に並べたもの
+   なので、いま何月のあたりにいるのかを見失うと、棚の名前だけが残ります。
+   上のバーの下にぴったり貼りつけたいので、バーの厚みはJSが実測して
+   --topbar-h で渡してきます（ノッチの深さで変わるため）。 */
 .cal {
+  position: sticky;
+  top: var(--topbar-h, 0px);
+  z-index: 12;
   padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease), padding var(--dur) var(--ease);
 }
+
+/* 貼りついているあいだは一段小さく。月の形は残したまま、リストに高さを返します。 */
+.cal.is-stuck {
+  padding-top: var(--sp-2);
+  padding-bottom: 2px;
+  border-bottom-color: var(--c-border);
+}
+.cal.is-stuck .cal-head { margin-bottom: 4px; }
+.cal.is-stuck .cal-day { height: 26px; font-size: var(--fs-xs); }
+.cal.is-stuck .cal-wd { padding-bottom: 1px; }
 
 .cal-head {
   display: flex;
@@ -12743,6 +12801,20 @@ button, [role="tab"] {
       }));
   }
 
+  /**
+   * 読むだけ。取り込みも、成否の物語も付けません——タブを開いたときのように
+   * 「読めたら使う、読めなければ何もしない」場面のための、いちばん薄い口です。
+   * @returns {Promise<string|null>} 読めなければ null
+   */
+  function readClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return Promise.resolve(null);
+    try {
+      return Promise.resolve(navigator.clipboard.readText())
+        .then((t) => (t == null ? null : String(t)))
+        .catch(() => null);
+    } catch (err) { return Promise.resolve(null); }
+  }
+
   /** 失敗したあとにだけ聞く。対応していないブラウザでは黙って null。 */
   function askPermission() {
     try {
@@ -12791,7 +12863,7 @@ button, [role="tab"] {
 
   KN.healthSync = {
     importText, importFromClipboard, importFromHash, describe, preview,
-    clipboardState, explain,
+    clipboardState, explain, readClipboard,
     parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
   };
 })();
@@ -13886,9 +13958,112 @@ button, [role="tab"] {
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.showScreen("settings"));
 
+    /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
+       高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
+       焼き込むと、機種が変わった日にずれます。 */
+    const fitCal = () => {
+      const h = els.topbar.getBoundingClientRect().height;
+      root.style.setProperty("--topbar-h", Math.round(h) + "px");
+    };
+    fitCal();
+    window.addEventListener("resize", fitCal);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
+
+    let lastTop = 0;
     root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+      const top = root.scrollTop;
+      const stuck = top > 4;
+      els.topbar.classList.toggle("is-stuck", stuck);
+      /* 貼りついているあいだは、カレンダーを一段小さくします。月の形は
+         残したまま、リストに返す高さを稼ぐため。 */
+      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
+
+      /* 月を追いかけるのは、**位置が変わったとき** だけ。scroll は、行が
+         増えて高さが変わっただけでも飛んできます。 */
+      const moved = Math.abs(top - lastTop) > 0.5;
+      lastTop = top;
+      if (!moved) return;
+      /* そして、動かしたのが自分でないときだけ、留めを外します。
+         自分で滑らせているあいだと、描き直しで位置を戻したぶんは
+         「その人が動いた」ではないので、そのぶんは基準のほうをずらします。
+         残りが指のぶんで、そちらが一目ぶん（24px）を超えたら外れます——
+         滑り終わりの数pxの揺れで外れると、めくった月がすぐ書き戻ります。 */
+      if (restoring || (KN.isGliding && KN.isGliding())) pinTop = top;
+      else if (calPinned && Math.abs(top - pinTop) > 24) calPinned = false;
+      followScroll();
+    }, { passive: true });
+  }
+
+  /* ---------------- スクロールに月がついていく ----------------
+
+     下の棚はカレンダーをほどいて縦に並べたものなので、いま画面の上に来て
+     いる棚が何月かは分かります。9月の棚まで下りたら、上のカレンダーも9月に
+     する——同じ場所を、上と下の二つの描き方で見ているだけにしたい。
+
+     逆向きも同じで、カレンダーを払って月を変えたら、リストもその月の頭へ
+     動きます。片方だけが動くと、二つは別々のものになってしまいます。 */
+
+  let followFrame = 0;
+  /* 手でめくった月は、留めます。その月の棚がまだ無いことはよくあり
+     （10月に一件も無ければ10月の棚は出ません）、そのとき位置から月を
+     読み直すと、めくった先が「いま見えている月」に上書きされて、
+     ‹ › が効かなくなります。留めは、その人がじっさいにスクロールした
+     ときに外れます。 */
+  let calPinned = false;
+  let pinTop = 0;
+  let restoring = false;
+
+  function followScroll() {
+    if (followFrame) return;
+    followFrame = requestAnimationFrame(() => {
+      followFrame = 0;
+      if (!root || !els.cal || query || calPinned) return;
+      /* 自分で滑らせているあいだは、ついていきません。こちらが運んでいる
+         最中に位置から月を読み直すと、めくったばかりの月が、通り道の月に
+         書き換わります。 */
+      if (KN.isGliding && KN.isGliding()) return;
+      const line = els.cal.getBoundingClientRect().bottom + 1;
+      let want = "";
+      const secs = els.body.querySelectorAll("[data-month]");
+      for (let i = 0; i < secs.length; i++) {
+        const m = secs[i].getAttribute("data-month");
+        if (!m) continue;
+        const r = secs[i].getBoundingClientRect();
+        // 画面の上端をまたいでいる棚。まだ来ていないものは相手にしません。
+        if (r.top <= line) want = m;
+        else break;
+      }
+      if (!want) {
+        // まだどの棚にも届いていない＝いちばん上。最初の棚の月に戻します。
+        for (let i = 0; i < secs.length; i++) {
+          const m = secs[i].getAttribute("data-month");
+          if (m) { want = m; break; }
+        }
+      }
+      if (!want) return;
+      const [y, mo] = want.split("-").map(Number);
+      const cur = shownMonth();
+      if (cur.year === y && cur.month === mo - 1) return;
+      setCalMonth(y, mo - 1);
     });
+  }
+
+  /** いまカレンダーが出している月。 */
+  function shownMonth() {
+    const now = KN.util.dayDate(todayKey());
+    return calMonth || { year: now.getFullYear(), month: now.getMonth() };
+  }
+
+  /**
+   * カレンダーだけを描き直します。スクロールのたびに画面ぜんぶを組み直すと
+   * 指の下で列が跳ねるので、ここは差し替えるものを最小にします。
+   */
+  function setCalMonth(year, month, manual) {
+    const now = KN.util.dayDate(todayKey());
+    calMonth = (year === now.getFullYear() && month === now.getMonth())
+      ? null : { year, month };
+    if (manual) { calPinned = true; pinTop = root ? root.scrollTop : 0; }
+    fillCalendar(els.cal, store.openTodos());
   }
 
   /* ---------------- the add / edit sheet ---------------- */
@@ -13901,7 +14076,9 @@ button, [role="tab"] {
     const t = editing ? store.getTodo(todoId) : null;
     if (editing && !t) return;
 
-    let due = editing ? t.due : null;
+    /* 新しく書くものは、まず今日のこと。日付なしで足すと「いつか」の棚に
+       落ちて、そこは見に行かないと目に入りません。あとから外せます。 */
+    let due = editing ? t.due : todayKey();
     let part = editing ? t.part : null;
     let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
@@ -13922,7 +14099,7 @@ button, [role="tab"] {
         <div class="field">
           <span class="field-label">いつまでに</span>
           <div class="js-due-chips"></div>
-          <input class="input js-due" type="date" value="${editing && t.due ? t.due : ""}"
+          <input class="input js-due" type="date" value="${due || ""}"
                  aria-label="日付を選ぶ">
           ${/* Which part of the day, for the ones where it matters, and the
                 clock itself for the ones that happen at a time. Choosing
@@ -14329,25 +14506,23 @@ button, [role="tab"] {
        clears any clock time as well — otherwise 19:30 carried up to 朝 would
        file itself straight back under 夜 and the drop would look ignored.
        Dropping onto a *day* leaves the time alone: only the day changed. */
-    /* 毎朝 opens the day and 毎晩 closes it, with the rest of today between —
-       so the panel reads down the day the way the day is lived. Both only
-       appear when something is in them: an empty 「毎朝」 line every morning is
-       a shelf for a routine nobody has. */
-    out.push({ id: "today-dawn", label: BOOKENDS[0].label, color: BOOKENDS[0].color,
-      today: true, day: today, part: "dawn", onlyWhenFull: true,
-      drop: () => ({ due: today, part: "dawn", time: null }) });
+    /* 今日は一枚。毎朝と毎晩は、かつてそれぞれ見出しを持っていましたが、
+       やめました——ほかの日はどれも見出しが一つで、今日だけ三つあるのは、
+       同じ「一日」を別の作りで描いていることになります。毎朝と毎晩は
+       いまも日の両端に並びますが、それは並び順が言うことで、見出しが
+       言うことではありません（行の左に「毎朝」と出ます）。 */
     out.push({ id: "today", label: "今日", color: DAY_COLORS[0], today: true, day: today,
       drop: () => ({ due: today, part: null }) });
-    out.push({ id: "today-dusk", label: BOOKENDS[1].label, color: BOOKENDS[1].color,
-      today: true, day: today, part: "dusk", onlyWhenFull: true,
-      drop: () => ({ due: today, part: "dusk", time: null }) });
 
     // The coming week, a day at a time.
     for (let i = 1; i <= 7; i++) {
       const day = U.shiftDay(today, i);
       const d = U.dayDate(day);
-      const label = i === 1 ? "明日" : i === 2 ? "明後日"
-        : `${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}`;
+      /* どの日も、まず日付。「明日」だけが日付を持たないと、下に並ぶ
+         「8月20日 木」と読み方が変わってしまいます。呼び名はそのうしろに
+         添えるもの。 */
+      const date = `${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}`;
+      const label = i === 1 ? `${date} 明日` : i === 2 ? `${date} 明後日` : date;
       out.push({ id: "d" + i, label, color: DAY_COLORS[Math.min(i, DAY_COLORS.length - 1)],
         day, drop: () => ({ due: day }) });
     }
@@ -14396,9 +14571,8 @@ button, [role="tab"] {
     if (!t.due) return "none";
     const n = daysUntil(t.due);
     if (n < 0) return "late";
-    /* Only the two ends of the day are shelves of their own now; everything
-       else for today sits in 今日 and is ordered by the clock and by hand. */
-    if (n === 0) return isBookend(t.part) ? "today-" + t.part : "today";
+    // 今日はひと棚。毎朝も毎晩もここに入り、並び順だけが日の両端に置きます。
+    if (n === 0) return "today";
     if (n <= 7) return "d" + n;
     const week = groups.find((g) => g.from && g.to && t.due >= g.from && t.due <= g.to);
     if (week) return week.id;
@@ -14587,6 +14761,10 @@ button, [role="tab"] {
   let groups = [];
 
   function renderBody() {
+    /* 書き替えても、読んでいた場所は動かしません。中身を空にすると
+       スクロールは0へ落ちるので、組み直したあとに返します——一件
+       片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
+    const keepTop = root ? root.scrollTop : 0;
     els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
@@ -14604,7 +14782,12 @@ button, [role="tab"] {
        downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
        いるのか」 not at all — 8月17日 four screens down is a date without a
        shape. Left out while searching: a filtered list is not a month. */
-    if (!query) els.body.append(monthCalendar(store.openTodos()));
+    els.cal = null;
+    if (!query) {
+      els.cal = monthCalendar(store.openTodos());
+      if (root && root.scrollTop > 4) els.cal.classList.add("is-stuck");
+      els.body.append(els.cal);
+    }
 
     if (!all.length) {
       els.body.append(node(html`
@@ -14617,6 +14800,7 @@ button, [role="tab"] {
           </p>
         </div>
       `));
+      restoreTop(keepTop);
       return;
     }
 
@@ -14626,6 +14810,7 @@ button, [role="tab"] {
           見つかりませんでした
         </p>
       `));
+      restoreTop(keepTop);
       return;
     }
 
@@ -14646,6 +14831,16 @@ button, [role="tab"] {
     });
 
     if (closed.length) els.body.append(archiveSection(closed, tiles));
+    restoreTop(keepTop);
+  }
+
+  /** 組み直したあとに、読んでいた場所へ戻します。 */
+  function restoreTop(top) {
+    if (!root || !top) return;
+    restoring = true;
+    root.scrollTop = Math.min(top, Math.max(0, root.scrollHeight - root.clientHeight));
+    // 戻したことが「その人が動いた」と読まれないよう、ひと呼吸だけ伏せます。
+    setTimeout(() => { restoring = false; }, 60);
   }
 
   function head(g, count) {
@@ -14671,6 +14866,22 @@ button, [role="tab"] {
      August while you are looking at October. */
 
   let calMonth = null;    // {year, month}, or null for 「this one」
+
+  /**
+   * どの月の棚か。「YYYY-MM」、決められないものは空。
+   * 期限切れ・いつか・もっと先は、どの月のものでもありません——そこを通っても
+   * 上のカレンダーは動かないほうがいい（月の無いものを見ているあいだに
+   * 勝手に月が変わるのは、ただの誤作動に見えます）。
+   */
+  function monthKeyOf(g) {
+    if (!g) return "";
+    const U = KN.util;
+    if (g.year != null && g.month != null) return `${g.year}-${String(g.month + 1).padStart(2, "0")}`;
+    const day = g.day || g.from;
+    if (!day) return "";
+    const d = U.dayDate(day);
+    return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "";
+  }
 
   /** Which shelf a bare date belongs to — the same reading groupIdOf does. */
   function groupIdOfDay(day) {
@@ -14698,6 +14909,41 @@ button, [role="tab"] {
    * line you asked for. The rows for that exact day light up once: long enough
    * to find, short enough not to be a state anyone has to dismiss.
    */
+  /** 上に貼りついているもの（バーと、いまはカレンダー）の厚み。 */
+  function chromeInset() {
+    const bar = root.querySelector(".topbar");
+    let h = bar ? bar.getBoundingClientRect().height : 0;
+    // 貼りついている（＝すでに上にいる）カレンダーのぶんだけ、さらに下げます。
+    if (els.cal && els.cal.classList.contains("is-stuck")) {
+      h += els.cal.getBoundingClientRect().height;
+    }
+    return h;
+  }
+
+  function scrollToSection(target) {
+    /* Scrolled by hand rather than with scrollIntoView. That asks *every*
+       ancestor to bring the row into view, the document included — and the
+       document's one spare pixel is what the status-bar tap listens on, so
+       revealing a row here would read as 「上へ戻れ」 and do the opposite
+       (app.js). Setting the screen's own scrollTop leaves the document alone. */
+    const top = root.scrollTop
+      + target.getBoundingClientRect().top - root.getBoundingClientRect().top - chromeInset();
+    KN.glideTo(root, Math.max(0, top));
+  }
+
+  /**
+   * その月の、いちばん上の棚まで。
+   * **その月の棚が無ければ、動かしません。** 近くの棚で代用すると、
+   * 見たかった月とは関係のない場所へ運んだうえ、そこの月がカレンダーに
+   * 跳ね返ってきて、めくったことが取り消されます。
+   */
+  function scrollToMonth(year, month) {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+    const target = [...els.body.querySelectorAll("[data-month]")]
+      .find((x) => x.getAttribute("data-month") === key);
+    if (target) scrollToSection(target);
+  }
+
   function jumpToDay(day) {
     const target = els.body.querySelector(`.todo-group[data-group="${groupIdOfDay(day)}"]`)
       || els.body.querySelector(".trip.todo-today");
@@ -14706,13 +14952,7 @@ button, [role="tab"] {
        document's one spare pixel is what the status-bar tap listens on, so
        revealing a row here would read as 「上へ戻れ」 and do the opposite
        (app.js). Setting the screen's own scrollTop leaves the document alone. */
-    if (target) {
-      const bar = root.querySelector(".topbar");
-      const inset = bar ? bar.getBoundingClientRect().height : 0;
-      const top = root.scrollTop
-        + target.getBoundingClientRect().top - root.getBoundingClientRect().top - inset;
-      KN.glideTo(root, top);
-    }
+    if (target) scrollToSection(target);
 
     const ids = new Set(store.openTodos().filter((t) => t.due === day).map((t) => t.id));
     if (!ids.size) return;
@@ -14795,12 +15035,62 @@ button, [role="tab"] {
     sec.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
   }
 
+  /* 骨組みは一度だけ作り、月が変わったら中身だけ描き直します。
+
+     節そのものを作り直さないのは、これが position:sticky の要素だから
+     です。貼りついている節を差し替えると、ブラウザはスクロールの
+     つなぎ目を取り直そうとして文書のほうを1pxだけ動かします——そして
+     その1pxは、ノッチのタップを聞くために置いてある1pxです（app.js）。
+     つまり月をめくるたびに「上へ戻れ」と言ったことになり、画面が
+     いちばん上まで飛びます。中身だけ入れ替えれば、節は動きません。 */
   function monthCalendar(open) {
+    const U = KN.util;
+    const sec = node(html`
+      <section class="cal">
+        <h2 class="cal-head">
+          <span class="cal-month"></span>
+          <span class="cal-year"></span>
+          <button type="button" class="cal-now js-now" hidden>今日へ</button>
+          <span class="cal-nav">
+            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
+          </span>
+        </h2>
+        <div class="cal-grid"></div>
+      </section>
+    `);
+    const grid = sec.querySelector(".cal-grid");
+
+    /* 月を変えたら、下のリストもその月の頭へ運びます。上だけが動くと、
+       カレンダーと棚が別々のものを指したまま並ぶことになります。 */
+    const goTo = (delta) => {
+      const m = shownMonth();
+      const d = new Date(m.year, m.month + delta, 1);
+      haptic();
+      setCalMonth(d.getFullYear(), d.getMonth(), true);
+      scrollToMonth(d.getFullYear(), d.getMonth());
+    };
+    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
+    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
+    sec.querySelector(".js-now").addEventListener("click", () => {
+      const now = U.dayDate(todayKey());
+      haptic();
+      setCalMonth(now.getFullYear(), now.getMonth(), true);
+      scrollToMonth(now.getFullYear(), now.getMonth());
+    });
+
+    wireMonthSwipe(sec, grid, goTo);
+    fillCalendar(sec, open);
+    return sec;
+  }
+
+  /** その月の顔を描く。節と grid の要素はそのまま使い回します。 */
+  function fillCalendar(sec, open) {
+    if (!sec) return;
     const U = KN.util;
     const today = todayKey();
     const now = U.dayDate(today);
-    const year = calMonth ? calMonth.year : now.getFullYear();
-    const month = calMonth ? calMonth.month : now.getMonth();
+    const { year, month } = shownMonth();
     const thisMonth = year === now.getFullYear() && month === now.getMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
@@ -14813,39 +15103,18 @@ button, [role="tab"] {
        for spotting the days that are unlike the others, and a thing that
        happens every week is exactly what all the days have in common. */
     const load = new Map();
-    open.forEach((t) => {
+    (open || []).forEach((t) => {
       if (!t.due || t.repeat) return;
       load.set(t.due, (load.get(t.due) || 0) + 1);
     });
 
-    const sec = node(html`
-      <section class="cal" aria-label="${year}年${month + 1}月">
-        <h2 class="cal-head">
-          <span class="cal-month">${month + 1}月</span>
-          <span class="cal-year">${year}</span>
-          ${thisMonth ? "" : html`<button type="button" class="cal-now js-now">今日へ</button>`}
-          <span class="cal-nav">
-            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
-          </span>
-        </h2>
-        <div class="cal-grid"></div>
-      </section>
-    `);
+    sec.setAttribute("aria-label", `${year}年${month + 1}月`);
+    sec.querySelector(".cal-month").textContent = `${month + 1}月`;
+    sec.querySelector(".cal-year").textContent = String(year);
+    sec.querySelector(".js-now").hidden = thisMonth;
+
     const grid = sec.querySelector(".cal-grid");
-
-    const goTo = (delta) => {
-      const d = new Date(year, month + delta, 1);
-      calMonth = { year: d.getFullYear(), month: d.getMonth() };
-      haptic();
-      renderBody();
-    };
-    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
-    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
-    const nowBtn = sec.querySelector(".js-now");
-    if (nowBtn) nowBtn.addEventListener("click", () => { calMonth = null; haptic(); renderBody(); });
-
-    wireMonthSwipe(sec, grid, goTo);
+    grid.innerHTML = "";
 
     U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
@@ -14873,13 +15142,12 @@ button, [role="tab"] {
       cell.addEventListener("click", () => { jumpToDay(key); haptic(); });
       grid.append(cell);
     }
-    return sec;
   }
 
   function groupSection(g, rows, tiles) {
     const section = node(html`
       <section class="cat-group todo-group ${rows.length ? "" : "is-empty"}"
-               data-group="${g.id}"></section>
+               data-group="${g.id}" data-month="${monthKeyOf(g)}"></section>
     `);
     section.append(head(g, rows.length));
     if (rows.length) {
@@ -14902,33 +15170,22 @@ button, [role="tab"] {
   function todayPanel(rowsOf, tiles) {
     const panel = node(html`<section class="trip todo-today"></section>`);
     const plain = groups.find((g) => g.id === "today");
-    const bookend = (id) => groups.find((g) => g.id === id);
-
-    const anyToday = rowsOf("today").length
-      + rowsOf("today-dawn").length + rowsOf("today-dusk").length;
-
-    if (rowsOf("today-dawn").length) {
-      panel.append(groupSection(bookend("today-dawn"), rowsOf("today-dawn"), tiles));
-    }
+    const rows = rowsOf("today");
 
     const top = node(html`
-      <section class="todo-group todo-today-any ${rowsOf("today").length ? "" : "is-empty"}"
-               data-group="today"></section>
+      <section class="todo-group todo-today-any ${rows.length ? "" : "is-empty"}"
+               data-group="today" data-month="${monthKeyOf(plain)}"></section>
     `);
-    top.append(head(plain, rowsOf("today").length));
-    if (rowsOf("today").length) {
+    top.append(head(plain, rows.length));
+    if (rows.length) {
       const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rowsOf("today").forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+      rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
       top.append(box);
       if (!tiles) wireReorder(box, plain);
-    } else if (!anyToday) {
+    } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
     panel.append(top);
-
-    if (rowsOf("today-dusk").length) {
-      panel.append(groupSection(bookend("today-dusk"), rowsOf("today-dusk"), tiles));
-    }
     return panel;
   }
 
@@ -16588,6 +16845,48 @@ button, [role="tab"] {
     });
   }
 
+  /* ---------------- タブを押したら、そのまま読む ----------------
+
+     ダイエットを開くのは、たいてい「ショートカットを走らせた直後」です。
+     だったら開いた時点で一度読みにいけば、押すボタンが一つ減ります。
+
+     三つだけ気をつけます。
+
+       1. **黙って失敗する。** クリップボードに買い物のURLが入っている日の
+          ほうが多いので、読めなかった・健康データでなかったときは何も
+          言いません。知らせるのは入ったときだけ。
+       2. **同じものを何度も知らせない。** 一度読んだ中身は覚えておいて、
+          変わっていなければ触りません（タブを行き来するたびに
+          「1件を更新」と出るのは、報告ではなく騒音です）。
+       3. **切れる。** クリップボードを覗く動きなので、設定で止められます。
+
+     読み取りそのものはタブを押した一拍のうちに始めます——そこを外すと、
+     ブラウザは「操作のない読み取り」として断ります。 */
+
+  let lastAuto = "";
+
+  /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
+  function onEnter() {
+    const st = store.get().settings;
+    if (st.dietAutoSync === false || st.clipboardBlocked) return;
+    const state = KN.healthSync.clipboardState();
+    if (!state.api) return;
+
+    KN.healthSync.readClipboard().then((text) => {
+      if (text == null) return;                 // 読めなかった：黙って引く
+      if (text === lastAuto) return;            // さっきと同じ中身
+      // 健康データの形をしていなければ、触りません。
+      const look = KN.healthSync.preview(text);
+      if (!look.ok) return;
+      lastAuto = text;
+      const res = KN.healthSync.importText(text);
+      if (!res.ok) return;
+      if (!res.added && !res.updated) return;   // 何も変わらなかった
+      render();
+      KN.ui.toast("ヘルスケア：" + KN.healthSync.describe(res));
+    }).catch(() => { /* 黙って引く */ });
+  }
+
   /* ---------------- ＋ ---------------- */
 
   function dockButton() {
@@ -16602,7 +16901,7 @@ button, [role="tab"] {
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.diet = { mount, render, dockButton,
+  KN.screens.diet = { mount, render, dockButton, onEnter,
     // 設定やテストから開けるように
     openWeightSheet, openMealSheet, openGoalSheet, openSyncSheet };
 })();
@@ -18724,6 +19023,15 @@ button, [role="tab"] {
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
+          <button class="row js-auto">
+            <span class="row-main">
+              <span class="row-title">開いたときに自動で読む</span>
+              <span class="row-sub">${store.get().settings.dietAutoSync === false
+                ? "オフ"
+                : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
+            </span>
+            <span class="row-value">${store.get().settings.dietAutoSync === false ? "オフ" : "オン"}</span>
+          </button>
           <button class="row js-sync">
             <span class="row-main">
               <span class="row-title">ヘルスケアから取り込む</span>
@@ -18751,6 +19059,12 @@ button, [role="tab"] {
 
     wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet.openGoalSheet());
     wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet.openSyncSheet());
+    wrap.querySelector(".js-auto").addEventListener("click", () => {
+      const off = store.get().settings.dietAutoSync === false;
+      store.update((s) => { s.settings.dietAutoSync = off; });
+      render();
+      KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
+    });
     wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
     wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
@@ -19015,13 +19329,25 @@ button, [role="tab"] {
 
     TABS.forEach((t, i) => {
       if (i) bar.append(node(html`<span class="tab-split"></span>`));
+      /* ふた面ある buttons は、絵も二つ持ちます。いま見ているほうが真ん中で
+         色つき、もう一方は脇に小さく灰色。押すと二つが入れ替わりながら
+         中心を通るので、「押したら裏返る」が動きとして見えます——
+         絵が一枚だけ差し替わるのでは、何が起きたのか読めません。 */
+      const faces = facesOf(t);
       const btn = node(html`
-        <button class="tab tab-${t.id}" role="tab" data-tab="${t.id}"
-                aria-controls="screen-${facesOf(t)[0].id}">
-          <span class="tab-ico"></span>
+        <button class="tab tab-${t.id} ${faces.length > 1 ? "is-pair" : ""}" role="tab"
+                data-tab="${t.id}" aria-controls="screen-${faces[0].id}">
+          <span class="tab-ico">
+            ${KN.util.raw(faces.map((f, n) => `<span class="tab-ico-face" data-face="${f.id}"
+              data-side="${faces.length > 1 ? (n === 0 ? "left" : "right") : "only"}"></span>`).join(""))}
+          </span>
           <span class="tab-label"></span>
         </button>
       `);
+      faces.forEach((f) => {
+        btn.querySelector(`.tab-ico-face[data-face="${f.id}"]`)
+          .append(node(html`<span>${icon(f.icon)}</span>`).firstChild);
+      });
       btn.addEventListener("click", () => pressTab(t));
       bar.append(btn);
     });
@@ -19053,10 +19379,13 @@ button, [role="tab"] {
       btn.setAttribute("aria-selected", String(here));
       btn.setAttribute("aria-controls", "screen-" + face.id);
       const ico = btn.querySelector(".tab-ico");
-      if (ico.dataset.face !== face.id) {
-        ico.dataset.face = face.id;
-        ico.replaceChildren(node(html`<span>${icon(face.icon)}</span>`).firstChild);
-      }
+      ico.dataset.face = face.id;
+      /* 位置と大きさと色はCSSが持ちます。ここが決めるのは「どちらが表か」
+         だけ——動きをJSで書くと、指を離した瞬間に飛ぶか、跳ねるかの
+         どちらかになります。 */
+      ico.querySelectorAll(".tab-ico-face").forEach((el) => {
+        el.classList.toggle("is-on", el.dataset.face === face.id);
+      });
 
       const label = btn.querySelector(".tab-label");
       const want = faces.length > 1
@@ -19213,6 +19542,12 @@ button, [role="tab"] {
     ensureMounted(id);
     KN.screens[id].render();
 
+    /* 画面によっては、開いたこと自体が合図になります。呼ぶのはここ——
+       タブを押した一拍のうちなので、ブラウザの「操作のうちに」を満たします。 */
+    if (KN.screens[id].onEnter) {
+      try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
+    }
+
     /* The ＋ lives in the dock — floating over the screen just above the tab
        bar, where a thumb already is — rather than in the top corner of each
        screen. Both the list and the price screen have something to add, and
@@ -19345,6 +19680,12 @@ button, [role="tab"] {
   /* Quick — a slide, not a journey. Native smooth scrolling paces itself by
      distance, so a screen 20 lists long took seconds; this is the same 260ms
      whether you are 300px down or 30,000. */
+  /* 動いているあいだは、ノッチのタップを聞きません。滑らせている最中に
+     文書が0へ寄ることがあり（貼りついた要素があると、ブラウザが位置を
+     取り直します）、それを合図と読むと、自分が始めた動きを自分で
+     打ち消して上へ飛びます。 */
+  let gliding = 0;
+
   function glideTo(el, to) {
     if (!el) return;
     const max = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -19352,14 +19693,19 @@ button, [role="tab"] {
     const from = el.scrollTop;
     if (Math.abs(want - from) < 1) return;
     const start = performance.now();
+    gliding = start + 420;
     const step = (now) => {
       const t = Math.min(1, (now - start) / 260);
       const e = 1 - Math.pow(1 - t, 3);
       el.scrollTop = from + (want - from) * e;
       if (t < 1) requestAnimationFrame(step);
+      else gliding = performance.now() + 120;   // 着地の直後もひと呼吸
     };
     requestAnimationFrame(step);
   }
+
+  const isGliding = () => performance.now() < gliding;
+  KN.isGliding = isGliding;
   const glideToTop = (el) => glideTo(el, 0);
   KN.glideTo = glideTo;
   KN.glideToTop = glideToTop;
@@ -19411,7 +19757,7 @@ button, [role="tab"] {
     window.addEventListener("scroll", () => {
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
-      const quiet = !touching && !(KN.reorder && KN.reorder.isActive());
+      const quiet = !touching && !isGliding() && !(KN.reorder && KN.reorder.isActive());
       const el = quiet ? activeScreen() : null;
       // The pixel goes back either way, so the next tap has something to take.
       window.scrollTo(0, TOP_TAP_PARK);
