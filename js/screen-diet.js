@@ -1299,7 +1299,9 @@
           <button class="row js-paste">
             <span class="row-main">
               <span class="row-title">コピーしたものを取り込む</span>
-              <span class="row-sub">ショートカットがコピーした中身を読みます</span>
+              <span class="row-sub">${store.get().settings.clipboardBlocked
+                ? "この端末では自動で読めないので、貼り付けの欄を開きます"
+                : "ショートカットがコピーした中身を読みます"}</span>
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
@@ -1311,6 +1313,7 @@
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
         </div>
+        <div class="js-got"></div>
         ${sync.lastAt ? html`<p class="diet-note">最後の取り込み：${U.formatStamp(sync.lastAt)}</p>` : ""}
 
         <div class="divider"></div>
@@ -1369,13 +1372,48 @@
     body.querySelector(".js-take").addEventListener("click", () => {
       done(KN.healthSync.importText(ta.value));
     });
+    /* 「コピーしたものを取り込む」。
+       読めればそのまま、読めなければ **貼り付けの欄** に切り替えます。
+       クリップボードのAPIは環境しだいで断られる道なので、断られたときに
+       行き止まりを出すのではなく、必ず通る道へ案内します。 */
     body.querySelector(".js-paste").addEventListener("click", () => {
+      /* 一度断られた端末で、毎日おなじ失敗を踏ませません。断られたことを
+         覚えて、次からは貼り付けの欄をまっすぐ開きます（欄の中に、また
+         自動で読めるか試す口を残してあります——iOSは変わるので）。 */
+      if (store.get().settings.clipboardBlocked) {
+        openPasteSheet({ why: "この端末では前に断られています" }, done);
+        return;
+      }
       KN.healthSync.importFromClipboard().then((res) => {
-        // 読めなかったときは、中身を①の欄に落として見えるようにします。
-        if (!res.ok && res.text) { ta.value = res.text; paintPreview(); }
-        done(res);
+        // 読めた文字列は、うまくいってもいかなくても、そのまま見せます。
+        if (res.text != null) showGot(res.text);
+        if (res.ok) { done(res); return; }
+        if (res.text != null) {
+          // 読めたが、中身が取り込めなかった。①の欄に落として、どこが
+          // 悪いのかを読み下しで見せます。
+          ta.value = res.text;
+          paintPreview();
+          KN.ui.toast(res.error);
+          return;
+        }
+        // そもそも読めなかった。覚えておいて、理由を添えて貼り付けの道へ。
+        store.update((st) => { st.settings.clipboardBlocked = true; });
+        openPasteSheet(res, done);
       });
     });
+
+    /* 読めた文字列そのもの。加工しません——「取れているつもりで取れていない」
+       を切り分けられるのは、生の中身だけです。 */
+    function showGot(text) {
+      const host = body.querySelector(".js-got");
+      host.innerHTML = "";
+      host.append(node(html`
+        <div class="diet-got">
+          <span class="diet-got-head">クリップボードから取得した文字列（${text.length}文字）</span>
+          <pre>${text || "（空）"}</pre>
+        </div>
+      `));
+    }
     body.querySelector(".js-file").addEventListener("click", () => {
       const input = node(html`<input type="file" accept=".txt,.json,text/plain,application/json" hidden>`);
       document.body.append(input);
@@ -1398,6 +1436,92 @@
     body.querySelector(".js-copy").addEventListener("click", () => {
       if (navigator.clipboard) navigator.clipboard.writeText(SHORTCUT_SAMPLE);
       KN.ui.toast("コピーしました");
+    });
+  }
+
+  /* 貼り付けの欄。iOSの「ペースト」はブラウザの権限を通らないので、
+     APIが断られても必ず通ります。開いた瞬間に欄へ入れておき、
+     長押しから一手で貼れるようにします。 */
+  function openPasteSheet(diag, done) {
+    const b = node(html`
+      <div class="stack">
+        <p class="diet-note">
+          この端末では、アプリからクリップボードを読み取れませんでした。
+          かわりに<b>下の欄を長押しして「ペースト」</b>を押してください。
+          貼り付けた時点で読み取ります。
+        </p>
+        <textarea class="textarea js-p" rows="4" spellcheck="false"
+                  autocapitalize="off" autocorrect="off"
+                  placeholder="ここに長押し →「ペースト」"></textarea>
+        <div class="js-got2"></div>
+        <div class="js-pv"></div>
+        <button class="btn btn-primary btn-block js-take2">取り込む</button>
+        <button class="btn btn-ghost btn-sm js-retry">自動で読めるか、もう一度試す</button>
+        ${diag && diag.why ? html`
+          <details class="diet-why">
+            <summary>読み取れなかった理由</summary>
+            <p class="diet-note">${diag.why}</p>
+          </details>` : ""}
+      </div>
+    `);
+    const h2 = KN.ui.sheet({ title: "貼り付けて取り込む", content: b });
+    const ta2 = b.querySelector(".js-p");
+    KN.ui.focusNow(ta2);
+
+    function refresh() {
+      const text = ta2.value;
+      const got = b.querySelector(".js-got2");
+      const pv = b.querySelector(".js-pv");
+      got.innerHTML = "";
+      pv.innerHTML = "";
+      if (!text.trim()) return;
+      got.append(node(html`
+        <div class="diet-got">
+          <span class="diet-got-head">貼り付けられた文字列（${text.length}文字）</span>
+          <pre>${text}</pre>
+        </div>
+      `));
+      const res = KN.healthSync.preview(text);
+      if (!res.ok) {
+        pv.append(node(html`<p class="diet-note is-warn">${res.error}</p>`));
+        return;
+      }
+      pv.append(node(html`
+        <div class="diet-read">
+          ${KN.util.raw(res.rows.map((r) => `
+            <div class="diet-read-row">
+              <span class="diet-read-name">${r.label}</span>
+              <b class="mono-num">${KN.util.escapeHtml(r.value)}</b>
+              <span class="diet-read-day">${KN.util.escapeHtml(U.formatDay(r.day))}</span>
+            </div>`).join(""))}
+        </div>
+      `));
+    }
+
+    // paste でも、キーボードで打っても、同じように読み直します。
+    ta2.addEventListener("paste", () => setTimeout(refresh, 0));
+    ta2.addEventListener("input", refresh);
+
+    b.querySelector(".js-retry").addEventListener("click", () => {
+      KN.healthSync.importFromClipboard().then((res) => {
+        if (res.text != null) {
+          // 読めた。次からはまた自動で読みにいきます。
+          store.update((st) => { st.settings.clipboardBlocked = false; });
+          ta2.value = res.text;
+          refresh();
+          if (res.ok) { h2.close(); done(res); return; }
+          KN.ui.toast(res.error);
+          return;
+        }
+        KN.ui.toast(res.why || res.error);
+      });
+    });
+
+    b.querySelector(".js-take2").addEventListener("click", () => {
+      // 手入力とまったく同じ道。
+      const res = KN.healthSync.importText(ta2.value);
+      if (res.ok) h2.close();
+      done(res);
     });
   }
 

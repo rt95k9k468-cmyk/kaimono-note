@@ -1752,3 +1752,24 @@
 .diet-edit-name { font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-edit-unit { font-size: var(--fs-xs); color: var(--c-text-3); }
 .diet-edit-src { font-size: 10px; color: var(--c-text-3); text-align: right; }
+
+/* ---- 取り込みの、生の中身 ---- */
+
+/* 加工しないで見せる欄。折り返しはするが、中身は変えない。 */
+.diet-got {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--sp-3); border-radius: var(--r-md);
+  background: var(--c-surface-2); border: 1px dashed var(--c-border-2);
+}
+.diet-got-head { font-size: var(--fs-xs); color: var(--c-text-3); }
+.diet-got pre {
+  margin: 0; font-size: 12px; line-height: 1.6; color: var(--c-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap; word-break: break-all;
+}
+
+.diet-why summary {
+  font-size: var(--fs-xs); color: var(--c-text-2);
+  cursor: pointer; padding: 4px 0;
+}
+.diet-why[open] summary { color: var(--c-text); font-weight: 700; }
