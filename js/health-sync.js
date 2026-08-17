@@ -463,6 +463,20 @@
       }));
   }
 
+  /**
+   * 読むだけ。取り込みも、成否の物語も付けません——タブを開いたときのように
+   * 「読めたら使う、読めなければ何もしない」場面のための、いちばん薄い口です。
+   * @returns {Promise<string|null>} 読めなければ null
+   */
+  function readClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return Promise.resolve(null);
+    try {
+      return Promise.resolve(navigator.clipboard.readText())
+        .then((t) => (t == null ? null : String(t)))
+        .catch(() => null);
+    } catch (err) { return Promise.resolve(null); }
+  }
+
   /** 失敗したあとにだけ聞く。対応していないブラウザでは黙って null。 */
   function askPermission() {
     try {
@@ -511,7 +525,7 @@
 
   KN.healthSync = {
     importText, importFromClipboard, importFromHash, describe, preview,
-    clipboardState, explain,
+    clipboardState, explain, readClipboard,
     parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
   };
 })();

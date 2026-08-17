@@ -575,6 +575,15 @@
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
+          <button class="row js-auto">
+            <span class="row-main">
+              <span class="row-title">開いたときに自動で読む</span>
+              <span class="row-sub">${store.get().settings.dietAutoSync === false
+                ? "オフ"
+                : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
+            </span>
+            <span class="row-value">${store.get().settings.dietAutoSync === false ? "オフ" : "オン"}</span>
+          </button>
           <button class="row js-sync">
             <span class="row-main">
               <span class="row-title">ヘルスケアから取り込む</span>
@@ -602,6 +611,12 @@
 
     wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet.openGoalSheet());
     wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet.openSyncSheet());
+    wrap.querySelector(".js-auto").addEventListener("click", () => {
+      const off = store.get().settings.dietAutoSync === false;
+      store.update((s) => { s.settings.dietAutoSync = off; });
+      render();
+      KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
+    });
     wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
     wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({

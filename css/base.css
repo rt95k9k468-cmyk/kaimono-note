@@ -183,6 +183,13 @@ html, body {
 html.has-top-tap { overflow-y: auto; }
 html.has-top-tap::after { content: ""; display: block; height: 1px; }
 
+/* その1pxに、ブラウザの「スクロールの錨」を働かせません。
+   画面の中で貼りつくもの（やることの月）が動くたび、ブラウザは文書のほうの
+   位置を取り直そうとして、この1pxを0へ寄せます。0はノッチのタップの合図
+   なので、月をめくるだけで「上へ戻れ」と言ったことになります。
+   ここに錨で守るべき中身は無い——1pxしかないので、外します。 */
+html.has-top-tap { overflow-anchor: none; }
+
 body {
   font-family: var(--font);
   font-size: var(--fs-md);
@@ -506,12 +513,41 @@ a { color: var(--c-primary); }
   transition: background .2s var(--ease), transform .2s var(--ease-out);
 }
 
+/* 一枚しか無いボタンは、いままでどおり真ん中に一つ。 */
+.tab-ico-face { grid-area: 1 / 1; display: grid; place-items: center; }
+.tab-ico-face svg { width: 22px; height: 22px; }
+
+/* ふた面のボタン。表は真ん中で大きく、裏は脇で小さく灰色。押すと
+   二つが中心を通ってすれ違います——同じ持ち場を分け合っていることが、
+   その動きで分かります。 */
+.tab.is-pair .tab-ico { width: 46px; }
+.tab.is-pair .tab-ico-face {
+  transition: transform .26s var(--ease-out), opacity .26s var(--ease), color .2s var(--ease);
+  color: var(--c-text-3);
+  opacity: .55;
+}
+.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-11px) scale(.62); }
+.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(11px)  scale(.62); }
+.tab.is-pair .tab-ico-face.is-on {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+  color: inherit;
+}
+.tab.is-pair[aria-selected="true"] .tab-ico-face.is-on { color: var(--c-primary); }
+/* 裏は、表になったときだけ線を太らせます（表が薄いと小さい絵が潰れる）。 */
+.tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab.is-pair .tab-ico-face { transition: opacity .1s linear; }
+}
+
 .tab[aria-selected="true"] { color: var(--c-primary); }
 .tab[aria-selected="true"] .tab-ico {
   background: var(--c-primary-soft);
   transform: translateY(-1px);
 }
 .tab[aria-selected="true"] svg { stroke-width: 2.3; }
+.tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
 
 .tab-badge {
   position: absolute;

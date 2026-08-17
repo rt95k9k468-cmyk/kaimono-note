@@ -215,9 +215,31 @@
    Today is a filled disc in 今日's own red, so the mark here and the shelf
    below say the same colour. */
 
+/* 月は、下までスクロールしても消えません。棚は月をほどいて縦に並べたもの
+   なので、いま何月のあたりにいるのかを見失うと、棚の名前だけが残ります。
+   上のバーの下にぴったり貼りつけたいので、バーの厚みはJSが実測して
+   --topbar-h で渡してきます（ノッチの深さで変わるため）。 */
 .cal {
+  position: sticky;
+  top: var(--topbar-h, 0px);
+  z-index: 12;
   padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease), padding var(--dur) var(--ease);
 }
+
+/* 貼りついているあいだは一段小さく。月の形は残したまま、リストに高さを返します。 */
+.cal.is-stuck {
+  padding-top: var(--sp-2);
+  padding-bottom: 2px;
+  border-bottom-color: var(--c-border);
+}
+.cal.is-stuck .cal-head { margin-bottom: 4px; }
+.cal.is-stuck .cal-day { height: 26px; font-size: var(--fs-xs); }
+.cal.is-stuck .cal-wd { padding-bottom: 1px; }
 
 .cal-head {
   display: flex;
