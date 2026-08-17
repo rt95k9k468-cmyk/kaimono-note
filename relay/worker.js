@@ -66,8 +66,12 @@ export default {
       const body = await env.MAIL.get("box");
       if (body == null) return new Response(null, { status: 204, headers: CORS });
       /* 渡したら消します。同じ便を二度読ませないためで、これが無いと
-         タブを開くたびに同じ日のデータを取り込み直すことになります
-         （アプリ側も重複を弾きますが、弾かせずに済むほうが良い）。 */
+         タブを開くたびに同じ日のデータを取り込み直すことになります。
+
+         ただし KV は結果整合です。置いたことも消したことも、世界中に
+         伝わるまで最大60秒ほどかかります。だから稀に同じ便が二度渡ること
+         があります——アプリ側は同じ日の同じ種類を差し替えるので、二度
+         入っても記録は増えません。ここは「たいてい一度」で足ります。 */
       await env.MAIL.delete("box");
       return new Response(body, {
         status: 200,
