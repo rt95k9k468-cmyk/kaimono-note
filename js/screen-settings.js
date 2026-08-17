@@ -580,7 +580,9 @@
               <span class="row-title">開いたときに自動で読む</span>
               <span class="row-sub">${store.get().settings.dietAutoSync === false
                 ? "オフ"
-                : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
+                : KN.healthRelay.configured()
+                  ? "ダイエットを開いた時に、中継所に届いているデータを取り込みます"
+                  : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
             </span>
             <span class="row-value">${store.get().settings.dietAutoSync === false ? "オフ" : "オン"}</span>
           </button>
@@ -590,6 +592,15 @@
               <span class="row-sub">${d.sync.lastAt ? `最後の取り込み：${KN.util.formatStamp(d.sync.lastAt)}` : "ショートカットで書き出したものを読みます"}</span>
             </span>
             <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-relay">
+            <span class="row-main">
+              <span class="row-title">中継所</span>
+              <span class="row-sub">${KN.healthRelay.configured()
+                ? `${KN.util.escapeHtml(KN.healthRelay.host())} ・ コピーと貼り付けなしで受け取ります`
+                : "未設定（ショートカットを走らせるだけで取り込めるようになります）"}</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
           </button>
           <button class="row js-ai">
             <span class="row-main">
@@ -617,6 +628,7 @@
       render();
       KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
     });
+    wrap.querySelector(".js-relay").addEventListener("click", openRelaySheet);
     wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
     wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
@@ -630,6 +642,82 @@
       KN.ui.toast("消しました");
     });
     return wrap;
+  }
+
+  /* 中継所のURLそのものが合言葉です。だから預かるのは一つだけ。
+     長くて当てられない道（/kn-a7f3…）にしてくださいと画面にも書きます。 */
+  function openRelaySheet() {
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">中継所のURL（https://…）</span>
+          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="https://example.workers.dev/kn-a7f3c1d9e2"
+                 value="${KN.healthRelay.url()}">
+        </label>
+        <p class="diet-note js-said">
+          ショートカットがここへ健康データを置き、くらしノートが受け取ります。
+          受け取ったら中継所からは消えるので、同じものを二度読むことはありません。
+          読み方は手入力とまったく同じで、増えるのは入口だけです。
+        </p>
+        <p class="diet-note">
+          <b>このURLが合言葉です。</b>当てられない長い道にしてください
+          （例：<code>/kn-</code> のあとに適当な英数字を十数文字）。
+          知られると、その人も同じ郵便受けを開けられます。
+        </p>
+        <p class="diet-note">
+          「つないでみる」は、届いていればそのまま取り込みます。中継所は渡したら
+          消す作りなので、覗くだけにするとその日のぶんを捨てることになるためです。
+        </p>
+        <p class="diet-note">中継所の建て方とショートカットの作り方は README の「中継所」にあります。</p>
+      </div>
+    `);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-test" style="flex:1">つないでみる</button>
+        <button class="btn btn-primary js-save" style="flex:1">保存</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "中継所", content: body, footer: foot });
+    const said = body.querySelector(".js-said");
+
+    const readUrl = () => body.querySelector(".js-url").value.trim();
+    const bad = (v) => v && !/^https:\/\//.test(v);
+
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      const v = readUrl();
+      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      KN.healthRelay.setUrl(v);
+      h.close(); render();
+      KN.ui.toast(v ? "中継所を覚えました" : "中継所を外しました");
+    });
+
+    /* 試すときは、まだ保存していない入力欄の値で試します。打ち間違えた
+       URLを保存させてから試させるのは順番が逆です。
+
+       なお「つないでみる」は、届いていれば取り込みます。中継所は渡したら
+       消す作りなので、覗いて捨てるとその日のデータが失くなるからです。 */
+    foot.querySelector(".js-test").addEventListener("click", () => {
+      const v = readUrl();
+      if (!v) { KN.ui.toast("URLを入れてください"); return; }
+      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      const keep = KN.healthRelay.url();
+      const btn = foot.querySelector(".js-test");
+      btn.disabled = true;
+      said.textContent = "つないでいます…";
+      KN.healthRelay.setUrl(v);
+      KN.healthRelay.test()
+        .then((r) => {
+          said.textContent = r.message;
+          if (r.imported && r.imported.ok) KN.screens.diet.render();
+        })
+        .catch((err) => { said.textContent = "つなげませんでした（" + (err && err.message || err) + "）"; })
+        .finally(() => {
+          btn.disabled = false;
+          // 試しただけで保存はしない。保存は「保存」を押したときだけ。
+          if (!keep) KN.healthRelay.setUrl(""); else KN.healthRelay.setUrl(keep);
+        });
+    });
   }
 
   /* 鍵ではなくURLを預かります。ここに鍵を書かせないのは方針ではなく事実で、
