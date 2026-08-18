@@ -219,35 +219,62 @@
     if (followFrame) return;
     followFrame = requestAnimationFrame(() => {
       followFrame = 0;
-      if (!root || !els.cal || query || calPinned) return;
+      if (!root || !els.cal || query) return;
       /* 自分で滑らせているあいだは、ついていきません。こちらが運んでいる
          最中に位置から月を読み直すと、めくったばかりの月が、通り道の月に
          書き換わります。 */
       if (KN.isGliding && KN.isGliding()) return;
+
       const line = els.cal.getBoundingClientRect().bottom + 1;
-      let want = "";
+      let at = null;
       const secs = els.body.querySelectorAll("[data-month]");
       for (let i = 0; i < secs.length; i++) {
-        const m = secs[i].getAttribute("data-month");
-        if (!m) continue;
-        const r = secs[i].getBoundingClientRect();
+        if (!secs[i].getAttribute("data-month")) continue;
         // 画面の上端をまたいでいる棚。まだ来ていないものは相手にしません。
-        if (r.top <= line) want = m;
+        if (secs[i].getBoundingClientRect().top <= line) at = secs[i];
         else break;
       }
-      if (!want) {
-        // まだどの棚にも届いていない＝いちばん上。最初の棚の月に戻します。
+      if (!at) {
+        // まだどの棚にも届いていない＝いちばん上。最初の棚に戻します。
         for (let i = 0; i < secs.length; i++) {
-          const m = secs[i].getAttribute("data-month");
-          if (m) { want = m; break; }
+          if (secs[i].getAttribute("data-month")) { at = secs[i]; break; }
         }
       }
-      if (!want) return;
+      if (!at) return;
+
+      /* いま上に来ている棚の日を、カレンダーの中でも塗ります。月だけが
+         ついてくると、「8月のどのあたりを見ているか」は分からないまま
+         でした。棚と数字は同じ場所を指しているので、同じ印が要ります。
+
+         月の留め（手でめくった）とは無関係に塗ります——留めているのは
+         「どの月を出すか」であって、「どこを見ているか」ではないので。
+         別の月を出していれば、その日の枠はそこに無く、何も塗られません。 */
+      markDay(at.getAttribute("data-day") || "");
+
+      if (calPinned) return;
+      const want = at.getAttribute("data-month");
       const [y, mo] = want.split("-").map(Number);
       const cur = shownMonth();
       if (cur.year === y && cur.month === mo - 1) return;
       setCalMonth(y, mo - 1);
     });
+  }
+
+  /* いま見ている日。カレンダーを描き直すと印は消えるので、覚えておいて
+     描いたあとに付け直します。 */
+  let hereDay = "";
+
+  function markDay(day) {
+    hereDay = day || "";
+    paintHere();
+  }
+
+  function paintHere() {
+    if (!els.cal) return;
+    els.cal.querySelectorAll(".cal-day.is-here").forEach((c) => c.classList.remove("is-here"));
+    if (!hereDay) return;
+    const cell = els.cal.querySelector(`.cal-day[data-day="${hereDay}"]`);
+    if (cell) cell.classList.add("is-here");
   }
 
   /** いまカレンダーが出している月。 */
@@ -1021,6 +1048,10 @@
 
   /** 組み直したあとに、読んでいた場所へ戻します。 */
   function restoreTop(top) {
+    /* 描き直したら、いま見ている日を数え直します。位置を戻さないとき
+       （いちばん上にいるとき）も要ります——開いた直後にスクロールが
+       起きないと、印がどこにも付かないままになるので。 */
+    followScroll();
     if (!root || !top) return;
     restoring = true;
     root.scrollTop = Math.min(top, Math.max(0, root.scrollHeight - root.clientHeight));
@@ -1327,12 +1358,15 @@
       cell.addEventListener("click", () => { jumpToDay(key); haptic(); });
       grid.append(cell);
     }
+    // 描き直したぶん、いま見ている日の印は消えています。付け直します。
+    paintHere();
   }
 
   function groupSection(g, rows, tiles) {
     const section = node(html`
       <section class="cat-group todo-group ${rows.length ? "" : "is-empty"}"
-               data-group="${g.id}" data-month="${monthKeyOf(g)}"></section>
+               data-group="${g.id}" data-month="${monthKeyOf(g)}"
+               data-day="${g.day || g.from || ""}"></section>
     `);
     section.append(head(g, rows.length));
     if (rows.length) {
@@ -1359,7 +1393,8 @@
 
     const top = node(html`
       <section class="todo-group todo-today-any ${rows.length ? "" : "is-empty"}"
-               data-group="today" data-month="${monthKeyOf(plain)}"></section>
+               data-group="today" data-month="${monthKeyOf(plain)}"
+               data-day="${plain ? plain.day : ""}"></section>
     `);
     top.append(head(plain, rows.length));
     if (rows.length) {

@@ -338,11 +338,25 @@
       });
   }
 
+  /* 下に引くのは「いま持っているものを見せ直せ」ではなく、
+     **「取りに行け」** の意味です。控えを読み直すだけだと、ダイエットの
+     画面では何も変わりません——歩数や睡眠は中継所の向こうにあって、
+     読み直しても取りには行かないので。
+
+     だから、開いている画面に refresh() があれば、それも待ちます。
+     無い画面はこれまでどおり読み直すだけです。 */
   function refreshData() {
-    return new Promise((resolve) => {
-      try { KN.store.reload(); } catch (err) { console.warn("refresh failed", err); }
-      resolve();
-    });
+    let outside = null;
+    try {
+      const screen = KN.screens && KN.screens[KN.activeScreen && KN.activeScreen()];
+      if (screen && screen.refresh) outside = screen.refresh();
+    } catch (err) { console.warn("refresh failed", err); }
+
+    return Promise.resolve(outside)
+      .catch(() => {})
+      .then(() => {
+        try { KN.store.reload(); } catch (err) { console.warn("refresh failed", err); }
+      });
   }
 
   /* The installed app can sit on the home screen for weeks. Asking the worker
