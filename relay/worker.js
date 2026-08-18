@@ -19,9 +19,11 @@
 
    建て方は relay/README.md にあります。 */
 
-const PATH = "/kn-CHANGE-ME";   // ← 当てられない長い道に変えてください
-const TTL  = 60 * 60 * 24 * 7;  // 取りに来ないまま一週間経った便は捨てる
-const MAX  = 64 * 1024;         // 健康データ一日ぶんは数百バイト。桁で余裕を見ています
+/* 合言葉になる道は wrangler.toml の [vars] RELAY_PATH に置きます。ここに
+   書かないのは、setup.sh に作らせるためです（人が考えた「ランダム」は
+   だいたいランダムではないので）。 */
+const TTL = 60 * 60 * 24 * 7;  // 取りに来ないまま一週間経った便は捨てる
+const MAX = 64 * 1024;         // 健康データ一日ぶんは数百バイト。桁で余裕を見ています
 
 /* このアプリのページから読めるようにするための約束。GETに custom header を
    付けないので、これだけで足ります。 */
@@ -39,8 +41,15 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
     /* 道が違えば、それ以上何も言いません。「そこは違う」と教えるのは、
-       総当たりで探している相手への手がかりになります。 */
-    if (url.pathname !== PATH) {
+       総当たりで探している相手への手がかりになります。
+
+       RELAY_PATH を置き忘れたまま公開すると、道が「合言葉なし」になって
+       しまいます。だから未設定は 404 ではなく、はっきり止めます。 */
+    if (!env.RELAY_PATH || !/^\/\S{8,}$/.test(env.RELAY_PATH)) {
+      return new Response("RELAY_PATH が設定されていません（wrangler.toml の [vars]）",
+        { status: 500, headers: CORS });
+    }
+    if (url.pathname !== env.RELAY_PATH) {
       return new Response("not found", { status: 404, headers: CORS });
     }
     if (!env.MAIL) {
