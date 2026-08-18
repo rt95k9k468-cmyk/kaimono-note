@@ -3309,6 +3309,14 @@ button, [role="tab"] {
 .diet-key-name { color: var(--c-text-2); }
 .diet-key-ex { color: var(--c-text-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
+   字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に
+   はみ出す形で当たり判定だけ広げます。 */
+.diet-steps a, .diet-note a {
+  display: inline-block; padding: 10px 4px; margin: -10px -4px;
+  color: var(--c-accent); text-decoration: underline;
+}
+
 /* 作った合言葉。指で書き写すものではなく **コピーするもの** なので、
    読めることより「途中で切れないこと」を優先して折り返します。 */
 .diet-relaykey {
