@@ -27,11 +27,13 @@
   let range = 30;             // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
 
+  /* 一日の順に、日の高さで。朝は昇る日、昼は真上の日、夜は月——
+     間食だけは時刻ではないので、食べもののほうを描きます。 */
   const SLOTS = [
-    { id: "breakfast", label: "朝食" },
-    { id: "lunch",     label: "昼食" },
-    { id: "dinner",    label: "夕食" },
-    { id: "snack",     label: "間食" },
+    { id: "breakfast", label: "朝食", ico: "sunrise" },
+    { id: "lunch",     label: "昼食", ico: "sun" },
+    { id: "dinner",    label: "夕食", ico: "moon" },
+    { id: "snack",     label: "間食", ico: "snack" },
   ];
   const slotLabel = (id) => (SLOTS.find((s) => s.id === id) || {}).label || "間食";
 
@@ -134,7 +136,10 @@
     const sec = node(html`
       <section class="card diet-hero">
         <button class="diet-hero-main js-weight">
-          <span class="diet-hero-label">${w ? (w.source === "health" ? "今日の体重（ヘルスケア）" : "今日の体重") : "今日はまだ量っていません"}</span>
+          <span class="diet-hero-label">
+            <i class="diet-hero-ico">${icon("scale")}</i>${w
+              ? (w.source === "health" ? "今日の体重（ヘルスケア）" : "今日の体重")
+              : "今日はまだ量っていません"}</span>
           <span class="diet-hero-value">
             <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
             ${w && w.fat != null ? html`<span class="diet-hero-fat mono-num">体脂肪 ${w.fat.toFixed(1)}%</span>` : ""}
@@ -143,17 +148,17 @@
         </button>
         <div class="diet-hero-side">
           <div class="diet-stat">
-            <span class="diet-stat-label">前回比</span>
+            <span class="diet-stat-label"><i class="diet-stat-ico">${icon("trend")}</i>前回比</span>
             <b class="diet-stat-value mono-num ${sum.delta == null ? "" : sum.delta < 0 ? "is-good" : sum.delta > 0 ? "is-warn" : ""}">${signed(sum.delta)}</b>
             <span class="diet-stat-unit">kg${sum.deltaDays > 1 ? `・${sum.deltaDays}日ぶり` : ""}</span>
           </div>
           <div class="diet-stat">
-            <span class="diet-stat-label">7日平均</span>
+            <span class="diet-stat-label"><i class="diet-stat-ico">${icon("chart")}</i>7日平均</span>
             <b class="diet-stat-value mono-num">${sum.ma7Now == null ? "—" : sum.ma7Now.toFixed(2)}</b>
             <span class="diet-stat-unit">kg</span>
           </div>
           <div class="diet-stat">
-            <span class="diet-stat-label">${g.targetKg == null ? "目標" : "目標まで"}</span>
+            <span class="diet-stat-label"><i class="diet-stat-ico">${icon("target")}</i>${g.targetKg == null ? "目標" : "目標まで"}</span>
             <b class="diet-stat-value mono-num">${g.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
             <span class="diet-stat-unit">${g.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
           </div>
@@ -269,13 +274,16 @@
   /* 数の並びは、見るためだけのものにしません。取り込んだ値を直せず消せず、
      今日より前の日にも触れないと、一度入った間違いがそのまま残ります。
      どの枠を押しても、その日の記録の画面が開きます。 */
+  /* 絵は飾りではありません。数字だけが六つ並ぶと、どれが何かは読むまで
+     分からず、探すたびに全部読み直すことになります。目は文字より先に絵を
+     拾うので、二度目からは絵で当たりを付けられます。 */
   const BODY_ROWS = [
-    { type: "steps",         label: "歩数",       unit: "歩",   hint: "8432" },
-    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1" },
-    { type: "activeEnergy",  label: "アクティブ", unit: "kcal", hint: "430" },
-    { type: "restingEnergy", label: "安静時",     unit: "kcal", hint: "1520" },
-    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12" },
-    { type: "heartRate",     label: "心拍数",     unit: "bpm",  hint: "62" },
+    { type: "steps",         label: "歩数",       unit: "歩",   hint: "8432", ico: "steps" },
+    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1",  ico: "route" },
+    { type: "activeEnergy",  label: "アクティブ", unit: "kcal", hint: "430",  ico: "flame" },
+    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12", ico: "moon" },
+    { type: "restingEnergy", label: "安静時",     unit: "kcal", hint: "1520", ico: "bed" },
+    { type: "heartRate",     label: "心拍数",     unit: "bpm",  hint: "62",   ico: "heart" },
   ];
 
   const showValue = (type, v) => {
@@ -291,11 +299,13 @@
 
   function renderBodyStats(host, card) {
     const sync = store.get().diet.sync;
-    /* カードに出す四つ。安静時エネルギーは記録の画面にはありますが、ここには
-       出しません——毎日ほとんど同じ数で、見て何かが変わるものではないので。
-       そのぶんを睡眠に譲ります。 */
-    const CARD = ["steps", "distance", "activeEnergy", "sleep"];
-    const rows = CARD.map((t) => BODY_ROWS.find((r) => r.type === t)).map((r) => ({
+    /* **ぜんぶ出します。**
+
+       前は四つだけで、安静時と心拍数は「記録を見る・直す」の向こうでした。
+       毎日ほとんど動かない数だから、というのが理由でしたが——動かないことを
+       確かめるのにも、開いて閉じる二手が要ります。持っている数を全部見せて
+       おけば、その二手はゼロになります。六つは、三つ二段で収まります。 */
+    const rows = BODY_ROWS.map((r) => ({
       ...r,
       value: showValue(r.type, card[r.type]),
       manual: isManual(card.day, r.type),
@@ -307,7 +317,8 @@
         <div class="section-title">${icon("heart")}今日のからだ</div>
         <div class="diet-grid">
           ${KN.util.raw(rows.map((r) => `
-            <button class="diet-cell js-cell" data-type="${r.type}">
+            <button class="diet-cell js-cell ${r.value === "—" ? "is-blank" : ""}" data-type="${r.type}">
+              <span class="diet-cell-ico">${icon(r.ico)}</span>
               <span class="diet-cell-label">${r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
               <b class="diet-cell-value mono-num">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
@@ -549,8 +560,9 @@
             const kcal = mine.reduce((a, m) => a + m.items.reduce((x, i) => x + i.kcal, 0), 0);
             const names = mine.flatMap((m) => m.items.map((i) => i.name)).join("・");
             return `
-              <button class="diet-slot js-slot" data-slot="${s.id}">
+              <button class="diet-slot js-slot ${mine.length ? "" : "is-blank"}" data-slot="${s.id}">
                 <span class="diet-slot-head">
+                  <span class="diet-slot-ico">${icon(s.ico)}</span>
                   <b>${s.label}</b>
                   <span class="diet-slot-kcal mono-num">${mine.length ? kcal.toLocaleString() + " kcal" : ""}</span>
                 </span>
@@ -595,6 +607,19 @@
     const h = KN.ui.sheet({ title: slotLabel(slot), content: body });
   }
 
+  /* 気づいたことの絵。何の話かを、読む前に見せます。 */
+  const FINDING_ICON = {
+    change:        "trend",
+    "steps-weeks": "steps",
+    "kcal-weeks":  "flame",
+    sleep:         "moon",
+    weekend:       "sun",
+    pfc:           "meal",
+    mixed:         "scale",
+    meal:          "meal",
+    clothed:       "scale",
+  };
+
   /* ---------------- 気づいたこと ---------------- */
 
   function renderInsight(host) {
@@ -610,8 +635,11 @@
           <div class="diet-findings">
             ${KN.util.raw(found.map((f) => `
               <div class="diet-finding is-${f.tone || "info"}">
-                <b>${KN.util.escapeHtml(f.title)}</b>
-                <p>${KN.util.escapeHtml(f.text)}</p>
+                <span class="diet-finding-ico">${icon(FINDING_ICON[f.id] || "sparkles")}</span>
+                <div class="diet-finding-text">
+                  <b>${KN.util.escapeHtml(f.title)}</b>
+                  <p>${KN.util.escapeHtml(f.text)}</p>
+                </div>
               </div>`).join(""))}
           </div>
           <p class="diet-note">ここに出るのは、並んだ数どうしの<b>関連</b>です。
@@ -1653,6 +1681,7 @@
 
   /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
   function onEnter() {
+    watchResume();          // 一度だけ。戻ってきたことも合図にします。
     const st = store.get().settings;
     if (st.dietAutoSync === false) return;
     // 中継所は「操作のうち」に縛られないので、先に走らせて構いません。
@@ -1683,13 +1712,68 @@
      邪魔です。中継所の不調を確かめたいときは、設定の「つないでみる」か
      取り込みシートの「中継所から取り込む」を押します。そこでは黙りません。 */
   function pullRelay() {
-    KN.healthRelay.pullAndImport().then((res) => {
-      if (!res.ok) return;                      // 空も、繋がらないも、黙って引く
-      if (!res.added && !res.updated) return;
+    return KN.healthRelay.pullAndImport().then((res) => {
+      if (!res.ok) return res;                  // 空も、繋がらないも、黙って引く
+      if (!res.added && !res.updated) return res;
       lastAuto = res.text || lastAuto;          // 同じ中身を貼り付けからも読まない
       render();
       KN.ui.toast("中継所：" + KN.healthSync.describe(res));
-    }).catch(() => { /* 黙って引く */ });
+      return res;
+    }).catch(() => ({ ok: false }));
+  }
+
+  /* ---------------- 下に引いたとき ----------------
+
+     下に引くのは「取りに行け」です。控えを読み直すだけでは、歩数も睡眠も
+     変わりません——あれは中継所の向こうにあるので。
+
+     そして**ここでは黙りません**。自分で引いたのに何も言われないのが、
+     いちばん困ります（タブを開いたときの自動取り込みは、電波の悪い場所で
+     毎回赤い字が出ないように黙りますが、あれとは事情が違います）。 */
+  function refresh() {
+    if (!KN.healthRelay.configured()) return Promise.resolve();
+    return KN.healthRelay.pullAndImport().then((res) => {
+      if (res.ok && (res.added || res.updated)) {
+        lastAuto = res.text || lastAuto;
+        render();
+        KN.ui.toast("中継所：" + KN.healthSync.describe(res));
+        return;
+      }
+      if (res.empty) { KN.ui.toast("中継所に新しいデータはありません"); return; }
+      if (!res.ok) { KN.ui.toast(res.error || "中継所につながりませんでした"); return; }
+      KN.ui.toast("中継所：" + KN.healthSync.describe(res));
+    }).catch((err) => {
+      KN.ui.toast("中継所につながりませんでした（" + (err && err.message || err) + "）");
+    });
+  }
+
+  /* ---------------- ほかのアプリから戻ったとき ----------------
+
+     いちばん多い流れは「ショートカットを走らせる → アプリに戻る」です。
+     このときダイエットのタブは**もう開いたまま**なので、タブを押す機会が
+     ありません。押されなければ onEnter は呼ばれず、中継所は覗かれない——
+     「押しても最新にならない」ように見えていた正体はこれです。
+
+     だから、戻ってきたこと自体を合図にします。ここも自動なので黙ります。 */
+  function watchResume() {
+    if (watchResume.done) return;
+    watchResume.done = true;
+    const back = () => {
+      if (document.visibilityState !== "visible") return;
+      if (KN.activeScreen && KN.activeScreen() !== "diet") return;
+      const st = store.get().settings;
+      if (st.dietAutoSync === false) return;
+      if (!KN.healthRelay.configured()) return;
+      /* 置いた直後は、まだ届いていないことがあります（中継所のKVは
+         結果整合で、伝わるまで少しかかる）。一度目で空でも、少し置いて
+         もう一度だけ覗きます。二度で足りなければ、下に引けば取りにいきます。 */
+      pullRelay().then((res) => {
+        if (res && res.ok && (res.added || res.updated)) return;
+        setTimeout(pullRelay, 4000);
+      });
+    };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("pageshow", back);
   }
 
   /* ---------------- ＋ ---------------- */
@@ -1706,7 +1790,7 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.diet = { mount, render, dockButton, onEnter,
+  KN.screens.diet = { mount, render, dockButton, onEnter, refresh,
     // 設定やテストから開けるように
     openWeightSheet, openMealSheet, openGoalSheet, openSyncSheet };
 })();

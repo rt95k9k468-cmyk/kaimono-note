@@ -341,6 +341,21 @@
 .cal-day.is-today.is-sun .cal-n,
 .cal-day.is-today.is-sat .cal-n { color: #fff; }
 
+/* いま下で見ている日。今日の赤丸とは別の印にします——今日は「どこか」で、
+   こちらは「いまどこを見ているか」。二つが同じ塗りだと、今日の位置を
+   探すたびに読み違えます。だから今日は塗りつぶし、こちらは輪郭。
+   スクロールで動くので、色の変わり方はゆっくりにしません（指の下で
+   遅れて追ってくると、ずれて見えます）。 */
+.cal-day.is-here .cal-n {
+  box-shadow: inset 0 0 0 2px var(--c-primary);
+  color: var(--c-primary);
+}
+.cal-day.is-here.is-today .cal-n {
+  /* 今日を見ているときは、二つが重なります。赤丸のまわりに輪をもう一本。 */
+  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
+  color: #fff;
+}
+
 /* Days that have something on them, in that day's own shelf colour — so the
    red-to-blue run below is visible up here as well. Up to three: past that it
    is 「詰まっている」 either way, and four dots in a 40px cell is a smudge.
@@ -1616,12 +1631,27 @@
 
 /* 4つ横に並ぶのは幅があるときだけ。320pxの画面では3つ＋1つに折り返します
    ——「7時間00分」は、四等分した枠には収まりません。 */
-.diet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: var(--sp-2); }
+/* 見出しに添える小さい絵。文字の高さに揃えて、行の背は変えません。 */
+.diet-hero-ico, .diet-stat-ico {
+  display: inline-block; vertical-align: -2px; line-height: 0;
+  color: var(--c-primary); opacity: .8; margin-right: 4px;
+}
+.diet-hero-ico svg { width: 14px; height: 14px; stroke-width: 1.8; }
+.diet-stat-ico svg { width: 12px; height: 12px; stroke-width: 1.8; }
+
+/* 六つの枠。電話の幅では三つ二段に落ちます——70pxのままだと五つ並んで
+   一つあふれ、二段目に一つだけ残る不揃いな形になります。 */
+.diet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--sp-2); }
 .diet-cell {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   padding: var(--sp-2) 2px; background: var(--c-surface-2);
   border-radius: var(--r-md); min-width: 0;
 }
+/* 絵は控えめに。数字より目立つと、読む順が逆になります。 */
+.diet-cell-ico { display: block; color: var(--c-primary); opacity: .82; line-height: 0; }
+.diet-cell-ico svg { width: 17px; height: 17px; stroke-width: 1.7; }
+/* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
+.diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
 .diet-cell-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
 .diet-cell-unit { font-size: 10px; color: var(--c-text-3); }
@@ -1657,8 +1687,12 @@
   border: 1px solid var(--c-border); border-radius: var(--r-md);
   min-height: 62px;
 }
-.diet-slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
-.diet-slot-head b { font-size: var(--fs-sm); }
+.diet-slot-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.diet-slot-head b { font-size: var(--fs-sm); margin-right: auto; }
+.diet-slot-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
+.diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
+/* まだ書いていない食事は、絵も薄く。書いたものとの差が、ひと目で出ます。 */
+.diet-slot.is-blank .diet-slot-ico { color: var(--c-text-3); opacity: .5; }
 .diet-slot-kcal { font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-slot-body {
   font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.4;
@@ -1679,11 +1713,19 @@
 
 .diet-findings { display: flex; flex-direction: column; gap: var(--sp-2); }
 .diet-finding {
+  display: flex; align-items: flex-start; gap: var(--sp-3);
   padding: var(--sp-3); border-radius: var(--r-md);
   background: var(--c-surface-2); border-left: 3px solid var(--c-border-2);
 }
+.diet-finding-text { min-width: 0; }
+/* 絵は左端に、文の一行目と肩を揃えて。色は札の色をそのまま継ぎます——
+   同じことを二度言うぶん、目は一度で拾えます。 */
+.diet-finding-ico { flex: none; line-height: 0; color: var(--c-text-3); margin-top: 1px; }
+.diet-finding-ico svg { width: 18px; height: 18px; stroke-width: 1.7; }
 .diet-finding.is-good { border-left-color: var(--c-primary); }
+.diet-finding.is-good .diet-finding-ico { color: var(--c-primary); }
 .diet-finding.is-warn { border-left-color: var(--c-accent); }
+.diet-finding.is-warn .diet-finding-ico { color: var(--c-accent); }
 .diet-finding b { font-size: var(--fs-sm); display: block; margin-bottom: 2px; }
 .diet-finding p { margin: 0; font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.7; }
 

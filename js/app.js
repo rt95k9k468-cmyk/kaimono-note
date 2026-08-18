@@ -749,6 +749,9 @@
   /** どのタブから引き出しを開けたか。設定の画面が、出すものを選ぶのに使います。 */
   KN.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
 
+  /** いま開いている画面。下に引いたときに、誰に聞けばいいかを知るため。 */
+  KN.activeScreen = () => active;
+
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {
     if (document.querySelector(".sheet")) return true;
