@@ -660,6 +660,12 @@
           アプリが作ります。
 
      残りは、Cloudflareの画面で貼るだけの作業になります。 */
+  /* 「Cloudflareに置く」の行き先。リポジトリの relay/ を指します——
+     Cloudflare がそこの wrangler.jsonc を読んで、置き場を作り、
+     .dev.vars.example を見て合言葉を尋ねてきます。 */
+  const DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url="
+    + "https://github.com/rt95k9k468-cmyk/kaimono-note/tree/main/relay";
+
   function openRelaySheet() {
     // まだ保存していない、この場かぎりの下ごしらえ。
     let draftPath = "";
@@ -672,35 +678,12 @@
           読み方は手入力とまったく同じで、増えるのは入口だけです。
         </p>
         <p class="diet-note">
-          <b>iPhoneだけで建てられます。</b>パソコンは要りません。下の①〜⑥を
+          <b>iPhoneだけで建てられます。</b>パソコンは要りません。下の①〜④を
           順に。Cloudflareの画面はSafariで開いてください（無料・カード不要）。
         </p>
 
         <div class="divider"></div>
-        <div class="section-title">① Cloudflareに登録して、Workerを作る</div>
-        <ol class="diet-steps">
-          <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a>
-            で登録（メールアドレスだけ。カードは要りません）</li>
-          <li>左の <b>Compute (Workers)</b> →（または <b>Workers &amp; Pages</b>）
-            → <b>Create</b> → <b>Start with Hello World</b> → <b>Deploy</b></li>
-        </ol>
-        <p class="diet-note">
-          名前は何でも構いません（<code>kurashi-relay</code> など）。
-          この名前が、あとで出てくるURLの頭になります。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">② 中継所のコードを貼る</div>
-        <button class="btn btn-primary btn-block js-copycode">中継所のコードをコピー</button>
-        <ol class="diet-steps">
-          <li>できたWorkerの <b>Edit code</b>（＜＞のボタン）を開く</li>
-          <li>コード欄を<b>長押し → 選択 → すべてを選択</b>して、
-            いま取ったものを<b>ペースト</b>（元のHello Worldは残さない）</li>
-          <li>右上の <b>Deploy</b></li>
-        </ol>
-
-        <div class="divider"></div>
-        <div class="section-title">③ 合言葉になる道をつくる</div>
+        <div class="section-title">① 道（合言葉）をつくる</div>
         <div class="diet-relaykey">
           <code class="js-path">${draftPath || "（まだ作っていません）"}</code>
         </div>
@@ -708,33 +691,58 @@
           <button class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
           <button class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
         </div>
-        <ol class="diet-steps">
-          <li>Workerの <b>Settings</b> → <b>Variables and Secrets</b> → <b>Add</b></li>
-          <li><b>Type</b> は <b>Secret</b>、
-            <b>Variable name</b> に <code>RELAY_PATH</code>、
-            <b>Value</b> にいま作った道を<b>ペースト</b></li>
-          <li><b>Deploy</b></li>
-        </ol>
         <p class="diet-note">
-          <b>この道が合言葉です。</b>知られると、その人も同じ郵便受けを開けられます。
-          だから Type は Secret にしてください（あとから画面に出なくなります。
-          忘れても、このアプリが完成したURLを覚えているので大丈夫です）。
+          <b>これが合言葉です。</b>知られると、その人も同じ郵便受けを開けられます。
+          ②の途中で貼るので、先に作ってコピーしておきます。
         </p>
 
         <div class="divider"></div>
-        <div class="section-title">④ 置き場（KV）を作って、結ぶ</div>
+        <div class="section-title">② 中継所を置く（コピペ不要）</div>
+        <a class="btn btn-primary btn-block js-deploy"
+           href="${DEPLOY_URL}" target="_blank" rel="noopener">Cloudflareに置く</a>
         <ol class="diet-steps">
-          <li>左の <b>Storage &amp; Databases</b> → <b>KV</b> →
-            <b>Create a namespace</b>（名前は何でも。<code>kurashi-mail</code> など）</li>
-          <li>Workerに戻って <b>Settings</b> → <b>Bindings</b> → <b>Add</b> →
-            <b>KV namespace</b></li>
-          <li><b>Variable name</b> は <b><code>MAIL</code></b>（コードがこの名前を見ています）。
-            <b>KV namespace</b> はいま作ったもの</li>
-          <li><b>Deploy</b></li>
+          <li>Cloudflareに登録（メールアドレスだけ。カードは要りません）。
+            登録済みならそのまま進みます</li>
+          <li>GitHubとつなぐ画面が出たら許可する（コードの置き場を読むためです）</li>
+          <li><b>RELAY_PATH</b> を聞かれたら、①でコピーした道を<b>ペースト</b></li>
+          <li><b>Deploy</b>（Create and deploy）を押す</li>
         </ol>
+        <p class="diet-note">
+          押すと、コードも<b>置き場（KV）も Cloudflare が自分で用意します</b>。
+          コードを貼り付ける必要も、KVを作って結び付ける必要もありません
+          （設計図に置き場の番号を書いていないので、「作ってください」の意味になります）。
+        </p>
+        <p class="diet-note">
+          <b>RELAY_PATH を聞かれなかったら</b>、置いたあとに
+          <b>Settings → Variables and Secrets → Add</b> で、Type を <b>Secret</b>、
+          名前を <code>RELAY_PATH</code> にして置いてください（それから <b>Deploy</b>）。
+        </p>
+
+        <p class="diet-note">
+          <b>うまくいかないときは、Cloudflareの画面からも同じことができます。</b>
+          <b>Create</b> → <b>Import a repository</b> → このアプリのリポジトリ
+          （<code>kaimono-note</code>）を選び、<b>Root directory</b> に
+          <code>relay</code> と入れて配置します。<b>あなた自身のリポジトリ</b>なので、
+          GitHubをつなげば一覧に出ます。
+        </p>
+        <p class="diet-note">
+          置き場（KV）が自動で用意されなかったときだけ、
+          <b>Storage &amp; Databases → KV</b> で作って、Workerの
+          <b>Settings → Bindings</b> で <code>MAIL</code> という名前に結んでください。
+        </p>
 
         <div class="divider"></div>
-        <div class="section-title">⑤ URLをつなげる</div>
+        <p class="diet-note">
+          <b>コードを手で貼るやり方は、iPhoneでは勧めません。</b>
+          編集画面（Edit code）はパソコン向けの部品でできていて、
+          指での「すべてを選択 → ペースト」がうまく効かないことがあります。
+          上の二つは、どちらも<b>貼り付けを必要としません</b>。
+          それでも中身を見たい・手で貼りたいときのために、口だけ残してあります。
+        </p>
+        <button class="btn btn-soft btn-block js-copycode">中継所のコードをコピー</button>
+
+        <div class="divider"></div>
+        <div class="section-title">③ URLをつなげる</div>
         <label class="field">
           <span class="field-label">WorkerのURL（Cloudflareの画面からコピー）</span>
           <input class="input js-base" inputmode="url" autocapitalize="off" spellcheck="false"
@@ -754,7 +762,7 @@
         </p>
 
         <div class="divider"></div>
-        <div class="section-title">⑥ 確かめる</div>
+        <div class="section-title">④ 確かめる</div>
         <button class="btn btn-primary btn-block js-verify">中継所を確かめる</button>
         <div class="js-steps"></div>
         <p class="diet-note js-said">
@@ -831,14 +839,14 @@
         KN.ui.toast("先に「道をつくる」を押してください"); return;
       }
       urlField.value = KN.healthRelay.joinUrl(base, draftPath);
-      KN.ui.toast("つなげました。⑥で確かめてください");
+      KN.ui.toast("つなげました。④で確かめてください");
     });
 
     /* 確かめるのは、まだ保存していない欄の値です。打ち間違えたURLを
        保存させてから試させるのは順番が逆なので。 */
     body.querySelector(".js-verify").addEventListener("click", () => {
       const v = readUrl();
-      if (!v) { KN.ui.toast("先に⑤でURLをつなげてください"); return; }
+      if (!v) { KN.ui.toast("先に③でURLをつなげてください"); return; }
       if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
       const btn = body.querySelector(".js-verify");
       btn.disabled = true;
