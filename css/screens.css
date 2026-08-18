@@ -1740,6 +1740,18 @@
 .diet-key-name { color: var(--c-text-2); }
 .diet-key-ex { color: var(--c-text-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* 作った合言葉。指で書き写すものではなく **コピーするもの** なので、
+   読めることより「途中で切れないこと」を優先して折り返します。 */
+.diet-relaykey {
+  background: var(--c-surface-2); border-radius: var(--r-md);
+  padding: var(--sp-3); text-align: center;
+}
+.diet-relaykey code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-sm); color: var(--c-text);
+  word-break: break-all; user-select: all; -webkit-user-select: all;
+}
+
 /* 説明のなかの短いコード。地の文に混ざっても読めるだけの下地を敷きます。 */
 .diet-note code, .diet-steps code, .diet-key code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
