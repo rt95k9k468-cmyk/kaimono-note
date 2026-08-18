@@ -531,8 +531,21 @@ a { color: var(--c-primary); }
   color: var(--c-text-3);
   opacity: .55;
 }
-.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-22px) scale(.52); }
-.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(22px)  scale(.52); }
+/* 脇に置くぶんは、**選んだ印の緑の丸からも外へ**出します。
+   絵どうしは離してあったのに、緑の丸（.tab-ico、幅40px＝中心から±20px）が
+   小さい絵に食い込んでいました。絵と絵の隙間だけを見て、下に敷いてある
+   印を数えていなかったための重なりです。
+
+     印の縁          20.0px（40 ÷ 2）
+     小さい絵の半分   5.7px（22 × 0.52 ÷ 2）
+     指で見て分かる隙間 4px
+     ────────────────────────
+     ずらす量        30px
+
+   印のほうを細くして寄せる手もありますが、選んだ印は三つのタブで
+   同じ形をしているべきなので、動かすのは絵のほうにします。 */
+.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-30px) scale(.52); }
+.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(30px)  scale(.52); }
 .tab.is-pair .tab-ico-face.is-on {
   transform: translateX(0) scale(1);
   opacity: 1;

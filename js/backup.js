@@ -129,14 +129,13 @@
     return !(days < REMIND_AFTER_DAYS);
   }
 
+  /* 自動の控えは取り続けますが、**催促はしません**。
+     頼んでもいないのに出る知らせは、出るたびに読み飛ばす癖をつけます。
+     そうなると、本当に伝えたいこと（取り込めた／取り込めなかった）まで
+     一緒に読み飛ばされます。書き出しどきかどうかは exportDue() が
+     答えるので、設定の画面に「前回いつ書き出したか」として静かに出ます。 */
   function init() {
     maybeDaily();
-    if (exportDue()) {
-      // Late enough that it does not collide with the first paint.
-      setTimeout(() => {
-        KN.ui && KN.ui.toast("設定からバックアップを書き出しておくと安心です");
-      }, 2500);
-    }
   }
 
   KN.backup = {

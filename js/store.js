@@ -1161,7 +1161,61 @@
     const ao = typeof a.order === "number" ? a.order : Infinity;
     const bo = typeof b.order === "number" ? b.order : Infinity;
     if (ao !== bo) return ao - bo;
-    return KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja");
+    return kanaOrder(a, b);
+  }
+
+  const kanaOrder = (a, b) =>
+    KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja");
+
+  /**
+   * その商品の絵の名前。手で選んでいればそれ、選んでいなければ名前から、
+   * 名前で当たらなければカテゴリの名前から。当たらなければ "" です。
+   *
+   * productMark() が絵を決める順番と、ここは同じでなければいけません。
+   * 違うと「同じ絵に見えるのに離れて並ぶ」ことになります。
+   */
+  function iconKeyOf(p) {
+    if (!p) return "";
+    if (p.icon && KN.productIcons.byKey(p.icon)) return p.icon;
+    const own = KN.productIcons.findKey(p.name);
+    if (own) return own;
+    const cat = getCategory(p.categoryId);
+    return (cat && KN.productIcons.findKey(cat.name)) || "";
+  }
+
+  /**
+   * ひとつのカテゴリの中を並べます。
+   *
+   * 手で並べた棚は、並べたとおり。触っていない棚は五十音——ただし
+   * **同じ絵のものは寄せます**。「牛乳」と「低脂肪牛乳」が五十音の
+   * 都合で棚の端と端に離れているのは、探すときの見え方と合いません。
+   * 目は文字より先に絵を拾うので、絵が同じものは近くにあってほしい。
+   *
+   * 寄せ方は「グループごと動かす」のではなく、**そのグループでいちばん
+   * 早い名前の場所へ、仲間を連れてくる** 形にします。こうすると全体は
+   * 五十音のままに見えて、同じ絵だけが束になります。
+   *
+   * @param {Array} list ひとつのカテゴリの商品
+   */
+  function sortProductsInCategory(list) {
+    const rows = [...list];
+    // 手で並べた商品が一つでもあるなら、その棚は人の決めた順が全部に優先。
+    if (rows.some((p) => typeof p.order === "number")) return rows.sort(productOrder);
+
+    const first = new Map();          // 絵の名前 → その絵でいちばん早い名前
+    rows.forEach((p) => {
+      const k = iconKeyOf(p) || ("\u0000" + p.id);   // 絵の無いものは束ねない
+      const cur = first.get(k);
+      if (!cur || kanaOrder(p, cur) < 0) first.set(k, p);
+    });
+
+    return rows.sort((a, b) => {
+      const ka = iconKeyOf(a) || ("\u0000" + a.id);
+      const kb = iconKeyOf(b) || ("\u0000" + b.id);
+      if (ka === kb) return kanaOrder(a, b);          // 同じ絵の中は五十音
+      return kanaOrder(first.get(ka), first.get(kb))  // 束どうしは、先頭の名前で
+        || ka.localeCompare(kb);
+    });
   }
 
   /**
@@ -1504,7 +1558,7 @@
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
-    productOrder, reorderProducts,
+    productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,

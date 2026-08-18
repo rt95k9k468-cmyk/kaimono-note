@@ -3763,9 +3763,18 @@
 
   /** Drawn icon for a product name, as raw SVG — or "" when nothing fits. */
   function find(name) {
+    const key = findKey(name);
+    return key ? ICONS[key] : "";
+  }
+
+  /** 同じことを、絵ではなく **名前** で返します。
+      絵そのものは長いSVGの文字列なので、「この二つは同じ絵か」を
+      比べるのには向きません。並べ替えが要るのは、比べられる名前のほうです。
+      @returns {string} 例 "milk"、当てはまらなければ "" */
+  function findKey(name) {
     const n = KN.util.foldKana(String(name || ""));
     if (!n) return "";
-    for (const [key, icon] of FLAT) if (n.includes(key)) return ICONS[icon];
+    for (const [key, icon] of FLAT) if (n.includes(key)) return icon;
     return "";
   }
 
@@ -3867,5 +3876,5 @@
     });
   }
 
-  KN.productIcons = { find, fallback, ICONS, list, byKey, suggest, search, LABELS };
+  KN.productIcons = { find, findKey, fallback, ICONS, list, byKey, suggest, search, LABELS };
 })();
