@@ -531,6 +531,10 @@
       .includes(el.type);
   }
 
+  /* 「キーボードでは起こり得ない縮み方」の境目。道具棚は高々100pxほど、
+     キーボードは250px以上。数の役目はそれだけで、高さの計算には使いません。 */
+  const KB_MIN = 180;
+
   function trackKeyboard() {
     const vv = window.visualViewport;
     if (!vv) return;   // Falls back to the CSS 100dvh, as before.
@@ -539,8 +543,27 @@
     if (!app) return;
 
     const fit = () => {
-      // Size first: the shell ends where the keyboard begins.
-      app.style.height = Math.round(vv.height) + "px";
+      /* 他のアプリから戻ったとき、タブ欄の下にキーボードひとつぶんの
+         空白が残ることがありました。iOS はページを眠らせているあいだの
+         visualViewport を必ずしも起こし直さないので、resize も scroll も
+         飛ばないまま、**キーボードの高さに縮めたままのシェル**が残ります。
+
+         そこで、あり得ない状態を一つだけ弾きます——
+         **入力する場所が無いのに、キーボードの高さぶん縮んでいる。**
+         キーボードは focus のあるところにしか出ないので、これは古い値です。
+
+         「入力中でなければ可視を信じない」ではいけません。iOS Safari は
+         上下の道具棚が引っ込むときにも可視を縮めます。あれは本当に
+         見えていないので、信じないとタブ欄が棚の下に潜ります。
+         道具棚は高々100px、キーボードは250px以上——間を取って180pxを
+         境にします。キーボードの高さを計算に使うのではなく、
+         「これはキーボードでは起こり得ない」を言うためだけの数です。 */
+      const visible = Math.round(vv.height);
+      const full = Math.round(window.innerHeight);
+      const typing = isTyping();
+      const stale = !typing && (full - visible) > KB_MIN;
+      const shell = stale ? full : visible;
+      app.style.height = shell + "px";
 
       /* Publish the same two numbers to CSS, for the things that are not the
          shell. A sheet is `position: fixed` and sized in dvh, and neither of
@@ -554,8 +577,10 @@
          on the browsers that do not. Anything anchored to the bottom of the
          window needs the second one; anything sized to the window needs the
          first. */
-      root.style.setProperty("--vvh", Math.round(vv.height) + "px");
-      root.style.setProperty("--kb", Math.max(0, Math.round(window.innerHeight - vv.height)) + "px");
+      root.style.setProperty("--vvh", shell + "px");
+      // --kb も同じ値から。古い値を弾いたなら、空けるべき隙間もありません
+      // （空けたままだと、下に貼る棒がその高さだけ浮きます）。
+      root.style.setProperty("--kb", stale ? "0px" : Math.max(0, full - visible) + "px");
 
       /* Then put the document back. iOS scrolls it to reveal the focused
          field while the shell is still full height; once it is not, that
@@ -584,7 +609,7 @@
       // clear of the keyboard — which is the shift that kept coming back.
       //
       // A focused text field, on a phone, *is* the keyboard being up.
-      root.classList.toggle("kb-open", isTyping());
+      root.classList.toggle("kb-open", typing);
     };
 
     vv.addEventListener("resize", fit);
@@ -720,6 +745,9 @@
   KN.showScreen = show;
   const OFF_BAR = ["compare", "settings"];
   KN.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+
+  /** どのタブから引き出しを開けたか。設定の画面が、出すものを選ぶのに使います。 */
+  KN.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {

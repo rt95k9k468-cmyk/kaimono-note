@@ -166,11 +166,24 @@
        read, and guessing would be worse than being consistent. */
     const order = new Map(store.sortedCategories().map((c, i) => [c.id, i]));
     const rank = (p) => (order.has(p.categoryId) ? order.get(p.categoryId) : order.size);
-    const shown = all
+    /* カテゴリの中は、手で並べていればその順、まだなら五十音——ただし
+       同じ絵のものは束ねます（「牛乳」と「低脂肪牛乳」が棚の端と端に
+       離れない）。束ね方はカテゴリ単位なので、まずカテゴリで割ってから
+       それぞれを並べ、あとで繋ぎ直します。 */
+    const picked = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
-      .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
-      // カテゴリの中は、手で並べていればその順、まだなら五十音。
-      .sort((a, b) => rank(a) - rank(b) || store.productOrder(a, b));
+      .filter((p) => !query || KN.util.foldKana(p.name).includes(query));
+
+    const byCat = new Map();
+    picked.forEach((p) => {
+      const k = order.has(p.categoryId) ? p.categoryId : "\u0000other";
+      if (!byCat.has(k)) byCat.set(k, []);
+      byCat.get(k).push(p);
+    });
+    const shown = [...byCat.keys()]
+      .sort((a, b) => (order.has(a) ? order.get(a) : order.size)
+                    - (order.has(b) ? order.get(b) : order.size))
+      .flatMap((k) => store.sortProductsInCategory(byCat.get(k)));
 
     const matched = shown.filter((p) => !p.archived);
     const archived = shown.filter((p) => p.archived);

@@ -42,14 +42,78 @@
     });
   }
 
+  /* ---------------- 引き出しは、開けたところのもの ----------------
+
+     設定はタブを持たない引き出しで、どの画面の歯車からも開きます。
+     だから中身も、**開けた画面のもの**を出します。ダイエットを見ていて
+     歯車を押したのに、店の一覧と商品のカテゴリが最初に出てくるのは、
+     引き出しの中で探しものをさせているのと同じです。
+
+     買うものと価格は一つの引き出しを分け合います——同じ棚の表と裏で、
+     店もカテゴリも両方から使うものなので。
+
+     どこにも行き止まりは作りません。いちばん下の「ほかの設定も見る」で
+     全部が出ます。見せないことと、無くすことは違います。 */
+  let showAll = false;
+
+  const scope = () => {
+    const from = KN.openedFrom ? KN.openedFrom() : "list";
+    if (from === "todo") return "todo";
+    if (from === "diet") return "diet";
+    return "shop";                       // list / prices は共有
+  };
+
+  /* 開け直すたびに、その画面のものへ戻します。
+     app.js は render() を先に、onEnter() をあとに呼ぶので、開いた時点では
+     まだ前回の showAll のままです。広げたままだったときだけ畳み直します
+     （毎回描き直すと、ただの二度手間になるので）。 */
+  function onEnter() {
+    if (!showAll) return;
+    showAll = false;
+    render();
+  }
+
   function render() {
+    const only = scope();
     els.body.innerHTML = "";
     els.body.append(themeGroup());
-    els.body.append(storesGroup());
-    els.body.append(categoriesGroup());
-    els.body.append(dietGroup());
+
+    if (showAll || only === "todo") els.body.append(todoGroup());
+    if (showAll || only === "shop") {
+      els.body.append(storesGroup());
+      els.body.append(categoriesGroup());
+    }
+    if (showAll || only === "diet") els.body.append(dietGroup());
+
     els.body.append(dataGroup());
+    if (!showAll) els.body.append(moreBlock(only));
     els.body.append(aboutBlock());
+  }
+
+  const SCOPE_LABEL = { todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
+
+  /** 隠したものへの入り口。畳んであるだけで、無いわけではないと言うための行。 */
+  function moreBlock(only) {
+    const others = Object.keys(SCOPE_LABEL).filter((k) => k !== only).map((k) => SCOPE_LABEL[k]);
+    const wrap = node(html`
+      <section class="settings-group">
+        <div class="rows">
+          <button class="row js-more">
+            <span class="row-main">
+              <span class="row-title">ほかの設定も見る</span>
+              <span class="row-sub">${others.join("・")}の設定</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+        </div>
+      </section>
+    `);
+    wrap.querySelector(".js-more").addEventListener("click", () => {
+      showAll = true;
+      render();
+      haptic();
+    });
+    return wrap;
   }
 
   /* ---------------- theme ---------------- */
@@ -64,6 +128,10 @@
           <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
           <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
         </div>
+        ${/* アイコンの数は「表示」に置きます。数えているのは買うものと
+              やることの **両方** なので、どちらか一方のタブのものでは
+              ありません（時刻のお知らせは、やることだけの話なので
+              あちらへ移しました）。 */""}
         <div class="rows js-badge-rows" hidden style="margin-top:12px">
           <button class="row js-badge">
             <span class="row-main">
@@ -71,15 +139,6 @@
               <span class="row-sub js-badge-sub"></span>
             </span>
             <span class="row-value js-badge-state"></span>
-          </button>
-        </div>
-        <div class="rows js-notify-rows" hidden style="margin-top:12px">
-          <button class="row js-notify">
-            <span class="row-main">
-              <span class="row-title">やることの時刻を知らせる</span>
-              <span class="row-sub js-notify-sub"></span>
-            </span>
-            <span class="row-value js-notify-state"></span>
           </button>
         </div>
       </section>
@@ -131,6 +190,33 @@
       });
     }
 
+    return wrap;
+  }
+
+
+  /* ---------------- やること ----------------
+
+     数を出すのも、時刻を知らせるのも、やることの話です。「表示」に
+     混ざっていたのは、どちらも見え方の設定に見えたからですが、
+     ダイエットを見ている人には関係がありません。 */
+
+  function todoGroup() {
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">やること</h2>
+        <div class="rows js-notify-rows" hidden>
+          <button class="row js-notify">
+            <span class="row-main">
+              <span class="row-title">やることの時刻を知らせる</span>
+              <span class="row-sub js-notify-sub"></span>
+            </span>
+            <span class="row-value js-notify-state"></span>
+          </button>
+        </div>
+        <p class="section-hint js-none" hidden>この端末で切り替えられる設定はありません。</p>
+      </section>
+    `);
+
     /* 時刻のお知らせ。The sub-line says what it actually does, at both
        settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —
        and it does not ring while the app is closed. Saying that here is the
@@ -165,6 +251,12 @@
       });
     }
 
+
+    /* 使えない端末（ブラウザのタブなど）では、見出しだけの空の枠が
+       残ります。何も無いことを言うほうが、白い枠より親切です。 */
+    if (wrap.querySelector(".js-notify-rows").hidden) {
+      wrap.querySelector(".js-none").hidden = false;
+    }
     return wrap;
   }
 
@@ -1059,5 +1151,5 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.settings = { mount, render };
+  KN.screens.settings = { mount, render, onEnter };
 })();

@@ -22,9 +22,18 @@
   let els = {};
   let query = "";
 
+  /* くりかえしの選択肢。毎朝と毎晩は、かつて「いつまでに」の下に別の列で
+     置いていましたが、あれは同じ問いを二か所で聞いていました——毎朝は
+     「一日のいつか」ではなく **どれくらいの頻度でいつ** であって、
+     毎日の言い換えの一つです。だから毎日の隣に置きます。
+
+     id は "dawn"/"dusk" のまま。中では repeat="daily" と part="dawn" の
+     組で持ちます（記録の形は変えていません。並べ替えも表示もそこを見ます）。 */
   const REPEATS = [
     { id: null,      label: "なし" },
     { id: "daily",   label: "毎日" },
+    { id: "dawn",    label: "毎朝" },
+    { id: "dusk",    label: "毎晩" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
   ];
@@ -149,13 +158,18 @@
     window.addEventListener("resize", fitCal);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
 
+    /* 手でめくった月の留めを外す合図。指が触ったこと、そのものです。 */
+    root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
+    root.addEventListener("wheel", unpinOnTouch, { passive: true, capture: true });
+
     let lastTop = 0;
     root.addEventListener("scroll", () => {
       const top = root.scrollTop;
       const stuck = top > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
-      /* 貼りついているあいだは、カレンダーを一段小さくします。月の形は
-         残したまま、リストに返す高さを稼ぐため。 */
+      /* 印を付けるのは境目の線のためと、chromeInset が「いま貼りついて
+         いるか」を知るため。**高さは変えません**——指を動かしている最中に
+         足場の背が変わると、読んでいる行がずれます。 */
       if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
 
       /* 月を追いかけるのは、**位置が変わったとき** だけ。scroll は、行が
@@ -163,13 +177,6 @@
       const moved = Math.abs(top - lastTop) > 0.5;
       lastTop = top;
       if (!moved) return;
-      /* そして、動かしたのが自分でないときだけ、留めを外します。
-         自分で滑らせているあいだと、描き直しで位置を戻したぶんは
-         「その人が動いた」ではないので、そのぶんは基準のほうをずらします。
-         残りが指のぶんで、そちらが一目ぶん（24px）を超えたら外れます——
-         滑り終わりの数pxの揺れで外れると、めくった月がすぐ書き戻ります。 */
-      if (restoring || (KN.isGliding && KN.isGliding())) pinTop = top;
-      else if (calPinned && Math.abs(top - pinTop) > 24) calPinned = false;
       followScroll();
     }, { passive: true });
   }
@@ -190,8 +197,23 @@
      ‹ › が効かなくなります。留めは、その人がじっさいにスクロールした
      ときに外れます。 */
   let calPinned = false;
-  let pinTop = 0;
   let restoring = false;
+
+  /* 留めを外すのは、**その人がリストに触ったとき**です。
+
+     前は「スクロールが24pxを超えたら外す」でした。これは動いた距離から
+     動かした人を当てようとするもので、当たらないことがあります——
+     こちらが運んだぶん、描き直しで戻したぶん、カレンダーの背が変わって
+     ずれたぶん。どれも指ではないのに、距離だけは出ます。実際、貼りついた
+     カレンダーの縮みをやめただけで、‹ › が三回で効かなくなりました。
+
+     指が触ったかどうかは、推し量らずに聞けます。カレンダーの上（矢印や
+     払い）は「リストに触った」ではないので、そこは除きます。 */
+  function unpinOnTouch(e) {
+    if (!calPinned) return;
+    if (els.cal && els.cal.contains(e.target)) return;
+    calPinned = false;
+  }
 
   function followScroll() {
     if (followFrame) return;
@@ -242,7 +264,7 @@
     const now = KN.util.dayDate(todayKey());
     calMonth = (year === now.getFullYear() && month === now.getMonth())
       ? null : { year, month };
-    if (manual) { calPinned = true; pinTop = root ? root.scrollTop : 0; }
+    if (manual) calPinned = true;
     fillCalendar(els.cal, store.openTodos());
   }
 
@@ -281,11 +303,10 @@
           <div class="js-due-chips"></div>
           <input class="input js-due" type="date" value="${due || ""}"
                  aria-label="日付を選ぶ">
-          ${/* Which part of the day, for the ones where it matters, and the
-                clock itself for the ones that happen at a time. Choosing
-                either drops the other — 「19:30」 and 「朝」 together is two
-                answers to one question. */""}
-          <div class="js-part"></div>
+          ${/* 時刻そのもの。毎朝・毎晩は「くりかえし」に移りました——
+                あちらとこちらは同じ問いなので、聞く場所は一つで足ります。
+                時刻と毎朝は今も互いを打ち消します（「19:30」と「毎朝」は
+                一つの問いへの二つの答えなので）。 */""}
           <div class="time-row js-time-row" hidden>
             <span class="time-label">時刻</span>
             <input class="input js-time" type="time" aria-label="時刻を選ぶ">
@@ -444,50 +465,18 @@
     const timeEl = body.querySelector(".js-time");
     const timeClear = body.querySelector(".js-time-clear");
 
+    /* 時刻の欄。日付が決まっていなければ聞く意味がなく、毎朝・毎晩を
+       選んでいるなら、時刻はもう答えられています。 */
     function paintPart() {
-      const host = body.querySelector(".js-part");
-      host.hidden = !due;
-      timeRow.hidden = !due;
-      if (!due) return;
-      /* Only the two ends are choices now, so a clock time lights nothing —
-         it is not a third bookend, it is the answer instead of one. */
-      const shown = part;
-      /* 毎朝 … いつでも … 毎晩, in the order the day runs. 朝・午後・夜 are
-         gone: the clock below says when precisely, and dragging says where. */
-      const chips = [
-        { id: "dawn", label: "毎朝" },
-        { id: "", label: "いつでも" },
-        { id: "dusk", label: "毎晩" },
-      ];
-      KN.ui.chipRow(host, chips, {
-        activeId: shown || "",
-        onPick: (id) => {
-          part = id || null;
-          /* 「毎朝」 and a clock time are two answers to one question, so the
-             newer one wins. 「毎朝」 is also daily by the meaning of the word,
-             so choosing it sets くりかえし rather than leaving a 「毎朝だが
-             一度きり」 for the store to correct quietly later. */
-          if (isBookend(part)) {
-            time = null;
-            repeat = "daily";
-            repeatDays = [];
-            repeatNth = null;
-            paintRepeat();
-          }
-          paintPart();
-          paintHint();
-          haptic();
-        },
-      });
-      // A clock and 「毎朝」 are different answers to the same question.
-      timeRow.hidden = isBookend(part);
+      timeRow.hidden = !due || isBookend(part);
       timeEl.value = time || "";
       timeClear.hidden = !time;
     }
 
     timeEl.addEventListener("change", () => {
       time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
-      if (time) part = null;
+      // 時刻を入れたら、毎朝・毎晩は降ります（あとから決めたほうが勝つ）。
+      if (time && isBookend(part)) { part = null; paintRepeat(); }
       paintPart();
       paintHint();
     });
@@ -504,28 +493,44 @@
 
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
+      // 日付を外すと、毎朝・毎晩の立つ場所が無くなります。くりかえしの
+      // 列にもそれが見えていないといけないので、そちらも塗り直します。
+      const dropped = !due && isBookend(part);
       if (!due) { part = null; time = null; }
       paintDueChips();
       paintPart();
       paintHint();
-      paintRepeatDetail();
+      if (dropped) paintRepeat(); else paintRepeatDetail();
     });
 
     const detailEl = body.querySelector(".js-repeat-detail");
     const repeatHint = body.querySelector(".js-repeat-hint");
 
+    /* 毎朝・毎晩は、記録の上では「毎日 ＋ 日の端」です。選択肢としては
+       毎日の隣に一つずつ並びますが、しまうときは repeat と part に分かれます。
+       だから光らせる印も、その二つから逆に組み立てます。 */
+    const repeatChipId = () => (isBookend(part) ? part : (repeat || ""));
+
     function paintRepeat() {
       KN.ui.chipRow(body.querySelector(".js-repeat"),
         REPEATS.map((r) => ({ id: r.id || "", label: r.label })), {
-          activeId: repeat || "",
+          activeId: repeatChipId(),
           onPick: (id) => {
-            repeat = id || null;
+            if (isBookend(id)) {
+              /* 毎朝・毎晩は、言葉の意味からして毎日です。そして時刻とは
+                 同じ問いへの二つの答えなので、片方を選べば片方は降ります。 */
+              part = id;
+              repeat = "daily";
+              time = null;
+            } else {
+              part = null;
+              repeat = id || null;
+            }
             if (repeat !== "weekly") repeatDays = [];
             if (repeat !== "monthly") repeatNth = null;
-            /* 「毎朝」で「毎週」は矛盾。あとから決めたほうが勝つので、
-               時間帯のほうが「いつでも」に降ります。 */
-            if (isBookend(part) && repeat !== "daily") { part = null; paintPart(); }
             paintRepeat();
+            paintPart();
+            paintHint();
             haptic();
           },
         });

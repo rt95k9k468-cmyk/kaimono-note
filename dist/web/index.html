@@ -547,8 +547,21 @@ a { color: var(--c-primary); }
   color: var(--c-text-3);
   opacity: .55;
 }
-.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-22px) scale(.52); }
-.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(22px)  scale(.52); }
+/* 脇に置くぶんは、**選んだ印の緑の丸からも外へ**出します。
+   絵どうしは離してあったのに、緑の丸（.tab-ico、幅40px＝中心から±20px）が
+   小さい絵に食い込んでいました。絵と絵の隙間だけを見て、下に敷いてある
+   印を数えていなかったための重なりです。
+
+     印の縁          20.0px（40 ÷ 2）
+     小さい絵の半分   5.7px（22 × 0.52 ÷ 2）
+     指で見て分かる隙間 4px
+     ────────────────────────
+     ずらす量        30px
+
+   印のほうを細くして寄せる手もありますが、選んだ印は三つのタブで
+   同じ形をしているべきなので、動かすのは絵のほうにします。 */
+.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-30px) scale(.52); }
+.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(30px)  scale(.52); }
 .tab.is-pair .tab-ico-face.is-on {
   transform: translateX(0) scale(1);
   opacity: 1;
@@ -1797,18 +1810,15 @@ button, [role="tab"] {
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
   border-bottom: 1px solid transparent;
-  transition: border-color var(--dur) var(--ease), padding var(--dur) var(--ease);
+  transition: border-color var(--dur) var(--ease);
 }
 
-/* 貼りついているあいだは一段小さく。月の形は残したまま、リストに高さを返します。 */
-.cal.is-stuck {
-  padding-top: var(--sp-2);
-  padding-bottom: 2px;
-  border-bottom-color: var(--c-border);
-}
-.cal.is-stuck .cal-head { margin-bottom: 4px; }
-.cal.is-stuck .cal-day { height: 26px; font-size: var(--fs-xs); }
-.cal.is-stuck .cal-wd { padding-bottom: 1px; }
+/* 貼りついたら、境目の線だけを出します。
+   **高さは変えません。** 以前は一段縮めてリストに高さを返していましたが、
+   指を動かしている最中に足場の背が変わると、読んでいる行がずれます。
+   稼げる数十ピクセルより、動かないことのほうが要ります。
+   （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
+.cal.is-stuck { border-bottom-color: var(--c-border); }
 
 .cal-head {
   display: flex;
@@ -7685,9 +7695,18 @@ a.btn { text-decoration: none; }
 
   /** Drawn icon for a product name, as raw SVG — or "" when nothing fits. */
   function find(name) {
+    const key = findKey(name);
+    return key ? ICONS[key] : "";
+  }
+
+  /** 同じことを、絵ではなく **名前** で返します。
+      絵そのものは長いSVGの文字列なので、「この二つは同じ絵か」を
+      比べるのには向きません。並べ替えが要るのは、比べられる名前のほうです。
+      @returns {string} 例 "milk"、当てはまらなければ "" */
+  function findKey(name) {
     const n = KN.util.foldKana(String(name || ""));
     if (!n) return "";
-    for (const [key, icon] of FLAT) if (n.includes(key)) return ICONS[icon];
+    for (const [key, icon] of FLAT) if (n.includes(key)) return icon;
     return "";
   }
 
@@ -7789,7 +7808,7 @@ a.btn { text-decoration: none; }
     });
   }
 
-  KN.productIcons = { find, fallback, ICONS, list, byKey, suggest, search, LABELS };
+  KN.productIcons = { find, findKey, fallback, ICONS, list, byKey, suggest, search, LABELS };
 })();
 
 /* ---- js/store.js ---- */
@@ -8956,7 +8975,61 @@ a.btn { text-decoration: none; }
     const ao = typeof a.order === "number" ? a.order : Infinity;
     const bo = typeof b.order === "number" ? b.order : Infinity;
     if (ao !== bo) return ao - bo;
-    return KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja");
+    return kanaOrder(a, b);
+  }
+
+  const kanaOrder = (a, b) =>
+    KN.util.foldKana(a.name).localeCompare(KN.util.foldKana(b.name), "ja");
+
+  /**
+   * その商品の絵の名前。手で選んでいればそれ、選んでいなければ名前から、
+   * 名前で当たらなければカテゴリの名前から。当たらなければ "" です。
+   *
+   * productMark() が絵を決める順番と、ここは同じでなければいけません。
+   * 違うと「同じ絵に見えるのに離れて並ぶ」ことになります。
+   */
+  function iconKeyOf(p) {
+    if (!p) return "";
+    if (p.icon && KN.productIcons.byKey(p.icon)) return p.icon;
+    const own = KN.productIcons.findKey(p.name);
+    if (own) return own;
+    const cat = getCategory(p.categoryId);
+    return (cat && KN.productIcons.findKey(cat.name)) || "";
+  }
+
+  /**
+   * ひとつのカテゴリの中を並べます。
+   *
+   * 手で並べた棚は、並べたとおり。触っていない棚は五十音——ただし
+   * **同じ絵のものは寄せます**。「牛乳」と「低脂肪牛乳」が五十音の
+   * 都合で棚の端と端に離れているのは、探すときの見え方と合いません。
+   * 目は文字より先に絵を拾うので、絵が同じものは近くにあってほしい。
+   *
+   * 寄せ方は「グループごと動かす」のではなく、**そのグループでいちばん
+   * 早い名前の場所へ、仲間を連れてくる** 形にします。こうすると全体は
+   * 五十音のままに見えて、同じ絵だけが束になります。
+   *
+   * @param {Array} list ひとつのカテゴリの商品
+   */
+  function sortProductsInCategory(list) {
+    const rows = [...list];
+    // 手で並べた商品が一つでもあるなら、その棚は人の決めた順が全部に優先。
+    if (rows.some((p) => typeof p.order === "number")) return rows.sort(productOrder);
+
+    const first = new Map();          // 絵の名前 → その絵でいちばん早い名前
+    rows.forEach((p) => {
+      const k = iconKeyOf(p) || ("\u0000" + p.id);   // 絵の無いものは束ねない
+      const cur = first.get(k);
+      if (!cur || kanaOrder(p, cur) < 0) first.set(k, p);
+    });
+
+    return rows.sort((a, b) => {
+      const ka = iconKeyOf(a) || ("\u0000" + a.id);
+      const kb = iconKeyOf(b) || ("\u0000" + b.id);
+      if (ka === kb) return kanaOrder(a, b);          // 同じ絵の中は五十音
+      return kanaOrder(first.get(ka), first.get(kb))  // 束どうしは、先頭の名前で
+        || ka.localeCompare(kb);
+    });
   }
 
   /**
@@ -9299,7 +9372,7 @@ a.btn { text-decoration: none; }
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
-    productOrder, reorderProducts,
+    productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
@@ -10744,14 +10817,13 @@ a.btn { text-decoration: none; }
     return !(days < REMIND_AFTER_DAYS);
   }
 
+  /* 自動の控えは取り続けますが、**催促はしません**。
+     頼んでもいないのに出る知らせは、出るたびに読み飛ばす癖をつけます。
+     そうなると、本当に伝えたいこと（取り込めた／取り込めなかった）まで
+     一緒に読み飛ばされます。書き出しどきかどうかは exportDue() が
+     答えるので、設定の画面に「前回いつ書き出したか」として静かに出ます。 */
   function init() {
     maybeDaily();
-    if (exportDue()) {
-      // Late enough that it does not collide with the first paint.
-      setTimeout(() => {
-        KN.ui && KN.ui.toast("設定からバックアップを書き出しておくと安心です");
-      }, 2500);
-    }
   }
 
   KN.backup = {
@@ -14297,9 +14369,18 @@ a.btn { text-decoration: none; }
   let els = {};
   let query = "";
 
+  /* くりかえしの選択肢。毎朝と毎晩は、かつて「いつまでに」の下に別の列で
+     置いていましたが、あれは同じ問いを二か所で聞いていました——毎朝は
+     「一日のいつか」ではなく **どれくらいの頻度でいつ** であって、
+     毎日の言い換えの一つです。だから毎日の隣に置きます。
+
+     id は "dawn"/"dusk" のまま。中では repeat="daily" と part="dawn" の
+     組で持ちます（記録の形は変えていません。並べ替えも表示もそこを見ます）。 */
   const REPEATS = [
     { id: null,      label: "なし" },
     { id: "daily",   label: "毎日" },
+    { id: "dawn",    label: "毎朝" },
+    { id: "dusk",    label: "毎晩" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
   ];
@@ -14424,13 +14505,18 @@ a.btn { text-decoration: none; }
     window.addEventListener("resize", fitCal);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
 
+    /* 手でめくった月の留めを外す合図。指が触ったこと、そのものです。 */
+    root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
+    root.addEventListener("wheel", unpinOnTouch, { passive: true, capture: true });
+
     let lastTop = 0;
     root.addEventListener("scroll", () => {
       const top = root.scrollTop;
       const stuck = top > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
-      /* 貼りついているあいだは、カレンダーを一段小さくします。月の形は
-         残したまま、リストに返す高さを稼ぐため。 */
+      /* 印を付けるのは境目の線のためと、chromeInset が「いま貼りついて
+         いるか」を知るため。**高さは変えません**——指を動かしている最中に
+         足場の背が変わると、読んでいる行がずれます。 */
       if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
 
       /* 月を追いかけるのは、**位置が変わったとき** だけ。scroll は、行が
@@ -14438,13 +14524,6 @@ a.btn { text-decoration: none; }
       const moved = Math.abs(top - lastTop) > 0.5;
       lastTop = top;
       if (!moved) return;
-      /* そして、動かしたのが自分でないときだけ、留めを外します。
-         自分で滑らせているあいだと、描き直しで位置を戻したぶんは
-         「その人が動いた」ではないので、そのぶんは基準のほうをずらします。
-         残りが指のぶんで、そちらが一目ぶん（24px）を超えたら外れます——
-         滑り終わりの数pxの揺れで外れると、めくった月がすぐ書き戻ります。 */
-      if (restoring || (KN.isGliding && KN.isGliding())) pinTop = top;
-      else if (calPinned && Math.abs(top - pinTop) > 24) calPinned = false;
       followScroll();
     }, { passive: true });
   }
@@ -14465,8 +14544,23 @@ a.btn { text-decoration: none; }
      ‹ › が効かなくなります。留めは、その人がじっさいにスクロールした
      ときに外れます。 */
   let calPinned = false;
-  let pinTop = 0;
   let restoring = false;
+
+  /* 留めを外すのは、**その人がリストに触ったとき**です。
+
+     前は「スクロールが24pxを超えたら外す」でした。これは動いた距離から
+     動かした人を当てようとするもので、当たらないことがあります——
+     こちらが運んだぶん、描き直しで戻したぶん、カレンダーの背が変わって
+     ずれたぶん。どれも指ではないのに、距離だけは出ます。実際、貼りついた
+     カレンダーの縮みをやめただけで、‹ › が三回で効かなくなりました。
+
+     指が触ったかどうかは、推し量らずに聞けます。カレンダーの上（矢印や
+     払い）は「リストに触った」ではないので、そこは除きます。 */
+  function unpinOnTouch(e) {
+    if (!calPinned) return;
+    if (els.cal && els.cal.contains(e.target)) return;
+    calPinned = false;
+  }
 
   function followScroll() {
     if (followFrame) return;
@@ -14517,7 +14611,7 @@ a.btn { text-decoration: none; }
     const now = KN.util.dayDate(todayKey());
     calMonth = (year === now.getFullYear() && month === now.getMonth())
       ? null : { year, month };
-    if (manual) { calPinned = true; pinTop = root ? root.scrollTop : 0; }
+    if (manual) calPinned = true;
     fillCalendar(els.cal, store.openTodos());
   }
 
@@ -14556,11 +14650,10 @@ a.btn { text-decoration: none; }
           <div class="js-due-chips"></div>
           <input class="input js-due" type="date" value="${due || ""}"
                  aria-label="日付を選ぶ">
-          ${/* Which part of the day, for the ones where it matters, and the
-                clock itself for the ones that happen at a time. Choosing
-                either drops the other — 「19:30」 and 「朝」 together is two
-                answers to one question. */""}
-          <div class="js-part"></div>
+          ${/* 時刻そのもの。毎朝・毎晩は「くりかえし」に移りました——
+                あちらとこちらは同じ問いなので、聞く場所は一つで足ります。
+                時刻と毎朝は今も互いを打ち消します（「19:30」と「毎朝」は
+                一つの問いへの二つの答えなので）。 */""}
           <div class="time-row js-time-row" hidden>
             <span class="time-label">時刻</span>
             <input class="input js-time" type="time" aria-label="時刻を選ぶ">
@@ -14719,50 +14812,18 @@ a.btn { text-decoration: none; }
     const timeEl = body.querySelector(".js-time");
     const timeClear = body.querySelector(".js-time-clear");
 
+    /* 時刻の欄。日付が決まっていなければ聞く意味がなく、毎朝・毎晩を
+       選んでいるなら、時刻はもう答えられています。 */
     function paintPart() {
-      const host = body.querySelector(".js-part");
-      host.hidden = !due;
-      timeRow.hidden = !due;
-      if (!due) return;
-      /* Only the two ends are choices now, so a clock time lights nothing —
-         it is not a third bookend, it is the answer instead of one. */
-      const shown = part;
-      /* 毎朝 … いつでも … 毎晩, in the order the day runs. 朝・午後・夜 are
-         gone: the clock below says when precisely, and dragging says where. */
-      const chips = [
-        { id: "dawn", label: "毎朝" },
-        { id: "", label: "いつでも" },
-        { id: "dusk", label: "毎晩" },
-      ];
-      KN.ui.chipRow(host, chips, {
-        activeId: shown || "",
-        onPick: (id) => {
-          part = id || null;
-          /* 「毎朝」 and a clock time are two answers to one question, so the
-             newer one wins. 「毎朝」 is also daily by the meaning of the word,
-             so choosing it sets くりかえし rather than leaving a 「毎朝だが
-             一度きり」 for the store to correct quietly later. */
-          if (isBookend(part)) {
-            time = null;
-            repeat = "daily";
-            repeatDays = [];
-            repeatNth = null;
-            paintRepeat();
-          }
-          paintPart();
-          paintHint();
-          haptic();
-        },
-      });
-      // A clock and 「毎朝」 are different answers to the same question.
-      timeRow.hidden = isBookend(part);
+      timeRow.hidden = !due || isBookend(part);
       timeEl.value = time || "";
       timeClear.hidden = !time;
     }
 
     timeEl.addEventListener("change", () => {
       time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
-      if (time) part = null;
+      // 時刻を入れたら、毎朝・毎晩は降ります（あとから決めたほうが勝つ）。
+      if (time && isBookend(part)) { part = null; paintRepeat(); }
       paintPart();
       paintHint();
     });
@@ -14779,28 +14840,44 @@ a.btn { text-decoration: none; }
 
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
+      // 日付を外すと、毎朝・毎晩の立つ場所が無くなります。くりかえしの
+      // 列にもそれが見えていないといけないので、そちらも塗り直します。
+      const dropped = !due && isBookend(part);
       if (!due) { part = null; time = null; }
       paintDueChips();
       paintPart();
       paintHint();
-      paintRepeatDetail();
+      if (dropped) paintRepeat(); else paintRepeatDetail();
     });
 
     const detailEl = body.querySelector(".js-repeat-detail");
     const repeatHint = body.querySelector(".js-repeat-hint");
 
+    /* 毎朝・毎晩は、記録の上では「毎日 ＋ 日の端」です。選択肢としては
+       毎日の隣に一つずつ並びますが、しまうときは repeat と part に分かれます。
+       だから光らせる印も、その二つから逆に組み立てます。 */
+    const repeatChipId = () => (isBookend(part) ? part : (repeat || ""));
+
     function paintRepeat() {
       KN.ui.chipRow(body.querySelector(".js-repeat"),
         REPEATS.map((r) => ({ id: r.id || "", label: r.label })), {
-          activeId: repeat || "",
+          activeId: repeatChipId(),
           onPick: (id) => {
-            repeat = id || null;
+            if (isBookend(id)) {
+              /* 毎朝・毎晩は、言葉の意味からして毎日です。そして時刻とは
+                 同じ問いへの二つの答えなので、片方を選べば片方は降ります。 */
+              part = id;
+              repeat = "daily";
+              time = null;
+            } else {
+              part = null;
+              repeat = id || null;
+            }
             if (repeat !== "weekly") repeatDays = [];
             if (repeat !== "monthly") repeatNth = null;
-            /* 「毎朝」で「毎週」は矛盾。あとから決めたほうが勝つので、
-               時間帯のほうが「いつでも」に降ります。 */
-            if (isBookend(part) && repeat !== "daily") { part = null; paintPart(); }
             paintRepeat();
+            paintPart();
+            paintHint();
             haptic();
           },
         });
@@ -18449,11 +18526,24 @@ a.btn { text-decoration: none; }
        read, and guessing would be worse than being consistent. */
     const order = new Map(store.sortedCategories().map((c, i) => [c.id, i]));
     const rank = (p) => (order.has(p.categoryId) ? order.get(p.categoryId) : order.size);
-    const shown = all
+    /* カテゴリの中は、手で並べていればその順、まだなら五十音——ただし
+       同じ絵のものは束ねます（「牛乳」と「低脂肪牛乳」が棚の端と端に
+       離れない）。束ね方はカテゴリ単位なので、まずカテゴリで割ってから
+       それぞれを並べ、あとで繋ぎ直します。 */
+    const picked = all
       .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
-      .filter((p) => !query || KN.util.foldKana(p.name).includes(query))
-      // カテゴリの中は、手で並べていればその順、まだなら五十音。
-      .sort((a, b) => rank(a) - rank(b) || store.productOrder(a, b));
+      .filter((p) => !query || KN.util.foldKana(p.name).includes(query));
+
+    const byCat = new Map();
+    picked.forEach((p) => {
+      const k = order.has(p.categoryId) ? p.categoryId : "\u0000other";
+      if (!byCat.has(k)) byCat.set(k, []);
+      byCat.get(k).push(p);
+    });
+    const shown = [...byCat.keys()]
+      .sort((a, b) => (order.has(a) ? order.get(a) : order.size)
+                    - (order.has(b) ? order.get(b) : order.size))
+      .flatMap((k) => store.sortProductsInCategory(byCat.get(k)));
 
     const matched = shown.filter((p) => !p.archived);
     const archived = shown.filter((p) => p.archived);
@@ -19130,14 +19220,78 @@ a.btn { text-decoration: none; }
     });
   }
 
+  /* ---------------- 引き出しは、開けたところのもの ----------------
+
+     設定はタブを持たない引き出しで、どの画面の歯車からも開きます。
+     だから中身も、**開けた画面のもの**を出します。ダイエットを見ていて
+     歯車を押したのに、店の一覧と商品のカテゴリが最初に出てくるのは、
+     引き出しの中で探しものをさせているのと同じです。
+
+     買うものと価格は一つの引き出しを分け合います——同じ棚の表と裏で、
+     店もカテゴリも両方から使うものなので。
+
+     どこにも行き止まりは作りません。いちばん下の「ほかの設定も見る」で
+     全部が出ます。見せないことと、無くすことは違います。 */
+  let showAll = false;
+
+  const scope = () => {
+    const from = KN.openedFrom ? KN.openedFrom() : "list";
+    if (from === "todo") return "todo";
+    if (from === "diet") return "diet";
+    return "shop";                       // list / prices は共有
+  };
+
+  /* 開け直すたびに、その画面のものへ戻します。
+     app.js は render() を先に、onEnter() をあとに呼ぶので、開いた時点では
+     まだ前回の showAll のままです。広げたままだったときだけ畳み直します
+     （毎回描き直すと、ただの二度手間になるので）。 */
+  function onEnter() {
+    if (!showAll) return;
+    showAll = false;
+    render();
+  }
+
   function render() {
+    const only = scope();
     els.body.innerHTML = "";
     els.body.append(themeGroup());
-    els.body.append(storesGroup());
-    els.body.append(categoriesGroup());
-    els.body.append(dietGroup());
+
+    if (showAll || only === "todo") els.body.append(todoGroup());
+    if (showAll || only === "shop") {
+      els.body.append(storesGroup());
+      els.body.append(categoriesGroup());
+    }
+    if (showAll || only === "diet") els.body.append(dietGroup());
+
     els.body.append(dataGroup());
+    if (!showAll) els.body.append(moreBlock(only));
     els.body.append(aboutBlock());
+  }
+
+  const SCOPE_LABEL = { todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
+
+  /** 隠したものへの入り口。畳んであるだけで、無いわけではないと言うための行。 */
+  function moreBlock(only) {
+    const others = Object.keys(SCOPE_LABEL).filter((k) => k !== only).map((k) => SCOPE_LABEL[k]);
+    const wrap = node(html`
+      <section class="settings-group">
+        <div class="rows">
+          <button class="row js-more">
+            <span class="row-main">
+              <span class="row-title">ほかの設定も見る</span>
+              <span class="row-sub">${others.join("・")}の設定</span>
+            </span>
+            <span class="row-chevron">${icon("chevron")}</span>
+          </button>
+        </div>
+      </section>
+    `);
+    wrap.querySelector(".js-more").addEventListener("click", () => {
+      showAll = true;
+      render();
+      haptic();
+    });
+    return wrap;
   }
 
   /* ---------------- theme ---------------- */
@@ -19152,6 +19306,10 @@ a.btn { text-decoration: none; }
           <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
           <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
         </div>
+        ${/* アイコンの数は「表示」に置きます。数えているのは買うものと
+              やることの **両方** なので、どちらか一方のタブのものでは
+              ありません（時刻のお知らせは、やることだけの話なので
+              あちらへ移しました）。 */""}
         <div class="rows js-badge-rows" hidden style="margin-top:12px">
           <button class="row js-badge">
             <span class="row-main">
@@ -19159,15 +19317,6 @@ a.btn { text-decoration: none; }
               <span class="row-sub js-badge-sub"></span>
             </span>
             <span class="row-value js-badge-state"></span>
-          </button>
-        </div>
-        <div class="rows js-notify-rows" hidden style="margin-top:12px">
-          <button class="row js-notify">
-            <span class="row-main">
-              <span class="row-title">やることの時刻を知らせる</span>
-              <span class="row-sub js-notify-sub"></span>
-            </span>
-            <span class="row-value js-notify-state"></span>
           </button>
         </div>
       </section>
@@ -19219,6 +19368,33 @@ a.btn { text-decoration: none; }
       });
     }
 
+    return wrap;
+  }
+
+
+  /* ---------------- やること ----------------
+
+     数を出すのも、時刻を知らせるのも、やることの話です。「表示」に
+     混ざっていたのは、どちらも見え方の設定に見えたからですが、
+     ダイエットを見ている人には関係がありません。 */
+
+  function todoGroup() {
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">やること</h2>
+        <div class="rows js-notify-rows" hidden>
+          <button class="row js-notify">
+            <span class="row-main">
+              <span class="row-title">やることの時刻を知らせる</span>
+              <span class="row-sub js-notify-sub"></span>
+            </span>
+            <span class="row-value js-notify-state"></span>
+          </button>
+        </div>
+        <p class="section-hint js-none" hidden>この端末で切り替えられる設定はありません。</p>
+      </section>
+    `);
+
     /* 時刻のお知らせ。The sub-line says what it actually does, at both
        settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —
        and it does not ring while the app is closed. Saying that here is the
@@ -19253,6 +19429,12 @@ a.btn { text-decoration: none; }
       });
     }
 
+
+    /* 使えない端末（ブラウザのタブなど）では、見出しだけの空の枠が
+       残ります。何も無いことを言うほうが、白い枠より親切です。 */
+    if (wrap.querySelector(".js-notify-rows").hidden) {
+      wrap.querySelector(".js-none").hidden = false;
+    }
     return wrap;
   }
 
@@ -20147,7 +20329,7 @@ a.btn { text-decoration: none; }
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.settings = { mount, render };
+  KN.screens.settings = { mount, render, onEnter };
 })();
 
 /* ---- js/app.js ---- */
@@ -20684,6 +20866,10 @@ a.btn { text-decoration: none; }
       .includes(el.type);
   }
 
+  /* 「キーボードでは起こり得ない縮み方」の境目。道具棚は高々100pxほど、
+     キーボードは250px以上。数の役目はそれだけで、高さの計算には使いません。 */
+  const KB_MIN = 180;
+
   function trackKeyboard() {
     const vv = window.visualViewport;
     if (!vv) return;   // Falls back to the CSS 100dvh, as before.
@@ -20692,8 +20878,27 @@ a.btn { text-decoration: none; }
     if (!app) return;
 
     const fit = () => {
-      // Size first: the shell ends where the keyboard begins.
-      app.style.height = Math.round(vv.height) + "px";
+      /* 他のアプリから戻ったとき、タブ欄の下にキーボードひとつぶんの
+         空白が残ることがありました。iOS はページを眠らせているあいだの
+         visualViewport を必ずしも起こし直さないので、resize も scroll も
+         飛ばないまま、**キーボードの高さに縮めたままのシェル**が残ります。
+
+         そこで、あり得ない状態を一つだけ弾きます——
+         **入力する場所が無いのに、キーボードの高さぶん縮んでいる。**
+         キーボードは focus のあるところにしか出ないので、これは古い値です。
+
+         「入力中でなければ可視を信じない」ではいけません。iOS Safari は
+         上下の道具棚が引っ込むときにも可視を縮めます。あれは本当に
+         見えていないので、信じないとタブ欄が棚の下に潜ります。
+         道具棚は高々100px、キーボードは250px以上——間を取って180pxを
+         境にします。キーボードの高さを計算に使うのではなく、
+         「これはキーボードでは起こり得ない」を言うためだけの数です。 */
+      const visible = Math.round(vv.height);
+      const full = Math.round(window.innerHeight);
+      const typing = isTyping();
+      const stale = !typing && (full - visible) > KB_MIN;
+      const shell = stale ? full : visible;
+      app.style.height = shell + "px";
 
       /* Publish the same two numbers to CSS, for the things that are not the
          shell. A sheet is `position: fixed` and sized in dvh, and neither of
@@ -20707,8 +20912,10 @@ a.btn { text-decoration: none; }
          on the browsers that do not. Anything anchored to the bottom of the
          window needs the second one; anything sized to the window needs the
          first. */
-      root.style.setProperty("--vvh", Math.round(vv.height) + "px");
-      root.style.setProperty("--kb", Math.max(0, Math.round(window.innerHeight - vv.height)) + "px");
+      root.style.setProperty("--vvh", shell + "px");
+      // --kb も同じ値から。古い値を弾いたなら、空けるべき隙間もありません
+      // （空けたままだと、下に貼る棒がその高さだけ浮きます）。
+      root.style.setProperty("--kb", stale ? "0px" : Math.max(0, full - visible) + "px");
 
       /* Then put the document back. iOS scrolls it to reveal the focused
          field while the shell is still full height; once it is not, that
@@ -20737,7 +20944,7 @@ a.btn { text-decoration: none; }
       // clear of the keyboard — which is the shift that kept coming back.
       //
       // A focused text field, on a phone, *is* the keyboard being up.
-      root.classList.toggle("kb-open", isTyping());
+      root.classList.toggle("kb-open", typing);
     };
 
     vv.addEventListener("resize", fit);
@@ -20873,6 +21080,9 @@ a.btn { text-decoration: none; }
   KN.showScreen = show;
   const OFF_BAR = ["compare", "settings"];
   KN.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+
+  /** どのタブから引き出しを開けたか。設定の画面が、出すものを選ぶのに使います。 */
+  KN.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {

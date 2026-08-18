@@ -228,18 +228,15 @@
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
   border-bottom: 1px solid transparent;
-  transition: border-color var(--dur) var(--ease), padding var(--dur) var(--ease);
+  transition: border-color var(--dur) var(--ease);
 }
 
-/* 貼りついているあいだは一段小さく。月の形は残したまま、リストに高さを返します。 */
-.cal.is-stuck {
-  padding-top: var(--sp-2);
-  padding-bottom: 2px;
-  border-bottom-color: var(--c-border);
-}
-.cal.is-stuck .cal-head { margin-bottom: 4px; }
-.cal.is-stuck .cal-day { height: 26px; font-size: var(--fs-xs); }
-.cal.is-stuck .cal-wd { padding-bottom: 1px; }
+/* 貼りついたら、境目の線だけを出します。
+   **高さは変えません。** 以前は一段縮めてリストに高さを返していましたが、
+   指を動かしている最中に足場の背が変わると、読んでいる行がずれます。
+   稼げる数十ピクセルより、動かないことのほうが要ります。
+   （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
+.cal.is-stuck { border-bottom-color: var(--c-border); }
 
 .cal-head {
   display: flex;
