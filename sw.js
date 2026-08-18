@@ -25,6 +25,7 @@ const ASSETS = [
   "js/diet.js",
   "js/diet-ai.js",
   "js/health-sync.js",
+  "js/relay-code.js",
   "js/health-relay.js",
   "js/product-sheet.js",
   "js/screen-todo.js",

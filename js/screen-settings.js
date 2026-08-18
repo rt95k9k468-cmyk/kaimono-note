@@ -644,45 +644,223 @@
     return wrap;
   }
 
-  /* 中継所のURLそのものが合言葉です。だから預かるのは一つだけ。
-     長くて当てられない道（/kn-a7f3…）にしてくださいと画面にも書きます。 */
+  /* ---------------- 中継所 ----------------
+
+     この画面は設定であると同時に、**手順書**です。外に置かないのは、
+     読む人がiPhoneしか持っていないからで、手順を読むために別の端末を
+     開かせるのは本末転倒だからです。
+
+     iPhoneだけで建てるとき、難所は二つあります。
+
+       1. **90行のコードをクリップボードに載せる。** GitHubを開いて、rawを
+          出して、全部を選んで、コピーして——指ではここで落ちます。
+          だから「コードをコピー」の一つボタンにしました。
+       2. **当てられない合言葉を作る。** iPhoneに openssl はありませんし、
+          人が思いつく「適当な文字列」は適当ではありません。だから
+          アプリが作ります。
+
+     残りは、Cloudflareの画面で貼るだけの作業になります。 */
   function openRelaySheet() {
+    // まだ保存していない、この場かぎりの下ごしらえ。
+    let draftPath = "";
+
     const body = node(html`
       <div class="stack">
-        <label class="field">
-          <span class="field-label">中継所のURL（https://…）</span>
-          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
-                 placeholder="https://example.workers.dev/kn-a7f3c1d9e2"
-                 value="${KN.healthRelay.url()}">
-        </label>
-        <p class="diet-note js-said">
+        <p class="diet-note">
           ショートカットがここへ健康データを置き、くらしノートが受け取ります。
           受け取ったら中継所からは消えるので、同じものを二度読むことはありません。
           読み方は手入力とまったく同じで、増えるのは入口だけです。
         </p>
         <p class="diet-note">
-          <b>このURLが合言葉です。</b>当てられない長い道にしてください
-          （例：<code>/kn-</code> のあとに適当な英数字を十数文字）。
-          知られると、その人も同じ郵便受けを開けられます。
+          <b>iPhoneだけで建てられます。</b>パソコンは要りません。下の①〜⑥を
+          順に。Cloudflareの画面はSafariで開いてください（無料・カード不要）。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">① Cloudflareに登録して、Workerを作る</div>
+        <ol class="diet-steps">
+          <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a>
+            で登録（メールアドレスだけ。カードは要りません）</li>
+          <li>左の <b>Compute (Workers)</b> →（または <b>Workers &amp; Pages</b>）
+            → <b>Create</b> → <b>Start with Hello World</b> → <b>Deploy</b></li>
+        </ol>
+        <p class="diet-note">
+          名前は何でも構いません（<code>kurashi-relay</code> など）。
+          この名前が、あとで出てくるURLの頭になります。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">② 中継所のコードを貼る</div>
+        <button class="btn btn-primary btn-block js-copycode">中継所のコードをコピー</button>
+        <ol class="diet-steps">
+          <li>できたWorkerの <b>Edit code</b>（＜＞のボタン）を開く</li>
+          <li>コード欄を<b>長押し → 選択 → すべてを選択</b>して、
+            いま取ったものを<b>ペースト</b>（元のHello Worldは残さない）</li>
+          <li>右上の <b>Deploy</b></li>
+        </ol>
+
+        <div class="divider"></div>
+        <div class="section-title">③ 合言葉になる道をつくる</div>
+        <div class="diet-relaykey">
+          <code class="js-path">${draftPath || "（まだ作っていません）"}</code>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
+          <button class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
+        </div>
+        <ol class="diet-steps">
+          <li>Workerの <b>Settings</b> → <b>Variables and Secrets</b> → <b>Add</b></li>
+          <li><b>Type</b> は <b>Secret</b>、
+            <b>Variable name</b> に <code>RELAY_PATH</code>、
+            <b>Value</b> にいま作った道を<b>ペースト</b></li>
+          <li><b>Deploy</b></li>
+        </ol>
+        <p class="diet-note">
+          <b>この道が合言葉です。</b>知られると、その人も同じ郵便受けを開けられます。
+          だから Type は Secret にしてください（あとから画面に出なくなります。
+          忘れても、このアプリが完成したURLを覚えているので大丈夫です）。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">④ 置き場（KV）を作って、結ぶ</div>
+        <ol class="diet-steps">
+          <li>左の <b>Storage &amp; Databases</b> → <b>KV</b> →
+            <b>Create a namespace</b>（名前は何でも。<code>kurashi-mail</code> など）</li>
+          <li>Workerに戻って <b>Settings</b> → <b>Bindings</b> → <b>Add</b> →
+            <b>KV namespace</b></li>
+          <li><b>Variable name</b> は <b><code>MAIL</code></b>（コードがこの名前を見ています）。
+            <b>KV namespace</b> はいま作ったもの</li>
+          <li><b>Deploy</b></li>
+        </ol>
+
+        <div class="divider"></div>
+        <div class="section-title">⑤ URLをつなげる</div>
+        <label class="field">
+          <span class="field-label">WorkerのURL（Cloudflareの画面からコピー）</span>
+          <input class="input js-base" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="https://kurashi-relay.あなた.workers.dev">
+        </label>
+        <button class="btn btn-soft btn-block js-join">道をつなげる</button>
+        <label class="field">
+          <span class="field-label">中継所のURL（これが保存されます）</span>
+          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="https://…workers.dev/kn-…"
+                 value="${KN.healthRelay.url()}">
+        </label>
+        <p class="diet-note">
+          WorkerのURLは、Cloudflareの Worker の画面の上のほうに出ています
+          （<code>…workers.dev</code>）。それを貼って「道をつなげる」を押すと、
+          ③で作った道が後ろに付きます。手で打ち継ぐ必要はありません。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">⑥ 確かめる</div>
+        <button class="btn btn-primary btn-block js-verify">中継所を確かめる</button>
+        <div class="js-steps"></div>
+        <p class="diet-note js-said">
+          置く・取る・消える・道が合言葉になっている——を、この場で一往復して
+          確かめます。ここが全部通れば、中継所は正しく建っています。
         </p>
         <p class="diet-note">
-          「つないでみる」は、届いていればそのまま取り込みます。中継所は渡したら
-          消す作りなので、覗くだけにするとその日のぶんを捨てることになるためです。
+          確かめる前に郵便受けを空にするので、もう届いていたデータは
+          <b>捨てずに取り込みます</b>（中継所は渡したら消す作りなので、
+          覗いて捨てると、その日のぶんを失くすことになります）。
         </p>
-        <p class="diet-note">中継所の建て方とショートカットの作り方は README の「中継所」にあります。</p>
       </div>
     `);
+
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-test" style="flex:1">つないでみる</button>
+        <button class="btn btn-soft js-clear" style="flex:1">外す</button>
         <button class="btn btn-primary js-save" style="flex:1">保存</button>
       </div>
     `);
     const h = KN.ui.sheet({ title: "中継所", content: body, footer: foot });
-    const said = body.querySelector(".js-said");
 
-    const readUrl = () => body.querySelector(".js-url").value.trim();
+    const said = body.querySelector(".js-said");
+    const stepsBox = body.querySelector(".js-steps");
+    const urlField = body.querySelector(".js-url");
+    const pathLabel = body.querySelector(".js-path");
+    const readUrl = () => urlField.value.trim();
     const bad = (v) => v && !/^https:\/\//.test(v);
+
+    /* iOSでは書き込みは通ります（読み取りと違って権限を通らない）。
+       それでも黙って失敗させないように、通らなかったら欄に出して
+       手で選べるようにします。 */
+    function copy(text, what) {
+      const ok = () => KN.ui.toast(what + "をコピーしました");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, () => fallback(text, what));
+      } else {
+        fallback(text, what);
+      }
+    }
+    function fallback(text, what) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
+      document.body.append(ta);
+      ta.select();
+      let done = false;
+      try { done = document.execCommand("copy"); } catch (err) { done = false; }
+      if (done) { ta.remove(); KN.ui.toast(what + "をコピーしました"); return; }
+      KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
+      ta.addEventListener("blur", () => ta.remove());
+    }
+
+    body.querySelector(".js-copycode").addEventListener("click", () => {
+      copy(KN.relayCode, "コード");
+    });
+
+    body.querySelector(".js-newpath").addEventListener("click", () => {
+      draftPath = KN.healthRelay.makePath();
+      pathLabel.textContent = draftPath;
+      copy(draftPath, "道");
+    });
+    body.querySelector(".js-copypath").addEventListener("click", () => {
+      if (!draftPath) { KN.ui.toast("先に「道をつくる」を押してください"); return; }
+      copy(draftPath, "道");
+    });
+
+    body.querySelector(".js-join").addEventListener("click", () => {
+      const base = body.querySelector(".js-base").value.trim();
+      if (!base) { KN.ui.toast("WorkerのURLを貼ってください"); return; }
+      if (bad(base)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      if (!draftPath && !/\/\S/.test(base.replace(/^https:\/\/[^/]+/, ""))) {
+        KN.ui.toast("先に「道をつくる」を押してください"); return;
+      }
+      urlField.value = KN.healthRelay.joinUrl(base, draftPath);
+      KN.ui.toast("つなげました。⑥で確かめてください");
+    });
+
+    /* 確かめるのは、まだ保存していない欄の値です。打ち間違えたURLを
+       保存させてから試させるのは順番が逆なので。 */
+    body.querySelector(".js-verify").addEventListener("click", () => {
+      const v = readUrl();
+      if (!v) { KN.ui.toast("先に⑤でURLをつなげてください"); return; }
+      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      const btn = body.querySelector(".js-verify");
+      btn.disabled = true;
+      stepsBox.innerHTML = "";
+      said.textContent = "確かめています…";
+      KN.healthRelay.selfTest(v).then((r) => {
+        said.textContent = r.message;
+        stepsBox.innerHTML = "";
+        stepsBox.append(node(html`
+          <div class="diet-read">
+            ${KN.util.raw(r.steps.map((st) => `
+              <div class="diet-read-row">
+                <span class="diet-read-name">${st.ok ? "✓" : "✗"} ${KN.util.escapeHtml(st.name)}</span>
+                <span class="diet-read-day">${KN.util.escapeHtml(st.detail)}</span>
+              </div>`).join(""))}
+          </div>
+        `));
+        if (r.ok) KN.screens.diet.render();
+      }).catch((err) => {
+        said.textContent = "確かめられませんでした（" + (err && err.message || err) + "）";
+      }).finally(() => { btn.disabled = false; });
+    });
 
     foot.querySelector(".js-save").addEventListener("click", () => {
       const v = readUrl();
@@ -691,32 +869,8 @@
       h.close(); render();
       KN.ui.toast(v ? "中継所を覚えました" : "中継所を外しました");
     });
-
-    /* 試すときは、まだ保存していない入力欄の値で試します。打ち間違えた
-       URLを保存させてから試させるのは順番が逆です。
-
-       なお「つないでみる」は、届いていれば取り込みます。中継所は渡したら
-       消す作りなので、覗いて捨てるとその日のデータが失くなるからです。 */
-    foot.querySelector(".js-test").addEventListener("click", () => {
-      const v = readUrl();
-      if (!v) { KN.ui.toast("URLを入れてください"); return; }
-      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
-      const keep = KN.healthRelay.url();
-      const btn = foot.querySelector(".js-test");
-      btn.disabled = true;
-      said.textContent = "つないでいます…";
-      KN.healthRelay.setUrl(v);
-      KN.healthRelay.test()
-        .then((r) => {
-          said.textContent = r.message;
-          if (r.imported && r.imported.ok) KN.screens.diet.render();
-        })
-        .catch((err) => { said.textContent = "つなげませんでした（" + (err && err.message || err) + "）"; })
-        .finally(() => {
-          btn.disabled = false;
-          // 試しただけで保存はしない。保存は「保存」を押したときだけ。
-          if (!keep) KN.healthRelay.setUrl(""); else KN.healthRelay.setUrl(keep);
-        });
+    foot.querySelector(".js-clear").addEventListener("click", () => {
+      KN.healthRelay.setUrl(""); h.close(); render(); KN.ui.toast("外しました");
     });
   }
 

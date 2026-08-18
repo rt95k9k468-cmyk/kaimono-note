@@ -1,6 +1,8 @@
 /* 中継所のふるまい。KVの偽物を渡して、外に出ずに確かめます。
    実行： node relay/worker.test.mjs                        */
 import worker from "./worker.js";
+import { readFileSync } from "node:fs";
+import { SRC, OUT, render } from "./embed.js";
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => {
@@ -149,6 +151,17 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   check("DELETE は断る（消すのは受け取ったときだけ）", r.status === 405, String(r.status));
   const r2 = await call(env, "PUT", PATH, "steps=1");
   check("PUT は POST と同じに扱う", r2.status === 200, String(r2.status));
+}
+
+/* ---------- アプリに埋めた写しが、元とずれていない ---------- */
+{
+  /* アプリの「コードをコピー」が配るのは js/relay-code.js の中の文字列です。
+     元を直して作り直し忘れると、**古い中継所を配り続ける** ことになります。
+     気づけないので、ここで落とします。直し方は `node relay/embed.js`。 */
+  const fresh = render(readFileSync(SRC, "utf8"));
+  const onDisk = readFileSync(OUT, "utf8");
+  check("アプリに埋めたコードが worker.js と同じ", fresh === onDisk,
+    fresh === onDisk ? "" : "ずれています → node relay/embed.js で作り直してください");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
