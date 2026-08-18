@@ -1,0 +1,3 @@
+# wrangler の作業場（ローカルのKVの中身もここに入ります）
+.wrangler/
+node_modules/
