@@ -91,9 +91,14 @@
     return round((num / den) * 7, 3);
   }
 
-  /** 画面ひとつぶんの体重まわり。無い数は null のまま渡します。 */
-  function weightSummary(windowDays) {
-    const today = U.todayKey();
+  /** 画面ひとつぶんの体重まわり。無い数は null のまま渡します。
+   *
+   *  endDay を渡すと、その日を「いま」として数えます——過ぎた日を開いて
+   *  いるあいだ、右の三つ（前回比・7日平均・目標まで）まで今日の数のままだと、
+   *  大きい数字とその横の数が別々の日の話になります。渡さなければ今日で、
+   *  これまでの呼び出しは何も変わりません。 */
+  function weightSummary(windowDays, endDay) {
+    const today = endDay || U.todayKey();
     const win = windowDays || 90;
     const pts = weightPoints(U.shiftDay(today, -(win - 1)), today);
     const ma7 = movingAverage(pts, 7);

@@ -329,16 +329,30 @@
       <div class="stack" style="gap:18px">
         <div class="field">
           <span class="field-label">やること</span>
-          <input class="input js-title" placeholder="例：ゴミ出し・電球を替える"
-                 value="${editing ? t.title : ""}"
-                 autocomplete="off" autocapitalize="off" spellcheck="false">
+          ${/* ★は名前の右に。前は一段まるごと使って「★を付ける／同じ日の
+                なかで先に出てきます」と書いていましたが、説明のほうが
+                ボタンより大きい札は、幅の使い方として逆さまです。 */""}
+          <div class="todo-name-row">
+            <input class="input js-title" placeholder="例：ゴミ出し・電球を替える"
+                   value="${editing ? t.title : ""}"
+                   autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button type="button" class="icon-btn fav js-flag" aria-pressed="${String(flagged)}"
+                    aria-label="★を付ける（同じ日のなかで先に出てきます）"
+                    title="★を付ける">${icon("star")}</button>
+          </div>
         </div>
 
         <div class="field">
           <span class="field-label">いつまでに</span>
           <div class="js-due-chips"></div>
-          <input class="input js-due" type="date" value="${due || ""}"
-                 aria-label="日付を選ぶ">
+          ${/* 空のとき、iOS の日付欄は **何も出しません**。枠だけが並んで、
+                何の欄なのか分からなくなります。だから空のときは自分で
+                「--/--/--」と書いて、押せば日付を選べることを見せます。 */""}
+          <div class="date-row">
+            <input class="input js-due" type="date" value="${due || ""}"
+                   aria-label="日付を選ぶ">
+            <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
+          </div>
           ${/* 時刻そのもの。毎朝・毎晩は「くりかえし」に移りました——
                 あちらとこちらは同じ問いなので、聞く場所は一つで足ります。
                 時刻と毎朝は今も互いを打ち消します（「19:30」と「毎朝」は
@@ -351,23 +365,14 @@
           <span class="field-hint js-due-hint"></span>
         </div>
 
+        ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
+              その上に「くりかえし」と重ねて言う必要がありません。 */""}
         <div class="field">
-          <span class="field-label">くりかえし</span>
           <div class="js-repeat"></div>
           ${/* Which days, once 毎週 or 毎月 is chosen. Hidden otherwise —
                 「なし」 has no days to ask about. */""}
           <div class="js-repeat-detail" hidden></div>
           <span class="field-hint js-repeat-hint" hidden></span>
-        </div>
-
-        <div class="field">
-          <button type="button" class="icon-auto fav-toggle js-flag" aria-pressed="${String(flagged)}">
-            <span class="icon-pick-mark js-flag-mark">${icon("star")}</span>
-            <span class="icon-pick-text">
-              <span class="icon-pick-name">★を付ける</span>
-              <span class="icon-pick-sub">同じ日のなかで先に出てきます</span>
-            </span>
-          </button>
         </div>
 
         <label class="field">
@@ -402,15 +407,22 @@
     /* The days a todo is nearly always for, in one press each. Typing a date
        into a date field is four taps that 「明後日」 does in one, and the
        calendar underneath is still there for the ones that are a real date. */
+    /* 押せる候補は、口に出して言う日だけ。「明々後日」「1週間後」「1か月後」は
+       外しました——数が増えるほど探す時間が延びますし、そのあたりの日は
+       たいてい下の日付欄で選んだほうが早い（「来週の火曜」は1週間後とは
+       限りません）。 */
     const DUE_CHIPS = () => [
       { id: todayKey(), label: "今日" },
       { id: shiftDay(todayKey(), 1), label: "明日" },
       { id: shiftDay(todayKey(), 2), label: "明後日" },
-      { id: shiftDay(todayKey(), 3), label: "明々後日" },
-      { id: shiftDay(todayKey(), 7), label: "1週間後" },
-      { id: KN.util.shiftMonth(todayKey(), 1), label: "1か月後" },
       { id: "", label: "なし" },
     ];
+
+    /* 空かどうかで、かぶせる「--/--/--」を出し入れします。 */
+    function paintDueEmpty() {
+      const ph = body.querySelector(".js-due-empty");
+      if (ph) ph.hidden = !!due;
+    }
 
     function paintDueChips() {
       KN.ui.chipRow(body.querySelector(".js-due-chips"), DUE_CHIPS(), {
@@ -419,6 +431,7 @@
           due = id || null;
           if (!due) { part = null; time = null; }
           dueEl.value = due || "";
+          paintDueEmpty();
           paintDueChips();
           paintPart();
           paintHint();
@@ -436,7 +449,8 @@
       const badge = KN.appBadge;
       hintEl.innerHTML = "";
       if (!due) {
-        hintEl.textContent = "日付を決めると、その日からアプリのアイコンに数が出ます";
+        /* 何も言いません。日付が空であることは、欄そのもの（--/--/--）が
+           言っています。同じことを二度書くと、そのぶん縦に伸びます。 */
         return;
       }
       /* Said here rather than discovered at 19:30. Two different sentences,
@@ -524,6 +538,7 @@
     });
 
     paintDueChips();
+    paintDueEmpty();
     paintPart();
     paintHint();
 
@@ -533,6 +548,7 @@
       // 列にもそれが見えていないといけないので、そちらも塗り直します。
       const dropped = !due && isBookend(part);
       if (!due) { part = null; time = null; }
+      paintDueEmpty();
       paintDueChips();
       paintPart();
       paintHint();

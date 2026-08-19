@@ -148,7 +148,10 @@
     };
   }
 
-  const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+  /* "memo" は、朝昼夜間食に分けずに書き連ねる一日ぶんの控えです。
+     前からある四つはそのまま残します——すでに書かれたものが、
+     読めなくなったり別の時間帯に化けたりしないように。 */
+  const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack", "memo"];
 
   function cleanMealItem(it) {
     const name = String(it && it.name || "").trim();
@@ -1381,9 +1384,32 @@
   }
 
   function mealsOfDay(day) {
-    const order = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
+    const order = { memo: -1, breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
     return diet().meals.filter((m) => m.day === day)
       .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
+  }
+
+  /* --- 一日ぶんの食事メモ ---
+
+     時間帯に分けて書くのは、続きません。書くのは一本の文で、
+     あとから数を足したくなったらその同じ一件に足します
+     （別の入れ物にすると、メモと数が離れて、どちらが本当か分からなく
+     なります）。一日に一件だけです。 */
+  function dayMemo(day) {
+    return diet().meals.find((m) => m.day === day && m.slot === "memo") || null;
+  }
+
+  /** メモを書き換えます。空にすると、数も持っていなければ消えます。 */
+  function setDayMemo(day, text, items) {
+    const cur = dayMemo(day);
+    const memo = String(text == null ? (cur ? cur.memo : "") : text);
+    const next = items === undefined ? (cur ? cur.items : []) : items;
+    if (!memo.trim() && !(next || []).length) {
+      if (cur) removeMeal(cur.id);
+      return null;
+    }
+    if (cur) { updateMeal(cur.id, { memo, items: next }); return dayMemo(day); }
+    return addMeal({ day, slot: "memo", memo, items: next });
   }
 
   /* --- お酒 --- */
@@ -1653,7 +1679,7 @@
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
-    addMeal, updateMeal, removeMeal, mealsOfDay,
+    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,

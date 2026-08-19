@@ -352,13 +352,11 @@
   box-shadow: inset 0 0 0 2px var(--c-primary);
   color: var(--c-primary);
 }
-.cal-day.is-here.is-today .cal-n {
-  /* 今日を見ているとき。輪を赤丸の **外** に出していましたが、それだと
-     下の点に食い込みます。丸の内側に白い輪を引けば、24pxの中で収まって、
-     「今日」と「いま見ている」の両方が読めます。 */
-  box-shadow: inset 0 0 0 2px #fff;
-  color: #fff;
-}
+/* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
+.cal-day.is-here.is-today .cal-n { color: #fff; }
+/* 今日を見ているときも、輪は同じ緑です。白い輪にしていましたが、
+   同じ「いま見ている」印が、日によって色を変える理由はありません。
+   赤い丸の上に緑の輪が重なって、両方が読めます。 */
 
 /* Days that have something on them, in that day's own shelf colour — so the
    red-to-blue run below is visible up here as well. Up to three: past that it
@@ -1576,9 +1574,13 @@
 
 .diet-hero { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 
+/* 体重は左、増減は右。縦に積むと、この枠だけで画面の三分の一を使って
+   しまい、グラフを見るのにいちいちスクロールすることになります。 */
+.diet-hero-top { display: flex; align-items: flex-start; gap: var(--sp-3); }
+
 .diet-hero-main {
   display: flex; flex-direction: column; gap: 2px;
-  text-align: left; width: 100%;
+  text-align: left; flex: 1 1 auto; min-width: 0;
   padding: 0; background: none; border: 0;
 }
 .diet-hero-label { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; }
@@ -1588,19 +1590,30 @@
   font-variant-numeric: tabular-nums;
 }
 .diet-hero-value small { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text-2); }
-.diet-hero-fat { font-size: var(--fs-sm); color: var(--c-text-2); margin-left: auto; }
-.diet-hero-cta { font-size: var(--fs-xs); color: var(--c-text-3); }
-
-.diet-hero-side {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2);
-  border-top: 1px solid var(--c-border); padding-top: var(--sp-3);
+/* 体脂肪は体重の下。同じ「いまの体」の話なので、横に離さず縦に続けます。 */
+.diet-hero-sub {
+  display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
+  min-height: 1px;
 }
-.diet-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
-.diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-stat-value { font-size: var(--fs-xl); font-weight: 800; }
+.diet-hero-fat { font-size: var(--fs-sm); color: var(--c-text-2); }
+.diet-hero-cond { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+/* 右の三つ。一つ一段で、名前・数・単位を一行に並べます
+   （縦三段×三列にすると、それだけで体重の高さを超えます）。 */
+.diet-hero-side {
+  display: flex; flex-direction: column; gap: 3px;
+  flex: none; width: 41%; max-width: 168px;
+  border-left: 1px solid var(--c-border); padding-left: var(--sp-3);
+}
+.diet-stat { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+.diet-stat-value { font-size: var(--fs-md); font-weight: 800; margin-left: auto; }
 .diet-stat-value.is-good { color: var(--c-primary); }
 .diet-stat-value.is-warn { color: var(--c-accent); }
-.diet-stat-unit { font-size: var(--fs-xs); color: var(--c-text-3); }
+.diet-stat-unit {
+  font-size: 10px; color: var(--c-text-3); white-space: nowrap;
+  max-width: 46px; overflow: hidden; text-overflow: ellipsis;
+}
 
 .diet-hero-note, .diet-note {
   font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.65; margin: 0;
@@ -1637,11 +1650,36 @@
    親の親まで同じことが起き、結局どこかで突っ張ります。
    **札を下の段に置けば、その綱引きは起きません** ——上の期間の列と
    同じ形になって、読み方もそろいます。 */
-.diet-with { display: block; }
-.diet-with-label {
-  display: block; font-size: var(--fs-xs); color: var(--c-text-3);
-  margin-bottom: 2px;
+/* グラフは体重の枠の中。上の数字とのあいだに線を一本だけ入れます。 */
+.diet-graph {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  border-top: 1px solid var(--c-border); padding-top: var(--sp-3);
 }
+
+/* グラフと、その右の札。札は縦に積みます——横に並べると六つで
+   はみ出し、下に置くと選ぶたびに目が往復します。 */
+.diet-plot { display: flex; align-items: stretch; gap: var(--sp-2); }
+.diet-plot-chart { flex: 1 1 auto; min-width: 0; }
+.diet-with { flex: none; width: 52px; display: flex; flex-direction: column; gap: 3px; }
+.diet-with-label {
+  display: block; font-size: 10px; color: var(--c-text-3); text-align: center;
+}
+.diet-with .chip-row {
+  flex: 1 1 auto;
+  flex-direction: column; justify-content: space-between;
+  gap: 2px; overflow: visible; padding: 0; margin: 0;
+}
+/* 縦に積むので、札の背は指の幅ではなくグラフの高さで決めます
+   （40pxのままだと六つで240pxになり、グラフより札のほうが高くなります）。 */
+.diet-with .chip {
+  flex: 0 0 auto; width: 100%; justify-content: center;
+  height: auto; min-height: 24px; padding: 3px 4px;
+  font-size: var(--fs-xs); line-height: 1.25;
+}
+/* 期間の札も、グラフと同じ枠に入ったぶん詰めます（見出し・数字・
+   グラフ・凡例が一枚に載るので、ここだけ大きいと段が目立ちます）。 */
+.diet-graph .chip-row > .chip { padding: 5px 12px; font-size: var(--fs-sm); }
+.diet-with .chip-row > .chip { padding: 3px 4px; font-size: var(--fs-xs); }
 
 .diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
@@ -1730,24 +1768,26 @@
 .diet-pfc-bar.is-over { box-shadow: inset 0 0 0 1px var(--c-accent); }
 .diet-pfc-num { font-size: var(--fs-xs); color: var(--c-text-2); width: 78px; text-align: right; flex: none; }
 
-.diet-slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
-.diet-slot {
-  display: flex; flex-direction: column; gap: 2px; text-align: left;
+/* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
+   「これはどれか」を決めることになります。 */
+.diet-memo {
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  width: 100%; text-align: left;
   padding: var(--sp-3); background: var(--c-surface-2);
-  border: 1px solid var(--c-border); border-radius: var(--r-md);
-  min-height: 62px;
+  border: 0; border-radius: var(--r-md);
 }
-.diet-slot-head { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
-.diet-slot-head b { font-size: var(--fs-sm); margin-right: auto; }
-.diet-slot-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
-.diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
-/* まだ書いていない食事は、絵も薄く。書いたものとの差が、ひと目で出ます。 */
-.diet-slot.is-blank .diet-slot-ico { color: var(--c-text-3); opacity: .5; }
-.diet-slot-kcal { font-size: var(--fs-xs); color: var(--c-text-2); }
-.diet-slot-body {
-  font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.4;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+.diet-memo-head { display: flex; align-items: center; gap: 6px; }
+.diet-memo-head b { font-size: var(--fs-sm); }
+.diet-memo-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
+.diet-memo-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.diet-memo.is-blank .diet-memo-ico { color: var(--c-text-3); opacity: .5; }
+.diet-memo-hint { font-size: var(--fs-xs); color: var(--c-text-3); margin-left: auto; }
+.diet-memo-body {
+  font-size: var(--fs-sm); color: var(--c-text); line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
 }
+.diet-memo.is-blank .diet-memo-body { color: var(--c-text-3); }
+.diet-old-meals { margin-top: var(--sp-2); }
 
 .diet-total {
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
@@ -1832,6 +1872,32 @@
 /* ボタンの見た目をしたリンク。<a> の既定の下線が付くと、押せるものが
    二種類あるように見えます。 */
 a.btn { text-decoration: none; }
+
+/* やることの名前と★を一段に。★は正方形のまま、名前が残りを取ります。 */
+.todo-name-row { display: flex; align-items: center; gap: var(--sp-2); }
+.todo-name-row .input { flex: 1 1 auto; min-width: 0; }
+.todo-name-row .fav { flex: none; width: 40px; height: 40px; }
+
+/* 空の日付欄。
+
+   iOS は空のとき **何も描きません** ——枠だけが並んで、何の欄なのか
+   分からなくなります。だからこちらで「--/--/--」と書きます。
+
+   ただ字を重ねるだけでは足りません。ブラウザによっては空のときに
+   「mm/dd/yyyy」を自分で描くので、そこへ重ねると二重に見えます。
+   下地ごと敷いて覆います——右端のカレンダーの絵だけは残して、
+   そこを押せば日付を選べるように。 */
+.date-row { position: relative; }
+.date-empty {
+  position: absolute;
+  left: 1.5px; top: 1.5px; bottom: 1.5px; right: 46px;
+  display: flex; align-items: center; padding-left: calc(var(--sp-4) - 1.5px);
+  background: var(--c-surface);
+  border-radius: calc(var(--r-md) - 1.5px);
+  font-size: var(--fs-lg); color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
 
 /* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
    字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に
