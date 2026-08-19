@@ -665,16 +665,39 @@
      motion that puts a sheet away — now ends it too.
      A drag that starts inside the field is included on purpose: flicking the
      bar itself downwards is the most obvious way to push it out of sight. */
+  /** 指の下（と、その上のどこか）に、まだ縦へ動かせる余地があるか。
+
+      「下へ払ったらキーボードを閉じる」は、**動かせるものが何も無いとき**の
+      約束です。読み返すために長いメモや一覧を動かしているのに閉じられると、
+      読むことと打つことが両立しません。だから、その動きで実際に何かが
+      スクロールできるなら、払いとは見なしません。 */
+  function canScroll(node, dy) {
+    let el = node;
+    while (el && el !== document.body && el !== document.documentElement) {
+      if (el.scrollHeight > el.clientHeight + 1) {
+        const style = getComputedStyle(el);
+        if (/(auto|scroll)/.test(style.overflowY)) {
+          // 下へ払う（dy>0）＝上の内容を見にいく。まだ上に残りがあるか。
+          const room = dy > 0 ? el.scrollTop : el.scrollHeight - el.clientHeight - el.scrollTop;
+          if (room > 1) return true;
+        }
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
   function dismissKeyboardOnSwipeDown() {
     const DROP = 34;   // far enough that a tap with a wobble is not a swipe
     const SIDE = 40;   // and straight enough not to be a swipe across a row
-    let y0 = 0, x0 = 0, live = false;
+    let y0 = 0, x0 = 0, live = false, from = null;
 
     document.addEventListener("touchstart", (e) => {
       live = e.touches.length === 1 && document.documentElement.classList.contains("kb-open");
       if (!live) return;
       y0 = e.touches[0].clientY;
       x0 = e.touches[0].clientX;
+      from = e.target;
     }, { passive: true });
 
     document.addEventListener("touchmove", (e) => {
@@ -683,11 +706,15 @@
       if (Math.abs(e.touches[0].clientX - x0) > SIDE) { live = false; return; }
       if (dy < DROP) return;
       live = false;
+      /* 指の下にまだ動かせるものがあるなら、それは読み返しているのであって、
+         キーボードを払っているのではありません。長いメモを読み直すたびに
+         キーボードが落ちると、打ち直すのに毎回入り直すことになります。 */
+      if (canScroll(from, dy)) return;
       const el = document.activeElement;
       if (el && el.blur) el.blur();
     }, { passive: true });
 
-    document.addEventListener("touchend", () => { live = false; }, { passive: true });
+    document.addEventListener("touchend", () => { live = false; from = null; }, { passive: true });
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

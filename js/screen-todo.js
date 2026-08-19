@@ -210,9 +210,10 @@
      指が触ったかどうかは、推し量らずに聞けます。カレンダーの上（矢印や
      払い）は「リストに触った」ではないので、そこは除きます。 */
   function unpinOnTouch(e) {
-    if (!calPinned) return;
+    if (!calPinned && !dayPinned) return;
     if (els.cal && els.cal.contains(e.target)) return;
     calPinned = false;
+    dayPinned = false;
   }
 
   function followScroll() {
@@ -263,9 +264,17 @@
   /* いま見ている日。カレンダーを描き直すと印は消えるので、覚えておいて
      描いたあとに付け直します。 */
   let hereDay = "";
+  /* 手で押した日は、留めます。押したあとリストを運ぶので、その途中の
+     スクロールで「通り道の日」に書き換わってしまうためです。やることの
+     無い日には棚がありませんから、運んだ先は近くの棚になり、輪だけが
+     押した日から離れることになります。留めは、指がリストに触れば外れます
+     （月の留めと同じ合図）。 */
+  let dayPinned = false;
 
-  function markDay(day) {
+  function markDay(day, byHand) {
+    if (dayPinned && !byHand) return;
     hereDay = day || "";
+    if (byHand) dayPinned = true;
     paintHere();
   }
 
@@ -1355,7 +1364,11 @@
       /* Tapping a date goes to that date's shelf. Otherwise the month is a
          picture of somewhere you cannot get to — 8月17日 is visible up here
          and four screens down there, with nothing joining them. */
-      cell.addEventListener("click", () => { jumpToDay(key); haptic(); });
+      /* 押した日には、その場で輪を移します。棚まで運んでから followScroll に
+         数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
+         輪はどこにも移らず、押しても何も起きないように見えます。
+         押した日を見ている——それがいちばん確かなことなので、先に言います。 */
+      cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
       grid.append(cell);
     }
     // 描き直したぶん、いま見ている日の印は消えています。付け直します。

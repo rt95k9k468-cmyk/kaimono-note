@@ -107,6 +107,10 @@
           drinks: store.drinksOfDay(d).map((x) => ({
             kind: x.kind, name: x.name || null, volumeMl: x.volumeMl,
             abv: x.abv, alcoholG: x.alcoholG, kcal: x.kcal, estimated: x.estimated,
+            // いつ、どんな気分で。きっかけが見えるとしたら、たぶんここです。
+            time: x.time || null,
+            mood: x.mood || null,
+            moodTags: x.moodTags && x.moodTags.length ? x.moodTags : null,
           })),
           alcoholG: (store.drinkTotals(d) || {}).alcoholG != null ? store.drinkTotals(d).alcoholG : 0,
           drinkKcal: (store.drinkTotals(d) || {}).kcal != null ? store.drinkTotals(d).kcal : 0,
@@ -120,6 +124,8 @@
         + "kcal は食べたものだけの数で、飲酒由来は drinkKcal に分けてある（足すかどうかは用途しだい）。"
         + "alcoholG は純アルコール量（ml×度数%÷100×0.8）。estimated が真のものは推定値なので、"
         + "細かい差を意味のあるものとして扱わないこと。"
+        + "moodTags と mood は本人が書いた言葉で、こちらが用意した分類ではない。"
+        + "件数が少ないうちは、言葉の重なりを傾向として語らないこと。"
         + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
         + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };

@@ -25,7 +25,10 @@
 
   let root = null;
   let els = {};
-  let range = 30;             // グラフの期間（日）。0 は全期間。
+  /* グラフの期間。まず7日を出します——「最近どうか」を見るのに、
+     30日は入り口としては長すぎます（30日ぶんの点は、電話の幅では
+     一日ぶんが10pxほどになり、日々の上下が読めません）。 */
+  let range = 7;              // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
   let series = "";             // 体重と並べて見るもの。空なら体重だけ。
 
@@ -221,7 +224,7 @@
     const pts = all.filter((p) => p.day >= from);
     if (pts.length < 2) return null;
     let max = null;
-    D.daysBetween(pts[0].day, pts[pts.length - 1].day).forEach((d) => {
+    D.daysBetween(pts[0].day, today).forEach((d) => {
       const v = sel.get(d);
       if (v != null && (max == null || v > max)) max = v;
     });
@@ -294,9 +297,26 @@
     const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
     const goal = store.get().diet.goal.targetKg;
 
-    const t0 = U.dayDate(pts[0].day).getTime();
-    const t1 = U.dayDate(pts[pts.length - 1].day).getTime();
-    const span = Math.max(1, t1 - t0);
+    /* 横の並べ方。**左詰め**、一日の幅は期間どおり。
+
+       前は「いちばん古い点」から「いちばん新しい点」までを目一杯に
+       広げていました（両端揃え）。３日ぶんしか無い週でも横いっぱいに伸びて、
+       間隔だけを見ると毎日量ったように見えます。
+
+       期間の頭を左端に固定するのも試しましたが、こんどは記録が右の端に
+       寄って、左が大きく空きます。始めたばかりの人ほど読みにくい。
+
+       だから **記録の始まりを左端に置き、一日の幅は期間から決めます**。
+       七日を選べば一日は幅の1/6で、三日ぶんなら左から2つぶんまで。
+       間隔は本物のまま、余りは右に残ります。記録がそろっていれば、
+       これまでどおり横いっぱいになります。 */
+    const spanDays = range === 0
+      ? Math.max(1, D.daysBetween(pts[0].day, pts[pts.length - 1].day).length)
+      : range;
+    const dayW = (W - padL - padR) / Math.max(1, spanDays - 1);
+    const base = pts[0].day;
+    const idx = (day) => Math.round(
+      (U.dayDate(day).getTime() - U.dayDate(base).getTime()) / 86400000);
 
     const values = pts.map((p) => p.kg)
       .concat(ma7.map((m) => m.value), ma14.map((m) => m.value));
@@ -308,7 +328,7 @@
     const padY = (hi - lo) * 0.12;
     lo -= padY; hi += padY;
 
-    const x = (day) => padL + ((U.dayDate(day).getTime() - t0) / span) * (W - padL - padR);
+    const x = (day) => padL + idx(day) * dayW;
     const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
     const path = (rows, get) => rows.map((r, i) => `${i ? "L" : "M"}${x(r.day).toFixed(1)} ${y(get(r)).toFixed(1)}`).join(" ");
 
@@ -318,7 +338,11 @@
        します。目盛りは書きません——書けば「体重と同じ軸だ」と読まれます。
        いちばん大きい日の値だけを右上に置いて、天井が何かを言います。 */
     const sel = seriesOf(series);
-    const days = D.daysBetween(pts[0].day, pts[pts.length - 1].day);
+    /* 棒と印も、左端から。右の端より先には置きません（期間より長い
+       ぶんは、そもそもこの窓に入っていないので出てきませんが、
+       枠の外に描いてしまうと切れた棒が見えます）。 */
+    const lastX = W - padR;
+    const days = D.daysBetween(base, today).filter((d) => x(d) <= lastX + 0.01);
     const bars = [];
     let barMax = 0;
     if (sel.id) {
@@ -378,8 +402,11 @@
             + `<rect class="diet-beer-hit" x="${(cx - 9).toFixed(1)}" y="${cy - 9}" width="18" height="18"/>`
             + `</g>`;
         }).join(""))}
-        <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(pts[0].day).replace("今日", "")}</text>
-        <text class="diet-axis" x="${W - padR}" y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
+        ${/* 端の日付。右は「いちばん新しい記録」の下に置きます——右端に
+              置くと、そこに点が無いのに日付だけがある形になります。 */""}
+        <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(base).replace("今日", "")}</text>
+        <text class="diet-axis" x="${Math.min(W - padR, Math.max(padL + 40, x(pts[pts.length - 1].day))).toFixed(1)}"
+              y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
       </svg>
     `);
 
@@ -400,10 +427,11 @@
         <div class="diet-read">
           ${KN.util.raw(rows.map((d) => `
             <div class="diet-drink-row">
-              <b>${KN.util.escapeHtml(DR.describeItem(d))}</b>
+              <b>${d.time ? KN.util.escapeHtml(d.time) + "　" : ""}${KN.util.escapeHtml(DR.describeItem(d))}</b>
               <span>${d.abv}%${d.estimated ? "（推定）" : ""}</span>
               <span class="mono-num">純アルコール ${d.estimated ? "約" : ""}${d.alcoholG}g</span>
               <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+              ${moodOf(d) ? `<span class="diet-mood">${KN.util.escapeHtml(moodOf(d))}</span>` : ""}
             </div>`).join(""))}
           ${rows.length > 1 ? `
             <div class="diet-drink-row is-sum">
@@ -558,6 +586,14 @@
 
   const EXAMPLES = ["ビール350ml 2本", "ワイン半分", "日本酒1合", "ハイボール2杯", "焼酎100ml"];
 
+  /** 札と自由入力をひと続きに。同じ言葉が二度出ないようにします。 */
+  function moodOf(d) {
+    const tags = (d.moodTags || []).filter(Boolean);
+    const text = String(d.mood || "").trim();
+    const all = text && !tags.includes(text) ? tags.concat(text) : tags;
+    return all.join("・");
+  }
+
   function openDrinkSheet(day0, editId) {
     const day = day0 || U.todayKey();
     const editing = editId ? store.drinksOfDay(day).find((d) => d.id === editId) : null;
@@ -575,6 +611,25 @@
         </label>
         <div class="diet-chips js-ex"></div>
         <div class="js-read"></div>
+
+        ${/* 飲むたびに書き足すものなので、時刻を持たせます。あとで
+              「いつ飲みはじめたか」「何時間かけたか」を見るために。
+              既定はいま——たいてい、飲んだそのときに書くので。 */""}
+        <div class="time-row">
+          <span class="time-label">時刻</span>
+          <input class="input js-time" type="time" aria-label="時刻"
+                 value="${editing ? (editing.time || "") : U.nowTime()}">
+        </div>
+
+        <label class="field">
+          <span class="field-label">そのときの気分（任意）</span>
+          <input class="input js-mood" placeholder="疲れた／付き合い／…"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 value="${editing ? editing.mood || "" : ""}">
+        </label>
+        <div class="diet-chips js-moodtags"></div>
+        <p class="diet-note js-moodnote"></p>
+
         <div class="js-list"></div>
       </div>
     `);
@@ -590,6 +645,7 @@
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
     let items = [];
+    let tags = editing ? (editing.moodTags || []).slice() : [];
 
     /* よくある書き方を、押せる形で。何をどう書けばいいかは、
        説明文より例のほうが早く伝わります。 */
@@ -646,6 +702,39 @@
     paint();
     KN.ui.focusNow(q);
 
+    /* ---- 気分の札 ----
+
+       用意された選択肢はありません。**これまでに自分が書いた言葉**が並びます。
+       はじめて書く人には何も出ず、二度目からは自分の言葉が押せるようになります。
+       ここに一般的な五つを並べてしまうと、その五つの中から選ぶことになって、
+       自分の飲み方が他人の言葉で記録されます。 */
+    function paintMoodTags() {
+      const host = body.querySelector(".js-moodtags");
+      const note = body.querySelector(".js-moodnote");
+      const seen = DR.moodSuggestions(store.get().diet.drinks, 5);
+      const words = [...new Set(seen.map((x) => x.word).concat(tags))];
+      host.innerHTML = "";
+      if (!words.length) {
+        note.textContent = "書いた言葉は、次から押せる札になります"
+          + "（よくある言葉をこちらで並べることはしません——自分の言葉のほうが、あとで読み返したときに当たります）。";
+        return;
+      }
+      note.textContent = "札は、これまでに自分が書いた言葉から作られます。";
+      words.forEach((w) => {
+        const on = tags.includes(w);
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${w}</button>`);
+        chip.addEventListener("click", () => {
+          const i = tags.indexOf(w);
+          if (i >= 0) tags.splice(i, 1); else tags.push(w);
+          paintMoodTags();
+          haptic();
+        });
+        host.append(chip);
+      });
+    }
+    paintMoodTags();
+
     /* その日のぶんの一覧。ここから直せます。 */
     function paintList() {
       const list = body.querySelector(".js-list");
@@ -658,8 +747,9 @@
         const row = node(html`
           <button class="row">
             <span class="row-main">
-              <span class="row-title">${DR.describeItem(d)}</span>
-              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+              <span class="row-title">${d.time ? d.time + "　" : ""}${DR.describeItem(d)}</span>
+              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal${
+                moodOf(d) ? "　" + moodOf(d) : ""}</span>
             </span>
             <span class="row-chevron">${icon("edit")}</span>
           </button>
@@ -673,12 +763,15 @@
 
     foot.querySelector(".js-save").addEventListener("click", () => {
       if (!items.length) { KN.ui.toast("読めませんでした。書き方を変えてみてください"); return; }
+      const time = body.querySelector(".js-time").value || null;
+      const mood = body.querySelector(".js-mood").value.trim();
+      const extra = { day, raw: q.value.trim(), time, mood, moodTags: tags };
       if (editing) {
         // 直すときは一つぶん。二つに増えたなら、残りは足します。
-        store.updateDrink(editing.id, { ...items[0], day, raw: q.value.trim() });
-        items.slice(1).forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+        store.updateDrink(editing.id, { ...items[0], ...extra });
+        items.slice(1).forEach((it) => store.addDrink({ ...it, ...extra }));
       } else {
-        items.forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+        items.forEach((it) => store.addDrink({ ...it, ...extra }));
       }
       h.close();
       render();

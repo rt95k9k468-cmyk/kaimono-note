@@ -306,7 +306,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 1px;
+  /* 数字の丸と、下の点のあいだ。1pxしかなく、見ている日の輪が点に
+     くっついて見えていました。輪のぶんを空けます。 */
+  gap: 4px;
   padding: 2px 0 3px;
   background: none;
   border: 0;
@@ -351,8 +353,10 @@
   color: var(--c-primary);
 }
 .cal-day.is-here.is-today .cal-n {
-  /* 今日を見ているときは、二つが重なります。赤丸のまわりに輪をもう一本。 */
-  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
+  /* 今日を見ているとき。輪を赤丸の **外** に出していましたが、それだと
+     下の点に食い込みます。丸の内側に白い輪を引けば、24pxの中で収まって、
+     「今日」と「いま見ている」の両方が読めます。 */
+  box-shadow: inset 0 0 0 2px #fff;
   color: #fff;
 }
 
@@ -1698,6 +1702,8 @@
 .diet-drink-row b { font-size: var(--fs-sm); color: var(--c-text); flex: 1 1 100%; }
 .diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
 .diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 気分の言葉。数字と並ぶので、字は小さく色は控えめに。 */
+.diet-mood { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--c-text-3); }
 
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
