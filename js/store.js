@@ -167,6 +167,9 @@
       p: Math.max(0, Math.round((num(it.p) || 0) * 10) / 10),
       f: Math.max(0, Math.round((num(it.f) || 0) * 10) / 10),
       c: Math.max(0, Math.round((num(it.c) || 0) * 10) / 10),
+      /* 食物繊維。前からある記録は持っていないので、null のままにします
+         （0 と書くと「無かった」ではなく「0gだった」ことになります）。 */
+      fiber: posNum(it.fiber),
       // どこから来た値か。base=成分表, user=自分で直した, product=市販品,
       // ai=写真からの推定。数字の重みが違うので、捨てずに持ちます。
       from: ["base", "user", "product", "ai", "manual"].includes(it.from) ? it.from : "manual",
@@ -217,9 +220,24 @@
     };
   }
 
+  /** AIの推計。何も無ければ null（「まだ聞いていない」と「0だった」は別）。 */
+  function cleanMealAI(a) {
+    if (!a || typeof a !== "object") return null;
+    const raw = typeof a.raw === "string" ? a.raw.slice(0, 4000) : "";
+    const out = {
+      kcal: posNum(a.kcal), p: posNum(a.p), f: posNum(a.f), c: posNum(a.c),
+      fiber: posNum(a.fiber), low: posNum(a.low), high: posNum(a.high),
+      raw,
+      at: a.at || new Date().toISOString(),
+    };
+    const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
+    return anyNum || raw ? out : null;
+  }
+
   function cleanMeal(m, i) {
     const items = (Array.isArray(m.items) ? m.items : []).map(cleanMealItem).filter(Boolean);
-    if (!items.length && !String(m.memo || "").trim()) return null;
+    const ai = cleanMealAI(m.ai);
+    if (!items.length && !ai && !String(m.memo || "").trim()) return null;
     return {
       id: m.id || uid("m"),
       day: dayStr(m.day) || today(),
@@ -227,6 +245,12 @@
       slot: MEAL_SLOTS.includes(m.slot) ? m.slot : "snack",
       items,
       memo: typeof m.memo === "string" ? m.memo : "",
+      /* AIに推してもらった結果。**返事の原文ごと**持ちます——数だけ残すと、
+         あとで読み方を良くしたときに読み直せませんし、そもそもどんな聞き方に
+         対する答えだったのかが分からなくなります。
+         数のうち kcal/P/F/C は items にも一件だけ入れてあります（その日の
+         合計や棒は items を数えているので、そこを作り替えずに済ませます）。 */
+      ai,
       // 写真そのものは持ちません（localStorage に画像は入りません）。
       // 解析にかけたかどうかだけを覚えておきます。
       photoAnalyzed: m.photoAnalyzed === true,
@@ -1363,11 +1387,11 @@
 
   /* --- 食事 --- */
 
-  function addMeal({ day, time, slot, items, memo } = {}) {
+  function addMeal({ day, time, slot, items, memo, ai } = {}) {
     const rec = cleanMeal({
       day: day || KN.util.todayKey(),
       time: time || KN.util.nowTime(),
-      slot, items, memo,
+      slot, items, memo, ai,
     }, 0);
     if (!rec) return null;
     update((s) => { s.diet.meals.push(rec); });
@@ -1403,17 +1427,22 @@
     return diet().meals.find((m) => m.day === day && m.slot === "memo") || null;
   }
 
-  /** メモを書き換えます。空にすると、数も持っていなければ消えます。 */
-  function setDayMemo(day, text, items) {
+  /**
+   * メモを書き換えます。空にすると、数も持っていなければ消えます。
+   * items と ai は、渡さなければ **いまのものを残します**（メモだけ直したい
+   * ときに、AIの推計まで消えてしまわないように）。
+   */
+  function setDayMemo(day, text, items, ai) {
     const cur = dayMemo(day);
     const memo = String(text == null ? (cur ? cur.memo : "") : text);
     const next = items === undefined ? (cur ? cur.items : []) : items;
-    if (!memo.trim() && !(next || []).length) {
+    const nextAi = ai === undefined ? (cur ? cur.ai : null) : ai;
+    if (!memo.trim() && !(next || []).length && !nextAi) {
       if (cur) removeMeal(cur.id);
       return null;
     }
-    if (cur) { updateMeal(cur.id, { memo, items: next }); return dayMemo(day); }
-    return addMeal({ day, slot: "memo", memo, items: next });
+    if (cur) { updateMeal(cur.id, { memo, items: next, ai: nextAi }); return dayMemo(day); }
+    return addMeal({ day, slot: "memo", memo, items: next, ai: nextAi });
   }
 
   /* --- お酒 --- */

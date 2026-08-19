@@ -168,14 +168,29 @@
   function dayTotals(day) {
     const meals = store.mealsOfDay(day);
     if (!meals.length) return null;
-    const sum = { kcal: 0, p: 0, f: 0, c: 0, estimated: false, items: 0 };
+    const sum = { kcal: 0, p: 0, f: 0, c: 0, fiber: null, low: null, high: null,
+                  estimated: false, items: 0 };
     meals.forEach((m) => m.items.forEach((it) => {
       sum.kcal += it.kcal; sum.p += it.p; sum.f += it.f; sum.c += it.c;
+      if (it.fiber != null) sum.fiber = (sum.fiber || 0) + it.fiber;
       sum.items += 1;
       if (it.estimated) sum.estimated = true;
     }));
+    /* 推定の幅は、AIに聞いた日だけ付きます。合計そのものではなく
+       「どれくらい確からしいか」なので、足し合わせずそのまま持ちます。 */
+    meals.forEach((m) => {
+      if (!m.ai) return;
+      if (m.ai.low != null) sum.low = (sum.low || 0) + m.ai.low;
+      if (m.ai.high != null) sum.high = (sum.high || 0) + m.ai.high;
+    });
+    /* 数の入っていない日（メモだけ書いた日）は「0kcal」ではありません。
+       0 と書くと、何も食べなかったことになります。 */
+    if (!sum.items) return null;
     sum.kcal = Math.round(sum.kcal);
     sum.p = round(sum.p, 1); sum.f = round(sum.f, 1); sum.c = round(sum.c, 1);
+    if (sum.fiber != null) sum.fiber = round(sum.fiber, 1);
+    if (sum.low != null) sum.low = Math.round(sum.low);
+    if (sum.high != null) sum.high = Math.round(sum.high);
     return sum;
   }
 
@@ -556,12 +571,123 @@
     };
   }
 
+  /* ---------------- 書き出し ----------------
+
+     控え（バックアップ）とは別のものです。あちらは**アプリに戻すため**の
+     ぜんぶで、買い物の商品も値段も覚えた振り分けも入っています。こちらは
+     **人とAIが読むため**の、日ごとに一行の表です。
+
+     ・過去の食事をあとで推し直す
+     ・一か月ぶんをまとめてAIに渡して読んでもらう
+     この二つのために、一日の記録を一行にほどきます。 */
+
+  const EXPORT_COLS = [
+    { key: "day",      label: "日付" },
+    { key: "weightKg", label: "体重kg" },
+    { key: "fatPct",   label: "体脂肪%" },
+    { key: "meal",     label: "量った条件" },
+    { key: "clothed",  label: "服装" },
+    { key: "steps",    label: "歩数" },
+    { key: "burned",   label: "総消費kcal" },
+    { key: "sleepMin", label: "睡眠分" },
+    { key: "kcal",     label: "摂取kcal" },
+    { key: "p",        label: "P_g" },
+    { key: "f",        label: "F_g" },
+    { key: "c",        label: "C_g" },
+    { key: "fiber",    label: "食物繊維g" },
+    { key: "low",      label: "推定下限kcal" },
+    { key: "high",     label: "推定上限kcal" },
+    { key: "alcoholG", label: "純アルコールg" },
+    { key: "drinkKcal", label: "酒kcal" },
+    { key: "drinks",   label: "飲んだもの" },
+    { key: "memo",     label: "食事メモ" },
+  ];
+
+  /** 一日ぶんを、平たい一行に。無い値は null のままにします。 */
+  function exportRows(fromDay, toDay) {
+    const to = toDay || U.todayKey();
+    const from = fromDay || to;
+    return daysBetween(from, to).map((day) => {
+      const w = store.weightOfDay(day);
+      const t = dayTotals(day);
+      const dt = store.drinkTotals(day);
+      const memo = store.mealsOfDay(day).find((m) => m.slot === "memo");
+      const drinks = store.drinksOfDay(day);
+      return {
+        day,
+        weightKg: w ? w.kg : null,
+        fatPct: w && w.fat != null ? w.fat : null,
+        meal: w && w.meal ? (w.meal === "before" ? "食前" : "食後") : null,
+        clothed: w && w.clothed != null ? (w.clothed ? "着衣あり" : "着衣なし") : null,
+        steps: store.healthValue(day, "steps"),
+        burned: burnedOf(day),
+        sleepMin: store.healthValue(day, "sleep"),
+        kcal: t ? t.kcal : null,
+        p: t ? t.p : null,
+        f: t ? t.f : null,
+        c: t ? t.c : null,
+        fiber: t ? t.fiber : null,
+        low: t ? t.low : null,
+        high: t ? t.high : null,
+        alcoholG: dt ? dt.alcoholG : null,
+        drinkKcal: dt ? dt.kcal : null,
+        drinks: drinks.length ? drinks.map((d) => KN.drinks.describeItem(d)).join("・") : null,
+        memo: memo && memo.memo ? memo.memo : null,
+      };
+    });
+  }
+
+  /** 何も書いていない日は落とします（空行だけの月を渡しても仕方がない）。 */
+  const hasSomething = (r) => EXPORT_COLS.some((c) => c.key !== "day" && r[c.key] != null);
+
+  function exportCsv(fromDay, toDay, opts) {
+    const rows = exportRows(fromDay, toDay).filter((o) => (opts && opts.all) || hasSomething(o));
+    const esc = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    return [EXPORT_COLS.map((c) => c.label).join(",")]
+      .concat(rows.map((r) => EXPORT_COLS.map((c) => esc(r[c.key])).join(",")))
+      .join("\n");
+  }
+
+  /** AIに貼るための文。表よりも、日ごとの塊のほうが読み違えられません。 */
+  function exportText(fromDay, toDay) {
+    const rows = exportRows(fromDay, toDay).filter(hasSomething);
+    if (!rows.length) return "";
+    const line = (r) => {
+      const bits = [];
+      if (r.weightKg != null) bits.push(`体重${r.weightKg}kg${r.fatPct != null ? `（体脂肪${r.fatPct}%）` : ""}`
+        + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
+      if (r.steps != null) bits.push(`歩数${Math.round(r.steps).toLocaleString()}`);
+      if (r.burned != null) bits.push(`総消費${Math.round(r.burned).toLocaleString()}kcal`);
+      if (r.sleepMin != null) bits.push(`睡眠${Math.floor(r.sleepMin / 60)}時間${String(Math.round(r.sleepMin % 60)).padStart(2, "0")}分`);
+      if (r.kcal != null) {
+        bits.push(`摂取${r.kcal.toLocaleString()}kcal`
+          + (r.low != null && r.high != null ? `（${r.low}〜${r.high}）` : "")
+          + `／P${r.p} F${r.f} C${r.c}` + (r.fiber != null ? ` 繊維${r.fiber}` : ""));
+      }
+      if (r.alcoholG != null) bits.push(`飲酒 純アルコール${r.alcoholG}g（${r.drinks || ""}）`);
+      /* 数はまだ無くてメモだけ、という日があります（AIに聞く前）。
+         そこに「記録なし」と書くと、書いたものが無かったことになります。 */
+      const head = `■ ${r.day}` + (bits.length ? `　${bits.join("／")}` : "");
+      return r.memo ? `${head}\n　食事メモ：${String(r.memo).replace(/\n/g, " / ")}` : head;
+    };
+    return [
+      `くらしノート 記録の書き出し（${rows[0].day}〜${rows[rows.length - 1].day}／${rows.length}日ぶん）`,
+      "※ 摂取カロリーとPFCはAIによる推定を含みます。飲酒は摂取カロリーに含めていません。",
+      "",
+    ].concat(rows.map(line)).join("\n");
+  }
+
   KN.diet = {
     burnedOf,
     daysBetween, weightPoints, movingAverage, slopePerWeek,
     weightSummary, projection, neededPace,
     dayTotals, remaining, pfcRatio, dayCard,
     analyze, coverage,
+    EXPORT_COLS, exportRows, exportCsv, exportText,
     MIN_GROUP,
   };
 })();

@@ -344,6 +344,8 @@
     minus:     '<path d="M5 12h14"/>',
     download:  '<path d="M12 3v12M7 11l5 5 5-5M4 21h16"/>',
     upload:    '<path d="M12 21V9M7 13l5-5 5 5M4 3h16"/>',
+    // 二枚重ねた紙。「コピーする」の、どこでも同じ形。
+    copy:      '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/>',
     sparkles:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/>',
     undo:      '<path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/>',
     // Delete-left. A plain ✕ on that key reads as "close", which is the one

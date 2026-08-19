@@ -279,7 +279,11 @@
     if (!it) return "";
     const head = [it.name, it.kindLabel].filter(Boolean).join(" ");
     const n = it.count === 1 ? "" : ` × ${trim(it.count)}${it.unit}`;
-    return `${head} ${trim(it.ml)}ml${n}`;
+    /* 一杯ぶんの ml を持たない記録（外から入ったものなど）は、合計から
+       割り戻します。そのまま書くと「0ml」の行が残って、何を飲んだのかが
+       読めなくなります。 */
+    const ml = it.ml || (it.count ? (it.volumeMl || 0) / it.count : it.volumeMl) || 0;
+    return `${head} ${trim(ml)}ml${n}`;
   }
 
   const trim = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10));
