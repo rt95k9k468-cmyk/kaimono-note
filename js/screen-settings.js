@@ -596,6 +596,129 @@
     return `${snaps.length}件・最新 ${snapStamp(snaps[0].at)}`;
   }
 
+  /* ---------------- 記録の書き出し ----------------
+
+     バックアップは「アプリに戻すため」のもので、中身はJSONです。人が読む
+     ものでも、AIに渡すものでもありません（買い物の商品や覚えた振り分けまで
+     入っています）。
+
+     ここで出すのは **日ごとに一行** の記録です。過去の食事をあとで推し直す、
+     一か月ぶんをまとめて読んでもらう——そのための形。文とCSVの二つを
+     用意して、コピーもファイル保存もできるようにします。 */
+
+  const EXPORT_SPANS = [
+    { id: "30", label: "30日" },
+    { id: "month", label: "今月" },
+    { id: "last", label: "先月" },
+    { id: "all", label: "全部" },
+  ];
+
+  function spanRange(id) {
+    const U = KN.util;
+    const today = U.todayKey();
+    const now = U.dayDate(today);
+    if (id === "month") {
+      return { from: U.dayKey(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
+    }
+    if (id === "last") {
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { from: U.dayKey(first), to: U.dayKey(last) };
+    }
+    if (id === "all") {
+      const st = store.get().diet;
+      const days = []
+        .concat(st.weights.map((w) => w.day), st.meals.map((m) => m.day),
+                st.health.map((h) => h.day), st.drinks.map((d) => d.day))
+        .filter(Boolean).sort();
+      return { from: days.length ? days[0] : today, to: today };
+    }
+    return { from: KN.util.shiftDay(today, -29), to: today };
+  }
+
+  function openRecordExport() {
+    let span = "30";
+    let form = "text";
+
+    const body = node(html`
+      <div class="stack">
+        <p class="diet-note">
+          日ごとの記録（体重・体脂肪・歩数・総消費・睡眠・摂取と推定の幅・お酒・
+          食事メモ）を、まとめて書き出します。<b>AIに貼って読んでもらう</b>ときは
+          「文」、表計算で見るときは「CSV」。<br>
+          バックアップとは別のものです（戻すためのファイルは、上の
+          「バックアップを保存」のほうです）。
+        </p>
+        <div class="js-span"></div>
+        <div class="js-form"></div>
+        <p class="diet-note js-count"></p>
+        <textarea class="textarea js-out" rows="10" readonly aria-label="書き出したもの"></textarea>
+      </div>
+    `);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-file" style="flex:1">${icon("download")}ファイルに保存</button>
+        <button class="btn btn-primary js-copy" style="flex:1">${icon("copy")}コピー</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "記録を書き出す", content: body, footer: foot });
+
+    function build() {
+      const { from, to } = spanRange(span);
+      const rows = KN.diet.exportRows(from, to)
+        .filter((r) => KN.diet.EXPORT_COLS.some((c) => c.key !== "day" && r[c.key] != null));
+      const text = form === "csv" ? KN.diet.exportCsv(from, to) : KN.diet.exportText(from, to);
+      body.querySelector(".js-out").value = text || "この期間には記録がありません。";
+      body.querySelector(".js-count").textContent =
+        `${from} 〜 ${to}　記録のある日：${rows.length}日ぶん（${text.length.toLocaleString()}文字）`;
+      return text;
+    }
+
+    function paint() {
+      KN.ui.chipRow(body.querySelector(".js-span"), EXPORT_SPANS,
+        { activeId: span, onPick: (id) => { span = String(id); paint(); } });
+      KN.ui.chipRow(body.querySelector(".js-form"),
+        [{ id: "text", label: "文" }, { id: "csv", label: "CSV" }],
+        { activeId: form, onPick: (id) => { form = String(id); paint(); } });
+      build();
+    }
+    paint();
+
+    foot.querySelector(".js-copy").addEventListener("click", () => {
+      const text = body.querySelector(".js-out").value;
+      const done = (ok) => {
+        if (ok) { KN.ui.toast("コピーしました"); return; }
+        // 断られる端末があります。選んでおいて、長押しから拾えるように。
+        const out = body.querySelector(".js-out");
+        out.focus();
+        try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 読めれば足ります */ }
+        KN.ui.toast("自動でコピーできませんでした。欄を長押しでコピーしてください");
+      };
+      if (!navigator.clipboard || !navigator.clipboard.writeText) { done(false); return; }
+      navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+    });
+
+    foot.querySelector(".js-file").addEventListener("click", () => {
+      const text = body.querySelector(".js-out").value;
+      const ext = form === "csv" ? "csv" : "txt";
+      const type = form === "csv" ? "text/csv;charset=utf-8" : "text/plain;charset=utf-8";
+      /* CSVは Excel が UTF-8 と分かるように BOM を付けます（付けないと
+         日本語が化けます）。 */
+      const blob = new Blob([form === "csv" ? "﻿" + text : text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const { from, to } = spanRange(span);
+      a.href = url;
+      a.download = `kurashi-kiroku-${from}_${to}.${ext}`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      KN.ui.toast("保存しました");
+      h.close();
+    });
+  }
+
   /** Pick one of the app's own rolling snapshots and roll back to it. */
   function openSnapshots() {
     const snaps = KN.backup.list();
@@ -1033,6 +1156,15 @@
             </span>
             <span class="row-chevron">${icon("upload")}</span>
           </button>
+          ${/* 控えとは別の道です。あちらはアプリに戻すためのぜんぶ、
+                こちらは人とAIが読むための、日ごとの表。 */""}
+          <button class="row js-records">
+            <span class="row-main">
+              <span class="row-title">記録を書き出す（AIに渡す用）</span>
+              <span class="row-sub">体重・食事・歩数・お酒を、日ごとの表にします</span>
+            </span>
+            <span class="row-chevron">${icon("copy")}</span>
+          </button>
           <button class="row js-snapshots">
             <span class="row-main">
               <span class="row-title">自動バックアップから戻す</span>
@@ -1082,6 +1214,7 @@
       KN.ui.toast("バックアップを保存しました");
     });
 
+    wrap.querySelector(".js-records").addEventListener("click", openRecordExport);
     wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
     wrap.querySelector(".js-learned").addEventListener("click", openLearned);
 
