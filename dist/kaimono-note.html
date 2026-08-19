@@ -1888,7 +1888,9 @@ button, [role="tab"] {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 1px;
+  /* 数字の丸と、下の点のあいだ。1pxしかなく、見ている日の輪が点に
+     くっついて見えていました。輪のぶんを空けます。 */
+  gap: 4px;
   padding: 2px 0 3px;
   background: none;
   border: 0;
@@ -1933,8 +1935,10 @@ button, [role="tab"] {
   color: var(--c-primary);
 }
 .cal-day.is-here.is-today .cal-n {
-  /* 今日を見ているときは、二つが重なります。赤丸のまわりに輪をもう一本。 */
-  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
+  /* 今日を見ているとき。輪を赤丸の **外** に出していましたが、それだと
+     下の点に食い込みます。丸の内側に白い輪を引けば、24pxの中で収まって、
+     「今日」と「いま見ている」の両方が読めます。 */
+  box-shadow: inset 0 0 0 2px #fff;
   color: #fff;
 }
 
@@ -3280,6 +3284,8 @@ button, [role="tab"] {
 .diet-drink-row b { font-size: var(--fs-sm); color: var(--c-text); flex: 1 1 100%; }
 .diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
 .diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 気分の言葉。数字と並ぶので、字は小さく色は控えめに。 */
+.diet-mood { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--c-text-3); }
 
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
@@ -8127,6 +8133,14 @@ a.btn { text-decoration: none; }
       kcal: Math.max(0, Math.round(num(d.kcal) || 0)),
       // 推した値かどうか。画面で「約」を付けるのはこの旗ひとつで決めます。
       estimated: d.estimated !== false,
+      /* そのときの気分。自由に書いたものと、押した札の両方を持ちます——
+         自由入力だけでは数えられず、札だけでは実感が落ちるので。
+         札の中身は、その人が書いた言葉から作られます（決め打ちしません）。 */
+      mood: String(d.mood || "").trim().slice(0, 120),
+      moodTags: (Array.isArray(d.moodTags) ? d.moodTags : [])
+        .map((t) => String(t || "").trim())
+        .filter(Boolean)
+        .slice(0, 6),
       raw: typeof d.raw === "string" ? d.raw : "",
       at: d.at || new Date().toISOString(),
     };
@@ -13035,9 +13049,52 @@ a.btn { text-decoration: none; }
      言いません。 */
   const GUIDE_G = 20;
 
+  /* ---------------- そのときの気分 ----------------
+
+     何を飲んだかだけでは、なぜ飲んだかは分かりません。「疲れた」「付き合い」
+     「うれしい」——そこに繰り返しがあるなら、それは量より先に見るべきものです。
+
+     **選択肢は用意しません。** よくある言葉を五つ並べておくのは簡単ですが、
+     並べた瞬間、人はその中から選びます。自分の言葉ではなく、こちらが用意した
+     言葉で自分の飲み方を記録することになる。しかもそれは、たいてい少しずつ
+     ずれています（「付き合い」と「断れなかった」は違う）。
+
+     だから、はじめは空欄だけです。書いた言葉をそのまま覚えて、次からは
+     それを押せるようにします。二度目からは、自分の言葉が並びます。 */
+
+  const MOOD_MAX_LEN = 12;   // これより長いものは「文」で、札にはなりません
+
+  /**
+   * これまでに書いた言葉から、押せる札を作ります。
+   * @param {Array} list これまでのお酒の記録
+   * @param {number} [max] いくつまで
+   * @returns {Array<{word:string, n:number}>} よく書いた順
+   */
+  function moodSuggestions(list, max) {
+    const rows = Array.isArray(list) ? list : [];
+    const count = new Map();
+    const last = new Map();
+    const bump = (w, at) => {
+      const word = String(w || "").trim();
+      if (!word || word.length > MOOD_MAX_LEN) return;
+      count.set(word, (count.get(word) || 0) + 1);
+      const t = String(at || "");
+      if (!last.has(word) || t > last.get(word)) last.set(word, t);
+    };
+    rows.forEach((r) => {
+      (Array.isArray(r.moodTags) ? r.moodTags : []).forEach((t) => bump(t, r.at));
+      // 短く書いた自由入力は、それ自体が札の候補です。
+      bump(r.mood, r.at);
+    });
+    return [...count.entries()]
+      .map(([word, n]) => ({ word, n }))
+      .sort((a, b) => b.n - a.n || String(last.get(b.word)).localeCompare(String(last.get(a.word))))
+      .slice(0, max || 5);
+  }
+
   KN.drinks = {
-    KINDS, GLASS, BOTTLE, GUIDE_G,
-    kindOf, byId, parse, parseOne, describeItem, totals,
+    KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN,
+    kindOf, byId, parse, parseOne, describeItem, totals, moodSuggestions,
   };
 })();
 
@@ -13151,6 +13208,10 @@ a.btn { text-decoration: none; }
           drinks: store.drinksOfDay(d).map((x) => ({
             kind: x.kind, name: x.name || null, volumeMl: x.volumeMl,
             abv: x.abv, alcoholG: x.alcoholG, kcal: x.kcal, estimated: x.estimated,
+            // いつ、どんな気分で。きっかけが見えるとしたら、たぶんここです。
+            time: x.time || null,
+            mood: x.mood || null,
+            moodTags: x.moodTags && x.moodTags.length ? x.moodTags : null,
           })),
           alcoholG: (store.drinkTotals(d) || {}).alcoholG != null ? store.drinkTotals(d).alcoholG : 0,
           drinkKcal: (store.drinkTotals(d) || {}).kcal != null ? store.drinkTotals(d).kcal : 0,
@@ -13164,6 +13225,8 @@ a.btn { text-decoration: none; }
         + "kcal は食べたものだけの数で、飲酒由来は drinkKcal に分けてある（足すかどうかは用途しだい）。"
         + "alcoholG は純アルコール量（ml×度数%÷100×0.8）。estimated が真のものは推定値なので、"
         + "細かい差を意味のあるものとして扱わないこと。"
+        + "moodTags と mood は本人が書いた言葉で、こちらが用意した分類ではない。"
+        + "件数が少ないうちは、言葉の重なりを傾向として語らないこと。"
         + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
         + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };
@@ -15201,9 +15264,10 @@ a.btn { text-decoration: none; }
      指が触ったかどうかは、推し量らずに聞けます。カレンダーの上（矢印や
      払い）は「リストに触った」ではないので、そこは除きます。 */
   function unpinOnTouch(e) {
-    if (!calPinned) return;
+    if (!calPinned && !dayPinned) return;
     if (els.cal && els.cal.contains(e.target)) return;
     calPinned = false;
+    dayPinned = false;
   }
 
   function followScroll() {
@@ -15254,9 +15318,17 @@ a.btn { text-decoration: none; }
   /* いま見ている日。カレンダーを描き直すと印は消えるので、覚えておいて
      描いたあとに付け直します。 */
   let hereDay = "";
+  /* 手で押した日は、留めます。押したあとリストを運ぶので、その途中の
+     スクロールで「通り道の日」に書き換わってしまうためです。やることの
+     無い日には棚がありませんから、運んだ先は近くの棚になり、輪だけが
+     押した日から離れることになります。留めは、指がリストに触れば外れます
+     （月の留めと同じ合図）。 */
+  let dayPinned = false;
 
-  function markDay(day) {
+  function markDay(day, byHand) {
+    if (dayPinned && !byHand) return;
     hereDay = day || "";
+    if (byHand) dayPinned = true;
     paintHere();
   }
 
@@ -16346,7 +16418,11 @@ a.btn { text-decoration: none; }
       /* Tapping a date goes to that date's shelf. Otherwise the month is a
          picture of somewhere you cannot get to — 8月17日 is visible up here
          and four screens down there, with nothing joining them. */
-      cell.addEventListener("click", () => { jumpToDay(key); haptic(); });
+      /* 押した日には、その場で輪を移します。棚まで運んでから followScroll に
+         数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
+         輪はどこにも移らず、押しても何も起きないように見えます。
+         押した日を見ている——それがいちばん確かなことなので、先に言います。 */
+      cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
       grid.append(cell);
     }
     // 描き直したぶん、いま見ている日の印は消えています。付け直します。
@@ -16556,7 +16632,10 @@ a.btn { text-decoration: none; }
 
   let root = null;
   let els = {};
-  let range = 30;             // グラフの期間（日）。0 は全期間。
+  /* グラフの期間。まず7日を出します——「最近どうか」を見るのに、
+     30日は入り口としては長すぎます（30日ぶんの点は、電話の幅では
+     一日ぶんが10pxほどになり、日々の上下が読めません）。 */
+  let range = 7;              // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
   let series = "";             // 体重と並べて見るもの。空なら体重だけ。
 
@@ -16752,7 +16831,7 @@ a.btn { text-decoration: none; }
     const pts = all.filter((p) => p.day >= from);
     if (pts.length < 2) return null;
     let max = null;
-    D.daysBetween(pts[0].day, pts[pts.length - 1].day).forEach((d) => {
+    D.daysBetween(pts[0].day, today).forEach((d) => {
       const v = sel.get(d);
       if (v != null && (max == null || v > max)) max = v;
     });
@@ -16825,9 +16904,26 @@ a.btn { text-decoration: none; }
     const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
     const goal = store.get().diet.goal.targetKg;
 
-    const t0 = U.dayDate(pts[0].day).getTime();
-    const t1 = U.dayDate(pts[pts.length - 1].day).getTime();
-    const span = Math.max(1, t1 - t0);
+    /* 横の並べ方。**左詰め**、一日の幅は期間どおり。
+
+       前は「いちばん古い点」から「いちばん新しい点」までを目一杯に
+       広げていました（両端揃え）。３日ぶんしか無い週でも横いっぱいに伸びて、
+       間隔だけを見ると毎日量ったように見えます。
+
+       期間の頭を左端に固定するのも試しましたが、こんどは記録が右の端に
+       寄って、左が大きく空きます。始めたばかりの人ほど読みにくい。
+
+       だから **記録の始まりを左端に置き、一日の幅は期間から決めます**。
+       七日を選べば一日は幅の1/6で、三日ぶんなら左から2つぶんまで。
+       間隔は本物のまま、余りは右に残ります。記録がそろっていれば、
+       これまでどおり横いっぱいになります。 */
+    const spanDays = range === 0
+      ? Math.max(1, D.daysBetween(pts[0].day, pts[pts.length - 1].day).length)
+      : range;
+    const dayW = (W - padL - padR) / Math.max(1, spanDays - 1);
+    const base = pts[0].day;
+    const idx = (day) => Math.round(
+      (U.dayDate(day).getTime() - U.dayDate(base).getTime()) / 86400000);
 
     const values = pts.map((p) => p.kg)
       .concat(ma7.map((m) => m.value), ma14.map((m) => m.value));
@@ -16839,7 +16935,7 @@ a.btn { text-decoration: none; }
     const padY = (hi - lo) * 0.12;
     lo -= padY; hi += padY;
 
-    const x = (day) => padL + ((U.dayDate(day).getTime() - t0) / span) * (W - padL - padR);
+    const x = (day) => padL + idx(day) * dayW;
     const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
     const path = (rows, get) => rows.map((r, i) => `${i ? "L" : "M"}${x(r.day).toFixed(1)} ${y(get(r)).toFixed(1)}`).join(" ");
 
@@ -16849,7 +16945,11 @@ a.btn { text-decoration: none; }
        します。目盛りは書きません——書けば「体重と同じ軸だ」と読まれます。
        いちばん大きい日の値だけを右上に置いて、天井が何かを言います。 */
     const sel = seriesOf(series);
-    const days = D.daysBetween(pts[0].day, pts[pts.length - 1].day);
+    /* 棒と印も、左端から。右の端より先には置きません（期間より長い
+       ぶんは、そもそもこの窓に入っていないので出てきませんが、
+       枠の外に描いてしまうと切れた棒が見えます）。 */
+    const lastX = W - padR;
+    const days = D.daysBetween(base, today).filter((d) => x(d) <= lastX + 0.01);
     const bars = [];
     let barMax = 0;
     if (sel.id) {
@@ -16909,8 +17009,11 @@ a.btn { text-decoration: none; }
             + `<rect class="diet-beer-hit" x="${(cx - 9).toFixed(1)}" y="${cy - 9}" width="18" height="18"/>`
             + `</g>`;
         }).join(""))}
-        <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(pts[0].day).replace("今日", "")}</text>
-        <text class="diet-axis" x="${W - padR}" y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
+        ${/* 端の日付。右は「いちばん新しい記録」の下に置きます——右端に
+              置くと、そこに点が無いのに日付だけがある形になります。 */""}
+        <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(base).replace("今日", "")}</text>
+        <text class="diet-axis" x="${Math.min(W - padR, Math.max(padL + 40, x(pts[pts.length - 1].day))).toFixed(1)}"
+              y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
       </svg>
     `);
 
@@ -16931,10 +17034,11 @@ a.btn { text-decoration: none; }
         <div class="diet-read">
           ${KN.util.raw(rows.map((d) => `
             <div class="diet-drink-row">
-              <b>${KN.util.escapeHtml(DR.describeItem(d))}</b>
+              <b>${d.time ? KN.util.escapeHtml(d.time) + "　" : ""}${KN.util.escapeHtml(DR.describeItem(d))}</b>
               <span>${d.abv}%${d.estimated ? "（推定）" : ""}</span>
               <span class="mono-num">純アルコール ${d.estimated ? "約" : ""}${d.alcoholG}g</span>
               <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+              ${moodOf(d) ? `<span class="diet-mood">${KN.util.escapeHtml(moodOf(d))}</span>` : ""}
             </div>`).join(""))}
           ${rows.length > 1 ? `
             <div class="diet-drink-row is-sum">
@@ -17089,6 +17193,14 @@ a.btn { text-decoration: none; }
 
   const EXAMPLES = ["ビール350ml 2本", "ワイン半分", "日本酒1合", "ハイボール2杯", "焼酎100ml"];
 
+  /** 札と自由入力をひと続きに。同じ言葉が二度出ないようにします。 */
+  function moodOf(d) {
+    const tags = (d.moodTags || []).filter(Boolean);
+    const text = String(d.mood || "").trim();
+    const all = text && !tags.includes(text) ? tags.concat(text) : tags;
+    return all.join("・");
+  }
+
   function openDrinkSheet(day0, editId) {
     const day = day0 || U.todayKey();
     const editing = editId ? store.drinksOfDay(day).find((d) => d.id === editId) : null;
@@ -17106,6 +17218,25 @@ a.btn { text-decoration: none; }
         </label>
         <div class="diet-chips js-ex"></div>
         <div class="js-read"></div>
+
+        ${/* 飲むたびに書き足すものなので、時刻を持たせます。あとで
+              「いつ飲みはじめたか」「何時間かけたか」を見るために。
+              既定はいま——たいてい、飲んだそのときに書くので。 */""}
+        <div class="time-row">
+          <span class="time-label">時刻</span>
+          <input class="input js-time" type="time" aria-label="時刻"
+                 value="${editing ? (editing.time || "") : U.nowTime()}">
+        </div>
+
+        <label class="field">
+          <span class="field-label">そのときの気分（任意）</span>
+          <input class="input js-mood" placeholder="疲れた／付き合い／…"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 value="${editing ? editing.mood || "" : ""}">
+        </label>
+        <div class="diet-chips js-moodtags"></div>
+        <p class="diet-note js-moodnote"></p>
+
         <div class="js-list"></div>
       </div>
     `);
@@ -17121,6 +17252,7 @@ a.btn { text-decoration: none; }
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
     let items = [];
+    let tags = editing ? (editing.moodTags || []).slice() : [];
 
     /* よくある書き方を、押せる形で。何をどう書けばいいかは、
        説明文より例のほうが早く伝わります。 */
@@ -17177,6 +17309,39 @@ a.btn { text-decoration: none; }
     paint();
     KN.ui.focusNow(q);
 
+    /* ---- 気分の札 ----
+
+       用意された選択肢はありません。**これまでに自分が書いた言葉**が並びます。
+       はじめて書く人には何も出ず、二度目からは自分の言葉が押せるようになります。
+       ここに一般的な五つを並べてしまうと、その五つの中から選ぶことになって、
+       自分の飲み方が他人の言葉で記録されます。 */
+    function paintMoodTags() {
+      const host = body.querySelector(".js-moodtags");
+      const note = body.querySelector(".js-moodnote");
+      const seen = DR.moodSuggestions(store.get().diet.drinks, 5);
+      const words = [...new Set(seen.map((x) => x.word).concat(tags))];
+      host.innerHTML = "";
+      if (!words.length) {
+        note.textContent = "書いた言葉は、次から押せる札になります"
+          + "（よくある言葉をこちらで並べることはしません——自分の言葉のほうが、あとで読み返したときに当たります）。";
+        return;
+      }
+      note.textContent = "札は、これまでに自分が書いた言葉から作られます。";
+      words.forEach((w) => {
+        const on = tags.includes(w);
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${w}</button>`);
+        chip.addEventListener("click", () => {
+          const i = tags.indexOf(w);
+          if (i >= 0) tags.splice(i, 1); else tags.push(w);
+          paintMoodTags();
+          haptic();
+        });
+        host.append(chip);
+      });
+    }
+    paintMoodTags();
+
     /* その日のぶんの一覧。ここから直せます。 */
     function paintList() {
       const list = body.querySelector(".js-list");
@@ -17189,8 +17354,9 @@ a.btn { text-decoration: none; }
         const row = node(html`
           <button class="row">
             <span class="row-main">
-              <span class="row-title">${DR.describeItem(d)}</span>
-              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+              <span class="row-title">${d.time ? d.time + "　" : ""}${DR.describeItem(d)}</span>
+              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal${
+                moodOf(d) ? "　" + moodOf(d) : ""}</span>
             </span>
             <span class="row-chevron">${icon("edit")}</span>
           </button>
@@ -17204,12 +17370,15 @@ a.btn { text-decoration: none; }
 
     foot.querySelector(".js-save").addEventListener("click", () => {
       if (!items.length) { KN.ui.toast("読めませんでした。書き方を変えてみてください"); return; }
+      const time = body.querySelector(".js-time").value || null;
+      const mood = body.querySelector(".js-mood").value.trim();
+      const extra = { day, raw: q.value.trim(), time, mood, moodTags: tags };
       if (editing) {
         // 直すときは一つぶん。二つに増えたなら、残りは足します。
-        store.updateDrink(editing.id, { ...items[0], day, raw: q.value.trim() });
-        items.slice(1).forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+        store.updateDrink(editing.id, { ...items[0], ...extra });
+        items.slice(1).forEach((it) => store.addDrink({ ...it, ...extra }));
       } else {
-        items.forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+        items.forEach((it) => store.addDrink({ ...it, ...extra }));
       }
       h.close();
       render();
@@ -22131,16 +22300,39 @@ distance=6.0km</pre>
      motion that puts a sheet away — now ends it too.
      A drag that starts inside the field is included on purpose: flicking the
      bar itself downwards is the most obvious way to push it out of sight. */
+  /** 指の下（と、その上のどこか）に、まだ縦へ動かせる余地があるか。
+
+      「下へ払ったらキーボードを閉じる」は、**動かせるものが何も無いとき**の
+      約束です。読み返すために長いメモや一覧を動かしているのに閉じられると、
+      読むことと打つことが両立しません。だから、その動きで実際に何かが
+      スクロールできるなら、払いとは見なしません。 */
+  function canScroll(node, dy) {
+    let el = node;
+    while (el && el !== document.body && el !== document.documentElement) {
+      if (el.scrollHeight > el.clientHeight + 1) {
+        const style = getComputedStyle(el);
+        if (/(auto|scroll)/.test(style.overflowY)) {
+          // 下へ払う（dy>0）＝上の内容を見にいく。まだ上に残りがあるか。
+          const room = dy > 0 ? el.scrollTop : el.scrollHeight - el.clientHeight - el.scrollTop;
+          if (room > 1) return true;
+        }
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
   function dismissKeyboardOnSwipeDown() {
     const DROP = 34;   // far enough that a tap with a wobble is not a swipe
     const SIDE = 40;   // and straight enough not to be a swipe across a row
-    let y0 = 0, x0 = 0, live = false;
+    let y0 = 0, x0 = 0, live = false, from = null;
 
     document.addEventListener("touchstart", (e) => {
       live = e.touches.length === 1 && document.documentElement.classList.contains("kb-open");
       if (!live) return;
       y0 = e.touches[0].clientY;
       x0 = e.touches[0].clientX;
+      from = e.target;
     }, { passive: true });
 
     document.addEventListener("touchmove", (e) => {
@@ -22149,11 +22341,15 @@ distance=6.0km</pre>
       if (Math.abs(e.touches[0].clientX - x0) > SIDE) { live = false; return; }
       if (dy < DROP) return;
       live = false;
+      /* 指の下にまだ動かせるものがあるなら、それは読み返しているのであって、
+         キーボードを払っているのではありません。長いメモを読み直すたびに
+         キーボードが落ちると、打ち直すのに毎回入り直すことになります。 */
+      if (canScroll(from, dy)) return;
       const el = document.activeElement;
       if (el && el.blur) el.blur();
     }, { passive: true });
 
-    document.addEventListener("touchend", () => { live = false; }, { passive: true });
+    document.addEventListener("touchend", () => { live = false; from = null; }, { passive: true });
   }
 
   /* Shopping history lives only in localStorage, which browsers are free to

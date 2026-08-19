@@ -197,6 +197,14 @@
       kcal: Math.max(0, Math.round(num(d.kcal) || 0)),
       // 推した値かどうか。画面で「約」を付けるのはこの旗ひとつで決めます。
       estimated: d.estimated !== false,
+      /* そのときの気分。自由に書いたものと、押した札の両方を持ちます——
+         自由入力だけでは数えられず、札だけでは実感が落ちるので。
+         札の中身は、その人が書いた言葉から作られます（決め打ちしません）。 */
+      mood: String(d.mood || "").trim().slice(0, 120),
+      moodTags: (Array.isArray(d.moodTags) ? d.moodTags : [])
+        .map((t) => String(t || "").trim())
+        .filter(Boolean)
+        .slice(0, 6),
       raw: typeof d.raw === "string" ? d.raw : "",
       at: d.at || new Date().toISOString(),
     };

@@ -309,8 +309,51 @@
      言いません。 */
   const GUIDE_G = 20;
 
+  /* ---------------- そのときの気分 ----------------
+
+     何を飲んだかだけでは、なぜ飲んだかは分かりません。「疲れた」「付き合い」
+     「うれしい」——そこに繰り返しがあるなら、それは量より先に見るべきものです。
+
+     **選択肢は用意しません。** よくある言葉を五つ並べておくのは簡単ですが、
+     並べた瞬間、人はその中から選びます。自分の言葉ではなく、こちらが用意した
+     言葉で自分の飲み方を記録することになる。しかもそれは、たいてい少しずつ
+     ずれています（「付き合い」と「断れなかった」は違う）。
+
+     だから、はじめは空欄だけです。書いた言葉をそのまま覚えて、次からは
+     それを押せるようにします。二度目からは、自分の言葉が並びます。 */
+
+  const MOOD_MAX_LEN = 12;   // これより長いものは「文」で、札にはなりません
+
+  /**
+   * これまでに書いた言葉から、押せる札を作ります。
+   * @param {Array} list これまでのお酒の記録
+   * @param {number} [max] いくつまで
+   * @returns {Array<{word:string, n:number}>} よく書いた順
+   */
+  function moodSuggestions(list, max) {
+    const rows = Array.isArray(list) ? list : [];
+    const count = new Map();
+    const last = new Map();
+    const bump = (w, at) => {
+      const word = String(w || "").trim();
+      if (!word || word.length > MOOD_MAX_LEN) return;
+      count.set(word, (count.get(word) || 0) + 1);
+      const t = String(at || "");
+      if (!last.has(word) || t > last.get(word)) last.set(word, t);
+    };
+    rows.forEach((r) => {
+      (Array.isArray(r.moodTags) ? r.moodTags : []).forEach((t) => bump(t, r.at));
+      // 短く書いた自由入力は、それ自体が札の候補です。
+      bump(r.mood, r.at);
+    });
+    return [...count.entries()]
+      .map(([word, n]) => ({ word, n }))
+      .sort((a, b) => b.n - a.n || String(last.get(b.word)).localeCompare(String(last.get(a.word))))
+      .slice(0, max || 5);
+  }
+
   KN.drinks = {
-    KINDS, GLASS, BOTTLE, GUIDE_G,
-    kindOf, byId, parse, parseOne, describeItem, totals,
+    KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN,
+    kindOf, byId, parse, parseOne, describeItem, totals, moodSuggestions,
   };
 })();
