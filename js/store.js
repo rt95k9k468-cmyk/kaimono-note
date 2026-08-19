@@ -96,6 +96,10 @@
         // 一日の目安。null なら画面は「残り」を出しません——目標が無いのに
         // 「残り1800kcal」と出すのは、勝手に決めた線を事実のように言うことです。
         kcalTarget: null, pTarget: null, fTarget: null, cTarget: null,
+        /* お酒の一日の目安（純アルコールg）。null なら 20g——厚生労働省の
+           「節度ある適度な飲酒」の量です。40g（男性で生活習慣病のリスクを
+           高めるとされる量）を目安に置きたい人もいるので、変えられます。 */
+        alcoholG: null,
       },
       // 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
       sync: { lastAt: null, added: 0, updated: 0 },
@@ -297,7 +301,7 @@
     out.goal.heightCm = posNum(out.goal.heightCm);
     out.goal.targetKg = posNum(out.goal.targetKg);
     out.goal.targetDay = dayStr(out.goal.targetDay);
-    ["kcalTarget", "pTarget", "fTarget", "cTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
     return out;
   }
 

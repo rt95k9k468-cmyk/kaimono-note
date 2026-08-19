@@ -238,6 +238,18 @@
    （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
 .cal.is-stuck { border-bottom-color: var(--c-border); }
 
+/* ダイエットのカレンダーは貼りつけません。やることの棚は月をほどいて縦に
+   並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
+   あるのは一日ぶんの記録で、月とは関係がありません——居座るぶん、体重も
+   グラフも下に押し下げるだけになります。 */
+#screen-diet .cal {
+  position: static;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+
 .cal-head {
   display: flex;
   align-items: center;
@@ -1697,8 +1709,6 @@
 
 /* ---- からだ ---- */
 
-/* 4つ横に並ぶのは幅があるときだけ。320pxの画面では3つ＋1つに折り返します
-   ——「7時間00分」は、四等分した枠には収まりません。 */
 /* 見出しに添える小さい絵。文字の高さに揃えて、行の背は変えません。 */
 .diet-hero-ico, .diet-stat-ico {
   display: inline-block; vertical-align: -2px; line-height: 0;
@@ -1707,9 +1717,10 @@
 .diet-hero-ico svg { width: 14px; height: 14px; stroke-width: 1.8; }
 .diet-stat-ico svg { width: 12px; height: 12px; stroke-width: 1.8; }
 
-/* 六つの枠。電話の幅では三つ二段に落ちます——70pxのままだと五つ並んで
-   一つあふれ、二段目に一つだけ残る不揃いな形になります。 */
-.diet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--sp-2); }
+/* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
+   「その日どうだったか」のひと組で、二段に割れると一組に見えなくなります。
+   そのぶん中身は詰めました（睡眠は 6h40m、飲酒は目安に対する％）。 */
+.diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .diet-cell {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   padding: var(--sp-2) 2px; background: var(--c-surface-2);
@@ -1720,17 +1731,22 @@
 .diet-cell-ico svg { width: 17px; height: 17px; stroke-width: 1.7; }
 /* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
-.diet-cell-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+.diet-cell-label { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
 .diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
-.diet-cell-unit { font-size: 10px; color: var(--c-text-3); }
-/* 飲酒の枠。数ではなく中身（「ビール 350ml × 2本」）を出すので、
-   横いっぱいを使います。三つの数の下に一段。 */
-.diet-cell-wide { grid-column: 1 / -1; }
-.diet-drink-what {
-  font-size: var(--fs-sm); font-weight: 700; line-height: 1.4;
-  text-align: center; word-break: break-word;
-}
-.diet-drink-what.is-none { color: var(--c-text-3); font-weight: 600; }
+/* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
+.diet-cell-value.is-over { color: var(--c-danger); }
+.diet-cell-unit { font-size: 10px; color: var(--c-text-3); white-space: nowrap; }
+
+/* 見出しの右に添える一言（最後の取り込み時刻など）。 */
+.section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--c-text-3); letter-spacing: 0; }
+
+/* 気づいたことと目標は、ときどき読み返す一枚。ほかのカードと地の色を
+   変えて、「毎日書くところ」と「たまに読むところ」を目で分けます。 */
+.diet-look { background: color-mix(in srgb, var(--c-accent) 7%, var(--c-surface)); }
+/* 中の小さい枠は、地の色から浮かせます（緑がかった地のままだと、
+   オレンジの上に別の色が乗って、どちらが枠か読みにくい）。 */
+.diet-look .row,
+.diet-look .diet-finding { background: color-mix(in srgb, var(--c-accent) 3%, var(--c-surface)); }
 
 /* 読み下し。打つそばから、入る中身を出します。 */
 .diet-drink-row {
