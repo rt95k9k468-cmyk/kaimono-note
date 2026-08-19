@@ -1820,6 +1820,18 @@ button, [role="tab"] {
    （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
 .cal.is-stuck { border-bottom-color: var(--c-border); }
 
+/* ダイエットのカレンダーは貼りつけません。やることの棚は月をほどいて縦に
+   並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
+   あるのは一日ぶんの記録で、月とは関係がありません——居座るぶん、体重も
+   グラフも下に押し下げるだけになります。 */
+#screen-diet .cal {
+  position: static;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+
 .cal-head {
   display: flex;
   align-items: center;
@@ -3279,8 +3291,6 @@ button, [role="tab"] {
 
 /* ---- からだ ---- */
 
-/* 4つ横に並ぶのは幅があるときだけ。320pxの画面では3つ＋1つに折り返します
-   ——「7時間00分」は、四等分した枠には収まりません。 */
 /* 見出しに添える小さい絵。文字の高さに揃えて、行の背は変えません。 */
 .diet-hero-ico, .diet-stat-ico {
   display: inline-block; vertical-align: -2px; line-height: 0;
@@ -3289,9 +3299,10 @@ button, [role="tab"] {
 .diet-hero-ico svg { width: 14px; height: 14px; stroke-width: 1.8; }
 .diet-stat-ico svg { width: 12px; height: 12px; stroke-width: 1.8; }
 
-/* 六つの枠。電話の幅では三つ二段に落ちます——70pxのままだと五つ並んで
-   一つあふれ、二段目に一つだけ残る不揃いな形になります。 */
-.diet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--sp-2); }
+/* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
+   「その日どうだったか」のひと組で、二段に割れると一組に見えなくなります。
+   そのぶん中身は詰めました（睡眠は 6h40m、飲酒は目安に対する％）。 */
+.diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .diet-cell {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   padding: var(--sp-2) 2px; background: var(--c-surface-2);
@@ -3302,17 +3313,22 @@ button, [role="tab"] {
 .diet-cell-ico svg { width: 17px; height: 17px; stroke-width: 1.7; }
 /* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
-.diet-cell-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+.diet-cell-label { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
 .diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
-.diet-cell-unit { font-size: 10px; color: var(--c-text-3); }
-/* 飲酒の枠。数ではなく中身（「ビール 350ml × 2本」）を出すので、
-   横いっぱいを使います。三つの数の下に一段。 */
-.diet-cell-wide { grid-column: 1 / -1; }
-.diet-drink-what {
-  font-size: var(--fs-sm); font-weight: 700; line-height: 1.4;
-  text-align: center; word-break: break-word;
-}
-.diet-drink-what.is-none { color: var(--c-text-3); font-weight: 600; }
+/* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
+.diet-cell-value.is-over { color: var(--c-danger); }
+.diet-cell-unit { font-size: 10px; color: var(--c-text-3); white-space: nowrap; }
+
+/* 見出しの右に添える一言（最後の取り込み時刻など）。 */
+.section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--c-text-3); letter-spacing: 0; }
+
+/* 気づいたことと目標は、ときどき読み返す一枚。ほかのカードと地の色を
+   変えて、「毎日書くところ」と「たまに読むところ」を目で分けます。 */
+.diet-look { background: color-mix(in srgb, var(--c-accent) 7%, var(--c-surface)); }
+/* 中の小さい枠は、地の色から浮かせます（緑がかった地のままだと、
+   オレンジの上に別の色が乗って、どちらが枠か読みにくい）。 */
+.diet-look .row,
+.diet-look .diet-finding { background: color-mix(in srgb, var(--c-accent) 3%, var(--c-surface)); }
 
 /* 読み下し。打つそばから、入る中身を出します。 */
 .diet-drink-row {
@@ -8098,6 +8114,10 @@ a.btn { text-decoration: none; }
         // 一日の目安。null なら画面は「残り」を出しません——目標が無いのに
         // 「残り1800kcal」と出すのは、勝手に決めた線を事実のように言うことです。
         kcalTarget: null, pTarget: null, fTarget: null, cTarget: null,
+        /* お酒の一日の目安（純アルコールg）。null なら 20g——厚生労働省の
+           「節度ある適度な飲酒」の量です。40g（男性で生活習慣病のリスクを
+           高めるとされる量）を目安に置きたい人もいるので、変えられます。 */
+        alcoholG: null,
       },
       // 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
       sync: { lastAt: null, added: 0, updated: 0 },
@@ -8299,7 +8319,7 @@ a.btn { text-decoration: none; }
     out.goal.heightCm = posNum(out.goal.heightCm);
     out.goal.targetKg = posNum(out.goal.targetKg);
     out.goal.targetDay = dayStr(out.goal.targetDay);
-    ["kcalTarget", "pTarget", "fTarget", "cTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
     return out;
   }
 
@@ -16789,6 +16809,9 @@ a.btn { text-decoration: none; }
     return /^-?0(\.0+)?$/.test(s) ? "±" + s.replace("-", "") : (v > 0 ? "+" + s : s);
   };
   const hhmm = (min) => (min == null ? "—" : `${Math.floor(min / 60)}時間${String(Math.round(min % 60)).padStart(2, "0")}分`);
+  /* 横に四つ並べる枠のための、短い書き方。「6時間40分」は7文字で、
+     四等分した枠には入りません。 */
+  const hm = (min) => (min == null ? "—" : `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, "0")}m`);
 
   /* ---------------- 組み立て ---------------- */
 
@@ -16828,21 +16851,10 @@ a.btn { text-decoration: none; }
     els.sync.addEventListener("click", openSyncSheet);
     els.settings.addEventListener("click", () => KN.showScreen("settings"));
 
-    /* カレンダーは上のバーのすぐ下に貼りつきます。バーの高さはノッチの
-       深さで変わるので、実測して渡します（やることのタブと同じ作り）。 */
-    const fitCal = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    els.fitCal = fitCal;
-    fitCal();
-    window.addEventListener("resize", fitCal);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
-
+    /* カレンダーは貼りつけません（やることのタブとはそこだけ違います）。
+       紙のいちばん上に印刷してあるものとして、スクロールで一緒に流れます。 */
     root.addEventListener("scroll", () => {
-      const stuck = root.scrollTop > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
     });
   }
 
@@ -16859,15 +16871,24 @@ a.btn { text-decoration: none; }
 
     els.body.innerHTML = "";
     els.cal = monthCalendar();
-    if (root && root.scrollTop > 4) els.cal.classList.add("is-stuck");
     els.body.append(els.cal);
+    /* 枠の分け方は「読む用がいつ来るか」で決めています。
+         体重＋推移   … 毎日いちばんに見るもの
+         からだ＋食事 … その日を書き足すところ（同じ一日の話なので一枚に）
+         気づき＋目標 … ときどき読み返すもの */
     els.body.append(node(html`
       <div class="diet">
         <div class="js-today"></div>
-        <div class="js-body-stats"></div>
-        <div class="js-meals"></div>
-        <div class="js-insight"></div>
-        <div class="js-goal"></div>
+        <section class="card section">
+          <div class="js-body-stats"></div>
+          <div class="divider"></div>
+          <div class="js-meals"></div>
+        </section>
+        <section class="card section diet-look">
+          <div class="js-insight"></div>
+          <div class="divider"></div>
+          <div class="js-goal"></div>
+        </section>
       </div>
     `));
 
@@ -16877,9 +16898,6 @@ a.btn { text-decoration: none; }
     renderInsight(els.body.querySelector(".js-insight"));
     renderGoal(els.body.querySelector(".js-goal"), now);
 
-    /* バーの厚みは、日付が入って一行増えたぶんだけ変わります。組み立てて
-       から測り直さないと、カレンダーがその差だけバーの下に潜ります。 */
-    if (els.fitCal) els.fitCal();
     if (root && keepTop) {
       root.scrollTop = Math.min(keepTop, Math.max(0, root.scrollHeight - root.clientHeight));
     }
@@ -17459,6 +17477,9 @@ a.btn { text-decoration: none; }
   const isManual = (day, type) =>
     store.healthOfDay(day, type).some((h) => h.source === "manual");
 
+  /** 一日の目安（純アルコールg）。決めていなければ厚労省の20g。 */
+  const alcoholGuide = () => store.get().diet.goal.alcoholG || DR.GUIDE_G;
+
   function renderBodyStats(host, card) {
     const sync = store.get().diet.sync;
     const dt = card.drinkTotals;
@@ -17467,15 +17488,18 @@ a.btn { text-decoration: none; }
 
        総消費は、安静時とアクティブを **こちらで足して** 出します。二つに
        分けて見せていましたが、「今日どれだけ使ったか」を知るのに人に足し算を
-       させるのは、こちらがやるべき仕事です。分けたぶんは「記録を見る・直す」に
-       あります。
+       させるのは、こちらがやるべき仕事です。分けたぶんは、枠を押して開く
+       「からだの記録」にあります。
 
        歩行距離はここから外しました。毎日ほとんど同じで、体重との関係も
        歩数がすでに言っています（そして機械が二台あると二重に数える——
        取り込みのほうで直しました）。記録としては持ち続けます。
 
-       飲酒は数ではなく、**中身**を出します。「1杯」とだけ出しても、
-       それがビール350mlなのか焼酎の水割りなのかで話がまるで違うので。 */
+       四つを**横一列**に並べます。そのために書き方を詰めました——睡眠は
+       「6時間40分」ではなく「6h40m」、飲酒は中身の言葉ではなく
+       **一日の目安に対する％**。中身は押せば出てきます。 */
+    const guide = alcoholGuide();
+    const pct = dt ? Math.round((dt.alcoholG / guide) * 100) : 0;
     const rows = [
       { type: "steps", label: "歩数", unit: "歩", ico: "steps",
         value: showValue("steps", card.steps), manual: isManual(card.day, "steps") },
@@ -17483,35 +17507,30 @@ a.btn { text-decoration: none; }
         value: card.burned == null ? "—" : n0(card.burned),
         manual: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy") },
       { type: "sleep", label: "睡眠", unit: "", ico: "moon",
-        value: showValue("sleep", card.sleep), manual: isManual(card.day, "sleep") },
+        value: card.sleep == null ? "—" : hm(card.sleep), manual: isManual(card.day, "sleep") },
+      /* 飲酒だけは「無い」ときも薄くしません。飲まなかった日は空白では
+         なく **0%という記録**で、そこが薄いと「書き忘れ」に見えます。 */
+      { type: "drink", label: "飲酒", ico: "drink", keep: true,
+        value: pct + "%", unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
+        over: pct > 100 },
     ];
-    const nothing = rows.every((r) => r.value === "—") && !card.workouts.length && !dt;
+    const nothing = card.steps == null && card.burned == null && card.sleep == null
+      && !card.workouts.length && !dt;
 
     const sec = node(html`
-      <section class="card section">
-        <div class="section-title">${icon("heart")}${dayName()}のからだ</div>
+      <div class="stack">
+        <div class="section-title">${icon("heart")}${dayName()}のからだ
+          ${sync.lastAt ? html`<span class="section-note">取り込み ${U.formatStamp(sync.lastAt)}</span>` : ""}
+        </div>
         <div class="diet-grid">
           ${KN.util.raw(rows.map((r) => `
-            <button class="diet-cell js-cell ${r.value === "—" ? "is-blank" : ""}" data-type="${r.type}">
+            <button class="diet-cell js-cell ${r.type === "drink" ? "js-drink" : ""} ${
+              r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
               <span class="diet-cell-ico">${icon(r.ico)}</span>
               <span class="diet-cell-label">${r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
-              <b class="diet-cell-value mono-num">${r.value}</b>
+              <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
             </button>`).join(""))}
-          ${/* 飲酒。三つの数と並べますが、中身は数ではなく言葉なので、
-                枠は横に長く取ります。 */""}
-          <button class="diet-cell diet-cell-wide js-drink ${dt ? "" : "is-blank"}">
-            <span class="diet-cell-ico">${icon("drink")}</span>
-            <span class="diet-cell-label">飲酒</span>
-            ${dt ? html`
-              <b class="diet-drink-what">${card.drinks.map((d) => DR.describeItem(d)).join("・")}</b>
-              <span class="diet-cell-unit">純アルコール ${dt.estimated ? "約" : ""}${dt.alcoholG}g
-                ・ ${dt.estimated ? "約" : ""}${dt.kcal.toLocaleString()}kcal</span>
-            ` : html`
-              <b class="diet-drink-what is-none">飲酒なし</b>
-              <span class="diet-cell-unit">タップして記録する</span>
-            `}
-          </button>
         </div>
         ${card.workouts.length ? html`
           <div class="diet-workouts">
@@ -17524,25 +17543,19 @@ a.btn { text-decoration: none; }
             ${icon("download")}ヘルスケアから取り込む
           </button>
           <p class="diet-note">歩数や睡眠は、iPhoneの「ショートカット」で書き出したものを読み込みます。
-            やり方は取り込み画面に書いてあります。枠を押せば手で書くこともできます。</p>` : html`
-          <div class="diet-foot">
-            <button class="btn btn-ghost btn-sm js-log">${icon("edit")}記録を見る・直す</button>
-            <span class="diet-note">${sync.lastAt ? `最後の取り込み：${U.formatStamp(sync.lastAt)}` : ""}</span>
-          </div>`}
-      </section>
+            やり方は取り込み画面に書いてあります。枠を押せば手で書くこともできます。</p>` : ""}
+      </div>
     `);
     const btn = sec.querySelector(".js-import");
     if (btn) btn.addEventListener("click", openSyncSheet);
-    const log = sec.querySelector(".js-log");
-    if (log) log.addEventListener("click", () => openBodySheet(card.day));
     sec.querySelectorAll(".js-cell").forEach((c) => {
       c.addEventListener("click", () => {
+        if (c.dataset.type === "drink") { openDrinkSheet(card.day); return; }
         // 総消費はそれ自体の欄が無いので、内わけの片方に降ろします。
         const t = c.dataset.type === "burned" ? "activeEnergy" : c.dataset.type;
         openBodySheet(card.day, t);
       });
     });
-    sec.querySelector(".js-drink").addEventListener("click", () => openDrinkSheet(card.day));
     host.append(sec);
   }
 
@@ -17924,7 +17937,7 @@ a.btn { text-decoration: none; }
     const others = meals.filter((m) => m.slot !== "memo");
 
     const sec = node(html`
-      <section class="card section">
+      <div class="stack">
         <div class="section-title">${icon("meal")}${dayName()}の食事</div>
 
         <div class="diet-kcal">
@@ -18007,7 +18020,7 @@ a.btn { text-decoration: none; }
                 </button>`;
             }).join(""))}
           </div>` : ""}
-      </section>
+      </div>
     `);
 
     sec.querySelector(".js-memo").addEventListener("click", () => openMemoSheet(card.day));
@@ -18203,7 +18216,7 @@ a.btn { text-decoration: none; }
     const aiOn = KN.dietAI.configured();
 
     const sec = node(html`
-      <section class="card section">
+      <div class="stack">
         <div class="section-title">${icon("sparkles")}気づいたこと</div>
         <div class="js-win"></div>
         ${found.length ? html`
@@ -18217,19 +18230,18 @@ a.btn { text-decoration: none; }
                 </div>
               </div>`).join(""))}
           </div>
-          <p class="diet-note">ここに出るのは、並んだ数どうしの<b>関連</b>です。
-            どちらがどちらを動かしたのかは、この計算では分かりません。</p>
         ` : html`
           <div class="empty diet-empty">
             <div class="empty-text">まだ言えることがありません。<br>
               直近${cov.days}日のうち、体重 ${cov.weight}日・食事 ${cov.meals}日・歩数 ${cov.steps}日ぶんの記録です。</div>
           </div>`}
+        ${/* 「これは関連であって因果ではありません」の但し書きは外しました。
+              毎回同じ文が下に付くと、読み飛ばす癖のほうが先に付きます。
+              言い方そのものを、断定しない形にしてあります（diet.js）。 */""}
         ${aiOn ? html`
           <button class="btn btn-soft btn-block js-ai">${icon("sparkles")}AIに相談する</button>
-        ` : html`
-          <p class="diet-note">AIの分析を使うには、設定で<b>窓口のURL</b>を決めます。
-            APIキーはこのアプリには置きません（このページの中身は誰でも読めるので）。</p>`}
-      </section>
+        ` : ""}
+      </div>
     `);
 
     KN.ui.chipRow(sec.querySelector(".js-win"),
@@ -18277,7 +18289,7 @@ a.btn { text-decoration: none; }
     const g = sum.goal;
     const proj = D.projection();
     const sec = node(html`
-      <section class="card section">
+      <div class="stack">
         <div class="section-title">${icon("flag")}目標</div>
         <div class="rows">
           <button class="row js-goal">
@@ -18304,7 +18316,7 @@ a.btn { text-decoration: none; }
           </div>
         </div>
         ${proj ? html`<p class="diet-note">${projText(proj)}</p>` : ""}
-      </section>
+      </div>
     `);
     sec.querySelector(".js-goal").addEventListener("click", openGoalSheet);
     host.append(sec);
@@ -18804,6 +18816,18 @@ a.btn { text-decoration: none; }
           </label>
         </div>
         <div class="js-suggest-box"></div>
+
+        <label class="field">
+          <span class="field-label">お酒の目安（純アルコール g/日）</span>
+          <input class="input js-alc" inputmode="decimal" placeholder="20"
+                 value="${g.alcoholG == null ? "" : String(g.alcoholG)}">
+        </label>
+        <p class="diet-note">
+          空なら <b>${DR.GUIDE_G}g</b> で数えます。厚生労働省は「節度ある適度な飲酒」を
+          一日 純アルコール<b>20g程度</b>（ビール中瓶1本ほど）としていて、
+          男性で<b>40g以上</b>が生活習慣病のリスクを高める量とされています。
+          今日のからだの「飲酒」は、この目安を100%とした割合で出します。
+        </p>
       </div>
     `);
 
@@ -18825,6 +18849,7 @@ a.btn { text-decoration: none; }
         pTarget: num(".js-p"),
         fTarget: num(".js-f"),
         cTarget: num(".js-c"),
+        alcoholG: num(".js-alc"),
       });
       h.close();
       render();
