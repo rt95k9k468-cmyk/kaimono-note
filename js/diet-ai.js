@@ -99,12 +99,27 @@
           steps: store.healthValue(d, "steps"),
           sleepMin: store.healthValue(d, "sleep"),
           activeEnergy: store.healthValue(d, "activeEnergy"),
+          restingEnergy: store.healthValue(d, "restingEnergy"),
+          // 安静時＋アクティブ。両方そろった日だけ数えます。
+          burnedKcal: KN.diet.burnedOf(d),
+          /* お酒。飲まなかった日は drinks:[] で、**その日を渡さない**のとは
+             別のことです（記録が無いのか、飲まなかったのかを分けるため）。 */
+          drinks: store.drinksOfDay(d).map((x) => ({
+            kind: x.kind, name: x.name || null, volumeMl: x.volumeMl,
+            abv: x.abv, alcoholG: x.alcoholG, kcal: x.kcal, estimated: x.estimated,
+          })),
+          alcoholG: (store.drinkTotals(d) || {}).alcoholG != null ? store.drinkTotals(d).alcoholG : 0,
+          drinkKcal: (store.drinkTotals(d) || {}).kcal != null ? store.drinkTotals(d).kcal : 0,
           workouts: store.healthOfDay(d, "workout").map((h) => ({ label: h.label, min: h.value, kcal: h.kcal })),
         };
-      }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null || r.sleepMin != null),
+      }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null
+                    || r.sleepMin != null || r.drinks.length),
       // 相関を因果と言わせないための一言。窓口側のプロンプトにも
       // 同じことを書きますが、材料にも添えておきます。
       note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。"
+        + "kcal は食べたものだけの数で、飲酒由来は drinkKcal に分けてある（足すかどうかは用途しだい）。"
+        + "alcoholG は純アルコール量（ml×度数%÷100×0.8）。estimated が真のものは推定値なので、"
+        + "細かい差を意味のあるものとして扱わないこと。"
         + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
         + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };

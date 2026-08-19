@@ -3185,10 +3185,36 @@ button, [role="tab"] {
 /* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
 .diet-dot.is-health { fill: none; stroke: var(--c-text-3); stroke-width: 1; }
 
+/* 並べて見るものの棒。**主役は体重の線**なので、棒は背後に薄く敷きます
+   （濃くすると、線より先に目に入って主客が入れ替わります）。 */
+.diet-bar { fill: var(--c-primary); opacity: .17; }
+.diet-axis.is-right { fill: var(--c-text-3); }
+
+/* 飲んだ日の印。濃さは純アルコール量で変えます（SVG側で opacity を付ける）。 */
+.diet-beer-mug { fill: none; stroke: var(--c-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.diet-beer-hit { fill: transparent; }
+.diet-beer { cursor: pointer; }
+
+/* 「並べて見る」の札の列。六つあるので、電話の幅には収まりません。
+
+   横に並べて置こうとして、カードごとはみ出させました。flex の子は
+   min-width:auto で中身ぶんまで突っ張るので、min-width:0 を足しても
+   親の親まで同じことが起き、結局どこかで突っ張ります。
+   **札を下の段に置けば、その綱引きは起きません** ——上の期間の列と
+   同じ形になって、読み方もそろいます。 */
+.diet-with { display: block; }
+.diet-with-label {
+  display: block; font-size: var(--fs-xs); color: var(--c-text-3);
+  margin-bottom: 2px;
+}
+
 .diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .diet-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
+.diet-legend-item i.dot-bar { background: var(--c-primary); opacity: .3; width: 8px; height: 10px; border-radius: 2px; }
+.diet-legend-item i.dot-beer { width: 12px; height: 12px; border-radius: 0; background: none; color: var(--c-accent); line-height: 0; }
+.diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }
 .diet-legend-item i.dot-ma7 { background: var(--c-primary); }
 .diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
 .diet-legend-item i.dot-goal { background: repeating-linear-gradient(90deg, var(--c-accent) 0 4px, transparent 4px 7px); }
@@ -3224,6 +3250,24 @@ button, [role="tab"] {
 .diet-cell-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
 .diet-cell-unit { font-size: 10px; color: var(--c-text-3); }
+/* 飲酒の枠。数ではなく中身（「ビール 350ml × 2本」）を出すので、
+   横いっぱいを使います。三つの数の下に一段。 */
+.diet-cell-wide { grid-column: 1 / -1; }
+.diet-drink-what {
+  font-size: var(--fs-sm); font-weight: 700; line-height: 1.4;
+  text-align: center; word-break: break-word;
+}
+.diet-drink-what.is-none { color: var(--c-text-3); font-weight: 600; }
+
+/* 読み下し。打つそばから、入る中身を出します。 */
+.diet-drink-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--sp-3);
+  font-size: var(--fs-xs); color: var(--c-text-2); padding: 3px 0;
+}
+.diet-drink-row b { font-size: var(--fs-sm); color: var(--c-text); flex: 1 1 100%; }
+.diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
+.diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 /* ---- 食事 ---- */
@@ -3870,6 +3914,10 @@ a.btn { text-decoration: none; }
     trend:     '<path d="M3.6 16.6 9 11.2l3.4 3.4 7-7"/><path d="M14.6 7.6h4.8v4.8"/>',
     drop:      '<path d="M12 3.2s6 6.3 6 10.2a6 6 0 0 1-12 0c0-3.9 6-10.2 6-10.2Z"/>',
     clock:     '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.2 1.9"/>',
+    /* お酒。ジョッキ。持ち手があると、コップやバケツと間違えません。 */
+    drink:     '<path d="M6.2 4.6h9.2v13.2a2 2 0 0 1-2 2H8.2a2 2 0 0 1-2-2Z"/>'
+             + '<path d="M15.4 7.6h2.2a2.4 2.4 0 0 1 0 4.8h-2.2"/>'
+             + '<path d="M6.2 9.2h9.2"/>',
   };
 
   /** Inline stroke icon. */
@@ -7954,6 +8002,9 @@ a.btn { text-decoration: none; }
       meals: [],
       foods: [],
       health: [],
+      // お酒。食事とは別に持ちます——飲んだ量と純アルコール量は、
+      // 食べたものの栄養とは別の軸で見るものなので。
+      drinks: [],
       goal: {
         heightCm: null,
         targetKg: null,
@@ -8034,6 +8085,39 @@ a.btn { text-decoration: none; }
     };
   }
 
+  /* お酒の一杯。
+     読み取りは直せますが、**本人が書いた文はもう手に入りません**。
+     だから raw を必ず持ちます。あとで読み方を良くしたときに、
+     古い記録も読み直せます。 */
+  function cleanDrink(d) {
+    if (!d || typeof d !== "object") return null;
+    const kinds = (KN.drinks && KN.drinks.KINDS) || [];
+    const kind = kinds.some((k) => k.id === d.kind) ? d.kind : "other";
+    const label = String(d.kindLabel || "").trim()
+      || ((kinds.find((k) => k.id === kind) || {}).label || "お酒");
+    const volumeMl = Math.max(0, Math.round((num(d.volumeMl) || 0) * 10) / 10);
+    if (!volumeMl) return null;
+    return {
+      id: d.id || uid("dr"),
+      day: dayStr(d.day) || today(),
+      time: KN.util.isTime(d.time) ? d.time : null,
+      kind,
+      kindLabel: label,
+      name: String(d.name || "").trim().slice(0, 40),
+      ml: Math.max(0, Math.round((num(d.ml) || 0) * 10) / 10),
+      count: Math.max(0, Math.round((num(d.count) || 1) * 100) / 100) || 1,
+      unit: ["本", "杯"].includes(d.unit) ? d.unit : "本",
+      volumeMl,
+      abv: Math.max(0, Math.round((num(d.abv) || 0) * 10) / 10),
+      alcoholG: Math.max(0, Math.round((num(d.alcoholG) || 0) * 10) / 10),
+      kcal: Math.max(0, Math.round(num(d.kcal) || 0)),
+      // 推した値かどうか。画面で「約」を付けるのはこの旗ひとつで決めます。
+      estimated: d.estimated !== false,
+      raw: typeof d.raw === "string" ? d.raw : "",
+      at: d.at || new Date().toISOString(),
+    };
+  }
+
   function cleanMeal(m, i) {
     const items = (Array.isArray(m.items) ? m.items : []).map(cleanMealItem).filter(Boolean);
     if (!items.length && !String(m.memo || "").trim()) return null;
@@ -8109,6 +8193,9 @@ a.btn { text-decoration: none; }
       meals: (Array.isArray(src.meals) ? src.meals : []).map(cleanMeal).filter(Boolean),
       foods: (Array.isArray(src.foods) ? src.foods : []).map(cleanUserFood).filter(Boolean),
       health: (Array.isArray(src.health) ? src.health : []).map(cleanHealth).filter(Boolean),
+      /* 前からある記録には drinks がありません。空で足すだけなので、
+         入れ直しても既存のデータは何も動きません。 */
+      drinks: (Array.isArray(src.drinks) ? src.drinks : []).map(cleanDrink).filter(Boolean),
       goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
       sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },
     };
@@ -8331,6 +8418,12 @@ a.btn { text-decoration: none; }
   function persist() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
+      /* 走り終えたら手を離します。ここを忘れていたので、saveTimer は
+         一度でも保存すればずっと真のままでした。reload() は「書きかけが
+         あるなら先に書き出す」ためにこの値を見るので、**いつでも
+         書き出してから読み直す**ことになり、外から書き換えられた控えを
+         毎回踏み潰していました（読み直す意味がありませんでした）。 */
+      saveTimer = null;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
       } catch (err) {
@@ -9201,7 +9294,42 @@ a.btn { text-decoration: none; }
       .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
   }
 
-  /* --- その人の食品 --- */
+  /* --- お酒 --- */
+
+  function addDrink(d) {
+    const rec = cleanDrink(d);
+    if (!rec) return null;
+    update((st) => { st.diet.drinks.push(rec); });
+    return rec;
+  }
+
+  function updateDrink(id, patch) {
+    let out = null;
+    update((st) => {
+      const i = st.diet.drinks.findIndex((x) => x.id === id);
+      if (i < 0) return;
+      const merged = cleanDrink({ ...st.diet.drinks[i], ...patch, id });
+      if (merged) { st.diet.drinks[i] = merged; out = merged; }
+    });
+    return out;
+  }
+
+  function removeDrink(id) {
+    update((st) => { st.diet.drinks = st.diet.drinks.filter((x) => x.id !== id); });
+  }
+
+  function drinksOfDay(day) {
+    return diet().drinks.filter((d) => d.day === day)
+      .sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))
+                   || String(a.at).localeCompare(String(b.at)));
+  }
+
+  /** その日の合計。飲んでいない日は null（0 と「無い」は別のことです）。 */
+  function drinkTotals(day) {
+    return KN.drinks ? KN.drinks.totals(drinksOfDay(day)) : null;
+  }
+
+  /** --- その人の食品 --- */
 
   function addUserFood(food) {
     const rec = cleanUserFood(food);
@@ -9434,6 +9562,7 @@ a.btn { text-decoration: none; }
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay,
+    addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, clearDiet,
@@ -12232,8 +12361,26 @@ a.btn { text-decoration: none; }
       // （ショートカット側でもそう書き出します）。
       sleep: store.healthValue(d, "sleep"),
       heartRate: store.healthValue(d, "heartRate"),
+      /* 総消費。安静時＋アクティブ。
+
+         別々に見せていましたが、「今日どれだけ使ったか」を知りたいときに
+         二つの数を足させるのは、こちらがやるべき仕事です。片方しか
+         取れていない日は、足すと嘘になるので null にします——
+         「1,444kcal使った」と「安静時ぶんしか分からない」は違います。 */
+      burned: burnedOf(d),
       workouts,
+      drinks: store.drinksOfDay(d),
+      drinkTotals: store.drinkTotals(d),
     };
+  }
+
+  /** その日の総消費。両方そろっているときだけ数えます。 */
+  function burnedOf(day) {
+    const rest = store.healthValue(day, "restingEnergy");
+    const act = store.healthValue(day, "activeEnergy");
+    if (rest == null && act == null) return null;
+    if (rest == null || act == null) return null;
+    return Math.round(rest + act);
   }
 
   /* ---------------- 統合分析 ----------------
@@ -12453,6 +12600,43 @@ a.btn { text-decoration: none; }
       });
     }
 
+    /* --- 飲んだ日と、その翌日 ---
+
+       翌日の体重を見ます。当日ではありません——飲んだあと体重計に
+       乗る人は少ないし、アルコールは水分として翌朝に出るからです。
+
+       ここは特に、因果に読まれやすいところです。「飲んだから増えた」と
+       書けば、そう読まれます。実際には、飲む日は外食の日でもあり、
+       塩分も糖質も同時に増えます。だから **並びの差** としてだけ言います。 */
+    const drinkDays = pts.filter((p) => {
+      const t = store.drinkTotals(U.shiftDay(p.day, -1));
+      return !!t;
+    });
+    const soberDays = pts.filter((p) => !store.drinkTotals(U.shiftDay(p.day, -1)));
+    const dr = [], so = [];
+    drinkDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) dr.push(p.kg - m); });
+    soberDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) so.push(p.kg - m); });
+    if (dr.length >= MIN_GROUP && so.length >= MIN_GROUP) {
+      const diff = round(mean(dr) - mean(so), 2);
+      const gTotal = drinkDays.reduce((a, p) => {
+        const t = store.drinkTotals(U.shiftDay(p.day, -1));
+        return a + (t ? t.alcoholG : 0);
+      }, 0);
+      out.push({
+        id: "drink",
+        title: "飲んだ翌日の体重",
+        text: Math.abs(diff) < 0.1
+          ? `飲んだ翌日（${dr.length}日）と、そうでない日（${so.length}日）で、`
+            + `7日平均からのずれに目立った差はありません。`
+          : `飲んだ翌日は、そうでない日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
+            + `（飲んだ翌日 ${dr.length}日 / そうでない日 ${so.length}日、`
+            + `純アルコール 平均${round(gTotal / dr.length, 1)}g）。`
+            + `並びに差があるということで、飲酒が原因だとは言えません`
+            + `——飲む日は外食の日でもあり、塩分も水分も一緒に動きます。`,
+        value: diff, tone: "info", n: dr.length + so.length,
+      });
+    }
+
     /* --- 平日と休日 --- */
     const wd = [], we = [];
     pts.forEach((p) => {
@@ -12516,11 +12700,330 @@ a.btn { text-decoration: none; }
   }
 
   KN.diet = {
+    burnedOf,
     daysBetween, weightPoints, movingAverage, slopePerWeek,
     weightSummary, projection, neededPace,
     dayTotals, remaining, pfcRatio, dayCard,
     analyze, coverage,
     MIN_GROUP,
+  };
+})();
+
+/* ---- js/drinks.js ---- */
+/* =========================================================
+   くらしノート — お酒
+   =========================================================
+
+   「ビール350mlを2本」と書けば、それだけで済むようにします。
+   毎晩のことなので、種類を選んで、量を選んで、本数を選んで……を
+   三回繰り返させると、三日でやめます。
+
+   書いたものは **そのまま残します**（raw）。読み取りはいつか直しますが、
+   本人が書いた文はもう二度と手に入らないからです。読み違えていたときも、
+   元の文が残っていれば後から直せます。
+
+   ---- 純アルコール量 ----
+
+     g = ml × 度数(%) ÷ 100 × 0.8
+
+   0.8 はエタノールの比重です。厚生労働省の「節度ある適度な飲酒」の
+   説明もこの式で、ビール500ml（5%）＝20g と数えます。
+
+   ---- カロリー ----
+
+   アルコールそのものは 1g あたり約7kcal。ただし飲みものはアルコール
+   だけでできてはいません——ビールには糖質があり、蒸留酒にはほとんど
+   ありません。だから「純アルコール×7」だけで済ませると、ビールは
+   低めに出ます。種類ごとの 100ml あたりの目安を持っておいて、それが
+   あるならそちらを使います。
+
+   どちらにしても **推定です**。度数を書かなかったなら、なおさら
+   推定です。estimated の印を付けて持ち、画面では「約」と書きます。
+   量った値と推した値が同じ顔で並ぶと、記録全体の信頼度は低いほうへ
+   揃ってしまうので。 */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+
+  /* 種類ごとの目安。度数は日本で売られているものの真ん中あたり、
+     kcal100 は 100ml あたりのエネルギー（文部科学省の食品成分表の
+     アルコール飲料の値をもとにした概数）。
+
+     words は書き方のゆれ。長いものから当てるので、「黒ビール」は
+     「ビール」より先に当たります。 */
+  const KINDS = [
+    { id: "beer",     label: "ビール",     abv: 5,    kcal100: 40,
+      words: ["ビール", "びーる", "발포", "発泡酒", "第三のビール", "黒ビール", "エール", "ipa", "ラガー", "beer"] },
+    { id: "highball", label: "ハイボール", abv: 7,    kcal100: 50,
+      words: ["ハイボール", "はいぼーる", "highball"] },
+    { id: "chuhai",   label: "チューハイ", abv: 6,    kcal100: 50,
+      words: ["チューハイ", "酎ハイ", "ちゅーはい", "サワー", "さわー", "ストロング"] },
+    { id: "wine",     label: "ワイン",     abv: 12,   kcal100: 73,
+      words: ["ワイン", "わいん", "赤ワイン", "白ワイン", "ロゼ", "スパークリング", "シャンパン", "wine"] },
+    { id: "sake",     label: "日本酒",     abv: 15,   kcal100: 103,
+      words: ["日本酒", "にほんしゅ", "清酒", "純米", "吟醸", "sake"] },
+    { id: "shochu",   label: "焼酎",       abv: 25,   kcal100: 144,
+      words: ["焼酎", "しょうちゅう", "芋焼酎", "麦焼酎", "泡盛", "shochu"] },
+    { id: "whisky",   label: "ウイスキー", abv: 40,   kcal100: 237,
+      words: ["ウイスキー", "ウィスキー", "うぃすきー", "バーボン", "スコッチ", "whisky", "whiskey"] },
+    { id: "plum",     label: "梅酒",       abv: 13,   kcal100: 156,
+      words: ["梅酒", "うめしゅ"] },
+    { id: "cocktail", label: "カクテル",   abv: 8,    kcal100: 70,
+      words: ["カクテル", "モヒート", "ジントニック", "カシスオレンジ", "カシオレ", "サングリア"] },
+    { id: "gin",      label: "ジン",       abv: 40,   kcal100: 284,
+      words: ["ジン", "ウォッカ", "ウオッカ", "ラム", "テキーラ", "gin", "vodka"] },
+    { id: "other",    label: "お酒",       abv: 8,    kcal100: 60, words: [] },
+  ];
+
+  const byId = (id) => KINDS.find((k) => k.id === id) || KINDS[KINDS.length - 1];
+
+  /* 「一杯」がどれくらいか。種類で違います——ビールの一杯と
+     ウイスキーの一杯（シングル）を同じ量で数えるわけにはいきません。 */
+  const GLASS = {
+    beer: 350, highball: 350, chuhai: 350, wine: 120, sake: 180,
+    shochu: 90, whisky: 30, plum: 90, cocktail: 150, gin: 30, other: 200,
+  };
+  /* 「一本」も同じく。缶ビールは350、ワインの一本は750。 */
+  const BOTTLE = {
+    beer: 350, highball: 350, chuhai: 350, wine: 750, sake: 720,
+    shochu: 720, whisky: 700, plum: 720, cocktail: 350, gin: 700, other: 350,
+  };
+
+  /* 頼み方が量を言っていることがあります。「ダブル」は60ml、「中ジョッキ」は
+     500ml——ここを見ないと、「ウイスキーをダブルで」が一本ぶんになります。 */
+  const SERVING = [
+    [/大ジョッキ/, 700], [/中ジョッキ|ジョッキ/, 500], [/小ジョッキ/, 350],
+    [/大瓶/, 633], [/中瓶/, 500], [/小瓶/, 334],
+    [/ダブル|ダブ/, 60], [/シングル/, 30],
+    [/ロング缶|500缶/, 500], [/ショート缶/, 350],
+  ];
+
+  /* 「ストロング系」は度数が倍近く違います。同じチューハイとして
+     6%で数えると、純アルコール量が3割以上ずれます。 */
+  const STRONG = /ストロング|strong|9%|９%/i;
+
+  /* 頼み方や飲み方の言葉。銘柄として拾ってしまうと、記録が
+     「ロック 梅酒」のような読みにくい名前になります。 */
+  const SERVE_WORDS = /ロック|水割り|お湯割り|ソーダ割り|炭酸割り|ストレート|大ジョッキ|中ジョッキ|小ジョッキ|ジョッキ|大瓶|中瓶|小瓶|ダブル|シングル|生中|生|ハーフ/g;
+
+  /* 飲んでいない、と書いたとき。ここを読み落として「お酒」として
+     記録すると、飲んでいない日が飲んだ日になります。 */
+  const NONE = /(飲|呑|の)(ん|ま|み)?(で|は)?(い)?な(い|かった)|飲まず|禁酒|休肝|抜き|ゼロ|0本|なし|無し|ノンアル|ノンアルコール/;
+
+  const KANJI = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 半: 0.5 };
+
+  const fold = (s) => KN.util.foldKana(String(s || ""));
+
+  /* 長い言葉から先に当てます。「赤ワイン」を「ワイン」で切ってしまうと、
+     銘柄として残るはずの「赤」が迷子になります。 */
+  const WORDS = KINDS
+    .flatMap((k) => k.words.map((w) => [fold(w), k]))
+    .sort((a, b) => b[0].length - a[0].length);
+
+  function kindOf(text) {
+    const t = fold(text);
+    for (const [w, k] of WORDS) if (t.includes(w)) return k;
+    return null;
+  }
+
+  /* ---------------- 書いたものを読む ----------------
+
+     一行に何種類も書けます（「ビール2本とワイン半分」）。
+     区切りは「と」「、」「＋」「,」。ただし「と」は言葉の中にも出るので、
+     酒の名前が二つ以上あるときだけ切ります。 */
+
+  function splitParts(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return [];
+    // まず、はっきりした区切りで。
+    let parts = raw.split(/[、,，＋+]|\s＋\s|\n/).map((x) => x.trim()).filter(Boolean);
+    // 「と」は、切った先の両方に酒の名前があるときだけ切ります。
+    const out = [];
+    parts.forEach((p) => {
+      const pieces = p.split(/と(?=[^と]*$)|と/);
+      if (pieces.length > 1 && pieces.every((x) => kindOf(x))) out.push(...pieces.map((x) => x.trim()));
+      else out.push(p);
+    });
+    return out.filter(Boolean);
+  }
+
+  /** 数字。「2」「２」「二」「半」。 */
+  function num(s) {
+    if (s == null) return null;
+    const t = String(s).trim().replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+    if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
+    if (KANJI[t] != null) return KANJI[t];
+    return null;
+  }
+
+  /**
+   * 一つぶんを読みます。
+   * @returns {object|null} 読めた一杯ぶん。何も分からなければ null。
+   */
+  function parseOne(raw) {
+    const text = String(raw || "").trim();
+    if (!text) return null;
+    const t = text.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+
+    // 飲んでいない、と書いてあるなら、何も作りません。
+    if (NONE.test(t) && !/\d/.test(t.replace(/0/g, ""))) return null;
+
+    /* 銘柄だけを書くことがあります（「アサヒスーパードライ 350ml 2本」）。
+       種類が分からなくても、量か数が書いてあるなら、それはお酒の話です。
+       読めなかったことにして捨てるより、「お酒」として残すほうがいい——
+       あとから種類を直せますが、捨てた記録は戻りません。 */
+    const looksLikeDrink = /(\d|[一二三四五六七八九十半])\s*(ml|mL|cc|l|L|本|缶|杯|合|グラス)/.test(t);
+    const kind = kindOf(t)
+      || (/(酒|さけ|飲|呑|のん)/.test(fold(t)) || looksLikeDrink ? byId("other") : null);
+    if (!kind) return null;
+
+    let estimated = false;
+
+    // 度数。「5%」「5度」「アルコール7」
+    let abv = null;
+    const mAbv = /(\d+(?:\.\d+)?)\s*(?:%|％|度(?!数)|パーセント)/.exec(t);
+    if (mAbv) abv = Number(mAbv[1]);
+    // ストロング系は度数が倍近く違う。同じ種類として数えるとずれます。
+    if (abv == null && kind.id === "chuhai" && STRONG.test(t)) { abv = 9; estimated = true; }
+    if (abv == null) { abv = kind.abv; estimated = true; }
+
+    // 容量。「350ml」「500cc」「1.5L」「一合」
+    let ml = null;
+    const mMl = /(\d+(?:\.\d+)?)\s*(ml|mL|ｍｌ|cc|CC)/.exec(t);
+    const mL = /(\d+(?:\.\d+)?)\s*(l|L|リットル|ℓ)(?![a-z])/.exec(t);
+    const mGo = /([\d一二三四五六七八九十半]+)\s*合/.exec(t);
+    if (mMl) ml = Number(mMl[1]);
+    else if (mL) ml = Number(mL[1]) * 1000;
+    else if (mGo) { const g = num(mGo[1]); if (g != null) ml = g * 180; }   // 一合＝180ml
+    else {
+      // 頼み方が量を言っていることがあります（ダブル、中ジョッキ）。
+      for (const [re, v] of SERVING) if (re.test(t)) { ml = v; estimated = true; break; }
+    }
+
+    // 数。「2本」「3杯」「×2」「2缶」「グラス2」
+    let count = null;
+    let unit = null;
+    const mCount = /([\d一二三四五六七八九十半]+(?:\.\d+)?)\s*(本|杯|缶|グラス|ぱい|ハイ)/.exec(t);
+    const mTimes = /(?:×|x|✕|かける)\s*(\d+(?:\.\d+)?)/.exec(t);
+    if (mCount) { count = num(mCount[1]); unit = mCount[2] === "缶" ? "本" : (mCount[2] === "グラス" ? "杯" : mCount[2]); }
+    else if (mTimes) { count = Number(mTimes[1]); unit = "本"; }
+
+    // 「半分」「半」。容量が書いてあれば半分に、無ければ本数を0.5に。
+    const half = /半分|はんぶん|(?:^|[^一二三四五六七八九十])半(?![分合])/.test(t);
+    if (half && count == null) count = 0.5;
+
+    if (count == null) { count = 1; if (!mMl && !mL && !mGo) estimated = true; }
+
+    /* 容量が書かれていないときは、種類と数え方から推します。
+
+       「本」「缶」と書いてあるなら瓶や缶ぶん。「杯」ならグラスぶん。
+       **何も書いていないなら、一杯ぶん**です——人は普通、一本ではなく
+       一杯から飲みはじめます。ここを瓶ぶんにしていたせいで、
+       「ウイスキー ダブル」が700ml（純アルコール224g）になっていました。
+       「半分」だけは瓶ぶん——半分と言うからには、容器が一つあります。 */
+    if (ml == null) {
+      const wantsBottle = unit === "本" || (half && !unit);
+      ml = (wantsBottle ? BOTTLE[kind.id] : GLASS[kind.id]) || GLASS.other;
+      estimated = true;
+    }
+    if (!unit) unit = half ? "本" : "杯";
+
+    const volume = Math.round(ml * count * 10) / 10;
+    const alcoholG = Math.round(volume * (abv / 100) * 0.8 * 10) / 10;
+    /* 種類ごとの目安があるならそちらを。ビールは糖質のぶん、
+       純アルコール×7 より高くなります。 */
+    const kcal = kind.kcal100
+      ? Math.round(volume * kind.kcal100 / 100)
+      : Math.round(alcoholG * 7);
+
+    /* 銘柄。種類を表す言葉と、数や単位を取り除いて残ったもの。
+       「アサヒスーパードライ 350ml」の「アサヒスーパードライ」。 */
+    let name = text;
+    kind.words.forEach((w) => { name = name.replace(new RegExp(w, "gi"), " "); });
+    name = name
+      .replace(SERVE_WORDS, " ")
+      .replace(/[\d０-９.一二三四五六七八九十半]+\s*(ml|mL|ｍｌ|cc|CC|l|L|リットル|ℓ|本|杯|缶|グラス|合|%|％|度)/gi, " ")
+      .replace(/[×x✕]\s*[\d０-９.]+/gi, " ")
+      .replace(/半分|はんぶん|を|の|と|、|,|　/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (name.length > 24) name = name.slice(0, 24);
+
+    return {
+      kind: kind.id,
+      kindLabel: kind.label,
+      name: name || "",
+      ml: Math.round(ml * 10) / 10,
+      count,
+      unit,
+      volumeMl: volume,
+      abv,
+      alcoholG,
+      kcal,
+      estimated,
+      raw: text,
+    };
+  }
+
+  /**
+   * 一行ぜんぶ。「ビール2本とワイン半分」→ 二つ。
+   * @returns {{items: Array, unknown: number}}
+   */
+  function parse(text) {
+    const parts = splitParts(text);
+    const items = [];
+    let unknown = 0;
+    parts.forEach((p) => {
+      const one = parseOne(p);
+      if (one) items.push(one); else if (p.trim()) unknown++;
+    });
+    // 何も切り出せなかったが、一行としてなら読めることがあります。
+    if (!items.length) {
+      const one = parseOne(text);
+      if (one) { items.push(one); unknown = 0; }
+    }
+    return { items, unknown };
+  }
+
+  /** 一つぶんの、読んで分かる言い方。「ビール 350ml × 2本」 */
+  function describeItem(it) {
+    if (!it) return "";
+    const head = [it.name, it.kindLabel].filter(Boolean).join(" ");
+    const n = it.count === 1 ? "" : ` × ${trim(it.count)}${it.unit}`;
+    return `${head} ${trim(it.ml)}ml${n}`;
+  }
+
+  const trim = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10));
+
+  /** その日ぶんの合計。 */
+  function totals(list) {
+    const rows = Array.isArray(list) ? list : [];
+    if (!rows.length) return null;
+    const t = { volumeMl: 0, alcoholG: 0, kcal: 0, kinds: 0, estimated: false, count: rows.length };
+    const kinds = new Set();
+    rows.forEach((r) => {
+      t.volumeMl += r.volumeMl || 0;
+      t.alcoholG += r.alcoholG || 0;
+      t.kcal += r.kcal || 0;
+      kinds.add(r.kind);
+      if (r.estimated) t.estimated = true;
+    });
+    t.volumeMl = Math.round(t.volumeMl);
+    t.alcoholG = Math.round(t.alcoholG * 10) / 10;
+    t.kcal = Math.round(t.kcal);
+    t.kinds = kinds.size;
+    return t;
+  }
+
+  /* 節度の目安。断定はしません——「純アルコール20g程度」は健康日本21の
+     言い方で、個人差も体格差もあります。数を出すだけにして、良し悪しは
+     言いません。 */
+  const GUIDE_G = 20;
+
+  KN.drinks = {
+    KINDS, GLASS, BOTTLE, GUIDE_G,
+    kindOf, byId, parse, parseOne, describeItem, totals,
   };
 })();
 
@@ -12626,12 +13129,27 @@ a.btn { text-decoration: none; }
           steps: store.healthValue(d, "steps"),
           sleepMin: store.healthValue(d, "sleep"),
           activeEnergy: store.healthValue(d, "activeEnergy"),
+          restingEnergy: store.healthValue(d, "restingEnergy"),
+          // 安静時＋アクティブ。両方そろった日だけ数えます。
+          burnedKcal: KN.diet.burnedOf(d),
+          /* お酒。飲まなかった日は drinks:[] で、**その日を渡さない**のとは
+             別のことです（記録が無いのか、飲まなかったのかを分けるため）。 */
+          drinks: store.drinksOfDay(d).map((x) => ({
+            kind: x.kind, name: x.name || null, volumeMl: x.volumeMl,
+            abv: x.abv, alcoholG: x.alcoholG, kcal: x.kcal, estimated: x.estimated,
+          })),
+          alcoholG: (store.drinkTotals(d) || {}).alcoholG != null ? store.drinkTotals(d).alcoholG : 0,
+          drinkKcal: (store.drinkTotals(d) || {}).kcal != null ? store.drinkTotals(d).kcal : 0,
           workouts: store.healthOfDay(d, "workout").map((h) => ({ label: h.label, min: h.value, kcal: h.kcal })),
         };
-      }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null || r.sleepMin != null),
+      }).filter((r) => r.weightKg != null || r.kcal != null || r.steps != null
+                    || r.sleepMin != null || r.drinks.length),
       // 相関を因果と言わせないための一言。窓口側のプロンプトにも
       // 同じことを書きますが、材料にも添えておきます。
       note: "相関を因果と断定しないこと。データが足りない項目は「わからない」と言うこと。"
+        + "kcal は食べたものだけの数で、飲酒由来は drinkKcal に分けてある（足すかどうかは用途しだい）。"
+        + "alcoholG は純アルコール量（ml×度数%÷100×0.8）。estimated が真のものは推定値なので、"
+        + "細かい差を意味のあるものとして扱わないこと。"
         + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
         + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };
@@ -12909,14 +13427,57 @@ a.btn { text-decoration: none; }
    * ワークアウトも一本ずつ残します（同じ日の朝と夜のランは別の運動です）。
    * 心拍数は足しても意味がないので、平均を採ります。
    */
+  /* 同じものを二つの機械が数えていることがあります。
+
+     歩行距離がそれで、Apple Watch と iPhone の両方が一日ぶんを持って
+     います。足すと二重になります——実測で Watch 7.8km / iPhone 6.0km /
+     ヘルスケア 7.9km のところ、足すと 13.9km になりました。
+
+     **足せるのは、同じものを分けて数えているときだけ**です。
+     出どころの違う「その日ぜんぶ」どうしは、足すものではなく
+     選ぶものです。Watch のほうがヘルスケアの値と合うので、
+     出どころが分かるなら Watch を採ります。
+
+     出どころが一つしか来ないとき（いまのショートカットはそうです）は、
+     これまでどおり足します。ここが変わるのは、**出どころを分けて
+     送ってきたときだけ** です。 */
+  const PICK_ONE = ["distance"];
+  const isWatch = (s) => /watch|ウォッチ|ウオッチ/i.test(String(s || ""));
+
   function foldSamples(list) {
     const out = [];
     const bag = new Map();
+
+    /* 先に見ておきます——同じ日の同じ種類に、違う出どころが来ているか。 */
+    const sources = new Map();
+    list.forEach((s) => {
+      if (!PICK_ONE.includes(s.type) || s.externalId) return;
+      const key = s.type + "|" + s.day;
+      if (!sources.has(key)) sources.set(key, new Set());
+      sources.get(key).add(String(s.source || ""));
+    });
+    const split = new Set();
+    sources.forEach((set, key) => { if (set.size > 1) split.add(key); });
+
     list.forEach((s) => {
       const foldable = !s.externalId
         && (ADDITIVE.includes(s.type) || s.type === "heartRate");
       if (!foldable) { out.push(s); return; }
       const key = s.type + "|" + s.day;
+
+      // 出どころが分かれている「選ぶもの」は、足さずに一つ選びます。
+      if (split.has(key)) {
+        const cur = bag.get(key);
+        if (!cur) { bag.set(key, { ...s, _n: 1, _picked: true }); return; }
+        // Watch を優先。どちらも Watch でなければ、大きいほうを残します
+        // （小さいほうは、片方の機械しか付けていなかった時間ぶん）。
+        const better = isWatch(s.source) && !isWatch(cur.source)
+          ? true
+          : (!isWatch(cur.source) && !isWatch(s.source) && s.value > cur.value);
+        if (better) bag.set(key, { ...s, _n: 1, _picked: true });
+        return;
+      }
+
       const cur = bag.get(key);
       if (!cur) { bag.set(key, { ...s, _n: 1 }); return; }
       cur.value += s.value;
@@ -12926,6 +13487,7 @@ a.btn { text-decoration: none; }
     bag.forEach((s) => {
       if (s.type === "heartRate" && s._n > 1) s.value = Math.round(s.value / s._n);
       delete s._n;
+      delete s._picked;
       out.push(s);
     });
     return out;
@@ -15976,11 +16538,13 @@ a.btn { text-decoration: none; }
   const U = KN.util;
   const store = KN.store;
   const D = KN.diet;
+  const DR = KN.drinks;
 
   let root = null;
   let els = {};
   let range = 30;             // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
+  let series = "";             // 体重と並べて見るもの。空なら体重だけ。
 
   /* 一日の順に、日の高さで。朝は昇る日、昼は真上の日、夜は月——
      間食だけは時刻ではないので、食べもののほうを描きます。 */
@@ -16133,17 +16697,72 @@ a.btn { text-decoration: none; }
     { id: 365, label: "1年" }, { id: 0, label: "全部" },
   ];
 
+  /* ---------------- 体重と並べて見るもの ----------------
+
+     単位が違うものを同じ縦軸に重ねると、どちらも読めなくなります。
+     体重は 68〜70 の狭い幅で動き、歩数は 0〜12000 です。同じ軸に置けば
+     体重は一本の水平線に潰れます。
+
+     だから **主役は体重の線のまま**、関連データは背後の棒にします。
+     棒は自分の最大値を天井とする別のものさしで、数字の目盛りは出さず、
+     いちばん大きい日の値だけを右上に書きます。棒の高さどうしを見比べる
+     ことはできて、体重と絶対値で比べることはできない——それが正しい
+     読み方なので、そう見えるようにします。
+
+     一度に一つだけ選べます。二つ重ねると、どちらの棒がどちらか分からなく
+     なるうえ、体重の線が埋もれます。 */
+  const SERIES = [
+    { id: "",       label: "なし" },
+    { id: "kcal",   label: "摂取",   unit: "kcal", ico: "meal",
+      get: (d) => { const t = D.dayTotals(d); return t ? t.kcal : null; } },
+    { id: "steps",  label: "歩数",   unit: "歩",   ico: "steps",
+      get: (d) => store.healthValue(d, "steps") },
+    { id: "burned", label: "総消費", unit: "kcal", ico: "flame",
+      get: (d) => D.burnedOf(d) },
+    { id: "sleep",  label: "睡眠",   unit: "時間", ico: "moon",
+      get: (d) => { const v = store.healthValue(d, "sleep"); return v == null ? null : Math.round(v / 6) / 10; } },
+    { id: "drink",  label: "飲酒",   unit: "g",    ico: "drink",
+      get: (d) => { const t = store.drinkTotals(d); return t ? t.alcoholG : null; } },
+  ];
+  const seriesOf = (id) => SERIES.find((s) => s.id === id) || SERIES[0];
+
+  /* 棒の天井。凡例に添えます——グラフの中に置くと、飲んだ日の印と
+     重なりました（狭いところに二つ置こうとしたのが間違いでした）。 */
+  function seriesMax() {
+    const sel = seriesOf(series);
+    if (!sel.id) return null;
+    const today = U.todayKey();
+    const all = D.weightPoints(null, today);
+    if (!all.length) return null;
+    const from = range === 0 ? all[0].day : U.shiftDay(today, -(range - 1));
+    const pts = all.filter((p) => p.day >= from);
+    if (pts.length < 2) return null;
+    let max = null;
+    D.daysBetween(pts[0].day, pts[pts.length - 1].day).forEach((d) => {
+      const v = sel.get(d);
+      if (v != null && (max == null || v > max)) max = v;
+    });
+    return max;
+  }
+
   function renderGraph(host) {
     const sec = node(html`
       <section class="card section diet-graph-card">
         <div class="section-title">${icon("chart")}体重の推移</div>
         <div class="js-range"></div>
         <div class="js-chart"></div>
+        <div class="diet-with">
+          <span class="diet-with-label">並べて見る</span>
+          <div class="js-series"></div>
+        </div>
         <div class="diet-legend">
           <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
           <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
           ${range === 0 || range >= 30 ? html`<span class="diet-legend-item"><i class="dot-ma14"></i>14日平均</span>` : ""}
           ${store.get().diet.goal.targetKg != null ? html`<span class="diet-legend-item"><i class="dot-goal"></i>目標</span>` : ""}
+          ${series ? html`<span class="diet-legend-item"><i class="dot-bar"></i>${seriesOf(series).label}${
+            seriesMax() == null ? "" : `（最大 ${seriesMax().toLocaleString()}${seriesOf(series).unit}）`}</span>` : ""}
+          <span class="diet-legend-item"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
         </div>
       </section>
     `);
@@ -16151,6 +16770,10 @@ a.btn { text-decoration: none; }
     KN.ui.chipRow(sec.querySelector(".js-range"), RANGES.map((r) => ({ id: r.id, label: r.label })), {
       activeId: range,
       onPick: (id) => { range = Number(id); render(); },
+    });
+    KN.ui.chipRow(sec.querySelector(".js-series"), SERIES.map((x) => ({ id: x.id, label: x.label })), {
+      activeId: series,
+      onPick: (id) => { series = String(id || ""); render(); },
     });
 
     sec.querySelector(".js-chart").append(chart());
@@ -16178,7 +16801,12 @@ a.btn { text-decoration: none; }
       `);
     }
 
-    const W = 320, H = 132, padL = 34, padR = 8, padT = 10, padB = 18;
+    /* 飲んだ日の印は、線とは別の帯に置きます。線の上に重ねると、
+       体重が高い日の点と印が同じ高さで並んで、どちらか読めません。 */
+    const hasMarks = D.daysBetween(all.length ? all[0].day : today, today)
+      .some((d) => store.drinkTotals(d));
+    const W = 320, H = 132, padL = 34, padR = 8, padB = 18;
+    const padT = hasMarks ? 22 : 10;
     const ma7 = D.movingAverage(pts, 7).filter((m) => m.value != null);
     const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
     const goal = store.get().diet.goal.targetKg;
@@ -16201,10 +16829,46 @@ a.btn { text-decoration: none; }
     const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
     const path = (rows, get) => rows.map((r, i) => `${i ? "L" : "M"}${x(r.day).toFixed(1)} ${y(get(r)).toFixed(1)}`).join(" ");
 
+    /* ---- 並べて見るもの ----
+
+       日ごとの棒。ものさしは体重とは別で、いちばん大きい日を天井に
+       します。目盛りは書きません——書けば「体重と同じ軸だ」と読まれます。
+       いちばん大きい日の値だけを右上に置いて、天井が何かを言います。 */
+    const sel = seriesOf(series);
+    const days = D.daysBetween(pts[0].day, pts[pts.length - 1].day);
+    const bars = [];
+    let barMax = 0;
+    if (sel.id) {
+      days.forEach((d) => {
+        const v = sel.get(d);
+        if (v == null) return;
+        bars.push({ day: d, value: v });
+        if (v > barMax) barMax = v;
+      });
+    }
+    const barW = Math.max(2, Math.min(11, (W - padL - padR) / Math.max(1, days.length) - 1.4));
+    const barBase = H - padB;
+    const barTop = padT + 18;                      // 体重の線と喧嘩しない高さまで
+    const barH = (v) => (barMax > 0 ? (v / barMax) * (barBase - barTop) : 0);
+
+    /* ---- 飲んだ日の印 ----
+
+       「飲酒あり」とだけ出しても、350mlを一本と、一升瓶を空けた日が
+       同じ顔になります。押せば中身が出るようにして、印の濃さは
+       純アルコール量で変えます。 */
+    const marks = days.map((d) => ({ day: d, t: store.drinkTotals(d) }))
+      .filter((m) => m.t);
+    const markY = 9;
+
     const gridVals = [hi - padY, (hi + lo) / 2, lo + padY];
     const svg = node(html`
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
            aria-label="体重の推移のグラフ">
+        ${KN.util.raw(bars.map((b) => {
+          const h = barH(b.value);
+          return `<rect class="diet-bar" x="${(x(b.day) - barW / 2).toFixed(1)}" y="${(barBase - h).toFixed(1)}"
+                        width="${barW.toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="1.2"/>`;
+        }).join(""))}
         ${KN.util.raw(gridVals.map((v) =>
           `<line class="diet-gridline" x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}"/>`
           + `<text class="diet-axis" x="${padL - 5}" y="${(y(v) + 3.4).toFixed(1)}" text-anchor="end">${v.toFixed(1)}</text>`
@@ -16217,11 +16881,67 @@ a.btn { text-decoration: none; }
         ${KN.util.raw(pts.map((p) =>
           `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""}" cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="1.9"/>`
         ).join(""))}
+        ${KN.util.raw(marks.map((m) => {
+          /* 濃さは純アルコール量で。「飲酒あり」とだけ出すと、350mlを一本と
+             一升瓶を空けた日が同じ顔になります。目安（20g）の1.5倍で満ちます。 */
+          const heavy = Math.min(1, (m.t.alcoholG || 0) / (DR.GUIDE_G * 1.5));
+          const s = 11 / 24;                       // 絵は24四方。11pxまで縮めます
+          const cx = x(m.day), cy = markY;
+          return `<g class="diet-beer" data-day="${m.day}" opacity="${(0.5 + heavy * 0.5).toFixed(2)}">`
+            + `<g transform="translate(${(cx - 5.5).toFixed(1)} ${(cy - 5.5).toFixed(1)}) scale(${s.toFixed(3)})">`
+            + `<path class="diet-beer-mug" d="M6.2 4.6h9.2v13.2a2 2 0 0 1-2 2H8.2a2 2 0 0 1-2-2Z"/>`
+            + `<path class="diet-beer-mug" d="M15.4 7.6h2.2a2.4 2.4 0 0 1 0 4.8h-2.2"/>`
+            + `<path class="diet-beer-mug" d="M6.2 9.2h9.2"/></g>`
+            + `<rect class="diet-beer-hit" x="${(cx - 9).toFixed(1)}" y="${cy - 9}" width="18" height="18"/>`
+            + `</g>`;
+        }).join(""))}
         <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(pts[0].day).replace("今日", "")}</text>
         <text class="diet-axis" x="${W - padR}" y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
       </svg>
     `);
+
+    /* 印は押せます。飲んだ量は、グラフの上で確かめられないと意味が薄い。 */
+    svg.querySelectorAll(".diet-beer").forEach((g) => {
+      g.addEventListener("click", () => { haptic(); showDrinkDay(g.getAttribute("data-day")); });
+    });
     return svg;
+  }
+
+  /** グラフの🍺を押したとき。その日に何を飲んだかを出します。 */
+  function showDrinkDay(day) {
+    const rows = store.drinksOfDay(day);
+    const t = DR.totals(rows);
+    if (!t) return;
+    const body = node(html`
+      <div class="stack">
+        <div class="diet-read">
+          ${KN.util.raw(rows.map((d) => `
+            <div class="diet-drink-row">
+              <b>${KN.util.escapeHtml(DR.describeItem(d))}</b>
+              <span>${d.abv}%${d.estimated ? "（推定）" : ""}</span>
+              <span class="mono-num">純アルコール ${d.estimated ? "約" : ""}${d.alcoholG}g</span>
+              <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+            </div>`).join(""))}
+          ${rows.length > 1 ? `
+            <div class="diet-drink-row is-sum">
+              <b>合計</b>
+              <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
+              <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
+              <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
+            </div>` : ""}
+        </div>
+      </div>
+    `);
+    /* 入れ物で包みます。ボタンそのものを渡すと、あとで
+       foot.querySelector(".js-edit") が自分自身を見つけられず、
+       ボタンが黙って効かなくなります（一度そうしていました）。 */
+    const foot = node(html`
+      <div style="width:100%">
+        <button class="btn btn-soft btn-block js-edit">${icon("edit")}この日の記録を直す</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: U.formatDay(day) + " のお酒", content: body, footer: foot });
+    foot.querySelector(".js-edit").addEventListener("click", () => { h.close(); openDrinkSheet(day); });
   }
 
   /* ---------------- からだ ---------------- */
@@ -16229,15 +16949,19 @@ a.btn { text-decoration: none; }
   /* 数の並びは、見るためだけのものにしません。取り込んだ値を直せず消せず、
      今日より前の日にも触れないと、一度入った間違いがそのまま残ります。
      どの枠を押しても、その日の記録の画面が開きます。 */
-  /* 絵は飾りではありません。数字だけが六つ並ぶと、どれが何かは読むまで
+  /* 絵は飾りではありません。数字だけが並ぶと、どれが何かは読むまで
      分からず、探すたびに全部読み直すことになります。目は文字より先に絵を
-     拾うので、二度目からは絵で当たりを付けられます。 */
+     拾うので、二度目からは絵で当たりを付けられます。
+
+     この並びは「からだの記録」を直す画面のもの——ヘルスケアから来る
+     六種類ぜんぶです。カードに出す四つとは別で、こちらは減らしません
+     （直せる場所が減ると、直せない値が生まれます）。 */
   const BODY_ROWS = [
     { type: "steps",         label: "歩数",       unit: "歩",   hint: "8432", ico: "steps" },
-    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1",  ico: "route" },
     { type: "activeEnergy",  label: "アクティブ", unit: "kcal", hint: "430",  ico: "flame" },
-    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12", ico: "moon" },
     { type: "restingEnergy", label: "安静時",     unit: "kcal", hint: "1520", ico: "bed" },
+    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12", ico: "moon" },
+    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1",  ico: "route" },
     { type: "heartRate",     label: "心拍数",     unit: "bpm",  hint: "62",   ico: "heart" },
   ];
 
@@ -16254,18 +16978,31 @@ a.btn { text-decoration: none; }
 
   function renderBodyStats(host, card) {
     const sync = store.get().diet.sync;
-    /* **ぜんぶ出します。**
+    const dt = card.drinkTotals;
 
-       前は四つだけで、安静時と心拍数は「記録を見る・直す」の向こうでした。
-       毎日ほとんど動かない数だから、というのが理由でしたが——動かないことを
-       確かめるのにも、開いて閉じる二手が要ります。持っている数を全部見せて
-       おけば、その二手はゼロになります。六つは、三つ二段で収まります。 */
-    const rows = BODY_ROWS.map((r) => ({
-      ...r,
-      value: showValue(r.type, card[r.type]),
-      manual: isManual(card.day, r.type),
-    }));
-    const nothing = rows.every((r) => r.value === "—") && !card.workouts.length;
+    /* カードに出す四つ。「今日どうだったか」に答える最小の組です。
+
+       総消費は、安静時とアクティブを **こちらで足して** 出します。二つに
+       分けて見せていましたが、「今日どれだけ使ったか」を知るのに人に足し算を
+       させるのは、こちらがやるべき仕事です。分けたぶんは「記録を見る・直す」に
+       あります。
+
+       歩行距離はここから外しました。毎日ほとんど同じで、体重との関係も
+       歩数がすでに言っています（そして機械が二台あると二重に数える——
+       取り込みのほうで直しました）。記録としては持ち続けます。
+
+       飲酒は数ではなく、**中身**を出します。「1杯」とだけ出しても、
+       それがビール350mlなのか焼酎の水割りなのかで話がまるで違うので。 */
+    const rows = [
+      { type: "steps", label: "歩数", unit: "歩", ico: "steps",
+        value: showValue("steps", card.steps), manual: isManual(card.day, "steps") },
+      { type: "burned", label: "総消費", unit: "kcal", ico: "flame",
+        value: card.burned == null ? "—" : n0(card.burned),
+        manual: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy") },
+      { type: "sleep", label: "睡眠", unit: "", ico: "moon",
+        value: showValue("sleep", card.sleep), manual: isManual(card.day, "sleep") },
+    ];
+    const nothing = rows.every((r) => r.value === "—") && !card.workouts.length && !dt;
 
     const sec = node(html`
       <section class="card section">
@@ -16278,6 +17015,20 @@ a.btn { text-decoration: none; }
               <b class="diet-cell-value mono-num">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
             </button>`).join(""))}
+          ${/* 飲酒。三つの数と並べますが、中身は数ではなく言葉なので、
+                枠は横に長く取ります。 */""}
+          <button class="diet-cell diet-cell-wide js-drink ${dt ? "" : "is-blank"}">
+            <span class="diet-cell-ico">${icon("drink")}</span>
+            <span class="diet-cell-label">飲酒</span>
+            ${dt ? html`
+              <b class="diet-drink-what">${card.drinks.map((d) => DR.describeItem(d)).join("・")}</b>
+              <span class="diet-cell-unit">純アルコール ${dt.estimated ? "約" : ""}${dt.alcoholG}g
+                ・ ${dt.estimated ? "約" : ""}${dt.kcal.toLocaleString()}kcal</span>
+            ` : html`
+              <b class="diet-drink-what is-none">飲酒なし</b>
+              <span class="diet-cell-unit">タップして記録する</span>
+            `}
+          </button>
         </div>
         ${card.workouts.length ? html`
           <div class="diet-workouts">
@@ -16302,9 +17053,164 @@ a.btn { text-decoration: none; }
     const log = sec.querySelector(".js-log");
     if (log) log.addEventListener("click", () => openBodySheet(card.day));
     sec.querySelectorAll(".js-cell").forEach((c) => {
-      c.addEventListener("click", () => openBodySheet(card.day, c.dataset.type));
+      c.addEventListener("click", () => {
+        // 総消費はそれ自体の欄が無いので、内わけの片方に降ろします。
+        const t = c.dataset.type === "burned" ? "activeEnergy" : c.dataset.type;
+        openBodySheet(card.day, t);
+      });
     });
+    sec.querySelector(".js-drink").addEventListener("click", () => openDrinkSheet(card.day));
     host.append(sec);
+  }
+
+  /* ---------------- お酒 ----------------
+
+     書いてもらうのは一行だけです。「ビール350mlを2本」。
+     種類を選び、量を選び、本数を選び……を毎晩やらせると、三日でやめます。
+
+     ただし **読んだものを黙って保存はしません**。読み違えはあるし、
+     度数を書かなければ推した値です。打つそばから読み下しを出して、
+     入る中身を見てから押してもらいます。確認の画面を別に挟むのではなく、
+     同じ画面に出す——押す回数は増やさずに、見えるようにするだけ。 */
+
+  const EXAMPLES = ["ビール350ml 2本", "ワイン半分", "日本酒1合", "ハイボール2杯", "焼酎100ml"];
+
+  function openDrinkSheet(day0, editId) {
+    const day = day0 || U.todayKey();
+    const editing = editId ? store.drinksOfDay(day).find((d) => d.id === editId) : null;
+
+    const body = node(html`
+      <div class="stack">
+        <div class="diet-daynav">
+          <b>${U.formatDay(day)}</b>
+        </div>
+        <label class="field">
+          <span class="field-label">飲んだもの</span>
+          <input class="input js-q" placeholder="ビール350ml 2本"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 value="${editing ? editing.raw || DR.describeItem(editing) : ""}">
+        </label>
+        <div class="diet-chips js-ex"></div>
+        <div class="js-read"></div>
+        <div class="js-list"></div>
+      </div>
+    `);
+
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
+        <button class="btn btn-primary js-save" style="flex:2">${editing ? "直す" : "記録する"}</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot });
+
+    const q = body.querySelector(".js-q");
+    const readBox = body.querySelector(".js-read");
+    let items = [];
+
+    /* よくある書き方を、押せる形で。何をどう書けばいいかは、
+       説明文より例のほうが早く伝わります。 */
+    EXAMPLES.forEach((ex) => {
+      const chip = node(html`<button type="button" class="chip">${ex}</button>`);
+      chip.addEventListener("click", () => {
+        q.value = q.value.trim() ? q.value.trim() + "、" + ex : ex;
+        paint();
+        haptic();
+      });
+      body.querySelector(".js-ex").append(chip);
+    });
+
+    function paint() {
+      const res = DR.parse(q.value);
+      items = res.items;
+      readBox.innerHTML = "";
+      if (!q.value.trim()) return;
+
+      if (!items.length) {
+        readBox.append(node(html`
+          <p class="diet-note is-warn">読めませんでした。
+            「ビール350ml 2本」のように、<b>お酒の種類</b>と量を書いてみてください。</p>`));
+        return;
+      }
+      const t = DR.totals(items);
+      readBox.append(node(html`
+        <div class="diet-read">
+          ${KN.util.raw(items.map((it) => `
+            <div class="diet-drink-row">
+              <b>${KN.util.escapeHtml(DR.describeItem(it))}</b>
+              <span>${it.abv}%${it.estimated ? "（推定）" : ""}</span>
+              <span class="mono-num">純アルコール ${it.estimated ? "約" : ""}${it.alcoholG}g</span>
+              <span class="mono-num">${it.estimated ? "約" : ""}${it.kcal.toLocaleString()}kcal</span>
+            </div>`).join(""))}
+          ${items.length > 1 ? `
+            <div class="diet-drink-row is-sum">
+              <b>合計 ${items.length}種類</b>
+              <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
+              <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
+              <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
+            </div>` : ""}
+        </div>
+      `));
+      readBox.append(node(html`
+        <p class="diet-note">
+          純アルコール量は <b>ml × 度数% ÷ 100 × 0.8</b> で数えます。
+          ${t.estimated ? "度数や量を書かなかったぶんは、種類ごとの目安から推しました（「約」と付けています）。" : ""}
+          ${t.alcoholG >= DR.GUIDE_G ? `なお「節度ある適度な飲酒」は一日 純アルコール${DR.GUIDE_G}g程度とされています（個人差があります）。` : ""}
+        </p>`));
+    }
+
+    q.addEventListener("input", paint);
+    paint();
+    KN.ui.focusNow(q);
+
+    /* その日のぶんの一覧。ここから直せます。 */
+    function paintList() {
+      const list = body.querySelector(".js-list");
+      list.innerHTML = "";
+      const mine = store.drinksOfDay(day).filter((d) => !editing || d.id !== editing.id);
+      if (!mine.length) return;
+      list.append(node(html`<div class="section-title">この日の記録</div>`));
+      const rows = node(html`<div class="rows"></div>`);
+      mine.forEach((d) => {
+        const row = node(html`
+          <button class="row">
+            <span class="row-main">
+              <span class="row-title">${DR.describeItem(d)}</span>
+              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+            </span>
+            <span class="row-chevron">${icon("edit")}</span>
+          </button>
+        `);
+        row.addEventListener("click", () => { h.close(); openDrinkSheet(day, d.id); });
+        rows.append(row);
+      });
+      list.append(rows);
+    }
+    paintList();
+
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      if (!items.length) { KN.ui.toast("読めませんでした。書き方を変えてみてください"); return; }
+      if (editing) {
+        // 直すときは一つぶん。二つに増えたなら、残りは足します。
+        store.updateDrink(editing.id, { ...items[0], day, raw: q.value.trim() });
+        items.slice(1).forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+      } else {
+        items.forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+      }
+      h.close();
+      render();
+      const t = DR.totals(items);
+      KN.ui.toast(`お酒：${items.map((i) => DR.describeItem(i)).join("・")}（純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g）`);
+      haptic(12);
+    });
+
+    const del = foot.querySelector(".js-del");
+    if (del) del.addEventListener("click", () => {
+      store.removeDrink(editing.id);
+      h.close();
+      render();
+      KN.ui.toast("消しました");
+    });
   }
 
   /* ---------------- からだの記録を直す ----------------
@@ -16476,6 +17382,9 @@ a.btn { text-decoration: none; }
             <b class="mono-num">${t ? t.kcal.toLocaleString() : "—"}</b><small>kcal</small>
             ${t && t.estimated ? html`<span class="badge badge-muted">推定を含む</span>` : ""}
           </div>
+          ${card.drinkTotals ? html`
+            <span class="badge badge-muted">＋ お酒 ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal.toLocaleString()}kcal</span>
+          ` : ""}
           ${rem ? html`
             <div class="diet-kcal-rem ${rem.kcal < 0 ? "is-over" : ""}">
               ${rem.kcal >= 0 ? html`残り <b class="mono-num">${rem.kcal.toLocaleString()}</b> kcal`
@@ -16484,6 +17393,13 @@ a.btn { text-decoration: none; }
             </div>` : ""}
         </div>
 
+        ${card.drinkTotals ? html`
+          <p class="diet-note">
+            上の ${t ? t.kcal.toLocaleString() : "0"}kcal は<b>食べたもの</b>だけの数です。
+            お酒のぶんを足すと
+            <b class="mono-num">${((t ? t.kcal : 0) + card.drinkTotals.kcal).toLocaleString()}kcal</b>
+            になります（お酒は栄養の内わけを持たないので、PFCの棒には入れていません）。
+          </p>` : ""}
         ${t ? html`
           <div class="diet-pfc">
             ${/* 棒が何を言っているかは一つに決めます。目標があるならその進み具合、
@@ -16571,6 +17487,7 @@ a.btn { text-decoration: none; }
     weekend:       "sun",
     pfc:           "meal",
     mixed:         "scale",
+    drink:         "drink",
     meal:          "meal",
     clothed:       "scale",
   };
@@ -17276,6 +18193,7 @@ a.btn { text-decoration: none; }
     ["heartRate", "心拍数", "62"],
     ["workout", "ワークアウト", "ウォーキング,42,210"],
     ["day", "どの日のぶんか", U.todayKey()],
+    ["source", "どの機械のぶんか", "Apple Watch"],
   ];
 
   function openSyncSheet() {
@@ -17390,9 +18308,21 @@ a.btn { text-decoration: none; }
         </div>
         <p class="diet-note">
           値が取れなかった行は<b>空のままで大丈夫</b>です（空は「無かった」として扱い、
-          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数や距離のように
+          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数のように
           足せるものは<b>合計</b>されます。JSON形式でも読めます。
         </p>
+        <p class="diet-note">
+          <b>歩行距離だけは、足すと二重になります。</b>Apple Watch と iPhone が
+          どちらも一日ぶんを持っているので、両方を合計すると倍近くになります
+          （実測で 7.8km と 6.0km を足して 13.9km になりました）。
+          <code>source=</code> を書いて機械ごとに分けて送れば、
+          <b>Apple Watch のほうを採ります</b>（ヘルスケアの値と一致します）。
+          分けずに一つだけ送るぶんには、これまでと何も変わりません。
+        </p>
+        <pre class="diet-code">source=Apple Watch
+distance=7.8km
+source=iPhone
+distance=6.0km</pre>
       </div>
     `);
 

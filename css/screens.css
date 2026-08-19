@@ -1616,10 +1616,36 @@
 /* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
 .diet-dot.is-health { fill: none; stroke: var(--c-text-3); stroke-width: 1; }
 
+/* 並べて見るものの棒。**主役は体重の線**なので、棒は背後に薄く敷きます
+   （濃くすると、線より先に目に入って主客が入れ替わります）。 */
+.diet-bar { fill: var(--c-primary); opacity: .17; }
+.diet-axis.is-right { fill: var(--c-text-3); }
+
+/* 飲んだ日の印。濃さは純アルコール量で変えます（SVG側で opacity を付ける）。 */
+.diet-beer-mug { fill: none; stroke: var(--c-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.diet-beer-hit { fill: transparent; }
+.diet-beer { cursor: pointer; }
+
+/* 「並べて見る」の札の列。六つあるので、電話の幅には収まりません。
+
+   横に並べて置こうとして、カードごとはみ出させました。flex の子は
+   min-width:auto で中身ぶんまで突っ張るので、min-width:0 を足しても
+   親の親まで同じことが起き、結局どこかで突っ張ります。
+   **札を下の段に置けば、その綱引きは起きません** ——上の期間の列と
+   同じ形になって、読み方もそろいます。 */
+.diet-with { display: block; }
+.diet-with-label {
+  display: block; font-size: var(--fs-xs); color: var(--c-text-3);
+  margin-bottom: 2px;
+}
+
 .diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .diet-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
+.diet-legend-item i.dot-bar { background: var(--c-primary); opacity: .3; width: 8px; height: 10px; border-radius: 2px; }
+.diet-legend-item i.dot-beer { width: 12px; height: 12px; border-radius: 0; background: none; color: var(--c-accent); line-height: 0; }
+.diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }
 .diet-legend-item i.dot-ma7 { background: var(--c-primary); }
 .diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
 .diet-legend-item i.dot-goal { background: repeating-linear-gradient(90deg, var(--c-accent) 0 4px, transparent 4px 7px); }
@@ -1655,6 +1681,24 @@
 .diet-cell-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
 .diet-cell-unit { font-size: 10px; color: var(--c-text-3); }
+/* 飲酒の枠。数ではなく中身（「ビール 350ml × 2本」）を出すので、
+   横いっぱいを使います。三つの数の下に一段。 */
+.diet-cell-wide { grid-column: 1 / -1; }
+.diet-drink-what {
+  font-size: var(--fs-sm); font-weight: 700; line-height: 1.4;
+  text-align: center; word-break: break-word;
+}
+.diet-drink-what.is-none { color: var(--c-text-3); font-weight: 600; }
+
+/* 読み下し。打つそばから、入る中身を出します。 */
+.diet-drink-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--sp-3);
+  font-size: var(--fs-xs); color: var(--c-text-2); padding: 3px 0;
+}
+.diet-drink-row b { font-size: var(--fs-sm); color: var(--c-text); flex: 1 1 100%; }
+.diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
+.diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 /* ---- 食事 ---- */

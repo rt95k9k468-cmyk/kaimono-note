@@ -213,8 +213,26 @@
       // （ショートカット側でもそう書き出します）。
       sleep: store.healthValue(d, "sleep"),
       heartRate: store.healthValue(d, "heartRate"),
+      /* 総消費。安静時＋アクティブ。
+
+         別々に見せていましたが、「今日どれだけ使ったか」を知りたいときに
+         二つの数を足させるのは、こちらがやるべき仕事です。片方しか
+         取れていない日は、足すと嘘になるので null にします——
+         「1,444kcal使った」と「安静時ぶんしか分からない」は違います。 */
+      burned: burnedOf(d),
       workouts,
+      drinks: store.drinksOfDay(d),
+      drinkTotals: store.drinkTotals(d),
     };
+  }
+
+  /** その日の総消費。両方そろっているときだけ数えます。 */
+  function burnedOf(day) {
+    const rest = store.healthValue(day, "restingEnergy");
+    const act = store.healthValue(day, "activeEnergy");
+    if (rest == null && act == null) return null;
+    if (rest == null || act == null) return null;
+    return Math.round(rest + act);
   }
 
   /* ---------------- 統合分析 ----------------
@@ -434,6 +452,43 @@
       });
     }
 
+    /* --- 飲んだ日と、その翌日 ---
+
+       翌日の体重を見ます。当日ではありません——飲んだあと体重計に
+       乗る人は少ないし、アルコールは水分として翌朝に出るからです。
+
+       ここは特に、因果に読まれやすいところです。「飲んだから増えた」と
+       書けば、そう読まれます。実際には、飲む日は外食の日でもあり、
+       塩分も糖質も同時に増えます。だから **並びの差** としてだけ言います。 */
+    const drinkDays = pts.filter((p) => {
+      const t = store.drinkTotals(U.shiftDay(p.day, -1));
+      return !!t;
+    });
+    const soberDays = pts.filter((p) => !store.drinkTotals(U.shiftDay(p.day, -1)));
+    const dr = [], so = [];
+    drinkDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) dr.push(p.kg - m); });
+    soberDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) so.push(p.kg - m); });
+    if (dr.length >= MIN_GROUP && so.length >= MIN_GROUP) {
+      const diff = round(mean(dr) - mean(so), 2);
+      const gTotal = drinkDays.reduce((a, p) => {
+        const t = store.drinkTotals(U.shiftDay(p.day, -1));
+        return a + (t ? t.alcoholG : 0);
+      }, 0);
+      out.push({
+        id: "drink",
+        title: "飲んだ翌日の体重",
+        text: Math.abs(diff) < 0.1
+          ? `飲んだ翌日（${dr.length}日）と、そうでない日（${so.length}日）で、`
+            + `7日平均からのずれに目立った差はありません。`
+          : `飲んだ翌日は、そうでない日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
+            + `（飲んだ翌日 ${dr.length}日 / そうでない日 ${so.length}日、`
+            + `純アルコール 平均${round(gTotal / dr.length, 1)}g）。`
+            + `並びに差があるということで、飲酒が原因だとは言えません`
+            + `——飲む日は外食の日でもあり、塩分も水分も一緒に動きます。`,
+        value: diff, tone: "info", n: dr.length + so.length,
+      });
+    }
+
     /* --- 平日と休日 --- */
     const wd = [], we = [];
     pts.forEach((p) => {
@@ -497,6 +552,7 @@
   }
 
   KN.diet = {
+    burnedOf,
     daysBetween, weightPoints, movingAverage, slopePerWeek,
     weightSummary, projection, neededPace,
     dayTotals, remaining, pfcRatio, dayCard,
