@@ -216,14 +216,57 @@
    * ワークアウトも一本ずつ残します（同じ日の朝と夜のランは別の運動です）。
    * 心拍数は足しても意味がないので、平均を採ります。
    */
+  /* 同じものを二つの機械が数えていることがあります。
+
+     歩行距離がそれで、Apple Watch と iPhone の両方が一日ぶんを持って
+     います。足すと二重になります——実測で Watch 7.8km / iPhone 6.0km /
+     ヘルスケア 7.9km のところ、足すと 13.9km になりました。
+
+     **足せるのは、同じものを分けて数えているときだけ**です。
+     出どころの違う「その日ぜんぶ」どうしは、足すものではなく
+     選ぶものです。Watch のほうがヘルスケアの値と合うので、
+     出どころが分かるなら Watch を採ります。
+
+     出どころが一つしか来ないとき（いまのショートカットはそうです）は、
+     これまでどおり足します。ここが変わるのは、**出どころを分けて
+     送ってきたときだけ** です。 */
+  const PICK_ONE = ["distance"];
+  const isWatch = (s) => /watch|ウォッチ|ウオッチ/i.test(String(s || ""));
+
   function foldSamples(list) {
     const out = [];
     const bag = new Map();
+
+    /* 先に見ておきます——同じ日の同じ種類に、違う出どころが来ているか。 */
+    const sources = new Map();
+    list.forEach((s) => {
+      if (!PICK_ONE.includes(s.type) || s.externalId) return;
+      const key = s.type + "|" + s.day;
+      if (!sources.has(key)) sources.set(key, new Set());
+      sources.get(key).add(String(s.source || ""));
+    });
+    const split = new Set();
+    sources.forEach((set, key) => { if (set.size > 1) split.add(key); });
+
     list.forEach((s) => {
       const foldable = !s.externalId
         && (ADDITIVE.includes(s.type) || s.type === "heartRate");
       if (!foldable) { out.push(s); return; }
       const key = s.type + "|" + s.day;
+
+      // 出どころが分かれている「選ぶもの」は、足さずに一つ選びます。
+      if (split.has(key)) {
+        const cur = bag.get(key);
+        if (!cur) { bag.set(key, { ...s, _n: 1, _picked: true }); return; }
+        // Watch を優先。どちらも Watch でなければ、大きいほうを残します
+        // （小さいほうは、片方の機械しか付けていなかった時間ぶん）。
+        const better = isWatch(s.source) && !isWatch(cur.source)
+          ? true
+          : (!isWatch(cur.source) && !isWatch(s.source) && s.value > cur.value);
+        if (better) bag.set(key, { ...s, _n: 1, _picked: true });
+        return;
+      }
+
       const cur = bag.get(key);
       if (!cur) { bag.set(key, { ...s, _n: 1 }); return; }
       cur.value += s.value;
@@ -233,6 +276,7 @@
     bag.forEach((s) => {
       if (s.type === "heartRate" && s._n > 1) s.value = Math.round(s.value / s._n);
       delete s._n;
+      delete s._picked;
       out.push(s);
     });
     return out;

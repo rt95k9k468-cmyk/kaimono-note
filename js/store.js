@@ -86,6 +86,9 @@
       meals: [],
       foods: [],
       health: [],
+      // お酒。食事とは別に持ちます——飲んだ量と純アルコール量は、
+      // 食べたものの栄養とは別の軸で見るものなので。
+      drinks: [],
       goal: {
         heightCm: null,
         targetKg: null,
@@ -166,6 +169,39 @@
     };
   }
 
+  /* お酒の一杯。
+     読み取りは直せますが、**本人が書いた文はもう手に入りません**。
+     だから raw を必ず持ちます。あとで読み方を良くしたときに、
+     古い記録も読み直せます。 */
+  function cleanDrink(d) {
+    if (!d || typeof d !== "object") return null;
+    const kinds = (KN.drinks && KN.drinks.KINDS) || [];
+    const kind = kinds.some((k) => k.id === d.kind) ? d.kind : "other";
+    const label = String(d.kindLabel || "").trim()
+      || ((kinds.find((k) => k.id === kind) || {}).label || "お酒");
+    const volumeMl = Math.max(0, Math.round((num(d.volumeMl) || 0) * 10) / 10);
+    if (!volumeMl) return null;
+    return {
+      id: d.id || uid("dr"),
+      day: dayStr(d.day) || today(),
+      time: KN.util.isTime(d.time) ? d.time : null,
+      kind,
+      kindLabel: label,
+      name: String(d.name || "").trim().slice(0, 40),
+      ml: Math.max(0, Math.round((num(d.ml) || 0) * 10) / 10),
+      count: Math.max(0, Math.round((num(d.count) || 1) * 100) / 100) || 1,
+      unit: ["本", "杯"].includes(d.unit) ? d.unit : "本",
+      volumeMl,
+      abv: Math.max(0, Math.round((num(d.abv) || 0) * 10) / 10),
+      alcoholG: Math.max(0, Math.round((num(d.alcoholG) || 0) * 10) / 10),
+      kcal: Math.max(0, Math.round(num(d.kcal) || 0)),
+      // 推した値かどうか。画面で「約」を付けるのはこの旗ひとつで決めます。
+      estimated: d.estimated !== false,
+      raw: typeof d.raw === "string" ? d.raw : "",
+      at: d.at || new Date().toISOString(),
+    };
+  }
+
   function cleanMeal(m, i) {
     const items = (Array.isArray(m.items) ? m.items : []).map(cleanMealItem).filter(Boolean);
     if (!items.length && !String(m.memo || "").trim()) return null;
@@ -241,6 +277,9 @@
       meals: (Array.isArray(src.meals) ? src.meals : []).map(cleanMeal).filter(Boolean),
       foods: (Array.isArray(src.foods) ? src.foods : []).map(cleanUserFood).filter(Boolean),
       health: (Array.isArray(src.health) ? src.health : []).map(cleanHealth).filter(Boolean),
+      /* 前からある記録には drinks がありません。空で足すだけなので、
+         入れ直しても既存のデータは何も動きません。 */
+      drinks: (Array.isArray(src.drinks) ? src.drinks : []).map(cleanDrink).filter(Boolean),
       goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
       sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },
     };
@@ -463,6 +502,12 @@
   function persist() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
+      /* 走り終えたら手を離します。ここを忘れていたので、saveTimer は
+         一度でも保存すればずっと真のままでした。reload() は「書きかけが
+         あるなら先に書き出す」ためにこの値を見るので、**いつでも
+         書き出してから読み直す**ことになり、外から書き換えられた控えを
+         毎回踏み潰していました（読み直す意味がありませんでした）。 */
+      saveTimer = null;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
       } catch (err) {
@@ -1333,7 +1378,42 @@
       .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
   }
 
-  /* --- その人の食品 --- */
+  /* --- お酒 --- */
+
+  function addDrink(d) {
+    const rec = cleanDrink(d);
+    if (!rec) return null;
+    update((st) => { st.diet.drinks.push(rec); });
+    return rec;
+  }
+
+  function updateDrink(id, patch) {
+    let out = null;
+    update((st) => {
+      const i = st.diet.drinks.findIndex((x) => x.id === id);
+      if (i < 0) return;
+      const merged = cleanDrink({ ...st.diet.drinks[i], ...patch, id });
+      if (merged) { st.diet.drinks[i] = merged; out = merged; }
+    });
+    return out;
+  }
+
+  function removeDrink(id) {
+    update((st) => { st.diet.drinks = st.diet.drinks.filter((x) => x.id !== id); });
+  }
+
+  function drinksOfDay(day) {
+    return diet().drinks.filter((d) => d.day === day)
+      .sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))
+                   || String(a.at).localeCompare(String(b.at)));
+  }
+
+  /** その日の合計。飲んでいない日は null（0 と「無い」は別のことです）。 */
+  function drinkTotals(day) {
+    return KN.drinks ? KN.drinks.totals(drinksOfDay(day)) : null;
+  }
+
+  /** --- その人の食品 --- */
 
   function addUserFood(food) {
     const rec = cleanUserFood(food);
@@ -1566,6 +1646,7 @@
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay,
+    addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, clearDiet,

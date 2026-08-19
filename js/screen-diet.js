@@ -21,11 +21,13 @@
   const U = KN.util;
   const store = KN.store;
   const D = KN.diet;
+  const DR = KN.drinks;
 
   let root = null;
   let els = {};
   let range = 30;             // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
+  let series = "";             // 体重と並べて見るもの。空なら体重だけ。
 
   /* 一日の順に、日の高さで。朝は昇る日、昼は真上の日、夜は月——
      間食だけは時刻ではないので、食べもののほうを描きます。 */
@@ -178,17 +180,72 @@
     { id: 365, label: "1年" }, { id: 0, label: "全部" },
   ];
 
+  /* ---------------- 体重と並べて見るもの ----------------
+
+     単位が違うものを同じ縦軸に重ねると、どちらも読めなくなります。
+     体重は 68〜70 の狭い幅で動き、歩数は 0〜12000 です。同じ軸に置けば
+     体重は一本の水平線に潰れます。
+
+     だから **主役は体重の線のまま**、関連データは背後の棒にします。
+     棒は自分の最大値を天井とする別のものさしで、数字の目盛りは出さず、
+     いちばん大きい日の値だけを右上に書きます。棒の高さどうしを見比べる
+     ことはできて、体重と絶対値で比べることはできない——それが正しい
+     読み方なので、そう見えるようにします。
+
+     一度に一つだけ選べます。二つ重ねると、どちらの棒がどちらか分からなく
+     なるうえ、体重の線が埋もれます。 */
+  const SERIES = [
+    { id: "",       label: "なし" },
+    { id: "kcal",   label: "摂取",   unit: "kcal", ico: "meal",
+      get: (d) => { const t = D.dayTotals(d); return t ? t.kcal : null; } },
+    { id: "steps",  label: "歩数",   unit: "歩",   ico: "steps",
+      get: (d) => store.healthValue(d, "steps") },
+    { id: "burned", label: "総消費", unit: "kcal", ico: "flame",
+      get: (d) => D.burnedOf(d) },
+    { id: "sleep",  label: "睡眠",   unit: "時間", ico: "moon",
+      get: (d) => { const v = store.healthValue(d, "sleep"); return v == null ? null : Math.round(v / 6) / 10; } },
+    { id: "drink",  label: "飲酒",   unit: "g",    ico: "drink",
+      get: (d) => { const t = store.drinkTotals(d); return t ? t.alcoholG : null; } },
+  ];
+  const seriesOf = (id) => SERIES.find((s) => s.id === id) || SERIES[0];
+
+  /* 棒の天井。凡例に添えます——グラフの中に置くと、飲んだ日の印と
+     重なりました（狭いところに二つ置こうとしたのが間違いでした）。 */
+  function seriesMax() {
+    const sel = seriesOf(series);
+    if (!sel.id) return null;
+    const today = U.todayKey();
+    const all = D.weightPoints(null, today);
+    if (!all.length) return null;
+    const from = range === 0 ? all[0].day : U.shiftDay(today, -(range - 1));
+    const pts = all.filter((p) => p.day >= from);
+    if (pts.length < 2) return null;
+    let max = null;
+    D.daysBetween(pts[0].day, pts[pts.length - 1].day).forEach((d) => {
+      const v = sel.get(d);
+      if (v != null && (max == null || v > max)) max = v;
+    });
+    return max;
+  }
+
   function renderGraph(host) {
     const sec = node(html`
       <section class="card section diet-graph-card">
         <div class="section-title">${icon("chart")}体重の推移</div>
         <div class="js-range"></div>
         <div class="js-chart"></div>
+        <div class="diet-with">
+          <span class="diet-with-label">並べて見る</span>
+          <div class="js-series"></div>
+        </div>
         <div class="diet-legend">
           <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
           <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
           ${range === 0 || range >= 30 ? html`<span class="diet-legend-item"><i class="dot-ma14"></i>14日平均</span>` : ""}
           ${store.get().diet.goal.targetKg != null ? html`<span class="diet-legend-item"><i class="dot-goal"></i>目標</span>` : ""}
+          ${series ? html`<span class="diet-legend-item"><i class="dot-bar"></i>${seriesOf(series).label}${
+            seriesMax() == null ? "" : `（最大 ${seriesMax().toLocaleString()}${seriesOf(series).unit}）`}</span>` : ""}
+          <span class="diet-legend-item"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
         </div>
       </section>
     `);
@@ -196,6 +253,10 @@
     KN.ui.chipRow(sec.querySelector(".js-range"), RANGES.map((r) => ({ id: r.id, label: r.label })), {
       activeId: range,
       onPick: (id) => { range = Number(id); render(); },
+    });
+    KN.ui.chipRow(sec.querySelector(".js-series"), SERIES.map((x) => ({ id: x.id, label: x.label })), {
+      activeId: series,
+      onPick: (id) => { series = String(id || ""); render(); },
     });
 
     sec.querySelector(".js-chart").append(chart());
@@ -223,7 +284,12 @@
       `);
     }
 
-    const W = 320, H = 132, padL = 34, padR = 8, padT = 10, padB = 18;
+    /* 飲んだ日の印は、線とは別の帯に置きます。線の上に重ねると、
+       体重が高い日の点と印が同じ高さで並んで、どちらか読めません。 */
+    const hasMarks = D.daysBetween(all.length ? all[0].day : today, today)
+      .some((d) => store.drinkTotals(d));
+    const W = 320, H = 132, padL = 34, padR = 8, padB = 18;
+    const padT = hasMarks ? 22 : 10;
     const ma7 = D.movingAverage(pts, 7).filter((m) => m.value != null);
     const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
     const goal = store.get().diet.goal.targetKg;
@@ -246,10 +312,46 @@
     const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
     const path = (rows, get) => rows.map((r, i) => `${i ? "L" : "M"}${x(r.day).toFixed(1)} ${y(get(r)).toFixed(1)}`).join(" ");
 
+    /* ---- 並べて見るもの ----
+
+       日ごとの棒。ものさしは体重とは別で、いちばん大きい日を天井に
+       します。目盛りは書きません——書けば「体重と同じ軸だ」と読まれます。
+       いちばん大きい日の値だけを右上に置いて、天井が何かを言います。 */
+    const sel = seriesOf(series);
+    const days = D.daysBetween(pts[0].day, pts[pts.length - 1].day);
+    const bars = [];
+    let barMax = 0;
+    if (sel.id) {
+      days.forEach((d) => {
+        const v = sel.get(d);
+        if (v == null) return;
+        bars.push({ day: d, value: v });
+        if (v > barMax) barMax = v;
+      });
+    }
+    const barW = Math.max(2, Math.min(11, (W - padL - padR) / Math.max(1, days.length) - 1.4));
+    const barBase = H - padB;
+    const barTop = padT + 18;                      // 体重の線と喧嘩しない高さまで
+    const barH = (v) => (barMax > 0 ? (v / barMax) * (barBase - barTop) : 0);
+
+    /* ---- 飲んだ日の印 ----
+
+       「飲酒あり」とだけ出しても、350mlを一本と、一升瓶を空けた日が
+       同じ顔になります。押せば中身が出るようにして、印の濃さは
+       純アルコール量で変えます。 */
+    const marks = days.map((d) => ({ day: d, t: store.drinkTotals(d) }))
+      .filter((m) => m.t);
+    const markY = 9;
+
     const gridVals = [hi - padY, (hi + lo) / 2, lo + padY];
     const svg = node(html`
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
            aria-label="体重の推移のグラフ">
+        ${KN.util.raw(bars.map((b) => {
+          const h = barH(b.value);
+          return `<rect class="diet-bar" x="${(x(b.day) - barW / 2).toFixed(1)}" y="${(barBase - h).toFixed(1)}"
+                        width="${barW.toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="1.2"/>`;
+        }).join(""))}
         ${KN.util.raw(gridVals.map((v) =>
           `<line class="diet-gridline" x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}"/>`
           + `<text class="diet-axis" x="${padL - 5}" y="${(y(v) + 3.4).toFixed(1)}" text-anchor="end">${v.toFixed(1)}</text>`
@@ -262,11 +364,67 @@
         ${KN.util.raw(pts.map((p) =>
           `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""}" cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="1.9"/>`
         ).join(""))}
+        ${KN.util.raw(marks.map((m) => {
+          /* 濃さは純アルコール量で。「飲酒あり」とだけ出すと、350mlを一本と
+             一升瓶を空けた日が同じ顔になります。目安（20g）の1.5倍で満ちます。 */
+          const heavy = Math.min(1, (m.t.alcoholG || 0) / (DR.GUIDE_G * 1.5));
+          const s = 11 / 24;                       // 絵は24四方。11pxまで縮めます
+          const cx = x(m.day), cy = markY;
+          return `<g class="diet-beer" data-day="${m.day}" opacity="${(0.5 + heavy * 0.5).toFixed(2)}">`
+            + `<g transform="translate(${(cx - 5.5).toFixed(1)} ${(cy - 5.5).toFixed(1)}) scale(${s.toFixed(3)})">`
+            + `<path class="diet-beer-mug" d="M6.2 4.6h9.2v13.2a2 2 0 0 1-2 2H8.2a2 2 0 0 1-2-2Z"/>`
+            + `<path class="diet-beer-mug" d="M15.4 7.6h2.2a2.4 2.4 0 0 1 0 4.8h-2.2"/>`
+            + `<path class="diet-beer-mug" d="M6.2 9.2h9.2"/></g>`
+            + `<rect class="diet-beer-hit" x="${(cx - 9).toFixed(1)}" y="${cy - 9}" width="18" height="18"/>`
+            + `</g>`;
+        }).join(""))}
         <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(pts[0].day).replace("今日", "")}</text>
         <text class="diet-axis" x="${W - padR}" y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
       </svg>
     `);
+
+    /* 印は押せます。飲んだ量は、グラフの上で確かめられないと意味が薄い。 */
+    svg.querySelectorAll(".diet-beer").forEach((g) => {
+      g.addEventListener("click", () => { haptic(); showDrinkDay(g.getAttribute("data-day")); });
+    });
     return svg;
+  }
+
+  /** グラフの🍺を押したとき。その日に何を飲んだかを出します。 */
+  function showDrinkDay(day) {
+    const rows = store.drinksOfDay(day);
+    const t = DR.totals(rows);
+    if (!t) return;
+    const body = node(html`
+      <div class="stack">
+        <div class="diet-read">
+          ${KN.util.raw(rows.map((d) => `
+            <div class="diet-drink-row">
+              <b>${KN.util.escapeHtml(DR.describeItem(d))}</b>
+              <span>${d.abv}%${d.estimated ? "（推定）" : ""}</span>
+              <span class="mono-num">純アルコール ${d.estimated ? "約" : ""}${d.alcoholG}g</span>
+              <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+            </div>`).join(""))}
+          ${rows.length > 1 ? `
+            <div class="diet-drink-row is-sum">
+              <b>合計</b>
+              <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
+              <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
+              <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
+            </div>` : ""}
+        </div>
+      </div>
+    `);
+    /* 入れ物で包みます。ボタンそのものを渡すと、あとで
+       foot.querySelector(".js-edit") が自分自身を見つけられず、
+       ボタンが黙って効かなくなります（一度そうしていました）。 */
+    const foot = node(html`
+      <div style="width:100%">
+        <button class="btn btn-soft btn-block js-edit">${icon("edit")}この日の記録を直す</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: U.formatDay(day) + " のお酒", content: body, footer: foot });
+    foot.querySelector(".js-edit").addEventListener("click", () => { h.close(); openDrinkSheet(day); });
   }
 
   /* ---------------- からだ ---------------- */
@@ -274,15 +432,19 @@
   /* 数の並びは、見るためだけのものにしません。取り込んだ値を直せず消せず、
      今日より前の日にも触れないと、一度入った間違いがそのまま残ります。
      どの枠を押しても、その日の記録の画面が開きます。 */
-  /* 絵は飾りではありません。数字だけが六つ並ぶと、どれが何かは読むまで
+  /* 絵は飾りではありません。数字だけが並ぶと、どれが何かは読むまで
      分からず、探すたびに全部読み直すことになります。目は文字より先に絵を
-     拾うので、二度目からは絵で当たりを付けられます。 */
+     拾うので、二度目からは絵で当たりを付けられます。
+
+     この並びは「からだの記録」を直す画面のもの——ヘルスケアから来る
+     六種類ぜんぶです。カードに出す四つとは別で、こちらは減らしません
+     （直せる場所が減ると、直せない値が生まれます）。 */
   const BODY_ROWS = [
     { type: "steps",         label: "歩数",       unit: "歩",   hint: "8432", ico: "steps" },
-    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1",  ico: "route" },
     { type: "activeEnergy",  label: "アクティブ", unit: "kcal", hint: "430",  ico: "flame" },
-    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12", ico: "moon" },
     { type: "restingEnergy", label: "安静時",     unit: "kcal", hint: "1520", ico: "bed" },
+    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12", ico: "moon" },
+    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1",  ico: "route" },
     { type: "heartRate",     label: "心拍数",     unit: "bpm",  hint: "62",   ico: "heart" },
   ];
 
@@ -299,18 +461,31 @@
 
   function renderBodyStats(host, card) {
     const sync = store.get().diet.sync;
-    /* **ぜんぶ出します。**
+    const dt = card.drinkTotals;
 
-       前は四つだけで、安静時と心拍数は「記録を見る・直す」の向こうでした。
-       毎日ほとんど動かない数だから、というのが理由でしたが——動かないことを
-       確かめるのにも、開いて閉じる二手が要ります。持っている数を全部見せて
-       おけば、その二手はゼロになります。六つは、三つ二段で収まります。 */
-    const rows = BODY_ROWS.map((r) => ({
-      ...r,
-      value: showValue(r.type, card[r.type]),
-      manual: isManual(card.day, r.type),
-    }));
-    const nothing = rows.every((r) => r.value === "—") && !card.workouts.length;
+    /* カードに出す四つ。「今日どうだったか」に答える最小の組です。
+
+       総消費は、安静時とアクティブを **こちらで足して** 出します。二つに
+       分けて見せていましたが、「今日どれだけ使ったか」を知るのに人に足し算を
+       させるのは、こちらがやるべき仕事です。分けたぶんは「記録を見る・直す」に
+       あります。
+
+       歩行距離はここから外しました。毎日ほとんど同じで、体重との関係も
+       歩数がすでに言っています（そして機械が二台あると二重に数える——
+       取り込みのほうで直しました）。記録としては持ち続けます。
+
+       飲酒は数ではなく、**中身**を出します。「1杯」とだけ出しても、
+       それがビール350mlなのか焼酎の水割りなのかで話がまるで違うので。 */
+    const rows = [
+      { type: "steps", label: "歩数", unit: "歩", ico: "steps",
+        value: showValue("steps", card.steps), manual: isManual(card.day, "steps") },
+      { type: "burned", label: "総消費", unit: "kcal", ico: "flame",
+        value: card.burned == null ? "—" : n0(card.burned),
+        manual: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy") },
+      { type: "sleep", label: "睡眠", unit: "", ico: "moon",
+        value: showValue("sleep", card.sleep), manual: isManual(card.day, "sleep") },
+    ];
+    const nothing = rows.every((r) => r.value === "—") && !card.workouts.length && !dt;
 
     const sec = node(html`
       <section class="card section">
@@ -323,6 +498,20 @@
               <b class="diet-cell-value mono-num">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
             </button>`).join(""))}
+          ${/* 飲酒。三つの数と並べますが、中身は数ではなく言葉なので、
+                枠は横に長く取ります。 */""}
+          <button class="diet-cell diet-cell-wide js-drink ${dt ? "" : "is-blank"}">
+            <span class="diet-cell-ico">${icon("drink")}</span>
+            <span class="diet-cell-label">飲酒</span>
+            ${dt ? html`
+              <b class="diet-drink-what">${card.drinks.map((d) => DR.describeItem(d)).join("・")}</b>
+              <span class="diet-cell-unit">純アルコール ${dt.estimated ? "約" : ""}${dt.alcoholG}g
+                ・ ${dt.estimated ? "約" : ""}${dt.kcal.toLocaleString()}kcal</span>
+            ` : html`
+              <b class="diet-drink-what is-none">飲酒なし</b>
+              <span class="diet-cell-unit">タップして記録する</span>
+            `}
+          </button>
         </div>
         ${card.workouts.length ? html`
           <div class="diet-workouts">
@@ -347,9 +536,164 @@
     const log = sec.querySelector(".js-log");
     if (log) log.addEventListener("click", () => openBodySheet(card.day));
     sec.querySelectorAll(".js-cell").forEach((c) => {
-      c.addEventListener("click", () => openBodySheet(card.day, c.dataset.type));
+      c.addEventListener("click", () => {
+        // 総消費はそれ自体の欄が無いので、内わけの片方に降ろします。
+        const t = c.dataset.type === "burned" ? "activeEnergy" : c.dataset.type;
+        openBodySheet(card.day, t);
+      });
     });
+    sec.querySelector(".js-drink").addEventListener("click", () => openDrinkSheet(card.day));
     host.append(sec);
+  }
+
+  /* ---------------- お酒 ----------------
+
+     書いてもらうのは一行だけです。「ビール350mlを2本」。
+     種類を選び、量を選び、本数を選び……を毎晩やらせると、三日でやめます。
+
+     ただし **読んだものを黙って保存はしません**。読み違えはあるし、
+     度数を書かなければ推した値です。打つそばから読み下しを出して、
+     入る中身を見てから押してもらいます。確認の画面を別に挟むのではなく、
+     同じ画面に出す——押す回数は増やさずに、見えるようにするだけ。 */
+
+  const EXAMPLES = ["ビール350ml 2本", "ワイン半分", "日本酒1合", "ハイボール2杯", "焼酎100ml"];
+
+  function openDrinkSheet(day0, editId) {
+    const day = day0 || U.todayKey();
+    const editing = editId ? store.drinksOfDay(day).find((d) => d.id === editId) : null;
+
+    const body = node(html`
+      <div class="stack">
+        <div class="diet-daynav">
+          <b>${U.formatDay(day)}</b>
+        </div>
+        <label class="field">
+          <span class="field-label">飲んだもの</span>
+          <input class="input js-q" placeholder="ビール350ml 2本"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 value="${editing ? editing.raw || DR.describeItem(editing) : ""}">
+        </label>
+        <div class="diet-chips js-ex"></div>
+        <div class="js-read"></div>
+        <div class="js-list"></div>
+      </div>
+    `);
+
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
+        <button class="btn btn-primary js-save" style="flex:2">${editing ? "直す" : "記録する"}</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot });
+
+    const q = body.querySelector(".js-q");
+    const readBox = body.querySelector(".js-read");
+    let items = [];
+
+    /* よくある書き方を、押せる形で。何をどう書けばいいかは、
+       説明文より例のほうが早く伝わります。 */
+    EXAMPLES.forEach((ex) => {
+      const chip = node(html`<button type="button" class="chip">${ex}</button>`);
+      chip.addEventListener("click", () => {
+        q.value = q.value.trim() ? q.value.trim() + "、" + ex : ex;
+        paint();
+        haptic();
+      });
+      body.querySelector(".js-ex").append(chip);
+    });
+
+    function paint() {
+      const res = DR.parse(q.value);
+      items = res.items;
+      readBox.innerHTML = "";
+      if (!q.value.trim()) return;
+
+      if (!items.length) {
+        readBox.append(node(html`
+          <p class="diet-note is-warn">読めませんでした。
+            「ビール350ml 2本」のように、<b>お酒の種類</b>と量を書いてみてください。</p>`));
+        return;
+      }
+      const t = DR.totals(items);
+      readBox.append(node(html`
+        <div class="diet-read">
+          ${KN.util.raw(items.map((it) => `
+            <div class="diet-drink-row">
+              <b>${KN.util.escapeHtml(DR.describeItem(it))}</b>
+              <span>${it.abv}%${it.estimated ? "（推定）" : ""}</span>
+              <span class="mono-num">純アルコール ${it.estimated ? "約" : ""}${it.alcoholG}g</span>
+              <span class="mono-num">${it.estimated ? "約" : ""}${it.kcal.toLocaleString()}kcal</span>
+            </div>`).join(""))}
+          ${items.length > 1 ? `
+            <div class="diet-drink-row is-sum">
+              <b>合計 ${items.length}種類</b>
+              <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
+              <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
+              <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
+            </div>` : ""}
+        </div>
+      `));
+      readBox.append(node(html`
+        <p class="diet-note">
+          純アルコール量は <b>ml × 度数% ÷ 100 × 0.8</b> で数えます。
+          ${t.estimated ? "度数や量を書かなかったぶんは、種類ごとの目安から推しました（「約」と付けています）。" : ""}
+          ${t.alcoholG >= DR.GUIDE_G ? `なお「節度ある適度な飲酒」は一日 純アルコール${DR.GUIDE_G}g程度とされています（個人差があります）。` : ""}
+        </p>`));
+    }
+
+    q.addEventListener("input", paint);
+    paint();
+    KN.ui.focusNow(q);
+
+    /* その日のぶんの一覧。ここから直せます。 */
+    function paintList() {
+      const list = body.querySelector(".js-list");
+      list.innerHTML = "";
+      const mine = store.drinksOfDay(day).filter((d) => !editing || d.id !== editing.id);
+      if (!mine.length) return;
+      list.append(node(html`<div class="section-title">この日の記録</div>`));
+      const rows = node(html`<div class="rows"></div>`);
+      mine.forEach((d) => {
+        const row = node(html`
+          <button class="row">
+            <span class="row-main">
+              <span class="row-title">${DR.describeItem(d)}</span>
+              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
+            </span>
+            <span class="row-chevron">${icon("edit")}</span>
+          </button>
+        `);
+        row.addEventListener("click", () => { h.close(); openDrinkSheet(day, d.id); });
+        rows.append(row);
+      });
+      list.append(rows);
+    }
+    paintList();
+
+    foot.querySelector(".js-save").addEventListener("click", () => {
+      if (!items.length) { KN.ui.toast("読めませんでした。書き方を変えてみてください"); return; }
+      if (editing) {
+        // 直すときは一つぶん。二つに増えたなら、残りは足します。
+        store.updateDrink(editing.id, { ...items[0], day, raw: q.value.trim() });
+        items.slice(1).forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+      } else {
+        items.forEach((it) => store.addDrink({ ...it, day, raw: q.value.trim() }));
+      }
+      h.close();
+      render();
+      const t = DR.totals(items);
+      KN.ui.toast(`お酒：${items.map((i) => DR.describeItem(i)).join("・")}（純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g）`);
+      haptic(12);
+    });
+
+    const del = foot.querySelector(".js-del");
+    if (del) del.addEventListener("click", () => {
+      store.removeDrink(editing.id);
+      h.close();
+      render();
+      KN.ui.toast("消しました");
+    });
   }
 
   /* ---------------- からだの記録を直す ----------------
@@ -521,6 +865,9 @@
             <b class="mono-num">${t ? t.kcal.toLocaleString() : "—"}</b><small>kcal</small>
             ${t && t.estimated ? html`<span class="badge badge-muted">推定を含む</span>` : ""}
           </div>
+          ${card.drinkTotals ? html`
+            <span class="badge badge-muted">＋ お酒 ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal.toLocaleString()}kcal</span>
+          ` : ""}
           ${rem ? html`
             <div class="diet-kcal-rem ${rem.kcal < 0 ? "is-over" : ""}">
               ${rem.kcal >= 0 ? html`残り <b class="mono-num">${rem.kcal.toLocaleString()}</b> kcal`
@@ -529,6 +876,13 @@
             </div>` : ""}
         </div>
 
+        ${card.drinkTotals ? html`
+          <p class="diet-note">
+            上の ${t ? t.kcal.toLocaleString() : "0"}kcal は<b>食べたもの</b>だけの数です。
+            お酒のぶんを足すと
+            <b class="mono-num">${((t ? t.kcal : 0) + card.drinkTotals.kcal).toLocaleString()}kcal</b>
+            になります（お酒は栄養の内わけを持たないので、PFCの棒には入れていません）。
+          </p>` : ""}
         ${t ? html`
           <div class="diet-pfc">
             ${/* 棒が何を言っているかは一つに決めます。目標があるならその進み具合、
@@ -616,6 +970,7 @@
     weekend:       "sun",
     pfc:           "meal",
     mixed:         "scale",
+    drink:         "drink",
     meal:          "meal",
     clothed:       "scale",
   };
@@ -1321,6 +1676,7 @@
     ["heartRate", "心拍数", "62"],
     ["workout", "ワークアウト", "ウォーキング,42,210"],
     ["day", "どの日のぶんか", U.todayKey()],
+    ["source", "どの機械のぶんか", "Apple Watch"],
   ];
 
   function openSyncSheet() {
@@ -1435,9 +1791,21 @@
         </div>
         <p class="diet-note">
           値が取れなかった行は<b>空のままで大丈夫</b>です（空は「無かった」として扱い、
-          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数や距離のように
+          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数のように
           足せるものは<b>合計</b>されます。JSON形式でも読めます。
         </p>
+        <p class="diet-note">
+          <b>歩行距離だけは、足すと二重になります。</b>Apple Watch と iPhone が
+          どちらも一日ぶんを持っているので、両方を合計すると倍近くになります
+          （実測で 7.8km と 6.0km を足して 13.9km になりました）。
+          <code>source=</code> を書いて機械ごとに分けて送れば、
+          <b>Apple Watch のほうを採ります</b>（ヘルスケアの値と一致します）。
+          分けずに一つだけ送るぶんには、これまでと何も変わりません。
+        </p>
+        <pre class="diet-code">source=Apple Watch
+distance=7.8km
+source=iPhone
+distance=6.0km</pre>
       </div>
     `);
 
