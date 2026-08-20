@@ -135,18 +135,18 @@
     els.body.innerHTML = "";
     els.cal = monthCalendar();
     els.body.append(els.cal);
-    /* 並びは「カレンダーで選んだ日の話」から。
-         からだ＋食事 … その日そのもの（カレンダーのすぐ下）
-         体重＋推移   … その日の体重と、そこまでの動き
-         気づき＋目標 … ときどき読み返すもの */
+    /* その日の話は、一枚の紙にまとめます。からだ・食事・体重は
+       別々の話ではなく、同じ一日の三つの面なので——横に払って日を
+       めくるときも、三つが**一緒に**流れたほうが「日が変わった」と読めます。
+       区切りは線ではなく地の色で。線は「別のもの」と言いますが、
+       ここで言いたいのは「同じ一日の、別の面」です。 */
     els.body.append(node(html`
       <div class="diet">
-        <section class="card section js-day-card">
-          <div class="js-body-stats"></div>
-          <div class="divider"></div>
-          <div class="js-meals"></div>
+        <section class="card js-day-card diet-day">
+          <div class="diet-block is-body js-body-stats"></div>
+          <div class="diet-block is-meal js-meals"></div>
+          <div class="diet-block is-weight js-today"></div>
         </section>
-        <div class="js-today"></div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
           <div class="divider"></div>
@@ -161,10 +161,9 @@
     renderInsight(els.body.querySelector(".js-insight"));
     renderGoal(els.body.querySelector(".js-goal"), now);
 
-    /* その日の話をしている二枚は、横に払えば日をめくれます。
-       カレンダーまで手を伸ばさずに、昨日・一昨日と辿れるように。 */
+    /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
+       伸ばさずに、昨日・一昨日と辿れるように。 */
     wireDaySwipe(els.body.querySelector(".js-day-card"));
-    wireDaySwipe(els.body.querySelector(".diet-hero"));
 
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
@@ -193,24 +192,26 @@
     return { year: d.getFullYear(), month: d.getMonth() };
   }
 
-  /* その日の点。何件あるかではなく、**何が書いてあるか**を出します。
-       ・体重を量った
-       ・食事を書いた
-       ・お酒（飲んだ＝緑／飲んでいない＝青）
+  /* その日の帯。出すのは**飲酒**だけにしました。
 
-     三つめが青いのは、飲まなかった日も記録だからです。点が出ないと
-     「書き忘れ」と見分けがつかず、休肝日が続いていることも見えません。
-     ただし、その日に何ひとつ書いていなければ何も出しません——使う前の
-     日々が「飲んでいない日」として青く並ぶのは、記録ではなく作り話です。 */
-  function dayDots(d) {
-    const out = [];
-    if (store.weightOfDay(d)) out.push("kg");
-    if (store.mealsOfDay(d).length) out.push("meal");
-    const drank = store.drinksOfDay(d).length;
-    const anyHealth = store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null;
-    if (drank) out.push("drink");
-    else if (out.length || anyHealth) out.push("dry");
-    return out;
+     「体重を書いた」「食事を書いた」は、カレンダーで見たいことでは
+     ありません（開けば分かります）。カレンダーで見たいのは**流れ**——
+     休肝日が続いているか、続けて飲んだ日があるか。
+
+     長さはその日の量（目安に対する割合）、色はその意味。飲まなかった日は
+     青、目安の内なら緑、超えた日は赤。何も書いていない日は出しません
+     ——使う前の日々が「飲んでいない日」として青く並ぶのは、記録ではなく
+     作り話です。 */
+  function drinkBar(d) {
+    const t = store.drinkTotals(d);
+    if (!t) {
+      // 何かしら書いてある日だけ、「飲まなかった」と言えます。
+      const any = store.weightOfDay(d) || store.mealsOfDay(d).length
+        || store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null;
+      return any ? { kind: "dry", pct: 100, g: 0 } : null;
+    }
+    const pct = Math.round((t.alcoholG / alcoholGuide()) * 100);
+    return { kind: pct > 100 ? "over" : "ok", pct: Math.max(6, Math.min(100, pct)), g: t.alcoholG };
   }
 
   function monthCalendar() {
@@ -312,21 +313,20 @@
       const key = U.dayKey(new Date(year, month, d));
       const wd = (lead + d - 1) % 7;
       const isToday = key === today;
-      /* 先の日には点を打ちません（記録は過去にしか無いので）。 */
-      const dots = key > today ? [] : dayDots(key);
-      const n = dots.length;
+      /* 先の日には帯を出しません（記録は過去にしか無いので）。 */
+      const bar = key > today ? null : drinkBar(key);
       const cell = node(html`
         <button class="cal-day ${isToday ? "is-today" : ""} ${key === here ? "is-here" : ""}
                        ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
                 data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
                 aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
-                  n ? (dots.includes("drink") ? " 記録あり・飲酒あり" : " 記録あり") : ""}">
+                  bar ? (bar.kind === "dry" ? " 飲酒なし" : ` 純アルコール${bar.g}g`) : ""}">
           <span class="cal-n">${String(d)}</span>
-          <span class="cal-dots" style="--cat:var(--c-primary)"></span>
+          <span class="cal-dots">${bar
+            ? KN.util.raw(`<span class="cal-bar"><i class="is-${bar.kind}" style="width:${bar.pct}%"></i></span>`)
+            : ""}</span>
         </button>
       `);
-      const host = cell.querySelector(".cal-dots");
-      dots.forEach((kind) => host.append(node(html`<i class="cal-dot ${kind === "dry" ? "is-dry" : ""}"></i>`)));
       cell.addEventListener("click", () => {
         viewDay = key === today ? null : key;
         calMonth = { year, month };
@@ -395,19 +395,45 @@
       if (Math.abs(moved) < THRESHOLD) { reset(); return; }
       const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
       if (next > U.todayKey()) { reset(); return; }
-      el.style.transition = "";
-      dx = 0;
-      paint();
       viewDay = next === U.todayKey() ? null : next;
       /* カレンダーは、めくった先の月に合わせます（月をまたいだときに
          その日の枠が無いと、緑の輪がどこにも行けません）。 */
       const d = U.dayDate(next);
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
       haptic();
-      render();
+      /* 紙が一枚、指の向きに抜けて、隣の日が同じ向きから入ってきます。
+         組み直しは見えないところ（抜けきったあと）でやります——
+         入れ替わる瞬間が見えると、めくったのではなく「化けた」に見えます。 */
+      slideDay(el, moved < 0 ? -1 : 1);
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
+  }
+
+  /**
+   * 日をめくる動き。抜ける方向へ滑らせて、組み直して、反対から入れます。
+   * @param dir -1 なら左へ抜ける（次の日）、+1 なら右へ抜ける（前の日）
+   */
+  function slideDay(el, dir) {
+    const OUT_MS = 150, IN_MS = 210;
+    el.style.transition = `transform ${OUT_MS}ms var(--ease), opacity ${OUT_MS}ms var(--ease)`;
+    el.style.transform = `translateX(${dir * 60}%)`;
+    el.style.opacity = "0";
+    setTimeout(() => {
+      render();
+      const fresh = els.body.querySelector(".js-day-card");
+      if (!fresh) return;
+      fresh.style.transition = "none";
+      fresh.style.transform = `translateX(${dir * -60}%)`;
+      fresh.style.opacity = "0";
+      // 二拍おかないと、置いた位置が「最初からそこ」として扱われて滑りません。
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        fresh.style.transition = `transform ${IN_MS}ms var(--ease-out), opacity ${IN_MS}ms var(--ease)`;
+        fresh.style.transform = "";
+        fresh.style.opacity = "";
+        setTimeout(() => { fresh.style.transition = ""; }, IN_MS + 20);
+      }));
+    }, OUT_MS);
   }
 
   /* 払うと月がめくれます。縦は下のカードのスクロールに譲ります——
@@ -481,7 +507,7 @@
     const when = dayName();
 
     const sec = node(html`
-      <section class="card diet-hero">
+      <div class="diet-hero">
         <div class="diet-hero-top">
           <button class="diet-hero-main js-weight">
             <span class="diet-hero-label">
@@ -517,7 +543,7 @@
         ${pace != null ? html`
           <p class="diet-hero-note">目標日まで、週 ${signed(pace, 2)}kg のペースが要ります。</p>` : ""}
         <div class="js-graph"></div>
-      </section>
+      </div>
     `);
     sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
     renderGraph(sec.querySelector(".js-graph"));
@@ -1858,11 +1884,18 @@
 
         <div class="divider"></div>
         <div class="section-title">AI推計結果</div>
-        <textarea class="textarea js-ai" rows="8" spellcheck="false"
-                  autocapitalize="off" autocorrect="off"
-                  placeholder="食品: 納豆&#10;量: 1パック&#10;カロリー: 90&#10;タンパク質: 7&#10;脂質: 5&#10;炭水化物: 5&#10;食物繊維: 3&#10;区分: 朝&#10;…&#10;摂取カロリー: 170"
-                  aria-label="AIの返事">${cur && cur.ai ? cur.ai.raw : ""}</textarea>
-        <button class="btn btn-soft btn-block js-read">${icon("sparkles")}AI結果を読み取る</button>
+        ${/* 貼ったら、その場で読みます。押すボタンを一つ挟むと、逐次
+              貼り替える使い方では毎回二度手間になります。消すボタンは
+              枠の中に——次を貼るのに、まず選んで消す必要がないように。 */""}
+        <div class="ta-wrap">
+          <textarea class="textarea js-ai" rows="8" spellcheck="false"
+                    autocapitalize="off" autocorrect="off"
+                    placeholder="食品: 納豆&#10;量: 1パック&#10;カロリー: 90&#10;タンパク質: 7&#10;脂質: 5&#10;炭水化物: 5&#10;食物繊維: 3&#10;区分: 朝&#10;…&#10;摂取カロリー: 170"
+                    aria-label="AIの返事">${cur && cur.ai ? cur.ai.raw : ""}</textarea>
+          <button type="button" class="ta-clear js-clear" aria-label="消して貼り直す" hidden>
+            ${icon("close")}
+          </button>
+        </div>
         <div class="js-got"></div>
         <div class="js-items"></div>
       </div>
@@ -1941,25 +1974,55 @@
           数が違っていれば、AIの返事の欄を直してもう一度「AI結果を読み取る」を押してください。</p>`));
     }
 
-    body.querySelector(".js-read").addEventListener("click", () => {
-      const res = readAiReply(aiTa.value);
-      if (!res.found) {
-        KN.ui.toast("数のある行が見つかりませんでした");
-        return;
-      }
-      ai = { ...res, raw: aiTa.value.trim(), at: new Date().toISOString() };
+    /* 貼った（打った）そばから読みます。読めた・読めないは下に出るので、
+       押して確かめるボタンは要りません。読めない文をそのままにしても、
+       いまの推計は消しません——**読めたときだけ**入れ替えます。 */
+    const clearBtn = body.querySelector(".js-clear");
+    let readTimer = 0;
+    let said = "";
+    function paintClear() { clearBtn.hidden = !aiTa.value.trim(); }
+
+    function readNow() {
+      const raw = aiTa.value.trim();
+      paintClear();
+      if (!raw) { ai = null; said = ""; paintAI(); return; }
+      const res = readAiReply(raw);
+      if (!res.found) { paintAI(); return; }
+      ai = { ...res, raw, at: new Date().toISOString() };
       delete ai.found;
       paintAI();
-      KN.ui.toast(res.foods.length
+      // 同じ中身で何度も言いません（打ちながらだと一文字ごとに鳴ります）。
+      const line = res.foods.length
         ? `食品${res.foods.length}件と合計を読み取りました`
-        : "合計を読み取りました");
+        : "合計を読み取りました";
+      if (line !== said) { said = line; KN.ui.toast(line); haptic(); }
+    }
+
+    aiTa.addEventListener("input", () => {
+      paintClear();
+      clearTimeout(readTimer);
+      readTimer = setTimeout(readNow, 180);
+    });
+    // 貼り付けは、打つのと違って一度で終わります。待たずに読みます。
+    aiTa.addEventListener("paste", () => { clearTimeout(readTimer); setTimeout(readNow, 0); });
+
+    clearBtn.addEventListener("click", () => {
+      aiTa.value = "";
+      ai = null;
+      said = "";
+      paintClear();
+      paintAI();
+      KN.ui.focusNow(aiTa);
       haptic();
     });
+
+    paintClear();
     paintAI();
 
     foot.querySelector(".js-save").addEventListener("click", () => {
-      /* 貼っただけで読み取りを押していない人のために、保存のときにもう一度
-         読みます（押し忘れで数が消えるほうが、勝手に読むより困ります）。 */
+      /* 打ち終えた直後（読み取りの一拍が来る前）に押されることがあります。
+         そのときのために、保存の前にもう一度だけ読みます。 */
+      clearTimeout(readTimer);
       if (aiTa.value.trim() && (!ai || ai.raw !== aiTa.value.trim())) {
         const res = readAiReply(aiTa.value);
         if (res.found) { ai = { ...res, raw: aiTa.value.trim(), at: new Date().toISOString() }; delete ai.found; }
