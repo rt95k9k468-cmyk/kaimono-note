@@ -204,17 +204,35 @@
      少ないのかは、その日どれだけ使ったか次第なので。 */
 
   const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+  const SLOT_LABEL = { breakfast: "朝", lunch: "昼", dinner: "夜", snack: "間食" };
 
   /** 区分ごとの合計。AIが食品ごとに区分を付けてくれた日は、ここが埋まります。 */
   function slotTotals(day) {
     const out = { breakfast: 0, lunch: 0, dinner: 0, snack: 0, other: 0, any: false };
-    store.mealsOfDay(day).forEach((m) => m.items.forEach((it) => {
+    const meals = store.mealsOfDay(day);
+    meals.forEach((m) => m.items.forEach((it) => {
       const key = MEAL_SLOTS.includes(it.slot) ? it.slot
         : (MEAL_SLOTS.includes(m.slot) ? m.slot : "other");
       out[key] += it.kcal;
       if (it.kcal) out.any = true;
     }));
     MEAL_SLOTS.concat("other").forEach((k) => { out[k] = Math.round(out[k]); });
+
+    /* 食品ごとの区分が一つも拾えなかった日でも、AIが「朝合計」まで
+       書いてくれていれば、そちらを使います。使ったぶんは「区分なし」から
+       引きます——同じカロリーを二度数えないためです。 */
+    const ai = (meals.find((m) => m.ai && m.ai.slots) || {}).ai;
+    if (ai && !MEAL_SLOTS.some((k) => out[k])) {
+      let used = 0;
+      MEAL_SLOTS.forEach((k) => {
+        const v = ai.slots[k];
+        if (v == null) return;
+        out[k] = Math.round(v);
+        used += out[k];
+        if (out[k]) out.any = true;
+      });
+      out.other = Math.max(0, out.other - used);
+    }
     return out;
   }
 
@@ -525,18 +543,130 @@
       }
     }
 
-    /* 条件が混ざっているのに、まだ比べられるほど溜まっていないとき。
-       黙っていると、その混ざりが増減として読まれ続けます。 */
-    const withCond = pts.filter((p) => p.meal != null || p.clothed != null);
-    const kinds = new Set(pts.map((p) => `${p.meal || "?"}/${p.clothed == null ? "?" : p.clothed}`));
-    if (withCond.length >= 2 && kinds.size > 1 && !out.some((f) => f.id === "meal" || f.id === "clothed")) {
+    /* --- 収支 ---
+
+       いちばん知りたいのはここです。「1,800kcal 食べた」も「8,000歩
+       歩いた」も、それ単体では次の一手になりません。**使ったぶんに対して
+       どれだけ入れたか**が分かってはじめて、増えるほうへ進んでいるのか
+       減るほうへ進んでいるのかが言えます。
+
+       体脂肪1kg はおよそ 7,200kcal——ここから「この差が続けば1週間で
+       何kg ぶんか」を出します。ただし、これは**計算上の見込み**であって
+       予報ではありません。摂取はAIの推計、総消費も端末の推計です。
+       だから、同じ期間の実測がある日は必ず並べて出します。ずれていたら、
+       ずれているという事実のほうが、計算より役に立ちます。 */
+    const balDays = daysBetween(from, today).map((d) => {
+      const t = dayTotals(d);
+      const burned = burnedOf(d);
+      if (!t || burned == null || burned <= 0) return null;
+      const dt = store.drinkTotals(d);
+      return { day: d, intake: t.kcal + (dt ? dt.kcal : 0), burned };
+    }).filter(Boolean);
+    if (balDays.length >= MIN_GROUP) {
+      const gap = mean(balDays.map((r) => r.intake - r.burned));
+      const perWeek = round(gap * 7 / 7200, 2);
+      const changed = out.find((f) => f.id === "change");
       out.push({
-        id: "mixed",
-        title: "量り方が混ざっています",
-        text: `この期間の記録には、条件の違う量り方が ${kinds.size} 通り混ざっています。`
-          + `食前と食後、着衣のあるなしは、体の変化ではなく量り方の差として並びに入ります。`
-          + `同じ条件が片側 ${MIN_GROUP} 日ぶん貯まると、その差を数で出します。`,
-        tone: "warn", n: withCond.length,
+        id: "balance",
+        title: "食べたぶんと、使ったぶん",
+        text: `両方そろっている ${balDays.length}日の平均で、摂取は総消費より`
+          + `1日 ${Math.abs(Math.round(gap)).toLocaleString()}kcal ${gap >= 0 ? "多め" : "少なめ"}です`
+          + `（摂取 ${Math.round(mean(balDays.map((r) => r.intake))).toLocaleString()}kcal / `
+          + `総消費 ${Math.round(mean(balDays.map((r) => r.burned))).toLocaleString()}kcal）。`
+          + `体脂肪1kgをおよそ7,200kcalとすると、この差が続けば1週間で `
+          + `${perWeek > 0 ? "+" : ""}${perWeek}kg ぶんの計算になります。`
+          + (changed
+            ? `実測は同じ期間で ${changed.value > 0 ? "+" : ""}${changed.value}kg でした。`
+              + `計算と実測がずれるのはふつうです（摂取も総消費も推定なので）。`
+              + `どちらかに合わせにいくより、同じ測り方で続けたときの向きを見てください。`
+            : `摂取も総消費も推定なので、実測の体重の動きと突き合わせて読んでください。`),
+        value: round(gap, 0), tone: gap > 0 ? "warn" : "good", n: balDays.length,
+      });
+    }
+
+    /* --- どこで食べているか ---
+
+       一日の合計が同じでも、朝に寄っているのか夜に寄っているのかで、
+       次に動かせる場所が変わります。ここは「多い・少ない」ではなく、
+       いまどうなっているかを数で置くだけにします。 */
+    const slotDays = daysBetween(from, today).map((d) => slotTotals(d)).filter((s) => s.any);
+    if (slotDays.length >= MIN_GROUP) {
+      const avg = {};
+      MEAL_SLOTS.concat("other").forEach((k) => { avg[k] = mean(slotDays.map((s) => s[k])); });
+      const all = MEAL_SLOTS.concat("other").reduce((a, k) => a + avg[k], 0);
+      const pct = (k) => (all > 0 ? Math.round(avg[k] / all * 100) : 0);
+      const heavy = MEAL_SLOTS.slice().sort((a, b) => avg[b] - avg[a])[0];
+      out.push({
+        id: "slot",
+        title: "どの食事が重いか",
+        text: `区分の分かる ${slotDays.length}日の平均は、`
+          + MEAL_SLOTS.map((k) => `${SLOT_LABEL[k]} ${Math.round(avg[k]).toLocaleString()}kcal（${pct(k)}%）`).join("・")
+          + (avg.other >= 1 ? `、区分なし ${Math.round(avg.other).toLocaleString()}kcal（${pct("other")}%）` : "")
+          + `。いちばん重いのは${SLOT_LABEL[heavy]}で、一日の${pct(heavy)}%です。`,
+        tone: "info", n: slotDays.length,
+      });
+    }
+
+    /* --- 夕食が重かった日と、その翌朝 ---
+
+       上の「どこで食べているか」は、いまの形を置くだけです。ここは
+       それが**並びに出ているか**を見ます。分ける線は決め打ちにせず、
+       その人の記録の真ん中（中央値）にします——「夜は40%まで」のような
+       外から持ってきた線は、人によって当たり外れが大きいので。 */
+    const shares = daysBetween(from, today).map((d) => {
+      const s = slotTotals(d);
+      const eaten = MEAL_SLOTS.reduce((a, k) => a + s[k], 0) + s.other;
+      if (!s.any || eaten <= 0) return null;
+      return { day: d, share: s.dinner / eaten };
+    }).filter(Boolean);
+    if (shares.length >= MIN_GROUP * 2) {
+      const sorted = shares.map((s) => s.share).slice().sort((a, b) => a - b);
+      const med = sorted[Math.floor(sorted.length / 2)];
+      const heavy = [], light = [];
+      shares.forEach((s) => {
+        const next = U.shiftDay(s.day, 1);
+        const p = pts.find((x) => x.day === next);
+        const ma = maMap.get(next);
+        if (!p || ma == null) return;
+        (s.share >= med ? heavy : light).push(p.kg - ma);
+      });
+      if (heavy.length >= MIN_GROUP && light.length >= MIN_GROUP) {
+        const diff = round(mean(heavy) - mean(light), 2);
+        out.push({
+          id: "dinner",
+          title: "夕食が重かった日の翌朝",
+          text: Math.abs(diff) < 0.1
+            ? `夕食の割合が高かった日（${heavy.length}日）と、そうでない日（${light.length}日）で、`
+              + `翌朝の体重に、7日平均からのずれの差はほとんどありません。`
+            : `夕食の割合が高かった日の翌朝は、そうでない日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
+              + `（分け目はこの期間の真ん中、夕食 ${Math.round(med * 100)}%。`
+              + `高いほう ${heavy.length}日 / 低いほう ${light.length}日）。`
+              + `並びの差であって、夕食が原因だとは言えません`
+              + `——重い夕食の日は、外食や飲酒と重なりやすいところです。`,
+          value: diff, tone: "info", n: heavy.length + light.length,
+        });
+      }
+    }
+
+    /* --- 食物繊維 ---
+
+       PFCの陰に隠れますが、いちばん足りていないのはたいていここです。
+       目安（日本人の食事摂取基準2020：成人男性21g・女性18g以上）に対して
+       いくつ足りないかを、数だけ置きます。 */
+    const fibers = daysBetween(from, today).map((d) => dayTotals(d))
+      .filter((t) => t && t.fiber != null).map((t) => t.fiber);
+    if (fibers.length >= MIN_GROUP) {
+      const avg = round(mean(fibers), 1);
+      const target = 21;
+      out.push({
+        id: "fiber",
+        title: "食物繊維",
+        text: `記録のある ${fibers.length}日の平均は 1日 ${avg}g です。`
+          + (avg >= target
+            ? `目安（成人男性21g・女性18g以上）には届いています。`
+            : `目安の21g（成人男性、女性は18g以上）まで、あと ${round(target - avg, 1)}g です。`)
+          + `AIの推計なので、数そのものより日ごとの上下を見てください。`,
+        value: avg, tone: avg >= target ? "good" : "info", n: fibers.length,
       });
     }
 
@@ -689,7 +819,15 @@
       const t = dayTotals(day);
       const st = slotTotals(day);
       const dt = store.drinkTotals(day);
-      const memo = store.mealsOfDay(day).find((m) => m.slot === "memo");
+      /* 食事メモは、区分ごとに書いたものを一本にまとめて出します
+         （前の作りの「一日ぶんのメモ」も、同じ列に並びます）。 */
+      const memoText = store.mealsOfDay(day)
+        .filter((m) => String(m.memo || "").trim())
+        // 区分のあるものが先、前の作りの「一日ぶんのメモ」は最後に。
+        .sort((a, b) => (SLOT_LABEL[a.slot] ? 0 : 1) - (SLOT_LABEL[b.slot] ? 0 : 1))
+        .map((m) => (SLOT_LABEL[m.slot] ? `【${SLOT_LABEL[m.slot]}】` : "")
+          + m.memo.trim().replace(/\s*\n\s*/g, " "))
+        .join(" ");
       const drinks = store.drinksOfDay(day);
       return {
         day,
@@ -718,7 +856,7 @@
         alcoholG: dt ? dt.alcoholG : null,
         drinkKcal: dt ? dt.kcal : null,
         drinks: drinks.length ? drinks.map((d) => KN.drinks.describeItem(d)).join("・") : null,
-        memo: memo && memo.memo ? memo.memo : null,
+        memo: memoText || null,
       };
     });
   }

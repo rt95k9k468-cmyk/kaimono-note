@@ -1836,20 +1836,18 @@
 .diet-kcal-rem.is-over b { color: var(--c-danger); }
 .diet-kcal-target { display: block; font-size: var(--fs-xs); color: var(--c-text-3); }
 
-.diet-pfc { display: flex; flex-direction: column; gap: 5px; }
-.diet-pfc-row { display: flex; align-items: center; gap: var(--sp-2); }
-.diet-pfc-name { font-size: var(--fs-xs); color: var(--c-text-2); width: 82px; flex: none; }
-.diet-pfc-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--c-surface-3); overflow: hidden; }
-.diet-pfc-bar i { display: block; height: 100%; border-radius: 3px; }
-.diet-pfc-bar i.is-p { background: var(--c-primary); }
-.diet-pfc-bar i.is-f { background: var(--c-accent); }
-.diet-pfc-bar i.is-c { background: var(--c-cool-ink); }
-/* 食物繊維。P/F/Cとちがって熱量の内わけではないので、色も別にします
-   （棒は、一日の目安21gに対する量です）。 */
-.diet-pfc-bar i.is-fiber { background: color-mix(in srgb, var(--c-primary) 55%, var(--c-text-3)); }
-/* 目安を越えた棒は、満ちきったことが分かるように縁を付けます。 */
-.diet-pfc-bar.is-over { box-shadow: inset 0 0 0 1px var(--c-accent); }
-.diet-pfc-num { font-size: var(--fs-xs); color: var(--c-text-2); width: 78px; text-align: right; flex: none; }
+/* PFCは数だけ。棒はやめました——目標のあるなしで意味が変わる絵は、
+   読むたびに「これはどっちの棒だったか」を思い出す手間がかかります。 */
+.diet-pfc-nums {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--sp-3);
+  font-size: var(--fs-sm); color: var(--c-text-2);
+}
+.diet-pfc-num { display: inline-flex; align-items: baseline; gap: 3px; }
+.diet-pfc-num i { font-style: normal; font-size: var(--fs-xs); color: var(--c-text-3); }
+.diet-pfc-num b { font-size: var(--fs-md); font-weight: 800; color: var(--c-text); }
+.diet-pfc-num small { font-size: var(--fs-xs); color: var(--c-text-3); }
+.diet-pfc-num.is-over b { color: var(--c-accent); }
+.diet-pfc-ratio { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 /* ---- カロリーの出どころ（積み上げの帯） ----
 
@@ -1857,8 +1855,10 @@
    色は区分ごとに変えますが、彩度は抑えます——ここは信号ではなく内わけで、
    「夜が多い」ことに赤信号の意味を持たせるのはこちらの仕事ではありません。 */
 .diet-stack-wrap { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* ここはこの画面でいちばん見るところなので、大きく取ります。
+   細い帯だと、5%と12%の差が指の幅より小さくなって読めません。 */
 .diet-stack {
-  display: flex; height: 14px; border-radius: var(--r-full);
+  display: flex; height: 26px; border-radius: var(--r-md);
   overflow: hidden; background: var(--c-surface-3);
 }
 .diet-stack i { display: block; height: 100%; min-width: 2px; }
@@ -1874,10 +1874,10 @@
 
 .diet-stack-legend {
   display: flex; flex-wrap: wrap; gap: 4px var(--sp-3);
-  font-size: var(--fs-xs); color: var(--c-text-2);
+  font-size: var(--fs-sm); color: var(--c-text-2);
 }
-.diet-stack-key { display: inline-flex; align-items: center; gap: 4px; }
-.diet-stack-key i { width: 8px; height: 8px; border-radius: var(--r-full); display: inline-block; }
+.diet-stack-key { display: inline-flex; align-items: center; gap: 5px; }
+.diet-stack-key i { width: 10px; height: 10px; border-radius: var(--r-full); display: inline-block; }
 .diet-stack-key i.is-breakfast { background: #e8b04b; }
 .diet-stack-key i.is-lunch     { background: var(--c-primary); }
 .diet-stack-key i.is-dinner    { background: #4a8fd9; }
@@ -1887,26 +1887,25 @@
 .diet-stack-key i.is-rest      { background: var(--c-surface-3); box-shadow: inset 0 0 0 1px var(--c-border); }
 .diet-note .is-warn { color: var(--c-danger); }
 
-/* 区分ごとの「＋」。四つ横に並べて、そのまま書き始められるように。
-   数が入っている区分は、その合計がそのまま札になります。 */
-.diet-slot-adds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.diet-slot-add {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: var(--sp-2) 2px; background: var(--c-surface-2);
-  border: 0; border-radius: var(--r-md); min-width: 0;
+/* 朝・昼・夜・間食の四枠。四つとも最初から開いていて、そこに直接
+   書きます。横に四列だと一行が3文字ぶんしか入らないので、縦に四つ。 */
+.diet-slots { display: flex; flex-direction: column; gap: var(--sp-2); }
+.diet-slot {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: var(--sp-2); background: var(--c-surface-2); border-radius: var(--r-md);
 }
-.diet-slot-add .diet-slot-ico { color: var(--c-primary); opacity: .82; line-height: 0; }
-.diet-slot-add .diet-slot-ico svg { width: 16px; height: 16px; stroke-width: 1.7; }
-.diet-slot-name { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
-.diet-slot-add .diet-slot-kcal { font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
-
-.diet-meals:empty { display: none; }
-/* 食品ごとの内わけ。ふだんは畳んでおきます（毎日読むものではないので）。 */
-.diet-foods summary {
-  font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-2);
-  padding: var(--sp-2) 0; cursor: pointer;
+.diet-slot-head { display: flex; align-items: center; gap: 5px; }
+.diet-slot-ico { color: var(--c-primary); opacity: .82; line-height: 0; }
+.diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
+.diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
+/* 書き込む枠。線を消して地の色だけにします——枠の中に枠を描くと、
+   四つ並んだときにうるさくなるので。 */
+.diet-slot-memo {
+  min-height: 34px; padding: 4px 6px; border-radius: var(--r-sm);
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  font-size: var(--fs-sm); line-height: 1.5; resize: none; overflow: hidden;
 }
-.diet-foods[open] summary { margin-bottom: var(--sp-2); }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
