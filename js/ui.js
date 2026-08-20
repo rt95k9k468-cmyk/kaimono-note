@@ -23,7 +23,17 @@
    * @param {Function} [opts.onClose]
    * @returns {{close: Function, el: HTMLElement}}
    */
-  function sheet({ title, titleMark, content, footer, onClose }) {
+  /**
+   * 下から出てくる紙。
+   *
+   * `guard: true` を渡した紙だけ、閉じようとしたときに見張ります。書きかけの
+   * まま × を押したり下へ払ったりしたら、黙って捨てずに一度だけ聞きます。
+   *
+   * 既定で入れていないのは、**書いたそばから保存する紙**があるからです
+   * （商品のメモは、欄から離れた時点でもう入っています）。そういう紙で
+   * 聞くのは、済んだことをもう一度聞くだけになります。
+   */
+  function sheet({ title, titleMark, content, footer, onClose, guard }) {
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     const el = node(html`
       <div class="sheet" role="dialog" aria-modal="true" aria-label="${title || ""}">
@@ -37,10 +47,14 @@
     `);
 
     el.querySelector(".sheet-body").append(content);
+    /* ボタンは**紙の中身の最後**に置きます。キーボードの上に貼りつけて
+       いましたが、指が届く代わりに、読めるところを一段ぶん食べていました。
+       書き終えて下まで来た人はそこでボタンに会いますし、途中でやめる人には
+       閉じるときに聞きます（下の tryClose）。 */
     if (footer) {
       const foot = node(html`<div class="sheet-foot"></div>`);
       foot.append(footer);
-      el.append(foot);
+      el.querySelector(".sheet-body").append(foot);
     }
 
     /* Each sheet opened over another gets its own storey. Without this every
@@ -81,8 +95,51 @@
       onClose && onClose();
     }
 
-    backdrop.addEventListener("click", close);
-    el.querySelector(".js-close").addEventListener("click", close);
+    /* ---- 書きかけのまま閉じようとしたとき ----
+
+       ×、下へ払う、外を押す——どれも「やめる」の合図ですが、**書いたものを
+       捨てる合図ではありません**。開いたときの中身を覚えておいて、変わって
+       いれば一度だけ聞きます。「保存する」を選べば、そのまま保存の
+       ボタンを押したのと同じことが起きます（検算で止まる紙なら、止まります）。 */
+    const fields = () => [...el.querySelectorAll(".sheet-body input, .sheet-body textarea, .sheet-body select")]
+      .filter((f) => !f.readOnly && !f.disabled && f.type !== "file");
+    const snapshot = () =>
+      fields().map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
+      + "\u241E"
+      + [...el.querySelectorAll(".sheet-body [aria-pressed]")].map((b) => b.getAttribute("aria-pressed")).join(",");
+    /* 「押せば済む」ボタン。帯そのものがボタンのこともあれば（やること）、
+       中に並んでいることもあります（体重、お酒）。押せない状態のものは
+       数えません——押しても何も起きないので、聞く意味がありません。 */
+    const primary = () => {
+      if (!footer || guard !== true) return null;
+      const ok = (b) => b && !b.disabled;
+      if (footer.matches && footer.matches(".js-save, .btn-primary") && ok(footer)) return footer;
+      const inside = footer.querySelector
+        ? footer.querySelector(".js-save, .btn-primary") : null;
+      return ok(inside) ? inside : null;
+    };
+    let baseline = snapshot();
+    /* 開いた直後に自分で埋める紙があります（前回と同じ条件、いまの時刻…）。
+       それを「その人が書いた」と数えないよう、一拍おいて取り直します。 */
+    setTimeout(() => { if (!closed) baseline = snapshot(); }, 60);
+
+    function tryClose() {
+      if (closed) return;
+      const btn = guard === false ? null : primary();
+      if (!btn || snapshot() === baseline) { close(); return; }
+      confirm({
+        title: "保存しますか？",
+        message: "書きかけのものがあります。",
+        okLabel: btn.textContent.trim() || "保存する",
+        cancelLabel: "保存しない",
+      }).then((ok) => {
+        if (ok) btn.click();
+        else close();
+      });
+    }
+
+    backdrop.addEventListener("click", tryClose);
+    el.querySelector(".js-close").addEventListener("click", tryClose);
 
     /* Capping the sheet at the visible height (see --vvh) keeps it on screen,
        but the field you tapped can end up below the fold of the sheet's own
@@ -127,7 +184,7 @@
         if (startY == null) return;
         const dy = (e.changedTouches[0] || {}).clientY - startY;
         el.style.transform = "";
-        if (dy > 90) close();
+        if (dy > 90) tryClose();
         startY = null;
       });
     });
@@ -208,7 +265,7 @@
       `);
 
       const h = sheet({
-        title, content: body, footer: foot,
+        title, content: body, footer: foot, guard: false,
         onClose: () => { if (!settled) { settled = true; resolve(false); } },
       });
 
@@ -241,7 +298,7 @@
       `);
 
       const h = sheet({
-        title, content: body, footer: foot,
+        title, content: body, footer: foot, guard: false,
         onClose: () => { if (!settled) { settled = true; resolve(null); } },
       });
 

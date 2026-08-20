@@ -158,7 +158,7 @@
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
 
-    const handle = KN.ui.sheet({ title: "買うものを追加", content: body, footer: foot });
+    const handle = KN.ui.sheet({ title: "買うものを追加", content: body, footer: foot, guard: true });
 
     const cat = KN.ui.categoryPicker(body.querySelector(".js-cat"), {
       selectedId: store.OTHER_CATEGORY,

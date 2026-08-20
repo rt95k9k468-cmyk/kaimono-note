@@ -1254,14 +1254,17 @@ button, [role="tab"] {
   overscroll-behavior: contain;
 }
 
+/* ボタンの帯。**貼りつけません**——中身の最後に、ふつうに並びます。
+   キーボードの上に固定していたころは、指は届くかわりに読めるところが
+   一段ぶん狭くなっていました。書き終えて下まで来れば、そこにあります。
+   （途中でやめようとしたときは、閉じる前に一度聞きます——ui.js の
+   tryClose。） */
 .sheet-foot {
   flex: none;
-  padding: var(--sp-3) var(--sp-5) var(--sp-5);
+  padding: var(--sp-3) 0 0;
   border-top: 1px solid var(--c-border);
   display: flex;
   gap: var(--sp-2);
-  /* Nothing scrolls under it — .sheet-body is its own flex child — so it can
-     stay clear and let the sheet's own tint show through. */
 }
 
 /* Product icons size themselves off the surrounding font-size, so every place
@@ -1874,6 +1877,7 @@ button, [role="tab"] {
 .cal-now + .cal-nav { margin-left: 0; }
 
 .cal-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px 0;
@@ -1942,10 +1946,24 @@ button, [role="tab"] {
    探すたびに読み違えます。だから今日は塗りつぶし、こちらは輪郭。
    スクロールで動くので、色の変わり方はゆっくりにしません（指の下で
    遅れて追ってくると、ずれて見えます）。 */
-.cal-day.is-here .cal-n {
+/* 輪は、枠ごとに描くのではなく **一つだけ** 置いて、選んだ日へ滑らせます。
+   枠ごとに出したり消したりすると、離れた日を押したときに「消えて、
+   別のところに現れる」——同じ輪が動いたようには見えません。 */
+.cal-ring {
+  position: absolute;
+  left: 0; top: 0;
+  width: 24px; height: 24px;
+  border-radius: var(--r-full);
   box-shadow: inset 0 0 0 2px var(--c-primary);
-  color: var(--c-primary);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform .24s var(--ease-out), opacity .16s var(--ease);
 }
+.cal-ring.is-on { opacity: 1; }
+/* 置き直した直後（月をめくった、画面を組み直した）は滑らせません。
+   前にいた場所と関係のないところから飛んでくるので。 */
+.cal-ring.is-jump { transition: opacity .16s var(--ease); }
+.cal-day.is-here .cal-n { color: var(--c-primary); }
 /* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
 .cal-day.is-here.is-today .cal-n { color: #fff; }
 /* 今日を見ているときも、輪は同じ緑です。白い輪にしていましたが、
@@ -1967,6 +1985,10 @@ button, [role="tab"] {
   border-radius: var(--r-full);
   background: var(--cat, var(--c-border-2));
 }
+/* 飲まなかった日。ダイエットのカレンダーだけに出る青い点です。
+   点が無いと「書き忘れ」と見分けがつかず、休肝日が続いていることも
+   見えません（飲んだ日は、ほかの記録と同じ色のままにしてあります）。 */
+.cal-dot.is-dry { background: #4a8fd9; }
 
 /* Arriving from the calendar, the rows for the day you tapped say so once.
 
@@ -3488,7 +3510,14 @@ a.btn { text-decoration: none; }
    「mm/dd/yyyy」を自分で描くので、そこへ重ねると二重に見えます。
    下地ごと敷いて覆います——右端のカレンダーの絵だけは残して、
    そこを押せば日付を選べるように。 */
-.date-row { position: relative; }
+/* 日付と時刻は横に並べます（二つで「いつ」の一つの答えなので）。
+   時刻のほうは幅を決め打ちします——中身は必ず5文字で、日付ほど要りません。 */
+.date-row { display: flex; align-items: center; gap: var(--sp-2); }
+.date-cell { position: relative; flex: 1 1 auto; min-width: 0; display: block; }
+.date-cell.is-time { flex: 0 0 116px; }
+.date-cell .input { width: 100%; }
+/* 空の日付・時刻に、自分でかぶせる字。ブラウザが出す薄い
+   「mm/dd/yyyy」を覆うので、地の色で塗ります（右の絵は覆いません）。 */
 .date-empty {
   position: absolute;
   left: 1.5px; top: 1.5px; bottom: 1.5px; right: 46px;
@@ -3499,6 +3528,7 @@ a.btn { text-decoration: none; }
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
+.date-cell.is-time .date-empty { right: 34px; }
 
 /* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
    字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に
@@ -9770,7 +9800,17 @@ a.btn { text-decoration: none; }
    * @param {Function} [opts.onClose]
    * @returns {{close: Function, el: HTMLElement}}
    */
-  function sheet({ title, titleMark, content, footer, onClose }) {
+  /**
+   * 下から出てくる紙。
+   *
+   * `guard: true` を渡した紙だけ、閉じようとしたときに見張ります。書きかけの
+   * まま × を押したり下へ払ったりしたら、黙って捨てずに一度だけ聞きます。
+   *
+   * 既定で入れていないのは、**書いたそばから保存する紙**があるからです
+   * （商品のメモは、欄から離れた時点でもう入っています）。そういう紙で
+   * 聞くのは、済んだことをもう一度聞くだけになります。
+   */
+  function sheet({ title, titleMark, content, footer, onClose, guard }) {
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     const el = node(html`
       <div class="sheet" role="dialog" aria-modal="true" aria-label="${title || ""}">
@@ -9784,10 +9824,14 @@ a.btn { text-decoration: none; }
     `);
 
     el.querySelector(".sheet-body").append(content);
+    /* ボタンは**紙の中身の最後**に置きます。キーボードの上に貼りつけて
+       いましたが、指が届く代わりに、読めるところを一段ぶん食べていました。
+       書き終えて下まで来た人はそこでボタンに会いますし、途中でやめる人には
+       閉じるときに聞きます（下の tryClose）。 */
     if (footer) {
       const foot = node(html`<div class="sheet-foot"></div>`);
       foot.append(footer);
-      el.append(foot);
+      el.querySelector(".sheet-body").append(foot);
     }
 
     /* Each sheet opened over another gets its own storey. Without this every
@@ -9828,8 +9872,51 @@ a.btn { text-decoration: none; }
       onClose && onClose();
     }
 
-    backdrop.addEventListener("click", close);
-    el.querySelector(".js-close").addEventListener("click", close);
+    /* ---- 書きかけのまま閉じようとしたとき ----
+
+       ×、下へ払う、外を押す——どれも「やめる」の合図ですが、**書いたものを
+       捨てる合図ではありません**。開いたときの中身を覚えておいて、変わって
+       いれば一度だけ聞きます。「保存する」を選べば、そのまま保存の
+       ボタンを押したのと同じことが起きます（検算で止まる紙なら、止まります）。 */
+    const fields = () => [...el.querySelectorAll(".sheet-body input, .sheet-body textarea, .sheet-body select")]
+      .filter((f) => !f.readOnly && !f.disabled && f.type !== "file");
+    const snapshot = () =>
+      fields().map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
+      + "\u241E"
+      + [...el.querySelectorAll(".sheet-body [aria-pressed]")].map((b) => b.getAttribute("aria-pressed")).join(",");
+    /* 「押せば済む」ボタン。帯そのものがボタンのこともあれば（やること）、
+       中に並んでいることもあります（体重、お酒）。押せない状態のものは
+       数えません——押しても何も起きないので、聞く意味がありません。 */
+    const primary = () => {
+      if (!footer || guard !== true) return null;
+      const ok = (b) => b && !b.disabled;
+      if (footer.matches && footer.matches(".js-save, .btn-primary") && ok(footer)) return footer;
+      const inside = footer.querySelector
+        ? footer.querySelector(".js-save, .btn-primary") : null;
+      return ok(inside) ? inside : null;
+    };
+    let baseline = snapshot();
+    /* 開いた直後に自分で埋める紙があります（前回と同じ条件、いまの時刻…）。
+       それを「その人が書いた」と数えないよう、一拍おいて取り直します。 */
+    setTimeout(() => { if (!closed) baseline = snapshot(); }, 60);
+
+    function tryClose() {
+      if (closed) return;
+      const btn = guard === false ? null : primary();
+      if (!btn || snapshot() === baseline) { close(); return; }
+      confirm({
+        title: "保存しますか？",
+        message: "書きかけのものがあります。",
+        okLabel: btn.textContent.trim() || "保存する",
+        cancelLabel: "保存しない",
+      }).then((ok) => {
+        if (ok) btn.click();
+        else close();
+      });
+    }
+
+    backdrop.addEventListener("click", tryClose);
+    el.querySelector(".js-close").addEventListener("click", tryClose);
 
     /* Capping the sheet at the visible height (see --vvh) keeps it on screen,
        but the field you tapped can end up below the fold of the sheet's own
@@ -9874,7 +9961,7 @@ a.btn { text-decoration: none; }
         if (startY == null) return;
         const dy = (e.changedTouches[0] || {}).clientY - startY;
         el.style.transform = "";
-        if (dy > 90) close();
+        if (dy > 90) tryClose();
         startY = null;
       });
     });
@@ -9955,7 +10042,7 @@ a.btn { text-decoration: none; }
       `);
 
       const h = sheet({
-        title, content: body, footer: foot,
+        title, content: body, footer: foot, guard: false,
         onClose: () => { if (!settled) { settled = true; resolve(false); } },
       });
 
@@ -9988,7 +10075,7 @@ a.btn { text-decoration: none; }
       `);
 
       const h = sheet({
-        title, content: body, footer: foot,
+        title, content: body, footer: foot, guard: false,
         onClose: () => { if (!settled) { settled = true; resolve(null); } },
       });
 
@@ -12903,12 +12990,17 @@ a.btn { text-decoration: none; }
      ・一か月ぶんをまとめてAIに渡して読んでもらう
      この二つのために、一日の記録を一行にほどきます。 */
 
+  /* 空欄は「未測定」です。0 とは別のものなので、0 では埋めません
+     （体重0kg も歩数0歩も、測っていないこととは違います）。
+     体重は数だけでは比べられないので、**測った時刻と条件**まで出します
+     ——朝と夜、食前と食後、着衣のあるなしで、同じ体でも1kg近く動きます。 */
   const EXPORT_COLS = [
-    { key: "day",      label: "日付" },
-    { key: "weightKg", label: "体重kg" },
-    { key: "fatPct",   label: "体脂肪%" },
-    { key: "meal",     label: "量った条件" },
-    { key: "clothed",  label: "服装" },
+    { key: "day",        label: "日付" },
+    { key: "weightKg",   label: "体重kg" },
+    { key: "weightTime", label: "測定時刻" },
+    { key: "fatPct",     label: "体脂肪%" },
+    { key: "meal",       label: "食前後" },
+    { key: "clothed",    label: "着衣" },
     { key: "steps",    label: "歩数" },
     { key: "burned",   label: "総消費kcal" },
     { key: "sleepMin", label: "睡眠分" },
@@ -12938,6 +13030,7 @@ a.btn { text-decoration: none; }
       return {
         day,
         weightKg: w ? w.kg : null,
+        weightTime: w && w.time ? w.time : null,
         fatPct: w && w.fat != null ? w.fat : null,
         meal: w && w.meal ? (w.meal === "before" ? "食前" : "食後") : null,
         clothed: w && w.clothed != null ? (w.clothed ? "着衣あり" : "着衣なし") : null,
@@ -12980,8 +13073,12 @@ a.btn { text-decoration: none; }
     if (!rows.length) return "";
     const line = (r) => {
       const bits = [];
-      if (r.weightKg != null) bits.push(`体重${r.weightKg}kg${r.fatPct != null ? `（体脂肪${r.fatPct}%）` : ""}`
-        + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
+      if (r.weightKg != null) {
+        bits.push(`体重${r.weightKg}kg`
+          + (r.weightTime ? `（${r.weightTime}）` : "")
+          + (r.fatPct != null ? `／体脂肪${r.fatPct}%` : "")
+          + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
+      }
       if (r.steps != null) bits.push(`歩数${Math.round(r.steps).toLocaleString()}`);
       if (r.burned != null) bits.push(`総消費${Math.round(r.burned).toLocaleString()}kcal`);
       if (r.sleepMin != null) bits.push(`睡眠${Math.floor(r.sleepMin / 60)}時間${String(Math.round(r.sleepMin % 60)).padStart(2, "0")}分`);
@@ -12999,6 +13096,8 @@ a.btn { text-decoration: none; }
     return [
       `くらしノート 記録の書き出し（${rows[0].day}〜${rows[rows.length - 1].day}／${rows.length}日ぶん）`,
       "※ 摂取カロリーとPFCはAIによる推定を含みます。飲酒は摂取カロリーに含めていません。",
+      "※ 書いていない項目は「未測定」です（0ではありません）。"
+        + "体重は測った時刻・食前後・着衣のあるなしで動くので、分かっているものは添えてあります。",
       "",
     ].concat(rows.map(line)).join("\n");
   }
@@ -15613,12 +15712,43 @@ a.btn { text-decoration: none; }
     paintHere();
   }
 
-  function paintHere() {
+  function paintHere(jump) {
     if (!els.cal) return;
     els.cal.querySelectorAll(".cal-day.is-here").forEach((c) => c.classList.remove("is-here"));
-    if (!hereDay) return;
+    const grid = els.cal.querySelector(".cal-grid");
+    if (!hereDay) { moveRing(grid, null); return; }
     const cell = els.cal.querySelector(`.cal-day[data-day="${hereDay}"]`);
     if (cell) cell.classList.add("is-here");
+    moveRing(grid, cell, jump);
+  }
+
+  /* ---------------- 選んでいる日の輪 ----------------
+
+     輪は枠ごとに描かず、一つだけ置いて滑らせます。日を押したとき、
+     消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
+     月をめくったときや、画面を組み直したときは滑らせません（前にいた
+     場所と関係のないところから飛んでくるため）。 */
+  function moveRing(grid, cell, jump) {
+    if (!grid) return;
+    let ring = grid.querySelector(".cal-ring");
+    if (!ring) {
+      ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
+      grid.prepend(ring);
+    }
+    if (!cell) { ring.classList.remove("is-on"); return; }
+    const n = cell.querySelector(".cal-n");
+    if (!n) return;
+    const g = grid.getBoundingClientRect();
+    const b = n.getBoundingClientRect();
+    if (!g.width || !b.width) return;              // まだ並んでいない
+    const first = !ring.classList.contains("is-on");
+    ring.classList.toggle("is-jump", !!jump || first);
+    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    ring.classList.add("is-on");
+    if (jump || first) {
+      // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
+    }
   }
 
   /** いまカレンダーが出している月。 */
@@ -15680,22 +15810,28 @@ a.btn { text-decoration: none; }
         <div class="field">
           <span class="field-label">いつまでに</span>
           <div class="js-due-chips"></div>
-          ${/* 空のとき、iOS の日付欄は **何も出しません**。枠だけが並んで、
-                何の欄なのか分からなくなります。だから空のときは自分で
-                「--/--/--」と書いて、押せば日付を選べることを見せます。 */""}
+          ${/* 空のとき、iOS の日付欄も時刻欄も **何も出しません**。枠だけが
+                並んで、何の欄なのか分からなくなります。だから空のときは
+                自分で「--/--/--」「--:--」と書いて、押せば選べることを
+                見せます。
+
+                日付と時刻は横に並べます。二つで一つの答え（いつ）なので、
+                段を分けると、時刻だけが宙に浮いて見えます。時刻の欄は
+                日付が空でも出したままにします——「なし」を選んだ人が、
+                そのあとで時刻を足せなくなるのは変なので。 */""}
           <div class="date-row">
-            <input class="input js-due" type="date" value="${due || ""}"
-                   aria-label="日付を選ぶ">
-            <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
-          </div>
-          ${/* 時刻そのもの。毎朝・毎晩は「くりかえし」に移りました——
-                あちらとこちらは同じ問いなので、聞く場所は一つで足ります。
-                時刻と毎朝は今も互いを打ち消します（「19:30」と「毎朝」は
-                一つの問いへの二つの答えなので）。 */""}
-          <div class="time-row js-time-row" hidden>
-            <span class="time-label">時刻</span>
-            <input class="input js-time" type="time" aria-label="時刻を選ぶ">
-            <button type="button" class="chip js-time-clear" hidden>はずす</button>
+            <span class="date-cell">
+              <input class="input js-due" type="date" value="${due || ""}"
+                     aria-label="日付を選ぶ">
+              <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
+            </span>
+            <span class="date-cell is-time">
+              <input class="input js-time" type="time" aria-label="時刻を選ぶ">
+              <span class="date-empty js-time-empty" aria-hidden="true">--:--</span>
+            </span>
+            <button type="button" class="icon-btn js-time-clear" aria-label="時刻をはずす" hidden>
+              ${icon("close")}
+            </button>
           </div>
           <span class="field-hint js-due-hint"></span>
         </div>
@@ -15737,6 +15873,8 @@ a.btn { text-decoration: none; }
       title: editing ? "やることを直す" : "やることを追加",
       content: body,
       footer: foot,
+      /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
+      guard: true,
     });
 
     /* The days a todo is nearly always for, in one press each. Typing a date
@@ -15781,7 +15919,6 @@ a.btn { text-decoration: none; }
        so, and offers to switch it on from here, where the reason for it is on
        screen. */
     function paintHint() {
-      const badge = KN.appBadge;
       hintEl.innerHTML = "";
       if (!due) {
         /* 何も言いません。日付が空であることは、欄そのもの（--/--/--）が
@@ -15820,25 +15957,10 @@ a.btn { text-decoration: none; }
           : "毎日くり返して、その日のいちばん下に出ます";
         return;
       }
-      if (!badge || !badge.supported()) {
-        hintEl.textContent = `${formatDay(due)}までのやることとして数えます`;
-        return;
-      }
-      if (badge.enabled()) {
-        hintEl.textContent = badge.blocked()
-          ? "アイコンの数は、端末の設定で通知を許可すると出ます"
-          : "その日が来ると、アプリのアイコンにも数が出ます";
-        return;
-      }
-      const b = node(html`
-        <span>アプリのアイコンに数を出すには
-          <button type="button" class="link-btn js-badge-on">オンにする</button></span>
-      `);
-      b.querySelector(".js-badge-on").addEventListener("click", async () => {
-        await badge.enable();
-        paintHint();
-      });
-      hintEl.append(b);
+      /* 日付を選んだだけのときは、何も言いません。「その日が来ると
+         アイコンに数が出ます」は、毎回おなじことを読ませるだけで、
+         読む人はもう知っています（アイコンの数の入り切りは、設定に
+         あります）。 */
     }
 
     /* 朝・午後・夜 and the clock are one question with two grains, so they are
@@ -15846,16 +15968,20 @@ a.btn { text-decoration: none; }
        when, and whichever was touched last is the answer. A time lights up the
        part it falls in, so 19:30 visibly *is* 夜 rather than something else
        sitting beside it. */
-    const timeRow = body.querySelector(".js-time-row");
+    const timeCell = body.querySelector(".date-cell.is-time");
     const timeEl = body.querySelector(".js-time");
     const timeClear = body.querySelector(".js-time-clear");
 
-    /* 時刻の欄。日付が決まっていなければ聞く意味がなく、毎朝・毎晩を
-       選んでいるなら、時刻はもう答えられています。 */
+    /* 時刻の欄はいつも出しておきます（日付が「なし」でも）。毎朝・毎晩を
+       選んでいるあいだだけは伏せます——あれは時刻そのものへの答えなので、
+       二つ並ぶと食い違います。 */
     function paintPart() {
-      timeRow.hidden = !due || isBookend(part);
+      const bookend = isBookend(part);
+      timeCell.hidden = bookend;
       timeEl.value = time || "";
-      timeClear.hidden = !time;
+      timeClear.hidden = bookend || !time;
+      const ph = body.querySelector(".js-time-empty");
+      if (ph) ph.hidden = !!time;
     }
 
     timeEl.addEventListener("change", () => {
@@ -16722,8 +16848,9 @@ a.btn { text-decoration: none; }
       cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
       grid.append(cell);
     }
-    // 描き直したぶん、いま見ている日の印は消えています。付け直します。
-    paintHere();
+    // 描き直したぶん、いま見ている日の印は消えています。付け直します
+    // （枠ごと入れ替わったので、輪は滑らせずに置きます）。
+    paintHere(true);
   }
 
   function groupSection(g, rows, tiles) {
@@ -17036,18 +17163,18 @@ a.btn { text-decoration: none; }
     els.body.innerHTML = "";
     els.cal = monthCalendar();
     els.body.append(els.cal);
-    /* 枠の分け方は「読む用がいつ来るか」で決めています。
-         体重＋推移   … 毎日いちばんに見るもの
-         からだ＋食事 … その日を書き足すところ（同じ一日の話なので一枚に）
+    /* 並びは「カレンダーで選んだ日の話」から。
+         からだ＋食事 … その日そのもの（カレンダーのすぐ下）
+         体重＋推移   … その日の体重と、そこまでの動き
          気づき＋目標 … ときどき読み返すもの */
     els.body.append(node(html`
       <div class="diet">
-        <div class="js-today"></div>
-        <section class="card section">
+        <section class="card section js-day-card">
           <div class="js-body-stats"></div>
           <div class="divider"></div>
           <div class="js-meals"></div>
         </section>
+        <div class="js-today"></div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
           <div class="divider"></div>
@@ -17056,11 +17183,20 @@ a.btn { text-decoration: none; }
       </div>
     `));
 
-    renderToday(els.body.querySelector(".js-today"), card, sum);
     renderBodyStats(els.body.querySelector(".js-body-stats"), card);
     renderMeals(els.body.querySelector(".js-meals"), card);
+    renderToday(els.body.querySelector(".js-today"), card, sum);
     renderInsight(els.body.querySelector(".js-insight"));
     renderGoal(els.body.querySelector(".js-goal"), now);
+
+    /* その日の話をしている二枚は、横に払えば日をめくれます。
+       カレンダーまで手を伸ばさずに、昨日・一昨日と辿れるように。 */
+    wireDaySwipe(els.body.querySelector(".js-day-card"));
+    wireDaySwipe(els.body.querySelector(".diet-hero"));
+
+    /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
+       置けません（測れないので）。ここは組み直しなので、滑らせません。 */
+    placeRing(true);
 
     if (root && keepTop) {
       root.scrollTop = Math.min(keepTop, Math.max(0, root.scrollHeight - root.clientHeight));
@@ -17085,14 +17221,24 @@ a.btn { text-decoration: none; }
     return { year: d.getFullYear(), month: d.getMonth() };
   }
 
-  /** その日に何かしら記録があるか（体重・食事・からだ・お酒）。 */
-  function dayLoad(d) {
-    let n = 0;
-    if (store.weightOfDay(d)) n++;
-    if (store.mealsOfDay(d).length) n++;
-    if (store.drinksOfDay(d).length) n++;
-    if (store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null) n++;
-    return n;
+  /* その日の点。何件あるかではなく、**何が書いてあるか**を出します。
+       ・体重を量った
+       ・食事を書いた
+       ・お酒（飲んだ＝緑／飲んでいない＝青）
+
+     三つめが青いのは、飲まなかった日も記録だからです。点が出ないと
+     「書き忘れ」と見分けがつかず、休肝日が続いていることも見えません。
+     ただし、その日に何ひとつ書いていなければ何も出しません——使う前の
+     日々が「飲んでいない日」として青く並ぶのは、記録ではなく作り話です。 */
+  function dayDots(d) {
+    const out = [];
+    if (store.weightOfDay(d)) out.push("kg");
+    if (store.mealsOfDay(d).length) out.push("meal");
+    const drank = store.drinksOfDay(d).length;
+    const anyHealth = store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null;
+    if (drank) out.push("drink");
+    else if (out.length || anyHealth) out.push("dry");
+    return out;
   }
 
   function monthCalendar() {
@@ -17133,6 +17279,42 @@ a.btn { text-decoration: none; }
     return sec;
   }
 
+  /* ---------------- 選んでいる日の輪 ----------------
+
+     輪は枠ごとに描かず、一つだけ置いて滑らせます。日を押したとき、
+     消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
+     月をめくったときや、画面を組み直したときは滑らせません（前にいた
+     場所と関係のないところから飛んでくるため）。 */
+  function moveRing(grid, cell, jump) {
+    if (!grid) return;
+    let ring = grid.querySelector(".cal-ring");
+    if (!ring) {
+      ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
+      grid.prepend(ring);
+    }
+    if (!cell) { ring.classList.remove("is-on"); return; }
+    const n = cell.querySelector(".cal-n");
+    if (!n) return;
+    const g = grid.getBoundingClientRect();
+    const b = n.getBoundingClientRect();
+    if (!g.width || !b.width) return;              // まだ並んでいない
+    const first = !ring.classList.contains("is-on");
+    ring.classList.toggle("is-jump", !!jump || first);
+    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    ring.classList.add("is-on");
+    if (jump || first) {
+      // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
+    }
+  }
+
+  /** いま見ている日へ、輪を置きます。 */
+  function placeRing(jump) {
+    if (!els.cal) return;
+    moveRing(els.cal.querySelector(".cal-grid"),
+      els.cal.querySelector(".cal-day.is-here"), jump);
+  }
+
   function fillCalendar(sec) {
     const today = U.todayKey();
     const here = curDay();
@@ -17158,27 +17340,102 @@ a.btn { text-decoration: none; }
       const key = U.dayKey(new Date(year, month, d));
       const wd = (lead + d - 1) % 7;
       const isToday = key === today;
-      /* 先の日には点を数えません（記録は過去にしか無いので）。 */
-      const n = key > today ? 0 : dayLoad(key);
+      /* 先の日には点を打ちません（記録は過去にしか無いので）。 */
+      const dots = key > today ? [] : dayDots(key);
+      const n = dots.length;
       const cell = node(html`
         <button class="cal-day ${isToday ? "is-today" : ""} ${key === here ? "is-here" : ""}
                        ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
                 data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
-                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${n ? " 記録あり" : ""}">
+                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
+                  n ? (dots.includes("drink") ? " 記録あり・飲酒あり" : " 記録あり") : ""}">
           <span class="cal-n">${String(d)}</span>
           <span class="cal-dots" style="--cat:var(--c-primary)"></span>
         </button>
       `);
-      const dots = cell.querySelector(".cal-dots");
-      for (let i = 0; i < Math.min(n, 3); i++) dots.append(node(html`<i class="cal-dot"></i>`));
+      const host = cell.querySelector(".cal-dots");
+      dots.forEach((kind) => host.append(node(html`<i class="cal-dot ${kind === "dry" ? "is-dry" : ""}"></i>`)));
       cell.addEventListener("click", () => {
         viewDay = key === today ? null : key;
         calMonth = { year, month };
         haptic();
+        /* 先に輪だけ動かします。組み直しのあとに置き直すと、そのときには
+           もう新しい枠なので、輪は滑らずに現れることになります。 */
+        moveRing(grid, cell);
         render();
       });
       grid.append(cell);
     }
+    // 描いたあとに、選んでいる日へ置きます（並んでいないと測れません）。
+    moveRing(grid, grid.querySelector(".cal-day.is-here"), true);
+  }
+
+  /* ---------------- 横に払って、日をめくる ----------------
+
+     カレンダーで選べますが、「昨日はどうだったか」を見るのに毎回上まで
+     戻るのは遠い。その日のことが書いてある枠そのものを払えば、日が動きます。
+     左へ払えば次の日、右へ払えば前の日——紙をめくる向きと同じです。
+
+     縦は下に譲ります（画面ぜんぶがスクロールするので）。向きは最初の
+     数ピクセルで決めて、そのまま最後まで持ちます。 */
+  function wireDaySwipe(el) {
+    if (!el) return;
+    const THRESHOLD = 56;
+    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
+
+    const paint = () => {
+      frame = 0;
+      el.style.transform = dx ? `translateX(${dx}px)` : "";
+    };
+    const reset = () => {
+      el.style.transition = "transform .2s var(--ease-out)";
+      dx = 0;
+      paint();
+      setTimeout(() => { el.style.transition = ""; }, 220);
+    };
+
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // 中の押せるものは、押せるままにします。
+      if (e.target.closest("input, textarea, select")) return;
+      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
+      el.style.transition = "";
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== id) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!axis) {
+        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+      }
+      if (axis !== "x") return;
+      /* 今日より先には行けないので、そちら向きは重くします（動かないの
+         ではなく、動きにくい——端に来たことが指に伝わります）。 */
+      const blocked = mx < 0 && isViewToday();
+      const m = blocked ? mx * 0.25 : mx;
+      dx = Math.abs(m) <= THRESHOLD ? m : Math.sign(m) * (THRESHOLD + (Math.abs(m) - THRESHOLD) * .3);
+      if (!frame) frame = requestAnimationFrame(paint);
+    });
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      const moved = dx;
+      id = null; axis = null;
+      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
+      const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
+      if (next > U.todayKey()) { reset(); return; }
+      el.style.transition = "";
+      dx = 0;
+      paint();
+      viewDay = next === U.todayKey() ? null : next;
+      /* カレンダーは、めくった先の月に合わせます（月をまたいだときに
+         その日の枠が無いと、緑の輪がどこにも行けません）。 */
+      const d = U.dayDate(next);
+      calMonth = { year: d.getFullYear(), month: d.getMonth() };
+      haptic();
+      render();
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
   }
 
   /* 払うと月がめくれます。縦は下のカードのスクロールに譲ります——
@@ -17789,7 +18046,7 @@ a.btn { text-decoration: none; }
         <button class="btn btn-primary js-save" style="flex:2">${editing ? "直す" : "記録する"}</button>
       </div>
     `);
-    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot, guard: true });
 
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
@@ -18070,7 +18327,7 @@ a.btn { text-decoration: none; }
       </div>
     `);
     const f = node(html`<button class="btn btn-primary btn-block">足す</button>`);
-    const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f });
+    const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f, guard: true });
     KN.ui.focusNow(b.querySelector(".js-n"));
     f.addEventListener("click", () => {
       const min = parseFloat(String(b.querySelector(".js-m").value).replace(/[^\d.]/g, ""));
@@ -18351,7 +18608,7 @@ a.btn { text-decoration: none; }
         <button class="btn btn-primary js-save" style="flex:1">保存</button>
       </div>
     `);
-    const h = KN.ui.sheet({ title: "食事のメモ", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: "食事のメモ", content: body, footer: foot, guard: true });
     const ta = body.querySelector(".js-memo");
     const aiTa = body.querySelector(".js-ai");
     if (!cur) KN.ui.focusNow(ta);
@@ -18687,7 +18944,7 @@ a.btn { text-decoration: none; }
       </div>
     `);
 
-    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true });
     const kgEl = body.querySelector(".js-kg");
     autoDecimal(kgEl);
     autoDecimal(body.querySelector(".js-fat"));
@@ -18791,7 +19048,7 @@ a.btn { text-decoration: none; }
       </div>
     `);
 
-    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot, guard: true });
 
     KN.ui.chipRow(body.querySelector(".js-slots"), SLOTS, {
       activeId: slot,
@@ -18865,7 +19122,7 @@ a.btn { text-decoration: none; }
         </div>
       `);
       const f = node(html`<button class="btn btn-primary btn-block">直す</button>`);
-      const hh = KN.ui.sheet({ title: "数を直す", content: b, footer: f });
+      const hh = KN.ui.sheet({ title: "数を直す", content: b, footer: f, guard: true });
       f.addEventListener("click", () => {
         const num = (sel, d) => {
           const v = parseFloat(String(b.querySelector(sel).value).replace(/[^\d.]/g, ""));
@@ -19081,7 +19338,7 @@ a.btn { text-decoration: none; }
     `);
 
     const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
-    const h = KN.ui.sheet({ title: "目標", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: "目標", content: body, footer: foot, guard: true });
 
     renderKcalSuggestion(body.querySelector(".js-suggest-box"), body);
 
@@ -19845,7 +20102,7 @@ distance=6.0km</pre>
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
 
-    const handle = KN.ui.sheet({ title: "買うものを追加", content: body, footer: foot });
+    const handle = KN.ui.sheet({ title: "買うものを追加", content: body, footer: foot, guard: true });
 
     const cat = KN.ui.categoryPicker(body.querySelector(".js-cat"), {
       selectedId: store.OTHER_CATEGORY,
