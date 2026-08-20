@@ -367,6 +367,10 @@
 .cal-ring {
   position: absolute;
   left: 0; top: 0;
+  /* 日の枠（position:relative のボタン）はこれより後ろに並ぶので、
+     重ね順を上げないと**今日の赤丸の下**に隠れます。輪の中は
+     すき通っているので、上に置いても数字は読めます。 */
+  z-index: 1;
   width: 24px; height: 24px;
   border-radius: var(--r-full);
   box-shadow: inset 0 0 0 2px var(--c-primary);
@@ -400,10 +404,23 @@
   border-radius: var(--r-full);
   background: var(--cat, var(--c-border-2));
 }
-/* 飲まなかった日。ダイエットのカレンダーだけに出る青い点です。
-   点が無いと「書き忘れ」と見分けがつかず、休肝日が続いていることも
-   見えません（飲んだ日は、ほかの記録と同じ色のままにしてあります）。 */
-.cal-dot.is-dry { background: #4a8fd9; }
+/* ---- ダイエットのカレンダー：飲酒の帯 ----
+
+   点を三つ並べるのはやめました。「体重を書いた」「食事を書いた」は
+   カレンダーで見たいことではありません——見たいのは**飲んだ量の流れ**で、
+   休肝日が続いているか、続けて飲んだ日があるか。
+
+   だから一本の帯にします。長さはその日の量（目安に対する割合）、
+   色はその意味——飲まなかった日は青、目安の内は緑、超えた日は赤。
+   色だけで量が分かるわけではないので、長さも一緒に動かします。 */
+.cal-bar {
+  width: 22px; height: 3px; border-radius: var(--r-full);
+  background: var(--c-border-2); overflow: hidden;
+}
+.cal-bar i { display: block; height: 100%; border-radius: var(--r-full); }
+.cal-bar i.is-dry  { background: #4a8fd9; }
+.cal-bar i.is-ok   { background: var(--c-primary); }
+.cal-bar i.is-over { background: var(--c-danger); }
 
 /* Arriving from the calendar, the rows for the day you tapped say so once.
 
@@ -1601,9 +1618,23 @@
 
 .diet { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-6); }
 
+/* ---- その日の紙 ----
+
+   からだ・食事・体重を一枚にまとめ、区切りは線ではなく地の色でつけます。
+   線は「別のもの」と言いますが、ここで言いたいのは「同じ一日の、別の面」。
+   横に払って日をめくるとき、三つが一緒に流れる形でもあります。 */
+.diet-day { padding: 0; overflow: hidden; }
+.diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.diet-block.is-body   { background: color-mix(in srgb, var(--c-primary) 5%, var(--c-surface)); }
+.diet-block.is-meal   { background: var(--c-surface); }
+.diet-block.is-weight { background: color-mix(in srgb, #4a8fd9 6%, var(--c-surface)); }
+/* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
+   持たないので、ここで与えます）。 */
+.diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+
 /* ---- 今日 ---- */
 
-.diet-hero { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.diet-hero { display: flex; flex-direction: column; gap: var(--sp-3); }
 
 /* 体重は左、増減は右。縦に積むと、この枠だけで画面の三分の一を使って
    しまい、グラフを見るのにいちいちスクロールすることになります。 */
@@ -1722,6 +1753,20 @@
 .diet-legend-item i.dot-ma7 { background: var(--c-primary); }
 .diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
 .diet-legend-item i.dot-goal { background: repeating-linear-gradient(90deg, var(--c-accent) 0 4px, transparent 4px 7px); }
+
+/* 枠の中に置く「消す」。次を貼るのに、まず選んで消す必要がないように。
+   親指が届く大きさは要りますが、字にかぶらないよう右上の角へ。 */
+.ta-wrap { position: relative; }
+.ta-clear {
+  position: absolute; top: 6px; right: 6px;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--c-surface-2) 92%, transparent);
+  color: var(--c-text-3);
+}
+.ta-clear svg { width: 16px; height: 16px; stroke-width: 2.2; }
+.ta-clear:active { background: var(--c-surface-3); color: var(--c-text); }
 
 .diet-empty { padding: var(--sp-4) var(--sp-2); }
 .diet-empty .empty-text { font-size: var(--fs-sm); line-height: 1.7; }
