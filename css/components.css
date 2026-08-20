@@ -652,14 +652,17 @@ button, [role="tab"] {
   overscroll-behavior: contain;
 }
 
+/* ボタンの帯。**貼りつけません**——中身の最後に、ふつうに並びます。
+   キーボードの上に固定していたころは、指は届くかわりに読めるところが
+   一段ぶん狭くなっていました。書き終えて下まで来れば、そこにあります。
+   （途中でやめようとしたときは、閉じる前に一度聞きます——ui.js の
+   tryClose。） */
 .sheet-foot {
   flex: none;
-  padding: var(--sp-3) var(--sp-5) var(--sp-5);
+  padding: var(--sp-3) 0 0;
   border-top: 1px solid var(--c-border);
   display: flex;
   gap: var(--sp-2);
-  /* Nothing scrolls under it — .sheet-body is its own flex child — so it can
-     stay clear and let the sheet's own tint show through. */
 }
 
 /* Product icons size themselves off the surrounding font-size, so every place

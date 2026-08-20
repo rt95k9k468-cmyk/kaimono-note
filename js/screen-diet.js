@@ -132,18 +132,18 @@
     els.body.innerHTML = "";
     els.cal = monthCalendar();
     els.body.append(els.cal);
-    /* 枠の分け方は「読む用がいつ来るか」で決めています。
-         体重＋推移   … 毎日いちばんに見るもの
-         からだ＋食事 … その日を書き足すところ（同じ一日の話なので一枚に）
+    /* 並びは「カレンダーで選んだ日の話」から。
+         からだ＋食事 … その日そのもの（カレンダーのすぐ下）
+         体重＋推移   … その日の体重と、そこまでの動き
          気づき＋目標 … ときどき読み返すもの */
     els.body.append(node(html`
       <div class="diet">
-        <div class="js-today"></div>
-        <section class="card section">
+        <section class="card section js-day-card">
           <div class="js-body-stats"></div>
           <div class="divider"></div>
           <div class="js-meals"></div>
         </section>
+        <div class="js-today"></div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
           <div class="divider"></div>
@@ -152,11 +152,20 @@
       </div>
     `));
 
-    renderToday(els.body.querySelector(".js-today"), card, sum);
     renderBodyStats(els.body.querySelector(".js-body-stats"), card);
     renderMeals(els.body.querySelector(".js-meals"), card);
+    renderToday(els.body.querySelector(".js-today"), card, sum);
     renderInsight(els.body.querySelector(".js-insight"));
     renderGoal(els.body.querySelector(".js-goal"), now);
+
+    /* その日の話をしている二枚は、横に払えば日をめくれます。
+       カレンダーまで手を伸ばさずに、昨日・一昨日と辿れるように。 */
+    wireDaySwipe(els.body.querySelector(".js-day-card"));
+    wireDaySwipe(els.body.querySelector(".diet-hero"));
+
+    /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
+       置けません（測れないので）。ここは組み直しなので、滑らせません。 */
+    placeRing(true);
 
     if (root && keepTop) {
       root.scrollTop = Math.min(keepTop, Math.max(0, root.scrollHeight - root.clientHeight));
@@ -181,14 +190,24 @@
     return { year: d.getFullYear(), month: d.getMonth() };
   }
 
-  /** その日に何かしら記録があるか（体重・食事・からだ・お酒）。 */
-  function dayLoad(d) {
-    let n = 0;
-    if (store.weightOfDay(d)) n++;
-    if (store.mealsOfDay(d).length) n++;
-    if (store.drinksOfDay(d).length) n++;
-    if (store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null) n++;
-    return n;
+  /* その日の点。何件あるかではなく、**何が書いてあるか**を出します。
+       ・体重を量った
+       ・食事を書いた
+       ・お酒（飲んだ＝緑／飲んでいない＝青）
+
+     三つめが青いのは、飲まなかった日も記録だからです。点が出ないと
+     「書き忘れ」と見分けがつかず、休肝日が続いていることも見えません。
+     ただし、その日に何ひとつ書いていなければ何も出しません——使う前の
+     日々が「飲んでいない日」として青く並ぶのは、記録ではなく作り話です。 */
+  function dayDots(d) {
+    const out = [];
+    if (store.weightOfDay(d)) out.push("kg");
+    if (store.mealsOfDay(d).length) out.push("meal");
+    const drank = store.drinksOfDay(d).length;
+    const anyHealth = store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null;
+    if (drank) out.push("drink");
+    else if (out.length || anyHealth) out.push("dry");
+    return out;
   }
 
   function monthCalendar() {
@@ -229,6 +248,42 @@
     return sec;
   }
 
+  /* ---------------- 選んでいる日の輪 ----------------
+
+     輪は枠ごとに描かず、一つだけ置いて滑らせます。日を押したとき、
+     消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
+     月をめくったときや、画面を組み直したときは滑らせません（前にいた
+     場所と関係のないところから飛んでくるため）。 */
+  function moveRing(grid, cell, jump) {
+    if (!grid) return;
+    let ring = grid.querySelector(".cal-ring");
+    if (!ring) {
+      ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
+      grid.prepend(ring);
+    }
+    if (!cell) { ring.classList.remove("is-on"); return; }
+    const n = cell.querySelector(".cal-n");
+    if (!n) return;
+    const g = grid.getBoundingClientRect();
+    const b = n.getBoundingClientRect();
+    if (!g.width || !b.width) return;              // まだ並んでいない
+    const first = !ring.classList.contains("is-on");
+    ring.classList.toggle("is-jump", !!jump || first);
+    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    ring.classList.add("is-on");
+    if (jump || first) {
+      // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
+    }
+  }
+
+  /** いま見ている日へ、輪を置きます。 */
+  function placeRing(jump) {
+    if (!els.cal) return;
+    moveRing(els.cal.querySelector(".cal-grid"),
+      els.cal.querySelector(".cal-day.is-here"), jump);
+  }
+
   function fillCalendar(sec) {
     const today = U.todayKey();
     const here = curDay();
@@ -254,27 +309,102 @@
       const key = U.dayKey(new Date(year, month, d));
       const wd = (lead + d - 1) % 7;
       const isToday = key === today;
-      /* 先の日には点を数えません（記録は過去にしか無いので）。 */
-      const n = key > today ? 0 : dayLoad(key);
+      /* 先の日には点を打ちません（記録は過去にしか無いので）。 */
+      const dots = key > today ? [] : dayDots(key);
+      const n = dots.length;
       const cell = node(html`
         <button class="cal-day ${isToday ? "is-today" : ""} ${key === here ? "is-here" : ""}
                        ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
                 data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
-                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${n ? " 記録あり" : ""}">
+                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
+                  n ? (dots.includes("drink") ? " 記録あり・飲酒あり" : " 記録あり") : ""}">
           <span class="cal-n">${String(d)}</span>
           <span class="cal-dots" style="--cat:var(--c-primary)"></span>
         </button>
       `);
-      const dots = cell.querySelector(".cal-dots");
-      for (let i = 0; i < Math.min(n, 3); i++) dots.append(node(html`<i class="cal-dot"></i>`));
+      const host = cell.querySelector(".cal-dots");
+      dots.forEach((kind) => host.append(node(html`<i class="cal-dot ${kind === "dry" ? "is-dry" : ""}"></i>`)));
       cell.addEventListener("click", () => {
         viewDay = key === today ? null : key;
         calMonth = { year, month };
         haptic();
+        /* 先に輪だけ動かします。組み直しのあとに置き直すと、そのときには
+           もう新しい枠なので、輪は滑らずに現れることになります。 */
+        moveRing(grid, cell);
         render();
       });
       grid.append(cell);
     }
+    // 描いたあとに、選んでいる日へ置きます（並んでいないと測れません）。
+    moveRing(grid, grid.querySelector(".cal-day.is-here"), true);
+  }
+
+  /* ---------------- 横に払って、日をめくる ----------------
+
+     カレンダーで選べますが、「昨日はどうだったか」を見るのに毎回上まで
+     戻るのは遠い。その日のことが書いてある枠そのものを払えば、日が動きます。
+     左へ払えば次の日、右へ払えば前の日——紙をめくる向きと同じです。
+
+     縦は下に譲ります（画面ぜんぶがスクロールするので）。向きは最初の
+     数ピクセルで決めて、そのまま最後まで持ちます。 */
+  function wireDaySwipe(el) {
+    if (!el) return;
+    const THRESHOLD = 56;
+    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
+
+    const paint = () => {
+      frame = 0;
+      el.style.transform = dx ? `translateX(${dx}px)` : "";
+    };
+    const reset = () => {
+      el.style.transition = "transform .2s var(--ease-out)";
+      dx = 0;
+      paint();
+      setTimeout(() => { el.style.transition = ""; }, 220);
+    };
+
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // 中の押せるものは、押せるままにします。
+      if (e.target.closest("input, textarea, select")) return;
+      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
+      el.style.transition = "";
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== id) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!axis) {
+        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+      }
+      if (axis !== "x") return;
+      /* 今日より先には行けないので、そちら向きは重くします（動かないの
+         ではなく、動きにくい——端に来たことが指に伝わります）。 */
+      const blocked = mx < 0 && isViewToday();
+      const m = blocked ? mx * 0.25 : mx;
+      dx = Math.abs(m) <= THRESHOLD ? m : Math.sign(m) * (THRESHOLD + (Math.abs(m) - THRESHOLD) * .3);
+      if (!frame) frame = requestAnimationFrame(paint);
+    });
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      const moved = dx;
+      id = null; axis = null;
+      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
+      const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
+      if (next > U.todayKey()) { reset(); return; }
+      el.style.transition = "";
+      dx = 0;
+      paint();
+      viewDay = next === U.todayKey() ? null : next;
+      /* カレンダーは、めくった先の月に合わせます（月をまたいだときに
+         その日の枠が無いと、緑の輪がどこにも行けません）。 */
+      const d = U.dayDate(next);
+      calMonth = { year: d.getFullYear(), month: d.getMonth() };
+      haptic();
+      render();
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
   }
 
   /* 払うと月がめくれます。縦は下のカードのスクロールに譲ります——
@@ -885,7 +1015,7 @@
         <button class="btn btn-primary js-save" style="flex:2">${editing ? "直す" : "記録する"}</button>
       </div>
     `);
-    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot, guard: true });
 
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
@@ -1166,7 +1296,7 @@
       </div>
     `);
     const f = node(html`<button class="btn btn-primary btn-block">足す</button>`);
-    const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f });
+    const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f, guard: true });
     KN.ui.focusNow(b.querySelector(".js-n"));
     f.addEventListener("click", () => {
       const min = parseFloat(String(b.querySelector(".js-m").value).replace(/[^\d.]/g, ""));
@@ -1447,7 +1577,7 @@
         <button class="btn btn-primary js-save" style="flex:1">保存</button>
       </div>
     `);
-    const h = KN.ui.sheet({ title: "食事のメモ", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: "食事のメモ", content: body, footer: foot, guard: true });
     const ta = body.querySelector(".js-memo");
     const aiTa = body.querySelector(".js-ai");
     if (!cur) KN.ui.focusNow(ta);
@@ -1783,7 +1913,7 @@
       </div>
     `);
 
-    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true });
     const kgEl = body.querySelector(".js-kg");
     autoDecimal(kgEl);
     autoDecimal(body.querySelector(".js-fat"));
@@ -1887,7 +2017,7 @@
       </div>
     `);
 
-    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot, guard: true });
 
     KN.ui.chipRow(body.querySelector(".js-slots"), SLOTS, {
       activeId: slot,
@@ -1961,7 +2091,7 @@
         </div>
       `);
       const f = node(html`<button class="btn btn-primary btn-block">直す</button>`);
-      const hh = KN.ui.sheet({ title: "数を直す", content: b, footer: f });
+      const hh = KN.ui.sheet({ title: "数を直す", content: b, footer: f, guard: true });
       f.addEventListener("click", () => {
         const num = (sel, d) => {
           const v = parseFloat(String(b.querySelector(sel).value).replace(/[^\d.]/g, ""));
@@ -2177,7 +2307,7 @@
     `);
 
     const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
-    const h = KN.ui.sheet({ title: "目標", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: "目標", content: body, footer: foot, guard: true });
 
     renderKcalSuggestion(body.querySelector(".js-suggest-box"), body);
 

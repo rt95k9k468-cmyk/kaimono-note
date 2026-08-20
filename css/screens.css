@@ -292,6 +292,7 @@
 .cal-now + .cal-nav { margin-left: 0; }
 
 .cal-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px 0;
@@ -360,10 +361,24 @@
    探すたびに読み違えます。だから今日は塗りつぶし、こちらは輪郭。
    スクロールで動くので、色の変わり方はゆっくりにしません（指の下で
    遅れて追ってくると、ずれて見えます）。 */
-.cal-day.is-here .cal-n {
+/* 輪は、枠ごとに描くのではなく **一つだけ** 置いて、選んだ日へ滑らせます。
+   枠ごとに出したり消したりすると、離れた日を押したときに「消えて、
+   別のところに現れる」——同じ輪が動いたようには見えません。 */
+.cal-ring {
+  position: absolute;
+  left: 0; top: 0;
+  width: 24px; height: 24px;
+  border-radius: var(--r-full);
   box-shadow: inset 0 0 0 2px var(--c-primary);
-  color: var(--c-primary);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform .24s var(--ease-out), opacity .16s var(--ease);
 }
+.cal-ring.is-on { opacity: 1; }
+/* 置き直した直後（月をめくった、画面を組み直した）は滑らせません。
+   前にいた場所と関係のないところから飛んでくるので。 */
+.cal-ring.is-jump { transition: opacity .16s var(--ease); }
+.cal-day.is-here .cal-n { color: var(--c-primary); }
 /* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
 .cal-day.is-here.is-today .cal-n { color: #fff; }
 /* 今日を見ているときも、輪は同じ緑です。白い輪にしていましたが、
@@ -385,6 +400,10 @@
   border-radius: var(--r-full);
   background: var(--cat, var(--c-border-2));
 }
+/* 飲まなかった日。ダイエットのカレンダーだけに出る青い点です。
+   点が無いと「書き忘れ」と見分けがつかず、休肝日が続いていることも
+   見えません（飲んだ日は、ほかの記録と同じ色のままにしてあります）。 */
+.cal-dot.is-dry { background: #4a8fd9; }
 
 /* Arriving from the calendar, the rows for the day you tapped say so once.
 
@@ -1906,7 +1925,14 @@ a.btn { text-decoration: none; }
    「mm/dd/yyyy」を自分で描くので、そこへ重ねると二重に見えます。
    下地ごと敷いて覆います——右端のカレンダーの絵だけは残して、
    そこを押せば日付を選べるように。 */
-.date-row { position: relative; }
+/* 日付と時刻は横に並べます（二つで「いつ」の一つの答えなので）。
+   時刻のほうは幅を決め打ちします——中身は必ず5文字で、日付ほど要りません。 */
+.date-row { display: flex; align-items: center; gap: var(--sp-2); }
+.date-cell { position: relative; flex: 1 1 auto; min-width: 0; display: block; }
+.date-cell.is-time { flex: 0 0 116px; }
+.date-cell .input { width: 100%; }
+/* 空の日付・時刻に、自分でかぶせる字。ブラウザが出す薄い
+   「mm/dd/yyyy」を覆うので、地の色で塗ります（右の絵は覆いません）。 */
 .date-empty {
   position: absolute;
   left: 1.5px; top: 1.5px; bottom: 1.5px; right: 46px;
@@ -1917,6 +1943,7 @@ a.btn { text-decoration: none; }
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
+.date-cell.is-time .date-empty { right: 34px; }
 
 /* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
    字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に

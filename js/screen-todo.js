@@ -278,12 +278,43 @@
     paintHere();
   }
 
-  function paintHere() {
+  function paintHere(jump) {
     if (!els.cal) return;
     els.cal.querySelectorAll(".cal-day.is-here").forEach((c) => c.classList.remove("is-here"));
-    if (!hereDay) return;
+    const grid = els.cal.querySelector(".cal-grid");
+    if (!hereDay) { moveRing(grid, null); return; }
     const cell = els.cal.querySelector(`.cal-day[data-day="${hereDay}"]`);
     if (cell) cell.classList.add("is-here");
+    moveRing(grid, cell, jump);
+  }
+
+  /* ---------------- 選んでいる日の輪 ----------------
+
+     輪は枠ごとに描かず、一つだけ置いて滑らせます。日を押したとき、
+     消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
+     月をめくったときや、画面を組み直したときは滑らせません（前にいた
+     場所と関係のないところから飛んでくるため）。 */
+  function moveRing(grid, cell, jump) {
+    if (!grid) return;
+    let ring = grid.querySelector(".cal-ring");
+    if (!ring) {
+      ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
+      grid.prepend(ring);
+    }
+    if (!cell) { ring.classList.remove("is-on"); return; }
+    const n = cell.querySelector(".cal-n");
+    if (!n) return;
+    const g = grid.getBoundingClientRect();
+    const b = n.getBoundingClientRect();
+    if (!g.width || !b.width) return;              // まだ並んでいない
+    const first = !ring.classList.contains("is-on");
+    ring.classList.toggle("is-jump", !!jump || first);
+    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    ring.classList.add("is-on");
+    if (jump || first) {
+      // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
+    }
   }
 
   /** いまカレンダーが出している月。 */
@@ -345,22 +376,28 @@
         <div class="field">
           <span class="field-label">いつまでに</span>
           <div class="js-due-chips"></div>
-          ${/* 空のとき、iOS の日付欄は **何も出しません**。枠だけが並んで、
-                何の欄なのか分からなくなります。だから空のときは自分で
-                「--/--/--」と書いて、押せば日付を選べることを見せます。 */""}
+          ${/* 空のとき、iOS の日付欄も時刻欄も **何も出しません**。枠だけが
+                並んで、何の欄なのか分からなくなります。だから空のときは
+                自分で「--/--/--」「--:--」と書いて、押せば選べることを
+                見せます。
+
+                日付と時刻は横に並べます。二つで一つの答え（いつ）なので、
+                段を分けると、時刻だけが宙に浮いて見えます。時刻の欄は
+                日付が空でも出したままにします——「なし」を選んだ人が、
+                そのあとで時刻を足せなくなるのは変なので。 */""}
           <div class="date-row">
-            <input class="input js-due" type="date" value="${due || ""}"
-                   aria-label="日付を選ぶ">
-            <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
-          </div>
-          ${/* 時刻そのもの。毎朝・毎晩は「くりかえし」に移りました——
-                あちらとこちらは同じ問いなので、聞く場所は一つで足ります。
-                時刻と毎朝は今も互いを打ち消します（「19:30」と「毎朝」は
-                一つの問いへの二つの答えなので）。 */""}
-          <div class="time-row js-time-row" hidden>
-            <span class="time-label">時刻</span>
-            <input class="input js-time" type="time" aria-label="時刻を選ぶ">
-            <button type="button" class="chip js-time-clear" hidden>はずす</button>
+            <span class="date-cell">
+              <input class="input js-due" type="date" value="${due || ""}"
+                     aria-label="日付を選ぶ">
+              <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
+            </span>
+            <span class="date-cell is-time">
+              <input class="input js-time" type="time" aria-label="時刻を選ぶ">
+              <span class="date-empty js-time-empty" aria-hidden="true">--:--</span>
+            </span>
+            <button type="button" class="icon-btn js-time-clear" aria-label="時刻をはずす" hidden>
+              ${icon("close")}
+            </button>
           </div>
           <span class="field-hint js-due-hint"></span>
         </div>
@@ -402,6 +439,8 @@
       title: editing ? "やることを直す" : "やることを追加",
       content: body,
       footer: foot,
+      /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
+      guard: true,
     });
 
     /* The days a todo is nearly always for, in one press each. Typing a date
@@ -446,7 +485,6 @@
        so, and offers to switch it on from here, where the reason for it is on
        screen. */
     function paintHint() {
-      const badge = KN.appBadge;
       hintEl.innerHTML = "";
       if (!due) {
         /* 何も言いません。日付が空であることは、欄そのもの（--/--/--）が
@@ -485,25 +523,10 @@
           : "毎日くり返して、その日のいちばん下に出ます";
         return;
       }
-      if (!badge || !badge.supported()) {
-        hintEl.textContent = `${formatDay(due)}までのやることとして数えます`;
-        return;
-      }
-      if (badge.enabled()) {
-        hintEl.textContent = badge.blocked()
-          ? "アイコンの数は、端末の設定で通知を許可すると出ます"
-          : "その日が来ると、アプリのアイコンにも数が出ます";
-        return;
-      }
-      const b = node(html`
-        <span>アプリのアイコンに数を出すには
-          <button type="button" class="link-btn js-badge-on">オンにする</button></span>
-      `);
-      b.querySelector(".js-badge-on").addEventListener("click", async () => {
-        await badge.enable();
-        paintHint();
-      });
-      hintEl.append(b);
+      /* 日付を選んだだけのときは、何も言いません。「その日が来ると
+         アイコンに数が出ます」は、毎回おなじことを読ませるだけで、
+         読む人はもう知っています（アイコンの数の入り切りは、設定に
+         あります）。 */
     }
 
     /* 朝・午後・夜 and the clock are one question with two grains, so they are
@@ -511,16 +534,20 @@
        when, and whichever was touched last is the answer. A time lights up the
        part it falls in, so 19:30 visibly *is* 夜 rather than something else
        sitting beside it. */
-    const timeRow = body.querySelector(".js-time-row");
+    const timeCell = body.querySelector(".date-cell.is-time");
     const timeEl = body.querySelector(".js-time");
     const timeClear = body.querySelector(".js-time-clear");
 
-    /* 時刻の欄。日付が決まっていなければ聞く意味がなく、毎朝・毎晩を
-       選んでいるなら、時刻はもう答えられています。 */
+    /* 時刻の欄はいつも出しておきます（日付が「なし」でも）。毎朝・毎晩を
+       選んでいるあいだだけは伏せます——あれは時刻そのものへの答えなので、
+       二つ並ぶと食い違います。 */
     function paintPart() {
-      timeRow.hidden = !due || isBookend(part);
+      const bookend = isBookend(part);
+      timeCell.hidden = bookend;
       timeEl.value = time || "";
-      timeClear.hidden = !time;
+      timeClear.hidden = bookend || !time;
+      const ph = body.querySelector(".js-time-empty");
+      if (ph) ph.hidden = !!time;
     }
 
     timeEl.addEventListener("change", () => {
@@ -1387,8 +1414,9 @@
       cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
       grid.append(cell);
     }
-    // 描き直したぶん、いま見ている日の印は消えています。付け直します。
-    paintHere();
+    // 描き直したぶん、いま見ている日の印は消えています。付け直します
+    // （枠ごと入れ替わったので、輪は滑らせずに置きます）。
+    paintHere(true);
   }
 
   function groupSection(g, rows, tiles) {

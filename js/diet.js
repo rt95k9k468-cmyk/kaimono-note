@@ -581,12 +581,17 @@
      ・一か月ぶんをまとめてAIに渡して読んでもらう
      この二つのために、一日の記録を一行にほどきます。 */
 
+  /* 空欄は「未測定」です。0 とは別のものなので、0 では埋めません
+     （体重0kg も歩数0歩も、測っていないこととは違います）。
+     体重は数だけでは比べられないので、**測った時刻と条件**まで出します
+     ——朝と夜、食前と食後、着衣のあるなしで、同じ体でも1kg近く動きます。 */
   const EXPORT_COLS = [
-    { key: "day",      label: "日付" },
-    { key: "weightKg", label: "体重kg" },
-    { key: "fatPct",   label: "体脂肪%" },
-    { key: "meal",     label: "量った条件" },
-    { key: "clothed",  label: "服装" },
+    { key: "day",        label: "日付" },
+    { key: "weightKg",   label: "体重kg" },
+    { key: "weightTime", label: "測定時刻" },
+    { key: "fatPct",     label: "体脂肪%" },
+    { key: "meal",       label: "食前後" },
+    { key: "clothed",    label: "着衣" },
     { key: "steps",    label: "歩数" },
     { key: "burned",   label: "総消費kcal" },
     { key: "sleepMin", label: "睡眠分" },
@@ -616,6 +621,7 @@
       return {
         day,
         weightKg: w ? w.kg : null,
+        weightTime: w && w.time ? w.time : null,
         fatPct: w && w.fat != null ? w.fat : null,
         meal: w && w.meal ? (w.meal === "before" ? "食前" : "食後") : null,
         clothed: w && w.clothed != null ? (w.clothed ? "着衣あり" : "着衣なし") : null,
@@ -658,8 +664,12 @@
     if (!rows.length) return "";
     const line = (r) => {
       const bits = [];
-      if (r.weightKg != null) bits.push(`体重${r.weightKg}kg${r.fatPct != null ? `（体脂肪${r.fatPct}%）` : ""}`
-        + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
+      if (r.weightKg != null) {
+        bits.push(`体重${r.weightKg}kg`
+          + (r.weightTime ? `（${r.weightTime}）` : "")
+          + (r.fatPct != null ? `／体脂肪${r.fatPct}%` : "")
+          + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
+      }
       if (r.steps != null) bits.push(`歩数${Math.round(r.steps).toLocaleString()}`);
       if (r.burned != null) bits.push(`総消費${Math.round(r.burned).toLocaleString()}kcal`);
       if (r.sleepMin != null) bits.push(`睡眠${Math.floor(r.sleepMin / 60)}時間${String(Math.round(r.sleepMin % 60)).padStart(2, "0")}分`);
@@ -677,6 +687,8 @@
     return [
       `くらしノート 記録の書き出し（${rows[0].day}〜${rows[rows.length - 1].day}／${rows.length}日ぶん）`,
       "※ 摂取カロリーとPFCはAIによる推定を含みます。飲酒は摂取カロリーに含めていません。",
+      "※ 書いていない項目は「未測定」です（0ではありません）。"
+        + "体重は測った時刻・食前後・着衣のあるなしで動くので、分かっているものは添えてあります。",
       "",
     ].concat(rows.map(line)).join("\n");
   }
