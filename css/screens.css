@@ -1858,14 +1858,16 @@
 /* ここはこの画面でいちばん見るところなので、大きく取ります。
    細い帯だと、5%と12%の差が指の幅より小さくなって読めません。 */
 .diet-stack {
-  display: flex; height: 26px; border-radius: var(--r-md);
+  /* 角はほとんど落としません。丸みを付けると、両端の区分だけが細く
+     見えて、長さの比べ合いが狂います。 */
+  display: flex; height: 26px; border-radius: 2px;
   overflow: hidden; background: var(--c-surface-3);
 }
 .diet-stack i { display: block; height: 100%; min-width: 2px; }
-.diet-stack i.is-breakfast { background: #e8b04b; }
-.diet-stack i.is-lunch     { background: var(--c-primary); }
-.diet-stack i.is-dinner    { background: #4a8fd9; }
-.diet-stack i.is-snack     { background: #a97fd0; }
+.diet-stack i.is-breakfast { background: var(--c-slot-b); }
+.diet-stack i.is-lunch     { background: var(--c-slot-l); }
+.diet-stack i.is-dinner    { background: var(--c-slot-d); }
+.diet-stack i.is-snack     { background: var(--c-slot-s); }
 .diet-stack i.is-other     { background: var(--c-text-3); }
 .diet-stack i.is-drink     { background: var(--c-accent); }
 .diet-stack i.is-rest      { background: transparent; }
@@ -1878,10 +1880,10 @@
 }
 .diet-stack-key { display: inline-flex; align-items: center; gap: 5px; }
 .diet-stack-key i { width: 10px; height: 10px; border-radius: var(--r-full); display: inline-block; }
-.diet-stack-key i.is-breakfast { background: #e8b04b; }
-.diet-stack-key i.is-lunch     { background: var(--c-primary); }
-.diet-stack-key i.is-dinner    { background: #4a8fd9; }
-.diet-stack-key i.is-snack     { background: #a97fd0; }
+.diet-stack-key i.is-breakfast { background: var(--c-slot-b); }
+.diet-stack-key i.is-lunch     { background: var(--c-slot-l); }
+.diet-stack-key i.is-dinner    { background: var(--c-slot-d); }
+.diet-stack-key i.is-snack     { background: var(--c-slot-s); }
 .diet-stack-key i.is-other     { background: var(--c-text-3); }
 .diet-stack-key i.is-drink     { background: var(--c-accent); }
 .diet-stack-key i.is-rest      { background: var(--c-surface-3); box-shadow: inset 0 0 0 1px var(--c-border); }
@@ -1894,17 +1896,27 @@
   display: flex; flex-direction: column; gap: 3px;
   padding: var(--sp-2); background: var(--c-surface-2); border-radius: var(--r-md);
 }
+/* 地の色は、帯のその区分と同じ色の薄いほう。どの枠がどの帯になるかを、
+   読まずに分かるように。 */
+.diet-slot[data-slot="breakfast"] { background: var(--c-slot-b-soft); }
+.diet-slot[data-slot="lunch"]     { background: var(--c-slot-l-soft); }
+.diet-slot[data-slot="dinner"]    { background: var(--c-slot-d-soft); }
+.diet-slot[data-slot="snack"]     { background: var(--c-slot-s-soft); }
 .diet-slot-head { display: flex; align-items: center; gap: 5px; }
-.diet-slot-ico { color: var(--c-primary); opacity: .82; line-height: 0; }
+.diet-slot-ico { color: var(--c-text-2); opacity: .9; line-height: 0; }
+.diet-slot[data-slot="breakfast"] .diet-slot-ico { color: var(--c-slot-b); }
+.diet-slot[data-slot="lunch"] .diet-slot-ico     { color: var(--c-slot-l); }
+.diet-slot[data-slot="dinner"] .diet-slot-ico    { color: var(--c-slot-d); }
+.diet-slot[data-slot="snack"] .diet-slot-ico     { color: var(--c-slot-s); }
 .diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
 .diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
-/* 書き込む枠。線を消して地の色だけにします——枠の中に枠を描くと、
-   四つ並んだときにうるさくなるので。 */
+/* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
+   拡大します（拡大したままでは、次の枠が見えません）。 */
 .diet-slot-memo {
-  min-height: 34px; padding: 4px 6px; border-radius: var(--r-sm);
+  min-height: 38px; padding: 6px 8px; border-radius: var(--r-sm);
   background: var(--c-surface); border: 1px solid var(--c-border);
-  font-size: var(--fs-sm); line-height: 1.5; resize: none; overflow: hidden;
+  font-size: var(--fs-lg); line-height: 1.5; resize: none; overflow: hidden;
 }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに

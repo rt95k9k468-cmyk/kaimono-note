@@ -43,6 +43,22 @@
   --c-cool-soft:   #dfeaf7;
   --c-cool-ink:    #21527e;
 
+  /* --- 食事の区分（朝・昼・夜・間食） ---
+
+     積み上げの帯と、書き込む枠の地の色に使います。四つは帯の中で
+     隣り合うので、色相をできるだけ離します——前は昼が緑・夜が青で、
+     どちらも中くらいの濃さの寒色だったため、境目が見えませんでした。
+     ここは信号ではなく内わけなので、彩度は抑えます。
+     soft のほうは、同じ色をうんと薄くした地の色です。 */
+  --c-slot-b:      #e0a02f;   /* 朝：黄 */
+  --c-slot-l:      #2e9bd6;   /* 昼：空色（明るい） */
+  --c-slot-d:      #2b3a8f;   /* 夜：紺（暗い） */
+  --c-slot-s:      #c0559b;   /* 間食：赤紫 */
+  --c-slot-b-soft: #fbf1dc;
+  --c-slot-l-soft: #dcf0fb;
+  --c-slot-d-soft: #e0e4f6;
+  --c-slot-s-soft: #f8e4f2;
+
   /* --- effects --- */
   --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
   --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
@@ -103,6 +119,16 @@
     --c-warn:        #dcae4a;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
+    /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
+       地の色（soft）は「薄い」ではなく「暗い」で作ります。 */
+    --c-slot-b:      #e8b258;
+    --c-slot-l:      #4fd0e0;
+    --c-slot-d:      #8878f0;
+    --c-slot-s:      #e28ad0;
+    --c-slot-b-soft: #332a1a;
+    --c-slot-l-soft: #142b36;
+    --c-slot-d-soft: #1f2244;
+    --c-slot-s-soft: #33203a;
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 2px 8px rgba(0,0,0,.45);
     --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -134,6 +160,16 @@
   --c-warn:        #dcae4a;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
+  /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
+     地の色（soft）は「薄い」ではなく「暗い」で作ります。 */
+  --c-slot-b:      #e8b258;
+  --c-slot-l:      #4fd0e0;
+  --c-slot-d:      #8878f0;
+  --c-slot-s:      #e28ad0;
+  --c-slot-b-soft: #332a1a;
+  --c-slot-l-soft: #142b36;
+  --c-slot-d-soft: #1f2244;
+  --c-slot-s-soft: #33203a;
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);

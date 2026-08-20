@@ -46,6 +46,22 @@
   --c-cool-soft:   #dfeaf7;
   --c-cool-ink:    #21527e;
 
+  /* --- 食事の区分（朝・昼・夜・間食） ---
+
+     積み上げの帯と、書き込む枠の地の色に使います。四つは帯の中で
+     隣り合うので、色相をできるだけ離します——前は昼が緑・夜が青で、
+     どちらも中くらいの濃さの寒色だったため、境目が見えませんでした。
+     ここは信号ではなく内わけなので、彩度は抑えます。
+     soft のほうは、同じ色をうんと薄くした地の色です。 */
+  --c-slot-b:      #e0a02f;   /* 朝：黄 */
+  --c-slot-l:      #2e9bd6;   /* 昼：空色（明るい） */
+  --c-slot-d:      #2b3a8f;   /* 夜：紺（暗い） */
+  --c-slot-s:      #c0559b;   /* 間食：赤紫 */
+  --c-slot-b-soft: #fbf1dc;
+  --c-slot-l-soft: #dcf0fb;
+  --c-slot-d-soft: #e0e4f6;
+  --c-slot-s-soft: #f8e4f2;
+
   /* --- effects --- */
   --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
   --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
@@ -106,6 +122,16 @@
     --c-warn:        #dcae4a;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
+    /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
+       地の色（soft）は「薄い」ではなく「暗い」で作ります。 */
+    --c-slot-b:      #e8b258;
+    --c-slot-l:      #4fd0e0;
+    --c-slot-d:      #8878f0;
+    --c-slot-s:      #e28ad0;
+    --c-slot-b-soft: #332a1a;
+    --c-slot-l-soft: #142b36;
+    --c-slot-d-soft: #1f2244;
+    --c-slot-s-soft: #33203a;
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 2px 8px rgba(0,0,0,.45);
     --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -137,6 +163,16 @@
   --c-warn:        #dcae4a;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
+  /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
+     地の色（soft）は「薄い」ではなく「暗い」で作ります。 */
+  --c-slot-b:      #e8b258;
+  --c-slot-l:      #4fd0e0;
+  --c-slot-d:      #8878f0;
+  --c-slot-s:      #e28ad0;
+  --c-slot-b-soft: #332a1a;
+  --c-slot-l-soft: #142b36;
+  --c-slot-d-soft: #1f2244;
+  --c-slot-s-soft: #33203a;
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -3430,14 +3466,16 @@ button, [role="tab"] {
 /* ここはこの画面でいちばん見るところなので、大きく取ります。
    細い帯だと、5%と12%の差が指の幅より小さくなって読めません。 */
 .diet-stack {
-  display: flex; height: 26px; border-radius: var(--r-md);
+  /* 角はほとんど落としません。丸みを付けると、両端の区分だけが細く
+     見えて、長さの比べ合いが狂います。 */
+  display: flex; height: 26px; border-radius: 2px;
   overflow: hidden; background: var(--c-surface-3);
 }
 .diet-stack i { display: block; height: 100%; min-width: 2px; }
-.diet-stack i.is-breakfast { background: #e8b04b; }
-.diet-stack i.is-lunch     { background: var(--c-primary); }
-.diet-stack i.is-dinner    { background: #4a8fd9; }
-.diet-stack i.is-snack     { background: #a97fd0; }
+.diet-stack i.is-breakfast { background: var(--c-slot-b); }
+.diet-stack i.is-lunch     { background: var(--c-slot-l); }
+.diet-stack i.is-dinner    { background: var(--c-slot-d); }
+.diet-stack i.is-snack     { background: var(--c-slot-s); }
 .diet-stack i.is-other     { background: var(--c-text-3); }
 .diet-stack i.is-drink     { background: var(--c-accent); }
 .diet-stack i.is-rest      { background: transparent; }
@@ -3450,10 +3488,10 @@ button, [role="tab"] {
 }
 .diet-stack-key { display: inline-flex; align-items: center; gap: 5px; }
 .diet-stack-key i { width: 10px; height: 10px; border-radius: var(--r-full); display: inline-block; }
-.diet-stack-key i.is-breakfast { background: #e8b04b; }
-.diet-stack-key i.is-lunch     { background: var(--c-primary); }
-.diet-stack-key i.is-dinner    { background: #4a8fd9; }
-.diet-stack-key i.is-snack     { background: #a97fd0; }
+.diet-stack-key i.is-breakfast { background: var(--c-slot-b); }
+.diet-stack-key i.is-lunch     { background: var(--c-slot-l); }
+.diet-stack-key i.is-dinner    { background: var(--c-slot-d); }
+.diet-stack-key i.is-snack     { background: var(--c-slot-s); }
 .diet-stack-key i.is-other     { background: var(--c-text-3); }
 .diet-stack-key i.is-drink     { background: var(--c-accent); }
 .diet-stack-key i.is-rest      { background: var(--c-surface-3); box-shadow: inset 0 0 0 1px var(--c-border); }
@@ -3466,17 +3504,27 @@ button, [role="tab"] {
   display: flex; flex-direction: column; gap: 3px;
   padding: var(--sp-2); background: var(--c-surface-2); border-radius: var(--r-md);
 }
+/* 地の色は、帯のその区分と同じ色の薄いほう。どの枠がどの帯になるかを、
+   読まずに分かるように。 */
+.diet-slot[data-slot="breakfast"] { background: var(--c-slot-b-soft); }
+.diet-slot[data-slot="lunch"]     { background: var(--c-slot-l-soft); }
+.diet-slot[data-slot="dinner"]    { background: var(--c-slot-d-soft); }
+.diet-slot[data-slot="snack"]     { background: var(--c-slot-s-soft); }
 .diet-slot-head { display: flex; align-items: center; gap: 5px; }
-.diet-slot-ico { color: var(--c-primary); opacity: .82; line-height: 0; }
+.diet-slot-ico { color: var(--c-text-2); opacity: .9; line-height: 0; }
+.diet-slot[data-slot="breakfast"] .diet-slot-ico { color: var(--c-slot-b); }
+.diet-slot[data-slot="lunch"] .diet-slot-ico     { color: var(--c-slot-l); }
+.diet-slot[data-slot="dinner"] .diet-slot-ico    { color: var(--c-slot-d); }
+.diet-slot[data-slot="snack"] .diet-slot-ico     { color: var(--c-slot-s); }
 .diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
 .diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
-/* 書き込む枠。線を消して地の色だけにします——枠の中に枠を描くと、
-   四つ並んだときにうるさくなるので。 */
+/* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
+   拡大します（拡大したままでは、次の枠が見えません）。 */
 .diet-slot-memo {
-  min-height: 34px; padding: 4px 6px; border-radius: var(--r-sm);
+  min-height: 38px; padding: 6px 8px; border-radius: var(--r-sm);
   background: var(--c-surface); border: 1px solid var(--c-border);
-  font-size: var(--fs-sm); line-height: 1.5; resize: none; overflow: hidden;
+  font-size: var(--fs-lg); line-height: 1.5; resize: none; overflow: hidden;
 }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
@@ -13386,7 +13434,7 @@ a.btn { text-decoration: none; }
         // 区分のあるものが先、前の作りの「一日ぶんのメモ」は最後に。
         .sort((a, b) => (SLOT_LABEL[a.slot] ? 0 : 1) - (SLOT_LABEL[b.slot] ? 0 : 1))
         .map((m) => (SLOT_LABEL[m.slot] ? `【${SLOT_LABEL[m.slot]}】` : "")
-          + m.memo.trim().replace(/\s*\n\s*/g, " "))
+          + m.memo.trim().split(/\n+/).map((x) => x.trim()).filter(Boolean).join("、"))
         .join(" ");
       const drinks = store.drinksOfDay(day);
       return {
@@ -18990,17 +19038,14 @@ a.btn { text-decoration: none; }
      打った先から保存します。「保存」を押さずに閉じても残ります
      （押し忘れで消えるほうが、間違って残るよりずっと痛い）。 */
 
-  const SLOT_PLACEHOLDER = {
-    breakfast: "納豆 卵 ごはん150g",
-    lunch:     "給食 そば",
-    dinner:    "ご飯150g 鶏むね200g サラダ",
-    snack:     "チョコ3かけ コーヒー",
-  };
+  /* 空の枠に置くのは、例ではなくハイフンだけです。例を書いておくと、
+     「この形で書かないといけない」と読まれます（書き方は自由です）。 */
+  const SLOT_PLACEHOLDER = "-";
 
   /** 打った量に合わせて、枠の高さを伸ばします。 */
   function grow(ta) {
     ta.style.height = "auto";
-    ta.style.height = `${Math.max(ta.scrollHeight, 34)}px`;
+    ta.style.height = `${Math.max(ta.scrollHeight, 38)}px`;
   }
 
   /** 書きかけを、画面を組み直す前に落とします（render の頭で呼びます）。 */
@@ -19024,7 +19069,7 @@ a.btn { text-decoration: none; }
           <textarea class="textarea diet-slot-memo js-slot-memo" data-slot="${sl.id}" rows="1"
                     spellcheck="false" autocapitalize="sentences"
                     aria-label="${sl.label}に食べたもの"
-                    placeholder="${SLOT_PLACEHOLDER[sl.id]}">${text}</textarea>
+                    placeholder="${SLOT_PLACEHOLDER}">${text}</textarea>
         </div>
       `);
       const ta = box.querySelector("textarea");
@@ -19117,6 +19162,8 @@ a.btn { text-decoration: none; }
       "",
       "【条件】",
       "・お酒（アルコール飲料）は計算に入れないでください。別に記録しています。",
+      "・食品の区切りは、スペース・読点（、）・中黒（・）・カンマ・スラッシュ・改行など、"
+        + "どれでもかまいません。区切り記号にかかわらず、別々の食品として扱ってください。",
       "・分量が書いていないものは、一般的な一人前として妥当な量を推定してください。",
       "・細かすぎる値にはせず、妥当な範囲の概数で答えてください。",
       "・カロリーは kcal、ほかは g で、数値だけを書いてください（単位や説明は不要）。",
@@ -19386,13 +19433,16 @@ a.btn { text-decoration: none; }
    * 渡すと、そこに何か推してくるAIがいます。
    */
   function dayMemoText(day) {
+    /* 一つの区分に何行書いてもかまいません。渡すときは読点でつなぎます
+       ——行のままだと、どこまでが【朝】の中身か分かりにくくなるので。 */
+    const oneLine = (text) => String(text || "").split(/\n+/).map((x) => x.trim()).filter(Boolean).join("、");
     const rows = SLOTS.map((sl) => {
-      const text = store.slotMemo(day, sl.id).trim();
-      return text ? `【${sl.short}】${text.replace(/\s*\n\s*/g, " ")}` : null;
+      const text = oneLine(store.slotMemo(day, sl.id));
+      return text ? `【${sl.short}】${text}` : null;
     }).filter(Boolean);
     // 前の作りで書いた「一日ぶんのメモ」も、残っていれば一緒に渡します。
     const legacy = store.dayMemo(day);
-    if (legacy && (legacy.memo || "").trim()) rows.push(legacy.memo.trim().replace(/\s*\n\s*/g, " "));
+    if (legacy && (legacy.memo || "").trim()) rows.push(oneLine(legacy.memo));
     return rows.join("\n");
   }
 
