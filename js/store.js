@@ -240,8 +240,20 @@
       raw,
       at: a.at || new Date().toISOString(),
     };
+    /* 区分ごとの合計。AIが「朝合計」まで書いてくれた日だけ入ります。
+       食品ごとの区分が拾えなかった日でも、これがあれば帯を引けます。
+       書かれていない区分は null のまま——0 にすると「食べなかった」に
+       なってしまいます。 */
+    const slots = {};
+    let hasSlot = false;
+    ["breakfast", "lunch", "dinner", "snack"].forEach((k) => {
+      const v = posNum(a.slots ? a.slots[k] : null);
+      slots[k] = v;
+      if (v != null) hasSlot = true;
+    });
+    if (hasSlot) out.slots = slots;
     const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
-    return anyNum || raw ? out : null;
+    return anyNum || hasSlot || raw ? out : null;
   }
 
   function cleanMeal(m, i) {
@@ -1400,7 +1412,8 @@
   function addMeal({ day, time, slot, items, memo, ai } = {}) {
     const rec = cleanMeal({
       day: day || KN.util.todayKey(),
-      time: time || KN.util.nowTime(),
+      // time: null は「時刻を持たない」です（区分だけで書く記録がこれ）。
+      time: time === null ? null : (time || KN.util.nowTime()),
       slot, items, memo, ai,
     }, 0);
     if (!rec) return null;
@@ -1425,6 +1438,39 @@
     const order = { memo: -1, breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
     return diet().meals.filter((m) => m.day === day)
       .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
+  }
+
+  /* --- 区分ごとの食事メモ ---
+
+     朝・昼・夜・間食の四つを、それぞれ一枚の紙として読み書きします。
+     入れ物は前と同じ meals のままです（作り替えると、いままでの記録が
+     読めなくなります）。同じ区分に何件も残っている古い記録は、読むときに
+     つなげて一つの文として見せ、書くときに一件へまとめます——ただし、
+     数（items）を持っている記録は消しません。文だけを預かります。 */
+
+  /** その区分に書いてあることを、一本の文にして返します。 */
+  function slotMemo(day, slot) {
+    return mealsOfDay(day)
+      .filter((m) => m.slot === slot && String(m.memo || "").trim())
+      .map((m) => m.memo.trim())
+      .join("\n");
+  }
+
+  /** その区分の文を書き換えます。空にすると、数を持たない記録は消えます。 */
+  function setSlotMemo(day, slot, text) {
+    if (!MEAL_SLOTS.includes(slot) || slot === "memo") return null;
+    const list = mealsOfDay(day).filter((m) => m.slot === slot);
+    const memo = String(text == null ? "" : text).trim();
+    if (!list.length) return memo ? addMeal({ day, slot, time: null, memo }) : null;
+    // 一件目に文をまとめ、残りからは文だけを外します（数は残します）。
+    list.slice(1).forEach((m) => {
+      if (m.items.length || m.ai) updateMeal(m.id, { memo: "" });
+      else removeMeal(m.id);
+    });
+    const head = list[0];
+    if (!memo && !head.items.length && !head.ai) { removeMeal(head.id); return null; }
+    updateMeal(head.id, { memo });
+    return diet().meals.find((m) => m.id === head.id) || null;
   }
 
   /* --- 一日ぶんの食事メモ ---
@@ -1730,6 +1776,7 @@
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo,
+    slotMemo, setSlotMemo,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
