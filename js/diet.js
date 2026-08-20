@@ -826,7 +826,7 @@
         // 区分のあるものが先、前の作りの「一日ぶんのメモ」は最後に。
         .sort((a, b) => (SLOT_LABEL[a.slot] ? 0 : 1) - (SLOT_LABEL[b.slot] ? 0 : 1))
         .map((m) => (SLOT_LABEL[m.slot] ? `【${SLOT_LABEL[m.slot]}】` : "")
-          + m.memo.trim().replace(/\s*\n\s*/g, " "))
+          + m.memo.trim().split(/\n+/).map((x) => x.trim()).filter(Boolean).join("、"))
         .join(" ");
       const drinks = store.drinksOfDay(day);
       return {

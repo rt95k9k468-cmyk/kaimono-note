@@ -1502,17 +1502,14 @@
      打った先から保存します。「保存」を押さずに閉じても残ります
      （押し忘れで消えるほうが、間違って残るよりずっと痛い）。 */
 
-  const SLOT_PLACEHOLDER = {
-    breakfast: "納豆 卵 ごはん150g",
-    lunch:     "給食 そば",
-    dinner:    "ご飯150g 鶏むね200g サラダ",
-    snack:     "チョコ3かけ コーヒー",
-  };
+  /* 空の枠に置くのは、例ではなくハイフンだけです。例を書いておくと、
+     「この形で書かないといけない」と読まれます（書き方は自由です）。 */
+  const SLOT_PLACEHOLDER = "-";
 
   /** 打った量に合わせて、枠の高さを伸ばします。 */
   function grow(ta) {
     ta.style.height = "auto";
-    ta.style.height = `${Math.max(ta.scrollHeight, 34)}px`;
+    ta.style.height = `${Math.max(ta.scrollHeight, 38)}px`;
   }
 
   /** 書きかけを、画面を組み直す前に落とします（render の頭で呼びます）。 */
@@ -1536,7 +1533,7 @@
           <textarea class="textarea diet-slot-memo js-slot-memo" data-slot="${sl.id}" rows="1"
                     spellcheck="false" autocapitalize="sentences"
                     aria-label="${sl.label}に食べたもの"
-                    placeholder="${SLOT_PLACEHOLDER[sl.id]}">${text}</textarea>
+                    placeholder="${SLOT_PLACEHOLDER}">${text}</textarea>
         </div>
       `);
       const ta = box.querySelector("textarea");
@@ -1629,6 +1626,8 @@
       "",
       "【条件】",
       "・お酒（アルコール飲料）は計算に入れないでください。別に記録しています。",
+      "・食品の区切りは、スペース・読点（、）・中黒（・）・カンマ・スラッシュ・改行など、"
+        + "どれでもかまいません。区切り記号にかかわらず、別々の食品として扱ってください。",
       "・分量が書いていないものは、一般的な一人前として妥当な量を推定してください。",
       "・細かすぎる値にはせず、妥当な範囲の概数で答えてください。",
       "・カロリーは kcal、ほかは g で、数値だけを書いてください（単位や説明は不要）。",
@@ -1898,13 +1897,16 @@
    * 渡すと、そこに何か推してくるAIがいます。
    */
   function dayMemoText(day) {
+    /* 一つの区分に何行書いてもかまいません。渡すときは読点でつなぎます
+       ——行のままだと、どこまでが【朝】の中身か分かりにくくなるので。 */
+    const oneLine = (text) => String(text || "").split(/\n+/).map((x) => x.trim()).filter(Boolean).join("、");
     const rows = SLOTS.map((sl) => {
-      const text = store.slotMemo(day, sl.id).trim();
-      return text ? `【${sl.short}】${text.replace(/\s*\n\s*/g, " ")}` : null;
+      const text = oneLine(store.slotMemo(day, sl.id));
+      return text ? `【${sl.short}】${text}` : null;
     }).filter(Boolean);
     // 前の作りで書いた「一日ぶんのメモ」も、残っていれば一緒に渡します。
     const legacy = store.dayMemo(day);
-    if (legacy && (legacy.memo || "").trim()) rows.push(legacy.memo.trim().replace(/\s*\n\s*/g, " "));
+    if (legacy && (legacy.memo || "").trim()) rows.push(oneLine(legacy.memo));
     return rows.join("\n");
   }
 
