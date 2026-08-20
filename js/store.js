@@ -173,6 +173,13 @@
       /* 食物繊維。前からある記録は持っていないので、null のままにします
          （0 と書くと「無かった」ではなく「0gだった」ことになります）。 */
       fiber: posNum(it.fiber),
+      /* どの食事のぶんか。AIに食品ごとに推してもらうと、一日の合計だけでなく
+         「朝がいくつ、夜がいくつ」まで数えられます。前からある明細は持って
+         いないので null——区分の分からないものとして扱います。 */
+      slot: MEAL_SLOTS.includes(it.slot) && it.slot !== "memo" ? it.slot : null,
+      /* 「1パック」「茶碗1杯」のような、人が書いたままの量。g に直せない
+         ことのほうが多いので、数にせず言葉のまま持ちます。 */
+      amount: typeof it.amount === "string" ? it.amount.trim().slice(0, 40) : "",
       // どこから来た値か。base=成分表, user=自分で直した, product=市販品,
       // ai=写真からの推定。数字の重みが違うので、捨てずに持ちます。
       from: ["base", "user", "product", "ai", "manual"].includes(it.from) ? it.from : "manual",

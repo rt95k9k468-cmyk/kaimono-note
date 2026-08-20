@@ -1806,6 +1806,63 @@
 .diet-pfc-bar.is-over { box-shadow: inset 0 0 0 1px var(--c-accent); }
 .diet-pfc-num { font-size: var(--fs-xs); color: var(--c-text-2); width: 78px; text-align: right; flex: none; }
 
+/* ---- カロリーの出どころ（積み上げの帯） ----
+
+   全体が総消費で、左から 朝・昼・夜・間食・区分なし・飲酒、余りが「残り」。
+   色は区分ごとに変えますが、彩度は抑えます——ここは信号ではなく内わけで、
+   「夜が多い」ことに赤信号の意味を持たせるのはこちらの仕事ではありません。 */
+.diet-stack-wrap { display: flex; flex-direction: column; gap: var(--sp-2); }
+.diet-stack {
+  display: flex; height: 14px; border-radius: var(--r-full);
+  overflow: hidden; background: var(--c-surface-3);
+}
+.diet-stack i { display: block; height: 100%; min-width: 2px; }
+.diet-stack i.is-breakfast { background: #e8b04b; }
+.diet-stack i.is-lunch     { background: var(--c-primary); }
+.diet-stack i.is-dinner    { background: #4a8fd9; }
+.diet-stack i.is-snack     { background: #a97fd0; }
+.diet-stack i.is-other     { background: var(--c-text-3); }
+.diet-stack i.is-drink     { background: var(--c-accent); }
+.diet-stack i.is-rest      { background: transparent; }
+/* 総消費を超えた日。帯は摂取いっぱいまで使い、縁で「はみ出た」と言います。 */
+.diet-stack.is-over { box-shadow: inset 0 0 0 1.5px var(--c-danger); }
+
+.diet-stack-legend {
+  display: flex; flex-wrap: wrap; gap: 4px var(--sp-3);
+  font-size: var(--fs-xs); color: var(--c-text-2);
+}
+.diet-stack-key { display: inline-flex; align-items: center; gap: 4px; }
+.diet-stack-key i { width: 8px; height: 8px; border-radius: var(--r-full); display: inline-block; }
+.diet-stack-key i.is-breakfast { background: #e8b04b; }
+.diet-stack-key i.is-lunch     { background: var(--c-primary); }
+.diet-stack-key i.is-dinner    { background: #4a8fd9; }
+.diet-stack-key i.is-snack     { background: #a97fd0; }
+.diet-stack-key i.is-other     { background: var(--c-text-3); }
+.diet-stack-key i.is-drink     { background: var(--c-accent); }
+.diet-stack-key i.is-rest      { background: var(--c-surface-3); box-shadow: inset 0 0 0 1px var(--c-border); }
+.diet-note .is-warn { color: var(--c-danger); }
+
+/* 区分ごとの「＋」。四つ横に並べて、そのまま書き始められるように。
+   数が入っている区分は、その合計がそのまま札になります。 */
+.diet-slot-adds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.diet-slot-add {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: var(--sp-2) 2px; background: var(--c-surface-2);
+  border: 0; border-radius: var(--r-md); min-width: 0;
+}
+.diet-slot-add .diet-slot-ico { color: var(--c-primary); opacity: .82; line-height: 0; }
+.diet-slot-add .diet-slot-ico svg { width: 16px; height: 16px; stroke-width: 1.7; }
+.diet-slot-name { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
+.diet-slot-add .diet-slot-kcal { font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
+
+.diet-meals:empty { display: none; }
+/* 食品ごとの内わけ。ふだんは畳んでおきます（毎日読むものではないので）。 */
+.diet-foods summary {
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-2);
+  padding: var(--sp-2) 0; cursor: pointer;
+}
+.diet-foods[open] summary { margin-bottom: var(--sp-2); }
+
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
 .diet-memo {
