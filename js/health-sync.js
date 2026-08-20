@@ -43,6 +43,51 @@
 
   const HEADER = /くらしノート|kurashi-?note/i;
 
+  /* ---------------- 読めなかった便を、データと間違えない ----------------
+
+     iPhoneがロックされているあいだ、HealthKit は暗号化されたままで読めません。
+     無人で走るショートカット（毎朝のオートメーション）はそこに当たることが
+     あって、"Protected health data is inaccessible" を返します。
+
+     困るのはそのあとです。ショートカットの「統計を計算 → 合計」は、
+     読めなかった＝0件のとき **0** を返します。つまり中継所には
+
+         steps=0
+         activeEnergy=0
+         sleep=0
+
+     が置かれ、そのまま取り込めば、その日の記録が 0 で塗り替わります。
+     「一歩も歩かなかった日」が静かに出来上がるわけです。
+
+     だから、**そういう便は入れません**。読めなかったことは分かるので、
+     入れずに置いておいて、あとでもう一度取りにいきます（health-relay.js と
+     screen-diet.js）。手で貼るぶんには関係のない話ですが、この文言そのものは
+     どこから来ても中身がないので、いつでも断ります。 */
+  const LOCKED_RE = new RegExp([
+    "protected\\s+health\\s+data\\s+is\\s+inaccessible",
+    "health\\s*data\\s*is\\s*inaccessible",
+    "healthkit[^\\n]{0,40}(unavailable|inaccessible|denied)",
+    "保護されたヘルスケア",
+    "ヘルスケア(の)?データ(に|へ)?アクセス(でき|出来)ません",
+  ].join("|"), "i");
+
+  const LOCKED_MSG = "ヘルスケアがまだ読める状態ではありませんでした"
+    + "（iPhoneがロックされているあいだは読めません）。少し待ってから取りにいきます。";
+
+  /** その便は「読めなかった」と言っているか。 */
+  function locked(text) {
+    return LOCKED_RE.test(String(text || ""));
+  }
+
+  /* 0 だけが並ぶ便も、同じ扱いにします。ショートカットは読めなかったとき
+     空ではなく 0 を返すので、字面だけでは成功と区別がつきません。
+     ぜんぶ 0 なら、それは「その日一日、何も動かず眠らなかった」ではなく、
+     読めていないほうです。ワークアウトは数えません（無い日が普通なので）。 */
+  function allZero(samples) {
+    const daily = (samples || []).filter((s) => s.type !== "workout");
+    return daily.length > 0 && daily.every((s) => s.value === 0);
+  }
+
   /* 受け取る名前と、内側の名前の対応。ショートカットの日本語名でも、
      HealthKitの識別子でも通るようにしてあります——どちらで書くかは
      作る人が決めることで、こちらが決めることではありません。 */
@@ -286,6 +331,7 @@
   function preview(text) {
     const raw = String(text || "").trim();
     if (!raw) return { ok: false, error: "中身がありません", rows: [] };
+    if (locked(raw)) return { ok: false, locked: true, error: LOCKED_MSG, rows: [] };
     let parsed = null;
     if (/^[[{]/.test(raw)) {
       try { parsed = parseJson(JSON.parse(raw)); } catch (err) { parsed = null; }
@@ -313,9 +359,20 @@
    * @returns {{ok:boolean, error?:string, added:number, updated:number,
    *            skipped:number, days:string[], byType:Object}}
    */
-  function importText(text) {
+  function importText(text, opts) {
+    /* auto は「無人で届いた便か」です。人が見ている貼り付けとちがって、
+       0 だらけの便を人が確かめてから押したわけではないので、そこだけ
+       用心を強くします。手入力・貼り付けの道（opts なし）は、これまでと
+       一字も変わりません。 */
+    const auto = !!(opts && opts.auto);
     const raw = String(text || "").trim();
     if (!raw) return { ok: false, error: "中身がありません", added: 0, updated: 0, skipped: 0 };
+
+    /* 「読めなかった」と書いてある便は、どこから来ても入れません
+       （中身がないので、断っても失うものがありません）。 */
+    if (locked(raw)) {
+      return { ok: false, locked: true, error: LOCKED_MSG, added: 0, updated: 0, skipped: 0 };
+    }
 
     let parsed = null;
     if (/^[[{]/.test(raw)) {
@@ -329,6 +386,23 @@
       return { ok: false, error: "取り込めるデータが見つかりません", added: 0, updated: 0, skipped: parsed.unknown || 0 };
     }
     parsed = { ...parsed, samples: foldSamples(parsed.samples) };
+
+    /* 無人の便が 0 ばかりのときは、読めていないほうです。**入れずに断って**、
+       いまある記録はそのままにします（呼んだ側が、少し待って取りにいきます）。
+       まじりの 0 も入れません——0 は「その日どうだったか」を何も言わない値
+       なので、入れて既にある数を消す理由がありません。 */
+    if (auto) {
+      if (allZero(parsed.samples)) {
+        return { ok: false, locked: true, zeros: true, error: LOCKED_MSG,
+                 added: 0, updated: 0, skipped: 0 };
+      }
+      const keep = parsed.samples.filter((s) => !(s.type !== "workout" && s.value === 0));
+      if (keep.length !== parsed.samples.length) parsed = { ...parsed, samples: keep };
+      if (!keep.length) {
+        return { ok: false, locked: true, zeros: true, error: LOCKED_MSG,
+                 added: 0, updated: 0, skipped: 0 };
+      }
+    }
 
     let added = 0, updated = 0, skipped = 0, kept = 0;
     const days = new Set();
@@ -569,6 +643,7 @@
 
   KN.healthSync = {
     importText, importFromClipboard, importFromHash, describe, preview,
+    locked, LOCKED_MSG,
     clipboardState, explain, readClipboard,
     parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
   };

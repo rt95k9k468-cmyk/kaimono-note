@@ -2471,7 +2471,12 @@
         <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
         <p class="diet-note">
           最後に<b>オートメーション</b>（毎朝7時など）に登録しておけば、あとは
-          このアプリで一度押すだけになります。
+          このアプリで一度押すだけになります。<br>
+          ひとつだけ気をつけることがあります。<b>iPhoneがロックされているあいだ、
+          ヘルスケアは読めません</b>（<code>Protected health data is inaccessible</code>）。
+          走る時刻は<b>ふだん端末を触っている時間</b>に寄せるか、ショートカットの先頭に
+          「待機」を挟んで読み直すようにしてください。読めなかった便は、このアプリでは
+          <b>取り込まずに待ちます</b>——0で塗り替えないためです。
         </p>
 
         <div class="divider"></div>
@@ -2523,6 +2528,30 @@
         </div>
         <div class="js-got"></div>
         ${sync.lastAt ? html`<p class="diet-note">最後の取り込み：${U.formatStamp(sync.lastAt)}</p>` : ""}
+        ${sync.lockedAt ? html`
+          <p class="diet-note is-warn">
+            ${U.formatStamp(sync.lockedAt)} に届いた便は、<b>ヘルスケアが読めない状態</b>でした
+            （iPhoneがロックされているあいだ、ショートカットはヘルスケアを読めません）。
+            <b>取り込んでいないので、それまでの記録はそのまま</b>です。少し待って何度か
+            取りにいき、それでも駄目なら、次にこのタブを開いたときにまた取りにいきます。
+          </p>
+          <div class="divider"></div>
+          <div class="section-title">ロック中でも取れるようにする</div>
+          <p class="diet-note">
+            大もとはショートカット側です。オートメーションが走ったとき画面がロックされて
+            いると、ヘルスケアは暗号化されたままで読めません
+            （<code>Protected health data is inaccessible</code>）。次のどれかで直ります。
+          </p>
+          <ol class="diet-steps">
+            <li>オートメーションの<b>「実行前に尋ねる」を切り</b>、時刻を
+              <b>ふだん端末を使っている時間</b>に寄せる（起床直後より、通勤中や昼など）</li>
+            <li>ショートカットの先頭に<b>「待機 30秒」→ もう一度ヘルスサンプルを検索</b>を足して、
+              一度目で空だったときの取り直しを作る（<b>「If」で結果が0件なら</b>のかたちにすると、
+              うまくいった日は待ちません）</li>
+            <li><b>0 を送らない</b>——「統計を計算」は読めなかったとき 0 を返します。
+              <b>「If 歩数 が 0 でない」</b>で囲んでおくと、読めなかった日は何も送りません
+              （このアプリも 0 だけの便は取り込みませんが、送らないほうが確かです）</li>
+          </ol>` : ""}
 
         <div class="divider"></div>
         <div class="section-title">書ける言葉</div>
@@ -2820,13 +2849,74 @@ distance=6.0km</pre>
     }).catch(() => { /* 黙って引く */ });
   }
 
+  /* ---------------- ロック中に走ったショートカットのこと ----------------
+
+     iPhoneがロックされているあいだ、HealthKit は暗号化されたままで読めません。
+     毎朝のオートメーションはそこに当たることがあって、ショートカットは
+     "Protected health data is inaccessible" を返すか、0 を並べて送ってきます。
+
+     それを取り込めば、その日の歩数も睡眠も 0 で塗り替わります。だから
+
+       ・入れない（health-sync.js が断ります。記録は動きません）
+       ・**少し待って、もう一度取りにいく**（下の RETRY_WAITS）
+       ・それでも駄目なら、そこで諦めます——上書きはしていないので、
+         次にタブを開いたとき（＝次の自動実行）また取りにいきます。
+
+     待つ間隔は、短すぎても長すぎても外します。ロックが解けるのは「人が
+     iPhoneを触ったとき」なので、20秒・1分・3分と広げながら三度だけ。
+     電池を気にする間隔ではありませんし、これ以上引っぱっても、次の
+     自動実行のほうが先に来ます。 */
+  let retryWaits = [20000, 60000, 180000];
+  let retryTimer = 0;
+
+  /* 試験からだけ、間隔を縮めます。20秒・1分・3分を実際に待つ試験は
+     書けないので——縮められるのは長さだけで、段取りは同じものを通します。 */
+  function __setRetryWaits(list) {
+    retryWaits = Array.isArray(list) && list.length ? list.slice() : [20000, 60000, 180000];
+  }
+
+  function stopRetry() {
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = 0; }
+  }
+
+  function scheduleRetry(step) {
+    stopRetry();
+    if (step >= retryWaits.length) return;      // 何度も駄目だった。次の自動実行へ。
+    retryTimer = setTimeout(() => {
+      retryTimer = 0;
+      // そのあいだに事情が変わっていたら、掛け直しません。
+      if (store.get().settings.dietAutoSync === false) return;
+      if (KN.activeScreen && KN.activeScreen() !== "diet") return;
+      if (!KN.healthRelay.configured()) return;
+      pullRelay(step + 1);
+    }, retryWaits[step]);
+  }
+
   /* 中継所からの自動取り込み。ここも「黙って失敗する」を守ります——
      電波の悪いところでタブを開くたびに赤い字が出るのは、報告ではなく
      邪魔です。中継所の不調を確かめたいときは、設定の「つないでみる」か
      取り込みシートの「中継所から取り込む」を押します。そこでは黙りません。 */
-  function pullRelay() {
+  /**
+   * @param next 掛け直しの何番目の待ち時間を使うか。ふだんの呼び出しは
+   *             渡しません（＝掛け直しの最中ではない、ということ）。
+   */
+  function pullRelay(next) {
+    const step = typeof next === "number" ? next : 0;
+    const inChain = typeof next === "number";
     return KN.healthRelay.pullAndImport().then((res) => {
-      if (!res.ok) return res;                  // 空も、繋がらないも、黙って引く
+      /* 読めない便だった。記録には触れていないので、待って掛け直します。
+         ここでも黙ります——ロックしていたのはその人の iPhone で、
+         そのことを赤い字で報告される筋合いはありません。取り込み画面の
+         ほうに「読めませんでした」と静かに出ます。 */
+      if (res.locked) { scheduleRetry(step); render(); return res; }
+      if (!res.ok) {
+        /* 掛け直しの最中なら、**空も「まだ届いていない」**です。読めない便は
+           受け取った時点で郵便受けから消えているので、次に届くのは
+           ショートカットがもう一度置いたぶん。それを待ちます。 */
+        if (inChain) scheduleRetry(step);
+        return res;                             // 掛け直しの外では、黙って引く
+      }
+      stopRetry();                              // 入った。掛け直しはもう要らない。
       if (!res.added && !res.updated) return res;
       lastAuto = res.text || lastAuto;          // 同じ中身を貼り付けからも読まない
       render();
@@ -2853,6 +2943,9 @@ distance=6.0km</pre>
         return;
       }
       if (res.empty) { KN.ui.toast("中継所に新しいデータはありません"); return; }
+      /* 読めない便だったとき。**入れていない**ので記録は無事です。
+         そのことを言って、あとは自動と同じく待って掛け直します。 */
+      if (res.locked) { render(); scheduleRetry(0); KN.ui.toast(res.error); return; }
       if (!res.ok) { KN.ui.toast(res.error || "中継所につながりませんでした"); return; }
       KN.ui.toast("中継所：" + KN.healthSync.describe(res));
     }).catch((err) => {
@@ -2882,7 +2975,9 @@ distance=6.0km</pre>
          もう一度だけ覗きます。二度で足りなければ、下に引けば取りにいきます。 */
       pullRelay().then((res) => {
         if (res && res.ok && (res.added || res.updated)) return;
-        setTimeout(pullRelay, 4000);
+        // 読めない便だったときは、あちらが待って掛け直しています。
+        if (res && res.locked) return;
+        setTimeout(() => pullRelay(), 4000);
       });
     };
     document.addEventListener("visibilitychange", back);
@@ -2906,6 +3001,7 @@ distance=6.0km</pre>
   KN.screens.diet = { mount, render, dockButton, onEnter, refresh,
     // 設定やテストから開けるように
     openWeightSheet, openMealSheet, openMemoSheet, openGoalSheet, openSyncSheet,
+    __setRetryWaits,
     // 聞き方と読み取りは、画面を通さずに確かめられるように出しておきます。
     aiPrompt, readAiReply };
 })();
