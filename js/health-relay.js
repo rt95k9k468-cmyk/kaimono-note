@@ -131,7 +131,14 @@
   /**
    * 郵便受けから取って、そのまま取り込みます。
    * 読み方は手入力とまったく同じ道です。
-   * @returns {Promise<{ok:boolean, empty?:boolean, error?:string, …importTextの結果}>}
+   *
+   * 中継所に置かれるのは、無人のショートカットが書いたものです。人が
+   * 目で見て押した貼り付けとはそこが違うので、`auto` を立てて渡します
+   * ——iPhoneがロックされていて読めなかった便（"Protected health data is
+   * inaccessible"、あるいは 0 の羅列）を、記録として入れないために。
+   * 断ったときは locked:true が付いて返り、**いまある記録は動きません**。
+   *
+   * @returns {Promise<{ok:boolean, empty?:boolean, locked?:boolean, error?:string, …importTextの結果}>}
    */
   function pullAndImport() {
     return pull().then((res) => {
@@ -140,7 +147,10 @@
         return { ok: false, empty: true, error: "中継所に新しいデータはありません",
                  added: 0, updated: 0, skipped: 0 };
       }
-      return { ...KN.healthSync.importText(res.text), text: res.text };
+      const out = { ...KN.healthSync.importText(res.text, { auto: true }), text: res.text };
+      // 読めなかった便が来たことは、覚えておきます（画面で言えるように）。
+      if (out.locked) store.markSyncLocked();
+      return out;
     });
   }
 

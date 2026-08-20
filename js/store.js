@@ -101,8 +101,11 @@
            高めるとされる量）を目安に置きたい人もいるので、変えられます。 */
         alcoholG: null,
       },
-      // 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
-      sync: { lastAt: null, added: 0, updated: 0 },
+      /* 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
+         lockedAt は「読めない便が届いた時刻」——iPhoneがロックされている
+         あいだ、ショートカットは HealthKit を読めません。取り込めなかった
+         ことを画面で言うために持ちます（入った時点で消えます）。 */
+      sync: { lastAt: null, added: 0, updated: 0, lockedAt: null },
     };
   }
 
@@ -1600,8 +1603,15 @@
 
   function markSynced(counts) {
     update((s) => {
-      s.diet.sync = { lastAt: new Date().toISOString(), added: counts.added || 0, updated: counts.updated || 0 };
+      // 入ったのだから、読めなかった印はここで消えます。
+      s.diet.sync = { lastAt: new Date().toISOString(), added: counts.added || 0,
+                      updated: counts.updated || 0, lockedAt: null };
     });
+  }
+
+  /** 読めない便が届いた（ロック中のショートカット）。記録には触りません。 */
+  function markSyncLocked() {
+    update((s) => { s.diet.sync = { ...s.diet.sync, lockedAt: new Date().toISOString() }; });
   }
 
   /** ダイエットの記録だけを消す。買い物とやることには触れません。 */
@@ -1716,7 +1726,7 @@
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
-    setGoal, markSynced, clearDiet,
+    setGoal, markSynced, markSyncLocked, clearDiet,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
