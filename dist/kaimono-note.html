@@ -3391,6 +3391,63 @@ button, [role="tab"] {
 .diet-pfc-bar.is-over { box-shadow: inset 0 0 0 1px var(--c-accent); }
 .diet-pfc-num { font-size: var(--fs-xs); color: var(--c-text-2); width: 78px; text-align: right; flex: none; }
 
+/* ---- カロリーの出どころ（積み上げの帯） ----
+
+   全体が総消費で、左から 朝・昼・夜・間食・区分なし・飲酒、余りが「残り」。
+   色は区分ごとに変えますが、彩度は抑えます——ここは信号ではなく内わけで、
+   「夜が多い」ことに赤信号の意味を持たせるのはこちらの仕事ではありません。 */
+.diet-stack-wrap { display: flex; flex-direction: column; gap: var(--sp-2); }
+.diet-stack {
+  display: flex; height: 14px; border-radius: var(--r-full);
+  overflow: hidden; background: var(--c-surface-3);
+}
+.diet-stack i { display: block; height: 100%; min-width: 2px; }
+.diet-stack i.is-breakfast { background: #e8b04b; }
+.diet-stack i.is-lunch     { background: var(--c-primary); }
+.diet-stack i.is-dinner    { background: #4a8fd9; }
+.diet-stack i.is-snack     { background: #a97fd0; }
+.diet-stack i.is-other     { background: var(--c-text-3); }
+.diet-stack i.is-drink     { background: var(--c-accent); }
+.diet-stack i.is-rest      { background: transparent; }
+/* 総消費を超えた日。帯は摂取いっぱいまで使い、縁で「はみ出た」と言います。 */
+.diet-stack.is-over { box-shadow: inset 0 0 0 1.5px var(--c-danger); }
+
+.diet-stack-legend {
+  display: flex; flex-wrap: wrap; gap: 4px var(--sp-3);
+  font-size: var(--fs-xs); color: var(--c-text-2);
+}
+.diet-stack-key { display: inline-flex; align-items: center; gap: 4px; }
+.diet-stack-key i { width: 8px; height: 8px; border-radius: var(--r-full); display: inline-block; }
+.diet-stack-key i.is-breakfast { background: #e8b04b; }
+.diet-stack-key i.is-lunch     { background: var(--c-primary); }
+.diet-stack-key i.is-dinner    { background: #4a8fd9; }
+.diet-stack-key i.is-snack     { background: #a97fd0; }
+.diet-stack-key i.is-other     { background: var(--c-text-3); }
+.diet-stack-key i.is-drink     { background: var(--c-accent); }
+.diet-stack-key i.is-rest      { background: var(--c-surface-3); box-shadow: inset 0 0 0 1px var(--c-border); }
+.diet-note .is-warn { color: var(--c-danger); }
+
+/* 区分ごとの「＋」。四つ横に並べて、そのまま書き始められるように。
+   数が入っている区分は、その合計がそのまま札になります。 */
+.diet-slot-adds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.diet-slot-add {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: var(--sp-2) 2px; background: var(--c-surface-2);
+  border: 0; border-radius: var(--r-md); min-width: 0;
+}
+.diet-slot-add .diet-slot-ico { color: var(--c-primary); opacity: .82; line-height: 0; }
+.diet-slot-add .diet-slot-ico svg { width: 16px; height: 16px; stroke-width: 1.7; }
+.diet-slot-name { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
+.diet-slot-add .diet-slot-kcal { font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
+
+.diet-meals:empty { display: none; }
+/* 食品ごとの内わけ。ふだんは畳んでおきます（毎日読むものではないので）。 */
+.diet-foods summary {
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-2);
+  padding: var(--sp-2) 0; cursor: pointer;
+}
+.diet-foods[open] summary { margin-bottom: var(--sp-2); }
+
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
 .diet-memo {
@@ -8226,6 +8283,13 @@ a.btn { text-decoration: none; }
       /* 食物繊維。前からある記録は持っていないので、null のままにします
          （0 と書くと「無かった」ではなく「0gだった」ことになります）。 */
       fiber: posNum(it.fiber),
+      /* どの食事のぶんか。AIに食品ごとに推してもらうと、一日の合計だけでなく
+         「朝がいくつ、夜がいくつ」まで数えられます。前からある明細は持って
+         いないので null——区分の分からないものとして扱います。 */
+      slot: MEAL_SLOTS.includes(it.slot) && it.slot !== "memo" ? it.slot : null,
+      /* 「1パック」「茶碗1杯」のような、人が書いたままの量。g に直せない
+         ことのほうが多いので、数にせず言葉のまま持ちます。 */
+      amount: typeof it.amount === "string" ? it.amount.trim().slice(0, 40) : "",
       // どこから来た値か。base=成分表, user=自分で直した, product=市販品,
       // ai=写真からの推定。数字の重みが違うので、捨てずに持ちます。
       from: ["base", "user", "product", "ai", "manual"].includes(it.from) ? it.from : "manual",
@@ -12613,6 +12677,74 @@ a.btn { text-decoration: none; }
     return sum;
   }
 
+  /* ---------------- 区分ごと、そして総消費との割合 ----------------
+
+     「一日で何kcal食べたか」だけでは、次にどうするかが決まりません。
+     朝が軽すぎるのか、夜が重いのか、間食なのか、お酒なのか——**どこから
+     来たか**が分かってはじめて、動かす場所が決まります。
+
+     そして、それを **総消費に対する割合** で見ます。1,800kcal が多いのか
+     少ないのかは、その日どれだけ使ったか次第なので。 */
+
+  const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+
+  /** 区分ごとの合計。AIが食品ごとに区分を付けてくれた日は、ここが埋まります。 */
+  function slotTotals(day) {
+    const out = { breakfast: 0, lunch: 0, dinner: 0, snack: 0, other: 0, any: false };
+    store.mealsOfDay(day).forEach((m) => m.items.forEach((it) => {
+      const key = MEAL_SLOTS.includes(it.slot) ? it.slot
+        : (MEAL_SLOTS.includes(m.slot) ? m.slot : "other");
+      out[key] += it.kcal;
+      if (it.kcal) out.any = true;
+    }));
+    MEAL_SLOTS.concat("other").forEach((k) => { out[k] = Math.round(out[k]); });
+    return out;
+  }
+
+  /**
+   * 一本の帯にするための組み立て。
+   *
+   *   朝 → 昼 → 夜 → 間食 →（区分なし）→ 飲酒 → 残り
+   *
+   * 全体（100%）は **その日の総消費**。総消費が分からない日は、割合の
+   * 話ができないので「内わけ」として同じ帯を出します（そう書きます）。
+   * 摂取が総消費を超えた日は、帯を摂取いっぱいまで使って、超えたぶんを
+   * 別に言います——「残り」を負の長さで描くことはできません。
+   */
+  function energySplit(day) {
+    const st = slotTotals(day);
+    const dt = store.drinkTotals(day);
+    const drink = dt ? dt.kcal : 0;
+    const eaten = MEAL_SLOTS.reduce((a, k) => a + st[k], 0) + st.other;
+    const intake = eaten + drink;
+    const burned = burnedOf(day);
+    const parts = [
+      { id: "breakfast", label: "朝",   kcal: st.breakfast },
+      { id: "lunch",     label: "昼",   kcal: st.lunch },
+      { id: "dinner",    label: "夜",   kcal: st.dinner },
+      { id: "snack",     label: "間食", kcal: st.snack },
+      { id: "other",     label: "区分なし", kcal: st.other },
+      { id: "drink",     label: "飲酒", kcal: drink },
+    ].filter((x) => x.kcal > 0);
+    if (!intake) return null;
+
+    const known = burned != null && burned > 0;
+    const over = known && intake > burned;
+    // 割合の分母。総消費が分からない日と、超えた日は、摂取そのものを分母に。
+    const base = known && !over ? burned : intake;
+    parts.forEach((x) => { x.pct = Math.round((x.kcal / base) * 1000) / 10; });
+    const rest = known && !over ? Math.max(0, burned - intake) : 0;
+    return {
+      parts, intake, eaten, drink, burned, rest, over,
+      /* 総消費が分かる日だけ、割合の話になります。分からない日は
+         同じ帯を「内わけ」として読みます。 */
+      known,
+      restPct: known && !over ? Math.round((rest / base) * 1000) / 10 : 0,
+      intakePct: known ? Math.round((intake / burned) * 1000) / 10 : null,
+      overKcal: over ? Math.round(intake - burned) : 0,
+    };
+  }
+
   /** 目標があるときだけ「残り」を出します。 */
   function remaining(day) {
     const g = store.get().diet.goal;
@@ -13014,7 +13146,11 @@ a.btn { text-decoration: none; }
     { key: "steps",    label: "歩数" },
     { key: "burned",   label: "総消費kcal" },
     { key: "sleepMin", label: "睡眠分" },
-    { key: "kcal",     label: "摂取kcal" },
+    { key: "kcal",       label: "摂取kcal" },
+    { key: "kBreakfast", label: "朝kcal" },
+    { key: "kLunch",     label: "昼kcal" },
+    { key: "kDinner",    label: "夜kcal" },
+    { key: "kSnack",     label: "間食kcal" },
     { key: "p",        label: "P_g" },
     { key: "f",        label: "F_g" },
     { key: "c",        label: "C_g" },
@@ -13034,6 +13170,7 @@ a.btn { text-decoration: none; }
     return daysBetween(from, to).map((day) => {
       const w = store.weightOfDay(day);
       const t = dayTotals(day);
+      const st = slotTotals(day);
       const dt = store.drinkTotals(day);
       const memo = store.mealsOfDay(day).find((m) => m.slot === "memo");
       const drinks = store.drinksOfDay(day);
@@ -13048,6 +13185,13 @@ a.btn { text-decoration: none; }
         burned: burnedOf(day),
         sleepMin: store.healthValue(day, "sleep"),
         kcal: t ? t.kcal : null,
+        /* 区分ごとの内わけ。AIが食品ごとに区分を付けた日だけ埋まります
+           （付いていない日は 0 ではなく空欄——区分が分からないだけで、
+           食べていないわけではないので）。 */
+        kBreakfast: st.any ? st.breakfast : null,
+        kLunch: st.any ? st.lunch : null,
+        kDinner: st.any ? st.dinner : null,
+        kSnack: st.any ? st.snack : null,
         p: t ? t.p : null,
         f: t ? t.f : null,
         c: t ? t.c : null,
@@ -13096,6 +13240,9 @@ a.btn { text-decoration: none; }
         bits.push(`摂取${r.kcal.toLocaleString()}kcal`
           + (r.low != null && r.high != null ? `（${r.low}〜${r.high}）` : "")
           + `／P${r.p} F${r.f} C${r.c}` + (r.fiber != null ? ` 繊維${r.fiber}` : ""));
+        if (r.kBreakfast != null) {
+          bits.push(`内わけ 朝${r.kBreakfast}／昼${r.kLunch}／夜${r.kDinner}／間食${r.kSnack}`);
+        }
       }
       if (r.alcoholG != null) bits.push(`飲酒 純アルコール${r.alcoholG}g（${r.drinks || ""}）`);
       /* 数はまだ無くてメモだけ、という日があります（AIに聞く前）。
@@ -13116,7 +13263,7 @@ a.btn { text-decoration: none; }
     burnedOf,
     daysBetween, weightPoints, movingAverage, slopePerWeek,
     weightSummary, projection, neededPace,
-    dayTotals, remaining, pfcRatio, dayCard,
+    dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit,
     analyze, coverage,
     EXPORT_COLS, exportRows, exportCsv, exportText,
     MIN_GROUP,
@@ -17168,13 +17315,16 @@ a.btn { text-decoration: none; }
 
   /* 一日の順に、日の高さで。朝は昇る日、昼は真上の日、夜は月——
      間食だけは時刻ではないので、食べもののほうを描きます。 */
+  /* short は札や帯に出す一文字ぶんの名前。label は文の中で使う名前です
+     （「朝食を直す」と「朝 300kcal」では、要る長さが違います）。 */
   const SLOTS = [
-    { id: "breakfast", label: "朝食", ico: "sunrise" },
-    { id: "lunch",     label: "昼食", ico: "sun" },
-    { id: "dinner",    label: "夕食", ico: "moon" },
-    { id: "snack",     label: "間食", ico: "snack" },
+    { id: "breakfast", label: "朝食", short: "朝",   ico: "sunrise" },
+    { id: "lunch",     label: "昼食", short: "昼",   ico: "sun" },
+    { id: "dinner",    label: "夕食", short: "夜",   ico: "moon" },
+    { id: "snack",     label: "間食", short: "間食", ico: "snack" },
   ];
   const slotLabel = (id) => (id === "memo" ? "メモ" : (SLOTS.find((s) => s.id === id) || {}).label || "間食");
+  const slotShort = (id) => (id === "memo" ? "メモ" : (SLOTS.find((s) => s.id === id) || {}).short || "間食");
 
   /** いま時刻なら、たぶんこの食事。夜遅くに開いたら間食です。 */
   function guessSlot() {
@@ -18444,13 +18594,65 @@ a.btn { text-decoration: none; }
 
   /* ---------------- 食事 ---------------- */
 
+  /* ---------------- カロリーの出どころ、一本で ----------------
+
+     「1,800kcal」だけでは、次にどうするかが決まりません。多いのか少ない
+     のかは総消費しだいですし、多かったとして**どこから来たのか**が
+     分からなければ、動かす場所も決まらない。
+
+     だから一本の帯にします。全体（100%）がその日の総消費で、左から
+     朝・昼・夜・間食・（区分なし）・飲酒、余りが「残り」。一目で
+     「使ったぶんに対してどれだけ食べたか」と「その内わけ」が同時に読めます。 */
+  function energyBar(day) {
+    const sp = D.energySplit(day);
+    if (!sp) return null;
+    const el = node(html`
+      <div class="diet-stack-wrap">
+        <div class="diet-stack ${sp.over ? "is-over" : ""}" role="img"
+             aria-label="${sp.known
+               ? `総消費${Math.round(sp.burned).toLocaleString()}kcalのうち、摂取${sp.intake.toLocaleString()}kcal`
+               : `摂取${sp.intake.toLocaleString()}kcalの内わけ`}">
+          ${KN.util.raw(sp.parts.map((x) =>
+            `<i class="is-${x.id}" style="width:${x.pct}%" title="${x.label} ${x.kcal.toLocaleString()}kcal"></i>`).join(""))}
+          ${sp.restPct > 0 ? KN.util.raw(`<i class="is-rest" style="width:${sp.restPct}%"></i>`) : ""}
+        </div>
+        <div class="diet-stack-legend">
+          ${KN.util.raw(sp.parts.map((x) =>
+            `<span class="diet-stack-key"><i class="is-${x.id}"></i>${x.label}
+               <b class="mono-num">${x.kcal.toLocaleString()}</b></span>`).join(""))}
+          ${sp.known && !sp.over ? html`
+            <span class="diet-stack-key"><i class="is-rest"></i>残り
+              <b class="mono-num">${Math.round(sp.rest).toLocaleString()}</b></span>` : ""}
+        </div>
+        <p class="diet-note">
+          ${sp.known ? html`
+            総消費 <b class="mono-num">${Math.round(sp.burned).toLocaleString()}</b>kcal に対して、
+            摂取は <b class="mono-num">${sp.intake.toLocaleString()}</b>kcal
+            （<b>${sp.intakePct}%</b>）。${sp.over
+              ? html`<b class="is-warn">${sp.overKcal.toLocaleString()}kcal 超えています。</b>`
+              : ""}
+          ` : html`
+            総消費がまだ分からない日なので、割合ではなく<b>内わけ</b>として出しています
+            （歩数や消費が入ると、総消費に対する割合になります）。
+          `}
+        </p>
+      </div>
+    `);
+    return el;
+  }
+
   function renderMeals(host, card) {
     const t = card.totals;
     const rem = card.remaining;
     const pfc = card.pfc;
     const meals = store.mealsOfDay(card.day);
-    const memo = store.dayMemo(card.day);
-    const others = meals.filter((m) => m.slot !== "memo");
+    const ai = store.dayMemo(card.day);          // AIの推計を入れておく一件
+    const st = D.slotTotals(card.day);
+    /* 書いた食事。AIの入れ物（slot:"memo"）は、前の作りで書いた本文が
+       残っていることがあるので、そのときだけ一件として並べます。 */
+    const entries = meals.filter((m) => m.slot !== "memo" && (m.memo || "").trim())
+      .concat(ai && (ai.memo || "").trim() ? [ai] : []);
+    const foods = meals.reduce((a, m) => a.concat(m.items.filter((i) => i.from === "ai")), []);
 
     const sec = node(html`
       <div class="stack">
@@ -18474,6 +18676,52 @@ a.btn { text-decoration: none; }
               <span class="diet-kcal-target">/ 目標 ${rem.target.toLocaleString()}</span>
             </div>` : ""}
         </div>
+
+        <div class="js-stack"></div>
+
+        ${/* 書いたもの。区分ごとに、何回でも足せます——「これは昼か間食か」で
+              迷う人はいませんが、「昼を二回に分けて書けない」と手が止まります。 */""}
+        <div class="rows diet-meals">
+          ${KN.util.raw(entries.map((m) => {
+            const kcal = m.items.reduce((a, i) => a + i.kcal, 0);
+            return `
+              <button class="row js-entry" data-id="${m.id}">
+                <span class="row-main">
+                  <span class="row-title">${KN.util.escapeHtml(m.memo || "（メモなし）")}</span>
+                  <span class="row-sub">${slotShort(m.slot)}${m.time ? " ・ " + m.time : ""}</span>
+                </span>
+                <span class="row-value mono-num">${kcal ? kcal.toLocaleString() : ""}</span>
+              </button>`;
+          }).join(""))}
+        </div>
+        <div class="diet-slot-adds js-adds"></div>
+
+        ${/* AIの推計。押し方は前と同じ二段（プロンプトを作る → 返事を貼る）。 */""}
+        <button class="diet-memo js-ai-open ${ai && ai.ai ? "" : "is-blank"}">
+          <span class="diet-memo-head">
+            <span class="diet-memo-ico">${icon("sparkles")}</span>
+            <b>AI推計</b>
+            <span class="diet-memo-hint">${ai && ai.ai ? "もう一度" : ""}</span>
+          </span>
+          <span class="diet-memo-body">${ai && ai.ai
+            ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
+              + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
+            : "＋ 食べたものをAIに推してもらう（プロンプトを作ってコピーします）"}</span>
+        </button>
+
+        ${foods.length ? html`
+          <details class="diet-foods">
+            <summary>食品ごとの内わけ（${foods.length}件）</summary>
+            <div class="diet-read">
+              ${KN.util.raw(foods.map((it) => `
+                <div class="diet-drink-row">
+                  <b>${KN.util.escapeHtml(it.name)}${it.amount ? " " + KN.util.escapeHtml(it.amount) : ""}</b>
+                  <span>${it.slot ? slotShort(it.slot) : "区分なし"}</span>
+                  <span class="mono-num">${it.kcal.toLocaleString()}kcal</span>
+                  <span class="mono-num">P${it.p} F${it.f} C${it.c}${it.fiber != null ? ` 繊維${it.fiber}` : ""}</span>
+                </div>`).join(""))}
+            </div>
+          </details>` : ""}
 
         ${card.drinkTotals ? html`
           <p class="diet-note">
@@ -18512,47 +18760,33 @@ a.btn { text-decoration: none; }
               : "棒は熱量の内わけです（目安を決めると、進み具合に変わります）。"}
               ${pfc ? `熱量比 P${pfc.p}% F${pfc.f}% C${pfc.c}%` : ""}</p>
           </div>` : ""}
-
-        ${/* 朝昼夜間食の四つの枠はやめました。分けて書かせると、
-              「これは昼か間食か」を毎回決めることになって、そのうち
-              書かなくなります。書くのは一本のメモです——時間の順に
-              足していくだけ。数は、あとから読み取らせます。 */""}
-        <button class="diet-memo js-memo ${memo && memo.memo.trim() ? "" : "is-blank"}">
-          <span class="diet-memo-head">
-            <span class="diet-memo-ico">${icon("edit")}</span>
-            <b>メモ</b>
-            <span class="diet-memo-hint">${memo && memo.memo.trim() ? "タップして書き足す" : ""}</span>
-          </span>
-          <span class="diet-memo-body">${memo && memo.memo.trim()
-            ? KN.util.escapeHtml(memo.memo)
-            : "＋ 食べたものを書く（あとでAIに貼って、カロリーを返してもらえます）"}</span>
-        </button>
-
-        ${/* 前に朝昼夜間食で書いたぶんは、そのまま残して、ここから
-              直せるようにしておきます（消したら書いたものが消えます）。 */""}
-        ${others.length ? html`
-          <div class="rows diet-old-meals">
-            ${KN.util.raw(others.map((m) => {
-              const kcal = m.items.reduce((a, i) => a + i.kcal, 0);
-              const names = m.items.map((i) => i.name).join("・") || m.memo || "（メモだけ）";
-              return `
-                <button class="row js-old" data-id="${m.id}">
-                  <span class="row-main">
-                    <span class="row-title">${KN.util.escapeHtml(names)}</span>
-                    <span class="row-sub">${slotLabel(m.slot)}${m.time ? " ・ " + m.time : ""}</span>
-                  </span>
-                  <span class="row-value mono-num">${kcal ? kcal.toLocaleString() + " kcal" : ""}</span>
-                </button>`;
-            }).join(""))}
-          </div>` : ""}
       </div>
     `);
 
-    sec.querySelector(".js-memo").addEventListener("click", () => openMemoSheet(card.day));
-    sec.querySelectorAll(".js-old").forEach((b) => {
+    const bar = energyBar(card.day);
+    if (bar) sec.querySelector(".js-stack").append(bar);
+
+    /* 区分ごとの「＋」。押した区分で、そのまま書き始められます
+       （区分ごとの合計も、ここに出しておきます）。 */
+    const adds = sec.querySelector(".js-adds");
+    SLOTS.forEach((sl) => {
+      const kcal = st[sl.id];
+      const btn = node(html`
+        <button class="diet-slot-add" data-slot="${sl.id}">
+          <span class="diet-slot-ico">${icon(sl.ico)}</span>
+          <span class="diet-slot-name">${sl.short}</span>
+          <span class="diet-slot-kcal mono-num">${kcal ? kcal.toLocaleString() : "＋"}</span>
+        </button>
+      `);
+      btn.addEventListener("click", () => openMealMemoSheet(card.day, null, sl.id));
+      adds.append(btn);
+    });
+
+    sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
+    sec.querySelectorAll(".js-entry").forEach((b) => {
       b.addEventListener("click", () => {
-        const m = others.find((x) => x.id === b.dataset.id);
-        if (m) openMealSheet(m);
+        const m = entries.find((x) => x.id === b.dataset.id);
+        if (m) openMealMemoSheet(card.day, m);
       });
     });
     host.append(sec);
@@ -18575,7 +18809,21 @@ a.btn { text-decoration: none; }
      「AIの窓口」は、鍵を自分の中継所に置く人のための別の道です）。 */
 
   /* 聞き方は、こちらで決めて渡します。毎回ちがう聞き方をすると、
-     返ってくる形もちがって、読み取れなくなるので。 */
+     返ってくる形もちがって、読み取れなくなるので。
+
+     聞くのは二段です。**食品ごと**の内わけと、そのあとに一日の**合計**。
+     合計だけでは「何を食べた結果そうなったか」が残らず、あとから
+     「あの日の夜が重かったのか」を確かめられません。 */
+  const AI_ITEM_LINES = [
+    "食品: 名前",
+    "量: 1パック",
+    "カロリー: 数値",
+    "タンパク質: 数値",
+    "脂質: 数値",
+    "炭水化物: 数値",
+    "食物繊維: 数値",
+    "区分: 朝",
+  ];
   const AI_LINES = [
     "摂取カロリー: 数値",
     "タンパク質: 数値",
@@ -18588,15 +18836,22 @@ a.btn { text-decoration: none; }
 
   function aiPrompt(memo) {
     return [
-      "次の「食事メモ」から、その日の栄養を推定してください。",
+      "次の「食事メモ」から、その日に食べたものの栄養を推定してください。",
       "",
       "【条件】",
       "・お酒（アルコール飲料）は計算に入れないでください。別に記録しています。",
-      "・分量が書いていないものは、一般的な一人前として推定してください。",
+      "・分量が書いていないものは、一般的な一人前として妥当な量を推定してください。",
       "・細かすぎる値にはせず、妥当な範囲の概数で答えてください。",
       "・カロリーは kcal、ほかは g で、数値だけを書いてください（単位や説明は不要）。",
-      "・推定下限と推定上限は、摂取カロリーの推定の幅です。",
-      "・次の7行だけを、この形のまま返してください。",
+      "・「区分」は 朝・昼・夜・間食 のどれかで、メモに書かれている区分に合わせてください。",
+      "・推定下限と推定上限は、その日の摂取カロリーの推定の幅です。",
+      "",
+      "【返し方】まず食品ごとに次の8行を繰り返し、最後に一日の合計7行を書いてください。",
+      "この形だけを返してください（前置きも、まとめの文も要りません）。",
+      "",
+      AI_ITEM_LINES.join("\n"),
+      "",
+      "（食品の数だけ繰り返し。そのあとに合計）",
       "",
       AI_LINES.join("\n"),
       "",
@@ -18608,7 +18863,12 @@ a.btn { text-decoration: none; }
   /* 返事の読み取り。行の頭の飾り（- や *）、全角のコロン、単位、
      「約」「およそ」、1800〜2000 のような幅——どれが来ても数を拾います。
      拾えなかった項目は null のままにします（0 で埋めると、聞いていない
-     ことと「0だった」ことが同じになります）。 */
+     ことと「0だった」ことが同じになります）。
+
+     食品の内わけと合計は、**同じ言葉**を使います（「タンパク質」は
+     どちらにも出てきます）。区切りは「摂取カロリー」で、そこから先が
+     合計です。食品の行が一つも無い返事——前の形の7行だけ——も、
+     これまでどおり読めます。 */
   const AI_KEYS = [
     { key: "low",   re: /(推定)?下限|最小|min/i },
     { key: "high",  re: /(推定)?上限|最大|max/i },
@@ -18619,24 +18879,89 @@ a.btn { text-decoration: none; }
     { key: "kcal",  re: /摂取カロリー|カロリー|エネルギー|kcal/i },
   ];
 
+  const SLOT_WORDS = [
+    { slot: "breakfast", re: /朝/ },
+    { slot: "lunch",     re: /昼|ランチ/ },
+    { slot: "dinner",    re: /夜|夕/ },
+    { slot: "snack",     re: /間食|おやつ|軽食|夜食/ },
+  ];
+  const slotOf = (word) => (SLOT_WORDS.find((x) => x.re.test(String(word || ""))) || {}).slot || null;
+
+  /** 「: 」の右側。無ければ行そのもの。 */
+  const rhsOf = (raw) => {
+    const at = raw.search(/[:：]/);
+    return at < 0 ? raw : raw.slice(at + 1).trim();
+  };
+  const numOf = (str) => {
+    const m = String(str || "").match(/-?\d+(?:[.,]\d+)?/);
+    if (!m) return null;
+    const v = parseFloat(m[0].replace(",", ""));
+    return Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : null;
+  };
+
   function readAiReply(text) {
     const out = { kcal: null, p: null, f: null, c: null, fiber: null, low: null, high: null };
+    const foods = [];
+    let cur = null;                 // いま読んでいる食品
+    let inTotals = false;           // 「摂取カロリー」から先は合計
     let found = 0;
+
+    const closeFood = () => {
+      if (cur && (cur.kcal != null || cur.name)) foods.push(cur);
+      cur = null;
+    };
+
     String(text || "").split(/\r?\n/).forEach((line) => {
       const raw = line.trim().replace(/^[-・*＊●○\s]+/, "");
       if (!raw) return;
+
+      // 食品の始まり
+      if (/^(食品|品目|料理|food|item)\s*[:：]/i.test(raw)) {
+        closeFood();
+        inTotals = false;
+        const name = rhsOf(raw).replace(/[（(].*?[)）]\s*$/, "").trim();
+        cur = { name: name || "（名前なし）", amount: "", slot: null,
+                kcal: null, p: null, f: null, c: null, fiber: null };
+        return;
+      }
+      if (cur && /^(量|分量|目安量|amount|qty)\s*[:：]/i.test(raw)) {
+        cur.amount = rhsOf(raw).slice(0, 40);
+        return;
+      }
+      if (cur && /^(区分|食事区分|slot|meal)\s*[:：]/i.test(raw)) {
+        cur.slot = slotOf(rhsOf(raw));
+        return;
+      }
+
       const hit = AI_KEYS.find((k) => k.re.test(raw));
-      if (!hit || out[hit.key] != null) return;
-      // 数は「:」より右から拾います（左に混ざる数を拾わないため）。
-      const rhs = raw.replace(/^[^:：]*[:：]/, "");
-      const m = (rhs || raw).match(/-?\d+(?:[.,]\d+)?/);
-      if (!m) return;
-      const v = parseFloat(m[0].replace(",", ""));
-      if (!Number.isFinite(v) || v < 0) return;
-      out[hit.key] = Math.round(v * 10) / 10;
-      found++;
+      if (!hit) return;
+      const v = numOf(rhsOf(raw));
+      if (v == null) return;
+
+      /* 「摂取カロリー」は合計の始まりです（食品のほうは「カロリー」）。 */
+      const totalsHead = /摂取カロリー|合計/.test(raw);
+      if (totalsHead) { closeFood(); inTotals = true; }
+
+      if (cur && !inTotals) {
+        if (cur[hit.key] == null && ["kcal", "p", "f", "c", "fiber"].includes(hit.key)) cur[hit.key] = v;
+        return;
+      }
+      if (out[hit.key] == null) { out[hit.key] = v; found++; }
     });
-    out.found = found;
+    closeFood();
+
+    out.foods = foods;
+    /* 合計を書かずに食品だけ返してくるAIもいます。そのときは足して作ります
+       ——読めているものから出せる数を、わざわざ空にする理由がありません。 */
+    if (foods.length && out.kcal == null) {
+      const sum = (k) => foods.reduce((a, x) => a + (x[k] || 0), 0);
+      out.kcal = Math.round(sum("kcal"));
+      ["p", "f", "c"].forEach((k) => { out[k] = Math.round(sum(k) * 10) / 10; });
+      if (foods.some((x) => x.fiber != null)) out.fiber = Math.round(sum("fiber") * 10) / 10;
+      out.summed = true;
+      found += 4;
+    }
+    out.found = found + foods.length;
     return out;
   }
 
@@ -18650,47 +18975,165 @@ a.btn { text-decoration: none; }
     { key: "high",  label: "推定上限",     unit: "kcal" },
   ];
 
-  /** AIの推計から、その日の合計に使う一件を作ります。 */
+  /**
+   * AIの推計から、その日の合計に使う明細を作ります。
+   *
+   * 食品ごとに返ってきていれば、**その一件ずつ**を入れます（区分も一緒に）。
+   * 合計しか返ってこなかったときは、これまでどおり「AI推計」の一件だけ。
+   * どちらでも、その日の合計・PFC・気づいたことの数え方は変わりません。
+   */
   function aiItem(ai) {
-    if (!ai || (ai.kcal == null && ai.p == null && ai.f == null && ai.c == null)) return [];
+    if (!ai) return [];
+    if (ai.foods && ai.foods.length) {
+      return ai.foods.map((x) => ({
+        name: x.name, amount: x.amount || "", slot: x.slot || null, grams: null,
+        kcal: x.kcal || 0, p: x.p || 0, f: x.f || 0, c: x.c || 0,
+        fiber: x.fiber, from: "ai", foodId: null, estimated: true,
+      }));
+    }
+    if (ai.kcal == null && ai.p == null && ai.f == null && ai.c == null) return [];
     return [{
-      name: "AI推計", grams: null,
+      name: "AI推計", grams: null, amount: "", slot: null,
       kcal: ai.kcal || 0, p: ai.p || 0, f: ai.f || 0, c: ai.c || 0,
       fiber: ai.fiber, from: "ai", foodId: null, estimated: true,
     }];
   }
 
-  function openMemoSheet(day0) {
+  /* ---------------- 食事を書く ----------------
+
+     区分（朝・昼・夜・間食）と、自由な一文。それだけです。
+     一日に何度でも足せます——昼を二回に分けて書けないと、そこで手が
+     止まるので。数はここでは聞きません（AIに推してもらう道が別にあります）。 */
+  function openMealMemoSheet(day0, existing, slotHint) {
     const day = day0 || curDay();
-    const cur = store.dayMemo(day);
-    /* 手で書いた明細（前の作りで入れたもの）は触りません。AIの推計は
-       「AI推計」の一件として別に持ちます——読み直すたびに、その一件だけを
-       入れ替えます。 */
-    const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
-    let ai = cur && cur.ai ? { ...cur.ai } : null;
+    const rec = existing || null;
+    /* 前の作りで書いた「一日ぶんのメモ」（slot:"memo"）を開いたときは、
+       区分がまだありません。選んでもらえば、そのぶんが独立した一件に
+       なります——AIの推計はもとの一件に残したまま、文だけが移ります。 */
+    const legacy = !!(rec && rec.slot === "memo");
+    let slot = rec && !legacy ? rec.slot : (slotHint || guessSlot());
 
     const body = node(html`
       <div class="stack">
         <div class="diet-daynav"><b>${U.formatDay(day)}</b></div>
-        <textarea class="textarea js-memo" rows="7" spellcheck="false"
-                  placeholder="トースト2枚とコーヒー&#10;昼 そば&#10;夜 鶏むね200g、ごはん150g"
-                  aria-label="食べたもの">${cur ? cur.memo : ""}</textarea>
+        <div class="field">
+          <span class="field-label">どの食事</span>
+          <div class="js-slots"></div>
+        </div>
+        <div class="time-row">
+          <span class="time-label">時刻</span>
+          <input class="input js-time" type="time" aria-label="時刻"
+                 value="${rec && rec.time ? rec.time : U.nowTime()}">
+        </div>
+        <label class="field">
+          <span class="field-label">食べたもの</span>
+          <textarea class="textarea js-memo" rows="4" spellcheck="false"
+                    placeholder="納豆ごはん、卵、味噌汁">${rec ? rec.memo : ""}</textarea>
+        </label>
         <p class="diet-note">
-          時間帯で分けなくてかまいません。書いた順に残ります。
-          <b>メモだけでも保存できます</b>。
+          量は書いても書かなくてもかまいません（書いていないものは、AIが
+          一般的な一人前として推します）。<b>これだけでも保存できます</b>。
         </p>
+        ${rec ? html`
+          <button type="button" class="btn btn-soft js-del" style="color:var(--c-danger)">
+            この記録を消す
+          </button>` : ""}
+      </div>
+    `);
+
+    const foot = node(html`
+      <button class="btn btn-primary btn-block js-save">${rec ? "保存" : "追加"}</button>
+    `);
+    const h = KN.ui.sheet({
+      title: rec ? "食事を直す" : "食事を書く",
+      content: body, footer: foot, guard: true,
+    });
+
+    const paintSlots = () => KN.ui.chipRow(body.querySelector(".js-slots"),
+      SLOTS.map((x) => ({ id: x.id, label: x.short })),
+      { activeId: slot, onPick: (id) => { slot = id; paintSlots(); haptic(); } });
+    paintSlots();
+    if (!rec) KN.ui.focusNow(body.querySelector(".js-memo"));
+
+    foot.addEventListener("click", () => {
+      const text = body.querySelector(".js-memo").value.trim();
+      const time = body.querySelector(".js-time").value || null;
+      if (!text) { KN.ui.toast("食べたものを書いてください"); return; }
+      if (legacy) {
+        // 文はこちらへ移し、AIの推計はもとの一件に残します。
+        store.addMeal({ day, slot, time, memo: text });
+        store.setDayMemo(day, "");
+      } else if (rec) {
+        store.updateMeal(rec.id, { slot, time, memo: text });
+      } else {
+        store.addMeal({ day, slot, time, memo: text });
+      }
+      haptic(10);
+      h.close();
+      render();
+      KN.ui.toast(rec ? "直しました" : "書きました");
+    });
+
+    const del = body.querySelector(".js-del");
+    if (del) del.addEventListener("click", async () => {
+      const ok = await KN.ui.confirm({ title: "この記録を消す", message: "元に戻せません。",
+                                       okLabel: "消す", danger: true });
+      if (!ok) return;
+      if (legacy) store.setDayMemo(day, "");     // AIの推計は残します
+      else store.removeMeal(rec.id);
+      h.close();
+      render();
+      KN.ui.toast("消しました");
+    });
+  }
+
+  /** その日の食事メモを、区分つきで一本の文に。AIに渡すのはこれです。 */
+  function dayMemoText(day) {
+    const rows = store.mealsOfDay(day)
+      .filter((m) => (m.memo || "").trim())
+      .map((m) => `${m.slot === "memo" ? "" : slotShort(m.slot) + ": "}${m.memo.trim().replace(/\n/g, " / ")}`);
+    return rows.join("\n");
+  }
+
+  /** 保存してある明細から、AIの「食品ごと」の形に戻します。 */
+  function foodsOf(rec) {
+    if (!rec) return [];
+    return rec.items.filter((i) => i.from === "ai" && i.name !== "AI推計").map((i) => ({
+      name: i.name, amount: i.amount || "", slot: i.slot || null,
+      kcal: i.kcal, p: i.p, f: i.f, c: i.c, fiber: i.fiber,
+    }));
+  }
+
+  function openAiSheet(day0) {
+    const day = day0 || curDay();
+    const cur = store.dayMemo(day);
+    const memoText = dayMemoText(day);
+    /* 手で書いた明細（前の作りで入れたもの）は触りません。AIのぶんだけを
+       入れ替えます。 */
+    const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
+    let ai = cur && cur.ai ? { ...cur.ai, foods: foodsOf(cur) } : null;
+
+    const body = node(html`
+      <div class="stack">
+        <div class="diet-daynav"><b>${U.formatDay(day)}</b></div>
+        ${memoText ? html`
+          <div class="diet-read"><div class="diet-drink-row"><b>${memoText}</b></div></div>
+        ` : html`
+          <p class="diet-note is-warn">この日の食事がまだ書かれていません。
+            先に「食事を書く」で、食べたものを入れてください。</p>`}
         <button class="btn btn-soft btn-block js-prompt">${icon("copy")}AI用プロンプトを作成</button>
-        <p class="diet-note js-promptnote">
-          決まった聞き方と、この日のメモをひとつの文にしてコピーします。
-          ChatGPTなどに貼って、返ってきた7行を下の欄に貼り戻してください。
-          <b>お酒は計算に入れません</b>（お酒は別に記録しています）。
+        <p class="diet-note">
+          決まった聞き方と、この日の食事メモをひとつの文にしてコピーします。
+          ChatGPTなどに貼って、返ってきた行をそのまま下の欄に貼り戻してください
+          （<b>食品ごとの内わけ</b>と、<b>一日の合計</b>が返ります）。
+          <b>お酒は入れません</b>——お酒は別に記録していて、カロリーもそちらで数えます。
         </p>
 
         <div class="divider"></div>
         <div class="section-title">AI推計結果</div>
-        <textarea class="textarea js-ai" rows="7" spellcheck="false"
+        <textarea class="textarea js-ai" rows="8" spellcheck="false"
                   autocapitalize="off" autocorrect="off"
-                  placeholder="摂取カロリー: 1850&#10;タンパク質: 78&#10;脂質: 55&#10;炭水化物: 240&#10;食物繊維: 18&#10;推定下限: 1700&#10;推定上限: 2000"
+                  placeholder="食品: 納豆&#10;量: 1パック&#10;カロリー: 90&#10;タンパク質: 7&#10;脂質: 5&#10;炭水化物: 5&#10;食物繊維: 3&#10;区分: 朝&#10;…&#10;摂取カロリー: 170"
                   aria-label="AIの返事">${cur && cur.ai ? cur.ai.raw : ""}</textarea>
         <button class="btn btn-soft btn-block js-read">${icon("sparkles")}AI結果を読み取る</button>
         <div class="js-got"></div>
@@ -18703,16 +19146,13 @@ a.btn { text-decoration: none; }
         <button class="btn btn-primary js-save" style="flex:1">保存</button>
       </div>
     `);
-    const h = KN.ui.sheet({ title: "食事のメモ", content: body, footer: foot, guard: true });
-    const ta = body.querySelector(".js-memo");
+    const h = KN.ui.sheet({ title: "AIに推してもらう", content: body, footer: foot, guard: true });
     const aiTa = body.querySelector(".js-ai");
-    if (!cur) KN.ui.focusNow(ta);
 
     /* ---- ① プロンプトを作ってコピー ---- */
     body.querySelector(".js-prompt").addEventListener("click", () => {
-      const memo = ta.value.trim();
-      if (!memo) { KN.ui.toast("先に食べたものを書いてください"); return; }
-      const text = aiPrompt(memo);
+      if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
+      const text = aiPrompt(memoText);
       copyText(text).then((ok) => {
         haptic(10);
         if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
@@ -18736,13 +19176,26 @@ a.btn { text-decoration: none; }
       try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 選べなくても読めます */ }
     }
 
-    /* ---- ② 返ってきた7行を読み取る ---- */
+    /* ---- ② 返ってきたものを読み取る ---- */
     function paintAI() {
       const host = body.querySelector(".js-items");
       host.innerHTML = "";
       if (!ai) {
-        host.append(node(html`<p class="diet-note">まだ推計はありません。メモだけでも保存できます。</p>`));
+        host.append(node(html`<p class="diet-note">まだ推計はありません。食事メモだけでも保存されています。</p>`));
         return;
+      }
+      if (ai.foods && ai.foods.length) {
+        host.append(node(html`
+          <div class="diet-read">
+            ${KN.util.raw(ai.foods.map((x) => `
+              <div class="diet-drink-row">
+                <b>${KN.util.escapeHtml(x.name)}${x.amount ? " " + KN.util.escapeHtml(x.amount) : ""}</b>
+                <span>${x.slot ? slotShort(x.slot) : "区分なし"}</span>
+                <span class="mono-num">${(x.kcal || 0).toLocaleString()}kcal</span>
+                <span class="mono-num">P${x.p || 0} F${x.f || 0} C${x.c || 0}${
+                  x.fiber != null ? ` 繊維${x.fiber}` : ""}</span>
+              </div>`).join(""))}
+          </div>`));
       }
       host.append(node(html`
         <div class="diet-read">
@@ -18755,8 +19208,10 @@ a.btn { text-decoration: none; }
         </div>
       `));
       host.append(node(html`
-        <p class="diet-note">この内容で保存します。数が違っていれば、AIの返事の欄を直して
-          もう一度「AI結果を読み取る」を押してください。</p>`));
+        <p class="diet-note">${ai.summed
+          ? "合計は書かれていなかったので、食品ごとの数を足しました。"
+          : "この内容で保存します。"}
+          数が違っていれば、AIの返事の欄を直してもう一度「AI結果を読み取る」を押してください。</p>`));
     }
 
     body.querySelector(".js-read").addEventListener("click", () => {
@@ -18768,7 +19223,9 @@ a.btn { text-decoration: none; }
       ai = { ...res, raw: aiTa.value.trim(), at: new Date().toISOString() };
       delete ai.found;
       paintAI();
-      KN.ui.toast(`${res.found}項目を読み取りました`);
+      KN.ui.toast(res.foods.length
+        ? `食品${res.foods.length}件と合計を読み取りました`
+        : "合計を読み取りました");
       haptic();
     });
     paintAI();
@@ -18781,7 +19238,8 @@ a.btn { text-decoration: none; }
         if (res.found) { ai = { ...res, raw: aiTa.value.trim(), at: new Date().toISOString() }; delete ai.found; }
       }
       if (!aiTa.value.trim()) ai = null;
-      store.setDayMemo(day, ta.value, handItems.concat(aiItem(ai)), ai);
+      const rec = store.dayMemo(day);
+      store.setDayMemo(day, rec ? rec.memo : "", handItems.concat(aiItem(ai)), ai);
       haptic(10);
       h.close();
       render();
@@ -20119,14 +20577,16 @@ distance=6.0km</pre>
       </div>
     `);
     // いちばん多い操作は食事です。体重は日に一度で、画面の一番上にあります。
-    fab.querySelector(".js-open-add").addEventListener("click", () => openMemoSheet(curDay()));
+    fab.querySelector(".js-open-add").addEventListener("click", () => openMealMemoSheet(curDay()));
     return fab;
   }
 
   KN.screens = KN.screens || {};
   KN.screens.diet = { mount, render, dockButton, onEnter, refresh,
     // 設定やテストから開けるように
-    openWeightSheet, openMealSheet, openMemoSheet, openGoalSheet, openSyncSheet,
+    openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet,
+    // 前の名前でも開けるように（設定や、外から呼んでいるところのため）
+    openMemoSheet: openMealMemoSheet,
     __setRetryWaits,
     // 聞き方と読み取りは、画面を通さずに確かめられるように出しておきます。
     aiPrompt, readAiReply };

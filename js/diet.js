@@ -194,6 +194,74 @@
     return sum;
   }
 
+  /* ---------------- 区分ごと、そして総消費との割合 ----------------
+
+     「一日で何kcal食べたか」だけでは、次にどうするかが決まりません。
+     朝が軽すぎるのか、夜が重いのか、間食なのか、お酒なのか——**どこから
+     来たか**が分かってはじめて、動かす場所が決まります。
+
+     そして、それを **総消費に対する割合** で見ます。1,800kcal が多いのか
+     少ないのかは、その日どれだけ使ったか次第なので。 */
+
+  const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+
+  /** 区分ごとの合計。AIが食品ごとに区分を付けてくれた日は、ここが埋まります。 */
+  function slotTotals(day) {
+    const out = { breakfast: 0, lunch: 0, dinner: 0, snack: 0, other: 0, any: false };
+    store.mealsOfDay(day).forEach((m) => m.items.forEach((it) => {
+      const key = MEAL_SLOTS.includes(it.slot) ? it.slot
+        : (MEAL_SLOTS.includes(m.slot) ? m.slot : "other");
+      out[key] += it.kcal;
+      if (it.kcal) out.any = true;
+    }));
+    MEAL_SLOTS.concat("other").forEach((k) => { out[k] = Math.round(out[k]); });
+    return out;
+  }
+
+  /**
+   * 一本の帯にするための組み立て。
+   *
+   *   朝 → 昼 → 夜 → 間食 →（区分なし）→ 飲酒 → 残り
+   *
+   * 全体（100%）は **その日の総消費**。総消費が分からない日は、割合の
+   * 話ができないので「内わけ」として同じ帯を出します（そう書きます）。
+   * 摂取が総消費を超えた日は、帯を摂取いっぱいまで使って、超えたぶんを
+   * 別に言います——「残り」を負の長さで描くことはできません。
+   */
+  function energySplit(day) {
+    const st = slotTotals(day);
+    const dt = store.drinkTotals(day);
+    const drink = dt ? dt.kcal : 0;
+    const eaten = MEAL_SLOTS.reduce((a, k) => a + st[k], 0) + st.other;
+    const intake = eaten + drink;
+    const burned = burnedOf(day);
+    const parts = [
+      { id: "breakfast", label: "朝",   kcal: st.breakfast },
+      { id: "lunch",     label: "昼",   kcal: st.lunch },
+      { id: "dinner",    label: "夜",   kcal: st.dinner },
+      { id: "snack",     label: "間食", kcal: st.snack },
+      { id: "other",     label: "区分なし", kcal: st.other },
+      { id: "drink",     label: "飲酒", kcal: drink },
+    ].filter((x) => x.kcal > 0);
+    if (!intake) return null;
+
+    const known = burned != null && burned > 0;
+    const over = known && intake > burned;
+    // 割合の分母。総消費が分からない日と、超えた日は、摂取そのものを分母に。
+    const base = known && !over ? burned : intake;
+    parts.forEach((x) => { x.pct = Math.round((x.kcal / base) * 1000) / 10; });
+    const rest = known && !over ? Math.max(0, burned - intake) : 0;
+    return {
+      parts, intake, eaten, drink, burned, rest, over,
+      /* 総消費が分かる日だけ、割合の話になります。分からない日は
+         同じ帯を「内わけ」として読みます。 */
+      known,
+      restPct: known && !over ? Math.round((rest / base) * 1000) / 10 : 0,
+      intakePct: known ? Math.round((intake / burned) * 1000) / 10 : null,
+      overKcal: over ? Math.round(intake - burned) : 0,
+    };
+  }
+
   /** 目標があるときだけ「残り」を出します。 */
   function remaining(day) {
     const g = store.get().diet.goal;
@@ -595,7 +663,11 @@
     { key: "steps",    label: "歩数" },
     { key: "burned",   label: "総消費kcal" },
     { key: "sleepMin", label: "睡眠分" },
-    { key: "kcal",     label: "摂取kcal" },
+    { key: "kcal",       label: "摂取kcal" },
+    { key: "kBreakfast", label: "朝kcal" },
+    { key: "kLunch",     label: "昼kcal" },
+    { key: "kDinner",    label: "夜kcal" },
+    { key: "kSnack",     label: "間食kcal" },
     { key: "p",        label: "P_g" },
     { key: "f",        label: "F_g" },
     { key: "c",        label: "C_g" },
@@ -615,6 +687,7 @@
     return daysBetween(from, to).map((day) => {
       const w = store.weightOfDay(day);
       const t = dayTotals(day);
+      const st = slotTotals(day);
       const dt = store.drinkTotals(day);
       const memo = store.mealsOfDay(day).find((m) => m.slot === "memo");
       const drinks = store.drinksOfDay(day);
@@ -629,6 +702,13 @@
         burned: burnedOf(day),
         sleepMin: store.healthValue(day, "sleep"),
         kcal: t ? t.kcal : null,
+        /* 区分ごとの内わけ。AIが食品ごとに区分を付けた日だけ埋まります
+           （付いていない日は 0 ではなく空欄——区分が分からないだけで、
+           食べていないわけではないので）。 */
+        kBreakfast: st.any ? st.breakfast : null,
+        kLunch: st.any ? st.lunch : null,
+        kDinner: st.any ? st.dinner : null,
+        kSnack: st.any ? st.snack : null,
         p: t ? t.p : null,
         f: t ? t.f : null,
         c: t ? t.c : null,
@@ -677,6 +757,9 @@
         bits.push(`摂取${r.kcal.toLocaleString()}kcal`
           + (r.low != null && r.high != null ? `（${r.low}〜${r.high}）` : "")
           + `／P${r.p} F${r.f} C${r.c}` + (r.fiber != null ? ` 繊維${r.fiber}` : ""));
+        if (r.kBreakfast != null) {
+          bits.push(`内わけ 朝${r.kBreakfast}／昼${r.kLunch}／夜${r.kDinner}／間食${r.kSnack}`);
+        }
       }
       if (r.alcoholG != null) bits.push(`飲酒 純アルコール${r.alcoholG}g（${r.drinks || ""}）`);
       /* 数はまだ無くてメモだけ、という日があります（AIに聞く前）。
@@ -697,7 +780,7 @@
     burnedOf,
     daysBetween, weightPoints, movingAverage, slopePerWeek,
     weightSummary, projection, neededPace,
-    dayTotals, remaining, pfcRatio, dayCard,
+    dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit,
     analyze, coverage,
     EXPORT_COLS, exportRows, exportCsv, exportText,
     MIN_GROUP,
