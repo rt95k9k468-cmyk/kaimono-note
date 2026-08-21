@@ -130,7 +130,7 @@
     /* Once a minute is as fine as the clock the times are written in. It is
        also what makes the badge correct: 19:30 arriving has to change the
        number on the icon whether or not anyone is looking at the screen. */
-    const beat = () => { tick(); if (KN.onMinute) KN.onMinute(); };
+    const beat = () => { tick(); if (KN.app.onMinute) KN.app.onMinute(); };
     if (timer) clearInterval(timer);
     timer = setInterval(beat, 30000);
 

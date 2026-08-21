@@ -43,7 +43,7 @@
       topbar: chrome.querySelector(".topbar"),
     };
 
-    chrome.querySelector(".js-back").addEventListener("click", () => KN.backScreen());
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

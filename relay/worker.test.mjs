@@ -68,9 +68,30 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   const env = env0();
   await call(env, "POST", PATH, "steps=1");
   await call(env, "POST", PATH, "steps=2");
-  check("郵便受けは一つだけ", env.MAIL._m.size === 1, String(env.MAIL._m.size));
+  // 便そのものは一つだけ（"box:replaced" は上書きを覚えておく小さな印で、別枠）。
+  check("郵便受けの本体は一つだけ", env.MAIL._m.get("box") === "steps=2");
   const got = await call(env, "GET", PATH);
   check("あとから置いたほうが残る", (await got.text()) === "steps=2");
+}
+
+/* ---------- 読まれないまま上書きされたことを、一度だけ伝える ---------- */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "steps=1");
+  await call(env, "POST", PATH, "steps=2");   // 1件目は読まれないまま消える
+  const got = await call(env, "GET", PATH);
+  check("上書きされたと伝える", got.headers.get("x-kn-replaced") === "1");
+  check("ブラウザに見えるようにしてある",
+    (got.headers.get("access-control-expose-headers") || "").includes("X-Kn-Replaced"));
+
+  const env2 = env0();
+  await call(env2, "POST", PATH, "steps=1");  // 一度だけ、上書きなし
+  const got2 = await call(env2, "GET", PATH);
+  check("上書きが無ければ付かない", got2.headers.get("x-kn-replaced") === null);
+
+  const got3 = await call(env, "GET", PATH);  // 読んだあとは印も消える
+  check("一度伝えたら、次はもう付かない",
+    got3.status === 204 && env.MAIL._m.has("box:replaced") === false);
 }
 
 /* ---------- 取りに来ない便は、いつか捨てる ---------- */

@@ -348,7 +348,7 @@
   function refreshData() {
     let outside = null;
     try {
-      const screen = KN.screens && KN.screens[KN.activeScreen && KN.activeScreen()];
+      const screen = KN.screens && KN.screens[KN.app.activeScreen && KN.app.activeScreen()];
       if (screen && screen.refresh) outside = screen.refresh();
     } catch (err) { console.warn("refresh failed", err); }
 

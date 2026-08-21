@@ -145,7 +145,7 @@
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
     els.layout.addEventListener("click", KN.ui.toggleLayout);
-    els.settings.addEventListener("click", () => KN.showScreen("settings"));
+    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
 
     /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
        高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
@@ -224,7 +224,7 @@
       /* 自分で滑らせているあいだは、ついていきません。こちらが運んでいる
          最中に位置から月を読み直すと、めくったばかりの月が、通り道の月に
          書き換わります。 */
-      if (KN.isGliding && KN.isGliding()) return;
+      if (KN.app.isGliding && KN.app.isGliding()) return;
 
       const line = els.cal.getBoundingClientRect().bottom + 1;
       let at = null;
@@ -1196,7 +1196,7 @@
        (app.js). Setting the screen's own scrollTop leaves the document alone. */
     const top = root.scrollTop
       + target.getBoundingClientRect().top - root.getBoundingClientRect().top - chromeInset();
-    KN.glideTo(root, Math.max(0, top));
+    KN.app.glideTo(root, Math.max(0, top));
   }
 
   /**

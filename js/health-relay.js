@@ -96,9 +96,13 @@
 
   /**
    * 郵便受けを覗きます。
-   * @returns {Promise<{ok:boolean, text:string|null, error?:string}>}
+   * @returns {Promise<{ok:boolean, text:string|null, error?:string, replaced?:boolean}>}
    *   text が null なら「繋がったが、届いていない」。
    *   ok が false なら「繋がらなかった」——理由を添えます。
+   *   replaced が true なら、いま受け取った便が届く前に別の便が来ていて、
+   *   読まれないまま上書きされていたということ（郵便受けは一通しか
+   *   持てないので）。古い中継所（この印を返さないバージョン）では、
+   *   常に付きません——アプリ側は付いていなければ何も言いません。
    */
   function pull() {
     if (!configured()) {
@@ -117,7 +121,8 @@
         // 204 は「郵便受けは空」。異常ではありません。
         if (res.status === 204) return { ok: true, text: null };
         if (!res.ok) return { ok: false, text: null, error: `中継所が ${res.status} を返しました` };
-        return res.text().then((t) => ({ ok: true, text: String(t == null ? "" : t) }));
+        const replaced = res.headers.get("X-Kn-Replaced") === "1";
+        return res.text().then((t) => ({ ok: true, text: String(t == null ? "" : t), replaced }));
       })
       .catch((err) => ({
         ok: false, text: null,
@@ -147,7 +152,8 @@
         return { ok: false, empty: true, error: "中継所に新しいデータはありません",
                  added: 0, updated: 0, skipped: 0 };
       }
-      const out = { ...KN.healthSync.importText(res.text, { auto: true }), text: res.text };
+      const out = { ...KN.healthSync.importText(res.text, { auto: true }), text: res.text,
+                     replaced: !!res.replaced };
       // 読めなかった便が来たことは、覚えておきます（画面で言えるように）。
       if (out.locked) store.markSyncLocked();
       return out;

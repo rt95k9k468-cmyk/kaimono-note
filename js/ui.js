@@ -87,7 +87,7 @@
          which is what left the tab bar hidden after a sheet was closed.
          Say goodbye while the field is still there to hear it. */
       if (el.contains(document.activeElement)) document.activeElement.blur();
-      KN.remeasure && KN.remeasure();
+      KN.app.remeasure && KN.app.remeasure();
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";
@@ -201,9 +201,31 @@
     return handle;
   }
 
+  /* aria-modal="true" だけでは、キーボードのTabは紙の外へも出て行けます
+     （それを止めるのはブラウザではなく、ここのJSの役目です）。いちばん
+     上の紙の中だけを回すようにします——端まで来たら、もう一方の端へ。 */
+  function focusableIn(el) {
+    return [...el.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+      'textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )].filter((f) => f.offsetParent !== null);
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && openSheets.length) {
       openSheets[openSheets.length - 1].close();
+      return;
+    }
+    if (e.key === "Tab" && openSheets.length) {
+      const top = openSheets[openSheets.length - 1];
+      const list = focusableIn(top.el);
+      if (!list.length) return;
+      const first = list[0], last = list[list.length - 1];
+      const active = document.activeElement;
+      const inside = top.el.contains(active);
+      if (e.shiftKey) {
+        if (!inside || active === first) { e.preventDefault(); last.focus(); }
+      } else if (!inside || active === last) { e.preventDefault(); first.focus(); }
     }
   });
 

@@ -35,7 +35,7 @@
 
     root.append(chrome);
     els = { body: chrome.querySelector(".js-body"), topbar: chrome.querySelector(".topbar") };
-    chrome.querySelector(".js-back").addEventListener("click", () => KN.backScreen());
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -57,7 +57,7 @@
   let showAll = false;
 
   const scope = () => {
-    const from = KN.openedFrom ? KN.openedFrom() : "list";
+    const from = KN.app.openedFrom ? KN.app.openedFrom() : "list";
     if (from === "todo") return "todo";
     if (from === "diet") return "diet";
     return "shop";                       // list / prices は共有
@@ -168,14 +168,14 @@
       btn.addEventListener("click", () => {
         const theme = btn.dataset.theme;
         store.update((s) => { s.settings.theme = theme; });
-        KN.applyTheme(theme);
+        KN.app.applyTheme(theme);
         haptic();
       });
     });
 
     /* Only where there is an icon to badge. In a browser tab the API is not
        there at all, and a switch that does nothing is worse than no switch. */
-    const badge = KN.appBadge;
+    const badge = KN.app.appBadge;
     if (badge && badge.supported()) {
       const rows = wrap.querySelector(".js-badge-rows");
       const state = wrap.querySelector(".js-badge-state");
@@ -855,8 +855,11 @@
       </section>
     `);
 
-    wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet.openGoalSheet());
-    wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet.openSyncSheet());
+    // openGoalSheet/openSyncSheet は共通の画面契約（mount/render/dockButton）の
+    // 外にあるダイエット画面だけの窓口です。screen-diet.js の export の
+    // コメントにあるとおり、設定画面から開けるように意図して公開されています。
+    wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet && KN.screens.diet.openGoalSheet());
+    wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet && KN.screens.diet.openSyncSheet());
     wrap.querySelector(".js-auto").addEventListener("click", () => {
       const off = store.get().settings.dietAutoSync === false;
       store.update((s) => { s.settings.dietAutoSync = off; });
@@ -1099,7 +1102,7 @@
               </div>`).join(""))}
           </div>
         `));
-        if (r.ok) KN.screens.diet.render();
+        if (r.ok && KN.screens.diet) KN.screens.diet.render();
       }).catch((err) => {
         said.textContent = "確かめられませんでした（" + (err && err.message || err) + "）";
       }).finally(() => { btn.disabled = false; });

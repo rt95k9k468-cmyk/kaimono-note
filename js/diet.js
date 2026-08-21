@@ -58,20 +58,35 @@
     const need = minPoints || Math.max(2, Math.ceil(windowDays / 3));
     // 窓ぜんぶが記録の中に入っている日から先が「満ちた」平均です。
     const firstFull = points.length ? U.shiftDay(points[0].day, windowDays - 1) : null;
-    return points.map((pt) => {
+    /* points は日付順に並んでいる（weightPoints が保証）ので、窓の左端は
+       右にしか動きません。毎回ぜんぶを filter() し直す代わりに、二本指
+       （start と i）で窓をなぞり、和を足し引きして平均を出します——
+       記録が長くなるほど filter() の総回数が点数の2乗で増えていたのを、
+       点数に比例するだけに抑えます。答えは元の filter() 版と同じです。 */
+    const out = [];
+    let start = 0, sum = 0, count = 0;
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i];
       const from = U.shiftDay(pt.day, -(windowDays - 1));
-      const inWin = points.filter((q) => q.day >= from && q.day <= pt.day);
-      if (inWin.length < need) return { day: pt.day, value: null, full: false };
-      return {
+      while (start < i && points[start].day < from) {
+        sum -= points[start].kg;
+        count--;
+        start++;
+      }
+      sum += pt.kg;
+      count++;
+      if (count < need) { out.push({ day: pt.day, value: null, full: false }); continue; }
+      out.push({
         day: pt.day,
-        value: round(mean(inWin.map((q) => q.kg)), 2),
+        value: round(sum / count, 2),
         /* 記録の頭のほうは、窓が record の外にはみ出していて、実際には
            3日ぶんや4日ぶんの平均です。出すことは出しますが（毎日は乗らない
            人にも線を見せたいので）、傾きを当てる材料からは外します——
            助走ぶんの短い平均が混ざると、傾きが実際より寝ます。 */
         full: firstFull != null && pt.day >= firstFull,
-      };
-    });
+      });
+    }
+    return out;
   }
 
   /**
