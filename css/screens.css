@@ -1623,25 +1623,25 @@
    からだ・食事・体重を一枚にまとめ、区切りは線ではなく地の色でつけます。
    線は「別のもの」と言いますが、ここで言いたいのは「同じ一日の、別の面」。
    横に払って日をめくるとき、三つが一緒に流れる形でもあります。 */
-/* 横に払うと、左右に前日・翌日の端が少しだけのぞきます（js-carousel）。
+/* ---- カルーセル（前日・今日・翌日を横一列に） ----
+
+   三枚を並べて横一列にし、外側で溢れたぶんを隠します。動かすのは
+   中の .js-track の transform だけ——ドラッグ量そのまま、隣の紙が
+   端から連続して入ってきます（要約ではなく本物の紙）。
+
    touch-action: pan-y で、縦のスクロールはブラウザの手に残したまま、
    横の動きだけをこちらが引き受けます——両方を素の指のジェスチャーに
    任せると、ページの縦スクロールと綱引きになって反応が鈍ります。 */
-.diet-carousel {
-  display: flex; align-items: stretch; gap: var(--sp-2);
-  overflow: hidden; touch-action: pan-y;
+.diet-carousel { overflow: hidden; touch-action: pan-y; }
+.diet-carousel-track {
+  display: flex;
+  /* 既定はここ（真ん中＝今日）。ドラッグ中だけ、JSがpxで上書きします。 */
+  transform: translateX(-100%);
 }
-.diet-carousel .js-day-card { flex: 1 1 auto; min-width: 0; }
-.diet-peek {
-  flex: 0 0 auto; width: 0; opacity: 0; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--c-surface-2); border-radius: var(--r-lg);
-}
-.diet-peek-inner {
-  padding: 0 var(--sp-3); white-space: nowrap;
-  font-size: var(--fs-xs); color: var(--c-text-2); text-align: center;
-}
-.diet-peek-inner b { display: block; margin-top: 2px; font-size: var(--fs-sm); color: var(--c-text); }
+.diet-carousel-track > .diet-day { flex: 0 0 100%; min-width: 0; }
+/* 前日・翌日の紙は本物ですが、押せません（指はカルーセルの外枠が
+   引き受けます）。inert 属性でも塞ぎますが、保険としてCSSでも。 */
+.diet-day.is-peek { pointer-events: none; }
 
 .diet-day { padding: 0; overflow: hidden; touch-action: pan-y; }
 .diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }

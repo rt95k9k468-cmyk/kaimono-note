@@ -3244,25 +3244,25 @@ button, [role="tab"] {
    からだ・食事・体重を一枚にまとめ、区切りは線ではなく地の色でつけます。
    線は「別のもの」と言いますが、ここで言いたいのは「同じ一日の、別の面」。
    横に払って日をめくるとき、三つが一緒に流れる形でもあります。 */
-/* 横に払うと、左右に前日・翌日の端が少しだけのぞきます（js-carousel）。
+/* ---- カルーセル（前日・今日・翌日を横一列に） ----
+
+   三枚を並べて横一列にし、外側で溢れたぶんを隠します。動かすのは
+   中の .js-track の transform だけ——ドラッグ量そのまま、隣の紙が
+   端から連続して入ってきます（要約ではなく本物の紙）。
+
    touch-action: pan-y で、縦のスクロールはブラウザの手に残したまま、
    横の動きだけをこちらが引き受けます——両方を素の指のジェスチャーに
    任せると、ページの縦スクロールと綱引きになって反応が鈍ります。 */
-.diet-carousel {
-  display: flex; align-items: stretch; gap: var(--sp-2);
-  overflow: hidden; touch-action: pan-y;
+.diet-carousel { overflow: hidden; touch-action: pan-y; }
+.diet-carousel-track {
+  display: flex;
+  /* 既定はここ（真ん中＝今日）。ドラッグ中だけ、JSがpxで上書きします。 */
+  transform: translateX(-100%);
 }
-.diet-carousel .js-day-card { flex: 1 1 auto; min-width: 0; }
-.diet-peek {
-  flex: 0 0 auto; width: 0; opacity: 0; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--c-surface-2); border-radius: var(--r-lg);
-}
-.diet-peek-inner {
-  padding: 0 var(--sp-3); white-space: nowrap;
-  font-size: var(--fs-xs); color: var(--c-text-2); text-align: center;
-}
-.diet-peek-inner b { display: block; margin-top: 2px; font-size: var(--fs-sm); color: var(--c-text); }
+.diet-carousel-track > .diet-day { flex: 0 0 100%; min-width: 0; }
+/* 前日・翌日の紙は本物ですが、押せません（指はカルーセルの外枠が
+   引き受けます）。inert 属性でも塞ぎますが、保険としてCSSでも。 */
+.diet-day.is-peek { pointer-events: none; }
 
 .diet-day { padding: 0; overflow: hidden; touch-action: pan-y; }
 .diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -17606,8 +17606,14 @@ a.btn { text-decoration: none; }
   let viewDay = null;
   const curDay = () => viewDay || U.todayKey();
   const isViewToday = () => curDay() === U.todayKey();
-  /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。 */
-  const dayName = () => (isViewToday() ? "今日" : U.formatDay(curDay()));
+  /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。
+      引数を渡せばその日、渡さなければ**いま見ている日**（既定の使い方）。
+      カルーセルの前日・翌日の紙は、いま見ている日とは別の日を描くので、
+      その紙の日を明示して呼びます。 */
+  const dayName = (day) => {
+    const d = day || curDay();
+    return d === U.todayKey() ? "今日" : U.formatDay(d);
+  };
 
   /* 一日の順に、日の高さで。朝は昇る日、昼は真上の日、夜は月——
      間食だけは時刻ではないので、食べもののほうを描きます。 */
@@ -17696,29 +17702,51 @@ a.btn { text-decoration: none; }
      自分の可視高さを持っていて、フォーカスした欄を scrollIntoView で
      戻せますが（ui.js）、この画面でそれをやると「文書ぜんぶに見せて」と
      頼んでしまい、ノッチのタップ用の1px（app.js）を巻き込みます。
-     なので、この画面自身の scrollTop を、手で計算して動かします。 */
-  let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
+     なので、この画面自身の scrollTop を、手で計算して動かします。
 
-  function keepFieldVisible(field) {
+     動かすのは**足りないぶんだけ**です。欄の下端がキーボードの上に
+     ちょうど乗る、その一点まで。決め打ちの待ち時間で何度も測り直すと、
+     可視領域がまだ動いている途中の値をつかんで、二度・三度と重ねて
+     動かしてしまいます（それが「大きく揺れる」の正体でした）。
+     いまは **可視領域が実際に変わったとき** だけ測り直し、すでに
+     ほぼ同じ行き先なら黙って何もしません。 */
+  let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
+  let kbTarget = null;       // 直前に動かした先（同じ先には、もう一度動かしません）。
+  let kbField = null;        // いま追っている欄。
+
+  const KB_MARGIN = 10;      // 欄の下端と、可視領域の下端のあいだに残す、最小限のすきま。
+
+  /** 欄がキーボードに隠れているぶんだけ、画面を持ち上げます。隠れていなければ何もしません。 */
+  function nudgeIntoView(field) {
+    if (!root || document.activeElement !== field) return;
+    const appEl = document.getElementById("app");
+    const visibleBottom = (appEl ? appEl.getBoundingClientRect().bottom : window.innerHeight) - KB_MARGIN;
+    const over = field.getBoundingClientRect().bottom - visibleBottom;
+    if (over <= 2) return;                       // すでに見えている
+    const target = Math.round(root.scrollTop + over);
+    if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
+    kbTarget = target;
+    KN.glideTo(root, target);
+  }
+
+  function armKeyboardFollow(field) {
     if (!root) return;
-    /* ここで測る scrollTop は、たいてい遅すぎます。フォーカスした瞬間、
-       ブラウザが「見えるところに置く」ため自分でスクロールを一度動かす
-       ことがあり（フォーカスの仕様の一部）、それは focusin より先に
-       効いてしまいます。だから「戻る場所」は指を置いた時点
-       （pointerdown、下の wireKeyboardScroll）で覚えておき、ここでは
-       まだ無いときの保険としてだけ拾います。 */
+    /* フォーカスした瞬間、ブラウザが「見えるところに置く」ため自分で
+       スクロールを一度動かすことがあります（フォーカスの仕様の一部で、
+       focusin より先に効きます）。こちらの計算はキーボードぶんの
+       すきまを見た**必要最小限**のはずなのに、ブラウザの分がその上に
+       乗ると、合計では「大きく動いた」ように見えてしまいます。
+       指を置いた時点（pointerdown、下の wireKeyboardScroll）の位置を
+       覚えておき、ここで一度そこへ戻してから、こちらの計算だけを
+       乗せます——動くのはこちらの分だけになります。 */
     if (kbScrollBase == null) kbScrollBase = root.scrollTop;
-    const MARGIN = 16;
-    const check = () => {
-      if (document.activeElement !== field) return;   // 別の場所へ移っていたら何もしない
-      const appEl = document.getElementById("app");
-      const bottom = (appEl ? appEl.getBoundingClientRect().bottom : window.innerHeight) - MARGIN;
-      const over = field.getBoundingClientRect().bottom - bottom;
-      if (over > 4) KN.glideTo(root, root.scrollTop + over);
-    };
-    /* キーボードは出てくるのに数百msかかり、その間 --vvh も動き続けるので
-       （app.js）、一度だけでなく何度か測り直します。 */
-    [60, 180, 360, 620].forEach((ms) => setTimeout(check, ms));
+    else root.scrollTop = kbScrollBase;
+    kbField = field;
+    kbTarget = null;
+    nudgeIntoView(field);
+    /* visualViewport の resize/scroll が拾えない・遅い環境向けの保険として、
+       もう一度だけ後で測ります（同じ先なら nudgeIntoView は何もしません）。 */
+    setTimeout(() => { if (kbField === field) nudgeIntoView(field); }, 300);
   }
 
   function wireKeyboardScroll() {
@@ -17730,7 +17758,7 @@ a.btn { text-decoration: none; }
     }, true);
     root.addEventListener("focusin", (e) => {
       const field = e.target.closest && e.target.closest("input, textarea, select");
-      if (field) keepFieldVisible(field);
+      if (field) armKeyboardFollow(field);
     });
     root.addEventListener("focusout", () => {
       // 少し待って、移った先も入力欄かどうかを見ます（欄から欄への移動では戻さない）。
@@ -17740,9 +17768,51 @@ a.btn { text-decoration: none; }
         const stillTyping = active && root.contains(active) && active.matches("input, textarea, select");
         if (stillTyping) return;
         KN.glideTo(root, kbScrollBase);
-        kbScrollBase = null;
+        kbScrollBase = null; kbTarget = null; kbField = null;
       }, 80);
     });
+    /* キーボードの出入りは可視領域（visualViewport）を動かします。
+       決め打ちの間隔で何度も見にいくのではなく、実際に動いたときだけ
+       測り直します——同じ先にはもう動かさないので、ここで何度呼んでも
+       余計な揺れにはなりません。 */
+    const vv = window.visualViewport;
+    if (vv) {
+      let t = 0;
+      const onChange = () => {
+        clearTimeout(t);
+        t = setTimeout(() => { if (kbField) nudgeIntoView(kbField); }, 50);
+      };
+      vv.addEventListener("resize", onChange);
+      vv.addEventListener("scroll", onChange);
+    }
+  }
+
+  /**
+   * その日の紙を、まるごと一枚。カルーセルの三枚（前日・今日・翌日）は
+   * どれもこれで作ります——要約ではなく本物なので、隣の日を払っている
+   * あいだも、止まったときと同じ中身が見えます。
+   *
+   * peek（前日・翌日側）は inert にします。指はカルーセルの外枠が
+   * 引き受けるので、紙そのものは押せなくてかまいません——押せるままだと
+   * 消えていく紙のボタンやテキストエリアにフォーカスが残ることがあります。
+   */
+  function buildDaySlide(day, opts) {
+    const peek = !!(opts && opts.peek);
+    const card = (opts && opts.card) || D.dayCard(day);
+    const win = Math.max(range || 365, 30);
+    const sum = (opts && opts.sum) || D.weightSummary(win, day);
+    const slide = node(html`
+      <section class="card diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
+        <div class="diet-block is-body js-body-stats"></div>
+        <div class="diet-block is-meal js-meals"></div>
+        <div class="diet-block is-weight js-today"></div>
+      </section>
+    `);
+    renderBodyStats(slide.querySelector(".js-body-stats"), card);
+    renderMeals(slide.querySelector(".js-meals"), card, { peek });
+    renderToday(slide.querySelector(".js-today"), card, sum);
+    if (peek) slide.inert = true;
+    return slide;
   }
 
   function render() {
@@ -17773,18 +17843,13 @@ a.btn { text-decoration: none; }
        ここで言いたいのは「同じ一日の、別の面」です。 */
     els.body.append(node(html`
       <div class="diet">
-        ${/* 紙の左右に、前日・翌日の薄い端をのぞかせます。指で払っている
-              あいだだけ幅を持ち（js-carousel）、隣の日があることを
-              動かす前から示します。中身は払いはじめてから詰めます
-              （毎回の組み直しで前後の日を作るのは無駄なので）。 */""}
+        ${/* 前日・翌日の紙も、あらかじめ本物として並べておきます
+              （js-track に横一列で三枚）。要約ではなく、その日の紙その
+              ものです——払いはじめた瞬間から、指のぶんだけ連続して
+              入ってくるように。既定は translateX(-100%) で真ん中の
+              紙（今日）を映し、動かすのは wireDaySwipe が引き受けます。 */""}
         <div class="diet-carousel js-carousel">
-          <div class="diet-peek is-prev js-peek-prev" aria-hidden="true"></div>
-          <section class="card js-day-card diet-day">
-            <div class="diet-block is-body js-body-stats"></div>
-            <div class="diet-block is-meal js-meals"></div>
-            <div class="diet-block is-weight js-today"></div>
-          </section>
-          <div class="diet-peek is-next js-peek-next" aria-hidden="true"></div>
+          <div class="diet-carousel-track js-track"></div>
         </div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
@@ -17794,15 +17859,19 @@ a.btn { text-decoration: none; }
       </div>
     `));
 
-    renderBodyStats(els.body.querySelector(".js-body-stats"), card);
-    renderMeals(els.body.querySelector(".js-meals"), card);
-    renderToday(els.body.querySelector(".js-today"), card, sum);
+    const track = els.body.querySelector(".js-track");
+    track.append(
+      buildDaySlide(U.shiftDay(day, -1), { peek: true }),
+      buildDaySlide(day, { peek: false, card, sum }),
+      buildDaySlide(U.shiftDay(day, 1), { peek: true }),
+    );
+
     renderInsight(els.body.querySelector(".js-insight"));
     renderGoal(els.body.querySelector(".js-goal"), now);
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
        伸ばさずに、昨日・一昨日と辿れるように。 */
-    wireDaySwipe(els.body.querySelector(".js-day-card"));
+    wireDaySwipe(track, els.body.querySelector(".js-carousel"));
 
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
@@ -17987,149 +18056,108 @@ a.btn { text-decoration: none; }
      戻るのは遠い。その日のことが書いてある枠そのものを払えば、日が動きます。
      左へ払えば次の日、右へ払えば前の日——紙をめくる向きと同じです。
 
-     指と1:1で追わせ、払っているあいだは隣の日の端を少しだけのぞかせます
-     （js-carousel の左右）。縦は下に譲ります——画面ぜんぶがスクロール
-     するので、向きは最初の数ピクセルで決めて、そのまま最後まで持ちます。 */
-  function wireDaySwipe(el) {
-    if (!el) return;
-    const carousel = el.closest(".js-carousel");
-    const peekPrev = carousel && carousel.querySelector(".js-peek-prev");
-    const peekNext = carousel && carousel.querySelector(".js-peek-next");
-    const PEEK_MAX = 68;
-    const THRESHOLD = 56;
-    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
-    let lastT = 0, lastX = 0, vx = 0;
+     前日・今日・翌日の三枚を、最初から横一列に並べておきます（js-track、
+     render() が組みます）。動かすのはこの track の transform だけ——
+     ドラッグした量そのままに、隣の紙が右（または左）から連続して
+     入ってきます。要約ではなく本物の紙なので、止まった瞬間もいちばん
+     払っている最中も、同じ中身が見えます。
 
-    /* 端の中身は、払いはじめてから一度だけ詰めます。毎回の組み直しで
-       前後の日ぶんまで作るのは無駄なので。 */
-    const fillPeek = (panel, dir) => {
-      if (!panel || panel.dataset.filled) return;
-      const day = U.shiftDay(curDay(), dir);
-      if (dir > 0 && day > U.todayKey()) { panel.dataset.filled = "empty"; return; }
-      panel.dataset.filled = "1";
-      const c = D.dayCard(day);
-      panel.innerHTML = "";
-      panel.append(node(html`
-        <div class="diet-peek-inner">
-          <span>${U.formatDay(day)}</span>
-          <b class="mono-num">${c.totals ? c.totals.kcal.toLocaleString() + "kcal" : "—"}</b>
-        </div>
-      `));
-    };
+     縦は下に譲ります——画面ぜんぶがスクロールするので、向きは最初の
+     数ピクセルで決めて、そのまま最後まで持ちます。「少し動かしただけで
+     隣へ行ける」を優先し、判定も動く量もどちらも軽くしてあります。 */
+  function wireDaySwipe(track, viewport) {
+    if (!track || !viewport) return;
+    const AXIS_LOCK = 5;     // これだけ動けば、向きを決めます（前は8px）
+    const COMMIT = 26;       // これだけ動けば、指を離したときに隣へ（前は56px）
+    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0, pageW = 0;
+    let lastT = 0, lastX = 0, vx = 0;
 
     const paint = () => {
       frame = 0;
-      el.style.transform = dx ? `translateX(${dx}px)` : "";
-      if (peekPrev) {
-        const w = dx > 0 ? Math.min(dx, PEEK_MAX) : 0;
-        peekPrev.style.width = `${w}px`;
-        peekPrev.style.opacity = String(Math.min(1, w / PEEK_MAX));
-      }
-      if (peekNext) {
-        const w = dx < 0 ? Math.min(-dx, PEEK_MAX) : 0;
-        peekNext.style.width = `${w}px`;
-        peekNext.style.opacity = String(Math.min(1, w / PEEK_MAX));
-      }
+      track.style.transform = `translateX(${-pageW + dx}px)`;
     };
-    const reset = () => {
-      const t = "transform .2s var(--ease-out)";
-      const tp = "width .2s var(--ease-out), opacity .2s var(--ease-out)";
-      el.style.transition = t;
-      if (peekPrev) peekPrev.style.transition = tp;
-      if (peekNext) peekNext.style.transition = tp;
-      dx = 0;
-      paint();
+    /** 三枚のうち、どれを画面いっぱいに見せて止まるか。0=前日 1=今日 2=翌日 */
+    const settle = (index) => new Promise((resolve) => {
+      track.style.transition = "transform .2s var(--ease-out)";
+      track.style.transform = `translateX(${-pageW * index}px)`;
       setTimeout(() => {
-        el.style.transition = "";
-        if (peekPrev) peekPrev.style.transition = "";
-        if (peekNext) peekNext.style.transition = "";
-      }, 220);
-    };
+        track.style.transition = "";
+        /* 真ん中（＝いま見ている日）に戻るときは、px の値を残さず、
+           CSSの既定（-100%）に戻します。動いていない素の状態と、
+           見分けが付かなくなるように。日をめくる側（0/2）は、この
+           あとすぐ render() が紙を丸ごと差し替えるので、そのままで
+           かまいません。 */
+        if (index === 1) track.style.transform = "";
+        resolve();
+      }, 200);
+    });
 
-    el.addEventListener("pointerdown", (e) => {
+    viewport.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       // 中の押せるものは、押せるままにします。
       if (e.target.closest("input, textarea, select")) return;
+      pageW = viewport.getBoundingClientRect().width;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       lastT = performance.now(); lastX = e.clientX; vx = 0;
-      el.style.transition = "";
+      track.style.transition = "";
     });
-    el.addEventListener("pointermove", (e) => {
+    viewport.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
       const mx = e.clientX - x0, my = e.clientY - y0;
       if (!axis) {
-        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
-        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+        if (Math.abs(mx) < AXIS_LOCK && Math.abs(my) < AXIS_LOCK) return;
+        /* 横をやや優先します——完全に水平でなくても、斜めの払いは
+           たいてい横のつもりです。真上・真下に近い動きだけ縦に譲ります。 */
+        axis = Math.abs(mx) >= Math.abs(my) * 0.85 ? "x" : "y";
         /* 横だと決まってから初めて捕まえます。ボタンをただ押しただけの
            指まで捕まえると、そのボタンの click が届かなくなるので。 */
         if (axis === "x") {
-          try { el.setPointerCapture(id); } catch (err) { /* Safari だと投げることがあります */ }
-          fillPeek(peekPrev, -1); fillPeek(peekNext, 1);
+          try { viewport.setPointerCapture(id); } catch (err) { /* Safari だと投げることがあります */ }
         }
       }
       if (axis !== "x") return;
       const now = performance.now();
       if (now > lastT) { vx = (e.clientX - lastX) / (now - lastT); lastT = now; lastX = e.clientX; }
       /* 今日より先には行けないので、そちら向きだけ重くします。それ以外は
-         指と1:1で追わせます——これまでは56pxを超えると余った分を3割にしか
-         動かしておらず、それが「反応が悪い」の正体でした。 */
+         指と1:1で追わせます。 */
       const blocked = mx < 0 && isViewToday();
       dx = blocked ? mx * 0.3 : mx;
       if (!frame) frame = requestAnimationFrame(paint);
     });
-    const end = (e) => {
+    const end = async (e) => {
       if (e.pointerId !== id) return;
+      const wasX = axis === "x";
       const moved = dx;
-      const fling = Math.abs(vx) > 0.5 && Math.abs(moved) >= 12;
       id = null; axis = null;
-      if (Math.abs(moved) < THRESHOLD && !fling) { reset(); return; }
+      /* 縦の払い（や、動かなかったタップ）は、横には何も触れていません。
+         ここで settle を呼ぶと、動いてもいない track に一瞬だけ
+         translate を乗せてしまいます（すぐ消えるとはいえ、それを
+         見るテストや目には「動いた」に映ります）。横だと決まった
+         ときだけ、この先の判定に進みます。 */
+      if (!wasX) return;
+      /* 短い距離でも、速い払い（フリック）なら隣へ。「軽い操作感」を
+         優先し、フリックの基準もゆるめにしてあります。 */
+      const fling = Math.abs(vx) > 0.35 && Math.abs(moved) >= 8;
+      if (Math.abs(moved) < COMMIT && !fling) { await settle(1); return; }
       const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
-      if (next > U.todayKey()) { reset(); return; }
+      if (next > U.todayKey()) { await settle(1); return; }
+      haptic();
+      await settle(moved < 0 ? 2 : 0);
+      /* 滑りきった、その位置のまま次へ渡します。viewDay を変えてから
+         render() で三枚を組み直すと、真ん中（今日）はいま画面いっぱいに
+         見えているのと同じ日になるので、見た目の続きが切れません。 */
       viewDay = next === U.todayKey() ? null : next;
-      /* カレンダーは、めくった先の月に合わせます（月をまたいだときに
-         その日の枠が無いと、緑の輪がどこにも行けません）。 */
       const d = U.dayDate(next);
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
-      haptic();
-      /* 紙が一枚、指の向きに抜けて、隣の日が同じ向きから入ってきます。
-         組み直しは見えないところ（抜けきったあと）でやります——
-         入れ替わる瞬間が見えると、めくったのではなく「化けた」に見えます。 */
-      slideDay(el, moved < 0 ? -1 : 1, peekPrev, peekNext);
-    };
-    el.addEventListener("pointerup", end);
-    el.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
-  }
-
-  /**
-   * 日をめくる動き。抜ける方向へ滑らせて、組み直して、反対から入れます。
-   * @param dir -1 なら左へ抜ける（次の日）、+1 なら右へ抜ける（前の日）
-   */
-  function slideDay(el, dir, peekPrev, peekNext) {
-    const OUT_MS = 150, IN_MS = 210;
-    el.style.transition = `transform ${OUT_MS}ms var(--ease), opacity ${OUT_MS}ms var(--ease)`;
-    el.style.transform = `translateX(${dir * 60}%)`;
-    el.style.opacity = "0";
-    [peekPrev, peekNext].forEach((p) => {
-      if (!p) return;
-      p.style.transition = `width ${OUT_MS}ms var(--ease), opacity ${OUT_MS}ms var(--ease)`;
-      p.style.width = "0px";
-      p.style.opacity = "0";
-    });
-    setTimeout(() => {
       render();
-      const fresh = els.body.querySelector(".js-day-card");
-      if (!fresh) return;
-      fresh.style.transition = "none";
-      fresh.style.transform = `translateX(${dir * -60}%)`;
-      fresh.style.opacity = "0";
-      // 二拍おかないと、置いた位置が「最初からそこ」として扱われて滑りません。
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        fresh.style.transition = `transform ${IN_MS}ms var(--ease-out), opacity ${IN_MS}ms var(--ease)`;
-        fresh.style.transform = "";
-        fresh.style.opacity = "";
-        setTimeout(() => { fresh.style.transition = ""; }, IN_MS + 20);
-      }));
-    }, OUT_MS);
+    };
+    viewport.addEventListener("pointerup", end);
+    viewport.addEventListener("pointercancel", (e) => {
+      if (e.pointerId !== id) return;
+      const wasX = axis === "x";
+      id = null; axis = null;
+      if (wasX) settle(1);
+    });
   }
 
   /* 払うと月がめくれます。縦は下のカードのスクロールに譲ります——
@@ -18200,7 +18228,7 @@ a.btn { text-decoration: none; }
     const w = card.weight;
     const g = sum.goal;
     const pace = D.neededPace();
-    const when = dayName();
+    const when = dayName(card.day);
 
     const sec = node(html`
       <div class="diet-hero">
@@ -18634,7 +18662,7 @@ a.btn { text-decoration: none; }
 
     const sec = node(html`
       <div class="stack">
-        <div class="section-title">${icon("heart")}${dayName()}のからだ
+        <div class="section-title">${icon("heart")}${dayName(card.day)}のからだ
           ${sync.lastAt ? html`<span class="section-note">取り込み ${U.formatStamp(sync.lastAt)}</span>` : ""}
         </div>
         <div class="diet-grid">
@@ -19090,7 +19118,8 @@ a.btn { text-decoration: none; }
     return el;
   }
 
-  function renderMeals(host, card) {
+  function renderMeals(host, card, opts) {
+    const peek = !!(opts && opts.peek);
     const t = card.totals;
     const rem = card.remaining;
     const pfc = card.pfc;
@@ -19101,7 +19130,7 @@ a.btn { text-decoration: none; }
 
     const sec = node(html`
       <div class="stack">
-        <div class="section-title">${icon("meal")}${dayName()}の食事</div>
+        <div class="section-title">${icon("meal")}${dayName(card.day)}の食事</div>
 
         <div class="diet-kcal">
           <div class="diet-kcal-main">
@@ -19176,7 +19205,7 @@ a.btn { text-decoration: none; }
 
     const bar = energyBar(card.day);
     if (bar) sec.querySelector(".js-stack").append(bar);
-    buildSlotBoxes(sec.querySelector(".js-slots"), card.day, st);
+    buildSlotBoxes(sec.querySelector(".js-slots"), card.day, st, { peek });
 
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
     host.append(sec);
@@ -19210,6 +19239,8 @@ a.btn { text-decoration: none; }
 
   function buildSlotBoxes(host, day, st, opts) {
     const inSheet = !!(opts && opts.sheet);
+    // カルーセルの前日・翌日の紙（本物だが押せない・打てない）。
+    const peek = !!(opts && opts.peek);
     const boxes = [];
     SLOTS.forEach((sl) => {
       const text = store.slotMemo(day, sl.id);
@@ -19230,6 +19261,9 @@ a.btn { text-decoration: none; }
       const ta = box.querySelector("textarea");
       ta.dataset.saved = text;
       boxes.push(ta);
+      grow(ta);   // 保存済みの複数行が、最初から詰まって見えないように。
+      host.append(box);
+      if (peek) return;   // 押せない紙なので、保存の配線は要りません。
       let timer = 0;
       const save = () => {
         clearTimeout(timer);
@@ -19248,17 +19282,16 @@ a.btn { text-decoration: none; }
       ta.addEventListener("input", () => {
         grow(ta);
         // 行が増えて枠が伸びると、欄の下端がまたキーボードに隠れうるので測り直します。
-        if (!inSheet) keepFieldVisible(ta);
+        if (!inSheet) nudgeIntoView(ta);
         if (inSheet) return;      // シートでは「保存」を押したときだけ書きます
         clearTimeout(timer);
         timer = setTimeout(save, 600);
       });
       if (!inSheet) ta.addEventListener("blur", save);
       ta.__save = save;
-      host.append(box);
     });
-    const flush = () => boxes.reduce((a, ta) => (ta.__save() || a), false);
-    if (!inSheet) flushSlots = flush;
+    const flush = () => boxes.reduce((a, ta) => (ta.__save ? ta.__save() : false) || a, false);
+    if (!inSheet && !peek) flushSlots = flush;
     return { boxes, flush };
   }
 
