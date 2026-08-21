@@ -2,6 +2,39 @@
    くらしノート — design tokens, reset, base layout
    ========================================================= */
 
+/* ---------------- 書体（BIZ UDPゴシック） ----------------
+
+   UD（ユニバーサルデザイン）書体は、判読性を上げるために作られた
+   専用の設計を持ちます——「6」と「9」、「シ」と「ツ」のような
+   見分けにくい字を離す、線の太さを均す、といった調整です。
+   長く画面を見る記録アプリには、装飾書体よりこちらが合います。
+
+   フォントファイルは fonts/ に自前で持っています（Google Fonts の
+   CDN には頼りません）。このアプリはオフラインで動くことが前提で、
+   電波の無いところで初回に開いた場合や、CDNが読めない環境でも
+   文字が欠けないようにするためです。中身はこのアプリの全ソース
+   （js/*.js・*.html）に実際に出てくる文字＋かな・半角英数の全域
+   だけに削ってあり（1611字、各229KB）、フルセット（4.4MB×2）より
+   大きく軽くしてあります。持っていない字（滅多に使わない漢字など、
+   人が自分で打った文章に出てくることがあります）は、次の候補書体
+   （端末に元から入っている日本語ゴシック）が自動で引き受けます
+   ——これは壊れではなく、web フォントの正しい振る舞いです。
+   ライセンスは OFL（fonts/OFL.txt）。作り直す手順は fonts/README.md。 */
+@font-face {
+  font-family: "BIZ UDPGothic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/BIZUDPGothic-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "BIZ UDPGothic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/BIZUDPGothic-Bold.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
 
@@ -36,6 +69,15 @@
   --c-danger:      #cf4f45;
   --c-danger-soft: #fdecea;
   --c-warn:        #c98a12;
+
+  /* --- 弾み = 本当に良い方向へ動いたときだけ使う色。accent（注目すべき
+         事実。最安値など）とは意味を分けます——同じ色に二つの意味を
+         持たせると、いずれ読み分けられなくなるので。データが裏付けた
+         ときにしか出しません（気づいたことの色点、体重グラフの向き、
+         やること・買い物を済ませた瞬間）。 --- */
+  --c-warmth:      #a87f1e;
+  --c-warmth-soft: #f5ebd2;
+  --c-warmth-ink:  #6e5411;
 
   /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
          the warm 税 keys on the pad, and one adds while the other takes
@@ -76,11 +118,34 @@
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
 
-  /* --- type --- */
-  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium",
+  /* --- type ---
+
+     BIZ UDPゴシックを本文にします。判読しやすさのために作られた
+     UD書体で、長く画面を見る記録アプリの地の文字に合わせました。
+     持っていない字（自前で持つのは fonts/README.md にある通り
+     このアプリの語彙＋かな・半角英数だけ）は、続く候補（端末に
+     入っている日本語ゴシック）が引き受けます。
+
+     太さは 400（本文）と 700（強調）の二つだけに揃えます——
+     埋め込んだファイルもこの二つしか無く、無い太さを指定すると
+     ブラウザが自前で太らせた字（縁がにじんで見えるもの）が出るので、
+     コンポーネント側の font-weight もすべてこの二値に揃えました。
+
+     行間は役目で三段に分けます。数字の大表示や一行のラベルは詰めて
+     （--lh-tight）、ボタンや行の文字は少し余裕を持たせ（--lh-ui）、
+     気づいたこと・説明文のような読みものは、長く読んでも疲れない
+     広さに（--lh-body）。 */
+  --font: "BIZ UDPGothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium",
           "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --fs-xs: 11px; --fs-sm: 12.5px; --fs-md: 14px;
   --fs-lg: 16px; --fs-xl: 19px;  --fs-2xl: 24px;
+
+  --fw-regular: 400;
+  --fw-bold:    700;
+
+  --lh-tight: 1.2;
+  --lh-ui:    1.6;
+  --lh-body:  1.75;
 
   /* --- motion --- */
   --ease: cubic-bezier(.2, .8, .3, 1);
@@ -117,6 +182,9 @@
     --c-danger:      #e8776c;
     --c-danger-soft: #33201e;
     --c-warn:        #dcae4a;
+    --c-warmth:      #e0b95c;
+    --c-warmth-soft: #332c18;
+    --c-warmth-ink:  #f0d28e;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
     /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -158,6 +226,9 @@
   --c-danger:      #e8776c;
   --c-danger-soft: #33201e;
   --c-warn:        #dcae4a;
+  --c-warmth:      #e0b95c;
+  --c-warmth-soft: #332c18;
+  --c-warmth-ink:  #f0d28e;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
   /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -229,11 +300,24 @@ html.has-top-tap { overflow-anchor: none; }
 body {
   font-family: var(--font);
   font-size: var(--fs-md);
-  line-height: 1.5;
+  line-height: var(--lh-ui);
+  font-variant-numeric: tabular-nums;
   color: var(--c-text);
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 動きを減らす設定の端末では、揺れ・拡大縮小・弾みをすべて瞬時にします。
+   意欲を高めるための小さな動き（マイクロインタラクション）も含めて、
+   このアプリのどんなアニメーションも例外にしません。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 h1, h2, h3, h4, p, figure { margin: 0; }
@@ -425,7 +509,7 @@ a { color: var(--c-primary); }
 
 .topbar-title {
   font-size: var(--fs-2xl);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -.02em;
   flex: 1;
   min-width: 0;
@@ -483,7 +567,7 @@ a { color: var(--c-primary); }
 .tab-face:not(.is-on) {
   color: var(--c-text-3);
   opacity: .8;
-  font-weight: 500;
+  font-weight: 700;
 }
 .tab[aria-selected="true"] .tab-face.is-on { color: var(--c-primary); }
 
@@ -518,7 +602,7 @@ a { color: var(--c-primary); }
     background: var(--c-bg);
   }
   .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
-  .rotate-note b { font-size: var(--fs-xl); font-weight: 800; }
+  .rotate-note b { font-size: var(--fs-xl); font-weight: 700; }
   .rotate-note span { font-size: var(--fs-sm); color: var(--c-text-2); }
 }
 
@@ -532,7 +616,7 @@ a { color: var(--c-primary); }
   gap: 3px;
   color: var(--c-text-3);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: .01em;
   transition: color .18s var(--ease);
   position: relative;

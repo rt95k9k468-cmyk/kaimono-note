@@ -60,7 +60,16 @@ const readB64 = (p) => fs.readFileSync(path.join(ROOT, p)).toString("base64");
 /** Keep a literal "</script>" inside JS from closing the tag it lives in. */
 const safeForScriptTag = (js) => js.replace(/<\/(script)/gi, "<\\/$1");
 
-const css = CSS.map((f) => `/* ---- ${f} ---- */\n${read(f)}`).join("\n");
+/* base.css の @font-face は "fonts/…woff2" という相対パスを指しています
+   （GitHub Pages 配置では正しく届きますが、この一枚だけのビルドは
+   「どこに置いても、そのまま開ける」約束なので、fonts/ フォルダが
+   隣に無い場所へ持って行かれると字が欠けます）。ここでだけ、
+   その参照を data URI に差し替えて中に埋め込みます。 */
+const FONT_URL_RE = /url\("\.\.\/fonts\/([A-Za-z0-9._-]+\.woff2)"\)/g;
+const inlineFonts = (cssText) => cssText.replace(FONT_URL_RE, (m, name) =>
+  `url("data:font/woff2;base64,${readB64(`fonts/${name}`)}")`);
+
+const css = inlineFonts(CSS.map((f) => `/* ---- ${f} ---- */\n${read(f)}`).join("\n"));
 const js = JS.map((f) => `/* ---- ${f} ---- */\n${safeForScriptTag(read(f))}`).join("\n");
 
 const iconSvg = `data:image/svg+xml;base64,${readB64("icons/icon.svg")}`;

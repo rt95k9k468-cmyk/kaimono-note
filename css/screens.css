@@ -257,7 +257,7 @@
   margin: 0 0 var(--sp-2);
   padding: 0 2px;
 }
-.cal-month { font-size: var(--fs-lg); font-weight: 800; color: var(--c-text); }
+.cal-month { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
 .cal-year { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
 
 /* ‹ › at the far end, and — only once you have wandered — the way back. The
@@ -351,7 +351,7 @@
 .cal-day.is-today .cal-n {
   background: #e05a3a;
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
 }
 .cal-day.is-today.is-sun .cal-n,
 .cal-day.is-today.is-sat .cal-n { color: #fff; }
@@ -447,7 +447,7 @@
   gap: 7px;
   padding: var(--sp-4) var(--sp-4) var(--sp-2);
   font-size: var(--fs-md);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text);
 }
 /* The group's colour, as a dot beside its name. The rows below wear the same
@@ -539,7 +539,7 @@
   align-items: center;
   flex: none;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
 }
 
@@ -633,7 +633,7 @@
 .todo-at {
   flex: none;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
   color: var(--cat, var(--c-text-2));
@@ -671,7 +671,7 @@
 .todo-part {
   flex: none;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--cat, var(--c-text-2));
   border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
   border-radius: 999px;
@@ -699,7 +699,7 @@
    is where the reason for pressing it is. */
 .link-btn {
   color: var(--c-primary);
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -722,7 +722,7 @@
   align-items: center;
   gap: var(--sp-2);
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
   visibility: hidden;
 }
 .swipe-yes {
@@ -853,7 +853,7 @@
 
 .tile-price {
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-accent);
   font-variant-numeric: tabular-nums;
 }
@@ -877,7 +877,7 @@
 .product.is-tile .product-name { -webkit-line-clamp: 2; }
 .item.is-tile .item-qty {
   font-size: var(--fs-xs);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text-2);
 }
 
@@ -1037,7 +1037,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text-2);
   margin-bottom: var(--sp-2);
 }
@@ -1049,7 +1049,7 @@
 .insight-ico { font-size: 17px; line-height: 1.35; flex: none; }
 .insight-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .insight-title { font-weight: 700; font-size: var(--fs-md); }
-.insight-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.55; }
+.insight-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-body); }
 
 /* Section divider between the trip and everything else. */
 .trip-head {
@@ -1058,7 +1058,7 @@
   gap: 6px;
   padding: var(--sp-4) var(--sp-4) var(--sp-2);
   font-size: var(--fs-md);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text);
 }
 .trip-head svg { width: 17px; height: 17px; stroke-width: 1.8; fill: currentColor; color: var(--c-warn); flex: none; }
@@ -1090,7 +1090,7 @@
 .item-qty {
   flex: none;
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text-2);
   background: var(--c-surface-2);
   padding: 1px 7px;
@@ -1153,7 +1153,7 @@
 
 .item-price-amount {
   font-size: var(--fs-lg);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-accent);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.01em;
@@ -1169,7 +1169,7 @@
   white-space: nowrap;
 }
 
-.item-price-none { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 600; }
+.item-price-none { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 700; }
 
 /* checked section toggle */
 .done-head {
@@ -1179,7 +1179,7 @@
   width: 100%;
   padding: var(--sp-2) var(--sp-4);
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text-2);
 }
 .done-head svg { width: 16px; height: 16px; stroke-width: 2.6; transition: transform .2s var(--ease); }
@@ -1207,7 +1207,7 @@
 /* Still used by the compare screen's own totals, which are totals of a basket
    whose prices are all known — that is what makes them safe to add up. */
 .summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
-.summary-total { font-size: var(--fs-2xl); font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.summary-total { font-size: var(--fs-2xl); font-weight: 700; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 
 /* ================= PRICES SCREEN ================= */
 
@@ -1246,7 +1246,7 @@
   width: 100%;
   padding: var(--sp-2) 0;
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text-3);
 }
 /* The chevron points right when the drawer is shut and down when it is
@@ -1378,17 +1378,17 @@
 .price-store { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .price-figures { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-.price-amount { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.price-amount { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .is-best .price-amount { color: var(--c-accent-ink); }
-.price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: 600; }
+.price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: 700; }
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 .crown { font-size: 13px; flex: none; }
 
 /* one store's price, in full */
-.field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.5; }
+.field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: var(--lh-body); }
 
-.cmp { font-size: var(--fs-md); color: var(--c-text-2); line-height: 1.6; }
+.cmp { font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-body); }
 .cmp b { color: var(--c-text); }
 .cmp .cmp-good { color: var(--c-primary); font-weight: 700; }
 .cmp .cmp-bad  { color: var(--c-accent-ink); }
@@ -1403,7 +1403,7 @@
 }
 .log-row.is-current { background: var(--c-primary-soft); }
 .log-date  { flex: none; width: 56px; font-size: var(--fs-sm); color: var(--c-text-2); }
-.log-price { flex: none; width: 74px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.log-price { flex: none; width: 74px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .log-unit  { flex: 1; min-width: 0; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-tag   { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink); }
 
@@ -1428,8 +1428,8 @@
 }
 
 .hero-label { font-size: var(--fs-sm); font-weight: 700; opacity: .88; }
-.hero-total { font-size: 34px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.hero-note { font-size: var(--fs-sm); opacity: .9; line-height: 1.5; }
+.hero-total { font-size: 34px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.hero-note { font-size: var(--fs-sm); opacity: .9; line-height: var(--lh-body); }
 
 .hero-save {
   margin-top: var(--sp-2);
@@ -1438,7 +1438,7 @@
   padding: 4px 10px;
   border-radius: var(--r-sm);
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .store-rank { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -1474,7 +1474,7 @@
   display: grid;
   place-items: center;
   font-size: var(--fs-sm);
-  font-weight: 800;
+  font-weight: 700;
 }
 .is-first .rank-no { background: var(--c-accent); color: #fff; }
 
@@ -1500,7 +1500,7 @@
 }
 
 .rank-total { flex: none; text-align: right; }
-.rank-amount { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.rank-amount { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .rank-sub { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 /* best-combo breakdown */
@@ -1514,9 +1514,9 @@
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
 }
-.combo-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .combo-store { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); flex: none; }
-.combo-price { font-weight: 800; font-variant-numeric: tabular-nums; flex: none; min-width: 62px; text-align: right; }
+.combo-price { font-weight: 700; font-variant-numeric: tabular-nums; flex: none; min-width: 62px; text-align: right; }
 
 /* ================= SETTINGS SCREEN ================= */
 
@@ -1548,7 +1548,7 @@
   text-align: center;
   color: var(--c-text-3);
   font-size: var(--fs-sm);
-  line-height: 1.7;
+  line-height: var(--lh-body);
 }
 
 /* sortable manage rows */
@@ -1564,7 +1564,7 @@
   border-radius: var(--r-full);
   margin-right: -2px;
 }
-.manage-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manage-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* store color swatches */
 .swatches { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
@@ -1596,7 +1596,7 @@
   min-width: 0;
   text-align: right;
   font-size: var(--fs-lg);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1604,7 +1604,7 @@
 }
 .calc-out.is-idle {
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--c-text-3);
 }
 
@@ -1673,7 +1673,7 @@
 .diet-hero-label { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
-  font-size: 40px; line-height: 1.05; font-weight: 800; color: var(--c-text);
+  font-size: 40px; line-height: 1.05; font-weight: 700; color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
 .diet-hero-value small { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text-2); }
@@ -1694,7 +1694,7 @@
 }
 .diet-stat { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
 .diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
-.diet-stat-value { font-size: var(--fs-md); font-weight: 800; margin-left: auto; }
+.diet-stat-value { font-size: var(--fs-md); font-weight: 700; margin-left: auto; }
 .diet-stat-value.is-good { color: var(--c-primary); }
 .diet-stat-value.is-warn { color: var(--c-accent); }
 .diet-stat-unit {
@@ -1703,7 +1703,7 @@
 }
 
 .diet-hero-note, .diet-note {
-  font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.65; margin: 0;
+  font-size: var(--fs-xs); color: var(--c-text-2); line-height: var(--lh-body); margin: 0;
 }
 .diet-note b { color: var(--c-text); }
 .diet-note.is-warn { color: var(--c-danger); }
@@ -1722,6 +1722,11 @@
 .diet-axis { fill: var(--c-text-3); font-size: 8px; font-family: var(--font); }
 .diet-goal-line { stroke: var(--c-accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .75; }
 .diet-ma7 { fill: none; stroke: var(--c-primary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+/* 標本が足りている・目標があり・実際にそちらへ向かっているときだけ付く帯。
+   線そのものの色は変えません（primaryのままにして、代わりに下の塗りだけで
+   知らせます——「良いときだけ線の色が変わる」だと、色が二つの役目を
+   兼ねてしまうので）。 */
+.diet-goal-glow { pointer-events: none; }
 .diet-ma14 { fill: none; stroke: var(--c-text-3); stroke-width: 1.2; opacity: .6; stroke-linecap: round; }
 .diet-dot { fill: var(--c-text-3); opacity: .75; }
 /* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
@@ -1801,7 +1806,7 @@
 .ta-clear:active { background: var(--c-surface-3); color: var(--c-text); }
 
 .diet-empty { padding: var(--sp-4) var(--sp-2); }
-.diet-empty .empty-text { font-size: var(--fs-sm); line-height: 1.7; }
+.diet-empty .empty-text { font-size: var(--fs-sm); line-height: var(--lh-body); }
 
 /* ---- からだ ---- */
 
@@ -1828,13 +1833,13 @@
 /* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
 .diet-cell-label { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
-.diet-cell-value { font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
+.diet-cell-value { font-size: var(--fs-md); font-weight: 700; white-space: nowrap; }
 /* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
 .diet-cell-value.is-over { color: var(--c-danger); }
 .diet-cell-unit { font-size: 10px; color: var(--c-text-3); white-space: nowrap; }
 
 /* 見出しの右に添える一言（最後の取り込み時刻など）。 */
-.section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--c-text-3); letter-spacing: 0; }
+.section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); letter-spacing: 0; }
 
 /* 気づいたことと目標は、ときどき読み返す一枚。ほかのカードと地の色を
    変えて、「毎日書くところ」と「たまに読むところ」を目で分けます。 */
@@ -1861,7 +1866,7 @@
 
 .diet-kcal { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
 .diet-kcal-main { display: flex; align-items: baseline; gap: 6px; }
-.diet-kcal-main b { font-size: 30px; font-weight: 800; line-height: 1; }
+.diet-kcal-main b { font-size: 30px; font-weight: 700; line-height: 1; }
 .diet-kcal-main small { font-size: var(--fs-md); color: var(--c-text-2); font-weight: 700; }
 .diet-kcal-rem { font-size: var(--fs-sm); color: var(--c-text-2); text-align: right; }
 .diet-kcal-rem b { font-size: var(--fs-lg); color: var(--c-primary); }
@@ -1876,7 +1881,7 @@
 }
 .diet-pfc-num { display: inline-flex; align-items: baseline; gap: 3px; }
 .diet-pfc-num i { font-style: normal; font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-pfc-num b { font-size: var(--fs-md); font-weight: 800; color: var(--c-text); }
+.diet-pfc-num b { font-size: var(--fs-md); font-weight: 700; color: var(--c-text); }
 .diet-pfc-num small { font-size: var(--fs-xs); color: var(--c-text-3); }
 .diet-pfc-num.is-over b { color: var(--c-accent); }
 .diet-pfc-ratio { font-size: var(--fs-xs); color: var(--c-text-3); }
@@ -1942,13 +1947,13 @@
 .diet-slot[data-slot="snack"] .diet-slot-ico     { color: var(--c-slot-s); }
 .diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
-.diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 800; color: var(--c-text); }
+.diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text); }
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
    拡大します（拡大したままでは、次の枠が見えません）。 */
 .diet-slot-memo {
   min-height: 38px; padding: 6px 8px; border-radius: var(--r-sm);
   background: var(--c-surface); border: 1px solid var(--c-border);
-  font-size: var(--fs-lg); line-height: 1.5; resize: none; overflow: hidden;
+  font-size: var(--fs-lg); line-height: var(--lh-body); resize: none; overflow: hidden;
 }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
@@ -1966,7 +1971,7 @@
 .diet-memo.is-blank .diet-memo-ico { color: var(--c-text-3); opacity: .5; }
 .diet-memo-hint { font-size: var(--fs-xs); color: var(--c-text-3); margin-left: auto; }
 .diet-memo-body {
-  font-size: var(--fs-sm); color: var(--c-text); line-height: 1.6;
+  font-size: var(--fs-sm); color: var(--c-text); line-height: var(--lh-body);
   white-space: pre-wrap; word-break: break-word;
 }
 .diet-memo.is-blank .diet-memo-body { color: var(--c-text-3); }
@@ -1976,7 +1981,7 @@
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
   padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
 }
-.diet-total b { font-size: var(--fs-2xl); font-weight: 800; }
+.diet-total b { font-size: var(--fs-2xl); font-weight: 700; }
 .diet-total small { font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-total span { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-items .row-title { display: flex; align-items: center; gap: 6px; }
@@ -2000,11 +2005,11 @@
 .diet-finding.is-warn { border-left-color: var(--c-accent); }
 .diet-finding.is-warn .diet-finding-ico { color: var(--c-accent); }
 .diet-finding b { font-size: var(--fs-sm); display: block; margin-bottom: 2px; }
-.diet-finding p { margin: 0; font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.7; }
+.diet-finding p { margin: 0; font-size: var(--fs-xs); color: var(--c-text-2); line-height: var(--lh-body); }
 
 .diet-ai-out {
   padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
-  font-size: var(--fs-sm); line-height: 1.8; white-space: pre-wrap;
+  font-size: var(--fs-sm); line-height: var(--lh-body); white-space: pre-wrap;
 }
 
 /* ---- 取り込みの説明 ---- */
@@ -2013,14 +2018,14 @@
    自前の行だから）。ここは手順そのものなので、番号を返します。 */
 .diet-steps {
   margin: 0; padding-left: 1.6em; list-style: decimal;
-  font-size: var(--fs-xs); color: var(--c-text-2); line-height: 1.8;
+  font-size: var(--fs-xs); color: var(--c-text-2); line-height: var(--lh-body);
 }
 .diet-steps li { margin-bottom: 2px; }
 .diet-steps li::marker { color: var(--c-text-3); font-weight: 700; }
 .diet-steps b { color: var(--c-text); }
 .diet-code {
   margin: 0; padding: var(--sp-3); background: var(--c-surface-2);
-  border-radius: var(--r-md); font-size: 11.5px; line-height: 1.6;
+  border-radius: var(--r-md); font-size: 11.5px; line-height: var(--lh-body);
   overflow-x: auto; white-space: pre; color: var(--c-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -2155,7 +2160,7 @@ a.btn { text-decoration: none; }
 }
 .diet-got-head { font-size: var(--fs-xs); color: var(--c-text-3); }
 .diet-got pre {
-  margin: 0; font-size: 12px; line-height: 1.6; color: var(--c-text);
+  margin: 0; font-size: 12px; line-height: var(--lh-body); color: var(--c-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap; word-break: break-all;
 }

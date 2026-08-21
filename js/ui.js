@@ -229,6 +229,38 @@
     }
   });
 
+  /* ---------------- 弾み（済ませた瞬間だけの、短い火花） ----------------
+
+     やることを済ませた・買うものを買った、その指の下だけに、小さな星が
+     一瞬散って消えます。褒賞ではなく、**その場で起きたことへの相槌**の
+     つもりなので、一度きり・250ms前後で終わり、居座りません。
+     鳴らすのは「済ませた」ときだけ——チェックを外す・取り消すときは
+     呼びません（本当に起きたことにしか反応しない、という約束のため）。
+
+     動きを減らす設定の端末では、base.css の全体ルールがこの動きも
+     瞬時にします。ここで個別に分岐は要りません。 */
+  function burst(el) {
+    if (!el || typeof el.getBoundingClientRect !== "function") return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const wrap = document.createElement("div");
+    wrap.className = "kn-burst";
+    wrap.style.left = cx + "px";
+    wrap.style.top = cy + "px";
+    const n = 6;
+    for (let i = 0; i < n; i++) {
+      const spark = document.createElement("i");
+      const angle = (360 / n) * i + (Math.random() * 22 - 11);
+      const dist = 16 + Math.random() * 10;
+      spark.style.setProperty("--a", angle.toFixed(1) + "deg");
+      spark.style.setProperty("--d", dist.toFixed(1) + "px");
+      spark.style.animationDelay = Math.round(Math.random() * 40) + "ms";
+      wrap.appendChild(spark);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 700);
+  }
+
   /* ---------------- toast ---------------- */
 
   let toastTimer = null;
@@ -694,5 +726,6 @@
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
+    burst,
   };
 })();
