@@ -1771,6 +1771,9 @@
       s.todos = next.todos;
       s.diet = next.diet;
       s.settings = next.settings;
+      // おぼえた振り分け（商品名→カテゴリ）。書き出しには入っているのに
+      // ここで戻し忘れていたので、復元すると学習だけが消えていました。
+      s.learned = next.learned;
     });
   }
 
