@@ -79,6 +79,22 @@
   --c-warmth-soft: #f5ebd2;
   --c-warmth-ink:  #6e5411;
 
+  /* --- からだの四つの指標 ---
+
+     歩数・総消費・睡眠・飲酒。リングの色で、どれの話かが一目で分かる
+     ようにします。色相をできるだけ離してあります（隣り合って並ぶので）。
+     -lit のほうは「目標を超えたぶん」を上に重ねる色で、同じ色相の
+     明るいほうへ振ってあります——超えたことが、足された明るさとして
+     見えるように。 */
+  --c-m-steps:     #12907e;
+  --c-m-steps-lit: #57c9b6;
+  --c-m-burn:      #dd6b20;
+  --c-m-burn-lit:  #f5a462;
+  --c-m-sleep:     #4b5bc4;
+  --c-m-sleep-lit: #8e99e8;
+  --c-m-drink:     #9a4fa8;
+  --c-m-drink-lit: #c98ed3;
+
   /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
          the warm 税 keys on the pad, and one adds while the other takes
          away — the two must never be pressed by mistake for each other. --- */
@@ -185,6 +201,15 @@
     --c-warmth:      #e0b95c;
     --c-warmth-soft: #332c18;
     --c-warmth-ink:  #f0d28e;
+    /* 暗い地の上では沈むので、四つとも明るいほうへ振ります。 */
+    --c-m-steps:     #3fc4ae;
+    --c-m-steps-lit: #8fe4d6;
+    --c-m-burn:      #f0955a;
+    --c-m-burn-lit:  #f8c39b;
+    --c-m-sleep:     #8b96ec;
+    --c-m-sleep-lit: #bcc3f5;
+    --c-m-drink:     #c989d4;
+    --c-m-drink-lit: #e2b8e9;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
     /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -229,6 +254,14 @@
   --c-warmth:      #e0b95c;
   --c-warmth-soft: #332c18;
   --c-warmth-ink:  #f0d28e;
+  --c-m-steps:     #3fc4ae;
+  --c-m-steps-lit: #8fe4d6;
+  --c-m-burn:      #f0955a;
+  --c-m-burn-lit:  #f8c39b;
+  --c-m-sleep:     #8b96ec;
+  --c-m-sleep-lit: #bcc3f5;
+  --c-m-drink:     #c989d4;
+  --c-m-drink-lit: #e2b8e9;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
   /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。

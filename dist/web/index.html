@@ -95,6 +95,22 @@
   --c-warmth-soft: #f5ebd2;
   --c-warmth-ink:  #6e5411;
 
+  /* --- からだの四つの指標 ---
+
+     歩数・総消費・睡眠・飲酒。リングの色で、どれの話かが一目で分かる
+     ようにします。色相をできるだけ離してあります（隣り合って並ぶので）。
+     -lit のほうは「目標を超えたぶん」を上に重ねる色で、同じ色相の
+     明るいほうへ振ってあります——超えたことが、足された明るさとして
+     見えるように。 */
+  --c-m-steps:     #12907e;
+  --c-m-steps-lit: #57c9b6;
+  --c-m-burn:      #dd6b20;
+  --c-m-burn-lit:  #f5a462;
+  --c-m-sleep:     #4b5bc4;
+  --c-m-sleep-lit: #8e99e8;
+  --c-m-drink:     #9a4fa8;
+  --c-m-drink-lit: #c98ed3;
+
   /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
          the warm 税 keys on the pad, and one adds while the other takes
          away — the two must never be pressed by mistake for each other. --- */
@@ -201,6 +217,15 @@
     --c-warmth:      #e0b95c;
     --c-warmth-soft: #332c18;
     --c-warmth-ink:  #f0d28e;
+    /* 暗い地の上では沈むので、四つとも明るいほうへ振ります。 */
+    --c-m-steps:     #3fc4ae;
+    --c-m-steps-lit: #8fe4d6;
+    --c-m-burn:      #f0955a;
+    --c-m-burn-lit:  #f8c39b;
+    --c-m-sleep:     #8b96ec;
+    --c-m-sleep-lit: #bcc3f5;
+    --c-m-drink:     #c989d4;
+    --c-m-drink-lit: #e2b8e9;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
     /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -245,6 +270,14 @@
   --c-warmth:      #e0b95c;
   --c-warmth-soft: #332c18;
   --c-warmth-ink:  #f0d28e;
+  --c-m-steps:     #3fc4ae;
+  --c-m-steps-lit: #8fe4d6;
+  --c-m-burn:      #f0955a;
+  --c-m-burn-lit:  #f8c39b;
+  --c-m-sleep:     #8b96ec;
+  --c-m-sleep-lit: #bcc3f5;
+  --c-m-drink:     #c989d4;
+  --c-m-drink-lit: #e2b8e9;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
   /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -3567,6 +3600,65 @@ button, [role="tab"] {
 /* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
 .diet-cell-value.is-over { color: var(--c-danger); }
 .diet-cell-unit { font-size: 10px; color: var(--c-text-3); white-space: nowrap; }
+
+/* ---- からだの輪 ----
+
+   目標に対してどこまで来たかを、数字ではなく形で出します。
+   角度（--deg）だけを JS が渡し、色はここが決めます——そうしないと
+   明るい／暗いの切り替えで色が固定されてしまうので。
+
+   ふつうの三つ：--fill が目標までのぶん、超えたら --lit が二周目として
+   上に重なります。飲酒だけは向きが逆で、残っているぶんが色です。 */
+.diet-ring {
+  order: -1;                       /* 字の並びは変えずに、輪だけ上へ */
+  position: relative;
+  width: 54px; height: 54px; border-radius: 50%;
+  display: grid; place-items: center;
+  margin-bottom: 1px;
+  --fill: var(--c-primary);
+  --lit:  var(--c-primary-2);
+  --rest: color-mix(in srgb, var(--c-text-3) 22%, transparent);
+  background: conic-gradient(var(--fill) 0 var(--deg), var(--rest) var(--deg) 360deg);
+}
+/* 超えたぶんは、明るいほうの色で二周目として頭から重ねます。 */
+.diet-ring.is-over {
+  background: conic-gradient(var(--lit) 0 var(--deg), var(--fill) var(--deg) 360deg);
+}
+/* 記録が無い日は、輪だけ薄く置きます（数字は「—」）。 */
+.diet-ring.is-none { background: conic-gradient(var(--rest) 0 360deg); }
+
+.diet-ring.is-steps  { --fill: var(--c-m-steps); --lit: var(--c-m-steps-lit); }
+.diet-ring.is-burned { --fill: var(--c-m-burn);  --lit: var(--c-m-burn-lit); }
+.diet-ring.is-sleep  { --fill: var(--c-m-sleep); --lit: var(--c-m-sleep-lit); }
+.diet-ring.is-drink  { --fill: var(--c-m-drink); --lit: var(--c-m-drink-lit); }
+/* 飲みすぎた日だけ、輪ぜんぶが灰色になり、超えたぶんが赤で乗ります。 */
+.diet-ring.is-drink.is-over { --fill: var(--rest); --lit: var(--c-danger); }
+
+/* 輪の内側をくり抜きます。地は、輪が乗っている枠と同じ色。 */
+.diet-ring::after {
+  content: ""; position: absolute; inset: 6px; border-radius: 50%;
+  background: var(--c-surface-2);
+}
+.diet-ring-mid {
+  position: relative; z-index: 1;
+  font-size: 12.5px; font-weight: 700; font-style: normal;
+  color: var(--fill); white-space: nowrap;
+}
+.diet-ring.is-none .diet-ring-mid { color: var(--c-text-3); }
+/* 飲みすぎた日の真ん中は赤（輪の色が灰色になっているので、そちらから取らない）。 */
+.diet-ring.is-drink.is-over .diet-ring-mid { color: var(--c-danger); }
+
+/* 輪が入ったぶん、枠の中は縦に伸びます。絵は文字の隣へ。
+   絵の色は、その指標の色にそろえます——全部が主色の緑のままだと、
+   輪の色と食い違って、どの絵がどの輪の話か読めなくなります。 */
+.diet-cell { padding: var(--sp-3) 2px var(--sp-2); gap: 0; }
+.diet-cell .diet-cell-label { display: inline-flex; align-items: center; gap: 3px; }
+.diet-cell .diet-cell-ico svg { width: 12px; height: 12px; }
+.diet-cell[data-type="steps"]  .diet-cell-ico { color: var(--c-m-steps); }
+.diet-cell[data-type="burned"] .diet-cell-ico { color: var(--c-m-burn); }
+.diet-cell[data-type="sleep"]  .diet-cell-ico { color: var(--c-m-sleep); }
+.diet-cell[data-type="drink"]  .diet-cell-ico { color: var(--c-m-drink); }
+.diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
 
 /* 見出しの右に添える一言（最後の取り込み時刻など）。 */
 .section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); letter-spacing: 0; }
@@ -8447,6 +8539,14 @@ a.btn { text-decoration: none; }
            「節度ある適度な飲酒」の量です。40g（男性で生活習慣病のリスクを
            高めるとされる量）を目安に置きたい人もいるので、変えられます。 */
         alcoholG: null,
+        /* からだの三つの目標（歩数・総消費kcal・睡眠分）。null なら
+           5,000歩 / 1,600kcal / 5時間。
+
+           ここは **届く高さ** に置いてあります。直近の平均を基準にすると、
+           歩いた人ほど基準も上がって、いつまでも埋まらないリングになります
+           ——頑張るほど遠のく目盛りは、目盛りとして間違っています。
+           固定の線なら超えられますし、超えたぶんも見えます。 */
+        stepsTarget: null, burnTarget: null, sleepTarget: null,
       },
       /* 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
          lockedAt は「読めない便が届いた時刻」——iPhoneがロックされている
@@ -8708,7 +8808,8 @@ a.btn { text-decoration: none; }
     out.goal.heightCm = posNum(out.goal.heightCm);
     out.goal.targetKg = posNum(out.goal.targetKg);
     out.goal.targetDay = dayStr(out.goal.targetDay);
-    ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG",
+     "stepsTarget", "burnTarget", "sleepTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
     return out;
   }
 
@@ -19005,6 +19106,49 @@ a.btn { text-decoration: none; }
   /** 一日の目安（純アルコールg）。決めていなければ厚労省の20g。 */
   const alcoholGuide = () => store.get().diet.goal.alcoholG || DR.GUIDE_G;
 
+  /* からだの三つの目標。決めていなければ、届く高さの既定値を使います
+     （store.js の goal のコメントを参照）。 */
+  const STEPS_DEFAULT = 5000, BURN_DEFAULT = 1600, SLEEP_DEFAULT = 300;
+  const stepsGoal = () => store.get().diet.goal.stepsTarget || STEPS_DEFAULT;
+  const burnGoal  = () => store.get().diet.goal.burnTarget  || BURN_DEFAULT;
+  const sleepGoal = () => store.get().diet.goal.sleepTarget || SLEEP_DEFAULT;
+
+  /**
+   * リングの描き方を決めます。角度だけを返し、色はCSS側の変数に任せます
+   * （そうしないと、明るい／暗いの切り替えで色が固定されてしまうので）。
+   *
+   * ふつうの三つ（歩数・総消費・睡眠）:
+   *   目標までは色が伸び、**超えたぶんは明るい色で二周目**として重なります。
+   *   超えたことが見えないと、超えた日と、ちょうど届いた日が同じ顔になります。
+   *
+   * 飲酒だけは向きが逆です:
+   *   飲まなかった日が **満ちた輪**。飲むほど減って灰色が増え、目安を
+   *   超えたら、超えたぶんが赤で出ます。「飲まなかった」は空白ではなく
+   *   その日の成果なので、いちばん見える形（満ちた輪）を当てています。
+   *
+   * @returns {{cls:string, deg:number, pct:number|null}}
+   */
+  function ringOf(kind, value, target) {
+    if (kind === "drink") {
+      const g = value || 0;                       // 飲んでいない日は 0g
+      const pct = target > 0 ? (g / target) * 100 : 0;
+      if (pct > 100) {
+        // 超過ぶんを赤で。二周を超えるほど飲んだ日は、輪一周で頭打ち。
+        const over = Math.min(100, pct - 100);
+        return { cls: "is-drink is-over", deg: over * 3.6, pct: Math.round(pct) };
+      }
+      // 残っているぶんを色で。0gなら満ちる。
+      return { cls: "is-drink", deg: (100 - pct) * 3.6, pct: Math.round(pct) };
+    }
+    if (value == null || !(target > 0)) return { cls: `is-${kind} is-none`, deg: 0, pct: null };
+    const pct = (value / target) * 100;
+    if (pct > 100) {
+      const over = Math.min(100, pct - 100);
+      return { cls: `is-${kind} is-over`, deg: over * 3.6, pct: Math.round(pct) };
+    }
+    return { cls: `is-${kind}`, deg: pct * 3.6, pct: Math.round(pct) };
+  }
+
   function renderBodyStats(host, card) {
     const sync = store.get().diet.sync;
     const dt = card.drinkTotals;
@@ -19025,19 +19169,33 @@ a.btn { text-decoration: none; }
        **一日の目安に対する％**。中身は押せば出てきます。 */
     const guide = alcoholGuide();
     const pct = dt ? Math.round((dt.alcoholG / guide) * 100) : 0;
+    const sg = stepsGoal(), bg = burnGoal(), slg = sleepGoal();
+    /* 輪の真ん中に出す字。ふつうの三つは目標に対する％（超えたら100を
+       超えた数がそのまま出ます——超えたことが読めるように）。飲酒だけは
+       量そのもの（g）です。％は下の行が言うので、同じ数を二度書きません。 */
+    const ringPct = (r) => (r.pct == null ? "—" : r.pct + "%");
+    const rSteps = ringOf("steps", card.steps, sg);
+    const rBurn  = ringOf("burned", card.burned, bg);
+    const rSleep = ringOf("sleep", card.sleep, slg);
+    const rDrink = ringOf("drink", dt ? dt.alcoholG : 0, guide);
     const rows = [
-      { type: "steps", label: "歩数", unit: "歩", ico: "steps",
-        value: showValue("steps", card.steps), manual: isManual(card.day, "steps") },
-      { type: "burned", label: "総消費", unit: "kcal", ico: "flame",
+      { type: "steps", label: "歩数", unit: `目標 ${n0(sg)}`, ico: "steps",
+        value: showValue("steps", card.steps), manual: isManual(card.day, "steps"),
+        ring: rSteps, mid: ringPct(rSteps) },
+      { type: "burned", label: "総消費", unit: `目標 ${n0(bg)}`, ico: "flame",
         value: card.burned == null ? "—" : n0(card.burned),
-        manual: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy") },
-      { type: "sleep", label: "睡眠", unit: "", ico: "moon",
-        value: card.sleep == null ? "—" : hm(card.sleep), manual: isManual(card.day, "sleep") },
+        manual: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy"),
+        ring: rBurn, mid: ringPct(rBurn) },
+      { type: "sleep", label: "睡眠", unit: `目標 ${hm(slg)}`, ico: "moon",
+        value: card.sleep == null ? "—" : hm(card.sleep), manual: isManual(card.day, "sleep"),
+        ring: rSleep, mid: ringPct(rSleep) },
       /* 飲酒だけは「無い」ときも薄くしません。飲まなかった日は空白では
-         なく **0%という記録**で、そこが薄いと「書き忘れ」に見えます。 */
+         なく **0%という記録**で、そこが薄いと「書き忘れ」に見えます。
+         輪は逆向き——飲まなかった日が満ちます（ringOf のコメント参照）。 */
       { type: "drink", label: "飲酒", ico: "drink", keep: true,
         value: pct + "%", unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
-        over: pct > 100 },
+        over: pct > 100,
+        ring: rDrink, mid: `${dt ? dt.alcoholG : 0}g` },
     ];
     const nothing = card.steps == null && card.burned == null && card.sleep == null
       && !card.workouts.length && !dt;
@@ -19049,10 +19207,16 @@ a.btn { text-decoration: none; }
         </div>
         <div class="diet-grid">
           ${KN.util.raw(rows.map((r) => `
+            ${/* 読み上げの順と、目で読む順は別です。字は「歩数 → 5,356 →
+                  目標」の順に並べておいて（読み上げも、textContent を見る
+                  ところも、この順で読みます）、輪だけを CSS で上へ回します。 */""}
             <button class="diet-cell js-cell ${r.type === "drink" ? "js-drink" : ""} ${
               r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
-              <span class="diet-cell-ico">${icon(r.ico)}</span>
-              <span class="diet-cell-label">${r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
+              <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
+                r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
+              <span class="diet-ring ${r.ring.cls}" style="--deg:${r.ring.deg.toFixed(1)}deg" aria-hidden="true">
+                <i class="diet-ring-mid mono-num">${r.mid}</i>
+              </span>
               <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
             </button>`).join(""))}
@@ -20979,6 +21143,32 @@ a.btn { text-decoration: none; }
         </div>
         <div class="js-suggest-box"></div>
 
+        <div class="divider"></div>
+        <div class="section-title">からだの目標（今日のからだの輪）</div>
+        <div class="field-row">
+          <label class="field" style="flex:1">
+            <span class="field-label">歩数</span>
+            <input class="input js-steps" inputmode="numeric" placeholder="${STEPS_DEFAULT}"
+                   value="${g.stepsTarget == null ? "" : String(g.stepsTarget)}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">総消費 (kcal)</span>
+            <input class="input js-burn" inputmode="numeric" placeholder="${BURN_DEFAULT}"
+                   value="${g.burnTarget == null ? "" : String(g.burnTarget)}">
+          </label>
+          <label class="field" style="flex:1">
+            <span class="field-label">睡眠 (時間)</span>
+            <input class="input js-sleep" inputmode="decimal" placeholder="${SLEEP_DEFAULT / 60}"
+                   value="${g.sleepTarget == null ? "" : String(Math.round(g.sleepTarget / 6) / 10)}">
+          </label>
+        </div>
+        <p class="diet-note">
+          空なら <b>${n0(STEPS_DEFAULT)}歩 / ${n0(BURN_DEFAULT)}kcal / ${SLEEP_DEFAULT / 60}時間</b> で数えます。
+          ここは <b>届く高さ</b>に置いてください——超えたぶんは、輪の二周目として
+          明るい色で乗ります。直近の平均に合わせると、頑張るほど目盛りが遠のいて、
+          いつまでも埋まらない輪になります。
+        </p>
+
         <label class="field">
           <span class="field-label">お酒の目安（純アルコール g/日）</span>
           <input class="input js-alc" inputmode="decimal" placeholder="20"
@@ -21012,6 +21202,10 @@ a.btn { text-decoration: none; }
         fTarget: num(".js-f"),
         cTarget: num(".js-c"),
         alcoholG: num(".js-alc"),
+        stepsTarget: num(".js-steps"),
+        burnTarget: num(".js-burn"),
+        // 睡眠だけは「時間」で聞いて、分で持ちます（記録のほうが分なので）。
+        sleepTarget: (() => { const hrs = num(".js-sleep"); return hrs == null ? null : Math.round(hrs * 60); })(),
       });
       h.close();
       render();

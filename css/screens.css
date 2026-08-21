@@ -1838,6 +1838,65 @@
 .diet-cell-value.is-over { color: var(--c-danger); }
 .diet-cell-unit { font-size: 10px; color: var(--c-text-3); white-space: nowrap; }
 
+/* ---- からだの輪 ----
+
+   目標に対してどこまで来たかを、数字ではなく形で出します。
+   角度（--deg）だけを JS が渡し、色はここが決めます——そうしないと
+   明るい／暗いの切り替えで色が固定されてしまうので。
+
+   ふつうの三つ：--fill が目標までのぶん、超えたら --lit が二周目として
+   上に重なります。飲酒だけは向きが逆で、残っているぶんが色です。 */
+.diet-ring {
+  order: -1;                       /* 字の並びは変えずに、輪だけ上へ */
+  position: relative;
+  width: 54px; height: 54px; border-radius: 50%;
+  display: grid; place-items: center;
+  margin-bottom: 1px;
+  --fill: var(--c-primary);
+  --lit:  var(--c-primary-2);
+  --rest: color-mix(in srgb, var(--c-text-3) 22%, transparent);
+  background: conic-gradient(var(--fill) 0 var(--deg), var(--rest) var(--deg) 360deg);
+}
+/* 超えたぶんは、明るいほうの色で二周目として頭から重ねます。 */
+.diet-ring.is-over {
+  background: conic-gradient(var(--lit) 0 var(--deg), var(--fill) var(--deg) 360deg);
+}
+/* 記録が無い日は、輪だけ薄く置きます（数字は「—」）。 */
+.diet-ring.is-none { background: conic-gradient(var(--rest) 0 360deg); }
+
+.diet-ring.is-steps  { --fill: var(--c-m-steps); --lit: var(--c-m-steps-lit); }
+.diet-ring.is-burned { --fill: var(--c-m-burn);  --lit: var(--c-m-burn-lit); }
+.diet-ring.is-sleep  { --fill: var(--c-m-sleep); --lit: var(--c-m-sleep-lit); }
+.diet-ring.is-drink  { --fill: var(--c-m-drink); --lit: var(--c-m-drink-lit); }
+/* 飲みすぎた日だけ、輪ぜんぶが灰色になり、超えたぶんが赤で乗ります。 */
+.diet-ring.is-drink.is-over { --fill: var(--rest); --lit: var(--c-danger); }
+
+/* 輪の内側をくり抜きます。地は、輪が乗っている枠と同じ色。 */
+.diet-ring::after {
+  content: ""; position: absolute; inset: 6px; border-radius: 50%;
+  background: var(--c-surface-2);
+}
+.diet-ring-mid {
+  position: relative; z-index: 1;
+  font-size: 12.5px; font-weight: 700; font-style: normal;
+  color: var(--fill); white-space: nowrap;
+}
+.diet-ring.is-none .diet-ring-mid { color: var(--c-text-3); }
+/* 飲みすぎた日の真ん中は赤（輪の色が灰色になっているので、そちらから取らない）。 */
+.diet-ring.is-drink.is-over .diet-ring-mid { color: var(--c-danger); }
+
+/* 輪が入ったぶん、枠の中は縦に伸びます。絵は文字の隣へ。
+   絵の色は、その指標の色にそろえます——全部が主色の緑のままだと、
+   輪の色と食い違って、どの絵がどの輪の話か読めなくなります。 */
+.diet-cell { padding: var(--sp-3) 2px var(--sp-2); gap: 0; }
+.diet-cell .diet-cell-label { display: inline-flex; align-items: center; gap: 3px; }
+.diet-cell .diet-cell-ico svg { width: 12px; height: 12px; }
+.diet-cell[data-type="steps"]  .diet-cell-ico { color: var(--c-m-steps); }
+.diet-cell[data-type="burned"] .diet-cell-ico { color: var(--c-m-burn); }
+.diet-cell[data-type="sleep"]  .diet-cell-ico { color: var(--c-m-sleep); }
+.diet-cell[data-type="drink"]  .diet-cell-ico { color: var(--c-m-drink); }
+.diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
+
 /* 見出しの右に添える一言（最後の取り込み時刻など）。 */
 .section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); letter-spacing: 0; }
 
