@@ -100,6 +100,14 @@
            「節度ある適度な飲酒」の量です。40g（男性で生活習慣病のリスクを
            高めるとされる量）を目安に置きたい人もいるので、変えられます。 */
         alcoholG: null,
+        /* からだの三つの目標（歩数・総消費kcal・睡眠分）。null なら
+           5,000歩 / 1,600kcal / 5時間。
+
+           ここは **届く高さ** に置いてあります。直近の平均を基準にすると、
+           歩いた人ほど基準も上がって、いつまでも埋まらないリングになります
+           ——頑張るほど遠のく目盛りは、目盛りとして間違っています。
+           固定の線なら超えられますし、超えたぶんも見えます。 */
+        stepsTarget: null, burnTarget: null, sleepTarget: null,
       },
       /* 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
          lockedAt は「読めない便が届いた時刻」——iPhoneがロックされている
@@ -361,7 +369,8 @@
     out.goal.heightCm = posNum(out.goal.heightCm);
     out.goal.targetKg = posNum(out.goal.targetKg);
     out.goal.targetDay = dayStr(out.goal.targetDay);
-    ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG",
+     "stepsTarget", "burnTarget", "sleepTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
     return out;
   }
 
