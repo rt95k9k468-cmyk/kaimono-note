@@ -186,6 +186,13 @@
       foodId: typeof it.foodId === "string" ? it.foodId : null,
       // 推定値かどうか。UIで「約」を付けるのはこの旗ひとつで決めます。
       estimated: it.estimated === true,
+      /* 外部AIがWeb検索して確認した根拠・情報源（サイト名やURL）・確度。
+         くらしノート自身は検索しません——ChatGPT等に貼って返ってきた
+         行から、そのまま拾って残すだけです。無ければ空文字のまま
+         （前からある記録もここは空文字になります）。 */
+      basis: typeof it.basis === "string" ? it.basis.trim().slice(0, 200) : "",
+      source: typeof it.source === "string" ? it.source.trim().slice(0, 300) : "",
+      confidence: typeof it.confidence === "string" ? it.confidence.trim().slice(0, 20) : "",
     };
   }
 
@@ -240,6 +247,11 @@
       raw,
       at: a.at || new Date().toISOString(),
     };
+    /* その日のエネルギー収支の評価・傾向分析など、外部AIが返した自由文。
+       数とは別に持ちます——数は帯やグラフに使い、これは読みものとして
+       そのまま出します。 */
+    const analysis = typeof a.analysis === "string" ? a.analysis.trim().slice(0, 2000) : "";
+    if (analysis) out.analysis = analysis;
     /* 区分ごとの合計。AIが「朝合計」まで書いてくれた日だけ入ります。
        食品ごとの区分が拾えなかった日でも、これがあれば帯を引けます。
        書かれていない区分は null のまま——0 にすると「食べなかった」に
@@ -253,7 +265,7 @@
     });
     if (hasSlot) out.slots = slots;
     const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
-    return anyNum || hasSlot || raw ? out : null;
+    return anyNum || hasSlot || raw || analysis ? out : null;
   }
 
   function cleanMeal(m, i) {

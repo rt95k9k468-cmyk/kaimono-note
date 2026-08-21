@@ -3310,6 +3310,13 @@ button, [role="tab"] {
 }
 .diet-note b { color: var(--c-text); }
 .diet-note.is-warn { color: var(--c-danger); }
+/* AIが返してきた、その日の評価。読みものなので、ほかの注意書きより
+   少し目立たせます（枠の色でひと目でAI由来と分かるように）。 */
+.diet-ai-note {
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-accent) 8%, var(--c-surface));
+  color: var(--c-text-2);
+}
 
 /* ---- グラフ ---- */
 
@@ -8394,6 +8401,13 @@ a.btn { text-decoration: none; }
       foodId: typeof it.foodId === "string" ? it.foodId : null,
       // 推定値かどうか。UIで「約」を付けるのはこの旗ひとつで決めます。
       estimated: it.estimated === true,
+      /* 外部AIがWeb検索して確認した根拠・情報源（サイト名やURL）・確度。
+         くらしノート自身は検索しません——ChatGPT等に貼って返ってきた
+         行から、そのまま拾って残すだけです。無ければ空文字のまま
+         （前からある記録もここは空文字になります）。 */
+      basis: typeof it.basis === "string" ? it.basis.trim().slice(0, 200) : "",
+      source: typeof it.source === "string" ? it.source.trim().slice(0, 300) : "",
+      confidence: typeof it.confidence === "string" ? it.confidence.trim().slice(0, 20) : "",
     };
   }
 
@@ -8448,6 +8462,11 @@ a.btn { text-decoration: none; }
       raw,
       at: a.at || new Date().toISOString(),
     };
+    /* その日のエネルギー収支の評価・傾向分析など、外部AIが返した自由文。
+       数とは別に持ちます——数は帯やグラフに使い、これは読みものとして
+       そのまま出します。 */
+    const analysis = typeof a.analysis === "string" ? a.analysis.trim().slice(0, 2000) : "";
+    if (analysis) out.analysis = analysis;
     /* 区分ごとの合計。AIが「朝合計」まで書いてくれた日だけ入ります。
        食品ごとの区分が拾えなかった日でも、これがあれば帯を引けます。
        書かれていない区分は null のまま——0 にすると「食べなかった」に
@@ -8461,7 +8480,7 @@ a.btn { text-decoration: none; }
     });
     if (hasSlot) out.slots = slots;
     const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
-    return anyNum || hasSlot || raw ? out : null;
+    return anyNum || hasSlot || raw || analysis ? out : null;
   }
 
   function cleanMeal(m, i) {
@@ -19159,10 +19178,17 @@ a.btn { text-decoration: none; }
             : "＋ 食べたものをAIに推してもらう（プロンプトを作ってコピーします）"}</span>
         </button>
 
+        ${/* エネルギー収支の評価は、AIが返してくれたときだけ短く出します。
+              その日を開くたびに読めるように、ここに置きます（詳しくは
+              「AI推計」を開けば同じ文が出ます）。 */""}
+        ${ai && ai.ai && ai.ai.analysis ? html`
+          <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
+
         ${/* 食品ごとの内わけは、持ってはいますが並べません。
               「納豆 90kcal P7 F5 C5」の行が十件並んでも、次の一手は
               変わらないからです。使うのは、区分ごとの合計（上の帯）と
-              一日の合計だけ。細かい数はAIの返事の原文に残しています。 */""}
+              一日の合計だけ。細かい数と根拠・情報源はAIの返事の原文に
+              残しています。 */""}
         ${card.drinkTotals ? html`
           <p class="diet-note">
             上の ${t ? t.kcal.toLocaleString() : "0"}kcal は<b>食べたもの</b>だけの数です。
@@ -19313,6 +19339,9 @@ a.btn { text-decoration: none; }
     "炭水化物: 数値",
     "食物繊維: 数値",
     "区分: 朝",
+    "根拠: 何を見て決めたか（例: 商品ページの栄養成分表示／標準的な食品成分データ）",
+    "情報源: サイト名とURL（検索していなければ「AIの推定」）",
+    "確度: 高・中・低のいずれか",
   ];
   /* 区分ごとの小計。食品の行に「区分」が付いていれば足せば出せますが、
      AIは案外そこを落とします。小計として名指しで書いてもらえば、
@@ -19333,23 +19362,43 @@ a.btn { text-decoration: none; }
     "推定上限: 数値",
   ];
 
-  function aiPrompt(memo) {
-    return [
+  /**
+   * AIへの聞き方。memo は食事メモ（【朝】…の形）、ctx は今日のからだの
+   * 記録と直近の記録（どちらも任意——無ければその見出しごと出しません）。
+   *
+   * くらしノート自身はWebを検索しません。ここで頼んでいるのは、貼り付け先の
+   * ChatGPT等に検索・確認・分析までしてもらうことです——「AIへコピー」で
+   * 渡す一つの文を作るのが、この関数の仕事です。
+   */
+  function aiPrompt(memo, ctx) {
+    const c = ctx || {};
+    const lines = [
       "次の「食事メモ」から、その日に食べたものの栄養を推定してください。",
       "",
       "【条件】",
       "・お酒（アルコール飲料）は計算に入れないでください。別に記録しています。",
       "・食品の区切りは、スペース・読点（、）・中黒（・）・カンマ・スラッシュ・改行など、"
         + "どれでもかまいません。区切り記号にかかわらず、別々の食品として扱ってください。",
+      "・商品名やメーカー名など、具体的な市販食品はWeb検索して栄養成分を確認してください。"
+        + "可能な限り、公式サイト・メーカーの商品ページ・パッケージの栄養成分表示を優先してください。",
+      "・銘柄の分からない一般的な食品は、日本食品標準成分表など信頼できる標準的な"
+        + "食品成分データを使ってください。",
+      "・検索して確認できた食品は、情報源（サイト名とURL）を書いてください。"
+        + "確認できなかった食品は、根拠にAIによる推定であることを明示してください。",
       "・分量が書いていないものは、一般的な一人前として妥当な量を推定してください。",
       "・細かすぎる値にはせず、妥当な範囲の概数で答えてください。",
-      "・カロリーは kcal、ほかは g で、数値だけを書いてください（単位や説明は不要）。",
+      "・カロリーは kcal、ほかは g で答えてください（数値のほかに単位は付けず、"
+        + "説明は「根拠」の行にまとめてください）。",
       "・「区分」は 朝・昼・夜・間食 のどれかで、メモの【朝】【昼】【夜】【間食】に合わせてください。",
       "・推定下限と推定上限は、その日の摂取カロリーの推定の幅です。",
+      "・「今日の記録」が渡されていれば、摂取と総消費の差からその日のエネルギー収支を計算し、"
+        + "簡潔に評価してください。",
+      "・「直近の記録」が渡されていれば、最近の傾向や個人内の変化にも触れてください。",
+      "・相関や傾向は、そのまま原因と結果として断定しないでください。",
       "",
-      "【返し方】まず食品ごとに次の8行を繰り返し、次に区分ごとの合計、",
-      "最後に一日の合計を書いてください。",
-      "この形だけを返してください（前置きも、まとめの文も要りません）。",
+      "【返し方】まず食品ごとに次の行を繰り返し、次に区分ごとの合計、"
+        + "そのあとに一日の合計、最後にエネルギー収支の評価と気づいたことを書いてください。",
+      "この形だけを返してください（前置きは要りません）。",
       "",
       AI_ITEM_LINES.join("\n"),
       "",
@@ -19361,9 +19410,15 @@ a.btn { text-decoration: none; }
       "",
       AI_LINES.join("\n"),
       "",
+      "（そのあとに、エネルギー収支の評価と気づいたことを自由に）",
+      "評価: 文章",
+      "",
       "【食事メモ】",
       String(memo || "").trim(),
-    ].join("\n");
+    ];
+    if (c.body) lines.push("", "【今日の記録】", c.body);
+    if (c.recent) lines.push("", "【直近の記録】", c.recent);
+    return lines.join("\n");
   }
 
   /* 返事の読み取り。行の頭の飾り（- や *）、全角のコロン、単位、
@@ -19410,12 +19465,20 @@ a.btn { text-decoration: none; }
      ないので、そのまま通します。 */
   const SLOT_SUM_RE = /^[【[]?\s*(朝|昼|夕|夜|間食|おやつ|軽食|夜食)(?:食|ごはん|ご飯)?\s*[】\]]?\s*(?:の)?\s*(?:合計|小計|計|総計|カロリー|kcal)?\s*[:：]/i;
 
+  /* 「評価:」「分析:」「気づいたこと:」から先は、数ではなく自由な文です。
+     一度この見出しに入ったら、あとは全部その文として拾います
+     （途中に別の見出しらしき語が出てきても、数の読み取りには戻りません
+     ——評価文の中に「タンパク質」という単語が出てくることもあるので）。 */
+  const ANALYSIS_HEAD_RE = /^(評価|分析|気づいたこと|エネルギー収支|コメント)\s*[:：]?\s*/;
+
   function readAiReply(text) {
     const out = { kcal: null, p: null, f: null, c: null, fiber: null, low: null, high: null };
     const slots = { breakfast: null, lunch: null, dinner: null, snack: null };
     const foods = [];
+    const analysisLines = [];
     let cur = null;                 // いま読んでいる食品
     let inTotals = false;           // 「摂取カロリー」から先は合計
+    let inAnalysis = false;         // 「評価」から先は自由文
     let found = 0;
 
     const closeFood = () => {
@@ -19425,7 +19488,18 @@ a.btn { text-decoration: none; }
 
     String(text || "").split(/\r?\n/).forEach((line) => {
       const raw = line.trim().replace(/^[-・*＊●○\s]+/, "");
+
+      if (inAnalysis) { if (raw) analysisLines.push(raw); return; }
       if (!raw) return;
+
+      if (ANALYSIS_HEAD_RE.test(raw)) {
+        closeFood();
+        inTotals = true;
+        inAnalysis = true;
+        const rest = raw.replace(ANALYSIS_HEAD_RE, "").trim();
+        if (rest) analysisLines.push(rest);
+        return;
+      }
 
       // 食品の始まり
       if (/^(食品|品目|料理|food|item)\s*[:：]/i.test(raw)) {
@@ -19433,7 +19507,8 @@ a.btn { text-decoration: none; }
         inTotals = false;
         const name = rhsOf(raw).replace(/[（(].*?[)）]\s*$/, "").trim();
         cur = { name: name || "（名前なし）", amount: "", slot: null,
-                kcal: null, p: null, f: null, c: null, fiber: null };
+                kcal: null, p: null, f: null, c: null, fiber: null,
+                basis: "", source: "", confidence: "" };
         return;
       }
       if (cur && /^(量|分量|目安量|amount|qty)\s*[:：]/i.test(raw)) {
@@ -19442,6 +19517,20 @@ a.btn { text-decoration: none; }
       }
       if (cur && /^(区分|食事区分|slot|meal)\s*[:：]/i.test(raw)) {
         cur.slot = slotOf(rhsOf(raw));
+        return;
+      }
+      /* Web検索の根拠・情報源・確度。くらしノート自身は検索しません——
+         貼り付け先のAIが検索した結果を、そのまま拾って残すだけです。 */
+      if (cur && /^(根拠|reasoning|basis)\s*[:：]/i.test(raw)) {
+        cur.basis = rhsOf(raw).slice(0, 200);
+        return;
+      }
+      if (cur && /^(情報源|出典|参照|source)\s*[:：]/i.test(raw)) {
+        cur.source = rhsOf(raw).slice(0, 300);
+        return;
+      }
+      if (cur && /^(確度|信頼度|confidence)\s*[:：]/i.test(raw)) {
+        cur.confidence = rhsOf(raw).slice(0, 20);
         return;
       }
 
@@ -19477,6 +19566,7 @@ a.btn { text-decoration: none; }
     closeFood();
 
     out.foods = foods;
+    if (analysisLines.length) out.analysis = analysisLines.join("\n").slice(0, 2000);
     /* 小計が書かれていなくても、食品ごとに区分が付いていれば足せます。
        （どちらも無い日は null のまま——0 は「食べなかった」なので。） */
     if (!Object.keys(slots).some((k) => slots[k] != null)) {
@@ -19496,7 +19586,7 @@ a.btn { text-decoration: none; }
       out.summed = true;
       found += 4;
     }
-    out.found = found + foods.length;
+    out.found = found + foods.length + (out.analysis ? 1 : 0);
     return out;
   }
 
@@ -19524,6 +19614,7 @@ a.btn { text-decoration: none; }
         name: x.name, amount: x.amount || "", slot: x.slot || null, grams: null,
         kcal: x.kcal || 0, p: x.p || 0, f: x.f || 0, c: x.c || 0,
         fiber: x.fiber, from: "ai", foodId: null, estimated: true,
+        basis: x.basis || "", source: x.source || "", confidence: x.confidence || "",
       }));
     }
     if (ai.kcal == null && ai.p == null && ai.f == null && ai.c == null) return [];
@@ -19623,12 +19714,56 @@ a.btn { text-decoration: none; }
     return rows.join("\n");
   }
 
+  /**
+   * その日のからだの記録（体重・体脂肪率・歩数・総消費・睡眠・飲酒）を、
+   * AIに渡す一つの文に。書いていない項目は行ごと出しません——空欄を
+   * 「0だった」と読まれないように。
+   */
+  function dayBodyText(day) {
+    const card = D.dayCard(day);
+    const rows = [];
+    if (card.weight) {
+      rows.push(`体重: ${card.weight.kg}kg`);
+      if (card.weight.fat != null) rows.push(`体脂肪率: ${card.weight.fat}%`);
+    }
+    if (card.steps != null) rows.push(`歩数: ${Math.round(card.steps)}歩`);
+    if (card.burned != null) rows.push(`総消費カロリー: ${Math.round(card.burned)}kcal`);
+    if (card.sleep != null) rows.push(`睡眠: ${hm(card.sleep)}`);
+    rows.push(card.drinkTotals
+      ? `飲酒: 純アルコール${card.drinkTotals.alcoholG}g`
+        + `（目安${alcoholGuide()}gの${Math.round(card.drinkTotals.alcoholG / alcoholGuide() * 100)}%）`
+      : "飲酒: なし");
+    return rows.join("\n");
+  }
+
+  /**
+   * 直近の記録を、日ごと一行の表に。「必要に応じて」なので、何も無い日は
+   * 出しません——空の行を並べても、傾向の材料にならないので。
+   */
+  function recentText(day, spanDays) {
+    const n = spanDays || 7;
+    const rows = [];
+    for (let i = 1; i <= n; i++) {
+      const d = U.shiftDay(day, -i);
+      const c = D.dayCard(d);
+      if (!c.weight && !c.totals && c.steps == null) continue;
+      const parts = [U.formatDay(d)];
+      if (c.weight) parts.push(`体重${c.weight.kg}kg`);
+      if (c.totals) parts.push(`摂取${c.totals.kcal.toLocaleString()}kcal`);
+      if (c.burned != null) parts.push(`総消費${Math.round(c.burned).toLocaleString()}kcal`);
+      if (c.steps != null) parts.push(`歩数${Math.round(c.steps).toLocaleString()}`);
+      rows.push(parts.join(" ／ "));
+    }
+    return rows.join("\n");
+  }
+
   /** 保存してある明細から、AIの「食品ごと」の形に戻します。 */
   function foodsOf(rec) {
     if (!rec) return [];
     return rec.items.filter((i) => i.from === "ai" && i.name !== "AI推計").map((i) => ({
       name: i.name, amount: i.amount || "", slot: i.slot || null,
       kcal: i.kcal, p: i.p, f: i.f, c: i.c, fiber: i.fiber,
+      basis: i.basis || "", source: i.source || "", confidence: i.confidence || "",
     }));
   }
 
@@ -19636,6 +19771,9 @@ a.btn { text-decoration: none; }
     const day = day0 || curDay();
     const cur = store.dayMemo(day);
     const memoText = dayMemoText(day);
+    // 「AIへコピー」に自動で乗せる、今日のからだの記録と直近の記録。
+    const bodyText = dayBodyText(day);
+    const recent = recentText(day, 7);
     /* 手で書いた明細（前の作りで入れたもの）は触りません。AIのぶんだけを
        入れ替えます。 */
     const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
@@ -19651,10 +19789,12 @@ a.btn { text-decoration: none; }
             先に「食事を書く」で、食べたものを入れてください。</p>`}
         <button class="btn btn-soft btn-block js-prompt">${icon("copy")}AI用プロンプトを作成</button>
         <p class="diet-note">
-          決まった聞き方と、この日の食事メモをひとつの文にしてコピーします。
-          ChatGPTなどに貼って、返ってきた行をそのまま下の欄に貼り戻してください
-          （<b>食品ごとの内わけ</b>と、<b>朝・昼・夜・間食それぞれの合計</b>、
-          そして<b>一日の合計</b>が返ります）。
+          決まった聞き方と、食事メモ・<b>今日の体重や歩数・総消費・睡眠・飲酒</b>・
+          直近の記録をひとつの文にしてコピーします。ChatGPTなどに貼ってください
+          （<b>Web検索や情報源の確認、栄養推定、傾向の分析</b>は、貼った先のAIが行います
+          ——くらしノート自身は検索しません）。
+          返ってきた行をそのまま下の欄に貼り戻せば、<b>食品ごとの内わけ（根拠・情報源つき）</b>、
+          <b>朝・昼・夜・間食それぞれの合計</b>、<b>一日の合計</b>、<b>その日の評価</b>が保存されます。
           <b>お酒は入れません</b>——お酒は別に記録していて、カロリーもそちらで数えます。
         </p>
 
@@ -19688,7 +19828,7 @@ a.btn { text-decoration: none; }
     /* ---- ① プロンプトを作ってコピー ---- */
     body.querySelector(".js-prompt").addEventListener("click", () => {
       if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
-      const text = aiPrompt(memoText);
+      const text = aiPrompt(memoText, { body: bodyText, recent });
       copyText(text).then((ok) => {
         haptic(10);
         if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
@@ -19722,10 +19862,15 @@ a.btn { text-decoration: none; }
       }
       /* 食品ごとの数は、保存はしますが並べません（読み合わせても
          次の一手が変わらないので）。ここで見せるのは、区分ごとの合計と
-         一日の合計——帯と数に出るのはこの二つだけです。 */
+         一日の合計——帯と数に出るのはこの二つだけです。
+         情報源・確度は、件数の要約だけ添えます（何を確認できたかが
+         分かれば十分で、一件ずつ見比べる場面は多くないので）。 */
       if (ai.foods && ai.foods.length) {
+        const sourced = ai.foods.filter((x) => x.source && !/^AIの推定/.test(x.source)).length;
+        const high = ai.foods.filter((x) => /高/.test(x.confidence || "")).length;
         host.append(node(html`
-          <p class="diet-note">食品 ${ai.foods.length}件を読み取りました。</p>`));
+          <p class="diet-note">食品 ${ai.foods.length}件を読み取りました
+            ${sourced ? `（情報源つき ${sourced}件${high ? `・確度「高」${high}件` : ""}）` : ""}。</p>`));
       }
       if (ai.slots) {
         host.append(node(html`
@@ -19748,6 +19893,13 @@ a.btn { text-decoration: none; }
             </div>`).join(""))}
         </div>
       `));
+      if (ai.analysis) {
+        host.append(node(html`
+          <div class="field">
+            <span class="field-label">その日の評価</span>
+            <div class="diet-read"><div class="diet-drink-row"><b>${ai.analysis}</b></div></div>
+          </div>`));
+      }
       host.append(node(html`
         <p class="diet-note">${ai.summed
           ? "合計は書かれていなかったので、食品ごとの数を足しました。"
