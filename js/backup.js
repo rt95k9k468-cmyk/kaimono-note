@@ -19,6 +19,8 @@
   const KEEP = 7;
   const REMIND_AFTER_DAYS = 30;
   const REMIND_MIN_PRODUCTS = 5;
+  const REMIND_MIN_TODOS = 5;
+  const REMIND_MIN_DIET_RECORDS = 5;
 
   function read() {
     try {
@@ -53,9 +55,20 @@
     };
   }
 
+  // やること・ダイエットの記録も守る対象なので、買い物が空でも
+  // どちらかに中身があれば「空ではない」とみなします。
+  function dietRecordCount(state) {
+    const d = (state && state.diet) || {};
+    return (d.weights || []).length + (d.meals || []).length
+      + (d.health || []).length + (d.drinks || []).length + (d.foods || []).length;
+  }
+
   function isEmpty(state) {
     const s = summarize(state);
-    return !s.products && !s.stores && !s.items;
+    if (s.products || s.stores || s.items) return false;
+    if ((state.todos || []).length) return false;
+    if (dietRecordCount(state)) return false;
+    return true;
   }
 
   /** Store the current state. Returns false when there was nothing worth keeping. */
@@ -122,7 +135,10 @@
   /** True once there is real data and no file has been written out in a while. */
   function exportDue() {
     const st = store.get();
-    if ((st.products || []).length < REMIND_MIN_PRODUCTS) return false;
+    const worth = (st.products || []).length >= REMIND_MIN_PRODUCTS
+      || (st.todos || []).length >= REMIND_MIN_TODOS
+      || dietRecordCount(st) >= REMIND_MIN_DIET_RECORDS;
+    if (!worth) return false;
     const last = lastExportAt();
     if (!last) return true;
     const days = (Date.now() - new Date(last).getTime()) / 86400000;

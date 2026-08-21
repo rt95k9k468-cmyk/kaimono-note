@@ -76,6 +76,7 @@
   function render() {
     const only = scope();
     els.body.innerHTML = "";
+    if (store.saveError()) els.body.append(saveErrorBanner());
     els.body.append(themeGroup());
 
     if (showAll || only === "todo") els.body.append(todoGroup());
@@ -88,6 +89,25 @@
     els.body.append(dataGroup());
     if (!showAll) els.body.append(moreBlock(only));
     els.body.append(aboutBlock());
+  }
+
+  /* 直近の保存が容量不足などで失敗したままのとき、直るまでずっと出す行。
+     一度きりのトーストは読み飛ばされて忘れられるので、ここには「保存済み
+     ではない」という事実を、直るまで居座らせます（store.js の saveError）。 */
+  function saveErrorBanner() {
+    return node(html`
+      <section class="settings-group">
+        <div class="rows" style="border:1px solid var(--c-danger); border-radius:12px; overflow:hidden">
+          <div class="row" style="background:var(--c-danger-soft)">
+            <span class="row-main">
+              <span class="row-title" style="color:var(--c-danger)">保存できていません</span>
+              <span class="row-sub">空き容量が足りないなど、変更がこの端末に保存できていません。
+                空き容量を確保するか、不要なアプリ・写真を整理してから、もう一度操作してみてください。</span>
+            </span>
+          </div>
+        </div>
+      </section>
+    `);
   }
 
   const SCOPE_LABEL = { todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
@@ -1257,7 +1277,7 @@
     wrap.querySelector(".js-reset").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
         title: "すべて削除しますか？",
-        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
+        message: "買い物リスト・商品・価格・お店だけでなく、やること・ダイエットの記録（体重・食事・お酒・目標）や設定もすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
         okLabel: "削除する",
         danger: true,
       });
