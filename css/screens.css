@@ -1702,6 +1702,13 @@
 }
 .diet-note b { color: var(--c-text); }
 .diet-note.is-warn { color: var(--c-danger); }
+/* AIが返してきた、その日の評価。読みものなので、ほかの注意書きより
+   少し目立たせます（枠の色でひと目でAI由来と分かるように）。 */
+.diet-ai-note {
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-accent) 8%, var(--c-surface));
+  color: var(--c-text-2);
+}
 
 /* ---- グラフ ---- */
 
