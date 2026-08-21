@@ -353,6 +353,45 @@
 
   let calMonth = null;                 // {year, month}、null は「今日の月」
 
+  /* カレンダーを月ぜんぶ出すか、いまの週だけに畳むか。
+     既定は週です——月の顔は画面の36%（306px）を使って、日付31個と点数個しか
+     運んでいませんでした。畳めば、その日の記録が最初の画面に入ります。
+     月の顔が要るときは押せば開き、その選択は覚えます（設定に持ちます）。
+
+     畳んでもマスは**ぜんぶ組んで**あります。隠すだけなので、開くのに
+     組み直しは要らず、輪の位置も測り直さずに済みます。 */
+  const calOpen = () => store.get().settings.calOpen === true;
+
+  /** いま出している週だけを残して、ほかのマスに印を付けます。 */
+  function markWeek(sec, here) {
+    const open = calOpen();
+    sec.classList.toggle("is-week", !open);
+    const btn = sec.querySelector(".js-calmore");
+    if (btn) {
+      btn.textContent = open ? "月" : "週";
+      btn.setAttribute("aria-expanded", String(open));
+      btn.setAttribute("aria-label", open ? "週だけにする" : "月ぜんぶを見る");
+    }
+    if (open) {
+      sec.querySelectorAll(".is-off-week").forEach((c) => c.classList.remove("is-off-week"));
+      return;
+    }
+    /* 選んでいる日が、いま出している月に無いことがあります（‹ で先の月を
+       覗いているとき）。そのときはその月の頭の週を出します——空っぽの
+       週を出すよりは、行き先のある週のほうが役に立ちます。 */
+    const first = sec.querySelector(".cal-day");
+    const hasHere = !!sec.querySelector(`.cal-day[data-day="${here}"]`);
+    const anchor = hasHere ? here : (first ? first.dataset.day : here);
+    const w = U.weekOf(anchor);
+    sec.querySelectorAll(".cal-day").forEach((c) => {
+      const k = c.dataset.day;
+      c.classList.toggle("is-off-week", k < w.from || k > w.to);
+    });
+    // 月の頭の空きマスは、その週を出しているときだけ残します。
+    const padsOn = !!first && first.dataset.day >= w.from && first.dataset.day <= w.to;
+    sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
+  }
+
   function shownMonth() {
     if (calMonth) return calMonth;
     const d = U.dayDate(curDay()) || new Date();
@@ -389,8 +428,9 @@
           <span class="cal-year"></span>
           <button type="button" class="cal-now js-now" hidden>今日へ</button>
           <span class="cal-nav">
-            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
+            <button type="button" class="cal-more js-calmore" aria-expanded="false"></button>
+            <button type="button" class="cal-arrow js-prev" aria-label="前へ">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-next" aria-label="次へ">${icon("chevron")}</button>
           </span>
         </h2>
         <div class="cal-grid"></div>
@@ -398,13 +438,28 @@
     `);
     const grid = sec.querySelector(".cal-grid");
 
+    /* ‹ › の刻みは、出しているものに合わせます——週だけ出しているときに
+       月ごと飛ぶと、押した先に自分の週が無くなります。 */
     const goTo = (delta) => {
+      haptic();
+      if (!calOpen()) {
+        const next = U.shiftDay(curDay(), delta * 7);
+        if (next > U.todayKey()) return;        // 先の日は見に行きません
+        viewDay = next === U.todayKey() ? null : next;
+        const d = U.dayDate(next);
+        calMonth = { year: d.getFullYear(), month: d.getMonth() };
+        render();
+        return;
+      }
       const m = shownMonth();
       const d = new Date(m.year, m.month + delta, 1);
-      haptic();
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
       fillCalendar(sec);
     };
+    sec.querySelector(".js-calmore").addEventListener("click", () => {
+      haptic();
+      store.update((s) => { s.settings.calOpen = !calOpen(); });
+    });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
@@ -505,6 +560,8 @@
       });
       grid.append(cell);
     }
+    // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
+    markWeek(sec, here);
     // 描いたあとに、選んでいる日へ置きます（並んでいないと測れません）。
     moveRing(grid, grid.querySelector(".cal-day.is-here"), true);
   }

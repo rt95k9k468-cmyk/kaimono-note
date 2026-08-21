@@ -212,6 +212,15 @@
     return dayKey(d);
   }
 
+  /** その日を含む一週間（日曜はじまり）の、両端の日。
+   *  カレンダーを一週ぶんに畳むときに、どのマスを残すかを決めます。 */
+  function weekOf(key) {
+    const d = dayDate(key);
+    if (!d) return { from: "", to: "" };
+    const wd = d.getDay();
+    return { from: shiftDay(key, -wd), to: shiftDay(key, 6 - wd) };
+  }
+
   /** Same date n months on, clamped to the month's last day — 1/31 monthly is
    *  2/28, not 3/3. */
   function shiftMonth(key, n) {
@@ -511,7 +520,7 @@
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana,
     isTime, partOfTime, formatTime, nowTime,
-    dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekdayJa, formatDay,
+    dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
