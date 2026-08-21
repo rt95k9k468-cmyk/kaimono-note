@@ -8791,6 +8791,13 @@ a.btn { text-decoration: none; }
     return s;
   }
 
+  /* 保存できなかった状態を覚えておきます。編集は画面には反映されますが、
+     ディスクには書けていません——120msごとに黙って失敗し続けると
+     トーストだけが鳴り続けるので、**状態が変わったとき**（失敗し始めた・
+     戻った）だけ知らせます。設定画面はこれを見て、直っていないあいだ
+     ずっと出る行を表示できます（一度きりのトーストは読み飛ばされるので）。 */
+  let saveError = null;
+
   let saveTimer = null;
   function persist() {
     clearTimeout(saveTimer);
@@ -8803,9 +8810,18 @@ a.btn { text-decoration: none; }
       saveTimer = null;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
+        if (saveError) {
+          saveError = null;
+          KN.ui && KN.ui.toast("保存を再開しました");
+          emit();   // 設定画面が出したままの警告行を、直った時点で引っ込めるため
+        }
       } catch (err) {
         console.error("save failed", err);
-        KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+        if (!saveError) {
+          saveError = String((err && err.message) || err);
+          KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+          emit();   // 開いている画面があれば、その場で警告行を出すため
+        }
       }
     }, 120);
   }
@@ -9993,6 +10009,7 @@ a.btn { text-decoration: none; }
   KN.store = {
     KEY, SCHEMA, STORE_COLORS, CATEGORY_COLORS, OTHER_CATEGORY,
     get, update, subscribe, reload,
+    saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
@@ -11394,6 +11411,8 @@ a.btn { text-decoration: none; }
   const KEEP = 7;
   const REMIND_AFTER_DAYS = 30;
   const REMIND_MIN_PRODUCTS = 5;
+  const REMIND_MIN_TODOS = 5;
+  const REMIND_MIN_DIET_RECORDS = 5;
 
   function read() {
     try {
@@ -11428,9 +11447,20 @@ a.btn { text-decoration: none; }
     };
   }
 
+  // やること・ダイエットの記録も守る対象なので、買い物が空でも
+  // どちらかに中身があれば「空ではない」とみなします。
+  function dietRecordCount(state) {
+    const d = (state && state.diet) || {};
+    return (d.weights || []).length + (d.meals || []).length
+      + (d.health || []).length + (d.drinks || []).length + (d.foods || []).length;
+  }
+
   function isEmpty(state) {
     const s = summarize(state);
-    return !s.products && !s.stores && !s.items;
+    if (s.products || s.stores || s.items) return false;
+    if ((state.todos || []).length) return false;
+    if (dietRecordCount(state)) return false;
+    return true;
   }
 
   /** Store the current state. Returns false when there was nothing worth keeping. */
@@ -11497,7 +11527,10 @@ a.btn { text-decoration: none; }
   /** True once there is real data and no file has been written out in a while. */
   function exportDue() {
     const st = store.get();
-    if ((st.products || []).length < REMIND_MIN_PRODUCTS) return false;
+    const worth = (st.products || []).length >= REMIND_MIN_PRODUCTS
+      || (st.todos || []).length >= REMIND_MIN_TODOS
+      || dietRecordCount(st) >= REMIND_MIN_DIET_RECORDS;
+    if (!worth) return false;
     const last = lastExportAt();
     if (!last) return true;
     const days = (Date.now() - new Date(last).getTime()) / 86400000;
@@ -17825,7 +17858,11 @@ a.btn { text-decoration: none; }
   function buildDaySlide(day, opts) {
     const peek = !!(opts && opts.peek);
     const card = (opts && opts.card) || D.dayCard(day);
-    const win = Math.max(range || 365, 30);
+    // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
+    // 全期間を描くのに、隣の前回比・7日平均などのサマリーだけ直近365日に
+    // 切り詰まってしまうので、ここだけ別に大きく取ります
+    // （chart() 側の daysBetween と同じ上限=4000日）。
+    const win = range === 0 ? 4000 : Math.max(range, 30);
     const sum = (opts && opts.sum) || D.weightSummary(win, day);
     const slide = node(html`
       <section class="card diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
@@ -17854,7 +17891,11 @@ a.btn { text-decoration: none; }
     const keepTop = root ? root.scrollTop : 0;
     const day = curDay();
     const card = D.dayCard(day);
-    const win = Math.max(range || 365, 30);
+    // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
+    // 全期間を描くのに、隣の前回比・7日平均などのサマリーだけ直近365日に
+    // 切り詰まってしまうので、ここだけ別に大きく取ります
+    // （chart() 側の daysBetween と同じ上限=4000日）。
+    const win = range === 0 ? 4000 : Math.max(range, 30);
     // 上の枠はその日の話、下の「目標」はいまの話。
     const sum = D.weightSummary(win, day);
     const now = isViewToday() ? sum : D.weightSummary(win);
@@ -23047,6 +23088,7 @@ distance=6.0km</pre>
   function render() {
     const only = scope();
     els.body.innerHTML = "";
+    if (store.saveError()) els.body.append(saveErrorBanner());
     els.body.append(themeGroup());
 
     if (showAll || only === "todo") els.body.append(todoGroup());
@@ -23059,6 +23101,25 @@ distance=6.0km</pre>
     els.body.append(dataGroup());
     if (!showAll) els.body.append(moreBlock(only));
     els.body.append(aboutBlock());
+  }
+
+  /* 直近の保存が容量不足などで失敗したままのとき、直るまでずっと出す行。
+     一度きりのトーストは読み飛ばされて忘れられるので、ここには「保存済み
+     ではない」という事実を、直るまで居座らせます（store.js の saveError）。 */
+  function saveErrorBanner() {
+    return node(html`
+      <section class="settings-group">
+        <div class="rows" style="border:1px solid var(--c-danger); border-radius:12px; overflow:hidden">
+          <div class="row" style="background:var(--c-danger-soft)">
+            <span class="row-main">
+              <span class="row-title" style="color:var(--c-danger)">保存できていません</span>
+              <span class="row-sub">空き容量が足りないなど、変更がこの端末に保存できていません。
+                空き容量を確保するか、不要なアプリ・写真を整理してから、もう一度操作してみてください。</span>
+            </span>
+          </div>
+        </div>
+      </section>
+    `);
   }
 
   const SCOPE_LABEL = { todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
@@ -24228,7 +24289,7 @@ distance=6.0km</pre>
     wrap.querySelector(".js-reset").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
         title: "すべて削除しますか？",
-        message: "買い物リスト・商品・価格・お店の記録がすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
+        message: "買い物リスト・商品・価格・お店だけでなく、やること・ダイエットの記録（体重・食事・お酒・目標）や設定もすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
         okLabel: "削除する",
         danger: true,
       });

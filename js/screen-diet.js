@@ -245,7 +245,11 @@
   function buildDaySlide(day, opts) {
     const peek = !!(opts && opts.peek);
     const card = (opts && opts.card) || D.dayCard(day);
-    const win = Math.max(range || 365, 30);
+    // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
+    // 全期間を描くのに、隣の前回比・7日平均などのサマリーだけ直近365日に
+    // 切り詰まってしまうので、ここだけ別に大きく取ります
+    // （chart() 側の daysBetween と同じ上限=4000日）。
+    const win = range === 0 ? 4000 : Math.max(range, 30);
     const sum = (opts && opts.sum) || D.weightSummary(win, day);
     const slide = node(html`
       <section class="card diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
@@ -274,7 +278,11 @@
     const keepTop = root ? root.scrollTop : 0;
     const day = curDay();
     const card = D.dayCard(day);
-    const win = Math.max(range || 365, 30);
+    // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
+    // 全期間を描くのに、隣の前回比・7日平均などのサマリーだけ直近365日に
+    // 切り詰まってしまうので、ここだけ別に大きく取ります
+    // （chart() 側の daysBetween と同じ上限=4000日）。
+    const win = range === 0 ? 4000 : Math.max(range, 30);
     // 上の枠はその日の話、下の「目標」はいまの話。
     const sum = D.weightSummary(win, day);
     const now = isViewToday() ? sum : D.weightSummary(win);

@@ -571,6 +571,13 @@
     return s;
   }
 
+  /* 保存できなかった状態を覚えておきます。編集は画面には反映されますが、
+     ディスクには書けていません——120msごとに黙って失敗し続けると
+     トーストだけが鳴り続けるので、**状態が変わったとき**（失敗し始めた・
+     戻った）だけ知らせます。設定画面はこれを見て、直っていないあいだ
+     ずっと出る行を表示できます（一度きりのトーストは読み飛ばされるので）。 */
+  let saveError = null;
+
   let saveTimer = null;
   function persist() {
     clearTimeout(saveTimer);
@@ -583,9 +590,18 @@
       saveTimer = null;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
+        if (saveError) {
+          saveError = null;
+          KN.ui && KN.ui.toast("保存を再開しました");
+          emit();   // 設定画面が出したままの警告行を、直った時点で引っ込めるため
+        }
       } catch (err) {
         console.error("save failed", err);
-        KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+        if (!saveError) {
+          saveError = String((err && err.message) || err);
+          KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+          emit();   // 開いている画面があれば、その場で警告行を出すため
+        }
       }
     }, 120);
   }
@@ -1773,6 +1789,7 @@
   KN.store = {
     KEY, SCHEMA, STORE_COLORS, CATEGORY_COLORS, OTHER_CATEGORY,
     get, update, subscribe, reload,
+    saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
