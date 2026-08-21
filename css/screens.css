@@ -291,6 +291,23 @@
 }
 .cal-now + .cal-nav { margin-left: 0; }
 
+/* 月ぜんぶ／今週だけ の切り替え。矢印と同じ列に置きます。 */
+.cal-more {
+  min-width: 30px; height: 30px; padding: 0 9px;
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--c-text-2);
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  transition: background .14s var(--ease), color .14s var(--ease);
+}
+.cal-more[aria-expanded="true"] { color: var(--c-primary-ink); background: var(--c-primary-soft); }
+@media (hover: hover) { .cal-more:hover { color: var(--c-text); } }
+
+/* 週だけ出しているとき、そのほかのマスは隠します（組んではあります——
+   開くときに組み直さずに済むように）。 */
+.cal.is-week .cal-day.is-off-week,
+.cal.is-week .cal-pad.is-off-week { display: none; }
+
 .cal-grid {
   position: relative;
   display: grid;
