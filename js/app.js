@@ -8,6 +8,10 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
 
+  // 他のモジュールと同じく、外に出すものは一つの名前空間（KN.app）にまとめます。
+  // 中身はこのファイルのあちこちで出来上がった順に足していきます。
+  KN.app = {};
+
   /* Three buttons — one per thing this book is about: the day, the shopping,
      the body.
 
@@ -52,7 +56,7 @@
     if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
     else root.removeAttribute("data-theme");
   }
-  KN.applyTheme = applyTheme;
+  KN.app.applyTheme = applyTheme;
 
   /* ---------------- tabs ---------------- */
 
@@ -252,7 +256,7 @@
     paintAppBadge();
   }
 
-  KN.appBadge = {
+  KN.app.appBadge = {
     supported: badgeSupported,
     enabled: () => store.get().settings.appBadge === true,
     blocked: badgeBlocked,
@@ -334,6 +338,15 @@
       if (location.hash) history.replaceState(null, "", location.pathname + location.search);
     });
 
+    /* 保存は120msだけ待ってからまとめて書きます（連打のたびに書かないため）。
+       その一拍のうちにアプリを閉じられると、待っていた分だけ保存されずに
+       終わることがあります——iOSではスワイプでの終了が一瞬なので、
+       pagehide／隠れた瞬間（visibilitychange）の両方でその場に書き出します。 */
+    window.addEventListener("pagehide", () => store.flush());
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") store.flush();
+    });
+
     // Re-render whichever screen is visible whenever state changes.
     store.subscribe(() => {
       if (KN.screens[active]) KN.screens[active].render();
@@ -363,7 +376,7 @@
        by arithmetic on when it should next change. */
     let dayNow = KN.util.todayKey();
     let dueNow = store.todosDue().length;
-    KN.onMinute = () => {
+    KN.app.onMinute = () => {
       const key = KN.util.todayKey();
       const due = store.todosDue().length;
       if (key === dayNow && due === dueNow) return;
@@ -373,7 +386,7 @@
       paintTabs();
       paintAppBadge(true);
     };
-    setInterval(KN.onMinute, 30000);
+    setInterval(KN.app.onMinute, 30000);
 
     requestPersistentStorage();
     watchTopTap();
@@ -442,10 +455,10 @@
   }
 
   const isGliding = () => performance.now() < gliding;
-  KN.isGliding = isGliding;
+  KN.app.isGliding = isGliding;
   const glideToTop = (el) => glideTo(el, 0);
-  KN.glideTo = glideTo;
-  KN.glideToTop = glideToTop;
+  KN.app.glideTo = glideTo;
+  KN.app.glideToTop = glideToTop;
 
   function watchTopTap() {
     /* The header, everywhere. Buttons and fields keep their own taps. */
@@ -641,7 +654,7 @@
        stops existing — so 「入力中」 stayed true with nothing left to type
        into, and the tab bar that hides behind it stayed hidden even after the
        sheet was closed. Anything that takes a field away can say so here. */
-    KN.remeasure = () => { fit(); settle(); };
+    KN.app.remeasure = () => { fit(); settle(); };
 
     /* And a net under that: every tap re-reads it. If whatever had focus is
        gone, this is where it gets noticed — one cheap measurement, on a
@@ -769,15 +782,15 @@
 
   /* Screens off the tab bar — お店くらべ — are opened by name from the screens
      that link to them, and hand the way back with them. */
-  KN.showScreen = show;
+  KN.app.showScreen = show;
   const OFF_BAR = ["compare", "settings"];
-  KN.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+  KN.app.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
 
   /** どのタブから引き出しを開けたか。設定の画面が、出すものを選ぶのに使います。 */
-  KN.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+  KN.app.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
 
   /** いま開いている画面。下に引いたときに、誰に聞けばいいかを知るため。 */
-  KN.activeScreen = () => active;
+  KN.app.activeScreen = () => active;
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {

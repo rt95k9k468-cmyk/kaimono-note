@@ -77,9 +77,9 @@
     };
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-    els.compare.addEventListener("click", () => KN.showScreen("compare"));
+    els.compare.addEventListener("click", () => KN.app.showScreen("compare"));
     els.layout.addEventListener("click", KN.ui.toggleLayout);
-    els.settings.addEventListener("click", () => KN.showScreen("settings"));
+    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

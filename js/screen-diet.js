@@ -122,7 +122,7 @@
     };
 
     els.sync.addEventListener("click", openSyncSheet);
-    els.settings.addEventListener("click", () => KN.showScreen("settings"));
+    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
 
     /* カレンダーは貼りつけません（やることのタブとはそこだけ違います）。
        紙のいちばん上に印刷してあるものとして、スクロールで一緒に流れます。 */
@@ -163,7 +163,7 @@
     const target = Math.round(root.scrollTop + over);
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
-    KN.glideTo(root, target);
+    KN.app.glideTo(root, target);
   }
 
   function armKeyboardFollow(field) {
@@ -211,7 +211,7 @@
         const active = document.activeElement;
         const stillTyping = active && root.contains(active) && active.matches("input, textarea, select");
         if (stillTyping) return;
-        KN.glideTo(root, kbScrollBase);
+        KN.app.glideTo(root, kbScrollBase);
         kbScrollBase = null; kbTarget = null; kbField = null;
       }, 80);
     });
@@ -260,7 +260,7 @@
     `);
     renderBodyStats(slide.querySelector(".js-body-stats"), card);
     renderMeals(slide.querySelector(".js-meals"), card, { peek });
-    renderToday(slide.querySelector(".js-today"), card, sum);
+    renderToday(slide.querySelector(".js-today"), card, sum, opts && opts.chartEl);
     if (peek) slide.inert = true;
     return slide;
   }
@@ -315,11 +315,14 @@
       </div>
     `));
 
+    // 三枚とも同じ体重グラフ（どの日を見ているかには依存しない）なので、
+    // 一度だけ作って、残り二枚には複製を渡します。
+    const sharedChart = chart();
     const track = els.body.querySelector(".js-track");
     track.append(
-      buildDaySlide(U.shiftDay(day, -1), { peek: true }),
-      buildDaySlide(day, { peek: false, card, sum }),
-      buildDaySlide(U.shiftDay(day, 1), { peek: true }),
+      buildDaySlide(U.shiftDay(day, -1), { peek: true, chartEl: sharedChart.cloneNode(true) }),
+      buildDaySlide(day, { peek: false, card, sum, chartEl: sharedChart }),
+      buildDaySlide(U.shiftDay(day, 1), { peek: true, chartEl: sharedChart.cloneNode(true) }),
     );
 
     renderInsight(els.body.querySelector(".js-insight"));
@@ -695,7 +698,7 @@
        グラフを見るのにいちいちスクロールすることになります。
      ・そのグラフも、同じ枠の中に入れます。「いまの体重」と「その動き」は
        別々の話ではありません。 */
-  function renderToday(host, card, sum) {
+  function renderToday(host, card, sum, chartEl) {
     const w = card.weight;
     const g = sum.goal;
     const pace = D.neededPace();
@@ -741,7 +744,7 @@
       </div>
     `);
     sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
-    renderGraph(sec.querySelector(".js-graph"));
+    renderGraph(sec.querySelector(".js-graph"), chartEl);
     host.append(sec);
   }
 
@@ -789,7 +792,11 @@
      「並べて見る」の札はグラフの**右**に縦に並べます。下に置くと、選ぶ
      たびに目が下まで降りて戻ることになり、六つ並べると横にもあふれます。
      縦に置けば、グラフの高さがそのまま札の置き場になります。 */
-  function renderGraph(host) {
+  /* chartEl を渡されたら、それを使います（作り直しません）。三枚の
+     カルーセルはどれも同じグラフ（選んだ日には依存しません）なので、
+     render() 側で一度だけ作って、他の二枚には複製を渡します——履歴が
+     長くなるほど chart() 自体が重くなるので、同じものを3回作らないため。 */
+  function renderGraph(host, chartEl) {
     const sec = node(html`
       <div class="diet-graph">
         <div class="section-title">${icon("chart")}体重の推移</div>
@@ -823,7 +830,7 @@
       onPick: (id) => { series = String(id || ""); render(); },
     });
 
-    sec.querySelector(".js-chart").append(chart());
+    sec.querySelector(".js-chart").append(chartEl || chart());
     host.append(sec);
   }
 
@@ -3362,7 +3369,12 @@ distance=6.0km</pre>
     const h = KN.ui.sheet({ title: "ヘルスケアから取り込む", content: body });
 
     const done = (res) => {
-      KN.ui.toast(KN.healthSync.describe(res));
+      let msg = KN.healthSync.describe(res);
+      // 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
+      // いたことがあります——黙ってよい自動のときとは違い、ここは自分で
+      // 押した操作なので、そのぶんは伝えます。
+      if (res && res.replaced) msg += "／前の便は読まれないまま上書きされていました";
+      KN.ui.toast(msg);
       if (res && res.ok) { h.close(); render(); }
     };
 
@@ -3662,7 +3674,7 @@ distance=6.0km</pre>
       retryTimer = 0;
       // そのあいだに事情が変わっていたら、掛け直しません。
       if (store.get().settings.dietAutoSync === false) return;
-      if (KN.activeScreen && KN.activeScreen() !== "diet") return;
+      if (KN.app.activeScreen && KN.app.activeScreen() !== "diet") return;
       if (!KN.healthRelay.configured()) return;
       pullRelay(step + 1);
     }, retryWaits[step]);
@@ -3709,13 +3721,22 @@ distance=6.0km</pre>
      そして**ここでは黙りません**。自分で引いたのに何も言われないのが、
      いちばん困ります（タブを開いたときの自動取り込みは、電波の悪い場所で
      毎回赤い字が出ないように黙りますが、あれとは事情が違います）。 */
+  /* 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
+     いたことがあります。自分で引いた・押したときだけ言い添えます
+     （自動のときが黙るのはそのままです）。 */
+  function describeRelay(res) {
+    let msg = "中継所：" + KN.healthSync.describe(res);
+    if (res && res.replaced) msg += "／前の便は読まれないまま上書きされていました";
+    return msg;
+  }
+
   function refresh() {
     if (!KN.healthRelay.configured()) return Promise.resolve();
     return KN.healthRelay.pullAndImport().then((res) => {
       if (res.ok && (res.added || res.updated)) {
         lastAuto = res.text || lastAuto;
         render();
-        KN.ui.toast("中継所：" + KN.healthSync.describe(res));
+        KN.ui.toast(describeRelay(res));
         return;
       }
       if (res.empty) { KN.ui.toast("中継所に新しいデータはありません"); return; }
@@ -3723,7 +3744,7 @@ distance=6.0km</pre>
          そのことを言って、あとは自動と同じく待って掛け直します。 */
       if (res.locked) { render(); scheduleRetry(0); KN.ui.toast(res.error); return; }
       if (!res.ok) { KN.ui.toast(res.error || "中継所につながりませんでした"); return; }
-      KN.ui.toast("中継所：" + KN.healthSync.describe(res));
+      KN.ui.toast(describeRelay(res));
     }).catch((err) => {
       KN.ui.toast("中継所につながりませんでした（" + (err && err.message || err) + "）");
     });
@@ -3742,7 +3763,7 @@ distance=6.0km</pre>
     watchResume.done = true;
     const back = () => {
       if (document.visibilityState !== "visible") return;
-      if (KN.activeScreen && KN.activeScreen() !== "diet") return;
+      if (KN.app.activeScreen && KN.app.activeScreen() !== "diet") return;
       const st = store.get().settings;
       if (st.dietAutoSync === false) return;
       if (!KN.healthRelay.configured()) return;

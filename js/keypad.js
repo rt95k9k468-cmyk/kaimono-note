@@ -261,7 +261,7 @@
     guardGhostClick();
     // The pad standing in for the keyboard means the app's idea of one has to
     // be re-read now, whether or not a blur was there to announce it.
-    KN.remeasure && KN.remeasure();
+    KN.app.remeasure && KN.app.remeasure();
   }
 
   /* ---------------- the click that lands somewhere else ----------------

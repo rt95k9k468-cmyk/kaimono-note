@@ -82,8 +82,8 @@
     };
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
-    els.settings.addEventListener("click", () => KN.showScreen("settings"));
-    els.compare.addEventListener("click", () => KN.showScreen("compare"));
+    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
+    els.compare.addEventListener("click", () => KN.app.showScreen("compare"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {

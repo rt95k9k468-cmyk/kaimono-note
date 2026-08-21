@@ -232,7 +232,9 @@
         .map((t) => String(t || "").trim())
         .filter(Boolean)
         .slice(0, 6),
-      raw: typeof d.raw === "string" ? d.raw : "",
+      // 書いた文はそのまま残しますが、際限なく伸ばさないよう meal.ai.raw と
+      // 同じ上限（4000字）で切ります。
+      raw: typeof d.raw === "string" ? d.raw.slice(0, 4000) : "",
       at: d.at || new Date().toISOString(),
     };
   }
@@ -368,6 +370,9 @@
   let migratedOnLoad = false;
   let state = load();
   const listeners = new Set();
+  // update()/reload() のたびに上がる版数。ダイエットの日付索引（下の
+  // dietIndex_）を、state が本当に動いたときだけ作り直すために使います。
+  let version = 0;
 
   function load() {
     try {
@@ -613,6 +618,7 @@
   /** Apply a mutation, persist, and notify. */
   function update(mutator) {
     mutator(state);
+    version++;
     persist();
     emit();
   }
@@ -622,19 +628,32 @@
     return () => listeners.delete(fn);
   }
 
+  // 120msの間だけ待っている保存があれば、いま書き出します。
+  function flushPending() {
+    if (!saveTimer) return;
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* the next save reports it */ }
+  }
+
   /* Re-read what is actually on disk. Each tab — or the same installed app
      opened in two places — keeps its own copy in memory, and the `storage`
      event only reaches tabs that were already open. Pulling to refresh is how
      you ask for whatever the other one wrote. Our own pending save goes out
      first, so a refresh can never discard an edit that had not landed yet. */
   function reload() {
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
-      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* the next save reports it */ }
-    }
+    flushPending();
     state = load();
+    version++;
     emit();
+  }
+
+  /* iOSでアプリを閉じる・タブを切り替えるとき、120msのデバウンス待ちの
+     まっただ中だと、その一拍が保存されずに終わることがあります。
+     pagehide／visibilitychange（隠れた瞬間）で呼び、待っている保存が
+     あればその場で書き出します。 */
+  function flush() {
+    flushPending();
   }
 
   // A v1 upgrade only lived in memory until the first edit; write it out now so
@@ -1378,6 +1397,38 @@
 
   const diet = () => state.diet;
 
+  /* weights/meals/drinks/health は増える一方の配列で、weightOfDay 等は
+     グラフの期間や分析の日数ぶん、日ごとに何度も呼ばれます。毎回
+     ぜんぶを filter() すると、記録が長くなるほど遅くなるので、
+     日付→その日の記録、という索引を作って使い回します。
+     作り直すのは state が本当に動いたとき（version が変わったとき）
+     だけです——読み出し用の索引なので、直接は書き換えません。 */
+  let dietIndexVersion = -1;
+  let dietIndex = null;
+
+  function groupByDay(list) {
+    const map = new Map();
+    list.forEach((rec) => {
+      let arr = map.get(rec.day);
+      if (!arr) map.set(rec.day, arr = []);
+      arr.push(rec);
+    });
+    return map;
+  }
+
+  function dietIndex_() {
+    if (dietIndexVersion === version) return dietIndex;
+    const d = diet();
+    dietIndex = {
+      weights: groupByDay(d.weights),
+      meals: groupByDay(d.meals),
+      drinks: groupByDay(d.drinks),
+      health: groupByDay(d.health),
+    };
+    dietIndexVersion = version;
+    return dietIndex;
+  }
+
   /* --- 体重 --- */
 
   function addWeight({ day, time, kg, fat, memo, meal, clothed, source, externalId } = {}) {
@@ -1414,7 +1465,7 @@
   /** その日の代表値。一日に何度も測った日は、最初の一回を採ります——
       起き抜けの体重がいちばん条件がそろっているので。 */
   function weightOfDay(day) {
-    const list = diet().weights.filter((w) => w.day === day)
+    const list = (dietIndex_().weights.get(day) || []).slice()
       .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
     return list.length ? list[0] : null;
   }
@@ -1464,7 +1515,7 @@
 
   function mealsOfDay(day) {
     const order = { memo: -1, breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
-    return diet().meals.filter((m) => m.day === day)
+    return (dietIndex_().meals.get(day) || []).slice()
       .sort((a, b) => (order[a.slot] - order[b.slot]) || String(a.time).localeCompare(String(b.time)));
   }
 
@@ -1554,7 +1605,7 @@
   }
 
   function drinksOfDay(day) {
-    return diet().drinks.filter((d) => d.day === day)
+    return (dietIndex_().drinks.get(day) || []).slice()
       .sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))
                    || String(a.at).localeCompare(String(b.at)));
   }
@@ -1663,7 +1714,8 @@
 
   /** その日のその種目。日ごとに一つのものは一件、ワークアウトは全部。 */
   function healthOfDay(day, type) {
-    return diet().health.filter((h) => h.day === day && (!type || h.type === type));
+    const list = dietIndex_().health.get(day) || [];
+    return type ? list.filter((h) => h.type === type) : list.slice();
   }
 
   /** その日のその種目の合計。無ければ null——0 と「測っていない」は違います。 */
@@ -1788,7 +1840,7 @@
 
   KN.store = {
     KEY, SCHEMA, STORE_COLORS, CATEGORY_COLORS, OTHER_CATEGORY,
-    get, update, subscribe, reload,
+    get, update, subscribe, reload, flush,
     saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
