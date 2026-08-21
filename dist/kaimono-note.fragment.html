@@ -3231,7 +3231,27 @@ button, [role="tab"] {
    からだ・食事・体重を一枚にまとめ、区切りは線ではなく地の色でつけます。
    線は「別のもの」と言いますが、ここで言いたいのは「同じ一日の、別の面」。
    横に払って日をめくるとき、三つが一緒に流れる形でもあります。 */
-.diet-day { padding: 0; overflow: hidden; }
+/* 横に払うと、左右に前日・翌日の端が少しだけのぞきます（js-carousel）。
+   touch-action: pan-y で、縦のスクロールはブラウザの手に残したまま、
+   横の動きだけをこちらが引き受けます——両方を素の指のジェスチャーに
+   任せると、ページの縦スクロールと綱引きになって反応が鈍ります。 */
+.diet-carousel {
+  display: flex; align-items: stretch; gap: var(--sp-2);
+  overflow: hidden; touch-action: pan-y;
+}
+.diet-carousel .js-day-card { flex: 1 1 auto; min-width: 0; }
+.diet-peek {
+  flex: 0 0 auto; width: 0; opacity: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--c-surface-2); border-radius: var(--r-lg);
+}
+.diet-peek-inner {
+  padding: 0 var(--sp-3); white-space: nowrap;
+  font-size: var(--fs-xs); color: var(--c-text-2); text-align: center;
+}
+.diet-peek-inner b { display: block; margin-top: 2px; font-size: var(--fs-sm); color: var(--c-text); }
+
+.diet-day { padding: 0; overflow: hidden; touch-action: pan-y; }
 .diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .diet-block.is-body   { background: color-mix(in srgb, var(--c-primary) 5%, var(--c-surface)); }
 .diet-block.is-meal   { background: var(--c-surface); }
@@ -17653,6 +17673,63 @@ a.btn { text-decoration: none; }
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
     });
+
+    wireKeyboardScroll();
+  }
+
+  /* ---------------- 入力欄がキーボードに隠れないように ----------------
+
+     食事の四枠は、シートの中ではなく画面にじかに置いています。シートは
+     自分の可視高さを持っていて、フォーカスした欄を scrollIntoView で
+     戻せますが（ui.js）、この画面でそれをやると「文書ぜんぶに見せて」と
+     頼んでしまい、ノッチのタップ用の1px（app.js）を巻き込みます。
+     なので、この画面自身の scrollTop を、手で計算して動かします。 */
+  let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
+
+  function keepFieldVisible(field) {
+    if (!root) return;
+    /* ここで測る scrollTop は、たいてい遅すぎます。フォーカスした瞬間、
+       ブラウザが「見えるところに置く」ため自分でスクロールを一度動かす
+       ことがあり（フォーカスの仕様の一部）、それは focusin より先に
+       効いてしまいます。だから「戻る場所」は指を置いた時点
+       （pointerdown、下の wireKeyboardScroll）で覚えておき、ここでは
+       まだ無いときの保険としてだけ拾います。 */
+    if (kbScrollBase == null) kbScrollBase = root.scrollTop;
+    const MARGIN = 16;
+    const check = () => {
+      if (document.activeElement !== field) return;   // 別の場所へ移っていたら何もしない
+      const appEl = document.getElementById("app");
+      const bottom = (appEl ? appEl.getBoundingClientRect().bottom : window.innerHeight) - MARGIN;
+      const over = field.getBoundingClientRect().bottom - bottom;
+      if (over > 4) KN.glideTo(root, root.scrollTop + over);
+    };
+    /* キーボードは出てくるのに数百msかかり、その間 --vvh も動き続けるので
+       （app.js）、一度だけでなく何度か測り直します。 */
+    [60, 180, 360, 620].forEach((ms) => setTimeout(check, ms));
+  }
+
+  function wireKeyboardScroll() {
+    /* 指を置いた時点の位置を、いちばん早いところで覚えておきます
+       （タップ→フォーカス→ブラウザ自身のスクロール、の一番手前）。 */
+    root.addEventListener("pointerdown", (e) => {
+      const field = e.target.closest && e.target.closest("input, textarea, select");
+      if (field && kbScrollBase == null) kbScrollBase = root.scrollTop;
+    }, true);
+    root.addEventListener("focusin", (e) => {
+      const field = e.target.closest && e.target.closest("input, textarea, select");
+      if (field) keepFieldVisible(field);
+    });
+    root.addEventListener("focusout", () => {
+      // 少し待って、移った先も入力欄かどうかを見ます（欄から欄への移動では戻さない）。
+      setTimeout(() => {
+        if (kbScrollBase == null) return;
+        const active = document.activeElement;
+        const stillTyping = active && root.contains(active) && active.matches("input, textarea, select");
+        if (stillTyping) return;
+        KN.glideTo(root, kbScrollBase);
+        kbScrollBase = null;
+      }, 80);
+    });
   }
 
   function render() {
@@ -17683,11 +17760,19 @@ a.btn { text-decoration: none; }
        ここで言いたいのは「同じ一日の、別の面」です。 */
     els.body.append(node(html`
       <div class="diet">
-        <section class="card js-day-card diet-day">
-          <div class="diet-block is-body js-body-stats"></div>
-          <div class="diet-block is-meal js-meals"></div>
-          <div class="diet-block is-weight js-today"></div>
-        </section>
+        ${/* 紙の左右に、前日・翌日の薄い端をのぞかせます。指で払っている
+              あいだだけ幅を持ち（js-carousel）、隣の日があることを
+              動かす前から示します。中身は払いはじめてから詰めます
+              （毎回の組み直しで前後の日を作るのは無駄なので）。 */""}
+        <div class="diet-carousel js-carousel">
+          <div class="diet-peek is-prev js-peek-prev" aria-hidden="true"></div>
+          <section class="card js-day-card diet-day">
+            <div class="diet-block is-body js-body-stats"></div>
+            <div class="diet-block is-meal js-meals"></div>
+            <div class="diet-block is-weight js-today"></div>
+          </section>
+          <div class="diet-peek is-next js-peek-next" aria-hidden="true"></div>
+        </div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
           <div class="divider"></div>
@@ -17889,22 +17974,63 @@ a.btn { text-decoration: none; }
      戻るのは遠い。その日のことが書いてある枠そのものを払えば、日が動きます。
      左へ払えば次の日、右へ払えば前の日——紙をめくる向きと同じです。
 
-     縦は下に譲ります（画面ぜんぶがスクロールするので）。向きは最初の
-     数ピクセルで決めて、そのまま最後まで持ちます。 */
+     指と1:1で追わせ、払っているあいだは隣の日の端を少しだけのぞかせます
+     （js-carousel の左右）。縦は下に譲ります——画面ぜんぶがスクロール
+     するので、向きは最初の数ピクセルで決めて、そのまま最後まで持ちます。 */
   function wireDaySwipe(el) {
     if (!el) return;
+    const carousel = el.closest(".js-carousel");
+    const peekPrev = carousel && carousel.querySelector(".js-peek-prev");
+    const peekNext = carousel && carousel.querySelector(".js-peek-next");
+    const PEEK_MAX = 68;
     const THRESHOLD = 56;
     let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
+    let lastT = 0, lastX = 0, vx = 0;
+
+    /* 端の中身は、払いはじめてから一度だけ詰めます。毎回の組み直しで
+       前後の日ぶんまで作るのは無駄なので。 */
+    const fillPeek = (panel, dir) => {
+      if (!panel || panel.dataset.filled) return;
+      const day = U.shiftDay(curDay(), dir);
+      if (dir > 0 && day > U.todayKey()) { panel.dataset.filled = "empty"; return; }
+      panel.dataset.filled = "1";
+      const c = D.dayCard(day);
+      panel.innerHTML = "";
+      panel.append(node(html`
+        <div class="diet-peek-inner">
+          <span>${U.formatDay(day)}</span>
+          <b class="mono-num">${c.totals ? c.totals.kcal.toLocaleString() + "kcal" : "—"}</b>
+        </div>
+      `));
+    };
 
     const paint = () => {
       frame = 0;
       el.style.transform = dx ? `translateX(${dx}px)` : "";
+      if (peekPrev) {
+        const w = dx > 0 ? Math.min(dx, PEEK_MAX) : 0;
+        peekPrev.style.width = `${w}px`;
+        peekPrev.style.opacity = String(Math.min(1, w / PEEK_MAX));
+      }
+      if (peekNext) {
+        const w = dx < 0 ? Math.min(-dx, PEEK_MAX) : 0;
+        peekNext.style.width = `${w}px`;
+        peekNext.style.opacity = String(Math.min(1, w / PEEK_MAX));
+      }
     };
     const reset = () => {
-      el.style.transition = "transform .2s var(--ease-out)";
+      const t = "transform .2s var(--ease-out)";
+      const tp = "width .2s var(--ease-out), opacity .2s var(--ease-out)";
+      el.style.transition = t;
+      if (peekPrev) peekPrev.style.transition = tp;
+      if (peekNext) peekNext.style.transition = tp;
       dx = 0;
       paint();
-      setTimeout(() => { el.style.transition = ""; }, 220);
+      setTimeout(() => {
+        el.style.transition = "";
+        if (peekPrev) peekPrev.style.transition = "";
+        if (peekNext) peekNext.style.transition = "";
+      }, 220);
     };
 
     el.addEventListener("pointerdown", (e) => {
@@ -17912,28 +18038,38 @@ a.btn { text-decoration: none; }
       // 中の押せるものは、押せるままにします。
       if (e.target.closest("input, textarea, select")) return;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
+      lastT = performance.now(); lastX = e.clientX; vx = 0;
       el.style.transition = "";
     });
     el.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
       const mx = e.clientX - x0, my = e.clientY - y0;
       if (!axis) {
-        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
         axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+        /* 横だと決まってから初めて捕まえます。ボタンをただ押しただけの
+           指まで捕まえると、そのボタンの click が届かなくなるので。 */
+        if (axis === "x") {
+          try { el.setPointerCapture(id); } catch (err) { /* Safari だと投げることがあります */ }
+          fillPeek(peekPrev, -1); fillPeek(peekNext, 1);
+        }
       }
       if (axis !== "x") return;
-      /* 今日より先には行けないので、そちら向きは重くします（動かないの
-         ではなく、動きにくい——端に来たことが指に伝わります）。 */
+      const now = performance.now();
+      if (now > lastT) { vx = (e.clientX - lastX) / (now - lastT); lastT = now; lastX = e.clientX; }
+      /* 今日より先には行けないので、そちら向きだけ重くします。それ以外は
+         指と1:1で追わせます——これまでは56pxを超えると余った分を3割にしか
+         動かしておらず、それが「反応が悪い」の正体でした。 */
       const blocked = mx < 0 && isViewToday();
-      const m = blocked ? mx * 0.25 : mx;
-      dx = Math.abs(m) <= THRESHOLD ? m : Math.sign(m) * (THRESHOLD + (Math.abs(m) - THRESHOLD) * .3);
+      dx = blocked ? mx * 0.3 : mx;
       if (!frame) frame = requestAnimationFrame(paint);
     });
     const end = (e) => {
       if (e.pointerId !== id) return;
       const moved = dx;
+      const fling = Math.abs(vx) > 0.5 && Math.abs(moved) >= 12;
       id = null; axis = null;
-      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
+      if (Math.abs(moved) < THRESHOLD && !fling) { reset(); return; }
       const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
       if (next > U.todayKey()) { reset(); return; }
       viewDay = next === U.todayKey() ? null : next;
@@ -17945,7 +18081,7 @@ a.btn { text-decoration: none; }
       /* 紙が一枚、指の向きに抜けて、隣の日が同じ向きから入ってきます。
          組み直しは見えないところ（抜けきったあと）でやります——
          入れ替わる瞬間が見えると、めくったのではなく「化けた」に見えます。 */
-      slideDay(el, moved < 0 ? -1 : 1);
+      slideDay(el, moved < 0 ? -1 : 1, peekPrev, peekNext);
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
@@ -17955,11 +18091,17 @@ a.btn { text-decoration: none; }
    * 日をめくる動き。抜ける方向へ滑らせて、組み直して、反対から入れます。
    * @param dir -1 なら左へ抜ける（次の日）、+1 なら右へ抜ける（前の日）
    */
-  function slideDay(el, dir) {
+  function slideDay(el, dir, peekPrev, peekNext) {
     const OUT_MS = 150, IN_MS = 210;
     el.style.transition = `transform ${OUT_MS}ms var(--ease), opacity ${OUT_MS}ms var(--ease)`;
     el.style.transform = `translateX(${dir * 60}%)`;
     el.style.opacity = "0";
+    [peekPrev, peekNext].forEach((p) => {
+      if (!p) return;
+      p.style.transition = `width ${OUT_MS}ms var(--ease), opacity ${OUT_MS}ms var(--ease)`;
+      p.style.width = "0px";
+      p.style.opacity = "0";
+    });
     setTimeout(() => {
       render();
       const fresh = els.body.querySelector(".js-day-card");
@@ -19092,6 +19234,8 @@ a.btn { text-decoration: none; }
       };
       ta.addEventListener("input", () => {
         grow(ta);
+        // 行が増えて枠が伸びると、欄の下端がまたキーボードに隠れうるので測り直します。
+        if (!inSheet) keepFieldVisible(ta);
         if (inSheet) return;      // シートでは「保存」を押したときだけ書きます
         clearTimeout(timer);
         timer = setTimeout(save, 600);
