@@ -883,6 +883,21 @@
     const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
     const goal = store.get().diet.goal.targetKg;
 
+    /* 目標へ向かう帯。**新しい計算はしません**——傾き（trendPerWeek）は
+       前回比・7日平均と同じ D.weightSummary() が既に持っている数字で、
+       標本が薄ければ null になる既存の関所もそのまま使います。目標が
+       無い・傾きが判定できない・むしろ遠ざかっている、のどれかなら
+       何も塗りません（作られた弾みにしないため）。 */
+    const trendWin = range === 0 ? 4000 : Math.max(range, 30);
+    const trendSum = goal != null ? D.weightSummary(trendWin, today) : null;
+    const trendPerWeek = trendSum ? trendSum.trendPerWeek : null;
+    const towardGoal = (() => {
+      if (goal == null || trendPerWeek == null || !ma7.length) return false;
+      const now = ma7[ma7.length - 1].value;
+      if (Math.abs(now - goal) < 0.1) return false;   // もう届いている
+      return now > goal ? trendPerWeek < -0.03 : trendPerWeek > 0.03;
+    })();
+
     /* 横の並べ方。**左詰め**、一日の幅は期間どおり。
 
        前は「いちばん古い点」から「いちばん新しい点」までを目一杯に
@@ -977,7 +992,11 @@
 
     const svg = node(html`
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
-           aria-label="体重の推移のグラフ${sel.id ? `（${sel.label}を並べています）` : ""}">
+           aria-label="体重の推移のグラフ${sel.id ? `（${sel.label}を並べています）` : ""}${towardGoal ? "。目標に近づいています" : ""}">
+        ${towardGoal ? KN.util.raw(`<defs><linearGradient id="goalGlow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--c-warmth)" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="var(--c-warmth)" stop-opacity="0"/>
+            </linearGradient></defs>`) : ""}
         ${KN.util.raw(bars.map((b) => {
           const h = barH(b.value);
           return `<rect class="diet-bar" x="${(x(b.day) - barW / 2).toFixed(1)}" y="${(gBot - h).toFixed(1)}"
@@ -995,6 +1014,9 @@
           ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`)
           : ""}
         ${ma14.length > 1 ? KN.util.raw(`<path class="diet-ma14" d="${path(ma14, (m) => m.value)}"/>`) : ""}
+        ${towardGoal && ma7.length > 1 ? KN.util.raw(`<path class="diet-goal-glow" d="${
+          path(ma7, (m) => m.value)} L${x(ma7[ma7.length - 1].day).toFixed(1)} ${gBot.toFixed(1)}`
+          + ` L${x(ma7[0].day).toFixed(1)} ${gBot.toFixed(1)} Z" fill="url(#goalGlow)"/>`) : ""}
         ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" d="${path(ma7, (m) => m.value)}"/>`) : ""}
         ${KN.util.raw(pts.map((p) =>
           `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""}" cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="1.9"/>`

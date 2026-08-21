@@ -633,7 +633,8 @@
       priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
     }
 
-    row.querySelector(".check").addEventListener("click", () => {
+    row.querySelector(".check").addEventListener("click", (e) => {
+      const wasChecked = item.checked;
       store.update((s) => {
         const rec = s.items.find((i) => i.id === item.id);
         if (rec) {
@@ -641,7 +642,14 @@
           rec.checkedAt = rec.checked ? KN.util.today() : null;
         }
       });
-      haptic(12);
+      // 買った瞬間だけ、火花＋しっかりめの震え。チェックを外すときは、
+      // いつもの軽いハプティックのまま（todoの tick() と同じ約束）。
+      if (!wasChecked) {
+        haptic([16, 40, 16]);
+        KN.ui.burst(e.currentTarget);
+      } else {
+        haptic(12);
+      }
     });
 
     row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));

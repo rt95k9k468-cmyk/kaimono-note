@@ -37,6 +37,8 @@ const ASSETS = [
   "js/screen-settings.js",
   "js/app.js",
   "manifest.webmanifest",
+  "fonts/BIZUDPGothic-Regular.woff2",
+  "fonts/BIZUDPGothic-Bold.woff2",
   "icons/icon.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",

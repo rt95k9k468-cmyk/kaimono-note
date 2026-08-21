@@ -963,7 +963,7 @@
     `);
     wrap.append(row);
 
-    row.querySelector(".check").addEventListener("click", () => tick(t.id));
+    row.querySelector(".check").addEventListener("click", (e) => tick(t.id, e.currentTarget));
     row.querySelector(".fav").addEventListener("click", () => {
       store.updateTodo(t.id, { flagged: !t.flagged });
       haptic(12);
@@ -1001,10 +1001,21 @@
 
   /* A repeating todo says out loud where it went. Otherwise ticking 「ゴミ出し」
      looks like nothing happened — the row stays, because the next one is due. */
-  function tick(id) {
+  function tick(id, checkEl) {
     const t = store.getTodo(id);
+    const wasDone = t.done;
     const res = store.toggleTodo(id);
-    haptic(12);
+    /* 済ませた瞬間だけ、火花＋しっかりめの震え。外すときは、いつもの
+       軽いハプティックのまま（本当に済ませたときにしか特別扱いしない、
+       という約束のため）。繰り返しのものは「次の日へ動く」だけで
+       done は立ちませんが、今日ぶんを済ませたことに変わりはないので、
+       ここも対象にします（wasDone だけを見るのはそのためです）。 */
+    if (!wasDone) {
+      haptic([16, 40, 16]);
+      if (checkEl) KN.ui.burst(checkEl);
+    } else {
+      haptic(12);
+    }
     if (res.repeated) {
       KN.ui.toast(`「${t.title}」は次は ${formatDay(res.due)}`, {
         action: { label: "元に戻す", onClick: res.undo },
