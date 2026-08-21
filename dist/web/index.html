@@ -3259,6 +3259,11 @@ button, [role="tab"] {
   /* 既定はここ（真ん中＝今日）。ドラッグ中だけ、JSがpxで上書きします。 */
   transform: translateX(-100%);
 }
+/* 指が動いているあいだだけ、合成レイヤーへの昇格をお願いしておきます。
+   常時つけっぱなしにはしません（使わない間もメモリを持ち続けるだけなので）
+   ——ドラッグの最初の一拍でその場で昇格すると、そこだけ一段重くなって
+   カクついて見えることがあるため、掴んだ瞬間に先に済ませておきます。 */
+.diet-carousel-track.is-dragging { will-change: transform; }
 .diet-carousel-track > .diet-day { flex: 0 0 100%; min-width: 0; }
 /* 前日・翌日の紙は本物ですが、押せません（指はカルーセルの外枠が
    引き受けます）。inert 属性でも塞ぎますが、保険としてCSSでも。 */
@@ -17613,6 +17618,12 @@ a.btn { text-decoration: none; }
 
   let root = null;
   let els = {};
+  /* カルーセルを指で払っているあいだ（横だと決まってから、滑り終わる
+     まで）。この間は render() を呼びません——お店の外の理由（30秒ごとの
+     見直しや、自動同期の書き込みなど）で store が動いても、指の下の紙が
+     ガタッと組み直されないように。次の render() は、離した直後に自分で
+     呼びます。 */
+  let dragging = false;
   /* グラフの期間。まず7日を出します——「最近どうか」を見るのに、
      30日は入り口としては長すぎます（30日ぶんの点は、電話の幅では
      一日ぶんが10pxほどになり、日々の上下が読めません）。 */
@@ -17762,10 +17773,17 @@ a.btn { text-decoration: none; }
     else root.scrollTop = kbScrollBase;
     kbField = field;
     kbTarget = null;
-    nudgeIntoView(field);
-    /* visualViewport の resize/scroll が拾えない・遅い環境向けの保険として、
-       もう一度だけ後で測ります（同じ先なら nudgeIntoView は何もしません）。 */
-    setTimeout(() => { if (kbField === field) nudgeIntoView(field); }, 300);
+    /* ここではまだ動かしません。キーボードがこれから出る（＝可視領域が
+       これから縮む）ところなら、いま測っても出はじめの中途半端な高さを
+       つかむだけです。それで一度動かし、キーボードが出終わってから
+       正しい高さでもう一度動かすと、「動いてから、また動く」という
+       いちばん避けたい二段の動きになります。
+
+       実際に可視領域が変わった瞬間（下の visualViewport）にだけ、
+       そこで初めて測って動かします——例外は、キーボードがもう出ている
+       とき（他の欄から続けて打っている）です。そのときは可視領域は
+       これ以上動かないので、ここで測ってすぐ合わせます。 */
+    if (document.documentElement.classList.contains("kb-open")) nudgeIntoView(field);
   }
 
   function wireKeyboardScroll() {
@@ -17790,16 +17808,18 @@ a.btn { text-decoration: none; }
         kbScrollBase = null; kbTarget = null; kbField = null;
       }, 80);
     });
-    /* キーボードの出入りは可視領域（visualViewport）を動かします。
-       決め打ちの間隔で何度も見にいくのではなく、実際に動いたときだけ
-       測り直します——同じ先にはもう動かさないので、ここで何度呼んでも
-       余計な揺れにはなりません。 */
+    /* キーボードの出入りは、可視領域（visualViewport）をその**過程で
+       何度も**動かします（一段飛びではなく、じわじわ縮む・じわじわ
+       広がる）。その途中の値を追いかけて何度も補正すると、それ自体が
+       「動いては、また動く」に見えてしまうので、ここは動きが止まって
+       からの**一回だけ**にします——最後の変化から120ms、何も起きなければ
+       「落ち着いた」とみなします。 */
     const vv = window.visualViewport;
     if (vv) {
       let t = 0;
       const onChange = () => {
         clearTimeout(t);
-        t = setTimeout(() => { if (kbField) nudgeIntoView(kbField); }, 50);
+        t = setTimeout(() => { if (kbField) nudgeIntoView(kbField); }, 120);
       };
       vv.addEventListener("resize", onChange);
       vv.addEventListener("scroll", onChange);
@@ -17837,6 +17857,8 @@ a.btn { text-decoration: none; }
   function render() {
     // 食事の四枠を保存した直後は、組み直しません（上の saving を参照）。
     if (saving) return;
+    // 指でカルーセルを払っているあいだも、組み直しません（上の dragging を参照）。
+    if (dragging) return;
     /* 食事の四枠は打った先から保存しますが、最後の一拍が残っている
        ことがあります。組み直す前に落とします（消える書きかけを
        作らないため）。 */
@@ -18091,14 +18113,18 @@ a.btn { text-decoration: none; }
     let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0, pageW = 0;
     let lastT = 0, lastX = 0, vx = 0;
 
+    /* transform だけを書き換えます（レイアウトに触れる幅・高さ・
+       位置は一切読み書きしません）。frame は rAF の間引き用で、
+       一度のフレームに一回しか描かないぶん、指の動きより先に
+       追いつくことはあっても、遅れて溜まることはありません。 */
     const paint = () => {
       frame = 0;
-      track.style.transform = `translateX(${-pageW + dx}px)`;
+      track.style.transform = `translate3d(${-pageW + dx}px,0,0)`;
     };
     /** 三枚のうち、どれを画面いっぱいに見せて止まるか。0=前日 1=今日 2=翌日 */
     const settle = (index) => new Promise((resolve) => {
       track.style.transition = "transform .2s var(--ease-out)";
-      track.style.transform = `translateX(${-pageW * index}px)`;
+      track.style.transform = `translate3d(${-pageW * index}px,0,0)`;
       setTimeout(() => {
         track.style.transition = "";
         /* 真ん中（＝いま見ている日）に戻るときは、px の値を残さず、
@@ -18106,7 +18132,7 @@ a.btn { text-decoration: none; }
            見分けが付かなくなるように。日をめくる側（0/2）は、この
            あとすぐ render() が紙を丸ごと差し替えるので、そのままで
            かまいません。 */
-        if (index === 1) track.style.transform = "";
+        if (index === 1) { track.style.transform = ""; track.classList.remove("is-dragging"); }
         resolve();
       }, 200);
     });
@@ -18119,7 +18145,7 @@ a.btn { text-decoration: none; }
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       lastT = performance.now(); lastX = e.clientX; vx = 0;
       track.style.transition = "";
-    });
+    }, { passive: true });
     viewport.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
       const mx = e.clientX - x0, my = e.clientY - y0;
@@ -18132,6 +18158,13 @@ a.btn { text-decoration: none; }
            指まで捕まえると、そのボタンの click が届かなくなるので。 */
         if (axis === "x") {
           try { viewport.setPointerCapture(id); } catch (err) { /* Safari だと投げることがあります */ }
+          /* ここから指が離れるまで、render() を止めます（30秒ごとの
+             見直しや自動同期など、指と関係の無い理由で store が動いても、
+             掴んでいる紙が組み直されないように）。will-change は、
+             合成レイヤーへの昇格をドラッグの最初の一拍で終わらせておく
+             ためのものなので、動いている間だけ付けます。 */
+          dragging = true;
+          track.classList.add("is-dragging");
         }
       }
       if (axis !== "x") return;
@@ -18142,7 +18175,7 @@ a.btn { text-decoration: none; }
       const blocked = mx < 0 && isViewToday();
       dx = blocked ? mx * 0.3 : mx;
       if (!frame) frame = requestAnimationFrame(paint);
-    });
+    }, { passive: true });
     const end = async (e) => {
       if (e.pointerId !== id) return;
       const wasX = axis === "x";
@@ -18157,14 +18190,17 @@ a.btn { text-decoration: none; }
       /* 短い距離でも、速い払い（フリック）なら隣へ。「軽い操作感」を
          優先し、フリックの基準もゆるめにしてあります。 */
       const fling = Math.abs(vx) > 0.35 && Math.abs(moved) >= 8;
-      if (Math.abs(moved) < COMMIT && !fling) { await settle(1); return; }
+      if (Math.abs(moved) < COMMIT && !fling) { await settle(1); dragging = false; return; }
       const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
-      if (next > U.todayKey()) { await settle(1); return; }
+      if (next > U.todayKey()) { await settle(1); dragging = false; return; }
       haptic();
       await settle(moved < 0 ? 2 : 0);
       /* 滑りきった、その位置のまま次へ渡します。viewDay を変えてから
          render() で三枚を組み直すと、真ん中（今日）はいま画面いっぱいに
-         見えているのと同じ日になるので、見た目の続きが切れません。 */
+         見えているのと同じ日になるので、見た目の続きが切れません。
+         render() 自身が dragging を見て止めてしまわないよう、呼ぶ前に
+         下ろします。 */
+      dragging = false;
       viewDay = next === U.todayKey() ? null : next;
       const d = U.dayDate(next);
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
@@ -18175,7 +18211,8 @@ a.btn { text-decoration: none; }
       if (e.pointerId !== id) return;
       const wasX = axis === "x";
       id = null; axis = null;
-      if (wasX) settle(1);
+      if (!wasX) return;
+      settle(1).then(() => { dragging = false; });
     });
   }
 
