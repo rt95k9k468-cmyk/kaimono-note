@@ -36,7 +36,8 @@
    Both screens that carry a ＋ pay it. */
 .screen[data-screen="todo"],
 .screen[data-screen="list"],
-.screen[data-screen="prices"] { padding-bottom: calc(56px + var(--sp-6)); }
+.screen[data-screen="prices"],
+.screen[data-screen="diet"] { padding-bottom: calc(56px + var(--sp-6)); }
 
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket. */
@@ -502,7 +503,7 @@
    the ramp made visible rather than fifteen identical grey lines. */
 .js-body > .todo-group { border-top: 1px solid var(--c-border); }
 .js-body > .todo-group > .todo-head {
-  background: color-mix(in srgb, var(--cat, var(--c-border)) 7%, transparent);
+  background: color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent);
   padding-top: var(--sp-3);
   padding-bottom: var(--sp-3);
 }
