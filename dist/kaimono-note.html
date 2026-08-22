@@ -299,11 +299,11 @@
 /* Category tints: the same mix reads as almost nothing against a dark surface,
    so the dark theme takes a stronger dose. Declared here beside the tokens
    rather than in the rules, so both themes are set in one place. */
-:root { --cat-fill: 11%; --cat-line: 26%; }
+:root { --cat-fill: 22%; --cat-line: 36%; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --cat-fill: 20%; --cat-line: 38%; }
+  :root:not([data-theme="light"]) { --cat-fill: 32%; --cat-line: 46%; }
 }
-:root[data-theme="dark"] { --cat-fill: 20%; --cat-line: 38%; }
+:root[data-theme="dark"] { --cat-fill: 32%; --cat-line: 46%; }
 
 /* ---------------- reset ---------------- */
 
@@ -1799,7 +1799,8 @@ button, [role="tab"] {
    Both screens that carry a ＋ pay it. */
 .screen[data-screen="todo"],
 .screen[data-screen="list"],
-.screen[data-screen="prices"] { padding-bottom: calc(56px + var(--sp-6)); }
+.screen[data-screen="prices"],
+.screen[data-screen="diet"] { padding-bottom: calc(56px + var(--sp-6)); }
 
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket. */
@@ -2265,7 +2266,7 @@ button, [role="tab"] {
    the ramp made visible rather than fifteen identical grey lines. */
 .js-body > .todo-group { border-top: 1px solid var(--c-border); }
 .js-body > .todo-group > .todo-head {
-  background: color-mix(in srgb, var(--cat, var(--c-border)) 7%, transparent);
+  background: color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent);
   padding-top: var(--sp-3);
   padding-bottom: var(--sp-3);
 }
