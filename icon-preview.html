@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>くらしノート — アイコン試作（30個）</title>
+<style>
+  :root {
+    --ic-line: #4a423b;
+    --bg: #f4f6f3; --card: #fff; --line: #e2e6e0;
+    --tx: #23302a; --tx2: #5d6b63; --tx3: #8b968f;
+  }
+  html[data-theme="dark"] {
+    --ic-line: #37312c;
+    --bg: #14181a; --card: #1d2225; --line: #2b3236;
+    --tx: #e6ebe8; --tx2: #a3aeaa; --tx3: #7b8783;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px 16px 60px;
+    background: var(--bg); color: var(--tx);
+    font-family: "BIZ UDPGothic", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 19px; margin: 0 0 2px; }
+  .sub { font-size: 12px; color: var(--tx2); margin: 0 0 18px; line-height: 1.6; }
+  h2 { font-size: 14px; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .note { font-size: 11.5px; color: var(--tx2); margin: -4px 0 10px; line-height: 1.7; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  button {
+    font: inherit; font-size: 12px; font-weight: 700; padding: 6px 12px;
+    border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--tx); cursor: pointer;
+  }
+  button.on { background: #2f8f5b; border-color: #2f8f5b; color: #fff; }
+  .p-icon { display: inline-block; vertical-align: middle; }
+
+  /* 実寸の並び */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; }
+  .cell {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 3px 6px; text-align: center;
+  }
+  .cell .p-icon { width: 34px; height: 34px; }
+  .cap { font-size: 9.5px; color: var(--tx2); margin-top: 4px; line-height: 1.25;
+         word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2;
+         -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* 拡大して見る */
+  .zoom { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+  .zoom .cell { padding: 10px 4px 7px; }
+  .zoom .p-icon { width: 88px; height: 88px; }
+
+  /* 実機サイズの比較 */
+  .sizes { display: flex; flex-wrap: wrap; gap: 14px; }
+  .sz { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+        padding: 10px 12px; display: flex; align-items: flex-end; gap: 10px; }
+  .sz b { font-size: 10px; color: var(--tx3); font-weight: 700; }
+  .s24 { width: 24px; height: 24px; } .s25 { width: 25px; height: 25px; }
+  .s28 { width: 28px; height: 28px; } .s34 { width: 34px; height: 34px; }
+  .s16 { width: 16px; height: 16px; }
+
+  /* 旧・新の対比 */
+  .vs { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+  .vsc { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 6px 7px; text-align: center; }
+  .vsr { display: flex; justify-content: center; align-items: center; gap: 14px; }
+  .vsr > span { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .vsr .p-icon { width: 40px; height: 40px; }
+  .vsr small { font-size: 9px; color: var(--tx3); }
+
+  /* 行に置いたところ（実使用の見え方） */
+  .rows { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+  .row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px 11px 14px; position: relative; overflow: hidden;
+    font-size: 15px; font-weight: 700;
+  }
+  .row::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background: var(--cat); }
+  .row .p-icon { width: 25px; height: 25px; flex: none; }
+  .row .yen { margin-left: auto; font-size: 13px; color: #e06a2b; }
+</style>
+</head>
+<body>
+
+<h1>くらしノート — アイコン試作 30個</h1>
+<p class="sub">
+  Icon Design System（線・陰影・色・丸み・版面の5つを固定）で描いた代表30個です。<br>
+  キーは既存のものをそのまま使っています（新規6個を除く）。アプリ本体はまだ差し替えていません。
+</p>
+
+<div class="bar">
+  <button id="theme">暗い画面で見る</button>
+  <button id="tint" class="on">カテゴリ色の行に置く</button>
+</div>
+
+<h2>1. 実寸（34px・タイル表示のサイズ）</h2>
+<p class="note">実機でいちばん大きく出るサイズです。ここで読めなければ他はすべて読めません。</p>
+<div class="grid" id="g-real"></div>
+
+<h2>2. 実機の各サイズ</h2>
+<p class="note">左から 16px（補助）・24px（基準グリッド）・25px（買うものの行）・28px（価格の行）・34px（タイル）。</p>
+<div class="sizes" id="g-sizes"></div>
+
+<h2>3. 拡大（88px）— 描き込みの確認</h2>
+<p class="note">線の太さ・陰の位置・色の統一を見るための拡大です。実機ではこの大きさにはなりません。</p>
+<div class="zoom" id="g-zoom"></div>
+
+<h2>4. 旧 → 新</h2>
+<p class="note">左が現行、右が試作。同じ物が同じ意味に見えているか、そして「一族」になったかを見ます。</p>
+<div class="vs" id="g-vs"></div>
+
+<h2>5. ボトル4種 — 色違いになっていないか</h2>
+<p class="note">
+  食器用洗剤・洗濯洗剤・柔軟剤・シャンプー。実物は注ぎ口・取っ手・肩・ポンプが違います。
+  ここが「同じ形の色違い」に見えたら、この仕組みは失敗です。
+</p>
+<div class="zoom" id="g-bottle"></div>
+
+<h2>6. 買うものの行に置いたところ</h2>
+<p class="note">カテゴリ色で塗られた行の上での見え方。白いもの（牛乳・卵）が沈まないかが要点です。</p>
+<div class="rows" id="g-rows"></div>
+
+<script src="js/util.js"></script>
+<script src="js/icon-system.js"></script>
+<script src="js/product-icons.js"></script>
+<script src="js/icons-v2.js"></script>
+<script>
+(function () {
+  const V2 = window.KN.iconsV2;
+  const OLD = window.KN.productIcons;
+  const LAB = {
+    apple:"りんご", tomato:"とまと", carrot:"にんじん", banana:"ばなな",
+    broccoli:"ブロッコリー", strawberry:"いちご", bread:"食パン", egg:"卵",
+    milk:"牛乳", rice:"米", onigiri:"おにぎり", fish:"魚",
+    dishSoap:"食器用洗剤", laundry:"洗濯洗剤", softener:"柔軟剤", shampoo:"シャンプー",
+    toiletRoll:"トイレット\nペーパー", tissue:"ティッシュ", scissors:"はさみ", knife:"包丁",
+    smartphone:"スマホ", tv:"テレビ", broom:"ほうき", vacuum:"掃除機",
+    hospital:"病院（新）", superMarket:"スーパー（新）", bank:"銀行（新）",
+    train:"電車（新）", trashOut:"ゴミ出し（新）", payment:"支払い（新）",
+  };
+  const keys = Object.keys(V2);
+  const cell = (k, cls) =>
+    `<div class="cell">${V2[k]}<div class="cap">${LAB[k] || k}</div></div>`;
+
+  document.getElementById("g-real").innerHTML = keys.map((k) => cell(k)).join("");
+  document.getElementById("g-zoom").innerHTML = keys.map((k) => cell(k)).join("");
+  document.getElementById("g-bottle").innerHTML =
+    ["dishSoap", "laundry", "softener", "shampoo"].map((k) => cell(k)).join("");
+
+  document.getElementById("g-sizes").innerHTML =
+    ["apple", "milk", "egg", "dishSoap", "fish", "hospital", "train", "payment"].map((k) =>
+      `<div class="sz">` +
+      ["s16", "s24", "s25", "s28", "s34"].map((c) =>
+        `<span>${V2[k].replace('class="p-icon"', 'class="p-icon ' + c + '"')}</span>`).join("") +
+      `<b>${LAB[k]}</b></div>`).join("");
+
+  document.getElementById("g-vs").innerHTML = keys.filter((k) => OLD.ICONS[k]).map((k) =>
+    `<div class="vsc"><div class="vsr">` +
+    `<span>${OLD.ICONS[k]}<small>旧</small></span>` +
+    `<span>${V2[k]}<small>新</small></span>` +
+    `</div><div class="cap">${LAB[k] || k}</div></div>`).join("");
+
+  const ROWS = [
+    ["milk", "牛乳", "#5b9bd5", "¥188"], ["egg", "卵", "#5b9bd5", "¥228"],
+    ["apple", "りんご", "#5ea55a", "¥398"], ["broccoli", "ブロッコリー", "#5ea55a", "¥198"],
+    ["fish", "さんま", "#d4695f", "¥258"], ["bread", "食パン", "#d79a4a", "¥158"],
+    ["dishSoap", "食器用洗剤", "#48b39a", "¥258"], ["toiletRoll", "トイレットペーパー", "#48b39a", "¥358"],
+    ["shampoo", "シャンプー", "#9b7ede", "¥698"],
+  ];
+  document.getElementById("g-rows").innerHTML = ROWS.map(([k, n, col, y]) =>
+    `<div class="row" style="--cat:${col};background:color-mix(in srgb, ${col} 22%, var(--card));` +
+    `border-color:color-mix(in srgb, ${col} 36%, var(--line))">` +
+    `${V2[k]}<span>${n}</span><span class="yen">${y}</span></div>`).join("");
+
+  const tb = document.getElementById("theme");
+  tb.onclick = () => {
+    const dark = document.documentElement.dataset.theme === "dark";
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    tb.textContent = dark ? "暗い画面で見る" : "明るい画面で見る";
+  };
+})();
+</script>
+</body>
+</html>
