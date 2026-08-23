@@ -173,10 +173,17 @@
       handle.close();
     }
 
+    /* 一画面に入るぶんより、少し多め。最初の一手で見えるところが埋まっていれば、
+       残りが何フレームか遅れて届いても、めくるより先に間に合います。 */
+    const CHUNK = 120;
+    /* 開いているシートが閉じたら、まだ流し込んでいるぶんは止めます。 */
+    let painting = 0;
+
     function grid(items) {
       const current = store.getProduct(productId).icon || "";
       const g = node(html`<div class="icon-grid"></div>`);
-      items.forEach(({ key, label, svg }) => {
+
+      const cellOf = ({ key, label, svg }) => {
         const cell = node(html`
           <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
                   data-key="${key}" aria-pressed="${String(key === current)}">
@@ -185,8 +192,33 @@
           </button>
         `);
         cell.addEventListener("click", () => choose(key));
-        g.append(cell);
-      });
+        return cell;
+      };
+
+      /* 絵が557個だったころは、全部いちどに組んで差し込んでも 70ms でした。
+         857個になると DOM が 8,000 節点・HTML が 700KB を超えて、実機では
+         シートが開く手が止まります。
+
+         そこで最初の一掴みだけを同期で入れ、残りはフレームごとに継ぎ足します。
+         総量は同じでも、一フレームに載る仕事が減るので、開く動作は止まりません。
+         「ぜんぶ」の中身は変わらないので、探すことにも選ぶことにも影響しません。 */
+      const head = items.slice(0, CHUNK);
+      head.forEach((it) => g.append(cellOf(it)));
+
+      if (items.length > CHUNK) {
+        const mine = ++painting;
+        let at = CHUNK;
+        const more = () => {
+          // 描き直しが始まっていたら、古い流し込みはここで降ります。
+          if (mine !== painting || !g.isConnected) return;
+          const stop = Math.min(at + CHUNK, items.length);
+          const frag = document.createDocumentFragment();
+          for (; at < stop; at++) frag.append(cellOf(items[at]));
+          g.append(frag);
+          if (at < items.length) requestAnimationFrame(more);
+        };
+        requestAnimationFrame(more);
+      }
       return g;
     }
 

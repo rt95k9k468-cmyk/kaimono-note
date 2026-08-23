@@ -179,10 +179,14 @@
 
   /* ---------------- 組み立て ---------------- */
 
-  /* 旧版と同じ器に収めます。class も viewBox も変えません——CSS も試験も
-     この二つを見ているので、中身だけが入れ替わる形にしておきます。 */
+  /* 旧版と同じ器に収めます。viewBox は 24 のまま、class も .p-icon のまま——
+     CSS も試験もこの二つを見ているので、中身だけが入れ替わる形にします。
+
+     is-v2 が一つだけ増えます。旧い絵と混ざっているあいだ、「輪郭線があるので
+     drop-shadow が要らない側」を CSS から指せるようにするためのものです。
+     .p-icon を見ている既存の選択子はそのまま当たります。 */
   const icon = (...parts) =>
-    `<svg class="p-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
+    `<svg class="p-icon is-v2" viewBox="0 0 24 24" fill="none" aria-hidden="true">` +
     `<g stroke="${LINE}" stroke-width="${LINE_W}" stroke-linejoin="round" stroke-linecap="round">` +
     parts.join("") +
     `</g></svg>`;

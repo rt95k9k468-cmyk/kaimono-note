@@ -289,6 +289,16 @@
 }
 :root[data-theme="dark"] { --cat-fill: 32%; --cat-line: 46%; }
 
+/* 絵の輪郭線（icon-system.js）。純黒ではなく茶を含んだ暗色——食べものと
+   日用品が並ぶ画面で、純黒は硬く、すべてがプラスチックに見えます。
+   暗い画面では少し沈めます。明るい面と同じ濃さのままだと、暗い地の上で
+   線だけが浮いて、絵が切り抜きに見えるので。 */
+:root { --ic-line: #4a423b; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ic-line: #37312c; }
+}
+:root[data-theme="dark"] { --ic-line: #37312c; }
+
 /* ---------------- reset ---------------- */
 
 *, *::before, *::after { box-sizing: border-box; }
