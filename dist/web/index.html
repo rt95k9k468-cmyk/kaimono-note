@@ -1438,19 +1438,15 @@ button, [role="tab"] {
   width: 1.32em;
   height: 1.32em;
   vertical-align: -.26em;
-  /* A hair of shadow. Several icons are mostly white — a milk carton, an egg,
-     a bowl of rice — and the rows they sit on are tinted with the category
-     colour, so without this they dissolve into the card. */
-  filter: drop-shadow(0 .5px .5px rgba(20, 40, 28, .22));
 }
 
-/* 描き直したものには輪郭線があるので、この影は要りません——線の外にもう一段
-   影が付くと、輪郭が二重になって濁ります。フィルタは一枚ごとに合成が走るので、
-   一画面に何十個も出るものから外せるのは、そのまま速さでもあります。
+/* ここには以前、白いもの（牛乳・卵・ごはん）がカテゴリ色の行に溶けないよう
+   drop-shadow が一段かかっていました。描き直した絵はどれも輪郭線を持つので、
+   影で浮かせる必要がなくなり、外しています。フィルタは一枚ごとに合成が走る
+   ので、一画面に何十個も並ぶものから外せたぶんはそのまま速さになります。
 
-   旧い絵と新しい絵が混ざっているあいだ、影が要るのは旧い側だけ。だから
-   全体から外すのではなく、新しい側だけが降りる形にしてあります。 */
-.p-icon.is-v2 { filter: none; }
+   is-v2 の目印は残してあります——CSS からは指していませんが、「この絵は
+   Icon Design System の上で描かれている」ことを示す印として要ります。 */
 
 .sheet-mark {
   font-size: 21px;
