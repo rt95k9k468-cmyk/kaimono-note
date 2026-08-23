@@ -897,6 +897,24 @@
     return (g && g.color) || NONE_COLOR;
   };
 
+  /* やることの絵。買うものと同じ辞書（product-icons.js）を、同じ引き方で
+     引きます。用事の言い回し——歯医者・銀行・ゴミ出し・保育園・役所——は
+     アイコン刷新のときに描き足したので、いまはどれも当たります。
+
+     選べるようにはしていません。買うものは「同じ品を何度も」なので手で
+     直す値打ちがありますが、やることは一度きりの文が多く、いちいち絵を
+     選ばせるのは手間のほうが大きい。名前から引くだけにしてあります。
+
+     当たらないときは、期限の色の丸に落とします。絵の無い行だけ左端が
+     空くと列が崩れるので、何かは必ず置く。丸は「まだ絵が無い」の目印で
+     あって、失敗の表示ではありません。 */
+  function todoMark(t) {
+    const svg = KN.productIcons.find(t.title);
+    return svg
+      ? html`<span class="todo-mark">${KN.util.raw(svg)}</span>`
+      : html`<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
+  }
+
   /* ---------------- rows ---------------- */
 
   function todoRow(t, tiles, groups, shelf) {
@@ -967,6 +985,7 @@
         <button class="fav ${t.flagged ? "is-on" : ""}" aria-pressed="${String(!!t.flagged)}"
                 aria-label="${t.title} に★を付ける">${icon("star")}</button>
         <button class="item-body">
+          ${todoMark(t)}
           <span class="item-name">${t.title}</span>
           <span class="tile-when">${closed ? KN.util.formatStamp(when)
             : (t.due
@@ -988,6 +1007,7 @@
                   aria-label="${t.title} を終わりにする">${checkMark()}</button>
           ${every ? html`<span class="todo-every">${every}</span>` : ""}
         </span>
+        ${todoMark(t)}
         <button class="item-body">
           <span class="item-name">${t.title}</span>
           ${meta.length ? html`<span class="item-meta">${meta}</span>` : ""}

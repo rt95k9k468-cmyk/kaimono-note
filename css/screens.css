@@ -584,6 +584,42 @@
   padding: 4px var(--sp-3) 4px 10px;
 }
 
+/* やることの絵。買うものの行と同じ 25px・同じ並び順（丸→絵→名前）に
+   してあります。二つの画面を行き来したときに、目が同じところを見るように。 */
+.item.todo:not(.is-tile) .todo-mark {
+  flex: none;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.item.todo .todo-mark .p-icon { width: 25px; height: 25px; }
+
+/* 名前から絵が引けなかったとき。期限の色の丸——「まだ絵が無い」であって
+   「間違い」ではないので、控えめに、でも列は空けずに。 */
+.todo-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cat, var(--c-border-2));
+  opacity: .55;
+}
+/* 済ませたものは絵も引きます。行の色が灰に落ちるのに絵だけ元気だと、
+   済んだ行が済んでいない行より目立ってしまうため。 */
+.item.is-checked .todo-mark { opacity: .45; filter: grayscale(1); }
+
+/* タイルでは絵が主役。買うもののタイルと同じ 34px。 */
+.item.todo.is-tile .todo-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+}
+.item.todo.is-tile .todo-mark .p-icon { width: 34px; height: 34px; }
+.item.todo.is-tile .todo-dot { width: 12px; height: 12px; }
+
 .todo-lead {
   flex: none;
   display: flex;
@@ -595,6 +631,21 @@
      anyone reads off a row. */
   width: 50px;
 }
+
+/* 済ませた行・しまった行の左の列は、丸だけになります——19:30 も 毎週火・金 も
+   「これから」の話なので、閉じた行には出ないためです（screen-todo.js）。
+   50px のまま空けておくと、その 22px はただの空白で、しかも「いつ閉じたか」の
+   入る場所を名前から奪います。絵が一列ぶん増えたぶんは、ここで返します。 */
+.item.todo:not(.is-tile).is-checked .todo-lead { width: 28px; }
+/* 閉じた行は記録なので、絵も小さく、間も詰めます。ここだけが「しまった」と
+   閉じた時刻の両方を抱える行で、名前の折り返しが起きるのもここだけです。 */
+.item.todo:not(.is-tile).is-checked { gap: 6px; }
+.item.todo:not(.is-tile).is-checked .todo-mark { width: 20px; height: 20px; }
+.item.todo:not(.is-tile).is-checked .todo-mark .p-icon { width: 20px; height: 20px; }
+/* 「しまった」の丸みも、ここでは一回り小さく。文字はそのまま——読める語を
+   削るより、まわりの余白を詰めるほうが失うものが少ない。 */
+.item.todo:not(.is-tile).is-checked .todo-tag { padding: 0 4px; }
+.item.todo:not(.is-tile).is-checked .item-meta { gap: 4px; }
 
 /* Across, not down: the name and whatever is left of the meta share one line
    (the base row stacks them, which is what made the box three storeys tall). */
