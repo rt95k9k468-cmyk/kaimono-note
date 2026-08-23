@@ -1364,16 +1364,23 @@
     // 手で並べた商品が一つでもあるなら、その棚は人の決めた順が全部に優先。
     if (rows.some((p) => typeof p.order === "number")) return rows.sort(productOrder);
 
+    /* 絵の名前は、商品ひとつにつき一度だけ引きます。
+       iconKeyOf() は当たるまでキーワード表（いま1,700語、絵を増やせば 3,000語）を
+       上から舐めるので、比較関数の中から呼ぶと 1 回の並べ替えで数千回走ります。
+       ここで一度引いて表にしておけば、比較は文字列の突き合わせだけになります。 */
+    const keyOf = new Map();
+    rows.forEach((p) => keyOf.set(p, iconKeyOf(p) || ("\u0000" + p.id)));
+
     const first = new Map();          // 絵の名前 → その絵でいちばん早い名前
     rows.forEach((p) => {
-      const k = iconKeyOf(p) || ("\u0000" + p.id);   // 絵の無いものは束ねない
+      const k = keyOf.get(p);                        // 絵の無いものは束ねない
       const cur = first.get(k);
       if (!cur || kanaOrder(p, cur) < 0) first.set(k, p);
     });
 
     return rows.sort((a, b) => {
-      const ka = iconKeyOf(a) || ("\u0000" + a.id);
-      const kb = iconKeyOf(b) || ("\u0000" + b.id);
+      const ka = keyOf.get(a);
+      const kb = keyOf.get(b);
       if (ka === kb) return kanaOrder(a, b);          // 同じ絵の中は五十音
       return kanaOrder(first.get(ka), first.get(kb))  // 束どうしは、先頭の名前で
         || ka.localeCompare(kb);

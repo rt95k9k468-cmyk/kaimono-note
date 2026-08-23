@@ -123,22 +123,24 @@
 
 <script src="js/util.js"></script>
 <script src="js/icon-system.js"></script>
-<script src="js/product-icons.js"></script>
 <script src="js/icons-v2.js"></script>
+<script>window.__v2 = window.KN.iconsV2; window.KN.iconsV2 = null;</script>
+<script src="js/product-icons.js"></script>
+<script>window.__oldArt = Object.assign({}, window.KN.productIcons.ICONS);
+        window.KN.iconsV2 = window.__v2;
+        Object.assign(window.KN.productIcons.ICONS, window.__v2);</script>
 <script>
 (function () {
   const V2 = window.KN.iconsV2;
   const OLD = window.KN.productIcons;
-  const LAB = {
-    apple:"りんご", tomato:"とまと", carrot:"にんじん", banana:"ばなな",
-    broccoli:"ブロッコリー", strawberry:"いちご", bread:"食パン", egg:"卵",
-    milk:"牛乳", rice:"米", onigiri:"おにぎり", fish:"魚",
-    dishSoap:"食器用洗剤", laundry:"洗濯洗剤", softener:"柔軟剤", shampoo:"シャンプー",
-    toiletRoll:"トイレット\nペーパー", tissue:"ティッシュ", scissors:"はさみ", knife:"包丁",
-    smartphone:"スマホ", tv:"テレビ", broom:"ほうき", vacuum:"掃除機",
-    hospital:"病院（新）", superMarket:"スーパー（新）", bank:"銀行（新）",
-    train:"電車（新）", trashOut:"ゴミ出し（新）", payment:"支払い（新）",
-  };
+  /* OLD.ICONS はもう新版で上書きされているので、旧い絵は別口で読み直します。 */
+  const OLDART = window.__oldArt || {};
+  /* 表示名は product-icons.js の LABELS から引きます——ここに一覧を書くと、
+     絵を足すたびに二か所直すことになるので。 */
+  const LAB = Object.assign({}, OLD.LABELS, {
+    hospital: "病院", superMarket: "スーパー", bank: "銀行",
+    train: "電車", trashOut: "ゴミ出し", payment: "支払い",
+  });
   const keys = Object.keys(V2);
   const cell = (k, cls) =>
     `<div class="cell">${V2[k]}<div class="cap">${LAB[k] || k}</div></div>`;
@@ -155,9 +157,9 @@
         `<span>${V2[k].replace('class="p-icon"', 'class="p-icon ' + c + '"')}</span>`).join("") +
       `<b>${LAB[k]}</b></div>`).join("");
 
-  document.getElementById("g-vs").innerHTML = keys.filter((k) => OLD.ICONS[k]).map((k) =>
+  document.getElementById("g-vs").innerHTML = keys.filter((k) => OLDART[k]).map((k) =>
     `<div class="vsc"><div class="vsr">` +
-    `<span>${OLD.ICONS[k]}<small>旧</small></span>` +
+    `<span>${OLDART[k]}<small>旧</small></span>` +
     `<span>${V2[k]}<small>新</small></span>` +
     `</div><div class="cap">${LAB[k] || k}</div></div>`).join("");
 
