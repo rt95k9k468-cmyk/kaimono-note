@@ -58,9 +58,30 @@ button, [role="tab"] {
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .45; pointer-events: none; }
 
+/* ---------------- 画面の絵（util.js の icon()） ----------------
+
+   二段階。既定は「主」で、文字に添えるだけのものが .is-sub を足します。
+   置き場所ごとの指定はこの下に続きますが、どれも二つの token のどちらか
+   を指すだけです——生の px を書いたら、そこからまた16通りが始まります。 */
+.ui-ico {
+  width: var(--ico); height: var(--ico);
+  stroke-width: var(--ico-w);
+  flex: none;
+}
+.ui-ico.is-sub {
+  width: var(--ico-sm); height: var(--ico-sm);
+  stroke-width: var(--ico-sm-w);
+}
+
+/* 塗りの面は、頼まれたときだけ出します。線と塗りは同じ座標に重なって
+   いるので、切り替えても絵は動きません。 */
+.ui-ico .ico-solid { display: none; }
+.ui-ico.is-solid .ico-line { display: none; }
+.ui-ico.is-solid .ico-solid { display: block; }
+
 /* Inline icons inside a text button must not inherit the SVG's intrinsic box. */
-.btn svg { width: 18px; height: 18px; flex: none; stroke-width: 2.2; }
-.btn-sm svg { width: 16px; height: 16px; }
+.btn svg { width: var(--ico); height: var(--ico); flex: none; stroke-width: var(--ico-w); }
+.btn-sm svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
 .btn-primary { background: var(--c-primary); color: #fff; box-shadow: var(--shadow-1); }
 /* =========================================================
@@ -124,7 +145,7 @@ button, [role="tab"] {
   .icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
 }
 .icon-btn:active { transform: scale(.92); }
-.icon-btn svg { width: 20px; height: 20px; stroke-width: 2; }
+.icon-btn svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 @media (hover: hover) {
   .icon-btn.is-danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
 }
@@ -232,7 +253,7 @@ button, [role="tab"] {
 
 /* 「今回買う」in the add sheet. Wears the star's own colour rather than the
    app's green, so it is plainly the same ★ that appears on the row. */
-.fav-toggle .icon-pick-mark svg { width: 24px; height: 24px; stroke-width: 2.2; color: var(--c-text-3); }
+.fav-toggle .icon-pick-mark svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); color: var(--c-text-3); }
 .fav-toggle.is-on {
   border-color: var(--c-warn);
   background: color-mix(in srgb, var(--c-warn) 13%, var(--c-surface));
@@ -311,7 +332,9 @@ button, [role="tab"] {
   box-shadow: var(--shadow-1);
   transition: transform .12s var(--ease), background .16s var(--ease);
 }
-.stepper-btn svg { width: 20px; height: 20px; stroke-width: 2.6; }
+/* 数を増減する丸ボタン。太さだけは主より強く——ここは＋と−の二本の線
+   しか無いので、同じ太さだと丸のなかで痩せて見えます。 */
+.stepper-btn svg { width: var(--ico); height: var(--ico); stroke-width: 2.6; }
 .stepper-btn:active { transform: scale(.9); }
 .stepper-value {
   min-width: 48px;
@@ -489,7 +512,7 @@ button, [role="tab"] {
 /* An inline icon in a section heading has no box of its own to be sized by —
    without this it inherits the 24-unit viewBox at font size and fills the
    card. */
-.section-title svg { width: 16px; height: 16px; flex: none; stroke-width: 2.2; }
+.section-title svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; stroke-width: var(--ico-sm-w); }
 
 /* One line under a section title, for a gesture that has nothing on screen to
    advertise it. */
@@ -888,7 +911,7 @@ button, [role="tab"] {
 .row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
 .row-value { color: var(--c-text-2); font-weight: 700; flex: none; }
 .row-chevron { color: var(--c-text-3); flex: none; display: grid; place-items: center; }
-.row-chevron svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.row-chevron svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 
 /* ---------------- misc ---------------- */
 
@@ -1016,4 +1039,5 @@ button, [role="tab"] {
 .key-ok.is-equals { font-size: 25px; font-weight: 700; }
 .key-ok:active { background: var(--c-primary-2); }
 
+/* キーの中身。キーの大きさが決めます（二段階の外）。 */
 .key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }

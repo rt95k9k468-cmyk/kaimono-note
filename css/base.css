@@ -115,6 +115,22 @@
   --c-slot-d-soft: #e0e4f6;
   --c-slot-s-soft: #f8e4f2;
 
+  /* --- 絵の大きさ、二段階 ---
+
+     画面の絵（util.js の icon()）は、置き場所ごとに 12〜26px の16通りの
+     大きさと、1.7〜3.2 の9通りの太さで書かれていました。全部が少しずつ
+     違うと、どれが大事かは何も言っていないのと同じです——目が最初に行く
+     先が決まりません。
+
+     二段階だけにします。「押せるもの・目印になるもの」と「文字に寄り添う
+     もの」。中間はありません。決まった大きさの入れもの（丸ボタン、キー、
+     チェックの輪、タブの丸）の中身だけが例外で、そこは入れものが大きさを
+     決めます——それぞれの場所に理由を書いてあります。 */
+  --ico:    20px;   /* 主：押せるもの・目印になるもの */
+  --ico-w:  2.2;
+  --ico-sm: 15px;   /* 添え：文字に寄り添うもの */
+  --ico-sm-w: 1.8;
+
   /* --- effects --- */
   --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
   --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
@@ -636,6 +652,8 @@ a { color: var(--c-primary); }
     text-align: center;
     background: var(--c-bg);
   }
+  /* 画面いっぱいのお知らせに一枚だけ出る絵。文章の脇の印ではないので、
+     二段階の外です。 */
   .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
   .rotate-note b { font-size: var(--fs-xl); font-weight: 700; }
   .rotate-note span { font-size: var(--fs-sm); color: var(--c-text-2); }
@@ -658,6 +676,8 @@ a { color: var(--c-primary); }
   padding-top: 2px;
 }
 
+/* タブの絵は、丸い下地（40×26px）の中身です。入れものが大きさを決めるので
+   二段階の外——そのかわり、選ばれた一つは塗りになります（下）。 */
 .tab svg { width: 23px; height: 23px; stroke-width: 1.9; }
 
 .tab .tab-ico {
@@ -721,6 +741,17 @@ a { color: var(--c-primary); }
 }
 .tab[aria-selected="true"] svg { stroke-width: 2.3; }
 .tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
+
+/* いま居るところは、線ではなく面で言います。
+
+   三つのタブが同じ細さの線で並んでいると、どれが選ばれているかは緑の丸
+   （下地）だけが持っていました。下地は薄い緑なので、明るいところで見ると
+   ほとんど消えます。塗った絵なら、色が飛んでも形の重さが残ります。
+
+   塗りと線は同じ座標に重ねてあるので（util.js）、切り替わっても絵は
+   動きません。太らせるのではなく、面になる。 */
+.tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-line { display: none; }
+.tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-solid { display: block; }
 
 .tab-badge {
   position: absolute;
