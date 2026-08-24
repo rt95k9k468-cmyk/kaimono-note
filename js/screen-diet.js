@@ -1051,8 +1051,8 @@
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
            aria-label="体重の推移のグラフ${sel.id ? `（${sel.label}を並べています）` : ""}${towardGoal ? "。目標に近づいています" : ""}">
         ${towardGoal ? KN.util.raw(`<defs><linearGradient id="goalGlow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--c-warmth)" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="var(--c-warmth)" stop-opacity="0"/>
+              <stop offset="0%" stop-color="var(--c-primary)" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="var(--c-primary)" stop-opacity="0"/>
             </linearGradient></defs>`) : ""}
         ${KN.util.raw(bars.map((b) => {
           const h = barH(b.value);

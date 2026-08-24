@@ -15,6 +15,7 @@ const ASSETS = [
   "js/icon-system.js",
   "js/icons-v2.js",
   "js/product-icons.js",
+  "js/empty-art.js",
   "js/store.js",
   "js/ui.js",
   "js/reorder.js",

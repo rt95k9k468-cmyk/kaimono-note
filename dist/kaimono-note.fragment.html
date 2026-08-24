@@ -73,14 +73,12 @@
   --c-danger-soft: #fdecea;
   --c-warn:        #c98a12;
 
-  /* --- 弾み = 本当に良い方向へ動いたときだけ使う色。accent（注目すべき
-         事実。最安値など）とは意味を分けます——同じ色に二つの意味を
-         持たせると、いずれ読み分けられなくなるので。データが裏付けた
-         ときにしか出しません（気づいたことの色点、体重グラフの向き、
-         やること・買い物を済ませた瞬間）。 --- */
-  --c-warmth:      #a87f1e;
-  --c-warmth-soft: #f5ebd2;
-  --c-warmth-ink:  #6e5411;
+  /* 「弾み」の色（--c-warmth）はここにありました。本当に良い方向へ動いた
+     ときだけ出す金色で、考え方は正しかったのですが、出番が「目標があり・
+     標本が足りて・実際に近づいている」ときだけで、ほとんどの日は画面に
+     現れませんでした。色を一つ増やして、その色を見た人がほとんどいない
+     ——覚えられない色は、意味を持てません。役目はからだのリングが毎日
+     果たしています。火花と体重グラフの帯は主色の緑へ移しました。 */
 
   /* --- からだの四つの指標 ---
 
@@ -201,9 +199,6 @@
     --c-danger:      #e8776c;
     --c-danger-soft: #33201e;
     --c-warn:        #dcae4a;
-    --c-warmth:      #e0b95c;
-    --c-warmth-soft: #332c18;
-    --c-warmth-ink:  #f0d28e;
     /* 暗い地の上では沈むので、四つとも明るいほうへ振ります。 */
     --c-m-steps:     #3fc4ae;
     --c-m-steps-lit: #8fe4d6;
@@ -254,9 +249,6 @@
   --c-danger:      #e8776c;
   --c-danger-soft: #33201e;
   --c-warn:        #dcae4a;
-  --c-warmth:      #e0b95c;
-  --c-warmth-soft: #332c18;
-  --c-warmth-ink:  #f0d28e;
   --c-m-steps:     #3fc4ae;
   --c-m-steps-lit: #8fe4d6;
   --c-m-burn:      #f0955a;
@@ -1291,14 +1283,20 @@ button, [role="tab"] {
   color: var(--c-text-2);
 }
 
+/* 絵文字を置いていた枠です。いまは描いた絵が入ります（empty-art.js）。
+   下地は淡い緑のまま——絵のほうが色を持っているので、下地まで主張すると
+   二重になります。 */
 .empty-art {
-  width: 92px; height: 92px;
+  width: 104px; height: 104px;
   display: grid;
   place-items: center;
   border-radius: var(--r-full);
   background: var(--c-primary-soft);
-  font-size: 40px;
   margin-bottom: var(--sp-1);
+}
+.empty-art .empty-svg {
+  display: block;
+  width: 68px; height: 68px;
 }
 
 .empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
@@ -1510,7 +1508,10 @@ button, [role="tab"] {
   position: absolute;
   width: 7px; height: 7px;
   margin: -3.5px 0 0 -3.5px;
-  background: var(--c-warmth);
+  /* 主色の緑。専用の金色（--c-warmth）を一つ立てていましたが、火花は
+     済ませた丸から飛ぶもので、その丸と同じ色のほうが、どこから出たかが
+     はっきりします。 */
+  background: var(--c-primary);
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
                       50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   transform: rotate(var(--a)) translateY(0) scale(0);
@@ -12508,6 +12509,119 @@ a.btn { text-decoration: none; }
   KN.productIcons = { find, findKey, fallback, ICONS, list, byKey, suggest, search, LABELS };
 })();
 
+/* ---- js/empty-art.js ---- */
+/* =========================================================
+   くらしノート — 空の画面の絵
+
+   何も無い画面は、アプリを開いたばかりの人が最初に見る画面です。そこに
+   絵文字を置いていました（🛒 ✅ 🏷️ ⚖️ 🏪）。絵文字は端末が描くもので、
+   iOS と Android と Windows で別の絵が出ます。線の太さも、色も、丸みも、
+   このアプリの決めごとの外側にあります——アイコンを全部描き直した画面の
+   なかで、そこだけが借りものの絵でした。
+
+   だからここで描きます。使う語彙は icon-system.js と同じ（同じ線、同じ
+   影、同じ色の名前）ですが、置き場所は分けてあります。これは商品の絵では
+   ないので、icons-v2.js に混ぜると絵を選ぶ画面に「てんびん」が並びます。
+
+   版面だけが違います
+   ------------------
+   商品のアイコンは 24 のグリッドに描き、25〜34px で出します。こちらは
+   68px で一枚だけ出るので、48 のグリッドに描きます。線は 2——24 グリッドの
+   1 と、画面上では同じ太さです（倍のグリッドを倍の大きさで出すので）。
+   広いぶん、商品アイコンでは描けない「場面」を描けます。
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = (window.KN = window.KN || {});
+  const S = KN.iconSystem;
+  const { C, R, LINE, r, c, p, pn, ln, sh, shR, gloss } = S;
+
+  /* 24 グリッドの決めごとを、そのまま倍にします。 */
+  const LW = S.LINE_W * 2;          // 輪郭 2
+  const IW = 1.8;                   // 内側の線。輪郭より細いこと
+  const rr = (k) => R[k] * 2;       // 角丸も倍
+
+  const scene = (...parts) =>
+    `<svg class="empty-svg" viewBox="0 0 48 48" fill="none" aria-hidden="true">` +
+    `<g stroke="${LINE}" stroke-width="${LW}" stroke-linejoin="round" stroke-linecap="round">` +
+    parts.join("") +
+    `</g></svg>`;
+
+  const ART = {
+
+    /* 買うもの。持ち手のあるかごに、りんごと葉物が覗いています。
+       「まだ何も入っていない」ではなく「これから入れるもの」を描きます
+       ——空の画面に空のかごを置くと、二度同じことを言うだけなので。 */
+    basket: scene(
+      ln("M15.5 20.4a8.6 8.6 0 0 1 17 0", LINE, LW),
+      c(19, 17.4, 5, C.red),
+      ln("M19 12.4v-2.6", C.brownD, IW),
+      pn("M19.8 11.6q3.4-1.8 4.6.6-2.8 1.8-4.6-.6", C.green),
+      gloss(17, 15.4, 2.4, 1.5),
+      p("M28.8 22.6q-1.8-8.6 4.4-10.8 3.2 5.8-.4 10.8z", C.lime),
+      ln("M31.6 22.2q-.4-5 1.6-8.4", C.limeD, IW, ".8"),
+      r(7.6, 20.6, 32.8, 5.4, rr("sm"), C.tan),
+      p("M10.8 26h26.4l-2.7 12.8q-.5 2.4-3 2.4H16.5q-2.5 0-3-2.4z", C.cream),
+      ln("M17.4 27.6l1.4 12.8M24 27.6l.5 12.8M30.6 27.6l-.5 12.8M37 27.6l-1.4 12.8",
+        C.tanD, 1.5, ".6"),
+      ln("M12.6 31.8h23.6M13.6 36.2h21.6", C.tanD, 1.5, ".6"),
+      sh("M34.5 26h2.7l-2.7 12.8q-.5 2.4-3 2.4h-2.7q2.5 0 3-2.4z", ".1")
+    ),
+
+    /* やること。全部に印の付いた綴じノート。「何も無い」ではなく
+       「片づいた」——同じ状態でも、そちらのほうが本当です。 */
+    donePad: scene(
+      shR(12.6, 11, 26, 31, rr("md"), ".09"),
+      r(9.8, 8.4, 26, 31, rr("md"), C.paper),
+      p("M9.8 13.6v-2q0-3.2 3.2-3.2h19.6q3.2 0 3.2 3.2v2z", C.forest),
+      ln("M15.6 5.6v6.4M22.8 5.6v6.4M30 5.6v6.4", C.steelD, 2),
+      ln("M14.6 21.4l2 2.2 4.2-4.9M14.6 28.6l2 2.2 4.2-4.9M14.6 35.8l2 2.2 4.2-4.9",
+        C.green, 2.2),
+      ln("M24.4 21h7.2M24.4 28.2h7.2M24.4 35.4h4.8", C.greyD, IW, ".5")
+    ),
+
+    /* 価格。ひもの付いた値札に ¥。 */
+    priceTag: scene(
+      p("M26 7.2h11.8q3 0 3 3v11.8q0 1.8-1.3 3.1L26.9 38.7q-2.1 2.1-4.2 0L9.3 25.4q-2.1-2.1 0-4.2L22.9 8.5q1.3-1.3 3.1-1.3z", C.amber),
+      sh("M40.8 17.4v4.6q0 1.8-1.3 3.1L26.9 38.7q-2.1 2.1-4.2 0l-2.1-2.1q2.1 2.1 4.2 0l12.6-12.6q1.3-1.3 1.3-3.1z", ".1"),
+      c(32.6, 15, 2.9, C.paper),
+      ln("M34.8 12.8l4.6-4.6", LINE, LW),
+      ln("M17.8 20.6l4.2 5 4.2-5M18.6 27.4h6.8M18.6 30.6h6.8M22 25.6v7.4",
+        C.amberD, 2.2, ".95"),
+      gloss(18.6, 14.6, 3, 1.8)
+    ),
+
+    /* 比べる。かたむいたてんびん。水平では「比べた結果」が出ません。 */
+    scales: scene(
+      p("M22 15.4h4v21.4h-4z", C.steel),
+      p("M14.2 41.2q0-3.4 3.6-4.4h12.4q3.6 1 3.6 4.4z", C.steelD),
+      p("M11.2 15.8 36.8 10.8l.7 3.5-25.6 5z", C.steel),
+      ln("M11.8 18.6v3M36.4 13.8v3", C.steelD, IW),
+      p("M5.6 21.6h12.4q-.6 6-6.2 6t-6.2-6z", C.forest),
+      p("M30 16.8h12.4q-.6 6-6.2 6t-6.2-6z", C.forest),
+      sh("M14.6 21.6h3.4q-.6 6-6.2 6 3.8 0 2.8-6z", ".12"),
+      sh("M39 16.8h3.4q-.6 6-6.2 6 3.8 0 2.8-6z", ".12"),
+      c(24, 13.4, 3.2, C.amber),
+      gloss(22.8, 12.2, 1.5, 1)
+    ),
+
+    /* お店。ひさしの下に、まだ何も書いていない値段の板が下がっています。 */
+    shopSign: scene(
+      r(8.4, 17.8, 31.2, 22.6, rr("sm"), C.cream),
+      sh("M34.4 17.8h5.2v22.6h-5.2z", ".08"),
+      p("M6 12.4q0-3 3-3h30q3 0 3 3v2q0 3.8-3.8 3.8H9.8Q6 18.2 6 14.4z", C.red),
+      pn("M13 9.4h5.8v8.8H13zM24.6 9.4h5.8v8.8h-5.8zM36.2 9.4h3.4v8.8h-3.4z",
+        C.white, 'opacity=".85"'),
+      ln("M20 18.2v3.4M28 18.2v3.4", C.steelD, IW),
+      r(14.4, 21.4, 19.2, 12.4, rr("xs"), C.paper),
+      ln("M18.4 26h11.2M18.4 30h7.4", C.greyD, IW, ".45")
+    ),
+  };
+
+  KN.emptyArt = ART;
+})();
+
 /* ---- js/store.js ---- */
 /* =========================================================
    くらしノート — state, persistence, selectors
@@ -21608,7 +21722,7 @@ a.btn { text-decoration: none; }
     if (!all.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">✅</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
           <h2 class="empty-title">やることはありません</h2>
           <p class="empty-text">
             下の＋から追加できます。日付を決めておくと、その日が来たときに
@@ -23217,8 +23331,8 @@ a.btn { text-decoration: none; }
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
            aria-label="体重の推移のグラフ${sel.id ? `（${sel.label}を並べています）` : ""}${towardGoal ? "。目標に近づいています" : ""}">
         ${towardGoal ? KN.util.raw(`<defs><linearGradient id="goalGlow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--c-warmth)" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="var(--c-warmth)" stop-opacity="0"/>
+              <stop offset="0%" stop-color="var(--c-primary)" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="var(--c-primary)" stop-opacity="0"/>
             </linearGradient></defs>`) : ""}
         ${KN.util.raw(bars.map((b) => {
           const h = barH(b.value);
@@ -26902,7 +27016,7 @@ distance=6.0km</pre>
   function emptyState() {
     const wrap = node(html`
       <div class="empty">
-        <div class="empty-art">🛒</div>
+        <div class="empty-art">${KN.util.raw(KN.emptyArt.basket)}</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
         <p class="empty-text">
           下の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
@@ -27095,7 +27209,7 @@ distance=6.0km</pre>
     if (!all.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">🏷️</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.priceTag)}</div>
           <h2 class="empty-title">商品がまだありません</h2>
           <p class="empty-text">
             買い物リストに追加した商品はここに自動で並びます。
@@ -27577,7 +27691,7 @@ distance=6.0km</pre>
     if (!data.entries.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">⚖️</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.scales)}</div>
           <h2 class="empty-title">リストに商品を追加すると比べられます</h2>
           <p class="empty-text">
             買い物リストの商品それぞれに、お店ごとの値段を登録してください。
@@ -27591,7 +27705,7 @@ distance=6.0km</pre>
     if (!st.stores.length || !data.combo.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">🏪</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.shopSign)}</div>
           <h2 class="empty-title">まだ値段の記録がありません</h2>
           <p class="empty-text">
             「商品と価格」から、お店ごとの値段を登録してみてください。
