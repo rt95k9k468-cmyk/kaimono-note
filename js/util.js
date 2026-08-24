@@ -417,12 +417,55 @@
              + '<path d="M6.2 9.2h9.2"/>',
   };
 
-  /** Inline stroke icon. */
+  /* ---------- 塗りの絵 ----------
+
+     線だけの絵ばかりが並ぶと、どれも同じ重さになります。「いまここに居る」
+     のように面で言うべきことまで、細い線で言っていました。
+
+     塗るのは、いま居るタブの四つだけです。ここが画面のなかで唯一「一つに
+     決まっているもの」で、面にする値打ちがあります。★や旗のような閉じた
+     形は、線の絵をそのまま塗れば済むので（.fav.is-on がやっています）
+     ここには要りません——**線でできていて塗る形が無い絵**だけを、
+     塗り用に描き起こします。
+
+     形は線の絵と同じ座標に置きます。切り替わるときに絵が動いてはいけない
+     ので、太さだけが変わって見えるように。 */
+  const ICON_SOLID = {
+    list: '<rect x="8" y="4.8" width="13" height="2.4" rx="1.2"/>'
+        + '<rect x="8" y="10.8" width="13" height="2.4" rx="1.2"/>'
+        + '<rect x="8" y="16.8" width="13" height="2.4" rx="1.2"/>'
+        + '<circle cx="3.5" cy="6" r="2"/><circle cx="3.5" cy="12" r="2"/><circle cx="3.5" cy="18" r="2"/>',
+    /* ✓ は塗る形を持たないので、線のまま太らせます。同じ絵のなかで
+       塗りと線が混ざりますが、見えるのは「濃くなった」ことだけです。 */
+    checklist: '<path d="M3.2 6.4 4.9 8.1 8 5M3.2 12.4 4.9 14.1 8 11M3.2 18.4 4.9 20.1 8 17"'
+        + ' fill="none" stroke="currentColor" stroke-width="2.6"/>'
+        + '<rect x="11" y="5.4" width="9.8" height="2.4" rx="1.2"/>'
+        + '<rect x="11" y="11.4" width="9.8" height="2.4" rx="1.2"/>'
+        + '<rect x="11" y="17.4" width="6.4" height="2.4" rx="1.2"/>',
+    /* 穴は evenodd で抜きます（地の色を上に塗ると、暗い画面で穴だけ
+       白く残ります）。 */
+    tag: '<path fill-rule="evenodd" d="M11.6 2.6H4.4A1.8 1.8 0 0 0 2.6 4.4v7.2a1.8 1.8 0 0 0 .53 1.27l8 8'
+        + 'a1.8 1.8 0 0 0 2.54 0l7.2-7.2a1.8 1.8 0 0 0 0-2.54l-8-8A1.8 1.8 0 0 0 11.6 2.6Z'
+        + 'M7.2 8.7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/>',
+    scale: '<path fill-rule="evenodd" d="M5.8 4.4h12.4a3 3 0 0 1 3 3v9.2a3 3 0 0 1-3 3H5.8a3 3 0 0 1-3-3V7.4'
+        + 'a3 3 0 0 1 3-3Zm6.2 3.8a4.6 4.6 0 0 0-4.35 3.1h8.7A4.6 4.6 0 0 0 12 8.2Z'
+        + 'm-3.4 6.6a1.1 1.1 0 0 0 0 2.2h6.8a1.1 1.1 0 0 0 0-2.2Z"/>',
+  };
+
+  /** Inline icon. Stroke by default; `.is-solid` shows the filled face. */
   function icon(name, cls) {
     const p = ICON_PATHS[name] || "";
+    const solid = ICON_SOLID[name];
+    /* ui-ico は、この48個ぜんぶに一つだけ付く手がかりです。いままで共通の
+       class が無かったので、大きさも太さも置き場所ごとにばらばらに書く
+       しかありませんでした（13〜26pxの16通り）。 */
     return raw(
-      `<svg class="${cls || ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
-      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`
+      `<svg class="ui-ico${cls ? " " + cls : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+      (solid
+        ? `<g class="ico-line">${p}</g><g class="ico-solid" fill="currentColor" stroke="none">${solid}</g>`
+        : p) +
+      `</svg>`
     );
   }
 

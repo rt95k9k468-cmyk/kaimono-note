@@ -131,6 +131,22 @@
   --c-slot-d-soft: #e0e4f6;
   --c-slot-s-soft: #f8e4f2;
 
+  /* --- 絵の大きさ、二段階 ---
+
+     画面の絵（util.js の icon()）は、置き場所ごとに 12〜26px の16通りの
+     大きさと、1.7〜3.2 の9通りの太さで書かれていました。全部が少しずつ
+     違うと、どれが大事かは何も言っていないのと同じです——目が最初に行く
+     先が決まりません。
+
+     二段階だけにします。「押せるもの・目印になるもの」と「文字に寄り添う
+     もの」。中間はありません。決まった大きさの入れもの（丸ボタン、キー、
+     チェックの輪、タブの丸）の中身だけが例外で、そこは入れものが大きさを
+     決めます——それぞれの場所に理由を書いてあります。 */
+  --ico:    20px;   /* 主：押せるもの・目印になるもの */
+  --ico-w:  2.2;
+  --ico-sm: 15px;   /* 添え：文字に寄り添うもの */
+  --ico-sm-w: 1.8;
+
   /* --- effects --- */
   --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
   --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
@@ -652,6 +668,8 @@ a { color: var(--c-primary); }
     text-align: center;
     background: var(--c-bg);
   }
+  /* 画面いっぱいのお知らせに一枚だけ出る絵。文章の脇の印ではないので、
+     二段階の外です。 */
   .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
   .rotate-note b { font-size: var(--fs-xl); font-weight: 700; }
   .rotate-note span { font-size: var(--fs-sm); color: var(--c-text-2); }
@@ -674,6 +692,8 @@ a { color: var(--c-primary); }
   padding-top: 2px;
 }
 
+/* タブの絵は、丸い下地（40×26px）の中身です。入れものが大きさを決めるので
+   二段階の外——そのかわり、選ばれた一つは塗りになります（下）。 */
 .tab svg { width: 23px; height: 23px; stroke-width: 1.9; }
 
 .tab .tab-ico {
@@ -737,6 +757,17 @@ a { color: var(--c-primary); }
 }
 .tab[aria-selected="true"] svg { stroke-width: 2.3; }
 .tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
+
+/* いま居るところは、線ではなく面で言います。
+
+   三つのタブが同じ細さの線で並んでいると、どれが選ばれているかは緑の丸
+   （下地）だけが持っていました。下地は薄い緑なので、明るいところで見ると
+   ほとんど消えます。塗った絵なら、色が飛んでも形の重さが残ります。
+
+   塗りと線は同じ座標に重ねてあるので（util.js）、切り替わっても絵は
+   動きません。太らせるのではなく、面になる。 */
+.tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-line { display: none; }
+.tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-solid { display: block; }
 
 .tab-badge {
   position: absolute;
@@ -815,9 +846,30 @@ button, [role="tab"] {
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .45; pointer-events: none; }
 
+/* ---------------- 画面の絵（util.js の icon()） ----------------
+
+   二段階。既定は「主」で、文字に添えるだけのものが .is-sub を足します。
+   置き場所ごとの指定はこの下に続きますが、どれも二つの token のどちらか
+   を指すだけです——生の px を書いたら、そこからまた16通りが始まります。 */
+.ui-ico {
+  width: var(--ico); height: var(--ico);
+  stroke-width: var(--ico-w);
+  flex: none;
+}
+.ui-ico.is-sub {
+  width: var(--ico-sm); height: var(--ico-sm);
+  stroke-width: var(--ico-sm-w);
+}
+
+/* 塗りの面は、頼まれたときだけ出します。線と塗りは同じ座標に重なって
+   いるので、切り替えても絵は動きません。 */
+.ui-ico .ico-solid { display: none; }
+.ui-ico.is-solid .ico-line { display: none; }
+.ui-ico.is-solid .ico-solid { display: block; }
+
 /* Inline icons inside a text button must not inherit the SVG's intrinsic box. */
-.btn svg { width: 18px; height: 18px; flex: none; stroke-width: 2.2; }
-.btn-sm svg { width: 16px; height: 16px; }
+.btn svg { width: var(--ico); height: var(--ico); flex: none; stroke-width: var(--ico-w); }
+.btn-sm svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
 .btn-primary { background: var(--c-primary); color: #fff; box-shadow: var(--shadow-1); }
 /* =========================================================
@@ -881,7 +933,7 @@ button, [role="tab"] {
   .icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
 }
 .icon-btn:active { transform: scale(.92); }
-.icon-btn svg { width: 20px; height: 20px; stroke-width: 2; }
+.icon-btn svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 @media (hover: hover) {
   .icon-btn.is-danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
 }
@@ -989,7 +1041,7 @@ button, [role="tab"] {
 
 /* 「今回買う」in the add sheet. Wears the star's own colour rather than the
    app's green, so it is plainly the same ★ that appears on the row. */
-.fav-toggle .icon-pick-mark svg { width: 24px; height: 24px; stroke-width: 2.2; color: var(--c-text-3); }
+.fav-toggle .icon-pick-mark svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); color: var(--c-text-3); }
 .fav-toggle.is-on {
   border-color: var(--c-warn);
   background: color-mix(in srgb, var(--c-warn) 13%, var(--c-surface));
@@ -1068,7 +1120,9 @@ button, [role="tab"] {
   box-shadow: var(--shadow-1);
   transition: transform .12s var(--ease), background .16s var(--ease);
 }
-.stepper-btn svg { width: 20px; height: 20px; stroke-width: 2.6; }
+/* 数を増減する丸ボタン。太さだけは主より強く——ここは＋と−の二本の線
+   しか無いので、同じ太さだと丸のなかで痩せて見えます。 */
+.stepper-btn svg { width: var(--ico); height: var(--ico); stroke-width: 2.6; }
 .stepper-btn:active { transform: scale(.9); }
 .stepper-value {
   min-width: 48px;
@@ -1246,7 +1300,7 @@ button, [role="tab"] {
 /* An inline icon in a section heading has no box of its own to be sized by —
    without this it inherits the 24-unit viewBox at font size and fills the
    card. */
-.section-title svg { width: 16px; height: 16px; flex: none; stroke-width: 2.2; }
+.section-title svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; stroke-width: var(--ico-sm-w); }
 
 /* One line under a section title, for a gesture that has nothing on screen to
    advertise it. */
@@ -1645,7 +1699,7 @@ button, [role="tab"] {
 .row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
 .row-value { color: var(--c-text-2); font-weight: 700; flex: none; }
 .row-chevron { color: var(--c-text-3); flex: none; display: grid; place-items: center; }
-.row-chevron svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.row-chevron svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 
 /* ---------------- misc ---------------- */
 
@@ -1773,6 +1827,7 @@ button, [role="tab"] {
 .key-ok.is-equals { font-size: 25px; font-weight: 700; }
 .key-ok:active { background: var(--c-primary-2); }
 
+/* キーの中身。キーの大きさが決めます（二段階の外）。 */
 .key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
 
 /* ---- css/screens.css ---- */
@@ -1833,6 +1888,7 @@ button, [role="tab"] {
   pointer-events: auto;
   transition: transform .12s var(--ease), background .16s var(--ease);
 }
+/* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。 */
 .add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; }
 .add-fab:active { transform: scale(.92); }
 @media (hover: hover) {
@@ -1871,6 +1927,7 @@ button, [role="tab"] {
 }
 .ac-emoji { font-size: 20px; flex: none; display: flex; align-items: center; }
 .ac-new-mark { width: 25px; color: var(--c-primary); }
+/* 丸い印（32px）の中身。入れものが大きさを決めます（二段階の外）。 */
 .ac-new-mark svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9;
                    fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -2050,7 +2107,7 @@ button, [role="tab"] {
   color: var(--c-text-2);
   transition: background .14s var(--ease), color .14s var(--ease);
 }
-.cal-arrow svg { width: 18px; height: 18px; stroke-width: 2.2; }
+.cal-arrow svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 /* The shared chevron points right, so 「次の月」 is it as drawn and
    「前の月」 is it turned all the way round. */
 .cal-arrow.js-prev svg { transform: rotate(180deg); }
@@ -2590,7 +2647,7 @@ button, [role="tab"] {
   background: var(--c-surface-3);
   color: var(--c-text-2);
 }
-.swipe-yes svg, .swipe-arch svg { width: 18px; height: 18px; stroke-width: 2.4; flex: none; }
+.swipe-yes svg, .swipe-arch svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); flex: none; }
 .swipe-yes svg { fill: currentColor; }
 
 /* Understated until the card has travelled far enough — full strength is the
@@ -2625,7 +2682,7 @@ button, [role="tab"] {
 .is-tile-wrap .swipe-arch span { display: none; }
 .is-tile-wrap .swipe-yes { padding-left: 10px; }
 .is-tile-wrap .swipe-arch { padding-right: 10px; }
-.is-tile-wrap .swipe-yes svg, .is-tile-wrap .swipe-arch svg { width: 20px; height: 20px; }
+/* タイルでも同じ大きさです（二段階にしたので、ここで足す差はもうありません）。 */
 
 /* ================= TILES ================= */
 
@@ -2764,8 +2821,8 @@ button, [role="tab"] {
 .item.is-tile .check { left: 4px; }
 .item.is-tile .fav { right: 4px; }
 .item.is-tile .check { width: 22px; height: 22px; }
-.item.is-tile .check svg { width: 13px; height: 13px; }
-.item.is-tile .fav svg { width: 17px; height: 17px; }
+.item.is-tile .check svg { width: 13px; height: 13px; }   /* タイルの輪は小さい */
+.item.is-tile .fav svg { width: var(--ico-sm); height: var(--ico-sm); }
 
 /* Bought: the tile steps back rather than striking a line through a name that
    is already wrapping across three lines. */
@@ -2808,7 +2865,9 @@ button, [role="tab"] {
   width: 44px; height: 44px;
   transform: translate(-50%, -50%);
 }
-.check svg { width: 15px; height: 15px; stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
+/* 大きさは輪（18px）が決めます。太さ 3.2 は白い✓が緑に沈まないための
+   もので、二段階の外です——輪の中身なので、輪と一緒に決まります。 */
+.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
 @media (hover: hover) {
   .check:hover { border-color: var(--c-primary); }
 }
@@ -2864,7 +2923,7 @@ button, [role="tab"] {
   width: 44px; height: 44px;
   transform: translate(-50%, -50%);
 }
-.fav svg { width: 20px; height: 20px; stroke-width: 1.8; fill: none; }
+.fav svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); fill: none; }
 .fav:active { transform: scale(.85); }
 .fav.is-on { color: var(--c-warn); }
 .fav.is-on svg { fill: currentColor; }
@@ -2888,7 +2947,7 @@ button, [role="tab"] {
   color: var(--c-text-2);
   margin-bottom: var(--sp-2);
 }
-.insights-head svg { width: 15px; height: 15px; stroke-width: 2; color: var(--c-primary); flex: none; }
+.insights-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); color: var(--c-primary); flex: none; }
 
 .insights-list { display: flex; flex-direction: column; gap: var(--sp-3); }
 
@@ -2908,7 +2967,7 @@ button, [role="tab"] {
   font-weight: 700;
   color: var(--c-text);
 }
-.trip-head svg { width: 17px; height: 17px; stroke-width: 1.8; fill: currentColor; color: var(--c-warn); flex: none; }
+.trip-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); fill: currentColor; color: var(--c-warn); flex: none; }
 .trip-head-rest { color: var(--c-text-3); font-weight: 700; }
 
 .item-body {
@@ -3029,7 +3088,7 @@ button, [role="tab"] {
   font-weight: 700;
   color: var(--c-text-2);
 }
-.done-head svg { width: 16px; height: 16px; stroke-width: 2.6; transition: transform .2s var(--ease); }
+.done-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform .2s var(--ease); }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
 
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
@@ -3069,7 +3128,7 @@ button, [role="tab"] {
   padding: 0 var(--sp-3);
   height: 46px;
 }
-.search-bar svg { width: 18px; height: 18px; color: var(--c-text-3); flex: none; stroke-width: 2.2; }
+.search-bar svg { width: var(--ico); height: var(--ico); color: var(--c-text-3); flex: none; stroke-width: var(--ico-w); }
 /* 16px is the floor: below it iOS zooms the page in on focus and the
    layout lurches. Every text field in the app sits at or above it. */
 .search-input { flex: 1; min-width: 0; border: none; background: none; outline: none; font-size: var(--fs-lg); height: 100%; }
@@ -3219,7 +3278,7 @@ button, [role="tab"] {
 }
 .price-main:active { transform: scale(.985); }
 .price-chevron { flex: none; color: var(--c-text-3); display: flex; }
-.price-chevron svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.price-chevron svg { width: var(--ico); height: var(--ico); stroke: currentColor; stroke-width: var(--ico-w); fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
 .price-store-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
 .price-store { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3633,6 +3692,7 @@ button, [role="tab"] {
 .diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
 .diet-legend-item i.dot-bar { background: var(--c-primary); opacity: .3; width: 8px; height: 10px; border-radius: 2px; }
 .diet-legend-item i.dot-beer { width: 12px; height: 12px; border-radius: 0; background: none; color: var(--c-accent); line-height: 0; }
+/* 凡例の粒。これは絵ではなく色見本の大きさに合わせます。 */
 .diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }
 .diet-legend-item i.dot-ma7 { background: var(--c-primary); }
 .diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
@@ -3649,7 +3709,7 @@ button, [role="tab"] {
   background: color-mix(in srgb, var(--c-surface-2) 92%, transparent);
   color: var(--c-text-3);
 }
-.ta-clear svg { width: 16px; height: 16px; stroke-width: 2.2; }
+.ta-clear svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 .ta-clear:active { background: var(--c-surface-3); color: var(--c-text); }
 
 .diet-empty { padding: var(--sp-4) var(--sp-2); }
@@ -3662,8 +3722,8 @@ button, [role="tab"] {
   display: inline-block; vertical-align: -2px; line-height: 0;
   color: var(--c-primary); opacity: .8; margin-right: 4px;
 }
-.diet-hero-ico svg { width: 14px; height: 14px; stroke-width: 1.8; }
-.diet-stat-ico svg { width: 12px; height: 12px; stroke-width: 1.8; }
+.diet-hero-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+.diet-stat-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
 /* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
    「その日どうだったか」のひと組で、二段に割れると一組に見えなくなります。
@@ -3676,7 +3736,7 @@ button, [role="tab"] {
 }
 /* 絵は控えめに。数字より目立つと、読む順が逆になります。 */
 .diet-cell-ico { display: block; color: var(--c-primary); opacity: .82; line-height: 0; }
-.diet-cell-ico svg { width: 17px; height: 17px; stroke-width: 1.7; }
+.diet-cell-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 /* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
 .diet-cell-label { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
@@ -3737,7 +3797,7 @@ button, [role="tab"] {
    輪の色と食い違って、どの絵がどの輪の話か読めなくなります。 */
 .diet-cell { padding: var(--sp-3) 2px var(--sp-2); gap: 0; }
 .diet-cell .diet-cell-label { display: inline-flex; align-items: center; gap: 3px; }
-.diet-cell .diet-cell-ico svg { width: 12px; height: 12px; }
+/* 枠のなかでも「添え」のまま。ここだけ 12px に落としていたのをやめました。 */
 .diet-cell[data-type="steps"]  .diet-cell-ico { color: var(--c-m-steps); }
 .diet-cell[data-type="burned"] .diet-cell-ico { color: var(--c-m-burn); }
 .diet-cell[data-type="sleep"]  .diet-cell-ico { color: var(--c-m-sleep); }
@@ -3851,7 +3911,7 @@ button, [role="tab"] {
 .diet-slot[data-slot="lunch"] .diet-slot-ico     { color: var(--c-slot-l); }
 .diet-slot[data-slot="dinner"] .diet-slot-ico    { color: var(--c-slot-d); }
 .diet-slot[data-slot="snack"] .diet-slot-ico     { color: var(--c-slot-s); }
-.diet-slot-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.diet-slot-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
 .diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text); }
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
@@ -3873,7 +3933,7 @@ button, [role="tab"] {
 .diet-memo-head { display: flex; align-items: center; gap: 6px; }
 .diet-memo-head b { font-size: var(--fs-sm); }
 .diet-memo-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
-.diet-memo-ico svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.diet-memo-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-memo.is-blank .diet-memo-ico { color: var(--c-text-3); opacity: .5; }
 .diet-memo-hint { font-size: var(--fs-xs); color: var(--c-text-3); margin-left: auto; }
 .diet-memo-body {
@@ -3905,7 +3965,7 @@ button, [role="tab"] {
 /* 絵は左端に、文の一行目と肩を揃えて。色は札の色をそのまま継ぎます——
    同じことを二度言うぶん、目は一度で拾えます。 */
 .diet-finding-ico { flex: none; line-height: 0; color: var(--c-text-3); margin-top: 1px; }
-.diet-finding-ico svg { width: 18px; height: 18px; stroke-width: 1.7; }
+.diet-finding-ico svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 .diet-finding.is-good { border-left-color: var(--c-primary); }
 .diet-finding.is-good .diet-finding-ico { color: var(--c-primary); }
 .diet-finding.is-warn { border-left-color: var(--c-accent); }
@@ -4536,12 +4596,55 @@ a.btn { text-decoration: none; }
              + '<path d="M6.2 9.2h9.2"/>',
   };
 
-  /** Inline stroke icon. */
+  /* ---------- 塗りの絵 ----------
+
+     線だけの絵ばかりが並ぶと、どれも同じ重さになります。「いまここに居る」
+     のように面で言うべきことまで、細い線で言っていました。
+
+     塗るのは、いま居るタブの四つだけです。ここが画面のなかで唯一「一つに
+     決まっているもの」で、面にする値打ちがあります。★や旗のような閉じた
+     形は、線の絵をそのまま塗れば済むので（.fav.is-on がやっています）
+     ここには要りません——**線でできていて塗る形が無い絵**だけを、
+     塗り用に描き起こします。
+
+     形は線の絵と同じ座標に置きます。切り替わるときに絵が動いてはいけない
+     ので、太さだけが変わって見えるように。 */
+  const ICON_SOLID = {
+    list: '<rect x="8" y="4.8" width="13" height="2.4" rx="1.2"/>'
+        + '<rect x="8" y="10.8" width="13" height="2.4" rx="1.2"/>'
+        + '<rect x="8" y="16.8" width="13" height="2.4" rx="1.2"/>'
+        + '<circle cx="3.5" cy="6" r="2"/><circle cx="3.5" cy="12" r="2"/><circle cx="3.5" cy="18" r="2"/>',
+    /* ✓ は塗る形を持たないので、線のまま太らせます。同じ絵のなかで
+       塗りと線が混ざりますが、見えるのは「濃くなった」ことだけです。 */
+    checklist: '<path d="M3.2 6.4 4.9 8.1 8 5M3.2 12.4 4.9 14.1 8 11M3.2 18.4 4.9 20.1 8 17"'
+        + ' fill="none" stroke="currentColor" stroke-width="2.6"/>'
+        + '<rect x="11" y="5.4" width="9.8" height="2.4" rx="1.2"/>'
+        + '<rect x="11" y="11.4" width="9.8" height="2.4" rx="1.2"/>'
+        + '<rect x="11" y="17.4" width="6.4" height="2.4" rx="1.2"/>',
+    /* 穴は evenodd で抜きます（地の色を上に塗ると、暗い画面で穴だけ
+       白く残ります）。 */
+    tag: '<path fill-rule="evenodd" d="M11.6 2.6H4.4A1.8 1.8 0 0 0 2.6 4.4v7.2a1.8 1.8 0 0 0 .53 1.27l8 8'
+        + 'a1.8 1.8 0 0 0 2.54 0l7.2-7.2a1.8 1.8 0 0 0 0-2.54l-8-8A1.8 1.8 0 0 0 11.6 2.6Z'
+        + 'M7.2 8.7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/>',
+    scale: '<path fill-rule="evenodd" d="M5.8 4.4h12.4a3 3 0 0 1 3 3v9.2a3 3 0 0 1-3 3H5.8a3 3 0 0 1-3-3V7.4'
+        + 'a3 3 0 0 1 3-3Zm6.2 3.8a4.6 4.6 0 0 0-4.35 3.1h8.7A4.6 4.6 0 0 0 12 8.2Z'
+        + 'm-3.4 6.6a1.1 1.1 0 0 0 0 2.2h6.8a1.1 1.1 0 0 0 0-2.2Z"/>',
+  };
+
+  /** Inline icon. Stroke by default; `.is-solid` shows the filled face. */
   function icon(name, cls) {
     const p = ICON_PATHS[name] || "";
+    const solid = ICON_SOLID[name];
+    /* ui-ico は、この48個ぜんぶに一つだけ付く手がかりです。いままで共通の
+       class が無かったので、大きさも太さも置き場所ごとにばらばらに書く
+       しかありませんでした（13〜26pxの16通り）。 */
     return raw(
-      `<svg class="${cls || ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
-      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`
+      `<svg class="ui-ico${cls ? " " + cls : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+      `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+      (solid
+        ? `<g class="ico-line">${p}</g><g class="ico-solid" fill="currentColor" stroke="none">${solid}</g>`
+        : p) +
+      `</svg>`
     );
   }
 
