@@ -279,7 +279,7 @@
           <span class="combo-name">${product.name}${item.qty > 1 ? html` <span style="color:var(--c-text-3)">×${item.qty}</span>` : ""}</span>
           ${pr
             ? html`
-                ${isCheapestHere ? html`<span class="crown">🏆</span>` : ""}
+                ${isCheapestHere ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}
                 <span class="combo-price">${yen(pr.price * item.qty)}</span>
               `
             : html`

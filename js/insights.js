@@ -44,7 +44,10 @@
         out.push({
           kind: "price-move",
           weight: 60 + Math.abs(delta) / Math.max(prev.price, 1) * 40,
-          icon: up ? "📈" : "📉",
+          /* 絵は名前で持ちます。ここは「何を出すか」を決める場所で、
+             どう描くかは画面の仕事です（util.js の icon()）。 */
+          icon: up ? "trend" : "trendDown",
+          tone: up ? "warn" : "good",
           title: `${p.name}が${up ? "値上がり" : "値下がり"}`,
           body: `${st.name}で ${yen(prev.price)} → ${yen(cur.price)}（${up ? "+" : ""}${yen(delta)}）`,
         });
@@ -87,7 +90,8 @@
       return [{
         kind: "one-stop",
         weight: 100,
-        icon: "🛒",
+        icon: "cart",
+        tone: "good",
         title: `今回は${top.st.name}だけで足ります`,
         body: extra <= 0
           ? `${priced.length}品を ${yen(top.total)} で買えます。店を回る必要はありません。`
@@ -97,7 +101,8 @@
     return [{
       kind: "split",
       weight: 95,
-      icon: "🧭",
+      icon: "shopCompare",
+      tone: "note",
       title: `店を分けると ${yen(extra)} 安くなります`,
       body: `${top.st.name}中心なら ${yen(top.total)}、それぞれ最安の店で買うと ${yen(cheapest)} です。`,
     }];
@@ -114,7 +119,8 @@
       out.push({
         kind: "stale",
         weight: 40 + Math.min(age / 10, 20),
-        icon: "🕰️",
+        icon: "clock",
+        tone: "mute",
         title: `${p.name}の値段が古くなっています`,
         body: `最後に記録したのは ${formatDate(best.date)}。次に見かけたら確かめると合計が正確になります。`,
       });

@@ -1119,7 +1119,14 @@
 .insights-list { display: flex; flex-direction: column; gap: var(--sp-3); }
 
 .insight { display: flex; gap: var(--sp-3); align-items: flex-start; }
-.insight-ico { font-size: 17px; line-height: 1.35; flex: none; }
+/* 気づいたことの絵。色は意味です——上がった（悪い方向）は赤、下がった・
+   一店で足りるは緑、店を分ければ安いは accent（＝最安値の色）、古い記録は
+   灰色。新しい色は足していません。 */
+.insight-ico { flex: none; line-height: 0; margin-top: 2px; }
+.insight-ico.is-warn { color: var(--c-danger); }
+.insight-ico.is-good { color: var(--c-primary); }
+.insight-ico.is-note { color: var(--c-accent); }
+.insight-ico.is-mute { color: var(--c-text-3); }
 .insight-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .insight-title { font-weight: 700; font-size: var(--fs-md); }
 .insight-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-body); }
@@ -1456,7 +1463,15 @@
 .price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: 700; }
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
-.crown { font-size: 13px; flex: none; }
+/* いちばん安いお店の印。🏆 の絵文字でした（端末が描くもので、iOS と
+   Android で別の絵が出ます）。accent は「最安値」の色なので、その色の
+   まま王冠にします——同じ意味には同じ色。 */
+.crown {
+  flex: none; line-height: 0;
+  display: inline-flex; align-items: center;
+  color: var(--c-accent);
+  margin-right: 3px;
+}
 
 /* one store's price, in full */
 .field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: var(--lh-body); }
@@ -1623,6 +1638,10 @@
   font-size: var(--fs-sm);
   line-height: var(--lh-body);
 }
+/* アプリの顔。一枚だけ大きく出す絵なので、二段階の外です（空の画面の
+   絵と同じ扱い——添えものではなく、それ自体が見せるもの）。 */
+.about-mark { margin-bottom: var(--sp-1); line-height: 0; }
+.about-mark .empty-svg { width: 46px; height: 46px; display: inline-block; }
 
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
@@ -2292,10 +2311,17 @@ a.btn { text-decoration: none; }
    「押したら沈む」を持たせます。 */
 .diet-cell { border: 0; text-align: center; transition: background .14s var(--ease); }
 .diet-cell:active { background: var(--c-surface-3); }
+/* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
+   持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
+   代わりの書体の字で、端末ごとに別の絵になります。描いた鉛筆にしました。
+   大きさは11px。ラベル（12.5px）の脇に付く印なので、二段階ではなく
+   ラベルの背が決めます。 */
 .diet-hand {
-  font-style: normal; font-size: 9px; color: var(--c-text-3);
-  margin-left: 2px; vertical-align: 1px;
+  display: inline-block; line-height: 0;
+  margin-left: 3px; vertical-align: -1px;
+  color: var(--c-text-3);
 }
+.diet-hand svg { width: 11px; height: 11px; stroke-width: 2.6; }
 
 .diet-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-foot .diet-note { margin-left: auto; text-align: right; }

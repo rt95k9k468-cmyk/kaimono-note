@@ -504,7 +504,7 @@
               <span class="dot" style="background:${st.color}"></span>
               <span class="price-store-wrap">
                 <span class="price-store">${st.name}</span>
-                ${isBest ? html`<span class="crown">🏆</span>` : ""}
+                ${isBest ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}
               </span>
               <span class="price-figures">
                 <span class="price-amount">${yen(pr.price)}</span>

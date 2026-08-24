@@ -2939,7 +2939,14 @@ button, [role="tab"] {
 .insights-list { display: flex; flex-direction: column; gap: var(--sp-3); }
 
 .insight { display: flex; gap: var(--sp-3); align-items: flex-start; }
-.insight-ico { font-size: 17px; line-height: 1.35; flex: none; }
+/* 気づいたことの絵。色は意味です——上がった（悪い方向）は赤、下がった・
+   一店で足りるは緑、店を分ければ安いは accent（＝最安値の色）、古い記録は
+   灰色。新しい色は足していません。 */
+.insight-ico { flex: none; line-height: 0; margin-top: 2px; }
+.insight-ico.is-warn { color: var(--c-danger); }
+.insight-ico.is-good { color: var(--c-primary); }
+.insight-ico.is-note { color: var(--c-accent); }
+.insight-ico.is-mute { color: var(--c-text-3); }
 .insight-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .insight-title { font-weight: 700; font-size: var(--fs-md); }
 .insight-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-body); }
@@ -3276,7 +3283,15 @@ button, [role="tab"] {
 .price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: 700; }
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
-.crown { font-size: 13px; flex: none; }
+/* いちばん安いお店の印。🏆 の絵文字でした（端末が描くもので、iOS と
+   Android で別の絵が出ます）。accent は「最安値」の色なので、その色の
+   まま王冠にします——同じ意味には同じ色。 */
+.crown {
+  flex: none; line-height: 0;
+  display: inline-flex; align-items: center;
+  color: var(--c-accent);
+  margin-right: 3px;
+}
 
 /* one store's price, in full */
 .field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: var(--lh-body); }
@@ -3443,6 +3458,10 @@ button, [role="tab"] {
   font-size: var(--fs-sm);
   line-height: var(--lh-body);
 }
+/* アプリの顔。一枚だけ大きく出す絵なので、二段階の外です（空の画面の
+   絵と同じ扱い——添えものではなく、それ自体が見せるもの）。 */
+.about-mark { margin-bottom: var(--sp-1); line-height: 0; }
+.about-mark .empty-svg { width: 46px; height: 46px; display: inline-block; }
 
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
@@ -4112,10 +4131,17 @@ a.btn { text-decoration: none; }
    「押したら沈む」を持たせます。 */
 .diet-cell { border: 0; text-align: center; transition: background .14s var(--ease); }
 .diet-cell:active { background: var(--c-surface-3); }
+/* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
+   持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
+   代わりの書体の字で、端末ごとに別の絵になります。描いた鉛筆にしました。
+   大きさは11px。ラベル（12.5px）の脇に付く印なので、二段階ではなく
+   ラベルの背が決めます。 */
 .diet-hand {
-  font-style: normal; font-size: 9px; color: var(--c-text-3);
-  margin-left: 2px; vertical-align: 1px;
+  display: inline-block; line-height: 0;
+  margin-left: 3px; vertical-align: -1px;
+  color: var(--c-text-3);
 }
+.diet-hand svg { width: 11px; height: 11px; stroke-width: 2.6; }
 
 .diet-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-foot .diet-note { margin-left: auto; text-align: right; }
@@ -4572,6 +4598,11 @@ a.btn { text-decoration: none; }
     calendar:  '<rect x="3" y="5" width="18" height="16" rx="2.4"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     repeat:    '<path d="M4 9.4V8a3 3 0 0 1 3-3h11"/><path d="m15 2 3 3-3 3"/><path d="M20 14.6V16a3 3 0 0 1-3 3H6"/><path d="m9 22-3-3 3-3"/>',
     flag:      '<path d="M5 21V4"/><path d="M5 4.6h11.6l-2 3.6 2 3.6H5"/>',
+    /* いちばん安いお店の印。ここは 🏆 の絵文字でした——端末が描くもので、
+       iOS と Android で別の絵が出ますし、このアプリの線でも色でもありません。
+       山は三つ。二つだと王冠に見えず、四つだと15pxで潰れます。 */
+    crown:     '<path d="M4.2 7.8 8 11.5 12 5.2l4 6.3 3.8-3.7-1.5 10.6H5.7Z"/>'
+             + '<path d="M5.9 15.2h12.2"/>',
 
     /* ダイエット。体重計は「四角い台と、真ん中の目盛り窓」——秤の絵にすると
        買い物の 天びん と紛れるので、乗るほうの秤にしてあります。 */
@@ -4606,6 +4637,9 @@ a.btn { text-decoration: none; }
              + '<circle cx="14.4" cy="11.4" r="1"/><circle cx="11.4" cy="15.2" r="1"/>',
     target:    '<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1"/>',
     trend:     '<path d="M3.6 16.6 9 11.2l3.4 3.4 7-7"/><path d="M14.6 7.6h4.8v4.8"/>',
+    /* 下がる向き。trend を上下に返しただけ——同じ形の裏表であることが、
+       「上がった／下がった」を並べたときにいちばん速く読めます。 */
+    trendDown: '<path d="M3.6 7.4 9 12.8l3.4-3.4 7 7"/><path d="M14.6 16.4h4.8v-4.8"/>',
     drop:      '<path d="M12 3.2s6 6.3 6 10.2a6 6 0 0 1-12 0c0-3.9 6-10.2 6-10.2Z"/>',
     clock:     '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.2 1.9"/>',
     /* お酒。ジョッキ。持ち手があると、コップやバケツと間違えません。 */
@@ -16266,7 +16300,10 @@ a.btn { text-decoration: none; }
         out.push({
           kind: "price-move",
           weight: 60 + Math.abs(delta) / Math.max(prev.price, 1) * 40,
-          icon: up ? "📈" : "📉",
+          /* 絵は名前で持ちます。ここは「何を出すか」を決める場所で、
+             どう描くかは画面の仕事です（util.js の icon()）。 */
+          icon: up ? "trend" : "trendDown",
+          tone: up ? "warn" : "good",
           title: `${p.name}が${up ? "値上がり" : "値下がり"}`,
           body: `${st.name}で ${yen(prev.price)} → ${yen(cur.price)}（${up ? "+" : ""}${yen(delta)}）`,
         });
@@ -16309,7 +16346,8 @@ a.btn { text-decoration: none; }
       return [{
         kind: "one-stop",
         weight: 100,
-        icon: "🛒",
+        icon: "cart",
+        tone: "good",
         title: `今回は${top.st.name}だけで足ります`,
         body: extra <= 0
           ? `${priced.length}品を ${yen(top.total)} で買えます。店を回る必要はありません。`
@@ -16319,7 +16357,8 @@ a.btn { text-decoration: none; }
     return [{
       kind: "split",
       weight: 95,
-      icon: "🧭",
+      icon: "shopCompare",
+      tone: "note",
       title: `店を分けると ${yen(extra)} 安くなります`,
       body: `${top.st.name}中心なら ${yen(top.total)}、それぞれ最安の店で買うと ${yen(cheapest)} です。`,
     }];
@@ -16336,7 +16375,8 @@ a.btn { text-decoration: none; }
       out.push({
         kind: "stale",
         weight: 40 + Math.min(age / 10, 20),
-        icon: "🕰️",
+        icon: "clock",
+        tone: "mute",
         title: `${p.name}の値段が古くなっています`,
         body: `最後に記録したのは ${formatDate(best.date)}。次に見かけたら確かめると合計が正確になります。`,
       });
@@ -20257,7 +20297,7 @@ a.btn { text-decoration: none; }
               <span class="dot" style="background:${st.color}"></span>
               <span class="price-store-wrap">
                 <span class="price-store">${st.name}</span>
-                ${isBest ? html`<span class="crown">🏆</span>` : ""}
+                ${isBest ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}
               </span>
               <span class="price-figures">
                 <span class="price-amount">${yen(pr.price)}</span>
@@ -23818,7 +23858,7 @@ a.btn { text-decoration: none; }
             <button class="diet-cell js-cell ${r.type === "drink" ? "js-drink" : ""} ${
               r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
               <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
-                r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
+                r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
               <span class="diet-ring ${r.ring.cls}" style="--deg:${r.ring.deg.toFixed(1)}deg" aria-hidden="true">
                 <i class="diet-ring-mid mono-num">${r.mid}</i>
               </span>
@@ -27138,7 +27178,7 @@ distance=6.0km</pre>
     if (priceBox && best && bestStore) {
       priceBox.append(frag(html`
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
-        <span class="item-price-store">🏆 ${bestStore.name}</span>
+        <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
       `));
     } else if (priceBox) {
       priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
@@ -27253,7 +27293,7 @@ distance=6.0km</pre>
     found.forEach((f) => {
       listEl.append(node(html`
         <div class="insight">
-          <span class="insight-ico">${f.icon}</span>
+          <span class="insight-ico is-${f.tone || "mute"}">${icon(f.icon, "is-sub")}</span>
           <span class="insight-main">
             <span class="insight-title">${f.title}</span>
             <span class="insight-body">${f.body}</span>
@@ -27680,7 +27720,7 @@ distance=6.0km</pre>
                 was is the whole reason the figure was written down. Under the
                 figure rather than beside it: a third of a screen has no
                 beside. */""}
-          ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
+          ${best && bestStore ? html`<span class="tile-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>` : ""}
           ${product.archived && product.archivedAt
             ? html`<span class="tile-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
         </button>
@@ -27709,7 +27749,7 @@ distance=6.0km</pre>
           ${best && bestStore
             ? html`
                 <span class="item-price-amount">${yen(best.price)}</span>
-                <span class="item-price-store">🏆 ${bestStore.name}</span>
+                <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
               `
             : html`<span class="item-price-none">—</span>`}
         </span>
@@ -28081,7 +28121,7 @@ distance=6.0km</pre>
           <span class="combo-name">${product.name}${item.qty > 1 ? html` <span style="color:var(--c-text-3)">×${item.qty}</span>` : ""}</span>
           ${pr
             ? html`
-                ${isCheapestHere ? html`<span class="crown">🏆</span>` : ""}
+                ${isCheapestHere ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}
                 <span class="combo-price">${yen(pr.price * item.qty)}</span>
               `
             : html`
@@ -29427,7 +29467,10 @@ distance=6.0km</pre>
   function aboutBlock() {
     return node(html`
       <div class="about">
-        <div style="font-size:28px;margin-bottom:4px">🛒</div>
+        ${/* アプリの顔。ここも 🛒 の絵文字でした——端末が描くもので、iOS と
+              Android で別の絵が出ます。空の買い物リストに出るのと同じかごに
+              しました（empty-art.js）。 */""}
+        <div class="about-mark">${KN.util.raw(KN.emptyArt.basket)}</div>
         <div style="font-weight:700;color:var(--c-text-2)">くらしノート</div>
         <div>データはこの端末の中だけに保存されます</div>
         <div style="margin-top:8px">

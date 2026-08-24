@@ -367,7 +367,7 @@
                 was is the whole reason the figure was written down. Under the
                 figure rather than beside it: a third of a screen has no
                 beside. */""}
-          ${best && bestStore ? html`<span class="tile-store">🏆 ${bestStore.name}</span>` : ""}
+          ${best && bestStore ? html`<span class="tile-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>` : ""}
           ${product.archived && product.archivedAt
             ? html`<span class="tile-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
         </button>
@@ -396,7 +396,7 @@
           ${best && bestStore
             ? html`
                 <span class="item-price-amount">${yen(best.price)}</span>
-                <span class="item-price-store">🏆 ${bestStore.name}</span>
+                <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
               `
             : html`<span class="item-price-none">—</span>`}
         </span>
