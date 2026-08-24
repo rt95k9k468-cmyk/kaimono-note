@@ -1791,19 +1791,50 @@
 /* ---- グラフ ---- */
 
 .diet-chart { width: 100%; height: auto; display: block; overflow: visible; }
-.diet-gridline { stroke: var(--c-border); stroke-width: 1; }
+
+/* 補助線は、読むためのものであって見るためのものではありません。前は
+   本文の枠線と同じ濃さで五本引いてあり、線のほうが記録より目立って
+   いました。細く、薄く。いちばん下だけは棒の足もとでもあるので、
+   そこだけ地に足を付けます。 */
+.diet-gridline { stroke: var(--c-border); stroke-width: .8; opacity: .75; }
+.diet-gridline.is-base { stroke: var(--c-border-2); opacity: .9; }
 .diet-axis { fill: var(--c-text-3); font-size: 8px; font-family: var(--font); }
-.diet-goal-line { stroke: var(--c-accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .75; }
+
+/* 目標。破線を端から端まで引くと「越えてはいけない線」に見えます——
+   細い実線にして、右の端に数を添えるだけにしました。数がそこにあれば、
+   凡例で「これは目標です」と言い直す必要もありません。 */
+.diet-goal-line { stroke: var(--c-accent); stroke-width: 1; opacity: .55; }
+.diet-goal-tag { fill: var(--c-accent); font-size: 8px; font-family: var(--font); opacity: .9; }
+/* 目標が枠の外にあるとき。線は引けないので、数と向きだけを端に置きます。 */
+.diet-goal-tag.is-off { opacity: .7; }
+
 .diet-ma7 { fill: none; stroke: var(--c-primary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-/* 標本が足りている・目標があり・実際にそちらへ向かっているときだけ付く帯。
-   線そのものの色は変えません（primaryのままにして、代わりに下の塗りだけで
-   知らせます——「良いときだけ線の色が変わる」だと、色が二つの役目を
+/* 線の下の面。いつも敷きます（濃さは SVG 側の gradient が持ちます）。 */
+.diet-area { pointer-events: none; }
+/* 標本が足りている・目標があり・実際にそちらへ向かっているときだけ付く光。
+   線そのものの色は変えません（primaryのままにして、代わりに線の下へ太い
+   薄緑を重ねます——「良いときだけ線の色が変わる」だと、色が二つの役目を
    兼ねてしまうので）。 */
-.diet-goal-glow { pointer-events: none; }
-.diet-ma14 { fill: none; stroke: var(--c-text-3); stroke-width: 1.2; opacity: .6; stroke-linecap: round; }
-.diet-dot { fill: var(--c-text-3); opacity: .75; }
+.diet-goal-glow {
+  fill: none; stroke: var(--c-primary); stroke-width: 7;
+  opacity: .16; stroke-linecap: round; stroke-linejoin: round;
+  pointer-events: none;
+}
+.diet-ma14 {
+  fill: none; stroke: var(--c-text-3); stroke-width: 1.1;
+  opacity: .55; stroke-linecap: round; stroke-dasharray: 3 3;
+}
+
+/* 量った点は線と同じ色。前は灰色で、線とは別のものを指しているように
+   見えていました。今日の点だけは大きく、地の色で縁取ります——線の先が
+   どこで終わっているかは、いちばん知りたいことなので。 */
+.diet-dot { fill: var(--c-primary); opacity: .38; }
 /* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
-.diet-dot.is-health { fill: none; stroke: var(--c-text-3); stroke-width: 1; }
+.diet-dot.is-health { fill: none; stroke: var(--c-primary); stroke-width: 1; opacity: .5; }
+.diet-dot.is-now {
+  fill: var(--c-primary); opacity: 1;
+  stroke: var(--c-surface); stroke-width: 1.6;
+}
 
 /* 並べて見るものの棒。**主役は体重の線**なので、棒は背後に薄く敷きます
    （濃くすると、線より先に目に入って主客が入れ替わります）。 */

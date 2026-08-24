@@ -3611,19 +3611,50 @@ button, [role="tab"] {
 /* ---- グラフ ---- */
 
 .diet-chart { width: 100%; height: auto; display: block; overflow: visible; }
-.diet-gridline { stroke: var(--c-border); stroke-width: 1; }
+
+/* 補助線は、読むためのものであって見るためのものではありません。前は
+   本文の枠線と同じ濃さで五本引いてあり、線のほうが記録より目立って
+   いました。細く、薄く。いちばん下だけは棒の足もとでもあるので、
+   そこだけ地に足を付けます。 */
+.diet-gridline { stroke: var(--c-border); stroke-width: .8; opacity: .75; }
+.diet-gridline.is-base { stroke: var(--c-border-2); opacity: .9; }
 .diet-axis { fill: var(--c-text-3); font-size: 8px; font-family: var(--font); }
-.diet-goal-line { stroke: var(--c-accent); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .75; }
+
+/* 目標。破線を端から端まで引くと「越えてはいけない線」に見えます——
+   細い実線にして、右の端に数を添えるだけにしました。数がそこにあれば、
+   凡例で「これは目標です」と言い直す必要もありません。 */
+.diet-goal-line { stroke: var(--c-accent); stroke-width: 1; opacity: .55; }
+.diet-goal-tag { fill: var(--c-accent); font-size: 8px; font-family: var(--font); opacity: .9; }
+/* 目標が枠の外にあるとき。線は引けないので、数と向きだけを端に置きます。 */
+.diet-goal-tag.is-off { opacity: .7; }
+
 .diet-ma7 { fill: none; stroke: var(--c-primary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-/* 標本が足りている・目標があり・実際にそちらへ向かっているときだけ付く帯。
-   線そのものの色は変えません（primaryのままにして、代わりに下の塗りだけで
-   知らせます——「良いときだけ線の色が変わる」だと、色が二つの役目を
+/* 線の下の面。いつも敷きます（濃さは SVG 側の gradient が持ちます）。 */
+.diet-area { pointer-events: none; }
+/* 標本が足りている・目標があり・実際にそちらへ向かっているときだけ付く光。
+   線そのものの色は変えません（primaryのままにして、代わりに線の下へ太い
+   薄緑を重ねます——「良いときだけ線の色が変わる」だと、色が二つの役目を
    兼ねてしまうので）。 */
-.diet-goal-glow { pointer-events: none; }
-.diet-ma14 { fill: none; stroke: var(--c-text-3); stroke-width: 1.2; opacity: .6; stroke-linecap: round; }
-.diet-dot { fill: var(--c-text-3); opacity: .75; }
+.diet-goal-glow {
+  fill: none; stroke: var(--c-primary); stroke-width: 7;
+  opacity: .16; stroke-linecap: round; stroke-linejoin: round;
+  pointer-events: none;
+}
+.diet-ma14 {
+  fill: none; stroke: var(--c-text-3); stroke-width: 1.1;
+  opacity: .55; stroke-linecap: round; stroke-dasharray: 3 3;
+}
+
+/* 量った点は線と同じ色。前は灰色で、線とは別のものを指しているように
+   見えていました。今日の点だけは大きく、地の色で縁取ります——線の先が
+   どこで終わっているかは、いちばん知りたいことなので。 */
+.diet-dot { fill: var(--c-primary); opacity: .38; }
 /* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
-.diet-dot.is-health { fill: none; stroke: var(--c-text-3); stroke-width: 1; }
+.diet-dot.is-health { fill: none; stroke: var(--c-primary); stroke-width: 1; opacity: .5; }
+.diet-dot.is-now {
+  fill: var(--c-primary); opacity: 1;
+  stroke: var(--c-surface); stroke-width: 1.6;
+}
 
 /* 並べて見るものの棒。**主役は体重の線**なので、棒は背後に薄く敷きます
    （濃くすると、線より先に目に入って主客が入れ替わります）。 */
@@ -23252,7 +23283,9 @@ a.btn { text-decoration: none; }
           <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
           <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
           ${range === 0 || range >= 30 ? html`<span class="diet-legend-item"><i class="dot-ma14"></i>14日平均</span>` : ""}
-          ${store.get().diet.goal.targetKg != null ? html`<span class="diet-legend-item"><i class="dot-goal"></i>目標</span>` : ""}
+          ${/* 目標はここには書きません。線の右の端に「目標 68.0」と数ごと
+                置いてあるので（chart()）、凡例で名前だけ言い直すと、
+                読む人は二か所を見比べることになります。 */""}
           ${/* 数はグラフの右の目盛りに出るので、ここでは名前だけ。
                 同じ数を二か所に書くと、どちらが本物か確かめる手間が増えます。 */""}
           ${series ? html`<span class="diet-legend-item"><i class="dot-bar"></i>${seriesOf(series).label}（${seriesOf(series).unit}）</span>` : ""}
@@ -23359,19 +23392,106 @@ a.btn { text-decoration: none; }
     const idx = (day) => Math.round(
       (U.dayDate(day).getTime() - U.dayDate(base).getTime()) / 86400000);
 
+    /* ---- 縦のものさし ----
+
+       前は「いちばん軽い日といちばん重い日を取って、上下に12%ずつ足す」
+       でした。それだと目盛りが 71.9 / 70.8 / 69.7 / 68.6 / 67.5 のような
+       半端な数の並びになります。等間隔ではありますが、**丸くない数**は
+       読めません——目盛りは「いま何kgか」を数えるための道具なので、
+       0.5 や 1 の刻みでないと、点の高さから重さを割り出せません。
+
+       だから刻みのほうを先に決めます。0.1／0.2／0.25／0.5／1……という
+       決まった刻みから、四つぶんで記録が収まるいちばん細かいものを選び、
+       余りを上下に振り分けてから、刻みの倍数まで下ろします。こうすると
+       五本の線はぜんぶ丸い数の上に来て、間隔も等しいままです。 */
+    const GRID_N = 5;
     const values = pts.map((p) => p.kg)
       .concat(ma7.map((m) => m.value), ma14.map((m) => m.value));
     let lo = Math.min(...values), hi = Math.max(...values);
-    /* 目標線は、近ければ枠に入れます。20kg先の目標まで無理に収めると、
-       実測の線が一本の水平線に潰れて、何も読めなくなります。 */
-    if (goal != null && goal >= lo - 6 && goal <= hi + 6) { lo = Math.min(lo, goal); hi = Math.max(hi, goal); }
-    if (hi - lo < 1) { const mid = (hi + lo) / 2; lo = mid - 0.6; hi = mid + 0.6; }
-    const padY = (hi - lo) * 0.12;
-    lo -= padY; hi += padY;
 
+    /* ---- 目標線を枠に入れるかどうか ----
+
+       前は「6kg以内なら入れる」でした。その結果、七日の窓ではほとんど
+       いつも入っていました——七日の体重の振れ幅は 0.5kg ほどしかないので、
+       3kg先の目標を入れると、**枠の八割が誰も通らない空白**になり、記録の
+       ほうは天井に貼りついた一本の線になります。空白の広いグラフは、
+       描いていないのと大差ありません。
+
+       だから、決め方を「目標までの距離」ではなく「入れたら何倍になるか」に
+       変えます。いま見えている振れ幅の2.6倍までに収まるなら入れる。収まら
+       ないなら枠は記録に合わせ、目標は**枠の外にあると分かる形**——下の端
+       （または上の端）に、数と向きの矢印だけを置きます。消すのではなく、
+       「ここではないどこか下」と言う。
+
+       90日や1年の窓では振れ幅そのものが大きいので、目標はふつうに枠へ
+       入ります。長く見るほど目標が見えてくる、というのは理屈にも合います。 */
+    const natRange = Math.max(0.6, hi - lo);
+    let goalIn = false;
+    if (goal != null) {
+      const wLo = Math.min(lo, goal), wHi = Math.max(hi, goal);
+      if (wHi - wLo <= natRange * 2.6) { lo = wLo; hi = wHi; goalIn = true; }
+    }
+    /* 振れ幅が小さい週でも、枠にはこれだけの高さを持たせます。0.2kgの上下を
+       画面いっぱいに拡大すると、量りの誤差が山脈に見えるので。ただし前は
+       1.2kg取っていて、七日の窓（振れ幅0.4kgほど）では線が枠の5%まで
+       潰れていました。0.6kgなら、量りの誤差を誇張せずに、一週間の動きは
+       動きとして見えます。 */
+    if (hi - lo < 0.6) { const mid = (hi + lo) / 2; lo = mid - 0.3; hi = mid + 0.3; }
+
+    const STEPS = [0.1, 0.2, 0.25, 0.5, 1, 1.5, 2, 2.5, 5, 10, 20, 25, 50];
+    const need = (hi - lo) * 1.08;                 // 端に線が触れないぶん
+    const step = STEPS.find((s) => s * (GRID_N - 1) >= need)
+      || Math.ceil(need / (GRID_N - 1));
+    const slack = step * (GRID_N - 1) - (hi - lo);
+    lo = Math.floor((lo - slack / 2) / step) * step;
+    hi = lo + step * (GRID_N - 1);
+    /* 丸めたぶんで、外していた目標が枠に入ることもあります。 */
+    if (goal != null && goal >= lo && goal <= hi) goalIn = true;
+    /* 刻みが整数なら小数点は要りません（「68」と「68.0」なら前者）。 */
+    const kgText = (v) => (step % 1 ? v.toFixed(1) : String(Math.round(v)));
+
+    /* いちばん下の線は棒の足もと、いちばん上は飲んだ日の印の下。ものさしも
+       その二本のあいだに張ります——そうすれば「五本の補助線」と「五つの
+       目盛り」が同じものになり、線と数がずれません。 */
+    const gBot = H - padB;
+    const gTop = padT + 12;
     const x = (day) => padL + idx(day) * dayW;
-    const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
-    const path = (rows, get) => rows.map((r, i) => `${i ? "L" : "M"}${x(r.day).toFixed(1)} ${y(get(r)).toFixed(1)}`).join(" ");
+    const y = (v) => gTop + (1 - (v - lo) / (hi - lo)) * (gBot - gTop);
+
+    /* ---- 線のなめらかさ ----
+
+       折れ線でつないでいました。7日平均はもともと日々のぶれをならした数
+       なので、それを角のある折れ線で描くと、ならした意味が見た目に出ません。
+
+       曲げ方は単調保存（Fritsch–Carlson）を使います。ふつうの滑らかな
+       曲線は、点と点のあいだで**行き過ぎ**ます——70.2 と 70.1 のあいだで
+       69.9 まで垂れる曲線を引いてしまう、ということです。体重のグラフで
+       それは「その日そう量った」と読まれるので、使えません。この引き方は
+       与えた点より外に出ないことが保証されています。 */
+    const curve = (ps) => {
+      if (ps.length < 3) return ps.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+      const n = ps.length, dx = [], m = [], t = [];
+      for (let i = 0; i < n - 1; i++) {
+        dx[i] = ps[i + 1].x - ps[i].x;
+        m[i] = dx[i] ? (ps[i + 1].y - ps[i].y) / dx[i] : 0;
+      }
+      t[0] = m[0];
+      for (let i = 1; i < n - 1; i++) {
+        if (m[i - 1] * m[i] <= 0) { t[i] = 0; continue; }
+        const w1 = 2 * dx[i] + dx[i - 1], w2 = dx[i] + 2 * dx[i - 1];
+        t[i] = (w1 + w2) / (w1 / m[i - 1] + w2 / m[i]);
+      }
+      t[n - 1] = m[n - 2];
+      let d = `M${ps[0].x.toFixed(1)} ${ps[0].y.toFixed(1)}`;
+      for (let i = 0; i < n - 1; i++) {
+        const h = dx[i] / 3;
+        d += ` C${(ps[i].x + h).toFixed(1)} ${(ps[i].y + t[i] * h).toFixed(1)}`
+          + ` ${(ps[i + 1].x - h).toFixed(1)} ${(ps[i + 1].y - t[i + 1] * h).toFixed(1)}`
+          + ` ${ps[i + 1].x.toFixed(1)} ${ps[i + 1].y.toFixed(1)}`;
+      }
+      return d;
+    };
+    const path = (rows, get) => curve(rows.map((r) => ({ x: x(r.day), y: y(get(r)) })));
 
     /* ---- 並べて見るもの ----
 
@@ -23397,21 +23517,15 @@ a.btn { text-decoration: none; }
 
     /* ---- 補助線 ----
 
-       三本では、線と線のあいだが広すぎて、点がどのあたりの重さなのかを
-       目分量で割ることになっていました。五本に増やして、**等間隔**に
-       引きます（前は「上・真ん中・下」で、真ん中だけが端数でした）。
+       五本、等間隔。上で決めた刻みの倍数の上に一本ずつ立っているので、
+       線と目盛りの数は同じものです（上の「縦のものさし」を参照）。
 
-       いちばん下の線は棒の足もとに重ねます。そうすると、線の間隔がその
+       いちばん下の線は棒の足もとでもあります。そうすると、線の間隔がその
        まま棒の目盛りの刻みになり、**同じ線の左右に体重と棒の数**を書け
        ます。二つのものさしを一つの枠で読ませるには、線を共有させるのが
        いちばん誤解が少ない。 */
-    const GRID_N = 5;
-    const gBot = H - padB;                         // いちばん下＝棒の足もと
-    const gTop = padT + 12;                        // いちばん上（飲んだ日の印の下）
-    const gridY = [];
-    for (let i = 0; i < GRID_N; i++) gridY.push(gBot - (gBot - gTop) * i / (GRID_N - 1));
-    // その高さが指す体重（y の逆算）。
-    const vAt = (yy) => lo + (1 - (yy - padT) / (H - padT - padB)) * (hi - lo);
+    const gridVals = [];
+    for (let i = 0; i < GRID_N; i++) gridVals.push(lo + step * i);
 
     const barTop = niceTop(barMax, GRID_N - 1);    // 棒の目盛りの天井
     const barH = (v) => (barTop > 0 ? (v / barTop) * (gBot - gTop) : 0);
@@ -23430,37 +23544,71 @@ a.btn { text-decoration: none; }
       .filter((m) => m.t);
     const markY = 9;
 
+    /* 面の左の縁を薄く消す幅。線が短いときに消しすぎないよう、線の長さの
+       三割までにします。 */
+    const areaX0 = ma7.length ? x(ma7[0].day) : padL;
+    const areaFade = ma7.length > 1
+      ? Math.max(6, Math.min(42, (x(ma7[ma7.length - 1].day) - areaX0) * 0.3))
+      : 6;
+
     const svg = node(html`
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
            aria-label="体重の推移のグラフ${sel.id ? `（${sel.label}を並べています）` : ""}${towardGoal ? "。目標に近づいています" : ""}">
-        ${towardGoal ? KN.util.raw(`<defs><linearGradient id="goalGlow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--c-primary)" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="var(--c-primary)" stop-opacity="0"/>
-            </linearGradient></defs>`) : ""}
+        ${/* 線の下の面。**いつも敷きます**——線一本だけだと、グラフというより
+              針金の絵に見えます。上を濃く、下へ消えていく一枚を敷くと、
+              「この高さにある」ことが面積として伝わります。 */""}
+        ${/* 面の左の縁は、線が始まる日にできる**垂直の壁**です。7日平均は
+              七日ぶんたまってから始まるので、壁は枠の途中に立ちます。そこに
+              段差があるように見えるのを、左だけ薄く消して逃がします
+              （右の縁は枠の端なので、もともと見えません）。 */""}
+        ${KN.util.raw(`<defs><linearGradient id="weightArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--c-primary)" stop-opacity="0.20"/>
+              <stop offset="100%" stop-color="var(--c-primary)" stop-opacity="0.01"/>
+            </linearGradient>`
+          + `<linearGradient id="areaFade" gradientUnits="userSpaceOnUse"`
+          + ` x1="${areaX0.toFixed(1)}" y1="0" x2="${(areaX0 + areaFade).toFixed(1)}" y2="0">`
+          + `<stop offset="0%" stop-color="#fff" stop-opacity="0"/>`
+          + `<stop offset="100%" stop-color="#fff" stop-opacity="1"/></linearGradient>`
+          + `<mask id="areaEdge"><rect x="0" y="0" width="${W}" height="${H}" fill="url(#areaFade)"/></mask>`
+          + `</defs>`)}
         ${KN.util.raw(bars.map((b) => {
           const h = barH(b.value);
           return `<rect class="diet-bar" x="${(x(b.day) - barW / 2).toFixed(1)}" y="${(gBot - h).toFixed(1)}"
-                        width="${barW.toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="1.2"/>`;
+                        width="${barW.toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="1.6"/>`;
         }).join(""))}
-        ${KN.util.raw(gridY.map((yy, i) =>
-          `<line class="diet-gridline" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}"/>`
-          + `<text class="diet-axis" x="${padL - 5}" y="${(yy + 3.4).toFixed(1)}" text-anchor="end">${vAt(yy).toFixed(1)}</text>`
-          + (sel.id
-            ? `<text class="diet-axis is-right" x="${W - padR + 4}" y="${(yy + 3.4).toFixed(1)}">${
-                barText(barTop * i / (GRID_N - 1))}</text>`
-            : "")
-        ).join(""))}
-        ${goal != null && goal >= lo && goal <= hi
-          ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`)
-          : ""}
-        ${ma14.length > 1 ? KN.util.raw(`<path class="diet-ma14" d="${path(ma14, (m) => m.value)}"/>`) : ""}
-        ${towardGoal && ma7.length > 1 ? KN.util.raw(`<path class="diet-goal-glow" d="${
+        ${KN.util.raw(gridVals.map((v, i) => {
+          const yy = y(v);
+          return `<line class="diet-gridline ${i ? "" : "is-base"}" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}"/>`
+            + `<text class="diet-axis" x="${padL - 6}" y="${(yy + 3.2).toFixed(1)}" text-anchor="end">${kgText(v)}</text>`
+            + (sel.id
+              ? `<text class="diet-axis is-right" x="${W - padR + 4}" y="${(yy + 3.2).toFixed(1)}">${
+                  barText(barTop * i / (GRID_N - 1))}</text>`
+              : "");
+        }).join(""))}
+        ${goal == null ? "" : goalIn
+          ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`
+            + `<text class="diet-goal-tag" x="${W - padR}" y="${(y(goal) - 4).toFixed(1)}" text-anchor="end">目標 ${goal.toFixed(1)}</text>`)
+          : KN.util.raw(`<text class="diet-goal-tag is-off" x="${W - padR}" y="${
+              (goal < lo ? gBot - 3 : gTop + 8).toFixed(1)}" text-anchor="end">目標 ${goal.toFixed(1)} ${
+              goal < lo ? "▼" : "▲"}</text>`)}
+        ${ma7.length > 1 ? KN.util.raw(`<path class="diet-area" mask="url(#areaEdge)" d="${
           path(ma7, (m) => m.value)} L${x(ma7[ma7.length - 1].day).toFixed(1)} ${gBot.toFixed(1)}`
-          + ` L${x(ma7[0].day).toFixed(1)} ${gBot.toFixed(1)} Z" fill="url(#goalGlow)"/>`) : ""}
+          + ` L${x(ma7[0].day).toFixed(1)} ${gBot.toFixed(1)} Z" fill="url(#weightArea)"/>`) : ""}
+        ${ma14.length > 1 ? KN.util.raw(`<path class="diet-ma14" d="${path(ma14, (m) => m.value)}"/>`) : ""}
+        ${/* 目標へ向かっているときの帯。前は線の下を塗りつぶしていましたが、
+              いつもの面を敷いたので、こんどは**線そのものを光らせます**。
+              太い薄緑を線の下に一本、同じ道筋で。線の色は変えません。 */""}
+        ${towardGoal && ma7.length > 1
+          ? KN.util.raw(`<path class="diet-goal-glow" d="${path(ma7, (m) => m.value)}"/>`) : ""}
         ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" d="${path(ma7, (m) => m.value)}"/>`) : ""}
-        ${KN.util.raw(pts.map((p) =>
-          `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""}" cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="1.9"/>`
-        ).join(""))}
+        ${/* 量った点。線と同じ色にします——前は灰色で、線とは別のものを
+              指しているように見えていました。今日の点だけは大きく、地の色で
+              縁取って、線の先端がどこかを言います。 */""}
+        ${KN.util.raw(pts.map((p, i) => {
+          const now = i === pts.length - 1;
+          return `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""} ${now ? "is-now" : ""}"`
+            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 1.8}"/>`;
+        }).join(""))}
         ${KN.util.raw(marks.map((m) => {
           /* 濃さは純アルコール量で。「飲酒あり」とだけ出すと、350mlを一本と
              一升瓶を空けた日が同じ顔になります。目安（20g）の1.5倍で満ちます。 */
