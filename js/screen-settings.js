@@ -1296,7 +1296,10 @@
   function aboutBlock() {
     return node(html`
       <div class="about">
-        <div style="font-size:28px;margin-bottom:4px">🛒</div>
+        ${/* アプリの顔。ここも 🛒 の絵文字でした——端末が描くもので、iOS と
+              Android で別の絵が出ます。空の買い物リストに出るのと同じかごに
+              しました（empty-art.js）。 */""}
+        <div class="about-mark">${KN.util.raw(KN.emptyArt.basket)}</div>
         <div style="font-weight:700;color:var(--c-text-2)">くらしノート</div>
         <div>データはこの端末の中だけに保存されます</div>
         <div style="margin-top:8px">

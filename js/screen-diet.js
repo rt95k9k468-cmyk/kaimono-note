@@ -1404,7 +1404,7 @@
             <button class="diet-cell js-cell ${r.type === "drink" ? "js-drink" : ""} ${
               r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
               <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
-                r.label}${r.manual ? '<i class="diet-hand" title="手入力">✎</i>' : ""}</span>
+                r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
               <span class="diet-ring ${r.ring.cls}" style="--deg:${r.ring.deg.toFixed(1)}deg" aria-hidden="true">
                 <i class="diet-ring-mid mono-num">${r.mid}</i>
               </span>

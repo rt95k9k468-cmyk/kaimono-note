@@ -627,7 +627,7 @@
     if (priceBox && best && bestStore) {
       priceBox.append(frag(html`
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
-        <span class="item-price-store">🏆 ${bestStore.name}</span>
+        <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
       `));
     } else if (priceBox) {
       priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
@@ -742,7 +742,7 @@
     found.forEach((f) => {
       listEl.append(node(html`
         <div class="insight">
-          <span class="insight-ico">${f.icon}</span>
+          <span class="insight-ico is-${f.tone || "mute"}">${icon(f.icon, "is-sub")}</span>
           <span class="insight-main">
             <span class="insight-title">${f.title}</span>
             <span class="insight-body">${f.body}</span>
