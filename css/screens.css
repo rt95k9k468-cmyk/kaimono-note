@@ -1727,6 +1727,14 @@
 .diet-carousel { overflow: hidden; touch-action: pan-y; }
 .diet-carousel-track {
   display: flex;
+  /* 三枚は、それぞれ自分の中身のぶんだけの高さで立たせます。flex の既定
+     （stretch）だと、三枚がいちばん高い紙にそろえて引き伸ばされます
+     ——前の日にたくさん書いてあると、**今日の紙の底に、その差のぶんだけ
+     地の色が残る**。中身が終わっているのに紙だけ続くので、下に何かある
+     ように見えて、指で探りにいくことになります。
+     高さをそろえないので、隣の紙が高くても払っている最中に切れません
+     （carousel は overflow:hidden なので、そろえたまま縮めると切れます）。 */
+  align-items: flex-start;
   /* 既定はここ（真ん中＝今日）。ドラッグ中だけ、JSがpxで上書きします。 */
   transform: translateX(-100%);
 }
