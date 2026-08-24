@@ -756,7 +756,7 @@
   function emptyState() {
     const wrap = node(html`
       <div class="empty">
-        <div class="empty-art">🛒</div>
+        <div class="empty-art">${KN.util.raw(KN.emptyArt.basket)}</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
         <p class="empty-text">
           下の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、

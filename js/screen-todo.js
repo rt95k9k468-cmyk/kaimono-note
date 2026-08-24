@@ -1122,7 +1122,7 @@
     if (!all.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">✅</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
           <h2 class="empty-title">やることはありません</h2>
           <p class="empty-text">
             下の＋から追加できます。日付を決めておくと、その日が来たときに

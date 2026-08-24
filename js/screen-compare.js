@@ -140,7 +140,7 @@
     if (!data.entries.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">⚖️</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.scales)}</div>
           <h2 class="empty-title">リストに商品を追加すると比べられます</h2>
           <p class="empty-text">
             買い物リストの商品それぞれに、お店ごとの値段を登録してください。
@@ -154,7 +154,7 @@
     if (!st.stores.length || !data.combo.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">🏪</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.shopSign)}</div>
           <h2 class="empty-title">まだ値段の記録がありません</h2>
           <p class="empty-text">
             「商品と価格」から、お店ごとの値段を登録してみてください。

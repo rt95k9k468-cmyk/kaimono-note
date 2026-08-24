@@ -539,14 +539,20 @@ button, [role="tab"] {
   color: var(--c-text-2);
 }
 
+/* 絵文字を置いていた枠です。いまは描いた絵が入ります（empty-art.js）。
+   下地は淡い緑のまま——絵のほうが色を持っているので、下地まで主張すると
+   二重になります。 */
 .empty-art {
-  width: 92px; height: 92px;
+  width: 104px; height: 104px;
   display: grid;
   place-items: center;
   border-radius: var(--r-full);
   background: var(--c-primary-soft);
-  font-size: 40px;
   margin-bottom: var(--sp-1);
+}
+.empty-art .empty-svg {
+  display: block;
+  width: 68px; height: 68px;
 }
 
 .empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
@@ -758,7 +764,10 @@ button, [role="tab"] {
   position: absolute;
   width: 7px; height: 7px;
   margin: -3.5px 0 0 -3.5px;
-  background: var(--c-warmth);
+  /* 主色の緑。専用の金色（--c-warmth）を一つ立てていましたが、火花は
+     済ませた丸から飛ぶもので、その丸と同じ色のほうが、どこから出たかが
+     はっきりします。 */
+  background: var(--c-primary);
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
                       50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   transform: rotate(var(--a)) translateY(0) scale(0);

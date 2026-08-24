@@ -147,7 +147,7 @@
     if (!all.length) {
       els.body.append(node(html`
         <div class="empty">
-          <div class="empty-art">🏷️</div>
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.priceTag)}</div>
           <h2 class="empty-title">商品がまだありません</h2>
           <p class="empty-text">
             買い物リストに追加した商品はここに自動で並びます。
