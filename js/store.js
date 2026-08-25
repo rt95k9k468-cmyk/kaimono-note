@@ -5,7 +5,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { uid, today } = KN.util;
+  const { uid, today, todayKey, foldKana } = KN.util;
 
   const KEY = "kaimono-note-v2";
   const LEGACY_KEY = "kaimono-note-v1";
@@ -60,12 +60,49 @@
          書き出す」がひとまとまりで済むから——そして、この機能を使わない人の
          保存データに、空の配列が五つも散らばらないためです。 */
       diet: emptyDiet(),
+      /* daily。積み上がりと、その日の地の文の置き場です。ダイエットと同じく
+         ひとつの入れ物にまとめてあります——「dailyだけ書き出す」がひとまとまりで
+         済むのと、この機能を使わない人の保存データに空の配列が二つ散らばらない
+         ようにするためです。 */
+      archive: emptyArchive(),
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
       // looking at, not on one of the two.
       settings: { theme: "auto", showChecked: true, layout: "rows" },
     };
   }
+
+  /* ---------------- daily ----------------
+
+     二つの入れ物に分けてあります。分けているのは **書く動機** です。
+
+       entries … 積み上がるもの。読んだ・学んだ・考えた・した・変わった。
+                 一つ一つが独立していて、日付は「いつのことか」でしかない。
+       days    … その日の地の文。起きた時刻・寝た時刻と、一、二行の覚え書き。
+                 一日に一つだけで、増えません。
+
+     混ぜないのは、寿命が違うからです。entries は後から検索して掘り返す
+     ものですが、days はその月を眺めるときの背景で、単独では読みません。
+
+     **ここに goal も streak も置きません。** 目標値を持たせれば達成率が
+     欲しくなり、連続日数を数えれば途切れが見えます。このアプリは積み上がりを
+     残す場所で、達成度を測る場所ではないので、**そもそも型として持ちません**。
+     後から足せてしまう形にしておくと、いつか足します。 */
+  function emptyArchive() {
+    return { entries: [], days: [] };
+  }
+
+  /* 五つの種類。色は「意味」ではなく「見分け」のために持たせます——月の
+     一覧で目が種類ごとにまとまるだけで、良し悪しは一切言いません。
+     カテゴリの色（CATEGORY_COLORS）と同じ考え方で、同じ濃度で使います。 */
+  const ARCHIVE_TYPES = [
+    { id: "reading", label: "読書",   icon: "book",      color: "#5b9bd5", unit: "ページ" },
+    { id: "study",   label: "学習",   icon: "edit",      color: "#48b39a", unit: "分" },
+    { id: "seed",    label: "種",     icon: "sprout",    color: "#9b7ede", unit: "" },
+    { id: "done",    label: "達成",   icon: "check",     color: "#5ea55a", unit: "" },
+    { id: "change",  label: "変化",   icon: "trend",     color: "#c2853f", unit: "" },
+  ];
+  const archiveType = (id) => ARCHIVE_TYPES.find((t) => t.id === id) || ARCHIVE_TYPES[0];
 
   /* ---------------- ダイエット ----------------
 
@@ -410,6 +447,25 @@
     out.items    = Array.isArray(s.items)    ? s.items    : [];
     out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
     out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
+
+    /* daily。この機能より前に保存された人には、空の箱を渡します。 */
+    const arc = (s.archive && typeof s.archive === "object") ? s.archive : {};
+    out.archive = {
+      entries: Array.isArray(arc.entries) ? arc.entries : [],
+      days:    Array.isArray(arc.days)    ? arc.days    : [],
+    };
+    /* 書いた時刻・直した時刻。並び順がこれで決まるので、持っていないものが
+       混ざると先頭に来たり最後に沈んだりします。日付しか無いものには、その日を
+       充てておきます（嘘の時刻を作るより、粗いほうがまだ読めます）。 */
+    out.archive.entries = out.archive.entries.filter((e) => e && e.id && e.type);
+    out.archive.entries.forEach((e) => {
+      e.date = String(e.date || "").slice(0, 10) || todayKey();
+      if (!e.createdAt) e.createdAt = e.date;
+      if (!e.updatedAt) e.updatedAt = e.createdAt;
+      if (!Array.isArray(e.tags)) e.tags = [];
+      if (!ARCHIVE_TYPES.some((t) => t.id === e.type)) e.type = "done";
+    });
+    out.archive.days = out.archive.days.filter((d) => d && d.date);
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
     Object.keys(out.learned).forEach((k) => {
@@ -1768,6 +1824,153 @@
     update((s) => { s.diet = emptyDiet(); });
   }
 
+  /* ---------------- daily ---------------- */
+
+  /* 日付は「日のかぎ」（YYYY-MM-DD）で持ちます。today() は時刻まで持つので、
+     そのまま入れると こよみの粒も「その日だけ」の絞り込みも当たりません
+     （月の絞り込みだけは先頭7文字で偶然当たるので、気づきにくい種類の食い違い
+     です）。入口で一度だけ削ります。 */
+  const dayKeyOf = (v) => String(v || todayKey()).slice(0, 10);
+
+  const archive = () => state.archive || (state.archive = emptyArchive());
+  const stamp = () => new Date().toISOString();
+
+  /**
+   * 積み上がりを一つ足します。
+   *
+   * **必須は type と title だけ**です。amount も unit も memo も、無いまま
+   * 記録が成立します——「何ページ読んだか」を思い出せないと書けない仕組みは、
+   * 書かない理由になります。ここで入力を止めないことのほうが、数の正確さより
+   * ずっと大事です。
+   */
+  function addEntry(e) {
+    const at = stamp();
+    const row = {
+      id: uid(),
+      date: dayKeyOf(e.date),
+      type: e.type || "done",
+      title: String(e.title || "").trim(),
+      amount: (e.amount === "" || e.amount == null) ? null : Number(e.amount),
+      unit: e.unit || null,
+      memo: e.memo ? String(e.memo) : "",
+      tags: Array.isArray(e.tags) ? e.tags : [],
+      createdAt: at,
+      updatedAt: at,
+    };
+    if (!isFinite(row.amount)) row.amount = null;
+    update((s) => { s.archive.entries.push(row); });
+    return row;
+  }
+
+  function updateEntry(id, patch) {
+    update((s) => {
+      const row = s.archive.entries.find((x) => x.id === id);
+      if (!row) return;
+      Object.assign(row, patch);
+      if (patch.date !== undefined) row.date = dayKeyOf(patch.date);
+      if (patch.amount === "" || patch.amount == null) row.amount = null;
+      else if (!isFinite(Number(row.amount))) row.amount = null;
+      else row.amount = Number(row.amount);
+      // 直した時刻。並び順はこれで決まります。
+      row.updatedAt = stamp();
+    });
+  }
+
+  function removeEntry(id) {
+    update((s) => { s.archive.entries = s.archive.entries.filter((x) => x.id !== id); });
+  }
+
+  /** 種を達成に変えます。書いた時刻は残し、種だった記憶だけ畳みます。 */
+  function promoteSeed(id) {
+    update((s) => {
+      const row = s.archive.entries.find((x) => x.id === id);
+      if (!row || row.type !== "seed") return;
+      row.type = "done";
+      row.updatedAt = stamp();
+    });
+  }
+
+  /* 並びは **最後に触った順**。書いた順ではありません——去年の本に一行
+     足したなら、いまのあなたはその本のことを考えているので、上に来ます。 */
+  const byRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+  const entriesOfMonth = (ym) =>
+    archive().entries.filter((e) => String(e.date).slice(0, 7) === ym).slice().sort(byRecent);
+  const entriesOfDay = (day) =>
+    archive().entries.filter((e) => e.date === day).slice().sort(byRecent);
+  const openSeeds = () =>
+    archive().entries.filter((e) => e.type === "seed").slice().sort(byRecent);
+
+  /** 種類ごとの数。**総数の比較には使いません**——内訳を並べるだけです。 */
+  function monthCounts(ym) {
+    const out = {};
+    entriesOfMonth(ym).forEach((e) => { out[e.type] = (out[e.type] || 0) + 1; });
+    return out;
+  }
+
+  /* 文字でさがす。タイトル・メモ・タグを見ます。かなの揺れは foldKana が
+     吸うので、「ぎんこう」でも「銀行」でも同じところに着きます。 */
+  function searchEntries(q) {
+    const needle = foldKana(String(q || "").trim().toLowerCase());
+    if (!needle) return [];
+    return archive().entries.filter((e) => {
+      const hay = foldKana([e.title, e.memo, (e.tags || []).join(" ")].join(" ").toLowerCase());
+      return hay.indexOf(needle) >= 0;
+    }).slice().sort(byRecent);
+  }
+
+  /* ---- その日の地の文 ---- */
+
+  const dayLog = (day) => archive().days.find((d) => d.date === day) || null;
+
+  /**
+   * 一日ぶんを書き換えます。**空にしたら行ごと消えます**——書きかけの空行が
+   * 溜まると、月を眺めたときに「何も書いていない日」と「空の行がある日」が
+   * 見分けられなくなります（setDayMemo と同じ考え方）。
+   */
+  function setDayLog(day, patch) {
+    update((s) => {
+      const cur = s.archive.days.find((d) => d.date === day);
+      const next = {
+        date: day,
+        memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
+        wake: patch.wake === undefined ? (cur ? cur.wake : null) : (patch.wake || null),
+        sleep: patch.sleep === undefined ? (cur ? cur.sleep : null) : (patch.sleep || null),
+      };
+      const empty = !next.memo.trim() && !next.wake && !next.sleep;
+      s.archive.days = s.archive.days.filter((d) => d.date !== day);
+      if (!empty) {
+        next.updatedAt = stamp();
+        s.archive.days.push(next);
+      }
+    });
+    return dayLog(day);
+  }
+
+  /* 月ぶんの地の文。日付の新しい順——月の頭から読ませると、いま近いことに
+     たどり着くまで指を動かすことになります。 */
+  const daysOfMonth = (ym) =>
+    archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+  /**
+   * 月ぶんを、まるごと一つの形にして返します。
+   *
+   * いまは書き出しにしか使いませんが、**後でこの月がどんな時間だったかを
+   * 言葉にしてもらう**ときに、そのまま渡せる形にしてあります。数だけ渡すと
+   * 数の話しか返ってきません。地の文（days）が一緒に入っているのはそのためです。
+   */
+  function exportMonth(ym) {
+    return {
+      app: "kaimono-note",
+      kind: "daily-month",
+      ym,
+      exportedAt: stamp(),
+      days: daysOfMonth(ym),
+      entries: entriesOfMonth(ym),
+      counts: monthCounts(ym),
+    };
+  }
+
   /* ---------------- import / export ---------------- */
 
   function exportJSON() {
@@ -1790,6 +1993,9 @@
       // おぼえた振り分け（商品名→カテゴリ）。書き出しには入っているのに
       // ここで戻し忘れていたので、復元すると学習だけが消えていました。
       s.learned = next.learned;
+      // daily。上と同じ理由で、ここに書きます——この列挙は足し忘れると
+      // 「書き出しには入っているのに、戻すと消える」を静かに起こします。
+      s.archive = next.archive;
     });
   }
 
@@ -1881,6 +2087,10 @@
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, markSyncLocked, clearDiet,
+    ARCHIVE_TYPES, archiveType,
+    addEntry, updateEntry, removeEntry, promoteSeed,
+    entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
+    dayLog, setDayLog, daysOfMonth, exportMonth,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
