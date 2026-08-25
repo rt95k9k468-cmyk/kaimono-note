@@ -27,6 +27,7 @@
      table of prices. So they share a button, and pressing it while you are
      already there turns it over. */
   const TABS = [
+    { id: "archive", label: "daily", icon: "book" },
     { id: "todo", label: "やること", icon: "checklist" },
     { id: "shop", label: "買い物", faces: [
       { id: "list",   label: "買うもの", icon: "list" },

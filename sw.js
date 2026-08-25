@@ -32,6 +32,7 @@ const ASSETS = [
   "js/relay-code.js",
   "js/health-relay.js",
   "js/product-sheet.js",
+  "js/screen-archive.js",
   "js/screen-todo.js",
   "js/screen-diet.js",
   "js/screen-list.js",
