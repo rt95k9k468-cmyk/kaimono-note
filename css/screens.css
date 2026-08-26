@@ -2369,33 +2369,39 @@ a.btn { text-decoration: none; }
 }
 .diet-why[open] summary { color: var(--c-text); font-weight: 700; }
 
+
 /* =========================================================
    daily — 積み上がりと、その日の地の文
    =========================================================
 
    この画面の色は **見分けのため** だけに使います。良い悪いは言いません
    ——danger も warn も出てきませんし、記録の無い日にも色は付きません。
-   種類の色（--arc-c）は行ごとに差し込まれ、左の細い帯と絵にだけ乗ります。 */
+   種類の色（--arc-c）は行ごとに差し込まれ、左の細い帯と絵にだけ乗ります。
 
-/* 月／種の切り替え。タブではないので、タブより静かに。 */
-.arc-seg { display: flex; gap: var(--sp-1); margin-top: var(--sp-3); }
-.arc-seg-b {
-  flex: 1; padding: 7px 0; border-radius: var(--r-full);
-  font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2);
-  background: var(--c-surface-2); border: 1px solid transparent;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.arc-seg-b.is-on { background: var(--c-primary-soft); color: var(--c-primary-ink); border-color: var(--c-primary-soft); }
+   カレンダーは他のタブ（やること・ダイエット）と同じ .cal 系のクラスを
+   そのまま使います。ここに足すのは、その日にどの色の粒を乗せるかだけです。 */
 
 .arc-cal { margin: 0 var(--sp-4) var(--sp-3); }
-/* こよみの粒。その日に書いた種類ぶん出ます。書いていない日は空のまま——
-   空白を目立たせないので、警告色も枠も付けません。 */
 .arc-cal .cal-dots { display: flex; gap: 2px; justify-content: center; align-items: center; height: 5px; }
 .arc-cal .cal-dots i { width: 4px; height: 4px; border-radius: var(--r-full); display: block; }
 .arc-cal .cal-dots i.is-log { background: var(--c-text-3); opacity: .5; width: 8px; border-radius: var(--r-full); }
 
-/* ---- daily log ---- */
+/* ---- ②月の積み上がり ----
+   カードにはしません。内訳だけの、地の文より軽い一行——ここが単独の
+   見出しになって目立つと、この画面の主役が数のほうへ寄ってしまいます。 */
+.arc-rollup {
+  margin: 0 var(--sp-4);
+  display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
+  font-size: var(--fs-sm);
+}
+.arc-rollup-label { color: var(--c-text-2); font-weight: 700; flex: none; }
+.arc-rollup-body { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); color: var(--c-text-3); }
 
+.arc-count { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--c-text-2); }
+.arc-count i { width: 7px; height: 7px; border-radius: var(--r-full); background: var(--arc-c); flex: none; }
+
+/* ---- ③ Daily Log ----
+   縦幅は広めに——一、二行の文が、一行ぶんの窮屈な帯に収まらないように。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .arc-log-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
@@ -2405,36 +2411,30 @@ a.btn { text-decoration: none; }
 
 .arc-log-row {
   display: flex; gap: var(--sp-3); width: 100%; text-align: left;
-  padding: var(--sp-2) 0; border-top: 1px solid var(--c-border);
-  align-items: flex-start;
+  padding: var(--sp-4) 0; border-top: 1px solid var(--c-border);
+  align-items: flex-start; min-height: 64px;
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 26px; flex: none; padding-top: 1px; }
 .arc-log-day b { font-size: var(--fs-md); font-weight: 800; font-variant-numeric: tabular-nums; }
 .arc-log-day i { font-size: 10px; font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
-.arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.arc-log-memo { font-size: var(--fs-sm); line-height: 1.6; color: var(--c-text); white-space: pre-wrap; }
+.arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.arc-log-memo { font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap; }
 .arc-log-times { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.arc-log-meta { font-size: 10px; color: var(--c-text-3); opacity: .8; }
 
-/* ---- 内訳 ----
-   地の文のすぐ下にしか出しません。単独では置かない決まりなので、
-   カードにもせず、地の文と同じ紙の続きに見えるようにしてあります。 */
-.arc-counts {
-  display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3);
-  padding: 0 calc(var(--sp-4) * 2);
-}
-.arc-count { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--c-text-2); }
-.arc-count i { width: 7px; height: 7px; border-radius: var(--r-full); background: var(--arc-c); flex: none; }
+/* ---- ④積み上げ項目 ---- */
+.arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
+.arc-stack-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
 
-/* ---- 積み上がりの一覧 ---- */
-
-.arc-list { margin: 0 var(--sp-4); overflow: hidden; }
+.arc-list { overflow: hidden; }
 .arc-row {
-  display: flex; gap: var(--sp-3); width: 100%; text-align: left;
+  display: flex; gap: var(--sp-2); width: 100%; align-items: flex-start;
   padding: var(--sp-3) var(--sp-4);
   border-top: 1px solid var(--c-border);
-  align-items: flex-start; position: relative;
+  position: relative;
 }
 .arc-row:first-child { border-top: none; }
 /* 種類の色は、左の細い帯だけが持ちます。行ぜんぶを染めると、五種類が
@@ -2443,15 +2443,17 @@ a.btn { text-decoration: none; }
   content: ""; position: absolute; left: 0; top: 0; bottom: 0;
   width: 3px; background: var(--arc-c);
 }
-.arc-ico { flex: none; color: var(--arc-c); display: flex; padding-top: 1px; }
-.arc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.arc-row-body { display: flex; gap: var(--sp-3); flex: 1; min-width: 0; text-align: left; align-items: flex-start; }
+.arc-ico { flex: none; color: var(--arc-c); display: flex; padding-top: 3px; }
+.arc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
 .arc-title { font-size: var(--fs-md); font-weight: 700; line-height: 1.45; word-break: break-word; }
 .arc-sub { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.arc-kind { color: var(--arc-c); font-weight: 700; }
-.arc-edited { color: var(--c-text-3); }
+.arc-sub span:first-child { color: var(--arc-c); font-weight: 700; }
 .arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.6; white-space: pre-wrap; }
 
-.arc-seed-note { font-size: var(--fs-xs); color: var(--c-text-3); padding: 0 var(--sp-4); }
+/* 行の中の check / fav は、しごとの他の画面（やること・買うもの）と
+   同じ部品をそのまま使います。ここでだけ揃えるのは並び位置だけです。 */
+.arc-row .check, .arc-row .fav { margin-top: 1px; flex: none; }
 
 /* ---- 書くシート ---- */
 
@@ -2470,12 +2472,26 @@ a.btn { text-decoration: none; }
 }
 .arc-pick-b.is-on svg { color: var(--arc-c); }
 
-.arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-.arc-more summary {
-  font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700;
-  cursor: pointer; padding: var(--sp-2) 0;
+/* 本／論文の切り替え。arc-pick-b と同じ見た目にし、種類の色ではなく
+   主色（primary）で選ばれたことを言います——読書という種類はもう
+   arc-pick で選んであるので、ここは「読書の中のどちら」の話です。 */
+.arc-kind { display: flex; gap: var(--sp-2); }
+.arc-kind-b {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: var(--r-full);
+  font-size: var(--fs-sm); font-weight: 700;
+  background: var(--c-surface-2); color: var(--c-text-2);
+  border: 1.5px solid transparent;
 }
+.arc-kind-b svg { color: var(--c-text-3); }
+.arc-kind-b.is-on { border-color: var(--c-primary); color: var(--c-primary-ink); background: var(--c-primary-soft); }
+.arc-kind-b.is-on svg { color: var(--c-primary); }
 
-/* 本体の段組み。地の文と内訳は「続きもの」なので、そこだけ間合いを詰めます。 */
+/* 読書の名前・著者は長くなりがちなので、一段大きく組みます。 */
+.input-lg { padding: 13px 14px; font-size: var(--fs-lg); }
+
+.arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; margin: -4px 0 0; }
+
+.arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+
 .arc-body { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
-.arc-body > .arc-log + .arc-counts { margin-top: calc(var(--sp-4) * -1 + var(--sp-2)); }

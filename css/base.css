@@ -579,11 +579,12 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  /* Three equal thirds. The bar is three places: the day, the shopping, the
-     body — and shopping's two faces share one button rather than taking one
-     each. Each split is a hairline and costs only its own width. */
+  /* Four equal quarters. The bar is four places: daily, the day (やること),
+     the shopping, the body — and shopping's two faces share one button
+     rather than taking one each. Each split is a hairline and costs only
+     its own width. */
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);

@@ -464,8 +464,18 @@
       if (!e.updatedAt) e.updatedAt = e.createdAt;
       if (!Array.isArray(e.tags)) e.tags = [];
       if (!ARCHIVE_TYPES.some((t) => t.id === e.type)) e.type = "done";
+      // この機能より前に保存された記録には、無かった項目を補います。
+      if (typeof e.favorite !== "boolean") e.favorite = false;
+      if (e.kind !== "book" && e.kind !== "paper") e.kind = e.type === "reading" ? "book" : null;
+      if (e.author != null && typeof e.author !== "string") e.author = null;
+      if (typeof e.pageFrom !== "number" || !isFinite(e.pageFrom)) e.pageFrom = null;
+      if (typeof e.pageTo !== "number" || !isFinite(e.pageTo)) e.pageTo = null;
     });
     out.archive.days = out.archive.days.filter((d) => d && d.date);
+    out.archive.days.forEach((d) => {
+      if (!d.updatedAt) d.updatedAt = d.date;
+      if (!d.createdAt) d.createdAt = d.updatedAt;
+    });
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
     Object.keys(out.learned).forEach((k) => {
@@ -1854,12 +1864,36 @@
       unit: e.unit || null,
       memo: e.memo ? String(e.memo) : "",
       tags: Array.isArray(e.tags) ? e.tags : [],
+      favorite: false,
+      // 読書だけが使います。他の種類では null のままです。
+      kind: e.kind || null,
+      author: e.author ? String(e.author).trim() : null,
+      pageFrom: (e.pageFrom === "" || e.pageFrom == null) ? null : Number(e.pageFrom),
+      pageTo: (e.pageTo === "" || e.pageTo == null) ? null : Number(e.pageTo),
       createdAt: at,
       updatedAt: at,
     };
     if (!isFinite(row.amount)) row.amount = null;
+    if (!isFinite(row.pageFrom)) row.pageFrom = null;
+    if (!isFinite(row.pageTo)) row.pageTo = null;
+    applyReadingPages(row);
     update((s) => { s.archive.entries.push(row); });
     return row;
+  }
+
+  /* 開始・終了ページから、読んだページ数を出します。120→150 なら 31ページ。
+     終了が開始より小さい・どちらか欠けている、のときは何も計算しません
+     ——当てずっぽうの数を出すより、空のほうがまだ正直です。 */
+  function applyReadingPages(row) {
+    if (row.type !== "reading") return;
+    if (row.pageFrom != null && row.pageTo != null && row.pageTo >= row.pageFrom) {
+      // 開始・終了の両方を読んだページに数えます（120ページ目から150ページ目
+      // までなら、両端を含めて31ページぶん読んだことになります）。
+      row.amount = row.pageTo - row.pageFrom + 1;
+      row.unit = "ページ";
+    } else {
+      row.amount = null;
+    }
   }
 
   function updateEntry(id, patch) {
@@ -1868,10 +1902,25 @@
       if (!row) return;
       Object.assign(row, patch);
       if (patch.date !== undefined) row.date = dayKeyOf(patch.date);
-      if (patch.amount === "" || patch.amount == null) row.amount = null;
-      else if (!isFinite(Number(row.amount))) row.amount = null;
-      else row.amount = Number(row.amount);
-      // 直した時刻。並び順はこれで決まります。
+      if (patch.pageFrom !== undefined) {
+        row.pageFrom = (patch.pageFrom === "" || patch.pageFrom == null) ? null : Number(patch.pageFrom);
+        if (!isFinite(row.pageFrom)) row.pageFrom = null;
+      }
+      if (patch.pageTo !== undefined) {
+        row.pageTo = (patch.pageTo === "" || patch.pageTo == null) ? null : Number(patch.pageTo);
+        if (!isFinite(row.pageTo)) row.pageTo = null;
+      }
+      if (row.type === "reading") {
+        applyReadingPages(row);
+      } else if (patch.amount === "" || patch.amount == null) {
+        row.amount = null;
+      } else if (!isFinite(Number(row.amount))) {
+        row.amount = null;
+      } else {
+        row.amount = Number(row.amount);
+      }
+      // 直した時刻。並び順はこれで決まります。お気に入りの付け外しはここを
+      // 通らないので（toggleFavorite）、中身を直したときだけ動きます。
       row.updatedAt = stamp();
     });
   }
@@ -1890,9 +1939,23 @@
     });
   }
 
+  /* お気に入りの付け外し。**直した時刻は動かしません**——星を付けることは
+     中身の書き直しではないので、「直: 」の印がここでは出てほしくないのと、
+     並び順（最後に触った順）が星ひとつで乱れてほしくないためです。 */
+  function toggleFavorite(id) {
+    update((s) => {
+      const row = s.archive.entries.find((x) => x.id === id);
+      if (row) row.favorite = !row.favorite;
+    });
+  }
+
   /* 並びは **最後に触った順**。書いた順ではありません——去年の本に一行
      足したなら、いまのあなたはその本のことを考えているので、上に来ます。 */
   const byRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+  const byFavoriteThenRecent = (a, b) =>
+    (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || byRecent(a, b);
+  const byDateThenRecent = (a, b) => String(b.date).localeCompare(String(a.date)) || byRecent(a, b);
+
   const entriesOfMonth = (ym) =>
     archive().entries.filter((e) => String(e.date).slice(0, 7) === ym).slice().sort(byRecent);
   const entriesOfDay = (day) =>
@@ -1905,6 +1968,33 @@
     const out = {};
     entriesOfMonth(ym).forEach((e) => { out[e.type] = (out[e.type] || 0) + 1; });
     return out;
+  }
+
+  /**
+   * 読書・論文の、前に打った名前と著者。次に書くときの下敷きにします。
+   *
+   * 別に保存はしません——entries そのものが記録なので、そこから拾えば
+   * 十分です。名前が同じもの（かなの揺れは吸います）は一つにまとめ、
+   * いちばん新しく使ったものを残します。
+   */
+  function readingCandidates() {
+    const seen = new Map();
+    archive().entries
+      .filter((e) => e.type === "reading" && e.title)
+      .sort(byRecent)
+      .forEach((e) => {
+        const key = foldKana(e.title.trim());
+        if (!seen.has(key)) {
+          seen.set(key, { title: e.title, author: e.author || "", kind: e.kind || "book", at: e.updatedAt });
+        }
+      });
+    return [...seen.values()];
+  }
+
+  /** いちばん最近書いた読書記録の名前・著者。新規シートの下敷きにします。 */
+  function lastReading() {
+    const list = readingCandidates();
+    return list.length ? list[0] : null;
   }
 
   /* 文字でさがす。タイトル・メモ・タグを見ます。かなの揺れは foldKana が
@@ -1935,6 +2025,7 @@
         memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
         wake: patch.wake === undefined ? (cur ? cur.wake : null) : (patch.wake || null),
         sleep: patch.sleep === undefined ? (cur ? cur.sleep : null) : (patch.sleep || null),
+        createdAt: cur ? cur.createdAt : stamp(),
       };
       const empty = !next.memo.trim() && !next.wake && !next.sleep;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
@@ -1946,11 +2037,12 @@
     return dayLog(day);
   }
 
-  /* 月ぶんの地の文。日付の新しい順——月の頭から読ませると、いま近いことに
-     たどり着くまで指を動かすことになります。 */
+  /* 月ぶんの地の文。**書いた・直した順**（entries と同じ byRecent）——
+     カレンダー上の日付順ではありません。古い日に一行足せば、それがいちばん
+     上に来ます。「いつのことか」より「いつ書いたか」を先に見せる、という
+     考え方は積み上がり側と揃えてあります。 */
   const daysOfMonth = (ym) =>
-    archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
-      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    archive().days.filter((d) => String(d.date).slice(0, 7) === ym).slice().sort(byRecent);
 
   /**
    * 月ぶんを、まるごと一つの形にして返します。
@@ -2088,7 +2180,8 @@
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType,
-    addEntry, updateEntry, removeEntry, promoteSeed,
+    addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
+    readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, setDayLog, daysOfMonth, exportMonth,
     exportJSON, importJSON, reset, loadSample,
