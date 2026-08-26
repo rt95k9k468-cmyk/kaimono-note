@@ -582,11 +582,12 @@ a { color: var(--c-primary); }
 
 .tabbar {
   flex: none;
-  /* Three equal thirds. The bar is three places: the day, the shopping, the
-     body — and shopping's two faces share one button rather than taking one
-     each. Each split is a hairline and costs only its own width. */
+  /* Four equal quarters. The bar is four places: daily, the day (やること),
+     the shopping, the body — and shopping's two faces share one button
+     rather than taking one each. Each split is a hairline and costs only
+     its own width. */
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
   align-items: stretch;
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
@@ -4189,33 +4190,39 @@ a.btn { text-decoration: none; }
 }
 .diet-why[open] summary { color: var(--c-text); font-weight: 700; }
 
+
 /* =========================================================
    daily — 積み上がりと、その日の地の文
    =========================================================
 
    この画面の色は **見分けのため** だけに使います。良い悪いは言いません
    ——danger も warn も出てきませんし、記録の無い日にも色は付きません。
-   種類の色（--arc-c）は行ごとに差し込まれ、左の細い帯と絵にだけ乗ります。 */
+   種類の色（--arc-c）は行ごとに差し込まれ、左の細い帯と絵にだけ乗ります。
 
-/* 月／種の切り替え。タブではないので、タブより静かに。 */
-.arc-seg { display: flex; gap: var(--sp-1); margin-top: var(--sp-3); }
-.arc-seg-b {
-  flex: 1; padding: 7px 0; border-radius: var(--r-full);
-  font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2);
-  background: var(--c-surface-2); border: 1px solid transparent;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.arc-seg-b.is-on { background: var(--c-primary-soft); color: var(--c-primary-ink); border-color: var(--c-primary-soft); }
+   カレンダーは他のタブ（やること・ダイエット）と同じ .cal 系のクラスを
+   そのまま使います。ここに足すのは、その日にどの色の粒を乗せるかだけです。 */
 
 .arc-cal { margin: 0 var(--sp-4) var(--sp-3); }
-/* こよみの粒。その日に書いた種類ぶん出ます。書いていない日は空のまま——
-   空白を目立たせないので、警告色も枠も付けません。 */
 .arc-cal .cal-dots { display: flex; gap: 2px; justify-content: center; align-items: center; height: 5px; }
 .arc-cal .cal-dots i { width: 4px; height: 4px; border-radius: var(--r-full); display: block; }
 .arc-cal .cal-dots i.is-log { background: var(--c-text-3); opacity: .5; width: 8px; border-radius: var(--r-full); }
 
-/* ---- daily log ---- */
+/* ---- ②月の積み上がり ----
+   カードにはしません。内訳だけの、地の文より軽い一行——ここが単独の
+   見出しになって目立つと、この画面の主役が数のほうへ寄ってしまいます。 */
+.arc-rollup {
+  margin: 0 var(--sp-4);
+  display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
+  font-size: var(--fs-sm);
+}
+.arc-rollup-label { color: var(--c-text-2); font-weight: 700; flex: none; }
+.arc-rollup-body { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); color: var(--c-text-3); }
 
+.arc-count { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--c-text-2); }
+.arc-count i { width: 7px; height: 7px; border-radius: var(--r-full); background: var(--arc-c); flex: none; }
+
+/* ---- ③ Daily Log ----
+   縦幅は広めに——一、二行の文が、一行ぶんの窮屈な帯に収まらないように。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .arc-log-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
@@ -4225,36 +4232,30 @@ a.btn { text-decoration: none; }
 
 .arc-log-row {
   display: flex; gap: var(--sp-3); width: 100%; text-align: left;
-  padding: var(--sp-2) 0; border-top: 1px solid var(--c-border);
-  align-items: flex-start;
+  padding: var(--sp-4) 0; border-top: 1px solid var(--c-border);
+  align-items: flex-start; min-height: 64px;
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 26px; flex: none; padding-top: 1px; }
 .arc-log-day b { font-size: var(--fs-md); font-weight: 800; font-variant-numeric: tabular-nums; }
 .arc-log-day i { font-size: 10px; font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
-.arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.arc-log-memo { font-size: var(--fs-sm); line-height: 1.6; color: var(--c-text); white-space: pre-wrap; }
+.arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.arc-log-memo { font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap; }
 .arc-log-times { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.arc-log-meta { font-size: 10px; color: var(--c-text-3); opacity: .8; }
 
-/* ---- 内訳 ----
-   地の文のすぐ下にしか出しません。単独では置かない決まりなので、
-   カードにもせず、地の文と同じ紙の続きに見えるようにしてあります。 */
-.arc-counts {
-  display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3);
-  padding: 0 calc(var(--sp-4) * 2);
-}
-.arc-count { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--c-text-2); }
-.arc-count i { width: 7px; height: 7px; border-radius: var(--r-full); background: var(--arc-c); flex: none; }
+/* ---- ④積み上げ項目 ---- */
+.arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
+.arc-stack-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
 
-/* ---- 積み上がりの一覧 ---- */
-
-.arc-list { margin: 0 var(--sp-4); overflow: hidden; }
+.arc-list { overflow: hidden; }
 .arc-row {
-  display: flex; gap: var(--sp-3); width: 100%; text-align: left;
+  display: flex; gap: var(--sp-2); width: 100%; align-items: flex-start;
   padding: var(--sp-3) var(--sp-4);
   border-top: 1px solid var(--c-border);
-  align-items: flex-start; position: relative;
+  position: relative;
 }
 .arc-row:first-child { border-top: none; }
 /* 種類の色は、左の細い帯だけが持ちます。行ぜんぶを染めると、五種類が
@@ -4263,15 +4264,17 @@ a.btn { text-decoration: none; }
   content: ""; position: absolute; left: 0; top: 0; bottom: 0;
   width: 3px; background: var(--arc-c);
 }
-.arc-ico { flex: none; color: var(--arc-c); display: flex; padding-top: 1px; }
-.arc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.arc-row-body { display: flex; gap: var(--sp-3); flex: 1; min-width: 0; text-align: left; align-items: flex-start; }
+.arc-ico { flex: none; color: var(--arc-c); display: flex; padding-top: 3px; }
+.arc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
 .arc-title { font-size: var(--fs-md); font-weight: 700; line-height: 1.45; word-break: break-word; }
 .arc-sub { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.arc-kind { color: var(--arc-c); font-weight: 700; }
-.arc-edited { color: var(--c-text-3); }
+.arc-sub span:first-child { color: var(--arc-c); font-weight: 700; }
 .arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.6; white-space: pre-wrap; }
 
-.arc-seed-note { font-size: var(--fs-xs); color: var(--c-text-3); padding: 0 var(--sp-4); }
+/* 行の中の check / fav は、しごとの他の画面（やること・買うもの）と
+   同じ部品をそのまま使います。ここでだけ揃えるのは並び位置だけです。 */
+.arc-row .check, .arc-row .fav { margin-top: 1px; flex: none; }
 
 /* ---- 書くシート ---- */
 
@@ -4290,15 +4293,29 @@ a.btn { text-decoration: none; }
 }
 .arc-pick-b.is-on svg { color: var(--arc-c); }
 
-.arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-.arc-more summary {
-  font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700;
-  cursor: pointer; padding: var(--sp-2) 0;
+/* 本／論文の切り替え。arc-pick-b と同じ見た目にし、種類の色ではなく
+   主色（primary）で選ばれたことを言います——読書という種類はもう
+   arc-pick で選んであるので、ここは「読書の中のどちら」の話です。 */
+.arc-kind { display: flex; gap: var(--sp-2); }
+.arc-kind-b {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: var(--r-full);
+  font-size: var(--fs-sm); font-weight: 700;
+  background: var(--c-surface-2); color: var(--c-text-2);
+  border: 1.5px solid transparent;
 }
+.arc-kind-b svg { color: var(--c-text-3); }
+.arc-kind-b.is-on { border-color: var(--c-primary); color: var(--c-primary-ink); background: var(--c-primary-soft); }
+.arc-kind-b.is-on svg { color: var(--c-primary); }
 
-/* 本体の段組み。地の文と内訳は「続きもの」なので、そこだけ間合いを詰めます。 */
+/* 読書の名前・著者は長くなりがちなので、一段大きく組みます。 */
+.input-lg { padding: 13px 14px; font-size: var(--fs-lg); }
+
+.arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; margin: -4px 0 0; }
+
+.arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+
 .arc-body { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
-.arc-body > .arc-log + .arc-counts { margin-top: calc(var(--sp-4) * -1 + var(--sp-2)); }
 
 </style>
 
@@ -4724,6 +4741,9 @@ a.btn { text-decoration: none; }
     /* 芽。まだ何にもなっていないものの印なので、花も実も付けません。左右の葉を
        わざと非対称にしてあります——対称にすると蝶に見えます。 */
     sprout:    '<path d="M12 20.6v-7.4"/><path d="M12 13.2C12 9.9 9.7 7.6 6.4 7.6c0 3.3 2.3 5.6 5.6 5.6Z"/><path d="M12.7 12.5c0-2.7 1.9-4.6 4.6-4.6.4 2.9-1.5 5-4.6 4.6Z"/>',
+    /* 論文・書類。本と混ざらないよう、閉じた一枚の紙に角の折れと横線三本で
+       「文字が詰まった一枚もの」と言います——本のような開いた谷はありません。 */
+    paper:     '<path d="M6.4 2.6h8.4l5.2 5.2v13.6a1 1 0 0 1-1 1H6.4a1 1 0 0 1-1-1V3.6a1 1 0 0 1 1-1Z"/><path d="M14.8 2.6v4.6a1 1 0 0 0 1 1h4.6"/><path d="M8.2 13h7.6M8.2 16.6h7.6M8.2 9.4h4"/>',
     /* いちばん安いお店の印。ここは 🏆 の絵文字でした——端末が描くもので、
        iOS と Android で別の絵が出ますし、このアプリの線でも色でもありません。
        山は三つ。二つだと王冠に見えず、四つだと15pxで潰れます。 */
@@ -4807,6 +4827,10 @@ a.btn { text-decoration: none; }
     scale: '<path fill-rule="evenodd" d="M5.8 4.4h12.4a3 3 0 0 1 3 3v9.2a3 3 0 0 1-3 3H5.8a3 3 0 0 1-3-3V7.4'
         + 'a3 3 0 0 1 3-3Zm6.2 3.8a4.6 4.6 0 0 0-4.35 3.1h8.7A4.6 4.6 0 0 0 12 8.2Z'
         + 'm-3.4 6.6a1.1 1.1 0 0 0 0 2.2h6.8a1.1 1.1 0 0 0 0-2.2Z"/>',
+    /* daily タブ。線の絵と同じ谷（中央の背）を持つ二枚の葉を、そのまま塗り
+       つぶします——線のときと座標が動かないよう、同じ曲線を使っています。 */
+    book: '<path d="M12 6.8C10.2 5.4 7.9 4.8 5 4.8a1 1 0 0 0-1 1v11.4a1 1 0 0 0 1 1c2.9 0 5.2.6 7 2Z"/>'
+        + '<path d="M12 6.8c1.8-1.4 4.1-2 7-2a1 1 0 0 1 1 1v11.4a1 1 0 0 1-1 1c-2.9 0-5.2.6-7 2Z"/>',
   };
 
   /** Inline icon. Stroke by default; `.is-solid` shows the filled face. */
@@ -13383,8 +13407,18 @@ a.btn { text-decoration: none; }
       if (!e.updatedAt) e.updatedAt = e.createdAt;
       if (!Array.isArray(e.tags)) e.tags = [];
       if (!ARCHIVE_TYPES.some((t) => t.id === e.type)) e.type = "done";
+      // この機能より前に保存された記録には、無かった項目を補います。
+      if (typeof e.favorite !== "boolean") e.favorite = false;
+      if (e.kind !== "book" && e.kind !== "paper") e.kind = e.type === "reading" ? "book" : null;
+      if (e.author != null && typeof e.author !== "string") e.author = null;
+      if (typeof e.pageFrom !== "number" || !isFinite(e.pageFrom)) e.pageFrom = null;
+      if (typeof e.pageTo !== "number" || !isFinite(e.pageTo)) e.pageTo = null;
     });
     out.archive.days = out.archive.days.filter((d) => d && d.date);
+    out.archive.days.forEach((d) => {
+      if (!d.updatedAt) d.updatedAt = d.date;
+      if (!d.createdAt) d.createdAt = d.updatedAt;
+    });
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
     Object.keys(out.learned).forEach((k) => {
@@ -14773,12 +14807,36 @@ a.btn { text-decoration: none; }
       unit: e.unit || null,
       memo: e.memo ? String(e.memo) : "",
       tags: Array.isArray(e.tags) ? e.tags : [],
+      favorite: false,
+      // 読書だけが使います。他の種類では null のままです。
+      kind: e.kind || null,
+      author: e.author ? String(e.author).trim() : null,
+      pageFrom: (e.pageFrom === "" || e.pageFrom == null) ? null : Number(e.pageFrom),
+      pageTo: (e.pageTo === "" || e.pageTo == null) ? null : Number(e.pageTo),
       createdAt: at,
       updatedAt: at,
     };
     if (!isFinite(row.amount)) row.amount = null;
+    if (!isFinite(row.pageFrom)) row.pageFrom = null;
+    if (!isFinite(row.pageTo)) row.pageTo = null;
+    applyReadingPages(row);
     update((s) => { s.archive.entries.push(row); });
     return row;
+  }
+
+  /* 開始・終了ページから、読んだページ数を出します。120→150 なら 31ページ。
+     終了が開始より小さい・どちらか欠けている、のときは何も計算しません
+     ——当てずっぽうの数を出すより、空のほうがまだ正直です。 */
+  function applyReadingPages(row) {
+    if (row.type !== "reading") return;
+    if (row.pageFrom != null && row.pageTo != null && row.pageTo >= row.pageFrom) {
+      // 開始・終了の両方を読んだページに数えます（120ページ目から150ページ目
+      // までなら、両端を含めて31ページぶん読んだことになります）。
+      row.amount = row.pageTo - row.pageFrom + 1;
+      row.unit = "ページ";
+    } else {
+      row.amount = null;
+    }
   }
 
   function updateEntry(id, patch) {
@@ -14787,10 +14845,25 @@ a.btn { text-decoration: none; }
       if (!row) return;
       Object.assign(row, patch);
       if (patch.date !== undefined) row.date = dayKeyOf(patch.date);
-      if (patch.amount === "" || patch.amount == null) row.amount = null;
-      else if (!isFinite(Number(row.amount))) row.amount = null;
-      else row.amount = Number(row.amount);
-      // 直した時刻。並び順はこれで決まります。
+      if (patch.pageFrom !== undefined) {
+        row.pageFrom = (patch.pageFrom === "" || patch.pageFrom == null) ? null : Number(patch.pageFrom);
+        if (!isFinite(row.pageFrom)) row.pageFrom = null;
+      }
+      if (patch.pageTo !== undefined) {
+        row.pageTo = (patch.pageTo === "" || patch.pageTo == null) ? null : Number(patch.pageTo);
+        if (!isFinite(row.pageTo)) row.pageTo = null;
+      }
+      if (row.type === "reading") {
+        applyReadingPages(row);
+      } else if (patch.amount === "" || patch.amount == null) {
+        row.amount = null;
+      } else if (!isFinite(Number(row.amount))) {
+        row.amount = null;
+      } else {
+        row.amount = Number(row.amount);
+      }
+      // 直した時刻。並び順はこれで決まります。お気に入りの付け外しはここを
+      // 通らないので（toggleFavorite）、中身を直したときだけ動きます。
       row.updatedAt = stamp();
     });
   }
@@ -14809,9 +14882,23 @@ a.btn { text-decoration: none; }
     });
   }
 
+  /* お気に入りの付け外し。**直した時刻は動かしません**——星を付けることは
+     中身の書き直しではないので、「直: 」の印がここでは出てほしくないのと、
+     並び順（最後に触った順）が星ひとつで乱れてほしくないためです。 */
+  function toggleFavorite(id) {
+    update((s) => {
+      const row = s.archive.entries.find((x) => x.id === id);
+      if (row) row.favorite = !row.favorite;
+    });
+  }
+
   /* 並びは **最後に触った順**。書いた順ではありません——去年の本に一行
      足したなら、いまのあなたはその本のことを考えているので、上に来ます。 */
   const byRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+  const byFavoriteThenRecent = (a, b) =>
+    (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || byRecent(a, b);
+  const byDateThenRecent = (a, b) => String(b.date).localeCompare(String(a.date)) || byRecent(a, b);
+
   const entriesOfMonth = (ym) =>
     archive().entries.filter((e) => String(e.date).slice(0, 7) === ym).slice().sort(byRecent);
   const entriesOfDay = (day) =>
@@ -14824,6 +14911,33 @@ a.btn { text-decoration: none; }
     const out = {};
     entriesOfMonth(ym).forEach((e) => { out[e.type] = (out[e.type] || 0) + 1; });
     return out;
+  }
+
+  /**
+   * 読書・論文の、前に打った名前と著者。次に書くときの下敷きにします。
+   *
+   * 別に保存はしません——entries そのものが記録なので、そこから拾えば
+   * 十分です。名前が同じもの（かなの揺れは吸います）は一つにまとめ、
+   * いちばん新しく使ったものを残します。
+   */
+  function readingCandidates() {
+    const seen = new Map();
+    archive().entries
+      .filter((e) => e.type === "reading" && e.title)
+      .sort(byRecent)
+      .forEach((e) => {
+        const key = foldKana(e.title.trim());
+        if (!seen.has(key)) {
+          seen.set(key, { title: e.title, author: e.author || "", kind: e.kind || "book", at: e.updatedAt });
+        }
+      });
+    return [...seen.values()];
+  }
+
+  /** いちばん最近書いた読書記録の名前・著者。新規シートの下敷きにします。 */
+  function lastReading() {
+    const list = readingCandidates();
+    return list.length ? list[0] : null;
   }
 
   /* 文字でさがす。タイトル・メモ・タグを見ます。かなの揺れは foldKana が
@@ -14854,6 +14968,7 @@ a.btn { text-decoration: none; }
         memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
         wake: patch.wake === undefined ? (cur ? cur.wake : null) : (patch.wake || null),
         sleep: patch.sleep === undefined ? (cur ? cur.sleep : null) : (patch.sleep || null),
+        createdAt: cur ? cur.createdAt : stamp(),
       };
       const empty = !next.memo.trim() && !next.wake && !next.sleep;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
@@ -14865,11 +14980,12 @@ a.btn { text-decoration: none; }
     return dayLog(day);
   }
 
-  /* 月ぶんの地の文。日付の新しい順——月の頭から読ませると、いま近いことに
-     たどり着くまで指を動かすことになります。 */
+  /* 月ぶんの地の文。**書いた・直した順**（entries と同じ byRecent）——
+     カレンダー上の日付順ではありません。古い日に一行足せば、それがいちばん
+     上に来ます。「いつのことか」より「いつ書いたか」を先に見せる、という
+     考え方は積み上がり側と揃えてあります。 */
   const daysOfMonth = (ym) =>
-    archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
-      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    archive().days.filter((d) => String(d.date).slice(0, 7) === ym).slice().sort(byRecent);
 
   /**
    * 月ぶんを、まるごと一つの形にして返します。
@@ -15007,7 +15123,8 @@ a.btn { text-decoration: none; }
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType,
-    addEntry, updateEntry, removeEntry, promoteSeed,
+    addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
+    readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, setDayLog, daysOfMonth, exportMonth,
     exportJSON, importJSON, reset, loadSample,
@@ -21117,18 +21234,19 @@ a.btn { text-decoration: none; }
 
    だから、この画面には **測るものが一つもありません**。目標も、達成率も、
    何日続いたかも、先月より多いか少ないかも出しません。積み上がったものを
-   置いておくと、後から読み返せる——それだけの場所です。数を出すところは
-   ありますが、それは内訳であって、成績ではありません。地の文（daily log）の
-   すぐ下にしか置かないのは、数だけが単独で目に入らないようにするためです。
+   置いておくと、後から読み返せる——それだけの場所です。
 
-   画面は三段です。
+   一画面に、ずっと四つ並びます（前は「月」「種」で面を分けていましたが、
+   やめました。種はお気に入り・完了の印・並び替えで見つかるので、
+   専用の場所は要りません）。
 
-     こよみ      … どの月を見ているか。日を押すとその日に絞ります
-     daily log   … その月の、日ごとの一、二行。起きた時刻と寝た時刻も
-     積み上がり  … 読んだ・学んだ・考えた・した・変わった
+     ①こよみ        … 他のタブと同じ作り（週／月・フリック・輪）
+     ②月の積み上がり … その月の内訳。数だけを言うので、常に短く
+     ③Daily Log     … その日あったこと・したこと。一、二行
+     ④積み上げ項目   … 読書・学習・種・達成・変化。並び替えとお気に入り付き
 
-   並びは **最後に触った順** です。日付順ではありません——去年の本に一行
-   足したなら、いまのあなたはその本を考えているので、上に来ます。
+   カレンダーは、やること・ダイエットと**同じコード**にしてあります
+   （置き場所と印だけを変えて三つ目を足す、という前二つと同じやり方です）。
    ========================================================= */
 (function () {
   "use strict";
@@ -21145,60 +21263,131 @@ a.btn { text-decoration: none; }
   let viewMonth = null;
   /* 日で絞っているとき、その日。null は「月ぜんぶ」。 */
   let viewDay = null;
-  /* 面。"month" か "seed"。 */
-  let face = "month";
-  /* さがしている文字。空なら通常の一覧。 */
+
+  /* ④の見せ方。並び替え・絞り込み・お気に入りだけ・文字さがし。
+     ページを分けない代わりに、ここで探します。 */
+  let typeFilter = "all";
+  let sortMode = "recent";     // recent | favorite | date
+  let favOnly = false;
   let query = "";
 
   const ymOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   const curYm = () => viewMonth || ymOf(new Date());
   const ymParts = (ym) => ({ year: +ym.slice(0, 4), month: +ym.slice(5, 7) - 1 });
   const isThisMonth = () => curYm() === ymOf(new Date());
+  /** 値が無ければ「-」。空欄をグレーの説明文で埋めない、という決めごとの担当。 */
+  const orDash = (v) => (v == null || v === "" ? "-" : v);
 
-  /* ---------------- こよみ ----------------
+  /* ================================================================
+     こよみ
 
-     ダイエットのこよみと同じ形にしてあります。押した日に絞り、もう一度
-     押すと解けます。**記録の無い日に色は付けません**——空白を目立たせると、
-     埋めなかったことを咎める画面になります。ここは咎める場所ではないので、
-     書いた日にだけ、その種類の色の粒が出ます。 */
+     やること・ダイエットのカレンダーと、作りをそろえてあります
+     （週⇄月・フリックで月送り・今日の赤丸・選んだ日の緑の輪）。
+     新しく考えたのは「どの日にどの色の粒が乗るか」だけです。
+     ================================================================ */
+
+  const calOpen = () => store.get().settings.calOpen === true;
+
+  function markWeek(sec, here) {
+    const open = calOpen();
+    sec.classList.toggle("is-week", !open);
+    const btn = sec.querySelector(".js-calmore");
+    if (btn) {
+      btn.textContent = open ? "月" : "週";
+      btn.setAttribute("aria-expanded", String(open));
+      btn.setAttribute("aria-label", open ? "週だけにする" : "月ぜんぶを見る");
+    }
+    if (open) {
+      sec.querySelectorAll(".is-off-week").forEach((c) => c.classList.remove("is-off-week"));
+      return;
+    }
+    const first = sec.querySelector(".cal-day");
+    const hasHere = !!sec.querySelector(`.cal-day[data-day="${here}"]`);
+    const anchor = hasHere ? here : (first ? first.dataset.day : here);
+    const w = U.weekOf(anchor);
+    sec.querySelectorAll(".cal-day").forEach((c) => {
+      const k = c.dataset.day;
+      c.classList.toggle("is-off-week", k < w.from || k > w.to);
+    });
+    const padsOn = !!first && first.dataset.day >= w.from && first.dataset.day <= w.to;
+    sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
+  }
+
+  function shownMonth() {
+    if (viewMonth) return ymParts(viewMonth);
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  }
+
+  function moveRing(grid, cell, jump) {
+    if (!grid) return;
+    let ring = grid.querySelector(".cal-ring");
+    if (!ring) {
+      ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
+      grid.prepend(ring);
+    }
+    if (!cell) { ring.classList.remove("is-on"); return; }
+    const n = cell.querySelector(".cal-n");
+    if (!n) return;
+    const g = grid.getBoundingClientRect();
+    const b = n.getBoundingClientRect();
+    if (!g.width || !b.width) return;
+    const first = !ring.classList.contains("is-on");
+    ring.classList.toggle("is-jump", !!jump || first);
+    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    ring.classList.add("is-on");
+    if (jump || first) {
+      requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
+    }
+  }
+
   function calendar() {
     const sec = node(html`
-      <section class="cal arc-cal">
+      <section class="cal">
         <h2 class="cal-head">
           <span class="cal-month"></span>
           <span class="cal-year"></span>
           <button type="button" class="cal-now js-now" hidden>今月へ</button>
           <span class="cal-nav">
-            <button type="button" class="cal-arrow js-prev" aria-label="前の月">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次の月">${icon("chevron")}</button>
+            <button type="button" class="cal-more js-calmore" aria-expanded="false"></button>
+            <button type="button" class="cal-arrow js-prev" aria-label="前へ">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-next" aria-label="次へ">${icon("chevron")}</button>
           </span>
         </h2>
         <div class="cal-grid"></div>
       </section>
     `);
-    sec.querySelector(".js-prev").addEventListener("click", () => goMonth(-1));
-    sec.querySelector(".js-next").addEventListener("click", () => goMonth(1));
+    const grid = sec.querySelector(".cal-grid");
+
+    const goTo = (delta) => {
+      haptic();
+      const m = shownMonth();
+      const d = new Date(m.year, m.month + delta, 1);
+      if (ymOf(d) > ymOf(new Date())) return;   // 先の月には行きません
+      viewMonth = ymOf(d) === ymOf(new Date()) ? null : ymOf(d);
+      viewDay = null;
+      render();
+    };
+    sec.querySelector(".js-calmore").addEventListener("click", () => {
+      haptic();
+      store.update((s) => { s.settings.calOpen = !calOpen(); });
+    });
+    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
+    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
       haptic(); viewMonth = null; viewDay = null; render();
     });
+
+    wireMonthSwipe(sec, grid, goTo);
     return sec;
   }
 
-  function goMonth(delta) {
-    haptic();
-    const { year, month } = ymParts(curYm());
-    const d = new Date(year, month + delta, 1);
-    // 先の月には行きません（記録は過去にしかないので）。
-    if (ymOf(d) > ymOf(new Date())) return;
-    viewMonth = ymOf(d);
-    viewDay = null;
-    render();
-  }
-
+  /* その日の粒。書いた種類ぶんの色（最大四つ）。log だけあって積み上げが
+     無い日は、灰色の小さな一粒にします——書いたことは書いたことなので、
+     何も出さないと「その日は空白」に見えてしまいます。 */
   function fillCalendar(sec) {
-    const ym = curYm();
-    const { year, month } = ymParts(ym);
     const today = U.todayKey();
+    const { year, month } = shownMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
 
@@ -21207,12 +21396,9 @@ a.btn { text-decoration: none; }
     sec.querySelector(".cal-year").textContent = String(year);
     sec.querySelector(".js-now").hidden = isThisMonth() && !viewDay;
 
-    /* その月ぶんを一度だけ引いて表にします。日ごとに store を引くと、
-       31日ぶんで31回なめることになります。 */
+    const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
     const byDay = {};
-    store.entriesOfMonth(ym).forEach((e) => {
-      (byDay[e.date] = byDay[e.date] || []).push(e.type);
-    });
+    store.entriesOfMonth(ym).forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e.type); });
     const logged = {};
     store.daysOfMonth(ym).forEach((d) => { logged[d.date] = true; });
 
@@ -21227,11 +21413,10 @@ a.btn { text-decoration: none; }
       const key = U.dayKey(new Date(year, month, d));
       const wd = (lead + d - 1) % 7;
       const isToday = key === today;
-      /* 粒は、その日に書いた種類ぶん。四つまでにしてあります——五つ以上を
-         並べると 34px の枠では粒が潰れて、ただの帯になります。 */
       const kinds = [...new Set(byDay[key] || [])].slice(0, 4);
-      const dots = kinds.map((t) =>
-        `<i style="background:${store.archiveType(t).color}"></i>`).join("");
+      const dotsHtml = kinds.length
+        ? kinds.map((t) => `<i style="background:${store.archiveType(t).color}"></i>`).join("")
+        : (logged[key] ? '<i class="is-log"></i>' : "");
       const cell = node(html`
         <button class="cal-day ${isToday ? "is-today" : ""} ${key === viewDay ? "is-here" : ""}
                        ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
@@ -21239,36 +21424,102 @@ a.btn { text-decoration: none; }
                 aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
                   kinds.length ? ` 記録${kinds.length}種` : ""}${logged[key] ? " log あり" : ""}">
           <span class="cal-n">${String(d)}</span>
-          <span class="cal-dots">${U.raw(dots)}${logged[key] && !kinds.length
-            ? U.raw('<i class="is-log"></i>') : ""}</span>
+          <span class="cal-dots">${U.raw(dotsHtml)}</span>
         </button>
       `);
       cell.addEventListener("click", () => {
         haptic();
-        // 同じ日をもう一度押したら、絞りを解きます。
-        viewDay = (viewDay === key) ? null : key;
+        viewDay = key === today ? null : key;
+        viewMonth = ymOf(new Date(year, month, 1)) === ymOf(new Date()) ? null : ymOf(new Date(year, month, 1));
+        moveRing(grid, cell);
         render();
       });
       grid.append(cell);
     }
+    markWeek(sec, viewDay || today);
+    moveRing(grid, grid.querySelector(`.cal-day[data-day="${viewDay || today}"]`), true);
   }
 
-  /* ---------------- daily log ----------------
+  /* やること・ダイエットと同じ、フリックで月をめくる仕掛け。日ごとの
+     めくり（横に払って日を進める）は無いので、月だけの単純な版です。 */
+  function wireMonthSwipe(sec, grid, goTo) {
+    const THRESHOLD = 52;
+    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
 
-     「2026年8月 daily log」。その月の、日ごとの一、二行です。
+    const paint = () => {
+      frame = 0;
+      grid.style.transform = dx ? `translateX(${dx}px)` : "";
+      grid.style.opacity = dx ? String(Math.max(.35, 1 - Math.abs(dx) / 260)) : "";
+    };
+    const reset = () => {
+      grid.style.transition = "transform .22s var(--ease-out), opacity .22s";
+      dx = 0;
+      paint();
+      setTimeout(() => { grid.style.transition = ""; }, 240);
+    };
 
-     長い文章は書かせません。中身は別のところ（Notion など）に書く前提で、
-     ここに残すのは **「そういう日だった」と後から思い出せるだけの手がかり**
-     です。起床と就寝の時刻も持ちますが、これは健康の記録ではなく、
-     その日の輪郭を思い出すための瑣末な目印として置いています。 */
-  function dailyLog() {
-    const ym = curYm();
+    sec.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.target.closest("button.cal-arrow, button.cal-now, button.cal-more")) return;
+      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
+      grid.style.transition = "";
+    });
+    sec.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== id) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!axis) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+        if (axis === "x") sec.setPointerCapture(id);
+      }
+      if (axis !== "x") return;
+      e.preventDefault();
+      dx = Math.abs(mx) <= THRESHOLD ? mx : Math.sign(mx) * (THRESHOLD + (Math.abs(mx) - THRESHOLD) * .3);
+      if (!frame) frame = requestAnimationFrame(paint);
+    });
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      const moved = dx;
+      id = null; axis = null;
+      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
+      grid.style.transition = "";
+      dx = 0;
+      paint();
+      goTo(moved < 0 ? 1 : -1);
+    };
+    sec.addEventListener("pointerup", end);
+    sec.addEventListener("pointercancel", () => { id = null; axis = null; reset(); });
+  }
+
+  /* ================================================================
+     ②月の積み上がり — 内訳だけの、細い一行
+     ================================================================ */
+
+  function monthRollup(ym) {
+    const { month } = ymParts(ym);
+    const c = store.monthCounts(ym);
+    const kinds = store.ARCHIVE_TYPES.filter((t) => c[t.id]);
+    return node(html`
+      <div class="arc-rollup">
+        <span class="arc-rollup-label">${month + 1}月の積み上がり</span>
+        <span class="arc-rollup-body">${kinds.length
+          ? U.raw(kinds.map((t) => `<span class="arc-count" style="--arc-c:${t.color}"><i></i>${t.label} ${c[t.id]}</span>`).join(""))
+          : "-"}</span>
+      </div>
+    `);
+  }
+
+  /* ================================================================
+     ③ Daily Log — その日あったこと・したこと
+     ================================================================ */
+
+  function dailyLog(ym) {
     const { year, month } = ymParts(ym);
-    const days = store.daysOfMonth(ym);
+    const days = viewDay ? store.daysOfMonth(ym).filter((d) => d.date === viewDay) : store.daysOfMonth(ym);
     const sec = node(html`
       <section class="card arc-log">
         <header class="arc-log-head">
-          <h2>${year}年${month + 1}月 daily log</h2>
+          <h2>${year}年${month + 1}月 Daily Log</h2>
           <button type="button" class="btn btn-soft btn-sm js-write">
             ${icon("edit", "is-sub")}<span>今日を書く</span>
           </button>
@@ -21279,17 +21530,11 @@ a.btn { text-decoration: none; }
     const body = sec.querySelector(".arc-log-body");
 
     if (!days.length) {
-      body.append(node(html`
-        <p class="arc-log-empty">まだ何も書いていません。<br>
-          その日あったこと・したことを、一、二行で。</p>
-      `));
+      body.append(node(html`<p class="arc-log-empty">-</p>`));
     }
     days.forEach((d) => {
       const dt = U.dayDate(d.date);
-      const times = [
-        d.wake ? `起 ${d.wake}` : "",
-        d.sleep ? `寝 ${d.sleep}` : "",
-      ].filter(Boolean).join(" ・ ");
+      const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
       const row = node(html`
         <button type="button" class="arc-log-row ${d.date === U.todayKey() ? "is-today" : ""}"
                 data-day="${d.date}">
@@ -21298,8 +21543,10 @@ a.btn { text-decoration: none; }
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
           </span>
           <span class="arc-log-text">
-            <span class="arc-log-memo">${d.memo || ""}</span>
-            ${times ? html`<span class="arc-log-times">${times}</span>` : ""}
+            <span class="arc-log-memo">${orDash(d.memo)}</span>
+            <span class="arc-log-times">起 ${orDash(d.wake)} ・ 寝 ${orDash(d.sleep)}</span>
+            <span class="arc-log-meta">作成 ${U.formatStamp(d.createdAt)}${
+              edited ? ` ・ 更新 ${U.formatStamp(d.updatedAt)}` : ""}</span>
           </span>
         </button>
       `);
@@ -21313,24 +21560,16 @@ a.btn { text-decoration: none; }
     return sec;
   }
 
-  /**
-   * 一日ぶんを書くシート。
-   *
-   * 必須はありません。時刻だけ書いて閉じても、一行だけ書いて閉じても
-   * 成立します。**三つとも空にすると、その日の行ごと消えます**——空の行が
-   * 溜まると、月を眺めたときに「書いていない日」と見分けられなくなるので。
-   */
   function openLogSheet(day) {
     const cur = store.dayLog(day) || {};
     const dt = U.dayDate(day);
     const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
 
     const body = node(html`
-      <div class="stack" style="gap:14px">
+      <div class="stack" style="gap:16px">
         <label class="field">
           <span class="field-label">その日あったこと・したこと</span>
-          <textarea class="input js-memo" rows="3" maxlength="200"
-                    placeholder="一、二行で。くわしくは別のところに。">${cur.memo || ""}</textarea>
+          <textarea class="textarea js-memo" rows="5" maxlength="200">${cur.memo || ""}</textarea>
           <span class="field-hint js-count"></span>
         </label>
         <div class="arc-times">
@@ -21346,23 +21585,18 @@ a.btn { text-decoration: none; }
       </div>
     `);
 
-    /* 二百字で止めます。ここを長く書けるようにすると、日記になります——
-       日記はもっと向いた道具があるので、この欄は「手がかり」に留めます。 */
     const memo = body.querySelector(".js-memo");
     const count = body.querySelector(".js-count");
     const paint = () => { count.textContent = `${memo.value.length} / 200`; };
     memo.addEventListener("input", paint);
     paint();
 
-    KN.ui.sheet({
+    const h = KN.ui.sheet({
       title: `${label} の log`,
       content: body,
       footer: node(html`<button class="btn btn-primary btn-block js-ok">保存</button>`),
-      onClose: null,
     });
-
-    const sheet = document.querySelector(".sheet");
-    sheet.querySelector(".js-ok").addEventListener("click", () => {
+    h.el.querySelector(".js-ok").addEventListener("click", () => {
       store.setDayLog(day, {
         memo: memo.value,
         wake: body.querySelector(".js-wake").value || null,
@@ -21370,110 +21604,335 @@ a.btn { text-decoration: none; }
       });
       haptic();
       KN.ui.toast("書きました");
-      document.querySelector(".sheet-backdrop") && document.querySelector(".sheet-backdrop").click();
+      h.close();
       render();
     });
   }
 
-  /* ---------------- 積み上がり ----------------
+  /* ================================================================
+     ④積み上げ項目 — 読書・学習・種・達成・変化
+     ================================================================ */
 
-     一覧の主役は **タイトル** です。何を読んだか、何を考えたか。数（ページ数・
-     分）は持っていれば添えますが、行の主語にはしません——「120ページ」だけ
-     並んだ一覧からは、何も思い出せないからです。 */
+  function visibleEntries(ym) {
+    let list;
+    if (query.trim()) {
+      list = store.searchEntries(query);
+    } else if (viewDay) {
+      list = store.entriesOfDay(viewDay);
+    } else {
+      list = store.entriesOfMonth(ym);
+    }
+    if (typeFilter !== "all") list = list.filter((e) => e.type === typeFilter);
+    if (favOnly) list = list.filter((e) => e.favorite);
+
+    const sorter = sortMode === "favorite" ? cmpFavorite : (sortMode === "date" ? cmpDate : cmpRecent);
+    return list.slice().sort(sorter);
+  }
+  // store 側の並びに乗るので、ここでは再現だけします（同じ関数を二重に
+  // 持たない代わりに、store が要らないと言った並びだけこちらで足します）。
+  const cmpRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+  const cmpFavorite = (a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || cmpRecent(a, b);
+  const cmpDate = (a, b) => String(b.date).localeCompare(String(a.date)) || cmpRecent(a, b);
+
+  function readingSubtitle(e, t) {
+    const bits = [];
+    if (e.author) bits.push(e.author);
+    if (e.pageFrom != null || e.pageTo != null) {
+      bits.push(`${orDash(e.pageFrom)}→${orDash(e.pageTo)}${e.amount != null ? `（${e.amount}ページ）` : ""}`);
+    }
+    return bits;
+  }
+
   function entryRow(e) {
     const t = store.archiveType(e.type);
-    const amount = (e.amount != null && isFinite(e.amount))
-      ? `${e.amount}${e.unit || t.unit || ""}` : "";
     const dt = U.dayDate(e.date);
     const when = dt ? `${dt.getMonth() + 1}/${dt.getDate()}` : "";
-    /* 直した時刻。書いたときと違うときだけ「直した」と言います——同じなら
-       ただの重複で、行が長くなるだけです。 */
-    const edited = e.updatedAt && e.createdAt
-      && String(e.updatedAt).slice(0, 16) !== String(e.createdAt).slice(0, 16);
+    const edited = e.updatedAt && e.createdAt && String(e.updatedAt).slice(0, 16) !== String(e.createdAt).slice(0, 16);
+
+    const subBits = [t.label, when];
+    if (e.type === "reading") {
+      subBits.push(...readingSubtitle(e, t));
+    } else if (e.amount != null) {
+      subBits.push(`${e.amount}${e.unit || t.unit || ""}`);
+    }
+    if (edited) subBits.push(`直: ${U.formatStamp(e.updatedAt)}`);
+
+    const typeIcon = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
 
     const row = node(html`
-      <button type="button" class="arc-row" data-id="${e.id}"
-              style="--arc-c:${t.color}">
-        <span class="arc-ico">${icon(t.icon, "is-sub")}</span>
-        <span class="arc-main">
-          <span class="arc-title">${e.title || t.label}</span>
-          <span class="arc-sub">
-            <span class="arc-kind">${t.label}</span>
-            <span>${when}</span>
-            ${amount ? html`<span>${amount}</span>` : ""}
-            ${edited ? html`<span class="arc-edited">直: ${U.formatStamp(e.updatedAt)}</span>` : ""}
+      <div class="arc-row" style="--arc-c:${t.color}">
+        ${e.type === "seed" ? html`
+          <button class="check js-seedcheck" role="checkbox" aria-checked="false"
+                  aria-label="「${e.title}」を達成にする">${icon("check")}</button>
+        ` : ""}
+        <button class="fav ${e.favorite ? "is-on" : ""} js-favbtn" aria-pressed="${String(!!e.favorite)}"
+                aria-label="「${e.title}」をお気に入りにする">${icon("star")}</button>
+        <button class="arc-row-body" data-id="${e.id}">
+          <span class="arc-ico">${icon(typeIcon, "is-sub")}</span>
+          <span class="arc-main">
+            <span class="arc-title">${e.title || t.label}</span>
+            <span class="arc-sub">${U.raw(subBits.map((b) => `<span>${U.escapeHtml ? U.escapeHtml(b) : b}</span>`).join(""))}</span>
+            <span class="arc-memo">${e.memo ? e.memo : "-"}</span>
           </span>
-          ${e.memo ? html`<span class="arc-memo">${e.memo}</span>` : ""}
-        </span>
-      </button>
+        </button>
+      </div>
     `);
-    row.addEventListener("click", () => openEntrySheet(e));
+    row.querySelector(".arc-row-body").addEventListener("click", () => openEntrySheet(e));
+    row.querySelector(".js-favbtn").addEventListener("click", () => {
+      haptic();
+      store.toggleFavorite(e.id);
+      render();
+    });
+    const seedCheck = row.querySelector(".js-seedcheck");
+    if (seedCheck) {
+      seedCheck.addEventListener("click", () => {
+        haptic();
+        store.promoteSeed(e.id);
+        KN.ui.toast("達成にしました");
+        render();
+      });
+    }
     return row;
   }
 
-  /** 内訳。**地の文のすぐ下にしか置きません**（数が単独で目に入らないように）。 */
-  function counts(ym) {
-    const c = store.monthCounts(ym);
-    const kinds = store.ARCHIVE_TYPES.filter((t) => c[t.id]);
-    if (!kinds.length) return null;
-    return node(html`
-      <div class="arc-counts">
-        ${U.raw(kinds.map((t) => `<span class="arc-count" style="--arc-c:${t.color}">`
-          + `<i></i>${t.label} ${c[t.id]}</span>`).join(""))}
-      </div>
+  function entriesSection(ym) {
+    const sec = node(html`
+      <section class="arc-stack">
+        <header class="arc-stack-head">
+          <h2>積み上げ</h2>
+          <button type="button" class="fav js-favonly ${favOnly ? "is-on" : ""}"
+                  aria-pressed="${String(favOnly)}" aria-label="お気に入りだけ見る">${icon("star")}</button>
+        </header>
+        <div class="js-typechips"></div>
+        <div class="js-sortchips"></div>
+        <div class="js-rows stack" style="gap:0"></div>
+      </section>
     `);
+
+    KN.ui.chipRow(sec.querySelector(".js-typechips"),
+      [{ id: "all", label: "すべて" }, ...store.ARCHIVE_TYPES.map((t) => ({ id: t.id, label: t.label, color: t.color }))],
+      { activeId: typeFilter, onPick: (id) => { typeFilter = id; haptic(); render(); } });
+
+    KN.ui.chipRow(sec.querySelector(".js-sortchips"),
+      [{ id: "recent", label: "更新順" }, { id: "favorite", label: "お気に入り順" }, { id: "date", label: "日付順" }],
+      { activeId: sortMode, onPick: (id) => { sortMode = id; haptic(); render(); } });
+
+    sec.querySelector(".js-favonly").addEventListener("click", () => {
+      favOnly = !favOnly; haptic(); render();
+    });
+
+    const rows = sec.querySelector(".js-rows");
+    const list = visibleEntries(ym);
+    if (!list.length) {
+      rows.append(node(html`
+        <div class="empty">
+          ${U.raw(KN.emptyArt.donePad)}
+          <p class="empty-title">${query.trim() ? "見つかりませんでした" : "まだ記録はありません"}</p>
+          <p class="empty-sub">読んだ本・学んだこと・思いついたことを、軽く。</p>
+        </div>
+      `));
+    } else {
+      const card = node(html`<div class="card arc-list"></div>`);
+      list.forEach((e) => card.append(entryRow(e)));
+      rows.append(card);
+    }
+    return sec;
   }
 
-  /**
-   * 一つ書く／直すシート。
-   *
-   * **必須はタイトルだけ**です。数も単位もメモも、折りたたみの中に置いて
-   * あります——開かなければ見えないので、「何ページ読んだか思い出せないから
-   * 書かない」が起きません。入力のハードルを上げる必須項目は作りません。
-   */
+  /* ---------------- 一つ書く／直すシート ----------------
+
+     「くわしく」は畳みません。任意の欄も最初から出したままにします——
+     開かないと見えない欄は、開かれないままのことが多いので。 */
   function openEntrySheet(existing) {
     const e = existing || null;
     let type = e ? e.type : "reading";
+    let kind = e ? (e.kind || "book") : "book";
+    /* 自動で埋めた欄には ×。人が打ち直したら消えます。 */
+    let titleAuto = false, authorAuto = false;
 
     const body = node(html`
-      <div class="stack" style="gap:14px">
+      <div class="stack" style="gap:16px">
         <div class="arc-pick js-pick"></div>
-        <label class="field">
-          <span class="field-label">タイトル</span>
-          <input type="text" class="input js-title" value="${e ? e.title : ""}"
-                 placeholder="何を読んだか・考えたか" enterkeyhint="done">
-        </label>
+
+        <div class="js-reading-fields" hidden>
+          <div class="stack" style="gap:16px">
+            <div class="arc-kind js-kind"></div>
+            <label class="field">
+              <span class="field-label">名前</span>
+              <div class="ta-wrap">
+                <input type="text" class="input input-lg js-title" value="${e ? e.title : ""}"
+                       enterkeyhint="next" autocomplete="off">
+                <button type="button" class="ta-clear js-title-clear" hidden aria-label="消す">${icon("close")}</button>
+              </div>
+              <div class="js-title-ac"></div>
+            </label>
+            <label class="field">
+              <span class="field-label">作者・著者</span>
+              <div class="ta-wrap">
+                <input type="text" class="input input-lg js-author" value="${e ? (e.author || "") : ""}"
+                       enterkeyhint="next" autocomplete="off">
+                <button type="button" class="ta-clear js-author-clear" hidden aria-label="消す">${icon("close")}</button>
+              </div>
+              <div class="js-author-ac"></div>
+            </label>
+            <div class="arc-times">
+              <label class="field">
+                <span class="field-label">開始ページ</span>
+                <input type="number" inputmode="numeric" class="input js-pagefrom"
+                       value="${e && e.pageFrom != null ? e.pageFrom : ""}">
+              </label>
+              <label class="field">
+                <span class="field-label">終了ページ</span>
+                <input type="number" inputmode="numeric" class="input js-pageto"
+                       value="${e && e.pageTo != null ? e.pageTo : ""}">
+              </label>
+            </div>
+            <p class="arc-pages-hint js-pages-calc">-</p>
+          </div>
+        </div>
+
+        <div class="js-generic-fields">
+          <div class="stack" style="gap:16px">
+            <label class="field">
+              <span class="field-label">タイトル</span>
+              <input type="text" class="input js-title-generic" value="${e && e.type !== "reading" ? e.title : ""}"
+                     enterkeyhint="done">
+            </label>
+            <div class="arc-times">
+              <label class="field">
+                <span class="field-label">数</span>
+                <input type="number" inputmode="numeric" class="input js-amount"
+                       value="${e && e.type !== "reading" && e.amount != null ? e.amount : ""}">
+              </label>
+              <label class="field">
+                <span class="field-label">単位</span>
+                <input type="text" class="input js-unit"
+                       value="${e && e.type !== "reading" && e.unit ? e.unit : ""}">
+              </label>
+            </div>
+          </div>
+        </div>
+
         <label class="field">
           <span class="field-label">日付</span>
           <input type="date" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
         </label>
-        <details class="arc-more">
-          <summary>くわしく（任意）</summary>
-          <div class="stack" style="gap:12px;padding-top:12px">
-            <div class="arc-times">
-              <label class="field">
-                <span class="field-label">数</span>
-                <input type="number" class="input js-amount" inputmode="numeric"
-                       value="${e && e.amount != null ? e.amount : ""}" placeholder="任意">
-              </label>
-              <label class="field">
-                <span class="field-label">単位</span>
-                <input type="text" class="input js-unit" value="${e && e.unit ? e.unit : ""}"
-                       placeholder="ページ / 分">
-              </label>
-            </div>
-            <label class="field">
-              <span class="field-label">メモ</span>
-              <textarea class="input js-memo" rows="2" maxlength="300"
-                        placeholder="ひとこと。長い話は別のところに。">${e ? e.memo : ""}</textarea>
-            </label>
-          </div>
-        </details>
+
+        <label class="field">
+          <span class="field-label">メモ</span>
+          <textarea class="textarea js-memo" rows="4" maxlength="300">${e ? e.memo : ""}</textarea>
+        </label>
       </div>
     `);
 
-    /* 種類を選ぶ札。色はここで初めて出ます——選んだものが、一覧でどの色に
-       なるかが、選ぶ時点で分かるように。 */
+    const readingFields = body.querySelector(".js-reading-fields");
+    const genericFields = body.querySelector(".js-generic-fields");
+    const titleReading = body.querySelector(".js-title");
+    const titleGeneric = body.querySelector(".js-title-generic");
+    const authorInput = body.querySelector(".js-author");
+    const pageFrom = body.querySelector(".js-pagefrom");
+    const pageTo = body.querySelector(".js-pageto");
+    const pagesCalc = body.querySelector(".js-pages-calc");
+    const titleClear = body.querySelector(".js-title-clear");
+    const authorClear = body.querySelector(".js-author-clear");
+
+    const paintPages = () => {
+      const a = pageFrom.value === "" ? null : Number(pageFrom.value);
+      const b = pageTo.value === "" ? null : Number(pageTo.value);
+      pagesCalc.textContent = (a != null && b != null && b >= a) ? `${b - a + 1}ページ` : "-";
+    };
+    pageFrom.addEventListener("input", paintPages);
+    pageTo.addEventListener("input", paintPages);
+    paintPages();
+
+    /* 新規の読書だけ、前回の名前・著者を下敷きにします。直したら ×は消えます。 */
+    if (!e) {
+      const last = store.lastReading();
+      if (last) {
+        titleReading.value = last.title;
+        authorInput.value = last.author || "";
+        kind = last.kind || "book";
+        titleAuto = true; authorAuto = !!last.author;
+      }
+    }
+    const paintClears = () => {
+      titleClear.hidden = !titleAuto;
+      authorClear.hidden = !authorAuto;
+    };
+    paintClears();
+    titleReading.addEventListener("input", () => { titleAuto = false; paintClears(); renderTitleAc(); });
+    authorInput.addEventListener("input", () => { authorAuto = false; paintClears(); renderAuthorAc(); });
+    titleClear.addEventListener("click", () => {
+      titleReading.value = ""; titleAuto = false; paintClears(); titleReading.focus();
+    });
+    authorClear.addEventListener("click", () => {
+      authorInput.value = ""; authorAuto = false; paintClears(); authorInput.focus();
+    });
+
+    /* 候補（前に打った名前・著者）。選んだら両方いっぺんに埋めます
+       ——同じ本の続きを書くときに、著者を打ち直させないためです。 */
+    const titleAcHost = body.querySelector(".js-title-ac");
+    const authorAcHost = body.querySelector(".js-author-ac");
+    function renderTitleAc() {
+      const q = U.foldKana(titleReading.value.trim());
+      if (!q) { titleAcHost.innerHTML = ""; return; }
+      const hits = store.readingCandidates()
+        .filter((c) => U.foldKana(c.title).includes(q)).slice(0, 5);
+      paintAc(titleAcHost, hits, (c) => `${c.title}`, (c) => c.author || "著者なし", (c) => {
+        titleReading.value = c.title;
+        if (c.author) { authorInput.value = c.author; authorAuto = false; }
+        titleAuto = false; paintClears();
+        titleAcHost.innerHTML = "";
+      });
+    }
+    function renderAuthorAc() {
+      const q = U.foldKana(authorInput.value.trim());
+      if (!q) { authorAcHost.innerHTML = ""; return; }
+      const seen = new Set();
+      const hits = store.readingCandidates()
+        .filter((c) => c.author && U.foldKana(c.author).includes(q))
+        .filter((c) => { const k = U.foldKana(c.author); if (seen.has(k)) return false; seen.add(k); return true; })
+        .slice(0, 5);
+      paintAc(authorAcHost, hits, (c) => c.author, (c) => `${c.title} の著者`, (c) => {
+        authorInput.value = c.author; authorAuto = false; paintClears();
+        authorAcHost.innerHTML = "";
+      });
+    }
+    function paintAc(host, rows, mainOf, subOf, onPick) {
+      host.innerHTML = "";
+      if (!rows.length) return;
+      const box = node(html`<div class="ac" role="listbox"></div>`);
+      rows.forEach((r) => {
+        const item = node(html`
+          <button type="button" class="ac-item" role="option">
+            <span class="ac-main"><span class="ac-name">${mainOf(r)}</span>
+              <span class="ac-sub">${subOf(r)}</span></span>
+          </button>
+        `);
+        item.addEventListener("mousedown", (ev) => ev.preventDefault());
+        item.addEventListener("click", () => onPick(r));
+        box.append(item);
+      });
+      host.append(box);
+    }
+
+    /* 本／論文の切り替え。 */
+    const kindHost = body.querySelector(".js-kind");
+    const paintKind = () => {
+      kindHost.innerHTML = "";
+      [{ id: "book", label: "本", icon: "book" }, { id: "paper", label: "論文", icon: "paper" }].forEach((k) => {
+        const b = node(html`
+          <button type="button" class="arc-kind-b ${k.id === kind ? "is-on" : ""}" data-k="${k.id}">
+            ${icon(k.icon, "is-sub")}<span>${k.label}</span>
+          </button>
+        `);
+        b.addEventListener("click", () => { kind = k.id; haptic(); paintKind(); });
+        kindHost.append(b);
+      });
+    };
+    paintKind();
+
+    /* 種類の札。読書だけ専用の欄に切り替わります。 */
     const pick = body.querySelector(".js-pick");
     const paintPick = () => {
       pick.innerHTML = "";
@@ -21484,42 +21943,56 @@ a.btn { text-decoration: none; }
             ${icon(t.icon, "is-sub")}<span>${t.label}</span>
           </button>
         `);
-        b.addEventListener("click", () => { type = t.id; haptic(); paintPick(); });
+        b.addEventListener("click", () => { type = t.id; haptic(); paintPick(); paintMode(); });
         pick.append(b);
       });
     };
+    const paintMode = () => {
+      const isReading = type === "reading";
+      readingFields.hidden = !isReading;
+      genericFields.hidden = isReading;
+    };
     paintPick();
+    paintMode();
 
     const footer = node(html`
       <div style="display:flex;gap:8px">
         ${e ? html`<button class="btn btn-soft js-del">${icon("trash", "is-sub")}</button>` : ""}
-        ${e && e.type === "seed"
-          ? html`<button class="btn btn-soft js-promote">達成にする</button>` : ""}
         <button class="btn btn-primary js-ok" style="flex:1">${e ? "保存" : "書く"}</button>
       </div>
     `);
 
-    KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer });
-    const close = () => {
-      const b = document.querySelector(".sheet-backdrop");
-      if (b) b.click();
-    };
+    const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true });
 
     footer.querySelector(".js-ok").addEventListener("click", () => {
-      const title = body.querySelector(".js-title").value.trim();
-      if (!title) { KN.ui.toast("タイトルを入れてください"); return; }
+      const isReading = type === "reading";
+      const title = (isReading ? titleReading.value : titleGeneric.value).trim();
+      if (!title) { KN.ui.toast("名前・タイトルを入れてください"); return; }
       const patch = {
         type,
         title,
         date: body.querySelector(".js-date").value || U.todayKey(),
-        amount: body.querySelector(".js-amount").value,
-        unit: body.querySelector(".js-unit").value.trim() || null,
         memo: body.querySelector(".js-memo").value,
       };
+      if (isReading) {
+        patch.kind = kind;
+        patch.author = authorInput.value.trim() || null;
+        patch.pageFrom = pageFrom.value;
+        patch.pageTo = pageTo.value;
+        patch.amount = null;   // applyReadingPages が計算し直します
+        patch.unit = null;
+      } else {
+        patch.kind = null;
+        patch.author = null;
+        patch.pageFrom = null;
+        patch.pageTo = null;
+        patch.amount = body.querySelector(".js-amount").value;
+        patch.unit = body.querySelector(".js-unit").value.trim() || null;
+      }
       if (e) store.updateEntry(e.id, patch);
       else store.addEntry(patch);
       haptic();
-      close();
+      h.close();
       render();
     });
 
@@ -21530,81 +22003,41 @@ a.btn { text-decoration: none; }
       });
       if (!ok) return;
       store.removeEntry(e.id);
-      close();
-      render();
-    });
-
-    const pro = footer.querySelector(".js-promote");
-    if (pro) pro.addEventListener("click", () => {
-      store.promoteSeed(e.id);
-      haptic();
-      KN.ui.toast("達成にしました");
-      close();
+      h.close();
       render();
     });
   }
 
-  /* ---------------- 未消化の種 ----------------
-
-     seed だけ、月をまたいで一覧できる動線を持たせています。溜めておく箱
-     として使えないと、種は書いた月に埋もれて二度と見つかりません。
-     消化したら「達成にする」で done に変わり、この箱から消えます。 */
-  function seedList() {
-    const seeds = store.openSeeds();
-    const wrap = node(html`<div class="stack" style="gap:10px"></div>`);
-    if (!seeds.length) {
-      wrap.append(node(html`
-        <div class="empty">
-          ${U.raw(KN.emptyArt.donePad)}
-          <p class="empty-title">まだ種はありません</p>
-          <p class="empty-sub">思いついたことを置いておくと、ここに溜まります。</p>
-        </div>
-      `));
-      return wrap;
-    }
-    wrap.append(node(html`
-      <p class="arc-seed-note">消化したら「達成にする」で畳めます。</p>
-    `));
-    const card = node(html`<div class="card arc-list"></div>`);
-    seeds.forEach((e) => card.append(entryRow(e)));
-    wrap.append(card);
-    return wrap;
-  }
-
-  /* ---------------- 画面 ---------------- */
+  /* ================================================================
+     画面
+     ================================================================ */
 
   function mount(el) {
     root = el;
     root.innerHTML = "";
-    /* 三つ（見出し・さがす欄・本体）を一つの器に入れます——node() は
-       いちばん外側の一つしか返さないので、並べて置くと後ろが消えます。 */
     root.append(node(html`
       <div class="stack">
-      <header class="topbar">
-        <div class="topbar-row">
-          <div style="flex:1;min-width:0">
-            <h1 class="topbar-title">daily</h1>
-            <p class="topbar-sub js-sub"></p>
+        <header class="topbar">
+          <div class="topbar-row">
+            <div style="flex:1;min-width:0">
+              <h1 class="topbar-title">daily</h1>
+              <p class="topbar-sub js-sub"></p>
+            </div>
+            <button class="icon-btn js-export" aria-label="この月を書き出す">${icon("download")}</button>
           </div>
-          <button class="icon-btn js-export" aria-label="この月を書き出す">${icon("download")}</button>
-        </div>
-        <div class="arc-seg js-face">
-          <button type="button" class="arc-seg-b is-on" data-f="month">月</button>
-          <button type="button" class="arc-seg-b" data-f="seed">種</button>
-        </div>
-      </header>
+        </header>
 
-      <div class="search-wrap">
-        <div class="search-bar">
-          ${icon("search")}
-          <input class="search-input js-q" placeholder="文字でさがす" aria-label="文字でさがす"
-                 autocomplete="off" spellcheck="false">
-          <button class="icon-btn js-clear" aria-label="検索をクリア"
-                  style="width:28px;height:28px" hidden>${icon("close")}</button>
+        <div class="search-wrap">
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-q" placeholder="文字でさがす" aria-label="文字でさがす"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+          </div>
         </div>
-      </div>
 
-      <div class="js-body arc-body"></div>
+        <div class="js-body arc-body"></div>
       </div>
     `));
 
@@ -21615,20 +22048,8 @@ a.btn { text-decoration: none; }
       clear: root.querySelector(".js-clear"),
     };
 
-    root.querySelectorAll(".js-face .arc-seg-b").forEach((b) => {
-      b.addEventListener("click", () => {
-        face = b.dataset.f;
-        haptic();
-        render();
-      });
-    });
-
-    /* さがすのは打つたびに。件数が数百のうちは、待たせるほうが目立ちます。 */
     els.q.addEventListener("input", () => { query = els.q.value; render(); });
-    els.clear.addEventListener("click", () => {
-      query = ""; els.q.value = ""; els.q.focus(); render();
-    });
-
+    els.clear.addEventListener("click", () => { query = ""; els.q.value = ""; els.q.focus(); render(); });
     root.querySelector(".js-export").addEventListener("click", exportThisMonth);
 
     els.cal = calendar();
@@ -21640,74 +22061,20 @@ a.btn { text-decoration: none; }
     const ym = curYm();
     const { year, month } = ymParts(ym);
 
-    root.querySelectorAll(".js-face .arc-seg-b").forEach((b) => {
-      b.classList.toggle("is-on", b.dataset.f === face);
-    });
     els.clear.hidden = !query;
+    els.sub.textContent = viewDay ? U.formatDate(viewDay) : `${year}年${month + 1}月`;
     els.body.innerHTML = "";
-
-    /* さがしているあいだは、こよみも log も出しません——探しているのは
-       「どの月か」ではなく「どれか」なので、結果だけが要ります。 */
-    if (query.trim()) {
-      const hits = store.searchEntries(query);
-      els.sub.textContent = `「${query.trim()}」`;
-      if (!hits.length) {
-        els.body.append(node(html`
-          <div class="empty">
-            <p class="empty-title">見つかりませんでした</p>
-            <p class="empty-sub">タイトル・メモ・タグからさがします。</p>
-          </div>
-        `));
-        return;
-      }
-      els.body.append(node(html`<p class="arc-seed-note">${hits.length}件</p>`));
-      const card = node(html`<div class="card arc-list"></div>`);
-      hits.forEach((e) => card.append(entryRow(e)));
-      els.body.append(card);
-      return;
-    }
-
-    if (face === "seed") {
-      els.sub.textContent = "溜めておいた、まだ形にしていないもの";
-      els.body.append(seedList());
-      return;
-    }
-
-    els.sub.textContent = viewDay
-      ? U.formatDate(viewDay)
-      : `${year}年${month + 1}月`;
 
     els.body.append(els.cal);
     fillCalendar(els.cal);
-
-    /* 地の文が先、数はそのすぐ下。この順番は入れ替えません——数が上に来ると、
-       数を見に来る画面になります。 */
-    els.body.append(dailyLog());
-    const c = counts(ym);
-    if (c) els.body.append(c);
-
-    const list = viewDay ? store.entriesOfDay(viewDay) : store.entriesOfMonth(ym);
-    if (!list.length) {
-      els.body.append(node(html`
-        <div class="empty">
-          ${U.raw(KN.emptyArt.donePad)}
-          <p class="empty-title">${viewDay ? "この日の記録はありません" : "この月の記録はありません"}</p>
-          <p class="empty-sub">読んだ本・学んだこと・思いついたことを、軽く。</p>
-        </div>
-      `));
-      return;
-    }
-    const card = node(html`<div class="card arc-list"></div>`);
-    list.forEach((e) => card.append(entryRow(e)));
-    els.body.append(card);
+    els.body.append(monthRollup(ym));
+    els.body.append(dailyLog(ym));
+    els.body.append(entriesSection(ym));
   }
 
   /**
-   * その月ぶんを JSON で書き出します。
-   *
-   * いまは控えを取るためのものですが、**後でこの月がどんな時間だったかを
-   * 言葉にしてもらう**ときに、そのまま渡せる形にしてあります。数だけ渡すと
-   * 数の話しか返ってこないので、地の文（daily log）も一緒に入っています。
+   * その月ぶんを JSON で書き出します。将来、この月がどんな時間だったかを
+   * 言葉にしてもらうときに、そのまま渡せる形にしてあります。
    */
   function exportThisMonth() {
     const ym = curYm();
@@ -21727,9 +22094,11 @@ a.btn { text-decoration: none; }
 
   function dockButton() {
     const fab = node(html`
-      <button class="add-fab js-open-add" aria-label="記録を書く">${icon("plus")}</button>
+      <div class="quick-add">
+        <button class="add-fab js-open-add" aria-label="記録を書く">${icon("plus")}</button>
+      </div>
     `);
-    fab.addEventListener("click", () => openEntrySheet(null));
+    fab.querySelector(".js-open-add").addEventListener("click", () => openEntrySheet(null));
     return fab;
   }
 
