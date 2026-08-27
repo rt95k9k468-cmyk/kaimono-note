@@ -44,6 +44,7 @@ const JS = [
   "js/diet.js",
   "js/drinks.js",
   "js/diet-ai.js",
+  "js/sleep-stages.js",
   "js/health-sync.js",
   "js/relay-code.js",
   "js/health-relay.js",

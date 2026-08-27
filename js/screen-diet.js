@@ -3659,10 +3659,13 @@ distance=6.0km</pre>
 
     const done = (res) => {
       let msg = KN.healthSync.describe(res);
-      // 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
-      // いたことがあります——黙ってよい自動のときとは違い、ここは自分で
-      // 押した操作なので、そのぶんは伝えます。
-      if (res && res.replaced) msg += "／前の便は読まれないまま上書きされていました";
+      /* 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
+         いたことがあります——黙ってよい自動のときとは違い、ここは自分で
+         押した操作なので、そのぶんは伝えます。
+         ただし snapshot の便（睡眠のステージのように、窓ぶんまるごとが毎回
+         入っているもの）は、前の便が消えても失われたものがありません。
+         毎朝四回送る使い方では毎回鳴ってしまうので、そこは黙ります。 */
+      if (res && res.replaced && !res.snapshot) msg += "／前の便は読まれないまま上書きされていました";
       KN.ui.toast(msg);
       if (res && res.ok) { h.close(); render(); }
     };
@@ -4015,7 +4018,8 @@ distance=6.0km</pre>
      （自動のときが黙るのはそのままです）。 */
   function describeRelay(res) {
     let msg = "中継所：" + KN.healthSync.describe(res);
-    if (res && res.replaced) msg += "／前の便は読まれないまま上書きされていました";
+    // snapshot の便は、前の便が消えても失われたものがありません（上を参照）。
+    if (res && res.replaced && !res.snapshot) msg += "／前の便は読まれないまま上書きされていました";
     return msg;
   }
 
