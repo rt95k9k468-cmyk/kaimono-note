@@ -202,6 +202,124 @@
     return { samples: out, unknown };
   }
 
+  /* ---------------- 睡眠のステージ ----------------
+
+     ショートカットの「ヘルスサンプルを探す」は、睡眠を細切れの区間で返します。
+     一行一オブジェクト（JSONL）で届くので、JSON.parse に丸ごと渡すと落ちます
+     ——`{...}\n{...}` はJSONとして正しくないためです。一行ずつ読みます。
+
+     一晩ぶんにまとめる仕事は sleep-stages.js が持ちます。ここはその結果を
+     三つの行き先に配るだけです。 */
+
+  /** JSONL（一行一オブジェクト）か JSON配列を、オブジェクトの並びにします。 */
+  function parseRows(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    // まず素直に。配列で来ることもあります（ショートカットの組み方しだい）。
+    try {
+      const one = JSON.parse(s);
+      if (Array.isArray(one)) return one;
+      if (one && typeof one === "object") return [one];
+    } catch (err) { /* JSONL のはず。下で読みます */ }
+    const lines = s.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+    const out = [];
+    let bad = 0;
+    lines.forEach((l) => {
+      try { const o = JSON.parse(l); if (o && typeof o === "object") out.push(o); }
+      catch (err) { bad++; }
+    });
+    // 半分以上読めないなら、JSONL ではない別のなにかです。
+    if (!out.length || bad > out.length) return null;
+    return out;
+  }
+
+  /**
+   * 睡眠のステージを取り込みます。
+   *
+   * 一つの便に二晩ぶん入っていることがあるので、**晩ごとに**書きます。
+   * 行き先は三つ：
+   *   睡眠時間 → diet.health の sleep（「今日のからだ」のリングが読む）
+   *   起床時刻 → その晩が終わった日の dayLog.wake
+   *   就寝時刻 → **その晩が始まった日**の dayLog.sleep（前日とは限りません）
+   *   四つの型 → 終わった日の dayLog.sleepStages（月の書き出しに載ります）
+   */
+  function importSleepStages(rows) {
+    const SS = KN.sleepStages;
+    const nights = SS.nightsFrom(rows);
+    if (!nights.length) {
+      return { ok: false, error: "睡眠の区間が読めませんでした", added: 0, updated: 0, skipped: 0 };
+    }
+
+    let added = 0, updated = 0, kept = 0, skipped = 0;
+    const days = new Set();
+    const byType = {};
+    const count = (t, how) => { byType[t] = byType[t] || { added: 0, updated: 0 }; byType[t][how]++; };
+
+    /* 古い晩から順に書きます。**一日が二つの晩の「就寝日」になることがある**
+       ためです——8/26 に 00:42 に寝て、同じ 8/26 の 23:11 にまた寝る、という
+       日です（実データで踏みました）。日誌の一行として読みたいのは夜のほう
+       なので、あとから来る遅い就寝時刻が残るように、時間順に上書きします。 */
+    const ordered = nights.slice().sort((a, b) => (a.endAt < b.endAt ? -1 : 1));
+
+    ordered.forEach((n) => {
+      // うたた寝は晩として書きません。
+      if (n.inBedMin < 60) { skipped++; return; }
+
+      /* まだ寝ている途中に取った便かどうか。終わりが「いま」に張り付いて
+         いれば、その晩はまだ終わっていません。**捨てはしません**——後から
+         来た、より遅く終わる読みで差し替わるので、途中の数でも入れておいた
+         ほうが、朝いちばんに開いたときに何も出ないより役に立ちます。 */
+      const provisional = (Date.now() - new Date(n.endAt).getTime()) < 20 * 60 * 1000;
+
+      /* 「遅いほうが勝つ」。同じ晩について、より遅く終わる読みが来たときだけ
+         書き替えます。9時・10時・11時・12時と何度届いても悪化しません。 */
+      const prev = store.dayLog(n.wakeDay);
+      const prevEnd = prev && prev.sleepStages ? prev.sleepStages.endAt : null;
+      if (prevEnd && prevEnd >= n.endAt) { skipped++; return; }
+
+      const res = store.putHealth({
+        type: "sleep", day: n.wakeDay, value: n.asleepMin,
+        unit: "分", source: "ヘルスケア",
+      });
+      if (res === "added") { added++; count("sleep", "added"); }
+      else if (res === "updated") { updated++; count("sleep", "updated"); }
+      else if (store.healthOfDay(n.wakeDay, "sleep").some((h) => h.source === "manual")) kept++;
+      else skipped++;
+
+      // 起床と、四つの型は「起きた日」に。
+      store.setDayLog(n.wakeDay, {
+        wake: n.wakeTime,
+        sleepStages: {
+          ...n.stages, asleepMin: n.asleepMin, inBedMin: n.inBedMin,
+          bedDay: n.bedDay, bedTime: n.bedTime, wakeTime: n.wakeTime,
+          endAt: n.endAt, provisional,
+        },
+      }, { source: "health" });
+      days.add(n.wakeDay);
+
+      /* 就寝は「寝はじめた日」に。同じ日のこともあります（00:42に寝た日）。
+         その日に既に**より遅い**就寝時刻が入っていれば、そちらを残します
+         ——取り込み直しても、夜の就寝が朝の就寝に戻ってしまわないように。 */
+      const bedCur = store.dayLog(n.bedDay);
+      const bedWas = bedCur && bedCur.sleepSource === "health" ? bedCur.sleep : null;
+      if (!bedWas || bedWas < n.bedTime) {
+        store.setDayLog(n.bedDay, { sleep: n.bedTime }, { source: "health" });
+      }
+      days.add(n.bedDay);
+    });
+
+    /* この便は「窓ぶんまるごと」なので、前の便が読まれずに消えても失われた
+       ものはありません（上書きの警告を出さないための印）。 */
+    if (!added && !updated && !kept) {
+      return { ok: false, error: "新しい睡眠の記録はありませんでした", snapshot: true,
+               added, updated, kept, skipped, days: [...days].sort(), byType };
+    }
+    store.markSynced({ added, updated });
+    return { ok: true, added, updated, kept, skipped, snapshot: true,
+             days: [...days].sort(), byType };
+  }
+
   /* ---------------- JSON ---------------- */
 
   function parseJson(obj) {
@@ -372,6 +490,14 @@
        （中身がないので、断っても失うものがありません）。 */
     if (locked(raw)) {
       return { ok: false, locked: true, error: LOCKED_MSG, added: 0, updated: 0, skipped: 0 };
+    }
+
+    /* 睡眠のステージが来ていたら、そちらへ。ふつうの取り込み（日ごとに一つの
+       数）とは行き先も数え方も別なので、入口で分けます。JSONL は下の
+       JSON.parse を通らないため、ここで見ないと「形が読めません」で終わります。 */
+    if (/^[[{]/.test(raw) && KN.sleepStages) {
+      const rows = parseRows(raw);
+      if (rows && KN.sleepStages.looksLikeStages(rows)) return importSleepStages(rows);
     }
 
     let parsed = null;

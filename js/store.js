@@ -475,6 +475,12 @@
     out.archive.days.forEach((d) => {
       if (!d.updatedAt) d.updatedAt = d.date;
       if (!d.createdAt) d.createdAt = d.updatedAt;
+      /* この機能より前に書かれた時刻は、ぜんぶ人が打ったものです——
+         取り込みに上書きさせないよう manual としておきます。 */
+      if (d.wakeSource !== "health" && d.wakeSource !== "manual") d.wakeSource = "manual";
+      if (d.sleepSource !== "health" && d.sleepSource !== "manual") d.sleepSource = "manual";
+      delete d.timeSource;   // 起床・就寝で兼ねていた古い印
+      if (d.sleepStages && typeof d.sleepStages !== "object") delete d.sleepStages;
     });
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
@@ -2017,17 +2023,49 @@
    * 溜まると、月を眺めたときに「何も書いていない日」と「空の行がある日」が
    * 見分けられなくなります（setDayMemo と同じ考え方）。
    */
-  function setDayLog(day, patch) {
+  function setDayLog(day, patch, opts) {
+    /* 誰が書いたか。人が打ったものは "manual"、ヘルスケアからの取り込みは
+       "health"。**取り込みは手で打った時刻を上書きしません**——毎朝の便が
+       黙って直しにくると、直したことのほうが消えるので（putHealth が体重で
+       やっているのと同じ決めごとです）。 */
+    const from = (opts && opts.source) || "manual";
     update((s) => {
       const cur = s.archive.days.find((d) => d.date === day);
+      /* 印は**起床と就寝で別々に**持ちます。一つで兼ねると、取り込みが
+         起床を書いた時点で印が health に変わり、その同じ便の次の一手で
+         就寝の手入力保護が外れます（実データで踏みました）。 */
+      const srcOf = (field) => {
+        const k = field === "wake" ? "wakeSource" : "sleepSource";
+        return (cur && cur[k]) ? cur[k] : "manual";
+      };
+      const keepTime = (field) => {
+        const mine = cur ? cur[field] : null;
+        // 取り込みは、人が入れた時刻には触れません。
+        if (from !== "manual" && mine && srcOf(field) === "manual") return { v: mine, kept: true };
+        if (patch[field] === undefined) return { v: mine, kept: true };
+        return { v: patch[field] || null, kept: false };
+      };
+      const w = keepTime("wake"), sl = keepTime("sleep");
       const next = {
         date: day,
         memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
-        wake: patch.wake === undefined ? (cur ? cur.wake : null) : (patch.wake || null),
-        sleep: patch.sleep === undefined ? (cur ? cur.sleep : null) : (patch.sleep || null),
+        wake: w.v,
+        sleep: sl.v,
         createdAt: cur ? cur.createdAt : stamp(),
       };
-      const empty = !next.memo.trim() && !next.wake && !next.sleep;
+      /* 実際に書き替えた欄だけ、書き手の印を更新します（メモだけ直したときに
+         時刻の出どころが人へ移ってしまわないように）。 */
+      next.wakeSource = w.kept ? srcOf("wake") : from;
+      next.sleepSource = sl.kept ? srcOf("sleep") : from;
+
+      /* 睡眠の四つの型。持っていれば残し、渡されたら差し替えます。
+         画面には出しません——月の書き出しに載せるためのものです。 */
+      const stages = patch.sleepStages === undefined
+        ? (cur ? cur.sleepStages : null)
+        : (patch.sleepStages || null);
+      if (stages) next.sleepStages = stages;
+
+      const empty = !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
         next.updatedAt = stamp();

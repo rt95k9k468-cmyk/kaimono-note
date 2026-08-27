@@ -13431,6 +13431,12 @@ a.btn { text-decoration: none; }
     out.archive.days.forEach((d) => {
       if (!d.updatedAt) d.updatedAt = d.date;
       if (!d.createdAt) d.createdAt = d.updatedAt;
+      /* この機能より前に書かれた時刻は、ぜんぶ人が打ったものです——
+         取り込みに上書きさせないよう manual としておきます。 */
+      if (d.wakeSource !== "health" && d.wakeSource !== "manual") d.wakeSource = "manual";
+      if (d.sleepSource !== "health" && d.sleepSource !== "manual") d.sleepSource = "manual";
+      delete d.timeSource;   // 起床・就寝で兼ねていた古い印
+      if (d.sleepStages && typeof d.sleepStages !== "object") delete d.sleepStages;
     });
     // Each entry keeps the name as it was typed as well as the folded key it is
     // matched on, so 設定 can show 「コンソメ」 rather than 「こんそめ」.
@@ -14973,17 +14979,49 @@ a.btn { text-decoration: none; }
    * 溜まると、月を眺めたときに「何も書いていない日」と「空の行がある日」が
    * 見分けられなくなります（setDayMemo と同じ考え方）。
    */
-  function setDayLog(day, patch) {
+  function setDayLog(day, patch, opts) {
+    /* 誰が書いたか。人が打ったものは "manual"、ヘルスケアからの取り込みは
+       "health"。**取り込みは手で打った時刻を上書きしません**——毎朝の便が
+       黙って直しにくると、直したことのほうが消えるので（putHealth が体重で
+       やっているのと同じ決めごとです）。 */
+    const from = (opts && opts.source) || "manual";
     update((s) => {
       const cur = s.archive.days.find((d) => d.date === day);
+      /* 印は**起床と就寝で別々に**持ちます。一つで兼ねると、取り込みが
+         起床を書いた時点で印が health に変わり、その同じ便の次の一手で
+         就寝の手入力保護が外れます（実データで踏みました）。 */
+      const srcOf = (field) => {
+        const k = field === "wake" ? "wakeSource" : "sleepSource";
+        return (cur && cur[k]) ? cur[k] : "manual";
+      };
+      const keepTime = (field) => {
+        const mine = cur ? cur[field] : null;
+        // 取り込みは、人が入れた時刻には触れません。
+        if (from !== "manual" && mine && srcOf(field) === "manual") return { v: mine, kept: true };
+        if (patch[field] === undefined) return { v: mine, kept: true };
+        return { v: patch[field] || null, kept: false };
+      };
+      const w = keepTime("wake"), sl = keepTime("sleep");
       const next = {
         date: day,
         memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
-        wake: patch.wake === undefined ? (cur ? cur.wake : null) : (patch.wake || null),
-        sleep: patch.sleep === undefined ? (cur ? cur.sleep : null) : (patch.sleep || null),
+        wake: w.v,
+        sleep: sl.v,
         createdAt: cur ? cur.createdAt : stamp(),
       };
-      const empty = !next.memo.trim() && !next.wake && !next.sleep;
+      /* 実際に書き替えた欄だけ、書き手の印を更新します（メモだけ直したときに
+         時刻の出どころが人へ移ってしまわないように）。 */
+      next.wakeSource = w.kept ? srcOf("wake") : from;
+      next.sleepSource = sl.kept ? srcOf("sleep") : from;
+
+      /* 睡眠の四つの型。持っていれば残し、渡されたら差し替えます。
+         画面には出しません——月の書き出しに載せるためのものです。 */
+      const stages = patch.sleepStages === undefined
+        ? (cur ? cur.sleepStages : null)
+        : (patch.sleepStages || null);
+      if (stages) next.sleepStages = stages;
+
+      const empty = !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
         next.updatedAt = stamp();
@@ -19348,6 +19386,186 @@ a.btn { text-decoration: none; }
   KN.dietAI = { configured, url, setUrl, coach, analyzePhoto, shrink, payload };
 })();
 
+/* ---- js/sleep-stages.js ---- */
+/* =========================================================
+   くらしノート — 睡眠のステージ（深い・コア・レム・覚醒）
+   =========================================================
+
+   ヘルスケアの「睡眠分析」は、一晩を細切れの区間で持っています。
+   ショートカットの「ヘルスサンプルを探す」がそのまま出すと、こうなります。
+
+     {"duration":"12:29","value":"コア","end":"2026/08/26 1:05","start":"2026/08/26 0:53"}
+
+   これを一晩ぶんにまとめ、四つの型の時間・就寝・起床・睡眠時間を出します。
+
+   ---- duration は読みません ----
+
+   上の行の duration は **12分29秒** です。12時間29分ではありません。
+   ところが既存の toMinutes() は「12:29」を 12時間29分＝749分 と読みます
+   （そちらは「sleep=7:12」＝7時間12分を読むための関数なので、正しい）。
+   同じ「数:数」が、片方では時分・片方では分秒を意味します。
+
+   だから duration は**捨てて**、start と end の差から数えます。実データ83行で
+   検算したところ、四つの型の合計とベッド滞在時間の差は0分でした。
+
+   ---- 一晩の切り分け ----
+
+   届くのは窓ぶん（前日12:00〜いま）で、二晩ぶん入ることがあります。
+   区間が3時間以上とぎれたら「別の晩」とします。晩の中の覚醒は区間として
+   記録されている（＝とぎれではない）ので、これで混ざりません。
+
+   ---- どの晩が「その日の晩」か ----
+
+   **その日に終わった晩**です。複数あればいちばん早く終わったもの——
+   昼寝を夜の記録として拾わないためです。
+
+   就寝時刻は「前日」に決め打ちしません。00:42に寝て08:13に起きた晩では、
+   就寝も起床も同じ日です。**始まりが実際に属する日**に書きます。
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+
+  /* ヘルスケアが返す名前。日本語・英語のどちらでも受けます——ショートカットは
+     端末の言語で書き出すので、片方だけにすると英語端末で黙って落ちます。 */
+  const STAGES = {
+    "深い": "deep", "deep": "deep", "asleepdeep": "deep",
+    "コア": "core", "core": "core", "asleepcore": "core", "asleep": "core", "睡眠": "core",
+    "レム": "rem", "rem": "rem", "asleeprem": "rem",
+    "覚醒": "awake", "awake": "awake", "起きている": "awake",
+    /* 「ベッドにいる」は Apple Watch を着けずに寝た夜などに来ます。眠っていた
+       とは言えないので、四つのどれにも足しません（下で捨てます）。 */
+    "inbed": null, "ベッド": null,
+  };
+
+  const normStage = (v) => {
+    const k = String(v == null ? "" : v).trim().toLowerCase().replace(/[\s_-]/g, "");
+    return Object.prototype.hasOwnProperty.call(STAGES, k) ? STAGES[k] : undefined;
+  };
+
+  /* 「2026/08/26 0:51」「2026-08-26 00:51」「2026-08-26T00:51:00+09:00」を受けます。
+     前の二つは**その端末の時刻**として読みます——ヘルスケアが書き出すのは
+     現地時刻で、UTCとして読むと九時間ずれた晩になります。 */
+  function parseAt(v) {
+    if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+    const s = String(v == null ? "" : v).trim();
+    if (!s) return null;
+    const m = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+    if (m) {
+      const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(s);          // ISO（帯つき）はここで
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    + `-${String(d.getDate()).padStart(2, "0")}`;
+  const hhmm = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  /**
+   * 行の並びを、区間の並びに直します。
+   * 読めない行・ステージでない行は黙って捨てます（他の種類のサンプルが
+   * 混ざって届くことがあるため）。
+   */
+  function toSegments(rows) {
+    const out = [];
+    (rows || []).forEach((r) => {
+      if (!r || typeof r !== "object") return;
+      const stage = normStage(r.value != null ? r.value : r.stage);
+      if (stage === undefined || stage === null) return;   // 未知＝別の種類 / null＝ベッドのみ
+      const start = parseAt(r.start != null ? r.start : r.startDate);
+      const end = parseAt(r.end != null ? r.end : r.endDate);
+      if (!start || !end || end <= start) return;
+      out.push({ stage, start, end });
+    });
+    return out.sort((a, b) => a.start - b.start || a.end - b.end);
+  }
+
+  /** 3時間以上とぎれたら別の晩。 */
+  const GAP_MIN = 180;
+
+  function toNights(segs) {
+    const out = [];
+    segs.forEach((s) => {
+      const cur = out[out.length - 1];
+      if (!cur || (s.start - cur.end) / 60000 > GAP_MIN) {
+        out.push({ segs: [s], start: s.start, end: s.end });
+      } else {
+        cur.segs.push(s);
+        if (s.end > cur.end) cur.end = s.end;
+      }
+    });
+    return out;
+  }
+
+  /** 一晩ぶんを数えます。時間はぜんぶ分で、四捨五入は最後だけ。 */
+  function summarize(night) {
+    const by = { deep: 0, core: 0, rem: 0, awake: 0 };
+    night.segs.forEach((s) => { by[s.stage] += (s.end - s.start) / 60000; });
+    const asleep = by.deep + by.core + by.rem;
+    const r = (n) => Math.round(n);
+    return {
+      /* 睡眠時間は 深い+コア+レム。覚醒はベッドにいただけなので入れません
+         （Appleの「睡眠時間」と同じ数え方）。 */
+      asleepMin: r(asleep),
+      inBedMin: r((night.end - night.start) / 60000),
+      stages: { deep: r(by.deep), core: r(by.core), rem: r(by.rem), awake: r(by.awake) },
+      bedDay: dayKey(night.start),
+      bedTime: hhmm(night.start),
+      wakeDay: dayKey(night.end),
+      wakeTime: hhmm(night.end),
+      // 起床が「いま」に近すぎる晩は、まだ寝ている途中に取った疑いがあります。
+      endAt: night.end.toISOString(),
+      segments: night.segs.length,
+    };
+  }
+
+  /**
+   * 届いた行から、晩ごとのまとめを返します。新しい晩が先。
+   *
+   * 一日ぶんに絞りません——届いた窓に二晩あれば二晩とも返します。どれを
+   * どの日に書くかは、受け取った側（health-sync）が決めます。
+   */
+  function nightsFrom(rows) {
+    const segs = toSegments(rows);
+    if (!segs.length) return [];
+    return toNights(segs).map(summarize).sort((a, b) => (a.endAt < b.endAt ? 1 : -1));
+  }
+
+  /**
+   * その日の晩を一つ選びます。**その日に終わった晩**のうち、いちばん早く
+   * 終わったもの——昼寝を夜の記録として拾わないためです。
+   *
+   * 短すぎるものは晩と見ません（うたた寝を「今夜の睡眠」にしないため）。
+   */
+  function nightForDay(nights, day, minMin) {
+    const floor = minMin == null ? 60 : minMin;
+    return (nights || [])
+      .filter((n) => n.wakeDay === day && n.inBedMin >= floor)
+      .sort((a, b) => (a.endAt < b.endAt ? -1 : 1))[0] || null;
+  }
+
+  /** 行の並びが「睡眠のステージ」かどうか。取り込み口の振り分けに使います。 */
+  function looksLikeStages(rows) {
+    if (!Array.isArray(rows) || !rows.length) return false;
+    let hit = 0;
+    rows.forEach((r) => {
+      if (!r || typeof r !== "object") return;
+      const st = normStage(r.value != null ? r.value : r.stage);
+      if (st !== undefined && (r.start || r.startDate) && (r.end || r.endDate)) hit++;
+    });
+    return hit >= Math.max(2, Math.ceil(rows.length * 0.5));
+  }
+
+  KN.sleepStages = {
+    nightsFrom, nightForDay, looksLikeStages,
+    // 試験と、他所からの検算のために出しておきます。
+    toSegments, toNights, summarize, parseAt, normStage, GAP_MIN,
+  };
+})();
+
 /* ---- js/health-sync.js ---- */
 /* =========================================================
    くらしノート — ヘルスケアの取り込み
@@ -19553,6 +19771,124 @@ a.btn { text-decoration: none; }
     return { samples: out, unknown };
   }
 
+  /* ---------------- 睡眠のステージ ----------------
+
+     ショートカットの「ヘルスサンプルを探す」は、睡眠を細切れの区間で返します。
+     一行一オブジェクト（JSONL）で届くので、JSON.parse に丸ごと渡すと落ちます
+     ——`{...}\n{...}` はJSONとして正しくないためです。一行ずつ読みます。
+
+     一晩ぶんにまとめる仕事は sleep-stages.js が持ちます。ここはその結果を
+     三つの行き先に配るだけです。 */
+
+  /** JSONL（一行一オブジェクト）か JSON配列を、オブジェクトの並びにします。 */
+  function parseRows(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    // まず素直に。配列で来ることもあります（ショートカットの組み方しだい）。
+    try {
+      const one = JSON.parse(s);
+      if (Array.isArray(one)) return one;
+      if (one && typeof one === "object") return [one];
+    } catch (err) { /* JSONL のはず。下で読みます */ }
+    const lines = s.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+    const out = [];
+    let bad = 0;
+    lines.forEach((l) => {
+      try { const o = JSON.parse(l); if (o && typeof o === "object") out.push(o); }
+      catch (err) { bad++; }
+    });
+    // 半分以上読めないなら、JSONL ではない別のなにかです。
+    if (!out.length || bad > out.length) return null;
+    return out;
+  }
+
+  /**
+   * 睡眠のステージを取り込みます。
+   *
+   * 一つの便に二晩ぶん入っていることがあるので、**晩ごとに**書きます。
+   * 行き先は三つ：
+   *   睡眠時間 → diet.health の sleep（「今日のからだ」のリングが読む）
+   *   起床時刻 → その晩が終わった日の dayLog.wake
+   *   就寝時刻 → **その晩が始まった日**の dayLog.sleep（前日とは限りません）
+   *   四つの型 → 終わった日の dayLog.sleepStages（月の書き出しに載ります）
+   */
+  function importSleepStages(rows) {
+    const SS = KN.sleepStages;
+    const nights = SS.nightsFrom(rows);
+    if (!nights.length) {
+      return { ok: false, error: "睡眠の区間が読めませんでした", added: 0, updated: 0, skipped: 0 };
+    }
+
+    let added = 0, updated = 0, kept = 0, skipped = 0;
+    const days = new Set();
+    const byType = {};
+    const count = (t, how) => { byType[t] = byType[t] || { added: 0, updated: 0 }; byType[t][how]++; };
+
+    /* 古い晩から順に書きます。**一日が二つの晩の「就寝日」になることがある**
+       ためです——8/26 に 00:42 に寝て、同じ 8/26 の 23:11 にまた寝る、という
+       日です（実データで踏みました）。日誌の一行として読みたいのは夜のほう
+       なので、あとから来る遅い就寝時刻が残るように、時間順に上書きします。 */
+    const ordered = nights.slice().sort((a, b) => (a.endAt < b.endAt ? -1 : 1));
+
+    ordered.forEach((n) => {
+      // うたた寝は晩として書きません。
+      if (n.inBedMin < 60) { skipped++; return; }
+
+      /* まだ寝ている途中に取った便かどうか。終わりが「いま」に張り付いて
+         いれば、その晩はまだ終わっていません。**捨てはしません**——後から
+         来た、より遅く終わる読みで差し替わるので、途中の数でも入れておいた
+         ほうが、朝いちばんに開いたときに何も出ないより役に立ちます。 */
+      const provisional = (Date.now() - new Date(n.endAt).getTime()) < 20 * 60 * 1000;
+
+      /* 「遅いほうが勝つ」。同じ晩について、より遅く終わる読みが来たときだけ
+         書き替えます。9時・10時・11時・12時と何度届いても悪化しません。 */
+      const prev = store.dayLog(n.wakeDay);
+      const prevEnd = prev && prev.sleepStages ? prev.sleepStages.endAt : null;
+      if (prevEnd && prevEnd >= n.endAt) { skipped++; return; }
+
+      const res = store.putHealth({
+        type: "sleep", day: n.wakeDay, value: n.asleepMin,
+        unit: "分", source: "ヘルスケア",
+      });
+      if (res === "added") { added++; count("sleep", "added"); }
+      else if (res === "updated") { updated++; count("sleep", "updated"); }
+      else if (store.healthOfDay(n.wakeDay, "sleep").some((h) => h.source === "manual")) kept++;
+      else skipped++;
+
+      // 起床と、四つの型は「起きた日」に。
+      store.setDayLog(n.wakeDay, {
+        wake: n.wakeTime,
+        sleepStages: {
+          ...n.stages, asleepMin: n.asleepMin, inBedMin: n.inBedMin,
+          bedDay: n.bedDay, bedTime: n.bedTime, wakeTime: n.wakeTime,
+          endAt: n.endAt, provisional,
+        },
+      }, { source: "health" });
+      days.add(n.wakeDay);
+
+      /* 就寝は「寝はじめた日」に。同じ日のこともあります（00:42に寝た日）。
+         その日に既に**より遅い**就寝時刻が入っていれば、そちらを残します
+         ——取り込み直しても、夜の就寝が朝の就寝に戻ってしまわないように。 */
+      const bedCur = store.dayLog(n.bedDay);
+      const bedWas = bedCur && bedCur.sleepSource === "health" ? bedCur.sleep : null;
+      if (!bedWas || bedWas < n.bedTime) {
+        store.setDayLog(n.bedDay, { sleep: n.bedTime }, { source: "health" });
+      }
+      days.add(n.bedDay);
+    });
+
+    /* この便は「窓ぶんまるごと」なので、前の便が読まれずに消えても失われた
+       ものはありません（上書きの警告を出さないための印）。 */
+    if (!added && !updated && !kept) {
+      return { ok: false, error: "新しい睡眠の記録はありませんでした", snapshot: true,
+               added, updated, kept, skipped, days: [...days].sort(), byType };
+    }
+    store.markSynced({ added, updated });
+    return { ok: true, added, updated, kept, skipped, snapshot: true,
+             days: [...days].sort(), byType };
+  }
+
   /* ---------------- JSON ---------------- */
 
   function parseJson(obj) {
@@ -19723,6 +20059,14 @@ a.btn { text-decoration: none; }
        （中身がないので、断っても失うものがありません）。 */
     if (locked(raw)) {
       return { ok: false, locked: true, error: LOCKED_MSG, added: 0, updated: 0, skipped: 0 };
+    }
+
+    /* 睡眠のステージが来ていたら、そちらへ。ふつうの取り込み（日ごとに一つの
+       数）とは行き先も数え方も別なので、入口で分けます。JSONL は下の
+       JSON.parse を通らないため、ここで見ないと「形が読めません」で終わります。 */
+    if (/^[[{]/.test(raw) && KN.sleepStages) {
+      const rows = parseRows(raw);
+      if (rows && KN.sleepStages.looksLikeStages(rows)) return importSleepStages(rows);
     }
 
     let parsed = null;
@@ -27461,10 +27805,13 @@ distance=6.0km</pre>
 
     const done = (res) => {
       let msg = KN.healthSync.describe(res);
-      // 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
-      // いたことがあります——黙ってよい自動のときとは違い、ここは自分で
-      // 押した操作なので、そのぶんは伝えます。
-      if (res && res.replaced) msg += "／前の便は読まれないまま上書きされていました";
+      /* 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
+         いたことがあります——黙ってよい自動のときとは違い、ここは自分で
+         押した操作なので、そのぶんは伝えます。
+         ただし snapshot の便（睡眠のステージのように、窓ぶんまるごとが毎回
+         入っているもの）は、前の便が消えても失われたものがありません。
+         毎朝四回送る使い方では毎回鳴ってしまうので、そこは黙ります。 */
+      if (res && res.replaced && !res.snapshot) msg += "／前の便は読まれないまま上書きされていました";
       KN.ui.toast(msg);
       if (res && res.ok) { h.close(); render(); }
     };
@@ -27817,7 +28164,8 @@ distance=6.0km</pre>
      （自動のときが黙るのはそのままです）。 */
   function describeRelay(res) {
     let msg = "中継所：" + KN.healthSync.describe(res);
-    if (res && res.replaced) msg += "／前の便は読まれないまま上書きされていました";
+    // snapshot の便は、前の便が消えても失われたものがありません（上を参照）。
+    if (res && res.replaced && !res.snapshot) msg += "／前の便は読まれないまま上書きされていました";
     return msg;
   }
 
