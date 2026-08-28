@@ -573,13 +573,20 @@
      choice. */
   function cleanPart(v) { return isBookendPart(v) ? v : null; }
 
-  /** Hold a 毎朝／毎晩 to what it says: every day, on a day, at no clock time. */
+  /**
+   * 毎朝／毎晩は、言葉のとおり「毎日・ある日から」です。
+   *
+   * かつては時刻も落としていました（「朝」と「7:30」は同じ問いへの二つの
+   * 答えだから）。いまは残します——**並び順と、報せる時刻は別のこと**だと
+   * 分かったためです。毎朝は一日のいちばん上に居てほしい、でもバッジは
+   * 7時に出てほしい。前者は part が、後者は time が決めます。
+   * 並び順で time に負けないことは、下の todoPart() が受け持ちます。
+   */
   function fixBookend(t) {
     if (!isBookendPart(t.part)) return t;
     t.repeat = "daily";
     t.repeatDays = [];
     t.repeatNth = null;
-    t.time = null;
     if (!t.due) t.due = KN.util.todayKey();
     return t;
   }
@@ -1010,7 +1017,10 @@
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
-      part: at ? null : cleanPart(part),
+      /* 時刻があっても part は落としません。毎朝・毎晩は「一日の端に置く」
+         という並び順の指定で、時刻は「いつ報せるか」——別のことなので。
+         （毎朝・毎晩でない part は、そもそも cleanPart が落とします。） */
+      part: cleanPart(part),
       time: at,
       notifiedFor: null,
       memo: String(memo || ""),
@@ -1041,17 +1051,17 @@
       if ("repeat" in patch) {
         t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
       }
-      /* 時刻と 朝/午後/夜 は、どちらか一方だけ。決めたほうが残り、もう一方は
-         降ります——「19:30」と「朝」を両方持たせると、どちらが本当かを毎回
-         決めなおすことになるので。あとから来た指定が勝ちます。 */
+      /* 時刻と、毎朝・毎晩は**両立します**。
+         かつては排他でした（「19:30」と「朝」のどちらが本当か決めなおす
+         ことになるから）。ですが毎朝・毎晩は「一日の端に置く」という並び順の
+         指定で、時刻は「いつ報せるか」——同じ問いへの二つの答えではありません。
+         毎朝を一番上に置いたまま、バッジは7時に出す、が言えるようになります。
+         （毎朝・毎晩でない part は cleanPart が落とすので、ここに残るのは
+         その二つだけです。） */
       if ("time" in patch) {
         t.time = KN.util.isTime(patch.time) ? patch.time : null;
-        if (t.time) t.part = null;
       }
-      if ("part" in patch) {
-        t.part = cleanPart(patch.part);
-        if (t.part && !("time" in patch)) t.time = null;
-      }
+      if ("part" in patch) t.part = cleanPart(patch.part);
       if (!t.due) { t.part = null; t.time = null; }
       fixBookend(t);
       if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
@@ -1202,7 +1212,15 @@
   /** 朝 / 午後 / 夜 — from the clock when there is one, otherwise from what was
       chosen by hand. Which shelf a todo lands on is read from here, so a
       「19:30」 files itself under 夜 without anyone having said 夜. */
-  const todoPart = (t) => (t && t.time ? KN.util.partOfTime(t.time) : (t && t.part) || null);
+  /* 日のなかのどこに置くか。ふつうは時刻から読みますが、**毎朝・毎晩は
+     時刻より part が勝ちます**——あれは「一日の端」という置き場所の指定で、
+     時刻はいつ報せるかの指定です。7:30 の毎朝を「朝の部」に混ぜてしまうと、
+     いちばん上に居るという約束が破れます。 */
+  const todoPart = (t) => {
+    if (!t) return null;
+    if (isBookendPart(t.part)) return t.part;
+    return t.time ? KN.util.partOfTime(t.time) : (t.part || null);
+  };
 
   function sortedTodos() {
     const rank = (t) => (t.due ? KN.util.daysUntil(t.due) : Number.MAX_SAFE_INTEGER);
