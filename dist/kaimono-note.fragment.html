@@ -189,9 +189,16 @@
   --dur: .22s;
 
   /* --- layout --- */
-  --tabbar-h: 60px;
-  /* 下の帯が場所として取っている高さ。帯そのものは画面に浮いていて、
-     中身はその下を流れていくので、どの画面もこれだけ下に余白を持ちます。
+  /* 下の帯（浮いたカプセル）が場所として取っている高さ。
+     内わけは、カプセル 66px ＋ 上の隙間 2px ＋ 下の隙間 10px。
+
+     60px にしていたころ、カプセルの中身は 49px（絵の丸 26 ＋ 隙間 3 ＋
+     字 18 ＋ 上 2）で、カプセルそのものは 48px しかありませんでした
+     ——中身のほうが 1px 高い。絵が縁に張りついて見えていたのはこれです。
+     66px にすると、上下に 8px ずつの余白ができます。 */
+  --tabbar-h: 78px;
+  /* 帯そのものは画面に浮いていて、中身はその下を流れていくので、
+     どの画面もこれだけ下に余白を持ちます。
      一か所で決めておかないと、画面ごとにずれます。 */
   --tabbar-space: calc(var(--tabbar-h) + var(--safe-b));
   --maxw: 620px;
@@ -623,19 +630,47 @@ a { color: var(--c-primary); }
   z-index: 30;
 }
 
-/* カプセル本体。すりガラスにするのは飾りではなく、下を流れていくものが
-   透けて見えることで「まだ続きがある」と分かるからです。 */
+/* カプセル本体。
+
+   すりガラスにするのは飾りではなく、下を流れていくものが透けて見えることで
+   「まだ続きがある」と分かるからです。だから **透けていることが見えなければ
+   意味がありません**。最初は地を 86% で置いていて、これはほとんど白い板と
+   同じでした——ぼかしを 20px かけても、ぼかす先が見えていませんでした。
+
+   58% まで落とします。下の一覧の色（買うものの札は行ごとに色が違います）が
+   帯の向こうで動くので、そこで初めて「ガラスだ」と読めます。ぼかしは 26px、
+   彩度は 200% ——ぼかすと色は濁るので、少し戻してやらないと灰色の靄に
+   なります。
+
+   字が読めなくなる心配は、この帯に関しては小さいものです。載っているのは
+   11px の太字と絵だけで、その下には**もう一枚**、白い縁（--c-border）と
+   影があります。念のため、選ばれていないほうの字は薄墨（--c-text-3）では
+   なく本文の濃さに寄せてあります（下の .tab を参照）。 */
 .tabbar::before {
   content: "";
   position: absolute;
   inset: 2px var(--sp-3) calc(var(--safe-b) + 10px);
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--c-bg-elev) 86%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: color-mix(in srgb, var(--c-bg-elev) 58%, transparent);
+  backdrop-filter: saturate(200%) blur(26px);
+  -webkit-backdrop-filter: saturate(200%) blur(26px);
+  /* 縁は二本立てます。外側の一本（border）は形を決め、内側の白い一本
+     （inset の影）はガラスの厚みです——これが無いと、透けた地の色が
+     そのまま外へつながって、縁がどこか分からなくなります。 */
   border: 1px solid var(--c-border);
-  /* 浮いていることを言うのは影だけなので、カードより深く落とします。 */
-  box-shadow: var(--shadow-3);
+  box-shadow:
+    var(--shadow-3),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+}
+/* 暗い画面では、内側の一本も暗さのほうへ寄せます（白い線を引くと、
+   夜に一本だけ光った縁が残ります）。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tabbar::before {
+    box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  }
+}
+:root[data-theme="dark"] .tabbar::before {
+  box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
 }
 
 /* ボタンだけが指を受けます（.tab は position:relative なので、DOM で後に
@@ -705,13 +740,15 @@ a { color: var(--c-primary); }
   align-items: center;
   justify-content: center;
   gap: 3px;
-  color: var(--c-text-3);
+  /* いちばん薄い墨（--c-text-3）から一段濃くしました。帯がすりガラスに
+     なって、字の下を色つきの札が流れていくようになったので、そこで
+     読めなくならないための一段です。 */
+  color: var(--c-text-2);
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: .01em;
   transition: color .18s var(--ease);
   position: relative;
-  padding-top: 2px;
 }
 
 /* タブの絵は、丸い下地（40×26px）の中身です。入れものが大きさを決めるので
