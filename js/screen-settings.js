@@ -837,6 +837,15 @@
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
+          <button class="row js-insight">
+            <span class="row-main">
+              <span class="row-title">気づいたこと</span>
+              <span class="row-sub">${store.get().settings.showInsight === true
+                ? "ダイエットの画面に、体重と食事から読み取れたことを出します"
+                : "出しません（標本が足りないうちは、当たり障りのないことしか言えないので）"}</span>
+            </span>
+            <span class="row-value">${store.get().settings.showInsight === true ? "オン" : "オフ"}</span>
+          </button>
           <button class="row js-ai">
             <span class="row-main">
               <span class="row-title">AIの窓口</span>
@@ -865,6 +874,12 @@
       store.update((s) => { s.settings.dietAutoSync = off; });
       render();
       KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
+    });
+    wrap.querySelector(".js-insight").addEventListener("click", () => {
+      const on = store.get().settings.showInsight !== true;
+      store.update((s) => { s.settings.showInsight = on; });
+      render();
+      KN.ui.toast(on ? "気づいたことを出します" : "気づいたことを出しません");
     });
     wrap.querySelector(".js-relay").addEventListener("click", openRelaySheet);
     wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);

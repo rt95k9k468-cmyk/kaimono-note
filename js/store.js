@@ -68,7 +68,11 @@
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
       // looking at, not on one of the two.
-      settings: { theme: "auto", showChecked: true, layout: "rows" },
+      /* showInsight は既定で false です。「気づいたこと」は、標本が足りない
+         うちは当たり障りのないことしか言えません——出しておくと、画面の
+         一等地を「大したことを言っていない枠」が占めます。要ると思ったときに
+         設定から出せます。 */
+      settings: { theme: "auto", showChecked: true, layout: "rows", showInsight: false },
     };
   }
 
