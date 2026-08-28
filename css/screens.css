@@ -20,7 +20,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--sp-3));
+  bottom: calc(var(--tabbar-space) + var(--sp-3));
   z-index: 20;
   pointer-events: none;
 }

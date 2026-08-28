@@ -808,7 +808,7 @@ button, [role="tab"] {
 .toast-root {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--sp-3));
+  bottom: calc(var(--tabbar-space) + var(--sp-3));
   translate: -50% 0;
   z-index: 200;
   display: flex;

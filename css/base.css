@@ -2,38 +2,29 @@
    くらしノート — design tokens, reset, base layout
    ========================================================= */
 
-/* ---------------- 書体（BIZ UDPゴシック） ----------------
+/* ---------------- 書体 ----------------
 
-   UD（ユニバーサルデザイン）書体は、判読性を上げるために作られた
-   専用の設計を持ちます——「6」と「9」、「シ」と「ツ」のような
-   見分けにくい字を離す、線の太さを均す、といった調整です。
-   長く画面を見る記録アプリには、装飾書体よりこちらが合います。
+   ここには BIZ UDPゴシックを自前で持っていました（fonts/ に woff2 を二本）。
+   UD書体は判読性のために作られていて、長く画面を見る記録アプリに合う。
+   考え方は正しかったのですが、**持ち方が間違っていました。**
 
-   フォントファイルは fonts/ に自前で持っています（Google Fonts の
-   CDN には頼りません）。このアプリはオフラインで動くことが前提で、
-   電波の無いところで初回に開いた場合や、CDNが読めない環境でも
-   文字が欠けないようにするためです。中身はこのアプリの全ソース
-   （js/*.js・*.html）に実際に出てくる文字＋かな・半角英数の全域
-   だけに削ってあり（1611字、各229KB）、フルセット（4.4MB×2）より
-   大きく軽くしてあります。持っていない字（滅多に使わない漢字など、
-   人が自分で打った文章に出てくることがあります）は、次の候補書体
-   （端末に元から入っている日本語ゴシック）が自動で引き受けます
-   ——これは壊れではなく、web フォントの正しい振る舞いです。
-   ライセンスは OFL（fonts/OFL.txt）。作り直す手順は fonts/README.md。 */
-@font-face {
-  font-family: "BIZ UDPGothic";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("../fonts/BIZUDPGothic-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "BIZ UDPGothic";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("../fonts/BIZUDPGothic-Bold.woff2") format("woff2");
-}
+   フルセットは一本 4.4MB あるので、アプリのソースに実際に出てくる文字
+   ＋かな・半角英数だけに削って 1611字・229KB にしてありました。ソースに
+   出てくる字は、それで足ります。**足りないのは、人が打つ字のほうです。**
+
+   人の名前には、ソースに出てこない漢字がふつうに使われます。地名も、
+   店の名前も、書き留めたい一言も。そういう字は書体が持っていないので、
+   端末の日本語ゴシックが一字だけ引き受けます——これは web フォントの
+   正しい振る舞いですが、**画面には「その字だけ太さと形が違う」として
+   出ます。** 一つの文の中で書体が入れ替わる。持ち主の子の名前だけが
+   違う顔で出る、というのがいちばん起きてほしくない形でした。
+
+   だから、**全部の字を持っているほうに揃えます。** 端末の書体です。
+   iPhone なら -apple-system が欧文に SF Pro、和文に ヒラギノ角ゴシックを
+   自動で組み合わせます。どちらも Apple が自分の UI に使っている面で、
+   足りない字がありません。「揃っていること」は、書体の質より先に来ます。
+
+   ついでに 458KB（配布物では base64 で 611KB）が要らなくなりました。 */
 
 :root {
   color-scheme: light;
@@ -153,23 +144,21 @@
 
   /* --- type ---
 
-     BIZ UDPゴシックを本文にします。判読しやすさのために作られた
-     UD書体で、長く画面を見る記録アプリの地の文字に合わせました。
-     持っていない字（自前で持つのは fonts/README.md にある通り
-     このアプリの語彙＋かな・半角英数だけ）は、続く候補（端末に
-     入っている日本語ゴシック）が引き受けます。
+     端末の書体を使います（上の「書体」の節に経緯）。-apple-system が
+     先頭なのは、iPhone でこれが欧文に SF Pro・和文にヒラギノ角ゴシックを
+     **自動で組み合わせる**からです。二つを別々に並べるより、Apple 自身が
+     決めた組み合わせのほうが、字面の高さも太さも合っています。
 
-     太さは 400（本文）と 700（強調）の二つだけに揃えます——
-     埋め込んだファイルもこの二つしか無く、無い太さを指定すると
-     ブラウザが自前で太らせた字（縁がにじんで見えるもの）が出るので、
-     コンポーネント側の font-weight もすべてこの二値に揃えました。
+     太さは 400（本文）と 700（強調）の二つだけに揃えます——中間の太さを
+     持たない書体では、ブラウザが自前で太らせた字（縁がにじんで見えるもの）が
+     出るので、コンポーネント側の font-weight もすべてこの二値に揃えました。
 
      行間は役目で三段に分けます。数字の大表示や一行のラベルは詰めて
      （--lh-tight）、ボタンや行の文字は少し余裕を持たせ（--lh-ui）、
      気づいたこと・説明文のような読みものは、長く読んでも疲れない
      広さに（--lh-body）。 */
-  --font: "BIZ UDPGothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium",
-          "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+          "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
   --fs-xs: 11px; --fs-sm: 12.5px; --fs-md: 14px;
   --fs-lg: 16px; --fs-xl: 19px;  --fs-2xl: 24px;
 
@@ -186,18 +175,32 @@
   --dur: .22s;
 
   /* --- layout --- */
-  /* 下の帯（浮いたカプセル）が場所として取っている高さ。
-     内わけは、カプセル 66px ＋ 上の隙間 2px ＋ 下の隙間 10px。
 
-     60px にしていたころ、カプセルの中身は 49px（絵の丸 26 ＋ 隙間 3 ＋
-     字 18 ＋ 上 2）で、カプセルそのものは 48px しかありませんでした
-     ——中身のほうが 1px 高い。絵が縁に張りついて見えていたのはこれです。
-     66px にすると、上下に 8px ずつの余白ができます。 */
-  --tabbar-h: 78px;
+  /* 下の帯（浮いたカプセル）の寸法。三つに分けてあります——カプセルの
+     高さ・画面の下端からの浮き・上の隙間。混ぜて一つの数にすると、
+     「もう少し細く」と「もう少し下へ」が同じ数字の取り合いになります。 */
+
+  /* カプセルそのものの高さ。中身は 45px（絵の丸 26 ＋ 隙間 1 ＋ 字 18）で、
+     上下に 7.5px ずつの余白が残ります。66px から落としました——絵と字の
+     隙間を 3px から 1px に詰めたぶん、まるごと薄くできます。 */
+  --tab-cap: 60px;
+
+  /* 画面の下端から、カプセルの底までの浮き。
+
+     safe-b（iPhone では 34px）をそのまま使うと、下がずいぶん空きます。
+     あれは「画面の端いっぱいに敷いたもの」がホームバーに食われないための
+     取り分で、**浮いているものには広すぎます**。ホームバー自体は下端から
+     20pxほどのところに居るので、そこを踏まない範囲で下げます。
+     safe-b の無い画面（PCやAndroidの一部）では、ただの 6px。 */
+  --tab-drop: max(6px, calc(var(--safe-b) - 14px));
+
+  /* 帯としての高さ（浮きを除いた、上の隙間 2px 込み）。 */
+  --tabbar-h: calc(var(--tab-cap) + 2px);
+
   /* 帯そのものは画面に浮いていて、中身はその下を流れていくので、
      どの画面もこれだけ下に余白を持ちます。
      一か所で決めておかないと、画面ごとにずれます。 */
-  --tabbar-space: calc(var(--tabbar-h) + var(--safe-b));
+  --tabbar-space: calc(var(--tabbar-h) + var(--tab-drop));
   --maxw: 620px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -618,7 +621,7 @@ a { color: var(--c-primary); }
   align-items: stretch;
   height: var(--tabbar-space);
   /* カプセルの内側だけを、押せる場所にします。 */
-  padding: 2px var(--sp-3) calc(var(--safe-b) + 10px);
+  padding: 2px var(--sp-3) var(--tab-drop);
   /* 地はここではなく ::before（カプセル本体）が持ちます。帯そのものは
      ただの枠なので、指も素通りさせます——カプセルの外の左右と下は、
      下の一覧に触れたままにしておきたいので。 */
@@ -646,7 +649,7 @@ a { color: var(--c-primary); }
 .tabbar::before {
   content: "";
   position: absolute;
-  inset: 2px var(--sp-3) calc(var(--safe-b) + 10px);
+  inset: 2px var(--sp-3) var(--tab-drop);
   border-radius: var(--r-full);
   background: color-mix(in srgb, var(--c-bg-elev) 58%, transparent);
   backdrop-filter: saturate(200%) blur(26px);
@@ -736,7 +739,9 @@ a { color: var(--c-primary); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  /* 絵と字の隙間。3px から詰めました——この2pxぶん、帯ぜんぶが薄くなります。
+     0 にすると字が絵にぶら下がって見えるので、1px は残します。 */
+  gap: 1px;
   /* いちばん薄い墨（--c-text-3）から一段濃くしました。帯がすりガラスに
      なって、字の下を色つきの札が流れていくようになったので、そこで
      読めなくならないための一段です。 */
