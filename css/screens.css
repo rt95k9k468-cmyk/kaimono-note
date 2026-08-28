@@ -2555,3 +2555,49 @@ a.btn { text-decoration: none; }
 .add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
 .add-fab.is-open { transform: rotate(45deg); }
 .add-fab.is-open:active { transform: rotate(45deg) scale(.92); }
+
+/* ---------------- 済ませたときの動き（やること） ----------------
+
+   押した瞬間に store が変わり、その場で組み直されていました。火花は散って
+   いるのに行はもう無く、何も起きていないように見えます——「済ませた」と
+   いう出来事に、見せ場がありませんでした。
+
+   三段にします。光る → 消える（または次の日へ滑る）→ 組み直す。
+   組み直しは JS 側で待たせてあるので、ここは見た目だけを受け持ちます。 */
+
+/* ① 光る。棚の色（--cat）を借りて、行そのものが一度明るくなります。 */
+.item.is-glow {
+  animation: todo-glow .26s var(--ease-out) forwards;
+}
+@keyframes todo-glow {
+  0%   { box-shadow: var(--shadow-1); }
+  60%  { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cat, var(--c-primary)) 55%, transparent),
+                     0 0 16px 2px color-mix(in srgb, var(--cat, var(--c-primary)) 35%, transparent);
+         background: color-mix(in srgb, var(--cat, var(--c-primary)) 14%, var(--c-surface)); }
+  100% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--cat, var(--c-primary)) 35%, transparent),
+                     0 0 10px 1px color-mix(in srgb, var(--cat, var(--c-primary)) 20%, transparent);
+         background: color-mix(in srgb, var(--cat, var(--c-primary)) 9%, var(--c-surface)); }
+}
+
+/* ②-a 一度きりのものは、その場で畳まれて消えます。 */
+.item.is-finishing {
+  animation: todo-finish .24s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes todo-finish {
+  to { opacity: 0; transform: scale(.94); }
+}
+
+/* ②-b 繰り返すものは消えません。次の設定日へ**滑って**いきます——その場で
+   消えると「終わった」に見え、明日また出ることが伝わりません。 */
+.item.is-sliding {
+  animation: todo-slide .3s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes todo-slide {
+  to { opacity: 0; transform: translateX(38%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item.is-glow, .item.is-finishing, .item.is-sliding { animation-duration: .01ms; }
+}
