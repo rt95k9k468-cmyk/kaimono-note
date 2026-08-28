@@ -331,35 +331,30 @@
     return sec;
   }
 
-  /* ================================================================
-     ③月の積み上がり — 内訳だけの、細い一行
-     ================================================================ */
+  /* 「◯月の積み上がり」の一行は、ここにありました。
 
-  function monthRollup(ym) {
-    const { month } = ymParts(ym);
-    const c = store.monthCounts(ym);
-    const kinds = store.ARCHIVE_TYPES.filter((t) => c[t.id]);
-    return node(html`
-      <div class="arc-rollup">
-        <span class="arc-rollup-label">${month + 1}月の積み上がり</span>
-        <span class="arc-rollup-body">${kinds.length
-          ? U.raw(kinds.map((t) => `<span class="arc-count" style="--arc-c:${t.color}"><i></i>${t.label} ${c[t.id]}</span>`).join(""))
-          : "-"}</span>
-      </div>
-    `);
-  }
+     消したのは要らないからではなく、**同じものを二度出していた**からです。
+     あの行は 読書2・学習1・種1・達成1・変化1 と並べ、その下の絞り込みの札は
+     すべて・読書・学習・種・達成・変化 と並んでいました。同じ五つの、数える
+     ほうと押すほうです。数を札のほうへ入れて、行そのものを畳みました。
+
+     言葉も一つ減ります。「積み上がり」と「積み上げ」が縦に並んでいて、
+     別のものを指しているのに一字しか違いませんでした。残るのは「積み上げ」
+     だけです。 */
 
   /* ================================================================
      ③ Daily Log — その日あったこと・したこと
      ================================================================ */
 
   function dailyLog(ym) {
-    const { year, month } = ymParts(ym);
     const days = viewDay ? store.daysOfMonth(ym).filter((d) => d.date === viewDay) : store.daysOfMonth(ym);
     const sec = node(html`
       <section class="card arc-log">
         <header class="arc-log-head">
-          <h2>${year}年${month + 1}月 Daily Log</h2>
+          ${/* 見出しから年月を外しました。すぐ上の暦が「8月 2026」と言っていて、
+                さらにその上の帯も月を言っていた——一画面に三回。行そのものは
+                日の数字を持っているので、ここは名前だけで足ります。 */""}
+          <h2>Daily Log</h2>
           <button type="button" class="btn btn-soft btn-sm js-write">
             ${icon("edit", "is-sub")}<span>今日を書く</span>
           </button>
@@ -560,27 +555,51 @@
     return row;
   }
 
+  /* 並び順は三つだけです。三つを札の一列にすると、絞り込みの札と合わせて
+     二段——記録が一件も見えないうちに 110px を使っていました。
+
+     見出しの右へ、いまの並びを名乗るボタンとして畳みます。押すと次へ回り、
+     三回で一周。隠れるのではなく **いまどれなのかが常に書いてある** ので、
+     押す前に読めます（menu にすると、開くまで分かりません）。 */
+  const SORTS = [
+    { id: "recent",   label: "更新順" },
+    { id: "date",     label: "日付順" },
+    { id: "favorite", label: "お気に入り順" },
+  ];
+  const sortLabel = (id) => (SORTS.find((s) => s.id === id) || SORTS[0]).label;
+  const nextSort = (id) => SORTS[(SORTS.findIndex((s) => s.id === id) + 1) % SORTS.length].id;
+
   function entriesSection(ym) {
     const sec = node(html`
       <section class="arc-stack">
         <header class="arc-stack-head">
           <h2>積み上げ</h2>
+          <button type="button" class="arc-sort js-sort"
+                  aria-label="並び順を変える（いまは${sortLabel(sortMode)}）">
+            ${icon("rows", "is-sub")}<span>${sortLabel(sortMode)}</span>
+          </button>
           <button type="button" class="fav js-favonly ${favOnly ? "is-on" : ""}"
                   aria-pressed="${String(favOnly)}" aria-label="お気に入りだけ見る">${icon("star")}</button>
         </header>
         <div class="js-typechips"></div>
-        <div class="js-sortchips"></div>
         <div class="js-rows stack" style="gap:0"></div>
       </section>
     `);
 
+    /* 数は札のほうへ。上にあった「◯月の積み上がり」の一行と同じ内訳です
+       ——数えるほうと押すほうを、一つにまとめました。ゼロは書きません
+       （「種 0」は、無いことを数えた字なので）。 */
+    const counts = store.monthCounts(ym);
     KN.ui.chipRow(sec.querySelector(".js-typechips"),
-      [{ id: "all", label: "すべて" }, ...store.ARCHIVE_TYPES.map((t) => ({ id: t.id, label: t.label, color: t.color }))],
+      [{ id: "all", label: "すべて" },
+       ...store.ARCHIVE_TYPES.map((t) => ({
+         id: t.id, label: t.label, color: t.color, count: counts[t.id] || null,
+       }))],
       { activeId: typeFilter, onPick: (id) => { typeFilter = id; haptic(); render(); } });
 
-    KN.ui.chipRow(sec.querySelector(".js-sortchips"),
-      [{ id: "recent", label: "更新順" }, { id: "favorite", label: "お気に入り順" }, { id: "date", label: "日付順" }],
-      { activeId: sortMode, onPick: (id) => { sortMode = id; haptic(); render(); } });
+    sec.querySelector(".js-sort").addEventListener("click", () => {
+      sortMode = nextSort(sortMode); haptic(); render();
+    });
 
     sec.querySelector(".js-favonly").addEventListener("click", () => {
       favOnly = !favOnly; haptic(); render();
@@ -936,7 +955,6 @@
   function render() {
     if (!root || rendering) return;
     const ym = curYm();
-    const { year, month } = ymParts(ym);
 
     /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
        **その場**を見ているので、押した瞬間に頭まで飛ばされると、もう一度
@@ -945,7 +963,12 @@
 
     rendering = true;
     els.clear.hidden = !query;
-    els.sub.textContent = viewDay ? U.formatDate(viewDay) : `${year}年${month + 1}月`;
+    /* 上の帯は、**暦が言えないことだけ**を言います。
+       月は、すぐ下の暦が「8月 2026」と出しています。ここでも「2026年8月」と
+       書けば、二行つづけて同じことを言ったことになります。日を選んだときは
+       暦のほうは緑の輪しか持っていないので、そのときだけここが引き受けます。 */
+    els.sub.textContent = viewDay ? U.formatDate(viewDay) : "";
+    els.sub.hidden = !viewDay;
     els.body.innerHTML = "";
 
     els.body.append(els.cal);
@@ -954,7 +977,6 @@
        これになります。見つからない日は、null が返って何も置かれません。 */
     const then = thenCard();
     if (then) els.body.append(then);
-    els.body.append(monthRollup(ym));
     els.body.append(dailyLog(ym));
     els.body.append(entriesSection(ym));
 
