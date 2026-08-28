@@ -793,6 +793,70 @@
   /** いま開いている画面。下に引いたときに、誰に聞けばいいかを知るため。 */
   KN.app.activeScreen = () => active;
 
+  /* ---------------- ＋ の上に出る、行き先の選択 ----------------
+
+     ＋ が二つ以上のことを始められる画面（daily・ダイエット）で使います。
+     押すと**その場**——親指のすぐ上——に選択肢が立ち上がります。シートを
+     開いて選ばせると、選ぶために一枚めくり、選んでからもう一枚めくることに
+     なるので、一手ぶん遠くなります。
+
+     dock は画面を切り替えるたびに組み直されるので、開いたままの札が別の
+     画面へ持ち越されることはありません。 */
+  function fabMenu(fab, items) {
+    const dock = document.getElementById("dock");
+    if (!dock || dock.querySelector(".fab-menu")) return closeFabMenu();
+
+    const menu = node(html`<div class="fab-menu" role="menu"></div>`);
+    items.forEach((it, i) => {
+      const b = node(html`
+        <button type="button" class="fab-menu-b" role="menuitem" style="--i:${String(i)}">
+          <span class="fab-menu-label">${it.label}</span>
+          <span class="fab-menu-ico">${icon(it.icon)}</span>
+        </button>
+      `);
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeFabMenu();
+        haptic();
+        it.onPick();
+      });
+      menu.append(b);
+    });
+    dock.insertBefore(menu, dock.firstChild);
+    dock.classList.add("is-menu");
+    fab.classList.add("is-open");
+    requestAnimationFrame(() => menu.classList.add("is-on"));
+
+    /* 外を押したら閉じます。＋そのものは自分で開け閉めするので外します
+       （ここで拾うと、閉じたそばから開き直します）。 */
+    const away = (e) => { if (!e.target.closest(".fab-menu, .add-fab")) closeFabMenu(); };
+    const esc = (e) => { if (e.key === "Escape") closeFabMenu(); };
+    setTimeout(() => {
+      document.addEventListener("pointerdown", away, true);
+      document.addEventListener("keydown", esc);
+    }, 0);
+    closeFabMenu.teardown = () => {
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }
+
+  function closeFabMenu() {
+    const dock = document.getElementById("dock");
+    if (!dock) return;
+    const menu = dock.querySelector(".fab-menu");
+    const fab = dock.querySelector(".add-fab");
+    if (fab) fab.classList.remove("is-open");
+    dock.classList.remove("is-menu");
+    if (closeFabMenu.teardown) { closeFabMenu.teardown(); closeFabMenu.teardown = null; }
+    if (!menu) return;
+    menu.classList.remove("is-on");
+    setTimeout(() => menu.remove(), 200);
+  }
+
+  KN.app.fabMenu = fabMenu;
+  KN.app.closeFabMenu = closeFabMenu;
+
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {
     if (document.querySelector(".sheet")) return true;

@@ -106,8 +106,11 @@
   --c-m-burn-lit:  #f5a462;
   --c-m-sleep:     #4b5bc4;
   --c-m-sleep-lit: #8e99e8;
-  --c-m-drink:     #9a4fa8;
-  --c-m-drink-lit: #c98ed3;
+  /* 飲酒。紫でしたが、カレンダーの休肝日バー（#4a8fd9）と別の色でした——
+     同じ「お酒の話」を、上の輪と下の暦で違う色で言っていたことになります。
+     そちらに揃えます。睡眠（藍 #4b5bc4）とは明度と彩度で分かれます。 */
+  --c-m-drink:     #4a8fd9;
+  --c-m-drink-lit: #8fbdea;
 
   /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
          the warm 税 keys on the pad, and one adds while the other takes
@@ -235,8 +238,8 @@
     --c-m-burn-lit:  #f8c39b;
     --c-m-sleep:     #8b96ec;
     --c-m-sleep-lit: #bcc3f5;
-    --c-m-drink:     #c989d4;
-    --c-m-drink-lit: #e2b8e9;
+    --c-m-drink:     #6fa9e4;
+    --c-m-drink-lit: #a9cef1;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
     /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -284,8 +287,8 @@
   --c-m-burn-lit:  #f8c39b;
   --c-m-sleep:     #8b96ec;
   --c-m-sleep-lit: #bcc3f5;
-  --c-m-drink:     #c989d4;
-  --c-m-drink-lit: #e2b8e9;
+  --c-m-drink:     #6fa9e4;
+  --c-m-drink-lit: #a9cef1;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
   /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -4255,8 +4258,18 @@ a.btn { text-decoration: none; }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .arc-log-memo { font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap; }
-.arc-log-times { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.arc-log-meta { font-size: 10px; color: var(--c-text-3); opacity: .8; }
+/* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
+.arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+/* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
+   数字が同じ顔で四つ並ぶと、どれがその日の話なのか読み取れません。 */
+.arc-log-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+.arc-stamp {
+  font-size: 10px; color: var(--c-text-3);
+  background: var(--c-surface-2);
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -4329,6 +4342,56 @@ a.btn { text-decoration: none; }
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 
 .arc-body { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
+
+/* ---------------- ＋ の上に出る、行き先の選択 ----------------
+
+   ＋ が二つ以上のことを始められる画面（daily・ダイエット）で使います。
+   親指のすぐ上に立ち上がるので、シートを一枚めくるより一手ぶん近い。
+   下から順に現れます——押した指のいちばん近くが最初に来るように。 */
+.dock.is-menu { pointer-events: auto; }
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  pointer-events: auto;
+}
+.fab-menu-b {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 9px 12px 9px 16px;
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text);
+  /* 立ち上がる前は、＋ の中に畳まれている位置に置きます。 */
+  opacity: 0;
+  transform: translateY(14px) scale(.92);
+  transition: opacity .16s var(--ease), transform .22s var(--ease-out);
+}
+.fab-menu.is-on .fab-menu-b { opacity: 1; transform: none; }
+/* 下のものから順に。--i は上から数えた番号なので、逆から遅らせます。 */
+.fab-menu.is-on .fab-menu-b { transition-delay: calc((2 - var(--i)) * 34ms); }
+.fab-menu-b:active { transform: scale(.96); }
+.fab-menu-ico {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; flex: none;
+  border-radius: var(--r-full);
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+}
+/* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
+.fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }
+
+/* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
+.add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
+.add-fab.is-open { transform: rotate(45deg); }
+.add-fab.is-open:active { transform: rotate(45deg) scale(.92); }
 
 </style>
 </head>
@@ -12949,6 +13012,34 @@ a.btn { text-decoration: none; }
       r(14.4, 21.4, 19.2, 12.4, rr("xs"), C.paper),
       ln("M18.4 26h11.2M18.4 30h7.4", C.greyD, IW, ".45")
     ),
+
+    /* daily の積み上げ。開いた帳面に、しおりと鉛筆。
+
+       ここに「済んだノート（donePad）」を借りていましたが、あれは やること
+       の絵です——✓が三つ並ぶと「片づいた」と言ってしまい、これから積み上げ
+       ようという画面の頭に置く絵ではありませんでした。
+
+       中身は罫線だけにします。何を書くかはその人が決めることなので、絵の
+       ほうで「本」や「時間」を名指ししません。中央の谷と、外側が下がった
+       紙の縁で「開いている」と言います。 */
+    notebook: scene(
+      shR(11.4, 13, 26, 25, rr("sm"), ".08"),
+      // 左右の紙。綴じ側が高く、外側がわずかに垂れて、開いた面に見えます。
+      p("M24 14q-4.8-3.2-13.4-3.2-1.8 0-1.8 1.8v21.6q0 1.8 1.8 1.8Q19.2 36 24 38.4z", C.paper),
+      p("M24 14q4.8-3.2 13.4-3.2 1.8 0 1.8 1.8v21.6q0 1.8-1.8 1.8Q28.8 36 24 38.4z", C.paper),
+      sh("M24 14q4.8-3.2 13.4-3.2 1.8 0 1.8 1.8v2.8Q38 12.6 24 16.8z", ".06"),
+      // 綴じ。左右の紙が出会うところなので、線は一本だけ。
+      ln("M24 14v24.4", C.steelD, IW),
+      // 罫線。左右で本数を変えます——同じだと版画のように整いすぎます。
+      ln("M12.8 20h7.6M12.8 24h7.6M12.8 28h7.6M12.8 32h5.2", C.greyD, IW, ".45"),
+      ln("M27.6 20h7.6M27.6 24h7.6M27.6 28h5.2", C.greyD, IW, ".45"),
+      // しおり。ここまで書いた、という印。
+      p("M30.4 10.8h3.4v9l-1.7-1.7-1.7 1.7z", C.coral),
+      // 鉛筆。紙の上に斜めに置きます。芯だけ濃く。
+      p("M32.4 39.2l2.4-6.2 6.8 2.6-2.4 6.2q-.4 1-1.4.6l-4.8-1.8q-1-.4-.6-1.4z", C.amber),
+      p("M41.6 35.6l1.5-3.8q.4-1-.6-1.4l-1.5-.6q-1-.4-1.4.6l-1.5 3.8z", C.tanD),
+      p("M32.4 39.2l-.9 2.4q-.3.8.5.5l2.4-.9z", C.inkD)
+    ),
   };
 
   KN.emptyArt = ART;
@@ -13430,8 +13521,15 @@ a.btn { text-decoration: none; }
     });
     out.archive.days = out.archive.days.filter((d) => d && d.date);
     out.archive.days.forEach((d) => {
-      if (!d.updatedAt) d.updatedAt = d.date;
-      if (!d.createdAt) d.createdAt = d.updatedAt;
+      /* 中身のある日だけ、持っていない時刻を日付で埋めます。空の行は
+         「日が変わったので用意しただけ」の今日なので、null のまま——
+         画面では「-」と出ます。ここで埋めると、書いてもいない日に
+         作成時刻が付きます。 */
+      const written = !!(String(d.memo || "").trim() || d.wake || d.sleep);
+      if (written) {
+        if (!d.updatedAt) d.updatedAt = d.date;
+        if (!d.createdAt) d.createdAt = d.updatedAt;
+      }
       /* この機能より前に書かれた時刻は、ぜんぶ人が打ったものです——
          取り込みに上書きさせないよう manual としておきます。 */
       if (d.wakeSource !== "health" && d.wakeSource !== "manual") d.wakeSource = "manual";
@@ -14976,6 +15074,33 @@ a.btn { text-decoration: none; }
   const dayLog = (day) => archive().days.find((d) => d.date === day) || null;
 
   /**
+   * その日の行を、無ければ用意します。
+   *
+   * 日が変わったら、その日の欄が**最初からそこにある**ようにするためです。
+   * 前は何か書くまで行そのものが無く、書き始めるには「今日を書く」を押して
+   * シートを開く必要がありました。日誌は、開いたら今日の欄が待っている
+   * ほうが自然です。
+   *
+   * 中身は空のまま——内容も時刻も「-」で出ます。setDayLog の「空なら消す」
+   * とは別の道を通します（あちらは人が消したときの話で、こちらは
+   * 「まだ何も書いていない今日」を置く話なので）。
+   */
+  function ensureDayLog(day) {
+    const d = dayKeyOf(day);
+    if (dayLog(d)) return dayLog(d);
+    update((s) => {
+      if (s.archive.days.some((x) => x.date === d)) return;
+      s.archive.days.push({
+        date: d, memo: "", wake: null, sleep: null,
+        wakeSource: "manual", sleepSource: "manual",
+        createdAt: null,      // まだ人が書いていないので、作成時刻も持ちません（「-」で出ます）
+        updatedAt: null,
+      });
+    });
+    return dayLog(d);
+  }
+
+  /**
    * 一日ぶんを書き換えます。**空にしたら行ごと消えます**——書きかけの空行が
    * 溜まると、月を眺めたときに「何も書いていない日」と「空の行がある日」が
    * 見分けられなくなります（setDayMemo と同じ考え方）。
@@ -15025,19 +15150,24 @@ a.btn { text-decoration: none; }
       const empty = !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
-        next.updatedAt = stamp();
+        /* 「更新」は**人が書き直したこと**を言う印です。毎朝の取り込みで
+           動かすと、触ってもいない日が更新済みになり、何も言わなくなります。
+           取り込みは更新日時に触れません。 */
+        next.updatedAt = from === "manual" ? stamp() : (cur ? cur.updatedAt : stamp());
         s.archive.days.push(next);
       }
     });
     return dayLog(day);
   }
 
-  /* 月ぶんの地の文。**書いた・直した順**（entries と同じ byRecent）——
-     カレンダー上の日付順ではありません。古い日に一行足せば、それがいちばん
-     上に来ます。「いつのことか」より「いつ書いたか」を先に見せる、という
-     考え方は積み上がり側と揃えてあります。 */
+  /* 月ぶんの地の文。**日付の新しい順**です。
+     いちどは「書いた・直した順」にしていましたが、これは日誌には向きません
+     ——26日に一行足しただけで、26日が27日の上に来ます。暦の並びが崩れると、
+     どこを読んでいるのか分からなくなる。積み上がり（entries）が更新順なのは
+     一つ一つが独立しているからで、日誌は日付そのものが背骨です。 */
   const daysOfMonth = (ym) =>
-    archive().days.filter((d) => String(d.date).slice(0, 7) === ym).slice().sort(byRecent);
+    archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
   /**
    * 月ぶんを、まるごと一つの形にして返します。
@@ -15178,7 +15308,7 @@ a.btn { text-decoration: none; }
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, daysOfMonth, exportMonth,
+    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -21902,9 +22032,15 @@ a.btn { text-decoration: none; }
           </span>
           <span class="arc-log-text">
             <span class="arc-log-memo">${orDash(d.memo)}</span>
-            <span class="arc-log-times">起 ${orDash(d.wake)} ・ 寝 ${orDash(d.sleep)}</span>
-            <span class="arc-log-meta">作成 ${U.formatStamp(d.createdAt)}${
-              edited ? ` ・ 更新 ${U.formatStamp(d.updatedAt)}` : ""}</span>
+            ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
+                  （作成・更新）が、数字として同じ顔で並んでいました。前者は
+                  中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
+                  中身のほうに先に行くようにします。 */""}
+            <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>
+            <span class="arc-log-meta">
+              <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
+              ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
+            </span>
           </span>
         </button>
       `);
@@ -21923,12 +22059,14 @@ a.btn { text-decoration: none; }
     const dt = U.dayDate(day);
     const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
 
+    /* 文字数の上限は置きません。前は200字で止めて残りを数えていましたが、
+       書ける量をこちらが決める理由がありません——短く書きたい人は短く書きます。
+       数えるのをやめると、書いている最中に「あと何字」が目に入らなくなります。 */
     const body = node(html`
       <div class="stack" style="gap:16px">
         <label class="field">
           <span class="field-label">その日あったこと・したこと</span>
-          <textarea class="textarea js-memo" rows="5" maxlength="200">${cur.memo || ""}</textarea>
-          <span class="field-hint js-count"></span>
+          <textarea class="textarea js-memo" rows="5">${cur.memo || ""}</textarea>
         </label>
         <div class="arc-times">
           <label class="field">
@@ -21944,26 +22082,43 @@ a.btn { text-decoration: none; }
     `);
 
     const memo = body.querySelector(".js-memo");
-    const count = body.querySelector(".js-count");
-    const paint = () => { count.textContent = `${memo.value.length} / 200`; };
-    memo.addEventListener("input", paint);
-    paint();
+    const wakeEl = body.querySelector(".js-wake");
+    const sleepEl = body.querySelector(".js-sleep");
+
+    /* 打った先から保存します。「保存」を押さずに閉じても残る——押し忘れで
+       消えるほうが、間違って残るよりずっと痛いので（食事の四枠と同じ考え）。
+       打つたびに書くと重いので、手が止まってから 500ms 後に一度だけ。 */
+    let timer = 0;
+    let last = JSON.stringify([cur.memo || "", cur.wake || "", cur.sleep || ""]);
+    const save = () => {
+      clearTimeout(timer); timer = 0;
+      const now = JSON.stringify([memo.value, wakeEl.value, sleepEl.value]);
+      if (now === last) return;
+      last = now;
+      store.setDayLog(day, {
+        memo: memo.value, wake: wakeEl.value || null, sleep: sleepEl.value || null,
+      });
+      render();
+    };
+    const queue = () => { clearTimeout(timer); timer = setTimeout(save, 500); };
+    [memo, wakeEl, sleepEl].forEach((el) => {
+      el.addEventListener("input", queue);
+      el.addEventListener("change", save);
+      el.addEventListener("blur", save);
+    });
 
     const h = KN.ui.sheet({
       title: `${label} の log`,
       content: body,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">保存</button>`),
+      // 自動で保存しているので、閉じるときに引き止めません。
+      guard: false,
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
+      onClose: save,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => {
-      store.setDayLog(day, {
-        memo: memo.value,
-        wake: body.querySelector(".js-wake").value || null,
-        sleep: body.querySelector(".js-sleep").value || null,
-      });
+      save();
       haptic();
-      KN.ui.toast("書きました");
       h.close();
-      render();
     });
   }
 
@@ -22084,9 +22239,11 @@ a.btn { text-decoration: none; }
     if (!list.length) {
       rows.append(node(html`
         <div class="empty">
-          ${U.raw(KN.emptyArt.donePad)}
+          ${/* 枠（.empty-art）に入れます。裸で置くと大きさの決まりが効かず、
+                原寸のまま出ます——「アイコンが大きすぎる」の正体はこれでした。 */""}
+          <div class="empty-art">${U.raw(KN.emptyArt.notebook)}</div>
           <p class="empty-title">${query.trim() ? "見つかりませんでした" : "まだ記録はありません"}</p>
-          <p class="empty-sub">読んだ本・学んだこと・思いついたことを、軽く。</p>
+          <p class="empty-text">読んだ本・学んだこと・思いついたことを、軽く。</p>
         </div>
       `));
     } else {
@@ -22178,7 +22335,7 @@ a.btn { text-decoration: none; }
 
         <label class="field">
           <span class="field-label">メモ</span>
-          <textarea class="textarea js-memo" rows="4" maxlength="300">${e ? e.memo : ""}</textarea>
+          <textarea class="textarea js-memo" rows="4">${e ? e.memo : ""}</textarea>
         </label>
       </div>
     `);
@@ -22411,14 +22568,30 @@ a.btn { text-decoration: none; }
     root.querySelector(".js-export").addEventListener("click", exportThisMonth);
 
     els.cal = calendar();
+    // 初めて開いたときも、今日の欄が待っているように。
+    store.ensureDayLog(U.todayKey());
     store.subscribe(() => { if (root && !root.hidden) render(); });
   }
 
+  /* 描き直している最中に、描き直しが始まらないように。
+
+     store を触ると subscribe が render を呼びます。描いている途中でそれが
+     起きると、内側の render が本体を空にしてから描き、外側は**その上に
+     もう一度**積みます——同じ行が二つ並びます（今日の行を用意する処理を
+     描画の中に置いたとき、実際にそうなりました）。 */
+  let rendering = false;
+
   function render() {
-    if (!root) return;
+    if (!root || rendering) return;
     const ym = curYm();
     const { year, month } = ymParts(ym);
 
+    /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
+       **その場**を見ているので、押した瞬間に頭まで飛ばされると、もう一度
+       同じところまで指で戻ることになります。位置を覚えて、組んだあとに返します。 */
+    const keepTop = root.scrollTop;
+
+    rendering = true;
     els.clear.hidden = !query;
     els.sub.textContent = viewDay ? U.formatDate(viewDay) : `${year}年${month + 1}月`;
     els.body.innerHTML = "";
@@ -22428,6 +22601,9 @@ a.btn { text-decoration: none; }
     els.body.append(monthRollup(ym));
     els.body.append(dailyLog(ym));
     els.body.append(entriesSection(ym));
+
+    if (keepTop) root.scrollTop = keepTop;
+    rendering = false;
   }
 
   /**
@@ -22450,13 +22626,23 @@ a.btn { text-decoration: none; }
     KN.ui.toast(`${ym} を書き出しました`);
   }
 
+  /* ＋ は二つのことを始められます（その日のことを書く／積み上げを一つ足す）。
+     どちらかに決め打ちすると、もう片方は画面のどこかを探すことになるので、
+     押したその場に二つ並べます。 */
   function dockButton() {
     const fab = node(html`
       <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="記録を書く">${icon("plus")}</button>
+        <button class="add-fab js-open-add" aria-label="書く" aria-haspopup="menu">${icon("plus")}</button>
       </div>
     `);
-    fab.querySelector(".js-open-add").addEventListener("click", () => openEntrySheet(null));
+    fab.querySelector(".js-open-add").addEventListener("click", (e) => {
+      e.stopPropagation();
+      KN.app.fabMenu(e.currentTarget, [
+        { label: "Daily Log", icon: "edit",
+          onPick: () => openLogSheet(viewDay || U.todayKey()) },
+        { label: "記録", icon: "book", onPick: () => openEntrySheet(null) },
+      ]);
+    });
     return fab;
   }
 
@@ -22482,6 +22668,11 @@ a.btn { text-decoration: none; }
 
   function onEnter() {
     watchResume();          // 一度だけ。戻ってきたことも合図にします。
+    /* 日が変わっていれば、その日の行を用意します。開いたときに今日の欄が
+       待っているように——描画の中ではなくここで呼ぶのは、store を触ると
+       描き直しが走るためです（上の rendering を参照）。 */
+    store.ensureDayLog(U.todayKey());
+    render();
     /* 置いた直後は、まだ届いていないことがあります（中継所のKVは結果整合で、
        伝わるまで少しかかる）。一度目が空なら、少し置いてもう一度だけ。 */
     peekRelay().then((res) => {
@@ -24341,6 +24532,7 @@ a.btn { text-decoration: none; }
   let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
   let kbTarget = null;       // 直前に動かした先（同じ先には、もう一度動かしません）。
   let kbField = null;        // いま追っている欄。
+  let kbMoved = false;       // **こちらが**動かしたか。ブラウザが動かしたぶんは戻しません。
 
   const KB_MARGIN = 10;      // 欄の下端と、可視領域の下端のあいだに残す、最小限のすきま。
 
@@ -24354,6 +24546,7 @@ a.btn { text-decoration: none; }
     const target = Math.round(root.scrollTop + over);
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
+    kbMoved = true;
     KN.app.glideTo(root, target);
   }
 
@@ -24367,8 +24560,19 @@ a.btn { text-decoration: none; }
        指を置いた時点（pointerdown、下の wireKeyboardScroll）の位置を
        覚えておき、ここで一度そこへ戻してから、こちらの計算だけを
        乗せます——動くのはこちらの分だけになります。 */
+    /* ブラウザ自身のスクロールを**巻き戻しません**。
+       ここにはかつて `root.scrollTop = kbScrollBase` がありました。こちらの
+       計算を「必要最小限」に保つための巻き戻しでしたが、画面の上では
+
+         ブラウザが欄を見せようと動かす → こちらが元に戻す → こちらが動かし直す
+
+       の三手が続けて起き、「一度上に動いてから戻ってくる」に見えます。
+       （二度指摘されたのはこれです。）
+
+       巻き戻しは要りません。nudgeIntoView は欄の**いまの位置**を測って
+       足りないぶんだけ動かすので、ブラウザが先に動かしていれば、その状態から
+       測って「もう見えている」と判断するだけです。動きは一度で済みます。 */
     if (kbScrollBase == null) kbScrollBase = root.scrollTop;
-    else root.scrollTop = kbScrollBase;
     kbField = field;
     kbTarget = null;
     /* ここではまだ動かしません。キーボードがこれから出る（＝可視領域が
@@ -24402,8 +24606,10 @@ a.btn { text-decoration: none; }
         const active = document.activeElement;
         const stillTyping = active && root.contains(active) && active.matches("input, textarea, select");
         if (stillTyping) return;
-        KN.app.glideTo(root, kbScrollBase);
-        kbScrollBase = null; kbTarget = null; kbField = null;
+        /* 戻すのは、**こちらが動かしたとき**だけです。ブラウザが欄を見せる
+           ために動かしたぶんまで戻すと、打ち終えた瞬間にまた画面が飛びます。 */
+        if (kbMoved) KN.app.glideTo(root, kbScrollBase);
+        kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
     /* キーボードの出入りは、可視領域（visualViewport）をその**過程で
@@ -25080,7 +25286,21 @@ a.btn { text-decoration: none; }
       onPick: (id) => { series = String(id || ""); render(); },
     });
 
-    sec.querySelector(".js-chart").append(chartEl || chart());
+    const drawn = chartEl || chart();
+    sec.querySelector(".js-chart").append(drawn);
+
+    /* 線が引けない日（記録が1日ぶん以下）は、「並べて」の札を出しません。
+
+       .diet-plot は横並びで、右のこの列は札を六つ縦に積みます——173px ほど
+       あります。左が二行のお知らせだけのとき、その差がまるごと空白として
+       残っていました（「体重の下に変な隙間」の正体）。
+
+       高さのためだけではありません。重ねる相手の線が無いのに「並べて」を
+       選ばせるのは、押しても何も起きない札を置くということです。 */
+    const isEmpty = !!(drawn.classList && drawn.classList.contains("diet-empty"));
+    const withCol = sec.querySelector(".diet-with");
+    if (withCol) withCol.hidden = isEmpty;
+
     host.append(sec);
   }
 
@@ -26298,7 +26518,18 @@ a.btn { text-decoration: none; }
       "次の「食事メモ」から、その日に食べたものの栄養を推定してください。",
       "",
       "【条件】",
-      "・お酒（アルコール飲料）は計算に入れないでください。別に記録しています。",
+      /* お酒は「見なかったこと」にしていましたが、その日のエネルギーの
+         いちばん大きな一角になる日があります。数は【今日の記録】で渡すので、
+         **評価と気づいたことでは必ず織り込んで**もらいます。
+
+         ただし食品ごとの行と合計には入れません——アプリが摂取カロリーに
+         お酒のぶんを自分で足しているので（画面の「＋お酒 Nkcal」）、
+         向こうでも足すと二重になります。数える場所は一つだけにします。 */
+      "・お酒（アルコール飲料）は、食品ごとの行と『摂取カロリー』の合計には"
+        + "含めないでください（アプリ側で別に加算しています）。",
+      "・ただし【今日の記録】の「飲酒」に、その日のお酒の量とカロリーが書いてあります。"
+        + "エネルギー収支の評価と気づいたことでは、**お酒のぶんも合わせた一日**として"
+        + "見てください（食事だけの評価にしないでください）。",
       "・食品の区切りは、スペース・読点（、）・中黒（・）・カンマ・スラッシュ・改行など、"
         + "どれでもかまいません。区切り記号にかかわらず、別々の食品として扱ってください。",
       "・商品名やメーカー名など、具体的な市販食品はWeb検索して栄養成分を確認してください。"
@@ -26651,9 +26882,12 @@ a.btn { text-decoration: none; }
     if (card.steps != null) rows.push(`歩数: ${Math.round(card.steps)}歩`);
     if (card.burned != null) rows.push(`総消費カロリー: ${Math.round(card.burned)}kcal`);
     if (card.sleep != null) rows.push(`睡眠: ${hm(card.sleep)}`);
+    /* お酒は量だけでなく kcal も渡します。渡さないまま「お酒も含めて見て」と
+       頼んでも、向こうは数を持っていないので、評価に混ぜようがありません。 */
     rows.push(card.drinkTotals
       ? `飲酒: 純アルコール${card.drinkTotals.alcoholG}g`
         + `（目安${alcoholGuide()}gの${Math.round(card.drinkTotals.alcoholG / alcoholGuide() * 100)}%）`
+        + ` ／ ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal}kcal`
       : "飲酒: なし");
     return rows.join("\n");
   }
@@ -27066,19 +27300,42 @@ a.btn { text-decoration: none; }
      ただし**打ち消せる形**にします。三桁の整数（105kgなど）を書きたい
      ときに、こちらの都合で書けなくなるのは困ります——入った点を自分で
      消せば、その欄では以後もう入れません。 */
-  function autoDecimal(input) {
+  /**
+   * 三桁打ったら小数点を入れます（573 → 57.3）。
+   *
+   * next を渡すと、点を入れたところで**次の欄へ移ります**。体重を打ち終えた
+   * 合図はその瞬間にはっきり出ているので、指を持ち上げて体脂肪の枠を狙う
+   * 一手を省けます。自分で点を打った人（68.4）も同じ扱いにします——
+   * 「打ち終えた」ことに変わりはないので。
+   */
+  function autoDecimal(input, next) {
     let stop = false;
     let hadDot = input.value.includes(".");
+    const advance = () => {
+      if (!next) return;
+      /* 一拍おきます。iOS はこの入力の直後にまだ自分の仕事（変換の確定や
+         キーボードの差し替え）をしていて、その最中に focus を移すと
+         移った先の枠にキャレットが乗りません。 */
+      setTimeout(() => { if (!next.value) KN.ui.focusNow(next); }, 60);
+    };
     input.addEventListener("input", (e) => {
       const v = input.value;
       const del = !!(e && e.inputType && e.inputType.indexOf("delete") === 0);
       if (del && hadDot && !v.includes(".")) stop = true;   // 点を自分で外した
-      hadDot = v.includes(".");
-      if (stop || del || hadDot) return;
+      const nowDot = v.includes(".");
+      // 自分で点を打って、小数第一位まで入った（68.4）。それも打ち終わり。
+      if (!del && !hadDot && nowDot === false) { /* まだ点なし。下で見ます */ }
+      hadDot = nowDot;
+      if (stop || del) return;
+      if (hadDot) {
+        if (/^\d{2,3}\.\d$/.test(v)) advance();
+        return;
+      }
       if (!/^\d{3}$/.test(v)) return;
       input.value = v.slice(0, 2) + "." + v.slice(2);
       hadDot = true;
       try { input.setSelectionRange(input.value.length, input.value.length); } catch (err) { /* type=number など */ }
+      advance();
     });
   }
 
@@ -27148,8 +27405,10 @@ a.btn { text-decoration: none; }
 
     const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true });
     const kgEl = body.querySelector(".js-kg");
-    autoDecimal(kgEl);
-    autoDecimal(body.querySelector(".js-fat"));
+    const fatEl = body.querySelector(".js-fat");
+    // 体重を打ち終えたら、そのまま体脂肪へ。
+    autoDecimal(kgEl, fatEl);
+    autoDecimal(fatEl);
     if (!w) KN.ui.focusNow(kgEl);
 
     const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
@@ -28270,11 +28529,20 @@ distance=6.0km</pre>
   function dockButton() {
     const fab = node(html`
       <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="食事を記録">${icon("plus")}</button>
+        <button class="add-fab js-open-add" aria-label="記録する" aria-haspopup="menu">${icon("plus")}</button>
       </div>
     `);
-    // いちばん多い操作は食事です。体重は日に一度で、画面の一番上にあります。
-    fab.querySelector(".js-open-add").addEventListener("click", () => openMealMemoSheet(curDay()));
+    /* ＋ から始められることは三つあります。いちばん多いのは食事ですが、
+       からだ も 体重 も、これまでは画面を探して該当の枠を押しにいくしか
+       ありませんでした——押したその場に三つ並べます（使う回数の多い順）。 */
+    fab.querySelector(".js-open-add").addEventListener("click", (e) => {
+      e.stopPropagation();
+      KN.app.fabMenu(e.currentTarget, [
+        { label: "今日の食事", icon: "meal", onPick: () => openMealMemoSheet(curDay()) },
+        { label: "今日のからだ", icon: "steps", onPick: () => openBodySheet(curDay()) },
+        { label: "体重", icon: "scale", onPick: () => openWeightSheet(null, curDay()) },
+      ]);
+    });
     return fab;
   }
 
@@ -32020,6 +32288,70 @@ distance=6.0km</pre>
 
   /** いま開いている画面。下に引いたときに、誰に聞けばいいかを知るため。 */
   KN.app.activeScreen = () => active;
+
+  /* ---------------- ＋ の上に出る、行き先の選択 ----------------
+
+     ＋ が二つ以上のことを始められる画面（daily・ダイエット）で使います。
+     押すと**その場**——親指のすぐ上——に選択肢が立ち上がります。シートを
+     開いて選ばせると、選ぶために一枚めくり、選んでからもう一枚めくることに
+     なるので、一手ぶん遠くなります。
+
+     dock は画面を切り替えるたびに組み直されるので、開いたままの札が別の
+     画面へ持ち越されることはありません。 */
+  function fabMenu(fab, items) {
+    const dock = document.getElementById("dock");
+    if (!dock || dock.querySelector(".fab-menu")) return closeFabMenu();
+
+    const menu = node(html`<div class="fab-menu" role="menu"></div>`);
+    items.forEach((it, i) => {
+      const b = node(html`
+        <button type="button" class="fab-menu-b" role="menuitem" style="--i:${String(i)}">
+          <span class="fab-menu-label">${it.label}</span>
+          <span class="fab-menu-ico">${icon(it.icon)}</span>
+        </button>
+      `);
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeFabMenu();
+        haptic();
+        it.onPick();
+      });
+      menu.append(b);
+    });
+    dock.insertBefore(menu, dock.firstChild);
+    dock.classList.add("is-menu");
+    fab.classList.add("is-open");
+    requestAnimationFrame(() => menu.classList.add("is-on"));
+
+    /* 外を押したら閉じます。＋そのものは自分で開け閉めするので外します
+       （ここで拾うと、閉じたそばから開き直します）。 */
+    const away = (e) => { if (!e.target.closest(".fab-menu, .add-fab")) closeFabMenu(); };
+    const esc = (e) => { if (e.key === "Escape") closeFabMenu(); };
+    setTimeout(() => {
+      document.addEventListener("pointerdown", away, true);
+      document.addEventListener("keydown", esc);
+    }, 0);
+    closeFabMenu.teardown = () => {
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }
+
+  function closeFabMenu() {
+    const dock = document.getElementById("dock");
+    if (!dock) return;
+    const menu = dock.querySelector(".fab-menu");
+    const fab = dock.querySelector(".add-fab");
+    if (fab) fab.classList.remove("is-open");
+    dock.classList.remove("is-menu");
+    if (closeFabMenu.teardown) { closeFabMenu.teardown(); closeFabMenu.teardown = null; }
+    if (!menu) return;
+    menu.classList.remove("is-on");
+    setTimeout(() => menu.remove(), 200);
+  }
+
+  KN.app.fabMenu = fabMenu;
+  KN.app.closeFabMenu = closeFabMenu;
 
   /** True while the user is part-way through something a reload would lose. */
   function isBusy() {

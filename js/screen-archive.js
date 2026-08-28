@@ -317,9 +317,15 @@
           </span>
           <span class="arc-log-text">
             <span class="arc-log-memo">${orDash(d.memo)}</span>
-            <span class="arc-log-times">起 ${orDash(d.wake)} ・ 寝 ${orDash(d.sleep)}</span>
-            <span class="arc-log-meta">作成 ${U.formatStamp(d.createdAt)}${
-              edited ? ` ・ 更新 ${U.formatStamp(d.updatedAt)}` : ""}</span>
+            ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
+                  （作成・更新）が、数字として同じ顔で並んでいました。前者は
+                  中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
+                  中身のほうに先に行くようにします。 */""}
+            <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>
+            <span class="arc-log-meta">
+              <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
+              ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
+            </span>
           </span>
         </button>
       `);
@@ -338,12 +344,14 @@
     const dt = U.dayDate(day);
     const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
 
+    /* 文字数の上限は置きません。前は200字で止めて残りを数えていましたが、
+       書ける量をこちらが決める理由がありません——短く書きたい人は短く書きます。
+       数えるのをやめると、書いている最中に「あと何字」が目に入らなくなります。 */
     const body = node(html`
       <div class="stack" style="gap:16px">
         <label class="field">
           <span class="field-label">その日あったこと・したこと</span>
-          <textarea class="textarea js-memo" rows="5" maxlength="200">${cur.memo || ""}</textarea>
-          <span class="field-hint js-count"></span>
+          <textarea class="textarea js-memo" rows="5">${cur.memo || ""}</textarea>
         </label>
         <div class="arc-times">
           <label class="field">
@@ -359,26 +367,43 @@
     `);
 
     const memo = body.querySelector(".js-memo");
-    const count = body.querySelector(".js-count");
-    const paint = () => { count.textContent = `${memo.value.length} / 200`; };
-    memo.addEventListener("input", paint);
-    paint();
+    const wakeEl = body.querySelector(".js-wake");
+    const sleepEl = body.querySelector(".js-sleep");
+
+    /* 打った先から保存します。「保存」を押さずに閉じても残る——押し忘れで
+       消えるほうが、間違って残るよりずっと痛いので（食事の四枠と同じ考え）。
+       打つたびに書くと重いので、手が止まってから 500ms 後に一度だけ。 */
+    let timer = 0;
+    let last = JSON.stringify([cur.memo || "", cur.wake || "", cur.sleep || ""]);
+    const save = () => {
+      clearTimeout(timer); timer = 0;
+      const now = JSON.stringify([memo.value, wakeEl.value, sleepEl.value]);
+      if (now === last) return;
+      last = now;
+      store.setDayLog(day, {
+        memo: memo.value, wake: wakeEl.value || null, sleep: sleepEl.value || null,
+      });
+      render();
+    };
+    const queue = () => { clearTimeout(timer); timer = setTimeout(save, 500); };
+    [memo, wakeEl, sleepEl].forEach((el) => {
+      el.addEventListener("input", queue);
+      el.addEventListener("change", save);
+      el.addEventListener("blur", save);
+    });
 
     const h = KN.ui.sheet({
       title: `${label} の log`,
       content: body,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">保存</button>`),
+      // 自動で保存しているので、閉じるときに引き止めません。
+      guard: false,
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
+      onClose: save,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => {
-      store.setDayLog(day, {
-        memo: memo.value,
-        wake: body.querySelector(".js-wake").value || null,
-        sleep: body.querySelector(".js-sleep").value || null,
-      });
+      save();
       haptic();
-      KN.ui.toast("書きました");
       h.close();
-      render();
     });
   }
 
@@ -499,9 +524,11 @@
     if (!list.length) {
       rows.append(node(html`
         <div class="empty">
-          ${U.raw(KN.emptyArt.donePad)}
+          ${/* 枠（.empty-art）に入れます。裸で置くと大きさの決まりが効かず、
+                原寸のまま出ます——「アイコンが大きすぎる」の正体はこれでした。 */""}
+          <div class="empty-art">${U.raw(KN.emptyArt.notebook)}</div>
           <p class="empty-title">${query.trim() ? "見つかりませんでした" : "まだ記録はありません"}</p>
-          <p class="empty-sub">読んだ本・学んだこと・思いついたことを、軽く。</p>
+          <p class="empty-text">読んだ本・学んだこと・思いついたことを、軽く。</p>
         </div>
       `));
     } else {
@@ -593,7 +620,7 @@
 
         <label class="field">
           <span class="field-label">メモ</span>
-          <textarea class="textarea js-memo" rows="4" maxlength="300">${e ? e.memo : ""}</textarea>
+          <textarea class="textarea js-memo" rows="4">${e ? e.memo : ""}</textarea>
         </label>
       </div>
     `);
@@ -826,14 +853,30 @@
     root.querySelector(".js-export").addEventListener("click", exportThisMonth);
 
     els.cal = calendar();
+    // 初めて開いたときも、今日の欄が待っているように。
+    store.ensureDayLog(U.todayKey());
     store.subscribe(() => { if (root && !root.hidden) render(); });
   }
 
+  /* 描き直している最中に、描き直しが始まらないように。
+
+     store を触ると subscribe が render を呼びます。描いている途中でそれが
+     起きると、内側の render が本体を空にしてから描き、外側は**その上に
+     もう一度**積みます——同じ行が二つ並びます（今日の行を用意する処理を
+     描画の中に置いたとき、実際にそうなりました）。 */
+  let rendering = false;
+
   function render() {
-    if (!root) return;
+    if (!root || rendering) return;
     const ym = curYm();
     const { year, month } = ymParts(ym);
 
+    /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
+       **その場**を見ているので、押した瞬間に頭まで飛ばされると、もう一度
+       同じところまで指で戻ることになります。位置を覚えて、組んだあとに返します。 */
+    const keepTop = root.scrollTop;
+
+    rendering = true;
     els.clear.hidden = !query;
     els.sub.textContent = viewDay ? U.formatDate(viewDay) : `${year}年${month + 1}月`;
     els.body.innerHTML = "";
@@ -843,6 +886,9 @@
     els.body.append(monthRollup(ym));
     els.body.append(dailyLog(ym));
     els.body.append(entriesSection(ym));
+
+    if (keepTop) root.scrollTop = keepTop;
+    rendering = false;
   }
 
   /**
@@ -865,13 +911,23 @@
     KN.ui.toast(`${ym} を書き出しました`);
   }
 
+  /* ＋ は二つのことを始められます（その日のことを書く／積み上げを一つ足す）。
+     どちらかに決め打ちすると、もう片方は画面のどこかを探すことになるので、
+     押したその場に二つ並べます。 */
   function dockButton() {
     const fab = node(html`
       <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="記録を書く">${icon("plus")}</button>
+        <button class="add-fab js-open-add" aria-label="書く" aria-haspopup="menu">${icon("plus")}</button>
       </div>
     `);
-    fab.querySelector(".js-open-add").addEventListener("click", () => openEntrySheet(null));
+    fab.querySelector(".js-open-add").addEventListener("click", (e) => {
+      e.stopPropagation();
+      KN.app.fabMenu(e.currentTarget, [
+        { label: "Daily Log", icon: "edit",
+          onPick: () => openLogSheet(viewDay || U.todayKey()) },
+        { label: "記録", icon: "book", onPick: () => openEntrySheet(null) },
+      ]);
+    });
     return fab;
   }
 
@@ -897,6 +953,11 @@
 
   function onEnter() {
     watchResume();          // 一度だけ。戻ってきたことも合図にします。
+    /* 日が変わっていれば、その日の行を用意します。開いたときに今日の欄が
+       待っているように——描画の中ではなくここで呼ぶのは、store を触ると
+       描き直しが走るためです（上の rendering を参照）。 */
+    store.ensureDayLog(U.todayKey());
+    render();
     /* 置いた直後は、まだ届いていないことがあります（中継所のKVは結果整合で、
        伝わるまで少しかかる）。一度目が空なら、少し置いてもう一度だけ。 */
     peekRelay().then((res) => {

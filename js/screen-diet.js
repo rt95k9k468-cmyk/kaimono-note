@@ -150,6 +150,7 @@
   let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
   let kbTarget = null;       // 直前に動かした先（同じ先には、もう一度動かしません）。
   let kbField = null;        // いま追っている欄。
+  let kbMoved = false;       // **こちらが**動かしたか。ブラウザが動かしたぶんは戻しません。
 
   const KB_MARGIN = 10;      // 欄の下端と、可視領域の下端のあいだに残す、最小限のすきま。
 
@@ -163,6 +164,7 @@
     const target = Math.round(root.scrollTop + over);
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
+    kbMoved = true;
     KN.app.glideTo(root, target);
   }
 
@@ -176,8 +178,19 @@
        指を置いた時点（pointerdown、下の wireKeyboardScroll）の位置を
        覚えておき、ここで一度そこへ戻してから、こちらの計算だけを
        乗せます——動くのはこちらの分だけになります。 */
+    /* ブラウザ自身のスクロールを**巻き戻しません**。
+       ここにはかつて `root.scrollTop = kbScrollBase` がありました。こちらの
+       計算を「必要最小限」に保つための巻き戻しでしたが、画面の上では
+
+         ブラウザが欄を見せようと動かす → こちらが元に戻す → こちらが動かし直す
+
+       の三手が続けて起き、「一度上に動いてから戻ってくる」に見えます。
+       （二度指摘されたのはこれです。）
+
+       巻き戻しは要りません。nudgeIntoView は欄の**いまの位置**を測って
+       足りないぶんだけ動かすので、ブラウザが先に動かしていれば、その状態から
+       測って「もう見えている」と判断するだけです。動きは一度で済みます。 */
     if (kbScrollBase == null) kbScrollBase = root.scrollTop;
-    else root.scrollTop = kbScrollBase;
     kbField = field;
     kbTarget = null;
     /* ここではまだ動かしません。キーボードがこれから出る（＝可視領域が
@@ -211,8 +224,10 @@
         const active = document.activeElement;
         const stillTyping = active && root.contains(active) && active.matches("input, textarea, select");
         if (stillTyping) return;
-        KN.app.glideTo(root, kbScrollBase);
-        kbScrollBase = null; kbTarget = null; kbField = null;
+        /* 戻すのは、**こちらが動かしたとき**だけです。ブラウザが欄を見せる
+           ために動かしたぶんまで戻すと、打ち終えた瞬間にまた画面が飛びます。 */
+        if (kbMoved) KN.app.glideTo(root, kbScrollBase);
+        kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
     /* キーボードの出入りは、可視領域（visualViewport）をその**過程で
@@ -889,7 +904,21 @@
       onPick: (id) => { series = String(id || ""); render(); },
     });
 
-    sec.querySelector(".js-chart").append(chartEl || chart());
+    const drawn = chartEl || chart();
+    sec.querySelector(".js-chart").append(drawn);
+
+    /* 線が引けない日（記録が1日ぶん以下）は、「並べて」の札を出しません。
+
+       .diet-plot は横並びで、右のこの列は札を六つ縦に積みます——173px ほど
+       あります。左が二行のお知らせだけのとき、その差がまるごと空白として
+       残っていました（「体重の下に変な隙間」の正体）。
+
+       高さのためだけではありません。重ねる相手の線が無いのに「並べて」を
+       選ばせるのは、押しても何も起きない札を置くということです。 */
+    const isEmpty = !!(drawn.classList && drawn.classList.contains("diet-empty"));
+    const withCol = sec.querySelector(".diet-with");
+    if (withCol) withCol.hidden = isEmpty;
+
     host.append(sec);
   }
 
@@ -2107,7 +2136,18 @@
       "次の「食事メモ」から、その日に食べたものの栄養を推定してください。",
       "",
       "【条件】",
-      "・お酒（アルコール飲料）は計算に入れないでください。別に記録しています。",
+      /* お酒は「見なかったこと」にしていましたが、その日のエネルギーの
+         いちばん大きな一角になる日があります。数は【今日の記録】で渡すので、
+         **評価と気づいたことでは必ず織り込んで**もらいます。
+
+         ただし食品ごとの行と合計には入れません——アプリが摂取カロリーに
+         お酒のぶんを自分で足しているので（画面の「＋お酒 Nkcal」）、
+         向こうでも足すと二重になります。数える場所は一つだけにします。 */
+      "・お酒（アルコール飲料）は、食品ごとの行と『摂取カロリー』の合計には"
+        + "含めないでください（アプリ側で別に加算しています）。",
+      "・ただし【今日の記録】の「飲酒」に、その日のお酒の量とカロリーが書いてあります。"
+        + "エネルギー収支の評価と気づいたことでは、**お酒のぶんも合わせた一日**として"
+        + "見てください（食事だけの評価にしないでください）。",
       "・食品の区切りは、スペース・読点（、）・中黒（・）・カンマ・スラッシュ・改行など、"
         + "どれでもかまいません。区切り記号にかかわらず、別々の食品として扱ってください。",
       "・商品名やメーカー名など、具体的な市販食品はWeb検索して栄養成分を確認してください。"
@@ -2460,9 +2500,12 @@
     if (card.steps != null) rows.push(`歩数: ${Math.round(card.steps)}歩`);
     if (card.burned != null) rows.push(`総消費カロリー: ${Math.round(card.burned)}kcal`);
     if (card.sleep != null) rows.push(`睡眠: ${hm(card.sleep)}`);
+    /* お酒は量だけでなく kcal も渡します。渡さないまま「お酒も含めて見て」と
+       頼んでも、向こうは数を持っていないので、評価に混ぜようがありません。 */
     rows.push(card.drinkTotals
       ? `飲酒: 純アルコール${card.drinkTotals.alcoholG}g`
         + `（目安${alcoholGuide()}gの${Math.round(card.drinkTotals.alcoholG / alcoholGuide() * 100)}%）`
+        + ` ／ ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal}kcal`
       : "飲酒: なし");
     return rows.join("\n");
   }
@@ -2875,19 +2918,42 @@
      ただし**打ち消せる形**にします。三桁の整数（105kgなど）を書きたい
      ときに、こちらの都合で書けなくなるのは困ります——入った点を自分で
      消せば、その欄では以後もう入れません。 */
-  function autoDecimal(input) {
+  /**
+   * 三桁打ったら小数点を入れます（573 → 57.3）。
+   *
+   * next を渡すと、点を入れたところで**次の欄へ移ります**。体重を打ち終えた
+   * 合図はその瞬間にはっきり出ているので、指を持ち上げて体脂肪の枠を狙う
+   * 一手を省けます。自分で点を打った人（68.4）も同じ扱いにします——
+   * 「打ち終えた」ことに変わりはないので。
+   */
+  function autoDecimal(input, next) {
     let stop = false;
     let hadDot = input.value.includes(".");
+    const advance = () => {
+      if (!next) return;
+      /* 一拍おきます。iOS はこの入力の直後にまだ自分の仕事（変換の確定や
+         キーボードの差し替え）をしていて、その最中に focus を移すと
+         移った先の枠にキャレットが乗りません。 */
+      setTimeout(() => { if (!next.value) KN.ui.focusNow(next); }, 60);
+    };
     input.addEventListener("input", (e) => {
       const v = input.value;
       const del = !!(e && e.inputType && e.inputType.indexOf("delete") === 0);
       if (del && hadDot && !v.includes(".")) stop = true;   // 点を自分で外した
-      hadDot = v.includes(".");
-      if (stop || del || hadDot) return;
+      const nowDot = v.includes(".");
+      // 自分で点を打って、小数第一位まで入った（68.4）。それも打ち終わり。
+      if (!del && !hadDot && nowDot === false) { /* まだ点なし。下で見ます */ }
+      hadDot = nowDot;
+      if (stop || del) return;
+      if (hadDot) {
+        if (/^\d{2,3}\.\d$/.test(v)) advance();
+        return;
+      }
       if (!/^\d{3}$/.test(v)) return;
       input.value = v.slice(0, 2) + "." + v.slice(2);
       hadDot = true;
       try { input.setSelectionRange(input.value.length, input.value.length); } catch (err) { /* type=number など */ }
+      advance();
     });
   }
 
@@ -2957,8 +3023,10 @@
 
     const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true });
     const kgEl = body.querySelector(".js-kg");
-    autoDecimal(kgEl);
-    autoDecimal(body.querySelector(".js-fat"));
+    const fatEl = body.querySelector(".js-fat");
+    // 体重を打ち終えたら、そのまま体脂肪へ。
+    autoDecimal(kgEl, fatEl);
+    autoDecimal(fatEl);
     if (!w) KN.ui.focusNow(kgEl);
 
     const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
@@ -4079,11 +4147,20 @@ distance=6.0km</pre>
   function dockButton() {
     const fab = node(html`
       <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="食事を記録">${icon("plus")}</button>
+        <button class="add-fab js-open-add" aria-label="記録する" aria-haspopup="menu">${icon("plus")}</button>
       </div>
     `);
-    // いちばん多い操作は食事です。体重は日に一度で、画面の一番上にあります。
-    fab.querySelector(".js-open-add").addEventListener("click", () => openMealMemoSheet(curDay()));
+    /* ＋ から始められることは三つあります。いちばん多いのは食事ですが、
+       からだ も 体重 も、これまでは画面を探して該当の枠を押しにいくしか
+       ありませんでした——押したその場に三つ並べます（使う回数の多い順）。 */
+    fab.querySelector(".js-open-add").addEventListener("click", (e) => {
+      e.stopPropagation();
+      KN.app.fabMenu(e.currentTarget, [
+        { label: "今日の食事", icon: "meal", onPick: () => openMealMemoSheet(curDay()) },
+        { label: "今日のからだ", icon: "steps", onPick: () => openBodySheet(curDay()) },
+        { label: "体重", icon: "scale", onPick: () => openWeightSheet(null, curDay()) },
+      ]);
+    });
     return fab;
   }
 

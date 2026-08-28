@@ -473,8 +473,15 @@
     });
     out.archive.days = out.archive.days.filter((d) => d && d.date);
     out.archive.days.forEach((d) => {
-      if (!d.updatedAt) d.updatedAt = d.date;
-      if (!d.createdAt) d.createdAt = d.updatedAt;
+      /* 中身のある日だけ、持っていない時刻を日付で埋めます。空の行は
+         「日が変わったので用意しただけ」の今日なので、null のまま——
+         画面では「-」と出ます。ここで埋めると、書いてもいない日に
+         作成時刻が付きます。 */
+      const written = !!(String(d.memo || "").trim() || d.wake || d.sleep);
+      if (written) {
+        if (!d.updatedAt) d.updatedAt = d.date;
+        if (!d.createdAt) d.createdAt = d.updatedAt;
+      }
       /* この機能より前に書かれた時刻は、ぜんぶ人が打ったものです——
          取り込みに上書きさせないよう manual としておきます。 */
       if (d.wakeSource !== "health" && d.wakeSource !== "manual") d.wakeSource = "manual";
@@ -2019,6 +2026,33 @@
   const dayLog = (day) => archive().days.find((d) => d.date === day) || null;
 
   /**
+   * その日の行を、無ければ用意します。
+   *
+   * 日が変わったら、その日の欄が**最初からそこにある**ようにするためです。
+   * 前は何か書くまで行そのものが無く、書き始めるには「今日を書く」を押して
+   * シートを開く必要がありました。日誌は、開いたら今日の欄が待っている
+   * ほうが自然です。
+   *
+   * 中身は空のまま——内容も時刻も「-」で出ます。setDayLog の「空なら消す」
+   * とは別の道を通します（あちらは人が消したときの話で、こちらは
+   * 「まだ何も書いていない今日」を置く話なので）。
+   */
+  function ensureDayLog(day) {
+    const d = dayKeyOf(day);
+    if (dayLog(d)) return dayLog(d);
+    update((s) => {
+      if (s.archive.days.some((x) => x.date === d)) return;
+      s.archive.days.push({
+        date: d, memo: "", wake: null, sleep: null,
+        wakeSource: "manual", sleepSource: "manual",
+        createdAt: null,      // まだ人が書いていないので、作成時刻も持ちません（「-」で出ます）
+        updatedAt: null,
+      });
+    });
+    return dayLog(d);
+  }
+
+  /**
    * 一日ぶんを書き換えます。**空にしたら行ごと消えます**——書きかけの空行が
    * 溜まると、月を眺めたときに「何も書いていない日」と「空の行がある日」が
    * 見分けられなくなります（setDayMemo と同じ考え方）。
@@ -2068,19 +2102,24 @@
       const empty = !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
-        next.updatedAt = stamp();
+        /* 「更新」は**人が書き直したこと**を言う印です。毎朝の取り込みで
+           動かすと、触ってもいない日が更新済みになり、何も言わなくなります。
+           取り込みは更新日時に触れません。 */
+        next.updatedAt = from === "manual" ? stamp() : (cur ? cur.updatedAt : stamp());
         s.archive.days.push(next);
       }
     });
     return dayLog(day);
   }
 
-  /* 月ぶんの地の文。**書いた・直した順**（entries と同じ byRecent）——
-     カレンダー上の日付順ではありません。古い日に一行足せば、それがいちばん
-     上に来ます。「いつのことか」より「いつ書いたか」を先に見せる、という
-     考え方は積み上がり側と揃えてあります。 */
+  /* 月ぶんの地の文。**日付の新しい順**です。
+     いちどは「書いた・直した順」にしていましたが、これは日誌には向きません
+     ——26日に一行足しただけで、26日が27日の上に来ます。暦の並びが崩れると、
+     どこを読んでいるのか分からなくなる。積み上がり（entries）が更新順なのは
+     一つ一つが独立しているからで、日誌は日付そのものが背骨です。 */
   const daysOfMonth = (ym) =>
-    archive().days.filter((d) => String(d.date).slice(0, 7) === ym).slice().sort(byRecent);
+    archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
   /**
    * 月ぶんを、まるごと一つの形にして返します。
@@ -2221,7 +2260,7 @@
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, daysOfMonth, exportMonth,
+    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
