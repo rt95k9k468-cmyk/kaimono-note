@@ -102,19 +102,23 @@
       if (label.dataset.sig !== t.label) { label.dataset.sig = t.label; label.textContent = t.label; }
     });
 
-    // The badge counts what is left to buy on this trip, and the star is what
-    // puts something on the trip. Nothing starred means nothing planned, so no
-    // badge — falling back to the whole list here would report a backlog the
-    // user never said they were buying.
+    /* 数える場所が二つあり、**数えるものが違います。**
+
+       アプリの絵の上（paintAppBadge）は、外から見えます。開いていなくても
+       目に入るので、そこに出していいのは「やると言って、まだやっていない」
+       だけ——★を付けた買い物と、今日の時刻が来たやること。買い物の一覧
+       ぜんぶを数えると、言ってもいない宿題を毎日突きつけることになります。
+
+       タブの上（ここ）は、アプリを開いているあいだだけ見えます。押した先に
+       何件あるかを言うだけなので、催促にはなりません。だから**そこにある
+       ぶんを数えます**。 */
     paintAppBadge();
 
-    paintTabBadge("list", tripCount());
+    paintTabBadge("list", listBadge());
+    paintTabBadge("todo", todoBadge());
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
-       体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。 */
-    // やること counts what is wanted today or already late. Something due next
-    // week is not a number you can act on today, and a tab that counts the
-    // whole backlog is a tab you learn to ignore.
-    paintTabBadge("todo", store.todosDue().length);
+       体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
+       daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
   }
 
   function paintTabBadge(tabId, count) {
@@ -141,8 +145,21 @@
      badge off the *notification* permission, so switching it on means asking
      for a permission whose dialog talks about notifications this app will
      never send. That is not a prompt to spring on anyone unasked. */
-  /** Left to buy on the trip being shopped now. */
+  /** Left to buy on the trip being shopped now. アプリの絵の上に出す数。 */
   const tripCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+
+  /* タブの上に出す数。
+
+     ★を付けているあいだは、その買い物のぶん（絵の上と同じ）。★が一つも
+     無いときは、まだ買っていないもの全部。「今回の買い物」を決めていない
+     人にとっては、そちらが「残っているもの」なので。 */
+  const listBadge = () => tripCount() || store.get().items.filter((i) => !i.checked).length;
+
+  /* やることは「今日ぶん」。時刻が来ているかは見ません——絵の上の数
+     （todosDue）は時刻まで見ますが、タブは押した先に何件あるかを言うだけで、
+     19時のやることも今日の一件だからです。期限を過ぎたものも入ります。 */
+  const todoBadge = () =>
+    store.openTodos().filter((t) => t.due && KN.util.daysUntil(t.due) <= 0).length;
 
   /* What the home-screen icon counts: this trip's shopping, plus the やること
      that are wanted today or are already late. Both are 「things I said I

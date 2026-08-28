@@ -340,7 +340,16 @@
       buildDaySlide(U.shiftDay(day, 1), { peek: true, chartEl: sharedChart.cloneNode(true) }),
     );
 
-    renderInsight(els.body.querySelector(".js-insight"));
+    /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
+       枠ごと消すので、目標だけが残ったときに上の仕切り線が浮きません。 */
+    const showInsight = store.get().settings.showInsight === true;
+    const lookCard = els.body.querySelector(".diet-look");
+    if (showInsight) renderInsight(els.body.querySelector(".js-insight"));
+    else if (lookCard) {
+      lookCard.querySelector(".js-insight").remove();
+      const rule = lookCard.querySelector(".divider");
+      if (rule) rule.remove();
+    }
     renderGoal(els.body.querySelector(".js-goal"), now);
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を

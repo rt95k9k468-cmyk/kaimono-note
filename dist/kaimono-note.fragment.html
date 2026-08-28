@@ -13698,7 +13698,11 @@ a.btn { text-decoration: none; }
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
       // looking at, not on one of the two.
-      settings: { theme: "auto", showChecked: true, layout: "rows" },
+      /* showInsight は既定で false です。「気づいたこと」は、標本が足りない
+         うちは当たり障りのないことしか言えません——出しておくと、画面の
+         一等地を「大したことを言っていない枠」が占めます。要ると思ったときに
+         設定から出せます。 */
+      settings: { theme: "auto", showChecked: true, layout: "rows", showInsight: false },
     };
   }
 
@@ -22983,6 +22987,21 @@ a.btn { text-decoration: none; }
       haptic();
       h.close();
     });
+
+    /* 開いたら、そのまま打てるようにします。
+
+       押してから枠を押し直して、さらにキーボードが出るのを待つ——三手です。
+       この画面を開く人は書きに来ているので、その三手を先に済ませておきます。
+
+       カーソルは**いちばん後ろ**へ。先頭に置くと、続きを書こうとした人が
+       毎回いちばん下まで指で送ることになります（日記は足していくものなので、
+       書き足す場所はいつも末尾です）。setSelectionRange を focus のあとに
+       呼ぶのは、focus が既定で全選択にする端末があるためです——選んだまま
+       打つと、書いてあったものが一文字で消えます。 */
+    KN.ui.focusNow(memo);
+    const end = memo.value.length;
+    try { memo.setSelectionRange(end, end); } catch (_) { /* time 欄などでは投げます */ }
+    memo.scrollTop = memo.scrollHeight;
   }
 
   /* ================================================================
@@ -25673,7 +25692,16 @@ a.btn { text-decoration: none; }
       buildDaySlide(U.shiftDay(day, 1), { peek: true, chartEl: sharedChart.cloneNode(true) }),
     );
 
-    renderInsight(els.body.querySelector(".js-insight"));
+    /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
+       枠ごと消すので、目標だけが残ったときに上の仕切り線が浮きません。 */
+    const showInsight = store.get().settings.showInsight === true;
+    const lookCard = els.body.querySelector(".diet-look");
+    if (showInsight) renderInsight(els.body.querySelector(".js-insight"));
+    else if (lookCard) {
+      lookCard.querySelector(".js-insight").remove();
+      const rule = lookCard.querySelector(".divider");
+      if (rule) rule.remove();
+    }
     renderGoal(els.body.querySelector(".js-goal"), now);
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
@@ -31787,6 +31815,15 @@ distance=6.0km</pre>
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
+          <button class="row js-insight">
+            <span class="row-main">
+              <span class="row-title">気づいたこと</span>
+              <span class="row-sub">${store.get().settings.showInsight === true
+                ? "ダイエットの画面に、体重と食事から読み取れたことを出します"
+                : "出しません（標本が足りないうちは、当たり障りのないことしか言えないので）"}</span>
+            </span>
+            <span class="row-value">${store.get().settings.showInsight === true ? "オン" : "オフ"}</span>
+          </button>
           <button class="row js-ai">
             <span class="row-main">
               <span class="row-title">AIの窓口</span>
@@ -31815,6 +31852,12 @@ distance=6.0km</pre>
       store.update((s) => { s.settings.dietAutoSync = off; });
       render();
       KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
+    });
+    wrap.querySelector(".js-insight").addEventListener("click", () => {
+      const on = store.get().settings.showInsight !== true;
+      store.update((s) => { s.settings.showInsight = on; });
+      render();
+      KN.ui.toast(on ? "気づいたことを出します" : "気づいたことを出しません");
     });
     wrap.querySelector(".js-relay").addEventListener("click", openRelaySheet);
     wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
@@ -32368,19 +32411,23 @@ distance=6.0km</pre>
       if (label.dataset.sig !== t.label) { label.dataset.sig = t.label; label.textContent = t.label; }
     });
 
-    // The badge counts what is left to buy on this trip, and the star is what
-    // puts something on the trip. Nothing starred means nothing planned, so no
-    // badge — falling back to the whole list here would report a backlog the
-    // user never said they were buying.
+    /* 数える場所が二つあり、**数えるものが違います。**
+
+       アプリの絵の上（paintAppBadge）は、外から見えます。開いていなくても
+       目に入るので、そこに出していいのは「やると言って、まだやっていない」
+       だけ——★を付けた買い物と、今日の時刻が来たやること。買い物の一覧
+       ぜんぶを数えると、言ってもいない宿題を毎日突きつけることになります。
+
+       タブの上（ここ）は、アプリを開いているあいだだけ見えます。押した先に
+       何件あるかを言うだけなので、催促にはなりません。だから**そこにある
+       ぶんを数えます**。 */
     paintAppBadge();
 
-    paintTabBadge("list", tripCount());
+    paintTabBadge("list", listBadge());
+    paintTabBadge("todo", todoBadge());
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
-       体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。 */
-    // やること counts what is wanted today or already late. Something due next
-    // week is not a number you can act on today, and a tab that counts the
-    // whole backlog is a tab you learn to ignore.
-    paintTabBadge("todo", store.todosDue().length);
+       体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
+       daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
   }
 
   function paintTabBadge(tabId, count) {
@@ -32407,8 +32454,21 @@ distance=6.0km</pre>
      badge off the *notification* permission, so switching it on means asking
      for a permission whose dialog talks about notifications this app will
      never send. That is not a prompt to spring on anyone unasked. */
-  /** Left to buy on the trip being shopped now. */
+  /** Left to buy on the trip being shopped now. アプリの絵の上に出す数。 */
   const tripCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
+
+  /* タブの上に出す数。
+
+     ★を付けているあいだは、その買い物のぶん（絵の上と同じ）。★が一つも
+     無いときは、まだ買っていないもの全部。「今回の買い物」を決めていない
+     人にとっては、そちらが「残っているもの」なので。 */
+  const listBadge = () => tripCount() || store.get().items.filter((i) => !i.checked).length;
+
+  /* やることは「今日ぶん」。時刻が来ているかは見ません——絵の上の数
+     （todosDue）は時刻まで見ますが、タブは押した先に何件あるかを言うだけで、
+     19時のやることも今日の一件だからです。期限を過ぎたものも入ります。 */
+  const todoBadge = () =>
+    store.openTodos().filter((t) => t.due && KN.util.daysUntil(t.due) <= 0).length;
 
   /* What the home-screen icon counts: this trip's shopping, plus the やること
      that are wanted today or are already late. Both are 「things I said I
