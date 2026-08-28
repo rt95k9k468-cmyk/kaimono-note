@@ -196,10 +196,15 @@
      高さ・画面の下端からの浮き・上の隙間。混ぜて一つの数にすると、
      「もう少し細く」と「もう少し下へ」が同じ数字の取り合いになります。 */
 
-  /* カプセルそのものの高さ。中身は 45px（絵の丸 26 ＋ 隙間 1 ＋ 字 18）で、
-     上下に 7.5px ずつの余白が残ります。66px から落としました——絵と字の
-     隙間を 3px から 1px に詰めたぶん、まるごと薄くできます。 */
-  --tab-cap: 60px;
+  /* カプセルそのものの高さ。中身は 45px（絵の丸 26 ＋ 隙間 1 ＋ 字 18）。
+
+     60px にしたら、数のバッジが縁に食い込みました。バッジは絵の右上に
+     はみ出すもので、上に **絵の外の高さ** が要ります。60px だと上の余白が
+     7.5px しかなく、16px のバッジがカプセルの外へ出ます。
+
+     64px にすると上下が 9.5px ずつになり、バッジ（上端をカプセルから 3px
+     下げて置きます）が縁から離れます。66px からは、まだ 2px 薄いままです。 */
+  --tab-cap: 64px;
 
   /* 画面の下端から、カプセルの底までの浮き。
 
@@ -667,31 +672,86 @@ a { color: var(--c-primary); }
   position: absolute;
   inset: 2px var(--sp-3) var(--tab-drop);
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--c-bg-elev) 58%, transparent);
-  backdrop-filter: saturate(200%) blur(26px);
-  -webkit-backdrop-filter: saturate(200%) blur(26px);
-  /* 縁は二本立てます。外側の一本（border）は形を決め、内側の白い一本
-     （inset の影）はガラスの厚みです——これが無いと、透けた地の色が
-     そのまま外へつながって、縁がどこか分からなくなります。 */
-  border: 1px solid var(--c-border);
-  box-shadow:
-    var(--shadow-3),
-    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+  /* 三枚重ね。下から順に、地・面のつや・上の縁の光。
+
+     ガラスに見えるかどうかを決めるのは、透けている度合いよりも
+     **光の当たり方**です。すりガラスは面が一様に曇りますが、厚みのある
+     ガラスは上の縁で光を拾い、面の上半分がうっすら明るくなります。
+     その二つを重ねると、同じ透け具合でも「板」ではなく「かたまり」に
+     見えます。 */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
+    color-mix(in srgb, var(--c-bg-elev) 52%, transparent);
+  /* brightness を少しだけ上げるのが、iOS 26 のガラスの効きどころです
+     ——後ろのものを暗くせずに拾い上げるので、重ねても画面が沈みません。
+     彩度も上げます（ぼかすと色は濁るので、戻してやらないと灰色の靄）。 */
+  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
+  -webkit-backdrop-filter: saturate(240%) blur(22px);
+  box-shadow: var(--shadow-3);
 }
-/* 暗い画面では、内側の一本も暗さのほうへ寄せます（白い線を引くと、
-   夜に一本だけ光った縁が残ります）。 */
+
+/* 縁の光。**一本の線ではなく、上下で明るさの違う輪**です。
+
+   ガラスの縁は、上では空を映して明るく、下では地面を映して暗くなり、
+   いちばん下でまた薄く光ります（下から回り込んだ光）。一様な白い線を
+   引くと、そこだけプラスチックの縁取りに見えます。
+
+   作り方は、1px の余白に色を敷いて、内側をマスクで抜く——border では
+   一色しか置けないので、こうします。指は素通りさせます。 */
+.tabbar::after {
+  content: "";
+  position: absolute;
+  inset: 2px var(--sp-3) var(--tab-drop);
+  border-radius: var(--r-full);
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .9),
+    rgba(255, 255, 255, .22) 34%,
+    rgba(255, 255, 255, .08) 62%,
+    rgba(255, 255, 255, .45));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+/* 暗い画面では、光を落とします。夜のガラスは、昼と同じようには光りません
+   ——白いまま置くと、縁だけが浮いて輪郭線に見えます。地のほうは逆に少し
+   濃くします（暗い背景に暗いガラスを重ねると、境目が消えるので）。 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .tabbar::before {
-    box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+      color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+  }
+  :root:not([data-theme="light"]) .tabbar::after {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, .28),
+      rgba(255, 255, 255, .07) 34%,
+      rgba(255, 255, 255, .03) 62%,
+      rgba(255, 255, 255, .13));
   }
 }
 :root[data-theme="dark"] .tabbar::before {
-  box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+    color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+}
+:root[data-theme="dark"] .tabbar::after {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .28),
+    rgba(255, 255, 255, .07) 34%,
+    rgba(255, 255, 255, .03) 62%,
+    rgba(255, 255, 255, .13));
 }
 
-/* ボタンだけが指を受けます（.tab は position:relative なので、DOM で後に
-   来るぶん ::before の上に描かれます——重ね順を数字で足す必要はありません）。 */
-.tab { pointer-events: auto; }
+/* ボタンだけが指を受けます。z-index を一つ持たせるのは、縁の光（::after）が
+   要素の**最後の子**として、ボタンより後に描かれるからです——放っておくと
+   光の輪が絵と字の上に乗ります。 */
+.tab { pointer-events: auto; z-index: 1; }
 
 /* The shopping button names both of its faces. The one you are looking at is
    lit and the other is dim — which is at the same time a label for what
@@ -846,11 +906,17 @@ a { color: var(--c-primary); }
 .tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-line { display: none; }
 .tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-solid { display: block; }
 
+/* 数のバッジ。絵の右上に、少しはみ出して乗ります。
+
+   上端をカプセルから 3px 下げるのは、縁に食い込ませないためです——
+   浮いているカプセルの縁は形そのものなので、そこに何かが掛かると
+   「切れている」に見えます。カプセルを 64px にして、この 3px を
+   作りました（--tab-cap の注記）。 */
 .tab-badge {
   position: absolute;
-  top: 0; left: 50%;
-  translate: 6px 0;
-  min-width: 17px; height: 17px;
+  top: 3px; left: 50%;
+  translate: 7px 0;
+  min-width: 16px; height: 16px;
   padding: 0 5px;
   border-radius: var(--r-full);
   background: var(--c-accent);
@@ -1968,43 +2034,90 @@ button, [role="tab"] {
 .add-fab {
   width: 56px; height: 56px;
   border-radius: var(--r-full);
-  /* 地の 58% は帯（base.css の .tabbar::before）と同じ。そこへ主色を
-     一割だけ差します——「押すもの」と分かるぶんだけで、緑の板には
-     しません。 */
-  background: color-mix(in srgb, var(--c-primary) 10%,
-              color-mix(in srgb, var(--c-bg-elev) 58%, transparent));
-  backdrop-filter: saturate(200%) blur(26px);
-  -webkit-backdrop-filter: saturate(200%) blur(26px);
+  /* 地は、下の帯（base.css の .tabbar::before）とまったく同じ組み立てです
+     ——三枚重ねの光と、同じぼかし・彩度・明るさ。二つは同じ高さに浮いて
+     いるので、材が違うと同じ高さに見えません。
+
+     違うのは主色を一割だけ差してあることだけ。「押すもの」と分かるぶん
+     だけで、緑の板にはしません（＋そのものが緑を持ちます）。 */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
+    color-mix(in srgb, var(--c-primary) 12%,
+      color-mix(in srgb, var(--c-bg-elev) 52%, transparent));
+  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
+  -webkit-backdrop-filter: saturate(240%) blur(22px);
   color: var(--c-primary);
   display: grid;
   place-items: center;
+  position: relative;
   /* Deeper than a card's, because it is genuinely above the page now and the
-     shadow is the only thing saying so. 内側の白い一本はガラスの厚みで、
-     帯と同じ役目です。 */
-  box-shadow:
-    var(--shadow-3),
-    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
-  border: 1px solid var(--c-border);
+     shadow is the only thing saying so. */
+  box-shadow: var(--shadow-3);
   /* The one thing in the dock that is meant to be pressed. */
   pointer-events: auto;
   transition: transform .12s var(--ease), background .16s var(--ease);
 }
-/* 暗い画面では、内側の一本を落とします（夜に一本だけ光った縁が残るので）。 */
+
+/* 縁の光。帯と同じ作り方（1pxの余白に色を敷いて、内側をマスクで抜く）。
+   丸なので、上で明るく下で薄く光る輪になります。 */
+.add-fab::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-full);
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .9),
+    rgba(255, 255, 255, .22) 34%,
+    rgba(255, 255, 255, .08) 62%,
+    rgba(255, 255, 255, .45));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* 暗い画面では、帯と同じだけ光を落とします。 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .add-fab {
-    box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+      color-mix(in srgb, var(--c-primary) 14%,
+        color-mix(in srgb, var(--c-bg-elev) 62%, transparent));
+  }
+  :root:not([data-theme="light"]) .add-fab::after {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
+      rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
   }
 }
 :root[data-theme="dark"] .add-fab {
-  box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+    color-mix(in srgb, var(--c-primary) 14%,
+      color-mix(in srgb, var(--c-bg-elev) 62%, transparent));
 }
+:root[data-theme="dark"] .add-fab::after {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
+    rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
+}
+
 /* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
-   線は 2.6 のまま——ガラスの上に乗るぶん、細いと沈みます。 */
-.add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; }
+   縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
+.add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; position: relative; z-index: 1; }
 .add-fab:active { transform: scale(.92); }
 @media (hover: hover) {
-  .add-fab:hover { background: color-mix(in srgb, var(--c-primary) 18%,
-                   color-mix(in srgb, var(--c-bg-elev) 62%, transparent)); }
+  .add-fab:hover { background:
+    linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .3), transparent 58%),
+    color-mix(in srgb, var(--c-primary) 20%,
+      color-mix(in srgb, var(--c-bg-elev) 54%, transparent)); }
+}
 }
 
 /* suggestions, under the name field in the add sheet */
