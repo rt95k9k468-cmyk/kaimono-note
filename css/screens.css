@@ -2173,6 +2173,20 @@
 .diet-slot[data-slot="snack"] .diet-slot-ico     { color: var(--c-slot-s); }
 .diet-slot-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
+
+/* 書いたものの絵。「トースト、ゆで卵、コーヒー」と打つと、その三つが
+   ここに並びます（screen-diet.js の slotMarks）。字を読まなくても、
+   今日の朝に何を食べたかが見えます。
+
+   .p-icon は置き場所ごとに大きさが決まります（行25px・価格28px・タイル34px）。
+   ここは四つめの置き場所で 20px——五つ並べて 区分名 と kcal のあいだに
+   収まる幅であり、かつ「何の絵か」がまだ読める下限です。少し重ねるのは、
+   絵と絵のあいだの隙間を詰めるためではなく、**一皿**に見せるためです。 */
+.diet-slot-marks { display: inline-flex; align-items: center; margin-left: 2px; }
+.diet-slot-mark { display: block; line-height: 0; margin-left: -3px; }
+.diet-slot-mark:first-child { margin-left: 0; }
+.diet-slot-mark .p-icon { width: 20px; height: 20px; display: block; }
+
 .diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text); }
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
    拡大します（拡大したままでは、次の枠が見えません）。 */

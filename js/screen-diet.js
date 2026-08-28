@@ -2042,6 +2042,60 @@
   /** 食事の四枠を保存しているあいだ（この間は組み直しません）。 */
   let saving = false;
 
+  /* ---------------- 書いたものの絵 ----------------
+
+     このアプリには 708 枚の手描きの絵があります（icons-v2.js）。玉ねぎには
+     玉ねぎ、卵には卵。買うものと価格の二画面でしか使っていませんでした
+     ——アプリで**いちばんよそに無いもの**が、二画面だけの方言でした。
+
+     食事の枠に書くのは、まさにその 708 枚が描いているものです。「トースト、
+     ゆで卵、コーヒー」と打てば、その三つの絵が見出しに並びます。字を読まずに
+     「今日の朝は何を食べたか」が見えるようになりますし、書いたものが絵に
+     なって返ってくるのは、それ自体が書く理由になります。
+
+     出すのは絵だけです。名前も数も、下の枠にすでに書いてあります。
+     引けなかったものは**何も出しません**——「？」のような代わりの絵を置くと、
+     読めなかったことを画面に貼り出すことになります。
+
+     多くても五つ。それ以上は絵が 20px より小さくなり、小さい絵は
+     「何かある」以上のことを言えません。 */
+  const MARK_MAX = 5;
+  /* 区切りは、人が実際に打つもの全部。読点・コンマ・中黒・改行・空白。 */
+  const MARK_SPLIT = /[、,，・･\n\r\/／]+|\s{1,}/;
+
+  function slotMarks(text) {
+    const line = String(text || "").trim();
+    if (!line) return [];
+    const seen = new Set();
+    const out = [];
+    for (const piece of line.split(MARK_SPLIT)) {
+      const raw = piece.trim();
+      if (!raw) continue;
+      // 「卵2個」「ご飯150g」の、量のほうを落とします。
+      const parsed = KN.foodData && KN.foodData.parseLine(raw);
+      const name = (parsed && parsed.name) || raw;
+      const key = KN.productIcons.findKey(name);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(key);
+      if (out.length >= MARK_MAX) break;
+    }
+    return out;
+  }
+
+  function paintMarks(host, text) {
+    if (!host) return;
+    const keys = slotMarks(text);
+    host.innerHTML = "";
+    host.hidden = !keys.length;
+    keys.forEach((k) => {
+      const i = document.createElement("i");
+      i.className = "diet-slot-mark";
+      i.innerHTML = KN.productIcons.byKey(k) || "";
+      host.append(i);
+    });
+  }
+
   function buildSlotBoxes(host, day, st, opts) {
     const inSheet = !!(opts && opts.sheet);
     // カルーセルの前日・翌日の紙（本物だが押せない・打てない）。
@@ -2055,6 +2109,8 @@
           <div class="diet-slot-head">
             <span class="diet-slot-ico">${icon(sl.ico)}</span>
             <b class="diet-slot-name">${sl.short}</b>
+            ${/* 書いたものの絵。打つそばから増えます（下の input を参照）。 */""}
+            <span class="diet-slot-marks js-marks" aria-hidden="true" hidden></span>
             <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
           </div>
           <textarea class="textarea diet-slot-memo js-slot-memo" data-slot="${sl.id}" rows="1"
@@ -2064,9 +2120,11 @@
         </div>
       `);
       const ta = box.querySelector("textarea");
+      const marks = box.querySelector(".js-marks");
       ta.dataset.saved = text;
       boxes.push(ta);
       grow(ta);   // 保存済みの複数行が、最初から詰まって見えないように。
+      paintMarks(marks, text);
       host.append(box);
       if (peek) return;   // 押せない紙なので、保存の配線は要りません。
       let timer = 0;
@@ -2086,6 +2144,9 @@
       };
       ta.addEventListener("input", () => {
         grow(ta);
+        /* 絵は保存を待ちません。打っているそばから増えるからこそ、
+           「書くと絵になる」が分かります（保存は600ms後）。 */
+        paintMarks(marks, ta.value);
         // 行が増えて枠が伸びると、欄の下端がまたキーボードに隠れうるので測り直します。
         if (!inSheet) nudgeIntoView(ta);
         if (inSheet) return;      // シートでは「保存」を押したときだけ書きます
