@@ -21,6 +21,11 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
+            ${/* 帰り道。価格はタブではなく、買うものの引き出しになりました
+                  ——開いた画面へ帰します（設定の画面と同じ作法）。 */""}
+            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
+              ${icon("chevron", "is-back")}
+            </button>
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
@@ -31,11 +36,8 @@
                  the same motion, and the corner of a top bar is the far end
                  of a phone from where the hand is.
 
-                 What is here is the same four, in the same order, as on
-                 買うもの — right to left: 設定・並べ方・さがす・くらべる. */""}
-            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
-              ${icon("shopCompare")}
-            </button>
+                 右から 設定・並べ方・さがす。買うものの帯と同じ順です
+                 （あちらの左端は「価格へ」、こちらの左端は「戻る」）。 */""}
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
@@ -64,7 +66,7 @@
 
     els = {
       sub:     chrome.querySelector(".js-sub"),
-      compare: chrome.querySelector(".js-compare"),
+
       searchBtn: chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
@@ -77,9 +79,10 @@
     };
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-    els.compare.addEventListener("click", () => KN.app.showScreen("compare"));
+
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

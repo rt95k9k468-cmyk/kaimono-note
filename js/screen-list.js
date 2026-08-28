@@ -39,8 +39,13 @@
 
                  The three that are here are the same three, in the same
                  order, on this screen and on 価格: くらべる・並べ方・さがす. */""}
-            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
-              ${icon("shopCompare")}
+            ${/* 価格の画面へ。ここにあったのは「お店をくらべる」でした——
+                  行き先を決めるときに何度か使うもので、買い物の途中で押す
+                  ものではなかったので、外しました。かわりに、値段を仕込む
+                  ところ（商品と価格）への戸を置きます。値札の絵にしたのは、
+                  行った先の画面が値札を並べているからです。 */""}
+            <button class="icon-btn js-prices" aria-label="商品と価格" title="商品と価格">
+              ${icon("tag")}
             </button>
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
@@ -73,7 +78,7 @@
       sub:        chrome.querySelector(".js-sub"),
       layout:     chrome.querySelector(".js-layout"),
       settings:   chrome.querySelector(".js-settings"),
-      compare:    chrome.querySelector(".js-compare"),
+      prices:     chrome.querySelector(".js-prices"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
@@ -87,7 +92,7 @@
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
-    els.compare.addEventListener("click", () => KN.app.showScreen("compare"));
+    els.prices.addEventListener("click", () => KN.app.showScreen("prices"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {

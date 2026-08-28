@@ -1536,110 +1536,11 @@
 .spark-area { fill: color-mix(in srgb, var(--c-primary) 14%, transparent); stroke: none; }
 .spark-dot { fill: var(--c-primary); }
 
-/* ================= COMPARE SCREEN ================= */
-
-.compare-hero {
-  margin: 0 var(--sp-4) var(--sp-4);
-  padding: var(--sp-5);
-  border-radius: var(--r-lg);
-  background: linear-gradient(140deg, var(--c-primary), var(--c-primary-2));
-  color: #fff;
-  box-shadow: var(--shadow-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.hero-label { font-size: var(--fs-sm); font-weight: 700; opacity: .88; }
-.hero-total { font-size: 34px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.hero-note { font-size: var(--fs-sm); opacity: .9; line-height: var(--lh-body); }
-
-.hero-save {
-  margin-top: var(--sp-2);
-  align-self: flex-start;
-  background: rgba(255,255,255,.2);
-  padding: 4px 10px;
-  border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-}
-
-.store-rank { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
-
-.rank-card {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  text-align: left;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  padding: var(--sp-3) var(--sp-4);
-  box-shadow: var(--shadow-1);
-  transition: background .14s var(--ease);
-}
-@media (hover: hover) {
-  .rank-card:hover { background: var(--c-surface-2); }
-}
-
-.rank-card.is-first {
-  border-color: color-mix(in srgb, var(--c-accent) 45%, transparent);
-  background: linear-gradient(120deg, var(--c-accent-soft), var(--c-surface) 70%);
-}
-
-.rank-no {
-  flex: none;
-  width: 28px; height: 28px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-2);
-  display: grid;
-  place-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-}
-.is-first .rank-no { background: var(--c-accent); color: #fff; }
-
-.rank-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.rank-name { font-weight: 700; display: flex; align-items: center; gap: var(--sp-2); }
-.rank-cover { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-2); }
-
-.cover-bar {
-  flex: 1;
-  max-width: 96px;
-  height: 4px;
-  background: var(--c-surface-3);
-  border-radius: var(--r-full);
-  overflow: hidden;
-}
-/* A span is inline by default, where height/width percentages do not apply. */
-.cover-fill {
-  display: block;
-  height: 100%;
-  background: var(--c-primary);
-  border-radius: var(--r-full);
-  transition: width .4s var(--ease-out);
-}
-
-.rank-total { flex: none; text-align: right; }
-.rank-amount { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.rank-sub { font-size: var(--fs-xs); color: var(--c-text-3); }
-
-/* best-combo breakdown */
-.combo-list { display: flex; flex-direction: column; gap: var(--sp-2); }
-.combo-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-}
-.combo-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.combo-store { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); flex: none; }
-.combo-price { font-weight: 700; font-variant-numeric: tabular-nums; flex: none; min-width: 62px; text-align: right; }
+/* ここには「お店くらべ」の画面の見た目がありました（105行）。画面ごと
+   外したので、使う人がいなくなりました——行き先を決めるときに何度か
+   使うもので、住む場所ではなかった、というのが外した理由です。
+   .diet-hero-label / .diet-hero-note は名前が似ていますが別物で、
+   ダイエットの画面が自分で持っています。 */
 
 /* ================= SETTINGS SCREEN ================= */
 

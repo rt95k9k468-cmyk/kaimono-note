@@ -3433,110 +3433,11 @@ button, [role="tab"] {
 .spark-area { fill: color-mix(in srgb, var(--c-primary) 14%, transparent); stroke: none; }
 .spark-dot { fill: var(--c-primary); }
 
-/* ================= COMPARE SCREEN ================= */
-
-.compare-hero {
-  margin: 0 var(--sp-4) var(--sp-4);
-  padding: var(--sp-5);
-  border-radius: var(--r-lg);
-  background: linear-gradient(140deg, var(--c-primary), var(--c-primary-2));
-  color: #fff;
-  box-shadow: var(--shadow-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.hero-label { font-size: var(--fs-sm); font-weight: 700; opacity: .88; }
-.hero-total { font-size: 34px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.hero-note { font-size: var(--fs-sm); opacity: .9; line-height: var(--lh-body); }
-
-.hero-save {
-  margin-top: var(--sp-2);
-  align-self: flex-start;
-  background: rgba(255,255,255,.2);
-  padding: 4px 10px;
-  border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-}
-
-.store-rank { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
-
-.rank-card {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  text-align: left;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-  padding: var(--sp-3) var(--sp-4);
-  box-shadow: var(--shadow-1);
-  transition: background .14s var(--ease);
-}
-@media (hover: hover) {
-  .rank-card:hover { background: var(--c-surface-2); }
-}
-
-.rank-card.is-first {
-  border-color: color-mix(in srgb, var(--c-accent) 45%, transparent);
-  background: linear-gradient(120deg, var(--c-accent-soft), var(--c-surface) 70%);
-}
-
-.rank-no {
-  flex: none;
-  width: 28px; height: 28px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-2);
-  display: grid;
-  place-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-}
-.is-first .rank-no { background: var(--c-accent); color: #fff; }
-
-.rank-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.rank-name { font-weight: 700; display: flex; align-items: center; gap: var(--sp-2); }
-.rank-cover { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-2); }
-
-.cover-bar {
-  flex: 1;
-  max-width: 96px;
-  height: 4px;
-  background: var(--c-surface-3);
-  border-radius: var(--r-full);
-  overflow: hidden;
-}
-/* A span is inline by default, where height/width percentages do not apply. */
-.cover-fill {
-  display: block;
-  height: 100%;
-  background: var(--c-primary);
-  border-radius: var(--r-full);
-  transition: width .4s var(--ease-out);
-}
-
-.rank-total { flex: none; text-align: right; }
-.rank-amount { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.rank-sub { font-size: var(--fs-xs); color: var(--c-text-3); }
-
-/* best-combo breakdown */
-.combo-list { display: flex; flex-direction: column; gap: var(--sp-2); }
-.combo-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
-}
-.combo-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.combo-store { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); flex: none; }
-.combo-price { font-weight: 700; font-variant-numeric: tabular-nums; flex: none; min-width: 62px; text-align: right; }
+/* ここには「お店くらべ」の画面の見た目がありました（105行）。画面ごと
+   外したので、使う人がいなくなりました——行き先を決めるときに何度か
+   使うもので、住む場所ではなかった、というのが外した理由です。
+   .diet-hero-label / .diet-hero-note は名前が似ていますが別物で、
+   ダイエットの画面が自分で持っています。 */
 
 /* ================= SETTINGS SCREEN ================= */
 
@@ -4641,7 +4542,6 @@ a.btn { text-decoration: none; }
     <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="買い物リスト"></section>
     <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="商品と価格" hidden></section>
     <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="ダイエット" hidden></section>
-    <section class="screen"           id="screen-compare"  data-screen="compare"  role="tabpanel" aria-label="お店くらべ" hidden></section>
     <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
   </main>
 
@@ -29763,8 +29663,13 @@ distance=6.0km</pre>
 
                  The three that are here are the same three, in the same
                  order, on this screen and on 価格: くらべる・並べ方・さがす. */""}
-            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
-              ${icon("shopCompare")}
+            ${/* 価格の画面へ。ここにあったのは「お店をくらべる」でした——
+                  行き先を決めるときに何度か使うもので、買い物の途中で押す
+                  ものではなかったので、外しました。かわりに、値段を仕込む
+                  ところ（商品と価格）への戸を置きます。値札の絵にしたのは、
+                  行った先の画面が値札を並べているからです。 */""}
+            <button class="icon-btn js-prices" aria-label="商品と価格" title="商品と価格">
+              ${icon("tag")}
             </button>
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
@@ -29797,7 +29702,7 @@ distance=6.0km</pre>
       sub:        chrome.querySelector(".js-sub"),
       layout:     chrome.querySelector(".js-layout"),
       settings:   chrome.querySelector(".js-settings"),
-      compare:    chrome.querySelector(".js-compare"),
+      prices:     chrome.querySelector(".js-prices"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
@@ -29811,7 +29716,7 @@ distance=6.0km</pre>
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
-    els.compare.addEventListener("click", () => KN.app.showScreen("compare"));
+    els.prices.addEventListener("click", () => KN.app.showScreen("prices"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {
@@ -30574,6 +30479,11 @@ distance=6.0km</pre>
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
+            ${/* 帰り道。価格はタブではなく、買うものの引き出しになりました
+                  ——開いた画面へ帰します（設定の画面と同じ作法）。 */""}
+            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
+              ${icon("chevron", "is-back")}
+            </button>
             <div style="flex:1;min-width:0">
               <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
@@ -30584,11 +30494,8 @@ distance=6.0km</pre>
                  the same motion, and the corner of a top bar is the far end
                  of a phone from where the hand is.
 
-                 What is here is the same four, in the same order, as on
-                 買うもの — right to left: 設定・並べ方・さがす・くらべる. */""}
-            <button class="icon-btn js-compare" aria-label="お店をくらべる" title="お店をくらべる">
-              ${icon("shopCompare")}
-            </button>
+                 右から 設定・並べ方・さがす。買うものの帯と同じ順です
+                 （あちらの左端は「価格へ」、こちらの左端は「戻る」）。 */""}
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
@@ -30617,7 +30524,7 @@ distance=6.0km</pre>
 
     els = {
       sub:     chrome.querySelector(".js-sub"),
-      compare: chrome.querySelector(".js-compare"),
+
       searchBtn: chrome.querySelector(".js-search-btn"),
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
@@ -30630,9 +30537,10 @@ distance=6.0km</pre>
     };
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-    els.compare.addEventListener("click", () => KN.app.showScreen("compare"));
+
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
+    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -31037,335 +30945,6 @@ distance=6.0km</pre>
 
   KN.screens = KN.screens || {};
   KN.screens.prices = { mount, render, dockButton };
-})();
-
-/* ---- js/screen-compare.js ---- */
-/* =========================================================
-   くらしノート — store comparison screen
-   ========================================================= */
-(function () {
-  "use strict";
-
-  const KN = window.KN;
-  const { html, node, icon, yen } = KN.util;
-  const store = KN.store;
-
-  let root = null;
-  let els = {};
-
-  function mount(el) {
-    root = el;
-    root.innerHTML = "";
-
-    const chrome = node(html`
-      <div class="stack">
-        ${/* No tab of its own any more — comparing shops is something done a
-              few times while deciding where to go, not a place to live in. It
-              opens from the shop button on リスト and 価格, and carries its
-              own way back to whichever of them asked for it. */""}
-        <header class="topbar">
-          <div class="topbar-row">
-            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
-              ${icon("chevron", "flip-x")}
-            </button>
-            <div style="flex:1;min-width:0">
-              <h1 class="topbar-title">お店くらべ</h1>
-              <div class="topbar-sub js-sub"></div>
-            </div>
-          </div>
-        </header>
-        <div class="js-body"></div>
-      </div>
-    `);
-
-    root.append(chrome);
-    els = {
-      sub:    chrome.querySelector(".js-sub"),
-      body:   chrome.querySelector(".js-body"),
-      topbar: chrome.querySelector(".topbar"),
-    };
-
-    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
-
-    root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
-    });
-  }
-
-  /* ---------------- computation ---------------- */
-
-  /** Items still to buy (falls back to the whole list once everything is checked). */
-  function targetItems() {
-    const items = store.get().items;
-    const active = items.filter((i) => !i.checked);
-    return active.length ? active : items;
-  }
-
-  function analyse() {
-    const entries = targetItems()
-      .map((item) => ({ item, product: store.getProduct(item.productId) }))
-      .filter((e) => e.product);
-
-    // Only items with at least one recorded price can take part in a comparison.
-    const priced = entries.filter((e) => store.bestPrice(e.product));
-    const unpriced = entries.length - priced.length;
-
-    // Cheapest achievable: every item bought at its own cheapest store.
-    const combo = [];
-    let comboTotal = 0;
-    priced.forEach(({ item, product }) => {
-      const best = store.bestPrice(product);
-      const st = store.getStore(best.storeId);
-      const line = best.price * item.qty;
-      comboTotal += line;
-      combo.push({ product, item, store: st, price: best.price, line });
-    });
-    combo.sort((a, b) => b.line - a.line);
-
-    /* Per-store figures over the SAME basket, so the totals are comparable:
-       buy what the store carries there, and anything it lacks at its own
-       cheapest store. `anchored` is therefore a realistic trip total. */
-    const rankings = store.sortedStores().map((st) => {
-      let ownTotal = 0;
-      let anchored = 0;
-      let covered = 0;
-      const missing = [];
-
-      priced.forEach(({ item, product }) => {
-        const here = store.priceAt(product, st.id);
-        if (here) {
-          ownTotal += here.price * item.qty;
-          anchored += here.price * item.qty;
-          covered += 1;
-        } else {
-          const best = store.bestPrice(product);
-          anchored += best.price * item.qty;
-          missing.push({ product, item, best });
-        }
-      });
-
-      return {
-        store: st,
-        ownTotal,
-        anchored,
-        covered,
-        missing,
-        full: priced.length > 0 && covered === priced.length,
-        ratio: priced.length ? covered / priced.length : 0,
-      };
-    }).filter((r) => r.covered > 0);
-
-    rankings.sort((a, b) => a.anchored - b.anchored || b.covered - a.covered);
-
-    // Cheapest store that carries the whole basket on its own, if one exists.
-    const fullCover = rankings.filter((r) => r.full).sort((a, b) => a.ownTotal - b.ownTotal);
-    const bestSingle = fullCover.length ? fullCover[0] : null;
-
-    return {
-      entries, priced, unpriced, rankings, combo, comboTotal, bestSingle,
-      storeCount: new Set(combo.map((c) => c.store && c.store.id)).size,
-    };
-  }
-
-  /* ---------------- render ---------------- */
-
-  function render() {
-    const st = store.get();
-    const data = analyse();
-
-    els.sub.textContent = data.entries.length
-      ? `未購入 ${data.entries.length}品で比較`
-      : "リストが空です";
-
-    els.body.innerHTML = "";
-
-    if (!data.entries.length) {
-      els.body.append(node(html`
-        <div class="empty">
-          <div class="empty-art">${KN.util.raw(KN.emptyArt.scales)}</div>
-          <h2 class="empty-title">リストに商品を追加すると比べられます</h2>
-          <p class="empty-text">
-            買い物リストの商品それぞれに、お店ごとの値段を登録してください。
-            合計でどのお店が安いかを自動で計算します。
-          </p>
-        </div>
-      `));
-      return;
-    }
-
-    if (!st.stores.length || !data.combo.length) {
-      els.body.append(node(html`
-        <div class="empty">
-          <div class="empty-art">${KN.util.raw(KN.emptyArt.shopSign)}</div>
-          <h2 class="empty-title">まだ値段の記録がありません</h2>
-          <p class="empty-text">
-            「商品と価格」から、お店ごとの値段を登録してみてください。
-            2店舗以上あると、合計でどちらが安いかが分かります。
-          </p>
-        </div>
-      `));
-      return;
-    }
-
-    els.body.append(hero(data));
-    els.body.append(rankingSection(data));
-    els.body.append(comboSection(data));
-  }
-
-  function hero(data) {
-    const saving = data.bestSingle ? data.bestSingle.ownTotal - data.comboTotal : 0;
-
-    return node(html`
-      <div class="compare-hero">
-        <span class="hero-label">最安の組み合わせで買うと</span>
-        <span class="hero-total">${yen(data.comboTotal)}</span>
-        <span class="hero-note">
-          ${data.combo.length}品を、それぞれいちばん安いお店で買った合計
-          ${data.storeCount > 1 ? html`（${data.storeCount}店をまわった場合）` : ""}
-          ${data.unpriced > 0 ? html`<br>※ ${data.unpriced}品は値段が未登録のため含みません` : ""}
-        </span>
-        ${saving > 0
-          ? html`<span class="hero-save">${data.bestSingle.store.name}だけで買うより ${yen(saving)} おトク</span>`
-          : ""}
-      </div>
-    `);
-  }
-
-  function rankingSection(data) {
-    const section = node(html`
-      <section class="section" style="padding-top:0">
-        <h2 class="section-title">この店を中心に買うと</h2>
-        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:-4px 0 4px">
-          同じ${data.priced.length}品を、その店にある物はその店で、ない物は最安の店で買った場合の合計です。
-        </p>
-        <div class="store-rank"></div>
-      </section>
-    `);
-    const list = section.querySelector(".store-rank");
-
-    data.rankings.forEach((r, idx) => {
-      const card = node(html`
-        <button class="rank-card ${idx === 0 ? "is-first" : ""}">
-          <span class="rank-no">${idx + 1}</span>
-          <span class="rank-main">
-            <span class="rank-name">
-              <span class="dot" style="background:${r.store.color}"></span>${r.store.name}
-            </span>
-            <span class="rank-cover">
-              <span class="cover-bar"><span class="cover-fill" style="width:${String(Math.round(r.ratio * 100))}%"></span></span>
-              ${r.full
-                ? html`<b style="color:var(--c-primary)">全品そろう</b>`
-                : html`${r.covered}/${data.priced.length}品`}
-            </span>
-          </span>
-          <span class="rank-total">
-            <span class="rank-amount">${yen(r.anchored)}</span>
-            <span class="rank-sub">${r.full ? "この店だけで" : `${r.missing.length}品は他店で`}</span>
-          </span>
-        </button>
-      `);
-      card.addEventListener("click", () => openStoreDetail(r, data));
-      list.append(card);
-    });
-
-    if (data.rankings.length < 2) {
-      section.append(node(html`
-        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6">
-          お店をもう1つ登録すると、合計金額を比べられるようになります。
-        </p>
-      `));
-    }
-
-    return section;
-  }
-
-  function openStoreDetail(rank, data) {
-    const lines = data.priced
-      .map(({ item, product }) => ({
-        product, item,
-        pr: store.priceAt(product, rank.store.id),
-      }))
-      .sort((a, b) => (a.pr ? 0 : 1) - (b.pr ? 0 : 1));
-
-    const body = node(html`<div class="stack" style="gap:14px"></div>`);
-
-    body.append(node(html`
-      <div class="stack" style="gap:6px">
-        <div class="spread">
-          <span class="summary-label">この店で買える分</span>
-          <span class="summary-total">${yen(rank.ownTotal)}</span>
-        </div>
-        ${rank.full
-          ? html`<p style="font-size:12px;color:var(--c-text-2)">リストの品はすべてこの店でそろいます。</p>`
-          : html`
-              <div class="spread">
-                <span class="summary-label">残り${rank.missing.length}品を最安店で買うと</span>
-                <span style="font-weight:800">＋${yen(rank.anchored - rank.ownTotal)}</span>
-              </div>
-              <div class="divider" style="margin:4px 0"></div>
-              <div class="spread">
-                <span class="summary-label">合計</span>
-                <span class="summary-total">${yen(rank.anchored)}</span>
-              </div>
-            `}
-      </div>
-    `));
-
-    const list = node(html`<div class="combo-list"></div>`);
-    lines.forEach(({ item, product, pr }) => {
-      const best = store.bestPrice(product);
-      const isCheapestHere = pr && best && pr.price <= best.price;
-      const bestStore = best ? store.getStore(best.storeId) : null;
-      list.append(node(html`
-        <div class="combo-row">
-          <span class="combo-name">${product.name}${item.qty > 1 ? html` <span style="color:var(--c-text-3)">×${item.qty}</span>` : ""}</span>
-          ${pr
-            ? html`
-                ${isCheapestHere ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}
-                <span class="combo-price">${yen(pr.price * item.qty)}</span>
-              `
-            : html`
-                <span class="combo-store" style="color:var(--c-text-3)">
-                  取扱なし → ${bestStore ? bestStore.name : ""}
-                </span>
-                <span class="combo-price" style="color:var(--c-text-3)">${yen(best.price * item.qty)}</span>
-              `}
-        </div>
-      `));
-    });
-    body.append(list);
-
-    KN.ui.sheet({ title: rank.store.name, content: body });
-  }
-
-  function comboSection(data) {
-    const section = node(html`
-      <section class="section">
-        <h2 class="section-title">商品ごとの最安店</h2>
-        <div class="combo-list"></div>
-      </section>
-    `);
-    const list = section.querySelector(".combo-list");
-
-    data.combo.forEach(({ product, item, store: st, line }) => {
-      const row = node(html`
-        <button class="combo-row" style="text-align:left;width:100%">
-          <span class="combo-name">${product.name}${item.qty > 1 ? html` <span style="color:var(--c-text-3)">×${item.qty}</span>` : ""}</span>
-          <span class="combo-store">
-            <span class="dot" style="background:${st.color};display:inline-block;margin-right:4px"></span>${st.name}
-          </span>
-          <span class="combo-price">${yen(line)}</span>
-        </button>
-      `);
-      row.addEventListener("click", () => KN.productSheet.open(product.id, { itemId: item.id }));
-      list.append(row);
-    });
-
-    return section;
-  }
-
-  KN.screens = KN.screens || {};
-  KN.screens.compare = { mount, render };
 })();
 
 /* ---- js/screen-settings.js ---- */
@@ -32699,34 +32278,36 @@ distance=6.0km</pre>
   // 中身はこのファイルのあちこちで出来上がった順に足していきます。
   KN.app = {};
 
-  /* Three buttons — one per thing this book is about: the day, the shopping,
-     the body.
+  /* 四つ。この帳面が扱う四つのことです——日々・その日の用事・買い物・からだ。
 
-     お店くらべ left the bar a while ago: it is a thing you do a few times while
-     deciding where to go, not a place you live in. 設定 went the same way, for
-     a plainer reason — it is not a place at all. Both open by name from the
-     screens that link to them, and hand back the way they came.
-
-     買うもの and 価格 kept a button each until they were sitting side by side
-     under one hairline, which is a bar admitting they are one thing and drawing
-     them as two. They *are* one thing: the same products, the same archive,
-     the same tiles, read once as a list to carry round a shop and once as a
-     table of prices. So they share a button, and pressing it while you are
-     already there turns it over. */
+     ここに無いものは、**居場所ではないから**ここに無い。お店くらべは
+     行き先を決めるときに何度か使うもので、住む場所ではありませんでした
+     （そして使われないまま残っていたので、外しました）。設定も同じで、
+     そもそも場所ではない。価格は、買い物の途中で開くものではなく、値段を
+     仕込むときにたまに開くもの。三つとも、呼んだ画面から名前で開いて、
+     帰り道を持って帰ります。 */
   const TABS = [
     { id: "archive", label: "daily", icon: "book" },
     { id: "todo", label: "やること", icon: "checklist" },
-    { id: "shop", label: "買い物", faces: [
-      { id: "list",   label: "買うもの", icon: "list" },
-      { id: "prices", label: "価格",     icon: "tag" },
-    ] },
+    /* 「買うもの」と「価格」は、一つのボタンのふた面でした。押すたびに
+       裏返る作りで、動きとしては綺麗だったのですが、**価格はタブの
+       持ち場ではありません**——買い物の途中で開くものではなく、値段を
+       仕込むときにたまに開くものです。買うものの上の帯から呼ぶ形にして、
+       タブは一つに戻しました。 */
+    { id: "list", label: "買うもの", icon: "list" },
     { id: "diet", label: "ダイエット", icon: "scale" },
   ];
 
-  /** Which of the shopping pair the shared button is showing. */
-  let shopFace = "list";
-  const facesOf = (t) => t.faces || [t];
-  const tabOwning = (id) => TABS.find((t) => facesOf(t).some((f) => f.id === id));
+  /* 引き出し（価格・設定）を、どこから開けたか。**一つの変数ではなく積み木**
+     です——買うもの → 価格 → 設定 と潜れるようになったので、「戻る」は
+     一段ずつ戻らなければいけません。一つの変数だと、設定から戻ったときに
+     価格ではなく買うものへ飛ぶか、価格と設定のあいだで往復します。
+
+     タブへ戻ったら、積んだものは捨てます（タブは根っこなので）。 */
+  const drawerFrom = [];
+  /* 「戻る」で開くときは積みません。積むと、戻った先からまた戻れなくなります。 */
+  let goingBack = false;
+  const HOME_OF_DRAWER = "list";
 
   /* The app opens on やること. The question on picking the phone up is 「今日
      なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
@@ -32748,10 +32329,6 @@ distance=6.0km</pre>
 
   /* ---------------- tabs ---------------- */
 
-  /* Half the bar each. The shopping button wears whichever of its two faces is
-     on screen, and names both so the second one is not a secret: the face you
-     are looking at is bright and the other is dim, which is also the label for
-     what pressing it again will do. */
   function buildTabs() {
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
@@ -32761,69 +32338,34 @@ distance=6.0km</pre>
          帯が画面いっぱいだったころ、四つの持ち場を切るために要ったものです。
          浮いた一つのカプセルになった今は、外枠が「ここが一まとまり」と
          言っているので、中を切るとかえって窮屈に見えます。 */
-      /* ふた面ある buttons は、絵も二つ持ちます。いま見ているほうが真ん中で
-         色つき、もう一方は脇に小さく灰色。押すと二つが入れ替わりながら
-         中心を通るので、「押したら裏返る」が動きとして見えます——
-         絵が一枚だけ差し替わるのでは、何が起きたのか読めません。 */
-      const faces = facesOf(t);
+      /* 絵は .tab-ico-face に入れます。丸い下地（.tab-ico）と絵を分けて
+         おくと、選ばれた印（下地）と絵の差し替えが別々に効きます。 */
       const btn = node(html`
-        <button class="tab tab-${t.id} ${faces.length > 1 ? "is-pair" : ""}" role="tab"
-                data-tab="${t.id}" aria-controls="screen-${faces[0].id}">
-          <span class="tab-ico">
-            ${KN.util.raw(faces.map((f, n) => `<span class="tab-ico-face" data-face="${f.id}"
-              data-side="${faces.length > 1 ? (n === 0 ? "left" : "right") : "only"}"></span>`).join(""))}
-          </span>
+        <button class="tab tab-${t.id}" role="tab"
+                data-tab="${t.id}" aria-controls="screen-${t.id}">
+          <span class="tab-ico"><span class="tab-ico-face" data-face="${t.id}"></span></span>
           <span class="tab-label"></span>
         </button>
       `);
-      faces.forEach((f) => {
-        btn.querySelector(`.tab-ico-face[data-face="${f.id}"]`)
-          .append(node(html`<span>${icon(f.icon)}</span>`).firstChild);
-      });
-      btn.addEventListener("click", () => pressTab(t));
+      btn.querySelector(".tab-ico-face")
+        .append(node(html`<span>${icon(t.icon)}</span>`).firstChild);
+      btn.addEventListener("click", () => show(t.id));
       bar.append(btn);
     });
     paintTabs();
-  }
-
-  /* Pressing the button you are already on turns it over — but only where
-     there are two sides. On やること it does nothing, which is what a tab bar
-     has always done. */
-  function pressTab(t) {
-    const faces = facesOf(t);
-    if (faces.length > 1 && faces.some((f) => f.id === active)) {
-      const next = faces[(faces.findIndex((f) => f.id === active) + 1) % faces.length];
-      shopFace = next.id;
-      show(next.id);
-      return;
-    }
-    show(faces.length > 1 ? shopFace : faces[0].id);
   }
 
   function paintTabs() {
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
       if (!btn) return;
-      const faces = facesOf(t);
-      const here = faces.some((f) => f.id === active);
-      const face = faces.find((f) => f.id === (here ? active : shopFace)) || faces[0];
-
+      /* 価格は買うものの引き出しなので、そこに居るあいだも「買うもの」が
+         光ったままです——帯のどこも光っていない画面は、迷子に見えます。 */
+      const here = t.id === active || (t.id === "list" && active === "prices");
       btn.setAttribute("aria-selected", String(here));
-      btn.setAttribute("aria-controls", "screen-" + face.id);
-      const ico = btn.querySelector(".tab-ico");
-      ico.dataset.face = face.id;
-      /* 位置と大きさと色はCSSが持ちます。ここが決めるのは「どちらが表か」
-         だけ——動きをJSで書くと、指を離した瞬間に飛ぶか、跳ねるかの
-         どちらかになります。 */
-      ico.querySelectorAll(".tab-ico-face").forEach((el) => {
-        el.classList.toggle("is-on", el.dataset.face === face.id);
-      });
-
+      btn.querySelector(".tab-ico-face").classList.add("is-on");
       const label = btn.querySelector(".tab-label");
-      const want = faces.length > 1
-        ? faces.map((f) => `<span class="tab-face ${f.id === face.id ? "is-on" : ""}">${f.label}</span>`).join("")
-        : t.label;
-      if (label.dataset.sig !== want) { label.dataset.sig = want; label.innerHTML = want; }
+      if (label.dataset.sig !== t.label) { label.dataset.sig = t.label; label.textContent = t.label; }
     });
 
     // The badge counts what is left to buy on this trip, and the star is what
@@ -32832,7 +32374,7 @@ distance=6.0km</pre>
     // user never said they were buying.
     paintAppBadge();
 
-    paintTabBadge("shop", tripCount());
+    paintTabBadge("list", tripCount());
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。 */
     // やること counts what is wanted today or already late. Something due next
@@ -32955,14 +32497,13 @@ distance=6.0km</pre>
     disable: disableAppBadge,
   };
 
-  /* Where the shop button came from, so 「戻る」 on お店くらべ goes back to the
-     screen that opened it rather than always to リスト. */
-  let cameFrom = "list";
 
   function show(id) {
     if (!KN.screens[id]) return;
-    if ((id === "compare" || id === "settings") && active !== id) cameFrom = active;
-    if (id === "list" || id === "prices") shopFace = id;
+    if (!goingBack) {
+      if (OFF_BAR.includes(id)) { if (active !== id) drawerFrom.push(active); }
+      else drawerFrom.length = 0;
+    }
     active = id;
 
     document.querySelectorAll(".screen").forEach((s) => {
@@ -33471,14 +33012,20 @@ distance=6.0km</pre>
     });
   }
 
-  /* Screens off the tab bar — お店くらべ — are opened by name from the screens
+  /* Screens off the tab bar — 価格・設定 — are opened by name from the screens
      that link to them, and hand the way back with them. */
   KN.app.showScreen = show;
-  const OFF_BAR = ["compare", "settings"];
-  KN.app.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+  const OFF_BAR = ["prices", "settings"];
+  KN.app.backScreen = () => {
+    const to = drawerFrom.pop() || HOME_OF_DRAWER;
+    goingBack = true;
+    try { show(to); } finally { goingBack = false; }
+  };
 
-  /** どのタブから引き出しを開けたか。設定の画面が、出すものを選ぶのに使います。 */
-  KN.app.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+  /** どの**タブ**から潜ってきたか。設定の画面が、出すものを選ぶのに使います
+      ——途中の引き出し（価格）ではなく、根っこのタブが知りたいので。 */
+  KN.app.openedFrom = () =>
+    [...drawerFrom].reverse().find((id) => !OFF_BAR.includes(id)) || HOME_OF_DRAWER;
 
   /** いま開いている画面。下に引いたときに、誰に聞けばいいかを知るため。 */
   KN.app.activeScreen = () => active;
