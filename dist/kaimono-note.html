@@ -24952,6 +24952,10 @@ a.btn { text-decoration: none; }
   function drinkBar(d) {
     const t = store.drinkTotals(d);
     if (!t) {
+      /* 今日の、まだ夕方前は、まだ何も言えません。歩数が入っただけで
+         「休肝日」の青い帯が朝から立つと、暦がその日を先に採点します
+         （輪のほうと同じ直し——renderBodyStats の drinkPending 参照）。 */
+      if (d === U.todayKey() && U.partOfTime(U.nowTime()) !== "night") return null;
       // 何かしら書いてある日だけ、「飲まなかった」と言えます。
       const any = store.weightOfDay(d) || store.mealsOfDay(d).length
         || store.healthValue(d, "steps") != null || store.healthValue(d, "sleep") != null;
@@ -25872,10 +25876,22 @@ a.btn { text-decoration: none; }
    *   超えたら、超えたぶんが赤で出ます。「飲まなかった」は空白ではなく
    *   その日の成果なので、いちばん見える形（満ちた輪）を当てています。
    *
+   *   ただし **その日が終わっていれば** の話です。朝七時に満ちた青い輪を
+   *   出すと、四つのうちいちばん目立つものが「まだ飲んでいない」を讃えて
+   *   いることになります——お酒は夕方より前には飲まないのだから、昼までの
+   *   0g は成果ではなく、まだ何も起きていないだけ。ほかの三つと同じ
+   *   「—」にして、夕方（18時）から満ち始めます。
+   *
+   *   同じ間違いを、AIに渡す文章のほうでは先に直してあります
+   *   （dayBodyText の「この時点ではまだ記録なし（未確定）」）。絵のほうが
+   *   残っていました。
+   *
+   * @param {boolean} [pending] 飲酒のみ：今日で、まだ夕方前で、記録も無い
    * @returns {{cls:string, deg:number, pct:number|null}}
    */
-  function ringOf(kind, value, target) {
+  function ringOf(kind, value, target, pending) {
     if (kind === "drink") {
+      if (pending) return { cls: "is-drink is-none", deg: 0, pct: null };
       const g = value || 0;                       // 飲んでいない日は 0g
       const pct = target > 0 ? (g / target) * 100 : 0;
       if (pct > 100) {
@@ -25915,6 +25931,18 @@ a.btn { text-decoration: none; }
        **一日の目安に対する％**。中身は押せば出てきます。 */
     const guide = alcoholGuide();
     const pct = dt ? Math.round((dt.alcoholG / guide) * 100) : 0;
+    /* まだ何も言えない日は、飲酒も数の無い枠にします（ringOf のコメント参照）。
+       言えないのは二つ——**明日から先**（まだ起きていない）と、**今日の
+       夕方前**（お酒はそれより前には出てこない）。夕方の境目は、やることの
+       朝/午後/夜と同じ 18時を引きます。ここで別の数を書くと、二つの「夜」が
+       少しずつずれていきます。
+
+       カレンダーの帯のほうは、未来の日をすでに出していません（render 内の
+       `key > today ? null : drinkBar(key)`）。輪だけが、横に払って出る
+       明日の紙で満ちていました。 */
+    const today = U.todayKey();
+    const drinkPending = !dt && (card.day > today
+      || (card.day === today && U.partOfTime(U.nowTime()) !== "night"));
     const sg = stepsGoal(), bg = burnGoal(), slg = sleepGoal();
     /* 輪の真ん中に出す字。ふつうの三つは目標に対する％（超えたら100を
        超えた数がそのまま出ます——超えたことが読めるように）。飲酒だけは
@@ -25923,7 +25951,7 @@ a.btn { text-decoration: none; }
     const rSteps = ringOf("steps", card.steps, sg);
     const rBurn  = ringOf("burned", card.burned, bg);
     const rSleep = ringOf("sleep", card.sleep, slg);
-    const rDrink = ringOf("drink", dt ? dt.alcoholG : 0, guide);
+    const rDrink = ringOf("drink", dt ? dt.alcoholG : 0, guide, drinkPending);
     const rows = [
       { type: "steps", label: "歩数", unit: `目標 ${n0(sg)}`, ico: "steps",
         value: showValue("steps", card.steps), manual: isManual(card.day, "steps"),
@@ -25937,11 +25965,15 @@ a.btn { text-decoration: none; }
         ring: rSleep, mid: ringPct(rSleep) },
       /* 飲酒だけは「無い」ときも薄くしません。飲まなかった日は空白では
          なく **0%という記録**で、そこが薄いと「書き忘れ」に見えます。
-         輪は逆向き——飲まなかった日が満ちます（ringOf のコメント参照）。 */
-      { type: "drink", label: "飲酒", ico: "drink", keep: true,
-        value: pct + "%", unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
-        over: pct > 100,
-        ring: rDrink, mid: `${dt ? dt.alcoholG : 0}g` },
+         輪は逆向き——飲まなかった日が満ちます（ringOf のコメント参照）。
+
+         例外は、今日のまだ夕方前だけ。そこは記録ではなく **まだ**なので、
+         ほかの三つと同じ薄い枠にします（keep を外す）。 */
+      { type: "drink", label: "飲酒", ico: "drink", keep: !drinkPending,
+        value: drinkPending ? "—" : pct + "%",
+        unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
+        over: !drinkPending && pct > 100,
+        ring: rDrink, mid: drinkPending ? "—" : `${dt ? dt.alcoholG : 0}g` },
     ];
     const nothing = card.steps == null && card.burned == null && card.sleep == null
       && !card.workouts.length && !dt;
