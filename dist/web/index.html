@@ -24392,12 +24392,22 @@ a.btn { text-decoration: none; }
       const fixed = due ? store.snapToRule(rule, due) : due;
       const at = fixed ? time : null;
       const when = fixed ? formatDay(fixed) + (at ? ` ${at}` : "") : "";
+      /* 毎朝・毎晩は、時刻を書いても**残します**。
+
+         ここは `fixed && !at ? part : null` でした——時刻を入れた瞬間に
+         毎朝・毎晩を捨てる、という式です。「朝」と「7:30」は同じ問いへの
+         二つの答えだから、と考えていたころの名残でした。
+
+         いまは別の問いです。**毎朝・毎晩は「その日のどこに並ぶか」、時刻は
+         「いつ報せるか」。** 画面の側（paintPart）も並べ替え（store の
+         todoPart）も、とうにそう直してありました。しまうところだけが
+         古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, part: fixed && !at ? part : null, time: at,
+        store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged });
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
-        store.addTodo({ title, due: fixed, part: fixed && !at ? part : null, time: at,
+        store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
