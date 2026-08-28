@@ -69,8 +69,11 @@
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
 
-    TABS.forEach((t, i) => {
-      if (i) bar.append(node(html`<span class="tab-split"></span>`));
+    TABS.forEach((t) => {
+      /* 仕切りの線（.tab-split）は、ここで四つのあいだに入れていました。
+         帯が画面いっぱいだったころ、四つの持ち場を切るために要ったものです。
+         浮いた一つのカプセルになった今は、外枠が「ここが一まとまり」と
+         言っているので、中を切るとかえって窮屈に見えます。 */
       /* ふた面ある buttons は、絵も二つ持ちます。いま見ているほうが真ん中で
          色つき、もう一方は脇に小さく灰色。押すと二つが入れ替わりながら
          中心を通るので、「押したら裏返る」が動きとして見えます——
