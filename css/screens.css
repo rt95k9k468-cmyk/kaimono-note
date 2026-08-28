@@ -2658,6 +2658,34 @@ a.btn { text-decoration: none; }
   to { opacity: 0; transform: translateX(38%); }
 }
 
+/* ②-c 買うものを買ったとき。やることと同じ三段ですが、滑る向きが違います
+   ——買ったものは横へ去るのではなく、下の「買ったもの」の山へ**落ちます**。
+   向きがそのまま行き先を指しているので、どこへ行ったかを探さずに済みます。 */
+.item.is-dropping {
+  animation: item-drop .28s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes item-drop {
+  to { opacity: 0; transform: translateY(14px) scale(.96); }
+}
+
+/* ---------------- 新しく来た行 ----------------
+
+   組み直しのあと、前の絵に居なかった行だけが名乗りを上げます。まわりの行は
+   FLIP（ui.js の flipRows）で「もといた場所」から滑ってくるので、二つ合わせて
+   「一件ぶんの席が開いて、そこに入った」に見えます。
+
+   上から降りてくるのは、足したものが一覧の頭に付くからです（daily は更新順、
+   買うものは足した順）。下から生えると、来た方向と置かれた場所が食い違います。 */
+.is-arriving {
+  animation: row-arrive .34s var(--ease-out) both;
+}
+@keyframes row-arrive {
+  from { opacity: 0; transform: translateY(-10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .item.is-glow, .item.is-finishing, .item.is-sliding { animation-duration: .01ms; }
+  .item.is-glow, .item.is-finishing, .item.is-sliding,
+  .item.is-dropping, .is-arriving { animation-duration: .01ms; }
 }

@@ -229,6 +229,81 @@
     }
   });
 
+  /* ---------------- 行が動くところを見せる（FLIP） ----------------
+
+     この app の画面は、何かが変わるたびに**丸ごと組み直します**。作りとしては
+     正しい（画面が state のうつしになる）のですが、そのぶん、起きたことが
+     全部「瞬間移動」として出ます。一件足すと、上から二番目だった行がいつの
+     まにか三番目にいる。並び替えを押すと、一覧が別のものに置き換わっている。
+     何が起きたのかは、二枚の絵を見比べて自分で当てるしかありません。
+
+     組み直しの**前後**で同じ行がどこに居たかを測って、「もといた場所」から
+     いまの場所へ滑らせます。行そのものは新しい要素ですが、目には同じ行が
+     動いたように見えます——これが FLIP（First / Last / Invert / Play）です。
+
+       const settle = KN.ui.flipRows(host, ".arc-row");   // 組む前に測る
+       ...組み直す...
+       settle();                                          // 測って、滑らせる
+
+     行は data-flip に自分の id を持ちます。持っていない行は素通りします。
+
+     **行き先が変わるときは動かしません。** 月をめくる・日を選ぶ・タブを移る
+     ときは一覧が丸ごと入れ替わるので、全部の行がいっせいに現れることに
+     なります。それは「編集の手ごたえ」ではなく、ただのちらつきです。
+     新しい行が半分を超えたら、動かさずに黙って置き換えます。 */
+  const FLIP_MS = 320;
+
+  function flipRows(host, selector) {
+    if (!host) return () => {};
+    /* 動きを減らす設定なら、測りもしません（transition は base.css が
+       瞬時にしますが、測って書いて消す往復そのものが無駄なので）。 */
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return () => {};
+    }
+    const first = new Map();
+    host.querySelectorAll(selector).forEach((el) => {
+      const id = el.dataset.flip;
+      if (id) first.set(id, el.getBoundingClientRect().top);
+    });
+
+    return () => {
+      const rows = [...host.querySelectorAll(selector)].filter((el) => el.dataset.flip);
+      if (!rows.length || !first.size) return;
+      const fresh = rows.filter((el) => !first.has(el.dataset.flip));
+      // 半分より多くが新顔なら、これは編集ではなく行き先の変更です。
+      if (fresh.length > rows.length / 2) return;
+
+      let moved = false;
+      rows.forEach((el) => {
+        const was = first.get(el.dataset.flip);
+        if (was == null) {
+          // 新しく来た行だけが、名乗りを上げます。
+          el.classList.add("is-arriving");
+          return;
+        }
+        const dy = was - el.getBoundingClientRect().top;
+        if (Math.abs(dy) < 1) return;          // 動いていない行は触りません
+        el.style.transition = "none";
+        el.style.transform = `translateY(${dy}px)`;
+        moved = true;
+      });
+      if (!moved) return;
+
+      /* 一拍おいてから戻します。同じフレームで書いて消すと、ブラウザは
+         二つをまとめて「何も変わっていない」と見なし、動きが出ません。 */
+      requestAnimationFrame(() => {
+        rows.forEach((el) => {
+          if (!el.style.transform) return;
+          el.style.transition = `transform ${FLIP_MS}ms var(--ease-out)`;
+          el.style.transform = "";
+        });
+        setTimeout(() => {
+          rows.forEach((el) => { el.style.transition = ""; el.style.transform = ""; });
+        }, FLIP_MS + 30);
+      });
+    };
+  }
+
   /* ---------------- 弾み（済ませた瞬間だけの、短い火花） ----------------
 
      やることを済ませた・買うものを買った、その指の下だけに、小さな星が
@@ -726,6 +801,6 @@
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
-    burst,
+    burst, flipRows,
   };
 })();
