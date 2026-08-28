@@ -4441,6 +4441,14 @@ a.btn { text-decoration: none; }
   -webkit-touch-callout: default;
   cursor: text;
 }
+/* 「数文ずつ」を選んだとき。長い日の文で一覧が埋まらないように、三行で
+   切ります（続きは押して開けば読めます）。既定は全文のままです。 */
+.arc-log-memo.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 /* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
 .arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
@@ -15498,6 +15506,32 @@ a.btn { text-decoration: none; }
     return diet().meals.find((m) => m.id === head.id) || null;
   }
 
+  /**
+   * 食べたもの・書いたことから、文字でさがします。
+   *
+   * 探す先は、人が**自分で書いた文**（各区分のメモと、その日の一言）と、
+   * 数として並べた食品の名まえです。日ごとにまとめて、新しい順に返します。
+   * 「あの日、何食べたっけ」に答えるためのものなので、日そのものが答え
+   * ——画面はここから、その日へ跳びます。
+   */
+  function searchDietDays(q) {
+    const needle = foldKana(String(q || "").trim().toLowerCase());
+    if (!needle) return [];
+    const hit = (s) => !!s && foldKana(String(s).toLowerCase()).indexOf(needle) >= 0;
+    const byDay = new Map();
+    diet().meals.forEach((m) => {
+      const found = [];
+      if (hit(m.memo)) found.push(String(m.memo).trim());
+      m.items.forEach((it) => { if (hit(it.name)) found.push(it.name); });
+      if (!found.length) return;
+      const cur = byDay.get(m.day) || { day: m.day, slots: [], text: [] };
+      if (!cur.slots.includes(m.slot)) cur.slots.push(m.slot);
+      found.forEach((w) => { if (!cur.text.includes(w)) cur.text.push(w); });
+      byDay.set(m.day, cur);
+    });
+    return [...byDay.values()].sort((a, b) => (a.day < b.day ? 1 : -1));
+  }
+
   /* --- 一日ぶんの食事メモ ---
 
      時間帯に分けて書くのは、続きません。書くのは一本の文で、
@@ -16184,7 +16218,7 @@ a.btn { text-decoration: none; }
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
-    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo,
+    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo, searchDietDays,
     slotMemo, setSlotMemo,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
@@ -16932,24 +16966,74 @@ a.btn { text-decoration: none; }
     }, true);
   }
 
-  /* ---------------- search: a button, and the bar it opens ----------------
+  /* ---------------- 文字でさがす：上に隠してあるバー ----------------
 
-     A search bar is worth its height only while it is being used. Left up
-     permanently it costs a row of the list on every screen, every day, to
-     answer a question asked once a week — so it lives behind the magnifier
-     next to the layout button, and folds away again when the query is
-     cleared. Same three parts on every screen that has one, wired here so
-     they cannot drift apart.
+     バーは**いつもそこにあります**が、いつもは見えません。題（.topbar）の
+     すぐ下、画面のいちばん上に置いてあって、その画面を開いた時点で、
+     ちょうどその一段ぶんだけ先へ送ってあります。.topbar は貼りついて
+     いるので、送られたバーはその裏に隠れます。少し下へ引けば出てくる
+     ——iOS のメールや写真と同じ、「上に隠してある」やり方です。
 
-     @param els  { searchBtn, searchWrap, search, searchClear }
+     隠すのに hidden を使っていたころは、虫めがねを押さないと在ることが
+     分かりませんでした。いまは押さなくても、下へ引けば出てきます。
+     虫めがねはそのまま残します——出すのに一番速い道でもあるので。
+
+     引ける余地が無い画面（中身が一画面に収まっている）では、送れないので
+     出したままになります。探すものが無いくらい短い一覧なので、それで
+     困りません。
+
+     @param els  { screen, searchBtn, searchWrap, search, searchClear }
      @param onChange  called after the query changes; repaint the list
      @param setQuery  hands the folded query back to the screen
   */
+  function searchWrapOf(scroller) {
+    return scroller ? scroller.querySelector(".search-wrap") : null;
+  }
+
+  /** バーを一段ぶん先へ送って、題の裏に隠します。 */
+  function parkSearch(scroller, force) {
+    const wrap = searchWrapOf(scroller);
+    if (!wrap || wrap.hidden) return;
+    const h = Math.round(wrap.getBoundingClientRect().height);
+    if (!h) return;
+    const input = wrap.querySelector(".search-input");
+    // 探している最中の人の手からは、画面を取り上げません。
+    if (input && (input.value || document.activeElement === input)) return;
+    // すでに読み進めているところへ、割り込みません。
+    if (!force && scroller.scrollTop > h + 1) return;
+
+    /* 送る余地が足りないとき——中身が一画面に収まっている画面——は、
+       足りないぶんだけ下に余白を足します。余白は送りきったところで
+       ちょうど使い切るので、画面には出ません。これが無いと、短い画面
+       だけバーが出たままになって、タブごとに顔が変わります。 */
+    const stack = wrap.parentElement;
+    if (stack) {
+      /* flex-shrink を止めてから。flex の子は既定で min-height:auto を
+         持っていて、それが「中身より縮まない」を保証しています。ここで
+         min-height を書くとその自動の下限が外れ、**中身より縮める**ように
+         なります——長い画面（ダイエット）の下が、帯の下に潜りました。 */
+      stack.style.flexShrink = "0";
+      stack.style.minHeight = `calc(100% + ${h}px)`;
+    }
+    scroller.scrollTop = h;
+  }
+
+  /** バーを出して、そのまま打てるようにします。 */
+  function revealSearch(scroller, input) {
+    // focus が先です。iOS は「指の動きからたどれる focus」にしか
+    // キーボードを出しません（focusNow の説明と同じ理由）。
+    if (input) focusNow(input);
+    if (scroller) KN.app.glideTo(scroller, 0);
+  }
+
   function wireSearch(els, onChange, setQuery) {
+    const scroller = els.screen || (els.searchWrap && els.searchWrap.closest(".screen"));
+
     const paint = () => {
-      const open = !els.searchWrap.hidden;
-      els.searchBtn.classList.toggle("is-on", open);
-      els.searchBtn.setAttribute("aria-expanded", String(open));
+      // 光るのは「いま絞り込んでいる」ときだけ。出ているかどうかではなく。
+      const on = !!els.search.value;
+      els.searchBtn.classList.toggle("is-on", on);
+      els.searchBtn.setAttribute("aria-expanded", String(on));
     };
 
     const clear = () => {
@@ -16957,14 +17041,19 @@ a.btn { text-decoration: none; }
       els.searchClear.hidden = true;
       setQuery("");
       onChange();
+      paint();
     };
 
     els.searchBtn.addEventListener("click", () => {
-      const opening = els.searchWrap.hidden;
-      els.searchWrap.hidden = !opening;
-      if (opening) setTimeout(() => els.search.focus(), 30);
-      else clear();
-      paint();
+      const showing = scroller && scroller.scrollTop < 2;
+      if (showing && (els.search.value || document.activeElement === els.search)) {
+        // 出ていて、使っている最中に押したら「やめる」。
+        clear();
+        els.search.blur();
+        parkSearch(scroller, true);
+      } else {
+        revealSearch(scroller, els.search);
+      }
       KN.util.haptic();
     });
 
@@ -16973,9 +17062,39 @@ a.btn { text-decoration: none; }
       els.searchClear.hidden = !els.search.value;
       setQuery(KN.util.foldKana(els.search.value));
       onChange();
+      paint();
     });
 
     els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });
+
+    /* 打ち終えて改行を押したら、キーボードだけ下ろします（絞り込みは
+       残したまま——見に行くのはこれからなので）。 */
+    els.search.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); els.search.blur(); }
+      if (e.key === "Escape") { clear(); els.search.blur(); parkSearch(scroller, true); }
+    });
+
+    /* 送られていくあいだ、薄くなっていきます。
+
+       題（.topbar）は少しだけ透けているので、裏に回ったバーがそのまま
+       残ると、題の後ろに丸い帯が影のように見えていました。出てくる途中で
+       濃くなるほうが「引き出している」感じにも合います。使っている最中
+       （打った字が入っている・指が入っている）は、薄くしません。 */
+    if (scroller) {
+      const fade = () => {
+        if (els.search.value || document.activeElement === els.search) {
+          els.searchWrap.style.opacity = "";
+          return;
+        }
+        const h = els.searchWrap.offsetHeight || 1;
+        const t = Math.min(1, Math.max(0, scroller.scrollTop / h));
+        els.searchWrap.style.opacity = String(1 - t);
+      };
+      scroller.addEventListener("scroll", fade, { passive: true });
+      els.search.addEventListener("focus", fade);
+      els.search.addEventListener("blur", fade);
+      fade();
+    }
 
     paint();
   }
@@ -17003,7 +17122,7 @@ a.btn { text-decoration: none; }
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
-    burst, flipRows,
+    burst, flipRows, parkSearch, revealSearch,
   };
 })();
 
@@ -22763,6 +22882,9 @@ a.btn { text-decoration: none; }
   let favOnly = false;
   let query = "";
 
+  /** daily の見え方の設定。まとめてここから読みます（既定はぜんぶ「出す」）。 */
+  const S = () => store.get().settings;
+
   const ymOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   const curYm = () => viewMonth || ymOf(new Date());
   const ymParts = (ym) => ({ year: +ym.slice(0, 4), month: +ym.slice(5, 7) - 1 });
@@ -23102,16 +23224,19 @@ a.btn { text-decoration: none; }
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
           </span>
           <span class="arc-log-text">
-            <span class="arc-log-memo">${orDash(d.memo)}</span>
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""}">${orDash(d.memo)}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
-                  中身のほうに先に行くようにします。 */""}
-            <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>
-            <span class="arc-log-meta">
-              <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
-              ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
-            </span>
+                  中身のほうに先に行くようにします。どちらも、要らない人は
+                  設定で消せます（数字が四つ並ぶのが邪魔なときがあるので）。 */""}
+            ${S().showDayTimes === false ? "" : html`
+              <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
+            ${S().showStamps === false ? "" : html`
+              <span class="arc-log-meta">
+                <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
+                ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
+              </span>`}
           </span>
         </div>
       `);
@@ -23663,16 +23788,20 @@ a.btn { text-decoration: none; }
               <h1 class="topbar-title">daily</h1>
               <p class="topbar-sub js-sub"></p>
             </div>
+            ${/* 右端から 設定・さがす・書き出し。ほかの三画面と同じ並べ方で、
+                  いちばん右がいつも設定です。 */""}
             <button class="icon-btn js-export" aria-label="この月を書き出す">${icon("download")}</button>
+            <button class="icon-btn js-search-btn" aria-label="文字でさがす">${icon("search")}</button>
+            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
-        <div class="search-wrap">
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
-            <input class="search-input js-q" placeholder="文字でさがす" aria-label="文字でさがす"
+            <input class="search-input js-search" placeholder="文字でさがす" aria-label="文字でさがす"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-clear" aria-label="検索をクリア"
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
                     style="width:28px;height:28px" hidden>${icon("close")}</button>
           </div>
         </div>
@@ -23684,13 +23813,18 @@ a.btn { text-decoration: none; }
     els = {
       sub: root.querySelector(".js-sub"),
       body: root.querySelector(".js-body"),
-      q: root.querySelector(".js-q"),
-      clear: root.querySelector(".js-clear"),
+      screen: root,
+      searchBtn: root.querySelector(".js-search-btn"),
+      searchWrap: root.querySelector(".js-search-wrap"),
+      search: root.querySelector(".js-search"),
+      searchClear: root.querySelector(".js-search-clear"),
     };
 
-    els.q.addEventListener("input", () => { query = els.q.value; render(); });
-    els.clear.addEventListener("click", () => { query = ""; els.q.value = ""; els.q.focus(); render(); });
+    /* ほかの三画面とまったく同じ配線です。バーは題の裏に隠してあって、
+       少し下へ引くと出てきます（ui.js の parkSearch）。 */
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
     root.querySelector(".js-export").addEventListener("click", exportThisMonth);
+    root.querySelector(".js-settings").addEventListener("click", () => KN.app.showScreen("settings"));
 
     els.cal = calendar();
     // 初めて開いたときも、今日の欄が待っているように。
@@ -23730,7 +23864,7 @@ a.btn { text-decoration: none; }
     const settle = KN.ui.flipRows(els.body, ".arc-row");
 
     rendering = true;
-    els.clear.hidden = !query;
+    els.searchClear.hidden = !els.search.value;
     /* 上の帯は、**暦が言えないことだけ**を言います。
        月は、すぐ下の暦が「8月 2026」と出しています。ここでも「2026年8月」と
        書けば、二行つづけて同じことを言ったことになります。日を選んだときは
@@ -23742,11 +23876,18 @@ a.btn { text-decoration: none; }
     els.body.append(els.cal);
     fillCalendar(els.cal);
     /* 「あの日」は、暦のすぐ下。暦は行き先を選ぶところなので、**最初の中身**は
-       これになります。見つからない日は、null が返って何も置かれません。 */
-    const then = thenCard();
-    if (then) els.body.append(then);
-    els.body.append(dailyLog(ym));
-    els.body.append(entriesSection(ym));
+       これになります。見つからない日は、null が返って何も置かれません。
+       出すかどうかは設定で決められます（既定は出す）。 */
+    if (S().showThen !== false) {
+      const then = thenCard();
+      if (then) els.body.append(then);
+    }
+    /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
+       その日の文が先で、集めるものとして使う人は積み上げが先です。
+       どちらが上かは、その人の使い方でしか決まりません。 */
+    const log = dailyLog(ym), entries = entriesSection(ym);
+    if (S().dailyOrder === "entries") els.body.append(entries, log);
+    else els.body.append(log, entries);
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;
@@ -23967,7 +24108,7 @@ a.btn { text-decoration: none; }
           </div>
         </header>
 
-        <div class="search-wrap js-search-wrap" hidden>
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="やることを探す" aria-label="やることを探す"
@@ -23987,6 +24128,7 @@ a.btn { text-decoration: none; }
       layout:    chrome.querySelector(".js-layout"),
       settings:  chrome.querySelector(".js-settings"),
       searchBtn: chrome.querySelector(".js-search-btn"),
+      screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:    chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
@@ -25619,6 +25761,9 @@ a.btn { text-decoration: none; }
   /* いま見ている日。null は「今日」——日付を焼き込まないのは、日付が
      変わったあともアプリを開きっぱなしにしていることがあるからです。 */
   let viewDay = null;
+  /* 「食べたものを探す」の文字。入っているあいだは、その日の紙のかわりに
+     見つかった日を並べます（下の renderFound）。 */
+  let query = "";
   const curDay = () => viewDay || U.todayKey();
   const isViewToday = () => curDay() === U.todayKey();
   /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。
@@ -25678,14 +25823,29 @@ a.btn { text-decoration: none; }
               <h1 class="topbar-title">ダイエット</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
-            ${/* 右端から 設定・取り込み。ほかの画面と同じ並べ方で、
+            ${/* 右端から 設定・さがす・取り込み。ほかの画面と同じ並べ方で、
                  いちばん右がいつも設定です。 */""}
             <button class="icon-btn js-sync" aria-label="ヘルスケアから取り込む" title="ヘルスケアから取り込む">
               ${icon("download")}
             </button>
+            <button class="icon-btn js-search-btn" aria-label="食べたものを探す">${icon("search")}</button>
             <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
+
+        ${/* ほかの三画面と同じバーです。題の裏に隠してあって、少し下へ
+              引くと出てきます（ui.js の parkSearch）。探す先だけが違って、
+              ここは**食べたもの**——「あの日、何食べたっけ」に答えます。 */""}
+        <div class="search-wrap js-search-wrap">
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-search" placeholder="食べたものを探す" aria-label="食べたものを探す"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+          </div>
+        </div>
+
         <div class="js-body"></div>
       </div>
     `);
@@ -25697,10 +25857,16 @@ a.btn { text-decoration: none; }
       sync: chrome.querySelector(".js-sync"),
       settings: chrome.querySelector(".js-settings"),
       topbar: chrome.querySelector(".topbar"),
+      screen: root,
+      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
+      search: chrome.querySelector(".js-search"),
+      searchClear: chrome.querySelector(".js-search-clear"),
     };
 
     els.sync.addEventListener("click", openSyncSheet);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     /* カレンダーは貼りつけません（やることのタブとはそこだけ違います）。
        紙のいちばん上に印刷してあるものとして、スクロールで一緒に流れます。 */
@@ -25858,6 +26024,62 @@ a.btn { text-decoration: none; }
     return slide;
   }
 
+  /* ---------------- 見つかった日を並べる ----------------
+
+     ここで探しているのは「言葉」ではなく「日」です。「唐揚げ」と打つ人は
+     文そのものではなく、**唐揚げを食べた日**を探しています。だから答えは
+     日付の一覧で、押せばその日の紙へ跳びます（跳んだら探すのはやめます
+     ——行き先に着いたら、地図はしまうものなので）。 */
+  function renderFound() {
+    const found = store.searchDietDays(query);
+    els.body.innerHTML = "";
+    els.sub.textContent = found.length ? `${found.length}日 見つかりました` : "";
+
+    if (!found.length) {
+      els.body.append(node(html`
+        <section class="card section">
+          <p class="arc-log-empty">見つかりませんでした。</p>
+        </section>
+      `));
+      return;
+    }
+
+    const list = node(html`<section class="card section diet-found"></section>`);
+    found.slice(0, 60).forEach((f) => {
+      const dt = U.dayDate(f.day);
+      const slots = f.slots
+        .map((id) => (SLOTS.find((s) => s.id === id) || {}).short || "メモ")
+        .join("・");
+      const row = node(html`
+        <button type="button" class="arc-log-row diet-found-row" data-day="${f.day}">
+          <span class="arc-log-day">
+            <b>${String(dt ? dt.getDate() : "")}</b>
+            <i>${dt ? U.weekdayJa(f.day) : ""}</i>
+          </span>
+          <span class="arc-log-text">
+            <span class="arc-log-memo">${f.text.join(" ／ ")}</span>
+            <span class="arc-log-times">${U.formatDate(f.day)}${slots ? " ・ " + slots : ""}</span>
+          </span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        viewDay = f.day === U.todayKey() ? null : f.day;
+        calMonth = null;
+        els.search.value = "";
+        els.searchClear.hidden = true;
+        query = "";
+        haptic();
+        render();
+        if (root) root.scrollTop = 0;
+      });
+      list.append(row);
+    });
+    if (found.length > 60) {
+      list.append(node(html`<p class="arc-log-empty">ほかにも ${String(found.length - 60)}日 あります。</p>`));
+    }
+    els.body.append(list);
+  }
+
   function render() {
     // 食事の四枠を保存した直後は、組み直しません（上の saving を参照）。
     if (saving) return;
@@ -25869,6 +26091,8 @@ a.btn { text-decoration: none; }
     flushSlots();
     flushSlots = () => {};
     const keepTop = root ? root.scrollTop : 0;
+    // 探しているあいだは、その日の紙のかわりに、見つかった日を並べます。
+    if (query.trim()) { renderFound(); return; }
     const day = curDay();
     const card = D.dayCard(day);
     // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
@@ -29931,7 +30155,7 @@ distance=6.0km</pre>
           </div>
         </header>
 
-        <div class="search-wrap js-search-wrap" hidden>
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="リストの中を探す" aria-label="リストの中を探す"
@@ -29958,6 +30182,7 @@ distance=6.0km</pre>
       settings:   chrome.querySelector(".js-settings"),
       prices:     chrome.querySelector(".js-prices"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
+      screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
@@ -30759,7 +30984,7 @@ distance=6.0km</pre>
         ${/* Folded away until asked for. It used to sit open under the title on
               every visit, spending a row of the screen on a question asked
               once in a while. */""}
-        <div class="search-wrap js-search-wrap" hidden>
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
@@ -30780,6 +31005,7 @@ distance=6.0km</pre>
       sub:     chrome.querySelector(".js-sub"),
 
       searchBtn: chrome.querySelector(".js-search-btn"),
+      screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
@@ -31264,6 +31490,7 @@ distance=6.0km</pre>
     const from = KN.app.openedFrom ? KN.app.openedFrom() : "list";
     if (from === "todo") return "todo";
     if (from === "diet") return "diet";
+    if (from === "archive") return "daily";
     return "shop";                       // list / prices は共有
   };
 
@@ -31288,6 +31515,7 @@ distance=6.0km</pre>
       els.body.append(storesGroup());
       els.body.append(categoriesGroup());
     }
+    if (showAll || only === "daily") els.body.append(dailyGroup());
     if (showAll || only === "diet") els.body.append(dietGroup());
 
     els.body.append(dataGroup());
@@ -31314,7 +31542,7 @@ distance=6.0km</pre>
     `);
   }
 
-  const SCOPE_LABEL = { todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
+  const SCOPE_LABEL = { daily: "daily", todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
 
   /** 隠したものへの入り口。畳んであるだけで、無いわけではないと言うための行。 */
   function moreBlock(only) {
@@ -32004,6 +32232,156 @@ distance=6.0km</pre>
     });
 
     sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
+  }
+
+  /* ---------------- daily ----------------
+
+     ここにあるのは、**見え方**だけです。何を書くか・何を残すかには一切
+     関わりません（daily は評価しない画面なので、目標も達成率もここには
+     置きません）。人によって、日誌として使うか、集めるものとして使うかが
+     はっきり分かれる画面なので、その分かれ目だけを渡します。 */
+
+  const dailySet = (key, value, said) => {
+    store.update((s) => { s.settings[key] = value; });
+    render();
+    if (said) KN.ui.toast(said);
+  };
+
+  function dailyGroup() {
+    const s = store.get().settings;
+    const full = s.logFull !== false;
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">daily</h2>
+        <div class="rows">
+          <button class="row js-month-export">
+            <span class="row-main">
+              <span class="row-title">月ぶんを書き出す</span>
+              <span class="row-sub">その月の Daily Log と積み上げを、まとめて一つのファイルに</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-then">
+            <span class="row-main">
+              <span class="row-title">「あの日」を出す</span>
+              <span class="row-sub">${s.showThen === false
+                ? "出しません"
+                : "暦のすぐ下に、何年か前の同じ日に書いたものを一つ"}</span>
+            </span>
+            <span class="row-value">${s.showThen === false ? "オフ" : "オン"}</span>
+          </button>
+          <button class="row js-logfull">
+            <span class="row-main">
+              <span class="row-title">Daily Log の見せ方</span>
+              <span class="row-sub">${full
+                ? "書いたものを全部そのまま出します"
+                : "はじめの三行だけ。続きは押して開けば読めます"}</span>
+            </span>
+            <span class="row-value">${full ? "全文" : "数行"}</span>
+          </button>
+          <button class="row js-daytimes">
+            <span class="row-main">
+              <span class="row-title">起床・就寝の時刻</span>
+              <span class="row-sub">${s.showDayTimes === false
+                ? "一覧には出しません（開けば書けます）"
+                : "Daily Log の一行ごとに出します"}</span>
+            </span>
+            <span class="row-value">${s.showDayTimes === false ? "オフ" : "オン"}</span>
+          </button>
+          <button class="row js-stamps">
+            <span class="row-main">
+              <span class="row-title">作成・更新の時刻</span>
+              <span class="row-sub">${s.showStamps === false
+                ? "出しません"
+                : "いつ書いて、いつ直したか（その日の話ではなく、帳簿のほう）"}</span>
+            </span>
+            <span class="row-value">${s.showStamps === false ? "オフ" : "オン"}</span>
+          </button>
+          <button class="row js-order">
+            <span class="row-main">
+              <span class="row-title">上に出すもの</span>
+              <span class="row-sub">${s.dailyOrder === "entries"
+                ? "積み上げが先。読んだ本や学んだことを集める使い方に"
+                : "Daily Log が先。その日の文を書く使い方に"}</span>
+            </span>
+            <span class="row-value">${s.dailyOrder === "entries" ? "積み上げ" : "Daily Log"}</span>
+          </button>
+        </div>
+      </section>
+    `);
+
+    wrap.querySelector(".js-month-export").addEventListener("click", openMonthExport);
+    wrap.querySelector(".js-then").addEventListener("click", () => {
+      const on = s.showThen === false;
+      dailySet("showThen", on, on ? "「あの日」を出します" : "「あの日」を出しません");
+    });
+    wrap.querySelector(".js-logfull").addEventListener("click", () => {
+      dailySet("logFull", !full, full ? "はじめの三行だけ出します" : "全文を出します");
+    });
+    wrap.querySelector(".js-daytimes").addEventListener("click", () => {
+      const on = s.showDayTimes === false;
+      dailySet("showDayTimes", on, on ? "起床・就寝を出します" : "起床・就寝を出しません");
+    });
+    wrap.querySelector(".js-stamps").addEventListener("click", () => {
+      const on = s.showStamps === false;
+      dailySet("showStamps", on, on ? "作成・更新を出します" : "作成・更新を出しません");
+    });
+    wrap.querySelector(".js-order").addEventListener("click", () => {
+      const toEntries = s.dailyOrder !== "entries";
+      dailySet("dailyOrder", toEntries ? "entries" : "log",
+        toEntries ? "積み上げを上にします" : "Daily Log を上にします");
+    });
+    return wrap;
+  }
+
+  /* 書き出す月を選ぶ紙。記録のある月だけを、新しい順に並べます——
+     空の月を書き出しても意味がないので、選べるのは中身のある月だけです。 */
+  function openMonthExport() {
+    const arc = store.get().archive || { entries: [], days: [] };
+    const months = new Set();
+    (arc.entries || []).forEach((e) => { if (e.date) months.add(String(e.date).slice(0, 7)); });
+    (arc.days || []).forEach((d) => { if (d.date) months.add(String(d.date).slice(0, 7)); });
+    const list = [...months].sort().reverse();
+
+    const body = node(html`<div class="stack"><div class="rows js-rows"></div></div>`);
+    const rows = body.querySelector(".js-rows");
+    if (!list.length) {
+      rows.append(node(html`<div class="row"><span class="row-main">
+        <span class="row-sub">まだ書いたものがありません。</span></span></div>`));
+    }
+    let handle = null;
+    list.forEach((ym) => {
+      const n = store.exportMonth(ym);
+      const days = (n.days || []).length, entries = (n.entries || []).length;
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${ym.replace("-", "年") + "月"}</span>
+            <span class="row-sub">Daily Log ${String(days)}日 ・ 積み上げ ${String(entries)}件</span>
+          </span>
+          <span class="row-chevron">${icon("download")}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        downloadJSON(`daily-${ym}.json`, store.exportMonth(ym));
+        KN.ui.toast(`${ym} を書き出しました`);
+        if (handle) handle.close();
+      });
+      rows.append(row);
+    });
+
+    handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
+  }
+
+  function downloadJSON(name, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   /* ---------------- ダイエット ---------------- */
@@ -32812,6 +33190,12 @@ distance=6.0km</pre>
     if (KN.screens[id].onEnter) {
       try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
     }
+
+    /* 「文字でさがす」のバーは、題のすぐ下に置いてあって、開いた時点では
+       その一段ぶんだけ先へ送ってあります（ui.js の parkSearch）。少し下へ
+       引けば出てきます。組み終わってから測るので、一拍おきます。 */
+    const screenEl = document.getElementById("screen-" + id);
+    requestAnimationFrame(() => KN.ui.parkSearch(screenEl));
 
     /* The ＋ lives in the dock — floating over the screen just above the tab
        bar, where a thumb already is — rather than in the top corner of each

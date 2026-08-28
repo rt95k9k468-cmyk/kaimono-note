@@ -269,6 +269,12 @@
       try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
     }
 
+    /* 「文字でさがす」のバーは、題のすぐ下に置いてあって、開いた時点では
+       その一段ぶんだけ先へ送ってあります（ui.js の parkSearch）。少し下へ
+       引けば出てきます。組み終わってから測るので、一拍おきます。 */
+    const screenEl = document.getElementById("screen-" + id);
+    requestAnimationFrame(() => KN.ui.parkSearch(screenEl));
+
     /* The ＋ lives in the dock — floating over the screen just above the tab
        bar, where a thumb already is — rather than in the top corner of each
        screen. Both the list and the price screen have something to add, and

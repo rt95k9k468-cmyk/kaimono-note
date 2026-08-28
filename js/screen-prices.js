@@ -47,7 +47,7 @@
         ${/* Folded away until asked for. It used to sit open under the title on
               every visit, spending a row of the screen on a question asked
               once in a while. */""}
-        <div class="search-wrap js-search-wrap" hidden>
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
@@ -68,6 +68,7 @@
       sub:     chrome.querySelector(".js-sub"),
 
       searchBtn: chrome.querySelector(".js-search-btn"),
+      screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),

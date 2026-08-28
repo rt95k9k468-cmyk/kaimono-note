@@ -53,7 +53,7 @@
           </div>
         </header>
 
-        <div class="search-wrap js-search-wrap" hidden>
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="リストの中を探す" aria-label="リストの中を探す"
@@ -80,6 +80,7 @@
       settings:   chrome.querySelector(".js-settings"),
       prices:     chrome.querySelector(".js-prices"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
+      screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),

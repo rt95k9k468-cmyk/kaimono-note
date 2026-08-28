@@ -116,7 +116,7 @@
           </div>
         </header>
 
-        <div class="search-wrap js-search-wrap" hidden>
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="やることを探す" aria-label="やることを探す"
@@ -136,6 +136,7 @@
       layout:    chrome.querySelector(".js-layout"),
       settings:  chrome.querySelector(".js-settings"),
       searchBtn: chrome.querySelector(".js-search-btn"),
+      screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:    chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
