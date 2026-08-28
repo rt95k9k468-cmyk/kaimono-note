@@ -2454,6 +2454,11 @@ a.btn { text-decoration: none; }
   display: flex; gap: var(--sp-3); width: 100%; text-align: left;
   padding: var(--sp-4) 0; border-top: 1px solid var(--c-border);
   align-items: flex-start; min-height: 64px;
+  cursor: pointer;
+  /* 行そのものは押すもの。長押しでこの帯が選ばれてしまわないように。 */
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 26px; flex: none; padding-top: 1px; }
@@ -2461,7 +2466,18 @@ a.btn { text-decoration: none; }
 .arc-log-day i { font-size: 10px; font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.arc-log-memo { font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap; }
+/* 本文だけは、選べます。**ここに出ているのはその日に書いた文そのもの**
+   なので、コピーするのに紙を開き直させる理由がありません。日付や時刻の
+   ほうは押すための飾りなので、上の .arc-log-row のまま選べません。
+   （選び終えた指を離すと click も鳴るので、選択が残っているあいだは
+   紙を開かないようにしています——screen-archive.js の click。） */
+.arc-log-memo {
+  font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+  cursor: text;
+}
 /* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
 .arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
@@ -2579,20 +2595,64 @@ a.btn { text-decoration: none; }
   gap: var(--sp-2);
   padding: 9px 12px 9px 16px;
   border-radius: var(--r-full);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-2);
+  position: relative;
+  /* 地は、＋（.add-fab）と下の帯（base.css の .tabbar::before）と
+     まったく同じ組み立てです——三枚重ねの光と、同じぼかし・彩度・明るさ。
+     この三つは同じ高さに浮いているので、材が違うと同じ高さに見えません。
+     ＋ を押して立ち上がるものが不透明な板だと、ガラスの上に紙を置いた
+     ように見えていました。 */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
+    color-mix(in srgb, var(--c-bg-elev) 52%, transparent);
+  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
+  -webkit-backdrop-filter: saturate(240%) blur(22px);
+  border: none;
+  box-shadow: var(--shadow-3);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text);
   /* 立ち上がる前は、＋ の中に畳まれている位置に置きます。 */
   opacity: 0;
-  transform: translateY(14px) scale(.92);
-  transition: opacity .16s var(--ease), transform .22s var(--ease-out);
+  transform: translateY(18px) scale(.9);
+  /* しまうときは、迷いなく。出るときだけ、下の .is-on で長くとります。 */
+  transition: opacity .18s var(--ease), transform .24s var(--ease-out);
 }
-.fab-menu.is-on .fab-menu-b { opacity: 1; transform: none; }
-/* 下のものから順に。--i は上から数えた番号なので、逆から遅らせます。 */
-.fab-menu.is-on .fab-menu-b { transition-delay: calc((2 - var(--i)) * 34ms); }
+
+/* 縁の光。帯・＋ と同じ作り方（1px の余白に色を敷いて、内側をマスクで
+   抜く）。丸みの強い錠剤なので、上で明るく下で薄く光る輪になります。 */
+.fab-menu-b::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-full);
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .9),
+    rgba(255, 255, 255, .22) 34%,
+    rgba(255, 255, 255, .08) 62%,
+    rgba(255, 255, 255, .45));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+/* 縁の光は最後の子として描かれるので、字と丸を一段上げます。 */
+.fab-menu-label, .fab-menu-ico { position: relative; z-index: 1; }
+
+/* 出てくるところ。**下のものから順に、ゆっくり**。
+
+   ＋ を押してから最後の一つが着くまでを 0.6 秒ほどとります。速いほうが
+   きびきびして見えますが、これは「行き先を選ぶ」ための menu なので、
+   立ち上がりきる前に読み始められるくらいの速さのほうが、選びやすい。 */
+.fab-menu.is-on .fab-menu-b {
+  opacity: 1;
+  transform: none;
+  transition: opacity .34s var(--ease), transform .46s var(--ease-out);
+  /* --i は上から数えた番号なので、逆から遅らせます（指のいちばん近くが先）。 */
+  transition-delay: calc((2 - var(--i)) * 62ms);
+}
 .fab-menu-b:active { transform: scale(.96); }
 .fab-menu-ico {
   display: grid; place-items: center;
@@ -2603,6 +2663,32 @@ a.btn { text-decoration: none; }
 }
 /* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
 .fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }
+
+/* 暗い画面では、帯・＋ と同じだけ光を落とします。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fab-menu-b {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+      color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+  }
+  :root:not([data-theme="light"]) .fab-menu-b::after {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
+      rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
+  }
+}
+:root[data-theme="dark"] .fab-menu-b {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+    color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+}
+:root[data-theme="dark"] .fab-menu-b::after {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
+    rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
+}
 
 /* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
 .add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
