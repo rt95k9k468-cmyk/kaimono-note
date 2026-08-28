@@ -63,26 +63,62 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   check("日本語がそのまま戻る", (await got.text()) === text);
 }
 
-/* ---------- 新しい便が古い便を上書きする ---------- */
+/* ---------- 同じ差出人の新しい便が、その差出人の古い便を差し替える ---------- */
 {
   const env = env0();
   await call(env, "POST", PATH, "steps=1");
   await call(env, "POST", PATH, "steps=2");
-  // 便そのものは一つだけ（"box:replaced" は上書きを覚えておく小さな印で、別枠）。
-  check("郵便受けの本体は一つだけ", env.MAIL._m.get("box") === "steps=2");
+  check("同じ差出人の棚は一つだけ", env.MAIL._m.get("box:text") === "steps=2");
   const got = await call(env, "GET", PATH);
   check("あとから置いたほうが残る", (await got.text()) === "steps=2");
 }
 
-/* ---------- 読まれないまま上書きされたことを、一度だけ伝える ---------- */
+/* ---------- 差出人が違えば、消し合わない ----------
+
+   ここが仕切りを入れた理由です。「からだ」と「睡眠」の二本のショートカットが
+   一時間ごとに走ると、前は後から来たほうが前を消していました。 */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "day=2026-08-28\nsteps=8432");           // からだ（key=value）
+  await call(env, "POST", PATH, '{"value":"コア","start":"a","end":"b"}');  // 睡眠（JSON）
+  const got = await call(env, "GET", PATH);
+  const text = await got.text();
+  check("からだと睡眠が両方とどく", text.includes("steps=8432") && text.includes("コア"), text);
+  check("何通まとめたかを言う", got.headers.get("x-kn-parts") === "2", got.headers.get("x-kn-parts"));
+  check("ブラウザに見えるようにしてある",
+    (got.headers.get("access-control-expose-headers") || "").includes("X-Kn-Parts"));
+  check("渡したら、ぜんぶ消える", (await call(env, "GET", PATH)).status === 204);
+}
+
+/* ---------- 名乗れば、その名前でしまう ---------- */
+{
+  const env = env0();
+  await call(env, "POST", PATH + "?slot=body", "steps=1");
+  await call(env, "POST", PATH + "?slot=weight", "weight=57.3");
+  const got = await call(env, "GET", PATH);
+  check("名乗った差出人ごとに残る", (await got.text()).split("\u001E").length === 2);
+}
+
+/* ---------- 入れ替え前に残っていた便を捨てない ---------- */
+{
+  const env = env0();
+  env.MAIL._m.set("box", "steps=999");        // 仕切りが無かったころの便
+  await call(env, "POST", PATH, "steps=1");
+  const got = await call(env, "GET", PATH);
+  const text = await got.text();
+  check("古い形の便も一緒に渡す", text.includes("steps=999") && text.includes("steps=1"), text);
+  check("そのあと空になる", (await call(env, "GET", PATH)).status === 204);
+}
+
+/* ---------- 上書きの印は、もう使わない ---------- */
 {
   const env = env0();
   await call(env, "POST", PATH, "steps=1");
-  await call(env, "POST", PATH, "steps=2");   // 1件目は読まれないまま消える
+  await call(env, "POST", PATH, "steps=2");
   const got = await call(env, "GET", PATH);
-  check("上書きされたと伝える", got.headers.get("x-kn-replaced") === "1");
-  check("ブラウザに見えるようにしてある",
-    (got.headers.get("access-control-expose-headers") || "").includes("X-Kn-Replaced"));
+  /* 差出人ごとに棚を持つので、同じ差出人の差し替えは「失った」ではなく
+     「新しいほうが来た」です。警告する理由がなくなりました。 */
+  check("同じ差出人の差し替えでは警告しない", got.headers.get("x-kn-replaced") == null);
 
   const env2 = env0();
   await call(env2, "POST", PATH, "steps=1");  // 一度だけ、上書きなし
@@ -110,7 +146,7 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   await call(env, "POST", PATH, "steps=1");
   const wrong = await call(env, "GET", "/kn-7f3a9c1d4e8b3");
   check("道が違えば渡さない", wrong.status === 404, String(wrong.status));
-  check("道が違っても、中身は残っている", env.MAIL._m.size === 1);
+  check("道が違っても、中身は残っている", env.MAIL._m.size >= 1);
   const root = await call(env, "GET", "/");
   check("根っこには何も無い", root.status === 404, String(root.status));
   const wrongBody = await wrong.text();

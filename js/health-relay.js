@@ -152,8 +152,8 @@
         return { ok: false, empty: true, error: "中継所に新しいデータはありません",
                  added: 0, updated: 0, skipped: 0 };
       }
-      const out = { ...KN.healthSync.importText(res.text, { auto: true }), text: res.text,
-                     replaced: !!res.replaced };
+      const out = { ...KN.healthSync.importText(res.text, { auto: true }),
+                     text: res.text, replaced: !!res.replaced };
       // 読めなかった便が来たことは、覚えておきます（画面で言えるように）。
       if (out.locked) store.markSyncLocked();
       return out;

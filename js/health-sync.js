@@ -473,6 +473,41 @@
     return { ok: true, rows, unknown: parsed.unknown || 0 };
   }
 
+  /* 便と便の仕切り（中継所が付けます）。ASCII の RS。 */
+  const SEP = "\u001E";
+
+  /**
+   * まとめて届いた便を、一通ずつ入れて足し合わせます。
+   *
+   * 一通が読めなくても、ほかの一通は入れます——「睡眠は読めたが、からだは
+   * 0だらけだった（iPhoneがロックされていた）」はふつうに起きるので、
+   * 片方の失敗で全部を捨てません。
+   */
+  function importParts(raw, opts) {
+    const parts = raw.split(SEP).map((t) => t.trim()).filter(Boolean);
+    const sum = { ok: false, added: 0, updated: 0, kept: 0, skipped: 0,
+                  days: [], byType: {}, parts: parts.length };
+    parts.forEach((one) => {
+      const r = importText(one, opts);
+      sum.added += r.added || 0;
+      sum.updated += r.updated || 0;
+      sum.kept += r.kept || 0;
+      sum.skipped += r.skipped || 0;
+      if (r.ok) sum.ok = true;
+      if (r.locked) sum.locked = true;
+      if (r.snapshot) sum.snapshot = true;
+      (r.days || []).forEach((d) => { if (!sum.days.includes(d)) sum.days.push(d); });
+      Object.keys(r.byType || {}).forEach((k) => {
+        sum.byType[k] = sum.byType[k] || { added: 0, updated: 0 };
+        sum.byType[k].added += (r.byType[k].added || 0);
+        sum.byType[k].updated += (r.byType[k].updated || 0);
+      });
+    });
+    sum.days.sort();
+    if (!sum.ok && !sum.locked) sum.error = "取り込めるデータが見つかりません";
+    return sum;
+  }
+
   /**
    * @returns {{ok:boolean, error?:string, added:number, updated:number,
    *            skipped:number, days:string[], byType:Object}}
@@ -491,6 +526,14 @@
     if (locked(raw)) {
       return { ok: false, locked: true, error: LOCKED_MSG, added: 0, updated: 0, skipped: 0 };
     }
+
+    /* 中継所は、差出人ごとに一通ずつしまって、まとめて渡します（からだの
+       ショートカットと、睡眠のショートカット）。仕切りは ASCII の RS。
+       一本の文字列で来るので、ここで切って**一通ずつ**読みます。
+
+       切らずに丸ごと読もうとすると、key=value と JSONL が混ざった一枚に
+       見えて、どちらの読み方にも当てはまらず落ちます。 */
+    if (raw.indexOf(SEP) >= 0) return importParts(raw, opts);
 
     /* 睡眠のステージが来ていたら、そちらへ。ふつうの取り込み（日ごとに一つの
        数）とは行き先も数え方も別なので、入口で分けます。JSONL は下の
