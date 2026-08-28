@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>くらしノート — 日記の取り込み</title>
+
+<!--
+  =========================================================
+  日記の PDF を、暗号化した控えに変える道具
+  =========================================================
+
+  一回きりの引っ越し道具です。アプリ本体には入りません（sw.js の
+  ASSETS にも build-standalone.js にも載せていません）。
+
+  ■ どこにも送りません
+
+  ここで起きることは全部この頁の中で終わります。PDF はブラウザが読み、
+  文字はブラウザが取り出し、暗号化もブラウザがやります。**通信は一度も
+  しません**——pdf.js も同じ場所に置いてあるものを読みます。開いたあと
+  機内モードにしても最後まで通ります。心の中を書いたものを扱うので、
+  ここは「そういう作りにしてある」ではなく「そもそも送る先が無い」で
+  なければいけません。
+
+  ■ 日付の切れ目は、こちらでは決められません
+
+  日記の書式は人それぞれです。「2023年4月17日(月)」かもしれないし
+  「2023/04/17」かもしれない。だから**候補を並べて、実際に何件見つかるかを
+  その場で見せます**。合っているものを目で選べます。どれも合わなければ、
+  自分で書けます。
+
+  ■ 鍵は、アプリと同じ作りです
+
+  ../js/diary-crypto.js を、アプリとこの頁が同じものを読んでいます。
+  ここで作った控えは、同じ合言葉でアプリが開けます。
+  =========================================================
+-->
+
+<style>
+  :root {
+    --bg: #f4f6f3; --panel: #fff; --line: #e0e6df; --line2: #cdd6cb;
+    --text: #171d19; --dim: #5a655e; --dim2: #8d968f;
+    --green: #2f8f5b; --green-soft: #e4f2ea; --red: #cf4f45; --red-soft: #fdecea;
+    --amber: #c98a12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10140f; --panel: #1b211a; --line: #2b332a; --line2: #3b453a;
+      --text: #e8eee7; --dim: #a4b0a2; --dim2: #788477;
+      --green: #57b681; --green-soft: #1d2f24; --red: #e8776c; --red-soft: #33201e;
+      --amber: #dcae4a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--text);
+    font: 15px/1.7 "Hiragino Sans", "Yu Gothic Medium", "Noto Sans JP", system-ui, sans-serif;
+  }
+  main { max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lede { color: var(--dim); font-size: 13.5px; margin: 0 0 28px; }
+  section {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  section[hidden] { display: none; }
+  h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; }
+  h2 i { font-style: normal; color: var(--dim2); font-size: 12px; font-weight: 400; }
+  p { margin: 0 0 10px; }
+  .note { font-size: 12.5px; color: var(--dim); }
+  .warn { color: var(--amber); }
+  .bad { color: var(--red); }
+  button {
+    font: inherit; font-weight: 700; cursor: pointer;
+    background: var(--green); color: #fff; border: 0;
+    border-radius: 10px; padding: 10px 18px;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+  button.ghost { background: transparent; color: var(--green); border: 1px solid var(--line2); }
+  input[type=text], input[type=password] {
+    font: inherit; width: 100%; padding: 9px 12px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--line2); border-radius: 9px;
+  }
+  #drop {
+    border: 2px dashed var(--line2); border-radius: 14px; padding: 36px 20px;
+    text-align: center; color: var(--dim); cursor: pointer;
+  }
+  #drop.over { border-color: var(--green); background: var(--green-soft); }
+  pre {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+    padding: 12px; overflow: auto; max-height: 260px;
+    font: 12.5px/1.65 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  td, th { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 700; font-size: 12px; }
+  tr.pick { cursor: pointer; }
+  tr.pick:hover td { background: var(--green-soft); }
+  tr.on td { background: var(--green-soft); font-weight: 700; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 10px 0; }
+  .bar i { display: block; height: 100%; background: var(--green); width: 0; transition: width .2s; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kv { display: flex; gap: 22px; flex-wrap: wrap; margin: 8px 0 4px; }
+  .kv div span { display: block; font-size: 12px; color: var(--dim2); }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>日記の取り込み</h1>
+  <p class="lede">
+    PDF の日記を読み取って、<b>暗号化した控え</b>を作ります。できたファイルを
+    くらしノートに読ませると、日記が入ります。
+  </p>
+
+  <!-- ① ファイル -->
+  <section>
+    <h2>① PDF を選ぶ <i>何枚でも。順番は問いません</i></h2>
+    <div id="drop">
+      ここに PDF を落とすか、押して選んでください
+      <input type="file" id="file" accept="application/pdf" multiple hidden>
+    </div>
+    <div class="bar" id="pbar" hidden><i></i></div>
+    <p class="note" id="pmsg"></p>
+    <p class="note">
+      <b>この頁は何もどこにも送りません。</b>読み取りも暗号化も、ぜんぶこの
+      ブラウザの中で終わります。心配なら、PDF を選ぶ前に機内モードにしても
+      最後まで通ります。
+    </p>
+  </section>
+
+  <!-- ② 中身を見る -->
+  <section id="s-peek" hidden>
+    <h2>② 取り出せた文字 <i>はじめの数ページ</i></h2>
+    <p class="note">
+      ここに日記の文が並んでいれば、読み取りは成功です。空っぽ・記号だらけなら、
+      その PDF は<b>文字ではなく画像</b>で、この道具では扱えません。
+    </p>
+    <pre id="peek"></pre>
+  </section>
+
+  <!-- ③ 日付の切れ目 -->
+  <section id="s-date" hidden>
+    <h2>③ 日付の書き方を選ぶ <i>いちばん件数が多いものが、たいてい正解です</i></h2>
+    <p class="note">
+      日記を「一日ぶん」に切り分けるための目印です。下の表で、実際に何件
+      見つかったかを見て選んでください。
+    </p>
+    <table id="pats"><tbody></tbody></table>
+    <p style="margin-top:14px">
+      <label class="note">どれも合わないときは、自分で書けます（正規表現）</label>
+      <input type="text" id="custom" placeholder="例: ^(\d{4})[./年](\d{1,2})[./月](\d{1,2})">
+    </p>
+    <p class="note" id="dmsg"></p>
+  </section>
+
+  <!-- ④ 結果 -->
+  <section id="s-result" hidden>
+    <h2>④ 切り分けた結果</h2>
+    <div class="kv" id="stats"></div>
+    <p class="note" id="rmsg"></p>
+    <pre id="sample"></pre>
+  </section>
+
+  <!-- ⑤ 合言葉 -->
+  <section id="s-key" hidden>
+    <h2>⑤ 合言葉を決める</h2>
+    <p>
+      日記はこの合言葉で暗号化されます。くらしノートで開くときも、同じものを使います。
+    </p>
+    <p class="bad">
+      <b>忘れると、二度と読めません。</b>取り戻す手立ては作りません
+      ——作れば、それが他人の抜け道になります。決めたら、必ず紙などに控えてください。
+    </p>
+    <p><input type="password" id="pw1" placeholder="合言葉" autocomplete="new-password"></p>
+    <p><input type="password" id="pw2" placeholder="もう一度" autocomplete="new-password"></p>
+    <p class="note" id="pwmsg"></p>
+    <div class="row">
+      <button id="go" disabled>暗号化して、控えを作る</button>
+      <span class="note" id="gomsg"></span>
+    </div>
+  </section>
+
+  <!-- ⑥ できあがり -->
+  <section id="s-done" hidden>
+    <h2>⑥ できました</h2>
+    <div class="kv" id="donekv"></div>
+    <p class="note">
+      このファイルを iPhone へ渡して（iCloud Drive・OneDrive・メールなど）、
+      くらしノートの <b>設定 → 日記を取り込む</b> で読ませてください。
+      中身は暗号化されているので、途中で誰かの手を経ても読めません。
+    </p>
+    <div class="row"><button id="dl">控えを保存する</button></div>
+  </section>
+</main>
+
+<script src="../js/diary-crypto.js"></script>
+<script type="module">
+/* pdf.js は同じ場所に置いてあるものを読みます（通信しません）。 */
+import * as pdfjs from "./vendor/pdf.min.mjs";
+pdfjs.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.mjs";
+
+const $ = (id) => document.getElementById(id);
+const X = window.KN.diaryCrypto;
+
+let pages = [];       // 取り出した文字。1要素 = 1ページ
+let days = [];        // 切り分けた結果 {date, body}
+let chosen = null;    // いま選んでいる書式
+
+/* ---------------- ① PDF を読む ---------------- */
+
+$("drop").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", (e) => readAll([...e.target.files]));
+["dragover", "dragenter"].forEach((t) =>
+  $("drop").addEventListener(t, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach((t) =>
+  $("drop").addEventListener(t, () => $("drop").classList.remove("over")));
+$("drop").addEventListener("drop", (e) => {
+  e.preventDefault();
+  readAll([...e.dataTransfer.files].filter((f) => /\.pdf$/i.test(f.name)));
+});
+
+async function readAll(files) {
+  if (!files.length) return;
+  pages = [];
+  $("pbar").hidden = false;
+  const bar = $("pbar").firstElementChild;
+
+  /* ファイルは名前の順に読みます。日記は年ごとに分かれていることが多く、
+     落とした順に並べると年が前後します（日付で並べ直すので結果は同じですが、
+     途中経過が読みにくくなります）。 */
+  files.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+
+  let total = 0, done = 0;
+  const docs = [];
+  for (const f of files) {
+    $("pmsg").textContent = `${f.name} を開いています…`;
+    const buf = await f.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+    docs.push({ name: f.name, doc });
+    total += doc.numPages;
+  }
+
+  for (const { name, doc } of docs) {
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      pages.push(joinItems(tc.items));
+      page.cleanup();
+      done++;
+      if (done % 10 === 0 || done === total) {
+        bar.style.width = (done / total * 100) + "%";
+        $("pmsg").textContent = `${name} — ${done} / ${total} ページ`;
+        await new Promise((r) => setTimeout(r));   // 画面に描かせる
+      }
+    }
+  }
+
+  const chars = pages.reduce((a, t) => a + t.length, 0);
+  $("pmsg").innerHTML = `<b>${total} ページ・${chars.toLocaleString()} 字</b>を読み取りました。`;
+  if (chars < total * 20) {
+    $("pmsg").innerHTML += ` <span class="bad">文字がほとんど取れていません。`
+      + `この PDF は画像かもしれません。</span>`;
+  }
+  $("s-peek").hidden = false;
+  $("peek").textContent = pages.slice(0, 3).join("\n\n─── ページの切れ目 ───\n\n").slice(0, 3000);
+  $("s-date").hidden = false;
+  paintPatterns();
+}
+
+/* pdf.js が返すのは「かたまり」の列で、行の切れ目は入っていません。
+   縦の位置（transform[5]）が変わったところを改行として扱います——
+   そうしないと一日ぶんが一行に潰れて、日付の目印も見つかりません。 */
+function joinItems(items) {
+  let out = "", lastY = null;
+  for (const it of items) {
+    if (typeof it.str !== "string") continue;
+    const y = it.transform ? Math.round(it.transform[5]) : null;
+    if (lastY != null && y != null && Math.abs(y - lastY) > 2) out += "\n";
+    out += it.str;
+    if (it.hasEOL) out += "\n";
+    lastY = y;
+  }
+  return out.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* ---------------- ② 日付の書式 ---------------- */
+
+/* 候補。y/m/d の三つを組で拾えることだけが条件です。行頭に錨を打つものと
+   打たないものを両方入れてあるのは、日付が本文の中ほどに書かれている
+   書式もあるからです。 */
+const PATTERNS = [
+  { label: "2023年4月17日", re: /^\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/ },
+  { label: "2023/04/17", re: /^\s*(\d{4})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})/ },
+  { label: "2023.4.17（行のどこでも）", re: /(\d{4})\s*[\/.\-年]\s*(\d{1,2})\s*[\/.\-月]\s*(\d{1,2})\s*日?/ },
+  { label: "23/04/17（西暦2桁）", re: /^\s*(\d{2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})/, short: true },
+  { label: "April 17, 2023", re: /^\s*([A-Z][a-z]{2,8})\s+(\d{1,2}),?\s+(\d{4})/, mdy: true },
+  { label: "2023-04-17T…（書き出しの機械読み）", re: /^\s*(\d{4})-(\d{2})-(\d{2})T/ },
+];
+
+const MONTHS = ["january", "february", "march", "april", "may", "june",
+                "july", "august", "september", "october", "november", "december"];
+
+function lines() {
+  return pages.join("\n").split(/\r?\n/);
+}
+
+/* 日付を剥がしたあと、行の頭に残る**日付の飾り**。曜日は日付の一部で、
+   本文ではありません——ここを残すと、どの日も「(水)」から始まります。
+   全角・半角、括弧の有無、「月曜日」まで。そのあとに残る区切り記号も。 */
+const DECOR = /^[\s　]*(?:[（(［\[]?\s*[日月火水木金土](?:曜日?)?\s*[)）\]］]?)?[\s　]*[-–—ー・:：/／|｜]*[\s　]*/;
+
+/** その書式で切ると、何日ぶんになるか。 */
+function trySplit(pat) {
+  const ls = lines();
+  const out = [];
+  let cur = null;
+  for (const line of ls) {
+    const m = pat.re.exec(line);
+    const d = m && toDate(m, pat);
+    if (d) {
+      if (cur) out.push(cur);
+      const rest = line.replace(pat.re, "").replace(DECOR, "").trim();
+      cur = { date: d, body: rest ? [rest] : [] };
+    } else if (cur) {
+      /* 日付が単独の行にあって、曜日だけが次の行に落ちている書式もあります
+         （pdf.js は縦の位置で行を切るので、装飾の位置によっては割れます）。
+         その日の**一行目だけ**は、曜日しか無ければ捨てます。 */
+      if (!cur.body.length && /^[\s　]*[（(［\[]?\s*[日月火水木金土](?:曜日?)?\s*[)）\]］]?[\s　]*$/.test(line)) continue;
+      cur.body.push(line);
+    }
+  }
+  if (cur) out.push(cur);
+  /* 同じ日が二度出てきたら（PDFが重なっている・一日を分けて書いている）、
+     捨てずに繋ぎます。落としたぶんは戻せないので、多いほうに倒します。 */
+  const merged = new Map();
+  for (const d of out) {
+    const body = d.body.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (!body) continue;
+    merged.set(d.date, merged.has(d.date) ? merged.get(d.date) + "\n\n" + body : body);
+  }
+  return [...merged.entries()].map(([date, body]) => ({ date, body }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+function toDate(m, pat) {
+  let y, mo, da;
+  if (pat.mdy) {
+    const i = MONTHS.indexOf(String(m[1]).toLowerCase());
+    if (i < 0) return null;
+    y = +m[3]; mo = i + 1; da = +m[2];
+  } else {
+    y = +m[1]; mo = +m[2]; da = +m[3];
+    if (pat.short) y += y < 70 ? 2000 : 1900;
+  }
+  if (!(y >= 1900 && y <= 2100 && mo >= 1 && mo <= 12 && da >= 1 && da <= 31)) return null;
+  // 実在しない日（2月31日）は、書式が間違っている合図なので落とします。
+  const t = new Date(y, mo - 1, da);
+  if (t.getMonth() !== mo - 1 || t.getDate() !== da) return null;
+  return `${y}-${String(mo).padStart(2, "0")}-${String(da).padStart(2, "0")}`;
+}
+
+function paintPatterns() {
+  const tb = $("pats").firstElementChild;
+  tb.innerHTML = "<tr><th>日付の書き方</th><th>見つかった日数</th><th>いちばん古い〜新しい</th></tr>";
+  const all = PATTERNS.map((pat) => ({ pat, days: trySplit(pat) }))
+    .sort((a, b) => b.days.length - a.days.length);
+  all.forEach(({ pat, days: d }) => {
+    const tr = document.createElement("tr");
+    tr.className = "pick";
+    tr.innerHTML = `<td>${pat.label}</td><td>${d.length ? d.length + " 日" : "—"}</td>`
+      + `<td>${d.length ? d[0].date + " 〜 " + d[d.length - 1].date : ""}</td>`;
+    tr.addEventListener("click", () => choose(pat, tr));
+    tb.append(tr);
+  });
+  const best = all[0];
+  if (best && best.days.length) choose(best.pat, tb.children[1]);
+  else $("dmsg").innerHTML = `<span class="bad">どの書式でも日付が見つかりませんでした。`
+    + `②の文字を見て、日付の行がどう書かれているかを確かめ、下の欄に自分で書いてください。</span>`;
+}
+
+$("custom").addEventListener("input", () => {
+  const src = $("custom").value.trim();
+  if (!src) return;
+  let re;
+  try { re = new RegExp(src); } catch (e) { $("dmsg").innerHTML = `<span class="bad">${e.message}</span>`; return; }
+  choose({ label: "自分で書いたもの", re }, null);
+});
+
+function choose(pat, tr) {
+  chosen = pat;
+  [...$("pats").firstElementChild.children].forEach((r) => r.classList.remove("on"));
+  if (tr) tr.classList.add("on");
+  days = trySplit(pat);
+  paintResult();
+}
+
+/* ---------------- ③ 結果 ---------------- */
+
+function paintResult() {
+  $("s-result").hidden = false;
+  const chars = days.reduce((a, d) => a + d.body.length, 0);
+  const from = days.length ? days[0].date : "—";
+  const to = days.length ? days[days.length - 1].date : "—";
+  $("stats").innerHTML = [
+    ["日数", days.length.toLocaleString() + " 日"],
+    ["字数", chars.toLocaleString() + " 字"],
+    ["いちばん短い日", days.length ? Math.min(...days.map((d) => d.body.length)) + " 字" : "—"],
+    ["いちばん長い日", days.length ? Math.max(...days.map((d) => d.body.length)) + " 字" : "—"],
+    ["期間", from + " 〜 " + to],
+  ].map(([k, v]) => `<div><span>${k}</span><b class="big">${v}</b></div>`).join("");
+
+  /* ここは目で確かめてもらう場所です。数が合っていても切れ目が
+     ずれていれば、前の日の終わりが次の日の頭に付きます。 */
+  $("rmsg").innerHTML = days.length
+    ? `下は<b>実際に切り分けた3日ぶん</b>です。日付と中身がずれていないか、`
+      + `本文の頭が切れていないかを見てください。`
+    : `<span class="bad">一日も切り出せませんでした。</span>`;
+  const pick = [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].filter(Boolean);
+  $("sample").textContent = pick.map((d) =>
+    `━━ ${d.date} ━━\n${d.body.slice(0, 400)}${d.body.length > 400 ? "\n…" : ""}`).join("\n\n");
+
+  $("s-key").hidden = !days.length;
+  checkPw();
+}
+
+/* ---------------- ④ 合言葉 ---------------- */
+
+[$("pw1"), $("pw2")].forEach((el) => el.addEventListener("input", checkPw));
+
+function checkPw() {
+  const a = $("pw1").value, b = $("pw2").value;
+  let msg = "", ok = false;
+  if (!a) msg = "";
+  else if (a.length < 8) msg = `<span class="warn">短すぎます。合言葉は長さがすべてです`
+    + `——記号を混ぜるより、覚えやすい文をそのまま使うほうが強くなります。</span>`;
+  else if (!b) msg = "もう一度、同じものを。";
+  else if (a !== b) msg = `<span class="bad">合っていません。</span>`;
+  else { msg = `<span style="color:var(--green)">合いました。この合言葉を、必ず控えてください。</span>`; ok = true; }
+  $("pwmsg").innerHTML = msg;
+  $("go").disabled = !(ok && days.length);
+}
+
+/* ---------------- ⑤ 暗号化 ---------------- */
+
+let sealed = null;
+
+$("go").addEventListener("click", async () => {
+  $("go").disabled = true;
+  $("gomsg").textContent = "鍵を作っています（わざと時間がかかります）…";
+  await new Promise((r) => setTimeout(r, 20));
+
+  const made = await X.makeLock($("pw1").value);
+  const out = [];
+  for (let i = 0; i < days.length; i++) {
+    const blob = await X.seal(made.key, days[i].body);
+    out.push({ date: days[i].date, iv: blob.iv, ct: blob.ct, at: new Date().toISOString() });
+    if (i % 25 === 0) {
+      $("gomsg").textContent = `包んでいます… ${i} / ${days.length}`;
+      await new Promise((r) => setTimeout(r));
+    }
+  }
+
+  sealed = { app: "kaimono-note", kind: "diary-sealed", v: 1,
+             lock: made.lock, days: out, at: new Date().toISOString() };
+
+  /* できたものを、その場で開き直して確かめます。**作った直後に一度読む**
+     ——ここを飛ばすと、開けない控えを持って引っ越すことになります。 */
+  $("gomsg").textContent = "確かめています…";
+  const back = await X.openLock(made.lock, $("pw1").value);
+  const first = await X.open(back, out[0]);
+  if (first !== days[0].body) {
+    $("gomsg").innerHTML = `<span class="bad">確かめに失敗しました。保存しないでください。</span>`;
+    return;
+  }
+
+  const json = JSON.stringify(sealed);
+  $("gomsg").textContent = "";
+  $("s-done").hidden = false;
+  $("donekv").innerHTML = [
+    ["日数", out.length.toLocaleString() + " 日"],
+    ["控えの大きさ", (json.length / 1048576).toFixed(1) + " MB"],
+    ["確かめ", "開き直して、中身が一致しました"],
+  ].map(([k, v]) => `<div><span>${k}</span><b class="big">${v}</b></div>`).join("");
+  $("s-done").scrollIntoView({ behavior: "smooth" });
+});
+
+$("dl").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(sealed)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `kurashi-diary-${sealed.days.length}days.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+</script>
+</body>
+</html>

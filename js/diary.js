@@ -60,18 +60,10 @@
      片方が消えたときにもう片方だけでも残るようにします。 */
   const LOCK_KEY = "kaimono-diary-lock";
 
-  /* PBKDF2 の回数。OWASP が SHA-256 に対して挙げている 600,000 回。
-     iPhone で 0.3〜1秒ほどかかります——**遅いことが目的**です。ここが速いと、
-     総当たりも速くなります。開くときに一度だけ払う代金なので、体感には
-     出ません（鍵は記憶の上に置いたまま使い回します）。 */
-  const ITER = 600000;
-  const SALT_LEN = 16;
-  const IV_LEN = 12;                 // AES-GCM の推奨長
-  const CHECK_TEXT = "kaimono-note-diary-v1";
-
-  const enc = new TextEncoder();
-  const dec = new TextDecoder();
-  const subtle = () => (window.crypto && window.crypto.subtle) || null;
+  /* 鍵と封の作りは js/diary-crypto.js にあります。**取り込みの道具
+     （tools/diary-import.html）と同じ一枚**を読んでいます——道具が作った
+     控えをアプリが開けなければ意味がないので、二度書きません。 */
+  const X = KN.diaryCrypto;
 
   /* 記憶の上だけの鍵。ここに入っているあいだが「開いている」状態です。 */
   let key = null;
@@ -127,33 +119,8 @@
     } catch (e) { return null; }
   }
 
-  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-
-  async function deriveKey(passphrase, salt) {
-    const s = subtle();
-    if (!s) throw new Error("この端末は WebCrypto を持っていません");
-    const material = await s.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-    return s.deriveKey(
-      { name: "PBKDF2", salt, iterations: ITER, hash: "SHA-256" },
-      material,
-      { name: "AES-GCM", length: 256 },
-      false,                                  // 取り出せない鍵。書き出す用は無い
-      ["encrypt", "decrypt"]
-    );
-  }
-
-  async function seal(k, text) {
-    const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
-    const ct = await subtle().encrypt({ name: "AES-GCM", iv }, k, enc.encode(text));
-    return { iv: b64(iv), ct: b64(ct) };
-  }
-
-  async function open_(k, blob) {
-    const plain = await subtle().decrypt(
-      { name: "AES-GCM", iv: unb64(blob.iv) }, k, unb64(blob.ct));
-    return dec.decode(plain);
-  }
+  const seal = (k, text) => X.seal(k, text);
+  const open_ = (k, blob) => X.open(k, blob);
 
   /** まだ一度も鍵を決めていないか。 */
   const isNew = () => !lockRecord();
@@ -168,14 +135,9 @@
   async function createKey(passphrase) {
     if (lockRecord()) throw new Error("鍵はもう決まっています");
     if (!passphrase || String(passphrase).length < 4) throw new Error("短すぎます");
-    const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
-    const k = await deriveKey(passphrase, salt);
-    /* 封。決まった文を包んだものです。開くときにこれが開ければ、
-       パスフレーズが合っています——本文で試すと、間違ったパスフレーズで
-       中身が壊れたのか鍵が違うのかが区別できません。 */
-    const check = await seal(k, CHECK_TEXT);
-    localStorage.setItem(LOCK_KEY, JSON.stringify({ v: 1, salt: b64(salt), iter: ITER, check }));
-    key = k;
+    const made = await X.makeLock(passphrase);
+    localStorage.setItem(LOCK_KEY, JSON.stringify(made.lock));
+    key = made.key;
     return true;
   }
 
@@ -186,13 +148,8 @@
   async function unlock(passphrase) {
     const rec = lockRecord();
     if (!rec) return false;
-    const k = await deriveKey(passphrase, unb64(rec.salt));
-    try {
-      const got = await open_(k, rec.check);
-      if (got !== CHECK_TEXT) return false;
-    } catch (e) {
-      return false;             // AES-GCM は鍵が違えば必ずここで落ちます
-    }
+    const k = await X.openLock(rec, passphrase);
+    if (!k) return false;
     key = k;
     return true;
   }
@@ -364,6 +321,6 @@
     isNew, isOpen, createKey, unlock, lock,
     get, put, remove, month, datesOfMonth, count, span, search, putMany,
     exportSealed, importSealed, room, wipe,
-    ITER,
+    ITER: X.ITER,
   };
 })();
