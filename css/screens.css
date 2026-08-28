@@ -2386,7 +2386,61 @@ a.btn { text-decoration: none; }
 .arc-cal .cal-dots i { width: 4px; height: 4px; border-radius: var(--r-full); display: block; }
 .arc-cal .cal-dots i.is-log { background: var(--c-text-3); opacity: .5; width: 8px; border-radius: var(--r-full); }
 
-/* ---- ②月の積み上がり ----
+/* ---- ② あの日 ----
+
+   過ぎた日の紙です。今日の紙（Daily Log・積み上げ）と**同じ顔にしません**
+   ——並べたときに、どちらが今でどちらが前か、読まなくても分かるように。
+   白い面ではなく一段沈んだ地に置き、左に主色の細い柱を立てます。柱は
+   「引用」の印で、この一枚が自分の書いたものの引き写しだと言っています。
+
+   押せますが、ボタンの顔はしていません。読みものとして置いて、触れれば
+   その日へ行く、という順です。 */
+.arc-then {
+  margin: 0 var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex; flex-direction: column; gap: 3px;
+  width: auto; text-align: left;
+  background: var(--c-surface-2);
+  border-left: 3px solid var(--c-primary);
+  transition: transform .18s var(--ease), background .18s var(--ease);
+}
+.arc-then:active { transform: scale(.985); background: var(--c-surface-3); }
+
+.arc-then-head { display: flex; align-items: center; gap: 6px; }
+.arc-then-head b { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.arc-then-ico { display: block; line-height: 0; color: var(--c-primary); opacity: .8; }
+.arc-then-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+/* 「1年前の今日」。行の右端へ寄せます——見出しの一部ではなく、日付の説明なので。 */
+.arc-then-when {
+  margin-left: auto; font-style: normal;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink);
+  background: var(--c-primary-soft);
+  padding: 2px 8px; border-radius: var(--r-full);
+}
+.arc-then-date { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+
+/* その日の地の文。ここがこの一枚の主役なので、いちばん大きく置きます。
+   三行で切るのは、カードが日によって伸び縮みしないためです——丈が毎日
+   揺れると、下に続くものの位置も毎日変わって、目が置き場所を覚えられません。 */
+.arc-then-memo {
+  margin-top: 3px;
+  font-size: var(--fs-md); color: var(--c-text); line-height: var(--lh-body);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; word-break: break-word;
+}
+
+.arc-then-rows { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.arc-then-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.arc-then-row-ico { display: block; line-height: 0; color: var(--arc-c); flex: none; }
+.arc-then-row-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+.arc-then-row em {
+  font-style: normal; font-size: var(--fs-sm); color: var(--c-text-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+/* 三つ目からは畳みます。「ほか3件」と数えると、その日の量の話になります。 */
+.arc-then-more { font-size: var(--fs-xs); color: var(--c-text-3); padding-left: 21px; }
+
+/* ---- ③月の積み上がり ----
    カードにはしません。内訳だけの、地の文より軽い一行——ここが単独の
    見出しになって目立つと、この画面の主役が数のほうへ寄ってしまいます。 */
 .arc-rollup {

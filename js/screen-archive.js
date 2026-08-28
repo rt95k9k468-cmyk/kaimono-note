@@ -51,6 +51,16 @@
   /** 値が無ければ「-」。空欄をグレーの説明文で埋めない、という決めごとの担当。 */
   const orDash = (v) => (v == null || v === "" ? "-" : v);
 
+  /** その日へ移る。月をまたいでも暦がついてくるように、二つ一緒に動かします。 */
+  function goToDay(day) {
+    if (!day) return;
+    viewMonth = String(day).slice(0, 7);
+    viewDay = day;
+    render();
+    // 暦は上にあるので、押した位置から画面ごと頭へ戻します。
+    if (root) root.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   /* ================================================================
      こよみ
 
@@ -265,7 +275,64 @@
   }
 
   /* ================================================================
-     ②月の積み上がり — 内訳だけの、細い一行
+     ②あの日 — 貯めたものを、返すところ
+     ================================================================
+
+     ここまで作ったのは貯める器だけでした。一年ぶん書けるようにしても、
+     書いたものが自分から出てこなければ、そのうち開かれなくなります。
+
+     出し方には線が一本あります。**無い過去のことは、何も言わない。**
+     「1年前の今日はこう書いていました」は思い出ですが、「去年は書いて
+     いたのに今年は」は採点です。だから見つからなければ**枠ごと出しません**
+     ——「まだ記録がありません」も出しません。それも「無い」を数えた言葉です。
+
+     出すのは一日ぶん、一枚だけ。並べると流れになり、流れは読み飛ばすもの
+     になります。選び方は store.archiveThen にあります。 */
+
+  function thenCard() {
+    const then = store.archiveThen();
+    if (!then) return null;             // 無ければ、何も置かない
+
+    const dt = U.dayDate(then.date);
+    const when = dt ? `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日 ${U.weekdayJa(then.date)}` : then.date;
+
+    /* 記録は多くても二つまで。三つ目からは数を出さずに畳みます——
+       「ほか3件」と数えると、その日の量の話になってしまうので、
+       押せば全部見られることだけを言います。 */
+    const shown = then.entries.slice(0, 2);
+    const more = then.entries.length > shown.length;
+
+    const sec = node(html`
+      <button type="button" class="card arc-then" data-day="${then.date}">
+        <span class="arc-then-head">
+          <span class="arc-then-ico">${icon("clock", "is-sub")}</span>
+          <b>あの日</b>
+          ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
+        </span>
+        <span class="arc-then-date">${when}</span>
+        ${then.memo ? html`<span class="arc-then-memo">${then.memo}</span>` : ""}
+        ${shown.length ? html`
+          <span class="arc-then-rows">
+            ${U.raw(shown.map((e) => {
+              const t = store.archiveType(e.type);
+              const ico = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
+              return `<span class="arc-then-row" style="--arc-c:${t.color}">`
+                + `<i class="arc-then-row-ico">${icon(ico, "is-sub").value}</i>`
+                + `<em>${U.escapeHtml(e.title || t.label)}</em></span>`;
+            }).join(""))}
+            ${more ? html`<span class="arc-then-more">ほかにも</span>` : ""}
+          </span>` : ""}
+      </button>
+    `);
+    sec.addEventListener("click", () => {
+      haptic();
+      goToDay(then.date);
+    });
+    return sec;
+  }
+
+  /* ================================================================
+     ③月の積み上がり — 内訳だけの、細い一行
      ================================================================ */
 
   function monthRollup(ym) {
@@ -883,6 +950,10 @@
 
     els.body.append(els.cal);
     fillCalendar(els.cal);
+    /* 「あの日」は、暦のすぐ下。暦は行き先を選ぶところなので、**最初の中身**は
+       これになります。見つからない日は、null が返って何も置かれません。 */
+    const then = thenCard();
+    if (then) els.body.append(then);
     els.body.append(monthRollup(ym));
     els.body.append(dailyLog(ym));
     els.body.append(entriesSection(ym));

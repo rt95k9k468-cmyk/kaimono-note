@@ -4223,7 +4223,61 @@ a.btn { text-decoration: none; }
 .arc-cal .cal-dots i { width: 4px; height: 4px; border-radius: var(--r-full); display: block; }
 .arc-cal .cal-dots i.is-log { background: var(--c-text-3); opacity: .5; width: 8px; border-radius: var(--r-full); }
 
-/* ---- ②月の積み上がり ----
+/* ---- ② あの日 ----
+
+   過ぎた日の紙です。今日の紙（Daily Log・積み上げ）と**同じ顔にしません**
+   ——並べたときに、どちらが今でどちらが前か、読まなくても分かるように。
+   白い面ではなく一段沈んだ地に置き、左に主色の細い柱を立てます。柱は
+   「引用」の印で、この一枚が自分の書いたものの引き写しだと言っています。
+
+   押せますが、ボタンの顔はしていません。読みものとして置いて、触れれば
+   その日へ行く、という順です。 */
+.arc-then {
+  margin: 0 var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex; flex-direction: column; gap: 3px;
+  width: auto; text-align: left;
+  background: var(--c-surface-2);
+  border-left: 3px solid var(--c-primary);
+  transition: transform .18s var(--ease), background .18s var(--ease);
+}
+.arc-then:active { transform: scale(.985); background: var(--c-surface-3); }
+
+.arc-then-head { display: flex; align-items: center; gap: 6px; }
+.arc-then-head b { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.arc-then-ico { display: block; line-height: 0; color: var(--c-primary); opacity: .8; }
+.arc-then-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+/* 「1年前の今日」。行の右端へ寄せます——見出しの一部ではなく、日付の説明なので。 */
+.arc-then-when {
+  margin-left: auto; font-style: normal;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink);
+  background: var(--c-primary-soft);
+  padding: 2px 8px; border-radius: var(--r-full);
+}
+.arc-then-date { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+
+/* その日の地の文。ここがこの一枚の主役なので、いちばん大きく置きます。
+   三行で切るのは、カードが日によって伸び縮みしないためです——丈が毎日
+   揺れると、下に続くものの位置も毎日変わって、目が置き場所を覚えられません。 */
+.arc-then-memo {
+  margin-top: 3px;
+  font-size: var(--fs-md); color: var(--c-text); line-height: var(--lh-body);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; word-break: break-word;
+}
+
+.arc-then-rows { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.arc-then-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.arc-then-row-ico { display: block; line-height: 0; color: var(--arc-c); flex: none; }
+.arc-then-row-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+.arc-then-row em {
+  font-style: normal; font-size: var(--fs-sm); color: var(--c-text-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+/* 三つ目からは畳みます。「ほか3件」と数えると、その日の量の話になります。 */
+.arc-then-more { font-size: var(--fs-xs); color: var(--c-text-3); padding-left: 21px; }
+
+/* ---- ③月の積み上がり ----
    カードにはしません。内訳だけの、地の文より軽い一行——ここが単独の
    見出しになって目立つと、この画面の主役が数のほうへ寄ってしまいます。 */
 .arc-rollup {
@@ -15232,6 +15286,89 @@ a.btn { text-decoration: none; }
     archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
       .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
+  /* ---- あの日 ----
+
+     貯めた記録を、**返す**ところです。
+
+     ここまでで作ったのは貯める器だけでした。一年ぶん書けるようにしても、
+     書いたものを自分から出してこなければ、そのうち開かれなくなります。
+     日記アプリでいちばん人が戻ってくる仕掛けは、ずっと「同じ日付の過去を
+     出す」ことでした——評価ではなく、**思い出させること**です。
+
+     この機能に、守らなければならない線が一本あります。
+
+       **無い過去のことは、何も言わない。**
+
+     「去年の今日は書いていました」と出すのは思い出ですが、「去年は書いて
+     いたのに今年は書いていません」は採点です。同じ仕組みが、出し方ひとつで
+     どちらにもなる。だから **見つからなければカードごと出しません**
+     ——「まだ記録がありません」も出しません。それも「無い」を数えた言葉です。
+
+     出すのは一つだけです。並べると流れになり、流れは読み飛ばすものになります。
+
+     選ぶ順は「遠い記念日から」。同じ月日の去年 → 一昨年 …→ ちょうど半年前
+     → 三ヶ月前 → 一ヶ月前。どれも無ければ、**過ぎた日のどれか一つ**を、
+     今日の日付から決まる決め方で選びます（同じ日のあいだは同じものが出て、
+     明くる日には別のものになる——毎回変わると、目を離した隙に消える紙に
+     なります）。 */
+
+  /** 「あの日」の候補になる、過ぎた日の並び。近い順ではなく遠い順。 */
+  function thenCandidates(day) {
+    const base = KN.util.dayDate(day);
+    if (!base) return [];
+    const out = [];
+    const y = base.getFullYear(), m = base.getMonth(), d = base.getDate();
+    /* 同じ月日の、過ぎた年。10年ぶん見ます（それより前は、あっても
+       「あの日」というより歴史です）。2月29日は、無い年には出ません
+       ——Date が3月1日へ送るので、日が変わっていないかを確かめます。 */
+    for (let back = 10; back >= 1; back--) {
+      const t = new Date(y - back, m, d);
+      if (t.getDate() !== d) continue;
+      out.push({ date: KN.util.dayKey(t), label: `${back}年前の今日` });
+    }
+    // 年に届かないうちも使えるように、月でも刻みます。
+    [[6, "半年前の今日"], [3, "3ヶ月前の今日"], [1, "1ヶ月前の今日"]].forEach(([back, label]) => {
+      const t = new Date(y, m - back, d);
+      if (t.getDate() !== d) return;   // 8月31日の1ヶ月前は「7月31日」だけ
+      out.push({ date: KN.util.dayKey(t), label });
+    });
+    return out;
+  }
+
+  /** その日に何か書いてあるか（記録か、地の文か）。 */
+  function thenOfDay(date, label) {
+    const rows = entriesOfDay(date);
+    const log = dayLog(date);
+    const memo = log && String(log.memo || "").trim();
+    if (!rows.length && !memo) return null;
+    return { date, label, entries: rows, memo: memo || "" };
+  }
+
+  /**
+   * 今日に返す「あの日」を一つ。無ければ null（カードごと出しません）。
+   *
+   * @param {string} [day] 今日として扱う日。試験のために外から渡せます。
+   */
+  function archiveThen(day) {
+    const today = dayKeyOf(day || todayKey());
+    for (const c of thenCandidates(today)) {
+      const hit = thenOfDay(c.date, c.label);
+      if (hit) return hit;
+    }
+    /* 記念日が無ければ、過ぎた日のどれか一つ。何日ぶんあるかは数えません
+       ——数えると「◯日ぶん貯まりました」が書きたくなるので、並びから
+       一つ取るだけにします。選ぶ位置は今日の日付から決めるので、同じ日の
+       あいだは動かず、明くる日には別の日になります。 */
+    const past = [...new Set([
+      ...archive().entries.map((e) => e.date),
+      ...archive().days.filter((d) => String(d.memo || "").trim()).map((d) => d.date),
+    ])].filter((d) => d && d < today).sort();
+    if (!past.length) return null;
+    const seed = Number(String(today).replace(/-/g, "")) % past.length;
+    const pick = past[seed];
+    return thenOfDay(pick, null);
+  }
+
   /**
    * 月ぶんを、まるごと一つの形にして返します。
    *
@@ -15371,7 +15508,7 @@ a.btn { text-decoration: none; }
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth,
+    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth, archiveThen,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
@@ -21872,6 +22009,16 @@ a.btn { text-decoration: none; }
   /** 値が無ければ「-」。空欄をグレーの説明文で埋めない、という決めごとの担当。 */
   const orDash = (v) => (v == null || v === "" ? "-" : v);
 
+  /** その日へ移る。月をまたいでも暦がついてくるように、二つ一緒に動かします。 */
+  function goToDay(day) {
+    if (!day) return;
+    viewMonth = String(day).slice(0, 7);
+    viewDay = day;
+    render();
+    // 暦は上にあるので、押した位置から画面ごと頭へ戻します。
+    if (root) root.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   /* ================================================================
      こよみ
 
@@ -22086,7 +22233,64 @@ a.btn { text-decoration: none; }
   }
 
   /* ================================================================
-     ②月の積み上がり — 内訳だけの、細い一行
+     ②あの日 — 貯めたものを、返すところ
+     ================================================================
+
+     ここまで作ったのは貯める器だけでした。一年ぶん書けるようにしても、
+     書いたものが自分から出てこなければ、そのうち開かれなくなります。
+
+     出し方には線が一本あります。**無い過去のことは、何も言わない。**
+     「1年前の今日はこう書いていました」は思い出ですが、「去年は書いて
+     いたのに今年は」は採点です。だから見つからなければ**枠ごと出しません**
+     ——「まだ記録がありません」も出しません。それも「無い」を数えた言葉です。
+
+     出すのは一日ぶん、一枚だけ。並べると流れになり、流れは読み飛ばすもの
+     になります。選び方は store.archiveThen にあります。 */
+
+  function thenCard() {
+    const then = store.archiveThen();
+    if (!then) return null;             // 無ければ、何も置かない
+
+    const dt = U.dayDate(then.date);
+    const when = dt ? `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日 ${U.weekdayJa(then.date)}` : then.date;
+
+    /* 記録は多くても二つまで。三つ目からは数を出さずに畳みます——
+       「ほか3件」と数えると、その日の量の話になってしまうので、
+       押せば全部見られることだけを言います。 */
+    const shown = then.entries.slice(0, 2);
+    const more = then.entries.length > shown.length;
+
+    const sec = node(html`
+      <button type="button" class="card arc-then" data-day="${then.date}">
+        <span class="arc-then-head">
+          <span class="arc-then-ico">${icon("clock", "is-sub")}</span>
+          <b>あの日</b>
+          ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
+        </span>
+        <span class="arc-then-date">${when}</span>
+        ${then.memo ? html`<span class="arc-then-memo">${then.memo}</span>` : ""}
+        ${shown.length ? html`
+          <span class="arc-then-rows">
+            ${U.raw(shown.map((e) => {
+              const t = store.archiveType(e.type);
+              const ico = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
+              return `<span class="arc-then-row" style="--arc-c:${t.color}">`
+                + `<i class="arc-then-row-ico">${icon(ico, "is-sub").value}</i>`
+                + `<em>${U.escapeHtml(e.title || t.label)}</em></span>`;
+            }).join(""))}
+            ${more ? html`<span class="arc-then-more">ほかにも</span>` : ""}
+          </span>` : ""}
+      </button>
+    `);
+    sec.addEventListener("click", () => {
+      haptic();
+      goToDay(then.date);
+    });
+    return sec;
+  }
+
+  /* ================================================================
+     ③月の積み上がり — 内訳だけの、細い一行
      ================================================================ */
 
   function monthRollup(ym) {
@@ -22704,6 +22908,10 @@ a.btn { text-decoration: none; }
 
     els.body.append(els.cal);
     fillCalendar(els.cal);
+    /* 「あの日」は、暦のすぐ下。暦は行き先を選ぶところなので、**最初の中身**は
+       これになります。見つからない日は、null が返って何も置かれません。 */
+    const then = thenCard();
+    if (then) els.body.append(then);
     els.body.append(monthRollup(ym));
     els.body.append(dailyLog(ym));
     els.body.append(entriesSection(ym));
