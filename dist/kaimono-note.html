@@ -203,6 +203,10 @@
 
   /* --- layout --- */
   --tabbar-h: 60px;
+  /* 下の帯が場所として取っている高さ。帯そのものは画面に浮いていて、
+     中身はその下を流れていくので、どの画面もこれだけ下に余白を持ちます。
+     一か所で決めておかないと、画面ごとにずれます。 */
+  --tabbar-space: calc(var(--tabbar-h) + var(--safe-b));
   --maxw: 620px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -461,7 +465,10 @@ a { color: var(--c-primary); }
   -webkit-overflow-scrolling: touch;
   display: none;
   flex-direction: column;
-  padding-bottom: calc(var(--sp-8) + var(--sp-6));
+  /* 下の帯は浮いていて場所を取らないので、その高さぶんは画面が自分で
+     持ちます（--tabbar-space）。足しているのは、帯が板だったころに
+     最後の一件の下にあったのと同じ余白です。 */
+  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
   scrollbar-width: thin;
   /* Opaque, so the refresh chip parked above the screen stays hidden until a
      pull slides the screen off it. */
@@ -596,33 +603,57 @@ a { color: var(--c-primary); }
 
 /* ---------------- tab bar ---------------- */
 
+/* 下の帯は、画面いっぱいの板ではなく、**浮いた一つのカプセル**です。
+
+   板だったころ、帯は画面の一番下に貼りつき、上に細い線を一本引いて、
+   四つの持ち場を仕切りの線で切っていました。線が三本、外枠が一本。
+   「ここからここまでが行き先です」を、四本の線で言っていたことになります。
+
+   カプセルは、外枠ひとつでそれを言います。中の仕切りは要りません
+   （app.js の buildTabs から外しました）。そして帯の下と左右に地が見える
+   ので、**中身がその下を流れていく**ことが目に見えます——貼りついた板は、
+   画面がそこで終わっているように見えていました。
+
+   場所の取り方も変わります。板は列の一員として高さを取っていましたが、
+   カプセルは浮いているので取りません。そのぶんは、どの画面も下の余白
+   （--tabbar-space）として自分で持ちます。 */
 .tabbar {
-  flex: none;
-  /* Four equal quarters. The bar is four places: daily, the day (やること),
-     the shopping, the body — and shopping's two faces share one button
-     rather than taking one each. Each split is a hairline and costs only
-     its own width. */
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  /* 四等分。行き先は daily・やること・買うもの・からだ の四つで、買うものの
+     ふた面は一つのボタンを分け合います（一つずつ取りません）。 */
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  grid-template-columns: repeat(4, 1fr);
   align-items: stretch;
-  height: calc(var(--tabbar-h) + var(--safe-b));
-  padding-bottom: var(--safe-b);
-  background: color-mix(in srgb, var(--c-bg-elev) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 1px solid var(--c-border);
-  box-shadow: var(--shadow-up);
+  height: var(--tabbar-space);
+  /* カプセルの内側だけを、押せる場所にします。 */
+  padding: 2px var(--sp-3) calc(var(--safe-b) + 10px);
+  /* 地はここではなく ::before（カプセル本体）が持ちます。帯そのものは
+     ただの枠なので、指も素通りさせます——カプセルの外の左右と下は、
+     下の一覧に触れたままにしておきたいので。 */
+  background: none;
+  pointer-events: none;
   z-index: 30;
 }
 
-/* The hairline between buttons: やること │ 買うもの・価格 │ ダイエット.
-   Short, centred, and quiet — it is a seam, not a border. */
-.tab-split {
-  width: 1px;
-  align-self: center;
-  height: 26px;
-  background: var(--c-border);
+/* カプセル本体。すりガラスにするのは飾りではなく、下を流れていくものが
+   透けて見えることで「まだ続きがある」と分かるからです。 */
+.tabbar::before {
+  content: "";
+  position: absolute;
+  inset: 2px var(--sp-3) calc(var(--safe-b) + 10px);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--c-bg-elev) 86%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--c-border);
+  /* 浮いていることを言うのは影だけなので、カードより深く落とします。 */
+  box-shadow: var(--shadow-3);
 }
+
+/* ボタンだけが指を受けます（.tab は position:relative なので、DOM で後に
+   来るぶん ::before の上に描かれます——重ね順を数字で足す必要はありません）。 */
+.tab { pointer-events: auto; }
 
 /* The shopping button names both of its faces. The one you are looking at is
    lit and the other is dim — which is at the same time a label for what
@@ -1869,12 +1900,16 @@ button, [role="tab"] {
 .quick-add { display: flex; justify-content: center; }
 
 /* Room under the last card so the button is never sitting on top of the thing
-   you are trying to read — one button's height plus the gap it floats by.
-   Both screens that carry a ＋ pay it. */
+   you are trying to read — one button's height plus the gap it floats by,
+   on top of the space the floating tab bar takes (--tabbar-space).
+
+   daily がここに入っていませんでした。＋を付けたときに足し忘れたもので、
+   一覧のいちばん下の一件が、丸ボタンの下から出てこなくなっていました。 */
+.screen[data-screen="archive"],
 .screen[data-screen="todo"],
 .screen[data-screen="list"],
 .screen[data-screen="prices"],
-.screen[data-screen="diet"] { padding-bottom: calc(56px + var(--sp-6)); }
+.screen[data-screen="diet"] { padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
 
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket. */
@@ -31993,8 +32028,11 @@ distance=6.0km</pre>
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
 
-    TABS.forEach((t, i) => {
-      if (i) bar.append(node(html`<span class="tab-split"></span>`));
+    TABS.forEach((t) => {
+      /* 仕切りの線（.tab-split）は、ここで四つのあいだに入れていました。
+         帯が画面いっぱいだったころ、四つの持ち場を切るために要ったものです。
+         浮いた一つのカプセルになった今は、外枠が「ここが一まとまり」と
+         言っているので、中を切るとかえって窮屈に見えます。 */
       /* ふた面ある buttons は、絵も二つ持ちます。いま見ているほうが真ん中で
          色つき、もう一方は脇に小さく灰色。押すと二つが入れ替わりながら
          中心を通るので、「押したら裏返る」が動きとして見えます——
