@@ -1669,6 +1669,32 @@
     return diet().meals.find((m) => m.id === head.id) || null;
   }
 
+  /**
+   * 食べたもの・書いたことから、文字でさがします。
+   *
+   * 探す先は、人が**自分で書いた文**（各区分のメモと、その日の一言）と、
+   * 数として並べた食品の名まえです。日ごとにまとめて、新しい順に返します。
+   * 「あの日、何食べたっけ」に答えるためのものなので、日そのものが答え
+   * ——画面はここから、その日へ跳びます。
+   */
+  function searchDietDays(q) {
+    const needle = foldKana(String(q || "").trim().toLowerCase());
+    if (!needle) return [];
+    const hit = (s) => !!s && foldKana(String(s).toLowerCase()).indexOf(needle) >= 0;
+    const byDay = new Map();
+    diet().meals.forEach((m) => {
+      const found = [];
+      if (hit(m.memo)) found.push(String(m.memo).trim());
+      m.items.forEach((it) => { if (hit(it.name)) found.push(it.name); });
+      if (!found.length) return;
+      const cur = byDay.get(m.day) || { day: m.day, slots: [], text: [] };
+      if (!cur.slots.includes(m.slot)) cur.slots.push(m.slot);
+      found.forEach((w) => { if (!cur.text.includes(w)) cur.text.push(w); });
+      byDay.set(m.day, cur);
+    });
+    return [...byDay.values()].sort((a, b) => (a.day < b.day ? 1 : -1));
+  }
+
   /* --- 一日ぶんの食事メモ ---
 
      時間帯に分けて書くのは、続きません。書くのは一本の文で、
@@ -2355,7 +2381,7 @@
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
-    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo,
+    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo, searchDietDays,
     slotMemo, setSlotMemo,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,

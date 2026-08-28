@@ -730,24 +730,74 @@
     }, true);
   }
 
-  /* ---------------- search: a button, and the bar it opens ----------------
+  /* ---------------- 文字でさがす：上に隠してあるバー ----------------
 
-     A search bar is worth its height only while it is being used. Left up
-     permanently it costs a row of the list on every screen, every day, to
-     answer a question asked once a week — so it lives behind the magnifier
-     next to the layout button, and folds away again when the query is
-     cleared. Same three parts on every screen that has one, wired here so
-     they cannot drift apart.
+     バーは**いつもそこにあります**が、いつもは見えません。題（.topbar）の
+     すぐ下、画面のいちばん上に置いてあって、その画面を開いた時点で、
+     ちょうどその一段ぶんだけ先へ送ってあります。.topbar は貼りついて
+     いるので、送られたバーはその裏に隠れます。少し下へ引けば出てくる
+     ——iOS のメールや写真と同じ、「上に隠してある」やり方です。
 
-     @param els  { searchBtn, searchWrap, search, searchClear }
+     隠すのに hidden を使っていたころは、虫めがねを押さないと在ることが
+     分かりませんでした。いまは押さなくても、下へ引けば出てきます。
+     虫めがねはそのまま残します——出すのに一番速い道でもあるので。
+
+     引ける余地が無い画面（中身が一画面に収まっている）では、送れないので
+     出したままになります。探すものが無いくらい短い一覧なので、それで
+     困りません。
+
+     @param els  { screen, searchBtn, searchWrap, search, searchClear }
      @param onChange  called after the query changes; repaint the list
      @param setQuery  hands the folded query back to the screen
   */
+  function searchWrapOf(scroller) {
+    return scroller ? scroller.querySelector(".search-wrap") : null;
+  }
+
+  /** バーを一段ぶん先へ送って、題の裏に隠します。 */
+  function parkSearch(scroller, force) {
+    const wrap = searchWrapOf(scroller);
+    if (!wrap || wrap.hidden) return;
+    const h = Math.round(wrap.getBoundingClientRect().height);
+    if (!h) return;
+    const input = wrap.querySelector(".search-input");
+    // 探している最中の人の手からは、画面を取り上げません。
+    if (input && (input.value || document.activeElement === input)) return;
+    // すでに読み進めているところへ、割り込みません。
+    if (!force && scroller.scrollTop > h + 1) return;
+
+    /* 送る余地が足りないとき——中身が一画面に収まっている画面——は、
+       足りないぶんだけ下に余白を足します。余白は送りきったところで
+       ちょうど使い切るので、画面には出ません。これが無いと、短い画面
+       だけバーが出たままになって、タブごとに顔が変わります。 */
+    const stack = wrap.parentElement;
+    if (stack) {
+      /* flex-shrink を止めてから。flex の子は既定で min-height:auto を
+         持っていて、それが「中身より縮まない」を保証しています。ここで
+         min-height を書くとその自動の下限が外れ、**中身より縮める**ように
+         なります——長い画面（ダイエット）の下が、帯の下に潜りました。 */
+      stack.style.flexShrink = "0";
+      stack.style.minHeight = `calc(100% + ${h}px)`;
+    }
+    scroller.scrollTop = h;
+  }
+
+  /** バーを出して、そのまま打てるようにします。 */
+  function revealSearch(scroller, input) {
+    // focus が先です。iOS は「指の動きからたどれる focus」にしか
+    // キーボードを出しません（focusNow の説明と同じ理由）。
+    if (input) focusNow(input);
+    if (scroller) KN.app.glideTo(scroller, 0);
+  }
+
   function wireSearch(els, onChange, setQuery) {
+    const scroller = els.screen || (els.searchWrap && els.searchWrap.closest(".screen"));
+
     const paint = () => {
-      const open = !els.searchWrap.hidden;
-      els.searchBtn.classList.toggle("is-on", open);
-      els.searchBtn.setAttribute("aria-expanded", String(open));
+      // 光るのは「いま絞り込んでいる」ときだけ。出ているかどうかではなく。
+      const on = !!els.search.value;
+      els.searchBtn.classList.toggle("is-on", on);
+      els.searchBtn.setAttribute("aria-expanded", String(on));
     };
 
     const clear = () => {
@@ -755,14 +805,19 @@
       els.searchClear.hidden = true;
       setQuery("");
       onChange();
+      paint();
     };
 
     els.searchBtn.addEventListener("click", () => {
-      const opening = els.searchWrap.hidden;
-      els.searchWrap.hidden = !opening;
-      if (opening) setTimeout(() => els.search.focus(), 30);
-      else clear();
-      paint();
+      const showing = scroller && scroller.scrollTop < 2;
+      if (showing && (els.search.value || document.activeElement === els.search)) {
+        // 出ていて、使っている最中に押したら「やめる」。
+        clear();
+        els.search.blur();
+        parkSearch(scroller, true);
+      } else {
+        revealSearch(scroller, els.search);
+      }
       KN.util.haptic();
     });
 
@@ -771,9 +826,39 @@
       els.searchClear.hidden = !els.search.value;
       setQuery(KN.util.foldKana(els.search.value));
       onChange();
+      paint();
     });
 
     els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });
+
+    /* 打ち終えて改行を押したら、キーボードだけ下ろします（絞り込みは
+       残したまま——見に行くのはこれからなので）。 */
+    els.search.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); els.search.blur(); }
+      if (e.key === "Escape") { clear(); els.search.blur(); parkSearch(scroller, true); }
+    });
+
+    /* 送られていくあいだ、薄くなっていきます。
+
+       題（.topbar）は少しだけ透けているので、裏に回ったバーがそのまま
+       残ると、題の後ろに丸い帯が影のように見えていました。出てくる途中で
+       濃くなるほうが「引き出している」感じにも合います。使っている最中
+       （打った字が入っている・指が入っている）は、薄くしません。 */
+    if (scroller) {
+      const fade = () => {
+        if (els.search.value || document.activeElement === els.search) {
+          els.searchWrap.style.opacity = "";
+          return;
+        }
+        const h = els.searchWrap.offsetHeight || 1;
+        const t = Math.min(1, Math.max(0, scroller.scrollTop / h));
+        els.searchWrap.style.opacity = String(1 - t);
+      };
+      scroller.addEventListener("scroll", fade, { passive: true });
+      els.search.addEventListener("focus", fade);
+      els.search.addEventListener("blur", fade);
+      fade();
+    }
 
     paint();
   }
@@ -801,6 +886,6 @@
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
-    burst, flipRows,
+    burst, flipRows, parkSearch, revealSearch,
   };
 })();

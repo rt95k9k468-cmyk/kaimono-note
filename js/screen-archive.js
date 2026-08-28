@@ -44,6 +44,9 @@
   let favOnly = false;
   let query = "";
 
+  /** daily の見え方の設定。まとめてここから読みます（既定はぜんぶ「出す」）。 */
+  const S = () => store.get().settings;
+
   const ymOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   const curYm = () => viewMonth || ymOf(new Date());
   const ymParts = (ym) => ({ year: +ym.slice(0, 4), month: +ym.slice(5, 7) - 1 });
@@ -383,16 +386,19 @@
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
           </span>
           <span class="arc-log-text">
-            <span class="arc-log-memo">${orDash(d.memo)}</span>
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""}">${orDash(d.memo)}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
-                  中身のほうに先に行くようにします。 */""}
-            <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>
-            <span class="arc-log-meta">
-              <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
-              ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
-            </span>
+                  中身のほうに先に行くようにします。どちらも、要らない人は
+                  設定で消せます（数字が四つ並ぶのが邪魔なときがあるので）。 */""}
+            ${S().showDayTimes === false ? "" : html`
+              <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
+            ${S().showStamps === false ? "" : html`
+              <span class="arc-log-meta">
+                <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
+                ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
+              </span>`}
           </span>
         </div>
       `);
@@ -944,16 +950,20 @@
               <h1 class="topbar-title">daily</h1>
               <p class="topbar-sub js-sub"></p>
             </div>
+            ${/* 右端から 設定・さがす・書き出し。ほかの三画面と同じ並べ方で、
+                  いちばん右がいつも設定です。 */""}
             <button class="icon-btn js-export" aria-label="この月を書き出す">${icon("download")}</button>
+            <button class="icon-btn js-search-btn" aria-label="文字でさがす">${icon("search")}</button>
+            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
-        <div class="search-wrap">
+        <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
-            <input class="search-input js-q" placeholder="文字でさがす" aria-label="文字でさがす"
+            <input class="search-input js-search" placeholder="文字でさがす" aria-label="文字でさがす"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-clear" aria-label="検索をクリア"
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
                     style="width:28px;height:28px" hidden>${icon("close")}</button>
           </div>
         </div>
@@ -965,13 +975,18 @@
     els = {
       sub: root.querySelector(".js-sub"),
       body: root.querySelector(".js-body"),
-      q: root.querySelector(".js-q"),
-      clear: root.querySelector(".js-clear"),
+      screen: root,
+      searchBtn: root.querySelector(".js-search-btn"),
+      searchWrap: root.querySelector(".js-search-wrap"),
+      search: root.querySelector(".js-search"),
+      searchClear: root.querySelector(".js-search-clear"),
     };
 
-    els.q.addEventListener("input", () => { query = els.q.value; render(); });
-    els.clear.addEventListener("click", () => { query = ""; els.q.value = ""; els.q.focus(); render(); });
+    /* ほかの三画面とまったく同じ配線です。バーは題の裏に隠してあって、
+       少し下へ引くと出てきます（ui.js の parkSearch）。 */
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
     root.querySelector(".js-export").addEventListener("click", exportThisMonth);
+    root.querySelector(".js-settings").addEventListener("click", () => KN.app.showScreen("settings"));
 
     els.cal = calendar();
     // 初めて開いたときも、今日の欄が待っているように。
@@ -1011,7 +1026,7 @@
     const settle = KN.ui.flipRows(els.body, ".arc-row");
 
     rendering = true;
-    els.clear.hidden = !query;
+    els.searchClear.hidden = !els.search.value;
     /* 上の帯は、**暦が言えないことだけ**を言います。
        月は、すぐ下の暦が「8月 2026」と出しています。ここでも「2026年8月」と
        書けば、二行つづけて同じことを言ったことになります。日を選んだときは
@@ -1023,11 +1038,18 @@
     els.body.append(els.cal);
     fillCalendar(els.cal);
     /* 「あの日」は、暦のすぐ下。暦は行き先を選ぶところなので、**最初の中身**は
-       これになります。見つからない日は、null が返って何も置かれません。 */
-    const then = thenCard();
-    if (then) els.body.append(then);
-    els.body.append(dailyLog(ym));
-    els.body.append(entriesSection(ym));
+       これになります。見つからない日は、null が返って何も置かれません。
+       出すかどうかは設定で決められます（既定は出す）。 */
+    if (S().showThen !== false) {
+      const then = thenCard();
+      if (then) els.body.append(then);
+    }
+    /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
+       その日の文が先で、集めるものとして使う人は積み上げが先です。
+       どちらが上かは、その人の使い方でしか決まりません。 */
+    const log = dailyLog(ym), entries = entriesSection(ym);
+    if (S().dailyOrder === "entries") els.body.append(entries, log);
+    else els.body.append(log, entries);
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;

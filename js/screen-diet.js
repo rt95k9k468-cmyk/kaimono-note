@@ -41,6 +41,9 @@
   /* いま見ている日。null は「今日」——日付を焼き込まないのは、日付が
      変わったあともアプリを開きっぱなしにしていることがあるからです。 */
   let viewDay = null;
+  /* 「食べたものを探す」の文字。入っているあいだは、その日の紙のかわりに
+     見つかった日を並べます（下の renderFound）。 */
+  let query = "";
   const curDay = () => viewDay || U.todayKey();
   const isViewToday = () => curDay() === U.todayKey();
   /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。
@@ -100,14 +103,29 @@
               <h1 class="topbar-title">ダイエット</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
-            ${/* 右端から 設定・取り込み。ほかの画面と同じ並べ方で、
+            ${/* 右端から 設定・さがす・取り込み。ほかの画面と同じ並べ方で、
                  いちばん右がいつも設定です。 */""}
             <button class="icon-btn js-sync" aria-label="ヘルスケアから取り込む" title="ヘルスケアから取り込む">
               ${icon("download")}
             </button>
+            <button class="icon-btn js-search-btn" aria-label="食べたものを探す">${icon("search")}</button>
             <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
+
+        ${/* ほかの三画面と同じバーです。題の裏に隠してあって、少し下へ
+              引くと出てきます（ui.js の parkSearch）。探す先だけが違って、
+              ここは**食べたもの**——「あの日、何食べたっけ」に答えます。 */""}
+        <div class="search-wrap js-search-wrap">
+          <div class="search-bar">
+            ${icon("search")}
+            <input class="search-input js-search" placeholder="食べたものを探す" aria-label="食べたものを探す"
+                   autocomplete="off" spellcheck="false">
+            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
+                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+          </div>
+        </div>
+
         <div class="js-body"></div>
       </div>
     `);
@@ -119,10 +137,16 @@
       sync: chrome.querySelector(".js-sync"),
       settings: chrome.querySelector(".js-settings"),
       topbar: chrome.querySelector(".topbar"),
+      screen: root,
+      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchWrap: chrome.querySelector(".js-search-wrap"),
+      search: chrome.querySelector(".js-search"),
+      searchClear: chrome.querySelector(".js-search-clear"),
     };
 
     els.sync.addEventListener("click", openSyncSheet);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     /* カレンダーは貼りつけません（やることのタブとはそこだけ違います）。
        紙のいちばん上に印刷してあるものとして、スクロールで一緒に流れます。 */
@@ -280,6 +304,62 @@
     return slide;
   }
 
+  /* ---------------- 見つかった日を並べる ----------------
+
+     ここで探しているのは「言葉」ではなく「日」です。「唐揚げ」と打つ人は
+     文そのものではなく、**唐揚げを食べた日**を探しています。だから答えは
+     日付の一覧で、押せばその日の紙へ跳びます（跳んだら探すのはやめます
+     ——行き先に着いたら、地図はしまうものなので）。 */
+  function renderFound() {
+    const found = store.searchDietDays(query);
+    els.body.innerHTML = "";
+    els.sub.textContent = found.length ? `${found.length}日 見つかりました` : "";
+
+    if (!found.length) {
+      els.body.append(node(html`
+        <section class="card section">
+          <p class="arc-log-empty">見つかりませんでした。</p>
+        </section>
+      `));
+      return;
+    }
+
+    const list = node(html`<section class="card section diet-found"></section>`);
+    found.slice(0, 60).forEach((f) => {
+      const dt = U.dayDate(f.day);
+      const slots = f.slots
+        .map((id) => (SLOTS.find((s) => s.id === id) || {}).short || "メモ")
+        .join("・");
+      const row = node(html`
+        <button type="button" class="arc-log-row diet-found-row" data-day="${f.day}">
+          <span class="arc-log-day">
+            <b>${String(dt ? dt.getDate() : "")}</b>
+            <i>${dt ? U.weekdayJa(f.day) : ""}</i>
+          </span>
+          <span class="arc-log-text">
+            <span class="arc-log-memo">${f.text.join(" ／ ")}</span>
+            <span class="arc-log-times">${U.formatDate(f.day)}${slots ? " ・ " + slots : ""}</span>
+          </span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        viewDay = f.day === U.todayKey() ? null : f.day;
+        calMonth = null;
+        els.search.value = "";
+        els.searchClear.hidden = true;
+        query = "";
+        haptic();
+        render();
+        if (root) root.scrollTop = 0;
+      });
+      list.append(row);
+    });
+    if (found.length > 60) {
+      list.append(node(html`<p class="arc-log-empty">ほかにも ${String(found.length - 60)}日 あります。</p>`));
+    }
+    els.body.append(list);
+  }
+
   function render() {
     // 食事の四枠を保存した直後は、組み直しません（上の saving を参照）。
     if (saving) return;
@@ -291,6 +371,8 @@
     flushSlots();
     flushSlots = () => {};
     const keepTop = root ? root.scrollTop : 0;
+    // 探しているあいだは、その日の紙のかわりに、見つかった日を並べます。
+    if (query.trim()) { renderFound(); return; }
     const day = curDay();
     const card = D.dayCard(day);
     // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は

@@ -60,6 +60,7 @@
     const from = KN.app.openedFrom ? KN.app.openedFrom() : "list";
     if (from === "todo") return "todo";
     if (from === "diet") return "diet";
+    if (from === "archive") return "daily";
     return "shop";                       // list / prices は共有
   };
 
@@ -84,6 +85,7 @@
       els.body.append(storesGroup());
       els.body.append(categoriesGroup());
     }
+    if (showAll || only === "daily") els.body.append(dailyGroup());
     if (showAll || only === "diet") els.body.append(dietGroup());
 
     els.body.append(dataGroup());
@@ -110,7 +112,7 @@
     `);
   }
 
-  const SCOPE_LABEL = { todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
+  const SCOPE_LABEL = { daily: "daily", todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
 
   /** 隠したものへの入り口。畳んであるだけで、無いわけではないと言うための行。 */
   function moreBlock(only) {
@@ -800,6 +802,156 @@
     });
 
     sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
+  }
+
+  /* ---------------- daily ----------------
+
+     ここにあるのは、**見え方**だけです。何を書くか・何を残すかには一切
+     関わりません（daily は評価しない画面なので、目標も達成率もここには
+     置きません）。人によって、日誌として使うか、集めるものとして使うかが
+     はっきり分かれる画面なので、その分かれ目だけを渡します。 */
+
+  const dailySet = (key, value, said) => {
+    store.update((s) => { s.settings[key] = value; });
+    render();
+    if (said) KN.ui.toast(said);
+  };
+
+  function dailyGroup() {
+    const s = store.get().settings;
+    const full = s.logFull !== false;
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">daily</h2>
+        <div class="rows">
+          <button class="row js-month-export">
+            <span class="row-main">
+              <span class="row-title">月ぶんを書き出す</span>
+              <span class="row-sub">その月の Daily Log と積み上げを、まとめて一つのファイルに</span>
+            </span>
+            <span class="row-chevron">${icon("download")}</span>
+          </button>
+          <button class="row js-then">
+            <span class="row-main">
+              <span class="row-title">「あの日」を出す</span>
+              <span class="row-sub">${s.showThen === false
+                ? "出しません"
+                : "暦のすぐ下に、何年か前の同じ日に書いたものを一つ"}</span>
+            </span>
+            <span class="row-value">${s.showThen === false ? "オフ" : "オン"}</span>
+          </button>
+          <button class="row js-logfull">
+            <span class="row-main">
+              <span class="row-title">Daily Log の見せ方</span>
+              <span class="row-sub">${full
+                ? "書いたものを全部そのまま出します"
+                : "はじめの三行だけ。続きは押して開けば読めます"}</span>
+            </span>
+            <span class="row-value">${full ? "全文" : "数行"}</span>
+          </button>
+          <button class="row js-daytimes">
+            <span class="row-main">
+              <span class="row-title">起床・就寝の時刻</span>
+              <span class="row-sub">${s.showDayTimes === false
+                ? "一覧には出しません（開けば書けます）"
+                : "Daily Log の一行ごとに出します"}</span>
+            </span>
+            <span class="row-value">${s.showDayTimes === false ? "オフ" : "オン"}</span>
+          </button>
+          <button class="row js-stamps">
+            <span class="row-main">
+              <span class="row-title">作成・更新の時刻</span>
+              <span class="row-sub">${s.showStamps === false
+                ? "出しません"
+                : "いつ書いて、いつ直したか（その日の話ではなく、帳簿のほう）"}</span>
+            </span>
+            <span class="row-value">${s.showStamps === false ? "オフ" : "オン"}</span>
+          </button>
+          <button class="row js-order">
+            <span class="row-main">
+              <span class="row-title">上に出すもの</span>
+              <span class="row-sub">${s.dailyOrder === "entries"
+                ? "積み上げが先。読んだ本や学んだことを集める使い方に"
+                : "Daily Log が先。その日の文を書く使い方に"}</span>
+            </span>
+            <span class="row-value">${s.dailyOrder === "entries" ? "積み上げ" : "Daily Log"}</span>
+          </button>
+        </div>
+      </section>
+    `);
+
+    wrap.querySelector(".js-month-export").addEventListener("click", openMonthExport);
+    wrap.querySelector(".js-then").addEventListener("click", () => {
+      const on = s.showThen === false;
+      dailySet("showThen", on, on ? "「あの日」を出します" : "「あの日」を出しません");
+    });
+    wrap.querySelector(".js-logfull").addEventListener("click", () => {
+      dailySet("logFull", !full, full ? "はじめの三行だけ出します" : "全文を出します");
+    });
+    wrap.querySelector(".js-daytimes").addEventListener("click", () => {
+      const on = s.showDayTimes === false;
+      dailySet("showDayTimes", on, on ? "起床・就寝を出します" : "起床・就寝を出しません");
+    });
+    wrap.querySelector(".js-stamps").addEventListener("click", () => {
+      const on = s.showStamps === false;
+      dailySet("showStamps", on, on ? "作成・更新を出します" : "作成・更新を出しません");
+    });
+    wrap.querySelector(".js-order").addEventListener("click", () => {
+      const toEntries = s.dailyOrder !== "entries";
+      dailySet("dailyOrder", toEntries ? "entries" : "log",
+        toEntries ? "積み上げを上にします" : "Daily Log を上にします");
+    });
+    return wrap;
+  }
+
+  /* 書き出す月を選ぶ紙。記録のある月だけを、新しい順に並べます——
+     空の月を書き出しても意味がないので、選べるのは中身のある月だけです。 */
+  function openMonthExport() {
+    const arc = store.get().archive || { entries: [], days: [] };
+    const months = new Set();
+    (arc.entries || []).forEach((e) => { if (e.date) months.add(String(e.date).slice(0, 7)); });
+    (arc.days || []).forEach((d) => { if (d.date) months.add(String(d.date).slice(0, 7)); });
+    const list = [...months].sort().reverse();
+
+    const body = node(html`<div class="stack"><div class="rows js-rows"></div></div>`);
+    const rows = body.querySelector(".js-rows");
+    if (!list.length) {
+      rows.append(node(html`<div class="row"><span class="row-main">
+        <span class="row-sub">まだ書いたものがありません。</span></span></div>`));
+    }
+    let handle = null;
+    list.forEach((ym) => {
+      const n = store.exportMonth(ym);
+      const days = (n.days || []).length, entries = (n.entries || []).length;
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${ym.replace("-", "年") + "月"}</span>
+            <span class="row-sub">Daily Log ${String(days)}日 ・ 積み上げ ${String(entries)}件</span>
+          </span>
+          <span class="row-chevron">${icon("download")}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        downloadJSON(`daily-${ym}.json`, store.exportMonth(ym));
+        KN.ui.toast(`${ym} を書き出しました`);
+        if (handle) handle.close();
+      });
+      rows.append(row);
+    });
+
+    handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
+  }
+
+  function downloadJSON(name, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   /* ---------------- ダイエット ---------------- */

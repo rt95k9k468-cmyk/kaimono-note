@@ -2478,6 +2478,14 @@ a.btn { text-decoration: none; }
   -webkit-touch-callout: default;
   cursor: text;
 }
+/* 「数文ずつ」を選んだとき。長い日の文で一覧が埋まらないように、三行で
+   切ります（続きは押して開けば読めます）。既定は全文のままです。 */
+.arc-log-memo.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 /* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
 .arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
