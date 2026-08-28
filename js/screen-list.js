@@ -12,6 +12,10 @@
   let els = {};
   let categoryFilter = null;   // categoryId or null = all
   let query = "";              // folded, from the search bar
+  /* 「買った」の三段（光る → 落ちる → 組み直す）を走っている最中の id。
+     途中でもう一度押されても、二度目は無視します——押した回数ぶん
+     チェックが行き来すると、落ちきったころには元に戻っています。 */
+  const finishing = new Set();
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -401,6 +405,11 @@
   }
 
   function renderBody(items) {
+    /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
+       settle() を呼ぶと、動いた行が「もといた場所」から滑ってきます
+       （ui.js の flipRows）。丸ごと入れ替わるとき（検索・カテゴリの切り替え）
+       は、向こうが自分で見送ります。 */
+    const settle = KN.ui.flipRows(els.body, ".item-wrap");
     els.body.innerHTML = "";
 
     if (!items.length) {
@@ -429,6 +438,7 @@
       const shown = appendGroups(active);
       if (!shown && categoryFilter) els.body.append(noneInCategory());
       if (checked.length) els.body.append(checkedSection(checked));
+      settle();
       return;
     }
 
@@ -460,6 +470,7 @@
     }
 
     if (checked.length) els.body.append(checkedSection(checked));
+    settle();
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
@@ -572,8 +583,13 @@
        throw and with the icons alone — a third of a screen has no room for
        the wording. */
     const wrap = node(html`
+      ${/* data-flip は「組み直しの前後で、同じ行かどうか」の目印です
+            （ui.js の flipRows）。data-item-id とは役目が別なので、
+            まとめずに二つ持たせています——片方を消しても、もう片方の
+            意味が変わらないように。 */""}
       <article class="item-wrap ${tiles ? "is-tile-wrap" : ""}"
-               data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
+               data-item-id="${item.id}" data-flip="${item.id}"
+               style="--cat:${store.productColor(product)}">
         <div class="swipe-yes">
           ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
         </div>
@@ -635,21 +651,32 @@
 
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
-      store.update((s) => {
+      const commit = () => store.update((s) => {
         const rec = s.items.find((i) => i.id === item.id);
         if (rec) {
           rec.checked = !rec.checked;
           rec.checkedAt = rec.checked ? KN.util.today() : null;
         }
       });
-      // 買った瞬間だけ、火花＋しっかりめの震え。チェックを外すときは、
-      // いつもの軽いハプティックのまま（todoの tick() と同じ約束）。
-      if (!wasChecked) {
-        haptic([16, 40, 16]);
-        KN.ui.burst(e.currentTarget);
-      } else {
-        haptic(12);
-      }
+
+      // チェックを外すときは、いつもの軽いハプティックですぐ戻します
+      // （取り消しは出来事ではないので、見せ場を作りません。todo と同じ約束）。
+      if (wasChecked) { haptic(12); commit(); return; }
+
+      /* 買った瞬間は、やることと同じ三段です——光る → 落ちる → 組み直す。
+         押したそばから店が変わると、火花は散っているのに行はもう無く、
+         何も起きなかったように見えます（screens.css の「済ませたときの動き」）。
+         落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
+         行ったかを探さずに済みます。 */
+      haptic([16, 40, 16]);
+      KN.ui.burst(e.currentTarget);
+      if (finishing.has(item.id)) return;      // 二度押しても一度だけ
+      finishing.add(item.id);
+      row.classList.add("is-glow");
+      setTimeout(() => {
+        row.classList.add("is-dropping");
+        setTimeout(() => { finishing.delete(item.id); commit(); }, 280);
+      }, 240);
     });
 
     row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));

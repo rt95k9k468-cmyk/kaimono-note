@@ -520,7 +520,10 @@
     const typeIcon = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
 
     const row = node(html`
-      <div class="arc-row" style="--arc-c:${t.color}">
+      ${/* data-flip は、組み直しの前後で同じ行かどうかの目印です
+            （ui.js の flipRows）。並べ替え・お気に入り・一件足したときに、
+            行が「もといた場所」から滑ってきます。 */""}
+      <div class="arc-row" data-flip="${e.id}" style="--arc-c:${t.color}">
         ${e.type === "seed" ? html`
           <button class="check js-seedcheck" role="checkbox" aria-checked="false"
                   aria-label="「${e.title}」を達成にする">${icon("check")}</button>
@@ -941,7 +944,15 @@
     els.cal = calendar();
     // 初めて開いたときも、今日の欄が待っているように。
     store.ensureDayLog(U.todayKey());
-    store.subscribe(() => { if (root && !root.hidden) render(); });
+    /* ここに store.subscribe(() => render()) がありました。**二重でした**
+       ——app.js が「state が変わったら、いま見ている画面を描き直す」を
+       すでにやっています（app.js の store.subscribe）。他の画面はどれも
+       自前で購読していません。daily だけが二回描いていました。
+
+       見た目には出ませんでした（二度描いても同じ絵になるので）。表に
+       出たのは FLIP を入れたときです——一度目で「新しく来た行」に印を
+       付け、二度目がその行ごと作り直して印を消していました。無駄な仕事は、
+       たいてい無駄なままでは終わりません。 */
   }
 
   /* 描き直している最中に、描き直しが始まらないように。
@@ -960,6 +971,12 @@
        **その場**を見ているので、押した瞬間に頭まで飛ばされると、もう一度
        同じところまで指で戻ることになります。位置を覚えて、組んだあとに返します。 */
     const keepTop = root.scrollTop;
+
+    /* 組み直す前に、いまどの行がどこに居るかを測ります（ui.js の flipRows）。
+       並べ替えを押す・お気に入りを付ける・一件足す——どれも一覧の中で行が
+       動くだけの出来事なのに、いままでは別の絵に置き換わっていました。
+       月をめくったときのように丸ごと入れ替わる場合は、向こうが見送ります。 */
+    const settle = KN.ui.flipRows(els.body, ".arc-row");
 
     rendering = true;
     els.clear.hidden = !query;
@@ -982,6 +999,9 @@
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;
+    // 位置を戻したあとで測ります（戻す前だと、行がスクロールぶんだけ
+    // 余計に動いたことになって、画面の外から飛んできます）。
+    settle();
   }
 
   /**

@@ -4563,8 +4563,36 @@ a.btn { text-decoration: none; }
   to { opacity: 0; transform: translateX(38%); }
 }
 
+/* ②-c 買うものを買ったとき。やることと同じ三段ですが、滑る向きが違います
+   ——買ったものは横へ去るのではなく、下の「買ったもの」の山へ**落ちます**。
+   向きがそのまま行き先を指しているので、どこへ行ったかを探さずに済みます。 */
+.item.is-dropping {
+  animation: item-drop .28s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes item-drop {
+  to { opacity: 0; transform: translateY(14px) scale(.96); }
+}
+
+/* ---------------- 新しく来た行 ----------------
+
+   組み直しのあと、前の絵に居なかった行だけが名乗りを上げます。まわりの行は
+   FLIP（ui.js の flipRows）で「もといた場所」から滑ってくるので、二つ合わせて
+   「一件ぶんの席が開いて、そこに入った」に見えます。
+
+   上から降りてくるのは、足したものが一覧の頭に付くからです（daily は更新順、
+   買うものは足した順）。下から生えると、来た方向と置かれた場所が食い違います。 */
+.is-arriving {
+  animation: row-arrive .34s var(--ease-out) both;
+}
+@keyframes row-arrive {
+  from { opacity: 0; transform: translateY(-10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .item.is-glow, .item.is-finishing, .item.is-sliding { animation-duration: .01ms; }
+  .item.is-glow, .item.is-finishing, .item.is-sliding,
+  .item.is-dropping, .is-arriving { animation-duration: .01ms; }
 }
 
 </style>
@@ -15819,6 +15847,81 @@ a.btn { text-decoration: none; }
     }
   });
 
+  /* ---------------- 行が動くところを見せる（FLIP） ----------------
+
+     この app の画面は、何かが変わるたびに**丸ごと組み直します**。作りとしては
+     正しい（画面が state のうつしになる）のですが、そのぶん、起きたことが
+     全部「瞬間移動」として出ます。一件足すと、上から二番目だった行がいつの
+     まにか三番目にいる。並び替えを押すと、一覧が別のものに置き換わっている。
+     何が起きたのかは、二枚の絵を見比べて自分で当てるしかありません。
+
+     組み直しの**前後**で同じ行がどこに居たかを測って、「もといた場所」から
+     いまの場所へ滑らせます。行そのものは新しい要素ですが、目には同じ行が
+     動いたように見えます——これが FLIP（First / Last / Invert / Play）です。
+
+       const settle = KN.ui.flipRows(host, ".arc-row");   // 組む前に測る
+       ...組み直す...
+       settle();                                          // 測って、滑らせる
+
+     行は data-flip に自分の id を持ちます。持っていない行は素通りします。
+
+     **行き先が変わるときは動かしません。** 月をめくる・日を選ぶ・タブを移る
+     ときは一覧が丸ごと入れ替わるので、全部の行がいっせいに現れることに
+     なります。それは「編集の手ごたえ」ではなく、ただのちらつきです。
+     新しい行が半分を超えたら、動かさずに黙って置き換えます。 */
+  const FLIP_MS = 320;
+
+  function flipRows(host, selector) {
+    if (!host) return () => {};
+    /* 動きを減らす設定なら、測りもしません（transition は base.css が
+       瞬時にしますが、測って書いて消す往復そのものが無駄なので）。 */
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return () => {};
+    }
+    const first = new Map();
+    host.querySelectorAll(selector).forEach((el) => {
+      const id = el.dataset.flip;
+      if (id) first.set(id, el.getBoundingClientRect().top);
+    });
+
+    return () => {
+      const rows = [...host.querySelectorAll(selector)].filter((el) => el.dataset.flip);
+      if (!rows.length || !first.size) return;
+      const fresh = rows.filter((el) => !first.has(el.dataset.flip));
+      // 半分より多くが新顔なら、これは編集ではなく行き先の変更です。
+      if (fresh.length > rows.length / 2) return;
+
+      let moved = false;
+      rows.forEach((el) => {
+        const was = first.get(el.dataset.flip);
+        if (was == null) {
+          // 新しく来た行だけが、名乗りを上げます。
+          el.classList.add("is-arriving");
+          return;
+        }
+        const dy = was - el.getBoundingClientRect().top;
+        if (Math.abs(dy) < 1) return;          // 動いていない行は触りません
+        el.style.transition = "none";
+        el.style.transform = `translateY(${dy}px)`;
+        moved = true;
+      });
+      if (!moved) return;
+
+      /* 一拍おいてから戻します。同じフレームで書いて消すと、ブラウザは
+         二つをまとめて「何も変わっていない」と見なし、動きが出ません。 */
+      requestAnimationFrame(() => {
+        rows.forEach((el) => {
+          if (!el.style.transform) return;
+          el.style.transition = `transform ${FLIP_MS}ms var(--ease-out)`;
+          el.style.transform = "";
+        });
+        setTimeout(() => {
+          rows.forEach((el) => { el.style.transition = ""; el.style.transform = ""; });
+        }, FLIP_MS + 30);
+      });
+    };
+  }
+
   /* ---------------- 弾み（済ませた瞬間だけの、短い火花） ----------------
 
      やることを済ませた・買うものを買った、その指の下だけに、小さな星が
@@ -16316,7 +16419,7 @@ a.btn { text-decoration: none; }
   KN.ui = {
     sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
-    burst,
+    burst, flipRows,
   };
 })();
 
@@ -22552,7 +22655,10 @@ a.btn { text-decoration: none; }
     const typeIcon = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
 
     const row = node(html`
-      <div class="arc-row" style="--arc-c:${t.color}">
+      ${/* data-flip は、組み直しの前後で同じ行かどうかの目印です
+            （ui.js の flipRows）。並べ替え・お気に入り・一件足したときに、
+            行が「もといた場所」から滑ってきます。 */""}
+      <div class="arc-row" data-flip="${e.id}" style="--arc-c:${t.color}">
         ${e.type === "seed" ? html`
           <button class="check js-seedcheck" role="checkbox" aria-checked="false"
                   aria-label="「${e.title}」を達成にする">${icon("check")}</button>
@@ -22973,7 +23079,15 @@ a.btn { text-decoration: none; }
     els.cal = calendar();
     // 初めて開いたときも、今日の欄が待っているように。
     store.ensureDayLog(U.todayKey());
-    store.subscribe(() => { if (root && !root.hidden) render(); });
+    /* ここに store.subscribe(() => render()) がありました。**二重でした**
+       ——app.js が「state が変わったら、いま見ている画面を描き直す」を
+       すでにやっています（app.js の store.subscribe）。他の画面はどれも
+       自前で購読していません。daily だけが二回描いていました。
+
+       見た目には出ませんでした（二度描いても同じ絵になるので）。表に
+       出たのは FLIP を入れたときです——一度目で「新しく来た行」に印を
+       付け、二度目がその行ごと作り直して印を消していました。無駄な仕事は、
+       たいてい無駄なままでは終わりません。 */
   }
 
   /* 描き直している最中に、描き直しが始まらないように。
@@ -22992,6 +23106,12 @@ a.btn { text-decoration: none; }
        **その場**を見ているので、押した瞬間に頭まで飛ばされると、もう一度
        同じところまで指で戻ることになります。位置を覚えて、組んだあとに返します。 */
     const keepTop = root.scrollTop;
+
+    /* 組み直す前に、いまどの行がどこに居るかを測ります（ui.js の flipRows）。
+       並べ替えを押す・お気に入りを付ける・一件足す——どれも一覧の中で行が
+       動くだけの出来事なのに、いままでは別の絵に置き換わっていました。
+       月をめくったときのように丸ごと入れ替わる場合は、向こうが見送ります。 */
+    const settle = KN.ui.flipRows(els.body, ".arc-row");
 
     rendering = true;
     els.clear.hidden = !query;
@@ -23014,6 +23134,9 @@ a.btn { text-decoration: none; }
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;
+    // 位置を戻したあとで測ります（戻す前だと、行がスクロールぶんだけ
+    // 余計に動いたことになって、画面の外から飛んできます）。
+    settle();
   }
 
   /**
@@ -29071,6 +29194,10 @@ distance=6.0km</pre>
   let els = {};
   let categoryFilter = null;   // categoryId or null = all
   let query = "";              // folded, from the search bar
+  /* 「買った」の三段（光る → 落ちる → 組み直す）を走っている最中の id。
+     途中でもう一度押されても、二度目は無視します——押した回数ぶん
+     チェックが行き来すると、落ちきったころには元に戻っています。 */
+  const finishing = new Set();
 
   /* ---------------- mount (static chrome) ---------------- */
 
@@ -29460,6 +29587,11 @@ distance=6.0km</pre>
   }
 
   function renderBody(items) {
+    /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
+       settle() を呼ぶと、動いた行が「もといた場所」から滑ってきます
+       （ui.js の flipRows）。丸ごと入れ替わるとき（検索・カテゴリの切り替え）
+       は、向こうが自分で見送ります。 */
+    const settle = KN.ui.flipRows(els.body, ".item-wrap");
     els.body.innerHTML = "";
 
     if (!items.length) {
@@ -29488,6 +29620,7 @@ distance=6.0km</pre>
       const shown = appendGroups(active);
       if (!shown && categoryFilter) els.body.append(noneInCategory());
       if (checked.length) els.body.append(checkedSection(checked));
+      settle();
       return;
     }
 
@@ -29519,6 +29652,7 @@ distance=6.0km</pre>
     }
 
     if (checked.length) els.body.append(checkedSection(checked));
+    settle();
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
@@ -29631,8 +29765,13 @@ distance=6.0km</pre>
        throw and with the icons alone — a third of a screen has no room for
        the wording. */
     const wrap = node(html`
+      ${/* data-flip は「組み直しの前後で、同じ行かどうか」の目印です
+            （ui.js の flipRows）。data-item-id とは役目が別なので、
+            まとめずに二つ持たせています——片方を消しても、もう片方の
+            意味が変わらないように。 */""}
       <article class="item-wrap ${tiles ? "is-tile-wrap" : ""}"
-               data-item-id="${item.id}" style="--cat:${store.productColor(product)}">
+               data-item-id="${item.id}" data-flip="${item.id}"
+               style="--cat:${store.productColor(product)}">
         <div class="swipe-yes">
           ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
         </div>
@@ -29694,21 +29833,32 @@ distance=6.0km</pre>
 
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
-      store.update((s) => {
+      const commit = () => store.update((s) => {
         const rec = s.items.find((i) => i.id === item.id);
         if (rec) {
           rec.checked = !rec.checked;
           rec.checkedAt = rec.checked ? KN.util.today() : null;
         }
       });
-      // 買った瞬間だけ、火花＋しっかりめの震え。チェックを外すときは、
-      // いつもの軽いハプティックのまま（todoの tick() と同じ約束）。
-      if (!wasChecked) {
-        haptic([16, 40, 16]);
-        KN.ui.burst(e.currentTarget);
-      } else {
-        haptic(12);
-      }
+
+      // チェックを外すときは、いつもの軽いハプティックですぐ戻します
+      // （取り消しは出来事ではないので、見せ場を作りません。todo と同じ約束）。
+      if (wasChecked) { haptic(12); commit(); return; }
+
+      /* 買った瞬間は、やることと同じ三段です——光る → 落ちる → 組み直す。
+         押したそばから店が変わると、火花は散っているのに行はもう無く、
+         何も起きなかったように見えます（screens.css の「済ませたときの動き」）。
+         落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
+         行ったかを探さずに済みます。 */
+      haptic([16, 40, 16]);
+      KN.ui.burst(e.currentTarget);
+      if (finishing.has(item.id)) return;      // 二度押しても一度だけ
+      finishing.add(item.id);
+      row.classList.add("is-glow");
+      setTimeout(() => {
+        row.classList.add("is-dropping");
+        setTimeout(() => { finishing.delete(item.id); commit(); }, 280);
+      }, 240);
     });
 
     row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));
