@@ -680,25 +680,58 @@
     return false;
   }
 
+  /** いま、文字を選んでいる最中か。
+
+      打った文をコピーしようとするとき、人は長押しで一語を選び、そのまま
+      **つまみを下へ引いて**範囲を広げます。指の動きは「下へ払う」と
+      そっくりで、放っておくとその途中でキーボードが落ちます。落ちれば
+      画面が組み直され、選択も消えて、コピーにたどり着けません。
+
+      選択が残っているあいだは、その指は払いではありません。 */
+  function isSelectingText() {
+    const a = document.activeElement;
+    if (a && typeof a.selectionStart === "number"
+        && a.selectionStart !== a.selectionEnd) return true;
+    const sel = window.getSelection && window.getSelection();
+    return !!(sel && sel.rangeCount && !sel.isCollapsed);
+  }
+
   function dismissKeyboardOnSwipeDown() {
     const DROP = 34;   // far enough that a tap with a wobble is not a swipe
     const SIDE = 40;   // and straight enough not to be a swipe across a row
-    let y0 = 0, x0 = 0, live = false, from = null;
+    const STIR = 6;    // これ以上動いて、はじめて「動きだした」
+    /* 動きだすまでの間。払いは指を置いてすぐ走りますが、選択は一度
+       押さえてから始まります（iOS の長押しはおよそ 0.5 秒）。じっと
+       していた時間そのものが、二つを分けるいちばん確かな印です。 */
+    const HOLD = 260;
+    let y0 = 0, x0 = 0, t0 = 0, live = false, from = null, stirred = false, held = false;
 
     document.addEventListener("touchstart", (e) => {
       live = e.touches.length === 1 && document.documentElement.classList.contains("kb-open");
       if (!live) return;
       y0 = e.touches[0].clientY;
       x0 = e.touches[0].clientX;
+      t0 = Date.now();
+      stirred = false;
+      held = false;
       from = e.target;
     }, { passive: true });
 
     document.addEventListener("touchmove", (e) => {
       if (!live) return;
-      const dy = e.touches[0].clientY - y0;
-      if (Math.abs(e.touches[0].clientX - x0) > SIDE) { live = false; return; }
+      const x = e.touches[0].clientX, dy = e.touches[0].clientY - y0;
+      if (!stirred) {
+        if (Math.abs(dy) < STIR && Math.abs(x - x0) < STIR) return;
+        stirred = true;
+        held = Date.now() - t0 >= HOLD;
+      }
+      // 押さえてから動きだしたなら、払いではなく、つまんで運んでいます。
+      if (held) { live = false; return; }
+      if (Math.abs(x - x0) > SIDE) { live = false; return; }
       if (dy < DROP) return;
       live = false;
+      // 選んでいる最中なら、その指はコピーの途中です（上の isSelectingText）。
+      if (isSelectingText()) return;
       /* 指の下にまだ動かせるものがあるなら、それは読み返しているのであって、
          キーボードを払っているのではありません。長いメモを読み直すたびに
          キーボードが落ちると、打ち直すのに毎回入り直すことになります。 */
@@ -836,7 +869,8 @@
     if (closeFabMenu.teardown) { closeFabMenu.teardown(); closeFabMenu.teardown = null; }
     if (!menu) return;
     menu.classList.remove("is-on");
-    setTimeout(() => menu.remove(), 200);
+    // しまう動き（screens.css の .fab-menu-b、transform .24s）が終わってから。
+    setTimeout(() => menu.remove(), 260);
   }
 
   KN.app.fabMenu = fabMenu;

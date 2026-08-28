@@ -42,7 +42,7 @@
 
 /* Removes the double-tap-to-zoom wait and stops a mistimed second tap
    from zooming the page instead of pressing the control again. */
-button, [role="tab"], .chip, .swatch, .check, input, select, textarea, label {
+button, [role="tab"], [role="button"], .chip, .swatch, .check, input, select, textarea, label {
   touch-action: manipulation;
 }
 

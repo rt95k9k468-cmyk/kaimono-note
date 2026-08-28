@@ -973,7 +973,7 @@ a { color: var(--c-primary); }
 
 /* Removes the double-tap-to-zoom wait and stops a mistimed second tap
    from zooming the page instead of pressing the control again. */
-button, [role="tab"], .chip, .swatch, .check, input, select, textarea, label {
+button, [role="tab"], [role="button"], .chip, .swatch, .check, input, select, textarea, label {
   touch-action: manipulation;
 }
 
@@ -4430,6 +4430,11 @@ a.btn { text-decoration: none; }
   display: flex; gap: var(--sp-3); width: 100%; text-align: left;
   padding: var(--sp-4) 0; border-top: 1px solid var(--c-border);
   align-items: flex-start; min-height: 64px;
+  cursor: pointer;
+  /* 行そのものは押すもの。長押しでこの帯が選ばれてしまわないように。 */
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 26px; flex: none; padding-top: 1px; }
@@ -4437,7 +4442,18 @@ a.btn { text-decoration: none; }
 .arc-log-day i { font-size: 10px; font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.arc-log-memo { font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap; }
+/* 本文だけは、選べます。**ここに出ているのはその日に書いた文そのもの**
+   なので、コピーするのに紙を開き直させる理由がありません。日付や時刻の
+   ほうは押すための飾りなので、上の .arc-log-row のまま選べません。
+   （選び終えた指を離すと click も鳴るので、選択が残っているあいだは
+   紙を開かないようにしています——screen-archive.js の click。） */
+.arc-log-memo {
+  font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+  cursor: text;
+}
 /* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
 .arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
@@ -4555,20 +4571,64 @@ a.btn { text-decoration: none; }
   gap: var(--sp-2);
   padding: 9px 12px 9px 16px;
   border-radius: var(--r-full);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-2);
+  position: relative;
+  /* 地は、＋（.add-fab）と下の帯（base.css の .tabbar::before）と
+     まったく同じ組み立てです——三枚重ねの光と、同じぼかし・彩度・明るさ。
+     この三つは同じ高さに浮いているので、材が違うと同じ高さに見えません。
+     ＋ を押して立ち上がるものが不透明な板だと、ガラスの上に紙を置いた
+     ように見えていました。 */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
+    color-mix(in srgb, var(--c-bg-elev) 52%, transparent);
+  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
+  -webkit-backdrop-filter: saturate(240%) blur(22px);
+  border: none;
+  box-shadow: var(--shadow-3);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text);
   /* 立ち上がる前は、＋ の中に畳まれている位置に置きます。 */
   opacity: 0;
-  transform: translateY(14px) scale(.92);
-  transition: opacity .16s var(--ease), transform .22s var(--ease-out);
+  transform: translateY(18px) scale(.9);
+  /* しまうときは、迷いなく。出るときだけ、下の .is-on で長くとります。 */
+  transition: opacity .18s var(--ease), transform .24s var(--ease-out);
 }
-.fab-menu.is-on .fab-menu-b { opacity: 1; transform: none; }
-/* 下のものから順に。--i は上から数えた番号なので、逆から遅らせます。 */
-.fab-menu.is-on .fab-menu-b { transition-delay: calc((2 - var(--i)) * 34ms); }
+
+/* 縁の光。帯・＋ と同じ作り方（1px の余白に色を敷いて、内側をマスクで
+   抜く）。丸みの強い錠剤なので、上で明るく下で薄く光る輪になります。 */
+.fab-menu-b::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-full);
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .9),
+    rgba(255, 255, 255, .22) 34%,
+    rgba(255, 255, 255, .08) 62%,
+    rgba(255, 255, 255, .45));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+/* 縁の光は最後の子として描かれるので、字と丸を一段上げます。 */
+.fab-menu-label, .fab-menu-ico { position: relative; z-index: 1; }
+
+/* 出てくるところ。**下のものから順に、ゆっくり**。
+
+   ＋ を押してから最後の一つが着くまでを 0.6 秒ほどとります。速いほうが
+   きびきびして見えますが、これは「行き先を選ぶ」ための menu なので、
+   立ち上がりきる前に読み始められるくらいの速さのほうが、選びやすい。 */
+.fab-menu.is-on .fab-menu-b {
+  opacity: 1;
+  transform: none;
+  transition: opacity .34s var(--ease), transform .46s var(--ease-out);
+  /* --i は上から数えた番号なので、逆から遅らせます（指のいちばん近くが先）。 */
+  transition-delay: calc((2 - var(--i)) * 62ms);
+}
 .fab-menu-b:active { transform: scale(.96); }
 .fab-menu-ico {
   display: grid; place-items: center;
@@ -4579,6 +4639,32 @@ a.btn { text-decoration: none; }
 }
 /* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
 .fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }
+
+/* 暗い画面では、帯・＋ と同じだけ光を落とします。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fab-menu-b {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+      color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+  }
+  :root:not([data-theme="light"]) .fab-menu-b::after {
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
+      rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
+  }
+}
+:root[data-theme="dark"] .fab-menu-b {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
+    color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+}
+:root[data-theme="dark"] .fab-menu-b::after {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
+    rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
+}
 
 /* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
 .add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
@@ -23016,9 +23102,14 @@ a.btn { text-decoration: none; }
     days.forEach((d) => {
       const dt = U.dayDate(d.date);
       const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+      /* **button ではなく div です。** iOS も含め、button の中の字は選べません
+         （長押しは「押しっぱなし」として扱われ、選択もコピーの吹き出しも
+         出ません）。ここに出ているのはその日に書いた文そのものなので、
+         開き直さずに拾えるほうが自然です。押せることは role と tabindex と
+         下の keydown で持たせます——見た目も振る舞いも今までどおり。 */
       const row = node(html`
-        <button type="button" class="arc-log-row ${d.date === U.todayKey() ? "is-today" : ""}"
-                data-day="${d.date}">
+        <div role="button" tabindex="0" class="arc-log-row ${d.date === U.todayKey() ? "is-today" : ""}"
+             data-day="${d.date}">
           <span class="arc-log-day">
             <b>${String(dt ? dt.getDate() : "")}</b>
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
@@ -23035,9 +23126,21 @@ a.btn { text-decoration: none; }
               ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
             </span>
           </span>
-        </button>
+        </div>
       `);
-      row.addEventListener("click", () => openLogSheet(d.date));
+      /* 選び終えて指を離すと click も鳴ります。そこで紙を開くと、選んだ
+         そばから選択が消えます——選んでいるときは、開きません。 */
+      row.addEventListener("click", () => {
+        const sel = window.getSelection && window.getSelection();
+        if (sel && sel.rangeCount && !sel.isCollapsed
+            && row.contains(sel.anchorNode)) return;
+        openLogSheet(d.date);
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        openLogSheet(d.date);
+      });
       body.append(row);
     });
 
@@ -33134,25 +33237,58 @@ distance=6.0km</pre>
     return false;
   }
 
+  /** いま、文字を選んでいる最中か。
+
+      打った文をコピーしようとするとき、人は長押しで一語を選び、そのまま
+      **つまみを下へ引いて**範囲を広げます。指の動きは「下へ払う」と
+      そっくりで、放っておくとその途中でキーボードが落ちます。落ちれば
+      画面が組み直され、選択も消えて、コピーにたどり着けません。
+
+      選択が残っているあいだは、その指は払いではありません。 */
+  function isSelectingText() {
+    const a = document.activeElement;
+    if (a && typeof a.selectionStart === "number"
+        && a.selectionStart !== a.selectionEnd) return true;
+    const sel = window.getSelection && window.getSelection();
+    return !!(sel && sel.rangeCount && !sel.isCollapsed);
+  }
+
   function dismissKeyboardOnSwipeDown() {
     const DROP = 34;   // far enough that a tap with a wobble is not a swipe
     const SIDE = 40;   // and straight enough not to be a swipe across a row
-    let y0 = 0, x0 = 0, live = false, from = null;
+    const STIR = 6;    // これ以上動いて、はじめて「動きだした」
+    /* 動きだすまでの間。払いは指を置いてすぐ走りますが、選択は一度
+       押さえてから始まります（iOS の長押しはおよそ 0.5 秒）。じっと
+       していた時間そのものが、二つを分けるいちばん確かな印です。 */
+    const HOLD = 260;
+    let y0 = 0, x0 = 0, t0 = 0, live = false, from = null, stirred = false, held = false;
 
     document.addEventListener("touchstart", (e) => {
       live = e.touches.length === 1 && document.documentElement.classList.contains("kb-open");
       if (!live) return;
       y0 = e.touches[0].clientY;
       x0 = e.touches[0].clientX;
+      t0 = Date.now();
+      stirred = false;
+      held = false;
       from = e.target;
     }, { passive: true });
 
     document.addEventListener("touchmove", (e) => {
       if (!live) return;
-      const dy = e.touches[0].clientY - y0;
-      if (Math.abs(e.touches[0].clientX - x0) > SIDE) { live = false; return; }
+      const x = e.touches[0].clientX, dy = e.touches[0].clientY - y0;
+      if (!stirred) {
+        if (Math.abs(dy) < STIR && Math.abs(x - x0) < STIR) return;
+        stirred = true;
+        held = Date.now() - t0 >= HOLD;
+      }
+      // 押さえてから動きだしたなら、払いではなく、つまんで運んでいます。
+      if (held) { live = false; return; }
+      if (Math.abs(x - x0) > SIDE) { live = false; return; }
       if (dy < DROP) return;
       live = false;
+      // 選んでいる最中なら、その指はコピーの途中です（上の isSelectingText）。
+      if (isSelectingText()) return;
       /* 指の下にまだ動かせるものがあるなら、それは読み返しているのであって、
          キーボードを払っているのではありません。長いメモを読み直すたびに
          キーボードが落ちると、打ち直すのに毎回入り直すことになります。 */
@@ -33290,7 +33426,8 @@ distance=6.0km</pre>
     if (closeFabMenu.teardown) { closeFabMenu.teardown(); closeFabMenu.teardown = null; }
     if (!menu) return;
     menu.classList.remove("is-on");
-    setTimeout(() => menu.remove(), 200);
+    // しまう動き（screens.css の .fab-menu-b、transform .24s）が終わってから。
+    setTimeout(() => menu.remove(), 260);
   }
 
   KN.app.fabMenu = fabMenu;

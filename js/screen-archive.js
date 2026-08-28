@@ -370,9 +370,14 @@
     days.forEach((d) => {
       const dt = U.dayDate(d.date);
       const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+      /* **button ではなく div です。** iOS も含め、button の中の字は選べません
+         （長押しは「押しっぱなし」として扱われ、選択もコピーの吹き出しも
+         出ません）。ここに出ているのはその日に書いた文そのものなので、
+         開き直さずに拾えるほうが自然です。押せることは role と tabindex と
+         下の keydown で持たせます——見た目も振る舞いも今までどおり。 */
       const row = node(html`
-        <button type="button" class="arc-log-row ${d.date === U.todayKey() ? "is-today" : ""}"
-                data-day="${d.date}">
+        <div role="button" tabindex="0" class="arc-log-row ${d.date === U.todayKey() ? "is-today" : ""}"
+             data-day="${d.date}">
           <span class="arc-log-day">
             <b>${String(dt ? dt.getDate() : "")}</b>
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
@@ -389,9 +394,21 @@
               ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
             </span>
           </span>
-        </button>
+        </div>
       `);
-      row.addEventListener("click", () => openLogSheet(d.date));
+      /* 選び終えて指を離すと click も鳴ります。そこで紙を開くと、選んだ
+         そばから選択が消えます——選んでいるときは、開きません。 */
+      row.addEventListener("click", () => {
+        const sel = window.getSelection && window.getSelection();
+        if (sel && sel.rangeCount && !sel.isCollapsed
+            && row.contains(sel.anchorNode)) return;
+        openLogSheet(d.date);
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        openLogSheet(d.date);
+      });
       body.append(row);
     });
 
