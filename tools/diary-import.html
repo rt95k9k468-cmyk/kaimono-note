@@ -150,11 +150,17 @@
       見つかったかを見て選んでください。
     </p>
     <table id="pats"><tbody></tbody></table>
+    <p class="note" id="dmsg"></p>
+    <p id="counter" hidden style="margin-top:14px">
+      <label class="row" style="cursor:pointer">
+        <input type="checkbox" id="dropcount">
+        <span id="countmsg"></span>
+      </label>
+    </p>
     <p style="margin-top:14px">
       <label class="note">どれも合わないときは、自分で書けます（正規表現）</label>
       <input type="text" id="custom" placeholder="例: ^(\d{4})[./年](\d{1,2})[./月](\d{1,2})">
     </p>
-    <p class="note" id="dmsg"></p>
   </section>
 
   <!-- ④ 結果 -->
@@ -293,6 +299,15 @@ function joinItems(items) {
    打たないものを両方入れてあるのは、日付が本文の中ほどに書かれている
    書式もあるからです。 */
 const PATTERNS = [
+  /* いちばん厳しい形を先頭に置きます。**その行が日付と曜日だけ**でできて
+     いること。日記の本文には「2021年8月2日は暑かった」のように日付で
+     始まる行がふつうに出てくるので、緩い形だと本文の途中で日を割ります。
+     割れたことは、日数が少し増えるだけでは気づけません——だから、この形が
+     使える書式なら、必ずこちらを選びます。 */
+  { label: "2023年4月17日 月曜日（その行が日付だけ）",
+    re: /^\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*[日月火水木金土]曜日?\s*$/ },
+  { label: "2023年4月17日（その行が日付だけ）",
+    re: /^\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*$/ },
   { label: "2023年4月17日", re: /^\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/ },
   { label: "2023/04/17", re: /^\s*(\d{4})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})/ },
   { label: "2023.4.17（行のどこでも）", re: /(\d{4})\s*[\/.\-年]\s*(\d{1,2})\s*[\/.\-月]\s*(\d{1,2})\s*日?/ },
@@ -312,6 +327,19 @@ function lines() {
    本文ではありません——ここを残すと、どの日も「(水)」から始まります。
    全角・半角、括弧の有無、「月曜日」まで。そのあとに残る区切り記号も。 */
 const DECOR = /^[\s　]*(?:[（(［\[]?\s*[日月火水木金土](?:曜日?)?\s*[)）\]］]?)?[\s　]*[-–—ー・:：/／|｜]*[\s　]*/;
+
+/* 日付のすぐ下に、日記アプリが勝手に足す一行があることがあります
+   ——「218日」「1,024日目」のような数え。本文ではありませんが、
+   **勝手には落としません**。子の生まれてからの日数のような、その人に
+   とって意味のある数かもしれないので。見つけたら数を出して、
+   落とすかどうかを選んでもらいます。 */
+const COUNTER = /^[\s　]*[\d,]{1,7}\s*日目?[\s　]*$/;
+/* 繋いだ本文の頭から、その一行ぶんを外す形。見つける側（hasCounter）と
+   落とす側（stripCounter）が、必ず同じ物を見るように一組にしてあります。 */
+const COUNTER_HEAD = /^[\s　]*[\d,]{1,7}\s*日目?[\s　]*(?:\n+|$)/;
+const hasCounter = (body) => COUNTER_HEAD.test(body);
+const stripCounter = (body) => (dropCounter ? body.replace(COUNTER_HEAD, "") : body);
+let dropCounter = false;
 
 /** その書式で切ると、何日ぶんになるか。 */
 function trySplit(pat) {
@@ -338,7 +366,13 @@ function trySplit(pat) {
      捨てずに繋ぎます。落としたぶんは戻せないので、多いほうに倒します。 */
   const merged = new Map();
   for (const d of out) {
-    const body = d.body.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    /* 数えの行は、**繋いだあとの文**から落とします。行の配列のまま
+       body[0] を見ると、日付と数えのあいだに空行が挟まっていたときに
+       外します（pdf.js は縦の位置で行を切るので、段落の間隔しだいで
+       空行が入ります）。見つける側と落とす側が別の物を見ていると、
+       「401日ぶん見つかりました」と言いながら一つも落ちません——
+       実際にそうなりました。 */
+    const body = stripCounter(d.body.join("\n").replace(/\n{3,}/g, "\n\n").trim());
     if (!body) continue;
     merged.set(d.date, merged.has(d.date) ? merged.get(d.date) + "\n\n" + body : body);
   }
@@ -366,20 +400,54 @@ function toDate(m, pat) {
 function paintPatterns() {
   const tb = $("pats").firstElementChild;
   tb.innerHTML = "<tr><th>日付の書き方</th><th>見つかった日数</th><th>いちばん古い〜新しい</th></tr>";
-  const all = PATTERNS.map((pat) => ({ pat, days: trySplit(pat) }))
-    .sort((a, b) => b.days.length - a.days.length);
-  all.forEach(({ pat, days: d }) => {
+  /* 表は件数の多い順に並べます（landscape が読めるように）。
+     でも**選ぶのは件数順ではありません**——下の pickBest を参照。 */
+  const all = PATTERNS.map((pat, i) => ({ pat, i, days: trySplit(pat) }));
+  const shown = all.slice().sort((a, b) => b.days.length - a.days.length);
+  const rows = new Map();
+  shown.forEach(({ pat, days: d }) => {
     const tr = document.createElement("tr");
     tr.className = "pick";
     tr.innerHTML = `<td>${pat.label}</td><td>${d.length ? d.length + " 日" : "—"}</td>`
       + `<td>${d.length ? d[0].date + " 〜 " + d[d.length - 1].date : ""}</td>`;
     tr.addEventListener("click", () => choose(pat, tr));
     tb.append(tr);
+    rows.set(pat, tr);
   });
-  const best = all[0];
-  if (best && best.days.length) choose(best.pat, tb.children[1]);
-  else $("dmsg").innerHTML = `<span class="bad">どの書式でも日付が見つかりませんでした。`
-    + `②の文字を見て、日付の行がどう書かれているかを確かめ、下の欄に自分で書いてください。</span>`;
+
+  const best = pickBest(all);
+  if (!best) {
+    $("dmsg").innerHTML = `<span class="bad">どの書式でも日付が見つかりませんでした。`
+      + `②の文字を見て、日付の行がどう書かれているかを確かめ、下の欄に自分で書いてください。</span>`;
+    return;
+  }
+  choose(best.pat, rows.get(best.pat));
+
+  /* 緩い書式のほうが多く見つかったときは、黙って選ばずに**言います**。
+     増えたぶんは新しい日かもしれないし、本文の途中で割れた傷かもしれない。
+     どちらかは中身を読まないと分からないので、こちらでは決めません。 */
+  const most = shown[0];
+  if (most.days.length > best.days.length) {
+    $("dmsg").innerHTML = `いちばん厳しい形（<b>${best.pat.label}</b>／${best.days.length}日）を選びました。`
+      + `「${most.pat.label}」だと ${most.days.length}日 見つかりますが、`
+      + `増えた ${most.days.length - best.days.length}日 は<b>本文の途中で割れた傷かもしれません</b>`
+      + `——日記には「2021年8月2日は…」のように日付で始まる行がふつうに出てくるので。`
+      + `④の見本を読んで、日付と中身がずれていなければ、そちらを押しても構いません。`;
+  }
+}
+
+/**
+ * どれを選ぶか。**件数がいちばん多いものではありません。**
+ *
+ * 緩い書式は、本文の中の日付まで拾って一日を割ります。割れても日数が
+ * 少し増えるだけなので、数字を見ているかぎり気づけません。だから
+ * 「厳しい順に見ていって、いちばん多いものの9割以上を拾えていれば、
+ * そこで止める」——多少の取りこぼしより、静かな割れのほうが怖い。
+ */
+function pickBest(all) {
+  const max = Math.max(...all.map((a) => a.days.length));
+  if (!max) return null;
+  return all.find((a) => a.days.length >= max * 0.9) || all.find((a) => a.days.length === max);
 }
 
 $("custom").addEventListener("input", () => {
@@ -390,10 +458,31 @@ $("custom").addEventListener("input", () => {
   choose({ label: "自分で書いたもの", re }, null);
 });
 
+$("dropcount").addEventListener("change", () => {
+  dropCounter = $("dropcount").checked;
+  if (chosen) { days = trySplit(chosen); paintResult(); }
+});
+
 function choose(pat, tr) {
   chosen = pat;
   [...$("pats").firstElementChild.children].forEach((r) => r.classList.remove("on"));
   if (tr) tr.classList.add("on");
+
+  /* 数えの行がどれくらいあるかを、落とす前に数えて見せます。 */
+  const was = dropCounter;
+  dropCounter = false;
+  const raw = trySplit(pat);
+  const n = raw.filter((d) => hasCounter(d.body)).length;
+  dropCounter = was;
+  $("counter").hidden = !n;
+  if (n) {
+    const ex = raw.find((d) => hasCounter(d.body)).body.split("\n")[0].trim();
+    $("countmsg").innerHTML = `日付のすぐ下に「<b>${ex}</b>」のような数えの行が、`
+      + `<b>${n}日ぶん</b>あります。本文から落としますか？`
+      + `<br><span class="note">日記アプリが自動で足した数なら落として構いません。`
+      + `子の生まれてからの日数のように、あなたにとって意味のある数なら、そのまま残してください。</span>`;
+  }
+
   days = trySplit(pat);
   paintResult();
 }
