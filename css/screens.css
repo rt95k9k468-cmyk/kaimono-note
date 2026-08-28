@@ -2421,8 +2421,18 @@ a.btn { text-decoration: none; }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .arc-log-memo { font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap; }
-.arc-log-times { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.arc-log-meta { font-size: 10px; color: var(--c-text-3); opacity: .8; }
+/* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
+.arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+/* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
+   数字が同じ顔で四つ並ぶと、どれがその日の話なのか読み取れません。 */
+.arc-log-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+.arc-stamp {
+  font-size: 10px; color: var(--c-text-3);
+  background: var(--c-surface-2);
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -2495,3 +2505,53 @@ a.btn { text-decoration: none; }
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 
 .arc-body { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
+
+/* ---------------- ＋ の上に出る、行き先の選択 ----------------
+
+   ＋ が二つ以上のことを始められる画面（daily・ダイエット）で使います。
+   親指のすぐ上に立ち上がるので、シートを一枚めくるより一手ぶん近い。
+   下から順に現れます——押した指のいちばん近くが最初に来るように。 */
+.dock.is-menu { pointer-events: auto; }
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  pointer-events: auto;
+}
+.fab-menu-b {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 9px 12px 9px 16px;
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text);
+  /* 立ち上がる前は、＋ の中に畳まれている位置に置きます。 */
+  opacity: 0;
+  transform: translateY(14px) scale(.92);
+  transition: opacity .16s var(--ease), transform .22s var(--ease-out);
+}
+.fab-menu.is-on .fab-menu-b { opacity: 1; transform: none; }
+/* 下のものから順に。--i は上から数えた番号なので、逆から遅らせます。 */
+.fab-menu.is-on .fab-menu-b { transition-delay: calc((2 - var(--i)) * 34ms); }
+.fab-menu-b:active { transform: scale(.96); }
+.fab-menu-ico {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; flex: none;
+  border-radius: var(--r-full);
+  background: var(--c-primary-soft);
+  color: var(--c-primary-ink);
+}
+/* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
+.fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }
+
+/* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
+.add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
+.add-fab.is-open { transform: rotate(45deg); }
+.add-fab.is-open:active { transform: rotate(45deg) scale(.92); }

@@ -90,8 +90,11 @@
   --c-m-burn-lit:  #f5a462;
   --c-m-sleep:     #4b5bc4;
   --c-m-sleep-lit: #8e99e8;
-  --c-m-drink:     #9a4fa8;
-  --c-m-drink-lit: #c98ed3;
+  /* 飲酒。紫でしたが、カレンダーの休肝日バー（#4a8fd9）と別の色でした——
+     同じ「お酒の話」を、上の輪と下の暦で違う色で言っていたことになります。
+     そちらに揃えます。睡眠（藍 #4b5bc4）とは明度と彩度で分かれます。 */
+  --c-m-drink:     #4a8fd9;
+  --c-m-drink-lit: #8fbdea;
 
   /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
          the warm 税 keys on the pad, and one adds while the other takes
@@ -219,8 +222,8 @@
     --c-m-burn-lit:  #f8c39b;
     --c-m-sleep:     #8b96ec;
     --c-m-sleep-lit: #bcc3f5;
-    --c-m-drink:     #c989d4;
-    --c-m-drink-lit: #e2b8e9;
+    --c-m-drink:     #6fa9e4;
+    --c-m-drink-lit: #a9cef1;
     --c-cool-soft:   #1f3346;
     --c-cool-ink:    #97c6ec;
     /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
@@ -268,8 +271,8 @@
   --c-m-burn-lit:  #f8c39b;
   --c-m-sleep:     #8b96ec;
   --c-m-sleep-lit: #bcc3f5;
-  --c-m-drink:     #c989d4;
-  --c-m-drink-lit: #e2b8e9;
+  --c-m-drink:     #6fa9e4;
+  --c-m-drink-lit: #a9cef1;
   --c-cool-soft:   #1f3346;
   --c-cool-ink:    #97c6ec;
   /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
