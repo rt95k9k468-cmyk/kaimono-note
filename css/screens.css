@@ -2440,19 +2440,9 @@ a.btn { text-decoration: none; }
 /* 三つ目からは畳みます。「ほか3件」と数えると、その日の量の話になります。 */
 .arc-then-more { font-size: var(--fs-xs); color: var(--c-text-3); padding-left: 21px; }
 
-/* ---- ③月の積み上がり ----
-   カードにはしません。内訳だけの、地の文より軽い一行——ここが単独の
-   見出しになって目立つと、この画面の主役が数のほうへ寄ってしまいます。 */
-.arc-rollup {
-  margin: 0 var(--sp-4);
-  display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
-  font-size: var(--fs-sm);
-}
-.arc-rollup-label { color: var(--c-text-2); font-weight: 700; flex: none; }
-.arc-rollup-body { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); color: var(--c-text-3); }
-
-.arc-count { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--c-text-2); }
-.arc-count i { width: 7px; height: 7px; border-radius: var(--r-full); background: var(--arc-c); flex: none; }
+/* 「◯月の積み上がり」（.arc-rollup / .arc-count）はここにありました。
+   数を絞り込みの札のほうへ入れて、行ごと畳みました——五つの種類を、
+   数えるほうと押すほうで二度並べていたので。screen-archive.js に経緯。 */
 
 /* ---- ③ Daily Log ----
    縦幅は広めに——一、二行の文が、一行ぶんの窮屈な帯に収まらないように。 */
@@ -2492,6 +2482,18 @@ a.btn { text-decoration: none; }
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
 .arc-stack-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+
+/* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
+   札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
+   押す前にいまどれなのかが読めます。囲いは付けません。見出しの隣で
+   枠を持つと、二つ目の見出しに見えます。 */
+.arc-sort {
+  display: inline-flex; align-items: center; gap: 4px;
+  flex: none; padding: 4px 2px;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-2);
+}
+.arc-sort svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); color: var(--c-text-3); }
+.arc-sort:active { color: var(--c-primary); }
 
 .arc-list { overflow: hidden; }
 .arc-row {
