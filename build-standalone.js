@@ -56,7 +56,6 @@ const JS = [
   "js/screen-diet.js",
   "js/screen-list.js",
   "js/screen-prices.js",
-  "js/screen-compare.js",
   "js/screen-settings.js",
   "js/app.js",
 ];

@@ -12,34 +12,36 @@
   // 中身はこのファイルのあちこちで出来上がった順に足していきます。
   KN.app = {};
 
-  /* Three buttons — one per thing this book is about: the day, the shopping,
-     the body.
+  /* 四つ。この帳面が扱う四つのことです——日々・その日の用事・買い物・からだ。
 
-     お店くらべ left the bar a while ago: it is a thing you do a few times while
-     deciding where to go, not a place you live in. 設定 went the same way, for
-     a plainer reason — it is not a place at all. Both open by name from the
-     screens that link to them, and hand back the way they came.
-
-     買うもの and 価格 kept a button each until they were sitting side by side
-     under one hairline, which is a bar admitting they are one thing and drawing
-     them as two. They *are* one thing: the same products, the same archive,
-     the same tiles, read once as a list to carry round a shop and once as a
-     table of prices. So they share a button, and pressing it while you are
-     already there turns it over. */
+     ここに無いものは、**居場所ではないから**ここに無い。お店くらべは
+     行き先を決めるときに何度か使うもので、住む場所ではありませんでした
+     （そして使われないまま残っていたので、外しました）。設定も同じで、
+     そもそも場所ではない。価格は、買い物の途中で開くものではなく、値段を
+     仕込むときにたまに開くもの。三つとも、呼んだ画面から名前で開いて、
+     帰り道を持って帰ります。 */
   const TABS = [
     { id: "archive", label: "daily", icon: "book" },
     { id: "todo", label: "やること", icon: "checklist" },
-    { id: "shop", label: "買い物", faces: [
-      { id: "list",   label: "買うもの", icon: "list" },
-      { id: "prices", label: "価格",     icon: "tag" },
-    ] },
+    /* 「買うもの」と「価格」は、一つのボタンのふた面でした。押すたびに
+       裏返る作りで、動きとしては綺麗だったのですが、**価格はタブの
+       持ち場ではありません**——買い物の途中で開くものではなく、値段を
+       仕込むときにたまに開くものです。買うものの上の帯から呼ぶ形にして、
+       タブは一つに戻しました。 */
+    { id: "list", label: "買うもの", icon: "list" },
     { id: "diet", label: "ダイエット", icon: "scale" },
   ];
 
-  /** Which of the shopping pair the shared button is showing. */
-  let shopFace = "list";
-  const facesOf = (t) => t.faces || [t];
-  const tabOwning = (id) => TABS.find((t) => facesOf(t).some((f) => f.id === id));
+  /* 引き出し（価格・設定）を、どこから開けたか。**一つの変数ではなく積み木**
+     です——買うもの → 価格 → 設定 と潜れるようになったので、「戻る」は
+     一段ずつ戻らなければいけません。一つの変数だと、設定から戻ったときに
+     価格ではなく買うものへ飛ぶか、価格と設定のあいだで往復します。
+
+     タブへ戻ったら、積んだものは捨てます（タブは根っこなので）。 */
+  const drawerFrom = [];
+  /* 「戻る」で開くときは積みません。積むと、戻った先からまた戻れなくなります。 */
+  let goingBack = false;
+  const HOME_OF_DRAWER = "list";
 
   /* The app opens on やること. The question on picking the phone up is 「今日
      なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
@@ -61,10 +63,6 @@
 
   /* ---------------- tabs ---------------- */
 
-  /* Half the bar each. The shopping button wears whichever of its two faces is
-     on screen, and names both so the second one is not a secret: the face you
-     are looking at is bright and the other is dim, which is also the label for
-     what pressing it again will do. */
   function buildTabs() {
     const bar = document.getElementById("tabbar");
     bar.innerHTML = "";
@@ -74,69 +72,34 @@
          帯が画面いっぱいだったころ、四つの持ち場を切るために要ったものです。
          浮いた一つのカプセルになった今は、外枠が「ここが一まとまり」と
          言っているので、中を切るとかえって窮屈に見えます。 */
-      /* ふた面ある buttons は、絵も二つ持ちます。いま見ているほうが真ん中で
-         色つき、もう一方は脇に小さく灰色。押すと二つが入れ替わりながら
-         中心を通るので、「押したら裏返る」が動きとして見えます——
-         絵が一枚だけ差し替わるのでは、何が起きたのか読めません。 */
-      const faces = facesOf(t);
+      /* 絵は .tab-ico-face に入れます。丸い下地（.tab-ico）と絵を分けて
+         おくと、選ばれた印（下地）と絵の差し替えが別々に効きます。 */
       const btn = node(html`
-        <button class="tab tab-${t.id} ${faces.length > 1 ? "is-pair" : ""}" role="tab"
-                data-tab="${t.id}" aria-controls="screen-${faces[0].id}">
-          <span class="tab-ico">
-            ${KN.util.raw(faces.map((f, n) => `<span class="tab-ico-face" data-face="${f.id}"
-              data-side="${faces.length > 1 ? (n === 0 ? "left" : "right") : "only"}"></span>`).join(""))}
-          </span>
+        <button class="tab tab-${t.id}" role="tab"
+                data-tab="${t.id}" aria-controls="screen-${t.id}">
+          <span class="tab-ico"><span class="tab-ico-face" data-face="${t.id}"></span></span>
           <span class="tab-label"></span>
         </button>
       `);
-      faces.forEach((f) => {
-        btn.querySelector(`.tab-ico-face[data-face="${f.id}"]`)
-          .append(node(html`<span>${icon(f.icon)}</span>`).firstChild);
-      });
-      btn.addEventListener("click", () => pressTab(t));
+      btn.querySelector(".tab-ico-face")
+        .append(node(html`<span>${icon(t.icon)}</span>`).firstChild);
+      btn.addEventListener("click", () => show(t.id));
       bar.append(btn);
     });
     paintTabs();
-  }
-
-  /* Pressing the button you are already on turns it over — but only where
-     there are two sides. On やること it does nothing, which is what a tab bar
-     has always done. */
-  function pressTab(t) {
-    const faces = facesOf(t);
-    if (faces.length > 1 && faces.some((f) => f.id === active)) {
-      const next = faces[(faces.findIndex((f) => f.id === active) + 1) % faces.length];
-      shopFace = next.id;
-      show(next.id);
-      return;
-    }
-    show(faces.length > 1 ? shopFace : faces[0].id);
   }
 
   function paintTabs() {
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
       if (!btn) return;
-      const faces = facesOf(t);
-      const here = faces.some((f) => f.id === active);
-      const face = faces.find((f) => f.id === (here ? active : shopFace)) || faces[0];
-
+      /* 価格は買うものの引き出しなので、そこに居るあいだも「買うもの」が
+         光ったままです——帯のどこも光っていない画面は、迷子に見えます。 */
+      const here = t.id === active || (t.id === "list" && active === "prices");
       btn.setAttribute("aria-selected", String(here));
-      btn.setAttribute("aria-controls", "screen-" + face.id);
-      const ico = btn.querySelector(".tab-ico");
-      ico.dataset.face = face.id;
-      /* 位置と大きさと色はCSSが持ちます。ここが決めるのは「どちらが表か」
-         だけ——動きをJSで書くと、指を離した瞬間に飛ぶか、跳ねるかの
-         どちらかになります。 */
-      ico.querySelectorAll(".tab-ico-face").forEach((el) => {
-        el.classList.toggle("is-on", el.dataset.face === face.id);
-      });
-
+      btn.querySelector(".tab-ico-face").classList.add("is-on");
       const label = btn.querySelector(".tab-label");
-      const want = faces.length > 1
-        ? faces.map((f) => `<span class="tab-face ${f.id === face.id ? "is-on" : ""}">${f.label}</span>`).join("")
-        : t.label;
-      if (label.dataset.sig !== want) { label.dataset.sig = want; label.innerHTML = want; }
+      if (label.dataset.sig !== t.label) { label.dataset.sig = t.label; label.textContent = t.label; }
     });
 
     // The badge counts what is left to buy on this trip, and the star is what
@@ -145,7 +108,7 @@
     // user never said they were buying.
     paintAppBadge();
 
-    paintTabBadge("shop", tripCount());
+    paintTabBadge("list", tripCount());
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。 */
     // やること counts what is wanted today or already late. Something due next
@@ -268,14 +231,13 @@
     disable: disableAppBadge,
   };
 
-  /* Where the shop button came from, so 「戻る」 on お店くらべ goes back to the
-     screen that opened it rather than always to リスト. */
-  let cameFrom = "list";
 
   function show(id) {
     if (!KN.screens[id]) return;
-    if ((id === "compare" || id === "settings") && active !== id) cameFrom = active;
-    if (id === "list" || id === "prices") shopFace = id;
+    if (!goingBack) {
+      if (OFF_BAR.includes(id)) { if (active !== id) drawerFrom.push(active); }
+      else drawerFrom.length = 0;
+    }
     active = id;
 
     document.querySelectorAll(".screen").forEach((s) => {
@@ -784,14 +746,20 @@
     });
   }
 
-  /* Screens off the tab bar — お店くらべ — are opened by name from the screens
+  /* Screens off the tab bar — 価格・設定 — are opened by name from the screens
      that link to them, and hand the way back with them. */
   KN.app.showScreen = show;
-  const OFF_BAR = ["compare", "settings"];
-  KN.app.backScreen = () => show(OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+  const OFF_BAR = ["prices", "settings"];
+  KN.app.backScreen = () => {
+    const to = drawerFrom.pop() || HOME_OF_DRAWER;
+    goingBack = true;
+    try { show(to); } finally { goingBack = false; }
+  };
 
-  /** どのタブから引き出しを開けたか。設定の画面が、出すものを選ぶのに使います。 */
-  KN.app.openedFrom = () => (OFF_BAR.includes(cameFrom) ? shopFace : cameFrom);
+  /** どの**タブ**から潜ってきたか。設定の画面が、出すものを選ぶのに使います
+      ——途中の引き出し（価格）ではなく、根っこのタブが知りたいので。 */
+  KN.app.openedFrom = () =>
+    [...drawerFrom].reverse().find((id) => !OFF_BAR.includes(id)) || HOME_OF_DRAWER;
 
   /** いま開いている画面。下に引いたときに、誰に聞けばいいかを知るため。 */
   KN.app.activeScreen = () => active;
