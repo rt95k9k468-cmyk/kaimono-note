@@ -2139,6 +2139,89 @@
     archive().days.filter((d) => String(d.date).slice(0, 7) === ym)
       .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
+  /* ---- あの日 ----
+
+     貯めた記録を、**返す**ところです。
+
+     ここまでで作ったのは貯める器だけでした。一年ぶん書けるようにしても、
+     書いたものを自分から出してこなければ、そのうち開かれなくなります。
+     日記アプリでいちばん人が戻ってくる仕掛けは、ずっと「同じ日付の過去を
+     出す」ことでした——評価ではなく、**思い出させること**です。
+
+     この機能に、守らなければならない線が一本あります。
+
+       **無い過去のことは、何も言わない。**
+
+     「去年の今日は書いていました」と出すのは思い出ですが、「去年は書いて
+     いたのに今年は書いていません」は採点です。同じ仕組みが、出し方ひとつで
+     どちらにもなる。だから **見つからなければカードごと出しません**
+     ——「まだ記録がありません」も出しません。それも「無い」を数えた言葉です。
+
+     出すのは一つだけです。並べると流れになり、流れは読み飛ばすものになります。
+
+     選ぶ順は「遠い記念日から」。同じ月日の去年 → 一昨年 …→ ちょうど半年前
+     → 三ヶ月前 → 一ヶ月前。どれも無ければ、**過ぎた日のどれか一つ**を、
+     今日の日付から決まる決め方で選びます（同じ日のあいだは同じものが出て、
+     明くる日には別のものになる——毎回変わると、目を離した隙に消える紙に
+     なります）。 */
+
+  /** 「あの日」の候補になる、過ぎた日の並び。近い順ではなく遠い順。 */
+  function thenCandidates(day) {
+    const base = KN.util.dayDate(day);
+    if (!base) return [];
+    const out = [];
+    const y = base.getFullYear(), m = base.getMonth(), d = base.getDate();
+    /* 同じ月日の、過ぎた年。10年ぶん見ます（それより前は、あっても
+       「あの日」というより歴史です）。2月29日は、無い年には出ません
+       ——Date が3月1日へ送るので、日が変わっていないかを確かめます。 */
+    for (let back = 10; back >= 1; back--) {
+      const t = new Date(y - back, m, d);
+      if (t.getDate() !== d) continue;
+      out.push({ date: KN.util.dayKey(t), label: `${back}年前の今日` });
+    }
+    // 年に届かないうちも使えるように、月でも刻みます。
+    [[6, "半年前の今日"], [3, "3ヶ月前の今日"], [1, "1ヶ月前の今日"]].forEach(([back, label]) => {
+      const t = new Date(y, m - back, d);
+      if (t.getDate() !== d) return;   // 8月31日の1ヶ月前は「7月31日」だけ
+      out.push({ date: KN.util.dayKey(t), label });
+    });
+    return out;
+  }
+
+  /** その日に何か書いてあるか（記録か、地の文か）。 */
+  function thenOfDay(date, label) {
+    const rows = entriesOfDay(date);
+    const log = dayLog(date);
+    const memo = log && String(log.memo || "").trim();
+    if (!rows.length && !memo) return null;
+    return { date, label, entries: rows, memo: memo || "" };
+  }
+
+  /**
+   * 今日に返す「あの日」を一つ。無ければ null（カードごと出しません）。
+   *
+   * @param {string} [day] 今日として扱う日。試験のために外から渡せます。
+   */
+  function archiveThen(day) {
+    const today = dayKeyOf(day || todayKey());
+    for (const c of thenCandidates(today)) {
+      const hit = thenOfDay(c.date, c.label);
+      if (hit) return hit;
+    }
+    /* 記念日が無ければ、過ぎた日のどれか一つ。何日ぶんあるかは数えません
+       ——数えると「◯日ぶん貯まりました」が書きたくなるので、並びから
+       一つ取るだけにします。選ぶ位置は今日の日付から決めるので、同じ日の
+       あいだは動かず、明くる日には別の日になります。 */
+    const past = [...new Set([
+      ...archive().entries.map((e) => e.date),
+      ...archive().days.filter((d) => String(d.memo || "").trim()).map((d) => d.date),
+    ])].filter((d) => d && d < today).sort();
+    if (!past.length) return null;
+    const seed = Number(String(today).replace(/-/g, "")) % past.length;
+    const pick = past[seed];
+    return thenOfDay(pick, null);
+  }
+
   /**
    * 月ぶんを、まるごと一つの形にして返します。
    *
@@ -2278,7 +2361,7 @@
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth,
+    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth, archiveThen,
     exportJSON, importJSON, reset, loadSample,
   };
 })();
