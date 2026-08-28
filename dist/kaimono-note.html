@@ -1949,26 +1949,57 @@ button, [role="tab"] {
 .screen[data-screen="diet"] { padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
 
 /* The one button on the list screen. Middle and bottom, because that is
-   where a thumb is while the other hand is holding a basket. */
+   where a thumb is while the other hand is holding a basket.
+
+   下の帯と同じガラスにします。二つは同じ高さに浮いていて、指はこの二つの
+   あいだを行き来します——片方が磨りガラスで、片方が塗りつぶした緑の円盤だと、
+   同じ高さに居るように見えません。
+
+   ただし**まったく同じ材ではありません**。帯は行き先を並べるだけの入れもので、
+   こちらは押すためのものです。ガラスに主色をひとさじ混ぜて、＋そのものを
+   緑にします——iOS 26 のやり方もこれで、ガラスは中立のまま、色は字のほうが
+   持ちます。塗りつぶした緑に白い＋のままガラスにすると、白い字の下に
+   一覧の白が透けて、いちばん押す場所がいちばん読みにくくなります。 */
 .add-fab {
   width: 56px; height: 56px;
   border-radius: var(--r-full);
-  background: var(--c-primary);
-  color: #fff;
+  /* 地の 58% は帯（base.css の .tabbar::before）と同じ。そこへ主色を
+     一割だけ差します——「押すもの」と分かるぶんだけで、緑の板には
+     しません。 */
+  background: color-mix(in srgb, var(--c-primary) 10%,
+              color-mix(in srgb, var(--c-bg-elev) 58%, transparent));
+  backdrop-filter: saturate(200%) blur(26px);
+  -webkit-backdrop-filter: saturate(200%) blur(26px);
+  color: var(--c-primary);
   display: grid;
   place-items: center;
   /* Deeper than a card's, because it is genuinely above the page now and the
-     shadow is the only thing saying so. */
-  box-shadow: var(--shadow-3);
+     shadow is the only thing saying so. 内側の白い一本はガラスの厚みで、
+     帯と同じ役目です。 */
+  box-shadow:
+    var(--shadow-3),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+  border: 1px solid var(--c-border);
   /* The one thing in the dock that is meant to be pressed. */
   pointer-events: auto;
   transition: transform .12s var(--ease), background .16s var(--ease);
 }
-/* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。 */
+/* 暗い画面では、内側の一本を落とします（夜に一本だけ光った縁が残るので）。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .add-fab {
+    box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  }
+}
+:root[data-theme="dark"] .add-fab {
+  box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+}
+/* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
+   線は 2.6 のまま——ガラスの上に乗るぶん、細いと沈みます。 */
 .add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; }
 .add-fab:active { transform: scale(.92); }
 @media (hover: hover) {
-  .add-fab:hover { background: var(--c-primary-2); }
+  .add-fab:hover { background: color-mix(in srgb, var(--c-primary) 18%,
+                   color-mix(in srgb, var(--c-bg-elev) 62%, transparent)); }
 }
 
 /* suggestions, under the name field in the add sheet */
