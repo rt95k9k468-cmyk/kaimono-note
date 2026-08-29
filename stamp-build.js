@@ -24,8 +24,21 @@
 const fs = require("fs");
 
 const VERSION = process.env.GITHUB_SHA || process.argv[2] || "dev";
-const ASSET_URL = /((?:src|href)=")((?:css|js)\/[A-Za-z0-9._-]+)(")/g;
-const PRECACHE_URL = /"((?:css|js)\/[A-Za-z0-9._-]+)"/g;
+
+/* すでに ?v=… が付いているものも拾って、**付け替えます**。
+
+   ここは一度こわしました。刻印は「配るファイルに対してだけ走らせて、
+   commit には戻さない」約束でしたが、手元で走らせた結果をそのまま
+   commit してしまい、次に CI が走ったときには全部の URL がもう
+   ?v=dev を持っていて、一つも見つからず落ちました。
+
+   「何も刻印できなかった」を失敗と見るのは正しい——名前を変えたのに
+   一覧を直し忘れた、を捕まえるための番人です。ただ、**もう刻印されて
+   いる**のは「見つからない」ではありません。番人はそのままに、二度目も
+   通るようにします。 */
+const ASSET_URL = /((?:src|href)=")((?:css|js)\/[A-Za-z0-9._-]+)(?:\?v=[^"]*)?(")/g;
+const PRECACHE_URL = /"((?:css|js)\/[A-Za-z0-9._-]+)(?:\?v=[^"]*)?"/g;
+const VERSION_LINE = /^const VERSION = .*$/m;
 
 function fail(msg) {
   console.error(`::error::${msg}`);
@@ -35,9 +48,8 @@ function fail(msg) {
 /* ---- sw.js: cache name + precache URLs ---- */
 let sw = fs.readFileSync("sw.js", "utf8");
 
-const stamped = sw.replace(/^const VERSION = .*$/m, `const VERSION = "${VERSION}";`);
-if (stamped === sw) fail("sw.js: VERSION 行が見つからず刻印できなかった（キャッシュ名が固定のままになる）");
-sw = stamped;
+if (!VERSION_LINE.test(sw)) fail("sw.js: VERSION 行が見つからない（キャッシュ名が固定のままになる）");
+sw = sw.replace(VERSION_LINE, `const VERSION = "${VERSION}";`);
 if (!sw.includes(`const VERSION = "${VERSION}";`)) fail("sw.js: VERSION の置換結果が一致しない");
 
 let swCount = 0;
