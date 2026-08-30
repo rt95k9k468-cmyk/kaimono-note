@@ -754,15 +754,36 @@
     return scroller ? scroller.querySelector(".search-wrap") : null;
   }
 
+  /** 窓を出しっぱなしにするか（設定）。既定は「出さない」。 */
+  function searchBarAlways() {
+    try { return KN.store.get().settings.searchBar === true; } catch (_) { return false; }
+  }
+
   /** バーを一段ぶん先へ送って、題の裏に隠します。 */
   function parkSearch(scroller, force) {
     const wrap = searchWrapOf(scroller);
-    if (!wrap || wrap.hidden) return;
-    const h = Math.round(wrap.getBoundingClientRect().height);
-    if (!h) return;
+    if (!wrap) return;
     const input = wrap.querySelector(".search-input");
     // 探している最中の人の手からは、画面を取り上げません。
     if (input && (input.value || document.activeElement === input)) return;
+
+    /* 窓を置きっぱなしにしない設定なら、裏へ送るのではなく畳みます。
+       送るやりかたは「上に一段ぶんの余白がある」ことが前提なので、
+       出していないときはそもそも余白が要りません。
+
+       設定を入れ替えた直後に、その場で追いつくところでもあります——画面へ
+       戻ってきたときに必ずここを通るので、畳んだ窓を出し直すのも、出して
+       いた窓を畳むのも、ここ一か所で済みます。 */
+    if (!searchBarAlways()) {
+      wrap.hidden = true;
+      wrap.style.opacity = "";
+      const stack0 = wrap.parentElement;
+      if (stack0) { stack0.style.flexShrink = ""; stack0.style.minHeight = ""; }
+      return;
+    }
+    wrap.hidden = false;
+    const h = Math.round(wrap.getBoundingClientRect().height);
+    if (!h) return;
     // すでに読み進めているところへ、割り込みません。
     if (!force && scroller.scrollTop > h + 1) return;
 
@@ -808,14 +829,34 @@
       paint();
     };
 
+    /* 窓を置きっぱなしにしない設定のときは、ふだんは畳んでおきます。
+       虫めがねを押したときだけ開きます——探し終えたら、また畳みます。 */
+    const tuck = () => {
+      if (searchBarAlways() || !els.searchWrap) return;
+      if (els.search.value || document.activeElement === els.search) return;
+      els.searchWrap.hidden = true;
+      els.searchWrap.style.opacity = "";
+      const stack = els.searchWrap.parentElement;
+      if (stack) { stack.style.flexShrink = ""; stack.style.minHeight = ""; }
+    };
+    const untuck = () => {
+      if (!els.searchWrap || !els.searchWrap.hidden) return;
+      els.searchWrap.hidden = false;
+      els.searchWrap.style.opacity = "";
+    };
+    tuck();
+
     els.searchBtn.addEventListener("click", () => {
-      const showing = scroller && scroller.scrollTop < 2;
+      const tucked = els.searchWrap && els.searchWrap.hidden;
+      const showing = !tucked && scroller && scroller.scrollTop < 2;
       if (showing && (els.search.value || document.activeElement === els.search)) {
         // 出ていて、使っている最中に押したら「やめる」。
         clear();
         els.search.blur();
-        parkSearch(scroller, true);
+        if (searchBarAlways()) parkSearch(scroller, true);
+        else tuck();
       } else {
+        untuck();
         revealSearch(scroller, els.search);
       }
       KN.util.haptic();
@@ -835,7 +876,10 @@
        残したまま——見に行くのはこれからなので）。 */
     els.search.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); els.search.blur(); }
-      if (e.key === "Escape") { clear(); els.search.blur(); parkSearch(scroller, true); }
+      if (e.key === "Escape") {
+        clear(); els.search.blur();
+        if (searchBarAlways()) parkSearch(scroller, true); else tuck();
+      }
     });
 
     /* 送られていくあいだ、薄くなっていきます。

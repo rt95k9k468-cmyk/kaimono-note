@@ -159,6 +159,21 @@
               やることの **両方** なので、どちらか一方のタブのものでは
               ありません（時刻のお知らせは、やることだけの話なので
               あちらへ移しました）。 */""}
+        ${/* 探す窓。ふだんは畳んでおきます——探すのはたまにすることなのに、
+              窓はいつも画面のいちばん上を取っていました。虫めがねを押せば
+              出るので、置きっぱなしにする必要がありません。 */""}
+        <div class="rows" style="margin-top:12px">
+          <button class="row js-searchbar">
+            <span class="row-main">
+              <span class="row-title">探す窓を出しておく</span>
+              <span class="row-sub">${store.get().settings.searchBar === true
+                ? "どのタブでも、上に窓を置いたままにします"
+                : "置きません（虫めがねを押したときだけ出ます）"}</span>
+            </span>
+            <span class="row-value">${store.get().settings.searchBar === true ? "オン" : "オフ"}</span>
+          </button>
+        </div>
+
         <div class="rows js-badge-rows" hidden style="margin-top:12px">
           <button class="row js-badge">
             <span class="row-main">
@@ -178,6 +193,13 @@
         KN.app.applyTheme(theme);
         haptic();
       });
+    });
+
+    wrap.querySelector(".js-searchbar").addEventListener("click", () => {
+      const on = store.get().settings.searchBar !== true;
+      store.update((s) => { s.settings.searchBar = on; });
+      render();
+      KN.ui.toast(on ? "探す窓を出しておきます" : "虫めがねを押したときだけ出します");
     });
 
     /* 基調色の丸。押すとその場で画面ぜんぶの色が変わります——設定を出たり
@@ -977,6 +999,30 @@
             </span>
             <span class="row-value">${s.dailyOrder === "entries" ? "積み上げ" : "Daily Log"}</span>
           </button>
+          ${/* 月のまとめ。出すか出さないかと、出すならどちら側か。位置は
+                「上か下か」のどちらかに決め打ちで、日の間に挟まりません
+                ——まとめは月ぜんぶの話なので、日の列に混ぜると、どの日の
+                話か分からなくなります。 */""}
+          <button class="row js-digest">
+            <span class="row-main">
+              <span class="row-title">月のまとめを出す</span>
+              <span class="row-sub">${s.showDigest === false
+                ? "出しません"
+                : "その月に記録のあった日と、どこから来た記録かの件数"}</span>
+            </span>
+            <span class="row-value">${s.showDigest === false ? "オフ" : "オン"}</span>
+          </button>
+          ${s.showDigest === false ? "" : html`
+            <button class="row js-digestpos">
+              <span class="row-main">
+                <span class="row-title">月のまとめの位置</span>
+                <span class="row-sub">${s.digestPos === "top"
+                  ? "Daily Log の上。開いてすぐ、月の姿が目に入ります"
+                  : "Daily Log の下。まず日を読んで、最後にまとめを見ます"}</span>
+              </span>
+              <span class="row-value">${s.digestPos === "top" ? "上" : "下"}</span>
+            </button>
+          `}
         </div>
       </section>
     `);
@@ -1001,6 +1047,16 @@
       const toEntries = s.dailyOrder !== "entries";
       dailySet("dailyOrder", toEntries ? "entries" : "log",
         toEntries ? "積み上げを上にします" : "Daily Log を上にします");
+    });
+    wrap.querySelector(".js-digest").addEventListener("click", () => {
+      const on = s.showDigest === false;
+      dailySet("showDigest", on, on ? "月のまとめを出します" : "月のまとめを出しません");
+    });
+    const posRow = wrap.querySelector(".js-digestpos");
+    if (posRow) posRow.addEventListener("click", () => {
+      const toTop = s.digestPos !== "top";
+      dailySet("digestPos", toTop ? "top" : "bottom",
+        toTop ? "月のまとめを上に出します" : "月のまとめを下に出します");
     });
     return wrap;
   }
