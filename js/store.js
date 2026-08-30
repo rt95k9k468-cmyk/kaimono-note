@@ -1311,6 +1311,40 @@
     };
   }
 
+  /**
+   * 「やった記録」を取り消します。
+   *
+   * 繰り返すものを済ませると、その日に写しが一件残り、元は次の日へ進みます。
+   * うっかり押したとき、**今日から外す方法がありませんでした**——写しは
+   * 押せない飾りで、元は明日に立っているので、今日の画面には何も無い。
+   *
+   * 写しを消して、元をその日へ戻します。返りは「元に戻す」の手です。
+   */
+  function undoTrace(traceId) {
+    const trace = getTodo(traceId);
+    if (!trace || !trace.trace) return null;
+    /* 元は「同じ題で、繰り返しを持っていて、記録より先の日付」のもの。
+       題で探すのは頼りないようですが、写しは元から作られるので、
+       題・繰り返し・区分がそろっているものが元です。 */
+    const origin = get().todos.find((t) => !t.trace && t.repeat
+      && t.title === trace.title && t.part === trace.part);
+    const wasDue = origin ? origin.due : null;
+    update((s) => {
+      s.todos = s.todos.filter((t) => t.id !== traceId);
+      if (origin) {
+        const o = s.todos.find((t) => t.id === origin.id);
+        if (o) o.due = trace.due;
+      }
+    });
+    return () => update((s) => {
+      if (origin) {
+        const o = s.todos.find((t) => t.id === origin.id);
+        if (o) o.due = wasDue;
+      }
+      s.todos.push({ ...trace });
+    });
+  }
+
   /* Overdue first, then by day, then by hand-order. Undated ones come last:
      they are things to do, not things due, and a list that mixed them in
      would bury the ones with a day on them. */
@@ -2488,7 +2522,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,

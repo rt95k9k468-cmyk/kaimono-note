@@ -996,8 +996,13 @@ a { color: var(--c-primary); }
 /* ＋ から立ち上がる候補も、右端にそろえます（＋ の真上から出るように）。 */
 .has-fab .fab-menu { align-items: flex-end; }
 
-/* キーボードが出ているあいだは帯が引っ込むので、＋ も下へ戻ります。 */
-.has-fab.kb-open .dock { bottom: var(--sp-3); right: var(--sp-3); }
+/* キーボードが出ているあいだは、＋ も**引っ込みます**。
+
+   帯と横に並ぶようになったので、帯だけが消えて ＋ が残ると、書いている
+   欄の上に丸だけが浮きます（ダイエットの食事欄で実際にそうなりました）。
+   打っている最中に足すものは無いので、一緒に下がってもらいます。 */
+.has-fab.kb-open .dock { opacity: 0; pointer-events: none; transform: translateY(120%); }
+.has-fab .dock { transition: opacity var(--m-nav) var(--ease), transform var(--m-nav) var(--ease-out); }
 
 /* ---- css/components.css ---- */
 /* =========================================================
@@ -5112,6 +5117,12 @@ a.btn { text-decoration: none; }
    「今日それをした」ことまで消えてしまうので。 */
 .tl-row .tl-item.is-checked .item-name { text-decoration: line-through; }
 .tl-row .tl-item.is-checked { opacity: .5; }
+/* 済んだ行は、左の時刻も丸の絵も灰色に。文字だけ薄くして数字と絵が
+   濃いままだと、「まだ残っている」に見えます。 */
+.tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: 400; }
+.tl-row.is-done .tl-node { background: var(--c-surface-2); }
+.tl-row.is-done .tl-node .todo-mark { filter: grayscale(1); opacity: .7; }
+.tl-row.is-done .tl-node .todo-dot { background: var(--c-border-2); }
 
 /* 空きの行。 */
 .tl-free-row { min-height: 50px; }
@@ -5178,8 +5189,10 @@ a.btn { text-decoration: none; }
    ということが起きません。 */
 .tl-item.is-striking .item-name,
 .item.is-striking .item-name {
-  /* 線は背景で引きます。text-decoration は動かせないので。 */
-  background-image: linear-gradient(currentColor, currentColor);
+  /* 線は背景で引きます。text-decoration は動かせないので。
+     色は、押した丸と同じ緑。同じ「済ませた」を、指の下と字の上で
+     別の色で言う理由がありません。 */
+  background-image: linear-gradient(var(--c-primary), var(--c-primary));
   background-repeat: no-repeat;
   background-position: 0 58%;
   background-size: 0% 2.5px;
@@ -5193,6 +5206,7 @@ a.btn { text-decoration: none; }
    引き終わった瞬間に線が細くなって見えます。 */
 .tl-row .tl-item.is-checked .item-name {
   text-decoration-thickness: 2.5px;
+  text-decoration-color: var(--c-primary);
   text-underline-offset: 0;
 }
 
@@ -5223,7 +5237,7 @@ a.btn { text-decoration: none; }
 }
 .tl-item.is-unstriking .item-name,
 .item.is-unstriking .item-name {
-  background-image: linear-gradient(currentColor, currentColor);
+  background-image: linear-gradient(var(--c-primary), var(--c-primary));
   background-repeat: no-repeat;
   background-position: 100% 58%;
   animation: tl-unstrike var(--m-check) var(--ease-in) forwards;
@@ -5421,16 +5435,16 @@ a.btn { text-decoration: none; }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg,
-    transparent,
-    color-mix(in srgb, var(--cat, var(--c-primary)) 22%, transparent) 45%,
-    transparent);
-  animation: tl-flash var(--m-strike) var(--ease-out) forwards;
+  /* 一様な色を敷いて、**左から右へ見せていきます**。通り過ぎる光では
+     なく、塗られたところは塗られたまま。線と同じ動き方なので、二つが
+     一緒に走って見えます。塗り終えてから、面ごと引きます。 */
+  background: color-mix(in srgb, var(--c-primary) 16%, transparent);
+  animation: tl-flash var(--strike-ms, var(--m-strike)) var(--ease-out) forwards;
 }
 @keyframes tl-flash {
-  from { opacity: 0; transform: translateX(-38%); }
-  40%  { opacity: 1; }
-  to   { opacity: 0; transform: translateX(38%); }
+  0%   { opacity: 1; clip-path: inset(0 100% 0 0); }
+  70%  { opacity: 1; clip-path: inset(0 0 0 0); }
+  100% { opacity: 0; clip-path: inset(0 0 0 0); }
 }
 
 /* 「やった記録」の印。押せないので、押せる丸とは違う顔にします
@@ -16352,6 +16366,40 @@ a.btn { text-decoration: none; }
     };
   }
 
+  /**
+   * 「やった記録」を取り消します。
+   *
+   * 繰り返すものを済ませると、その日に写しが一件残り、元は次の日へ進みます。
+   * うっかり押したとき、**今日から外す方法がありませんでした**——写しは
+   * 押せない飾りで、元は明日に立っているので、今日の画面には何も無い。
+   *
+   * 写しを消して、元をその日へ戻します。返りは「元に戻す」の手です。
+   */
+  function undoTrace(traceId) {
+    const trace = getTodo(traceId);
+    if (!trace || !trace.trace) return null;
+    /* 元は「同じ題で、繰り返しを持っていて、記録より先の日付」のもの。
+       題で探すのは頼りないようですが、写しは元から作られるので、
+       題・繰り返し・区分がそろっているものが元です。 */
+    const origin = get().todos.find((t) => !t.trace && t.repeat
+      && t.title === trace.title && t.part === trace.part);
+    const wasDue = origin ? origin.due : null;
+    update((s) => {
+      s.todos = s.todos.filter((t) => t.id !== traceId);
+      if (origin) {
+        const o = s.todos.find((t) => t.id === origin.id);
+        if (o) o.due = trace.due;
+      }
+    });
+    return () => update((s) => {
+      if (origin) {
+        const o = s.todos.find((t) => t.id === origin.id);
+        if (o) o.due = wasDue;
+      }
+      s.todos.push({ ...trace });
+    });
+  }
+
   /* Overdue first, then by day, then by hand-order. Undated ones come last:
      they are things to do, not things due, and a list that mixed them in
      would bury the ones with a day on them. */
@@ -17529,7 +17577,7 @@ a.btn { text-decoration: none; }
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, sortedTodos, todosDue, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
@@ -26608,6 +26656,16 @@ a.btn { text-decoration: none; }
     }, 260);
   }
 
+  /** 「やった記録」を取り消します。記録を消して、繰り返しを今日へ戻します。 */
+  function untrace(t) {
+    const undo = store.undoTrace(t.id);
+    if (!undo) return;
+    KN.motion.fire("uncheck");
+    KN.ui.toast(`「${t.title}」を、済ませていないことにしました`, {
+      action: { label: "元に戻す", onClick: undo },
+    });
+  }
+
   function sayMoved(t, res) {
     KN.ui.toast(`「${t.title}」は次は ${formatDay(res.due)}`, {
       action: { label: "元に戻す", onClick: res.undo },
@@ -27232,8 +27290,7 @@ a.btn { text-decoration: none; }
       <li class="tl-free-row ${past ? "is-past" : ""}">
         <span class="tl-time">${f.at}</span>
         <span class="tl-rail is-dash"></span>
-        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}
-          ${past ? "あいていました" : "あいています"}</span>
+        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}</span>
       </li>
     `);
   }
@@ -27246,14 +27303,15 @@ a.btn { text-decoration: none; }
     /* 済ませたものは、押した時刻を出します。組み立てもこの時刻でその用事を
        置いているので、左の時刻とあわせて「いつ何をしたか」が読めます。 */
     if (it.doneAtMin != null) {
-      facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)} に済ませました</span>`);
+      facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)}</span>`);
     }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
     if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const li = node(html`
-      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}"
+      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
+                 ${(t.done || t.archived) ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
@@ -27275,11 +27333,14 @@ a.btn { text-decoration: none; }
                   facts が空になる行では、この帯ごと出しません。 */""}
             ${facts.length ? html`<span class="tl-facts">${facts}</span>` : ""}
           </button>
-          ${/* 「やった記録」は押せません。もう終わったその日ぶんの写しで、
-                外すという操作に意味がないので——静かな印だけを置きます
-                （元のほうは翌日に立っていて、そちらは押せます）。 */""}
+          ${/* 「やった記録」も押せます。**押し間違いは取り消せなければ
+                いけません。** ここを飾りにしていたので、毎朝のものを
+                うっかり済ませたとき、その日から外す方法がありませんでした
+                （元は翌日へ行っていて、今日には印だけが残る）。
+                押すと記録を消して、元を今日へ戻します。 */""}
           ${t.trace
-            ? html`<span class="check is-trace" aria-label="済ませました">${icon("check")}</span>`
+            ? html`<button class="check is-trace" role="checkbox" aria-checked="true"
+                    aria-label="${t.title} を、済ませていないことにする">${icon("check")}</button>`
             : html`<button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
                     aria-checked="${String(!!t.done)}"
                     aria-label="${t.title} を終わりにする">
@@ -27295,6 +27356,7 @@ a.btn { text-decoration: none; }
     if (box) {
       box.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (t.trace) { untrace(t); return; }
         tick(t.id, e.currentTarget);
       });
     }

@@ -1200,6 +1200,16 @@
     }, 260);
   }
 
+  /** 「やった記録」を取り消します。記録を消して、繰り返しを今日へ戻します。 */
+  function untrace(t) {
+    const undo = store.undoTrace(t.id);
+    if (!undo) return;
+    KN.motion.fire("uncheck");
+    KN.ui.toast(`「${t.title}」を、済ませていないことにしました`, {
+      action: { label: "元に戻す", onClick: undo },
+    });
+  }
+
   function sayMoved(t, res) {
     KN.ui.toast(`「${t.title}」は次は ${formatDay(res.due)}`, {
       action: { label: "元に戻す", onClick: res.undo },
@@ -1824,8 +1834,7 @@
       <li class="tl-free-row ${past ? "is-past" : ""}">
         <span class="tl-time">${f.at}</span>
         <span class="tl-rail is-dash"></span>
-        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}
-          ${past ? "あいていました" : "あいています"}</span>
+        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}</span>
       </li>
     `);
   }
@@ -1838,14 +1847,15 @@
     /* 済ませたものは、押した時刻を出します。組み立てもこの時刻でその用事を
        置いているので、左の時刻とあわせて「いつ何をしたか」が読めます。 */
     if (it.doneAtMin != null) {
-      facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)} に済ませました</span>`);
+      facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)}</span>`);
     }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
     if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const li = node(html`
-      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}"
+      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
+                 ${(t.done || t.archived) ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
@@ -1867,11 +1877,14 @@
                   facts が空になる行では、この帯ごと出しません。 */""}
             ${facts.length ? html`<span class="tl-facts">${facts}</span>` : ""}
           </button>
-          ${/* 「やった記録」は押せません。もう終わったその日ぶんの写しで、
-                外すという操作に意味がないので——静かな印だけを置きます
-                （元のほうは翌日に立っていて、そちらは押せます）。 */""}
+          ${/* 「やった記録」も押せます。**押し間違いは取り消せなければ
+                いけません。** ここを飾りにしていたので、毎朝のものを
+                うっかり済ませたとき、その日から外す方法がありませんでした
+                （元は翌日へ行っていて、今日には印だけが残る）。
+                押すと記録を消して、元を今日へ戻します。 */""}
           ${t.trace
-            ? html`<span class="check is-trace" aria-label="済ませました">${icon("check")}</span>`
+            ? html`<button class="check is-trace" role="checkbox" aria-checked="true"
+                    aria-label="${t.title} を、済ませていないことにする">${icon("check")}</button>`
             : html`<button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
                     aria-checked="${String(!!t.done)}"
                     aria-label="${t.title} を終わりにする">
@@ -1887,6 +1900,7 @@
     if (box) {
       box.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (t.trace) { untrace(t); return; }
         tick(t.id, e.currentTarget);
       });
     }
