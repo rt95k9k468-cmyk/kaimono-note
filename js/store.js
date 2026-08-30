@@ -1249,6 +1249,23 @@
      返すのは読み取り専用の並びで、id は**元のid**です。押したときに元へ
      辿れるように（消すのも直すのも、元の関数へ回します）。 */
 
+  /* 時刻つきの記録が「何日のことか」。
+
+     **dayKeyOf は使えません。** あれは文字列の頭10文字を切るだけで、
+     doneAt / checkedAt は UTC の ISO（today() が toISOString を返す）です。
+     一方その日を指す鍵（todayKey）はローカルの日付。日本時間だと9時間
+     ずれるので、朝に済ませたものが前の日へ回り、時刻も9時間ずれて出て
+     いました。時刻を持つ値は、いったんローカルの日時に直してから数えます。
+
+     日付だけの値（積み上げの date は "YYYY-MM-DD"）はそのまま通します
+     ——あれは初めからローカルの日付なので、Date に通すとかえってずれます。 */
+  function dayOfStamp(v) {
+    const str = String(v || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const key = KN.util.dayKey(new Date(str));
+    return key || dayKeyOf(str);
+  }
+
   function dayFeed(day) {
     const key = dayKeyOf(day);
     const s = get();
@@ -1261,7 +1278,7 @@
     s.todos.forEach((t) => {
       if (!t.done && !t.archived) return;
       const at = todoClosedAt(t);
-      if (!at || dayKeyOf(at) !== key) return;
+      if (!at || dayOfStamp(at) !== key) return;
       out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
                  minutes: t.minutes || null, repeat: !!t.repeat, trace: !!t.trace });
     });
@@ -1272,7 +1289,7 @@
        ものの題を空のまま出すと、種の行だけ名無しで並びます。書いた本人に
        とっては、そのメモが題です——一行目を借ります。 */
     (s.archive.entries || []).forEach((e) => {
-      if (dayKeyOf(e.date) !== key) return;
+      if (dayOfStamp(e.date) !== key) return;
       const memo = String(e.memo || "");
       const title = e.title || memo.split("\n")[0].trim();
       out.push({ src: "entry", id: e.id, at: e.createdAt || e.date,
@@ -1283,7 +1300,7 @@
     /* ③ その日に買ったもの。 */
     (s.items || []).forEach((i) => {
       if (!i.checked || !i.checkedAt) return;
-      if (dayKeyOf(i.checkedAt) !== key) return;
+      if (dayOfStamp(i.checkedAt) !== key) return;
       const p = s.products.find((x) => x.id === i.productId);
       out.push({ src: "item", id: i.id, at: i.checkedAt,
                  title: (p && p.name) || "", icon: (p && p.icon) || null });

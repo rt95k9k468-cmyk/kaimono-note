@@ -5725,36 +5725,53 @@ a.btn { text-decoration: none; }
 
    手で書いた日記の下に、やること・積み上げ・買うものから引いてきた行が
    続きます。日記の文と同じ濃さで並べると「どれも自分が書いた文」に見えて
-   しまうので、こちらは一段沈めます——引いてきたものだと分かるように。 */
+   しまうので、こちらは一段沈めます——引いてきたものだと分かるように。
+
+   種類ごとに枠でまとめます。前は一件ずつに「やること」の札を付けていて、
+   五件あれば同じ札が五つ縦に並びました。枠なら一度言えば済みます。 */
 .arc-feed {
-  display: flex; flex-direction: column;
-  margin: -2px 0 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 2px 0 10px;
   padding-left: 46px;   /* 上の行の日付の欄と、頭を揃えます */
+}
+.arc-feed-box {
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: 5px 8px 6px;
+}
+.arc-feed-box-head {
+  margin: 0 0 2px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+
+/* 二件以上あるときは、左右二列。列の高さ（--rows）を決めて縦へ流すので、
+   上から下へ読んで右へ折り返します——5件なら 1,2,3 が左、4,5 が右。
+   一件だけのときは分けません（右が空くだけなので）。 */
+.arc-feed-list { display: flex; flex-direction: column; }
+.arc-feed-box.is-split .arc-feed-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 1), auto);
+  grid-auto-columns: 1fr;
+  column-gap: 10px;
 }
 .arc-feed-row {
   display: grid;
-  grid-template-columns: 40px auto 1fr;
+  grid-template-columns: 38px 1fr;
   align-items: baseline;
-  gap: 8px;
-  padding: 5px 0;
+  gap: 6px;
+  /* 行間は詰めます。ここは「その日ぜんぶ」が一目に入るほうが大事なので。 */
+  padding: 2px 0;
   text-align: left;
   font-size: var(--fs-sm);
+  line-height: 1.35;
   color: var(--c-text-2);
 }
 .arc-feed-when {
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
-}
-/* どこから来た記録かを、小さな札で。色は種類ごとに変えません——ここは
-   「どのタブのものか」を言うだけで、良し悪しは何も言わないので。 */
-.arc-feed-kind {
-  padding: 1px 6px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-3);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  white-space: nowrap;
 }
 .arc-feed-title {
   min-width: 0;
@@ -16605,6 +16622,23 @@ a.btn { text-decoration: none; }
      返すのは読み取り専用の並びで、id は**元のid**です。押したときに元へ
      辿れるように（消すのも直すのも、元の関数へ回します）。 */
 
+  /* 時刻つきの記録が「何日のことか」。
+
+     **dayKeyOf は使えません。** あれは文字列の頭10文字を切るだけで、
+     doneAt / checkedAt は UTC の ISO（today() が toISOString を返す）です。
+     一方その日を指す鍵（todayKey）はローカルの日付。日本時間だと9時間
+     ずれるので、朝に済ませたものが前の日へ回り、時刻も9時間ずれて出て
+     いました。時刻を持つ値は、いったんローカルの日時に直してから数えます。
+
+     日付だけの値（積み上げの date は "YYYY-MM-DD"）はそのまま通します
+     ——あれは初めからローカルの日付なので、Date に通すとかえってずれます。 */
+  function dayOfStamp(v) {
+    const str = String(v || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const key = KN.util.dayKey(new Date(str));
+    return key || dayKeyOf(str);
+  }
+
   function dayFeed(day) {
     const key = dayKeyOf(day);
     const s = get();
@@ -16617,7 +16651,7 @@ a.btn { text-decoration: none; }
     s.todos.forEach((t) => {
       if (!t.done && !t.archived) return;
       const at = todoClosedAt(t);
-      if (!at || dayKeyOf(at) !== key) return;
+      if (!at || dayOfStamp(at) !== key) return;
       out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
                  minutes: t.minutes || null, repeat: !!t.repeat, trace: !!t.trace });
     });
@@ -16628,7 +16662,7 @@ a.btn { text-decoration: none; }
        ものの題を空のまま出すと、種の行だけ名無しで並びます。書いた本人に
        とっては、そのメモが題です——一行目を借ります。 */
     (s.archive.entries || []).forEach((e) => {
-      if (dayKeyOf(e.date) !== key) return;
+      if (dayOfStamp(e.date) !== key) return;
       const memo = String(e.memo || "");
       const title = e.title || memo.split("\n")[0].trim();
       out.push({ src: "entry", id: e.id, at: e.createdAt || e.date,
@@ -16639,7 +16673,7 @@ a.btn { text-decoration: none; }
     /* ③ その日に買ったもの。 */
     (s.items || []).forEach((i) => {
       if (!i.checked || !i.checkedAt) return;
-      if (dayKeyOf(i.checkedAt) !== key) return;
+      if (dayOfStamp(i.checkedAt) !== key) return;
       const p = s.products.find((x) => x.id === i.productId);
       out.push({ src: "item", id: i.id, at: i.checkedAt,
                  title: (p && p.name) || "", icon: (p && p.icon) || null });
@@ -25300,37 +25334,74 @@ a.btn { text-decoration: none; }
      やること・買うものはそのタブへ移ります——「ここで直せそうに見えて、
      直しても元に伝わらない」という形にだけはしないためです。 */
   const FEED_LABEL = { todo: "やること", entry: "積み上げ", item: "買うもの" };
+  /* 出す順番。その日の並びは時刻順ですが、**枠は種類ごと**にまとまるので、
+     枠そのものの順は決めておきます（日によって入れ替わると読みにくい）。 */
+  const FEED_ORDER = ["todo", "entry", "item"];
+
+  /** 時刻つきの記録の「何時何分」。ローカルの時計で読みます——
+      しまってあるのは UTC の ISO なので、文字を切ると9時間ずれます。 */
+  function feedClock(v) {
+    const str = String(v || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return "";   // 日付だけの記録には時刻が無い
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return "";
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
 
   function feedRows(day) {
     const feed = store.dayFeed(day);
     if (!feed.length) return null;
 
+    /* 種類ごとにまとめます。前は一件ずつに「やること」の札を付けていて、
+       五件あれば同じ札が五つ縦に並びました——同じことを繰り返し言うより、
+       ひとつの枠に入れて「ここからはやること」と一度だけ言うほうが済みます。 */
     const wrap = node(html`<div class="arc-feed"></div>`);
-    feed.forEach((f) => {
-      const at = f.at && /T\d\d:\d\d/.test(String(f.at))
-        ? String(f.at).slice(11, 16) : "";
-      const row = node(html`
-        ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
-              名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
-              行のほうが先に当たることがあります（そこから .arc-row を
-              辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
-        <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
-          <span class="arc-feed-when">${at || "—"}</span>
-          <span class="arc-feed-kind arc-feed-kind-${f.src}">${FEED_LABEL[f.src] || ""}</span>
-          <span class="arc-feed-title">${f.title}</span>
-        </button>
+    FEED_ORDER.forEach((src) => {
+      const rows = feed.filter((f) => f.src === src);
+      if (!rows.length) return;
+
+      /* 二件以上あるときは、枠の中を左右に分けます。件数の半分で切って、
+         前半が左・後半が右——上から下へ読んで、右へ折り返す形です
+         （5件なら 1,2,3 が左、4,5 が右）。一件のときは分けません
+         ——一列に一件だけ置いて右を空けても、幅が余るだけなので。 */
+      const twoCol = rows.length >= 2;
+      const box = node(html`
+        <section class="arc-feed-box ${twoCol ? "is-split" : ""}" data-src="${src}">
+          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}</h4>
+          <div class="arc-feed-list"></div>
+        </section>
       `);
-      row.addEventListener("click", () => {
-        KN.motion.fire("select");
-        if (f.src === "entry") {
-          const e = store.get().archive.entries.find((x) => x.id === f.id);
-          if (e) openEntrySheet(e);
-          return;
-        }
-        /* やること・買うものは、それぞれのタブが本体です。 */
-        KN.app.showScreen(f.src === "todo" ? "todo" : "list");
+      const list = box.querySelector(".arc-feed-list");
+      if (twoCol) {
+        const half = Math.ceil(rows.length / 2);
+        list.style.setProperty("--rows", String(half));
+      }
+
+      rows.forEach((f) => {
+        const at = feedClock(f.at);
+        const row = node(html`
+          ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
+                名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
+                行のほうが先に当たることがあります（そこから .arc-row を
+                辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
+          <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
+            <span class="arc-feed-when">${at}</span>
+            <span class="arc-feed-title">${f.title}</span>
+          </button>
+        `);
+        row.addEventListener("click", () => {
+          KN.motion.fire("select");
+          if (f.src === "entry") {
+            const e = store.get().archive.entries.find((x) => x.id === f.id);
+            if (e) openEntrySheet(e);
+            return;
+          }
+          /* やること・買うものは、それぞれのタブが本体です。 */
+          KN.app.showScreen(f.src === "todo" ? "todo" : "list");
+        });
+        list.append(row);
       });
-      wrap.append(row);
+      wrap.append(box);
     });
     return wrap;
   }

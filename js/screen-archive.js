@@ -451,37 +451,74 @@
      やること・買うものはそのタブへ移ります——「ここで直せそうに見えて、
      直しても元に伝わらない」という形にだけはしないためです。 */
   const FEED_LABEL = { todo: "やること", entry: "積み上げ", item: "買うもの" };
+  /* 出す順番。その日の並びは時刻順ですが、**枠は種類ごと**にまとまるので、
+     枠そのものの順は決めておきます（日によって入れ替わると読みにくい）。 */
+  const FEED_ORDER = ["todo", "entry", "item"];
+
+  /** 時刻つきの記録の「何時何分」。ローカルの時計で読みます——
+      しまってあるのは UTC の ISO なので、文字を切ると9時間ずれます。 */
+  function feedClock(v) {
+    const str = String(v || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return "";   // 日付だけの記録には時刻が無い
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return "";
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
 
   function feedRows(day) {
     const feed = store.dayFeed(day);
     if (!feed.length) return null;
 
+    /* 種類ごとにまとめます。前は一件ずつに「やること」の札を付けていて、
+       五件あれば同じ札が五つ縦に並びました——同じことを繰り返し言うより、
+       ひとつの枠に入れて「ここからはやること」と一度だけ言うほうが済みます。 */
     const wrap = node(html`<div class="arc-feed"></div>`);
-    feed.forEach((f) => {
-      const at = f.at && /T\d\d:\d\d/.test(String(f.at))
-        ? String(f.at).slice(11, 16) : "";
-      const row = node(html`
-        ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
-              名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
-              行のほうが先に当たることがあります（そこから .arc-row を
-              辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
-        <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
-          <span class="arc-feed-when">${at || "—"}</span>
-          <span class="arc-feed-kind arc-feed-kind-${f.src}">${FEED_LABEL[f.src] || ""}</span>
-          <span class="arc-feed-title">${f.title}</span>
-        </button>
+    FEED_ORDER.forEach((src) => {
+      const rows = feed.filter((f) => f.src === src);
+      if (!rows.length) return;
+
+      /* 二件以上あるときは、枠の中を左右に分けます。件数の半分で切って、
+         前半が左・後半が右——上から下へ読んで、右へ折り返す形です
+         （5件なら 1,2,3 が左、4,5 が右）。一件のときは分けません
+         ——一列に一件だけ置いて右を空けても、幅が余るだけなので。 */
+      const twoCol = rows.length >= 2;
+      const box = node(html`
+        <section class="arc-feed-box ${twoCol ? "is-split" : ""}" data-src="${src}">
+          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}</h4>
+          <div class="arc-feed-list"></div>
+        </section>
       `);
-      row.addEventListener("click", () => {
-        KN.motion.fire("select");
-        if (f.src === "entry") {
-          const e = store.get().archive.entries.find((x) => x.id === f.id);
-          if (e) openEntrySheet(e);
-          return;
-        }
-        /* やること・買うものは、それぞれのタブが本体です。 */
-        KN.app.showScreen(f.src === "todo" ? "todo" : "list");
+      const list = box.querySelector(".arc-feed-list");
+      if (twoCol) {
+        const half = Math.ceil(rows.length / 2);
+        list.style.setProperty("--rows", String(half));
+      }
+
+      rows.forEach((f) => {
+        const at = feedClock(f.at);
+        const row = node(html`
+          ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
+                名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
+                行のほうが先に当たることがあります（そこから .arc-row を
+                辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
+          <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
+            <span class="arc-feed-when">${at}</span>
+            <span class="arc-feed-title">${f.title}</span>
+          </button>
+        `);
+        row.addEventListener("click", () => {
+          KN.motion.fire("select");
+          if (f.src === "entry") {
+            const e = store.get().archive.entries.find((x) => x.id === f.id);
+            if (e) openEntrySheet(e);
+            return;
+          }
+          /* やること・買うものは、それぞれのタブが本体です。 */
+          KN.app.showScreen(f.src === "todo" ? "todo" : "list");
+        });
+        list.append(row);
       });
-      wrap.append(row);
+      wrap.append(box);
     });
     return wrap;
   }
