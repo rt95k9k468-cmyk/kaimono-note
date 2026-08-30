@@ -539,6 +539,11 @@
       // と食い違えるので。日のなかの並びは todoPart() が時刻から読みます。
       part: cleanPart(t.part),
       time: KN.util.isTime(t.time) ? t.time : null,
+      /* かかる時間（分）。持たないものは null のままです——**0 ではなく**。
+         0 と書くと「一瞬で終わる用事」になってしまいますが、実際には
+         「まだ決めていない」がほとんどなので。時間軸はこれを読んで
+         その用事の帯の長さを決め、持たないものには既定の長さを当てます。 */
+      minutes: cleanMinutes(t.minutes),
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
@@ -576,6 +581,19 @@
      them for sorting (todoPart below) — that is arithmetic, not a stored
      choice. */
   function cleanPart(v) { return isBookendPart(v) ? v : null; }
+
+  /* かかる時間（分）。5分から12時間まで。
+
+     上を12時間で止めるのは、それより長いものは「用事」ではなく
+     「その日の全部」だからです。一日を組み立てるための数なので、
+     一日を食べ尽くす数は受け取りません。5分刻みに丸めるのは、
+     人が見積もるときの粒がそれより細かくならないためです。 */
+  const MIN_MINUTES = 5, MAX_MINUTES = 720;
+  function cleanMinutes(v) {
+    const n = Number(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(n / 5) * 5));
+  }
 
   /**
    * 毎朝／毎晩は、言葉のとおり「毎日・ある日から」です。
@@ -1010,7 +1028,7 @@
      what is overdue, what repeats, what the icon should count. */
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
-                     repeatNth = null, memo = "", flagged = false } = {}) {
+                     repeatNth = null, memo = "", flagged = false, minutes = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1026,6 +1044,8 @@
          （毎朝・毎晩でない part は、そもそも cleanPart が落とします。） */
       part: cleanPart(part),
       time: at,
+      // かかる時間（分）。決めていなければ null。時間軸が読みます。
+      minutes: cleanMinutes(minutes),
       notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
@@ -1072,6 +1092,7 @@
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
+      if ("minutes" in patch) t.minutes = cleanMinutes(patch.minutes);
     });
   }
 

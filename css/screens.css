@@ -2776,3 +2776,205 @@ a.btn { text-decoration: none; }
   .item.is-glow, .item.is-finishing, .item.is-sliding,
   .item.is-dropping, .is-arriving { animation-duration: .01ms; }
 }
+
+/* =========================================================
+   今日の時間割（screen-todo.js の timeline）
+
+   参考にしたのは Structured の一日の見せ方です。左に時刻、真ん中に一本の
+   線、線の上に丸いアイコン、右に用事。**線が繋がっているか切れているか**
+   だけで、詰まっているか空いているかが読めます——文字を読む前に。
+
+   色は一つだけ使います。棚の色（--cat）は丸の中にだけ入れて、行そのものは
+   塗りません。九本の帯を塗るのをやめたのはここです：色が九つあると、
+   色は何も言わなくなります。
+   ========================================================= */
+
+.tl { padding: var(--sp-2) 0 0; }
+
+/* 上の一行。空きの合計と、一覧へ移る道。 */
+.tl-sum {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 0 var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+.tl-sum.is-back { padding-top: var(--sp-3); justify-content: flex-end; }
+.tl-free { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+/* はみ出しは、注意ではなく**事実**として言います。赤くしません——
+   「予定どおりに入らなかった＝失敗」ではないので。 */
+.tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+.tl-switch {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: var(--fs-xs); font-weight: 700;
+  transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease);
+}
+.tl-switch:active { transform: scale(.96); background: var(--c-surface-3); }
+
+.tl-list { list-style: none; margin: 0; padding: 0; }
+
+/* 一行の骨格。三列——時刻・線・中身。時刻の幅を固定するのは、
+   数字が右端で揃っていないと、上下の時刻を見比べられないからです。 */
+.tl-row, .tl-free-row, .tl-now {
+  display: grid;
+  grid-template-columns: 46px 40px 1fr;
+  align-items: start;
+}
+.tl-time {
+  padding-top: 10px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-right: var(--sp-2);
+}
+/* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
+.tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
+.tl-time.is-now { color: var(--c-primary); font-weight: 800; }
+
+/* 線。行の高さいっぱいに引いて、丸を上に乗せます。 */
+.tl-rail {
+  position: relative;
+  justify-self: center;
+  width: 2px;
+  align-self: stretch;
+  min-height: 44px;
+}
+.tl-rail::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--c-primary) 26%, transparent);
+}
+/* 空いているところは、点線。**繋がっていない**ことが空きの意味です。 */
+.tl-rail.is-dash::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--c-primary) 30%, transparent) 0 4px,
+    transparent 4px 9px);
+}
+
+/* 線の上の丸。中身は手描きアイコン、地は棚の色をごく薄く。 */
+.tl-node {
+  position: absolute;
+  left: 50%; top: 6px;
+  transform: translateX(-50%);
+  display: grid; place-items: center;
+  width: 34px; height: 34px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
+  box-shadow: 0 0 0 3px var(--c-bg);
+}
+.tl-node .todo-mark { width: 20px; height: 20px; }
+.tl-node .todo-mark svg { width: 20px; height: 20px; }
+.tl-node .todo-dot {
+  width: 8px; height: 8px; border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent);
+}
+
+/* 中身。.item を借りているので、地と枠だけ外します——済ませたときの動き
+   （is-glow / is-finishing）はそのまま使いたいので、class は残します。 */
+.tl-row .tl-item {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: var(--sp-2) 0 var(--sp-3) var(--sp-2);
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+/* 左端の色の帯。行の色は丸のほうが持つので、ここには要りません
+   ——同じことを二度言うと、どちらも読まれなくなります。 */
+.tl-row .tl-item::before { display: none; }
+/* **flex ではなく block です。** ここは一度こわしました：flex の子になると
+   `display:-webkit-box` が flow-root へ blockify され、-webkit-line-clamp が
+   高さ0に畳みます——題がまるごと消えました。行数を絞りたい要素を抱える
+   入れものは、flex にしないこと。 */
+.tl-body {
+  flex: 1; min-width: 0;
+  display: block;
+  text-align: left;
+}
+.tl-body > * + * { margin-top: 2px; }
+/* 題の上の小さな一行。長さ・時刻あり・繰り返し。**題より先に**読ませない
+   ように、薄く小さく。動画の作りをそのまま借りています。 */
+.tl-cap {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  line-height: 1.4;
+}
+.tl-len { font-variant-numeric: tabular-nums; }
+.tl-pin, .tl-rep {
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+/* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
+   実際には「二つ入れた」だけなので。 */
+.tl-clash { color: var(--c-text-2); font-weight: 700; }
+/* 題。一覧の行から display と行数の決まりを引き継ぐので、ここで引き直し
+   ます。-webkit-box-orient を書き落とすと Chromium は高さ0に畳みます
+   ——実際そうなって、題がまるごと消えていました。 */
+.tl-row .tl-item .item-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  flex: none;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.tl-memo {
+  font-size: var(--fs-xs); color: var(--c-text-3);
+  line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tl-row .check { flex: none; margin-top: 4px; }
+
+/* 済んだもの。線からは外さず、薄くして横線を引きます——消すと
+   「今日それをした」ことまで消えてしまうので。 */
+.tl-row .tl-item.is-checked .item-name { text-decoration: line-through; }
+.tl-row .tl-item.is-checked { opacity: .5; }
+
+/* 空きの行。 */
+.tl-free-row { min-height: 40px; }
+.tl-free-text {
+  padding: 10px 0 10px var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+}
+
+/* いま何時か。線の上の小さな点と、右へ伸びる一本。 */
+.tl-now { min-height: 22px; }
+.tl-now .tl-rail::before { background: color-mix(in srgb, var(--c-primary) 26%, transparent); }
+.tl-now-dot {
+  position: absolute;
+  left: 50%; top: 8px;
+  width: 9px; height: 9px;
+  margin-left: -4.5px;
+  border-radius: var(--r-full);
+  background: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-bg);
+}
+.tl-now-line {
+  align-self: start;
+  height: 2px;
+  margin: 12px var(--sp-2) 0 var(--sp-2);
+  border-radius: 1px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--c-primary) 55%, transparent),
+    transparent);
+}
+
+/* 時間割のときの今日の枠。地の色を外して、白い紙のうえに線だけを残します。
+   参考にした画面もそうでした——一日の形を読ませたいので、面で語らない。 */
+.trip.todo-today.is-tl {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+}

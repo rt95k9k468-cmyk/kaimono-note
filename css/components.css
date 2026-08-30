@@ -1041,3 +1041,68 @@ button, [role="tab"] {
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */
 .key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+
+/* =========================================================
+   出来事の返し方（js/motion.js が付け外しする class）
+
+   ここにあるのは「動きそのもの」だけです。**どの出来事にどれを使うか**は
+   motion.js が決めます。画面の CSS がこの見た目を直に真似すると、また
+   画面ごとにばらけるので、増やすときはこちらへ足すこと。
+
+   長さは全部 --m-* から読みます。数字をここに書かないこと。
+   ========================================================= */
+
+/* 押している間。CSS の :active で足りるところには要りません。 */
+.is-m-press { transform: scale(.97); transition: transform var(--m-press) var(--ease); }
+
+/* 印が付いた。ほんの少し行き過ぎて戻ります——指で押した手ごたえ。 */
+@keyframes m-check {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(.9); }
+  100% { transform: scale(1); }
+}
+.is-m-check { animation: m-check var(--m-check) var(--spring); }
+
+/* 増えた。下から入ってきて、静かに着きます。 */
+@keyframes m-add {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.is-m-add { animation: m-add var(--m-add) var(--ease-out); }
+
+/* 減った。静かに離れて、速く消えます（--ease-in）。高さも一緒に
+   畳むので、周りが滑らかに詰まります。 */
+@keyframes m-delete {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateX(-14px) scale(.97); }
+}
+.is-m-delete {
+  animation: m-delete var(--m-delete) var(--ease-in) forwards;
+  pointer-events: none;
+}
+
+/* 数が変わった。数字そのものを動かすと読めなくなるので、
+   ほんの少しだけ持ち上げます。 */
+@keyframes m-number {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+.is-m-number { animation: m-number var(--m-number) var(--ease-out); }
+
+/* うまくいった。緑の輪が一度だけ広がって消えます。 */
+@keyframes m-success {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-primary) 45%, transparent); }
+  to   { box-shadow: 0 0 0 12px transparent; }
+}
+.is-m-success { animation: m-success var(--m-success) var(--ease-out); }
+
+/* 気をつけて。左右にごく短く振ります。「間違い」ではなく「いまのは
+   通っていない」を言うだけなので、振り幅は小さく。 */
+@keyframes m-warn {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  55%      { transform: translateX(3px); }
+  80%      { transform: translateX(-2px); }
+}
+.is-m-warn { animation: m-warn var(--m-warn) var(--ease); }

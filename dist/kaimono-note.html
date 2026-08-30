@@ -185,10 +185,48 @@
   --lh-ui:    1.6;
   --lh-body:  1.75;
 
-  /* --- motion --- */
+  /* --- motion ---
+
+     動きは画面ごとに決めません。**出来事の種類ごと**に決めます。
+
+     いままでは各画面が .16s だの .28s だのを直に書いていて、同じ「押した」
+     が場所によって違う速さで返っていました。動きは飾りではなく「いま何が
+     起きたか」を伝えるものなので、同じ出来事はどこでも同じ速さで返らないと、
+     読む側が画面ごとに学び直すことになります。
+
+     曲線は四本だけ。
+       --ease      ふつうの往復（色・不透明度・小さな移動）
+       --ease-out  出てくるもの（速く出て、静かに着く）
+       --ease-in   去るもの（静かに離れて、速く消える）
+       --spring    手ごたえを返すところだけ。行き過ぎて戻ります。
+                   全部に使うと画面が落ち着きません。
+
+     速さは出来事の名前で持ちます。新しく書くところでは数字を直に置かず、
+     この名前を使うこと。 */
   --ease: cubic-bezier(.2, .8, .3, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in: cubic-bezier(.55, 0, .85, .3);
+  --spring: cubic-bezier(.34, 1.42, .5, 1);
   --dur: .22s;
+
+  /* 指の下で起きること。速い＝じかに触っている感じ。 */
+  --m-press: .1s;
+  /* 印が付く・数が変わる。押した手ごたえなので、ほんの少し弾みます。 */
+  --m-check: .26s;
+  --m-number: .3s;
+  /* 増える・減る。減るほうを少し速く——去るものを見送らせないため。 */
+  --m-add: .32s;
+  --m-delete: .24s;
+  /* 並びが変わる（FLIP）。行が「移動した」と読める最短の長さです。 */
+  --m-reorder: .32s;
+  /* 紙。開くのはゆっくり、閉じるのは速く。 */
+  --m-sheet-open: .34s;
+  --m-sheet-close: .2s;
+  /* 画面が変わる。 */
+  --m-nav: .26s;
+  /* うまくいった／気をつけて。 */
+  --m-success: .42s;
+  --m-warn: .36s;
 
   /* --- layout --- */
 
@@ -1972,6 +2010,71 @@ button, [role="tab"] {
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */
 .key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+
+/* =========================================================
+   出来事の返し方（js/motion.js が付け外しする class）
+
+   ここにあるのは「動きそのもの」だけです。**どの出来事にどれを使うか**は
+   motion.js が決めます。画面の CSS がこの見た目を直に真似すると、また
+   画面ごとにばらけるので、増やすときはこちらへ足すこと。
+
+   長さは全部 --m-* から読みます。数字をここに書かないこと。
+   ========================================================= */
+
+/* 押している間。CSS の :active で足りるところには要りません。 */
+.is-m-press { transform: scale(.97); transition: transform var(--m-press) var(--ease); }
+
+/* 印が付いた。ほんの少し行き過ぎて戻ります——指で押した手ごたえ。 */
+@keyframes m-check {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(.9); }
+  100% { transform: scale(1); }
+}
+.is-m-check { animation: m-check var(--m-check) var(--spring); }
+
+/* 増えた。下から入ってきて、静かに着きます。 */
+@keyframes m-add {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.is-m-add { animation: m-add var(--m-add) var(--ease-out); }
+
+/* 減った。静かに離れて、速く消えます（--ease-in）。高さも一緒に
+   畳むので、周りが滑らかに詰まります。 */
+@keyframes m-delete {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateX(-14px) scale(.97); }
+}
+.is-m-delete {
+  animation: m-delete var(--m-delete) var(--ease-in) forwards;
+  pointer-events: none;
+}
+
+/* 数が変わった。数字そのものを動かすと読めなくなるので、
+   ほんの少しだけ持ち上げます。 */
+@keyframes m-number {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+.is-m-number { animation: m-number var(--m-number) var(--ease-out); }
+
+/* うまくいった。緑の輪が一度だけ広がって消えます。 */
+@keyframes m-success {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-primary) 45%, transparent); }
+  to   { box-shadow: 0 0 0 12px transparent; }
+}
+.is-m-success { animation: m-success var(--m-success) var(--ease-out); }
+
+/* 気をつけて。左右にごく短く振ります。「間違い」ではなく「いまのは
+   通っていない」を言うだけなので、振り幅は小さく。 */
+@keyframes m-warn {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  55%      { transform: translateX(3px); }
+  80%      { transform: translateX(-2px); }
+}
+.is-m-warn { animation: m-warn var(--m-warn) var(--ease); }
 
 /* ---- css/screens.css ---- */
 /* =========================================================
@@ -4753,6 +4856,208 @@ a.btn { text-decoration: none; }
   .item.is-dropping, .is-arriving { animation-duration: .01ms; }
 }
 
+/* =========================================================
+   今日の時間割（screen-todo.js の timeline）
+
+   参考にしたのは Structured の一日の見せ方です。左に時刻、真ん中に一本の
+   線、線の上に丸いアイコン、右に用事。**線が繋がっているか切れているか**
+   だけで、詰まっているか空いているかが読めます——文字を読む前に。
+
+   色は一つだけ使います。棚の色（--cat）は丸の中にだけ入れて、行そのものは
+   塗りません。九本の帯を塗るのをやめたのはここです：色が九つあると、
+   色は何も言わなくなります。
+   ========================================================= */
+
+.tl { padding: var(--sp-2) 0 0; }
+
+/* 上の一行。空きの合計と、一覧へ移る道。 */
+.tl-sum {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 0 var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+.tl-sum.is-back { padding-top: var(--sp-3); justify-content: flex-end; }
+.tl-free { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+/* はみ出しは、注意ではなく**事実**として言います。赤くしません——
+   「予定どおりに入らなかった＝失敗」ではないので。 */
+.tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+.tl-switch {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: var(--fs-xs); font-weight: 700;
+  transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease);
+}
+.tl-switch:active { transform: scale(.96); background: var(--c-surface-3); }
+
+.tl-list { list-style: none; margin: 0; padding: 0; }
+
+/* 一行の骨格。三列——時刻・線・中身。時刻の幅を固定するのは、
+   数字が右端で揃っていないと、上下の時刻を見比べられないからです。 */
+.tl-row, .tl-free-row, .tl-now {
+  display: grid;
+  grid-template-columns: 46px 40px 1fr;
+  align-items: start;
+}
+.tl-time {
+  padding-top: 10px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-right: var(--sp-2);
+}
+/* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
+.tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
+.tl-time.is-now { color: var(--c-primary); font-weight: 800; }
+
+/* 線。行の高さいっぱいに引いて、丸を上に乗せます。 */
+.tl-rail {
+  position: relative;
+  justify-self: center;
+  width: 2px;
+  align-self: stretch;
+  min-height: 44px;
+}
+.tl-rail::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--c-primary) 26%, transparent);
+}
+/* 空いているところは、点線。**繋がっていない**ことが空きの意味です。 */
+.tl-rail.is-dash::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--c-primary) 30%, transparent) 0 4px,
+    transparent 4px 9px);
+}
+
+/* 線の上の丸。中身は手描きアイコン、地は棚の色をごく薄く。 */
+.tl-node {
+  position: absolute;
+  left: 50%; top: 6px;
+  transform: translateX(-50%);
+  display: grid; place-items: center;
+  width: 34px; height: 34px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
+  box-shadow: 0 0 0 3px var(--c-bg);
+}
+.tl-node .todo-mark { width: 20px; height: 20px; }
+.tl-node .todo-mark svg { width: 20px; height: 20px; }
+.tl-node .todo-dot {
+  width: 8px; height: 8px; border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent);
+}
+
+/* 中身。.item を借りているので、地と枠だけ外します——済ませたときの動き
+   （is-glow / is-finishing）はそのまま使いたいので、class は残します。 */
+.tl-row .tl-item {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: var(--sp-2) 0 var(--sp-3) var(--sp-2);
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+/* 左端の色の帯。行の色は丸のほうが持つので、ここには要りません
+   ——同じことを二度言うと、どちらも読まれなくなります。 */
+.tl-row .tl-item::before { display: none; }
+/* **flex ではなく block です。** ここは一度こわしました：flex の子になると
+   `display:-webkit-box` が flow-root へ blockify され、-webkit-line-clamp が
+   高さ0に畳みます——題がまるごと消えました。行数を絞りたい要素を抱える
+   入れものは、flex にしないこと。 */
+.tl-body {
+  flex: 1; min-width: 0;
+  display: block;
+  text-align: left;
+}
+.tl-body > * + * { margin-top: 2px; }
+/* 題の上の小さな一行。長さ・時刻あり・繰り返し。**題より先に**読ませない
+   ように、薄く小さく。動画の作りをそのまま借りています。 */
+.tl-cap {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  line-height: 1.4;
+}
+.tl-len { font-variant-numeric: tabular-nums; }
+.tl-pin, .tl-rep {
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+/* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
+   実際には「二つ入れた」だけなので。 */
+.tl-clash { color: var(--c-text-2); font-weight: 700; }
+/* 題。一覧の行から display と行数の決まりを引き継ぐので、ここで引き直し
+   ます。-webkit-box-orient を書き落とすと Chromium は高さ0に畳みます
+   ——実際そうなって、題がまるごと消えていました。 */
+.tl-row .tl-item .item-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  flex: none;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.tl-memo {
+  font-size: var(--fs-xs); color: var(--c-text-3);
+  line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tl-row .check { flex: none; margin-top: 4px; }
+
+/* 済んだもの。線からは外さず、薄くして横線を引きます——消すと
+   「今日それをした」ことまで消えてしまうので。 */
+.tl-row .tl-item.is-checked .item-name { text-decoration: line-through; }
+.tl-row .tl-item.is-checked { opacity: .5; }
+
+/* 空きの行。 */
+.tl-free-row { min-height: 40px; }
+.tl-free-text {
+  padding: 10px 0 10px var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+}
+
+/* いま何時か。線の上の小さな点と、右へ伸びる一本。 */
+.tl-now { min-height: 22px; }
+.tl-now .tl-rail::before { background: color-mix(in srgb, var(--c-primary) 26%, transparent); }
+.tl-now-dot {
+  position: absolute;
+  left: 50%; top: 8px;
+  width: 9px; height: 9px;
+  margin-left: -4.5px;
+  border-radius: var(--r-full);
+  background: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-bg);
+}
+.tl-now-line {
+  align-self: start;
+  height: 2px;
+  margin: 12px var(--sp-2) 0 var(--sp-2);
+  border-radius: 1px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--c-primary) 55%, transparent),
+    transparent);
+}
+
+/* 時間割のときの今日の枠。地の色を外して、白い紙のうえに線だけを残します。
+   参考にした画面もそうでした——一日の形を読ませたいので、面で語らない。 */
+.trip.todo-today.is-tl {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+}
+
 </style>
 </head>
 <body>
@@ -5385,6 +5690,433 @@ a.btn { text-decoration: none; }
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,
+  };
+})();
+
+/* ---- js/motion.js ---- */
+/* =========================================================
+   くらしノート — 出来事の返し方（Motion / Haptic を一つにまとめる）
+
+   このファイルの言い分は一つだけです。
+
+     **同じ出来事は、どこで起きても同じように返る。**
+
+   いままでは各画面が自分で `haptic()` を呼び、自分で .16s だの .28s だのを
+   書いていました。結果として「済ませた」の手ごたえが、やることの画面と
+   買うものの画面で違っていました。押した人からすれば同じ「済ませた」なので、
+   返り方が違えば、画面ごとに読み方を学び直すことになります。
+
+   ここでは出来事に名前を付けて、その名前に対して
+
+     ・目に見える変化（class を一時的に付ける／FLIP）
+     ・指に返る震え（震え方の長さも出来事ごとに変える）
+
+   の**両方**を一度に決めます。視覚と触覚は別々の演出ではなく、同じ一つの
+   出来事の二つの面です。片方だけ鳴ると、鳴らないほうが壊れて見えます。
+
+   使い方：
+
+     KN.motion.fire("check", el);     // 印が付いた
+     KN.motion.fire("delete", el);    // 消えていく（Promise が返ります）
+     KN.motion.press(el);             // 押されている間だけ
+
+   速さは css/base.css の --m-* を読みます。JS 側に数字を二重に持つと、
+   いつか必ず片方だけ直されるので、**CSS を唯一の出どころ**にします。
+
+   震えについて：iOS の Safari は navigator.vibrate を持ちません。つまり
+   ホーム画面のこのアプリでは、いまのところ震えません。それでも呼ぶ形だけ
+   残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator へ
+   差し替える一点になるからです。呼び出し側を書き換えずに済みます。
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+
+  /* 出来事の一覧。
+
+     ms   … 震えの長さ。強さは指定できないので、長さで軽重を表します。
+     cls  … その間だけ付ける class（css/components.css の .is-m-* ）。
+     tok  … 長さを読む CSS 変数の名前。 */
+  const EVENTS = {
+    press:      { ms: 0,  cls: null,          tok: "--m-press" },
+    check:      { ms: 12, cls: "is-m-check",  tok: "--m-check" },
+    uncheck:    { ms: 6,  cls: null,          tok: "--m-check" },
+    add:        { ms: 10, cls: "is-m-add",    tok: "--m-add" },
+    delete:     { ms: 14, cls: "is-m-delete", tok: "--m-delete" },
+    reorder:    { ms: 6,  cls: null,          tok: "--m-reorder" },
+    select:     { ms: 5,  cls: null,          tok: "--m-press" },
+    save:       { ms: 12, cls: null,          tok: "--m-check" },
+    sheetOpen:  { ms: 0,  cls: null,          tok: "--m-sheet-open" },
+    sheetClose: { ms: 0,  cls: null,          tok: "--m-sheet-close" },
+    nav:        { ms: 4,  cls: null,          tok: "--m-nav" },
+    number:     { ms: 0,  cls: "is-m-number", tok: "--m-number" },
+    /* うまくいった・気をつけて。ここだけ二拍にします——一拍だと
+       「何か起きた」しか言えず、良し悪しが伝わらないので。 */
+    success:    { ms: 0,  cls: "is-m-success", tok: "--m-success", pattern: [10, 40, 18] },
+    warn:       { ms: 0,  cls: "is-m-warn",    tok: "--m-warn",    pattern: [22, 60, 22] },
+  };
+
+  /* 動きを減らす設定の人には、動かしません。class も付けません
+     （付けても CSS 側で瞬時になりますが、無駄な組み直しが残るので）。 */
+  const still = () => !!(window.matchMedia
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  /* 長さは CSS から読みます。読めなければ 240ms。
+     一度読んだら覚えます——毎回 getComputedStyle を呼ぶと、
+     押すたびにレイアウトを測り直すことになります。 */
+  const cache = new Map();
+  function ms(token) {
+    if (cache.has(token)) return cache.get(token);
+    let out = 240;
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+      if (/ms$/.test(v)) out = parseFloat(v);
+      else if (/s$/.test(v)) out = parseFloat(v) * 1000;
+    } catch (_) { /* 既定のまま */ }
+    cache.set(token, out);
+    return out;
+  }
+  /* 画面の設定が変わったら（テーマの切り替えなど）、測り直します。 */
+  if (window.matchMedia) {
+    try {
+      window.matchMedia("(prefers-reduced-motion: reduce)")
+        .addEventListener("change", () => cache.clear());
+    } catch (_) { /* 古い Safari。無くても困りません */ }
+  }
+
+  function buzz(spec) {
+    if (!navigator.vibrate) return;
+    try {
+      if (spec.pattern) navigator.vibrate(spec.pattern);
+      else if (spec.ms) navigator.vibrate(spec.ms);
+    } catch (_) { /* 震えないことは失敗ではありません */ }
+  }
+
+  /**
+   * 出来事を返します。
+   *
+   * @param {string} name  EVENTS の名前
+   * @param {Element} [el] 目に見える変化を起こす相手（省略可）
+   * @returns {Promise} 動きが終わったら解決します。消えるものを
+   *                    「消え終わってから」外したいときに使います。
+   */
+  function fire(name, el) {
+    const spec = EVENTS[name];
+    if (!spec) return Promise.resolve();
+    buzz(spec);
+    const dur = ms(spec.tok);
+    if (!el || !spec.cls || still()) {
+      return new Promise((done) => setTimeout(done, still() ? 0 : dur));
+    }
+    /* 同じ class が残っていると二度目が効きません。一度外して、
+       次のフレームで付け直します（アニメーションの作り直し）。 */
+    el.classList.remove(spec.cls);
+    // 読むことで、ブラウザにここまでを確定させます。
+    void el.offsetWidth;
+    el.classList.add(spec.cls);
+    return new Promise((done) => setTimeout(() => {
+      el.classList.remove(spec.cls);
+      done();
+    }, dur));
+  }
+
+  /* 押している間だけ縮むもの。CSS の :active で足りる場所には要りません
+     ——これは「指を離しても少しだけ効いていてほしい」ところ用です。 */
+  function press(el) {
+    if (!el || still()) return;
+    el.classList.add("is-m-press");
+    const off = () => {
+      el.classList.remove("is-m-press");
+      el.removeEventListener("pointerup", off);
+      el.removeEventListener("pointercancel", off);
+      el.removeEventListener("pointerleave", off);
+    };
+    el.addEventListener("pointerup", off);
+    el.addEventListener("pointercancel", off);
+    el.addEventListener("pointerleave", off);
+  }
+
+  KN.motion = { fire, press, ms, still, EVENTS };
+})();
+
+/* ---- js/plan.js ---- */
+/* =========================================================
+   くらしノート — 一日を組み立てる
+
+   やることの一覧は「何が残っているか」しか言いません。時間軸は
+   **「今日をどう配ると収まるのか」**を言います。同じ5件でも、
+   一覧なら「5件ある」で終わり、時間軸なら「昼までに3件、夕方に2件、
+   あいだが1時間空いている」と読めます。
+
+   ここは**組み立てるだけ**で、何も保存しません。保存するのは人が
+   決めたこと（時刻・かかる時間・順番）だけで、「何時に始まるか」は
+   そこから毎回導きます。導いた結果を保存すると、翌日には嘘になります。
+
+   -------------------------------------------------------------------
+   決まりごと（この四つだけです）
+
+   1. **時刻を持つものは動かない。** 「16:00に病院」は16:00です。
+   2. **持たないものは、前のものの後ろへ順に置く。** 置き場所は
+      その日の始まりから順に詰めます。
+   3. **毎朝は一日の頭、毎晩は一日の終わり。** これは並び順の指定なので、
+      時刻を持っていても端に立ちます（時刻はそのまま尊重します）。
+   4. **空いた時間は、空いたと言う。** 埋めません。「1時間20分あいている」
+      と分かることが、配り直すための材料になります。
+
+   -------------------------------------------------------------------
+   評価はしません。
+
+   予定より遅れていても、赤くしません。「達成率」も「予定通り」も出しません。
+   現実の生活は崩れるものだ、というのがこの画面の前提です。出すのは
+   「いま何時か」と「あと何が残っているか」だけで、そこから先は本人が
+   決めることです。
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const KN = window.KN;
+  const U = KN.util;
+
+  /* かかる時間を決めていないものに当てる長さ。
+
+     30分にしたのは、短すぎると一日が実際よりたくさん入るように見え、
+     長すぎると空きが無いように見えるからです。どちらも「配り直す材料」
+     としては嘘になります。30分は、家事も用事もだいたいこのくらい、
+     という当たりです（人が決めた数があれば、必ずそちらを使います）。 */
+  const DEFAULT_MINUTES = 30;
+
+  /* 一日の枠。ここから外は「今日」として扱いません。設定で動かせます。 */
+  const DEFAULT_START = "07:00";
+  const DEFAULT_END = "22:00";
+
+  /* これ未満の空きは、空きと呼びません。5分の隙間を「自由時間」と
+     書かれても、何にも使えないので。 */
+  const MIN_GAP = 10;
+
+  /* ---------------- 時刻と分の行き来 ---------------- */
+
+  const toMin = (hhmm) => {
+    if (!U.isTime(hhmm)) return null;
+    const [h, m] = String(hhmm).split(":").map(Number);
+    return h * 60 + m;
+  };
+  /* 24時をまたいでも折り返しません（1470 → 「24:30」）。深夜25時と書く
+     あの言い方です。折り返すと「07:00に始まって07:00に終わる」ができて
+     しまい、溢れているのか一瞬なのかが区別できなくなります。 */
+  const toTime = (min) => {
+    const m = Math.max(0, Math.round(min));
+    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  };
+
+  /** 「1時間20分」「45分」。0 は返しません（呼ぶ側が空きを間引くので）。 */
+  function humanSpan(min) {
+    const n = Math.round(min);
+    if (n < 60) return `${n}分`;
+    const h = Math.floor(n / 60), m = n % 60;
+    return m ? `${h}時間${m}分` : `${h}時間`;
+  }
+
+  const minutesOf = (t) => (t && t.minutes) || DEFAULT_MINUTES;
+
+  /* ---------------- 並べる ---------------- */
+
+  /* 毎朝・毎晩は一日の端。あいだは、時刻を持つものが時刻順、持たないものは
+     そのあと。これは既存の並び（store.sortedTodos）と同じ考え方で、
+     ここでは「端に立つ」を先に確定させてから中を並べます。 */
+  function ordered(todos) {
+    const dawn = [], dusk = [], timed = [], loose = [];
+    todos.forEach((t) => {
+      if (t.part === "dawn") dawn.push(t);
+      else if (t.part === "dusk") dusk.push(t);
+      else if (U.isTime(t.time)) timed.push(t);
+      else loose.push(t);
+    });
+    const byTime = (a, b) => (toMin(a.time) - toMin(b.time)) || ((a.order || 0) - (b.order || 0));
+    const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
+    dawn.sort((a, b) => (U.isTime(a.time) && U.isTime(b.time) ? byTime(a, b) : byOrder(a, b)));
+    dusk.sort((a, b) => (U.isTime(a.time) && U.isTime(b.time) ? byTime(a, b) : byOrder(a, b)));
+    timed.sort(byTime);
+    loose.sort(byOrder);
+    return { dawn, dusk, middle: timed.concat(loose) };
+  }
+
+  /**
+   * 一日を組み立てます。
+   *
+   * @param {string} day        「YYYY-MM-DD」
+   * @param {object[]} todos    その日の、まだ済んでいないものと済んだもの
+   * @param {object} [opts]     { start, end }（省略時は設定、無ければ 7:00–22:00）
+   * @returns {{ day, start, end, items, free, freeTotal, over }}
+   *
+   *   items … { todo, at, until, minutes, fixed, clash }
+   *            at/until は「HH:MM」。fixed は時刻を持っていたか。
+   *            clash は、前のものと重なってしまったか（重なりは
+   *            隠さずに言います。隠すと、なぜ入らないのかが分からない）。
+   *   free  … { at, until, minutes } の並び。空き。
+   *   over  … 一日の枠から溢れた分（分）。0 なら収まっています。
+   */
+  /** ふさがっている時間帯（[start,end) の並び、開始順）に対して、
+      `from` 以降でいちばん早い、`len` 分入る場所を返します。 */
+  function firstGap(from, len, blocks) {
+    let at = from;
+    // blocks は開始順。前から順に、ぶつかるたびにその後ろへ送ります。
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      if (b.end <= at) continue;          // もう過ぎている
+      if (b.start >= at + len) break;     // その前に入りきる
+      at = b.end;                          // ぶつかった。後ろへ。
+    }
+    return at;
+  }
+
+  const addBlock = (blocks, start, end) => {
+    blocks.push({ start, end });
+    blocks.sort((a, b) => a.start - b.start);
+  };
+
+  function buildDay(day, todos, opts) {
+    const o = opts || {};
+    const dayStart = toMin(o.start) != null ? toMin(o.start) : toMin(DEFAULT_START);
+    const dayEnd = toMin(o.end) != null ? toMin(o.end) : toMin(DEFAULT_END);
+
+    const { dawn, dusk, middle } = ordered(todos || []);
+    const items = [];
+    const blocks = [];   // ふさがっている時間帯
+
+    /* ---- ① 時刻を持つものに、先に場所を与える ----
+
+       ここは一度まちがえました。来た順に一本の cursor で置いていくと、
+       「16:00の病院」を先に置いたせいで、時刻を持たない「洗濯」が
+       17:00 に回りました。朝じゅう空いているのに、です。
+
+       時刻を持つものは**動かない予定**で、持たないものは**空いた
+       ところに入るもの**です。順番の問題ではなく、種類の違いなので、
+       先に固定を全部置いてから、残りを隙間に入れます。 */
+    const fixedOf = (t) => U.isTime(t.time);
+    [].concat(dawn, middle, dusk).filter(fixedOf).forEach((t) => {
+      const len = minutesOf(t);
+      const start = toMin(t.time);
+      // 先に置いた固定と重なっているか。動かさずに、重なりとして言います。
+      const clash = blocks.some((b) => start < b.end && start + len > b.start);
+      items.push({ todo: t, atMin: start, untilMin: start + len,
+                   minutes: len, fixed: true, clash });
+      addBlock(blocks, start, start + len);
+    });
+
+    /* ---- ② 毎朝の、時刻を持たないもの。一日の頭から詰めます ---- */
+    let cursor = dayStart;
+    dawn.filter((t) => !fixedOf(t)).forEach((t) => {
+      const len = minutesOf(t);
+      const start = firstGap(cursor, len, blocks);
+      items.push({ todo: t, atMin: start, untilMin: start + len,
+                   minutes: len, fixed: false, clash: false });
+      addBlock(blocks, start, start + len);
+      cursor = start + len;
+    });
+
+    /* ---- ③ あいだの、時刻を持たないもの。毎朝の後ろから、空きへ ----
+
+       「毎朝は一日の頭」は、時間軸でも守ります。ここで cursor を毎朝の
+       いちばん後ろまで進めておかないと、6:30 に固定した「服薬（毎朝）」の
+       **前**に、時刻を持たない「掃除」が入ってしまいます。時計としては
+       正しくても、毎朝を頭に置くと決めた意味が消えます。 */
+    const dawnEnd = items
+      .filter((it) => it.todo.part === "dawn")
+      .reduce((n, it) => Math.max(n, it.untilMin), dayStart);
+    cursor = Math.max(cursor, dawnEnd);
+
+    middle.filter((t) => !fixedOf(t)).forEach((t) => {
+      const len = minutesOf(t);
+      const start = firstGap(cursor, len, blocks);
+      items.push({ todo: t, atMin: start, untilMin: start + len,
+                   minutes: len, fixed: false, clash: false });
+      addBlock(blocks, start, start + len);
+      cursor = start + len;
+    });
+
+    /* ---- ④ 毎晩の、時刻を持たないもの。一日の終わりに寄せます ----
+
+       「寝る前にやること」は、終わりに寄っているほうが本当なので、
+       合計の長さぶんだけ dayEnd から手前に置きます。あいだのものが
+       そこまで伸びていたら、その後ろへ。 */
+    const duskFlex = dusk.filter((t) => !fixedOf(t));
+    const duskLen = duskFlex.reduce((n, t) => n + minutesOf(t), 0);
+    let duskCursor = Math.max(cursor, dayEnd - duskLen);
+    duskFlex.forEach((t) => {
+      const len = minutesOf(t);
+      const start = firstGap(duskCursor, len, blocks);
+      items.push({ todo: t, atMin: start, untilMin: start + len,
+                   minutes: len, fixed: false, clash: false });
+      addBlock(blocks, start, start + len);
+      duskCursor = start + len;
+    });
+
+    const sorted = items.slice().sort((a, b) => a.atMin - b.atMin || a.untilMin - b.untilMin);
+    sorted.forEach((it) => { it.at = toTime(it.atMin); it.until = toTime(it.untilMin); });
+
+    /* 空き。となりどうしのあいだと、一日の始まり・終わりの端。 */
+    const free = [];
+    let edge = dayStart;
+    sorted.forEach((it) => {
+      if (it.atMin - edge >= MIN_GAP) {
+        free.push({ at: toTime(edge), until: toTime(it.atMin),
+                    atMin: edge, untilMin: it.atMin, minutes: it.atMin - edge });
+      }
+      edge = Math.max(edge, it.untilMin);
+    });
+    if (dayEnd - edge >= MIN_GAP) {
+      free.push({ at: toTime(edge), until: toTime(dayEnd),
+                  atMin: edge, untilMin: dayEnd, minutes: dayEnd - edge });
+    }
+
+    /* 溢れ。**分のまま**で測ります——「HH:MM」に直してから引くと、
+       24時をまたいだ日に折り返して 0 になります（実際そうなりました）。 */
+    const last = sorted.length ? Math.max(...sorted.map((i) => i.untilMin)) : dayStart;
+
+    return {
+      day,
+      start: toTime(dayStart),
+      end: toTime(dayEnd),
+      startMin: dayStart,
+      endMin: dayEnd,
+      items: sorted,
+      free,
+      freeTotal: free.reduce((n, f) => n + f.minutes, 0),
+      over: Math.max(0, last - dayEnd),
+    };
+  }
+
+  /* ---------------- 空きへ入れる ---------------- */
+
+  /**
+   * この長さのものが入る空きを、早い順に挙げます。
+   *
+   * Quick Capture が「いつやりますか」と聞かずに済ませるための材料です。
+   * 「10:00〜10:15 が空いています」と出してから聞けば、答えは一押しで済みます。
+   *
+   * @param {object} plan   buildDay の返り
+   * @param {number} minutes  入れたい長さ（分）
+   * @param {string} [after]  この時刻より後だけ（省略時は「いま」以降）
+   * @returns {{at, until, minutes}[]}  最大3つ
+   */
+  function slotsFor(plan, minutes, after) {
+    const len = Math.max(5, Number(minutes) || DEFAULT_MINUTES);
+    const floor = toMin(after) != null ? toMin(after) : toMin(U.nowTime());
+    return plan.free
+      .map((f) => {
+        const at = floor == null ? f.atMin : Math.max(f.atMin, floor);
+        return { at: toTime(at), until: toTime(at + len), minutes: len,
+                 atMin: at, room: f.untilMin - at };
+      })
+      .filter((f) => f.room >= len)
+      .slice(0, 3)
+      .map(({ at, until, minutes: m, atMin }) => ({ at, until, minutes: m, atMin }));
+  }
+
+  KN.plan = {
+    buildDay, slotsFor, humanSpan, toMin, toTime,
+    DEFAULT_MINUTES, DEFAULT_START, DEFAULT_END, MIN_GAP,
   };
 })();
 
@@ -14390,6 +15122,11 @@ a.btn { text-decoration: none; }
       // と食い違えるので。日のなかの並びは todoPart() が時刻から読みます。
       part: cleanPart(t.part),
       time: KN.util.isTime(t.time) ? t.time : null,
+      /* かかる時間（分）。持たないものは null のままです——**0 ではなく**。
+         0 と書くと「一瞬で終わる用事」になってしまいますが、実際には
+         「まだ決めていない」がほとんどなので。時間軸はこれを読んで
+         その用事の帯の長さを決め、持たないものには既定の長さを当てます。 */
+      minutes: cleanMinutes(t.minutes),
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
@@ -14427,6 +15164,19 @@ a.btn { text-decoration: none; }
      them for sorting (todoPart below) — that is arithmetic, not a stored
      choice. */
   function cleanPart(v) { return isBookendPart(v) ? v : null; }
+
+  /* かかる時間（分）。5分から12時間まで。
+
+     上を12時間で止めるのは、それより長いものは「用事」ではなく
+     「その日の全部」だからです。一日を組み立てるための数なので、
+     一日を食べ尽くす数は受け取りません。5分刻みに丸めるのは、
+     人が見積もるときの粒がそれより細かくならないためです。 */
+  const MIN_MINUTES = 5, MAX_MINUTES = 720;
+  function cleanMinutes(v) {
+    const n = Number(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(n / 5) * 5));
+  }
 
   /**
    * 毎朝／毎晩は、言葉のとおり「毎日・ある日から」です。
@@ -14861,7 +15611,7 @@ a.btn { text-decoration: none; }
      what is overdue, what repeats, what the icon should count. */
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
-                     repeatNth = null, memo = "", flagged = false } = {}) {
+                     repeatNth = null, memo = "", flagged = false, minutes = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -14877,6 +15627,8 @@ a.btn { text-decoration: none; }
          （毎朝・毎晩でない part は、そもそも cleanPart が落とします。） */
       part: cleanPart(part),
       time: at,
+      // かかる時間（分）。決めていなければ null。時間軸が読みます。
+      minutes: cleanMinutes(minutes),
       notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
@@ -14923,6 +15675,7 @@ a.btn { text-decoration: none; }
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
+      if ("minutes" in patch) t.minutes = cleanMinutes(patch.minutes);
     });
   }
 
@@ -24396,6 +25149,7 @@ a.btn { text-decoration: none; }
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
     let flagged = editing ? !!t.flagged : false;
+    let minutes = editing ? (t.minutes || null) : null;
     haptic(10);
 
     const body = node(html`
@@ -24446,6 +25200,22 @@ a.btn { text-decoration: none; }
                 19:30 と書いていいのか」で迷います。 */""}
           <span class="field-hint js-time-note" hidden>時刻は、お知らせを出す
             タイミングです。並ぶ場所は毎朝・毎晩のままです。</span>
+        </div>
+
+        ${/* どれくらいかかるか。
+
+              これは締め切りでも目標でもありません。**今日の時間割を組む
+              ための長さ**です。決めなくても構いません——決めていないものは
+              30分として置かれます。
+
+              札で選ばせるのは、分を打たせると「25分か30分か」を考え始めて
+              しまうからです。見積もりはそこまで細かくならないので、
+              よく使う長さだけを並べます。 */""}
+        <div class="field">
+          <span class="field-label">どれくらい かかる</span>
+          <div class="js-mins"></div>
+          <span class="field-hint">今日の時間割を組むのに使います。
+            決めなければ 30分ぶんの場所を取ります。</span>
         </div>
 
         ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
@@ -24583,6 +25353,25 @@ a.btn { text-decoration: none; }
     const timeCell = body.querySelector(".date-cell.is-time");
     const timeEl = body.querySelector(".js-time");
     const timeClear = body.querySelector(".js-time-clear");
+
+    /* かかる時間。よく使う長さだけを札で出します——分を打たせると
+       「25分か30分か」を考え始めてしまい、見積もりはそこまで細かく
+       なりません。「決めない」も答えのうちなので、先頭に置きます。 */
+    const MINS = [15, 30, 45, 60, 90, 120];
+    const minsHost = body.querySelector(".js-mins");
+    function paintMins() {
+      KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(
+        MINS.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
+      ), {
+        activeId: minutes ? String(minutes) : "",
+        onPick: (id) => {
+          minutes = id ? Number(id) : null;
+          KN.motion.fire("select");
+          paintMins();
+        },
+      });
+    }
+    paintMins();
 
     /* 時刻の欄はいつも出しておきます（日付が「なし」でも、毎朝・毎晩でも）。
 
@@ -24763,11 +25552,11 @@ a.btn { text-decoration: none; }
          古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes });
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -25592,15 +26381,164 @@ a.btn { text-decoration: none; }
     `);
     top.append(head(plain, rows.length));
     if (rows.length) {
-      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
-      top.append(box);
-      if (!tiles) wireReorder(box, plain);
+      /* 今日だけは、一覧ではなく**時間割**で出せます。一覧は「何が残って
+         いるか」しか言いませんが、時間割は「どう配ると収まるか」を言います
+         ——同じ5件でも、読み取れることが違います。
+         タイルを選んでいる人には出しません（正方形に時間軸は引けないので）。 */
+      if (!tiles && timelineOn()) {
+        /* 時間割のときは、今日の枠の地の色を外します（下の CSS）。
+           一本の線と時刻でもう十分に「今日」と言えているので、そこへ
+           色の面まで重ねると、色の言っていることが薄まります。 */
+        panel.classList.add("is-tl");
+        top.append(timeline(rows, plain));
+      } else {
+        const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+        rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+        top.append(box);
+        if (!tiles) wireReorder(box, plain);
+        /* 戻る道。時間割から一覧へ移れるなら、一覧からも戻れないと
+           片道になります（タイルのときは時間軸が引けないので出しません）。 */
+        if (!tiles && !timelineOn()) {
+          const back = node(html`
+            <div class="tl-sum is-back">
+              <button type="button" class="tl-switch js-tl-on">時間割で見る</button>
+            </div>
+          `);
+          back.querySelector(".js-tl-on").addEventListener("click", () => {
+            store.update((st) => { st.settings.todoTimeline = true; });
+            KN.motion.fire("select");
+          });
+          top.append(back);
+        }
+      }
     } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
     panel.append(top);
     return panel;
+  }
+
+  /* ---------------- 今日の時間割 ----------------
+
+     一本の線に沿って、今日が上から下へ流れます。左に時刻、線の上に丸い
+     アイコン、右に用事。用事と用事のあいだが空いていれば、空いていると
+     書きます——埋めません。**空きが見えること**が、配り直すための材料です。
+
+     評価はしません。遅れていても赤くしませんし、「予定通り」も「達成率」も
+     出しません。出すのは「いま何時か」と「何が残っているか」だけ。現実の
+     生活は崩れるものだ、というのがこの画面の前提なので。
+
+     組み立てそのものは js/plan.js が持ちます。ここは描くだけです。 */
+
+  const timelineOn = () => store.get().settings.todoTimeline !== false;
+
+  function timeline(rows, shelf) {
+    const P = KN.plan;
+    const s = store.get().settings;
+    const plan = P.buildDay(todayKey(), rows, { start: s.dayStart, end: s.dayEnd });
+    const nowMin = P.toMin(KN.util.nowTime());
+    const isToday = !shelf || !shelf.day || shelf.day === todayKey();
+
+    const sec = node(html`
+      <div class="tl">
+        <div class="tl-sum">
+          ${plan.freeTotal >= P.MIN_GAP
+            ? html`<span class="tl-free">空き ${P.humanSpan(plan.freeTotal)}</span>` : ""}
+          ${plan.over
+            ? html`<span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>` : ""}
+          <button type="button" class="tl-switch js-tl-off">一覧で見る</button>
+        </div>
+        <ol class="tl-list js-tl"></ol>
+      </div>
+    `);
+    const list = sec.querySelector(".js-tl");
+
+    /* 用事と空きを、時刻の順に一本へ混ぜます。 */
+    const parts = []
+      .concat(plan.items.map((it) => ({ kind: "item", at: it.atMin, it })))
+      .concat(plan.free.map((f) => ({ kind: "free", at: f.atMin, f })))
+      .sort((a, b) => a.at - b.at);
+
+    let nowPlaced = false;
+    parts.forEach((part, i) => {
+      /* 「いま」の線は、その時刻をまたぐところに一度だけ。今日以外の日を
+         見ているときは出しません（きのうの「いま」は意味を成さないので）。 */
+      if (isToday && !nowPlaced && nowMin != null && part.at > nowMin) {
+        list.append(nowRow(nowMin));
+        nowPlaced = true;
+      }
+      if (part.kind === "free") { list.append(freeRow(part.f)); return; }
+      const next = parts[i + 1];
+      list.append(itemRow(part.it, !!next && next.kind === "item"));
+    });
+    if (isToday && !nowPlaced && nowMin != null && nowMin <= plan.endMin) {
+      list.append(nowRow(nowMin));
+    }
+
+    sec.querySelector(".js-tl-off").addEventListener("click", () => {
+      store.update((st) => { st.settings.todoTimeline = false; });
+      KN.motion.fire("select");
+    });
+    return sec;
+  }
+
+  /** いま何時か。線がここで色を変えます。 */
+  function nowRow(nowMin) {
+    return node(html`
+      <li class="tl-now">
+        <span class="tl-time is-now">${KN.plan.toTime(nowMin)}</span>
+        <span class="tl-rail"><span class="tl-now-dot"></span></span>
+        <span class="tl-now-line"></span>
+      </li>
+    `);
+  }
+
+  /** 空いているところ。埋めずに、空いていると言うだけ。 */
+  function freeRow(f) {
+    return node(html`
+      <li class="tl-free-row">
+        <span class="tl-time">${f.at}</span>
+        <span class="tl-rail is-dash"></span>
+        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)} あいています</span>
+      </li>
+    `);
+  }
+
+  /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
+  function itemRow(it, joined) {
+    const t = it.todo;
+    const li = node(html`
+      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}"
+          data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
+        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
+        <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
+        <div class="item todo tl-item ${t.done ? "is-checked" : ""}">
+          <button class="tl-body" type="button">
+            <span class="tl-cap">
+              <span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>
+              ${it.fixed ? html`<span class="tl-pin">時刻あり</span>` : ""}
+              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
+              ${t.repeat ? html`<span class="tl-rep">${repeatShort(t)}</span>` : ""}
+            </span>
+            <span class="item-name">${t.title}</span>
+            ${t.memo ? html`<span class="tl-memo">${t.memo}</span>` : ""}
+          </button>
+          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                  aria-checked="${String(!!t.done)}"
+                  aria-label="${t.title} を終わりにする">
+            ${t.repeat
+              ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
+              : icon("check")}
+          </button>
+        </div>
+      </li>
+    `);
+    li.querySelector(".tl-body").addEventListener("click", () => openSheet(t.id));
+    li.querySelector(".check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      tick(t.id, e.currentTarget);
+    });
+    return li;
   }
 
   /* ---------------- picking one up ----------------
