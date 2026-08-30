@@ -195,6 +195,14 @@
 
   /* 指の下で起きること。速い＝じかに触っている感じ。 */
   --m-press: .1s;
+  /* 押した「あと」、その札や欄が新しい姿に落ち着くまで。選ばれた色に
+     変わる、枠が濃くなる、といったところです。press より少し長いのは、
+     press が**触れている手ごたえ**なのに対して、こちらは**変わった結果**
+     を読ませるものだからで、瞬時に切り替わると色が飛んだように見えます。
+
+     ここは長らく .14s / .16s / .18s が直に書かれていた場所でした。名前が
+     無いせいで、同じ意味のものが三つの速さで動いていました。 */
+  --m-state: .16s;
   /* 印が付く・数が変わる。押した手ごたえなので、ほんの少し弾みます。 */
   --m-check: .26s;
   /* 済ませたときに、題の上を線が引かれていく長さ。check より長いのは、
@@ -552,7 +560,7 @@ a { color: var(--c-primary); }
   border: 1px solid var(--c-border);
   box-shadow: var(--shadow-2);
   color: var(--c-text-3);
-  transition: color .18s var(--ease);
+  transition: color var(--m-state) var(--ease);
 }
 
 /* Explicit, because the initial `transform-origin` for SVG content is its
@@ -789,7 +797,7 @@ a { color: var(--c-primary); }
   gap: 5px;
   white-space: nowrap;
 }
-.tab-face { transition: color .18s var(--ease), opacity .18s var(--ease); }
+.tab-face { transition: color var(--m-state) var(--ease), opacity var(--m-state) var(--ease); }
 .tab-face:not(.is-on) {
   color: var(--c-text-3);
   opacity: .8;
@@ -851,7 +859,7 @@ a { color: var(--c-primary); }
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: .01em;
-  transition: color .18s var(--ease);
+  transition: color var(--m-state) var(--ease);
   position: relative;
 }
 

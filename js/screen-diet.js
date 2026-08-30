@@ -17,7 +17,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, haptic } = KN.util;
+  const { html, node, icon } = KN.util;
   const U = KN.util;
   const store = KN.store;
   const D = KN.diet;
@@ -370,7 +370,7 @@
         els.search.value = "";
         els.searchClear.hidden = true;
         query = "";
-        haptic();
+        KN.motion.fire("select");
         render();
         if (root) root.scrollTop = 0;
       });
@@ -573,7 +573,7 @@
     /* ‹ › の刻みは、出しているものに合わせます——週だけ出しているときに
        月ごと飛ぶと、押した先に自分の週が無くなります。 */
     const goTo = (delta) => {
-      haptic();
+      KN.motion.fire("nav");
       if (!calOpen()) {
         const next = U.shiftDay(curDay(), delta * 7);
         if (next > U.todayKey()) return;        // 先の日は見に行きません
@@ -589,13 +589,13 @@
       fillCalendar(sec);
     };
     sec.querySelector(".js-calmore").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("nav");
       store.update((s) => { s.settings.calOpen = !calOpen(); });
     });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("nav");
       calMonth = null;
       viewDay = null;
       render();
@@ -684,7 +684,7 @@
       cell.addEventListener("click", () => {
         viewDay = key === today ? null : key;
         calMonth = { year, month };
-        haptic();
+        KN.motion.fire("select");
         /* 先に輪だけ動かします。組み直しのあとに置き直すと、そのときには
            もう新しい枠なので、輪は滑らずに現れることになります。 */
         moveRing(grid, cell);
@@ -800,7 +800,7 @@
       if (Math.abs(moved) < COMMIT && !fling) { await settle(1); dragging = false; return; }
       const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
       if (next > U.todayKey()) { await settle(1); dragging = false; return; }
-      haptic();
+      KN.motion.fire("nav");
       await settle(moved < 0 ? 2 : 0);
       /* 滑りきった、その位置のまま次へ渡します。viewDay を変えてから
          render() で三枚を組み直すと、真ん中（今日）はいま画面いっぱいに
@@ -1365,7 +1365,7 @@
 
     /* 印は押せます。飲んだ量は、グラフの上で確かめられないと意味が薄い。 */
     svg.querySelectorAll(".diet-beer").forEach((g) => {
-      g.addEventListener("click", () => { haptic(); showDrinkDay(g.getAttribute("data-day")); });
+      g.addEventListener("click", () => { KN.motion.fire("select"); showDrinkDay(g.getAttribute("data-day")); });
     });
     return svg;
   }
@@ -1693,7 +1693,7 @@
       chip.addEventListener("click", () => {
         q.value = q.value.trim() ? q.value.trim() + "、" + ex : ex;
         paint();
-        haptic();
+        KN.motion.fire("select");
       });
       body.querySelector(".js-ex").append(chip);
     });
@@ -1767,7 +1767,7 @@
           const i = tags.indexOf(w);
           if (i >= 0) tags.splice(i, 1); else tags.push(w);
           paintMoodTags();
-          haptic();
+          KN.motion.fire("select");
         });
         host.append(chip);
       });
@@ -1816,7 +1816,7 @@
       render();
       const t = DR.totals(items);
       KN.ui.toast(`お酒：${items.map((i) => DR.describeItem(i)).join("・")}（純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g）`);
-      haptic(12);
+      KN.motion.fire("save");
     });
 
     const del = foot.querySelector(".js-del");
@@ -2657,7 +2657,7 @@
 
     foot.addEventListener("click", () => {
       built.flush();
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast("書きました");
@@ -2830,7 +2830,7 @@
       if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
       const text = aiPrompt(memoText, { body: bodyText, recent });
       copyText(text).then((ok) => {
-        haptic(10);
+        KN.motion.fire("select");
         if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
         // 断られる端末があります。その時は、長押しで拾えるように出します。
         showPrompt(text);
@@ -2929,7 +2929,7 @@
       const line = res.foods.length
         ? `食品${res.foods.length}件${nSlot ? `・区分${nSlot}件` : ""}と合計を読み取りました`
         : (nSlot ? `区分${nSlot}件と合計を読み取りました` : "合計を読み取りました");
-      if (line !== said) { said = line; KN.ui.toast(line); haptic(); }
+      if (line !== said) { said = line; KN.ui.toast(line); KN.motion.fire("select"); }
     }
 
     aiTa.addEventListener("input", () => {
@@ -2947,7 +2947,7 @@
       paintClear();
       paintAI();
       KN.ui.focusNow(aiTa);
-      haptic();
+      KN.motion.fire("select");
     });
 
     paintClear();
@@ -2964,7 +2964,7 @@
       if (!aiTa.value.trim()) ai = null;
       const rec = store.dayMemo(day);
       store.setDayMemo(day, rec ? rec.memo : "", handItems.concat(aiItem(ai)), ai);
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast("保存しました");
@@ -3283,7 +3283,7 @@
       };
       if (w) store.updateWeight(w.id, patch);
       else store.addWeight(patch);
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast(w ? "直しました" : "記録しました");
@@ -3544,7 +3544,7 @@
       };
       if (meal) store.updateMeal(meal.id, patch);
       else store.addMeal(patch);
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast(meal ? "直しました" : "記録しました");

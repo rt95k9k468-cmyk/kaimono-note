@@ -80,7 +80,7 @@
   box-shadow: var(--shadow-3);
   /* The one thing in the dock that is meant to be pressed. */
   pointer-events: auto;
-  transition: transform .12s var(--ease), background .16s var(--ease);
+  transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease);
 }
 
 /* 縁の光。帯と同じ作り方（1pxの余白に色を敷いて、内側をマスクで抜く）。
@@ -153,7 +153,7 @@
   overflow: hidden;
   max-height: 260px;
   overflow-y: auto;
-  animation: ac-in .16s var(--ease-out);
+  animation: ac-in var(--m-state) var(--ease-out);
 }
 
 @keyframes ac-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -245,7 +245,7 @@
   /* The row settling into place is deliberately unhurried — long enough to
      read as the row gliding, with an easing that keeps almost all the travel
      up front and lets the last few pixels drift in. */
-  transition: opacity .2s var(--ease), background .16s var(--ease),
+  transition: opacity .2s var(--ease), background var(--m-state) var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
   /* Vertical stays with the list so it can still scroll; horizontal comes to
      the swipe handler. The buttons inside need it too, otherwise a swipe that
@@ -354,7 +354,7 @@
   place-items: center;
   border-radius: var(--r-md);
   color: var(--c-text-2);
-  transition: background .14s var(--ease), color .14s var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .cal-arrow svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 /* The shared chevron points right, so 「次の月」 is it as drawn and
@@ -383,7 +383,7 @@
   color: var(--c-text-2);
   border-radius: var(--r-full);
   background: var(--c-surface-2);
-  transition: background .14s var(--ease), color .14s var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .cal-more[aria-expanded="true"] { color: var(--c-primary-ink); background: var(--c-primary-soft); }
 @media (hover: hover) { .cal-more:hover { color: var(--c-text); } }
@@ -429,7 +429,7 @@
   border: 0;
   border-radius: var(--r-md);
   -webkit-tap-highlight-color: transparent;
-  transition: background .14s var(--ease);
+  transition: background var(--m-state) var(--ease);
 }
 .cal-day:active { background: var(--c-surface-2); }
 
@@ -478,12 +478,12 @@
   box-shadow: inset 0 0 0 2px var(--c-primary);
   pointer-events: none;
   opacity: 0;
-  transition: transform .24s var(--ease-out), opacity .16s var(--ease);
+  transition: transform .24s var(--ease-out), opacity var(--m-state) var(--ease);
 }
 .cal-ring.is-on { opacity: 1; }
 /* 置き直した直後（月をめくった、画面を組み直した）は滑らせません。
    前にいた場所と関係のないところから飛んでくるので。 */
-.cal-ring.is-jump { transition: opacity .16s var(--ease); }
+.cal-ring.is-jump { transition: opacity var(--m-state) var(--ease); }
 .cal-day.is-here .cal-n { color: var(--c-primary); }
 /* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
 .cal-day.is-here.is-today .cal-n { color: #fff; }
@@ -903,7 +903,7 @@
    signal that letting go will do something. */
 .swipe-yes > *, .swipe-arch > * {
   opacity: .55;
-  transition: opacity .14s var(--ease), transform .18s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 .swipe-yes > * { transform: translateX(-4px); }
 .swipe-arch > * { transform: translateX(4px); }
@@ -1104,7 +1104,7 @@
   border: 2px solid var(--c-border-2);
   display: grid;
   place-items: center;
-  transition: background .18s var(--ease), border-color .18s var(--ease), transform .14s var(--ease-out);
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
   background: transparent;
 }
 .check::after {
@@ -1116,7 +1116,7 @@
 }
 /* 大きさは輪（18px）が決めます。太さ 3.2 は白い✓が緑に沈まないための
    もので、二段階の外です——輪の中身なので、輪と一緒に決まります。 */
-.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
+.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity var(--m-state), transform .2s var(--ease-out); }
 @media (hover: hover) {
   .check:hover { border-color: var(--c-primary); }
 }
@@ -1137,7 +1137,7 @@
   display: grid;
   place-items: center;
   pointer-events: none;
-  transition: opacity .16s var(--ease), transform .2s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform .2s var(--ease-out);
 }
 .check-repeat svg {
   width: 13px; height: 13px;
@@ -1163,7 +1163,7 @@
   display: grid;
   place-items: center;
   color: var(--c-text-3);
-  transition: color .16s var(--ease), transform .14s var(--ease-out);
+  transition: color var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 .fav::after {
   content: "";
@@ -1417,7 +1417,7 @@
   width: 16px; height: 16px;
   stroke-width: 2.6;
   flex: none;
-  transition: transform .18s var(--ease);
+  transition: transform var(--m-state) var(--ease);
 }
 .archive.is-open .archive-head svg { transform: rotate(90deg); }
 .archive-body { padding-top: var(--sp-2); }
@@ -1450,7 +1450,7 @@
      listed or not, so nothing shifts sideways when one is added. */
   padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
   box-shadow: var(--shadow-1);
-  transition: background .14s var(--ease),
+  transition: background var(--m-state) var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
   /* Vertical stays with the screen so it can still scroll; horizontal comes
      to the swipe handler — the buttons inside included. */
@@ -1513,7 +1513,7 @@
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   border: 1.5px solid transparent;
-  transition: background .16s var(--ease);
+  transition: background var(--m-state) var(--ease);
 }
 
 .price-row.is-best {
@@ -1530,7 +1530,7 @@
   align-items: center;
   gap: var(--sp-3);
   text-align: left;
-  transition: transform .12s;
+  transition: transform var(--m-press);
 }
 .price-main:active { transform: scale(.985); }
 .price-chevron { flex: none; color: var(--c-text-3); display: flex; }
@@ -1610,7 +1610,7 @@
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text-2);
-  transition: background .16s var(--ease), color .16s var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .seg-btn[aria-pressed="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
 
@@ -1647,7 +1647,7 @@
   width: 32px; height: 32px;
   border-radius: var(--r-full);
   border: 3px solid transparent;
-  transition: transform .14s var(--ease), border-color .14s;
+  transition: transform var(--m-state) var(--ease), border-color var(--m-state);
 }
 @media (hover: hover) {
   .swatch:hover { transform: scale(1.1); }
@@ -2314,7 +2314,7 @@ a.btn { text-decoration: none; }
 
 /* 数の枠は押せます。押せることが見た目でも分かるように、行と同じ
    「押したら沈む」を持たせます。 */
-.diet-cell { border: 0; text-align: center; transition: background .14s var(--ease); }
+.diet-cell { border: 0; text-align: center; transition: background var(--m-state) var(--ease); }
 .diet-cell:active { background: var(--c-surface-3); }
 /* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
    持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
@@ -2399,7 +2399,7 @@ a.btn { text-decoration: none; }
   width: auto; text-align: left;
   background: var(--c-surface-2);
   border-left: 3px solid var(--c-primary);
-  transition: transform .18s var(--ease), background .18s var(--ease);
+  transition: transform var(--m-state) var(--ease), background var(--m-state) var(--ease);
 }
 .arc-then:active { transform: scale(.985); background: var(--c-surface-3); }
 
@@ -2624,7 +2624,7 @@ a.btn { text-decoration: none; }
   opacity: 0;
   transform: translateY(18px) scale(.9);
   /* しまうときは、迷いなく。出るときだけ、下の .is-on で長くとります。 */
-  transition: opacity .18s var(--ease), transform .24s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform .24s var(--ease-out);
 }
 
 /* 縁の光。帯・＋ と同じ作り方（1px の余白に色を敷いて、内側をマスクで
@@ -2699,7 +2699,7 @@ a.btn { text-decoration: none; }
 }
 
 /* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
-.add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
+.add-fab { transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease); }
 .add-fab.is-open { transform: rotate(45deg); }
 .add-fab.is-open:active { transform: rotate(45deg) scale(.92); }
 

@@ -211,6 +211,14 @@
 
   /* 指の下で起きること。速い＝じかに触っている感じ。 */
   --m-press: .1s;
+  /* 押した「あと」、その札や欄が新しい姿に落ち着くまで。選ばれた色に
+     変わる、枠が濃くなる、といったところです。press より少し長いのは、
+     press が**触れている手ごたえ**なのに対して、こちらは**変わった結果**
+     を読ませるものだからで、瞬時に切り替わると色が飛んだように見えます。
+
+     ここは長らく .14s / .16s / .18s が直に書かれていた場所でした。名前が
+     無いせいで、同じ意味のものが三つの速さで動いていました。 */
+  --m-state: .16s;
   /* 印が付く・数が変わる。押した手ごたえなので、ほんの少し弾みます。 */
   --m-check: .26s;
   /* 済ませたときに、題の上を線が引かれていく長さ。check より長いのは、
@@ -568,7 +576,7 @@ a { color: var(--c-primary); }
   border: 1px solid var(--c-border);
   box-shadow: var(--shadow-2);
   color: var(--c-text-3);
-  transition: color .18s var(--ease);
+  transition: color var(--m-state) var(--ease);
 }
 
 /* Explicit, because the initial `transform-origin` for SVG content is its
@@ -805,7 +813,7 @@ a { color: var(--c-primary); }
   gap: 5px;
   white-space: nowrap;
 }
-.tab-face { transition: color .18s var(--ease), opacity .18s var(--ease); }
+.tab-face { transition: color var(--m-state) var(--ease), opacity var(--m-state) var(--ease); }
 .tab-face:not(.is-on) {
   color: var(--c-text-3);
   opacity: .8;
@@ -867,7 +875,7 @@ a { color: var(--c-primary); }
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: .01em;
-  transition: color .18s var(--ease);
+  transition: color var(--m-state) var(--ease);
   position: relative;
 }
 
@@ -2203,7 +2211,7 @@ button, [role="tab"] {
   box-shadow: var(--shadow-3);
   /* The one thing in the dock that is meant to be pressed. */
   pointer-events: auto;
-  transition: transform .12s var(--ease), background .16s var(--ease);
+  transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease);
 }
 
 /* 縁の光。帯と同じ作り方（1pxの余白に色を敷いて、内側をマスクで抜く）。
@@ -2276,7 +2284,7 @@ button, [role="tab"] {
   overflow: hidden;
   max-height: 260px;
   overflow-y: auto;
-  animation: ac-in .16s var(--ease-out);
+  animation: ac-in var(--m-state) var(--ease-out);
 }
 
 @keyframes ac-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -2368,7 +2376,7 @@ button, [role="tab"] {
   /* The row settling into place is deliberately unhurried — long enough to
      read as the row gliding, with an easing that keeps almost all the travel
      up front and lets the last few pixels drift in. */
-  transition: opacity .2s var(--ease), background .16s var(--ease),
+  transition: opacity .2s var(--ease), background var(--m-state) var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
   /* Vertical stays with the list so it can still scroll; horizontal comes to
      the swipe handler. The buttons inside need it too, otherwise a swipe that
@@ -2477,7 +2485,7 @@ button, [role="tab"] {
   place-items: center;
   border-radius: var(--r-md);
   color: var(--c-text-2);
-  transition: background .14s var(--ease), color .14s var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .cal-arrow svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 /* The shared chevron points right, so 「次の月」 is it as drawn and
@@ -2506,7 +2514,7 @@ button, [role="tab"] {
   color: var(--c-text-2);
   border-radius: var(--r-full);
   background: var(--c-surface-2);
-  transition: background .14s var(--ease), color .14s var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .cal-more[aria-expanded="true"] { color: var(--c-primary-ink); background: var(--c-primary-soft); }
 @media (hover: hover) { .cal-more:hover { color: var(--c-text); } }
@@ -2552,7 +2560,7 @@ button, [role="tab"] {
   border: 0;
   border-radius: var(--r-md);
   -webkit-tap-highlight-color: transparent;
-  transition: background .14s var(--ease);
+  transition: background var(--m-state) var(--ease);
 }
 .cal-day:active { background: var(--c-surface-2); }
 
@@ -2601,12 +2609,12 @@ button, [role="tab"] {
   box-shadow: inset 0 0 0 2px var(--c-primary);
   pointer-events: none;
   opacity: 0;
-  transition: transform .24s var(--ease-out), opacity .16s var(--ease);
+  transition: transform .24s var(--ease-out), opacity var(--m-state) var(--ease);
 }
 .cal-ring.is-on { opacity: 1; }
 /* 置き直した直後（月をめくった、画面を組み直した）は滑らせません。
    前にいた場所と関係のないところから飛んでくるので。 */
-.cal-ring.is-jump { transition: opacity .16s var(--ease); }
+.cal-ring.is-jump { transition: opacity var(--m-state) var(--ease); }
 .cal-day.is-here .cal-n { color: var(--c-primary); }
 /* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
 .cal-day.is-here.is-today .cal-n { color: #fff; }
@@ -3026,7 +3034,7 @@ button, [role="tab"] {
    signal that letting go will do something. */
 .swipe-yes > *, .swipe-arch > * {
   opacity: .55;
-  transition: opacity .14s var(--ease), transform .18s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 .swipe-yes > * { transform: translateX(-4px); }
 .swipe-arch > * { transform: translateX(4px); }
@@ -3227,7 +3235,7 @@ button, [role="tab"] {
   border: 2px solid var(--c-border-2);
   display: grid;
   place-items: center;
-  transition: background .18s var(--ease), border-color .18s var(--ease), transform .14s var(--ease-out);
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
   background: transparent;
 }
 .check::after {
@@ -3239,7 +3247,7 @@ button, [role="tab"] {
 }
 /* 大きさは輪（18px）が決めます。太さ 3.2 は白い✓が緑に沈まないための
    もので、二段階の外です——輪の中身なので、輪と一緒に決まります。 */
-.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity .16s, transform .2s var(--ease-out); }
+.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity var(--m-state), transform .2s var(--ease-out); }
 @media (hover: hover) {
   .check:hover { border-color: var(--c-primary); }
 }
@@ -3260,7 +3268,7 @@ button, [role="tab"] {
   display: grid;
   place-items: center;
   pointer-events: none;
-  transition: opacity .16s var(--ease), transform .2s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform .2s var(--ease-out);
 }
 .check-repeat svg {
   width: 13px; height: 13px;
@@ -3286,7 +3294,7 @@ button, [role="tab"] {
   display: grid;
   place-items: center;
   color: var(--c-text-3);
-  transition: color .16s var(--ease), transform .14s var(--ease-out);
+  transition: color var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 .fav::after {
   content: "";
@@ -3540,7 +3548,7 @@ button, [role="tab"] {
   width: 16px; height: 16px;
   stroke-width: 2.6;
   flex: none;
-  transition: transform .18s var(--ease);
+  transition: transform var(--m-state) var(--ease);
 }
 .archive.is-open .archive-head svg { transform: rotate(90deg); }
 .archive-body { padding-top: var(--sp-2); }
@@ -3573,7 +3581,7 @@ button, [role="tab"] {
      listed or not, so nothing shifts sideways when one is added. */
   padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
   box-shadow: var(--shadow-1);
-  transition: background .14s var(--ease),
+  transition: background var(--m-state) var(--ease),
               transform .52s cubic-bezier(.16, .84, .24, 1);
   /* Vertical stays with the screen so it can still scroll; horizontal comes
      to the swipe handler — the buttons inside included. */
@@ -3636,7 +3644,7 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   border: 1.5px solid transparent;
-  transition: background .16s var(--ease);
+  transition: background var(--m-state) var(--ease);
 }
 
 .price-row.is-best {
@@ -3653,7 +3661,7 @@ button, [role="tab"] {
   align-items: center;
   gap: var(--sp-3);
   text-align: left;
-  transition: transform .12s;
+  transition: transform var(--m-press);
 }
 .price-main:active { transform: scale(.985); }
 .price-chevron { flex: none; color: var(--c-text-3); display: flex; }
@@ -3733,7 +3741,7 @@ button, [role="tab"] {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text-2);
-  transition: background .16s var(--ease), color .16s var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .seg-btn[aria-pressed="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
 
@@ -3770,7 +3778,7 @@ button, [role="tab"] {
   width: 32px; height: 32px;
   border-radius: var(--r-full);
   border: 3px solid transparent;
-  transition: transform .14s var(--ease), border-color .14s;
+  transition: transform var(--m-state) var(--ease), border-color var(--m-state);
 }
 @media (hover: hover) {
   .swatch:hover { transform: scale(1.1); }
@@ -4437,7 +4445,7 @@ a.btn { text-decoration: none; }
 
 /* 数の枠は押せます。押せることが見た目でも分かるように、行と同じ
    「押したら沈む」を持たせます。 */
-.diet-cell { border: 0; text-align: center; transition: background .14s var(--ease); }
+.diet-cell { border: 0; text-align: center; transition: background var(--m-state) var(--ease); }
 .diet-cell:active { background: var(--c-surface-3); }
 /* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
    持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
@@ -4522,7 +4530,7 @@ a.btn { text-decoration: none; }
   width: auto; text-align: left;
   background: var(--c-surface-2);
   border-left: 3px solid var(--c-primary);
-  transition: transform .18s var(--ease), background .18s var(--ease);
+  transition: transform var(--m-state) var(--ease), background var(--m-state) var(--ease);
 }
 .arc-then:active { transform: scale(.985); background: var(--c-surface-3); }
 
@@ -4747,7 +4755,7 @@ a.btn { text-decoration: none; }
   opacity: 0;
   transform: translateY(18px) scale(.9);
   /* しまうときは、迷いなく。出るときだけ、下の .is-on で長くとります。 */
-  transition: opacity .18s var(--ease), transform .24s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform .24s var(--ease-out);
 }
 
 /* 縁の光。帯・＋ と同じ作り方（1px の余白に色を敷いて、内側をマスクで
@@ -4822,7 +4830,7 @@ a.btn { text-decoration: none; }
 }
 
 /* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
-.add-fab { transition: transform .12s var(--ease), background .16s var(--ease); }
+.add-fab { transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease); }
 .add-fab.is-open { transform: rotate(45deg); }
 .add-fab.is-open:active { transform: rotate(45deg) scale(.92); }
 
@@ -24591,7 +24599,7 @@ a.btn { text-decoration: none; }
 
   const KN = window.KN;
   const U = KN.util;
-  const { html, node, icon, haptic } = U;
+  const { html, node, icon } = U;
   const store = KN.store;
 
   let root = null;
@@ -24711,7 +24719,7 @@ a.btn { text-decoration: none; }
     const grid = sec.querySelector(".cal-grid");
 
     const goTo = (delta) => {
-      haptic();
+      KN.motion.fire("select");
       const m = shownMonth();
       const d = new Date(m.year, m.month + delta, 1);
       if (ymOf(d) > ymOf(new Date())) return;   // 先の月には行きません
@@ -24720,13 +24728,13 @@ a.btn { text-decoration: none; }
       render();
     };
     sec.querySelector(".js-calmore").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       store.update((s) => { s.settings.calOpen = !calOpen(); });
     });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
-      haptic(); viewMonth = null; viewDay = null; render();
+      KN.motion.fire("select"); viewMonth = null; viewDay = null; render();
     });
 
     wireMonthSwipe(sec, grid, goTo);
@@ -24779,7 +24787,7 @@ a.btn { text-decoration: none; }
         </button>
       `);
       cell.addEventListener("click", () => {
-        haptic();
+        KN.motion.fire("select");
         viewDay = key === today ? null : key;
         viewMonth = ymOf(new Date(year, month, 1)) === ymOf(new Date()) ? null : ymOf(new Date(year, month, 1));
         moveRing(grid, cell);
@@ -24893,7 +24901,7 @@ a.btn { text-decoration: none; }
       </button>
     `);
     sec.addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       goToDay(then.date);
     });
     return sec;
@@ -25052,7 +25060,7 @@ a.btn { text-decoration: none; }
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => {
       save();
-      haptic();
+      KN.motion.fire("select");
       h.close();
     });
 
@@ -25145,14 +25153,14 @@ a.btn { text-decoration: none; }
     `);
     row.querySelector(".arc-row-body").addEventListener("click", () => openEntrySheet(e));
     row.querySelector(".js-favbtn").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       store.toggleFavorite(e.id);
       render();
     });
     const seedCheck = row.querySelector(".js-seedcheck");
     if (seedCheck) {
       seedCheck.addEventListener("click", () => {
-        haptic();
+        KN.motion.fire("select");
         store.promoteSeed(e.id);
         KN.ui.toast("達成にしました");
         render();
@@ -25201,14 +25209,14 @@ a.btn { text-decoration: none; }
        ...store.ARCHIVE_TYPES.map((t) => ({
          id: t.id, label: t.label, color: t.color, count: counts[t.id] || null,
        }))],
-      { activeId: typeFilter, onPick: (id) => { typeFilter = id; haptic(); render(); } });
+      { activeId: typeFilter, onPick: (id) => { typeFilter = id; KN.motion.fire("select"); render(); } });
 
     sec.querySelector(".js-sort").addEventListener("click", () => {
-      sortMode = nextSort(sortMode); haptic(); render();
+      sortMode = nextSort(sortMode); KN.motion.fire("select"); render();
     });
 
     sec.querySelector(".js-favonly").addEventListener("click", () => {
-      favOnly = !favOnly; haptic(); render();
+      favOnly = !favOnly; KN.motion.fire("select"); render();
     });
 
     const rows = sec.querySelector(".js-rows");
@@ -25418,7 +25426,7 @@ a.btn { text-decoration: none; }
             ${icon(k.icon, "is-sub")}<span>${k.label}</span>
           </button>
         `);
-        b.addEventListener("click", () => { kind = k.id; haptic(); paintKind(); });
+        b.addEventListener("click", () => { kind = k.id; KN.motion.fire("select"); paintKind(); });
         kindHost.append(b);
       });
     };
@@ -25435,7 +25443,7 @@ a.btn { text-decoration: none; }
             ${icon(t.icon, "is-sub")}<span>${t.label}</span>
           </button>
         `);
-        b.addEventListener("click", () => { type = t.id; haptic(); paintPick(); paintMode(); });
+        b.addEventListener("click", () => { type = t.id; KN.motion.fire("select"); paintPick(); paintMode(); });
         pick.append(b);
       });
     };
@@ -25483,7 +25491,7 @@ a.btn { text-decoration: none; }
       }
       if (e) store.updateEntry(e.id, patch);
       else store.addEntry(patch);
-      haptic();
+      KN.motion.fire("select");
       h.close();
       render();
     });
@@ -25639,7 +25647,7 @@ a.btn { text-decoration: none; }
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    haptic();
+    KN.motion.fire("select");
     KN.ui.toast(`${ym} を書き出しました`);
   }
 
@@ -28218,7 +28226,7 @@ a.btn { text-decoration: none; }
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, haptic } = KN.util;
+  const { html, node, icon } = KN.util;
   const U = KN.util;
   const store = KN.store;
   const D = KN.diet;
@@ -28571,7 +28579,7 @@ a.btn { text-decoration: none; }
         els.search.value = "";
         els.searchClear.hidden = true;
         query = "";
-        haptic();
+        KN.motion.fire("select");
         render();
         if (root) root.scrollTop = 0;
       });
@@ -28774,7 +28782,7 @@ a.btn { text-decoration: none; }
     /* ‹ › の刻みは、出しているものに合わせます——週だけ出しているときに
        月ごと飛ぶと、押した先に自分の週が無くなります。 */
     const goTo = (delta) => {
-      haptic();
+      KN.motion.fire("nav");
       if (!calOpen()) {
         const next = U.shiftDay(curDay(), delta * 7);
         if (next > U.todayKey()) return;        // 先の日は見に行きません
@@ -28790,13 +28798,13 @@ a.btn { text-decoration: none; }
       fillCalendar(sec);
     };
     sec.querySelector(".js-calmore").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("nav");
       store.update((s) => { s.settings.calOpen = !calOpen(); });
     });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("nav");
       calMonth = null;
       viewDay = null;
       render();
@@ -28885,7 +28893,7 @@ a.btn { text-decoration: none; }
       cell.addEventListener("click", () => {
         viewDay = key === today ? null : key;
         calMonth = { year, month };
-        haptic();
+        KN.motion.fire("select");
         /* 先に輪だけ動かします。組み直しのあとに置き直すと、そのときには
            もう新しい枠なので、輪は滑らずに現れることになります。 */
         moveRing(grid, cell);
@@ -29001,7 +29009,7 @@ a.btn { text-decoration: none; }
       if (Math.abs(moved) < COMMIT && !fling) { await settle(1); dragging = false; return; }
       const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
       if (next > U.todayKey()) { await settle(1); dragging = false; return; }
-      haptic();
+      KN.motion.fire("nav");
       await settle(moved < 0 ? 2 : 0);
       /* 滑りきった、その位置のまま次へ渡します。viewDay を変えてから
          render() で三枚を組み直すと、真ん中（今日）はいま画面いっぱいに
@@ -29566,7 +29574,7 @@ a.btn { text-decoration: none; }
 
     /* 印は押せます。飲んだ量は、グラフの上で確かめられないと意味が薄い。 */
     svg.querySelectorAll(".diet-beer").forEach((g) => {
-      g.addEventListener("click", () => { haptic(); showDrinkDay(g.getAttribute("data-day")); });
+      g.addEventListener("click", () => { KN.motion.fire("select"); showDrinkDay(g.getAttribute("data-day")); });
     });
     return svg;
   }
@@ -29894,7 +29902,7 @@ a.btn { text-decoration: none; }
       chip.addEventListener("click", () => {
         q.value = q.value.trim() ? q.value.trim() + "、" + ex : ex;
         paint();
-        haptic();
+        KN.motion.fire("select");
       });
       body.querySelector(".js-ex").append(chip);
     });
@@ -29968,7 +29976,7 @@ a.btn { text-decoration: none; }
           const i = tags.indexOf(w);
           if (i >= 0) tags.splice(i, 1); else tags.push(w);
           paintMoodTags();
-          haptic();
+          KN.motion.fire("select");
         });
         host.append(chip);
       });
@@ -30017,7 +30025,7 @@ a.btn { text-decoration: none; }
       render();
       const t = DR.totals(items);
       KN.ui.toast(`お酒：${items.map((i) => DR.describeItem(i)).join("・")}（純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g）`);
-      haptic(12);
+      KN.motion.fire("save");
     });
 
     const del = foot.querySelector(".js-del");
@@ -30858,7 +30866,7 @@ a.btn { text-decoration: none; }
 
     foot.addEventListener("click", () => {
       built.flush();
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast("書きました");
@@ -31031,7 +31039,7 @@ a.btn { text-decoration: none; }
       if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
       const text = aiPrompt(memoText, { body: bodyText, recent });
       copyText(text).then((ok) => {
-        haptic(10);
+        KN.motion.fire("select");
         if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
         // 断られる端末があります。その時は、長押しで拾えるように出します。
         showPrompt(text);
@@ -31130,7 +31138,7 @@ a.btn { text-decoration: none; }
       const line = res.foods.length
         ? `食品${res.foods.length}件${nSlot ? `・区分${nSlot}件` : ""}と合計を読み取りました`
         : (nSlot ? `区分${nSlot}件と合計を読み取りました` : "合計を読み取りました");
-      if (line !== said) { said = line; KN.ui.toast(line); haptic(); }
+      if (line !== said) { said = line; KN.ui.toast(line); KN.motion.fire("select"); }
     }
 
     aiTa.addEventListener("input", () => {
@@ -31148,7 +31156,7 @@ a.btn { text-decoration: none; }
       paintClear();
       paintAI();
       KN.ui.focusNow(aiTa);
-      haptic();
+      KN.motion.fire("select");
     });
 
     paintClear();
@@ -31165,7 +31173,7 @@ a.btn { text-decoration: none; }
       if (!aiTa.value.trim()) ai = null;
       const rec = store.dayMemo(day);
       store.setDayMemo(day, rec ? rec.memo : "", handItems.concat(aiItem(ai)), ai);
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast("保存しました");
@@ -31484,7 +31492,7 @@ a.btn { text-decoration: none; }
       };
       if (w) store.updateWeight(w.id, patch);
       else store.addWeight(patch);
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast(w ? "直しました" : "記録しました");
@@ -31745,7 +31753,7 @@ a.btn { text-decoration: none; }
       };
       if (meal) store.updateMeal(meal.id, patch);
       else store.addMeal(patch);
-      haptic(10);
+      KN.motion.fire("save");
       h.close();
       render();
       KN.ui.toast(meal ? "直しました" : "記録しました");
@@ -32610,7 +32618,7 @@ distance=6.0km</pre>
   "use strict";
 
   const KN = window.KN;
-  const { html, node, frag, icon, yen, haptic } = KN.util;
+  const { html, node, frag, icon, yen } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -32718,7 +32726,7 @@ distance=6.0km</pre>
      the row that had just appeared — the sheet sat over the list it had
      changed. One add, one close; the ＋ is under the thumb for the next. */
   function openAddSheet() {
-    haptic(10);
+    KN.motion.fire("save");
 
     let picked = null;        // an existing product chosen from the suggestions
     let catTouched = false;   // the category was set by hand, so stop guessing
@@ -32787,7 +32795,7 @@ distance=6.0km</pre>
       favSub.textContent = fav
         ? "今回の買い物としてまとまります"
         : "★を付けると、今回の買い物としてまとまります";
-      haptic(10);
+      KN.motion.fire("save");
     });
 
     /* Everything the name field drives: the button, the suggestions, and —
@@ -32873,7 +32881,7 @@ distance=6.0km</pre>
         const c = store.getCategory(product.categoryId);
         KN.ui.toast(`${c.emoji} ${c.name} に「${product.name}」を追加しました`);
       }
-      haptic(12);
+      KN.motion.fire("save");
       /* Closed, not cleared. Staying open was meant to save a tap on a long
          list written in one sitting, but it left the sheet covering the very
          list it had just changed — so every add ended with a look at a form
@@ -33009,7 +33017,7 @@ distance=6.0km</pre>
       activeId: categoryFilter || "",
       onPick: (id) => {
         categoryFilter = id && id !== categoryFilter ? id : null;
-        haptic();
+        KN.motion.fire("select");
         render();
       },
     });
@@ -33200,7 +33208,7 @@ distance=6.0km</pre>
           const byId = new Map(s.items.map((it) => [it.id, it]));
           ids.forEach((id, k) => { s.items[slots[k]] = byId.get(id); });
         });
-        KN.util.haptic(12);
+        KN.motion.fire("save");
       },
     });
   }
@@ -33314,7 +33322,7 @@ distance=6.0km</pre>
 
       // チェックを外すときは、いつもの軽いハプティックですぐ戻します
       // （取り消しは出来事ではないので、見せ場を作りません。todo と同じ約束）。
-      if (wasChecked) { haptic(12); commit(); return; }
+      if (wasChecked) { KN.motion.fire("save"); commit(); return; }
 
       /* 買った瞬間は、やることと同じ三段です——光る → 落ちる → 組み直す。
          押したそばから店が変わると、火花は散っているのに行はもう無く、
@@ -33368,7 +33376,7 @@ distance=6.0km</pre>
      sitting in the price list as though nothing had been decided about it;
      saying 「しばらく買わない」 once, in one place, is the honest version. */
   function archive(product) {
-    haptic(12);
+    KN.motion.fire("save");
     const undo = store.setArchived(product.id, true);
     KN.ui.toast(`「${product.name}」をアーカイブしました`, {
       action: { label: "元に戻す", onClick: undo },
@@ -33383,7 +33391,7 @@ distance=6.0km</pre>
       const rec = s.items.find((i) => i.id === itemId);
       if (rec) rec.fav = !rec.fav;
     });
-    haptic(12);
+    KN.motion.fire("save");
   }
 
   /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
@@ -33500,7 +33508,7 @@ distance=6.0km</pre>
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, yen, perItemPrice, formatSize, haptic } = KN.util;
+  const { html, node, icon, yen, perItemPrice, formatSize } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -33601,7 +33609,7 @@ distance=6.0km</pre>
       return;
     }
     const p = store.addProduct({ name, categoryId: store.guessCategory(name) });
-    haptic(10);
+    KN.motion.fire("save");
     KN.productSheet.open(p.id);
   }
 
@@ -33632,7 +33640,7 @@ distance=6.0km</pre>
       activeId: categoryFilter || "",
       onPick: (id) => {
         categoryFilter = id && id !== categoryFilter ? id : null;
-        haptic();
+        KN.motion.fire("select");
         renderFilter();
         renderBody();
       },
@@ -33757,7 +33765,7 @@ distance=6.0km</pre>
         const [moved] = ids.splice(from, 1);
         ids.splice(to, 0, moved);
         const first = store.reorderProducts(ids);
-        haptic(12);
+        KN.motion.fire("save");
         // 初めてその棚に手を入れたときだけ、これから何が起きるかを言います。
         if (first) KN.ui.toast("この並びで覚えました（あとから増えた商品は後ろに付きます）");
       },
@@ -33800,7 +33808,7 @@ distance=6.0km</pre>
     }
 
     section.querySelector(".js-toggle").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       store.update((s) => { s.settings.showArchived = !open; });
     });
 
@@ -33915,7 +33923,7 @@ distance=6.0km</pre>
   /** Put this product on the shopping list, or take it off. */
   function toggleListed(product) {
     const item = listedItem(product.id);
-    haptic(14);
+    KN.motion.fire("delete");
     if (!item) {
       store.addItem(product.id);
       KN.ui.toast(`「${product.name}」をリストに追加しました`);
@@ -33961,7 +33969,7 @@ distance=6.0km</pre>
     // Said out loud when it happens, because the row on the other tab
     // disappearing without a word would look like a bug.
     const wasListed = to && !!listedItem(product.id);
-    haptic(14);
+    KN.motion.fire("delete");
     const undo = store.setArchived(product.id, to);
     const said = to
       ? (wasListed ? `「${product.name}」をアーカイブし、リストから外しました`

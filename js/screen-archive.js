@@ -26,7 +26,7 @@
 
   const KN = window.KN;
   const U = KN.util;
-  const { html, node, icon, haptic } = U;
+  const { html, node, icon } = U;
   const store = KN.store;
 
   let root = null;
@@ -146,7 +146,7 @@
     const grid = sec.querySelector(".cal-grid");
 
     const goTo = (delta) => {
-      haptic();
+      KN.motion.fire("select");
       const m = shownMonth();
       const d = new Date(m.year, m.month + delta, 1);
       if (ymOf(d) > ymOf(new Date())) return;   // 先の月には行きません
@@ -155,13 +155,13 @@
       render();
     };
     sec.querySelector(".js-calmore").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       store.update((s) => { s.settings.calOpen = !calOpen(); });
     });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
-      haptic(); viewMonth = null; viewDay = null; render();
+      KN.motion.fire("select"); viewMonth = null; viewDay = null; render();
     });
 
     wireMonthSwipe(sec, grid, goTo);
@@ -214,7 +214,7 @@
         </button>
       `);
       cell.addEventListener("click", () => {
-        haptic();
+        KN.motion.fire("select");
         viewDay = key === today ? null : key;
         viewMonth = ymOf(new Date(year, month, 1)) === ymOf(new Date()) ? null : ymOf(new Date(year, month, 1));
         moveRing(grid, cell);
@@ -328,7 +328,7 @@
       </button>
     `);
     sec.addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       goToDay(then.date);
     });
     return sec;
@@ -487,7 +487,7 @@
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => {
       save();
-      haptic();
+      KN.motion.fire("select");
       h.close();
     });
 
@@ -580,14 +580,14 @@
     `);
     row.querySelector(".arc-row-body").addEventListener("click", () => openEntrySheet(e));
     row.querySelector(".js-favbtn").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       store.toggleFavorite(e.id);
       render();
     });
     const seedCheck = row.querySelector(".js-seedcheck");
     if (seedCheck) {
       seedCheck.addEventListener("click", () => {
-        haptic();
+        KN.motion.fire("select");
         store.promoteSeed(e.id);
         KN.ui.toast("達成にしました");
         render();
@@ -636,14 +636,14 @@
        ...store.ARCHIVE_TYPES.map((t) => ({
          id: t.id, label: t.label, color: t.color, count: counts[t.id] || null,
        }))],
-      { activeId: typeFilter, onPick: (id) => { typeFilter = id; haptic(); render(); } });
+      { activeId: typeFilter, onPick: (id) => { typeFilter = id; KN.motion.fire("select"); render(); } });
 
     sec.querySelector(".js-sort").addEventListener("click", () => {
-      sortMode = nextSort(sortMode); haptic(); render();
+      sortMode = nextSort(sortMode); KN.motion.fire("select"); render();
     });
 
     sec.querySelector(".js-favonly").addEventListener("click", () => {
-      favOnly = !favOnly; haptic(); render();
+      favOnly = !favOnly; KN.motion.fire("select"); render();
     });
 
     const rows = sec.querySelector(".js-rows");
@@ -853,7 +853,7 @@
             ${icon(k.icon, "is-sub")}<span>${k.label}</span>
           </button>
         `);
-        b.addEventListener("click", () => { kind = k.id; haptic(); paintKind(); });
+        b.addEventListener("click", () => { kind = k.id; KN.motion.fire("select"); paintKind(); });
         kindHost.append(b);
       });
     };
@@ -870,7 +870,7 @@
             ${icon(t.icon, "is-sub")}<span>${t.label}</span>
           </button>
         `);
-        b.addEventListener("click", () => { type = t.id; haptic(); paintPick(); paintMode(); });
+        b.addEventListener("click", () => { type = t.id; KN.motion.fire("select"); paintPick(); paintMode(); });
         pick.append(b);
       });
     };
@@ -918,7 +918,7 @@
       }
       if (e) store.updateEntry(e.id, patch);
       else store.addEntry(patch);
-      haptic();
+      KN.motion.fire("select");
       h.close();
       render();
     });
@@ -1074,7 +1074,7 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    haptic();
+    KN.motion.fire("select");
     KN.ui.toast(`${ym} を書き出しました`);
   }
 

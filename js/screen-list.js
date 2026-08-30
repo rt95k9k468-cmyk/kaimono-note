@@ -5,7 +5,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, frag, icon, yen, haptic } = KN.util;
+  const { html, node, frag, icon, yen } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -113,7 +113,7 @@
      the row that had just appeared — the sheet sat over the list it had
      changed. One add, one close; the ＋ is under the thumb for the next. */
   function openAddSheet() {
-    haptic(10);
+    KN.motion.fire("save");
 
     let picked = null;        // an existing product chosen from the suggestions
     let catTouched = false;   // the category was set by hand, so stop guessing
@@ -182,7 +182,7 @@
       favSub.textContent = fav
         ? "今回の買い物としてまとまります"
         : "★を付けると、今回の買い物としてまとまります";
-      haptic(10);
+      KN.motion.fire("save");
     });
 
     /* Everything the name field drives: the button, the suggestions, and —
@@ -268,7 +268,7 @@
         const c = store.getCategory(product.categoryId);
         KN.ui.toast(`${c.emoji} ${c.name} に「${product.name}」を追加しました`);
       }
-      haptic(12);
+      KN.motion.fire("save");
       /* Closed, not cleared. Staying open was meant to save a tap on a long
          list written in one sitting, but it left the sheet covering the very
          list it had just changed — so every add ended with a look at a form
@@ -404,7 +404,7 @@
       activeId: categoryFilter || "",
       onPick: (id) => {
         categoryFilter = id && id !== categoryFilter ? id : null;
-        haptic();
+        KN.motion.fire("select");
         render();
       },
     });
@@ -595,7 +595,7 @@
           const byId = new Map(s.items.map((it) => [it.id, it]));
           ids.forEach((id, k) => { s.items[slots[k]] = byId.get(id); });
         });
-        KN.util.haptic(12);
+        KN.motion.fire("save");
       },
     });
   }
@@ -709,7 +709,7 @@
 
       // チェックを外すときは、いつもの軽いハプティックですぐ戻します
       // （取り消しは出来事ではないので、見せ場を作りません。todo と同じ約束）。
-      if (wasChecked) { haptic(12); commit(); return; }
+      if (wasChecked) { KN.motion.fire("save"); commit(); return; }
 
       /* 買った瞬間は、やることと同じ三段です——光る → 落ちる → 組み直す。
          押したそばから店が変わると、火花は散っているのに行はもう無く、
@@ -763,7 +763,7 @@
      sitting in the price list as though nothing had been decided about it;
      saying 「しばらく買わない」 once, in one place, is the honest version. */
   function archive(product) {
-    haptic(12);
+    KN.motion.fire("save");
     const undo = store.setArchived(product.id, true);
     KN.ui.toast(`「${product.name}」をアーカイブしました`, {
       action: { label: "元に戻す", onClick: undo },
@@ -778,7 +778,7 @@
       const rec = s.items.find((i) => i.id === itemId);
       if (rec) rec.fav = !rec.fav;
     });
-    haptic(12);
+    KN.motion.fire("save");
   }
 
   /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
