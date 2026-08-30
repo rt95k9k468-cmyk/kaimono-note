@@ -2063,18 +2063,31 @@
 
     const move = (ev) => {
       if (!tlDrag) return;
-      ev.preventDefault();
       aim(ev.clientX, ev.clientY);
     };
-    const up = () => {
+    /* 運んでいるあいだ、画面のほうは動かしません。
+
+       **これは pointermove では止まりません。** そちらで preventDefault
+       しても、指で画面を送るのを止めるのは touchmove のほうです。止め
+       そこねるとブラウザが画面を送りはじめ、そのとき指の追跡ごと取り
+       上げられます（pointercancel）——指はまだ触れているのに、運ぶのが
+       終わる。touch-action: none は持ち上げたあとに付けているので、
+       すでに始まっている指の動きには効きません。ここで押さえます。 */
+    const hold = (ev) => { if (tlDrag) ev.preventDefault(); };
+    const off = () => {
       document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", up);
-      document.removeEventListener("pointercancel", up);
-      drop();
+      document.removeEventListener("touchmove", hold);
+      document.removeEventListener("pointerup", done);
+      document.removeEventListener("pointercancel", give);
     };
-    document.addEventListener("pointermove", move, { passive: false });
-    document.addEventListener("pointerup", up);
-    document.addEventListener("pointercancel", up);
+    const done = () => { off(); drop(true); };
+    /* 取り上げられたときは、**置きません**。指を離していないのだから、
+       まだどこへ置くとも言っていません。 */
+    const give = () => { off(); drop(false); };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("touchmove", hold, { passive: false });
+    document.addEventListener("pointerup", done);
+    document.addEventListener("pointercancel", give);
     aim(row.getBoundingClientRect().left + 20, y0);
   }
 
@@ -2122,8 +2135,11 @@
     d.target = { kind: "order", id: anchor.dataset.todoId, before: !!before };
   }
 
-  /** つまんだ手を離したところ。 */
-  function drop() {
+  /** つまんだ手を離したところ。
+   *  @param {boolean} commit 置くかどうか。指を離したなら true。
+   *    ブラウザに指の追跡を取り上げられた（pointercancel）ときは false
+   *    ——**離していないのだから、まだどこへ置くとも言っていません。** */
+  function drop(commit) {
     const d = tlDrag;
     tlDrag = null;
     if (!d) return;
@@ -2144,7 +2160,7 @@
        ——置いたままだと、次にどこかを押したときに食べてしまいます。 */
     if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);
     const t = store.getTodo(d.id);
-    if (!d.target || !t) { render(); return; }
+    if (!commit || !d.target || !t) { render(); return; }
 
     if (d.target.kind === "time") {
       const at = KN.plan.toTime(d.target.at);
