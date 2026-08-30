@@ -28031,8 +28031,23 @@ a.btn { text-decoration: none; }
     const appEl = document.getElementById("app");
     const visibleBottom = (appEl ? appEl.getBoundingClientRect().bottom : window.innerHeight) - KB_MARGIN;
     const over = field.getBoundingClientRect().bottom - visibleBottom;
-    if (over <= 2) return;                       // すでに見えている
-    const target = Math.round(root.scrollTop + over);
+
+    /* 足りないぶんだけ持ち上げる——だけでなく、**行きすぎたぶんは戻します**。
+
+       欄に触れると、ブラウザ自身も「見えるところへ」動かします。ところが
+       その動きは必要最小限とは限らず、実際この画面では必要な548に対して
+       732まで送っていました（欄が真ん中あたりに来る位置）。こちらは
+       「もう見えている」と判断して何もしないので、行きすぎがそのまま
+       残ります——押した欄が画面のずっと上のほうへ飛んだように見えます。
+
+       上へ戻すのは、**始めた位置より上には行かない**範囲だけです。
+       そこから先は、その人が自分で見ていた場所なので。 */
+    const SLACK = 24;            // これ以内の行きすぎは、直しません（揺り戻しに見えるので）
+    if (over <= 2 && !(kbScrollBase != null && over < -SLACK
+                       && root.scrollTop > kbScrollBase)) return;
+    const want = root.scrollTop + over;
+    const target = Math.round(kbScrollBase != null ? Math.max(kbScrollBase, want) : want);
+    if (Math.abs(target - root.scrollTop) < 3) return;
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
     kbMoved = true;
@@ -28095,9 +28110,16 @@ a.btn { text-decoration: none; }
         const active = document.activeElement;
         const stillTyping = active && root.contains(active) && active.matches("input, textarea, select");
         if (stillTyping) return;
-        /* 戻すのは、**こちらが動かしたとき**だけです。ブラウザが欄を見せる
-           ために動かしたぶんまで戻すと、打ち終えた瞬間にまた画面が飛びます。 */
-        if (kbMoved) KN.app.glideTo(root, kbScrollBase);
+        /* **動いたぶんは、誰が動かしたのであれ戻します。**
+
+           ここは長らく「こちらが動かしたときだけ」でした。ところが実際に
+           動かしているのはたいていブラウザのほうで（欄に触れた時点で自分で
+           送ります）、こちらは何もしていない。結果、打ち終えて閉じても
+           画面は送られたままで、見ていた場所は自分で探し直しでした。
+
+           誰が動かしたかは、その人には関係のない話です。触れる前に見て
+           いた場所へ、静かに戻します。 */
+        if (Math.abs(root.scrollTop - kbScrollBase) > 2) KN.app.glideTo(root, kbScrollBase);
         kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
