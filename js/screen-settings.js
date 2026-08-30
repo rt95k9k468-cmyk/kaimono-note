@@ -689,7 +689,11 @@
   function snapshotSub() {
     const snaps = KN.backup.list();
     if (!snaps.length) return "アプリ内に自動保存された控えはまだありません";
-    return `${snaps.length}件・最新 ${snapStamp(snaps[0].at)}`;
+    /* どこまで戻せるかを言います。件数だけでは「いつまで遡れるか」が
+       分からず、いざというときに開いてみるまで分かりません。 */
+    const oldest = snaps[snaps.length - 1];
+    return `${snaps.length}件・最新 ${snapStamp(snaps[0].at)}`
+      + (snaps.length > 1 ? `（${snapStamp(oldest.at)} まで戻せます）` : "");
   }
 
   /* ---------------- 記録の書き出し ----------------
