@@ -72,7 +72,17 @@
          うちは当たり障りのないことしか言えません——出しておくと、画面の
          一等地を「大したことを言っていない枠」が占めます。要ると思ったときに
          設定から出せます。 */
-      settings: { theme: "auto", accent: "orange", showChecked: true, layout: "rows", showInsight: false },
+      /* searchBar は既定で false です。探すのはたまにすることなのに、窓は
+         いつも一等地に居座っていました。虫めがねを押せば出るので、置き
+         っぱなしにする理由がありません。
+
+         digest（daily の月のまとめ）は既定で true・下です——これまでも
+         daily ログの下に出ていたので、いまお使いの方の画面が変わりません。
+         要らない方は設定で消せます。 */
+      settings: {
+        theme: "auto", accent: "orange", showChecked: true, layout: "rows",
+        showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
+      },
     };
   }
 
@@ -506,6 +516,7 @@
     /* 知らない基調色は、既定へ戻します。色を減らした・名前を変えたときに、
        選んだ覚えのない色で画面が出てこないように。 */
     out.settings.accent = cleanAccent(out.settings.accent);
+    out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];

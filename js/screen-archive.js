@@ -1242,10 +1242,14 @@
     /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
        「その月の成績」に見えるので、必ず地の文の隣に並べる、という
        決めごとです（daily-rules.js が見張っています）。 */
-    const log = dailyLog(ym), digest = monthDigest(ym), entries = entriesSection(ym);
+    const log = dailyLog(ym), entries = entriesSection(ym);
+    /* まとめは設定で出し入れできます。出すときは、上か下かのどちらか一方
+       ——日の間には決して挟みません。挟むと「その日のまとめ」に見えます。 */
+    const digest = S().showDigest === false ? null : monthDigest(ym);
     const logBlock = document.createDocumentFragment();
+    if (digest && S().digestPos === "top") logBlock.append(digest);
     logBlock.append(log);
-    if (digest) logBlock.append(digest);
+    if (digest && S().digestPos !== "top") logBlock.append(digest);
     if (S().dailyOrder === "entries") els.body.append(entries, logBlock);
     else els.body.append(logBlock, entries);
 
