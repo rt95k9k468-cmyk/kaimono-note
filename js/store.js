@@ -72,7 +72,7 @@
          うちは当たり障りのないことしか言えません——出しておくと、画面の
          一等地を「大したことを言っていない枠」が占めます。要ると思ったときに
          設定から出せます。 */
-      settings: { theme: "auto", showChecked: true, layout: "rows", showInsight: false },
+      settings: { theme: "auto", accent: "orange", showChecked: true, layout: "rows", showInsight: false },
     };
   }
 
@@ -95,6 +95,24 @@
   function emptyArchive() {
     return { entries: [], days: [] };
   }
+
+  /* ---------------- 基調色 ----------------
+
+     選べる基調色の一覧です。**実際の色は CSS が持ちます**（base.css の
+     :root[data-accent="…"]）。ここにあるのは、id と名前と、設定画面の
+     見本に出す一色だけ——同じ数値を二か所に書くと、片方だけ直したときに
+     静かに食い違うので。
+
+     id は data-accent の値になります。既定のオレンジだけは札を付けない
+     ので（:root の素の値がそのまま効きます）、CSS 側に規則がありません。 */
+  const ACCENTS = [
+    { id: "orange", label: "オレンジ", swatch: "#d9662a" },
+    { id: "green",  label: "みどり",   swatch: "#2f8f5b" },
+    { id: "blue",   label: "あお",     swatch: "#2f72c4" },
+    { id: "violet", label: "むらさき", swatch: "#7a5bd0" },
+    { id: "rose",   label: "ももいろ", swatch: "#c8476f" },
+  ];
+  const cleanAccent = (v) => (ACCENTS.some((a) => a.id === v) ? v : "orange");
 
   /* 五つの種類。色は「意味」ではなく「見分け」のために持たせます——月の
      一覧で目が種類ごとにまとまるだけで、良し悪しは一切言いません。
@@ -485,6 +503,9 @@
     const base = emptyState();
     const out = { ...base, ...s };
     out.settings = { ...base.settings, ...(s.settings || {}) };
+    /* 知らない基調色は、既定へ戻します。色を減らした・名前を変えたときに、
+       選んだ覚えのない色で画面が出てこないように。 */
+    out.settings.accent = cleanAccent(out.settings.accent);
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
@@ -2802,7 +2823,7 @@
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, markSyncLocked, clearDiet,
-    ARCHIVE_TYPES, archiveType,
+    ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
