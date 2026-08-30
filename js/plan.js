@@ -43,9 +43,14 @@
      という当たりです（人が決めた数があれば、必ずそちらを使います）。 */
   const DEFAULT_MINUTES = 30;
 
-  /* 一日の枠。ここから外は「今日」として扱いません。設定で動かせます。 */
-  const DEFAULT_START = "07:00";
-  const DEFAULT_END = "22:00";
+  /* 一日の枠。ここから外は「今日」として扱いません。設定で動かせます。
+
+     5:00〜23:00 にしてあります。7:00〜22:00 では、早い朝と遅い夜が枠の
+     外に落ちました——早起きして片づけたものが「はみ出し」になったり、
+     寝る前の用事が置けなかったり。広めに取って、実際の暮らしに合わせて
+     設定で狭めてもらうほうが、間違いが少ない。 */
+  const DEFAULT_START = "05:00";
+  const DEFAULT_END = "23:00";
 
   /* これ未満の空きは、空きと呼びません。5分の隙間を「自由時間」と
      書かれても、何にも使えないので。 */
@@ -158,9 +163,27 @@
     const blocks = [];   // ふさがっている時間帯
 
     /* 済んだものは、詰め直しの対象になりません。もうやったことなので
-       朝のところに置いたままにして、これからの時間は食べさせません。 */
+       置いたままにして、これからの時間は食べさせません。 */
     const doneOf = (t) => !!(t.done || t.archived);
     const floorFor = (t) => (now != null && !doneOf(t) ? Math.max(dayStart, now) : dayStart);
+
+    /* 済ませた**実際の時刻**。doneAt はもともと時刻まで持っていました
+       （ISO の刻印）が、組み立てが読んでいませんでした。読まないと、
+       済んだものが一日の頭から順に詰められて、朝に済ませたことになります
+       ——それは作り話です。押した時刻に置きます。
+
+       終わりがその時刻で、始まりはそこから長さぶん手前。「10:42 に押した、
+       20分かかった」を素直に読むと、10:22〜10:42 です。 */
+    function doneSpan(t) {
+      if (!doneOf(t) || !t.doneAt) return null;
+      const d = new Date(t.doneAt);
+      if (isNaN(d.getTime())) return null;
+      if (U.dayKey(d) !== day) return null;          // 別の日に押したもの
+      const end = d.getHours() * 60 + d.getMinutes();
+      const len = minutesOf(t);
+      if (end <= dayStart) return null;              // 枠の外。ふつうに詰めます
+      return { start: Math.max(dayStart, end - len), end };
+    }
 
     /* ---- ① 時刻を持つものに、先に場所を与える ----
 
@@ -187,11 +210,16 @@
       let c = from;
       list.forEach((t) => {
         const len = minutesOf(t);
-        const start = firstGap(Math.max(c, floorFor(t)), len, blocks);
-        items.push({ todo: t, atMin: start, untilMin: start + len,
-                     minutes: len, fixed: false, clash: false });
-        addBlock(blocks, start, start + len);
-        c = start + len;
+        /* 済ませたものは、押した時刻に置きます（詰めません）。
+           押した記録が無いものだけ、順に詰めます。 */
+        const span = doneSpan(t);
+        const start = span ? span.start : firstGap(Math.max(c, floorFor(t)), len, blocks);
+        const until = span ? span.end : start + len;
+        items.push({ todo: t, atMin: start, untilMin: until,
+                     minutes: until - start, fixed: false, clash: false,
+                     doneAtMin: span ? span.end : null });
+        addBlock(blocks, start, until);
+        if (!span) c = until;
       });
       return c;
     }

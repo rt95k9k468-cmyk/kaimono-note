@@ -2850,8 +2850,14 @@ a.btn { text-decoration: none; }
   grid-template-columns: 44px 56px 1fr;
   align-items: start;
 }
+/* 時刻と丸は、行の**まん中**に置きます。
+
+   前は上から決まった距離に置いていました。すると、行の高さが中身で
+   変わる（メモがある／長さを書いた／二行の題）たびに、丸と題が上下に
+   ずれます。参考画面もここは中心合わせで、時刻の字の中心と丸の中心が
+   揃っています。 */
 .tl-time {
-  padding-top: 18px;
+  align-self: center;
   padding-right: 3px;
   font-size: var(--fs-sm);
   color: var(--c-text-3);
@@ -2891,8 +2897,8 @@ a.btn { text-decoration: none; }
 /* 線の上の丸。中身は手描きアイコン、地は棚の色をごく薄く。 */
 .tl-node {
   position: absolute;
-  left: 50%; top: 11px;
-  transform: translateX(-50%);
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
   display: grid; place-items: center;
   width: 50px; height: 50px;
   border-radius: var(--r-full);
@@ -2986,6 +2992,7 @@ a.btn { text-decoration: none; }
 .tl-free-row { min-height: 50px; }
 .tl-free-row .tl-rail { min-height: 50px; }
 .tl-free-text {
+  align-self: center;
   padding: 16px var(--sp-4) 16px 8px;
   font-size: var(--fs-sm);
   color: var(--c-text-3);
@@ -2997,7 +3004,8 @@ a.btn { text-decoration: none; }
 .tl-now .tl-rail::before { background: color-mix(in srgb, var(--c-primary) 26%, transparent); }
 .tl-now-dot {
   position: absolute;
-  left: 50%; top: 12px;
+  left: 50%; top: 50%;
+  margin-top: -5.5px;
   width: 11px; height: 11px;
   margin-left: -5.5px;
   border-radius: var(--r-full);
@@ -3005,9 +3013,9 @@ a.btn { text-decoration: none; }
   box-shadow: 0 0 0 4px var(--c-bg);
 }
 .tl-now-line {
-  align-self: start;
+  align-self: center;
   height: 2px;
-  margin: 17px var(--sp-4) 0 8px;
+  margin: 0 var(--sp-4) 0 8px;
   border-radius: 1px;
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--c-primary) 55%, transparent),
@@ -3015,9 +3023,74 @@ a.btn { text-decoration: none; }
 }
 
 /* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
-   線だけが下へ伸びていると「まだ続く」と読めてしまいます。 */
-.tl-list > li:last-child .tl-rail::before { bottom: auto; height: 61px; }
+   線だけが下へ伸びていると「まだ続く」と読めてしまいます。
+   丸は行のまん中にあるので、そこまで（50% ＋ 丸の半径）。 */
+.tl-list > li:last-child .tl-rail::before { bottom: auto; height: calc(50% + 25px); }
 
 /* 過ぎた空き。もう使えないので、線も字も一段薄く。消しはしません
    ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
 .tl-free-row.is-past { opacity: .6; }
+
+/* ---------------- 済ませたときの動き（時間割） ----------------
+
+   時間割の行は、済ませても**消えません**（今日それをした、が残るので）。
+   なので一覧の「光って畳まれて消える」は使えません。かわりに、
+
+     ① 題の上を、線が左から右へ引かれる
+     ② 丸がひと回り大きくなって、戻る（ピコン）
+
+   の二つを同時に出します。線が引かれ終わったところで store を更新すると、
+   本物の text-decoration に引き継がれます——動きと結果が同じ形なので、
+   切り替わったことに気づきません。 */
+
+.tl-item.is-striking .item-name {
+  /* 線は背景で引きます。text-decoration は動かせないので。
+     currentColor の細い帯を、幅0から100%へ伸ばします。 */
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  background-size: 0% 1.5px;
+  animation: tl-strike var(--m-strike) var(--ease-out) forwards;
+}
+@keyframes tl-strike {
+  from { background-size: 0% 1.5px; }
+  to   { background-size: 100% 1.5px; }
+}
+
+/* 丸のピコン。行き過ぎて戻る曲線（--spring）で、ひと回りだけ。
+   済ませた瞬間に**指の下ではないところ**が動くので、押した先とは別に
+   「その用事が片づいた」ことが見えます。 */
+.tl-node.is-pop { animation: tl-pop var(--m-strike) var(--spring); }
+@keyframes tl-pop {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  38%  { transform: translate(-50%, -50%) scale(1.16); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 外すときは、逆に引っ込みます。線は消え、丸は一度縮んで戻ります。 */
+.tl-node.is-unpop { animation: tl-unpop var(--m-check) var(--ease-out); }
+@keyframes tl-unpop {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  40%  { transform: translate(-50%, -50%) scale(.86); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+.tl-item.is-unstriking .item-name {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 100% 58%;
+  animation: tl-unstrike var(--m-check) var(--ease-in) forwards;
+}
+@keyframes tl-unstrike {
+  from { background-size: 100% 1.5px; }
+  to   { background-size: 0% 1.5px; }
+}
+
+/* 済ませた行の、済ませた時刻。押した時刻をそのまま出します
+   （組み立てもこの時刻でその用事を置きます）。 */
+.tl-done-at { color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+
+/* 翌日以降の棚も、時間割のときは枠から出します（今日と同じ顔に）。
+   棚の色の帯も外します——時間軸のほうが「いつ」を言っているので、
+   帯の色は同じことを二度言っているだけになります。 */
+.todo-group.is-tl { margin-left: 0; margin-right: 0; }
+.todo-group.is-tl .todo-head { padding-left: var(--sp-4); padding-right: var(--sp-4); }
