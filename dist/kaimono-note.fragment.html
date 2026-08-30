@@ -5425,7 +5425,9 @@ a.btn { text-decoration: none; }
   /* 一様な色を敷いて、**左から右へ見せていきます**。通り過ぎる光では
      なく、塗られたところは塗られたまま。線と同じ動き方なので、二つが
      一緒に走って見えます。塗り終えてから、面ごと引きます。 */
-  background: color-mix(in srgb, var(--c-primary) 16%, transparent);
+  /* 色は**その用事の色**——丸のまわりと同じ棚の色です。緑にすると押した
+     丸の色が段ぜんぶへ広がって見え、その用事が何の仲間だったかが消えます。 */
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 22%, transparent);
   animation: tl-flash var(--strike-ms, var(--m-strike)) var(--ease-out) forwards;
 }
 @keyframes tl-flash {
@@ -5466,7 +5468,13 @@ a.btn { text-decoration: none; }
   transform: scale(.98);
   transition: opacity var(--m-press) var(--ease), transform var(--m-press) var(--ease);
 }
-.tl-list.is-dragging { touch-action: none; }
+/* 運んでいるあいだは、指は運ぶためのものです。長押しはふつう文字を
+   選ぶ合図なので、そのままだと運びながら題が青く反転していきました。 */
+.tl-list.is-dragging {
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
 .tl-list.is-dragging .tl-row { transition: transform var(--m-reorder) var(--ease-out); }
 
 /* 置き場の印。用事のあいだへ入るときは、その境目に線を引きます。 */
@@ -5506,10 +5514,13 @@ a.btn { text-decoration: none; }
   border-radius: var(--r-md);
   border: 1.5px dashed var(--c-border);
   background: color-mix(in srgb, var(--c-primary) 5%, transparent);
-  animation: tl-band-in var(--m-sheet-open) var(--spring) both;
+  /* **高さは動かしません。** 高さを 0 から伸ばすと、掴んでいるあいだ
+     ずっと下の行が動きつづけて、狙った先が指の下から逃げていきました。
+     広がりは一度で決まり、変わるのは濃さだけにします。 */
+  animation: tl-band-in var(--m-sheet-open) var(--ease-out) both;
 }
 @keyframes tl-band-in {
-  from { height: 0; opacity: 0; margin-top: 0; margin-bottom: 0; }
+  from { opacity: 0; }
 }
 .tl-free-row.is-aim .tl-band {
   border-style: solid;
@@ -26659,7 +26670,11 @@ a.btn { text-decoration: none; }
        ——線が引き終わったところで store を更新すると、本物の取り消し線に
        そのまま引き継がれます。 */
     const tl = checkEl && checkEl.closest(".tl-row");
-    if (tl && !t.repeat) {
+    /* 繰り返しのものも、**同じ動き**で済ませます。ここで外していたので、
+       毎朝のものだけ線も光りもなく、その場で組み直されて行が飛んでいま
+       した。繰り返しは済ませると今日に記録が残り、元が翌日へ行く——行は
+       その場に残るので、他と同じ見せ方でそのまま通ります。 */
+    if (tl) {
       const item = tl.querySelector(".tl-item");
       const node0 = tl.querySelector(".tl-node");
       finishing.add(id);
@@ -27420,6 +27435,8 @@ a.btn { text-decoration: none; }
     KN.motion.fire("reorder");
     row.classList.add("is-lifted");
     list.classList.add("is-dragging");
+    /* 持ち上がるまでの0.38秒で、もう選ばれていることがあります。 */
+    try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
 
     /* 運び終えた指は、離したところで click も起こします。本文は押すと
        詳細が開くので、そのままだと**置きなおすたびに詳細が開いて**
@@ -27436,6 +27453,10 @@ a.btn { text-decoration: none; }
        15分きざみの札を敷き詰めていましたが、昼の空きひとつで札が60枚
        出て、時間帯を選ぶというより数字の壁を読む作業になっていました。
        帯なら、長い空きは長く見えます——空きの**量**も同時に読めます。 */
+    /* 開くと、そのぶん下がぜんぶ押し下がります。掴んでいる行が指の下から
+       逃げると、狙ったところに置けません——**掴んだ行が動かないように**、
+       広がった量だけ画面のほうをずらします。上で開いたぶんだけ、下へ。 */
+    const before = row.getBoundingClientRect().top;
     list.querySelectorAll(".tl-free-row").forEach((fr) => {
       const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
       if (!isFinite(from) || !isFinite(until) || until - from < len) return;
@@ -27447,6 +27468,11 @@ a.btn { text-decoration: none; }
         </span>
       `));
     });
+    const scroller = list.closest(".screen") || document.scrollingElement;
+    if (scroller) {
+      const shift = Math.round(row.getBoundingClientRect().top - before);
+      if (shift) scroller.scrollTop += shift;
+    }
 
     const move = (ev) => {
       if (!tlDrag) return;
