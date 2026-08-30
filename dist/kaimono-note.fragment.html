@@ -26068,6 +26068,20 @@ a.btn { text-decoration: none; }
             決めなければ 30分ぶんの場所を取ります。</span>
         </div>
 
+        ${/* **その長さが入る空き**を、そのまま押せる形で出します。
+
+              時刻を決めるのに時計の欄を開いて「何時なら空いていたか」を
+              思い出させるのは、この画面がもう知っていることを人にやらせて
+              います。長さが決まった時点で答えは出せるので、押せば決まる形
+              で置きます。
+
+              入る空きが無い日は、何も出しません——入らない時間を勧める
+              くらいなら、黙っているほうがいい。 */""}
+        <div class="field js-slot-field" hidden>
+          <span class="field-label">空いているところ</span>
+          <div class="js-slots"></div>
+        </div>
+
         ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
               その上に「くりかえし」と重ねて言う必要がありません。 */""}
         <div class="field">
@@ -26218,6 +26232,49 @@ a.btn { text-decoration: none; }
           minutes = id ? Number(id) : null;
           KN.motion.fire("select");
           paintMins();
+          paintSlots();
+        },
+      });
+    }
+
+    /* その日の組み立てを引いて、いま決めている長さが入る空きを出します。
+
+       いま直している一件は、組み立てから**外して**数えます。入れたまま
+       だと、自分がすでに占めている場所を「空いていません」と自分に言い
+       返すことになります。 */
+    const slotField = body.querySelector(".js-slot-field");
+    const slotHost = body.querySelector(".js-slots");
+    function paintSlots() {
+      const day = due;
+      if (!day) { slotField.hidden = true; return; }
+      /* その日のものを、そのまま拾います。**todosDue は使えません**
+         ——あれは日を取らず、「いま来ているもの」を返します（お知らせ用）。
+         渡した日は黙って捨てられ、時刻がまだ来ていない用事が居ないことに
+         なって、一日じゅう空いているという答えが返っていました。
+
+         済ませたものも渡します。組み立て側が、済んだものは「これからの
+         時間」を食べないように扱います（時間割と同じ）。 */
+      const rows = store.get().todos.filter((x) => x.due === day && !x.archived && !x.trace
+        && (!editing || x.id !== todoId));
+      const isToday = day === todayKey();
+      const cfg = store.get().settings;
+      const plan = KN.plan.buildDay(day, rows, {
+        start: cfg.dayStart, end: cfg.dayEnd,
+        now: isToday ? KN.util.nowTime() : null,
+      });
+      const slots = KN.plan.slotsFor(plan, minutes || KN.plan.DEFAULT_MINUTES,
+        isToday ? KN.util.nowTime() : "00:00");
+      slotField.hidden = !slots.length;
+      if (!slots.length) return;
+      KN.ui.chipRow(slotHost, slots.map((s) => ({ id: s.at, label: s.at })), {
+        activeId: time || "",
+        onPick: (id) => {
+          /* もう一度押したら外れます。決めたものを外す道が無いのは不便です。 */
+          time = time === id ? null : id;
+          KN.motion.fire("select");
+          paintPart();
+          paintHint();
+          paintSlots();
         },
       });
     }
@@ -26244,11 +26301,13 @@ a.btn { text-decoration: none; }
       // 毎朝・毎晩はそのまま。時刻は「いつ報せるか」なので、並ぶ場所とは別。
       paintPart();
       paintHint();
+      paintSlots();      // 自分で打った時刻も、札のほうに映します
     });
     timeClear.addEventListener("click", () => {
       time = null;
       paintPart();
       paintHint();
+      paintSlots();
       haptic();
     });
 
@@ -26256,6 +26315,7 @@ a.btn { text-decoration: none; }
     paintDueEmpty();
     paintPart();
     paintHint();
+    paintSlots();
 
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
@@ -26267,6 +26327,7 @@ a.btn { text-decoration: none; }
       paintDueChips();
       paintPart();
       paintHint();
+      paintSlots();      // 日が変われば、空いているところも変わります
       if (dropped) paintRepeat(); else paintRepeatDetail();
     });
 
