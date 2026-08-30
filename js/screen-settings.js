@@ -150,6 +150,11 @@
           <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
           <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
         </div>
+
+        ${/* 基調色。明暗とは別の軸なので、その下に並べます（「あおの、暗い面」
+              のように掛け合わさるもの）。名前だけでは何色か分からないので、
+              実物の丸を添えます——選ぶのは名前ではなく色なので。 */""}
+        <div class="accent-row js-accents" role="group" aria-label="基調色"></div>
         ${/* アイコンの数は「表示」に置きます。数えているのは買うものと
               やることの **両方** なので、どちらか一方のタブのものでは
               ありません（時刻のお知らせは、やることだけの話なので
@@ -174,6 +179,33 @@
         haptic();
       });
     });
+
+    /* 基調色の丸。押すとその場で画面ぜんぶの色が変わります——設定を出たり
+       入ったりしないと確かめられない選択は、選びようがないので。 */
+    const accents = wrap.querySelector(".js-accents");
+    function paintAccents() {
+      const now = store.get().settings.accent || "orange";
+      accents.innerHTML = "";
+      store.ACCENTS.forEach((a) => {
+        const on = a.id === now;
+        const b = node(html`
+          <button type="button" class="accent-dot ${on ? "is-on" : ""}"
+                  data-accent="${a.id}" aria-pressed="${String(on)}"
+                  aria-label="${a.label}" title="${a.label}">
+            <span class="accent-swatch" style="background:${a.swatch}"></span>
+            <span class="accent-name">${a.label}</span>
+          </button>
+        `);
+        b.addEventListener("click", () => {
+          store.update((s) => { s.settings.accent = a.id; });
+          KN.app.applyAccent(a.id);
+          KN.motion.fire("select", b);
+          paintAccents();
+        });
+        accents.append(b);
+      });
+    }
+    paintAccents();
 
     /* Only where there is an icon to badge. In a browser tab the API is not
        there at all, and a switch that does nothing is worse than no switch. */

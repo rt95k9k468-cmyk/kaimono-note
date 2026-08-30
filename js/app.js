@@ -61,6 +61,20 @@
   }
   KN.app.applyTheme = applyTheme;
 
+  /* 基調色。明暗（data-theme）とは**別の軸**なので、別の札で持ちます
+     ——「青の、暗い面」のように二つは掛け合わさるものだからです。
+
+     既定（オレンジ）のときは札を付けません。付けないほうが :root の素の値が
+     そのまま効いて、規則が一段浅く済みます。 */
+  function applyAccent(accent) {
+    const root = document.documentElement;
+    const known = (KN.store && KN.store.ACCENTS) || [];
+    const ok = known.some((a) => a.id === accent);
+    if (ok && accent !== "orange") root.setAttribute("data-accent", accent);
+    else root.removeAttribute("data-accent");
+  }
+  KN.app.applyAccent = applyAccent;
+
   /* ---------------- tabs ---------------- */
 
   function buildTabs() {
@@ -314,6 +328,7 @@
 
   function boot() {
     applyTheme(store.get().settings.theme || "auto");
+    applyAccent(store.get().settings.accent || "orange");
     buildTabs();
 
     const fromHash = location.hash.slice(1);

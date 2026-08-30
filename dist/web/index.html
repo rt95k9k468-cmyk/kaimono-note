@@ -1028,6 +1028,116 @@ a { color: var(--c-primary); }
 .has-fab.kb-open .dock { opacity: 0; pointer-events: none; transform: translateY(120%); }
 .has-fab .dock { transition: opacity var(--m-nav) var(--ease), transform var(--m-nav) var(--ease-out); }
 
+/* =========================================================
+   基調色（accent themes）
+
+   明暗（data-theme）とは別の軸です。「青の、暗い面」のように二つは
+   掛け合わさるので、札を分けてあります。
+
+   差し替えるのは brand の四つと、値札の accent だけ。ほかは触りません
+   ——からだの四つの輪（歩数・総消費・睡眠・飲酒）と手描きアイコンの配色は、
+   それぞれ「どの指標か」「何の品物か」を言うための色で、アプリの基調色とは
+   別の仕事をしています。基調が変わるたびに卵の黄身の色が変わったら困る。
+
+   **値札（--c-accent）は、基調色と必ず色相を離します。** ここは「いちばん
+   安い」を言う場所で、ふつうのボタンと同じ色になると埋もれます。だから
+   基調が暖色なら値札は寒色、基調が寒色なら値札は暖色、と組にしてあります。
+
+   既定のオレンジには規則がありません（:root の素の値がそのまま効きます）。
+   ========================================================= */
+
+/* ---- みどり（もとの基調色） ---- */
+:root[data-accent="green"] {
+  --c-primary:     #2f8f5b;
+  --c-primary-2:   #26744a;
+  --c-primary-soft:#e4f2ea;
+  --c-primary-ink: #1d5b39;
+  --c-accent:      #d8722f;
+  --c-accent-soft: #fdefe3;
+  --c-accent-ink:  #9c4c14;
+}
+/* ---- あお ---- */
+:root[data-accent="blue"] {
+  --c-primary:     #2f72c4;
+  --c-primary-2:   #245a9e;
+  --c-primary-soft:#e3edfa;
+  --c-primary-ink: #1b4576;
+  --c-accent:      #d8722f;
+  --c-accent-soft: #fdefe3;
+  --c-accent-ink:  #9c4c14;
+}
+/* ---- むらさき ---- */
+:root[data-accent="violet"] {
+  --c-primary:     #7a5bd0;
+  --c-primary-2:   #6446b4;
+  --c-primary-soft:#ece6fa;
+  --c-primary-ink: #4d3488;
+  --c-accent:      #d8722f;
+  --c-accent-soft: #fdefe3;
+  --c-accent-ink:  #9c4c14;
+}
+/* ---- ももいろ ---- */
+:root[data-accent="rose"] {
+  --c-primary:     #c8476f;
+  --c-primary-2:   #a83557;
+  --c-primary-soft:#fbe6ec;
+  --c-primary-ink: #832743;
+  --c-accent:      #2f7fb8;
+  --c-accent-soft: #e4f1fa;
+  --c-accent-ink:  #1c5678;
+}
+
+/* ---- 暗い面 ----
+   同じ考え方で、暗い地に沈まないよう明るいほうへ振ります。
+   自動（システムに従う）と、自分で暗いを選んだとき、両方に効かせます。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="green"],
+  :root[data-theme="dark"][data-accent="green"] {
+    --c-primary: #57b681; --c-primary-2: #6cc794;
+    --c-primary-soft: #1d2f24; --c-primary-ink: #9ddcb8;
+    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+  }
+  :root:not([data-theme="light"])[data-accent="blue"],
+  :root[data-theme="dark"][data-accent="blue"] {
+    --c-primary: #62a3e8; --c-primary-2: #7fb6ef;
+    --c-primary-soft: #17273a; --c-primary-ink: #a6cdf5;
+    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+  }
+  :root:not([data-theme="light"])[data-accent="violet"],
+  :root[data-theme="dark"][data-accent="violet"] {
+    --c-primary: #a98ce8; --c-primary-2: #bda4ef;
+    --c-primary-soft: #241e3a; --c-primary-ink: #cfbdf5;
+    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+  }
+  :root:not([data-theme="light"])[data-accent="rose"],
+  :root[data-theme="dark"][data-accent="rose"] {
+    --c-primary: #e07a9c; --c-primary-2: #ea97b3;
+    --c-primary-soft: #331b24; --c-primary-ink: #f3bccd;
+    --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
+  }
+}
+/* 自分で「暗い」を選んだときは、システムの設定に関わらず効かせます。 */
+:root[data-theme="dark"][data-accent="green"] {
+  --c-primary: #57b681; --c-primary-2: #6cc794;
+  --c-primary-soft: #1d2f24; --c-primary-ink: #9ddcb8;
+  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+}
+:root[data-theme="dark"][data-accent="blue"] {
+  --c-primary: #62a3e8; --c-primary-2: #7fb6ef;
+  --c-primary-soft: #17273a; --c-primary-ink: #a6cdf5;
+  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+}
+:root[data-theme="dark"][data-accent="violet"] {
+  --c-primary: #a98ce8; --c-primary-2: #bda4ef;
+  --c-primary-soft: #241e3a; --c-primary-ink: #cfbdf5;
+  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+}
+:root[data-theme="dark"][data-accent="rose"] {
+  --c-primary: #e07a9c; --c-primary-2: #ea97b3;
+  --c-primary-soft: #331b24; --c-primary-ink: #f3bccd;
+  --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
+}
+
 /* ---- css/components.css ---- */
 /* =========================================================
    くらしノート — reusable components
@@ -5823,6 +5933,39 @@ a.btn { text-decoration: none; }
   font-variant-numeric: tabular-nums;
   color: var(--c-text);
 }
+
+/* ---------------- 基調色を選ぶ ----------------
+
+   明暗の三択のすぐ下に並べます（別の軸ですが、どちらも「表示」の話なので）。
+   名前だけでは何色か分からないので、実物の丸を添えます——選ぶのは名前では
+   なく色なので。選んでいるものは、輪で囲って示します。 */
+.accent-row {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-top: 12px;
+}
+.accent-dot {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-md);
+}
+.accent-swatch {
+  width: 32px; height: 32px;
+  border-radius: var(--r-full);
+  /* 選んでいないときも、地から浮くように細い縁を持たせます
+     （白に近い地の上で、薄い色の丸が消えないように）。 */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+  transition: box-shadow var(--m-state) var(--ease), transform var(--m-press) var(--ease);
+}
+.accent-dot.is-on .accent-swatch {
+  /* 地の色の輪を挟んでから、その外に色の輪。丸と輪がくっつかないように。 */
+  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
+  transform: scale(1.04);
+}
+.accent-name {
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+}
+.accent-dot.is-on .accent-name { color: var(--c-text); font-weight: 700; }
 
 </style>
 </head>
@@ -15485,7 +15628,7 @@ a.btn { text-decoration: none; }
          うちは当たり障りのないことしか言えません——出しておくと、画面の
          一等地を「大したことを言っていない枠」が占めます。要ると思ったときに
          設定から出せます。 */
-      settings: { theme: "auto", showChecked: true, layout: "rows", showInsight: false },
+      settings: { theme: "auto", accent: "orange", showChecked: true, layout: "rows", showInsight: false },
     };
   }
 
@@ -15508,6 +15651,24 @@ a.btn { text-decoration: none; }
   function emptyArchive() {
     return { entries: [], days: [] };
   }
+
+  /* ---------------- 基調色 ----------------
+
+     選べる基調色の一覧です。**実際の色は CSS が持ちます**（base.css の
+     :root[data-accent="…"]）。ここにあるのは、id と名前と、設定画面の
+     見本に出す一色だけ——同じ数値を二か所に書くと、片方だけ直したときに
+     静かに食い違うので。
+
+     id は data-accent の値になります。既定のオレンジだけは札を付けない
+     ので（:root の素の値がそのまま効きます）、CSS 側に規則がありません。 */
+  const ACCENTS = [
+    { id: "orange", label: "オレンジ", swatch: "#d9662a" },
+    { id: "green",  label: "みどり",   swatch: "#2f8f5b" },
+    { id: "blue",   label: "あお",     swatch: "#2f72c4" },
+    { id: "violet", label: "むらさき", swatch: "#7a5bd0" },
+    { id: "rose",   label: "ももいろ", swatch: "#c8476f" },
+  ];
+  const cleanAccent = (v) => (ACCENTS.some((a) => a.id === v) ? v : "orange");
 
   /* 五つの種類。色は「意味」ではなく「見分け」のために持たせます——月の
      一覧で目が種類ごとにまとまるだけで、良し悪しは一切言いません。
@@ -15898,6 +16059,9 @@ a.btn { text-decoration: none; }
     const base = emptyState();
     const out = { ...base, ...s };
     out.settings = { ...base.settings, ...(s.settings || {}) };
+    /* 知らない基調色は、既定へ戻します。色を減らした・名前を変えたときに、
+       選んだ覚えのない色で画面が出てこないように。 */
+    out.settings.accent = cleanAccent(out.settings.accent);
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
@@ -18215,7 +18379,7 @@ a.btn { text-decoration: none; }
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
     setGoal, markSynced, markSyncLocked, clearDiet,
-    ARCHIVE_TYPES, archiveType,
+    ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
@@ -35009,6 +35173,11 @@ distance=6.0km</pre>
           <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
           <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
         </div>
+
+        ${/* 基調色。明暗とは別の軸なので、その下に並べます（「あおの、暗い面」
+              のように掛け合わさるもの）。名前だけでは何色か分からないので、
+              実物の丸を添えます——選ぶのは名前ではなく色なので。 */""}
+        <div class="accent-row js-accents" role="group" aria-label="基調色"></div>
         ${/* アイコンの数は「表示」に置きます。数えているのは買うものと
               やることの **両方** なので、どちらか一方のタブのものでは
               ありません（時刻のお知らせは、やることだけの話なので
@@ -35033,6 +35202,33 @@ distance=6.0km</pre>
         haptic();
       });
     });
+
+    /* 基調色の丸。押すとその場で画面ぜんぶの色が変わります——設定を出たり
+       入ったりしないと確かめられない選択は、選びようがないので。 */
+    const accents = wrap.querySelector(".js-accents");
+    function paintAccents() {
+      const now = store.get().settings.accent || "orange";
+      accents.innerHTML = "";
+      store.ACCENTS.forEach((a) => {
+        const on = a.id === now;
+        const b = node(html`
+          <button type="button" class="accent-dot ${on ? "is-on" : ""}"
+                  data-accent="${a.id}" aria-pressed="${String(on)}"
+                  aria-label="${a.label}" title="${a.label}">
+            <span class="accent-swatch" style="background:${a.swatch}"></span>
+            <span class="accent-name">${a.label}</span>
+          </button>
+        `);
+        b.addEventListener("click", () => {
+          store.update((s) => { s.settings.accent = a.id; });
+          KN.app.applyAccent(a.id);
+          KN.motion.fire("select", b);
+          paintAccents();
+        });
+        accents.append(b);
+      });
+    }
+    paintAccents();
 
     /* Only where there is an icon to badge. In a browser tab the API is not
        there at all, and a switch that does nothing is worse than no switch. */
@@ -36481,6 +36677,20 @@ distance=6.0km</pre>
   }
   KN.app.applyTheme = applyTheme;
 
+  /* 基調色。明暗（data-theme）とは**別の軸**なので、別の札で持ちます
+     ——「青の、暗い面」のように二つは掛け合わさるものだからです。
+
+     既定（オレンジ）のときは札を付けません。付けないほうが :root の素の値が
+     そのまま効いて、規則が一段浅く済みます。 */
+  function applyAccent(accent) {
+    const root = document.documentElement;
+    const known = (KN.store && KN.store.ACCENTS) || [];
+    const ok = known.some((a) => a.id === accent);
+    if (ok && accent !== "orange") root.setAttribute("data-accent", accent);
+    else root.removeAttribute("data-accent");
+  }
+  KN.app.applyAccent = applyAccent;
+
   /* ---------------- tabs ---------------- */
 
   function buildTabs() {
@@ -36734,6 +36944,7 @@ distance=6.0km</pre>
 
   function boot() {
     applyTheme(store.get().settings.theme || "auto");
+    applyAccent(store.get().settings.accent || "orange");
     buildTabs();
 
     const fromHash = location.hash.slice(1);
