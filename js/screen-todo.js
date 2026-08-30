@@ -473,6 +473,20 @@
           <div class="js-slots"></div>
         </div>
 
+        ${/* 中の段取り。
+
+              「朝のしたく」のような一件は、それ自体がいくつかの手順です。
+              手順ごとに別々の用事へ割ると一日が細切れに見えますし、一件に
+              まとめてしまうと何が残っているのか分かりません。中に持たせます。
+
+              くりかえしと合わせれば、そのままルーティンです——毎朝の一件が、
+              中に同じ手順を持って毎日戻ってきます。 */""}
+        <div class="field">
+          <span class="field-label">中の段取り（任意）</span>
+          <div class="sub-edit js-subs"></div>
+          <button type="button" class="btn btn-soft js-sub-add">手順を足す</button>
+        </div>
+
         ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
               その上に「くりかえし」と重ねて言う必要がありません。 */""}
         <div class="field">
@@ -671,6 +685,54 @@
     }
     paintMins();
 
+    /* ---- 中の段取りを書くところ ----
+
+       欄をそのまま並べます。ここで印を付けさせないのは、**書く**のと
+       **やる**が別のことだからです。印は時間割の行のほうで付けます
+       ——手順を直しに来て、ついでに済ませたことにしてしまう、という
+       取り違えが起きないように。 */
+    let subs = editing ? (t.subs || []).map((x) => ({ ...x })) : [];
+    const subHost = body.querySelector(".js-subs");
+    function paintSubs(focusAt) {
+      subHost.textContent = "";
+      subs.forEach((s, i) => {
+        const line = node(html`
+          <div class="sub-line">
+            <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
+                   aria-label="${i + 1}つめの手順" autocomplete="off">
+            <button type="button" class="icon-btn js-sub-del"
+                    aria-label="この手順を消す">${icon("close")}</button>
+          </div>
+        `);
+        const field = line.querySelector(".js-sub");
+        field.addEventListener("input", () => { subs[i].title = field.value; });
+        /* 改行で次の手順へ。続けて書くときに、いちいち「足す」を押しに
+           戻らなくて済みます。 */
+        field.addEventListener("keydown", (ev) => {
+          if (ev.key !== "Enter") return;
+          ev.preventDefault();
+          subs.splice(i + 1, 0, { id: "s" + Date.now() + i, title: "", done: false });
+          paintSubs(i + 1);
+        });
+        line.querySelector(".js-sub-del").addEventListener("click", () => {
+          subs.splice(i, 1);
+          KN.motion.fire("delete");
+          paintSubs();
+        });
+        subHost.append(line);
+      });
+      if (focusAt != null) {
+        const el = subHost.querySelectorAll(".js-sub")[focusAt];
+        if (el) KN.ui.focusNow(el);
+      }
+    }
+    body.querySelector(".js-sub-add").addEventListener("click", () => {
+      subs.push({ id: "s" + Date.now() + subs.length, title: "", done: false });
+      KN.motion.fire("add");
+      paintSubs(subs.length - 1);
+    });
+    paintSubs();
+
     /* 時刻の欄はいつも出しておきます（日付が「なし」でも、毎朝・毎晩でも）。
 
        かつては毎朝・毎晩のあいだ伏せていました——「朝」と「7:30」は同じ
@@ -855,10 +917,13 @@
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged, minutes });
+        /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
+           知らない欄を混ぜると黙って落ちます。 */
+        store.setSubs(todoId, subs);
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes, subs });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -1911,6 +1976,10 @@
      こちらは時間割のものだと分かる名前にします。 */
   let tlDrag = null;
 
+  /* どの用事の手順を、いま開いて見ているか。組み直しをまたいで覚えて
+     おきます——手順を一つ押すたびに畳まれては、続けて押せません。 */
+  const openSubs = new Set();
+
   function wireDrag(list, day) {
     list.addEventListener("pointerdown", (e) => {
       if (tlDrag) return;
@@ -2169,6 +2238,15 @@
       const n = store.tripCount();
       if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
     }
+    /* 手順があるなら、**残りいくつか**。「3/5」と割り算の形で書くと
+       達成率の顔になるので、残りの数だけを言います。全部終えていれば、
+       その旨をひとことで。 */
+    const sc = store.subCount(t);
+    if (sc.total) {
+      facts.push(html`<span class="tl-subs">${
+        sc.done >= sc.total ? "手順ぜんぶ" : `あと${sc.total - sc.done}手順`
+      }</span>`);
+    }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
     if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
@@ -2223,6 +2301,52 @@
         if (t.trace) { untrace(t); return; }
         tick(t.id, e.currentTarget);
       });
+    }
+
+    /* 手順は、行の下にたたんで置きます。
+
+       **やるところで押せる**ようにするのが肝です。手順を一つ済ませる
+       たびにシートを開かせると、朝のしたくのような細かい流れでは、開いて
+       閉じるだけで手数が増えます。ここなら、時間割を見たまま押せます。
+
+       たたんであるのは、手順を持つ用事が二つ三つあると、時間割が手順で
+       埋まって「今日は何があるか」が読めなくなるからです。 */
+    if (sc.total && !t.trace) {
+      const open = openSubs.has(t.id);
+      const wrap = node(html`
+        <div class="tl-sub-wrap ${open ? "is-open" : ""}">
+          <button type="button" class="tl-sub-toggle" aria-expanded="${String(open)}">
+            ${open ? "手順をたたむ" : "手順をひらく"}
+          </button>
+          <ul class="tl-sub-list" ${open ? "" : KN.util.raw("hidden")}></ul>
+        </div>
+      `);
+      const list = wrap.querySelector(".tl-sub-list");
+      (t.subs || []).forEach((s) => {
+        const line = node(html`
+          <li class="tl-sub ${s.done ? "is-done" : ""}">
+            <button type="button" class="check is-sub" role="checkbox"
+                    aria-checked="${String(!!s.done)}"
+                    aria-label="${s.title} を終わりにする">${icon("check")}</button>
+            <span class="tl-sub-name">${s.title}</span>
+          </li>
+        `);
+        line.querySelector("button").addEventListener("click", (e) => {
+          e.stopPropagation();
+          const btn = e.currentTarget;
+          KN.motion.fire(s.done ? "uncheck" : "check", btn);
+          if (!s.done) KN.ui.burst(btn);
+          store.toggleSub(t.id, s.id);
+        });
+        list.append(line);
+      });
+      wrap.querySelector(".tl-sub-toggle").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (openSubs.has(t.id)) openSubs.delete(t.id); else openSubs.add(t.id);
+        KN.motion.fire("select", e.currentTarget);
+        render();
+      });
+      li.append(wrap);
     }
     return li;
   }

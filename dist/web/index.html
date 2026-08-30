@@ -5596,6 +5596,45 @@ a.btn { text-decoration: none; }
 /* 時間割で、買い物の一件が「いま何個ぶんか」。 */
 .tl-shop { font-variant-numeric: tabular-nums; }
 
+/* ---------------- 中の段取り ----------------
+
+   手順は行の下にたたんで置きます。やるところで押せるのが肝で、一つ済ませる
+   たびにシートを開かせると、朝のしたくのような細かい流れでは開いて閉じる
+   だけで手数が増えます。たたんであるのは、手順を持つ用事が二つ三つあると
+   時間割が手順で埋まって「今日は何があるか」が読めなくなるからです。 */
+.tl-sub-wrap { grid-column: 3; padding: 0 var(--sp-4) 10px 8px; }
+.tl-sub-toggle {
+  padding: 4px 0;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.tl-sub-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.tl-sub {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0;
+}
+.tl-sub .check.is-sub { width: 26px; height: 26px; flex: 0 0 auto; }
+.tl-sub .check.is-sub svg { width: 15px; height: 15px; }
+.tl-sub-name {
+  font-size: 15px;
+  color: var(--c-text);
+  /* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。 */
+  background-image: linear-gradient(var(--c-primary), var(--c-primary));
+  background-repeat: no-repeat;
+  background-position: 0 center;
+  background-size: 0% 2px;
+  transition: background-size var(--m-strike) var(--ease-out), color var(--m-check) var(--ease);
+}
+.tl-sub.is-done .tl-sub-name { background-size: 100% 2px; color: var(--c-text-3); }
+
+/* シートの中、手順を書き並べるところ。 */
+.sub-edit { display: flex; flex-direction: column; gap: 8px; }
+.sub-edit:empty { display: none; }
+.sub-line { display: flex; align-items: center; gap: 6px; }
+.sub-line .input { flex: 1 1 auto; min-width: 0; }
+.tl-subs { font-variant-numeric: tabular-nums; }
+
 </style>
 </head>
 <body>
@@ -15787,6 +15826,14 @@ a.btn { text-decoration: none; }
          一件として置いたものです。中身（何を買うか）は買うもの側が持ち
          つづけるので、ここは**行くという用事**だけを持ちます。 */
       shop: t.shop === true,
+      /* 中の段取り。「朝のしたく」のような一件は、それ自体がいくつかの
+         手順です。手順を別々の用事に割ると一日が細切れに見え、一件に
+         まとめると何が残っているか分かりません。中に持たせます。
+
+         繰り返しと合わせると、そのままルーティンになります——毎朝の一件が、
+         中に同じ手順を持って毎日戻ってくる。だから「ルーティン」という
+         別の種類は作りません。同じものに名前を二つ付けることになるので。 */
+      subs: cleanSubs(t.subs),
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -15837,6 +15884,20 @@ a.btn { text-decoration: none; }
     const n = Number(v);
     if (!isFinite(n) || n <= 0) return null;
     return Math.min(MAX, Math.max(MIN, Math.round(n / 5) * 5));
+  }
+
+  /* 中の段取りを整えます。**function 宣言**であることが大事です
+     ——読み込みは load() がこの下より前で走るので、const にすると
+     読めない箱になり、読み込みごと落ちます（一度やりました）。
+     数え上げの上限は、中に置いてあります。 */
+  function cleanSubs(v) {
+    const MAX = 50;
+    if (!Array.isArray(v)) return [];
+    return v.map((s, i) => ({
+      id: (s && s.id) || ("s" + i + "-" + Math.random().toString(36).slice(2, 8)),
+      title: String((s && s.title) || "").trim(),
+      done: !!(s && s.done),
+    })).filter((s) => s.title).slice(0, MAX);
   }
 
   /**
@@ -16276,7 +16337,7 @@ a.btn { text-decoration: none; }
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
                      repeatNth = null, memo = "", flagged = false, minutes = null,
-                     shop = false } = {}) {
+                     shop = false, subs = [] } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -16303,6 +16364,7 @@ a.btn { text-decoration: none; }
       archivedAt: null,
       trace: false,
       shop: shop === true,
+      subs: cleanSubs(subs),
       createdAt: today(),
       order: 0,
     };
@@ -16312,6 +16374,31 @@ a.btn { text-decoration: none; }
       s.todos.unshift(rec);
     });
     return rec;
+  }
+
+  /* ---------------- 中の段取り ---------------- */
+
+  /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。 */
+  function setSubs(id, subs) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t) t.subs = cleanSubs(subs);
+    });
+  }
+
+  /** 手順ひとつを、済んだ／まだに切り替えます。 */
+  function toggleSub(id, subId) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      const sub = t && (t.subs || []).find((x) => x.id === subId);
+      if (sub) sub.done = !sub.done;
+    });
+  }
+
+  /** 残りいくつか。{done, total}。手順が無ければ total は 0。 */
+  function subCount(t) {
+    const subs = (t && t.subs) || [];
+    return { done: subs.filter((s) => s.done).length, total: subs.length };
   }
 
   /* ---------------- 買うものを、その日の予定に ----------------
@@ -16502,12 +16589,20 @@ a.btn { text-decoration: none; }
             doneAt: today(),
             archived: false, archivedAt: null,
             trace: true,
+            /* 記録のほうは、**その日ほんとうにどこまでやったか**を
+               そのまま持ちます（写しなので、印もそのまま）。 */
+            subs: (t.subs || []).map((x) => ({ ...x })),
             order: (t.order || 0),
           });
         }
         t.due = due;
         t.done = false;
         t.doneAt = null;
+        /* 翌日へ行くほうは、手順の印を**まっさらに戻します**。
+           きのう済ませた印が付いたまま朝を迎えると、まだ何もしていない
+           のに半分終わっているように見えます。手順そのものは残ります
+           ——毎日同じ順でやるから、まとめてあるので。 */
+        t.subs = (t.subs || []).map((x) => ({ ...x, done: false }));
       } else {
         t.done = !t.done;
         t.doneAt = t.done ? today() : null;
@@ -17744,6 +17839,7 @@ a.btn { text-decoration: none; }
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
+    setSubs, toggleSub, subCount,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
@@ -26095,6 +26191,20 @@ a.btn { text-decoration: none; }
           <div class="js-slots"></div>
         </div>
 
+        ${/* 中の段取り。
+
+              「朝のしたく」のような一件は、それ自体がいくつかの手順です。
+              手順ごとに別々の用事へ割ると一日が細切れに見えますし、一件に
+              まとめてしまうと何が残っているのか分かりません。中に持たせます。
+
+              くりかえしと合わせれば、そのままルーティンです——毎朝の一件が、
+              中に同じ手順を持って毎日戻ってきます。 */""}
+        <div class="field">
+          <span class="field-label">中の段取り（任意）</span>
+          <div class="sub-edit js-subs"></div>
+          <button type="button" class="btn btn-soft js-sub-add">手順を足す</button>
+        </div>
+
         ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
               その上に「くりかえし」と重ねて言う必要がありません。 */""}
         <div class="field">
@@ -26293,6 +26403,54 @@ a.btn { text-decoration: none; }
     }
     paintMins();
 
+    /* ---- 中の段取りを書くところ ----
+
+       欄をそのまま並べます。ここで印を付けさせないのは、**書く**のと
+       **やる**が別のことだからです。印は時間割の行のほうで付けます
+       ——手順を直しに来て、ついでに済ませたことにしてしまう、という
+       取り違えが起きないように。 */
+    let subs = editing ? (t.subs || []).map((x) => ({ ...x })) : [];
+    const subHost = body.querySelector(".js-subs");
+    function paintSubs(focusAt) {
+      subHost.textContent = "";
+      subs.forEach((s, i) => {
+        const line = node(html`
+          <div class="sub-line">
+            <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
+                   aria-label="${i + 1}つめの手順" autocomplete="off">
+            <button type="button" class="icon-btn js-sub-del"
+                    aria-label="この手順を消す">${icon("close")}</button>
+          </div>
+        `);
+        const field = line.querySelector(".js-sub");
+        field.addEventListener("input", () => { subs[i].title = field.value; });
+        /* 改行で次の手順へ。続けて書くときに、いちいち「足す」を押しに
+           戻らなくて済みます。 */
+        field.addEventListener("keydown", (ev) => {
+          if (ev.key !== "Enter") return;
+          ev.preventDefault();
+          subs.splice(i + 1, 0, { id: "s" + Date.now() + i, title: "", done: false });
+          paintSubs(i + 1);
+        });
+        line.querySelector(".js-sub-del").addEventListener("click", () => {
+          subs.splice(i, 1);
+          KN.motion.fire("delete");
+          paintSubs();
+        });
+        subHost.append(line);
+      });
+      if (focusAt != null) {
+        const el = subHost.querySelectorAll(".js-sub")[focusAt];
+        if (el) KN.ui.focusNow(el);
+      }
+    }
+    body.querySelector(".js-sub-add").addEventListener("click", () => {
+      subs.push({ id: "s" + Date.now() + subs.length, title: "", done: false });
+      KN.motion.fire("add");
+      paintSubs(subs.length - 1);
+    });
+    paintSubs();
+
     /* 時刻の欄はいつも出しておきます（日付が「なし」でも、毎朝・毎晩でも）。
 
        かつては毎朝・毎晩のあいだ伏せていました——「朝」と「7:30」は同じ
@@ -26477,10 +26635,13 @@ a.btn { text-decoration: none; }
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged, minutes });
+        /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
+           知らない欄を混ぜると黙って落ちます。 */
+        store.setSubs(todoId, subs);
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes, subs });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -27533,6 +27694,10 @@ a.btn { text-decoration: none; }
      こちらは時間割のものだと分かる名前にします。 */
   let tlDrag = null;
 
+  /* どの用事の手順を、いま開いて見ているか。組み直しをまたいで覚えて
+     おきます——手順を一つ押すたびに畳まれては、続けて押せません。 */
+  const openSubs = new Set();
+
   function wireDrag(list, day) {
     list.addEventListener("pointerdown", (e) => {
       if (tlDrag) return;
@@ -27791,6 +27956,15 @@ a.btn { text-decoration: none; }
       const n = store.tripCount();
       if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
     }
+    /* 手順があるなら、**残りいくつか**。「3/5」と割り算の形で書くと
+       達成率の顔になるので、残りの数だけを言います。全部終えていれば、
+       その旨をひとことで。 */
+    const sc = store.subCount(t);
+    if (sc.total) {
+      facts.push(html`<span class="tl-subs">${
+        sc.done >= sc.total ? "手順ぜんぶ" : `あと${sc.total - sc.done}手順`
+      }</span>`);
+    }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
     if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
@@ -27845,6 +28019,52 @@ a.btn { text-decoration: none; }
         if (t.trace) { untrace(t); return; }
         tick(t.id, e.currentTarget);
       });
+    }
+
+    /* 手順は、行の下にたたんで置きます。
+
+       **やるところで押せる**ようにするのが肝です。手順を一つ済ませる
+       たびにシートを開かせると、朝のしたくのような細かい流れでは、開いて
+       閉じるだけで手数が増えます。ここなら、時間割を見たまま押せます。
+
+       たたんであるのは、手順を持つ用事が二つ三つあると、時間割が手順で
+       埋まって「今日は何があるか」が読めなくなるからです。 */
+    if (sc.total && !t.trace) {
+      const open = openSubs.has(t.id);
+      const wrap = node(html`
+        <div class="tl-sub-wrap ${open ? "is-open" : ""}">
+          <button type="button" class="tl-sub-toggle" aria-expanded="${String(open)}">
+            ${open ? "手順をたたむ" : "手順をひらく"}
+          </button>
+          <ul class="tl-sub-list" ${open ? "" : KN.util.raw("hidden")}></ul>
+        </div>
+      `);
+      const list = wrap.querySelector(".tl-sub-list");
+      (t.subs || []).forEach((s) => {
+        const line = node(html`
+          <li class="tl-sub ${s.done ? "is-done" : ""}">
+            <button type="button" class="check is-sub" role="checkbox"
+                    aria-checked="${String(!!s.done)}"
+                    aria-label="${s.title} を終わりにする">${icon("check")}</button>
+            <span class="tl-sub-name">${s.title}</span>
+          </li>
+        `);
+        line.querySelector("button").addEventListener("click", (e) => {
+          e.stopPropagation();
+          const btn = e.currentTarget;
+          KN.motion.fire(s.done ? "uncheck" : "check", btn);
+          if (!s.done) KN.ui.burst(btn);
+          store.toggleSub(t.id, s.id);
+        });
+        list.append(line);
+      });
+      wrap.querySelector(".tl-sub-toggle").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (openSubs.has(t.id)) openSubs.delete(t.id); else openSubs.add(t.id);
+        KN.motion.fire("select", e.currentTarget);
+        render();
+      });
+      li.append(wrap);
     }
     return li;
   }
