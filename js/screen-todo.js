@@ -1132,20 +1132,35 @@
       const node0 = tl.querySelector(".tl-node");
       finishing.add(id);
       checkEl.setAttribute("aria-checked", String(!wasDone));
+      let wait = KN.motion.ms("--m-check");
       if (wasDone) {
         KN.motion.fire("uncheck");
         item.classList.add("is-unstriking");
         node0.classList.add("is-unpop");
       } else {
+        /* 線を引く時間は、**題の長さに合わせます**。短い題も長い題も同じ
+           0.38秒で引くと、長いほうだけ筆が妙に速く走ります。速さのほうを
+           一定にして、そのぶん時間が伸び縮みするほうが自然です。
+           短すぎる／長すぎるのは止めます（0.22〜0.62秒）。 */
+        const w = tl.querySelector(".item-name").getBoundingClientRect().width;
+        const SPEED = 620;   // px/秒。筆の走る速さ。
+        wait = Math.round(Math.min(620, Math.max(220, (w / SPEED) * 1000)));
+        item.style.setProperty("--strike-ms", wait + "ms");
         KN.motion.fire("check");
         item.classList.add("is-striking");
         node0.classList.add("is-pop");
+        tl.classList.add("is-flash");
+        /* 火花は、押した丸からと**絵の丸からも**。押した先だけで散ると、
+           片づいたのがどの用事かは、指のあるところしか言いません。 */
         KN.ui.burst(checkEl);
+        KN.ui.burst(node0);
       }
       setTimeout(() => {
         finishing.delete(id);
+        tl.classList.remove("is-flash");
+        item.style.removeProperty("--strike-ms");
         store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
-      }, KN.motion.ms(wasDone ? "--m-check" : "--m-strike"));
+      }, wait);
       return;
     }
 
@@ -1220,7 +1235,10 @@
 
     const shown = all.filter(hit);
     const open = shown.filter((t) => !t.done && !t.archived);
-    const closed = shown.filter((t) => t.done || t.archived);
+    /* 「やった記録」（繰り返しを済ませたときの写し）は、棚に入れません。
+       棚は「やらずに片づけたもの」の置き場で、性格が違います。記録は
+       その日の時間割の中にだけ残ります。 */
+    const closed = shown.filter((t) => (t.done || t.archived) && !t.trace);
 
     /* The month, above everything. The shelves below are a calendar unrolled
        downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
@@ -1849,21 +1867,29 @@
                   facts が空になる行では、この帯ごと出しません。 */""}
             ${facts.length ? html`<span class="tl-facts">${facts}</span>` : ""}
           </button>
-          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
-                  aria-checked="${String(!!t.done)}"
-                  aria-label="${t.title} を終わりにする">
-            ${t.repeat
-              ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
-              : icon("check")}
-          </button>
+          ${/* 「やった記録」は押せません。もう終わったその日ぶんの写しで、
+                外すという操作に意味がないので——静かな印だけを置きます
+                （元のほうは翌日に立っていて、そちらは押せます）。 */""}
+          ${t.trace
+            ? html`<span class="check is-trace" aria-label="済ませました">${icon("check")}</span>`
+            : html`<button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                    aria-checked="${String(!!t.done)}"
+                    aria-label="${t.title} を終わりにする">
+                ${t.repeat
+                  ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
+                  : icon("check")}
+              </button>`}
         </div>
       </li>
     `);
     li.querySelector(".tl-body").addEventListener("click", () => openSheet(t.id));
-    li.querySelector(".check").addEventListener("click", (e) => {
-      e.stopPropagation();
-      tick(t.id, e.currentTarget);
-    });
+    const box = li.querySelector("button.check");
+    if (box) {
+      box.addEventListener("click", (e) => {
+        e.stopPropagation();
+        tick(t.id, e.currentTarget);
+      });
+    }
     return li;
   }
 

@@ -970,6 +970,35 @@ a { color: var(--c-primary); }
   line-height: 1;
 }
 
+/* ---------------- ＋ は帯のとなりに ----------------
+
+   ＋ は帯の上に浮いていました。参考にした画面（Structured）では、帯と
+   ＋ が横に並んで一つの列を作ります。そのほうが二つの関係がはっきり
+   します——帯は「どこを見るか」、＋ は「足す」。上下に重なっていると、
+   ＋ が帯の一部なのか別のものなのかが曖昧で、しかも一覧のいちばん下の
+   行に必ずかぶっていました。
+
+   帯は ＋ のぶんだけ狭くなります。四つの持ち場はそのぶん詰まりますが、
+   もともと一つ 90px 以上あるので、字が折れることはありません。 */
+:root { --fab-size: 56px; --fab-gap: 8px; }
+
+.has-fab .tabbar { padding-right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+.has-fab .tabbar::before,
+.has-fab .tabbar::after { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+
+/* ＋ の置き場。帯のカプセルと上下の中心を合わせます。 */
+.has-fab .dock {
+  left: auto;
+  right: var(--sp-3);
+  bottom: calc(var(--tab-drop) + (var(--tab-cap) - var(--fab-size)) / 2);
+}
+.has-fab .quick-add { justify-content: flex-end; }
+/* ＋ から立ち上がる候補も、右端にそろえます（＋ の真上から出るように）。 */
+.has-fab .fab-menu { align-items: flex-end; }
+
+/* キーボードが出ているあいだは帯が引っ込むので、＋ も下へ戻ります。 */
+.has-fab.kb-open .dock { bottom: var(--sp-3); right: var(--sp-3); }
+
 /* ---- css/components.css ---- */
 /* =========================================================
    くらしノート — reusable components
@@ -5005,13 +5034,20 @@ a.btn { text-decoration: none; }
 
 /* 中身。.item を借りているので、地と枠だけ外します——済ませたときの動き
    （is-glow / is-finishing）はそのまま使いたいので、class は残します。 */
-.tl-row .tl-item {
+/* `.item.tl-item` と二つ重ねてあります。ここは一度だまされました：
+   `.tl-row .tl-item`（詳細度 0,2,0）は `.item.todo:not(.is-tile)`（0,3,0）に
+   負けるので、書いた padding がずっと効いていませんでした。行の高さは
+   線（.tl-rail の min-height）が作っていたので、見た目では気づけません。
+   右の余白だけが 16px のつもりで 12px になっていて、買うものの行と
+   揃っていませんでした。 */
+.tl-row .item.tl-item {
   background: none;
   border: none;
   box-shadow: none;
   padding: 15px var(--sp-4) 17px 8px;
   gap: var(--sp-3);
-  align-items: flex-start;
+  align-items: center;
+  min-height: 0;
 }
 /* 左端の色の帯。行の色は丸のほうが持つので、ここには要りません
    ——同じことを二度言うと、どちらも読まれなくなります。 */
@@ -5070,7 +5106,7 @@ a.btn { text-decoration: none; }
 /* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
    実際には「二つ入れた」だけなので。 */
 .tl-clash { color: var(--c-text-2); font-weight: 700; }
-.tl-row .check { flex: none; margin-top: 2px; }
+.tl-row .check { flex: none; }
 
 /* 済んだもの。線からは外さず、薄くして横線を引きます——消すと
    「今日それをした」ことまで消えてしまうので。 */
@@ -5132,24 +5168,46 @@ a.btn { text-decoration: none; }
    本物の text-decoration に引き継がれます——動きと結果が同じ形なので、
    切り替わったことに気づきません。 */
 
-.tl-item.is-striking .item-name {
-  /* 線は背景で引きます。text-decoration は動かせないので。
-     currentColor の細い帯を、幅0から100%へ伸ばします。 */
+/* 線を引く。**太さは 2.5px**——1.5px では、17px の題の上でほとんど
+   見えませんでした。線は「消した」と言うためのものなので、字と同じくらい
+   はっきりしていていい。
+
+   長さと速さは JS が決めます（screen-todo.js の tick）。題が長ければ
+   線も長く、そのぶん時間もかかる——**線を引く速さのほうを一定に**して
+   あります。どの題でも同じ速さで筆が走るので、長い題だけ妙に速い、
+   ということが起きません。 */
+.tl-item.is-striking .item-name,
+.item.is-striking .item-name {
+  /* 線は背景で引きます。text-decoration は動かせないので。 */
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
   background-position: 0 58%;
-  background-size: 0% 1.5px;
-  animation: tl-strike var(--m-strike) var(--ease-out) forwards;
+  background-size: 0% 2.5px;
+  animation: tl-strike var(--strike-ms, var(--m-strike)) var(--ease-out) forwards;
 }
 @keyframes tl-strike {
-  from { background-size: 0% 1.5px; }
-  to   { background-size: 100% 1.5px; }
+  from { background-size: 0% 2.5px; }
+  to   { background-size: 100% 2.5px; }
+}
+/* 済ませたあとの本物の線も、同じ太さに。動きと結果で太さが変わると、
+   引き終わった瞬間に線が細くなって見えます。 */
+.tl-row .tl-item.is-checked .item-name {
+  text-decoration-thickness: 2.5px;
+  text-underline-offset: 0;
 }
 
 /* 丸のピコン。行き過ぎて戻る曲線（--spring）で、ひと回りだけ。
    済ませた瞬間に**指の下ではないところ**が動くので、押した先とは別に
    「その用事が片づいた」ことが見えます。 */
-.tl-node.is-pop { animation: tl-pop var(--m-strike) var(--spring); }
+.tl-node.is-pop { animation: tl-pop var(--m-check) var(--spring); }
+/* 買うものの絵の丸も、同じピコン。あちらは translate を持たないので、
+   その場で大きさだけ変えます。 */
+.item-emoji.is-pop { animation: mark-pop var(--m-check) var(--spring); }
+@keyframes mark-pop {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
 @keyframes tl-pop {
   0%   { transform: translate(-50%, -50%) scale(1); }
   38%  { transform: translate(-50%, -50%) scale(1.16); }
@@ -5163,15 +5221,16 @@ a.btn { text-decoration: none; }
   40%  { transform: translate(-50%, -50%) scale(.86); }
   100% { transform: translate(-50%, -50%) scale(1); }
 }
-.tl-item.is-unstriking .item-name {
+.tl-item.is-unstriking .item-name,
+.item.is-unstriking .item-name {
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
   background-position: 100% 58%;
   animation: tl-unstrike var(--m-check) var(--ease-in) forwards;
 }
 @keyframes tl-unstrike {
-  from { background-size: 100% 1.5px; }
-  to   { background-size: 0% 1.5px; }
+  from { background-size: 100% 2.5px; }
+  to   { background-size: 0% 2.5px; }
 }
 
 /* 済ませた行の、済ませた時刻。押した時刻をそのまま出します
@@ -5349,6 +5408,52 @@ a.btn { text-decoration: none; }
   border-right: none;
   box-shadow: none;
 }
+
+/* 行ぜんぶが、ひと呼吸だけ光る。
+
+   線と丸は「その用事」の話ですが、これは「一段が片づいた」の話です。
+   帯を左から右へ一度だけ通します——面ごと明るくすると画面が跳ねるので、
+   通り過ぎる光にしてあります。 */
+.tl-row.is-flash, .item.is-flash { position: relative; }
+.tl-row.is-flash::after,
+.item.is-flash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--cat, var(--c-primary)) 22%, transparent) 45%,
+    transparent);
+  animation: tl-flash var(--m-strike) var(--ease-out) forwards;
+}
+@keyframes tl-flash {
+  from { opacity: 0; transform: translateX(-38%); }
+  40%  { opacity: 1; }
+  to   { opacity: 0; transform: translateX(38%); }
+}
+
+/* 「やった記録」の印。押せないので、押せる丸とは違う顔にします
+   ——輪郭ではなく、塗った丸に白い✓。 */
+.tl-row .check.is-trace {
+  display: grid; place-items: center;
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+  cursor: default;
+}
+.tl-row .check.is-trace svg { opacity: 1; }
+
+/* 買うものの行：絵の丸を、**名前の行に**合わせます。
+
+   行のまん中に置くと、メモや購入時刻が付いた行だけ絵が下がって見えます
+   （名前は上の一行、絵は二行ぶんの中心）。名前がその行の主題なので、
+   絵はそちらに揃えます。ずらす量は、名前の一行の高さと丸の差の半分。 */
+.item-wrap:not(.is-tile-wrap) .item-emoji {
+  align-self: flex-start;
+  margin-top: calc((var(--name-line, 26px) - 40px) / 2);
+}
+.item-wrap:not(.is-tile-wrap) .item-body { align-self: flex-start; }
 
 </style>
 </head>
@@ -15350,7 +15455,22 @@ a.btn { text-decoration: none; }
     return out;
   }
 
-  /* ---------------- persistence ---------------- */
+  /* ---------------- persistence ----------------
+
+     **ここから下で使うものは、この行より上に置くこと。**
+
+     `let state = load()` は module の評価の途中で走ります。つまり load() が
+     触るものは、その時点で初期化済みでなければいけません。下に書いた
+     const / let は「初期化前の参照」で落ち、しかも落ち方が静かです。
+
+     この注意書きは二度書き直しました。一度目は所要時間の上限（const）で、
+     人のデータを消しました。二度目は**その事故を塞ぐための退避先の鍵**を
+     やはり下に置いて、今度は store ごと立ち上がらなくしました。
+     関数宣言は巻き上がるので安全ですが、値は上に置くしかありません。 */
+
+  // 読めなかった生の文字列の退避先。live のデータとは別の鍵にします。
+  const RESCUE_KEY = KEY + "-rescue";
+  let loadError = null;
 
   let migratedOnLoad = false;
   let state = load();
@@ -15359,18 +15479,43 @@ a.btn { text-decoration: none; }
   // dietIndex_）を、state が本当に動いたときだけ作り直すために使います。
   let version = 0;
 
-  function load() {
-    try {
-      const rawV2 = localStorage.getItem(KEY);
-      if (rawV2) return reconcile(JSON.parse(rawV2));
+  /* 保存してあるものが読めなかったとき。
 
+     ここは**空のアプリで再開してはいけない**場所です。読めなかっただけで
+     データは残っているのに、空で立ち上がってしまうと、次に何か触った瞬間の
+     保存が本物を上書きします。読めなかったことが、消したことになる。
+
+     実際にそれをやりました。reconcile の中で ReferenceError（初期化前の
+     const 参照）が出て、この catch に静かに入り、空のアプリが立ち上がり、
+     次の保存で人のデータが消えました。落ちた側のバグは直しましたが、
+     **同じ形の事故がもう起きないように、ここを塞ぎます。**
+
+     生の文字列を別の鍵へ退避し、保存そのものを止めます。書けないので、
+     元の鍵に残っているものも無事です。 */
+  function rescue(raw, err) {
+    loadError = String((err && err.message) || err);
+    console.error("state load failed — data left untouched", err);
+    try {
+      // 退避は一度だけ。二度目で、退避したものまで壊さないように。
+      if (!localStorage.getItem(RESCUE_KEY)) localStorage.setItem(RESCUE_KEY, raw);
+    } catch (_) { /* 書けなくても、元の鍵はそのままなので失われません */ }
+  }
+
+  function load() {
+    let rawV2 = null;
+    try { rawV2 = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+    if (rawV2) {
+      try { return reconcile(JSON.parse(rawV2)); }
+      catch (err) { rescue(rawV2, err); return emptyState(); }
+    }
+    try {
       const rawV1 = localStorage.getItem(LEGACY_KEY);
       if (rawV1) {
         migratedOnLoad = true;
         return migrateV1(JSON.parse(rawV1));
       }
     } catch (err) {
-      console.warn("state load failed, starting fresh", err);
+      console.warn("legacy state unreadable", err);
     }
     return emptyState();
   }
@@ -15487,6 +15632,16 @@ a.btn { text-decoration: none; }
       doneAt: t.doneAt || null,
       archived: t.archived === true,
       archivedAt: t.archivedAt || null,
+      /* 繰り返すものを済ませたときに残す「やった記録」。
+
+         繰り返しは、済ませると次の日へ移ります。そのぶん**その日に
+         やったこと自体が画面から消えて**いました。朝のルーティンや育児の
+         ように毎日やるものほど、やった跡が残らないことになります。
+
+         なので、済ませた日に一件だけ写しを置きます。写しは繰り返しません
+         （もう終わったその日ぶんなので）。棚（アーカイブ）には入れません
+         ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
+      trace: t.trace === true,
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -15522,12 +15677,21 @@ a.btn { text-decoration: none; }
      上を12時間で止めるのは、それより長いものは「用事」ではなく
      「その日の全部」だからです。一日を組み立てるための数なので、
      一日を食べ尽くす数は受け取りません。5分刻みに丸めるのは、
-     人が見積もるときの粒がそれより細かくならないためです。 */
-  const MIN_MINUTES = 5, MAX_MINUTES = 720;
+     人が見積もるときの粒がそれより細かくならないためです。
+
+     **数は関数の中に置きます。** すぐ上の isBookendPart に書いてあるとおり、
+     ここは reconcile() が module の評価中に呼ぶ場所です。const を外に
+     置くと、読み込みのたびに「初期化前の参照」で落ちます——しかも
+     load() の catch に静かに入って、空のアプリとして戻ってきます。
+
+     私はその注意書きのすぐ下に const を置いて、**実際に人のデータを
+     消しました。** 長さを決めていないもの（minutes が null）は最初の
+     行で返るので落ちず、長さを決めた人だけが全部を失う、という形でした。 */
   function cleanMinutes(v) {
+    const MIN = 5, MAX = 720;
     const n = Number(v);
     if (!isFinite(n) || n <= 0) return null;
-    return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(n / 5) * 5));
+    return Math.min(MAX, Math.max(MIN, Math.round(n / 5) * 5));
   }
 
   /**
@@ -15645,6 +15809,9 @@ a.btn { text-decoration: none; }
          書き出してから読み直す**ことになり、外から書き換えられた控えを
          毎回踏み潰していました（読み直す意味がありませんでした）。 */
       saveTimer = null;
+      /* 読めなかった日は、書きません。空の state で上書きしてしまうので。
+         直った版で開き直せば、そのまま元のデータが読めます。 */
+      if (loadError) return;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
         if (saveError) {
@@ -15988,6 +16155,7 @@ a.btn { text-decoration: none; }
       doneAt: null,
       archived: false,
       archivedAt: null,
+      trace: false,
       createdAt: today(),
       order: 0,
     };
@@ -16129,10 +16297,34 @@ a.btn { text-decoration: none; }
     const repeating = !before.done && !!before.repeat;
     const due = repeating ? nextDue(before) : before.due;
 
+    /* 繰り返すものを済ませたとき、**その日に「やった」を一件残します**。
+
+       前は次の日へ移すだけでした。毎朝の服薬も、離乳食も、済ませた
+       とたんにその日から消えます。毎日やるものほど、やった跡が残らない。
+
+       残すのは写しです（繰り返さない・その日ぶんの done 一件）。元の
+       ほうは今までどおり次の日へ移ります。写しはアーカイブには入れません
+       ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
+    const traceId = repeating ? uid("t") : null;
+
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       if (!t) return;
       if (repeating) {
+        if (t.due) {
+          s.todos.push({
+            ...t,
+            id: traceId,
+            due: t.due,          // 済ませた、その日のぶん
+            repeat: null, repeatDays: [], repeatNth: null,
+            notifiedFor: null,
+            done: true,
+            doneAt: today(),
+            archived: false, archivedAt: null,
+            trace: true,
+            order: (t.order || 0),
+          });
+        }
         t.due = due;
         t.done = false;
         t.doneAt = null;
@@ -16153,6 +16345,8 @@ a.btn { text-decoration: none; }
         t.done = was.done;
         t.doneAt = was.doneAt;
         t.due = was.due;
+        // 戻すなら、やった記録も一緒に取り消します。
+        if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
       }),
     };
   }
@@ -17321,6 +17515,9 @@ a.btn { text-decoration: none; }
 
   KN.store = {
     KEY, SCHEMA, STORE_COLORS, CATEGORY_COLORS, OTHER_CATEGORY,
+    /* 読めなかったかどうか。画面はこれを見て「保存を止めています」と
+       言えます（黙って動かないのが、いちばん困るので）。 */
+    loadError: () => loadError,
     get, update, subscribe, reload, flush,
     saveError: () => saveError,
     getProduct, getStore, getCategory,
@@ -26243,20 +26440,35 @@ a.btn { text-decoration: none; }
       const node0 = tl.querySelector(".tl-node");
       finishing.add(id);
       checkEl.setAttribute("aria-checked", String(!wasDone));
+      let wait = KN.motion.ms("--m-check");
       if (wasDone) {
         KN.motion.fire("uncheck");
         item.classList.add("is-unstriking");
         node0.classList.add("is-unpop");
       } else {
+        /* 線を引く時間は、**題の長さに合わせます**。短い題も長い題も同じ
+           0.38秒で引くと、長いほうだけ筆が妙に速く走ります。速さのほうを
+           一定にして、そのぶん時間が伸び縮みするほうが自然です。
+           短すぎる／長すぎるのは止めます（0.22〜0.62秒）。 */
+        const w = tl.querySelector(".item-name").getBoundingClientRect().width;
+        const SPEED = 620;   // px/秒。筆の走る速さ。
+        wait = Math.round(Math.min(620, Math.max(220, (w / SPEED) * 1000)));
+        item.style.setProperty("--strike-ms", wait + "ms");
         KN.motion.fire("check");
         item.classList.add("is-striking");
         node0.classList.add("is-pop");
+        tl.classList.add("is-flash");
+        /* 火花は、押した丸からと**絵の丸からも**。押した先だけで散ると、
+           片づいたのがどの用事かは、指のあるところしか言いません。 */
         KN.ui.burst(checkEl);
+        KN.ui.burst(node0);
       }
       setTimeout(() => {
         finishing.delete(id);
+        tl.classList.remove("is-flash");
+        item.style.removeProperty("--strike-ms");
         store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
-      }, KN.motion.ms(wasDone ? "--m-check" : "--m-strike"));
+      }, wait);
       return;
     }
 
@@ -26331,7 +26543,10 @@ a.btn { text-decoration: none; }
 
     const shown = all.filter(hit);
     const open = shown.filter((t) => !t.done && !t.archived);
-    const closed = shown.filter((t) => t.done || t.archived);
+    /* 「やった記録」（繰り返しを済ませたときの写し）は、棚に入れません。
+       棚は「やらずに片づけたもの」の置き場で、性格が違います。記録は
+       その日の時間割の中にだけ残ります。 */
+    const closed = shown.filter((t) => (t.done || t.archived) && !t.trace);
 
     /* The month, above everything. The shelves below are a calendar unrolled
        downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
@@ -26960,21 +27175,29 @@ a.btn { text-decoration: none; }
                   facts が空になる行では、この帯ごと出しません。 */""}
             ${facts.length ? html`<span class="tl-facts">${facts}</span>` : ""}
           </button>
-          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
-                  aria-checked="${String(!!t.done)}"
-                  aria-label="${t.title} を終わりにする">
-            ${t.repeat
-              ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
-              : icon("check")}
-          </button>
+          ${/* 「やった記録」は押せません。もう終わったその日ぶんの写しで、
+                外すという操作に意味がないので——静かな印だけを置きます
+                （元のほうは翌日に立っていて、そちらは押せます）。 */""}
+          ${t.trace
+            ? html`<span class="check is-trace" aria-label="済ませました">${icon("check")}</span>`
+            : html`<button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                    aria-checked="${String(!!t.done)}"
+                    aria-label="${t.title} を終わりにする">
+                ${t.repeat
+                  ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
+                  : icon("check")}
+              </button>`}
         </div>
       </li>
     `);
     li.querySelector(".tl-body").addEventListener("click", () => openSheet(t.id));
-    li.querySelector(".check").addEventListener("click", (e) => {
-      e.stopPropagation();
-      tick(t.id, e.currentTarget);
-    });
+    const box = li.querySelector("button.check");
+    if (box) {
+      box.addEventListener("click", (e) => {
+        e.stopPropagation();
+        tick(t.id, e.currentTarget);
+      });
+    }
     return li;
   }
 
@@ -32110,9 +32333,12 @@ distance=6.0km</pre>
         </button>
       </div>
     `) : node(html`
+      ${/* 星が左、丸が右。**やることの並びに揃えます**——同じ「済ませる」
+            丸が、タブを移ると左右に飛ぶのは、指がいちばん覚えにくいところ
+            でした。星は「今回買う」の指定なので、名前の手前で構いません。 */""}
       <div class="item ${item.checked ? "is-checked" : ""}">
-        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
-                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
+        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
+                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
         <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="item-body">
           <span class="item-name-row">
@@ -32130,8 +32356,8 @@ distance=6.0km</pre>
           </span>
         </button>
         <div class="item-price"></div>
-        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
-                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
+        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
+                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
       </div>
     `);
     wrap.append(row);
@@ -32165,15 +32391,28 @@ distance=6.0km</pre>
          何も起きなかったように見えます（screens.css の「済ませたときの動き」）。
          落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
          行ったかを探さずに済みます。 */
-      haptic([16, 40, 16]);
-      KN.ui.burst(e.currentTarget);
+      /* やることと同じ返し方にします——線が引かれ、絵の丸がひと回りし、
+         行を光が通る。そのあとで下の「買ったもの」へ落ちます。
+         同じ「済ませた」が、タブごとに違う返り方をしないように。 */
       if (finishing.has(item.id)) return;      // 二度押しても一度だけ
       finishing.add(item.id);
-      row.classList.add("is-glow");
+      KN.motion.fire("check");
+      KN.ui.burst(e.currentTarget);
+      const mark = row.querySelector(".item-emoji");
+      if (mark) KN.ui.burst(mark);
+
+      const nameEl = row.querySelector(".item-name");
+      const w = nameEl ? nameEl.getBoundingClientRect().width : 120;
+      const SPEED = 620;   // px/秒。時間割と同じ筆の速さ。
+      const draw = Math.round(Math.min(620, Math.max(220, (w / SPEED) * 1000)));
+      row.style.setProperty("--strike-ms", draw + "ms");
+      row.classList.add("is-striking", "is-flash");
+      if (mark) mark.classList.add("is-pop");
+
       setTimeout(() => {
         row.classList.add("is-dropping");
         setTimeout(() => { finishing.delete(item.id); commit(); }, 280);
-      }, 240);
+      }, draw);
     });
 
     row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));
@@ -34666,6 +34905,10 @@ distance=6.0km</pre>
       const fab = make ? make() : null;
       if (fab) dock.append(fab);
       dock.hidden = !dock.childElementCount;
+      /* ＋ は帯の**右どなり**に立ちます（参考にした画面と同じ並び）。
+         その日は帯のほうが一つぶん狭くなるので、あるかないかを根に
+         書いておいて、CSS がそこから幅を決めます。 */
+      document.documentElement.classList.toggle("has-fab", !dock.hidden);
     }
 
     paintTabs();
