@@ -373,6 +373,10 @@
        icon — the two tabs sit side by side and must not read as one. */
     checklist: '<path d="M3.2 6.4 4.9 8.1 8 5"/><path d="M3.2 12.4 4.9 14.1 8 11"/><path d="M3.2 18.4 4.9 20.1 8 17"/><path d="M11 6.6h9.8M11 12.6h9.8M11 18.6h6.4"/>',
     calendar:  '<rect x="3" y="5" width="18" height="16" rx="2.4"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    /* 暦をしまっているとき。同じ暦に斜線を一本だけ足します——「無い」のでは
+       なく「いまは出していない」なので、形そのものは変えません。 */
+    "calendar-off": '<rect x="3" y="5" width="18" height="16" rx="2.4"/>'
+      + '<path d="M3 10h18M8 3v4M16 3v4"/><path d="M4.4 21 19.6 4.4"/>',
     repeat:    '<path d="M4 9.4V8a3 3 0 0 1 3-3h11"/><path d="m15 2 3 3-3 3"/><path d="M20 14.6V16a3 3 0 0 1-3 3H6"/><path d="m9 22-3-3 3-3"/>',
     flag:      '<path d="M5 21V4"/><path d="M5 4.6h11.6l-2 3.6 2 3.6H5"/>',
     /* 開いた本。閉じた本（ただの角丸四角）は値札と同じ形になるので、中央の谷と
