@@ -614,6 +614,11 @@
          中に同じ手順を持って毎日戻ってくる。だから「ルーティン」という
          別の種類は作りません。同じものに名前を二つ付けることになるので。 */
       subs: cleanSubs(t.subs),
+      /* 自分で選んだ絵。決めていなければ null——その場合は題から絵を
+         推す（KN.productIcons.find）のを、時間割の側がやります。買うもの
+         の商品アイコンと同じ選び方で、「迷ったときは丸のまま」ではなく、
+         中身にいちばん近い絵を積極的に選ぶという方針もそちらと揃えます。 */
+      icon: cleanIcon(t.icon),
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -678,6 +683,16 @@
       title: String((s && s.title) || "").trim(),
       done: !!(s && s.done),
     })).filter((s) => s.title).slice(0, MAX);
+  }
+
+  /* **function 宣言**であることが大事です（cleanMinutes/cleanSubs と
+     同じ理由——load() はこの下より前で走るので、const だと読めない箱に
+     なります）。存在しない絵の鍵が紛れ込んでいたら、null に戻します
+     （手描きの絵の数が減った・キーが変わった、といった将来の変更で
+     用事が壊れて見えないように）。 */
+  function cleanIcon(key) {
+    if (!key) return null;
+    return KN.productIcons.byKey(key) ? String(key) : null;
   }
 
   /**
@@ -1117,7 +1132,7 @@
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
                      repeatNth = null, memo = "", flagged = false, minutes = null,
-                     shop = false, subs = [] } = {}) {
+                     shop = false, subs = [], icon = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1145,6 +1160,7 @@
       trace: false,
       shop: shop === true,
       subs: cleanSubs(subs),
+      icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
     };
@@ -1278,6 +1294,7 @@
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
       if ("minutes" in patch) t.minutes = cleanMinutes(patch.minutes);
+      if ("icon" in patch) t.icon = cleanIcon(patch.icon);
     });
   }
 
