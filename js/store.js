@@ -1310,6 +1310,45 @@
     return out.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
   }
 
+  /* ---------------- ひと月のまとめ ----------------
+
+     Daily Log と**同じ材料**から作ります（dayFeed をその月ぶん回すだけ）。
+     別の数え方を持たせると、まとめと日々の並びが食い違ったときに、
+     どちらが本当か決められなくなります。
+
+     数えるのは、あったことだけです。割合も、続いた日数も、先月との比べも
+     出しません——この画面が答えるのは「あの月はどんな月だったか」で、
+     良し悪しではないので（daily-rules.js が、その器を持っていないことを
+     見張っています）。 */
+  function monthDigest(ym) {
+    const key = String(ym || "").slice(0, 7);
+    const bySrc = { todo: 0, entry: 0, item: 0 };
+    const daysWith = [];
+    let total = 0;
+
+    const [y, m] = key.split("-").map(Number);
+    if (!y || !m) return { daysWith, bySrc, total };
+
+    const last = new Date(y, m, 0).getDate();
+    for (let d = 1; d <= last; d++) {
+      const day = `${key}-${String(d).padStart(2, "0")}`;
+      const feed = dayFeed(day);
+      if (!feed.length) continue;
+      daysWith.push(day);
+      total += feed.length;
+      feed.forEach((f) => { if (bySrc[f.src] != null) bySrc[f.src] += 1; });
+    }
+
+    /* 地の文（日記）だけ書いた日も「記録のあった日」です。 */
+    (get().archive.days || []).forEach((row) => {
+      if (String(row.date || "").slice(0, 7) !== key) return;
+      if (!String(row.memo || "").trim()) return;
+      if (!daysWith.includes(row.date)) daysWith.push(row.date);
+    });
+    daysWith.sort();
+    return { daysWith, bySrc, total };
+  }
+
   /* ---------------- 買うものを、その日の予定に ----------------
 
      ★を付けたものは「今回の買い物」です。それは買うもの側の話で、
@@ -2750,7 +2789,7 @@
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
-    dayFeed,
+    dayFeed, monthDigest,
     calPrefs, setCalPref,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,

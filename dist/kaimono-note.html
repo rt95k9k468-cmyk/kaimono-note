@@ -5783,6 +5783,47 @@ a.btn { text-decoration: none; }
   .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
 }
 
+/* ---------------- ◯月のまとめ ----------------
+
+   Daily Log のすぐ下に置きます。数だけが単独で立つと「その月の成績」に
+   見えるので、必ず地の文の隣に並べる、という決めごとです。
+
+   数えるのは、あったことだけ。割合も、続いた日数も、先月との比べも
+   出しません——良し悪しを言う場所ではないので。 */
+.arc-counts { padding: 12px var(--sp-4) 14px; }
+.arc-counts-head {
+  margin: 0 0 6px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+.arc-counts-days {
+  margin: 0 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
+.arc-counts-days b {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.arc-counts-list {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 0; padding: 0; list-style: none;
+}
+.arc-counts-item {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+}
+.arc-counts-label { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 700; }
+.arc-counts-n {
+  font-size: var(--fs-md); font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text);
+}
+
 </style>
 </head>
 <body>
@@ -16683,6 +16724,45 @@ a.btn { text-decoration: none; }
     return out.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
   }
 
+  /* ---------------- ひと月のまとめ ----------------
+
+     Daily Log と**同じ材料**から作ります（dayFeed をその月ぶん回すだけ）。
+     別の数え方を持たせると、まとめと日々の並びが食い違ったときに、
+     どちらが本当か決められなくなります。
+
+     数えるのは、あったことだけです。割合も、続いた日数も、先月との比べも
+     出しません——この画面が答えるのは「あの月はどんな月だったか」で、
+     良し悪しではないので（daily-rules.js が、その器を持っていないことを
+     見張っています）。 */
+  function monthDigest(ym) {
+    const key = String(ym || "").slice(0, 7);
+    const bySrc = { todo: 0, entry: 0, item: 0 };
+    const daysWith = [];
+    let total = 0;
+
+    const [y, m] = key.split("-").map(Number);
+    if (!y || !m) return { daysWith, bySrc, total };
+
+    const last = new Date(y, m, 0).getDate();
+    for (let d = 1; d <= last; d++) {
+      const day = `${key}-${String(d).padStart(2, "0")}`;
+      const feed = dayFeed(day);
+      if (!feed.length) continue;
+      daysWith.push(day);
+      total += feed.length;
+      feed.forEach((f) => { if (bySrc[f.src] != null) bySrc[f.src] += 1; });
+    }
+
+    /* 地の文（日記）だけ書いた日も「記録のあった日」です。 */
+    (get().archive.days || []).forEach((row) => {
+      if (String(row.date || "").slice(0, 7) !== key) return;
+      if (!String(row.memo || "").trim()) return;
+      if (!daysWith.includes(row.date)) daysWith.push(row.date);
+    });
+    daysWith.sort();
+    return { daysWith, bySrc, total };
+  }
+
   /* ---------------- 買うものを、その日の予定に ----------------
 
      ★を付けたものは「今回の買い物」です。それは買うもの側の話で、
@@ -18123,7 +18203,7 @@ a.btn { text-decoration: none; }
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
-    dayFeed,
+    dayFeed, monthDigest,
     calPrefs, setCalPref,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
@@ -25406,6 +25486,44 @@ a.btn { text-decoration: none; }
     return wrap;
   }
 
+  /* ================================================================
+     ◯月のまとめ — Daily Log と同じ材料から
+
+     数えるのは、あったことだけです。「何日書けたか」であって「何%達成
+     したか」ではありません。割合も、続いた日数も、先月との比べも出しま
+     せん——この画面が答えるのは「あの月はどんな月だったか」で、良し悪し
+     ではないので。
+
+     日を絞って見ているときは出しません（その日ぶんは Daily Log の行が
+     そのまま言っているので、まとめる相手がいません）。
+     ================================================================ */
+  function monthDigest(ym) {
+    if (viewDay) return null;
+    const d = store.monthDigest(ym);
+    if (!d.total && !d.daysWith.length) return null;
+
+    const { month } = ymParts(ym);
+    const bits = [];
+    if (d.bySrc.todo) bits.push({ label: "やること", n: d.bySrc.todo });
+    if (d.bySrc.entry) bits.push({ label: "積み上げ", n: d.bySrc.entry });
+    if (d.bySrc.item) bits.push({ label: "買うもの", n: d.bySrc.item });
+
+    return node(html`
+      <section class="card arc-counts">
+        <h3 class="arc-counts-head">${month + 1}月のまとめ</h3>
+        <p class="arc-counts-days">記録のある日 <b>${d.daysWith.length}</b> 日</p>
+        ${bits.length ? html`
+          <ul class="arc-counts-list">
+            ${bits.map((b) => html`
+              <li class="arc-counts-item">
+                <span class="arc-counts-label">${b.label}</span>
+                <span class="arc-counts-n">${b.n}</span>
+              </li>`)}
+          </ul>` : ""}
+      </section>
+    `);
+  }
+
   function openLogSheet(day) {
     const cur = store.dayLog(day) || {};
     const dt = U.dayDate(day);
@@ -26056,9 +26174,15 @@ a.btn { text-decoration: none; }
     /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
        その日の文が先で、集めるものとして使う人は積み上げが先です。
        どちらが上かは、その人の使い方でしか決まりません。 */
-    const log = dailyLog(ym), entries = entriesSection(ym);
-    if (S().dailyOrder === "entries") els.body.append(entries, log);
-    else els.body.append(log, entries);
+    /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
+       「その月の成績」に見えるので、必ず地の文の隣に並べる、という
+       決めごとです（daily-rules.js が見張っています）。 */
+    const log = dailyLog(ym), digest = monthDigest(ym), entries = entriesSection(ym);
+    const logBlock = document.createDocumentFragment();
+    logBlock.append(log);
+    if (digest) logBlock.append(digest);
+    if (S().dailyOrder === "entries") els.body.append(entries, logBlock);
+    else els.body.append(logBlock, entries);
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;
