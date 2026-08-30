@@ -2102,6 +2102,12 @@
     if (it.doneAtMin != null) {
       facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)}</span>`);
     }
+    /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
+       ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
+    if (t.shop) {
+      const n = store.tripCount();
+      if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
+    }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
     if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);

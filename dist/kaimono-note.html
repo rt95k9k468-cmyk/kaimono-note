@@ -5570,6 +5570,32 @@ a.btn { text-decoration: none; }
   .tl-band-line { transition: none; }
 }
 
+/* ---------------- 買うものを、その日の予定に ----------------
+
+   「今回買うもの」の足元に一行。★は何を買うかを決めますが、いつ行くかは
+   言いません——それは一日の組み立ての話なので、押すとやること側へ一件
+   置きます。箱の中の締めくくりなので、囲みは持たせず地の色で沈めます。 */
+.trip-plan { padding: 4px var(--sp-4) 12px; }
+.trip-plan-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 11px var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  transition: background var(--m-press) var(--ease), color var(--m-press) var(--ease);
+}
+.trip-plan-btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.trip-plan-btn.is-on {
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+  color: var(--c-primary);
+}
+
+/* 時間割で、買い物の一件が「いま何個ぶんか」。 */
+.tl-shop { font-variant-numeric: tabular-nums; }
+
 </style>
 </head>
 <body>
@@ -15758,6 +15784,10 @@ a.btn { text-decoration: none; }
          （もう終わったその日ぶんなので）。棚（アーカイブ）には入れません
          ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
       trace: t.trace === true,
+      /* 「買い物へ行く」の一件。★を付けた買うものを、その日の予定に
+         一件として置いたものです。中身（何を買うか）は買うもの側が持ち
+         つづけるので、ここは**行くという用事**だけを持ちます。 */
+      shop: t.shop === true,
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -16246,7 +16276,8 @@ a.btn { text-decoration: none; }
      what is overdue, what repeats, what the icon should count. */
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
-                     repeatNth = null, memo = "", flagged = false, minutes = null } = {}) {
+                     repeatNth = null, memo = "", flagged = false, minutes = null,
+                     shop = false } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -16272,6 +16303,7 @@ a.btn { text-decoration: none; }
       archived: false,
       archivedAt: null,
       trace: false,
+      shop: shop === true,
       createdAt: today(),
       order: 0,
     };
@@ -16281,6 +16313,39 @@ a.btn { text-decoration: none; }
       s.todos.unshift(rec);
     });
     return rec;
+  }
+
+  /* ---------------- 買うものを、その日の予定に ----------------
+
+     ★を付けたものは「今回の買い物」です。それは買うもの側の話で、
+     **いつ行くか**は予定側の話——別のことなので、二重に持たせません。
+     予定に置くのは「買い物へ行く」という一件だけで、何を買うかは
+     買うもののほうがずっと持ちつづけます。数も、そちらを数えます
+     （写しておくと、★を足した瞬間に古くなるので）。 */
+
+  /** いま★が付いていて、まだ買っていないものの数。 */
+  function tripCount() {
+    return get().items.filter((i) => i.fav && !i.checked).length;
+  }
+
+  /** その日に置いた「買い物へ行く」。無ければ null。 */
+  function tripTodo(day) {
+    return get().todos.find((t) => t.shop && t.due === day && !t.archived && !t.trace) || null;
+  }
+
+  /** その日の予定に置きます。すでにあれば、そのまま返します。 */
+  function planTrip(day, minutes = 60) {
+    const had = tripTodo(day);
+    if (had) return had;
+    return addTodo({ title: "買い物へ行く", due: day, minutes, shop: true });
+  }
+
+  /** 予定から外します。外せたら true。 */
+  function unplanTrip(day) {
+    const t = tripTodo(day);
+    if (!t) return false;
+    update((s) => { s.todos = s.todos.filter((x) => x.id !== t.id); });
+    return true;
   }
 
   function getTodo(id) { return get().todos.find((t) => t.id === id) || null; }
@@ -17679,6 +17744,7 @@ a.btn { text-decoration: none; }
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
+    tripCount, tripTodo, planTrip, unplanTrip,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
@@ -27659,6 +27725,12 @@ a.btn { text-decoration: none; }
     if (it.doneAtMin != null) {
       facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)}</span>`);
     }
+    /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
+       ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
+    if (t.shop) {
+      const n = store.tripCount();
+      if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
+    }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
     if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
@@ -32719,6 +32791,7 @@ distance=6.0km</pre>
     const tripShown = appendGroups(trip, inner);
     if (!tripShown && categoryFilter) inner.append(noneInCategory());
     box.append(inner);
+    box.append(tripPlanRow());
     els.body.append(box);
     els.body.append(insightsCard(trip));
 
@@ -32729,6 +32802,44 @@ distance=6.0km</pre>
 
     if (checked.length) els.body.append(checkedSection(checked));
     settle();
+  }
+
+  /* ---------------- 「いつ行くか」を、予定のほうへ ----------------
+
+     ★は「今回買うもの」を決めますが、**いつ行くか**は言いません。それは
+     一日の組み立ての話なので、やること側に一件置いて、そちらで時間を
+     決められるようにします（時間割の上でつまんで動かせます）。
+
+     置くのは「買い物へ行く」の一件だけです。何を買うかはこの画面が持ち
+     つづけます——予定側に品名まで写すと、★をひとつ足した瞬間に古くなる
+     ので。 */
+  function tripPlanRow() {
+    const day = KN.util.todayKey();
+    const planned = store.tripTodo(day);
+    const row = node(html`
+      <div class="trip-plan">
+        <button type="button" class="trip-plan-btn ${planned ? "is-on" : ""}">
+          ${icon(planned ? "check" : "plus")}
+          <span>${planned ? "今日の予定にあります" : "今日の予定に入れる"}</span>
+        </button>
+      </div>
+    `);
+    row.querySelector("button").addEventListener("click", (e) => {
+      const btn = e.currentTarget;
+      if (store.tripTodo(day)) {
+        store.unplanTrip(day);
+        KN.motion.fire("delete", btn);
+        KN.ui.toast("今日の予定から外しました");
+      } else {
+        store.planTrip(day);
+        KN.motion.fire("add", btn);
+        KN.ui.toast("今日の予定に入れました", {
+          action: { label: "見る", onClick: () => KN.app.showScreen("todo") },
+        });
+      }
+      render();
+    });
+    return row;
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */

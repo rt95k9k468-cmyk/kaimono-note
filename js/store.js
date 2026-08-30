@@ -602,6 +602,10 @@
          （もう終わったその日ぶんなので）。棚（アーカイブ）には入れません
          ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
       trace: t.trace === true,
+      /* 「買い物へ行く」の一件。★を付けた買うものを、その日の予定に
+         一件として置いたものです。中身（何を買うか）は買うもの側が持ち
+         つづけるので、ここは**行くという用事**だけを持ちます。 */
+      shop: t.shop === true,
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -1090,7 +1094,8 @@
      what is overdue, what repeats, what the icon should count. */
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
-                     repeatNth = null, memo = "", flagged = false, minutes = null } = {}) {
+                     repeatNth = null, memo = "", flagged = false, minutes = null,
+                     shop = false } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1116,6 +1121,7 @@
       archived: false,
       archivedAt: null,
       trace: false,
+      shop: shop === true,
       createdAt: today(),
       order: 0,
     };
@@ -1125,6 +1131,39 @@
       s.todos.unshift(rec);
     });
     return rec;
+  }
+
+  /* ---------------- 買うものを、その日の予定に ----------------
+
+     ★を付けたものは「今回の買い物」です。それは買うもの側の話で、
+     **いつ行くか**は予定側の話——別のことなので、二重に持たせません。
+     予定に置くのは「買い物へ行く」という一件だけで、何を買うかは
+     買うもののほうがずっと持ちつづけます。数も、そちらを数えます
+     （写しておくと、★を足した瞬間に古くなるので）。 */
+
+  /** いま★が付いていて、まだ買っていないものの数。 */
+  function tripCount() {
+    return get().items.filter((i) => i.fav && !i.checked).length;
+  }
+
+  /** その日に置いた「買い物へ行く」。無ければ null。 */
+  function tripTodo(day) {
+    return get().todos.find((t) => t.shop && t.due === day && !t.archived && !t.trace) || null;
+  }
+
+  /** その日の予定に置きます。すでにあれば、そのまま返します。 */
+  function planTrip(day, minutes = 60) {
+    const had = tripTodo(day);
+    if (had) return had;
+    return addTodo({ title: "買い物へ行く", due: day, minutes, shop: true });
+  }
+
+  /** 予定から外します。外せたら true。 */
+  function unplanTrip(day) {
+    const t = tripTodo(day);
+    if (!t) return false;
+    update((s) => { s.todos = s.todos.filter((x) => x.id !== t.id); });
+    return true;
   }
 
   function getTodo(id) { return get().todos.find((t) => t.id === id) || null; }
@@ -2523,6 +2562,7 @@
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
+    tripCount, tripTodo, planTrip, unplanTrip,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,

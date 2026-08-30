@@ -467,6 +467,7 @@
     const tripShown = appendGroups(trip, inner);
     if (!tripShown && categoryFilter) inner.append(noneInCategory());
     box.append(inner);
+    box.append(tripPlanRow());
     els.body.append(box);
     els.body.append(insightsCard(trip));
 
@@ -477,6 +478,44 @@
 
     if (checked.length) els.body.append(checkedSection(checked));
     settle();
+  }
+
+  /* ---------------- 「いつ行くか」を、予定のほうへ ----------------
+
+     ★は「今回買うもの」を決めますが、**いつ行くか**は言いません。それは
+     一日の組み立ての話なので、やること側に一件置いて、そちらで時間を
+     決められるようにします（時間割の上でつまんで動かせます）。
+
+     置くのは「買い物へ行く」の一件だけです。何を買うかはこの画面が持ち
+     つづけます——予定側に品名まで写すと、★をひとつ足した瞬間に古くなる
+     ので。 */
+  function tripPlanRow() {
+    const day = KN.util.todayKey();
+    const planned = store.tripTodo(day);
+    const row = node(html`
+      <div class="trip-plan">
+        <button type="button" class="trip-plan-btn ${planned ? "is-on" : ""}">
+          ${icon(planned ? "check" : "plus")}
+          <span>${planned ? "今日の予定にあります" : "今日の予定に入れる"}</span>
+        </button>
+      </div>
+    `);
+    row.querySelector("button").addEventListener("click", (e) => {
+      const btn = e.currentTarget;
+      if (store.tripTodo(day)) {
+        store.unplanTrip(day);
+        KN.motion.fire("delete", btn);
+        KN.ui.toast("今日の予定から外しました");
+      } else {
+        store.planTrip(day);
+        KN.motion.fire("add", btn);
+        KN.ui.toast("今日の予定に入れました", {
+          action: { label: "見る", onClick: () => KN.app.showScreen("todo") },
+        });
+      }
+      render();
+    });
+    return row;
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
