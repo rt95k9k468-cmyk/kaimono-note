@@ -213,6 +213,10 @@
   --m-press: .1s;
   /* 印が付く・数が変わる。押した手ごたえなので、ほんの少し弾みます。 */
   --m-check: .26s;
+  /* 済ませたときに、題の上を線が引かれていく長さ。check より長いのは、
+     これが「押した手ごたえ」ではなく「済ませた、という出来事」だから
+     ——見せ場なので、目で追える速さにします。 */
+  --m-strike: .38s;
   --m-number: .3s;
   /* 増える・減る。減るほうを少し速く——去るものを見送らせないため。 */
   --m-add: .32s;
@@ -4935,8 +4939,14 @@ a.btn { text-decoration: none; }
   grid-template-columns: 44px 56px 1fr;
   align-items: start;
 }
+/* 時刻と丸は、行の**まん中**に置きます。
+
+   前は上から決まった距離に置いていました。すると、行の高さが中身で
+   変わる（メモがある／長さを書いた／二行の題）たびに、丸と題が上下に
+   ずれます。参考画面もここは中心合わせで、時刻の字の中心と丸の中心が
+   揃っています。 */
 .tl-time {
-  padding-top: 18px;
+  align-self: center;
   padding-right: 3px;
   font-size: var(--fs-sm);
   color: var(--c-text-3);
@@ -4976,8 +4986,8 @@ a.btn { text-decoration: none; }
 /* 線の上の丸。中身は手描きアイコン、地は棚の色をごく薄く。 */
 .tl-node {
   position: absolute;
-  left: 50%; top: 11px;
-  transform: translateX(-50%);
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
   display: grid; place-items: center;
   width: 50px; height: 50px;
   border-radius: var(--r-full);
@@ -5071,6 +5081,7 @@ a.btn { text-decoration: none; }
 .tl-free-row { min-height: 50px; }
 .tl-free-row .tl-rail { min-height: 50px; }
 .tl-free-text {
+  align-self: center;
   padding: 16px var(--sp-4) 16px 8px;
   font-size: var(--fs-sm);
   color: var(--c-text-3);
@@ -5082,7 +5093,8 @@ a.btn { text-decoration: none; }
 .tl-now .tl-rail::before { background: color-mix(in srgb, var(--c-primary) 26%, transparent); }
 .tl-now-dot {
   position: absolute;
-  left: 50%; top: 12px;
+  left: 50%; top: 50%;
+  margin-top: -5.5px;
   width: 11px; height: 11px;
   margin-left: -5.5px;
   border-radius: var(--r-full);
@@ -5090,9 +5102,9 @@ a.btn { text-decoration: none; }
   box-shadow: 0 0 0 4px var(--c-bg);
 }
 .tl-now-line {
-  align-self: start;
+  align-self: center;
   height: 2px;
-  margin: 17px var(--sp-4) 0 8px;
+  margin: 0 var(--sp-4) 0 8px;
   border-radius: 1px;
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--c-primary) 55%, transparent),
@@ -5100,12 +5112,77 @@ a.btn { text-decoration: none; }
 }
 
 /* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
-   線だけが下へ伸びていると「まだ続く」と読めてしまいます。 */
-.tl-list > li:last-child .tl-rail::before { bottom: auto; height: 61px; }
+   線だけが下へ伸びていると「まだ続く」と読めてしまいます。
+   丸は行のまん中にあるので、そこまで（50% ＋ 丸の半径）。 */
+.tl-list > li:last-child .tl-rail::before { bottom: auto; height: calc(50% + 25px); }
 
 /* 過ぎた空き。もう使えないので、線も字も一段薄く。消しはしません
    ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
 .tl-free-row.is-past { opacity: .6; }
+
+/* ---------------- 済ませたときの動き（時間割） ----------------
+
+   時間割の行は、済ませても**消えません**（今日それをした、が残るので）。
+   なので一覧の「光って畳まれて消える」は使えません。かわりに、
+
+     ① 題の上を、線が左から右へ引かれる
+     ② 丸がひと回り大きくなって、戻る（ピコン）
+
+   の二つを同時に出します。線が引かれ終わったところで store を更新すると、
+   本物の text-decoration に引き継がれます——動きと結果が同じ形なので、
+   切り替わったことに気づきません。 */
+
+.tl-item.is-striking .item-name {
+  /* 線は背景で引きます。text-decoration は動かせないので。
+     currentColor の細い帯を、幅0から100%へ伸ばします。 */
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  background-size: 0% 1.5px;
+  animation: tl-strike var(--m-strike) var(--ease-out) forwards;
+}
+@keyframes tl-strike {
+  from { background-size: 0% 1.5px; }
+  to   { background-size: 100% 1.5px; }
+}
+
+/* 丸のピコン。行き過ぎて戻る曲線（--spring）で、ひと回りだけ。
+   済ませた瞬間に**指の下ではないところ**が動くので、押した先とは別に
+   「その用事が片づいた」ことが見えます。 */
+.tl-node.is-pop { animation: tl-pop var(--m-strike) var(--spring); }
+@keyframes tl-pop {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  38%  { transform: translate(-50%, -50%) scale(1.16); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 外すときは、逆に引っ込みます。線は消え、丸は一度縮んで戻ります。 */
+.tl-node.is-unpop { animation: tl-unpop var(--m-check) var(--ease-out); }
+@keyframes tl-unpop {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  40%  { transform: translate(-50%, -50%) scale(.86); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+.tl-item.is-unstriking .item-name {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 100% 58%;
+  animation: tl-unstrike var(--m-check) var(--ease-in) forwards;
+}
+@keyframes tl-unstrike {
+  from { background-size: 100% 1.5px; }
+  to   { background-size: 0% 1.5px; }
+}
+
+/* 済ませた行の、済ませた時刻。押した時刻をそのまま出します
+   （組み立てもこの時刻でその用事を置きます）。 */
+.tl-done-at { color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+
+/* 翌日以降の棚も、時間割のときは枠から出します（今日と同じ顔に）。
+   棚の色の帯も外します——時間軸のほうが「いつ」を言っているので、
+   帯の色は同じことを二度言っているだけになります。 */
+.todo-group.is-tl { margin-left: 0; margin-right: 0; }
+.todo-group.is-tl .todo-head { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 
 </style>
 </head>
@@ -5934,9 +6011,14 @@ a.btn { text-decoration: none; }
      という当たりです（人が決めた数があれば、必ずそちらを使います）。 */
   const DEFAULT_MINUTES = 30;
 
-  /* 一日の枠。ここから外は「今日」として扱いません。設定で動かせます。 */
-  const DEFAULT_START = "07:00";
-  const DEFAULT_END = "22:00";
+  /* 一日の枠。ここから外は「今日」として扱いません。設定で動かせます。
+
+     5:00〜23:00 にしてあります。7:00〜22:00 では、早い朝と遅い夜が枠の
+     外に落ちました——早起きして片づけたものが「はみ出し」になったり、
+     寝る前の用事が置けなかったり。広めに取って、実際の暮らしに合わせて
+     設定で狭めてもらうほうが、間違いが少ない。 */
+  const DEFAULT_START = "05:00";
+  const DEFAULT_END = "23:00";
 
   /* これ未満の空きは、空きと呼びません。5分の隙間を「自由時間」と
      書かれても、何にも使えないので。 */
@@ -6049,9 +6131,27 @@ a.btn { text-decoration: none; }
     const blocks = [];   // ふさがっている時間帯
 
     /* 済んだものは、詰め直しの対象になりません。もうやったことなので
-       朝のところに置いたままにして、これからの時間は食べさせません。 */
+       置いたままにして、これからの時間は食べさせません。 */
     const doneOf = (t) => !!(t.done || t.archived);
     const floorFor = (t) => (now != null && !doneOf(t) ? Math.max(dayStart, now) : dayStart);
+
+    /* 済ませた**実際の時刻**。doneAt はもともと時刻まで持っていました
+       （ISO の刻印）が、組み立てが読んでいませんでした。読まないと、
+       済んだものが一日の頭から順に詰められて、朝に済ませたことになります
+       ——それは作り話です。押した時刻に置きます。
+
+       終わりがその時刻で、始まりはそこから長さぶん手前。「10:42 に押した、
+       20分かかった」を素直に読むと、10:22〜10:42 です。 */
+    function doneSpan(t) {
+      if (!doneOf(t) || !t.doneAt) return null;
+      const d = new Date(t.doneAt);
+      if (isNaN(d.getTime())) return null;
+      if (U.dayKey(d) !== day) return null;          // 別の日に押したもの
+      const end = d.getHours() * 60 + d.getMinutes();
+      const len = minutesOf(t);
+      if (end <= dayStart) return null;              // 枠の外。ふつうに詰めます
+      return { start: Math.max(dayStart, end - len), end };
+    }
 
     /* ---- ① 時刻を持つものに、先に場所を与える ----
 
@@ -6078,11 +6178,16 @@ a.btn { text-decoration: none; }
       let c = from;
       list.forEach((t) => {
         const len = minutesOf(t);
-        const start = firstGap(Math.max(c, floorFor(t)), len, blocks);
-        items.push({ todo: t, atMin: start, untilMin: start + len,
-                     minutes: len, fixed: false, clash: false });
-        addBlock(blocks, start, start + len);
-        c = start + len;
+        /* 済ませたものは、押した時刻に置きます（詰めません）。
+           押した記録が無いものだけ、順に詰めます。 */
+        const span = doneSpan(t);
+        const start = span ? span.start : firstGap(Math.max(c, floorFor(t)), len, blocks);
+        const until = span ? span.end : start + len;
+        items.push({ todo: t, atMin: start, untilMin: until,
+                     minutes: until - start, fixed: false, clash: false,
+                     doneAtMin: span ? span.end : null });
+        addBlock(blocks, start, until);
+        if (!span) c = until;
       });
       return c;
     }
@@ -25959,6 +26064,36 @@ a.btn { text-decoration: none; }
     const wasDone = t.done;
     const row = checkEl && checkEl.closest(".item");
 
+    /* ---- 時間割の行は、済ませても消えません ----
+
+       一覧の「光って、畳まれて消える」は、行が去るから成り立つ動きです。
+       時間割では行がその場に残る（今日それをした、が残る）ので、別の
+       見せ方が要ります。題の上を線が引かれていき、丸がひと回りして戻る
+       ——線が引き終わったところで store を更新すると、本物の取り消し線に
+       そのまま引き継がれます。 */
+    const tl = checkEl && checkEl.closest(".tl-row");
+    if (tl && !t.repeat) {
+      const item = tl.querySelector(".tl-item");
+      const node0 = tl.querySelector(".tl-node");
+      finishing.add(id);
+      checkEl.setAttribute("aria-checked", String(!wasDone));
+      if (wasDone) {
+        KN.motion.fire("uncheck");
+        item.classList.add("is-unstriking");
+        node0.classList.add("is-unpop");
+      } else {
+        KN.motion.fire("check");
+        item.classList.add("is-striking");
+        node0.classList.add("is-pop");
+        KN.ui.burst(checkEl);
+      }
+      setTimeout(() => {
+        finishing.delete(id);
+        store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
+      }, KN.motion.ms(wasDone ? "--m-check" : "--m-strike"));
+      return;
+    }
+
     /* 外すときは、これまでどおりその場で。戻す動きに見せ場は要りません。 */
     if (wasDone || !row) {
       const res = store.toggleTodo(id);
@@ -26433,11 +26568,27 @@ a.btn { text-decoration: none; }
                data-day="${g.day || g.from || ""}"></section>
     `);
     section.append(head(g, rows.length));
-    if (rows.length) {
-      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rows.forEach((t) => box.append(todoRow(t, tiles, groups, g)));
-      section.append(box);
-      if (!tiles) wireReorder(box, g);
+    /* 今日の枠と同じ理由で、済ませたものだけの日も出します。 */
+    const asTl = !tiles && timelineOn() && g.day;
+    const doneThatDay = asTl
+      ? store.get().todos.filter((t) => (t.done || t.archived) && t.due === g.day)
+      : [];
+    if (rows.length || doneThatDay.length) {
+      /* 翌日以降も、今日と同じ顔にします。今日だけ時間割で明日からただの
+         一覧だと、同じ「やること」が二つの読み方を持つことになり、下へ
+         送った用事がどこへ行ったのか読み替えが要ります。
+
+         一日ぶんの棚（g.day を持つもの）だけです。「来週」「もっと先」は
+         何日かの寄せ集めなので、一本の時間軸は引けません。 */
+      if (asTl) {
+        section.classList.add("is-tl");
+        section.append(timeline(rows, g));
+      } else {
+        const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+        rows.forEach((t) => box.append(todoRow(t, tiles, groups, g)));
+        section.append(box);
+        if (!tiles) wireReorder(box, g);
+      }
     }
     return section;
   }
@@ -26461,12 +26612,20 @@ a.btn { text-decoration: none; }
                data-day="${plain ? plain.day : ""}"></section>
     `);
     top.append(head(plain, rows.length));
-    if (rows.length) {
+    /* 時間割は、済ませたものも並べます。なので**残りが0でも出します**
+       ——ここは一度こわしました。残りの数だけで出すかどうかを決めていたので、
+       今日ぶんを全部片づけた瞬間に、その日の記録ごと画面から消えました。
+       「今日これをやった」は、残りが無くなってからこそ見たいものです。 */
+    const asTimeline = !tiles && timelineOn();
+    const doneToday = asTimeline && plain && plain.day
+      ? store.get().todos.filter((t) => (t.done || t.archived) && t.due === plain.day)
+      : [];
+    if (rows.length || doneToday.length) {
       /* 今日だけは、一覧ではなく**時間割**で出せます。一覧は「何が残って
          いるか」しか言いませんが、時間割は「どう配ると収まるか」を言います
          ——同じ5件でも、読み取れることが違います。
          タイルを選んでいる人には出しません（正方形に時間軸は引けないので）。 */
-      if (!tiles && timelineOn()) {
+      if (asTimeline) {
         /* 時間割のときは、今日の枠の地の色を外します（下の CSS）。
            一本の線と時刻でもう十分に「今日」と言えているので、そこへ
            色の面まで重ねると、色の言っていることが薄まります。 */
@@ -26477,20 +26636,6 @@ a.btn { text-decoration: none; }
         rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
         top.append(box);
         if (!tiles) wireReorder(box, plain);
-        /* 戻る道。時間割から一覧へ移れるなら、一覧からも戻れないと
-           片道になります（タイルのときは時間軸が引けないので出しません）。 */
-        if (!tiles && !timelineOn()) {
-          const back = node(html`
-            <div class="tl-sum is-back">
-              <button type="button" class="tl-switch js-tl-on">時間割で見る</button>
-            </div>
-          `);
-          back.querySelector(".js-tl-on").addEventListener("click", () => {
-            store.update((st) => { st.settings.todoTimeline = true; });
-            KN.motion.fire("select");
-          });
-          top.append(back);
-        }
       }
     } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
@@ -26536,14 +26681,18 @@ a.btn { text-decoration: none; }
       <div class="tl">
         ${/* 今日は「このあと」の空きを出します。一日ぜんぶの合計を出すと、
               15時に「空き13時間」——そのうち8時間はもう過ぎている、という
-              嘘になります。人が知りたいのは、これから何ができるかです。 */""}
+              嘘になります。人が知りたいのは、これから何ができるかです。
+
+              ここに「一覧で見る」の札がありました。外したのは、**そう
+              しょっちゅう変えるものではない**からです。毎日見る画面の
+              一等地を、年に数回押すかどうかのボタンが占めていました。
+              切り替えは設定（やること → 今日を時間割で見る）にあります。 */""}
         <div class="tl-sum">
           ${free >= P.MIN_GAP
             ? html`<span class="tl-free">${isToday ? "このあと " : ""}空き ${P.humanSpan(free)}</span>`
             : html`<span class="tl-free">${isToday ? "このあとの" : ""}空きはありません</span>`}
           ${plan.over
             ? html`<span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>` : ""}
-          <button type="button" class="tl-switch js-tl-off">一覧で見る</button>
         </div>
         <ol class="tl-list js-tl"></ol>
       </div>
@@ -26577,10 +26726,6 @@ a.btn { text-decoration: none; }
       list.append(nowRow(nowMin));
     }
 
-    sec.querySelector(".js-tl-off").addEventListener("click", () => {
-      store.update((st) => { st.settings.todoTimeline = false; });
-      KN.motion.fire("select");
-    });
     return sec;
   }
 
@@ -26615,6 +26760,17 @@ a.btn { text-decoration: none; }
   /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
   function itemRow(it, joined) {
     const t = it.todo;
+    /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
+    const facts = [];
+    /* 済ませたものは、押した時刻を出します。組み立てもこの時刻でその用事を
+       置いているので、左の時刻とあわせて「いつ何をしたか」が読めます。 */
+    if (it.doneAtMin != null) {
+      facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)} に済ませました</span>`);
+    }
+    if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
+    if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
+    if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
+    if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const li = node(html`
       <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
@@ -26631,12 +26787,12 @@ a.btn { text-decoration: none; }
           <button class="tl-body" type="button">
             ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
             <span class="item-name">${t.title}</span>
-            <span class="tl-facts">
-              <span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>
-              ${it.fixed ? html`<span class="tl-pin">時刻あり</span>` : ""}
-              ${t.repeat ? html`<span class="tl-rep">${repeatShort(t)}</span>` : ""}
-              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
-            </span>
+            ${/* 決めていない長さは**書きません**。組み立てには30分として
+                  使いますが、画面に「30分」と出すとそれが決めた数のように
+                  読めますし、決めていない行にまで一段増えて、丸と題が
+                  中心線からずれる原因にもなっていました。
+                  facts が空になる行では、この帯ごと出しません。 */""}
+            ${facts.length ? html`<span class="tl-facts">${facts}</span>` : ""}
           </button>
           <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
                   aria-checked="${String(!!t.done)}"
