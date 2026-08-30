@@ -390,6 +390,7 @@
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
     let flagged = editing ? !!t.flagged : false;
+    let minutes = editing ? (t.minutes || null) : null;
     haptic(10);
 
     const body = node(html`
@@ -440,6 +441,22 @@
                 19:30 と書いていいのか」で迷います。 */""}
           <span class="field-hint js-time-note" hidden>時刻は、お知らせを出す
             タイミングです。並ぶ場所は毎朝・毎晩のままです。</span>
+        </div>
+
+        ${/* どれくらいかかるか。
+
+              これは締め切りでも目標でもありません。**今日の時間割を組む
+              ための長さ**です。決めなくても構いません——決めていないものは
+              30分として置かれます。
+
+              札で選ばせるのは、分を打たせると「25分か30分か」を考え始めて
+              しまうからです。見積もりはそこまで細かくならないので、
+              よく使う長さだけを並べます。 */""}
+        <div class="field">
+          <span class="field-label">どれくらい かかる</span>
+          <div class="js-mins"></div>
+          <span class="field-hint">今日の時間割を組むのに使います。
+            決めなければ 30分ぶんの場所を取ります。</span>
         </div>
 
         ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
@@ -577,6 +594,25 @@
     const timeCell = body.querySelector(".date-cell.is-time");
     const timeEl = body.querySelector(".js-time");
     const timeClear = body.querySelector(".js-time-clear");
+
+    /* かかる時間。よく使う長さだけを札で出します——分を打たせると
+       「25分か30分か」を考え始めてしまい、見積もりはそこまで細かく
+       なりません。「決めない」も答えのうちなので、先頭に置きます。 */
+    const MINS = [15, 30, 45, 60, 90, 120];
+    const minsHost = body.querySelector(".js-mins");
+    function paintMins() {
+      KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(
+        MINS.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
+      ), {
+        activeId: minutes ? String(minutes) : "",
+        onPick: (id) => {
+          minutes = id ? Number(id) : null;
+          KN.motion.fire("select");
+          paintMins();
+        },
+      });
+    }
+    paintMins();
 
     /* 時刻の欄はいつも出しておきます（日付が「なし」でも、毎朝・毎晩でも）。
 
@@ -757,11 +793,11 @@
          古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes });
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -1586,15 +1622,164 @@
     `);
     top.append(head(plain, rows.length));
     if (rows.length) {
-      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
-      top.append(box);
-      if (!tiles) wireReorder(box, plain);
+      /* 今日だけは、一覧ではなく**時間割**で出せます。一覧は「何が残って
+         いるか」しか言いませんが、時間割は「どう配ると収まるか」を言います
+         ——同じ5件でも、読み取れることが違います。
+         タイルを選んでいる人には出しません（正方形に時間軸は引けないので）。 */
+      if (!tiles && timelineOn()) {
+        /* 時間割のときは、今日の枠の地の色を外します（下の CSS）。
+           一本の線と時刻でもう十分に「今日」と言えているので、そこへ
+           色の面まで重ねると、色の言っていることが薄まります。 */
+        panel.classList.add("is-tl");
+        top.append(timeline(rows, plain));
+      } else {
+        const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+        rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+        top.append(box);
+        if (!tiles) wireReorder(box, plain);
+        /* 戻る道。時間割から一覧へ移れるなら、一覧からも戻れないと
+           片道になります（タイルのときは時間軸が引けないので出しません）。 */
+        if (!tiles && !timelineOn()) {
+          const back = node(html`
+            <div class="tl-sum is-back">
+              <button type="button" class="tl-switch js-tl-on">時間割で見る</button>
+            </div>
+          `);
+          back.querySelector(".js-tl-on").addEventListener("click", () => {
+            store.update((st) => { st.settings.todoTimeline = true; });
+            KN.motion.fire("select");
+          });
+          top.append(back);
+        }
+      }
     } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
     panel.append(top);
     return panel;
+  }
+
+  /* ---------------- 今日の時間割 ----------------
+
+     一本の線に沿って、今日が上から下へ流れます。左に時刻、線の上に丸い
+     アイコン、右に用事。用事と用事のあいだが空いていれば、空いていると
+     書きます——埋めません。**空きが見えること**が、配り直すための材料です。
+
+     評価はしません。遅れていても赤くしませんし、「予定通り」も「達成率」も
+     出しません。出すのは「いま何時か」と「何が残っているか」だけ。現実の
+     生活は崩れるものだ、というのがこの画面の前提なので。
+
+     組み立てそのものは js/plan.js が持ちます。ここは描くだけです。 */
+
+  const timelineOn = () => store.get().settings.todoTimeline !== false;
+
+  function timeline(rows, shelf) {
+    const P = KN.plan;
+    const s = store.get().settings;
+    const plan = P.buildDay(todayKey(), rows, { start: s.dayStart, end: s.dayEnd });
+    const nowMin = P.toMin(KN.util.nowTime());
+    const isToday = !shelf || !shelf.day || shelf.day === todayKey();
+
+    const sec = node(html`
+      <div class="tl">
+        <div class="tl-sum">
+          ${plan.freeTotal >= P.MIN_GAP
+            ? html`<span class="tl-free">空き ${P.humanSpan(plan.freeTotal)}</span>` : ""}
+          ${plan.over
+            ? html`<span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>` : ""}
+          <button type="button" class="tl-switch js-tl-off">一覧で見る</button>
+        </div>
+        <ol class="tl-list js-tl"></ol>
+      </div>
+    `);
+    const list = sec.querySelector(".js-tl");
+
+    /* 用事と空きを、時刻の順に一本へ混ぜます。 */
+    const parts = []
+      .concat(plan.items.map((it) => ({ kind: "item", at: it.atMin, it })))
+      .concat(plan.free.map((f) => ({ kind: "free", at: f.atMin, f })))
+      .sort((a, b) => a.at - b.at);
+
+    let nowPlaced = false;
+    parts.forEach((part, i) => {
+      /* 「いま」の線は、その時刻をまたぐところに一度だけ。今日以外の日を
+         見ているときは出しません（きのうの「いま」は意味を成さないので）。 */
+      if (isToday && !nowPlaced && nowMin != null && part.at > nowMin) {
+        list.append(nowRow(nowMin));
+        nowPlaced = true;
+      }
+      if (part.kind === "free") { list.append(freeRow(part.f)); return; }
+      const next = parts[i + 1];
+      list.append(itemRow(part.it, !!next && next.kind === "item"));
+    });
+    if (isToday && !nowPlaced && nowMin != null && nowMin <= plan.endMin) {
+      list.append(nowRow(nowMin));
+    }
+
+    sec.querySelector(".js-tl-off").addEventListener("click", () => {
+      store.update((st) => { st.settings.todoTimeline = false; });
+      KN.motion.fire("select");
+    });
+    return sec;
+  }
+
+  /** いま何時か。線がここで色を変えます。 */
+  function nowRow(nowMin) {
+    return node(html`
+      <li class="tl-now">
+        <span class="tl-time is-now">${KN.plan.toTime(nowMin)}</span>
+        <span class="tl-rail"><span class="tl-now-dot"></span></span>
+        <span class="tl-now-line"></span>
+      </li>
+    `);
+  }
+
+  /** 空いているところ。埋めずに、空いていると言うだけ。 */
+  function freeRow(f) {
+    return node(html`
+      <li class="tl-free-row">
+        <span class="tl-time">${f.at}</span>
+        <span class="tl-rail is-dash"></span>
+        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)} あいています</span>
+      </li>
+    `);
+  }
+
+  /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
+  function itemRow(it, joined) {
+    const t = it.todo;
+    const li = node(html`
+      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}"
+          data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
+        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
+        <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
+        <div class="item todo tl-item ${t.done ? "is-checked" : ""}">
+          <button class="tl-body" type="button">
+            <span class="tl-cap">
+              <span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>
+              ${it.fixed ? html`<span class="tl-pin">時刻あり</span>` : ""}
+              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
+              ${t.repeat ? html`<span class="tl-rep">${repeatShort(t)}</span>` : ""}
+            </span>
+            <span class="item-name">${t.title}</span>
+            ${t.memo ? html`<span class="tl-memo">${t.memo}</span>` : ""}
+          </button>
+          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
+                  aria-checked="${String(!!t.done)}"
+                  aria-label="${t.title} を終わりにする">
+            ${t.repeat
+              ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
+              : icon("check")}
+          </button>
+        </div>
+      </li>
+    `);
+    li.querySelector(".tl-body").addEventListener("click", () => openSheet(t.id));
+    li.querySelector(".check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      tick(t.id, e.currentTarget);
+    });
+    return li;
   }
 
   /* ---------------- picking one up ----------------
