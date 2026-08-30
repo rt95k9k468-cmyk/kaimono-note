@@ -5184,6 +5184,172 @@ a.btn { text-decoration: none; }
 .todo-group.is-tl { margin-left: 0; margin-right: 0; }
 .todo-group.is-tl .todo-head { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 
+/* =========================================================
+   行を、カードから紙へ（買うもの・価格・やることの一覧）
+
+   これまでは一行ずつが**カード**でした。角が丸く、影があり、左右に余白を
+   持ち、地はカテゴリの色で塗られ、左端に色の帯まで立っていました。
+   七行あれば、七枚の色の板が縦に並びます。
+
+   困るのは二つ。
+
+   ひとつ、**色が何も言わなくなる**。色は「これは他と違う」と言うための
+   ものですが、全部の行が塗られていると、違いではなく賑やかさになります。
+
+   ふたつ、**入れ子に見える**。画面に余白があり、その内側にカードの余白が
+   あり、さらにその内側に行の中身がある。中身がいちばん奥に沈みます。
+
+   なので、行は紙の上の一行に戻します。地は塗らず、枠も影も持たず、
+   端から端まで使い、となりとは細い線で分かれる。**色は絵の丸の中にだけ**
+   置きます——ひと目で種類が分かる役目はそこで足りますし、そのぶん色が
+   ちゃんと効きます。時間割で先にこの形にして、読みやすさが変わったので、
+   ほかの一覧もここへ揃えます。
+
+   （タイル表示はこの限りではありません。あれは正方形が並ぶことに意味が
+   ある別の見せ方なので、そのまま残します。）
+   ========================================================= */
+
+.item-list:not(.is-tiles),
+.product-list:not(.is-tiles) { padding: 0; gap: 0; }
+
+.item-wrap:not(.is-tile-wrap) { border-radius: 0; }
+
+.item-wrap:not(.is-tile-wrap) .item {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px var(--sp-4);
+  gap: var(--sp-3);
+  /* となりとの境。線は上に引きます——いちばん下の行の下に線が残ると、
+     一覧がそこで終わっていないように見えるので。 */
+  border-top: 1px solid var(--c-border);
+}
+.item-wrap:not(.is-tile-wrap):first-child .item { border-top: none; }
+/* 左端の色の帯。丸のほうが色を持つので、要りません。 */
+.item-wrap:not(.is-tile-wrap) .item::before { display: none; }
+
+/* 絵は、色のついた丸の中に。行のかわりにここが種類を言います。 */
+.item-wrap:not(.is-tile-wrap) .item-emoji {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
+  font-size: 20px;
+}
+.item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }
+.item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
+
+/* 買ったもの・済ませたものは、地を塗るかわりに薄くします。 */
+.item-wrap:not(.is-tile-wrap) .item.is-checked { background: none; opacity: .5; }
+
+/* ---- 価格の行も、同じ形に ---- */
+
+.product-wrap:not(.is-tile-wrap) { border-radius: 0; }
+
+.product-wrap:not(.is-tile-wrap) .product {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px var(--sp-4);
+  border-top: 1px solid var(--c-border);
+}
+.product-wrap:not(.is-tile-wrap):first-child .product { border-top: none; }
+
+/* 絵は丸に。行の地ではなく、ここが種類の色を持ちます。 */
+.product-wrap:not(.is-tile-wrap) .product-emoji {
+  width: 40px; height: 40px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
+}
+.product-wrap:not(.is-tile-wrap) .product-emoji .p-icon { width: 24px; height: 24px; }
+
+/* 「買うものリストに入っている」は、左の帯で言っていました。帯をやめたので、
+   丸に輪を掛けて言い直します。**これは色の飾りではなく情報**です——同じ
+   一覧の中で、いま買う予定のものだけが分かる必要があります。 */
+.product-wrap:not(.is-tile-wrap) .product.is-listed::before { display: none; }
+.product-wrap:not(.is-tile-wrap) .product.is-listed .product-emoji {
+  box-shadow: 0 0 0 2px var(--cat, var(--c-primary));
+}
+@media (hover: hover) {
+  .product-wrap:not(.is-tile-wrap) .product:hover { background: var(--c-surface-2); }
+}
+
+/* ---- ダイエット：その日の紙を、枠から出す ----
+
+   一日ぶんの記録（からだ・食事・体重）は、画面の余白の内側にカードが
+   あり、そのカードの中にまた枠が並ぶ、という三重でした。中身がいちばん
+   奥に沈みます。紙そのものを画面いっぱいに広げて、区切りは地の色だけに
+   任せます——もともと「同じ一日の別の面」を言うために色で分けてあった
+   ので、外枠は無くても三つは分かれて見えます。 */
+.diet { padding: 0 0 var(--sp-6); gap: 0; }
+.diet-day.card {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  box-shadow: none;
+}
+/* 中の三つの面は、左右の余白だけ自分で持ちます。 */
+.diet-block { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+
+/* 目標や「気づいたこと」の紙も、同じ幅に。 */
+.diet .diet-look.card {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+  margin-top: var(--sp-3);
+}
+
+/* 食事の四枠。色のついた板の中に、白い入力欄が入っていました——箱の中の箱
+   です。板をやめて、区分の色は**見出しの絵と、左の細い線**だけが持ちます。
+   どの枠がどの帯になるかは、それで十分に読めます。 */
+.diet-slot {
+  padding: 2px 0 2px var(--sp-3);
+  background: none;
+  border-radius: 0;
+  border-left: 2.5px solid var(--c-border-2);
+}
+.diet-slot[data-slot="breakfast"] { background: none; border-left-color: var(--c-slot-b); }
+.diet-slot[data-slot="lunch"]     { background: none; border-left-color: var(--c-slot-l); }
+.diet-slot[data-slot="dinner"]    { background: none; border-left-color: var(--c-slot-d); }
+.diet-slot[data-slot="snack"]     { background: none; border-left-color: var(--c-slot-s); }
+
+/* ---- daily：紙の上の一段に ----
+
+   Daily Log も積み上げも、画面の余白の内側に浮いたカードでした。
+   時間割・買うもの・ダイエットと同じ扱いにします——端から端まで使い、
+   となりとは細い線で分かれる。「あの日」だけは左の色の帯を残します
+   （あれは種類ではなく「これは過去から来たものだ」という別の合図で、
+   ほかの行と混ざってはいけないので）。 */
+.card.arc-log,
+.card.arc-list {
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+}
+.card.arc-log { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+
+.arc-stack { margin-left: 0; margin-right: 0; }
+.arc-stack-head { padding: 0 var(--sp-4); }
+.arc-stack > .chip-row { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+
+.card.arc-then {
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border);
+  border-right: none;
+  box-shadow: none;
+}
+
 </style>
 </head>
 <body>
