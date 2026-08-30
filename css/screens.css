@@ -393,6 +393,11 @@
 .cal.is-week .cal-day.is-off-week,
 .cal.is-week .cal-pad.is-off-week { display: none; }
 
+/* 隣の月の日。週で見るときは、7日そろえるために顔を出します。月ぜんぶを
+   見るときは、その月の枠を保ちたいので場所だけ取って伏せます。 */
+.cal:not(.is-week) .cal-day.is-out { visibility: hidden; pointer-events: none; }
+.cal-day.is-out .cal-n { color: var(--c-text-3); }
+
 .cal-grid {
   position: relative;
   display: grid;

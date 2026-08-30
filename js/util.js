@@ -212,6 +212,27 @@
     return dayKey(d);
   }
 
+  /** その月の暦を七日そろいにするために要る、**隣の月の日**。
+   *
+   *  暦は月ごとに組みますが、週は月をまたぎます。8/31（月）で月が終わる週は
+   *  9/1〜9/5 まで続いているのに、その月のマスしか無いと後半が空白のまま
+   *  でした——「週で見る」と言いながら、月末の週だけ二日しか出ません。
+   *
+   *  前の月ぶん（lead）と次の月ぶん（trail）を、日付の鍵で返します。
+   *  月で見ているあいだは伏せるので（CSS の .is-out）、月の見た目は
+   *  これまでどおりです。 */
+  function outDays(year, month) {
+    const lead = [];
+    const trail = [];
+    const first = new Date(year, month, 1);
+    for (let i = first.getDay(); i > 0; i--) lead.push(dayKey(new Date(year, month, 1 - i)));
+    const last = new Date(year, month + 1, 0);
+    for (let i = 1; i <= 6 - last.getDay(); i++) {
+      trail.push(dayKey(new Date(year, month + 1, i)));
+    }
+    return { lead, trail };
+  }
+
   /** その日を含む一週間（日曜はじまり）の、両端の日。
    *  カレンダーを一週ぶんに畳むときに、どのマスを残すかを決めます。 */
   function weekOf(key) {
@@ -588,7 +609,7 @@
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana,
     isTime, partOfTime, formatTime, nowTime,
-    dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, weekdayJa, formatDay,
+    dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
