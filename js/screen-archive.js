@@ -574,10 +574,8 @@
             （ui.js の flipRows）。並べ替え・お気に入り・一件足したときに、
             行が「もといた場所」から滑ってきます。 */""}
       <div class="arc-row" data-flip="${e.id}" style="--arc-c:${t.color}">
-        ${e.type === "seed" ? html`
-          <button class="check js-seedcheck" role="checkbox" aria-checked="false"
-                  aria-label="「${e.title}」を達成にする">${icon("check")}</button>
-        ` : ""}
+        ${/* 種は、達成に変える丸を持ちません。種はメモとしての記録で、
+              「できた・できていない」を測るものではないので。 */""}
         <button class="fav ${e.favorite ? "is-on" : ""} js-favbtn" aria-pressed="${String(!!e.favorite)}"
                 aria-label="「${e.title}」をお気に入りにする">${icon("star")}</button>
         <button class="arc-row-body" data-id="${e.id}">
@@ -596,15 +594,6 @@
       store.toggleFavorite(e.id);
       render();
     });
-    const seedCheck = row.querySelector(".js-seedcheck");
-    if (seedCheck) {
-      seedCheck.addEventListener("click", () => {
-        KN.motion.fire("select");
-        store.promoteSeed(e.id);
-        KN.ui.toast("達成にしました");
-        render();
-      });
-    }
     return row;
   }
 
@@ -732,12 +721,15 @@
 
         <div class="js-generic-fields">
           <div class="stack" style="gap:16px">
-            <label class="field">
+            ${/* 種だけは、タイトル・数・単位を持ちません。種はメモそのものが
+                  記録で、日付とメモの二つだけで足ります。数を測るものでは
+                  ないので、単位も要りません。 */""}
+            <label class="field js-title-generic-field">
               <span class="field-label">タイトル</span>
               <input type="text" class="input js-title-generic" value="${e && e.type !== "reading" ? e.title : ""}"
                      enterkeyhint="done">
             </label>
-            <div class="arc-times">
+            <div class="arc-times js-amount-fields">
               <label class="field">
                 <span class="field-label">数</span>
                 <input type="number" inputmode="numeric" class="input js-amount"
@@ -886,10 +878,16 @@
         pick.append(b);
       });
     };
+    const titleGenericField = body.querySelector(".js-title-generic-field");
+    const amountFields = body.querySelector(".js-amount-fields");
     const paintMode = () => {
       const isReading = type === "reading";
+      const isSeed = type === "seed";
       readingFields.hidden = !isReading;
       genericFields.hidden = isReading;
+      /* 種だけ、タイトルと数・単位を隠します。書くのは日付とメモだけ。 */
+      titleGenericField.hidden = isSeed;
+      amountFields.hidden = isSeed;
     };
     paintPick();
     paintMode();
@@ -905,13 +903,20 @@
 
     footer.querySelector(".js-ok").addEventListener("click", () => {
       const isReading = type === "reading";
-      const title = (isReading ? titleReading.value : titleGeneric.value).trim();
-      if (!title) { KN.ui.toast("名前・タイトルを入れてください"); return; }
+      const isSeed = type === "seed";
+      const memoVal = body.querySelector(".js-memo").value;
+      /* 種は、タイトルではなく**メモ**が中身です。求めるのはメモのほう。 */
+      const title = isSeed ? "" : (isReading ? titleReading.value : titleGeneric.value).trim();
+      if (isSeed) {
+        if (!memoVal.trim()) { KN.ui.toast("メモを書いてください"); return; }
+      } else if (!title) {
+        KN.ui.toast("名前・タイトルを入れてください"); return;
+      }
       const patch = {
         type,
         title,
         date: body.querySelector(".js-date").value || U.todayKey(),
-        memo: body.querySelector(".js-memo").value,
+        memo: memoVal,
       };
       if (isReading) {
         patch.kind = kind;
@@ -919,6 +924,13 @@
         patch.pageFrom = pageFrom.value;
         patch.pageTo = pageTo.value;
         patch.amount = null;   // applyReadingPages が計算し直します
+        patch.unit = null;
+      } else if (isSeed) {
+        patch.kind = null;
+        patch.author = null;
+        patch.pageFrom = null;
+        patch.pageTo = null;
+        patch.amount = null;
         patch.unit = null;
       } else {
         patch.kind = null;
