@@ -1156,6 +1156,41 @@
     return rec;
   }
 
+  /* ---------------- 暦の見かたは、タブごとに ----------------
+
+     長らく settings.calOpen ひとつを三つの画面で分け合っていました。
+     ところが見たい単位は画面ごとに違います——ダイエットは月ぜんぶを
+     眺めたいが、やることは今週だけでいい、というように。一つの札を
+     分け合っていると、片方を月にした瞬間もう片方も月になります。
+
+     出す・しまうも同じで、画面ごとに持ちます。暦が無いほうが広く使える
+     画面があるので。 */
+
+  const CAL_TABS = ["todo", "diet", "archive"];
+
+  function calPrefs(tab) {
+    const s = get().settings;
+    const key = CAL_TABS.includes(tab) ? tab : "todo";
+    const by = (s.calBy && typeof s.calBy === "object") ? s.calBy : {};
+    const one = (by[key] && typeof by[key] === "object") ? by[key] : {};
+    return {
+      /* 月ぜんぶを出すか（false なら今週だけ）。古い calOpen は、まだ
+         自分の札を持っていない画面の初期値として使います——これまでの
+         見かたが、いきなり変わらないように。 */
+      open: one.open === undefined ? s.calOpen === true : one.open === true,
+      // 暦そのものを出すか。既定は出す。
+      shown: one.shown === undefined ? true : one.shown === true,
+    };
+  }
+
+  function setCalPref(tab, patch) {
+    const key = CAL_TABS.includes(tab) ? tab : "todo";
+    update((s) => {
+      if (!s.settings.calBy || typeof s.settings.calBy !== "object") s.settings.calBy = {};
+      s.settings.calBy[key] = { ...(s.settings.calBy[key] || {}), ...patch };
+    });
+  }
+
   /* ---------------- 中の段取り ---------------- */
 
   /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。 */
@@ -2620,6 +2655,7 @@
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
+    calPrefs, setCalPref,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
