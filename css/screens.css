@@ -3472,3 +3472,42 @@ a.btn { text-decoration: none; }
 
 /* 時間割で、買い物の一件が「いま何個ぶんか」。 */
 .tl-shop { font-variant-numeric: tabular-nums; }
+
+/* ---------------- 中の段取り ----------------
+
+   手順は行の下にたたんで置きます。やるところで押せるのが肝で、一つ済ませる
+   たびにシートを開かせると、朝のしたくのような細かい流れでは開いて閉じる
+   だけで手数が増えます。たたんであるのは、手順を持つ用事が二つ三つあると
+   時間割が手順で埋まって「今日は何があるか」が読めなくなるからです。 */
+.tl-sub-wrap { grid-column: 3; padding: 0 var(--sp-4) 10px 8px; }
+.tl-sub-toggle {
+  padding: 4px 0;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.tl-sub-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.tl-sub {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0;
+}
+.tl-sub .check.is-sub { width: 26px; height: 26px; flex: 0 0 auto; }
+.tl-sub .check.is-sub svg { width: 15px; height: 15px; }
+.tl-sub-name {
+  font-size: 15px;
+  color: var(--c-text);
+  /* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。 */
+  background-image: linear-gradient(var(--c-primary), var(--c-primary));
+  background-repeat: no-repeat;
+  background-position: 0 center;
+  background-size: 0% 2px;
+  transition: background-size var(--m-strike) var(--ease-out), color var(--m-check) var(--ease);
+}
+.tl-sub.is-done .tl-sub-name { background-size: 100% 2px; color: var(--c-text-3); }
+
+/* シートの中、手順を書き並べるところ。 */
+.sub-edit { display: flex; flex-direction: column; gap: 8px; }
+.sub-edit:empty { display: none; }
+.sub-line { display: flex; align-items: center; gap: 6px; }
+.sub-line .input { flex: 1 1 auto; min-width: 0; }
+.tl-subs { font-variant-numeric: tabular-nums; }

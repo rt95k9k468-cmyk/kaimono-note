@@ -606,6 +606,14 @@
          一件として置いたものです。中身（何を買うか）は買うもの側が持ち
          つづけるので、ここは**行くという用事**だけを持ちます。 */
       shop: t.shop === true,
+      /* 中の段取り。「朝のしたく」のような一件は、それ自体がいくつかの
+         手順です。手順を別々の用事に割ると一日が細切れに見え、一件に
+         まとめると何が残っているか分かりません。中に持たせます。
+
+         繰り返しと合わせると、そのままルーティンになります——毎朝の一件が、
+         中に同じ手順を持って毎日戻ってくる。だから「ルーティン」という
+         別の種類は作りません。同じものに名前を二つ付けることになるので。 */
+      subs: cleanSubs(t.subs),
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -656,6 +664,20 @@
     const n = Number(v);
     if (!isFinite(n) || n <= 0) return null;
     return Math.min(MAX, Math.max(MIN, Math.round(n / 5) * 5));
+  }
+
+  /* 中の段取りを整えます。**function 宣言**であることが大事です
+     ——読み込みは load() がこの下より前で走るので、const にすると
+     読めない箱になり、読み込みごと落ちます（一度やりました）。
+     数え上げの上限は、中に置いてあります。 */
+  function cleanSubs(v) {
+    const MAX = 50;
+    if (!Array.isArray(v)) return [];
+    return v.map((s, i) => ({
+      id: (s && s.id) || ("s" + i + "-" + Math.random().toString(36).slice(2, 8)),
+      title: String((s && s.title) || "").trim(),
+      done: !!(s && s.done),
+    })).filter((s) => s.title).slice(0, MAX);
   }
 
   /**
@@ -1095,7 +1117,7 @@
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
                      repeatNth = null, memo = "", flagged = false, minutes = null,
-                     shop = false } = {}) {
+                     shop = false, subs = [] } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1122,6 +1144,7 @@
       archivedAt: null,
       trace: false,
       shop: shop === true,
+      subs: cleanSubs(subs),
       createdAt: today(),
       order: 0,
     };
@@ -1131,6 +1154,31 @@
       s.todos.unshift(rec);
     });
     return rec;
+  }
+
+  /* ---------------- 中の段取り ---------------- */
+
+  /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。 */
+  function setSubs(id, subs) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t) t.subs = cleanSubs(subs);
+    });
+  }
+
+  /** 手順ひとつを、済んだ／まだに切り替えます。 */
+  function toggleSub(id, subId) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      const sub = t && (t.subs || []).find((x) => x.id === subId);
+      if (sub) sub.done = !sub.done;
+    });
+  }
+
+  /** 残りいくつか。{done, total}。手順が無ければ total は 0。 */
+  function subCount(t) {
+    const subs = (t && t.subs) || [];
+    return { done: subs.filter((s) => s.done).length, total: subs.length };
   }
 
   /* ---------------- 買うものを、その日の予定に ----------------
@@ -1321,12 +1369,20 @@
             doneAt: today(),
             archived: false, archivedAt: null,
             trace: true,
+            /* 記録のほうは、**その日ほんとうにどこまでやったか**を
+               そのまま持ちます（写しなので、印もそのまま）。 */
+            subs: (t.subs || []).map((x) => ({ ...x })),
             order: (t.order || 0),
           });
         }
         t.due = due;
         t.done = false;
         t.doneAt = null;
+        /* 翌日へ行くほうは、手順の印を**まっさらに戻します**。
+           きのう済ませた印が付いたまま朝を迎えると、まだ何もしていない
+           のに半分終わっているように見えます。手順そのものは残ります
+           ——毎日同じ順でやるから、まとめてあるので。 */
+        t.subs = (t.subs || []).map((x) => ({ ...x, done: false }));
       } else {
         t.done = !t.done;
         t.doneAt = t.done ? today() : null;
@@ -2563,6 +2619,7 @@
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
+    setSubs, toggleSub, subCount,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
