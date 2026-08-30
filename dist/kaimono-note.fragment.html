@@ -27787,25 +27787,19 @@ a.btn { text-decoration: none; }
     const plan = P.buildDay(day, rows.concat(done), {
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
-    const free = plan.freeAhead == null ? plan.freeTotal : plan.freeAhead;
-
     const sec = node(html`
       <div class="tl">
-        ${/* 今日は「このあと」の空きを出します。一日ぜんぶの合計を出すと、
-              15時に「空き13時間」——そのうち8時間はもう過ぎている、という
-              嘘になります。人が知りたいのは、これから何ができるかです。
+        ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
+              並びと帯の隙間で同じことを言っています。文で重ねて言うのは
+              説明のしすぎです。
 
-              ここに「一覧で見る」の札がありました。外したのは、**そう
-              しょっちゅう変えるものではない**からです。毎日見る画面の
-              一等地を、年に数回押すかどうかのボタンが占めていました。
-              切り替えは設定（やること → 今日を時間割で見る）にあります。 */""}
-        <div class="tl-sum">
-          ${free >= P.MIN_GAP
-            ? html`<span class="tl-free">${isToday ? "このあと " : ""}空き ${P.humanSpan(free)}</span>`
-            : html`<span class="tl-free">${isToday ? "このあとの" : ""}空きはありません</span>`}
-          ${plan.over
-            ? html`<span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>` : ""}
-        </div>
+              超過（はみ出し）だけは残します——これは「読めば分かる」では
+              なく、**詰め込みすぎている**という注意なので、他の事実とは
+              性格が違います。 */""}
+        ${plan.over
+          ? html`<div class="tl-sum">
+              <span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>
+            </div>` : ""}
         <ol class="tl-list js-tl"></ol>
       </div>
     `);
@@ -28120,11 +28114,11 @@ a.btn { text-decoration: none; }
     `);
   }
 
-  /** 空いているところ。埋めずに、空いていると言うだけ。
+  /** 空いているところ。埋めずに、点線の帯だけで示します。
 
-      過ぎた空きは過去形にします。「5時間20分 あいています」と現在形で
-      書かれても、その5時間はもう無いので。責める言い方はしません
-      ——空いていた、と言うだけです。 */
+      「10時間44分」のような長さの文は出しません——空きの前後にある用事の
+      時刻を見れば、どれだけ空いているかは読めます。文で重ねて言うのは
+      説明のしすぎです（帯の広さ自体は、つまんで動かすときに見えます）。 */
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
     return node(html`
@@ -28132,7 +28126,6 @@ a.btn { text-decoration: none; }
           data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}">
         <span class="tl-time">${f.at}</span>
         <span class="tl-rail is-dash"></span>
-        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}</span>
       </li>
     `);
   }
@@ -28142,30 +28135,23 @@ a.btn { text-decoration: none; }
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
-    /* 済ませたものは、押した時刻を出します。組み立てもこの時刻でその用事を
-       置いているので、左の時刻とあわせて「いつ何をしたか」が読めます。 */
-    if (it.doneAtMin != null) {
-      facts.push(html`<span class="tl-done-at">${KN.plan.toTime(it.doneAtMin)}</span>`);
-    }
+    /* 完了時刻・時刻あり・毎日・残り手順は、ここには出しません。
+
+       完了時刻は、左の時刻の列がその用事の行そのものにすでに書いています
+       （組み立てが完了時刻でその行を置いているので）。時刻あり・毎日は、
+       行の左側（時刻の太さ）と、押す丸の繰り返しアイコンがすでに言って
+       います。手順の残数は、行の下をひらけば見えます。同じことを、題の
+       すぐ下でもう一度言う理由がありません。 */
     /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
        ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
     if (t.shop) {
       const n = store.tripCount();
       if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
     }
-    /* 手順があるなら、**残りいくつか**。「3/5」と割り算の形で書くと
-       達成率の顔になるので、残りの数だけを言います。全部終えていれば、
-       その旨をひとことで。 */
-    const sc = store.subCount(t);
-    if (sc.total) {
-      facts.push(html`<span class="tl-subs">${
-        sc.done >= sc.total ? "手順ぜんぶ" : `あと${sc.total - sc.done}手順`
-      }</span>`);
-    }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
-    if (it.fixed) facts.push(html`<span class="tl-pin">時刻あり</span>`);
-    if (t.repeat) facts.push(html`<span class="tl-rep">${repeatShort(t)}</span>`);
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
+    // 残数は文にしません。手順を持っているかどうかだけ、下の開閉に使います。
+    const sc = store.subCount(t);
     const li = node(html`
       <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
                  ${(t.done || t.archived) ? "is-done" : ""}"
