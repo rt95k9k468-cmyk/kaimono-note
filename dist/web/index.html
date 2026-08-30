@@ -5007,8 +5007,12 @@ a.btn { text-decoration: none; }
   align-self: stretch;
   /* 丸（50px）が入る高さ。もとは 72px でしたが、用事が八つある日で
      一覧が745pxになり、一日ぶんが画面に入りませんでした。「眺める」ため
-     の余白は、**一日が一目に入る**ことより先には来ません。 */
-  min-height: 48px;
+     の余白は、**一日が一目に入る**ことより先には来ません。
+
+     かかる時間が長い用事は、この最低の高さを JS 側（--tl-span）が
+     押し上げます。長い用事ほど帯が長く見えるように——ただし伸びには
+     上限があります（screen-todo.js の tlSpanH）。既定は48pxのまま。 */
+  min-height: var(--tl-span, 48px);
 }
 .tl-rail::before {
   content: "";
@@ -26537,8 +26541,14 @@ a.btn { text-decoration: none; }
 
     /* かかる時間。よく使う長さだけを札で出します——分を打たせると
        「25分か30分か」を考え始めてしまい、見積もりはそこまで細かく
-       なりません。「決めない」も答えのうちなので、先頭に置きます。 */
-    const MINS = [15, 30, 45, 60, 90, 120];
+       なりません。「決めない」も答えのうちなので、先頭に置きます。
+
+       2時間までは30分刻み、そこから先は1時間刻みにします。外出や作業
+       まとめのように長くかかる用事も、札を押すだけで置けるように
+       （買い物へ行く、通院、旅行の移動など）。上限は cleanMinutes と
+       同じ12時間——それ以上は一日の別の使い方（複数の用事に割る）の話
+       なので、ここでは扱いません。 */
+    const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
     const minsHost = body.querySelector(".js-mins");
     function paintMins() {
       KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(
@@ -28143,6 +28153,26 @@ a.btn { text-decoration: none; }
     `);
   }
 
+  /* アイコンまわりの枠の高さを、かかる時間に合わせて少しずつ伸ばします。
+
+     30分までは、いまの基本の高さ（48px）のまま。そこから先は30分きざみで
+     じわっと伸びていき、6時間より先は増やしません——長い用事ほど帯を長く
+     見せたい一方、実際の分数どおりに伸ばすと（12時間で数百px）一日の
+     見通しがかえって悪くなるので、伸びは頭打ちにします。
+
+     済ませた行には使いません（#30で詰めた「済んだ列はできるだけ小さく」
+     という決めごとと矛盾するので）。 */
+  const TL_BASE_H = 48;    // .tl-rail の基本の高さ（css/screens.css と同じ数）
+  const TL_STEP_MIN = 30;  // これだけ増えるごとに、一段伸ばす
+  const TL_STEP_PX = 12;   // 一段ぶんの伸び。事実の行がある内容は48pxより
+                           // 少し高くなるので、それより確実に上回る刻みにします。
+  const TL_MAX_EXTRA = 96; // 伸びの上限
+  function tlSpanH(minutes) {
+    if (!minutes || minutes <= TL_STEP_MIN) return null;
+    const steps = Math.ceil((minutes - TL_STEP_MIN) / TL_STEP_MIN);
+    return TL_BASE_H + Math.min(steps * TL_STEP_PX, TL_MAX_EXTRA);
+  }
+
   /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
   function itemRow(it, joined) {
     const t = it.todo;
@@ -28165,10 +28195,13 @@ a.btn { text-decoration: none; }
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     // 残数は文にしません。手順を持っているかどうかだけ、下の開閉に使います。
     const sc = store.subCount(t);
+    const closed = t.done || t.archived;
+    const span = closed ? null : tlSpanH(t.minutes);
     const li = node(html`
       <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
-                 ${(t.done || t.archived) ? "is-done" : ""}"
-          data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
+                 ${closed ? "is-done" : ""}"
+          data-todo-id="${t.id}" data-flip="${t.id}"
+          style="--cat:${colorOf(t, groups)}${span ? `;--tl-span:${span}px` : ""}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。

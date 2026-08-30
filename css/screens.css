@@ -2876,8 +2876,12 @@ a.btn { text-decoration: none; }
   align-self: stretch;
   /* 丸（50px）が入る高さ。もとは 72px でしたが、用事が八つある日で
      一覧が745pxになり、一日ぶんが画面に入りませんでした。「眺める」ため
-     の余白は、**一日が一目に入る**ことより先には来ません。 */
-  min-height: 48px;
+     の余白は、**一日が一目に入る**ことより先には来ません。
+
+     かかる時間が長い用事は、この最低の高さを JS 側（--tl-span）が
+     押し上げます。長い用事ほど帯が長く見えるように——ただし伸びには
+     上限があります（screen-todo.js の tlSpanH）。既定は48pxのまま。 */
+  min-height: var(--tl-span, 48px);
 }
 .tl-rail::before {
   content: "";
