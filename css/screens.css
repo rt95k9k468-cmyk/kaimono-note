@@ -3573,3 +3573,48 @@ a.btn { text-decoration: none; }
    「8月 2026年 暦を出す」の一段だけが残るのは、しまったことになりません
    ——戻す道は題の右のボタンが持っているので、ここは消して構いません。 */
 .cal.is-hidden { display: none; }
+
+/* ---------------- Daily Log：その日、ほかで起きたこと ----------------
+
+   手で書いた日記の下に、やること・積み上げ・買うものから引いてきた行が
+   続きます。日記の文と同じ濃さで並べると「どれも自分が書いた文」に見えて
+   しまうので、こちらは一段沈めます——引いてきたものだと分かるように。 */
+.arc-feed {
+  display: flex; flex-direction: column;
+  margin: -2px 0 10px;
+  padding-left: 46px;   /* 上の行の日付の欄と、頭を揃えます */
+}
+.arc-feed-row {
+  display: grid;
+  grid-template-columns: 40px auto 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
+.arc-feed-when {
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+}
+/* どこから来た記録かを、小さな札で。色は種類ごとに変えません——ここは
+   「どのタブのものか」を言うだけで、良し悪しは何も言わないので。 */
+.arc-feed-kind {
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.arc-feed-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
+}
