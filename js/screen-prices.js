@@ -5,7 +5,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, icon, yen, perItemPrice, formatSize, haptic } = KN.util;
+  const { html, node, icon, yen, perItemPrice, formatSize } = KN.util;
   const store = KN.store;
 
   let root = null;
@@ -106,7 +106,7 @@
       return;
     }
     const p = store.addProduct({ name, categoryId: store.guessCategory(name) });
-    haptic(10);
+    KN.motion.fire("save");
     KN.productSheet.open(p.id);
   }
 
@@ -137,7 +137,7 @@
       activeId: categoryFilter || "",
       onPick: (id) => {
         categoryFilter = id && id !== categoryFilter ? id : null;
-        haptic();
+        KN.motion.fire("select");
         renderFilter();
         renderBody();
       },
@@ -262,7 +262,7 @@
         const [moved] = ids.splice(from, 1);
         ids.splice(to, 0, moved);
         const first = store.reorderProducts(ids);
-        haptic(12);
+        KN.motion.fire("save");
         // 初めてその棚に手を入れたときだけ、これから何が起きるかを言います。
         if (first) KN.ui.toast("この並びで覚えました（あとから増えた商品は後ろに付きます）");
       },
@@ -305,7 +305,7 @@
     }
 
     section.querySelector(".js-toggle").addEventListener("click", () => {
-      haptic();
+      KN.motion.fire("select");
       store.update((s) => { s.settings.showArchived = !open; });
     });
 
@@ -420,7 +420,7 @@
   /** Put this product on the shopping list, or take it off. */
   function toggleListed(product) {
     const item = listedItem(product.id);
-    haptic(14);
+    KN.motion.fire("delete");
     if (!item) {
       store.addItem(product.id);
       KN.ui.toast(`「${product.name}」をリストに追加しました`);
@@ -466,7 +466,7 @@
     // Said out loud when it happens, because the row on the other tab
     // disappearing without a word would look like a bug.
     const wasListed = to && !!listedItem(product.id);
-    haptic(14);
+    KN.motion.fire("delete");
     const undo = store.setArchived(product.id, to);
     const said = to
       ? (wasListed ? `「${product.name}」をアーカイブし、リストから外しました`
