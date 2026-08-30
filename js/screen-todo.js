@@ -275,13 +275,22 @@
   /* カレンダーを月ぜんぶ出すか、いまの週だけに畳むか。既定は週です
      （画面の36%＝306pxを、日付31個と点数個のために使っていました）。
      畳んでもマスはぜんぶ組んであり、隠しているだけです。 */
-  const calOpen = () => store.get().settings.calOpen === true;
+  const calOpen = () => store.calPrefs("todo").open;
+  const calShown = () => store.calPrefs("todo").shown;
 
   /** いま出している週だけを残して、ほかのマスに印を付けます。 */
   function markWeek(sec, here) {
     if (!sec) return;
     const open = calOpen();
+    const shown = calShown();
     sec.classList.toggle("is-week", !open);
+    sec.classList.toggle("is-hidden", !shown);
+    const pin = sec.querySelector(".js-calpin");
+    if (pin) {
+      pin.textContent = shown ? "しまう" : "暦を出す";
+      pin.setAttribute("aria-pressed", String(shown));
+      pin.setAttribute("aria-label", shown ? "暦をしまう" : "暦を出す");
+    }
     const btn = sec.querySelector(".js-calmore");
     if (btn) {
       btn.textContent = open ? "月" : "週";
@@ -1659,6 +1668,11 @@
           <button type="button" class="cal-now js-now" hidden>今日へ</button>
           <span class="cal-nav">
             <button type="button" class="cal-more js-calmore" aria-expanded="false"></button>
+            ${/* 暦そのものを、しまう・出す。暦の無いほうが広く使える日が
+                  あるので、ひと押しで替えられるようにしてあります。畳んでも
+                  この見出しの帯は残します——しまった先が見えていないと、
+                  戻す道が無くなるので。 */""}
+            <button type="button" class="cal-pin js-calpin" aria-pressed="true"></button>
             <button type="button" class="cal-arrow js-prev" aria-label="前へ">${icon("chevron")}</button>
             <button type="button" class="cal-arrow js-next" aria-label="次へ">${icon("chevron")}</button>
           </span>
@@ -1689,7 +1703,11 @@
     };
     sec.querySelector(".js-calmore").addEventListener("click", () => {
       haptic();
-      store.update((s) => { s.settings.calOpen = !calOpen(); });
+      store.setCalPref("todo", { open: !calOpen() });
+    });
+    sec.querySelector(".js-calpin").addEventListener("click", () => {
+      KN.motion.fire("select");
+      store.setCalPref("todo", { shown: !calShown() });
     });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
