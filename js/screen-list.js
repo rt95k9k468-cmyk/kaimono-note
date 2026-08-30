@@ -355,12 +355,12 @@
     const done = scope.filter((i) => i.checked).length;
     const label = scope === items ? "" : "今回買うもの ";
 
-    // 「N件中M件購入済み」rather than「N件・M件購入済み」: the section heading
-    // below counts what is left, and two different numbers under the same
-    // wording read as a contradiction.
-    els.sub.textContent = items.length
-      ? (scope.length ? `${label}${scope.length}件中 ${done}件購入済み` : "今回買うものは未選択です")
-      : "リストは空です";
+    /* 表題の下には、何も出しません。
+
+       「8件中8件購入済み」と書いていましたが、すぐ下の見出しが件数を持ち、
+       その下に進み具合の帯もあります。同じことを三度言っていました。
+       題のすぐ下は目がいちばん先に行く場所なので、そこは空けます。 */
+    els.sub.textContent = "";
 
     els.progWrap.hidden = scope.length === 0;
     els.progress.style.width = scope.length ? `${(done / scope.length) * 100}%` : "0%";

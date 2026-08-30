@@ -112,6 +112,7 @@
                   the right because it is the one that leaves. */""}
             <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
             <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
@@ -147,6 +148,20 @@
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
     els.layout.addEventListener("click", KN.ui.toggleLayout);
     els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
+
+    /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
+       ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
+       しまっているあいだは、同じ暦に斜線の入った絵に変わります。 */
+    const calBtn = chrome.querySelector(".js-cal-btn");
+    if (calBtn) {
+      paintCalBtn(calBtn);
+      calBtn.addEventListener("click", () => {
+        KN.motion.fire("select", calBtn);
+        store.setCalPref("todo", { shown: !calShown() });
+        paintCalBtn(calBtn);
+        render();
+      });
+    }
 
     /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
        高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
@@ -278,6 +293,15 @@
   const calOpen = () => store.calPrefs("todo").open;
   const calShown = () => store.calPrefs("todo").shown;
 
+  /** 題の右の暦ボタン。出しているかどうかで、絵と読み上げが変わります。 */
+  function paintCalBtn(btn) {
+    const on = calShown();
+    btn.innerHTML = icon(on ? "calendar" : "calendar-off");
+    btn.setAttribute("aria-pressed", String(on));
+    btn.setAttribute("aria-label", on ? "暦をしまう" : "暦を出す");
+    btn.setAttribute("title", on ? "暦をしまう" : "暦を出す");
+  }
+
   /** いま出している週だけを残して、ほかのマスに印を付けます。 */
   function markWeek(sec, here) {
     if (!sec) return;
@@ -285,12 +309,6 @@
     const shown = calShown();
     sec.classList.toggle("is-week", !open);
     sec.classList.toggle("is-hidden", !shown);
-    const pin = sec.querySelector(".js-calpin");
-    if (pin) {
-      pin.textContent = shown ? "しまう" : "暦を出す";
-      pin.setAttribute("aria-pressed", String(shown));
-      pin.setAttribute("aria-label", shown ? "暦をしまう" : "暦を出す");
-    }
     const btn = sec.querySelector(".js-calmore");
     if (btn) {
       btn.textContent = open ? "月" : "週";
@@ -1668,11 +1686,6 @@
           <button type="button" class="cal-now js-now" hidden>今日へ</button>
           <span class="cal-nav">
             <button type="button" class="cal-more js-calmore" aria-expanded="false"></button>
-            ${/* 暦そのものを、しまう・出す。暦の無いほうが広く使える日が
-                  あるので、ひと押しで替えられるようにしてあります。畳んでも
-                  この見出しの帯は残します——しまった先が見えていないと、
-                  戻す道が無くなるので。 */""}
-            <button type="button" class="cal-pin js-calpin" aria-pressed="true"></button>
             <button type="button" class="cal-arrow js-prev" aria-label="前へ">${icon("chevron")}</button>
             <button type="button" class="cal-arrow js-next" aria-label="次へ">${icon("chevron")}</button>
           </span>
@@ -1704,10 +1717,6 @@
     sec.querySelector(".js-calmore").addEventListener("click", () => {
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
-    });
-    sec.querySelector(".js-calpin").addEventListener("click", () => {
-      KN.motion.fire("select");
-      store.setCalPref("todo", { shown: !calShown() });
     });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
