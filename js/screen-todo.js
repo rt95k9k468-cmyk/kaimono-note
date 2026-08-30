@@ -1753,16 +1753,23 @@
           data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
+        ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
+
+              前置き（メモ）が上にあるのは、それが**題を読むための文脈**
+              だからです（「忘れたくないことだから ／ 「あとで」を使ってみよう」）。
+              事実（長さ・時刻あり・繰り返し）は下——題を読んだあとで
+              十分なので。前は長さを題の上に置いていましたが、いちばん
+              大きく読ませたいものの上に、数字が乗っていました。 */""}
         <div class="item todo tl-item ${t.done ? "is-checked" : ""}">
           <button class="tl-body" type="button">
-            <span class="tl-cap">
+            ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
+            <span class="item-name">${t.title}</span>
+            <span class="tl-facts">
               <span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>
               ${it.fixed ? html`<span class="tl-pin">時刻あり</span>` : ""}
-              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
               ${t.repeat ? html`<span class="tl-rep">${repeatShort(t)}</span>` : ""}
+              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
             </span>
-            <span class="item-name">${t.title}</span>
-            ${t.memo ? html`<span class="tl-memo">${t.memo}</span>` : ""}
           </button>
           <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
                   aria-checked="${String(!!t.done)}"

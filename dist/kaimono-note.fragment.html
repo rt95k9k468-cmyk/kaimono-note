@@ -4850,17 +4850,44 @@ a.btn { text-decoration: none; }
    線、線の上に丸いアイコン、右に用事。**線が繋がっているか切れているか**
    だけで、詰まっているか空いているかが読めます——文字を読む前に。
 
+   寸法は参考画面を実測して合わせました（1284px 幅 ＝ CSS 428pt の
+   スクリーンショットから、390pt へ換算）。
+
+     丸の径      164px → 54.7pt → 50px
+     丸の中心    x=233 → 77.7pt → 71px
+     題の左端    x=356 → 118.7pt → 108px
+     題の字面    43px  → 14.3pt → font 17px
+     時刻の右端  x=123 → 41pt   → 37px
+
+   はじめは丸34px・題14px で作っていました。同じ形でも、この差だけで
+   読みやすさが変わります——一日の形を**眺める**画面なので、目が拾う
+   単位が小さいと、読むのではなく探すことになります。
+
    色は一つだけ使います。棚の色（--cat）は丸の中にだけ入れて、行そのものは
    塗りません。九本の帯を塗るのをやめたのはここです：色が九つあると、
    色は何も言わなくなります。
    ========================================================= */
 
-.tl { padding: var(--sp-2) 0 0; }
+/* **枠に入れません。** 画面の端から端まで使います。
+
+   カードに入れると、線の左に必ず余白が二重（画面の余白＋カードの余白）に
+   なり、時間軸が紙の真ん中で始まります。一日は画面そのものの上を流れて
+   いるほうが自然なので、ここだけ全幅にしました。 */
+.trip.todo-today.is-tl {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+.trip.todo-today.is-tl .todo-head { padding: var(--sp-3) var(--sp-4) var(--sp-2); }
+
+.tl { padding: 0 0 var(--sp-2); }
 
 /* 上の一行。空きの合計と、一覧へ移る道。 */
 .tl-sum {
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: 0 var(--sp-2) var(--sp-3);
+  padding: 0 var(--sp-4) var(--sp-3);
   font-size: var(--fs-sm);
 }
 .tl-sum.is-back { padding-top: var(--sp-3); justify-content: flex-end; }
@@ -4870,31 +4897,32 @@ a.btn { text-decoration: none; }
 .tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 .tl-switch {
   margin-left: auto;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: var(--r-full);
   background: var(--c-surface-2);
   color: var(--c-text-2);
-  font-size: var(--fs-xs); font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;
   transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease);
 }
 .tl-switch:active { transform: scale(.96); background: var(--c-surface-3); }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
 
-/* 一行の骨格。三列——時刻・線・中身。時刻の幅を固定するのは、
-   数字が右端で揃っていないと、上下の時刻を見比べられないからです。 */
+/* 一行の骨格。三列——時刻・線・中身。実測した位置に合わせてあります。
+   時刻の幅を固定するのは、数字が右端で揃っていないと上下の時刻を
+   見比べられないからです。 */
 .tl-row, .tl-free-row, .tl-now {
   display: grid;
-  grid-template-columns: 46px 40px 1fr;
+  grid-template-columns: 44px 56px 1fr;
   align-items: start;
 }
 .tl-time {
-  padding-top: 10px;
-  font-size: var(--fs-xs);
+  padding-top: 18px;
+  padding-right: 3px;
+  font-size: var(--fs-sm);
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
   text-align: right;
-  padding-right: var(--sp-2);
 }
 /* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
 .tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
@@ -4906,13 +4934,15 @@ a.btn { text-decoration: none; }
   justify-self: center;
   width: 2px;
   align-self: stretch;
-  min-height: 44px;
+  /* 丸（50px）の上下に、同じだけ余白が残る高さ。詰めると、一日の形を
+     「眺める」のではなく「探す」ことになります。 */
+  min-height: 72px;
 }
 .tl-rail::before {
   content: "";
   position: absolute;
   left: 50%; top: 0; bottom: 0;
-  width: 2px;
+  width: 2.5px;
   transform: translateX(-50%);
   background: color-mix(in srgb, var(--c-primary) 26%, transparent);
 }
@@ -4920,25 +4950,27 @@ a.btn { text-decoration: none; }
 .tl-rail.is-dash::before {
   background: repeating-linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--c-primary) 30%, transparent) 0 4px,
-    transparent 4px 9px);
+    color-mix(in srgb, var(--c-primary) 32%, transparent) 0 5px,
+    transparent 5px 11px);
 }
 
 /* 線の上の丸。中身は手描きアイコン、地は棚の色をごく薄く。 */
 .tl-node {
   position: absolute;
-  left: 50%; top: 6px;
+  left: 50%; top: 11px;
   transform: translateX(-50%);
   display: grid; place-items: center;
-  width: 34px; height: 34px;
+  width: 50px; height: 50px;
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
-  box-shadow: 0 0 0 3px var(--c-bg);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 18%, var(--c-bg));
+  /* **白い輪を持ちません。** 丸のまわりを地の色で囲うと、線が丸の手前で
+     切れて、続いているところまで破線に見えます（実際そうなりました）。
+     線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
 }
-.tl-node .todo-mark { width: 20px; height: 20px; }
-.tl-node .todo-mark svg { width: 20px; height: 20px; }
+.tl-node .todo-mark { width: 30px; height: 30px; }
+.tl-node .todo-mark svg { width: 30px; height: 30px; }
 .tl-node .todo-dot {
-  width: 8px; height: 8px; border-radius: var(--r-full);
+  width: 11px; height: 11px; border-radius: var(--r-full);
   background: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent);
 }
 
@@ -4948,13 +4980,14 @@ a.btn { text-decoration: none; }
   background: none;
   border: none;
   box-shadow: none;
-  padding: var(--sp-2) 0 var(--sp-3) var(--sp-2);
-  gap: var(--sp-2);
+  padding: 15px var(--sp-4) 17px 8px;
+  gap: var(--sp-3);
   align-items: flex-start;
 }
 /* 左端の色の帯。行の色は丸のほうが持つので、ここには要りません
    ——同じことを二度言うと、どちらも読まれなくなります。 */
 .tl-row .tl-item::before { display: none; }
+
 /* **flex ではなく block です。** ここは一度こわしました：flex の子になると
    `display:-webkit-box` が flow-root へ blockify され、-webkit-line-clamp が
    高さ0に畳みます——題がまるごと消えました。行数を絞りたい要素を抱える
@@ -4964,44 +4997,51 @@ a.btn { text-decoration: none; }
   display: block;
   text-align: left;
 }
-.tl-body > * + * { margin-top: 2px; }
-/* 題の上の小さな一行。長さ・時刻あり・繰り返し。**題より先に**読ませない
-   ように、薄く小さく。動画の作りをそのまま借りています。 */
+
+/* 題の上の前置き（メモ）。読むための文脈なので、題より先に目を
+   引かないように薄く小さく。 */
 .tl-cap {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  font-size: var(--fs-xs);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  margin-bottom: 3px;
+  font-size: var(--fs-sm);
   color: var(--c-text-3);
   line-height: 1.4;
 }
-.tl-len { font-variant-numeric: tabular-nums; }
-.tl-pin, .tl-rep {
-  padding: 0 6px;
-  border-radius: var(--r-sm);
-  background: var(--c-surface-2);
-}
-/* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
-   実際には「二つ入れた」だけなので。 */
-.tl-clash { color: var(--c-text-2); font-weight: 700; }
-/* 題。一覧の行から display と行数の決まりを引き継ぐので、ここで引き直し
-   ます。-webkit-box-orient を書き落とすと Chromium は高さ0に畳みます
-   ——実際そうなって、題がまるごと消えていました。 */
+
+/* 題。この画面でいちばん大きい字です。実測に合わせて 17px。 */
 .tl-row .tl-item .item-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   flex: none;
-  font-size: var(--fs-md);
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.45;
+  line-height: 1.4;
+  letter-spacing: -.01em;
 }
-.tl-memo {
-  font-size: var(--fs-xs); color: var(--c-text-3);
-  line-height: 1.5;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden;
+
+/* 題の下の事実。長さ・時刻あり・繰り返し。 */
+.tl-facts {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 5px;
+  font-size: var(--fs-sm);
+  color: var(--c-text-3);
+  line-height: 1.4;
 }
-.tl-row .check { flex: none; margin-top: 4px; }
+.tl-len { font-variant-numeric: tabular-nums; }
+.tl-pin, .tl-rep {
+  padding: 1px 8px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+/* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
+   実際には「二つ入れた」だけなので。 */
+.tl-clash { color: var(--c-text-2); font-weight: 700; }
+.tl-row .check { flex: none; margin-top: 2px; }
 
 /* 済んだもの。線からは外さず、薄くして横線を引きます——消すと
    「今日それをした」ことまで消えてしまうので。 */
@@ -5009,41 +5049,40 @@ a.btn { text-decoration: none; }
 .tl-row .tl-item.is-checked { opacity: .5; }
 
 /* 空きの行。 */
-.tl-free-row { min-height: 40px; }
+.tl-free-row { min-height: 50px; }
+.tl-free-row .tl-rail { min-height: 50px; }
 .tl-free-text {
-  padding: 10px 0 10px var(--sp-2);
-  font-size: var(--fs-xs);
+  padding: 16px var(--sp-4) 16px 8px;
+  font-size: var(--fs-sm);
   color: var(--c-text-3);
 }
 
 /* いま何時か。線の上の小さな点と、右へ伸びる一本。 */
-.tl-now { min-height: 22px; }
+.tl-now { min-height: 28px; }
+.tl-now .tl-rail { min-height: 28px; }
 .tl-now .tl-rail::before { background: color-mix(in srgb, var(--c-primary) 26%, transparent); }
 .tl-now-dot {
   position: absolute;
-  left: 50%; top: 8px;
-  width: 9px; height: 9px;
-  margin-left: -4.5px;
+  left: 50%; top: 12px;
+  width: 11px; height: 11px;
+  margin-left: -5.5px;
   border-radius: var(--r-full);
   background: var(--c-primary);
-  box-shadow: 0 0 0 3px var(--c-bg);
+  box-shadow: 0 0 0 4px var(--c-bg);
 }
 .tl-now-line {
   align-self: start;
   height: 2px;
-  margin: 12px var(--sp-2) 0 var(--sp-2);
+  margin: 17px var(--sp-4) 0 8px;
   border-radius: 1px;
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--c-primary) 55%, transparent),
     transparent);
 }
 
-/* 時間割のときの今日の枠。地の色を外して、白い紙のうえに線だけを残します。
-   参考にした画面もそうでした——一日の形を読ませたいので、面で語らない。 */
-.trip.todo-today.is-tl {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-}
+/* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
+   線だけが下へ伸びていると「まだ続く」と読めてしまいます。 */
+.tl-list > li:last-child .tl-rail::before { bottom: auto; height: 61px; }
 
 </style>
 
@@ -26498,16 +26537,23 @@ a.btn { text-decoration: none; }
           data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${colorOf(t, groups)}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${it.at}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
+        ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
+
+              前置き（メモ）が上にあるのは、それが**題を読むための文脈**
+              だからです（「忘れたくないことだから ／ 「あとで」を使ってみよう」）。
+              事実（長さ・時刻あり・繰り返し）は下——題を読んだあとで
+              十分なので。前は長さを題の上に置いていましたが、いちばん
+              大きく読ませたいものの上に、数字が乗っていました。 */""}
         <div class="item todo tl-item ${t.done ? "is-checked" : ""}">
           <button class="tl-body" type="button">
-            <span class="tl-cap">
+            ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
+            <span class="item-name">${t.title}</span>
+            <span class="tl-facts">
               <span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>
               ${it.fixed ? html`<span class="tl-pin">時刻あり</span>` : ""}
-              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
               ${t.repeat ? html`<span class="tl-rep">${repeatShort(t)}</span>` : ""}
+              ${it.clash ? html`<span class="tl-clash">前と重なっています</span>` : ""}
             </span>
-            <span class="item-name">${t.title}</span>
-            ${t.memo ? html`<span class="tl-memo">${t.memo}</span>` : ""}
           </button>
           <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
                   aria-checked="${String(!!t.done)}"
