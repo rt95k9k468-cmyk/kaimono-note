@@ -523,6 +523,44 @@
     return wrap;
   }
 
+  /* ================================================================
+     ◯月のまとめ — Daily Log と同じ材料から
+
+     数えるのは、あったことだけです。「何日書けたか」であって「何%達成
+     したか」ではありません。割合も、続いた日数も、先月との比べも出しま
+     せん——この画面が答えるのは「あの月はどんな月だったか」で、良し悪し
+     ではないので。
+
+     日を絞って見ているときは出しません（その日ぶんは Daily Log の行が
+     そのまま言っているので、まとめる相手がいません）。
+     ================================================================ */
+  function monthDigest(ym) {
+    if (viewDay) return null;
+    const d = store.monthDigest(ym);
+    if (!d.total && !d.daysWith.length) return null;
+
+    const { month } = ymParts(ym);
+    const bits = [];
+    if (d.bySrc.todo) bits.push({ label: "やること", n: d.bySrc.todo });
+    if (d.bySrc.entry) bits.push({ label: "積み上げ", n: d.bySrc.entry });
+    if (d.bySrc.item) bits.push({ label: "買うもの", n: d.bySrc.item });
+
+    return node(html`
+      <section class="card arc-counts">
+        <h3 class="arc-counts-head">${month + 1}月のまとめ</h3>
+        <p class="arc-counts-days">記録のある日 <b>${d.daysWith.length}</b> 日</p>
+        ${bits.length ? html`
+          <ul class="arc-counts-list">
+            ${bits.map((b) => html`
+              <li class="arc-counts-item">
+                <span class="arc-counts-label">${b.label}</span>
+                <span class="arc-counts-n">${b.n}</span>
+              </li>`)}
+          </ul>` : ""}
+      </section>
+    `);
+  }
+
   function openLogSheet(day) {
     const cur = store.dayLog(day) || {};
     const dt = U.dayDate(day);
@@ -1173,9 +1211,15 @@
     /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
        その日の文が先で、集めるものとして使う人は積み上げが先です。
        どちらが上かは、その人の使い方でしか決まりません。 */
-    const log = dailyLog(ym), entries = entriesSection(ym);
-    if (S().dailyOrder === "entries") els.body.append(entries, log);
-    else els.body.append(log, entries);
+    /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
+       「その月の成績」に見えるので、必ず地の文の隣に並べる、という
+       決めごとです（daily-rules.js が見張っています）。 */
+    const log = dailyLog(ym), digest = monthDigest(ym), entries = entriesSection(ym);
+    const logBlock = document.createDocumentFragment();
+    logBlock.append(log);
+    if (digest) logBlock.append(digest);
+    if (S().dailyOrder === "entries") els.body.append(entries, logBlock);
+    else els.body.append(logBlock, entries);
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;

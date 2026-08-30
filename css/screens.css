@@ -3635,3 +3635,44 @@ a.btn { text-decoration: none; }
 @media (hover: hover) {
   .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
 }
+
+/* ---------------- ◯月のまとめ ----------------
+
+   Daily Log のすぐ下に置きます。数だけが単独で立つと「その月の成績」に
+   見えるので、必ず地の文の隣に並べる、という決めごとです。
+
+   数えるのは、あったことだけ。割合も、続いた日数も、先月との比べも
+   出しません——良し悪しを言う場所ではないので。 */
+.arc-counts { padding: 12px var(--sp-4) 14px; }
+.arc-counts-head {
+  margin: 0 0 6px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+.arc-counts-days {
+  margin: 0 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
+.arc-counts-days b {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.arc-counts-list {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 0; padding: 0; list-style: none;
+}
+.arc-counts-item {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+}
+.arc-counts-label { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 700; }
+.arc-counts-n {
+  font-size: var(--fs-md); font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text);
+}
