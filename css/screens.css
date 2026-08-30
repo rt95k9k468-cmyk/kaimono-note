@@ -2916,13 +2916,20 @@ a.btn { text-decoration: none; }
 
 /* 中身。.item を借りているので、地と枠だけ外します——済ませたときの動き
    （is-glow / is-finishing）はそのまま使いたいので、class は残します。 */
-.tl-row .tl-item {
+/* `.item.tl-item` と二つ重ねてあります。ここは一度だまされました：
+   `.tl-row .tl-item`（詳細度 0,2,0）は `.item.todo:not(.is-tile)`（0,3,0）に
+   負けるので、書いた padding がずっと効いていませんでした。行の高さは
+   線（.tl-rail の min-height）が作っていたので、見た目では気づけません。
+   右の余白だけが 16px のつもりで 12px になっていて、買うものの行と
+   揃っていませんでした。 */
+.tl-row .item.tl-item {
   background: none;
   border: none;
   box-shadow: none;
   padding: 15px var(--sp-4) 17px 8px;
   gap: var(--sp-3);
-  align-items: flex-start;
+  align-items: center;
+  min-height: 0;
 }
 /* 左端の色の帯。行の色は丸のほうが持つので、ここには要りません
    ——同じことを二度言うと、どちらも読まれなくなります。 */
@@ -2981,7 +2988,7 @@ a.btn { text-decoration: none; }
 /* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
    実際には「二つ入れた」だけなので。 */
 .tl-clash { color: var(--c-text-2); font-weight: 700; }
-.tl-row .check { flex: none; margin-top: 2px; }
+.tl-row .check { flex: none; }
 
 /* 済んだもの。線からは外さず、薄くして横線を引きます——消すと
    「今日それをした」ことまで消えてしまうので。 */
@@ -3043,24 +3050,46 @@ a.btn { text-decoration: none; }
    本物の text-decoration に引き継がれます——動きと結果が同じ形なので、
    切り替わったことに気づきません。 */
 
-.tl-item.is-striking .item-name {
-  /* 線は背景で引きます。text-decoration は動かせないので。
-     currentColor の細い帯を、幅0から100%へ伸ばします。 */
+/* 線を引く。**太さは 2.5px**——1.5px では、17px の題の上でほとんど
+   見えませんでした。線は「消した」と言うためのものなので、字と同じくらい
+   はっきりしていていい。
+
+   長さと速さは JS が決めます（screen-todo.js の tick）。題が長ければ
+   線も長く、そのぶん時間もかかる——**線を引く速さのほうを一定に**して
+   あります。どの題でも同じ速さで筆が走るので、長い題だけ妙に速い、
+   ということが起きません。 */
+.tl-item.is-striking .item-name,
+.item.is-striking .item-name {
+  /* 線は背景で引きます。text-decoration は動かせないので。 */
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
   background-position: 0 58%;
-  background-size: 0% 1.5px;
-  animation: tl-strike var(--m-strike) var(--ease-out) forwards;
+  background-size: 0% 2.5px;
+  animation: tl-strike var(--strike-ms, var(--m-strike)) var(--ease-out) forwards;
 }
 @keyframes tl-strike {
-  from { background-size: 0% 1.5px; }
-  to   { background-size: 100% 1.5px; }
+  from { background-size: 0% 2.5px; }
+  to   { background-size: 100% 2.5px; }
+}
+/* 済ませたあとの本物の線も、同じ太さに。動きと結果で太さが変わると、
+   引き終わった瞬間に線が細くなって見えます。 */
+.tl-row .tl-item.is-checked .item-name {
+  text-decoration-thickness: 2.5px;
+  text-underline-offset: 0;
 }
 
 /* 丸のピコン。行き過ぎて戻る曲線（--spring）で、ひと回りだけ。
    済ませた瞬間に**指の下ではないところ**が動くので、押した先とは別に
    「その用事が片づいた」ことが見えます。 */
-.tl-node.is-pop { animation: tl-pop var(--m-strike) var(--spring); }
+.tl-node.is-pop { animation: tl-pop var(--m-check) var(--spring); }
+/* 買うものの絵の丸も、同じピコン。あちらは translate を持たないので、
+   その場で大きさだけ変えます。 */
+.item-emoji.is-pop { animation: mark-pop var(--m-check) var(--spring); }
+@keyframes mark-pop {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
 @keyframes tl-pop {
   0%   { transform: translate(-50%, -50%) scale(1); }
   38%  { transform: translate(-50%, -50%) scale(1.16); }
@@ -3074,15 +3103,16 @@ a.btn { text-decoration: none; }
   40%  { transform: translate(-50%, -50%) scale(.86); }
   100% { transform: translate(-50%, -50%) scale(1); }
 }
-.tl-item.is-unstriking .item-name {
+.tl-item.is-unstriking .item-name,
+.item.is-unstriking .item-name {
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
   background-position: 100% 58%;
   animation: tl-unstrike var(--m-check) var(--ease-in) forwards;
 }
 @keyframes tl-unstrike {
-  from { background-size: 100% 1.5px; }
-  to   { background-size: 0% 1.5px; }
+  from { background-size: 100% 2.5px; }
+  to   { background-size: 0% 2.5px; }
 }
 
 /* 済ませた行の、済ませた時刻。押した時刻をそのまま出します
@@ -3260,3 +3290,49 @@ a.btn { text-decoration: none; }
   border-right: none;
   box-shadow: none;
 }
+
+/* 行ぜんぶが、ひと呼吸だけ光る。
+
+   線と丸は「その用事」の話ですが、これは「一段が片づいた」の話です。
+   帯を左から右へ一度だけ通します——面ごと明るくすると画面が跳ねるので、
+   通り過ぎる光にしてあります。 */
+.tl-row.is-flash, .item.is-flash { position: relative; }
+.tl-row.is-flash::after,
+.item.is-flash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--cat, var(--c-primary)) 22%, transparent) 45%,
+    transparent);
+  animation: tl-flash var(--m-strike) var(--ease-out) forwards;
+}
+@keyframes tl-flash {
+  from { opacity: 0; transform: translateX(-38%); }
+  40%  { opacity: 1; }
+  to   { opacity: 0; transform: translateX(38%); }
+}
+
+/* 「やった記録」の印。押せないので、押せる丸とは違う顔にします
+   ——輪郭ではなく、塗った丸に白い✓。 */
+.tl-row .check.is-trace {
+  display: grid; place-items: center;
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+  cursor: default;
+}
+.tl-row .check.is-trace svg { opacity: 1; }
+
+/* 買うものの行：絵の丸を、**名前の行に**合わせます。
+
+   行のまん中に置くと、メモや購入時刻が付いた行だけ絵が下がって見えます
+   （名前は上の一行、絵は二行ぶんの中心）。名前がその行の主題なので、
+   絵はそちらに揃えます。ずらす量は、名前の一行の高さと丸の差の半分。 */
+.item-wrap:not(.is-tile-wrap) .item-emoji {
+  align-self: flex-start;
+  margin-top: calc((var(--name-line, 26px) - 40px) / 2);
+}
+.item-wrap:not(.is-tile-wrap) .item-body { align-self: flex-start; }

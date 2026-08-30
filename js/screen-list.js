@@ -619,9 +619,12 @@
         </button>
       </div>
     `) : node(html`
+      ${/* 星が左、丸が右。**やることの並びに揃えます**——同じ「済ませる」
+            丸が、タブを移ると左右に飛ぶのは、指がいちばん覚えにくいところ
+            でした。星は「今回買う」の指定なので、名前の手前で構いません。 */""}
       <div class="item ${item.checked ? "is-checked" : ""}">
-        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
-                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
+        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
+                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
         <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="item-body">
           <span class="item-name-row">
@@ -639,8 +642,8 @@
           </span>
         </button>
         <div class="item-price"></div>
-        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
-                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
+        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
+                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
       </div>
     `);
     wrap.append(row);
@@ -674,15 +677,28 @@
          何も起きなかったように見えます（screens.css の「済ませたときの動き」）。
          落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
          行ったかを探さずに済みます。 */
-      haptic([16, 40, 16]);
-      KN.ui.burst(e.currentTarget);
+      /* やることと同じ返し方にします——線が引かれ、絵の丸がひと回りし、
+         行を光が通る。そのあとで下の「買ったもの」へ落ちます。
+         同じ「済ませた」が、タブごとに違う返り方をしないように。 */
       if (finishing.has(item.id)) return;      // 二度押しても一度だけ
       finishing.add(item.id);
-      row.classList.add("is-glow");
+      KN.motion.fire("check");
+      KN.ui.burst(e.currentTarget);
+      const mark = row.querySelector(".item-emoji");
+      if (mark) KN.ui.burst(mark);
+
+      const nameEl = row.querySelector(".item-name");
+      const w = nameEl ? nameEl.getBoundingClientRect().width : 120;
+      const SPEED = 620;   // px/秒。時間割と同じ筆の速さ。
+      const draw = Math.round(Math.min(620, Math.max(220, (w / SPEED) * 1000)));
+      row.style.setProperty("--strike-ms", draw + "ms");
+      row.classList.add("is-striking", "is-flash");
+      if (mark) mark.classList.add("is-pop");
+
       setTimeout(() => {
         row.classList.add("is-dropping");
         setTimeout(() => { finishing.delete(item.id); commit(); }, 280);
-      }, 240);
+      }, draw);
     });
 
     row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));

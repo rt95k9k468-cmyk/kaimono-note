@@ -415,7 +415,22 @@
     return out;
   }
 
-  /* ---------------- persistence ---------------- */
+  /* ---------------- persistence ----------------
+
+     **ここから下で使うものは、この行より上に置くこと。**
+
+     `let state = load()` は module の評価の途中で走ります。つまり load() が
+     触るものは、その時点で初期化済みでなければいけません。下に書いた
+     const / let は「初期化前の参照」で落ち、しかも落ち方が静かです。
+
+     この注意書きは二度書き直しました。一度目は所要時間の上限（const）で、
+     人のデータを消しました。二度目は**その事故を塞ぐための退避先の鍵**を
+     やはり下に置いて、今度は store ごと立ち上がらなくしました。
+     関数宣言は巻き上がるので安全ですが、値は上に置くしかありません。 */
+
+  // 読めなかった生の文字列の退避先。live のデータとは別の鍵にします。
+  const RESCUE_KEY = KEY + "-rescue";
+  let loadError = null;
 
   let migratedOnLoad = false;
   let state = load();
@@ -424,18 +439,43 @@
   // dietIndex_）を、state が本当に動いたときだけ作り直すために使います。
   let version = 0;
 
-  function load() {
-    try {
-      const rawV2 = localStorage.getItem(KEY);
-      if (rawV2) return reconcile(JSON.parse(rawV2));
+  /* 保存してあるものが読めなかったとき。
 
+     ここは**空のアプリで再開してはいけない**場所です。読めなかっただけで
+     データは残っているのに、空で立ち上がってしまうと、次に何か触った瞬間の
+     保存が本物を上書きします。読めなかったことが、消したことになる。
+
+     実際にそれをやりました。reconcile の中で ReferenceError（初期化前の
+     const 参照）が出て、この catch に静かに入り、空のアプリが立ち上がり、
+     次の保存で人のデータが消えました。落ちた側のバグは直しましたが、
+     **同じ形の事故がもう起きないように、ここを塞ぎます。**
+
+     生の文字列を別の鍵へ退避し、保存そのものを止めます。書けないので、
+     元の鍵に残っているものも無事です。 */
+  function rescue(raw, err) {
+    loadError = String((err && err.message) || err);
+    console.error("state load failed — data left untouched", err);
+    try {
+      // 退避は一度だけ。二度目で、退避したものまで壊さないように。
+      if (!localStorage.getItem(RESCUE_KEY)) localStorage.setItem(RESCUE_KEY, raw);
+    } catch (_) { /* 書けなくても、元の鍵はそのままなので失われません */ }
+  }
+
+  function load() {
+    let rawV2 = null;
+    try { rawV2 = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+    if (rawV2) {
+      try { return reconcile(JSON.parse(rawV2)); }
+      catch (err) { rescue(rawV2, err); return emptyState(); }
+    }
+    try {
       const rawV1 = localStorage.getItem(LEGACY_KEY);
       if (rawV1) {
         migratedOnLoad = true;
         return migrateV1(JSON.parse(rawV1));
       }
     } catch (err) {
-      console.warn("state load failed, starting fresh", err);
+      console.warn("legacy state unreadable", err);
     }
     return emptyState();
   }
@@ -552,6 +592,16 @@
       doneAt: t.doneAt || null,
       archived: t.archived === true,
       archivedAt: t.archivedAt || null,
+      /* 繰り返すものを済ませたときに残す「やった記録」。
+
+         繰り返しは、済ませると次の日へ移ります。そのぶん**その日に
+         やったこと自体が画面から消えて**いました。朝のルーティンや育児の
+         ように毎日やるものほど、やった跡が残らないことになります。
+
+         なので、済ませた日に一件だけ写しを置きます。写しは繰り返しません
+         （もう終わったその日ぶんなので）。棚（アーカイブ）には入れません
+         ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
+      trace: t.trace === true,
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -587,12 +637,21 @@
      上を12時間で止めるのは、それより長いものは「用事」ではなく
      「その日の全部」だからです。一日を組み立てるための数なので、
      一日を食べ尽くす数は受け取りません。5分刻みに丸めるのは、
-     人が見積もるときの粒がそれより細かくならないためです。 */
-  const MIN_MINUTES = 5, MAX_MINUTES = 720;
+     人が見積もるときの粒がそれより細かくならないためです。
+
+     **数は関数の中に置きます。** すぐ上の isBookendPart に書いてあるとおり、
+     ここは reconcile() が module の評価中に呼ぶ場所です。const を外に
+     置くと、読み込みのたびに「初期化前の参照」で落ちます——しかも
+     load() の catch に静かに入って、空のアプリとして戻ってきます。
+
+     私はその注意書きのすぐ下に const を置いて、**実際に人のデータを
+     消しました。** 長さを決めていないもの（minutes が null）は最初の
+     行で返るので落ちず、長さを決めた人だけが全部を失う、という形でした。 */
   function cleanMinutes(v) {
+    const MIN = 5, MAX = 720;
     const n = Number(v);
     if (!isFinite(n) || n <= 0) return null;
-    return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(n / 5) * 5));
+    return Math.min(MAX, Math.max(MIN, Math.round(n / 5) * 5));
   }
 
   /**
@@ -710,6 +769,9 @@
          書き出してから読み直す**ことになり、外から書き換えられた控えを
          毎回踏み潰していました（読み直す意味がありませんでした）。 */
       saveTimer = null;
+      /* 読めなかった日は、書きません。空の state で上書きしてしまうので。
+         直った版で開き直せば、そのまま元のデータが読めます。 */
+      if (loadError) return;
       try {
         localStorage.setItem(KEY, JSON.stringify(state));
         if (saveError) {
@@ -1053,6 +1115,7 @@
       doneAt: null,
       archived: false,
       archivedAt: null,
+      trace: false,
       createdAt: today(),
       order: 0,
     };
@@ -1194,10 +1257,34 @@
     const repeating = !before.done && !!before.repeat;
     const due = repeating ? nextDue(before) : before.due;
 
+    /* 繰り返すものを済ませたとき、**その日に「やった」を一件残します**。
+
+       前は次の日へ移すだけでした。毎朝の服薬も、離乳食も、済ませた
+       とたんにその日から消えます。毎日やるものほど、やった跡が残らない。
+
+       残すのは写しです（繰り返さない・その日ぶんの done 一件）。元の
+       ほうは今までどおり次の日へ移ります。写しはアーカイブには入れません
+       ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
+    const traceId = repeating ? uid("t") : null;
+
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       if (!t) return;
       if (repeating) {
+        if (t.due) {
+          s.todos.push({
+            ...t,
+            id: traceId,
+            due: t.due,          // 済ませた、その日のぶん
+            repeat: null, repeatDays: [], repeatNth: null,
+            notifiedFor: null,
+            done: true,
+            doneAt: today(),
+            archived: false, archivedAt: null,
+            trace: true,
+            order: (t.order || 0),
+          });
+        }
         t.due = due;
         t.done = false;
         t.doneAt = null;
@@ -1218,6 +1305,8 @@
         t.done = was.done;
         t.doneAt = was.doneAt;
         t.due = was.due;
+        // 戻すなら、やった記録も一緒に取り消します。
+        if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
       }),
     };
   }
@@ -2386,6 +2475,9 @@
 
   KN.store = {
     KEY, SCHEMA, STORE_COLORS, CATEGORY_COLORS, OTHER_CATEGORY,
+    /* 読めなかったかどうか。画面はこれを見て「保存を止めています」と
+       言えます（黙って動かないのが、いちばん困るので）。 */
+    loadError: () => loadError,
     get, update, subscribe, reload, flush,
     saveError: () => saveError,
     getProduct, getStore, getCategory,

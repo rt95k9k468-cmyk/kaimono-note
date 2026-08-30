@@ -953,3 +953,32 @@ a { color: var(--c-primary); }
   place-items: center;
   line-height: 1;
 }
+
+/* ---------------- ＋ は帯のとなりに ----------------
+
+   ＋ は帯の上に浮いていました。参考にした画面（Structured）では、帯と
+   ＋ が横に並んで一つの列を作ります。そのほうが二つの関係がはっきり
+   します——帯は「どこを見るか」、＋ は「足す」。上下に重なっていると、
+   ＋ が帯の一部なのか別のものなのかが曖昧で、しかも一覧のいちばん下の
+   行に必ずかぶっていました。
+
+   帯は ＋ のぶんだけ狭くなります。四つの持ち場はそのぶん詰まりますが、
+   もともと一つ 90px 以上あるので、字が折れることはありません。 */
+:root { --fab-size: 56px; --fab-gap: 8px; }
+
+.has-fab .tabbar { padding-right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+.has-fab .tabbar::before,
+.has-fab .tabbar::after { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+
+/* ＋ の置き場。帯のカプセルと上下の中心を合わせます。 */
+.has-fab .dock {
+  left: auto;
+  right: var(--sp-3);
+  bottom: calc(var(--tab-drop) + (var(--tab-cap) - var(--fab-size)) / 2);
+}
+.has-fab .quick-add { justify-content: flex-end; }
+/* ＋ から立ち上がる候補も、右端にそろえます（＋ の真上から出るように）。 */
+.has-fab .fab-menu { align-items: flex-end; }
+
+/* キーボードが出ているあいだは帯が引っ込むので、＋ も下へ戻ります。 */
+.has-fab.kb-open .dock { bottom: var(--sp-3); right: var(--sp-3); }
