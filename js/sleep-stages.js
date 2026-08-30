@@ -30,8 +30,9 @@
    **その日に終わった晩**です。複数あればいちばん早く終わったもの——
    昼寝を夜の記録として拾わないためです。
 
-   就寝時刻は「前日」に決め打ちしません。00:42に寝て08:13に起きた晩では、
-   就寝も起床も同じ日です。**始まりが実際に属する日**に書きます。
+   就寝は「その晩がどの日の晩か」で書きます。暦の日ではありません
+   ——00:42に寝た晩は暦では当日ですが、人にとっては**前の日の晩**です
+   （夜ふかしをして日付をまたいだだけ）。切れ目は朝5時（nightOf）。
    ========================================================= */
 (function () {
   "use strict";
@@ -74,6 +75,24 @@
   const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     + `-${String(d.getDate()).padStart(2, "0")}`;
   const hhmm = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  /* 「何日の晩か」。**暦の日とは違います。**
+
+     8月28日の夜ふかしをして、日付が変わった 01:02 に寝る。暦では8月29日
+     ですが、人にとっては**28日の晩**です。翌朝「ゆうべは何時に寝たか」を
+     見にいくのは28日の欄で、29日の欄ではありません。暦の日をそのまま
+     使っていたので、夜ふかしをした晩だけ就寝時刻が翌日へ回っていました。
+
+     切れ目は朝5時。時間割の一日の始まり（DEFAULT_START）と同じにして
+     あります——アプリの中で「一日」の意味が二つに割れないように。
+     5時から24時までに寝た場合は、その日の晩のままです。 */
+  const NIGHT_ENDS = 5;   // これより前に寝たなら、前の日の晩
+  function nightOf(d) {
+    if (d.getHours() >= NIGHT_ENDS) return dayKey(d);
+    const prev = new Date(d.getTime());
+    prev.setDate(prev.getDate() - 1);
+    return dayKey(prev);
+  }
 
   /**
    * 行の並びを、区間の並びに直します。
@@ -123,7 +142,7 @@
       asleepMin: r(asleep),
       inBedMin: r((night.end - night.start) / 60000),
       stages: { deep: r(by.deep), core: r(by.core), rem: r(by.rem), awake: r(by.awake) },
-      bedDay: dayKey(night.start),
+      bedDay: nightOf(night.start),
       bedTime: hhmm(night.start),
       wakeDay: dayKey(night.end),
       wakeTime: hhmm(night.end),

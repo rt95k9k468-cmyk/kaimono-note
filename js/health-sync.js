@@ -43,6 +43,16 @@
 
   const HEADER = /くらしノート|kurashi-?note/i;
 
+  /* その晩の中での「遅さ」。5時より前は、日付をまたいだぶんとして
+     24時間ぶん後ろに数えます——23:30 より 01:02 のほうが遅い、と
+     読めるように（暦の時刻のままだと逆に出ます）。 */
+  function nightRank(hhmm) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""));
+    if (!m) return -1;
+    const min = Number(m[1]) * 60 + Number(m[2]);
+    return min < 5 * 60 ? min + 24 * 60 : min;
+  }
+
   /* ---------------- 読めなかった便を、データと間違えない ----------------
 
      iPhoneがロックされているあいだ、HealthKit は暗号化されたままで読めません。
@@ -298,12 +308,17 @@
       }, { source: "health" });
       days.add(n.wakeDay);
 
-      /* 就寝は「寝はじめた日」に。同じ日のこともあります（00:42に寝た日）。
-         その日に既に**より遅い**就寝時刻が入っていれば、そちらを残します
-         ——取り込み直しても、夜の就寝が朝の就寝に戻ってしまわないように。 */
+      /* 就寝は「その晩がどの日の晩か」に。日付をまたいで寝た晩は、暦の
+         翌日ではなく**前の日の晩**として書かれます（sleep-stages の nightOf）。
+         同じ晩に既に**より遅い**就寝時刻が入っていれば、そちらを残します
+         ——取り込み直しても、夜の就寝が朝の就寝に戻ってしまわないように。
+
+         「より遅い」は**その晩の中での遅さ**で比べます。一つの晩には 23:30 と
+         01:02 の両方が入りえて（寝て、起きて、また寝た）、文字の並びで比べると
+         "01:02" < "23:30" になり、後から寝たほうが捨てられます。 */
       const bedCur = store.dayLog(n.bedDay);
       const bedWas = bedCur && bedCur.sleepSource === "health" ? bedCur.sleep : null;
-      if (!bedWas || bedWas < n.bedTime) {
+      if (!bedWas || nightRank(bedWas) < nightRank(n.bedTime)) {
         store.setDayLog(n.bedDay, { sleep: n.bedTime }, { source: "health" });
       }
       days.add(n.bedDay);
