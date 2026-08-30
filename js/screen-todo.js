@@ -2491,6 +2491,40 @@
     return fab;
   }
 
+  /* ---------------- 開いたときに、いまのところへ ----------------
+
+     一日ぶんは画面より長いので、いちばん上から始めると、開くたびに朝の
+     済んだ列を下へたどることになります。読みたいのは**いま**です。
+
+     寄せる先は「いまの線」。無ければ（今日でない日を見ているときなど）
+     まだ済んでいない最初の一件。どちらも無ければ、動かしません。
+
+     まん中より**少し上**に置きます。まん中ちょうどだと、これからやること
+     ——下側——に使える高さが半分しか残りません。少し上げれば、過ぎたぶんは
+     すぐ上に見えたまま、先のほうが広く見えます。 */
+  const AIM = 0.38;   // 画面の高さの、どのあたりに置くか（0＝上、0.5＝まん中）
+
+  function toNow() {
+    if (!root) return;
+    const mark = root.querySelector(".tl-now")
+      || root.querySelector(".tl-row:not(.is-done)");
+    if (!mark) return;
+    const box = root.getBoundingClientRect();
+    const at = mark.getBoundingClientRect();
+    const want = root.scrollTop + (at.top - box.top) - box.height * AIM;
+    const max = Math.max(0, root.scrollHeight - root.clientHeight);
+    const to = Math.round(Math.min(max, Math.max(0, want)));
+    if (Math.abs(to - root.scrollTop) < 4) return;
+    /* 送ったことが「その人が動かした」と読まれないよう、ひと呼吸伏せます
+       （restoreTop と同じ約束。見ている日の印が動いてしまうので）。 */
+    restoring = true;
+    root.scrollTop = to;
+    setTimeout(() => { restoring = false; }, 60);
+  }
+
+  /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。 */
+  function onEnter() { requestAnimationFrame(toNow); }
+
   KN.screens = KN.screens || {};
-  KN.screens.todo = { mount, render, dockButton };
+  KN.screens.todo = { mount, render, dockButton, onEnter };
 })();

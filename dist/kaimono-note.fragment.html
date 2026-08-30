@@ -4992,9 +4992,10 @@ a.btn { text-decoration: none; }
   justify-self: center;
   width: 2px;
   align-self: stretch;
-  /* 丸（50px）の上下に、同じだけ余白が残る高さ。詰めると、一日の形を
-     「眺める」のではなく「探す」ことになります。 */
-  min-height: 72px;
+  /* 丸（50px）が入る高さ。もとは 72px でしたが、用事が八つある日で
+     一覧が745pxになり、一日ぶんが画面に入りませんでした。「眺める」ため
+     の余白は、**一日が一目に入る**ことより先には来ません。 */
+  min-height: 48px;
 }
 .tl-rail::before {
   content: "";
@@ -5044,7 +5045,7 @@ a.btn { text-decoration: none; }
   background: none;
   border: none;
   box-shadow: none;
-  padding: 15px var(--sp-4) 17px 8px;
+  padding: 7px var(--sp-4) 8px 8px;
   gap: var(--sp-3);
   align-items: center;
   min-height: 0;
@@ -5092,7 +5093,9 @@ a.btn { text-decoration: none; }
 /* 題の下の事実。長さ・時刻あり・繰り返し。 */
 .tl-facts {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  margin-top: 5px;
+  /* 題との間。5px から 2px へ——題と、その題についての事実なので、
+     離すほど別の行に見えます。字の大きさは変えません（読みにくくなる）。 */
+  margin-top: 2px;
   font-size: var(--fs-sm);
   color: var(--c-text-3);
   line-height: 1.4;
@@ -5657,6 +5660,20 @@ a.btn { text-decoration: none; }
 .sub-line { display: flex; align-items: center; gap: 6px; }
 .sub-line .input { flex: 1 1 auto; min-width: 0; }
 .tl-subs { font-variant-numeric: tabular-nums; }
+
+/* 済ませたものは、もっと詰めます。
+
+   残っているものと同じ場所を取る理由がありません——読むのは「あと何が
+   あるか」で、済んだ列は**そこにあったことが分かれば足ります**。消さない
+   のは、今日それをしたのが見えなくなるからです。小さくして、残します。 */
+.tl-row.is-done .item.tl-item { padding: 4px var(--sp-4) 5px 8px; }
+.tl-row.is-done .tl-rail { min-height: 40px; }
+.tl-row.is-done .tl-node { width: 34px; height: 34px; }
+.tl-row.is-done .tl-node .todo-mark,
+.tl-row.is-done .tl-node .todo-mark svg { width: 20px; height: 20px; }
+.tl-row.is-done .item-name { font-size: 15px; }
+.tl-row.is-done .check { width: 26px; height: 26px; }
+.tl-row.is-done .check svg { width: 15px; height: 15px; }
 
 </style>
 
@@ -28266,8 +28283,42 @@ a.btn { text-decoration: none; }
     return fab;
   }
 
+  /* ---------------- 開いたときに、いまのところへ ----------------
+
+     一日ぶんは画面より長いので、いちばん上から始めると、開くたびに朝の
+     済んだ列を下へたどることになります。読みたいのは**いま**です。
+
+     寄せる先は「いまの線」。無ければ（今日でない日を見ているときなど）
+     まだ済んでいない最初の一件。どちらも無ければ、動かしません。
+
+     まん中より**少し上**に置きます。まん中ちょうどだと、これからやること
+     ——下側——に使える高さが半分しか残りません。少し上げれば、過ぎたぶんは
+     すぐ上に見えたまま、先のほうが広く見えます。 */
+  const AIM = 0.38;   // 画面の高さの、どのあたりに置くか（0＝上、0.5＝まん中）
+
+  function toNow() {
+    if (!root) return;
+    const mark = root.querySelector(".tl-now")
+      || root.querySelector(".tl-row:not(.is-done)");
+    if (!mark) return;
+    const box = root.getBoundingClientRect();
+    const at = mark.getBoundingClientRect();
+    const want = root.scrollTop + (at.top - box.top) - box.height * AIM;
+    const max = Math.max(0, root.scrollHeight - root.clientHeight);
+    const to = Math.round(Math.min(max, Math.max(0, want)));
+    if (Math.abs(to - root.scrollTop) < 4) return;
+    /* 送ったことが「その人が動かした」と読まれないよう、ひと呼吸伏せます
+       （restoreTop と同じ約束。見ている日の印が動いてしまうので）。 */
+    restoring = true;
+    root.scrollTop = to;
+    setTimeout(() => { restoring = false; }, 60);
+  }
+
+  /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。 */
+  function onEnter() { requestAnimationFrame(toNow); }
+
   KN.screens = KN.screens || {};
-  KN.screens.todo = { mount, render, dockButton };
+  KN.screens.todo = { mount, render, dockButton, onEnter };
 })();
 
 /* ---- js/screen-diet.js ---- */
