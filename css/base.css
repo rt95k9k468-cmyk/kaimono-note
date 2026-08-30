@@ -46,16 +46,29 @@
   --c-border:      #e0e6df;
   --c-border-2:    #cdd6cb;
 
-  /* --- brand --- */
-  --c-primary:     #2f8f5b;
-  --c-primary-2:   #26744a;
-  --c-primary-soft:#e4f2ea;
-  --c-primary-ink: #1d5b39;
+  /* --- brand ---
 
-  /* --- accent = "best price" --- */
-  --c-accent:      #d8722f;
-  --c-accent-soft: #fdefe3;
-  --c-accent-ink:  #9c4c14;
+     オレンジを既定の基調にします。前は緑でした。将来、設定から基調色を
+     選べるようにする話が出ているので、ここに直接オレンジの数値を書く
+     のではなく、この四つ（primary / -2 / -soft / -ink）が「いまの基調色」
+     という**役目**を持つ場所だと考えてください。基調を変えるときは、
+     この四行と、下の accent（すぐ下の理由で変わる）だけを差し替えれば
+     アプリ全体が追随します——実際、95%以上の場所は var(--c-primary) 系を
+     参照していて、色を直に書いている場所はほとんど残っていません。 */
+  --c-primary:     #d9662a;
+  --c-primary-2:   #b84f1c;
+  --c-primary-soft:#fbe9db;
+  --c-primary-ink: #8a3c14;
+
+  /* --- accent = "best価格" ---
+
+     もとはオレンジでした（#d8722f）。基調色そのものがオレンジになった
+     ので、そのままだと「いちばん安い」の札が普通のボタンと同じ色に
+     埋もれます。ここだけ寒色（青）へ振って、基調と競わないようにします
+     ——割引（cool-soft/-ink）に寒色を当てたのと同じ考え方です。 */
+  --c-accent:      #2f7fb8;
+  --c-accent-soft: #e4f1fa;
+  --c-accent-ink:  #1c5678;
 
   --c-danger:      #cf4f45;
   --c-danger-soft: #fdecea;
@@ -274,13 +287,16 @@
     --c-text-3:      #788477;
     --c-border:      #2b332a;
     --c-border-2:    #3b453a;
-    --c-primary:     #57b681;
-    --c-primary-2:   #6cc794;
-    --c-primary-soft:#1d2f24;
-    --c-primary-ink: #9ddcb8;
-    --c-accent:      #f0955a;
-    --c-accent-soft: #33241a;
-    --c-accent-ink:  #f5b489;
+    /* 暗い地の上のオレンジ。明るい面と同じ考え方——彩度を保ちつつ、
+       暗い地に沈まないよう明るいほうへ振ります。 */
+    --c-primary:     #e8874f;
+    --c-primary-2:   #f0a06c;
+    --c-primary-soft:#3a2415;
+    --c-primary-ink: #f5c39a;
+    /* accent も同じ理由で青へ。暗い地でも基調色と競わないように。 */
+    --c-accent:      #6fb6e8;
+    --c-accent-soft: #17293a;
+    --c-accent-ink:  #a9d4f1;
     --c-danger:      #e8776c;
     --c-danger-soft: #33201e;
     --c-warn:        #dcae4a;
@@ -324,13 +340,13 @@
   --c-text-3:      #788477;
   --c-border:      #2b332a;
   --c-border-2:    #3b453a;
-  --c-primary:     #57b681;
-  --c-primary-2:   #6cc794;
-  --c-primary-soft:#1d2f24;
-  --c-primary-ink: #9ddcb8;
-  --c-accent:      #f0955a;
-  --c-accent-soft: #33241a;
-  --c-accent-ink:  #f5b489;
+  --c-primary:     #e8874f;
+  --c-primary-2:   #f0a06c;
+  --c-primary-soft:#3a2415;
+  --c-primary-ink: #f5c39a;
+  --c-accent:      #6fb6e8;
+  --c-accent-soft: #17293a;
+  --c-accent-ink:  #a9d4f1;
   --c-danger:      #e8776c;
   --c-danger-soft: #33201e;
   --c-warn:        #dcae4a;
