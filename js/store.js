@@ -1303,16 +1303,23 @@
     const s = get();
     const out = [];
 
-    /* ① その日に済ませた「やること」。繰り返しの写し（trace）も入ります
-       ——毎朝のものを今日やった、という記録はそちらが持っているので。
-       元のほうは翌日へ移って done:false になっているため、同じ用事が
-       二度出ることはありません。 */
+    /* ① その日に済ませた「やること」。ただし一度きりのものだけです。
+
+       毎朝・毎晩の繰り返しは入れません。毎日必ず並ぶので、日記の側は
+       「歯みがき」「洗濯」で埋まってしまい、その日にしかなかったことが
+       埋もれます。日記に残したいのは「その日のこと」で、いつもと同じこと
+       ではありません。繰り返しそのものの動きは、これまでどおりです
+       ——やることタブでは変わらず出て、済ませられます。
+
+       写し（trace）も同じ理由で外します。写しは繰り返しを済ませたときに
+       できるものなので、入れれば結局、毎日の同じ用事が並びます。 */
     s.todos.forEach((t) => {
       if (!t.done && !t.archived) return;
+      if (t.repeat || t.trace) return;
       const at = todoClosedAt(t);
       if (!at || dayOfStamp(at) !== key) return;
       out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
-                 minutes: t.minutes || null, repeat: !!t.repeat, trace: !!t.trace });
+                 minutes: t.minutes || null, repeat: false, trace: false });
     });
 
     /* ② その日の「積み上げ」。
