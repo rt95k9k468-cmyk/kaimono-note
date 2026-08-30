@@ -15911,6 +15911,11 @@ a.btn { text-decoration: none; }
          中に同じ手順を持って毎日戻ってくる。だから「ルーティン」という
          別の種類は作りません。同じものに名前を二つ付けることになるので。 */
       subs: cleanSubs(t.subs),
+      /* 自分で選んだ絵。決めていなければ null——その場合は題から絵を
+         推す（KN.productIcons.find）のを、時間割の側がやります。買うもの
+         の商品アイコンと同じ選び方で、「迷ったときは丸のまま」ではなく、
+         中身にいちばん近い絵を積極的に選ぶという方針もそちらと揃えます。 */
+      icon: cleanIcon(t.icon),
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
@@ -15975,6 +15980,16 @@ a.btn { text-decoration: none; }
       title: String((s && s.title) || "").trim(),
       done: !!(s && s.done),
     })).filter((s) => s.title).slice(0, MAX);
+  }
+
+  /* **function 宣言**であることが大事です（cleanMinutes/cleanSubs と
+     同じ理由——load() はこの下より前で走るので、const だと読めない箱に
+     なります）。存在しない絵の鍵が紛れ込んでいたら、null に戻します
+     （手描きの絵の数が減った・キーが変わった、といった将来の変更で
+     用事が壊れて見えないように）。 */
+  function cleanIcon(key) {
+    if (!key) return null;
+    return KN.productIcons.byKey(key) ? String(key) : null;
   }
 
   /**
@@ -16414,7 +16429,7 @@ a.btn { text-decoration: none; }
 
   function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
                      repeatNth = null, memo = "", flagged = false, minutes = null,
-                     shop = false, subs = [] } = {}) {
+                     shop = false, subs = [], icon = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -16442,6 +16457,7 @@ a.btn { text-decoration: none; }
       trace: false,
       shop: shop === true,
       subs: cleanSubs(subs),
+      icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
     };
@@ -16575,6 +16591,7 @@ a.btn { text-decoration: none; }
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
       if ("minutes" in patch) t.minutes = cleanMinutes(patch.minutes);
+      if ("icon" in patch) t.icon = cleanIcon(patch.icon);
     });
   }
 
@@ -26322,6 +26339,7 @@ a.btn { text-decoration: none; }
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
     let flagged = editing ? !!t.flagged : false;
     let minutes = editing ? (t.minutes || null) : null;
+    let iconKey = editing ? (t.icon || null) : null;
     haptic(10);
 
     const body = node(html`
@@ -26339,6 +26357,23 @@ a.btn { text-decoration: none; }
                     aria-label="★を付ける（同じ日のなかで先に出てきます）"
                     title="★を付ける">${icon("star")}</button>
           </div>
+        </div>
+
+        ${/* アイコン。買うものの商品アイコンと同じ選び方です。迷ったときに
+              丸のまま置いておくのではなく、中身にいちばん近い絵を積極的に
+              選ぶ、という決めごとも揃えます。既定は「おまかせ」——題から
+              推した絵で、選んだことになりません（自分で選んだ絵だけが
+              「自分で選んだ絵です」と出ます）。 */""}
+        <div class="field">
+          <span class="field-label">アイコン</span>
+          <button type="button" class="icon-pick js-icon-pick">
+            <span class="icon-pick-mark js-icon-mark"></span>
+            <span class="icon-pick-text">
+              <span class="icon-pick-name js-icon-lbl"></span>
+              <span class="icon-pick-sub js-icon-sub"></span>
+            </span>
+            <span class="price-chevron">${icon("chevron")}</span>
+          </button>
         </div>
 
         <div class="field">
@@ -26445,6 +26480,24 @@ a.btn { text-decoration: none; }
     const dueEl = body.querySelector(".js-due");
     const hintEl = body.querySelector(".js-due-hint");
     const flagBtn = body.querySelector(".js-flag");
+
+    /* アイコンの札。選んだ鍵（iconKey）と、いま打ってある題の両方が
+       見え方を決めます——おまかせのときは、打つそばから推す絵が変わる
+       ので、題の変化にも塗り直しが要ります。 */
+    const iconPickBtn = body.querySelector(".js-icon-pick");
+    function paintIcon() {
+      const own = iconKey && KN.productIcons.byKey(iconKey);
+      iconPickBtn.querySelector(".js-icon-mark").innerHTML = iconMarkHtml(titleEl.value, iconKey);
+      iconPickBtn.querySelector(".js-icon-lbl").textContent =
+        own ? (KN.productIcons.LABELS[iconKey] || iconKey) : "おまかせ";
+      iconPickBtn.querySelector(".js-icon-sub").textContent =
+        own ? "自分で選んだ絵です" : "題から選んでいます";
+    }
+    paintIcon();
+    iconPickBtn.addEventListener("click", () => {
+      openTodoIconPicker(iconKey, titleEl.value, (key) => { iconKey = key; paintIcon(); });
+    });
+    titleEl.addEventListener("input", () => { if (!iconKey) paintIcon(); });
     const foot = node(html`
       <button class="btn btn-primary btn-block js-save" ${editing ? "" : KN.util.raw("disabled")}>
         ${editing ? "保存" : "追加"}
@@ -26853,14 +26906,14 @@ a.btn { text-decoration: none; }
          古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes, icon: iconKey });
         /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
            知らない欄を混ぜると黙って落ちます。 */
         store.setSubs(todoId, subs);
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes, subs });
+          repeat, repeatDays, repeatNth, memo, flagged, minutes, subs, icon: iconKey });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -27025,11 +27078,122 @@ a.btn { text-decoration: none; }
      当たらないときは、期限の色の丸に落とします。絵の無い行だけ左端が
      空くと列が崩れるので、何かは必ず置く。丸は「まだ絵が無い」の目印で
      あって、失敗の表示ではありません。 */
-  function todoMark(t) {
-    const svg = KN.productIcons.find(t.title);
+  /** 自分で選んだ絵（あれば）、無ければ題から推した絵。無ければ丸だけ。
+   *  シート内の「いまの見え方」プレビューと、行そのものの両方が使います。 */
+  function iconMarkHtml(titleText, key) {
+    const svg = (key && KN.productIcons.byKey(key)) || KN.productIcons.find(titleText || "");
     return svg
       ? html`<span class="todo-mark">${KN.util.raw(svg)}</span>`
       : html`<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
+  }
+
+  function todoMark(t) {
+    return iconMarkHtml(t.title, t.icon);
+  }
+
+  /* ---------------- やることの絵を選ぶ ----------------
+
+     買うものの商品アイコンと、同じ絵の一覧・同じ選び方です（KN.productIcons）。
+     ここではまだ何も保存しません——選んだ鍵をシートに持たせておいて、
+     「追加」「保存」を押したときに他の欄と一緒に書き込みます。書きかけの
+     ままシートを閉じても、その場では何も変わっていないように。 */
+  function openTodoIconPicker(current, titleText, onChoose) {
+    const body = node(html`
+      <div class="stack" style="gap:14px">
+        <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
+               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
+        <div class="stack js-grids" style="gap:14px"></div>
+      </div>
+    `);
+    const grids = body.querySelector(".js-grids");
+    const q = body.querySelector(".js-q");
+    const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
+
+    function choose(key) {
+      KN.motion.fire("select");
+      onChoose(key || null);
+      handle.close();
+    }
+
+    /* 絵が800を超えるので、開いた瞬間に全部を組むと手が止まります
+       （product-sheet.js の同じ仕掛けと同じ理由）。最初の一掴みだけ
+       同期で入れ、残りはフレームごとに継ぎ足します。 */
+    const CHUNK = 120;
+    let painting = 0;
+    function grid(items) {
+      const g = node(html`<div class="icon-grid"></div>`);
+      const cellOf = ({ key, label, svg }) => {
+        const cell = node(html`
+          <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
+                  data-key="${key}" aria-pressed="${String(key === current)}">
+            <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
+            <span class="icon-cell-label">${label}</span>
+          </button>
+        `);
+        cell.addEventListener("click", () => choose(key));
+        return cell;
+      };
+      const head = items.slice(0, CHUNK);
+      head.forEach((it) => g.append(cellOf(it)));
+      if (items.length > CHUNK) {
+        const mine = ++painting;
+        let at = CHUNK;
+        const more = () => {
+          if (mine !== painting || !g.isConnected) return;
+          const stop = Math.min(at + CHUNK, items.length);
+          const frag = document.createDocumentFragment();
+          for (; at < stop; at++) frag.append(cellOf(items[at]));
+          g.append(frag);
+          if (at < items.length) requestAnimationFrame(more);
+        };
+        requestAnimationFrame(more);
+      }
+      return g;
+    }
+
+    const heading = (text) => node(html`<span class="field-label">${text}</span>`);
+
+    function paint() {
+      grids.innerHTML = "";
+      const query = q.value.trim();
+      if (query) {
+        const hits = KN.productIcons.search(query);
+        if (!hits.length) {
+          grids.append(node(html`
+            <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
+              「${query}」に合う絵はありません
+            </p>
+          `));
+          return;
+        }
+        grids.append(grid(hits));
+        return;
+      }
+      const auto = node(html`
+        <button type="button" class="icon-auto js-auto ${current ? "" : "is-on"}"
+                aria-pressed="${String(!current)}">
+          <span class="icon-pick-mark">${iconMarkHtml(titleText, null)}</span>
+          <span class="icon-pick-text">
+            <span class="icon-pick-name">おまかせにする</span>
+            <span class="icon-pick-sub">題から選びます</span>
+          </span>
+        </button>
+      `);
+      auto.addEventListener("click", () => choose(null));
+      grids.append(auto);
+
+      const maybe = KN.productIcons.suggest(titleText, 8);
+      if (maybe.length) {
+        grids.append(heading("もしかして"));
+        grids.append(grid(KN.productIcons.list().filter((x) => maybe.includes(x.key))
+          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
+      }
+      grids.append(heading("ぜんぶ"));
+      grids.append(grid(KN.productIcons.list()));
+    }
+    q.addEventListener("input", KN.util.debounce(paint, 160));
+    paint();
+    return handle;
   }
 
   /* ---------------- rows ---------------- */
