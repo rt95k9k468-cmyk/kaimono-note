@@ -1809,7 +1809,244 @@
       list.append(nowRow(nowMin));
     }
 
+    wireDrag(list, day);
     return sec;
+  }
+
+  /* ---------------- つまんで、置きなおす ----------------
+
+     長押しで一件が持ち上がり、指について動きます。落とせる先は二種類です。
+
+       ① **用事と用事のあいだ** … その順番に入ります。時刻を持っていた
+          ものは、時刻を手放します——「ここでやる」と順番で言い直したので、
+          時計に縛られたままだと二つの指示が食い違います。以後の用事は、
+          その用事の長さぶんだけ後ろへずれます（組み立てが勝手にやります）。
+
+       ② **空いている時間の中** … 空きの行が、その空きぶんに広がって、
+          15分ごとの置き場が現れます。時間帯のどこに置くかまで選べる。
+          ここへ落とすと時刻を持ちます（「その時間にやる」と言ったので）。
+
+     置きなおす先が「順番」と「時刻」の二つある、というのがこの画面の
+     肝です。片方だけだと、決めたいことの半分しか言えません。 */
+
+  const DRAG_HOLD = 380;   // これだけ押さえたら持ち上がる
+  const DRAG_SLOP = 8;     // その前にこれ以上動いたら、ただのスクロール
+  const SLOT_MIN = 15;     // 帯の中は15分きざみで止まります
+
+  /** 空きが広がる高さ。長い空きほど高く、ただし画面を覆わない程度に。
+
+      分をそのまま画素にすると、昼の5時間があいている日は帯だけで
+      300画素になり、前後の用事が視界から消えます。かといって全部同じ
+      高さにすると、10分の空きと3時間の空きが同じ顔になります。 */
+  function bandHeight(minutes) {
+    return Math.round(Math.min(220, Math.max(64, 40 + minutes * 0.42)));
+  }
+
+  /* 一覧のドラッグ（下の reorder まわり）にも同じ名前の札があるので、
+     こちらは時間割のものだと分かる名前にします。 */
+  let tlDrag = null;
+
+  function wireDrag(list, day) {
+    list.addEventListener("pointerdown", (e) => {
+      if (tlDrag) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      /* 掴めないのは**印だけ**です。前はここで button 全部を外していま
+         したが、行の本文（題や事実の乗っているところ）自体が button なので、
+         行を掴む道がどこにも無くなっていました。掴んで欲しくないのは、
+         押したら別のことが起きる小さな丸——それだけ。 */
+      if (e.target.closest(".check, .fav")) return;
+      const row = e.target.closest(".tl-row");
+      if (!row || row.classList.contains("is-done")) return;
+
+      const id = row.dataset.todoId;
+      const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+      let timer = setTimeout(() => { timer = null; lift(row, id, list, day, y0); }, DRAG_HOLD);
+
+      const cancel = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        list.removeEventListener("pointermove", moved);
+        list.removeEventListener("pointerup", cancel);
+        list.removeEventListener("pointercancel", cancel);
+      };
+      const moved = (ev) => {
+        if (ev.pointerId !== pid || !timer) return;
+        if (Math.abs(ev.clientX - x0) > DRAG_SLOP || Math.abs(ev.clientY - y0) > DRAG_SLOP) cancel();
+      };
+      list.addEventListener("pointermove", moved);
+      list.addEventListener("pointerup", cancel);
+      list.addEventListener("pointercancel", cancel);
+    });
+  }
+
+  /** 持ち上げる。空きの行を開いて、置き場を見せます。 */
+  function lift(row, id, list, day, y0) {
+    const t = store.getTodo(id);
+    if (!t) return;
+    const len = t.minutes || KN.plan.DEFAULT_MINUTES;
+
+    tlDrag = { id, row, list, day, len, target: null };
+    KN.motion.fire("reorder");
+    row.classList.add("is-lifted");
+    list.classList.add("is-dragging");
+
+    /* 運び終えた指は、離したところで click も起こします。本文は押すと
+       詳細が開くので、そのままだと**置きなおすたびに詳細が開いて**
+       いました。この一回だけ、止めます。 */
+    const eatClick = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    list.addEventListener("click", eatClick, { capture: true, once: true });
+    tlDrag.eatClick = eatClick;
+
+    /* 空きの行が、その空きぶんに**上下へ広がります**。**その空きに入る
+       ものだけ**——入らないところが開いても、置けないので。
+
+       広がった帯の中は、時間そのものです。上端がその空きの始まり、下端が
+       終わり。指を上下すれば、その高さのぶんだけ時刻が動きます。前はここに
+       15分きざみの札を敷き詰めていましたが、昼の空きひとつで札が60枚
+       出て、時間帯を選ぶというより数字の壁を読む作業になっていました。
+       帯なら、長い空きは長く見えます——空きの**量**も同時に読めます。 */
+    list.querySelectorAll(".tl-free-row").forEach((fr) => {
+      const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
+      if (!isFinite(from) || !isFinite(until) || until - from < len) return;
+      fr.classList.add("is-open");
+      fr.style.setProperty("--band-h", bandHeight(until - from) + "px");
+      fr.append(node(html`
+        <span class="tl-band">
+          <span class="tl-band-line"><span class="tl-band-time"></span></span>
+        </span>
+      `));
+    });
+
+    const move = (ev) => {
+      if (!tlDrag) return;
+      ev.preventDefault();
+      aim(ev.clientX, ev.clientY);
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", up);
+      drop();
+    };
+    document.addEventListener("pointermove", move, { passive: false });
+    document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", up);
+    aim(row.getBoundingClientRect().left + 20, y0);
+  }
+
+  /** いま指の下にあるのは、どの置き場か。 */
+  function aim(x, y) {
+    const d = tlDrag;
+    if (!d) return;
+    d.list.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
+
+    /* 開いた帯の中にいるなら、指の高さがそのまま時刻です。 */
+    for (const fr of d.list.querySelectorAll(".tl-free-row.is-open")) {
+      const band = fr.querySelector(".tl-band");
+      if (!band) continue;
+      const b = band.getBoundingClientRect();
+      if (y < b.top || y > b.bottom || b.height <= 0) continue;
+      const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
+      /* 置けるのは「始まり」だけなので、下端は**終わり − 長さ**です。
+         そうしないと帯のいちばん下を狙ったとき、はみ出す時刻を返します。 */
+      const last = Math.max(from, until - d.len);
+      const ratio = Math.min(1, Math.max(0, (y - b.top) / b.height));
+      const at = Math.min(last, Math.max(from,
+        Math.round((from + ratio * (last - from)) / SLOT_MIN) * SLOT_MIN));
+      fr.classList.add("is-aim");
+      const line = fr.querySelector(".tl-band-line");
+      if (line) {
+        const span = last - from;
+        line.style.top = (span > 0 ? ((at - from) / span) * 100 : 0) + "%";
+        const label = line.querySelector(".tl-band-time");
+        if (label) label.textContent = KN.plan.toTime(at);
+      }
+      d.target = { kind: "time", at };
+      return;
+    }
+    /* 用事と用事のあいだ。行の上半分なら前へ、下半分なら後ろへ。 */
+    const rows = [...d.list.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
+    let before = null;
+    for (const r of rows) {
+      const b = r.getBoundingClientRect();
+      if (y < b.top + b.height / 2) { before = r; break; }
+    }
+    const anchor = before || rows[rows.length - 1] || null;
+    if (!anchor) { d.target = null; return; }
+    anchor.classList.add("is-aim");
+    anchor.classList.toggle("is-aim-before", !!before);
+    d.target = { kind: "order", id: anchor.dataset.todoId, before: !!before };
+  }
+
+  /** つまんだ手を離したところ。 */
+  function drop() {
+    const d = tlDrag;
+    tlDrag = null;
+    if (!d) return;
+    d.row.classList.remove("is-lifted");
+    d.list.classList.remove("is-dragging");
+    d.list.querySelectorAll(".is-aim").forEach((el) => {
+      el.classList.remove("is-aim", "is-aim-before");
+    });
+    /* 広げた空きは、閉じます。置いたあとに描き直される行もありますが、
+       落とす先が無かったときは描き直されないので、ここで畳みます。 */
+    d.list.querySelectorAll(".tl-free-row.is-open").forEach((fr) => {
+      fr.classList.remove("is-open");
+      fr.style.removeProperty("--band-h");
+      const band = fr.querySelector(".tl-band");
+      if (band) band.remove();
+    });
+    /* click は離した直後に来ます。来なかったぶんは、ここで片づけます
+       ——置いたままだと、次にどこかを押したときに食べてしまいます。 */
+    if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);
+    const t = store.getTodo(d.id);
+    if (!d.target || !t) { render(); return; }
+
+    if (d.target.kind === "time") {
+      const at = KN.plan.toTime(d.target.at);
+      const was = { time: t.time };
+      store.updateTodo(d.id, { time: at, due: d.day });
+      KN.motion.fire("save");
+      KN.ui.toast(`「${t.title}」を ${at} に`, {
+        action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
+      });
+      return;
+    }
+
+    /* 順番で置きなおす。時刻は手放します。 */
+    const ids = [...d.list.querySelectorAll(".tl-row")]
+      .map((r) => r.dataset.todoId).filter((x) => x && x !== d.id);
+    /* **並び全体**を控えます。この置きなおしは一件だけでなく、その日の
+       並び順をまるごと書き替えるので、戻すときも同じ広さで戻さないと
+       「元に戻す」が元に戻しません（動かした一件だけを戻して、まわりは
+       新しい順のまま、という半端な形になっていました）。 */
+    const was = { time: t.time, order: new Map() };
+    store.get().todos.forEach((x) => {
+      if (x.id === d.id || ids.includes(x.id)) was.order.set(x.id, x.order);
+    });
+    const at = ids.indexOf(d.target.id);
+    ids.splice(d.target.before ? Math.max(0, at) : at + 1, 0, d.id);
+    store.update((s) => {
+      ids.forEach((tid, i) => {
+        const row = s.todos.find((x) => x.id === tid);
+        if (row) row.order = i;
+      });
+      const me = s.todos.find((x) => x.id === d.id);
+      if (me) { me.time = null; me.due = d.day; }
+    });
+    KN.motion.fire("save");
+    KN.ui.toast(`「${t.title}」を動かしました`, {
+      action: {
+        label: "元に戻す",
+        onClick: () => store.update((s) => {
+          was.order.forEach((ord, tid) => {
+            const row = s.todos.find((x) => x.id === tid);
+            if (row) row.order = ord;
+          });
+          const me = s.todos.find((x) => x.id === d.id);
+          if (me) me.time = was.time;
+        }),
+      },
+    });
   }
 
   /** いま何時か。線がここで色を変えます。 */
@@ -1831,7 +2068,8 @@
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
     return node(html`
-      <li class="tl-free-row ${past ? "is-past" : ""}">
+      <li class="tl-free-row ${past ? "is-past" : ""}"
+          data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}">
         <span class="tl-time">${f.at}</span>
         <span class="tl-rail is-dash"></span>
         <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}</span>
