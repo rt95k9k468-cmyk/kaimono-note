@@ -1676,15 +1676,31 @@
   function timeline(rows, shelf) {
     const P = KN.plan;
     const s = store.get().settings;
-    const plan = P.buildDay(todayKey(), rows, { start: s.dayStart, end: s.dayEnd });
     const nowMin = P.toMin(KN.util.nowTime());
     const isToday = !shelf || !shelf.day || shelf.day === todayKey();
+    /* 今日を見ているときだけ「いま」を渡します。渡すと、まだ済んでいない
+       時刻なしのものが**いまから先**に並びます——15時に開いて残りの用事が
+       7時に並んでいても、配り直す役には立たないので。 */
+    /* 済ませたものも線の上に残します。**今日それをした**ことが見えるのは、
+       残りが何かと同じくらい大事なので（消すと、朝からの半日が空白に
+       なります）。組み立て側は、済んだものが「これからの時間」を食べない
+       ようにしています（plan.js の doneOf）。 */
+    const day = shelf && shelf.day ? shelf.day : todayKey();
+    const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
+    const plan = P.buildDay(day, rows.concat(done), {
+      start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
+    });
+    const free = plan.freeAhead == null ? plan.freeTotal : plan.freeAhead;
 
     const sec = node(html`
       <div class="tl">
+        ${/* 今日は「このあと」の空きを出します。一日ぜんぶの合計を出すと、
+              15時に「空き13時間」——そのうち8時間はもう過ぎている、という
+              嘘になります。人が知りたいのは、これから何ができるかです。 */""}
         <div class="tl-sum">
-          ${plan.freeTotal >= P.MIN_GAP
-            ? html`<span class="tl-free">空き ${P.humanSpan(plan.freeTotal)}</span>` : ""}
+          ${free >= P.MIN_GAP
+            ? html`<span class="tl-free">${isToday ? "このあと " : ""}空き ${P.humanSpan(free)}</span>`
+            : html`<span class="tl-free">${isToday ? "このあとの" : ""}空きはありません</span>`}
           ${plan.over
             ? html`<span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>` : ""}
           <button type="button" class="tl-switch js-tl-off">一覧で見る</button>
@@ -1704,11 +1720,16 @@
     parts.forEach((part, i) => {
       /* 「いま」の線は、その時刻をまたぐところに一度だけ。今日以外の日を
          見ているときは出しません（きのうの「いま」は意味を成さないので）。 */
-      if (isToday && !nowPlaced && nowMin != null && part.at > nowMin) {
+      /* ちょうど「いま」から始まるものは、線の**下**に来ます（これから
+         やることなので）。> だと同時刻のものが線の上に残っていました。 */
+      if (isToday && !nowPlaced && nowMin != null && part.at >= nowMin) {
         list.append(nowRow(nowMin));
         nowPlaced = true;
       }
-      if (part.kind === "free") { list.append(freeRow(part.f)); return; }
+      if (part.kind === "free") {
+        list.append(freeRow(part.f, isToday ? nowMin : null));
+        return;
+      }
       const next = parts[i + 1];
       list.append(itemRow(part.it, !!next && next.kind === "item"));
     });
@@ -1734,13 +1755,19 @@
     `);
   }
 
-  /** 空いているところ。埋めずに、空いていると言うだけ。 */
-  function freeRow(f) {
+  /** 空いているところ。埋めずに、空いていると言うだけ。
+
+      過ぎた空きは過去形にします。「5時間20分 あいています」と現在形で
+      書かれても、その5時間はもう無いので。責める言い方はしません
+      ——空いていた、と言うだけです。 */
+  function freeRow(f, nowMin) {
+    const past = nowMin != null && f.untilMin <= nowMin;
     return node(html`
-      <li class="tl-free-row">
+      <li class="tl-free-row ${past ? "is-past" : ""}">
         <span class="tl-time">${f.at}</span>
         <span class="tl-rail is-dash"></span>
-        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)} あいています</span>
+        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}
+          ${past ? "あいていました" : "あいています"}</span>
       </li>
     `);
   }

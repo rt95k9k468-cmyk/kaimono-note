@@ -3017,3 +3017,7 @@ a.btn { text-decoration: none; }
 /* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
    線だけが下へ伸びていると「まだ続く」と読めてしまいます。 */
 .tl-list > li:last-child .tl-rail::before { bottom: auto; height: 61px; }
+
+/* 過ぎた空き。もう使えないので、線も字も一段薄く。消しはしません
+   ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
+.tl-free-row.is-past { opacity: .6; }

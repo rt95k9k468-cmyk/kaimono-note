@@ -1106,3 +1106,9 @@ button, [role="tab"] {
   80%      { transform: translateX(-2px); }
 }
 .is-m-warn { animation: m-warn var(--m-warn) var(--ease); }
+
+/* 設定の行に、時刻の欄を二つ並べるとき（一日の始まりと終わり）。 */
+.row-times { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.row-times .input { height: 40px; width: auto; flex: 1; min-width: 0; text-align: center; }
+.row-dash { color: var(--c-text-3); flex: none; }
+.row.js-day-span { align-items: flex-start; }
