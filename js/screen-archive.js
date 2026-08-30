@@ -428,12 +428,62 @@
         openLogSheet(d.date);
       });
       body.append(row);
+      /* 手で書いた文の下に、その日ほかで起きたことを続けます。行の外に
+         置くのは、押したときの行き先が違うからです——上の文は「その日の
+         日記」を開き、下の一つ一つは**それぞれの元**を開きます。 */
+      const feed = feedRows(d.date);
+      if (feed) body.append(feed);
     });
 
     sec.querySelector(".js-write").addEventListener("click", () => {
       openLogSheet(viewDay || (isThisMonth() ? U.todayKey() : `${ym}-01`));
     });
     return sec;
+  }
+
+  /* その日、ほかのタブで起きたこと。
+
+     ここには**何も持っていません**。store.dayFeed が、やること・積み上げ・
+     買うものから、その日ぶんを集めて返したものを並べるだけです。だから
+     同じことが二度出ることも、ここから元が壊れることもありません。
+
+     押すと、それぞれの元へ行きます。積み上げはその記録の紙が開き、
+     やること・買うものはそのタブへ移ります——「ここで直せそうに見えて、
+     直しても元に伝わらない」という形にだけはしないためです。 */
+  const FEED_LABEL = { todo: "やること", entry: "積み上げ", item: "買うもの" };
+
+  function feedRows(day) {
+    const feed = store.dayFeed(day);
+    if (!feed.length) return null;
+
+    const wrap = node(html`<div class="arc-feed"></div>`);
+    feed.forEach((f) => {
+      const at = f.at && /T\d\d:\d\d/.test(String(f.at))
+        ? String(f.at).slice(11, 16) : "";
+      const row = node(html`
+        ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
+              名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
+              行のほうが先に当たることがあります（そこから .arc-row を
+              辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
+        <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
+          <span class="arc-feed-when">${at || "—"}</span>
+          <span class="arc-feed-kind arc-feed-kind-${f.src}">${FEED_LABEL[f.src] || ""}</span>
+          <span class="arc-feed-title">${f.title}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        KN.motion.fire("select");
+        if (f.src === "entry") {
+          const e = store.get().archive.entries.find((x) => x.id === f.id);
+          if (e) openEntrySheet(e);
+          return;
+        }
+        /* やること・買うものは、それぞれのタブが本体です。 */
+        KN.app.showScreen(f.src === "todo" ? "todo" : "list");
+      });
+      wrap.append(row);
+    });
+    return wrap;
   }
 
   function openLogSheet(day) {

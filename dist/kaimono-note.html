@@ -5721,6 +5721,51 @@ a.btn { text-decoration: none; }
    ——戻す道は題の右のボタンが持っているので、ここは消して構いません。 */
 .cal.is-hidden { display: none; }
 
+/* ---------------- Daily Log：その日、ほかで起きたこと ----------------
+
+   手で書いた日記の下に、やること・積み上げ・買うものから引いてきた行が
+   続きます。日記の文と同じ濃さで並べると「どれも自分が書いた文」に見えて
+   しまうので、こちらは一段沈めます——引いてきたものだと分かるように。 */
+.arc-feed {
+  display: flex; flex-direction: column;
+  margin: -2px 0 10px;
+  padding-left: 46px;   /* 上の行の日付の欄と、頭を揃えます */
+}
+.arc-feed-row {
+  display: grid;
+  grid-template-columns: 40px auto 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
+.arc-feed-when {
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+}
+/* どこから来た記録かを、小さな札で。色は種類ごとに変えません——ここは
+   「どのタブのものか」を言うだけで、良し悪しは何も言わないので。 */
+.arc-feed-kind {
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.arc-feed-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
+}
+
 </style>
 </head>
 <body>
@@ -16543,6 +16588,67 @@ a.btn { text-decoration: none; }
     return { done: subs.filter((s) => s.done).length, total: subs.length };
   }
 
+  /* ---------------- その日にあったこと（Daily Log の材料） ----------------
+
+     **写しません。引きます。**
+
+     その日の Daily Log は、新しい入れものではありません。すでにどこかに
+     ある記録を、その日ぶんだけ集めて並べた**眺め**です。だから、
+
+       ・二重に出ることが構造上ありません（元をひとつずつ読むだけなので）
+       ・Daily 側から元を壊せません（Daily は何も持っていないので）
+       ・「どちらが本物か」が生まれません（本物はいつも元のほうです）
+
+     写しを作る道を選ぶと、この三つを自分で守りつづけることになります。
+     ——守れなかったときに、黙って壊れる種類の約束です。
+
+     返すのは読み取り専用の並びで、id は**元のid**です。押したときに元へ
+     辿れるように（消すのも直すのも、元の関数へ回します）。 */
+
+  function dayFeed(day) {
+    const key = dayKeyOf(day);
+    const s = get();
+    const out = [];
+
+    /* ① その日に済ませた「やること」。繰り返しの写し（trace）も入ります
+       ——毎朝のものを今日やった、という記録はそちらが持っているので。
+       元のほうは翌日へ移って done:false になっているため、同じ用事が
+       二度出ることはありません。 */
+    s.todos.forEach((t) => {
+      if (!t.done && !t.archived) return;
+      const at = todoClosedAt(t);
+      if (!at || dayKeyOf(at) !== key) return;
+      out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
+                 minutes: t.minutes || null, repeat: !!t.repeat, trace: !!t.trace });
+    });
+
+    /* ② その日の「積み上げ」。
+
+       種はタイトルを持ちません（メモそのものが記録なので）。持っていない
+       ものの題を空のまま出すと、種の行だけ名無しで並びます。書いた本人に
+       とっては、そのメモが題です——一行目を借ります。 */
+    (s.archive.entries || []).forEach((e) => {
+      if (dayKeyOf(e.date) !== key) return;
+      const memo = String(e.memo || "");
+      const title = e.title || memo.split("\n")[0].trim();
+      out.push({ src: "entry", id: e.id, at: e.createdAt || e.date,
+                 title, type: e.type, memo,
+                 amount: e.amount, unit: e.unit });
+    });
+
+    /* ③ その日に買ったもの。 */
+    (s.items || []).forEach((i) => {
+      if (!i.checked || !i.checkedAt) return;
+      if (dayKeyOf(i.checkedAt) !== key) return;
+      const p = s.products.find((x) => x.id === i.productId);
+      out.push({ src: "item", id: i.id, at: i.checkedAt,
+                 title: (p && p.name) || "", icon: (p && p.icon) || null });
+    });
+
+    /* 時刻の順に。時刻を持たないものは、その日の頭に来ます。 */
+    return out.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+  }
+
   /* ---------------- 買うものを、その日の予定に ----------------
 
      ★を付けたものは「今回の買い物」です。それは買うもの側の話で、
@@ -17983,6 +18089,7 @@ a.btn { text-decoration: none; }
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
+    dayFeed,
     calPrefs, setCalPref,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
@@ -25170,12 +25277,62 @@ a.btn { text-decoration: none; }
         openLogSheet(d.date);
       });
       body.append(row);
+      /* 手で書いた文の下に、その日ほかで起きたことを続けます。行の外に
+         置くのは、押したときの行き先が違うからです——上の文は「その日の
+         日記」を開き、下の一つ一つは**それぞれの元**を開きます。 */
+      const feed = feedRows(d.date);
+      if (feed) body.append(feed);
     });
 
     sec.querySelector(".js-write").addEventListener("click", () => {
       openLogSheet(viewDay || (isThisMonth() ? U.todayKey() : `${ym}-01`));
     });
     return sec;
+  }
+
+  /* その日、ほかのタブで起きたこと。
+
+     ここには**何も持っていません**。store.dayFeed が、やること・積み上げ・
+     買うものから、その日ぶんを集めて返したものを並べるだけです。だから
+     同じことが二度出ることも、ここから元が壊れることもありません。
+
+     押すと、それぞれの元へ行きます。積み上げはその記録の紙が開き、
+     やること・買うものはそのタブへ移ります——「ここで直せそうに見えて、
+     直しても元に伝わらない」という形にだけはしないためです。 */
+  const FEED_LABEL = { todo: "やること", entry: "積み上げ", item: "買うもの" };
+
+  function feedRows(day) {
+    const feed = store.dayFeed(day);
+    if (!feed.length) return null;
+
+    const wrap = node(html`<div class="arc-feed"></div>`);
+    feed.forEach((f) => {
+      const at = f.at && /T\d\d:\d\d/.test(String(f.at))
+        ? String(f.at).slice(11, 16) : "";
+      const row = node(html`
+        ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
+              名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
+              行のほうが先に当たることがあります（そこから .arc-row を
+              辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
+        <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
+          <span class="arc-feed-when">${at || "—"}</span>
+          <span class="arc-feed-kind arc-feed-kind-${f.src}">${FEED_LABEL[f.src] || ""}</span>
+          <span class="arc-feed-title">${f.title}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        KN.motion.fire("select");
+        if (f.src === "entry") {
+          const e = store.get().archive.entries.find((x) => x.id === f.id);
+          if (e) openEntrySheet(e);
+          return;
+        }
+        /* やること・買うものは、それぞれのタブが本体です。 */
+        KN.app.showScreen(f.src === "todo" ? "todo" : "list");
+      });
+      wrap.append(row);
+    });
+    return wrap;
   }
 
   function openLogSheet(day) {

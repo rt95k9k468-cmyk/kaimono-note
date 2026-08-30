@@ -1232,6 +1232,67 @@
     return { done: subs.filter((s) => s.done).length, total: subs.length };
   }
 
+  /* ---------------- その日にあったこと（Daily Log の材料） ----------------
+
+     **写しません。引きます。**
+
+     その日の Daily Log は、新しい入れものではありません。すでにどこかに
+     ある記録を、その日ぶんだけ集めて並べた**眺め**です。だから、
+
+       ・二重に出ることが構造上ありません（元をひとつずつ読むだけなので）
+       ・Daily 側から元を壊せません（Daily は何も持っていないので）
+       ・「どちらが本物か」が生まれません（本物はいつも元のほうです）
+
+     写しを作る道を選ぶと、この三つを自分で守りつづけることになります。
+     ——守れなかったときに、黙って壊れる種類の約束です。
+
+     返すのは読み取り専用の並びで、id は**元のid**です。押したときに元へ
+     辿れるように（消すのも直すのも、元の関数へ回します）。 */
+
+  function dayFeed(day) {
+    const key = dayKeyOf(day);
+    const s = get();
+    const out = [];
+
+    /* ① その日に済ませた「やること」。繰り返しの写し（trace）も入ります
+       ——毎朝のものを今日やった、という記録はそちらが持っているので。
+       元のほうは翌日へ移って done:false になっているため、同じ用事が
+       二度出ることはありません。 */
+    s.todos.forEach((t) => {
+      if (!t.done && !t.archived) return;
+      const at = todoClosedAt(t);
+      if (!at || dayKeyOf(at) !== key) return;
+      out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
+                 minutes: t.minutes || null, repeat: !!t.repeat, trace: !!t.trace });
+    });
+
+    /* ② その日の「積み上げ」。
+
+       種はタイトルを持ちません（メモそのものが記録なので）。持っていない
+       ものの題を空のまま出すと、種の行だけ名無しで並びます。書いた本人に
+       とっては、そのメモが題です——一行目を借ります。 */
+    (s.archive.entries || []).forEach((e) => {
+      if (dayKeyOf(e.date) !== key) return;
+      const memo = String(e.memo || "");
+      const title = e.title || memo.split("\n")[0].trim();
+      out.push({ src: "entry", id: e.id, at: e.createdAt || e.date,
+                 title, type: e.type, memo,
+                 amount: e.amount, unit: e.unit });
+    });
+
+    /* ③ その日に買ったもの。 */
+    (s.items || []).forEach((i) => {
+      if (!i.checked || !i.checkedAt) return;
+      if (dayKeyOf(i.checkedAt) !== key) return;
+      const p = s.products.find((x) => x.id === i.productId);
+      out.push({ src: "item", id: i.id, at: i.checkedAt,
+                 title: (p && p.name) || "", icon: (p && p.icon) || null });
+    });
+
+    /* 時刻の順に。時刻を持たないものは、その日の頭に来ます。 */
+    return out.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+  }
+
   /* ---------------- 買うものを、その日の予定に ----------------
 
      ★を付けたものは「今回の買い物」です。それは買うもの側の話で、
@@ -2672,6 +2733,7 @@
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
+    dayFeed,
     calPrefs, setCalPref,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
