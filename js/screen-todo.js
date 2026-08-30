@@ -1886,6 +1886,26 @@
   }
 
   /** その月の顔を描く。節と grid の要素はそのまま使い回します。 */
+  /* 隣の月のマス。週が月をまたぐときだけ表に出ます（月で見ているあいだは
+     CSS が伏せます）。押せばその日へ行けるので、月末の週から翌月の頭へ
+     そのまま進めます。中身は日付だけ——粒（件数）はその月のぶんしか
+     数えていないので、出すと嘘になります。 */
+  function outCell(key) {
+    const U = KN.util;
+    const d = U.dayDate(key);
+    const wd = d ? d.getDay() : 0;
+    const cell = node(html`
+      <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
+              data-day="${key}" tabindex="-1"
+              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
+        <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
+        <span class="cal-dots"></span>
+      </button>
+    `);
+    cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
+    return cell;
+  }
+
   function fillCalendar(sec, open) {
     if (!sec) return;
     const U = KN.util;
@@ -1920,7 +1940,11 @@
     U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
     `)));
-    for (let i = 0; i < lead; i++) grid.append(node(html`<span class="cal-pad"></span>`));
+    /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
+       して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
+       これまでどおり）。押せば、その日へ行けます。 */
+    const outer = U.outDays(year, month);
+    outer.lead.forEach((key) => grid.append(outCell(key)));
 
     for (let d = 1; d <= total; d++) {
       const key = U.dayKey(new Date(year, month, d));
@@ -1947,6 +1971,7 @@
       cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
       grid.append(cell);
     }
+    outer.trail.forEach((key) => grid.append(outCell(key)));
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);
     // 描き直したぶん、いま見ている日の印は消えています。付け直します

@@ -183,6 +183,29 @@
   /* その日の粒。書いた種類ぶんの色（最大四つ）。log だけあって積み上げが
      無い日は、灰色の小さな一粒にします——書いたことは書いたことなので、
      何も出さないと「その日は空白」に見えてしまいます。 */
+  /* 隣の月のマス。週で見るときだけ姿を見せます（月で見るあいだは CSS が
+     伏せるので、月の見た目はこれまでどおり）。押せば、その日へ移ります。 */
+  function outCell(key) {
+    const d = U.dayDate(key);
+    const wd = d ? d.getDay() : 0;
+    const cell = node(html`
+      <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
+              data-day="${key}" tabindex="-1"
+              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
+        <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
+        <span class="cal-dots"></span>
+      </button>
+    `);
+    cell.addEventListener("click", () => {
+      KN.motion.fire("select");
+      viewDay = key === U.todayKey() ? null : key;
+      const ym = String(key).slice(0, 7);
+      viewMonth = ym === ymOf(new Date()) ? null : ym;
+      render();
+    });
+    return cell;
+  }
+
   function fillCalendar(sec) {
     const today = U.todayKey();
     const { year, month } = shownMonth();
@@ -205,7 +228,11 @@
     U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
     `)));
-    for (let i = 0; i < lead; i++) grid.append(node(html`<span class="cal-pad"></span>`));
+    /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
+       して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
+       これまでどおり）。押せば、その日へ行けます。 */
+    const outer = U.outDays(year, month);
+    outer.lead.forEach((key) => grid.append(outCell(key)));
 
     for (let d = 1; d <= total; d++) {
       const key = U.dayKey(new Date(year, month, d));
@@ -234,6 +261,7 @@
       });
       grid.append(cell);
     }
+    outer.trail.forEach((key) => grid.append(outCell(key)));
     markWeek(sec, viewDay || today);
     moveRing(grid, grid.querySelector(`.cal-day[data-day="${viewDay || today}"]`), true);
   }
