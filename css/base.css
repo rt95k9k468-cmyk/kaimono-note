@@ -980,5 +980,10 @@ a { color: var(--c-primary); }
 /* ＋ から立ち上がる候補も、右端にそろえます（＋ の真上から出るように）。 */
 .has-fab .fab-menu { align-items: flex-end; }
 
-/* キーボードが出ているあいだは帯が引っ込むので、＋ も下へ戻ります。 */
-.has-fab.kb-open .dock { bottom: var(--sp-3); right: var(--sp-3); }
+/* キーボードが出ているあいだは、＋ も**引っ込みます**。
+
+   帯と横に並ぶようになったので、帯だけが消えて ＋ が残ると、書いている
+   欄の上に丸だけが浮きます（ダイエットの食事欄で実際にそうなりました）。
+   打っている最中に足すものは無いので、一緒に下がってもらいます。 */
+.has-fab.kb-open .dock { opacity: 0; pointer-events: none; transform: translateY(120%); }
+.has-fab .dock { transition: opacity var(--m-nav) var(--ease), transform var(--m-nav) var(--ease-out); }

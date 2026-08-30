@@ -2994,6 +2994,12 @@ a.btn { text-decoration: none; }
    「今日それをした」ことまで消えてしまうので。 */
 .tl-row .tl-item.is-checked .item-name { text-decoration: line-through; }
 .tl-row .tl-item.is-checked { opacity: .5; }
+/* 済んだ行は、左の時刻も丸の絵も灰色に。文字だけ薄くして数字と絵が
+   濃いままだと、「まだ残っている」に見えます。 */
+.tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: 400; }
+.tl-row.is-done .tl-node { background: var(--c-surface-2); }
+.tl-row.is-done .tl-node .todo-mark { filter: grayscale(1); opacity: .7; }
+.tl-row.is-done .tl-node .todo-dot { background: var(--c-border-2); }
 
 /* 空きの行。 */
 .tl-free-row { min-height: 50px; }
@@ -3060,8 +3066,10 @@ a.btn { text-decoration: none; }
    ということが起きません。 */
 .tl-item.is-striking .item-name,
 .item.is-striking .item-name {
-  /* 線は背景で引きます。text-decoration は動かせないので。 */
-  background-image: linear-gradient(currentColor, currentColor);
+  /* 線は背景で引きます。text-decoration は動かせないので。
+     色は、押した丸と同じ緑。同じ「済ませた」を、指の下と字の上で
+     別の色で言う理由がありません。 */
+  background-image: linear-gradient(var(--c-primary), var(--c-primary));
   background-repeat: no-repeat;
   background-position: 0 58%;
   background-size: 0% 2.5px;
@@ -3075,6 +3083,7 @@ a.btn { text-decoration: none; }
    引き終わった瞬間に線が細くなって見えます。 */
 .tl-row .tl-item.is-checked .item-name {
   text-decoration-thickness: 2.5px;
+  text-decoration-color: var(--c-primary);
   text-underline-offset: 0;
 }
 
@@ -3105,7 +3114,7 @@ a.btn { text-decoration: none; }
 }
 .tl-item.is-unstriking .item-name,
 .item.is-unstriking .item-name {
-  background-image: linear-gradient(currentColor, currentColor);
+  background-image: linear-gradient(var(--c-primary), var(--c-primary));
   background-repeat: no-repeat;
   background-position: 100% 58%;
   animation: tl-unstrike var(--m-check) var(--ease-in) forwards;
@@ -3303,16 +3312,16 @@ a.btn { text-decoration: none; }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg,
-    transparent,
-    color-mix(in srgb, var(--cat, var(--c-primary)) 22%, transparent) 45%,
-    transparent);
-  animation: tl-flash var(--m-strike) var(--ease-out) forwards;
+  /* 一様な色を敷いて、**左から右へ見せていきます**。通り過ぎる光では
+     なく、塗られたところは塗られたまま。線と同じ動き方なので、二つが
+     一緒に走って見えます。塗り終えてから、面ごと引きます。 */
+  background: color-mix(in srgb, var(--c-primary) 16%, transparent);
+  animation: tl-flash var(--strike-ms, var(--m-strike)) var(--ease-out) forwards;
 }
 @keyframes tl-flash {
-  from { opacity: 0; transform: translateX(-38%); }
-  40%  { opacity: 1; }
-  to   { opacity: 0; transform: translateX(38%); }
+  0%   { opacity: 1; clip-path: inset(0 100% 0 0); }
+  70%  { opacity: 1; clip-path: inset(0 0 0 0); }
+  100% { opacity: 0; clip-path: inset(0 0 0 0); }
 }
 
 /* 「やった記録」の印。押せないので、押せる丸とは違う顔にします
