@@ -2145,7 +2145,21 @@
   const SLOT_PLACEHOLDER = "-";
 
   /** 打った量に合わせて、枠の高さを伸ばします。 */
-  function grow(ta) {
+  /* 枠の高さを、中身のぶんに合わせます。
+
+     **紙に置かれるまでは測れません。** どこにも置かれていない枠の
+     scrollHeight は 0 で、そのまま下限の38px（一行ぶん）に落ち着きます。
+     食事の枠は組み立てたあとで画面へ差し込まれるので、その場で測ると
+     必ず一行になり、保存した二行目から先が開くたびに隠れていました。
+
+     測れないうちは、一枚あとの絵で測り直します。それでも置かれていない
+     なら、その枠は捨てられたということなので、あきらめます。 */
+  function grow(ta, retry) {
+    if (!ta.isConnected || !ta.scrollHeight) {
+      if (retry) return;
+      requestAnimationFrame(() => grow(ta, true));
+      return;
+    }
     ta.style.height = "auto";
     ta.style.height = `${Math.max(ta.scrollHeight, 38)}px`;
   }
@@ -2236,9 +2250,15 @@
       const marks = box.querySelector(".js-marks");
       ta.dataset.saved = text;
       boxes.push(ta);
-      grow(ta);   // 保存済みの複数行が、最初から詰まって見えないように。
       paintMarks(marks, text);
       host.append(box);
+      /* 高さを合わせるのは、**紙に置いてから**です。
+
+         ここは append より前にありました。まだどこにも置かれていない枠の
+         scrollHeight は 0 なので、下限の38px（一行ぶん）に落ち着きます。
+         打っているあいだは伸びるのに、書いて閉じて開き直すと一行に戻って
+         いた——保存した二行目から先が、開くたびに隠れていました。 */
+      grow(ta);
       if (peek) return;   // 押せない紙なので、保存の配線は要りません。
       let timer = 0;
       const save = () => {

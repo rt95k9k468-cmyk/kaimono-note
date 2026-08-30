@@ -736,7 +736,23 @@
 
       setTimeout(() => {
         row.classList.add("is-dropping");
-        setTimeout(() => { finishing.delete(item.id); commit(); }, 280);
+        setTimeout(() => {
+          finishing.delete(item.id);
+          commit();
+          /* 押し間違いは、その場で戻せること。行は「買ったもの」へ落ちて
+             視界から消えるので、戻す道が見えていないと、下まで探しに行く
+             ことになります。やること側と同じ約束です。 */
+          const name = (store.getProduct(item.productId) || {}).name || "";
+          KN.ui.toast(name ? `「${name}」を買いました` : "買いました", {
+            action: {
+              label: "元に戻す",
+              onClick: () => store.update((s) => {
+                const rec = s.items.find((i) => i.id === item.id);
+                if (rec) { rec.checked = false; rec.checkedAt = null; }
+              }),
+            },
+          });
+        }, 280);
       }, draw);
     });
 
