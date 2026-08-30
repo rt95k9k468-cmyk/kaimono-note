@@ -3578,36 +3578,53 @@ a.btn { text-decoration: none; }
 
    手で書いた日記の下に、やること・積み上げ・買うものから引いてきた行が
    続きます。日記の文と同じ濃さで並べると「どれも自分が書いた文」に見えて
-   しまうので、こちらは一段沈めます——引いてきたものだと分かるように。 */
+   しまうので、こちらは一段沈めます——引いてきたものだと分かるように。
+
+   種類ごとに枠でまとめます。前は一件ずつに「やること」の札を付けていて、
+   五件あれば同じ札が五つ縦に並びました。枠なら一度言えば済みます。 */
 .arc-feed {
-  display: flex; flex-direction: column;
-  margin: -2px 0 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 2px 0 10px;
   padding-left: 46px;   /* 上の行の日付の欄と、頭を揃えます */
+}
+.arc-feed-box {
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: 5px 8px 6px;
+}
+.arc-feed-box-head {
+  margin: 0 0 2px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+
+/* 二件以上あるときは、左右二列。列の高さ（--rows）を決めて縦へ流すので、
+   上から下へ読んで右へ折り返します——5件なら 1,2,3 が左、4,5 が右。
+   一件だけのときは分けません（右が空くだけなので）。 */
+.arc-feed-list { display: flex; flex-direction: column; }
+.arc-feed-box.is-split .arc-feed-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 1), auto);
+  grid-auto-columns: 1fr;
+  column-gap: 10px;
 }
 .arc-feed-row {
   display: grid;
-  grid-template-columns: 40px auto 1fr;
+  grid-template-columns: 38px 1fr;
   align-items: baseline;
-  gap: 8px;
-  padding: 5px 0;
+  gap: 6px;
+  /* 行間は詰めます。ここは「その日ぜんぶ」が一目に入るほうが大事なので。 */
+  padding: 2px 0;
   text-align: left;
   font-size: var(--fs-sm);
+  line-height: 1.35;
   color: var(--c-text-2);
 }
 .arc-feed-when {
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
-}
-/* どこから来た記録かを、小さな札で。色は種類ごとに変えません——ここは
-   「どのタブのものか」を言うだけで、良し悪しは何も言わないので。 */
-.arc-feed-kind {
-  padding: 1px 6px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-3);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  white-space: nowrap;
 }
 .arc-feed-title {
   min-width: 0;
