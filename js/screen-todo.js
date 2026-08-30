@@ -1127,7 +1127,11 @@
        ——線が引き終わったところで store を更新すると、本物の取り消し線に
        そのまま引き継がれます。 */
     const tl = checkEl && checkEl.closest(".tl-row");
-    if (tl && !t.repeat) {
+    /* 繰り返しのものも、**同じ動き**で済ませます。ここで外していたので、
+       毎朝のものだけ線も光りもなく、その場で組み直されて行が飛んでいま
+       した。繰り返しは済ませると今日に記録が残り、元が翌日へ行く——行は
+       その場に残るので、他と同じ見せ方でそのまま通ります。 */
+    if (tl) {
       const item = tl.querySelector(".tl-item");
       const node0 = tl.querySelector(".tl-node");
       finishing.add(id);
@@ -1888,6 +1892,8 @@
     KN.motion.fire("reorder");
     row.classList.add("is-lifted");
     list.classList.add("is-dragging");
+    /* 持ち上がるまでの0.38秒で、もう選ばれていることがあります。 */
+    try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
 
     /* 運び終えた指は、離したところで click も起こします。本文は押すと
        詳細が開くので、そのままだと**置きなおすたびに詳細が開いて**
@@ -1904,6 +1910,10 @@
        15分きざみの札を敷き詰めていましたが、昼の空きひとつで札が60枚
        出て、時間帯を選ぶというより数字の壁を読む作業になっていました。
        帯なら、長い空きは長く見えます——空きの**量**も同時に読めます。 */
+    /* 開くと、そのぶん下がぜんぶ押し下がります。掴んでいる行が指の下から
+       逃げると、狙ったところに置けません——**掴んだ行が動かないように**、
+       広がった量だけ画面のほうをずらします。上で開いたぶんだけ、下へ。 */
+    const before = row.getBoundingClientRect().top;
     list.querySelectorAll(".tl-free-row").forEach((fr) => {
       const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
       if (!isFinite(from) || !isFinite(until) || until - from < len) return;
@@ -1915,6 +1925,11 @@
         </span>
       `));
     });
+    const scroller = list.closest(".screen") || document.scrollingElement;
+    if (scroller) {
+      const shift = Math.round(row.getBoundingClientRect().top - before);
+      if (shift) scroller.scrollTop += shift;
+    }
 
     const move = (ev) => {
       if (!tlDrag) return;

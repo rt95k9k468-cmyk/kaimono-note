@@ -3315,7 +3315,9 @@ a.btn { text-decoration: none; }
   /* 一様な色を敷いて、**左から右へ見せていきます**。通り過ぎる光では
      なく、塗られたところは塗られたまま。線と同じ動き方なので、二つが
      一緒に走って見えます。塗り終えてから、面ごと引きます。 */
-  background: color-mix(in srgb, var(--c-primary) 16%, transparent);
+  /* 色は**その用事の色**——丸のまわりと同じ棚の色です。緑にすると押した
+     丸の色が段ぜんぶへ広がって見え、その用事が何の仲間だったかが消えます。 */
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 22%, transparent);
   animation: tl-flash var(--strike-ms, var(--m-strike)) var(--ease-out) forwards;
 }
 @keyframes tl-flash {
@@ -3356,7 +3358,13 @@ a.btn { text-decoration: none; }
   transform: scale(.98);
   transition: opacity var(--m-press) var(--ease), transform var(--m-press) var(--ease);
 }
-.tl-list.is-dragging { touch-action: none; }
+/* 運んでいるあいだは、指は運ぶためのものです。長押しはふつう文字を
+   選ぶ合図なので、そのままだと運びながら題が青く反転していきました。 */
+.tl-list.is-dragging {
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
 .tl-list.is-dragging .tl-row { transition: transform var(--m-reorder) var(--ease-out); }
 
 /* 置き場の印。用事のあいだへ入るときは、その境目に線を引きます。 */
@@ -3396,10 +3404,13 @@ a.btn { text-decoration: none; }
   border-radius: var(--r-md);
   border: 1.5px dashed var(--c-border);
   background: color-mix(in srgb, var(--c-primary) 5%, transparent);
-  animation: tl-band-in var(--m-sheet-open) var(--spring) both;
+  /* **高さは動かしません。** 高さを 0 から伸ばすと、掴んでいるあいだ
+     ずっと下の行が動きつづけて、狙った先が指の下から逃げていきました。
+     広がりは一度で決まり、変わるのは濃さだけにします。 */
+  animation: tl-band-in var(--m-sheet-open) var(--ease-out) both;
 }
 @keyframes tl-band-in {
-  from { height: 0; opacity: 0; margin-top: 0; margin-bottom: 0; }
+  from { opacity: 0; }
 }
 .tl-free-row.is-aim .tl-band {
   border-style: solid;
