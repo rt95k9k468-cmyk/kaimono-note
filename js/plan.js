@@ -132,14 +132,35 @@
     blocks.sort((a, b) => a.start - b.start);
   };
 
+  /**
+   * @param {object} [opts]
+   *   start / end … 一日の枠（「HH:MM」）
+   *   now         … 「いま」。渡すと、**まだ済んでいない**時刻なしのものを
+   *                 ここから先へ置きます。今日を見ているときだけ渡すこと。
+   */
   function buildDay(day, todos, opts) {
     const o = opts || {};
     const dayStart = toMin(o.start) != null ? toMin(o.start) : toMin(DEFAULT_START);
     const dayEnd = toMin(o.end) != null ? toMin(o.end) : toMin(DEFAULT_END);
+    /* 「いま」。これが、この画面がいちばん役に立つところです。
+
+       前は一日の始まりから詰めるだけでした。つまり15時に開いても、残った
+       用事が7時・7時半・8時…と並びます。**もう過ぎた時刻に、これからやる
+       ことが並ぶ**わけで、「今日をどう配るか」の役には立ちません。
+
+       いまから先へ置けば、出てくる空きも「これから使える時間」になります。
+       予定が崩れたら勝手に詰め直る、というのはこれのことです——遅れを
+       責めるのではなく、**残りを数え直すだけ**です。 */
+    const now = toMin(o.now);
 
     const { dawn, dusk, middle } = ordered(todos || []);
     const items = [];
     const blocks = [];   // ふさがっている時間帯
+
+    /* 済んだものは、詰め直しの対象になりません。もうやったことなので
+       朝のところに置いたままにして、これからの時間は食べさせません。 */
+    const doneOf = (t) => !!(t.done || t.archived);
+    const floorFor = (t) => (now != null && !doneOf(t) ? Math.max(dayStart, now) : dayStart);
 
     /* ---- ① 時刻を持つものに、先に場所を与える ----
 
@@ -161,16 +182,27 @@
       addBlock(blocks, start, start + len);
     });
 
-    /* ---- ② 毎朝の、時刻を持たないもの。一日の頭から詰めます ---- */
-    let cursor = dayStart;
-    dawn.filter((t) => !fixedOf(t)).forEach((t) => {
-      const len = minutesOf(t);
-      const start = firstGap(cursor, len, blocks);
-      items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: false, clash: false });
-      addBlock(blocks, start, start + len);
-      cursor = start + len;
-    });
+    /** 時刻を持たないものを、`from` から順に空きへ置きます。返りは次の場所。 */
+    function place(list, from) {
+      let c = from;
+      list.forEach((t) => {
+        const len = minutesOf(t);
+        const start = firstGap(Math.max(c, floorFor(t)), len, blocks);
+        items.push({ todo: t, atMin: start, untilMin: start + len,
+                     minutes: len, fixed: false, clash: false });
+        addBlock(blocks, start, start + len);
+        c = start + len;
+      });
+      return c;
+    }
+
+    /* ---- ② 毎朝の、時刻を持たないもの。一日の頭から詰めます ----
+
+       済ませたものを先に置きます。もうやったことなので朝のところに残り、
+       これからの時間を食べません。まだのものは「いま」から先へ。 */
+    const dawnFlex = dawn.filter((t) => !fixedOf(t));
+    let cursor = place(dawnFlex.filter(doneOf), dayStart);
+    cursor = place(dawnFlex.filter((t) => !doneOf(t)), cursor);
 
     /* ---- ③ あいだの、時刻を持たないもの。毎朝の後ろから、空きへ ----
 
@@ -183,14 +215,9 @@
       .reduce((n, it) => Math.max(n, it.untilMin), dayStart);
     cursor = Math.max(cursor, dawnEnd);
 
-    middle.filter((t) => !fixedOf(t)).forEach((t) => {
-      const len = minutesOf(t);
-      const start = firstGap(cursor, len, blocks);
-      items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: false, clash: false });
-      addBlock(blocks, start, start + len);
-      cursor = start + len;
-    });
+    const midFlex = middle.filter((t) => !fixedOf(t));
+    cursor = place(midFlex.filter(doneOf), cursor);
+    cursor = place(midFlex.filter((t) => !doneOf(t)), cursor);
 
     /* ---- ④ 毎晩の、時刻を持たないもの。一日の終わりに寄せます ----
 
@@ -198,16 +225,9 @@
        合計の長さぶんだけ dayEnd から手前に置きます。あいだのものが
        そこまで伸びていたら、その後ろへ。 */
     const duskFlex = dusk.filter((t) => !fixedOf(t));
-    const duskLen = duskFlex.reduce((n, t) => n + minutesOf(t), 0);
-    let duskCursor = Math.max(cursor, dayEnd - duskLen);
-    duskFlex.forEach((t) => {
-      const len = minutesOf(t);
-      const start = firstGap(duskCursor, len, blocks);
-      items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: false, clash: false });
-      addBlock(blocks, start, start + len);
-      duskCursor = start + len;
-    });
+    const duskLen = duskFlex.filter((t) => !doneOf(t)).reduce((n, t) => n + minutesOf(t), 0);
+    let duskCursor = place(duskFlex.filter(doneOf), cursor);
+    place(duskFlex.filter((t) => !doneOf(t)), Math.max(duskCursor, dayEnd - duskLen));
 
     const sorted = items.slice().sort((a, b) => a.atMin - b.atMin || a.untilMin - b.untilMin);
     sorted.forEach((it) => { it.at = toTime(it.atMin); it.until = toTime(it.untilMin); });
@@ -231,15 +251,28 @@
        24時をまたいだ日に折り返して 0 になります（実際そうなりました）。 */
     const last = sorted.length ? Math.max(...sorted.map((i) => i.untilMin)) : dayStart;
 
+    /* 空きは二つ数えます。
+
+       freeTotal … 一日ぜんぶの空き。
+       freeAhead … **いまから先**の空き。
+
+       分けたのは、合計だけ出すと嘘になるからです。15時に「空き13時間15分」
+       と出しても、そのうち8時間はもう過ぎています。人が知りたいのは
+       「これから何ができるか」なので、今日を見ているあいだはこちらを出します。 */
+    const ahead = now == null ? null
+      : free.reduce((n, f) => n + Math.max(0, f.untilMin - Math.max(f.atMin, now)), 0);
+
     return {
       day,
       start: toTime(dayStart),
       end: toTime(dayEnd),
       startMin: dayStart,
       endMin: dayEnd,
+      nowMin: now,
       items: sorted,
       free,
       freeTotal: free.reduce((n, f) => n + f.minutes, 0),
+      freeAhead: ahead,
       over: Math.max(0, last - dayEnd),
     };
   }

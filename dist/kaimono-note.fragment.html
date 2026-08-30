@@ -2063,6 +2063,12 @@ button, [role="tab"] {
 }
 .is-m-warn { animation: m-warn var(--m-warn) var(--ease); }
 
+/* 設定の行に、時刻の欄を二つ並べるとき（一日の始まりと終わり）。 */
+.row-times { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.row-times .input { height: 40px; width: auto; flex: 1; min-width: 0; text-align: center; }
+.row-dash { color: var(--c-text-3); flex: none; }
+.row.js-day-span { align-items: flex-start; }
+
 /* ---- css/screens.css ---- */
 /* =========================================================
    くらしノート — screen specific
@@ -5084,6 +5090,10 @@ a.btn { text-decoration: none; }
    線だけが下へ伸びていると「まだ続く」と読めてしまいます。 */
 .tl-list > li:last-child .tl-rail::before { bottom: auto; height: 61px; }
 
+/* 過ぎた空き。もう使えないので、線も字も一段薄く。消しはしません
+   ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
+.tl-free-row.is-past { opacity: .6; }
+
 </style>
 
 <div class="app" id="app">
@@ -6000,14 +6010,35 @@ a.btn { text-decoration: none; }
     blocks.sort((a, b) => a.start - b.start);
   };
 
+  /**
+   * @param {object} [opts]
+   *   start / end … 一日の枠（「HH:MM」）
+   *   now         … 「いま」。渡すと、**まだ済んでいない**時刻なしのものを
+   *                 ここから先へ置きます。今日を見ているときだけ渡すこと。
+   */
   function buildDay(day, todos, opts) {
     const o = opts || {};
     const dayStart = toMin(o.start) != null ? toMin(o.start) : toMin(DEFAULT_START);
     const dayEnd = toMin(o.end) != null ? toMin(o.end) : toMin(DEFAULT_END);
+    /* 「いま」。これが、この画面がいちばん役に立つところです。
+
+       前は一日の始まりから詰めるだけでした。つまり15時に開いても、残った
+       用事が7時・7時半・8時…と並びます。**もう過ぎた時刻に、これからやる
+       ことが並ぶ**わけで、「今日をどう配るか」の役には立ちません。
+
+       いまから先へ置けば、出てくる空きも「これから使える時間」になります。
+       予定が崩れたら勝手に詰め直る、というのはこれのことです——遅れを
+       責めるのではなく、**残りを数え直すだけ**です。 */
+    const now = toMin(o.now);
 
     const { dawn, dusk, middle } = ordered(todos || []);
     const items = [];
     const blocks = [];   // ふさがっている時間帯
+
+    /* 済んだものは、詰め直しの対象になりません。もうやったことなので
+       朝のところに置いたままにして、これからの時間は食べさせません。 */
+    const doneOf = (t) => !!(t.done || t.archived);
+    const floorFor = (t) => (now != null && !doneOf(t) ? Math.max(dayStart, now) : dayStart);
 
     /* ---- ① 時刻を持つものに、先に場所を与える ----
 
@@ -6029,16 +6060,27 @@ a.btn { text-decoration: none; }
       addBlock(blocks, start, start + len);
     });
 
-    /* ---- ② 毎朝の、時刻を持たないもの。一日の頭から詰めます ---- */
-    let cursor = dayStart;
-    dawn.filter((t) => !fixedOf(t)).forEach((t) => {
-      const len = minutesOf(t);
-      const start = firstGap(cursor, len, blocks);
-      items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: false, clash: false });
-      addBlock(blocks, start, start + len);
-      cursor = start + len;
-    });
+    /** 時刻を持たないものを、`from` から順に空きへ置きます。返りは次の場所。 */
+    function place(list, from) {
+      let c = from;
+      list.forEach((t) => {
+        const len = minutesOf(t);
+        const start = firstGap(Math.max(c, floorFor(t)), len, blocks);
+        items.push({ todo: t, atMin: start, untilMin: start + len,
+                     minutes: len, fixed: false, clash: false });
+        addBlock(blocks, start, start + len);
+        c = start + len;
+      });
+      return c;
+    }
+
+    /* ---- ② 毎朝の、時刻を持たないもの。一日の頭から詰めます ----
+
+       済ませたものを先に置きます。もうやったことなので朝のところに残り、
+       これからの時間を食べません。まだのものは「いま」から先へ。 */
+    const dawnFlex = dawn.filter((t) => !fixedOf(t));
+    let cursor = place(dawnFlex.filter(doneOf), dayStart);
+    cursor = place(dawnFlex.filter((t) => !doneOf(t)), cursor);
 
     /* ---- ③ あいだの、時刻を持たないもの。毎朝の後ろから、空きへ ----
 
@@ -6051,14 +6093,9 @@ a.btn { text-decoration: none; }
       .reduce((n, it) => Math.max(n, it.untilMin), dayStart);
     cursor = Math.max(cursor, dawnEnd);
 
-    middle.filter((t) => !fixedOf(t)).forEach((t) => {
-      const len = minutesOf(t);
-      const start = firstGap(cursor, len, blocks);
-      items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: false, clash: false });
-      addBlock(blocks, start, start + len);
-      cursor = start + len;
-    });
+    const midFlex = middle.filter((t) => !fixedOf(t));
+    cursor = place(midFlex.filter(doneOf), cursor);
+    cursor = place(midFlex.filter((t) => !doneOf(t)), cursor);
 
     /* ---- ④ 毎晩の、時刻を持たないもの。一日の終わりに寄せます ----
 
@@ -6066,16 +6103,9 @@ a.btn { text-decoration: none; }
        合計の長さぶんだけ dayEnd から手前に置きます。あいだのものが
        そこまで伸びていたら、その後ろへ。 */
     const duskFlex = dusk.filter((t) => !fixedOf(t));
-    const duskLen = duskFlex.reduce((n, t) => n + minutesOf(t), 0);
-    let duskCursor = Math.max(cursor, dayEnd - duskLen);
-    duskFlex.forEach((t) => {
-      const len = minutesOf(t);
-      const start = firstGap(duskCursor, len, blocks);
-      items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: false, clash: false });
-      addBlock(blocks, start, start + len);
-      duskCursor = start + len;
-    });
+    const duskLen = duskFlex.filter((t) => !doneOf(t)).reduce((n, t) => n + minutesOf(t), 0);
+    let duskCursor = place(duskFlex.filter(doneOf), cursor);
+    place(duskFlex.filter((t) => !doneOf(t)), Math.max(duskCursor, dayEnd - duskLen));
 
     const sorted = items.slice().sort((a, b) => a.atMin - b.atMin || a.untilMin - b.untilMin);
     sorted.forEach((it) => { it.at = toTime(it.atMin); it.until = toTime(it.untilMin); });
@@ -6099,15 +6129,28 @@ a.btn { text-decoration: none; }
        24時をまたいだ日に折り返して 0 になります（実際そうなりました）。 */
     const last = sorted.length ? Math.max(...sorted.map((i) => i.untilMin)) : dayStart;
 
+    /* 空きは二つ数えます。
+
+       freeTotal … 一日ぜんぶの空き。
+       freeAhead … **いまから先**の空き。
+
+       分けたのは、合計だけ出すと嘘になるからです。15時に「空き13時間15分」
+       と出しても、そのうち8時間はもう過ぎています。人が知りたいのは
+       「これから何ができるか」なので、今日を見ているあいだはこちらを出します。 */
+    const ahead = now == null ? null
+      : free.reduce((n, f) => n + Math.max(0, f.untilMin - Math.max(f.atMin, now)), 0);
+
     return {
       day,
       start: toTime(dayStart),
       end: toTime(dayEnd),
       startMin: dayStart,
       endMin: dayEnd,
+      nowMin: now,
       items: sorted,
       free,
       freeTotal: free.reduce((n, f) => n + f.minutes, 0),
+      freeAhead: ahead,
       over: Math.max(0, last - dayEnd),
     };
   }
@@ -26460,15 +26503,31 @@ a.btn { text-decoration: none; }
   function timeline(rows, shelf) {
     const P = KN.plan;
     const s = store.get().settings;
-    const plan = P.buildDay(todayKey(), rows, { start: s.dayStart, end: s.dayEnd });
     const nowMin = P.toMin(KN.util.nowTime());
     const isToday = !shelf || !shelf.day || shelf.day === todayKey();
+    /* 今日を見ているときだけ「いま」を渡します。渡すと、まだ済んでいない
+       時刻なしのものが**いまから先**に並びます——15時に開いて残りの用事が
+       7時に並んでいても、配り直す役には立たないので。 */
+    /* 済ませたものも線の上に残します。**今日それをした**ことが見えるのは、
+       残りが何かと同じくらい大事なので（消すと、朝からの半日が空白に
+       なります）。組み立て側は、済んだものが「これからの時間」を食べない
+       ようにしています（plan.js の doneOf）。 */
+    const day = shelf && shelf.day ? shelf.day : todayKey();
+    const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
+    const plan = P.buildDay(day, rows.concat(done), {
+      start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
+    });
+    const free = plan.freeAhead == null ? plan.freeTotal : plan.freeAhead;
 
     const sec = node(html`
       <div class="tl">
+        ${/* 今日は「このあと」の空きを出します。一日ぜんぶの合計を出すと、
+              15時に「空き13時間」——そのうち8時間はもう過ぎている、という
+              嘘になります。人が知りたいのは、これから何ができるかです。 */""}
         <div class="tl-sum">
-          ${plan.freeTotal >= P.MIN_GAP
-            ? html`<span class="tl-free">空き ${P.humanSpan(plan.freeTotal)}</span>` : ""}
+          ${free >= P.MIN_GAP
+            ? html`<span class="tl-free">${isToday ? "このあと " : ""}空き ${P.humanSpan(free)}</span>`
+            : html`<span class="tl-free">${isToday ? "このあとの" : ""}空きはありません</span>`}
           ${plan.over
             ? html`<span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>` : ""}
           <button type="button" class="tl-switch js-tl-off">一覧で見る</button>
@@ -26488,11 +26547,16 @@ a.btn { text-decoration: none; }
     parts.forEach((part, i) => {
       /* 「いま」の線は、その時刻をまたぐところに一度だけ。今日以外の日を
          見ているときは出しません（きのうの「いま」は意味を成さないので）。 */
-      if (isToday && !nowPlaced && nowMin != null && part.at > nowMin) {
+      /* ちょうど「いま」から始まるものは、線の**下**に来ます（これから
+         やることなので）。> だと同時刻のものが線の上に残っていました。 */
+      if (isToday && !nowPlaced && nowMin != null && part.at >= nowMin) {
         list.append(nowRow(nowMin));
         nowPlaced = true;
       }
-      if (part.kind === "free") { list.append(freeRow(part.f)); return; }
+      if (part.kind === "free") {
+        list.append(freeRow(part.f, isToday ? nowMin : null));
+        return;
+      }
       const next = parts[i + 1];
       list.append(itemRow(part.it, !!next && next.kind === "item"));
     });
@@ -26518,13 +26582,19 @@ a.btn { text-decoration: none; }
     `);
   }
 
-  /** 空いているところ。埋めずに、空いていると言うだけ。 */
-  function freeRow(f) {
+  /** 空いているところ。埋めずに、空いていると言うだけ。
+
+      過ぎた空きは過去形にします。「5時間20分 あいています」と現在形で
+      書かれても、その5時間はもう無いので。責める言い方はしません
+      ——空いていた、と言うだけです。 */
+  function freeRow(f, nowMin) {
+    const past = nowMin != null && f.untilMin <= nowMin;
     return node(html`
-      <li class="tl-free-row">
+      <li class="tl-free-row ${past ? "is-past" : ""}">
         <span class="tl-time">${f.at}</span>
         <span class="tl-rail is-dash"></span>
-        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)} あいています</span>
+        <span class="tl-free-text">${KN.plan.humanSpan(f.minutes)}
+          ${past ? "あいていました" : "あいています"}</span>
       </li>
     `);
   }
@@ -32649,6 +32719,29 @@ distance=6.0km</pre>
     const wrap = node(html`
       <section class="settings-group">
         <h2 class="section-title">やること</h2>
+        <div class="rows">
+          ${/* 時間割が読む一日の枠。ここがその人の暮らしと合っていないと、
+                「このあと ◯時間あいています」の数がぜんぶずれます。 */""}
+          <div class="row js-day-span">
+            <span class="row-main">
+              <span class="row-title">一日の始まりと終わり</span>
+              <span class="row-sub">今日の時間割は、この幅のなかに組みます。
+                空き時間の数もここから数えます。</span>
+              <span class="row-times">
+                <input class="input js-day-start" type="time" aria-label="一日の始まり">
+                <span class="row-dash">〜</span>
+                <input class="input js-day-end" type="time" aria-label="一日の終わり">
+              </span>
+            </span>
+          </div>
+          <button class="row js-tl">
+            <span class="row-main">
+              <span class="row-title">今日を時間割で見る</span>
+              <span class="row-sub js-tl-sub"></span>
+            </span>
+            <span class="row-value js-tl-state"></span>
+          </button>
+        </div>
         <div class="rows js-notify-rows" hidden>
           <button class="row js-notify">
             <span class="row-main">
@@ -32661,6 +32754,48 @@ distance=6.0km</pre>
         <p class="section-hint js-none" hidden>この端末で切り替えられる設定はありません。</p>
       </section>
     `);
+
+    /* 一日の枠。空にしたら既定へ戻します（枠が無いと組めないので）。 */
+    const P = KN.plan;
+    const startEl = wrap.querySelector(".js-day-start");
+    const endEl = wrap.querySelector(".js-day-end");
+    const st = store.get().settings;
+    startEl.value = st.dayStart || P.DEFAULT_START;
+    endEl.value = st.dayEnd || P.DEFAULT_END;
+    const saveSpan = () => {
+      const a = KN.util.isTime(startEl.value) ? startEl.value : P.DEFAULT_START;
+      let b = KN.util.isTime(endEl.value) ? endEl.value : P.DEFAULT_END;
+      /* 終わりが始まりより前なら、一日が裏返ります。組めないので直します
+         ——黙って受け取って空きが負になるより、その場で戻すほうが親切です。 */
+      if (P.toMin(b) <= P.toMin(a)) {
+        b = P.DEFAULT_END;
+        KN.ui.toast("終わりは始まりより後にしてください");
+      }
+      startEl.value = a; endEl.value = b;
+      store.update((s) => { s.settings.dayStart = a; s.settings.dayEnd = b; });
+      KN.motion.fire("save");
+    };
+    startEl.addEventListener("change", saveSpan);
+    endEl.addEventListener("change", saveSpan);
+
+    /* 時間割で見るかどうか。画面の中の「一覧で見る」と同じ切り替えです
+       ——設定からも触れないと、一度切ったあと戻し方を探すことになります。 */
+    const tlRow = wrap.querySelector(".js-tl");
+    const paintTl = () => {
+      const on = store.get().settings.todoTimeline !== false;
+      wrap.querySelector(".js-tl-state").textContent = on ? "オン" : "オフ";
+      wrap.querySelector(".js-tl-sub").textContent = on
+        ? "一本の線に沿って、今日の並びと空きを出します"
+        : "今日も、ほかの日と同じ一覧で出します";
+    };
+    tlRow.addEventListener("click", () => {
+      const on = store.get().settings.todoTimeline === false;
+      store.update((s) => { s.settings.todoTimeline = on; });
+      paintTl();
+      KN.motion.fire("select");
+      KN.ui.toast(on ? "時間割で出します" : "一覧で出します");
+    });
+    paintTl();
 
     /* 時刻のお知らせ。The sub-line says what it actually does, at both
        settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —

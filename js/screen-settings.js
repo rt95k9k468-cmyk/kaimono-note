@@ -235,6 +235,29 @@
     const wrap = node(html`
       <section class="settings-group">
         <h2 class="section-title">やること</h2>
+        <div class="rows">
+          ${/* 時間割が読む一日の枠。ここがその人の暮らしと合っていないと、
+                「このあと ◯時間あいています」の数がぜんぶずれます。 */""}
+          <div class="row js-day-span">
+            <span class="row-main">
+              <span class="row-title">一日の始まりと終わり</span>
+              <span class="row-sub">今日の時間割は、この幅のなかに組みます。
+                空き時間の数もここから数えます。</span>
+              <span class="row-times">
+                <input class="input js-day-start" type="time" aria-label="一日の始まり">
+                <span class="row-dash">〜</span>
+                <input class="input js-day-end" type="time" aria-label="一日の終わり">
+              </span>
+            </span>
+          </div>
+          <button class="row js-tl">
+            <span class="row-main">
+              <span class="row-title">今日を時間割で見る</span>
+              <span class="row-sub js-tl-sub"></span>
+            </span>
+            <span class="row-value js-tl-state"></span>
+          </button>
+        </div>
         <div class="rows js-notify-rows" hidden>
           <button class="row js-notify">
             <span class="row-main">
@@ -247,6 +270,48 @@
         <p class="section-hint js-none" hidden>この端末で切り替えられる設定はありません。</p>
       </section>
     `);
+
+    /* 一日の枠。空にしたら既定へ戻します（枠が無いと組めないので）。 */
+    const P = KN.plan;
+    const startEl = wrap.querySelector(".js-day-start");
+    const endEl = wrap.querySelector(".js-day-end");
+    const st = store.get().settings;
+    startEl.value = st.dayStart || P.DEFAULT_START;
+    endEl.value = st.dayEnd || P.DEFAULT_END;
+    const saveSpan = () => {
+      const a = KN.util.isTime(startEl.value) ? startEl.value : P.DEFAULT_START;
+      let b = KN.util.isTime(endEl.value) ? endEl.value : P.DEFAULT_END;
+      /* 終わりが始まりより前なら、一日が裏返ります。組めないので直します
+         ——黙って受け取って空きが負になるより、その場で戻すほうが親切です。 */
+      if (P.toMin(b) <= P.toMin(a)) {
+        b = P.DEFAULT_END;
+        KN.ui.toast("終わりは始まりより後にしてください");
+      }
+      startEl.value = a; endEl.value = b;
+      store.update((s) => { s.settings.dayStart = a; s.settings.dayEnd = b; });
+      KN.motion.fire("save");
+    };
+    startEl.addEventListener("change", saveSpan);
+    endEl.addEventListener("change", saveSpan);
+
+    /* 時間割で見るかどうか。画面の中の「一覧で見る」と同じ切り替えです
+       ——設定からも触れないと、一度切ったあと戻し方を探すことになります。 */
+    const tlRow = wrap.querySelector(".js-tl");
+    const paintTl = () => {
+      const on = store.get().settings.todoTimeline !== false;
+      wrap.querySelector(".js-tl-state").textContent = on ? "オン" : "オフ";
+      wrap.querySelector(".js-tl-sub").textContent = on
+        ? "一本の線に沿って、今日の並びと空きを出します"
+        : "今日も、ほかの日と同じ一覧で出します";
+    };
+    tlRow.addEventListener("click", () => {
+      const on = store.get().settings.todoTimeline === false;
+      store.update((s) => { s.settings.todoTimeline = on; });
+      paintTl();
+      KN.motion.fire("select");
+      KN.ui.toast(on ? "時間割で出します" : "一覧で出します");
+    });
+    paintTl();
 
     /* 時刻のお知らせ。The sub-line says what it actually does, at both
        settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —
