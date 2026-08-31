@@ -2821,7 +2821,8 @@ a.btn { text-decoration: none; }
 }
 .trip.todo-today.is-tl .todo-head { padding: var(--sp-3) var(--sp-4) var(--sp-2); }
 
-.tl { padding: 0 0 var(--sp-2); }
+/* 目盛りと「いま」を重ねる層の受け皿。 */
+.tl { position: relative; padding: 0 0 var(--sp-2); }
 
 /* 上の一行。空きの合計と、一覧へ移る道。 */
 .tl-sum {
@@ -2850,11 +2851,15 @@ a.btn { text-decoration: none; }
 /* 一行の骨格。三列——時刻・線・中身。実測した位置に合わせてあります。
    時刻の幅を固定するのは、数字が右端で揃っていないと上下の時刻を
    見比べられないからです。 */
-.tl-row, .tl-free-row, .tl-now {
+.tl-row, .tl-free-row {
   display: grid;
   grid-template-columns: 44px 56px 1fr;
   align-items: start;
 }
+/* 行どうしは、重ならないように前後関係を決めておきます。伸びた帯は行の
+   高さより外へは出ませんが、丸（50px）は基本の高さ（52px）の中に収まる
+   ぶんだけ余裕を持たせてあります。 */
+.tl-row, .tl-free-row { position: relative; }
 /* 時刻と丸は、行の**まん中**に置きます。
 
    前は上から決まった距離に置いていました。すると、行の高さが中身で
@@ -2885,8 +2890,12 @@ a.btn { text-decoration: none; }
 
      かかる時間が長い用事は、この最低の高さを JS 側（--tl-span）が
      押し上げます。長い用事ほど帯が長く見えるように——ただし伸びには
-     上限があります（screen-todo.js の tlSpanH）。既定は48pxのまま。 */
-  min-height: var(--tl-span, 48px);
+     上限があります（screen-todo.js の tlSpanH）。
+
+     既定は52px＝**30分ぶん**です（48pxから上げました）。丸が50pxなので、
+     48pxのままだと丸が行から1pxずつはみ出して、詰まった日には上下の丸が
+     触れました。52pxなら丸は行の中に収まります。 */
+  min-height: var(--tl-span, 52px);
 }
 .tl-rail::before {
   content: "";
@@ -2926,32 +2935,20 @@ a.btn { text-decoration: none; }
 .tl-row.is-long .tl-node {
   top: 0;
   transform: translateX(-50%);
-  height: var(--tl-span, 48px);
+  height: var(--tl-span, 52px);
   border-radius: 25px;
   place-items: start center;
   padding-top: 10px;
 }
 /* 時刻の札も上端へ。まん中に置くと、10時から18時まで伸びた粒の横で、
-   札だけが14時のあたりに付いていることになります。 */
-.tl-row.is-long .tl-time { align-self: start; padding-top: 15px; }
-.tl-row.is-long .item.tl-item { align-self: start; }
+   札だけが14時のあたりに付いていることになります。
 
-/* 長い用事の途中の時刻。時刻の列（左の44px）だけに収め、内容（題や事実）
-   の上には出しません——空きの目盛りと違って、右側はもう文字で埋まって
-   いるので、線を引くと重なります。 */
-.tl-row.is-long { position: relative; }
-.tl-inner-hours { position: absolute; inset: 0; pointer-events: none; }
-.tl-inner-hour {
-  position: absolute;
-  left: 0; width: 44px;
-  transform: translateY(-50%);
-  padding-right: 3px;
-  text-align: right;
-  font-size: var(--fs-sm);
-  color: var(--c-text-3);
-  opacity: .7;
-  font-variant-numeric: tabular-nums;
-}
+   下げるのは padding ではなく margin です。padding だと札の**枠**だけが
+   上へ伸びて、字は枠のまん中に来ません。軸のほうは「この行はどの高さに
+   時刻を書いたか」を枠から測るので、字と枠がずれていると、避けたつもりの
+   目盛りが重なります（実際そうなりました）。 */
+.tl-row.is-long .tl-time { align-self: start; margin-top: 16px; }
+.tl-row.is-long .item.tl-item { align-self: start; }
 
 .tl-node .todo-mark { width: 30px; height: 30px; }
 .tl-node .todo-mark svg { width: 30px; height: 30px; }
@@ -3050,17 +3047,29 @@ a.btn { text-decoration: none; }
 .tl-row.is-done .tl-node .todo-dot { background: var(--c-border-2); }
 
 /* 空きの行。空いている量が縦の長さになります（--free-h は JS が測ります）。 */
-.tl-free-row { position: relative; min-height: var(--free-h, 50px); }
-.tl-free-row .tl-rail { min-height: var(--free-h, 50px); }
+.tl-free-row { min-height: var(--free-h, 32px); }
+.tl-free-row .tl-rail { min-height: var(--free-h, 32px); }
 
-/* 空きの中を通る、ちょうどの時刻。時間の軸が1時間きざみで読めるように
-   ——用事のあいだが空いていても、5:00 6:00 7:00 と目盛りが続きます。
-   線は目盛りの延長で、ごく薄く。読むのは数字のほうです。 */
-.tl-hours { position: absolute; inset: 0; pointer-events: none; }
-/* 目盛りは行いっぱいに広げ、数字だけ時刻の列（44px）に収めます。こうする
-   と線の右端が行の端で止まるので、はみ出しを切り落とす必要がありません
-   ——切り落とすと、空きのちょうど上端に来る目盛り（前の用事が終わった
-   ところ）が、半分に切れて消えていました。 */
+/* ---------------- 1時間ごとの時間軸 ----------------
+
+   目盛りと「いま」は、行の中ではなく**一枚の層**に描きます（JS 側の
+   paintAxis）。行ごとに持たせていたころは、行が自分の中しか知らないので、
+   伸びた用事の途中の目盛りと、その用事が左に書いている始まりの時刻とが
+   同じ高さに並んで重なりました。一枚にまとめれば、置く前に全部の位置を
+   見比べて、ぶつかるものを落とせます。
+
+   ここは**触れません**（pointer-events: none）。行を掴む・押すは、下の
+   行がそのまま受け取ります。 */
+.tl-axis {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ちょうどの時刻。数字だけ時刻の列（44px）に収め、線はレールと丸を
+   avoid して右側だけに引きます——丸（左から47〜97px）を横切ると、線が
+   帯を切っているように見えます。 */
 .tl-hour {
   position: absolute;
   left: 0; right: 0;
@@ -3080,14 +3089,14 @@ a.btn { text-decoration: none; }
 .tl-hour::after {
   content: "";
   position: absolute;
-  top: 50%; left: 48px; right: 0;
+  top: 50%; left: 104px; right: 0;
   height: 1px;
   background: var(--c-border);
-  opacity: .55;
+  opacity: .5;
 }
-/* つまんで運んでいるあいだは、帯が自分で時刻を出します。目盛りと二重に
-   なるので、そのあいだだけ伏せます。 */
-.tl-free-row.is-open .tl-hours { display: none; }
+/* つまんで運んでいるあいだは、開いた帯が自分で時刻を出します。目盛りと
+   二重になるので、そのあいだだけ軸を伏せます。 */
+.tl:has(.tl-list.is-dragging) .tl-axis { display: none; }
 .tl-free-text {
   align-self: center;
   padding: 16px var(--sp-4) 16px 8px;
@@ -3095,24 +3104,45 @@ a.btn { text-decoration: none; }
   color: var(--c-text-3);
 }
 
-/* いま何時か。線の上の小さな点と、右へ伸びる一本。 */
-.tl-now { min-height: 28px; }
-.tl-now .tl-rail { min-height: 28px; }
-.tl-now .tl-rail::before { background: color-mix(in srgb, var(--c-primary) 26%, transparent); }
+/* いま何時か。時刻・点・線の三つで、**軸のいちばん前**に置きます。
+
+   前はこれも一行でした。行だと、いまが長い用事のまん中にあっても、線は
+   その用事の**あと**にしか置けません——14時から18時の用事を15時に見ると、
+   線が18時のあたりに出ていました。層に移したので、いまの高さそのものに
+   置けます。点のまわりの地の色の輪は、帯の上に乗ったときに「前にある」と
+   分かるための輪です。 */
+.tl-now {
+  position: absolute;
+  left: 0; right: 0;
+  height: 0;
+  /* 目盛りより前。同じ層の中では後から足したものが前に出ますが、
+     数字で書いておきます——足す順に頼ると、順を変えたときに黙って
+     壊れます。 */
+  z-index: 1;
+}
+.tl-now .tl-time {
+  position: absolute;
+  left: 0; top: 0;
+  width: 44px;
+  padding-right: 3px;
+  text-align: right;
+  transform: translateY(-50%);
+}
 .tl-now-dot {
   position: absolute;
-  left: 50%; top: 50%;
+  left: 72px; top: 0;
   margin-top: -5.5px;
   width: 11px; height: 11px;
   margin-left: -5.5px;
   border-radius: var(--r-full);
   background: var(--c-primary);
-  box-shadow: 0 0 0 4px var(--c-bg);
+  box-shadow: 0 0 0 3px var(--c-bg);
 }
 .tl-now-line {
-  align-self: center;
+  position: absolute;
+  left: 104px; right: var(--sp-4);
+  top: -1px;
   height: 2px;
-  margin: 0 var(--sp-4) 0 8px;
   border-radius: 1px;
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--c-primary) 55%, transparent),
@@ -3124,7 +3154,7 @@ a.btn { text-decoration: none; }
    丸は行のまん中にあるので、そこまで（50% ＋ 丸の半径）。 */
 .tl-list > li:last-child .tl-rail::before { bottom: auto; height: calc(50% + 25px); }
 /* 伸びた粒で終わる日は、粒の下端までです（まん中ではなく）。 */
-.tl-list > li:last-child.is-long .tl-rail::before { height: var(--tl-span, 48px); }
+.tl-list > li:last-child.is-long .tl-rail::before { height: var(--tl-span, 52px); }
 
 /* 日付の帯は、越えられない境目です。
 
@@ -3136,7 +3166,16 @@ a.btn { text-decoration: none; }
    一覧の下に、粒がはみ出せるぶんの余白を取り、見出しのほうは地の色を
    敷いて前に出します。どちらか一方では足りません（余白だけだと、伸びた
    粒がいつか越えてきます）。 */
-.tl-list { padding-bottom: 10px; }
+/* 上下の余白は、軸の端の目盛り（一日の始まりと終わり）が字の高さぶん
+   はみ出さないために要ります。下の余白は、最後の丸が次の日の見出しへ
+   食い込まないためのもの——両方が要ります。 */
+.tl-list { padding: 10px 0; }
+/* 一日ぶんを、それぞれ独立した層にします。**こうしないと足りません。**
+   見出しを前へ出しても（z-index:1）、その上の日の粒や、いまの線（軸の層）
+   のほうが大きい数を持っていれば、下の日の見出しを覆ってしまいます。
+   日ごとに層を閉じておけば、比べ合うのは同じ日の中だけ——そして日は
+   並び順どおり、あとの日が前になります。 */
+.js-body > .todo-group { position: relative; z-index: 0; }
 .js-body > .todo-group > .todo-head {
   position: relative;
   z-index: 1;
