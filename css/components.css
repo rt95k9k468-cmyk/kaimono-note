@@ -73,11 +73,50 @@ button, [role="tab"] {
   stroke-width: var(--ico-sm-w);
 }
 
+/* Phosphor の絵は**面**なので、この stroke-width は効きません（太さは
+   持ってきた weight ＝ Regular が決めます）。効くのは、Phosphor に適切な
+   代替が無くて手描きのまま残っている絵——いまは体重計の一つだけです。
+
+   そこだけ 2.2 のままだと、まわりより一段太い絵が一つ混ざります。Phosphor
+   の Regular は 256 の升目で 16、つまり升目の 6.25%。手描きの升目は 24 な
+   ので、同じ重さは 24 × 0.0625 = 1.5 です。 */
+[data-icons="phosphor"] .ui-ico[data-ico-mode="stroke"] { stroke-width: 1.5; }
+[data-icons="phosphor"] .ui-ico[data-ico-mode="stroke"].is-sub { stroke-width: 1.5; }
+
 /* 塗りの面は、頼まれたときだけ出します。線と塗りは同じ座標に重なって
    いるので、切り替えても絵は動きません。 */
 .ui-ico .ico-solid { display: none; }
 .ui-ico.is-solid .ico-line { display: none; }
 .ui-ico.is-solid .ico-solid { display: block; }
+
+/* 「ここは面で言う」ところ。★の付いた印と、右へ払ったときに出る札です。
+
+   これまでは `svg { fill: currentColor }` で線の絵を塗りつぶしていました。
+   Phosphor の絵は**もともと面**なので、塗りを足しても何も変わりません
+   ——色が変わるだけで、付いているのか付いていないのかが読めなくなります。
+   同じ絵の Fill weight に差し替えます（タブの選ばれている面と同じ仕掛け）。
+
+   塗りの面を持たない絵（暦など）はそのまま線で出ます。fill: currentColor
+   の指定は、手描きの一族へ戻したときのために残してあります。 */
+.fav.is-on .ui-ico .ico-line,
+.fav-toggle.is-on .icon-pick-mark .ui-ico .ico-line,
+.trip-head .ui-ico .ico-line,
+.swipe-yes .ui-ico .ico-line { display: none; }
+.fav.is-on .ui-ico .ico-solid,
+.fav-toggle.is-on .icon-pick-mark .ui-ico .ico-solid,
+.trip-head .ui-ico .ico-solid,
+.swipe-yes .ui-ico .ico-solid { display: block; }
+/* もう置いてあるものを外すほうの札は、線に戻します（付ける／外すは別の
+   ふるまいで、同じ顔をしていてはいけないので）。 */
+.is-there .swipe-yes .ui-ico .ico-line { display: block; }
+.is-there .swipe-yes .ui-ico .ico-solid { display: none; }
+
+/* 済ませる丸の中の ✓ だけ、二枚目の顔（Bold）を出します。塗りつぶした丸の
+   上に白で抜く 15px の絵で、Regular だと線が地に負けて消えかけました
+   ——白抜きは同じ太さでも細く見えます。**weight の例外はここ一つだけ**です。
+   手描きの一族には二枚目がないので、戻せばこれまでどおり線のまま出ます。 */
+.check .ui-ico .ico-line { display: none; }
+.check .ui-ico .ico-solid { display: block; }
 
 /* Inline icons inside a text button must not inherit the SVG's intrinsic box. */
 .btn svg { width: var(--ico); height: var(--ico); flex: none; stroke-width: var(--ico-w); }

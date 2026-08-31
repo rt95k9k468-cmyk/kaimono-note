@@ -28,6 +28,9 @@ const CSS = ["css/base.css", "css/components.css", "css/screens.css"];
 // Load order matters: utilities, then state, then UI, then screens, then boot.
 const JS = [
   "js/util.js",
+  "js/icons.js",
+  "js/icons-legacy.js",
+  "js/icons-phosphor.js",
   "js/motion.js",
   "js/plan.js",
   "js/icon-system.js",
