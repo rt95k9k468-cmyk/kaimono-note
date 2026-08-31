@@ -243,6 +243,14 @@
   }
 
   function followScroll() {
+    /* 一日ずつのときは、画面に日は一つしかありません。スクロールで
+       数え直す相手がいないので、そのまま帰ります。 */
+    if (oneDay()) {
+      hereDay = shownDay();
+      markWeek(els.cal, hereDay);
+      paintHere();
+      return;
+    }
     if (followFrame) return;
     followFrame = requestAnimationFrame(() => {
       followFrame = 0;
@@ -353,7 +361,7 @@
   /** 画面の題に、いま見ている日を書きます。 */
   function paintDayTitle() {
     if (!els.dayTitle || !els.dayTitle.isConnected) return;
-    const key = hereDay || todayKey();
+    const key = oneDay() ? shownDay() : (hereDay || todayKey());
     const d = KN.util.dayDate(key);
     if (!d || isNaN(d.getTime())) return;
     els.dayTitle.querySelector(".day-y").textContent = String(d.getFullYear());
@@ -431,9 +439,13 @@
     const t = editing ? store.getTodo(todoId) : null;
     if (editing && !t) return;
 
-    /* 新しく書くものは、まず今日のこと。日付なしで足すと「いつか」の棚に
-       落ちて、そこは見に行かないと目に入りません。あとから外せます。 */
-    let due = editing ? t.due : todayKey();
+    /* 新しく書くものは、**いま出している日**のこと。日付なしで足すと
+       「いつか」の棚に落ちて、そこは見に行かないと目に入りません。
+       あとから外せます。
+
+       一日ずつになってからは、今日を焼き付けるほうが不自然です——9月1日を
+       開いて＋を押した人が足したいのは、9月1日のことなので。 */
+    let due = editing ? t.due : (oneDay() ? shownDay() : todayKey());
     let part = editing ? t.part : null;
     let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
@@ -1700,6 +1712,32 @@
       return;
     }
 
+    /* ---- 一日ずつ ----
+
+       時間割で見ているあいだは、**画面に一日ぶんだけ**を出します（参考に
+       した画面と同じ）。棚を縦に積むのをやめました。
+
+       積んでいた形にも良いところはありました——「棚は月をほどいて縦に
+       並べたもの」で、下へたどれば来週まで見通せて、棚をまたいでつまむと
+       日付が変わる。失うものがあるのは承知のうえです。かわりに得るのは、
+       **一日が一枚に収まる**ことです。今日を見ているときに明日の見出しが
+       目に入らない、というのは、一日を組み直すあいだはむしろ利きます。
+
+       失った道は、二つとも別の口に付け替えました。
+         ・遠くの日へ … 上の週の帯を押す（＋ ‹ › と左右に払う）
+         ・日付を変える … その用事を、週の帯の日へ運ぶ（下の wireDayDrop）
+
+       期限切れ・もっと先・済んだものは、一日の中には居場所がありません。
+       **一覧で見る**ほうがその受け皿です（設定で切り替え）。時間割の頭に、
+       期限切れがあることだけ出します——黙って隠すと、見に行く理由すら
+       無くなるので。 */
+    if (oneDay()) {
+      sheet.append(daySection(shownDay(), open));
+      wireDaySwipe(sheet);
+      restoreTop(keepTop);
+      return;
+    }
+
     const rowsOf = (id) => open.filter((t) => groupIdOf(t, groups) === id);
 
     /* 期限切れ and 「もっと先」 are the two that only appear when they have
@@ -1707,13 +1745,6 @@
        an overflow rather than a shelf. */
     const late = groups.find((g) => g.late);
     if (rowsOf("late").length) sheet.append(groupSection(late, rowsOf("late"), tiles));
-
-    /* 暦で過ぎた日を押したときは、その日の時間割を今日の上に出します
-       （下の pastSection）。 */
-    if (pastDay && !tiles && timelineOn()) {
-      const sec = pastSection(pastDay, open);
-      if (sec) sheet.append(sec);
-    }
 
     sheet.append(todayPanel(rowsOf, tiles));
 
@@ -1725,6 +1756,59 @@
 
     if (closed.length) sheet.append(archiveSection(closed, tiles));
     restoreTop(keepTop);
+  }
+
+  /* ---------------- 一日ぶん ---------------- */
+
+  /** 時間割で見ているか（＝一日ずつか）。探しているあいだは棚に戻ります
+      ——絞った結果は「一日」ではないので。 */
+  const oneDay = () => !query && !KN.ui.isTiles() && timelineOn();
+
+  /* いま出している日。null は今日です（日が変わっても勝手についてくる
+     ように、todayKey() を焼き付けません）。 */
+  let viewDay = null;
+  const shownDay = () => viewDay || todayKey();
+
+  /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
+  function daySection(day, open) {
+    const sec = node(html`
+      <section class="todo-group todo-day is-tl" data-group="day"
+               data-month="${day.slice(0, 7)}" data-day="${day}"></section>
+    `);
+
+    /* 期限切れ。一日の中には居場所がないので、あることだけ言って、
+       受け皿（一覧）への口を出します。今日を見ているときだけ——過ぎた日を
+       見ているときに「期限切れ」と言われても、することがありません。 */
+    if (day === todayKey()) {
+      const late = open.filter((t) => t.due && t.due < todayKey());
+      if (late.length) {
+        const bar = node(html`
+          <button type="button" class="tl-late js-late">
+            <span class="tl-late-n">${late.length}</span>
+            <span>期限切れがあります</span>
+            <span class="tl-late-go">一覧で見る${icon("chevron")}</span>
+          </button>
+        `);
+        bar.addEventListener("click", () => {
+          store.update((st) => { st.settings.todoTimeline = false; });
+          KN.ui.toast("一覧で出します。設定から戻せます");
+          haptic();
+        });
+        sec.append(bar);
+      }
+    }
+
+    const rows = open.filter((t) => t.due === day);
+    const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
+    if (!rows.length && !done.length) {
+      sec.append(node(html`
+        <p class="todo-today-empty">${day === todayKey()
+          ? "今日のぶんはありません" : "この日のやることはありません"}</p>
+      `));
+      return sec;
+    }
+    sec.append(timeline(rows, { id: "day", day }));
+    return sec;
   }
 
   /** 組み直したあとに、読んでいた場所へ戻します。 */
@@ -1992,6 +2076,13 @@
        自分の週が無くなります）。 */
     const goTo = (delta) => {
       haptic();
+      /* 一日ずつのときは、一日ぶん送ります。週ごと飛ばすと、隣の日を
+         見るのに七回ぶん動くことになります。週をまたげば帯のほうが
+         ついてきます（markDay → markWeek）。 */
+      if (oneDay()) {
+        goDay(KN.util.shiftDay(shownDay(), delta), delta);
+        return;
+      }
       if (!calOpen()) {
         const next = KN.util.shiftDay(hereDay || todayKey(), delta * 7);
         const d = KN.util.dayDate(next);
@@ -2008,8 +2099,9 @@
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
-      const now = U.dayDate(todayKey());
       haptic();
+      if (oneDay()) { goDay(todayKey()); return; }
+      const now = U.dayDate(todayKey());
       setCalMonth(now.getFullYear(), now.getMonth(), true);
       scrollToMonth(now.getFullYear(), now.getMonth());
     });
@@ -2084,7 +2176,10 @@
 
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
 
-    sec.querySelector(".js-now").hidden = thisMonth;
+    /* 「今日へ」。一日ずつのときは**出している日**が今日かどうかで決めます
+       ——月で見ていた名残のまま「今月かどうか」で決めていると、9月1日を
+       開いているのに戻り口が出ませんでした（同じ月なので）。 */
+    sec.querySelector(".js-now").hidden = oneDay() ? (shownDay() === today) : thisMonth;
 
     const grid = sec.querySelector(".cal-grid");
     grid.innerHTML = "";
@@ -2140,27 +2235,14 @@
                data-day="${g.day || g.from || ""}"></section>
     `);
     section.append(head(g, rows.length));
-    /* 今日の枠と同じ理由で、済ませたものだけの日も出します。 */
-    const asTl = !tiles && timelineOn() && g.day;
-    const doneThatDay = asTl
-      ? store.get().todos.filter((t) => (t.done || t.archived) && t.due === g.day)
-      : [];
-    if (rows.length || doneThatDay.length) {
-      /* 翌日以降も、今日と同じ顔にします。今日だけ時間割で明日からただの
-         一覧だと、同じ「やること」が二つの読み方を持つことになり、下へ
-         送った用事がどこへ行ったのか読み替えが要ります。
-
-         一日ぶんの棚（g.day を持つもの）だけです。「来週」「もっと先」は
-         何日かの寄せ集めなので、一本の時間軸は引けません。 */
-      if (asTl) {
-        section.classList.add("is-tl");
-        section.append(timeline(rows, g));
-      } else {
-        const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-        rows.forEach((t) => box.append(todoRow(t, tiles, groups, g)));
-        section.append(box);
-        if (!tiles) wireReorder(box, g);
-      }
+    /* 時間割はここでは描きません。**一日ずつ**の画面（daySection）だけが
+       描きます。ここは「一覧で見る」ときの棚——期限切れ・来週・もっと先の
+       受け皿で、どれも何日かの寄せ集めなので、一本の時間軸は引けません。 */
+    if (rows.length) {
+      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+      rows.forEach((t) => box.append(todoRow(t, tiles, groups, g)));
+      section.append(box);
+      if (!tiles) wireReorder(box, g);
     }
     return section;
   }
@@ -2183,65 +2265,69 @@
 
      出しかたは今日と同じ部品（timeline）です。過ぎた日だけ別の見せかたに
      すると、同じ「やること」に二つの読み方ができてしまいます。 */
-  let pastDay = null;
+  /** 暦で押された日へ。
 
-  function pastSection(day, open) {
-    const U = KN.util;
-    const d = U.dayDate(day);
-    if (!d) return null;
-    const rows = open.filter((t) => t.due === day);
-    const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
-    if (!rows.length && !done.length) {
-      const empty = node(html`
-        <section class="todo-group todo-past" data-group="past" data-day="${day}">
-          <h2 class="todo-head" style="--cat:var(--c-text-3)">
-            <span class="todo-head-dot"></span>
-            <span>${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}</span>
-            <button type="button" class="tl-switch js-past-close">今日へ</button>
-          </h2>
-          <p class="todo-today-empty">この日のやることはありません</p>
-        </section>
-      `);
-      empty.querySelector(".js-past-close").addEventListener("click", closePast);
-      return empty;
-    }
-    const sec = node(html`
-      <section class="todo-group todo-past is-tl" data-group="past" data-day="${day}">
-        <h2 class="todo-head" style="--cat:var(--c-text-3)">
-          <span class="todo-head-dot"></span>
-          <span>${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}</span>
-          <button type="button" class="tl-switch js-past-close">今日へ</button>
-        </h2>
-      </section>
-    `);
-    sec.append(timeline(rows, { id: "past", day, color: "var(--c-text-3)" }));
-    sec.querySelector(".js-past-close").addEventListener("click", closePast);
-    return sec;
-  }
-
-  function closePast() {
-    pastDay = null;
-    dayPinned = false;
-    markDay(todayKey(), true);
-    render();
-    const panel = els.body && els.body.querySelector(".trip.todo-today");
-    if (panel) scrollToSection(panel);
-    haptic();
-  }
-
-  /** 暦で押された日へ。過ぎた日なら、その日の時間割を出します。 */
+      一日ずつのときは、**その日に入れ替えます**（過ぎた日も先の日も同じ
+      扱いで、特別な差し込みはもう要りません）。棚で見ているときは、
+      これまでどおりその棚まで運びます。 */
   function openDay(day) {
-    markDay(day, true);
-    if (day < todayKey()) {
-      pastDay = day;
-      render();
-      const sec = els.body.querySelector('.todo-group[data-group="past"]');
-      if (sec) scrollToSection(sec, true);
-    } else {
-      if (pastDay) { pastDay = null; render(); }
-      jumpToDay(day);
-    }
     haptic();
+    if (oneDay()) {
+      goDay(day);
+      return;
+    }
+    markDay(day, true);
+    jumpToDay(day);
+  }
+
+  /* ---------------- 左右に払って、日を送る ----------------
+
+     一日ずつになったので、隣の日へ行く道が要ります。上の帯を押すのが
+     一つ、‹ › が二つめ、これが三つめ——**紙を横に払う**。参考にした画面と
+     同じ手つきで、いちばん手数が少ない道です。
+
+     縦のスクロールとぶつからないよう、横がはっきり勝っているときだけ
+     取ります（1.4倍）。つまんで運んでいる最中は取りません——用事を横へ
+     運ぼうとしている指を、日送りに取られては困ります。 */
+  const SWIPE_MIN = 56;      // これだけ横に動いたら、日を送ります
+  const SWIPE_DOM = 1.4;     // 縦より、これだけ横が勝っていること
+
+  function wireDaySwipe(el) {
+    let x0 = 0, y0 = 0, pid = null, live = false;
+    el.addEventListener("pointerdown", (e) => {
+      if (tlDrag || e.pointerType === "mouse") return;
+      pid = e.pointerId; x0 = e.clientX; y0 = e.clientY; live = true;
+    }, { passive: true });
+    const end = (e) => {
+      if (!live || e.pointerId !== pid) return;
+      live = false;
+      if (tlDrag) return;
+      const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (Math.abs(dx) < SWIPE_MIN) return;
+      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DOM) return;
+      const dir = dx < 0 ? 1 : -1;      // 左へ払う＝次の日
+      haptic();
+      goDay(shiftDay(shownDay(), dir), dir);
+    };
+    el.addEventListener("pointerup", end, { passive: true });
+    el.addEventListener("pointercancel", () => { live = false; }, { passive: true });
+  }
+
+  /** 出す日を入れ替えます。 */
+  function goDay(day, dir) {
+    if (!day || day === shownDay()) return;
+    viewDay = day === todayKey() ? null : day;
+    markDay(day, true);
+    render();
+    /* 入れ替えたら、読む場所は先頭から。今日だけは「いま」のところへ
+       ——一日の途中で開くのはたいてい今日なので。 */
+    if (root) root.scrollTop = 0;
+    if (day === todayKey()) requestAnimationFrame(toNow);
+    const sheet = els.body && els.body.querySelector(".tl-sheet");
+    if (sheet && dir && !KN.motion.still()) {
+      sheet.classList.add(dir > 0 ? "is-from-right" : "is-from-left");
+      requestAnimationFrame(() => sheet.classList.remove("is-from-right", "is-from-left"));
+    }
   }
 
   function todayPanel(rowsOf, tiles) {
@@ -2255,31 +2341,13 @@
                data-day="${plain ? plain.day : ""}"></section>
     `);
     top.append(head(plain, rows.length));
-    /* 時間割は、済ませたものも並べます。なので**残りが0でも出します**
-       ——ここは一度こわしました。残りの数だけで出すかどうかを決めていたので、
-       今日ぶんを全部片づけた瞬間に、その日の記録ごと画面から消えました。
-       「今日これをやった」は、残りが無くなってからこそ見たいものです。 */
-    const asTimeline = !tiles && timelineOn();
-    const doneToday = asTimeline && plain && plain.day
-      ? store.get().todos.filter((t) => (t.done || t.archived) && t.due === plain.day)
-      : [];
-    if (rows.length || doneToday.length) {
-      /* 今日だけは、一覧ではなく**時間割**で出せます。一覧は「何が残って
-         いるか」しか言いませんが、時間割は「どう配ると収まるか」を言います
-         ——同じ5件でも、読み取れることが違います。
-         タイルを選んでいる人には出しません（正方形に時間軸は引けないので）。 */
-      if (asTimeline) {
-        /* 時間割のときは、今日の枠の地の色を外します（下の CSS）。
-           一本の線と時刻でもう十分に「今日」と言えているので、そこへ
-           色の面まで重ねると、色の言っていることが薄まります。 */
-        panel.classList.add("is-tl");
-        top.append(timeline(rows, plain));
-      } else {
-        const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-        rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
-        top.append(box);
-        if (!tiles) wireReorder(box, plain);
-      }
+    /* ここは「一覧で見る」ときの今日の枠です。時間割は daySection が描く
+       ようになったので、こちらは並べるだけになりました。 */
+    if (rows.length) {
+      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
+      rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+      top.append(box);
+      if (!tiles) wireReorder(box, plain);
     } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
@@ -2615,6 +2683,25 @@
     const d = tlDrag;
     if (!d) return;
     d.list.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
+    if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
+
+    /* ---- 週の帯の日 ----
+
+       ここが**日付を変える**道です。棚を縦に積んでいたころは、下の
+       「9月1日」の棚まで運べば日が変わりました。一日ずつにしたので棚は
+       もうありません。かわりに、上の帯の日へ持っていきます。
+
+       上のほうを先に見ます。帯は行の上に重なっているので、あとに回すと
+       「行と行のあいだ」が先に当たってしまいます。 */
+    const cell = els.cal && [...els.cal.querySelectorAll(".cal-day")].find((c) => {
+      const b = c.getBoundingClientRect();
+      return b.width > 0 && x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+    });
+    if (cell && cell.dataset.day) {
+      cell.classList.add("is-drop");
+      d.target = { kind: "day", day: cell.dataset.day };
+      return;
+    }
 
     /* 開いた帯の中にいるなら、指の高さがそのまま時刻です。 */
     for (const fr of d.list.querySelectorAll(".tl-free-row.is-open")) {
@@ -2678,8 +2765,25 @@
     /* click は離した直後に来ます。来なかったぶんは、ここで片づけます
        ——置いたままだと、次にどこかを押したときに食べてしまいます。 */
     if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);
+    if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
     const t = store.getTodo(d.id);
     if (!commit || !d.target || !t) { render(); return; }
+
+    /* 週の帯の日へ落とした。**日付を変えます。**
+
+       時刻は持ったままにします——「16時の病院を明日へ」は、明日の16時の
+       ことです。順番で置きなおしたときに時刻を手放すのとは、言っている
+       ことが違います（あちらは「時計ではなくこの順で」と言い直したので）。 */
+    if (d.target.kind === "day") {
+      if (d.target.day === t.due) { render(); return; }
+      const was = { due: t.due };
+      store.updateTodo(d.id, { due: d.target.day });
+      KN.motion.fire("save");
+      KN.ui.toast(`「${t.title}」を ${formatDay(d.target.day)} へ`, {
+        action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
+      });
+      return;
+    }
 
     if (d.target.kind === "time") {
       const at = KN.plan.toTime(d.target.at);
@@ -2749,6 +2853,10 @@
      済ませたものも色のまま残します（参考にした画面と同じ）。やった
      ことが灰色になって沈むと、朝からの半日が空白に見えるので。 */
   function tlColorOf(t) {
+    /* 一日ずつのときは、棚がありません。坂（締切までの遠さ）も、比べる
+       相手が画面に無いので何も言えません。基調の塗りひとつで揃えます
+       ——参考にした画面も、一日ぶんは同じ色で並びます。 */
+    if (oneDay()) return "var(--c-primary-fill)";
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   }
