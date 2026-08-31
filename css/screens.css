@@ -2897,23 +2897,38 @@ a.btn { text-decoration: none; }
      触れました。52pxなら丸は行の中に収まります。 */
   min-height: var(--tl-span, 52px);
 }
+/* 背骨は**塗りの色そのまま**です。前は26%に薄めていましたが、参考に
+   した画面は丸と同じ濃さで引いていて（実測 #f3938e ＝ 丸の #f2938e と
+   ほぼ同値）、そのぶん一日が一本の線として先に目に入ります。太さも
+   2.5px → 3.5px（実測）。 */
 .tl-rail::before {
   content: "";
   position: absolute;
   left: 50%; top: 0; bottom: 0;
-  width: 2.5px;
+  width: 3.5px;
   transform: translateX(-50%);
-  background: color-mix(in srgb, var(--c-primary) 26%, transparent);
+  background: var(--cat, var(--c-primary-fill));
 }
-/* 空いているところは、点線。**繋がっていない**ことが空きの意味です。 */
+/* 空いているところは、点線。**繋がっていない**ことが空きの意味です。
+   濃さは実線より一段落とします——同じ濃さだと、破線が「途切れた線」
+   ではなく「別の模様」に見えます。 */
 .tl-rail.is-dash::before {
   background: repeating-linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--c-primary) 32%, transparent) 0 5px,
-    transparent 5px 11px);
+    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 62%, transparent) 0 7px,
+    transparent 7px 15px);
 }
 
-/* 線の上の丸。中身は手描きアイコン、地は棚の色をごく薄く。 */
+/* 線の上の丸。中身は手描きアイコン、地は棚の色。
+
+   参考にした画面の丸は**べた塗り**で、中の絵は白抜きの一色です。
+   こちらの絵は800枚の手描きで、色そのものが「何の品物か」を言って
+   います（卵の黄身、洗剤の青）。白抜きにすると、その情報が全部
+   消えます——**絵のほうを残します。**
+
+   かわりに地を濃くしました（18% → 42%）。べた塗りには届きませんが、
+   丸が「薄い染み」ではなく「色の面」として立ち、行の重心が絵のほうへ
+   寄ります。参考画面で丸が担っていた仕事は、そこです。 */
 .tl-node {
   position: absolute;
   left: 50%; top: 50%;
@@ -2921,7 +2936,7 @@ a.btn { text-decoration: none; }
   display: grid; place-items: center;
   width: 50px; height: 50px;
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary)) 18%, var(--c-bg));
+  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface));
   /* **白い輪を持ちません。** 丸のまわりを地の色で囲うと、線が丸の手前で
      切れて、続いているところまで破線に見えます（実際そうなりました）。
      線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
@@ -2950,11 +2965,13 @@ a.btn { text-decoration: none; }
 .tl-row.is-long .tl-time { align-self: start; margin-top: 16px; }
 .tl-row.is-long .item.tl-item { align-self: start; }
 
-.tl-node .todo-mark { width: 30px; height: 30px; }
-.tl-node .todo-mark svg { width: 30px; height: 30px; }
+.tl-node .todo-mark { width: 32px; height: 32px; }
+.tl-node .todo-mark svg { width: 32px; height: 32px; }
+/* 絵を持たない用事の丸。参考画面の白抜きに寄せて、地より濃い一点に。 */
 .tl-node .todo-dot {
-  width: 11px; height: 11px; border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent);
+  width: 12px; height: 12px; border-radius: var(--r-full);
+  background: var(--c-surface);
+  opacity: .9;
 }
 
 /* 中身。.item を借りているので、地と枠だけ外します——済ませたときの動き
@@ -2981,11 +2998,21 @@ a.btn { text-decoration: none; }
 /* **flex ではなく block です。** ここは一度こわしました：flex の子になると
    `display:-webkit-box` が flow-root へ blockify され、-webkit-line-clamp が
    高さ0に畳みます——題がまるごと消えました。行数を絞りたい要素を抱える
-   入れものは、flex にしないこと。 */
+   入れものは、flex にしないこと。この但し書きは .tl-open にも効きます。 */
 .tl-body {
   flex: 1; min-width: 0;
   display: block;
   text-align: left;
+}
+/* 題を押すところ。事実の行（手順の丸薬が乗る）はこの外です——button の
+   中に button は置けないので。 */
+.tl-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 /* 題の上の前置き（メモ）。読むための文脈なので、題より先に目を
@@ -3008,7 +3035,9 @@ a.btn { text-decoration: none; }
   -webkit-line-clamp: 2;
   overflow: hidden;
   flex: none;
-  font-size: 17px;
+  /* 実測 16px。17px から一段落としました——参考画面の題は、副題との差で
+     大きく見えているので、絶対値はここまでで足ります。 */
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: -.01em;
@@ -3025,6 +3054,53 @@ a.btn { text-decoration: none; }
   line-height: 1.4;
 }
 .tl-len { font-variant-numeric: tabular-nums; }
+
+/* 手順の丸薬（☑ 2/5 ⌄）。
+
+   前は行の下に「手順をひらく」という文のボタンを置いていました。参考に
+   した画面はここに一粒を置いていて、**数と入口が一粒で言えます**——
+   いくつ済んだかを読むために開かなくてよく、一段ぶんの高さも浮きます。 */
+.tl-subs-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 7px 3px 5px;
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease);
+}
+.tl-subs-chip:active { transform: scale(.94); }
+/* 中の小さな□。参考画面はここだけ濃い灰の塗りに白い✓で、丸薬の地から
+   一段沈ませてあります——数のほうを読ませたいので。 */
+.tl-subs-box {
+  display: grid; place-items: center;
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  background: var(--c-text-2);
+  color: #fff;
+}
+.tl-subs-box svg { width: 11px; height: 11px; stroke-width: 3.4; }
+.tl-subs-arrow {
+  display: grid; place-items: center;
+  color: var(--c-text-3);
+  transition: transform var(--dur) var(--ease);
+}
+.tl-subs-arrow svg { width: 13px; height: 13px; }
+/* たたんでいるときは右向き、ひらくと下向き。回る先が「そこが開く」と
+   言うので、閉じているときの向きは進む方向（右）にします。 */
+.tl-subs-chip[aria-expanded="false"] .tl-subs-arrow { transform: rotate(0deg); }
+.tl-subs-chip[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
+
+/* 右の印。参考画面は基調色の細い輪で、済ませると同じ色で塗りつぶし。
+   一覧の印（灰色の輪 → 基調色の塗り）とは輪の色だけが違います。 */
+.tl-row .check:not(.is-sub) {
+  border-color: var(--cat, var(--c-primary-fill));
+}
+.tl-row .check:not(.is-sub)[aria-checked="true"] {
+  background: var(--cat, var(--c-primary-fill));
+  border-color: var(--cat, var(--c-primary-fill));
+}
 .tl-pin, .tl-rep {
   padding: 1px 8px;
   border-radius: var(--r-sm);
@@ -3035,16 +3111,22 @@ a.btn { text-decoration: none; }
 .tl-clash { color: var(--c-text-2); font-weight: 700; }
 .tl-row .check { flex: none; }
 
-/* 済んだもの。線からは外さず、薄くして横線を引きます——消すと
-   「今日それをした」ことまで消えてしまうので。 */
-.tl-row .tl-item.is-checked .item-name { text-decoration: line-through; }
-.tl-row .tl-item.is-checked { opacity: .5; }
-/* 済んだ行は、左の時刻も丸の絵も灰色に。文字だけ薄くして数字と絵が
-   濃いままだと、「まだ残っている」に見えます。 */
+/* 済んだもの。**色は残します。**
+
+   前は行ごと50%に落として、丸の絵を grayscale にして、左の時刻まで
+   灰色にしていました。「まだ残っている」に見せないため、という理屈
+   でしたが、参考にした画面は逆をやっています——丸は色のまま、題に線を
+   引いて字だけ灰色に。そのほうが、朝から積み上げた半日が**画面に
+   残ります。** 灰色にすると、やったことが背景に沈む。
+
+   残りとの見分けは、題の線と右の印（塗りつぶし）が付けています。 */
+.tl-row .tl-item.is-checked .item-name {
+  text-decoration: line-through;
+  color: var(--c-text-2);
+}
+.tl-row .tl-item.is-checked .tl-cap,
+.tl-row .tl-item.is-checked .tl-facts { color: var(--c-text-3); }
 .tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: 400; }
-.tl-row.is-done .tl-node { background: var(--c-surface-2); }
-.tl-row.is-done .tl-node .todo-mark { filter: grayscale(1); opacity: .7; }
-.tl-row.is-done .tl-node .todo-dot { background: var(--c-border-2); }
 
 /* 空きの行。空いている量が縦の長さになります（--free-h は JS が測ります）。 */
 .tl-free-row { min-height: var(--free-h, 32px); }
@@ -3219,8 +3301,12 @@ a.btn { text-decoration: none; }
 .tl-item.is-striking .item-name,
 .item.is-striking .item-name {
   /* 線は背景で引きます。text-decoration は動かせないので。
-     色は、押した丸と同じ緑。同じ「済ませた」を、指の下と字の上で
-     別の色で言う理由がありません。 */
+     色は、押した丸と同じ基調色。同じ「済ませた」を、指の下と字の上で
+     別の色で言う理由がありません。
+
+     ——時間割だけは、この規則から外しました（すぐ下）。参考にした画面は
+     題を**字と同じ灰**で消していて、丸のほうは色のまま残ります。丸が
+     色で残るぶん、線まで色を持つと行が二か所で主張します。 */
   background-image: linear-gradient(var(--c-primary), var(--c-primary));
   background-repeat: no-repeat;
   background-position: 0 58%;
@@ -3235,8 +3321,14 @@ a.btn { text-decoration: none; }
    引き終わった瞬間に線が細くなって見えます。 */
 .tl-row .tl-item.is-checked .item-name {
   text-decoration-thickness: 2.5px;
-  text-decoration-color: var(--c-primary);
+  text-decoration-color: var(--c-text-2);
   text-underline-offset: 0;
+}
+/* 時間割の線は灰で引きます（上の但し書き）。引いている最中と、引き
+   終わったあとで色が変わらないように、動きのほうも上書きします。 */
+.tl-row .tl-item.is-striking .item-name,
+.tl-row .tl-item.is-unstriking .item-name {
+  background-image: linear-gradient(var(--c-text-2), var(--c-text-2));
 }
 
 /* 丸のピコン。行き過ぎて戻る曲線（--spring）で、ひと回りだけ。
@@ -3653,28 +3745,43 @@ a.btn { text-decoration: none; }
   /* レールの中心は、行の左から 44px ＋ 56px/2 = 72px。手順の帯は
      3列目（左から100px）に始まるので、そこから 28px 戻ったところ。 */
   left: -28px; top: 0; bottom: 0;
-  width: 2.5px;
+  width: 3.5px;
   transform: translateX(-50%);
-  background: color-mix(in srgb, var(--c-primary) 26%, transparent);
+  background: var(--cat, var(--c-primary-fill));
 }
-.tl-sub-toggle {
-  padding: 4px 0;
-  color: var(--c-text-3);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
-.tl-sub-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.tl-sub-list { display: flex; flex-direction: column; margin-top: 2px; }
+/* 一段ごとに細い罫線を一本（参考画面と同じ）。線は**チェックの右**から
+   始めます——左端から引くと、チェックの列が表の枠に見えます。 */
 .tl-sub {
+  position: relative;
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 0;
+  padding: 9px 0;
 }
-.tl-sub .check.is-sub { width: 26px; height: 26px; flex: 0 0 auto; }
+.tl-sub + .tl-sub::before {
+  content: "";
+  position: absolute;
+  left: 34px; right: 0; top: 0;
+  height: 1px;
+  background: var(--c-border);
+}
+/* 手順のチェックは**角丸の四角**です。行そのものの丸い印と形で分けて
+   おくと、「一件を終える」と「手順を一つ終える」を取り違えません
+   （参考画面も同じ分け方をしています）。 */
+.tl-sub .check.is-sub {
+  width: 24px; height: 24px; flex: 0 0 auto;
+  border-radius: 7px;
+  border-width: 2px;
+}
 .tl-sub .check.is-sub svg { width: 15px; height: 15px; }
+.tl-sub .check.is-sub[aria-checked="true"] {
+  background: var(--cat, var(--c-primary-fill));
+  border-color: var(--cat, var(--c-primary-fill));
+}
 .tl-sub-name {
   font-size: 15px;
   color: var(--c-text);
   /* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。 */
-  background-image: linear-gradient(var(--c-primary), var(--c-primary));
+  background-image: linear-gradient(var(--c-text-3), var(--c-text-3));
   background-repeat: no-repeat;
   /* 58% は行の上下まん中ではなく**字のまん中**です。和文はベースラインの
      下に余白があるので、center だと字の上のほうを通ります。題の取り消し線

@@ -113,10 +113,15 @@
      見本に出す一色だけ——同じ数値を二か所に書くと、片方だけ直したときに
      静かに食い違うので。
 
-     id は data-accent の値になります。既定のオレンジだけは札を付けない
-     ので（:root の素の値がそのまま効きます）、CSS 側に規則がありません。 */
+     id は data-accent の値になります。既定の一色だけは札を付けないので
+     （:root の素の値がそのまま効きます）、CSS 側に規則がありません。
+
+     その既定は、いまはコーラルです。**id は "orange" のまま置いてあります**
+     ——保存してある設定の値を書き換えずに色だけを入れ替えられるからで、
+     移行も `reconcile()` の変更も要りません。id は保存された値との約束、
+     label は人に見せる名前、と役目が別です。 */
   const ACCENTS = [
-    { id: "orange", label: "オレンジ", swatch: "#d9662a" },
+    { id: "orange", label: "コーラル", swatch: "#f2938e" },
     { id: "green",  label: "みどり",   swatch: "#2f8f5b" },
     { id: "blue",   label: "あお",     swatch: "#2f72c4" },
     { id: "violet", label: "むらさき", swatch: "#7a5bd0" },

@@ -1035,7 +1035,11 @@
      and grey for what has no day at all — near is hot, far is cool, undecided
      is neither. */
 
-  const DAY_COLORS = ["#e05a3a", "#e08a3a", "#cfa93c", "#8bb34a", "#6aae55", "#5aa55a", "#4fa17a", "#49a0a0"];
+  /* 今日の色を、基調のコーラルに合わせました（実測 #f2938e）。時間割の
+     丸と背骨がこの色で塗られるので、ここが基調とずれていると、今日の
+     画面だけ別のアプリの色になります。二日目から先はこれまでどおり、
+     締切までの遠さを言う坂です。 */
+  const DAY_COLORS = ["#f2938e", "#e08a3a", "#cfa93c", "#8bb34a", "#6aae55", "#5aa55a", "#4fa17a", "#49a0a0"];
   const WEEK_COLOR = "#4a8fd9";
   const MONTH_COLOR = "#6a7fd0";
   const NONE_COLOR = "#9aa4a0";
@@ -2412,7 +2416,7 @@
          したが、行の本文（題や事実の乗っているところ）自体が button なので、
          行を掴む道がどこにも無くなっていました。掴んで欲しくないのは、
          押したら別のことが起きる小さな丸——それだけ。 */
-      if (e.target.closest(".check, .fav")) return;
+      if (e.target.closest(".check, .fav, .tl-subs-chip")) return;
       const row = e.target.closest(".tl-row");
       if (!row || row.classList.contains("is-done")) return;
 
@@ -2644,6 +2648,20 @@
     return String(hhmm || "").replace(/^0(\d:)/, "$1");
   }
 
+  /* 時間割の丸の色。**一覧の colorOf とは別の規則です。**
+
+     一覧の色は「あとどれくらいで締切か」を言う坂で、済ませたものと
+     繰り返すものはその坂に乗らないので灰色にしてあります。時間割は
+     締切の話をしていません——その日をどう配ったか、の話です。だから
+     ここでは全部その日の色で塗ります。
+
+     済ませたものも色のまま残します（参考にした画面と同じ）。やった
+     ことが灰色になって沈むと、朝からの半日が空白に見えるので。 */
+  function tlColorOf(t) {
+    const g = groups.find((x) => x.id === groupIdOf(t, groups));
+    return (g && g.color) || NONE_COLOR;
+  }
+
   /** いま何時か。時刻・点・線の三つで、軸のいちばん前に置きます。 */
   function nowMark(nowMin, y) {
     return node(html`
@@ -2749,14 +2767,28 @@
        すぐ下でもう一度言う理由がありません。 */
     /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
        ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
+    const sc = store.subCount(t);
+    const subsOpen = openSubs.has(t.id);
+    /* 手順は、事実の行に**丸薬**で出します。前は行の下に「手順をひらく」
+       という文のボタンを置いていましたが、参考にした画面はここに
+       `☑ 2/5 ⌄` の一粒を置いていて、そのぶん一段ぶんの高さが浮きます。
+       数（いくつ済んだか）と入口が、一粒で同時に言えるので。 */
+    if (sc.total && !t.trace) {
+      facts.push(html`
+        <button type="button" class="tl-subs-chip" aria-expanded="${String(subsOpen)}"
+                aria-label="${t.title} の手順を${subsOpen ? "たたむ" : "ひらく"}">
+          <span class="tl-subs-box">${icon("check")}</span>
+          <span class="tl-subs-n">${sc.done}/${sc.total}</span>
+          <span class="tl-subs-arrow">${icon("chevron")}</span>
+        </button>
+      `);
+    }
     if (t.shop) {
       const n = store.tripCount();
       if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
     }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
-    // 残数は文にしません。手順を持っているかどうかだけ、下の開閉に使います。
-    const sc = store.subCount(t);
     const closed = t.done || t.archived;
     /* 帯の長さは、置かれた実際の幅（始まり〜終わり）から測ります。ただし
        長さを**決めていない**ものは帯にしません——組み立てが仮に置いた
@@ -2767,7 +2799,7 @@
                  ${closed ? "is-done" : ""} ${span ? "is-long" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
-          style="--cat:${colorOf(t, groups)}${span ? `;--tl-span:${span}px` : ""}">
+          style="--cat:${tlColorOf(t)}${span ? `;--tl-span:${span}px` : ""}">
         ${/* 伸びた行では、時刻もアイコンも**上端**へ寄せます。上端が
               始まりの時刻だからです。まん中に置くと、枠は10時から18時
               まで伸びているのに、札は14時のあたりに付いていることに
@@ -2782,16 +2814,23 @@
               十分なので。前は長さを題の上に置いていましたが、いちばん
               大きく読ませたいものの上に、数字が乗っていました。 */""}
         <div class="item todo tl-item ${t.done ? "is-checked" : ""}">
-          <button class="tl-body" type="button">
-            ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
-            <span class="item-name">${t.title}</span>
+          ${/* 事実の行を、題を押す button の**外**へ出しました。手順の丸薬が
+                押せるものになったからです——button の中に button は置けず、
+                置いても browser が黙って捨てます。入れものは block のまま
+                （下の CSS の但し書き：行数を絞る要素を抱える入れものを
+                flex にすると、-webkit-line-clamp が高さ0に畳みます）。 */""}
+          <div class="tl-body">
+            <button class="tl-open" type="button">
+              ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
+              <span class="item-name">${t.title}</span>
+            </button>
             ${/* 決めていない長さは**書きません**。組み立てには30分として
                   使いますが、画面に「30分」と出すとそれが決めた数のように
                   読めますし、決めていない行にまで一段増えて、丸と題が
                   中心線からずれる原因にもなっていました。
                   facts が空になる行では、この帯ごと出しません。 */""}
             ${facts.length ? html`<span class="tl-facts">${facts}</span>` : ""}
-          </button>
+          </div>
           ${/* 「やった記録」も押せます。**押し間違いは取り消せなければ
                 いけません。** ここを飾りにしていたので、毎朝のものを
                 うっかり済ませたとき、その日から外す方法がありませんでした
@@ -2810,7 +2849,7 @@
         </div>
       </li>
     `);
-    li.querySelector(".tl-body").addEventListener("click", () => openSheet(t.id));
+    li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id));
     const box = li.querySelector("button.check");
     if (box) {
       box.addEventListener("click", (e) => {
@@ -2829,13 +2868,9 @@
        たたんであるのは、手順を持つ用事が二つ三つあると、時間割が手順で
        埋まって「今日は何があるか」が読めなくなるからです。 */
     if (sc.total && !t.trace) {
-      const open = openSubs.has(t.id);
       const wrap = node(html`
-        <div class="tl-sub-wrap ${open ? "is-open" : ""}">
-          <button type="button" class="tl-sub-toggle" aria-expanded="${String(open)}">
-            ${open ? "手順をたたむ" : "手順をひらく"}
-          </button>
-          <ul class="tl-sub-list" ${open ? "" : KN.util.raw("hidden")}></ul>
+        <div class="tl-sub-wrap ${subsOpen ? "is-open" : ""}">
+          <ul class="tl-sub-list" ${subsOpen ? "" : KN.util.raw("hidden")}></ul>
         </div>
       `);
       const list = wrap.querySelector(".tl-sub-list");
@@ -2867,7 +2902,7 @@
         });
         list.append(line);
       });
-      wrap.querySelector(".tl-sub-toggle").addEventListener("click", (e) => {
+      li.querySelector(".tl-subs-chip").addEventListener("click", (e) => {
         e.stopPropagation();
         if (openSubs.has(t.id)) openSubs.delete(t.id); else openSubs.add(t.id);
         KN.motion.fire("select", e.currentTarget);
