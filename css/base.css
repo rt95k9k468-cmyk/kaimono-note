@@ -29,36 +29,60 @@
 :root {
   color-scheme: light;
 
-  /* --- surfaces --- */
-  --c-bg:          #f4f6f3;
-  --c-bg-elev:     #ffffff;
-  --c-surface:     #ffffff;
-  --c-surface-2:   #eef2ed;
-  --c-surface-3:   #e4eae3;
+  /* --- surfaces ---
 
-  /* --- text --- */
-  --c-text:        #171d19;
-  --c-text-2:      #5a655e;
-  --c-text-3:      #8d968f;
+     参考にした画面（Structured）から実測した数字です。もとは緑を混ぜた
+     生成りでしたが、あちらの地は**うっすら紫がかった灰**で、その上に
+     まっ白な紙が乗ります。地と紙の差がこの一段だけなので、紙のふちを
+     線で囲わなくても「一枚乗っている」と読めます。 */
+  --c-bg:          #f0eff3;   /* 実測 */
+  --c-bg-elev:     #ffffff;
+  --c-surface:     #ffffff;   /* 実測 */
+  --c-surface-2:   #e8e8e8;   /* 実測（手順の丸薬の地） */
+  --c-surface-3:   #dcdce0;
+
+  /* --- text ---
+
+     字も緑を抜いて、ニュートラルな灰にします。副題と左の時刻は実測の
+     #636363——本文とのあいだが一段しかないので、読む順が「題 → その他」
+     の二段でまとまります。 */
+  --c-text:        #111113;
+  --c-text-2:      #636363;   /* 実測（副題・時刻） */
+  --c-text-3:      #8e8e93;
   --c-text-on:     #ffffff;
 
   /* --- lines --- */
-  --c-border:      #e0e6df;
-  --c-border-2:    #cdd6cb;
+  --c-border:      #e4e4e8;
+  --c-border-2:    #cdcdd3;
 
   /* --- brand ---
 
-     オレンジを既定の基調にします。前は緑でした。将来、設定から基調色を
-     選べるようにする話が出ているので、ここに直接オレンジの数値を書く
-     のではなく、この四つ（primary / -2 / -soft / -ink）が「いまの基調色」
-     という**役目**を持つ場所だと考えてください。基調を変えるときは、
-     この四行と、下の accent（すぐ下の理由で変わる）だけを差し替えれば
-     アプリ全体が追随します——実際、95%以上の場所は var(--c-primary) 系を
-     参照していて、色を直に書いている場所はほとんど残っていません。 */
-  --c-primary:     #d9662a;
-  --c-primary-2:   #b84f1c;
-  --c-primary-soft:#fbe9db;
-  --c-primary-ink: #8a3c14;
+     コーラルを既定の基調にします（緑 → オレンジ → いまここ）。この四つ
+     （primary / -2 / -soft / -ink）が「いまの基調色」という**役目**を
+     持つ場所です。基調を変えるときは、この四行と塗り（下の -fill）、
+     それに accent だけを差し替えればアプリ全体が追随します——95%以上の
+     場所は var(--c-primary) 系を参照していて、色を直に書いている場所は
+     ほとんど残っていません。
+
+     数値は参考にした画面（Structured）の実測 #f2938e に合わせました。
+     設定の札の id は "orange" のまま置いてあります——保存してある値を
+     変えずに済み、`reconcile()` も触らずに色だけが入れ替わるので。 */
+  --c-primary:     #bf4f49;
+  --c-primary-2:   #a84240;
+  --c-primary-soft:#fdeceb;
+  --c-primary-ink: #8f3833;
+
+  /* **塗るための色**。丸・背骨・印の輪はこれです。
+
+     実測の #f2938e は白の上で 2.25:1 しかありません——参考画面がこの色を
+     **字に使っていない**のはそのためで、あちらも塗りだけに使っています。
+     一方 --c-primary は39か所で字の色として使われている（リンク・タブ・
+     電卓の記号…）ので、そちらは読める濃さ（4.7:1）に留めます。
+     同じ色の濃淡ではなく、**役目が二つある**ということです。 */
+  --c-primary-fill:#f2938e;   /* 実測 */
+
+  /* 一日の終わり。参考画面はここだけ夜の青にしてあります（実測）。 */
+  --c-night:       #55799f;
 
   /* --- accent = "best価格" ---
 
@@ -277,22 +301,26 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --c-bg:          #10140f;
-    --c-bg-elev:     #181d17;
-    --c-surface:     #1b211a;
-    --c-surface-2:   #232a22;
-    --c-surface-3:   #2c342b;
-    --c-text:        #e8eee7;
-    --c-text-2:      #a4b0a2;
-    --c-text-3:      #788477;
-    --c-border:      #2b332a;
-    --c-border-2:    #3b453a;
-    /* 暗い地の上のオレンジ。明るい面と同じ考え方——彩度を保ちつつ、
-       暗い地に沈まないよう明るいほうへ振ります。 */
-    --c-primary:     #e8874f;
-    --c-primary-2:   #f0a06c;
-    --c-primary-soft:#3a2415;
-    --c-primary-ink: #f5c39a;
+    --c-bg:          #121216;
+    --c-bg-elev:     #1a1a1f;
+    --c-surface:     #1c1c22;
+    --c-surface-2:   #26262d;
+    --c-surface-3:   #303038;
+    --c-text:        #ececed;
+    --c-text-2:      #a6a6ab;
+    --c-text-3:      #7c7c83;
+    --c-border:      #2e2e36;
+    --c-border-2:    #3e3e48;
+    /* 暗い地の上のコーラル。明るい面と同じ考え方——彩度を保ちつつ、
+       暗い地に沈まないよう明るいほうへ振ります。明るい面と違って、
+       暗い地の上ならこの色は字にも耐えます（8.25:1）ので、塗りと
+       字がここでは同じ濃さで足ります。 */
+    --c-primary:     #f2938e;
+    --c-primary-2:   #f5a9a4;
+    --c-primary-soft:#3a201f;
+    --c-primary-ink: #f8c5c1;
+    --c-primary-fill:#e8837b;
+    --c-night:       #6f93b8;
     /* accent も同じ理由で青へ。暗い地でも基調色と競わないように。 */
     --c-accent:      #6fb6e8;
     --c-accent-soft: #17293a;
@@ -330,20 +358,22 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --c-bg:          #10140f;
-  --c-bg-elev:     #181d17;
-  --c-surface:     #1b211a;
-  --c-surface-2:   #232a22;
-  --c-surface-3:   #2c342b;
-  --c-text:        #e8eee7;
-  --c-text-2:      #a4b0a2;
-  --c-text-3:      #788477;
-  --c-border:      #2b332a;
-  --c-border-2:    #3b453a;
-  --c-primary:     #e8874f;
-  --c-primary-2:   #f0a06c;
-  --c-primary-soft:#3a2415;
-  --c-primary-ink: #f5c39a;
+  --c-bg:          #121216;
+  --c-bg-elev:     #1a1a1f;
+  --c-surface:     #1c1c22;
+  --c-surface-2:   #26262d;
+  --c-surface-3:   #303038;
+  --c-text:        #ececed;
+  --c-text-2:      #a6a6ab;
+  --c-text-3:      #7c7c83;
+  --c-border:      #2e2e36;
+  --c-border-2:    #3e3e48;
+  --c-primary:     #f2938e;
+  --c-primary-2:   #f5a9a4;
+  --c-primary-soft:#3a201f;
+  --c-primary-ink: #f8c5c1;
+  --c-primary-fill:#e8837b;
+  --c-night:       #6f93b8;
   --c-accent:      #6fb6e8;
   --c-accent-soft: #17293a;
   --c-accent-ink:  #a9d4f1;
