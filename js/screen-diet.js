@@ -99,11 +99,15 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
-            <div style="flex:1;min-width:0">
-              <div class="topbar-sub js-sub"></div>
-            </div>
-            ${/* 右端から 設定・さがす・取り込み。ほかの画面と同じ並べ方で、
-                 いちばん右がいつも設定です。 */""}
+            ${/* 題は、いま見ている日。やること・daily と同じ組みです——年だけ
+                  差し色、月日が黒、右に「›」。押すと暦が月ぜんぶに開きます。
+                  月と年を別に出す見出しの行（「8月 2026」）と「週」の札、
+                  ‹ › は、この題に吸収して消えました。 */""}
+            <button type="button" class="topbar-day js-day-title">
+              <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
+              <span class="day-more">${icon("chevron")}</span>
+            </button>
+            ${/* 右端から 暦・さがす・取り込み。ほかの画面と同じ並べ方です。 */""}
             <button class="icon-btn js-sync" aria-label="ヘルスケアから取り込む" title="ヘルスケアから取り込む">
               ${icon("download")}
             </button>
@@ -131,7 +135,7 @@
     root.append(chrome);
 
     els = {
-      sub: chrome.querySelector(".js-sub"),
+      dayTitle: chrome.querySelector(".js-day-title"),
       body: chrome.querySelector(".js-body"),
       sync: chrome.querySelector(".js-sync"),
       topbar: chrome.querySelector(".topbar"),
@@ -143,6 +147,13 @@
     };
 
     els.sync.addEventListener("click", openSyncSheet);
+
+    /* 題を押すと、暦が月ぜんぶに開きます（やること・daily の「›」と同じ）。
+       題は上のバーにいるので、結ぶのは組み立てのとき一度きりです。 */
+    els.dayTitle.addEventListener("click", () => {
+      KN.motion.fire("select");
+      store.setCalPref("diet", { open: !calOpen() });
+    });
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
@@ -346,7 +357,12 @@
   function renderFound() {
     const found = store.searchDietDays(query);
     els.body.innerHTML = "";
-    els.sub.textContent = found.length ? `${found.length}日 見つかりました` : "";
+    /* 見つかった数は、結果のすぐ上に。上のバーに出していましたが、そこは
+       いま見ている日の題の場所になりました——探しているあいだは日を見て
+       いないので、題のところに数を置くと、二つが同じ場所で入れ替わります。 */
+    if (found.length) {
+      els.body.append(node(html`<p class="diet-found-n">${found.length}日 見つかりました</p>`));
+    }
 
     if (!found.length) {
       els.body.append(node(html`
@@ -419,8 +435,6 @@
 
     /* 日付は暦と、その日の紙の見出しが持っています。題の下でもう一度
        言う必要はありません（「さがす」の結果だけは、ここに出します）。 */
-    els.sub.textContent = "";
-
     els.body.innerHTML = "";
     els.cal = monthCalendar();
     els.body.append(els.cal);
@@ -429,7 +443,21 @@
        めくるときも、三つが**一緒に**流れたほうが「日が変わった」と読めます。
        区切りは線ではなく地の色で。線は「別のもの」と言いますが、
        ここで言いたいのは「同じ一日の、別の面」です。 */
-    els.body.append(node(html`
+    /* 暦から下は、掴める一枚として扱います（やること・daily と同じ）。
+       ここは白い紙にしません——中の「今日のからだ」がすでに端から端まで
+       の面を持っていて、その上にもう一枚白を敷くと、面が二重になります。
+       出すのは掴み手だけ。**下へ引けば暦が月ぜんぶまで開き**、掴み手から
+       上へ押せば週へ戻ります。 */
+    const sheet = node(html`
+      <div class="tl-sheet is-bare"><span class="tl-grip" aria-hidden="true"><i></i></span></div>
+    `);
+    els.body.append(sheet);
+    wireCalPull(sheet);
+    /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
+       使えません。閉じているあいだだけ譲ってもらいます。 */
+    if (calShown() && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
+
+    sheet.append(node(html`
       <div class="diet">
         ${/* 前日・翌日の紙も、あらかじめ本物として並べておきます
               （js-track に横一列で三枚）。要約ではなく、その日の紙その
@@ -519,17 +547,24 @@
     const shown = calShown();
     sec.classList.toggle("is-week", !open);
     sec.classList.toggle("is-hidden", !shown);
-    const btn = sec.querySelector(".js-calmore");
-    if (btn) {
-      btn.textContent = open ? "月" : "週";
-      btn.setAttribute("aria-expanded", String(open));
-      btn.setAttribute("aria-label", open ? "週だけにする" : "月ぜんぶを見る");
-    }
+    /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
+       右の「›」の傾きも、隣の週の濃さも、これを見て決まります（やること・
+       daily と同じ）。 */
+    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
+       塗るものはもうありません。 */
+    paintDayTitle();
     if (open) {
       sec.querySelectorAll(".is-off-week").forEach((c) => c.classList.remove("is-off-week"));
       return;
     }
-    /* 選んでいる日が、いま出している月に無いことがあります（‹ で先の月を
+    tagOffWeek(sec, here);
+  }
+
+  /** いまの週の外にあるマスに印を付けます。週で見ているときは CSS が隠し、
+      指で引いているあいだは、その印が「濃さ」の目印になります。 */
+  function tagOffWeek(sec, here) {
+    /* 選んでいる日が、いま出している月に無いことがあります（先の月を
        覗いているとき）。そのときはその月の頭の週を出します——空っぽの
        週を出すよりは、行き先のある週のほうが役に立ちます。 */
     const first = sec.querySelector(".cal-day");
@@ -543,6 +578,39 @@
     // 月の頭の空きマスは、その週を出しているときだけ残します。
     const padsOn = !!first && first.dataset.day >= w.from && first.dataset.day <= w.to;
     sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
+  }
+
+  /** 画面の題に、いま見ている日を書きます（やること・daily と同じ組み）。 */
+  function paintDayTitle() {
+    if (!els.dayTitle || !els.dayTitle.isConnected) return;
+    const d = U.dayDate(curDay());
+    if (!d || isNaN(d.getTime())) return;
+    els.dayTitle.querySelector(".day-y").textContent = String(d.getFullYear());
+    els.dayTitle.querySelector(".day-md").textContent = `年${d.getMonth() + 1}月${d.getDate()}日`;
+    els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
+    els.dayTitle.setAttribute("aria-label",
+      `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日。押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
+  }
+
+  /* ---------------- 紙を下に引くと、月が出てくる ----------------
+
+     やること・daily と同じ仕掛けです（js/cal-peek.js）。ここが答えるのは
+     「この画面では何が『いま見ている日』か」「いつ引いてよいか」だけ。 */
+  function wireCalPull(el) {
+    KN.calPeek.wire({
+      sheet: el,
+      root,
+      cal: () => els.cal,
+      isOpen: calOpen,
+      // 探している最中と、暦をしまっているときは引きません。
+      enabled: () => !query.trim() && calShown(),
+      here: () => curDay(),
+      tagOffWeek,
+      commit: (open) => {
+        if (open !== calOpen()) store.setCalPref("diet", { open });
+        else markWeek(els.cal, curDay());
+      },
+    });
   }
 
   function shownMonth() {
@@ -578,22 +646,11 @@
   }
 
   function monthCalendar() {
-    const sec = node(html`
-      <section class="cal">
-        <h2 class="cal-head">
-          <span class="cal-month"></span>
-          <span class="cal-year"></span>
-          <button type="button" class="cal-now js-now" hidden>今日へ</button>
-          <span class="cal-nav">
-            <button type="button" class="cal-more js-calmore" aria-expanded="false"></button>
-            <button type="button" class="cal-arrow js-prev" aria-label="前へ">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次へ">${icon("chevron")}</button>
-          </span>
-        </h2>
-        <div class="cal-grid"></div>
-      </section>
-    `);
-    const grid = sec.querySelector(".cal-grid");
+    const sec = node(html`<section class="cal"></section>`);
+    /* 三層（曜日の行／伸び縮みする窓／その中のずらしと日のマス）は
+       cal-peek.js が組みます。やること・daily の暦と同じものです。 */
+    const grid = KN.calPeek.mount(sec).grid;
+    sec.append(node(html`<button type="button" class="cal-now js-now" hidden>今日へ</button>`));
 
     /* ‹ › の刻みは、出しているものに合わせます——週だけ出しているときに
        月ごと飛ぶと、押した先に自分の週が無くなります。 */
@@ -613,12 +670,6 @@
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
       fillCalendar(sec);
     };
-    sec.querySelector(".js-calmore").addEventListener("click", () => {
-      KN.motion.fire("nav");
-      store.setCalPref("diet", { open: !calOpen() });
-    });
-    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
-    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
       KN.motion.fire("nav");
       calMonth = null;
@@ -700,13 +751,15 @@
     const lead = new Date(year, month, 1).getDay();
 
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-    sec.querySelector(".cal-month").textContent = `${month + 1}月`;
-    sec.querySelector(".cal-year").textContent = String(year);
     sec.querySelector(".js-now").hidden = thisMonth && here === today;
 
     const grid = sec.querySelector(".cal-grid");
     grid.innerHTML = "";
-    U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
+    /* 曜日の行は、日のマスとは別の入れ物です——暦を引いて伸ばすとき、
+       動くのは日のマスだけで、曜日はここに留まります。 */
+    const wds = sec.querySelector(".cal-wds");
+    wds.innerHTML = "";
+    U.WEEKDAYS.forEach((w, i) => wds.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
     `)));
     /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
