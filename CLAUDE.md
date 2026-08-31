@@ -23,13 +23,15 @@
 
 ## 開発ブランチとデプロイ
 
-- 作業ブランチ: `claude/shopping-list-file-migration-ct4ufx`
+- 作業ブランチ: `claude/schedule-display-improvements-xc3gca`
+  （セッションごとに指定が変わる。以前は
+  `claude/shopping-list-file-migration-ct4ufx` だった——指定されたほうを使う）
 - ユーザーの明示的な許可のもと、`main` への直接pushが認められている：
   ```
-  git push -u origin claude/shopping-list-file-migration-ct4ufx
-  git checkout main && git merge --ff-only claude/shopping-list-file-migration-ct4ufx
+  git push -u origin claude/schedule-display-improvements-xc3gca
+  git checkout main && git merge --ff-only claude/schedule-display-improvements-xc3gca
   git push origin main
-  git checkout claude/shopping-list-file-migration-ct4ufx
+  git checkout claude/schedule-display-improvements-xc3gca
   ```
 - デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。
   `mcp__github__actions_list`（method: list_workflow_runs, branch: main）で
@@ -81,7 +83,19 @@
 - 変更のたびに、触った画面の主要テストと `daily-rules.js`（dailyの非評価
   原則）は必ず走らせる。
 
-## 現在の状態（このファイルを作った時点）
+## 現在の状態
 
 `main` とこの作業ブランチは同じコミットで、デプロイ済み・保留中のタスクは
 無い。直近の作業内容は `git log` を見ること。
+
+時間割の**時刻の軸**は、行の中ではなく一枚の層（`.tl-axis`）に描いている。
+`paintAxis()` が組み終わったあとにレール（`.tl-rail`）を実測して、時刻→縦位置
+の折れ線を作る。ここを触るときの決めごと：
+
+- 軸に出るのは**1時間ごとの時刻**と、用事が自分で書く**始まりの時刻**だけ。
+  用事の終わりの時刻は軸に足さない（一件の都合で目盛りの間隔が乱れる）。
+- 「いま」は軸の層のいちばん前。長い用事の帯の**中**にも入る。
+- かかる時間が30分を超えたら帯（`is-long`）。長さは5分きざみなので、
+  丸のままの上限が30分、その次の35分から帯。
+- 行の基本の高さは52px。JS の `TL_BASE_H` と CSS の `--tl-span` の既定値が
+  同じ数であること。
