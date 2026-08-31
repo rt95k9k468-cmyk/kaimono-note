@@ -2936,6 +2936,23 @@ a.btn { text-decoration: none; }
 .tl-row.is-long .tl-time { align-self: start; padding-top: 15px; }
 .tl-row.is-long .item.tl-item { align-self: start; }
 
+/* 長い用事の途中の時刻。時刻の列（左の44px）だけに収め、内容（題や事実）
+   の上には出しません——空きの目盛りと違って、右側はもう文字で埋まって
+   いるので、線を引くと重なります。 */
+.tl-row.is-long { position: relative; }
+.tl-inner-hours { position: absolute; inset: 0; pointer-events: none; }
+.tl-inner-hour {
+  position: absolute;
+  left: 0; width: 44px;
+  transform: translateY(-50%);
+  padding-right: 3px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  color: var(--c-text-3);
+  opacity: .7;
+  font-variant-numeric: tabular-nums;
+}
+
 .tl-node .todo-mark { width: 30px; height: 30px; }
 .tl-node .todo-mark svg { width: 30px; height: 30px; }
 .tl-node .todo-dot {
