@@ -663,7 +663,17 @@ a { color: var(--c-primary); }
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: calc(var(--safe-t) + var(--sp-4)) var(--sp-4) var(--sp-3);
+  /* **題の帯ではなくなりました。** どの画面の題（「買い物リスト」
+     「ダイエット」…）も外してあります——同じ名前を下の帯がすでに言って
+     いて、上でもう一度言うために一段ぶんの高さを使っていました。
+
+     残るのは道具（さがす・並べ方・暦）だけ。やることと daily では、その
+     左に**いま見ている日**が乗ります——そこは名前ではなく、画面ごとに
+     変わる中身だからです。
+
+     上の詰めを 16px → 8px に。題が無いぶん、字の背の高さぶんだけ器が
+     余っていました。 */
+  padding: calc(var(--safe-t) + var(--sp-2)) var(--sp-4) var(--sp-2);
   /* **透かしません。**
 
      すりガラス（88%＋ぼかし）にしていました。iOS らしい面ですが、下に
@@ -939,38 +949,30 @@ a { color: var(--c-primary); }
    0.52倍まで落とすと、あいだに5pxの隙ができます。丸い下地（40px）から
    はみ出しますが、それでいい——下地は「いま居るほう」の印なので、
    待っているほうが外にいるのは正しい絵です。 */
-.tab.is-pair .tab-ico-face {
-  transition: transform .26s var(--ease-out), opacity .26s var(--ease), color .2s var(--ease);
-  color: var(--c-text-3);
-  opacity: .55;
-}
-/* 脇に置くぶんは、**選んだ印の緑の丸からも外へ**出します。
-   絵どうしは離してあったのに、緑の丸（.tab-ico、幅40px＝中心から±20px）が
-   小さい絵に食い込んでいました。絵と絵の隙間だけを見て、下に敷いてある
-   印を数えていなかったための重なりです。
+/* ふた面のタブ。**いま出ている面**の絵と名前が乗り、下に小さな二つの点が
+   付きます——左が表、右が裏。塗られているほうが、いま見ている面です。
 
-     印の縁          20.0px（40 ÷ 2）
-     小さい絵の半分   5.7px（22 × 0.52 ÷ 2）
-     指で見て分かる隙間 4px
-     ────────────────────────
-     ずらす量        30px
-
-   印のほうを細くして寄せる手もありますが、選んだ印は三つのタブで
-   同じ形をしているべきなので、動かすのは絵のほうにします。 */
-.tab.is-pair .tab-ico-face[data-side="left"]  { transform: translateX(-30px) scale(.52); }
-.tab.is-pair .tab-ico-face[data-side="right"] { transform: translateX(30px)  scale(.52); }
-.tab.is-pair .tab-ico-face.is-on {
-  transform: translateX(0) scale(1);
-  opacity: 1;
-  color: inherit;
+   ここには前、二つの絵を左右に置いて入れ替える作りがありました。指の下で
+   絵が滑る動きは綺麗でしたが、絵が二つ見えているぶん「いまどっちなのか」を
+   読むのに一拍かかります。帯は**居場所を言うもの**なので、絵は一つでいい。
+   裏があることは、点二つで足ります。 */
+.tab-flip {
+  display: flex;
+  gap: 3px;
+  margin-top: 1px;
+  height: 3px;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
 }
-.tab.is-pair[aria-selected="true"] .tab-ico-face.is-on { color: var(--c-primary); }
-/* 裏は、表になったときだけ線を太らせます（表が薄いと小さい絵が潰れる）。 */
-.tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
-
-@media (prefers-reduced-motion: reduce) {
-  .tab.is-pair .tab-ico-face { transition: opacity .1s linear; }
+.tab[aria-selected="true"] .tab-flip { opacity: 1; }
+.tab-flip i {
+  width: 3px; height: 3px;
+  border-radius: var(--r-full);
+  background: currentColor;
+  opacity: .3;
+  transition: opacity var(--m-state) var(--ease);
 }
+.tab-flip i.is-on { opacity: 1; }
 
 .tab[aria-selected="true"] { color: var(--c-primary); }
 .tab[aria-selected="true"] .tab-ico {

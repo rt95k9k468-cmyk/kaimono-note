@@ -100,7 +100,6 @@
         <header class="topbar">
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
-              <h1 class="topbar-title">ダイエット</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* 右端から 設定・さがす・取り込み。ほかの画面と同じ並べ方で、
@@ -110,7 +109,6 @@
             </button>
             <button class="icon-btn js-search-btn" aria-label="食べたものを探す">${icon("search")}</button>
             <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
-            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -136,7 +134,6 @@
       sub: chrome.querySelector(".js-sub"),
       body: chrome.querySelector(".js-body"),
       sync: chrome.querySelector(".js-sync"),
-      settings: chrome.querySelector(".js-settings"),
       topbar: chrome.querySelector(".topbar"),
       screen: root,
       searchBtn: chrome.querySelector(".js-search-btn"),
@@ -146,7 +143,6 @@
     };
 
     els.sync.addEventListener("click", openSyncSheet);
-    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。

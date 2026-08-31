@@ -21,13 +21,10 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
-            ${/* 帰り道。価格はタブではなく、買うものの引き出しになりました
-                  ——開いた画面へ帰します（設定の画面と同じ作法）。 */""}
-            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
-              ${icon("chevron", "is-back")}
-            </button>
+            ${/* 帰り道のボタンはありません。価格は**買うものの裏面**になり、
+                  帯の同じところをもう一度押せば表へ戻ります。引き出しでは
+                  なくなったので、帰り道も帯そのものです。 */""}
             <div style="flex:1;min-width:0">
-              <h1 class="topbar-title">商品と価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* The ＋ is not up here any more — it is the same floating
@@ -40,7 +37,6 @@
                  （あちらの左端は「価格へ」、こちらの左端は「戻る」）。 */""}
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -73,7 +69,6 @@
       search:  chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       layout:  chrome.querySelector(".js-layout"),
-      settings: chrome.querySelector(".js-settings"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
@@ -82,8 +77,6 @@
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
-    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
-    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);

@@ -20,17 +20,46 @@
      そもそも場所ではない。価格は、買い物の途中で開くものではなく、値段を
      仕込むときにたまに開くもの。三つとも、呼んだ画面から名前で開いて、
      帰り道を持って帰ります。 */
+  /* 帯は四つ。**そのうち二つは、ふた面を持ちます。**
+
+     いま居るタブをもう一度押すと、裏返ります。やること ⇄ daily、
+     買うもの ⇄ 価格。四つとも別の場所に置くと帯が六つになり、一つあたりの
+     幅が指より細くなります。組にしたのは、対になっているものどうしです
+     ——やることと daily は「今日」の表と裏（これからと、やったこと）、
+     買うものと価格は「買い物」の表と裏（何を買うかと、いくらか）。
+
+     価格をタブから外したことが、前に一度あります（「買い物の途中で開く
+     ものではない」）。それは**独立した一つの持ち場としては**そのとおりで、
+     いまは持ち場ではなく、買うものの裏面として置いています。
+
+     四つめは設定です。前は画面ごとに歯車を置いていましたが、同じ設定へ
+     行く道が四つあることになり、しかもそのぶん上の帯が一つずつ狭く
+     なっていました。行き先が一つなら、入口も一つでいい。 */
   const TABS = [
-    { id: "archive", label: "daily", icon: "book" },
-    { id: "todo", label: "やること", icon: "checklist" },
-    /* 「買うもの」と「価格」は、一つのボタンのふた面でした。押すたびに
-       裏返る作りで、動きとしては綺麗だったのですが、**価格はタブの
-       持ち場ではありません**——買い物の途中で開くものではなく、値段を
-       仕込むときにたまに開くものです。買うものの上の帯から呼ぶ形にして、
-       タブは一つに戻しました。 */
-    { id: "list", label: "買うもの", icon: "list" },
+    { id: "todo", pair: "archive", label: "やること", icon: "checklist" },
+    { id: "list", pair: "prices", label: "買うもの", icon: "list" },
     { id: "diet", label: "ダイエット", icon: "scale" },
+    { id: "settings", label: "設定", icon: "gear" },
   ];
+
+  /* 裏面の名前と絵。表と同じ形で持っておくと、塗るときに分岐が要りません。 */
+  const FACES = {
+    todo:     { label: "やること",   icon: "checklist" },
+    archive:  { label: "daily",      icon: "book" },
+    list:     { label: "買うもの",   icon: "list" },
+    prices:   { label: "価格",       icon: "tag" },
+    diet:     { label: "ダイエット", icon: "scale" },
+    settings: { label: "設定",       icon: "gear" },
+  };
+
+  /* どちらの面を見ていたか。組ごとに覚えます——価格を見ていた人が
+     ダイエットへ寄って戻ってきたとき、買うものに巻き戻るのは
+     「戻った」ではなく「やり直し」なので。 */
+  const lastFace = {};
+  const tabOf = (id) => TABS.find((t) => t.id === id || t.pair === id);
+  /* `t.pair &&` を落とすと、裏面を持たないタブで undefined === undefined が
+     成り立って show(undefined) を呼びます（設定が開かなくなりました）。 */
+  const faceOf = (t) => (t.pair && lastFace[t.id] === t.pair ? t.pair : t.id);
 
   /* 引き出し（価格・設定）を、どこから開けたか。**一つの変数ではなく積み木**
      です——買うもの → 価格 → 設定 と潜れるようになったので、「戻る」は
@@ -89,15 +118,27 @@
       /* 絵は .tab-ico-face に入れます。丸い下地（.tab-ico）と絵を分けて
          おくと、選ばれた印（下地）と絵の差し替えが別々に効きます。 */
       const btn = node(html`
-        <button class="tab tab-${t.id}" role="tab"
+        <button class="tab tab-${t.id} ${t.pair ? "is-pair" : ""}" role="tab"
                 data-tab="${t.id}" aria-controls="screen-${t.id}">
           <span class="tab-ico"><span class="tab-ico-face" data-face="${t.id}"></span></span>
           <span class="tab-label"></span>
+          ${t.pair ? html`<span class="tab-flip" aria-hidden="true"><i></i><i></i></span>` : ""}
         </button>
       `);
-      btn.querySelector(".tab-ico-face")
-        .append(node(html`<span>${icon(t.icon)}</span>`).firstChild);
-      btn.addEventListener("click", () => show(t.id));
+      /* ふた面の組は、**いま居るタブをもう一度押すと裏返ります。**
+         居ないところから押したときは、最後に見ていた面へ——見ていた面を
+         覚えていないと、価格から寄り道して戻るたびに買うものへ巻き戻り、
+         「戻った」ではなく「やり直し」になります。 */
+      btn.addEventListener("click", () => {
+        const here = t.id === active || t.pair === active;
+        if (here && t.pair) {
+          const to = active === t.id ? t.pair : t.id;
+          lastFace[t.id] = to;
+          show(to);
+          return;
+        }
+        show(here ? active : faceOf(t));
+      });
       bar.append(btn);
     });
     paintTabs();
@@ -107,13 +148,32 @@
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
       if (!btn) return;
-      /* 価格は買うものの引き出しなので、そこに居るあいだも「買うもの」が
-         光ったままです——帯のどこも光っていない画面は、迷子に見えます。 */
-      const here = t.id === active || (t.id === "list" && active === "prices");
+      const here = t.id === active || t.pair === active;
+      /* 帯は**いま出ている面**の名前と絵になります。「押すと何になるか」
+         ではありません——帯はいる場所を言うもので、行き先を言うものでは
+         ないので。裏返せることは、居るところをもう一度押したときに
+         分かります。 */
+      const face = FACES[here ? active : faceOf(t)] || FACES[t.id];
       btn.setAttribute("aria-selected", String(here));
       btn.querySelector(".tab-ico-face").classList.add("is-on");
+      const ico = btn.querySelector(".tab-ico-face");
+      if (ico.dataset.sig !== face.icon) {
+        ico.dataset.sig = face.icon;
+        ico.innerHTML = "";
+        ico.append(node(html`<span>${icon(face.icon)}</span>`).firstChild);
+      }
       const label = btn.querySelector(".tab-label");
-      if (label.dataset.sig !== t.label) { label.dataset.sig = t.label; label.textContent = t.label; }
+      if (label.dataset.sig !== face.label) {
+        label.dataset.sig = face.label;
+        label.textContent = face.label;
+      }
+      /* 下の二つの点。左が表、右が裏。塗られているほうが、いま見ている面。 */
+      const flip = btn.querySelector(".tab-flip");
+      if (flip) {
+        const onPair = here && active === t.pair;
+        flip.children[0].classList.toggle("is-on", !onPair);
+        flip.children[1].classList.toggle("is-on", onPair);
+      }
     });
 
     /* 数えるのは、**やると言ったもの**だけです。絵の上でもタブの上でも
@@ -126,8 +186,10 @@
        見えます。見える場所が違っても、数が持つ意味は変わりません。 */
     paintAppBadge();
 
-    paintTabBadge("list", tripCount());
-    paintTabBadge("todo", todoBadge());
+    /* 数は、その面が出ているときだけ。価格を見ているのに「買うもの3件」と
+       出ていると、いま見ている画面の数だと読まれます。 */
+    paintTabBadge("list", active === "prices" ? 0 : tripCount());
+    paintTabBadge("todo", active === "archive" ? 0 : todoBadge());
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
        daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
@@ -821,7 +883,10 @@
   /* Screens off the tab bar — 価格・設定 — are opened by name from the screens
      that link to them, and hand the way back with them. */
   KN.app.showScreen = show;
-  const OFF_BAR = ["prices", "settings"];
+  /* 引き出し（帯に自分の場所を持たない画面）。価格と設定は帯へ移ったので、
+     いまは空です。それでも仕組みは残します——将来また潜る画面ができた
+     ときに、戻り道の積み木がそのまま使えるので。 */
+  const OFF_BAR = [];
   KN.app.backScreen = () => {
     const to = drawerFrom.pop() || HOME_OF_DRAWER;
     goingBack = true;

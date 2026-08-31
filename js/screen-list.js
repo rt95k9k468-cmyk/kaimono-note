@@ -28,7 +28,6 @@
         <header class="topbar">
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
-              <h1 class="topbar-title">買い物リスト</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* No 「まとめて削除」 on this bar any more. Having bought
@@ -44,12 +43,8 @@
                   ものではなかったので、外しました。かわりに、値段を仕込む
                   ところ（商品と価格）への戸を置きます。値札の絵にしたのは、
                   行った先の画面が値札を並べているからです。 */""}
-            <button class="icon-btn js-prices" aria-label="商品と価格" title="商品と価格">
-              ${icon("tag")}
-            </button>
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -77,8 +72,6 @@
     els = {
       sub:        chrome.querySelector(".js-sub"),
       layout:     chrome.querySelector(".js-layout"),
-      settings:   chrome.querySelector(".js-settings"),
-      prices:     chrome.querySelector(".js-prices"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -92,8 +85,6 @@
     };
 
     els.layout.addEventListener("click", KN.ui.toggleLayout);
-    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
-    els.prices.addEventListener("click", () => KN.app.showScreen("prices"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {

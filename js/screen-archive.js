@@ -1124,7 +1124,6 @@
         <header class="topbar">
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
-              <h1 class="topbar-title">daily</h1>
               <p class="topbar-sub js-sub"></p>
             </div>
             ${/* 右端から 設定・さがす・書き出し。ほかの三画面と同じ並べ方で、
@@ -1132,7 +1131,6 @@
             <button class="icon-btn js-export" aria-label="この月を書き出す">${icon("download")}</button>
             <button class="icon-btn js-search-btn" aria-label="文字でさがす">${icon("search")}</button>
             <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
-            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -1164,7 +1162,6 @@
        少し下へ引くと出てきます（ui.js の parkSearch）。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
     root.querySelector(".js-export").addEventListener("click", exportThisMonth);
-    root.querySelector(".js-settings").addEventListener("click", () => KN.app.showScreen("settings"));
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
