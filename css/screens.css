@@ -2689,7 +2689,11 @@ a.btn { text-decoration: none; }
 
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 
-.arc-body { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
+/* 中身は紙（.tl-sheet.is-daily）の中へ移りました。ここに残っているのは
+   暦と紙の二つだけで、そのあいだは空けません——空けると、暦の下に地の
+   帯が一本できて、紙が「浮いている」ように見えます。段どうしの間は紙の
+   ほうが持ちます。 */
+.arc-body { display: flex; flex-direction: column; padding-bottom: var(--sp-4); }
 
 /* ---------------- ＋ の上に出る、行き先の選択 ----------------
 
@@ -3686,6 +3690,7 @@ a.btn { text-decoration: none; }
    （あれは種類ではなく「これは過去から来たものだ」という別の合図で、
    ほかの行と混ざってはいけないので）。 */
 .card.arc-log,
+.card.arc-counts,
 .card.arc-list {
   margin-left: 0;
   margin-right: 0;
@@ -3709,6 +3714,19 @@ a.btn { text-decoration: none; }
   border-right: none;
   box-shadow: none;
 }
+
+/* daily の紙。やることと同じ一枚で、掴めば暦が開きます。中身の段どうしの
+   間は .arc-body が空けていました——段が紙の中へ移ったので、その役目も
+   紙が引き受けます。 */
+.tl-sheet.is-daily {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-4);
+}
+/* 掴み手のすぐ下に「あの日」や Daily Log の枠線が来ると、掴み手が線に
+   刺さって見えます。ひと呼吸ぶん空けます。 */
+.tl-sheet.is-daily > .tl-grip { margin-bottom: calc(var(--sp-4) * -1 + 2px); }
 
 /* 行ぜんぶが、ひと呼吸だけ光る。
 
