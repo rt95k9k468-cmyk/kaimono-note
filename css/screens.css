@@ -309,9 +309,9 @@
   top: var(--topbar-h, 0px);
   z-index: 12;
   padding: var(--sp-3) var(--sp-4) var(--sp-2);
-  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  /* 上のバーと同じ理由で、透かしません（base.css の .topbar）。下を白い
+     紙が流れるので、透かすと日付や曜日の裏に行の字が重なります。 */
+  background: var(--c-bg);
   border-bottom: 1px solid transparent;
   transition: border-color var(--dur) var(--ease);
 }
@@ -335,15 +335,53 @@
   border-bottom-color: transparent;
 }
 
+/* 画面の題としての日付（上のバー）。参考にした画面と同じ組みです：
+   年だけ差し色で、月日が黒。右に「›」——押すと暦が月ぜんぶに開きます。
+
+   大きさは幅に合わせて縮みます。「2026年12月31日」は390pxの画面で
+   26pxだと右の四つのボタンとぶつかるので、clamp で折り合いを付けます。 */
+.topbar-day {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-right: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+.topbar-day .topbar-title {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  /* 実測は 428pt の画面で 26px 相当。狭い端末では ‹ › とぶつかるので、
+     幅に合わせて縮めます。 */
+  font-size: clamp(18px, 6.4vw, 26px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.day-y { color: var(--c-primary-fill); }
+.day-md { color: var(--c-text); }
+.day-more {
+  display: grid; place-items: center;
+  flex: none;
+  color: var(--c-primary-fill);
+  transition: transform var(--dur) var(--ease);
+}
+.day-more svg { width: 17px; height: 17px; stroke-width: 2.6; }
+.topbar-day[aria-expanded="true"] .day-more { transform: rotate(90deg); }
+.topbar-day:active { opacity: .6; }
+
 .cal-head {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 var(--sp-2);
+  margin: 0 0 var(--sp-1);
   padding: 0 2px;
 }
-.cal-month { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
-.cal-year { font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); }
 
 /* ‹ › at the far end, and — only once you have wandered — the way back. The
    arrows are the same chevron the app uses everywhere, turned. */
@@ -455,13 +493,16 @@
 /* Today, circled. Filled rather than outlined: an outline is one more ring
    among 30 numbers, and the one thing this calendar has to answer without
    being read is 「今日はどこ」. */
+/* 今日は**黒**です（参考画面の実測）。基調色で塗っていましたが、暦の中の
+   絵や、下で選んでいる日の輪も基調色なので、今日だけが浮きませんでした。
+   黒はこの画面のどこにも無い色なので、探さずに見つかります。 */
 .cal-day.is-today .cal-n {
-  background: #e05a3a;
-  color: #fff;
+  background: var(--c-text);
+  color: var(--c-bg);
   font-weight: 700;
 }
 .cal-day.is-today.is-sun .cal-n,
-.cal-day.is-today.is-sat .cal-n { color: #fff; }
+.cal-day.is-today.is-sat .cal-n { color: var(--c-bg); }
 
 /* いま下で見ている日。今日の赤丸とは別の印にします——今日は「どこか」で、
    こちらは「いまどこを見ているか」。二つが同じ塗りだと、今日の位置を
@@ -491,7 +532,10 @@
 .cal-ring.is-jump { transition: opacity var(--m-state) var(--ease); }
 .cal-day.is-here .cal-n { color: var(--c-primary); }
 /* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
-.cal-day.is-here.is-today .cal-n { color: #fff; }
+/* 今日を見ているとき。塗りは今日のもの（地の色の反転）なので、字は
+   その上で読める色に戻します——#fff を直に書いていたので、暗い面では
+   白い塗りに白い字になっていました。 */
+.cal-day.is-here.is-today .cal-n { color: var(--c-bg); }
 /* 今日を見ているときも、輪は同じ緑です。白い輪にしていましたが、
    同じ「いま見ている」印が、日によって色を変える理由はありません。
    赤い丸の上に緑の輪が重なって、両方が読めます。 */
@@ -500,16 +544,42 @@
    red-to-blue run below is visible up here as well. Up to three: past that it
    is 「詰まっている」 either way, and four dots in a 40px cell is a smudge.
    The row keeps its height with none, or the numbers jog as todos move. */
+/* 日ごとの絵。点をやめて、その日にあるものの絵を並べます（参考画面と
+   同じ）。四つまで、少しずつ重ねて——並べきると一日ぶんが 4×18px で
+   72px になり、7日ぶんが画面に入りません。重ねれば 18+3×11 = 51px。
+
+   高さは中身が無くても取ります。取らないと、やることが増えた日だけ
+   マスが背伸びして、数字の並びが上下に揺れます。 */
 .cal-dots {
   display: flex;
-  gap: 2px;
-  height: 4px;
+  width: 100%;
+  height: 20px;
   align-items: center;
+  justify-content: center;
+  /* マスからはみ出させません。三つ重ねて 20+2×13 = 46px、7分の1のマス
+     （390px の画面で約51px）に収まります。 */
+  overflow: hidden;
 }
-.cal-dot {
-  width: 4px; height: 4px;
+/* 参考画面は 22px 相当でした。ここを 17px まで詰めたら、中の絵が12pxに
+   なって何の絵か読めなくなりました——あちらの絵は白抜きの一色なので
+   小さくても形が残りますが、こちらは色の付いた手描きです。**絵が読める
+   大きさ**のほうを取って、そのぶん出す数を四つから三つに減らします。 */
+.cal-mark {
+  display: grid; place-items: center;
+  width: 20px; height: 20px;
+  flex: none;
   border-radius: var(--r-full);
-  background: var(--cat, var(--c-border-2));
+  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 55%, var(--c-bg));
+  /* 重ねる。左のものが上に来るように、あとのものを下へ潜らせます。 */
+  margin-left: -7px;
+}
+.cal-mark:first-child { margin-left: 0; }
+.cal-mark .todo-mark,
+.cal-mark .todo-mark svg { width: 14px; height: 14px; }
+.cal-mark .todo-dot {
+  width: 6px; height: 6px; border-radius: var(--r-full);
+  background: var(--c-bg);
+  opacity: .95;
 }
 /* ---- ダイエットのカレンダー：飲酒の帯 ----
 
@@ -590,16 +660,16 @@
    its heading, and the heading itself washed in that shelf's own colour. The
    wash is faint (7%), but fifteen faint washes in a row from red to blue is
    the ramp made visible rather than fifteen identical grey lines. */
-.js-body > .todo-group { border-top: 1px solid var(--c-border); }
-.js-body > .todo-group > .todo-head {
+.tl-sheet > .todo-group { border-top: 1px solid var(--c-border); }
+.tl-sheet > .todo-group > .todo-head {
   background: color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent);
   padding-top: var(--sp-3);
   padding-bottom: var(--sp-3);
 }
-.js-body > .todo-group:not(.is-empty) > .todo-head { padding-bottom: var(--sp-2); }
+.tl-sheet > .todo-group:not(.is-empty) > .todo-head { padding-bottom: var(--sp-2); }
 /* The band is the heading's, so a shelf holding rows keeps them below it on
    the page's own ground rather than inside a tinted block. */
-.js-body > .todo-group > .item-list { padding-top: var(--sp-2); }
+.tl-sheet > .todo-group > .item-list { padding-top: var(--sp-2); }
 
 /* 今日 gets the panel 今回買うもの has: the rows sit inside something rather
    than under a heading that scrolls away. The wash is 今日's own colour rather
@@ -3163,15 +3233,18 @@ a.btn { text-decoration: none; }
   text-align: right;
   transform: translateY(-50%);
 }
+/* 点は、行と行の**境目**に立ちます。丸（50px）は64pxの行のまん中なので、
+   境目から上下の丸までの隙間はそれぞれ7px。点は輪まで含めてそこに収まる
+   大きさ（4.5＋2.5＝7px）でなければ、次の丸に噛みます。 */
 .tl-now-dot {
   position: absolute;
   left: 72px; top: 0;
-  margin-top: -5.5px;
-  width: 11px; height: 11px;
-  margin-left: -5.5px;
+  margin-top: -4.5px;
+  width: 9px; height: 9px;
+  margin-left: -4.5px;
   border-radius: var(--r-full);
   background: var(--c-primary);
-  box-shadow: 0 0 0 3px var(--c-bg);
+  box-shadow: 0 0 0 2.5px var(--c-surface);
 }
 .tl-now-line {
   position: absolute;
@@ -3208,8 +3281,43 @@ a.btn { text-decoration: none; }
    のほうが大きい数を持っていれば、下の日の見出しを覆ってしまいます。
    日ごとに層を閉じておけば、比べ合うのは同じ日の中だけ——そして日は
    並び順どおり、あとの日が前になります。 */
-.js-body > .todo-group { position: relative; z-index: 0; }
-.js-body > .todo-group > .todo-head {
+/* ---------------- 一日ぶんの紙 ----------------
+
+   参考にした画面は、暦のうしろの地（うっすら紫がかった灰）の上に、角の
+   丸い白いシートを重ねています。掴み手（上の小さな灰色の棒）まで含めて
+   「ここから下は別の層」と言っていて、線を一本も引かずに、暦とリストが
+   別の面にあることが読めます。
+
+   下は角を丸めません。画面の下まで続くもので、そこで終わるものでは
+   ないからです。 */
+.tl-sheet {
+  position: relative;
+  background: var(--c-surface);
+  border-radius: 22px 22px 0 0;
+  padding-top: 4px;
+  /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
+     ——途中で切れると、その下の地が「まだ何かある」に見えます。
+     暦の高さは日によって変わる（週／月）ので、そのぶんは引きません
+     ——足りないぶんは下の余白が引き受けます。 */
+  min-height: 62vh;
+  /* 紙のふちは、地との差だけで見せます。影を足すと、この一枚が「浮いて
+     いる」ように見えて、下までひと続きに流れる感じが切れます。 */
+}
+.tl-grip {
+  display: block;
+  width: 36px; height: 5px;
+  margin: 5px auto 0;
+  border-radius: var(--r-full);
+  background: var(--c-border-2);
+  opacity: .8;
+}
+
+.tl-sheet > .todo-group { position: relative; z-index: 0; }
+/* 紙の中では、いちばん上の見出しの上の線は要りません（紙のふちが
+   すでに切れ目です）。 */
+.tl-sheet > .todo-group:first-of-type,
+.tl-sheet > .trip.todo-today:first-of-type { border-top: 0; }
+.tl-sheet > .todo-group > .todo-head {
   position: relative;
   z-index: 1;
   /* 棚の色の薄い染めは、そのまま。その下に地の色を一枚敷いて、透けなく

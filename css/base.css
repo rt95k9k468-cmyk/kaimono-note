@@ -664,9 +664,14 @@ a { color: var(--c-primary); }
   top: 0;
   z-index: 20;
   padding: calc(var(--safe-t) + var(--sp-4)) var(--sp-4) var(--sp-3);
-  background: color-mix(in srgb, var(--c-bg) 88%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  /* **透かしません。**
+
+     すりガラス（88%＋ぼかし）にしていました。iOS らしい面ですが、下に
+     まっ白な紙が流れるようになってから、その紙と行が帯を通して透けて
+     見えるようになりました——上のバーの中に、読めない字が薄く重なる。
+     参考にした画面の帯は地の色そのままで塗ってあります。地と紙の差は
+     もともと一段しかないので、透かして得るものがありません。 */
+  background: var(--c-bg);
   border-bottom: 1px solid transparent;
   transition: border-color var(--dur) var(--ease);
 }
