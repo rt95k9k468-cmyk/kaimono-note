@@ -322,14 +322,16 @@
     wrap.className = "kn-burst";
     wrap.style.left = cx + "px";
     wrap.style.top = cy + "px";
-    const n = 6;
+    /* **輪です。** 前は6つの星を、角度も距離も少しずつ散らして飛ばして
+       いました（火花）。参考にした画面は、丸い点を等間隔にきれいな輪で
+       広げます——散らすと「弾けた」ですが、揃えると「一周した」になって、
+       済ませたことの区切りらしく収まります。 */
+    const n = 12;
+    const dist = 19;
     for (let i = 0; i < n; i++) {
       const spark = document.createElement("i");
-      const angle = (360 / n) * i + (Math.random() * 22 - 11);
-      const dist = 16 + Math.random() * 10;
-      spark.style.setProperty("--a", angle.toFixed(1) + "deg");
-      spark.style.setProperty("--d", dist.toFixed(1) + "px");
-      spark.style.animationDelay = Math.round(Math.random() * 40) + "ms";
+      spark.style.setProperty("--a", ((360 / n) * i).toFixed(1) + "deg");
+      spark.style.setProperty("--d", dist + "px");
       wrap.appendChild(spark);
     }
     document.body.appendChild(wrap);

@@ -104,9 +104,16 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
-            <div style="flex:1;min-width:0">
-              <h1 class="topbar-title">やること</h1>
-            </div>
+            ${/* 題（「やること」）は外しました。タブの名前は下の帯がすでに
+                  言っていて、上でもう一度言う必要がありません。かわりに
+                  **いま見ている日**が、すぐ下の行に大きく出ます（参考に
+                  した画面と同じで、日付そのものが画面の題です）。
+
+                  ここへ置かずに一段下げたのは、幅が足りないからです。
+                  「2026年8月31日」を参考画面と同じ大きさで出すと 200px
+                  を超え、右の四つのボタンと同居できません。あちらには
+                  ボタンがないので一行で済んでいます。 */""}
+            <div style="flex:1;min-width:0"></div>
             ${/* Right to left: 設定, 並べ方, さがす — the same three, in the
                   same places, on every screen that has them. 設定 is last on
                   the right because it is the one that leaves. */""}
@@ -152,6 +159,9 @@
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
        しまっているあいだは、同じ暦に斜線の入った絵に変わります。 */
+    /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
+       週の帯の右にあった「週」の札と同じ切り替えなので、そちらは外して
+       こちらに寄せました——同じことを二か所に置かないために。 */
     const calBtn = chrome.querySelector(".js-cal-btn");
     if (calBtn) {
       paintCalBtn(calBtn);
@@ -309,12 +319,10 @@
     const shown = calShown();
     sec.classList.toggle("is-week", !open);
     sec.classList.toggle("is-hidden", !shown);
-    const btn = sec.querySelector(".js-calmore");
-    if (btn) {
-      btn.textContent = open ? "月" : "週";
-      btn.setAttribute("aria-expanded", String(open));
-      btn.setAttribute("aria-label", open ? "週だけにする" : "月ぜんぶを見る");
-    }
+    /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
+       塗るものはもうありません——開いているかどうかは、題の右の「›」が
+       回ることで言います（paintDayTitle）。 */
+    paintDayTitle();
     if (open) {
       sec.querySelectorAll(".is-off-week").forEach((c) => c.classList.remove("is-off-week"));
       return;
@@ -339,6 +347,21 @@
        移っていくときも、週がそれについていくように）。 */
     markWeek(els.cal, hereDay || todayKey());
     paintHere();
+    paintDayTitle();
+  }
+
+  /** 画面の題に、いま見ている日を書きます。 */
+  function paintDayTitle() {
+    if (!els.dayTitle || !els.dayTitle.isConnected) return;
+    const key = hereDay || todayKey();
+    const d = KN.util.dayDate(key);
+    if (!d || isNaN(d.getTime())) return;
+    els.dayTitle.querySelector(".day-y").textContent = String(d.getFullYear());
+    els.dayTitle.querySelector(".day-md").textContent =
+      `年${d.getMonth() + 1}月${d.getDate()}日`;
+    els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
+    els.dayTitle.setAttribute("aria-label",
+      `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日。押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
   }
 
   function paintHere(jump) {
@@ -1539,6 +1562,7 @@
   function render() {
     KN.ui.paintLayoutButton(els.layout);
     renderBody();
+    paintDayTitle();
   }
 
   let groups = [];
@@ -1575,6 +1599,20 @@
       els.body.append(els.cal);
     }
 
+    /* 一日ぶんは、**白い紙**の上に乗ります。
+
+       参考にした画面は、暦のうしろの地（うっすら紫がかった灰）の上に、
+       角の丸い白いシートを一枚重ねています。上の掴み手（小さな灰色の棒）
+       まで含めて「ここから下は別の層」と言っていて、暦とリストが同じ面に
+       並んでいないことが、線を引かなくても読めます。
+
+       検索しているあいだは出しません——絞った結果は「一日」ではないので、
+       一日ぶんの紙に乗せると嘘になります。 */
+    const sheet = query ? els.body : node(html`
+      <div class="tl-sheet"><span class="tl-grip" aria-hidden="true"></span></div>
+    `);
+    if (sheet !== els.body) els.body.append(sheet);
+
     if (!all.length) {
       els.body.append(node(html`
         <div class="empty">
@@ -1606,24 +1644,24 @@
        something in them: one is a problem rather than a place, and the other is
        an overflow rather than a shelf. */
     const late = groups.find((g) => g.late);
-    if (rowsOf("late").length) els.body.append(groupSection(late, rowsOf("late"), tiles));
+    if (rowsOf("late").length) sheet.append(groupSection(late, rowsOf("late"), tiles));
 
     /* 暦で過ぎた日を押したときは、その日の時間割を今日の上に出します
        （下の pastSection）。 */
     if (pastDay && !tiles && timelineOn()) {
       const sec = pastSection(pastDay, open);
-      if (sec) els.body.append(sec);
+      if (sec) sheet.append(sec);
     }
 
-    els.body.append(todayPanel(rowsOf, tiles));
+    sheet.append(todayPanel(rowsOf, tiles));
 
     groups.filter((g) => !g.late && !g.today).forEach((g) => {
       const rows = rowsOf(g.id);
       if (!rows.length && g.onlyWhenFull) return;
-      els.body.append(groupSection(g, rows, tiles));
+      sheet.append(groupSection(g, rows, tiles));
     });
 
-    if (closed.length) els.body.append(archiveSection(closed, tiles));
+    if (closed.length) sheet.append(archiveSection(closed, tiles));
     restoreTop(keepTop);
   }
 
@@ -1851,20 +1889,40 @@
     const U = KN.util;
     const sec = node(html`
       <section class="cal">
+        ${/* 見出しは、いま見ている日そのものです。年だけ差し色にするのも
+              参考画面と同じ（実測 #ff935f）——年は「いつもと同じ」ので
+              読まなくてよく、月日を先に読ませたい。薄い色がその順を
+              作ります。右の「›」を押すと、週の帯が月ぜんぶに開きます。
+
+              月と年を別に出す行（「8月 2026」）と「週」の札は、ここに吸収
+              して消えました。残る ‹ › は前後の週へめくるためのもので、
+              参考画面には無いものですが、指で送るほかに道が無いと遠い日へ
+              何度も払うことになるので残しています。 */""}
         <h2 class="cal-head">
-          <span class="cal-month"></span>
-          <span class="cal-year"></span>
+          <button type="button" class="topbar-day js-day-title">
+            <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
+            <span class="day-more">${icon("chevron")}</span>
+          </button>
           <button type="button" class="cal-now js-now" hidden>今日へ</button>
           <span class="cal-nav">
-            <button type="button" class="cal-more js-calmore" aria-expanded="false"></button>
-            <button type="button" class="cal-arrow js-prev" aria-label="前へ">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次へ">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-prev" aria-label="前の週へ">${icon("chevron")}</button>
+            <button type="button" class="cal-arrow js-next" aria-label="次の週へ">${icon("chevron")}</button>
           </span>
         </h2>
         <div class="cal-grid"></div>
       </section>
     `);
     const grid = sec.querySelector(".cal-grid");
+
+    /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
+       前は帯の右に「週」の札を置いていましたが、同じことを二か所で
+       言わないよう、題のほうに寄せました。 */
+    els.dayTitle = sec.querySelector(".js-day-title");
+    els.dayTitle.addEventListener("click", () => {
+      haptic();
+      store.setCalPref("todo", { open: !calOpen() });
+    });
+    paintDayTitle();
 
     /* 月を変えたら、下のリストもその月の頭へ運びます。上だけが動くと、
        カレンダーと棚が別々のものを指したまま並ぶことになります。
@@ -1885,10 +1943,6 @@
       setCalMonth(d.getFullYear(), d.getMonth(), true);
       scrollToMonth(d.getFullYear(), d.getMonth());
     };
-    sec.querySelector(".js-calmore").addEventListener("click", () => {
-      haptic();
-      store.setCalPref("todo", { open: !calOpen() });
-    });
     sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
     sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
@@ -1947,9 +2001,27 @@
       load.set(t.due, (load.get(t.due) || 0) + 1);
     });
 
+    /* 日ごとの**絵**。点のかわりに、その日にあるものの絵をそのまま並べます
+       （参考にした画面と同じ）。点は「詰まっている／いない」しか言いません
+       が、絵は「病院がある」「買い物の日だ」まで言います。暦を読む目的の
+       ほとんどは後者です。
+
+       繰り返すものも入れます。上の点は繰り返しを外していました——毎週火曜の
+       ゴミ出しが九日に点を打つと、点が「ふつうでない日」を指せなくなるから
+       です。絵は違います：絵は数ではなく**中身**なので、毎週あるものが毎週
+       出ているのは、そのとおりで正しい。
+
+       三つまで（参考画面は四つ）。一つ減らしたのは、こちらの絵が読める
+       大きさ（20px）だと四つ目がマスからはみ出すからです。 */
+    const marks = new Map();
+    (open || []).forEach((t) => {
+      if (!t.due) return;
+      const list = marks.get(t.due) || [];
+      if (list.length < 3) { list.push(t); marks.set(t.due, list); }
+    });
+
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-    sec.querySelector(".cal-month").textContent = `${month + 1}月`;
-    sec.querySelector(".cal-year").textContent = String(year);
+
     sec.querySelector(".js-now").hidden = thisMonth;
 
     const grid = sec.querySelector(".cal-grid");
@@ -1978,7 +2050,9 @@
         </button>
       `);
       const dots = cell.querySelector(".cal-dots");
-      for (let i = 0; i < Math.min(n, 3); i++) dots.append(node(html`<i class="cal-dot"></i>`));
+      (marks.get(key) || []).forEach((t) => dots.append(node(html`
+        <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
+      `)));
       /* Tapping a date goes to that date's shelf. Otherwise the month is a
          picture of somewhere you cannot get to — 8月17日 is visible up here
          and four screens down there, with nothing joining them. */
@@ -2808,15 +2882,61 @@
         });
         list.append(line);
       });
-      li.querySelector(".tl-subs-chip").addEventListener("click", (e) => {
+      /* ひらく・たたむは、**その場で**やります。
+
+         前はここで render() を呼んで、画面ぜんぶを組み直していました。
+         組み直すと一瞬で入れ替わるので、手順が「出てきた」のか「もとから
+         あった」のかが分かりません。読んでいた位置も、開閉のたびに
+         測り直しになります。高さを動かすだけなら、行はその場に残ります。 */
+      const chip = li.querySelector(".tl-subs-chip");
+      chip.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (openSubs.has(t.id)) openSubs.delete(t.id); else openSubs.add(t.id);
-        KN.motion.fire("select", e.currentTarget);
-        render();
+        const open = !openSubs.has(t.id);
+        if (open) openSubs.add(t.id); else openSubs.delete(t.id);
+        KN.motion.fire("select", chip);
+        chip.setAttribute("aria-expanded", String(open));
+        chip.setAttribute("aria-label", `${t.title} の手順を${open ? "たたむ" : "ひらく"}`);
+        slideSubs(wrap, open);
       });
       li.append(wrap);
     }
     return li;
+  }
+
+  /** 手順の段を、高さで開け閉めします。
+
+      height を auto のままでは動かせないので、実測した高さまで動かして、
+      着いたら auto に戻します（戻さないと、あとで手順が増えたときに
+      古い高さで切れます）。動きを減らす設定の人には、瞬時に。 */
+  function slideSubs(wrap, open) {
+    const list = wrap.querySelector(".tl-sub-list");
+    if (!list) return;
+    wrap.classList.toggle("is-open", open);
+    const clear = () => {
+      list.style.height = "";
+      list.style.overflow = "";
+      list.style.transition = "";
+    };
+    if (KN.motion.still()) {
+      clear();
+      list.hidden = !open;
+      return;
+    }
+    const dur = KN.motion.ms(open ? "--m-sheet-open" : "--m-sheet-close");
+    if (open) list.hidden = false;
+    const h = list.scrollHeight;
+    list.style.overflow = "hidden";
+    list.style.height = (open ? 0 : h) + "px";
+    /* 一枚待ってから動かします。同じフレームで from と to を書くと、
+       ブラウザは to しか見ません（動かずに飛びます）。 */
+    requestAnimationFrame(() => {
+      list.style.transition = `height ${dur}ms var(--ease-${open ? "out" : "in"})`;
+      list.style.height = (open ? h : 0) + "px";
+    });
+    setTimeout(() => {
+      clear();
+      if (!open) list.hidden = true;
+    }, dur + 40);
   }
 
   /* ---------------- picking one up ----------------

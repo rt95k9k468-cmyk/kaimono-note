@@ -783,24 +783,25 @@ button, [role="tab"] {
   z-index: 600;
   pointer-events: none;
 }
+/* 点は**丸**です。星の形（clip-path の十角形）をやめました——参考にした
+   画面は、押した印のまわりに丸い点が等間隔で一周します。星は「弾けた」、
+   丸の輪は「一周した」。済ませたことの区切りには後者のほうが合います。
+
+   色は塗りの色（丸や背骨と同じ）。どこから出たかが、色でつながります。 */
 .kn-burst i {
   position: absolute;
-  width: 7px; height: 7px;
-  margin: -3.5px 0 0 -3.5px;
-  /* 主色の緑。専用の金色（--c-warmth）を一つ立てていましたが、火花は
-     済ませた丸から飛ぶもので、その丸と同じ色のほうが、どこから出たかが
-     はっきりします。 */
-  background: var(--c-primary);
-  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
-                      50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  width: 5px; height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--c-primary-fill);
   transform: rotate(var(--a)) translateY(0) scale(0);
   opacity: 0;
-  animation: kn-spark .5s var(--ease-out, ease) forwards;
+  animation: kn-spark .46s var(--ease-out, ease) forwards;
 }
 @keyframes kn-spark {
-  0%   { transform: rotate(var(--a)) translateY(0) scale(0);    opacity: 1; }
-  35%  { transform: rotate(var(--a)) translateY(calc(-1 * var(--d))) scale(1); opacity: 1; }
-  100% { transform: rotate(var(--a)) translateY(calc(-1 * var(--d) - 7px)) scale(.35); opacity: 0; }
+  0%   { transform: rotate(var(--a)) translateY(calc(-1 * var(--d) * .45)) scale(0); opacity: 1; }
+  40%  { transform: rotate(var(--a)) translateY(calc(-1 * var(--d))) scale(1); opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(calc(-1 * var(--d) - 5px)) scale(.5); opacity: 0; }
 }
 
 /* ---------------- toast ---------------- */
