@@ -22,17 +22,97 @@
               どの画面の上の帯も一つずつ狭くなっていました。行き先が一つ
               なら、入口も一つでいい。
 
-              引き出しでなくなったので、題も戻るボタンも要りません——帯が
-              「設定」と言っていて、帰り道は帯そのものです。 */""}
+              上の帯は、**中へ入っているあいだだけ**出します。目次に居る
+              あいだは帯（下のタブ）が「設定」と言っているので要りません。
+              一段下がったら、そこがどこで、どう戻るかを言う必要があります。 */""}
+        <header class="topbar js-top" hidden>
+          <div class="topbar-row">
+            <button class="icon-btn set-back js-back" aria-label="設定へもどる">${icon("chevron")}</button>
+            <span class="topbar-title set-top-title js-top-title"></span>
+            ${/* 題を**まん中**に置くための、戻るボタンと同じ幅の空き。左に
+                  寄せると、題が戻るボタンの添え字に見えます。 */""}
+            <span class="set-back-pad" aria-hidden="true"></span>
+          </div>
+        </header>
         <div class="js-body"></div>
       </div>
     `);
 
     root.append(chrome);
-    els = { body: chrome.querySelector(".js-body"), topbar: null };
+    els = {
+      body: chrome.querySelector(".js-body"),
+      topbar: chrome.querySelector(".js-top"),
+      topTitle: chrome.querySelector(".js-top-title"),
+    };
 
-    /* 上の帯が無くなったので、貼りつく境目もありません。 */
+    chrome.querySelector(".js-back").addEventListener("click", () => {
+      KN.motion.fire("nav");
+      page = null;
+      render();
+      if (root) root.scrollTop = 0;
+    });
+
+    root.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    }, { passive: true });
   }
+
+  /* ---------------- 目次と、その中 ----------------
+
+     一枚に全部を並べていました。「表示」の次に「やること」、その次に
+     **お店が10行**、そのあとにカテゴリが9行——設定そのものと、設定の中の
+     一件一件が、同じ高さで縦に並んでいたわけです。「お店を1つ足す」と
+     「ダイエットの記録を消す」が同じ層に見えるのは、層が無いのと同じです。
+
+     二段にしました。**目次**（ここは行き先の名前だけ）と、**その中**
+     （押した一つぶんだけが画面ぜんぶを使う）。参考にした画面（Structured）
+     と同じ組みで、行は［色の付いた四角の絵］［名前］［いまの値］［›］。
+
+     中身の作りは何も変えていません——これまでの group() をそのまま、
+     一段下の画面に置いただけです。 */
+
+  /* いま開いている中の名前。null は目次。 */
+  let page = null;
+
+  /* 絵の四角の色。**基調色とは別の軸**です（からだの四つの輪と同じ理由
+     ——ここの色は「どの設定か」を言うもので、その人の好きな色の話では
+     ありません）。どれも白い絵が 3:1 以上で乗る濃さにしてあります。 */
+  const PAGES = [
+    {
+      group: "一般",
+      id: "look", title: "外観", icon: "palette", tint: "#5f9152",
+      build: () => [themeGroup()],
+      // 参考画面と同じで、いまの色をひと粒で出します。
+      value: () => {
+        const a = store.ACCENTS.find((x) => x.id === (store.get().settings.accent || "orange"));
+        return a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null;
+      },
+    },
+    {
+      group: "画面ごと",
+      id: "todo", title: "やること", icon: "checklist", tint: "#c96a61",
+      build: () => [todoGroup()],
+      value: () => (store.get().settings.todoTimeline !== false ? "時間割" : "一覧"),
+    },
+    {
+      id: "list", title: "買うもの", icon: "cart", tint: "#5686bd",
+      /* お店とカテゴリは、どちらも買うものの中の話です。目次に並べていた
+         ので「お店」と「表示」が同じ重さに見えていました。一段下げて、
+         二つ一緒にこの中へ。 */
+      build: () => [storesGroup(), categoriesGroup()],
+      value: () => {
+        const s = store.get();
+        return `お店 ${(s.stores || []).length}・カテゴリ ${(s.categories || []).length}`;
+      },
+    },
+    { id: "daily", title: "daily", icon: "book", tint: "#9a6fae", build: () => [dailyGroup()] },
+    { id: "diet", title: "ダイエット", icon: "scale", tint: "#bd7a2e", build: () => [dietGroup()] },
+    {
+      group: "データ",
+      id: "data", title: "バックアップと書き出し", icon: "download", tint: "#6a7d92",
+      build: () => [dataGroup()],
+    },
+  ];
 
   /* ---------------- 一枚に、ぜんぶ ----------------
 
@@ -52,15 +132,64 @@
 
   function render() {
     els.body.innerHTML = "";
+    const here = page && PAGES.find((p) => p.id === page);
+    if (here) renderPage(here);
+    else renderIndex();
+  }
+
+  /** 目次。行き先の名前と、いまの値だけ。 */
+  function renderIndex() {
+    els.topbar.hidden = true;
+    /* 保存できていないことは、どの層に居ても先に言います。中へ入る前に
+       目に入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) els.body.append(saveErrorBanner());
-    els.body.append(themeGroup());
-    els.body.append(todoGroup());
-    els.body.append(storesGroup());
-    els.body.append(categoriesGroup());
-    els.body.append(dailyGroup());
-    els.body.append(dietGroup());
-    els.body.append(dataGroup());
+
+    let card = null;
+    PAGES.forEach((p) => {
+      if (p.group) {
+        els.body.append(node(html`<h2 class="set-head">${p.group}</h2>`));
+        card = node(html`<div class="rows set-card"></div>`);
+        els.body.append(card);
+      }
+      const row = node(html`
+        <button type="button" class="row set-row" data-page="${p.id}">
+          <span class="set-tile" style="background:${p.tint}">${icon(p.icon)}</span>
+          <span class="row-main"><span class="row-title">${p.title}</span></span>
+          <span class="row-value set-value"></span>
+          <span class="row-chevron">${icon("chevron")}</span>
+        </button>
+      `);
+      const v = p.value ? p.value() : null;
+      const slot = row.querySelector(".set-value");
+      if (v && typeof v === "object") slot.append(v);
+      else if (v) slot.textContent = v;
+      row.addEventListener("click", () => {
+        KN.motion.fire("nav", row);
+        page = p.id;
+        render();
+        if (root) root.scrollTop = 0;
+      });
+      card.append(row);
+    });
+
     els.body.append(aboutBlock());
+  }
+
+  /** 押した一つぶん。中身はこれまでと同じ部品です。 */
+  function renderPage(p) {
+    els.topbar.hidden = false;
+    els.topTitle.textContent = p.title;
+    const wrap = node(html`<div class="set-page" data-page="${p.id}"></div>`);
+    p.build().forEach((sec) => {
+      /* 上の帯がもう題を言っているので、同じ字の見出しは落とします。
+         「お店 3件」のように帯と違うことを言っている見出しは残します
+         ——買うものの中には、お店とカテゴリの二つが並ぶので。 */
+      sec.querySelectorAll(".section-title").forEach((h) => {
+        if (h.textContent.trim() === p.title) h.remove();
+      });
+      wrap.append(sec);
+    });
+    els.body.append(wrap);
   }
 
   /* 直近の保存が容量不足などで失敗したままのとき、直るまでずっと出す行。

@@ -1701,6 +1701,80 @@
 
 .settings-group { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-5); }
 
+/* ---- 目次（設定の一段目） ----
+
+   参考にした画面（Structured）と同じ組みです。小さな灰色の見出しの下に、
+   角の丸い白いカードが一枚。行は［色の付いた四角の絵］［名前］［いまの値］
+   ［›］で、押すと一段下がります。
+
+   見出しは**カードの内側の余白と左端をそろえます**（画面の端から
+   16＋16＝32px）。字の頭が揃っていないと、見出しがどのカードのものか
+   毎回目で探すことになります。 */
+.set-head {
+  margin: var(--sp-6) 0 var(--sp-2);
+  padding: 0 calc(var(--sp-4) * 2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+/* 目次には上の帯がありません（下のタブがすでに「設定」と言っているので）。
+   帯が無いぶん、ノッチの深さはここが引き受けます——さもないと最初の見出しが
+   時刻や電波の下に潜ります。 */
+.js-body > .set-head:first-child,
+.js-body > .settings-group:first-child { margin-top: calc(var(--safe-t) + var(--sp-4)); }
+
+.set-card {
+  margin: 0 var(--sp-4);
+  /* 参考画面の角は、行の高さの三分の一ほど。中の四角の絵より一回り丸く
+     ないと、絵がカードの角に刺さって見えます。 */
+  border-radius: 18px;
+}
+
+/* 行そのものは、これまでの .row を借ります（同じ押し心地）。高さは参考
+   画面の実測（47pt）に寄せて、絵が収まるぶんだけ足します。 */
+.set-row { min-height: 54px; gap: var(--sp-3); }
+/* 仕切りは、**絵の右**から。端から端まで引くと、絵の列が縦の帯に見えて、
+   名前より先に色が読まれます。 */
+.set-card .set-row { border-bottom: none; position: relative; }
+.set-card .set-row + .set-row::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--sp-4) + 30px + var(--sp-3));
+  right: 0; top: 0;
+  height: 1px;
+  background: var(--c-border);
+}
+
+.set-tile {
+  flex: none;
+  width: 30px; height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  /* 絵は白抜き。ここは一本線のUIの絵で、手描きの品物の絵ではありません
+     ——あちらは色そのものが「何の品物か」を言うので白く抜けません
+     （CLAUDE.md）。こちらの色は「どの設定か」の目印なので、抜けます。 */
+  color: #fff;
+}
+.set-tile svg { width: 18px; height: 18px; stroke-width: 2.1; }
+
+.set-value { font-weight: 600; color: var(--c-text-3); }
+/* 外観の行は、字ではなく**いまの色そのもの**を出します（参考画面と同じ）。 */
+.set-dot {
+  display: block;
+  width: 15px; height: 15px;
+  border-radius: var(--r-full);
+}
+
+/* ---- 中（設定の二段目） ---- */
+.set-back svg { transform: rotate(180deg); }
+/* 題はまん中。左の戻るボタンと同じ幅を右にも空けます。 */
+.set-top-title { flex: 1; min-width: 0; text-align: center; }
+.set-back-pad { flex: none; width: 38px; }   /* .icon-btn と同じ幅 */
+.set-page { padding-top: var(--sp-3); }
+/* 帯が題を言っているので、中の一つめの見出しは JS が落とします。残った
+   見出し（買うものの中の「お店」「カテゴリ」）は、これまでどおり。 */
+
 .seg {
   display: grid;
   grid-auto-flow: column;
