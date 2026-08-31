@@ -17,79 +17,49 @@
 
     const chrome = node(html`
       <div class="stack">
-        ${/* No tab of its own any more. 設定 is not a place you live in — it
-              is a drawer you open, change one thing in, and shut. It opens
-              from the gear at the right-hand end of every screen's top bar and
-              carries its own way back to whichever asked for it. */""}
-        <header class="topbar">
-          <div class="topbar-row">
-            <button class="icon-btn js-back" aria-label="戻る" style="margin-left:-4px">
-              ${icon("chevron", "flip-x")}
-            </button>
-            <h1 class="topbar-title">設定</h1>
-          </div>
-        </header>
+        ${/* **帯の四つめになりました。** 前は画面ごとの歯車から開く引き出し
+              でしたが、同じ行き先への入口が四つあることになり、そのぶん
+              どの画面の上の帯も一つずつ狭くなっていました。行き先が一つ
+              なら、入口も一つでいい。
+
+              引き出しでなくなったので、題も戻るボタンも要りません——帯が
+              「設定」と言っていて、帰り道は帯そのものです。 */""}
         <div class="js-body"></div>
       </div>
     `);
 
     root.append(chrome);
-    els = { body: chrome.querySelector(".js-body"), topbar: chrome.querySelector(".topbar") };
-    chrome.querySelector(".js-back").addEventListener("click", () => KN.app.backScreen());
+    els = { body: chrome.querySelector(".js-body"), topbar: null };
 
-    root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
-    });
+    /* 上の帯が無くなったので、貼りつく境目もありません。 */
   }
 
-  /* ---------------- 引き出しは、開けたところのもの ----------------
+  /* ---------------- 一枚に、ぜんぶ ----------------
 
-     設定はタブを持たない引き出しで、どの画面の歯車からも開きます。
-     だから中身も、**開けた画面のもの**を出します。ダイエットを見ていて
-     歯車を押したのに、店の一覧と商品のカテゴリが最初に出てくるのは、
-     引き出しの中で探しものをさせているのと同じです。
+     ここは引き出しでした。どの画面の歯車からも開けて、**開けた画面のもの
+     だけ**を出す作りです（ダイエットから開いて店の一覧が出てくるのは、
+     引き出しの中で探しものをさせているのと同じ、という理屈でした）。
 
-     買うものと価格は一つの引き出しを分け合います——同じ棚の表と裏で、
-     店もカテゴリも両方から使うものなので。
+     帯の四つめになったので、その理屈は成り立ちません。押した人は「設定へ
+     行く」と言ったのであって、どの画面から押したかは何も言っていない。
+     出しどころで中身が変わると、同じ設定を探すのに「どこから開けば出るか」
+     を覚えることになります。**全部、いつも同じ順で出します。**
 
-     どこにも行き止まりは作りません。いちばん下の「ほかの設定も見る」で
-     全部が出ます。見せないことと、無くすことは違います。 */
-  let showAll = false;
+     順は、上の帯の並びと同じ（やること → 買うもの → daily → ダイエット）。
+     画面の並びと設定の並びが揃っていれば、探す先は帯を見れば分かります。 */
 
-  const scope = () => {
-    const from = KN.app.openedFrom ? KN.app.openedFrom() : "list";
-    if (from === "todo") return "todo";
-    if (from === "diet") return "diet";
-    if (from === "archive") return "daily";
-    return "shop";                       // list / prices は共有
-  };
-
-  /* 開け直すたびに、その画面のものへ戻します。
-     app.js は render() を先に、onEnter() をあとに呼ぶので、開いた時点では
-     まだ前回の showAll のままです。広げたままだったときだけ畳み直します
-     （毎回描き直すと、ただの二度手間になるので）。 */
-  function onEnter() {
-    if (!showAll) return;
-    showAll = false;
-    render();
-  }
+  function onEnter() { render(); }
 
   function render() {
-    const only = scope();
     els.body.innerHTML = "";
     if (store.saveError()) els.body.append(saveErrorBanner());
     els.body.append(themeGroup());
-
-    if (showAll || only === "todo") els.body.append(todoGroup());
-    if (showAll || only === "shop") {
-      els.body.append(storesGroup());
-      els.body.append(categoriesGroup());
-    }
-    if (showAll || only === "daily") els.body.append(dailyGroup());
-    if (showAll || only === "diet") els.body.append(dietGroup());
-
+    els.body.append(todoGroup());
+    els.body.append(storesGroup());
+    els.body.append(categoriesGroup());
+    els.body.append(dailyGroup());
+    els.body.append(dietGroup());
     els.body.append(dataGroup());
-    if (!showAll) els.body.append(moreBlock(only));
     els.body.append(aboutBlock());
   }
 
@@ -110,32 +80,6 @@
         </div>
       </section>
     `);
-  }
-
-  const SCOPE_LABEL = { daily: "daily", todo: "やること", shop: "買うもの・価格", diet: "ダイエット" };
-
-  /** 隠したものへの入り口。畳んであるだけで、無いわけではないと言うための行。 */
-  function moreBlock(only) {
-    const others = Object.keys(SCOPE_LABEL).filter((k) => k !== only).map((k) => SCOPE_LABEL[k]);
-    const wrap = node(html`
-      <section class="settings-group">
-        <div class="rows">
-          <button class="row js-more">
-            <span class="row-main">
-              <span class="row-title">ほかの設定も見る</span>
-              <span class="row-sub">${others.join("・")}の設定</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
-        </div>
-      </section>
-    `);
-    wrap.querySelector(".js-more").addEventListener("click", () => {
-      showAll = true;
-      render();
-      haptic();
-    });
-    return wrap;
   }
 
   /* ---------------- theme ---------------- */

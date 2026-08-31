@@ -104,23 +104,23 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
-            ${/* 題（「やること」）は外しました。タブの名前は下の帯がすでに
-                  言っていて、上でもう一度言う必要がありません。かわりに
-                  **いま見ている日**が、すぐ下の行に大きく出ます（参考に
-                  した画面と同じで、日付そのものが画面の題です）。
+            ${/* 題は「やること」ではなく、**いま見ている日**です。タブの名前は
+                  下の帯がすでに言っているので、上で二度言う必要がありません。
 
-                  ここへ置かずに一段下げたのは、幅が足りないからです。
-                  「2026年8月31日」を参考画面と同じ大きさで出すと 200px
-                  を超え、右の四つのボタンと同居できません。あちらには
-                  ボタンがないので一行で済んでいます。 */""}
-            <div style="flex:1;min-width:0"></div>
+                  一度は一段下げて暦の見出しに置きました。幅が足りなかった
+                  からです——四つのボタンと同居できなかった。設定が帯へ移って
+                  一つ減ったので、ここへ戻せます。戻したぶん、暦の見出しの
+                  行がまるごと消えました。 */""}
+            <button type="button" class="topbar-day js-day-title">
+              <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
+              <span class="day-more">${icon("chevron")}</span>
+            </button>
             ${/* Right to left: 設定, 並べ方, さがす — the same three, in the
                   same places, on every screen that has them. 設定 is last on
                   the right because it is the one that leaves. */""}
             <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
             <button class="icon-btn js-layout"></button>
             <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
-            <button class="icon-btn js-settings" aria-label="設定" title="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -142,7 +142,6 @@
 
     els = {
       layout:    chrome.querySelector(".js-layout"),
-      settings:  chrome.querySelector(".js-settings"),
       searchBtn: chrome.querySelector(".js-search-btn"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -154,7 +153,6 @@
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
     els.layout.addEventListener("click", KN.ui.toggleLayout);
-    els.settings.addEventListener("click", () => KN.app.showScreen("settings"));
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
@@ -162,6 +160,15 @@
     /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
        週の帯の右にあった「週」の札と同じ切り替えなので、そちらは外して
        こちらに寄せました——同じことを二か所に置かないために。 */
+    /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
+       題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
+       ——暦は描き直されますが、バーは残るので。 */
+    els.dayTitle = chrome.querySelector(".js-day-title");
+    els.dayTitle.addEventListener("click", () => {
+      haptic();
+      store.setCalPref("todo", { open: !calOpen() });
+    });
+
     const calBtn = chrome.querySelector(".js-cal-btn");
     if (calBtn) {
       paintCalBtn(calBtn);
@@ -2013,40 +2020,15 @@
     const U = KN.util;
     const sec = node(html`
       <section class="cal">
-        ${/* 見出しは、いま見ている日そのものです。年だけ差し色にするのも
-              参考画面と同じ（実測 #ff935f）——年は「いつもと同じ」ので
-              読まなくてよく、月日を先に読ませたい。薄い色がその順を
-              作ります。右の「›」を押すと、週の帯が月ぜんぶに開きます。
-
-              月と年を別に出す行（「8月 2026」）と「週」の札は、ここに吸収
-              して消えました。残る ‹ › は前後の週へめくるためのもので、
-              参考画面には無いものですが、指で送るほかに道が無いと遠い日へ
-              何度も払うことになるので残しています。 */""}
-        <h2 class="cal-head">
-          <button type="button" class="topbar-day js-day-title">
-            <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
-            <span class="day-more">${icon("chevron")}</span>
-          </button>
-          <button type="button" class="cal-now js-now" hidden>今日へ</button>
-          <span class="cal-nav">
-            <button type="button" class="cal-arrow js-prev" aria-label="前の週へ">${icon("chevron")}</button>
-            <button type="button" class="cal-arrow js-next" aria-label="次の週へ">${icon("chevron")}</button>
-          </span>
-        </h2>
+        ${/* 見出しの行は、まるごと上のバーへ移しました（日付の題と「›」）。
+              残っていた ‹ › は落としています——日を送る道は、週の帯を押す・
+              左右に払う、の二つで足りていて、三つめは行を一段ぶん使うだけ
+              でした。「今日へ」だけは、遠い日から一息で帰る道として残します。 */""}
         <div class="cal-grid"></div>
+        <button type="button" class="cal-now js-now" hidden>今日へ</button>
       </section>
     `);
     const grid = sec.querySelector(".cal-grid");
-
-    /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
-       前は帯の右に「週」の札を置いていましたが、同じことを二か所で
-       言わないよう、題のほうに寄せました。 */
-    els.dayTitle = sec.querySelector(".js-day-title");
-    els.dayTitle.addEventListener("click", () => {
-      haptic();
-      store.setCalPref("todo", { open: !calOpen() });
-    });
-    paintDayTitle();
 
     /* 月を変えたら、下のリストもその月の頭へ運びます。上だけが動くと、
        カレンダーと棚が別々のものを指したまま並ぶことになります。
@@ -2074,8 +2056,6 @@
       setCalMonth(d.getFullYear(), d.getMonth(), true);
       scrollToMonth(d.getFullYear(), d.getMonth());
     };
-    sec.querySelector(".js-prev").addEventListener("click", () => goTo(-1));
-    sec.querySelector(".js-next").addEventListener("click", () => goTo(1));
     sec.querySelector(".js-now").addEventListener("click", () => {
       haptic();
       if (oneDay()) { goDay(todayKey()); return; }
