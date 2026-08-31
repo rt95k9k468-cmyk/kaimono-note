@@ -2619,14 +2619,50 @@
 
   function paintNow(sec, list, axis, isToday) {
     axis.textContent = "";
-    if (!isToday) return;
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
-    const nowMin = KN.plan.toMin(KN.util.nowTime());
+    const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
+    markLive(list, nowMin);
     if (nowMin == null) return;
     const y = nowY(sec, list, nowMin);
     if (y == null) return;
     axis.append(nowMark(nowMin, y));
+  }
+
+  /* ---------------- いま、進んでいるもの ----------------
+
+     線は「ここから下は、まだ始まっていない」と言うだけでした。線のすぐ上に
+     ある一件が**いま進んでいる**ことは、そこから読み取るしかありません
+     ——それは推し量る作業で、画面が言っていることではない。
+
+     その一件に印を付けます。出すのは二つだけ：
+
+       ・丸のまわりの輪 … どこまで来たか（始まりからの割合）。これは
+         時計の言うことで、その人の出来ばえの話ではありません。
+       ・うすい地      … いま目を向けるのはここ、という合図
+
+     字は足しません。「いま」と書き添えると、線とその丸と字で三度同じ
+     ことを言うことになるので。
+
+     輪は30秒ごとに描き直します（軸と同じ拍）。組み直しはしません。 */
+  function markLive(list, nowMin) {
+    for (const li of list.children) {
+      if (!li.classList || !li.classList.contains("tl-row")) continue;
+      const a = Number(li.dataset.at), u = Number(li.dataset.until);
+      /* 済ませたものは進みません。組み立ては済んだものを「これからの
+         時間」に置かないので枠は残っていますが、そこに輪を出すと
+         「まだやっている」ことになります。 */
+      const live = nowMin != null && isFinite(a) && isFinite(u) && u > a
+        && a <= nowMin && nowMin < u && !li.classList.contains("is-done");
+      li.classList.toggle("is-live", live);
+      if (live) {
+        li.style.setProperty("--live", ((nowMin - a) / (u - a)).toFixed(3));
+        li.setAttribute("aria-current", "time");
+      } else {
+        li.style.removeProperty("--live");
+        li.removeAttribute("aria-current");
+      }
+    }
   }
 
   /* 「いま」は、黙っていると止まります。
@@ -2973,11 +3009,31 @@
 
      済ませたものも色のまま残します（参考にした画面と同じ）。やった
      ことが灰色になって沈むと、朝からの半日が空白に見えるので。 */
-  function tlColorOf(t) {
+  /* ---------------- 夜は、夜の色 ----------------
+
+     一日ぶんは基調の塗りひとつで並べていました。参考にした画面（Structured）
+     も昼のあいだはそうですが、**一日の終わりだけ青**にしてあります（実測。
+     色は --c-night）。理屈も分かります——夕方から先は、同じ「やること」でも
+     体感の色が違う。暗くなってからの一件が朝の一件と同じ色で並んでいると、
+     一日が一本調子に見えます。
+
+     夜と決めるのは二つ。**毎晩**（part: "dusk"）は、時刻を持っていても
+     いなくても夜です。それ以外は**組み立てが置いた時刻**で見ます
+     ——t.time ではなく置かれた位置で見るのは、時刻を決めていない用事も
+     夜に落ちれば夜だからです。 */
+  const NIGHT_FROM = 18 * 60;      // 18:00 から先
+
+  function isNight(t, atMin) {
+    if (t && t.part === "dusk") return true;
+    const m = isFinite(atMin) ? Number(atMin) : KN.plan.toMin(t && t.time);
+    return m != null && isFinite(m) && m >= NIGHT_FROM;
+  }
+
+  function tlColorOf(t, atMin) {
     /* 一日ずつのときは、棚がありません。坂（締切までの遠さ）も、比べる
        相手が画面に無いので何も言えません。基調の塗りひとつで揃えます
-       ——参考にした画面も、一日ぶんは同じ色で並びます。 */
-    if (oneDay()) return "var(--c-primary-fill)";
+       ——夜のぶんを除いて。 */
+    if (oneDay()) return isNight(t, atMin) ? "var(--c-night)" : "var(--c-primary-fill)";
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   }
@@ -3013,9 +3069,16 @@
 
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
+    /* 空きも、夜に入ったところから夜の色にします。線は一日を通す一本な
+       ので、空きだけ昼の色のままだと、夜の用事のあいだで色が切れて
+       「別の線」に見えます。切り替わるのは、その空きが**夜に入る**
+       ところ（18時をまたぐ空きは、夜のぶんが半分でも夜側で数えます
+       ——点線のなかで色を変えると、そこに何かがあるように見えるので）。 */
+    const night = f.untilMin > NIGHT_FROM;
     return node(html`
       <li class="tl-free-row ${past ? "is-past" : ""}"
-          data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}">
+          data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
+          style="--cat:${night ? "var(--c-night)" : "var(--c-primary-fill)"}">
         <span class="tl-time"></span>
         <span class="tl-rail is-dash"></span>
       </li>
@@ -3074,7 +3137,7 @@
                  ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
-          style="--cat:${tlColorOf(t)}">
+          style="--cat:${tlColorOf(t, it.atMin)}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。

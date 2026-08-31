@@ -3122,6 +3122,35 @@ a.btn { text-decoration: none; }
      切れて、続いているところまで破線に見えます（実際そうなりました）。
      線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
 }
+/* ---- いま進んでいるもの ----
+
+   丸のまわりに、どこまで来たかの輪。始まりから12時の向きに時計回りで、
+   残りは同じ色の薄いぶん——「この用事のどのあたりに居るか」だけを言い、
+   速いとも遅いとも言いません（時計の言うことで、その人の話ではない）。
+
+   58px：丸が50pxなので外へ4pxずつ。行の背は64pxなので、上下の行の輪とは
+   3pxずつ空きます。 */
+.tl-row.is-live .tl-rail::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 58px; height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: var(--r-full);
+  background: conic-gradient(from 0deg,
+    var(--cat, var(--c-primary-fill)) calc(var(--live, 0) * 360deg),
+    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 20%, transparent) 0);
+  -webkit-mask: radial-gradient(closest-side, #0000 calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(closest-side, #0000 calc(100% - 3px), #000 calc(100% - 3px));
+  pointer-events: none;
+}
+/* いま目を向けるのはここ、という地。字は足しません——線と輪と字で三度
+   同じことを言うことになるので。 */
+.tl-row.is-live .item.tl-item {
+  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 12%, transparent);
+  border-radius: 14px;
+}
+
 .tl-node .todo-mark { width: 32px; height: 32px; }
 .tl-node .todo-mark svg { width: 32px; height: 32px; }
 /* 絵を持たない用事の丸。参考画面の白抜きに寄せて、地より濃い一点に。 */
@@ -3787,6 +3816,25 @@ a.btn { text-decoration: none; }
   border-bottom: 1px solid var(--c-border);
   border-right: none;
   box-shadow: none;
+}
+
+/* ダイエットの紙。掴むためだけの一枚で、**面は持ちません**——中の
+   「今日のからだ」がすでに端から端までの面を持っていて、その上にもう一枚
+   白を敷くと面が二重になります。出すのは掴み手だけ。 */
+.tl-sheet.is-bare {
+  background: none;
+  border-radius: 0;
+  min-height: 0;
+}
+.tl-sheet.is-bare > .tl-grip { padding: 6px 0 7px; }
+
+/* 探した結果の数。上のバーに出していましたが、そこは日付の題の場所に
+   なりました。 */
+.diet-found-n {
+  margin: 0 var(--sp-4) var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-text-3);
 }
 
 /* daily の紙。やることと同じ一枚で、掴めば暦が開きます。中身の段どうしの
