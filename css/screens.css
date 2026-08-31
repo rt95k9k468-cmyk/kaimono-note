@@ -3134,6 +3134,12 @@ a.btn { text-decoration: none; }
    ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
 .tl-free-row.is-past { opacity: .6; }
 
+/* 過ぎた日の時間割。暦でその日を押すと、今日の上に出ます。今日と同じ
+   部品で描くので、見出しの右に「今日へ」の戻り口だけ足します。 */
+.todo-past > .todo-head { justify-content: space-between; }
+.todo-past > .todo-head > span:nth-of-type(2) { margin-right: auto; }
+.todo-past .js-past-close { flex: none; }
+
 /* ---------------- 済ませたときの動き（時間割） ----------------
 
    時間割の行は、済ませても**消えません**（今日それをした、が残るので）。

@@ -1604,6 +1604,13 @@
     const late = groups.find((g) => g.late);
     if (rowsOf("late").length) els.body.append(groupSection(late, rowsOf("late"), tiles));
 
+    /* 暦で過ぎた日を押したときは、その日の時間割を今日の上に出します
+       （下の pastSection）。 */
+    if (pastDay && !tiles && timelineOn()) {
+      const sec = pastSection(pastDay, open);
+      if (sec) els.body.append(sec);
+    }
+
     els.body.append(todayPanel(rowsOf, tiles));
 
     groups.filter((g) => !g.late && !g.today).forEach((g) => {
@@ -1902,7 +1909,7 @@
         <span class="cal-dots"></span>
       </button>
     `);
-    cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
+    cell.addEventListener("click", () => openDay(key));
     return cell;
   }
 
@@ -1968,7 +1975,7 @@
          数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
          輪はどこにも移らず、押しても何も起きないように見えます。
          押した日を見ている——それがいちばん確かなことなので、先に言います。 */
-      cell.addEventListener("click", () => { markDay(key, true); jumpToDay(key); haptic(); });
+      cell.addEventListener("click", () => openDay(key));
       grid.append(cell);
     }
     outer.trail.forEach((key) => grid.append(outCell(key)));
@@ -2019,6 +2026,77 @@
      朝・午後・夜, then 毎晩. The two ends are only drawn when something is
      standing in them — an empty 「毎朝」 line every morning is a shelf for a
      routine nobody has. */
+  /* 過ぎた日。暦でその日を押すと、ここへ出ます。
+
+     新しく持ち直すものは何もありません。その日の時間割は、いま持っている
+     やること（due がその日のもの）から**そのつど組み立てます**——済ませた
+     もの、済ませなかったもの、繰り返しを済ませたときの写し、手順の印まで、
+     すべて元のデータがすでに持っています。写しを作れば、元を直したときに
+     古い姿が残ります。組み立てるなら、そもそもずれようがありません。
+
+     出しかたは今日と同じ部品（timeline）です。過ぎた日だけ別の見せかたに
+     すると、同じ「やること」に二つの読み方ができてしまいます。 */
+  let pastDay = null;
+
+  function pastSection(day, open) {
+    const U = KN.util;
+    const d = U.dayDate(day);
+    if (!d) return null;
+    const rows = open.filter((t) => t.due === day);
+    const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
+    if (!rows.length && !done.length) {
+      const empty = node(html`
+        <section class="todo-group todo-past" data-group="past" data-day="${day}">
+          <h2 class="todo-head" style="--cat:var(--c-text-3)">
+            <span class="todo-head-dot"></span>
+            <span>${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}</span>
+            <button type="button" class="tl-switch js-past-close">今日へ</button>
+          </h2>
+          <p class="todo-today-empty">この日のやることはありません</p>
+        </section>
+      `);
+      empty.querySelector(".js-past-close").addEventListener("click", closePast);
+      return empty;
+    }
+    const sec = node(html`
+      <section class="todo-group todo-past is-tl" data-group="past" data-day="${day}">
+        <h2 class="todo-head" style="--cat:var(--c-text-3)">
+          <span class="todo-head-dot"></span>
+          <span>${d.getMonth() + 1}月${d.getDate()}日 ${U.WEEKDAYS[d.getDay()]}</span>
+          <button type="button" class="tl-switch js-past-close">今日へ</button>
+        </h2>
+      </section>
+    `);
+    sec.append(timeline(rows, { id: "past", day, color: "var(--c-text-3)" }));
+    sec.querySelector(".js-past-close").addEventListener("click", closePast);
+    return sec;
+  }
+
+  function closePast() {
+    pastDay = null;
+    dayPinned = false;
+    markDay(todayKey(), true);
+    render();
+    const panel = els.body && els.body.querySelector(".trip.todo-today");
+    if (panel) scrollToSection(panel);
+    haptic();
+  }
+
+  /** 暦で押された日へ。過ぎた日なら、その日の時間割を出します。 */
+  function openDay(day) {
+    markDay(day, true);
+    if (day < todayKey()) {
+      pastDay = day;
+      render();
+      const sec = els.body.querySelector('.todo-group[data-group="past"]');
+      if (sec) scrollToSection(sec);
+    } else {
+      if (pastDay) { pastDay = null; render(); }
+      jumpToDay(day);
+    }
+    haptic();
+  }
+
   function todayPanel(rowsOf, tiles) {
     const panel = node(html`<section class="trip todo-today"></section>`);
     const plain = groups.find((g) => g.id === "today");
