@@ -3636,14 +3636,23 @@ a.btn { text-decoration: none; }
 .sub-line .input { flex: 1 1 auto; min-width: 0; }
 .tl-subs { font-variant-numeric: tabular-nums; }
 
-/* 済ませたものは、もっと詰めます。
+/* 済ませたものは、細く。
 
-   残っているものと同じ場所を取る理由がありません——読むのは「あと何が
-   あるか」で、済んだ列は**そこにあったことが分かれば足ります**。消さない
-   のは、今日それをしたのが見えなくなるからです。小さくして、残します。 */
+   字も丸も一回り小さくして、目を引かないようにします。ただし**縦の長さ
+   は詰めません**。詰めると軸が嘘をつきます——3時間かけて済ませたものが
+   40pxに縮むと、その下にあるものが三時間ぶん上へ繰り上がって、朝から
+   の一日が実際より短く見えます。かけた時間はかけた時間です。 */
 .tl-row.is-done .item.tl-item { padding: 4px var(--sp-4) 5px 8px; }
-.tl-row.is-done .tl-rail { min-height: 40px; }
+.tl-row.is-done .tl-rail { min-height: var(--tl-span, 40px); }
 .tl-row.is-done .tl-node { width: 34px; height: 34px; }
+/* 伸びた粒のまま、幅だけ細く。 */
+.tl-row.is-done.is-long .tl-node {
+  height: var(--tl-span, 40px);
+  width: 34px;
+  border-radius: 17px;
+  padding-top: 7px;
+}
+.tl-row.is-done.is-long .tl-time { padding-top: 11px; }
 .tl-row.is-done .tl-node .todo-mark,
 .tl-row.is-done .tl-node .todo-mark svg { width: 20px; height: 20px; }
 .tl-row.is-done .item-name { font-size: 15px; }

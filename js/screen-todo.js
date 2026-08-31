@@ -2595,8 +2595,11 @@
      30分以下はここに収まるので、丸のままです。そこから先は、伸びた枠の
      上端が始まりの時刻、下端が終わりの時刻になります。
 
-     済ませた行には使いません（#30で詰めた「済んだ列はできるだけ小さく」
-     という決めごとと矛盾するので）。 */
+     済ませた行も同じです。以前は詰めていました（「済んだ列はできるだけ
+     小さく」）が、それだと軸が嘘をつきます——3時間かけて済ませたものが
+     48pxに縮むと、その下にあるものが三時間ぶん上へ繰り上がって、朝から
+     の一日が実際より短く見えます。かけた時間はかけた時間です。かわりに
+     済ませた行は薄く・灰色にしてあるので、場所は取っても目は引きません。 */
   const TL_BASE_H = 48;    // .tl-rail の基本の高さ（css/screens.css と同じ数）
   const TL_PX_PER_MIN = 1;
   function tlSpanH(minutes) {
@@ -2628,7 +2631,7 @@
     // 残数は文にしません。手順を持っているかどうかだけ、下の開閉に使います。
     const sc = store.subCount(t);
     const closed = t.done || t.archived;
-    const span = closed ? null : tlSpanH(t.minutes);
+    const span = tlSpanH(t.minutes);
     const li = node(html`
       <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
                  ${closed ? "is-done" : ""} ${span ? "is-long" : ""}"
