@@ -2224,7 +2224,7 @@
           層にすれば、いまの高さそのものに置けて、しかも常に前に出ます。 */
     const axis = node(html`<div class="tl-axis" aria-hidden="true"></div>`);
     sec.append(axis);
-    watchAxis(sec, isToday ? nowMin : null);
+    watchAxis(sec, isToday);
 
     wireDrag(list, day);
     return sec;
@@ -2245,11 +2245,12 @@
   const AXIS_STEP_PX = 22;    // 目盛りどうしは、これより詰めません
   const AXIS_CLEAR_PX = 17;   // 行が自分で書いた時刻の、上下これだけは空けます
 
-  function watchAxis(sec, nowMin) {
+  function watchAxis(sec, isToday) {
     const list = sec.querySelector(".js-tl");
     const axis = sec.querySelector(".tl-axis");
     if (!list || !axis) return;
-    const paint = () => paintAxis(sec, list, axis, nowMin);
+    const paint = () => paintAxis(sec, list, axis, isToday);
+    axis.__paint = paint;
     /* 返した時点では、まだ親に付いていません（高さが0です）。付いた瞬間
        にも、手順をひらいて伸びたときにも呼ばれるので、測り直す口はこれ
        一つで足ります。 */
@@ -2259,6 +2260,29 @@
       requestAnimationFrame(paint);
     }
   }
+
+  /* 「いま」は、黙っていると止まります。
+
+     画面を組み直すのは、その日が変わったときと、やることの数が変わった
+     ときだけです（app.js の onMinute）。つまり15時に開いたまま16時になっても、
+     線は15時のところに居ます。**いまを指す線が、いまを指していない**のは、
+     ただ無いより悪い——見た人はそれを信じるので。
+
+     組み直しはしません。軸だけ描き直せば足ります（行の高さは変わらない
+     ので、置き場所は同じ折れ線から読めます）。組み直すと、読んでいる
+     途中で行が動いたり、つまんでいるものが落ちたりします。 */
+  const NOW_TICK = 30000;
+  setInterval(() => {
+    if (!root || document.hidden) return;
+    /* 別のタブを見ているときは、測っても 0 しか返りません（消えている
+       ので）。そこで描き直すと軸が空になります。戻ってきたときは
+       ResizeObserver が呼んでくれるので、ここは黙って見送ります。 */
+    if (!root.offsetParent && root.offsetHeight === 0) return;
+    if (tlDrag) return;                       // 運んでいる最中は触りません
+    root.querySelectorAll(".tl-axis").forEach((el) => {
+      if (typeof el.__paint === "function") el.__paint();
+    });
+  }, NOW_TICK);
 
   /** 時刻（分）→ 縦の位置（px）。行のレールを実測して作った折れ線です。 */
   function axisScale(sec, list) {
@@ -2294,7 +2318,10 @@
     return null;                                          // 一日の枠の外
   }
 
-  function paintAxis(sec, list, axis, nowMin) {
+  function paintAxis(sec, list, axis, isToday) {
+    /* いまの時刻は、描くたびに時計から読み直します。掴んだまま持って
+       いると、線が置かれた時刻のまま固まるので。 */
+    const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
     const segs = axisScale(sec, list);
     axis.textContent = "";
     if (!segs.length) return;
