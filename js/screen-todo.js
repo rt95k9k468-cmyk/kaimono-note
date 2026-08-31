@@ -2215,45 +2215,43 @@
       list.append(itemRow(part.it, !!next && next.kind === "item"));
     });
 
-    /* 時刻の目盛りと「いま」は、行の流れの中には置きません。**一枚の層**に
-       まとめて、行の上に重ねます。理由は二つあります。
-
-       ① 目盛りを行ごとに持たせていたころ、目盛りは自分の行の中しか知り
-          ませんでした。だから伸びた用事の中の目盛りと、その用事が左に
-          書いている始まりの時刻が、同じ高さに並んで**重なりました**。
-          一枚にまとめれば、置く前に全部の位置を見比べられます。
-       ② 「いま」が行だったころ、いまの時刻が長い用事の**まん中**に
-          あっても、線はその用事の行の**あと**にしか置けませんでした。
-          14時から18時の用事を15時に見ると、線は18時のあたりに出ます。
-          層にすれば、いまの高さそのものに置けて、しかも常に前に出ます。 */
+    /* 「いま」は、行の流れの中には置きません。**一枚の層**に乗せて、行の
+       上に重ねます。行だったころは、いまの時刻がある用事の**あと**にしか
+       置けませんでした——14時から18時の用事を15時に見ると、線が18時の
+       あたりに出ます。層にすれば、その行の中の正しい高さに置けて、しかも
+       常に前に出ます。 */
     const axis = node(html`<div class="tl-axis" aria-hidden="true"></div>`);
     sec.append(axis);
-    watchAxis(sec, isToday);
+    watchNow(sec, isToday);
 
     wireDrag(list, day);
     return sec;
   }
 
-  /* ---------------- 1時間ごとの時間軸 ----------------
+  /* ---------------- いま、どこにいるか ----------------
 
-     軸は**1時間ごと**です。用事の終わりの時刻（7:30 のような）は書きません
-     ——それは軸の目盛りではなく、一件の都合だからです。一件の都合を軸に
-     混ぜると、目盛りの間隔が用事の数だけ乱れて、上下の時刻を見比べられ
-     なくなります。用事が自分で書くのは**始まりの時刻**だけ。
+     ここには1時間ごとの目盛りを描く層がありました。**やめました。**
+
+     参考にした画面（Structured）の時間割は、時間に比例していません。
+     610分の空きと325分の空きが同じ高さで、しかも5分の用事より低い
+     ——つまりあれは「並び順のリスト」で、長さは絵ではなく字（詳細の
+     「16時30分〜16時35分」）で言っています。目盛りの軸も、伸びる帯も、
+     その作りとは噛み合いません。両方とも外しました。
+
+     残したのは「いま」の一本だけです。あちらには無いものですが、
+     一日の途中で開いたときに**どこまで来たか**を言えるのはこれだけ
+     なので、ここは意図して足しています。
 
      位置は組み終わってから実測します。行の高さは中身（メモ・手順・題の
      行数）で変わるので、分から計算した位置は当たりません。時間の背骨は
      レール（.tl-rail）なので、そこだけを測ります——手順をひらいた行では、
      レールは題の段にとどまり、下へ伸びた手順の帯には時間がありません。 */
 
-  const AXIS_STEP_PX = 22;    // 目盛りどうしは、これより詰めません
-  const AXIS_CLEAR_PX = 17;   // 行が自分で書いた時刻の、上下これだけは空けます
-
-  function watchAxis(sec, isToday) {
+  function watchNow(sec, isToday) {
     const list = sec.querySelector(".js-tl");
     const axis = sec.querySelector(".tl-axis");
     if (!list || !axis) return;
-    const paint = () => paintAxis(sec, list, axis, isToday);
+    const paint = () => paintNow(sec, list, axis, isToday);
     axis.__paint = paint;
     /* 返した時点では、まだ親に付いていません（高さが0です）。付いた瞬間
        にも、手順をひらいて伸びたときにも呼ばれるので、測り直す口はこれ
@@ -2265,34 +2263,21 @@
     }
   }
 
-  /* 「いま」は、黙っていると止まります。
+  /** いまの時刻が、リストのどの高さに当たるか。無ければ null。
 
-     画面を組み直すのは、その日が変わったときと、やることの数が変わった
-     ときだけです（app.js の onMinute）。つまり15時に開いたまま16時になっても、
-     線は15時のところに居ます。**いまを指す線が、いまを指していない**のは、
-     ただ無いより悪い——見た人はそれを信じるので。
+      **行と行のあいだに置きます。行の中には入れません。**
 
-     組み直しはしません。軸だけ描き直せば足ります（行の高さは変わらない
-     ので、置き場所は同じ折れ線から読めます）。組み直すと、読んでいる
-     途中で行が動いたり、つまんでいるものが落ちたりします。 */
-  const NOW_TICK = 30000;
-  setInterval(() => {
-    if (!root || document.hidden) return;
-    /* 別のタブを見ているときは、測っても 0 しか返りません（消えている
-       ので）。そこで描き直すと軸が空になります。戻ってきたときは
-       ResizeObserver が呼んでくれるので、ここは黙って見送ります。 */
-    if (!root.offsetParent && root.offsetHeight === 0) return;
-    if (tlDrag) return;                       // 運んでいる最中は触りません
-    root.querySelectorAll(".tl-axis").forEach((el) => {
-      if (typeof el.__paint === "function") el.__paint();
-    });
-  }, NOW_TICK);
+      比例をやめたので、行の中の高さには意味がなくなりました。4時間の
+      用事も64pxの一行で、そこへ「15:20」を時間どおりに置くと、行の頭から
+      21pxのところ——つまり丸と時刻の札の上に重なります（実際そうなり
+      ました）。
 
-  /** 時刻（分）→ 縦の位置（px）。行のレールを実測して作った折れ線です。 */
-  function axisScale(sec, list) {
+      リストで言えるのは「ここから下は、まだ始まっていない」だけです。
+      だから線は、**まだ始まっていない最初の行の上**に引きます。いま
+      進行中のものは線の上に、これからのものは線の下に。 */
+  function nowY(sec, list, nowMin) {
     const top0 = sec.getBoundingClientRect().top;
-    const segs = [];
-    let last = -Infinity;
+    let last = null;
     for (const li of list.children) {
       const rail = li.querySelector(".tl-rail");
       if (!rail) continue;
@@ -2300,76 +2285,46 @@
       if (!isFinite(a) || !isFinite(u) || u <= a) continue;
       const r = rail.getBoundingClientRect();
       if (r.height <= 0) continue;
-      /* 重なっている用事は、前の行に食わせます。二つの行が同じ時刻を
-         主張すると、折れ線が後ろへ戻って目盛りの順が壊れます。 */
-      const from = Math.max(a, last);
-      if (u <= from) continue;
-      segs.push({
-        a: from, u,
-        top: r.top - top0 + ((from - a) / (u - a)) * r.height,
-        h: r.height * ((u - from) / (u - a)),
-      });
-      last = u;
+      if (a >= nowMin) return r.top - top0;
+      last = r.bottom - top0;
     }
-    return segs;
+    /* 一日の残りが全部始まっているなら、線はいちばん下です。 */
+    return last;
   }
 
-  function axisY(segs, min) {
-    for (const s of segs) {
-      if (min < s.a) return s.top;                       // 行と行のすきま
-      if (min <= s.u) return s.top + ((min - s.a) / (s.u - s.a)) * s.h;
-    }
-    return null;                                          // 一日の枠の外
-  }
-
-  function paintAxis(sec, list, axis, isToday) {
-    /* いまの時刻は、描くたびに時計から読み直します。掴んだまま持って
-       いると、線が置かれた時刻のまま固まるので。 */
-    const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
-    const segs = axisScale(sec, list);
+  function paintNow(sec, list, axis, isToday) {
     axis.textContent = "";
-    if (!segs.length) return;
-    const first = segs[0].a, last = segs[segs.length - 1].u;
-    const top0 = sec.getBoundingClientRect().top;
-
-    /* 行が自分で書いている時刻（用事の始まり）。目盛りがそこへ重なると
-       数字が二つ並んで、どちらも読めません。用事のほうを残します。
-
-       二とおりで避けます。**同じ時刻**（8時に始まる用事の横の「8:00」）は
-       数で分かるので数で落とし、近いだけのもの（8:10 の横の「8:00」）は
-       高さで落とします。数だけでは 8:10 が避けられず、高さだけでは、
-       伸びた行の中で離れて置かれた同じ数字が二つ残ります。 */
-    const taken = [];
-    const written = new Set();
-    list.querySelectorAll(".tl-row").forEach((row) => {
-      const el = row.querySelector(":scope > .tl-time");
-      if (!el || !el.textContent.trim()) return;
-      const at = Number(row.dataset.at);
-      if (isFinite(at)) written.add(at);
-      const r = el.getBoundingClientRect();
-      if (r.height > 0) taken.push(r.top - top0 + r.height / 2);
-    });
-
-    const nowY = nowMin != null ? axisY(segs, nowMin) : null;
-    if (nowY != null) taken.push(nowY);
-
-    let prev = -Infinity;
-    for (let m = Math.ceil(first / 60) * 60; m <= last; m += 60) {
-      if (written.has(m)) continue;
-      const y = axisY(segs, m);
-      if (y == null) continue;
-      if (y - prev < AXIS_STEP_PX) continue;
-      if (taken.some((t) => Math.abs(t - y) < AXIS_CLEAR_PX)) continue;
-      axis.append(node(html`
-        <span class="tl-hour" style="top:${y.toFixed(1)}px"><i>${tlClock(KN.plan.toTime(m))}</i></span>
-      `));
-      prev = y;
-    }
-
-    /* 「いま」は最後に足します——同じ層の中では、あとに置いたものが前に
-       出ます。長い用事の帯の上でも、いまの点と線が隠れません。 */
-    if (nowY != null) axis.append(nowMark(nowMin, nowY));
+    if (!isToday) return;
+    /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
+       持ち回ると、線が置かれた時刻のまま固まるので。 */
+    const nowMin = KN.plan.toMin(KN.util.nowTime());
+    if (nowMin == null) return;
+    const y = nowY(sec, list, nowMin);
+    if (y == null) return;
+    axis.append(nowMark(nowMin, y));
   }
+
+  /* 「いま」は、黙っていると止まります。
+
+     画面を組み直すのは、その日が変わったときと、やることの数が変わった
+     ときだけです（app.js の onMinute）。つまり15時に開いたまま16時になっても、
+     線は15時のところに居ます。**いまを指す線が、いまを指していない**のは、
+     ただ無いより悪い——見た人はそれを信じるので。
+
+     組み直しはしません。線だけ置き直せば足ります（行の高さは変わらない
+     ので、置き場所は同じ折れ線から読めます）。組み直すと、読んでいる
+     途中で行が動いたり、つまんでいるものが落ちたりします。 */
+  const NOW_TICK = 30000;
+  setInterval(() => {
+    if (!root || document.hidden) return;
+    /* 別のタブを見ているときは、測っても 0 しか返りません（消えている
+       ので）。戻ってきたときは ResizeObserver が呼んでくれます。 */
+    if (!root.offsetParent && root.offsetHeight === 0) return;
+    if (tlDrag) return;                       // 運んでいる最中は触りません
+    root.querySelectorAll(".tl-axis").forEach((el) => {
+      if (typeof el.__paint === "function") el.__paint();
+    });
+  }, NOW_TICK);
 
   /* ---------------- つまんで、置きなおす ----------------
 
@@ -2682,76 +2637,35 @@
      用事ほど素直には伸ばしません。夜の10時間を10時間ぶんの点線で描くと、
      一日の大半が「何も無いところ」で埋まって、肝心の用事が画面の外へ
      出ていきます。空きは詰めて、用事は正直に。 */
-  /* 時刻の字を入れるための高さは、もう要りません——空きの行は自分では
-     時刻を書かず、1時間ごとの目盛りは上に重なる軸のほうが持つからです。
-     そのぶん短い空きを詰められるので、10分の隙間が44pxの空白になって
-     軸の間隔を乱すことがなくなりました。 */
-  const TL_FREE_MIN = 28;      // これより短くはしません（点線が読める高さ）
-  const TL_FREE_MAX = 220;     // 長い空きは、ここで頭打ち
-  const TL_FREE_PX_PER_MIN = 0.6;
-  function freeH(minutes) {
-    return Math.round(Math.min(TL_FREE_MAX, Math.max(TL_FREE_MIN, minutes * TL_FREE_PX_PER_MIN)));
-  }
+  /* 空きの高さは、**長さによりません**。10分の隙間も一晩も同じ高さです。
 
-  /** 空いているところ。点線の帯だけで、時刻は書きません。
+     参考にした画面がそうだからです（610分と325分の空きが同じ高さで、
+     しかも5分の用事より低い）。比例をやめると失うものはあります——一日の
+     形が高さで読めなくなる。かわりに得るのは、**一日が一画面に入る**
+     ことです。夜の10時間を10時間ぶん描くと、肝心の用事が画面の外へ
+     出ていきます。あちらはその取り引きを、比例を捨てる側で決めています。 */
+  const TL_FREE_H = 56;
 
-      前はここが空きの**始まりの時刻**を書いていました。空きの始まりは
-      直前の用事の**終わり**なので（7:00の洗濯が30分なら「7:30」）、軸に
-      用事の都合が混ざります。時刻は1時間ごとの軸に任せます。 */
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
     return node(html`
       <li class="tl-free-row ${past ? "is-past" : ""}"
-          data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
-          style="--free-h:${freeH(f.untilMin - f.atMin)}px">
+          data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}">
         <span class="tl-time"></span>
         <span class="tl-rail is-dash"></span>
       </li>
     `);
   }
 
-  /* アイコンまわりの枠の高さは、かかる時間から測ります。
+  /* 丸は**伸びません**。かかる時間が4時間でも10時間でも、同じ大きさの丸
+     ひとつです。
 
-     ただし1分1pxのままだと、10時間の用事が720pxになり、画面2枚ぶんを
-     一件が占めてしまいます（実際そう言われました）。最初の2時間は
-     1分1pxのまま——短い用事どうしの見分けは、ここがいちばん利くので。
-     2時間を超えたぶんは、ゆるやかにしか伸ばしません（1分0.3px）。
-     10時間の用事も300px前後に収まりつつ、6時間より長いことはちゃんと
-     長く見えます——「長さ」と「長めであること」の中間で折り合いを
-     付けています。
-
-     52pxは下限です。丸と題が入る高さで、これより詰めると読めません。
-     30分以下はここに収まるので、丸のままです。そこから先は、伸びた枠の
-     上端が始まりの時刻、下端が終わりの時刻になります。
-
-     済ませた行も同じです。以前は詰めていました（「済んだ列はできるだけ
-     小さく」）が、それだと軸が嘘をつきます——3時間かけて済ませたものが
-     52pxに縮むと、その下にあるものが三時間ぶん上へ繰り上がって、朝から
-     の一日が実際より短く見えます。かけた時間はかけた時間です。かわりに
-     済ませた行は薄く・灰色にしてあるので、場所は取っても目は引きません。 */
-  /* **30分を超えたら帯になります。** 30分ぶんが丸ひとつぶんの高さ（52px）
-     で、そこが分かれ目です。長さは5分きざみでしか持てない（store の
-     cleanMinutes）ので、丸のままの上限がちょうど30分、その次の35分から
-     帯——上端が始まり、下端が終わり。「1時間」と書くかわりに、1時間ぶんの
-     高さを占めます。
-
-     前は「48pxを超えたら」でした。1分1pxで測っていたので、分かれ目が
-     49分という中途半端な数になり、45分の用事が丸のままでした。決めごとは
-     見た目の px ではなく、**時間のほう**に置きます。 */
-  const TL_BASE_H = 52;       // 30分ぶん＝丸が収まる高さ（css/screens.css と同じ数）
-  const TL_BAND_FROM = 30;    // これを超えたら帯
-  const TL_LINEAR_TO = 120;   // ここまでは、そのまま1分1px
-  const TL_SLOW_RATE = 0.3;   // それを超えたら、ゆるやかに
-  function tlOffset(minutes) {
-    const m = Math.max(0, minutes || 0);
-    if (m <= TL_BAND_FROM) return m * (TL_BASE_H / TL_BAND_FROM);
-    if (m <= TL_LINEAR_TO) return TL_BASE_H + (m - TL_BAND_FROM);
-    return TL_BASE_H + (TL_LINEAR_TO - TL_BAND_FROM) + (m - TL_LINEAR_TO) * TL_SLOW_RATE;
-  }
-  function tlSpanH(minutes) {
-    if (!minutes || minutes <= TL_BAND_FROM) return null;
-    return Math.round(tlOffset(minutes));
-  }
+     ここには「30分を超えたら縦長の帯にする」仕掛けがありました（帯の
+     上端が始まり、下端が終わり）。長さが絵で読めるのは良かったのですが、
+     参考にした画面はそれをやっていません——一日は並び順のリストで、
+     長さは題の下に「4時間」と字で書くだけ。丸が伸びないぶん、行の高さが
+     揃って、一日が一本のリズムとして読めます。長さを知りたいときは字が
+     あり、詳細を開けば始まりと終わりの両方が出ます。 */
 
   /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
   function itemRow(it, joined) {
@@ -2790,20 +2704,12 @@
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const closed = t.done || t.archived;
-    /* 帯の長さは、置かれた実際の幅（始まり〜終わり）から測ります。ただし
-       長さを**決めていない**ものは帯にしません——組み立てが仮に置いた
-       30分を、決めた長さのように見せないためです。 */
-    const span = tlSpanH(t.minutes ? it.untilMin - it.atMin : 0);
     const li = node(html`
       <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
-                 ${closed ? "is-done" : ""} ${span ? "is-long" : ""}"
+                 ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
-          style="--cat:${tlColorOf(t)}${span ? `;--tl-span:${span}px` : ""}">
-        ${/* 伸びた行では、時刻もアイコンも**上端**へ寄せます。上端が
-              始まりの時刻だからです。まん中に置くと、枠は10時から18時
-              まで伸びているのに、札は14時のあたりに付いていることに
-              なります。 */""}
+          style="--cat:${tlColorOf(t)}">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
