@@ -1776,28 +1776,6 @@
                data-month="${day.slice(0, 7)}" data-day="${day}"></section>
     `);
 
-    /* 期限切れ。一日の中には居場所がないので、あることだけ言って、
-       受け皿（一覧）への口を出します。今日を見ているときだけ——過ぎた日を
-       見ているときに「期限切れ」と言われても、することがありません。 */
-    if (day === todayKey()) {
-      const late = open.filter((t) => t.due && t.due < todayKey());
-      if (late.length) {
-        const bar = node(html`
-          <button type="button" class="tl-late js-late">
-            <span class="tl-late-n">${late.length}</span>
-            <span>期限切れがあります</span>
-            <span class="tl-late-go">一覧で見る${icon("chevron")}</span>
-          </button>
-        `);
-        bar.addEventListener("click", () => {
-          store.update((st) => { st.settings.todoTimeline = false; });
-          KN.ui.toast("一覧で出します。設定から戻せます");
-          haptic();
-        });
-        sec.append(bar);
-      }
-    }
-
     const rows = open.filter((t) => t.due === day);
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     if (!rows.length && !done.length) {
@@ -2221,6 +2199,36 @@
       grid.append(cell);
     }
     outer.trail.forEach((key) => grid.append(outCell(key)));
+    /* 期限切れ。一日の中には居場所がないので、**あることだけ**言って、
+       受け皿（一覧）への口を出します。
+
+       ここ（貼りつく帯の中）に置くのが肝です。紙の中に置いていたら、
+       開いた瞬間に「いま」のところへ送られて（toNow）、そのまま帯の裏へ
+       隠れました——**見えない注意は、無いのと同じ**です。帯の中なら、
+       どこまで送っても居ます。
+
+       今日を見ているときだけ。過ぎた日を見ているときに「期限切れ」と
+       言われても、することがありません。 */
+    const oldBar = sec.querySelector(".tl-late");
+    if (oldBar) oldBar.remove();
+    const late = oneDay() && shownDay() === today
+      ? (open || []).filter((t) => t.due && t.due < today) : [];
+    if (late.length) {
+      const bar = node(html`
+        <button type="button" class="tl-late js-late">
+          <span class="tl-late-n">${late.length}</span>
+          <span>期限切れがあります</span>
+          <span class="tl-late-go">一覧で見る${icon("chevron")}</span>
+        </button>
+      `);
+      bar.addEventListener("click", () => {
+        haptic();
+        store.update((st) => { st.settings.todoTimeline = false; });
+        KN.ui.toast("一覧で出します。設定から戻せます");
+      });
+      sec.append(bar);
+    }
+
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);
     // 描き直したぶん、いま見ている日の印は消えています。付け直します

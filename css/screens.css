@@ -3330,11 +3330,14 @@ a.btn { text-decoration: none; }
   align-items: center;
   gap: var(--sp-2);
   width: 100%;
-  padding: 11px var(--sp-4);
+  /* 貼りつく帯（.cal）の中にいます。帯の左右の余白はすでに効いているので、
+     ここは上下だけ。 */
+  margin-top: var(--sp-2);
+  padding: 8px 0 2px;
   color: var(--c-text-2);
   font-size: var(--fs-sm);
   text-align: left;
-  border-bottom: 1px solid var(--c-border);
+  border-top: 1px solid var(--c-border);
 }
 .tl-late-n {
   display: grid; place-items: center;
@@ -3354,7 +3357,7 @@ a.btn { text-decoration: none; }
   font-weight: 700;
 }
 .tl-late-go svg { width: 14px; height: 14px; }
-.tl-late:active { background: var(--c-surface-2); }
+.tl-late:active { opacity: .6; }
 
 /* 用事を運んでいるあいだ、指の下にある日。ここへ落とすと日付が変わります
    ——棚を縦に積んでいたころ、下の棚へ運んでいたのと同じことです。 */
