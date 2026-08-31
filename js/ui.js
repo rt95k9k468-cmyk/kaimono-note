@@ -33,10 +33,14 @@
    * （商品のメモは、欄から離れた時点でもう入っています）。そういう紙で
    * 聞くのは、済んだことをもう一度聞くだけになります。
    */
-  function sheet({ title, titleMark, content, footer, onClose, guard }) {
+  /* hero … 紙の頭に敷く一枚。渡すと、題の行のかわりにこれが乗り、閉じる
+     丸だけがその上に浮きます。時間割の行の絵を、そのまま大きくして続きを
+     見せるためのものです（参考にした画面と同じ作り）。 */
+  function sheet({ title, titleMark, hero, content, footer, onClose, guard }) {
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     const el = node(html`
-      <div class="sheet" role="dialog" aria-modal="true" aria-label="${title || ""}">
+      <div class="sheet ${hero ? "has-hero" : ""}" role="dialog" aria-modal="true"
+           aria-label="${title || ""}">
         <div class="sheet-handle"></div>
         <header class="sheet-head">
           <h2 class="sheet-title">${titleMark ? html`<span class="sheet-mark">${titleMark}</span>` : ""}${title || ""}</h2>
@@ -46,6 +50,7 @@
       </div>
     `);
 
+    if (hero) el.querySelector(".sheet-head").before(hero);
     el.querySelector(".sheet-body").append(content);
     /* ボタンは**紙の中身の最後**に置きます。キーボードの上に貼りつけて
        いましたが、指が届く代わりに、読めるところを一段ぶん食べていました。

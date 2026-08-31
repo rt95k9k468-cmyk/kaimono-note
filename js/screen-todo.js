@@ -504,6 +504,17 @@
               ${icon("close")}
             </button>
           </div>
+          ${/* **始まりと終わり**を、範囲で書きます。
+
+                時間割の軸からは終わりの時刻を外しました——一件の都合を
+                軸に混ぜると目盛りが乱れるので。でも「7時の洗濯は何時に
+                終わるのか」は知りたいことで、行き場が要ります。参考にした
+                画面も、詳細でだけ「16時30分〜16時35分」と範囲で出して
+                いました。ここがその場所です。
+
+                時刻を決めていないものには出しません——組み立てが仮に置く
+                だけで、「何時から何時まで」と言える根拠がないので。 */""}
+          <span class="field-hint js-span-note" hidden></span>
           <span class="field-hint js-due-hint"></span>
           ${/* 毎朝・毎晩のときだけ出します。そう言っておかないと「毎朝なのに
                 19:30 と書いていいのか」で迷います。 */""}
@@ -606,13 +617,45 @@
       </button>
     `);
 
+    /* 紙の頭は、時間割の行の**続き**です。
+
+       参考にした画面は、押した行の絵をそのまま大きくして紙の頭に敷きます
+       ——同じ丸、同じ色、同じ題。押したものと開いたものが同じだと目で
+       分かるので、「どれを開いたんだったか」を思い出さずに済みます。
+       ふつうの題の行（「やることを直す」）は、そのぶん要らなくなります。
+
+       新しく足すときは出しません。まだ何の絵でも何の題でもないので、
+       敷くものがありません。 */
+    let hero = null;
+    if (editing) {
+      hero = node(html`
+        <div class="sheet-hero" style="--cat:${tlColorOf(t)}">
+          <span class="hero-node js-hero-node">${todoMark(t)}</span>
+          <span class="hero-text">
+            ${t.memo ? html`<span class="hero-cap js-hero-cap">${t.memo}</span>` : ""}
+            <span class="hero-title js-hero-title">${t.title}</span>
+          </span>
+        </div>
+      `);
+    }
+
     const handle = KN.ui.sheet({
       title: editing ? "やることを直す" : "やることを追加",
+      hero,
       content: body,
       footer: foot,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
     });
+
+    /* 題を打ち替えたら、頭の題もついていきます。保存する前から同じものを
+       指していないと、頭が「さっきのもの」を見せたままになります。 */
+    if (hero) {
+      const heroTitle = hero.querySelector(".js-hero-title");
+      body.querySelector(".js-title").addEventListener("input", (e) => {
+        heroTitle.textContent = e.target.value || t.title;
+      });
+    }
 
     /* The days a todo is nearly always for, in one press each. Typing a date
        into a date field is four taps that 「明後日」 does in one, and the
@@ -655,7 +698,25 @@
        iPhone that is behind a setting most people never open. So the hint says
        so, and offers to switch it on from here, where the reason for it is on
        screen. */
+    /** 「7:00 〜 7:30　30分」。時刻と長さの両方が決まったときだけ。 */
+    function paintSpanNote() {
+      const el = body.querySelector(".js-span-note");
+      if (!el) return;
+      const P = KN.plan;
+      const at = P.toMin(time);
+      if (at == null) { el.hidden = true; el.textContent = ""; return; }
+      const len = minutes || P.DEFAULT_MINUTES;
+      const until = P.toTime(at + len);
+      const guess = minutes ? "" : "（長さを決めていないので、30分として）";
+      /* 時刻の書き方は、時間割の左の列と揃えます（頭の0を落とす）。
+         同じ時刻が画面によって「07:00」と「7:00」に見えると、同じもの
+         だと気づくのに一拍かかります。 */
+      el.hidden = false;
+      el.textContent = `${tlClock(time)} 〜 ${tlClock(until)}　${P.humanSpan(len)}${guess}`;
+    }
+
     function paintHint() {
+      paintSpanNote();
       hintEl.innerHTML = "";
       if (!due) {
         /* 何も言いません。日付が空であることは、欄そのもの（--/--/--）が
@@ -729,6 +790,7 @@
           minutes = id ? Number(id) : null;
           KN.motion.fire("select");
           paintMins();
+          paintSpanNote();   // 終わりの時刻は、長さでも変わります
           paintSlots();
         },
       });
