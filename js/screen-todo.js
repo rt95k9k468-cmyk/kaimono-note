@@ -334,6 +334,10 @@
     const shown = calShown();
     sec.classList.toggle("is-week", !open);
     sec.classList.toggle("is-hidden", !shown);
+    /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
+       右の「›」の傾きも、隣の月の日の濃さも、これを見て決まります。指で
+       引いているあいだは、この数が指について動きます。 */
+    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません——開いているかどうかは、題の右の「›」が
        回ることで言います（paintDayTitle）。 */
@@ -342,6 +346,12 @@
       sec.querySelectorAll(".is-off-week").forEach((c) => c.classList.remove("is-off-week"));
       return;
     }
+    tagOffWeek(sec, here);
+  }
+
+  /** いまの週の外にあるマスに印を付けます。週で見ているときは CSS が隠し、
+      指で引いているあいだは、その印が「濃さ」の目印になります。 */
+  function tagOffWeek(sec, here) {
     const first = sec.querySelector(".cal-day");
     const anchor = (here && sec.querySelector(`.cal-day[data-day="${here}"]`))
       ? here : (first ? first.dataset.day : here);
@@ -1779,7 +1789,7 @@
        検索しているあいだは出しません——絞った結果は「一日」ではないので、
        一日ぶんの紙に乗せると嘘になります。 */
     const sheet = query ? els.body : node(html`
-      <div class="tl-sheet"><span class="tl-grip" aria-hidden="true"></span></div>
+      <div class="tl-sheet"><span class="tl-grip" aria-hidden="true"><i></i></span></div>
     `);
     if (sheet !== els.body) els.body.append(sheet);
 
@@ -1830,6 +1840,12 @@
     if (oneDay()) {
       sheet.append(daySection(shownDay(), open));
       wireDaySwipe(sheet);
+      wireCalPull(sheet);
+      /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
+         使えません。閉じているあいだだけ譲ってもらいます（開いていれば
+         下向きは空いているので、これまでどおり更新できます）。
+         上の暦の帯からは、どちらの姿でも引けます。 */
+      if (els.cal && calShown() && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
       restoreTop(keepTop);
       return;
     }
@@ -2113,7 +2129,15 @@
               残っていた ‹ › は落としています——日を送る道は、週の帯を押す・
               左右に払う、の二つで足りていて、三つめは行を一段ぶん使うだけ
               でした。「今日へ」だけは、遠い日から一息で帰る道として残します。 */""}
-        <div class="cal-grid"></div>
+        ${/* 曜日の行は、日のマスと別の入れ物にします。下の紙を引くと暦が
+              月ぜんぶまで伸びますが、そのとき動くのは**日のマスだけ**で、
+              曜日は上に留まっていてほしいからです。伸び縮みは
+              `.cal-clip`（窓）の高さ、いまの週を窓に合わせるのは
+              `.cal-slide`（ずらし）の役です。月をめくるときの横ずれは
+              `.cal-grid` が持っているので、縦と横で層を分けています
+              ——同じ要素に二つの transform は書けません。 */""}
+        <div class="cal-wds"></div>
+        <div class="cal-clip"><div class="cal-slide"><div class="cal-grid"></div></div></div>
         <button type="button" class="cal-now js-now" hidden>今日へ</button>
       </section>
     `);
@@ -2231,7 +2255,9 @@
     const grid = sec.querySelector(".cal-grid");
     grid.innerHTML = "";
 
-    U.WEEKDAYS.forEach((w, i) => grid.append(node(html`
+    const wds = sec.querySelector(".cal-wds");
+    wds.innerHTML = "";
+    U.WEEKDAYS.forEach((w, i) => wds.append(node(html`
       <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
     `)));
     /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
@@ -2388,6 +2414,172 @@
     };
     el.addEventListener("pointerup", end, { passive: true });
     el.addEventListener("pointercancel", () => { live = false; }, { passive: true });
+  }
+
+  /* ---------------- 紙を下に引くと、月が出てくる ----------------
+
+     暦は既定では今週の一行だけです。月ぜんぶを見たいときは題を押せば
+     開きますが、押して開くのは「切り替え」であって、**引き出す**のとは
+     手つきが違います。参考にした画面と同じで、下の紙をつまんで下げると、
+     その下から月が出てきます——指が止まればそこで止まり、離せば近いほう
+     （週か月か）へ収まります。
+
+     数は一つだけ持ちます：0 が週、1 が月。窓（.cal-clip）の高さと、いまの
+     週を窓に合わせるずらし（.cal-slide）と、隣の月の日の濃さと、題の右の
+     「›」の傾きが、みなこの一つの数から出ます。だから途中で手を離しても、
+     すべてが同じところにいます。
+
+     取る向きは一つだけです。閉じているときは**下へ**引くぶんだけ、開いて
+     いるときは**上へ**押すぶんだけ。逆向きは縦のスクロールに渡します
+     ——開いている月をさらに引き下げられても、出てくるものがありません。 */
+  const PULL_SLOP = 10;      // これだけ動いてから、引く手つきだと決めます
+  const PULL_DONE = 0.34;    // ここまで来ていたら、行った先へ収めます
+
+  /** 暦の伸びしろを測ります。**開いた姿**で測るので、先に窓を開けます。 */
+  function calMetrics() {
+    const cal = els.cal;
+    if (!cal) return null;
+    const clip = cal.querySelector(".cal-clip");
+    const slide = cal.querySelector(".cal-slide");
+    const grid = cal.querySelector(".cal-grid");
+    if (!clip || !slide || !grid) return null;
+    const cells = [].slice.call(grid.querySelectorAll(".cal-day"));
+    if (cells.length < 8) return null;
+    const rowH = cells[7].offsetTop - cells[0].offsetTop;
+    const cellH = cells[0].offsetHeight;
+    const full = grid.offsetHeight;
+    if (!(rowH > 0) || !(cellH > 0) || full <= cellH) return null;
+    /* いま見ている日の週が、窓に来る週です。月をめくった先など、その日が
+       この月に無いときは先頭の週にします。 */
+    const here = hereDay || todayKey();
+    let idx = -1;
+    for (let i = 0; i < cells.length; i++) if (cells[i].dataset.day === here) { idx = i; break; }
+    return { clip, slide, grid, cellH, rowH, full, week: idx < 0 ? 0 : Math.floor(idx / 7) };
+  }
+
+  /** 0（週）〜1（月）のあいだの、途中の姿を描きます。 */
+  function paintPeek(m, p) {
+    const h = m.cellH + (m.full - m.cellH) * p;
+    m.clip.style.height = h.toFixed(1) + "px";
+    m.slide.style.transform = `translateY(${(-m.week * m.rowH * (1 - p)).toFixed(1)}px)`;
+    if (root) root.style.setProperty("--cal-p", p.toFixed(3));
+  }
+
+  /** 引きはじめ。隠していた週をぜんぶ出してから測ります。 */
+  function beginPeek() {
+    const cal = els.cal;
+    if (!cal) return null;
+    cal.classList.remove("is-settling");
+    cal.classList.add("is-peek");
+    if (root) root.classList.add("is-cal-peek");
+    /* 引きはじめに、選ばれている字を放します。マウスで引くと紙の上の字が
+       選ばれ、次にその上から引いたときブラウザが「選んだ字を運ぶ」ほうの
+       手つきだと判断して、こちらの指を取り上げます（pointercancel）。 */
+    const sel = window.getSelection && window.getSelection();
+    if (sel && !sel.isCollapsed) sel.removeAllRanges();
+    /* 月から週へ戻すときも、いまの週の外に印を付けておきます。同じ CSS が
+       濃さと隣の月の日を見ているので、行き（週→月）と帰り（月→週）で
+       見え方が違わないように。 */
+    tagOffWeek(cal, hereDay || todayKey());
+    const m = calMetrics();
+    if (!m) { endPeek(); return null; }
+    paintPeek(m, calOpen() ? 1 : 0);
+    return m;
+  }
+
+  function endPeek() {
+    if (els.cal) els.cal.classList.remove("is-peek", "is-settling");
+    if (root) root.classList.remove("is-cal-peek");
+  }
+
+  /** 指を離したあと。行き先まで滑らせてから、はじめて設定に書きます。
+      先に書くと暦が組み直されて、途中の姿から**跳んで**しまいます。 */
+  function settlePeek(m, open) {
+    const cal = els.cal;
+    if (!cal || !m) return;
+    const done = () => {
+      endPeek();
+      m.clip.style.height = "";
+      m.slide.style.transform = "";
+      if (open !== calOpen()) store.setCalPref("todo", { open });
+      else markWeek(cal, hereDay || todayKey());
+    };
+    if (KN.motion.still()) { done(); return; }
+    cal.classList.add("is-settling");
+    if (root) root.classList.remove("is-cal-peek");   // ここからは滑らせます
+    paintPeek(m, open ? 1 : 0);
+    let over = false;
+    const fin = () => {
+      if (over) return;
+      over = true;
+      clearTimeout(tm);
+      m.clip.removeEventListener("transitionend", fin);
+      done();
+    };
+    m.clip.addEventListener("transitionend", fin);
+    const tm = setTimeout(fin, 420);
+  }
+
+  function wireCalPull(el) {
+    let pid = null, x0 = 0, y0 = 0, p0 = 0, p = 0, m = null, live = false, on = false;
+    /* 掴み手から始めたかどうか。上へ**押し戻す**のは、ここからだけです
+       ——紙の本体で上へ引けば、それはリストを送るスクロールなので。 */
+    let byGrip = false;
+    const drop = () => { live = false; on = false; pid = null; m = null; };
+
+    el.addEventListener("pointerdown", (e) => {
+      if (tlDrag || !els.cal) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // 上まで来ているときだけ。途中で引くのは、ただのスクロールです。
+      if (!root || root.scrollTop > 0) return;
+      if (query || !oneDay() || !calShown()) return;
+      pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
+      p0 = calOpen() ? 1 : 0; p = p0;
+      byGrip = !!(e.target.closest && e.target.closest(".tl-grip"));
+      live = true; on = false;
+      /* 掴み手からのぶんは、この場で指を預かります。上へ押すと紙のほうが
+         縮んで指の下から逃げるので、預けておかないと、途中から動きが
+         暦のほうへ流れてしまいます（掴み手には押すものが無いので、
+         ここで預かって困るものもありません）。 */
+      if (byGrip) { try { el.setPointerCapture(pid); } catch (_) { /* だめでも続けます */ } }
+    }, { passive: true });
+
+    el.addEventListener("pointermove", (e) => {
+      if (!live || e.pointerId !== pid) return;
+      if (tlDrag) { if (on) settlePeek(m, p0 === 1); drop(); return; }
+      const dy = e.clientY - y0, dx = e.clientX - x0;
+      if (!on) {
+        // 横が勝ったら、日送り（wireDaySwipe）の番です。
+        if (Math.abs(dx) > PULL_SLOP && Math.abs(dx) > Math.abs(dy)) { drop(); return; }
+        if (Math.abs(dy) < PULL_SLOP || Math.abs(dy) < Math.abs(dx) * 1.2) return;
+        // 閉じているなら下へ、開いているなら上へ。逆向きは渡します。
+        if ((dy > 0) === (p0 === 1)) { drop(); return; }
+        // 上へ戻すのは掴み手からだけ（下のリストのスクロールを取らない）。
+        if (dy < 0 && !byGrip) { drop(); return; }
+        m = beginPeek();
+        if (!m) { drop(); return; }
+        on = true;
+        try { el.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
+      }
+      // 取ったからには、スクロールには渡しません。
+      if (e.cancelable) e.preventDefault();
+      const span = m.full - m.cellH;
+      const moved = dy - Math.sign(dy) * PULL_SLOP;
+      p = Math.min(1, Math.max(0, p0 + moved / span));
+      paintPeek(m, p);
+    }, { passive: false });
+
+    const end = (e) => {
+      if (!live || e.pointerId !== pid) return;
+      const was = on, mm = m, pp = p, from = p0;
+      drop();
+      if (!was) return;
+      const open = from === 1 ? pp > 1 - PULL_DONE : pp > PULL_DONE;
+      if (open !== (from === 1)) haptic();
+      settlePeek(mm, open);
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
   }
 
   /** 出す日を入れ替えます。 */

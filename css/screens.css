@@ -372,7 +372,13 @@
   transition: transform var(--dur) var(--ease);
 }
 .day-more svg { width: 17px; height: 17px; stroke-width: 2.6; }
-.topbar-day[aria-expanded="true"] .day-more { transform: rotate(90deg); }
+/* 傾きは、暦がどれだけ開いているか（--cal-p：0＝週、1＝月）そのものです。
+   押して切り替えたときは 0↔1 が一息で入れ替わり、紙を引いているあいだは
+   指と一緒に少しずつ回ります——同じ一つの数を見ているので、途中で手を
+   離しても「›」だけが取り残されることがありません。 */
+.day-more { transform: rotate(calc(var(--cal-p, 0) * 90deg)); }
+/* 指の下では滑らせません。遅れて追ってくると、ずれて見えます。 */
+.is-cal-peek .day-more { transition: none; }
 .topbar-day:active { opacity: .6; }
 
 .cal-head {
@@ -447,6 +453,33 @@
   touch-action: pan-y;
 }
 .cal { touch-action: pan-y; }
+
+/* 曜日の行。日のマスとは別の入れ物です——下の紙を引いて暦を伸ばすとき、
+   動くのは日のマスだけで、曜日はここに留まります。 */
+.cal-wds {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* 伸び縮みする窓と、その中のずらし。ふだんは何もしません（高さは中身の
+   まま、ずれは0）——JSが指の下で高さとずれを書いているあいだだけ効きます。
+   月をめくるときの横ずれは中の .cal-grid が持つので、縦と横で層が別です。 */
+.cal-clip { overflow: hidden; }
+.cal.is-settling .cal-clip { transition: height .3s var(--ease-out); }
+.cal.is-settling .cal-slide { transition: transform .3s var(--ease-out); }
+/* 引いているあいだは、隠していた週も場所を取ります（測るために）。
+   濃さは、開いているぶんだけ。 */
+.cal.is-peek.is-week .cal-day.is-off-week { display: flex; }
+.cal.is-peek.is-week .cal-pad.is-off-week { display: block; }
+.cal.is-peek .cal-day.is-off-week { opacity: var(--cal-p, 1); }
+/* 隣の月の日は、週の行に居るあいだだけ顔を出します。伸ばしている最中に
+   ほかの行のぶんまで出ると、収まった月の姿と食い違います。 */
+.cal.is-peek .cal-day.is-out.is-off-week { visibility: hidden; }
+.cal.is-peek .cal-day.is-out:not(.is-off-week) { visibility: visible; }
+@media (prefers-reduced-motion: reduce) {
+  .cal.is-settling .cal-clip,
+  .cal.is-settling .cal-slide { transition: none; }
+}
 
 .cal-wd {
   text-align: center;
@@ -3294,7 +3327,6 @@ a.btn { text-decoration: none; }
   position: relative;
   background: var(--c-surface);
   border-radius: 22px 22px 0 0;
-  padding-top: 4px;
   /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
      ——途中で切れると、その下の地が「まだ何かある」に見えます。
      暦の高さは日によって変わる（週／月）ので、そのぶんは引きません
@@ -3303,10 +3335,30 @@ a.btn { text-decoration: none; }
   /* 紙のふちは、地との差だけで見せます。影を足すと、この一枚が「浮いて
      いる」ように見えて、下までひと続きに流れる感じが切れます。 */
 }
+/* 掴み手。見えている棒は5pxですが、掴めるところはもっと広く取ります
+   ——ここは「紙をつまむ」ための場所で、5pxの棒は指では狙えません。
+   広げたぶん、月を**押し戻す**（上へ）手つきをここだけで受けられます：
+   紙の本体で上へ引くと、それは下のリストを送るスクロールなので。 */
 .tl-grip {
   display: block;
+  padding: 9px 0 9px;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* 引いているあいだ、字は選ばせません。選ばれたままだと、次にその上から
+   引いたときブラウザが「選んだ字を運ぶ」ほうの手つきを始めて、こちらの
+   指を取り上げてしまいます。 */
+.is-cal-peek .tl-sheet,
+.is-cal-peek .cal {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.tl-grip > i {
+  display: block;
   width: 36px; height: 5px;
-  margin: 5px auto 0;
+  margin: 0 auto;
   border-radius: var(--r-full);
   background: var(--c-border-2);
   opacity: .8;
