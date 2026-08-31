@@ -463,58 +463,93 @@
     let iconKey = editing ? (t.icon || null) : null;
     haptic(10);
 
-    const body = node(html`
-      <div class="stack" style="gap:18px">
-        <div class="field">
-          <span class="field-label">やること</span>
-          ${/* ★は名前の右に。前は一段まるごと使って「★を付ける／同じ日の
-                なかで先に出てきます」と書いていましたが、説明のほうが
-                ボタンより大きい札は、幅の使い方として逆さまです。 */""}
-          <div class="todo-name-row">
-            <input class="input js-title" placeholder="例：ゴミ出し・電球を替える"
-                   value="${editing ? t.title : ""}"
-                   autocomplete="off" autocapitalize="off" spellcheck="false">
-            <button type="button" class="icon-btn fav js-flag" aria-pressed="${String(flagged)}"
-                    aria-label="★を付ける（同じ日のなかで先に出てきます）"
-                    title="★を付ける">${icon("star")}</button>
-          </div>
-        </div>
+    /* ---------------- 詳細の紙 ----------------
 
-        ${/* アイコン。買うものの商品アイコンと同じ選び方です。迷ったときに
-              丸のまま置いておくのではなく、中身にいちばん近い絵を積極的に
-              選ぶ、という決めごとも揃えます。既定は「おまかせ」——題から
-              推した絵で、選んだことになりません（自分で選んだ絵だけが
-              「自分で選んだ絵です」と出ます）。 */""}
-        <div class="field">
-          <span class="field-label">アイコン</span>
-          <button type="button" class="icon-pick js-icon-pick">
-            <span class="icon-pick-mark js-icon-mark"></span>
-            <span class="icon-pick-text">
-              <span class="icon-pick-name js-icon-lbl"></span>
-              <span class="icon-pick-sub js-icon-sub"></span>
-            </span>
-            <span class="price-chevron">${icon("chevron")}</span>
+       **一枚に全部を並べるのをやめました。**
+
+       前はここに、題・アイコン・いつまでに（札4つ＋日付欄＋時刻欄）・
+       どれくらいかかる（札14個）・空いているところ・手順・くりかえし・
+       メモ・削除が、上から下へ全部並んでいました。決められることは多い
+       けれど、**いま決めたい一つを探すのに全部を読む**ことになります。
+
+       参考にした画面の作りに合わせて、三段にしました。
+
+         頭   … 行の絵の続き。ここで題を直し、絵を選び、印を付ける
+         札   … 決めごとを一行ずつ（日付・時刻・くりかえし・お知らせ）。
+                押すと、その一つだけの紙が開く
+         中身 … 手順とメモ
+
+       札を押して開く紙の中身は、**前と同じ部品をそのまま**移しています
+       ——札も欄も配線ごと動かすので、選び方は何も変わりません。変わったのは
+       「いつ見せるか」だけです。 */
+    const body = node(html`
+      <div class="sheet-detail">
+        ${/* ---- 決めごと ---- */""}
+        <div class="d-card">
+          <button type="button" class="d-row js-row-due">
+            <span class="d-ico">${icon("calendar")}</span>
+            <span class="d-label js-due-label"></span>
+            <span class="d-value js-due-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
+          <button type="button" class="d-row js-row-time">
+            <span class="d-ico">${icon("clock")}</span>
+            <span class="d-label js-time-label"></span>
+            <span class="d-value js-time-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
+          <button type="button" class="d-row js-row-repeat">
+            <span class="d-ico">${icon("repeat")}</span>
+            <span class="d-label js-repeat-label"></span>
+            <span class="d-value js-repeat-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
+          <button type="button" class="d-row js-row-notify">
+            <span class="d-ico">${icon("bell")}</span>
+            <span class="d-label js-notify-label"></span>
+            <span class="d-value js-notify-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
           </button>
         </div>
 
-        <div class="field">
-          <span class="field-label">いつまでに</span>
-          <div class="js-due-chips"></div>
-          ${/* 空のとき、iOS の日付欄も時刻欄も **何も出しません**。枠だけが
-                並んで、何の欄なのか分からなくなります。だから空のときは
-                自分で「--/--/--」「--:--」と書いて、押せば選べることを
-                見せます。
+        ${/* ---- 中身：手順とメモ ---- */""}
+        <div class="d-card">
+          <div class="sub-edit js-subs"></div>
+          <button type="button" class="d-add js-sub-add">
+            <span class="d-add-box">${icon("plus")}</span>
+            <span>手順を足す</span>
+          </button>
+          <textarea class="d-memo js-memo" rows="2"
+                    placeholder="メモ、持ちもの、電話番号…">${editing ? t.memo || "" : ""}</textarea>
+        </div>
+      </div>
+    `);
 
-                日付と時刻は横に並べます。二つで一つの答え（いつ）なので、
-                段を分けると、時刻だけが宙に浮いて見えます。時刻の欄は
-                日付が空でも出したままにします——「なし」を選んだ人が、
-                そのあとで時刻を足せなくなるのは変なので。 */""}
+    /* ---- 押すと開く、一つぶんの紙 ----
+
+       中身は前と同じ部品です。body の中には置かず、ここで組んで持って
+       おきます（開くときに紙へ差し込み、閉じたら戻します）。 */
+    const pickDue = node(html`
+      <div class="stack" style="gap:14px">
+        <div class="field">
+          <div class="js-due-chips"></div>
           <div class="date-row">
             <span class="date-cell">
               <input class="input js-due" type="date" value="${due || ""}"
                      aria-label="日付を選ぶ">
               <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
             </span>
+          </div>
+          <span class="field-hint js-due-hint"></span>
+        </div>
+      </div>
+    `);
+
+    const pickTime = node(html`
+      <div class="stack" style="gap:14px">
+        <div class="field">
+          <span class="field-label">時刻</span>
+          <div class="date-row">
             <span class="date-cell is-time">
               <input class="input js-time" type="time" aria-label="時刻を選ぶ">
               <span class="date-empty js-time-empty" aria-hidden="true">--:--</span>
@@ -523,110 +558,91 @@
               ${icon("close")}
             </button>
           </div>
-          ${/* **始まりと終わり**を、範囲で書きます。
-
-                時間割の軸からは終わりの時刻を外しました——一件の都合を
-                軸に混ぜると目盛りが乱れるので。でも「7時の洗濯は何時に
-                終わるのか」は知りたいことで、行き場が要ります。参考にした
-                画面も、詳細でだけ「16時30分〜16時35分」と範囲で出して
-                いました。ここがその場所です。
-
-                時刻を決めていないものには出しません——組み立てが仮に置く
-                だけで、「何時から何時まで」と言える根拠がないので。 */""}
           <span class="field-hint js-span-note" hidden></span>
-          <span class="field-hint js-due-hint"></span>
           ${/* 毎朝・毎晩のときだけ出します。そう言っておかないと「毎朝なのに
                 19:30 と書いていいのか」で迷います。 */""}
           <span class="field-hint js-time-note" hidden>時刻は、お知らせを出す
             タイミングです。並ぶ場所は毎朝・毎晩のままです。</span>
         </div>
 
-        ${/* どれくらいかかるか。
-
-              これは締め切りでも目標でもありません。**今日の時間割を組む
-              ための長さ**です。決めなくても構いません——決めていないものは
-              30分として置かれます。
-
-              札で選ばせるのは、分を打たせると「25分か30分か」を考え始めて
-              しまうからです。見積もりはそこまで細かくならないので、
-              よく使う長さだけを並べます。 */""}
+        ${/* どれくらいかかるか。締め切りでも目標でもありません——**今日の
+              時間割を組むための長さ**です。決めなくても構いません。 */""}
         <div class="field">
           <span class="field-label">どれくらい かかる</span>
           <div class="js-mins"></div>
-          <span class="field-hint">今日の時間割を組むのに使います。
-            決めなければ 30分ぶんの場所を取ります。</span>
         </div>
 
-        ${/* **その長さが入る空き**を、そのまま押せる形で出します。
-
-              時刻を決めるのに時計の欄を開いて「何時なら空いていたか」を
-              思い出させるのは、この画面がもう知っていることを人にやらせて
-              います。長さが決まった時点で答えは出せるので、押せば決まる形
-              で置きます。
-
-              入る空きが無い日は、何も出しません——入らない時間を勧める
-              くらいなら、黙っているほうがいい。 */""}
+        ${/* **その長さが入る空き**を、そのまま押せる形で。時刻を決めるのに
+              「何時なら空いていたか」を思い出させるのは、この画面がもう
+              知っていることを人にやらせています。 */""}
         <div class="field js-slot-field" hidden>
           <span class="field-label">空いているところ</span>
           <div class="js-slots"></div>
         </div>
-
-        ${/* 中の段取り。
-
-              「朝のしたく」のような一件は、それ自体がいくつかの手順です。
-              手順ごとに別々の用事へ割ると一日が細切れに見えますし、一件に
-              まとめてしまうと何が残っているのか分かりません。中に持たせます。
-
-              くりかえしと合わせれば、そのままルーティンです——毎朝の一件が、
-              中に同じ手順を持って毎日戻ってきます。 */""}
-        <div class="field">
-          <span class="field-label">中の段取り（任意）</span>
-          <div class="sub-edit js-subs"></div>
-          <button type="button" class="btn btn-soft js-sub-add">手順を足す</button>
-        </div>
-
-        ${/* 見出しは付けません。札に「なし・毎日・毎朝…」と書いてあるので、
-              その上に「くりかえし」と重ねて言う必要がありません。 */""}
-        <div class="field">
-          <div class="js-repeat"></div>
-          ${/* Which days, once 毎週 or 毎月 is chosen. Hidden otherwise —
-                「なし」 has no days to ask about. */""}
-          <div class="js-repeat-detail" hidden></div>
-          <span class="field-hint js-repeat-hint" hidden></span>
-        </div>
-
-        <label class="field">
-          <span class="field-label">メモ（任意）</span>
-          <textarea class="input memo-input js-memo" rows="3"
-                    placeholder="例：可燃ごみ・8時まで">${editing ? t.memo || "" : ""}</textarea>
-        </label>
-
-        ${editing ? html`
-          <button type="button" class="btn btn-soft js-delete" style="color:var(--c-danger)">
-            このやることを削除
-          </button>` : ""}
       </div>
     `);
 
-    const titleEl = body.querySelector(".js-title");
-    const dueEl = body.querySelector(".js-due");
-    const hintEl = body.querySelector(".js-due-hint");
-    const flagBtn = body.querySelector(".js-flag");
+    const pickRepeat = node(html`
+      <div class="stack" style="gap:14px">
+        <div class="field">
+          <div class="js-repeat"></div>
+          <div class="js-repeat-detail" hidden></div>
+          <span class="field-hint js-repeat-hint" hidden></span>
+        </div>
+      </div>
+    `);
 
-    /* アイコンの札。選んだ鍵（iconKey）と、いま打ってある題の両方が
-       見え方を決めます——おまかせのときは、打つそばから推す絵が変わる
-       ので、題の変化にも塗り直しが要ります。 */
-    const iconPickBtn = body.querySelector(".js-icon-pick");
+    /* 紙の中の部品を、body から探せるようにします——下の配線は
+       body.querySelector で書かれているので、探す先を広げるだけで
+       そのまま通ります。 */
+    const parts = [body, pickDue, pickTime, pickRepeat];
+    body.pick = (sel) => {
+      for (const el of parts) { const hit = el.querySelector(sel); if (hit) return hit; }
+      return null;
+    };
+
+    /* ---- 頭。行の絵の続きで、ここが題とアイコンの持ち場です ----
+
+       題の欄は body の中にありました。頭に絵と題が並んでいるのに、その
+       すぐ下でもう一度「やること」という欄に同じ題が出ている——同じものが
+       二つある形でした。**頭のほうを本物にします**（参考画面と同じで、
+       題は下線の引かれた白い字として、そこで直に打てます）。
+
+       新しく足すときも頭を敷きます。前は「まだ何の絵でも題でもないので
+       敷くものがない」と書きましたが、打ちながら絵と題が育っていくほうが、
+       欄を埋めてから確かめるより短い道でした。 */
+    const hero = node(html`
+      <div class="sheet-hero" style="--cat:${editing ? tlColorOf(t) : "var(--c-primary-fill)"}">
+        <span class="hero-mark">
+          <span class="hero-node js-hero-node"></span>
+          <button type="button" class="hero-paint js-icon-pick" aria-label="絵を選ぶ">
+            ${icon("palette")}
+          </button>
+        </span>
+        <span class="hero-text">
+          <span class="hero-cap js-hero-when"></span>
+          <input class="hero-title js-title" placeholder="例：ゴミ出し・電球を替える"
+                 value="${editing ? t.title : ""}"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 aria-label="やること">
+          <span class="hero-facts js-hero-facts"></span>
+        </span>
+      </div>
+    `);
+
+    const titleEl = hero.querySelector(".js-title");
+    const dueEl = body.pick(".js-due");
+    const hintEl = body.pick(".js-due-hint");
+
+    /* アイコン。選んだ鍵（iconKey）と、いま打ってある題の両方が見え方を
+       決めます——おまかせのときは、打つそばから推す絵が変わるので。 */
+    const iconPickBtn = hero.querySelector(".js-icon-pick");
     function paintIcon() {
-      const own = iconKey && KN.productIcons.byKey(iconKey);
-      iconPickBtn.querySelector(".js-icon-mark").innerHTML = iconMarkHtml(titleEl.value, iconKey);
-      iconPickBtn.querySelector(".js-icon-lbl").textContent =
-        own ? (KN.productIcons.LABELS[iconKey] || iconKey) : "おまかせ";
-      iconPickBtn.querySelector(".js-icon-sub").textContent =
-        own ? "自分で選んだ絵です" : "題から選んでいます";
+      hero.querySelector(".js-hero-node").innerHTML = iconMarkHtml(titleEl.value, iconKey);
     }
     paintIcon();
-    iconPickBtn.addEventListener("click", () => {
+    iconPickBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       openTodoIconPicker(iconKey, titleEl.value, (key) => { iconKey = key; paintIcon(); });
     });
     titleEl.addEventListener("input", () => { if (!iconKey) paintIcon(); });
@@ -645,22 +661,36 @@
 
        新しく足すときは出しません。まだ何の絵でも何の題でもないので、
        敷くものがありません。 */
-    let hero = null;
+    /* ---- ⋯ の中の二つ ----
+
+       ★を付けるのと、消すの。どちらも「たまに、一度だけ」使うもので、
+       決めごとの札のあいだに置くと、毎回目を通す列に混ざります。
+       ★は前は題の右の小さな丸、削除は紙のいちばん下にありました。 */
+    const heroMenu = [
+      {
+        id: "flag",
+        label: () => (flagged ? "★をはずす" : "★をつける"),
+        sub: "同じ日のなかで先に出てきます",
+        icon: "star",
+        onPick: () => { flagged = !flagged; paintHeroFacts(); },
+      },
+    ];
     if (editing) {
-      hero = node(html`
-        <div class="sheet-hero" style="--cat:${tlColorOf(t)}">
-          <span class="hero-node js-hero-node">${todoMark(t)}</span>
-          <span class="hero-text">
-            ${t.memo ? html`<span class="hero-cap js-hero-cap">${t.memo}</span>` : ""}
-            <span class="hero-title js-hero-title">${t.title}</span>
-          </span>
-        </div>
-      `);
+      heroMenu.push({
+        id: "delete", label: () => "このやることを削除", icon: "trash", danger: true,
+        onPick: () => {
+          const undo = store.removeTodo(todoId);
+          haptic(14);
+          handle.close();
+          KN.ui.toast("削除しました", { action: { label: "元に戻す", onClick: undo } });
+        },
+      });
     }
 
     const handle = KN.ui.sheet({
       title: editing ? "やることを直す" : "やることを追加",
       hero,
+      menu: heroMenu,
       content: body,
       footer: foot,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
@@ -669,12 +699,76 @@
 
     /* 題を打ち替えたら、頭の題もついていきます。保存する前から同じものを
        指していないと、頭が「さっきのもの」を見せたままになります。 */
-    if (hero) {
-      const heroTitle = hero.querySelector(".js-hero-title");
-      body.querySelector(".js-title").addEventListener("input", (e) => {
-        heroTitle.textContent = e.target.value || t.title;
-      });
+
+    /* ---- 頭の、題の上と下 ----
+
+       上は「いつのことか」（日付と時刻）、下は印（★・くりかえし・手順の数）。
+       参考にした画面と同じ並びです。 */
+    function paintHeroFacts() {
+      hero.querySelector(".js-hero-when").textContent =
+        [due ? formatDay(due) : "日付なし", time ? tlClock(time) : ""].filter(Boolean).join("　");
+      const facts = hero.querySelector(".js-hero-facts");
+      facts.innerHTML = "";
+      if (flagged) facts.append(node(html`<span class="hero-fact is-fav">${icon("star")}</span>`));
+      if (repeat) facts.append(node(html`<span class="hero-fact">${icon("repeat")}</span>`));
+      const n = subs.filter((x) => x.title.trim()).length;
+      if (n) {
+        const done = subs.filter((x) => x.done && x.title.trim()).length;
+        facts.append(node(html`
+          <span class="hero-fact is-subs">${icon("check")}<i>${done}/${n}</i></span>`));
+      }
     }
+
+    /* ---- 四つの札 ----
+
+       押すと、その一つだけの紙が開きます。中身は上で組んだ pickDue /
+       pickTime / pickRepeat をそのまま差し込むので、選び方は前と同じです。 */
+    function openPick(title, el) {
+      el.hidden = false;
+      KN.ui.sheet({ title, content: el });
+    }
+    function paintRows() {
+      const row = (sel, label, value) => {
+        body.querySelector(sel + " .d-label").textContent = label;
+        body.querySelector(sel + " .d-value").textContent = value;
+      };
+      /* 左は**日付そのもの**、右は「今日」「明日」のような呼び名。
+         両方に formatDay を使うと、今日の行が「今日／今日」になります。 */
+      if (due) {
+        const d = KN.util.dayDate(due);
+        const n = daysUntil(due);
+        const near = n === 0 ? "今日" : n === 1 ? "明日" : n === 2 ? "明後日"
+          : n === -1 ? "昨日" : (n < 0 ? `${-n}日前` : `${n}日後`);
+        const full = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）`;
+        row(".js-row-due", full, near);
+      } else {
+        row(".js-row-due", "日付なし", "");
+      }
+      row(".js-row-time", time ? `${tlClock(time)}${minutes ? " 〜 " + tlClock(KN.plan.toTime(KN.plan.toMin(time) + minutes)) : ""}` : "時刻なし",
+          minutes ? KN.plan.humanSpan(minutes) : "");
+      const rid = isBookend(part) ? part : (repeat || "");
+      const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
+      row(".js-row-repeat", rid ? rw : "くりかえさない",
+          repeat === "weekly" && repeatDays.length
+            ? repeatDays.map((d) => WD[d]).join("・") : "");
+      const nt = KN.notify;
+      const on = !!(nt && nt.supported() && nt.enabled() && !nt.blocked());
+      row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
+          time ? (on ? "オン" : "オフ") : "");
+      body.querySelector(".js-row-notify").disabled = !time;
+      paintHeroFacts();
+    }
+    body.querySelector(".js-row-due").addEventListener("click", () => openPick("いつまでに", pickDue));
+    body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻と長さ", pickTime));
+    body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
+    body.querySelector(".js-row-notify").addEventListener("click", () => {
+      const nt = KN.notify;
+      if (!nt || !nt.supported()) { KN.ui.toast("この端末では知らせられません"); return; }
+      if (nt.blocked()) { KN.ui.toast("端末の設定で、通知が止められています"); return; }
+      haptic();
+      if (nt.enabled()) { nt.disable(); paintRows(); KN.ui.toast("お知らせを止めました"); return; }
+      nt.enable().then(() => { paintRows(); }).catch(() => {});
+    });
 
     /* The days a todo is nearly always for, in one press each. Typing a date
        into a date field is four taps that 「明後日」 does in one, and the
@@ -692,12 +786,12 @@
 
     /* 空かどうかで、かぶせる「--/--/--」を出し入れします。 */
     function paintDueEmpty() {
-      const ph = body.querySelector(".js-due-empty");
+      const ph = body.pick(".js-due-empty");
       if (ph) ph.hidden = !!due;
     }
 
     function paintDueChips() {
-      KN.ui.chipRow(body.querySelector(".js-due-chips"), DUE_CHIPS(), {
+      KN.ui.chipRow(body.pick(".js-due-chips"), DUE_CHIPS(), {
         activeId: due || "",
         onPick: (id) => {
           due = id || null;
@@ -719,7 +813,7 @@
        screen. */
     /** 「7:00 〜 7:30　30分」。時刻と長さの両方が決まったときだけ。 */
     function paintSpanNote() {
-      const el = body.querySelector(".js-span-note");
+      const el = body.pick(".js-span-note");
       if (!el) return;
       const P = KN.plan;
       const at = P.toMin(time);
@@ -736,6 +830,9 @@
 
     function paintHint() {
       paintSpanNote();
+      /* 札の右の値も、決めごとが変わるたびに書き直します。ここは日付・
+         時刻・長さのどれが変わっても必ず通る合流点です。 */
+      paintRows();
       hintEl.innerHTML = "";
       if (!due) {
         /* 何も言いません。日付が空であることは、欄そのもの（--/--/--）が
@@ -785,9 +882,9 @@
        when, and whichever was touched last is the answer. A time lights up the
        part it falls in, so 19:30 visibly *is* 夜 rather than something else
        sitting beside it. */
-    const timeCell = body.querySelector(".date-cell.is-time");
-    const timeEl = body.querySelector(".js-time");
-    const timeClear = body.querySelector(".js-time-clear");
+    const timeCell = body.pick(".date-cell.is-time");
+    const timeEl = body.pick(".js-time");
+    const timeClear = body.pick(".js-time-clear");
 
     /* かかる時間。よく使う長さだけを札で出します——分を打たせると
        「25分か30分か」を考え始めてしまい、見積もりはそこまで細かく
@@ -799,7 +896,7 @@
        同じ12時間——それ以上は一日の別の使い方（複数の用事に割る）の話
        なので、ここでは扱いません。 */
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
-    const minsHost = body.querySelector(".js-mins");
+    const minsHost = body.pick(".js-mins");
     function paintMins() {
       KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(
         MINS.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
@@ -810,6 +907,7 @@
           KN.motion.fire("select");
           paintMins();
           paintSpanNote();   // 終わりの時刻は、長さでも変わります
+          paintRows();
           paintSlots();
         },
       });
@@ -820,8 +918,8 @@
        いま直している一件は、組み立てから**外して**数えます。入れたまま
        だと、自分がすでに占めている場所を「空いていません」と自分に言い
        返すことになります。 */
-    const slotField = body.querySelector(".js-slot-field");
-    const slotHost = body.querySelector(".js-slots");
+    const slotField = body.pick(".js-slot-field");
+    const slotHost = body.pick(".js-slots");
     function paintSlots() {
       const day = due;
       if (!day) { slotField.hidden = true; return; }
@@ -865,7 +963,7 @@
        ——手順を直しに来て、ついでに済ませたことにしてしまう、という
        取り違えが起きないように。 */
     let subs = editing ? (t.subs || []).map((x) => ({ ...x })) : [];
-    const subHost = body.querySelector(".js-subs");
+    const subHost = body.pick(".js-subs");
     function paintSubs(focusAt) {
       subHost.textContent = "";
       subs.forEach((s, i) => {
@@ -898,6 +996,7 @@
         const el = subHost.querySelectorAll(".js-sub")[focusAt];
         if (el) KN.ui.focusNow(el);
       }
+      paintHeroFacts();   // 頭の「☑ 2/5」も、増減についていきます
     }
     body.querySelector(".js-sub-add").addEventListener("click", () => {
       subs.push({ id: "s" + Date.now() + subs.length, title: "", done: false });
@@ -916,9 +1015,9 @@
       timeCell.hidden = false;
       timeEl.value = time || "";
       timeClear.hidden = !time;
-      const ph = body.querySelector(".js-time-empty");
+      const ph = body.pick(".js-time-empty");
       if (ph) ph.hidden = !!time;
-      const note = body.querySelector(".js-time-note");
+      const note = body.pick(".js-time-note");
       if (note) note.hidden = !isBookend(part);
     }
 
@@ -957,8 +1056,8 @@
       if (dropped) paintRepeat(); else paintRepeatDetail();
     });
 
-    const detailEl = body.querySelector(".js-repeat-detail");
-    const repeatHint = body.querySelector(".js-repeat-hint");
+    const detailEl = body.pick(".js-repeat-detail");
+    const repeatHint = body.pick(".js-repeat-hint");
 
     /* 毎朝・毎晩は、記録の上では「毎日 ＋ 日の端」です。選択肢としては
        毎日の隣に一つずつ並びますが、しまうときは repeat と part に分かれます。
@@ -966,7 +1065,7 @@
     const repeatChipId = () => (isBookend(part) ? part : (repeat || ""));
 
     function paintRepeat() {
-      KN.ui.chipRow(body.querySelector(".js-repeat"),
+      KN.ui.chipRow(body.pick(".js-repeat"),
         REPEATS.map((r) => ({ id: r.id || "", label: r.label })), {
           activeId: repeatChipId(),
           onPick: (id) => {
@@ -996,6 +1095,7 @@
        and both of those are read off the day already chosen above, so the
        question is a choice between two readings rather than a form. */
     function paintRepeatDetail() {
+      paintRows();
       detailEl.innerHTML = "";
       detailEl.hidden = repeat !== "weekly" && repeat !== "monthly";
       repeatHint.hidden = detailEl.hidden;
@@ -1055,21 +1155,17 @@
     }
 
     paintRepeat();
+    paintRows();
 
-    flagBtn.classList.toggle("is-on", flagged);
-    flagBtn.addEventListener("click", () => {
-      flagged = !flagged;
-      flagBtn.classList.toggle("is-on", flagged);
-      flagBtn.setAttribute("aria-pressed", String(flagged));
-      haptic(10);
-    });
+    /* ★は ⋯ の中へ移りました（上の heroMenu）。付いているかどうかは、
+       頭の題の下に小さな星として出ます。 */
 
     titleEl.addEventListener("input", () => { foot.disabled = !titleEl.value.trim(); });
 
     foot.addEventListener("click", () => {
       const title = titleEl.value.trim();
       if (!title) return;
-      const memo = body.querySelector(".js-memo").value;
+      const memo = body.pick(".js-memo").value;
       /* 「毎週 火・金」 with a Monday on it is a rule and a date that disagree.
          The rule is the one that was just chosen on purpose, so the date moves
          to the first day the rule actually falls on. */
@@ -1105,15 +1201,8 @@
       handle.close();
     });
 
-    const del = body.querySelector(".js-delete");
-    if (del) {
-      del.addEventListener("click", () => {
-        const undo = store.removeTodo(todoId);
-        haptic(14);
-        handle.close();
-        KN.ui.toast("削除しました", { action: { label: "元に戻す", onClick: undo } });
-      });
-    }
+    /* 削除は ⋯ の中へ移りました（上の heroMenu）。紙のいちばん下に置くと、
+       毎回そこを通ることになります——たまに、一度だけ使うものなので。 */
 
     /* New ones open ready to type — see focusNow: the focus has to happen in
        the same beat as the tap or iOS leaves the keyboard down. Editing an

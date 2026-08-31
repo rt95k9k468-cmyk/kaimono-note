@@ -83,6 +83,15 @@ button, [role="tab"] {
 .btn svg { width: var(--ico); height: var(--ico); flex: none; stroke-width: var(--ico-w); }
 .btn-sm svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
+/* 大きな決めのボタン。
+
+   参考にした画面の「タスクを更新」は明るいコーラルに白い字です。同じ色
+   （#f2938e）で塗ると、白との差が **2.25:1** しかありません——大きい字の
+   目安（3:1）にも届かない数で、明るいところで見ると字が沈みます。
+
+   塗りと字の色は、両立しない組み合わせが実際にあります。ここは色の見た目
+   より**字が読めること**を取って、基調の濃いほう（4.74:1）で塗ります。
+   同じコーラルの系統なので、並べたときに別の色には見えません。 */
 .btn-primary { background: var(--c-primary); color: #fff; box-shadow: var(--shadow-1); }
 /* =========================================================
    Hover, only where a pointer can actually hover
@@ -691,12 +700,16 @@ button, [role="tab"] {
   color: #fff;
   flex: none;
 }
+/* 粒。**縦にのびた丸薬**です（参考画面と同じ形）。時間割の丸は円ですが、
+   ここは一枚の絵として大きく見せる場所なので、縦長のほうが絵が伸び伸び
+   入ります。白い細い輪で、地の面から一段持ち上げます。 */
+.hero-mark { position: relative; flex: none; }
 .hero-node {
   display: grid; place-items: center;
-  flex: none;
-  width: 62px; height: 62px;
-  border-radius: var(--r-full);
+  width: 62px; height: 84px;
+  border-radius: 31px;
   background: var(--cat, var(--c-primary-fill));
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
 }
 .hero-node .todo-mark,
 .hero-node .todo-mark svg { width: 38px; height: 38px; }
@@ -704,41 +717,82 @@ button, [role="tab"] {
   width: 14px; height: 14px; border-radius: var(--r-full);
   background: #fff; opacity: .92;
 }
-.hero-text { min-width: 0; display: block; }
+/* 絵を選ぶ丸。粒の左下に、はみ出して掛かります——参考画面と同じ置き方で、
+   「この粒の見た目を変えるもの」だと、位置が言っています。 */
+.hero-paint {
+  position: absolute;
+  left: -10px; bottom: -6px;
+  display: grid; place-items: center;
+  width: 34px; height: 34px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 88%, #000);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
+  color: #fff;
+  transition: transform var(--m-press) var(--ease);
+}
+.hero-paint:active { transform: scale(.9); }
+.hero-paint svg { width: 17px; height: 17px; }
+
+.hero-text { min-width: 0; display: block; flex: 1; }
 .hero-cap {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  overflow: hidden;
-  margin-bottom: 3px;
+  display: block;
+  margin-bottom: 2px;
   font-size: var(--fs-sm);
   color: color-mix(in srgb, #fff 78%, transparent);
+  font-variant-numeric: tabular-nums;
 }
+/* 題は**そこで直に打てます**。下線が一本あるだけで、枠も地の色も持ちません
+   ——欄に見せると、頭が「入力画面の一部」になってしまいます。ここは行の
+   続きで、そこに手を入れられる、という形にしたい。 */
 .hero-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  display: block;
+  width: 100%;
+  padding: 2px 0 5px;
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid color-mix(in srgb, #fff 45%, transparent);
+  border-radius: 0;
+  color: #fff;
+  font-family: inherit;
   font-size: 20px;
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: -.01em;
+  transition: border-color var(--m-state) var(--ease);
 }
-/* 頭を敷いたときは、題の行は要りません。閉じる丸だけがその上に浮きます
-   ——参考画面と同じで、左上ではなく右上に置きます（この app のほかの紙と
-   同じ側。閉じ方だけ画面ごとに変わるのは、覚え直しになるので）。 */
+.hero-title::placeholder { color: color-mix(in srgb, #fff 55%, transparent); }
+.hero-title:focus { outline: none; border-bottom-color: #fff; }
+
+/* 題の下の印。★・くりかえし・手順の数。 */
+.hero-facts {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 6px;
+  min-height: 16px;
+  color: color-mix(in srgb, #fff 80%, transparent);
+}
+.hero-facts:empty { display: none; }
+.hero-fact { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-sm); }
+.hero-fact svg { width: 14px; height: 14px; }
+.hero-fact.is-fav { color: #fff; }
+.hero-fact.is-subs i { font-style: normal; font-variant-numeric: tabular-nums; }
+/* 頭を敷いたときは、題の行は要りません。閉じる丸が**左**、⋯ が右——参考に
+   した画面と同じ並びです。色の面の上では、閉じるほうが先に目に入る側に
+   あったほうが、迷わずに出られます。 */
 .sheet.has-hero .sheet-head {
   position: absolute;
-  top: var(--sp-2); right: var(--sp-2);
+  top: var(--sp-3); left: var(--sp-3); right: var(--sp-3);
   z-index: 2;
   padding: 0;
+  gap: 0;
 }
 .sheet.has-hero .sheet-title { display: none; }
 .sheet.has-hero .sheet-head .icon-btn {
-  background: color-mix(in srgb, #fff 26%, transparent);
+  background: color-mix(in srgb, #fff 30%, transparent);
   color: #fff;
   border-radius: var(--r-full);
+  width: 38px; height: 38px;
 }
+.sheet.has-hero .sheet-head .js-menu { margin-left: auto; }
 /* 掴み手も、色の面の上では白く。**浮かせて**置きます——ふつうに並べると
    その上下の余白ぶん、紙の地が色の面の上にはみ出して、頭のいちばん上に
    白い帯が一本残ります。 */
@@ -750,7 +804,117 @@ button, [role="tab"] {
   z-index: 2;
   background: color-mix(in srgb, #fff 55%, transparent);
 }
-.sheet.has-hero .sheet-body { padding-top: var(--sp-5); }
+.sheet.has-hero .sheet-body { padding-top: var(--sp-4); }
+/* 頭は、閉じる丸と ⋯ のぶんだけ上に余白が要ります。 */
+.sheet.has-hero .sheet-hero { padding-top: calc(var(--sp-6) + 26px); }
+
+/* ---------------- 決めごとの札と、中身のカード ----------------
+
+   一枚に全部を並べるのをやめました。決めごとは**一行ずつ**で、押すと
+   その一つだけの紙が開きます。読むときは四行を上から下へ見るだけで済み、
+   決めるときはその一つだけが目の前にある。
+
+   カードは二枚。上が「いつ・どうくりかえす・知らせるか」、下が「中身」
+   （手順とメモ）。地の色から白い面を浮かせて、そのあいだに線を引きます
+   ——参考にした画面と同じ組みです。 */
+.sheet-detail { display: flex; flex-direction: column; gap: var(--sp-4); }
+.d-card {
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.d-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 13px var(--sp-4) 13px 14px;
+  text-align: left;
+  transition: background var(--m-press) var(--ease);
+}
+.d-row + .d-row,
+.d-add { border-top: 1px solid var(--c-border); }
+.d-row:active { background: var(--c-surface-2); }
+.d-row:disabled { opacity: .5; }
+.d-ico {
+  display: grid; place-items: center;
+  flex: none;
+  width: 26px; height: 26px;
+  color: var(--c-primary-fill);
+}
+.d-ico svg { width: 21px; height: 21px; stroke-width: 2; }
+.d-label {
+  flex: 1; min-width: 0;
+  font-size: var(--fs-lg);
+  color: var(--c-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.d-value {
+  flex: none;
+  font-size: var(--fs-md);
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+}
+.d-go { display: grid; place-items: center; flex: none; color: var(--c-border-2); }
+.d-go svg { width: 17px; height: 17px; stroke-width: 2.4; }
+
+/* 手順を足す行。参考画面の「サブタスクを追加」と同じで、空のチェック□が
+   置いてあります——押せば一つ増える、が形で分かるように。 */
+.d-add {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 11px var(--sp-4);
+  color: var(--c-text-3);
+  font-size: var(--fs-md);
+  text-align: left;
+}
+.d-add:active { background: var(--c-surface-2); }
+.d-add-box {
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  flex: none;
+  border-radius: 7px;
+  border: 2px solid var(--c-border-2);
+  color: var(--c-text-3);
+}
+.d-add-box svg { width: 14px; height: 14px; stroke-width: 2.6; }
+.d-card .sub-edit { padding: var(--sp-2) var(--sp-4) 0; }
+.d-card .sub-edit:empty { padding: 0; }
+
+/* メモ。枠を持ちません——カードの中の、最後の一段です。 */
+.d-memo {
+  display: block;
+  width: 100%;
+  padding: 12px var(--sp-4) 14px;
+  border: 0;
+  border-top: 1px solid var(--c-border);
+  border-radius: 0;
+  background: none;
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  resize: none;
+}
+.d-memo::placeholder { color: var(--c-text-3); }
+.d-memo:focus { outline: none; }
+
+/* ---------------- ほかの操作（⋯） ---------------- */
+.act-list { display: flex; flex-direction: column; }
+.act-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 13px 2px;
+  text-align: left;
+}
+.act-row + .act-row { border-top: 1px solid var(--c-border); }
+.act-row:active { opacity: .6; }
+.act-ico { display: grid; place-items: center; flex: none; width: 24px; color: var(--c-text-2); }
+.act-ico svg { width: 20px; height: 20px; }
+.act-main { display: block; min-width: 0; }
+.act-label { display: block; font-size: var(--fs-lg); color: var(--c-text); }
+.act-sub { display: block; font-size: var(--fs-sm); color: var(--c-text-3); }
+.act-row.is-danger .act-ico,
+.act-row.is-danger .act-label { color: var(--c-danger); }
 
 .sheet-body {
   overflow-y: auto;

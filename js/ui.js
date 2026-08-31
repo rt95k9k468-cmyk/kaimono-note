@@ -36,21 +36,40 @@
   /* hero … 紙の頭に敷く一枚。渡すと、題の行のかわりにこれが乗り、閉じる
      丸だけがその上に浮きます。時間割の行の絵を、そのまま大きくして続きを
      見せるためのものです（参考にした画面と同じ作り）。 */
-  function sheet({ title, titleMark, hero, content, footer, onClose, guard }) {
+  /* menu … 頭に置く「⋯」の中身。[{ id, label(), sub, icon, danger, onPick }]
+     たまに、一度だけ使うもの（★を付ける・削除）の置き場です。決めごとの
+     列に混ぜると、毎回そこを通ることになります。 */
+  function sheet({ title, titleMark, hero, menu, content, footer, onClose, guard }) {
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     const el = node(html`
       <div class="sheet ${hero ? "has-hero" : ""}" role="dialog" aria-modal="true"
            aria-label="${title || ""}">
         <div class="sheet-handle"></div>
         <header class="sheet-head">
-          <h2 class="sheet-title">${titleMark ? html`<span class="sheet-mark">${titleMark}</span>` : ""}${title || ""}</h2>
+          ${/* 頭を敷いたときは、閉じる丸が**左**、⋯ が右。参考にした画面と
+                同じ並びです——色の面の上では、閉じるほうが先に目に入る側に
+                あったほうが、迷わずに出られます。 */""}
           <button class="icon-btn js-close" aria-label="閉じる">${icon("close")}</button>
+          <h2 class="sheet-title">${titleMark ? html`<span class="sheet-mark">${titleMark}</span>` : ""}${title || ""}</h2>
+          ${menu && menu.length
+            ? html`<button class="icon-btn js-menu" aria-label="ほかの操作">${icon("more")}</button>`
+            : ""}
         </header>
         <div class="sheet-body"></div>
       </div>
     `);
 
     if (hero) el.querySelector(".sheet-head").before(hero);
+    const menuBtn = el.querySelector(".js-menu");
+    if (menuBtn) {
+      menuBtn.addEventListener("click", () => {
+        haptic();
+        actionSheet(menu.map((m) => ({
+          label: typeof m.label === "function" ? m.label() : m.label,
+          sub: m.sub, icon: m.icon, danger: m.danger, onPick: m.onPick,
+        })));
+      });
+    }
     el.querySelector(".sheet-body").append(content);
     /* ボタンは**紙の中身の最後**に置きます。キーボードの上に貼りつけて
        いましたが、指が届く代わりに、読めるところを一段ぶん食べていました。
@@ -341,6 +360,38 @@
     }
     document.body.appendChild(wrap);
     setTimeout(() => wrap.remove(), 700);
+  }
+
+  /* ---------------- ほかの操作（⋯ の中身） ----------------
+
+     たまに、一度だけ使うものの置き場です。★を付ける、削除する。決めごとの
+     列に混ぜると、毎回そこを通ることになりますし、削除のような戻せない
+     ものが指の通り道にあるのは、それだけで危ない。
+
+     ふつうの紙（sheet）を借ります——専用の作りを増やすより、開き方・閉じ方・
+     背景の作法が同じであるほうが、覚え直しがありません。 */
+  function actionSheet(items) {
+    const box = node(html`<div class="act-list"></div>`);
+    const handle = sheet({ title: "ほかの操作", content: box });
+    (items || []).forEach((it) => {
+      const row = node(html`
+        <button type="button" class="act-row ${it.danger ? "is-danger" : ""}">
+          <span class="act-ico">${it.icon ? icon(it.icon) : ""}</span>
+          <span class="act-main">
+            <span class="act-label">${it.label}</span>
+            ${it.sub ? html`<span class="act-sub">${it.sub}</span>` : ""}
+          </span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        handle.close();
+        /* 閉じ終わってから動かします。紙が消えるのと画面が組み直るのが
+           同じ拍だと、閉じる動きが飛んで見えます。 */
+        setTimeout(() => { try { it.onPick(); } catch (_) { /* 閉じるのは済んでいます */ } }, 40);
+      });
+      box.append(row);
+    });
+    return handle;
   }
 
   /* ---------------- toast ---------------- */
@@ -935,7 +986,7 @@
   }
 
   KN.ui = {
-    sheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    sheet, actionSheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, parkSearch, revealSearch,
   };
