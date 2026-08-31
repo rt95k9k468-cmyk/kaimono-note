@@ -2917,6 +2917,25 @@ a.btn { text-decoration: none; }
      切れて、続いているところまで破線に見えます（実際そうなりました）。
      線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
 }
+/* 長い用事は、丸がそのまま**縦にのびた粒**になります。
+
+   上端が始まりの時刻、下端が終わりの時刻。8時から18時までの用事なら、
+   その粒が8時から18時までを覆います——「長い」と書くかわりに、長い。
+   絵そのものは30pxのまま上端に置くので、10時間の用事でも、巨大な
+   アイコンが画面を占めることにはなりません（伸びるのは地のほうです）。 */
+.tl-row.is-long .tl-node {
+  top: 0;
+  transform: translateX(-50%);
+  height: var(--tl-span, 48px);
+  border-radius: 25px;
+  place-items: start center;
+  padding-top: 10px;
+}
+/* 時刻の札も上端へ。まん中に置くと、10時から18時まで伸びた粒の横で、
+   札だけが14時のあたりに付いていることになります。 */
+.tl-row.is-long .tl-time { align-self: start; padding-top: 15px; }
+.tl-row.is-long .item.tl-item { align-self: start; }
+
 .tl-node .todo-mark { width: 30px; height: 30px; }
 .tl-node .todo-mark svg { width: 30px; height: 30px; }
 .tl-node .todo-dot {
@@ -3013,9 +3032,45 @@ a.btn { text-decoration: none; }
 .tl-row.is-done .tl-node .todo-mark { filter: grayscale(1); opacity: .7; }
 .tl-row.is-done .tl-node .todo-dot { background: var(--c-border-2); }
 
-/* 空きの行。 */
-.tl-free-row { min-height: 50px; }
-.tl-free-row .tl-rail { min-height: 50px; }
+/* 空きの行。空いている量が縦の長さになります（--free-h は JS が測ります）。 */
+.tl-free-row { position: relative; min-height: var(--free-h, 50px); }
+.tl-free-row .tl-rail { min-height: var(--free-h, 50px); }
+
+/* 空きの中を通る、ちょうどの時刻。時間の軸が1時間きざみで読めるように
+   ——用事のあいだが空いていても、5:00 6:00 7:00 と目盛りが続きます。
+   線は目盛りの延長で、ごく薄く。読むのは数字のほうです。 */
+.tl-hours { position: absolute; inset: 0; pointer-events: none; }
+/* 目盛りは行いっぱいに広げ、数字だけ時刻の列（44px）に収めます。こうする
+   と線の右端が行の端で止まるので、はみ出しを切り落とす必要がありません
+   ——切り落とすと、空きのちょうど上端に来る目盛り（前の用事が終わった
+   ところ）が、半分に切れて消えていました。 */
+.tl-hour {
+  position: absolute;
+  left: 0; right: 0;
+  transform: translateY(-50%);
+  font-size: var(--fs-sm);
+  color: var(--c-text-3);
+  opacity: .75;
+  font-variant-numeric: tabular-nums;
+}
+.tl-hour > i {
+  display: inline-block;
+  width: 44px;
+  padding-right: 3px;
+  text-align: right;
+  font-style: normal;
+}
+.tl-hour::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 48px; right: 0;
+  height: 1px;
+  background: var(--c-border);
+  opacity: .55;
+}
+/* つまんで運んでいるあいだは、帯が自分で時刻を出します。目盛りと二重に
+   なるので、そのあいだだけ伏せます。 */
+.tl-free-row.is-open .tl-hours { display: none; }
 .tl-free-text {
   align-self: center;
   padding: 16px var(--sp-4) 16px 8px;
@@ -3051,6 +3106,29 @@ a.btn { text-decoration: none; }
    線だけが下へ伸びていると「まだ続く」と読めてしまいます。
    丸は行のまん中にあるので、そこまで（50% ＋ 丸の半径）。 */
 .tl-list > li:last-child .tl-rail::before { bottom: auto; height: calc(50% + 25px); }
+/* 伸びた粒で終わる日は、粒の下端までです（まん中ではなく）。 */
+.tl-list > li:last-child.is-long .tl-rail::before { height: var(--tl-span, 48px); }
+
+/* 日付の帯は、越えられない境目です。
+
+   前の日の最後の用事の粒が、次の日の見出し（「9月1日 火 明日」）に
+   かぶっていました。丸は行のまん中に置いてあって、行の高さより2pxだけ
+   大きい——それだけで、字の上に乗ります。伸びる粒を入れたので、放って
+   おけばもっと食い込みます。
+
+   一覧の下に、粒がはみ出せるぶんの余白を取り、見出しのほうは地の色を
+   敷いて前に出します。どちらか一方では足りません（余白だけだと、伸びた
+   粒がいつか越えてきます）。 */
+.tl-list { padding-bottom: 10px; }
+.js-body > .todo-group > .todo-head {
+  position: relative;
+  z-index: 1;
+  /* 棚の色の薄い染めは、そのまま。その下に地の色を一枚敷いて、透けなく
+     します——透けたままでは、前に出しても粒が見えてしまいます。 */
+  background:
+    linear-gradient(color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent) 0 100%),
+    var(--c-bg);
+}
 
 /* 過ぎた空き。もう使えないので、線も字も一段薄く。消しはしません
    ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
