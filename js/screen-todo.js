@@ -1713,14 +1713,21 @@
     return h;
   }
 
-  function scrollToSection(target) {
+  function scrollToSection(target, willStick) {
     /* Scrolled by hand rather than with scrollIntoView. That asks *every*
        ancestor to bring the row into view, the document included — and the
        document's one spare pixel is what the status-bar tap listens on, so
        revealing a row here would read as 「上へ戻れ」 and do the opposite
        (app.js). Setting the screen's own scrollTop leaves the document alone. */
+    /* 送ったあとに暦が貼りつくと、着いた先の見出しがその裏に隠れます
+       ——いま貼りついていないぶんは、chromeInset が数えていないので。
+       これから貼りつくと分かっているときは、その高さも先に引きます。 */
+    let inset = chromeInset();
+    if (willStick && els.cal && !els.cal.classList.contains("is-stuck")) {
+      inset += els.cal.getBoundingClientRect().height;
+    }
     const top = root.scrollTop
-      + target.getBoundingClientRect().top - root.getBoundingClientRect().top - chromeInset();
+      + target.getBoundingClientRect().top - root.getBoundingClientRect().top - inset;
     KN.app.glideTo(root, Math.max(0, top));
   }
 
@@ -2089,7 +2096,7 @@
       pastDay = day;
       render();
       const sec = els.body.querySelector('.todo-group[data-group="past"]');
-      if (sec) scrollToSection(sec);
+      if (sec) scrollToSection(sec, true);
     } else {
       if (pastDay) { pastDay = null; render(); }
       jumpToDay(day);
