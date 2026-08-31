@@ -2583,13 +2583,19 @@
     `);
   }
 
-  /* アイコンまわりの枠の高さは、かかる時間そのものです。
+  /* アイコンまわりの枠の高さは、かかる時間から測ります。
 
-     1分1pxで測ります。60分の用事は60px、120分は120px、180分は180px
-     ——**高さを見比べれば、長さを見比べたことになります**。前は30分
-     きざみで少しずつ足していき、6時間で頭打ちにしていました。すると
-     3時間の用事と10時間の用事が同じ高さになり、枠は「長さ」ではなく
-     「長めであること」しか言っていませんでした。上限は外しました。
+     ただし1分1pxのままだと、10時間の用事が720pxになり、画面2枚ぶんを
+     一件が占めてしまいます（実際そう言われました）。最初の2時間は
+     1分1pxのまま——短い用事どうしの見分けは、ここがいちばん利くので。
+     2時間を超えたぶんは、ゆるやかにしか伸ばしません（1分0.3px）。
+     10時間の用事も300px前後に収まりつつ、6時間より長いことはちゃんと
+     長く見えます——「長さ」と「長めであること」の中間で折り合いを
+     付けています。
+
+     tlOffset は同じ式を、行の**途中**の位置を求めるのにも使います
+     （下の tlInnerMarks）。伸びが折れ線なので、経過分数から縦位置を
+     求めるのにも、同じ式の片道だけで足ります。
 
      48pxは下限です。丸と題が入る高さで、これより詰めると読めません。
      30分以下はここに収まるので、丸のままです。そこから先は、伸びた枠の
@@ -2600,12 +2606,36 @@
      48pxに縮むと、その下にあるものが三時間ぶん上へ繰り上がって、朝から
      の一日が実際より短く見えます。かけた時間はかけた時間です。かわりに
      済ませた行は薄く・灰色にしてあるので、場所は取っても目は引きません。 */
-  const TL_BASE_H = 48;    // .tl-rail の基本の高さ（css/screens.css と同じ数）
-  const TL_PX_PER_MIN = 1;
+  const TL_BASE_H = 48;      // .tl-rail の基本の高さ（css/screens.css と同じ数）
+  const TL_LINEAR_MIN = 120; // ここまでは、そのまま1分1px
+  const TL_SLOW_RATE = 0.3;  // それを超えたら、ゆるやかに
+  function tlOffset(minutes) {
+    const m = Math.max(0, minutes || 0);
+    return m <= TL_LINEAR_MIN ? m : TL_LINEAR_MIN + (m - TL_LINEAR_MIN) * TL_SLOW_RATE;
+  }
   function tlSpanH(minutes) {
     if (!minutes) return null;
-    const h = Math.round(minutes * TL_PX_PER_MIN);
+    const h = Math.round(tlOffset(minutes));
     return h > TL_BASE_H ? h : null;
+  }
+
+  /* 長い用事の途中に通る、ちょうどの時刻。
+
+     伸びた枠は上端＝始まり・下端＝終わりですが、その**途中**が何時なのか
+     は、枠の見た目だけでは読めません（ゆるやかな伸びなので、まん中が
+     ちょうど中間の時刻とも限りません）。8時から18時までの用事なら、
+     9時・10時・11時…と、実際の時刻をその位置に添えます。 */
+  function tlInnerMarks(atMin, minutes) {
+    const out = [];
+    if (!minutes) return out;
+    for (let m = Math.ceil((atMin + 1) / 60) * 60; m < atMin + minutes; m += 60) {
+      out.push({ at: m, top: Math.round(tlOffset(m - atMin)) });
+    }
+    // 長い用事ほど目盛りも増えるので、8個を超えたら間引きます（空きの
+    // 目盛りと同じ考え方）。
+    if (out.length <= 8) return out;
+    const step = Math.ceil(out.length / 8);
+    return out.filter((_, i) => i % step === 0);
   }
 
   /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
@@ -2632,6 +2662,9 @@
     const sc = store.subCount(t);
     const closed = t.done || t.archived;
     const span = tlSpanH(t.minutes);
+    /* 長い用事の途中に通る、ちょうどの時刻。枠は上端＝始まり・下端＝終わり
+       としか言わないので、途中がいま何時なのかを添えます。 */
+    const marks = span ? tlInnerMarks(it.atMin, t.minutes) : [];
     const li = node(html`
       <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
                  ${closed ? "is-done" : ""} ${span ? "is-long" : ""}"
@@ -2643,6 +2676,13 @@
               なります。 */""}
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
+        ${marks.length ? html`
+          <span class="tl-inner-hours" aria-hidden="true">
+            ${marks.map((m) => html`
+              <span class="tl-inner-hour" style="top:${m.top}px">${tlClock(KN.plan.toTime(m.at))}</span>
+            `)}
+          </span>
+        ` : ""}
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
 
               前置き（メモ）が上にあるのは、それが**題を読むための文脈**
@@ -2723,6 +2763,16 @@
           KN.motion.fire(s.done ? "uncheck" : "check", btn);
           if (!s.done) KN.ui.burst(btn);
           store.toggleSub(t.id, s.id);
+
+          /* 手順を全部終えたら、そのタスクも終わりにします。押した丸を
+             確かめるほうが、押す前の s.done を見るより確かです——ここは
+             toggleSub のあとなので、subs はもう書き換わっています。 */
+          const fresh = store.getTodo(t.id);
+          const done = store.subCount(fresh);
+          if (done.total && done.done === done.total && !fresh.done) {
+            const mainCheck = li.querySelector(".tl-item > .check");
+            if (mainCheck) tick(t.id, mainCheck);
+          }
         });
         list.append(line);
       });
