@@ -2888,14 +2888,14 @@ a.btn { text-decoration: none; }
      一覧が745pxになり、一日ぶんが画面に入りませんでした。「眺める」ため
      の余白は、**一日が一目に入る**ことより先には来ません。
 
-     かかる時間が長い用事は、この最低の高さを JS 側（--tl-span）が
-     押し上げます。長い用事ほど帯が長く見えるように——ただし伸びには
-     上限があります（screen-todo.js の tlSpanH）。
+     **かかる時間では変わりません。** ここは長さに応じて伸びていました
+     （--tl-span）が、参考にした画面は時間に比例しません——4時間の用事も
+     25分の用事も同じ高さの行で、長さは題の下の字が言います。行の高さが
+     揃うぶん、一日が一本のリズムとして読めます。
 
-     既定は52px＝**30分ぶん**です（48pxから上げました）。丸が50pxなので、
-     48pxのままだと丸が行から1pxずつはみ出して、詰まった日には上下の丸が
-     触れました。52pxなら丸は行の中に収まります。 */
-  min-height: var(--tl-span, 52px);
+     64px は実測から。参考画面の行は、時刻の札から次の札まで 67px 前後
+     ——丸が50pxなので、上下に7pxずつの余白でその間隔になります。 */
+  min-height: 64px;
 }
 /* 背骨は**塗りの色そのまま**です。前は26%に薄めていましたが、参考に
    した画面は丸と同じ濃さで引いていて（実測 #f3938e ＝ 丸の #f2938e と
@@ -2941,30 +2941,6 @@ a.btn { text-decoration: none; }
      切れて、続いているところまで破線に見えます（実際そうなりました）。
      線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
 }
-/* 長い用事は、丸がそのまま**縦にのびた粒**になります。
-
-   上端が始まりの時刻、下端が終わりの時刻。8時から18時までの用事なら、
-   その粒が8時から18時までを覆います——「長い」と書くかわりに、長い。
-   絵そのものは30pxのまま上端に置くので、10時間の用事でも、巨大な
-   アイコンが画面を占めることにはなりません（伸びるのは地のほうです）。 */
-.tl-row.is-long .tl-node {
-  top: 0;
-  transform: translateX(-50%);
-  height: var(--tl-span, 52px);
-  border-radius: 25px;
-  place-items: start center;
-  padding-top: 10px;
-}
-/* 時刻の札も上端へ。まん中に置くと、10時から18時まで伸びた粒の横で、
-   札だけが14時のあたりに付いていることになります。
-
-   下げるのは padding ではなく margin です。padding だと札の**枠**だけが
-   上へ伸びて、字は枠のまん中に来ません。軸のほうは「この行はどの高さに
-   時刻を書いたか」を枠から測るので、字と枠がずれていると、避けたつもりの
-   目盛りが重なります（実際そうなりました）。 */
-.tl-row.is-long .tl-time { align-self: start; margin-top: 16px; }
-.tl-row.is-long .item.tl-item { align-self: start; }
-
 .tl-node .todo-mark { width: 32px; height: 32px; }
 .tl-node .todo-mark svg { width: 32px; height: 32px; }
 /* 絵を持たない用事の丸。参考画面の白抜きに寄せて、地より濃い一点に。 */
@@ -3128,17 +3104,21 @@ a.btn { text-decoration: none; }
 .tl-row .tl-item.is-checked .tl-facts { color: var(--c-text-3); }
 .tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: 400; }
 
-/* 空きの行。空いている量が縦の長さになります（--free-h は JS が測ります）。 */
-.tl-free-row { min-height: var(--free-h, 32px); }
-.tl-free-row .tl-rail { min-height: var(--free-h, 32px); }
+/* 空きの行。**長さによらず一定**です（screen-todo.js の TL_FREE_H に
+   同じ数）。用事の行より少しだけ低くして、間が空いていることは高さでは
+   なく破線が言います。 */
+.tl-free-row { min-height: 56px; }
+.tl-free-row .tl-rail { min-height: 56px; }
 
-/* ---------------- 1時間ごとの時間軸 ----------------
+/* ---------------- いま、どこにいるか ----------------
 
-   目盛りと「いま」は、行の中ではなく**一枚の層**に描きます（JS 側の
-   paintAxis）。行ごとに持たせていたころは、行が自分の中しか知らないので、
-   伸びた用事の途中の目盛りと、その用事が左に書いている始まりの時刻とが
-   同じ高さに並んで重なりました。一枚にまとめれば、置く前に全部の位置を
-   見比べて、ぶつかるものを落とせます。
+   「いま」は、行の中ではなく**一枚の層**に描きます（JS 側の paintNow）。
+   行だったころは、いまの時刻がある用事の**あと**にしか置けませんでした
+   ——14時から18時の用事を15時に見ると、線が18時のあたりに出ます。層なら、
+   その行の中の正しい高さに置けて、しかも常に前に出ます。
+
+   ここには1時間ごとの目盛りも乗っていました。時間に比例するのをやめた
+   ので、時刻→縦位置の折れ線が引けなくなり、外しました。
 
    ここは**触れません**（pointer-events: none）。行を掴む・押すは、下の
    行がそのまま受け取ります。 */
@@ -3149,35 +3129,8 @@ a.btn { text-decoration: none; }
   z-index: 2;
 }
 
-/* ちょうどの時刻。数字だけ時刻の列（44px）に収め、線はレールと丸を
-   avoid して右側だけに引きます——丸（左から47〜97px）を横切ると、線が
-   帯を切っているように見えます。 */
-.tl-hour {
-  position: absolute;
-  left: 0; right: 0;
-  transform: translateY(-50%);
-  font-size: var(--fs-sm);
-  color: var(--c-text-3);
-  opacity: .75;
-  font-variant-numeric: tabular-nums;
-}
-.tl-hour > i {
-  display: inline-block;
-  width: 44px;
-  padding-right: 3px;
-  text-align: right;
-  font-style: normal;
-}
-.tl-hour::after {
-  content: "";
-  position: absolute;
-  top: 50%; left: 104px; right: 0;
-  height: 1px;
-  background: var(--c-border);
-  opacity: .5;
-}
-/* つまんで運んでいるあいだは、開いた帯が自分で時刻を出します。目盛りと
-   二重になるので、そのあいだだけ軸を伏せます。 */
+/* つまんで運んでいるあいだは、開いた帯が自分で時刻を出します。いまの線と
+   二重になるので、そのあいだだけ層を伏せます。 */
 .tl:has(.tl-list.is-dragging) .tl-axis { display: none; }
 .tl-free-text {
   align-self: center;
@@ -3235,8 +3188,6 @@ a.btn { text-decoration: none; }
    線だけが下へ伸びていると「まだ続く」と読めてしまいます。
    丸は行のまん中にあるので、そこまで（50% ＋ 丸の半径）。 */
 .tl-list > li:last-child .tl-rail::before { bottom: auto; height: calc(50% + 25px); }
-/* 伸びた粒で終わる日は、粒の下端までです（まん中ではなく）。 */
-.tl-list > li:last-child.is-long .tl-rail::before { height: var(--tl-span, 52px); }
 
 /* 日付の帯は、越えられない境目です。
 
@@ -3799,28 +3750,15 @@ a.btn { text-decoration: none; }
 .sub-line .input { flex: 1 1 auto; min-width: 0; }
 .tl-subs { font-variant-numeric: tabular-nums; }
 
-/* 済ませたものは、細く。
+/* 済ませたものも、**同じ大きさのまま**です。
 
-   字も丸も一回り小さくして、目を引かないようにします。ただし**縦の長さ
-   は詰めません**。詰めると軸が嘘をつきます——3時間かけて済ませたものが
-   40pxに縮むと、その下にあるものが三時間ぶん上へ繰り上がって、朝から
-   の一日が実際より短く見えます。かけた時間はかけた時間です。 */
-.tl-row.is-done .item.tl-item { padding: 4px var(--sp-4) 5px 8px; }
-.tl-row.is-done .tl-rail { min-height: var(--tl-span, 40px); }
-.tl-row.is-done .tl-node { width: 34px; height: 34px; }
-/* 伸びた粒のまま、幅だけ細く。 */
-.tl-row.is-done.is-long .tl-node {
-  height: var(--tl-span, 40px);
-  width: 34px;
-  border-radius: 17px;
-  padding-top: 7px;
-}
-.tl-row.is-done.is-long .tl-time { padding-top: 11px; }
-.tl-row.is-done .tl-node .todo-mark,
-.tl-row.is-done .tl-node .todo-mark svg { width: 20px; height: 20px; }
-.tl-row.is-done .item-name { font-size: 15px; }
-.tl-row.is-done .check { width: 26px; height: 26px; }
-.tl-row.is-done .check svg { width: 15px; height: 15px; }
+   ここには「細く」する規則がありました——丸を34pxに、題を15pxに、印も
+   小さく。目を引かないように、という理屈でした。参考にした画面は縮めて
+   いません。丸も題も残りと同じで、違うのは題の取り消し線と、右の印が
+   塗りつぶされていることだけ。
+
+   縮めると、朝から積み上げたものが**小さくなって沈みます**。やった量が
+   見えているほうが、残りを配り直すときの材料になります。 */
 
 /* ---------------- 暦をしまう ----------------
 
