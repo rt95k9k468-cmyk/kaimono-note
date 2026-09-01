@@ -15446,6 +15446,57 @@ a.btn { text-decoration: none; }
      入れ替えが終わったら、この行と旧い ICONS の中身をまとめて片付けます。 */
   Object.assign(ICONS, KN.iconsV2 || {});
 
+  /* ---------------- 光学サイズを揃える ----------------
+
+     708個を並べると、同じ 24 の升目に描いてあるのに**大きさが揃って見えません**。
+     細い棒（つめやすり・糸ようじ・栓抜き）は小さく、横長の札や店構え（地図・
+     映画館・コンビニ）は大きく見えます。
+
+     どちらか一方の物差しでは外れます。実測して確かめました：
+
+       箱の長辺だけ … 綿棒は 19.6 で**いちばん大きい**と出ます。斜めの細い棒
+                      なので箱は大きく、絵は小さい。ここで縮めると逆効果。
+       インク量だけ … 海苔（真っ黒な四角）が大きいと出ます。
+
+     ので、**箱の長辺とインク量の相乗平均**を知覚サイズとして、その中央値から
+     ±15% より外に出ているものだけを引き戻します。中の 644 個は触りません
+     ——揃っているものを動かす理由がないので。
+
+     倍率は 0.90〜1.28 で頭打ち。さらに、拡げた結果が升目（1.2〜22.8）から
+     はみ出す絵は、はみ出さないところで止めます（10個がこれに当たりました）。
+
+     線の太さは倍率で割り戻します。拡げた絵だけ線が太くなると、この仕組みの
+     いちばん大きな約束（全部の絵が同じ太さの線を持つ）が崩れるので。 */
+  const FIT = {
+    bento:0.90, kale:0.90, soba:0.90, postcard:0.90, calendarSheet:0.90,
+    whiteboard:0.90, storageJar:0.90, washingMachine:0.90, laptop:0.90,
+    camera:0.90, dishwasher:0.90, pharmacy:0.90, drugstore:0.90,
+    deliverySlip:0.90, cityHall:0.90, postOffice:0.90, licenseCard:0.90,
+    convenienceStore:0.90, electronicsStore:0.90, zoo:0.90, map:0.90,
+    movie:0.90, cinema:0.90, healthCheck:1.09, compass:1.10, burdock:1.14,
+    mascara:1.15, pen:1.16, rollingPin:1.17, daikon:1.18, scissors:1.18,
+    cucumber:1.19, dumpling:1.19, cutter:1.19, chili:1.19, carrot:1.20,
+    ladle:1.20, tableKnife:1.20, screwdriver:1.20, chiliOil:1.20,
+    interdental:1.20, corkscrew:1.20, herb:1.20, tonic:1.20, liver:1.21,
+    zucchini:1.21, plaster:1.22, sushi:1.23, spinach:1.23, banana:1.23,
+    hotdog:1.23, mentaiko:1.23, driedFruit:1.23, rubberBand:1.24, ruler:1.25,
+    beans:1.26, yakitori:1.28, tsukune:1.28, dango:1.28, nailFile:1.28,
+  };
+
+  /* 升目の真ん中を動かさずに拡げ縮めします。絵の重心ではなく 12,12 を軸に
+     するのは、いまの置き場所（実測した中心のずれは 0.0／0.37）を保つためです。 */
+  const LINE_W = (KN.iconSystem && KN.iconSystem.LINE_W) || 0.7;
+  for (const key in FIT) {
+    const svg = ICONS[key];
+    if (!svg) continue;
+    const s = FIT[key];
+    ICONS[key] = svg.replace(
+      /(<g stroke=[^>]*>)/,
+      `$1<g transform="translate(12,12) scale(${s}) translate(-12,-12)" ` +
+      `stroke-width="${(LINE_W / s).toFixed(3)}">`
+    ).replace(/<\/g><\/svg>$/, "</g></g></svg>");
+  }
+
   /* ---------------- what each icon answers to ---------------- */
 
   /* Folded to hiragana, so each word is listed once and カタカナ・ひらがな・
