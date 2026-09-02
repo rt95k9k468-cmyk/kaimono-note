@@ -30538,12 +30538,11 @@ a.btn { text-decoration: none; }
       `));
       return sec;
     }
-    /* 期限の近い順。期限を書いていないものは後ろへ——急ぐものが上に
-       来ないと、この欄は「積んだだけ」になります。 */
-    const sorted = rows.slice().sort((a, b) => {
-      const x = a.deadline || "9999-99-99", y = b.deadline || "9999-99-99";
-      return x < y ? -1 : x > y ? 1 : (a.order || 0) - (b.order || 0);
-    });
+    /* 並びは**手で決めたもの**（order）です。期限は文字で見えているので、
+       並び順まで期限に決めさせると、二つのやり方で同じことを言うことに
+       なります——並べ替えられるようにした以上、並びの持ち主は order の
+       ほうにします。急ぐものを上に置きたければ、運べば済みます。 */
+    const sorted = rows.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     const list = node(html`<ul class="tl tl-someday"></ul>`);
     sorted.forEach((t) => list.append(somedayRow(t)));
     sec.append(list);
@@ -31582,11 +31581,26 @@ a.btn { text-decoration: none; }
       d.target = { kind: "time", at };
       return;
     }
-    /* 長期タスクの欄の上で離したなら、まだ何も言っていません。この欄の
-       中に置き場はない（時刻が無いので）ので、そのまま帰します。 */
+    /* 長期タスクの欄の中。**この欄の中でも、並べ替えられます**——
+       落とし先は時間割だけではありません。行の上なら、その前後へ。
+       行の無いところ（欄の余白）で離したなら、まだ何も言っていないので
+       帰します。 */
     if (d.someday) {
       const b = d.list.getBoundingClientRect();
-      if (y >= b.top && y <= b.bottom) { d.target = null; return; }
+      if (y >= b.top && y <= b.bottom) {
+        const mine = [...d.list.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
+        let before = null;
+        for (const r of mine) {
+          const rb = r.getBoundingClientRect();
+          if (y < rb.top + rb.height / 2) { before = r; break; }
+        }
+        const anchor = before || mine[mine.length - 1] || null;
+        if (!anchor) { d.target = null; return; }
+        anchor.classList.add("is-aim");
+        anchor.classList.toggle("is-aim-before", !!before);
+        d.target = { kind: "someday-order", id: anchor.dataset.todoId, before: !!before };
+        return;
+      }
     }
 
     /* 用事と用事のあいだ。行の上半分なら前へ、下半分なら後ろへ。 */
@@ -31666,6 +31680,39 @@ a.btn { text-decoration: none; }
       KN.motion.fire("save");
       KN.ui.toast(`「${t.title}」を ${at} に`, {
         action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
+      });
+      return;
+    }
+
+    /* 長期タスクの欄の中で、並べ替えるだけ。**時刻もやる日も動きません**
+       ——この欄の行はどちらも持っていないので、動かしようがないので。
+       控えるのは、この欄の並び順だけです。 */
+    if (d.target.kind === "someday-order") {
+      const ids = [...d.list.querySelectorAll(".tl-row")]
+        .map((r) => r.dataset.todoId).filter((x) => x && x !== d.id);
+      const was = new Map();
+      store.get().todos.forEach((x) => {
+        if (x.id === d.id || ids.includes(x.id)) was.set(x.id, x.order);
+      });
+      const at = ids.indexOf(d.target.id);
+      ids.splice(d.target.before ? Math.max(0, at) : at + 1, 0, d.id);
+      store.update((s) => {
+        ids.forEach((tid, i) => {
+          const row = s.todos.find((x) => x.id === tid);
+          if (row) row.order = i;
+        });
+      });
+      KN.motion.fire("save");
+      KN.ui.toast(`「${t.title}」を動かしました`, {
+        action: {
+          label: "元に戻す",
+          onClick: () => store.update((s) => {
+            was.forEach((ord, tid) => {
+              const row = s.todos.find((x) => x.id === tid);
+              if (row) row.order = ord;
+            });
+          }),
+        },
       });
       return;
     }
