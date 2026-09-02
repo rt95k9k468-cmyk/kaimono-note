@@ -123,12 +123,12 @@
               <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
               <span class="day-more">${icon("chevron")}</span>
             </button>
-            ${/* Right to left: 設定, 並べ方, さがす — the same three, in the
-                  same places, on every screen that has them. 設定 is last on
-                  the right because it is the one that leaves. */""}
+            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
+                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
+                  たまにしか使いません。たまに使うものは設定の中へ。
+                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
             <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
-            <button class="icon-btn js-layout"></button>
-            <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
+            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -149,7 +149,6 @@
     root.append(chrome);
 
     els = {
-      layout:    chrome.querySelector(".js-layout"),
       searchBtn: chrome.querySelector(".js-search-btn"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -160,7 +159,8 @@
     };
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-    els.layout.addEventListener("click", KN.ui.toggleLayout);
+    chrome.querySelector(".js-settings").addEventListener("click",
+      () => KN.app.showScreen("settings"));
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
@@ -176,17 +176,6 @@
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
     });
-
-    const calBtn = chrome.querySelector(".js-cal-btn");
-    if (calBtn) {
-      paintCalBtn(calBtn);
-      calBtn.addEventListener("click", () => {
-        KN.motion.fire("select", calBtn);
-        store.setCalPref("todo", { shown: !calShown() });
-        paintCalBtn(calBtn);
-        render();
-      });
-    }
 
     /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
        高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
@@ -326,14 +315,10 @@
   const calOpen = () => store.calPrefs("todo").open;
   const calShown = () => store.calPrefs("todo").shown;
 
-  /** 題の右の暦ボタン。出しているかどうかで、絵と読み上げが変わります。 */
-  function paintCalBtn(btn) {
-    const on = calShown();
-    btn.innerHTML = icon(on ? "calendar" : "calendar-off");
-    btn.setAttribute("aria-pressed", String(on));
-    btn.setAttribute("aria-label", on ? "暦をしまう" : "暦を出す");
-    btn.setAttribute("title", on ? "暦をしまう" : "暦を出す");
-  }
+  /* 題の右にあった暦ボタン（出す／しまう）は外しました。**紙を引く手つきが
+     同じことを言えます**——週から上へ押せば暦は消え、そこから下へ引けば
+     戻ってきます（js/cal-peek.js の三段）。押しても引いても同じことが
+     起きるなら、置くのは一つでいい。設定の「やること」にも札があります。 */
 
   /** いま出している週だけを残して、ほかのマスに印を付けます。 */
   function markWeek(sec, here) {
@@ -1857,7 +1842,6 @@
      about the day, and the number that matters — what is wanted now — is
      already on the tab, on the icon, and beside every heading below. */
   function render() {
-    KN.ui.paintLayoutButton(els.layout);
     renderBody();
     paintDayTitle();
   }
@@ -1964,7 +1948,7 @@
          使えません。閉じているあいだだけ譲ってもらいます（開いていれば
          下向きは空いているので、これまでどおり更新できます）。
          上の暦の帯からは、どちらの姿でも引けます。 */
-      if (els.cal && calShown() && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
+      if (els.cal && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
       restoreTop(keepTop);
       return;
     }
@@ -2614,15 +2598,20 @@
       root,
       cal: () => els.cal,
       isOpen: calOpen,
-      // 探している最中と、暦をしまっているときは引きません。
-      enabled: () => !query && oneDay() && calShown(),
+      isShown: calShown,
+      /* 探している最中だけ引きません。**暦をしまっていても引けます**
+         ——三段目（暦なし）から週へ戻す道が、ここしかないので。 */
+      enabled: () => !query && oneDay(),
       // 用事を運んでいる指を、暦に取られては困ります。
       busy: () => !!tlDrag,
       here: () => hereDay || todayKey(),
       tagOffWeek,
-      commit: (open) => {
-        if (open !== calOpen()) store.setCalPref("todo", { open });
-        else markWeek(els.cal, hereDay || todayKey());
+      /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
+         ときだけ塗り直し——書けば store が組み直すので、二度手間になります。 */
+      commit: ({ shown, open }) => {
+        if (open !== calOpen() || shown !== calShown()) {
+          store.setCalPref("todo", { open, shown });
+        } else markWeek(els.cal, hereDay || todayKey());
       },
     });
   }
@@ -2834,7 +2823,37 @@
     if (nowMin == null) return;
     const y = nowY(sec, list, nowMin);
     if (y == null) return;
-    axis.append(nowMark(nowMin, y));
+    axis.append(nowMark(nowMin, clearOfClocks(sec, list, y)));
+  }
+
+  /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
+
+      いまの時刻は塗りの境目に置きます。境目が丸薬の頭のすぐ近くに来ると
+      ——15分の用事を始まって3分で見たとき、1時間の用事を26分で見たとき
+      ——その用事の時刻の札と字が重なって、どちらも読めなくなります
+      （「14:45」と「15:11」が重なりました）。
+
+      **動かすのは、いまの時刻のほう**です。用事の時刻は丸薬の頭に付いて
+      いて、そこを離れると何を指しているのか言えなくなります。いまの時刻の
+      ほうは、境目そのものが色で見えているので、札は近くに居れば足ります。
+
+      逃がす向きは、いま居るほう（上にいるなら上へ、下なら下へ）。 */
+  const CLOCK_GAP = 17;                     // 字の高さ（16px前後）＋ひと呼吸
+
+  function clearOfClocks(sec, list, y) {
+    const top0 = sec.getBoundingClientRect().top;
+    let out = y;
+    for (const li of list.children) {
+      const el = li.querySelector(".tl-time");
+      if (!el || !el.textContent.trim()) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height <= 0) continue;
+      const mid = r.top + r.height / 2 - top0;
+      const d = out - mid;
+      if (Math.abs(d) >= CLOCK_GAP) continue;
+      out = mid + (d < 0 ? -CLOCK_GAP : CLOCK_GAP);
+    }
+    return out;
   }
 
   /* ---------------- 過ぎたぶんは、色。まだのぶんは、灰色 ----------------
@@ -3411,8 +3430,17 @@
      出ていきます。あちらはその取り引きを、比例を捨てる側で決めています。 */
   const TL_FREE_H = 56;
 
+  /* 空きの線を、実線にするか点線にするか。
+
+     **30分以内の空きは、繋がっています。** 用事と用事のあいだの十分や
+     そこらは「途切れ」ではなく、ひと続きの時間のなかの余白です。そこを
+     点線で切ると、続けてやる二件が別々の塊に見えます。30分より空いたら、
+     そこはもう別の時間なので点線。 */
+  const TL_JOIN_GAP = 30;
+
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
+    const dash = f.minutes > TL_JOIN_GAP;
     /* 空きも、夜に入ったところから夜の色にします。線は一日を通す一本な
        ので、空きだけ昼の色のままだと、夜の用事のあいだで色が切れて
        「別の線」に見えます。切り替わるのは、その空きが**夜に入る**
@@ -3424,7 +3452,7 @@
           data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
           style="--cat:${night ? "var(--c-night)" : "var(--c-primary-fill)"}">
         <span class="tl-time"></span>
-        <span class="tl-rail is-dash"></span>
+        <span class="tl-rail ${dash ? "is-dash" : ""}"></span>
       </li>
     `);
   }

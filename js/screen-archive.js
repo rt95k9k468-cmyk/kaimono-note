@@ -75,15 +75,6 @@
   const calOpen = () => store.calPrefs("archive").open;
   const calShown = () => store.calPrefs("archive").shown;
 
-  /** 題の右の暦ボタン。出しているかどうかで、絵と読み上げが変わります。 */
-  function paintCalBtn(btn) {
-    const on = calShown();
-    btn.innerHTML = icon(on ? "calendar" : "calendar-off");
-    btn.setAttribute("aria-pressed", String(on));
-    btn.setAttribute("aria-label", on ? "暦をしまう" : "暦を出す");
-    btn.setAttribute("title", on ? "暦をしまう" : "暦を出す");
-  }
-
   function markWeek(sec, here) {
     const open = calOpen();
     const shown = calShown();
@@ -389,13 +380,17 @@
       root,
       cal: () => els.cal,
       isOpen: calOpen,
-      // 暦をしまっているあいだは、出てくるものがありません。
-      enabled: () => calShown(),
+      isShown: calShown,
+      // 暦をしまっていても引けます（そこから週へ戻す道がここなので）。
+      enabled: () => true,
       here: () => viewDay || U.todayKey(),
       tagOffWeek,
-      commit: (open) => {
-        if (open !== calOpen()) store.setCalPref("archive", { open });
-        else markWeek(els.cal, viewDay || U.todayKey());
+      /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
+         ときだけ塗り直し——書けば store が組み直すので、二度手間になります。 */
+      commit: ({ shown, open }) => {
+        if (open !== calOpen() || shown !== calShown()) {
+          store.setCalPref("archive", { open, shown });
+        } else markWeek(els.cal, viewDay || U.todayKey());
       },
     });
   }
@@ -1265,10 +1260,12 @@
               <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
               <span class="day-more">${icon("chevron")}</span>
             </button>
-            ${/* 右端から 暦・さがす・書き出し。ほかの三画面と同じ並べ方です。 */""}
-            <button class="icon-btn js-export" aria-label="この月を書き出す">${icon("download")}</button>
+            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）・
+                  暦の出し入れ・月の書き出しは、たまにしか使いません。たまに
+                  使うものは設定の中へ。右上に居るのは「どの画面でも同じ
+                  二つ」だけにします。 */""}
             <button class="icon-btn js-search-btn" aria-label="文字でさがす">${icon("search")}</button>
-            <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
+            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -1300,7 +1297,8 @@
     /* ほかの三画面とまったく同じ配線です。バーは題の裏に隠してあって、
        少し下へ引くと出てきます（ui.js の parkSearch）。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
-    root.querySelector(".js-export").addEventListener("click", exportThisMonth);
+    root.querySelector(".js-settings").addEventListener("click",
+      () => KN.app.showScreen("settings"));
 
     /* 題を押すと、暦が月ぜんぶに開きます（やることの「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
@@ -1327,19 +1325,9 @@
       if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
     }, { passive: true });
 
-    /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
-       ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
-       しまっているあいだは、同じ暦に斜線の入った絵に変わります。 */
-    const calBtn = root.querySelector(".js-cal-btn");
-    if (calBtn) {
-      paintCalBtn(calBtn);
-      calBtn.addEventListener("click", () => {
-        KN.motion.fire("select", calBtn);
-        store.setCalPref("archive", { shown: !calShown() });
-        paintCalBtn(calBtn);
-        render();
-      });
-    }
+    /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
+       消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の daily にも
+       札があります。 */
 
     els.cal = calendar();
     // 初めて開いたときも、今日の欄が待っているように。
@@ -1399,7 +1387,7 @@
     /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
        使えません。閉じているあいだだけ譲ってもらいます（開いていれば
        下向きは空いているので、これまでどおり更新できます）。 */
-    if (calShown() && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
+    if (!calOpen()) sheet.setAttribute("data-pull-own", "cal");
 
     /* 「あの日」は、紙のいちばん上。暦は行き先を選ぶところなので、**最初の
        中身**はこれになります。見つからない日は、null が返って何も置かれ

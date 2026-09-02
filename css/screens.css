@@ -483,6 +483,21 @@
 .cal-clip { overflow: hidden; }
 .cal.is-settling .cal-clip { transition: height .3s var(--ease-out); }
 .cal.is-settling .cal-slide { transition: transform .3s var(--ease-out); }
+/* ---- 三段目：暦そのものを畳む ----
+
+   週からさらに上へ押すと、暦が消えます。畳むのは日のマスだけでは足りません
+   ——曜日の行と、暦の上下の余白も一緒に畳まないと、消したはずの場所に
+   「日 月 火…」と余白だけが残ります。寸法は指の下で JS が書くので、
+   ここは**畳めるようにしておく**（overflow）のと、離したあと滑らせる
+   （transition）だけです。 */
+.cal.is-peek .cal-wds { overflow: hidden; }
+.cal.is-settling .cal-wds {
+  transition: height .3s var(--ease-out), opacity .3s var(--ease-out);
+}
+.cal.is-settling { transition: padding .3s var(--ease-out), border-color var(--dur) var(--ease); }
+/* しまってある暦も、引いているあいだは場所を取ります（測るために）。
+   ここが無いと、三段目から週へ戻す道が始められません。 */
+.cal.is-hidden.is-peek { display: block; }
 /* 引いているあいだは、隠していた週も場所を取ります（測るために）。
    濃さは、開いているぶんだけ。 */
 .cal.is-peek.is-week .cal-day.is-off-week { display: flex; }
@@ -494,7 +509,9 @@
 .cal.is-peek .cal-day.is-out:not(.is-off-week) { visibility: visible; }
 @media (prefers-reduced-motion: reduce) {
   .cal.is-settling .cal-clip,
-  .cal.is-settling .cal-slide { transition: none; }
+  .cal.is-settling .cal-slide,
+  .cal.is-settling .cal-wds,
+  .cal.is-settling { transition: none; }
 }
 
 .cal-wd {
@@ -1736,11 +1753,11 @@
   font-weight: 700;
   color: var(--c-text-3);
 }
-/* 目次には上の帯がありません（下のタブがすでに「設定」と言っているので）。
-   帯が無いぶん、ノッチの深さはここが引き受けます——さもないと最初の見出しが
-   時刻や電波の下に潜ります。 */
+/* 目次にも上の帯が戻ったので、ノッチの深さはそちらが持ちます。ここは
+   帯のすぐ下の一段ぶんだけ。（帯が無かったころ、ここが `--safe-t` を
+   引き受けていました。二重に取ると、最初の見出しだけが深く沈みます。） */
 .js-body > .set-head:first-child,
-.js-body > .settings-group:first-child { margin-top: calc(var(--safe-t) + var(--sp-4)); }
+.js-body > .settings-group:first-child { margin-top: var(--sp-4); }
 
 .set-card {
   margin: 0 var(--sp-4);
@@ -3115,10 +3132,15 @@ a.btn { text-decoration: none; }
    した画面は丸と同じ濃さで引いていて（実測 #f3938e ＝ 丸の #f2938e と
    ほぼ同値）、そのぶん一日が一本の線として先に目に入ります。太さも
    2.5px → 3.5px（実測）。 */
-/* 線も、時計が通ったところまでが色です（--pass）。まだのところは灰色。
-   丸薬の塗りと同じ数から出しているので、線と丸のあいだで境目がずれる
-   ことはありません。一日を通して見ると、上から色が下りてくる一本の線に
-   なります。 */
+/* 線の色は、**丸薬の地とまったく同じ**二色です（--tl-fill / --tl-wait）。
+
+   前はここだけ濃い塗り（--cat そのまま）で、破線はさらにその62%でした。
+   三つの濃さが縦一列に並ぶと、丸と丸のあいだで色が二度変わって、線が
+   「別のもの」に見えます。丸から丸へ続く一本なら、丸と同じ色であるのが
+   いちばん素直でした。
+
+   時計が通ったところまでが色、そこから先は灰色（--pass）。丸薬の塗りと
+   同じ数から出しているので、線と丸のあいだで境目がずれることはありません。 */
 .tl-rail::before {
   content: "";
   position: absolute;
@@ -3126,22 +3148,23 @@ a.btn { text-decoration: none; }
   width: 3.5px;
   transform: translateX(-50%);
   background: linear-gradient(to bottom,
-    var(--cat, var(--c-primary-fill)) 0 var(--p),
-    var(--tl-wait-line) var(--p) 100%);
+    var(--tl-fill) 0 var(--p),
+    var(--tl-wait) var(--p) 100%);
 }
-/* 空いているところは、点線。**繋がっていない**ことが空きの意味です。
-   濃さは実線より一段落とします——同じ濃さだと、破線が「途切れた線」
-   ではなく「別の模様」に見えます。
+/* 空きが**30分より長い**ところだけ、点線。**繋がっていない**ことが
+   空きの意味なので、逆に言えば30分以内の空きは繋がっています——用事と
+   用事のあいだの十分やそこらは、途切れではなく「ひと続きの時間」です。
+   （どちらにするかは screen-todo.js の freeRow が決めます。）
+
+   点は 6px、間は 4px。前は 7px と 8px で、間のほうが点より長く、線と
+   いうより点々の列に見えていました。
 
    色は上の一本と同じ作りにして、点々のほうは**マスク**で抜きます。
    地の色と点々を一つの背景で兼ねると、過ぎたぶんとこれからで色を
    変えられません（repeating- の中に二色の境目は書けない）。 */
 .tl-rail.is-dash::before {
-  background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 62%, transparent) 0 var(--p),
-    var(--tl-wait-line) var(--p) 100%);
-  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 7px, transparent 7px 15px);
-  mask: repeating-linear-gradient(to bottom, #000 0 7px, transparent 7px 15px);
+  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
+  mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
 }
 
 /* 線の上の丸薬。中身は手描きアイコン、地は棚の色。
@@ -3170,8 +3193,10 @@ a.btn { text-decoration: none; }
      夜の青は「済んでから」しか出てこなくなります。一割なら、灰色として
      読めるまま、昼は暖かい灰・夜は冷たい灰になります。 */
   --tl-wait: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 6%, var(--c-surface-2));
-  /* 線のほうは、丸薬より一段暗い灰。細いので、同じ濃さだと消えます。 */
-  --tl-wait-line: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 8%, var(--c-surface-3));
+  /* 過ぎたぶんの色。丸薬の地も、丸薬をつなぐ線も、ここから出ます。
+     **一つの変数から出すのが肝**です——二か所に書くと、片方だけ直した日に
+     線と丸で色が割れます。 */
+  --tl-fill: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface));
 }
 .tl-node {
   position: absolute;
@@ -3182,7 +3207,7 @@ a.btn { text-decoration: none; }
   height: var(--tl-h, 50px);
   border-radius: 25px;
   background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface)) 0 var(--p),
+    var(--tl-fill) 0 var(--p),
     var(--tl-wait) var(--p) 100%);
   /* **白い輪を持ちません。** 丸のまわりを地の色で囲うと、線が丸の手前で
      切れて、続いているところまで破線に見えます（実際そうなりました）。
@@ -3196,7 +3221,7 @@ a.btn { text-decoration: none; }
    境目そのものが無いので、ぼかすと端が濁ります。 */
 .tl-row.is-live .tl-node {
   background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface)) 0 calc(var(--p) - 4px),
+    var(--tl-fill) 0 calc(var(--p) - 4px),
     var(--tl-wait) calc(var(--p) + 8px) 100%);
 }
 /* ---- 重なった二つ ----
@@ -3218,6 +3243,16 @@ a.btn { text-decoration: none; }
 .tl-row.is-clash-above .tl-node {
   height: calc(var(--tl-h, 50px) + 16px);
   transform: translate(-50%, calc(-50% + 8px));
+}
+/* 三つ以上が重なると、まん中の一件は**上とも下とも**ぶつかります。
+
+   ここは一度こわしました：上の二つは詳細度が同じなので、両方を持つ行には
+   あとに書いたほう（is-clash-above）だけが効き、まん中の丸薬は下へしか
+   育ちません。上の継ぎ目はめり込むどころか 2px 離れて、白い抜きだけが
+   宙に浮いていました。両方向へ16pxずつ、位置は動かさずに育てます。 */
+.tl-row.is-clash.is-clash-above .tl-node {
+  height: calc(var(--tl-h, 50px) + 32px);
+  transform: translate(-50%, -50%);
 }
 /* 合わさったところの白い抜き。行の頭（＝二つの行の境目）が、めり込みの
    まん中です。
@@ -4140,8 +4175,8 @@ a.btn { text-decoration: none; }
   /* 手順の段の背骨は、その用事が済んだかどうかの下（時間としては
      「終わったあと」）なので、上の行の塗り具合をそのまま継ぎます。 */
   background: linear-gradient(to bottom,
-    var(--cat, var(--c-primary-fill)) 0 var(--p),
-    var(--tl-wait-line) var(--p) 100%);
+    var(--tl-fill) 0 var(--p),
+    var(--tl-wait) var(--p) 100%);
 }
 .tl-sub-list { display: flex; flex-direction: column; margin-top: 2px; }
 /* 一段ごとに細い罫線を一本（参考画面と同じ）。線は**チェックの右**から
