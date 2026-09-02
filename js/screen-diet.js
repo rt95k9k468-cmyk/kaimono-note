@@ -34,7 +34,10 @@
   /* グラフの期間。まず7日を出します——「最近どうか」を見るのに、
      30日は入り口としては長すぎます（30日ぶんの点は、電話の幅では
      一日ぶんが10pxほどになり、日々の上下が読めません）。 */
-  let range = 7;              // グラフの期間（日）。0 は全期間。
+  /* 保存してある期間から始めます（初めてなら7日）。ここで store を読むのは
+     モジュールを組んでいる最中なので、`let state = load()` より後に走る
+     screen-diet.js からなら安全です。 */
+  let range = store.dietRange();   // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
   let series = "";             // 体重と並べて見るもの。空なら体重だけ。
 
@@ -1120,7 +1123,7 @@
 
     KN.ui.chipRow(sec.querySelector(".js-range"), RANGES.map((r) => ({ id: r.id, label: r.label })), {
       activeId: range,
-      onPick: (id) => { range = Number(id); render(); },
+      onPick: (id) => { range = Number(id); store.setDietRange(range); render(); },
     });
     KN.ui.chipRow(sec.querySelector(".js-series"), SERIES.map((x) => ({ id: x.id, label: x.label })), {
       activeId: series,

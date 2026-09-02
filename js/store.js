@@ -1244,6 +1244,25 @@
     });
   }
 
+  /* 体重のグラフの期間。開くたびに 7日 に戻ると、30日で見ている人は
+     毎回押し直すことになります。見かたは持ち物なので、覚えます。
+
+     既定は 7日のまま。読むほうで値を絞ってあるので、古い保存（この札を
+     持っていない）も、知らない値が入っていても既定に落ちます——
+     `reconcile()` を通さずに済むのは、そのためです。 */
+  const DIET_RANGES = [0, 7, 30, 90, 365];
+
+  function dietRange() {
+    const v = get().settings.dietRange;
+    return DIET_RANGES.includes(v) ? v : 7;
+  }
+
+  function setDietRange(days) {
+    const v = Number(days);
+    if (!DIET_RANGES.includes(v)) return;
+    update((s) => { s.settings.dietRange = v; });
+  }
+
   /* ---------------- 中の段取り ---------------- */
 
   /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。 */
@@ -1517,6 +1536,54 @@
     let guard = 0;
     while (U.daysUntil(next) < 0 && guard++ < 500) step();
     return next;
+  }
+
+  /**
+   * その用事が、その日に立つか。
+   *
+   * くり返しの用事は記録としては**一件**で、`due` は「次にやる日」です。
+   * だから素直に `due === day` で数えると、毎日のはずのものが一日にしか
+   * 出ません。先の日を見にいったときに時間割が空なのは、そこに何も無い
+   * からではなく、まだ来ていないからでした。
+   *
+   * ここは**出す／出さない**を答えるだけで、記録は増やしません。日ごとの
+   * 控えを作り始めると、済ませた印をどちらに付けるかという問題が生まれて、
+   * 二重管理になります（Daily Log を「写さず引く」ことにしたのと同じ理由）。
+   *
+   * **function 宣言**にしてあります。この下の load() の道からは呼びませんが、
+   * 上の cleanMinutes に書いてあるとおり、ここは const を置くと静かに
+   * 落ちる場所なので、揃えておきます。
+   */
+  function fallsOn(todo, day) {
+    const U = KN.util;
+    if (!todo || !day) return false;
+    if (!todo.repeat) return todo.due === day;
+    // くり返しは「その日から」。始まる前の日には立ちません。
+    if (!todo.due || day < todo.due) return todo.due === day;
+    if (todo.due === day) return true;
+
+    if (todo.repeat === "daily") return true;
+
+    if (todo.repeat === "weekly") {
+      const days = todo.repeatDays || [];
+      if (days.length) return days.includes(U.dayOfWeek(day));
+      // 曜日を選んでいない「毎週」は、due と同じ曜日。
+      return U.dayOfWeek(day) === U.dayOfWeek(todo.due);
+    }
+
+    if (todo.repeat === "monthly") {
+      const nth = todo.repeatNth;
+      if (nth) {
+        const d = U.dayDate(day);
+        if (!d) return false;
+        return U.nthWeekdayOf(d.getFullYear(), d.getMonth(), nth.nth, nth.weekday) === day;
+      }
+      // 「第◯曜日」でない毎月は、due と同じ日にち。月末の丸めはしません
+      // ——31日の用事が、30日しかない月に勝手に生えないように。
+      return day.slice(8) === todo.due.slice(8);
+    }
+
+    return false;
   }
 
   /** The first day on or after `from` that the repeat rule actually falls on. */
@@ -2834,7 +2901,7 @@
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
     dayFeed, monthDigest,
-    calPrefs, setCalPref,
+    calPrefs, setCalPref, dietRange, setDietRange, fallsOn,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,

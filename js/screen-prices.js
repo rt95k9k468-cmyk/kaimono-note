@@ -25,6 +25,7 @@
                   帯の同じところをもう一度押せば表へ戻ります。引き出しでは
                   なくなったので、帰り道も帯そのものです。 */""}
             <div style="flex:1;min-width:0">
+              <h1 class="topbar-title tab-title">価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* The ＋ is not up here any more — it is the same floating
