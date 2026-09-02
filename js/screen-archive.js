@@ -193,6 +193,68 @@
     return true;
   }
 
+  /* ---------------- 月を選ぶ ----------------
+
+     題を押したときに開きます。前はここで暦の開き具合（週／月）を切り替えて
+     いましたが、**それは紙を引く手つきがもう持っています**（cal-peek）。
+     同じことを二か所でやっていて、しかも題が言っているのは「2026年9月」
+     ——年と月なので、押したときに応えるべきなのは「ほかの月へ」です。
+
+     daily は月ぶんを出す画面なので、行き先は日ではなく月にします。日は、
+     月を出してから暦の中で選ぶ、という順です。 */
+  function openMonthPicker() {
+    const now = new Date();
+    const nowYm = ymOf(now);
+    const here = shownMonth();
+    let year = here.year;
+
+    const body = node(html`
+      <div class="stack" style="gap:14px">
+        <div class="mp-head">
+          <button type="button" class="icon-btn js-py flip-x" aria-label="前の年">${icon("chevron")}</button>
+          <span class="mp-year js-y"></span>
+          <button type="button" class="icon-btn js-ny" aria-label="次の年">${icon("chevron")}</button>
+        </div>
+        <div class="mp-grid js-grid"></div>
+      </div>
+    `);
+
+    const handle = KN.ui.sheet({ title: "月を選ぶ", content: body });
+
+    const grid = body.querySelector(".js-grid");
+    const yEl = body.querySelector(".js-y");
+
+    function paint() {
+      yEl.textContent = `${year}年`;
+      // 先の年へは行けません（まだ書かれていない月なので）。
+      body.querySelector(".js-ny").disabled = year >= now.getFullYear();
+      grid.innerHTML = "";
+      for (let m = 0; m < 12; m++) {
+        const ym = ymOf(new Date(year, m, 1));
+        const ahead = ym > nowYm;
+        const cell = node(html`
+          <button type="button" class="mp-cell ${ym === ymOf(new Date(here.year, here.month, 1)) ? "is-here" : ""}
+                  ${ym === nowYm ? "is-now" : ""}" ${ahead ? "disabled" : ""}>${m + 1}月</button>
+        `);
+        if (!ahead) {
+          cell.addEventListener("click", () => {
+            KN.motion.fire("select");
+            viewMonth = ym === nowYm ? null : ym;
+            viewDay = null;
+            handle.close();
+            render();
+          });
+        }
+        grid.append(cell);
+      }
+    }
+    body.querySelector(".js-py").addEventListener("click", () => { year--; paint(); });
+    body.querySelector(".js-ny").addEventListener("click", () => {
+      if (year < now.getFullYear()) { year++; paint(); }
+    });
+    paint();
+  }
+
   /* ---------------- 左右に払って、月を送る ----------------
 
      やることは紙を払うと日が変わります。こちらの一枚は一か月ぶんなので、
@@ -1245,7 +1307,7 @@
        ——暦は描き直されますが、バーは残るので。 */
     els.dayTitle.addEventListener("click", () => {
       KN.motion.fire("select");
-      store.setCalPref("archive", { open: !calOpen() });
+      openMonthPicker();
     });
 
     /* ずっと見えている暦は、上のバーのすぐ下に貼りつきます。バーの高さは

@@ -4287,3 +4287,34 @@ a.btn { text-decoration: none; }
   color: var(--c-text-3);
 }
 .accent-dot.is-on .accent-name { color: var(--c-text); font-weight: 700; }
+
+/* ---- 月を選ぶ紙（daily の題を押すと出ます） ----
+
+   daily は月ぶんを出す画面なので、題（「2026年9月」）を押したときの
+   行き先は日ではなく**月**です。年を送る頭と、12個の升目だけ。 */
+.mp-head {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
+}
+.mp-year { font-size: var(--fs-lg); font-weight: 700; min-width: 5.5em; text-align: center; }
+.mp-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2);
+}
+.mp-cell {
+  padding: 14px 0;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: var(--fs-base); font-weight: 700;
+  cursor: pointer;
+}
+/* まだ来ていない月は選べません（書かれていないので）。 */
+.mp-cell[disabled] { opacity: .34; cursor: default; }
+/* 今日のいる月には輪だけ。いま見ている月は塗ります——「どこにいるか」と
+   「今日はどこか」は別のことなので、別の見せ方にします。 */
+.mp-cell.is-now { border-color: var(--c-primary-fill); }
+.mp-cell.is-here {
+  background: var(--c-primary-fill);
+  border-color: var(--c-primary-fill);
+  color: #fff;
+}
