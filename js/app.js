@@ -72,11 +72,13 @@
   let goingBack = false;
   const HOME_OF_DRAWER = "list";
 
-  /* The app opens on やること. The question on picking the phone up is 「今日
-     なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
-     list is what you open once you are already standing in a shop, and it is
-     one tap away. */
-  const HOME = "todo";
+  /* 立ち上げたときは daily を出します。やること・買うものは「用がある
+     ときに開く」画面ですが、daily は開いてはじめて書くもので、開かなければ
+     書かれないままになるので。やることは、下の帯からひと押しで出ます。
+
+     `archive`（daily）は やること の裏面なので、ここに裏面の名前を書けば
+     `tabOf` が組を見つけ、下の帯は「やること」の組が選ばれた形になります。 */
+  const HOME = "archive";
 
   let active = HOME;
   const mounted = new Set();

@@ -28,6 +28,11 @@
         <header class="topbar">
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
+              ${/* 題は出します。ただし帯の高さは他のタブと同じまま——題の
+                   ぶんだけ帯が太ると、この画面だけ一段深いところにいるように
+                   見えるので。色は「2026年」と同じコーラル（--c-primary）で、
+                   どのタブでも「いまどこか」を言う字は同じ色にします。 */""}
+              <h1 class="topbar-title tab-title">買うもの</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* No 「まとめて削除」 on this bar any more. Having bought
@@ -58,9 +63,9 @@
           </div>
         </div>
 
-        <div class="progress-wrap js-progress-wrap" hidden>
-          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
-        </div>
+        ${/* 進み具合の帯は外しました。「何件買ったか」は下の見出しが数で
+             言っていて、帯はそれを絵にし直しているだけ——しかも買い物の
+             途中で見るのは「あと何を買うか」であって、達成率ではないので。 */""}
 
         <div class="js-filter"></div>
         <div class="js-body"></div>
@@ -77,8 +82,6 @@
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
-      progWrap:   chrome.querySelector(".js-progress-wrap"),
-      progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
       body:       chrome.querySelector(".js-body"),
       topbar:     chrome.querySelector(".topbar"),
@@ -353,8 +356,6 @@
        題のすぐ下は目がいちばん先に行く場所なので、そこは空けます。 */
     els.sub.textContent = "";
 
-    els.progWrap.hidden = scope.length === 0;
-    els.progress.style.width = scope.length ? `${(done / scope.length) * 100}%` : "0%";
 
     KN.ui.paintLayoutButton(els.layout);
 

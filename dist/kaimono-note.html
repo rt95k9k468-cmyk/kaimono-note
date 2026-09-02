@@ -2941,6 +2941,22 @@ button, [role="tab"] {
   white-space: nowrap;
   line-height: 1.25;
 }
+/* 買うもの・価格の題。**帯の高さを変えないこと**が条件なので、やること／
+   daily の日付の題とまったく同じ寸法にしてあります（clamp・行の高さ・字の
+   詰め）。ここが違うと、この二つのタブだけ帯が一段深く見えます。
+
+   色は「2026年」と同じ差し色。`--c-primary-fill` は白の上で 2.25:1 しか
+   なく、ふつうの本文には使えませんが、ここは `.day-y` と同じ「いまどこか」
+   を言う大きな字で、隣に並べたときに同じ色に見えることのほうが要ります。 */
+.tab-title {
+  font-size: clamp(18px, 6.4vw, 26px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  color: var(--c-primary-fill);
+  margin: 0;
+}
+
 .day-y { color: var(--c-primary-fill); }
 .day-md { color: var(--c-text); }
 .day-more {
@@ -3164,31 +3180,34 @@ button, [role="tab"] {
 .cal-dots {
   display: flex;
   width: 100%;
-  height: 20px;
+  height: 15px;
   align-items: center;
   justify-content: center;
-  /* マスからはみ出させません。三つ重ねて 20+2×13 = 46px、7分の1のマス
-     （390px の画面で約51px）に収まります。 */
+  /* マスからはみ出させません。三つ重ねて 15+2×10 = 35px、7分の1のマス
+     （390px の画面で約51px）に余裕で収まります。 */
   overflow: hidden;
 }
-/* 参考画面は 22px 相当でした。ここを 17px まで詰めたら、中の絵が12pxに
-   なって何の絵か読めなくなりました——あちらの絵は白抜きの一色なので
-   小さくても形が残りますが、こちらは色の付いた手描きです。**絵が読める
-   大きさ**のほうを取って、そのぶん出す数を四つから三つに減らします。 */
+/* 丸ごと小さくしてあります（20px → 15px）。ここは「その日に何かある」
+   ことを言う場所で、何があるかを読む場所ではありません——読むのは日を
+   選んでから下の時間割で、という順です。大きいと、日付の数字よりも
+   絵のほうが先に目に入って、暦が暦に見えなくなります。
+
+   丸を縮めたぶん、中の絵も一緒に縮めます（14px → 11px）。丸だけ縮めると
+   絵が縁からはみ出します。 */
 .cal-mark {
   display: grid; place-items: center;
-  width: 20px; height: 20px;
+  width: 15px; height: 15px;
   flex: none;
   border-radius: var(--r-full);
   background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 55%, var(--c-bg));
   /* 重ねる。左のものが上に来るように、あとのものを下へ潜らせます。 */
-  margin-left: -7px;
+  margin-left: -5px;
 }
 .cal-mark:first-child { margin-left: 0; }
 .cal-mark .todo-mark,
-.cal-mark .todo-mark svg { width: 14px; height: 14px; }
+.cal-mark .todo-mark svg { width: 11px; height: 11px; }
 .cal-mark .todo-dot {
-  width: 6px; height: 6px; border-radius: var(--r-full);
+  width: 5px; height: 5px; border-radius: var(--r-full);
   background: var(--c-bg);
   opacity: .95;
 }
@@ -18082,6 +18101,25 @@ a.btn { text-decoration: none; }
     });
   }
 
+  /* 体重のグラフの期間。開くたびに 7日 に戻ると、30日で見ている人は
+     毎回押し直すことになります。見かたは持ち物なので、覚えます。
+
+     既定は 7日のまま。読むほうで値を絞ってあるので、古い保存（この札を
+     持っていない）も、知らない値が入っていても既定に落ちます——
+     `reconcile()` を通さずに済むのは、そのためです。 */
+  const DIET_RANGES = [0, 7, 30, 90, 365];
+
+  function dietRange() {
+    const v = get().settings.dietRange;
+    return DIET_RANGES.includes(v) ? v : 7;
+  }
+
+  function setDietRange(days) {
+    const v = Number(days);
+    if (!DIET_RANGES.includes(v)) return;
+    update((s) => { s.settings.dietRange = v; });
+  }
+
   /* ---------------- 中の段取り ---------------- */
 
   /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。 */
@@ -18355,6 +18393,54 @@ a.btn { text-decoration: none; }
     let guard = 0;
     while (U.daysUntil(next) < 0 && guard++ < 500) step();
     return next;
+  }
+
+  /**
+   * その用事が、その日に立つか。
+   *
+   * くり返しの用事は記録としては**一件**で、`due` は「次にやる日」です。
+   * だから素直に `due === day` で数えると、毎日のはずのものが一日にしか
+   * 出ません。先の日を見にいったときに時間割が空なのは、そこに何も無い
+   * からではなく、まだ来ていないからでした。
+   *
+   * ここは**出す／出さない**を答えるだけで、記録は増やしません。日ごとの
+   * 控えを作り始めると、済ませた印をどちらに付けるかという問題が生まれて、
+   * 二重管理になります（Daily Log を「写さず引く」ことにしたのと同じ理由）。
+   *
+   * **function 宣言**にしてあります。この下の load() の道からは呼びませんが、
+   * 上の cleanMinutes に書いてあるとおり、ここは const を置くと静かに
+   * 落ちる場所なので、揃えておきます。
+   */
+  function fallsOn(todo, day) {
+    const U = KN.util;
+    if (!todo || !day) return false;
+    if (!todo.repeat) return todo.due === day;
+    // くり返しは「その日から」。始まる前の日には立ちません。
+    if (!todo.due || day < todo.due) return todo.due === day;
+    if (todo.due === day) return true;
+
+    if (todo.repeat === "daily") return true;
+
+    if (todo.repeat === "weekly") {
+      const days = todo.repeatDays || [];
+      if (days.length) return days.includes(U.dayOfWeek(day));
+      // 曜日を選んでいない「毎週」は、due と同じ曜日。
+      return U.dayOfWeek(day) === U.dayOfWeek(todo.due);
+    }
+
+    if (todo.repeat === "monthly") {
+      const nth = todo.repeatNth;
+      if (nth) {
+        const d = U.dayDate(day);
+        if (!d) return false;
+        return U.nthWeekdayOf(d.getFullYear(), d.getMonth(), nth.nth, nth.weekday) === day;
+      }
+      // 「第◯曜日」でない毎月は、due と同じ日にち。月末の丸めはしません
+      // ——31日の用事が、30日しかない月に勝手に生えないように。
+      return day.slice(8) === todo.due.slice(8);
+    }
+
+    return false;
   }
 
   /** The first day on or after `from` that the repeat rule actually falls on. */
@@ -19672,7 +19758,7 @@ a.btn { text-decoration: none; }
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, subCount,
     dayFeed, monthDigest,
-    calPrefs, setCalPref,
+    calPrefs, setCalPref, dietRange, setDietRange, fallsOn,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
     todosWaiting, todosToAnnounce, markAnnounced,
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
@@ -28260,11 +28346,19 @@ a.btn { text-decoration: none; }
 
      id は "dawn"/"dusk" のまま。中では repeat="daily" と part="dawn" の
      組で持ちます（記録の形は変えていません。並べ替えも表示もそこを見ます）。 */
+  /* **毎朝・毎晩は、選べる先から外しました。** 時間割になる前は、その日の
+     どこに置くかを言う手立てが「朝の端／夜の端」しかありませんでした。
+     いまは時刻そのものを書けて、書かなくても組み立てが場所を決めます。
+     残しておくと「毎日・7:00」と「毎朝・7:00」の二通りができて、同じことを
+     二つの言い方で持つことになります。
+
+     **すでに毎朝・毎晩で持っているものは、そのままにします。** 記録の形
+     （part: "dawn"/"dusk"）も、それを見ている並べ替え・夜の色・plan.js も
+     手を付けていません——選べなくなるだけで、あるものは動きません。
+     作り替えが要るなら、勝手にやらずに先に相談すること。 */
   const REPEATS = [
     { id: null,      label: "なし" },
     { id: "daily",   label: "毎日" },
-    { id: "dawn",    label: "毎朝" },
-    { id: "dusk",    label: "毎晩" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
   ];
@@ -30119,7 +30213,11 @@ a.btn { text-decoration: none; }
                data-month="${day.slice(0, 7)}" data-day="${day}"></section>
     `);
 
-    const rows = open.filter((t) => t.due === day);
+    /* くり返しの用事は、先の日にも立ちます（store.fallsOn）。**今日から先
+       だけ**そうします——過ぎた日には済ませた跡（trace）がもう並んでいて、
+       そこへ生きている一件を重ねると、同じ用事が二行になるので。 */
+    const ahead = day >= todayKey();
+    const rows = open.filter((t) => (ahead ? store.fallsOn(t, day) : t.due === day));
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     if (!rows.length && !done.length) {
       sec.append(node(html`
@@ -31723,7 +31821,10 @@ a.btn { text-decoration: none; }
   /* グラフの期間。まず7日を出します——「最近どうか」を見るのに、
      30日は入り口としては長すぎます（30日ぶんの点は、電話の幅では
      一日ぶんが10pxほどになり、日々の上下が読めません）。 */
-  let range = 7;              // グラフの期間（日）。0 は全期間。
+  /* 保存してある期間から始めます（初めてなら7日）。ここで store を読むのは
+     モジュールを組んでいる最中なので、`let state = load()` より後に走る
+     screen-diet.js からなら安全です。 */
+  let range = store.dietRange();   // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
   let series = "";             // 体重と並べて見るもの。空なら体重だけ。
 
@@ -32809,7 +32910,7 @@ a.btn { text-decoration: none; }
 
     KN.ui.chipRow(sec.querySelector(".js-range"), RANGES.map((r) => ({ id: r.id, label: r.label })), {
       activeId: range,
-      onPick: (id) => { range = Number(id); render(); },
+      onPick: (id) => { range = Number(id); store.setDietRange(range); render(); },
     });
     KN.ui.chipRow(sec.querySelector(".js-series"), SERIES.map((x) => ({ id: x.id, label: x.label })), {
       activeId: series,
@@ -36247,6 +36348,11 @@ distance=6.0km</pre>
         <header class="topbar">
           <div class="topbar-row">
             <div style="flex:1;min-width:0">
+              ${/* 題は出します。ただし帯の高さは他のタブと同じまま——題の
+                   ぶんだけ帯が太ると、この画面だけ一段深いところにいるように
+                   見えるので。色は「2026年」と同じコーラル（--c-primary）で、
+                   どのタブでも「いまどこか」を言う字は同じ色にします。 */""}
+              <h1 class="topbar-title tab-title">買うもの</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* No 「まとめて削除」 on this bar any more. Having bought
@@ -36277,9 +36383,9 @@ distance=6.0km</pre>
           </div>
         </div>
 
-        <div class="progress-wrap js-progress-wrap" hidden>
-          <div class="progress"><div class="progress-bar js-progress" style="width:0%"></div></div>
-        </div>
+        ${/* 進み具合の帯は外しました。「何件買ったか」は下の見出しが数で
+             言っていて、帯はそれを絵にし直しているだけ——しかも買い物の
+             途中で見るのは「あと何を買うか」であって、達成率ではないので。 */""}
 
         <div class="js-filter"></div>
         <div class="js-body"></div>
@@ -36296,8 +36402,6 @@ distance=6.0km</pre>
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
-      progWrap:   chrome.querySelector(".js-progress-wrap"),
-      progress:   chrome.querySelector(".js-progress"),
       filter:     chrome.querySelector(".js-filter"),
       body:       chrome.querySelector(".js-body"),
       topbar:     chrome.querySelector(".topbar"),
@@ -36572,8 +36676,6 @@ distance=6.0km</pre>
        題のすぐ下は目がいちばん先に行く場所なので、そこは空けます。 */
     els.sub.textContent = "";
 
-    els.progWrap.hidden = scope.length === 0;
-    els.progress.style.width = scope.length ? `${(done / scope.length) * 100}%` : "0%";
 
     KN.ui.paintLayoutButton(els.layout);
 
@@ -37141,6 +37243,7 @@ distance=6.0km</pre>
                   帯の同じところをもう一度押せば表へ戻ります。引き出しでは
                   なくなったので、帰り道も帯そのものです。 */""}
             <div style="flex:1;min-width:0">
+              <h1 class="topbar-title tab-title">価格</h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* The ＋ is not up here any more — it is the same floating
@@ -39396,11 +39499,13 @@ distance=6.0km</pre>
   let goingBack = false;
   const HOME_OF_DRAWER = "list";
 
-  /* The app opens on やること. The question on picking the phone up is 「今日
-     なにをするんだっけ」 far more often than 「何を買うんだっけ」 — the shopping
-     list is what you open once you are already standing in a shop, and it is
-     one tap away. */
-  const HOME = "todo";
+  /* 立ち上げたときは daily を出します。やること・買うものは「用がある
+     ときに開く」画面ですが、daily は開いてはじめて書くもので、開かなければ
+     書かれないままになるので。やることは、下の帯からひと押しで出ます。
+
+     `archive`（daily）は やること の裏面なので、ここに裏面の名前を書けば
+     `tabOf` が組を見つけ、下の帯は「やること」の組が選ばれた形になります。 */
+  const HOME = "archive";
 
   let active = HOME;
   const mounted = new Set();

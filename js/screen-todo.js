@@ -29,11 +29,19 @@
 
      id は "dawn"/"dusk" のまま。中では repeat="daily" と part="dawn" の
      組で持ちます（記録の形は変えていません。並べ替えも表示もそこを見ます）。 */
+  /* **毎朝・毎晩は、選べる先から外しました。** 時間割になる前は、その日の
+     どこに置くかを言う手立てが「朝の端／夜の端」しかありませんでした。
+     いまは時刻そのものを書けて、書かなくても組み立てが場所を決めます。
+     残しておくと「毎日・7:00」と「毎朝・7:00」の二通りができて、同じことを
+     二つの言い方で持つことになります。
+
+     **すでに毎朝・毎晩で持っているものは、そのままにします。** 記録の形
+     （part: "dawn"/"dusk"）も、それを見ている並べ替え・夜の色・plan.js も
+     手を付けていません——選べなくなるだけで、あるものは動きません。
+     作り替えが要るなら、勝手にやらずに先に相談すること。 */
   const REPEATS = [
     { id: null,      label: "なし" },
     { id: "daily",   label: "毎日" },
-    { id: "dawn",    label: "毎朝" },
-    { id: "dusk",    label: "毎晩" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
   ];
@@ -1888,7 +1896,11 @@
                data-month="${day.slice(0, 7)}" data-day="${day}"></section>
     `);
 
-    const rows = open.filter((t) => t.due === day);
+    /* くり返しの用事は、先の日にも立ちます（store.fallsOn）。**今日から先
+       だけ**そうします——過ぎた日には済ませた跡（trace）がもう並んでいて、
+       そこへ生きている一件を重ねると、同じ用事が二行になるので。 */
+    const ahead = day >= todayKey();
+    const rows = open.filter((t) => (ahead ? store.fallsOn(t, day) : t.due === day));
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     if (!rows.length && !done.length) {
       sec.append(node(html`
