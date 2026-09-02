@@ -41,7 +41,12 @@
   const KN = window.KN;
   const { html, node, haptic } = KN.util;
 
-  const SLOP = 10;      // これだけ動いてから、引く手つきだと決めます
+  /* これだけ動いてから、引く手つきだと決めます。10 だと、決まるまでに
+     ブラウザのほうが先に画面を送りはじめて、そのとき指の追跡ごと取り
+     上げられます（pointercancel）——「掴み手からしか動かない」ように
+     感じていたのはこれで、掴み手だけは touch-action: none なので
+     ブラウザが手を出さなかったからです。 */
+  const SLOP = 5;
   const DONE = 0.34;    // ここまで来ていたら、行った先へ収めます
 
   /**
@@ -190,7 +195,7 @@
       if (!on) {
         // 横が勝ったら、日送り（wireDaySwipe）の番です。
         if (Math.abs(dx) > SLOP && Math.abs(dx) > Math.abs(dy)) { drop(); return; }
-        if (Math.abs(dy) < SLOP || Math.abs(dy) < Math.abs(dx) * 1.2) return;
+        if (Math.abs(dy) < SLOP || Math.abs(dy) <= Math.abs(dx)) return;
         // 閉じているなら下へ、開いているなら上へ。逆向きは渡します。
         if ((dy > 0) === (p0 === 1)) { drop(); return; }
         // 上へ戻すのは掴み手からだけ（下のリストのスクロールを取らない）。
@@ -219,6 +224,28 @@
     };
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
+
+    /* **これは pointermove では止まりません。**
+
+       上まで来ているところから下へ引くと、ブラウザは先に「画面を送る」
+       ほうを始めます。始まってしまえば指の追跡は取り上げられ（pointercancel）、
+       暦は出てきません。pointermove で preventDefault しても、送るのを
+       止めるのは touchmove のほうなので間に合いません。
+
+       だから、こちらが取ると決める前でも——上端にいて、閉じていて、下へ
+       向かっているあいだは——ここで渡さないでおきます。紙のどこを持っても
+       下へ引けば暦が出るのは、これがあるからです。上へ向かうぶんは
+       そのまま渡します（それは下のリストを送るスクロールなので）。 */
+    el.addEventListener("touchmove", (e) => {
+      if (!live || !e.cancelable) return;
+      if (on) { e.preventDefault(); return; }
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      const dy = t.clientY - y0, dx = t.clientX - x0;
+      if (Math.abs(dx) > Math.abs(dy)) return;      // 横は日送りの番
+      // 閉じているなら下へ、開いているなら上（掴み手から）だけ。
+      if (p0 === 1 ? dy < 0 && byGrip : dy > 0) e.preventDefault();
+    }, { passive: false });
   }
 
   KN.calPeek = { mount, wire };
