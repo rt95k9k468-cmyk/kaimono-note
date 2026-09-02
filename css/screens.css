@@ -4349,3 +4349,13 @@ a.btn { text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 .tl-due.is-over { color: var(--c-danger); font-weight: 700; }
+
+/* 価格の「12商品・3店舗」。上の帯から下ろしたものです——題の下に一行
+   足すと、この画面の帯だけが他のタブより高くなります。帯の高さは四つの
+   タブで揃っていること。 */
+.prices-count {
+  margin: 0;
+  padding: 0 var(--sp-4) var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
