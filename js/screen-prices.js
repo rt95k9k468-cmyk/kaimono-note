@@ -25,8 +25,12 @@
                   帯の同じところをもう一度押せば表へ戻ります。引き出しでは
                   なくなったので、帰り道も帯そのものです。 */""}
             <div style="flex:1;min-width:0">
+              ${/* 数（「12商品・3店舗」）は、ここには置きません。題の下に
+                   一行足すと、この画面の帯だけが他のタブより 15px 高く
+                   なります。帯の高さは四つのタブで揃っていること——
+                   ここだけ深いと、一段下の階層にいるように見えるので。
+                   数は下（.js-count）へ移しました。 */""}
               <h1 class="topbar-title tab-title">価格</h1>
-              <div class="topbar-sub js-sub"></div>
             </div>
             ${/* The ＋ is not up here any more — it is the same floating
                  button the list screen has, in the dock at the bottom
@@ -54,6 +58,7 @@
           </div>
         </div>
 
+        <p class="prices-count js-count"></p>
         <div class="js-filter"></div>
         <div class="js-body"></div>
       </div>
@@ -62,7 +67,7 @@
     root.append(chrome);
 
     els = {
-      sub:     chrome.querySelector(".js-sub"),
+      count:   chrome.querySelector(".js-count"),
 
       searchBtn: chrome.querySelector(".js-search-btn"),
       screen:     root,
@@ -106,7 +111,7 @@
 
   function render() {
     const st = store.get();
-    els.sub.textContent = `${st.products.length}商品 ・ ${st.stores.length}店舗`;
+    els.count.textContent = `${st.products.length}商品 ・ ${st.stores.length}店舗`;
     KN.ui.paintLayoutButton(els.layout);
     renderFilter();
     renderBody();
