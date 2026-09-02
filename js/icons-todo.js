@@ -641,5 +641,9 @@
       .map(([key]) => key);
   }
 
-  KN.iconsTodo = { ICONS, find, findKey, byKey, list, search, suggest, LABELS };
+  /* 形の部品は、食材のシルエット（`icons-food.js`）にも貸します。**一つの
+     文法を二か所に書かない**ため——角丸の作り方が二通りあると、片方だけ
+     直した日に一族が割れます。 */
+  KN.iconsTodo = { ICONS, find, findKey, byKey, list, search, suggest, LABELS,
+                   geom: { rr, cir, ell, svg: S } };
 })();

@@ -1474,14 +1474,22 @@
      当たらないときは、期限の色の丸に落とします。絵の無い行だけ左端が
      空くと列が崩れるので、何かは必ず置く。丸は「まだ絵が無い」の目印で
      あって、失敗の表示ではありません。 */
+  /** 買うものの絵を、やること用に。**食材はシルエットに差し替えます**
+   *  （`icons-food.js`、269品目→71型）。時間割の丸薬には「こと」の
+   *  シルエットが並ぶので、「牛乳を買う」だけ色つきの絵が出ると一族が
+   *  割れます。買うものタブ側は色つきのままです。 */
+  function productArt(key) {
+    return (key && (KN.iconsFood.byKey(key) || KN.productIcons.byKey(key))) || "";
+  }
+
   /** 自分で選んだ絵（あれば）、無ければ題から推した絵。無ければ丸だけ。
    *  シート内の「いまの見え方」プレビューと、行そのものの両方が使います。 */
   function iconMarkHtml(titleText, key) {
     /* 保存済みの絵の名前は、どちらの辞書のものかを持っていません（前は
        買うものしか無かったので）。両方に聞いて、答えたほうを使います。 */
-    const svg = (key && (KN.iconsTodo.byKey(key) || KN.productIcons.byKey(key)))
+    const svg = (key && (KN.iconsTodo.byKey(key) || productArt(key)))
       || KN.iconsTodo.find(titleText || "")
-      || KN.productIcons.find(titleText || "");
+      || productArt(KN.productIcons.findKey(titleText || ""));
     return svg
       ? html`<span class="todo-mark">${KN.util.raw(svg)}</span>`
       : html`<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
@@ -1553,11 +1561,15 @@
 
     const heading = (text) => node(html`<span class="field-label">${text}</span>`);
 
+    /* 一覧に出す品物の絵も、行と同じもの（食材はシルエット）に差し替えます
+       ——選ぶ紙と行で違う絵が出ると、選んだものが出ていないように見えます。 */
+    const art = (it) => ({ ...it, svg: productArt(it.key) || it.svg });
+
     function paint() {
       grids.innerHTML = "";
       const query = q.value.trim();
       if (query) {
-        const hits = KN.iconsTodo.search(query).concat(KN.productIcons.search(query));
+        const hits = KN.iconsTodo.search(query).concat(KN.productIcons.search(query).map(art));
         if (!hits.length) {
           grids.append(node(html`
             <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
@@ -1587,7 +1599,7 @@
       const mineP = KN.productIcons.suggest(titleText, 4);
       const maybe = mineT.concat(mineP);
       if (maybe.length) {
-        const pool = KN.iconsTodo.list().concat(KN.productIcons.list());
+        const pool = KN.iconsTodo.list().concat(KN.productIcons.list().map(art));
         grids.append(heading("もしかして"));
         grids.append(grid(pool.filter((x) => maybe.includes(x.key))
           .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
@@ -1597,7 +1609,7 @@
       grids.append(heading("こと"));
       grids.append(grid(KN.iconsTodo.list()));
       grids.append(heading("品物"));
-      grids.append(grid(KN.productIcons.list()));
+      grids.append(grid(KN.productIcons.list().map(art)));
     }
     q.addEventListener("input", KN.util.debounce(paint, 160));
     paint();

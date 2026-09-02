@@ -739,7 +739,16 @@
      用事が壊れて見えないように）。 */
   function cleanIcon(key) {
     if (!key) return null;
-    return KN.productIcons.byKey(key) ? String(key) : null;
+    /* 絵は二冊あります——品物（product-icons）と、こと（icons-todo）。
+       **両方に聞くこと**。片方だけ見ていると、やることで選んだ「こと」の絵が
+       次に開いたとき黙って消えます。 */
+    const P = KN.productIcons, T = KN.iconsTodo;
+    /* どちらも読めていないなら、判定せずに**そのまま残します**。読み込みに
+       失敗した日に、利用者が選んだ絵をこちらが消してしまわないように。 */
+    if (!P && !T) return String(key);
+    if (P && P.byKey(key)) return String(key);
+    if (T && T.byKey(key)) return String(key);
+    return null;
   }
 
   /**
