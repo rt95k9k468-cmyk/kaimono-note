@@ -4318,3 +4318,34 @@ a.btn { text-decoration: none; }
   border-color: var(--c-primary-fill);
   color: #fff;
 }
+
+/* ---- 長期タスク（時間割の下） ----
+
+   やると決めているが、いつやるかは決めていないもの。時間割とは**別枠**
+   だと分かるように、上に少し空きと一本の区切りを置きます。行そのものの
+   組みは時間割と同じ——同じものを別の形で描くと、運べることが伝わらない
+   ので。 */
+.tl-someday-sec {
+  margin-top: var(--sp-5);
+  border-top: 1px solid var(--c-border);
+  padding-top: var(--sp-3);
+}
+.tl-someday-head { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* 時刻の列は空けたまま置きます。**詰めません**——詰めると丸の位置が
+   時間割とずれて、上下で別の並びに見えます。運べる先は上の時間割なので、
+   同じ縦位置に丸があることのほうが要ります。 */
+.tl-someday .tl-row .tl-time { visibility: hidden; }
+
+/* 背骨（縦の線）は引きません。時刻が無いので、つなぐ時間がありません。
+   丸だけが残ります。 */
+.tl-someday .tl-row .tl-rail::before,
+.tl-someday .tl-row .tl-rail::after { display: none; }
+
+/* 期限。題のすぐ下、長さと同じ列に。過ぎたものは字で言います
+   （色だけだと、色の意味を知っている人にしか伝わらないので）。 */
+.tl-due {
+  color: var(--c-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.tl-due.is-over { color: var(--c-danger); font-weight: 700; }

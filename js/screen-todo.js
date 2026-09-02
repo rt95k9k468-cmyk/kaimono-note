@@ -479,6 +479,7 @@
     let flagged = editing ? !!t.flagged : false;
     let minutes = editing ? (t.minutes || null) : null;
     let iconKey = editing ? (t.icon || null) : null;
+    let deadline = editing ? (t.deadline || null) : null;
     haptic(10);
 
     /* ---------------- 詳細の紙 ----------------
@@ -514,6 +515,15 @@
             <span class="d-ico">${icon("clock")}</span>
             <span class="d-label js-time-label"></span>
             <span class="d-value js-time-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
+          ${/* 期限。**日付（いつやるか）とは別のこと**です——長期タスクは
+                やる日を決めていないだけで、締め切りはあることがあります。
+                時刻と長さのすぐ下に置くのは、どちらも「いつ」の話だから。 */""}
+          <button type="button" class="d-row js-row-limit">
+            <span class="d-ico">${icon("flag")}</span>
+            <span class="d-label js-limit-label"></span>
+            <span class="d-value js-limit-value"></span>
             <span class="d-go">${icon("chevron")}</span>
           </button>
           <button type="button" class="d-row js-row-repeat">
@@ -559,6 +569,31 @@
             </span>
           </div>
           <span class="field-hint js-due-hint"></span>
+        </div>
+      </div>
+    `);
+
+    /* 期限の紙。日付の紙と同じ組みですが、**呼び名の札は置きません**
+       ——「今日」「明日」に締め切るものはたいてい日付のほうで決まっていて、
+       ここで選ぶのは「今月末まで」のような、もう少し先の日なので。
+       外すための口だけは要ります（一度書いた期限は、消せなければ嘘のまま
+       残ります）。 */
+    const pickLimit = node(html`
+      <div class="stack" style="gap:14px">
+        <div class="field">
+          <span class="field-label">いつまでに</span>
+          <div class="date-row">
+            <span class="date-cell">
+              <input class="input js-limit" type="date" value="${deadline || ""}"
+                     aria-label="期限を選ぶ">
+              <span class="date-empty js-limit-empty" aria-hidden="true">--/--/--</span>
+            </span>
+            <button type="button" class="icon-btn js-limit-clear" aria-label="期限をはずす" hidden>
+              ${icon("close")}
+            </button>
+          </div>
+          <span class="field-hint">やる日とは別です。長期タスクは、やる日を
+            決めていなくても期限だけ持てます。</span>
         </div>
       </div>
     `);
@@ -713,7 +748,7 @@
           if (!src) return;
           const made = store.addTodo({
             title: `${src.title}(コピー)`,
-            due: src.due, part: src.part, time: src.time,
+            due: src.due, deadline: src.deadline, part: src.part, time: src.time,
             repeat: src.repeat, repeatDays: src.repeatDays, repeatNth: src.repeatNth,
             memo: src.memo, flagged: src.flagged, minutes: src.minutes,
             shop: src.shop, icon: src.icon,
@@ -797,6 +832,18 @@
       }
       row(".js-row-time", time ? `${tlClock(time)}${minutes ? " 〜 " + tlClock(KN.plan.toTime(KN.plan.toMin(time) + minutes)) : ""}` : "時刻なし",
           minutes ? KN.plan.humanSpan(minutes) : "");
+      /* 期限。過ぎていたら、その旨をそのまま書きます（色だけで言うと、
+         色の意味を知っている人にしか伝わらないので）。 */
+      if (deadline) {
+        const d = KN.util.dayDate(deadline);
+        const n = daysUntil(deadline);
+        const near = n === 0 ? "今日まで" : n === 1 ? "明日まで"
+          : n < 0 ? `${-n}日すぎています` : `あと${n}日`;
+        row(".js-row-limit",
+            `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）まで`, near);
+      } else {
+        row(".js-row-limit", "期限なし", "");
+      }
       const rid = isBookend(part) ? part : (repeat || "");
       const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
       row(".js-row-repeat", rid ? rw : "くりかえさない",
@@ -811,6 +858,7 @@
     }
     body.querySelector(".js-row-due").addEventListener("click", () => openPick("いつまでに", pickDue));
     body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻と長さ", pickTime));
+    body.querySelector(".js-row-limit").addEventListener("click", () => openPick("期限", pickLimit));
     body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
     body.querySelector(".js-row-notify").addEventListener("click", () => {
       const nt = KN.notify;
@@ -1093,6 +1141,33 @@
     paintHint();
     paintSlots();
 
+    /* 期限の欄。日付の欄と同じ作りですが、こちらは外れても何も連れて
+       いきません（時刻もくりかえしも、やる日の話なので）。 */
+    const limitEl = body.pick(".js-limit");
+    const limitClear = body.pick(".js-limit-clear");
+    function paintLimit() {
+      const ph = body.pick(".js-limit-empty");
+      if (ph) ph.hidden = !!deadline;
+      if (limitClear) limitClear.hidden = !deadline;
+      paintRows();
+    }
+    if (limitEl) {
+      limitEl.addEventListener("change", () => {
+        deadline = limitEl.value || null;
+        paintLimit();
+        haptic();
+      });
+    }
+    if (limitClear) {
+      limitClear.addEventListener("click", () => {
+        deadline = null;
+        if (limitEl) limitEl.value = "";
+        paintLimit();
+        haptic();
+      });
+    }
+    paintLimit();
+
     dueEl.addEventListener("change", () => {
       due = dueEl.value || null;
       // 日付を外すと、毎朝・毎晩の立つ場所が無くなります。くりかえしの
@@ -1235,14 +1310,15 @@
          todoPart）も、とうにそう直してありました。しまうところだけが
          古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, part: fixed ? part : null, time: at,
+        store.updateTodo(todoId, { title, due: fixed, deadline,
+          part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged, minutes, icon: iconKey });
         /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
            知らない欄を混ぜると黙って落ちます。 */
         store.setSubs(todoId, subs);
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
-        store.addTodo({ title, due: fixed, part: fixed ? part : null, time: at,
+        store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, memo, flagged, minutes, subs, icon: iconKey });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
@@ -1880,6 +1956,8 @@
        無くなるので。 */
     if (oneDay()) {
       sheet.append(daySection(shownDay(), open));
+      // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
+      sheet.append(somedaySection(open));
       wireDaySwipe(sheet);
       wireCalPull(sheet);
       /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
@@ -1944,6 +2022,77 @@
     }
     sec.append(timeline(rows, { id: "day", day }));
     return sec;
+  }
+
+  /* ---------------- 長期タスク ----------------
+
+     やると決めているが、**いつやるかは決めていない**もの（`due` を
+     持たないもの）。時間割の下に、少し離して置きます。
+
+     時刻も、時刻の線も出しません。時刻が無いのだから、そこに何かを
+     書けば嘘になります——「未定」とも書きません（列が空いていること自体が
+     もう「まだ決めていない」と言っているので）。かわりに出すのは**期限**
+     です。ここは締め切りだけが効いてくる場所なので。
+
+     ここから時間割へ運べます（wireDrag は同じものを使います）。空いている
+     ところへ落とせば、その日・その時刻に決まる——それがこの欄の使い道です。
+     詳細の紙も、時間割の行とまったく同じものが開きます。 */
+  function somedaySection(open) {
+    const rows = open.filter((t) => !t.due && !t.done && !t.archived && !t.trace);
+    const sec = node(html`
+      <section class="todo-group tl-someday-sec" data-group="someday">
+        <h2 class="todo-head tl-someday-head">
+          <span>長期タスク</span>
+          ${rows.length ? html`<span class="cat-head-count">${rows.length}</span>` : ""}
+        </h2>
+      </section>
+    `);
+    if (!rows.length) {
+      sec.append(node(html`
+        <p class="todo-today-empty">いつかやることを、ここに置いておけます</p>
+      `));
+      return sec;
+    }
+    /* 期限の近い順。期限を書いていないものは後ろへ——急ぐものが上に
+       来ないと、この欄は「積んだだけ」になります。 */
+    const sorted = rows.slice().sort((a, b) => {
+      const x = a.deadline || "9999-99-99", y = b.deadline || "9999-99-99";
+      return x < y ? -1 : x > y ? 1 : (a.order || 0) - (b.order || 0);
+    });
+    const list = node(html`<ul class="tl tl-someday"></ul>`);
+    sorted.forEach((t) => list.append(somedayRow(t)));
+    sec.append(list);
+    /* 運ぶ手つきは時間割と同じもの。day は渡しません——この欄の行は
+       まだどの日のものでもないので、落とした先が日を決めます。 */
+    wireDrag(list, null);
+    return sec;
+  }
+
+  /** 長期タスクの一行。時間割の行と同じ組みで、時刻の列だけが空。 */
+  function somedayRow(t) {
+    const it = {
+      todo: t,
+      at: null, atMin: NaN, untilMin: NaN,
+      fixed: false, clash: false,
+      minutes: t.minutes || KN.plan.DEFAULT_MINUTES,
+    };
+    const li = itemRow(it, false);
+    li.classList.add("is-someday");
+    /* 期限は、題のすぐ近くに。事実の行（長さと同じところ）に置きます
+       ——ここでいちばん効いてくる数なので、先頭に差し込みます。 */
+    if (t.deadline) {
+      const body = li.querySelector(".tl-body");
+      let facts = li.querySelector(".tl-facts");
+      if (!facts) {
+        facts = node(html`<span class="tl-facts"></span>`);
+        if (body) body.append(facts);
+      }
+      const over = t.deadline < todayKey();
+      facts.prepend(node(html`
+        <span class="tl-due ${over ? "is-over" : ""}">${formatDay(t.deadline)}まで</span>
+      `));
+    }
+    return li;
   }
 
   /** 組み直したあとに、読んでいた場所へ戻します。 */
@@ -2809,10 +2958,23 @@
 
     /* 持ち上げた指の位置を控えます。**動かさずに離したら、何もしません**
        ——下の drop() を見ること。 */
-    tlDrag = { id, row, list, day, len, target: null, y0, moved: false };
+    /* 落とし先の一覧。ふつうは掴んだのと同じ一覧ですが、**長期タスクから
+       運ぶときだけは違います**——あの欄には空きの行が無いので、置き場は
+       その日の時間割のほうにあります。日付も、その日のものになります
+       （長期タスクはまだどの日のものでもないので）。 */
+    const someday = list.classList.contains("tl-someday");
+    const dayList = someday
+      ? (root && root.querySelector(".todo-day .tl:not(.tl-someday)")) || list
+      : list;
+    const dayKey = someday ? shownDay() : day;
+
+    tlDrag = { id, row, list, dayList, someday, day: dayKey, len,
+               target: null, y0, moved: false };
     KN.motion.fire("reorder");
     row.classList.add("is-lifted");
     list.classList.add("is-dragging");
+    // 落とし先が別の一覧なら、そちらにも印を付けます（軸を伏せる CSS のため）。
+    if (dayList !== list) dayList.classList.add("is-dragging");
     /* 持ち上がるまでの0.38秒で、もう選ばれていることがあります。 */
     try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
 
@@ -2835,7 +2997,7 @@
        逃げると、狙ったところに置けません——**掴んだ行が動かないように**、
        広がった量だけ画面のほうをずらします。上で開いたぶんだけ、下へ。 */
     const before = row.getBoundingClientRect().top;
-    list.querySelectorAll(".tl-free-row").forEach((fr) => {
+    dayList.querySelectorAll(".tl-free-row").forEach((fr) => {
       const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
       if (!isFinite(from) || !isFinite(until) || until - from < len) return;
       fr.classList.add("is-open");
@@ -2890,6 +3052,7 @@
     const d = tlDrag;
     if (!d) return;
     d.list.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
+    d.dayList.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
     if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
 
     /* ---- 週の帯の日 ----
@@ -2911,7 +3074,7 @@
     }
 
     /* 開いた帯の中にいるなら、指の高さがそのまま時刻です。 */
-    for (const fr of d.list.querySelectorAll(".tl-free-row.is-open")) {
+    for (const fr of d.dayList.querySelectorAll(".tl-free-row.is-open")) {
       const band = fr.querySelector(".tl-band");
       if (!band) continue;
       const b = band.getBoundingClientRect();
@@ -2934,8 +3097,15 @@
       d.target = { kind: "time", at };
       return;
     }
+    /* 長期タスクの欄の上で離したなら、まだ何も言っていません。この欄の
+       中に置き場はない（時刻が無いので）ので、そのまま帰します。 */
+    if (d.someday) {
+      const b = d.list.getBoundingClientRect();
+      if (y >= b.top && y <= b.bottom) { d.target = null; return; }
+    }
+
     /* 用事と用事のあいだ。行の上半分なら前へ、下半分なら後ろへ。 */
-    const rows = [...d.list.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
+    const rows = [...d.dayList.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
     let before = null;
     for (const r of rows) {
       const b = r.getBoundingClientRect();
@@ -2958,12 +3128,13 @@
     if (!d) return;
     d.row.classList.remove("is-lifted");
     d.list.classList.remove("is-dragging");
-    d.list.querySelectorAll(".is-aim").forEach((el) => {
+    d.dayList.classList.remove("is-dragging");
+    [d.list, d.dayList].forEach((L) => L.querySelectorAll(".is-aim").forEach((el) => {
       el.classList.remove("is-aim", "is-aim-before");
-    });
+    }));
     /* 広げた空きは、閉じます。置いたあとに描き直される行もありますが、
        落とす先が無かったときは描き直されないので、ここで畳みます。 */
-    d.list.querySelectorAll(".tl-free-row.is-open").forEach((fr) => {
+    d.dayList.querySelectorAll(".tl-free-row.is-open").forEach((fr) => {
       fr.classList.remove("is-open");
       fr.style.removeProperty("--band-h");
       const band = fr.querySelector(".tl-band");
@@ -3015,7 +3186,7 @@
     }
 
     /* 順番で置きなおす。時刻は手放します。 */
-    const ids = [...d.list.querySelectorAll(".tl-row")]
+    const ids = [...d.dayList.querySelectorAll(".tl-row")]
       .map((r) => r.dataset.todoId).filter((x) => x && x !== d.id);
     /* **並び全体**を控えます。この置きなおしは一件だけでなく、その日の
        並び順をまるごと書き替えるので、戻すときも同じ広さで戻さないと

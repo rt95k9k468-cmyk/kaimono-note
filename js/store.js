@@ -608,6 +608,16 @@
       id: t.id || uid("t"),
       title: String(t.title || "").trim(),
       due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : null,
+      /* 期限。**`due` とは別のことです。**
+
+         `due` は「その日の時間割に居る」——いつ**やる**か。`deadline` は
+         いつ**まで**か。長期タスク（`due` を持たないもの）は、やる日を
+         まだ決めていないだけで、締め切りはあることがあります
+         （「今月中に免許の更新」）。同じ欄で兼ねると、締め切りを書いた
+         とたんにその日の時間割へ入ってしまいます。
+
+         持っていない記録は null に落ちるので、古い保存もそのまま読めます。 */
+      deadline: /^\d{4}-\d{2}-\d{2}$/.test(t.deadline) ? t.deadline : null,
       repeat: ["daily", "weekly", "monthly"].includes(t.repeat) ? t.repeat : null,
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
@@ -1167,7 +1177,8 @@
      a day it is wanted by. Everything else here exists because of that day —
      what is overdue, what repeats, what the icon should count. */
 
-  function addTodo({ title, due = null, part = null, time = null, repeat = null, repeatDays = [],
+  function addTodo({ title, due = null, deadline = null, part = null, time = null,
+                     repeat = null, repeatDays = [],
                      repeatNth = null, memo = "", flagged = false, minutes = null,
                      shop = false, subs = [], icon = null } = {}) {
     const name = String(title || "").trim();
@@ -1177,6 +1188,8 @@
       id: uid("t"),
       title: name,
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
+      // いつまでに。やる日（due）とは別（上の reconcile の但し書きを見ること）。
+      deadline: /^\d{4}-\d{2}-\d{2}$/.test(deadline) ? deadline : null,
       repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
@@ -1469,6 +1482,9 @@
       if ("part" in patch) t.part = cleanPart(patch.part);
       if (!t.due) { t.part = null; t.time = null; }
       fixBookend(t);
+      if ("deadline" in patch) {
+        t.deadline = /^\d{4}-\d{2}-\d{2}$/.test(patch.deadline) ? patch.deadline : null;
+      }
       if ("repeatDays" in patch) t.repeatDays = cleanDays(patch.repeatDays);
       if ("repeatNth" in patch) t.repeatNth = cleanNth(patch.repeatNth);
       if ("memo" in patch) t.memo = String(patch.memo || "");
