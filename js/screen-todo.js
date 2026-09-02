@@ -1499,6 +1499,43 @@
     return iconMarkHtml(t.title, t.icon);
   }
 
+  /* ---------------- 丸薬の中の絵 ----------------
+
+     **丸薬と同じところで色が変わります。** 過ぎたぶん（テーマ色に染まった
+     ところ）では白抜き、まだのぶん（灰色）ではテーマ色。進んでいる最中は、
+     絵の途中で切り替わります。
+
+     そのために、絵を `<svg>` ではなく **マスク**として置きます。塗りは CSS の
+     グラデーション一枚で、丸薬の背景とまったく同じ式（`--pass` と丸薬の
+     高さ）から出ます——**境目を二か所で計算しない**ことが肝で、別々に
+     出すと、伸びた丸薬や重なった行で必ずずれます。
+
+     色つきの品物の絵（食材以外の買うもの）は二色に割り切れないので、
+     これまでどおり `<svg>` のまま置きます。 */
+  const maskCache = new Map();
+  function maskUrl(svg) {
+    let u = maskCache.get(svg);
+    if (u) return u;
+    const s = svg
+      .replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ')
+      .replace('fill="currentColor"', 'fill="#000"');
+    u = "url('data:image/svg+xml," + encodeURIComponent(s) + "')";
+    maskCache.set(svg, u);
+    return u;
+  }
+
+  /** 時間割の丸薬の中に置く絵。シルエットなら二色に割れる形で、
+   *  色つきの絵ならそのまま。 */
+  function tlMark(t) {
+    const key = t.icon;
+    const sil = (key && (KN.iconsTodo.byKey(key) || KN.iconsFood.byKey(key)))
+      || KN.iconsTodo.find(t.title || "")
+      || KN.iconsFood.byKey(KN.productIcons.findKey(t.title || ""));
+    if (!sil) return todoMark(t);
+    return html`<span class="todo-mark is-split"
+                      style="--icon:${KN.util.raw(maskUrl(sil))}"></span>`;
+  }
+
   /* ---------------- やることの絵を選ぶ ----------------
 
      買うものの商品アイコンと、同じ絵の一覧・同じ選び方です（KN.productIcons）。
@@ -3540,7 +3577,7 @@
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
           style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
-        <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
+        <span class="tl-rail"><span class="tl-node">${tlMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
 
               前置き（メモ）が上にあるのは、それが**題を読むための文脈**
