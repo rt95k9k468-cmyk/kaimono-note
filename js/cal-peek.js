@@ -21,17 +21,24 @@
    持っているからです——同じ要素に二つの transform は書けません。
    曜日を .cal-grid の外に出したのは、暦が伸びても曜日が上に留まるように。
 
-   ■ 数はひとつ
+   ■ 段は三つ
 
-   開き具合は --cal-p だけ（0＝週、1＝月）。窓の高さ、ずらし、隣の週の
-   濃さ、題の右の「›」の傾きが、すべてこれから出ます。途中で指を離しても
-   全部が同じところにいる、というのがこの作りの理由です。
+     -1 … 暦なし（画面ぜんぶが下の紙）
+      0 … 今週の一行
+      1 … 月ぜんぶ
 
-   ■ 取る向きは片道ずつ
+   数はひとつ（p）で、-1 から 1 まで続いています。真ん中の 0 が週なので、
+   週から下へ引けば月、**週から上へ押せば暦そのものが消えます**。段の
+   あいだは指について連続に動くので、どこで手を離しても近いほうへ収まる。
 
-   閉じているときは**下**へ引くぶんだけ、開いているときは**上**へ押す
-   ぶんだけ。逆向きは縦のスクロールに渡します——開いている月をさらに
-   引き下げられても、出てくるものがありません。そして上へ戻すのは
+   画面へ渡すのは --cal-p で、こちらは **0〜1 だけ**です（隣の週の濃さと
+   題の「›」の傾きが見ている数で、負の側には意味がありません）。消える
+   ぶんの縮みは、JSが曜日の行と余白に直に書きます。
+
+   ■ 取る向きは、いる段による
+
+   いちばん上（月）からは上へだけ、いちばん下（暦なし）からは下へだけ。
+   真ん中（週）からは**両方**へ行けます。そして上へ押すのは
    **掴み手（.tl-grip）からだけ**です：紙の本体で上へ引けば、それは下の
    リストを送るスクロールなので。
    ========================================================= */
@@ -85,15 +92,51 @@
     for (let i = 0; i < cells.length; i++) {
       if (cells[i].dataset.day === here) { idx = i; break; }
     }
-    return { clip, slide, grid, cellH, rowH, full, week: idx < 0 ? 0 : Math.floor(idx / 7) };
+    /* 三段目（暦なし）へ縮めるには、日のマスだけでは足りません。曜日の行と
+       暦そのものの上下の余白も一緒に畳まないと、消したはずの暦の場所に
+       「日 月 火…」と余白だけが残ります。 */
+    const wds = cal.querySelector(".cal-wds");
+    const cs = window.getComputedStyle(cal);
+    return {
+      cal, clip, slide, grid, cellH, rowH, full,
+      week: idx < 0 ? 0 : Math.floor(idx / 7),
+      wds,
+      wdsH: wds ? wds.offsetHeight : 0,
+      padT: parseFloat(cs.paddingTop) || 0,
+      padB: parseFloat(cs.paddingBottom) || 0,
+    };
   }
 
-  /** 0（週）〜1（月）のあいだの、途中の姿を描きます。 */
+  /** 一週ぶんの高さ（暦を丸ごと畳むときの道のり）。 */
+  const weekSpan = (m) => m.cellH + m.wdsH + m.padT + m.padB;
+
+  /** -1（暦なし）〜0（週）〜1（月）のあいだの、途中の姿を描きます。 */
   function paint(o, m, p) {
-    const h = m.cellH + (m.full - m.cellH) * p;
-    m.clip.style.height = h.toFixed(1) + "px";
-    m.slide.style.transform = `translateY(${(-m.week * m.rowH * (1 - p)).toFixed(1)}px)`;
-    if (o.root) o.root.style.setProperty("--cal-p", p.toFixed(3));
+    const open = p > 0 ? p : 0;       // 0〜1：週から月へ
+    const hide = p < 0 ? -p : 0;      // 0〜1：週から暦なしへ
+    const keep = 1 - hide;
+    m.clip.style.height =
+      ((m.cellH + (m.full - m.cellH) * open) * keep).toFixed(1) + "px";
+    m.slide.style.transform = `translateY(${(-m.week * m.rowH * (1 - open)).toFixed(1)}px)`;
+    if (m.wds) {
+      m.wds.style.height = (m.wdsH * keep).toFixed(1) + "px";
+      m.wds.style.opacity = keep.toFixed(3);
+    }
+    m.cal.style.paddingTop = (m.padT * keep).toFixed(1) + "px";
+    m.cal.style.paddingBottom = (m.padB * keep).toFixed(1) + "px";
+    /* 画面へ渡すのは 0〜1 だけ。負の側は「暦が消えていく」ことで、
+       「どれだけ開いているか」ではありません。 */
+    if (o.root) o.root.style.setProperty("--cal-p", open.toFixed(3));
+  }
+
+  /** 指の下で書いた寸法を、ぜんぶ剥がします。 */
+  function bare(m) {
+    if (!m) return;
+    m.clip.style.height = "";
+    m.slide.style.transform = "";
+    if (m.wds) { m.wds.style.height = ""; m.wds.style.opacity = ""; }
+    m.cal.style.paddingTop = "";
+    m.cal.style.paddingBottom = "";
   }
 
   function end(o) {
@@ -120,25 +163,27 @@
     o.tagOffWeek(cal, o.here());
     const m = metrics(cal, o.here());
     if (!m) { end(o); return null; }
-    paint(o, m, o.isOpen() ? 1 : 0);
+    paint(o, m, at(o));
     return m;
   }
 
+  /** いまの段。-1＝暦なし、0＝週、1＝月。 */
+  const at = (o) => (!o.isShown() ? -1 : (o.isOpen() ? 1 : 0));
+
   /** 指を離したあと。行き先まで滑らせて**から**、はじめて設定に書きます。
       先に書くと暦が組み直されて、途中の姿から跳んでしまいます。 */
-  function settle(o, m, open) {
+  function settle(o, m, to) {
     const cal = o.cal();
     if (!cal || !m) return;
     const done = () => {
       end(o);
-      m.clip.style.height = "";
-      m.slide.style.transform = "";
-      o.commit(open);
+      bare(m);
+      o.commit({ shown: to >= 0, open: to > 0 });
     };
     if (KN.motion.still()) { done(); return; }
     cal.classList.add("is-settling");
     if (o.root) o.root.classList.remove("is-cal-peek");   // ここからは滑らせます
-    paint(o, m, open ? 1 : 0);
+    paint(o, m, to);
     let over = false;
     const fin = () => {
       if (over) return;
@@ -158,15 +203,18 @@
    * o.root       その画面（スクロールする器）
    * o.cal()      いまの .cal
    * o.isOpen()   月ぜんぶを出しているか
-   * o.enabled()  いま引いてよいか（探している最中・暦をしまっているときは false）
+   * o.isShown()  暦そのものを出しているか
+   * o.enabled()  いま引いてよいか（探している最中は false）
    * o.busy()     ほかの手つきが指を持っているか（用事を運んでいる最中など）
    * o.here()     いま見ている日（どの週を窓に出すか）
    * o.tagOffWeek(sec, here)  いまの週の外に印を付ける
-   * o.commit(open)           行き先が決まった。設定に書く／塗り直す
+   * o.commit({shown, open})  行き先が決まった。設定に書く／塗り直す
    */
   function wire(o) {
     const el = o.sheet;
     let pid = null, x0 = 0, y0 = 0, p0 = 0, p = 0, m = null, live = false, on = false;
+    /* いま動いているのは、どの段のあいだか。[lo, hi] と、その道のり（span）。 */
+    let lo = 0, hi = 1, span = 1;
     /* 掴み手から始めたかどうか。上へ押し戻すのは、ここからだけです。 */
     let byGrip = false;
     const drop = () => { live = false; on = false; pid = null; m = null; };
@@ -178,7 +226,7 @@
       if (!o.root || o.root.scrollTop > 0) return;
       if (o.enabled && !o.enabled()) return;
       pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
-      p0 = o.isOpen() ? 1 : 0; p = p0;
+      p0 = at(o); p = p0;
       byGrip = !!(e.target.closest && e.target.closest(".tl-grip"));
       live = true; on = false;
       /* 掴み手からのぶんは、この場で指を預かります。上へ押すと紙のほうが
@@ -196,31 +244,42 @@
         // 横が勝ったら、日送り（wireDaySwipe）の番です。
         if (Math.abs(dx) > SLOP && Math.abs(dx) > Math.abs(dy)) { drop(); return; }
         if (Math.abs(dy) < SLOP || Math.abs(dy) <= Math.abs(dx)) return;
-        // 閉じているなら下へ、開いているなら上へ。逆向きは渡します。
-        if ((dy > 0) === (p0 === 1)) { drop(); return; }
-        // 上へ戻すのは掴み手からだけ（下のリストのスクロールを取らない）。
+        /* いちばん上（月）からは上へだけ、いちばん下（暦なし）からは下へ
+           だけ。真ん中（週）からは両方へ行けます。 */
+        if (p0 === 1 && dy > 0) { drop(); return; }
+        if (p0 === -1 && dy < 0) { drop(); return; }
+        // 上へ押すのは掴み手からだけ（下のリストのスクロールを取らない）。
         if (dy < 0 && !byGrip) { drop(); return; }
         m = begin(o);
         if (!m) { drop(); return; }
+        /* どの段のあいだを動くかは、いる段と向きで決まります。決めるのは
+           ここ一度きり——途中で測り直すと、境目をまたぐたびに指の下で
+           速さが変わります。 */
+        if (p0 === 1 || (p0 === 0 && dy > 0)) {
+          lo = 0; hi = 1; span = m.full - m.cellH;      // 週 ⇄ 月
+        } else {
+          lo = -1; hi = 0; span = weekSpan(m);          // 暦なし ⇄ 週
+        }
         on = true;
         try { el.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
       }
       // 取ったからには、スクロールには渡しません。
       if (e.cancelable) e.preventDefault();
-      const span = m.full - m.cellH;
       const moved = dy - Math.sign(dy) * SLOP;
-      p = Math.min(1, Math.max(0, p0 + moved / span));
+      p = Math.min(hi, Math.max(lo, p0 + moved / (span || 1)));
       paint(o, m, p);
     }, { passive: false });
 
     const up = (e) => {
       if (!live || e.pointerId !== pid) return;
-      const was = on, mm = m, pp = p, from = p0;
+      const was = on, mm = m, pp = p, from = p0, a = lo, b = hi;
       drop();
       if (!was) return;
-      const open = from === 1 ? pp > 1 - DONE : pp > DONE;
-      if (open !== (from === 1)) haptic();
-      settle(o, mm, open);
+      /* 出てきた側から DONE ぶん離れていたら、行った先へ。離れていなければ
+         元の段へ戻します。 */
+      const to = from === a ? (pp > a + DONE ? b : a) : (pp < b - DONE ? a : b);
+      if (to !== from) haptic();
+      settle(o, mm, to);
     };
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
@@ -243,8 +302,8 @@
       if (!t) return;
       const dy = t.clientY - y0, dx = t.clientX - x0;
       if (Math.abs(dx) > Math.abs(dy)) return;      // 横は日送りの番
-      // 閉じているなら下へ、開いているなら上（掴み手から）だけ。
-      if (p0 === 1 ? dy < 0 && byGrip : dy > 0) e.preventDefault();
+      // 下へ行けるのは月にいないとき。上へは掴み手から、暦なしでないとき。
+      if (dy > 0 ? p0 !== 1 : (byGrip && p0 !== -1)) e.preventDefault();
     }, { passive: false });
   }
 

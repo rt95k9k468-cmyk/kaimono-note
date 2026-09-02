@@ -17,17 +17,21 @@
 
     const chrome = node(html`
       <div class="stack">
-        ${/* **帯の四つめになりました。** 前は画面ごとの歯車から開く引き出し
-              でしたが、同じ行き先への入口が四つあることになり、そのぶん
-              どの画面の上の帯も一つずつ狭くなっていました。行き先が一つ
-              なら、入口も一つでいい。
+        ${/* **また引き出しに戻りました。** 帯の四つめに置いていた時期が
+              ありますが、設定は場所ではありません——毎日そこへ「行く」もの
+              ではなく、何かを直したいときに開くもの。どのタブの右上の歯車
+              からも開けて、開けたところへ帰ります。
 
-              上の帯は、**中へ入っているあいだだけ**出します。目次に居る
-              あいだは帯（下のタブ）が「設定」と言っているので要りません。
-              一段下がったら、そこがどこで、どう戻るかを言う必要があります。 */""}
-        <header class="topbar js-top" hidden>
+              引き出しなので、上の帯は**いつも**出します。中へ入って
+              いれば題はその中の名前、目次に居れば「設定」。戻るボタンも
+              二段ぶん働きます——中からは目次へ、目次からは呼んだ画面へ。
+
+              出しどころで中身は変えません（全部・いつも同じ順）。押した人は
+              「設定へ行く」と言ったのであって、どこから押したかは何も
+              言っていないので。 */""}
+        <header class="topbar js-top">
           <div class="topbar-row">
-            <button class="icon-btn set-back js-back" aria-label="設定へもどる">${icon("chevron")}</button>
+            <button class="icon-btn set-back js-back" aria-label="もどる">${icon("chevron")}</button>
             <span class="topbar-title set-top-title js-top-title"></span>
             ${/* 題を**まん中**に置くための、戻るボタンと同じ幅の空き。左に
                   寄せると、題が戻るボタンの添え字に見えます。 */""}
@@ -45,8 +49,10 @@
       topTitle: chrome.querySelector(".js-top-title"),
     };
 
+    /* 戻るは二段ぶん。中に居れば目次へ、目次に居れば呼んだ画面へ。 */
     chrome.querySelector(".js-back").addEventListener("click", () => {
       KN.motion.fire("nav");
+      if (page == null) { KN.app.backScreen(); return; }
       page = null;
       render();
       if (root) root.scrollTop = 0;
@@ -99,7 +105,7 @@
       /* お店とカテゴリは、どちらも買うものの中の話です。目次に並べていた
          ので「お店」と「表示」が同じ重さに見えていました。一段下げて、
          二つ一緒にこの中へ。 */
-      build: () => [storesGroup(), categoriesGroup()],
+      build: () => [countsRow(), storesGroup(), categoriesGroup()],
       value: () => {
         const s = store.get();
         return `お店 ${(s.stores || []).length}・カテゴリ ${(s.categories || []).length}`;
@@ -139,7 +145,8 @@
 
   /** 目次。行き先の名前と、いまの値だけ。 */
   function renderIndex() {
-    els.topbar.hidden = true;
+    els.topbar.hidden = false;
+    els.topTitle.textContent = "設定";
     /* 保存できていないことは、どの層に居ても先に言います。中へ入る前に
        目に入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) els.body.append(saveErrorBanner());
@@ -235,6 +242,24 @@
         ${/* 探す窓。ふだんは畳んでおきます——探すのはたまにすることなのに、
               窓はいつも画面のいちばん上を取っていました。虫めがねを押せば
               出るので、置きっぱなしにする必要がありません。 */""}
+        ${/* 並べ方（行／タイル）。買うもの・価格・やることの三画面が同じ
+              一つの札を見ているので、置き場所はここ（画面ごとではない）。
+
+              右上のボタンでした。押すたびに画面が組み変わるほど強いのに、
+              使うのは月に何度かで、その一つのために全画面の右上を一つぶん
+              使っていました。**強さと、使う頻度は別のこと**です。 */""}
+        <div class="rows" style="margin-top:12px">
+          <button class="row js-layout">
+            <span class="row-main">
+              <span class="row-title">並べ方</span>
+              <span class="row-sub">${KN.ui.isTiles()
+                ? "絵を大きく、三つずつ並べます"
+                : "一行に一つずつ、名前を読みやすく並べます"}</span>
+            </span>
+            <span class="row-value">${KN.ui.isTiles() ? "タイル" : "リスト"}</span>
+          </button>
+        </div>
+
         <div class="rows" style="margin-top:12px">
           <button class="row js-searchbar">
             <span class="row-main">
@@ -266,6 +291,11 @@
         KN.app.applyTheme(theme);
         haptic();
       });
+    });
+
+    wrap.querySelector(".js-layout").addEventListener("click", () => {
+      KN.ui.toggleLayout();
+      render();
     });
 
     wrap.querySelector(".js-searchbar").addEventListener("click", () => {
@@ -358,6 +388,36 @@
      混ざっていたのは、どちらも見え方の設定に見えたからですが、
      ダイエットを見ている人には関係がありません。 */
 
+  /* ---------------- 暦を出すか、しまうか ----------------
+
+     題の右の暦ボタンが各画面から消えたので、その札はここにあります。
+     ただし**押すのが唯一の道ではありません**——紙の掴み手を上へ押せば
+     暦は消え、下へ引けば戻ります（js/cal-peek.js の三段）。ここは
+     「そんな手つきがあると知らない人」のための、もう一つの入口です。
+
+     タブごとに持ちます（store.calPrefs）。ダイエットは月ぜんぶを眺めたいが
+     やることは今週でいい、というように、見たい単位が画面ごとに違うので。 */
+  function calRow(tab, what) {
+    const on = store.calPrefs(tab).shown;
+    const row = node(html`
+      <button class="row js-cal-shown">
+        <span class="row-main">
+          <span class="row-title">暦を出す</span>
+          <span class="row-sub">${on
+            ? `${what}の上に暦を置きます（紙の持ち手を上へ押してもしまえます）`
+            : "しまってあります（紙の持ち手を下へ引くと戻ります）"}</span>
+        </span>
+        <span class="row-value">${on ? "オン" : "オフ"}</span>
+      </button>
+    `);
+    row.addEventListener("click", () => {
+      store.setCalPref(tab, { shown: !on });
+      render();
+      haptic();
+    });
+    return row;
+  }
+
   function todoGroup() {
     const wrap = node(html`
       <section class="settings-group">
@@ -384,6 +444,7 @@
             </span>
             <span class="row-value js-tl-state"></span>
           </button>
+          <span class="js-cal-slot"></span>
         </div>
         <div class="rows js-notify-rows" hidden>
           <button class="row js-notify">
@@ -480,10 +541,29 @@
     if (wrap.querySelector(".js-notify-rows").hidden) {
       wrap.querySelector(".js-none").hidden = false;
     }
+    wrap.querySelector(".js-cal-slot").replaceWith(calRow("todo", "時間割"));
     return wrap;
   }
 
   /* ---------------- stores ---------------- */
+
+  /* 価格の画面の上にあった「68商品・10店舗」は、ここへ移しました。
+     あちらでは値札の並びそのものが数を見せていて、その上でもう一度
+     数えた結果を書くのは、同じことを二度言うことでした。数だけを
+     知りたい人のために、置き場所は残します。 */
+  function countsRow() {
+    const st = store.get();
+    return node(html`
+      <section class="settings-group">
+        <div class="rows">
+          <div class="row">
+            <span class="row-main"><span class="row-title">登録されているもの</span></span>
+            <span class="row-value">${st.products.length}商品 ・ ${st.stores.length}店舗</span>
+          </div>
+        </div>
+      </section>
+    `);
+  }
 
   function storesGroup() {
     const stores = store.sortedStores();
@@ -1020,6 +1100,7 @@
       <section class="settings-group">
         <h2 class="section-title">daily</h2>
         <div class="rows">
+          <span class="js-cal-slot"></span>
           <button class="row js-month-export">
             <span class="row-main">
               <span class="row-title">月ぶんを書き出す</span>
@@ -1131,6 +1212,7 @@
       dailySet("digestPos", toTop ? "top" : "bottom",
         toTop ? "月のまとめを上に出します" : "月のまとめを下に出します");
     });
+    wrap.querySelector(".js-cal-slot").replaceWith(calRow("archive", "Daily Log"));
     return wrap;
   }
 
@@ -1193,6 +1275,7 @@
       <section class="settings-group">
         <h2 class="section-title">ダイエット</h2>
         <div class="rows">
+          <span class="js-cal-slot"></span>
           <button class="row js-goal">
             <span class="row-main">
               <span class="row-title">目標</span>
@@ -1285,6 +1368,7 @@
       render();
       KN.ui.toast("消しました");
     });
+    wrap.querySelector(".js-cal-slot").replaceWith(calRow("diet", "その日の記録"));
     return wrap;
   }
 

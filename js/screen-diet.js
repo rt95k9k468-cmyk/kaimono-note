@@ -110,12 +110,12 @@
               <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
               <span class="day-more">${icon("chevron")}</span>
             </button>
-            ${/* 右端から 暦・さがす・取り込み。ほかの画面と同じ並べ方です。 */""}
-            <button class="icon-btn js-sync" aria-label="ヘルスケアから取り込む" title="ヘルスケアから取り込む">
-              ${icon("download")}
-            </button>
+            ${/* 右上は**二つだけ**です——さがす と 設定。暦の出し入れと
+                  ヘルスケアからの取り込みは、たまにしか使いません。たまに
+                  使うものは設定の中へ（取り込みの札は前からそこにあります）。
+                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
             <button class="icon-btn js-search-btn" aria-label="食べたものを探す">${icon("search")}</button>
-            <button class="icon-btn js-cal-btn" aria-pressed="true"></button>
+            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -140,7 +140,6 @@
     els = {
       dayTitle: chrome.querySelector(".js-day-title"),
       body: chrome.querySelector(".js-body"),
-      sync: chrome.querySelector(".js-sync"),
       topbar: chrome.querySelector(".topbar"),
       screen: root,
       searchBtn: chrome.querySelector(".js-search-btn"),
@@ -149,7 +148,8 @@
       searchClear: chrome.querySelector(".js-search-clear"),
     };
 
-    els.sync.addEventListener("click", openSyncSheet);
+    chrome.querySelector(".js-settings").addEventListener("click",
+      () => KN.app.showScreen("settings"));
 
     /* 題を押すと、暦が月ぜんぶに開きます（やること・daily の「›」と同じ）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです。 */
@@ -158,19 +158,9 @@
       store.setCalPref("diet", { open: !calOpen() });
     });
 
-    /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
-       ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
-       しまっているあいだは、同じ暦に斜線の入った絵に変わります。 */
-    const calBtn = chrome.querySelector(".js-cal-btn");
-    if (calBtn) {
-      paintCalBtn(calBtn);
-      calBtn.addEventListener("click", () => {
-        KN.motion.fire("select", calBtn);
-        store.setCalPref("diet", { shown: !calShown() });
-        paintCalBtn(calBtn);
-        render();
-      });
-    }
+    /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
+       消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の
+       「ダイエット」にも札があります。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     /* カレンダーは貼りつけません（やることのタブとはそこだけ違います）。
@@ -458,7 +448,7 @@
     wireCalPull(sheet);
     /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
        使えません。閉じているあいだだけ譲ってもらいます。 */
-    if (calShown() && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
+    if (!calOpen()) sheet.setAttribute("data-pull-own", "cal");
 
     sheet.append(node(html`
       <div class="diet">
@@ -535,15 +525,6 @@
   const calOpen = () => store.calPrefs("diet").open;
   const calShown = () => store.calPrefs("diet").shown;
 
-  /** 題の右の暦ボタン。出しているかどうかで、絵と読み上げが変わります。 */
-  function paintCalBtn(btn) {
-    const on = calShown();
-    btn.innerHTML = icon(on ? "calendar" : "calendar-off");
-    btn.setAttribute("aria-pressed", String(on));
-    btn.setAttribute("aria-label", on ? "暦をしまう" : "暦を出す");
-    btn.setAttribute("title", on ? "暦をしまう" : "暦を出す");
-  }
-
   /** いま出している週だけを残して、ほかのマスに印を付けます。 */
   function markWeek(sec, here) {
     const open = calOpen();
@@ -605,13 +586,17 @@
       root,
       cal: () => els.cal,
       isOpen: calOpen,
-      // 探している最中と、暦をしまっているときは引きません。
-      enabled: () => !query.trim() && calShown(),
+      isShown: calShown,
+      // 探している最中だけ引きません（暦をしまっていても引けます）。
+      enabled: () => !query.trim(),
       here: () => curDay(),
       tagOffWeek,
-      commit: (open) => {
-        if (open !== calOpen()) store.setCalPref("diet", { open });
-        else markWeek(els.cal, curDay());
+      /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
+         ときだけ塗り直し——書けば store が組み直すので、二度手間になります。 */
+      commit: ({ shown, open }) => {
+        if (open !== calOpen() || shown !== calShown()) {
+          store.setCalPref("diet", { open, shown });
+        } else markWeek(els.cal, curDay());
       },
     });
   }

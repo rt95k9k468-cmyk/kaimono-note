@@ -48,8 +48,12 @@
                   ものではなかったので、外しました。かわりに、値段を仕込む
                   ところ（商品と価格）への戸を置きます。値札の絵にしたのは、
                   行った先の画面が値札を並べているからです。 */""}
+            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
+                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
+                  たまにしか使いません。たまに使うものは設定の中へ。
+                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
-            <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -76,7 +80,6 @@
 
     els = {
       sub:        chrome.querySelector(".js-sub"),
-      layout:     chrome.querySelector(".js-layout"),
       searchBtn:  chrome.querySelector(".js-search-btn"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
@@ -87,7 +90,8 @@
       topbar:     chrome.querySelector(".topbar"),
     };
 
-    els.layout.addEventListener("click", KN.ui.toggleLayout);
+    chrome.querySelector(".js-settings").addEventListener("click",
+      () => KN.app.showScreen("settings"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     root.addEventListener("scroll", () => {
@@ -357,7 +361,6 @@
     els.sub.textContent = "";
 
 
-    KN.ui.paintLayoutButton(els.layout);
 
     renderFilter(items);
     /* Searching narrows the rows, not the header: the counts above still

@@ -40,8 +40,12 @@
 
                  右から 設定・並べ方・さがす。買うものの帯と同じ順です
                  （あちらの左端は「価格へ」、こちらの左端は「戻る」）。 */""}
+            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
+                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
+                  たまにしか使いません。たまに使うものは設定の中へ。
+                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
             <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
-            <button class="icon-btn js-layout"></button>
+            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
           </div>
         </header>
 
@@ -58,7 +62,10 @@
           </div>
         </div>
 
-        <p class="prices-count js-count"></p>
+        ${/* 「68商品・10店舗」の一行は外しました。**この画面はもう数を
+              言っています**——値札の並びそのものが、いくつあるかを見せて
+              います。数えた結果だけを別に一行足すのは、同じことを二度
+              言うことです。知りたいときは、設定の「買うもの」に。 */""}
         <div class="js-filter"></div>
         <div class="js-body"></div>
       </div>
@@ -67,14 +74,12 @@
     root.append(chrome);
 
     els = {
-      count:   chrome.querySelector(".js-count"),
 
       searchBtn: chrome.querySelector(".js-search-btn"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
-      layout:  chrome.querySelector(".js-layout"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
@@ -82,7 +87,8 @@
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
 
-    els.layout.addEventListener("click", KN.ui.toggleLayout);
+    chrome.querySelector(".js-settings").addEventListener("click",
+      () => KN.app.showScreen("settings"));
 
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
@@ -111,8 +117,6 @@
 
   function render() {
     const st = store.get();
-    els.count.textContent = `${st.products.length}商品 ・ ${st.stores.length}店舗`;
-    KN.ui.paintLayoutButton(els.layout);
     renderFilter();
     renderBody();
   }
