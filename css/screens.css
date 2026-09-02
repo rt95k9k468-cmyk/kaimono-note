@@ -3066,8 +3066,13 @@ a.btn { text-decoration: none; }
    変わる（メモがある／長さを書いた／二行の題）たびに、丸と題が上下に
    ずれます。参考画面もここは中心合わせで、時刻の字の中心と丸の中心が
    揃っています。 */
+/* 丸薬が伸びたら、時刻は**その頭**につきます。時刻が言っているのは
+   始まりなので、伸びた丸のまん中に置くと、その字が指しているところに
+   何も無くなります。ずらす量は伸びたぶんの半分——ちょうど、真円だった
+   ときと同じ「頭から25px」の位置に戻ります。 */
 .tl-time {
   align-self: center;
+  transform: translateY(calc((50px - var(--tl-h, 50px)) / 2));
   padding-right: 3px;
   font-size: var(--fs-sm);
   color: var(--c-text-3);
@@ -3094,8 +3099,12 @@ a.btn { text-decoration: none; }
      揃うぶん、一日が一本のリズムとして読めます。
 
      64px は実測から。参考画面の行は、時刻の札から次の札まで 67px 前後
-     ——丸が50pxなので、上下に7pxずつの余白でその間隔になります。 */
-  min-height: 64px;
+     ——丸が50pxなので、上下に7pxずつの余白でその間隔になります。
+
+     丸薬が伸びたら、そのぶんは行も背伸びします（上下7pxずつは残す）。
+     行の高さを時間で決めているのではなく、**丸が入るだけ**取っている
+     のであって、順序が逆です。 */
+  min-height: max(64px, calc(var(--tl-h, 50px) + 14px));
   /* 絵を押すと詳細が開きます（題を押したときと同じ場所へ）。指で押せる
      ものだと分かるように、手の形にしておきます。空きの行のレールは
      押しても何も起きないので、そちらは元のまま。 */
@@ -3106,25 +3115,36 @@ a.btn { text-decoration: none; }
    した画面は丸と同じ濃さで引いていて（実測 #f3938e ＝ 丸の #f2938e と
    ほぼ同値）、そのぶん一日が一本の線として先に目に入ります。太さも
    2.5px → 3.5px（実測）。 */
+/* 線も、時計が通ったところまでが色です（--pass）。まだのところは灰色。
+   丸薬の塗りと同じ数から出しているので、線と丸のあいだで境目がずれる
+   ことはありません。一日を通して見ると、上から色が下りてくる一本の線に
+   なります。 */
 .tl-rail::before {
   content: "";
   position: absolute;
   left: 50%; top: 0; bottom: 0;
   width: 3.5px;
   transform: translateX(-50%);
-  background: var(--cat, var(--c-primary-fill));
+  background: linear-gradient(to bottom,
+    var(--cat, var(--c-primary-fill)) 0 var(--p),
+    var(--tl-wait-line) var(--p) 100%);
 }
 /* 空いているところは、点線。**繋がっていない**ことが空きの意味です。
    濃さは実線より一段落とします——同じ濃さだと、破線が「途切れた線」
-   ではなく「別の模様」に見えます。 */
+   ではなく「別の模様」に見えます。
+
+   色は上の一本と同じ作りにして、点々のほうは**マスク**で抜きます。
+   地の色と点々を一つの背景で兼ねると、過ぎたぶんとこれからで色を
+   変えられません（repeating- の中に二色の境目は書けない）。 */
 .tl-rail.is-dash::before {
-  background: repeating-linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 62%, transparent) 0 7px,
-    transparent 7px 15px);
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 62%, transparent) 0 var(--p),
+    var(--tl-wait-line) var(--p) 100%);
+  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 7px, transparent 7px 15px);
+  mask: repeating-linear-gradient(to bottom, #000 0 7px, transparent 7px 15px);
 }
 
-/* 線の上の丸。中身は手描きアイコン、地は棚の色。
+/* 線の上の丸薬。中身は手描きアイコン、地は棚の色。
 
    参考にした画面の丸は**べた塗り**で、中の絵は白抜きの一色です。
    こちらの絵は800枚の手描きで、色そのものが「何の品物か」を言って
@@ -3133,54 +3153,104 @@ a.btn { text-decoration: none; }
 
    かわりに地を濃くしました（18% → 42%）。べた塗りには届きませんが、
    丸が「薄い染み」ではなく「色の面」として立ち、行の重心が絵のほうへ
-   寄ります。参考画面で丸が担っていた仕事は、そこです。 */
+   寄ります。参考画面で丸が担っていた仕事は、そこです。
+
+   **高さは、かかる時間**（--tl-h、screen-todo.js の nodeH）。幅は50pxの
+   まま、角は幅の半分（25px）なので、いちばん短いときは真円、伸びれば
+   丸薬になります。行は伸びません——行のまん中に、上下へ育ちます。
+
+   **塗りは、時計が通ったところまで**（--pass）。上から色が下りてきて、
+   下はまだ灰色。参考にした画面と同じで、一日が進むと時間割が上から
+   染まっていきます。 */
+.tl-row, .tl-free-row {
+  --p: calc(var(--pass, 1) * 100%);
+  /* まだ来ていないぶんの色。ほとんど灰色ですが、棚の色を一割だけ混ぜて
+     あります——**夜の色を落とさない**ためです。夜の用事は、その日の
+     18時を過ぎるまでずっとこちら側にいるので、まっさらな灰色にすると、
+     夜の青は「済んでから」しか出てこなくなります。一割なら、灰色として
+     読めるまま、昼は暖かい灰・夜は冷たい灰になります。 */
+  --tl-wait: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 6%, var(--c-surface-2));
+  /* 線のほうは、丸薬より一段暗い灰。細いので、同じ濃さだと消えます。 */
+  --tl-wait-line: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 8%, var(--c-surface-3));
+}
 .tl-node {
   position: absolute;
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
   display: grid; place-items: center;
-  width: 50px; height: 50px;
-  border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface));
+  width: 50px;
+  height: var(--tl-h, 50px);
+  border-radius: 25px;
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface)) 0 var(--p),
+    var(--tl-wait) var(--p) 100%);
   /* **白い輪を持ちません。** 丸のまわりを地の色で囲うと、線が丸の手前で
      切れて、続いているところまで破線に見えます（実際そうなりました）。
      線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
 }
 /* ---- いま進んでいるもの ----
 
-   丸のまわりに、どこまで来たかの輪。始まりから12時の向きに時計回りで、
-   残りは同じ色の薄いぶん——「この用事のどのあたりに居るか」だけを言い、
-   速いとも遅いとも言いません（時計の言うことで、その人の話ではない）。
+   境目だけ、少しぼかします。かっちり切ると、そこに何かが**置いてある**
+   ように見えて、進んでいる感じが出ません（参考画面もここは滲ませて
+   います）。ぼかすのは進行中の一件だけ——過ぎたものとこれからのものは
+   境目そのものが無いので、ぼかすと端が濁ります。 */
+.tl-row.is-live .tl-node {
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface)) 0 calc(var(--p) - 4px),
+    var(--tl-wait) calc(var(--p) + 8px) 100%);
+}
+/* ---- 重なった二つ ----
 
-   58px：丸が50pxなので外へ4pxずつ。行の背は64pxなので、上下の行の輪とは
-   3pxずつ空きます。 */
-.tl-row.is-live .tl-rail::after {
+   時刻が重なっている二件は、丸薬どうしが**ぶつかります**。線でつなぐ
+   のではなく、めり込んで、合わさったところが白く抜けます（参考画面の
+   実測：丸薬の幅56pxに対して、めり込み20px・白い抜きは34×13px）。
+   重なりは「順番に並んでいない」ことなので、線でつないでしまうと
+   そこだけ嘘になります。
+
+   ぶつけかたは**丸薬を伸ばすほう**です。行を詰めると、題と題が重なり
+   ます（行の高さは題とメモが決めるので、詰めた瞬間に字が噛む）。
+   上の行の丸薬は下へ、下の行の丸薬は上へ、それぞれ16pxずつ育てます
+   ——行と行のあいだは7px＋7pxなので、めり込みは 16×2−14 = 18px。 */
+.tl-row.is-clash .tl-node {
+  height: calc(var(--tl-h, 50px) + 16px);
+  transform: translate(-50%, calc(-50% - 8px));
+}
+.tl-row.is-clash-above .tl-node {
+  height: calc(var(--tl-h, 50px) + 16px);
+  transform: translate(-50%, calc(-50% + 8px));
+}
+/* 合わさったところの白い抜き。行の頭（＝二つの行の境目）が、めり込みの
+   まん中です。
+
+   本当は二つの丸の**重なった形**（両端のとがった木の葉）ですが、
+   30×12px でその差は1px前後なので、楕円で描いています。 */
+.tl-row.is-clash .tl-rail::after {
   content: "";
   position: absolute;
-  left: 50%; top: 50%;
-  width: 58px; height: 58px;
-  margin: -29px 0 0 -29px;
-  border-radius: var(--r-full);
-  background: conic-gradient(from 0deg,
-    var(--cat, var(--c-primary-fill)) calc(var(--live, 0) * 360deg),
-    color-mix(in srgb, var(--cat, var(--c-primary-fill)) 20%, transparent) 0);
-  -webkit-mask: radial-gradient(closest-side, #0000 calc(100% - 3px), #000 calc(100% - 3px));
-  mask: radial-gradient(closest-side, #0000 calc(100% - 3px), #000 calc(100% - 3px));
+  left: 50%; top: 0;
+  width: 30px; height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--c-surface);
   pointer-events: none;
 }
 /* いま目を向けるのはここ、という地。字は足しません——線と輪と字で三度
    同じことを言うことになるので。 */
 .tl-row.is-live .item.tl-item {
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 12%, transparent);
+  /* 12% から 8% へ。丸薬が二色になったぶん、地まで濃いと、塗りが題の
+     ほうへ流れ出したように見えます。 */
+  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 8%, transparent);
   border-radius: 14px;
 }
 
 .tl-node .todo-mark { width: 32px; height: 32px; }
 .tl-node .todo-mark svg { width: 32px; height: 32px; }
-/* 絵を持たない用事の丸。参考画面の白抜きに寄せて、地より濃い一点に。 */
+/* 絵を持たない用事の丸。白い一点でした——塗りが灰色にもなるようになった
+   ので、白だと**まだ来ていない用事だけ点が消えます**。棚の色にすると、
+   薄い塗りの上でも灰色の上でも同じように立ちます。 */
 .tl-node .todo-dot {
   width: 12px; height: 12px; border-radius: var(--r-full);
-  background: var(--c-surface);
+  background: var(--cat, var(--c-primary-fill));
   opacity: .9;
 }
 
@@ -3200,6 +3270,10 @@ a.btn { text-decoration: none; }
   gap: var(--sp-3);
   align-items: center;
   min-height: 0;
+  /* 行は上揃えですが、題は丸薬の**まん中**に来ます。丸が伸びた行で
+     上揃えのままだと、題が丸の肩のあたりに浮いて、どの丸の題なのかが
+     読めなくなります。 */
+  align-self: center;
 }
 /* 左端の色の帯。行の色は丸のほうが持つので、ここには要りません
    ——同じことを二度言うと、どちらも読まれなくなります。 */
@@ -3397,34 +3471,20 @@ a.btn { text-decoration: none; }
   text-align: right;
   transform: translateY(-50%);
 }
-/* 点は、行と行の**境目**に立ちます。丸（50px）は64pxの行のまん中なので、
-   境目から上下の丸までの隙間はそれぞれ7px。点は輪まで含めてそこに収まる
-   大きさ（4.5＋2.5＝7px）でなければ、次の丸に噛みます。 */
-.tl-now-dot {
-  position: absolute;
-  left: 72px; top: 0;
-  margin-top: -4.5px;
-  width: 9px; height: 9px;
-  margin-left: -4.5px;
-  border-radius: var(--r-full);
-  background: var(--c-primary);
-  box-shadow: 0 0 0 2.5px var(--c-surface);
-}
-.tl-now-line {
-  position: absolute;
-  left: 104px; right: var(--sp-4);
-  top: -1px;
-  height: 2px;
-  border-radius: 1px;
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--c-primary) 55%, transparent),
-    transparent);
-}
+/* ここには点（.tl-now-dot）と、右へ流れる線（.tl-now-line）がありました。
+   **外しました。** 丸薬と背骨が、過ぎたぶんとこれからで色を変えるように
+   なったので、「いま」はもう塗りの境目として画面に出ています。そこへ点と
+   線を重ねると、同じことを三度言うことになります。
+
+   残したのは時刻の字だけです。境目が**何時なのか**は色では言えないので。 */
 
 /* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
    線だけが下へ伸びていると「まだ続く」と読めてしまいます。
-   丸は行のまん中にあるので、そこまで（50% ＋ 丸の半径）。 */
-.tl-list > li:last-child .tl-rail::before { bottom: auto; height: calc(50% + 25px); }
+   丸は行のまん中にあるので、そこまで（50% ＋ 丸薬の半分）。 */
+.tl-list > li:last-child .tl-rail::before {
+  bottom: auto;
+  height: calc(50% + var(--tl-h, 50px) / 2);
+}
 
 /* 日付の帯は、越えられない境目です。
 
@@ -4077,7 +4137,11 @@ a.btn { text-decoration: none; }
   left: -28px; top: 0; bottom: 0;
   width: 3.5px;
   transform: translateX(-50%);
-  background: var(--cat, var(--c-primary-fill));
+  /* 手順の段の背骨は、その用事が済んだかどうかの下（時間としては
+     「終わったあと」）なので、上の行の塗り具合をそのまま継ぎます。 */
+  background: linear-gradient(to bottom,
+    var(--cat, var(--c-primary-fill)) 0 var(--p),
+    var(--tl-wait-line) var(--p) 100%);
 }
 .tl-sub-list { display: flex; flex-direction: column; margin-top: 2px; }
 /* 一段ごとに細い罫線を一本（参考画面と同じ）。線は**チェックの右**から

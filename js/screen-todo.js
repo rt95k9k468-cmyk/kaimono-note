@@ -2733,6 +2733,15 @@
       list.append(itemRow(part.it, !!next && next.kind === "item"));
     });
 
+    /* 重なっている二つは、**丸薬どうしがぶつかって**見えます（下の CSS）。
+       ぶつかるには相手が要るので、重なった行の一つ上にも印を付けます。
+       組み立ては時刻の順に並べているので、重なった相手はすぐ上の行です。 */
+    [...list.children].forEach((li) => {
+      if (!li.classList.contains("is-clash")) return;
+      const prev = li.previousElementSibling;
+      if (prev && prev.classList.contains("tl-row")) prev.classList.add("is-clash-above");
+    });
+
     /* 「いま」は、行の流れの中には置きません。**一枚の層**に乗せて、行の
        上に重ねます。行だったころは、いまの時刻がある用事の**あと**にしか
        置けませんでした——14時から18時の用事を15時に見ると、線が18時の
@@ -2783,16 +2792,15 @@
 
   /** いまの時刻が、リストのどの高さに当たるか。無ければ null。
 
-      **行と行のあいだに置きます。行の中には入れません。**
+      **行の中にも入ります。** ここには「行と行のあいだにしか置けない」と
+      書いてありました。丸薬（アイコン周り）がかかる時間だけ縦に伸びる
+      ようになって、事情が変わりました——丸薬の上端が始まり、下端が
+      終わりなので、行の中に目盛りが生まれています。9時00分〜9時45分の
+      用事を 9時07分に見れば、丸薬の頭から 16% のところが「いま」です。
+      塗りの境目（下の CSS の --pass）と同じ高さになります。
 
-      比例をやめたので、行の中の高さには意味がなくなりました。4時間の
-      用事も64pxの一行で、そこへ「15:20」を時間どおりに置くと、行の頭から
-      21pxのところ——つまり丸と時刻の札の上に重なります（実際そうなり
-      ました）。
-
-      リストで言えるのは「ここから下は、まだ始まっていない」だけです。
-      だから線は、**まだ始まっていない最初の行の上**に引きます。いま
-      進行中のものは線の上に、これからのものは線の下に。 */
+      空きの帯の中でも同じように割ります。空きの高さは長さに比例しません
+      が、「この空きのどのあたりか」は帯の中でなら言えます。 */
   function nowY(sec, list, nowMin) {
     const top0 = sec.getBoundingClientRect().top;
     let last = null;
@@ -2803,7 +2811,14 @@
       if (!isFinite(a) || !isFinite(u) || u <= a) continue;
       const r = rail.getBoundingClientRect();
       if (r.height <= 0) continue;
-      if (a >= nowMin) return r.top - top0;
+      if (nowMin <= a) return r.top - top0;
+      if (nowMin < u) {
+        /* 用事なら丸薬の中で、空きなら帯の中で。丸薬は行のまん中にあって
+           行より低いので、行の高さで割ると塗りの境目とずれます。 */
+        const nd = li.querySelector(".tl-node");
+        const box = nd ? nd.getBoundingClientRect() : r;
+        if (box.height > 0) return box.top - top0 + box.height * ((nowMin - a) / (u - a));
+      }
       last = r.bottom - top0;
     }
     /* 一日の残りが全部始まっているなら、線はいちばん下です。 */
@@ -2815,46 +2830,57 @@
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
-    markLive(list, nowMin);
+    markPass(list, nowMin);
     if (nowMin == null) return;
     const y = nowY(sec, list, nowMin);
     if (y == null) return;
     axis.append(nowMark(nowMin, y));
   }
 
-  /* ---------------- いま、進んでいるもの ----------------
+  /* ---------------- 過ぎたぶんは、色。まだのぶんは、灰色 ----------------
 
-     線は「ここから下は、まだ始まっていない」と言うだけでした。線のすぐ上に
-     ある一件が**いま進んでいる**ことは、そこから読み取るしかありません
-     ——それは推し量る作業で、画面が言っていることではない。
+     ここには「丸のまわりの輪」がありました（始まりからの割合を、円グラフの
+     ように）。**やめました。** 丸薬が時間ぶん伸びるようになったので、
+     どこまで来たかは**丸薬そのものの中**で言えます——上から色が下りてきて、
+     下はまだ灰色。参考にした画面（Structured）がそうでした。輪は、伸びた
+     丸薬のまわりに描くと形が合いませんし、同じことを二度言うことにも
+     なります。
 
-     その一件に印を付けます。出すのは二つだけ：
+     数はひとつ（--pass：0＝まだ、1＝過ぎた）。丸薬の塗り・背骨の色・
+     破線の色が、すべてこれから出ます。行ごとに 0〜1 で、その行の
+     「始まり〜終わり」を時計がどこまで通ったかです。
 
-       ・丸のまわりの輪 … どこまで来たか（始まりからの割合）。これは
-         時計の言うことで、その人の出来ばえの話ではありません。
-       ・うすい地      … いま目を向けるのはここ、という合図
+     **今日を見ているときだけ**です。ほかの日には出しません——明日を
+     開いたときに一日ぶんが灰色だと、これから組む画面として読めない。
+     灰色が言っているのは「まだ来ていない」ではなく、**今日のうちで、
+     まだ来ていない**なので。
 
-     字は足しません。「いま」と書き添えると、線とその丸と字で三度同じ
-     ことを言うことになるので。
+     済ませたものは、いつでも色のままです（1 に留めます）。時計より
+     手が先に進むことはあるので。
 
-     輪は30秒ごとに描き直します（軸と同じ拍）。組み直しはしません。 */
-  function markLive(list, nowMin) {
+     30秒ごとに置き直します（軸と同じ拍）。組み直しはしません。 */
+  function markPass(list, nowMin) {
     for (const li of list.children) {
-      if (!li.classList || !li.classList.contains("tl-row")) continue;
+      if (!li.classList) continue;
+      const row = li.classList.contains("tl-row");
+      if (!row && !li.classList.contains("tl-free-row")) continue;
       const a = Number(li.dataset.at), u = Number(li.dataset.until);
-      /* 済ませたものは進みません。組み立ては済んだものを「これからの
-         時間」に置かないので枠は残っていますが、そこに輪を出すと
-         「まだやっている」ことになります。 */
-      const live = nowMin != null && isFinite(a) && isFinite(u) && u > a
-        && a <= nowMin && nowMin < u && !li.classList.contains("is-done");
+      const known = isFinite(a) && isFinite(u) && u > a;
+      let pass;
+      if (nowMin == null || !known || li.classList.contains("is-done")) pass = 1;
+      else if (nowMin >= u) pass = 1;
+      else if (nowMin <= a) pass = 0;
+      else pass = (nowMin - a) / (u - a);
+      li.style.setProperty("--pass", pass.toFixed(3));
+      if (!row) continue;
+      /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
+         ここ」という合図で、塗りの境目とは別のことを言っているので。
+         済ませたものには出しません。 */
+      const live = nowMin != null && known && pass > 0 && pass < 1
+        && !li.classList.contains("is-done");
       li.classList.toggle("is-live", live);
-      if (live) {
-        li.style.setProperty("--live", ((nowMin - a) / (u - a)).toFixed(3));
-        li.setAttribute("aria-current", "time");
-      } else {
-        li.style.removeProperty("--live");
-        li.removeAttribute("aria-current");
-      }
+      if (live) li.setAttribute("aria-current", "time");
+      else li.removeAttribute("aria-current");
     }
   }
 
@@ -3317,15 +3343,54 @@
     return (g && g.color) || NONE_COLOR;
   }
 
-  /** いま何時か。時刻・点・線の三つで、軸のいちばん前に置きます。 */
+  /** いま何時か。**時刻の字だけ**を、軸のいちばん前に置きます。
+
+      点と、右へ流れる線がありました。外しました——色が過ぎたぶんと
+      これからを分けるようになったので、「いま」は塗りの境目としてもう
+      画面に出ています。そこへ点と線を重ねると、同じことを三度言うことに
+      なります。残すのは、境目が**何時なのか**だけ（それは色では言えない）。
+      参考にした画面も、ここは太字の時刻ひとつです。 */
   function nowMark(nowMin, y) {
     return node(html`
       <span class="tl-now" style="top:${y.toFixed(1)}px">
         <span class="tl-time is-now">${tlClock(KN.plan.toTime(nowMin))}</span>
-        <span class="tl-now-dot"></span>
-        <span class="tl-now-line"></span>
       </span>
     `);
+  }
+
+  /* ---------------- 丸薬（アイコン周り）の高さ ----------------
+
+     丸は**伸びます**。ここには「伸びません」と書いてありました——参考に
+     した画面の**行**が時間に比例していない、という実測からです。それは
+     いまも本当で、行はいまも比例しません（4時間の用事も25分の用事も、
+     題と絵の段は同じ高さ）。
+
+     比例するのは**丸のほう**でした。同じ画面をもう一度measureすると、
+     15分の用事は真円、45分・1時間のものは縦に伸びた丸薬で、重なった二つは
+     丸薬どうしがぶつかっています。つまりあの画面は「行は並び順、丸は時間」
+     という二本立てです。行を伸ばさずに丸だけ伸ばすと、一日が一画面に
+     入ったまま、長さが絵でも読めます。
+
+     数の決めかた：
+       ・30分までは真円（50px）。決めなかった長さの既定と同じ幅なので、
+         ここを境にすると「長さを決めた人」のものだけが伸びます。
+       ・そこから 1分 = 0.8px。1時間で74px、2時間で122px。
+       ・170pxで頭打ち。半日の用事に半日ぶんの丸薬を描くと、それだけで
+         一画面が埋まります。上限から先は、長さは題の下の字が言います。
+
+     **長さを決めていない用事は、伸ばしません。** 組み立ては30分として
+     置きますが、それは置き場所を決めるための仮の数で、画面に出すと
+     決めた数のように読めます（題の下に「30分」と書かないのと同じ理由）。 */
+  const TL_NODE_MIN  = 50;
+  const TL_NODE_MAX  = 170;
+  const TL_NODE_FREE = 30;
+  const TL_NODE_RATE = 0.8;
+
+  function nodeH(it) {
+    const m = it && it.todo && Number(it.todo.minutes);
+    if (!m || !isFinite(m)) return TL_NODE_MIN;
+    return Math.round(Math.min(TL_NODE_MAX,
+      TL_NODE_MIN + Math.max(0, m - TL_NODE_FREE) * TL_NODE_RATE));
   }
 
   /** 空いているところ。埋めずに、点線の帯だけで示します。
@@ -3364,17 +3429,11 @@
     `);
   }
 
-  /* 丸は**伸びません**。かかる時間が4時間でも10時間でも、同じ大きさの丸
-     ひとつです。
+  /* 丸の高さは nodeH（上）が決めます。長さを決めた用事だけが伸びて、
+     行そのものは伸びません——伸びるのは丸のほうだけ、というのが参考画面の
+     作りでした。 */
 
-     ここには「30分を超えたら縦長の帯にする」仕掛けがありました（帯の
-     上端が始まり、下端が終わり）。長さが絵で読めるのは良かったのですが、
-     参考にした画面はそれをやっていません——一日は並び順のリストで、
-     長さは題の下に「4時間」と字で書くだけ。丸が伸びないぶん、行の高さが
-     揃って、一日が一本のリズムとして読めます。長さを知りたいときは字が
-     あり、詳細を開けば始まりと終わりの両方が出ます。 */
-
-  /** 一つの用事。丸いアイコンが線の上に乗り、右に印を付ける丸。 */
+  /** 一つの用事。丸薬のアイコンが線の上に乗り、右に印を付ける丸。 */
   function itemRow(it, joined) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
@@ -3416,7 +3475,7 @@
                  ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
-          style="--cat:${tlColorOf(t, it.atMin)}">
+          style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
         <span class="tl-rail"><span class="tl-node">${todoMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
