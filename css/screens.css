@@ -645,6 +645,11 @@
 .cal-mark:first-child { margin-left: 0; }
 .cal-mark .todo-mark,
 .cal-mark .todo-mark svg { width: 11px; height: 11px; }
+/* 丸がすでに棚の色に染まっているので、中のシルエットは**白抜き**。
+   丸薬の中と同じ決めごとです（染まったところは白、染まっていないところは
+   棚の色）。ここは進み具合を持たないので、いつも染まっている側。
+   色つきの品物の絵は白くしません——色そのものが「何の品物か」を言うので。 */
+.cal-mark .p-icon.is-todo { color: var(--c-surface); }
 .cal-mark .todo-dot {
   width: 5px; height: 5px; border-radius: var(--r-full);
   background: var(--c-bg);
@@ -3200,13 +3205,18 @@ a.btn { text-decoration: none; }
      線と丸で色が割れます。 */
   --tl-fill: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface));
 }
+/* 丸薬の**実際の高さ**は一か所から出します（重なりで育つぶんも含めて）。
+   中の絵の色の境目がここから出るので、二か所に書くと必ずずれます。 */
+.tl-row { --tl-node-h: var(--tl-h, 50px); }
+.tl-row.is-clash, .tl-row.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 14px); }
+.tl-row.is-clash.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 28px); }
 .tl-node {
   position: absolute;
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
   display: grid; place-items: center;
   width: 50px;
-  height: var(--tl-h, 50px);
+  height: var(--tl-node-h, var(--tl-h, 50px));
   border-radius: 25px;
   background: linear-gradient(to bottom,
     var(--tl-fill) 0 var(--p),
@@ -3240,24 +3250,15 @@ a.btn { text-decoration: none; }
    ——行と行のあいだは5px＋5pxなので、めり込みは 14×2−10 = 18px。
    （行の余白を詰めたときに、この二つの数も直すこと。**めり込みの18pxが
    決めごと**で、育てる量はそこから逆算した数です。） */
-.tl-row.is-clash .tl-node {
-  height: calc(var(--tl-h, 50px) + 14px);
-  transform: translate(-50%, calc(-50% - 7px));
-}
-.tl-row.is-clash-above .tl-node {
-  height: calc(var(--tl-h, 50px) + 14px);
-  transform: translate(-50%, calc(-50% + 7px));
-}
+.tl-row.is-clash .tl-node { transform: translate(-50%, calc(-50% - 7px)); }
+.tl-row.is-clash-above .tl-node { transform: translate(-50%, calc(-50% + 7px)); }
 /* 三つ以上が重なると、まん中の一件は**上とも下とも**ぶつかります。
 
    ここは一度こわしました：上の二つは詳細度が同じなので、両方を持つ行には
    あとに書いたほう（is-clash-above）だけが効き、まん中の丸薬は下へしか
    育ちません。上の継ぎ目はめり込むどころか 2px 離れて、白い抜きだけが
    宙に浮いていました。両方向へ16pxずつ、位置は動かさずに育てます。 */
-.tl-row.is-clash.is-clash-above .tl-node {
-  height: calc(var(--tl-h, 50px) + 28px);
-  transform: translate(-50%, -50%);
-}
+.tl-row.is-clash.is-clash-above .tl-node { transform: translate(-50%, -50%); }
 /* 合わさったところの白い抜き。行の頭（＝二つの行の境目）が、めり込みの
    まん中です。
 
@@ -3284,6 +3285,37 @@ a.btn { text-decoration: none; }
 
 .tl-node .todo-mark { width: 32px; height: 32px; }
 .tl-node .todo-mark svg { width: 32px; height: 32px; }
+/* ---- 丸薬の中の絵は、丸薬と同じところで色が変わる ----
+
+   過ぎたぶん（テーマ色に染まったところ）では**白抜き**、まだのぶん（灰色）
+   では**テーマ色**。進んでいる最中の一件は、絵の途中で切り替わります。
+
+   絵は `<svg>` ではなく**マスク**で置いてあります（screen-todo.js の
+   `tlMark`）。塗りはこのグラデーション一枚で、**丸薬の背景とまったく同じ式**
+   ——`--pass` と丸薬の高さ（`--tl-node-h`）——から出ます。境目を二か所で
+   計算すると、伸びた丸薬や重なった行で必ずずれるので。
+
+   絵は丸薬のまん中に置かれているので、丸薬の上端から測った境目から
+   「絵の上端までの距離」を引いたものが、絵の中での境目です。 */
+.tl-node .todo-mark.is-split {
+  --icon-h: 32px;
+  --icon-p: clamp(0px,
+    calc(var(--pass, 1) * var(--tl-node-h, 50px)
+         - (var(--tl-node-h, 50px) - var(--icon-h)) / 2),
+    var(--icon-h));
+  background: linear-gradient(to bottom,
+    var(--c-surface) 0 var(--icon-p),
+    var(--cat, var(--c-primary-fill)) var(--icon-p) 100%);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+/* 進行中の一件だけ、境目を滲ませます（丸薬の塗りと同じ理由・同じ拍）。
+   絵は丸薬より小さいので、ぼかす幅もそのぶん狭く。 */
+.tl-row.is-live .tl-node .todo-mark.is-split {
+  background: linear-gradient(to bottom,
+    var(--c-surface) 0 calc(var(--icon-p) - 2px),
+    var(--cat, var(--c-primary-fill)) calc(var(--icon-p) + 4px) 100%);
+}
 /* 絵を持たない用事の丸。白い一点でした——塗りが灰色にもなるようになった
    ので、白だと**まだ来ていない用事だけ点が消えます**。棚の色にすると、
    薄い塗りの上でも灰色の上でも同じように立ちます。 */
