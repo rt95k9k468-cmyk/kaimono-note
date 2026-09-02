@@ -1,0 +1,95 @@
+{
+  "domains": [
+    { "sec": "野菜", "types": [
+      { "name": "葉もの", "rep": "cabbage", "m": ["cabbage","lettuce","chineseCabbage","spinach","salad","shiso","parsley","kale","herb"] },
+      { "name": "房・つぼみ", "rep": "broccoli", "m": ["broccoli","cauliflower"] },
+      { "name": "根菜（長い）", "rep": "carrot", "m": ["carrot","daikon","burdock","yam","lotusRoot","bambooShoot"] },
+      { "name": "いも", "rep": "potato", "m": ["potato","sweetPotato","ginger"] },
+      { "name": "球根", "rep": "onion", "m": ["onion","garlic"] },
+      { "name": "葉つきの根", "rep": "turnip", "m": ["turnip","radish"] },
+      { "name": "丸い実もの", "rep": "tomato", "m": ["tomato","pumpkin","avocado","pepper","winterMelon"] },
+      { "name": "細長い実もの", "rep": "cucumber", "m": ["cucumber","eggplant","zucchini","bittergourd","okra","chili"] },
+      { "name": "穂", "rep": "corn", "m": ["corn"] },
+      { "name": "きのこ", "rep": "mushroom", "m": ["mushroom"] },
+      { "name": "茎もの", "rep": "springOnion", "m": ["springOnion","asparagus","celery","sprout","myoga"] },
+      { "name": "さや・豆", "rep": "peas", "m": ["peas","edamame","snapPeas","beans"] }
+    ]},
+    { "sec": "果物", "types": [
+      { "name": "丸い果物", "rep": "apple", "m": ["apple","peach","pear","persimmon","apricot","pomegranate","loquat"] },
+      { "name": "柑橘", "rep": "orange", "m": ["orange","lemon","kumquat"] },
+      { "name": "粒・房", "rep": "grape", "m": ["grape","strawberry","blueberry","raspberry","cherry"] },
+      { "name": "大玉", "rep": "watermelon", "m": ["watermelon","melon"] },
+      { "name": "南のもの", "rep": "banana", "m": ["banana","pineapple","mango","papaya","dragonFruit","kiwi","fig"] },
+      { "name": "乾物・殻もの", "rep": "chestnut", "m": ["chestnut","driedFruit"] }
+    ]},
+    { "sec": "肉・魚", "types": [
+      { "name": "肉のかたまり", "rep": "meat", "m": ["meat","steak","lamb","liver","roastBeef","hormone","chicken"] },
+      { "name": "ひき肉・丸いもの", "rep": "hamburgSteak", "m": ["minced","hamburgSteak","meatball","tsukune"] },
+      { "name": "スライス肉", "rep": "bacon", "m": ["bacon","ham","prosciutto"] },
+      { "name": "棒もの", "rep": "sausage", "m": ["sausage","yakitori"] },
+      { "name": "丸魚", "rep": "fish", "m": ["fish","grilledFish","eel","shirasu"] },
+      { "name": "切り身・刺身", "rep": "sushi", "m": ["sushi","tuna"] },
+      { "name": "殻もの・貝", "rep": "shrimp", "m": ["shrimp","crab","shellfish","scallop","seaUrchin"] },
+      { "name": "軟体", "rep": "squid", "m": ["squid","octopus"] },
+      { "name": "練りもの", "rep": "kamaboko", "m": ["kamaboko","chikuwa"] },
+      { "name": "魚卵・削りもの", "rep": "roe", "m": ["roe","mentaiko","katsuobushi"] }
+    ]},
+    { "sec": "乳製品・卵", "types": [
+      { "name": "卵", "rep": "egg", "m": ["egg"] },
+      { "name": "紙パック", "rep": "milk", "m": ["milk","soyMilk","drinkYogurt"] },
+      { "name": "チーズ", "rep": "cheese", "m": ["cheese","slicedCheese","pizzaCheese","creamCheese","camembert"] },
+      { "name": "塊バター", "rep": "butter", "m": ["butter","margarine"] },
+      { "name": "カップ", "rep": "yogurt", "m": ["yogurt","pudding","cream","condensedMilk"] },
+      { "name": "アイス", "rep": "iceCream", "m": ["iceCream"] }
+    ]},
+    { "sec": "大豆製品・和のもの", "types": [
+      { "name": "パック（豆腐・納豆）", "rep": "tofu", "m": ["tofu","natto","konjac","fishCake"] },
+      { "name": "板もの", "rep": "nori", "m": ["nori"] },
+      { "name": "漬物", "rep": "pickles", "m": ["pickles"] },
+      { "name": "餅", "rep": "mochi", "m": ["mochi"] },
+      { "name": "粉・小袋", "rep": "furikake", "m": ["furikake","dashiPack"] }
+    ]},
+    { "sec": "主食・パン", "types": [
+      { "name": "食パン", "rep": "bread", "m": ["bread","toast","sandwich"] },
+      { "name": "丸パン・菓子パン", "rep": "croissant", "m": ["croissant","bagel","sweetBun","melonBun","baguette","pancake"] },
+      { "name": "丼・麺", "rep": "noodles", "m": ["noodles","soba","udon","somen","cupNoodle","yakisoba"] },
+      { "name": "乾麺", "rep": "pasta", "m": ["pasta","driedNoodle"] },
+      { "name": "ごはん", "rep": "onigiri", "m": ["onigiri"] },
+      { "name": "皿もの", "rep": "curry", "m": ["curry","pot","okonomiyaki","pizza","burger","hotdog","takoyaki","dumpling"] },
+      { "name": "箱もの", "rep": "bento", "m": ["bento","cereal","frozen"] },
+      { "name": "たれ・スープ", "rep": "pastaSauce", "m": ["pastaSauce","ramenSoup"] }
+    ]},
+    { "sec": "調味料", "types": [
+      { "name": "角びん", "rep": "oil", "m": ["oil","sesameOil","chiliOil","fishSauce","balsamic","tabasco","mirin","shiroDashi","syrup","vinegar","sauceBottle","spice"] },
+      { "name": "チューブ", "rep": "wasabi", "m": ["wasabi","gingerTube","garlicTube","mustard","karashi"] },
+      { "name": "絞り出し", "rep": "mayo", "m": ["mayo","ketchup"] },
+      { "name": "小びん・瓶詰", "rep": "miso", "m": ["doubanjiang","gochujang","peanutButter","marmalade","honey","miso","shioKoji"] },
+      { "name": "箱・小袋", "rep": "curryRoux", "m": ["curryRoux","consomme","stockPack","yeast","sesame"] },
+      { "name": "袋（粉）", "rep": "flour", "m": ["flour","salt"] },
+      { "name": "缶", "rep": "tin", "m": ["tin"] }
+    ]},
+    { "sec": "菓子", "types": [
+      { "name": "袋菓子", "rep": "chips", "m": ["chips","nuts","gummy","marshmallow","dryFood","popcorn"] },
+      { "name": "箱菓子", "rep": "cookie", "m": ["cookie","cracker","pocky","gum","wafer","cerealBar"] },
+      { "name": "棒・粒", "rep": "chocolate", "m": ["chocolate","candy","caramel","chocoBar","ramuneCandy","throatCandy"] },
+      { "name": "生菓子", "rep": "cake", "m": ["cake","tart","jelly","dorayaki","daifuku","dango","manju","castella"] },
+      { "name": "せんべい", "rep": "riceCracker", "m": ["riceCracker"] }
+    ]},
+    { "sec": "飲みもの", "types": [
+      { "name": "ペットボトル", "rep": "water", "m": ["water","oolong","tea","juice","soda","barleyTea","drink"] },
+      { "name": "紙パック", "rep": "amazake", "m": ["amazake","milkTea","aojiru"] },
+      { "name": "缶・小瓶", "rep": "beer", "m": ["beer","tonic","lactic","protein","energyDrink"] },
+      { "name": "カップ", "rep": "coffee", "m": ["coffee","latte","cocoa","matcha","smoothie"] },
+      { "name": "瓶（酒）", "rep": "wine", "m": ["wine","sake","whisky","plum","cocktail"] },
+      { "name": "袋・箱", "rep": "teaBag", "m": ["teaBag","coffeeBeans"] }
+    ]},
+    { "sec": "惣菜・冷凍・乾物", "types": [
+      { "name": "揚げもの", "rep": "tempura", "m": ["tempura","croquette","friedFood","springRoll"] },
+      { "name": "皿もの", "rep": "gratin", "m": ["gratin","omelette","oden","potatoSalad","saladChicken"] },
+      { "name": "冷凍の袋", "rep": "frozenGyoza", "m": ["frozenGyoza","saladPack"] },
+      { "name": "缶詰", "rep": "cannedFruit", "m": ["cannedFruit","cannedCorn","cannedFish"] },
+      { "name": "乾物", "rep": "driedShiitake", "m": ["driedShiitake","koyaTofu","fu"] },
+      { "name": "氷菓", "rep": "icePop", "m": ["icePop","shavedIce"] }
+    ]}
+  ]
+}
