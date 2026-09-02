@@ -1455,9 +1455,17 @@
     return (g && g.color) || NONE_COLOR;
   };
 
-  /* やることの絵。買うものと同じ辞書（product-icons.js）を、同じ引き方で
-     引きます。用事の言い回し——歯医者・銀行・ゴミ出し・保育園・役所——は
-     アイコン刷新のときに描き足したので、いまはどれも当たります。
+  /* やることの絵。**「こと」の辞書（icons-todo.js）を先に**、当たらなければ
+     買うものの辞書（product-icons.js）を引きます。
+
+     前は買うものの辞書だけを引いていました。実測したところ、用事の言い回し
+     107個のうち当たったのは50個（47%）です——「買い物」「料理する」「会議」
+     「宿題」「散歩」「充電」「バックアップ」が、ことごとく外れていました。
+     買い物リストのために作った辞書に、用事を引かせていたからです。
+
+     順番が大事です。「洗濯する」は洗濯機であってほしいが、「洗濯洗剤」は
+     ボトルであってほしい。同じ辞書を同じ順で引くと、どちらか一方しか
+     立ちません。やること側は こと を先に、買うもの側は 品物 を先に。
 
      選べるようにはしていません。買うものは「同じ品を何度も」なので手で
      直す値打ちがありますが、やることは一度きりの文が多く、いちいち絵を
@@ -1469,7 +1477,11 @@
   /** 自分で選んだ絵（あれば）、無ければ題から推した絵。無ければ丸だけ。
    *  シート内の「いまの見え方」プレビューと、行そのものの両方が使います。 */
   function iconMarkHtml(titleText, key) {
-    const svg = (key && KN.productIcons.byKey(key)) || KN.productIcons.find(titleText || "");
+    /* 保存済みの絵の名前は、どちらの辞書のものかを持っていません（前は
+       買うものしか無かったので）。両方に聞いて、答えたほうを使います。 */
+    const svg = (key && (KN.iconsTodo.byKey(key) || KN.productIcons.byKey(key)))
+      || KN.iconsTodo.find(titleText || "")
+      || KN.productIcons.find(titleText || "");
     return svg
       ? html`<span class="todo-mark">${KN.util.raw(svg)}</span>`
       : html`<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
@@ -1545,7 +1557,7 @@
       grids.innerHTML = "";
       const query = q.value.trim();
       if (query) {
-        const hits = KN.productIcons.search(query);
+        const hits = KN.iconsTodo.search(query).concat(KN.productIcons.search(query));
         if (!hits.length) {
           grids.append(node(html`
             <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
@@ -1570,13 +1582,21 @@
       auto.addEventListener("click", () => choose(null));
       grids.append(auto);
 
-      const maybe = KN.productIcons.suggest(titleText, 8);
+      /* 「もしかして」は こと を先に。用事の題を書いているところなので。 */
+      const mineT = KN.iconsTodo.suggest(titleText, 4);
+      const mineP = KN.productIcons.suggest(titleText, 4);
+      const maybe = mineT.concat(mineP);
       if (maybe.length) {
+        const pool = KN.iconsTodo.list().concat(KN.productIcons.list());
         grids.append(heading("もしかして"));
-        grids.append(grid(KN.productIcons.list().filter((x) => maybe.includes(x.key))
+        grids.append(grid(pool.filter((x) => maybe.includes(x.key))
           .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
       }
-      grids.append(heading("ぜんぶ"));
+      /* 二つに分けて出します。数がまるで違う（こと93・品物708）ので、
+         混ぜると こと が品物の海に沈みます。 */
+      grids.append(heading("こと"));
+      grids.append(grid(KN.iconsTodo.list()));
+      grids.append(heading("品物"));
       grids.append(grid(KN.productIcons.list()));
     }
     q.addEventListener("input", KN.util.debounce(paint, 160));

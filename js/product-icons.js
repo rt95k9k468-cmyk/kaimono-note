@@ -744,8 +744,28 @@
      やるので、ここでは足すだけ。 */
   if (KN.iconsV2Keys) KEYS.push(...KN.iconsV2Keys);
 
+  /* 2文字のひらがなは、**名前が丸ごとそれと同じときだけ**当てます。
+
+     実測で見つけた事故：「パスワードを変える」がクレヨンになっていました。
+     `crayon` の言葉に「ぱす」（＝クレパス）があり、それが「ぱすわーど」に
+     含まれてしまうためです。かな2文字は品物の名を成しません——「こんそめ」と
+     「べーこん」が こん を共有するのと同じ話で、これは `suggest()` の
+     `runIsWorthIt` がすでに知っていた決めごとです。漢字は2文字でも名を成す
+     （洗剤・牛乳）ので、そのまま。
+
+     ただし**丸ごと同じときだけ**にはしません。この表には「あめ」「のり」
+     「ねぎ」「いか」のような2文字が74個あって、それが「焼きのり」「長ねぎ」に
+     当たらなくなるのは、失うほうが大きい。**短い名前のときだけ**当てます
+     （4文字まで）。品物の名は短く、用事の文は長い——「ぱすわーどをかえる」は
+     9文字で、この線の向こう側です。 */
+  const SHORT_KANA = (k) => k.length < 3 && !/[㐀-鿿]/.test(k);
+  const SHORT_NAME = 4;
+
   const FLAT = KEYS
-    .flatMap(([name, words]) => words.map((w) => [KN.util.foldKana(w), name]))
+    .flatMap(([name, words]) => words.map((w) => {
+      const k = KN.util.foldKana(w);
+      return [k, name, SHORT_KANA(k)];
+    }))
     .sort((a, b) => b[0].length - a[0].length);
 
   /** Drawn icon for a product name, as raw SVG — or "" when nothing fits. */
@@ -761,7 +781,10 @@
   function findKey(name) {
     const n = KN.util.foldKana(String(name || ""));
     if (!n) return "";
-    for (const [key, icon] of FLAT) if (n.includes(key)) return icon;
+    for (const [word, icon, short] of FLAT) {
+      if (short && n.length > SHORT_NAME) continue;
+      if (n.includes(word)) return icon;
+    }
     return "";
   }
 
