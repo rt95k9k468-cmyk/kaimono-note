@@ -694,6 +694,39 @@
       },
     ];
     if (editing) {
+      /* 写しを作ります。似たものを続けて足すとき——同じ手順を持つ用事を
+         曜日ちがいで置く、買い出しの型を使い回す——に、一から書き直すのは
+         そこにある一件を無視していることになります。
+
+         写したらすぐ、その写しの紙を開きます。作って閉じてしまうと、
+         「どこへ行ったか」を時間割の中から探すことになるので。題に
+         「（コピー）」を付けておくのは、開いた紙がどちらのものか、
+         見た瞬間に分かるようにするためです。
+
+         **済ませた印は写しません。** 写しはこれからやることで、
+         元がもう済んでいるかどうかとは関わりがないので。 */
+      heroMenu.push({
+        id: "copy", label: () => "このやることをコピー", icon: "copy",
+        sub: "同じ中身で、もう一件つくります",
+        onPick: () => {
+          const src = store.getTodo(todoId);
+          if (!src) return;
+          const made = store.addTodo({
+            title: `${src.title}(コピー)`,
+            due: src.due, part: src.part, time: src.time,
+            repeat: src.repeat, repeatDays: src.repeatDays, repeatNth: src.repeatNth,
+            memo: src.memo, flagged: src.flagged, minutes: src.minutes,
+            shop: src.shop, icon: src.icon,
+            // 手順は形だけ写して、済ませた印は落とします。
+            subs: (src.subs || []).map((x) => ({ title: x.title })),
+          });
+          if (!made) return;
+          haptic(10);
+          handle.close();
+          // 紙が閉じきってから開きます。重ねると、閉じる動きが新しい紙を消します。
+          setTimeout(() => openSheet(made.id), 260);
+        },
+      });
       heroMenu.push({
         id: "delete", label: () => "このやることを削除", icon: "trash", danger: true,
         onPick: () => {
@@ -2774,7 +2807,9 @@
     if (!t) return;
     const len = t.minutes || KN.plan.DEFAULT_MINUTES;
 
-    tlDrag = { id, row, list, day, len, target: null };
+    /* 持ち上げた指の位置を控えます。**動かさずに離したら、何もしません**
+       ——下の drop() を見ること。 */
+    tlDrag = { id, row, list, day, len, target: null, y0, moved: false };
     KN.motion.fire("reorder");
     row.classList.add("is-lifted");
     list.classList.add("is-dragging");
@@ -2819,6 +2854,9 @@
 
     const move = (ev) => {
       if (!tlDrag) return;
+      /* 「動かした」と言えるのは、狙いが変わるだけ動いてから。指は置いた
+         ままでも数px揺れるので、その揺れで時刻が書き換わっては困ります。 */
+      if (Math.abs(ev.clientY - tlDrag.y0) > DRAG_SLOP) tlDrag.moved = true;
       aim(ev.clientX, ev.clientY);
     };
     /* 運んでいるあいだ、画面のほうは動かしません。
@@ -2938,6 +2976,15 @@
     const t = store.getTodo(d.id);
     if (!commit || !d.target || !t) { render(); return; }
 
+    /* **持ち上げて、そのまま離した。** 何も言っていないので、何もしません。
+
+       持ち上げると空きの行が開いて、指の下がその帯の中に入ります。だから
+       動かしていなくても aim() は「その高さの時刻」を返します——11:00 の
+       用事を持ち上げて置きなおしただけで 12:00 になっていたのは、これです。
+       置き場が見えていることと、そこへ置くと言ったことは別なので、
+       指が動いていなければ帰します。 */
+    if (!d.moved) { render(); return; }
+
     /* 週の帯の日へ落とした。**日付を変えます。**
 
        時刻は持ったままにします——「16時の病院を明日へ」は、明日の16時の
@@ -2956,6 +3003,8 @@
 
     if (d.target.kind === "time") {
       const at = KN.plan.toTime(d.target.at);
+      // もとと同じ時刻・同じ日に落ちたなら、書き換えも報せも要りません。
+      if (at === t.time && d.day === t.due) { render(); return; }
       const was = { time: t.time };
       store.updateTodo(d.id, { time: at, due: d.day });
       KN.motion.fire("save");
@@ -3196,6 +3245,14 @@
       </li>
     `);
     li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id));
+    /* 絵（レールの丸）も、押せば詳細が開きます。行の中で絵だけが「押しても
+       何も起きないところ」でした——見た目には題と同じ一つの行なので、
+       どちらを押しても同じ場所へ行くのが素直です。
+
+       運んだ指が離れぎわに起こす click は、lift() の eatClick が食べるので、
+       ここには来ません（置きなおすたびに詳細が開くことはありません）。 */
+    const rail = li.querySelector(".tl-rail");
+    if (rail) rail.addEventListener("click", () => openSheet(t.id));
     const box = li.querySelector("button.check");
     if (box) {
       box.addEventListener("click", (e) => {
