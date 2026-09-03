@@ -26,7 +26,12 @@
 - 作業ブランチ: `claude/kurashinote-task-icon-expansion-wm5kw3`
   （セッションごとに指定が変わる。以前は
   `claude/shopping-list-file-migration-ct4ufx` だった——指定されたほうを使う）
-- ユーザーの明示的な許可のもと、`main` への直接pushが認められている：
+- **`main` へ流すのに、いちいち訊かない。** 直したら、テストを通して
+  コミットして、そのまま `main` まで流すところまでが一続き。ユーザーの
+  明示的な許可のもとで認められている。
+  ただし**先に報告するもの**は変わらない——データの移行、既存の記録の
+  作り替え、後戻りできない類。それは「よっぽど」のほう。
+- `main` への直接pushの手順：
   ```
   git push -u origin claude/kurashinote-task-icon-expansion-wm5kw3
   git checkout main && git merge --ff-only claude/kurashinote-task-icon-expansion-wm5kw3
