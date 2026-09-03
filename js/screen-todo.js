@@ -3129,15 +3129,32 @@
        逃げると、狙ったところに置けません——**掴んだ行が動かないように**、
        広がった量だけ画面のほうをずらします。上で開いたぶんだけ、下へ。 */
     const before = row.getBoundingClientRect().top;
+    /* **空きは、長さに関わらず全部ひらきます。**
+
+       前は「その空きに入るものだけ」でした。入らないところを開いても
+       置けないから、という理屈でしたが、そもそも**重なってはいけない
+       理由がありません**。15分の隙間へ1時間の用事を置いたなら、次の
+       用事と重なる——それは利用者が決めたことで、こちらが止めることでは
+       ない（重なりは丸薬どうしがぶつかる絵で、ちゃんと見えます）。 */
     dayList.querySelectorAll(".tl-free-row").forEach((fr) => {
       const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
-      if (!isFinite(from) || !isFinite(until) || until - from < len) return;
+      if (!isFinite(from) || !isFinite(until) || until <= from) return;
       fr.classList.add("is-open");
       fr.style.setProperty("--band-h", bandHeight(until - from) + "px");
       fr.append(node(html`
         <span class="tl-band">
           <span class="tl-band-line"><span class="tl-band-time"></span></span>
         </span>
+      `));
+    });
+    /* 用事の丸薬にも、狙いの線を仕込みます。**丸薬は時間そのもの**なので、
+       そこを狙えば「その用事に重なる時刻」を指せます——これで一日の
+       どの15分にも置けるようになります（空きだけでは、埋まっている
+       時間帯に置く道がありませんでした）。 */
+    dayList.querySelectorAll(".tl-row .tl-rail").forEach((rail) => {
+      if (rail.querySelector(".tl-aim-line")) return;
+      rail.append(node(html`
+        <span class="tl-aim-line"><span class="tl-band-time"></span></span>
       `));
     });
     const scroller = list.closest(".screen") || document.scrollingElement;
@@ -3183,8 +3200,10 @@
   function aim(x, y) {
     const d = tlDrag;
     if (!d) return;
-    d.list.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
-    d.dayList.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
+    [d.list, d.dayList, root].forEach((L) => {
+      if (!L) return;
+      L.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim", "is-aim-time"));
+    });
     if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
 
     /* ---- 週の帯の日 ----
@@ -3212,9 +3231,10 @@
       const b = band.getBoundingClientRect();
       if (y < b.top || y > b.bottom || b.height <= 0) continue;
       const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
-      /* 置けるのは「始まり」だけなので、下端は**終わり − 長さ**です。
-         そうしないと帯のいちばん下を狙ったとき、はみ出す時刻を返します。 */
-      const last = Math.max(from, until - d.len);
+      /* 下端は**終わり − 15分**。前は「終わり − 長さ」で、空きに入らない
+         用事は端まで狙えませんでした。はみ出してよいことにしたので、
+         残すのは「始まりは空きの中」というだけです。 */
+      const last = Math.max(from, until - SLOT_MIN);
       const ratio = Math.min(1, Math.max(0, (y - b.top) / b.height));
       const at = Math.min(last, Math.max(from,
         Math.round((from + ratio * (last - from)) / SLOT_MIN) * SLOT_MIN));
@@ -3251,8 +3271,51 @@
       }
     }
 
-    /* 用事と用事のあいだ。行の上半分なら前へ、下半分なら後ろへ。 */
+    /* 長期タスクの欄へ運んだ。**日付も時刻も外して**、あちらへ移します。
+
+       時間割の用事を「いつやるか決めていないもの」に戻す道です。ここが
+       無いと、いったん日を決めた用事は、詳細の紙を開いて日付を消すまで
+       時間割に居つづけます。 */
+    /* **探すのは節のほう**（.tl-someday-sec）です。中の `ul.tl-someday` は
+       一件も無いと組まれないので、いちばん要る「空っぽの長期タスクへ
+       最初の一件を運ぶ」がちょうど落とせませんでした。 */
+    const sec = root && root.querySelector(".tl-someday-sec");
+    if (!d.someday && sec) {
+      const b = sec.getBoundingClientRect();
+      if (b.height > 0 && y >= b.top && y <= b.bottom) {
+        sec.classList.add("is-aim");
+        d.target = { kind: "someday" };
+        return;
+      }
+    }
+
     const rows = [...d.dayList.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
+
+    /* 丸薬の上。**丸薬は時間そのもの**（高さがかかる時間）なので、その
+       どこを狙ったかが、そのまま時刻になります。埋まっている時間帯にも
+       置けるのは、ここがあるからです。狙うのは丸薬の列だけ——題のほうは
+       「順番で置きなおす」ままにします（別のことを言っているので）。 */
+    for (const r of rows) {
+      const rail = r.querySelector(".tl-rail");
+      if (!rail) continue;
+      const b = rail.getBoundingClientRect();
+      if (b.height <= 0 || x < b.left || x > b.right || y < b.top || y > b.bottom) continue;
+      const from = Number(r.dataset.at), until = Number(r.dataset.until);
+      if (!isFinite(from) || !isFinite(until) || until <= from) continue;
+      const ratio = Math.min(1, Math.max(0, (y - b.top) / b.height));
+      const at = Math.round((from + ratio * (until - from)) / SLOT_MIN) * SLOT_MIN;
+      r.classList.add("is-aim", "is-aim-time");
+      const line = rail.querySelector(".tl-aim-line");
+      if (line) {
+        line.style.top = (ratio * 100).toFixed(1) + "%";
+        const label = line.querySelector(".tl-band-time");
+        if (label) label.textContent = KN.plan.toTime(at);
+      }
+      d.target = { kind: "time", at };
+      return;
+    }
+
+    /* 用事と用事のあいだ。行の上半分なら前へ、下半分なら後ろへ。 */
     let before = null;
     for (const r of rows) {
       const b = r.getBoundingClientRect();
@@ -3276,9 +3339,13 @@
     d.row.classList.remove("is-lifted");
     d.list.classList.remove("is-dragging");
     d.dayList.classList.remove("is-dragging");
-    [d.list, d.dayList].forEach((L) => L.querySelectorAll(".is-aim").forEach((el) => {
-      el.classList.remove("is-aim", "is-aim-before");
-    }));
+    [d.list, d.dayList, root].forEach((L) => {
+      if (!L) return;
+      L.querySelectorAll(".is-aim").forEach((el) => {
+        el.classList.remove("is-aim", "is-aim-before", "is-aim-time");
+      });
+    });
+    d.dayList.querySelectorAll(".tl-aim-line").forEach((el) => el.remove());
     /* 広げた空きは、閉じます。置いたあとに描き直される行もありますが、
        落とす先が無かったときは描き直されないので、ここで畳みます。 */
     d.dayList.querySelectorAll(".tl-free-row.is-open").forEach((fr) => {
@@ -3327,6 +3394,22 @@
       store.updateTodo(d.id, { time: at, due: d.day });
       KN.motion.fire("save");
       KN.ui.toast(`「${t.title}」を ${at} に`, {
+        action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
+      });
+      return;
+    }
+
+    /* 長期タスクの欄へ運んだ。**日付と時刻を外します。**
+
+       「いつやるか決めていないもの」に戻す、ということです。順番で置き
+       なおすときに時刻だけ手放すのとは違って、こちらは日付も手放します
+       ——長期タスクの欄にいるのは `due` を持たない用事なので。 */
+    if (d.target.kind === "someday") {
+      if (!t.due && !t.time) { render(); return; }
+      const was = { due: t.due, time: t.time };
+      store.updateTodo(d.id, { due: null, time: null });
+      KN.motion.fire("save");
+      KN.ui.toast(`「${t.title}」を長期タスクへ`, {
         action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
       });
       return;
@@ -3536,12 +3619,20 @@
        ので、空きだけ昼の色のままだと、夜の用事のあいだで色が切れて
        「別の線」に見えます。切り替わるのは、その空きが**夜に入る**
        ところ（18時をまたぐ空きは、夜のぶんが半分でも夜側で数えます
-       ——点線のなかで色を変えると、そこに何かがあるように見えるので）。 */
+       ——点線のなかで色を変えると、そこに何かがあるように見えるので）。
+
+       **ただし、過ぎたぶんは「始まり」で決めます**（--cat-a）。夕方まで
+       予定の無い日は、空きの行が一つで昼から夜までを持ちます。終わりだけ
+       で決めると、朝に済ませた用事の丸薬の下に**夜の青が数px** 顔を出し
+       ました——過ぎたぶんは上の丸薬から続く線なので、そこは上と同じ色で
+       なければいけません。まだのぶん（灰色）のほうが夜を含みます。 */
     const night = f.untilMin > NIGHT_FROM;
+    const nightAt = f.atMin >= NIGHT_FROM;
     return node(html`
       <li class="tl-free-row ${past ? "is-past" : ""}"
           data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
-          style="--cat:${night ? "var(--c-night)" : "var(--c-primary-fill)"}">
+          style="--cat:${night ? "var(--c-night)" : "var(--c-primary-fill)"};
+                 --cat-a:${nightAt ? "var(--c-night)" : "var(--c-primary-fill)"}">
         <span class="tl-time"></span>
         <span class="tl-rail ${dash ? "is-dash" : ""}"></span>
       </li>
@@ -3553,17 +3644,32 @@
      作りでした。 */
 
   /** 一つの用事。丸薬のアイコンが線の上に乗り、右に印を付ける丸。 */
+  /** 済ませた時刻。`doneAt` は UTC の ISO なので、**読むのは地元の時刻**
+      です（`getHours` が直します——文字を切り出すと9時間ずれます）。
+      昔の記録は日付だけのことがあるので、時刻を持たないものは出しません。 */
+  function doneClock(iso) {
+    if (!iso || !/\d{1,2}:\d{2}/.test(String(iso))) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
   function itemRow(it, joined) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
-    /* 完了時刻・時刻あり・毎日・残り手順は、ここには出しません。
+    /* 時刻あり・毎日・残り手順は、ここには出しません。行の左側（時刻の
+       太さ）と、押す丸の繰り返しアイコンがすでに言っています。手順の残数は、
+       行の下をひらけば見えます。
 
-       完了時刻は、左の時刻の列がその用事の行そのものにすでに書いています
-       （組み立てが完了時刻でその行を置いているので）。時刻あり・毎日は、
-       行の左側（時刻の太さ）と、押す丸の繰り返しアイコンがすでに言って
-       います。手順の残数は、行の下をひらけば見えます。同じことを、題の
-       すぐ下でもう一度言う理由がありません。 */
+       **済ませた時刻は出します。** ここには「左の時刻の列がすでに書いて
+       いる」と書いてありましたが、あれは**予定の時刻**です。7時に置いた
+       用事を9時に済ませたなら、その二つは別のこと——記録として残るのは
+       後者のほうです。 */
+    if ((t.done || t.archived) && t.doneAt) {
+      const c = doneClock(t.doneAt);
+      if (c) facts.push(html`<span class="tl-doneat">${icon("check")}<i>${c}</i></span>`);
+    }
     /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
        ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
     const sc = store.subCount(t);

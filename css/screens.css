@@ -3238,7 +3238,7 @@ a.btn { text-decoration: none; }
      色つきの手描きで、地を濃くすると絵が沈んだからでした。いまは中が
      白抜きのシルエットなので、地は濃いほうが読めます——薄い地に白を
      抜くと、白が消えます。 */
-  --tl-fill: var(--cat, var(--c-primary-fill));
+  --tl-fill: var(--cat-a, var(--cat, var(--c-primary-fill)));
 }
 /* 丸薬の**実際の高さ**は一か所から出します（重なりで育つぶんも含めて）。
    中の絵の色の境目がここから出るので、二か所に書くと必ずずれます。 */
@@ -3444,6 +3444,17 @@ a.btn { text-decoration: none; }
   line-height: 1.4;
 }
 .tl-len { font-variant-numeric: tabular-nums; }
+
+/* 済ませた時刻。予定の時刻（左の列）とは別のものなので、✓ を添えて
+   「これは記録のほう」と言います。色はその用事の色——済んだことの印
+   なので、事実の灰色より一段だけ前に出します。 */
+.tl-doneat {
+  display: inline-flex; align-items: center; gap: 3px;
+  color: var(--cat, var(--c-primary));
+  font-variant-numeric: tabular-nums;
+}
+.tl-doneat i { font-style: normal; }
+.tl-doneat svg { width: 12px; height: 12px; stroke-width: 3; flex: none; }
 
 /* 手順の丸薬（☑ 2/5 ⌄）。
 
@@ -4176,6 +4187,29 @@ a.btn { text-decoration: none; }
   border-style: solid;
   border-color: color-mix(in srgb, var(--c-primary) 45%, transparent);
   background: color-mix(in srgb, var(--c-primary) 11%, transparent);
+}
+
+/* 丸薬の上を狙ったときの、置く時刻の線。空きの帯の線と同じ役目ですが、
+   置き場所が丸薬の列なので、そのぶん左右へはみ出させます（3.5pxの線の上に
+   同じ幅の線を重ねても見えないので）。 */
+.tl-aim-line {
+  position: absolute;
+  left: -9px; right: -9px; top: 0;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--c-primary);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  transition: top var(--m-press) var(--ease-out);
+}
+.tl-row.is-aim-time .tl-aim-line { opacity: 1; }
+/* 長期タスクの欄へ運んでいるあいだ。**受け皿ぜんぶ**を光らせます
+   ——あそこには行が無いこともあるので、行を光らせる手が使えません。 */
+.tl-someday-sec.is-aim {
+  background: color-mix(in srgb, var(--c-primary) 8%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c-primary) 40%, transparent);
+  border-radius: var(--r-md);
 }
 
 /* 指の高さにいる一本の線が、置く時刻です。 */
