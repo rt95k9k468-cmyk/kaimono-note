@@ -104,7 +104,7 @@
     };
     fitBar();
     window.addEventListener("resize", fitBar);
-    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { down: "prices" });
+    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { role: "front" });
 
     chrome.querySelector(".js-settings").addEventListener("click",
       () => KN.app.showScreen("settings"));

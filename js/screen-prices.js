@@ -96,7 +96,7 @@
     };
     fitBar();
     window.addEventListener("resize", fitBar);
-    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { up: "list" });
+    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { role: "back" });
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
 
