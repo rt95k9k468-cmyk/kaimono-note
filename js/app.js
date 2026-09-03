@@ -519,6 +519,15 @@
     grip.setAttribute("role", "button");
     grip.setAttribute("tabindex", "0");
     grip.removeAttribute("aria-hidden");
+    /* **「引いて更新」に、この指を渡しません。**
+
+       これが無いと、掴み手を下へ引いた指を pull-refresh も一緒に取ります。
+       あちらは `.screen` ごと平行移動させるので（pull-refresh.js の
+       `screenEl.style.transform`）、**上のバーとカテゴリの札まで指について
+       降りてきます**——紙が下がるのではなく、画面ごと崩れていくように見える。
+       やること・daily・ダイエットの掴み手には前から付いていて、ここだけ
+       抜けていました。 */
+    grip.setAttribute("data-pull-own", "face");
     faceGrips.push(grip);
     syncFaceGrips();
     const flip = () => faceTo(faceAt() ? 0 : 1);

@@ -732,17 +732,12 @@ a { color: var(--c-primary); }
   transform: translateY(calc(var(--face-p, 1) * var(--face-d, 0px)));
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
 }
-/* 留まっているあいだ、掴み手は**貼りつきません**。
-
-   頭だけ残すために紙を `overflow: hidden` で切ると、紙そのものが「送る器」に
-   なります。すると sticky の基準が画面ではなく紙になって、掴み手が紙の
-   上端から `top`（43px）ぶん下がりました——実測で 750 のはずが 793、
-   ちょうど下の帯の裏へ潜って掴めない位置です。留まった紙は送られないので、
-   ここで貼りつく理由はありません。 */
-.screen.is-face-parked .tl-grip {
-  position: static;
-  pointer-events: auto;
-}
+/* 掴み手だけは触れます（紙の本体は帯の下なので、触れると帯ごしに買うものの
+   行を押せてしまう）。貼りつきかたは動かしません——紙を切っていた時期は
+   `overflow: hidden` が紙そのものを「送る器」に変えて、sticky の基準が画面
+   から紙へ移り、掴み手が 750 のはずが 793（下の帯の裏）へ落ちていました。
+   切るのをやめたので、その手当ても要りません。 */
+.screen.is-face-parked .tl-grip { pointer-events: auto; }
 
 /* 題も、同じ数（--face-p）から出します。**帯そのものは動きません**
    ——動くのは中身（名前）だけ。
