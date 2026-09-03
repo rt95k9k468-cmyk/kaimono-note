@@ -37,7 +37,11 @@
   const TABS = [
     { id: "archive", label: "daily", icon: "book" },
     { id: "todo", label: "やること", icon: "checklist" },
-    { id: "list", pair: "prices", label: "買うもの", icon: "list" },
+    /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
+       そこへは掴み手を下げて行きます。だから帯には席を持たず、価格を見て
+       いるあいだも帯が言うのは「買うもの」——いま居るのは買うもののタブで、
+       その紙を下げているだけなので。`holds` は「この席が受け持つ画面」。 */
+    { id: "list", holds: ["prices"], label: "買うもの", icon: "list" },
     { id: "diet", label: "ダイエット", icon: "scale" },
   ];
 
@@ -51,14 +55,9 @@
     settings: { label: "設定",       icon: "gear" },
   };
 
-  /* どちらの面を見ていたか。組ごとに覚えます——価格を見ていた人が
-     ダイエットへ寄って戻ってきたとき、買うものに巻き戻るのは
-     「戻った」ではなく「やり直し」なので。 */
-  const lastFace = {};
-  const tabOf = (id) => TABS.find((t) => t.id === id || t.pair === id);
-  /* `t.pair &&` を落とすと、裏面を持たないタブで undefined === undefined が
-     成り立って show(undefined) を呼びます（設定が開かなくなりました）。 */
-  const faceOf = (t) => (t.pair && lastFace[t.id] === t.pair ? t.pair : t.id);
+  /** その席が、いまの画面を受け持っているか。 */
+  const holdsId = (t, id) => t.id === id || (t.holds && t.holds.indexOf(id) >= 0);
+  const tabOf = (id) => TABS.find((t) => holdsId(t, id));
 
   /* 引き出し（価格・設定）を、どこから開けたか。**一つの変数ではなく積み木**
      です——買うもの → 価格 → 設定 と潜れるようになったので、「戻る」は
@@ -118,26 +117,18 @@
       /* 絵は .tab-ico-face に入れます。丸い下地（.tab-ico）と絵を分けて
          おくと、選ばれた印（下地）と絵の差し替えが別々に効きます。 */
       const btn = node(html`
-        <button class="tab tab-${t.id} ${t.pair ? "is-pair" : ""}" role="tab"
+        <button class="tab tab-${t.id}" role="tab"
                 data-tab="${t.id}" aria-controls="screen-${t.id}">
           <span class="tab-ico"><span class="tab-ico-face" data-face="${t.id}"></span></span>
           <span class="tab-label"></span>
-          ${t.pair ? html`<span class="tab-flip" aria-hidden="true"><i></i><i></i></span>` : ""}
         </button>
       `);
-      /* ふた面の組は、**いま居るタブをもう一度押すと裏返ります。**
-         居ないところから押したときは、最後に見ていた面へ——見ていた面を
-         覚えていないと、価格から寄り道して戻るたびに買うものへ巻き戻り、
-         「戻った」ではなく「やり直し」になります。 */
+      /* 価格を見ているところで「買うもの」を押したら、**紙を戻します**
+         ——差し替えるのではなく。あの二つは重なった二枚なので、行き来は
+         紙の動きで見えていないと、どちらが前に居るのか分からなくなります。 */
       btn.addEventListener("click", () => {
-        const here = t.id === active || t.pair === active;
-        if (here && t.pair) {
-          const to = active === t.id ? t.pair : t.id;
-          lastFace[t.id] = to;
-          show(to);
-          return;
-        }
-        show(here ? active : faceOf(t));
+        if (t.holds && t.holds.indexOf(active) >= 0) { faceTo(0); return; }
+        show(t.id);
       });
       bar.append(btn);
     });
@@ -148,12 +139,11 @@
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
       if (!btn) return;
-      const here = t.id === active || t.pair === active;
-      /* 帯は**いま出ている面**の名前と絵になります。「押すと何になるか」
-         ではありません——帯はいる場所を言うもので、行き先を言うものでは
-         ないので。裏返せることは、居るところをもう一度押したときに
-         分かります。 */
-      const face = FACES[here ? active : faceOf(t)] || FACES[t.id];
+      const here = holdsId(t, active);
+      /* 帯が言うのは**その席の名前**です。価格を見ているあいだも「買うもの」
+         のまま——いま居るのは買うもののタブで、その紙を下げているだけ
+         なので。帯はいる場所を言うもので、紙の位置を言うものではありません。 */
+      const face = FACES[t.id];
       btn.setAttribute("aria-selected", String(here));
       btn.querySelector(".tab-ico-face").classList.add("is-on");
       const ico = btn.querySelector(".tab-ico-face");
@@ -166,13 +156,6 @@
       if (label.dataset.sig !== face.label) {
         label.dataset.sig = face.label;
         label.textContent = face.label;
-      }
-      /* 下の二つの点。左が表、右が裏。塗られているほうが、いま見ている面。 */
-      const flip = btn.querySelector(".tab-flip");
-      if (flip) {
-        const onPair = here && active === t.pair;
-        flip.children[0].classList.toggle("is-on", !onPair);
-        flip.children[1].classList.toggle("is-on", onPair);
       }
     });
 
@@ -350,22 +333,36 @@
 
      動きも重なりのとおりにします：下りる面は下へ抜け、後ろの面はその場で
      少しだけ大きくなる（ずっとそこに居た、という見え方）。 */
-  /* 動かすのは**前の一枚だけ**です（買うもの）。価格はその後ろに敷いた
-     まま動きません——後ろのものは動かないから後ろに見えます。前が下がった
-     ぶんだけ、後ろが等身大へ戻ってくる（--face-p）。
+  /* **動くのは紙だけです。上のバーは動きません。**
 
-     行き先は 0（買うものが全面）か 1（下がりきって価格が全面）の二つ。
-     途中で離したら、近いほうへ滑らせます。 */
+     前は画面ぜんぶ（`.screen`）を平行移動させていましたが、それは「ページが
+     下へ抜けていく」動きで、重なりには読めませんでした。動かすのは、掴み手が
+     乗っている紙と、その上のカテゴリの札。**紙の中身は紙ごと一緒に**下がり、
+     空いたところに後ろの紙が出てきます——暦を引くのとまったく同じ原理で、
+     あちらの「暦」の役をここでは価格の紙が務めます。
+
+     行き先は 0（買うものの紙が全面）か 1（下がりきって価格の紙が全面）の
+     二つ。途中で離したら、近いほうへ滑らせます。 */
   const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
   const FACE_MS = 280;
   const FRONT = "list", BACK = "prices";
 
   const screensEl = () => document.getElementById("screens");
-  const faceH = () => (screensEl() ? screensEl().getBoundingClientRect().height : 1) || 1;
 
   function faceEls() {
     return { front: document.getElementById("screen-" + FRONT),
              back: document.getElementById("screen-" + BACK) };
+  }
+
+  /** 紙が下りきるまでの道のり（px）。**札の上端から、画面の下まで**
+      ——下りきったところで、前の紙は画面から出ていること。 */
+  function faceDist(front) {
+    const box = screensEl();
+    if (!box) return 1;
+    const head = front.querySelector(".js-filter") || front.querySelector(".tl-sheet");
+    const b = box.getBoundingClientRect();
+    if (!head) return b.height || 1;
+    return Math.max(1, b.bottom - head.getBoundingClientRect().top);
   }
 
   /** 二枚とも見えるようにして、動かせる形にします。 */
@@ -380,12 +377,15 @@
     back.classList.add("is-face-back");
     front.classList.add("is-face-front");
     front.classList.remove("is-face-settle");
+    /* 道のりは、**取ると決めた時に一度だけ**測ります。途中で測り直すと、
+       指の下で速さが変わります（暦の `span` と同じ決めごと）。 */
+    front.style.setProperty("--face-d", faceDist(front).toFixed(1) + "px");
     return { front, back };
   }
 
+  /** 途中の姿。数**ひとつ**（--face-p）から、紙の位置も題の入れ替わりも出ます。 */
   function facePaint(o, p) {
-    o.front.style.transform = "translateY(" + (p * 100).toFixed(3) + "%)";
-    o.back.style.setProperty("--face-p", p.toFixed(3));
+    o.front.style.setProperty("--face-p", p.toFixed(3));
   }
 
   /** 行き先まで滑らせて、着いたら片づけます。 */
@@ -395,11 +395,24 @@
     setTimeout(() => {
       o.front.classList.remove("is-face-front", "is-face-settle");
       o.back.classList.remove("is-face-back");
-      o.front.style.transform = "";
-      o.back.style.removeProperty("--face-p");
+      o.front.style.removeProperty("--face-p");
+      o.front.style.removeProperty("--face-d");
       show(to > 0.5 ? BACK : FRONT, "settled");
     }, FACE_MS + 20);
   }
+
+  /** 指を使わずに、紙をその位置まで滑らせます（帯を押したときの道）。
+      0＝買うものの紙が全面、1＝価格の紙が全面。 */
+  function faceTo(p) {
+    const o = faceOpen();
+    if (!o) return;
+    facePaint(o, p > 0.5 ? 0 : 1);      // いまの姿から始めます
+    /* 一度描いてから滑らせないと、始まりの姿が無いので跳びます。 */
+    void o.front.offsetHeight;
+    haptic();
+    faceSettle(o, p);
+  }
+  KN.app.faceTo = faceTo;
 
   /** 紙の掴み手に、面をめくる手つきを結びます。
 
@@ -408,10 +421,26 @@
   KN.app.wireFaceGrip = function wireFaceGrip(grip, opts) {
     if (!grip) return;
     const front = opts && opts.role === "front";
-    let pid = null, y0 = 0, on = false, o = null, p = 0;
+    /* **押しても、めくれます。** 引くのが本筋ですが、そこにしか道が無いと
+       価格へは指で引ける人しか行けません（暦の段と違って、あちらには
+       この画面でしか見られない中身——商品と値段と店——があります）。
+       押す道があれば、キーボードにも読み上げにも通ります。 */
+    grip.setAttribute("role", "button");
+    grip.setAttribute("tabindex", "0");
+    grip.removeAttribute("aria-hidden");
+    grip.setAttribute("aria-label", front
+      ? "価格をひらく（下へ引いてもひらきます）"
+      : "買うものへ戻る（上へ押しても戻ります）");
+    const flip = () => faceTo(front ? 1 : 0);
+    grip.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      flip();
+    });
+    let pid = null, y0 = 0, on = false, o = null, p = 0, dist = 1, moved = false;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      pid = e.pointerId; y0 = e.clientY; on = true; o = null;
+      pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
       p = front ? 0 : 1;
       try { grip.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
     });
@@ -419,28 +448,35 @@
       if (!on || e.pointerId !== pid) return;
       if (e.cancelable) e.preventDefault();
       const dy = e.clientY - y0;
+      if (Math.abs(dy) > 3) moved = true;
       /* 行ける向きは片道ずつ。前の一枚は下へ、後ろの一枚は上へ。 */
       if (!o) {
         if (front ? dy <= 2 : dy >= -2) return;
         o = faceOpen();
         if (!o) { on = false; return; }
+        /* 道のりは、**取ると決めた時に一度だけ**（faceOpen が測って
+           --face-d に書いたものを、そのまま指の換算にも使います。二か所で
+           測ると、紙の進みと指の進みが合わなくなります）。 */
+        dist = parseFloat(o.front.style.getPropertyValue("--face-d")) || 1;
         facePaint(o, p);
       }
-      p = Math.max(0, Math.min(1, (front ? 0 : 1) + dy / faceH()));
+      p = Math.max(0, Math.min(1, (front ? 0 : 1) + dy / dist));
       facePaint(o, p);
     }, { passive: false });
-    const done = () => {
+    const done = (tapped) => {
       if (!on) return;
       on = false; pid = null;
-      if (!o) return;
+      /* 引かずに離した＝押した、ということ。指の道が無くてもめくれます。
+         取り上げられた（pointercancel）ぶんは、押したことにしません。 */
+      if (!o) { if (tapped && !moved) flip(); return; }
       const from = front ? 0 : 1;
       const to = Math.abs(p - from) > FACE_DONE ? (from ? 0 : 1) : from;
       if (to !== from) haptic();
       faceSettle(o, to);
       o = null;
     };
-    grip.addEventListener("pointerup", done);
-    grip.addEventListener("pointercancel", done);
+    grip.addEventListener("pointerup", () => done(true));
+    grip.addEventListener("pointercancel", () => done(false));
   };
 
   function show(id, face) {
