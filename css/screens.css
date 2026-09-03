@@ -4104,6 +4104,24 @@ a.btn { text-decoration: none; }
   margin-bottom: calc(-1 * (var(--tabbar-space) + var(--sp-8) + var(--sp-6)));
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
 }
+/* 価格に着いて留まっているあいだ、残すのは**頭だけ**です。
+
+   中身まで残すと、すりガラスの帯（.tabbar）を通して買うものの行が透けて、
+   価格の行と二重に見えます（実測：帯の中に「パブロン鼻」「値段は未登録」が
+   重なって出た）。帯の下は価格の一覧が流れる場所で、そこに買うものの紙が
+   いてはいけません。
+
+   切る高さは掴み手ぶん（`--face-peek`、app.js が実測して書きます）。
+   上の `#screen-list .tl-sheet` を上書きするので、同じ id を持たせて
+   詳細度を勝たせています——`.screen.is-face-parked` だけでは id に負けます。 */
+#screen-list.is-face-parked .tl-sheet {
+  flex: none;
+  max-height: var(--face-peek, 29px);
+  min-height: 0;
+  overflow: hidden;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
 
 /* 価格の一覧が乗るところ。**紙ではありません。**
 

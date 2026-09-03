@@ -637,23 +637,24 @@ a { color: var(--c-primary); }
   pointer-events: auto;
 }
 /* 探す欄とカテゴリの札は、自分の地を持っていません（画面の地の上に置く
-   前提だったので）。前の面を透かすあいだだけ、ここにも地を敷きます。
-
-   探す欄… 敷かないと、伏せたはずの後ろの探す欄がこちらの裏に透けます。
-   札 …… 敷かないと、**札のあいだから後ろの一覧の行が覗きます**（実測：
-          札の隙間に、価格の側の牛乳の絵が出ていた）。札は前の紙の連れなので、
-          前の地を持って一緒に下がるのが正しい。 */
+   前提だったので）。前の面を透かすあいだだけ、ここにも地を敷きます。 */
 .screen.is-face-front .search-wrap,
 .screen.is-face-front .js-filter { background: var(--c-bg); }
-/* 動くのはこの二つ。**同じ一つの数から**出すこと——別々に書くと、
-   片方だけ直した日に札と紙がずれます。 */
-.screen.is-face-front .js-filter,
-.screen.is-face-front > .stack > .tl-sheet,
+
+/* **動くのは紙だけです。題の帯も札の帯も、動きません。**
+
+   札の帯（.js-filter）も紙と一緒に下げていました。「札は紙の連れだから」
+   という理屈でしたが、実機で見ると**帯までが指について降りてくる**——
+   紙が下がるのではなく、画面ごと崩れていくように見えます。
+
+   この二つは、どちらか一方の面の持ちものではありません。**器の側の帯**
+   です：位置はいつも同じところで、変わるのは**中身だけ**（「買うもの」→
+   「価格」、買うものの札 → 価格の札）。動かない枠の中で名前が入れ替わる
+   ほうが、「後ろの面が出てきた」と素直に読めます。 */
 .screen.is-face-front .stack > .tl-sheet {
   transform: translateY(calc(var(--face-p, 0) * var(--face-d, 0px)));
   will-change: transform;
 }
-.screen.is-face-front.is-face-settle .js-filter,
 .screen.is-face-front.is-face-settle .stack > .tl-sheet {
   transition: transform .28s var(--ease-out);
 }
@@ -662,6 +663,32 @@ a { color: var(--c-primary); }
 .screen.is-face-front .stack > .tl-sheet {
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
 }
+
+/* ---- 帯の中身が、じわっと入れ替わる ----
+
+   紙が下がるにつれて、前の面の札が薄れ、後ろの面の札が出てきます。
+   **重なりません**：先に前が消えきって（p .04→.30）、それから後ろが
+   出てくる（p .30→.62）。下の題の但し書きと同じ理由で、二つが同時に
+   見えると、日本語は字が詰まっているので一塊に読めてしまいます。
+
+   **地は後ろの札が持ちます**（`background`、薄めない）。前の札を薄めた
+   だけだと、消えきった一瞬に地も無くなって、札の帯のところに価格の行が
+   透けます。後ろにいつも一枚あれば、その隙間ができません。 */
+.screen.is-face-front .js-filter {
+  opacity: clamp(0, calc((.30 - var(--face-p, 0)) / .26), 1);
+}
+.screen.is-face-back .js-filter { background: var(--c-bg); }
+.screen.is-face-back .js-filter > * {
+  opacity: clamp(0, calc((var(--face-p, 0) - .30) / .32), 1);
+}
+/* 離した先へ滑るあいだは、濃さにも時間をかけます。指で引いているあいだは
+   `--face-p` が毎フレーム動くので何も要りませんが、離すと数が一度に跳んで、
+   **紙だけが滑って題と札はぱっと切り替わり**ました。 */
+.screen.is-face-front.is-face-settle .js-filter,
+.screen.is-face-front.is-face-settle .face-t,
+.screen.is-face-back.is-face-settle .js-filter > * {
+  transition: opacity .28s var(--ease-out);
+}
 /* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは一覧
    だけで、**自分の上の一組——バー・探す欄・カテゴリの札——はまとめて
    伏せます。** そこには前の面の同じ三つが居るので、二枚重ねると字が
@@ -669,12 +696,9 @@ a { color: var(--c-primary); }
    （`display:none` にすると、伏せたぶんだけ後ろの一覧が上がって、
    着いた瞬間に下へ跳びます）。
 
-   **札が抜けていました。** 伏せていたのはバーと探す欄だけで、カテゴリの
-   札はそのまま出ていました。前の面の札は紙の連れなので紙と一緒に下がる
-   ——そのあとに空いた同じ場所へ、後ろの札が居残る。実測で、めくっている
-   最中に前の札が top 300、後ろの札が top 42 に並んで見えていました
-   （＝二段の札）。札は「その面の上の一組」の一部なので、バーと探す欄と
-   同じときに伏せるのが正しい。 */
+   **札はここから外しました。** 伏せてしまうと、帯の中身が入れ替わる道が
+   ありません。札は上の「帯の中身が、じわっと入れ替わる」のほうが受け持ち
+   ます——伏せるのではなく、薄めて後ろの札と入れ替える。 */
 .screen.is-face-back {
   display: flex;
   z-index: 0;
@@ -682,25 +706,61 @@ a { color: var(--c-primary); }
 }
 .screen.is-face-back > .stack > .topbar,
 .screen.is-face-back .stack > .topbar,
-.screen.is-face-back .search-wrap,
-.screen.is-face-back .js-filter { visibility: hidden; }
+.screen.is-face-back .search-wrap { visibility: hidden; }
 
-/* 題も、同じ数（--face-p）から出します。ただし**題は量ではなく名前**なので、
-   途中の姿を持ちません——決まり目（FACE_DONE = 0.26）で、ぱっと入れ替えます。
-   そこまで下げたら手を離せば価格に着く、という合図でもあります。
+/* ---- 価格に着いたあと、買うものの紙は頭だけ残る ----
 
-   **薄めて重ねる（クロスフェード）も、縦に送るのも、試して外しました。**
-   どちらも途中で二語が同時に見えます。日本語は字が詰まっているので、
-   重なると別の字に読め（実測：「買うもの」と「価格」が一塊になった）、
-   縦送りでも上下に半分ずつ出て、題が二行あるように見えました。
-   0〜1 を 1000倍して clamp すると、境目だけの階段になります。 */
+   下げきったところで紙を画面から出しきってしまうと、**指で戻る道がどこにも
+   ありません**（価格は地なので、掴み手を持てない）。掴み手ぶん（app.js の
+   FACE_PEEK = 29px）だけ下の帯の上にのぞかせて、そこに留めます。
+
+   留まっているあいだ、この面は「頭だけの一枚」です——自分の題も探す欄も
+   札も伏せます（そこには価格の帯が居るので）。触れるのは掴み手だけ
+   （`pointer-events`）——紙の本体は帯の下に隠れていて、そこを触れるように
+   すると、帯ごしに買うものの行を押せてしまいます。 */
+.screen.is-face-parked {
+  display: flex;
+  z-index: 3;
+  background: none;
+  pointer-events: none;
+}
+.screen.is-face-parked > .stack > .topbar,
+.screen.is-face-parked .stack > .topbar,
+.screen.is-face-parked .search-wrap,
+.screen.is-face-parked .js-filter { visibility: hidden; }
+.screen.is-face-parked .stack > .tl-sheet {
+  transform: translateY(calc(var(--face-p, 1) * var(--face-d, 0px)));
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
+}
+/* 留まっているあいだ、掴み手は**貼りつきません**。
+
+   頭だけ残すために紙を `overflow: hidden` で切ると、紙そのものが「送る器」に
+   なります。すると sticky の基準が画面ではなく紙になって、掴み手が紙の
+   上端から `top`（43px）ぶん下がりました——実測で 750 のはずが 793、
+   ちょうど下の帯の裏へ潜って掴めない位置です。留まった紙は送られないので、
+   ここで貼りつく理由はありません。 */
+.screen.is-face-parked .tl-grip {
+  position: static;
+  pointer-events: auto;
+}
+
+/* 題も、同じ数（--face-p）から出します。**帯そのものは動きません**
+   ——動くのは中身（名前）だけ。
+
+   **重ねません。** 薄めて重ねるのも縦に送るのも試して外しました：どちらも
+   途中で二語が同時に見え、日本語は字が詰まっているので別の字に読めます
+   （実測：「買うもの」と「価格」が一塊になった）。
+   かわりに**順に**やります——先に「買うもの」が消えきってから（p .04→.30）、
+   「価格」が出てくる（p .30→.62）。決まり目で切り替える階段
+   （1000倍の clamp）ではなくなったので、じわっと変わりますが、二つが同時に
+   読めることはありません。上の札の帯と、**同じ拍・同じ区間**にすること。 */
 .face-title { position: relative; }
 .face-t { display: block; }
-.face-t-front { opacity: clamp(0, calc((.26 - var(--face-p, 0)) * 1000), 1); }
+.face-t-front { opacity: clamp(0, calc((.30 - var(--face-p, 0)) / .26), 1); }
 .face-t-back {
   position: absolute;
   inset: 0;
-  opacity: clamp(0, calc((var(--face-p, 0) - .26) * 1000), 1);
+  opacity: clamp(0, calc((var(--face-p, 0) - .30) / .32), 1);
 }
 
 @keyframes scr-in-r  { from { transform: translateX(100%); }  to { transform: none; } }
