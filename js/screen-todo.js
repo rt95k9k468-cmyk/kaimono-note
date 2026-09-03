@@ -3073,13 +3073,78 @@
   const EDGE_BAND = 84;
   const EDGE_MAX = 17;
 
-  /** 空きが広がる高さ。長い空きほど高く、ただし画面を覆わない程度に。
+  /* ---------------- 左の列は、一本の時間軸 ----------------
 
-      分をそのまま画素にすると、昼の5時間があいている日は帯だけで
-      300画素になり、前後の用事が視界から消えます。かといって全部同じ
-      高さにすると、10分の空きと3時間の空きが同じ顔になります。 */
-  function bandHeight(minutes) {
-    return Math.round(Math.min(220, Math.max(64, 40 + minutes * 0.42)));
+     **「空いている場所だけ置ける」という考え方は、捨てました。**
+
+     前は、掴んだ瞬間に空きの行が破線の帯になって上下へ広がり（`bandHeight`
+     が 64〜220px を返していました）、その帯の中だけが細かく狙えました。
+     つまり**置ける場所を決めていたのは、そこに何が置いてあるかでした**。
+
+     いまは行を見ません。**丸薬に合わせた一本の軸**を通します：丸薬の上端が
+     その用事の始まり、下端が終わり。丸薬と丸薬のあいだは、前の終わりから
+     次の始まりへまっすぐ。丸薬の上でも、あいだでも、空きでも、狙った高さの
+     時刻がそのまま出ます。
+
+     **まっすぐ一直線（列の上端＝日の始まり、下端＝終わり）も試して、外し
+     ました。** px あたりの分はどこでも同じになりますが、行の高さは題とメモが
+     決めていて時間に比例しないので、**丸薬の時刻と軸が最大 327分ずれました**
+     ——「12:30 旅行準備」の真横で札が「18:12」と出る。座標が示す時刻は、
+     そこに描いてある丸薬が言っている時刻でなければいけません。
+
+     ずれは 0分になりましたが、そのかわり px あたりの分は場所で変わります
+     （丸薬の中は細かく、長い空きは粗い）。**それでも置けない高さはありません**
+     ——どの座標にも時刻が対応します。 */
+
+  /** 掴んだときの軸。**一度だけ**決めます（途中で測り直すと、指の下で
+      速さが変わる）。持つのは列の上端からの px と、そこの分。位置は毎回
+      その場で測ります——画面を送れば列も動くので。 */
+  function axisOf(dayList) {
+    const rows = [...dayList.children].filter((li) => li.classList
+      && (li.classList.contains("tl-row") || li.classList.contains("tl-free-row")));
+    if (!rows.length) return null;
+    const box = dayList.getBoundingClientRect();
+    const from = Number(rows[0].dataset.at);
+    const to = Number(rows[rows.length - 1].dataset.until);
+    if (!isFinite(from) || !isFinite(to) || to <= from || box.height <= 0) return null;
+
+    /* 節は丸薬（`.tl-node`）の上端と下端。`.todo-mark` は中の32pxの絵で、
+       丸薬そのものではありません——あちらを測ると、4時間の用事も15分の
+       用事も同じ32pxになります。 */
+    const raw = [{ y: 0, min: from }];
+    rows.forEach((li) => {
+      const at = Number(li.dataset.at), un = Number(li.dataset.until);
+      const node0 = li.querySelector(".tl-node");
+      if (!node0 || !isFinite(at) || !isFinite(un) || un < at) return;
+      const b = node0.getBoundingClientRect();
+      if (b.height <= 0) return;
+      raw.push({ y: b.top - box.top, min: at });
+      raw.push({ y: b.bottom - box.top, min: un });
+    });
+    raw.push({ y: box.height, min: to });
+
+    /* **上から下へ、y も分も進む一本にします。** 重なった二つは丸薬どうしが
+       ぶつかる（`is-clash` が上下へ14pxずつ育てる）ので、そのままだと節が
+       前後します。y で並べ直して、分は前の節より戻らないように押さえます。 */
+    raw.sort((a, b) => a.y - b.y);
+    const pts = [];
+    raw.forEach((p) => {
+      const last = pts[pts.length - 1];
+      const min = last ? Math.max(last.min, p.min) : p.min;
+      if (last && p.y - last.y < 0.5) { last.min = Math.max(last.min, min); return; }
+      pts.push({ y: p.y, min });
+    });
+    if (pts.length < 2) return null;
+
+    /* 左右の境目は、行の**列の切れ目**そのもの（`grid-template-columns` が
+       44px 56px 1fr なので 100px）。前はここが `.tl-rail` の右端＝73px
+       でした——レールは 2px の線なので、その右端で切ると時刻を選べる幅が
+       列の切れ目より 27px 手前で終わっていて、しかも**題を掴んだ指は
+       いつも外側**にいました（実測：x=170 で縦に動かすと、どの高さでも
+       時刻が取れない）。 */
+    const item = dayList.querySelector(".tl-row .tl-item");
+    const edge = item ? item.getBoundingClientRect().left : box.left + 100;
+    return { pts, edge };
   }
 
   /* 一覧のドラッグ（下の reorder まわり）にも同じ名前の札があるので、
@@ -3122,7 +3187,7 @@
     });
   }
 
-  /** 持ち上げる。空きの行を開いて、置き場を見せます。 */
+  /** 持ち上げる。左の列が、一本の時間軸になります。 */
   function lift(row, id, list, day, y0) {
     const t = store.getTodo(id);
     if (!t) return;
@@ -3131,17 +3196,26 @@
     /* 持ち上げた指の位置を控えます。**動かさずに離したら、何もしません**
        ——下の drop() を見ること。 */
     /* 落とし先の一覧。ふつうは掴んだのと同じ一覧ですが、**長期タスクから
-       運ぶときだけは違います**——あの欄には空きの行が無いので、置き場は
+       運ぶときだけは違います**——あの欄には時刻の軸が無いので、置き場は
        その日の時間割のほうにあります。日付も、その日のものになります
-       （長期タスクはまだどの日のものでもないので）。 */
+       （長期タスクはまだどの日のものでもないので）。
+
+       **探すのは `.tl-list` です。** ここは `.tl:not(.tl-someday)` でした
+       が、`.tl` は**二つの別物**に付いています——行を並べる
+       `<ul class="tl tl-someday">`（js の 2148行）と、その日の時間割を
+       囲む `<div class="tl">`（2804行）。`:not(.tl-someday)` が拾うのは
+       後者の**囲い**で、中の `<ol class="tl-list">` ではありません。
+       囲いの子は `.tl-sum` と `<ol>` だけなので、行を数えると 0 件
+       ——長期タスクから運ぶと**時刻が一度も取れませんでした**（実測：
+       列の真上 x=20 でも、y 160〜710 の全点で時刻が null）。 */
     const someday = list.classList.contains("tl-someday");
     const dayList = someday
-      ? (root && root.querySelector(".todo-day .tl:not(.tl-someday)")) || list
+      ? (root && root.querySelector(".todo-day .tl-list")) || list
       : list;
     const dayKey = someday ? shownDay() : day;
 
     tlDrag = { id, row, list, dayList, someday, day: dayKey, len,
-               target: null, y0, moved: false };
+               target: null, y0, moved: false, axis: axisOf(dayList) };
     KN.motion.fire("reorder");
     row.classList.add("is-lifted");
     list.classList.add("is-dragging");
@@ -3157,45 +3231,36 @@
     list.addEventListener("click", eatClick, { capture: true, once: true });
     tlDrag.eatClick = eatClick;
 
-    /* 空きの行が、その空きぶんに**上下へ広がります**。**その空きに入る
-       ものだけ**——入らないところが開いても、置けないので。
+    /* **行は、いっさい動かしません。**
 
-       広がった帯の中は、時間そのものです。上端がその空きの始まり、下端が
-       終わり。指を上下すれば、その高さのぶんだけ時刻が動きます。前はここに
-       15分きざみの札を敷き詰めていましたが、昼の空きひとつで札が60枚
-       出て、時間帯を選ぶというより数字の壁を読む作業になっていました。
-       帯なら、長い空きは長く見えます——空きの**量**も同時に読めます。 */
-    /* 開くと、そのぶん下がぜんぶ押し下がります。掴んでいる行が指の下から
-       逃げると、狙ったところに置けません——**掴んだ行が動かないように**、
-       広がった量だけ画面のほうをずらします。上で開いたぶんだけ、下へ。 */
-    const before = row.getBoundingClientRect().top;
-    /* **空きは、長さに関わらず全部ひらきます。**
+       前はここで空きの行を破線の帯にして上下へ広げ、押し下がったぶんだけ
+       画面をずらし返していました。掴んだ行は指の下に留まりますが、**狙って
+       いた先のほうは動きます**——組み替わった軸の上で狙い直すことになる。
+       開いた帯そのものも「置けるのはここ」と言っていて、捨てた考え方の
+       生き残りでした（実測：帯が5つ、合わせて490px ぶん割り込んでいた）。
 
-       前は「その空きに入るものだけ」でした。入らないところを開いても
-       置けないから、という理屈でしたが、そもそも**重なってはいけない
-       理由がありません**。15分の隙間へ1時間の用事を置いたなら、次の
-       用事と重なる——それは利用者が決めたことで、こちらが止めることでは
-       ない（重なりは丸薬どうしがぶつかる絵で、ちゃんと見えます）。 */
-    dayList.querySelectorAll(".tl-free-row").forEach((fr) => {
-      const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
-      if (!isFinite(from) || !isFinite(until) || until <= from) return;
-      fr.classList.add("is-open");
-      fr.style.setProperty("--band-h", bandHeight(until - from) + "px");
-      fr.append(node(html`<span class="tl-band"></span>`));
-    });
-    /* 狙いの線は、**どの行にも**仕込みます（用事にも空きにも）。列ぜんぶが
-       一本の時間軸なので、線の置き場も行で分けません。 */
-    dayList.querySelectorAll(".tl-rail").forEach((rail) => {
-      if (rail.querySelector(".tl-aim-line")) return;
-      rail.append(node(html`
+       狙いの線は、行の中ではなく**一枚の層**に乗せます。列ぜんぶが一本の
+       軸なので、線の置き場を行で分ける理由がありません。行に仕込むと、
+       線は必ず行の境目に吸い寄せられます。 */
+    const aimLayer = node(html`
+      <div class="tl-aim" aria-hidden="true">
         <span class="tl-aim-line"><span class="tl-band-time"></span></span>
-      `));
-    });
-    const scroller = list.closest(".screen") || document.scrollingElement;
-    if (scroller) {
-      const shift = Math.round(row.getBoundingClientRect().top - before);
-      if (shift) scroller.scrollTop += shift;
+      </div>
+    `);
+    (dayList.closest(".tl") || dayList).append(aimLayer);
+    tlDrag.aimLayer = aimLayer;
+    /* **どこが時計なのかを、見せます。** 破線の帯を外したぶん、左の列が
+       時間軸だという手がかりが絵から消えました。運んでいるあいだだけ、
+       その幅にうすい地を敷きます——「左＝時刻、右＝並び順」は位置で言って
+       いることなので、その位置が見えていないと言えていません。 */
+    if (tlDrag.axis) {
+      const b = dayList.getBoundingClientRect();
+      const lb = aimLayer.getBoundingClientRect();
+      aimLayer.style.setProperty("--aim-edge", (tlDrag.axis.edge - lb.left).toFixed(1) + "px");
+      aimLayer.style.setProperty("--aim-top", (b.top - lb.top).toFixed(1) + "px");
+      aimLayer.style.setProperty("--aim-h", b.height.toFixed(1) + "px");
     }
+    const scroller = list.closest(".screen") || document.scrollingElement;
     tlDrag.scroller = scroller;
     tlDrag.x = row.getBoundingClientRect().left + 20;
     tlDrag.y = y0;
@@ -3260,46 +3325,47 @@
     d.raf = requestAnimationFrame(edgeScroll);
   }
 
-  /** 左の列の中で、その高さが何時かを返します（15分きざみ）。
+  /** 左の列の、その高さが何時か（15分きざみ）。
+
+      **縦の座標 → 時刻。それだけです。** そこに何が置いてあっても、置ける
+      かどうかは問いません——丸薬の上でも、丸薬と丸薬のあいだでも、空きでも、
+      同じ一本の軸の上の一点として読みます。目盛りは丸薬に合わせてあるので、
+      丸薬の真横に指を置けば、その丸薬が言っている時刻が出ます。
 
       列の外（題やメモの側）なら null。そちらは「順番で置きなおす」ほうの
       持ち場で、**左右で言っていることが違います**——左は時計、右は並び順。
+      境目は行の列の切れ目（`axisOf` の `edge`）で、レールの 2px の線では
+      ありません。
 
-      狙いの線もここで置きます。行の中の割合をそのまま線の位置にするので、
-      指のところに線が来ます。 */
+      狙いの線は一枚の層に置きます。指の高さがそのまま線の高さなので、
+      **行の境目へ吸い寄せられることも、空きへ逃げることもありません。** */
   function railTime(d, x, y) {
-    const rows = [...d.dayList.children].filter((li) => li.classList
-      && (li.classList.contains("tl-row") || li.classList.contains("tl-free-row")));
-    if (!rows.length) return null;
-    const first = rows[0].querySelector(".tl-rail");
-    if (!first) return null;
-    const col = first.getBoundingClientRect();
-    /* 横は列の幅ぶん。狭いと狙いにくいので、左は画面の端まで（時刻の字も
-       列のうち）、右は列の右端までにします。 */
-    if (x > col.right) return null;
+    const a = d.axis;
+    if (!a || x > a.edge) return null;
+    const box = d.dayList.getBoundingClientRect();
+    if (box.height <= 0) return null;
+    /* 節と節のあいだを、まっすぐ割ります。 */
+    const yy = Math.min(box.height, Math.max(0, y - box.top));
+    const pts = a.pts;
+    let i = 1;
+    while (i < pts.length - 1 && pts[i].y < yy) i++;
+    const p0 = pts[i - 1], p1 = pts[i];
+    const r = p1.y > p0.y ? (yy - p0.y) / (p1.y - p0.y) : 0;
+    const t = Math.round((p0.min + Math.min(1, Math.max(0, r)) * (p1.min - p0.min)) / SLOT_MIN) * SLOT_MIN;
 
-    let hit = null, ratio = 0;
-    for (const li of rows) {
-      const b = li.getBoundingClientRect();
-      if (b.height <= 0) continue;
-      if (y < b.top) { if (!hit) { hit = li; ratio = 0; } break; }
-      if (y <= b.bottom) { hit = li; ratio = (y - b.top) / b.height; break; }
-      hit = li; ratio = 1;                       // まだ下にある：最後の行に留める
-    }
-    if (!hit) return null;
-    const at = Number(hit.dataset.at), until = Number(hit.dataset.until);
-    if (!isFinite(at) || !isFinite(until) || until <= at) return null;
-    const t = Math.round((at + Math.min(1, Math.max(0, ratio)) * (until - at)) / SLOT_MIN) * SLOT_MIN;
-
-    hit.classList.add("is-aim", "is-aim-time");
-    const rail = hit.querySelector(".tl-rail");
-    const line = rail && rail.querySelector(".tl-aim-line");
+    const layer = d.aimLayer;
+    const line = layer && layer.querySelector(".tl-aim-line");
     if (line) {
-      line.style.top = (Math.min(1, Math.max(0, ratio)) * 100).toFixed(1) + "%";
+      const lb = layer.getBoundingClientRect();
+      /* 線は**層の中の位置**で置きます（行の中の割合ではなく）。層は
+         その日の時間割ぜんぶを覆っているので、指の高さをそのまま渡せます。 */
+      line.style.top = (Math.min(box.bottom, Math.max(box.top, y)) - lb.top).toFixed(1) + "px";
+      line.style.width = (a.edge - lb.left).toFixed(1) + "px";
+      layer.classList.add("is-on");
       const label = line.querySelector(".tl-band-time");
       if (label) label.textContent = KN.plan.toTime(t);
     }
-    return { at: t, row: hit };
+    return { at: t };
   }
 
   /** いま指の下にあるのは、どの置き場か。 */
@@ -3308,8 +3374,9 @@
     if (!d) return;
     [d.list, d.dayList, root].forEach((L) => {
       if (!L) return;
-      L.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim", "is-aim-time"));
+      L.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
     });
+    if (d.aimLayer) d.aimLayer.classList.remove("is-on");
     if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
 
     /* ---- 週の帯の日 ----
@@ -3415,18 +3482,12 @@
     [d.list, d.dayList, root].forEach((L) => {
       if (!L) return;
       L.querySelectorAll(".is-aim").forEach((el) => {
-        el.classList.remove("is-aim", "is-aim-before", "is-aim-time");
+        el.classList.remove("is-aim", "is-aim-before");
       });
     });
-    d.dayList.querySelectorAll(".tl-aim-line").forEach((el) => el.remove());
-    /* 広げた空きは、閉じます。置いたあとに描き直される行もありますが、
-       落とす先が無かったときは描き直されないので、ここで畳みます。 */
-    d.dayList.querySelectorAll(".tl-free-row.is-open").forEach((fr) => {
-      fr.classList.remove("is-open");
-      fr.style.removeProperty("--band-h");
-      const band = fr.querySelector(".tl-band");
-      if (band) band.remove();
-    });
+    /* 狙いの層を片づけます。行には何も仕込んでいないので、畳むものは
+       これだけです（空きを広げるのをやめたので、閉じる手当ても要らない）。 */
+    if (d.aimLayer) d.aimLayer.remove();
     /* click は離した直後に来ます。来なかったぶんは、ここで片づけます
        ——置いたままだと、次にどこかを押したときに食べてしまいます。 */
     if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);

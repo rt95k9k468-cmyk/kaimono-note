@@ -4240,77 +4240,58 @@ a.btn { text-decoration: none; }
 }
 .tl-row.is-aim.is-aim-before::before { bottom: auto; top: -1px; }
 
-/* 空いている時間は、つまんでいるあいだだけ**上下に広がります**。
-   その空きに入るものだけ開くので、開いた＝置ける、です。
+/* ---- 左の列は、一本の時間軸 ----
 
-   帯の高さは空きの長さに比例します（上限つき）。広がった量がそのまま
-   「どれだけあいているか」で、その中の高さが「何時か」です。 */
-.tl-free-row.is-open .tl-free-text { color: var(--c-text-2); }
-/* 帯は新しい段に出るので、線も一緒に伸ばします。伸ばさないと、広げた
-   ぶんだけ背骨が途切れて、時間が切れているように見えました。
+   **破線の帯（`.tl-band`）は、捨てました。** 掴んだ瞬間に空きの行が上下へ
+   広がって、その中だけが細かく狙えた——つまり「置ける場所」を、そこに何が
+   置いてあるかが決めていました。広がるぶん（実測：帯5つで490px）だけ行が
+   押し下がるので、狙っていた先も指の下から逃げます。
 
-   四つとも置き場所を明記します。線にだけ段をまたがせると、残りの三つは
-   自動で置かれるので順番がずれ、時刻が右へ、線が左端へ飛びました。 */
-.tl-free-row.is-open .tl-time { grid-column: 1; grid-row: 1; }
-.tl-free-row.is-open .tl-rail { grid-column: 2; grid-row: 1 / span 2; }
-.tl-free-row.is-open .tl-free-text { grid-column: 3; grid-row: 1; }
-.tl-free-row.is-open .tl-band { grid-row: 2; }
-.tl-band {
-  grid-column: 3;
-  position: relative;
-  display: block;
-  height: var(--band-h, 96px);
-  margin: 2px var(--sp-4) 10px 8px;
-  border-radius: var(--r-md);
-  border: 1.5px dashed var(--c-border);
-  background: color-mix(in srgb, var(--c-primary) 5%, transparent);
-  /* **高さは動かしません。** 高さを 0 から伸ばすと、掴んでいるあいだ
-     ずっと下の行が動きつづけて、狙った先が指の下から逃げていきました。
-     広がりは一度で決まり、変わるのは濃さだけにします。 */
-  animation: tl-band-in var(--m-sheet-open) var(--ease-out) both;
+   いまは行を一切動かしません。狙いの線は、行の中ではなく**一枚の層**
+   （`.tl-aim`）に乗せます。指の高さがそのまま線の高さなので、行の境目へ
+   吸い寄せられることも、空きへ逃げることもありません。 */
+.tl-aim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
 }
-@keyframes tl-band-in {
-  from { opacity: 0; }
+/* 運んでいるあいだだけ、時間軸の幅にうすい地。**どこが時計なのか**を絵で
+   言います——破線の帯を外したぶん、その手がかりが消えていました。
+   「左＝時刻、右＝並び順」は位置で言っていることなので、その位置が見えて
+   いないと、言えていないのと同じです。 */
+.tl-aim::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--aim-top, 0);
+  width: var(--aim-edge, 100px);
+  height: var(--aim-h, 100%);
+  background: color-mix(in srgb, var(--c-primary) 6%, transparent);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
 }
-.tl-free-row.is-aim .tl-band {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--c-primary) 45%, transparent);
-  background: color-mix(in srgb, var(--c-primary) 11%, transparent);
-}
-
-/* 丸薬の上を狙ったときの、置く時刻の線。空きの帯の線と同じ役目ですが、
-   置き場所が丸薬の列なので、そのぶん左右へはみ出させます（3.5pxの線の上に
-   同じ幅の線を重ねても見えないので）。 */
 .tl-aim-line {
   position: absolute;
-  left: -9px; right: -9px; top: 0;
+  left: 0; top: 0;
   height: 2.5px;
   border-radius: 2px;
   background: var(--c-primary);
   opacity: 0;
   pointer-events: none;
-  z-index: 3;
-  transition: top var(--m-press) var(--ease-out);
+  /* **時間はかけません。** 線が指を追いかけると、狙った高さと線の高さが
+     ずれたまま指を離すことになります。座標がそのまま時刻なので、線は
+     座標に居ること。 */
 }
-.tl-row.is-aim-time .tl-aim-line,
-.tl-free-row.is-aim-time .tl-aim-line { opacity: 1; }
+.tl-aim.is-on .tl-aim-line { opacity: 1; }
+/* 線の右端に、狙っている時刻。左端だと画面の外へ出ます（軸は画面の左端から
+   始まっているので）。 */
+.tl-aim-line .tl-band-time { left: auto; right: 0; transform: translate(4px, -50%); }
 /* 長期タスクの欄へ運んでいるあいだ。**受け皿ぜんぶ**を光らせます
    ——あそこには行が無いこともあるので、行を光らせる手が使えません。 */
 .tl-someday-sec.is-aim {
   background: color-mix(in srgb, var(--c-primary) 8%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c-primary) 40%, transparent);
   border-radius: var(--r-md);
-}
-
-/* 指の高さにいる一本の線が、置く時刻です。 */
-.tl-band-line {
-  position: absolute;
-  left: 0; right: 0; top: 0;
-  height: 2.5px;
-  border-radius: 2px;
-  background: var(--c-primary);
-  opacity: 0;
-  transition: top var(--m-press) var(--ease-out);
 }
 
 .tl-band-time {
@@ -4325,10 +4306,6 @@ a.btn { text-decoration: none; }
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-@media (prefers-reduced-motion: reduce) {
-  .tl-band { animation: none; }
-  .tl-band-line { transition: none; }
 }
 
 /* ---------------- 買うものを、その日の予定に ----------------
