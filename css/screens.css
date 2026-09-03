@@ -3661,7 +3661,10 @@ a.btn { text-decoration: none; }
      スクロールし直すことになります。紙の地を持たせて、中身はその下を
      流れます（角の丸みも紙と同じ——止まったときに紙の頭に見えるように）。 */
   position: sticky;
-  top: 0;
+  /* 上のバー（.topbar）は sticky で top:0 に居るので、そのぶん下げます
+     ——重ねると掴み手がバーの裏へ潜ります。厚みは JS が測って
+     --topbar-h に渡してきます（ノッチの深さで変わるため）。 */
+  top: var(--topbar-h, 0px);
   z-index: 5;
   background: var(--c-surface);
   border-radius: 22px 22px 0 0;
@@ -4034,6 +4037,22 @@ a.btn { text-decoration: none; }
   border-bottom: 1px solid var(--c-border);
   border-right: none;
   box-shadow: none;
+}
+
+/* 買うもの・価格の紙。ここは暦を持たないので、上のバーと札の下から
+   画面の下まで、まるごと一枚です。中身が少ない日でも下まで届くように、
+   器のほうを伸ばします（`min-height: 62vh` だけだと途中で切れて、その下の
+   地が「まだ何かある」に見える）。 */
+#screen-list > .stack,
+#screen-prices > .stack { flex: 1; min-height: 0; }
+#screen-list .tl-sheet,
+#screen-prices .tl-sheet {
+  flex: 1;
+  /* 画面の下の余白（帯のぶん）は、紙のほうが引き受けます。器のほうに
+     持たせたままだと、白い紙が画面の途中で切れて、その下の地が
+     「まだ何かある」に見えます。 */
+  margin-bottom: calc(-1 * (var(--tabbar-space) + var(--sp-8) + var(--sp-6)));
+  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
 }
 
 /* ダイエットの紙。掴むためだけの一枚で、**面は持ちません**——中の

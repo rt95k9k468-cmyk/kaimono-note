@@ -1117,6 +1117,18 @@
             </span>
             <span class="row-value">${s.showThen === false ? "オフ" : "オン"}</span>
           </button>
+          ${/* Daily Log をその日ぶんだけ出すか、月ぜんぶ並べるか。
+                既定は**その日ぶん**——毎日開くのは今日を書くためなのに、
+                書いた日が増えるほど今日が下へ流れていく作りだったので。 */""}
+          <button class="row js-scope">
+            <span class="row-main">
+              <span class="row-title">Daily Log に出す範囲</span>
+              <span class="row-sub">${s.dailyScope === "month"
+                ? "その月ぜんぶを、日ごとに縦へ並べます"
+                : "暦で選んでいる日の、一日ぶんだけ"}</span>
+            </span>
+            <span class="row-value">${s.dailyScope === "month" ? "月ぜんぶ" : "1日"}</span>
+          </button>
           <button class="row js-logfull">
             <span class="row-main">
               <span class="row-title">Daily Log の見せ方</span>
