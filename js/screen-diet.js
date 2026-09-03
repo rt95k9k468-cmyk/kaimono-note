@@ -446,9 +446,10 @@
     `);
     els.body.append(sheet);
     wireCalPull(sheet);
-    /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
-       使えません。閉じているあいだだけ譲ってもらいます。 */
-    if (!calOpen()) sheet.setAttribute("data-pull-own", "cal");
+    /* **印は掴み手だけ。** 紙ぜんぶに付けていたので、この画面では
+       「引いて更新」がまるごと効かなくなっていました。 */
+    const grip = sheet.querySelector(".tl-grip");
+    if (grip) grip.setAttribute("data-pull-own", "cal");
 
     sheet.append(node(html`
       <div class="diet">

@@ -2040,11 +2040,13 @@
       sheet.append(somedaySection(open));
       wireDaySwipe(sheet);
       wireCalPull(sheet);
-      /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
-         使えません。閉じているあいだだけ譲ってもらいます（開いていれば
-         下向きは空いているので、これまでどおり更新できます）。
-         上の暦の帯からは、どちらの姿でも引けます。 */
-      if (els.cal && !calOpen()) sheet.setAttribute("data-pull-own", "cal");
+      /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました
+         ——紙のどこを持っても下へ引けば暦が出た時期の名残です。段を
+         替えられるのが掴み手だけになったいま、紙の本体は「引いて更新」の
+         ものなので、そのまま譲ります（ダイエットで引いて更新が効かなく
+         なっていたのは、これでした）。 */
+      const grip = sheet.querySelector(".tl-grip");
+      if (grip) grip.setAttribute("data-pull-own", "cal");
       restoreTop(keepTop);
       return;
     }
@@ -3059,6 +3061,12 @@
   const DRAG_HOLD = 380;   // これだけ押さえたら持ち上がる
   const DRAG_SLOP = 8;     // その前にこれ以上動いたら、ただのスクロール
   const SLOT_MIN = 15;     // 帯の中は15分きざみで止まります
+  /* 運んでいる最中に、画面の端で自動的に送る帯の厚みと、ひと呼吸あたりの
+     送り幅。**端に近いほど速く**——深く入るほど急いでいる、と読みます。
+     これが無いと、画面の外にあるもの（長期タスクの欄や、朝の時間帯）へは
+     運べません。指は画面から出られないので。 */
+  const EDGE_BAND = 84;
+  const EDGE_MAX = 17;
 
   /** 空きが広がる高さ。長い空きほど高く、ただし画面を覆わない程度に。
 
@@ -3189,12 +3197,17 @@
       const shift = Math.round(row.getBoundingClientRect().top - before);
       if (shift) scroller.scrollTop += shift;
     }
+    tlDrag.scroller = scroller;
+    tlDrag.x = row.getBoundingClientRect().left + 20;
+    tlDrag.y = y0;
+    tlDrag.raf = requestAnimationFrame(edgeScroll);
 
     const move = (ev) => {
       if (!tlDrag) return;
       /* 「動かした」と言えるのは、狙いが変わるだけ動いてから。指は置いた
          ままでも数px揺れるので、その揺れで時刻が書き換わっては困ります。 */
       if (Math.abs(ev.clientY - tlDrag.y0) > DRAG_SLOP) tlDrag.moved = true;
+      tlDrag.x = ev.clientX; tlDrag.y = ev.clientY;
       aim(ev.clientX, ev.clientY);
     };
     /* 運んでいるあいだ、画面のほうは動かしません。
@@ -3221,6 +3234,31 @@
     document.addEventListener("pointerup", done);
     document.addEventListener("pointercancel", give);
     aim(row.getBoundingClientRect().left + 20, y0);
+  }
+
+  /** 画面の端まで運んだら、その向きへ送ります。
+
+      指は画面から出られないので、これが無いと**画面の外にあるものへは
+      運べません**——長期タスクの欄が下に隠れていたら、そこへは置けない。
+      端に近いほど速くします（深く入るほど急いでいる、と読む）。
+      送ったあとは狙いを取り直します——中身が指の下で動いたので。 */
+  function edgeScroll() {
+    const d = tlDrag;
+    if (!d) return;
+    const sc = d.scroller;
+    if (sc) {
+      const b = sc.getBoundingClientRect();
+      let v = 0;
+      if (d.y < b.top + EDGE_BAND) v = -(b.top + EDGE_BAND - d.y) / EDGE_BAND;
+      else if (d.y > b.bottom - EDGE_BAND) v = (d.y - (b.bottom - EDGE_BAND)) / EDGE_BAND;
+      if (v) {
+        const step = Math.sign(v) * Math.max(2, Math.min(1, Math.abs(v)) * EDGE_MAX);
+        const was = sc.scrollTop;
+        sc.scrollTop = was + step;
+        if (sc.scrollTop !== was) aim(d.x, d.y);
+      }
+    }
+    d.raf = requestAnimationFrame(edgeScroll);
   }
 
   /** いま指の下にあるのは、どの置き場か。 */
@@ -3324,17 +3362,22 @@
        「順番で置きなおす」ままにします（別のことを言っているので）。 */
     for (const r of rows) {
       const rail = r.querySelector(".tl-rail");
-      if (!rail) continue;
+      const node = r.querySelector(".tl-node");
+      if (!rail || !node) continue;
+      /* 掴めるのは**列ぜんぶ**（横は rail）。ただし時刻を読むのは**丸薬の
+         中だけ**です（縦は node）——丸薬の上下のつなぎは、この用事の時間
+         ではないので、そこを時刻に混ぜると、狙った時刻とずれます。 */
       const b = rail.getBoundingClientRect();
-      if (b.height <= 0 || x < b.left || x > b.right || y < b.top || y > b.bottom) continue;
+      const n = node.getBoundingClientRect();
+      if (n.height <= 0 || x < b.left || x > b.right || y < n.top || y > n.bottom) continue;
       const from = Number(r.dataset.at), until = Number(r.dataset.until);
       if (!isFinite(from) || !isFinite(until) || until <= from) continue;
-      const ratio = Math.min(1, Math.max(0, (y - b.top) / b.height));
+      const ratio = Math.min(1, Math.max(0, (y - n.top) / n.height));
       const at = Math.round((from + ratio * (until - from)) / SLOT_MIN) * SLOT_MIN;
       r.classList.add("is-aim", "is-aim-time");
       const line = rail.querySelector(".tl-aim-line");
       if (line) {
-        line.style.top = (ratio * 100).toFixed(1) + "%";
+        line.style.top = (((n.top - b.top) + ratio * n.height) / (b.height || 1) * 100).toFixed(1) + "%";
         const label = line.querySelector(".tl-band-time");
         if (label) label.textContent = KN.plan.toTime(at);
       }
@@ -3363,6 +3406,7 @@
     const d = tlDrag;
     tlDrag = null;
     if (!d) return;
+    if (d.raf) cancelAnimationFrame(d.raf);
     d.row.classList.remove("is-lifted");
     d.list.classList.remove("is-dragging");
     d.dayList.classList.remove("is-dragging");

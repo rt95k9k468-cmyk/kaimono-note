@@ -1469,10 +1469,12 @@
     els.body.append(sheet);
     wireCalPull(sheet);
     wireMonthPage(sheet);
-    /* 紙を下へ引くと暦が出てくるので、そのぶん「引いて更新」は紙の上では
-       使えません。閉じているあいだだけ譲ってもらいます（開いていれば
-       下向きは空いているので、これまでどおり更新できます）。 */
-    if (!calOpen()) sheet.setAttribute("data-pull-own", "cal");
+    /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました——紙の
+       どこを持っても下へ引けば暦が出た時期の名残です。段を替えられるのが
+       掴み手だけになったいま、紙の本体は「引いて更新」のものなので、
+       そのまま譲ります。 */
+    const grip = sheet.querySelector(".tl-grip");
+    if (grip) grip.setAttribute("data-pull-own", "cal");
 
     /* 「あの日」は、紙のいちばん上。暦は行き先を選ぶところなので、**最初の
        中身**はこれになります。見つからない日は、null が返って何も置かれ
