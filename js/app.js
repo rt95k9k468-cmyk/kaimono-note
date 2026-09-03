@@ -322,19 +322,61 @@
   };
 
 
+  /* ---------------- 画面は、帯と同じ向きへ流れる ----------------
+
+     daily → やること と押したなら、画面も左へ流れて次の面が右から入って
+     きます。どちらへ動いたかが、動きそのもので分かるように。
+
+     並びは**下の帯の並び**です。買うもの と 価格 は同じ一つのタブの表と裏
+     なので、同じ番号を持たせます——ふた面をめくるのは横へ動くことでは
+     ないので、そこは流しません（これまでどおりの入りかた）。 */
+  const SLIDE = { archive: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
+  const SLIDE_MS = 280;
+  let slideT = null;
+
+  function slideDir(from, to) {
+    if (!from || from === to) return 0;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return 0;
+    const a = SLIDE[from], b = SLIDE[to];
+    if (a == null || b == null || a === b) return 0;
+    return b > a ? 1 : -1;
+  }
+
   function show(id) {
     if (!KN.screens[id]) return;
     if (!goingBack) {
       if (OFF_BAR.includes(id)) { if (active !== id) drawerFrom.push(active); }
       else drawerFrom.length = 0;
     }
+    const from = active;
     active = id;
+    const dir = slideDir(from, id);
 
     document.querySelectorAll(".screen").forEach((s) => {
       const on = s.dataset.screen === id;
+      /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
+         動くものがありません。 */
+      const out = dir !== 0 && !on && s.dataset.screen === from;
+      s.classList.remove("is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r");
       s.classList.toggle("is-active", on);
-      s.hidden = !on;
+      if (on) {
+        s.hidden = false;
+        if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
+      } else if (out) {
+        s.classList.add("is-leaving", dir > 0 ? "is-out-l" : "is-out-r");
+      } else {
+        s.hidden = true;
+      }
     });
+    clearTimeout(slideT);
+    if (dir) {
+      slideT = setTimeout(() => {
+        document.querySelectorAll(".screen.is-leaving").forEach((s) => {
+          s.classList.remove("is-leaving", "is-out-l", "is-out-r");
+          s.hidden = true;
+        });
+      }, SLIDE_MS + 40);
+    }
 
     ensureMounted(id);
     KN.screens[id].render();

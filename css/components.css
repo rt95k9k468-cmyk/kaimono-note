@@ -629,6 +629,15 @@ button, [role="tab"] {
 .empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
 .empty-text  { font-size: var(--fs-md); max-width: 30ch; line-height: var(--lh-body); }
 
+/* 画面の主役ではない空きのとき（daily の積み上げのように、上にもう中身が
+   ある一段）。**同じ大きさで出すと、無いもののほうが大きく見えます。**
+   絵は残しますが、面積はその一段ぶんに収めます。 */
+.empty.is-quiet { padding: var(--sp-6) var(--sp-6); gap: var(--sp-2); }
+.empty.is-quiet .empty-art { width: 64px; height: 64px; }
+.empty.is-quiet .empty-art .empty-svg { width: 40px; height: 40px; }
+.empty.is-quiet .empty-title { font-size: var(--fs-md); }
+.empty.is-quiet .empty-text { font-size: var(--fs-sm); }
+
 /* ---------------- sheet (bottom modal) ---------------- */
 
 /* All the blurring happens here rather than on the sheet itself. The sheet is

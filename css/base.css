@@ -550,6 +550,8 @@ a { color: var(--c-primary); }
   flex: 1;
   min-height: 0;
   position: relative;
+  /* 面が横へ流れるあいだ、外へはみ出したぶんは見せません。 */
+  overflow: hidden;
 }
 
 .screen {
@@ -583,6 +585,33 @@ a { color: var(--c-primary); }
 @keyframes screen-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
+}
+
+/* ---------------- 帯と同じ向きへ流れる ----------------
+
+   daily → やること と押したなら、画面も左へ流れて次の面が右から入って
+   きます。どちらへ動いたかが、動きそのもので分かるように。
+
+   出ていく面は、流れ終わるまで残します（app.js が is-leaving を付けて、
+   終わったころに外します）——消してから動かしても、動くものがありません。
+   ふた面（買うもの ⇄ 価格）は横へ動くことではないので、流しません。 */
+.screen.is-leaving {
+  display: flex;
+  pointer-events: none;
+  z-index: 0;
+}
+.screen.is-active.is-in-r { animation: scr-in-r .28s var(--ease-out); }
+.screen.is-active.is-in-l { animation: scr-in-l .28s var(--ease-out); }
+.screen.is-leaving.is-out-l { animation: scr-out-l .28s var(--ease-out) forwards; }
+.screen.is-leaving.is-out-r { animation: scr-out-r .28s var(--ease-out) forwards; }
+
+@keyframes scr-in-r  { from { transform: translateX(100%); }  to { transform: none; } }
+@keyframes scr-in-l  { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes scr-out-l { from { transform: none; } to { transform: translateX(-100%); } }
+@keyframes scr-out-r { from { transform: none; } to { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.is-active, .screen.is-leaving { animation: none; }
 }
 
 /* ---------------- pull to refresh ---------------- */

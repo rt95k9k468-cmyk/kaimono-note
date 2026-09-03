@@ -1186,6 +1186,11 @@
       const on = s.showThen === false;
       dailySet("showThen", on, on ? "「あの日」を出します" : "「あの日」を出しません");
     });
+    wrap.querySelector(".js-scope").addEventListener("click", () => {
+      const toMonth = s.dailyScope !== "month";
+      dailySet("dailyScope", toMonth ? "month" : "day",
+        toMonth ? "その月ぜんぶを並べます" : "選んでいる日の、一日ぶんだけ出します");
+    });
     wrap.querySelector(".js-logfull").addEventListener("click", () => {
       dailySet("logFull", !full, full ? "はじめの三行だけ出します" : "全文を出します");
     });

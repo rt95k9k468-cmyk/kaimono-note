@@ -518,18 +518,38 @@
      ③ Daily Log — その日あったこと・したこと
      ================================================================ */
 
+  /** 見ている日。日を選んでいなければ、今日（その月でなければ月の頭）。 */
+  const focusDay = () => viewDay || (isThisMonth() ? U.todayKey() : `${curYm()}-01`);
+  /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
+  const oneDayLog = () => S().dailyScope !== "month";
+
   function dailyLog(ym) {
-    const days = viewDay ? store.daysOfMonth(ym).filter((d) => d.date === viewDay) : store.daysOfMonth(ym);
+    /* **その日ぶんだけ**を紙に出します（設定で月ぜんぶにも戻せます）。
+
+       月ぜんぶを縦に並べていました。書いた日が増えるほど、今日の一行は
+       下へ流れていきます——毎日開くのは「今日を書く」ためなのに、今日が
+       だんだん遠くなる、という作りでした。日を移すのは暦のほうの役目です。
+
+       その日にまだ何も無いときは、**空のまま一行を出します**。無いことを
+       言うためではなく、押せば書けるところがそこに要るからです。 */
+    const only = oneDayLog() ? focusDay() : viewDay;
+    const all = store.daysOfMonth(ym);
+    const days = only
+      ? (all.filter((d) => d.date === only).length
+          ? all.filter((d) => d.date === only)
+          : [{ date: only, memo: "" }])
+      : all;
     const sec = node(html`
       <section class="card arc-log">
         <header class="arc-log-head">
           ${/* 見出しから年月を外しました。すぐ上の暦が「8月 2026」と言っていて、
                 さらにその上の帯も月を言っていた——一画面に三回。行そのものは
-                日の数字を持っているので、ここは名前だけで足ります。 */""}
+                日の数字を持っているので、ここは名前だけで足ります。
+
+                「今日を書く」のボタンも外しました。すぐ下の行そのものが
+                押せば開くもので、＋の中にも同じ口があります——同じことへ
+                三つ目の入口を作ると、見出しの重さがそのぶん増えるだけです。 */""}
           <h2>Daily Log</h2>
-          <button type="button" class="btn btn-soft btn-sm js-write">
-            ${icon("edit", "is-sub")}<span>今日を書く</span>
-          </button>
         </header>
         <div class="arc-log-body"></div>
       </section>
@@ -555,15 +575,19 @@
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
           </span>
           <span class="arc-log-text">
-            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""}">${orDash(d.memo)}</span>
+            ${/* まだ何も書いていない日は、「-」ではなく**押せば書ける**と
+                  言います。無いことを数えた字にはしません（daily は評価
+                  しないので、「書けていない」とも言いません）。 */""}
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.createdAt ? "" : "is-blank"}"
+                  >${d.createdAt ? orDash(d.memo) : "押して、この日のことを書く"}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
                   中身のほうに先に行くようにします。どちらも、要らない人は
                   設定で消せます（数字が四つ並ぶのが邪魔なときがあるので）。 */""}
-            ${S().showDayTimes === false ? "" : html`
+            ${S().showDayTimes === false || !d.createdAt ? "" : html`
               <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
-            ${S().showStamps === false ? "" : html`
+            ${S().showStamps === false || !d.createdAt ? "" : html`
               <span class="arc-log-meta">
                 <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
                 ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
@@ -592,9 +616,6 @@
       if (feed) body.append(feed);
     });
 
-    sec.querySelector(".js-write").addEventListener("click", () => {
-      openLogSheet(viewDay || (isThisMonth() ? U.todayKey() : `${ym}-01`));
-    });
     return sec;
   }
 
@@ -688,11 +709,12 @@
      せん——この画面が答えるのは「あの月はどんな月だったか」で、良し悪し
      ではないので。
 
-     日を絞って見ているときは出しません（その日ぶんは Daily Log の行が
-     そのまま言っているので、まとめる相手がいません）。
+     **日を絞っていても出します。** 前は出していませんでした——「その日ぶんは
+     Daily Log の行がそのまま言っている」という理由でしたが、Daily Log が
+     一日ぶんになったいま、この一段だけが月の話をします。消すと、月を
+     見る手だてがどこにも無くなります。
      ================================================================ */
   function monthDigest(ym) {
-    if (viewDay) return null;
     const d = store.monthDigest(ym);
     if (!d.total && !d.daysWith.length) return null;
 
@@ -912,14 +934,25 @@
 
     /* 数は札のほうへ。上にあった「◯月の積み上がり」の一行と同じ内訳です
        ——数えるほうと押すほうを、一つにまとめました。ゼロは書きません
-       （「種 0」は、無いことを数えた字なので）。 */
+       （「種 0」は、無いことを数えた字なので）。
+
+       **札は、あるものだけ並べます。** 五種類ぜんぶを always 出していた
+       ので、一件も書いていない月でも「すべて・読書・学習・種・達成・変化」
+       と六つの丸が並び、その下は空でした。**中身より操作のほうが多い**
+       画面で、それがこの一段の見た目を重くしていた正体です。 */
     const counts = store.monthCounts(ym);
-    KN.ui.chipRow(sec.querySelector(".js-typechips"),
-      [{ id: "all", label: "すべて" },
-       ...store.ARCHIVE_TYPES.map((t) => ({
-         id: t.id, label: t.label, color: t.color, count: counts[t.id] || null,
-       }))],
-      { activeId: typeFilter, onPick: (id) => { typeFilter = id; KN.motion.fire("select"); render(); } });
+    const kinds = store.ARCHIVE_TYPES.filter((t) => counts[t.id]);
+    const chips = sec.querySelector(".js-typechips");
+    if (kinds.length > 1) {
+      KN.ui.chipRow(chips,
+        [{ id: "all", label: "すべて" },
+         ...kinds.map((t) => ({ id: t.id, label: t.label, color: t.color, count: counts[t.id] }))],
+        { activeId: typeFilter, onPick: (id) => { typeFilter = id; KN.motion.fire("select"); render(); } });
+    } else {
+      /* 一種類しか無ければ、絞る相手がいません。 */
+      if (typeFilter !== "all") typeFilter = "all";
+      chips.remove();
+    }
 
     sec.querySelector(".js-sort").addEventListener("click", () => {
       sortMode = nextSort(sortMode); KN.motion.fire("select"); render();
@@ -931,9 +964,16 @@
 
     const rows = sec.querySelector(".js-rows");
     const list = visibleEntries(ym);
+    /* 並べ替えとお気に入りも、**並べる相手がいるときだけ**。一件も無い
+       ところに「更新順 ☆」が浮いていても、押せることしか言いません。
+       （お気に入りだけ見ているときは、戻れなくなるので残します。） */
+    if (list.length < 2 && !favOnly) {
+      sec.querySelector(".js-sort").remove();
+      sec.querySelector(".js-favonly").remove();
+    }
     if (!list.length) {
       rows.append(node(html`
-        <div class="empty">
+        <div class="empty is-quiet">
           ${/* 枠（.empty-art）に入れます。裸で置くと大きさの決まりが効かず、
                 原寸のまま出ます——「アイコンが大きすぎる」の正体はこれでした。 */""}
           <div class="empty-art">${U.raw(KN.emptyArt.notebook)}</div>
