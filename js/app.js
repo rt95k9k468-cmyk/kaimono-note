@@ -346,6 +346,11 @@
   const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
   const FACE_MS = 280;
   const FRONT = "list", BACK = "prices";
+  /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
+     画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
+     地なので、掴み手を持てない——base.css の「紙一枚と、その後ろの地」）。
+     掴み手ぶん（29px）だけ残せば、そこが戻り道になります。 */
+  const FACE_PEEK = 29;
 
   const screensEl = () => document.getElementById("screens");
 
@@ -354,21 +359,49 @@
              back: document.getElementById("screen-" + BACK) };
   }
 
-  /** 紙が下りきるまでの道のり（px）。**札の上端から、画面の下まで**
-      ——下りきったところで、前の紙は画面から出ていること。 */
+  /* **`--face-p` は `#screens` に書きます**（前の面ではなく）。
+
+     カスタムプロパティは、書いた要素から**下へ**しか伝わりません。前の面に
+     書いていたので、後ろの面（価格）からは読めませんでした——題と札を
+     「動かさずに中身だけ入れ替える」には、後ろの札もこの数を読む必要が
+     あるので、二枚の親まで上げます。 */
+  const faceVar = (k) => {
+    const box = screensEl();
+    return box ? parseFloat(box.style.getPropertyValue(k)) : NaN;
+  };
+
+  /** 紙が下りきるまでの道のり（px）。**紙の頭から、下の帯の上まで**
+      ——下りきったところで、頭が `FACE_PEEK` ぶん帯の上に残ること。 */
   function faceDist(front) {
     const box = screensEl();
     if (!box) return 1;
-    const head = front.querySelector(".js-filter") || front.querySelector(".tl-sheet");
+    /* 測るのは**掴み手**です。紙の箱の上端ではありません——掴み手は sticky で
+       いつも見えている「頭」そのものなので、一覧を下へ送ってあっても、
+       同じところに留まります（紙の箱の上端は画面の外へ流れていく）。 */
+    const head = front.querySelector(".tl-grip") || front.querySelector(".tl-sheet");
+    const bar = document.getElementById("tabbar");
     const b = box.getBoundingClientRect();
-    if (!head) return b.height || 1;
-    return Math.max(1, b.bottom - head.getBoundingClientRect().top);
+    const floor = bar ? bar.getBoundingClientRect().top : b.bottom;
+    if (!head) return Math.max(1, b.height - FACE_PEEK);
+    /* いま動いているぶんを差し引いて、**動かす前の頭の位置**を出します。
+       留まっているところ（p=1）から掴み直しても同じ道のりになるように。 */
+    const p = faceVar("--face-p") || 0;
+    const d0 = faceVar("--face-d") || 0;
+    const hb = head.getBoundingClientRect();
+    const rest = hb.top - p * d0;
+    /* のぞかせる量は**掴み手そのものの高さ**。CSS の余白を変えたら、ここも
+       黙って付いてきます（数字を二か所に書くと、片方だけ直した日にずれる）。
+       留まった紙を頭の高さで切るのにも同じ数を使うので、書き出しておきます。 */
+    const peek = hb.height || FACE_PEEK;
+    box.style.setProperty("--face-peek", peek.toFixed(1) + "px");
+    return Math.max(1, floor - peek - rest);
   }
 
   /** 二枚とも見えるようにして、動かせる形にします。 */
   function faceOpen() {
     const { front, back } = faceEls();
-    if (!front || !back) return null;
+    const box = screensEl();
+    if (!front || !back || !box) return null;
     [FRONT, BACK].forEach((id) => {
       ensureMounted(id);
       try { KN.screens[id].render(); } catch (_) { /* 組めなくても手つきは続けます */ }
@@ -378,26 +411,68 @@
     front.classList.add("is-face-front");
     front.classList.remove("is-face-settle");
     /* 道のりは、**取ると決めた時に一度だけ**測ります。途中で測り直すと、
-       指の下で速さが変わります（暦の `span` と同じ決めごと）。 */
-    front.style.setProperty("--face-d", faceDist(front).toFixed(1) + "px");
+       指の下で速さが変わります（暦の `span` と同じ決めごと）。
+       留まっている印は、測ったあとで外すこと——先に外すと紙が跳んで、
+       その跳んだ先を測ってしまいます。 */
+    const d = faceDist(front);
+    front.classList.remove("is-face-parked");
+    box.style.setProperty("--face-d", d.toFixed(1) + "px");
     return { front, back };
   }
 
-  /** 途中の姿。数**ひとつ**（--face-p）から、紙の位置も題の入れ替わりも出ます。 */
+  /** 途中の姿。数**ひとつ**（--face-p）から、紙の位置も、題と札の
+      入れ替わりも出ます。書くのは二枚の親（#screens）——上の faceVar の
+      但し書きを見ること。 */
   function facePaint(o, p) {
-    o.front.style.setProperty("--face-p", p.toFixed(3));
+    const box = screensEl();
+    if (box) box.style.setProperty("--face-p", p.toFixed(3));
   }
 
-  /** 行き先まで滑らせて、着いたら片づけます。 */
+  /** いま紙はどちらに居るか（0＝買うものが全面、1＝価格が全面）。
+      掴み手が「どちらへ引けるか」を、ここから決めます。 */
+  function faceAt() {
+    const { front } = faceEls();
+    if (front && front.classList.contains("is-face-parked")) return 1;
+    const p = faceVar("--face-p");
+    return isFinite(p) && p > 0.5 ? 1 : 0;
+  }
+
+  /** 留まっている紙を片づけます（頭ものぞかせません）。 */
+  function faceUnpark() {
+    const { front } = faceEls();
+    const box = screensEl();
+    if (front) front.classList.remove("is-face-parked");
+    if (box) {
+      box.style.removeProperty("--face-p");
+      box.style.removeProperty("--face-d");
+    }
+  }
+
+  /** 行き先まで滑らせて、着いたら片づけます。
+
+      **価格に着いたときは、片づけません。** 前の紙は頭（掴み手ぶん）だけを
+      下の帯の上にのぞかせて、そこに留まります——そこが指で戻る道なので。
+      画面としては価格が前に出る（`show(BACK)`）ので、前の面は自分の題と
+      札を伏せて、頭だけの一枚になります（css の `.is-face-parked`）。 */
   function faceSettle(o, to) {
+    /* 印は**二枚とも**に付けます。指で引いているあいだ `--face-p` は毎フレーム
+       動くので中身も滑らかに入れ替わりますが、離した先へ滑るときは数が一度に
+       跳びます——紙だけが滑って、題と札はぱっと切り替わる。後ろの札もここで
+       薄れる側なので、あちらにも要ります。 */
     o.front.classList.add("is-face-settle");
+    o.back.classList.add("is-face-settle");
     facePaint(o, to);
     setTimeout(() => {
       o.front.classList.remove("is-face-front", "is-face-settle");
-      o.back.classList.remove("is-face-back");
-      o.front.style.removeProperty("--face-p");
-      o.front.style.removeProperty("--face-d");
+      o.back.classList.remove("is-face-back", "is-face-settle");
+      if (to > 0.5) {
+        o.front.classList.add("is-face-parked");
+        facePaint(o, 1);
+      } else {
+        faceUnpark();
+      }
       show(to > 0.5 ? BACK : FRONT, "settled");
+      syncFaceGrips();
     }, FACE_MS + 20);
   }
 
@@ -414,19 +489,29 @@
   }
   KN.app.faceTo = faceTo;
 
+  /* 面をめくる掴み手たち。名札を state に合わせて言い直すために控えます
+     ——同じ一つの棒が、下ろす前は「価格をひらく」、留まっているあいだは
+     「買うものへ戻る」なので。 */
+  const faceGrips = [];
+  function syncFaceGrips() {
+    const at = faceAt();
+    faceGrips.forEach((g) => g.setAttribute("aria-label", at
+      ? "買うものへ戻る（上へ引いても戻ります）"
+      : "価格をひらく（下へ引いてもひらきます）"));
+  }
+
   /** 紙の掴み手に、面をめくる手つきを結びます。
 
-      `opts.role` は "front"（買うもの＝前の一枚）か "back"（価格＝後ろ）。
-      前の掴み手は**下へ**、後ろの掴み手は**上へ**しか動きません。
+      **掴み手は一つだけです**（買うものの紙の頭）。価格は後ろの地なので
+      掴み手を持ちません——持つと丸角と掴み手が二組出ます（base.css の
+      「紙一枚と、その後ろの地」）。
 
-      **いま結んでいるのは "front" だけです。** 価格は後ろの地になり、
-      掴み手を持たなくなりました（持つと丸角と掴み手が二組出る——
-      base.css の「紙一枚と、その後ろの地」を見ること）。"back" のほうは
-      残してあります：前の紙の頭を画面の下にのぞかせて、そこから指で戻す
-      形にするなら、また要るので。 */
+      同じ一つの棒が**往復を受け持ちます**。向きは `opts.role` ではなく
+      **いま紙がどこに居るか**（`faceAt()`）で決まります：上に居れば下へ、
+      下に留まっていれば上へ。役目を固定していたころは、下ろしたあとの
+      掴み手が「下へしか行けない」ままで、戻り道が塞がっていました。 */
   KN.app.wireFaceGrip = function wireFaceGrip(grip, opts) {
     if (!grip) return;
-    const front = opts && opts.role === "front";
     /* **押しても、めくれます。** 引くのが本筋ですが、そこにしか道が無いと
        価格へは指で引ける人しか行けません（暦の段と違って、あちらには
        この画面でしか見られない中身——商品と値段と店——があります）。
@@ -434,20 +519,21 @@
     grip.setAttribute("role", "button");
     grip.setAttribute("tabindex", "0");
     grip.removeAttribute("aria-hidden");
-    grip.setAttribute("aria-label", front
-      ? "価格をひらく（下へ引いてもひらきます）"
-      : "買うものへ戻る（上へ押しても戻ります）");
-    const flip = () => faceTo(front ? 1 : 0);
+    faceGrips.push(grip);
+    syncFaceGrips();
+    const flip = () => faceTo(faceAt() ? 0 : 1);
     grip.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
       flip();
     });
-    let pid = null, y0 = 0, on = false, o = null, p = 0, dist = 1, moved = false;
+    let pid = null, y0 = 0, on = false, o = null, p = 0, dist = 1, moved = false, from = 0;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
-      p = front ? 0 : 1;
+      /* 始まりは**いまの姿**。留まっているところから掴んだら 1 から始まって、
+         指を上げるぶんだけ 0 へ向かいます。 */
+      from = faceAt(); p = from;
       try { grip.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
     });
     grip.addEventListener("pointermove", (e) => {
@@ -455,18 +541,19 @@
       if (e.cancelable) e.preventDefault();
       const dy = e.clientY - y0;
       if (Math.abs(dy) > 3) moved = true;
-      /* 行ける向きは片道ずつ。前の一枚は下へ、後ろの一枚は上へ。 */
+      /* 行ける向きは片道ずつ。上に居るなら下へ、留まっているなら上へ。
+         逆向きはスクロールに渡します（暦の段と同じ決めごと）。 */
       if (!o) {
-        if (front ? dy <= 2 : dy >= -2) return;
+        if (from === 0 ? dy <= 2 : dy >= -2) return;
         o = faceOpen();
         if (!o) { on = false; return; }
         /* 道のりは、**取ると決めた時に一度だけ**（faceOpen が測って
            --face-d に書いたものを、そのまま指の換算にも使います。二か所で
            測ると、紙の進みと指の進みが合わなくなります）。 */
-        dist = parseFloat(o.front.style.getPropertyValue("--face-d")) || 1;
+        dist = faceVar("--face-d") || 1;
         facePaint(o, p);
       }
-      p = Math.max(0, Math.min(1, (front ? 0 : 1) + dy / dist));
+      p = Math.max(0, Math.min(1, from + dy / dist));
       facePaint(o, p);
     }, { passive: false });
     const done = (tapped) => {
@@ -475,7 +562,6 @@
       /* 引かずに離した＝押した、ということ。指の道が無くてもめくれます。
          取り上げられた（pointercancel）ぶんは、押したことにしません。 */
       if (!o) { if (tapped && !moved) flip(); return; }
-      const from = front ? 0 : 1;
       const to = Math.abs(p - from) > FACE_DONE ? (from ? 0 : 1) : from;
       if (to !== from) haptic();
       faceSettle(o, to);
@@ -493,6 +579,10 @@
     }
     const from = active;
     active = id;
+    /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
+       のぞかせた頭は「この後ろに買うものがある」という札なので、daily や
+       ダイエットの上に残っていては嘘になります。 */
+    if (id !== FRONT && id !== BACK) faceUnpark();
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */
@@ -511,6 +601,11 @@
         if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
       } else if (out) {
         s.classList.add("is-leaving", dir > 0 ? "is-out-l" : "is-out-r");
+      } else if (s.classList.contains("is-face-parked")) {
+        /* 価格を見ているあいだ、買うものの紙は**頭だけ**そこに居ます。
+           出ている面ではないので隠される順番ですが、隠すと戻り道が
+           消えます（自分の題と札は、css のほうで伏せています）。 */
+        s.hidden = false;
       } else {
         s.hidden = true;
       }
