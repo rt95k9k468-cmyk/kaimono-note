@@ -169,10 +169,11 @@
 
     screenEl = host.querySelector(".screen.is-active");
     if (!screenEl) return;
-    /* 画面のほうが、その端の give を自分で使うことがあります（やることの
-       時間割は、紙を下へ引くと暦が月ぜんぶまで出てきます）。同じ指を二つが
-       取ると、暦が伸びながら画面ごと下がることになるので、印のあるところ
-       から始まった手つきは、こちらでは拾いません。 */
+    /* 画面のほうが、その端の give を自分で使うことがあります（紙の掴み手は
+       下へ引くと暦が出ます）。同じ指を二つが取ると、暦が伸びながら画面ごと
+       下がることになるので、印のあるところから始まった手つきは拾いません。
+       **印が付いているのは掴み手だけ**です——紙ぜんぶに付いていた時期が
+       あって、そのあいだ「引いて更新」がまるごと効きませんでした。 */
     if (e.target && e.target.closest && e.target.closest("[data-pull-own]")) return;
     // Which ends have any give in them. Anywhere in the middle of a list, a
     // drag either way is just a scroll.
