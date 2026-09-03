@@ -2673,12 +2673,14 @@ a.btn { text-decoration: none; }
    日の数字 14 → 19px）。小さい字はそれ自体が「静かな画面」の作りかたです
    が、毎日読むものとしては小さすぎました。**そのぶん余白を広く取ります**
    ——静けさは字の小ささではなく、空きの多さのほうで持たせます。 */
-.arc-log { margin: 0 var(--sp-4); padding: var(--sp-4); }
+/* 右の余白を左より広く取ります。本文が右端まで詰まると、両端揃えの
+   最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
+.arc-log { margin: 0 var(--sp-4); padding: var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
 .arc-log-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
 
-.arc-log-empty { font-size: var(--fs-md); color: var(--c-text-3); line-height: 1.8; }
+.arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
 
 .arc-log-row {
   display: flex; gap: var(--sp-4); width: 100%; text-align: left;
@@ -2702,7 +2704,15 @@ a.btn { text-decoration: none; }
    （選び終えた指を離すと click も鳴るので、選択が残っているあいだは
    紙を開かないようにしています——screen-archive.js の click。） */
 .arc-log-memo {
-  font-size: var(--fs-md); line-height: 1.8; color: var(--c-text); white-space: pre-wrap;
+  /* 毎日読むものなので、本文はここだけ 16px（ほかの画面より一段大きい）。
+     **両端揃え**にしてあります——日本語は字幅が揃っているので、右端が
+     そろうと一枚の紙の面として落ち着きます。改行はそのまま残すので
+     `pre-wrap` と併用します（`justify` は行の中だけの話なので、両立します）。 */
+  font-size: var(--fs-lg); line-height: 1.85; color: var(--c-text); white-space: pre-wrap;
+  text-align: justify;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: strict;
   user-select: text;
   -webkit-user-select: text;
   -webkit-touch-callout: default;
@@ -3224,12 +3234,18 @@ a.btn { text-decoration: none; }
    染まっていきます。 */
 .tl-row, .tl-free-row {
   --p: calc(var(--pass, 1) * 100%);
-  /* まだ来ていないぶんの色。ほとんど灰色ですが、棚の色を一割だけ混ぜて
-     あります——**夜の色を落とさない**ためです。夜の用事は、その日の
-     18時を過ぎるまでずっとこちら側にいるので、まっさらな灰色にすると、
-     夜の青は「済んでから」しか出てこなくなります。一割なら、灰色として
-     読めるまま、昼は暖かい灰・夜は冷たい灰になります。 */
-  --tl-wait: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 6%, var(--c-surface-2));
+  /* まだ来ていないぶんの色。**まっさらな一色の灰**です。
+
+     ここには棚の色を6%混ぜていました——「夜の用事は18時を過ぎるまで
+     ずっとこちら側なので、混ぜないと夜の青が済んでからしか出てこない」
+     という理由です。**その理由は無くなりました**：丸薬の地をべた塗りに
+     したので、夜の色は済んだ時点ではっきり出ますし、これからの丸薬でも
+     中の絵が `--cat`（＝夜なら青）で描かれています。
+
+     混ぜたままにすると、**灰色が行ごとに変わります**。実測で、昼側の
+     (232,225,224) と夜側の (223,225,227) が空きの行の境目でぶつかって
+     いました。線は一日を通す一本なので、そこで色が変わってはいけません。 */
+  --tl-wait: var(--c-surface-2);
   /* 過ぎたぶんの色。丸薬の地も、丸薬をつなぐ線も、ここから出ます。
      **一つの変数から出すのが肝**です——二か所に書くと、片方だけ直した日に
      線と丸で色が割れます。
@@ -3661,10 +3677,12 @@ a.btn { text-decoration: none; }
      スクロールし直すことになります。紙の地を持たせて、中身はその下を
      流れます（角の丸みも紙と同じ——止まったときに紙の頭に見えるように）。 */
   position: sticky;
-  /* 上のバー（.topbar）は sticky で top:0 に居るので、そのぶん下げます
-     ——重ねると掴み手がバーの裏へ潜ります。厚みは JS が測って
-     --topbar-h に渡してきます（ノッチの深さで変わるため）。 */
-  top: var(--topbar-h, 0px);
+  /* 上のバー（.topbar）と暦（.cal）は、どちらも sticky で上に居ます。
+     そのぶん下げないと、掴み手はその裏へ潜って消えます（実際そうなって
+     いて、暦を出しているあいだだけ掴み手が居なくなっていました）。
+     厚みはどちらも JS が実測して渡します——バーはノッチの深さで、暦は
+     週／月／暦なしで変わるので、CSSに数字を焼き込めません。 */
+  top: calc(var(--topbar-h, 0px) + var(--cal-h, 0px));
   z-index: 5;
   background: var(--c-surface);
   border-radius: 22px 22px 0 0;
@@ -3760,9 +3778,17 @@ a.btn { text-decoration: none; }
     var(--c-bg);
 }
 
-/* 過ぎた空き。もう使えないので、線も字も一段薄く。消しはしません
-   ——「今日はここが空いていた」も、その日のかたちのうちなので。 */
-.tl-free-row.is-past { opacity: .6; }
+/* 過ぎた空きの字は、一段薄く。**線は薄くしません。**
+
+   ここは行ごと `opacity: .6` にしていました。「過ぎたぶんは薄く」という
+   決めごとが、`--pass`（過ぎたぶんは色・これからは灰色）を入れる前から
+   残っていたものです。二つが同じことを別々に言うと、こうなります
+   ——実測で、丸薬をつなぐ線が (225,113,107)、そのすぐ下の点線が
+   **(236,169,165)**。同じ色を指定しているのに、点線だけ4割ほど白く
+   混ざって見えていました。**「丸薬の間の線の色が周囲と合わない」の
+   正体はこれです。** 色は `--pass` に任せ、ここは字だけにします。 */
+.tl-free-row.is-past .tl-free-text,
+.tl-free-row.is-past .tl-time { opacity: .6; }
 
 /* 過ぎた日の時間割。暦でその日を押すと、今日の上に出ます。今日と同じ
    部品で描くので、見出しの右に「今日へ」の戻り口だけ足します。 */
@@ -4023,7 +4049,7 @@ a.btn { text-decoration: none; }
   border: none;
   box-shadow: none;
 }
-.card.arc-log { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+.card.arc-log { padding-left: var(--sp-4); padding-right: var(--sp-6); }
 
 .arc-stack { margin-left: 0; margin-right: 0; }
 .arc-stack-head { padding: 0 var(--sp-4); }

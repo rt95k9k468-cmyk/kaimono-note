@@ -19,6 +19,8 @@
   const store = KN.store;
 
   let root = null;
+  /* 暦の厚みを測り直す。mount が中身を入れます（render から呼びます）。 */
+  let fitCalH = () => {};
   let els = {};
   let query = "";
 
@@ -187,6 +189,28 @@
     fitCal();
     window.addEventListener("resize", fitCal);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
+
+    /* 暦の厚み。**掴み手はこのぶんだけ下に貼りつきます**——暦もバーも
+       sticky で上に居るので、数えないと掴み手がその裏へ潜ります
+       （実際そうなっていて、暦を出しているあいだだけ掴み手が消えていた）。
+
+       暦は組み直しのたびに**別の要素**になるので、そのつど引き直して、
+       見張る相手も付け替えます。書くのは変わったときだけ——書くたびに
+       ResizeObserver が鳴ると、輪になります。 */
+    let calRO = null, calSeen = null, calH = -1;
+    fitCalH = () => {
+      const c = root.querySelector(".cal");
+      const h = c && !c.classList.contains("is-hidden")
+        ? Math.round(c.getBoundingClientRect().height) : 0;
+      if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
+      if (c !== calSeen && window.ResizeObserver) {
+        if (calRO) calRO.disconnect();
+        calSeen = c;
+        if (c) { calRO = new ResizeObserver(() => fitCalH()); calRO.observe(c); }
+      }
+    };
+    fitCalH();
+    window.addEventListener("resize", () => fitCalH());
 
     /* 手でめくった月の留めを外す合図。指が触ったこと、そのものです。 */
     root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
@@ -1913,6 +1937,9 @@
   function render() {
     renderBody();
     paintDayTitle();
+    /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
+       （掴み手はそのぶん下に貼りつくので）。 */
+    fitCalH();
   }
 
   let groups = [];
