@@ -37,6 +37,7 @@ const JS = [
   "js/icons-v2.js",
   "js/product-icons.js",
   "js/icons-todo.js",
+  "js/icons-todo-hand.js",
   "js/icons-food.js",
   "js/empty-art.js",
   "js/diary-crypto.js",
