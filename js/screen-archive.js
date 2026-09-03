@@ -30,6 +30,8 @@
   const store = KN.store;
 
   let root = null;
+  /* 暦の厚みを測り直す。mount が中身を入れます（render から呼びます）。 */
+  let fitCalH = () => {};
   let els = {};
 
   /* 見ている月。null は「今月」。 */
@@ -53,6 +55,11 @@
   const isThisMonth = () => curYm() === ymOf(new Date());
   /** 値が無ければ「-」。空欄をグレーの説明文で埋めない、という決めごとの担当。 */
   const orDash = (v) => (v == null || v === "" ? "-" : v);
+
+  /** 見ている日。日を選んでいなければ、今日（その月でなければ月の頭）。 */
+  const focusDay = () => viewDay || (isThisMonth() ? U.todayKey() : `${curYm()}-01`);
+  /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
+  const oneDayLog = () => S().dailyScope !== "month";
 
   /** その日へ移る。月をまたいでも暦がついてくるように、二つ一緒に動かします。 */
   function goToDay(day) {
@@ -255,6 +262,25 @@
   const SWIPE_MIN = 56;
   const SWIPE_DOM = 1.4;
 
+  /** 前の日／次の日へ。**紙を払うのは、日を送る手つきです。**
+
+      月を送っていました。Daily Log が一日ぶんになったいま、紙に出ている
+      のは「その日」なので、払って動くのも日であるべきです（月は上の題を
+      押せば選べます）。先の日へは行きません——月送りと同じ決めごと。 */
+  function goDayBy(delta) {
+    const cur = focusDay();
+    const d = U.dayDate(cur);
+    if (!d) return false;
+    const key = U.dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta));
+    if (key > U.todayKey()) return false;
+    KN.motion.fire("select");
+    const ym = key.slice(0, 7);
+    viewMonth = ym === ymOf(new Date()) ? null : ym;
+    viewDay = key === U.todayKey() ? null : key;
+    render();
+    return true;
+  }
+
   function wireMonthPage(el) {
     let x0 = 0, y0 = 0, pid = null, live = false;
     el.addEventListener("pointerdown", (e) => {
@@ -267,8 +293,8 @@
       const dx = e.clientX - x0, dy = e.clientY - y0;
       if (Math.abs(dx) < SWIPE_MIN) return;
       if (Math.abs(dx) < Math.abs(dy) * SWIPE_DOM) return;
-      const dir = dx < 0 ? 1 : -1;      // 左へ払う＝次の月
-      if (!goMonth(dir)) return;
+      const dir = dx < 0 ? 1 : -1;      // 左へ払う＝次の日
+      if (!goDayBy(dir)) return;
       const sheet = els.body && els.body.querySelector(".tl-sheet");
       if (sheet && !KN.motion.still()) {
         sheet.classList.add(dir > 0 ? "is-from-right" : "is-from-left");
@@ -517,11 +543,6 @@
   /* ================================================================
      ③ Daily Log — その日あったこと・したこと
      ================================================================ */
-
-  /** 見ている日。日を選んでいなければ、今日（その月でなければ月の頭）。 */
-  const focusDay = () => viewDay || (isThisMonth() ? U.todayKey() : `${curYm()}-01`);
-  /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
-  const oneDayLog = () => S().dailyScope !== "month";
 
   function dailyLog(ym) {
     /* **その日ぶんだけ**を紙に出します（設定で月ぜんぶにも戻せます）。
@@ -977,8 +998,10 @@
           ${/* 枠（.empty-art）に入れます。裸で置くと大きさの決まりが効かず、
                 原寸のまま出ます——「アイコンが大きすぎる」の正体はこれでした。 */""}
           <div class="empty-art">${U.raw(KN.emptyArt.notebook)}</div>
+          ${/* 説明の一文は外しました。「読んだ本・学んだこと…」は、＋を
+                押せば出てくる欄がそのまま言っていることで、ここでは
+                空きの下に字を一段増やしているだけでした。 */""}
           <p class="empty-title">${query.trim() ? "見つかりませんでした" : "まだ記録はありません"}</p>
-          <p class="empty-text">読んだ本・学んだこと・思いついたことを、軽く。</p>
         </div>
       `));
     } else {
@@ -1359,6 +1382,28 @@
     window.addEventListener("resize", fitCal);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
 
+    /* 暦の厚み。**掴み手はこのぶんだけ下に貼りつきます**——暦もバーも
+       sticky で上に居るので、数えないと掴み手がその裏へ潜ります
+       （実際そうなっていて、暦を出しているあいだだけ掴み手が消えていた）。
+
+       暦は組み直しのたびに**別の要素**になるので、そのつど引き直して、
+       見張る相手も付け替えます。書くのは変わったときだけ——書くたびに
+       ResizeObserver が鳴ると、輪になります。 */
+    let calRO = null, calSeen = null, calH = -1;
+    fitCalH = () => {
+      const c = root.querySelector(".cal");
+      const h = c && !c.classList.contains("is-hidden")
+        ? Math.round(c.getBoundingClientRect().height) : 0;
+      if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
+      if (c !== calSeen && window.ResizeObserver) {
+        if (calRO) calRO.disconnect();
+        calSeen = c;
+        if (c) { calRO = new ResizeObserver(() => fitCalH()); calRO.observe(c); }
+      }
+    };
+    fitCalH();
+    window.addEventListener("resize", () => fitCalH());
+
     root.addEventListener("scroll", () => {
       const stuck = root.scrollTop > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
@@ -1455,6 +1500,9 @@
 
     if (keepTop) root.scrollTop = keepTop;
     rendering = false;
+    /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
+       （掴み手はそのぶん下に貼りつくので）。 */
+    fitCalH();
     // 位置を戻したあとで測ります（戻す前だと、行がスクロールぶんだけ
     // 余計に動いたことになって、画面の外から飛んできます）。
     settle();
