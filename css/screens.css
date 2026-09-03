@@ -501,6 +501,22 @@
   transition: height .3s var(--ease-out), opacity .3s var(--ease-out);
 }
 .cal.is-settling { transition: padding .3s var(--ease-out), border-color var(--dur) var(--ease); }
+/* **暦は、紙より前に居たままにします**（z-index は動かしません）。紙の箱は
+   画面の上へはみ出しているので、紙を前に出すと、送った先では紙の地が暦を
+   丸ごと隠します——実測で、ダイエットで下まで送ってから引くと暦が一度も
+   見えませんでした。暦が前、紙はその下を流れる。この順が正です。 */
+
+/* ダイエットの暦だけは、ふだん貼りつきません（下にあるのは一日ぶんの記録で、
+   月とは関係がないので）。**引いているあいだだけ貼りつけます**——下まで
+   送った先で掴み手を引いたとき、暦が画面の外に居ては出てくるものがない。
+   （収めたあと、開くほうへ行ったときだけ上まで戻します——cal-peek の
+   settle。畳んだときは読んでいたところに居させます。） */
+#screen-diet .cal.is-peek,
+#screen-diet .cal.is-settling {
+  position: sticky;
+  top: var(--topbar-h, 0px);
+  background: var(--c-bg);
+}
 /* しまってある暦も、引いているあいだは場所を取ります（測るために）。
    ここが無いと、三段目から週へ戻す道が始められません。 */
 .cal.is-hidden.is-peek { display: block; }

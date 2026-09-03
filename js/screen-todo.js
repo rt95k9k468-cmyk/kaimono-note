@@ -200,6 +200,11 @@
     let calRO = null, calSeen = null, calH = -1;
     fitCalH = () => {
       const c = root.querySelector(".cal");
+      /* **引いているあいだは測りません。** 紙を引くと暦は月ぜんぶの姿で
+         留められる（cal-peek の begin）ので、そのまま測ると床が月の高さに
+         なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
+         紙の transform が一緒に運んでくれます。 */
+      if (c && (c.classList.contains("is-peek") || c.classList.contains("is-settling"))) return;
       const h = c && !c.classList.contains("is-hidden")
         ? Math.round(c.getBoundingClientRect().height) : 0;
       if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
