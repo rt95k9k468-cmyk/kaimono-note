@@ -2426,18 +2426,26 @@
      CSS が伏せます）。押せばその日へ行けるので、月末の週から翌月の頭へ
      そのまま進めます。中身は日付だけ——粒（件数）はその月のぶんしか
      数えていないので、出すと嘘になります。 */
-  function outCell(key) {
+  function outCell(key, marks) {
     const U = KN.util;
     const d = U.dayDate(key);
     const wd = d ? d.getDay() : 0;
     const cell = node(html`
       <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-              data-day="${key}" tabindex="-1"
+              data-day="${key}"
               aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
         <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots"></span>
+        <span class="cal-dots" style="--cat:${dayColor(key)}"></span>
       </button>
     `);
+    /* 絵も出します。ここを空にしていたのは「件数はその月ぶんしか数えて
+       いない」からでしたが、marks は `t.due` で引いているだけなので、
+       隣の月の日もそのまま引けます。空のままにすると「翌月1日は何も
+       ない」と嘘をつくことになります。 */
+    const dots = cell.querySelector(".cal-dots");
+    ((marks && marks.get(key)) || []).forEach((t) => dots.append(node(html`
+      <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
+    `)));
     cell.addEventListener("click", () => openDay(key));
     return cell;
   }
@@ -2503,7 +2511,7 @@
        して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
        これまでどおり）。押せば、その日へ行けます。 */
     const outer = U.outDays(year, month);
-    outer.lead.forEach((key) => grid.append(outCell(key)));
+    outer.lead.forEach((key) => grid.append(outCell(key, marks)));
 
     for (let d = 1; d <= total; d++) {
       const key = U.dayKey(new Date(year, month, d));
@@ -2532,7 +2540,7 @@
       cell.addEventListener("click", () => openDay(key));
       grid.append(cell);
     }
-    outer.trail.forEach((key) => grid.append(outCell(key)));
+    outer.trail.forEach((key) => grid.append(outCell(key, marks)));
     /* 期限切れ。一日の中には居場所がないので、**あることだけ**言って、
        受け皿（一覧）への口を出します。
 
@@ -2961,6 +2969,17 @@
       else pass = (nowMin - a) / (u - a);
       li.style.setProperty("--pass", pass.toFixed(3));
       if (!row) continue;
+      /* 行の中の線は、**丸薬の上と下で一色ずつ**です（--pt / --pb）。
+
+         行の高さは題とメモが決めるもので、時間ではありません。時間を
+         持っているのは丸薬だけ。なので「行の高さの pass 割」で線を
+         切ると、丸薬の中の境目と**必ずずれます**（行と丸薬で高さが
+         違うので）。そこが「丸薬を貫く線と、丸薬の間の線が違う色に
+         見える」の正体でした。
+         上は用事が**始まっていれば**色、下は**終わっていれば**色。
+         これなら隣の空きの行と必ず同じ色でつながります。 */
+      li.style.setProperty("--pt", pass > 0 ? "1" : "0");
+      li.style.setProperty("--pb", pass >= 1 ? "1" : "0");
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */

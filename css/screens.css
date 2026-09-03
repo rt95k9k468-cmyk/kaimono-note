@@ -453,10 +453,16 @@
 .cal.is-week .cal-day.is-off-week,
 .cal.is-week .cal-pad.is-off-week { display: none; }
 
-/* 隣の月の日。週で見るときは、7日そろえるために顔を出します。月ぜんぶを
-   見るときは、その月の枠を保ちたいので場所だけ取って伏せます。 */
-.cal:not(.is-week) .cal-day.is-out { visibility: hidden; pointer-events: none; }
-.cal-day.is-out .cal-n { color: var(--c-text-3); }
+/* 隣の月の日。**週でも月でも顔を出します。**
+
+   月のときだけ伏せていました。でも週で見えていたものが月にすると消える
+   のは、同じ暦が二つの顔を持つということで、月末の週を見ているときに
+   「翌月の1日はどこへ行った」となります。実際にはそこに日はあります。
+
+   その月のぶんではないことは、**字を薄くして**言います（場所を取るだけの
+   空白より、薄い「1」のほうが多くを言う）。押せばその日へ行けます。 */
+.cal-day.is-out { opacity: .42; }
+.cal-day.is-out .cal-n { color: var(--c-text-2); }
 
 .cal-grid {
   position: relative;
@@ -503,10 +509,6 @@
 .cal.is-peek.is-week .cal-day.is-off-week { display: flex; }
 .cal.is-peek.is-week .cal-pad.is-off-week { display: block; }
 .cal.is-peek .cal-day.is-off-week { opacity: var(--cal-p, 1); }
-/* 隣の月の日は、週の行に居るあいだだけ顔を出します。伸ばしている最中に
-   ほかの行のぶんまで出ると、収まった月の姿と食い違います。 */
-.cal.is-peek .cal-day.is-out.is-off-week { visibility: hidden; }
-.cal.is-peek .cal-day.is-out:not(.is-off-week) { visibility: visible; }
 @media (prefers-reduced-motion: reduce) {
   .cal.is-settling .cal-clip,
   .cal.is-settling .cal-slide,
@@ -3158,6 +3160,27 @@ a.btn { text-decoration: none; }
     var(--tl-fill) 0 var(--p),
     var(--tl-wait) var(--p) 100%);
 }
+/* **用事の行だけは、丸薬の上と下で一色ずつ**にします。
+
+   行の高さを決めるのは題とメモで、時間ではありません。時間を持っている
+   のは丸薬だけです。なので「行の高さの pass 割」で線を切ると、丸薬の中の
+   境目と**必ずずれます**——行と丸薬で高さが違うので。丸薬を貫く線と丸薬の
+   間の線が違って見えたのは、これでした。
+
+   上は用事が始まっていれば色（--pt）、下は終わっていれば色（--pb）。
+   境目は丸薬の中にしかありません。空きの行のほうは、そこが「時間その
+   もの」なので、これまでどおり pass の位置で切ります。 */
+.tl-row {
+  --tl-top: color-mix(in srgb, var(--tl-fill) calc(var(--pt, 1) * 100%), var(--tl-wait));
+  --tl-bot: color-mix(in srgb, var(--tl-fill) calc(var(--pb, 1) * 100%), var(--tl-wait));
+  --tl-nt: calc((100% - var(--tl-node-h, 50px)) / 2);
+}
+.tl-row .tl-rail::before {
+  background: linear-gradient(to bottom,
+    var(--tl-top) 0 var(--tl-nt),
+    var(--tl-fill) var(--tl-nt) calc(100% - var(--tl-nt)),
+    var(--tl-bot) calc(100% - var(--tl-nt)) 100%);
+}
 /* 空きが**30分より長い**ところだけ、点線。**繋がっていない**ことが
    空きの意味なので、逆に言えば30分以内の空きは繋がっています——用事と
    用事のあいだの十分やそこらは、途切れではなく「ひと続きの時間」です。
@@ -3202,8 +3225,13 @@ a.btn { text-decoration: none; }
   --tl-wait: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 6%, var(--c-surface-2));
   /* 過ぎたぶんの色。丸薬の地も、丸薬をつなぐ線も、ここから出ます。
      **一つの変数から出すのが肝**です——二か所に書くと、片方だけ直した日に
-     線と丸で色が割れます。 */
-  --tl-fill: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 42%, var(--c-surface));
+     線と丸で色が割れます。
+
+     **べた塗りです（42%混ぜをやめました）。** 混ぜていたのは、中の絵が
+     色つきの手描きで、地を濃くすると絵が沈んだからでした。いまは中が
+     白抜きのシルエットなので、地は濃いほうが読めます——薄い地に白を
+     抜くと、白が消えます。 */
+  --tl-fill: var(--cat, var(--c-primary-fill));
 }
 /* 丸薬の**実際の高さ**は一か所から出します（重なりで育つぶんも含めて）。
    中の絵の色の境目がここから出るので、二か所に書くと必ずずれます。 */
@@ -3605,11 +3633,20 @@ a.btn { text-decoration: none; }
 }
 /* 掴み手。見えている棒は5pxですが、掴めるところはもっと広く取ります
    ——ここは「紙をつまむ」ための場所で、5pxの棒は指では狙えません。
-   広げたぶん、月を**押し戻す**（上へ）手つきをここだけで受けられます：
-   紙の本体で上へ引くと、それは下のリストを送るスクロールなので。 */
+   **暦の段（暦なし／週／月）を替えられるのはここだけ**なので、狙いやすさ
+   がそのまま使いやすさになります。上下12pxずつ、29pxぶんが掴み手です。 */
 .tl-grip {
   display: block;
-  padding: 9px 0 9px;
+  padding: 12px 0 12px;
+  /* **スクロールしても居なくなりません。** 掴み手は「この紙はつまめる」と
+     言っている札で、下へ送ったとたんに消えると、戻すには一度上まで
+     スクロールし直すことになります。紙の地を持たせて、中身はその下を
+     流れます（角の丸みも紙と同じ——止まったときに紙の頭に見えるように）。 */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--c-surface);
+  border-radius: 22px 22px 0 0;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;

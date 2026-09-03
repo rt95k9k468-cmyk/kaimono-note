@@ -225,9 +225,14 @@
       // 上まで来ているときだけ。途中で引くのは、ただのスクロールです。
       if (!o.root || o.root.scrollTop > 0) return;
       if (o.enabled && !o.enabled()) return;
+      byGrip = !!(e.target.closest && e.target.closest(".tl-grip"));
+      /* **切り替えるのは掴み手からだけ。** 紙のどこを持っても下へ引けば
+         暦が出る、という作りにしていたことがありましたが、使いづらい
+         ——読んでいて下を見ようとするたびに暦が伸びてきます。掴み手は
+         そのぶん広く取ってあります（見えている棒は5px、掴めるのは29px）。 */
+      if (!byGrip) return;
       pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
       p0 = at(o); p = p0;
-      byGrip = !!(e.target.closest && e.target.closest(".tl-grip"));
       live = true; on = false;
       /* 掴み手からのぶんは、この場で指を預かります。上へ押すと紙のほうが
          縮んで指の下から逃げるので、預けておかないと、途中から動きが
@@ -248,8 +253,6 @@
            だけ。真ん中（週）からは両方へ行けます。 */
         if (p0 === 1 && dy > 0) { drop(); return; }
         if (p0 === -1 && dy < 0) { drop(); return; }
-        // 上へ押すのは掴み手からだけ（下のリストのスクロールを取らない）。
-        if (dy < 0 && !byGrip) { drop(); return; }
         m = begin(o);
         if (!m) { drop(); return; }
         /* どの段のあいだを動くかは、いる段と向きで決まります。決めるのは
@@ -291,10 +294,9 @@
        暦は出てきません。pointermove で preventDefault しても、送るのを
        止めるのは touchmove のほうなので間に合いません。
 
-       だから、こちらが取ると決める前でも——上端にいて、閉じていて、下へ
-       向かっているあいだは——ここで渡さないでおきます。紙のどこを持っても
-       下へ引けば暦が出るのは、これがあるからです。上へ向かうぶんは
-       そのまま渡します（それは下のリストを送るスクロールなので）。 */
+       だから、こちらが取ると決める前でも——掴み手にいて、その向きへ
+       行けるあいだは——ここで渡さないでおきます。掴み手から始めた手つき
+       だけが live なので、ここに来るのはそのぶんだけです。 */
     el.addEventListener("touchmove", (e) => {
       if (!live || !e.cancelable) return;
       if (on) { e.preventDefault(); return; }
@@ -302,8 +304,8 @@
       if (!t) return;
       const dy = t.clientY - y0, dx = t.clientX - x0;
       if (Math.abs(dx) > Math.abs(dy)) return;      // 横は日送りの番
-      // 下へ行けるのは月にいないとき。上へは掴み手から、暦なしでないとき。
-      if (dy > 0 ? p0 !== 1 : (byGrip && p0 !== -1)) e.preventDefault();
+      // 下へ行けるのは月にいないとき、上へは暦なしでないとき。
+      if (dy > 0 ? p0 !== 1 : p0 !== -1) e.preventDefault();
     }, { passive: false });
   }
 
