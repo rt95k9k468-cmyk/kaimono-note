@@ -32,7 +32,16 @@
                    ぶんだけ帯が太ると、この画面だけ一段深いところにいるように
                    見えるので。色は「2026年」と同じコーラル（--c-primary）で、
                    どのタブでも「いまどこか」を言う字は同じ色にします。 */""}
-              <h1 class="topbar-title tab-title">買うもの</h1>
+              ${/* 題は二枚重ねて、`--face-p` で入れ替えます。紙を下げていくと
+                    「買うもの」が薄れ、「価格」が出てくる——動いているのは紙
+                    ですが、いま前に居るのはどちらか、を題も一緒に言います。
+                    下げきったところで app.js が本物の価格の画面に差し替える
+                    ので、そのとき題はもう「価格」になっていて、継ぎ目が
+                    見えません。 */""}
+              <h1 class="topbar-title tab-title face-title">
+                <span class="face-t face-t-front">買うもの</span>
+                <span class="face-t face-t-back" aria-hidden="true">価格</span>
+              </h1>
               <div class="topbar-sub js-sub"></div>
             </div>
             ${/* No 「まとめて削除」 on this bar any more. Having bought

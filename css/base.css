@@ -614,29 +614,78 @@ a { color: var(--c-primary); }
    価格が出てきます。上げれば戻ります。指の動いたぶんだけ動くので、
    途中で止めればそこに留まります（離すと近いほうへ滑ります）。
 
-   動くのは**前の一枚だけ**です。後ろのものは動かないから後ろに見える
-   ——あちらは等身大へ戻ってくるだけにします（--face-p、0〜1）。 */
+   **動くのは紙だけです。上のバーは動きません。**
+   前は画面ぜんぶ（`.screen`）を平行移動させていましたが、それは「ページが
+   下へ抜けていく」動きで、重なりには読めませんでした。動かすのは、掴み手が
+   乗っている紙と、その上のカテゴリの札——**紙の中身は紙ごと一緒に**下がり、
+   空いたところに後ろの紙が出てきます。暦を引くのとまったく同じ原理で、
+   あちらの「暦」の役をここでは価格の紙が務めます。
+
+   前の面の地は透かします（`background: none`）——紙が下がったところから
+   後ろが見えなければ、重なりになりません。透かしてよいのは、上のバーと
+   探す欄が自分の地を持っているからです。 */
 .screen.is-face-front {
   display: flex;
   z-index: 3;
-  /* 下がった一枚は「紙」に見えなければいけません。上の角を丸め、
-     下に影を落として、後ろとのあいだに厚みを作ります。 */
-  border-radius: 22px 22px 0 0;
-  box-shadow: 0 -10px 34px rgba(0, 0, 0, .16);
+  background: none;
+  pointer-events: auto;
+}
+/* 探す欄とカテゴリの札は、自分の地を持っていません（画面の地の上に置く
+   前提だったので）。前の面を透かすあいだだけ、ここにも地を敷きます。
+
+   探す欄… 敷かないと、伏せたはずの後ろの探す欄がこちらの裏に透けます。
+   札 …… 敷かないと、**札のあいだから後ろの一覧の行が覗きます**（実測：
+          札の隙間に、価格の側の牛乳の絵が出ていた）。札は前の紙の連れなので、
+          前の地を持って一緒に下がるのが正しい。 */
+.screen.is-face-front .search-wrap,
+.screen.is-face-front .js-filter { background: var(--c-bg); }
+/* 動くのはこの二つ。**同じ一つの数から**出すこと——別々に書くと、
+   片方だけ直した日に札と紙がずれます。 */
+.screen.is-face-front .js-filter,
+.screen.is-face-front > .stack > .tl-sheet,
+.screen.is-face-front .stack > .tl-sheet {
+  transform: translateY(calc(var(--face-p, 0) * var(--face-d, 0px)));
   will-change: transform;
 }
-.screen.is-face-front.is-face-settle {
+.screen.is-face-front.is-face-settle .js-filter,
+.screen.is-face-front.is-face-settle .stack > .tl-sheet {
   transition: transform .28s var(--ease-out);
 }
+/* 下がった紙は「紙」に見えなければいけません。上の角はもともと丸いので、
+   足すのは影だけ——後ろとのあいだに厚みが出ます。 */
+.screen.is-face-front .stack > .tl-sheet {
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
+}
+/* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは紙と
+   札だけで、自分の上のバーと探す欄は伏せます——そこには前の面のバーが
+   居るので、二枚重ねると字が重なります。`visibility` で伏せるのは、
+   場所を取ったままにするため（`display:none` にすると、後ろの札と紙が
+   前のものと違う高さに来ます）。 */
 .screen.is-face-back {
   display: flex;
   z-index: 0;
   pointer-events: none;
-  transform: scale(calc(.955 + .045 * var(--face-p, 0)));
-  opacity: calc(.5 + .5 * var(--face-p, 0));
 }
-@media (prefers-reduced-motion: reduce) {
-  .screen.is-face-back { transform: none; opacity: 1; }
+.screen.is-face-back > .stack > .topbar,
+.screen.is-face-back .stack > .topbar,
+.screen.is-face-back .search-wrap { visibility: hidden; }
+
+/* 題も、同じ数（--face-p）から出します。ただし**題は量ではなく名前**なので、
+   途中の姿を持ちません——決まり目（FACE_DONE = 0.26）で、ぱっと入れ替えます。
+   そこまで下げたら手を離せば価格に着く、という合図でもあります。
+
+   **薄めて重ねる（クロスフェード）も、縦に送るのも、試して外しました。**
+   どちらも途中で二語が同時に見えます。日本語は字が詰まっているので、
+   重なると別の字に読め（実測：「買うもの」と「価格」が一塊になった）、
+   縦送りでも上下に半分ずつ出て、題が二行あるように見えました。
+   0〜1 を 1000倍して clamp すると、境目だけの階段になります。 */
+.face-title { position: relative; }
+.face-t { display: block; }
+.face-t-front { opacity: clamp(0, calc((.26 - var(--face-p, 0)) * 1000), 1); }
+.face-t-back {
+  position: absolute;
+  inset: 0;
+  opacity: clamp(0, calc((var(--face-p, 0) - .26) * 1000), 1);
 }
 
 @keyframes scr-in-r  { from { transform: translateX(100%); }  to { transform: none; } }

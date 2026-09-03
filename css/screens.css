@@ -3715,6 +3715,15 @@ a.btn { text-decoration: none; }
   -webkit-user-select: none;
   user-select: none;
 }
+/* 買うもの／価格の掴み手は**押しても効きます**（app.js の wireFaceGrip が
+   role="button" を付けます）。指で引けない人にも道が要るので。押せると
+   分かるように、狙いが当たったときの輪だけ出します。 */
+.tl-grip[role="button"] { cursor: pointer; }
+.tl-grip[role="button"]:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -4px;
+  border-radius: 22px 22px 0 0;
+}
 .tl-grip > i {
   display: block;
   width: 36px; height: 5px;
