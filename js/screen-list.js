@@ -72,7 +72,13 @@
              途中で見るのは「あと何を買うか」であって、達成率ではないので。 */""}
 
         <div class="js-filter"></div>
-        <div class="js-body"></div>
+        ${/* 紙と掴み手。やること・daily と同じ器です。**掴み手を下へ引くと
+              価格の面が出ます**——この二つは横に並んだ二つのタブではなく、
+              買うものの後ろに価格がいる、という重なりなので。 */""}
+        <div class="tl-sheet js-sheet">
+          <span class="tl-grip js-grip" aria-hidden="true"><i></i></span>
+          <div class="js-body"></div>
+        </div>
       </div>
     `);
 
@@ -89,6 +95,16 @@
       body:       chrome.querySelector(".js-body"),
       topbar:     chrome.querySelector(".topbar"),
     };
+
+    /* 掴み手は上のバーのすぐ下に貼りつきます。バーの高さはノッチの深さで
+       変わるので、実測して渡します（CSSに焼き込むと機種でずれる）。 */
+    const fitBar = () => {
+      const h = els.topbar.getBoundingClientRect().height;
+      root.style.setProperty("--topbar-h", Math.round(h) + "px");
+    };
+    fitBar();
+    window.addEventListener("resize", fitBar);
+    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { down: "prices" });
 
     chrome.querySelector(".js-settings").addEventListener("click",
       () => KN.app.showScreen("settings"));

@@ -342,7 +342,41 @@
     return b > a ? 1 : -1;
   }
 
-  function show(id) {
+  /* ---------------- 面をめくる（買うもの ⇄ 価格） ----------------
+
+     この二つは横に並んだ二つのタブではなく、**買うものの後ろに価格がいる**
+     という重なりです。紙の掴み手を下へ引くと前の一枚が下りて、後ろの面が
+     出てきます。上へ押せば戻ります。
+
+     動きも重なりのとおりにします：下りる面は下へ抜け、後ろの面はその場で
+     少しだけ大きくなる（ずっとそこに居た、という見え方）。 */
+  const FACE_PULL = 52;
+
+  KN.app.wireFaceGrip = function wireFaceGrip(grip, opts) {
+    if (!grip) return;
+    let pid = null, y0 = 0, on = false;
+    grip.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pid = e.pointerId; y0 = e.clientY; on = true;
+      try { grip.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
+    });
+    /* 取ったからには、下のリストへは渡しません（掴み手は touch-action:none）。 */
+    grip.addEventListener("pointermove", (e) => {
+      if (!on || e.pointerId !== pid) return;
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    const done = (e) => {
+      if (!on || e.pointerId !== pid) return;
+      const dy = e.clientY - y0;
+      on = false; pid = null;
+      if (dy > FACE_PULL && opts.down) { haptic(); show(opts.down, "down"); }
+      else if (dy < -FACE_PULL && opts.up) { haptic(); show(opts.up, "up"); }
+    };
+    grip.addEventListener("pointerup", done);
+    grip.addEventListener("pointercancel", () => { on = false; pid = null; });
+  };
+
+  function show(id, face) {
     if (!KN.screens[id]) return;
     if (!goingBack) {
       if (OFF_BAR.includes(id)) { if (active !== id) drawerFrom.push(active); }
@@ -350,29 +384,35 @@
     }
     const from = active;
     active = id;
-    const dir = slideDir(from, id);
+    const dir = face ? 0 : slideDir(from, id);
+    const flip = face && from && from !== id ? face : null;
+    const FACE_IN = { down: "is-face-under", up: "is-face-rise" };
+    const FACE_OUT = { down: "is-face-drop", up: "is-face-behind" };
+    const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r",
+                 "is-face-under", "is-face-rise", "is-face-drop", "is-face-behind"];
 
     document.querySelectorAll(".screen").forEach((s) => {
       const on = s.dataset.screen === id;
       /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
          動くものがありません。 */
-      const out = dir !== 0 && !on && s.dataset.screen === from;
-      s.classList.remove("is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r");
+      const out = (dir !== 0 || flip) && !on && s.dataset.screen === from;
+      s.classList.remove(...ALL);
       s.classList.toggle("is-active", on);
       if (on) {
         s.hidden = false;
-        if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
+        if (flip) s.classList.add(FACE_IN[flip]);
+        else if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
       } else if (out) {
-        s.classList.add("is-leaving", dir > 0 ? "is-out-l" : "is-out-r");
+        s.classList.add("is-leaving", flip ? FACE_OUT[flip] : (dir > 0 ? "is-out-l" : "is-out-r"));
       } else {
         s.hidden = true;
       }
     });
     clearTimeout(slideT);
-    if (dir) {
+    if (dir || flip) {
       slideT = setTimeout(() => {
         document.querySelectorAll(".screen.is-leaving").forEach((s) => {
-          s.classList.remove("is-leaving", "is-out-l", "is-out-r");
+          s.classList.remove(...ALL);
           s.hidden = true;
         });
       }, SLIDE_MS + 40);

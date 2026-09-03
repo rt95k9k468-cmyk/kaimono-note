@@ -67,7 +67,12 @@
               います。数えた結果だけを別に一行足すのは、同じことを二度
               言うことです。知りたいときは、設定の「買うもの」に。 */""}
         <div class="js-filter"></div>
-        <div class="js-body"></div>
+        ${/* 買うものと同じ紙と掴み手。**こちらは後ろの面**なので、掴み手を
+              上へ押すと買うものが戻ってきます。 */""}
+        <div class="tl-sheet js-sheet">
+          <span class="tl-grip js-grip" aria-hidden="true"><i></i></span>
+          <div class="js-body"></div>
+        </div>
       </div>
     `);
 
@@ -84,6 +89,14 @@
       body:    chrome.querySelector(".js-body"),
       topbar:  chrome.querySelector(".topbar"),
     };
+
+    const fitBar = () => {
+      const h = els.topbar.getBoundingClientRect().height;
+      root.style.setProperty("--topbar-h", Math.round(h) + "px");
+    };
+    fitBar();
+    window.addEventListener("resize", fitBar);
+    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { up: "list" });
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
 
