@@ -2667,17 +2667,22 @@ a.btn { text-decoration: none; }
    数えるほうと押すほうで二度並べていたので。screen-archive.js に経緯。 */
 
 /* ---- ③ Daily Log ----
-   縦幅は広めに——一、二行の文が、一行ぶんの窮屈な帯に収まらないように。 */
+   縦幅は広めに——一、二行の文が、一行ぶんの窮屈な帯に収まらないように。
+
+   **字は一段ずつ大きくしてあります**（本文 12.5 → 14px、見出し 14 → 16px、
+   日の数字 14 → 19px）。小さい字はそれ自体が「静かな画面」の作りかたです
+   が、毎日読むものとしては小さすぎました。**そのぶん余白を広く取ります**
+   ——静けさは字の小ささではなく、空きの多さのほうで持たせます。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4); }
-.arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
-.arc-log-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.arc-log-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
 
-.arc-log-empty { font-size: var(--fs-sm); color: var(--c-text-3); line-height: 1.7; }
+.arc-log-empty { font-size: var(--fs-md); color: var(--c-text-3); line-height: 1.8; }
 
 .arc-log-row {
-  display: flex; gap: var(--sp-3); width: 100%; text-align: left;
-  padding: var(--sp-4) 0; border-top: 1px solid var(--c-border);
+  display: flex; gap: var(--sp-4); width: 100%; text-align: left;
+  padding: 0 0 var(--sp-5); border-top: none;
   align-items: flex-start; min-height: 64px;
   cursor: pointer;
   /* 行そのものは押すもの。長押しでこの帯が選ばれてしまわないように。 */
@@ -2686,23 +2691,25 @@ a.btn { text-decoration: none; }
   -webkit-user-select: none;
 }
 .arc-log-row:first-child { border-top: none; }
-.arc-log-day { display: flex; flex-direction: column; align-items: center; width: 26px; flex: none; padding-top: 1px; }
-.arc-log-day b { font-size: var(--fs-md); font-weight: 800; font-variant-numeric: tabular-nums; }
-.arc-log-day i { font-size: 10px; font-style: normal; color: var(--c-text-3); }
+.arc-log-day { display: flex; flex-direction: column; align-items: center; width: 30px; flex: none; padding-top: 1px; }
+.arc-log-day b { font-size: var(--fs-xl); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.arc-log-day i { font-size: var(--fs-xs); font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
-.arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 /* 本文だけは、選べます。**ここに出ているのはその日に書いた文そのもの**
    なので、コピーするのに紙を開き直させる理由がありません。日付や時刻の
    ほうは押すための飾りなので、上の .arc-log-row のまま選べません。
    （選び終えた指を離すと click も鳴るので、選択が残っているあいだは
    紙を開かないようにしています——screen-archive.js の click。） */
 .arc-log-memo {
-  font-size: var(--fs-sm); line-height: 1.7; color: var(--c-text); white-space: pre-wrap;
+  font-size: var(--fs-md); line-height: 1.8; color: var(--c-text); white-space: pre-wrap;
   user-select: text;
   -webkit-user-select: text;
   -webkit-touch-callout: default;
   cursor: text;
 }
+/* まだ何も書いていない日の一行。押せば書ける、という誘いなので、薄い字で。 */
+.arc-log-memo.is-blank { color: var(--c-text-3); }
 /* 「数文ずつ」を選んだとき。長い日の文で一覧が埋まらないように、三行で
    切ります（続きは押して開けば読めます）。既定は全文のままです。 */
 .arc-log-memo.is-clamped {
@@ -2712,7 +2719,7 @@ a.btn { text-decoration: none; }
   overflow: hidden;
 }
 /* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
-.arc-log-times { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+.arc-log-times { font-size: var(--fs-sm); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
    数字が同じ顔で四つ並ぶと、どれがその日の話なのか読み取れません。 */
 .arc-log-meta { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -2727,7 +2734,7 @@ a.btn { text-decoration: none; }
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-md); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-stack-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
 
 /* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
    札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
@@ -3996,8 +4003,10 @@ a.btn { text-decoration: none; }
   margin-left: 0;
   margin-right: 0;
   border-radius: 0;
-  border-left: none;
-  border-right: none;
+  /* **線は引きません。** 一段ごとに上下へ線を入れていたら、一画面に
+     六本並びました。分かれていることは、**余白のほうが言います**
+     （.tl-sheet.is-daily の gap）——線は最後の手段で、まず空けること。 */
+  border: none;
   box-shadow: none;
 }
 .card.arc-log { padding-left: var(--sp-4); padding-right: var(--sp-4); }
@@ -4038,11 +4047,14 @@ a.btn { text-decoration: none; }
 /* daily の紙。やることと同じ一枚で、掴めば暦が開きます。中身の段どうしの
    間は .arc-body が空けていました——段が紙の中へ移ったので、その役目も
    紙が引き受けます。 */
+/* 一段と一段のあいだは、**線ではなく余白**で分けます。線を六本引いて
+   いたのをぜんぶ外したぶん、ここを広く取ります（16px → 32px）。字を
+   少し大きくしたので、その釣り合いもここで取っています。 */
 .tl-sheet.is-daily {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
-  padding-bottom: var(--sp-4);
+  gap: var(--sp-8);
+  padding-bottom: var(--sp-6);
 }
 /* 掴み手のすぐ下に「あの日」や Daily Log の枠線が来ると、掴み手が線に
    刺さって見えます。ひと呼吸ぶん空けます。 */
@@ -4340,7 +4352,7 @@ a.btn { text-decoration: none; }
    五件あれば同じ札が五つ縦に並びました。枠なら一度言えば済みます。 */
 .arc-feed {
   display: flex; flex-direction: column; gap: 6px;
-  margin: 2px 0 10px;
+  margin: 2px 0 var(--sp-5);
   padding-left: 46px;   /* 上の行の日付の欄と、頭を揃えます */
 }
 .arc-feed-box {
@@ -4349,8 +4361,8 @@ a.btn { text-decoration: none; }
   padding: 5px 8px 6px;
 }
 .arc-feed-box-head {
-  margin: 0 0 2px;
-  font-size: var(--fs-xs);
+  margin: 0 0 4px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text-3);
 }
@@ -4368,14 +4380,14 @@ a.btn { text-decoration: none; }
 }
 .arc-feed-row {
   display: grid;
-  grid-template-columns: 38px 1fr;
+  grid-template-columns: 42px 1fr;
   align-items: baseline;
   gap: 6px;
   /* 行間は詰めます。ここは「その日ぜんぶ」が一目に入るほうが大事なので。 */
-  padding: 2px 0;
+  padding: 3px 0;
   text-align: left;
-  font-size: var(--fs-sm);
-  line-height: 1.35;
+  font-size: var(--fs-md);
+  line-height: 1.45;
   color: var(--c-text-2);
 }
 .arc-feed-when {
@@ -4399,19 +4411,20 @@ a.btn { text-decoration: none; }
 
    数えるのは、あったことだけ。割合も、続いた日数も、先月との比べも
    出しません——良し悪しを言う場所ではないので。 */
-.arc-counts { padding: 12px var(--sp-4) 14px; }
+.arc-counts { padding: 0 var(--sp-4); }
 .arc-counts-head {
-  margin: 0 0 6px;
-  font-size: var(--fs-md);
-  font-weight: 700;
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  letter-spacing: -.01em;
 }
 .arc-counts-days {
-  margin: 0 0 10px;
-  font-size: var(--fs-sm);
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-md);
   color: var(--c-text-2);
 }
 .arc-counts-days b {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-xl);
   font-weight: 800;
   color: var(--c-text);
   font-variant-numeric: tabular-nums;
@@ -4426,9 +4439,9 @@ a.btn { text-decoration: none; }
   border-radius: var(--r-full);
   background: var(--c-surface-2);
 }
-.arc-counts-label { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 700; }
+.arc-counts-label { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 700; }
 .arc-counts-n {
-  font-size: var(--fs-md); font-weight: 800;
+  font-size: var(--fs-lg); font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--c-text);
 }
