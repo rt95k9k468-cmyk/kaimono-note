@@ -10,11 +10,30 @@
    （screen-archive）が、同じものを二枚書き写して持たないために。書き写す
    と、片方だけを直した日に二つの暦が違う動きをします。
 
+   ■ 動かすのは、暦の高さ。紙はそのぶんだけ上下する
+
+   数（p）から出るのは**暦の高さ**（`visibleH`）ひとつで、紙はそのぶん
+   だけ流れの中で上下します。紙の上端（丸角＋掴み手）は、いつも暦の
+   すぐ下——**掴み手の貼りつく床（--cal-h）も、同じ `visibleH` から**
+   毎フレーム書きます。数が一つなので、途中で指を離しても暦と掴み手と
+   紙が別々のところに居る、ということが起きません。
+
+   **紙のほうを transform で動かす作りは、試して外しました。**
+   暦を月の姿で留めて紙を平行移動させれば組み直しが要らない、という
+   話でしたが、そのためには紙が暦の**上**を通らなければなりません
+   （上へ押して暦を消すのは「紙が覆う」ことなので）。ところが紙の箱は
+   画面の上へはみ出しています——送った先では、紙の頭は viewport の
+   ずっと上です。上に乗せた瞬間、**紙の地が暦を丸ごと隠しました**
+   （実測：ダイエットで下まで送ってから引くと、暦は一度も見えない）。
+   紙のはみ出しを切るには clip-path を毎フレーム計算することになり、
+   それは高さを書き換えるより高くつきます。暦が上に居て、下を紙が
+   流れる——この順のままにするのが素直でした。
+
    ■ 三層
 
-     .cal-wds    曜日の行。ここは動きません
-     .cal-clip   伸び縮みする窓（overflow: hidden）
-       .cal-slide   その中のずらし（縦の transform）
+     .cal-wds    曜日の行
+     .cal-clip   窓（overflow: hidden）
+       .cal-slide   その中のずらし（縦の transform ＝ どの週を上に出すか）
          .cal-grid    日のマス（横の transform ＝ 月めくり）
 
    縦と横で層を分けているのは、月めくりの横ずれを .cal-grid がすでに
@@ -38,9 +57,12 @@
    ■ 取る向きは、いる段による
 
    いちばん上（月）からは上へだけ、いちばん下（暦なし）からは下へだけ。
-   真ん中（週）からは**両方**へ行けます。そして上へ押すのは
-   **掴み手（.tl-grip）からだけ**です：紙の本体で上へ引けば、それは下の
-   リストを送るスクロールなので。
+   真ん中（週）からは**両方**へ行けます。取れるのは**掴み手からだけ**です
+   ——紙の本体は、下のリストを送るスクロールのもの。
+
+   **スクロール位置は問いません。** 前は「いちばん上にいるときだけ」でした
+   が、掴み手はどこまで送っても上に居る（sticky）ので、そこを掴んだのに
+   何も起きないのは筋が通りません。
    ========================================================= */
 (function () {
   "use strict";
@@ -107,36 +129,68 @@
     };
   }
 
-  /** 一週ぶんの高さ（暦を丸ごと畳むときの道のり）。 */
-  const weekSpan = (m) => m.cellH + m.wdsH + m.padT + m.padB;
+  /** その段のとき、暦は何px見えているか（上下の余白と曜日の行を含む）。 */
+  function visibleH(m, p) {
+    if (p <= -1) return 0;
+    const chrome = m.wdsH + m.padT + m.padB;
+    const grid = p <= 0 ? m.cellH : m.cellH + (m.full - m.cellH) * Math.min(1, p);
+    /* 暦なし（-1）と週（0）のあいだは、暦ぜんぶが畳まれていきます。 */
+    const keep = p < 0 ? 1 + p : 1;
+    return (grid + chrome) * keep;
+  }
 
-  /** -1（暦なし）〜0（週）〜1（月）のあいだの、途中の姿を描きます。 */
+  /** lo段から hi段までの、指の道のり（px）。**暦が伸び縮みする量そのもの**
+      ＝ 紙が上下する量です。ここを別に決めると、指の下で紙が速すぎたり
+      遅すぎたりします。 */
+  const spanOf = (m, lo, hi) => Math.abs(visibleH(m, hi) - visibleH(m, lo));
+
+  /** -1（暦なし）〜0（週）〜1（月）のあいだの、途中の姿を描きます。
+
+      書くのは**暦の高さ**だけ。紙はそのぶんだけ流れの中で下がり、紙の
+      上端（丸角＋掴み手）は暦のすぐ下に来ます。掴み手の貼りつく床
+      （--cal-h）も同じ数から出すので、送った先でも掴み手は暦の下辺に
+      居ます。 */
   function paint(o, m, p) {
-    const open = p > 0 ? p : 0;       // 0〜1：週から月へ
-    const hide = p < 0 ? -p : 0;      // 0〜1：週から暦なしへ
-    const keep = 1 - hide;
-    m.clip.style.height =
-      ((m.cellH + (m.full - m.cellH) * open) * keep).toFixed(1) + "px";
+    const open = p > 0 ? p : 0;          // 0〜1：週から月へ
+    const keep = p < 0 ? 1 + p : 1;      // 1〜0：週から暦なしへ
+    const grid = p <= 0 ? m.cellH : m.cellH + (m.full - m.cellH) * Math.min(1, p);
+    m.clip.style.height = (grid * keep).toFixed(1) + "px";
     m.slide.style.transform = `translateY(${(-m.week * m.rowH * (1 - open)).toFixed(1)}px)`;
+    /* 三段目へ向かうぶんは、日のマスだけでは足りません——曜日の行と暦の
+       上下の余白も一緒に畳まないと、消したはずの場所に「日 月 火…」と
+       余白だけが残ります。 */
     if (m.wds) {
       m.wds.style.height = (m.wdsH * keep).toFixed(1) + "px";
       m.wds.style.opacity = keep.toFixed(3);
     }
     m.cal.style.paddingTop = (m.padT * keep).toFixed(1) + "px";
     m.cal.style.paddingBottom = (m.padB * keep).toFixed(1) + "px";
-    /* 画面へ渡すのは 0〜1 だけ。負の側は「暦が消えていく」ことで、
-       「どれだけ開いているか」ではありません。 */
-    if (o.root) o.root.style.setProperty("--cal-p", open.toFixed(3));
+    if (o.root) {
+      /* 画面へ渡すのは 0〜1 だけ。負の側は「暦が消えていく」ことで、
+         「どれだけ開いているか」ではありません。 */
+      o.root.style.setProperty("--cal-p", open.toFixed(3));
+      /* 掴み手の床。**毎フレーム、暦の高さと同じ数**を書きます——これが
+         無いと、送った先で掴み手だけが暦に潜ります（ダイエットは暦の
+         厚みを誰も測っていないので、まるごと88px 潜っていました）。 */
+      o.root.style.setProperty("--cal-h", visibleH(m, p).toFixed(1) + "px");
+    }
   }
 
   /** 指の下で書いた寸法を、ぜんぶ剥がします。 */
-  function bare(m) {
+  function bare(o, m) {
     if (!m) return;
     m.clip.style.height = "";
     m.slide.style.transform = "";
     if (m.wds) { m.wds.style.height = ""; m.wds.style.opacity = ""; }
     m.cal.style.paddingTop = "";
     m.cal.style.paddingBottom = "";
+    /* 床は、引く前の値へ戻します（ふだん誰が持っているかは画面ごとに
+       違うので、消すのではなく**元へ**戻すこと）。このあと画面が組み
+       直せば、そちらの fitCalH が正しい値を書きます。 */
+    if (o.root) {
+      if (m.calHWas) o.root.style.setProperty("--cal-h", m.calHWas);
+      else o.root.style.removeProperty("--cal-h");
+    }
   }
 
   function end(o) {
@@ -149,6 +203,16 @@
   function begin(o) {
     const cal = o.cal();
     if (!cal) return null;
+    /* 送ってあるぶんを覚えておきます。**この先で暦がいったん月の高さまで
+       伸びるので**（隠していた週を出して測るため）、ブラウザが「読んで
+       いた場所」を追いかけて画面ごと送ってしまいます——実測で、下まで
+       送った先から引くと 196px（＝伸びたぶん）跳ねていました。測り終えて
+       正しい高さを書いたら、ここへ戻します。 */
+    const scroll0 = o.root ? o.root.scrollTop : 0;
+    /* ふだんから貼りついている暦か（やること・daily）、そうでないか
+       （ダイエット）。引いているあいだは css がどちらも貼りつけるので、
+       印を付ける**前に**見ること。 */
+    const stuck = window.getComputedStyle(cal).position === "sticky";
     cal.classList.remove("is-settling");
     cal.classList.add("is-peek");
     if (o.root) o.root.classList.add("is-cal-peek");
@@ -163,7 +227,12 @@
     o.tagOffWeek(cal, o.here());
     const m = metrics(cal, o.here());
     if (!m) { end(o); return null; }
+    m.stuck = stuck;
+    m.scroll = scroll0;
+    if (o.root) m.calHWas = o.root.style.getPropertyValue("--cal-h");
     paint(o, m, at(o));
+    /* 測るあいだに伸びたぶんを、ブラウザが追いかけていたら戻します。 */
+    if (o.root) { void o.root.offsetHeight; o.root.scrollTop = scroll0; }
     return m;
   }
 
@@ -177,16 +246,26 @@
     if (!cal || !m) return;
     const done = () => {
       end(o);
-      bare(m);
+      bare(o, m);
       o.commit({ shown: to >= 0, open: to > 0 });
+      /* 剥がして組み直したところで、また「読んでいた場所」が働きます。
+         収まった姿は指の下の姿と同じ寸法なので、送りは引く前のまま。
+
+         **ふだん貼りつかない暦（ダイエット）で、開くほうへ収めたときだけ
+         上まで戻します。** あちらの暦は紙の頭に印刷してあるものなので、
+         送った先では画面の外に居ます——せっかく開いた月が、指を離した
+         とたんに見えなくなるので。畳むほうへ収めたときは、読んでいた
+         ところに居させます。 */
+      if (o.root) o.root.scrollTop = (!m.stuck && to > m.from) ? 0 : m.scroll;
     };
+    m.from = at(o);
     if (KN.motion.still()) { done(); return; }
     cal.classList.add("is-settling");
     if (o.root) o.root.classList.remove("is-cal-peek");   // ここからは滑らせます
     paint(o, m, to);
     let over = false;
-    const fin = () => {
-      if (over) return;
+    const fin = (e) => {
+      if (over || (e && e.target !== m.clip)) return;
       over = true;
       clearTimeout(tm);
       m.clip.removeEventListener("transitionend", fin);
@@ -222,8 +301,9 @@
     el.addEventListener("pointerdown", (e) => {
       if (!o.cal() || (o.busy && o.busy())) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      // 上まで来ているときだけ。途中で引くのは、ただのスクロールです。
-      if (!o.root || o.root.scrollTop > 0) return;
+      /* **スクロール位置は問いません。** 前はここに「いちばん上にいる
+         ときだけ」がありました。掴み手はどこまで送っても上に居る（sticky）
+         ので、そこを掴んだのに何も起きないのは筋が通りません。 */
       if (o.enabled && !o.enabled()) return;
       byGrip = !!(e.target.closest && e.target.closest(".tl-grip"));
       /* **切り替えるのは掴み手からだけ。** 紙のどこを持っても下へ引けば
@@ -259,10 +339,11 @@
            ここ一度きり——途中で測り直すと、境目をまたぐたびに指の下で
            速さが変わります。 */
         if (p0 === 1 || (p0 === 0 && dy > 0)) {
-          lo = 0; hi = 1; span = m.full - m.cellH;      // 週 ⇄ 月
+          lo = 0; hi = 1;                               // 週 ⇄ 月
         } else {
-          lo = -1; hi = 0; span = weekSpan(m);          // 暦なし ⇄ 週
+          lo = -1; hi = 0;                              // 暦なし ⇄ 週
         }
+        span = spanOf(m, lo, hi);
         on = true;
         try { el.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
       }

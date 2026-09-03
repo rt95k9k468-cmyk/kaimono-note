@@ -163,8 +163,24 @@
        「ダイエット」にも札があります。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
+    /* 上のバーの厚み。**掴み手はこのぶんだけ下に貼りつきます**——数えないと
+       掴み手はバーの裏へ潜り、下まで送った先で掴めなくなります（実際そう
+       なっていて、この画面だけ段を替えられませんでした）。厚みはノッチの
+       深さで変わるので、CSSに数字は焼き込めません。
+       暦のぶん（--cal-h）は要りません——ここの暦は貼りつかないので。 */
+    const fitTop = () => {
+      const h = els.topbar.getBoundingClientRect().height;
+      root.style.setProperty("--topbar-h", Math.round(h) + "px");
+    };
+    fitTop();
+    window.addEventListener("resize", fitTop);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitTop);
+
     /* カレンダーは貼りつけません（やることのタブとはそこだけ違います）。
-       紙のいちばん上に印刷してあるものとして、スクロールで一緒に流れます。 */
+       紙のいちばん上に印刷してあるものとして、スクロールで一緒に流れます
+       ——ただし**紙を引いているあいだだけは貼りつきます**（css の
+       `#screen-diet .cal.is-peek`）。下まで送った先で掴み手を引いたとき、
+       暦が画面の外に居ては、出てくるものがないので。 */
     root.addEventListener("scroll", () => {
       els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
     });
