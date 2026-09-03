@@ -4096,8 +4096,7 @@ a.btn { text-decoration: none; }
    地が「まだ何かある」に見える）。 */
 #screen-list > .stack,
 #screen-prices > .stack { flex: 1; min-height: 0; }
-#screen-list .tl-sheet,
-#screen-prices .tl-sheet {
+#screen-list .tl-sheet {
   flex: 1;
   /* 画面の下の余白（帯のぶん）は、紙のほうが引き受けます。器のほうに
      持たせたままだと、白い紙が画面の途中で切れて、その下の地が
@@ -4105,6 +4104,20 @@ a.btn { text-decoration: none; }
   margin-bottom: calc(-1 * (var(--tabbar-space) + var(--sp-8) + var(--sp-6)));
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
 }
+
+/* 価格の一覧が乗るところ。**紙ではありません。**
+
+   ここには `#screen-prices .tl-sheet` が居て、買うものとまったく同じ
+   丸角の白い紙でした。価格は買うものの後ろに敷いてある地なので、紙を
+   持ってはいけません——持つと、めくっている最中に丸角と掴み手が二組
+   出ます（実測でそうなっていた）。
+
+   だから面も丸角も敷きません。行のほうは、もともとこれで読めるように
+   できています（`.product-wrap:not(.is-tile-wrap) .product` は
+   `background: none` で、区切りは上の細い線、絵の丸の地は
+   `color-mix(--cat 16%, var(--c-bg))` ——**地の色を混ぜてある**）。
+   下まで伸ばすのは、器の余白がすでに帯のぶんを持っているので `flex` だけ。 */
+.prices-ground { flex: 1; min-height: 0; }
 
 /* ダイエットの紙。掴むためだけの一枚で、**面は持ちません**——中の
    「今日のからだ」がすでに端から端までの面を持っていて、その上にもう一枚
