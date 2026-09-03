@@ -534,11 +534,11 @@
        言うためではなく、押せば書けるところがそこに要るからです。 */
     const only = oneDayLog() ? focusDay() : viewDay;
     const all = store.daysOfMonth(ym);
-    const days = only
-      ? (all.filter((d) => d.date === only).length
-          ? all.filter((d) => d.date === only)
-          : [{ date: only, memo: "" }])
-      : all;
+    const mine = only ? all.filter((d) => d.date === only) : all;
+    /* 記録の無い日は、**空の一行**を作って出します。`isBlank` を立てて
+       おくのは、`createdAt` の有無で見分けると取りこぼすから——古い記録は
+       持っていないことがあります。 */
+    const days = only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine;
     const sec = node(html`
       <section class="card arc-log">
         <header class="arc-log-head">
@@ -578,16 +578,16 @@
             ${/* まだ何も書いていない日は、「-」ではなく**押せば書ける**と
                   言います。無いことを数えた字にはしません（daily は評価
                   しないので、「書けていない」とも言いません）。 */""}
-            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.createdAt ? "" : "is-blank"}"
-                  >${d.createdAt ? orDash(d.memo) : "押して、この日のことを書く"}</span>
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank ? "is-blank" : ""}"
+                  >${d.isBlank ? "押して、この日のことを書く" : orDash(d.memo)}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
                   中身のほうに先に行くようにします。どちらも、要らない人は
                   設定で消せます（数字が四つ並ぶのが邪魔なときがあるので）。 */""}
-            ${S().showDayTimes === false || !d.createdAt ? "" : html`
+            ${S().showDayTimes === false || d.isBlank ? "" : html`
               <span class="arc-log-times">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
-            ${S().showStamps === false || !d.createdAt ? "" : html`
+            ${S().showStamps === false || d.isBlank ? "" : html`
               <span class="arc-log-meta">
                 <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
                 ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
