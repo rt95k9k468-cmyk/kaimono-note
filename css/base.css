@@ -607,21 +607,37 @@ a { color: var(--c-primary); }
 .screen.is-leaving.is-out-l { animation: scr-out-l .28s var(--ease-out) forwards; }
 .screen.is-leaving.is-out-r { animation: scr-out-r .28s var(--ease-out) forwards; }
 
-/* ---- 買うもの ⇄ 価格：前後の重なり ----
+/* ---- 買うもの ⇄ 価格：一枚が、もう一枚の上に乗っている ----
 
-   横に並んだ二つのタブではなく、**買うものの後ろに価格がいる**という
-   重なりです。下りる面は下へ抜け（前にいたので、いちばん前を通る）、
-   後ろの面はその場で少し大きくなるだけ——動かすと「横から来た」に
-   見えて、後ろに居たことが伝わりません。 */
-.screen.is-leaving.is-face-drop { z-index: 3; animation: scr-face-drop .3s var(--ease-out) forwards; }
-.screen.is-leaving.is-face-behind { z-index: 0; animation: scr-face-behind .3s var(--ease-out) forwards; }
-.screen.is-active.is-face-under { z-index: 0; animation: scr-face-under .3s var(--ease-out); }
-.screen.is-active.is-face-rise { z-index: 3; animation: scr-face-rise .3s var(--ease-out); }
+   横に並んだ二つのタブではありません。**価格の紙の上に、買うものの紙が
+   乗っています。** 掴み手を下げると上の一枚が指について下がり、後ろの
+   価格が出てきます。上げれば戻ります。指の動いたぶんだけ動くので、
+   途中で止めればそこに留まります（離すと近いほうへ滑ります）。
 
-@keyframes scr-face-drop   { from { transform: none; } to { transform: translateY(100%); } }
-@keyframes scr-face-rise   { from { transform: translateY(100%); } to { transform: none; } }
-@keyframes scr-face-under  { from { transform: scale(.965); opacity: .55; } to { transform: none; opacity: 1; } }
-@keyframes scr-face-behind { from { transform: none; opacity: 1; } to { transform: scale(.965); opacity: .55; } }
+   動くのは**前の一枚だけ**です。後ろのものは動かないから後ろに見える
+   ——あちらは等身大へ戻ってくるだけにします（--face-p、0〜1）。 */
+.screen.is-face-front {
+  display: flex;
+  z-index: 3;
+  /* 下がった一枚は「紙」に見えなければいけません。上の角を丸め、
+     下に影を落として、後ろとのあいだに厚みを作ります。 */
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, .16);
+  will-change: transform;
+}
+.screen.is-face-front.is-face-settle {
+  transition: transform .28s var(--ease-out);
+}
+.screen.is-face-back {
+  display: flex;
+  z-index: 0;
+  pointer-events: none;
+  transform: scale(calc(.955 + .045 * var(--face-p, 0)));
+  opacity: calc(.5 + .5 * var(--face-p, 0));
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen.is-face-back { transform: none; opacity: 1; }
+}
 
 @keyframes scr-in-r  { from { transform: translateX(100%); }  to { transform: none; } }
 @keyframes scr-in-l  { from { transform: translateX(-100%); } to { transform: none; } }

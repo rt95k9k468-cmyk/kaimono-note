@@ -350,30 +350,97 @@
 
      動きも重なりのとおりにします：下りる面は下へ抜け、後ろの面はその場で
      少しだけ大きくなる（ずっとそこに居た、という見え方）。 */
-  const FACE_PULL = 52;
+  /* 動かすのは**前の一枚だけ**です（買うもの）。価格はその後ろに敷いた
+     まま動きません——後ろのものは動かないから後ろに見えます。前が下がった
+     ぶんだけ、後ろが等身大へ戻ってくる（--face-p）。
 
+     行き先は 0（買うものが全面）か 1（下がりきって価格が全面）の二つ。
+     途中で離したら、近いほうへ滑らせます。 */
+  const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
+  const FACE_MS = 280;
+  const FRONT = "list", BACK = "prices";
+
+  const screensEl = () => document.getElementById("screens");
+  const faceH = () => (screensEl() ? screensEl().getBoundingClientRect().height : 1) || 1;
+
+  function faceEls() {
+    return { front: document.getElementById("screen-" + FRONT),
+             back: document.getElementById("screen-" + BACK) };
+  }
+
+  /** 二枚とも見えるようにして、動かせる形にします。 */
+  function faceOpen() {
+    const { front, back } = faceEls();
+    if (!front || !back) return null;
+    [FRONT, BACK].forEach((id) => {
+      ensureMounted(id);
+      try { KN.screens[id].render(); } catch (_) { /* 組めなくても手つきは続けます */ }
+    });
+    back.hidden = false; front.hidden = false;
+    back.classList.add("is-face-back");
+    front.classList.add("is-face-front");
+    front.classList.remove("is-face-settle");
+    return { front, back };
+  }
+
+  function facePaint(o, p) {
+    o.front.style.transform = "translateY(" + (p * 100).toFixed(3) + "%)";
+    o.back.style.setProperty("--face-p", p.toFixed(3));
+  }
+
+  /** 行き先まで滑らせて、着いたら片づけます。 */
+  function faceSettle(o, to) {
+    o.front.classList.add("is-face-settle");
+    facePaint(o, to);
+    setTimeout(() => {
+      o.front.classList.remove("is-face-front", "is-face-settle");
+      o.back.classList.remove("is-face-back");
+      o.front.style.transform = "";
+      o.back.style.removeProperty("--face-p");
+      show(to > 0.5 ? BACK : FRONT, "settled");
+    }, FACE_MS + 20);
+  }
+
+  /** 紙の掴み手に、面をめくる手つきを結びます。
+
+      `opts.role` は "front"（買うもの＝前の一枚）か "back"（価格＝後ろ）。
+      前の掴み手は**下へ**、後ろの掴み手は**上へ**しか動きません。 */
   KN.app.wireFaceGrip = function wireFaceGrip(grip, opts) {
     if (!grip) return;
-    let pid = null, y0 = 0, on = false;
+    const front = opts && opts.role === "front";
+    let pid = null, y0 = 0, on = false, o = null, p = 0;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      pid = e.pointerId; y0 = e.clientY; on = true;
+      pid = e.pointerId; y0 = e.clientY; on = true; o = null;
+      p = front ? 0 : 1;
       try { grip.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
     });
-    /* 取ったからには、下のリストへは渡しません（掴み手は touch-action:none）。 */
     grip.addEventListener("pointermove", (e) => {
       if (!on || e.pointerId !== pid) return;
       if (e.cancelable) e.preventDefault();
-    }, { passive: false });
-    const done = (e) => {
-      if (!on || e.pointerId !== pid) return;
       const dy = e.clientY - y0;
+      /* 行ける向きは片道ずつ。前の一枚は下へ、後ろの一枚は上へ。 */
+      if (!o) {
+        if (front ? dy <= 2 : dy >= -2) return;
+        o = faceOpen();
+        if (!o) { on = false; return; }
+        facePaint(o, p);
+      }
+      p = Math.max(0, Math.min(1, (front ? 0 : 1) + dy / faceH()));
+      facePaint(o, p);
+    }, { passive: false });
+    const done = () => {
+      if (!on) return;
       on = false; pid = null;
-      if (dy > FACE_PULL && opts.down) { haptic(); show(opts.down, "down"); }
-      else if (dy < -FACE_PULL && opts.up) { haptic(); show(opts.up, "up"); }
+      if (!o) return;
+      const from = front ? 0 : 1;
+      const to = Math.abs(p - from) > FACE_DONE ? (from ? 0 : 1) : from;
+      if (to !== from) haptic();
+      faceSettle(o, to);
+      o = null;
     };
     grip.addEventListener("pointerup", done);
-    grip.addEventListener("pointercancel", () => { on = false; pid = null; });
+    grip.addEventListener("pointercancel", done);
   };
 
   function show(id, face) {
@@ -384,32 +451,30 @@
     }
     const from = active;
     active = id;
+    /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
+       （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
+       ところから跳ねます。 */
     const dir = face ? 0 : slideDir(from, id);
-    const flip = face && from && from !== id ? face : null;
-    const FACE_IN = { down: "is-face-under", up: "is-face-rise" };
-    const FACE_OUT = { down: "is-face-drop", up: "is-face-behind" };
-    const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r",
-                 "is-face-under", "is-face-rise", "is-face-drop", "is-face-behind"];
+    const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r"];
 
     document.querySelectorAll(".screen").forEach((s) => {
       const on = s.dataset.screen === id;
       /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
          動くものがありません。 */
-      const out = (dir !== 0 || flip) && !on && s.dataset.screen === from;
+      const out = dir !== 0 && !on && s.dataset.screen === from;
       s.classList.remove(...ALL);
       s.classList.toggle("is-active", on);
       if (on) {
         s.hidden = false;
-        if (flip) s.classList.add(FACE_IN[flip]);
-        else if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
+        if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
       } else if (out) {
-        s.classList.add("is-leaving", flip ? FACE_OUT[flip] : (dir > 0 ? "is-out-l" : "is-out-r"));
+        s.classList.add("is-leaving", dir > 0 ? "is-out-l" : "is-out-r");
       } else {
         s.hidden = true;
       }
     });
     clearTimeout(slideT);
-    if (dir || flip) {
+    if (dir) {
       slideT = setTimeout(() => {
         document.querySelectorAll(".screen.is-leaving").forEach((s) => {
           s.classList.remove(...ALL);
