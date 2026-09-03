@@ -4248,7 +4248,8 @@ a.btn { text-decoration: none; }
   z-index: 3;
   transition: top var(--m-press) var(--ease-out);
 }
-.tl-row.is-aim-time .tl-aim-line { opacity: 1; }
+.tl-row.is-aim-time .tl-aim-line,
+.tl-free-row.is-aim-time .tl-aim-line { opacity: 1; }
 /* 長期タスクの欄へ運んでいるあいだ。**受け皿ぜんぶ**を光らせます
    ——あそこには行が無いこともあるので、行を光らせる手が使えません。 */
 .tl-someday-sec.is-aim {
@@ -4267,7 +4268,7 @@ a.btn { text-decoration: none; }
   opacity: 0;
   transition: top var(--m-press) var(--ease-out);
 }
-.tl-free-row.is-aim .tl-band-line { opacity: 1; }
+
 .tl-band-time {
   position: absolute;
   left: 0; top: 50%;

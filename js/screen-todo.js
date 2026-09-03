@@ -3176,17 +3176,11 @@
       if (!isFinite(from) || !isFinite(until) || until <= from) return;
       fr.classList.add("is-open");
       fr.style.setProperty("--band-h", bandHeight(until - from) + "px");
-      fr.append(node(html`
-        <span class="tl-band">
-          <span class="tl-band-line"><span class="tl-band-time"></span></span>
-        </span>
-      `));
+      fr.append(node(html`<span class="tl-band"></span>`));
     });
-    /* 用事の丸薬にも、狙いの線を仕込みます。**丸薬は時間そのもの**なので、
-       そこを狙えば「その用事に重なる時刻」を指せます——これで一日の
-       どの15分にも置けるようになります（空きだけでは、埋まっている
-       時間帯に置く道がありませんでした）。 */
-    dayList.querySelectorAll(".tl-row .tl-rail").forEach((rail) => {
+    /* 狙いの線は、**どの行にも**仕込みます（用事にも空きにも）。列ぜんぶが
+       一本の時間軸なので、線の置き場も行で分けません。 */
+    dayList.querySelectorAll(".tl-rail").forEach((rail) => {
       if (rail.querySelector(".tl-aim-line")) return;
       rail.append(node(html`
         <span class="tl-aim-line"><span class="tl-band-time"></span></span>
@@ -3261,6 +3255,48 @@
     d.raf = requestAnimationFrame(edgeScroll);
   }
 
+  /** 左の列の中で、その高さが何時かを返します（15分きざみ）。
+
+      列の外（題やメモの側）なら null。そちらは「順番で置きなおす」ほうの
+      持ち場で、**左右で言っていることが違います**——左は時計、右は並び順。
+
+      狙いの線もここで置きます。行の中の割合をそのまま線の位置にするので、
+      指のところに線が来ます。 */
+  function railTime(d, x, y) {
+    const rows = [...d.dayList.children].filter((li) => li.classList
+      && (li.classList.contains("tl-row") || li.classList.contains("tl-free-row")));
+    if (!rows.length) return null;
+    const first = rows[0].querySelector(".tl-rail");
+    if (!first) return null;
+    const col = first.getBoundingClientRect();
+    /* 横は列の幅ぶん。狭いと狙いにくいので、左は画面の端まで（時刻の字も
+       列のうち）、右は列の右端までにします。 */
+    if (x > col.right) return null;
+
+    let hit = null, ratio = 0;
+    for (const li of rows) {
+      const b = li.getBoundingClientRect();
+      if (b.height <= 0) continue;
+      if (y < b.top) { if (!hit) { hit = li; ratio = 0; } break; }
+      if (y <= b.bottom) { hit = li; ratio = (y - b.top) / b.height; break; }
+      hit = li; ratio = 1;                       // まだ下にある：最後の行に留める
+    }
+    if (!hit) return null;
+    const at = Number(hit.dataset.at), until = Number(hit.dataset.until);
+    if (!isFinite(at) || !isFinite(until) || until <= at) return null;
+    const t = Math.round((at + Math.min(1, Math.max(0, ratio)) * (until - at)) / SLOT_MIN) * SLOT_MIN;
+
+    hit.classList.add("is-aim", "is-aim-time");
+    const rail = hit.querySelector(".tl-rail");
+    const line = rail && rail.querySelector(".tl-aim-line");
+    if (line) {
+      line.style.top = (Math.min(1, Math.max(0, ratio)) * 100).toFixed(1) + "%";
+      const label = line.querySelector(".tl-band-time");
+      if (label) label.textContent = KN.plan.toTime(t);
+    }
+    return { at: t, row: hit };
+  }
+
   /** いま指の下にあるのは、どの置き場か。 */
   function aim(x, y) {
     const d = tlDrag;
@@ -3289,35 +3325,22 @@
       return;
     }
 
-    /* 開いた帯の中にいるなら、指の高さがそのまま時刻です。 */
-    for (const fr of d.dayList.querySelectorAll(".tl-free-row.is-open")) {
-      const band = fr.querySelector(".tl-band");
-      if (!band) continue;
-      const b = band.getBoundingClientRect();
-      if (y < b.top || y > b.bottom || b.height <= 0) continue;
-      const from = Number(fr.dataset.at), until = Number(fr.dataset.until);
-      /* 下端は**終わり − 15分**。前は「終わり − 長さ」で、空きに入らない
-         用事は端まで狙えませんでした。はみ出してよいことにしたので、
-         残すのは「始まりは空きの中」というだけです。 */
-      const last = Math.max(from, until - SLOT_MIN);
-      const ratio = Math.min(1, Math.max(0, (y - b.top) / b.height));
-      const at = Math.min(last, Math.max(from,
-        Math.round((from + ratio * (last - from)) / SLOT_MIN) * SLOT_MIN));
-      fr.classList.add("is-aim");
-      const line = fr.querySelector(".tl-band-line");
-      if (line) {
-        const span = last - from;
-        line.style.top = (span > 0 ? ((at - from) / span) * 100 : 0) + "%";
-        const label = line.querySelector(".tl-band-time");
-        if (label) label.textContent = KN.plan.toTime(at);
+    /* ---- 長期タスクの欄 ----
+
+       **探すのは節のほう**（.tl-someday-sec）です。中の `ul.tl-someday` は
+       一件も無いと組まれないので、いちばん要る「空っぽの長期タスクへ
+       最初の一件を運ぶ」がちょうど落とせませんでした。 */
+    const sec = root && root.querySelector(".tl-someday-sec");
+    if (!d.someday && sec) {
+      const b = sec.getBoundingClientRect();
+      if (b.height > 0 && y >= b.top && y <= b.bottom) {
+        sec.classList.add("is-aim");
+        d.target = { kind: "someday" };
+        return;
       }
-      d.target = { kind: "time", at };
-      return;
     }
-    /* 長期タスクの欄の中。**この欄の中でも、並べ替えられます**——
-       落とし先は時間割だけではありません。行の上なら、その前後へ。
-       行の無いところ（欄の余白）で離したなら、まだ何も言っていないので
-       帰します。 */
+
+    /* ---- 長期タスクの欄の中で並べ替える ---- */
     if (d.someday) {
       const b = d.list.getBoundingClientRect();
       if (y >= b.top && y <= b.bottom) {
@@ -3336,56 +3359,30 @@
       }
     }
 
-    /* 長期タスクの欄へ運んだ。**日付も時刻も外して**、あちらへ移します。
+    /* ---- 左の列は、まるごと一本の時間軸 ----
 
-       時間割の用事を「いつやるか決めていないもの」に戻す道です。ここが
-       無いと、いったん日を決めた用事は、詳細の紙を開いて日付を消すまで
-       時間割に居つづけます。 */
-    /* **探すのは節のほう**（.tl-someday-sec）です。中の `ul.tl-someday` は
-       一件も無いと組まれないので、いちばん要る「空っぽの長期タスクへ
-       最初の一件を運ぶ」がちょうど落とせませんでした。 */
-    const sec = root && root.querySelector(".tl-someday-sec");
-    if (!d.someday && sec) {
-      const b = sec.getBoundingClientRect();
-      if (b.height > 0 && y >= b.top && y <= b.bottom) {
-        sec.classList.add("is-aim");
-        d.target = { kind: "someday" };
-        return;
-      }
-    }
+       **「何が置いてあるか」は見ません。** 空きも、丸薬も、丸薬と丸薬の
+       あいだも、区別しない——その日の始まりから終わりまでが連続した時刻で、
+       指を置いたどの高さにも15分きざみの時刻が対応します。
 
+       前は「空きの帯の中」と「丸薬の中」だけが時刻で、そのあいだの隙間
+       （行の余白・帯の外）はぜんぶ「順番で置きなおす」に落ちていました。
+       置ける場所と置けない場所が、見た目では区別のつかない数pxの縞に
+       なっていた、ということです。**その区別ごと捨てます。**
+
+       行はどれも `data-at` / `data-until` を持っていて、縦に隙間なく並んで
+       いるので、**行の高さをその行の時間に割り当てれば**、列ぜんぶが途切れ
+       のない時間軸になります。長い空きは、持ち上げたときに帯のぶんだけ
+       背が伸びているので、そこだけ細かく狙えます。 */
+    const timeAt = railTime(d, x, y);
+    if (timeAt) { d.target = { kind: "time", at: timeAt.at }; return; }
+
+    /* ---- 題とメモの側は、順番で置きなおす ----
+
+       **左右で言っていることが違います。** 左の列は時計、右は並び順。
+       どちらを狙ったかが位置で分かるので、混ざりません。
+       行の上半分なら前へ、下半分なら後ろへ。 */
     const rows = [...d.dayList.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
-
-    /* 丸薬の上。**丸薬は時間そのもの**（高さがかかる時間）なので、その
-       どこを狙ったかが、そのまま時刻になります。埋まっている時間帯にも
-       置けるのは、ここがあるからです。狙うのは丸薬の列だけ——題のほうは
-       「順番で置きなおす」ままにします（別のことを言っているので）。 */
-    for (const r of rows) {
-      const rail = r.querySelector(".tl-rail");
-      const node = r.querySelector(".tl-node");
-      if (!rail || !node) continue;
-      /* 掴めるのは**列ぜんぶ**（横は rail）。ただし時刻を読むのは**丸薬の
-         中だけ**です（縦は node）——丸薬の上下のつなぎは、この用事の時間
-         ではないので、そこを時刻に混ぜると、狙った時刻とずれます。 */
-      const b = rail.getBoundingClientRect();
-      const n = node.getBoundingClientRect();
-      if (n.height <= 0 || x < b.left || x > b.right || y < n.top || y > n.bottom) continue;
-      const from = Number(r.dataset.at), until = Number(r.dataset.until);
-      if (!isFinite(from) || !isFinite(until) || until <= from) continue;
-      const ratio = Math.min(1, Math.max(0, (y - n.top) / n.height));
-      const at = Math.round((from + ratio * (until - from)) / SLOT_MIN) * SLOT_MIN;
-      r.classList.add("is-aim", "is-aim-time");
-      const line = rail.querySelector(".tl-aim-line");
-      if (line) {
-        line.style.top = (((n.top - b.top) + ratio * n.height) / (b.height || 1) * 100).toFixed(1) + "%";
-        const label = line.querySelector(".tl-band-time");
-        if (label) label.textContent = KN.plan.toTime(at);
-      }
-      d.target = { kind: "time", at };
-      return;
-    }
-
-    /* 用事と用事のあいだ。行の上半分なら前へ、下半分なら後ろへ。 */
     let before = null;
     for (const r of rows) {
       const b = r.getBoundingClientRect();
