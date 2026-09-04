@@ -1,0 +1,2539 @@
+{
+ "note": "ICON-SILHOUETTE.md を見ること。値は候補で、採否ではない",
+ "total": 439,
+ "done": [
+  "toiletRoll",
+  "dishSoap",
+  "shampoo",
+  "rinse",
+  "milkyLotion",
+  "householdBook",
+  "envelope",
+  "bathScale",
+  "fridge",
+  "airPurifier",
+  "dog",
+  "cat",
+  "battery",
+  "cuttingBoard",
+  "laundry",
+  "tissue",
+  "trashBag",
+  "toothbrush",
+  "wrap"
+ ],
+ "pending": {
+  "rice": [
+   "bxs:bowl-rice|0.88",
+   "material-symbols:rice-bowl-rounded|0.88",
+   "ion:pricetag|0.43",
+   "ion:pricetags|0.43"
+  ],
+  "bleach": [
+   "bi:mic-fill|0.43",
+   "fluent:mic-24-filled|0.43",
+   "ion:mic|0.43",
+   "material-symbols:ent-rounded|0.43"
+  ],
+  "bodySoap": [
+   "material-symbols:soap-rounded|1",
+   "ph:hand-soap-fill|0.88",
+   "material-symbols:ods-rounded|0.43",
+   "material-symbols:sos-rounded|0.43"
+  ],
+  "handSoap": [
+   "material-symbols:soap-rounded|1",
+   "ph:hand-soap-fill|1",
+   "material-symbols:sos-rounded|0.43",
+   "mingcute:and-fill|0.43"
+  ],
+  "soapBar": [
+   "fluent:list-bar-24-filled|0.88",
+   "material-symbols:wine-bar-rounded|0.88",
+   "ri:side-bar-fill|0.88",
+   "bi:bar-chart-fill|0.88"
+  ],
+  "toothpaste": [
+   "ph:tooth-fill|1",
+   "ri:tooth-fill|1",
+   "mingcute:test-tube-fill|0.88",
+   "ph:test-tube-fill|0.88"
+  ],
+  "faceWash": [
+   "material-symbols:wash-rounded|1",
+   "bxs:car-wash|0.88",
+   "mingcute:wash-machine-fill|0.88",
+   "material-symbols:local-car-wash-rounded|0.76"
+  ],
+  "sunscreen": [
+   "bi:sun-fill|1",
+   "bxs:sun|1",
+   "mingcute:sun-2-fill|1",
+   "mingcute:sun-fill|1"
+  ],
+  "kitchenRoll": [
+   "bxs:paint-roll|0.88",
+   "material-symbols:camera-roll-rounded|0.88",
+   "material-symbols:settings-b-roll-rounded|0.88",
+   "ph:scroll-fill|0.43"
+  ],
+  "foil": [
+   "bxs:paint-roll|0.88",
+   "material-symbols:camera-roll-rounded|0.88",
+   "material-symbols:settings-b-roll-rounded|0.88",
+   "mingcute:oil-fill|0.43"
+  ],
+  "sponge": [
+   "bxs:dish|1",
+   "mingcute:dish-cover-fill|0.88",
+   "material-symbols:clean-hands-rounded|0.88",
+   "material-symbols:cleaning-rounded|0.43"
+  ],
+  "mask": [
+   "bxs:mask|1",
+   "material-symbols:masks-rounded|1",
+   "ph:mask-sad-fill|0.88",
+   "bxs:face-mask|0.88"
+  ],
+  "toner": [
+   "mingcute:bottle-fill|1",
+   "tabler:bottle-filled|1",
+   "ri:ink-bottle-fill|0.88",
+   "ph:beer-bottle-fill|0.88"
+  ],
+  "diaper": [
+   "mingcute:baby-fill|1",
+   "ph:baby-fill|1",
+   "material-symbols:bedroom-baby-rounded|0.88",
+   "bxs:baby-carriage|0.88"
+  ],
+  "bulb": [
+   "bxs:bulb|1",
+   "ion:bulb|1",
+   "mingcute:bulb-2-fill|1",
+   "mingcute:bulb-fill|1"
+  ],
+  "socks": [
+   "mingcute:sock-fill|1",
+   "ph:sock-fill|1",
+   "bi:ear-fill|0.43",
+   "ion:ear|0.43"
+  ],
+  "petFood": [
+   "fluent:food-24-filled|1",
+   "material-symbols:no-food-rounded|0.88",
+   "fluent:food-egg-24-filled|0.88",
+   "bxs:food-menu|0.88"
+  ],
+  "zipBag": [
+   "bi:bag-fill|1",
+   "ion:bag|1",
+   "ph:bag-fill|1",
+   "bi:bag-x-fill|1"
+  ],
+  "razor": [
+   "tabler:blade-filled|1",
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "material-symbols:ad-off-rounded|0.41"
+  ],
+  "cottonSwab": [
+   "fluent:usb-stick-24-filled|0.88",
+   "material-symbols:game-stick-l3-rounded|0.76",
+   "material-symbols:game-stick-r3-rounded|0.76",
+   "material-symbols:game-stick-left-rounded|0.76"
+  ],
+  "deodorant": [
+   "material-symbols:air-freshener-rounded|1",
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88",
+   "ph:spray-bottle-fill|0.88"
+  ],
+  "insect": [
+   "bi:bug-fill|1",
+   "bxs:bug|1",
+   "fluent:bug-24-filled|1",
+   "ion:bug|1"
+  ],
+  "stationery": [
+   "bi:pen-fill|1",
+   "bxs:pen|1",
+   "fluent:pen-24-filled|1",
+   "mingcute:pen-2-fill|1"
+  ],
+  "groceries": [
+   "bi:basket-fill|1",
+   "bxs:basket|1",
+   "ion:basket|1",
+   "mingcute:basket-2-fill|1"
+  ],
+  "household": [
+   "material-symbols:household-supplies-rounded|0.88",
+   "ph:paint-brush-household-fill|0.76",
+   "bi:house-fill|0.43",
+   "material-symbols:house-rounded|0.43"
+  ],
+  "baby": [
+   "mingcute:baby-fill|1",
+   "ph:baby-fill|1",
+   "material-symbols:bedroom-baby-rounded|0.88",
+   "bxs:baby-carriage|0.88"
+  ],
+  "cleanerSpray": [
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88",
+   "ph:spray-bottle-fill|0.88",
+   "mingcute:pray-fill|0.43"
+  ],
+  "kitchenSpray": [
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88",
+   "ph:spray-bottle-fill|0.88",
+   "mingcute:pray-fill|0.43"
+  ],
+  "bathCleaner": [
+   "bxs:bath|1",
+   "mingcute:bath-fill|1",
+   "tabler:bath-filled|1",
+   "bxs:shower|1"
+  ],
+  "toiletCleaner": [
+   "fluent:toilet-20-filled|1",
+   "ph:toilet-fill|1",
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88"
+  ],
+  "mold": [
+   "fluent:mold-24-filled|1",
+   "tabler:device-tv-old-filled|0.39"
+  ],
+  "pipeCleaner": [
+   "ph:pipe-fill|1",
+   "material-symbols:plumbing-rounded|1",
+   "tabler:test-pipe-2-filled|0.88",
+   "ph:pipe-wrench-fill|0.88"
+  ],
+  "cleanser": [
+   "material-symbols:soap-rounded|1",
+   "ph:hand-soap-fill|0.88",
+   "material-symbols:sos-rounded|0.43",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "wipes": [
+   "mingcute:na-fill|0.43",
+   "mingcute:ins-fill|0.43",
+   "material-symbols:swipe-rounded|0.43",
+   "mingcute:wiper-fill|0.43"
+  ],
+  "rubberGloves": [
+   "mingcute:glove-fill|1",
+   "ph:boxing-glove-fill|0.88",
+   "mingcute:love-fill|0.43",
+   "mingcute:finger-love-fill|0.41"
+  ],
+  "scrubBrush": [
+   "bi:brush-fill|1",
+   "bxs:brush|1",
+   "ion:brush|1",
+   "material-symbols:brush-rounded|1"
+  ],
+  "bucket": [
+   "bi:bucket-fill|1",
+   "fluent:paint-bucket-24-filled|0.88",
+   "material-symbols:bucket-check-rounded|0.88",
+   "ph:paint-bucket-fill|0.88"
+  ],
+  "mop": [
+   "material-symbols:mop-rounded|1",
+   "material-symbols:moped-rounded|0.43",
+   "ph:moped-fill|0.43",
+   "ph:moped-front-fill|0.41"
+  ],
+  "laundryNet": [
+   "bi:basket-fill|1",
+   "bxs:basket|1",
+   "ion:basket|1",
+   "mingcute:basket-2-fill|1"
+  ],
+  "hanger": [
+   "tabler:hanger-2-filled|1",
+   "ph:coat-hanger-fill|0.88",
+   "fluent:clothes-hanger-24-filled|0.88",
+   "mingcute:coathanger-fill|0.43"
+  ],
+  "clothespin": [
+   "bi:pin-fill|1",
+   "bxs:pin|1",
+   "fluent:pin-24-filled|1",
+   "ion:pin|1"
+  ],
+  "dishcloth": [
+   "ph:towel-fill|1",
+   "mingcute:na-fill|0.43",
+   "mingcute:ins-fill|0.43",
+   "mingcute:to-do-fill|0.41"
+  ],
+  "paperPlate": [
+   "bxs:dish|1",
+   "mingcute:dish-cover-fill|0.88",
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43"
+  ],
+  "paperCup": [
+   "bi:cup-fill|1",
+   "ri:cup-fill|1",
+   "bi:cup-hot-fill|0.88",
+   "material-symbols:glass-cup-rounded|0.88"
+  ],
+  "chopsticks": [
+   "fluent:chopsticks-24-filled|1",
+   "mingcute:chopsticks-fill|1",
+   "fluent:bowl-chopsticks-24-filled|0.88",
+   "tabler:bowl-chopsticks-filled|0.88"
+  ],
+  "straw": [
+   "bxs:drink|1",
+   "mingcute:drink-fill|1",
+   "ri:drinks-2-fill|1",
+   "ri:drinks-fill|1"
+  ],
+  "toothpick": [
+   "fluent:usb-stick-24-filled|0.88",
+   "tabler:guitar-pick-filled|0.88",
+   "material-symbols:game-stick-l3-rounded|0.76",
+   "material-symbols:game-stick-r3-rounded|0.76"
+  ],
+  "container": [
+   "tabler:container-filled|1",
+   "ph:shipping-container-fill|0.88",
+   "mingcute:ai-fill|0.43",
+   "mingcute:ins-fill|0.43"
+  ],
+  "dryingAgent": [
+   "fluent:agents-24-filled|1",
+   "ri:ai-agent-fill|0.88",
+   "fluent:agents-add-24-filled|0.88",
+   "fluent:agents-sync-24-filled|0.88"
+  ],
+  "detergentPod": [
+   "fluent:pill-24-filled|1",
+   "material-symbols:pill-rounded|1",
+   "ph:pill-fill|1",
+   "tabler:pill-filled|1"
+  ],
+  "bakingSoda": [
+   "bi:box-fill|1",
+   "bxs:box|1",
+   "fluent:box-24-filled|1",
+   "material-symbols:box-rounded|1"
+  ],
+  "citricAcid": [
+   "ph:jar-fill|1",
+   "ph:tip-jar-fill|0.88",
+   "ph:jar-label-fill|0.88",
+   "tabler:id-filled|0.43"
+  ],
+  "floorWipes": [
+   "material-symbols:mop-rounded|1",
+   "material-symbols:floor-rounded|1",
+   "material-symbols:floor-lamp-rounded|0.88",
+   "material-symbols:moped-rounded|0.43"
+  ],
+  "floorWiper": [
+   "mingcute:wiper-fill|1",
+   "material-symbols:floor-rounded|0.43",
+   "fluent:code-fs-16-filled|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "refillPouch": [
+   "bi:bag-fill|1",
+   "ion:bag|1",
+   "ph:bag-fill|1",
+   "bi:bag-x-fill|1"
+  ],
+  "trashCan": [
+   "ph:gas-can-fill|0.88",
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88",
+   "mingcute:watering-can-fill|0.88"
+  ],
+  "drainNet": [
+   "mingcute:ai-fill|0.43",
+   "mingcute:ins-fill|0.43",
+   "mingcute:rain-fill|0.43",
+   "bi:magnet-fill|0.43"
+  ],
+  "mosquitoCoil": [
+   "material-symbols:toc-rounded|0.43",
+   "mingcute:oil-fill|0.43",
+   "ri:oil-fill|0.43",
+   "mingcute:to-do-fill|0.41"
+  ],
+  "icePack": [
+   "bxs:package|0.43",
+   "material-symbols:package-rounded|0.43",
+   "mingcute:package-2-fill|0.43",
+   "mingcute:package-fill|0.43"
+  ],
+  "ecoBag": [
+   "bi:bag-fill|1",
+   "ion:bag|1",
+   "ph:bag-fill|1",
+   "bi:bag-x-fill|1"
+  ],
+  "coolerBag": [
+   "bi:bag-fill|1",
+   "ion:bag|1",
+   "ph:bag-fill|1",
+   "bi:bag-x-fill|1"
+  ],
+  "medicine": [
+   "ri:medicine-bottle-fill|0.88",
+   "mingcute:ins-fill|0.43",
+   "bxs:log-in|0.41",
+   "ion:log-in|0.41"
+  ],
+  "plaster": [
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "thermometer": [
+   "bxs:thermometer|1",
+   "ion:thermometer|1",
+   "material-symbols:thermometer-rounded|1",
+   "mingcute:thermometer-fill|1"
+  ],
+  "formula": [
+   "mingcute:formula-fill|1",
+   "fluent:math-formula-24-filled|0.88",
+   "fluent:math-formula-sparkle-20-filled|0.76",
+   "fluent:clipboard-math-formula-24-filled|0.76"
+  ],
+  "babyFood": [
+   "fluent:food-24-filled|1",
+   "material-symbols:no-food-rounded|0.88",
+   "fluent:food-egg-24-filled|0.88",
+   "bxs:food-menu|0.88"
+  ],
+  "babyBottle": [
+   "mingcute:bottle-fill|1",
+   "tabler:bottle-filled|1",
+   "ri:ink-bottle-fill|0.88",
+   "ph:beer-bottle-fill|0.88"
+  ],
+  "babyWipes": [
+   "mingcute:abs-fill|0.43",
+   "mingcute:baby-fill|0.43",
+   "ph:baby-fill|0.43",
+   "material-symbols:swipe-rounded|0.43"
+  ],
+  "pan": [
+   "material-symbols:drag-pan-rounded|0.88",
+   "material-symbols:pan-tool-rounded|0.88",
+   "material-symbols:pan-zoom-rounded|0.88",
+   "tabler:zoom-pan-filled|0.88"
+  ],
+  "kettle": [
+   "material-symbols:kettle-rounded|1",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-ts-fill|0.41",
+   "fluent:document-ts-16-filled|0.41"
+  ],
+  "cutlery": [
+   "fluent:cut-24-filled|0.43",
+   "ion:cut|0.43",
+   "material-symbols:cut-rounded|0.43",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "riceCooker": [
+   "mingcute:electric-cooker-fill|0.88",
+   "material-symbols:eco-rounded|0.43",
+   "material-symbols:multicooker-rounded|0.43",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "apron": [
+   "material-symbols:person-apron-rounded|0.88",
+   "fluent:mic-on-24-filled|0.41",
+   "material-symbols:hdr-on-rounded|0.41",
+   "material-symbols:raw-on-rounded|0.41"
+  ],
+  "strainer": [
+   "mingcute:ai-fill|0.43",
+   "mingcute:ins-fill|0.43",
+   "mingcute:rain-fill|0.43",
+   "bxs:train|0.43"
+  ],
+  "measuringCup": [
+   "bi:cup-fill|1",
+   "ri:cup-fill|1",
+   "bi:measuring-cup-fill|1",
+   "bi:cup-hot-fill|0.88"
+  ],
+  "peeler": [
+   "mingcute:knife-fill|1",
+   "ph:knife-fill|1",
+   "ri:knife-fill|1",
+   "material-symbols:kitchen-rounded|1"
+  ],
+  "serum": [
+   "mingcute:bottle-fill|1",
+   "tabler:bottle-filled|1",
+   "ri:dropper-fill|1",
+   "ri:ink-bottle-fill|0.88"
+  ],
+  "lipBalm": [
+   "material-symbols:lips-rounded|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "mingcute:burj-al-arab-fill|0.39"
+  ],
+  "lipstick": [
+   "mingcute:lipstick-fill|1",
+   "material-symbols:lips-rounded|0.43",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "foundation": [
+   "material-symbols:foundation-rounded|1",
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43"
+  ],
+  "mascara": [
+   "bxs:car|0.43",
+   "ion:car|0.43",
+   "mingcute:car-2-fill|0.43",
+   "mingcute:car-3-fill|0.43"
+  ],
+  "makeupRemover": [
+   "mingcute:up-fill|0.43",
+   "ion:move|0.43",
+   "material-symbols:move-rounded|0.43",
+   "mingcute:move-fill|0.43"
+  ],
+  "cottonPad": [
+   "mingcute:pad-fill|1",
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "bi:dpad-fill|0.43"
+  ],
+  "nailClipper": [
+   "mingcute:ai-fill|0.43",
+   "mingcute:na-fill|0.43",
+   "material-symbols:lips-rounded|0.43",
+   "ri:mv-ai-fill|0.41"
+  ],
+  "hairOil": [
+   "mingcute:oil-fill|1",
+   "ri:oil-fill|1",
+   "material-symbols:oil-barrel-rounded|0.88",
+   "mingcute:ai-fill|0.43"
+  ],
+  "hairSpray": [
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88",
+   "ph:spray-bottle-fill|0.88",
+   "mingcute:ai-fill|0.43"
+  ],
+  "hairWax": [
+   "mingcute:ai-fill|0.43",
+   "material-symbols:air-rounded|0.43",
+   "mingcute:hair-2-fill|0.43",
+   "mingcute:hair-fill|0.43"
+  ],
+  "comb": [
+   "mingcute:combine-fill|0.43",
+   "fluent:code-cs-16-filled|0.41",
+   "material-symbols:co-present-rounded|0.41",
+   "fluent:document-cs-16-filled|0.41"
+  ],
+  "hairTie": [
+   "fluent:bow-tie-24-filled|0.88",
+   "mingcute:bow-tie-fill|0.88",
+   "mingcute:ai-fill|0.43",
+   "ri:ie-fill|0.43"
+  ],
+  "floss": [
+   "fluent:code-fs-16-filled|0.41",
+   "material-symbols:water-loss-rounded|0.41",
+   "fluent:document-fs-16-filled|0.41",
+   "material-symbols:thermometer-loss-rounded|0.41"
+  ],
+  "mouthwash": [
+   "material-symbols:wash-rounded|0.43",
+   "mingcute:mouth-fill|0.43",
+   "bxs:log-out|0.41",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "interdental": [
+   "material-symbols:ent-rounded|0.43",
+   "mingcute:ins-fill|0.43",
+   "mingcute:dental-fill|0.43",
+   "bxs:log-in|0.41"
+  ],
+  "bathSalt": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "towel": [
+   "ph:towel-fill|1",
+   "mingcute:to-do-fill|0.41",
+   "bxs:to-top|0.41",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "perfume": [
+   "fluent:code-fs-16-filled|0.41",
+   "material-symbols:near-me-rounded|0.41",
+   "ph:file-rs-fill|0.41",
+   "fluent:document-fs-16-filled|0.41"
+  ],
+  "handCream": [
+   "ion:ice-cream|0.88",
+   "mingcute:ice-cream-2-fill|0.88",
+   "mingcute:ice-cream-fill|0.88",
+   "ph:ice-cream-fill|0.88"
+  ],
+  "bodyTowel": [
+   "ph:towel-fill|1",
+   "material-symbols:ods-rounded|0.43",
+   "ion:body|0.43",
+   "mingcute:body-fill|0.43"
+  ],
+  "contactSolution": [
+   "material-symbols:ios-rounded|0.43",
+   "material-symbols:sos-rounded|0.43",
+   "mingcute:ios-fill|0.43",
+   "bxs:contact|0.43"
+  ],
+  "shoeCare": [
+   "material-symbols:self-care-rounded|0.88",
+   "material-symbols:child-care-rounded|0.88",
+   "bxs:car|0.43",
+   "ion:car|0.43"
+  ],
+  "airFreshener": [
+   "material-symbols:air-freshener-rounded|1",
+   "mingcute:ai-fill|0.43",
+   "material-symbols:air-rounded|0.43",
+   "ri:mv-ai-fill|0.41"
+  ],
+  "pillSheet": [
+   "material-symbols:sheets-rtl-rounded|0.88",
+   "material-symbols:bottom-sheets-rounded|0.88",
+   "fluent:pi-24-filled|0.43",
+   "ph:pi-fill|0.43"
+  ],
+  "coldMedicine": [
+   "ri:medicine-bottle-fill|0.88",
+   "mingcute:ins-fill|0.43",
+   "bxs:log-in|0.41",
+   "ion:log-in|0.41"
+  ],
+  "stomachMedicine": [
+   "ri:medicine-bottle-fill|0.88",
+   "mingcute:ins-fill|0.43",
+   "ri:mac-fill|0.43",
+   "mingcute:to-do-fill|0.41"
+  ],
+  "eyeDrops": [
+   "fluent:drop-24-filled|1",
+   "mingcute:drop-fill|1",
+   "ph:drop-fill|1",
+   "ri:drop-fill|1"
+  ],
+  "supplement": [
+   "mingcute:up-fill|0.43",
+   "material-symbols:ent-rounded|0.43",
+   "ri:men-fill|0.43",
+   "bxs:hand-up|0.41"
+  ],
+  "ointment": [
+   "material-symbols:ent-rounded|0.43",
+   "mingcute:ins-fill|0.43",
+   "ri:men-fill|0.43",
+   "bxs:log-in|0.41"
+  ],
+  "bandage": [
+   "ion:bandage|1",
+   "tabler:bandage-filled|1",
+   "bi:ban-fill|0.43",
+   "ion:ban|0.43"
+  ],
+  "disinfectant": [
+   "mingcute:ins-fill|0.43",
+   "bxs:log-in|0.41",
+   "ion:log-in|0.41",
+   "bxs:zoom-in|0.41"
+  ],
+  "heatPad": [
+   "mingcute:pad-fill|1",
+   "ion:at|0.43",
+   "material-symbols:ad-rounded|0.43",
+   "mingcute:at-fill|0.43"
+  ],
+  "testKit": [
+   "mingcute:first-aid-kit-fill|0.76",
+   "ph:first-aid-kit-fill|0.76",
+   "ri:first-aid-kit-fill|0.76",
+   "material-symbols:tools-installation-kit-rounded|0.76"
+  ],
+  "softener": [
+   "material-symbols:sos-rounded|0.43",
+   "fluent:code-fs-16-filled|0.41",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "scissors": [
+   "mingcute:scissors-2-fill|1",
+   "mingcute:scissors-3-fill|1",
+   "mingcute:scissors-fill|1",
+   "ph:scissors-fill|1"
+  ],
+  "knife": [
+   "mingcute:knife-fill|1",
+   "ph:knife-fill|1",
+   "ri:knife-fill|1",
+   "mingcute:fork-knife-fill|0.88"
+  ],
+  "smartphone": [
+   "ri:smartphone-fill|1",
+   "material-symbols:sms-rounded|0.43",
+   "bi:phone-fill|0.43",
+   "bxs:phone|0.43"
+  ],
+  "tv": [
+   "bi:tv-fill|1",
+   "bxs:tv|1",
+   "fluent:tv-24-filled|1",
+   "ion:tv|1"
+  ],
+  "broom": [
+   "fluent:broom-24-filled|1",
+   "mingcute:broom-fill|1",
+   "ph:broom-fill|1",
+   "fluent:broom-sparkle-20-filled|0.88"
+  ],
+  "vacuum": [
+   "material-symbols:vacuum-rounded|1",
+   "material-symbols:vacuum-2-rounded|1",
+   "material-symbols:vacuum-2-on-rounded|0.88",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "pen": [
+   "bi:pen-fill|1",
+   "bxs:pen|1",
+   "fluent:pen-24-filled|1",
+   "mingcute:pen-2-fill|1"
+  ],
+  "notebook": [
+   "fluent:notebook-24-filled|1",
+   "mingcute:notebook-2-fill|1",
+   "mingcute:notebook-fill|1",
+   "ph:notebook-fill|1"
+  ],
+  "eraser": [
+   "bi:eraser-fill|1",
+   "bxs:eraser|1",
+   "fluent:eraser-24-filled|1",
+   "mingcute:eraser-fill|1"
+  ],
+  "tape": [
+   "ri:tape-fill|1",
+   "mingcute:audio-tape-fill|0.88",
+   "ph:cassette-tape-fill|0.88",
+   "material-symbols:measuring-tape-rounded|0.88"
+  ],
+  "glue": [
+   "bxs:paste|1",
+   "mingcute:paste-fill|1",
+   "material-symbols:content-paste-rounded|0.88",
+   "material-symbols:markdown-paste-rounded|0.88"
+  ],
+  "charger": [
+   "material-symbols:charger-rounded|1",
+   "material-symbols:ev-charger-rounded|0.88",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41"
+  ],
+  "earphone": [
+   "bi:ear-fill|0.43",
+   "ion:ear|0.43",
+   "mingcute:ear-fill|0.43",
+   "ph:ear-fill|0.43"
+  ],
+  "umbrella": [
+   "bi:umbrella-fill|1",
+   "fluent:umbrella-24-filled|1",
+   "ion:umbrella|1",
+   "material-symbols:umbrella-rounded|1"
+  ],
+  "stickyNote": [
+   "bxs:note|1",
+   "fluent:note-24-filled|1",
+   "material-symbols:note-rounded|1",
+   "ph:note-fill|1"
+  ],
+  "fileFolder": [
+   "bi:folder-fill|1",
+   "bxs:folder|1",
+   "fluent:folder-24-filled|1",
+   "ion:folder|1"
+  ],
+  "ruler": [
+   "bxs:ruler|1",
+   "fluent:ruler-24-filled|1",
+   "mingcute:ruler-fill|1",
+   "ph:ruler-fill|1"
+  ],
+  "stapler": [
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "calculator": [
+   "bi:calculator-fill|1",
+   "bxs:calculator|1",
+   "fluent:calculator-24-filled|1",
+   "ion:calculator|1"
+  ],
+  "cutter": [
+   "fluent:cut-24-filled|0.43",
+   "ion:cut|0.43",
+   "material-symbols:cut-rounded|0.43",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "lightBattery": [
+   "bxs:battery|1",
+   "fluent:battery-20-filled|1",
+   "mingcute:battery-1-fill|1",
+   "mingcute:battery-2-fill|1"
+  ],
+  "tshirt": [
+   "fluent:shirt-20-filled|0.43",
+   "ion:shirt|0.43",
+   "mingcute:shirt-fill|0.43",
+   "ri:shirt-fill|0.43"
+  ],
+  "underwear": [
+   "bi:ear-fill|0.43",
+   "ion:ear|0.43",
+   "mingcute:ear-fill|0.43",
+   "ph:ear-fill|0.43"
+  ],
+  "slippers": [
+   "material-symbols:lips-rounded|0.43",
+   "ph:file-rs-fill|0.41",
+   "material-symbols:bring-your-own-ip-rounded|0.37"
+  ],
+  "pyjamas": [
+   "bxs:file-js|0.41",
+   "fluent:code-js-16-filled|0.41",
+   "fluent:code-py-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41"
+  ],
+  "hat": [
+   "mingcute:hat-2-fill|1",
+   "mingcute:hat-fill|1",
+   "bxs:hard-hat|0.88",
+   "material-symbols:chef-hat-rounded|0.88"
+  ],
+  "gloves": [
+   "mingcute:glove-fill|1",
+   "ph:boxing-glove-fill|0.88",
+   "mingcute:love-fill|0.43",
+   "mingcute:finger-love-fill|0.41"
+  ],
+  "catLitter": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "petSheet": [
+   "material-symbols:sheets-rtl-rounded|0.88",
+   "material-symbols:bottom-sheets-rounded|0.88",
+   "material-symbols:pets-rounded|0.43",
+   "material-symbols:flowsheet-rounded|0.43"
+  ],
+  "flower": [
+   "ion:flower|1",
+   "mingcute:flower-2-fill|1",
+   "mingcute:flower-3-fill|1",
+   "mingcute:flower-4-fill|1"
+  ],
+  "plant": [
+   "ph:plant-fill|1",
+   "ri:plant-fill|1",
+   "fluent:plant-grass-24-filled|0.88",
+   "material-symbols:potted-plant-rounded|0.88"
+  ],
+  "refillPouchGreen": [
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-fs-16-filled|0.41",
+   "ph:file-rs-fill|0.41",
+   "fluent:re-order-24-filled|0.41"
+  ],
+  "handWarmerBox": [
+   "bi:box-fill|1",
+   "bxs:box|1",
+   "fluent:box-24-filled|1",
+   "material-symbols:box-rounded|1"
+  ],
+  "driedSeaweedSoup": [
+   "tabler:soup-filled|1",
+   "mingcute:soup-pot-2-fill|0.88",
+   "mingcute:soup-pot-fill|0.88",
+   "material-symbols:soup-kitchen-rounded|0.88"
+  ],
+  "instantSoup": [
+   "tabler:soup-filled|1",
+   "mingcute:soup-pot-2-fill|0.88",
+   "mingcute:soup-pot-fill|0.88",
+   "material-symbols:soup-kitchen-rounded|0.88"
+  ],
+  "spoon": [
+   "mingcute:spoon-fill|1",
+   "material-symbols:fork-spoon-rounded|0.88",
+   "mingcute:fork-spoon-fill|0.88",
+   "tabler:bowl-spoon-filled|0.88"
+  ],
+  "fork": [
+   "mingcute:fork-fill|1",
+   "ph:git-fork-fill|0.88",
+   "ri:git-fork-fill|0.88",
+   "material-symbols:fork-left-rounded|0.88"
+  ],
+  "tableKnife": [
+   "mingcute:knife-fill|1",
+   "ph:knife-fill|1",
+   "ri:knife-fill|1",
+   "mingcute:fork-knife-fill|0.88"
+  ],
+  "renge": [
+   "ph:file-rs-fill|0.41",
+   "fluent:re-order-24-filled|0.41",
+   "material-symbols:high-res-rounded|0.41",
+   "fluent:re-order-dots-24-filled|0.39"
+  ],
+  "chopstickPair": [
+   "fluent:pair-24-filled|1",
+   "mingcute:ai-fill|0.43",
+   "material-symbols:air-rounded|0.43",
+   "mingcute:hop-fill|0.43"
+  ],
+  "package": [
+   "bxs:package|1",
+   "material-symbols:package-rounded|1",
+   "mingcute:package-2-fill|1",
+   "mingcute:package-fill|1"
+  ],
+  "saucepan": [
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "material-symbols:drag-pan-rounded|0.41"
+  ],
+  "pressureCooker": [
+   "mingcute:electric-cooker-fill|0.88",
+   "material-symbols:eco-rounded|0.43",
+   "material-symbols:multicooker-rounded|0.43",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "wok": [
+   "mingcute:pot-fill|1",
+   "material-symbols:cooking-rounded|1",
+   "material-symbols:drag-pan-rounded|0.88",
+   "material-symbols:pan-tool-rounded|0.88"
+  ],
+  "potLid": [
+   "tabler:id-filled|0.43",
+   "mingcute:pot-fill|0.43",
+   "material-symbols:sliders-rounded|0.43",
+   "ph:sliders-fill|0.43"
+  ],
+  "ladle": [
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "material-symbols:ad-off-rounded|0.41",
+   "material-symbols:add-ad-rounded|0.41"
+  ],
+  "turner": [
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41",
+   "ph:file-ts-fill|0.41",
+   "material-symbols:turn-left-rounded|0.41"
+  ],
+  "whisk": [
+   "fluent:data-whisker-24-filled|0.41",
+   "material-symbols:mobile-sensor-hi-rounded|0.39"
+  ],
+  "tongs": [
+   "mingcute:tongue-fill|0.43",
+   "mingcute:to-do-fill|0.41",
+   "bxs:to-top|0.41",
+   "fluent:mic-on-24-filled|0.41"
+  ],
+  "grater": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "rollingPin": [
+   "bi:pin-fill|1",
+   "bxs:pin|1",
+   "fluent:pin-24-filled|1",
+   "ion:pin|1"
+  ],
+  "kitchenScissors": [
+   "mingcute:scissors-2-fill|1",
+   "mingcute:scissors-3-fill|1",
+   "mingcute:scissors-fill|1",
+   "ph:scissors-fill|1"
+  ],
+  "canOpener": [
+   "bi:pen-fill|0.43",
+   "bxs:pen|0.43",
+   "fluent:pen-24-filled|0.43",
+   "mingcute:pen-2-fill|0.43"
+  ],
+  "bottleOpener": [
+   "bi:pen-fill|0.43",
+   "bxs:bot|0.43",
+   "bxs:pen|0.43",
+   "fluent:bot-24-filled|0.43"
+  ],
+  "corkscrew": [
+   "fluent:code-cs-16-filled|0.41",
+   "ph:file-rs-fill|0.41",
+   "fluent:re-order-24-filled|0.41",
+   "material-symbols:high-res-rounded|0.41"
+  ],
+  "measuringSpoon": [
+   "mingcute:spoon-fill|1",
+   "material-symbols:fork-spoon-rounded|0.88",
+   "mingcute:fork-spoon-fill|0.88",
+   "tabler:bowl-spoon-filled|0.88"
+  ],
+  "kitchenScale": [
+   "ion:scale|1",
+   "material-symbols:scale-rounded|1",
+   "mingcute:scale-fill|1",
+   "tabler:scale-filled|1"
+  ],
+  "kitchenTimer": [
+   "bxs:timer|1",
+   "fluent:timer-24-filled|1",
+   "ion:timer|1",
+   "material-symbols:timer-rounded|1"
+  ],
+  "thermos": [
+   "material-symbols:thermostat-rounded|0.43",
+   "bxs:thermometer|0.43",
+   "ion:thermometer|0.43",
+   "material-symbols:thermometer-rounded|0.43"
+  ],
+  "tumbler": [
+   "bi:cup-fill|1",
+   "ri:cup-fill|1",
+   "tabler:mug-filled|1",
+   "tabler:glass-filled|1"
+  ],
+  "mug": [
+   "tabler:mug-filled|1",
+   "material-symbols:language-us-rounded|0.41",
+   "material-symbols:language-us-dvorak-rounded|0.39",
+   "material-symbols:language-us-colemak-rounded|0.39"
+  ],
+  "glassCup": [
+   "bi:cup-fill|1",
+   "ri:cup-fill|1",
+   "material-symbols:glass-cup-rounded|1",
+   "mingcute:glass-cup-fill|1"
+  ],
+  "teapot": [
+   "mingcute:pot-fill|0.43",
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41"
+  ],
+  "teacup": [
+   "mingcute:teacup-fill|1",
+   "mingcute:up-fill|0.43",
+   "bi:cup-fill|0.43",
+   "ri:cup-fill|0.43"
+  ],
+  "riceBowl": [
+   "mingcute:bowl-2-fill|1",
+   "mingcute:bowl-fill|1",
+   "ri:bowl-fill|1",
+   "tabler:bowl-filled|1"
+  ],
+  "plateDish": [
+   "bxs:dish|1",
+   "mingcute:dish-cover-fill|0.88",
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43"
+  ],
+  "donburi": [
+   "bxs:bus|0.43",
+   "ion:bus|0.43",
+   "mingcute:bus-2-fill|0.43",
+   "mingcute:bus-fill|0.43"
+  ],
+  "lunchBox": [
+   "bi:box-fill|1",
+   "bxs:box|1",
+   "fluent:box-24-filled|1",
+   "material-symbols:box-rounded|1"
+  ],
+  "dishRack": [
+   "bi:hdd-rack-fill|0.88",
+   "bxs:dish|0.43",
+   "mingcute:brackets-fill|0.43",
+   "ri:brackets-fill|0.43"
+  ],
+  "storageJar": [
+   "ph:jar-fill|1",
+   "ph:tip-jar-fill|0.88",
+   "ph:jar-label-fill|0.88",
+   "fluent:storage-24-filled|0.43"
+  ],
+  "iceTray": [
+   "ph:tray-fill|1",
+   "ion:file-tray|0.88",
+   "ph:archive-tray-fill|0.88",
+   "fluent:tray-item-add-24-filled|0.76"
+  ],
+  "ricePaddle": [
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "fluent:add-24-filled|0.43",
+   "ion:add|0.43"
+  ],
+  "ovenMitt": [
+   "fluent:oven-24-filled|0.43",
+   "material-symbols:oven-rounded|0.43",
+   "ph:oven-fill|0.43",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "microwave": [
+   "fluent:microwave-20-filled|1",
+   "material-symbols:microwave-rounded|1",
+   "tabler:microwave-filled|1",
+   "material-symbols:microwave-gen-rounded|0.88"
+  ],
+  "ovenToaster": [
+   "material-symbols:ent-rounded|0.43",
+   "fluent:oven-24-filled|0.43",
+   "material-symbols:oven-rounded|0.43",
+   "ph:oven-fill|0.43"
+  ],
+  "washingMachine": [
+   "ph:washing-machine-fill|1",
+   "mingcute:wash-machine-fill|0.88",
+   "mingcute:ins-fill|0.43",
+   "ri:mac-fill|0.43"
+  ],
+  "clothesDryer": [
+   "bxs:dryer|1",
+   "ph:hair-dryer-fill|0.88",
+   "material-symbols:sd-rounded|0.43",
+   "material-symbols:dry-rounded|0.43"
+  ],
+  "hairDryer": [
+   "bxs:dryer|1",
+   "ph:hair-dryer-fill|1",
+   "mingcute:ai-fill|0.43",
+   "material-symbols:air-rounded|0.43"
+  ],
+  "iron": [
+   "material-symbols:iron-rounded|1",
+   "tabler:ironing-1-filled|0.43",
+   "tabler:ironing-2-filled|0.43",
+   "tabler:ironing-3-filled|0.43"
+  ],
+  "electricFan": [
+   "mingcute:fan-2-fill|1",
+   "mingcute:fan-fill|1",
+   "ph:fan-fill|1",
+   "tabler:car-fan-filled|0.88"
+  ],
+  "heater": [
+   "material-symbols:water-heater-rounded|0.88",
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43"
+  ],
+  "airConditioner": [
+   "mingcute:ai-fill|0.43",
+   "material-symbols:air-rounded|0.43",
+   "material-symbols:ios-rounded|0.43",
+   "mingcute:ios-fill|0.43"
+  ],
+  "humidifier": [
+   "ri:ie-fill|0.43",
+   "tabler:id-filled|0.43",
+   "fluent:midi-24-filled|0.43",
+   "mingcute:midi-fill|0.43"
+  ],
+  "speaker": [
+   "bi:speaker-fill|1",
+   "bxs:speaker|1",
+   "material-symbols:speaker-rounded|1",
+   "mingcute:speaker-fill|1"
+  ],
+  "headphones": [
+   "mingcute:headphone-2-fill|1",
+   "mingcute:headphone-fill|1",
+   "ri:headphone-fill|1",
+   "fluent:headphones-24-filled|1"
+  ],
+  "laptop": [
+   "bi:laptop-fill|1",
+   "fluent:laptop-24-filled|1",
+   "ion:laptop|1",
+   "mingcute:laptop-2-fill|1"
+  ],
+  "tablet": [
+   "bi:tablet-fill|1",
+   "fluent:tablet-24-filled|1",
+   "material-symbols:tablet-rounded|1",
+   "ri:tablet-fill|1"
+  ],
+  "printer": [
+   "bi:printer-fill|1",
+   "bxs:printer|1",
+   "ph:printer-fill|1",
+   "ri:printer-fill|1"
+  ],
+  "router": [
+   "bi:router-fill|1",
+   "fluent:router-24-filled|1",
+   "material-symbols:router-rounded|1",
+   "ri:router-fill|1"
+  ],
+  "mouse": [
+   "bi:mouse-fill|1",
+   "bxs:mouse|1",
+   "material-symbols:mouse-rounded|1",
+   "mingcute:mouse-fill|1"
+  ],
+  "keyboardDevice": [
+   "mingcute:device-fill|1",
+   "ri:device-fill|1",
+   "bxs:devices|1",
+   "material-symbols:devices-rounded|1"
+  ],
+  "camera": [
+   "bi:camera-fill|1",
+   "bxs:camera|1",
+   "fluent:camera-24-filled|1",
+   "ion:camera|1"
+  ],
+  "blender": [
+   "material-symbols:blender-rounded|1",
+   "ri:blender-fill|1",
+   "tabler:blender-filled|1",
+   "material-symbols:pin-end-rounded|0.41"
+  ],
+  "coffeeMaker": [
+   "material-symbols:coffee-maker-rounded|1",
+   "bxs:coffee|0.43",
+   "material-symbols:coffee-rounded|0.43",
+   "ph:coffee-fill|0.43"
+  ],
+  "electricKettle": [
+   "material-symbols:kettle-rounded|1",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "hotplate": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "powerStrip": [
+   "ph:film-strip-fill|0.88",
+   "material-symbols:trip-rounded|0.43",
+   "fluent:power-24-filled|0.43",
+   "ion:power|0.43"
+  ],
+  "powerBank": [
+   "bxs:bank|1",
+   "mingcute:bank-fill|1",
+   "ph:bank-fill|1",
+   "ri:bank-fill|1"
+  ],
+  "remote": [
+   "fluent:remote-20-filled|1",
+   "mingcute:remote-fill|1",
+   "material-symbols:tv-remote-rounded|0.88",
+   "material-symbols:remote-gen-rounded|0.88"
+  ],
+  "shaver": [
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41",
+   "material-symbols:av-timer-rounded|0.41"
+  ],
+  "electricToothbrush": [
+   "bi:brush-fill|0.43",
+   "bxs:brush|0.43",
+   "ion:brush|0.43",
+   "material-symbols:brush-rounded|0.43"
+  ],
+  "dishwasher": [
+   "fluent:dishwasher-24-filled|1",
+   "material-symbols:dishwasher-rounded|1",
+   "material-symbols:dishwasher-gen-rounded|0.88",
+   "bxs:dish|0.43"
+  ],
+  "usbCable": [
+   "material-symbols:cable-rounded|1",
+   "bxs:cable-car|0.88",
+   "material-symbols:cable-car-rounded|0.88",
+   "ph:cable-car-fill|0.88"
+  ],
+  "chair": [
+   "material-symbols:chair-rounded|1",
+   "ph:chair-fill|1",
+   "material-symbols:chair-alt-rounded|0.88",
+   "material-symbols:high-chair-rounded|0.88"
+  ],
+  "desk": [
+   "fluent:desk-24-filled|1",
+   "material-symbols:desk-rounded|1",
+   "mingcute:desk-fill|1",
+   "ph:desk-fill|1"
+  ],
+  "diningTable": [
+   "fluent:table-24-filled|1",
+   "material-symbols:table-rounded|1",
+   "mingcute:table-2-fill|1",
+   "mingcute:table-3-fill|1"
+  ],
+  "sofa": [
+   "mingcute:sofa-fill|1",
+   "ri:sofa-fill|1",
+   "material-symbols:sos-rounded|0.43",
+   "fluent:code-fs-16-filled|0.41"
+  ],
+  "bed": [
+   "bxs:bed|1",
+   "fluent:bed-24-filled|1",
+   "ion:bed|1",
+   "material-symbols:bed-rounded|1"
+  ],
+  "mattress": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "futon": [
+   "mingcute:to-do-fill|0.41",
+   "bxs:to-top|0.41",
+   "fluent:mic-on-24-filled|0.41",
+   "material-symbols:hdr-on-rounded|0.41"
+  ],
+  "pillow": [
+   "fluent:pi-24-filled|0.43",
+   "ph:pi-fill|0.43",
+   "fluent:pill-24-filled|0.43",
+   "material-symbols:pill-rounded|0.43"
+  ],
+  "blanket": [
+   "bxs:blanket|1",
+   "material-symbols:blanket-rounded|1",
+   "material-symbols:lan-rounded|0.43",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "bedSheet": [
+   "material-symbols:sheets-rtl-rounded|0.88",
+   "material-symbols:bottom-sheets-rounded|0.88",
+   "bxs:bed|0.43",
+   "fluent:bed-24-filled|0.43"
+  ],
+  "bookshelf": [
+   "bi:book-fill|0.43",
+   "bxs:book|0.43",
+   "fluent:book-24-filled|0.43",
+   "ion:book|0.43"
+  ],
+  "shelfUnit": [
+   "material-symbols:ac-unit-rounded|0.88",
+   "material-symbols:ad-units-rounded|0.88",
+   "ph:unite-fill|0.43",
+   "ri:community-fill|0.43"
+  ],
+  "chestDrawers": [
+   "fluent:drawer-24-filled|1",
+   "mingcute:drawer-2-fill|1",
+   "mingcute:drawer-fill|1",
+   "fluent:drawer-add-24-filled|0.88"
+  ],
+  "storageBox": [
+   "bi:box-fill|1",
+   "bxs:box|1",
+   "fluent:box-24-filled|1",
+   "material-symbols:box-rounded|1"
+  ],
+  "rug": [
+   "ph:rug-fill|1",
+   "ph:file-rs-fill|0.41",
+   "material-symbols:language-us-rounded|0.41",
+   "material-symbols:sports-rugby-rounded|0.41"
+  ],
+  "curtain": [
+   "mingcute:curtain-fill|1",
+   "material-symbols:curtains-rounded|1",
+   "material-symbols:curtains-closed-rounded|0.88",
+   "mingcute:ai-fill|0.43"
+  ],
+  "mirror": [
+   "mingcute:mirror-fill|1",
+   "material-symbols:car-mirror-heat-rounded|0.76",
+   "fluent:dual-screen-mirror-24-filled|0.76",
+   "ph:file-rs-fill|0.41"
+  ],
+  "wallClock": [
+   "bi:clock-fill|1",
+   "fluent:clock-24-filled|1",
+   "mingcute:clock-2-fill|1",
+   "mingcute:clock-fill|1"
+  ],
+  "deskLamp": [
+   "bi:lamp-fill|1",
+   "ph:lamp-fill|1",
+   "mingcute:desk-lamp-2-fill|1",
+   "mingcute:desk-lamp-fill|1"
+  ],
+  "ceilingLight": [
+   "material-symbols:light-rounded|1",
+   "mingcute:light-fill|1",
+   "material-symbols:light-off-rounded|0.88",
+   "material-symbols:light-mode-rounded|0.88"
+  ],
+  "cushion": [
+   "material-symbols:ios-rounded|0.43",
+   "mingcute:ios-fill|0.43",
+   "fluent:mic-on-24-filled|0.41",
+   "material-symbols:hdr-on-rounded|0.41"
+  ],
+  "doormat": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "laundryBasket": [
+   "bi:basket-fill|1",
+   "bxs:basket|1",
+   "ion:basket|1",
+   "mingcute:basket-2-fill|1"
+  ],
+  "photoFrame": [
+   "fluent:frame-24-filled|1",
+   "mingcute:frame-fill|1",
+   "material-symbols:photo-frame-rounded|1",
+   "material-symbols:frame-bug-rounded|0.88"
+  ],
+  "vase": [
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "material-symbols:mark-as-unread-rounded|0.39",
+   "material-symbols:picture-as-pdf-rounded|0.39"
+  ],
+  "kotatsu": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "pencil": [
+   "bi:pencil-fill|1",
+   "bxs:pencil|1",
+   "ion:pencil|1",
+   "mingcute:pencil-2-fill|1"
+  ],
+  "mechanicalPencil": [
+   "bi:pencil-fill|1",
+   "bxs:pencil|1",
+   "ion:pencil|1",
+   "mingcute:pencil-2-fill|1"
+  ],
+  "pencilLead": [
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "bi:pen-fill|0.43",
+   "bxs:pen|0.43"
+  ],
+  "marker": [
+   "material-symbols:ink-marker-rounded|0.88",
+   "ph:marker-circle-fill|0.88",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41"
+  ],
+  "highlighter": [
+   "ph:highlighter-fill|1",
+   "material-symbols:ink-highlighter-rounded|0.88",
+   "material-symbols:stylus-highlighter-rounded|0.88",
+   "material-symbols:highlighter-size-1-rounded|0.88"
+  ],
+  "crayon": [
+   "fluent:mic-on-24-filled|0.41",
+   "material-symbols:hdr-on-rounded|0.41",
+   "material-symbols:raw-on-rounded|0.41",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "colorPencils": [
+   "bi:pencil-fill|1",
+   "bxs:pencil|1",
+   "ion:pencil|1",
+   "mingcute:pencil-2-fill|1"
+  ],
+  "paintSet": [
+   "material-symbols:set-meal-rounded|0.88",
+   "mingcute:ai-fill|0.43",
+   "mingcute:ins-fill|0.43",
+   "bxs:paint|0.43"
+  ],
+  "paintBrush": [
+   "bi:brush-fill|1",
+   "bxs:brush|1",
+   "ion:brush|1",
+   "material-symbols:brush-rounded|1"
+  ],
+  "correctionTape": [
+   "ri:tape-fill|1",
+   "mingcute:audio-tape-fill|0.88",
+   "ph:cassette-tape-fill|0.88",
+   "material-symbols:measuring-tape-rounded|0.88"
+  ],
+  "paperClip": [
+   "ph:paperclip-fill|1",
+   "fluent:video-clip-24-filled|0.88",
+   "ph:paperclip-horizontal-fill|0.88",
+   "fluent:video-clip-off-24-filled|0.76"
+  ],
+  "binderClip": [
+   "fluent:video-clip-24-filled|0.88",
+   "fluent:video-clip-off-24-filled|0.76",
+   "fluent:video-clip-wand-24-filled|0.76",
+   "material-symbols:format-text-clip-rounded|0.76"
+  ],
+  "pushPin": [
+   "bi:pin-fill|1",
+   "bxs:pin|1",
+   "fluent:pin-24-filled|1",
+   "ion:pin|1"
+  ],
+  "rubberBand": [
+   "bxs:band-aid|0.88",
+   "material-symbols:device-band-rounded|0.88",
+   "bi:ban-fill|0.43",
+   "ion:ban|0.43"
+  ],
+  "staples": [
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-ts-fill|0.41"
+  ],
+  "holePunch": [
+   "material-symbols:punch-clock-rounded|0.88",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:document-cs-16-filled|0.41",
+   "material-symbols:language-us-rounded|0.41"
+  ],
+  "pencilCase": [
+   "material-symbols:cases-rounded|1",
+   "material-symbols:match-case-rounded|0.88",
+   "material-symbols:earbud-case-rounded|0.88",
+   "material-symbols:match-case-off-rounded|0.76"
+  ],
+  "copyPaper": [
+   "mingcute:paper-2-fill|1",
+   "mingcute:paper-fill|1",
+   "ri:file-paper-2-fill|0.88",
+   "ri:file-paper-fill|0.88"
+  ],
+  "looseLeaf": [
+   "bi:leaf-fill|1",
+   "bxs:leaf|1",
+   "fluent:leaf-16-filled|1",
+   "ion:leaf|1"
+  ],
+  "binder": [
+   "fluent:binder-triangle-24-filled|0.88",
+   "mingcute:ins-fill|0.43",
+   "bxs:log-in|0.41",
+   "ion:log-in|0.41"
+  ],
+  "letterPad": [
+   "mingcute:pad-fill|1",
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "bi:dpad-fill|0.43"
+  ],
+  "postcard": [
+   "bi:postcard-fill|1",
+   "bi:postcard-heart-fill|0.88",
+   "bxs:car|0.43",
+   "ion:car|0.43"
+  ],
+  "postageStamp": [
+   "ph:stamp-fill|1",
+   "material-symbols:mp-rounded|0.43",
+   "bi:tag-fill|0.43",
+   "bxs:tag|0.43"
+  ],
+  "nameStamp": [
+   "ph:stamp-fill|1",
+   "material-symbols:mp-rounded|0.43",
+   "mingcute:na-fill|0.43",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "inkPad": [
+   "mingcute:pad-fill|1",
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "mingcute:ins-fill|0.43"
+  ],
+  "memoPad": [
+   "mingcute:pad-fill|1",
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "material-symbols:mop-rounded|0.43"
+  ],
+  "diary": [
+   "mingcute:diary-fill|1",
+   "mingcute:aries-fill|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41"
+  ],
+  "calendarSheet": [
+   "material-symbols:sheets-rtl-rounded|0.88",
+   "material-symbols:bottom-sheets-rounded|0.88",
+   "bi:calendar-fill|0.43",
+   "bxs:calendar|0.43"
+  ],
+  "whiteboard": [
+   "fluent:whiteboard-24-filled|1",
+   "mingcute:whiteboard-fill|1",
+   "fluent:whiteboard-off-24-filled|0.88",
+   "fluent:board-24-filled|0.43"
+  ],
+  "magnetPin": [
+   "bi:pin-fill|1",
+   "bxs:pin|1",
+   "fluent:pin-24-filled|1",
+   "ion:pin|1"
+  ],
+  "labelSticker": [
+   "bxs:sticker|1",
+   "fluent:sticker-24-filled|1",
+   "material-symbols:sticker-rounded|1",
+   "mingcute:sticker-fill|1"
+  ],
+  "sketchbook": [
+   "bi:book-fill|0.43",
+   "bxs:book|0.43",
+   "fluent:book-24-filled|0.43",
+   "ion:book|0.43"
+  ],
+  "protractor": [
+   "ph:tractor-fill|0.43",
+   "mingcute:to-do-fill|0.41",
+   "bxs:to-top|0.41",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "inkCartridge": [
+   "tabler:id-filled|0.43",
+   "bxs:car|0.43",
+   "ion:car|0.43",
+   "mingcute:car-2-fill|0.43"
+  ],
+  "dentist": [
+   "fluent:dentist-24-filled|1",
+   "material-symbols:ent-rounded|0.43",
+   "material-symbols:dentistry-rounded|0.43",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "pharmacy": [
+   "material-symbols:local-pharmacy-rounded|0.88",
+   "ri:mac-fill|0.43",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41"
+  ],
+  "drugstore": [
+   "ph:rug-fill|0.43",
+   "bxs:store|0.43",
+   "material-symbols:store-rounded|0.43",
+   "mingcute:store-2-fill|0.43"
+  ],
+  "healthCheck": [
+   "fluent:check-24-filled|1",
+   "material-symbols:check-rounded|1",
+   "mingcute:check-2-fill|1",
+   "mingcute:check-fill|1"
+  ],
+  "vaccination": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "mingcute:na-fill|0.43",
+   "ph:at-fill|0.43"
+  ],
+  "gargle": [
+   "fluent:gas-24-filled|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "brace": [
+   "fluent:braces-24-filled|1",
+   "mingcute:braces-fill|1",
+   "ri:braces-fill|1",
+   "fluent:braces-dismiss-16-filled|0.88"
+  ],
+  "hairBrush": [
+   "bi:brush-fill|1",
+   "bxs:brush|1",
+   "ion:brush|1",
+   "material-symbols:brush-rounded|1"
+  ],
+  "massager": [
+   "material-symbols:massage-rounded|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "coolingSheet": [
+   "material-symbols:sheets-rtl-rounded|0.88",
+   "material-symbols:bottom-sheets-rounded|0.88",
+   "mingcute:ins-fill|0.43",
+   "bxs:cool|0.43"
+  ],
+  "crutch": [
+   "mingcute:crutch-fill|1",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "poultice": [
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-ts-fill|0.41",
+   "ion:ice-cream|0.41"
+  ],
+  "nailFile": [
+   "bi:file-fill|1",
+   "bxs:file|1",
+   "mingcute:file-fill|1",
+   "ph:file-fill|1"
+  ],
+  "school": [
+   "bxs:school|1",
+   "ion:school|1",
+   "material-symbols:school-rounded|1",
+   "mingcute:school-fill|1"
+  ],
+  "nursery": [
+   "mingcute:nurse-fill|0.43",
+   "ri:nurse-fill|0.43",
+   "tabler:nurse-filled|0.43",
+   "ph:file-rs-fill|0.41"
+  ],
+  "toy": [
+   "material-symbols:toys-rounded|1",
+   "material-symbols:toys-fan-rounded|0.88",
+   "material-symbols:smart-toy-rounded|0.88",
+   "mingcute:toy-horse-fill|0.88"
+  ],
+  "plushToy": [
+   "material-symbols:toys-rounded|1",
+   "material-symbols:toys-fan-rounded|0.88",
+   "material-symbols:smart-toy-rounded|0.88",
+   "mingcute:toy-horse-fill|0.88"
+  ],
+  "bib": [
+   "bxs:bible|0.43"
+  ],
+  "stroller": [
+   "material-symbols:stroller-rounded|1",
+   "material-symbols:no-stroller-rounded|0.88",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "babyGate": [
+   "material-symbols:gate-rounded|1",
+   "ri:ancient-gate-fill|0.88",
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43"
+  ],
+  "babyBath": [
+   "bxs:bath|1",
+   "mingcute:bath-fill|1",
+   "tabler:bath-filled|1",
+   "material-symbols:bath-soak-rounded|0.88"
+  ],
+  "babyCrib": [
+   "material-symbols:crib-rounded|1",
+   "mingcute:abs-fill|0.43",
+   "mingcute:baby-fill|0.43",
+   "ph:baby-fill|0.43"
+  ],
+  "babyClothes": [
+   "fluent:clothes-hanger-24-filled|0.88",
+   "mingcute:abs-fill|0.43",
+   "mingcute:baby-fill|0.43",
+   "ph:baby-fill|0.43"
+  ],
+  "schoolBag": [
+   "bi:bag-fill|1",
+   "ion:bag|1",
+   "ph:bag-fill|1",
+   "bi:bag-x-fill|1"
+  ],
+  "babyCarrier": [
+   "ri:ie-fill|0.43",
+   "bxs:car|0.43",
+   "ion:car|0.43",
+   "mingcute:abs-fill|0.43"
+  ],
+  "document": [
+   "fluent:document-24-filled|1",
+   "ion:document|1",
+   "mingcute:document-2-fill|1",
+   "mingcute:document-3-fill|1"
+  ],
+  "compass": [
+   "bi:compass-fill|1",
+   "bxs:compass|1",
+   "ion:compass|1",
+   "mingcute:compass-2-fill|1"
+  ],
+  "rubberStamp": [
+   "ph:stamp-fill|1",
+   "material-symbols:mp-rounded|0.43",
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41"
+  ],
+  "laminator": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "mingcute:na-fill|0.43",
+   "ph:at-fill|0.43"
+  ],
+  "letterPack": [
+   "bxs:package|0.43",
+   "material-symbols:package-rounded|0.43",
+   "mingcute:package-2-fill|0.43",
+   "mingcute:package-fill|0.43"
+  ],
+  "setSquare": [
+   "bi:square-fill|1",
+   "bxs:square|1",
+   "fluent:square-24-filled|1",
+   "ion:square|1"
+  ],
+  "deskPad": [
+   "mingcute:pad-fill|1",
+   "material-symbols:ad-rounded|0.43",
+   "tabler:ad-filled|0.43",
+   "bi:dpad-fill|0.43"
+  ],
+  "textbook": [
+   "bi:book-fill|0.43",
+   "bxs:book|0.43",
+   "fluent:book-24-filled|0.43",
+   "fluent:text-24-filled|0.43"
+  ],
+  "businessCard": [
+   "bxs:card|1",
+   "ion:card|1",
+   "material-symbols:cards-rounded|1",
+   "ph:cards-fill|1"
+  ],
+  "nameTag": [
+   "bi:tag-fill|1",
+   "bxs:tag|1",
+   "fluent:tag-24-filled|1",
+   "material-symbols:tag-rounded|1"
+  ],
+  "deliverySlip": [
+   "fluent:live-24-filled|0.43",
+   "material-symbols:lips-rounded|0.43",
+   "mingcute:live-fill|0.43",
+   "ri:live-fill|0.43"
+  ],
+  "origami": [
+   "fluent:gas-24-filled|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "cityHall": [
+   "bxs:city|0.43",
+   "fluent:city-24-filled|0.43",
+   "ph:city-fill|0.43",
+   "material-symbols:hallway-rounded|0.43"
+  ],
+  "postOffice": [
+   "fluent:office-apps-24-filled|0.88",
+   "ri:home-office-fill|0.88",
+   "ph:office-chair-fill|0.88",
+   "ph:building-office-fill|0.88"
+  ],
+  "delivery": [
+   "material-symbols:delivery-truck-bolt-rounded|0.76",
+   "material-symbols:delivery-truck-speed-rounded|0.76",
+   "fluent:live-24-filled|0.43",
+   "mingcute:live-fill|0.43"
+  ],
+  "contract": [
+   "ion:contract|1",
+   "material-symbols:contract-rounded|1",
+   "ri:contract-fill|1",
+   "material-symbols:contract-edit-rounded|0.88"
+  ],
+  "postBox": [
+   "bi:box-fill|1",
+   "bxs:box|1",
+   "fluent:box-24-filled|1",
+   "material-symbols:box-rounded|1"
+  ],
+  "qrPay": [
+   "material-symbols:upi-pay-rounded|0.88",
+   "mingcute:card-pay-fill|0.88",
+   "mingcute:wechat-pay-fill|0.88",
+   "ri:wechat-pay-fill|0.88"
+  ],
+  "utilityBill": [
+   "mingcute:bill-2-fill|1",
+   "mingcute:bill-fill|1",
+   "ri:bill-fill|1",
+   "fluent:clock-bill-24-filled|0.88"
+  ],
+  "receipt": [
+   "bxs:receipt|1",
+   "fluent:receipt-24-filled|1",
+   "ion:receipt|1",
+   "material-symbols:receipt-rounded|1"
+  ],
+  "homeLoan": [
+   "bxs:home|0.43",
+   "fluent:home-24-filled|0.43",
+   "ion:home|0.43",
+   "material-symbols:home-rounded|0.43"
+  ],
+  "officialPaper": [
+   "mingcute:paper-2-fill|1",
+   "mingcute:paper-fill|1",
+   "ri:file-paper-2-fill|0.88",
+   "ri:file-paper-fill|0.88"
+  ],
+  "insurance": [
+   "mingcute:ins-fill|0.43",
+   "bxs:log-in|0.41",
+   "ion:log-in|0.41",
+   "bxs:zoom-in|0.41"
+  ],
+  "licenseCard": [
+   "bxs:card|1",
+   "ion:card|1",
+   "material-symbols:cards-rounded|1",
+   "ph:cards-fill|1"
+  ],
+  "cash": [
+   "ion:cash|1",
+   "mingcute:cash-2-fill|1",
+   "mingcute:cash-fill|1",
+   "ri:cash-fill|1"
+  ],
+  "convenienceStore": [
+   "bxs:store|1",
+   "material-symbols:store-rounded|1",
+   "mingcute:store-2-fill|1",
+   "mingcute:store-fill|1"
+  ],
+  "restaurant": [
+   "ion:restaurant|1",
+   "material-symbols:restaurant-rounded|1",
+   "ri:restaurant-2-fill|1",
+   "ri:restaurant-fill|1"
+  ],
+  "cafe": [
+   "ion:cafe|1",
+   "material-symbols:local-cafe-rounded|0.88",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-fs-16-filled|0.41"
+  ],
+  "hairSalon": [
+   "mingcute:ai-fill|0.43",
+   "material-symbols:air-rounded|0.43",
+   "mingcute:hair-2-fill|0.43",
+   "mingcute:hair-fill|0.43"
+  ],
+  "barber": [
+   "fluent:code-rb-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "cleaners": [
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "gasStation": [
+   "mingcute:gas-station-fill|1",
+   "ri:gas-station-fill|1",
+   "tabler:gas-station-filled|1",
+   "bi:ev-station-fill|0.88"
+  ],
+  "carWash": [
+   "material-symbols:wash-rounded|1",
+   "bxs:car-wash|1",
+   "mingcute:wash-machine-fill|0.88",
+   "material-symbols:local-car-wash-rounded|0.88"
+  ],
+  "bakery": [
+   "material-symbols:bakery-dining-rounded|0.88",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "homeCenter": [
+   "material-symbols:help-center-rounded|0.88",
+   "material-symbols:align-center-rounded|0.88",
+   "mingcute:align-center-fill|0.88",
+   "material-symbols:fitness-center-rounded|0.88"
+  ],
+  "repairShop": [
+   "material-symbols:shop-rounded|1",
+   "mingcute:shop-fill|1",
+   "material-symbols:shop-two-rounded|0.88",
+   "fluent:building-shop-24-filled|0.88"
+  ],
+  "greengrocer": [
+   "fluent:code-cs-16-filled|0.41",
+   "ph:file-rs-fill|0.41",
+   "fluent:re-order-24-filled|0.41",
+   "material-symbols:high-res-rounded|0.41"
+  ],
+  "electronicsStore": [
+   "bxs:store|1",
+   "material-symbols:store-rounded|1",
+   "mingcute:store-2-fill|1",
+   "mingcute:store-fill|1"
+  ],
+  "bookstore": [
+   "bi:book-fill|0.43",
+   "bxs:book|0.43",
+   "fluent:book-24-filled|0.43",
+   "ion:book|0.43"
+  ],
+  "departmentStore": [
+   "bxs:store|1",
+   "material-symbols:store-rounded|1",
+   "mingcute:store-2-fill|1",
+   "mingcute:store-fill|1"
+  ],
+  "hundredYenShop": [
+   "material-symbols:shop-rounded|1",
+   "mingcute:shop-fill|1",
+   "material-symbols:shop-two-rounded|0.88",
+   "fluent:building-shop-24-filled|0.88"
+  ],
+  "coinLaundry": [
+   "material-symbols:laundry-rounded|1",
+   "material-symbols:local-laundry-service-rounded|0.76",
+   "material-symbols:dry-rounded|0.43",
+   "mingcute:dry-fill|0.43"
+  ],
+  "suitcase": [
+   "bi:suitcase-fill|1",
+   "mingcute:suitcase-2-fill|1",
+   "mingcute:suitcase-fill|1",
+   "ph:suitcase-fill|1"
+  ],
+  "airplane": [
+   "bi:airplane-fill|1",
+   "fluent:airplane-24-filled|1",
+   "ion:airplane|1",
+   "mingcute:airplane-fill|1"
+  ],
+  "station": [
+   "bi:ev-station-fill|0.88",
+   "bxs:ev-station|0.88",
+   "material-symbols:ev-station-rounded|0.88",
+   "mingcute:gas-station-fill|0.88"
+  ],
+  "bus": [
+   "bxs:bus|1",
+   "ion:bus|1",
+   "mingcute:bus-2-fill|1",
+   "mingcute:bus-fill|1"
+  ],
+  "taxi": [
+   "bxs:taxi|1",
+   "ph:taxi-fill|1",
+   "ri:taxi-fill|1",
+   "ri:taxi-wifi-fill|0.88"
+  ],
+  "guidebook": [
+   "tabler:id-filled|0.43",
+   "bi:book-fill|0.43",
+   "bxs:book|0.43",
+   "fluent:book-24-filled|0.43"
+  ],
+  "camping": [
+   "material-symbols:camping-rounded|1",
+   "fluent:pi-24-filled|0.43",
+   "material-symbols:mp-rounded|0.43",
+   "ph:pi-fill|0.43"
+  ],
+  "ticket": [
+   "bi:ticket-fill|1",
+   "ion:ticket|1",
+   "mingcute:ticket-fill|1",
+   "ph:ticket-fill|1"
+  ],
+  "busStop": [
+   "bi:stop-fill|1",
+   "fluent:stop-24-filled|1",
+   "ion:stop|1",
+   "material-symbols:stop-rounded|1"
+  ],
+  "car": [
+   "bxs:car|1",
+   "ion:car|1",
+   "mingcute:car-2-fill|1",
+   "mingcute:car-3-fill|1"
+  ],
+  "park": [
+   "material-symbols:park-rounded|1",
+   "mingcute:park-fill|1",
+   "ph:park-fill|1",
+   "fluent:call-park-24-filled|0.88"
+  ],
+  "zoo": [
+   "tabler:zoom-filled|0.43",
+   "bxs:zoom-in|0.41",
+   "fluent:zoom-in-24-filled|0.41",
+   "material-symbols:zoom-in-rounded|0.41"
+  ],
+  "map": [
+   "bi:map-fill|1",
+   "bxs:map|1",
+   "fluent:map-24-filled|1",
+   "ion:map|1"
+  ],
+  "mountain": [
+   "mingcute:mountain-2-fill|1",
+   "mingcute:mountain-fill|1",
+   "tabler:mountain-filled|1",
+   "ph:mountains-fill|1"
+  ],
+  "inn": [
+   "mingcute:ins-fill|0.43",
+   "mingcute:dinner-fill|0.43",
+   "tabler:pinned-filled|0.43",
+   "ph:spinner-fill|0.43"
+  ],
+  "aquarium": [
+   "material-symbols:aq-rounded|0.43",
+   "mingcute:aquarius-fill|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41"
+  ],
+  "sea": [
+   "fluent:seat-24-filled|0.43",
+   "mingcute:seal-fill|0.43",
+   "mingcute:seat-fill|0.43",
+   "ph:seal-fill|0.43"
+  ],
+  "onsen": [
+   "material-symbols:onsen-rounded|1",
+   "fluent:mic-on-24-filled|0.41",
+   "material-symbols:hdr-on-rounded|0.41",
+   "material-symbols:raw-on-rounded|0.41"
+  ],
+  "phone": [
+   "bi:phone-fill|1",
+   "bxs:phone|1",
+   "fluent:phone-24-filled|1",
+   "mingcute:phone-fill|1"
+  ],
+  "mail": [
+   "fluent:mail-24-filled|1",
+   "ion:mail|1",
+   "material-symbols:mail-rounded|1",
+   "mingcute:mail-fill|1"
+  ],
+  "christmas": [
+   "mingcute:christmas-hat-fill|0.88",
+   "mingcute:christmas-ball-fill|0.88",
+   "tabler:christmas-tree-filled|0.88",
+   "mingcute:father-christmas-fill|0.88"
+  ],
+  "present": [
+   "material-symbols:co-present-rounded|0.88",
+   "material-symbols:file-present-rounded|0.88",
+   "material-symbols:present-to-all-rounded|0.76",
+   "material-symbols:ent-rounded|0.43"
+  ],
+  "pet": [
+   "material-symbols:pets-rounded|1",
+   "material-symbols:pet-supplies-rounded|0.88",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-ts-fill|0.41"
+  ],
+  "mapPin": [
+   "bi:pin-fill|1",
+   "bxs:pin|1",
+   "fluent:pin-24-filled|1",
+   "ion:pin|1"
+  ],
+  "newYear": [
+   "bi:ear-fill|0.43",
+   "fluent:new-24-filled|0.43",
+   "ion:ear|0.43",
+   "mingcute:ear-fill|0.43"
+  ],
+  "mothersDay": [
+   "material-symbols:view-day-rounded|0.88",
+   "material-symbols:clear-day-rounded|0.88",
+   "fluent:shifts-day-24-filled|0.88",
+   "bi:calendar-day-fill|0.88"
+  ],
+  "wateringCan": [
+   "mingcute:watering-can-fill|1",
+   "ph:gas-can-fill|0.88",
+   "bxs:spray-can|0.88",
+   "fluent:spray-can-16-filled|0.88"
+  ],
+  "birthdayCake": [
+   "bi:cake-fill|1",
+   "bxs:cake|1",
+   "material-symbols:cake-rounded|1",
+   "mingcute:cake-fill|1"
+  ],
+  "sdCard": [
+   "bxs:card|1",
+   "ion:card|1",
+   "material-symbols:cards-rounded|1",
+   "ph:cards-fill|1"
+  ],
+  "usbMemory": [
+   "fluent:memory-16-filled|1",
+   "material-symbols:memory-rounded|1",
+   "ph:memory-fill|1",
+   "ri:memories-fill|1"
+  ],
+  "microphone": [
+   "bxs:microphone|1",
+   "mingcute:microphone-fill|1",
+   "ph:microphone-fill|1",
+   "tabler:microphone-filled|1"
+  ],
+  "powerTool": [
+   "mingcute:tool-fill|1",
+   "ri:tools-fill|1",
+   "material-symbols:pan-tool-rounded|0.88",
+   "fluent:laser-tool-20-filled|0.88"
+  ],
+  "gamePad": [
+   "mingcute:pad-fill|1",
+   "material-symbols:gamepad-rounded|1",
+   "ri:gamepad-fill|1",
+   "material-symbols:gamepad-up-rounded|0.88"
+  ],
+  "coat": [
+   "mingcute:coat-fill|1",
+   "ph:coat-hanger-fill|0.88",
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43"
+  ],
+  "jacket": [
+   "bxs:file-js|0.41",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:code-js-16-filled|0.41",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "suit": [
+   "bi:suit-club-fill|0.88",
+   "bi:suit-heart-fill|0.88",
+   "bi:suit-spade-fill|0.88",
+   "bi:suit-diamond-fill|0.88"
+  ],
+  "sweater": [
+   "ion:at|0.43",
+   "mingcute:at-fill|0.43",
+   "ph:at-fill|0.43",
+   "ri:at-fill|0.43"
+  ],
+  "hoodie": [
+   "ph:hoodie-fill|1",
+   "ri:ie-fill|0.43",
+   "material-symbols:ods-rounded|0.43",
+   "mingcute:hood-fill|0.43"
+  ],
+  "dressShirt": [
+   "fluent:shirt-20-filled|1",
+   "ion:shirt|1",
+   "mingcute:shirt-fill|1",
+   "ri:shirt-fill|1"
+  ],
+  "sportswear": [
+   "bi:ear-fill|0.43",
+   "ion:ear|0.43",
+   "mingcute:ear-fill|0.43",
+   "ph:ear-fill|0.43"
+  ],
+  "jeans": [
+   "ph:pants-fill|1",
+   "mingcute:trouser-fill|1",
+   "bxs:user|0.43",
+   "mingcute:user-1-fill|0.43"
+  ],
+  "skirt": [
+   "mingcute:skirt-fill|1",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41",
+   "ph:file-ts-fill|0.41"
+  ],
+  "tights": [
+   "fluent:text-wrap-tight-24-filled|0.76",
+   "fluent:text-position-tight-24-filled|0.76",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-ts-fill|0.41"
+  ],
+  "necktie": [
+   "mingcute:necktie-fill|1",
+   "ri:ie-fill|0.43",
+   "fluent:bow-tie-24-filled|0.41",
+   "fluent:code-cs-16-filled|0.41"
+  ],
+  "sandals": [
+   "mingcute:and-fill|0.43",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "material-symbols:filter-b-and-w-rounded|0.41"
+  ],
+  "boots": [
+   "ph:boot-fill|1",
+   "bi:bootstrap-fill|0.43",
+   "ri:bootstrap-fill|0.43",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "belt": [
+   "ph:belt-fill|1",
+   "material-symbols:conveyor-belt-rounded|0.88",
+   "ph:seatbelt-fill|0.43",
+   "fluent:code-ts-16-filled|0.41"
+  ],
+  "stole": [
+   "mingcute:to-do-fill|0.41",
+   "bxs:to-top|0.41",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-ts-fill|0.41"
+  ],
+  "bag": [
+   "bi:bag-fill|1",
+   "ion:bag|1",
+   "ph:bag-fill|1",
+   "bi:bag-x-fill|1"
+  ],
+  "dustpan": [
+   "fluent:dust-24-filled|0.43",
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:save-as-rounded|0.41"
+  ],
+  "doorStopper": [
+   "bi:stop-fill|0.43",
+   "fluent:door-24-filled|0.43",
+   "fluent:stop-24-filled|0.43",
+   "ion:stop|0.43"
+  ],
+  "screwdriver": [
+   "mingcute:screwdriver-fill|1",
+   "ph:screwdriver-fill|1",
+   "fluent:wrench-screwdriver-24-filled|0.88",
+   "mingcute:drive-fill|0.43"
+  ],
+  "screw": [
+   "mingcute:screwdriver-fill|0.43",
+   "ph:screwdriver-fill|0.43",
+   "fluent:code-cs-16-filled|0.41",
+   "ph:file-rs-fill|0.41"
+  ],
+  "hammer": [
+   "ion:hammer|1",
+   "mingcute:hammer-fill|1",
+   "ph:hammer-fill|1",
+   "ri:hammer-fill|1"
+  ],
+  "hook": [
+   "fluent:mail-fish-hook-24-filled|0.76",
+   "fluent:arrow-hook-up-left-24-filled|0.64",
+   "fluent:arrow-hook-up-right-24-filled|0.64",
+   "fluent:arrow-hook-down-left-24-filled|0.64"
+  ],
+  "tapeMeasure": [
+   "ri:tape-fill|0.43",
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:near-me-rounded|0.41"
+  ],
+  "denture": [
+   "material-symbols:ent-rounded|0.43",
+   "fluent:code-ts-16-filled|0.41",
+   "ph:file-rs-fill|0.41",
+   "ph:file-ts-fill|0.41"
+  ],
+  "disc": [
+   "bi:disc-fill|1",
+   "bxs:disc|1",
+   "ion:disc|1",
+   "mingcute:disc-fill|1"
+  ],
+  "gardenTrowel": [
+   "fluent:gas-24-filled|0.43",
+   "material-symbols:ent-rounded|0.43",
+   "mingcute:rows-2-fill|0.43",
+   "mingcute:rows-3-fill|0.43"
+  ],
+  "guitar": [
+   "fluent:guitar-24-filled|1",
+   "mingcute:guitar-fill|1",
+   "ph:guitar-fill|1",
+   "bxs:guitar-amp|0.88"
+  ],
+  "golf": [
+   "ion:golf|1",
+   "ph:golf-fill|1",
+   "tabler:golf-filled|1",
+   "ri:golf-ball-fill|0.88"
+  ],
+  "bicycle": [
+   "ion:bicycle|1",
+   "ph:bicycle-fill|1",
+   "fluent:vehicle-bicycle-24-filled|0.88",
+   "material-symbols:cycle-rounded|0.43"
+  ],
+  "soccerBall": [
+   "bxs:ball|1",
+   "ph:soccer-ball-fill|1",
+   "ri:ball-pen-fill|0.88",
+   "ri:golf-ball-fill|0.88"
+  ],
+  "tennis": [
+   "bxs:tennis-ball|0.88",
+   "ph:tennis-ball-fill|0.88",
+   "material-symbols:sports-tennis-rounded|0.88",
+   "ion:tennisball|0.43"
+  ],
+  "piano": [
+   "bxs:piano|1",
+   "material-symbols:piano-rounded|1",
+   "ri:piano-fill|1",
+   "material-symbols:piano-off-rounded|0.88"
+  ],
+  "radio": [
+   "bxs:radio|1",
+   "ion:radio|1",
+   "material-symbols:radio-rounded|1",
+   "mingcute:radio-fill|1"
+  ],
+  "movie": [
+   "bxs:movie|1",
+   "material-symbols:movie-rounded|1",
+   "mingcute:movie-fill|1",
+   "ri:movie-2-fill|1"
+  ],
+  "museum": [
+   "material-symbols:museum-rounded|1",
+   "material-symbols:language-us-rounded|0.41",
+   "material-symbols:language-us-dvorak-rounded|0.39",
+   "material-symbols:language-us-colemak-rounded|0.39"
+  ],
+  "handcraft": [
+   "mingcute:and-fill|0.43",
+   "bxs:hand|0.43",
+   "mingcute:hand-fill|0.43",
+   "ph:hand-fill|0.43"
+  ],
+  "cinema": [
+   "mingcute:ins-fill|0.43",
+   "bxs:log-in|0.41",
+   "ion:log-in|0.41",
+   "bxs:zoom-in|0.41"
+  ],
+  "blackPepper": [
+   "ph:pepper-fill|1",
+   "fluent:code-cs-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:ac-unit-rounded|0.41"
+  ],
+  "mentsuyu": [
+   "material-symbols:ent-rounded|0.43",
+   "ri:men-fill|0.43",
+   "fluent:code-ts-16-filled|0.41",
+   "material-symbols:near-me-rounded|0.41"
+  ],
+  "seaweedWakame": [
+   "fluent:save-as-24-filled|0.41",
+   "material-symbols:near-me-rounded|0.41",
+   "material-symbols:save-as-rounded|0.41",
+   "material-symbols:remember-me-rounded|0.41"
+  ],
+  "hospital": [
+   "bi:hospital-fill|1",
+   "mingcute:hospital-fill|1",
+   "ph:hospital-fill|1",
+   "ri:hospital-fill|1"
+  ],
+  "superMarket": [
+   "mingcute:up-fill|0.43",
+   "bxs:hand-up|0.41",
+   "fluent:code-ts-16-filled|0.41",
+   "fluent:save-as-24-filled|0.41"
+  ],
+  "bank": [
+   "bxs:bank|1",
+   "mingcute:bank-fill|1",
+   "ph:bank-fill|1",
+   "ri:bank-fill|1"
+  ],
+  "train": [
+   "bxs:train|1",
+   "ion:train|1",
+   "material-symbols:train-rounded|1",
+   "mingcute:train-2-fill|1"
+  ],
+  "trashOut": [
+   "bxs:log-out|0.88",
+   "ion:log-out|0.88",
+   "material-symbols:all-out-rounded|0.88",
+   "bxs:zoom-out|0.88"
+  ],
+  "payment": [
+   "fluent:payment-24-filled|1",
+   "material-symbols:payments-rounded|1",
+   "material-symbols:payment-card-rounded|0.88",
+   "ri:secure-payment-fill|0.88"
+  ]
+ }
+}
