@@ -3254,16 +3254,41 @@
        時間軸は縦なので、横に振れると狙いが揺れて見えます。もとの行は
        薄いまま残します（どこから来たかが見える）。 */
     const gb = row.getBoundingClientRect();
-    const ghost = row.cloneNode(true);
-    ghost.classList.add("tl-ghost");
-    ghost.classList.remove("is-lifted");
-    ghost.removeAttribute("data-todo-id");
-    ghost.style.left = gb.left + "px";
-    ghost.style.top = gb.top + "px";
-    ghost.style.width = gb.width + "px";
+    /* **原寸の写しではなく、縮めたカードにします。** 行をそのまま持ち上げると
+       指の下が広く塞がって、下の時間割が読めません。要るのは「何を運んで
+       いるか」だけなので、絵と題と長さの三つに削ります。 */
+    const mark0 = row.querySelector(".todo-mark");
+    /* 題は `.item-name`。`.tl-title` は無いので、行ぜんぶの字（時刻＋題＋
+       事実）が札に入っていました。 */
+    const title0 = (row.querySelector(".item-name") || row).textContent.trim();
+    const span0 = t.minutes ? KN.plan.humanSpan(t.minutes) : "";
+    const ghost = node(html`
+      <div class="tl-ghost" style="--cat:${tlColorOf(t, NaN)}">
+        <span class="tl-ghost-mark"></span>
+        <span class="tl-ghost-body">
+          ${span0 ? html`<span class="tl-ghost-when">${span0}</span>` : ""}
+          <span class="tl-ghost-title">${title0}</span>
+        </span>
+      </div>
+    `);
+    if (mark0) ghost.querySelector(".tl-ghost-mark").append(mark0.cloneNode(true));
+    const mb = (mark0 || row).getBoundingClientRect();
+    ghost.style.left = Math.round(gb.left + 44) + "px";
+    ghost.style.top = Math.round(mb.top + mb.height / 2) + "px";
     document.body.append(ghost);
     tlDrag.ghost = ghost;
-    tlDrag.ghostY = gb.top + gb.height / 2;
+    tlDrag.ghostY = mb.top + mb.height / 2;
+    /* **＋ が、赤いゴミ箱に変わります。** 運んでいるあいだだけ。落とせば
+       消えますが、**必ず取り消せます**（store.removeTodo が戻す手を返す）。 */
+    const dock = document.getElementById("dock");
+    if (dock && !dock.hidden) {
+      const trash = node(html`<span class="tl-trash" aria-hidden="true">${icon("trash")}</span>`);
+      (dock.querySelector(".quick-add") || dock).append(trash);
+      dock.classList.add("is-trash");
+      tlDrag.trash = trash;
+      tlDrag.dock = dock;
+    }
+
     const scroller = KN.app.scrollerOf(list.closest(".screen")) || document.scrollingElement;
     tlDrag.scroller = scroller;
     tlDrag.x = row.getBoundingClientRect().left + 20;
@@ -3402,7 +3427,20 @@
       L.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
     });
     if (d.aimLayer) d.aimLayer.classList.remove("is-on");
+    if (d.trash) d.trash.classList.remove("is-armed");
     if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
+
+    /* ---- ゴミ箱 ----
+
+       **いちばん先に見ます。** 下の帯の上に浮いているので、あとに回すと
+       「長期タスクの欄」のほうが先に当たります。 */
+    if (d.trash) {
+      const b = d.trash.getBoundingClientRect();
+      const over = b.width > 0 && x >= b.left - 8 && x <= b.right + 8
+                              && y >= b.top - 8 && y <= b.bottom + 8;
+      d.trash.classList.toggle("is-armed", over);
+      if (over) { d.target = { kind: "trash" }; return; }
+    }
 
     /* ---- 週の帯の日 ----
 
@@ -3495,6 +3533,8 @@
        これだけです（空きを広げるのをやめたので、閉じる手当ても要らない）。 */
     if (d.aimLayer) d.aimLayer.remove();
     if (d.ghost) d.ghost.remove();
+    if (d.trash) d.trash.remove();
+    if (d.dock) d.dock.classList.remove("is-trash");
     /* click は離した直後に来ます。来なかったぶんは、ここで片づけます
        ——置いたままだと、次にどこかを押したときに食べてしまいます。 */
     if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);
@@ -3523,6 +3563,18 @@
       KN.motion.fire("save");
       KN.ui.toast(`「${t.title}」を ${formatDay(d.target.day)} へ`, {
         action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
+      });
+      return;
+    }
+
+    /* ゴミ箱へ落とした。**消しますが、取り消せます。** やることは人の予定
+       そのものなので、戻す手を必ず添えること。 */
+    if (d.target.kind === "trash") {
+      const undo = store.removeTodo(d.id);
+      KN.motion.fire("save");
+      haptic(14);
+      KN.ui.toast(`「${t.title}」を削除しました`, {
+        action: { label: "元に戻す", onClick: undo },
       });
       return;
     }
