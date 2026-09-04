@@ -580,6 +580,28 @@
     grip.addEventListener("pointercancel", () => done(false));
   };
 
+  /** その画面で、実際に**送っている器**はどれか。
+
+      やること・daily・買うものでは、送るのは `.screen` ではなく**紙**
+      （`.tl-sheet`）です。丸角と掴み手を持つ外枠は動かず、中身だけがその中を
+      流れる——外枠が器の中の一員だったころは、下へ送ると紙の頭が上へ流れて
+      いって、丸角ごと画面の外へ出ていました（実測：送り 270px で紙の上端が
+      -140px）。
+
+      ダイエット（紙が `is-bare` で丸角を持たない）・価格・設定は、これまで
+      どおり画面そのものが送ります。**どちらかを決め打ちにしないこと**
+      ——`overflow` を見て、実際に送っているほうを返します。 */
+  KN.app.scrollerOf = function scrollerOf(el) {
+    if (!el) return null;
+    const sheet = el.querySelector(".tl-sheet");
+    if (sheet) {
+      const ov = getComputedStyle(sheet).overflowY;
+      if (ov === "auto" || ov === "scroll") return sheet;
+    }
+    return el;
+  };
+  const scrollerOf = KN.app.scrollerOf;
+
   function show(id, face) {
     if (!KN.screens[id]) return;
     if (!goingBack) {

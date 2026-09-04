@@ -1409,8 +1409,9 @@
     fitCalH();
     window.addEventListener("resize", () => fitCalH());
 
-    root.addEventListener("scroll", () => {
-      const stuck = root.scrollTop > 4;
+    const sc0 = KN.app.scrollerOf(root);
+    sc0.addEventListener("scroll", () => {
+      const stuck = sc0.scrollTop > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
       if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
     }, { passive: true });
@@ -1448,7 +1449,8 @@
     /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
        **その場**を見ているので、押した瞬間に頭まで飛ばされると、もう一度
        同じところまで指で戻ることになります。位置を覚えて、組んだあとに返します。 */
-    const keepTop = root.scrollTop;
+    const keepScroller = KN.app.scrollerOf(root);
+    const keepTop = keepScroller.scrollTop;
 
     /* 組み直す前に、いまどの行がどこに居るかを測ります（ui.js の flipRows）。
        並べ替えを押す・お気に入りを付ける・一件足す——どれも一覧の中で行が
@@ -1505,7 +1507,7 @@
     if (S().dailyOrder === "entries") sheet.append(entries, logBlock);
     else sheet.append(logBlock, entries);
 
-    if (keepTop) root.scrollTop = keepTop;
+    if (keepTop) keepScroller.scrollTop = keepTop;
     rendering = false;
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
        （掴み手はそのぶん下に貼りつくので）。 */

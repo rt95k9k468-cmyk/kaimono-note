@@ -222,8 +222,9 @@
     root.addEventListener("wheel", unpinOnTouch, { passive: true, capture: true });
 
     let lastTop = 0;
-    root.addEventListener("scroll", () => {
-      const top = root.scrollTop;
+    const sc0 = KN.app.scrollerOf(root);
+    sc0.addEventListener("scroll", () => {
+      const top = sc0.scrollTop;
       const stuck = top > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
       /* 印を付けるのは境目の線のためと、chromeInset が「いま貼りついて
@@ -1953,7 +1954,7 @@
     /* 書き替えても、読んでいた場所は動かしません。中身を空にすると
        スクロールは0へ落ちるので、組み直したあとに返します——一件
        片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
-    const keepTop = root ? root.scrollTop : 0;
+    const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
     els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
@@ -2188,8 +2189,9 @@
        起きないと、印がどこにも付かないままになるので。 */
     followScroll();
     if (!root || !top) return;
+    const sc = KN.app.scrollerOf(root);
     restoring = true;
-    root.scrollTop = Math.min(top, Math.max(0, root.scrollHeight - root.clientHeight));
+    sc.scrollTop = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
     // 戻したことが「その人が動いた」と読まれないよう、ひと呼吸だけ伏せます。
     setTimeout(() => { restoring = false; }, 60);
   }
@@ -2735,7 +2737,7 @@
     render();
     /* 入れ替えたら、読む場所は先頭から。今日だけは「いま」のところへ
        ——一日の途中で開くのはたいてい今日なので。 */
-    if (root) root.scrollTop = 0;
+    if (root) KN.app.scrollerOf(root).scrollTop = 0;
     if (day === todayKey()) requestAnimationFrame(toNow);
     const sheet = els.body && els.body.querySelector(".tl-sheet");
     if (sheet && dir && !KN.motion.still()) {
@@ -3265,7 +3267,7 @@
       aimLayer.style.setProperty("--aim-top", (b.top - lb.top).toFixed(1) + "px");
       aimLayer.style.setProperty("--aim-h", b.height.toFixed(1) + "px");
     }
-    const scroller = list.closest(".screen") || document.scrollingElement;
+    const scroller = KN.app.scrollerOf(list.closest(".screen")) || document.scrollingElement;
     tlDrag.scroller = scroller;
     tlDrag.x = row.getBoundingClientRect().left + 20;
     tlDrag.y = y0;
@@ -4157,16 +4159,20 @@
     const mark = root.querySelector(".tl-now")
       || root.querySelector(".tl-row:not(.is-done)");
     if (!mark) return;
-    const box = root.getBoundingClientRect();
+    /* 測るのも動かすのも、**実際に送っている器**（紙）です。画面のほうは
+       もう動きません——そこを測ると box.height が画面ぜんぶになって、
+       狙いの高さ（AIM）が紙の中のどこでもない場所を指します。 */
+    const root2 = KN.app.scrollerOf(root);
+    const box = root2.getBoundingClientRect();
     const at = mark.getBoundingClientRect();
-    const want = root.scrollTop + (at.top - box.top) - box.height * AIM;
-    const max = Math.max(0, root.scrollHeight - root.clientHeight);
+    const want = root2.scrollTop + (at.top - box.top) - box.height * AIM;
+    const max = Math.max(0, root2.scrollHeight - root2.clientHeight);
     const to = Math.round(Math.min(max, Math.max(0, want)));
-    if (Math.abs(to - root.scrollTop) < 4) return;
+    if (Math.abs(to - root2.scrollTop) < 4) return;
     /* 送ったことが「その人が動かした」と読まれないよう、ひと呼吸伏せます
        （restoreTop と同じ約束。見ている日の印が動いてしまうので）。 */
     restoring = true;
-    root.scrollTop = to;
+    root2.scrollTop = to;
     setTimeout(() => { restoring = false; }, 60);
   }
 
