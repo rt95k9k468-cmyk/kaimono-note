@@ -233,11 +233,15 @@
        「吹きつける」は使い方そのものが違うので、仲間として意味がある */
     spray: F("<path d=\"M200 80a8 8 0 0 0 8-8a56.06 56.06 0 0 0-56-56H80a16 16 0 0 0-16 16v48a24 24 0 0 1-24 24a8 8 0 0 0 0 16a40 40 0 0 0 40-40h32v24.62a23.87 23.87 0 0 1-9 18.74l-16 12.79a39.79 39.79 0 0 0-15 31.23V224a16 16 0 0 0 16 16h104a16 16 0 0 0 16-16v-12.53A270.9 270.9 0 0 0 174 80ZM80 32h72a40.08 40.08 0 0 1 39.2 32H80Z\"/>", 0.9643, 12.29, 4.57),
     /* チューブ。潰して封じた端・胴・蓋を横に寝かせた形。
-       縦にすると、この一族の混みあう場所（縦に長い容器）へ入ってしまう。 */
+       **二度こわしました。** 横に寝かせたら ただの棒、20度傾けても
+       斜めの棒でした。向きの問題ではなく、**上下が逆**だったのです。
+       チューブをチューブにしているのは「**細い口が上にあって、潰した底が
+       いちばん広い**」という上下の差で、口を下にすると、その差が消えます。
+       口28／胴の裾92／潰した底104。 */
     tube: S(
-      "M22 84h24v88H22Z",
-      "M46 98h122v60H46Z",
-      rr(168, 88, 48, 80, 8)),
+      rr(114, 24, 28, 26, 6),
+      "M104 50h48l22 140H82Z",
+      rr(76, 190, 104, 26, 5)),
 
     /* ジャー（広口） — Phosphor Fill `jar-fill`
        蓋の広い入れもの。乳液・わっくす・入浴剤・保存瓶 */
@@ -293,7 +297,7 @@
     refillPouch: "bag", refillPouchGreen: "bag", zipBag: "bag", catLitter: "bag", petFood: "bag", detergentPod: "bag", dryingAgent: "bag",
     bakingSoda: "box", citricAcid: "box", formula: "box", lunchBox: "box", container: "box", iceTray: "box",
     medicine: "medicine", coldMedicine: "medicine", stomachMedicine: "medicine", gargle: "medicine", pillSheet: "medicine", supplement: "medicine", eyeDrops: "medicine",
-    mug: "cup", glassCup: "cup", tumbler: "cup", paperCup: "cup", measuringCup: "cup", thermos: "cup",
+    mug: "cup", glassCup: "cup", tumbler: "cup", paperCup: "cup", measuringCup: "cup", thermos: "bottle",
     riceBowl: "bowl", donburi: "bowl", teacup: "bowl", strainer: "bowl",
     plateDish: "plate",
     teapot: "spoutPot", wateringCan: "spoutPot",
