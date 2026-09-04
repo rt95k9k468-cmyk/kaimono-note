@@ -208,7 +208,8 @@
        いた場所」を追いかけて画面ごと送ってしまいます——実測で、下まで
        送った先から引くと 196px（＝伸びたぶん）跳ねていました。測り終えて
        正しい高さを書いたら、ここへ戻します。 */
-    const scroll0 = o.root ? o.root.scrollTop : 0;
+    const sc0 = o.root ? KN.app.scrollerOf(o.root) : null;
+    const scroll0 = sc0 ? sc0.scrollTop : 0;
     /* ふだんから貼りついている暦か（やること・daily）、そうでないか
        （ダイエット）。引いているあいだは css がどちらも貼りつけるので、
        印を付ける**前に**見ること。 */
@@ -232,7 +233,7 @@
     if (o.root) m.calHWas = o.root.style.getPropertyValue("--cal-h");
     paint(o, m, at(o));
     /* 測るあいだに伸びたぶんを、ブラウザが追いかけていたら戻します。 */
-    if (o.root) { void o.root.offsetHeight; o.root.scrollTop = scroll0; }
+    if (sc0) { void o.root.offsetHeight; sc0.scrollTop = scroll0; }
     return m;
   }
 
@@ -256,7 +257,7 @@
          送った先では画面の外に居ます——せっかく開いた月が、指を離した
          とたんに見えなくなるので。畳むほうへ収めたときは、読んでいた
          ところに居させます。 */
-      if (o.root) o.root.scrollTop = (!m.stuck && to > m.from) ? 0 : m.scroll;
+      if (o.root) KN.app.scrollerOf(o.root).scrollTop = (!m.stuck && to > m.from) ? 0 : m.scroll;
     };
     m.from = at(o);
     if (KN.motion.still()) { done(); return; }

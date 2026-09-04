@@ -37,11 +37,13 @@
 
    daily がここに入っていませんでした。＋を付けたときに足し忘れたもので、
    一覧のいちばん下の一件が、丸ボタンの下から出てこなくなっていました。 */
-.screen[data-screen="archive"],
-.screen[data-screen="todo"],
-.screen[data-screen="list"],
 .screen[data-screen="prices"],
 .screen[data-screen="diet"] { padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
+/* 紙が器になった三つは、下の余白も紙の中が持ちます（器の外に余白を置いても、
+   中身の下には空きができません）。 */
+.screen[data-screen="archive"],
+.screen[data-screen="todo"],
+.screen[data-screen="list"] { padding-bottom: 0; }
 
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket.
@@ -4096,14 +4098,60 @@ a.btn { text-decoration: none; }
    地が「まだ何かある」に見える）。 */
 #screen-list > .stack,
 #screen-prices > .stack { flex: 1; min-height: 0; }
+/* 下の帯のぶんの余白は、紙の中の `padding-bottom` が持ちます（下の
+   「外枠と、その中を流れる中身」）。**画面から紙を引き出す負のマージンは
+   要らなくなりました**——紙が器そのものになって、画面の下まで届いているので。 */
+/* ---------------- 外枠と、その中を流れる中身 ----------------
+
+   **送る器は、画面ではなく紙です**（やること・daily・買うもの）。
+
+   前はひとつでした——`.screen` が送る器で、紙はその中のふつうのブロック。
+   だから下へ送ると、丸角のついた紙の上端はそのまま上へ流れて消えます
+   （実測：送り 270px で紙の上端が **-140px**）。手当てとして掴み手に
+   sticky と同じ丸角を着せていましたが、掴み手の地も紙の地も同じ白
+   （どちらも実測 rgb(255,255,255)）なので、角を落とした隙間から覗くのは
+   紙自身の白——**丸角は最初から見えていませんでした**。しかも流れてくる行が
+   その隙間を通る、という禁じ手そのものの構造でした。
+
+   外枠（丸角＋掴み手）と、中身を送る器を分けます：紙が器になり、上のバー・
+   探す欄・暦は紙の外に留まる。中身は紙の中だけを流れます。
+
+   **ダイエット・価格・設定はこれまでどおり画面が送ります。** ダイエットの紙は
+   `is-bare` で丸角を持たない（隠れる角がない）うえ、あの画面だけは引いて
+   更新とキーボードの送りが画面そのものの scrollTop に乗っています。
+   価格と設定は紙を持ちません。**器がどちらかは、`KN.app.scrollerOf()` が
+   `overflow` を見て答えます**——決め打ちにしないこと。 */
+#screen-todo,
+#screen-archive,
+#screen-list { overflow: hidden; }
+/* 紙まで、高さの割り当てを通します。途中の箱が `flex:1; min-height:0` を
+   持っていないと、紙は中身ぶんに伸びて器になりません。 */
+#screen-todo > .stack,
+#screen-archive > .stack,
+#screen-list > .stack { flex: 1; min-height: 0; }
+#screen-todo > .stack > .js-body,
+#screen-archive > .stack > .arc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#screen-todo .tl-sheet,
+#screen-archive .tl-sheet,
 #screen-list .tl-sheet {
   flex: 1;
-  /* 画面の下の余白（帯のぶん）は、紙のほうが引き受けます。器のほうに
-     持たせたままだと、白い紙が画面の途中で切れて、その下の地が
-     「まだ何かある」に見えます。 */
-  margin-bottom: calc(-1 * (var(--tabbar-space) + var(--sp-8) + var(--sp-6)));
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 丸角の内側で中身を切ります。これが「内容が角丸の下を通る」を止める
+     ところ——切らないと、角の隙間を行が通ります。 */
+  border-radius: 22px 22px 0 0;
+  -webkit-overflow-scrolling: touch;
+  /* 下の帯のぶんは、紙の中の余白が持ちます（器が変わったので、画面の
+     padding では中身の下に空きができません）。 */
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
 }
+/* 中で送るようになったので、掴み手が避ける相手はもういません（上のバーも
+   暦も紙の外）。紙の上端に貼りつけば、それが外枠の頭です。 */
+#screen-todo .tl-grip,
+#screen-archive .tl-grip,
+#screen-list .tl-grip { top: 0; }
+
 /* 留まっている紙は、**中身をそのまま持っています**（頭で切りません）。
 
    一度 `max-height` で頭だけに切りました——すりガラスの帯を通して買うものの

@@ -119,8 +119,11 @@
       () => KN.app.showScreen("settings"));
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
-    root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
+    /* 送っているのは画面ではなく紙です（css の「外枠と、その中を流れる
+       中身」）。見張る相手を間違えると、上のバーの影が一生出ません。 */
+    const sc = KN.app.scrollerOf(root);
+    sc.addEventListener("scroll", () => {
+      els.topbar.classList.toggle("is-stuck", sc.scrollTop > 4);
     });
   }
 
