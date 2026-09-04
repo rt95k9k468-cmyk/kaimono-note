@@ -1,0 +1,1293 @@
+{
+ "note": "ICON-SILHOUETTE.md を見ること。cand は候補であって採否ではない",
+ "done": {
+  "containers": "js/icons-goods.js の TYPES/OF（14型・73枚）",
+  "individual": "js/icons-goods.js の ICONS（14枚）",
+  "food": "js/icons-food.js（71型・269枚）"
+ },
+ "types": {
+  "pot": {
+   "ja": "鍋・やかん",
+   "keys": [
+    "saucepan",
+    "pressureCooker",
+    "wok",
+    "potLid",
+    "kettle",
+    "electricKettle"
+   ],
+   "cand": [
+    "mingcute:pot-fill",
+    "material-symbols:kettle-rounded",
+    "ph:cooking-pot-fill"
+   ]
+  },
+  "fryPan": {
+   "ja": "ふらいぱん",
+   "keys": [
+    "pan",
+    "hotplate"
+   ],
+   "cand": [
+    "material-symbols:skillet-rounded",
+    "material-symbols:drag-pan-rounded",
+    "material-symbols:pan-tool-rounded"
+   ]
+  },
+  "cutlery": {
+   "ja": "かとらりー",
+   "keys": [
+    "spoon",
+    "fork",
+    "tableKnife",
+    "renge",
+    "chopstickPair",
+    "chopsticks",
+    "cutlery",
+    "straw",
+    "toothpick",
+    "measuringSpoon"
+   ],
+   "cand": [
+    "material-symbols:fork-spoon-rounded",
+    "mingcute:fork-knife-fill",
+    "mingcute:fork-spoon-fill"
+   ]
+  },
+  "utensil": {
+   "ja": "調理の柄もの",
+   "keys": [
+    "ladle",
+    "turner",
+    "whisk",
+    "tongs",
+    "ricePaddle",
+    "peeler",
+    "grater",
+    "rollingPin"
+   ],
+   "cand": [
+    "mingcute:spatula-fill",
+    "fluent:spatula-spoon-24-filled",
+    "ion:at"
+   ]
+  },
+  "scissors": {
+   "ja": "はさみ",
+   "keys": [
+    "scissors",
+    "kitchenScissors"
+   ],
+   "cand": [
+    "mingcute:scissors-2-fill",
+    "mingcute:scissors-3-fill",
+    "mingcute:scissors-fill"
+   ]
+  },
+  "knife": {
+   "ja": "刃もの",
+   "keys": [
+    "knife",
+    "cutter"
+   ],
+   "cand": [
+    "mingcute:knife-fill",
+    "ph:knife-fill",
+    "ri:knife-fill"
+   ]
+  },
+  "opener": {
+   "ja": "開ける道具",
+   "keys": [
+    "canOpener",
+    "bottleOpener",
+    "corkscrew"
+   ],
+   "cand": [
+    "fluent:code-cs-16-filled",
+    "ph:file-rs-fill",
+    "fluent:re-order-24-filled"
+   ]
+  },
+  "rack": {
+   "ja": "かご・水切り",
+   "keys": [
+    "dishRack",
+    "laundryBasket",
+    "basket"
+   ],
+   "cand": [
+    "bi:basket-fill",
+    "bxs:basket",
+    "ion:basket"
+   ]
+  },
+  "mitt": {
+   "ja": "鍋つかみ・えぷろん",
+   "keys": [
+    "ovenMitt",
+    "apron",
+    "bib"
+   ],
+   "cand": [
+    "mingcute:glove-fill",
+    "material-symbols:person-apron-rounded",
+    "ph:boxing-glove-fill"
+   ]
+  },
+  "scaleTool": {
+   "ja": "はかり",
+   "keys": [
+    "kitchenScale"
+   ],
+   "cand": [
+    "ion:scale",
+    "material-symbols:scale-rounded",
+    "mingcute:scale-fill"
+   ]
+  },
+  "timer": {
+   "ja": "たいまー",
+   "keys": [
+    "kitchenTimer"
+   ],
+   "cand": [
+    "bxs:timer",
+    "fluent:timer-24-filled",
+    "ion:timer"
+   ]
+  },
+  "paperRoll": {
+   "ja": "巻きもの",
+   "keys": [
+    "kitchenRoll",
+    "foil"
+   ],
+   "cand": [
+    "mingcute:toilet-paper-fill",
+    "ph:toilet-paper-fill",
+    "bxs:paint-roll"
+   ]
+  },
+  "mopStick": {
+   "ja": "長い柄の掃除道具",
+   "keys": [
+    "mop",
+    "floorWiper",
+    "broom",
+    "dustpan"
+   ],
+   "cand": [
+    "material-symbols:mop-rounded",
+    "fluent:broom-24-filled",
+    "mingcute:broom-fill"
+   ]
+  },
+  "brushTool": {
+   "ja": "ぶらし",
+   "keys": [
+    "scrubBrush",
+    "hairBrush",
+    "comb",
+    "paintBrush",
+    "sponge"
+   ],
+   "cand": [
+    "bi:brush-fill",
+    "bxs:brush",
+    "ion:brush"
+   ]
+  },
+  "sheetPack": {
+   "ja": "しーとの袋",
+   "keys": [
+    "wipes",
+    "floorWipes",
+    "babyWipes",
+    "cottonPad"
+   ],
+   "cand": [
+    "mingcute:na-fill",
+    "mingcute:ins-fill",
+    "bxs:log-in"
+   ]
+  },
+  "gloveWear": {
+   "ja": "手袋",
+   "keys": [
+    "rubberGloves",
+    "gloves"
+   ],
+   "cand": [
+    "mingcute:glove-fill",
+    "ph:boxing-glove-fill",
+    "mingcute:love-fill"
+   ]
+  },
+  "net": {
+   "ja": "ねっと",
+   "keys": [
+    "drainNet",
+    "laundryNet"
+   ],
+   "cand": [
+    "bi:magnet-fill",
+    "bxs:magnet",
+    "bxs:planet"
+   ]
+  },
+  "trashCan": {
+   "ja": "ごみ箱",
+   "keys": [
+    "trashCan",
+    "trashOut"
+   ],
+   "cand": [
+    "bi:trash-fill",
+    "bxs:trash",
+    "ion:trash"
+   ]
+  },
+  "vacuum": {
+   "ja": "掃除機",
+   "keys": [
+    "vacuum"
+   ],
+   "cand": [
+    "material-symbols:vacuum-rounded",
+    "material-symbols:vacuum-2-rounded",
+    "material-symbols:vacuum-2-on-rounded"
+   ]
+  },
+  "cloth": {
+   "ja": "布もの",
+   "keys": [
+    "dishcloth",
+    "towel",
+    "bodyTowel",
+    "rug",
+    "doormat",
+    "curtain",
+    "blanket",
+    "bedSheet",
+    "stole"
+   ],
+   "cand": [
+    "ph:towel-fill",
+    "bxs:blanket",
+    "material-symbols:blanket-rounded"
+   ]
+  },
+  "hanger": {
+   "ja": "はんがー・洗濯ばさみ",
+   "keys": [
+    "hanger",
+    "clothespin"
+   ],
+   "cand": [
+    "tabler:hanger-2-filled",
+    "fluent:clothes-hanger-24-filled",
+    "fluent:video-clip-24-filled"
+   ]
+  },
+  "screenDev": {
+   "ja": "画面のもの",
+   "keys": [
+    "tv",
+    "laptop",
+    "tablet",
+    "smartphone",
+    "whiteboard",
+    "monitor"
+   ],
+   "cand": [
+    "bi:tv-fill",
+    "bxs:tv",
+    "fluent:tv-24-filled"
+   ]
+  },
+  "boxAppl": {
+   "ja": "箱の家電",
+   "keys": [
+    "microwave",
+    "ovenToaster",
+    "washingMachine",
+    "clothesDryer",
+    "dishwasher",
+    "printer",
+    "riceCooker",
+    "laminator",
+    "router"
+   ],
+   "cand": [
+    "bi:printer-fill",
+    "bxs:printer",
+    "ph:printer-fill"
+   ]
+  },
+  "fanAppl": {
+   "ja": "風・熱の家電",
+   "keys": [
+    "electricFan",
+    "airConditioner",
+    "humidifier",
+    "heater"
+   ],
+   "cand": [
+    "mingcute:fan-2-fill",
+    "mingcute:fan-fill",
+    "ph:fan-fill"
+   ]
+  },
+  "smallAppl": {
+   "ja": "台所の家電",
+   "keys": [
+    "blender",
+    "coffeeMaker"
+   ],
+   "cand": [
+    "material-symbols:blender-rounded",
+    "ri:blender-fill",
+    "tabler:blender-filled"
+   ]
+  },
+  "audio": {
+   "ja": "音のもの",
+   "keys": [
+    "speaker",
+    "headphones",
+    "earphone",
+    "radio",
+    "microphone"
+   ],
+   "cand": [
+    "bi:speaker-fill",
+    "bxs:speaker",
+    "material-symbols:speaker-rounded"
+   ]
+  },
+  "camera": {
+   "ja": "かめら",
+   "keys": [
+    "camera"
+   ],
+   "cand": [
+    "bi:camera-fill",
+    "bxs:camera",
+    "fluent:camera-24-filled"
+   ]
+  },
+  "plugCable": {
+   "ja": "電源・けーぶる",
+   "keys": [
+    "charger",
+    "usbCable",
+    "powerStrip",
+    "powerBank",
+    "lightBattery"
+   ],
+   "cand": [
+    "bi:plug-fill",
+    "bxs:plug",
+    "ph:plug-fill"
+   ]
+  },
+  "chip": {
+   "ja": "小さな記録もの",
+   "keys": [
+    "sdCard",
+    "usbMemory",
+    "disc"
+   ],
+   "cand": [
+    "bi:usb-fill",
+    "fluent:usb-24-filled",
+    "material-symbols:usb-rounded"
+   ]
+  },
+  "remote": {
+   "ja": "りもこん・こんとろーらー",
+   "keys": [
+    "remote",
+    "gamePad"
+   ],
+   "cand": [
+    "material-symbols:gamepad-rounded",
+    "ri:gamepad-fill",
+    "mingcute:remote-control-fill"
+   ]
+  },
+  "inputDev": {
+   "ja": "まうす・きーぼーど",
+   "keys": [
+    "mouse",
+    "keyboardDevice"
+   ],
+   "cand": [
+    "bi:mouse-fill",
+    "bxs:mouse",
+    "material-symbols:mouse-rounded"
+   ]
+  },
+  "hairDryer": {
+   "ja": "どらいやー",
+   "keys": [
+    "hairDryer",
+    "shaver",
+    "electricToothbrush",
+    "massager"
+   ],
+   "cand": [
+    "ph:hair-dryer-fill",
+    "fluent:save-as-24-filled",
+    "material-symbols:save-as-rounded"
+   ]
+  },
+  "iron": {
+   "ja": "あいろん",
+   "keys": [
+    "iron"
+   ],
+   "cand": [
+    "material-symbols:iron-rounded",
+    "tabler:ironing-1-filled",
+    "tabler:ironing-2-filled"
+   ]
+  },
+  "chair": {
+   "ja": "椅子・そふぁ",
+   "keys": [
+    "chair",
+    "sofa",
+    "cushion"
+   ],
+   "cand": [
+    "mingcute:sofa-fill",
+    "ri:sofa-fill",
+    "material-symbols:chair-rounded"
+   ]
+  },
+  "table": {
+   "ja": "机・てーぶる",
+   "keys": [
+    "desk",
+    "diningTable",
+    "kotatsu"
+   ],
+   "cand": [
+    "fluent:desk-24-filled",
+    "material-symbols:desk-rounded",
+    "mingcute:desk-fill"
+   ]
+  },
+  "bed": {
+   "ja": "寝るもの",
+   "keys": [
+    "bed",
+    "mattress",
+    "futon",
+    "pillow"
+   ],
+   "cand": [
+    "bxs:bed",
+    "fluent:bed-24-filled",
+    "ion:bed"
+   ]
+  },
+  "shelf": {
+   "ja": "棚・引き出し",
+   "keys": [
+    "bookshelf",
+    "shelfUnit",
+    "chestDrawers",
+    "storageBox"
+   ],
+   "cand": [
+    "fluent:drawer-24-filled",
+    "mingcute:drawer-2-fill",
+    "mingcute:drawer-fill"
+   ]
+  },
+  "lamp": {
+   "ja": "あかり",
+   "keys": [
+    "deskLamp",
+    "ceilingLight",
+    "bulb"
+   ],
+   "cand": [
+    "bi:lamp-fill",
+    "ph:lamp-fill",
+    "mingcute:desk-lamp-2-fill"
+   ]
+  },
+  "clock": {
+   "ja": "時計",
+   "keys": [
+    "wallClock"
+   ],
+   "cand": [
+    "bi:clock-fill",
+    "fluent:clock-24-filled",
+    "mingcute:clock-2-fill"
+   ]
+  },
+  "mirror": {
+   "ja": "鏡",
+   "keys": [
+    "mirror"
+   ],
+   "cand": [
+    "mingcute:mirror-fill",
+    "material-symbols:car-mirror-heat-rounded",
+    "fluent:dual-screen-mirror-24-filled"
+   ]
+  },
+  "frame": {
+   "ja": "額・板",
+   "keys": [
+    "photoFrame",
+    "calendarSheet"
+   ],
+   "cand": [
+    "fluent:frame-24-filled",
+    "mingcute:frame-fill",
+    "bi:calendar-fill"
+   ]
+  },
+  "plantPot": {
+   "ja": "草花",
+   "keys": [
+    "plant",
+    "flower",
+    "vase",
+    "gardenTrowel"
+   ],
+   "cand": [
+    "ph:plant-fill",
+    "ri:plant-fill",
+    "ion:flower"
+   ]
+  },
+  "umbrella": {
+   "ja": "傘",
+   "keys": [
+    "umbrella"
+   ],
+   "cand": [
+    "bi:umbrella-fill",
+    "fluent:umbrella-24-filled",
+    "ion:umbrella"
+   ]
+  },
+  "penTool": {
+   "ja": "書くもの",
+   "keys": [
+    "pen",
+    "pencil",
+    "mechanicalPencil",
+    "pencilLead",
+    "marker",
+    "highlighter",
+    "crayon",
+    "colorPencils",
+    "paintSet",
+    "inkCartridge"
+   ],
+   "cand": [
+    "bi:pen-fill",
+    "bxs:pen",
+    "fluent:pen-24-filled"
+   ]
+  },
+  "notebook": {
+   "ja": "帳面",
+   "keys": [
+    "notebook",
+    "diary",
+    "memoPad",
+    "sketchbook",
+    "textbook",
+    "binder",
+    "letterPad",
+    "guidebook"
+   ],
+   "cand": [
+    "bi:book-fill",
+    "bxs:book",
+    "bxs:note"
+   ]
+  },
+  "paperSheet": {
+   "ja": "紙",
+   "keys": [
+    "copyPaper",
+    "looseLeaf",
+    "document",
+    "postcard",
+    "origami",
+    "deskPad",
+    "letterPack",
+    "officialPaper",
+    "contract",
+    "insurance",
+    "utilityBill",
+    "homeLoan",
+    "receipt",
+    "deliverySlip"
+   ],
+   "cand": [
+    "bi:file-fill",
+    "bxs:file",
+    "mingcute:file-fill"
+   ]
+  },
+  "stickyNote": {
+   "ja": "付箋・しーる",
+   "keys": [
+    "stickyNote",
+    "labelSticker"
+   ],
+   "cand": [
+    "bxs:note",
+    "fluent:note-24-filled",
+    "material-symbols:note-rounded"
+   ]
+  },
+  "folder": {
+   "ja": "ふぁいる",
+   "keys": [
+    "fileFolder"
+   ],
+   "cand": [
+    "bi:folder-fill",
+    "bxs:folder",
+    "fluent:folder-24-filled"
+   ]
+  },
+  "clip": {
+   "ja": "留めるもの",
+   "keys": [
+    "paperClip",
+    "binderClip",
+    "pushPin",
+    "rubberBand",
+    "staples",
+    "hook",
+    "screw",
+    "magnetPin"
+   ],
+   "cand": [
+    "bi:pin-fill",
+    "bxs:pin",
+    "fluent:pin-24-filled"
+   ]
+  },
+  "stapler": {
+   "ja": "ほちきす・ぱんち",
+   "keys": [
+    "stapler",
+    "holePunch"
+   ],
+   "cand": [
+    "fluent:code-ts-16-filled",
+    "fluent:save-as-24-filled",
+    "material-symbols:save-as-rounded"
+   ]
+  },
+  "tapeRoll": {
+   "ja": "てーぷ",
+   "keys": [
+    "tape",
+    "correctionTape"
+   ],
+   "cand": [
+    "ri:tape-fill",
+    "mingcute:audio-tape-fill",
+    "ph:cassette-tape-fill"
+   ]
+  },
+  "ruler": {
+   "ja": "測るもの",
+   "keys": [
+    "ruler",
+    "setSquare",
+    "protractor",
+    "tapeMeasure",
+    "compass"
+   ],
+   "cand": [
+    "bxs:ruler",
+    "fluent:ruler-24-filled",
+    "mingcute:ruler-fill"
+   ]
+  },
+  "pencilCase": {
+   "ja": "筆箱",
+   "keys": [
+    "pencilCase",
+    "stationery"
+   ],
+   "cand": [
+    "material-symbols:cases-rounded",
+    "material-symbols:match-case-rounded",
+    "material-symbols:earbud-case-rounded"
+   ]
+  },
+  "eraser": {
+   "ja": "消しごむ",
+   "keys": [
+    "eraser"
+   ],
+   "cand": [
+    "bi:eraser-fill",
+    "bxs:eraser",
+    "fluent:eraser-24-filled"
+   ]
+  },
+  "calculator": {
+   "ja": "電卓",
+   "keys": [
+    "calculator"
+   ],
+   "cand": [
+    "bi:calculator-fill",
+    "bxs:calculator",
+    "fluent:calculator-24-filled"
+   ]
+  },
+  "stamp": {
+   "ja": "印・切手",
+   "keys": [
+    "nameStamp",
+    "rubberStamp",
+    "inkPad",
+    "postageStamp"
+   ],
+   "cand": [
+    "mingcute:seal-fill",
+    "ph:seal-fill",
+    "ph:stamp-fill"
+   ]
+  },
+  "card": {
+   "ja": "かーど",
+   "keys": [
+    "businessCard",
+    "nameTag",
+    "licenseCard",
+    "ticket",
+    "qrPay",
+    "cash"
+   ],
+   "cand": [
+    "bxs:card",
+    "ion:card",
+    "material-symbols:cards-rounded"
+   ]
+  },
+  "topWear": {
+   "ja": "上衣",
+   "keys": [
+    "tshirt",
+    "sweater",
+    "hoodie",
+    "dressShirt",
+    "sportswear",
+    "babyClothes",
+    "pyjamas",
+    "underwear"
+   ],
+   "cand": [
+    "fluent:shirt-20-filled",
+    "ion:shirt",
+    "mingcute:shirt-fill"
+   ]
+  },
+  "outerWear": {
+   "ja": "上着",
+   "keys": [
+    "coat",
+    "jacket",
+    "suit"
+   ],
+   "cand": [
+    "mingcute:coat-fill",
+    "ph:coat-hanger-fill",
+    "ion:at"
+   ]
+  },
+  "bottomWear": {
+   "ja": "下衣",
+   "keys": [
+    "jeans",
+    "skirt",
+    "tights"
+   ],
+   "cand": [
+    "mingcute:skirt-fill",
+    "ph:pants-fill",
+    "mingcute:trouser-fill"
+   ]
+  },
+  "necktie": {
+   "ja": "ねくたい",
+   "keys": [
+    "necktie"
+   ],
+   "cand": [
+    "mingcute:necktie-fill",
+    "fluent:bow-tie-24-filled",
+    "mingcute:bow-tie-fill"
+   ]
+  },
+  "shoe": {
+   "ja": "履きもの",
+   "keys": [
+    "slippers",
+    "sandals",
+    "boots",
+    "shoeCare"
+   ],
+   "cand": [
+    "mingcute:shoe-2-fill",
+    "mingcute:shoe-fill",
+    "ph:boot-fill"
+   ]
+  },
+  "socks": {
+   "ja": "靴下",
+   "keys": [
+    "socks"
+   ],
+   "cand": [
+    "mingcute:sock-fill",
+    "ph:sock-fill",
+    "material-symbols:sos-rounded"
+   ]
+  },
+  "hat": {
+   "ja": "帽子",
+   "keys": [
+    "hat"
+   ],
+   "cand": [
+    "mingcute:hat-2-fill",
+    "mingcute:hat-fill",
+    "bxs:hard-hat"
+   ]
+  },
+  "belt": {
+   "ja": "べると",
+   "keys": [
+    "belt"
+   ],
+   "cand": [
+    "ph:belt-fill",
+    "material-symbols:conveyor-belt-rounded",
+    "ph:seatbelt-fill"
+   ]
+  },
+  "maskWear": {
+   "ja": "ますく",
+   "keys": [
+    "mask"
+   ],
+   "cand": [
+    "bxs:mask",
+    "material-symbols:masks-rounded",
+    "bxs:face-mask"
+   ]
+  },
+  "carryBag": {
+   "ja": "かばん",
+   "keys": [
+    "suitcase",
+    "schoolBag",
+    "ecoBag",
+    "coolerBag",
+    "babyCarrier",
+    "groceries",
+    "package",
+    "household"
+   ],
+   "cand": [
+    "bi:bag-fill",
+    "ion:bag",
+    "ph:bag-fill"
+   ]
+  },
+  "diaper": {
+   "ja": "おむつ・しーつ",
+   "keys": [
+    "diaper",
+    "petSheet",
+    "icePack",
+    "handWarmerBox",
+    "heatPad",
+    "coolingSheet",
+    "poultice",
+    "plaster",
+    "bandage"
+   ],
+   "cand": [
+    "mingcute:baby-fill",
+    "ph:baby-fill",
+    "fluent:patch-24-filled"
+   ]
+  },
+  "stroller": {
+   "ja": "べびーかー",
+   "keys": [
+    "stroller"
+   ],
+   "cand": [
+    "material-symbols:stroller-rounded",
+    "bxs:baby-carriage",
+    "mingcute:baby-carriage-fill"
+   ]
+  },
+  "babyRoom": {
+   "ja": "赤ちゃんの家具",
+   "keys": [
+    "babyGate",
+    "babyCrib",
+    "babyBath",
+    "baby",
+    "nursery"
+   ],
+   "cand": [
+    "material-symbols:crib-rounded",
+    "mingcute:baby-fill",
+    "ph:baby-fill"
+   ]
+  },
+  "petThing": {
+   "ja": "ぺっと",
+   "keys": [
+    "pet"
+   ],
+   "cand": [
+    "ion:paw",
+    "mingcute:paw-fill",
+    "tabler:paw-filled"
+   ]
+  },
+  "thermo": {
+   "ja": "体温計",
+   "keys": [
+    "thermometer"
+   ],
+   "cand": [
+    "bxs:thermometer",
+    "fluent:temperature-24-filled",
+    "ion:thermometer"
+   ]
+  },
+  "testKit": {
+   "ja": "検査きっと",
+   "keys": [
+    "testKit",
+    "healthCheck",
+    "vaccination"
+   ],
+   "cand": [
+    "fluent:syringe-24-filled",
+    "ion:medical",
+    "material-symbols:syringe-rounded"
+   ]
+  },
+  "support": {
+   "ja": "支えるもの",
+   "keys": [
+    "brace",
+    "crutch"
+   ],
+   "cand": [
+    "mingcute:crutch-fill",
+    "ion:bandage",
+    "material-symbols:support-rounded"
+   ]
+  },
+  "toothCare": {
+   "ja": "歯のもの",
+   "keys": [
+    "floss",
+    "interdental",
+    "denture",
+    "dentist"
+   ],
+   "cand": [
+    "ph:tooth-fill",
+    "ri:tooth-fill",
+    "mingcute:dental-fill"
+   ]
+  },
+  "smallCare": {
+   "ja": "身だしなみの小物",
+   "keys": [
+    "nailClipper",
+    "nailFile",
+    "hairTie",
+    "cottonSwab",
+    "razor"
+   ],
+   "cand": [
+    "mingcute:scissors-2-fill",
+    "mingcute:scissors-3-fill",
+    "mingcute:scissors-fill"
+   ]
+  },
+  "shop": {
+   "ja": "お店",
+   "keys": [
+    "convenienceStore",
+    "superMarket",
+    "greengrocer",
+    "bakery",
+    "bookstore",
+    "homeCenter",
+    "electronicsStore",
+    "departmentStore",
+    "hundredYenShop",
+    "repairShop",
+    "drugstore",
+    "pharmacy"
+   ],
+   "cand": [
+    "material-symbols:shop-rounded",
+    "mingcute:shop-fill",
+    "bxs:store"
+   ]
+  },
+  "building": {
+   "ja": "建物",
+   "keys": [
+    "school",
+    "cityHall",
+    "postOffice",
+    "bank",
+    "hospital",
+    "museum",
+    "inn"
+   ],
+   "cand": [
+    "bxs:bank",
+    "mingcute:bank-fill",
+    "ph:bank-fill"
+   ]
+  },
+  "eatery": {
+   "ja": "食べるお店",
+   "keys": [
+    "restaurant",
+    "cafe"
+   ],
+   "cand": [
+    "ion:cafe",
+    "bxs:coffee",
+    "material-symbols:coffee-rounded"
+   ]
+  },
+  "salon": {
+   "ja": "美容・理容",
+   "keys": [
+    "hairSalon",
+    "barber"
+   ],
+   "cand": [
+    "fluent:code-cs-16-filled",
+    "fluent:code-rb-16-filled",
+    "fluent:save-as-24-filled"
+   ]
+  },
+  "service": {
+   "ja": "預ける・洗う店",
+   "keys": [
+    "cleaners",
+    "coinLaundry",
+    "gasStation",
+    "carWash"
+   ],
+   "cand": [
+    "material-symbols:laundry-rounded",
+    "bxs:car-wash",
+    "mingcute:gas-station-fill"
+   ]
+  },
+  "leisure": {
+   "ja": "出かける先",
+   "keys": [
+    "park",
+    "zoo",
+    "aquarium",
+    "cinema",
+    "onsen",
+    "sea",
+    "mountain",
+    "camping",
+    "movie",
+    "golf",
+    "tennis",
+    "soccerBall"
+   ],
+   "cand": [
+    "bi:tree-fill",
+    "bxs:tree",
+    "material-symbols:park-rounded"
+   ]
+  },
+  "car": {
+   "ja": "車",
+   "keys": [
+    "car",
+    "taxi"
+   ],
+   "cand": [
+    "bxs:car",
+    "ion:car",
+    "mingcute:car-2-fill"
+   ]
+  },
+  "train": {
+   "ja": "電車・ばす",
+   "keys": [
+    "train",
+    "station",
+    "bus",
+    "busStop"
+   ],
+   "cand": [
+    "bxs:bus",
+    "ion:bus",
+    "mingcute:bus-2-fill"
+   ]
+  },
+  "airplane": {
+   "ja": "飛行機",
+   "keys": [
+    "airplane"
+   ],
+   "cand": [
+    "bxs:plane",
+    "ri:plane-fill",
+    "tabler:plane-filled"
+   ]
+  },
+  "bicycle": {
+   "ja": "自転車",
+   "keys": [
+    "bicycle"
+   ],
+   "cand": [
+    "mingcute:bike-fill",
+    "ri:bike-fill",
+    "tabler:bike-filled"
+   ]
+  },
+  "map": {
+   "ja": "地図",
+   "keys": [
+    "map",
+    "mapPin"
+   ],
+   "cand": [
+    "bi:map-fill",
+    "bxs:map",
+    "fluent:map-24-filled"
+   ]
+  },
+  "gift": {
+   "ja": "贈りもの",
+   "keys": [
+    "present",
+    "christmas",
+    "mothersDay",
+    "birthdayCake",
+    "newYear"
+   ],
+   "cand": [
+    "bi:cake-fill",
+    "bi:gift-fill",
+    "bxs:cake"
+   ]
+  },
+  "toy": {
+   "ja": "おもちゃ",
+   "keys": [
+    "toy",
+    "plushToy",
+    "handcraft"
+   ],
+   "cand": [
+    "material-symbols:toys-rounded",
+    "bi:puzzle-fill",
+    "ri:puzzle-2-fill"
+   ]
+  },
+  "music": {
+   "ja": "楽器",
+   "keys": [
+    "guitar",
+    "piano"
+   ],
+   "cand": [
+    "bxs:music",
+    "bxs:piano",
+    "material-symbols:piano-rounded"
+   ]
+  },
+  "tool": {
+   "ja": "工具",
+   "keys": [
+    "screwdriver",
+    "hammer",
+    "powerTool",
+    "doorStopper"
+   ],
+   "cand": [
+    "mingcute:tool-fill",
+    "ri:tools-fill",
+    "bxs:wrench"
+   ]
+  },
+  "phone": {
+   "ja": "連絡",
+   "keys": [
+    "phone",
+    "mail",
+    "delivery",
+    "postBox",
+    "payment"
+   ],
+   "cand": [
+    "fluent:mail-24-filled",
+    "ion:mail",
+    "material-symbols:mail-rounded"
+   ]
+  },
+  "mosquito": {
+   "ja": "蚊取り",
+   "keys": [
+    "mosquitoCoil"
+   ],
+   "cand": [
+    "ph:spiral-fill",
+    "fluent:pi-24-filled",
+    "ph:pi-fill"
+   ]
+  }
+ },
+ "toContainerType": {
+  "sunscreen": "bottle",
+  "paperPlate": "plate"
+ },
+ "toFoodType": {
+  "rice": "flour",
+  "blackPepper": "miso",
+  "mentsuyu": "oil",
+  "seaweedWakame": "nori",
+  "driedSeaweedSoup": "driedShiitake",
+  "instantSoup": "tin"
+ }
+}
