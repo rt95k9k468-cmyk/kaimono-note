@@ -3195,27 +3195,22 @@ a.btn { text-decoration: none; }
     var(--tl-fill) 0 var(--p),
     var(--tl-wait) var(--p) 100%);
 }
-/* **用事の行だけは、丸薬の上と下で一色ずつ**にします。
+/* **丸薬と時間線は、完全に別ものです。**
 
-   行の高さを決めるのは題とメモで、時間ではありません。時間を持っている
-   のは丸薬だけです。なので「行の高さの pass 割」で線を切ると、丸薬の中の
-   境目と**必ずずれます**——行と丸薬で高さが違うので。丸薬を貫く線と丸薬の
-   間の線が違って見えたのは、これでした。
+   ここには「用事の行だけは、丸薬の上と下で一色ずつ」という三段の
+   グラデーションがありました——丸薬の高さ（`--tl-node-h`）から上下の帯を
+   計算して、上は `--pt`、下は `--pb`、**まん中は `--tl-fill` べた**。
 
-   上は用事が始まっていれば色（--pt）、下は終わっていれば色（--pb）。
-   境目は丸薬の中にしかありません。空きの行のほうは、そこが「時間その
-   もの」なので、これまでどおり pass の位置で切ります。 */
-.tl-row {
-  --tl-top: color-mix(in srgb, var(--tl-fill) calc(var(--pt, 1) * 100%), var(--tl-wait));
-  --tl-bot: color-mix(in srgb, var(--tl-fill) calc(var(--pb, 1) * 100%), var(--tl-wait));
-  --tl-nt: calc((100% - var(--tl-node-h, 50px)) / 2);
-}
-.tl-row .tl-rail::before {
-  background: linear-gradient(to bottom,
-    var(--tl-top) 0 var(--tl-nt),
-    var(--tl-fill) var(--tl-nt) calc(100% - var(--tl-nt)),
-    var(--tl-bot) calc(100% - var(--tl-nt)) 100%);
-}
+   まん中が問題でした。あそこは `--pass` を見ていないので、**時計がまだ
+   来ていない用事でも常にコーラル**です。丸薬が覆っているあいだは見えま
+   せんが、丸薬の高さと行の高さの取り方がずれると（重なった行、伸びた
+   丸薬）そのまま顔を出します——「時間線に意味なく色が付いている」の
+   正体はこれでした。
+
+   線は線として、丸薬は丸薬として、それぞれ独立に描きます。線は上の
+   `.tl-rail::before` 一本（`--pass` の位置で切るだけ）。丸薬はその上に
+   **地を持って**乗るので、裏を通る線は隠れます。繋ぎの短い線はもう
+   ありません——「丸薬の上下に線を接続する」という考え方ごと捨てました。 */
 /* 空きが**30分より長い**ところだけ、点線。**繋がっていない**ことが
    空きの意味なので、逆に言えば30分以内の空きは繋がっています——用事と
    用事のあいだの十分やそこらは、途切れではなく「ひと続きの時間」です。
@@ -4304,20 +4299,9 @@ a.btn { text-decoration: none; }
   pointer-events: none;
   z-index: 4;
 }
-/* 運んでいるあいだだけ、時間軸の幅にうすい地。**どこが時計なのか**を絵で
-   言います——破線の帯を外したぶん、その手がかりが消えていました。
-   「左＝時刻、右＝並び順」は位置で言っていることなので、その位置が見えて
-   いないと、言えていないのと同じです。 */
-.tl-aim::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: var(--aim-top, 0);
-  width: var(--aim-edge, 100px);
-  height: var(--aim-h, 100%);
-  background: color-mix(in srgb, var(--c-primary) 6%, transparent);
-  border-radius: 0 var(--r-md) var(--r-md) 0;
-}
+/* **うすい地は外しました。** 運んでいるあいだ、時間軸の幅（左100px）に
+   地を敷いて「ここが時計」と言っていましたが、左右で言うことが違わなく
+   なった以上（行のどこでも時刻）、区切って見せるものがありません。 */
 .tl-aim-line {
   position: absolute;
   left: 0; top: 0;
@@ -4331,6 +4315,32 @@ a.btn { text-decoration: none; }
      座標に居ること。 */
 }
 .tl-aim.is-on .tl-aim-line { opacity: 1; }
+
+/* ---- 持ち上げた行は、指についてくる ----
+
+   写しを一枚、画面の上に浮かせます。もとの行は薄いまま残る（どこから
+   来たかが見える）ので、これは**運んでいるものの手ごたえ**のほうです。
+   少しだけ持ち上げて、影を落とす——紙から浮いている、という絵。 */
+.tl-ghost {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  background: var(--c-surface);
+  border-radius: var(--r-md);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .18), 0 2px 6px rgba(0, 0, 0, .10);
+  opacity: .97;
+  /* **持ち上がる動きだけ、時間をかけます。** 運んでいる最中の縦は指の
+     ぶんそのままなので、transform に transition を掛けてはいけません
+     （掛けると指から遅れて、狙った高さと影の高さがずれます）。 */
+  animation: tl-ghost-in .16s var(--ease-out) both;
+}
+@keyframes tl-ghost-in {
+  from { box-shadow: none; opacity: .6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-ghost { animation: none; }
+}
 
 /* 狙っている時刻の札は、**線の上へ逃がします**。
 
