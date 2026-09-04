@@ -3072,6 +3072,11 @@
      運べません。指は画面から出られないので。 */
   const EDGE_BAND = 84;
   const EDGE_MAX = 17;
+  /* 狙っている時刻の札を、線からどれだけ上へ逃がすか。指の腹はおよそ 22px
+     ぶん線にかかるので、そのぶんを越えて空けます（css の余白と合わせて、
+     札の下端が線から 18px 上に来ます）。この数より上に線が来たときだけ、
+     札を下側へ返します。 */
+  const AIM_LABEL_GAP = 56;
 
   /* ---------------- 左の列は、一本の時間軸 ----------------
 
@@ -3359,11 +3364,23 @@
       const lb = layer.getBoundingClientRect();
       /* 線は**層の中の位置**で置きます（行の中の割合ではなく）。層は
          その日の時間割ぜんぶを覆っているので、指の高さをそのまま渡せます。 */
-      line.style.top = (Math.min(box.bottom, Math.max(box.top, y)) - lb.top).toFixed(1) + "px";
+      const lineY = Math.min(box.bottom, Math.max(box.top, y)) - lb.top;
+      line.style.top = lineY.toFixed(1) + "px";
       line.style.width = (a.edge - lb.left).toFixed(1) + "px";
       layer.classList.add("is-on");
       const label = line.querySelector(".tl-band-time");
       if (label) label.textContent = KN.plan.toTime(t);
+      /* **札は、指の上に逃がします。**
+
+         線の高さにそのまま置くと、そこは指が乗っているところなので、
+         いちばん読みたい数字が指の腹で隠れます。線の少し上（CSS の
+         `bottom: 100%` ＋ 余白）へ出しておけば、同じ高さのことを言い
+         ながら、指には隠れません。
+
+         ただし列のいちばん上では、上に出す場所がありません。そこだけ
+         下へ返します（`is-under`）——指のすぐ上に画面の端が来ている
+         ときは、指も上からは触れないので下側が空いています。 */
+      line.classList.toggle("is-under", lineY < AIM_LABEL_GAP);
     }
     return { at: t };
   }

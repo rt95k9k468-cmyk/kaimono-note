@@ -162,6 +162,18 @@
   const atTop = (el) => el.scrollTop <= 0;
   const atBottom = (el) => el.scrollHeight - el.clientHeight - el.scrollTop <= 1;
 
+  /** 下へ引いて更新できるのは、**ダイエットだけ**です。
+
+      あそこだけは引くことに用があります——中継所に預けたヘルスケアの記録を
+      取りに行く道が、これしかないので。ほかの三つには取りに行く先がなく、
+      一覧の頭で下へ動かすたびに画面が伸びるのは、ただの邪魔でした。
+
+      **止めるのは「下へ引く」ほうだけ**です。下端の give（`edge = "bottom"`）
+      と、勢いのついた指がリストの端を越えたときの帯（`onScroll` → `fling`）は
+      そのまま——あちらは更新ではなく、ブラウザ本来の跳ね返りを返しているだけ
+      なので、無くすと一覧が壁に当たったように止まります。 */
+  const canRefresh = (el) => !!el && el.dataset.screen === "diet";
+
   function onStart(e) {
     armed = engaged = false;
     edge = null;
@@ -200,7 +212,9 @@
       if (Math.abs(dy) < SLOP || Math.abs(dy) < Math.abs(dx) * 1.5) return;
       // Down at the top, up at the bottom — anything else is a scroll, and
       // the scroller has to have it.
-      if (dy > 0 && couldTop && atTop(screenEl)) edge = "top";
+      // 下へ引くのは、更新できる画面（ダイエット）だけ。上の canRefresh を
+      // 見ること。ほかの画面では、この指はそのままスクロールに渡します。
+      if (dy > 0 && couldTop && atTop(screenEl) && canRefresh(screenEl)) edge = "top";
       else if (dy < 0 && couldBottom && atBottom(screenEl)) edge = "bottom";
       else { armed = false; return; }
       engaged = true;
