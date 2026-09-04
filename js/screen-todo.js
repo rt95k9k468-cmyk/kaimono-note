@@ -3005,17 +3005,9 @@
       else pass = (nowMin - a) / (u - a);
       li.style.setProperty("--pass", pass.toFixed(3));
       if (!row) continue;
-      /* 行の中の線は、**丸薬の上と下で一色ずつ**です（--pt / --pb）。
-
-         行の高さは題とメモが決めるもので、時間ではありません。時間を
-         持っているのは丸薬だけ。なので「行の高さの pass 割」で線を
-         切ると、丸薬の中の境目と**必ずずれます**（行と丸薬で高さが
-         違うので）。そこが「丸薬を貫く線と、丸薬の間の線が違う色に
-         見える」の正体でした。
-         上は用事が**始まっていれば**色、下は**終わっていれば**色。
-         これなら隣の空きの行と必ず同じ色でつながります。 */
-      li.style.setProperty("--pt", pass > 0 ? "1" : "0");
-      li.style.setProperty("--pb", pass >= 1 ? "1" : "0");
+      /* **`--pt` / `--pb` は書きません。** 線を丸薬の高さで三段に割るのを
+         やめたので（css の「丸薬と時間線は、完全に別ものです」）、この二つを
+         読むところがもうありません。線は `--pass` 一つだけを見ます。 */
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
@@ -3143,15 +3135,10 @@
     });
     if (pts.length < 2) return null;
 
-    /* 左右の境目は、行の**列の切れ目**そのもの（`grid-template-columns` が
-       44px 56px 1fr なので 100px）。前はここが `.tl-rail` の右端＝73px
-       でした——レールは 2px の線なので、その右端で切ると時刻を選べる幅が
-       列の切れ目より 27px 手前で終わっていて、しかも**題を掴んだ指は
-       いつも外側**にいました（実測：x=170 で縦に動かすと、どの高さでも
-       時刻が取れない）。 */
-    const item = dayList.querySelector(".tl-row .tl-item");
-    const edge = item ? item.getBoundingClientRect().left : box.left + 100;
-    return { pts, edge };
+    /* **左右の境目は、もうありません。** 前はここで列の切れ目（100px）を
+       出して、それより右を「順番で置きなおす」に振っていました。行のどこを
+       持ち上げても同じ時間軸、に変えたので要りません（aim() の但し書き）。 */
+    return { pts };
   }
 
   /* 一覧のドラッグ（下の reorder まわり）にも同じ名前の札があるので、
@@ -3256,17 +3243,27 @@
     `);
     (dayList.closest(".tl") || dayList).append(aimLayer);
     tlDrag.aimLayer = aimLayer;
-    /* **どこが時計なのかを、見せます。** 破線の帯を外したぶん、左の列が
-       時間軸だという手がかりが絵から消えました。運んでいるあいだだけ、
-       その幅にうすい地を敷きます——「左＝時刻、右＝並び順」は位置で言って
-       いることなので、その位置が見えていないと言えていません。 */
-    if (tlDrag.axis) {
-      const b = dayList.getBoundingClientRect();
-      const lb = aimLayer.getBoundingClientRect();
-      aimLayer.style.setProperty("--aim-edge", (tlDrag.axis.edge - lb.left).toFixed(1) + "px");
-      aimLayer.style.setProperty("--aim-top", (b.top - lb.top).toFixed(1) + "px");
-      aimLayer.style.setProperty("--aim-h", b.height.toFixed(1) + "px");
-    }
+
+    /* **持ち上げた行は、指についてきます。**
+
+       前は行がその場に残って薄くなるだけで、動いているのは細い線と札だけ
+       でした。何を運んでいるのかが手の中に無いので、狙いを合わせている
+       あいだ「いま何を動かしているか」を覚えていないといけません。
+
+       写しを一枚、画面の上に浮かせて指の高さへ運びます。**縦だけ**——
+       時間軸は縦なので、横に振れると狙いが揺れて見えます。もとの行は
+       薄いまま残します（どこから来たかが見える）。 */
+    const gb = row.getBoundingClientRect();
+    const ghost = row.cloneNode(true);
+    ghost.classList.add("tl-ghost");
+    ghost.classList.remove("is-lifted");
+    ghost.removeAttribute("data-todo-id");
+    ghost.style.left = gb.left + "px";
+    ghost.style.top = gb.top + "px";
+    ghost.style.width = gb.width + "px";
+    document.body.append(ghost);
+    tlDrag.ghost = ghost;
+    tlDrag.ghostY = gb.top + gb.height / 2;
     const scroller = KN.app.scrollerOf(list.closest(".screen")) || document.scrollingElement;
     tlDrag.scroller = scroller;
     tlDrag.x = row.getBoundingClientRect().left + 20;
@@ -3279,6 +3276,7 @@
          ままでも数px揺れるので、その揺れで時刻が書き換わっては困ります。 */
       if (Math.abs(ev.clientY - tlDrag.y0) > DRAG_SLOP) tlDrag.moved = true;
       tlDrag.x = ev.clientX; tlDrag.y = ev.clientY;
+      moveGhost();
       aim(ev.clientX, ev.clientY);
     };
     /* 運んでいるあいだ、画面のほうは動かしません。
@@ -3307,6 +3305,13 @@
     aim(row.getBoundingClientRect().left + 20, y0);
   }
 
+  /** 影を、指の高さへ。縦だけ動かします。 */
+  function moveGhost() {
+    const d = tlDrag;
+    if (!d || !d.ghost) return;
+    d.ghost.style.transform = `translateY(${(d.y - d.ghostY).toFixed(1)}px)`;
+  }
+
   /** 画面の端まで運んだら、その向きへ送ります。
 
       指は画面から出られないので、これが無いと**画面の外にあるものへは
@@ -3326,7 +3331,7 @@
         const step = Math.sign(v) * Math.max(2, Math.min(1, Math.abs(v)) * EDGE_MAX);
         const was = sc.scrollTop;
         sc.scrollTop = was + step;
-        if (sc.scrollTop !== was) aim(d.x, d.y);
+        if (sc.scrollTop !== was) { moveGhost(); aim(d.x, d.y); }
       }
     }
     d.raf = requestAnimationFrame(edgeScroll);
@@ -3339,16 +3344,15 @@
       同じ一本の軸の上の一点として読みます。目盛りは丸薬に合わせてあるので、
       丸薬の真横に指を置けば、その丸薬が言っている時刻が出ます。
 
-      列の外（題やメモの側）なら null。そちらは「順番で置きなおす」ほうの
-      持ち場で、**左右で言っていることが違います**——左は時計、右は並び順。
-      境目は行の列の切れ目（`axisOf` の `edge`）で、レールの 2px の線では
-      ありません。
+      **横は見ません。** 前は列の切れ目（100px）より右を「順番で置きなおす」
+      に振っていましたが、その分岐ごとやめました——行のどこを持ち上げても、
+      同じ一本の時間軸です。
 
       狙いの線は一枚の層に置きます。指の高さがそのまま線の高さなので、
       **行の境目へ吸い寄せられることも、空きへ逃げることもありません。** */
   function railTime(d, x, y) {
     const a = d.axis;
-    if (!a || x > a.edge) return null;
+    if (!a) return null;
     const box = d.dayList.getBoundingClientRect();
     if (box.height <= 0) return null;
     /* 節と節のあいだを、まっすぐ割ります。 */
@@ -3368,7 +3372,9 @@
          その日の時間割ぜんぶを覆っているので、指の高さをそのまま渡せます。 */
       const lineY = Math.min(box.bottom, Math.max(box.top, y)) - lb.top;
       line.style.top = lineY.toFixed(1) + "px";
-      line.style.width = (a.edge - lb.left).toFixed(1) + "px";
+      /* 線は列いっぱい。左右で言うことが違わなくなったので、時刻の側だけを
+         指す理由がありません（下の aim() の但し書き）。 */
+      line.style.width = (box.width).toFixed(1) + "px";
       layer.classList.add("is-on");
       const label = line.querySelector(".tl-band-time");
       if (label) label.textContent = KN.plan.toTime(t);
@@ -3450,40 +3456,21 @@
       }
     }
 
-    /* ---- 左の列は、まるごと一本の時間軸 ----
+    /* ---- 時間割の中は、どこでも時刻 ----
 
-       **「何が置いてあるか」は見ません。** 空きも、丸薬も、丸薬と丸薬の
-       あいだも、区別しない——その日の始まりから終わりまでが連続した時刻で、
-       指を置いたどの高さにも15分きざみの時刻が対応します。
+       **横は見ません。** 前はここで左右に振っていました——列の切れ目
+       （100px）より左なら時刻、右なら「順番で置きなおす」。行のどこを
+       持ち上げたかで、同じ縦の動きが別のことになる、ということです。
+       題は行のいちばん広い的なので、**ふつうに掴むと必ず並び順のほう**に
+       落ちていました（実測：x=170 では全高で時刻が取れない）。
 
-       前は「空きの帯の中」と「丸薬の中」だけが時刻で、そのあいだの隙間
-       （行の余白・帯の外）はぜんぶ「順番で置きなおす」に落ちていました。
-       置ける場所と置けない場所が、見た目では区別のつかない数pxの縞に
-       なっていた、ということです。**その区別ごと捨てます。**
+       分岐ごとやめます。時間割の中はどこでも同じ一本の時間軸で、縦の座標が
+       そのまま15分きざみの時刻です。並び順は、時刻が決めます。
 
-       行はどれも `data-at` / `data-until` を持っていて、縦に隙間なく並んで
-       いるので、**行の高さをその行の時間に割り当てれば**、列ぜんぶが途切れ
-       のない時間軸になります。長い空きは、持ち上げたときに帯のぶんだけ
-       背が伸びているので、そこだけ細かく狙えます。 */
+       **時間割での「並び順だけ変える」は無くなりました。** 長期タスクの欄
+       （時刻を持たない行）の中の並べ替えは、上のとおり残っています。 */
     const timeAt = railTime(d, x, y);
-    if (timeAt) { d.target = { kind: "time", at: timeAt.at }; return; }
-
-    /* ---- 題とメモの側は、順番で置きなおす ----
-
-       **左右で言っていることが違います。** 左の列は時計、右は並び順。
-       どちらを狙ったかが位置で分かるので、混ざりません。
-       行の上半分なら前へ、下半分なら後ろへ。 */
-    const rows = [...d.dayList.querySelectorAll(".tl-row")].filter((r) => r !== d.row);
-    let before = null;
-    for (const r of rows) {
-      const b = r.getBoundingClientRect();
-      if (y < b.top + b.height / 2) { before = r; break; }
-    }
-    const anchor = before || rows[rows.length - 1] || null;
-    if (!anchor) { d.target = null; return; }
-    anchor.classList.add("is-aim");
-    anchor.classList.toggle("is-aim-before", !!before);
-    d.target = { kind: "order", id: anchor.dataset.todoId, before: !!before };
+    d.target = timeAt ? { kind: "time", at: timeAt.at } : null;
   }
 
   /** つまんだ手を離したところ。
@@ -3507,6 +3494,7 @@
     /* 狙いの層を片づけます。行には何も仕込んでいないので、畳むものは
        これだけです（空きを広げるのをやめたので、閉じる手当ても要らない）。 */
     if (d.aimLayer) d.aimLayer.remove();
+    if (d.ghost) d.ghost.remove();
     /* click は離した直後に来ます。来なかったぶんは、ここで片づけます
        ——置いたままだと、次にどこかを押したときに食べてしまいます。 */
     if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);
@@ -3601,41 +3589,9 @@
       return;
     }
 
-    /* 順番で置きなおす。時刻は手放します。 */
-    const ids = [...d.dayList.querySelectorAll(".tl-row")]
-      .map((r) => r.dataset.todoId).filter((x) => x && x !== d.id);
-    /* **並び全体**を控えます。この置きなおしは一件だけでなく、その日の
-       並び順をまるごと書き替えるので、戻すときも同じ広さで戻さないと
-       「元に戻す」が元に戻しません（動かした一件だけを戻して、まわりは
-       新しい順のまま、という半端な形になっていました）。 */
-    const was = { time: t.time, order: new Map() };
-    store.get().todos.forEach((x) => {
-      if (x.id === d.id || ids.includes(x.id)) was.order.set(x.id, x.order);
-    });
-    const at = ids.indexOf(d.target.id);
-    ids.splice(d.target.before ? Math.max(0, at) : at + 1, 0, d.id);
-    store.update((s) => {
-      ids.forEach((tid, i) => {
-        const row = s.todos.find((x) => x.id === tid);
-        if (row) row.order = i;
-      });
-      const me = s.todos.find((x) => x.id === d.id);
-      if (me) { me.time = null; me.due = d.day; }
-    });
-    KN.motion.fire("save");
-    KN.ui.toast(`「${t.title}」を動かしました`, {
-      action: {
-        label: "元に戻す",
-        onClick: () => store.update((s) => {
-          was.order.forEach((ord, tid) => {
-            const row = s.todos.find((x) => x.id === tid);
-            if (row) row.order = ord;
-          });
-          const me = s.todos.find((x) => x.id === d.id);
-          if (me) me.time = was.time;
-        }),
-      },
-    });
+    /* **時間割の「順番で置きなおす」は、もうここへ来ません。**
+       aim() が時間割の中で返すのは `time` だけになりました（左右の分岐を
+       やめたので）。並び順は時刻が決めます。 */
   }
 
   /* 時刻の見せかた。0時台から9時台は頭の0を落とします——「05:00」の0は

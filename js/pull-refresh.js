@@ -172,14 +172,23 @@
       と、勢いのついた指がリストの端を越えたときの帯（`onScroll` → `fling`）は
       そのまま——あちらは更新ではなく、ブラウザ本来の跳ね返りを返しているだけ
       なので、無くすと一覧が壁に当たったように止まります。 */
-  const canRefresh = (el) => !!el && el.dataset.screen === "diet";
+  const canRefresh = (el) => !!el && !!el.closest
+    && !!el.closest('.screen[data-screen="diet"]');
 
   function onStart(e) {
     armed = engaged = false;
     edge = null;
     if (e.touches.length !== 1 || blocked()) return;
 
-    screenEl = host.querySelector(".screen.is-active");
+    /* **測るのは「実際に送っている器」です。**
+
+       やること・daily・買うものでは、送るのは画面ではなく紙（`.tl-sheet`）に
+       なりました。画面のほうを測ると `scrollHeight === clientHeight` なので
+       **上端にも下端にも同時に居ることになり**、縦の指をこちらが毎回
+       「下端の give」として取って `preventDefault` します——**紙が一切
+       送れなくなっていました**（実測：touchmove 7回すべてが既定阻止、送り 0）。 */
+    const active = host.querySelector(".screen.is-active");
+    screenEl = (KN.app && KN.app.scrollerOf) ? KN.app.scrollerOf(active) : active;
     if (!screenEl) return;
     /* 画面のほうが、その端の give を自分で使うことがあります（紙の掴み手は
        下へ引くと暦が出ます）。同じ指を二つが取ると、暦が伸びながら画面ごと
