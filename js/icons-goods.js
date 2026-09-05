@@ -469,6 +469,81 @@
     /* 鏡 — MingCute Fill `mirror-fill`
        鏡 */
     mirror: F("<path d=\"M12 2a1 1 0 0 1 1 1v18a1 1 0 1 1-2 0v-1H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6V3a1 1 0 0 1 1-1m4 16a1 1 0 1 1 0 2h-1a1 1 0 1 1 0-2zm4-1a1 1 0 0 1 1 1a2 2 0 0 1-2 2a1 1 0 1 1 0-2a1 1 0 0 1 1-1m0-4a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1m0-5a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V9a1 1 0 0 1 1-1m-1-4a2 2 0 0 1 2 2a1 1 0 1 1-2 0a1 1 0 1 1 0-2m-3 0a1 1 0 1 1 0 2h-1a1 1 0 1 1 0-2z\"/>", 10.8, -1.6, -1.6),
+
+    /* ---------------- 文房具・紙もの・衣類の20型（三束目） ----------------
+
+       16型がセットから、3型は畳み、1型（**てーぷ**）は探して無く、
+       描くことになりました（`icon-silhouette-types.json` の `draw`）。
+
+       **この束は「ぜんぶ四角」でした。** 紙・帳面・付箋・ふぁいる・かーど・
+       額・電卓・切手——輪郭はどれも角の丸い四角です。それでも 0.18〜0.39 に
+       散ったのは、**四角の縁のどこかを崩している絵**を選んだからです：
+       ふぁいるは上の耳、紙は折れた角、帳面は左の背、かーどは中の顔、
+       電卓は表のぼたん、額は太い縁。**素の四角は一枚も採っていません。**
+
+       畳んだ3型
+       ・付箋・しーる → 紙（体重計と 0.128〜0.140。角の丸い小さな四角は寄る）
+       ・ほちきす・穴あけぱんち → 留めるもの（15,908枚に一枚も無し）
+       ・筆箱・文房具せっと → 箱（同じく無し。文房具の入れもの、で一つ） */
+
+    /* 額・板 — MingCute Fill `frame-fill`
+       写真立て・日めくり */
+    frame: F("<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-width=\"3\" d=\"M20 7H4m13 13V4m3 13H4m3 3V4\"/>", 13.5, -34, -34),
+    /* 草花 — Phosphor Fill `potted-plant-fill`
+       観葉植物・花・花瓶・移植ごて。**花だけの絵は採りません**——`flower-tulip` は
+       core 0.174 で、茎が 25px で消えます */
+    plantPot: F("<path d=\"M200 144h-76.7l22.41-22.41a59.55 59.55 0 0 0 26.1 6.36a49.56 49.56 0 0 0 25.89-7.22c23.72-14.36 36.43-47.6 34-88.92a8 8 0 0 0-7.52-7.52c-41.32-2.43-74.56 10.28-88.93 34c-9.35 15.45-9.59 34.11-.86 52L120 124.68l-12.21-12.21c6-13.25 5.57-27-1.39-38.48C95.53 56 70.61 46.41 39.73 48.22a8 8 0 0 0-7.51 7.51C30.4 86.6 40 111.52 58 122.4a38.2 38.2 0 0 0 20 5.6a45 45 0 0 0 18.52-4.19L108.69 136l-8 8H56a8 8 0 0 0 0 16h9.59l13.21 59.47A15.89 15.89 0 0 0 94.42 232h67.17a15.91 15.91 0 0 0 15.62-12.53L190.42 160H200a8 8 0 0 0 0-16\"/>", 1.0384, -9.07, -4.92),
+    /* 傘 — Phosphor Fill `umbrella-fill`
+       傘。core 0.287 は柄が細いからで、25px でも J 字は読めます。
+       `mingcute:umbrella-2-fill` は core が高い（0.526）が、**ビーチパラソル**でした */
+    umbrella: F("<path d=\"M240 126.63A112.21 112.21 0 0 0 128 24A112.21 112.21 0 0 0 16.05 126.63A16 16 0 0 0 32 144h88v56a32 32 0 0 0 64 0a8 8 0 0 0-16 0a16 16 0 0 1-32 0v-56h88a16 16 0 0 0 16-17.37M32 128a96.15 96.15 0 0 1 76.2-85.89C96.48 58 81.85 86.11 80.17 128zm143.83 0c-1.68-41.89-16.31-70-28-85.94A96.07 96.07 0 0 1 224 128Z\"/>", 0.964, 4.58, 4.61),
+    /* 書くもの — Boxicons Solid `pencil`
+       ぺん・鉛筆・しゃーぺん・替え芯・まじっく・蛍光ぺん・くれよん・色鉛筆・
+       絵の具・いんく */
+    penTool: F("<path d=\"M8.707 19.707L18 10.414L13.586 6l-9.293 9.293a1 1 0 0 0-.263.464L3 21l5.242-1.03c.176-.044.337-.135.465-.263M21 7.414a2 2 0 0 0 0-2.828L19.414 3a2 2 0 0 0-2.828 0L15 4.586L19.414 9z\"/>", 11.6219, -14.87, -8.06),
+    /* 帳面 — Phosphor Fill `notebook-fill`
+       のーと・日記・めも帳・すけっちぶっく・教科書・ばいんだー・便箋・
+       ガイドブック。**本の絵は採れません**——家計簿（`book-rounded`）と同じ絵になります */
+    notebook: F("<path d=\"M208 32H48a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16M80 208H48V48h32Zm96-56h-64a8 8 0 0 1 0-16h64a8 8 0 0 1 0 16m0-32h-64a8 8 0 0 1 0-16h64a8 8 0 0 1 0 16\"/>", 1.125, -16, -16),
+    /* 紙 — Remix Icon Fill `file-text-fill`
+       こぴー用紙・るーずりーふ・書類・はがき・折り紙・下敷き・れたーぱっく・
+       公的書類・契約書・保険・請求書・住宅ろーん・れしーと・宅配伝票、
+       それに**付箋・ラベルしーる**（付箋の絵は体重計と 0.128〜0.140 で、
+       角の丸い小さな四角はどれとも寄るため畳みました） */
+    paperSheet: F("<path d=\"M21 9v11.993A1 1 0 0 1 20.007 22H3.993A.993.993 0 0 1 3 21.008V2.992C3 2.455 3.447 2 3.998 2H14v6a1 1 0 0 0 1 1zm0-2h-5V2.003zM8 7v2h3V7zm0 4v2h8v-2zm0 4v2h8v-2z\"/>", 10.8, -1.6, -1.6),
+    /* ふぁいる — Material Symbols (rounded fill) `folder-rounded`
+       ふぁいる */
+    folder: F("<path d=\"M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h5.175q.4 0 .763.15t.637.425L12 6h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z\"/>", 10.8, -1.6, -1.6),
+    /* 留めるもの — Tabler Filled `pin-filled`
+       くりっぷ・だぶるくりっぷ・画鋲・輪ごむ・ほちきすの針・ふっく・ねじ・
+       まぐねっと、それに**ほちきす・穴あけぱんち**（15,908枚に一枚もありません） */
+    clip: F("<path d=\"m15.113 3.21l.094.083l5.5 5.5a1 1 0 0 1-1.175 1.59l-3.172 3.171l-1.424 3.797a1 1 0 0 1-.158.277l-.07.08l-1.5 1.5a1 1 0 0 1-1.32.082l-.095-.083L9 16.415l-3.793 3.792a1 1 0 0 1-1.497-1.32l.083-.094L7.585 15l-2.792-2.793a1 1 0 0 1-.083-1.32l.083-.094l1.5-1.5a1 1 0 0 1 .258-.187l.098-.042l3.796-1.425l3.171-3.17a1 1 0 0 1 1.497-1.26z\"/>", 12.3419, -23.18, -16.99),
+    /* 測るもの — Remix Icon Fill `ruler-2-fill`
+       定規・三角定規・分度器・めじゃー・こんぱす */
+    ruler: F("<path d=\"M15 21h-2v-3h-2v3H9v-2H7v2H4a1 1 0 0 1-1-1v-3h2v-2H3v-2h3v-2H3V9h2V7H3V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v9h9a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-3v-2h-2z\"/>", 12, -16, -16),
+    /* 消しごむ — Phosphor Fill `eraser-fill`
+       消しごむ */
+    eraser: F("<path d=\"M225 80.4L183.6 39a24 24 0 0 0-33.94 0L31 157.66a24 24 0 0 0 0 33.94l30.06 30.06a8 8 0 0 0 5.68 2.34H216a8 8 0 0 0 0-16h-84.7l93.7-93.66a24 24 0 0 0 0-33.94M213.67 103L160 156.69L107.31 104L161 50.34a8 8 0 0 1 11.32 0l41.38 41.38a8 8 0 0 1 0 11.31Z\"/>", 1.0382, -4.89, -4.87),
+    /* 電卓 — Remix Icon Fill `calculator-fill`
+       電卓 */
+    calculator: F("<path d=\"M4 2h16a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1m3 10v2h2v-2zm0 4v2h2v-2zm4-4v2h2v-2zm0 4v2h2v-2zm4-4v6h2v-6zM7 6v4h10V6z\"/>", 10.8, -1.6, -1.6),
+    /* 印・切手 — Phosphor Fill `stamp-fill`
+       はんこ・ごむ印・しゅにく・切手。`mingcute:seal-fill`（ぎざぎざの丸）は
+       25px で**人の胸像**に見えました */
+    stamp: F("<path d=\"M224 224a8 8 0 0 1-8 8H40a8 8 0 0 1 0-16h176a8 8 0 0 1 8 8m-16-96h-56.43l15.71-73.29A32 32 0 0 0 136 16h-16a32 32 0 0 0-31.28 38.71L104.43 128H48a16 16 0 0 0-16 16v40a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-40a16 16 0 0 0-16-16\"/>", 1, 0, 4),
+    /* かーど — Remix Icon Fill `id-card-fill`
+       名刺・名札・免許証・ちけっと・QR決済・現金 */
+    card: F("<path d=\"M1 5a1 1 0 0 1 1-1h20a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm12 3v2h6V8zm5 4h-5v2h5zm-7.5-2a2.5 2.5 0 1 0-5 0a2.5 2.5 0 0 0 5 0M8 13.5A3.5 3.5 0 0 0 4.5 17h7A3.5 3.5 0 0 0 8 13.5\"/>", 9.8182, 10.18, 10.18),
+    /* 上衣 — Phosphor Fill `t-shirt-fill`
+       てぃーしゃつ・せーたー・ぱーかー・わいしゃつ・運動着・ベビー服・
+       ぱじゃま・下着 */
+    topWear: F("<path d=\"M247.59 61.22L195.83 33a8 8 0 0 0-3.83-1h-32a8 8 0 0 0-8 8a24 24 0 0 1-48 0a8 8 0 0 0-8-8H64a8 8 0 0 0-3.84 1L8.41 61.22a15.76 15.76 0 0 0-6.59 21.26l19.27 36.81A16.37 16.37 0 0 0 35.67 128H56v80a16 16 0 0 0 16 16h112a16 16 0 0 0 16-16v-80h20.34a16.37 16.37 0 0 0 14.58-8.71l19.27-36.81a15.76 15.76 0 0 0-6.6-21.26M35.67 112a.62.62 0 0 1-.41-.13L16.09 75.26L56 53.48V112Zm185.07-.14a.55.55 0 0 1-.41.14H200V53.48l39.92 21.78Z\"/>", 0.8438, 19.99, 19.99),
+    /* 上着 — MingCute Fill `coat-fill`
+       こーと・じゃけっと・すーつ */
+    outerWear: F("<path fill-rule=\"evenodd\" d=\"M6.268 18.752L6 17l-.49.549a1 1 0 0 1-1.193.227l-1.012-.505a2 2 0 0 1-1.021-2.364l2.262-7.539a5 5 0 0 1 2.553-3.035L9.13 3.317A3 3 0 0 1 10.472 3h3.056a3 3 0 0 1 1.342.317l2.03 1.016a5 5 0 0 1 2.553 3.035l2.262 7.539a2 2 0 0 1-1.021 2.364l-1.012.505a1 1 0 0 1-1.192-.227L18 17l-.268 1.752A3 3 0 0 1 14.826 21H9.174a3 3 0 0 1-2.906-2.248m3.757-13.646A1 1 0 0 1 10.472 5h3.056a1 1 0 0 1 .447.106l.96.48L12 10.15L9.065 5.585z\" clip-rule=\"evenodd\"/>", 11.0204, -4.24, -4.24),
+    /* 下衣 — Phosphor Fill `pants-fill`
+       じーんず・すかーと・たいつ */
+    bottomWear: F("<path d=\"m53.44 43.5l.68-5.5A16 16 0 0 1 70 24h116a16 16 0 0 1 15.88 14l.68 5.49a4 4 0 0 1-4 4.5H57.41a4 4 0 0 1-3.97-4.49M169 64a32.06 32.06 0 0 0 31 24h3.59a4 4 0 0 0 4-4.5l-2-16a4 4 0 0 0-4-3.5ZM52.41 88H56a32.06 32.06 0 0 0 31-24H54.41a4 4 0 0 0-4 3.5l-2 16a4 4 0 0 0 4 4.5m171.47 126l-13.32-106.5a4 4 0 0 0-4-3.5H200a48.07 48.07 0 0 1-47.32-40H136v39.73a8.18 8.18 0 0 1-7.47 8.25a8 8 0 0 1-8.53-8V64h-16.68A48.07 48.07 0 0 1 56 104h-6.59a4 4 0 0 0-4 3.5L32.12 214a16 16 0 0 0 6.71 15.09a16.56 16.56 0 0 0 9.56 2.91h40.3a16 16 0 0 0 15.51-12.06l23.8-92l23.79 91.94A16 16 0 0 0 167.31 232h40.3a16.54 16.54 0 0 0 9.56-2.89a16 16 0 0 0 6.71-15.11\"/>", 1.0385, -4.92, -4.92),
   };
 
   /* キー → 型。ここに載っているキーは ICONS には置きません（家は一つ）。 */
@@ -528,6 +603,28 @@
     deskLamp: "lamp", ceilingLight: "lamp", bulb: "lamp",
     wallClock: "clock",
     mirror: "mirror",
+
+    /* 文房具・紙もの・衣類（三束目）。付箋は紙へ、ほちきすは留めるものへ、
+       筆箱は箱へ畳んであります。 */
+    photoFrame: "frame", calendarSheet: "frame",
+    plant: "plantPot", flower: "plantPot", vase: "plantPot", gardenTrowel: "plantPot",
+    umbrella: "umbrella",
+    pen: "penTool", pencil: "penTool", mechanicalPencil: "penTool", pencilLead: "penTool", marker: "penTool", highlighter: "penTool", crayon: "penTool", colorPencils: "penTool", paintSet: "penTool", inkCartridge: "penTool",
+    notebook: "notebook", diary: "notebook", memoPad: "notebook", sketchbook: "notebook", textbook: "notebook", binder: "notebook", letterPad: "notebook", guidebook: "notebook",
+    copyPaper: "paperSheet", looseLeaf: "paperSheet", document: "paperSheet", postcard: "paperSheet", origami: "paperSheet", deskPad: "paperSheet", letterPack: "paperSheet", officialPaper: "paperSheet", contract: "paperSheet", insurance: "paperSheet", utilityBill: "paperSheet", homeLoan: "paperSheet", receipt: "paperSheet", deliverySlip: "paperSheet",
+    stickyNote: "paperSheet", labelSticker: "paperSheet",
+    fileFolder: "folder",
+    paperClip: "clip", binderClip: "clip", pushPin: "clip", rubberBand: "clip", staples: "clip", hook: "clip", screw: "clip", magnetPin: "clip",
+    stapler: "clip", holePunch: "clip",
+    ruler: "ruler", setSquare: "ruler", protractor: "ruler", tapeMeasure: "ruler", compass: "ruler",
+    pencilCase: "box", stationery: "box",
+    eraser: "eraser",
+    calculator: "calculator",
+    nameStamp: "stamp", rubberStamp: "stamp", inkPad: "stamp", postageStamp: "stamp",
+    businessCard: "card", nameTag: "card", licenseCard: "card", ticket: "card", qrPay: "card", cash: "card",
+    tshirt: "topWear", sweater: "topWear", hoodie: "topWear", dressShirt: "topWear", sportswear: "topWear", babyClothes: "topWear", pyjamas: "topWear", underwear: "topWear",
+    coat: "outerWear", jacket: "outerWear", suit: "outerWear",
+    jeans: "bottomWear", skirt: "bottomWear", tights: "bottomWear",
   };
 
   /* 型を畳んだぶん。**同じ絵でよいキー**を、絵を持っているキーへ回します。

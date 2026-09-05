@@ -596,7 +596,8 @@
     "fluent:frame-24-filled",
     "mingcute:frame-fill",
     "bi:calendar-fill"
-   ]
+   ],
+   "done": "mingcute:frame-fill"
   },
   "plantPot": {
    "ja": "草花",
@@ -610,7 +611,8 @@
     "ph:plant-fill",
     "ri:plant-fill",
     "ion:flower"
-   ]
+   ],
+   "done": "ph:potted-plant-fill"
   },
   "umbrella": {
    "ja": "傘",
@@ -621,7 +623,8 @@
     "bi:umbrella-fill",
     "fluent:umbrella-24-filled",
     "ion:umbrella"
-   ]
+   ],
+   "done": "ph:umbrella-fill"
   },
   "penTool": {
    "ja": "書くもの",
@@ -641,7 +644,8 @@
     "bi:pen-fill",
     "bxs:pen",
     "fluent:pen-24-filled"
-   ]
+   ],
+   "done": "bxs:pencil"
   },
   "notebook": {
    "ja": "帳面",
@@ -659,7 +663,8 @@
     "bi:book-fill",
     "bxs:book",
     "bxs:note"
-   ]
+   ],
+   "done": "ph:notebook-fill"
   },
   "paperSheet": {
    "ja": "紙",
@@ -683,7 +688,8 @@
     "bi:file-fill",
     "bxs:file",
     "mingcute:file-fill"
-   ]
+   ],
+   "done": "ri:file-text-fill"
   },
   "stickyNote": {
    "ja": "付箋・しーる",
@@ -695,7 +701,8 @@
     "bxs:note",
     "fluent:note-24-filled",
     "material-symbols:note-rounded"
-   ]
+   ],
+   "folded": "paperSheet（体重計と 0.128〜0.140。角の丸い小さな四角は寄る）"
   },
   "folder": {
    "ja": "ふぁいる",
@@ -706,7 +713,8 @@
     "bi:folder-fill",
     "bxs:folder",
     "fluent:folder-24-filled"
-   ]
+   ],
+   "done": "material-symbols:folder-rounded"
   },
   "clip": {
    "ja": "留めるもの",
@@ -724,7 +732,8 @@
     "bi:pin-fill",
     "bxs:pin",
     "fluent:pin-24-filled"
-   ]
+   ],
+   "done": "tabler:pin-filled"
   },
   "stapler": {
    "ja": "ほちきす・ぱんち",
@@ -736,7 +745,8 @@
     "fluent:code-ts-16-filled",
     "fluent:save-as-24-filled",
     "material-symbols:save-as-rounded"
-   ]
+   ],
+   "folded": "clip（15,908枚に一枚も無し）"
   },
   "tapeRoll": {
    "ja": "てーぷ",
@@ -748,7 +758,8 @@
     "ri:tape-fill",
     "mingcute:audio-tape-fill",
     "ph:cassette-tape-fill"
-   ]
+   ],
+   "draw": "探して無かった。`ri:tape-fill` はカセットテープ。参考画像をもらってから描く"
   },
   "ruler": {
    "ja": "測るもの",
@@ -763,7 +774,8 @@
     "bxs:ruler",
     "fluent:ruler-24-filled",
     "mingcute:ruler-fill"
-   ]
+   ],
+   "done": "ri:ruler-2-fill"
   },
   "pencilCase": {
    "ja": "筆箱",
@@ -775,7 +787,8 @@
     "material-symbols:cases-rounded",
     "material-symbols:match-case-rounded",
     "material-symbols:earbud-case-rounded"
-   ]
+   ],
+   "folded": "box（同じく無し。文房具の入れもの、で一つ）"
   },
   "eraser": {
    "ja": "消しごむ",
@@ -786,7 +799,8 @@
     "bi:eraser-fill",
     "bxs:eraser",
     "fluent:eraser-24-filled"
-   ]
+   ],
+   "done": "ph:eraser-fill"
   },
   "calculator": {
    "ja": "電卓",
@@ -797,7 +811,8 @@
     "bi:calculator-fill",
     "bxs:calculator",
     "fluent:calculator-24-filled"
-   ]
+   ],
+   "done": "ri:calculator-fill"
   },
   "stamp": {
    "ja": "印・切手",
@@ -811,7 +826,8 @@
     "mingcute:seal-fill",
     "ph:seal-fill",
     "ph:stamp-fill"
-   ]
+   ],
+   "done": "ph:stamp-fill"
   },
   "card": {
    "ja": "かーど",
@@ -827,7 +843,8 @@
     "bxs:card",
     "ion:card",
     "material-symbols:cards-rounded"
-   ]
+   ],
+   "done": "ri:id-card-fill"
   },
   "topWear": {
    "ja": "上衣",
@@ -845,7 +862,8 @@
     "fluent:shirt-20-filled",
     "ion:shirt",
     "mingcute:shirt-fill"
-   ]
+   ],
+   "done": "ph:t-shirt-fill"
   },
   "outerWear": {
    "ja": "上着",
@@ -858,7 +876,8 @@
     "mingcute:coat-fill",
     "ph:coat-hanger-fill",
     "ion:at"
-   ]
+   ],
+   "done": "mingcute:coat-fill"
   },
   "bottomWear": {
    "ja": "下衣",
@@ -871,7 +890,8 @@
     "mingcute:skirt-fill",
     "ph:pants-fill",
     "mingcute:trouser-fill"
-   ]
+   ],
+   "done": "ph:pants-fill"
   },
   "necktie": {
    "ja": "ねくたい",
@@ -1334,5 +1354,6 @@
   "instantSoup": "tin"
  },
  "batch1": "1〜20型は済み（14型はセットから／1型は描き起こし／5型は畳んだ）",
- "batch2": "21〜40型も済み（20型ぜんぶセットから。描くもの・畳むものはゼロ）"
+ "batch2": "21〜40型も済み（20型ぜんぶセットから。描くもの・畳むものはゼロ）",
+ "batch3": "41〜60型も済み（16型セット／3型畳んだ／1型 てーぷ は描く）"
 }
