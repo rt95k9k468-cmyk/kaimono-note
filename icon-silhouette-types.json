@@ -310,7 +310,8 @@
     "tabler:hanger-2-filled",
     "fluent:clothes-hanger-24-filled",
     "fluent:video-clip-24-filled"
-   ]
+   ],
+   "done": "tabler:hanger-2-filled"
   },
   "screenDev": {
    "ja": "画面のもの",
@@ -326,7 +327,9 @@
     "bi:tv-fill",
     "bxs:tv",
     "fluent:tv-24-filled"
-   ]
+   ],
+   "done": "ph:laptop-fill",
+   "note": "monitor は icons-v2 に無い（表の上だけのキー）"
   },
   "boxAppl": {
    "ja": "箱の家電",
@@ -345,7 +348,8 @@
     "bi:printer-fill",
     "bxs:printer",
     "ph:printer-fill"
-   ]
+   ],
+   "done": "ri:printer-fill"
   },
   "fanAppl": {
    "ja": "風・熱の家電",
@@ -359,7 +363,8 @@
     "mingcute:fan-2-fill",
     "mingcute:fan-fill",
     "ph:fan-fill"
-   ]
+   ],
+   "done": "ph:fan-fill"
   },
   "smallAppl": {
    "ja": "台所の家電",
@@ -371,7 +376,8 @@
     "material-symbols:blender-rounded",
     "ri:blender-fill",
     "tabler:blender-filled"
-   ]
+   ],
+   "done": "material-symbols:coffee-maker-rounded"
   },
   "audio": {
    "ja": "音のもの",
@@ -386,7 +392,8 @@
     "bi:speaker-fill",
     "bxs:speaker",
     "material-symbols:speaker-rounded"
-   ]
+   ],
+   "done": "ph:headphones-fill"
   },
   "camera": {
    "ja": "かめら",
@@ -397,7 +404,8 @@
     "bi:camera-fill",
     "bxs:camera",
     "fluent:camera-24-filled"
-   ]
+   ],
+   "done": "mingcute:camera-fill"
   },
   "plugCable": {
    "ja": "電源・けーぶる",
@@ -412,7 +420,8 @@
     "bi:plug-fill",
     "bxs:plug",
     "ph:plug-fill"
-   ]
+   ],
+   "done": "ph:plugs-fill"
   },
   "chip": {
    "ja": "小さな記録もの",
@@ -425,7 +434,8 @@
     "bi:usb-fill",
     "fluent:usb-24-filled",
     "material-symbols:usb-rounded"
-   ]
+   ],
+   "done": "ph:floppy-disk-fill"
   },
   "remote": {
    "ja": "りもこん・こんとろーらー",
@@ -437,7 +447,8 @@
     "material-symbols:gamepad-rounded",
     "ri:gamepad-fill",
     "mingcute:remote-control-fill"
-   ]
+   ],
+   "done": "material-symbols:gamepad-rounded"
   },
   "inputDev": {
    "ja": "まうす・きーぼーど",
@@ -449,7 +460,8 @@
     "bi:mouse-fill",
     "bxs:mouse",
     "material-symbols:mouse-rounded"
-   ]
+   ],
+   "done": "mingcute:keyboard-fill"
   },
   "hairDryer": {
    "ja": "どらいやー",
@@ -463,7 +475,8 @@
     "ph:hair-dryer-fill",
     "fluent:save-as-24-filled",
     "material-symbols:save-as-rounded"
-   ]
+   ],
+   "done": "ph:hair-dryer-fill"
   },
   "iron": {
    "ja": "あいろん",
@@ -474,7 +487,8 @@
     "material-symbols:iron-rounded",
     "tabler:ironing-1-filled",
     "tabler:ironing-2-filled"
-   ]
+   ],
+   "done": "material-symbols:iron-rounded"
   },
   "chair": {
    "ja": "椅子・そふぁ",
@@ -487,7 +501,8 @@
     "mingcute:sofa-fill",
     "ri:sofa-fill",
     "material-symbols:chair-rounded"
-   ]
+   ],
+   "done": "mingcute:sofa-fill"
   },
   "table": {
    "ja": "机・てーぶる",
@@ -500,7 +515,8 @@
     "fluent:desk-24-filled",
     "material-symbols:desk-rounded",
     "mingcute:desk-fill"
-   ]
+   ],
+   "done": "mingcute:desk-fill"
   },
   "bed": {
    "ja": "寝るもの",
@@ -514,7 +530,8 @@
     "bxs:bed",
     "fluent:bed-24-filled",
     "ion:bed"
-   ]
+   ],
+   "done": "ph:bed-fill"
   },
   "shelf": {
    "ja": "棚・引き出し",
@@ -528,7 +545,8 @@
     "fluent:drawer-24-filled",
     "mingcute:drawer-2-fill",
     "mingcute:drawer-fill"
-   ]
+   ],
+   "done": "ri:book-shelf-fill"
   },
   "lamp": {
    "ja": "あかり",
@@ -541,7 +559,8 @@
     "bi:lamp-fill",
     "ph:lamp-fill",
     "mingcute:desk-lamp-2-fill"
-   ]
+   ],
+   "done": "bi:lamp-fill"
   },
   "clock": {
    "ja": "時計",
@@ -552,7 +571,8 @@
     "bi:clock-fill",
     "fluent:clock-24-filled",
     "mingcute:clock-2-fill"
-   ]
+   ],
+   "done": "tabler:alarm-filled"
   },
   "mirror": {
    "ja": "鏡",
@@ -563,7 +583,8 @@
     "mingcute:mirror-fill",
     "material-symbols:car-mirror-heat-rounded",
     "fluent:dual-screen-mirror-24-filled"
-   ]
+   ],
+   "done": "mingcute:mirror-fill"
   },
   "frame": {
    "ja": "額・板",
@@ -1312,5 +1333,6 @@
   "driedSeaweedSoup": "driedShiitake",
   "instantSoup": "tin"
  },
- "batch1": "1〜20型は済み（14型はセットから／1型は描き起こし／5型は畳んだ）"
+ "batch1": "1〜20型は済み（14型はセットから／1型は描き起こし／5型は畳んだ）",
+ "batch2": "21〜40型も済み（20型ぜんぶセットから。描くもの・畳むものはゼロ）"
 }
