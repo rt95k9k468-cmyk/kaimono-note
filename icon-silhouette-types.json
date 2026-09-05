@@ -1,5 +1,5 @@
 {
- "note": "ICON-SILHOUETTE.md を見ること。cand は候補であって採否ではない",
+ "note": "ICON-SILHOUETTE.md を見ること。cand は候補であって採否ではない。done ＝採った絵（icons-goods.js に入れた）、folded ＝畳んで消えた型",
  "done": {
   "containers": "js/icons-goods.js の TYPES/OF（14型・73枚）",
   "individual": "js/icons-goods.js の ICONS（14枚）",
@@ -20,7 +20,8 @@
     "mingcute:pot-fill",
     "material-symbols:kettle-rounded",
     "ph:cooking-pot-fill"
-   ]
+   ],
+   "done": "mingcute:soup-pot-fill"
   },
   "fryPan": {
    "ja": "ふらいぱん",
@@ -32,7 +33,8 @@
     "material-symbols:skillet-rounded",
     "material-symbols:drag-pan-rounded",
     "material-symbols:pan-tool-rounded"
-   ]
+   ],
+   "done": "material-symbols:skillet-rounded"
   },
   "cutlery": {
    "ja": "かとらりー",
@@ -52,7 +54,8 @@
     "material-symbols:fork-spoon-rounded",
     "mingcute:fork-knife-fill",
     "mingcute:fork-spoon-fill"
-   ]
+   ],
+   "done": "material-symbols:fork-spoon-rounded"
   },
   "utensil": {
    "ja": "調理の柄もの",
@@ -70,7 +73,8 @@
     "mingcute:spatula-fill",
     "fluent:spatula-spoon-24-filled",
     "ion:at"
-   ]
+   ],
+   "done": "mingcute:spoon-fill"
   },
   "scissors": {
    "ja": "はさみ",
@@ -82,7 +86,8 @@
     "mingcute:scissors-2-fill",
     "mingcute:scissors-3-fill",
     "mingcute:scissors-fill"
-   ]
+   ],
+   "done": "mingcute:scissors-fill"
   },
   "knife": {
    "ja": "刃もの",
@@ -94,7 +99,8 @@
     "mingcute:knife-fill",
     "ph:knife-fill",
     "ri:knife-fill"
-   ]
+   ],
+   "done": "mingcute:knife-fill"
   },
   "opener": {
    "ja": "開ける道具",
@@ -107,7 +113,8 @@
     "fluent:code-cs-16-filled",
     "ph:file-rs-fill",
     "fluent:re-order-24-filled"
-   ]
+   ],
+   "folded": "utensil（缶切り・栓抜き・こるくすくりゅー。25px で読める形が9セットに無い）"
   },
   "rack": {
    "ja": "かご・水切り",
@@ -120,7 +127,8 @@
     "bi:basket-fill",
     "bxs:basket",
     "ion:basket"
-   ]
+   ],
+   "done": "tabler:basket-filled"
   },
   "mitt": {
    "ja": "鍋つかみ・えぷろん",
@@ -133,7 +141,9 @@
     "mingcute:glove-fill",
     "material-symbols:person-apron-rounded",
     "ph:boxing-glove-fill"
-   ]
+   ],
+   "folded": "glove へ 鍋つかみ、apron（描いた）へ えぷろん・すたい",
+   "note": "えぷろん・すたいは icons-goods.js の apron（描き起こし）"
   },
   "scaleTool": {
    "ja": "はかり",
@@ -144,7 +154,8 @@
     "ion:scale",
     "material-symbols:scale-rounded",
     "mingcute:scale-fill"
-   ]
+   ],
+   "folded": "bathScale の絵（どちらも「はかり」。分銅は ジャー と 0.114）"
   },
   "timer": {
    "ja": "たいまー",
@@ -155,7 +166,8 @@
     "bxs:timer",
     "fluent:timer-24-filled",
     "ion:timer"
-   ]
+   ],
+   "done": "bxs:timer"
   },
   "paperRoll": {
    "ja": "巻きもの",
@@ -167,7 +179,8 @@
     "mingcute:toilet-paper-fill",
     "ph:toilet-paper-fill",
     "bxs:paint-roll"
-   ]
+   ],
+   "folded": "toiletRoll と wrap の絵（きっちんぺーぱー／あるみほいる）"
   },
   "mopStick": {
    "ja": "長い柄の掃除道具",
@@ -181,7 +194,8 @@
     "material-symbols:mop-rounded",
     "fluent:broom-24-filled",
     "mingcute:broom-fill"
-   ]
+   ],
+   "done": "material-symbols:mop-rounded"
   },
   "brushTool": {
    "ja": "ぶらし",
@@ -196,7 +210,8 @@
     "bi:brush-fill",
     "bxs:brush",
     "ion:brush"
-   ]
+   ],
+   "done": "mingcute:brush-fill"
   },
   "sheetPack": {
    "ja": "しーとの袋",
@@ -210,7 +225,8 @@
     "mingcute:na-fill",
     "mingcute:ins-fill",
     "bxs:log-in"
-   ]
+   ],
+   "folded": "tissue の絵（一枚ずつ引き出す紙もの）"
   },
   "gloveWear": {
    "ja": "手袋",
@@ -222,7 +238,9 @@
     "mingcute:glove-fill",
     "ph:boxing-glove-fill",
     "mingcute:love-fill"
-   ]
+   ],
+   "done": "mingcute:glove-fill",
+   "note": "鍋つかみ（ovenMitt）もここへ。型の名前は icons-goods.js では glove"
   },
   "net": {
    "ja": "ねっと",
@@ -234,7 +252,8 @@
     "bi:magnet-fill",
     "bxs:magnet",
     "bxs:planet"
-   ]
+   ],
+   "folded": "bag（排水口ネット・洗濯ネットは 25px では袋）"
   },
   "trashCan": {
    "ja": "ごみ箱",
@@ -246,7 +265,8 @@
     "bi:trash-fill",
     "bxs:trash",
     "ion:trash"
-   ]
+   ],
+   "done": "bi:trash-fill"
   },
   "vacuum": {
    "ja": "掃除機",
@@ -257,7 +277,8 @@
     "material-symbols:vacuum-rounded",
     "material-symbols:vacuum-2-rounded",
     "material-symbols:vacuum-2-on-rounded"
-   ]
+   ],
+   "done": "material-symbols:vacuum-rounded"
   },
   "cloth": {
    "ja": "布もの",
@@ -276,7 +297,8 @@
     "ph:towel-fill",
     "bxs:blanket",
     "material-symbols:blanket-rounded"
-   ]
+   ],
+   "done": "ph:towel-fill"
   },
   "hanger": {
    "ja": "はんがー・洗濯ばさみ",
@@ -1289,5 +1311,6 @@
   "seaweedWakame": "nori",
   "driedSeaweedSoup": "driedShiitake",
   "instantSoup": "tin"
- }
+ },
+ "batch1": "1〜20型は済み（14型はセットから／1型は描き起こし／5型は畳んだ）"
 }
