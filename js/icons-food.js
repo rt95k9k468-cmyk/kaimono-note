@@ -419,7 +419,13 @@
   };
 
   /* 品目 → 型。代表は自分自身を指します。 */
-  const OF = {};
+  const OF = {
+    /* `icon-silhouette-types.json` の `toFoodType`。食材の型で足りるので、
+       描き起こさずにここへ回します。**繋いだとき、この6キーだけ色つきの絵が
+       残っていました**（米が手描きのまま出ていたのがこれ）。 */
+    rice: "flour", blackPepper: "miso", mentsuyu: "oil", seaweedWakame: "nori",
+    driedSeaweedSoup: "driedShiitake", instantSoup: "tin",
+};
   Object.keys(TYPES).forEach((rep) => {
     OF[rep] = rep;
     (MEMBERS[rep] || []).forEach((m) => { OF[m] = rep; });
