@@ -1090,10 +1090,28 @@
    * to a group by sight.
    * @returns raw HTML, ready to drop into an html`` template
    */
+  /**
+   * 絵の名前 → 絵。**単色のシルエットを先に引きます。**
+   *
+   * 順番は 道具など（`iconsGoods`）→ 食材（`iconsFood`）→ 色つきの手描き
+   * （`productIcons`＝`icons-v2.js`）。**キーは一文字も変えていない**ので、
+   * 利用者が手で選んだ絵も、キーワードの表も動きません。変わるのは
+   * 「そのキーでどの絵を出すか」だけです。
+   *
+   * 色つきに戻すときは、**この関数の中の2行を消すだけ**
+   * （`icons-v2.js` は消していません）。
+   */
+  function markOf(key) {
+    if (!key) return "";
+    return (KN.iconsGoods && KN.iconsGoods.byKey(key))
+      || (KN.iconsFood && KN.iconsFood.byKey(key))
+      || KN.productIcons.byKey(key) || "";
+  }
+
   function productMark(product) {
     if (!product) return "";
     // Chosen by hand: nothing else gets to argue with it.
-    const own = KN.productIcons.byKey(product.icon);
+    const own = markOf(product.icon);
     return own ? KN.util.raw(own) : autoMark(product);
   }
 
@@ -1101,10 +1119,10 @@
   function autoMark(product) {
     if (!product) return "";
     const cat = getCategory(product.categoryId);
+    const key = KN.productIcons.findKey(product.name)
+      || (cat && KN.productIcons.findKey(cat.name));
     return KN.util.raw(
-      KN.productIcons.find(product.name)
-      || (cat && KN.productIcons.find(cat.name))
-      || KN.productIcons.fallback(productColor(product))
+      markOf(key) || KN.productIcons.fallback(productColor(product))
     );
   }
 
@@ -1983,11 +2001,29 @@
    */
   function iconKeyOf(p) {
     if (!p) return "";
-    if (p.icon && KN.productIcons.byKey(p.icon)) return p.icon;
+    if (p.icon && KN.productIcons.byKey(p.icon)) return artKeyOf(p.icon);
     const own = KN.productIcons.findKey(p.name);
-    if (own) return own;
+    if (own) return artKeyOf(own);
     const cat = getCategory(p.categoryId);
-    return (cat && KN.productIcons.findKey(cat.name)) || "";
+    return artKeyOf((cat && KN.productIcons.findKey(cat.name)) || "");
+  }
+
+  /**
+   * その絵の**型**の名前。単色シルエットでは、いくつものキーが同じ型
+   * （＝同じ絵）を使います——こぴー用紙も契約書も「紙」です。
+   * 並べ替えが寄せたいのは**同じに見えるもの**なので、キーではなく
+   * 型で答えます。型を持たないキーは、そのキー自身が答えです。
+   */
+  function artKeyOf(key) {
+    if (!key) return "";
+    const G = KN.iconsGoods, F = KN.iconsFood;
+    if (G) {
+      const k = (G.SAME && G.SAME[key]) || key;
+      if (G.ICONS[k]) return "g:" + k;
+      if (G.OF[k]) return "g:" + G.OF[k];
+    }
+    if (F && F.OF[key]) return "f:" + F.OF[key];
+    return key;
   }
 
   /**
