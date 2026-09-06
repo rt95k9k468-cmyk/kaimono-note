@@ -205,13 +205,11 @@
   /** Left to buy on the trip being shopped now. アプリの絵の上に出す数。 */
   const tripCount = () => store.get().items.filter((i) => i.fav && !i.checked).length;
 
-  /* やることは「今日ぶん」。時刻が来ているかだけは見ません——今日に
-     決めたものは、19時のぶんも今日やると言ったものなので。絵の上の数
-     （todosDue）は時刻まで見ます。そこは開いていなくても目に入るので、
-     まだ来ていない時刻のぶんを出すと催促になるからです。
-     期限を過ぎたものは、どちらにも入ります。 */
-  const todoBadge = () =>
-    store.openTodos().filter((t) => t.due && KN.util.daysUntil(t.due) <= 0).length;
+  /* タブバーとホーム画面アイコンは、同じ「やること」の数を言うので、
+     同じ基準（todosDue、時刻まで見る）で数えます。以前はタブバーだけ
+     時刻を見ずに「今日の日付」だけで数えていて、二つの数が食い違って
+     いました。 */
+  const todoBadge = () => store.todosDue().length;
 
   /* What the home-screen icon counts: this trip's shopping, plus the やること
      that are wanted today or are already late. Both are 「things I said I
