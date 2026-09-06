@@ -1541,8 +1541,11 @@
      高さ）から出ます——**境目を二か所で計算しない**ことが肝で、別々に
      出すと、伸びた丸薬や重なった行で必ずずれます。
 
-     色つきの品物の絵（食材以外の買うもの）は二色に割り切れないので、
-     これまでどおり `<svg>` のまま置きます。 */
+     **単色シルエットは、品物の絵もここへ通します**（2026年9月5日）。
+     通していなかったころは、「燃えるゴミ」のような**品物の絵で当たった行だけ
+     `<svg>` のまま置かれて、丸の中で黒いまま**でした——白抜きになるのは
+     マスクに乗った絵だけなので。色つきに戻したときだけ `<svg>` に落ちます
+     （`productArt` が色つきを返すのは、シルエットが無いキーのときだけ）。 */
   const maskCache = new Map();
   function maskUrl(svg) {
     let u = maskCache.get(svg);
@@ -1559,9 +1562,10 @@
    *  色つきの絵ならそのまま。 */
   function tlMark(t) {
     const key = t.icon;
-    const sil = (key && (KN.iconsTodo.byKey(key) || KN.iconsFood.byKey(key)))
+    const sil = (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
+        || KN.iconsFood.byKey(key)))
       || KN.iconsTodo.find(t.title || "")
-      || KN.iconsFood.byKey(KN.productIcons.findKey(t.title || ""));
+      || productArt(KN.productIcons.findKey(t.title || ""));
     if (!sil) return todoMark(t);
     return html`<span class="todo-mark is-split"
                       style="--icon:${KN.util.raw(maskUrl(sil))}"></span>`;
