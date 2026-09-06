@@ -3163,6 +3163,16 @@
      おきます——手順を一つ押すたびに畳まれては、続けて押せません。 */
   const openSubs = new Set();
 
+  /* 手順のボタンを押した拍を、要素ではなく id で覚えておきます。
+     pointerup で store を書き換えると、その一拍で画面ぜんぶが描き直され
+     （app.js の store.subscribe）、押したボタン自身も新しい要素に
+     差し替わります。タッチでは pointerup のあとに「代替の」click が続けて
+     発行され、その click は差し替わった**新しい**要素をあらためて叩く
+     ——preventDefault では止まりません（touchstart 側で止める必要が
+     あり、pointer イベントだけでは間に合わない）。要素ではなく id を
+     見張れば、差し替わっても同じ手順として気づけます。 */
+  const subGestureAt = new Map();
+
   function wireDrag(list, day) {
     list.addEventListener("pointerdown", (e) => {
       if (tlDrag) return;
@@ -3954,31 +3964,84 @@
         </div>
       `);
       const list = wrap.querySelector(".tl-sub-list");
+      /* 長押し＝スキップ。500msは「押し間違いでは届かないが、待たされた
+         とは感じない」長さ（iOSのcontext menuの既定と同じ帯）。キーボードの
+         Enter/Spaceは pointerdown を起こさないので、長押し扱いにはなりません
+         （下の click だけが走ります）。 */
+      const HOLD_MS = 500;
       (t.subs || []).forEach((s) => {
         const line = node(html`
-          <li class="tl-sub ${s.done ? "is-done" : ""}">
+          <li class="tl-sub ${s.done ? "is-done" : ""} ${s.skipped ? "is-skipped" : ""}">
             <button type="button" class="check is-sub" role="checkbox"
-                    aria-checked="${String(!!s.done)}"
-                    aria-label="${s.title} を終わりにする">${icon("check")}</button>
+                    aria-checked="${s.done ? "true" : s.skipped ? "mixed" : "false"}"
+                    aria-label="${s.title}${s.skipped ? "（できなかった）" : ""} を終わりにする（長押しでできなかったことにする）">${s.skipped ? icon("minus") : icon("check")}</button>
             <span class="tl-sub-name">${s.title}</span>
           </li>
         `);
-        line.querySelector("button").addEventListener("click", (e) => {
-          e.stopPropagation();
-          const btn = e.currentTarget;
-          KN.motion.fire(s.done ? "uncheck" : "check", btn);
-          if (!s.done) KN.ui.burst(btn);
-          store.toggleSub(t.id, s.id);
+        const btn = line.querySelector("button");
 
-          /* 手順を全部終えたら、そのタスクも終わりにします。押した丸を
-             確かめるほうが、押す前の s.done を見るより確かです——ここは
-             toggleSub のあとなので、subs はもう書き換わっています。 */
+        /* 見た目を、いま store にある値に合わせて描き直します。s は
+           このループの外で捕まえたスナップショットなので、toggle のあとは
+           必ず store から読み直します。 */
+        function paint() {
           const fresh = store.getTodo(t.id);
-          const done = store.subCount(fresh);
-          if (done.total && done.done === done.total && !fresh.done) {
-            const mainCheck = li.querySelector(".tl-item > .check");
-            if (mainCheck) tick(t.id, mainCheck);
+          const cur = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
+          line.classList.toggle("is-done", !!cur.done);
+          line.classList.toggle("is-skipped", !!cur.skipped);
+          btn.setAttribute("aria-checked", cur.done ? "true" : cur.skipped ? "mixed" : "false");
+          btn.setAttribute("aria-label",
+            `${cur.title}${cur.skipped ? "（できなかった）" : ""} を終わりにする（長押しでできなかったことにする）`);
+          btn.innerHTML = KN.icons.svg(cur.skipped ? "minus" : "check");
+        }
+
+        /* store を書き換えると、その一拍で画面ぜんぶが描き直されます
+           （app.js の store.subscribe）——このボタン自身も新しい要素に
+           差し替わるということです。だから **指を離すまで store には
+           触りません**。
+
+           それでも足りません。タッチでは pointerup のあとに「代替の」
+           click が続けて発行され、その click は差し替わった**新しい**
+           要素をあらためて叩きます——preventDefault は touchstart 側で
+           呼ばないと間に合わず、pointerdown 側で呼んでも止まりません
+           （実機のCDP touchで確かめて踏んだ動きです。これが「スキップの
+           直後にもう一度タップ＝完了が走る」の正体でした）。だから
+           「扱った」の印はボタン要素にもこの描画のクロージャにも持たせず、
+           手順の id で見張ります（subGestureAt、モジュール直下＝描き直しを
+           またいで生きています）。 */
+        let holdTimer = 0, holdFired = false;
+        const clearHold = () => { clearTimeout(holdTimer); holdTimer = 0; };
+        function release(commit) {
+          clearHold();
+          if (!commit) { holdFired = false; return; }
+          subGestureAt.set(s.id, Date.now());
+          const fresh = store.getTodo(t.id);
+          const cur = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
+          if (holdFired) {
+            KN.motion.fire("warn", btn);
+            store.toggleSubSkip(t.id, s.id);
+          } else {
+            KN.motion.fire(cur.done ? "uncheck" : "check", btn);
+            if (!cur.done) KN.ui.burst(btn);
+            store.toggleSub(t.id, s.id);
           }
+          holdFired = false;
+          paint();
+        }
+        btn.addEventListener("pointerdown", (e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          holdFired = false;
+          holdTimer = setTimeout(() => { holdFired = true; holdTimer = 0; }, HOLD_MS);
+        });
+        btn.addEventListener("pointerup", () => release(true));
+        btn.addEventListener("pointercancel", () => release(false));
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // 直前（0.8秒以内）に pointerup 側で同じ手順をもう扱っていたら、
+          // これはタッチの代替clickです。キーボードからの押下は pointerdown が
+          // 起きないので、ここには引っかかりません。
+          const last = subGestureAt.get(s.id) || 0;
+          if (Date.now() - last < 800) return;
+          release(true);
         });
         list.append(line);
       });

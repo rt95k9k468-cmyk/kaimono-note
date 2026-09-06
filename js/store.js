@@ -729,6 +729,8 @@
       id: (s && s.id) || ("s" + i + "-" + Math.random().toString(36).slice(2, 8)),
       title: String((s && s.title) || "").trim(),
       done: !!(s && s.done),
+      // 「できなかった」。完了とは別の状態——同時には立ちません（下のtoggleが守ります）。
+      skipped: !!(s && s.skipped),
     })).filter((s) => s.title).slice(0, MAX);
   }
 
@@ -1313,19 +1315,34 @@
     });
   }
 
-  /** 手順ひとつを、済んだ／まだに切り替えます。 */
+  /** 手順ひとつを、済んだ／まだに切り替えます。スキップとは同時に立ちません。 */
   function toggleSub(id, subId) {
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       const sub = t && (t.subs || []).find((x) => x.id === subId);
-      if (sub) sub.done = !sub.done;
+      if (!sub) return;
+      sub.done = !sub.done;
+      if (sub.done) sub.skipped = false;
     });
   }
 
-  /** 残りいくつか。{done, total}。手順が無ければ total は 0。 */
+  /** 手順ひとつを、できなかった／まだに切り替えます（長押し）。完了とは同時に立ちません。 */
+  function toggleSubSkip(id, subId) {
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      const sub = t && (t.subs || []).find((x) => x.id === subId);
+      if (!sub) return;
+      sub.skipped = !sub.skipped;
+      if (sub.skipped) sub.done = false;
+    });
+  }
+
+  /** 残りいくつか。{done, total}。手順が無ければ total は 0。
+      「片が付いた」数なので、スキップも分子に数えます——見た目に印は
+      ついているのに帯だけ進んでいない、という食い違いを避けるためです。 */
   function subCount(t) {
     const subs = (t && t.subs) || [];
-    return { done: subs.filter((s) => s.done).length, total: subs.length };
+    return { done: subs.filter((s) => s.done || s.skipped).length, total: subs.length };
   }
 
   /* ---------------- その日にあったこと（Daily Log の材料） ----------------
@@ -1705,7 +1722,7 @@
            きのう済ませた印が付いたまま朝を迎えると、まだ何もしていない
            のに半分終わっているように見えます。手順そのものは残ります
            ——毎日同じ順でやるから、まとめてあるので。 */
-        t.subs = (t.subs || []).map((x) => ({ ...x, done: false }));
+        t.subs = (t.subs || []).map((x) => ({ ...x, done: false, skipped: false }));
       } else {
         t.done = !t.done;
         t.doneAt = t.done ? today() : null;
@@ -2960,7 +2977,7 @@
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
-    setSubs, toggleSub, subCount,
+    setSubs, toggleSub, toggleSubSkip, subCount,
     dayFeed, monthDigest,
     calPrefs, setCalPref, dietRange, setDietRange, fallsOn,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
