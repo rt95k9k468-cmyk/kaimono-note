@@ -23,20 +23,19 @@
 
 ## 開発ブランチとデプロイ
 
-- 作業ブランチ: `claude/kurashinote-task-icon-expansion-wm5kw3`
-  （セッションごとに指定が変わる。以前は
-  `claude/shopping-list-file-migration-ct4ufx` だった——指定されたほうを使う）
+- 作業ブランチはセッションごとに指定される。`git branch --show-current`
+  で確認し、指定されたブランチを使う。
 - **`main` へ流すのに、いちいち訊かない。** 直したら、テストを通して
   コミットして、そのまま `main` まで流すところまでが一続き。ユーザーの
   明示的な許可のもとで認められている。
   ただし**先に報告するもの**は変わらない——データの移行、既存の記録の
   作り替え、後戻りできない類。それは「よっぽど」のほう。
-- `main` への直接pushの手順：
+- `main` への直接pushの手順（`<branch>` は現在の作業ブランチ）：
   ```
-  git push -u origin claude/kurashinote-task-icon-expansion-wm5kw3
-  git checkout main && git merge --ff-only claude/kurashinote-task-icon-expansion-wm5kw3
+  git push -u origin <branch>
+  git checkout main && git merge --ff-only <branch>
   git push origin main
-  git checkout claude/kurashinote-task-icon-expansion-wm5kw3
+  git checkout <branch>
   ```
 - デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。
   `mcp__github__actions_list`（method: list_workflow_runs, branch: main）で
@@ -102,16 +101,6 @@
   対になる**当たり判定**も一緒に置くこと：掴み手ではないところ（紙の本体）を
   引いたら、`.screen` に transform が付く——付かないなら、その試験は
   そもそも「引いて更新」を動かせていない、と分かります。
-
-## 現在の状態
-
-作業ブランチが `main` より先に進んでいる（アイコンまわりの三件）。直近の
-作業内容は `git log` を見ること。
-
-商品アイコン708個は単色シルエットに統一済み（2026年9月5日、買うもの・価格・
-ダイエットも含めて全画面）。残っているのは実機で見てからの手当てだけ
-（タイル表示の大きい絵はまだ見ていない）。型分け・シルエット化の実測値と
-経緯は `ICON-TYPES.md` / `ICON-SILHOUETTE.md` を参照。
 
 ### 「やること」は Structured に寄せてある
 
@@ -943,10 +932,3 @@ daily は月ぶんを出す画面なので、題は日を選んでいれば「8�
 測り方は Playwright で canvas に描いて画素を数えるだけ。スクリプトは
 セッションのスクラッチに置き、コミットしない（テストと同じ扱い）。
 実測結果・過去の数値は `ICON-TYPES.md`。
-
-### 手描きアイコンは白抜きにしない（色つきに戻した場合の旧ルール）
-
-色つきの絵は色そのものが「何の品物か」を言うので、白抜きにせず地のほうを
-濃くする、という旧方針。2026年9月5日に単色シルエットへ切り替わったため
-**いまは無効**（丸薬の中でも暦の丸でも白抜きになる）。色つきへ戻す
-（`markOf()` の2行を消す）場合にだけ再び有効になる。詳細は `ICON-SILHOUETTE.md`。
