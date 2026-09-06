@@ -902,7 +902,8 @@
     "mingcute:necktie-fill",
     "fluent:bow-tie-24-filled",
     "mingcute:bow-tie-fill"
-   ]
+   ],
+   "done": "mingcute:bow-tie-fill"
   },
   "shoe": {
    "ja": "履きもの",
@@ -916,7 +917,8 @@
     "mingcute:shoe-2-fill",
     "mingcute:shoe-fill",
     "ph:boot-fill"
-   ]
+   ],
+   "done": "mingcute:shoe-2-fill"
   },
   "socks": {
    "ja": "靴下",
@@ -927,7 +929,8 @@
     "mingcute:sock-fill",
     "ph:sock-fill",
     "material-symbols:sos-rounded"
-   ]
+   ],
+   "done": "ph:sock-fill"
   },
   "hat": {
    "ja": "帽子",
@@ -938,7 +941,8 @@
     "mingcute:hat-2-fill",
     "mingcute:hat-fill",
     "bxs:hard-hat"
-   ]
+   ],
+   "done": "mingcute:hat-2-fill"
   },
   "belt": {
    "ja": "べると",
@@ -949,7 +953,8 @@
     "ph:belt-fill",
     "material-symbols:conveyor-belt-rounded",
     "ph:seatbelt-fill"
-   ]
+   ],
+   "done": "ph:belt-fill"
   },
   "maskWear": {
    "ja": "ますく",
@@ -960,7 +965,8 @@
     "bxs:mask",
     "material-symbols:masks-rounded",
     "bxs:face-mask"
-   ]
+   ],
+   "done": "ph:face-mask-fill"
   },
   "carryBag": {
    "ja": "かばん",
@@ -978,7 +984,8 @@
     "bi:bag-fill",
     "ion:bag",
     "ph:bag-fill"
-   ]
+   ],
+   "done": "ph:suitcase-fill"
   },
   "diaper": {
    "ja": "おむつ・しーつ",
@@ -997,7 +1004,8 @@
     "mingcute:baby-fill",
     "ph:baby-fill",
     "fluent:patch-24-filled"
-   ]
+   ],
+   "done": "tabler:bandage-filled"
   },
   "stroller": {
    "ja": "べびーかー",
@@ -1008,7 +1016,8 @@
     "material-symbols:stroller-rounded",
     "bxs:baby-carriage",
     "mingcute:baby-carriage-fill"
-   ]
+   ],
+   "done": "tabler:baby-carriage-filled"
   },
   "babyRoom": {
    "ja": "赤ちゃんの家具",
@@ -1023,7 +1032,8 @@
     "material-symbols:crib-rounded",
     "mingcute:baby-fill",
     "ph:baby-fill"
-   ]
+   ],
+   "done": "material-symbols:crib-rounded"
   },
   "petThing": {
    "ja": "ぺっと",
@@ -1034,7 +1044,8 @@
     "ion:paw",
     "mingcute:paw-fill",
     "tabler:paw-filled"
-   ]
+   ],
+   "done": "mingcute:paw-fill"
   },
   "thermo": {
    "ja": "体温計",
@@ -1045,7 +1056,8 @@
     "bxs:thermometer",
     "fluent:temperature-24-filled",
     "ion:thermometer"
-   ]
+   ],
+   "done": "ph:thermometer-fill"
   },
   "testKit": {
    "ja": "検査きっと",
@@ -1058,7 +1070,8 @@
     "fluent:syringe-24-filled",
     "ion:medical",
     "material-symbols:syringe-rounded"
-   ]
+   ],
+   "done": "material-symbols:syringe-rounded"
   },
   "support": {
    "ja": "支えるもの",
@@ -1070,7 +1083,8 @@
     "mingcute:crutch-fill",
     "ion:bandage",
     "material-symbols:support-rounded"
-   ]
+   ],
+   "done": "mingcute:crutch-fill"
   },
   "toothCare": {
    "ja": "歯のもの",
@@ -1084,7 +1098,8 @@
     "ph:tooth-fill",
     "ri:tooth-fill",
     "mingcute:dental-fill"
-   ]
+   ],
+   "done": "ph:tooth-fill"
   },
   "smallCare": {
    "ja": "身だしなみの小物",
@@ -1099,7 +1114,8 @@
     "mingcute:scissors-2-fill",
     "mingcute:scissors-3-fill",
     "mingcute:scissors-fill"
-   ]
+   ],
+   "folded": "brushTool（くしとヘアブラシが既にそこ。小物はセットに無し）"
   },
   "shop": {
    "ja": "お店",
@@ -1121,7 +1137,8 @@
     "material-symbols:shop-rounded",
     "mingcute:shop-fill",
     "bxs:store"
-   ]
+   ],
+   "done": "ri:store-fill"
   },
   "building": {
    "ja": "建物",
@@ -1138,7 +1155,8 @@
     "bxs:bank",
     "mingcute:bank-fill",
     "ph:bank-fill"
-   ]
+   ],
+   "done": "bxs:bank"
   },
   "eatery": {
    "ja": "食べるお店",
@@ -1150,7 +1168,8 @@
     "ion:cafe",
     "bxs:coffee",
     "material-symbols:coffee-rounded"
-   ]
+   ],
+   "done": "ri:restaurant-2-fill"
   },
   "salon": {
    "ja": "美容・理容",
@@ -1162,7 +1181,8 @@
     "fluent:code-cs-16-filled",
     "fluent:code-rb-16-filled",
     "fluent:save-as-24-filled"
-   ]
+   ],
+   "folded": "shop（はさみの絵は「はさみ」が使っている）"
   },
   "service": {
    "ja": "預ける・洗う店",
@@ -1355,5 +1375,6 @@
  },
  "batch1": "1〜20型は済み（14型はセットから／1型は描き起こし／5型は畳んだ）",
  "batch2": "21〜40型も済み（20型ぜんぶセットから。描くもの・畳むものはゼロ）",
- "batch3": "41〜60型は済み（17型セット＋てーぷを描いた／3型畳んだ）"
+ "batch3": "41〜60型は済み（17型セット＋てーぷを描いた／3型畳んだ）",
+ "batch4": "61〜80型も済み（18型セット／2型畳んだ／描くものゼロ）"
 }
