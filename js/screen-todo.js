@@ -1509,7 +1509,8 @@
    *  シルエットが並ぶので、「牛乳を買う」だけ色つきの絵が出ると一族が
    *  割れます。買うものタブ側は色つきのままです。 */
   function productArt(key) {
-    return (key && (KN.iconsFood.byKey(key) || KN.productIcons.byKey(key))) || "";
+    return (key && (KN.iconsGoods.byKey(key) || KN.iconsFood.byKey(key)
+      || KN.productIcons.byKey(key))) || "";
   }
 
   /** 自分で選んだ絵（あれば）、無ければ題から推した絵。無ければ丸だけ。

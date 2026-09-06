@@ -23,6 +23,7 @@ const ASSETS = [
   "js/icons-todo.js",
   "js/icons-todo-hand.js",
   "js/icons-food.js",
+  "js/icons-goods.js",
   "js/empty-art.js",
   "js/diary-crypto.js",
   "js/diary.js",
