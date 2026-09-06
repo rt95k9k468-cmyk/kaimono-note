@@ -1,5 +1,5 @@
 {
- "note": "ICON-SILHOUETTE.md を見ること。cand は候補であって採否ではない。done ＝採った絵（icons-goods.js に入れた）、folded ＝畳んで消えた型",
+ "note": "ICON-SILHOUETTE.md を見ること。done ＝採った絵（icons-goods.js に入れた）、folded ＝畳んで消えた型。93型すべて済み（81型セット／2型描いた／11型畳んだ）",
  "done": {
   "containers": "js/icons-goods.js の TYPES/OF（14型・73枚）",
   "individual": "js/icons-goods.js の ICONS（14枚）",
@@ -1196,7 +1196,8 @@
     "material-symbols:laundry-rounded",
     "bxs:car-wash",
     "mingcute:gas-station-fill"
-   ]
+   ],
+   "done": "ri:gas-station-fill"
   },
   "leisure": {
    "ja": "出かける先",
@@ -1218,7 +1219,8 @@
     "bi:tree-fill",
     "bxs:tree",
     "material-symbols:park-rounded"
-   ]
+   ],
+   "done": "ph:mountains-fill"
   },
   "car": {
    "ja": "車",
@@ -1230,7 +1232,8 @@
     "bxs:car",
     "ion:car",
     "mingcute:car-2-fill"
-   ]
+   ],
+   "done": "bxs:car"
   },
   "train": {
    "ja": "電車・ばす",
@@ -1244,7 +1247,8 @@
     "bxs:bus",
     "ion:bus",
     "mingcute:bus-2-fill"
-   ]
+   ],
+   "done": "mingcute:bus-fill"
   },
   "airplane": {
    "ja": "飛行機",
@@ -1255,7 +1259,8 @@
     "bxs:plane",
     "ri:plane-fill",
     "tabler:plane-filled"
-   ]
+   ],
+   "done": "bxs:plane"
   },
   "bicycle": {
    "ja": "自転車",
@@ -1266,7 +1271,8 @@
     "mingcute:bike-fill",
     "ri:bike-fill",
     "tabler:bike-filled"
-   ]
+   ],
+   "done": "mingcute:bike-fill"
   },
   "map": {
    "ja": "地図",
@@ -1278,7 +1284,8 @@
     "bi:map-fill",
     "bxs:map",
     "fluent:map-24-filled"
-   ]
+   ],
+   "done": "material-symbols:map-rounded"
   },
   "gift": {
    "ja": "贈りもの",
@@ -1293,7 +1300,8 @@
     "bi:cake-fill",
     "bi:gift-fill",
     "bxs:cake"
-   ]
+   ],
+   "done": "ph:gift-fill"
   },
   "toy": {
    "ja": "おもちゃ",
@@ -1306,7 +1314,8 @@
     "material-symbols:toys-rounded",
     "bi:puzzle-fill",
     "ri:puzzle-2-fill"
-   ]
+   ],
+   "done": "mingcute:toy-horse-fill"
   },
   "music": {
    "ja": "楽器",
@@ -1318,7 +1327,8 @@
     "bxs:music",
     "bxs:piano",
     "material-symbols:piano-rounded"
-   ]
+   ],
+   "done": "fluent:guitar-24-filled"
   },
   "tool": {
    "ja": "工具",
@@ -1332,7 +1342,8 @@
     "mingcute:tool-fill",
     "ri:tools-fill",
     "bxs:wrench"
-   ]
+   ],
+   "done": "mingcute:tool-fill"
   },
   "phone": {
    "ja": "連絡",
@@ -1347,7 +1358,8 @@
     "fluent:mail-24-filled",
     "ion:mail",
     "material-symbols:mail-rounded"
-   ]
+   ],
+   "done": "mingcute:phone-fill"
   },
   "mosquito": {
    "ja": "蚊取り",
@@ -1358,7 +1370,8 @@
     "ph:spiral-fill",
     "fluent:pi-24-filled",
     "ph:pi-fill"
-   ]
+   ],
+   "done": "ph:spiral-fill"
   }
  },
  "toContainerType": {
@@ -1376,5 +1389,6 @@
  "batch1": "1〜20型は済み（14型はセットから／1型は描き起こし／5型は畳んだ）",
  "batch2": "21〜40型も済み（20型ぜんぶセットから。描くもの・畳むものはゼロ）",
  "batch3": "41〜60型は済み（17型セット＋てーぷを描いた／3型畳んだ）",
- "batch4": "61〜80型も済み（18型セット／2型畳んだ／描くものゼロ）"
+ "batch4": "61〜80型も済み（18型セット／2型畳んだ／描くものゼロ）",
+ "batch5": "81〜93型も済み（13型ぜんぶセットから）。93型すべて決着"
 }
