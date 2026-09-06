@@ -4570,6 +4570,14 @@ a.btn { text-decoration: none; }
   background: var(--cat, var(--c-primary-fill));
   border-color: var(--cat, var(--c-primary-fill));
 }
+/* スキップ（できなかった）。完了の色（--cat）は使わず、地味な灰色に
+   ——「やった」と「やらなかった」を同じ濃さで塗ると見分かなくなる。 */
+.tl-sub .check.is-sub[aria-checked="mixed"] {
+  background: var(--c-surface-2);
+  border-color: var(--c-text-3);
+  color: var(--c-text-3);
+}
+.tl-sub.is-skipped .tl-sub-name { background-size: 100% 2px; color: var(--c-text-3); }
 .tl-sub-name {
   font-size: 15px;
   color: var(--c-text);
