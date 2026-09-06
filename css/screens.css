@@ -3975,6 +3975,28 @@ a.btn { text-decoration: none; }
 .item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }
 .item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
 
+/* ---- 単色シルエットは、カテゴリの色で塗ります ----
+
+   品物の絵は 2026年9月5日に単色シルエット（`is-todo`）へ切り替わりました。
+   `currentColor` で描いてあるので、放っておくと**行の字と同じ黒**になります。
+   ところが絵が入る丸は、すでにカテゴリの色（16%）で染まっている——**地と絵が
+   別々のことを言っている**状態でした。同じ色にして、丸と絵で一つのことを言います。
+
+   色は `--cat` そのままではなく、**字の色を15%だけ混ぜて**います。実測で、
+   `--cat` のままだと丸の地との明暗比が 2.15〜2.93（食品・飲みもの・掃除が
+   2.2前後）で、はさみや自転車のような**線でできた絵が薄れます**。15%混ぜると
+   2.5〜3.3 になり、色みは保ったまま 25px でも残ります。
+
+   `--cat` が無いところ（絵を選ぶ紙）は基調色に落ちます。
+   暦の日の丸だけは別（`.cal-mark .p-icon.is-todo` が白抜き）。 */
+.item-emoji .p-icon.is-todo,
+.product-emoji .p-icon.is-todo,
+.diet-slot-mark .p-icon.is-todo,
+.icon-pick-mark .p-icon.is-todo,
+.icon-cell-mark .p-icon.is-todo {
+  color: color-mix(in srgb, var(--cat, var(--c-primary)) 85%, var(--c-text));
+}
+
 /* 買ったもの・済ませたものは、地を塗るかわりに薄くします。 */
 .item-wrap:not(.is-tile-wrap) .item.is-checked { background: none; opacity: .5; }
 
