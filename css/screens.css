@@ -3184,16 +3184,31 @@ a.btn { text-decoration: none; }
    いちばん素直でした。
 
    時計が通ったところまでが色、そこから先は灰色（--pass）。丸薬の塗りと
-   同じ数から出しているので、線と丸のあいだで境目がずれることはありません。 */
+   同じ数から出しているので、線と丸のあいだで境目がずれることはありません。
+
+   **これは空きの行（.tl-free-row）だけの話です。** 用事の行（.tl-row）は
+   下の別ルールで、丸薬の**縦の中央（50%）で二値に割ります**——行の高さは
+   題とメモの長さで決まり丸薬の実際の時間とは無関係なので、ここの `--p`
+   をそのまま用事の行に使うと、丸薬の下端より下（まだ来ていない時間）の
+   線にまで色が漏れます。丸薬は行の中で常に縦の中央に置かれるので、50%は
+   必ず丸薬の中——そこで二値に割れば、境目は丸薬の高さがどうであれ
+   常に丸薬の内側（見えないところ）に収まります。 */
 .tl-rail::before {
   content: "";
   position: absolute;
   left: 50%; top: 0; bottom: 0;
   width: 3.5px;
   transform: translateX(-50%);
+}
+.tl-free-row .tl-rail::before {
   background: linear-gradient(to bottom,
     var(--tl-fill) 0 var(--p),
     var(--tl-wait) var(--p) 100%);
+}
+.tl-row .tl-rail::before {
+  background: linear-gradient(to bottom,
+    var(--rail-top-c, var(--tl-wait)) 0 50%,
+    var(--rail-bot-c, var(--tl-wait)) 50% 100%);
 }
 /* **丸薬と時間線は、完全に別ものです。**
 
