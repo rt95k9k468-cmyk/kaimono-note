@@ -1673,8 +1673,6 @@
         over: !drinkPending && pct > 100,
         ring: rDrink, mid: drinkPending ? "—" : `${dt ? dt.alcoholG : 0}g` },
     ];
-    const nothing = card.steps == null && card.burned == null && card.sleep == null
-      && !card.workouts.length && !dt;
 
     const sec = node(html`
       <div class="stack">
@@ -1703,16 +1701,8 @@
               `<span class="badge">${KN.util.escapeHtml(w.label || "ワークアウト")} ${Math.round(w.value)}分`
               + `${w.kcal != null ? ` ・ ${Math.round(w.kcal)}kcal` : ""}</span>`).join(""))}
           </div>` : ""}
-        ${nothing ? html`
-          <button class="btn btn-soft btn-block js-import">
-            ${icon("download")}ヘルスケアから取り込む
-          </button>
-          <p class="diet-note">歩数や睡眠は、iPhoneの「ショートカット」で書き出したものを読み込みます。
-            やり方は取り込み画面に書いてあります。枠を押せば手で書くこともできます。</p>` : ""}
       </div>
     `);
-    const btn = sec.querySelector(".js-import");
-    if (btn) btn.addEventListener("click", openSyncSheet);
     sec.querySelectorAll(".js-cell").forEach((c) => {
       c.addEventListener("click", () => {
         if (c.dataset.type === "drink") { openDrinkSheet(card.day); return; }
