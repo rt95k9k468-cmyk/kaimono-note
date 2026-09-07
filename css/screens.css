@@ -325,6 +325,22 @@
    （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
 .cal.is-stuck { border-bottom-color: var(--c-border); }
 
+/* 紙の上端の継ぎ目。実測（Structured）では、紙の白そのものではなく
+   紙のすぐ上の地が4/255だけ沈んでいて、それが「わずかな立体感」の
+   正体でした。ここに置くのは、下の紙（.tl-sheet／.tl-grip）に触れずに
+   同じ沈みを足すためです——.cal は z-index: 12 で紙より前に居るので、
+   自分の下端から10pxだけ影を伸ばせば、紙の側の重ね順やドラッグの層に
+   一切触れずに、暦の裾が紙にわずかな影を落として見えます。 */
+#screen-todo .cal::after,
+#screen-archive .cal::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  height: 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .045), transparent);
+  pointer-events: none;
+}
+
 /* ダイエットのカレンダーは貼りつけません。やることの棚は月をほどいて縦に
    並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
    あるのは一日ぶんの記録で、月とは関係がありません——居座るぶん、体重も
@@ -536,8 +552,8 @@
 
 .cal-wd {
   text-align: center;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--c-text-3);
   padding-bottom: 3px;
 }
@@ -565,10 +581,10 @@
 .cal-n {
   display: grid;
   place-items: center;
-  width: 24px; height: 24px;
+  width: 27px; height: 27px;
   border-radius: var(--r-full);
-  font-size: var(--fs-sm);
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--c-text-2);
@@ -579,11 +595,13 @@
 /* Today, circled. Filled rather than outlined: an outline is one more ring
    among 30 numbers, and the one thing this calendar has to answer without
    being read is 「今日はどこ」. */
-/* 今日は**黒**です（参考画面の実測）。基調色で塗っていましたが、暦の中の
-   絵や、下で選んでいる日の輪も基調色なので、今日だけが浮きませんでした。
-   黒はこの画面のどこにも無い色なので、探さずに見つかります。 */
+/* 今日は基調色（--c-primary）です。前は黒でした――選んでいる日の輪
+   （.cal-ring）も基調色なので、重ねると色が違って二重に見える、という
+   のが黒にした理由でしたが、動画（Structured）は今日を基調色で塗って
+   います。色を揃えれば、今日＝選んでいる日のときは輪の色が塗りに溶けて
+   見えなくなるので、二重の見え方はむしろこちらのほうが起きません。 */
 .cal-day.is-today .cal-n {
-  background: var(--c-text);
+  background: var(--c-primary);
   color: var(--c-bg);
   font-weight: 700;
 }
@@ -3738,7 +3756,7 @@ a.btn { text-decoration: none; }
 }
 .tl-grip > i {
   display: block;
-  width: 36px; height: 5px;
+  width: 48px; height: 5px;
   margin: 0 auto;
   border-radius: var(--r-full);
   background: var(--c-border-2);
