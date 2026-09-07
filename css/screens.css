@@ -3203,13 +3203,14 @@ a.btn { text-decoration: none; }
    時計が通ったところまでが色、そこから先は灰色（--pass）。丸薬の塗りと
    同じ数から出しているので、線と丸のあいだで境目がずれることはありません。
 
-   **これは空きの行（.tl-free-row）だけの話です。** 用事の行（.tl-row）は
-   下の別ルールで、丸薬の**縦の中央（50%）で二値に割ります**——行の高さは
-   題とメモの長さで決まり丸薬の実際の時間とは無関係なので、ここの `--p`
-   をそのまま用事の行に使うと、丸薬の下端より下（まだ来ていない時間）の
-   線にまで色が漏れます。丸薬は行の中で常に縦の中央に置かれるので、50%は
-   必ず丸薬の中——そこで二値に割れば、境目は丸薬の高さがどうであれ
-   常に丸薬の内側（見えないところ）に収まります。 */
+   **これは空きの行（.tl-free-row）だけの話です。** 空きの行は、行の高さ
+   そのものが時間なので、`--p` をそのまま高さに貼ってよい。
+
+   **用事の行（.tl-row）は違います。** 行の高さは題とメモの長さで決まって
+   いて、時間とは無関係です。ここへ `--p` を貼ると、丸薬の下端より下
+   （まだ来ていない時間）の線にまで色が漏れます。
+
+   なので、境目は**丸薬そのものの寸法から出します**（下の --rail-p）。 */
 .tl-rail::before {
   content: "";
   position: absolute;
@@ -3222,10 +3223,40 @@ a.btn { text-decoration: none; }
     var(--tl-fill) 0 var(--p),
     var(--tl-wait) var(--p) 100%);
 }
+/* 用事の行の線は、**丸薬の上端と下端で三つに割ります**。割る場所は、
+   丸薬そのものの寸法（--tl-node-h と --node-dy）から出します。
+
+   ここには「行の 50% で二値に割る」と書いてありました。丸薬が行のまん中に
+   居るあいだは 50% も丸薬の中なので当たってはいましたが、**当たっていた
+   だけ**です——丸薬を動かす日（重なり・伸び・行の作り替え）に、線のほうは
+   何も知らないまま置き去りになります。
+
+   三つの帯が言っていること：
+
+   - 丸薬の**上**（0 〜 --node-top）… その用事が**始まったか**。始まって
+     いれば色、まだなら灰色（--rail-top-c）。ここは時間を持たない、ただの
+     繋ぎなので、途中で色が変わってはいけません。
+   - 丸薬の**中**（--node-top 〜 --node-bot）… 丸薬の地とまったく同じ式で
+     塗ります（--rail-p ＝ 上端から --pass ぶん下りたところ）。丸薬が
+     隠すので見えませんが、**見えないところに違うことを書かない**
+     ——それが「まん中だけ常にコーラル」だった頃の失敗です。
+   - 丸薬の**下**（--node-bot 〜 100%）… その用事が**終わったか**
+     （--rail-bot-c）。手順の段の背骨も、同じ変数を継ぎます。
+
+   `0 ≤ pass ≤ 1` である限り、色の変わり目は必ず丸薬の上端と下端のあいだに
+   落ちます——**線が丸薬を追い越すことが、式として書けません。**
+   `--rail-p` は、丸薬の地（.tl-node）と中の絵のマスク
+   （.todo-mark.is-split）とまったく同じ式です。 */
 .tl-row .tl-rail::before {
+  --node-h: var(--tl-node-h, var(--tl-h, 50px));
+  --node-top: calc(50% + var(--node-dy, 0px) - var(--node-h) / 2);
+  --node-bot: calc(50% + var(--node-dy, 0px) + var(--node-h) / 2);
+  --rail-p: calc(var(--node-top) + var(--pass, 1) * var(--node-h));
   background: linear-gradient(to bottom,
-    var(--rail-top-c, var(--tl-wait)) 0 50%,
-    var(--rail-bot-c, var(--tl-wait)) 50% 100%);
+    var(--rail-top-c, var(--tl-wait)) 0 var(--node-top),
+    var(--tl-fill) var(--node-top) var(--rail-p),
+    var(--tl-wait) var(--rail-p) var(--node-bot),
+    var(--rail-bot-c, var(--tl-wait)) var(--node-bot) 100%);
 }
 /* **丸薬と時間線は、完全に別ものです。**
 
@@ -3301,15 +3332,19 @@ a.btn { text-decoration: none; }
      抜くと、白が消えます。 */
   --tl-fill: var(--cat-a, var(--cat, var(--c-primary-fill)));
 }
-/* 丸薬の**実際の高さ**は一か所から出します（重なりで育つぶんも含めて）。
-   中の絵の色の境目がここから出るので、二か所に書くと必ずずれます。 */
-.tl-row { --tl-node-h: var(--tl-h, 50px); }
+/* 丸薬の**実際の高さと、実際の置き場所**は、この二つの変数だけから出します
+   （重なりで育つぶん・ずれるぶんも含めて）。中の絵の色の境目も、線の色の
+   境目も、ここから出ます——二か所に書くと必ずずれます。
+
+   `--node-dy` は、行のまん中からのずれ。重なった二件は丸薬を育てて
+   ぶつけるので、そのぶん位置も動きます（下の is-clash の但し書き）。 */
+.tl-row { --tl-node-h: var(--tl-h, 50px); --node-dy: 0px; }
 .tl-row.is-clash, .tl-row.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 14px); }
 .tl-row.is-clash.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 28px); }
 .tl-node {
   position: absolute;
   left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, calc(-50% + var(--node-dy, 0px)));
   display: grid; place-items: center;
   width: 50px;
   height: var(--tl-node-h, var(--tl-h, 50px));
@@ -3346,15 +3381,18 @@ a.btn { text-decoration: none; }
    ——行と行のあいだは5px＋5pxなので、めり込みは 14×2−10 = 18px。
    （行の余白を詰めたときに、この二つの数も直すこと。**めり込みの18pxが
    決めごと**で、育てる量はそこから逆算した数です。） */
-.tl-row.is-clash .tl-node { transform: translate(-50%, calc(-50% - 7px)); }
-.tl-row.is-clash-above .tl-node { transform: translate(-50%, calc(-50% + 7px)); }
+/* ずらしは `--node-dy` に書きます（transform に直に書きません）。**線の
+   色の境目が、この数から出る**ので——丸薬の位置を transform だけで動かすと、
+   線のほうは動かないことを知らないまま、境目が丸薬の外へ出ます。 */
+.tl-row.is-clash { --node-dy: -7px; }
+.tl-row.is-clash-above { --node-dy: 7px; }
 /* 三つ以上が重なると、まん中の一件は**上とも下とも**ぶつかります。
 
    ここは一度こわしました：上の二つは詳細度が同じなので、両方を持つ行には
    あとに書いたほう（is-clash-above）だけが効き、まん中の丸薬は下へしか
    育ちません。上の継ぎ目はめり込むどころか 2px 離れて、白い抜きだけが
-   宙に浮いていました。両方向へ16pxずつ、位置は動かさずに育てます。 */
-.tl-row.is-clash.is-clash-above .tl-node { transform: translate(-50%, -50%); }
+   宙に浮いていました。両方向へ14pxずつ、位置は動かさずに育てます。 */
+.tl-row.is-clash.is-clash-above { --node-dy: 0px; }
 /* 合わさったところの白い抜き。行の頭（＝二つの行の境目）が、めり込みの
    まん中です。
 
@@ -3664,10 +3702,19 @@ a.btn { text-decoration: none; }
 
 /* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
    線だけが下へ伸びていると「まだ続く」と読めてしまいます。
-   丸は行のまん中にあるので、そこまで（50% ＋ 丸薬の半分）。 */
+   丸薬の下端（行の中央 ＋ ずらし ＋ 高さの半分）まで。
+
+   **切るのは clip-path で、height ではありません。** height を縮めると、
+   塗りのパーセントが**その縮めた箱**を基準にし直すので、上の --rail-p が
+   指す場所が丸薬からずれます（実測で、いちばん下の行だけ境目が 2.5px 上へ
+   逃げて、まだ始まっていない用事の丸薬の**上に**色が出ました）。clip-path
+   なら箱はそのままで、見えるところだけが縮みます。
+
+   マスクは使えません——点線（.tl-rail.is-dash::before）がもう使っていて、
+   いちばん下が空きの行のときに打ち消し合うので。 */
 .tl-list > li:last-child .tl-rail::before {
-  bottom: auto;
-  height: calc(50% + var(--tl-h, 50px) / 2);
+  clip-path: inset(0 0 calc(50% - var(--node-dy, 0px)
+                            - var(--tl-node-h, var(--tl-h, 50px)) / 2) 0);
 }
 
 /* 日付の帯は、越えられない境目です。
@@ -3920,17 +3967,17 @@ a.btn { text-decoration: none; }
   100% { transform: scale(1); }
 }
 @keyframes tl-pop {
-  0%   { transform: translate(-50%, -50%) scale(1); }
-  38%  { transform: translate(-50%, -50%) scale(1.16); }
-  100% { transform: translate(-50%, -50%) scale(1); }
+  0%   { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
+  38%  { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1.16); }
+  100% { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
 }
 
 /* 外すときは、逆に引っ込みます。線は消え、丸は一度縮んで戻ります。 */
 .tl-node.is-unpop { animation: tl-unpop var(--m-check) var(--ease-out); }
 @keyframes tl-unpop {
-  0%   { transform: translate(-50%, -50%) scale(1); }
-  40%  { transform: translate(-50%, -50%) scale(.86); }
-  100% { transform: translate(-50%, -50%) scale(1); }
+  0%   { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
+  40%  { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(.86); }
+  100% { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
 }
 .tl-item.is-unstriking .item-name,
 .item.is-unstriking .item-name {
@@ -4557,11 +4604,25 @@ a.btn { text-decoration: none; }
   left: -28px; top: 0; bottom: 0;
   width: 3.5px;
   transform: translateX(-50%);
-  /* 手順の段の背骨は、その用事が済んだかどうかの下（時間としては
-     「終わったあと」）なので、上の行の塗り具合をそのまま継ぎます。 */
-  background: linear-gradient(to bottom,
-    var(--tl-fill) 0 var(--p),
-    var(--tl-wait) var(--p) 100%);
+  /* 手順の段の背骨は、**一色**です。塗りの境目を持ちません。
+
+     ここは `--p` で切っていました（上の行と同じつもりで）。**それが
+     「線が丸薬を追い越す」の正体でした。**
+
+     `--p` はパーセントなので、掛かる相手は**この段自身の高さ**です。
+     ところがこの段の高さを決めているのは**手順が何件あるか**で、時間とは
+     何の関係もありません。実測（6:30〜7:30 の用事を 6:49 に見る、
+     --pass = 0.317）：手順4件をひらくとこの段は180px あり、その31.7%
+     ＝ 57px が色付きになりました。丸薬の下端より **62px 下**まで色が
+     下りていた、ということです。たたんでいても、余白の10px の31.7%
+     ＝ 3px が、丸薬から少し離れて浮いて見えていました。
+
+     そもそもこの段は**丸薬の下端より下**＝その用事が終わったあとの場所
+     です。まだ終わっていない用事なら、ここは全部「まだ来ていない」側。
+     だから境目は要らず、上の行のレールの下半分（--rail-bot-c）と
+     **同じ一色**を continue すれば足ります。境目が無ければ、追い越しは
+     起こりようがありません。 */
+  background: var(--rail-bot-c, var(--tl-wait));
 }
 .tl-sub-list { display: flex; flex-direction: column; margin-top: 2px; }
 /* 一段ごとに細い罫線を一本（参考画面と同じ）。線は**チェックの右**から
