@@ -12,6 +12,71 @@
 
   const openSheets = [];
 
+  /* ---------------- 紙が生まれるところ ----------------
+
+     紙は画面の下からせり上がっていました。＋を押して出てくる紙が、押した
+     指とは関係のないところ——画面の下端——から来るので、「＋がこれを出した」
+     ことが動きの中に無い。参考にした画面（Structured）は、押した丸のところ
+     から紙が育ちます。
+
+     ここで覚えるのは**最後に押された指の位置**だけです。呼び出し側は一つも
+     書き換えません——押してから紙が開くまでのあいだ（0.8秒）に開いた紙は、
+     その場所から育ちます。押していないのに開いた紙（プログラムから、
+     キーボードから）は覚えがないので、これまでどおり下からせり上がります。
+
+     ボタンの真ん中ではなく**指の位置**を覚えるのは、そのほうが正直だから
+     でもありますが、何より**測らなくて済む**からです。ボタンの箱を測ると、
+     アプリじゅうのどの pointerdown でもレイアウトを一度取り直すことに
+     なります——一覧を送りはじめる指も、その一つです。
+
+     capture で拾うのは、途中で止められる（stopPropagation する）ボタンが
+     あるからです。押されたことだけは、どこで止まっても知りたい。 */
+  let pressed = null;
+  document.addEventListener("pointerdown", (e) => {
+    const b = e.target && e.target.closest
+      && e.target.closest("button, [role='button'], a[href]");
+    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+  }, true);
+
+  const still = () => !!(window.matchMedia
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  /** 押されたところから育てる支度。育てないなら null。 */
+  function seedFrom(el) {
+    if (!pressed || Date.now() - pressed.t > 800) return null;
+    /* 640px 以上では紙は画面の真ん中のダイアログで、別の transform を
+       持っています。そちらは触りません。 */
+    if (!window.matchMedia("(max-width: 639px)").matches) return null;
+    if (still()) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    /* いまの transform は translate(-50%, 100%)——**100% ＝ 自分の高さ**
+       なので、開いたときの箱は、いま測った箱を高さぶん上へ戻したもの。 */
+    const cx = r.left + r.width / 2;
+    const cy = r.top - r.height / 2;
+    el.style.setProperty("--sx", `${(pressed.x - cx).toFixed(1)}px`);
+    el.style.setProperty("--sy", `${(pressed.y - cy).toFixed(1)}px`);
+    /* 畳んだ姿は、**動きを止めたまま**確定させます。三行とも要ります。
+
+       ここを一行でも落とすと、これまでどおり下からせり上がるだけになります
+       ——しかも黙って。実測でつまずいた順に書くと：
+
+       ・class を足すだけ（読まない）… `.is-open` がすぐ次に付くので、
+         そのあいだにスタイルが一度も解決されず、ブラウザが「動き出す前の
+         姿」として覚えているのは上の getBoundingClientRect のときのまま。
+       ・transition を止めずに読む … 今度は解決されますが、そこで
+         「下に控えた紙 → 畳んだ姿」の動きが**その場で始まります**。次の
+         rAF で開きを頼んだときには、まだ下に控えたところにいるので、
+         そこから開くことになる（実測：scale は 1 のまま、ty だけ 666→0）。
+
+       止めて、読んで、戻す。これで「畳んだ姿から開く」になります。 */
+    el.style.transition = "none";
+    el.classList.add("is-from-origin");
+    void getComputedStyle(el).transform;
+    el.style.transition = "";
+    return { x: pressed.x, y: pressed.y };
+  }
+
   /* ---------------- bottom sheet ---------------- */
 
   /**
@@ -92,6 +157,22 @@
     sheetRoot().append(backdrop, el);
     document.body.style.overflow = "hidden";
 
+    /* 押されたところから育てます（育てないなら null で、これまでどおり
+       下からせり上がります）。 */
+    const seed = seedFrom(el);
+    if (seed) {
+      /* 押した丸から、いちど光がにじみ出ます。紙が育ちきるまでの一拍を、
+         ＋のあった場所が受け持つためのものです——紙が小さいあいだ、画面に
+         「どこから来たのか」を言うものが他にありません。
+         重ね順は覆いと同じ数にして、DOM の順で覆いの上・紙の下に置きます。 */
+      const bloom = node(html`<i class="sheet-bloom" aria-hidden="true"></i>`);
+      bloom.style.left = `${seed.x}px`;
+      bloom.style.top = `${seed.y}px`;
+      bloom.style.zIndex = String(100 + depth * 2);
+      sheetRoot().append(bloom);
+      setTimeout(() => bloom.remove(), 520);
+    }
+
     // Next frame so the transition runs.
     requestAnimationFrame(() => {
       backdrop.classList.add("is-open");
@@ -115,7 +196,10 @@
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";
-      setTimeout(() => { backdrop.remove(); el.remove(); }, 300);
+      /* 育って出てきた紙は、同じ道を縮んで帰ります（.is-open を外すだけで
+         逆再生になります）。そのぶん片づけるのを待ちます。 */
+      setTimeout(() => { backdrop.remove(); el.remove(); },
+        el.classList.contains("is-from-origin") ? 460 : 300);
       onClose && onClose();
     }
 
@@ -208,7 +292,9 @@
         if (startY == null) return;
         const dy = (e.changedTouches[0] || {}).clientY - startY;
         el.style.transform = "";
-        if (dy > 90) tryClose();
+        /* 下へ払って閉じるときは、下へ帰します。指が下へ送ったものが
+           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。 */
+        if (dy > 90) { el.classList.remove("is-from-origin"); tryClose(); }
         startY = null;
       });
     });

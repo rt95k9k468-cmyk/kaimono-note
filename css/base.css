@@ -1042,6 +1042,52 @@ a { color: var(--c-primary); }
     rgba(255, 255, 255, .13));
 }
 
+/* 押したところから生まれる光。
+
+   カプセルと**同じ形に切り抜いた一枚**です（inset も丸みも ::before と
+   同じ）。中の光は指の下（--gx / --gy）から広がって消えます。ここを
+   タブごとに分けないのは、カプセルが一枚のガラスだからです——分けると、
+   隣との境目で光が四角く切れます。
+
+   重ね順は 0。カプセルの地と縁の光（どちらも z-index: auto の擬似要素）
+   より後、ボタン（z-index: 1）より前に入ります。だから絵と字は光に
+   埋もれません。 */
+.tab-glow {
+  position: absolute;
+  inset: 2px var(--sp-3) var(--tab-drop);
+  border-radius: var(--r-full);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.has-fab .tab-glow { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+.tab-glow::after {
+  content: "";
+  position: absolute;
+  left: var(--gx, 50%);
+  top: var(--gy, 50%);
+  width: 200px; height: 200px;
+  margin: -100px 0 0 -100px;
+  border-radius: var(--r-full);
+  /* 白い閃光にはしません。ガラスが拾うのは**色を含んだ光**なので、白の
+     芯のまわりに主色をひとさじ置きます。真っ白だけだと、ガラスではなく
+     ストロボに見えます。 */
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, .6) 0%,
+    color-mix(in srgb, var(--c-primary) 18%, transparent) 40%,
+    transparent 70%);
+  opacity: 0;
+}
+.tab-glow.is-lit::after { animation: tab-lit .46s var(--ease-out); }
+@keyframes tab-lit {
+  0%   { opacity: 0;   transform: scale(.12); }
+  18%  { opacity: 1; }
+  100% { opacity: 0;   transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-glow { display: none; }
+}
+
 /* ボタンだけが指を受けます。z-index を一つ持たせるのは、縁の光（::after）が
    要素の**最後の子**として、ボタンより後に描かれるからです——放っておくと
    光の輪が絵と字の上に乗ります。 */
