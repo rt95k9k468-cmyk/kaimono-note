@@ -1840,7 +1840,6 @@
 
     q.addEventListener("input", paint);
     paint();
-    KN.ui.focusNow(q);
 
     /* ---- 気分の札 ----
 
@@ -2062,7 +2061,6 @@
     `);
     const f = node(html`<button class="btn btn-primary btn-block">足す</button>`);
     const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f, guard: true });
-    KN.ui.focusNow(b.querySelector(".js-n"));
     f.addEventListener("click", () => {
       const min = parseFloat(String(b.querySelector(".js-m").value).replace(/[^\d.]/g, ""));
       if (!(min > 0)) { KN.ui.toast("時間を入れてください"); return; }
@@ -2773,9 +2771,6 @@
 
     const built = buildSlotBoxes(body.querySelector(".js-slots"), day, D.slotTotals(day), { sheet: true });
     built.boxes.forEach(grow);
-    const first = built.boxes.find((ta) => ta.dataset.slot === (hint || guessSlot())) || built.boxes[0];
-    KN.ui.focusNow(first);
-
     foot.addEventListener("click", () => {
       built.flush();
       KN.motion.fire("save");
@@ -3374,7 +3369,6 @@
     // 体重を打ち終えたら、そのまま体脂肪へ。
     autoDecimal(kgEl, fatEl);
     autoDecimal(fatEl);
-    if (!w) KN.ui.focusNow(kgEl);
 
     const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
       activeId: meal || "",
@@ -3485,8 +3479,6 @@
     const itemsEl = body.querySelector(".js-items");
     const totalEl = body.querySelector(".js-total");
     const sugEl = body.querySelector(".js-suggest");
-
-    if (!meal) KN.ui.focusNow(foodEl);
 
     function paint() {
       itemsEl.innerHTML = "";

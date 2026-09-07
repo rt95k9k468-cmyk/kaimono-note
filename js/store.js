@@ -673,6 +673,11 @@
          中に同じ手順を持って毎日戻ってくる。だから「ルーティン」という
          別の種類は作りません。同じものに名前を二つ付けることになるので。 */
       subs: cleanSubs(t.subs),
+      /* 手順の、今日と翌日以降を分ける薄い上書き。持っていない古い記録は
+         {} に落ちるので、これまでどおり読めます（新しく増えた欄なので、
+         reconcile の既定値フォールバックで足りています——データの
+         移り替えは要りません）。 */
+      subState: cleanSubState(t.subState),
       /* 自分で選んだ絵。決めていなければ null——その場合は題から絵を
          推す（KN.productIcons.find）のを、時間割の側がやります。買うもの
          の商品アイコンと同じ選び方で、「迷ったときは丸のまま」ではなく、
@@ -744,6 +749,27 @@
       // 「できなかった」。完了とは別の状態——同時には立ちません（下のtoggleが守ります）。
       skipped: !!(s && s.skipped),
     })).filter((s) => s.title).slice(0, MAX);
+  }
+
+  /** 繰り返す用事の手順を、今日と翌日以降で別物として扱うための、
+      日ごとの薄い上書き。{ "YYYY-MM-DD": { subId: "done"|"skipped" } }。
+      古いものは黙って落とします（直近60日ぶんだけ持てば十分——それより
+      前の分は、済ませたときの「やった記録」（trace）のほうにもう写しが
+      残っています）。 */
+  function cleanSubState(v) {
+    if (!v || typeof v !== "object") return {};
+    const out = {};
+    Object.keys(v).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort().slice(-60)
+      .forEach((day) => {
+        const row = v[day];
+        if (!row || typeof row !== "object") return;
+        const clean = {};
+        Object.keys(row).forEach((subId) => {
+          if (row[subId] === "done" || row[subId] === "skipped") clean[subId] = row[subId];
+        });
+        if (Object.keys(clean).length) out[day] = clean;
+      });
+    return out;
   }
 
   /* **function 宣言**であることが大事です（cleanMinutes/cleanSubs と
@@ -1251,6 +1277,7 @@
       trace: false,
       shop: shop === true,
       subs: cleanSubs(subs),
+      subState: {},
       icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
@@ -1319,31 +1346,84 @@
 
   /* ---------------- 中の段取り ---------------- */
 
-  /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。 */
+  /** 手順を丸ごと差し替えます（並べ替え・書き直し・足す・消すの全部）。
+      消えた手順ぶんの日ごとの印（下の subState）も、ここで一緒に
+      片づけます——残しておいても二度と読まれない、ただのゴミなので。 */
   function setSubs(id, subs) {
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
-      if (t) t.subs = cleanSubs(subs);
+      if (!t) return;
+      t.subs = cleanSubs(subs);
+      if (t.subState && Object.keys(t.subState).length) {
+        const ids = new Set(t.subs.map((x) => x.id));
+        const next = {};
+        Object.keys(t.subState).forEach((day) => {
+          const row = {};
+          Object.keys(t.subState[day]).forEach((subId) => {
+            if (ids.has(subId)) row[subId] = t.subState[day][subId];
+          });
+          if (Object.keys(row).length) next[day] = row;
+        });
+        t.subState = next;
+      }
     });
   }
 
-  /** 手順ひとつを、済んだ／まだに切り替えます。スキップとは同時に立ちません。 */
-  function toggleSub(id, subId) {
+  /** 手順ひとつの、いまの済み方を返します。単発の用事は t.subs をそのまま
+      見ますが、繰り返す用事は day 基準の上書き（t.subState）を見ます。
+
+      繰り返しの記録は1件だけで、先の日には fallsOn() が「出す」と
+      答えるだけです（store.js 冒頭の fallsOn の但し書き）。そこへ
+      素直に t.subs を出すと、今日チェックした手順が明日の同じ行にも
+      チェック済みで出てしまいます——今日と明日以降が、同じ手順の状態を
+      指しているからです。subState はその手順ぶんだけ日で分けた、薄い
+      上書きです（用事そのものは増やしません。据え置き）。 */
+  function subStatus(t, sub, day) {
+    if (t && t.repeat && day) {
+      const v = t.subState && t.subState[day] && t.subState[day][sub.id];
+      return { done: v === "done", skipped: v === "skipped" };
+    }
+    return { done: !!(sub && sub.done), skipped: !!(sub && sub.skipped) };
+  }
+
+  function setSubState(t, day, subId, value) {
+    if (!t.subState) t.subState = {};
+    if (!t.subState[day]) t.subState[day] = {};
+    if (value) t.subState[day][subId] = value;
+    else delete t.subState[day][subId];
+    if (!Object.keys(t.subState[day]).length) delete t.subState[day];
+  }
+
+  /** 手順ひとつを、済んだ／まだに切り替えます。スキップとは同時に立ちません。
+      繰り返す用事で day を渡すと、その日だけの上書きになります
+      （subStatus の但し書きを見ること）。 */
+  function toggleSub(id, subId, day) {
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       const sub = t && (t.subs || []).find((x) => x.id === subId);
       if (!sub) return;
+      if (t.repeat && day) {
+        const cur = subStatus(t, sub, day);
+        setSubState(t, day, subId, cur.done ? null : "done");
+        return;
+      }
       sub.done = !sub.done;
       if (sub.done) sub.skipped = false;
     });
   }
 
-  /** 手順ひとつを、できなかった／まだに切り替えます（長押し）。完了とは同時に立ちません。 */
-  function toggleSubSkip(id, subId) {
+  /** 手順ひとつを、できなかった／まだに切り替えます（長押し）。完了とは
+      同時に立ちません。day の扱いは toggleSub と同じです。 */
+  function toggleSubSkip(id, subId, day) {
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       const sub = t && (t.subs || []).find((x) => x.id === subId);
       if (!sub) return;
+      if (t.repeat && day) {
+        const cur = subStatus(t, sub, day);
+        setSubState(t, day, subId, cur.skipped ? null : "skipped");
+        return;
+      }
       sub.skipped = !sub.skipped;
       if (sub.skipped) sub.done = false;
     });
@@ -1351,10 +1431,16 @@
 
   /** 残りいくつか。{done, total}。手順が無ければ total は 0。
       「片が付いた」数なので、スキップも分子に数えます——見た目に印は
-      ついているのに帯だけ進んでいない、という食い違いを避けるためです。 */
-  function subCount(t) {
+      ついているのに帯だけ進んでいない、という食い違いを避けるためです。
+      繰り返す用事は day を渡すこと（渡さないと、まだ何もしていない
+      扱いになります——用事そのものの subs は据え置きなので）。 */
+  function subCount(t, day) {
     const subs = (t && t.subs) || [];
-    return { done: subs.filter((s) => s.done || s.skipped).length, total: subs.length };
+    const done = subs.filter((s) => {
+      const st = subStatus(t, s, day);
+      return st.done || st.skipped;
+    }).length;
+    return { done, total: subs.length };
   }
 
   /* ---------------- その日にあったこと（Daily Log の材料） ----------------
@@ -1722,8 +1808,16 @@
             archived: false, archivedAt: null,
             trace: true,
             /* 記録のほうは、**その日ほんとうにどこまでやったか**を
-               そのまま持ちます（写しなので、印もそのまま）。 */
-            subs: (t.subs || []).map((x) => ({ ...x })),
+               そのまま持ちます（写しなので、印もそのまま）。手順の状態は
+               t.subs にではなく、その日ぶんの上書き（subState）に
+               あるので、ここで一度だけ焼き込みます——写しは repeat を
+               持たない単発の記録なので、以後は自分の subs をそのまま
+               読めば足ります（subState はもう要りません）。 */
+            subs: (t.subs || []).map((x) => {
+              const st = subStatus(t, x, t.due);
+              return { ...x, done: st.done, skipped: st.skipped };
+            }),
+            subState: {},
             order: (t.order || 0),
           });
         }
@@ -2989,7 +3083,7 @@
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
-    setSubs, toggleSub, toggleSubSkip, subCount,
+    setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
     calPrefs, setCalPref, dietRange, setDietRange, fallsOn,
     archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,

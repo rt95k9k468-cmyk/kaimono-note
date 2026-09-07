@@ -761,10 +761,29 @@
     `);
   }
 
+  /* 育休完了（終了予定）日。ユーザーに確認済みの固定日付です——ここだけ
+     直接書きます。終わったらこの節ぶん（呼び出し側の「あと◯日」の行）が
+     静かに出なくなります（下の remain >= 1 のガード）。 */
+  const LEAVE_END_DAY = "2027-04-01";
+
+  /** 空の日を開いたときだけ、本文の頭に日付とカウントダウンを下書きします。
+      書いた跡がある日には触れません（既存の記録はそのまま）。 */
+  function dailyStamp(day) {
+    const dt = U.dayDate(day);
+    if (!dt) return "";
+    const lines = [`${day.replace(/-/g, ".")}（${U.weekdayJa(day)}）`];
+    /* U.daysUntil は「今日から」の日数なので、二回呼んで引き算すれば
+       「day 基準」に直せます——「今日」が両方から消えるので。 */
+    const remain = U.daysUntil(LEAVE_END_DAY) - U.daysUntil(day) + 1;
+    if (remain >= 1) lines.push(`育休完了まであと${remain}日`);
+    return `${lines.join("\n")}\n\n`;
+  }
+
   function openLogSheet(day) {
     const cur = store.dayLog(day) || {};
     const dt = U.dayDate(day);
     const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
+    const memoInit = (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
 
     /* 文字数の上限は置きません。前は200字で止めて残りを数えていましたが、
        書ける量をこちらが決める理由がありません——短く書きたい人は短く書きます。
@@ -773,7 +792,7 @@
       <div class="stack" style="gap:16px">
         <label class="field">
           <span class="field-label">その日あったこと・したこと</span>
-          <textarea class="textarea js-memo" rows="5">${cur.memo || ""}</textarea>
+          <textarea class="textarea js-memo" rows="5">${memoInit}</textarea>
         </label>
         <div class="arc-times">
           <label class="field">
@@ -796,7 +815,11 @@
        消えるほうが、間違って残るよりずっと痛いので（食事の四枠と同じ考え）。
        打つたびに書くと重いので、手が止まってから 500ms 後に一度だけ。 */
     let timer = 0;
-    let last = JSON.stringify([cur.memo || "", cur.wake || "", cur.sleep || ""]);
+    /* 下書きした日付・カウントダウンは、開いただけでは保存しません。
+       ここを cur.memo（元の値）ではなく memoInit（下書き後の値）に
+       しておけば、何も打たずに閉じたときは「変わっていない」扱いになり
+       ます——空の日を覗いただけで記録ができてしまうのを防ぎます。 */
+    let last = JSON.stringify([memoInit, cur.wake || "", cur.sleep || ""]);
     const save = () => {
       clearTimeout(timer); timer = 0;
       const now = JSON.stringify([memo.value, wakeEl.value, sleepEl.value]);
@@ -828,17 +851,11 @@
       h.close();
     });
 
-    /* 開いたら、そのまま打てるようにします。
-
-       押してから枠を押し直して、さらにキーボードが出るのを待つ——三手です。
-       この画面を開く人は書きに来ているので、その三手を先に済ませておきます。
-
-       カーソルは**いちばん後ろ**へ。先頭に置くと、続きを書こうとした人が
-       毎回いちばん下まで指で送ることになります（日記は足していくものなので、
-       書き足す場所はいつも末尾です）。setSelectionRange を focus のあとに
-       呼ぶのは、focus が既定で全選択にする端末があるためです——選んだまま
-       打つと、書いてあったものが一文字で消えます。 */
-    KN.ui.focusNow(memo);
+    /* 開いてすぐには入力モードにしません（キーボードを自動で出さない）。
+       カーソルは押して打ち始めたときのために**いちばん後ろ**へ。先頭に
+       置くと、続きを書こうとした人が毎回いちばん下まで指で送ることに
+       なります（日記は足していくものなので、書き足す場所はいつも末尾
+       です）。 */
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* time 欄などでは投げます */ }
     memo.scrollTop = memo.scrollHeight;

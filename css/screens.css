@@ -618,7 +618,11 @@
      重ね順を上げないと**今日の赤丸の下**に隠れます。輪の中は
      すき通っているので、上に置いても数字は読めます。 */
   z-index: 1;
-  width: 24px; height: 24px;
+  /* .cal-n と同じ27pxに。数字の字を大きくしたとき、ここの24pxだけ
+     残っていたので、輪が数字の丸より小さく、字に食い込んで見えました。
+     位置合わせ（moveRing）は .cal-n の左上を基準にしているので、同じ
+     大きさにしておけば揺れずに重なります。 */
+  width: 27px; height: 27px;
   border-radius: var(--r-full);
   box-shadow: inset 0 0 0 2px var(--c-primary);
   pointer-events: none;
@@ -4594,21 +4598,37 @@ a.btn { text-decoration: none; }
   border-color: var(--c-text-3);
   color: var(--c-text-3);
 }
-.tl-sub.is-skipped .tl-sub-name { background-size: 100% 2px; color: var(--c-text-3); }
+.tl-sub.is-skipped .tl-sub-name { color: var(--c-text-3); }
+.tl-sub.is-skipped .tl-sub-name::after { width: 100%; }
 .tl-sub-name {
+  position: relative;
+  display: inline-block;
   font-size: 15px;
   color: var(--c-text);
-  /* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。 */
-  background-image: linear-gradient(var(--c-text-3), var(--c-text-3));
-  background-repeat: no-repeat;
+}
+/* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。
+
+   前は背景で引いていました（linear-gradientをbackground-sizeで伸ばす）が、
+   背景は文字の**下**に塗られる決まりなので、手順名に絵文字（色の付いた
+   面）が入ると、その絵文字のところだけ線が隠れました——取り消し線が
+   絵文字より上に来ず、絵文字の背後へ回り込みます。
+   ::after は文字より後ろ（＝描く順でいう手前）に重なるので、これなら
+   絵文字の上を通ります。 */
+.tl-sub-name::after {
+  content: "";
+  position: absolute;
+  left: 0;
   /* 58% は行の上下まん中ではなく**字のまん中**です。和文はベースラインの
      下に余白があるので、center だと字の上のほうを通ります。題の取り消し線
      と同じ数にしてあります。 */
-  background-position: 0 58%;
-  background-size: 0% 2px;
-  transition: background-size var(--m-strike) var(--ease-out), color var(--m-check) var(--ease);
+  top: 58%;
+  width: 0%;
+  height: 2px;
+  background: var(--c-text-3);
+  transition: width var(--m-strike) var(--ease-out);
 }
-.tl-sub.is-done .tl-sub-name { background-size: 100% 2px; color: var(--c-text-3); }
+.tl-sub.is-done .tl-sub-name { color: var(--c-text-3); }
+.tl-sub.is-done .tl-sub-name::after { width: 100%; }
 
 /* シートの中、手順を書き並べるところ。 */
 .sub-edit { display: flex; flex-direction: column; gap: 8px; }

@@ -1345,12 +1345,6 @@
 
     /* 削除は ⋯ の中へ移りました（上の heroMenu）。紙のいちばん下に置くと、
        毎回そこを通ることになります——たまに、一度だけ使うものなので。 */
-
-    /* New ones open ready to type — see focusNow: the focus has to happen in
-       the same beat as the tap or iOS leaves the keyboard down. Editing an
-       existing todo does not, because the thing you came to change is as
-       likely to be the date as the words. */
-    if (!editing) KN.ui.focusNow(titleEl);
   }
 
   /* ---------------- when, as a set of shelves ----------------
@@ -2838,7 +2832,7 @@
         return;
       }
       const next = parts[i + 1];
-      list.append(itemRow(part.it, !!next && next.kind === "item"));
+      list.append(itemRow(part.it, !!next && next.kind === "item", day));
     });
 
     /* 重なっている二つは、**丸薬どうしがぶつかって**見えます（下の CSS）。
@@ -3184,7 +3178,9 @@
          押したら別のことが起きる小さな丸——それだけ。 */
       if (e.target.closest(".check, .fav, .tl-subs-chip")) return;
       const row = e.target.closest(".tl-row");
-      if (!row || row.classList.contains("is-done")) return;
+      /* 済ませたあとでも持てます——開始時刻がわかってから、事後的に
+         リスケすることがあるので。止めていたのはここ一行だけでした。 */
+      if (!row) return;
 
       const id = row.dataset.todoId;
       const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
@@ -3840,7 +3836,7 @@
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  function itemRow(it, joined) {
+  function itemRow(it, joined, day) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
@@ -3858,8 +3854,13 @@
     }
     /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
        ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
-    const sc = store.subCount(t);
-    const subsOpen = openSubs.has(t.id);
+    const sc = store.subCount(t, day);
+    /* 繰り返す用事は、今日の行と翌日以降の行が**同じ t.id**を指します
+       （fallsOn の但し書き——記録は増やしません）。だから開閉も day を
+       混ぜた鍵で見張ります。混ぜないと、今日ひらいた手順が翌日の同じ
+       行にもひらいたまま出ました。 */
+    const subsKey = day ? `${t.id}@${day}` : t.id;
+    const subsOpen = openSubs.has(subsKey);
     /* 手順は、事実の行に**丸薬**で出します。前は行の下に「手順をひらく」
        という文のボタンを置いていましたが、参考にした画面はここに
        `☑ 2/5 ⌄` の一粒を置いていて、そのぶん一段ぶんの高さが浮きます。
@@ -3970,7 +3971,14 @@
          Enter/Spaceは pointerdown を起こさないので、長押し扱いにはなりません
          （下の click だけが走ります）。 */
       const HOLD_MS = 500;
-      (t.subs || []).forEach((s) => {
+      (t.subs || []).forEach((s0) => {
+        /* s0 は「手順そのもの」（題・並び）。済み方は繰り返す用事だと
+           day 基準の上書きから読みます（subStatus の但し書き参照）——
+           s0.done / s0.skipped をそのまま出すと、今日チェックした手順が
+           翌日の同じ行にもチェック済みで出ます。 */
+        const st0 = store.subStatus(t, s0, day);
+        const s = { ...s0, done: st0.done, skipped: st0.skipped };
+        const gestureKey = day ? `${day}:${s.id}` : s.id;
         const line = node(html`
           <li class="tl-sub ${s.done ? "is-done" : ""} ${s.skipped ? "is-skipped" : ""}">
             <button type="button" class="check is-sub" role="checkbox"
@@ -3986,63 +3994,100 @@
            必ず store から読み直します。 */
         function paint() {
           const fresh = store.getTodo(t.id);
-          const cur = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
+          const raw = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
+          const cur = fresh ? store.subStatus(fresh, raw, day) : { done: s.done, skipped: s.skipped };
           line.classList.toggle("is-done", !!cur.done);
           line.classList.toggle("is-skipped", !!cur.skipped);
           btn.setAttribute("aria-checked", cur.done ? "true" : cur.skipped ? "mixed" : "false");
           btn.setAttribute("aria-label",
-            `${cur.title}${cur.skipped ? "（できなかった）" : ""} を終わりにする（長押しでできなかったことにする）`);
+            `${raw.title}${cur.skipped ? "（できなかった）" : ""} を終わりにする（長押しでできなかったことにする）`);
           btn.innerHTML = KN.icons.svg(cur.skipped ? "minus" : "check");
         }
 
         /* store を書き換えると、その一拍で画面ぜんぶが描き直されます
            （app.js の store.subscribe）——このボタン自身も新しい要素に
-           差し替わるということです。だから **指を離すまで store には
-           触りません**。
+           差し替わるということです。**500ms経った時点**（指はまだ
+           乗っている）で確定させるので、その描き直しはここでも起こります
+           ——それでも構いません。古いボタンは DOM から外れて pointercancel
+           を受け取るだけで、以後は何もしません（下の holdFired の早期
+           returnがそれ）。
 
-           それでも足りません。タッチでは pointerup のあとに「代替の」
-           click が続けて発行され、その click は差し替わった**新しい**
-           要素をあらためて叩きます——preventDefault は touchstart 側で
-           呼ばないと間に合わず、pointerdown 側で呼んでも止まりません
-           （実機のCDP touchで確かめて踏んだ動きです。これが「スキップの
-           直後にもう一度タップ＝完了が走る」の正体でした）。だから
-           「扱った」の印はボタン要素にもこの描画のクロージャにも持たせず、
-           手順の id で見張ります（subGestureAt、モジュール直下＝描き直しを
-           またいで生きています）。 */
-        let holdTimer = 0, holdFired = false;
+           足りないのはタッチの「代替の」click です。pointerup のあとに
+           続けて発行され、差し替わった**新しい**要素をあらためて叩きます
+           ——preventDefault は touchstart 側で呼ばないと間に合わず、
+           pointerdown 側で呼んでも止まりません（実機のCDP touchで確かめて
+           踏んだ動きです。これが「スキップの直後にもう一度タップ＝完了が
+           走る」の正体でした）。だから「扱った」の印はボタン要素にもこの
+           描画のクロージャにも持たせず、手順の id で見張ります
+           （subGestureAt、モジュール直下＝描き直しをまたいで生きています）。 */
+        let holdTimer = 0, holdFired = false, heldPointerId = null;
         const clearHold = () => { clearTimeout(holdTimer); holdTimer = 0; };
-        function release(commit) {
+        /* 長押し確定。指を離すのを待たず、ここで「できなかった」を立てます
+           ——離したときにしか反応しないと、0.5秒経っても何も起きていないように
+           見えて、指を離すまで長押しと認められません。 */
+        function commitHold() {
+          holdFired = true;
+          holdTimer = 0;
+          subGestureAt.set(gestureKey, { t: Date.now(), pid: heldPointerId });
+          KN.motion.fire("warn", btn);
+          store.toggleSubSkip(t.id, s.id, day);
+          paint();
+        }
+        function release(commit, e) {
           clearHold();
-          if (!commit) { holdFired = false; return; }
-          subGestureAt.set(s.id, Date.now());
+          // 長押しはもう確定済み。離す・キャンセルのどちらでも、ここでは
+          // 何もしません（二重に切り替えてしまうので）。
+          if (holdFired) { holdFired = false; return; }
+          if (!commit) return;
+          /* 500ms経った時点で store を書き換えると、その一拍で行が丸ごと
+             差し替わります——このボタンはもう外れています。それでも
+             ブラウザは、外れたことに気づいた直後の pointerup を、いま
+             同じ場所にある**新しい**ボタンへ渡すことがあります（実機の
+             CDP touchで確かめて踏んだ動きです）。新しいボタンの
+             holdFired は false（何も知らない、生まれたての状態）なので、
+             ここで防がないと長押しの直後に完了/選択なしがもう一度走り、
+             せっかく立てた「できなかった」が一拍でまた消えます。
+
+             **見分けるのは pointerId。** 0.8秒という時間の物差しだけだと、
+             すぐあとに同じ手順を本当にもう一度押した（できなかった→選択
+             なし、を続けてやりたいときは普通にあります）のまで弾いて
+             しまいます。同じ指（同じ pointerId）から続けて来たものだけを
+             「さっきの続き」として弾き、違う指（＝新しいタップ）は時間が
+             近くても通します。 */
+          const rec = subGestureAt.get(gestureKey);
+          const pid = e && e.pointerId != null ? e.pointerId : null;
+          if (rec && pid != null && rec.pid === pid && Date.now() - rec.t < 2000) return;
+          subGestureAt.set(gestureKey, { t: Date.now(), pid });
           const fresh = store.getTodo(t.id);
-          const cur = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
-          if (holdFired) {
-            KN.motion.fire("warn", btn);
-            store.toggleSubSkip(t.id, s.id);
+          const raw = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
+          const cur = fresh ? store.subStatus(fresh, raw, day) : { done: s.done, skipped: s.skipped };
+          if (cur.skipped) {
+            /* 「できなかった」のところへの短いタップは、選択なしへ戻します。
+               toggleSub を呼ぶと done が立ってしまう（できなかった→できた、
+               という順に進んでしまう）ので、ここは toggleSubSkip で外すだけ。 */
+            KN.motion.fire("uncheck", btn);
+            store.toggleSubSkip(t.id, s.id, day);
           } else {
             KN.motion.fire(cur.done ? "uncheck" : "check", btn);
             if (!cur.done) KN.ui.burst(btn);
-            store.toggleSub(t.id, s.id);
+            store.toggleSub(t.id, s.id, day);
           }
-          holdFired = false;
           paint();
         }
         btn.addEventListener("pointerdown", (e) => {
           if (e.pointerType === "mouse" && e.button !== 0) return;
           holdFired = false;
-          holdTimer = setTimeout(() => { holdFired = true; holdTimer = 0; }, HOLD_MS);
+          heldPointerId = e.pointerId;
+          holdTimer = setTimeout(commitHold, HOLD_MS);
         });
-        btn.addEventListener("pointerup", () => release(true));
-        btn.addEventListener("pointercancel", () => release(false));
+        btn.addEventListener("pointerup", (e) => release(true, e));
+        btn.addEventListener("pointercancel", (e) => release(false, e));
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
-          // 直前（0.8秒以内）に pointerup 側で同じ手順をもう扱っていたら、
-          // これはタッチの代替clickです。キーボードからの押下は pointerdown が
-          // 起きないので、ここには引っかかりません。
-          const last = subGestureAt.get(s.id) || 0;
-          if (Date.now() - last < 800) return;
-          release(true);
+          // タッチの代替clickです（キーボードからの押下は pointerdown が
+          // 起きないので、ここには来ません）。直前に同じ指で扱っていたら
+          // release の中の見張りが黙って弾きます。
+          release(true, e);
         });
         list.append(line);
       });
@@ -4055,8 +4100,8 @@
       const chip = li.querySelector(".tl-subs-chip");
       chip.addEventListener("click", (e) => {
         e.stopPropagation();
-        const open = !openSubs.has(t.id);
-        if (open) openSubs.add(t.id); else openSubs.delete(t.id);
+        const open = !openSubs.has(subsKey);
+        if (open) openSubs.add(subsKey); else openSubs.delete(subsKey);
         KN.motion.fire("select", chip);
         chip.setAttribute("aria-expanded", String(open));
         chip.setAttribute("aria-label", `${t.title} の手順を${open ? "たたむ" : "ひらく"}`);
