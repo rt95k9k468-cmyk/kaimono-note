@@ -303,15 +303,6 @@
       handle.close();
     }
 
-    /* Straight into the field, keyboard and all.
-
-       It has to happen *here* — synchronously, still inside the tap that
-       opened the sheet. iOS only raises the keyboard for a focus that belongs
-       to a gesture it can see, so the same call one frame later (or after the
-       sheet's own animation, which is where it used to live) focuses the field
-       and leaves the keyboard down: a caret blinking in a box you then have to
-       tap anyway. */
-    KN.ui.focusNow(nameEl);
     return handle;
   }
 
