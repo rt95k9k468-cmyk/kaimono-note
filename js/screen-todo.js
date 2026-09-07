@@ -1370,11 +1370,12 @@
      and grey for what has no day at all — near is hot, far is cool, undecided
      is neither. */
 
-  /* 今日の色を、基調のコーラルに合わせました（実測 #f2938e）。時間割の
+  /* 今日の色を、いまの基調色に合わせます（`--c-primary-fill`）。時間割の
      丸と背骨がこの色で塗られるので、ここが基調とずれていると、今日の
-     画面だけ別のアプリの色になります。二日目から先はこれまでどおり、
-     締切までの遠さを言う坂です。 */
-  const DAY_COLORS = ["#f2938e", "#e08a3a", "#cfa93c", "#8bb34a", "#6aae55", "#5aa55a", "#4fa17a", "#49a0a0"];
+     画面だけ別のアプリの色になります。基調を切り替えたときも、ここが
+     追随するので固定のコーラルにはしません。二日目から先はこれまで
+     どおり、締切までの遠さを言う坂です。 */
+  const DAY_COLORS = ["var(--c-primary-fill)", "#e08a3a", "#cfa93c", "#8bb34a", "#6aae55", "#5aa55a", "#4fa17a", "#49a0a0"];
   const WEEK_COLOR = "#4a8fd9";
   const MONTH_COLOR = "#6a7fd0";
   const NONE_COLOR = "#9aa4a0";

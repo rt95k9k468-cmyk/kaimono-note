@@ -1300,54 +1300,105 @@ a { color: var(--c-primary); }
    明暗（data-theme）とは別の軸です。「青の、暗い面」のように二つは
    掛け合わさるので、札を分けてあります。
 
-   差し替えるのは brand の四つと、値札の accent だけ。ほかは触りません
-   ——からだの四つの輪（歩数・総消費・睡眠・飲酒）と手描きアイコンの配色は、
-   それぞれ「どの指標か」「何の品物か」を言うための色で、アプリの基調色とは
-   別の仕事をしています。基調が変わるたびに卵の黄身の色が変わったら困る。
+   差し替えるのは brand の五つ（primary / -2 / -soft / -ink /
+   **-fill**）と、値札の accent だけ。ほかは触りません——からだの四つの輪
+   （歩数・総消費・睡眠・飲酒）と手描きアイコンの配色は、それぞれ「どの
+   指標か」「何の品物か」を言うための色で、アプリの基調色とは別の仕事を
+   しています。基調が変わるたびに卵の黄身の色が変わったら困る。
+
+   **--c-primary-fill も基調ごとに差し替えます。** 時間割の丸薬・背骨・
+   経過線・暦の日の丸はここから塗りを取っているので（screens.css の
+   `--tl-fill` / `--tl-wait` を参照）、ここを差し替えないと基調を変えても
+   「時間割だけコーラルのまま」になります。値は設定の見本の一色と
+   同じ——見本で選んだ色が、そのまま時間割に塗られます。
 
    **値札（--c-accent）は、基調色と必ず色相を離します。** ここは「いちばん
    安い」を言う場所で、ふつうのボタンと同じ色になると埋もれます。だから
    基調が暖色なら値札は寒色、基調が寒色なら値札は暖色、と組にしてあります。
 
-   既定のオレンジには規則がありません（:root の素の値がそのまま効きます）。
-   ========================================================= */
+   濃淡は、基調ごとに描き直したわけではありません。**どの基調も同じ物差し
+   （文字色は白地で4.6:1、背景の薄色は1.2:1、濃い文字色は8.8:1……という
+   狙いの対比）で色相だけを差し替えて出しています**——そうしないと、
+   基調によって「淡さ」や「読みやすさ」の手触りがばらつくので。緑系の
+   暗い面だけは彩度を大きく落としてあります（同じ彩度・明度でも、緑は
+   目に刺さって見えるため）。
 
-/* ---- みどり（もとの基調色） ---- */
+   既定のオレンジ（コーラル）には規則がありません（:root の素の値が
+   そのまま効きます）。 */
+
+/* ---- セージ（もとの「みどり」） ---- */
 :root[data-accent="green"] {
-  --c-primary:     #2f8f5b;
-  --c-primary-2:   #26744a;
-  --c-primary-soft:#e4f2ea;
-  --c-primary-ink: #1d5b39;
+  --c-primary:     #28853d;
+  --c-primary-2:   #226c33;
+  --c-primary-soft:#c6f7d2;
+  --c-primary-ink: #185626;
+  --c-primary-fill:#82a98b;
   --c-accent:      #d8722f;
   --c-accent-soft: #fdefe3;
   --c-accent-ink:  #9c4c14;
 }
-/* ---- あお ---- */
+/* ---- オーシャン（もとの「あお」） ---- */
 :root[data-accent="blue"] {
-  --c-primary:     #2f72c4;
-  --c-primary-2:   #245a9e;
-  --c-primary-soft:#e3edfa;
-  --c-primary-ink: #1b4576;
+  --c-primary:     #327ba6;
+  --c-primary-2:   #2a6587;
+  --c-primary-soft:#dbeefa;
+  --c-primary-ink: #1e4f6b;
+  --c-primary-fill:#6fa8c9;
   --c-accent:      #d8722f;
   --c-accent-soft: #fdefe3;
   --c-accent-ink:  #9c4c14;
 }
-/* ---- むらさき ---- */
+/* ---- ラベンダー（もとの「むらさき」） ---- */
 :root[data-accent="violet"] {
-  --c-primary:     #7a5bd0;
-  --c-primary-2:   #6446b4;
-  --c-primary-soft:#ece6fa;
-  --c-primary-ink: #4d3488;
+  --c-primary:     #7d62d0;
+  --c-primary-2:   #5c3cc1;
+  --c-primary-soft:#ede9fc;
+  --c-primary-ink: #4f31ae;
+  --c-primary-fill:#9a8fbd;
   --c-accent:      #d8722f;
   --c-accent-soft: #fdefe3;
   --c-accent-ink:  #9c4c14;
 }
-/* ---- ももいろ ---- */
+/* ---- ローズ（もとの「ももいろ」。色味を描き直し） ---- */
 :root[data-accent="rose"] {
-  --c-primary:     #c8476f;
-  --c-primary-2:   #a83557;
-  --c-primary-soft:#fbe6ec;
-  --c-primary-ink: #832743;
+  --c-primary:     #c84760;
+  --c-primary-2:   #aa354c;
+  --c-primary-soft:#fbe6ea;
+  --c-primary-ink: #882639;
+  --c-primary-fill:#c98592;
+  --c-accent:      #2f7fb8;
+  --c-accent-soft: #e4f1fa;
+  --c-accent-ink:  #1c5678;
+}
+/* ---- マスタード ---- */
+:root[data-accent="mustard"] {
+  --c-primary:     #926f2c;
+  --c-primary-2:   #775c25;
+  --c-primary-soft:#f8eace;
+  --c-primary-ink: #5d471a;
+  --c-primary-fill:#d6ad5c;
+  --c-accent:      #2f7fb8;
+  --c-accent-soft: #e4f1fa;
+  --c-accent-ink:  #1c5678;
+}
+/* ---- スカイ ---- */
+:root[data-accent="sky"] {
+  --c-primary:     #2b7f8f;
+  --c-primary-2:   #256875;
+  --c-primary-soft:#d0f1f8;
+  --c-primary-ink: #1a515c;
+  --c-primary-fill:#82bfcb;
+  --c-accent:      #d8722f;
+  --c-accent-soft: #fdefe3;
+  --c-accent-ink:  #9c4c14;
+}
+/* ---- アプリコット ---- */
+:root[data-accent="apricot"] {
+  --c-primary:     #ab6233;
+  --c-primary-2:   #8b512c;
+  --c-primary-soft:#fae8dd;
+  --c-primary-ink: #6e3e1f;
+  --c-primary-fill:#e9a477;
   --c-accent:      #2f7fb8;
   --c-accent-soft: #e4f1fa;
   --c-accent-ink:  #1c5678;
@@ -1355,51 +1406,86 @@ a { color: var(--c-primary); }
 
 /* ---- 暗い面 ----
    同じ考え方で、暗い地に沈まないよう明るいほうへ振ります。
-   自動（システムに従う）と、自分で暗いを選んだとき、両方に効かせます。 */
+   自動（システムに従う）と、自分で暗いを選んだとき、両方に効かせます。
+   **--c-primary-fill は明暗で変えません**（コーラルも同じ考え方——丸薬の
+   塗りは一日を通して同じ色であるべきなので）。 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"])[data-accent="green"],
   :root[data-theme="dark"][data-accent="green"] {
-    --c-primary: #57b681; --c-primary-2: #6cc794;
+    --c-primary: #56b66c; --c-primary-2: #62c579;
     --c-primary-soft: #1d2f24; --c-primary-ink: #9ddcb8;
     --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
   }
   :root:not([data-theme="light"])[data-accent="blue"],
   :root[data-theme="dark"][data-accent="blue"] {
-    --c-primary: #62a3e8; --c-primary-2: #7fb6ef;
+    --c-primary: #4face2; --c-primary-2: #66baea;
     --c-primary-soft: #17273a; --c-primary-ink: #a6cdf5;
     --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
   }
   :root:not([data-theme="light"])[data-accent="violet"],
   :root[data-theme="dark"][data-accent="violet"] {
-    --c-primary: #a98ce8; --c-primary-2: #bda4ef;
+    --c-primary: #ab96ee; --c-primary-2: #c5b6f5;
     --c-primary-soft: #241e3a; --c-primary-ink: #cfbdf5;
     --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
   }
   :root:not([data-theme="light"])[data-accent="rose"],
   :root[data-theme="dark"][data-accent="rose"] {
-    --c-primary: #e07a9c; --c-primary-2: #ea97b3;
-    --c-primary-soft: #331b24; --c-primary-ink: #f3bccd;
+    --c-primary: #ea8599; --c-primary-2: #f0a4b3;
+    --c-primary-soft: #391e23; --c-primary-ink: #f6bdc7;
+    --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
+  }
+  :root:not([data-theme="light"])[data-accent="mustard"],
+  :root[data-theme="dark"][data-accent="mustard"] {
+    --c-primary: #d39925; --c-primary-2: #dea534;
+    --c-primary-soft: #2c2517; --c-primary-ink: #efcf8f;
+    --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
+  }
+  :root:not([data-theme="light"])[data-accent="sky"],
+  :root[data-theme="dark"][data-accent="sky"] {
+    --c-primary: #22b2cf; --c-primary-2: #27c3e2;
+    --c-primary-soft: #17282c; --c-primary-ink: #8fdfef;
+    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+  }
+  :root:not([data-theme="light"])[data-accent="apricot"],
+  :root[data-theme="dark"][data-accent="apricot"] {
+    --c-primary: #e28f5a; --c-primary-2: #e8a274;
+    --c-primary-soft: #312319; --c-primary-ink: #f2c1a2;
     --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
   }
 }
 /* 自分で「暗い」を選んだときは、システムの設定に関わらず効かせます。 */
 :root[data-theme="dark"][data-accent="green"] {
-  --c-primary: #57b681; --c-primary-2: #6cc794;
+  --c-primary: #56b66c; --c-primary-2: #62c579;
   --c-primary-soft: #1d2f24; --c-primary-ink: #9ddcb8;
   --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
 }
 :root[data-theme="dark"][data-accent="blue"] {
-  --c-primary: #62a3e8; --c-primary-2: #7fb6ef;
+  --c-primary: #4face2; --c-primary-2: #66baea;
   --c-primary-soft: #17273a; --c-primary-ink: #a6cdf5;
   --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
 }
 :root[data-theme="dark"][data-accent="violet"] {
-  --c-primary: #a98ce8; --c-primary-2: #bda4ef;
+  --c-primary: #ab96ee; --c-primary-2: #c5b6f5;
   --c-primary-soft: #241e3a; --c-primary-ink: #cfbdf5;
   --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
 }
 :root[data-theme="dark"][data-accent="rose"] {
-  --c-primary: #e07a9c; --c-primary-2: #ea97b3;
-  --c-primary-soft: #331b24; --c-primary-ink: #f3bccd;
+  --c-primary: #ea8599; --c-primary-2: #f0a4b3;
+  --c-primary-soft: #391e23; --c-primary-ink: #f6bdc7;
+  --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
+}
+:root[data-theme="dark"][data-accent="mustard"] {
+  --c-primary: #d39925; --c-primary-2: #dea534;
+  --c-primary-soft: #2c2517; --c-primary-ink: #efcf8f;
+  --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
+}
+:root[data-theme="dark"][data-accent="sky"] {
+  --c-primary: #22b2cf; --c-primary-2: #27c3e2;
+  --c-primary-soft: #17282c; --c-primary-ink: #8fdfef;
+  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
+}
+:root[data-theme="dark"][data-accent="apricot"] {
+  --c-primary: #e28f5a; --c-primary-2: #e8a274;
+  --c-primary-soft: #312319; --c-primary-ink: #f2c1a2;
   --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
 }

@@ -119,13 +119,25 @@
      その既定は、いまはコーラルです。**id は "orange" のまま置いてあります**
      ——保存してある設定の値を書き換えずに色だけを入れ替えられるからで、
      移行も `reconcile()` の変更も要りません。id は保存された値との約束、
-     label は人に見せる名前、と役目が別です。 */
+     label は人に見せる名前、と役目が別です。
+
+     見本の色（swatch）は、その基調の `--c-primary-fill`——時間割の丸薬に
+     実際に塗られる色——と同じ数値にしてあります。見本で選んだ色が、
+     そのまま時間割に出る、という一貫性のためです。
+
+     もとの「みどり／あお／むらさき／ももいろ」の四つも、id は変えずに
+     色味だけ描き直しました（"orange" が過去に一度そうしたのと同じ扱い
+     です）。ここに保存済みの値がある人がいても、id が指す先が変わる
+     だけで、設定は壊れません。 */
   const ACCENTS = [
-    { id: "orange", label: "コーラル", swatch: "#f2938e" },
-    { id: "green",  label: "みどり",   swatch: "#2f8f5b" },
-    { id: "blue",   label: "あお",     swatch: "#2f72c4" },
-    { id: "violet", label: "むらさき", swatch: "#7a5bd0" },
-    { id: "rose",   label: "ももいろ", swatch: "#c8476f" },
+    { id: "orange",  label: "コーラル",     swatch: "#f49e98" },
+    { id: "blue",    label: "オーシャン",   swatch: "#6fa8c9" },
+    { id: "green",   label: "セージ",       swatch: "#82a98b" },
+    { id: "violet",  label: "ラベンダー",   swatch: "#9a8fbd" },
+    { id: "mustard", label: "マスタード",   swatch: "#d6ad5c" },
+    { id: "sky",     label: "スカイ",       swatch: "#82bfcb" },
+    { id: "apricot", label: "アプリコット", swatch: "#e9a477" },
+    { id: "rose",    label: "ローズ",       swatch: "#c98592" },
   ];
   const cleanAccent = (v) => (ACCENTS.some((a) => a.id === v) ? v : "orange");
 
