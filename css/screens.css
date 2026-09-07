@@ -325,22 +325,6 @@
    （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
 .cal.is-stuck { border-bottom-color: var(--c-border); }
 
-/* 紙の上端の継ぎ目。実測（Structured）では、紙の白そのものではなく
-   紙のすぐ上の地が4/255だけ沈んでいて、それが「わずかな立体感」の
-   正体でした。ここに置くのは、下の紙（.tl-sheet／.tl-grip）に触れずに
-   同じ沈みを足すためです——.cal は z-index: 12 で紙より前に居るので、
-   自分の下端から10pxだけ影を伸ばせば、紙の側の重ね順やドラッグの層に
-   一切触れずに、暦の裾が紙にわずかな影を落として見えます。 */
-#screen-todo .cal::after,
-#screen-archive .cal::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; top: 100%;
-  height: 10px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, .045), transparent);
-  pointer-events: none;
-}
-
 /* ダイエットのカレンダーは貼りつけません。やることの棚は月をほどいて縦に
    並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
    あるのは一日ぶんの記録で、月とは関係がありません——居座るぶん、体重も
@@ -3730,12 +3714,40 @@ a.btn { text-decoration: none; }
      週／月／暦なしで変わるので、CSSに数字を焼き込めません。 */
   top: calc(var(--topbar-h, 0px) + var(--cal-h, 0px));
   z-index: 5;
-  background: var(--c-surface);
+  /* 紙のふちを、白でなぞります。実測（Structured）では、これは紙の外に
+     落ちる影ではなく、丸い縁そのものが少し明るく光って見える効きどころ
+     でした——動画で確かめると、紙の**外**（暦との境目）には何もなく、
+     丸まっている**紙自身の縁**が周りよりわずかに白い。
+
+     だから別の層を重ねるのではなく、掴み手の背景そのものを縦のグラデ
+     ーションにします。いちばん上（丸くなっているところ）を純白にし、
+     数pxだけ沈めて、紙の地色に戻す——これだけで、背景の四角い箱では
+     なく**この丸角の形どおりに**光って見えます（border-radius は要素
+     自身の塗りにも掛かるので、四角い影が丸の下からはみ出す心配が
+     要りません）。紙（.tl-sheet）の側には一切触れていません。 */
+  background: linear-gradient(180deg,
+    #fff 0,
+    color-mix(in srgb, var(--c-surface) 96%, #000) 16px,
+    var(--c-surface) 28px);
   border-radius: 22px 22px 0 0;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
+}
+/* 暗い画面では、沈める方向が逆になります——白い縁ではなく、周りより
+   ほんの少し明るい縁として光ります。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tl-grip {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--c-surface) 88%, #fff) 0,
+      var(--c-surface) 22px);
+  }
+}
+:root[data-theme="dark"] .tl-grip {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--c-surface) 88%, #fff) 0,
+    var(--c-surface) 22px);
 }
 /* 引いているあいだ、字は選ばせません。選ばれたままだと、次にその上から
    引いたときブラウザが「選んだ字を運ぶ」ほうの手つきを始めて、こちらの
@@ -3756,7 +3768,7 @@ a.btn { text-decoration: none; }
 }
 .tl-grip > i {
   display: block;
-  width: 48px; height: 5px;
+  width: 36px; height: 5px;
   margin: 0 auto;
   border-radius: var(--r-full);
   background: var(--c-border-2);
