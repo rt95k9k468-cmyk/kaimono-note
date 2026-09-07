@@ -687,6 +687,64 @@ button, [role="tab"] {
 
 .sheet.is-open { transform: translate(-50%, 0); }
 
+/* ---------------- 押したところから育つ紙 ----------------
+
+   ui.js の seedFrom() が、押されたボタンの真ん中と、開いたときの紙の
+   真ん中との差を `--sx` / `--sy` に書きます。閉じているあいだの紙は、
+   その差ぶんずれた場所に 0.3 倍で畳まれていて、`.is-open` が付くと
+   **もとの場所・もとの大きさ**（＝ .sheet.is-open のまま）へ戻ります。
+   ずれと縮みを一つの transform に並べているので、行き着く先は下から
+   せり上がる紙とまったく同じ場所です。
+
+   丸みも一緒に動かします。小さいうちは丸く、育ちきると紙の角に戻る
+   ——これが無いと、小さい状態が「紙の縮小」ではなく「細い帯」に見えます。
+
+   ここだけ :not(.is-open) で書くのは、`.sheet.is-open`（0,2,0）に確実に
+   勝つためです（同じ強さだと、書いた順で決まってしまう）。 */
+/* ここだけ --ease-out（cubic-bezier(.16,1,.3,1)）を使いません。あの曲線は
+   出だしが速すぎて、実測で**時間の3%で6割**まで進みます——せり上がるだけの
+   紙ならそれでいいのですが、育つ紙では小さいうちの姿が一瞬で終わって、
+   「＋から出てきた」ことが見えません。iOS の紙と同じ、途中がちゃんと見える
+   曲線にします。 */
+.sheet.is-from-origin {
+  transition:
+    transform .42s cubic-bezier(.32, .72, 0, 1),
+    opacity .18s var(--ease),
+    border-radius .42s cubic-bezier(.32, .72, 0, 1);
+}
+.sheet.is-from-origin:not(.is-open) {
+  transform: translate(-50%, 0) translate(var(--sx, 0px), var(--sy, 0px)) scale(.3);
+  opacity: 0;
+  border-radius: 34px;
+}
+
+/* 押した丸からにじむ光。紙が小さいあいだ、「どこから来たのか」を言うのは
+   これだけです。位置は ui.js が実測して inline で書きます（画面の座標）。 */
+.sheet-bloom {
+  position: fixed;
+  width: 260px; height: 260px;
+  margin: -130px 0 0 -130px;
+  border-radius: var(--r-full);
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--c-primary-fill) 70%, transparent) 0%,
+    color-mix(in srgb, var(--c-primary-fill) 26%, transparent) 44%,
+    transparent 70%);
+  pointer-events: none;
+  /* **紙より先に終わります。** 紙が育つのと同じ長さ（.44s）出していたら、
+     画面ぜんぶが桃色に染まりました——紙の地は 76% しか塗っていないので、
+     下の光がそのまま透けます。光は「＋がいま光った」と言うだけのもので、
+     紙が大きくなるころには役目が終わっています。 */
+  animation: sheet-bloom .3s var(--ease-out) forwards;
+}
+@keyframes sheet-bloom {
+  0%   { transform: scale(.14); opacity: .5; }
+  40%  { opacity: .16; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-bloom { display: none; }
+}
+
 @media (min-width: 640px) {
   .sheet {
     bottom: auto;

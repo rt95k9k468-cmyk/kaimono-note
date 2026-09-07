@@ -136,7 +136,18 @@
 /* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
    縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
 .add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; position: relative; z-index: 1; }
-.add-fab:active { transform: scale(.92); }
+/* 押すと、**縮まずに膨らんで明るくなります**。動画（Structured）の実測が
+   これでした——押した瞬間に丸が一回り大きくなり、色が一段明るいほうへ振れる。
+   縮む動きは「引っ込む」ことなので、これから何かが出てくるボタンの合図と
+   しては逆を向いています。 */
+.add-fab:active {
+  transform: scale(1.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 42%),
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .4), transparent 60%),
+    color-mix(in srgb, var(--c-primary) 22%,
+      color-mix(in srgb, var(--c-bg-elev) 58%, transparent));
+}
 @media (hover: hover) {
   .add-fab:hover { background:
     linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%),
@@ -2967,7 +2978,7 @@ a.btn { text-decoration: none; }
 /* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
 .add-fab { transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease); }
 .add-fab.is-open { transform: rotate(45deg); }
-.add-fab.is-open:active { transform: rotate(45deg) scale(.92); }
+.add-fab.is-open:active { transform: rotate(45deg) scale(1.06); }
 
 /* ---------------- 済ませたときの動き（やること） ----------------
 

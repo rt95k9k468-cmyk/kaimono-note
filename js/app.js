@@ -132,6 +132,33 @@
       });
       bar.append(btn);
     });
+
+    /* ---- 押したところから、光が生まれる ----
+
+       帯はガラスです。ガラスは触られたところで光を拾うので、押した合図は
+       「ボタンの色が変わる」ではなく「そこから光が広がる」であってほしい。
+
+       光を置くのは**帯のカプセル全体**で、押されたタブの中ではありません。
+       タブごとに区切ると、隣との境目で光が四角く切れます——カプセルは一枚の
+       ガラスなので、光もその一枚の上を広がります。丸みはカプセルと同じ。
+
+       座標は指の位置そのもの（clientX/Y）です。ボタンの真ん中ではありません
+       ——「押した場所から」と言うなら、指の下から出ないと嘘になります。 */
+    const glow = node(html`<i class="tab-glow" aria-hidden="true"></i>`);
+    bar.append(glow);
+    bar.addEventListener("pointerdown", (e) => {
+      if (!e.target || !e.target.closest || !e.target.closest(".tab")) return;
+      const r = glow.getBoundingClientRect();
+      if (!r.width) return;
+      glow.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
+      glow.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
+      /* 同じところを続けて押しても光り直すように、いちど外して測り直します
+         （class を付け直すだけでは、同じアニメーションは巻き戻りません）。 */
+      glow.classList.remove("is-lit");
+      void glow.offsetWidth;
+      glow.classList.add("is-lit");
+    });
+
     paintTabs();
   }
 
