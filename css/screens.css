@@ -3714,21 +3714,20 @@ a.btn { text-decoration: none; }
      週／月／暦なしで変わるので、CSSに数字を焼き込めません。 */
   top: calc(var(--topbar-h, 0px) + var(--cal-h, 0px));
   z-index: 5;
-  /* 紙のふちを、白でなぞります。実測（Structured）では、これは紙の外に
-     落ちる影ではなく、丸い縁そのものが少し明るく光って見える効きどころ
-     でした——動画で確かめると、紙の**外**（暦との境目）には何もなく、
-     丸まっている**紙自身の縁**が周りよりわずかに白い。
+  /* 紙のふちを、白でなぞります。ユーザーが実測した画像では、境目の
+     いちばん上の1行だけがほぼ純白（255）で、そこから数pxで紙の地色
+     （252〜253あたり）に落ち着いていました——太い帯ではなく、ごく
+     細い線でした（前は16〜28pxで戻す緩やかな帯にしていて、太すぎ
+     ました）。
 
-     だから別の層を重ねるのではなく、掴み手の背景そのものを縦のグラデ
-     ーションにします。いちばん上（丸くなっているところ）を純白にし、
-     数pxだけ沈めて、紙の地色に戻す——これだけで、背景の四角い箱では
-     なく**この丸角の形どおりに**光って見えます（border-radius は要素
-     自身の塗りにも掛かるので、四角い影が丸の下からはみ出す心配が
-     要りません）。紙（.tl-sheet）の側には一切触れていません。 */
+     掴み手の背景を縦のグラデーションにするところは変えていません。
+     border-radius は要素自身の塗りにも掛かるので、この丸角の形どおり
+     に光ります（四角い影が丸の下からはみ出す心配がありません）。
+     紙（.tl-sheet）の側には一切触れていません。 */
   background: linear-gradient(180deg,
     #fff 0,
-    color-mix(in srgb, var(--c-surface) 96%, #000) 16px,
-    var(--c-surface) 28px);
+    color-mix(in srgb, var(--c-surface) 95%, #000) 4px,
+    var(--c-surface) 11px);
   border-radius: 22px 22px 0 0;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
@@ -3741,13 +3740,13 @@ a.btn { text-decoration: none; }
   :root:not([data-theme="light"]) .tl-grip {
     background: linear-gradient(180deg,
       color-mix(in srgb, var(--c-surface) 88%, #fff) 0,
-      var(--c-surface) 22px);
+      var(--c-surface) 9px);
   }
 }
 :root[data-theme="dark"] .tl-grip {
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--c-surface) 88%, #fff) 0,
-    var(--c-surface) 22px);
+    var(--c-surface) 9px);
 }
 /* 引いているあいだ、字は選ばせません。選ばれたままだと、次にその上から
    引いたときブラウザが「選んだ字を運ぶ」ほうの手つきを始めて、こちらの
