@@ -30,7 +30,7 @@
                    なります。帯の高さは四つのタブで揃っていること——
                    ここだけ深いと、一段下の階層にいるように見えるので。
                    数は下（.js-count）へ移しました。 */""}
-              <h1 class="topbar-title tab-title">価格</h1>
+              <h1 class="topbar-title tab-title">prices</h1>
             </div>
             ${/* The ＋ is not up here any more — it is the same floating
                  button the list screen has, in the dock at the bottom

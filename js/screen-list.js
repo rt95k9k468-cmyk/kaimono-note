@@ -39,8 +39,8 @@
                     ので、そのとき題はもう「価格」になっていて、継ぎ目が
                     見えません。 */""}
               <h1 class="topbar-title tab-title face-title">
-                <span class="face-t face-t-front">買うもの</span>
-                <span class="face-t face-t-back" aria-hidden="true">価格</span>
+                <span class="face-t face-t-front">shopping</span>
+                <span class="face-t face-t-back" aria-hidden="true">prices</span>
               </h1>
               <div class="topbar-sub js-sub"></div>
             </div>

@@ -104,12 +104,12 @@
     },
     {
       group: "画面ごと",
-      id: "todo", title: "やること", icon: "checklist", tint: "#c96a61",
+      id: "todo", title: "tasks", icon: "checklist", tint: "#c96a61",
       build: () => [todoGroup()],
       value: () => (store.get().settings.todoTimeline !== false ? "時間割" : "一覧"),
     },
     {
-      id: "list", title: "買うもの", icon: "cart", tint: "#5686bd",
+      id: "list", title: "shopping", icon: "cart", tint: "#5686bd",
       /* お店とカテゴリは、どちらも買うものの中の話です。目次に並べていた
          ので「お店」と「表示」が同じ重さに見えていました。一段下げて、
          二つ一緒にこの中へ。 */
@@ -120,7 +120,7 @@
       },
     },
     { id: "daily", title: "daily", icon: "book", tint: "#9a6fae", build: () => [dailyGroup()] },
-    { id: "diet", title: "ダイエット", icon: "scale", tint: "#bd7a2e", build: () => [dietGroup()] },
+    { id: "diet", title: "health", icon: "heart", tint: "#bd7a2e", build: () => [dietGroup()] },
   ];
 
   /* ---------------- 開いたら、その画面の設定から ----------------
@@ -441,7 +441,7 @@
   function todoGroup() {
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="section-title">やること</h2>
+        <h2 class="section-title">tasks</h2>
         <div class="rows">
           ${/* 時間割が読む一日の枠。ここがその人の暮らしと合っていないと、
                 「このあと ◯時間あいています」の数がぜんぶずれます。 */""}
@@ -1310,7 +1310,7 @@
     const aiOn = KN.dietAI.configured();
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="section-title">ダイエット</h2>
+        <h2 class="section-title">health</h2>
         <div class="rows">
           <span class="js-cal-slot"></span>
           <button class="row js-goal">

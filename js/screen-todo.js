@@ -2467,17 +2467,16 @@
        自分の週が無くなります）。 */
     const goTo = (delta) => {
       haptic();
-      /* 一日ずつのときは、一日ぶん送ります。週ごと飛ばすと、隣の日を
-         見るのに七回ぶん動くことになります。週をまたげば帯のほうが
-         ついてきます（markDay → markWeek）。 */
-      if (oneDay()) {
-        goDay(KN.util.shiftDay(shownDay(), delta), delta);
-        return;
-      }
+      /* 暦の送りは、出しているものに合わせます——週なら週、月なら月。
+         一日ずつの紙のときも同じです。日を一日ぶんだけ送る道は、紙
+         そのものを払うほうにあります（day-swipe.js）。ここで日ずつ
+         飛ばすと、隣の週を見るのに七回ぶん動くことになるので。 */
       if (!calOpen()) {
-        const next = KN.util.shiftDay(hereDay || todayKey(), delta * 7);
+        const here = oneDay() ? shownDay() : (hereDay || todayKey());
+        const next = KN.util.shiftDay(here, delta * 7);
         const d = KN.util.dayDate(next);
         setCalMonth(d.getFullYear(), d.getMonth(), true);
+        if (oneDay()) { goDay(next, delta); return; }
         markDay(next, true);
         jumpToDay(next);
         return;
@@ -2485,6 +2484,15 @@
       const m = shownMonth();
       const d = new Date(m.year, m.month + delta, 1);
       setCalMonth(d.getFullYear(), d.getMonth(), true);
+      if (oneDay()) {
+        /* 一日ずつの紙も、その月へ運びます——暦と紙が同じ月を指すように。
+           いまの月なら今日、そうでなければその月の頭。 */
+        const now = KN.util.dayDate(todayKey());
+        const key = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+          ? todayKey() : KN.util.dayKey(d);
+        goDay(key, delta);
+        return;
+      }
       scrollToMonth(d.getFullYear(), d.getMonth());
     };
 

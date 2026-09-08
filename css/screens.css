@@ -2030,12 +2030,24 @@
   gap: var(--sp-8);
 }
 
-.diet-day { padding: 0; overflow: hidden; touch-action: pan-y; }
+/* からだ・食事の帯が同じ色（`--c-sheet`）になったので、色だけでは境目が
+   言えません。ここに小さな gap を足して、地（`--c-bg`）を細く覗かせます
+   ——線は引かず、余白のほうに言わせる、という daily と同じ手です。 */
+.diet-day { padding: 0; overflow: hidden; touch-action: pan-y; display: flex; flex-direction: column; gap: var(--sp-2); }
 .diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 /* ダイエットの紙は `.tl-sheet.is-bare`（面を持たない）なので、この三つの
    帯が実質の「紙」です。混ぜる相手は `--c-surface`（純白）ではなく
-   `--c-sheet`——紙の地の色が変わるたびに、ここもついてくるように。 */
-.diet-block.is-body   { background: color-mix(in srgb, var(--c-primary) 5%, var(--c-sheet)); }
+   `--c-sheet`——紙の地の色が変わるたびに、ここもついてくるように。
+
+   **からだ（is-body）の赤みは落としました。** 他のタブの帯（daily・
+   やること・買うもの）はどれも色付けの無い `--c-sheet` そのものなので、
+   ここだけ色が付いていると青／赤の帯がこの画面固有のものに見えます。
+   境目は色ではなく、段のあいだの余白（`.diet-day` の `gap`）が持ちます。
+
+   **体重（is-weight）の青みは、残します。** ここだけは意味が違います
+   ——からだ寄りの他画面には無い、この帯だけの数字（グラフ・目標）の
+   置き場だと分かるように。 */
+.diet-block.is-body   { background: var(--c-sheet); }
 .diet-block.is-meal   { background: var(--c-sheet); }
 .diet-block.is-weight { background: color-mix(in srgb, #4a8fd9 6%, var(--c-sheet)); }
 /* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
@@ -4166,9 +4178,11 @@ a.btn { text-decoration: none; }
 
    一日ぶんの記録（からだ・食事・体重）は、画面の余白の内側にカードが
    あり、そのカードの中にまた枠が並ぶ、という三重でした。中身がいちばん
-   奥に沈みます。紙そのものを画面いっぱいに広げて、区切りは地の色だけに
-   任せます——もともと「同じ一日の別の面」を言うために色で分けてあった
-   ので、外枠は無くても三つは分かれて見えます。 */
+   奥に沈みます。紙そのものを画面いっぱいに広げて、外枠を無くします。
+
+   区切りは、色だけには任せません。**からだ・食事は同じ地の色**なので
+   （からだの赤みは落としました）、そこは小さな gap（`.diet-day`）が
+   地を覗かせて言います。体重だけは青みが残っているので、色でも分かります。 */
 .diet { padding: 0 0 var(--sp-6); gap: 0; }
 .diet-day.card {
   border-radius: 0;
