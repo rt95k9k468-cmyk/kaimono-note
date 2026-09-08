@@ -1986,8 +1986,18 @@
 
    touch-action: pan-y で、縦のスクロールはブラウザの手に残したまま、
    横の動きだけをこちらが引き受けます——両方を素の指のジェスチャーに
-   任せると、ページの縦スクロールと綱引きになって反応が鈍ります。 */
-.day-car { overflow: hidden; touch-action: pan-y; }
+   任せると、ページの縦スクロールと綱引きになって反応が鈍ります。
+
+   **`flex-shrink: 0` が要ります。** daily の紙（`.tl-sheet.is-daily`）は
+   自身が `display:flex; flex-direction:column` で、かつスクロールする
+   箱（`overflow-y:auto`）です。flexbox の既定では、`overflow` が
+   `visible` でない子は `min-height: auto` が `0` になる決まりがあり
+   ——この `.day-car` の `overflow: hidden` がまさにそれで、紙の残り
+   高さに収まるよう**中身より低く縮められて**しまいます（実測：本文が
+   2000字あっても car は 393px のまま）。あふれた文字が箱の外に出られず、
+   スクロールもできなくなっていました。`flex-shrink: 0` で、中身の高さを
+   守ります。 */
+.day-car { overflow: hidden; touch-action: pan-y; flex-shrink: 0; }
 .day-track {
   display: flex;
   /* 三枚は、それぞれ自分の中身のぶんだけの高さで立たせます。flex の既定
