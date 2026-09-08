@@ -157,6 +157,16 @@
       store.setCalPref("diet", { open: !calOpen() });
     });
 
+    /* 題の右の「今日へ戻る」。`viewDay` も `calMonth` も落とすと、どちらも
+       今日を指しなおします（curDay / shownMonth の既定がそれ）。今日を見て
+       いるあいだは `paintDayTitleInto` が押せなくしています。 */
+    chrome.querySelector(".js-go-today").addEventListener("click", () => {
+      KN.motion.fire("select");
+      viewDay = null;
+      calMonth = null;
+      render();
+    });
+
 
     /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
        消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の

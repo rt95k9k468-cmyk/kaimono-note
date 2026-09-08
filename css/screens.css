@@ -433,21 +433,48 @@
 .day-d { color: var(--c-text); }
 .day-d.is-today { color: var(--c-primary-fill); }
 
-.day-more {
+.topbar-day:active { opacity: .6; }
+
+/* ---- 題の右の「今日へ戻る」 ----
+
+   ここは「›」が居た場所です。あれは `--cal-p` で回って暦の開き具合を
+   言っていましたが、daily では題を押すと**月を選ぶ紙**が開くので、あそこ
+   では回る意味がありませんでした。やること・health では効いていたものの、
+   開いているかどうかは暦そのものの高さがもう言っています。
+
+   **場所は、どの日を見ていても同じだけ取ります。** 前に外した「今日へ帰る」
+   札は当日でないときだけ出て、そのぶん題の字を一段落としていました——今日と
+   それ以外で題の大きさが変わって見えた原因がそれです。ここは出入りせず、
+   今日を見ているあいだは薄くして押せなくするだけ。だから題の clamp も
+   帯の高さも、日によって動きません。
+
+   絵は 17px（「›」と同じ）、指の的は 44px（`::after` が持つ。`.icon-btn`
+   と同じ手で、幅を増やさずに的だけ広げます）。 */
+.topbar-today {
   display: grid; place-items: center;
   flex: none;
+  position: relative;
+  width: 26px; height: 26px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--c-primary-fill);
-  transition: transform var(--dur) var(--ease);
+  transition: opacity var(--dur) var(--ease);
 }
-.day-more svg { width: 17px; height: 17px; stroke-width: 2.6; }
-/* 傾きは、暦がどれだけ開いているか（--cal-p：0＝週、1＝月）そのものです。
-   押して切り替えたときは 0↔1 が一息で入れ替わり、紙を引いているあいだは
-   指と一緒に少しずつ回ります——同じ一つの数を見ているので、途中で手を
-   離しても「›」だけが取り残されることがありません。 */
-.day-more { transform: rotate(calc(var(--cal-p, 0) * 90deg)); }
-/* 指の下では滑らせません。遅れて追ってくると、ずれて見えます。 */
-.is-cal-peek .day-more { transition: none; }
-.topbar-day:active { opacity: .6; }
+.topbar-today svg { width: 17px; height: 17px; }
+.topbar-today::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+.topbar-today:active { opacity: .5; }
+/* 今日を見ているあいだ。**消さずに薄く**——消すと、日を送るたびに題の右で
+   何かが出入りします。押せないので、的も取り下げます。 */
+.topbar-today[disabled] { opacity: .22; }
+.topbar-today[disabled]::after { content: none; }
 
 .cal-head {
   display: flex;

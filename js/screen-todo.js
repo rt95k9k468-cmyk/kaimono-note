@@ -180,6 +180,18 @@
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
     });
+    /* 題の右の「今日へ戻る」。一日ずつの紙なら日を入れ替え、一覧で見て
+       いるときは今日の棚まで運びます（暦の送りと同じ二通り）。今日を見て
+       いるあいだは `paintDayTitleInto` が押せなくしています。 */
+    chrome.querySelector(".js-go-today").addEventListener("click", () => {
+      haptic();
+      const today = todayKey();
+      const d = KN.util.dayDate(today);
+      setCalMonth(d.getFullYear(), d.getMonth(), true);
+      if (oneDay()) { goDay(today, -1); return; }
+      markDay(today, true);
+      jumpToDay(today);
+    });
     /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
        高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
        焼き込むと、機種が変わった日にずれます。 */
