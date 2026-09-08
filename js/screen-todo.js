@@ -120,11 +120,12 @@
                   一度は一段下げて暦の見出しに置きました。幅が足りなかった
                   からです——四つのボタンと同居できなかった。設定が帯へ移って
                   一つ減ったので、ここへ戻せます。戻したぶん、暦の見出しの
-                  行がまるごと消えました。 */""}
-            <button type="button" class="topbar-day js-day-title">
-              <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
-              <span class="day-more">${icon("chevron")}</span>
-            </button>
+                  行がまるごと消えました。
+
+                  形も書式も KN.util が持ちます（daily・ダイエットと同じ
+                  ひと組）——三か所に書き写すと、片方だけ直した日に三つの
+                  題が違う顔をするので。 */""}
+            ${KN.util.dayTitleBar()}
             ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
                   暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
                   たまにしか使いません。たまに使うものは設定の中へ。
@@ -173,10 +174,20 @@
     /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
        ——暦は描き直されますが、バーは残るので。 */
+    els.dayRow = chrome.querySelector(".topbar-dayrow");
     els.dayTitle = chrome.querySelector(".js-day-title");
     els.dayTitle.addEventListener("click", () => {
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
+    });
+    /* 今日へ帰る札。ここでの「今日」は todayKey() そのものです——日を
+       送るのと同じ道（goDay）を通すので、紙の入れ替わりも同じに見えます。
+       向きは、いま見ている日より今日が先か後かで決めます。 */
+    chrome.querySelector(".js-today").addEventListener("click", () => {
+      const now = todayKey();
+      if (shownDay() === now) return;
+      haptic();
+      goDay(now, shownDay() < now ? 1 : -1);
     });
 
     /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
@@ -398,18 +409,13 @@
     paintDayTitle();
   }
 
-  /** 画面の題に、いま見ている日を書きます。 */
+  /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
-    if (!els.dayTitle || !els.dayTitle.isConnected) return;
+    if (!els.dayRow || !els.dayRow.isConnected) return;
     const key = oneDay() ? shownDay() : (hereDay || todayKey());
-    const d = KN.util.dayDate(key);
-    if (!d || isNaN(d.getTime())) return;
-    els.dayTitle.querySelector(".day-y").textContent = String(d.getFullYear());
-    els.dayTitle.querySelector(".day-md").textContent =
-      `年${d.getMonth() + 1}月${d.getDate()}日`;
+    KN.util.paintDayTitleInto(els.dayRow, key,
+      `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
-    els.dayTitle.setAttribute("aria-label",
-      `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日。押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
   }
 
   function paintHere(jump) {

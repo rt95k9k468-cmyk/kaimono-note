@@ -353,12 +353,20 @@
 
    大きさは幅に合わせて縮みます。「2026年12月31日」は390pxの画面で
    26pxだと右の四つのボタンとぶつかるので、clamp で折り合いを付けます。 */
+/* 日付の題と、その右の Today の札は、一組で「いま見ている日」を言います。
+   帯の余りを押すのはこの組のほう——札が出たり消えたりするたびに、押す
+   相手が入れ替わらないように。 */
+.topbar-dayrow {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-right: auto;
+}
 .topbar-day {
   display: flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
-  margin-right: auto;
   background: none;
   border: none;
   padding: 0;
@@ -368,9 +376,15 @@
   display: flex;
   align-items: baseline;
   min-width: 0;
-  /* 実測は 428pt の画面で 26px 相当。狭い端末では ‹ › とぶつかるので、
-     幅に合わせて縮めます。 */
-  font-size: clamp(18px, 6.4vw, 26px);
+  /* 実測は 428pt の画面で 26px 相当。狭い端末では右の二つとぶつかるので、
+     幅に合わせて縮めます。
+
+     曜日（「（火）」＝ 3文字ぶん）と、当日でないときに出る Today の札が
+     加わったぶん、**係数を下げました**（6.4vw/26px → 5.4vw/23px）。
+     前のままだと、実測で 320px の画面で「日（日）」が、390px でも「（火）」
+     が欠けます。ここは字の大きさより、**日付が最後まで読めること**が先。 */
+  font-size: clamp(16px, 5.4vw, 23px);
+
   font-weight: 700;
   letter-spacing: -.02em;
   white-space: nowrap;
@@ -392,8 +406,66 @@
   margin: 0;
 }
 
+/* 色を当てる相手は二つです。**年はいつも差し色**（いま何年のどこを見て
+   いるか、の頭）。**日にちの数は、当日のときだけ差し色**——参考にした
+   画面が暦の帯で今日の数だけ色を変えているのと同じで、「開いているのが
+   今日かどうか」を、字の色そのものが言います。残り（年◯月・日（火））は
+   黒のまま。 */
 .day-y { color: var(--c-primary-fill); }
-.day-md { color: var(--c-text); }
+.day-pre, .day-post { color: var(--c-text); }
+.day-d { color: var(--c-text); }
+.day-d.is-today { color: var(--c-primary-fill); }
+
+/* 当日ではない日を見ているときだけ出る、今日へ帰る札。
+
+   暦から今日を探して押す道はありますが、暦は畳んであることもあり
+   （三段目）、月をまたいで戻るには送りも要ります。**帰り道は一つ、
+   いつも同じところに**——日付のすぐ右、というのがその置き場です。
+   当日を見ているあいだは出しません（押しても何も起きない札は、
+   「押せることがある」という記憶だけを増やします）。 */
+/* 日付の題がいる帯だけ、右の二つとの間を詰めます（12 → 8px）。指の的は
+   44px のまま（.icon-btn::after が持っています）なので、詰めても押しにくく
+   はなりません。詰めたぶんは、日付が最後まで読めることに回ります。 */
+.topbar-row:has(.topbar-dayrow) { gap: 8px; }
+/* Today の札が出ているあいだは、そのぶん字を一段落とします。札は当日で
+   ないときだけ出るので、**ふだんの題は大きいまま**——狭い一日のためだけに
+   毎日小さくする必要はありません。 */
+.topbar-dayrow:has(.topbar-today:not([hidden])) .topbar-title {
+  font-size: clamp(15px, 4.6vw, 21px);
+}
+/* いちばん狭い画面（320px 級）で、Today の札まで出ている日だけは、それでも
+   16px 足りません（実測）。**落とすのは「›」のほう**です——あれは題が押せる
+   ことの目印で、押せること自体は題が持っています。日付の字を欠けさせる
+   （何日か読めなくなる）のと引き比べれば、こちらが先に譲る側。 */
+@media (max-width: 360px) {
+  .topbar-dayrow:has(.topbar-today:not([hidden])) .day-more { display: none; }
+}
+
+.topbar-today {
+  flex: none;
+  margin-left: 6px;
+  padding: 0 8px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--c-primary-fill) 18%, transparent);
+  color: var(--c-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.topbar-today:active { opacity: .6; }
+/* 指の的は44px。見えている札は24pxのままで、当たりだけ外へ広げます
+   （上のバーの高さを変えないため——`.icon-btn::after` と同じ手当て）。 */
+.topbar-today { position: relative; }
+.topbar-today::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: max(100%, 44px); height: 44px;
+  transform: translate(-50%, -50%);
+}
 .day-more {
   display: grid; place-items: center;
   flex: none;
@@ -3747,7 +3819,9 @@ a.btn { text-decoration: none; }
    ないからです。 */
 .tl-sheet {
   position: relative;
-  background: var(--c-surface);
+  /* 純白ではなく 253。ふちの純白の一本（掴み手の inset）が見えるための
+     一段です——両方が純白だと、線は引いてあっても見えません。 */
+  background: var(--c-sheet);
   border-radius: 22px 22px 0 0;
   /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
      ——途中で切れると、その下の地が「まだ何かある」に見えます。
@@ -3776,12 +3850,14 @@ a.btn { text-decoration: none; }
      週／月／暦なしで変わるので、CSSに数字を焼き込めません。 */
   top: calc(var(--topbar-h, 0px) + var(--cal-h, 0px));
   z-index: 5;
-  background: var(--c-surface);
+  /* 掴み手の地は、紙の地と**同じ**でなければなりません（貼りついたまま
+     行がその下を通るので、少しでも違うと帯に見えます）。 */
+  background: var(--c-sheet);
   border-radius: 22px 22px 0 0;
   /* 紙のふちを、純白で一本なぞります。単色・1px・inset だけ——
      border-radius は box-shadow にも掛かるので、この丸角の形どおりに
-     出ます。紙（.tl-sheet）の側には触れていません。 */
-  box-shadow: inset 0 1px 0 #fff;
+     出ます。地を 253 に下げたので、この一本がようやく見えます。 */
+  box-shadow: inset 0 1px 0 var(--c-sheet-edge);
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
