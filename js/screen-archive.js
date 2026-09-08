@@ -117,19 +117,17 @@
     sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
   }
 
-  /** 画面の題に、いま見ているところを書きます。年だけ差し色（やることと
-      同じ組み）。日を選んでいれば日まで、月ぜんぶを見ているなら月まで
-      ——見ていないものを題に書くと、そこが嘘になります。 */
+  /** 画面の題に、いま見ている日を書きます（やること・ダイエットと同じ
+      ひと組。書式は KN.util が持ちます）。
+
+      「日を選んでいなければ月まで」という書き方をしていました。あれは
+      月ぜんぶを縦に並べていたころの決めごとで、紙が一日ぶんになったいま、
+      題だけ月を言うと**紙と題が違うことを言います**。日を選んでいない
+      ときに紙が出しているのは focusDay()——そこを、そのまま題にします。 */
   function paintDayTitle() {
-    if (!els.dayTitle || !els.dayTitle.isConnected) return;
-    const { year, month } = shownMonth();
-    const d = viewDay ? U.dayDate(viewDay) : null;
-    const md = d ? `年${d.getMonth() + 1}月${d.getDate()}日` : `年${month + 1}月`;
-    els.dayTitle.querySelector(".day-y").textContent = String(d ? d.getFullYear() : year);
-    els.dayTitle.querySelector(".day-md").textContent = md;
+    if (!els.dayRow || !els.dayRow.isConnected) return;
+    KN.util.paintDayTitleInto(els.dayRow, focusDay(), "押すと月を選ぶ");
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
-    els.dayTitle.setAttribute("aria-label",
-      `${d ? d.getFullYear() : year}${md}。押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
   }
 
   function shownMonth() {
@@ -1332,14 +1330,17 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
-            ${/* 題は、いま見ているところ。やることと同じ組みです——年だけ
-                  差し色、月日が黒、右に「›」。押すと暦が月ぜんぶに開きます。
+            ${/* 題は、いま見ている**日**。やること・ダイエットと同じひと組を
+                  KN.util から借ります——年は差し色、日にちの数は今日のときだけ
+                  差し色、右に「›」。押すと月を選ぶ紙が開きます。
                   月と年を別に出す見出しの行（「8月 2026」）と「週」の札は、
-                  この題に吸収されて消えました。 */""}
-            <button type="button" class="topbar-day js-day-title">
-              <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
-              <span class="day-more">${icon("chevron")}</span>
-            </button>
+                  この題に吸収されて消えました。
+
+                  「日を選んでいなければ 8月 まで」という書き方をしていました
+                  ——月ぜんぶを縦に並べていたころの名残です。Daily Log が
+                  一日ぶんになったいま、紙に出ているのはその**日**なので、
+                  題も日まで言います（言わないと、紙と題が別のことを言う）。 */""}
+            ${KN.util.dayTitleBar()}
             ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）・
                   暦の出し入れ・月の書き出しは、たまにしか使いません。たまに
                   使うものは設定の中へ。右上に居るのは「どの画面でも同じ
@@ -1367,6 +1368,7 @@
       body: root.querySelector(".js-body"),
       screen: root,
       topbar: root.querySelector(".topbar"),
+      dayRow: root.querySelector(".topbar-dayrow"),
       dayTitle: root.querySelector(".js-day-title"),
       searchBtn: root.querySelector(".js-search-btn"),
       searchWrap: root.querySelector(".js-search-wrap"),
@@ -1386,6 +1388,16 @@
     els.dayTitle.addEventListener("click", () => {
       KN.motion.fire("select");
       openMonthPicker();
+    });
+
+    /* 今日へ帰る札。月ぜんぶを見ていた名残（viewMonth）も一緒に落とします
+       ——今日へ帰るのに、先月の暦が出たままでは帰りきっていません。 */
+    root.querySelector(".js-today").addEventListener("click", () => {
+      if (focusDay() === U.todayKey()) return;
+      KN.motion.fire("select");
+      viewMonth = null;
+      viewDay = null;
+      render();
     });
 
     /* ずっと見えている暦は、上のバーのすぐ下に貼りつきます。バーの高さは

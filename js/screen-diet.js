@@ -102,14 +102,12 @@
       <div class="stack">
         <header class="topbar">
           <div class="topbar-row">
-            ${/* 題は、いま見ている日。やること・daily と同じ組みです——年だけ
-                  差し色、月日が黒、右に「›」。押すと暦が月ぜんぶに開きます。
+            ${/* 題は、いま見ている日。やること・daily と同じひと組を KN.util
+                  から借ります——年は差し色、日にちの数は今日のときだけ差し色、
+                  右に「›」。押すと暦が月ぜんぶに開きます。
                   月と年を別に出す見出しの行（「8月 2026」）と「週」の札、
                   ‹ › は、この題に吸収して消えました。 */""}
-            <button type="button" class="topbar-day js-day-title">
-              <span class="topbar-title"><span class="day-y"></span><span class="day-md"></span></span>
-              <span class="day-more">${icon("chevron")}</span>
-            </button>
+            ${U.dayTitleBar()}
             ${/* 右上は**二つだけ**です——さがす と 設定。暦の出し入れと
                   ヘルスケアからの取り込みは、たまにしか使いません。たまに
                   使うものは設定の中へ（取り込みの札は前からそこにあります）。
@@ -138,6 +136,7 @@
     root.append(chrome);
 
     els = {
+      dayRow: chrome.querySelector(".topbar-dayrow"),
       dayTitle: chrome.querySelector(".js-day-title"),
       body: chrome.querySelector(".js-body"),
       topbar: chrome.querySelector(".topbar"),
@@ -156,6 +155,16 @@
     els.dayTitle.addEventListener("click", () => {
       KN.motion.fire("select");
       store.setCalPref("diet", { open: !calOpen() });
+    });
+
+    /* 今日へ帰る札。暦の月も一緒に今月へ戻します——今日の記録を出しながら
+       先月の暦が出たままでは、帰りきっていません。 */
+    chrome.querySelector(".js-today").addEventListener("click", () => {
+      if (curDay() === U.todayKey()) return;
+      KN.motion.fire("select");
+      viewDay = null;
+      calMonth = null;      // null ＝「今日の月」（shownMonth の既定）
+      render();
     });
 
     /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
@@ -581,16 +590,12 @@
     sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
   }
 
-  /** 画面の題に、いま見ている日を書きます（やること・daily と同じ組み）。 */
+  /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
-    if (!els.dayTitle || !els.dayTitle.isConnected) return;
-    const d = U.dayDate(curDay());
-    if (!d || isNaN(d.getTime())) return;
-    els.dayTitle.querySelector(".day-y").textContent = String(d.getFullYear());
-    els.dayTitle.querySelector(".day-md").textContent = `年${d.getMonth() + 1}月${d.getDate()}日`;
+    if (!els.dayRow || !els.dayRow.isConnected) return;
+    U.paintDayTitleInto(els.dayRow, curDay(),
+      `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
-    els.dayTitle.setAttribute("aria-label",
-      `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日。押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
   }
 
   /* ---------------- 紙を下に引くと、月が出てくる ----------------

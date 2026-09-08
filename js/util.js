@@ -302,6 +302,83 @@
     return d.getFullYear() === new Date().getFullYear() ? md + wd : `${d.getFullYear()}/${md}${wd}`;
   }
 
+  /* ---------- 上の帯の、日付の題 ----------
+
+     やること・daily・ダイエットの三画面が、同じ一つの書式を使います
+     （`2026年9月8日（火）`）。**書式をここに置くのは、三か所に書き写すと
+     片方だけ直した日に三つの題が違う顔をするから**です。三つの画面が
+     答えるのは「ここでの『いま見ている日』は何か」だけ。
+
+     四つに割って返すのは、**色を当てる相手が二つある**からです——年
+     （いつも差し色）と、日にちの数（**当日のときだけ**差し色）。参考に
+     した画面が暦の帯で当日の数だけ色を変えているのと同じ理屈で、
+     「いま開いているのは今日だ」を、字の色そのものが言います。
+
+     曜日まで書くのは、日付だけでは「その日が何曜だったか」を数えないと
+     分からないからです。予定を組むときに要るのは、たいてい曜日のほう。 */
+  function dayTitleParts(key) {
+    const d = dayDate(key);
+    if (!d) return null;
+    return {
+      y: String(d.getFullYear()),
+      pre: `年${d.getMonth() + 1}月`,
+      d: String(d.getDate()),
+      post: `日（${WEEKDAYS[d.getDay()]}）`,
+      isToday: key === todayKey(),
+    };
+  }
+
+  /** 読み上げ用の一本の字。上の四つを、そのままつないだもの。 */
+  function dayTitleText(key) {
+    const p = dayTitleParts(key);
+    return p ? p.y + p.pre + p.d + p.post : "";
+  }
+
+  /** 上の帯に置く、ひと組（日付の題 ＋ 今日へ帰る札）。三画面で同じ形です。 */
+  function dayTitleBar() {
+    return html`
+      <div class="topbar-dayrow">
+        <button type="button" class="topbar-day js-day-title">
+          <span class="topbar-title"><span class="day-y"></span><span class="day-pre"></span><span
+                class="day-d"></span><span class="day-post"></span></span>
+          <span class="day-more">${icon("chevron")}</span>
+        </button>
+        <button type="button" class="topbar-today js-today" hidden>Today</button>
+      </div>
+    `;
+  }
+
+  /**
+   * 組んだひと組に、その日を書きます。
+   * @param {Element} row  .topbar-dayrow（の中を持っているもの）
+   * @param {string} key   いま見ている日
+   * @param {string} [action] 題を押すと何が起きるか（読み上げ用）
+   * @returns {Element|null} Today の札。押されたときの行き先は、画面ごとに違う
+   *          （やることは goDay、daily は月ごと、ダイエットは viewDay）ので、
+   *          繋ぐのは呼んだ側の仕事です。
+   */
+  function paintDayTitleInto(row, key, action) {
+    if (!row) return null;
+    const p = dayTitleParts(key);
+    if (!p) return null;
+    const q = (s) => row.querySelector(s);
+    const dEl = q(".day-d");
+    if (!dEl) return null;
+    q(".day-y").textContent = p.y;
+    q(".day-pre").textContent = p.pre;
+    dEl.textContent = p.d;
+    dEl.classList.toggle("is-today", p.isToday);
+    q(".day-post").textContent = p.post;
+    const btn = q(".js-day-title");
+    if (btn) btn.setAttribute("aria-label", dayTitleText(key) + (action ? `。${action}` : ""));
+    const today = q(".js-today");
+    if (today) {
+      today.hidden = p.isToday;
+      today.setAttribute("aria-label", "今日へもどる");
+    }
+    return today;
+  }
+
   function relativeDate(iso) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";
@@ -453,6 +530,7 @@
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
+    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,

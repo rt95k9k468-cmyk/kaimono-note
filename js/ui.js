@@ -207,14 +207,29 @@
 
        ×、下へ払う、外を押す——どれも「やめる」の合図ですが、**書いたものを
        捨てる合図ではありません**。開いたときの中身を覚えておいて、変わって
-       いれば一度だけ聞きます。「保存する」を選べば、そのまま保存の
-       ボタンを押したのと同じことが起きます（検算で止まる紙なら、止まります）。 */
-    const fields = () => [...el.querySelectorAll(".sheet-body input, .sheet-body textarea, .sheet-body select")]
-      .filter((f) => !f.readOnly && !f.disabled && f.type !== "file");
+       いれば**そのまま保存します**。聞きません——保存のボタンがそこにあって、
+       押せる状態で、中身が変わっているなら、答えはもう決まっているので。
+
+       聞くのは、**押しても保存が通らなかったとき**だけです（体重が空、
+       のような検算で止まる紙）。そのときは紙が閉じないので、それを合図に
+       従来どおり一度だけ聞きます——「保存しない」を選ぶ道が無いと、直せない
+       欄を抱えた紙から出られなくなるので。
+
+       ---- 見張る範囲は、紙ぜんぶ ----
+
+       ここは `.sheet-body` の中しか数えていませんでした。ところが**やること
+       の題の欄は頭（hero）にいます**——題を打ち替えただけだと「何も変わって
+       いない」と判定され、下へ払うと**黙って捨てられていました**。欄がどの
+       段にあるかは、書いた人にとって何の意味も持ちません。紙ぜんぶを見ます
+       （帯の中は押せば決まるものなので、そこだけ数えません）。 */
+    const inFoot = (n) => !!(footer && footer.contains && footer.contains(n));
+    const fields = () => [...el.querySelectorAll("input, textarea, select")]
+      .filter((f) => !f.readOnly && !f.disabled && f.type !== "file" && !inFoot(f));
     const snapshot = () =>
       fields().map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
       + "\u241E"
-      + [...el.querySelectorAll(".sheet-body [aria-pressed]")].map((b) => b.getAttribute("aria-pressed")).join(",");
+      + [...el.querySelectorAll("[aria-pressed]")].filter((b) => !inFoot(b))
+        .map((b) => b.getAttribute("aria-pressed")).join(",");
     /* 「押せば済む」ボタン。帯そのものがボタンのこともあれば（やること）、
        中に並んでいることもあります（体重、お酒）。押せない状態のものは
        数えません——押しても何も起きないので、聞く意味がありません。 */
@@ -235,15 +250,28 @@
       if (closed) return;
       const btn = guard === false ? null : primary();
       if (!btn || snapshot() === baseline) { close(); return; }
-      confirm({
-        title: "保存しますか？",
-        message: "書きかけのものがあります。",
-        okLabel: btn.textContent.trim() || "保存する",
-        cancelLabel: "保存しない",
-      }).then((ok) => {
-        if (ok) btn.click();
-        else close();
-      });
+      /* 保存のボタンを、そのまま押します。うまくいった紙は自分で閉じるので
+         （どの保存も最後に handle.close() を呼びます）、**閉じたかどうか**が
+         そのまま「保存できたか」の返事になります。
+
+         保存が非同期な紙のために、返事は一拍おいて聞きます。 */
+      btn.click();
+      setTimeout(() => {
+        if (closed) return;
+        /* 閉じていない＝検算で止まった紙です。何が足りないかは、その紙自身が
+           もう言っています（トースト）。ここで聞くのは「直す」か「捨てる」か
+           ——直せない欄を抱えたまま出られなくならないように。 */
+        /* 「捨てる」ほうを ok に置くのは、confirm が**流された（外を押した・
+           Escape）ときに false を返す**からです。false ＝ 何もしない＝紙は
+           開いたまま、が安全側になります。 */
+        confirm({
+          title: "保存できませんでした",
+          message: "書きかけのものが残っています。",
+          okLabel: "保存しない",
+          cancelLabel: "書きつづける",
+          danger: true,
+        }).then((drop) => { if (drop) close(); });
+      }, 80);
     }
 
     backdrop.addEventListener("click", tryClose);
@@ -299,7 +327,10 @@
       });
     });
 
-    const handle = { close, el };
+    /* tryClose も渡します。Escape で閉じる道（下の keydown）が close() を
+       直接呼んでいて、そこだけ**書きかけを黙って捨てていました**。閉じ方が
+       四つあるなら、四つとも同じ扱いにします。 */
+    const handle = { close, tryClose, el };
     openSheets.push(handle);
 
     // Focus the first meaningful control.
@@ -323,7 +354,8 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && openSheets.length) {
-      openSheets[openSheets.length - 1].close();
+      const top = openSheets[openSheets.length - 1];
+      (top.tryClose || top.close)();
       return;
     }
     if (e.key === "Tab" && openSheets.length) {
