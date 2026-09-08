@@ -336,10 +336,10 @@
    （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
 .cal.is-stuck { border-bottom-color: var(--c-border); }
 
-/* ダイエットのカレンダーは貼りつけません。やることの棚は月をほどいて縦に
-   並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
-   あるのは一日ぶんの記録で、月とは関係がありません——居座るぶん、体重も
-   グラフも下に押し下げるだけになります。 */
+/* health（ダイエット）の**月**は貼りつけません。やることの棚は月をほどいて
+   縦に並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
+   あるのは一日ぶんの記録で、月とは関係がありません——五、六行が居座るぶん、
+   体重もグラフも下に押し下げるだけになります。 */
 #screen-diet .cal {
   position: static;
   background: none;
@@ -347,6 +347,20 @@
   -webkit-backdrop-filter: none;
   border-bottom-color: transparent;
 }
+
+/* **週の一行は、貼りつけます。** 上の理由（月ぜんぶが居座ると押し下げる）は
+   五、六行ぶんの話で、一行には当たりません。やること・daily では週の帯が
+   ずっと上に居るのに、この画面だけ送ると消えていました——同じ暦が画面に
+   よって違う顔をすることになります。しかも、消えたあとは戻す道が掴み手
+   （引いて開く）しかなく、「いつの週を見ているか」が分からないまま
+   記録を読むことになります。 */
+#screen-diet .cal.is-week {
+  position: sticky;
+  top: var(--topbar-h, 0px);
+  background: var(--c-bg);
+}
+/* 貼りついたら、境目の線だけを出します（他の画面と同じ。高さは動きません）。 */
+#screen-diet .cal.is-week.is-stuck { border-bottom-color: var(--c-border); }
 
 /* 画面の題としての日付（上のバー）。参考にした画面と同じ組みです：
    年だけ差し色で、月日が黒。右に「›」——押すと暦が月ぜんぶに開きます。
@@ -516,6 +530,32 @@
 .cal-clip { overflow: hidden; }
 .cal.is-settling .cal-clip { transition: height .3s var(--ease-out); }
 .cal.is-settling .cal-slide { transition: transform .3s var(--ease-out); }
+
+/* ---- 週を横に払うあいだ、隣の週を先に見せる（js/cal-swipe.js）----
+
+   三枚を横一列に並べて、真ん中（＝いま出している週）を -100% に置きます。
+   真ん中は組み直した写しではなく、**生きている `.cal-slide` そのもの**を
+   運んできたものです（選んでいる日の輪ごと動くように）。左右の二枚は
+   clone なので押せません。
+
+   はみ出したぶんを切るのは `.cal-clip`（もともと overflow: hidden）。
+   高さは三枚のいちばん高いものに合わせて流れるので、書きません
+   ——週の一行はどれも同じ高さです。 */
+.cal-wk-track { display: flex; will-change: transform; }
+.cal-wk-track > * { flex: 0 0 100%; min-width: 0; }
+/* 隣の週の一枚。日のマスの並びは `.cal-grid` と同じ寸法にします
+   ——ここが違うと、払っているあいだだけ列がずれます。 */
+.cal-wk-page {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px 0;
+}
+/* 行けない側（今日より先の週）は、中身の無い一枚で場所だけ取ります。 */
+.cal-wk-page.is-void { display: block; }
+/* 真ん中の盤は月ぜんぶを組んであり、週の外は `.cal.is-week` の
+   `display: none` が伏せています（上）。払っているあいだも `.is-week` は
+   付いたままなので、真ん中だけ一か月ぶんに伸びる、ということは起きません。
+   左右の二枚は最初から七つしか持っていないので、伏せるものがありません。 */
 /* ---- 三段目：暦そのものを畳む ----
 
    週からさらに上へ押すと、暦が消えます。畳むのは日のマスだけでは足りません
