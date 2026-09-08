@@ -161,17 +161,15 @@
   function calendar() {
     /* 見出しの行（月・年・「週」の札・‹ ›）は、まるごと上のバーへ移しました
        ——やることと同じ組みです。日付の題そのものが「押すと暦が開く」
-       ボタンで、月をめくるのは横に払う手つき。「今月へ」だけは、遠い月から
-       一息で帰る道として残します。 */
+       ボタンで、月をめくるのは横に払う手つき。
+
+       「今月へ」の札は無くしました。隠れているあいだは場所を取らない
+       ボタンでしたが、出た瞬間だけ暦の高さが伸びて、下の紙が押し下げ
+       られていました。今月へ戻る道は、暦を送って探すことで足ります。 */
     const sec = node(html`<section class="cal"></section>`);
     /* 三層（曜日の行／伸び縮みする窓／その中のずらしと日のマス）は
        cal-peek.js が組みます。やることの暦と、同じものを使うためです。 */
     const grid = KN.calPeek.mount(sec).grid;
-    sec.append(node(html`<button type="button" class="cal-now js-now" hidden>今月へ</button>`));
-
-    sec.querySelector(".js-now").addEventListener("click", () => {
-      KN.motion.fire("select"); viewMonth = null; viewDay = null; render();
-    });
 
     wireMonthSwipe(sec, grid, goMonth);
     return sec;
@@ -336,7 +334,6 @@
     const lead = new Date(year, month, 1).getDay();
 
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-    sec.querySelector(".js-now").hidden = isThisMonth() && !viewDay;
 
     const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
     const byDay = {};
@@ -439,7 +436,7 @@
 
     sec.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (e.target.closest("button.cal-arrow, button.cal-now, button.cal-more")) return;
+      if (e.target.closest("button.cal-arrow, button.cal-more")) return;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       grid.style.transition = "";
     });
@@ -1390,15 +1387,6 @@
       openMonthPicker();
     });
 
-    /* 今日へ帰る札。月ぜんぶを見ていた名残（viewMonth）も一緒に落とします
-       ——今日へ帰るのに、先月の暦が出たままでは帰りきっていません。 */
-    root.querySelector(".js-today").addEventListener("click", () => {
-      if (focusDay() === U.todayKey()) return;
-      KN.motion.fire("select");
-      viewMonth = null;
-      viewDay = null;
-      render();
-    });
 
     /* ずっと見えている暦は、上のバーのすぐ下に貼りつきます。バーの高さは
        ノッチの深さで変わるので、実測して渡します——CSSに数字を焼き込むと、

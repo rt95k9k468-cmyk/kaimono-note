@@ -180,16 +180,6 @@
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
     });
-    /* 今日へ帰る札。ここでの「今日」は todayKey() そのものです——日を
-       送るのと同じ道（goDay）を通すので、紙の入れ替わりも同じに見えます。
-       向きは、いま見ている日より今日が先か後かで決めます。 */
-    chrome.querySelector(".js-today").addEventListener("click", () => {
-      const now = todayKey();
-      if (shownDay() === now) return;
-      haptic();
-      goDay(now, shownDay() < now ? 1 : -1);
-    });
-
     /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
        高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
        焼き込むと、機種が変わった日にずれます。 */
@@ -2364,8 +2354,8 @@
 
     sec.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      // The arrows and 「今日へ」 are buttons; let them be pressed.
-      if (e.target.closest("button.cal-arrow, button.cal-now")) return;
+      // The arrows are buttons; let them be pressed.
+      if (e.target.closest("button.cal-arrow")) return;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       grid.style.transition = "";
     });
@@ -2416,13 +2406,17 @@
         ${/* 見出しの行は、まるごと上のバーへ移しました（日付の題と「›」）。
               残っていた ‹ › は落としています——日を送る道は、週の帯を押す・
               左右に払う、の二つで足りていて、三つめは行を一段ぶん使うだけ
-              でした。「今日へ」だけは、遠い日から一息で帰る道として残します。 */""}
+              でした。
+
+              「今日へ」の札は無くしました。隠れているあいだは場所を
+              取らないボタンでしたが、出た瞬間だけ暦の高さがそのぶん伸びて、
+              下の紙が押し下げられていました。今日へ戻る道は、暦から今日の
+              マスを選ぶことで足ります。 */""}
       </section>
     `);
     /* 三層（曜日の行／伸び縮みする窓／その中のずらしと日のマス）は
        cal-peek.js が組みます。daily の暦と、同じものを使うためです。 */
     const grid = KN.calPeek.mount(sec).grid;
-    sec.append(node(html`<button type="button" class="cal-now js-now" hidden>今日へ</button>`));
 
     /* 月を変えたら、下のリストもその月の頭へ運びます。上だけが動くと、
        カレンダーと棚が別々のものを指したまま並ぶことになります。
@@ -2450,13 +2444,6 @@
       setCalMonth(d.getFullYear(), d.getMonth(), true);
       scrollToMonth(d.getFullYear(), d.getMonth());
     };
-    sec.querySelector(".js-now").addEventListener("click", () => {
-      haptic();
-      if (oneDay()) { goDay(todayKey()); return; }
-      const now = U.dayDate(todayKey());
-      setCalMonth(now.getFullYear(), now.getMonth(), true);
-      scrollToMonth(now.getFullYear(), now.getMonth());
-    });
 
     wireMonthSwipe(sec, grid, goTo);
     fillCalendar(sec, open);
@@ -2498,7 +2485,6 @@
     const today = todayKey();
     const now = U.dayDate(today);
     const { year, month } = shownMonth();
-    const thisMonth = year === now.getFullYear() && month === now.getMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
 
@@ -2535,11 +2521,6 @@
     });
 
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-
-    /* 「今日へ」。一日ずつのときは**出している日**が今日かどうかで決めます
-       ——月で見ていた名残のまま「今月かどうか」で決めていると、9月1日を
-       開いているのに戻り口が出ませんでした（同じ月なので）。 */
-    sec.querySelector(".js-now").hidden = oneDay() ? (shownDay() === today) : thisMonth;
 
     const grid = sec.querySelector(".cal-grid");
     grid.innerHTML = "";

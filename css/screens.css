@@ -379,12 +379,15 @@
   /* 実測は 428pt の画面で 26px 相当。狭い端末では右の二つとぶつかるので、
      幅に合わせて縮めます。
 
-     曜日（「（火）」＝ 3文字ぶん）と、当日でないときに出る Today の札が
-     加わったぶん、**係数を下げました**（6.4vw/26px → 5.4vw/23px）。
-     前のままだと、実測で 320px の画面で「日（日）」が、390px でも「（火）」
-     が欠けます。ここは字の大きさより、**日付が最後まで読めること**が先。 */
-  font-size: clamp(16px, 5.4vw, 23px);
+     **どの日を見ていても、大きさは同じ**です。Today の札があった時期は、
+     札が出ている日だけ字を一段落としていて、今日とそれ以外で大きさが
+     違って見えました——見ている日によって大きさが変わるほうがおかしいので、
+     札ごと外し、字はいつもこの一つの clamp だけにしています。
 
+     曜日（「（火）」＝ 3文字ぶん）が加わったぶん、係数はそのままでは
+     320px 級で19px・375px級で1px、文字が欠けます（実測）。係数を
+     6.4vw/26px → 5.4vw/23px に下げて収めています。 */
+  font-size: clamp(16px, 5.4vw, 23px);
   font-weight: 700;
   letter-spacing: -.02em;
   white-space: nowrap;
@@ -416,56 +419,6 @@
 .day-d { color: var(--c-text); }
 .day-d.is-today { color: var(--c-primary-fill); }
 
-/* 当日ではない日を見ているときだけ出る、今日へ帰る札。
-
-   暦から今日を探して押す道はありますが、暦は畳んであることもあり
-   （三段目）、月をまたいで戻るには送りも要ります。**帰り道は一つ、
-   いつも同じところに**——日付のすぐ右、というのがその置き場です。
-   当日を見ているあいだは出しません（押しても何も起きない札は、
-   「押せることがある」という記憶だけを増やします）。 */
-/* 日付の題がいる帯だけ、右の二つとの間を詰めます（12 → 8px）。指の的は
-   44px のまま（.icon-btn::after が持っています）なので、詰めても押しにくく
-   はなりません。詰めたぶんは、日付が最後まで読めることに回ります。 */
-.topbar-row:has(.topbar-dayrow) { gap: 8px; }
-/* Today の札が出ているあいだは、そのぶん字を一段落とします。札は当日で
-   ないときだけ出るので、**ふだんの題は大きいまま**——狭い一日のためだけに
-   毎日小さくする必要はありません。 */
-.topbar-dayrow:has(.topbar-today:not([hidden])) .topbar-title {
-  font-size: clamp(15px, 4.6vw, 21px);
-}
-/* いちばん狭い画面（320px 級）で、Today の札まで出ている日だけは、それでも
-   16px 足りません（実測）。**落とすのは「›」のほう**です——あれは題が押せる
-   ことの目印で、押せること自体は題が持っています。日付の字を欠けさせる
-   （何日か読めなくなる）のと引き比べれば、こちらが先に譲る側。 */
-@media (max-width: 360px) {
-  .topbar-dayrow:has(.topbar-today:not([hidden])) .day-more { display: none; }
-}
-
-.topbar-today {
-  flex: none;
-  margin-left: 6px;
-  padding: 0 8px;
-  height: 24px;
-  border: 0;
-  border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--c-primary-fill) 18%, transparent);
-  color: var(--c-primary);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .01em;
-  white-space: nowrap;
-}
-.topbar-today:active { opacity: .6; }
-/* 指の的は44px。見えている札は24pxのままで、当たりだけ外へ広げます
-   （上のバーの高さを変えないため——`.icon-btn::after` と同じ手当て）。 */
-.topbar-today { position: relative; }
-.topbar-today::after {
-  content: "";
-  position: absolute;
-  left: 50%; top: 50%;
-  width: max(100%, 44px); height: 44px;
-  transform: translate(-50%, -50%);
-}
 .day-more {
   display: grid; place-items: center;
   flex: none;
@@ -509,17 +462,6 @@
 @media (hover: hover) {
   .cal-arrow:hover { background: var(--c-surface-2); color: var(--c-text); }
 }
-
-.cal-now {
-  margin-left: auto;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--c-primary);
-  padding: 4px 8px;
-  border-radius: var(--r-full);
-  background: var(--c-primary-soft);
-}
-.cal-now + .cal-nav { margin-left: 0; }
 
 /* 月ぜんぶ／今週だけ の切り替え。矢印と同じ列に置きます。 */
 .cal-more {
@@ -2065,9 +2007,12 @@
 
 .diet-day { padding: 0; overflow: hidden; touch-action: pan-y; }
 .diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
-.diet-block.is-body   { background: color-mix(in srgb, var(--c-primary) 5%, var(--c-surface)); }
-.diet-block.is-meal   { background: var(--c-surface); }
-.diet-block.is-weight { background: color-mix(in srgb, #4a8fd9 6%, var(--c-surface)); }
+/* ダイエットの紙は `.tl-sheet.is-bare`（面を持たない）なので、この三つの
+   帯が実質の「紙」です。混ぜる相手は `--c-surface`（純白）ではなく
+   `--c-sheet`——紙の地の色が変わるたびに、ここもついてくるように。 */
+.diet-block.is-body   { background: color-mix(in srgb, var(--c-primary) 5%, var(--c-sheet)); }
+.diet-block.is-meal   { background: var(--c-sheet); }
+.diet-block.is-weight { background: color-mix(in srgb, #4a8fd9 6%, var(--c-sheet)); }
 /* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
    持たないので、ここで与えます）。 */
 .diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -4251,6 +4196,11 @@ a.btn { text-decoration: none; }
      （.tl-sheet.is-daily の gap）——線は最後の手段で、まず空けること。 */
   border: none;
   box-shadow: none;
+  /* `.card` の既定は `--c-surface`（純白）。daily の紙は `--c-sheet`
+     （250）なので、そのままだと段だけ純白の帯として**浮いて見えます**
+     ——地の白と紙の白が、目には同じ白でも数字としては違うので。
+     紙の地と**同じ**変数を見ることで、色を変えるたびについてきます。 */
+  background: var(--c-sheet);
 }
 .card.arc-log { padding-left: var(--sp-4); padding-right: var(--sp-6); }
 

@@ -157,15 +157,6 @@
       store.setCalPref("diet", { open: !calOpen() });
     });
 
-    /* 今日へ帰る札。暦の月も一緒に今月へ戻します——今日の記録を出しながら
-       先月の暦が出たままでは、帰りきっていません。 */
-    chrome.querySelector(".js-today").addEventListener("click", () => {
-      if (curDay() === U.todayKey()) return;
-      KN.motion.fire("select");
-      viewDay = null;
-      calMonth = null;      // null ＝「今日の月」（shownMonth の既定）
-      render();
-    });
 
     /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
        消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の
@@ -658,9 +649,13 @@
   function monthCalendar() {
     const sec = node(html`<section class="cal"></section>`);
     /* 三層（曜日の行／伸び縮みする窓／その中のずらしと日のマス）は
-       cal-peek.js が組みます。やること・daily の暦と同じものです。 */
+       cal-peek.js が組みます。やること・daily の暦と同じものです。
+
+       「今日へ」の札は無くしました。隠れているあいだは場所を取らない
+       ボタンでしたが、出た瞬間だけ暦の高さが伸びて、下の紙が押し下げ
+       られていました。今日へ戻る道は、暦から今日のマスを選ぶことで
+       足ります。 */
     const grid = KN.calPeek.mount(sec).grid;
-    sec.append(node(html`<button type="button" class="cal-now js-now" hidden>今日へ</button>`));
 
     /* ‹ › の刻みは、出しているものに合わせます——週だけ出しているときに
        月ごと飛ぶと、押した先に自分の週が無くなります。 */
@@ -680,12 +675,6 @@
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
       fillCalendar(sec);
     };
-    sec.querySelector(".js-now").addEventListener("click", () => {
-      KN.motion.fire("nav");
-      calMonth = null;
-      viewDay = null;
-      render();
-    });
 
     wireMonthSwipe(sec, grid, goTo);
     fillCalendar(sec);
@@ -754,14 +743,11 @@
   function fillCalendar(sec) {
     const today = U.todayKey();
     const here = curDay();
-    const now = U.dayDate(today);
     const { year, month } = shownMonth();
-    const thisMonth = year === now.getFullYear() && month === now.getMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
 
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-    sec.querySelector(".js-now").hidden = thisMonth && here === today;
 
     const grid = sec.querySelector(".cal-grid");
     grid.innerHTML = "";
@@ -959,7 +945,7 @@
 
     sec.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (e.target.closest("button.cal-arrow, button.cal-now")) return;
+      if (e.target.closest("button.cal-arrow")) return;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       grid.style.transition = "";
     });
