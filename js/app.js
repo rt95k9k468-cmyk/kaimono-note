@@ -36,23 +36,26 @@
      各タブの右上の歯車へ戻して、席は daily に譲ります。 */
   const TABS = [
     { id: "archive", label: "daily", icon: "book" },
-    { id: "todo", label: "やること", icon: "checklist" },
+    { id: "todo", label: "tasks", icon: "checklist" },
     /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
        そこへは掴み手を下げて行きます。だから帯には席を持たず、価格を見て
        いるあいだも帯が言うのは「買うもの」——いま居るのは買うもののタブで、
        その紙を下げているだけなので。`holds` は「この席が受け持つ画面」。 */
-    { id: "list", holds: ["prices"], label: "買うもの", icon: "list" },
-    { id: "diet", label: "ダイエット", icon: "scale" },
+    { id: "list", holds: ["prices"], label: "shopping", icon: "list" },
+    /* ダイエット → health。絵も「健康・人」を連想するものへ
+       （`heart`、Phosphor Regular）。手描きの `scale`（体重計）だけが
+       線の絵で他の三つから浮いていたので、これで一族も揃います。 */
+    { id: "diet", label: "health", icon: "heart" },
   ];
 
   /* 裏面の名前と絵。表と同じ形で持っておくと、塗るときに分岐が要りません。 */
   const FACES = {
-    todo:     { label: "やること",   icon: "checklist" },
-    archive:  { label: "daily",      icon: "book" },
-    list:     { label: "買うもの",   icon: "list" },
-    prices:   { label: "価格",       icon: "tag" },
-    diet:     { label: "ダイエット", icon: "scale" },
-    settings: { label: "設定",       icon: "gear" },
+    todo:     { label: "tasks",    icon: "checklist" },
+    archive:  { label: "daily",    icon: "book" },
+    list:     { label: "shopping", icon: "list" },
+    prices:   { label: "prices",   icon: "tag" },
+    diet:     { label: "health",   icon: "heart" },
+    settings: { label: "設定",     icon: "gear" },
   };
 
   /** その席が、いまの画面を受け持っているか。 */

@@ -171,7 +171,13 @@
        cal-peek.js が組みます。やることの暦と、同じものを使うためです。 */
     const grid = KN.calPeek.mount(sec).grid;
 
-    wireMonthSwipe(sec, grid, goMonth);
+    /* 暦を横に払ったときの送りは、出しているものに合わせます——月ぜんぶ
+       なら月、週だけならその週。前は常に月へ飛んでいて（週で見ていても
+       月ごと動いた）、押した先に自分の週が無くなっていました。 */
+    wireMonthSwipe(sec, grid, (delta) => {
+      if (calOpen()) { goMonth(delta); return; }
+      goWeek(delta);
+    });
     return sec;
   }
 
@@ -185,6 +191,17 @@
     viewDay = null;
     render();
     return true;
+  }
+
+  /** 週を送ります。暦が週だけを出しているとき、横に払うとここへ来ます。
+      日を送る道と同じ `goDayTo` に乗せます——月をまたいでも暦がついて
+      くる仕事は、もう向こうが持っているので。先の日へは行きません
+      （過去にしか向いていない画面なので）。 */
+  function goWeek(delta) {
+    const next = U.shiftDay(focusDay(), delta * 7);
+    if (next > U.todayKey()) return;
+    KN.motion.fire("select");
+    goDayTo(next);
   }
 
   /* ---------------- 月を選ぶ ----------------
