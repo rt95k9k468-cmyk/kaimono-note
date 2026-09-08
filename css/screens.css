@@ -1972,17 +1972,23 @@
    からだ・食事・体重を一枚にまとめ、区切りは線ではなく地の色でつけます。
    線は「別のもの」と言いますが、ここで言いたいのは「同じ一日の、別の面」。
    横に払って日をめくるとき、三つが一緒に流れる形でもあります。 */
-/* ---- カルーセル（前日・今日・翌日を横一列に） ----
+/* ---- 日を送るカルーセル（やること・daily・ダイエットで分け合う） ----
 
-   三枚を並べて横一列にし、外側で溢れたぶんを隠します。動かすのは
-   中の .js-track の transform だけ——ドラッグ量そのまま、隣の紙が
-   端から連続して入ってきます（要約ではなく本物の紙）。
+   紙を横に払うと、隣の日が指のぶんだけ連続して入ってきます。要約では
+   なく本物の紙です。仕掛けは js/day-swipe.js が持ちます——ここはその
+   器の形だけ。
+
+   外側（.day-car）で溢れたぶんを隠し、動かすのは中の .day-track の
+   transform だけ。**ふだん track の中には、いま見ている日の一枚しか
+   居ません**（隣の二枚は、横だと決まった瞬間に組んで、戻ってきたら
+   片づけます）。だから既定の transform は素のまま——JS が px で書いて
+   いるあいだだけ、三枚ぶんの位置になります。
 
    touch-action: pan-y で、縦のスクロールはブラウザの手に残したまま、
    横の動きだけをこちらが引き受けます——両方を素の指のジェスチャーに
    任せると、ページの縦スクロールと綱引きになって反応が鈍ります。 */
-.diet-carousel { overflow: hidden; touch-action: pan-y; }
-.diet-carousel-track {
+.day-car { overflow: hidden; touch-action: pan-y; }
+.day-track {
   display: flex;
   /* 三枚は、それぞれ自分の中身のぶんだけの高さで立たせます。flex の既定
      （stretch）だと、三枚がいちばん高い紙にそろえて引き伸ばされます
@@ -1990,20 +1996,29 @@
      地の色が残る**。中身が終わっているのに紙だけ続くので、下に何かある
      ように見えて、指で探りにいくことになります。
      高さをそろえないので、隣の紙が高くても払っている最中に切れません
-     （carousel は overflow:hidden なので、そろえたまま縮めると切れます）。 */
+     （器は overflow:hidden なので、そろえたまま縮めると切れます）。 */
   align-items: flex-start;
-  /* 既定はここ（真ん中＝今日）。ドラッグ中だけ、JSがpxで上書きします。 */
-  transform: translateX(-100%);
 }
 /* 指が動いているあいだだけ、合成レイヤーへの昇格をお願いしておきます。
    常時つけっぱなしにはしません（使わない間もメモリを持ち続けるだけなので）
    ——ドラッグの最初の一拍でその場で昇格すると、そこだけ一段重くなって
    カクついて見えることがあるため、掴んだ瞬間に先に済ませておきます。 */
-.diet-carousel-track.is-dragging { will-change: transform; }
-.diet-carousel-track > .diet-day { flex: 0 0 100%; min-width: 0; }
-/* 前日・翌日の紙は本物ですが、押せません（指はカルーセルの外枠が
-   引き受けます）。inert 属性でも塞ぎますが、保険としてCSSでも。 */
-.diet-day.is-peek { pointer-events: none; }
+.day-track.is-dragging { will-change: transform; }
+.day-track > .day-slide { flex: 0 0 100%; min-width: 0; }
+/* 隣の紙は本物ですが、押せません（指はカルーセルの外枠が引き受けます）。
+   inert 属性でも塞ぎますが、保険としてCSSでも。 */
+.day-slide.is-peek { pointer-events: none; }
+/* 行けない側（今日より先など）は、中身の無い一枚で場所だけ取ります
+   ——真ん中を -100% に置くための足場なので、無いと位置がずれます。 */
+.day-slide.is-void { min-height: 1px; }
+/* daily の紙は、段どうしのあいだを紙自身が空けていました（.tl-sheet.is-daily
+   の gap）。中身がカルーセルの一枚へ移ったので、その役目もここへ移します
+   ——移さないと、六つの段が隙間なく積み上がります。 */
+.tl-sheet.is-daily .day-slide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
 
 .diet-day { padding: 0; overflow: hidden; touch-action: pan-y; }
 .diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -4678,13 +4693,24 @@ a.btn { text-decoration: none; }
   background: var(--cat, var(--c-primary-fill));
   border-color: var(--cat, var(--c-primary-fill));
 }
-/* スキップ（できなかった）。完了の色（--cat）は使わず、地味な灰色に
-   ——「やった」と「やらなかった」を同じ濃さで塗ると見分かなくなる。 */
+/* スキップ（できなかった）。**済ませたものと同じ濃さで塗ります**——地味な
+   灰色にしていた時期がありますが、それは「やらなかったことは薄い」と言って
+   いるのと同じで、この画面がずっと避けてきた採点です（済ませた用事を灰色に
+   して縮めないのと、まったく同じ理由）。
+
+   「やった」と「やらなかった」を分けるのは**印の形**です——✓ と −。色は
+   「もう手をつけ終わった」ことだけを言い、どちらに終わったかは形が言う。
+   白抜きの − は、丸薬の中の絵と同じ決めごとです。 */
 .tl-sub .check.is-sub[aria-checked="mixed"] {
-  background: var(--c-surface-2);
-  border-color: var(--c-text-3);
-  color: var(--c-text-3);
+  background: var(--cat, var(--c-primary-fill));
+  border-color: var(--cat, var(--c-primary-fill));
+  color: #fff;
 }
+/* **印そのものを出します。** `.check svg` は既定で `opacity: 0` で、それを
+   1に戻す決めごとは `[aria-checked="true"]` にしかありませんでした——
+   つまり − は、描かれてはいたが**一度も見えていません**でした（灰色の
+   四角だけが出ていて、「できなかった」は色でしか言えていなかった）。 */
+.tl-sub .check.is-sub[aria-checked="mixed"] svg { opacity: 1; transform: scale(1); }
 .tl-sub.is-skipped .tl-sub-name { color: var(--c-text-3); }
 .tl-sub.is-skipped .tl-sub-name::after { width: 100%; }
 .tl-sub-name {
@@ -4722,6 +4748,35 @@ a.btn { text-decoration: none; }
 .sub-edit:empty { display: none; }
 .sub-line { display: flex; align-items: center; gap: 6px; }
 .sub-line .input { flex: 1 1 auto; min-width: 0; }
+/* 並べ替えの掴み手（四本線）。**この段だけ、押した瞬間から運べます**
+   ——欄の上で指を止めるのは「文字の位置を決める」手つきなので、長押しを
+   待つ作りはここでは使えません。
+
+   見えている絵は 16px ですが、掴めるところは 34px 取ります（指の的）。
+   色は地味に——ここで読むのは手順の文で、掴み手はその脇にある道具です。
+   `touch-action: none` は、掴んだ指をシートのスクロールに取られない
+   ためのもの。 */
+.sub-grip {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px; height: 34px;
+  margin-left: -6px;
+  color: var(--c-text-3);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.sub-grip svg { width: 16px; height: 16px; }
+.sub-line.reorder-lift .sub-grip { cursor: grabbing; }
+/* 持ち上がった行には、影が付きます（reorder.js の決めごと）。この段の行は
+   地を持っていないので、そのままだと影だけが宙に浮きます——紙と同じ地を
+   敷いて、一枚として持ち上がるように。 */
+.sub-line.reorder-lift {
+  background: var(--c-sheet);
+  border-radius: 10px;
+}
 .tl-subs { font-variant-numeric: tabular-nums; }
 
 /* 済ませたものも、**同じ大きさのまま**です。
