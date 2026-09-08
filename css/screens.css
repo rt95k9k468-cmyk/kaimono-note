@@ -4182,9 +4182,14 @@ a.btn { text-decoration: none; }
 
    区切りは、色だけには任せません。**からだ・食事は同じ地の色**なので
    （からだの赤みは落としました）、そこは小さな gap（`.diet-day`）が
-   地を覗かせて言います。体重だけは青みが残っているので、色でも分かります。 */
+   地を覗かせて言います。体重だけは青みが残っているので、色でも分かります。
+
+   **`.card` の既定は純白（`--c-surface`）です。** gap はこの紙自身の
+   地を覗かせるので、上書きしないと帯（245）の隙間に純白が挟まって
+   そこだけ浮いて見えます——帯と同じ `--c-sheet` にします。 */
 .diet { padding: 0 0 var(--sp-6); gap: 0; }
 .diet-day.card {
+  background: var(--c-sheet);
   border-radius: 0;
   border-left: none;
   border-right: none;
