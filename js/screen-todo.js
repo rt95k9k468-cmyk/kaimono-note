@@ -2367,72 +2367,6 @@
     }, 320);
   }
 
-  /* Flicked sideways, the month turns.
-
-     The arrows stay — they are what says it can be done — but a month grid is
-     a page, and a page is turned by pushing it. The grid follows the finger so
-     the gesture is answered while it is happening rather than only at the end,
-     and a push that stops short slides back to where it was, which is how you
-     find out that half a push is not enough without having to undo anything.
-
-     Vertical wins ties: the whole screen scrolls under this, and a calendar
-     that swallowed a downward flick would be a calendar you had to scroll
-     around. The direction is decided once, on the first few pixels, and holds
-     for the rest of the gesture. */
-  function wireMonthSwipe(sec, grid, goTo) {
-    const THRESHOLD = 52;
-    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
-
-    const paint = () => {
-      frame = 0;
-      grid.style.transform = dx ? `translateX(${dx}px)` : "";
-      grid.style.opacity = dx ? String(Math.max(.35, 1 - Math.abs(dx) / 260)) : "";
-    };
-    const reset = () => {
-      grid.style.transition = "transform .22s var(--ease-out), opacity .22s";
-      dx = 0;
-      paint();
-      setTimeout(() => { grid.style.transition = ""; }, 240);
-    };
-
-    sec.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      // The arrows are buttons; let them be pressed.
-      if (e.target.closest("button.cal-arrow")) return;
-      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
-      grid.style.transition = "";
-    });
-
-    sec.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== id) return;
-      const mx = e.clientX - x0, my = e.clientY - y0;
-      if (!axis) {
-        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
-        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-        if (axis === "x") sec.setPointerCapture(id);
-      }
-      if (axis !== "x") return;
-      e.preventDefault();
-      // Past the threshold it stiffens: the page is already committed, and the
-      // remaining travel is only the finger carrying on.
-      dx = Math.abs(mx) <= THRESHOLD ? mx : Math.sign(mx) * (THRESHOLD + (Math.abs(mx) - THRESHOLD) * .3);
-      if (!frame) frame = requestAnimationFrame(paint);
-    });
-
-    const end = (e) => {
-      if (e.pointerId !== id) return;
-      const moved = dx;
-      id = null; axis = null;
-      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
-      // Pushed left, the next month comes in from the right.
-      grid.style.transition = "";
-      dx = 0;
-      paint();
-      goTo(moved < 0 ? 1 : -1);
-    };
-    sec.addEventListener("pointerup", end);
-    sec.addEventListener("pointercancel", (e) => { if (e.pointerId === id) { id = null; axis = null; reset(); } });
-  }
 
   /* 骨組みは一度だけ作り、月が変わったら中身だけ描き直します。
 
@@ -2496,9 +2430,41 @@
       scrollToMonth(d.getFullYear(), d.getMonth());
     };
 
-    wireMonthSwipe(sec, grid, goTo);
+    /* 手つきは三画面で分け合う一つ（js/cal-swipe.js）です。週だけ出して
+       いるときは、隣の週が指のぶんだけ先に入ってきます。 */
+    KN.calSwipe.wire({
+      sec, grid,
+      isWeek: () => !calOpen(),
+      here: () => (oneDay() ? shownDay() : (hereDay || todayKey())),
+      step: stepWeek,
+      monthGrid: monthGridFor,
+      go: goTo,
+      /* 用事を運んでいる最中は、この指は向こうのものです。 */
+      busy: () => !!tlDrag || KN.reorder.isActive(),
+    });
     fillCalendar(sec, open);
     return sec;
+  }
+
+  /** 週を送った先の日。この画面は**先の日へも行けます**（これから何を
+      するか組む画面なので）。だから塞ぐ向きはありません。 */
+  function stepWeek(delta) {
+    const here = oneDay() ? shownDay() : (hereDay || todayKey());
+    return KN.util.shiftDay(here, delta * 7);
+  }
+
+  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
+      いま出している月なら、生きている盤をそのまま渡します——組み直すと、
+      選んでいる日の輪まで作り直すことになるので。 */
+  function monthGridFor(year, month) {
+    const cur = shownMonth();
+    if (els.cal && cur.year === year && cur.month === month) {
+      return els.cal.querySelector(".cal-grid");
+    }
+    const tmp = node(html`<section class="cal"></section>`);
+    KN.calPeek.mount(tmp);
+    fillCalendar(tmp, store.openTodos(), { year, month });
+    return tmp.querySelector(".cal-grid");
   }
 
   /** その月の顔を描く。節と grid の要素はそのまま使い回します。 */
@@ -2530,12 +2496,20 @@
     return cell;
   }
 
-  function fillCalendar(sec, open) {
+  /**
+   * @param {Element} sec  組む先の `.cal`
+   * @param {Array} open   やること（`store.openTodos()`）
+   * @param {{year:number,month:number}} [only]  その月で組みます。渡すのは
+   *   **離れたところへ組むとき**だけ（隣の週を先に見せるため）。そのぶんは
+   *   画面に出ないので、最後の二つ——いまの週の印と、見ている日の輪——は
+   *   置きません。置くと、出ていない盤のために生きている題まで塗り直します。
+   */
+  function fillCalendar(sec, open, only) {
     if (!sec) return;
     const U = KN.util;
     const today = todayKey();
     const now = U.dayDate(today);
-    const { year, month } = shownMonth();
+    const { year, month } = only || shownMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
 
@@ -2615,6 +2589,7 @@
       grid.append(cell);
     }
     outer.trail.forEach((key) => grid.append(outCell(key, marks)));
+    if (only) return;                     // 離れたところへ組んだぶん（上を参照）
     /* 期限切れ。一日の中には居場所がないので、**あることだけ**言って、
        受け皿（一覧）への口を出します。
 
@@ -2762,8 +2737,10 @@
       /* 探している最中だけ引きません。**暦をしまっていても引けます**
          ——三段目（暦なし）から週へ戻す道が、ここしかないので。 */
       enabled: () => !query && oneDay(),
-      // 用事を運んでいる指を、暦に取られては困ります。
-      busy: () => !!tlDrag,
+      /* 用事を運んでいる指を、暦に取られては困ります。暦を横に払って
+         いる最中も同じ——cal-swipe が生きている盤を運んでいるので、
+         ここで高さまで書くと二つが同じものを取り合います。 */
+      busy: () => !!tlDrag || KN.calSwipe.isActive(),
       here: () => hereDay || todayKey(),
       tagOffWeek,
       /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった

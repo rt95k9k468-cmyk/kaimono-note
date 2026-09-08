@@ -36,6 +36,7 @@ const ASSETS = [
   "js/pull-refresh.js",
   "js/cal-peek.js",
   "js/day-swipe.js",
+  "js/cal-swipe.js",
   "js/notify.js",
   "js/food-data.js",
   "js/diet.js",

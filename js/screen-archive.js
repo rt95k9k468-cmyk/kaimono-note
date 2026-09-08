@@ -173,12 +173,38 @@
 
     /* 暦を横に払ったときの送りは、出しているものに合わせます——月ぜんぶ
        なら月、週だけならその週。前は常に月へ飛んでいて（週で見ていても
-       月ごと動いた）、押した先に自分の週が無くなっていました。 */
-    wireMonthSwipe(sec, grid, (delta) => {
-      if (calOpen()) { goMonth(delta); return; }
-      goWeek(delta);
+       月ごと動いた）、押した先に自分の週が無くなっていました。
+       手つきは三画面で分け合う一つ（js/cal-swipe.js）です。 */
+    KN.calSwipe.wire({
+      sec, grid,
+      isWeek: () => !calOpen(),
+      here: focusDay,
+      step: stepWeek,
+      monthGrid: monthGridFor,
+      go: (delta) => { if (calOpen()) goMonth(delta); else goWeek(delta); },
     });
     return sec;
+  }
+
+  /** 週を送った先の日。先の日へは行きません（過去にしか向いていない
+      画面なので）。行けないなら null——払っても重くなるだけです。 */
+  function stepWeek(delta) {
+    const next = U.shiftDay(focusDay(), delta * 7);
+    return next > U.todayKey() ? null : next;
+  }
+
+  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
+      いま出している月なら、生きている盤をそのまま渡します——組み直すと、
+      選んでいる日の輪まで作り直すことになるので。 */
+  function monthGridFor(year, month) {
+    const cur = shownMonth();
+    if (els.cal && cur.year === year && cur.month === month) {
+      return els.cal.querySelector(".cal-grid");
+    }
+    const tmp = node(html`<section class="cal"></section>`);
+    KN.calPeek.mount(tmp);
+    fillCalendar(tmp, { year, month });
+    return tmp.querySelector(".cal-grid");
   }
 
   /** 月を送ります。暦を払っても、紙を払っても、ここへ来ます。 */
@@ -335,9 +361,16 @@
     return cell;
   }
 
-  function fillCalendar(sec) {
+  /**
+   * @param {Element} sec  組む先の `.cal`
+   * @param {{year:number,month:number}} [only]  その月で組みます。渡すのは
+   *   **離れたところへ組むとき**だけ（隣の週を先に見せるため）。そのぶんは
+   *   画面に出ないので、最後の二つ——いまの週の印と、選んだ日の輪——は
+   *   置きません。置くと、出ていない盤のために生きている題まで塗り直します。
+   */
+  function fillCalendar(sec, only) {
     const today = U.todayKey();
-    const { year, month } = shownMonth();
+    const { year, month } = only || shownMonth();
     const total = new Date(year, month + 1, 0).getDate();
     const lead = new Date(year, month, 1).getDay();
 
@@ -392,6 +425,7 @@
       grid.append(cell);
     }
     outer.trail.forEach((key) => grid.append(outCell(key)));
+    if (only) return;                     // 離れたところへ組んだぶん（上を参照）
     markWeek(sec, viewDay || today);
     moveRing(grid, grid.querySelector(`.cal-day[data-day="${viewDay || today}"]`), true);
   }
@@ -412,6 +446,10 @@
       isShown: calShown,
       // 暦をしまっていても引けます（そこから週へ戻す道がここなので）。
       enabled: () => true,
+      /* 暦を横に払っている最中は、この指は向こうのものです（cal-swipe が
+         生きている盤を運んでいるので、ここで高さまで書くと二つが同じ
+         ものを取り合います）。 */
+      busy: () => KN.calSwipe.isActive(),
       here: () => viewDay || U.todayKey(),
       tagOffWeek,
       /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
@@ -424,56 +462,6 @@
     });
   }
 
-  /* やること・ダイエットと同じ、フリックで月をめくる仕掛け。日ごとの
-     めくり（横に払って日を進める）は無いので、月だけの単純な版です。 */
-  function wireMonthSwipe(sec, grid, goTo) {
-    const THRESHOLD = 52;
-    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
-
-    const paint = () => {
-      frame = 0;
-      grid.style.transform = dx ? `translateX(${dx}px)` : "";
-      grid.style.opacity = dx ? String(Math.max(.35, 1 - Math.abs(dx) / 260)) : "";
-    };
-    const reset = () => {
-      grid.style.transition = "transform .22s var(--ease-out), opacity .22s";
-      dx = 0;
-      paint();
-      setTimeout(() => { grid.style.transition = ""; }, 240);
-    };
-
-    sec.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (e.target.closest("button.cal-arrow, button.cal-more")) return;
-      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
-      grid.style.transition = "";
-    });
-    sec.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== id) return;
-      const mx = e.clientX - x0, my = e.clientY - y0;
-      if (!axis) {
-        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
-        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-        if (axis === "x") sec.setPointerCapture(id);
-      }
-      if (axis !== "x") return;
-      e.preventDefault();
-      dx = Math.abs(mx) <= THRESHOLD ? mx : Math.sign(mx) * (THRESHOLD + (Math.abs(mx) - THRESHOLD) * .3);
-      if (!frame) frame = requestAnimationFrame(paint);
-    });
-    const end = (e) => {
-      if (e.pointerId !== id) return;
-      const moved = dx;
-      id = null; axis = null;
-      if (Math.abs(moved) < THRESHOLD) { reset(); return; }
-      grid.style.transition = "";
-      dx = 0;
-      paint();
-      goTo(moved < 0 ? 1 : -1);
-    };
-    sec.addEventListener("pointerup", end);
-    sec.addEventListener("pointercancel", () => { id = null; axis = null; reset(); });
-  }
 
   /* ================================================================
      ②あの日 — 貯めたものを、返すところ
