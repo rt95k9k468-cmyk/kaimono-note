@@ -249,56 +249,47 @@
     paint();
   }
 
-  /* ---------------- 左右に払って、月を送る ----------------
+  /* ---------------- 左右に払って、日を送る ----------------
 
-     やることは紙を払うと日が変わります。こちらの一枚は一か月ぶんなので、
-     同じ手つきで月が変わります——‹ › を落としたぶんの受け皿です。
-     縦のスクロールとぶつからないよう、横がはっきり勝っているときだけ
-     取ります（やることと同じ数）。 */
-  const SWIPE_MIN = 56;
-  const SWIPE_DOM = 1.4;
+     紙に出ているのは「その日」なので、払って動くのも日です（月は上の題を
+     押せば選べます）。先の日へは行きません——記録を見るところで、まだ
+     来ていない日には記録がないので。
 
-  /** 前の日／次の日へ。**紙を払うのは、日を送る手つきです。**
+     仕掛けそのものは js/day-swipe.js が持ちます（やること・ダイエットと
+     分け合うため）。ここが答えるのは「いま見ている日は何か」「隣はどこか」
+     「その日の紙をどう組むか」「決まったら何をするか」だけです。
 
-      月を送っていました。Daily Log が一日ぶんになったいま、紙に出ている
-      のは「その日」なので、払って動くのも日であるべきです（月は上の題を
-      押せば選べます）。先の日へは行きません——月送りと同じ決めごと。 */
-  function goDayBy(delta) {
-    const cur = focusDay();
-    const d = U.dayDate(cur);
-    if (!d) return false;
-    const key = U.dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta));
-    if (key > U.todayKey()) return false;
-    KN.motion.fire("select");
+     **動くのは紙そのもの**です。前は指が離れてから中身を差し替えて、
+     22px ぶんだけ横から入れていました——払っている最中は何も動かないので、
+     指がどこまで行けば送られるのかが絵に出ていませんでした。 */
+  let swiping = false;
+
+  /** その隣の日。今日より先へは行きません。 */
+  function stepDay(key, dir) {
+    const d = U.dayDate(key);
+    if (!d) return null;
+    const next = U.dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + dir));
+    return next > U.todayKey() ? null : next;
+  }
+
+  /** その日へ移ります（暦の月も、その日を含む月へ連れていきます）。 */
+  function goDayTo(key) {
     const ym = key.slice(0, 7);
     viewMonth = ym === ymOf(new Date()) ? null : ym;
     viewDay = key === U.todayKey() ? null : key;
     render();
-    return true;
   }
 
-  function wireMonthPage(el) {
-    let x0 = 0, y0 = 0, pid = null, live = false;
-    el.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse") return;
-      pid = e.pointerId; x0 = e.clientX; y0 = e.clientY; live = true;
-    }, { passive: true });
-    const end = (e) => {
-      if (!live || e.pointerId !== pid) return;
-      live = false;
-      const dx = e.clientX - x0, dy = e.clientY - y0;
-      if (Math.abs(dx) < SWIPE_MIN) return;
-      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DOM) return;
-      const dir = dx < 0 ? 1 : -1;      // 左へ払う＝次の日
-      if (!goDayBy(dir)) return;
-      const sheet = els.body && els.body.querySelector(".tl-sheet");
-      if (sheet && !KN.motion.still()) {
-        sheet.classList.add(dir > 0 ? "is-from-right" : "is-from-left");
-        requestAnimationFrame(() => sheet.classList.remove("is-from-right", "is-from-left"));
-      }
-    };
-    el.addEventListener("pointerup", end, { passive: true });
-    el.addEventListener("pointercancel", () => { live = false; }, { passive: true });
+  function wireDaySwipe(viewport, track) {
+    KN.daySwipe.wire({
+      viewport,
+      track,
+      day: focusDay,
+      step: stepDay,
+      slide: daySlide,
+      commit: goDayTo,
+      lock: (on) => { swiping = on; },
+    });
   }
 
   /* その日の粒。書いた種類ぶんの色（最大四つ）。log だけあって積み上げが
@@ -539,7 +530,7 @@
      ③ Daily Log — その日あったこと・したこと
      ================================================================ */
 
-  function dailyLog(ym) {
+  function dailyLog(ym, day) {
     /* **その日ぶんだけ**を紙に出します（設定で月ぜんぶにも戻せます）。
 
        月ぜんぶを縦に並べていました。書いた日が増えるほど、今日の一行は
@@ -548,7 +539,9 @@
 
        その日にまだ何も無いときは、**空のまま一行を出します**。無いことを
        言うためではなく、押せば書けるところがそこに要るからです。 */
-    const only = oneDayLog() ? focusDay() : viewDay;
+    /* どの日ぶんを出すか。隣の日の紙を組むときは、その日を渡してもらい
+       ます（day-swipe.js の slide）——渡されなければ、いま見ている日。 */
+    const only = oneDayLog() ? (day || focusDay()) : viewDay;
     const all = store.daysOfMonth(ym);
     const mine = only ? all.filter((d) => d.date === only) : all;
     /* 記録の無い日は、**空の一行**を作って出します。`isBlank` を立てて
@@ -1459,8 +1452,44 @@
      描画の中に置いたとき、実際にそうなりました）。 */
   let rendering = false;
 
+  /** その日ぶんの紙まるごと。横に払うと、この一枚が隣の日のものと
+      入れ替わります。 */
+  function daySlide(day) {
+    const ym = day.slice(0, 7);
+    const el = node(html`<div class="day-slide"></div>`);
+
+    /* 「あの日」は、紙のいちばん上。暦は行き先を選ぶところなので、**最初の
+       中身**はこれになります。見つからない日は、null が返って何も置かれ
+       ません。出すかどうかは設定で決められます（既定は出す）。 */
+    if (S().showThen !== false) {
+      const then = thenCard();
+      if (then) el.append(then);
+    }
+    /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
+       その日の文が先で、集めるものとして使う人は積み上げが先です。
+       どちらが上かは、その人の使い方でしか決まりません。 */
+    /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
+       「その月の成績」に見えるので、必ず地の文の隣に並べる、という
+       決めごとです（daily-rules.js が見張っています）。 */
+    const log = dailyLog(ym, day), entries = entriesSection(ym);
+    /* まとめは設定で出し入れできます。出すときは、上か下かのどちらか一方
+       ——日の間には決して挟みません。挟むと「その日のまとめ」に見えます。 */
+    const digest = S().showDigest === false ? null : monthDigest(ym);
+    const logBlock = document.createDocumentFragment();
+    if (digest && S().digestPos === "top") logBlock.append(digest);
+    logBlock.append(log);
+    if (digest && S().digestPos !== "top") logBlock.append(digest);
+    if (S().dailyOrder === "entries") el.append(entries, logBlock);
+    else el.append(logBlock, entries);
+    return el;
+  }
+
   function render() {
     if (!root || rendering) return;
+    /* 紙を横に払っているあいだは、組み直しません（day-swipe.js が上げ下げ
+       します）。指の下で紙が組み直されると、掴んでいたものが別の絵に
+       なります。 */
+    if (swiping) return;
     const ym = curYm();
 
     /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
@@ -1492,7 +1521,6 @@
     `);
     els.body.append(sheet);
     wireCalPull(sheet);
-    wireMonthPage(sheet);
     /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました——紙の
        どこを持っても下へ引けば暦が出た時期の名残です。段を替えられるのが
        掴み手だけになったいま、紙の本体は「引いて更新」のものなので、
@@ -1500,29 +1528,13 @@
     const grip = sheet.querySelector(".tl-grip");
     if (grip) grip.setAttribute("data-pull-own", "cal");
 
-    /* 「あの日」は、紙のいちばん上。暦は行き先を選ぶところなので、**最初の
-       中身**はこれになります。見つからない日は、null が返って何も置かれ
-       ません。出すかどうかは設定で決められます（既定は出す）。 */
-    if (S().showThen !== false) {
-      const then = thenCard();
-      if (then) sheet.append(then);
-    }
-    /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
-       その日の文が先で、集めるものとして使う人は積み上げが先です。
-       どちらが上かは、その人の使い方でしか決まりません。 */
-    /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
-       「その月の成績」に見えるので、必ず地の文の隣に並べる、という
-       決めごとです（daily-rules.js が見張っています）。 */
-    const log = dailyLog(ym), entries = entriesSection(ym);
-    /* まとめは設定で出し入れできます。出すときは、上か下かのどちらか一方
-       ——日の間には決して挟みません。挟むと「その日のまとめ」に見えます。 */
-    const digest = S().showDigest === false ? null : monthDigest(ym);
-    const logBlock = document.createDocumentFragment();
-    if (digest && S().digestPos === "top") logBlock.append(digest);
-    logBlock.append(log);
-    if (digest && S().digestPos !== "top") logBlock.append(digest);
-    if (S().dailyOrder === "entries") sheet.append(entries, logBlock);
-    else sheet.append(logBlock, entries);
+    /* 中身は、横に払える一枚（.day-slide）にまとめて入れます。払っている
+       あいだ、隣の日の紙が指のぶんだけ入ってきます。 */
+    const car = node(html`<div class="day-car"><div class="day-track"></div></div>`);
+    const track = car.querySelector(".day-track");
+    track.append(daySlide(focusDay()));
+    sheet.append(car);
+    wireDaySwipe(car, track);
 
     if (keepTop) keepScroller.scrollTop = keepTop;
     rendering = false;

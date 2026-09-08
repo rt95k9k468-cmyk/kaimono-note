@@ -34,6 +34,12 @@
    * @param {object} opts
    * @param {string} opts.item   selector for the rows
    * @param {Function} opts.onDrop  (fromIndex, toIndex) — commit the new order
+   * @param {string} [opts.handle]  selector for a grab handle inside the row.
+   *        A press that lands on one lifts the row **at once** — no hold. A
+   *        handle is a thing whose only job is to be dragged, so waiting on a
+   *        timer says nothing the handle has not already said. It also lets
+   *        rows made of text fields be reordered at all: holding still on an
+   *        input is how you place a caret, not how you pick a row up.
    * @param {Function} [opts.blocked]  return true to refuse to start
    * @param {Function} [opts.onCross]  (clientY) => target|null, asked every frame
    *        while dragging; a truthy target means the row is over somewhere
@@ -55,6 +61,15 @@
     if (!el || el.parentElement !== container) return;
 
     const startX = e.clientX, startY = e.clientY, pointerId = e.pointerId;
+
+    // A press on a handle is already the whole gesture — lift on the spot.
+    if (opts.handle && e.target.closest(opts.handle)) {
+      // Otherwise the press selects the text of the field beside it, and the
+      // browser decides half way through that it is dragging that selection.
+      e.preventDefault();
+      lift({ container, opts, el, pointerId, startY });
+      return;
+    }
 
     const moved = (ev) => {
       if (ev.pointerId !== pointerId) return;

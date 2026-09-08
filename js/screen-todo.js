@@ -1079,6 +1079,12 @@
       subs.forEach((s, i) => {
         const line = node(html`
           <div class="sub-line">
+            ${/* 掴み手（四本線）。押した瞬間から運べます——長押しを待つ
+                  作りにはできません。ここは字を書く欄が並んでいる段で、
+                  欄の上で指を止めるのは「文字の位置を決める」手つきだから
+                  です。掴むための場所を別に置いたぶん、待たせる理由も
+                  無くなりました。 */""}
+            <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
             <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
                    aria-label="${i + 1}つめの手順" autocomplete="off">
             <button type="button" class="icon-btn js-sub-del"
@@ -1086,7 +1092,13 @@
           </div>
         `);
         const field = line.querySelector(".js-sub");
-        field.addEventListener("input", () => { subs[i].title = field.value; });
+        field.addEventListener("input", () => {
+          subs[i].title = field.value;
+          /* 運んでいるあいだの控え（reorder.js の ghost）は cloneNode で
+             作るので、打った字は **value 属性**にも書いておきます
+             ——属性を更新しないと、控えだけが打つ前の字を出します。 */
+          field.setAttribute("value", field.value);
+        });
         /* 改行で次の手順へ。続けて書くときに、いちいち「足す」を押しに
            戻らなくて済みます。 */
         field.addEventListener("keydown", (ev) => {
@@ -1108,6 +1120,20 @@
       }
       paintHeroFacts();   // 頭の「☑ 2/5」も、増減についていきます
     }
+    /* 手順の並べ替え。掴み手からだけ、押した瞬間に持ち上がります。
+       運び終わったら控えの配列を並べ替えて、そのまま描き直します
+       ——保存はシートの「保存」が引き受けるので、ここでは store に
+       触れません（**書く**のと**やる**を分ける、この紙の決めごと）。 */
+    KN.reorder.attach(subHost, {
+      item: ".sub-line",
+      handle: ".js-sub-grip",
+      onDrop: (from, to) => {
+        const [moved] = subs.splice(from, 1);
+        subs.splice(to, 0, moved);
+        paintSubs();
+      },
+    });
+
     body.querySelector(".js-sub-add").addEventListener("click", () => {
       subs.push({ id: "s" + Date.now() + subs.length, title: "", done: false });
       KN.motion.fire("add");
@@ -1937,6 +1963,10 @@
      about the day, and the number that matters — what is wanted now — is
      already on the tab, on the icon, and beside every heading below. */
   function render() {
+    /* 紙を横に払っているあいだは、組み直しません（day-swipe.js が上げ下げ
+       します）。指の下で紙が組み直されると、掴んでいたものが別の絵に
+       なります。 */
+    if (swiping) return;
     renderBody();
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
@@ -2037,10 +2067,13 @@
        期限切れがあることだけ出します——黙って隠すと、見に行く理由すら
        無くなるので。 */
     if (oneDay()) {
-      sheet.append(daySection(shownDay(), open));
-      // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
-      sheet.append(somedaySection(open));
-      wireDaySwipe(sheet);
+      /* 一日ぶんの中身は、横に払える一枚（.day-slide）にまとめて入れます。
+         払っているあいだ、隣の日の紙が指のぶんだけ入ってきます。 */
+      const car = node(html`<div class="day-car"><div class="day-track"></div></div>`);
+      const track = car.querySelector(".day-track");
+      track.append(daySlide(shownDay(), open));
+      sheet.append(car);
+      wireDaySwipe(car, track, open);
       wireCalPull(sheet);
       /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました
          ——紙のどこを持っても下へ引けば暦が出た時期の名残です。段を
@@ -2085,6 +2118,16 @@
   const shownDay = () => viewDay || todayKey();
 
   /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
+  /** その日ぶんの紙まるごと（時間割＋長期タスク）。横に払うと、この一枚が
+      隣の日のものと入れ替わります。 */
+  function daySlide(day, open) {
+    const el = node(html`<div class="day-slide"></div>`);
+    el.append(daySection(day, open));
+    // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
+    el.append(somedaySection(open));
+    return el;
+  }
+
   function daySection(day, open) {
     const sec = node(html`
       <section class="todo-group todo-day is-tl" data-group="day"
@@ -2656,34 +2699,43 @@
   /* ---------------- 左右に払って、日を送る ----------------
 
      一日ずつになったので、隣の日へ行く道が要ります。上の帯を押すのが
-     一つ、‹ › が二つめ、これが三つめ——**紙を横に払う**。参考にした画面と
-     同じ手つきで、いちばん手数が少ない道です。
+     一つ、‹ › が二つめ、これが三つめ——**紙を横に払う**。
 
-     縦のスクロールとぶつからないよう、横がはっきり勝っているときだけ
-     取ります（1.4倍）。つまんで運んでいる最中は取りません——用事を横へ
-     運ぼうとしている指を、日送りに取られては困ります。 */
-  const SWIPE_MIN = 56;      // これだけ横に動いたら、日を送ります
-  const SWIPE_DOM = 1.4;     // 縦より、これだけ横が勝っていること
+     仕掛けそのものは js/day-swipe.js が持ちます（daily・ダイエットと
+     分け合うため——三枚書き写すと、片方だけを直した日に三つの紙が違う
+     動きをします）。ここが答えるのは「いま見ている日は何か」「隣はどこか」
+     「その日の紙をどう組むか」「決まったら何をするか」だけです。
 
-  function wireDaySwipe(el) {
-    let x0 = 0, y0 = 0, pid = null, live = false;
-    el.addEventListener("pointerdown", (e) => {
-      if (tlDrag || e.pointerType === "mouse") return;
-      pid = e.pointerId; x0 = e.clientX; y0 = e.clientY; live = true;
-    }, { passive: true });
-    const end = (e) => {
-      if (!live || e.pointerId !== pid) return;
-      live = false;
-      if (tlDrag) return;
-      const dx = e.clientX - x0, dy = e.clientY - y0;
-      if (Math.abs(dx) < SWIPE_MIN) return;
-      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DOM) return;
-      const dir = dx < 0 ? 1 : -1;      // 左へ払う＝次の日
-      haptic();
-      goDay(shiftDay(shownDay(), dir), dir);
-    };
-    el.addEventListener("pointerup", end, { passive: true });
-    el.addEventListener("pointercancel", () => { live = false; }, { passive: true });
+     **動くのは紙そのもの**です。前は指が離れてから隣の日へ差し替えて、
+     22px ぶんだけ横から入れていました——払っている最中は何も動かないので、
+     指がどこまで行けば送られるのかが絵に出ていませんでした。
+
+     つまんで運んでいる最中は取りません——用事を横へ運ぼうとしている指を、
+     日送りに取られては困ります。 */
+  let swiping = false;
+
+  function wireDaySwipe(viewport, track, open) {
+    KN.daySwipe.wire({
+      viewport,
+      track,
+      day: shownDay,
+      /* 先の日へも行けます。ここは「これから何をするか」を組む画面なので、
+         明日・あさっての時間割にも用があります。 */
+      step: (d, dir) => shiftDay(d, dir),
+      /* 隣の日も、いまの組み直しで拾った同じ一覧から組みます（`open` は
+         日で絞る前のもの）。掴んでいるあいだ組み直しは止まっているので、
+         この控えが古くなることはありません。 */
+      slide: (d) => daySlide(d, open),
+      commit: (next) => {
+        viewDay = next === todayKey() ? null : next;
+        markDay(next, true);
+        /* goDay と違って、読んでいた場所は動かしません——滑りきった紙の
+           続きがそのまま出るように（renderBody が位置を返します）。 */
+        render();
+      },
+      busy: () => !!tlDrag || KN.reorder.isActive(),
+      lock: (on) => { swiping = on; },
+    });
   }
 
   /* ---------------- 紙を下に引くと、月が出てくる ----------------
@@ -3174,19 +3226,26 @@
       const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
       let timer = setTimeout(() => { timer = null; lift(row, id, list, day, y0); }, DRAG_HOLD);
 
+      /* **待っているあいだの見張りは document で。** 一覧に付けていました
+         が、紙を横に払うと day-swipe.js が外枠でポインタを捕まえます
+         （setPointerCapture）——捕まえた先はこの一覧より**外**なので、
+         以後の pointermove も pointerup も、ここまで降りてきません。
+         見張りが黙ると長押しの時計は止まらず、払い終わったあとに行が
+         持ち上がりました。document なら、捕まえた先がどこでも届きます
+         （reorder.js も同じ作りです）。 */
       const cancel = () => {
         if (timer) { clearTimeout(timer); timer = null; }
-        list.removeEventListener("pointermove", moved);
-        list.removeEventListener("pointerup", cancel);
-        list.removeEventListener("pointercancel", cancel);
+        document.removeEventListener("pointermove", moved);
+        document.removeEventListener("pointerup", cancel);
+        document.removeEventListener("pointercancel", cancel);
       };
       const moved = (ev) => {
         if (ev.pointerId !== pid || !timer) return;
         if (Math.abs(ev.clientX - x0) > DRAG_SLOP || Math.abs(ev.clientY - y0) > DRAG_SLOP) cancel();
       };
-      list.addEventListener("pointermove", moved);
-      list.addEventListener("pointerup", cancel);
-      list.addEventListener("pointercancel", cancel);
+      document.addEventListener("pointermove", moved);
+      document.addEventListener("pointerup", cancel);
+      document.addEventListener("pointercancel", cancel);
     });
   }
 

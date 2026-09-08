@@ -344,7 +344,7 @@
     const win = range === 0 ? 4000 : Math.max(range, 30);
     const sum = (opts && opts.sum) || D.weightSummary(win, day);
     const slide = node(html`
-      <section class="card diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
+      <section class="card day-slide diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
         <div class="diet-block is-body js-body-stats"></div>
         <div class="diet-block is-meal js-meals"></div>
         <div class="diet-block is-weight js-today"></div>
@@ -469,13 +469,12 @@
 
     sheet.append(node(html`
       <div class="diet">
-        ${/* 前日・翌日の紙も、あらかじめ本物として並べておきます
-              （js-track に横一列で三枚）。要約ではなく、その日の紙その
-              ものです——払いはじめた瞬間から、指のぶんだけ連続して
-              入ってくるように。既定は translateX(-100%) で真ん中の
-              紙（今日）を映し、動かすのは wireDaySwipe が引き受けます。 */""}
-        <div class="diet-carousel js-carousel">
-          <div class="diet-carousel-track js-track"></div>
+        ${/* 並べておくのは、いま見ている日の一枚だけ。隣の二枚は、横に
+              払うと決まった瞬間に day-swipe.js がその場で組みます——
+              要約ではなく、その日の紙そのものが、指のぶんだけ連続して
+              入ってきます。戻ってきたら、その二枚は片づきます。 */""}
+        <div class="day-car js-carousel">
+          <div class="day-track js-track"></div>
         </div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
@@ -485,15 +484,10 @@
       </div>
     `));
 
-    // 三枚とも同じ体重グラフ（どの日を見ているかには依存しない）なので、
-    // 一度だけ作って、残り二枚には複製を渡します。
-    const sharedChart = chart();
+    /* 並べておくのは、いま見ている日の一枚だけです。隣の二枚は、横に
+       払うと決まった瞬間に day-swipe.js が組みます（下の slide）。 */
     const track = els.body.querySelector(".js-track");
-    track.append(
-      buildDaySlide(U.shiftDay(day, -1), { peek: true, chartEl: sharedChart.cloneNode(true) }),
-      buildDaySlide(day, { peek: false, card, sum, chartEl: sharedChart }),
-      buildDaySlide(U.shiftDay(day, 1), { peek: true, chartEl: sharedChart.cloneNode(true) }),
-    );
+    track.append(buildDaySlide(day, { peek: false, card, sum, chartEl: chart() }));
 
     /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
        枠ごと消すので、目標だけが残ったときに上の仕切り線が浮きません。 */
@@ -508,8 +502,27 @@
     renderGoal(els.body.querySelector(".js-goal"), now);
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
-       伸ばさずに、昨日・一昨日と辿れるように。 */
-    wireDaySwipe(track, els.body.querySelector(".js-carousel"));
+       伸ばさずに、昨日・一昨日と辿れるように。仕掛けは day-swipe.js が
+       持ちます——やること・daily と同じ一つを分け合っています。 */
+    KN.daySwipe.wire({
+      viewport: els.body.querySelector(".js-carousel"),
+      track,
+      day: curDay,
+      /* 先の日へは行けません。ここは記録を見るところで、まだ来ていない
+         日には記録がありません。 */
+      step: (d, dir) => {
+        const next = U.shiftDay(d, dir);
+        return next > U.todayKey() ? null : next;
+      },
+      slide: (d) => buildDaySlide(d, { peek: true, chartEl: chart() }),
+      commit: (next) => {
+        viewDay = next === U.todayKey() ? null : next;
+        const dd = U.dayDate(next);
+        calMonth = { year: dd.getFullYear(), month: dd.getMonth() };
+        render();
+      },
+      lock: (on) => { dragging = on; },
+    });
 
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
@@ -798,131 +811,6 @@
     markWeek(sec, here);
     // 描いたあとに、選んでいる日へ置きます（並んでいないと測れません）。
     moveRing(grid, grid.querySelector(".cal-day.is-here"), true);
-  }
-
-  /* ---------------- 横に払って、日をめくる ----------------
-
-     カレンダーで選べますが、「昨日はどうだったか」を見るのに毎回上まで
-     戻るのは遠い。その日のことが書いてある枠そのものを払えば、日が動きます。
-     左へ払えば次の日、右へ払えば前の日——紙をめくる向きと同じです。
-
-     前日・今日・翌日の三枚を、最初から横一列に並べておきます（js-track、
-     render() が組みます）。動かすのはこの track の transform だけ——
-     ドラッグした量そのままに、隣の紙が右（または左）から連続して
-     入ってきます。要約ではなく本物の紙なので、止まった瞬間もいちばん
-     払っている最中も、同じ中身が見えます。
-
-     縦は下に譲ります——画面ぜんぶがスクロールするので、向きは最初の
-     数ピクセルで決めて、そのまま最後まで持ちます。「少し動かしただけで
-     隣へ行ける」を優先し、判定も動く量もどちらも軽くしてあります。 */
-  function wireDaySwipe(track, viewport) {
-    if (!track || !viewport) return;
-    const AXIS_LOCK = 5;     // これだけ動けば、向きを決めます（前は8px）
-    const COMMIT = 26;       // これだけ動けば、指を離したときに隣へ（前は56px）
-    let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0, pageW = 0;
-    let lastT = 0, lastX = 0, vx = 0;
-
-    /* transform だけを書き換えます（レイアウトに触れる幅・高さ・
-       位置は一切読み書きしません）。frame は rAF の間引き用で、
-       一度のフレームに一回しか描かないぶん、指の動きより先に
-       追いつくことはあっても、遅れて溜まることはありません。 */
-    const paint = () => {
-      frame = 0;
-      track.style.transform = `translate3d(${-pageW + dx}px,0,0)`;
-    };
-    /** 三枚のうち、どれを画面いっぱいに見せて止まるか。0=前日 1=今日 2=翌日 */
-    const settle = (index) => new Promise((resolve) => {
-      track.style.transition = "transform .2s var(--ease-out)";
-      track.style.transform = `translate3d(${-pageW * index}px,0,0)`;
-      setTimeout(() => {
-        track.style.transition = "";
-        /* 真ん中（＝いま見ている日）に戻るときは、px の値を残さず、
-           CSSの既定（-100%）に戻します。動いていない素の状態と、
-           見分けが付かなくなるように。日をめくる側（0/2）は、この
-           あとすぐ render() が紙を丸ごと差し替えるので、そのままで
-           かまいません。 */
-        if (index === 1) { track.style.transform = ""; track.classList.remove("is-dragging"); }
-        resolve();
-      }, 200);
-    });
-
-    viewport.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      // 中の押せるものは、押せるままにします。
-      if (e.target.closest("input, textarea, select")) return;
-      pageW = viewport.getBoundingClientRect().width;
-      id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
-      lastT = performance.now(); lastX = e.clientX; vx = 0;
-      track.style.transition = "";
-    }, { passive: true });
-    viewport.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== id) return;
-      const mx = e.clientX - x0, my = e.clientY - y0;
-      if (!axis) {
-        if (Math.abs(mx) < AXIS_LOCK && Math.abs(my) < AXIS_LOCK) return;
-        /* 横をやや優先します——完全に水平でなくても、斜めの払いは
-           たいてい横のつもりです。真上・真下に近い動きだけ縦に譲ります。 */
-        axis = Math.abs(mx) >= Math.abs(my) * 0.85 ? "x" : "y";
-        /* 横だと決まってから初めて捕まえます。ボタンをただ押しただけの
-           指まで捕まえると、そのボタンの click が届かなくなるので。 */
-        if (axis === "x") {
-          try { viewport.setPointerCapture(id); } catch (err) { /* Safari だと投げることがあります */ }
-          /* ここから指が離れるまで、render() を止めます（30秒ごとの
-             見直しや自動同期など、指と関係の無い理由で store が動いても、
-             掴んでいる紙が組み直されないように）。will-change は、
-             合成レイヤーへの昇格をドラッグの最初の一拍で終わらせておく
-             ためのものなので、動いている間だけ付けます。 */
-          dragging = true;
-          track.classList.add("is-dragging");
-        }
-      }
-      if (axis !== "x") return;
-      const now = performance.now();
-      if (now > lastT) { vx = (e.clientX - lastX) / (now - lastT); lastT = now; lastX = e.clientX; }
-      /* 今日より先には行けないので、そちら向きだけ重くします。それ以外は
-         指と1:1で追わせます。 */
-      const blocked = mx < 0 && isViewToday();
-      dx = blocked ? mx * 0.3 : mx;
-      if (!frame) frame = requestAnimationFrame(paint);
-    }, { passive: true });
-    const end = async (e) => {
-      if (e.pointerId !== id) return;
-      const wasX = axis === "x";
-      const moved = dx;
-      id = null; axis = null;
-      /* 縦の払い（や、動かなかったタップ）は、横には何も触れていません。
-         ここで settle を呼ぶと、動いてもいない track に一瞬だけ
-         translate を乗せてしまいます（すぐ消えるとはいえ、それを
-         見るテストや目には「動いた」に映ります）。横だと決まった
-         ときだけ、この先の判定に進みます。 */
-      if (!wasX) return;
-      /* 短い距離でも、速い払い（フリック）なら隣へ。「軽い操作感」を
-         優先し、フリックの基準もゆるめにしてあります。 */
-      const fling = Math.abs(vx) > 0.35 && Math.abs(moved) >= 8;
-      if (Math.abs(moved) < COMMIT && !fling) { await settle(1); dragging = false; return; }
-      const next = U.shiftDay(curDay(), moved < 0 ? 1 : -1);
-      if (next > U.todayKey()) { await settle(1); dragging = false; return; }
-      KN.motion.fire("nav");
-      await settle(moved < 0 ? 2 : 0);
-      /* 滑りきった、その位置のまま次へ渡します。viewDay を変えてから
-         render() で三枚を組み直すと、真ん中（今日）はいま画面いっぱいに
-         見えているのと同じ日になるので、見た目の続きが切れません。
-         render() 自身が dragging を見て止めてしまわないよう、呼ぶ前に
-         下ろします。 */
-      dragging = false;
-      viewDay = next === U.todayKey() ? null : next;
-      const d = U.dayDate(next);
-      calMonth = { year: d.getFullYear(), month: d.getMonth() };
-      render();
-    };
-    viewport.addEventListener("pointerup", end);
-    viewport.addEventListener("pointercancel", (e) => {
-      if (e.pointerId !== id) return;
-      const wasX = axis === "x";
-      id = null; axis = null;
-      if (!wasX) return;
-      settle(1).then(() => { dragging = false; });
-    });
   }
 
   /* 払うと月がめくれます。縦は下のカードのスクロールに譲ります——
