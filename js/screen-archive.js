@@ -1385,6 +1385,13 @@
       openMonthPicker();
     });
 
+    /* 題の右の「今日へ戻る」。今日を見ているあいだは `paintDayTitleInto` が
+       押せなくしているので、ここで日を見る必要はありません。 */
+    root.querySelector(".js-go-today").addEventListener("click", () => {
+      KN.motion.fire("select");
+      goDayTo(U.todayKey());
+    });
+
 
     /* ずっと見えている暦は、上のバーのすぐ下に貼りつきます。バーの高さは
        ノッチの深さで変わるので、実測して渡します——CSSに数字を焼き込むと、

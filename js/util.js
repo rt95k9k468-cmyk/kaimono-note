@@ -315,7 +315,15 @@
      「いま開いているのは今日だ」を、字の色そのものが言います。
 
      曜日まで書くのは、日付だけでは「その日が何曜だったか」を数えないと
-     分からないからです。予定を組むときに要るのは、たいてい曜日のほう。 */
+     分からないからです。予定を組むときに要るのは、たいてい曜日のほう。
+
+     **括弧は半角**（`(火)`）。全角の `（火）` は前後に見えない余白を抱えて
+     いて、実測で 3文字ぶん——半角なら 1.6文字ぶんです。浮いた 1.4文字ぶんが、
+     右の「今日へ戻る」に回ります（題の字は狭い画面ほど小さくなる clamp な
+     ので、ここを詰めないと 320px 級で字が欠ける）。
+     **もし実機で括弧が上下にずれて見えたら、ここの一行を全角へ戻すこと**
+     ——ASCIIの括弧はラテン字の中心に合わせて描かれているので、漢字と
+     並べたときの座りは書体しだいです。 */
   function dayTitleParts(key) {
     const d = dayDate(key);
     if (!d) return null;
@@ -323,7 +331,7 @@
       y: String(d.getFullYear()),
       pre: `年${d.getMonth() + 1}月`,
       d: String(d.getDate()),
-      post: `日（${WEEKDAYS[d.getDay()]}）`,
+      post: `日(${WEEKDAYS[d.getDay()]})`,
       isToday: key === todayKey(),
     };
   }
@@ -334,20 +342,32 @@
     return p ? p.y + p.pre + p.d + p.post : "";
   }
 
-  /** 上の帯に置く、日付の題。三画面で同じ形です。
+  /** 上の帯に置く、日付の題と、その右の「今日へ戻る」。三画面で同じ形です。
 
-      「今日へ帰る」札を置いていた時期がありますが、外しました。当日と
-      それ以外とで題の大きさが変わって見えたのは、あの札のぶんだけ字を
-      一段落としていたのが原因です——**日はいつも同じ大きさ**にします。
-      今日へ帰る道は、暦から今日のマスを選ぶことで足ります。 */
+      **「›」は外しました。** `--cal-p` で回して暦の開き具合を言っていた
+      のですが、daily では題を押すと月を選ぶ紙が開く（暦の開閉ではない）ので、
+      あそこでは**回る意味がありませんでした**。やること・health では効いて
+      いましたが、開いているかどうかは暦そのものの高さがもう言っています
+      ——同じことを二か所で言わない、のほうを取ります。
+
+      **跡地には「今日へ戻る」を置きます。** 今日から離れる道は増えた
+      （暦を払う・紙を払う・暦の日を押す）のに、戻る道は「暦から今日のマスを
+      探して押す」しかありませんでした。今日が画面に出ていない週まで行って
+      いると、その一手が二手三手になります。
+
+      **札を出したり消したりはしません。** 前に外した「今日へ帰る」札は、
+      当日でないときだけ出て、そのぶん題の字を一段落としていました
+      ——今日とそれ以外で題の大きさが変わって見えた原因です。ここは
+      **いつも同じ場所を同じ幅で取り**、今日を見ているあいだは押せなくして
+      薄くするだけ。**どの日を見ていても、題の字も帯の高さも動きません。** */
   function dayTitleBar() {
     return html`
       <div class="topbar-dayrow">
         <button type="button" class="topbar-day js-day-title">
           <span class="topbar-title"><span class="day-y"></span><span class="day-pre"></span><span
                 class="day-d"></span><span class="day-post"></span></span>
-          <span class="day-more">${icon("chevron")}</span>
         </button>
+        <button type="button" class="topbar-today js-go-today">${icon("back")}</button>
       </div>
     `;
   }
@@ -372,6 +392,13 @@
     q(".day-post").textContent = p.post;
     const btn = q(".js-day-title");
     if (btn) btn.setAttribute("aria-label", dayTitleText(key) + (action ? `。${action}` : ""));
+    /* 今日を見ているあいだは押せません。**消しません**——場所は取ったまま
+       薄くするだけ（消すと、日を送るたびに題の右で何かが出入りします）。 */
+    const home = q(".js-go-today");
+    if (home) {
+      home.disabled = p.isToday;
+      home.setAttribute("aria-label", p.isToday ? "今日を見ています" : "今日へ戻る");
+    }
   }
 
   function relativeDate(iso) {
