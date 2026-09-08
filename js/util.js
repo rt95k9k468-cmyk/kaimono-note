@@ -334,7 +334,12 @@
     return p ? p.y + p.pre + p.d + p.post : "";
   }
 
-  /** 上の帯に置く、ひと組（日付の題 ＋ 今日へ帰る札）。三画面で同じ形です。 */
+  /** 上の帯に置く、日付の題。三画面で同じ形です。
+
+      「今日へ帰る」札を置いていた時期がありますが、外しました。当日と
+      それ以外とで題の大きさが変わって見えたのは、あの札のぶんだけ字を
+      一段落としていたのが原因です——**日はいつも同じ大きさ**にします。
+      今日へ帰る道は、暦から今日のマスを選ぶことで足ります。 */
   function dayTitleBar() {
     return html`
       <div class="topbar-dayrow">
@@ -343,7 +348,6 @@
                 class="day-d"></span><span class="day-post"></span></span>
           <span class="day-more">${icon("chevron")}</span>
         </button>
-        <button type="button" class="topbar-today js-today" hidden>Today</button>
       </div>
     `;
   }
@@ -353,17 +357,14 @@
    * @param {Element} row  .topbar-dayrow（の中を持っているもの）
    * @param {string} key   いま見ている日
    * @param {string} [action] 題を押すと何が起きるか（読み上げ用）
-   * @returns {Element|null} Today の札。押されたときの行き先は、画面ごとに違う
-   *          （やることは goDay、daily は月ごと、ダイエットは viewDay）ので、
-   *          繋ぐのは呼んだ側の仕事です。
    */
   function paintDayTitleInto(row, key, action) {
-    if (!row) return null;
+    if (!row) return;
     const p = dayTitleParts(key);
-    if (!p) return null;
+    if (!p) return;
     const q = (s) => row.querySelector(s);
     const dEl = q(".day-d");
-    if (!dEl) return null;
+    if (!dEl) return;
     q(".day-y").textContent = p.y;
     q(".day-pre").textContent = p.pre;
     dEl.textContent = p.d;
@@ -371,12 +372,6 @@
     q(".day-post").textContent = p.post;
     const btn = q(".js-day-title");
     if (btn) btn.setAttribute("aria-label", dayTitleText(key) + (action ? `。${action}` : ""));
-    const today = q(".js-today");
-    if (today) {
-      today.hidden = p.isToday;
-      today.setAttribute("aria-label", "今日へもどる");
-    }
-    return today;
   }
 
   function relativeDate(iso) {
