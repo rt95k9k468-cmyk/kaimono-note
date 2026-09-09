@@ -481,7 +481,11 @@
        core 0.638、既存69型との最小距離 0.132。`ICON-DEIMAGINE.md` Phase 3。 */
     mayo: S("M105.7 68.7 L150.3 68.7 L152.4 72.3 L171.9 139 L174.3 153.6 L174.3 210.5 L168.6 223.5 L158.5 231.2 L100.8 232 L91.8 227.9 L85.8 221 L82.5 213.7 L82.5 147.1Z",
       "M107.7 30.1 L115.4 24 L140.6 24 L143.8 25.6 L149.1 31.7 L149.1 56.9 L107.3 57.3Z"),
-    miso: S(               /* 小びん・瓶詰 */
+    /* `miso`（みそ）は利用者の判断で「味噌汁」として`gratin`（お椀もの）へ
+       畳んだ（`ICON-DEIMAGINE.md`）。この小びんの絵は、道連れだった
+       瓶もの6つのうち`honey`を新しい代表に立てて引き継ぐ——形はまだ
+       想像描きのまま（Phase 3未着手）。 */
+    honey: S(              /* 小びん・瓶詰 */
       rr(48, 44, 160, 36, 10),
       "M56 84h144v112a26 26 0 0 1-26 26H82a26 26 0 0 1-26-26Z",
       rr(76, 116, 104, 44, 8)),
@@ -672,7 +676,11 @@
     ],
     wasabi: ["gingerTube", "garlicTube", "mustard", "karashi"],
     mayo: ["ketchup"],
-    miso: ["doubanjiang", "gochujang", "peanutButter", "marmalade", "honey", "shioKoji"],
+    /* みそ（`miso`）は`gratin`（お椀もの）へ畳んだので、道連れの瓶もの
+       （どうばんじゃん・コチュジャン・ピーナッツバター・マーマレード・
+       塩麹）は新しい代表`honey`へ移した。利用者から後日、瓶ものの
+       参考画像が届く予定（`ICON-DEIMAGINE.md`）。 */
+    honey: ["doubanjiang", "gochujang", "peanutButter", "marmalade", "shioKoji"],
     flour: ["salt"],
     /* 果物の缶詰は想像描きの型を畳んで消した（`ICON-DEIMAGINE.md`）。
        「缶」という同じ実物の入れ物なので `tin` へ——どちらもまだ想像描き
@@ -692,7 +700,7 @@
     teaBag: ["coffeeBeans"],
     /* 惣菜・冷凍・乾物 */
     tempura: ["croquette", "friedFood", "springRoll"],
-    gratin: ["omelette", "oden", "potatoSalad", "saladChicken"],
+    gratin: ["omelette", "oden", "potatoSalad", "saladChicken", "miso"],
     frozenGyoza: ["saladPack"],
     icePop: ["shavedIce"],
   };
@@ -702,7 +710,7 @@
     /* `icon-silhouette-types.json` の `toFoodType`。食材の型で足りるので、
        描き起こさずにここへ回します。**繋いだとき、この6キーだけ色つきの絵が
        残っていました**（米が手描きのまま出ていたのがこれ）。 */
-    rice: "flour", blackPepper: "miso", mentsuyu: "oil", seaweedWakame: "nori",
+    rice: "flour", blackPepper: "honey", mentsuyu: "oil", seaweedWakame: "nori",
     driedSeaweedSoup: "mushroom", instantSoup: "tin",
 };
   Object.keys(TYPES).forEach((rep) => {
