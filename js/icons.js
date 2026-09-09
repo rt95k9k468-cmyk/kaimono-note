@@ -10,10 +10,9 @@
    一族は名前で登録します。いまは二つ：
 
      phosphor … Phosphor Icons v2.1.1（MIT）。いま使っているもの
-     legacy   … 手描きの55個。使っていませんが、消していません
-
-   `KN.icons.use("legacy")` と書けば、画面には一行も触れずに全部が戻ります。
-   三つめを足すときも、ここに register するだけです。
+     legacy   … 手描きの55個。一族まるごと戻す口は封じてあります
+                （下の「逃げ場」参照）——一つだけ、Phosphor に無い
+                絵（体重計）を拾うためだけに残っています。
 
    ■ 版が違うと、絵の作りも違う
 
@@ -49,22 +48,14 @@
   /* 一族ごとの絵の帳面。{ name: { body, solid, viewBox, mode } } */
   const providers = Object.create(null);
 
-  /* いま使う一族と、そこに無い名前の逃げ場。逃げ場があるので、
-     Phosphor に見つからなかった一つ（体重計）だけが手描きのまま残せます。 */
-  let current = "phosphor";
-  let fallback = "legacy";
+  /* 使う一族は固定。そこに無い名前の逃げ場だけを残してあります——
+     Phosphor に見つからなかった一つ（体重計）が手描きのまま拾えるように。
+     一族をまるごと入れ替える口（かつての `use()`）は封じました。 */
+  const current = "phosphor";
+  const fallback = "legacy";
 
   function register(id, set) {
     providers[id] = Object.assign(providers[id] || Object.create(null), set);
-  }
-
-  function use(id) {
-    if (providers[id]) current = id;
-    /* いまどの一族かを、いちばん上の札に書いておきます。CSS がそれを見て
-       重さを合わせられるように——一族が変われば線の太さの意味も変わるので
-       （手描きは 24 の升目に 2.2、Phosphor は 256 の升目に 16）。 */
-    if (document.documentElement) document.documentElement.dataset.icons = current;
-    return current;
   }
 
   const provider = () => current;
@@ -109,8 +100,10 @@
     return open + body + "</svg>";
   }
 
-  KN.icons = { register, use, provider, has, get, svg, DEFAULT_BOX };
+  KN.icons = { register, provider, has, get, svg, DEFAULT_BOX };
 
-  /* 札は、最初から出しておきます（use() を呼ばずに既定のまま使うので）。 */
+  /* いまどの一族かを、いちばん上の札に書いておきます。CSS がそれを見て
+     線の太さを合わせます（`[data-icons="phosphor"]`）。一族は固定なので
+     一度書くだけです。 */
   if (document.documentElement) document.documentElement.dataset.icons = current;
 })();
