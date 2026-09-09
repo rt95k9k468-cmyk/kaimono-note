@@ -442,14 +442,13 @@
    では回る意味がありませんでした。やること・health では効いていたものの、
    開いているかどうかは暦そのものの高さがもう言っています。
 
-   **場所は、どの日を見ていても同じだけ取ります。** 前に外した「今日へ帰る」
-   札は当日でないときだけ出て、そのぶん題の字を一段落としていました——今日と
-   それ以外で題の大きさが変わって見えた原因がそれです。ここは出入りせず、
-   今日を見ているあいだは薄くして押せなくするだけ。だから題の clamp も
-   帯の高さも、日によって動きません。
+   **今日を見ているあいだは隠します**（`hidden`）。押しても行き先が無く、
+   向き（左か右か）も決まらないので、薄く残す理由がありません。動くのは
+   矢の右にある探す・設定の位置だけ——**題そのものは vw基準の clamp なので、
+   この矢の有無とは無関係**です。日によって題の字も帯の高さも動きません。
 
-   絵は 17px（「›」と同じ）、指の的は 44px（`::after` が持つ。`.icon-btn`
-   と同じ手で、幅を増やさずに的だけ広げます）。 */
+   絵は 17px（前の「›」と同じ）、指の的は 44px（`::after` が持つ。
+   `.icon-btn` と同じ手で、幅を増やさずに的だけ広げます）。 */
 .topbar-today {
   display: grid; place-items: center;
   flex: none;
@@ -460,9 +459,12 @@
   border: none;
   background: none;
   color: var(--c-primary-fill);
-  transition: opacity var(--dur) var(--ease);
 }
 .topbar-today svg { width: 17px; height: 17px; }
+/* 未来の日からは左向き（時間を遡る）、過去の日からは右向き（時間を進める）。
+   絵そのものは左向き一つだけ持ち、右向きは鏡に映すだけ——`arrow-u-up-right`
+   はこの絵のちょうど鏡像なので、絵を二つ持つ必要がありません。 */
+.topbar-today.is-flip svg { transform: scaleX(-1); }
 .topbar-today::after {
   content: "";
   position: absolute;
@@ -471,10 +473,6 @@
   transform: translate(-50%, -50%);
 }
 .topbar-today:active { opacity: .5; }
-/* 今日を見ているあいだ。**消さずに薄く**——消すと、日を送るたびに題の右で
-   何かが出入りします。押せないので、的も取り下げます。 */
-.topbar-today[disabled] { opacity: .22; }
-.topbar-today[disabled]::after { content: none; }
 
 .cal-head {
   display: flex;
