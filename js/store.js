@@ -1138,8 +1138,10 @@
    * 利用者が手で選んだ絵も、キーワードの表も動きません。変わるのは
    * 「そのキーでどの絵を出すか」だけです。
    *
-   * 色つきに戻すときは、**この関数の中の2行を消すだけ**
-   * （`icons-v2.js` は消していません）。
+   * 最後の `KN.productIcons.byKey(key)` はもう当たりません——
+   * `product-icons.js` が `icons-v2.js` の絵をもう `ICONS` へ重ねていない
+   * ので（708キー全部を `iconsGoods` / `iconsFood` が拾えるようになった
+   * ため、実測でも 0 件）。色つきへ戻す口はそちらで塞いであります。
    */
   function markOf(key) {
     if (!key) return "";

@@ -3,11 +3,8 @@
 
    Phosphor へ移す前に、この画面がずっと使っていた絵です。**消していません。**
    一族の一つとして登録してあるだけで、いまの画面からは引かれません
-   （js/icons.js の provider が "phosphor" のため）。
-
-   戻すときは一行です：
-
-       KN.icons.use("legacy");
+   （js/icons.js の provider が "phosphor" のため）。一族をまるごと
+   戻す口（かつての `KN.icons.use("legacy")`）は封じてあります。
 
    一つだけ、いまも現役の絵があります——**体重計（scale）**。Phosphor に
    あるのは天びん（scales）で、それは買いもの側の「お店を比べる」と紛れます。

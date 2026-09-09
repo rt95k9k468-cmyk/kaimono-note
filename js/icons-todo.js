@@ -484,8 +484,7 @@
   /* ---------------- 一族の入れ替え ----------------
 
      既定は Phosphor Fill。手で描いた108枚は `icons-todo-hand.js` に消さずに
-     置いてあり、`KN.iconsTodo.use("hand")` の一行で入れ替わります
-     （UIアイコンの `KN.icons.use("legacy")` と同じ仕掛け）。
+     置いてあり、`KN.iconsTodo.use("hand")` の一行で入れ替わります。
      **画面はどの一族かを知りません**——見るのは `ICONS` だけです。 */
   const FAMILIES = { phosphor: RAW };
   const ICONS = {};
