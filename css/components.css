@@ -1002,7 +1002,7 @@ button, [role="tab"] {
   background: none;
   color: var(--c-text);
   font-family: inherit;
-  font-size: var(--fs-md);
+  font-size: var(--fs-lg);
   line-height: var(--lh-body);
   resize: none;
 }

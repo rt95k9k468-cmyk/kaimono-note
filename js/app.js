@@ -41,7 +41,7 @@
        そこへは掴み手を下げて行きます。だから帯には席を持たず、価格を見て
        いるあいだも帯が言うのは「買うもの」——いま居るのは買うもののタブで、
        その紙を下げているだけなので。`holds` は「この席が受け持つ画面」。 */
-    { id: "list", holds: ["prices"], label: "shopping", icon: "list" },
+    { id: "list", holds: ["prices"], label: "shopping", icon: "cart" },
     /* ダイエット → health。絵も「健康・人」を連想するものへ
        （`heart`、Phosphor Regular）。手描きの `scale`（体重計）だけが
        線の絵で他の三つから浮いていたので、これで一族も揃います。 */
@@ -52,7 +52,7 @@
   const FACES = {
     todo:     { label: "tasks",    icon: "checklist" },
     archive:  { label: "daily",    icon: "book" },
-    list:     { label: "shopping", icon: "list" },
+    list:     { label: "shopping", icon: "cart" },
     prices:   { label: "prices",   icon: "tag" },
     diet:     { label: "health",   icon: "heart" },
     settings: { label: "設定",     icon: "gear" },
