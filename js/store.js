@@ -1131,23 +1131,20 @@
    * @returns raw HTML, ready to drop into an html`` template
    */
   /**
-   * 絵の名前 → 絵。**単色のシルエットを先に引きます。**
+   * 絵の名前 → 絵。**単色のシルエットだけを引きます。**
    *
-   * 順番は 道具など（`iconsGoods`）→ 食材（`iconsFood`）→ 色つきの手描き
-   * （`productIcons`＝`icons-v2.js`）。**キーは一文字も変えていない**ので、
-   * 利用者が手で選んだ絵も、キーワードの表も動きません。変わるのは
-   * 「そのキーでどの絵を出すか」だけです。
+   * 道具など（`iconsGoods`）→ 食材（`iconsFood`）の順。**キーは一文字も
+   * 変えていない**ので、利用者が手で選んだ絵も、キーワードの表も動きません。
    *
-   * 最後の `KN.productIcons.byKey(key)` はもう当たりません——
-   * `product-icons.js` が `icons-v2.js` の絵をもう `ICONS` へ重ねていない
-   * ので（708キー全部を `iconsGoods` / `iconsFood` が拾えるようになった
-   * ため、実測でも 0 件）。色つきへ戻す口はそちらで塞いであります。
+   * 色つき（`icons-v2.js`）へはもう戻りません——`KN.productIcons.byKey()`
+   * 自体が、いまはこの二つと同じところを見に行くだけの窓口になっています
+   * （`product-icons.js` 側の決めごと）。だからここで三つ目として呼んでも
+   * 同じ答えの二度引きにしかならず、書きません。
    */
   function markOf(key) {
     if (!key) return "";
     return (KN.iconsGoods && KN.iconsGoods.byKey(key))
-      || (KN.iconsFood && KN.iconsFood.byKey(key))
-      || KN.productIcons.byKey(key) || "";
+      || (KN.iconsFood && KN.iconsFood.byKey(key)) || "";
   }
 
   function productMark(product) {
