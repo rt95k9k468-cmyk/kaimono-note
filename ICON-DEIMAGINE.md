@@ -236,9 +236,32 @@ Phase 3 へ回す。** 実際に4型（`pasta` `orange` `corn` `grape`）で
 
 Phase 1（5型中1型）と合わせて、25型を試して2型が採用。**歩留まりは1割弱。**
 
+**第2束（次にcoreが低い20型）の結果、2026-09-09：71型中 4型採用。**
+今回は Phosphor Fill / Fluent filled 由来（単色・少パス数）の候補に絞って
+探したところ、歩留まりが上がった——**セットの語彙選びを絵文字系に広げるほど
+候補は増えるが、埋め込める形式のものはまた別**、という Phase 1〜2 前半の
+教訓が効いた。
+
+| 判定 | 型 |
+|---|---|
+| **採用** | `cheese`（Phosphor Fill） `teaBag`（同） `coffee`（同） `cookie`（Fluent） |
+| 意味の似た候補はあったが識別特徴が消えて不採用 | `frozenGyoza`（ひだの無いただの塊） |
+| セット候補が絵文字系のみで門1未達 | `onigiri` `peas` `bacon` `bento` `watermelon` `cake` `sushi` |
+| セット候補ゼロ | `mayo` `roe` `butter` `amazake` `pickles` `wasabi` `cucumber` |
+| セット候補の意味が別物 | `miso` |
+
+**歩留まりが上がった理由：候補の出所を先に絞ったから。** 第1束は
+語幹検索でヒットした候補を core の高い順に全部レンダリングしていたが、
+第2束は「Phosphor Fill / Fluent filled 系だけを先に選んで測る」順にした。
+絵文字系（noto-v1・fluent-emoji-high-contrast）は候補としては出るが、
+（a）core が低いことが多く、（b）通っても埋め込めない、の二重の壁がある
+ので、**先に除いてから探すほうが早い。**
+
+Phase 1〜2 合計：45型を試して **6型採用**（歩留まり13%）。
+
 ### Phase 3 ── 参考画像をなぞる（消費：大・数セッション）
 
-残り（見込み **55〜65型 ＋ goods 4型**）。うち `pasta` `orange` `corn`
+残り（**65型 ＋ goods 4型**、2026-09-09時点）。うち `pasta` `orange` `corn`
 `grape` の4型は、なぞる元の参考画像（noto-v1のシルエット）が既に手元に
 ある。ここが計画の8割です。
 
@@ -342,26 +365,26 @@ core は 2026年9月9日の実測（上の物差し）。低い順。
 | `cabbage` | キャベツ | 0.536 | | セット候補ゼロ（core 0.141のみ） |
 | `water` | 水 | 0.541 | | セットの候補2つ（水滴シルエット）はcore通過(0.79/0.77)したが、距離で `egg` と0.121まで接近し門2で不合格 → Phase 3 |
 | `sausage` | そーせーじ | 0.545 | | セット候補はホットドッグ（パン付き）で、ソーセージ単体と別物 → Phase 3 |
-| `onigiri` | おにぎり | 0.545 | | |
+| `onigiri` | おにぎり | 0.545 | | セット候補（ph:onigiri-fill/bold）は門1未達（core 0.282／0.125）→ Phase 3 |
 | `mayo` | まよねーず | 0.552 | | セット候補ゼロ |
-| `peas` | 豆 | 0.559 | | |
-| `cheese` | ちーず | 0.561 | | |
-| `roe` | 魚卵 | 0.562 | | |
-| `bacon` | べーこん | 0.568 | | |
-| `bento` | 弁当 | 0.581 | | |
-| `frozenGyoza` | ぎょうざ | 0.588 | | |
-| `butter` | ばたー | 0.598 | | |
-| `amazake` | 甘酒 | 0.599 | | |
+| `peas` | 豆 | 0.559 | | セット候補は絵文字系のみ（fluent-emoji-high-contrast:pea-pod、core 0.027）で門1未達 → Phase 3 |
+| `cheese` | ちーず | 0.561 | **set:ph:cheese-fill** | core 0.460／距離0.289。2026-09-09 |
+| `roe` | 魚卵 | 0.562 | | セット候補ゼロ（誤爆のみ：healthicons:gastroenterology） |
+| `bacon` | べーこん | 0.568 | | セット候補は絵文字系のみで門1未達（core 0.237）→ Phase 3 |
+| `bento` | 弁当 | 0.581 | | セット候補は絵文字系のみで門1未達（core 0.292）→ Phase 3 |
+| `frozenGyoza` | ぎょうざ | 0.588 | | セット候補（tabler:dumpling-filled、core 0.799）は門1は通るが、ひだ・半月形の識別特徴が無いただの塊で不採用 → Phase 3 |
+| `butter` | ばたー | 0.598 | | セット候補ゼロ |
+| `amazake` | 甘酒 | 0.599 | | セット候補ゼロ |
 | `pickles` | つけもの | 0.600 | | セット候補ゼロ |
-| `wasabi` | わさび | 0.605 | | |
-| `sushi` | 寿司 | 0.611 | | |
-| `teaBag` | お茶 | 0.612 | | |
-| `watermelon` | すいか | 0.617 | | |
-| `coffee` | こーひー | 0.618 | | |
-| `cucumber` | きゅうり | 0.631 | | |
-| `cookie` | くっきー | 0.632 | | |
-| `cake` | けーき | 0.636 | | |
-| `miso` | みそ | 0.639 | | |
+| `wasabi` | わさび | 0.605 | | セット候補ゼロ |
+| `sushi` | 寿司 | 0.611 | | セット候補（maki:sushi-11／restaurant-sushi）は門1未達（core 0.383／0.373）→ Phase 3 |
+| `teaBag` | お茶 | 0.612 | **set:ph:tea-bag-fill** | core 0.492／距離0.327。カップ型候補（mingcute:teacup-fill、core 0.720）もあったが牛乳等と紛れるため見送り。2026-09-09 |
+| `watermelon` | すいか | 0.617 | | セット候補は絵文字系のみで門1未達（core 0.420）→ Phase 3 |
+| `coffee` | こーひー | 0.618 | **set:ph:coffee-bean-fill** | core 0.655／距離0.248。カップ型候補（fluent:drink-coffee-24-filled、core 0.630）もあったがteaBagのカップ候補と紛れるため豆を採った。2026-09-09 |
+| `cucumber` | きゅうり | 0.631 | | セット候補ゼロ（core 0.000のみ） |
+| `cookie` | くっきー | 0.632 | **set:fluent:cookies-24-filled** | core 0.708／距離0.248。2026-09-09 |
+| `cake` | けーき | 0.636 | | セット候補は絵文字系のみで門1未達（core 0.395／0.280）→ Phase 3 |
+| `miso` | みそ | 0.639 | | セット候補（浅い鍋料理の絵）は「みそ」の意味を持たない → Phase 3 |
 | `pastaSauce` | ぱすたそーす | 0.646 | | |
 | `iceCream` | あいす | 0.646 | | |
 | `croissant` | くろわっさん | 0.657 | | |
