@@ -214,6 +214,18 @@
        液体の入れもの全部。ぽんぷ・注ぎ口・取っ手・細口に分けていたのを一つに戻した
        ——しゃんぷー と りんす を絵で見分ける必要は無い（名前がすぐ横にある） */
     bottle: F("<path d=\"M13 1a2 2 0 0 1 1.995 1.85L15 3v.5c0 1.317.381 2.604 1.094 3.705l.17.25l.05.072a9.1 9.1 0 0 1 1.68 4.92l.006.354V19a3 3 0 0 1-2.824 2.995L15 22H9a3 3 0 0 1-2.995-2.824L6 19v-6.2a9.1 9.1 0 0 1 1.486-4.982l.2-.292l.05-.069A6.82 6.82 0 0 0 9 3.5V3a2 2 0 0 1 1.85-1.995L11 1zm.362 5h-2.724a8.8 8.8 0 0 1-1.08 2.334l-.194.284l-.05.069a7.1 7.1 0 0 0-1.307 3.798l-.003.125A3.33 3.33 0 0 1 9.979 12a3.4 3.4 0 0 1 2.833 1.417c.27.375.706.593 1.209.583a1.4 1.4 0 0 0 1.166-.583a3.4 3.4 0 0 1 .81-.8L16 12.8c0-1.37-.396-2.707-1.137-3.852l-.228-.332A8.8 8.8 0 0 1 13.362 6\"/>", 10.2857, 4.57, 9.71),
+    /* 洗濯洗剤。参考画像をなぞった
+       （白黒化→輪郭抽出→Douglas-Peucker、ε=1.2・長辺208・中心128,128）。
+       「ボトル」型は細口の共有シルエットで、太い胴・取っ手の穴・注ぎ口の
+       この形とは別物なので、洗濯洗剤（`laundry`）だけこちらへ移した。 */
+    detergentBottle: S(
+      "M121.7 26.1 L124.9 48.0 L92.6 47.8 L95.5 27.8 L97.8 24.2 L118.8 24.0Z",
+      "M85.5 75.7 L87.2 56.9 L89.4 54.2 L127.0 53.8 L130.5 56.9 L132.0 75.9Z",
+      "M82.4 82.1 L134.9 81.7 L169.5 100.5 L185.1 116.1 L193.0 130.3 L199.7 148.6 L203.0 172.8 L202.6 194.5 L200.1 205.7 L194.7 216.2 L187.0 223.9 L177.8 228.9 L165.3 231.8 L85.1 232.0 L70.3 227.6 L60.1 218.7 L55.5 210.7 L53.0 200.3 L54.2 160.3 L57.6 128.2 L60.9 113.2 L66.3 100.7 L72.1 91.9Z",
+      "M175.7 181.4 L180.5 175.7 L182.2 168.2 L181.4 154.5 L176.8 138.2 L162.0 116.7 L154.9 113.0 L147.8 113.4 L143.4 117.4 L143.4 125.7 L155.9 148.2 L165.5 177.4 L170.3 181.4Z",
+      "M143.2 201.4 L149.3 192.0 L148.0 178.6 L142.6 159.5 L133.0 140.3 L123.4 127.8 L111.5 118.8 L103.6 116.3 L91.9 118.0 L85.9 124.0 L82.1 134.0 L75.5 185.3 L77.6 197.0 L81.9 201.4 L87.4 203.4 L129.0 203.9Z",
+      "M88.8 156.1 L92.2 132.8 L97.4 125.9 L103.2 125.9 L110.7 129.3 L123.0 142.4 L107.4 151.8Z",
+      "M85.5 192.0 L86.1 178.0 L96.1 180.9 L109.0 178.0 L120.7 170.5 L132.2 159.1 L138.4 178.6 L140.1 189.9 L138.2 193.4 L89.9 194.3Z"),
     /* スプレー — Phosphor Fill `spray-bottle-fill`
        吹きつけるもの。トリガーと噴射缶を一つに。ここだけは残す——
        「吹きつける」は使い方そのものが違うので、仲間として意味がある */
@@ -679,7 +691,8 @@
 
   /* キー → 型。ここに載っているキーは ICONS には置きません（家は一つ）。 */
   const OF = {
-    bodySoap: "bottle", handSoap: "bottle", faceWash: "bottle", cleanser: "bottle", shampoo: "bottle", dishSoap: "bottle", rinse: "bottle", laundry: "bottle", softener: "bottle", bleach: "bottle", toner: "bottle", mouthwash: "bottle", contactSolution: "bottle", pipeCleaner: "bottle", serum: "bottle", hairOil: "bottle", perfume: "bottle", babyBottle: "bottle",
+    bodySoap: "bottle", handSoap: "bottle", faceWash: "bottle", cleanser: "bottle", shampoo: "bottle", dishSoap: "bottle", rinse: "bottle", softener: "bottle", bleach: "bottle", toner: "bottle", mouthwash: "bottle", contactSolution: "bottle", pipeCleaner: "bottle", serum: "bottle", hairOil: "bottle", perfume: "bottle", babyBottle: "bottle",
+    laundry: "detergentBottle",
     cleanerSpray: "spray", kitchenSpray: "spray", bathCleaner: "spray", toiletCleaner: "spray", mold: "spray", hairSpray: "spray", deodorant: "spray", airFreshener: "spray", insect: "spray", disinfectant: "spray",
     toothpaste: "tube", handCream: "tube", ointment: "tube", makeupRemover: "tube", glue: "tube",
     milkyLotion: "jar", hairWax: "jar", bathSalt: "jar", storageJar: "jar", babyFood: "jar", foundation: "jar",
