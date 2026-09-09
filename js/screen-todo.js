@@ -806,6 +806,25 @@
       guard: true,
     });
 
+    /* メモは打った量ぶん伸びます（screen-diet.js の食事メモと同じ仕組み）。
+       固定の高さに収めず全文を出し、はみ出た先は紙そのもの（.sheet-body）が
+       スクロールして受けます。紙に置かれるまでは scrollHeight が 0 のまま
+       なので、一度だけ測り直します。 */
+    function growMemo(ta, retry) {
+      if (!ta.isConnected || !ta.scrollHeight) {
+        if (retry) return;
+        requestAnimationFrame(() => growMemo(ta, true));
+        return;
+      }
+      ta.style.height = "auto";
+      ta.style.height = `${ta.scrollHeight}px`;
+    }
+    const memoEl = body.pick(".js-memo");
+    if (memoEl) {
+      growMemo(memoEl);
+      memoEl.addEventListener("input", () => growMemo(memoEl));
+    }
+
     /* 題を打ち替えたら、頭の題もついていきます。保存する前から同じものを
        指していないと、頭が「さっきのもの」を見せたままになります。 */
 
