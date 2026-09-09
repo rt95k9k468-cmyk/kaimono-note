@@ -597,5 +597,5 @@
      直した日に一族が割れます。 */
   KN.iconsTodo = { ICONS, find, findKey, byKey, list, search, suggest, LABELS,
                    register, use,
-                   geom: { rr, cir, ell, svg: S } };
+                   geom: { rr, cir, ell, svg: S, F } };
 })();
