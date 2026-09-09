@@ -327,12 +327,16 @@
   function dayTitleParts(key) {
     const d = dayDate(key);
     if (!d) return null;
+    const today = todayKey();
     return {
       y: String(d.getFullYear()),
       pre: `年${d.getMonth() + 1}月`,
       d: String(d.getDate()),
       post: `日(${WEEKDAYS[d.getDay()]})`,
-      isToday: key === todayKey(),
+      isToday: key === today,
+      /* 「今日へ戻る」の矢がどちらを向くか。未来の日から戻るのは時間を
+         遡る＝左、過去の日から戻るのは時間を進める＝右。 */
+      isFuture: key > today,
     };
   }
 
@@ -355,11 +359,14 @@
       探して押す」しかありませんでした。今日が画面に出ていない週まで行って
       いると、その一手が二手三手になります。
 
-      **札を出したり消したりはしません。** 前に外した「今日へ帰る」札は、
-      当日でないときだけ出て、そのぶん題の字を一段落としていました
-      ——今日とそれ以外で題の大きさが変わって見えた原因です。ここは
-      **いつも同じ場所を同じ幅で取り**、今日を見ているあいだは押せなくして
-      薄くするだけ。**どの日を見ていても、題の字も帯の高さも動きません。** */
+      **今日を見ているあいだは、隠します。** 押しても行き先が無いので、
+      薄くして残す意味がありません（向き——左か右か——も決まらないので、
+      なおさら）。前に外した「今日へ帰る」札は当日でないときだけ出て、
+      そのぶん**題の字**を一段落としていました——今日とそれ以外で題の
+      大きさが変わって見えた原因はそれです。ここが違うのは、**題の幅は
+      vw基準の clamp で、この矢の有無とは無関係**なこと。矢を隠しても、
+      動くのは矢の右にある探す・設定の位置だけで、題の字も帯の高さも
+      動きません。 */
   function dayTitleBar() {
     return html`
       <div class="topbar-dayrow">
@@ -392,12 +399,16 @@
     q(".day-post").textContent = p.post;
     const btn = q(".js-day-title");
     if (btn) btn.setAttribute("aria-label", dayTitleText(key) + (action ? `。${action}` : ""));
-    /* 今日を見ているあいだは押せません。**消しません**——場所は取ったまま
-       薄くするだけ（消すと、日を送るたびに題の右で何かが出入りします）。 */
+    /* 今日を見ているあいだは隠します。押せる日だけ、向きも決まります
+       ——未来の日から戻るのは時間を遡る＝左向き、過去の日から戻るのは
+       時間を進める＝右向き（`.is-flip` が CSS で左右反転させます）。 */
     const home = q(".js-go-today");
     if (home) {
-      home.disabled = p.isToday;
-      home.setAttribute("aria-label", p.isToday ? "今日を見ています" : "今日へ戻る");
+      home.hidden = p.isToday;
+      if (!p.isToday) {
+        home.classList.toggle("is-flip", !p.isFuture);
+        home.setAttribute("aria-label", "今日へ戻る");
+      }
     }
   }
 
