@@ -38,11 +38,10 @@
 
   /* ---------------- 色つきの絵は、もう重ねない ----------------
 
-     以前はここで icons-v2.js の708枚を ICONS へ重ねていました。単色
-     シルエット（iconsGoods / iconsFood）が708キー全部を持つようになった
-     いま、そちらが store.js の markOf() で必ず先に当たるので、この
-     ICONS はもう画面には出ません——**そういう決めごと**にして、色つきへ
-     戻す口をここで塞いであります。
+     以前はここで icons-v2.js の708枚を ICONS へ重ねていました。いまは
+     重ねません——`ICONS` は常に空です。**絵は `byKey()`（下）が単色
+     シルエット（iconsGoods / iconsFood）から直接引きます**。色つきへ
+     戻す口はここで塞いであり、`ICONS` へ何かを重ねても、もう画面には出ません。
 
      `icons-v2.js` は読み込んだままです。絵ではなく、そこにしか無い
      **キーワード表**（`iconsV2Keys`。下の「新しく増えた絵のキーワード」で
@@ -812,10 +811,21 @@
   const ORDER = KEYS.map(([key]) => key)
     .concat(Object.keys(ICONS).filter((k) => !KEYS.some(([key]) => key === k)));
 
-  const list = () => ORDER.map((key) => ({ key, label: LABELS[key] || key, svg: ICONS[key] }));
+  /** The icon a key names, or "" for a key that is not one.
+   *
+   * The picture itself no longer lives in `ICONS` (see above) — it comes
+   * from the single-colour silhouettes (`iconsGoods` / `iconsFood`), the
+   * same two places `store.js`'s `markOf()` looks. This file loads before
+   * those two, so the lookup has to happen here, at call time, not at
+   * module-eval time — by the time a screen actually asks for a picture,
+   * every script has run. Screens across the app (product-sheet.js's
+   * picker, screen-todo.js's picker, screen-diet.js) call `byKey`/`list`/
+   * `search` expecting a real picture back, not just a colour fallback —
+   * this keeps that contract true now that the colour set is gone. */
+  const byKey = (key) =>
+    (key && ((KN.iconsGoods && KN.iconsGoods.byKey(key)) || (KN.iconsFood && KN.iconsFood.byKey(key)))) || "";
 
-  /** The icon a key names, or "" for a key that is not one. */
-  const byKey = (key) => (key && ICONS[key]) || "";
+  const list = () => ORDER.map((key) => ({ key, label: LABELS[key] || key, svg: byKey(key) }));
 
   /** The longest run of characters two strings share. */
   function sharedRun(a, b) {
