@@ -257,11 +257,25 @@ Phase 1（5型中1型）と合わせて、25型を試して2型が採用。**歩
 （a）core が低いことが多く、（b）通っても埋め込めない、の二重の壁がある
 ので、**先に除いてから探すほうが早い。**
 
-Phase 1〜2 合計：45型を試して **6型採用**（歩留まり13%）。
+Phase 1〜2 合計（第2束まで）：45型を試して **6型採用**（歩留まり13%）。
+
+**第3束（次にcoreが低い20型）の結果、2026-09-09：71型中 3型採用。**
+検索の誤爆が増えた束——`pastaSauce`→UFO、`tin`→スキャン系UI、
+`meat`→シャンパン/ハンマー（"ham"の部分一致）、`riceCracker`→花火、と
+語幹検索の限界が目立った。
+
+| 判定 | 型 |
+|---|---|
+| **採用** | `fish`（Fluent） `mushroom`（Tabler） `iceCream`（Phosphor Fill） |
+| 意味の近い候補はあったが別の型と紛れるため見送り | `iceCream` の棒アイス型候補（`icePop` と紛れる、コーン型を採用したので実害なし） |
+| セット候補が絵文字系のみ、または門1未達 | `croissant` `mochi` `milk` `beer` `banana` `curry` `broccoli` `icePop` |
+| セット候補ゼロ（誤爆除く） | `pastaSauce` `flour` `furikake` `tin` `meat` `riceCracker` `turnip` `potato` `tofu` |
+
+Phase 1〜2 合計（第3束まで）：65型を試して **9型採用**（歩留まり14%）。
 
 ### Phase 3 ── 参考画像をなぞる（消費：大・数セッション）
 
-残り（**65型 ＋ goods 4型**、2026-09-09時点）。うち `pasta` `orange` `corn`
+残り（**62型 ＋ goods 4型**、2026-09-09時点）。うち `pasta` `orange` `corn`
 `grape` の4型は、なぞる元の参考画像（noto-v1のシルエット）が既に手元に
 ある。ここが計画の8割です。
 
@@ -385,26 +399,26 @@ core は 2026年9月9日の実測（上の物差し）。低い順。
 | `cookie` | くっきー | 0.632 | **set:fluent:cookies-24-filled** | core 0.708／距離0.248。2026-09-09 |
 | `cake` | けーき | 0.636 | | セット候補は絵文字系のみで門1未達（core 0.395／0.280）→ Phase 3 |
 | `miso` | みそ | 0.639 | | セット候補（浅い鍋料理の絵）は「みそ」の意味を持たない → Phase 3 |
-| `pastaSauce` | ぱすたそーす | 0.646 | | |
-| `iceCream` | あいす | 0.646 | | |
-| `croissant` | くろわっさん | 0.657 | | |
-| `flour` | 粉 | 0.662 | | `rice` `blackPepper` ほかも背負う |
-| `mochi` | もち | 0.663 | | |
+| `pastaSauce` | ぱすたそーす | 0.646 | | セット候補ゼロ（"sauce"が"flying-saucer"に部分一致する誤爆のみ） |
+| `iceCream` | あいす | 0.646 | **set:ph:ice-cream-fill** | core 0.616／距離0.198。棒アイス型の候補（iconoir:ice-cream-solid／mingcute:ice-cream-2-fill）は`icePop`と紛れるため見送り、コーン型を採った。2026-09-09 |
+| `croissant` | くろわっさん | 0.657 | | セット候補は絵文字系のみ |
+| `flour` | 粉 | 0.662 | | `rice` `blackPepper` ほかも背負う。セット候補ゼロ |
+| `mochi` | もち | 0.663 | | セット候補は絵文字系のみ |
 | `furikake` | ふりかけ | 0.664 | | セット候補ゼロ |
-| `tin` | 缶詰 | 0.666 | | |
-| `milk` | 牛乳 | 0.667 | | |
-| `meat` | 肉 | 0.669 | | |
-| `beer` | びーる | 0.678 | | |
-| `banana` | ばなな | 0.680 | | |
-| `riceCracker` | せんべい | 0.682 | | |
-| `turnip` | かぶ | 0.691 | | |
-| `curry` | かれー | 0.695 | | |
-| `broccoli` | ぶろっこりー | 0.708 | | |
-| `fish` | 魚 | 0.710 | | |
-| `potato` | いも | 0.712 | | |
+| `tin` | 缶詰 | 0.666 | | セット候補ゼロ（"can"が"scan"等に部分一致する誤爆のみ） |
+| `milk` | 牛乳 | 0.667 | | セット候補（tabler:milk-filled）は門1未達（core 0.425）→ Phase 3 |
+| `meat` | 肉 | 0.669 | | セット候補ゼロ（"meat"が"champagne""hammer""hamburger"に部分一致する誤爆のみ） |
+| `beer` | びーる | 0.678 | | セット候補（ph:beer-bottle-fill、core 0.437）は門1未達 → Phase 3 |
+| `banana` | ばなな | 0.680 | | セット候補は絵文字系のみ |
+| `riceCracker` | せんべい | 0.682 | | セット候補ゼロ（"cracker"が"firecracker"に部分一致する誤爆のみ） |
+| `turnip` | かぶ | 0.691 | | セット候補ゼロ |
+| `curry` | かれー | 0.695 | | セット候補は絵文字系のみ |
+| `broccoli` | ぶろっこりー | 0.708 | | セット候補は絵文字系のみ |
+| `fish` | 魚 | 0.710 | **set:fluent:food-fish-24-filled** | core 0.679／距離0.329。2026-09-09 |
+| `potato` | いも | 0.712 | | セット候補ゼロ |
 | `tofu` | とうふ | 0.718 | | セット候補ゼロ |
-| `mushroom` | きのこ | 0.718 | | |
-| `icePop` | あいすばー | 0.720 | | |
+| `mushroom` | きのこ | 0.718 | **set:tabler:mushroom-filled** | core 0.696／距離0.223。2026-09-09 |
+| `icePop` | あいすばー | 0.720 | | セット候補（ph:popsicle-fill、core 0.383）は門1未達 → Phase 3 |
 | `tomato` | とまと | 0.722 | | |
 | `nori` | のり | 0.732 | | セット候補ゼロ |
 | `apple` | りんご | 0.737 | | |
