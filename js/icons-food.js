@@ -424,9 +424,6 @@
       rr(48, 44, 160, 36, 10),
       "M56 84h144v112a26 26 0 0 1-26 26H82a26 26 0 0 1-26-26Z",
       rr(76, 116, 104, 44, 8)),
-    curryRoux: S(          /* 箱・小袋 */
-      rr(34, 52, 188, 152, 12),
-      rr(34, 94, 188, 14, 0), rr(60, 132, 136, 22, 11)),
     flour: S(              /* 袋（粉） */
       "M52 82c0-14 8-26 22-32l54-24 54 24c14 6 22 18 22 32v126a20 20 0 0 1-20 20H72a20 20 0 0 1-20-20Z",
       rr(52, 96, 152, 14, 0)),
@@ -575,7 +572,11 @@
     croissant: ["bagel", "sweetBun", "melonBun", "baguette", "pancake"],
     noodles: ["soba", "udon", "somen", "cupNoodle", "yakisoba"],
     pasta: ["driedNoodle"],
-    curry: ["pot", "okonomiyaki", "pizza", "burger", "hotdog", "takoyaki", "dumpling"],
+    /* かれーるー（`curryRoux`）は想像描きの型を畳んで消した
+       （`ICON-DEIMAGINE.md`）。当初は「板 vs 盛り付け」で実物として別物
+       と保留していたが、あらためて利用者の判断で `curry` へ畳んだ。 */
+    curry: ["pot", "okonomiyaki", "pizza", "burger", "hotdog", "takoyaki", "dumpling",
+      "curryRoux", "consomme", "stockPack", "yeast", "sesame"],
     bento: ["cereal", "frozen"],
     pastaSauce: ["ramenSoup"],
     /* 調味料 */
@@ -586,7 +587,6 @@
     wasabi: ["gingerTube", "garlicTube", "mustard", "karashi"],
     mayo: ["ketchup"],
     miso: ["doubanjiang", "gochujang", "peanutButter", "marmalade", "honey", "shioKoji"],
-    curryRoux: ["consomme", "stockPack", "yeast", "sesame"],
     flour: ["salt"],
     /* 果物の缶詰は想像描きの型を畳んで消した（`ICON-DEIMAGINE.md`）。
        「缶」という同じ実物の入れ物なので `tin` へ——どちらもまだ想像描き
