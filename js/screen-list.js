@@ -120,11 +120,16 @@
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
     /* 送っているのは画面ではなく紙です（css の「外枠と、その中を流れる
-       中身」）。見張る相手を間違えると、上のバーの影が一生出ません。 */
-    const sc = KN.app.scrollerOf(root);
-    sc.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", sc.scrollTop > 4);
-    });
+       中身」）。見張る相手を間違えると、上のバーの影が一生出ません
+       ——ここで一度だけ `KN.app.scrollerOf(root)` を控えると、まさにそれが
+       起きます。紙は render() のたびに別の要素に差し替わるので、控えた
+       あとの render() では差し替わった紙を見失い、聞き手は二度と鳴りません
+       （scroll イベントは束ねないので）。**`root` の側でキャプチャ段階で
+       受けます**——紙が差し替わっても、子孫のどれが送ってもキャプチャは
+       root まで降りてくるので、聞き手を付け替えずに済みます。 */
+    root.addEventListener("scroll", (e) => {
+      els.topbar.classList.toggle("is-stuck", e.target.scrollTop > 4);
+    }, { capture: true });
   }
 
   /* ---------------- the add sheet ---------------- */
