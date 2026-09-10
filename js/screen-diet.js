@@ -25,6 +25,7 @@
 
   let root = null;
   let els = {};
+  let fitCalH = () => {};
   /* カルーセルを指で払っているあいだ（横だと決まってから、滑り終わる
      まで）。この間は render() を呼びません——お店の外の理由（30秒ごとの
      見直しや、自動同期の書き込みなど）で store が動いても、指の下の紙が
@@ -176,8 +177,7 @@
     /* 上のバーの厚み。**掴み手はこのぶんだけ下に貼りつきます**——数えないと
        掴み手はバーの裏へ潜り、下まで送った先で掴めなくなります（実際そう
        なっていて、この画面だけ段を替えられませんでした）。厚みはノッチの
-       深さで変わるので、CSSに数字は焼き込めません。
-       暦のぶん（--cal-h）は要りません——ここの暦は貼りつかないので。 */
+       深さで変わるので、CSSに数字は焼き込めません。 */
     const fitTop = () => {
       const h = els.topbar.getBoundingClientRect().height;
       root.style.setProperty("--topbar-h", Math.round(h) + "px");
@@ -186,15 +186,29 @@
     window.addEventListener("resize", fitTop);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", fitTop);
 
-    /* **週の一行は貼りつきます**（やること・daily と同じ）。月ぜんぶを
-       出しているときだけ流れます——五、六行が居座ると、体重もグラフも
-       そのぶん下に押し下げられるので（css の `#screen-diet .cal`）。
-       紙を引いているあいだは、月でも貼りつきます（`.cal.is-peek`）
-       ——下まで送った先で掴み手を引いたとき、暦が画面の外に居ては
-       出てくるものがないので。
+    /* 暦のぶん（--cal-h）。週も月も、どちらも貼りつくので、いま出ている
+       高さをそのまま床にします（やること・daily の fitCalH と同じ作り）。
+       暦は render() のたびに別の要素になるので、そのつど引き直して
+       見張る相手も付け替えます。 */
+    let calRO = null, calSeen = null, calH = -1;
+    fitCalH = () => {
+      const c = root.querySelector(".cal");
+      if (c && (c.classList.contains("is-peek") || c.classList.contains("is-settling"))) return;
+      const h = c && !c.classList.contains("is-hidden")
+        ? Math.round(c.getBoundingClientRect().height) : 0;
+      if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
+      if (c !== calSeen && window.ResizeObserver) {
+        if (calRO) calRO.disconnect();
+        calSeen = c;
+        if (c) { calRO = new ResizeObserver(() => fitCalH()); calRO.observe(c); }
+      }
+    };
+    fitCalH();
+    window.addEventListener("resize", () => fitCalH());
 
-       貼りついた印は、暦にも付けます。付けないと、境目の線が出ないまま
-       記録の字が下をくぐります。 */
+    /* **週も月も貼りつきます**（やること・daily と同じ）。貼りついた印は、
+       暦にも付けます。付けないと、境目の線が出ないまま記録の字が下を
+       くぐります。 */
     root.addEventListener("scroll", () => {
       const stuck = root.scrollTop > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
@@ -536,6 +550,8 @@
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
     placeRing(true);
+    /* 暦は上で組み直したばかりの**別の要素**なので、床もここで引き直します。 */
+    fitCalH();
 
     if (root && keepTop) {
       root.scrollTop = Math.min(keepTop, Math.max(0, root.scrollHeight - root.clientHeight));
