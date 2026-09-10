@@ -335,31 +335,13 @@
    （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
 .cal.is-stuck { border-bottom-color: var(--c-border); }
 
-/* health（ダイエット）の**月**は貼りつけません。やることの棚は月をほどいて
-   縦に並べたものなので、下まで降りても「いま何月か」が要ります。こちらの下に
-   あるのは一日ぶんの記録で、月とは関係がありません——五、六行が居座るぶん、
-   体重もグラフも下に押し下げるだけになります。 */
-#screen-diet .cal {
-  position: static;
-  background: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-bottom-color: transparent;
-}
-
-/* **週の一行は、貼りつけます。** 上の理由（月ぜんぶが居座ると押し下げる）は
-   五、六行ぶんの話で、一行には当たりません。やること・daily では週の帯が
-   ずっと上に居るのに、この画面だけ送ると消えていました——同じ暦が画面に
-   よって違う顔をすることになります。しかも、消えたあとは戻す道が掴み手
-   （引いて開く）しかなく、「いつの週を見ているか」が分からないまま
-   記録を読むことになります。 */
-#screen-diet .cal.is-week {
-  position: sticky;
-  top: var(--topbar-h, 0px);
-  background: var(--c-bg);
-}
-/* 貼りついたら、境目の線だけを出します（他の画面と同じ。高さは動きません）。 */
-#screen-diet .cal.is-week.is-stuck { border-bottom-color: var(--c-border); }
+/* health（ダイエット）も、月ぜんぶを含めて貼りつけます。前は「五、六行が
+   居座ると体重もグラフも押し下げる」という理由で月だけ流していましたが、
+   やること・daily は月表示でも暦が上に固定されたまま中身だけが流れる
+   のに対し、ここだけ暦もろとも画面全体が下がっていく——同じ暦なのに
+   画面によって挙動が違って見えるほうを、押し下げより避けます。
+   （床の`--cal-h`は screen-diet.js の fitCalH が、月・週どちらの高さも
+   測って渡します。） */
 
 /* 画面の題としての日付（上のバー）。参考にした画面と同じ組みです：
    年だけ差し色で、月日が黒。右に「›」——押すと暦が月ぜんぶに開きます。
@@ -597,17 +579,6 @@
    丸ごと隠します——実測で、ダイエットで下まで送ってから引くと暦が一度も
    見えませんでした。暦が前、紙はその下を流れる。この順が正です。 */
 
-/* ダイエットの暦だけは、ふだん貼りつきません（下にあるのは一日ぶんの記録で、
-   月とは関係がないので）。**引いているあいだだけ貼りつけます**——下まで
-   送った先で掴み手を引いたとき、暦が画面の外に居ては出てくるものがない。
-   （収めたあと、開くほうへ行ったときだけ上まで戻します——cal-peek の
-   settle。畳んだときは読んでいたところに居させます。） */
-#screen-diet .cal.is-peek,
-#screen-diet .cal.is-settling {
-  position: sticky;
-  top: var(--topbar-h, 0px);
-  background: var(--c-bg);
-}
 /* しまってある暦も、引いているあいだは場所を取ります（測るために）。
    ここが無いと、三段目から週へ戻す道が始められません。 */
 .cal.is-hidden.is-peek { display: block; }
@@ -4157,11 +4128,7 @@ a.btn { text-decoration: none; }
   box-shadow: none;
   padding: 12px var(--sp-4);
   gap: var(--sp-3);
-  /* となりとの境。線は上に引きます——いちばん下の行の下に線が残ると、
-     一覧がそこで終わっていないように見えるので。 */
-  border-top: 1px solid var(--c-border);
 }
-.item-wrap:not(.is-tile-wrap):first-child .item { border-top: none; }
 /* 左端の色の帯。丸のほうが色を持つので、要りません。 */
 .item-wrap:not(.is-tile-wrap) .item::before { display: none; }
 
