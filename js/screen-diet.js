@@ -179,18 +179,11 @@
        `#screen-diet .tl-grip { top: 0; }`）。厚みを測って `--topbar-h` /
        `--cal-h` を渡す仕事は、もう要りません。
 
-       送っているのは紙のほうです。ただし紙は render() のたびに**別の要素**
-       に差し替わるので、`KN.app.scrollerOf(root)` を一度だけ呼んで控える
-       と、次の render() 以降は差し替わった新しい紙を見張れません
-       （scroll イベントは束ねないので、古い紙にだけ付いた聞き手は二度と
-       鳴りません）。**`root` の側でキャプチャ段階で受けます**——scroll は
-       束ねませんが、キャプチャは子孫のどれが送っても root まで降りてくる
-       ので、紙が差し替わっても聞き手を付け替えずに済みます。 */
-    root.addEventListener("scroll", (e) => {
-      const stuck = e.target.scrollTop > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
-    }, true);
+       境目の線（is-stuck）は、やること・daily・買うものと同じく出しません
+       ——貼りつく相手（バー・暦）の下に線を引く仕掛け自体は他の三つにも
+       あるが、線を出す聞き手が付いていないので実際には一度も出ない
+       （3画面とも同じ）。ここだけ線を出す仕掛けを足すと、この画面だけ
+       違う顔になる。 */
 
     wireKeyboardScroll();
   }
