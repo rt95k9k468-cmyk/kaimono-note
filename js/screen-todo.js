@@ -234,10 +234,16 @@
     root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
     root.addEventListener("wheel", unpinOnTouch, { passive: true, capture: true });
 
+    /* 送っているのは紙（`.tl-sheet`）ですが、紙は render() のたびに
+       **別の要素**に差し替わります。ここを一度だけ `KN.app.scrollerOf(root)`
+       で控えると、次の render() 以降は差し替わった新しい紙を見失い、
+       この聞き手は二度と鳴りません（scroll イベントは束ねないので）。
+       **`root` の側でキャプチャ段階で受けます**——紙が差し替わっても、
+       子孫のどれが送ってもキャプチャは root まで降りてくるので、
+       聞き手を付け替えずに済みます。 */
     let lastTop = 0;
-    const sc0 = KN.app.scrollerOf(root);
-    sc0.addEventListener("scroll", () => {
-      const top = sc0.scrollTop;
+    root.addEventListener("scroll", (e) => {
+      const top = e.target.scrollTop;
       const stuck = top > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
       /* 印を付けるのは境目の線のためと、chromeInset が「いま貼りついて
@@ -251,7 +257,7 @@
       lastTop = top;
       if (!moved) return;
       followScroll();
-    }, { passive: true });
+    }, { passive: true, capture: true });
   }
 
   /* ---------------- スクロールに月がついていく ----------------

@@ -1431,12 +1431,18 @@
     fitCalH();
     window.addEventListener("resize", () => fitCalH());
 
-    const sc0 = KN.app.scrollerOf(root);
-    sc0.addEventListener("scroll", () => {
-      const stuck = sc0.scrollTop > 4;
+    /* 送っているのは紙（`.tl-sheet`）ですが、紙は render() のたびに
+       **別の要素**に差し替わります。ここを一度だけ `KN.app.scrollerOf(root)`
+       で控えると、次の render() 以降は差し替わった新しい紙を見失い、
+       この聞き手は二度と鳴りません（scroll イベントは束ねないので）。
+       **`root` の側でキャプチャ段階で受けます**——紙が差し替わっても、
+       子孫のどれが送ってもキャプチャは root まで降りてくるので、
+       聞き手を付け替えずに済みます。 */
+    root.addEventListener("scroll", (e) => {
+      const stuck = e.target.scrollTop > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
       if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
-    }, { passive: true });
+    }, { passive: true, capture: true });
 
     /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
        消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の daily にも
