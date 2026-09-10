@@ -494,8 +494,6 @@
         </div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
-          <div class="divider"></div>
-          <div class="js-goal"></div>
         </section>
       </div>
     `));
@@ -506,16 +504,11 @@
     track.append(buildDaySlide(day, { peek: false, card, sum, chartEl: chart() }));
 
     /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
-       枠ごと消すので、目標だけが残ったときに上の仕切り線が浮きません。 */
+       出さないなら、この紙自体を置きません（中身が無い枠が浮くので）。 */
     const showInsight = store.get().settings.showInsight === true;
     const lookCard = els.body.querySelector(".diet-look");
     if (showInsight) renderInsight(els.body.querySelector(".js-insight"));
-    else if (lookCard) {
-      lookCard.querySelector(".js-insight").remove();
-      const rule = lookCard.querySelector(".divider");
-      if (rule) rule.remove();
-    }
-    renderGoal(els.body.querySelector(".js-goal"), now);
+    else if (lookCard) lookCard.remove();
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
        伸ばさずに、昨日・一昨日と辿れるように。仕掛けは day-swipe.js が
@@ -881,14 +874,14 @@
        アプリのどの数字でも同じことなので、一行ぶんの高さを使って
        言うほどのことではありません。
      ・体脂肪は体重の下に。同じ「いまの体」の話なので、縦に続けます。
-     ・前回比・7日平均・目標までは**右側**に。下に置くと枠が縦に伸びて、
+     ・傾き・平均・目標までは**右側**に。下に置くと枠が縦に伸びて、
        グラフを見るのにいちいちスクロールすることになります。
      ・そのグラフも、同じ枠の中に入れます。「いまの体重」と「その動き」は
-       別々の話ではありません。 */
+       別々の話ではありません。
+     ・この三つは、文字のところを押すと出す日数・目標体重を直せます
+       （平均・傾きは何日ぶんで均すか、目標まではいくつを狙うか）。 */
   function renderToday(host, card, sum, chartEl) {
     const w = card.weight;
-    const g = sum.goal;
-    const pace = D.neededPace();
     const when = dayName(card.day);
 
     const sec = node(html`
@@ -896,9 +889,8 @@
         <div class="diet-hero-top">
           <button class="diet-hero-main js-weight">
             <span class="diet-hero-label">
-              <i class="diet-hero-ico">${icon("scale")}</i>${w
-                ? (w.source === "health" ? `${when}の体重（ヘルスケア）` : `${when}の体重`)
-                : `${when}はまだ量っていません`}</span>
+              <i class="diet-hero-ico">${icon("scale")}</i>${w && w.source === "health"
+                ? `${when}の体重（ヘルスケア）` : `${when}の体重`}</span>
             <span class="diet-hero-value">
               <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
             </span>
@@ -908,31 +900,59 @@
             </span>
           </button>
           <div class="diet-hero-side">
-            <div class="diet-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("trend")}</i>前回比</span>
-              <b class="diet-stat-value mono-num ${sum.delta == null ? "" : sum.delta < 0 ? "is-good" : sum.delta > 0 ? "is-warn" : ""}">${signed(sum.delta)}</b>
-              <span class="diet-stat-unit">kg${sum.deltaDays > 1 ? `・${sum.deltaDays}日ぶり` : ""}</span>
-            </div>
-            <div class="diet-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("chart")}</i>7日平均</span>
+            <button type="button" class="diet-stat js-trend">
+              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("trend")}</i>傾き</span>
+              <b class="diet-stat-value mono-num">${sum.trendPerWeek == null ? "—" : signed(sum.trendPerWeek, 2)}</b>
+              <span class="diet-stat-unit">kg/週</span>
+            </button>
+            <button type="button" class="diet-stat js-avg">
+              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("chart")}</i>${sum.avgWindowDays}日平均</span>
               <b class="diet-stat-value mono-num">${sum.ma7Now == null ? "—" : sum.ma7Now.toFixed(2)}</b>
               <span class="diet-stat-unit">kg</span>
-            </div>
-            <div class="diet-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("target")}</i>${g.targetKg == null ? "目標" : "目標まで"}</span>
-              <b class="diet-stat-value mono-num">${g.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
-              <span class="diet-stat-unit">${g.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
-            </div>
+            </button>
+            <button type="button" class="diet-stat js-goal-stat">
+              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("target")}</i>${sum.goal.targetKg == null ? "目標" : "目標まで"}</span>
+              <b class="diet-stat-value mono-num">${sum.goal.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
+              <span class="diet-stat-unit">${sum.goal.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
+            </button>
           </div>
         </div>
-        ${pace != null ? html`
-          <p class="diet-hero-note">目標日まで、週 ${signed(pace, 2)}kg のペースが要ります。</p>` : ""}
         <div class="js-graph"></div>
       </div>
     `);
     sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
+    sec.querySelector(".js-trend").addEventListener("click", () => openWindowSheet("trend"));
+    sec.querySelector(".js-avg").addEventListener("click", () => openWindowSheet("avg"));
+    sec.querySelector(".js-goal-stat").addEventListener("click", openGoalSheet);
     renderGraph(sec.querySelector(".js-graph"), chartEl);
     host.append(sec);
+  }
+
+  /** 「平均」「傾き」を、何日ぶんで均すか。既定はどちらも7日——増やすほど
+      揺れは減り、短くするほど直近の変化に敏感になります。 */
+  function openWindowSheet(kind) {
+    const isAvg = kind === "avg";
+    const g = store.get().diet.goal;
+    const cur = (isAvg ? g.avgWindowDays : g.trendWindowDays) || 7;
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">${isAvg ? "平均" : "傾き"}を出す日数</span>
+          <input class="input js-days" inputmode="numeric" placeholder="7" value="${cur}">
+        </label>
+        <p class="diet-note">空なら7日で数えます。長くするほど揺れが減り、短くするほど
+          直近の変化に敏感になります。</p>
+      </div>
+    `);
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
+    const h = KN.ui.sheet({ title: isAvg ? "平均の日数" : "傾きの日数", content: body, footer: foot, guard: true });
+    foot.addEventListener("click", () => {
+      const v = parseInt(body.querySelector(".js-days").value, 10);
+      const n = Number.isFinite(v) && v > 0 ? Math.min(90, v) : null;
+      store.setGoal(isAvg ? { avgWindowDays: n } : { trendWindowDays: n });
+      h.close();
+      render();
+    });
   }
 
   /* ---------------- グラフ ---------------- */
@@ -3070,53 +3090,6 @@
           out.append(node(html`<p class="diet-note is-warn">うまくいきませんでした：${err.message}</p>`));
         });
     });
-  }
-
-  /* ---------------- 目標 ---------------- */
-
-  function renderGoal(host, sum) {
-    const g = sum.goal;
-    const proj = D.projection();
-    const sec = node(html`
-      <div class="stack">
-        <div class="section-title">${icon("flag")}目標</div>
-        <div class="rows">
-          <button class="row js-goal">
-            <span class="row-main">
-              <span class="row-title">目標体重</span>
-              <span class="row-sub">${g.targetKg == null ? "決めていません"
-                : `${g.targetKg.toFixed(1)}kg${g.targetDay ? ` ・ ${U.formatDay(g.targetDay)}まで` : ""}`}</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
-          <div class="row">
-            <span class="row-main">
-              <span class="row-title">BMI</span>
-              <span class="row-sub">${g.heightCm ? `身長 ${g.heightCm}cm` : "身長を入れると出ます"}</span>
-            </span>
-            <span class="row-value mono-num">${sum.bmi == null ? "—" : sum.bmi.toFixed(1)}</span>
-          </div>
-          <div class="row">
-            <span class="row-main">
-              <span class="row-title">いまの傾き</span>
-              <span class="row-sub">7日平均の直線あてはめ</span>
-            </span>
-            <span class="row-value mono-num">${sum.trendPerWeek == null ? "—" : `${signed(sum.trendPerWeek, 2)} kg/週`}</span>
-          </div>
-        </div>
-        ${proj ? html`<p class="diet-note">${projText(proj)}</p>` : ""}
-      </div>
-    `);
-    sec.querySelector(".js-goal").addEventListener("click", openGoalSheet);
-    host.append(sec);
-  }
-
-  function projText(p) {
-    if (p.reached) return "目標の重さに届いています。";
-    if (p.stalled) return "いまの傾きのままだと、目標には近づきません（傾きが目標と逆か、ほぼ横ばいです）。";
-    if (p.far) return "いまの傾きだと、目標まで数年かかる計算になります。ペースか目標を見直す頃かもしれません。";
-    return `いまの傾き（週 ${signed(p.rate, 2)}kg）が続いた場合、${U.formatDay(p.day)}ごろに目標の重さになる計算です。`
-      + "これは予測ではなく、いまの傾きをそのまま伸ばした線です。";
   }
 
   /* ---------------- 体重を書く ---------------- */

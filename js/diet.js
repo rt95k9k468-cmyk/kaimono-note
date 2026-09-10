@@ -116,13 +116,18 @@
     const today = endDay || U.todayKey();
     const win = windowDays || 90;
     const pts = weightPoints(U.shiftDay(today, -(win - 1)), today);
-    const ma7 = movingAverage(pts, 7);
+    const goal = store.get().diet.goal;
+    // 「平均」「傾き」は、それぞれ別の日数で均せます（既定はどちらも7日）。
+    const avgWin = goal.avgWindowDays || 7;
+    const trendWin = goal.trendWindowDays || 7;
+    const maAvg = movingAverage(pts, avgWin);
+    const maTrend = avgWin === trendWin ? maAvg : movingAverage(pts, trendWin);
+    const ma7 = avgWin === 7 ? maAvg : movingAverage(pts, 7);
     const ma14 = movingAverage(pts, 14);
     const last = pts.length ? pts[pts.length - 1] : null;
     const prev = pts.length > 1 ? pts[pts.length - 2] : null;
-    const lastMa = [...ma7].reverse().find((m) => m.value != null) || null;
+    const lastMa = [...maAvg].reverse().find((m) => m.value != null) || null;
 
-    const goal = store.get().diet.goal;
     const height = goal.heightCm;
     return {
       points: pts,
@@ -132,11 +137,13 @@
       // ——同じ日の朝と夜を比べても、それは一日の中の水の出入りです。
       delta: last && prev ? round(last.kg - prev.kg, 2) : null,
       deltaDays: last && prev ? Math.round((U.dayDate(last.day) - U.dayDate(prev.day)) / 86400000) : null,
+      avgWindowDays: avgWin,
+      trendWindowDays: trendWin,
       ma7Now: lastMa ? lastMa.value : null,
       trendPerWeek: (() => {
-        const full = ma7.filter((m) => m.value != null && m.full);
+        const full = maTrend.filter((m) => m.value != null && m.full);
         if (full.length >= 3) return slopePerWeek(full);
-        const any = ma7.filter((m) => m.value != null);
+        const any = maTrend.filter((m) => m.value != null);
         return slopePerWeek(any.length >= 3 ? any : pts);
       })(),
       bmi: last && height ? round(last.kg / (height / 100) ** 2, 1) : null,
