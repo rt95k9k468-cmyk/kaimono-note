@@ -179,6 +179,10 @@
         heightCm: null,
         targetKg: null,
         targetDay: null,
+        // 「平均」「傾き」に使う日数。null ならどちらも7日——増やすほど
+        // 揺れは減りますが、直近の変化には鈍くなります。
+        avgWindowDays: null,
+        trendWindowDays: null,
         // 一日の目安。null なら画面は「残り」を出しません——目標が無いのに
         // 「残り1800kcal」と出すのは、勝手に決めた線を事実のように言うことです。
         kcalTarget: null, pTarget: null, fTarget: null, cTarget: null,
@@ -457,6 +461,10 @@
     out.goal.targetDay = dayStr(out.goal.targetDay);
     ["kcalTarget", "pTarget", "fTarget", "cTarget", "alcoholG",
      "stepsTarget", "burnTarget", "sleepTarget"].forEach((k) => { out.goal[k] = posNum(out.goal[k]); });
+    ["avgWindowDays", "trendWindowDays"].forEach((k) => {
+      const n = posNum(out.goal[k]);
+      out.goal[k] = n == null ? null : Math.min(90, Math.round(n));
+    });
     return out;
   }
 
@@ -1409,6 +1417,7 @@
       sub.done = !sub.done;
       if (sub.done) sub.skipped = false;
     });
+    syncParentDone(id, day);
   }
 
   /** 手順ひとつを、できなかった／まだに切り替えます（長押し）。完了とは
@@ -1426,6 +1435,21 @@
       sub.skipped = !sub.skipped;
       if (sub.skipped) sub.done = false;
     });
+    syncParentDone(id, day);
+  }
+
+  /** 手順を触ったその拍で、親の済み方を合わせます。全部片づいた
+      （できた／できなかった、どちらでも）ら親も完了、そうでなくなったら
+      親も未完了へ——手順を触っていないとき（親の完了ボタンを直接押した
+      とき）はここを通らないので、サブタスクが残っていても手動で完了に
+      できることは変わりません。 */
+  function syncParentDone(id, day) {
+    const t = getTodo(id);
+    if (!t) return;
+    const sc = subCount(t, day);
+    if (!sc.total) return;
+    if (sc.done === sc.total && !t.done) toggleTodo(id);
+    else if (sc.done < sc.total && t.done) toggleTodo(id);
   }
 
   /** 残りいくつか。{done, total}。手順が無ければ total は 0。

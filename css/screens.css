@@ -37,7 +37,6 @@
 
    daily がここに入っていませんでした。＋を付けたときに足し忘れたもので、
    一覧のいちばん下の一件が、丸ボタンの下から出てこなくなっていました。 */
-.screen[data-screen="prices"],
 .screen[data-screen="diet"] { padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
 /* 紙が器になった三つは、下の余白も紙の中が持ちます（器の外に余白を置いても、
    中身の下には空きができません）。 */
@@ -669,18 +668,14 @@
 /* Today, circled. Filled rather than outlined: an outline is one more ring
    among 30 numbers, and the one thing this calendar has to answer without
    being read is 「今日はどこ」. */
-/* 今日は基調色（--c-primary）です。前は黒でした――選んでいる日の輪
-   （.cal-ring）も基調色なので、重ねると色が違って二重に見える、という
-   のが黒にした理由でしたが、動画（Structured）は今日を基調色で塗って
-   います。色を揃えれば、今日＝選んでいる日のときは輪の色が塗りに溶けて
-   見えなくなるので、二重の見え方はむしろこちらのほうが起きません。 */
+/* 今日は基調色の太字。**塗りつぶすのは、いま見ている日でもあるときだけ**
+   （`.is-here` も付いているとき、下の規則）——他の日を選んでいても今日の
+   丸だけ常に目立っていると、いまどこを見ているかと紛れます。他の日を
+   見ているときは、字の色と太さだけで「今日はここ」と言えば足ります。 */
 .cal-day.is-today .cal-n {
-  background: var(--c-primary);
-  color: var(--c-bg);
+  color: var(--c-primary);
   font-weight: 700;
 }
-.cal-day.is-today.is-sun .cal-n,
-.cal-day.is-today.is-sat .cal-n { color: var(--c-bg); }
 
 /* いま下で見ている日。今日の赤丸とは別の印にします——今日は「どこか」で、
    こちらは「いまどこを見ているか」。二つが同じ塗りだと、今日の位置を
@@ -713,11 +708,10 @@
    前にいた場所と関係のないところから飛んでくるので。 */
 .cal-ring.is-jump { transition: opacity var(--m-state) var(--ease); }
 .cal-day.is-here .cal-n { color: var(--c-primary); }
-/* 今日は赤い丸で塗ってあるので、字は白のまま。輪だけを重ねます。 */
-/* 今日を見ているとき。塗りは今日のもの（地の色の反転）なので、字は
-   その上で読める色に戻します——#fff を直に書いていたので、暗い面では
-   白い塗りに白い字になっていました。 */
-.cal-day.is-here.is-today .cal-n { color: var(--c-bg); }
+/* 今日を見ているときだけ、赤い丸で塗ります（輪だけでは今日の位置が
+   埋もれるので）。字は塗りの上で読める色に戻します——#fff を直に
+   書いていたので、暗い面では白い塗りに白い字になっていました。 */
+.cal-day.is-here.is-today .cal-n { background: var(--c-primary); color: var(--c-bg); }
 /* 今日を見ているときも、輪は同じ緑です。白い輪にしていましたが、
    同じ「いま見ている」印が、日によって色を変える理由はありません。
    赤い丸の上に緑の輪が重なって、両方が読めます。 */
@@ -2109,12 +2103,12 @@
    ここだけ色が付いていると青／赤の帯がこの画面固有のものに見えます。
    境目は色ではなく、段のあいだの余白（`.diet-day` の `gap`）が持ちます。
 
-   **体重（is-weight）の青みは、残します。** ここだけは意味が違います
-   ——からだ寄りの他画面には無い、この帯だけの数字（グラフ・目標）の
-   置き場だと分かるように。 */
+   **体重（is-weight）の青みも、やめました。** 他と同じ `--c-sheet` に
+   揃えます——ここだけ色が付いていると、他に無いこの帯固有のものに見えて、
+   むしろ画面の中で浮きます。 */
 .diet-block.is-body   { background: var(--c-sheet); }
 .diet-block.is-meal   { background: var(--c-sheet); }
-.diet-block.is-weight { background: color-mix(in srgb, #4a8fd9 6%, var(--c-sheet)); }
+.diet-block.is-weight { background: var(--c-sheet); }
 /* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
    持たないので、ここで与えます）。 */
 .diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -2154,7 +2148,11 @@
   flex: none; width: 41%; max-width: 168px;
   border-left: 1px solid var(--c-border); padding-left: var(--sp-3);
 }
-.diet-stat { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.diet-stat {
+  display: flex; align-items: baseline; gap: 4px; min-width: 0;
+  width: 100%; padding: 0; background: none; border: 0; font: inherit;
+  color: inherit; text-align: left; cursor: pointer;
+}
 .diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-stat-value { font-size: var(--fs-md); font-weight: 700; margin-left: auto; }
 .diet-stat-value.is-good { color: var(--c-primary); }
@@ -2916,10 +2914,8 @@ a.btn { text-decoration: none; }
 .arc-row {
   display: flex; gap: var(--sp-2); width: 100%; align-items: flex-start;
   padding: var(--sp-3) var(--sp-4);
-  border-top: 1px solid var(--c-border);
   position: relative;
 }
-.arc-row:first-child { border-top: none; }
 /* 種類の色は、左の細い帯だけが持ちます。行ぜんぶを染めると、五種類が
    並んだときに一覧が縞になって、肝心のタイトルが読みにくくなります。 */
 .arc-row::before {
@@ -4216,9 +4212,7 @@ a.btn { text-decoration: none; }
   border-radius: 0;
   box-shadow: none;
   padding: 12px var(--sp-4);
-  border-top: 1px solid var(--c-border);
 }
-.product-wrap:not(.is-tile-wrap):first-child .product { border-top: none; }
 
 /* 絵は丸に。行の地ではなく、ここが種類の色を持ちます。 */
 .product-wrap:not(.is-tile-wrap) .product-emoji {
@@ -4403,10 +4397,19 @@ a.btn { text-decoration: none; }
 
    だから面も丸角も敷きません。行のほうは、もともとこれで読めるように
    できています（`.product-wrap:not(.is-tile-wrap) .product` は
-   `background: none` で、区切りは上の細い線、絵の丸の地は
+   `background: none`、絵の丸の地は
    `color-mix(--cat 16%, var(--c-bg))` ——**地の色を混ぜてある**）。
-   下まで伸ばすのは、器の余白がすでに帯のぶんを持っているので `flex` だけ。 */
-.prices-ground { flex: 1; min-height: 0; }
+   項目のあいだの線は引きません（余白だけで分かれています）。
+   下まで伸ばすのは `flex` だけ。**`min-height: 0` は持たせません。**
+   持たせていたところ、中身（商品の一覧）が見込みより長いとき、この箱
+   だけが見込みの高さに縮んで中身がそこからはみ出し、末尾に置いた
+   `padding-bottom` がそのはみ出しの内側に埋もれて一度も現れませんでした
+   （実測：いちばん下の行がタブバーの裏まで届いていた）。既定の
+   `min-height: auto`（中身ぶんを下回らない）に戻すと、箱そのものが
+   中身の長さまで伸びるので、余白は必ず中身のあとに付いてきます。
+   中身が短い日は、これまでどおり `flex: 1` が下まで伸ばします
+   （`min-height` の既定は「伸びない」を言わないので）。 */
+.prices-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
 
 /* ダイエットの紙。掴むためだけの一枚で、**面は持ちません**——中の
    「今日のからだ」がすでに端から端までの面を持っていて、その上にもう一枚
