@@ -25,7 +25,6 @@
 
   let root = null;
   let els = {};
-  let fitCalH = () => {};
   /* カルーセルを指で払っているあいだ（横だと決まってから、滑り終わる
      まで）。この間は render() を呼びません——お店の外の理由（30秒ごとの
      見直しや、自動同期の書き込みなど）で store が動いても、指の下の紙が
@@ -174,46 +173,24 @@
        「ダイエット」にも札があります。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
-    /* 上のバーの厚み。**掴み手はこのぶんだけ下に貼りつきます**——数えないと
-       掴み手はバーの裏へ潜り、下まで送った先で掴めなくなります（実際そう
-       なっていて、この画面だけ段を替えられませんでした）。厚みはノッチの
-       深さで変わるので、CSSに数字は焼き込めません。 */
-    const fitTop = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitTop();
-    window.addEventListener("resize", fitTop);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitTop);
+    /* **紙（`.tl-sheet`）が器になったので**（やること・daily と同じ）、上の
+       バーも暦も、掴み手が避ける相手ではなくなりました——どちらも紙の外の、
+       送られない場所に居ます。掴み手は紙の上端に貼りつくだけ（css の
+       `#screen-diet .tl-grip { top: 0; }`）。厚みを測って `--topbar-h` /
+       `--cal-h` を渡す仕事は、もう要りません。
 
-    /* 暦のぶん（--cal-h）。週も月も、どちらも貼りつくので、いま出ている
-       高さをそのまま床にします（やること・daily の fitCalH と同じ作り）。
-       暦は render() のたびに別の要素になるので、そのつど引き直して
-       見張る相手も付け替えます。 */
-    let calRO = null, calSeen = null, calH = -1;
-    fitCalH = () => {
-      const c = root.querySelector(".cal");
-      if (c && (c.classList.contains("is-peek") || c.classList.contains("is-settling"))) return;
-      const h = c && !c.classList.contains("is-hidden")
-        ? Math.round(c.getBoundingClientRect().height) : 0;
-      if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
-      if (c !== calSeen && window.ResizeObserver) {
-        if (calRO) calRO.disconnect();
-        calSeen = c;
-        if (c) { calRO = new ResizeObserver(() => fitCalH()); calRO.observe(c); }
-      }
-    };
-    fitCalH();
-    window.addEventListener("resize", () => fitCalH());
-
-    /* **週も月も貼りつきます**（やること・daily と同じ）。貼りついた印は、
-       暦にも付けます。付けないと、境目の線が出ないまま記録の字が下を
-       くぐります。 */
-    root.addEventListener("scroll", () => {
-      const stuck = root.scrollTop > 4;
+       送っているのは紙のほうです。ただし紙は render() のたびに**別の要素**
+       に差し替わるので、`KN.app.scrollerOf(root)` を一度だけ呼んで控える
+       と、次の render() 以降は差し替わった新しい紙を見張れません
+       （scroll イベントは束ねないので、古い紙にだけ付いた聞き手は二度と
+       鳴りません）。**`root` の側でキャプチャ段階で受けます**——scroll は
+       束ねませんが、キャプチャは子孫のどれが送っても root まで降りてくる
+       ので、紙が差し替わっても聞き手を付け替えずに済みます。 */
+    root.addEventListener("scroll", (e) => {
+      const stuck = e.target.scrollTop > 4;
       els.topbar.classList.toggle("is-stuck", stuck);
       if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
-    });
+    }, true);
 
     wireKeyboardScroll();
   }
@@ -231,7 +208,14 @@
      可視領域がまだ動いている途中の値をつかんで、二度・三度と重ねて
      動かしてしまいます（それが「大きく揺れる」の正体でした）。
      いまは **可視領域が実際に変わったとき** だけ測り直し、すでに
-     ほぼ同じ行き先なら黙って何もしません。 */
+     ほぼ同じ行き先なら黙って何もしません。
+
+     **動かす相手は `root` ではなく、いまの紙**です。紙が器になったので
+     （やること・daily と同じ）、`root`（画面そのもの）は overflow:hidden
+     でもう送れません。紙は render() のたびに別の要素になるので、ここは
+     毎回 `KN.app.scrollerOf(root)` を呼び直します——変数に控えて使い回すと、
+     控えたあとの render() で差し替わった紙を見失います。 */
+  const sheetEl = () => KN.app.scrollerOf(root);
   let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
   let kbTarget = null;       // 直前に動かした先（同じ先には、もう一度動かしません）。
   let kbField = null;        // いま追っている欄。
@@ -257,15 +241,16 @@
        上へ戻すのは、**始めた位置より上には行かない**範囲だけです。
        そこから先は、その人が自分で見ていた場所なので。 */
     const SLACK = 24;            // これ以内の行きすぎは、直しません（揺り戻しに見えるので）
+    const sc = sheetEl();
     if (over <= 2 && !(kbScrollBase != null && over < -SLACK
-                       && root.scrollTop > kbScrollBase)) return;
-    const want = root.scrollTop + over;
+                       && sc.scrollTop > kbScrollBase)) return;
+    const want = sc.scrollTop + over;
     const target = Math.round(kbScrollBase != null ? Math.max(kbScrollBase, want) : want);
-    if (Math.abs(target - root.scrollTop) < 3) return;
+    if (Math.abs(target - sc.scrollTop) < 3) return;
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
     kbMoved = true;
-    KN.app.glideTo(root, target);
+    KN.app.glideTo(sc, target);
   }
 
   function armKeyboardFollow(field) {
@@ -290,7 +275,7 @@
        巻き戻しは要りません。nudgeIntoView は欄の**いまの位置**を測って
        足りないぶんだけ動かすので、ブラウザが先に動かしていれば、その状態から
        測って「もう見えている」と判断するだけです。動きは一度で済みます。 */
-    if (kbScrollBase == null) kbScrollBase = root.scrollTop;
+    if (kbScrollBase == null) kbScrollBase = sheetEl().scrollTop;
     kbField = field;
     kbTarget = null;
     /* ここではまだ動かしません。キーボードがこれから出る（＝可視領域が
@@ -311,7 +296,7 @@
        （タップ→フォーカス→ブラウザ自身のスクロール、の一番手前）。 */
     root.addEventListener("pointerdown", (e) => {
       const field = e.target.closest && e.target.closest("input, textarea, select");
-      if (field && kbScrollBase == null) kbScrollBase = root.scrollTop;
+      if (field && kbScrollBase == null) kbScrollBase = sheetEl().scrollTop;
     }, true);
     root.addEventListener("focusin", (e) => {
       const field = e.target.closest && e.target.closest("input, textarea, select");
@@ -333,7 +318,7 @@
 
            誰が動かしたかは、その人には関係のない話です。触れる前に見て
            いた場所へ、静かに戻します。 */
-        if (Math.abs(root.scrollTop - kbScrollBase) > 2) KN.app.glideTo(root, kbScrollBase);
+        if (Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
         kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
@@ -438,7 +423,7 @@
         query = "";
         KN.motion.fire("select");
         render();
-        if (root) root.scrollTop = 0;
+        if (root) KN.app.scrollerOf(root).scrollTop = 0;
       });
       list.append(row);
     });
@@ -458,7 +443,7 @@
        作らないため）。 */
     flushSlots();
     flushSlots = () => {};
-    const keepTop = root ? root.scrollTop : 0;
+    const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
     // 探しているあいだは、その日の紙のかわりに、見つかった日を並べます。
     if (query.trim()) { renderFound(); return; }
     const day = curDay();
@@ -550,11 +535,10 @@
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
     placeRing(true);
-    /* 暦は上で組み直したばかりの**別の要素**なので、床もここで引き直します。 */
-    fitCalH();
 
     if (root && keepTop) {
-      root.scrollTop = Math.min(keepTop, Math.max(0, root.scrollHeight - root.clientHeight));
+      const sc = KN.app.scrollerOf(root);
+      sc.scrollTop = Math.min(keepTop, Math.max(0, sc.scrollHeight - sc.clientHeight));
     }
   }
 

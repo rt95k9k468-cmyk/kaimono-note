@@ -1,20 +1,13 @@
 /* =========================================================
-   くらしノート — the edges of a scroll: pull to refresh, and the give
-   at the bottom
+   くらしノート — the edges of a scroll: the give at the top and bottom
 
-   There is no server behind this app, so a refresh cannot fetch anything.
-   What it can do is real, if small: write out any save still in flight,
-   re-read the file from disk so a copy open elsewhere is picked up, repaint
-   the screen, and ask the service worker whether a newer build has been
-   deployed. The gesture is mostly there because reaching the top of a list
-   and pulling is what a phone user does; this makes that mean something
-   instead of nothing.
-
-   The screens turn the browser's own overscroll off (see overscroll-behavior
-   in base.css) because its bounce fought this gesture at the top. That left
-   the bottom of a list stopping dead against nothing, so the same engine
-   gives the bottom edge a band too — no chip, no action, just the give that
-   tells a finger it has reached the end.
+   There is no server behind this app and no gesture that fetches anything
+   anymore — pulling down used to arm a manual refresh for the diet screen's
+   healthkit relay, but that was retired (the tab already pulls on its own
+   when opened, and the settings sheet has its own button for it). What is
+   left is just the feel of reaching either end of a list: a little give
+   under the finger, and the same give when a fast flick carries past the
+   end, so a scroll never just stops dead against nothing.
 
    Both edges are painted by one loop that eases what is on screen towards
    where the finger is, rather than writing the finger's position straight
@@ -27,43 +20,9 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node, raw, haptic } = KN.util;
 
-  /* The mark, drawn rather than borrowed from the icon set, because it has to
-     do two different things.
-
-     While you pull it is a redo mark: a ring with a gap, an arrowhead at the
-     leading end that never quite closes the circle, and the whole thing turns
-     as you go — one full revolution by the time it is armed. The ring is not
-     just revealed, it is drawn: the stroke runs on from the gap and the head
-     fades in as the last of it lands.
-
-     Once you let go the arrowhead goes and a second arc takes over, chasing
-     itself around the ring. Same circle, same weight, so it reads as the mark
-     carrying on rather than a different thing appearing.
-
-     Geometry, so the numbers are not mysterious: r=9 about (12,12). The arc
-     runs clockwise from -60° to 240°, i.e. 300° of the circle, leaving the
-     gap across the top. Its length is 2·π·9·(300/360) = 47.12, which is the
-     dash pattern the drawing-on relies on. The head is a triangle centred on
-     the arc's end and turned to its tangent there. */
-  const MARK = raw(`
-    <svg class="ptr-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-      <path class="ptr-arc" d="M16.5 4.21A9 9 0 1 1 7.5 4.21"/>
-      <path class="ptr-head" d="M10.1 2.71 7.3 6.86 5.1 3.05Z" fill="currentColor" stroke="none"/>
-      <circle class="ptr-spin" cx="12" cy="12" r="9"/>
-    </svg>
-  `);
-
-  const ARC_LEN = 47.12;
-
-  const TRIGGER = 56;    // pull the chip this far down to arm the refresh
-  const HOLD    = 52;    // where it parks while the refresh runs
-  const MAX     = 96;    // it never stretches further than this
-  const FOOT    = 76;    // and the band at the bottom never further than this
-  const MIN_RUN = 550;   // keep the spinner up long enough to be read
-  const SLOP    = 10;    // finger travel before we decide what this gesture is
+  const FOOT   = 76;    // the band at the bottom never stretches further than this
+  const SLOP   = 10;    // finger travel before we decide what this gesture is
 
   /* How hard the painted position is pulled towards the finger each frame,
      and towards home once the finger is gone. Low numbers on purpose: a
@@ -73,20 +32,15 @@
   const SETTLE  = 0.13;
 
   let host = null;       // #screens
-  let ptr = null;        // the chip
-  let mark = null;       // the svg inside it
-  let arc = null;        // the redo ring, drawn on as you pull
-  let head = null;       // its arrowhead
 
   let screenEl = null;   // the screen being pulled
   let startY = 0, startX = 0;
   let target = 0;        // where the finger says the screen should be
   let shown = 0;         // where it actually is, chasing target
-  let edge = null;       // "top" | "bottom" — which end this gesture belongs to
-  let couldTop = false, couldBottom = false;
-  let armed = false;     // the touch started somewhere an edge could give
+  let edge = null;       // "bottom" — which end this gesture belongs to
+  let couldBottom = false;
+  let armed = false;     // the touch started somewhere the bottom could give
   let engaged = false;   // it turned out to be a pull rather than a scroll
-  let busy = false;
   let loop = 0;
   let bare = false;      // a band with no chip on it — the fling below
   let out = false;       // the fling is still on its way out, not yet coming back
@@ -105,14 +59,6 @@
     host = document.getElementById("screens");
     if (!host) return;
 
-    ptr = node(html`<div class="ptr"><span class="ptr-ring">${MARK}</span></div>`);
-    mark = ptr.querySelector(".ptr-mark");
-    arc = ptr.querySelector(".ptr-arc");
-    head = ptr.querySelector(".ptr-head");
-    // First child, so the screens paint over it. It only ever shows in the
-    // gap a pull opens up above them.
-    host.prepend(ptr);
-
     host.addEventListener("touchstart", onStart, { passive: true });
     host.addEventListener("touchmove", onMove, { passive: false });
     host.addEventListener("touchend", onEnd);
@@ -130,28 +76,21 @@
     window.addEventListener("pageshow", clear);
   }
 
-  /** Abandon any band, gesture or animation, and put the screen back. */
+  /** Abandon any band or gesture, and put the screen back. */
   function clear() {
     armed = engaged = out = bare = false;
     edge = null;
     if (loop) { cancelAnimationFrame(loop); loop = 0; }
     target = shown = 0;
     lastEl = null;
-    if (ptr) {
-      ptr.style.opacity = "0";
-      ptr.style.transform = "";
-    }
-    // The refresh keeps running if it was mid-flight; only the motion stops.
     host.querySelectorAll(".screen").forEach((el) => {
       el.style.transform = "";
       el.style.willChange = "";
     });
-    if (ptr) ptr.style.willChange = "";
   }
 
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */
   function blocked() {
-    if (busy) return true;
     if (KN.reorder.isActive()) return true;
     if (document.documentElement.classList.contains("kb-open")) return true;
     if (document.querySelector(".sheet")) return true;
@@ -161,19 +100,6 @@
 
   const atTop = (el) => el.scrollTop <= 0;
   const atBottom = (el) => el.scrollHeight - el.clientHeight - el.scrollTop <= 1;
-
-  /** 下へ引いて更新できるのは、**ダイエットだけ**です。
-
-      あそこだけは引くことに用があります——中継所に預けたヘルスケアの記録を
-      取りに行く道が、これしかないので。ほかの三つには取りに行く先がなく、
-      一覧の頭で下へ動かすたびに画面が伸びるのは、ただの邪魔でした。
-
-      **止めるのは「下へ引く」ほうだけ**です。下端の give（`edge = "bottom"`）
-      と、勢いのついた指がリストの端を越えたときの帯（`onScroll` → `fling`）は
-      そのまま——あちらは更新ではなく、ブラウザ本来の跳ね返りを返しているだけ
-      なので、無くすと一覧が壁に当たったように止まります。 */
-  const canRefresh = (el) => !!el && !!el.closest
-    && !!el.closest('.screen[data-screen="diet"]');
 
   function onStart(e) {
     armed = engaged = false;
@@ -193,14 +119,11 @@
     /* 画面のほうが、その端の give を自分で使うことがあります（紙の掴み手は
        下へ引くと暦が出ます）。同じ指を二つが取ると、暦が伸びながら画面ごと
        下がることになるので、印のあるところから始まった手つきは拾いません。
-       **印が付いているのは掴み手だけ**です——紙ぜんぶに付いていた時期が
-       あって、そのあいだ「引いて更新」がまるごと効きませんでした。 */
+       **印が付いているのは掴み手だけ**です。 */
     if (e.target && e.target.closest && e.target.closest("[data-pull-own]")) return;
-    // Which ends have any give in them. Anywhere in the middle of a list, a
-    // drag either way is just a scroll.
-    couldTop = atTop(screenEl);
+    // 下端に give が無ければ、そもそも構いません。
     couldBottom = atBottom(screenEl);
-    if (!couldTop && !couldBottom) return;
+    if (!couldBottom) return;
 
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
@@ -219,12 +142,10 @@
       // Give up on the sideways drag that deletes a row or stars it.
       if (Math.abs(dx) > SLOP) { armed = false; return; }
       if (Math.abs(dy) < SLOP || Math.abs(dy) < Math.abs(dx) * 1.5) return;
-      // Down at the top, up at the bottom — anything else is a scroll, and
-      // the scroller has to have it.
-      // 下へ引くのは、更新できる画面（ダイエット）だけ。上の canRefresh を
-      // 見ること。ほかの画面では、この指はそのままスクロールに渡します。
-      if (dy > 0 && couldTop && atTop(screenEl) && canRefresh(screenEl)) edge = "top";
-      else if (dy < 0 && couldBottom && atBottom(screenEl)) edge = "bottom";
+      // Up at the bottom is a give. Anything else is a scroll, and the
+      // scroller has to have it（下へ引いて更新は廃止したので、上端は
+      // 常にスクロールのまま）。
+      if (dy < 0 && couldBottom && atBottom(screenEl)) edge = "bottom";
       else { armed = false; return; }
       engaged = true;
       // A finger arriving over a flick's band takes it over from here.
@@ -236,16 +157,14 @@
     // Taking the gesture means the scroller must not also act on it.
     e.preventDefault();
     // Rubber band: the first pixels come easily, the last ones barely move.
-    target = edge === "top"
-      ? MAX * (1 - Math.exp(-Math.max(0, dy) / MAX))
-      : -FOOT * (1 - Math.exp(-Math.max(0, -dy) / FOOT));
+    target = -FOOT * (1 - Math.exp(-Math.max(0, -dy) / FOOT));
   }
 
   function onEnd() {
     if (!engaged) { armed = false; return; }
     armed = engaged = false;
-    if (edge === "top" && shown >= TRIGGER) run();
-    else { target = 0; spin(); }
+    target = 0;
+    spin();
   }
 
   /* ---------------- carrying a flick past the end ---------------- */
@@ -261,8 +180,8 @@
     const v = ok ? (el.scrollTop - lastTop) / (now - lastAt) : 0;
     lastEl = el; lastTop = el.scrollTop; lastAt = now;
 
-    // A finger, a refresh, or a band already running owns the screen.
-    if (engaged || armed || busy || loop) return;
+    // A finger or a band already running owns the screen.
+    if (engaged || armed || loop) return;
     if (Math.abs(v) < FLING_MIN) return;
     if (v > 0 ? atBottom(el) : atTop(el)) fling(el, v);
   }
@@ -271,7 +190,7 @@
     const dist = Math.min(FLING_MAX, Math.abs(v) * FLING_GAIN);
     if (dist < 4) return;
     screenEl = el;
-    bare = true;              // no chip: a throw must never arm the refresh
+    bare = true;              // 帯だけ。跳ね返りが更新に化けないように。
     out = true;
     shown = 0;
     target = v > 0 ? -dist : dist;
@@ -281,7 +200,6 @@
   /* ---------------- the motion ---------------- */
 
   function begin() {
-    ptr.style.willChange = "transform, opacity";
     if (screenEl) screenEl.style.willChange = "transform";
     spin();
   }
@@ -311,7 +229,6 @@
   }
 
   function rest() {
-    ptr.style.willChange = "";
     bare = false;
     if (screenEl) {
       screenEl.style.willChange = "";
@@ -321,83 +238,6 @@
 
   function paint() {
     if (screenEl) screenEl.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
-
-    // The chip belongs to a finger at the top edge only. The bottom band and
-    // the band a flick leaves behind are bare give, with nothing to arm.
-    if (shown <= 0 || bare) {
-      ptr.style.opacity = "0";
-      return;
-    }
-    ptr.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
-    ptr.style.opacity = String(Math.min(1, shown / 26));
-    if (busy) return;   // from here on the spinner has the mark
-
-    // The ring draws itself on, the head lands at the end of it, and the
-    // whole mark turns once by the time the pull is armed.
-    const p = shown / TRIGGER;
-    ptr.classList.toggle("is-ready", shown >= TRIGGER);
-    arc.style.strokeDashoffset = (ARC_LEN * (1 - Math.min(1, p))).toFixed(2);
-    head.style.opacity = String(Math.max(0, Math.min(1, (p - 0.72) / 0.28)));
-    mark.style.transform = `rotate(${(Math.min(p, 1.2) * 300).toFixed(1)}deg)`;
-  }
-
-  function run() {
-    busy = true;
-    haptic();
-    ptr.classList.add("is-busy");
-    ptr.classList.remove("is-ready");
-    // Hand the mark over to the spinner. Both of these were set inline on the
-    // way down, and inline beats the `is-busy` rules that would hide them.
-    mark.style.transform = "";
-    head.style.opacity = "0";
-    target = HOLD;
-    spin();
-
-    const started = Date.now();
-    Promise.all([refreshData(), checkForNewBuild()])
-      .catch(() => {})
-      .then(() => {
-        const left = Math.max(0, MIN_RUN - (Date.now() - started));
-        setTimeout(() => {
-          busy = false;
-          ptr.classList.remove("is-busy");
-          target = 0;
-          spin();
-        }, left);
-      });
-  }
-
-  /* 下に引くのは「いま持っているものを見せ直せ」ではなく、
-     **「取りに行け」** の意味です。控えを読み直すだけだと、ダイエットの
-     画面では何も変わりません——歩数や睡眠は中継所の向こうにあって、
-     読み直しても取りには行かないので。
-
-     だから、開いている画面に refresh() があれば、それも待ちます。
-     無い画面はこれまでどおり読み直すだけです。 */
-  function refreshData() {
-    let outside = null;
-    try {
-      const screen = KN.screens && KN.screens[KN.app.activeScreen && KN.app.activeScreen()];
-      if (screen && screen.refresh) outside = screen.refresh();
-    } catch (err) { console.warn("refresh failed", err); }
-
-    return Promise.resolve(outside)
-      .catch(() => {})
-      .then(() => {
-        try { KN.store.reload(); } catch (err) { console.warn("refresh failed", err); }
-      });
-  }
-
-  /* The installed app can sit on the home screen for weeks. Asking the worker
-     to look for a new build is the one thing here that reaches the network —
-     and if it finds one, app.js reloads into it on its own. */
-  function checkForNewBuild() {
-    if (!("serviceWorker" in navigator) || !navigator.serviceWorker.getRegistration) {
-      return Promise.resolve();
-    }
-    return navigator.serviceWorker.getRegistration()
-      .then((reg) => (reg ? reg.update() : null))
-      .catch(() => null);
   }
 
   KN.pullRefresh = { init };
