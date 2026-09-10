@@ -2846,54 +2846,19 @@
     return true;
   }
 
-  /** ②貼り付け。クリップボードから自動で読み、読めなければ長押しの欄へ。
+  /** ②貼り付け。押した拍のうちに、クリップボードを直接読んでそのまま
+      保存します。欄も、待ち時間も、途中の画面も挟みません。
 
-      readClipboard() は「読めたら儲けもの」の道です（health-sync.js参照）。
-      iOSのホーム画面から起動したアプリ（standalone）では、権限の確認そのものを
-      出せず、Promise が then でも catch でもなく**ずっと片づかない**ことが
-      あります——そうなると、待っているだけでは永遠にボタンの反応が無いように
-      見えます。だから短く待って、応えが無ければ自分から長押しの欄へ進みます。 */
+      ヘルスケア取り込み（health-sync.js）の clipboardBlocked は見ません
+      ——あちらで一度断られると、この日ぶんの新しいボタンも巻き込んで
+      二度と自動で読まなくなってしまいます。読めるかどうかは、その場で
+      毎回確かめます。 */
   function pasteAiResult(day) {
-    if (store.get().settings.clipboardBlocked) { openAiPasteFallback(day); return; }
-    const giveUp = new Promise((resolve) => setTimeout(() => resolve(null), 1200));
-    Promise.race([KN.healthSync.readClipboard(), giveUp]).then((text) => {
+    KN.healthSync.readClipboard().then((text) => {
       const t = (text || "").trim();
-      if (!t) {
-        store.update((s) => { s.settings.clipboardBlocked = true; });
-        openAiPasteFallback(day);
-        return;
-      }
+      if (!t) { KN.ui.toast("クリップボードを読み取れませんでした"); return; }
       saveAiReply(day, t);
     });
-  }
-
-  /** 長押し貼り付け用の逃げ道。iOSの「ペースト」はAPIの許可を通らないので、
-      断られても必ずここを通れます。貼った時点で自動で取り込みますが、
-      ペーストの合図そのものを見落とす端末もあるかもしれないので、
-      押せるボタンも下に残します（保険）。 */
-  function openAiPasteFallback(day) {
-    const b = node(html`
-      <div class="stack">
-        <p class="diet-note">
-          この端末では自動で読み取れませんでした。下の欄を長押しして「ペースト」を
-          押してください。貼り付けた時点で取り込みます。
-        </p>
-        <textarea class="textarea js-p" rows="8" spellcheck="false"
-                  autocapitalize="off" autocorrect="off"
-                  placeholder="ここに長押し →「ペースト」" aria-label="AIの返事"></textarea>
-        <button type="button" class="btn btn-primary btn-block js-take">取り込む</button>
-      </div>
-    `);
-    const h = KN.ui.sheet({ title: "貼り付けて取り込む", content: b });
-    const ta = b.querySelector(".js-p");
-    KN.ui.focusNow(ta);
-    const tryTake = () => {
-      const t = ta.value.trim();
-      if (!t) return;
-      if (saveAiReply(day, t)) h.close();
-    };
-    ta.addEventListener("paste", () => { setTimeout(tryTake, 0); });
-    b.querySelector(".js-take").addEventListener("click", tryTake);
   }
 
   function openAiSheet(day0) {
