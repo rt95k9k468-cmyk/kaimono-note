@@ -68,23 +68,23 @@
   }
 
   /** その日の日記・起床就寝・やること・買うものを、ひとつの文にまとめます。
+      日付は書きません——地の文（本文）の頭に本人がすでに書く習慣なので、
+      ここでまた書くと二重になります。
       dayFeed が返すのは**その日に済ませた**ものだけ（未完了は含みません）
       ——写さず引く作りなので、Daily Log の行がすでに言っていることと
       同じ材料です。 */
   function dailyCopyText(day) {
     const cur = store.dayLog(day) || {};
-    const dt = U.dayDate(day);
-    const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
-    const lines = [label];
+    const blocks = [];
     const memo = (cur.memo || "").trim();
-    if (memo) lines.push("", memo);
-    if (cur.wake || cur.sleep) lines.push("", `起床 ${orDash(cur.wake)} ・ 就寝 ${orDash(cur.sleep)}`);
+    if (memo) blocks.push(memo);
+    if (cur.wake || cur.sleep) blocks.push(`起床 ${orDash(cur.wake)} ・ 就寝 ${orDash(cur.sleep)}`);
     const feed = store.dayFeed(day);
     const todos = feed.filter((f) => f.src === "todo");
     const items = feed.filter((f) => f.src === "item");
-    if (todos.length) lines.push("", "やること", ...todos.map((t) => `・${t.title}`));
-    if (items.length) lines.push("", "買うもの", ...items.map((i) => `・${i.title}`));
-    return lines.join("\n");
+    if (todos.length) blocks.push(["やること", ...todos.map((t) => `・${t.title}`)].join("\n"));
+    if (items.length) blocks.push(["買うもの", ...items.map((i) => `・${i.title}`)].join("\n"));
+    return blocks.join("\n\n");
   }
 
   /** その日へ移る。月をまたいでも暦がついてくるように、二つ一緒に動かします。 */
