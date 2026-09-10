@@ -2500,6 +2500,13 @@
   padding: var(--sp-3); background: var(--c-surface-2);
   border: 0; border-radius: var(--r-md);
 }
+/* 詳しい紙を開く帯。押せる範囲だけボタンに戻し、見た目は前の
+   .diet-memo とまったく同じにします（ボタンの既定を消すだけ）。 */
+.diet-memo-open {
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  width: 100%; text-align: left; padding: 0; margin: 0;
+  background: none; border: 0; font: inherit; color: inherit;
+}
 .diet-memo-head { display: flex; align-items: center; gap: 6px; }
 .diet-memo-head b { font-size: var(--fs-sm); }
 .diet-memo-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
@@ -2511,6 +2518,9 @@
   white-space: pre-wrap; word-break: break-word;
 }
 .diet-memo.is-blank .diet-memo-body { color: var(--c-text-3); }
+/* 押すだけで完結する二つのボタン。①コピー ②貼り付け、同じ重さで並べます。 */
+.diet-ai-btns { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+.diet-ai-btns .btn { flex: 1; }
 .diet-old-meals { margin-top: var(--sp-2); }
 
 .diet-total {
