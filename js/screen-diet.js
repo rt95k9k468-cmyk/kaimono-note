@@ -2069,18 +2069,28 @@
               そのまま書けます（打った先から保存します）。 */""}
         <div class="diet-slots js-slots"></div>
 
-        ${/* AIの推計。押し方は前と同じ二段（プロンプトを作る → 返事を貼る）。 */""}
-        <button class="diet-memo js-ai-open ${ai && ai.ai ? "" : "is-blank"}">
-          <span class="diet-memo-head">
-            <span class="diet-memo-ico">${icon("sparkles")}</span>
-            <b>AI推計</b>
-            <span class="diet-memo-hint">${ai && ai.ai ? "もう一度" : ""}</span>
-          </span>
-          <span class="diet-memo-body">${ai && ai.ai
-            ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
-              + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
-            : "＋ 食べたものをAIに推してもらう（プロンプトを作ってコピーします）"}</span>
-        </button>
+        ${/* AIの推計。押すだけで完結する二つのボタンにしました
+              ——①プロンプトを作ってコピー ②AIの返事を貼り付ける。
+              どちらも他のアプリへ行って戻ってくるだけで済みます。
+              中身を見返す・自分で直すときは、上の帯（結果の要約）を
+              押せば、これまでどおり詳しい紙が開きます。 */""}
+        <div class="diet-memo ${ai && ai.ai ? "" : "is-blank"}">
+          <button type="button" class="diet-memo-open js-ai-open">
+            <span class="diet-memo-head">
+              <span class="diet-memo-ico">${icon("sparkles")}</span>
+              <b>AI推計</b>
+              <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
+            </span>
+            <span class="diet-memo-body">${ai && ai.ai
+              ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
+                + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
+              : "食べたものをAIに推してもらいます"}</span>
+          </button>
+          <div class="diet-ai-btns">
+            <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
+            <button type="button" class="btn btn-soft btn-sm js-ai-paste">${icon("download")}貼り付け</button>
+          </div>
+        </div>
 
         ${/* エネルギー収支の評価は、AIが返してくれたときだけ短く出します。
               その日を開くたびに読めるように、ここに置きます（詳しくは
@@ -2125,6 +2135,8 @@
     buildSlotBoxes(sec.querySelector(".js-slots"), card.day, st, { peek });
 
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
+    sec.querySelector(".js-ai-prompt").addEventListener("click", () => copyAiPrompt(card.day));
+    sec.querySelector(".js-ai-paste").addEventListener("click", () => pasteAiResult(card.day));
     host.append(sec);
     // 高さは、置いてからでないと測れません（幅が決まっていないので）。
     sec.querySelectorAll(".js-slot-memo").forEach(grow);
@@ -2781,6 +2793,97 @@
       kcal: i.kcal, p: i.p, f: i.f, c: i.c, fiber: i.fiber,
       basis: i.basis || "", source: i.source || "", confidence: i.confidence || "",
     }));
+  }
+
+  /* ---- メイン画面の二つのボタン ----
+
+     シートを開かず、押すだけで完結させます。①はコピーだけ、②は貼り付け
+     だけ——どちらも一手です。中身を見返す・raw を書き直すときは、上の
+     帯（js-ai-open）から今までどおり openAiSheet が開きます。 */
+
+  /** ①プロンプトを作ってコピー。 */
+  function copyAiPrompt(day) {
+    const memoText = dayMemoText(day);
+    if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
+    const text = aiPrompt(memoText, { body: dayBodyText(day), recent: recentText(day, 7) });
+    copyText(text).then((ok) => {
+      KN.motion.fire("select");
+      if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
+      // 断られる端末があります。そのときは長押しで拾えるように出します。
+      openAiCopyFallback(text);
+    });
+  }
+
+  /** 長押しコピー用の逃げ道。自動コピーが断られたときだけ出します。 */
+  function openAiCopyFallback(text) {
+    const b = node(html`
+      <div class="stack">
+        <p class="diet-note">自動でコピーできませんでした。下の文を長押しでコピーしてください。</p>
+        <textarea class="textarea js-out" rows="10" readonly aria-label="AIに貼る文">${text}</textarea>
+      </div>
+    `);
+    KN.ui.sheet({ title: "AI用プロンプト", content: b });
+    const out = b.querySelector(".js-out");
+    KN.ui.focusNow(out);
+    try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 選べなくても読めます */ }
+  }
+
+  /** ②AIの返事を、読み取ってそのまま保存します。 */
+  function saveAiReply(day, text) {
+    const res = readAiReply(text);
+    if (!res.found) {
+      KN.ui.toast("読み取れませんでした。AIの返事をそのまま貼ってください");
+      return false;
+    }
+    const ai = { ...res, raw: text, at: new Date().toISOString() };
+    delete ai.found;
+    const cur = store.dayMemo(day);
+    const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
+    store.setDayMemo(day, cur ? cur.memo : "", handItems.concat(aiItem(ai)), ai);
+    KN.motion.fire("save");
+    render();
+    KN.ui.toast("保存しました");
+    return true;
+  }
+
+  /** ②貼り付け。クリップボードから自動で読み、読めなければ長押しの欄へ。 */
+  function pasteAiResult(day) {
+    if (store.get().settings.clipboardBlocked) { openAiPasteFallback(day); return; }
+    KN.healthSync.readClipboard().then((text) => {
+      const t = (text || "").trim();
+      if (!t) {
+        store.update((s) => { s.settings.clipboardBlocked = true; });
+        openAiPasteFallback(day);
+        return;
+      }
+      saveAiReply(day, t);
+    });
+  }
+
+  /** 長押し貼り付け用の逃げ道。iOSの「ペースト」はAPIの許可を通らないので、
+      断られても必ずここを通れます。 */
+  function openAiPasteFallback(day) {
+    const b = node(html`
+      <div class="stack">
+        <p class="diet-note">
+          この端末では自動で読み取れませんでした。下の欄を長押しして「ペースト」を
+          押してください。貼り付けた時点で取り込みます。
+        </p>
+        <textarea class="textarea js-p" rows="8" spellcheck="false"
+                  autocapitalize="off" autocorrect="off"
+                  placeholder="ここに長押し →「ペースト」" aria-label="AIの返事"></textarea>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "貼り付けて取り込む", content: b });
+    const ta = b.querySelector(".js-p");
+    KN.ui.focusNow(ta);
+    ta.addEventListener("paste", () => {
+      setTimeout(() => {
+        const t = ta.value.trim();
+        if (!t) return;
+        if (saveAiReply(day, t)) h.close();
+      }, 0);
+    });
   }
 
   function openAiSheet(day0) {

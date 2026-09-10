@@ -61,6 +61,32 @@
   /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
   const oneDayLog = () => S().dailyScope !== "month";
 
+  /** クリップボードへ。断られたら false を返します（例外は投げません）。 */
+  function copyText(text) {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) return Promise.resolve(false);
+    return navigator.clipboard.writeText(text).then(() => true, () => false);
+  }
+
+  /** その日の日記・起床就寝・やること・買うものを、ひとつの文にまとめます。
+      dayFeed が返すのは**その日に済ませた**ものだけ（未完了は含みません）
+      ——写さず引く作りなので、Daily Log の行がすでに言っていることと
+      同じ材料です。 */
+  function dailyCopyText(day) {
+    const cur = store.dayLog(day) || {};
+    const dt = U.dayDate(day);
+    const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
+    const lines = [label];
+    const memo = (cur.memo || "").trim();
+    if (memo) lines.push("", memo);
+    if (cur.wake || cur.sleep) lines.push("", `起床 ${orDash(cur.wake)} ・ 就寝 ${orDash(cur.sleep)}`);
+    const feed = store.dayFeed(day);
+    const todos = feed.filter((f) => f.src === "todo");
+    const items = feed.filter((f) => f.src === "item");
+    if (todos.length) lines.push("", "やること", ...todos.map((t) => `・${t.title}`));
+    if (items.length) lines.push("", "買うもの", ...items.map((i) => `・${i.title}`));
+    return lines.join("\n");
+  }
+
   /** その日へ移る。月をまたいでも暦がついてくるように、二つ一緒に動かします。 */
   function goToDay(day) {
     if (!day) return;
@@ -564,11 +590,24 @@
                 押せば開くもので、＋の中にも同じ口があります——同じことへ
                 三つ目の入口を作ると、見出しの重さがそのぶん増えるだけです。 */""}
           <h2>Daily Log</h2>
+          ${/* 月ぜんぶを並べる設定のときは、見出しの下に複数の日が並ぶので
+                「どの日を」が一つに決まりません。一日ぶんのときだけ出します。 */
+              oneDayLog() ? html`
+            <button type="button" class="icon-btn js-log-copy" aria-label="この日の記録をコピー">
+              ${icon("copy")}
+            </button>` : ""}
         </header>
         <div class="arc-log-body"></div>
       </section>
     `);
     const body = sec.querySelector(".arc-log-body");
+    const copyBtn = sec.querySelector(".js-log-copy");
+    if (copyBtn) copyBtn.addEventListener("click", () => {
+      copyText(dailyCopyText(only)).then((ok) => {
+        KN.motion.fire("select");
+        KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
+      });
+    });
 
     if (!days.length) {
       body.append(node(html`<p class="arc-log-empty">-</p>`));
