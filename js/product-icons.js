@@ -769,6 +769,11 @@
     }))
     .sort((a, b) => b[0].length - a[0].length);
 
+  /* 「オレンジジュース」を おれんじ で切ってよいか——その後ろ（じゅーす）が
+     辞書の言葉かどうかを `hasWord` が聞きにきます。 */
+  const WORDS = new Set(FLAT.map(([w]) => w));
+  const isWord = (s) => WORDS.has(s);
+
   /** Drawn icon for a product name, as raw SVG — or "" when nothing fits. */
   function find(name) {
     const key = findKey(name);
@@ -780,11 +785,15 @@
       比べるのには向きません。並べ替えが要るのは、比べられる名前のほうです。
       @returns {string} 例 "milk"、当てはまらなければ "" */
   function findKey(name) {
-    const n = KN.util.foldKana(String(name || ""));
-    if (!n) return "";
+    /* 「含まれるか」ではなく「**語として**含まれるか」を聞きます
+       （`KN.util.hasWord`）。カタカナの連なりを途中で切った当たり——
+       「タコス」の たこ、「ペットボトル」の ぺっと、「オレンジジュース」の
+       おれんじ——は、ここで落ちます。 */
+    const f = KN.util.foldRuns(name);
+    if (!f.text) return "";
     for (const [word, icon, short] of FLAT) {
-      if (short && n.length > SHORT_NAME) continue;
-      if (n.includes(word)) return icon;
+      if (short && f.text.length > SHORT_NAME) continue;
+      if (KN.util.hasWord(f, word, isWord)) return icon;
     }
     return "";
   }
