@@ -173,33 +173,17 @@
        「ダイエット」にも札があります。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
 
-    /* 上のバーの厚み。**掴み手はこのぶんだけ下に貼りつきます**——数えないと
-       掴み手はバーの裏へ潜り、下まで送った先で掴めなくなります（実際そう
-       なっていて、この画面だけ段を替えられませんでした）。厚みはノッチの
-       深さで変わるので、CSSに数字は焼き込めません。
-       暦のぶん（--cal-h）は要りません——ここの暦は貼りつかないので。 */
-    const fitTop = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitTop();
-    window.addEventListener("resize", fitTop);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitTop);
+    /* **紙（`.tl-sheet`）が器になったので**（やること・daily と同じ）、上の
+       バーも暦も、掴み手が避ける相手ではなくなりました——どちらも紙の外の、
+       送られない場所に居ます。掴み手は紙の上端に貼りつくだけ（css の
+       `#screen-diet .tl-grip { top: 0; }`）。厚みを測って `--topbar-h` /
+       `--cal-h` を渡す仕事は、もう要りません。
 
-    /* **週の一行は貼りつきます**（やること・daily と同じ）。月ぜんぶを
-       出しているときだけ流れます——五、六行が居座ると、体重もグラフも
-       そのぶん下に押し下げられるので（css の `#screen-diet .cal`）。
-       紙を引いているあいだは、月でも貼りつきます（`.cal.is-peek`）
-       ——下まで送った先で掴み手を引いたとき、暦が画面の外に居ては
-       出てくるものがないので。
-
-       貼りついた印は、暦にも付けます。付けないと、境目の線が出ないまま
-       記録の字が下をくぐります。 */
-    root.addEventListener("scroll", () => {
-      const stuck = root.scrollTop > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
-    });
+       境目の線（is-stuck）は、やること・daily・買うものと同じく出しません
+       ——貼りつく相手（バー・暦）の下に線を引く仕掛け自体は他の三つにも
+       あるが、線を出す聞き手が付いていないので実際には一度も出ない
+       （3画面とも同じ）。ここだけ線を出す仕掛けを足すと、この画面だけ
+       違う顔になる。 */
 
     wireKeyboardScroll();
   }
@@ -217,7 +201,14 @@
      可視領域がまだ動いている途中の値をつかんで、二度・三度と重ねて
      動かしてしまいます（それが「大きく揺れる」の正体でした）。
      いまは **可視領域が実際に変わったとき** だけ測り直し、すでに
-     ほぼ同じ行き先なら黙って何もしません。 */
+     ほぼ同じ行き先なら黙って何もしません。
+
+     **動かす相手は `root` ではなく、いまの紙**です。紙が器になったので
+     （やること・daily と同じ）、`root`（画面そのもの）は overflow:hidden
+     でもう送れません。紙は render() のたびに別の要素になるので、ここは
+     毎回 `KN.app.scrollerOf(root)` を呼び直します——変数に控えて使い回すと、
+     控えたあとの render() で差し替わった紙を見失います。 */
+  const sheetEl = () => KN.app.scrollerOf(root);
   let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
   let kbTarget = null;       // 直前に動かした先（同じ先には、もう一度動かしません）。
   let kbField = null;        // いま追っている欄。
@@ -243,15 +234,16 @@
        上へ戻すのは、**始めた位置より上には行かない**範囲だけです。
        そこから先は、その人が自分で見ていた場所なので。 */
     const SLACK = 24;            // これ以内の行きすぎは、直しません（揺り戻しに見えるので）
+    const sc = sheetEl();
     if (over <= 2 && !(kbScrollBase != null && over < -SLACK
-                       && root.scrollTop > kbScrollBase)) return;
-    const want = root.scrollTop + over;
+                       && sc.scrollTop > kbScrollBase)) return;
+    const want = sc.scrollTop + over;
     const target = Math.round(kbScrollBase != null ? Math.max(kbScrollBase, want) : want);
-    if (Math.abs(target - root.scrollTop) < 3) return;
+    if (Math.abs(target - sc.scrollTop) < 3) return;
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
     kbMoved = true;
-    KN.app.glideTo(root, target);
+    KN.app.glideTo(sc, target);
   }
 
   function armKeyboardFollow(field) {
@@ -276,7 +268,7 @@
        巻き戻しは要りません。nudgeIntoView は欄の**いまの位置**を測って
        足りないぶんだけ動かすので、ブラウザが先に動かしていれば、その状態から
        測って「もう見えている」と判断するだけです。動きは一度で済みます。 */
-    if (kbScrollBase == null) kbScrollBase = root.scrollTop;
+    if (kbScrollBase == null) kbScrollBase = sheetEl().scrollTop;
     kbField = field;
     kbTarget = null;
     /* ここではまだ動かしません。キーボードがこれから出る（＝可視領域が
@@ -297,7 +289,7 @@
        （タップ→フォーカス→ブラウザ自身のスクロール、の一番手前）。 */
     root.addEventListener("pointerdown", (e) => {
       const field = e.target.closest && e.target.closest("input, textarea, select");
-      if (field && kbScrollBase == null) kbScrollBase = root.scrollTop;
+      if (field && kbScrollBase == null) kbScrollBase = sheetEl().scrollTop;
     }, true);
     root.addEventListener("focusin", (e) => {
       const field = e.target.closest && e.target.closest("input, textarea, select");
@@ -319,7 +311,7 @@
 
            誰が動かしたかは、その人には関係のない話です。触れる前に見て
            いた場所へ、静かに戻します。 */
-        if (Math.abs(root.scrollTop - kbScrollBase) > 2) KN.app.glideTo(root, kbScrollBase);
+        if (Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
         kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
@@ -424,7 +416,7 @@
         query = "";
         KN.motion.fire("select");
         render();
-        if (root) root.scrollTop = 0;
+        if (root) KN.app.scrollerOf(root).scrollTop = 0;
       });
       list.append(row);
     });
@@ -444,7 +436,7 @@
        作らないため）。 */
     flushSlots();
     flushSlots = () => {};
-    const keepTop = root ? root.scrollTop : 0;
+    const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
     // 探しているあいだは、その日の紙のかわりに、見つかった日を並べます。
     if (query.trim()) { renderFound(); return; }
     const day = curDay();
@@ -494,8 +486,6 @@
         </div>
         <section class="card section diet-look">
           <div class="js-insight"></div>
-          <div class="divider"></div>
-          <div class="js-goal"></div>
         </section>
       </div>
     `));
@@ -506,16 +496,11 @@
     track.append(buildDaySlide(day, { peek: false, card, sum, chartEl: chart() }));
 
     /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
-       枠ごと消すので、目標だけが残ったときに上の仕切り線が浮きません。 */
+       出さないなら、この紙自体を置きません（中身が無い枠が浮くので）。 */
     const showInsight = store.get().settings.showInsight === true;
     const lookCard = els.body.querySelector(".diet-look");
     if (showInsight) renderInsight(els.body.querySelector(".js-insight"));
-    else if (lookCard) {
-      lookCard.querySelector(".js-insight").remove();
-      const rule = lookCard.querySelector(".divider");
-      if (rule) rule.remove();
-    }
-    renderGoal(els.body.querySelector(".js-goal"), now);
+    else if (lookCard) lookCard.remove();
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
        伸ばさずに、昨日・一昨日と辿れるように。仕掛けは day-swipe.js が
@@ -545,7 +530,8 @@
     placeRing(true);
 
     if (root && keepTop) {
-      root.scrollTop = Math.min(keepTop, Math.max(0, root.scrollHeight - root.clientHeight));
+      const sc = KN.app.scrollerOf(root);
+      sc.scrollTop = Math.min(keepTop, Math.max(0, sc.scrollHeight - sc.clientHeight));
     }
   }
 
@@ -881,14 +867,14 @@
        アプリのどの数字でも同じことなので、一行ぶんの高さを使って
        言うほどのことではありません。
      ・体脂肪は体重の下に。同じ「いまの体」の話なので、縦に続けます。
-     ・前回比・7日平均・目標までは**右側**に。下に置くと枠が縦に伸びて、
+     ・傾き・平均・目標までは**右側**に。下に置くと枠が縦に伸びて、
        グラフを見るのにいちいちスクロールすることになります。
      ・そのグラフも、同じ枠の中に入れます。「いまの体重」と「その動き」は
-       別々の話ではありません。 */
+       別々の話ではありません。
+     ・この三つは、文字のところを押すと出す日数・目標体重を直せます
+       （平均・傾きは何日ぶんで均すか、目標まではいくつを狙うか）。 */
   function renderToday(host, card, sum, chartEl) {
     const w = card.weight;
-    const g = sum.goal;
-    const pace = D.neededPace();
     const when = dayName(card.day);
 
     const sec = node(html`
@@ -896,9 +882,8 @@
         <div class="diet-hero-top">
           <button class="diet-hero-main js-weight">
             <span class="diet-hero-label">
-              <i class="diet-hero-ico">${icon("scale")}</i>${w
-                ? (w.source === "health" ? `${when}の体重（ヘルスケア）` : `${when}の体重`)
-                : `${when}はまだ量っていません`}</span>
+              <i class="diet-hero-ico">${icon("scale")}</i>${w && w.source === "health"
+                ? `${when}の体重（ヘルスケア）` : `${when}の体重`}</span>
             <span class="diet-hero-value">
               <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
             </span>
@@ -908,31 +893,59 @@
             </span>
           </button>
           <div class="diet-hero-side">
-            <div class="diet-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("trend")}</i>前回比</span>
-              <b class="diet-stat-value mono-num ${sum.delta == null ? "" : sum.delta < 0 ? "is-good" : sum.delta > 0 ? "is-warn" : ""}">${signed(sum.delta)}</b>
-              <span class="diet-stat-unit">kg${sum.deltaDays > 1 ? `・${sum.deltaDays}日ぶり` : ""}</span>
-            </div>
-            <div class="diet-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("chart")}</i>7日平均</span>
+            <button type="button" class="diet-stat js-trend">
+              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("trend")}</i>傾き</span>
+              <b class="diet-stat-value mono-num">${sum.trendPerWeek == null ? "—" : signed(sum.trendPerWeek, 2)}</b>
+              <span class="diet-stat-unit">kg/週</span>
+            </button>
+            <button type="button" class="diet-stat js-avg">
+              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("chart")}</i>${sum.avgWindowDays}日平均</span>
               <b class="diet-stat-value mono-num">${sum.ma7Now == null ? "—" : sum.ma7Now.toFixed(2)}</b>
               <span class="diet-stat-unit">kg</span>
-            </div>
-            <div class="diet-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("target")}</i>${g.targetKg == null ? "目標" : "目標まで"}</span>
-              <b class="diet-stat-value mono-num">${g.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
-              <span class="diet-stat-unit">${g.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
-            </div>
+            </button>
+            <button type="button" class="diet-stat js-goal-stat">
+              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("target")}</i>${sum.goal.targetKg == null ? "目標" : "目標まで"}</span>
+              <b class="diet-stat-value mono-num">${sum.goal.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
+              <span class="diet-stat-unit">${sum.goal.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
+            </button>
           </div>
         </div>
-        ${pace != null ? html`
-          <p class="diet-hero-note">目標日まで、週 ${signed(pace, 2)}kg のペースが要ります。</p>` : ""}
         <div class="js-graph"></div>
       </div>
     `);
     sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
+    sec.querySelector(".js-trend").addEventListener("click", () => openWindowSheet("trend"));
+    sec.querySelector(".js-avg").addEventListener("click", () => openWindowSheet("avg"));
+    sec.querySelector(".js-goal-stat").addEventListener("click", openGoalSheet);
     renderGraph(sec.querySelector(".js-graph"), chartEl);
     host.append(sec);
+  }
+
+  /** 「平均」「傾き」を、何日ぶんで均すか。既定はどちらも7日——増やすほど
+      揺れは減り、短くするほど直近の変化に敏感になります。 */
+  function openWindowSheet(kind) {
+    const isAvg = kind === "avg";
+    const g = store.get().diet.goal;
+    const cur = (isAvg ? g.avgWindowDays : g.trendWindowDays) || 7;
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">${isAvg ? "平均" : "傾き"}を出す日数</span>
+          <input class="input js-days" inputmode="numeric" placeholder="7" value="${cur}">
+        </label>
+        <p class="diet-note">空なら7日で数えます。長くするほど揺れが減り、短くするほど
+          直近の変化に敏感になります。</p>
+      </div>
+    `);
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
+    const h = KN.ui.sheet({ title: isAvg ? "平均の日数" : "傾きの日数", content: body, footer: foot, guard: true });
+    foot.addEventListener("click", () => {
+      const v = parseInt(body.querySelector(".js-days").value, 10);
+      const n = Number.isFinite(v) && v > 0 ? Math.min(90, v) : null;
+      store.setGoal(isAvg ? { avgWindowDays: n } : { trendWindowDays: n });
+      h.close();
+      render();
+    });
   }
 
   /* ---------------- グラフ ---------------- */
@@ -2056,18 +2069,28 @@
               そのまま書けます（打った先から保存します）。 */""}
         <div class="diet-slots js-slots"></div>
 
-        ${/* AIの推計。押し方は前と同じ二段（プロンプトを作る → 返事を貼る）。 */""}
-        <button class="diet-memo js-ai-open ${ai && ai.ai ? "" : "is-blank"}">
-          <span class="diet-memo-head">
-            <span class="diet-memo-ico">${icon("sparkles")}</span>
-            <b>AI推計</b>
-            <span class="diet-memo-hint">${ai && ai.ai ? "もう一度" : ""}</span>
-          </span>
-          <span class="diet-memo-body">${ai && ai.ai
-            ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
-              + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
-            : "＋ 食べたものをAIに推してもらう（プロンプトを作ってコピーします）"}</span>
-        </button>
+        ${/* AIの推計。押すだけで完結する二つのボタンにしました
+              ——①プロンプトを作ってコピー ②AIの返事を貼り付ける。
+              どちらも他のアプリへ行って戻ってくるだけで済みます。
+              中身を見返す・自分で直すときは、上の帯（結果の要約）を
+              押せば、これまでどおり詳しい紙が開きます。 */""}
+        <div class="diet-memo ${ai && ai.ai ? "" : "is-blank"}">
+          <button type="button" class="diet-memo-open js-ai-open">
+            <span class="diet-memo-head">
+              <span class="diet-memo-ico">${icon("sparkles")}</span>
+              <b>AI推計</b>
+              <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
+            </span>
+            <span class="diet-memo-body">${ai && ai.ai
+              ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
+                + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
+              : "食べたものをAIに推してもらいます"}</span>
+          </button>
+          <div class="diet-ai-btns">
+            <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
+            <button type="button" class="btn btn-soft btn-sm js-ai-paste">${icon("download")}貼り付け</button>
+          </div>
+        </div>
 
         ${/* エネルギー収支の評価は、AIが返してくれたときだけ短く出します。
               その日を開くたびに読めるように、ここに置きます（詳しくは
@@ -2112,6 +2135,8 @@
     buildSlotBoxes(sec.querySelector(".js-slots"), card.day, st, { peek });
 
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
+    sec.querySelector(".js-ai-prompt").addEventListener("click", () => copyAiPrompt(card.day));
+    sec.querySelector(".js-ai-paste").addEventListener("click", () => pasteAiResult(card.day));
     host.append(sec);
     // 高さは、置いてからでないと測れません（幅が決まっていないので）。
     sec.querySelectorAll(".js-slot-memo").forEach(grow);
@@ -2770,6 +2795,72 @@
     }));
   }
 
+  /* ---- メイン画面の二つのボタン ----
+
+     シートを開かず、押すだけで完結させます。①はコピーだけ、②は貼り付け
+     だけ——どちらも一手です。中身を見返す・raw を書き直すときは、上の
+     帯（js-ai-open）から今までどおり openAiSheet が開きます。 */
+
+  /** ①プロンプトを作ってコピー。 */
+  function copyAiPrompt(day) {
+    const memoText = dayMemoText(day);
+    if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
+    const text = aiPrompt(memoText, { body: dayBodyText(day), recent: recentText(day, 7) });
+    copyText(text).then((ok) => {
+      KN.motion.fire("select");
+      if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
+      // 断られる端末があります。そのときは長押しで拾えるように出します。
+      openAiCopyFallback(text);
+    });
+  }
+
+  /** 長押しコピー用の逃げ道。自動コピーが断られたときだけ出します。 */
+  function openAiCopyFallback(text) {
+    const b = node(html`
+      <div class="stack">
+        <p class="diet-note">自動でコピーできませんでした。下の文を長押しでコピーしてください。</p>
+        <textarea class="textarea js-out" rows="10" readonly aria-label="AIに貼る文">${text}</textarea>
+      </div>
+    `);
+    KN.ui.sheet({ title: "AI用プロンプト", content: b });
+    const out = b.querySelector(".js-out");
+    KN.ui.focusNow(out);
+    try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 選べなくても読めます */ }
+  }
+
+  /** ②AIの返事を、読み取ってそのまま保存します。 */
+  function saveAiReply(day, text) {
+    const res = readAiReply(text);
+    if (!res.found) {
+      KN.ui.toast("読み取れませんでした。AIの返事をそのまま貼ってください");
+      return false;
+    }
+    const ai = { ...res, raw: text, at: new Date().toISOString() };
+    delete ai.found;
+    const cur = store.dayMemo(day);
+    const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
+    store.setDayMemo(day, cur ? cur.memo : "", handItems.concat(aiItem(ai)), ai);
+    KN.motion.fire("save");
+    render();
+    KN.ui.toast("保存しました");
+    return true;
+  }
+
+  /** ②貼り付け。押した拍のうちに、クリップボードを直接読んでそのまま
+      保存します。欄も、待ち時間も、途中の画面も挟みません。
+
+      ヘルスケア取り込み（health-sync.js）の clipboardBlocked は見ません
+      ——あちらで一度断られると、この日ぶんの新しいボタンも巻き込んで
+      二度と自動で読まなくなってしまいます。読めるかどうかは、その場で
+      毎回確かめます。 */
+  function pasteAiResult(day) {
+    KN.healthSync.readClipboard().then((text) => {
+      const t = (text || "").trim();
+      if (!t) { KN.ui.toast("クリップボードを読み取れませんでした"); return; }
+      saveAiReply(day, t);
+    });
+  }
+
   function openAiSheet(day0) {
     const day = day0 || curDay();
     const cur = store.dayMemo(day);
@@ -3070,53 +3161,6 @@
           out.append(node(html`<p class="diet-note is-warn">うまくいきませんでした：${err.message}</p>`));
         });
     });
-  }
-
-  /* ---------------- 目標 ---------------- */
-
-  function renderGoal(host, sum) {
-    const g = sum.goal;
-    const proj = D.projection();
-    const sec = node(html`
-      <div class="stack">
-        <div class="section-title">${icon("flag")}目標</div>
-        <div class="rows">
-          <button class="row js-goal">
-            <span class="row-main">
-              <span class="row-title">目標体重</span>
-              <span class="row-sub">${g.targetKg == null ? "決めていません"
-                : `${g.targetKg.toFixed(1)}kg${g.targetDay ? ` ・ ${U.formatDay(g.targetDay)}まで` : ""}`}</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
-          <div class="row">
-            <span class="row-main">
-              <span class="row-title">BMI</span>
-              <span class="row-sub">${g.heightCm ? `身長 ${g.heightCm}cm` : "身長を入れると出ます"}</span>
-            </span>
-            <span class="row-value mono-num">${sum.bmi == null ? "—" : sum.bmi.toFixed(1)}</span>
-          </div>
-          <div class="row">
-            <span class="row-main">
-              <span class="row-title">いまの傾き</span>
-              <span class="row-sub">7日平均の直線あてはめ</span>
-            </span>
-            <span class="row-value mono-num">${sum.trendPerWeek == null ? "—" : `${signed(sum.trendPerWeek, 2)} kg/週`}</span>
-          </div>
-        </div>
-        ${proj ? html`<p class="diet-note">${projText(proj)}</p>` : ""}
-      </div>
-    `);
-    sec.querySelector(".js-goal").addEventListener("click", openGoalSheet);
-    host.append(sec);
-  }
-
-  function projText(p) {
-    if (p.reached) return "目標の重さに届いています。";
-    if (p.stalled) return "いまの傾きのままだと、目標には近づきません（傾きが目標と逆か、ほぼ横ばいです）。";
-    if (p.far) return "いまの傾きだと、目標まで数年かかる計算になります。ペースか目標を見直す頃かもしれません。";
-    return `いまの傾き（週 ${signed(p.rate, 2)}kg）が続いた場合、${U.formatDay(p.day)}ごろに目標の重さになる計算です。`
-      + "これは予測ではなく、いまの傾きをそのまま伸ばした線です。";
   }
 
   /* ---------------- 体重を書く ---------------- */
