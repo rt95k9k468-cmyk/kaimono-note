@@ -102,6 +102,18 @@
       id: "data", title: "バックアップと書き出し", icon: "download", tint: "#6a7d92",
       build: () => [dataGroup()],
     },
+    /* 絵が付かなかった言葉を集める一枚。新しい入れ物は作らず、いま保存
+       されている題・食事・商品を、開いたその場で辞書に通し直すだけです
+       （Daily Log の「写さず引く」と同じ考え方）。辞書に言葉を足せば、
+       次に開いたときにはその分だけ短くなります。 */
+    {
+      id: "iconGaps", title: "絵が見つからない言葉", icon: "tag", tint: "#8a7f74",
+      build: () => [iconGapsGroup()],
+      value: () => {
+        const n = collectIconGaps().length;
+        return n ? `${n}件` : "0件";
+      },
+    },
     {
       group: "画面ごと",
       id: "todo", title: "tasks", icon: "checklist", tint: "#c96a61",
@@ -1694,6 +1706,124 @@
     foot.querySelector(".js-clear").addEventListener("click", () => {
       KN.dietAI.setUrl(""); h.close(); render(); KN.ui.toast("外しました");
     });
+  }
+
+  /* ---------------- 絵が見つからない言葉 ----------------
+
+     新しい保存領域は増やしません。いま store にある題・食事・商品の名前を、
+     画面が実際に引いているのと同じ手順（やること→こと辞書→品物辞書、
+     食事→品物辞書のみ）で、開くたびその場で辞書に通すだけです。外れた
+     ものだけを、出てきた回数の多い順に並べます。
+
+     手で絵を選んだもの（t.icon / p.icon が付いているもの）は、辞書に
+     頼っていないので対象外にします——ここは「自動で当てられなかった
+     言葉」の一覧なので。 */
+
+  function collectIconGaps() {
+    const s = store.get();
+    const T = KN.iconsTodo, P = KN.productIcons;
+    if (!T || !P) return [];
+
+    const byKey = new Map(); // "kind name" -> { name, kind, count }
+    const bump = (name, kind) => {
+      const k = kind + " " + name;
+      const cur = byKey.get(k);
+      if (cur) cur.count++;
+      else byKey.set(k, { name, kind, count: 1 });
+    };
+
+    (s.todos || []).forEach((t) => {
+      if (t.icon) return;
+      const title = String(t.title || "").trim();
+      if (!title) return;
+      if (!(T.findKey(title) || P.findKey(title))) bump(title, "やること");
+    });
+
+    (s.diet && s.diet.meals || []).forEach((m) => {
+      (m.items || []).forEach((it) => {
+        const name = String(it.name || "").trim();
+        if (!name) return;
+        if (!P.findKey(name)) bump(name, "食事");
+      });
+    });
+
+    (s.products || []).forEach((p) => {
+      if (p.icon) return;
+      const name = String(p.name || "").trim();
+      if (!name) return;
+      const cat = s.categories.find((c) => c.id === p.categoryId)
+        || s.categories.find((c) => c.id === store.OTHER_CATEGORY)
+        || s.categories[0];
+      const hit = P.findKey(name) || (cat && P.findKey(cat.name));
+      if (!hit) bump(name, "買うもの");
+    });
+
+    return [...byKey.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ja"));
+  }
+
+  function iconGapsGroup() {
+    const gaps = collectIconGaps();
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">絵が見つからない言葉</h2>
+        <p class="row-sub" style="padding:0 4px 12px">
+          いま保存されている題・食事・商品の名前を、その場で辞書に通した
+          結果です。回数の多い順に並びます。ここに出ている言葉をコピーして
+          伝えていただくと、辞書に足す作業に回せます。
+        </p>
+        ${gaps.length ? html`
+          <div class="rows js-gap-rows"></div>
+          <div class="rows" style="margin-top:12px">
+            <button class="row js-gap-copy">
+              <span class="row-main"><span class="row-title">一覧をコピー</span></span>
+              <span class="row-chevron">${icon("copy")}</span>
+            </button>
+          </div>
+        ` : html`
+          <p class="row-sub" style="padding:0 4px">いまのところ、ありません。</p>
+        `}
+      </section>
+    `);
+
+    if (gaps.length) {
+      const rows = wrap.querySelector(".js-gap-rows");
+      gaps.slice(0, 200).forEach((g) => {
+        rows.append(node(html`
+          <div class="row">
+            <span class="row-main">
+              <span class="row-title">${g.name}</span>
+              <span class="row-sub">${g.kind}</span>
+            </span>
+            <span class="row-value">${g.count}件</span>
+          </div>
+        `));
+      });
+
+      wrap.querySelector(".js-gap-copy").addEventListener("click", () => {
+        const text = gaps.map((g) => `${g.name}\t${g.kind}\t${g.count}`).join("\n");
+        const ok = () => KN.ui.toast("コピーしました");
+        const fallback = () => {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
+          document.body.append(ta);
+          ta.select();
+          let done = false;
+          try { done = document.execCommand("copy"); } catch (err) { done = false; }
+          if (done) { ta.remove(); ok(); return; }
+          KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
+          ta.addEventListener("blur", () => ta.remove());
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(ok, fallback);
+        } else {
+          fallback();
+        }
+      });
+    }
+
+    return wrap;
   }
 
   function dataGroup() {
