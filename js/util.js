@@ -151,34 +151,72 @@
    *
    *  - 連なりの**終わりまで**届く当たりは、途中から始まっていても採る。
    *  - 途中で切れている当たりは、**残りの後ろが辞書にある語なら譲る**
-   *    （オレンジ｜ジュース）。
-   *  - 後ろが辞書に無いときだけ、前半を採る——ただし**4字以上**の、連なりの
-   *    頭から始まっているものに限る（「コーヒー｜フィルター」は珈琲の絵で
-   *    よいが、「タコ｜ス」の たこ は連なりの中でたまたま揃っただけなので）。
+   *    （オレンジ｜ジュース）。ただし**譲る相手には丈が要ります**（下記）。
+   *  - 後ろが辞書に無いときだけ、前半を採る——連なりの**頭から**始まって
+   *    いるなら4字以上、**途中から**なら5字以上（下記）。
+   *
+   *  ### 譲る相手には、丈が要る（`TAIL_SLACK`）
+   *
+   *  「譲る」を無条件にしていたころ、**7文字の頭が3文字の後ろに席を譲って
+   *  いました**——「カップヌードル｜チリトマト」がトマトに、「バープロテイン｜
+   *  ブラック」が ぶ｜**らっく** で棚になっていた。後ろが主役なのは
+   *  **後ろが主名詞のとき**の話で、商品名のうしろに味や色の名前が続く書き方は
+   *  そうではありません。
+   *
+   *  **構造では分けられません。**「カップヌードル｜チリトマト」（頭が正解）と
+   *  「ノンアルコール｜ビール」（後ろが正解）は、長い頭＋3文字の後ろという
+   *  まったく同じ形です。分かれ目は語そのものの性質——修飾語か品物の名前か
+   *  ——で、それは `product-icons.js` の `MODIFIER` が持ちます。ここで引ける
+   *  のは丈だけなので、**1字ぶんの遊び**（`TAIL_SLACK`）で線を引きます：
+   *  後ろが自分より2字以上短ければ譲らない。実測で、`とまと`(3)は
+   *  `かっぷぬーどる`(7)に譲らず、`どりんく`(4)は`よーぐると`(5)に譲ります。
+   *
+   *  ### 連なりの途中から始まる当たりも、長ければ採る（`MID_MIN`）
+   *
+   *  「頭から始まっているものに限る」としていたので、`バー|プロテイン|ブラック`
+   *  の `ぷろていん`(5) が落ちていました。5字あれば連なりの中でたまたま揃う
+   *  ものではないので、途中からでも採ります（4字だと `ノンア|ルコール` の
+   *  あるこーる が消毒液として立ってしまうため、ここだけ一段高い）。
    *
    *  @param {{text:string, cls:number[]}} f `foldRuns` の返り値
    *  @param {(s:string)=>boolean} [isWord] その文字列が辞書の言葉か */
   const HEAD_MIN = 4;
-  function hasWord(f, w, isWord) {
-    if (!w) return false;
+  const MID_MIN = 5;
+  const TAIL_SLACK = 1;
+
+  /** `hasWord` と同じ判定で、**採った場所**を返します（無ければ -1）。
+   *
+   *  同じ語が二度出てくる文——「食パン(チーズ)とチーズ」のような——では、
+   *  最初の当たりが落ちて二つめが採られることがあります。`indexOf` で
+   *  取り直すと、**落ちたほうの場所**を見てしまう。括弧の内外を見る側
+   *  （`product-icons.js` の `findKey`）にはそれが効くので、判定した本人に
+   *  場所を言わせます。**判定は一か所だけ**——`hasWord` はこれの薄い衣です。 */
+  function wordAt(f, w, isWord) {
+    if (!w) return -1;
     const { text, cls } = f;
     for (let i = text.indexOf(w); i >= 0; i = text.indexOf(w, i + 1)) {
       const end = i + w.length;
-      if (end >= text.length) return true;
+      if (end >= text.length) return i;
       const last = cls[end - 1];
-      if (last === 0 || cls[end] !== last) return true;
+      if (last === 0 || cls[end] !== last) return i;
       /* ここから先は、連なりの途中で切っている当たりだけの話。 */
       let r = end;
       while (r < text.length && cls[r] === last) r++;
       let tailIsWord = false;
       if (isWord) {
-        for (let p = end; p < r && !tailIsWord; p++) tailIsWord = isWord(text.slice(p, r));
+        for (let p = end; p < r && !tailIsWord; p++) {
+          if (r - p < w.length - TAIL_SLACK) continue;   /* 短い後ろには譲らない */
+          tailIsWord = isWord(text.slice(p, r));
+        }
       }
       if (tailIsWord) continue;
-      if (w.length >= HEAD_MIN && (i === 0 || cls[i - 1] !== last)) return true;
+      if (w.length >= HEAD_MIN && (i === 0 || cls[i - 1] !== last)) return i;
+      if (w.length >= MID_MIN) return i;
     }
-    return false;
+    return -1;
   }
+
+  function hasWord(f, w, isWord) { return wordAt(f, w, isWord) >= 0; }
 
   function today() { return new Date().toISOString(); }
 
@@ -625,7 +663,7 @@
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
     yen, yenFine, parseNum,
-    today, formatDate, formatStamp, relativeDate, foldKana, foldRuns, hasWord,
+    today, formatDate, formatStamp, relativeDate, foldKana, foldRuns, hasWord, wordAt,
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
