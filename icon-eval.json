@@ -170,6 +170,28 @@
     { "screen": "shop", "text": "インスタントラーメン", "want": ["noodles", "instantNoodles"] },
     { "screen": "shop", "text": "ヨーグルト飲料", "want": ["yogurt", "drink"] },
     { "screen": "shop", "text": "あめ", "want": ["candy"] },
-    { "screen": "shop", "text": "いか", "want": ["squid"] }
+    { "screen": "shop", "text": "いか", "want": ["squid"] },
+
+    { "screen": "todo", "text": "朝のBaby", "want": ["babyBottle"], "note": "こと辞書に育児の絵が無いので、品物辞書のベビー用品（哺乳瓶）へ落ちる。段階A" },
+    { "screen": "todo", "text": "キャストを戻す", "want": ["do-carFront"], "note": "利用者の車の名前（ダイハツ・キャスト）。ギプスの意味ではない" },
+    { "screen": "todo", "text": "マツダで送る", "want": ["do-carFront"], "note": "利用者の車のメーカー名" },
+    { "screen": "todo", "text": "大島T稲川T食事会", "want": ["do-mug"], "note": "「会食」の言葉を飲み会の絵（乾杯）に寄せた" },
+    { "screen": "todo", "text": "陶器金属類(第1木曜)", "want": ["do-trashBin"] },
+    { "screen": "todo", "text": "エスタの手続き", "want": ["do-doc"] },
+    { "screen": "todo", "text": "しおりを完成させる", "want": ["do-doc"] },
+    { "screen": "todo", "text": "顔パック補充", "want": ["serum"], "note": "こと辞書に無いので美容液の絵へ" },
+    { "screen": "food", "text": "おから煮", "want": ["bento"] },
+    { "screen": "food", "text": "パルム", "want": ["iceCream"] },
+    { "screen": "food", "text": "ブラックモンブラン", "want": ["iceCream"] },
+    { "screen": "food", "text": "アルフォート", "want": ["cookie"] },
+    { "screen": "food", "text": "まるぼうろ", "want": ["cookie"] },
+    { "screen": "food", "text": "ロッテ チョコパイ", "want": ["cookie"] },
+    { "screen": "food", "text": "ダックワーズ", "want": ["cookie"] },
+    { "screen": "food", "text": "カプヌ具だけ", "want": ["cupNoodle"] },
+    { "screen": "food", "text": "くるみパン半分", "want": ["bread"] },
+    { "screen": "food", "text": "チリドッグ半分", "want": ["hotdog"] },
+    { "screen": "food", "text": "とり天", "want": ["tempura"] },
+    { "screen": "food", "text": "ナナチキ", "want": ["friedFood"] },
+    { "screen": "food", "text": "砂ずり", "want": ["chicken"] }
   ]
 }
