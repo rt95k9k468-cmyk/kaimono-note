@@ -201,6 +201,9 @@
     { "screen": "todo", "text": "ジモティ出品", "want": ["do-tag"], "note": "既存の値札の絵に「出品・フリマ」を足した" },
     { "screen": "todo", "text": "高速代渡す", "want": ["do-wallet"] },
     { "screen": "todo", "text": "姉に返信", "want": ["do-chatReply"], "note": "Phosphor Fill chat-teardrop-text-fill。電話（phoneRing）ではなく文章の返信" },
-    { "screen": "todo", "text": "林田先生に返信", "want": ["do-chatReply"] }
+    { "screen": "todo", "text": "林田先生に返信", "want": ["do-chatReply"] },
+    { "screen": "todo", "text": "ケノンしよう", "want": ["do-hairDryer"], "note": "Phosphor Fill hair-dryer-fill。脱毛器・美顔器の代替。散髪の scissors とは別" },
+    { "screen": "todo", "text": "白藤の出産祝い(12月上旬予定)", "want": ["do-giftBox"], "note": "「祝い」だけでは無く「出産祝い」に「お」が付かない形が抜けていた" },
+    { "screen": "todo", "text": "会食でたらふく食べた", "want": ["do-mealOut"], "note": "感想文だが「会食」の一語で拾ってよい（mealOut追加のついでに解決）" }
   ]
 }
