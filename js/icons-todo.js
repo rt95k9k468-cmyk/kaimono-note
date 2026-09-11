@@ -536,13 +536,19 @@
     }))
     .sort((a, b) => b[0].length - a[0].length);
 
+  /* 連なりの後ろ半分が、この辞書の言葉かどうか（`hasWord` が聞きにきます）。 */
+  const WORDS = new Set(FLAT.map(([w]) => w));
+  const isWord = (s) => WORDS.has(s);
+
   /** 題に合う絵の**名前**。当てはまらなければ ""。 */
   function findKey(name) {
-    const n = KN.util.foldKana(String(name || ""));
-    if (!n) return "";
+    /* 買うものの辞書と同じ引き方（`KN.util.hasWord`）。カタカナの連なりを
+       途中で切った当たりは採りません。 */
+    const f = KN.util.foldRuns(name);
+    if (!f.text) return "";
     for (const [k, key, short] of FLAT) {
-      if (short && n.length > 4) continue;
-      if (n.includes(k)) return key;
+      if (short && f.text.length > 4) continue;
+      if (KN.util.hasWord(f, k, isWord)) return key;
     }
     return "";
   }

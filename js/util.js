@@ -114,6 +114,72 @@
       .replace(/\s+/g, "");
   }
 
+  /* ---------- 語の切れ目 ---------- */
+
+  /* カタカナとラテン字は、続けて書くと**どこが語の切れ目か分からなくなる**
+     ——「タコス」の中に「たこ」が、「オレンジジュース」の中に「おれんじ」が
+     居ます。ひらがな・漢字の混ざる文はそこで切れ目が見えるので、この話は
+     カタカナ（とラテン字）の連なりだけのものです。
+
+     `foldRuns` は `foldKana` と同じ文字列に、同じ長さの**字の種類**を添えて
+     返します（1＝カタカナの連なり、2＝ラテン字と数字、0＝そのどちらでもない）。
+     `foldKana` は NFKC → 小文字 → カタカナをひらがなへ → 空白を落とす、の順で、
+     カタカナ→ひらがなの置き換えは一字が一字になるので、**位置がずれません**
+     ——だから折りたたむ前の字から取った種類を、折りたたんだあとの位置で読めます。
+     （空白を落とす順だけ入れ替えてありますが、空白はかなの置き換えに関わらない
+     ので、出てくる文字列は `foldKana` と同じものです。） */
+  const RUN_KANA = /[ァ-ヿ]/;   /* 小書き・長音符「ー」も含む */
+  const RUN_LATIN = /[0-9a-z]/;
+  function foldRuns(s) {
+    const pre = String(s || "").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+    const text = pre.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+    const cls = new Array(pre.length);
+    for (let i = 0; i < pre.length; i++) {
+      cls[i] = RUN_KANA.test(pre[i]) ? 1 : RUN_LATIN.test(pre[i]) ? 2 : 0;
+    }
+    return { text, cls };
+  }
+
+  /** その言葉が、**語として**含まれているか。
+   *
+   *  ただの `includes` と違うのは一点だけ——カタカナ（ラテン字）の連なりを
+   *  **途中で切った当たり**を、そのままでは採りません。「タコス」の「たこ」、
+   *  「ペットボトル」の「ぺっと」、「オレンジジュース」の「おれんじ」がそれです。
+   *
+   *  見るのは**後ろ側だけ**。日本語のカタカナ語は**後ろが主役**です
+   *  （オレンジ**ジュース**はジュース、ポテト**サラダ**はサラダ）。だから：
+   *
+   *  - 連なりの**終わりまで**届く当たりは、途中から始まっていても採る。
+   *  - 途中で切れている当たりは、**残りの後ろが辞書にある語なら譲る**
+   *    （オレンジ｜ジュース）。
+   *  - 後ろが辞書に無いときだけ、前半を採る——ただし**4字以上**の、連なりの
+   *    頭から始まっているものに限る（「コーヒー｜フィルター」は珈琲の絵で
+   *    よいが、「タコ｜ス」の たこ は連なりの中でたまたま揃っただけなので）。
+   *
+   *  @param {{text:string, cls:number[]}} f `foldRuns` の返り値
+   *  @param {(s:string)=>boolean} [isWord] その文字列が辞書の言葉か */
+  const HEAD_MIN = 4;
+  function hasWord(f, w, isWord) {
+    if (!w) return false;
+    const { text, cls } = f;
+    for (let i = text.indexOf(w); i >= 0; i = text.indexOf(w, i + 1)) {
+      const end = i + w.length;
+      if (end >= text.length) return true;
+      const last = cls[end - 1];
+      if (last === 0 || cls[end] !== last) return true;
+      /* ここから先は、連なりの途中で切っている当たりだけの話。 */
+      let r = end;
+      while (r < text.length && cls[r] === last) r++;
+      let tailIsWord = false;
+      if (isWord) {
+        for (let p = end; p < r && !tailIsWord; p++) tailIsWord = isWord(text.slice(p, r));
+      }
+      if (tailIsWord) continue;
+      if (w.length >= HEAD_MIN && (i === 0 || cls[i - 1] !== last)) return true;
+    }
+    return false;
+  }
+
   function today() { return new Date().toISOString(); }
 
   function formatDate(iso) {
@@ -559,7 +625,7 @@
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
     yen, yenFine, parseNum,
-    today, formatDate, formatStamp, relativeDate, foldKana,
+    today, formatDate, formatStamp, relativeDate, foldKana, foldRuns, hasWord,
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
