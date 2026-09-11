@@ -50,7 +50,7 @@
     { "screen": "todo", "text": "猫のトイレ掃除", "want": ["do-paw", "do-toilet"] },
     { "screen": "todo", "text": "実家に電話する", "want": ["do-phoneRing", "do-family"] },
     { "screen": "todo", "text": "会議の資料を作る", "want": ["do-presentation"] },
-    { "screen": "todo", "text": "メールの返信", "want": ["mail", "do-envelopeLetter"] },
+    { "screen": "todo", "text": "メールの返信", "want": ["mail", "do-envelopeLetter", "do-chatReply"], "note": "返信という行いなので吹き出しでも妥当。封筒に限らない" },
     { "screen": "todo", "text": "タコスを作る", "want": ["do-cooking"], "note": "段階Cで「たこすを作」を追記して直した。たこ（蛸）には当てない作り" },
     { "screen": "todo", "text": "カレーを作る", "want": ["curry", "do-cooking"] },
     { "screen": "todo", "text": "米を研ぐ", "want": ["rice"] },
@@ -61,7 +61,6 @@
     { "screen": "todo", "text": "部屋の掃除", "want": ["broom", "do-vacuum"] },
     { "screen": "todo", "text": "床の掃除", "want": ["do-vacuum", "broom"] },
     { "screen": "todo", "text": "電話をかける", "want": ["do-phoneRing"] },
-
     { "screen": "meal", "text": "鶏むね肉のソテー", "want": ["chicken"] },
     { "screen": "meal", "text": "マカロニサラダ", "want": ["potatoSalad"], "note": "「まかろにさらだ」はポテトサラダの言葉に入れてある、という決めごと（現状維持・段階C確認済み）。専用の絵は無い" },
     { "screen": "meal", "text": "ポテトサラダ", "want": ["potatoSalad"] },
@@ -80,7 +79,7 @@
     { "screen": "meal", "text": "冷奴", "want": ["tofu"] },
     { "screen": "meal", "text": "タコス", "want": [], "note": "たこ（蛸）にしない。タコスの絵は無い" },
     { "screen": "meal", "text": "オムライス", "want": ["rice", "egg"] },
-    { "screen": "meal", "text": "カレーライス", "want": ["rice", "curry"] },
+    { "screen": "meal", "text": "カレーライス", "want": ["curry"], "note": "米ではなくカレー。curry に「かれーらいす」を足して決着（「はやしらいす」と同じ形）" },
     { "screen": "meal", "text": "ラーメン", "want": ["noodles", "ramen"] },
     { "screen": "meal", "text": "そば", "want": ["soba"] },
     { "screen": "meal", "text": "親子丼", "want": ["donburi"] },
@@ -92,7 +91,6 @@
     { "screen": "meal", "text": "プロテイン", "want": ["protein"] },
     { "screen": "meal", "text": "アーモンド", "want": ["nuts"] },
     { "screen": "meal", "text": "チョコレート", "want": ["chocolate"] },
-
     { "screen": "shop", "text": "牛乳", "want": ["milk"] },
     { "screen": "shop", "text": "卵", "want": ["egg"] },
     { "screen": "shop", "text": "食パン", "want": ["bread"] },
@@ -127,7 +125,6 @@
     { "screen": "shop", "text": "パスタ", "want": ["pasta"] },
     { "screen": "shop", "text": "カットわかめ", "want": ["seaweedWakame"] },
     { "screen": "shop", "text": "冷凍餃子", "want": ["frozenGyoza"] },
-
     { "screen": "shop", "text": "ポテトチップス", "want": ["chips"] },
     { "screen": "shop", "text": "コーヒーメーカー", "want": ["coffeeMaker"] },
     { "screen": "shop", "text": "トマトソース", "want": ["pastaSauce", "sauceBottle"], "note": "「とまと」で切らない" },
@@ -171,7 +168,6 @@
     { "screen": "shop", "text": "ヨーグルト飲料", "want": ["yogurt", "drink"] },
     { "screen": "shop", "text": "あめ", "want": ["candy"] },
     { "screen": "shop", "text": "いか", "want": ["squid"] },
-
     { "screen": "todo", "text": "朝のBaby", "want": ["babyBottle"], "note": "こと辞書に育児の絵が無いので、品物辞書のベビー用品（哺乳瓶）へ落ちる。段階A" },
     { "screen": "todo", "text": "キャストを戻す", "want": ["do-carFront"], "note": "利用者の車の名前（ダイハツ・キャスト）。ギプスの意味ではない" },
     { "screen": "todo", "text": "マツダで送る", "want": ["do-carFront"], "note": "利用者の車のメーカー名" },
@@ -193,7 +189,6 @@
     { "screen": "food", "text": "とり天", "want": ["tempura"] },
     { "screen": "food", "text": "ナナチキ", "want": ["friedFood"] },
     { "screen": "food", "text": "砂ずり", "want": ["chicken"] },
-
     { "screen": "todo", "text": "cloud Code指令", "want": ["do-robot"], "note": "Phosphor Fill robot-fill を新規に取り込んだ（段階C）" },
     { "screen": "todo", "text": "クロウド指示", "want": ["do-robot"] },
     { "screen": "todo", "text": "ANAのマイル", "want": ["do-airplaneMile"], "note": "Phosphor Fill airplane-fill。旅行かばん（suitcase）とは別のこと" },
@@ -204,6 +199,21 @@
     { "screen": "todo", "text": "林田先生に返信", "want": ["do-chatReply"] },
     { "screen": "todo", "text": "ケノンしよう", "want": ["do-hairDryer"], "note": "Phosphor Fill hair-dryer-fill。脱毛器・美顔器の代替。散髪の scissors とは別" },
     { "screen": "todo", "text": "白藤の出産祝い(12月上旬予定)", "want": ["do-giftBox"], "note": "「祝い」だけでは無く「出産祝い」に「お」が付かない形が抜けていた" },
-    { "screen": "todo", "text": "会食でたらふく食べた", "want": ["do-mealOut"], "note": "感想文だが「会食」の一語で拾ってよい（mealOut追加のついでに解決）" }
+    { "screen": "todo", "text": "会食でたらふく食べた", "want": ["do-mealOut"], "note": "感想文だが「会食」の一語で拾ってよい（mealOut追加のついでに解決）" },
+    { "screen": "meal", "text": "カップヌードルチリトマト", "want": ["cupNoodle"], "note": "商品名のうしろに味の名前が続く書き方。7文字の頭が3文字の「とまと」に譲っていた（TAIL_SLACK）" },
+    { "screen": "meal", "text": "一本満足バープロテインブラック", "want": ["protein"], "note": "「ぷろていん」は連なりの途中から始まる当たり（MID_MIN）。以前は ぶ｜らっく で棚になっていた" },
+    { "screen": "meal", "text": "食パン8枚切り2枚(チーズとポテサラとジャム)", "want": ["bread"], "note": "括弧の中は付け合わせの注記。主役は括弧の外（findKey の順位の一段目）" },
+    { "screen": "meal", "text": "食パン(ジャム)", "want": ["bread"], "note": "同じ決めごとの、いちばん短い形" },
+    { "screen": "shop", "text": "レトルト", "want": ["tin"], "note": "単独なら競争相手がいないので、そのまま缶詰" },
+    { "screen": "shop", "text": "消毒用アルコール", "want": ["disinfectant"], "note": "「あるこーる」は修飾語だが、ほかに当たりが無いので出る" },
+    { "screen": "shop", "text": "さば水煮缶", "want": ["tin"], "note": "日本語の複合語は後ろが主名詞。同点の決着を「文中で先」に代えると水になる——だから登録順のまま" },
+    { "screen": "shop", "text": "カマンベールチーズ", "want": ["camembert"], "note": "より具体的なほうが勝つ。以前はチーズに譲っていた" },
+    { "screen": "shop", "text": "冷凍ピザ", "want": ["pizza"], "note": "「冷凍」は修飾語。中身のほうが主役" },
+    { "screen": "shop", "text": "冷凍うどん", "want": ["udon"] },
+    { "screen": "shop", "text": "ブラックコーヒー", "want": ["coffee"], "note": "「ぶ｜らっく」で棚にならないこと" },
+    { "screen": "meal", "text": "ポテサラ", "want": ["potatoSalad"], "note": "語彙を足す前は、かな2文字の「さら」(皿) が当たって皿の絵になっていた" },
+    { "screen": "meal", "text": "チーズトースト", "want": ["toast", "cheese"] },
+    { "screen": "meal", "text": "ミニトマト", "want": ["tomato"] },
+    { "screen": "shop", "text": "トマトケチャップ", "want": ["ketchup"] }
   ]
 }
