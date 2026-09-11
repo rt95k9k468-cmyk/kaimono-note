@@ -175,7 +175,7 @@
     { "screen": "todo", "text": "朝のBaby", "want": ["babyBottle"], "note": "こと辞書に育児の絵が無いので、品物辞書のベビー用品（哺乳瓶）へ落ちる。段階A" },
     { "screen": "todo", "text": "キャストを戻す", "want": ["do-carFront"], "note": "利用者の車の名前（ダイハツ・キャスト）。ギプスの意味ではない" },
     { "screen": "todo", "text": "マツダで送る", "want": ["do-carFront"], "note": "利用者の車のメーカー名" },
-    { "screen": "todo", "text": "大島T稲川T食事会", "want": ["do-mug"], "note": "「会食」の言葉を飲み会の絵（乾杯）に寄せた" },
+    { "screen": "todo", "text": "大島T稲川T食事会", "want": ["do-mealOut"], "note": "外食は必ずしも酒を飲むとは限らないので、乾杯（mug）ではなくフォークとナイフの絵に分けた" },
     { "screen": "todo", "text": "陶器金属類(第1木曜)", "want": ["do-trashBin"] },
     { "screen": "todo", "text": "エスタの手続き", "want": ["do-doc"] },
     { "screen": "todo", "text": "しおりを完成させる", "want": ["do-doc"] },
@@ -192,6 +192,15 @@
     { "screen": "food", "text": "チリドッグ半分", "want": ["hotdog"] },
     { "screen": "food", "text": "とり天", "want": ["tempura"] },
     { "screen": "food", "text": "ナナチキ", "want": ["friedFood"] },
-    { "screen": "food", "text": "砂ずり", "want": ["chicken"] }
+    { "screen": "food", "text": "砂ずり", "want": ["chicken"] },
+
+    { "screen": "todo", "text": "cloud Code指令", "want": ["do-robot"], "note": "Phosphor Fill robot-fill を新規に取り込んだ（段階C）" },
+    { "screen": "todo", "text": "クロウド指示", "want": ["do-robot"] },
+    { "screen": "todo", "text": "ANAのマイル", "want": ["do-airplaneMile"], "note": "Phosphor Fill airplane-fill。旅行かばん（suitcase）とは別のこと" },
+    { "screen": "todo", "text": "御仏前の準備", "want": ["do-lotus"], "note": "Phosphor Fill flower-lotus-fill。祝い事の giftBox とは意味が違う弔事用" },
+    { "screen": "todo", "text": "ジモティ出品", "want": ["do-tag"], "note": "既存の値札の絵に「出品・フリマ」を足した" },
+    { "screen": "todo", "text": "高速代渡す", "want": ["do-wallet"] },
+    { "screen": "todo", "text": "姉に返信", "want": ["do-chatReply"], "note": "Phosphor Fill chat-teardrop-text-fill。電話（phoneRing）ではなく文章の返信" },
+    { "screen": "todo", "text": "林田先生に返信", "want": ["do-chatReply"] }
   ]
 }
