@@ -1714,51 +1714,22 @@
   KN.screens = KN.screens || {};
   /* ---------------- 中継所を覗く ----------------
 
-     睡眠が来ると、起床・就寝は**この画面**に出ます。ところが中継所を覗いて
-     いたのはダイエットの画面だけでした——朝いちばんに daily を開いた人は、
-     ダイエットへ寄り道するまで昨夜の記録が出てこないことになります。
-     出る場所が覗く場所でもあるように、ここでも覗きます。
+     睡眠が来ると、起床・就寝は**この画面**に出ます。だからここでも覗いて
+     いました——朝いちばんに daily を開いた人が、ダイエットへ寄り道するまで
+     昨夜の記録を見られないのはおかしいので。
 
-     自動なので黙ります（入っても言いません。画面が変わることが返事です）。
-     郵便受けは一通なので、二つの画面が覗いても取り合いにはなりません
-     ——先に取ったほうが取り込み、あとは空を見るだけです。 */
-  function peekRelay() {
-    if (!KN.healthRelay || !KN.healthRelay.configured()) return Promise.resolve(null);
-    if (store.get().settings.dietAutoSync === false) return Promise.resolve(null);
-    return KN.healthRelay.pullAndImport().then((res) => {
-      if (res && res.ok && (res.added || res.updated)) render();
-      return res;
-    }).catch(() => null);
-  }
-
+     いまは**覗き続けるのは health-relay.js の見張り**です（画面がどれで
+     あっても、見えているあいだは覗きます）。二つの画面に同じ仕掛けを
+     書き写していたのをやめて、開いたその瞬間の一度ぶんだけ残しました。
+     入ったことは store の変化が伝えるので、ここで render を呼ぶ必要も
+     ありません（app.js の subscribe）。 */
   function onEnter() {
-    watchResume();          // 一度だけ。戻ってきたことも合図にします。
     /* 日が変わっていれば、その日の行を用意します。開いたときに今日の欄が
        待っているように——描画の中ではなくここで呼ぶのは、store を触ると
        描き直しが走るためです（上の rendering を参照）。 */
     store.ensureDayLog(U.todayKey());
     render();
-    /* 置いた直後は、まだ届いていないことがあります（中継所のKVは結果整合で、
-       伝わるまで少しかかる）。一度目が空なら、少し置いてもう一度だけ。 */
-    peekRelay().then((res) => {
-      if (res && res.ok && (res.added || res.updated)) return;
-      if (res && res.locked) return;      // 読めない便。あちらが掛け直します
-      setTimeout(peekRelay, 4000);
-    });
-  }
-
-  /* ほかのアプリ（ショートカット）から戻ってきたとき。daily を開いたまま
-     走らせると、タブを押す機会がないので onEnter が呼ばれません。 */
-  function watchResume() {
-    if (watchResume.done) return;
-    watchResume.done = true;
-    const back = () => {
-      if (document.visibilityState !== "visible") return;
-      if (KN.app.activeScreen && KN.app.activeScreen() !== "archive") return;
-      peekRelay();
-    };
-    document.addEventListener("visibilitychange", back);
-    window.addEventListener("pageshow", back);
+    if (KN.healthRelay) KN.healthRelay.pullNow();
   }
 
   KN.screens.archive = { mount, render, dockButton, onEnter };

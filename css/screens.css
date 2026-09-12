@@ -2360,8 +2360,18 @@
 .diet-cell[data-type="drink"]  .diet-cell-ico { color: var(--c-m-drink); }
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
 
-/* 見出しの右に添える一言（最後の取り込み時刻など）。 */
+/* 見出しの右に添える一言（この数字は何時時点か、など）。 */
 .section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); letter-spacing: 0; }
+
+/* 押せるほうの一言（からだの「◯:◯◯ 時点」）。字の大きさは変えません
+   ——押せることを大きさで言うと、見出しの右が騒がしくなるので。的だけを
+   ::after で広げます（.icon-btn と同じ手で、まわりの並びを動かさずに）。 */
+button.section-note { position: relative; color: var(--c-primary); }
+button.section-note::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%);
+}
+button.section-note:active { opacity: .55; }
 
 /* 気づいたことと目標は、ときどき読み返す一枚。ほかのカードと地の色を
    変えて、「毎日書くところ」と「たまに読むところ」を目で分けます。 */

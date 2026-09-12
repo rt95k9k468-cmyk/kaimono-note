@@ -805,6 +805,12 @@
     KN.pullRefresh.init();
     KN.backup.init();
     KN.notify.init();
+    /* 中継所の見張り。**画面ではなくここから立てます**——前はダイエットと
+       daily がそれぞれ持っていて、その二つが出ているときしか覗きませんでした
+       （やること・買うものを見ているあいだ、届いた歩数は一度も入らない）。
+       入った記録は store に乗り、いま出ている画面は上の subscribe が
+       描き直すので、覗く側が画面を知っている必要はありません。 */
+    KN.healthRelay.watch();
     registerServiceWorker();
   }
 
