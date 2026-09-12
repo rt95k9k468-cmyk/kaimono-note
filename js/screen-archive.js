@@ -67,12 +67,22 @@
     return navigator.clipboard.writeText(text).then(() => true, () => false);
   }
 
-  /** その日の日記・起床就寝・やること・買うものを、ひとつの文にまとめます。
-      日付は書きません——地の文（本文）の頭に本人がすでに書く習慣なので、
-      ここでまた書くと二重になります。
+  /** その日の日記・起床就寝・やること・買うもの・からだ（ダイエット）を、
+      ひとつの文にまとめます。日付は書きません——地の文（本文）の頭に
+      本人がすでに書く習慣なので、ここでまた書くと二重になります。
       dayFeed が返すのは**その日に済ませた**ものだけ（未完了は含みません）
       ——写さず引く作りなので、Daily Log の行がすでに言っていることと
-      同じ材料です。 */
+      同じ材料です。
+      見出しは「完了したこと」「購入したもの」のように**済んだこと**だと
+      分かる言い方にしてあります——この文をAIに渡したとき、まだやって
+      いない予定だと誤読されないようにするためです。 */
+  const DIET_SLOTS = [
+    { id: "breakfast", label: "朝食" },
+    { id: "lunch", label: "昼食" },
+    { id: "dinner", label: "夕食" },
+    { id: "snack", label: "間食" },
+  ];
+
   function dailyCopyText(day) {
     const cur = store.dayLog(day) || {};
     const blocks = [];
@@ -82,8 +92,22 @@
     const feed = store.dayFeed(day);
     const todos = feed.filter((f) => f.src === "todo");
     const items = feed.filter((f) => f.src === "item");
-    if (todos.length) blocks.push(["やること", ...todos.map((t) => `・${t.title}`)].join("\n"));
-    if (items.length) blocks.push(["買うもの", ...items.map((i) => `・${i.title}`)].join("\n"));
+    if (todos.length) blocks.push(["完了したこと（この日にやり終えたもの）", ...todos.map((t) => `・${t.title}`)].join("\n"));
+    if (items.length) blocks.push(["購入したもの（この日に買い終えたもの）", ...items.map((i) => `・${i.title}`)].join("\n"));
+
+    const w = store.weightOfDay(day);
+    if (w && (w.kg != null || w.fat != null)) {
+      const parts = [];
+      if (w.kg != null) parts.push(`体重 ${w.kg}kg`);
+      if (w.fat != null) parts.push(`体脂肪率 ${w.fat}%`);
+      blocks.push(["からだの記録", `・${parts.join(" ・ ")}`].join("\n"));
+    }
+    const mealLines = DIET_SLOTS
+      .map((sl) => ({ ...sl, text: (store.slotMemo(day, sl.id) || "").trim() }))
+      .filter((sl) => sl.text)
+      .map((sl) => `・${sl.label}: ${sl.text}`);
+    if (mealLines.length) blocks.push(["食べたもの（この日に食べ終えたもの）", ...mealLines].join("\n"));
+
     return blocks.join("\n\n");
   }
 
