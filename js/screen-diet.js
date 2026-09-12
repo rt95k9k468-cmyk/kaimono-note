@@ -1510,7 +1510,6 @@
   }
 
   function renderBodyStats(host, card) {
-    const sync = store.get().diet.sync;
     const dt = card.drinkTotals;
 
     /* カードに出す四つ。「今日どうだったか」に答える最小の組です。
@@ -1577,7 +1576,7 @@
     const sec = node(html`
       <div class="stack">
         <div class="section-title">${icon("heart")}${dayName(card.day)}のからだ
-          ${sync.lastAt ? html`<span class="section-note">取り込み ${U.formatStamp(sync.lastAt)}</span>` : ""}
+          ${KN.util.raw(freshNoteHtml(card.day))}
         </div>
         <div class="diet-grid">
           ${KN.util.raw(rows.map((r) => `
@@ -1611,7 +1610,78 @@
         openBodySheet(card.day, t);
       });
     });
+    const fresh = sec.querySelector(".js-fresh");
+    if (fresh) fresh.addEventListener("click", askForFresh);
     host.append(sec);
+  }
+
+  /* ---------------- この数字は、何時時点か ----------------
+
+     いちばん困るのは「数時間前のままなのに気づかない」ことでした。画面は
+     数字を出すだけで、それが**いつの数字か**を言っていなかったので。
+
+     見るのは、その日の記録そのものが持っている取り込み時刻です
+     （`store.healthSeenAt`）。`diet.sync.lastAt` は「最後に何かが入った時刻」で、
+     昨日を開いていても今朝の時刻を出すので、ここでは使えません。
+
+     言うのは**今日のぶんだけ**。過ぎた日はもう新しくなりようがないので、
+     時刻を添えても読む人の判断は変わりません。 */
+
+  const BODY_TYPES = ["steps", "distance", "activeEnergy", "restingEnergy", "sleep"];
+
+  function freshNoteHtml(day) {
+    if (day !== U.todayKey()) return "";
+    const at = store.healthSeenAt(day, BODY_TYPES);
+    const here = KN.healthRelay.configured();
+    /* 中継所を設定していない人に「まだ届いていません」とは言いません
+       ——届く先がそもそも無いので、直しようのないことを言うことになります。
+       貼り付けやファイルから入った記録があれば、その時刻は出します。 */
+    if (!at && !here) return "";
+    let label;
+    if (at) {
+      const d = new Date(at);
+      label = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")} 時点`;
+    } else {
+      label = store.get().diet.sync.lockedAt ? "まだ読めていません" : "まだ届いていません";
+    }
+    if (!here) {
+      return `<span class="section-note">${KN.util.escapeHtml(label)}</span>`;
+    }
+    const name = KN.healthRelay.shortcutName();
+    return `<button type="button" class="section-note js-fresh"
+      aria-label="${KN.util.escapeHtml(label + "。押すと" + (name ? "ショートカットを走らせて" : "") + "取りに行きます")}"
+      >${KN.util.escapeHtml(label)}</button>`;
+  }
+
+  /* 押されたとき。
+
+     ショートカットの名前を設定してあれば、**その場で走らせます**。これが
+     いちばん確かな道です——指が触れているということは iPhone のロックが
+     解けているということで、そのときの HealthKit は読めるからです（無人の
+     オートメーションが空振りするのは、ロック中に鳴るときだけ）。戻ってきた
+     ぶんは見張りが拾います（2分間は5秒おき）。
+
+     名前が無ければ、中継所を覗くところまで。 */
+  function askForFresh() {
+    const name = KN.healthRelay.shortcutName();
+    if (name) {
+      if (KN.healthRelay.runShortcut(name)) return;
+      KN.ui.toast("ショートカットを開けませんでした");
+    }
+    KN.healthRelay.pullNow({ force: true }).then((res) => {
+      if (res && res.ok && (res.added || res.updated)) {
+        KN.ui.toast("中継所：" + KN.healthSync.describe(res));
+        return;
+      }
+      if (res && res.locked) { KN.ui.toast(res.error); return; }
+      if (res && res.empty) {
+        KN.ui.toast(name
+          ? "中継所に新しいデータはありません"
+          : "中継所に新しいデータはありません（設定でショートカットの名前を入れると、ここから走らせられます）");
+        return;
+      }
+      KN.ui.toast((res && res.error) || "取りに行けませんでした");
+    });
   }
 
   /* ---------------- お酒 ----------------
@@ -4140,13 +4210,6 @@ distance=6.0km</pre>
 
     const done = (res) => {
       let msg = KN.healthSync.describe(res);
-      /* 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
-         いたことがあります——黙ってよい自動のときとは違い、ここは自分で
-         押した操作なので、そのぶんは伝えます。
-         ただし snapshot の便（睡眠のステージのように、窓ぶんまるごとが毎回
-         入っているもの）は、前の便が消えても失われたものがありません。
-         毎朝四回送る使い方では毎回鳴ってしまうので、そこは黙ります。 */
-      if (res && res.replaced && !res.snapshot) msg += "／前の便は読まれないまま上書きされていました";
       KN.ui.toast(msg);
       if (res && res.ok) { h.close(); render(); }
     };
@@ -4191,7 +4254,9 @@ distance=6.0km</pre>
       }
       const btn = body.querySelector(".js-relay");
       btn.disabled = true;
-      KN.healthRelay.pullAndImport().then((res) => {
+      // 押したのだから、見張りの間隔も最初（1分）へ戻します。
+      // force：自動を切ってあっても、自分で押したぶんは取りに行きます。
+      KN.healthRelay.pullNow({ force: true }).then((res) => {
         if (res.text != null) showGot(res.text);
         if (res.ok) { done(res); return; }
         if (res.text != null) {          // 受け取れたが、中身が読めなかった
@@ -4384,13 +4449,16 @@ distance=6.0km</pre>
 
   /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
   function onEnter() {
-    watchResume();          // 一度だけ。戻ってきたことも合図にします。
     const st = store.get().settings;
     if (st.dietAutoSync === false) return;
-    // 中継所は「操作のうち」に縛られないので、先に走らせて構いません。
-    // ただしクリップボードの読み取りは一拍のうちに始める必要があるので、
-    // 中継所の返事を待たずに、同じ拍で並べて始めます。
-    if (KN.healthRelay.configured()) pullRelay();
+    /* 中継所は「操作のうち」に縛られないので、先に走らせて構いません。
+       ただしクリップボードの読み取りは一拍のうちに始める必要があるので、
+       中継所の返事を待たずに、同じ拍で並べて始めます。
+
+       **覗き続けているのは health-relay.js の見張り**で、この画面ではあり
+       ません（開いていない画面にも届くように移しました）。ここで呼ぶのは、
+       開いたその瞬間の一度ぶんです。 */
+    KN.healthRelay.pullNow();
     if (st.clipboardBlocked) return;
     const state = KN.healthSync.clipboardState();
     if (!state.api) return;
@@ -4413,147 +4481,21 @@ distance=6.0km</pre>
   /* ---------------- ロック中に走ったショートカットのこと ----------------
 
      iPhoneがロックされているあいだ、HealthKit は暗号化されたままで読めません。
-     毎朝のオートメーションはそこに当たることがあって、ショートカットは
+     一時間おきのオートメーションはそこに当たることがあって、ショートカットは
      "Protected health data is inaccessible" を返すか、0 を並べて送ってきます。
 
      それを取り込めば、その日の歩数も睡眠も 0 で塗り替わります。だから
+     **入れません**（health-sync.js が断ります。記録は動きません）。
 
-       ・入れない（health-sync.js が断ります。記録は動きません）
-       ・**少し待って、もう一度取りにいく**（下の RETRY_WAITS）
-       ・それでも駄目なら、そこで諦めます——上書きはしていないので、
-         次にタブを開いたとき（＝次の自動実行）また取りにいきます。
+     待って掛け直す仕掛けは、**ここから中継所のほうへ移しました**。前は
+     この画面が20秒・1分・3分と掛け直していましたが、郵便受けは渡した便を
+     その場で消していたので、掛け直した先はいつも空でした——断った便は
+     受け取った時点で消えていて、次に何か入るのはショートカットが次に
+     走ったときだったからです。
 
-     待つ間隔は、短すぎても長すぎても外します。ロックが解けるのは「人が
-     iPhoneを触ったとき」なので、20秒・1分・3分と広げながら三度だけ。
-     電池を気にする間隔ではありませんし、これ以上引っぱっても、次の
-     自動実行のほうが先に来ます。 */
-  let retryWaits = [20000, 60000, 180000];
-  let retryTimer = 0;
-
-  /* 試験からだけ、間隔を縮めます。20秒・1分・3分を実際に待つ試験は
-     書けないので——縮められるのは長さだけで、段取りは同じものを通します。 */
-  function __setRetryWaits(list) {
-    retryWaits = Array.isArray(list) && list.length ? list.slice() : [20000, 60000, 180000];
-  }
-
-  function stopRetry() {
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = 0; }
-  }
-
-  function scheduleRetry(step) {
-    stopRetry();
-    if (step >= retryWaits.length) return;      // 何度も駄目だった。次の自動実行へ。
-    retryTimer = setTimeout(() => {
-      retryTimer = 0;
-      // そのあいだに事情が変わっていたら、掛け直しません。
-      if (store.get().settings.dietAutoSync === false) return;
-      if (KN.app.activeScreen && KN.app.activeScreen() !== "diet") return;
-      if (!KN.healthRelay.configured()) return;
-      pullRelay(step + 1);
-    }, retryWaits[step]);
-  }
-
-  /* 中継所からの自動取り込み。ここも「黙って失敗する」を守ります——
-     電波の悪いところでタブを開くたびに赤い字が出るのは、報告ではなく
-     邪魔です。中継所の不調を確かめたいときは、設定の「つないでみる」か
-     取り込みシートの「中継所から取り込む」を押します。そこでは黙りません。 */
-  /**
-   * @param next 掛け直しの何番目の待ち時間を使うか。ふだんの呼び出しは
-   *             渡しません（＝掛け直しの最中ではない、ということ）。
-   */
-  function pullRelay(next) {
-    const step = typeof next === "number" ? next : 0;
-    const inChain = typeof next === "number";
-    return KN.healthRelay.pullAndImport().then((res) => {
-      /* 読めない便だった。記録には触れていないので、待って掛け直します。
-         ここでも黙ります——ロックしていたのはその人の iPhone で、
-         そのことを赤い字で報告される筋合いはありません。取り込み画面の
-         ほうに「読めませんでした」と静かに出ます。 */
-      if (res.locked) { scheduleRetry(step); render(); return res; }
-      if (!res.ok) {
-        /* 掛け直しの最中なら、**空も「まだ届いていない」**です。読めない便は
-           受け取った時点で郵便受けから消えているので、次に届くのは
-           ショートカットがもう一度置いたぶん。それを待ちます。 */
-        if (inChain) scheduleRetry(step);
-        return res;                             // 掛け直しの外では、黙って引く
-      }
-      stopRetry();                              // 入った。掛け直しはもう要らない。
-      if (!res.added && !res.updated) return res;
-      lastAuto = res.text || lastAuto;          // 同じ中身を貼り付けからも読まない
-      render();
-      KN.ui.toast("中継所：" + KN.healthSync.describe(res));
-      return res;
-    }).catch(() => ({ ok: false }));
-  }
-
-  /* ---------------- 下に引いたとき ----------------
-
-     下に引くのは「取りに行け」です。控えを読み直すだけでは、歩数も睡眠も
-     変わりません——あれは中継所の向こうにあるので。
-
-     そして**ここでは黙りません**。自分で引いたのに何も言われないのが、
-     いちばん困ります（タブを開いたときの自動取り込みは、電波の悪い場所で
-     毎回赤い字が出ないように黙りますが、あれとは事情が違います）。 */
-  /* 郵便受けは一通しか持てないので、前の便が読まれないまま上書きされて
-     いたことがあります。自分で引いた・押したときだけ言い添えます
-     （自動のときが黙るのはそのままです）。 */
-  function describeRelay(res) {
-    let msg = "中継所：" + KN.healthSync.describe(res);
-    // snapshot の便は、前の便が消えても失われたものがありません（上を参照）。
-    if (res && res.replaced && !res.snapshot) msg += "／前の便は読まれないまま上書きされていました";
-    return msg;
-  }
-
-  function refresh() {
-    if (!KN.healthRelay.configured()) return Promise.resolve();
-    return KN.healthRelay.pullAndImport().then((res) => {
-      if (res.ok && (res.added || res.updated)) {
-        lastAuto = res.text || lastAuto;
-        render();
-        KN.ui.toast(describeRelay(res));
-        return;
-      }
-      if (res.empty) { KN.ui.toast("中継所に新しいデータはありません"); return; }
-      /* 読めない便だったとき。**入れていない**ので記録は無事です。
-         そのことを言って、あとは自動と同じく待って掛け直します。 */
-      if (res.locked) { render(); scheduleRetry(0); KN.ui.toast(res.error); return; }
-      if (!res.ok) { KN.ui.toast(res.error || "中継所につながりませんでした"); return; }
-      KN.ui.toast(describeRelay(res));
-    }).catch((err) => {
-      KN.ui.toast("中継所につながりませんでした（" + (err && err.message || err) + "）");
-    });
-  }
-
-  /* ---------------- ほかのアプリから戻ったとき ----------------
-
-     いちばん多い流れは「ショートカットを走らせる → アプリに戻る」です。
-     このときダイエットのタブは**もう開いたまま**なので、タブを押す機会が
-     ありません。押されなければ onEnter は呼ばれず、中継所は覗かれない——
-     「押しても最新にならない」ように見えていた正体はこれです。
-
-     だから、戻ってきたこと自体を合図にします。ここも自動なので黙ります。 */
-  function watchResume() {
-    if (watchResume.done) return;
-    watchResume.done = true;
-    const back = () => {
-      if (document.visibilityState !== "visible") return;
-      if (KN.app.activeScreen && KN.app.activeScreen() !== "diet") return;
-      const st = store.get().settings;
-      if (st.dietAutoSync === false) return;
-      if (!KN.healthRelay.configured()) return;
-      /* 置いた直後は、まだ届いていないことがあります（中継所のKVは
-         結果整合で、伝わるまで少しかかる）。一度目で空でも、少し置いて
-         もう一度だけ覗きます。二度で足りなければ、下に引けば取りにいきます。 */
-      pullRelay().then((res) => {
-        if (res && res.ok && (res.added || res.updated)) return;
-        // 読めない便だったときは、あちらが待って掛け直しています。
-        if (res && res.locked) return;
-        setTimeout(() => pullRelay(), 4000);
-      });
-    };
-    document.addEventListener("visibilitychange", back);
-    window.addEventListener("pageshow", back);
-  }
+     いまは中継所が消しません。そして**ひとつ前の便も一緒に渡してくる**ので、
+     空振りの便が良い便を踏み潰しません（relay/worker.js）。この画面が
+     持つ仕事は、もうありません。 */
 
   /* ---------------- ＋ ---------------- */
 
@@ -4578,12 +4520,15 @@ distance=6.0km</pre>
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.diet = { mount, render, dockButton, onEnter, refresh,
+  /* `refresh`（下に引いたときの取りに行く口）と `__setRetryWaits` は
+     外しました。引く手つきは全タブから無くなっていて、掛け直しは中継所の
+     見張り（health-relay.js）が持っています。押して取りに行く道は、
+     からだの枠の「◯:◯◯ 時点」と、取り込みシートの中にあります。 */
+  KN.screens.diet = { mount, render, dockButton, onEnter,
     // 設定やテストから開けるように
     openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet,
     // 前の名前でも開けるように（設定や、外から呼んでいるところのため）
     openMemoSheet: openMealMemoSheet,
-    __setRetryWaits,
     // 聞き方と読み取りは、画面を通さずに確かめられるように出しておきます。
     aiPrompt, readAiReply };
 })();
