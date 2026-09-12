@@ -678,7 +678,12 @@
       <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
                 aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
-        <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
+        ${/* タイルではなく一覧のときだけ、丸そのものが押せます——一覧では
+              丸が題の連れ（.item-body の外）に居るので、独立した的が
+              作れます。タイルは丸も題も一つのボタンの中なので、これまで
+              どおり押せば紙が開きます（丸だけを的にする余地が無いため）。 */""}
+        <button type="button" class="item-emoji js-emoji"
+                aria-label="${product.name} の絵を選ぶ">${store.productMark(product)}</button>
         <button class="item-body">
           <span class="item-name-row">
             <span class="item-name">${product.name}</span>
@@ -774,6 +779,12 @@
 
     row.querySelector(".item-body").addEventListener("click", () => {
       KN.productSheet.open(product.id, { itemId: item.id });
+    });
+
+    // 一覧だけ：丸そのものを押すと、品目の紙を経由せずアイコン選びへ直行します。
+    const emojiBtn = row.querySelector(".js-emoji");
+    if (emojiBtn) emojiBtn.addEventListener("click", () => {
+      KN.productSheet.openIconPicker(product.id, () => {});
     });
 
     KN.ui.swipeActions(wrap, row, {

@@ -107,11 +107,18 @@
        （Daily Log の「写さず引く」と同じ考え方）。辞書に言葉を足せば、
        次に開いたときにはその分だけ短くなります。 */
     {
-      id: "iconGaps", title: "絵が見つからない言葉", icon: "tag", tint: "#8a7f74",
-      build: () => [iconGapsGroup()],
+      /* もとは「絵が見つからない言葉」だけの一枚でした。「絵はあるが
+         ちがう」の報告（下の iconReportsGroup）も同じ悩みごとなので、
+         段を増やさずここへ二つ目の見出しとして加えます。 */
+      id: "iconGaps", title: "アイコンについて", icon: "tag", tint: "#8a7f74",
+      build: () => [iconGapsGroup(), iconReportsGroup()],
       value: () => {
-        const n = collectIconGaps().length;
-        return n ? `${n}件` : "0件";
+        const gaps = collectIconGaps().length;
+        const reports = (store.get().iconReports || []).length;
+        const parts = [];
+        if (gaps) parts.push(`不明 ${gaps}`);
+        if (reports) parts.push(`報告 ${reports}`);
+        return parts.length ? parts.join("・") : "0件";
       },
     },
     {
@@ -1822,6 +1829,122 @@
         }
       });
     }
+
+    return wrap;
+  }
+
+  /* 「この絵はちがう」の報告。書き込む先は
+     `js/screen-diet.js` の `openMealIconPicker`（食事メモの絵を
+     タップして開く紙）ですが、ここではその置き場所を出すだけです。
+
+     **送り先はありません。** このアプリが外と話す唯一の口は中継所URLで、
+     それは資格情報なので触れません（このファイルの最優先の約束事）。
+     だから報告は**この端末に溜まるだけ**——見返す、またはコピーして
+     次にお願いするときに渡す先です。 */
+  function iconReportsGroup() {
+    const screenLabel = { meal: "食事", shop: "買うもの", todo: "やること" };
+    const iconLabel = (key) => key ? (KN.productIcons.LABELS[key] || key) : "（絵ナシ）";
+
+    const wrap = node(html`
+      <section class="settings-group">
+        <h2 class="section-title">報告した絵のちがい</h2>
+        <p class="row-sub" style="padding:0 4px 12px">
+          食事の絵をタップして「この絵はちがう、と設定に記録する」を押すと、
+          ここに残ります。送り先はありません——次にお願いするときに、この
+          一覧をコピーして渡すための場所です。
+        </p>
+        ${/* 空のときと件があるときで、中身の形がまるごと変わります
+              （一覧＋コピー行、か、一行の案内文か）。だから空にするのは
+              「入れ物」ではなく、その**中身**——js-rep-rows は常に同じ
+              一つの要素のまま、中を repaint のたびに詰め替えます。
+              前は空のとき要素ごと差し替えていて、二回目の repaint が
+              もう外れた要素を触っていました。 */""}
+        <div class="js-rep-body"></div>
+        <div class="field" style="margin-top:12px">
+          <span class="field-label">手で書き足す</span>
+          <div style="display:flex;gap:8px">
+            <input class="input js-rep-text" placeholder="例：一本満足バー" style="flex:1"
+                   autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button type="button" class="btn btn-soft js-rep-add">追加</button>
+          </div>
+        </div>
+      </section>
+    `);
+
+    const body = wrap.querySelector(".js-rep-body");
+
+    function copyReports(reports) {
+      const text = JSON.stringify(reports.map((r) => (
+        { screen: r.screen, text: r.text, gotIcon: r.gotIcon }
+      )), null, 1);
+      const ok = () => KN.ui.toast("コピーしました");
+      const fallback = () => {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
+        document.body.append(ta);
+        ta.select();
+        let done = false;
+        try { done = document.execCommand("copy"); } catch (err) { done = false; }
+        if (done) { ta.remove(); ok(); return; }
+        KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
+        ta.addEventListener("blur", () => ta.remove());
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, fallback);
+      } else {
+        fallback();
+      }
+    }
+
+    function paint() {
+      const reports = store.get().iconReports || [];
+      body.innerHTML = "";
+      if (!reports.length) {
+        body.append(node(html`<p class="row-sub" style="padding:0 4px">いまのところ、ありません。</p>`));
+        return;
+      }
+      const rows = node(html`<div class="rows"></div>`);
+      reports.forEach((r) => {
+        const row = node(html`
+          <div class="row">
+            <span class="row-main">
+              <span class="row-title">${r.text}</span>
+              <span class="row-sub">${screenLabel[r.screen] || r.screen || "？"}・いま出る絵：${iconLabel(r.gotIcon)}</span>
+            </span>
+            <button type="button" class="icon-btn js-rep-del" aria-label="「${r.text}」の報告を消す">${icon("close")}</button>
+          </div>
+        `);
+        row.querySelector(".js-rep-del").addEventListener("click", () => {
+          store.removeIconReport(r.id);
+          paint();
+        });
+        rows.append(row);
+      });
+      body.append(rows);
+
+      const copyRow = node(html`
+        <div class="rows" style="margin-top:12px">
+          <button type="button" class="row js-rep-copy">
+            <span class="row-main"><span class="row-title">一覧をコピー</span></span>
+            <span class="row-chevron">${icon("copy")}</span>
+          </button>
+        </div>
+      `);
+      copyRow.querySelector(".js-rep-copy").addEventListener("click", () => copyReports(reports));
+      body.append(copyRow);
+    }
+    paint();
+
+    wrap.querySelector(".js-rep-add").addEventListener("click", () => {
+      const input = wrap.querySelector(".js-rep-text");
+      const text = input.value.trim();
+      if (!text) return;
+      store.addIconReport({ text, screen: "shop", gotIcon: KN.productIcons.findKey(text) });
+      input.value = "";
+      paint();
+    });
 
     return wrap;
   }

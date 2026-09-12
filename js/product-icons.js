@@ -839,6 +839,22 @@
       比べるのには向きません。並べ替えが要るのは、比べられる名前のほうです。
       @returns {string} 例 "milk"、当てはまらなければ "" */
   function findKey(name) {
+    /* 自分で選んだ絵があれば、辞書より先にそちらを使います
+       （`js/store.js` の `iconOverrides`）。買うもの・やることは記録
+       そのものが `icon` 欄を持てる（この関数より手前で読まれるので、
+       ここまで来ません）のに対し、食事メモは自由記述の一文なので、
+       入力した文字列そのものを鍵にした辞書がここで効きます。
+
+       `product-icons.js` は `store.js` より先に読み込まれる（index.html
+       の順）ので、モジュール評価の時点では `KN.store` はまだありません
+       ——だからここで**呼び出された瞬間**に読みます（`byKey` が
+       `iconsGoods`/`iconsFood` を呼び出し時に読むのと同じ理由）。
+       node の harness（icon-eval 等）は store.js を読み込まないので、
+       `KN.store` が無ければ何も無かったことにします。 */
+    if (KN.store && KN.store.getIconOverride) {
+      const ov = KN.store.getIconOverride(name);
+      if (ov) return ov;
+    }
     /* 「含まれるか」ではなく「**語として**含まれるか」を聞きます
        （`KN.util.hasWord`）。カタカナの連なりを途中で切った当たり——
        「タコス」の たこ、「ペットボトル」の ぺっと、「オレンジジュース」の

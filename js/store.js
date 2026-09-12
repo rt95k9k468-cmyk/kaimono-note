@@ -65,6 +65,24 @@
          済むのと、この機能を使わない人の保存データに空の配列が二つ散らばらない
          ようにするためです。 */
       archive: emptyArchive(),
+      /* アイコンの言い換え（自分だけの上書き）。買うもの・やることは記録
+         そのものに `icon` 欄を持てますが、食事メモは自由記述の一文なので
+         そういう入れ物がありません。かわりに**入力した文字列そのもの**を
+         鍵にした小さな辞書を持ちます——「一本満足バープロテインブラック」
+         と打つたびに、選んだ絵を思い出します。`KN.util.foldKana` で畳んだ
+         文字列が鍵（大文字小文字・全角半角・カタカナひらがなの違いを
+         吸収するため）。値が無ければ辞書（findKey）に任せます。
+         買うもの・やることの `icon` 欄のほうが強いので、そちらにすでに
+         絵が決まっている記録には効きません（product-icons.js の findKey
+         を参照）。 */
+      iconOverrides: {},
+      /* 「この絵はちがう」の報告。開発者へ送る経路が無い（中継所URLは
+         資格情報なので触れない）ので、**この端末に溜めるだけ**——見返す、
+         またはコピーして次のセッションで渡す先です。設定の
+         「絵が見つからない言葉」と対になる場所ですが、あちらは「絵が
+         無い」を自動で集めるのに対し、こちらは「絵はあるが違う」を
+         手で残します。 */
+      iconReports: [],
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
       // looking at, not on one of the two.
@@ -548,6 +566,8 @@
     out.items    = Array.isArray(s.items)    ? s.items    : [];
     out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
     out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
+    out.iconOverrides = (s.iconOverrides && typeof s.iconOverrides === "object" && !Array.isArray(s.iconOverrides)) ? s.iconOverrides : {};
+    out.iconReports = Array.isArray(s.iconReports) ? s.iconReports.filter((r) => r && r.id && r.text) : [];
 
     /* daily。この機能より前に保存された人には、空の箱を渡します。 */
     const arc = (s.archive && typeof s.archive === "object") ? s.archive : {};
@@ -2370,6 +2390,54 @@
      つなげて一つの文として見せ、書くときに一件へまとめます——ただし、
      数（items）を持っている記録は消しません。文だけを預かります。 */
 
+  /* ---------------- アイコンの言い換え・報告 ----------------
+
+     食事メモは自由記述なので、買うもの・やることのように記録へ
+     `icon` 欄を持たせられません。かわりに、**入力した文字列そのもの**を
+     鍵にした辞書を一つ持ちます。買うもの・やることの絵選びと同じ
+     `KN.util.foldKana` で畳むので、表記の揺れ（全角半角・かな）は
+     吸収されます。 */
+
+  function foldOverrideKey(name) {
+    return KN.util.foldKana(String(name == null ? "" : name).trim());
+  }
+
+  /** その文字列に、自分で決めた絵があれば返します（無ければ ""）。
+      `product-icons.js` の `findKey` が、辞書を引くより先にここへ聞きます。 */
+  function getIconOverride(name) {
+    const k = foldOverrideKey(name);
+    return k ? (state.iconOverrides[k] || "") : "";
+  }
+
+  /** 絵を決めます。key が無ければ「おまかせ」に戻す＝辞書ごと削除します
+      （空文字列を値として持たせると、"何も出さないのが正解" だったのか
+      "まだ決めていない" だったのかが区別できなくなるため）。 */
+  function setIconOverride(name, key) {
+    const k = foldOverrideKey(name);
+    if (!k) return;
+    update((s) => {
+      if (key) s.iconOverrides[k] = key;
+      else delete s.iconOverrides[k];
+    });
+  }
+
+  /** 「この絵はちがう」の記録を1件足します。送り先が無いので、この端末に
+      残すだけです——見返す、またはコピーして次に伝える先。 */
+  function addIconReport({ text, screen, gotIcon }) {
+    const t = String(text || "").trim();
+    if (!t) return;
+    update((s) => {
+      s.iconReports.unshift({
+        id: KN.util.uid("ir"), text: t, screen: screen || "", gotIcon: gotIcon || "",
+        createdAt: KN.util.today(),
+      });
+    });
+  }
+
+  function removeIconReport(id) {
+    update((s) => { s.iconReports = s.iconReports.filter((r) => r.id !== id); });
+  }
+
   /** その区分に書いてあることを、一本の文にして返します。 */
   function slotMemo(day, slot) {
     return mealsOfDay(day)
@@ -3116,6 +3184,7 @@
     lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo, searchDietDays,
     slotMemo, setSlotMemo,
+    getIconOverride, setIconOverride, addIconReport, removeIconReport,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
