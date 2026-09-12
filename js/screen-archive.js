@@ -99,14 +99,32 @@
        （体重・歩数・総消費・睡眠・飲酒、それぞれ store.healthValue /
        weightOfDay / drinkTotals から）。ここで数えなおしません——数える
        場所が二か所になると、どちらかだけ直した日に食い違います。
-       目標に対する割合は出しません（daily は評価しない、の一部）。 */
+       目標に対する割合は出しません（daily は評価しない、の一部）。
+
+       歩数・総消費・睡眠はヘルスケアから自動で入ってくる値なので、日が
+       終わっていなければ**まだ途中の数**です。「何時に取り込んだ値か」を
+       添えないと、朝いちばんの歩数を一日ぶんの歩数として読まれてしまいます。
+       添えるのは `importedAt`（取り込んだ時刻）——手で打った値は
+       importedAt を持たないので、その場合は時刻を添えません。 */
+    function healthAsOf(types) {
+      const stamps = types
+        .flatMap((t) => store.healthOfDay(day, t))
+        .map((h) => h.importedAt)
+        .filter(Boolean)
+        .sort();
+      if (!stamps.length) return "";
+      const d = new Date(stamps[stamps.length - 1]);
+      if (isNaN(d.getTime())) return "";
+      return `（${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}時点）`;
+    }
+
     const card = KN.diet.dayCard(day);
     const bodyParts = [];
     if (card.weight && card.weight.kg != null) bodyParts.push(`体重 ${card.weight.kg}kg`);
     if (card.weight && card.weight.fat != null) bodyParts.push(`体脂肪率 ${card.weight.fat}%`);
-    if (card.steps != null) bodyParts.push(`歩数 ${Math.round(card.steps).toLocaleString()}歩`);
-    if (card.burned != null) bodyParts.push(`総消費 ${Math.round(card.burned).toLocaleString()}kcal`);
-    if (card.sleep != null) bodyParts.push(`睡眠 ${Math.floor(card.sleep / 60)}時間${String(Math.round(card.sleep % 60)).padStart(2, "0")}分`);
+    if (card.steps != null) bodyParts.push(`歩数 ${Math.round(card.steps).toLocaleString()}歩${healthAsOf(["steps"])}`);
+    if (card.burned != null) bodyParts.push(`総消費 ${Math.round(card.burned).toLocaleString()}kcal${healthAsOf(["activeEnergy", "restingEnergy"])}`);
+    if (card.sleep != null) bodyParts.push(`睡眠 ${Math.floor(card.sleep / 60)}時間${String(Math.round(card.sleep % 60)).padStart(2, "0")}分${healthAsOf(["sleep"])}`);
     if (card.drinkTotals) bodyParts.push(`飲酒 純アルコール${card.drinkTotals.alcoholG}g`);
     if (bodyParts.length) blocks.push(["からだの記録", `・${bodyParts.join(" ・ ")}`].join("\n"));
 
