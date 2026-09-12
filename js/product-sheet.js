@@ -975,5 +975,8 @@
     return btn;
   }
 
-  KN.productSheet = { open };
+  /* openIconPicker も外へ出します——買うものの一覧の丸を直接タップして
+     絵を選べるように（screen-list.js）。品目の紙を経由せず、その場で
+     アイコンを選ぶ紙だけを開きます。 */
+  KN.productSheet = { open, openIconPicker };
 })();

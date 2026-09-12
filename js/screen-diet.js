@@ -2201,6 +2201,9 @@
   /* 区切りは、人が実際に打つもの全部。読点・コンマ・中黒・改行・空白。 */
   const MARK_SPLIT = /[、,，・･\n\r\/／]+|\s{1,}/;
 
+  /** `{ key, name }` の列。`name` は、その絵を出した**元の一片**（量を
+      落としたあとの文字列）——絵をタップして直すとき、どの文字列に
+      対する言い換えかを言うのに要ります。 */
   function slotMarks(text) {
     const line = String(text || "").trim();
     if (!line) return [];
@@ -2215,23 +2218,150 @@
       const key = KN.productIcons.findKey(name);
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      out.push(key);
+      out.push({ key, name });
       if (out.length >= MARK_MAX) break;
     }
     return out;
   }
 
-  function paintMarks(host, text) {
+  /** 絵の列を描きます。`onPick(name, key)` を渡すと、絵はタップできる
+      ボタンになります——渡さなければ（カルーセルの隣の日など、打てない
+      紙）これまでどおりの飾りです。 */
+  function paintMarks(host, text, onPick) {
     if (!host) return;
-    const keys = slotMarks(text);
+    const marks = slotMarks(text);
     host.innerHTML = "";
-    host.hidden = !keys.length;
-    keys.forEach((k) => {
-      const i = document.createElement("i");
-      i.className = "diet-slot-mark";
-      i.innerHTML = KN.productIcons.byKey(k) || "";
-      host.append(i);
+    host.hidden = !marks.length;
+    marks.forEach(({ key, name }) => {
+      const el = document.createElement(onPick ? "button" : "i");
+      el.className = "diet-slot-mark";
+      el.innerHTML = KN.productIcons.byKey(key) || "";
+      if (onPick) {
+        el.type = "button";
+        el.setAttribute("aria-label", `「${name}」の絵を選ぶ`);
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();   // 枠を持ち上げる・紙を閉じる、を起こさない
+          onPick(name, key);
+        });
+      }
+      host.append(el);
     });
+  }
+
+  /* ---------------- 食事の絵を選ぶ ----------------
+
+     買うもの・やることと同じ選び方（KN.productIcons）ですが、書き込む
+     先が違います。あちらは記録そのものの `icon` 欄ですが、食事メモには
+     そういう入れ物が無い（自由記述の一文なので）——かわりに
+     `store.setIconOverride` で、**打った文字列そのもの**に対する言い換え
+     として覚えます。 */
+  function openMealIconPicker(name, current, onChoose) {
+    /* 「報告する」は探す欄のすぐ下に置きます。**格子の下ではありません**
+       ——「ぜんぶ」は700枚を超えるので、下に置くと見つけてもらう前に
+       スクロールで力尽きます。まず選ぶか、まず報告するか、どちらも
+       同じ一手の距離にしておきます。 */
+    const body = node(html`
+      <div class="stack" style="gap:14px">
+        <p class="row-sub" style="padding:0 4px">「${name}」の絵</p>
+        <input class="input js-q" placeholder="絵をさがす（例：麺）"
+               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
+        <div class="rows">
+          <button type="button" class="row js-report">
+            <span class="row-main"><span class="row-title">この絵はちがう、と設定に記録する</span></span>
+          </button>
+        </div>
+        <div class="stack js-grids" style="gap:14px"></div>
+      </div>
+    `);
+    const grids = body.querySelector(".js-grids");
+    const q = body.querySelector(".js-q");
+    const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
+
+    function choose(key) {
+      KN.motion.fire("select");
+      onChoose(key || null);
+      handle.close();
+    }
+
+    body.querySelector(".js-report").addEventListener("click", () => {
+      store.addIconReport({ text: name, screen: "meal", gotIcon: current });
+      KN.ui.toast("記録しました。設定の「アイコンについて」から見られます");
+    });
+
+    const CHUNK = 120;
+    let painting = 0;
+    function grid(items) {
+      const g = node(html`<div class="icon-grid"></div>`);
+      const cellOf = ({ key, label, svg }) => {
+        const cell = node(html`
+          <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
+                  data-key="${key}" aria-pressed="${String(key === current)}">
+            <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
+            <span class="icon-cell-label">${label}</span>
+          </button>
+        `);
+        cell.addEventListener("click", () => choose(key));
+        return cell;
+      };
+      const head = items.slice(0, CHUNK);
+      head.forEach((it) => g.append(cellOf(it)));
+      if (items.length > CHUNK) {
+        const mine = ++painting;
+        let at = CHUNK;
+        const more = () => {
+          if (mine !== painting || !g.isConnected) return;
+          const stop = Math.min(at + CHUNK, items.length);
+          const frag = document.createDocumentFragment();
+          for (; at < stop; at++) frag.append(cellOf(items[at]));
+          g.append(frag);
+          if (at < items.length) requestAnimationFrame(more);
+        };
+        requestAnimationFrame(more);
+      }
+      return g;
+    }
+
+    function paint() {
+      grids.innerHTML = "";
+      const query = q.value.trim();
+      if (query) {
+        const hits = KN.productIcons.search(query);
+        if (!hits.length) {
+          grids.append(node(html`
+            <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
+              「${query}」に合う絵はありません
+            </p>
+          `));
+          return;
+        }
+        grids.append(grid(hits));
+        return;
+      }
+      const auto = node(html`
+        <button type="button" class="icon-auto js-auto ${current ? "" : "is-on"}"
+                aria-pressed="${String(!current)}">
+          <span class="icon-pick-mark">${KN.util.raw(KN.productIcons.byKey(current) || "")}</span>
+          <span class="icon-pick-text">
+            <span class="icon-pick-name">おまかせにする</span>
+            <span class="icon-pick-sub">この文字列だけの言い換えをやめます</span>
+          </span>
+        </button>
+      `);
+      auto.addEventListener("click", () => choose(null));
+      grids.append(auto);
+
+      const maybe = KN.productIcons.suggest(name, 8);
+      if (maybe.length) {
+        grids.append(node(html`<span class="field-label">もしかして</span>`));
+        grids.append(grid(KN.productIcons.list().filter((x) => maybe.includes(x.key))
+          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
+      }
+      grids.append(node(html`<span class="field-label">ぜんぶ</span>`));
+      grids.append(grid(KN.productIcons.list()));
+    }
+
+    q.addEventListener("input", KN.util.debounce(paint, 160));
+    paint();
   }
 
   function buildSlotBoxes(host, day, st, opts) {
@@ -2247,8 +2377,9 @@
           <div class="diet-slot-head">
             <span class="diet-slot-ico">${icon(sl.ico)}</span>
             <b class="diet-slot-name">${sl.short}</b>
-            ${/* 書いたものの絵。打つそばから増えます（下の input を参照）。 */""}
-            <span class="diet-slot-marks js-marks" aria-hidden="true" hidden></span>
+            ${/* 書いたものの絵。打つそばから増えます（下の input を参照）。
+                  タップすると、その一片だけの言い換えを選べます。 */""}
+            <span class="diet-slot-marks js-marks" hidden></span>
             <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
           </div>
           <textarea class="textarea diet-slot-memo js-slot-memo" data-slot="${sl.id}" rows="1"
@@ -2261,16 +2392,7 @@
       const marks = box.querySelector(".js-marks");
       ta.dataset.saved = text;
       boxes.push(ta);
-      paintMarks(marks, text);
-      host.append(box);
-      /* 高さを合わせるのは、**紙に置いてから**です。
 
-         ここは append より前にありました。まだどこにも置かれていない枠の
-         scrollHeight は 0 なので、下限の38px（一行ぶん）に落ち着きます。
-         打っているあいだは伸びるのに、書いて閉じて開き直すと一行に戻って
-         いた——保存した二行目から先が、開くたびに隠れていました。 */
-      grow(ta);
-      if (peek) return;   // 押せない紙なので、保存の配線は要りません。
       let timer = 0;
       const save = () => {
         clearTimeout(timer);
@@ -2286,11 +2408,32 @@
         ta.dataset.saved = val;
         return true;
       };
+      /* 絵をタップして直す口。押せない紙（peek）には要りません。
+
+         上書きは店（`store.iconOverrides`）に書くので、続けて画面が
+         まるごと組み直ります——その組み直しは `render()` の先頭で
+         `flushSlots()` を呼ぶので、この枠の書きかけも一緒に流れます
+         （下記の `save` は、念のため直接呼ぶだけ）。 */
+      const onPick = peek ? null : (name, key) => {
+        save();
+        openMealIconPicker(name, key, (newKey) => store.setIconOverride(name, newKey));
+      };
+
+      paintMarks(marks, text, onPick);
+      host.append(box);
+      /* 高さを合わせるのは、**紙に置いてから**です。
+
+         ここは append より前にありました。まだどこにも置かれていない枠の
+         scrollHeight は 0 なので、下限の38px（一行ぶん）に落ち着きます。
+         打っているあいだは伸びるのに、書いて閉じて開き直すと一行に戻って
+         いた——保存した二行目から先が、開くたびに隠れていました。 */
+      grow(ta);
+      if (peek) return;   // 押せない紙なので、保存の配線は要りません。
       ta.addEventListener("input", () => {
         grow(ta);
         /* 絵は保存を待ちません。打っているそばから増えるからこそ、
            「書くと絵になる」が分かります（保存は600ms後）。 */
-        paintMarks(marks, ta.value);
+        paintMarks(marks, ta.value, onPick);
         // 行が増えて枠が伸びると、欄の下端がまたキーボードに隠れうるので測り直します。
         if (!inSheet) nudgeIntoView(ta);
         if (inSheet) return;      // シートでは「保存」を押したときだけ書きます
