@@ -95,18 +95,50 @@
     if (todos.length) blocks.push(["完了したこと（この日にやり終えたもの）", ...todos.map((t) => `・${t.title}`)].join("\n"));
     if (items.length) blocks.push(["購入したもの（この日に買い終えたもの）", ...items.map((i) => `・${i.title}`)].join("\n"));
 
-    const w = store.weightOfDay(day);
-    if (w && (w.kg != null || w.fat != null)) {
-      const parts = [];
-      if (w.kg != null) parts.push(`体重 ${w.kg}kg`);
-      if (w.fat != null) parts.push(`体脂肪率 ${w.fat}%`);
-      blocks.push(["からだの記録", `・${parts.join(" ・ ")}`].join("\n"));
-    }
+    /* からだの記録は KN.diet.dayCard がすでに一日ぶんへ束ねてある値を使います
+       （体重・歩数・総消費・睡眠・飲酒、それぞれ store.healthValue /
+       weightOfDay / drinkTotals から）。ここで数えなおしません——数える
+       場所が二か所になると、どちらかだけ直した日に食い違います。
+       目標に対する割合は出しません（daily は評価しない、の一部）。 */
+    const card = KN.diet.dayCard(day);
+    const bodyParts = [];
+    if (card.weight && card.weight.kg != null) bodyParts.push(`体重 ${card.weight.kg}kg`);
+    if (card.weight && card.weight.fat != null) bodyParts.push(`体脂肪率 ${card.weight.fat}%`);
+    if (card.steps != null) bodyParts.push(`歩数 ${Math.round(card.steps).toLocaleString()}歩`);
+    if (card.burned != null) bodyParts.push(`総消費 ${Math.round(card.burned).toLocaleString()}kcal`);
+    if (card.sleep != null) bodyParts.push(`睡眠 ${Math.floor(card.sleep / 60)}時間${String(Math.round(card.sleep % 60)).padStart(2, "0")}分`);
+    if (card.drinkTotals) bodyParts.push(`飲酒 純アルコール${card.drinkTotals.alcoholG}g`);
+    if (bodyParts.length) blocks.push(["からだの記録", `・${bodyParts.join(" ・ ")}`].join("\n"));
+
     const mealLines = DIET_SLOTS
       .map((sl) => ({ ...sl, text: (store.slotMemo(day, sl.id) || "").trim() }))
       .filter((sl) => sl.text)
       .map((sl) => `・${sl.label}: ${sl.text}`);
     if (mealLines.length) blocks.push(["食べたもの（この日に食べ終えたもの）", ...mealLines].join("\n"));
+
+    /* ここから先は**この日の記録ではありません**——参考として添える、
+       まだ済んでいない先の予定と、いつやるか決めていない長期タスクです。
+       見出しに「（参考）」と「まだ済んでいない」を必ず書きます。上のブロック
+       と地続きに読むと「この日にあったこと」に混ざって見えるためです。 */
+    const upcoming = [];
+    for (let i = 1; i <= 7; i++) {
+      const d = U.shiftDay(day, i);
+      store.get().todos.forEach((t) => {
+        if (t.done || t.archived || t.trace) return;
+        if (!store.fallsOn(t, d)) return;
+        upcoming.push(`・${U.formatDay(d)} ${t.title}`);
+      });
+    }
+    if (upcoming.length) {
+      blocks.push(["（参考・この日の記録ではありません）明日以降の予定（まだ済んでいません）", ...upcoming].join("\n"));
+    }
+
+    const someday = store.get().todos
+      .filter((t) => !t.done && !t.archived && !t.trace && !t.due)
+      .map((t) => t.deadline ? `・${t.title}（${t.deadline}まで）` : `・${t.title}`);
+    if (someday.length) {
+      blocks.push(["（参考・この日の記録ではありません）長期タスク（いつやるか未定・まだ済んでいません）", ...someday].join("\n"));
+    }
 
     return blocks.join("\n\n");
   }
