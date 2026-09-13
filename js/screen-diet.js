@@ -811,8 +811,8 @@
        動くのは日のマスだけで、曜日はここに留まります。 */
     const wds = sec.querySelector(".cal-wds");
     wds.innerHTML = "";
-    U.WEEKDAYS.forEach((w, i) => wds.append(node(html`
-      <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
+    U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
+      <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
     `)));
     /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
        して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
