@@ -851,6 +851,17 @@ button, [role="tab"] {
   color: color-mix(in srgb, #fff 78%, transparent);
   font-variant-numeric: tabular-nums;
 }
+/* 打っている字から日付や時刻が読めているあいだの**予告**。
+   まだ欄には入っていないので、点線で「これからそうなる」とだけ言う
+   ——欄から離れた瞬間に線が消えるので、入ったことがそこで分かる。
+   新しい札は置かない：ここはもともと「いつのことか」を言う場所で、
+   同じことを二か所で言わないため。 */
+.hero-cap.is-peek {
+  color: #fff;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
 /* 題は**そこで直に打てます**。下線が一本あるだけで、枠も地の色も持ちません
    ——欄に見せると、頭が「入力画面の一部」になってしまいます。ここは行の
    続きで、そこに手を入れられる、という形にしたい。 */
