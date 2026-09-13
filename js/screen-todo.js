@@ -506,6 +506,11 @@
     let minutes = editing ? (t.minutes || null) : null;
     let iconKey = editing ? (t.icon || null) : null;
     let deadline = editing ? (t.deadline || null) : null;
+    /* この紙で題に手が入ったか。**打った字から日付や時刻を読むのは、
+       手が入ったときだけ**です（下の「打った字から『いつ』を読む」）。
+       ここに置くのは、組み立ての途中（paintRows → paintHeroFacts）から
+       読まれるから——下に let で書くと、そこで TDZ で落ちます。 */
+    let titleTouched = !editing;
     haptic(10);
 
     /* ---------------- 詳細の紙 ----------------
@@ -836,8 +841,26 @@
        上は「いつのことか」（日付と時刻）、下は印（★・くりかえし・手順の数）。
        参考にした画面と同じ並びです。 */
     function paintHeroFacts() {
-      hero.querySelector(".js-hero-when").textContent =
-        [due ? formatDay(due) : "日付なし", time ? tlClock(time) : ""].filter(Boolean).join("　");
+      /* 打ちかけの字から日付や時刻が読めているなら、**そうなる姿**を先に
+         出します（点線つき。下の whenPeek）。欄へ移るのは題の欄から離れた
+         ときですが、そこまで何も出さないと、読めているのかどうかが
+         分かりません。 */
+      const peek = whenPeek();
+      const cap = hero.querySelector(".js-hero-when");
+      const capDay = (peek && peek.due) || due;
+      const capAt = (peek && peek.time) || time;
+      cap.classList.toggle("is-peek", !!peek);
+      /* 「明日まで レポート」のように、読めたのが期限だけのときは、
+         `due` の欄（「日付なし」）はそのまま——期限は別欄なので、
+         そちらの姿を借りると「やる日が明日になった」と誤解させます。
+         かわりに「◯◯まで」とだけ言います（新しい札は置かない決めごと
+         なので、この一行が兼ねます）。 */
+      if (peek && peek.deadline && !peek.due) {
+        cap.textContent = `${formatDay(peek.deadline)}まで`;
+      } else {
+        cap.textContent =
+          [capDay ? formatDay(capDay) : "日付なし", capAt ? tlClock(capAt) : ""].filter(Boolean).join("　");
+      }
       const facts = hero.querySelector(".js-hero-facts");
       facts.innerHTML = "";
       if (flagged) facts.append(node(html`<span class="hero-fact is-fav">${icon("star")}</span>`));
@@ -1369,7 +1392,119 @@
 
     titleEl.addEventListener("input", () => { foot.disabled = !titleEl.value.trim(); });
 
+    /* ---------------- 打った字から「いつ」を読む ----------------
+
+       「10:00 病院」と打ったら、10:00 の時間割に「病院」が立つ。読むのは
+       `js/when-parse.js`（DOM も store も触らない部品）で、ここが持つのは
+       **読めたものを欄へ移すこと**だけです。決めごと（どこまで読むか・
+       何を読まないか）は向こうに書いてあります。
+
+       **移すのは、題の欄から離れたとき。** 打っているあいだは頭に点線で
+       予告するだけです。一文字ごとに落としていくと、「10:00くらいに」と
+       続けて打つ人の字が、打っている最中に消えます。
+
+       読み違えたときのために、トーストに「戻す」を置きます——落とした字も、
+       入った欄も、押せば元どおりになります。
+
+       **直しに来ただけの紙では、読みません。** 「9/15 資料」という題の
+       用事を開いて保存を押しただけで日付が動く、というのは、書いていない
+       ことを勝手に決めているのと同じです。読むのは、この紙で題に手を
+       入れた人がいるときだけ（`titleTouched`。宣言は紙の頭にあります——
+       組み立ての途中で読まれるので、ここに let で書くと落ちます）。
+       新しく足す紙は、題が空から始まるので、打った時点で必ず手が
+       入っています。 */
+    titleEl.addEventListener("input", () => { titleTouched = true; });
+
+    function whenPeek() {
+      const W = KN.whenParse;
+      if (!W || !titleTouched) return null;
+      const res = W.parse(titleEl.value);
+      return W.found(res) ? res : null;
+    }
+
+    /* 題を差し替えます。**value 属性にも書く**こと——運んでいるあいだの
+       控え（cloneNode）は属性を読むので、書かないと打つ前の字が出ます。 */
+    function setTitle(v) {
+      titleEl.value = v;
+      titleEl.setAttribute("value", v);
+      foot.disabled = !v.trim();
+      if (!iconKey) paintIcon();
+    }
+
+    /** 日付・時刻まわりの欄と札を、まとめて描き直します。 */
+    function repaintWhen() {
+      dueEl.value = due || "";
+      paintDueEmpty();
+      paintDueChips();
+      paintPart();
+      paintMins();
+      paintRepeat();
+      paintRepeatDetail();   // 中で paintRows も通ります
+      paintHint();
+      paintSlots();
+      /* 期限（deadline）は due とは別欄です（CLAUDE.md「長期タスクと、
+         期限」）。limitEl の値を書き直さないと、欄の中の日付ピッカーは
+         打ち替える前の姿のまま残ります。 */
+      if (limitEl) limitEl.value = deadline || "";
+      paintLimit();
+    }
+
+    function whenApply(opts) {
+      const W = KN.whenParse;
+      if (!W || !titleTouched) return;
+      const res = W.parse(titleEl.value);
+      if (!W.found(res)) return;
+      const back = { title: titleEl.value, due, time, minutes, part, deadline,
+        repeat, repeatDays: repeatDays.slice(), repeatNth };
+      setTitle(res.title);
+      if (res.due) due = res.due;
+      if (res.time) time = res.time;
+      if (res.minutes) minutes = res.minutes;
+      if (res.deadline) deadline = res.deadline;
+      if (res.repeat) {
+        repeat = res.repeat;
+        repeatDays = res.repeatDays || [];
+        repeatNth = res.repeatNth || null;
+        /* 毎朝・毎晩は記録の上では「毎日＋日の端」です。くり返しを言い直された
+           のだから、古い端は外します。 */
+        if (isBookend(part)) part = null;
+      }
+      /* 時刻だけを言われたら、その日は**いま出している日**。日付が無いまま
+         時刻を持たせると、保存のところで時刻ごと落ちます
+         （`const at = fixed ? time : null`）。 */
+      if (time && !due) due = (oneDay() ? shownDay() : todayKey()) || todayKey();
+      repaintWhen();
+      /* 保存のときは黙って移します——すぐ後ろに「◯◯を9/14 15:00までに」が
+         続くので、同じことを二枚のトーストで言うことになります。 */
+      if (opts && opts.quiet) return;
+      haptic(10);
+      KN.ui.toast(`${W.describe(res, { due, time, minutes, deadline })}にしました`, {
+        action: {
+          label: "戻す",
+          onClick: () => {
+            setTitle(back.title);
+            due = back.due; time = back.time; minutes = back.minutes; part = back.part;
+            deadline = back.deadline;
+            repeat = back.repeat; repeatDays = back.repeatDays; repeatNth = back.repeatNth;
+            repaintWhen();
+          },
+        },
+      });
+    }
+
+    titleEl.addEventListener("input", paintHeroFacts);
+    titleEl.addEventListener("change", () => whenApply());
+    titleEl.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      whenApply();
+      titleEl.blur();
+    });
+
     foot.addEventListener("click", () => {
+      /* 打ちっぱなしで押されたぶんも、ここで読みます（欄から離れる前に
+         押されたら、change はまだ来ていません）。 */
+      whenApply({ quiet: true });
       const title = titleEl.value.trim();
       if (!title) return;
       const memo = body.pick(".js-memo").value;
