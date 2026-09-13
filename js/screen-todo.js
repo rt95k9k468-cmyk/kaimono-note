@@ -2716,9 +2716,18 @@
        出ているのは、そのとおりで正しい。
 
        三つまで（参考画面は四つ）。一つ減らしたのは、こちらの絵が読める
-       大きさ（20px）だと四つ目がマスからはみ出すからです。 */
+       大きさ（20px）だと四つ目がマスからはみ出すからです。
+
+       過ぎた日のぶんは、片づけていても出します——`open` は「まだ
+       やっていない」ものだけなので、済ませたとたんにそのマスから絵が
+       消えていました。過去のマスは記録なので、片づけたことでその日に
+       何があったか読めなくなるのは本末転倒です。今日から先はこれまで
+       どおり `open` だけ（まだ起きていないことを「済んだ」と出すと
+       嘘になるので）。 */
+    const doneForMarks = store.get().todos
+      .filter((t) => (t.done || t.archived) && t.due && t.due < today);
     const marks = new Map();
-    (open || []).forEach((t) => {
+    (open || []).concat(doneForMarks).forEach((t) => {
       if (!t.due) return;
       const list = marks.get(t.due) || [];
       if (list.length < 3) { list.push(t); marks.set(t.due, list); }

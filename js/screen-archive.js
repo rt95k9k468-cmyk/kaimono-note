@@ -506,7 +506,7 @@
         ? kinds.map((t) => `<i style="background:${store.archiveType(t).color}"></i>`).join("")
         : (logged[key] ? '<i class="is-log"></i>' : "");
       const cell = node(html`
-        <button class="cal-day ${isToday ? "is-today" : ""} ${key === viewDay ? "is-here" : ""}
+        <button class="cal-day ${isToday ? "is-today" : ""} ${key === (viewDay || today) ? "is-here" : ""}
                        ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
                 data-day="${key}" ${isToday ? U.raw('aria-current="date"') : ""}
                 aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
