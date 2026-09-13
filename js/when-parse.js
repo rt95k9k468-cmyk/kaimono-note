@@ -28,6 +28,15 @@
  *   言葉は要らない。
  * - **毎朝・毎晩は読みません。** くり返しの選択肢からも外してあります
  *   （時刻が書けるので、毎日との二通りができていた）。
+ * - **「明日まで」は期限（`deadline`）に入ります、日付（`due`）ではなく。**
+ *   「いつやるか」と「いつまでか」は別の欄なので（CLAUDE.md「長期タスクと、
+ *   期限」）。「10時までに起きる」のような**時刻**の「まで」は、依然として
+ *   読みません——締め切りは日そのものの話で、時刻の締め切りという欄は
+ *   ありません。
+ * - **裸の長さ（「30分」「1時間」）は、日付・時刻・くり返し・期限のどれかと
+ *   いっしょに打たれたときだけ読みます。** 「10分休憩」「腕立て30回」の
+ *   ように、長さでも回数でも読める言葉が日本語には多く、単独では
+ *   区別が付きません（実際に「10分休憩」を長さとして誤読しました）。
  */
 (function () {
   const KN = (window.KN = window.KN || {});
@@ -153,6 +162,51 @@
   const RE_WD = "([日月火水木金土])曜日?";
   const RE_WEEK = "(今週|来週|再来週)";
 
+  /* 日付を言う語。**期限（まで）にも同じ語を使う**ので、
+     ここへ切り出してあります——二か所に書くと、片方だけ日付の言葉を
+     増やした日に、期限のほうだけ古いままになります。 */
+  const DATE_RAW = [
+    { re: "(\\d{4})[/-](\\d{1,2})[/-](\\d{1,2})",
+      read: (m) => { const d = ymd(+m[1], +m[2], +m[3]); return d ? { due: d } : null; } },
+    { re: "(\\d{4})年(\\d{1,2})月(\\d{1,2})日",
+      read: (m) => { const d = ymd(+m[1], +m[2], +m[3]); return d ? { due: d } : null; } },
+    { re: "(\\d{1,2})月(\\d{1,2})日",
+      read: (m, c) => { const d = nextMd(+m[1], +m[2], c); return d ? { due: d } : null; } },
+    { re: "(\\d{1,2})/(\\d{1,2})",
+      read: (m, c) => { const d = nextMd(+m[1], +m[2], c); return d ? { due: d } : null; } },
+    { re: "(?:今日|本日|きょう)", read: (m, c) => ({ due: c.today }) },
+    { re: "(?:明々後日|明明後日|しあさって)", read: (m, c) => ({ due: U.shiftDay(c.today, 3) }) },
+    { re: "(?:明後日|あさって)", read: (m, c) => ({ due: U.shiftDay(c.today, 2) }) },
+    { re: "(?:明日|あした|あす)", read: (m, c) => ({ due: U.shiftDay(c.today, 1) }) },
+    { re: "(\\d{1,3})日後", read: (m, c) => ({ due: U.shiftDay(c.today, Number(m[1])) }) },
+    { re: "(\\d{1,2})週間後", read: (m, c) => ({ due: U.shiftDay(c.today, Number(m[1]) * 7) }) },
+    { re: "(\\d{1,2})[ヶケかカ箇]?月後",
+      read: (m, c) => ({ due: U.shiftMonth(c.today, Number(m[1])) }) },
+    { re: "(今月|来月|再来月)末",
+      read: (m, c) => ({ due: endOfMonth(c.today, m[1] === "来月" ? 1 : m[1] === "再来月" ? 2 : 0) }) },
+    { re: "月末", read: (m, c) => ({ due: endOfMonth(c.today, 0) }) },
+    { re: RE_WEEK + "末", read: (m, c) => {
+        const add = m[1] === "来週" ? 7 : m[1] === "再来週" ? 14 : 0;
+        return { due: add ? U.shiftDay(weekTop(c.today), add + 6) : nextWd(6, c.today) };
+      } },
+    { re: "週末", read: (m, c) => ({ due: nextWd(6, c.today) }) },
+    { re: RE_WEEK + "の?" + RE_WD, read: (m, c) => {
+        const add = m[1] === "来週" ? 7 : m[1] === "再来週" ? 14 : 0;
+        return { due: nextWd(WDS.indexOf(m[2]), U.shiftDay(weekTop(c.today), add)) };
+      } },
+    /* 「来週」だけのときは、その週のはじめ（月曜）。日を言っていないので、
+       週の頭に置いて、あとから動かしてもらう。 */
+    { re: "(来週|再来週)", read: (m, c) => ({
+        due: U.shiftDay(weekTop(c.today), (m[1] === "来週" ? 7 : 14) + 1) }) },
+    { re: RE_WD, read: (m, c) => ({ due: nextWd(WDS.indexOf(m[1]), c.today) }) },
+    { re: "(\\d{1,2})日", read: (m, c) => { const d = nextDom(+m[1], c); return d ? { due: d } : null; } },
+  ];
+
+  /* すぐ後ろに何かが続くと別の意味になってしまう言葉（「30分」の直後に
+     「休憩」と続けば、それは長さではなく活動の名前）を締め出すための
+     境目チェック。空きか、文字列の端でだけ止まってよい。 */
+  const WORD_END = "(?=[\\s　]|$)";
+
   const RAW = [
     /* ---- くり返し ---- */
     { kind: "repeat", re: "毎月第([1-5])" + RE_WD,
@@ -189,41 +243,24 @@
     { kind: "repeat", re: "毎週", read: () => ({ repeat: "weekly", repeatDays: [] }) },
     { kind: "repeat", re: "毎日", read: () => ({ repeat: "daily" }) },
 
+    /* ---- 期限（まで）----
+     *
+     * 「明日まで レポート」は**期限**（`deadline`）で、いつやるか（`due`）
+     * ではありません（CLAUDE.md「長期タスクと、期限」）。日付を言う語は
+     * DATE_RAW と同じものを使い、後ろに「まで／迄」が付いたときだけ
+     * ここで捕まえます。**日付ルールより先に試すこと**——先に裸の日付
+     * ルールが「明日」だけを食べてしまうと、残った「まで」が題に残ります。 */
+    ...DATE_RAW.map((r) => ({
+      kind: "deadline",
+      re: r.re + "(?:まで|迄)(?:に|には)?",
+      read: (m, c) => { const p = r.read(m, c); return p && p.due ? { deadline: p.due } : null; },
+    })),
+    { kind: "deadline", re: "(?:今日|本日|きょう)中(?:に)?", read: (m, c) => ({ deadline: c.today }) },
+    { kind: "deadline", re: "今週中(?:に)?", read: (m, c) => ({ deadline: nextWd(6, c.today) }) },
+    { kind: "deadline", re: "今月中(?:に)?", read: (m, c) => ({ deadline: endOfMonth(c.today, 0) }) },
+
     /* ---- 日付 ---- */
-    { kind: "date", re: "(\\d{4})[/-](\\d{1,2})[/-](\\d{1,2})",
-      read: (m) => { const d = ymd(+m[1], +m[2], +m[3]); return d ? { due: d } : null; } },
-    { kind: "date", re: "(\\d{4})年(\\d{1,2})月(\\d{1,2})日",
-      read: (m) => { const d = ymd(+m[1], +m[2], +m[3]); return d ? { due: d } : null; } },
-    { kind: "date", re: "(\\d{1,2})月(\\d{1,2})日",
-      read: (m, c) => { const d = nextMd(+m[1], +m[2], c); return d ? { due: d } : null; } },
-    { kind: "date", re: "(\\d{1,2})/(\\d{1,2})",
-      read: (m, c) => { const d = nextMd(+m[1], +m[2], c); return d ? { due: d } : null; } },
-    { kind: "date", re: "(?:今日|本日|きょう)", read: (m, c) => ({ due: c.today }) },
-    { kind: "date", re: "(?:明々後日|明明後日|しあさって)", read: (m, c) => ({ due: U.shiftDay(c.today, 3) }) },
-    { kind: "date", re: "(?:明後日|あさって)", read: (m, c) => ({ due: U.shiftDay(c.today, 2) }) },
-    { kind: "date", re: "(?:明日|あした|あす)", read: (m, c) => ({ due: U.shiftDay(c.today, 1) }) },
-    { kind: "date", re: "(\\d{1,3})日後", read: (m, c) => ({ due: U.shiftDay(c.today, Number(m[1])) }) },
-    { kind: "date", re: "(\\d{1,2})週間後", read: (m, c) => ({ due: U.shiftDay(c.today, Number(m[1]) * 7) }) },
-    { kind: "date", re: "(\\d{1,2})[ヶケかカ箇]?月後",
-      read: (m, c) => ({ due: U.shiftMonth(c.today, Number(m[1])) }) },
-    { kind: "date", re: "(今月|来月|再来月)末",
-      read: (m, c) => ({ due: endOfMonth(c.today, m[1] === "来月" ? 1 : m[1] === "再来月" ? 2 : 0) }) },
-    { kind: "date", re: "月末", read: (m, c) => ({ due: endOfMonth(c.today, 0) }) },
-    { kind: "date", re: RE_WEEK + "末", read: (m, c) => {
-        const add = m[1] === "来週" ? 7 : m[1] === "再来週" ? 14 : 0;
-        return { due: add ? U.shiftDay(weekTop(c.today), add + 6) : nextWd(6, c.today) };
-      } },
-    { kind: "date", re: "週末", read: (m, c) => ({ due: nextWd(6, c.today) }) },
-    { kind: "date", re: RE_WEEK + "の?" + RE_WD, read: (m, c) => {
-        const add = m[1] === "来週" ? 7 : m[1] === "再来週" ? 14 : 0;
-        return { due: nextWd(WDS.indexOf(m[2]), U.shiftDay(weekTop(c.today), add)) };
-      } },
-    /* 「来週」だけのときは、その週のはじめ（月曜）。日を言っていないので、
-       週の頭に置いて、あとから動かしてもらう。 */
-    { kind: "date", re: "(来週|再来週)", read: (m, c) => ({
-        due: U.shiftDay(weekTop(c.today), (m[1] === "来週" ? 7 : 14) + 1) }) },
-    { kind: "date", re: RE_WD, read: (m, c) => ({ due: nextWd(WDS.indexOf(m[1]), c.today) }) },
-    { kind: "date", re: "(\\d{1,2})日", read: (m, c) => { const d = nextDom(+m[1], c); return d ? { due: d } : null; } },
+    ...DATE_RAW.map((r) => ({ kind: "date", re: r.re, read: r.read })),
 
     /* ---- 時刻 ---- */
     { kind: "time", re: "(" + T_ONE + ")[ \\u3000]?(?:〜|-|から)[ \\u3000]?(" + T_ONE + ")(?:まで)?",
@@ -236,11 +273,34 @@
       } },
     { kind: "time", re: "(" + T_ONE + ")",
       read: (m) => { const t = readTime(m[1]); return t ? { time: t } : null; } },
+
+    /* ---- 長さ（分）----
+     *
+     * **日付・時刻・くり返し・期限のどれかと一緒に打たれたときだけ**
+     * 読みます（`guard`）。「10分休憩」「腕立て30回」のように、長さでも
+     * 回数でも読める言葉が日本語には多く、単独では区別が付きません
+     * （実際に「10分休憩」を誤って読みました）。「10:00 30分 ジョギング」の
+     * ように、いつ・どれくらいを続けて打つ人の字だけを読みます。
+     *
+     * 直後に境目（空きか文字列の端）が無ければ止めます——「30分休憩」の
+     * ように直後へ字が続くのは、長さではなく活動の名前の一部だからです。 */
+    { kind: "minutes", guard: (taken) => !!(taken.date || taken.time || taken.repeat || taken.deadline),
+      re: "(\\d{1,2})時間(\\d{1,2})分" + WORD_END,
+      read: (m) => ({ minutes: cleanSpan(Number(m[1]) * 60 + Number(m[2])) }) },
+    { kind: "minutes", guard: (taken) => !!(taken.date || taken.time || taken.repeat || taken.deadline),
+      re: "(\\d{1,2})時間半" + WORD_END,
+      read: (m) => ({ minutes: cleanSpan(Number(m[1]) * 60 + 30) }) },
+    { kind: "minutes", guard: (taken) => !!(taken.date || taken.time || taken.repeat || taken.deadline),
+      re: "(\\d{1,2})時間" + WORD_END,
+      read: (m) => ({ minutes: cleanSpan(Number(m[1]) * 60) }) },
+    { kind: "minutes", guard: (taken) => !!(taken.date || taken.time || taken.repeat || taken.deadline),
+      re: "(\\d{1,3})分(?:間)?" + WORD_END,
+      read: (m) => ({ minutes: cleanSpan(Number(m[1])) }) },
   ];
 
   /* 頭とお尻ぶんを、一度だけ組んでおきます（打つたびに 50本 組み直さない）。 */
   const RULES = RAW.map((r) => ({
-    kind: r.kind, read: r.read,
+    kind: r.kind, read: r.read, guard: r.guard,
     head: new RegExp("^(?:" + r.re + ")"),
     tail: new RegExp("(?:" + r.re + ")$"),
   }));
@@ -287,6 +347,7 @@
 
     for (const rule of RULES) {
       if (taken[rule.kind]) continue;
+      if (rule.guard && !rule.guard(taken)) continue;
 
       const h = rule.head.exec(span);
       if (h) {
@@ -296,7 +357,7 @@
           if (patch) {
             const drop = seamHead(flat.slice(end, b));
             const rest = text.slice(0, a) + text.slice(end + drop);
-            if (MEAT.test(rest)) return { rest, patch, text: text.slice(a, end) };
+            if (MEAT.test(rest)) return { rest, patch, kind: rule.kind, text: text.slice(a, end) };
           }
         }
       }
@@ -311,7 +372,7 @@
           if (patch) {
             const keep = seamTail(flat.slice(a, start));
             const rest = text.slice(0, a + keep) + text.slice(b);
-            if (MEAT.test(rest)) return { rest, patch, text: text.slice(start, b) };
+            if (MEAT.test(rest)) return { rest, patch, kind: rule.kind, text: text.slice(start, b) };
           }
         }
       }
@@ -326,7 +387,7 @@
    * @param {{today?: string}} [opts]  今日（試験のために外から渡せる）
    * @returns {{title: string, hits: Array, due?: string, time?: string,
    *            minutes?: number, repeat?: string, repeatDays?: number[],
-   *            repeatNth?: object}}
+   *            repeatNth?: object, deadline?: string}}
    *          見つからなかった欄は**置きません**（null と「言っていない」を
    *          分けるため。画面の側は、来た欄だけを書き換えます）。
    */
@@ -337,7 +398,9 @@
     const taken = {};
     let cur = String(text == null ? "" : text);
 
-    for (let pass = 0; pass < 4; pass++) {
+    /* くり返し・期限・日付・時刻・長さ、の五種類まで一度に読めます
+       （「毎週月曜 明日まで 10:00 30分 ゴミ出し」のような字を想定した数）。 */
+    for (let pass = 0; pass < 5; pass++) {
       const hit = takeOne(cur, taken, ctx);
       if (!hit) break;
       cur = hit.rest;
@@ -386,6 +449,8 @@
       const end = len != null && toMin(at) != null ? toTime(toMin(at) + len) : null;
       bits.push(end ? `${at}〜${end}` : at);
     }
+    const deadline = res.deadline || e.deadline;
+    if (deadline) bits.push(`${U.formatDay(deadline)}まで`);
     return bits.join(" ");
   }
 
