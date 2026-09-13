@@ -33,6 +33,7 @@ const JS = [
   "js/icons-phosphor.js",
   "js/motion.js",
   "js/plan.js",
+  "js/when-parse.js",
   "js/icon-system.js",
   "js/icons-v2.js",
   "js/product-icons.js",
