@@ -11,6 +11,7 @@ const check = (name, ok, detail) => {
 };
 
 const PATH = "/kn-7f3a9c1d4e8b2";
+const SEP = "\u001E";
 
 /* KVの偽物。put の TTL も控えておいて、渡し忘れていないか見ます。 */
 function fakeKV() {
@@ -31,8 +32,13 @@ const call = (env, method, path, body) =>
   }), env);
 
 const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
+const verOf = (res) => res.headers.get("x-kn-ver");
 
-/* ---------- 置いて、取って、消える ---------- */
+/* ---------- 置いて、取る。そして**消えない** ----------
+
+   ここが作り直しの本体です。前は渡した時点で消していたので、読む側が
+   その便を断ると（iPhoneがロック中に走った 0 の羅列がそれです）、
+   その一回ぶんが永久に失われていました。 */
 {
   const env = env0();
   const put = await call(env, "POST", PATH, "day=2026-08-18\nsteps=8432");
@@ -48,19 +54,75 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   check("途中で覚え込まれない",
     /no-store/.test(get1.headers.get("cache-control") || ""),
     get1.headers.get("cache-control"));
+  check("版を添えている", /^\d+$/.test(verOf(get1) || ""), verOf(get1));
+  check("版がブラウザから読める",
+    (get1.headers.get("access-control-expose-headers") || "").includes("X-Kn-Ver"));
 
   const get2 = await call(env, "GET", PATH);
-  check("渡したら消える（二度目は 204）", get2.status === 204, String(get2.status));
-  check("204 に中身は無い", (await get2.text()) === "");
+  check("渡しても消えない（版を言わなければ、もう一度渡す）",
+    get2.status === 200 && (await get2.text()) === "day=2026-08-18\nsteps=8432",
+    String(get2.status));
 }
 
-/* ---------- 日本語も、そのまま往復する ---------- */
+/* ---------- 版が同じなら、渡してこない ---------- */
 {
   const env = env0();
-  const text = "day=2026-08-18\nworkout=ウォーキング,42,210";
-  await call(env, "POST", PATH, text);
+  await call(env, "POST", PATH, "steps=1");
   const got = await call(env, "GET", PATH);
-  check("日本語がそのまま戻る", (await got.text()) === text);
+  const v = verOf(got);
+
+  const same = await call(env, "GET", PATH + "?since=" + v);
+  check("版が同じなら 204", same.status === 204, String(same.status));
+  check("204 に中身は無い", (await same.text()) === "");
+  check("204 にも版は付く", verOf(same) === v, verOf(same));
+
+  await call(env, "POST", PATH, "steps=2");
+  const again = await call(env, "GET", PATH + "?since=" + v);
+  check("新しい便が来たら、また渡す", again.status === 200, String(again.status));
+  check("版は必ず進む", Number(verOf(again)) > Number(v), `${v} → ${verOf(again)}`);
+}
+
+/* ---------- 版は、同じミリ秒に二本置いても進む ----------
+
+   時計の分解能はミリ秒なので、二本のショートカットが同じ拍で置くと
+   同じ数になります。そうなると読む側が「変わっていない」と読みます。 */
+{
+  const env = env0();
+  const vs = [];
+  for (let i = 0; i < 5; i++) {
+    await call(env, "POST", PATH + "?slot=s" + i, "steps=" + i);
+    vs.push(Number(verOf(await call(env, "GET", PATH))));
+  }
+  const rising = vs.every((v, i) => i === 0 || v > vs[i - 1]);
+  check("続けて置いても版が重ならない", rising, vs.join(","));
+}
+
+/* ---------- ひとつ前の便も、一緒に渡す ----------
+
+   空振りの便（ロック中に走ったショートカットの 0 の羅列）が、読まれる前の
+   良い便を踏み潰さないための仕掛けです。**ひとつ前 → いま** の順に並べる
+   ので、読む側は順に取り込めば「いまのが読めればそれが残る」になります。 */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "steps=8432");        // 良い便
+  await call(env, "POST", PATH, "steps=0");           // ロック中の空振り
+  const got = await call(env, "GET", PATH);
+  const parts = (await got.text()).split(SEP);
+  check("ひとつ前と、いまの二通が届く", parts.length === 2, String(parts.length));
+  check("ひとつ前が先、いまが後", parts[0] === "steps=8432" && parts[1] === "steps=0",
+    parts.join(" / "));
+  check("何通まとめたかを言う", got.headers.get("x-kn-parts") === "2",
+    got.headers.get("x-kn-parts"));
+}
+
+/* ---------- 同じ中身が二度来ても、ひとつ前には下ろさない ---------- */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "steps=1");
+  await call(env, "POST", PATH, "steps=1");
+  check("同じものを二通持たない", env.MAIL._m.has("box:text:prev") === false);
+  const got = await call(env, "GET", PATH);
+  check("渡るのは一通", (await got.text()) === "steps=1");
 }
 
 /* ---------- 同じ差出人の新しい便が、その差出人の古い便を差し替える ---------- */
@@ -68,9 +130,7 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   const env = env0();
   await call(env, "POST", PATH, "steps=1");
   await call(env, "POST", PATH, "steps=2");
-  check("同じ差出人の棚は一つだけ", env.MAIL._m.get("box:text") === "steps=2");
-  const got = await call(env, "GET", PATH);
-  check("あとから置いたほうが残る", (await got.text()) === "steps=2");
+  check("同じ差出人の「いま」は一つだけ", env.MAIL._m.get("box:text") === "steps=2");
 }
 
 /* ---------- 差出人が違えば、消し合わない ----------
@@ -84,10 +144,8 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   const got = await call(env, "GET", PATH);
   const text = await got.text();
   check("からだと睡眠が両方とどく", text.includes("steps=8432") && text.includes("コア"), text);
-  check("何通まとめたかを言う", got.headers.get("x-kn-parts") === "2", got.headers.get("x-kn-parts"));
   check("ブラウザに見えるようにしてある",
     (got.headers.get("access-control-expose-headers") || "").includes("X-Kn-Parts"));
-  check("渡したら、ぜんぶ消える", (await call(env, "GET", PATH)).status === 204);
 }
 
 /* ---------- 名乗れば、その名前でしまう ---------- */
@@ -96,10 +154,37 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   await call(env, "POST", PATH + "?slot=body", "steps=1");
   await call(env, "POST", PATH + "?slot=weight", "weight=57.3");
   const got = await call(env, "GET", PATH);
-  check("名乗った差出人ごとに残る", (await got.text()).split("\u001E").length === 2);
+  check("名乗った差出人ごとに残る", (await got.text()).split(SEP).length === 2);
 }
 
-/* ---------- 入れ替え前に残っていた便を捨てない ---------- */
+/* ---------- 捨てる口 ----------
+
+   渡しても消えなくなったぶん、**意図して空にする道**が要ります。
+   アプリの「中継所を確かめる」が置いた試しの便を片づけるのがここです。 */
+{
+  const env = env0();
+  await call(env, "POST", PATH + "?slot=body", "steps=1");
+  await call(env, "POST", PATH + "?slot=kntest", "kn-selftest=abc");
+
+  const one = await call(env, "DELETE", PATH + "?slot=kntest");
+  check("名指しの DELETE は 200", one.status === 200, String(one.status));
+  const left = await call(env, "GET", PATH);
+  const text = await left.text();
+  check("名指したものだけ消える",
+    text.includes("steps=1") && !text.includes("kn-selftest"), text);
+
+  await call(env, "POST", PATH + "?slot=body", "steps=2");   // ひとつ前も作る
+  const all = await call(env, "DELETE", PATH);
+  check("名指さない DELETE は 200", all.status === 200, String(all.status));
+  const after = await call(env, "GET", PATH);
+  check("ぜんぶ空になる", after.status === 204, String(after.status));
+  check("ひとつ前も残さない", env.MAIL._m.has("box:body:prev") === false);
+}
+
+/* ---------- 入れ替え前に残っていた便を捨てない ----------
+
+   仕切りの無かったころの "box" は、版の外にいます。毎回そのまま渡すと
+   「変わっていないのに 200 が返る」ので、差出人の棚へ移してから渡します。 */
 {
   const env = env0();
   env.MAIL._m.set("box", "steps=999");        // 仕切りが無かったころの便
@@ -107,27 +192,30 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   const got = await call(env, "GET", PATH);
   const text = await got.text();
   check("古い形の便も一緒に渡す", text.includes("steps=999") && text.includes("steps=1"), text);
-  check("そのあと空になる", (await call(env, "GET", PATH)).status === 204);
+  check("古い置き場からは移してある", env.MAIL._m.has("box") === false);
+  check("移した先で版に乗る", verOf(got) !== "0", verOf(got));
 }
 
-/* ---------- 上書きの印は、もう使わない ---------- */
+/* ---------- 控えが古い形（コンマ並び）でも読める ----------
+
+   入れ替えた瞬間、KV に残っているのは "text,json" の形です。ここで
+   版を "0"（＝何も無い）と答えると、待っている便が渡らなくなります。 */
 {
   const env = env0();
-  await call(env, "POST", PATH, "steps=1");
-  await call(env, "POST", PATH, "steps=2");
+  env.MAIL._m.set("box:slots", "text");
+  env.MAIL._m.set("box:text", "steps=42");
   const got = await call(env, "GET", PATH);
-  /* 差出人ごとに棚を持つので、同じ差出人の差し替えは「失った」ではなく
-     「新しいほうが来た」です。警告する理由がなくなりました。 */
-  check("同じ差出人の差し替えでは警告しない", got.headers.get("x-kn-replaced") == null);
+  check("古い控えでも渡る", got.status === 200 && (await got.text()) === "steps=42",
+    String(got.status));
+  check("「何も無い」とは言わない", verOf(got) !== "0", verOf(got));
+}
 
-  const env2 = env0();
-  await call(env2, "POST", PATH, "steps=1");  // 一度だけ、上書きなし
-  const got2 = await call(env2, "GET", PATH);
-  check("上書きが無ければ付かない", got2.headers.get("x-kn-replaced") === null);
-
-  const got3 = await call(env, "GET", PATH);  // 読んだあとは印も消える
-  check("一度伝えたら、次はもう付かない",
-    got3.status === 204 && env.MAIL._m.has("box:replaced") === false);
+/* ---------- 控えに名前はあるが、中身がTTLで消えたとき ---------- */
+{
+  const env = env0();
+  env.MAIL._m.set("box:slots", JSON.stringify({ v: 2, slots: { text: 1757000000000 } }));
+  const got = await call(env, "GET", PATH);
+  check("空と同じに答える（500にしない）", got.status === 204, String(got.status));
 }
 
 /* ---------- 取りに来ない便は、いつか捨てる ---------- */
@@ -138,6 +226,8 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   check("TTL を渡している", typeof ttl === "number", String(ttl));
   check("TTL は KV の下限（60秒）以上", ttl >= 60, String(ttl));
   check("TTL は一週間", ttl === 604800, String(ttl));
+  check("控えにも TTL が付く",
+    env.MAIL._puts.every((o) => o.expirationTtl === 604800));
 }
 
 /* ---------- 道が合言葉 ---------- */
@@ -151,6 +241,9 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   check("根っこには何も無い", root.status === 404, String(root.status));
   const wrongBody = await wrong.text();
   check("違う道に、手がかりを返さない", !/kn-|中継|relay/i.test(wrongBody), wrongBody);
+  const wrongDel = await call(env, "DELETE", "/kn-7f3a9c1d4e8b3");
+  check("道が違えば捨てさせない", wrongDel.status === 404, String(wrongDel.status));
+  check("道が違う DELETE で消えていない", env.MAIL._m.get("box:text") === "steps=1");
 }
 
 /* ---------- 置き忘れは、黙って通さない ---------- */
@@ -192,6 +285,12 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
   const pre = await call(env, "OPTIONS", PATH);
   check("OPTIONS は 204", pre.status === 204, String(pre.status));
   check("どこからでも読める", pre.headers.get("access-control-allow-origin") === "*");
+  /* DELETE は「単純な動詞」ではないので、ブラウザは先に OPTIONS を投げます。
+     許した動詞に入っていないと、そこで止まります。 */
+  check("DELETE も許してある",
+    (pre.headers.get("access-control-allow-methods") || "").includes("DELETE"),
+    pre.headers.get("access-control-allow-methods"));
+
   await call(env, "POST", PATH, "steps=1");
   const got = await call(env, "GET", PATH);
   check("GET にも約束が付いている",
@@ -204,8 +303,8 @@ const env0 = () => ({ RELAY_PATH: PATH, MAIL: fakeKV() });
 /* ---------- 知らない動詞 ---------- */
 {
   const env = env0();
-  const r = await call(env, "DELETE", PATH);
-  check("DELETE は断る（消すのは受け取ったときだけ）", r.status === 405, String(r.status));
+  const r = await call(env, "PATCH", PATH, "steps=1");
+  check("知らない動詞は断る", r.status === 405, String(r.status));
   const r2 = await call(env, "PUT", PATH, "steps=1");
   check("PUT は POST と同じに扱う", r2.status === 200, String(r2.status));
 }

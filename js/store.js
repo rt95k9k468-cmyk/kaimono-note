@@ -2655,6 +2655,30 @@
     return type ? list.filter((h) => h.type === type) : list.slice();
   }
 
+  /* その日の数字が、いつ入ったか。
+
+     `diet.sync.lastAt` とは別のものです。あちらは「最後に何かが取り込まれた
+     時刻」で、いま見ている日の話をしていません——昨日を開いていても今朝の
+     時刻が出ます。画面で言いたいのは「**この数字は何時時点か**」なので、
+     その日の記録そのものが持っている `importedAt` のいちばん新しいものを
+     見ます。
+
+     手で書いた記録は数えません。あれは取り込みの新しさとは関係が無く、
+     混ぜると「さっき手で直したから最新」に見えてしまいます。
+     どの種目を見るかは呼ぶ側が決めます（渡さなければ、その日ぜんぶ）。
+
+     @returns {string|null} ISO の時刻。機械から入った記録が無ければ null。 */
+  function healthSeenAt(day, types) {
+    const want = Array.isArray(types) && types.length ? types : null;
+    let best = null;
+    (dietIndex_().health.get(dayKeyOf(day)) || []).forEach((h) => {
+      if (!h || h.source === "manual" || !h.importedAt) return;
+      if (want && want.indexOf(h.type) < 0) return;
+      if (best == null || h.importedAt > best) best = h.importedAt;
+    });
+    return best;
+  }
+
   /** その日のその種目の合計。無ければ null——0 と「測っていない」は違います。 */
   function healthValue(day, type) {
     const list = healthOfDay(day, type);
@@ -3187,7 +3211,7 @@
     getIconOverride, setIconOverride, addIconReport, removeIconReport,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUserFood, removeUserFood, findFood,
-    putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue,
+    putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue, healthSeenAt,
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
