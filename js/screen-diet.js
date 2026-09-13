@@ -3858,10 +3858,20 @@
                    value="${g.targetKg == null ? "" : String(g.targetKg)}">
           </label>
         </div>
-        <label class="field">
+        <div class="field">
           <span class="field-label">目標日</span>
-          <input type="date" class="input js-td" value="${g.targetDay || ""}">
-        </label>
+          <div class="date-row">
+            <span class="date-cell">
+              <input class="input js-td" type="date" value="${g.targetDay || ""}"
+                     aria-label="目標日を選ぶ">
+              <span class="date-empty js-td-empty" aria-hidden="true">--/--/--</span>
+            </span>
+            <button type="button" class="icon-btn js-td-clear" aria-label="目標日をはずす" hidden>
+              ${icon("close")}
+            </button>
+          </div>
+          <span class="field-hint">決めていなくてもかまいません。</span>
+        </div>
 
         <div class="divider"></div>
         <div class="section-title">一日の目安</div>
@@ -3929,6 +3939,27 @@
     const h = KN.ui.sheet({ title: "目標", content: body, footer: foot, guard: true });
 
     renderKcalSuggestion(body.querySelector(".js-suggest-box"), body);
+
+    /* 目標日は決めなくてもかまいません。ネイティブの日付欄には、いちど
+       選んだ日を空へ戻す手つきが（特に iOS で）無いので、外すための
+       口を別に置きます——「いつまでに」の期限欄（screen-todo.js）と
+       同じ作りです。 */
+    const tdEl = body.querySelector(".js-td");
+    const tdClear = body.querySelector(".js-td-clear");
+    const tdEmpty = body.querySelector(".js-td-empty");
+    function paintTargetDay() {
+      if (tdEmpty) tdEmpty.hidden = !!tdEl.value;
+      if (tdClear) tdClear.hidden = !tdEl.value;
+    }
+    tdEl.addEventListener("change", paintTargetDay);
+    if (tdClear) {
+      tdClear.addEventListener("click", () => {
+        tdEl.value = "";
+        paintTargetDay();
+        KN.motion.fire("select");
+      });
+    }
+    paintTargetDay();
 
     foot.addEventListener("click", () => {
       const num = (sel) => {
