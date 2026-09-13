@@ -731,6 +731,11 @@
    棚の色）。ここは進み具合を持たないので、いつも染まっている側。
    色つきの品物の絵は白くしません——色そのものが「何の品物か」を言うので。 */
 .cal-mark .p-icon.is-todo { color: var(--c-surface); }
+/* daily の積み上げ（読書・種など）は `icon()` の絵をそのまま置くので、
+   `.todo-mark` の入れ物を持ちません。同じ丸に合わせてここでも縮めて
+   白抜きにします——既定の `--ico`（20px）のままだと丸(15px)からはみ出し、
+   色も currentColor が地の字色のままで白抜きになりません。 */
+.cal-mark .ui-ico { width: 11px; height: 11px; color: var(--c-surface); }
 .cal-mark .todo-dot {
   width: 5px; height: 5px; border-radius: var(--r-full);
   background: var(--c-bg);
