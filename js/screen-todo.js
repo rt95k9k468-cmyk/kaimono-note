@@ -847,8 +847,17 @@
       const capDay = (peek && peek.due) || due;
       const capAt = (peek && peek.time) || time;
       cap.classList.toggle("is-peek", !!peek);
-      cap.textContent =
-        [capDay ? formatDay(capDay) : "日付なし", capAt ? tlClock(capAt) : ""].filter(Boolean).join("　");
+      /* 「明日まで レポート」のように、読めたのが期限だけのときは、
+         `due` の欄（「日付なし」）はそのまま——期限は別欄なので、
+         そちらの姿を借りると「やる日が明日になった」と誤解させます。
+         かわりに「◯◯まで」とだけ言います（新しい札は置かない決めごと
+         なので、この一行が兼ねます）。 */
+      if (peek && peek.deadline && !peek.due) {
+        cap.textContent = `${formatDay(peek.deadline)}まで`;
+      } else {
+        cap.textContent =
+          [capDay ? formatDay(capDay) : "日付なし", capAt ? tlClock(capAt) : ""].filter(Boolean).join("　");
+      }
       const facts = hero.querySelector(".js-hero-facts");
       facts.innerHTML = "";
       if (flagged) facts.append(node(html`<span class="hero-fact is-fav">${icon("star")}</span>`));
@@ -1420,6 +1429,11 @@
       paintRepeatDetail();   // 中で paintRows も通ります
       paintHint();
       paintSlots();
+      /* 期限（deadline）は due とは別欄です（CLAUDE.md「長期タスクと、
+         期限」）。limitEl の値を書き直さないと、欄の中の日付ピッカーは
+         打ち替える前の姿のまま残ります。 */
+      if (limitEl) limitEl.value = deadline || "";
+      paintLimit();
     }
 
     function whenApply(opts) {
@@ -1427,12 +1441,13 @@
       if (!W || !titleTouched) return;
       const res = W.parse(titleEl.value);
       if (!W.found(res)) return;
-      const back = { title: titleEl.value, due, time, minutes, part,
+      const back = { title: titleEl.value, due, time, minutes, part, deadline,
         repeat, repeatDays: repeatDays.slice(), repeatNth };
       setTitle(res.title);
       if (res.due) due = res.due;
       if (res.time) time = res.time;
       if (res.minutes) minutes = res.minutes;
+      if (res.deadline) deadline = res.deadline;
       if (res.repeat) {
         repeat = res.repeat;
         repeatDays = res.repeatDays || [];
@@ -1450,12 +1465,13 @@
          続くので、同じことを二枚のトーストで言うことになります。 */
       if (opts && opts.quiet) return;
       haptic(10);
-      KN.ui.toast(`${W.describe(res, { due, time, minutes })}にしました`, {
+      KN.ui.toast(`${W.describe(res, { due, time, minutes, deadline })}にしました`, {
         action: {
           label: "戻す",
           onClick: () => {
             setTitle(back.title);
             due = back.due; time = back.time; minutes = back.minutes; part = back.part;
+            deadline = back.deadline;
             repeat = back.repeat; repeatDays = back.repeatDays; repeatNth = back.repeatNth;
             repaintWhen();
           },
