@@ -316,6 +316,18 @@
     return dayKey(d);
   }
 
+  /** 週は月曜はじまり。`getDay()`（日曜=0）を、月曜=0・日曜=6の**列の位置**
+   *  へ読み替えるための一手間。週の開始をここだけで決めるので、動かすなら
+   *  ここ一か所——`WEEKDAYS` はいじりません（`repeatDays` や「(火)」の
+   *  表記が `getDay()` の生の値と結びついているので、そちらの並びを
+   *  変えると保存済みのくり返し設定の意味がズレます）。 */
+  const weekCol = (wd) => (wd + 6) % 7;
+  /** 曜日の見出し行を月曜はじまりで描くための並び（実際の曜日番号）。
+   *  三画面（やること／daily／ダイエット）が同じこの並びを見出しにも
+   *  くり返しの曜日チップにも使います——書き写すと、片方だけ直した日に
+   *  並びが割れるので。 */
+  const WEEKDAY_COLS = [1, 2, 3, 4, 5, 6, 0];
+
   /** その月の暦を七日そろいにするために要る、**隣の月の日**。
    *
    *  暦は月ごとに組みますが、週は月をまたぎます。8/31（月）で月が終わる週は
@@ -329,21 +341,21 @@
     const lead = [];
     const trail = [];
     const first = new Date(year, month, 1);
-    for (let i = first.getDay(); i > 0; i--) lead.push(dayKey(new Date(year, month, 1 - i)));
+    for (let i = weekCol(first.getDay()); i > 0; i--) lead.push(dayKey(new Date(year, month, 1 - i)));
     const last = new Date(year, month + 1, 0);
-    for (let i = 1; i <= 6 - last.getDay(); i++) {
+    for (let i = 1; i <= 6 - weekCol(last.getDay()); i++) {
       trail.push(dayKey(new Date(year, month + 1, i)));
     }
     return { lead, trail };
   }
 
-  /** その日を含む一週間（日曜はじまり）の、両端の日。
+  /** その日を含む一週間（月曜はじまり）の、両端の日。
    *  カレンダーを一週ぶんに畳むときに、どのマスを残すかを決めます。 */
   function weekOf(key) {
     const d = dayDate(key);
     if (!d) return { from: "", to: "" };
-    const wd = d.getDay();
-    return { from: shiftDay(key, -wd), to: shiftDay(key, 6 - wd) };
+    const col = weekCol(d.getDay());
+    return { from: shiftDay(key, -col), to: shiftDay(key, 6 - col) };
   }
 
   /** Same date n months on, clamped to the month's last day — 1/31 monthly is
@@ -666,7 +678,7 @@
     today, formatDate, formatStamp, relativeDate, foldKana, foldRuns, hasWord, wordAt,
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
-    dayOfWeek, WEEKDAYS, nthWeekdayOf, weekdayNth,
+    dayOfWeek, WEEKDAYS, WEEKDAY_COLS, nthWeekdayOf, weekdayNth,
     dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,

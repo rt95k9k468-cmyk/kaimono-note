@@ -96,7 +96,10 @@
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
     if (t.repeat === "weekly") {
-      const d = t.repeatDays || [];
+      // 表示だけ月曜はじまりに揃えます（保存している repeatDays の並びは
+      // 変えません——曜日チップの並びと同じ理由です）。
+      const d = (t.repeatDays || []).slice()
+        .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
       return d.length ? `毎週 ${d.map((n) => WD[n]).join("・")}` : "毎週";
     }
     const n = t.repeatNth;
@@ -888,9 +891,13 @@
       }
       const rid = isBookend(part) ? part : (repeat || "");
       const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
+      // 表示だけ月曜はじまりに揃えます（曜日チップ・repeatText と同じ並び。
+      // 保存している repeatDays の並びそのものは変えません）。
+      const orderedRepeatDays = repeatDays.slice()
+        .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
       row(".js-row-repeat", rid ? rw : "くりかえさない",
           repeat === "weekly" && repeatDays.length
-            ? repeatDays.map((d) => WD[d]).join("・") : "");
+            ? orderedRepeatDays.map((d) => WD[d]).join("・") : "");
       const nt = KN.notify;
       const on = !!(nt && nt.supported() && nt.enabled() && !nt.blocked());
       row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
@@ -1297,7 +1304,11 @@
 
       if (repeat === "weekly") {
         const row = node(html`<div class="chip-row js-days"></div>`);
-        KN.util.WEEKDAYS.forEach((label, n) => {
+        /* 見出しと同じ月曜はじまりの並び。`n` は保存している実際の曜日番号
+           （0=日〜6=土）で、`repeatDays` の意味はここでは変えません
+           ——並び順を月曜はじまりに揃えるのは表示だけの話です。 */
+        KN.util.WEEKDAY_COLS.forEach((n) => {
+          const label = KN.util.WEEKDAYS[n];
           const on = repeatDays.includes(n);
           const chip = node(html`
             <button type="button" class="chip ${on ? "is-on" : ""}" aria-pressed="${String(on)}"
@@ -1313,8 +1324,10 @@
           row.append(chip);
         });
         detailEl.append(row);
+        const orderedDays = repeatDays.slice()
+          .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
         repeatHint.textContent = repeatDays.length
-          ? `毎週 ${repeatDays.map((n) => KN.util.WEEKDAYS[n]).join("・")} にくり返します`
+          ? `毎週 ${orderedDays.map((n) => KN.util.WEEKDAYS[n]).join("・")} にくり返します`
           : "曜日を選ばないと、いまの日付と同じ曜日で1週間ごとにくり返します";
         return;
       }
@@ -2583,8 +2596,8 @@
 
     const wds = sec.querySelector(".cal-wds");
     wds.innerHTML = "";
-    U.WEEKDAYS.forEach((w, i) => wds.append(node(html`
-      <span class="cal-wd ${i === 0 ? "is-sun" : (i === 6 ? "is-sat" : "")}">${w}</span>
+    U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
+      <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
     `)));
     /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
        して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
