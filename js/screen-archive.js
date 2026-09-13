@@ -435,20 +435,33 @@
     });
   }
 
-  /* その日の粒。書いた種類ぶんの色（最大四つ）。log だけあって積み上げが
-     無い日は、灰色の小さな一粒にします——書いたことは書いたことなので、
-     何も出さないと「その日は空白」に見えてしまいます。 */
+  /* その日の積み上げ。やることのカレンダーと同じ絵で出します
+     （`.cal-mark`——種類の色に染まった丸の中に、その種類の絵）。三つまで。
+     log だけあって積み上げが無い日は、灰色の小さな一粒にします——書いた
+     ことは書いたことなので、何も出さないと「その日は空白」に見えて
+     しまいます。 */
+  function markIconsHtml(types) {
+    return [...new Set(types || [])].slice(0, 3)
+      .map((t) => {
+        const at = store.archiveType(t);
+        return `<i class="cal-mark" style="--cat:${at.color}">${icon(at.icon)}</i>`;
+      }).join("");
+  }
+
   /* 隣の月のマス。週で見るときだけ姿を見せます（月で見るあいだは CSS が
-     伏せるので、月の見た目はこれまでどおり）。押せば、その日へ移ります。 */
-  function outCell(key) {
+     伏せるので、月の見た目はこれまでどおり）。押せば、その日へ移ります。
+     絵も出します——空のままだと「よその月の頭は何も無い」と嘘をつく
+     ことになるので（やることの outCell と同じ理由）。 */
+  function outCell(key, byDay) {
     const d = U.dayDate(key);
     const wd = d ? d.getDay() : 0;
+    const dotsHtml = markIconsHtml(byDay && byDay[key]);
     const cell = node(html`
       <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
               data-day="${key}" tabindex="-1"
               aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
         <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots"></span>
+        <span class="cal-dots">${U.raw(dotsHtml)}</span>
       </button>
     `);
     cell.addEventListener("click", () => {
@@ -477,8 +490,14 @@
     sec.setAttribute("aria-label", `${year}年${month + 1}月`);
 
     const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
+    /* 隣の月へはみ出すマス（lead/trail）の絵も出すため、前後の月ぶんも
+       一緒に集めます。 */
+    const prevYm = U.shiftMonth(`${ym}-01`, -1).slice(0, 7);
+    const nextYm = U.shiftMonth(`${ym}-01`, 1).slice(0, 7);
     const byDay = {};
-    store.entriesOfMonth(ym).forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e.type); });
+    [prevYm, ym, nextYm].forEach((m) => {
+      store.entriesOfMonth(m).forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e.type); });
+    });
     const logged = {};
     store.daysOfMonth(ym).forEach((d) => { logged[d.date] = true; });
 
@@ -495,15 +514,15 @@
        して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
        これまでどおり）。押せば、その日へ行けます。 */
     const outer = U.outDays(year, month);
-    outer.lead.forEach((key) => grid.append(outCell(key)));
+    outer.lead.forEach((key) => grid.append(outCell(key, byDay)));
 
     for (let d = 1; d <= total; d++) {
       const key = U.dayKey(new Date(year, month, d));
       const wd = (lead + d - 1) % 7;
       const isToday = key === today;
-      const kinds = [...new Set(byDay[key] || [])].slice(0, 4);
+      const kinds = [...new Set(byDay[key] || [])].slice(0, 3);
       const dotsHtml = kinds.length
-        ? kinds.map((t) => `<i style="background:${store.archiveType(t).color}"></i>`).join("")
+        ? markIconsHtml(kinds)
         : (logged[key] ? '<i class="is-log"></i>' : "");
       const cell = node(html`
         <button class="cal-day ${isToday ? "is-today" : ""} ${key === (viewDay || today) ? "is-here" : ""}
@@ -524,7 +543,7 @@
       });
       grid.append(cell);
     }
-    outer.trail.forEach((key) => grid.append(outCell(key)));
+    outer.trail.forEach((key) => grid.append(outCell(key, byDay)));
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
     markWeek(sec, viewDay || today);
     moveRing(grid, grid.querySelector(`.cal-day[data-day="${viewDay || today}"]`), true);
