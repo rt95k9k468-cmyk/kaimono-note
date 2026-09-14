@@ -152,6 +152,13 @@
       render() が走るので、ここを 0 に戻すと、スイッチを一つ押しただけで
       一覧の頭まで飛ばされます。 */
   function paintLayer(L) {
+    /* **書いている最中の欄は、組み直さない。** 中継所は見えているあいだ
+       1〜5分ごとに覗きにいき、届けば store が動きます——そのたびに紙を
+       組み直すと、URLを打っている途中の字が消えます（買うものの枠が
+       `saving` を見ているのと同じ心配りの列）。離れれば change が走って
+       保存され、そこで組み直されるので、古いまま残ることはありません。 */
+    const a = document.activeElement;
+    if (a && L.el.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
     const keep = L.el.scrollTop;
     L.body.innerHTML = "";
     const page = L.id ? PAGES[L.id] : null;
@@ -326,6 +333,8 @@
     stores: { title: "お店",                 build: () => [storesGroup()] },
     cats:   { title: "カテゴリ",              build: () => [categoriesGroup()] },
     icons:  { title: "アイコンについて",       build: () => [iconGapsGroup(), iconReportsGroup()] },
+    relay:    { title: "中継所",   build: relayRows },
+    relayHow: { title: "建てかた", build: relayHowRows },
   };
 
   function onEnter() {
@@ -1333,7 +1342,7 @@
         navRow({
           ico: "route", tint: TINT.relay, title: "中継所",
           value: KN.healthRelay.configured() ? KN.healthRelay.host() : "未設定",
-          onTap: openRelaySheet,
+          onTap: () => go("relay"),
         }),
         navRow({
           ico: "sparkles", tint: TINT.ai, title: "AIの窓口",
@@ -1347,9 +1356,177 @@
 
   /* ---------------- 中継所 ----------------
 
-     この画面は設定であると同時に、**手順書**です。外に置かないのは、
-     読む人がiPhoneしか持っていないからで、手順を読むために別の端末を
-     開かせるのは本末転倒だからです。
+     下から出る一枚の紙に、①〜⑤の手順書がまるごと入っていました。**建てて
+     しまった人には、そのほとんどが要らないもの**です——建ったあとに開くのは
+     「ちゃんと届いているか確かめる」「ショートカットの名前を直す」ときで、
+     そのたびに Cloudflare の手順を五段ぶんスクロールすることになる。
+
+     二枚に分けます。**中継所**（いま建っているか・確かめる・名前）と、その
+     「›」の先の**建てかた**（①〜③）。手順そのものも畳みました——⑤あった
+     段が三つになったのは、④（確かめる）と⑤（名前）が手順ではなく
+     **設定**だったからです。手順の紙から出して、状態の紙へ置きました。
+
+     残す言葉は「押して何が起きるか分からないこと」と「つまずいたときの
+     逃げ道」だけ。安心させるための言い回し（「〜する必要はありません」
+     「〜という意味になります」）は、全部落としてあります。
+
+     **中継所URLには触れません。** 読むのは `KN.healthRelay` だけで、
+     ここは欄に出して預かるだけです（このファイルから fetch もしません）。 */
+
+  /* 道（合言葉）は、作ってから②で貼り、③でつなぐまで持ち歩きます。紙が
+     組み直されても消えないように、**紙の外**に置きます——中継所を覗く拍
+     （1〜5分ごと）で store が動くと、紙はそのつど組み直されるので。 */
+  let relayPath = "";
+  /* 確かめた結果も同じ理由でここに。 */
+  let relayTest = null;
+
+  const relayBad = (v) => v && !/^https:\/\//.test(v);
+
+  /* iOSでは書き込みは通ります（読み取りと違って権限を通らない）。それでも
+     黙って失敗させないように、通らなかったら欄に出して手で選べるように
+     します。 */
+  function copyText(text, what) {
+    const ok = () => KN.ui.toast(what + "をコピーしました");
+    const fallback = () => {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
+      document.body.append(ta);
+      ta.select();
+      let done = false;
+      try { done = document.execCommand("copy"); } catch (err) { done = false; }
+      if (done) { ta.remove(); ok(); return; }
+      KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
+      ta.addEventListener("blur", () => ta.remove());
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  /** 字を書く欄を一つだけ置くカード。 */
+  function fieldCard({ label, value, placeholder, hint, onSave }) {
+    const wrap = node(html`
+      <div class="set-card is-pad">
+        <label class="field">
+          <span class="field-label">${label}</span>
+          <input class="input js-f" inputmode="url" autocapitalize="off" spellcheck="false"
+                 placeholder="${placeholder || ""}" value="${value || ""}">
+        </label>
+      </div>
+    `);
+    const f = wrap.querySelector(".js-f");
+    if (hint) f.setAttribute("inputmode", hint);
+    /* 離れたときに預かります。設定の他の行が押した瞬間に効くのと同じ拍で、
+       「保存」を押させるためだけの帯を持ちません。 */
+    f.addEventListener("change", () => onSave(f.value.trim(), f));
+    return wrap;
+  }
+
+  function relayRows() {
+    const url = KN.healthRelay.url();
+    const on = KN.healthRelay.configured();
+
+    /* 確かめた結果。**紙の外に持っている**ので、覗く拍で組み直されても
+       消えません。 */
+    const result = node(html`<div class="js-relay-out"></div>`);
+    const paintResult = () => {
+      result.innerHTML = "";
+      if (!relayTest) return;
+      result.append(node(html`
+        <div class="set-card is-pad">
+          <div class="diet-read">
+            ${KN.util.raw((relayTest.steps || []).map((st) => `
+              <div class="diet-read-row">
+                <span class="diet-read-name">${st.ok ? "✓" : "✗"} ${KN.util.escapeHtml(st.name)}</span>
+                <span class="diet-read-day">${KN.util.escapeHtml(st.detail)}</span>
+              </div>`).join(""))}
+          </div>
+          <p class="set-foot is-flush" style="margin-top:8px">${relayTest.message}</p>
+        </div>
+      `));
+    };
+    paintResult();
+
+    const verify = navRow({
+      ico: "check", tint: TINT.sync, title: "確かめる",
+      value: on ? "" : "URLが要ります",
+      onTap: () => {
+        const v = KN.healthRelay.url();
+        if (!v) { KN.ui.toast("先に「建てかた」でURLをつなげてください"); return; }
+        relayTest = { message: "確かめています…", steps: [] };
+        paintResult();
+        KN.healthRelay.selfTest(v).then((r) => {
+          relayTest = { message: r.message, steps: r.steps || [] };
+          paintResult();
+          if (r.ok && KN.screens.diet) KN.screens.diet.render();
+        }).catch((err) => {
+          relayTest = { message: "確かめられませんでした（" + (err && err.message || err) + "）", steps: [] };
+          paintResult();
+        });
+      },
+    });
+
+    return [
+      foot("iPhoneのショートカットがここへ健康データを置き、くらしノートが取りにいきます。読み方は手入力とまったく同じで、増えるのは入口だけです。"),
+      fieldCard({
+        label: "中継所のURL", value: url,
+        placeholder: "https://…workers.dev/kn-…",
+        onSave: (v, f) => {
+          if (relayBad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+          /* **空にしても外しません。** ここは合言葉を含んだURLで、消すと
+             Cloudflare を見に行かないと戻せません。外すのは下の行から。 */
+          if (!v) { f.value = KN.healthRelay.url(); return; }
+          KN.healthRelay.setUrl(v);
+          render();
+          KN.ui.toast("中継所を覚えました");
+        },
+      }),
+      card(verify),
+      result,
+      foot("置く・取る・消える・道が合言葉になっている——を一往復して確かめます。古い形の中継所につないでいると、一行目でそう出ます。"),
+      fieldCard({
+        label: "ショートカットの名前", value: KN.healthRelay.shortcutName(),
+        placeholder: "くらしノート健康",
+        onSave: (v) => { KN.healthRelay.setShortcutName(v); KN.ui.toast(v ? "覚えました" : "外しました"); },
+      }),
+      foot("入れておくと、ダイエットの「◯:◯◯ 時点」を押したときに、そのショートカットをその場で走らせます。ショートカットアプリに出ている名前を、記号や空白まで一字たがえずに。"),
+      card(navRow({
+        ico: "route", tint: TINT.relay, title: "建てかた",
+        onTap: () => go("relayHow"),
+      })),
+      foot("まだ建てていない方はこちら。iPhoneだけで建てられます。"),
+      on ? card(dangerRow({
+        ico: "close", title: "中継所を外す",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "中継所を外しますか？",
+            message: "このURLはCloudflareの画面を見ないと作り直せません。控えてから外してください。",
+            okLabel: "外す", danger: true,
+          });
+          if (!ok) return;
+          KN.healthRelay.setUrl("");
+          relayTest = null;
+          render();
+          KN.ui.toast("外しました");
+        },
+      })) : null,
+    ];
+  }
+
+  /* 「Cloudflareに置く」の行き先。リポジトリの relay/ を指します——
+     Cloudflare がそこの wrangler.jsonc を読んで、置き場を作り、
+     .dev.vars.example を見て合言葉を尋ねてきます。 */
+  const DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url="
+    + "https://github.com/rt95k9k468-cmyk/kaimono-note/tree/main/relay";
+
+  /* ---------------- 建てかた（三段目） ----------------
+
+     ①〜⑤ を三つに畳みました。④（確かめる）と⑤（ショートカットの名前）は
+     **手順ではなく設定**だったので、一つ手前の紙へ移してあります。
 
      iPhoneだけで建てるとき、難所は二つあります。
 
@@ -1361,268 +1538,90 @@
           アプリが作ります。
 
      残りは、Cloudflareの画面で貼るだけの作業になります。 */
-  /* 「Cloudflareに置く」の行き先。リポジトリの relay/ を指します——
-     Cloudflare がそこの wrangler.jsonc を読んで、置き場を作り、
-     .dev.vars.example を見て合言葉を尋ねてきます。 */
-  const DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url="
-    + "https://github.com/rt95k9k468-cmyk/kaimono-note/tree/main/relay";
-
-  function openRelaySheet() {
-    // まだ保存していない、この場かぎりの下ごしらえ。
-    let draftPath = "";
-
-    const body = node(html`
-      <div class="stack">
-        <p class="diet-note">
-          ショートカットがここへ健康データを置き、くらしノートが受け取ります。
-          読み方は手入力とまったく同じで、増えるのは入口だけです。
-        </p>
-        <p class="diet-note">
-          <b>すでに建てている方は、置き直しが要ります。</b>渡した便を消さない
-          作りに変わったので、アプリだけ新しくしても効きません。下の「中継所の
-          コードをコピー」から貼り直すか、②でもう一度配置してください
-          （URLも道もそのままで構いません）。
-        </p>
-        <p class="diet-note">
-          <b>iPhoneだけで建てられます。</b>パソコンは要りません。下の①〜④を
-          順に。Cloudflareの画面はSafariで開いてください（無料・カード不要）。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">① 道（合言葉）をつくる</div>
+  function relayHowRows() {
+    const pathCard = node(html`
+      <div class="set-card is-pad">
         <div class="diet-relaykey">
-          <code class="js-path">${draftPath || "（まだ作っていません）"}</code>
+          <code class="js-path">${relayPath || "（まだ作っていません）"}</code>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
-          <button class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button type="button" class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
+          <button type="button" class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
         </div>
-        <p class="diet-note">
-          <b>これが合言葉です。</b>知られると、その人も同じ郵便受けを開けられます。
-          ②の途中で貼るので、先に作ってコピーしておきます。
-        </p>
+      </div>
+    `);
+    const label = pathCard.querySelector(".js-path");
+    pathCard.querySelector(".js-newpath").addEventListener("click", () => {
+      relayPath = KN.healthRelay.makePath();
+      label.textContent = relayPath;
+      copyText(relayPath, "道");
+    });
+    pathCard.querySelector(".js-copypath").addEventListener("click", () => {
+      if (!relayPath) { KN.ui.toast("先に「道をつくる」を押してください"); return; }
+      copyText(relayPath, "道");
+    });
 
-        <div class="divider"></div>
-        <div class="section-title">② 中継所を置く（コピペ不要）</div>
+    const deployCard = node(html`
+      <div class="set-card is-pad">
         <a class="btn btn-primary btn-block js-deploy"
            href="${DEPLOY_URL}" target="_blank" rel="noopener">Cloudflareに置く</a>
-        <ol class="diet-steps">
-          <li>Cloudflareに登録（メールアドレスだけ。カードは要りません）。
-            登録済みならそのまま進みます</li>
-          <li>GitHubとつなぐ画面が出たら許可する（コードの置き場を読むためです）</li>
+        <ol class="diet-steps" style="margin-top:12px">
+          <li>Cloudflareに登録（メールアドレスだけ。カードは要りません）</li>
+          <li>GitHubとつなぐ画面が出たら許可する</li>
           <li><b>RELAY_PATH</b> を聞かれたら、①でコピーした道を<b>ペースト</b></li>
           <li><b>Deploy</b>（Create and deploy）を押す</li>
         </ol>
-        <p class="diet-note">
-          押すと、コードも<b>置き場（KV）も Cloudflare が自分で用意します</b>。
-          コードを貼り付ける必要も、KVを作って結び付ける必要もありません
-          （設計図に置き場の番号を書いていないので、「作ってください」の意味になります）。
-        </p>
-        <p class="diet-note">
-          <b>RELAY_PATH を聞かれなかったら</b>、置いたあとに
-          <b>Settings → Variables and Secrets → Add</b> で、Type を <b>Secret</b>、
-          名前を <code>RELAY_PATH</code> にして置いてください（それから <b>Deploy</b>）。
-        </p>
+      </div>
+    `);
 
-        <p class="diet-note">
-          <b>うまくいかないときは、Cloudflareの画面からも同じことができます。</b>
-          <b>Create</b> → <b>Import a repository</b> → このアプリのリポジトリ
-          （<code>kaimono-note</code>）を選び、<b>Root directory</b> に
-          <code>relay</code> と入れて配置します。<b>あなた自身のリポジトリ</b>なので、
-          GitHubをつなげば一覧に出ます。
-        </p>
-        <p class="diet-note">
-          置き場（KV）が自動で用意されなかったときだけ、
-          <b>Storage &amp; Databases → KV</b> で作って、Workerの
-          <b>Settings → Bindings</b> で <code>MAIL</code> という名前に結んでください。
-        </p>
-
-        <div class="divider"></div>
-        <p class="diet-note">
-          <b>コードを手で貼るやり方は、iPhoneでは勧めません。</b>
-          編集画面（Edit code）はパソコン向けの部品でできていて、
-          指での「すべてを選択 → ペースト」がうまく効かないことがあります。
-          上の二つは、どちらも<b>貼り付けを必要としません</b>。
-          それでも中身を見たい・手で貼りたいときのために、口だけ残してあります。
-        </p>
-        <button class="btn btn-soft btn-block js-copycode">中継所のコードをコピー</button>
-
-        <div class="divider"></div>
-        <div class="section-title">③ URLをつなげる</div>
+    const joinCard = node(html`
+      <div class="set-card is-pad">
         <label class="field">
-          <span class="field-label">WorkerのURL（Cloudflareの画面からコピー）</span>
+          <span class="field-label">WorkerのURL</span>
           <input class="input js-base" inputmode="url" autocapitalize="off" spellcheck="false"
                  placeholder="https://kurashi-relay.あなた.workers.dev">
         </label>
-        <button class="btn btn-soft btn-block js-join">道をつなげる</button>
-        <label class="field">
-          <span class="field-label">中継所のURL（これが保存されます）</span>
-          <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
-                 placeholder="https://…workers.dev/kn-…"
-                 value="${KN.healthRelay.url()}">
-        </label>
-        <p class="diet-note">
-          WorkerのURLは、Cloudflareの Worker の画面の上のほうに出ています
-          （<code>…workers.dev</code>）。それを貼って「道をつなげる」を押すと、
-          ③で作った道が後ろに付きます。手で打ち継ぐ必要はありません。
-        </p>
-        <p class="diet-note">
-          <b>ショートカット（自動化）を3本目以降増やすとき。</b>
-          中継所は「JSON形式（睡眠など）」と「それ以外の書式（歩数・体重など）」の
-          二つまでは自動で仕分けますが、<b>それ以外の書式のショートカットを
-          2本目以降さらに追加する場合</b>は、URLの末尾に <code>?slot=名前</code>
-          を付けて名乗ってください（例：体重用なら
-          <code>https://…workers.dev/kn-…?slot=weight</code>）。
-          名乗らずに同じ書式のショートカットを複数走らせると、あとから届いた便が
-          前の便を上書きしてしまい、「一部の項目だけ届かない」ことになります。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">④ 確かめる</div>
-        <button class="btn btn-primary btn-block js-verify">中継所を確かめる</button>
-        <div class="js-steps"></div>
-        <p class="diet-note js-said">
-          置く・取る・消える・道が合言葉になっている——を、この場で一往復して
-          確かめます。ここが全部通れば、中継所は正しく建っています。
-        </p>
-        <p class="diet-note">
-          試しの便は<b>健康データの形をしていないもの</b>（<code>kn-selftest=…</code>）を、
-          専用の棚（<code>?slot=kntest</code>）へ置いて、最後に自分で片づけます。
-          本物の便には触れませんし、片づけ損ねても記録には入りません。
-        </p>
-        <p class="diet-note">
-          古い形の中継所につないでいると、一行目で<b>そう出ます</b>。
-          そのときは上の「中継所のコードをコピー」から貼り直してください。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">⑤ その場で取りに行けるようにする</div>
-        <label class="field">
-          <span class="field-label">ショートカットの名前（歩数などを送るもの）</span>
-          <input class="input js-scname" autocapitalize="off" spellcheck="false"
-                 placeholder="くらしノート健康"
-                 value="${KN.util.escapeHtml(KN.healthRelay.shortcutName())}">
-        </label>
-        <p class="diet-note">
-          入れておくと、ダイエットの「からだ」の右の<b>「◯:◯◯ 時点」を押したときに、
-          そのショートカットをその場で走らせます</b>。無人のオートメーションと違って、
-          <b>指が触れている＝iPhoneのロックが解けている</b>ので、ヘルスケアが
-          読めないまま空振りすることがありません。戻ってきたぶんは、アプリが
-          2分間・5秒おきに待ち受けて拾います。
-        </p>
-        <p class="diet-note">
-          ショートカットアプリに出ている名前を、<b>一字たがえずに</b>入れてください
-          （記号や空白も含めて）。押すと一瞬ショートカットアプリへ切り替わります
-          ——戻るのは指で構いません。名前を空にすれば、押しても中継所を覗くだけに
-          なります。
-        </p>
+        <button type="button" class="btn btn-primary btn-block js-join" style="margin-top:12px">
+          道をつなげて保存
+        </button>
       </div>
     `);
-
-    const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-clear" style="flex:1">外す</button>
-        <button class="btn btn-primary js-save" style="flex:1">保存</button>
-      </div>
-    `);
-    const h = KN.ui.sheet({ title: "中継所", content: body, footer: foot });
-
-    const said = body.querySelector(".js-said");
-    const stepsBox = body.querySelector(".js-steps");
-    const urlField = body.querySelector(".js-url");
-    const pathLabel = body.querySelector(".js-path");
-    const readUrl = () => urlField.value.trim();
-    const bad = (v) => v && !/^https:\/\//.test(v);
-
-    /* iOSでは書き込みは通ります（読み取りと違って権限を通らない）。
-       それでも黙って失敗させないように、通らなかったら欄に出して
-       手で選べるようにします。 */
-    function copy(text, what) {
-      const ok = () => KN.ui.toast(what + "をコピーしました");
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(ok, () => fallback(text, what));
-      } else {
-        fallback(text, what);
-      }
-    }
-    function fallback(text, what) {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.setAttribute("readonly", "");
-      ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
-      document.body.append(ta);
-      ta.select();
-      let done = false;
-      try { done = document.execCommand("copy"); } catch (err) { done = false; }
-      if (done) { ta.remove(); KN.ui.toast(what + "をコピーしました"); return; }
-      KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
-      ta.addEventListener("blur", () => ta.remove());
-    }
-
-    body.querySelector(".js-copycode").addEventListener("click", () => {
-      copy(KN.relayCode, "コード");
-    });
-
-    body.querySelector(".js-newpath").addEventListener("click", () => {
-      draftPath = KN.healthRelay.makePath();
-      pathLabel.textContent = draftPath;
-      copy(draftPath, "道");
-    });
-    body.querySelector(".js-copypath").addEventListener("click", () => {
-      if (!draftPath) { KN.ui.toast("先に「道をつくる」を押してください"); return; }
-      copy(draftPath, "道");
-    });
-
-    body.querySelector(".js-join").addEventListener("click", () => {
-      const base = body.querySelector(".js-base").value.trim();
+    joinCard.querySelector(".js-join").addEventListener("click", () => {
+      const base = joinCard.querySelector(".js-base").value.trim();
       if (!base) { KN.ui.toast("WorkerのURLを貼ってください"); return; }
-      if (bad(base)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
-      if (!draftPath && !/\/\S/.test(base.replace(/^https:\/\/[^/]+/, ""))) {
+      if (relayBad(base)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
+      if (!relayPath && !/\/\S/.test(base.replace(/^https:\/\/[^/]+/, ""))) {
         KN.ui.toast("先に「道をつくる」を押してください"); return;
       }
-      urlField.value = KN.healthRelay.joinUrl(base, draftPath);
-      KN.ui.toast("つなげました。④で確かめてください");
+      KN.healthRelay.setUrl(KN.healthRelay.joinUrl(base, relayPath));
+      /* つないだら、ここで終わりです。**一つ手前へ返します**——次にすること
+         （確かめる）はあちらにあるので、戻る道を探させません。 */
+      back();
+      KN.ui.toast("つなげました。「確かめる」を押してください");
     });
 
-    /* 確かめるのは、まだ保存していない欄の値です。打ち間違えたURLを
-       保存させてから試させるのは順番が逆なので。 */
-    body.querySelector(".js-verify").addEventListener("click", () => {
-      const v = readUrl();
-      if (!v) { KN.ui.toast("先に③でURLをつなげてください"); return; }
-      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
-      const btn = body.querySelector(".js-verify");
-      btn.disabled = true;
-      stepsBox.innerHTML = "";
-      said.textContent = "確かめています…";
-      KN.healthRelay.selfTest(v).then((r) => {
-        said.textContent = r.message;
-        stepsBox.innerHTML = "";
-        stepsBox.append(node(html`
-          <div class="diet-read">
-            ${KN.util.raw(r.steps.map((st) => `
-              <div class="diet-read-row">
-                <span class="diet-read-name">${st.ok ? "✓" : "✗"} ${KN.util.escapeHtml(st.name)}</span>
-                <span class="diet-read-day">${KN.util.escapeHtml(st.detail)}</span>
-              </div>`).join(""))}
-          </div>
-        `));
-        if (r.ok && KN.screens.diet) KN.screens.diet.render();
-      }).catch((err) => {
-        said.textContent = "確かめられませんでした（" + (err && err.message || err) + "）";
-      }).finally(() => { btn.disabled = false; });
-    });
+    const codeCard = card(navRow({
+      ico: "copy", tint: TINT.sub, title: "中継所のコードをコピー",
+      onTap: () => copyText(KN.relayCode, "コード"),
+    }));
 
-    foot.querySelector(".js-save").addEventListener("click", () => {
-      const v = readUrl();
-      if (bad(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
-      KN.healthRelay.setUrl(v);
-      KN.healthRelay.setShortcutName(body.querySelector(".js-scname").value);
-      h.close(); render();
-      KN.ui.toast(v ? "中継所を覚えました" : "中継所を外しました");
-    });
-    foot.querySelector(".js-clear").addEventListener("click", () => {
-      KN.healthRelay.setUrl(""); h.close(); render(); KN.ui.toast("外しました");
-    });
+    return [
+      foot("パソコンは要りません。Cloudflareの画面はSafariで開いてください（無料・カード不要）。"),
+      head("① 道（合言葉）をつくる"),
+      pathCard,
+      foot("これが合言葉です。知られると、その人も同じ郵便受けを開けられます。②の途中で貼るので、先に作ってコピーしておきます。"),
+      head("② 中継所を置く"),
+      deployCard,
+      /* 逃げ道は一段にまとめます。三つに割ると、どれも同じ重さの手順に
+         見えて、**まっすぐ進める人にも三段ぶん読ませる**ことになります。 */
+      foot("つまずいたら：RELAY_PATH を聞かれなかったら、置いたあとに Settings → Variables and Secrets → Add で Type を Secret、名前を RELAY_PATH にして Deploy。置く画面が出なければ Create → Import a repository → kaimono-note を選び、Root directory に relay。置き場（KV）が用意されなかったときだけ Storage & Databases → KV で作り、Settings → Bindings で MAIL に結びます。"),
+      codeCard,
+      foot("手で貼るのは、iPhoneでは勧めません（編集画面が指で扱いにくいため）。すでに建てている方は、ここから貼り直してください——渡した便を消さない作りに変わったので、アプリだけ新しくしても効きません。URLも道もそのままで構いません。"),
+      head("③ URLをつなげる"),
+      joinCard,
+      foot("Workerの画面の上のほうに出ている …workers.dev を貼ると、①の道が後ろに付いて保存されます。手で打ち継ぐ必要はありません。"),
+      foot("ショートカットを3本目以降増やすときは、URLの末尾に ?slot=名前 を付けて名乗ってください（例：?slot=weight）。名乗らないと、同じ書式の便どうしが上書きし合います。"),
+    ];
   }
 
   /* 鍵ではなくURLを預かります。ここに鍵を書かせないのは方針ではなく事実で、
