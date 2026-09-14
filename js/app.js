@@ -633,7 +633,7 @@
     /* 設定は紙の重なり（.set-layer）で、送るのはいちばん上の一枚です。
        画面そのものは `overflow: hidden` なので、ここを教えないと
        pull-refresh が「上端にも下端にも同時に居る」と読みます。 */
-    const layer = el.querySelector(".set-layer:last-child");
+    const layer = el.querySelector(".set-layer:last-child .set-scroll");
     if (layer) return layer;
     const sheet = el.querySelector(".tl-sheet");
     if (sheet) {

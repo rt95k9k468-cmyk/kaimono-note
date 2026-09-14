@@ -104,7 +104,100 @@
   /* menu … 頭に置く「⋯」の中身。[{ id, label(), sub, icon, danger, onPick }]
      たまに、一度だけ使うもの（★を付ける・削除）の置き場です。決めごとの
      列に混ぜると、毎回そこを通ることになります。 */
-  function sheet({ title, titleMark, hero, menu, content, footer, onClose, guard }) {
+  /* ---- 書きかけのまま閉じようとしたとき ----
+
+     ×、下へ払う、外を押す、左端から引く——どれも「やめる」の合図ですが、
+     **書いたものを捨てる合図ではありません**。開いたときの中身を覚えて
+     おいて、変わっていれば**そのまま保存します**。聞きません——保存の
+     ボタンがそこにあって、押せる状態で、中身が変わっているなら、答えは
+     もう決まっているので。
+
+     聞くのは、**押しても保存が通らなかったとき**だけです（体重が空、の
+     ような検算で止まる紙）。そのときは閉じないので、それを合図に一度だけ
+     聞きます——「保存しない」を選ぶ道が無いと、直せない欄を抱えたまま
+     出られなくなるので。
+
+     **紙でも、設定の中の押しのける一枚でも、同じことをします。**だから
+     ここに一つだけ置いて、両方が借ります——二か所に書くと、片方だけ
+     直した日に「下へ払うと消えるが、左端から引くと残る」が起きます。
+
+     見張る範囲は**入れものぜんぶ**。`.sheet-body` の中しか数えていな
+     かった時期があり、やることの題の欄（hero にいる）を打ち替えただけ
+     だと「何も変わっていない」と判定され、黙って捨てられていました。
+     欄がどの段にあるかは、書いた人にとって何の意味も持ちません。数え
+     ないのは帯（footer）の中だけ——押せば決まるものなので。 */
+  function makeGuard({ el, footer, guard, close, isClosed }) {
+    const inFoot = (n) => !!(footer && footer.contains && footer.contains(n));
+    const fields = () => [...el.querySelectorAll("input, textarea, select")]
+      .filter((f) => !f.readOnly && !f.disabled && f.type !== "file" && !inFoot(f));
+    const snapshot = () =>
+      fields().map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
+      + "\u241E"
+      + [...el.querySelectorAll("[aria-pressed]")].filter((b) => !inFoot(b))
+        .map((b) => b.getAttribute("aria-pressed")).join(",");
+    /* 「押せば済む」ボタン。帯そのものがボタンのこともあれば（やること）、
+       中に並んでいることもあります（体重、お酒）。押せない状態のものは
+       数えません——押しても何も起きないので、聞く意味がありません。 */
+    const primary = () => {
+      if (!footer || guard !== true) return null;
+      const ok = (b) => b && !b.disabled;
+      if (footer.matches && footer.matches(".js-save, .btn-primary") && ok(footer)) return footer;
+      const inside = footer.querySelector
+        ? footer.querySelector(".js-save, .btn-primary") : null;
+      return ok(inside) ? inside : null;
+    };
+    let baseline = snapshot();
+    /* 開いた直後に自分で埋める紙があります（前回と同じ条件、いまの時刻…）。
+       それを「その人が書いた」と数えないよう、一拍おいて取り直します。 */
+    setTimeout(() => { if (!isClosed()) baseline = snapshot(); }, 60);
+
+    return function tryClose() {
+      if (isClosed()) return;
+      const btn = guard === false ? null : primary();
+      if (!btn || snapshot() === baseline) { close(); return; }
+      /* 保存のボタンを、そのまま押します。うまくいった紙は自分で閉じるので
+         （どの保存も最後に handle.close() を呼びます）、**閉じたかどうか**が
+         そのまま「保存できたか」の返事になります。
+
+         保存が非同期な紙のために、返事は一拍おいて聞きます。 */
+      btn.click();
+      setTimeout(() => {
+        if (isClosed()) return;
+        /* 「捨てる」ほうを ok に置くのは、confirm が**流された（外を押した・
+           Escape）ときに false を返す**からです。false ＝ 何もしない＝紙は
+           開いたまま、が安全側になります。 */
+        confirm({
+          title: "保存できませんでした",
+          message: "書きかけのものが残っています。",
+          okLabel: "保存しない",
+          cancelLabel: "書きつづける",
+          danger: true,
+        }).then((drop) => { if (drop) close(); });
+      }, 80);
+    };
+  }
+
+  /* ---- 設定の中では、紙ではなく一枚を押しのける ----
+
+     `KN.ui.pageHost` が名乗り出ていて、いまがその画面なら、下から出る紙の
+     かわりに**全画面の一枚**として開きます。呼ぶ側は同じ handle を受け取る
+     ので、`h.close()` も `h.tryClose()` もそのまま効きます——十数か所の
+     `KN.ui.sheet(...)` を一つも書き換えずに、設定の中だけが押しのけに
+     なる、ということです。
+
+     移さないものが三つ：
+       - `as: "dialog"`（confirm・prompt・ほかの操作）。**あれは決めるための
+         もので、行き先ではありません。**iOS でも設定の中に警告は警告として
+         出ます。
+       - 頭を敷いた紙（hero）と「⋯」を持つ紙（menu）。あの二つは紙の形に
+         寄りかかった作りなので、移すと絵が壊れます。 */
+  let pageHost = null;
+
+  function sheet(opts) {
+    const { title, titleMark, hero, menu, content, footer, onClose, guard } = opts || {};
+    if (pageHost && opts && opts.as !== "dialog" && !hero && !menu && pageHost.wants()) {
+      return pageHost.open(opts);
+    }
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     const el = node(html`
       <div class="sheet ${hero ? "has-hero" : ""}" role="dialog" aria-modal="true"
@@ -222,57 +315,7 @@
        いない」と判定され、下へ払うと**黙って捨てられていました**。欄がどの
        段にあるかは、書いた人にとって何の意味も持ちません。紙ぜんぶを見ます
        （帯の中は押せば決まるものなので、そこだけ数えません）。 */
-    const inFoot = (n) => !!(footer && footer.contains && footer.contains(n));
-    const fields = () => [...el.querySelectorAll("input, textarea, select")]
-      .filter((f) => !f.readOnly && !f.disabled && f.type !== "file" && !inFoot(f));
-    const snapshot = () =>
-      fields().map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
-      + "\u241E"
-      + [...el.querySelectorAll("[aria-pressed]")].filter((b) => !inFoot(b))
-        .map((b) => b.getAttribute("aria-pressed")).join(",");
-    /* 「押せば済む」ボタン。帯そのものがボタンのこともあれば（やること）、
-       中に並んでいることもあります（体重、お酒）。押せない状態のものは
-       数えません——押しても何も起きないので、聞く意味がありません。 */
-    const primary = () => {
-      if (!footer || guard !== true) return null;
-      const ok = (b) => b && !b.disabled;
-      if (footer.matches && footer.matches(".js-save, .btn-primary") && ok(footer)) return footer;
-      const inside = footer.querySelector
-        ? footer.querySelector(".js-save, .btn-primary") : null;
-      return ok(inside) ? inside : null;
-    };
-    let baseline = snapshot();
-    /* 開いた直後に自分で埋める紙があります（前回と同じ条件、いまの時刻…）。
-       それを「その人が書いた」と数えないよう、一拍おいて取り直します。 */
-    setTimeout(() => { if (!closed) baseline = snapshot(); }, 60);
-
-    function tryClose() {
-      if (closed) return;
-      const btn = guard === false ? null : primary();
-      if (!btn || snapshot() === baseline) { close(); return; }
-      /* 保存のボタンを、そのまま押します。うまくいった紙は自分で閉じるので
-         （どの保存も最後に handle.close() を呼びます）、**閉じたかどうか**が
-         そのまま「保存できたか」の返事になります。
-
-         保存が非同期な紙のために、返事は一拍おいて聞きます。 */
-      btn.click();
-      setTimeout(() => {
-        if (closed) return;
-        /* 閉じていない＝検算で止まった紙です。何が足りないかは、その紙自身が
-           もう言っています（トースト）。ここで聞くのは「直す」か「捨てる」か
-           ——直せない欄を抱えたまま出られなくならないように。 */
-        /* 「捨てる」ほうを ok に置くのは、confirm が**流された（外を押した・
-           Escape）ときに false を返す**からです。false ＝ 何もしない＝紙は
-           開いたまま、が安全側になります。 */
-        confirm({
-          title: "保存できませんでした",
-          message: "書きかけのものが残っています。",
-          okLabel: "保存しない",
-          cancelLabel: "書きつづける",
-          danger: true,
-        }).then((drop) => { if (drop) close(); });
-      }, 80);
-    }
+    const tryClose = makeGuard({ el, footer, guard, close, isClosed: () => closed });
 
     backdrop.addEventListener("click", tryClose);
     el.querySelector(".js-close").addEventListener("click", tryClose);
@@ -490,7 +533,7 @@
      背景の作法が同じであるほうが、覚え直しがありません。 */
   function actionSheet(items) {
     const box = node(html`<div class="act-list"></div>`);
-    const handle = sheet({ title: "ほかの操作", content: box });
+    const handle = sheet({ title: "ほかの操作", content: box, as: "dialog" });
     (items || []).forEach((it) => {
       const row = node(html`
         <button type="button" class="act-row ${it.danger ? "is-danger" : ""}">
@@ -570,7 +613,7 @@
       `);
 
       const h = sheet({
-        title, content: body, footer: foot, guard: false,
+        title, content: body, footer: foot, guard: false, as: "dialog",
         onClose: () => { if (!settled) { settled = true; resolve(false); } },
       });
 
@@ -603,7 +646,7 @@
       `);
 
       const h = sheet({
-        title, content: body, footer: foot, guard: false,
+        title, content: body, footer: foot, guard: false, as: "dialog",
         onClose: () => { if (!settled) { settled = true; resolve(null); } },
       });
 
@@ -1103,8 +1146,12 @@
     }, 320);
   }
 
+  /** 設定の画面が「紙のかわりに一枚を押しのける」と名乗り出るための口。 */
+  function setPageHost(host) { pageHost = host; }
+
   KN.ui = {
     sheet, actionSheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, parkSearch, revealSearch,
   };

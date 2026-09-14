@@ -1886,6 +1886,15 @@
   inset: 0;
   display: flex;
   flex-direction: column;
+  background: var(--c-bg);
+}
+
+/* 送るのは、帯と帯のあいだだけ。**帯を送る箱の外へ出した**ので、貼りつける
+   仕掛け（sticky）は要りません——上の帯はいつもそこに居て、下の帯（保存・
+   外す）も中身の長さに関わらず同じところに居ます。 */
+.set-scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: none;
@@ -1894,9 +1903,31 @@
      `preventDefault` は投げません——投げると、戻らないと決めたあとの縦送り
      まで止まります。 */
   touch-action: pan-y;
-  background: var(--c-bg);
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
 }
+
+/* 押せば決まるもの（保存・外す）の帯。紙のときは中身の最後に置いていま
+   したが、一枚ぶんの高さがあると、短い欄の紙でボタンが画面のまん中に
+   浮きます。下の帯（タブ）のぶんだけ、自分で空けます。 */
+.set-bar {
+  flex: none;
+  padding: var(--sp-3) var(--set-gut) calc(var(--tabbar-space) + var(--sp-2));
+  background: var(--c-bg);
+  box-shadow: 0 -1px 0 var(--set-line);
+}
+.set-bar > * { width: 100%; }
+
+/* 紙のかわりに押しのけている一枚。中身は紙のつもりで組まれているので、
+   紙が持っていた余白と段の空きを、そのままここが持ちます
+   （`.sheet-body` の実測：左右 20px・下 20px・段の空き 16px）。 */
+.set-layer.is-sheetish .js-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+}
+/* 選ぶ一枚（二択の行）は、設定のカードと同じ幅・同じ角に揃えます。 */
+.set-layer.is-sheetish .set-choose { border-radius: 18px; }
 
 /* 影は**動いている一枚にだけ**。止まっているあいだ左端に影があると、そこに
    何かが重なっているという嘘になります。 */
@@ -1912,8 +1943,7 @@
    左上に丸い戻るが**いつも**居ます（参考画像3の中の画面と同じ形）。 */
 
 .set-nav {
-  position: sticky;
-  top: 0;
+  flex: none;
   z-index: 20;
   display: flex;
   align-items: center;

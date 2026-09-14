@@ -35,20 +35,27 @@
   /** 動いている最中は、次の一手を取らない（重ねて押されると紙が迷子になる）。 */
   let moving = false;
 
-  function makeLayer(pageId) {
+  /** 一枚を組む。`opts.title` を渡すと、`PAGES` に載っていない一枚
+      （紙のかわりに押しのけるもの）になります。`opts.bar` は下の帯。 */
+  function makeLayer(pageId, opts) {
+    opts = opts || {};
     const page = pageId ? PAGES[pageId] : null;
+    const root2 = !pageId && !opts.title;   // 根っこ（大きな題を持つ一枚）
     const el = node(html`
       <div class="set-layer">
         ${/* 帯は**紙ごと**に持ちます。押しのけられるときに帯も一緒に動くのが、
-              あちらの動きなので——一枚だけ据え置くと、題だけが宙に残ります。 */""}
+              あちらの動きなので——一枚だけ据え置くと、題だけが宙に残ります。
+              送る箱の**外**に置くので、貼りつける仕掛けは要りません。 */""}
         <header class="set-nav js-nav">
           <button class="set-back js-back" aria-label="もどる">${icon("chevron")}</button>
           <span class="set-nav-title js-nav-title"></span>
           ${/* 題を**まん中**に置くための、戻るボタンと同じ幅の空き。 */""}
           <span class="set-nav-pad" aria-hidden="true"></span>
         </header>
-        ${pageId ? "" : html`<h1 class="set-hero js-hero">設定</h1>`}
-        <div class="js-body"></div>
+        <div class="set-scroll js-scroll">
+          ${root2 ? html`<h1 class="set-hero js-hero">設定</h1>` : ""}
+          <div class="js-body"></div>
+        </div>
       </div>
     `);
     const L = {
@@ -57,11 +64,20 @@
       nav: el.querySelector(".js-nav"),
       navTitle: el.querySelector(".js-nav-title"),
       hero: el.querySelector(".js-hero"),
+      scroll: el.querySelector(".js-scroll"),
       body: el.querySelector(".js-body"),
     };
-    L.navTitle.textContent = page ? page.title : "設定";
+    L.navTitle.textContent = page ? page.title : (opts.title || "設定");
+    /* 押せば決まるもの（保存・外す）は、下に貼りつけた帯へ。紙のときは
+       中身の最後に置いていましたが、一枚ぶんの高さがあると、短い欄の紙で
+       ボタンが画面のまん中に浮きます。 */
+    if (opts.bar) {
+      const bar = node(html`<div class="set-bar"></div>`);
+      bar.append(opts.bar);
+      el.append(bar);
+    }
     el.querySelector(".js-back").addEventListener("click", back);
-    el.addEventListener("scroll", () => paintNav(L), { passive: true });
+    L.scroll.addEventListener("scroll", () => paintNav(L), { passive: true });
     return L;
   }
 
@@ -74,6 +90,13 @@
     /* 左端から引いて一段戻る。設定の中では紙の重なり、いちばん外では
        画面そのものが動きます——どちらも「上の一枚と、その下の一枚」なので、
        同じ仕掛けが両方を受け持てます。 */
+    /* 設定の中では、紙ではなく一枚を押しのける、と名乗り出ます。決めるための
+       もの（confirm・ほかの操作）は `as: "dialog"` で紙のまま来ます。 */
+    KN.ui.setPageHost({
+      wants: () => KN.app.activeScreen() === "settings" && !!root && stack.length > 0,
+      open: openAsPage,
+    });
+
     KN.edgeBack.wire({
       el: root,
       busy: () => moving
@@ -90,7 +113,26 @@
       const under = stack[stack.length - 2];
       return {
         top: leaving.el, under: under.el,
-        commit: () => { stack.pop(); leaving.el.remove(); KN.edgeBack.clear(under.el); },
+        commit: () => {
+          if (!leaving.handle) {
+            stack.pop(); leaving.el.remove(); KN.edgeBack.clear(under.el);
+            return;
+          }
+          /* 書きかけがあれば、ここで保存されます（`tryClose`）。うまく
+             いった一枚は自分で閉じる＝ `popLayer` がその場で外すので、
+             指の置いたところから続きます。
+
+             **検算で止まったときだけ、押し戻します。**指はもう出しきって
+             いますが、直す欄が画面の外にあっては直しようがないので。 */
+          leaving.el.style.pointerEvents = "none";
+          leaving.handle.tryClose();
+          setTimeout(() => {
+            if (!leaving.el.isConnected) return;
+            leaving.el.style.pointerEvents = "";
+            moving = true;
+            KN.edgeBack.push(leaving.el, under.el, +1).then(() => { moving = false; });
+          }, 160);
+        },
         cancel: () => { KN.edgeBack.clear(leaving.el); KN.edgeBack.rest(under.el); },
       };
     }
@@ -108,18 +150,34 @@
     };
   }
 
+  /** 一枚を抜く。**もう指で出しきっている一枚は、そのまま外します**
+      ——0 に戻してから右へ流し直すと、一拍だけ元の位置へ跳ねて見えます。 */
+  function popLayer(L) {
+    const i = stack.indexOf(L);
+    if (i <= 0) return;
+    stack.splice(i, 1);
+    const under = top();
+    const at = /translate3d\(\s*(-?[\d.]+)px/.exec(L.el.style.transform || "");
+    if (at && parseFloat(at[1]) > 4) {
+      L.el.remove();
+      KN.edgeBack.clear(under.el);
+      return;
+    }
+    moving = true;
+    KN.edgeBack.push(L.el, under.el, -1).then(() => { L.el.remove(); moving = false; });
+  }
+
   /** 戻る。紙を一枚めくるだけ——根っこまで来ていれば、呼んだ画面へ帰る。 */
   function back() {
     if (moving) return;
+    const L = top();
+    /* 紙のかわりに押しのけている一枚は、**閉じかたをその一枚が持っています**
+       （書きかけがあれば保存する、という決めごと）。ここで勝手にめくると、
+       下へ払ったときと違う結果になります。 */
+    if (L && L.handle) { KN.motion.fire("nav"); L.handle.tryClose(); return; }
     KN.motion.fire("nav");
     if (stack.length <= 1) { KN.app.backScreen(); return; }
-    const leaving = stack.pop();
-    const under = top();
-    moving = true;
-    KN.edgeBack.push(leaving.el, under.el, -1).then(() => {
-      leaving.el.remove();
-      moving = false;
-    });
+    popLayer(L);
   }
 
   /** 「›」の先へ。右から一枚入ってきて、下の一枚は控えへ下がります。 */
@@ -138,14 +196,76 @@
      「設定」と書いてあるのは、同じことを二度言うことなので。境目も同じ
      ところで引きます——大きな題が見えているあいだに線が横切ると、題が
      帯の中身に見えます。「›」の先には大きな題が無いので、いつも出します。 */
+  /* ---------------- 紙のかわりに、一枚を押しのける ----------------
+
+     設定の中で `KN.ui.sheet(...)` を呼ぶと、下から出る紙ではなく**全画面の
+     一枚**が右から入ってきます。呼ぶ側は同じ handle を受け取るので、
+     `h.close()` はそのまま効きます——十数か所ある呼び出しを一つも書き
+     換えずに、設定の中だけが押しのけになる、ということです。
+
+     **閉じかたは紙と同じ**（`KN.ui.makeGuard`）。書きかけがあれば、戻るを
+     押しても左端から引いても保存されます。二か所に書くと、片方だけ直した日に
+     「下へ払うと消えるが、左端から引くと残る」が起きます。 */
+  function openAsPage(opts) {
+    const under = top();
+    const L = makeLayer(null, { title: opts.title, bar: opts.footer });
+    /* 中身は**紙のつもりで組まれたもの**（`.field` や `.diet-note` が、器の
+       余白を当てにして並んでいる）。器が変わっても、その余白は器が持ち
+       続けます——中身を書き換えて回るより、ここで一行ぶん受けるほうが、
+       落としどころとして安い。 */
+    L.el.classList.add("is-sheetish");
+    stack.push(L);
+    root.append(L.el);
+    L.body.append(opts.content);
+    /* 帯の題を出します。組み直しは通らない一枚（`paintLayer` が `handle` を
+       見て素通りする）ので、ここで一度だけ。 */
+    paintNav(L);
+    moving = true;
+    KN.edgeBack.push(L.el, under.el, +1).then(() => { moving = false; });
+
+    let closed = false;
+    const handle = {
+      /* 設定そのものから出ていくとき（下の帯を押した、など）に、この一枚は
+         畳まれます。紙は覆いがあって出られませんが、押しのける一枚は下の帯が
+         見えているので出られる——**そこは紙と違うところ**です。DOM はもう
+         外れているので、ここでは「閉じた」ことだけを伝えます
+         （待っている約束があれば、それを解くために）。 */
+      abandon() {
+        if (closed) return;
+        closed = true;
+        if (opts.onClose) opts.onClose();
+      },
+      close() {
+        if (closed) return;
+        closed = true;
+        /* 欄を残したまま外すと、WebKit は blur を出しません——キーボードが
+           出たままだとアプリが思い込みます（紙のほうと同じ手当て）。 */
+        if (L.el.contains(document.activeElement)) document.activeElement.blur();
+        KN.keypad && KN.keypad.close();
+        popLayer(L);
+        if (opts.onClose) opts.onClose();
+        KN.app.remeasure && KN.app.remeasure();
+      },
+    };
+    handle.tryClose = KN.ui.makeGuard({
+      el: L.el, footer: opts.footer, guard: opts.guard,
+      close: handle.close, isClosed: () => closed,
+    });
+    L.handle = handle;
+    return handle;
+  }
+
   function paintNav(L) {
     if (!L || !L.nav) return;
-    let titled = !!L.id;
+    /* 大きな題を持っていない一枚は、いつも帯の題を出します——「›」の先も、
+       紙のかわりに押しのけている一枚も。出さないと、帯に戻るボタンだけが
+       居て、**いま何を見ているのかを言うものが画面に無くなります**。 */
+    let titled = !L.hero;
     if (!titled && L.hero) {
       titled = L.hero.getBoundingClientRect().bottom <= L.nav.getBoundingClientRect().bottom;
     }
     L.nav.classList.toggle("is-titled", titled);
-    L.nav.classList.toggle("is-stuck", titled && L.el.scrollTop > 4);
+    L.nav.classList.toggle("is-stuck", titled && L.scroll.scrollTop > 4);
   }
 
   /** 一枚ぶんを組み直す。**読んでいた場所は保つ**——store が動くたびに
@@ -157,14 +277,18 @@
        組み直すと、URLを打っている途中の字が消えます（買うものの枠が
        `saving` を見ているのと同じ心配りの列）。離れれば change が走って
        保存され、そこで組み直されるので、古いまま残ることはありません。 */
+    /* 紙のかわりに押しのけている一枚は、中身が呼んだ側のものです
+       （`KN.ui.sheet` に渡された content）。組み直す型を持っていないので、
+       触りません——紙が store の動きで組み直されないのと同じです。 */
+    if (L.handle) return;
     const a = document.activeElement;
     if (a && L.el.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
-    const keep = L.el.scrollTop;
+    const keep = L.scroll.scrollTop;
     L.body.innerHTML = "";
     const page = L.id ? PAGES[L.id] : null;
     if (page) page.build().flat().filter(Boolean).forEach((n) => L.body.append(n));
     else renderRoot(L);
-    L.el.scrollTop = keep;
+    L.scroll.scrollTop = keep;
     paintNav(L);
   }
 
@@ -342,9 +466,13 @@
     fromTab = TAB[from] ? from : "archive";
     /* 重なりは畳んで、根っこ一枚に戻します——前に開いたときの「›」の先が
        残っていると、歯車を押した人が、押した覚えのない紙を見ることになる。 */
-    while (stack.length > 1) stack.pop().el.remove();
+    while (stack.length > 1) {
+      const L = stack.pop();
+      L.el.remove();
+      if (L.handle) L.handle.abandon();
+    }
     KN.edgeBack.clear(stack[0].el);
-    stack[0].el.scrollTop = 0;
+    stack[0].scroll.scrollTop = 0;
     render();
   }
 
@@ -709,23 +837,20 @@
       onDrop: (from, to) => KN.reorder.applyOrder(stores, from, to, (s) => s.stores),
     });
 
-    wrap.querySelector(".js-add").addEventListener("click", async () => {
-      const name = await KN.ui.prompt({ title: "お店を追加", label: "お店の名前", placeholder: "例：イオン 〇〇店" });
-      if (!name) return;
-      if (store.findStoreByName(name)) { KN.ui.toast("同じ名前のお店があります"); return; }
-      store.addStore(name);
-      KN.ui.toast("追加しました");
-    });
+    wrap.querySelector(".js-add").addEventListener("click", () => editStore(null));
 
     return wrap;
   }
 
+  /** お店の紙。`st` が null なら「足す」——**編集と同じ一枚**にします。
+      名前だけ聞く小さな窓だと、色は足したあとでもう一度開いて選ぶことに
+      なりますし、足すと編集で出てくるものの形が違います。 */
   function editStore(st) {
     const body = node(html`
       <div class="stack" style="gap:18px">
         <label class="field">
           <span class="field-label">お店の名前</span>
-          <input class="input js-name" value="${st.name}">
+          <input class="input js-name" value="${st ? st.name : ""}" placeholder="例：イオン 〇〇店">
         </label>
         <div class="field">
           <span class="field-label">色</span>
@@ -734,7 +859,7 @@
       </div>
     `);
 
-    let color = st.color;
+    let color = st ? st.color : store.STORE_COLORS[0];
     const sw = body.querySelector(".js-swatches");
     function paint() {
       sw.innerHTML = "";
@@ -746,11 +871,21 @@
     }
     paint();
 
-    const foot = node(html`<button class="btn btn-primary btn-block">保存</button>`);
-    const h = KN.ui.sheet({ title: "お店の編集", content: body, footer: foot });
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">${st ? "保存" : "追加"}</button>`);
+    const h = KN.ui.sheet({
+      title: st ? "お店の編集" : "お店を追加", content: body, footer: foot, guard: true,
+    });
 
     foot.addEventListener("click", () => {
       const name = body.querySelector(".js-name").value.trim();
+      if (!st) {
+        if (!name) { KN.ui.toast("名前を入力してください"); return; }
+        if (store.findStoreByName(name)) { KN.ui.toast("同じ名前のお店があります"); return; }
+        store.addStore(name, color);
+        h.close();
+        KN.ui.toast("追加しました");
+        return;
+      }
       store.update((s) => {
         const rec = s.stores.find((x) => x.id === st.id);
         if (rec) { if (name) rec.name = name; rec.color = color; }
