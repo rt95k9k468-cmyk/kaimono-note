@@ -345,6 +345,15 @@
   const SLIDE_MS = 280;
   let slideT = null;
 
+  /* **タブの流れと、引き出しの押しのけは別のもの。**
+
+     タブどうし（daily → やること）は、横に並んだ席を移るので、二枚が同じ
+     ぶんだけ流れます（carousel）。引き出し（設定）は席ではなく**上に重なる
+     一枚**なので、iOS の設定と同じ押しのけ——入る面は 100% → 0、下の面は
+     0 → -28% しか動かず、入る面の左端に影が付きます。同じだけ動かすと
+     二枚が並んで滑っているように見えて、「上に乗った」ことが伝わりません。 */
+  const pushy = (a, b) => OFF_BAR.includes(a) || OFF_BAR.includes(b);
+
   function slideDir(from, to) {
     if (!from || from === to) return 0;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return 0;
@@ -621,6 +630,11 @@
       ——`overflow` を見て、実際に送っているほうを返します。 */
   KN.app.scrollerOf = function scrollerOf(el) {
     if (!el) return null;
+    /* 設定は紙の重なり（.set-layer）で、送るのはいちばん上の一枚です。
+       画面そのものは `overflow: hidden` なので、ここを教えないと
+       pull-refresh が「上端にも下端にも同時に居る」と読みます。 */
+    const layer = el.querySelector(".set-layer:last-child");
+    if (layer) return layer;
     const sheet = el.querySelector(".tl-sheet");
     if (sheet) {
       const ov = getComputedStyle(sheet).overflowY;
@@ -636,6 +650,13 @@
       if (OFF_BAR.includes(id)) { if (active !== id) drawerFrom.push(active); }
       else drawerFrom.length = 0;
     }
+    /* 左端を引くために出していた一枚が残っていたら、ここで印を落とします
+       ——指で戻りきった直後にここへ来るので、残すと「後ろの一枚」のまま
+       次の画面に居座ります。 */
+    document.querySelectorAll(".screen.is-under").forEach((s) => {
+      s.classList.remove("is-under");
+      s.style.transform = "";
+    });
     const from = active;
     active = id;
     /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
@@ -646,7 +667,13 @@
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */
     const dir = face ? 0 : slideDir(from, id);
-    const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r"];
+    const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r",
+                 "is-push-in", "is-push-under", "is-pop-in", "is-pop-out"];
+    const push = dir !== 0 && pushy(from, id);
+    const inCls  = push ? (dir > 0 ? "is-push-in" : "is-pop-in")
+                        : (dir > 0 ? "is-in-r" : "is-in-l");
+    const outCls = push ? (dir > 0 ? "is-push-under" : "is-pop-out")
+                        : (dir > 0 ? "is-out-l" : "is-out-r");
 
     document.querySelectorAll(".screen").forEach((s) => {
       const on = s.dataset.screen === id;
@@ -657,9 +684,9 @@
       s.classList.toggle("is-active", on);
       if (on) {
         s.hidden = false;
-        if (dir) s.classList.add(dir > 0 ? "is-in-r" : "is-in-l");
+        if (dir) s.classList.add(inCls);
       } else if (out) {
-        s.classList.add("is-leaving", dir > 0 ? "is-out-l" : "is-out-r");
+        s.classList.add("is-leaving", outCls);
       } else if (s.classList.contains("is-face-parked")) {
         /* 価格を見ているあいだ、買うものの紙は**頭だけ**そこに居ます。
            出ている面ではないので隠される順番ですが、隠すと戻り道が
@@ -1236,10 +1263,43 @@
      ——どのタブの右上の歯車からも開けて、開けたところへ帰ります。
      価格は帯のまま（買うものの裏面）なので、ここには入りません。 */
   const OFF_BAR = ["settings"];
-  KN.app.backScreen = () => {
+  /** 引き出しから帰る。`face` に何か渡すと**動かしません**——左端から指で
+      引いて戻ったときのように、呼んだ側がもう滑らせ終えている場合です
+      （買うもの ⇄ 価格 の `"settled"` と同じ合図）。 */
+  KN.app.backScreen = (face) => {
     const to = drawerFrom.pop() || HOME_OF_DRAWER;
     goingBack = true;
-    try { show(to); } finally { goingBack = false; }
+    try { show(to, face); } finally { goingBack = false; }
+  };
+
+  /* ---------------- 左端から引くあいだ、後ろの画面を出す ----------------
+
+     引き出し（設定）の根っこで左端を引くと、次に動くのは**画面そのもの**
+     です。戻る先はいま隠れているので、指が動かすものがありません——ここで
+     出します。どこから潜ってきたかを知っているのは、この積み木だけなので、
+     出すのもここの仕事です。
+
+     **組み直してから出すこと。** 設定を見ているあいだ store が動いても、
+     描き直されるのは出ている画面だけなので、隠れていた一枚は古いままです。 */
+  KN.app.underScreen = () => {
+    const to = drawerFrom[drawerFrom.length - 1];
+    if (!to || !KN.screens[to]) return null;
+    const el = document.querySelector(`.screen[data-screen="${to}"]`);
+    if (!el) return null;
+    ensureMounted(to);
+    try { KN.screens[to].render(); } catch (err) { /* 出すことを妨げない */ }
+    el.hidden = false;
+    el.classList.add("is-under");
+    return el;
+  };
+
+  /** 引くのをやめた。出した一枚を、また隠します。 */
+  KN.app.underScreenClear = () => {
+    document.querySelectorAll(".screen.is-under").forEach((s) => {
+      s.classList.remove("is-under");
+      s.style.transform = "";
+      if (s.dataset.screen !== active) s.hidden = true;
+    });
   };
 
   /** どの**タブ**から潜ってきたか。設定の画面が、出すものを選ぶのに使います

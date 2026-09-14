@@ -196,6 +196,13 @@
 
   /* --- radii --- */
   --r-sm: 8px;
+  /* 上に重なる一枚を、下の一枚がどれだけ控えて受けるか。**一つの数から
+     出すこと**——js/edge-back.js の PARALLAX と揃っていないと、押して
+     戻るのと指で戻るのとで、同じ一段が二通りの遠さに見えます。 */
+  --push-p: .28;
+  --push-e: cubic-bezier(.32, .72, 0, 1);
+  --push-shadow: -10px 0 24px rgba(0, 0, 0, .14);
+
   --r-md: 12px;
   --r-lg: 16px;
   --r-xl: 22px;
@@ -355,6 +362,9 @@
     --c-accent-ink:  #a9d4f1;
     --c-danger:      #e8776c;
     --c-danger-soft: #33201e;
+    /* 暗い面に黒い影を落としても見えません。重なりの境目は、地より明るい
+       一本で言います——影ではなく、**ふち**として。 */
+    --push-shadow: -1px 0 0 rgba(255, 255, 255, .14), -14px 0 28px rgba(0, 0, 0, .5);
     --c-warn:        #dcae4a;
     /* 暗い地の上では沈むので、四つとも明るいほうへ振ります。 */
     --c-m-steps:     #3fc4ae;
@@ -409,6 +419,9 @@
   --c-accent-ink:  #a9d4f1;
   --c-danger:      #e8776c;
   --c-danger-soft: #33201e;
+  /* 暗い面に黒い影を落としても見えません。重なりの境目は、地より明るい
+     一本で言います——影ではなく、**ふち**として。 */
+  --push-shadow: -1px 0 0 rgba(255, 255, 255, .14), -14px 0 28px rgba(0, 0, 0, .5);
   --c-warn:        #dcae4a;
   --c-m-steps:     #3fc4ae;
   --c-m-steps-lit: #8fe4d6;
@@ -625,6 +638,34 @@ a { color: var(--c-primary); }
   pointer-events: none;
   z-index: 0;
 }
+/* ---- 引き出しは、押しのけて重なる ----
+
+   タブどうしは横に並んだ席を移るので二枚が同じぶん流れますが（上）、
+   設定は席ではなく**上に重なる一枚**です。iOS の設定と同じ押しのけに
+   します——入る面は 100% → 0、下の面は 0 → -28%（`--push-p`）しか動かず、
+   入る面の左端に影が付く。同じだけ動かすと二枚が並んで滑っているように
+   見えて、「上に乗った」ことが伝わりません。
+
+   **指で引いて戻るときも、同じ数から出します**（js/edge-back.js の
+   PARALLAX）——押して戻るのと指で戻るのとで深さが違うと、同じ一段が
+   二通りの遠さに見えます。 */
+.screen.is-active.is-push-in   { animation: scr-push-in .3s var(--push-e); }
+.screen.is-leaving.is-push-under { animation: scr-push-under .3s var(--push-e) forwards; }
+.screen.is-active.is-pop-in    { animation: scr-pop-in .3s var(--push-e); }
+.screen.is-leaving.is-pop-out  { animation: scr-pop-out .3s var(--push-e) forwards; }
+/* 影は動いている一枚にだけ。止まっているあいだ画面の左端に影があると、
+   そこに何かが重なっているという嘘になります。 */
+.screen.is-push-in, .screen.is-pop-out, .screen.is-over { box-shadow: var(--push-shadow); }
+
+/* 左端から引いているあいだ、戻る先の画面を後ろに出します（app.js の
+   underScreen）。押せません——指は上の一枚のものなので。 */
+.screen.is-under {
+  display: flex;
+  z-index: 0;
+  pointer-events: none;
+}
+.screen.is-over { z-index: 2; }
+
 .screen.is-active.is-in-r { animation: scr-in-r .28s var(--ease-out); }
 .screen.is-active.is-in-l { animation: scr-in-l .28s var(--ease-out); }
 .screen.is-leaving.is-out-l { animation: scr-out-l .28s var(--ease-out) forwards; }
@@ -785,6 +826,11 @@ a { color: var(--c-primary); }
 @keyframes scr-in-l  { from { transform: translateX(-100%); } to { transform: none; } }
 @keyframes scr-out-l { from { transform: none; } to { transform: translateX(-100%); } }
 @keyframes scr-out-r { from { transform: none; } to { transform: translateX(100%); } }
+
+@keyframes scr-push-in    { from { transform: translateX(100%); }            to { transform: none; } }
+@keyframes scr-push-under { from { transform: none; }                        to { transform: translateX(calc(var(--push-p) * -100%)); } }
+@keyframes scr-pop-in     { from { transform: translateX(calc(var(--push-p) * -100%)); } to { transform: none; } }
+@keyframes scr-pop-out    { from { transform: none; }                        to { transform: translateX(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
   .screen.is-active, .screen.is-leaving { animation: none; }

@@ -1865,7 +1865,45 @@
 }
 :root[data-theme="dark"] { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; }
 
-.set-stack { gap: 0; }
+/* ---- 一段は、紙の重なり ----
+
+   「›」の先は、中身の差し替えではなく**本物の紙**（.set-layer）です。奥へ
+   行けば右から一枚入ってきて、下の一枚は控えへ引く。左端から指で引けば、
+   その途中の姿がそのまま見えます（js/edge-back.js）。
+
+   **送る器は紙のほう**（画面ではない）。画面を送る器のままにすると、戻った
+   ときに読んでいた場所が失われるうえ、重なった紙が一緒に動きます。
+   `KN.app.scrollerOf()` にもそう教えてあります。 */
+#screen-settings {
+  overflow: hidden;
+  /* 下の帯のぶんの余白は、**紙の中**が持ちます（器の外に置いても、中身の
+     下には空きができない）。 */
+  padding-bottom: 0;
+}
+
+.set-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  /* 縦はブラウザに残し、横だけこちらで取ります（day-swipe.js と同じ手）。
+     `preventDefault` は投げません——投げると、戻らないと決めたあとの縦送り
+     まで止まります。 */
+  touch-action: pan-y;
+  background: var(--c-bg);
+  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+}
+
+/* 影は**動いている一枚にだけ**。止まっているあいだ左端に影があると、そこに
+   何かが重なっているという嘘になります。 */
+.set-layer.is-edge-lift,
+#screen-settings.is-edge .set-layer:last-child {
+  box-shadow: var(--push-shadow);
+}
 
 /* ---- 頭（大きな題と、貼りつく帯） ----
 
