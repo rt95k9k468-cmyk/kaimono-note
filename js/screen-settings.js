@@ -9,69 +9,156 @@
   const store = KN.store;
 
   let root = null;
-  let els = {};
 
-  function mount(el) {
-    root = el;
-    root.innerHTML = "";
+  /* ---------------- 一段は、紙の重なり ----------------
 
-    const chrome = node(html`
-      <div class="stack set-stack">
-        ${/* **また引き出しに戻りました。** 帯の四つめに置いていた時期が
-              ありますが、設定は場所ではありません——毎日そこへ「行く」もの
-              ではなく、何かを直したいときに開くもの。どのタブの右上の歯車
-              からも開けて、開けたところへ帰ります。
+     前は一枚でした。`.js-body` の中身を入れ替えて「›」の先を出していたので、
+     **奥へ行く動きが絵に出ていません**でした——押した瞬間に別の中身に化ける
+     だけで、どちらへ進んだのか、戻る道がどちらにあるのかを、動きが何も
+     言っていない。戻ったときに読んでいた場所（scrollTop）も失われます。
 
-              頭は参考画面（Structured）と同じ**大きな題**。送ると帯の
-              まん中の小さい題に入れ替わります。引き出しなので、戻るは
-              いつも左上の丸いボタン——ただし**一段ぶん**しか働きません
-              （中からは根っこへ、根っこからは呼んだ画面へ）。 */""}
+     いまは、一段ごとに**本物の紙**（`.set-layer`）を重ねます。奥へ行けば
+     右から一枚入ってきて、下の一枚は -28% まで引いて控える。戻れば、その
+     一枚が右へ抜けて、下が戻ってくる。**左端から指で引いても同じこと**が
+     起きます（`js/edge-back.js`）——押して動かすのと、指で動かすのとで、
+     絵が一致している、ということです。
+
+     紙が器になったので、送るのは紙のほう（画面ではない）。`scrollerOf()` に
+     そのことを教えてあります——教えないと `pull-refresh` が「上端にも下端にも
+     同時に居る」と読んで、縦の指を毎回取ります（CLAUDE.md）。 */
+
+  /** いま重なっている紙。[0] が根っこで、最後が上に見えている一枚。 */
+  let stack = [];
+
+  const top = () => stack[stack.length - 1];
+
+  /** 動いている最中は、次の一手を取らない（重ねて押されると紙が迷子になる）。 */
+  let moving = false;
+
+  function makeLayer(pageId) {
+    const page = pageId ? PAGES[pageId] : null;
+    const el = node(html`
+      <div class="set-layer">
+        ${/* 帯は**紙ごと**に持ちます。押しのけられるときに帯も一緒に動くのが、
+              あちらの動きなので——一枚だけ据え置くと、題だけが宙に残ります。 */""}
         <header class="set-nav js-nav">
           <button class="set-back js-back" aria-label="もどる">${icon("chevron")}</button>
           <span class="set-nav-title js-nav-title"></span>
           ${/* 題を**まん中**に置くための、戻るボタンと同じ幅の空き。 */""}
           <span class="set-nav-pad" aria-hidden="true"></span>
         </header>
-        <h1 class="set-hero js-hero">設定</h1>
+        ${pageId ? "" : html`<h1 class="set-hero js-hero">設定</h1>`}
         <div class="js-body"></div>
       </div>
     `);
-
-    root.append(chrome);
-    els = {
-      body: chrome.querySelector(".js-body"),
-      nav: chrome.querySelector(".js-nav"),
-      navTitle: chrome.querySelector(".js-nav-title"),
-      hero: chrome.querySelector(".js-hero"),
+    const L = {
+      id: pageId,
+      el,
+      nav: el.querySelector(".js-nav"),
+      navTitle: el.querySelector(".js-nav-title"),
+      hero: el.querySelector(".js-hero"),
+      body: el.querySelector(".js-body"),
     };
+    L.navTitle.textContent = page ? page.title : "設定";
+    el.querySelector(".js-back").addEventListener("click", back);
+    el.addEventListener("scroll", () => paintNav(L), { passive: true });
+    return L;
+  }
 
-    /* 戻るは一段。中に居れば一つ手前へ、根っこに居れば呼んだ画面へ。 */
-    chrome.querySelector(".js-back").addEventListener("click", back);
+  function mount(el) {
+    root = el;
+    root.innerHTML = "";
+    stack = [makeLayer(null)];
+    root.append(stack[0].el);
 
-    root.addEventListener("scroll", paintNav, { passive: true });
+    /* 左端から引いて一段戻る。設定の中では紙の重なり、いちばん外では
+       画面そのものが動きます——どちらも「上の一枚と、その下の一枚」なので、
+       同じ仕掛けが両方を受け持てます。 */
+    KN.edgeBack.wire({
+      el: root,
+      busy: () => moving
+        || !!document.querySelector(".sheet")
+        || (KN.reorder && KN.reorder.isActive && KN.reorder.isActive()),
+      begin: edgeBegin,
+    });
+  }
+
+  /** 左端を引きはじめた。上の一枚と、その下に出すものを答えます。 */
+  function edgeBegin() {
+    if (stack.length > 1) {
+      const leaving = top();
+      const under = stack[stack.length - 2];
+      return {
+        top: leaving.el, under: under.el,
+        commit: () => { stack.pop(); leaving.el.remove(); KN.edgeBack.clear(under.el); },
+        cancel: () => { KN.edgeBack.clear(leaving.el); KN.edgeBack.rest(under.el); },
+      };
+    }
+    /* 根っこまで来ている。ここから先は**画面**が一段で、後ろに居るのは
+       歯車を押した画面そのものです。出すのは app.js の役目——どこから
+       潜ってきたかを知っているのはあちらなので。 */
+    const under = KN.app.underScreen && KN.app.underScreen();
+    if (!under) return null;
+    root.classList.add("is-over");
+    const done = () => { root.classList.remove("is-over"); KN.edgeBack.clear(root); };
+    return {
+      top: root, under,
+      commit: () => { KN.edgeBack.clear(under); done(); KN.app.backScreen("settled"); },
+      cancel: () => { KN.app.underScreenClear(); done(); },
+    };
   }
 
   /** 戻る。紙を一枚めくるだけ——根っこまで来ていれば、呼んだ画面へ帰る。 */
   function back() {
+    if (moving) return;
     KN.motion.fire("nav");
-    if (!stack.length) { KN.app.backScreen(); return; }
-    stack.pop();
-    render();
-    if (root) root.scrollTop = 0;
+    if (stack.length <= 1) { KN.app.backScreen(); return; }
+    const leaving = stack.pop();
+    const under = top();
+    moving = true;
+    KN.edgeBack.push(leaving.el, under.el, -1).then(() => {
+      leaving.el.remove();
+      moving = false;
+    });
+  }
+
+  /** 「›」の先へ。右から一枚入ってきて、下の一枚は控えへ下がります。 */
+  function go(id) {
+    if (moving || !PAGES[id]) return;
+    const under = top();
+    const L = makeLayer(id);
+    stack.push(L);
+    root.append(L.el);
+    paintLayer(L);
+    moving = true;
+    KN.edgeBack.push(L.el, under.el, +1).then(() => { moving = false; });
   }
 
   /* 帯の題は、**大きな題が帯の下へ隠れてから**出します。二つ同時に
      「設定」と書いてあるのは、同じことを二度言うことなので。境目も同じ
      ところで引きます——大きな題が見えているあいだに線が横切ると、題が
-     帯の中身に見えます。 */
-  function paintNav() {
-    if (!root || !els.nav) return;
-    let titled = stack.length > 0;
-    if (!titled && els.hero && !els.hero.hidden) {
-      titled = els.hero.getBoundingClientRect().bottom <= els.nav.getBoundingClientRect().bottom;
+     帯の中身に見えます。「›」の先には大きな題が無いので、いつも出します。 */
+  function paintNav(L) {
+    if (!L || !L.nav) return;
+    let titled = !!L.id;
+    if (!titled && L.hero) {
+      titled = L.hero.getBoundingClientRect().bottom <= L.nav.getBoundingClientRect().bottom;
     }
-    els.nav.classList.toggle("is-titled", titled);
-    els.nav.classList.toggle("is-stuck", titled && root.scrollTop > 4);
+    L.nav.classList.toggle("is-titled", titled);
+    L.nav.classList.toggle("is-stuck", titled && L.el.scrollTop > 4);
+  }
+
+  /** 一枚ぶんを組み直す。**読んでいた場所は保つ**——store が動くたびに
+      render() が走るので、ここを 0 に戻すと、スイッチを一つ押しただけで
+      一覧の頭まで飛ばされます。 */
+  function paintLayer(L) {
+    const keep = L.el.scrollTop;
+    L.body.innerHTML = "";
+    const page = L.id ? PAGES[L.id] : null;
+    if (page) page.build().flat().filter(Boolean).forEach((n) => L.body.append(n));
+    else renderRoot(L);
+    L.el.scrollTop = keep;
+    paintNav(L);
   }
 
   /* ---------------- 一枚で済ませる ----------------
@@ -89,11 +176,6 @@
      カテゴリ9件・外観・バックアップ・アイコン）。あれは「目次の目次」では
      なく、参考画面（Structured）の `通知設定 ›` と同じ**詳細**——行の右に
      いまの値が出ていて、押すと続きが開く、というものです。 */
-
-  /* いまどこを見ているか。空なら根っこ。バックアップ → データを消す、の
-     ように潜れるので、一つの変数ではなく積み木です（app.js の drawerFrom と
-     同じ理由——一つだと、二段目から戻ったときに行き先を見失います）。 */
-  let stack = [];
 
   /* 歯車を押したのはどの画面か。**入ったときに一度だけ**読みます——store が
      動くたびに render() が走るので、そのつど聞くと、設定を見ているあいだに
@@ -246,41 +328,34 @@
     icons:  { title: "アイコンについて",       build: () => [iconGapsGroup(), iconReportsGroup()] },
   };
 
-  function go(id) {
-    stack.push(id);
-    render();
-    if (root) root.scrollTop = 0;
-  }
-
   function onEnter() {
     const from = KN.app.openedFrom && KN.app.openedFrom();
     fromTab = TAB[from] ? from : "archive";
-    stack = [];
+    /* 重なりは畳んで、根っこ一枚に戻します——前に開いたときの「›」の先が
+       残っていると、歯車を押した人が、押した覚えのない紙を見ることになる。 */
+    while (stack.length > 1) stack.pop().el.remove();
+    KN.edgeBack.clear(stack[0].el);
+    stack[0].el.scrollTop = 0;
     render();
-    if (root) root.scrollTop = 0;
   }
 
+  /** store が動いた。**重なっている紙は、ぜんぶ**組み直します——上の一枚
+      だけにすると、戻ったときに古い数字が出ます（お店を消した直後の件数など）。 */
   function render() {
-    if (!els.body) return;
-    els.body.innerHTML = "";
-    const here = stack.length ? PAGES[stack[stack.length - 1]] : null;
-    els.hero.hidden = !!here;
-    els.navTitle.textContent = here ? here.title : "設定";
-    if (here) here.build().flat().filter(Boolean).forEach((n) => els.body.append(n));
-    else renderRoot();
-    paintNav();
+    if (!stack.length) return;
+    stack.forEach(paintLayer);
   }
 
   /** 根っこ。開いた画面の設定が先、一般があと。 */
-  function renderRoot() {
+  function renderRoot(L) {
+    const put = (list) => list.flat().filter(Boolean).forEach((n) => L.body.append(n));
     /* 保存できていないことは、いちばん先に言います。中へ入る前に目に
        入らないと、直せる人が直す機会を失うので。 */
-    if (store.saveError()) els.body.append(saveErrorBanner());
+    if (store.saveError()) L.body.append(saveErrorBanner());
     const tab = TAB[fromTab] || TAB.archive;
-    const put = (list) => list.flat().filter(Boolean).forEach((n) => els.body.append(n));
-    els.body.append(head(tab.label));
+    L.body.append(head(tab.label));
     put(tab.rows());
-    els.body.append(head("一般"));
+    L.body.append(head("一般"));
     put(generalRows());
   }
 
