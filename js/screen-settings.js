@@ -16,28 +16,23 @@
     root.innerHTML = "";
 
     const chrome = node(html`
-      <div class="stack">
+      <div class="stack set-stack">
         ${/* **また引き出しに戻りました。** 帯の四つめに置いていた時期が
               ありますが、設定は場所ではありません——毎日そこへ「行く」もの
               ではなく、何かを直したいときに開くもの。どのタブの右上の歯車
               からも開けて、開けたところへ帰ります。
 
-              引き出しなので、上の帯は**いつも**出します。中へ入って
-              いれば題はその中の名前、目次に居れば「設定」。戻るボタンも
-              二段ぶん働きます——中からは目次へ、目次からは呼んだ画面へ。
-
-              出しどころで中身は変えません（全部・いつも同じ順）。押した人は
-              「設定へ行く」と言ったのであって、どこから押したかは何も
-              言っていないので。 */""}
-        <header class="topbar js-top">
-          <div class="topbar-row">
-            <button class="icon-btn set-back js-back" aria-label="もどる">${icon("chevron")}</button>
-            <span class="topbar-title set-top-title js-top-title"></span>
-            ${/* 題を**まん中**に置くための、戻るボタンと同じ幅の空き。左に
-                  寄せると、題が戻るボタンの添え字に見えます。 */""}
-            <span class="set-back-pad" aria-hidden="true"></span>
-          </div>
+              頭は参考画面（Structured）と同じ**大きな題**。送ると帯の
+              まん中の小さい題に入れ替わります。引き出しなので、戻るは
+              いつも左上の丸いボタン——ただし**一段ぶん**しか働きません
+              （中からは根っこへ、根っこからは呼んだ画面へ）。 */""}
+        <header class="set-nav js-nav">
+          <button class="set-back js-back" aria-label="もどる">${icon("chevron")}</button>
+          <span class="set-nav-title js-nav-title"></span>
+          ${/* 題を**まん中**に置くための、戻るボタンと同じ幅の空き。 */""}
+          <span class="set-nav-pad" aria-hidden="true"></span>
         </header>
+        <h1 class="set-hero js-hero">設定</h1>
         <div class="js-body"></div>
       </div>
     `);
@@ -45,197 +40,274 @@
     root.append(chrome);
     els = {
       body: chrome.querySelector(".js-body"),
-      topbar: chrome.querySelector(".js-top"),
-      topTitle: chrome.querySelector(".js-top-title"),
+      nav: chrome.querySelector(".js-nav"),
+      navTitle: chrome.querySelector(".js-nav-title"),
+      hero: chrome.querySelector(".js-hero"),
     };
 
-    /* 戻るは二段ぶん。中に居れば目次へ、目次に居れば呼んだ画面へ。 */
-    chrome.querySelector(".js-back").addEventListener("click", () => {
-      KN.motion.fire("nav");
-      if (page == null) { KN.app.backScreen(); return; }
-      page = null;
-      render();
-      if (root) root.scrollTop = 0;
-    });
+    /* 戻るは一段。中に居れば一つ手前へ、根っこに居れば呼んだ画面へ。 */
+    chrome.querySelector(".js-back").addEventListener("click", back);
 
-    root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
-    }, { passive: true });
+    root.addEventListener("scroll", paintNav, { passive: true });
   }
 
-  /* ---------------- 目次と、その中 ----------------
+  /** 戻る。紙を一枚めくるだけ——根っこまで来ていれば、呼んだ画面へ帰る。 */
+  function back() {
+    KN.motion.fire("nav");
+    if (!stack.length) { KN.app.backScreen(); return; }
+    stack.pop();
+    render();
+    if (root) root.scrollTop = 0;
+  }
 
-     一枚に全部を並べていました。「表示」の次に「やること」、その次に
-     **お店が10行**、そのあとにカテゴリが9行——設定そのものと、設定の中の
-     一件一件が、同じ高さで縦に並んでいたわけです。「お店を1つ足す」と
-     「ダイエットの記録を消す」が同じ層に見えるのは、層が無いのと同じです。
+  /* 帯の題は、**大きな題が帯の下へ隠れてから**出します。二つ同時に
+     「設定」と書いてあるのは、同じことを二度言うことなので。境目も同じ
+     ところで引きます——大きな題が見えているあいだに線が横切ると、題が
+     帯の中身に見えます。 */
+  function paintNav() {
+    if (!root || !els.nav) return;
+    let titled = stack.length > 0;
+    if (!titled && els.hero && !els.hero.hidden) {
+      titled = els.hero.getBoundingClientRect().bottom <= els.nav.getBoundingClientRect().bottom;
+    }
+    els.nav.classList.toggle("is-titled", titled);
+    els.nav.classList.toggle("is-stuck", titled && root.scrollTop > 4);
+  }
 
-     二段にしました。**目次**（ここは行き先の名前だけ）と、**その中**
-     （押した一つぶんだけが画面ぜんぶを使う）。参考にした画面（Structured）
-     と同じ組みで、行は［色の付いた四角の絵］［名前］［いまの値］［›］。
+  /* ---------------- 一枚で済ませる ----------------
 
-     中身の作りは何も変えていません——これまでの group() をそのまま、
-     一段下の画面に置いただけです。 */
+     二段でした。**目次**（外観・バックアップ・「画面ごと」…の行き先だけが
+     並ぶ一枚）と、**その中**。歯車を押すとその画面の設定がいきなり開き、
+     戻るを押すと目次が出てくる、という順です。
 
-  /* いま開いている中の名前。null は目次。 */
-  let page = null;
+     目次をやめました。歯車を押した指は「**この画面のことを直したい**」と
+     言っているので、開いた一枚に、その画面の設定と「一般」が両方並びます。
+     ほかのタブの設定は、そのタブの歯車から。「画面ごと」というまとまりは、
+     もうどこにもありません。
+
+     **一画面ぶんある中身だけは、これまでどおり「›」の先です**（お店10件・
+     カテゴリ9件・外観・バックアップ・アイコン）。あれは「目次の目次」では
+     なく、参考画面（Structured）の `通知設定 ›` と同じ**詳細**——行の右に
+     いまの値が出ていて、押すと続きが開く、というものです。 */
+
+  /* いまどこを見ているか。空なら根っこ。バックアップ → データを消す、の
+     ように潜れるので、一つの変数ではなく積み木です（app.js の drawerFrom と
+     同じ理由——一つだと、二段目から戻ったときに行き先を見失います）。 */
+  let stack = [];
+
+  /* 歯車を押したのはどの画面か。**入ったときに一度だけ**読みます——store が
+     動くたびに render() が走るので、そのつど聞くと、設定を見ているあいだに
+     根っこの中身が入れ替わる余地を残すことになります。 */
+  let fromTab = null;
 
   /* 絵の四角の色。**基調色とは別の軸**です（からだの四つの輪と同じ理由
      ——ここの色は「どの設定か」を言うもので、その人の好きな色の話では
      ありません）。どれも白い絵が 3:1 以上で乗る濃さにしてあります。 */
-  const PAGES = [
-    {
-      group: "一般",
-      id: "look", title: "外観", icon: "palette", tint: "#5f9152",
-      build: () => [themeGroup()],
-      // 参考画面と同じで、いまの色をひと粒で出します。
-      value: () => {
-        const a = store.ACCENTS.find((x) => x.id === (store.get().settings.accent || "orange"));
-        return a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null;
-      },
-    },
-    /* バックアップは「データ」という自分の段を持っていました。**一行の
-       ために見出しを一枚立てていた**わけです——段の名前は、そこに二つ以上
-       並んでいて初めて「まとめている」と言えます。外観と同じ「一般」の中へ。
-       どちらもアプリぜんぶの話で、画面ごとの話ではないので、括りも合います。 */
-    {
-      id: "data", title: "バックアップと書き出し", icon: "download", tint: "#6a7d92",
-      build: () => [dataGroup()],
-    },
-    /* 絵が付かなかった言葉を集める一枚。新しい入れ物は作らず、いま保存
-       されている題・食事・商品を、開いたその場で辞書に通し直すだけです
-       （Daily Log の「写さず引く」と同じ考え方）。辞書に言葉を足せば、
-       次に開いたときにはその分だけ短くなります。 */
-    {
-      /* もとは「絵が見つからない言葉」だけの一枚でした。「絵はあるが
-         ちがう」の報告（下の iconReportsGroup）も同じ悩みごとなので、
-         段を増やさずここへ二つ目の見出しとして加えます。 */
-      id: "iconGaps", title: "アイコンについて", icon: "tag", tint: "#8a7f74",
-      build: () => [iconGapsGroup(), iconReportsGroup()],
-      value: () => {
-        const gaps = collectIconGaps().length;
-        const reports = (store.get().iconReports || []).length;
-        const parts = [];
-        if (gaps) parts.push(`不明 ${gaps}`);
-        if (reports) parts.push(`報告 ${reports}`);
-        return parts.length ? parts.join("・") : "0件";
-      },
-    },
-    {
-      group: "画面ごと",
-      id: "todo", title: "tasks", icon: "checklist", tint: "#c96a61",
-      build: () => [todoGroup()],
-      value: () => (store.get().settings.todoTimeline !== false ? "時間割" : "一覧"),
-    },
-    {
-      id: "list", title: "shopping", icon: "cart", tint: "#5686bd",
-      /* お店とカテゴリは、どちらも買うものの中の話です。目次に並べていた
-         ので「お店」と「表示」が同じ重さに見えていました。一段下げて、
-         二つ一緒にこの中へ。 */
-      build: () => [countsRow(), storesGroup(), categoriesGroup()],
-      value: () => {
-        const s = store.get();
-        return `お店 ${(s.stores || []).length}・カテゴリ ${(s.categories || []).length}`;
-      },
-    },
-    { id: "daily", title: "daily", icon: "book", tint: "#9a6fae", build: () => [dailyGroup()] },
-    { id: "diet", title: "health", icon: "heart", tint: "#bd7a2e", build: () => [dietGroup()] },
-  ];
-
-  /* ---------------- 開いたら、その画面の設定から ----------------
-
-     全部を目次から選ばせていました。設定は帯の四つめだった時期があり、
-     そのころは「押した人は『設定へ行く』と言ったのであって、どこから
-     押したかは何も言っていない」——だから出しどころで中身を変えない、
-     という理屈が通っていました。
-
-     **いまは違います。** 設定は帯に席を持たず、開く口は**その画面の右上の
-     歯車**だけです。やることを見ながらそこを押した指は、「設定へ行く」と
-     言ったのではなく「**この画面のことを直したい**」と言っています。
-     それを目次で受けて、四つの中から「やること」をもう一度選ばせるのは、
-     いま言われたことをもう一度聞き返しているのと同じです。
-
-     だから、**押したタブの中を最初から開きます**。目次はここへ来る前の
-     通り道ではなく、**戻るを一度押せば出てくる場所**になりました
-     ——他のタブの設定へ行きたい人は、そこから選べます。 */
-
-  /** 歯車を押した画面 → その中の名前。載っていない画面は目次のまま。
-
-      価格は席を持たない画面（買うものの紙の後ろに敷いた地）なので、
-      その席——買うもの——の中を開きます。お店もカテゴリも商品の数も、
-      ぜんぶそこにあります。 */
-  const PAGE_OF_TAB = {
-    todo: "todo", list: "list", prices: "list", archive: "daily", diet: "diet",
+  const TINT = {
+    look:   "#5f9152",
+    data:   "#6a7d92",
+    sub:    "#7f8fa3",
+    icons:  "#8a7f74",
+    danger: "#b8463c",
+    store:  "#5686bd",
+    cat:    "#7f68ad",
+    goal:   "#bd7a2e",
+    sync:   "#4f8f8a",
+    relay:  "#5686bd",
+    ai:     "#9a6fae",
   };
+
+  /* ---------------- 行とカード ----------------
+
+     参考画面の実測（1284×2778、3倍）を写したものです。カードは左右20px、
+     行は52px、仕切りは**絵の右**から。 */
+
+  /** 白いカード。null は捨てるので、端末で出せない行をそのまま渡せます。 */
+  function card(...rows) {
+    const list = rows.flat().filter(Boolean);
+    if (!list.length) return null;
+    const el = node(html`<div class="set-card"></div>`);
+    list.forEach((r) => el.append(r));
+    return el;
+  }
+
+  const head = (text) => node(html`<h2 class="set-head">${text}</h2>`);
+
+  /** カードの**下**に置く説明。行の中に入れると、行の高さを説明が決めて
+      しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
+  const foot = (text) => (text ? node(html`<p class="set-foot">${text}</p>`) : null);
+
+  /** 先へ進む行。**色の付いた四角が付くのは、ここだけ**です——あれは
+      「押すと続きがある」の合図で、その場で切り替わるスイッチの行には
+      要りません（参考画面もそうなっています）。 */
+  function navRow({ ico, tint, title, value, onTap }) {
+    const row = node(html`
+      <button type="button" class="set-row is-nav">
+        <span class="set-tile" style="background:${tint || TINT.data}">${icon(ico || "gear")}</span>
+        <span class="set-title">${title}</span>
+        <span class="set-val"></span>
+        <span class="set-chev">${icon("chevron")}</span>
+      </button>
+    `);
+    const slot = row.querySelector(".set-val");
+    if (value && typeof value === "object") slot.append(value);
+    else if (value) slot.textContent = value;
+    row.addEventListener("click", () => { KN.motion.fire("nav", row); onTap(); });
+    return row;
+  }
+
+  /** 戻せない操作の行。**四角ではなく、赤い絵と赤い字**（参考画面の
+      「アプリを初期化」と同じ）——色の付いた四角は「行き先」の印なので、
+      そのまま着せると、消す操作が普通の行き先と同じ顔になります。 */
+  function dangerRow({ ico, title, onTap }) {
+    const row = node(html`
+      <button type="button" class="set-row is-danger">
+        <span class="set-glyph">${icon(ico || "trash")}</span>
+        <span class="set-title">${title}</span>
+      </button>
+    `);
+    row.addEventListener("click", onTap);
+    return row;
+  }
+
+  /** その場で切り替わる行。絵は付けません。 */
+  function switchRow({ title, on, onTap }) {
+    const row = node(html`
+      <button type="button" class="set-row is-sw" role="switch" aria-checked="${String(!!on)}">
+        <span class="set-title">${title}</span>
+        ${/* iOSの「オン/オフラベル」に合わせて、棒と丸を中に描きます
+              ——参考画面の実機がそうなっているので、そこだけ素のスイッチだと
+              端末の中で一つだけ顔が違って見えます。 */""}
+        <span class="toggle" aria-hidden="true">
+          <span class="toggle-mark"></span>
+          <span class="toggle-knob"></span>
+        </span>
+      </button>
+    `);
+    row.addEventListener("click", () => { haptic(); onTap(!on); });
+    return row;
+  }
+
+  /** 二択だが「オン/オフ」ではない行（並べ方、出す範囲…）。右にいまの値、
+      押すと選ぶ紙。スイッチにすると、**どちらがオンなのかを字で言えません**。 */
+  function pickRow({ title, value, onTap }) {
+    const row = node(html`
+      <button type="button" class="set-row is-pick">
+        <span class="set-title">${title}</span>
+        <span class="set-val">${value || ""}</span>
+        <span class="set-chev">${icon("chevron")}</span>
+      </button>
+    `);
+    row.addEventListener("click", () => { KN.motion.fire("nav", row); onTap(); });
+    return row;
+  }
+
+  /** 選ぶ紙。いまのものに ✓。 */
+  function choose({ title, value, options, onPick }) {
+    const body = node(html`<div class="set-choose"></div>`);
+    let h = null;
+    options.forEach((o) => {
+      const on = o.id === value;
+      const row = node(html`
+        <button type="button" class="set-row is-choice ${on ? "is-on" : ""}">
+          <span class="set-title">${o.label}${o.note
+            ? html`<span class="set-note">${o.note}</span>` : ""}</span>
+          <span class="set-check">${on ? icon("check") : ""}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        if (h) h.close();
+        if (!on) { haptic(); onPick(o.id); }
+      });
+      body.append(row);
+    });
+    h = KN.ui.sheet({ title, content: body });
+  }
+
+  /* ---------------- どの画面の設定か ----------------
+
+     歯車を押した画面 → その席の名前と中身。価格は席を持たない画面
+     （買うものの紙の裏）なので、その席——買うもの——の設定を出します。 */
+  const TAB = {
+    todo:    { label: "tasks",    rows: todoRows },
+    list:    { label: "shopping", rows: listRows },
+    prices:  { label: "shopping", rows: listRows },
+    archive: { label: "daily",    rows: dailyRows },
+    diet:    { label: "health",   rows: dietRows },
+  };
+
+  /** 「›」の先。ここに載るのは**一画面ぶんある中身**だけです。 */
+  const PAGES = {
+    look:   { title: "外観",                 build: lookRows },
+    data:   { title: "バックアップと書き出し", build: dataRows },
+    danger: { title: "データを消す",          build: dangerRows },
+    stores: { title: "お店",                 build: () => [storesGroup()] },
+    cats:   { title: "カテゴリ",              build: () => [categoriesGroup()] },
+    icons:  { title: "アイコンについて",       build: () => [iconGapsGroup(), iconReportsGroup()] },
+  };
+
+  function go(id) {
+    stack.push(id);
+    render();
+    if (root) root.scrollTop = 0;
+  }
 
   function onEnter() {
     const from = KN.app.openedFrom && KN.app.openedFrom();
-    const want = PAGE_OF_TAB[from] || null;
-    page = want && PAGES.some((p) => p.id === want) ? want : null;
+    fromTab = TAB[from] ? from : "archive";
+    stack = [];
     render();
     if (root) root.scrollTop = 0;
   }
 
   function render() {
+    if (!els.body) return;
     els.body.innerHTML = "";
-    const here = page && PAGES.find((p) => p.id === page);
-    if (here) renderPage(here);
-    else renderIndex();
+    const here = stack.length ? PAGES[stack[stack.length - 1]] : null;
+    els.hero.hidden = !!here;
+    els.navTitle.textContent = here ? here.title : "設定";
+    if (here) here.build().flat().filter(Boolean).forEach((n) => els.body.append(n));
+    else renderRoot();
+    paintNav();
   }
 
-  /** 目次。行き先の名前と、いまの値だけ。 */
-  function renderIndex() {
-    els.topbar.hidden = false;
-    els.topTitle.textContent = "設定";
-    /* 保存できていないことは、どの層に居ても先に言います。中へ入る前に
-       目に入らないと、直せる人が直す機会を失うので。 */
+  /** 根っこ。開いた画面の設定が先、一般があと。 */
+  function renderRoot() {
+    /* 保存できていないことは、いちばん先に言います。中へ入る前に目に
+       入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) els.body.append(saveErrorBanner());
-
-    let card = null;
-    PAGES.forEach((p) => {
-      if (p.group) {
-        els.body.append(node(html`<h2 class="set-head">${p.group}</h2>`));
-        card = node(html`<div class="rows set-card"></div>`);
-        els.body.append(card);
-      }
-      const row = node(html`
-        <button type="button" class="row set-row" data-page="${p.id}">
-          <span class="set-tile" style="background:${p.tint}">${icon(p.icon)}</span>
-          <span class="row-main"><span class="row-title">${p.title}</span></span>
-          <span class="row-value set-value"></span>
-          <span class="row-chevron">${icon("chevron")}</span>
-        </button>
-      `);
-      const v = p.value ? p.value() : null;
-      const slot = row.querySelector(".set-value");
-      if (v && typeof v === "object") slot.append(v);
-      else if (v) slot.textContent = v;
-      row.addEventListener("click", () => {
-        KN.motion.fire("nav", row);
-        page = p.id;
-        render();
-        if (root) root.scrollTop = 0;
-      });
-      card.append(row);
-    });
-
+    const tab = TAB[fromTab] || TAB.archive;
+    const put = (list) => list.flat().filter(Boolean).forEach((n) => els.body.append(n));
+    els.body.append(head(tab.label));
+    put(tab.rows());
+    els.body.append(head("一般"));
+    put(generalRows());
   }
 
-  /** 押した一つぶん。中身はこれまでと同じ部品です。 */
-  function renderPage(p) {
-    els.topbar.hidden = false;
-    els.topTitle.textContent = p.title;
-    const wrap = node(html`<div class="set-page" data-page="${p.id}"></div>`);
-    p.build().forEach((sec) => {
-      /* 上の帯がもう題を言っているので、同じ字の見出しは落とします。
-         「お店 3件」のように帯と違うことを言っている見出しは残します
-         ——買うものの中には、お店とカテゴリの二つが並ぶので。 */
-      sec.querySelectorAll(".section-title").forEach((h) => {
-        if (h.textContent.trim() === p.title) h.remove();
-      });
-      wrap.append(sec);
-    });
-    els.body.append(wrap);
+  /** どの画面から開いても、下半分はこれ。 */
+  function generalRows() {
+    const s = store.get();
+    const a = store.ACCENTS.find((x) => x.id === (s.settings.accent || "orange"));
+    const notes = collectIconGaps().length + (s.iconReports || []).length;
+    return [
+      card(
+        navRow({
+          ico: "palette", tint: TINT.look, title: "外観",
+          /* 参考画面と同じで、いまの色をひと粒で。 */
+          value: a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null,
+          onTap: () => go("look"),
+        }),
+        navRow({
+          ico: "download", tint: TINT.data, title: "バックアップと書き出し",
+          onTap: () => go("data"),
+        }),
+        navRow({
+          ico: "tag", tint: TINT.icons, title: "アイコンについて",
+          value: notes ? `${notes}件` : "",
+          onTap: () => go("icons"),
+        })
+      ),
+    ];
   }
 
   /* 直近の保存が容量不足などで失敗したままのとき、直るまでずっと出す行。
@@ -244,188 +316,124 @@
   function saveErrorBanner() {
     return node(html`
       <section class="settings-group">
-        <div class="rows" style="border:1px solid var(--c-danger); border-radius:12px; overflow:hidden">
-          <div class="row" style="background:var(--c-danger-soft)">
-            <span class="row-main">
-              <span class="row-title" style="color:var(--c-danger)">保存できていません</span>
-              <span class="row-sub">空き容量が足りないなど、変更がこの端末に保存できていません。
-                空き容量を確保するか、不要なアプリ・写真を整理してから、もう一度操作してみてください。</span>
-            </span>
+        <div class="set-card is-alert">
+          <div class="set-row">
+            <span class="set-title">保存できていません<span class="set-note">空き容量が足りないなど、変更がこの端末に保存できていません。</span></span>
           </div>
         </div>
       </section>
     `);
   }
 
-  /* ---------------- theme ---------------- */
+  /* ---------------- 外観（「›」の先） ---------------- */
 
-  function themeGroup() {
-    const current = store.get().settings.theme || "auto";
-    const wrap = node(html`
-      <section class="settings-group">
-        <h2 class="section-title">表示</h2>
-        <div class="seg">
-          <button class="seg-btn" data-theme="auto"  aria-pressed="${String(current === "auto")}">自動</button>
-          <button class="seg-btn" data-theme="light" aria-pressed="${String(current === "light")}">ライト</button>
-          <button class="seg-btn" data-theme="dark"  aria-pressed="${String(current === "dark")}">ダーク</button>
-        </div>
-
-        ${/* 基調色。明暗とは別の軸なので、その下に並べます（「あおの、暗い面」
-              のように掛け合わさるもの）。名前だけでは何色か分からないので、
-              実物の丸を添えます——選ぶのは名前ではなく色なので。 */""}
-        <div class="accent-row js-accents" role="group" aria-label="基調色"></div>
-        ${/* アイコンの数は「表示」に置きます。数えているのは買うものと
-              やることの **両方** なので、どちらか一方のタブのものでは
-              ありません（時刻のお知らせは、やることだけの話なので
-              あちらへ移しました）。 */""}
-        ${/* 探す窓。ふだんは畳んでおきます——探すのはたまにすることなのに、
-              窓はいつも画面のいちばん上を取っていました。虫めがねを押せば
-              出るので、置きっぱなしにする必要がありません。 */""}
-        ${/* 並べ方（行／タイル）。買うもの・価格・やることの三画面が同じ
-              一つの札を見ているので、置き場所はここ（画面ごとではない）。
-
-              右上のボタンでした。押すたびに画面が組み変わるほど強いのに、
-              使うのは月に何度かで、その一つのために全画面の右上を一つぶん
-              使っていました。**強さと、使う頻度は別のこと**です。 */""}
-        <div class="rows" style="margin-top:12px">
-          <button class="row js-layout">
-            <span class="row-main">
-              <span class="row-title">並べ方</span>
-              <span class="row-sub">${KN.ui.isTiles()
-                ? "絵を大きく、三つずつ並べます"
-                : "一行に一つずつ、名前を読みやすく並べます"}</span>
-            </span>
-            <span class="row-value">${KN.ui.isTiles() ? "タイル" : "リスト"}</span>
-          </button>
-        </div>
-
-        <div class="rows" style="margin-top:12px">
-          <button class="row js-searchbar">
-            <span class="row-main">
-              <span class="row-title">探す窓を出しておく</span>
-              <span class="row-sub">${store.get().settings.searchBar === true
-                ? "どのタブでも、上に窓を置いたままにします"
-                : "置きません（虫めがねを押したときだけ出ます）"}</span>
-            </span>
-            <span class="row-value">${store.get().settings.searchBar === true ? "オン" : "オフ"}</span>
-          </button>
-        </div>
-
-        <div class="rows js-badge-rows" hidden style="margin-top:12px">
-          <button class="row js-badge">
-            <span class="row-main">
-              <span class="row-title">アイコンにも数を出す</span>
-              <span class="row-sub js-badge-sub"></span>
-            </span>
-            <span class="row-value js-badge-state"></span>
-          </button>
-        </div>
-      </section>
-    `);
-
-    wrap.querySelectorAll(".seg-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const theme = btn.dataset.theme;
-        store.update((s) => { s.settings.theme = theme; });
-        KN.app.applyTheme(theme);
-        haptic();
+  /** 基調色の丸。押すとその場で画面ぜんぶの色が変わります——設定を出たり
+      入ったりしないと確かめられない選択は、選びようがないので。 */
+  function paintAccents(host) {
+    const now = store.get().settings.accent || "orange";
+    host.innerHTML = "";
+    store.ACCENTS.forEach((a) => {
+      const on = a.id === now;
+      const b = node(html`
+        <button type="button" class="accent-dot ${on ? "is-on" : ""}"
+                data-accent="${a.id}" aria-pressed="${String(on)}"
+                aria-label="${a.label}" title="${a.label}">
+          <span class="accent-swatch" style="background:${a.swatch}"></span>
+          <span class="accent-name">${a.label}</span>
+        </button>
+      `);
+      b.addEventListener("click", () => {
+        store.update((s) => { s.settings.accent = a.id; });
+        KN.app.applyAccent(a.id);
+        KN.motion.fire("select", b);
+        paintAccents(host);
       });
+      host.append(b);
     });
-
-    wrap.querySelector(".js-layout").addEventListener("click", () => {
-      KN.ui.toggleLayout();
-      render();
-    });
-
-    wrap.querySelector(".js-searchbar").addEventListener("click", () => {
-      const on = store.get().settings.searchBar !== true;
-      store.update((s) => { s.settings.searchBar = on; });
-      render();
-      KN.ui.toast(on ? "探す窓を出しておきます" : "虫めがねを押したときだけ出します");
-    });
-
-    /* 基調色の丸。押すとその場で画面ぜんぶの色が変わります——設定を出たり
-       入ったりしないと確かめられない選択は、選びようがないので。 */
-    const accents = wrap.querySelector(".js-accents");
-    function paintAccents() {
-      const now = store.get().settings.accent || "orange";
-      accents.innerHTML = "";
-      store.ACCENTS.forEach((a) => {
-        const on = a.id === now;
-        const b = node(html`
-          <button type="button" class="accent-dot ${on ? "is-on" : ""}"
-                  data-accent="${a.id}" aria-pressed="${String(on)}"
-                  aria-label="${a.label}" title="${a.label}">
-            <span class="accent-swatch" style="background:${a.swatch}"></span>
-            <span class="accent-name">${a.label}</span>
-          </button>
-        `);
-        b.addEventListener("click", () => {
-          store.update((s) => { s.settings.accent = a.id; });
-          KN.app.applyAccent(a.id);
-          KN.motion.fire("select", b);
-          paintAccents();
-        });
-        accents.append(b);
-      });
-    }
-    paintAccents();
-
-    /* Only where there is an icon to badge. In a browser tab the API is not
-       there at all, and a switch that does nothing is worse than no switch. */
-    const badge = KN.app.appBadge;
-    if (badge && badge.supported()) {
-      const rows = wrap.querySelector(".js-badge-rows");
-      const state = wrap.querySelector(".js-badge-state");
-      const sub = wrap.querySelector(".js-badge-sub");
-      rows.hidden = false;
-
-      /* An 「オン」 that is not on is the worst of the three states: the app
-         says it is doing something the icon is not showing. iOS drops the
-         badge permission on its own — a reset, a tap in 設定 → 通知 — and
-         tells the page nothing, so the switch has to be able to say so. */
-      const paint = () => {
-        const on = badge.enabled();
-        const blocked = on && badge.blocked && badge.blocked();
-        state.textContent = blocked ? "許可が必要" : (on ? "オン" : "オフ");
-        state.style.color = blocked ? "var(--c-danger)"
-          : (on ? "var(--c-primary)" : "var(--c-text-3)");
-        /* オンのときは、**いま何を出しているか**まで書きます。0のときは絵に
-           何も出ないので、壊れているのか数えるものが無いのかが、見ただけでは
-           分かりません。内わけを出せば分かります。 */
-        const n = badge.now ? badge.now() : null;
-        sub.textContent = blocked
-          ? "端末の設定で、このアプリの通知を許可すると出るようになります"
-          : (on
-            ? (n
-              ? (n.total
-                ? `いま ${n.total} を出しています（★を付けた買うもの ${n.trip}件 ＋ 手をつけられるやること ${n.due}件）`
-                : "いまは何も出していません（★を付けた買うものも、時刻の来たやることも、いまはありません）")
-              : "ホーム画面のアイコンに、今回買うものと、いま手をつけられるやることの数が出ます")
-            : "iPhone では、通知の許可を求められます（この設定は数を出すだけです）");
-      };
-      paint();
-
-      wrap.querySelector(".js-badge").addEventListener("click", async () => {
-        haptic();
-        if (badge.enabled()) { badge.disable(); paint(); return; }
-        const ok = await badge.enable();
-        paint();
-        if (!ok) {
-          KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
-        }
-      });
-    }
-
-    return wrap;
   }
 
+  function lookRows() {
+    const s = store.get().settings;
+    const theme = s.theme || "auto";
 
-  /* ---------------- やること ----------------
+    const seg = node(html`
+      <div class="set-card is-pad">
+        <div class="seg">
+          <button class="seg-btn" data-theme="auto"  aria-pressed="${String(theme === "auto")}">自動</button>
+          <button class="seg-btn" data-theme="light" aria-pressed="${String(theme === "light")}">ライト</button>
+          <button class="seg-btn" data-theme="dark"  aria-pressed="${String(theme === "dark")}">ダーク</button>
+        </div>
+      </div>
+    `);
+    seg.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.theme;
+        store.update((x) => { x.settings.theme = v; });
+        KN.app.applyTheme(v);
+        haptic();
+        render();
+      });
+    });
 
-     数を出すのも、時刻を知らせるのも、やることの話です。「表示」に
-     混ざっていたのは、どちらも見え方の設定に見えたからですが、
-     ダイエットを見ている人には関係がありません。 */
+    const accents = node(html`
+      <div class="set-card is-pad">
+        <div class="accent-row js-accents" role="group" aria-label="基調色"></div>
+      </div>
+    `);
+    paintAccents(accents.querySelector(".js-accents"));
+
+    /* ホーム画面の絵に数を出せる端末でだけ。ブラウザのタブでは API その
+       ものが無く、**何も起きないスイッチは、無いより悪い**ので。 */
+    const badge = KN.app.appBadge;
+    const canBadge = badge && badge.supported();
+    const badgeOn = canBadge && badge.enabled();
+    /* 「オン」なのに出ていない、が三つのうちいちばん悪い状態です。iOS は
+       許可を自分で落とすことがあり（設定を触った・端末を戻した）、その
+       ことをページには何も言いません。だからスイッチ側が言います。 */
+    const badgeBlocked = canBadge && badgeOn && badge.blocked && badge.blocked();
+
+    return [
+      head("明るさ"), seg,
+      head("基調色"), accents,
+      head("表示"),
+      card(
+        pickRow({
+          title: "並べ方", value: KN.ui.isTiles() ? "タイル" : "リスト",
+          onTap: () => choose({
+            title: "並べ方", value: KN.ui.isTiles() ? "tiles" : "list",
+            options: [
+              { id: "list",  label: "リスト", note: "一行に一つ。名前が読みやすい" },
+              { id: "tiles", label: "タイル", note: "絵を大きく、三つずつ" },
+            ],
+            onPick: () => { KN.ui.toggleLayout(); render(); },
+          }),
+        }),
+        switchRow({
+          title: "探す窓を出しておく", on: s.searchBar === true,
+          onTap: (v) => {
+            store.update((x) => { x.settings.searchBar = v; });
+            render();
+          },
+        })
+      ),
+      foot("並べ方は、買うもの・価格・やることの三つが分け合います。探す窓を出さないときは、虫めがねを押すと出ます。"),
+      canBadge ? card(
+        switchRow({
+          title: "アイコンにも数を出す", on: badgeOn,
+          onTap: async (v) => {
+            haptic();
+            if (!v) { badge.disable(); render(); return; }
+            const ok = await badge.enable();
+            render();
+            if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+          },
+        })
+      ) : null,
+      canBadge ? foot(badgeBlocked
+        ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
+        : "ホーム画面の絵に、今回買うものと、いま手をつけられるやることの数が出ます。") : null,
+    ];
+  }
 
   /* ---------------- 暦を出すか、しまうか ----------------
 
@@ -436,193 +444,146 @@
 
      タブごとに持ちます（store.calPrefs）。ダイエットは月ぜんぶを眺めたいが
      やることは今週でいい、というように、見たい単位が画面ごとに違うので。 */
-  function calRow(tab, what) {
+  function calSwitch(tab) {
     const on = store.calPrefs(tab).shown;
-    const row = node(html`
-      <button class="row js-cal-shown">
-        <span class="row-main">
-          <span class="row-title">暦を出す</span>
-          <span class="row-sub">${on
-            ? `${what}の上に暦を置きます（紙の持ち手を上へ押してもしまえます）`
-            : "しまってあります（紙の持ち手を下へ引くと戻ります）"}</span>
-        </span>
-        <span class="row-value">${on ? "オン" : "オフ"}</span>
-      </button>
-    `);
-    row.addEventListener("click", () => {
-      store.setCalPref(tab, { shown: !on });
-      render();
-      haptic();
+    return switchRow({
+      title: "暦を出す", on,
+      onTap: (v) => { store.setCalPref(tab, { shown: v }); render(); },
     });
-    return row;
   }
 
-  function todoGroup() {
-    const wrap = node(html`
-      <section class="settings-group">
-        <h2 class="section-title">tasks</h2>
-        <div class="rows">
-          ${/* 時間割が読む一日の枠。ここがその人の暮らしと合っていないと、
-                「このあと ◯時間あいています」の数がぜんぶずれます。 */""}
-          <div class="row js-day-span">
-            <span class="row-main">
-              <span class="row-title">一日の始まりと終わり</span>
-              <span class="row-sub">今日の時間割は、この幅のなかに組みます。
-                空き時間の数もここから数えます。</span>
-              <span class="row-times">
-                <input class="input js-day-start" type="time" aria-label="一日の始まり">
-                <span class="row-dash">〜</span>
-                <input class="input js-day-end" type="time" aria-label="一日の終わり">
-              </span>
-            </span>
-          </div>
-          <button class="row js-tl">
-            <span class="row-main">
-              <span class="row-title">今日を時間割で見る</span>
-              <span class="row-sub js-tl-sub"></span>
-            </span>
-            <span class="row-value js-tl-state"></span>
-          </button>
-          <span class="js-cal-slot"></span>
-        </div>
-        <div class="rows js-notify-rows" hidden>
-          <button class="row js-notify">
-            <span class="row-main">
-              <span class="row-title">やることの時刻を知らせる</span>
-              <span class="row-sub js-notify-sub"></span>
-            </span>
-            <span class="row-value js-notify-state"></span>
-          </button>
-        </div>
-        <p class="section-hint js-none" hidden>この端末で切り替えられる設定はありません。</p>
-      </section>
-    `);
+  /* ---------------- やること ---------------- */
 
-    /* 一日の枠。空にしたら既定へ戻します（枠が無いと組めないので）。 */
+  /** 一日の枠。時間割はこの幅の中に組み、空き時間もここから数えます。
+      行の中に時刻の欄を二つ並べていましたが、そこだけ行が二段になって、
+      一覧の高さがそろわなくなっていました。 */
+  function openDaySpan() {
     const P = KN.plan;
-    const startEl = wrap.querySelector(".js-day-start");
-    const endEl = wrap.querySelector(".js-day-end");
     const st = store.get().settings;
-    startEl.value = st.dayStart || P.DEFAULT_START;
-    endEl.value = st.dayEnd || P.DEFAULT_END;
-    const saveSpan = () => {
-      const a = KN.util.isTime(startEl.value) ? startEl.value : P.DEFAULT_START;
-      let b = KN.util.isTime(endEl.value) ? endEl.value : P.DEFAULT_END;
+    const body = node(html`
+      <div class="stack">
+        <div class="row-times">
+          <input class="input js-a" type="time" aria-label="一日の始まり"
+                 value="${st.dayStart || P.DEFAULT_START}">
+          <span class="row-dash">〜</span>
+          <input class="input js-b" type="time" aria-label="一日の終わり"
+                 value="${st.dayEnd || P.DEFAULT_END}">
+        </div>
+        <p class="set-foot is-flush">今日の時間割は、この幅のなかに組みます。空き時間もここから数えます。</p>
+      </div>
+    `);
+    const save = node(html`<button class="btn btn-primary btn-block">保存</button>`);
+    const h = KN.ui.sheet({ title: "一日の始まりと終わり", content: body, footer: save });
+
+    save.addEventListener("click", () => {
+      const av = body.querySelector(".js-a").value;
+      const bv = body.querySelector(".js-b").value;
+      const a = KN.util.isTime(av) ? av : P.DEFAULT_START;
+      let b = KN.util.isTime(bv) ? bv : P.DEFAULT_END;
       /* 終わりが始まりより前なら、一日が裏返ります。組めないので直します
          ——黙って受け取って空きが負になるより、その場で戻すほうが親切です。 */
       if (P.toMin(b) <= P.toMin(a)) {
         b = P.DEFAULT_END;
         KN.ui.toast("終わりは始まりより後にしてください");
       }
-      startEl.value = a; endEl.value = b;
       store.update((s) => { s.settings.dayStart = a; s.settings.dayEnd = b; });
+      h.close();
+      render();
       KN.motion.fire("save");
-    };
-    startEl.addEventListener("change", saveSpan);
-    endEl.addEventListener("change", saveSpan);
-
-    /* 時間割で見るかどうか。画面の中の「一覧で見る」と同じ切り替えです
-       ——設定からも触れないと、一度切ったあと戻し方を探すことになります。 */
-    const tlRow = wrap.querySelector(".js-tl");
-    const paintTl = () => {
-      const on = store.get().settings.todoTimeline !== false;
-      wrap.querySelector(".js-tl-state").textContent = on ? "オン" : "オフ";
-      wrap.querySelector(".js-tl-sub").textContent = on
-        ? "一本の線に沿って、今日の並びと空きを出します"
-        : "今日も、ほかの日と同じ一覧で出します";
-    };
-    tlRow.addEventListener("click", () => {
-      const on = store.get().settings.todoTimeline === false;
-      store.update((s) => { s.settings.todoTimeline = on; });
-      paintTl();
-      KN.motion.fire("select");
-      KN.ui.toast(on ? "時間割で出します" : "一覧で出します");
     });
-    paintTl();
-
-    /* 時刻のお知らせ。The sub-line says what it actually does, at both
-       settings, because 「通知」 on its own would be read as 「19:30 に鳴る」 —
-       and it does not ring while the app is closed. Saying that here is the
-       difference between a feature and a thing that quietly lets you down. */
-    const notify = KN.notify;
-    if (notify && notify.supported()) {
-      const rows = wrap.querySelector(".js-notify-rows");
-      const state = wrap.querySelector(".js-notify-state");
-      const sub = wrap.querySelector(".js-notify-sub");
-      rows.hidden = false;
-
-      const paint = () => {
-        const on = notify.enabled();
-        const blocked = on && notify.blocked();
-        state.textContent = blocked ? "許可が必要" : (on ? "オン" : "オフ");
-        state.style.color = blocked ? "var(--c-danger)"
-          : (on ? "var(--c-primary)" : "var(--c-text-3)");
-        sub.textContent = blocked
-          ? "端末の設定で、このアプリの通知を許可すると出るようになります"
-          : (on
-              ? "時刻を決めたやることをお知らせします。アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます"
-              : "アプリを開いているときにお知らせし、閉じていたぶんは開いたときにまとめて出ます");
-      };
-      paint();
-
-      wrap.querySelector(".js-notify").addEventListener("click", async () => {
-        haptic();
-        if (notify.enabled()) { notify.disable(); paint(); return; }
-        const ok = await notify.enable();
-        paint();
-        if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
-      });
-    }
-
-
-    /* 使えない端末（ブラウザのタブなど）では、見出しだけの空の枠が
-       残ります。何も無いことを言うほうが、白い枠より親切です。 */
-    if (wrap.querySelector(".js-notify-rows").hidden) {
-      wrap.querySelector(".js-none").hidden = false;
-    }
-    wrap.querySelector(".js-cal-slot").replaceWith(calRow("todo", "時間割"));
-    return wrap;
   }
 
-  /* ---------------- stores ---------------- */
+  function todoRows() {
+    const s = store.get().settings;
+    const P = KN.plan;
+    /* 「05:00」ではなく「5:00」。時刻の欄が返す形と、画面に書く形は別。 */
+    const trim = (t) => String(t).replace(/^0/, "");
+    const span = `${trim(s.dayStart || P.DEFAULT_START)}〜${trim(s.dayEnd || P.DEFAULT_END)}`;
 
-  /* 価格の画面の上にあった「68商品・10店舗」は、ここへ移しました。
-     あちらでは値札の並びそのものが数を見せていて、その上でもう一度
-     数えた結果を書くのは、同じことを二度言うことでした。数だけを
-     知りたい人のために、置き場所は残します。 */
-  function countsRow() {
-    const st = store.get();
-    return node(html`
-      <section class="settings-group">
-        <div class="rows">
-          <div class="row">
-            <span class="row-main"><span class="row-title">登録されているもの</span></span>
-            <span class="row-value">${st.products.length}商品 ・ ${st.stores.length}店舗</span>
-          </div>
-        </div>
-      </section>
-    `);
+    /* 時刻のお知らせ。何をするかは**カードの下**で言います——「通知」と
+       だけ書くと「19:30 に鳴る」と読まれますが、アプリを閉じているあいだは
+       鳴りません。そこを言うかどうかが、機能と、黙って裏切るものの差です。 */
+    const notify = KN.notify;
+    const canNotify = notify && notify.supported();
+    const notifyOn = canNotify && notify.enabled();
+    const notifyBlocked = canNotify && notifyOn && notify.blocked();
+
+    return [
+      card(
+        switchRow({
+          title: "今日を時間割で見る", on: s.todoTimeline !== false,
+          onTap: (v) => {
+            store.update((x) => { x.settings.todoTimeline = v; });
+            render();
+            KN.motion.fire("select");
+          },
+        }),
+        calSwitch("todo")
+      ),
+      card(
+        pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
+      ),
+      canNotify ? card(
+        switchRow({
+          title: "やることの時刻を知らせる", on: notifyOn,
+          onTap: async (v) => {
+            if (!v) { notify.disable(); render(); return; }
+            const ok = await notify.enable();
+            render();
+            if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+          },
+        })
+      ) : null,
+      canNotify ? foot(notifyBlocked
+        ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
+        : "アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます。") : null,
+    ];
+  }
+
+  /* ---------------- 買うもの ----------------
+
+     お店とカテゴリは、どちらも一画面ぶんあります（10行・9行）。数だけを
+     行に出して、中身は「›」の先へ。価格の画面の上にあった「68商品・10店舗」も
+     ここへ——あちらでは値札の並びそのものが数を見せていて、その上でもう一度
+     数えた結果を書くのは、同じことを二度言うことでした。 */
+  function listRows() {
+    const s = store.get();
+    return [
+      card(
+        navRow({
+          ico: "store", tint: TINT.store, title: "お店",
+          value: `${(s.stores || []).length}件`, onTap: () => go("stores"),
+        }),
+        navRow({
+          ico: "tag", tint: TINT.cat, title: "カテゴリ",
+          value: `${(s.categories || []).length}件`, onTap: () => go("cats"),
+        })
+      ),
+      foot(`${s.products.length}商品・${s.stores.length}店舗が登録されています。`),
+    ];
   }
 
   function storesGroup() {
     const stores = store.sortedStores();
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="section-title">お店 <span style="font-weight:600;color:var(--c-text-3)">${stores.length}件</span></h2>
+        <div class="set-card js-rows"></div>
         ${stores.length > 1
-          ? html`<p class="section-hint">長押しすると持ち上がります。そのまま動かして並べ替えられます。</p>`
+          ? html`<p class="set-foot is-flush">長押しで並べ替えられます。</p>`
           : ""}
-        <div class="stack js-rows" style="gap:8px"></div>
-        <button class="btn btn-soft btn-sm js-add">${icon("plus")} お店を追加</button>
+        <div class="set-card">
+          <button type="button" class="set-row is-add js-add">
+            <span class="set-glyph">${icon("plus")}</span>
+            <span class="set-title">お店を追加</span>
+          </button>
+        </div>
       </section>
     `);
 
     const rows = wrap.querySelector(".js-rows");
     if (!stores.length) {
       rows.append(node(html`
-        <p style="font-size:13px;color:var(--c-text-3);line-height:1.6">
-          お店を登録すると、商品ごとに値段を記録して比べられます。
-        </p>
+        <p class="set-empty">お店を登録すると、商品ごとに値段を記録して比べられます。</p>
       `));
     }
 
@@ -721,10 +682,14 @@
     const cats = store.sortedCategories();
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="section-title">カテゴリ <span style="font-weight:600;color:var(--c-text-3)">${cats.length}件</span></h2>
-        <p class="section-hint">長押しすると持ち上がります。そのまま動かして並べ替えられます。</p>
-        <div class="stack js-rows" style="gap:8px"></div>
-        <button class="btn btn-soft btn-sm js-add">${icon("plus")} カテゴリを追加</button>
+        <div class="set-card js-rows"></div>
+        <p class="set-foot is-flush">長押しで並べ替えられます。</p>
+        <div class="set-card">
+          <button type="button" class="set-row is-add js-add">
+            <span class="set-glyph">${icon("plus")}</span>
+            <span class="set-title">カテゴリを追加</span>
+          </button>
+        </div>
       </section>
     `);
 
@@ -861,13 +826,6 @@
     return `${formatDate(iso)} ${hh}:${mm}`;
   }
 
-  function learnedSub() {
-    const n = store.learnedList().length;
-    return n
-      ? `${n}件。カテゴリを手で選ぶたびに増えます`
-      : "商品のカテゴリを手で選ぶと、次から同じ名前をそこに入れます";
-  }
-
   /* What the app has been taught, and a way to take it back. Guessing on the
      user's behalf is only reasonable if they can see what it decided. */
   function openLearned() {
@@ -879,10 +837,7 @@
 
     const body = node(html`
       <div class="stack">
-        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:0 0 8px">
-          商品のカテゴリを手で選ぶと、その名前を覚えます。次から同じ名前や、
-          それを含む名前は、はじめからそのカテゴリに入ります。
-        </p>
+        <p class="set-foot is-flush">カテゴリを手で選ぶと、次から同じ名前はそこに入ります。</p>
         <div class="stack js-rules" style="gap:8px"></div>
         <button class="btn btn-soft btn-sm js-forget-all" style="margin-top:4px">すべて忘れる</button>
       </div>
@@ -988,12 +943,9 @@
 
     const body = node(html`
       <div class="stack">
-        <p class="diet-note">
-          日ごとの記録（体重・体脂肪・歩数・総消費・睡眠・摂取と推定の幅・お酒・
-          食事メモ）を、まとめて書き出します。<b>AIに貼って読んでもらう</b>ときは
-          「文」、表計算で見るときは「CSV」。<br>
-          バックアップとは別のものです（戻すためのファイルは、上の
-          「バックアップを保存」のほうです）。
+        <p class="set-foot is-flush">
+          AIに貼るときは「文」、表計算で見るときは「CSV」。アプリに戻すための
+          ファイルは「バックアップを保存」のほうです。
         </p>
         <div class="js-span"></div>
         <div class="js-form"></div>
@@ -1075,11 +1027,7 @@
 
     const body = node(html`
       <div class="stack">
-        <p style="font-size:12px;color:var(--c-text-3);line-height:1.6;margin:0 0 8px">
-          アプリが自動で残している控えです。この端末の中にだけ保存されるため、
-          機種変更や端末の紛失には備えられません。そなえるには「バックアップを保存」で
-          ファイルを書き出してください。
-        </p>
+        <p class="set-foot is-flush">この端末の中だけの控えです。機種変更にそなえるには「バックアップを保存」を。</p>
         <div class="rows js-snaps"></div>
       </div>
     `);
@@ -1126,150 +1074,96 @@
      置きません）。人によって、日誌として使うか、集めるものとして使うかが
      はっきり分かれる画面なので、その分かれ目だけを渡します。 */
 
-  const dailySet = (key, value, said) => {
+  const dailySet = (key, value) => {
     store.update((s) => { s.settings[key] = value; });
     render();
-    if (said) KN.ui.toast(said);
   };
 
-  function dailyGroup() {
+  function dailyRows() {
     const s = store.get().settings;
     const full = s.logFull !== false;
-    const wrap = node(html`
-      <section class="settings-group">
-        <h2 class="section-title">daily</h2>
-        <div class="rows">
-          <span class="js-cal-slot"></span>
-          <button class="row js-month-export">
-            <span class="row-main">
-              <span class="row-title">月ぶんを書き出す</span>
-              <span class="row-sub">その月の Daily Log と積み上げを、まとめて一つのファイルに</span>
-            </span>
-            <span class="row-chevron">${icon("download")}</span>
-          </button>
-          <button class="row js-then">
-            <span class="row-main">
-              <span class="row-title">「あの日」を出す</span>
-              <span class="row-sub">${s.showThen === false
-                ? "出しません"
-                : "暦のすぐ下に、何年か前の同じ日に書いたものを一つ"}</span>
-            </span>
-            <span class="row-value">${s.showThen === false ? "オフ" : "オン"}</span>
-          </button>
-          ${/* Daily Log をその日ぶんだけ出すか、月ぜんぶ並べるか。
-                既定は**その日ぶん**——毎日開くのは今日を書くためなのに、
-                書いた日が増えるほど今日が下へ流れていく作りだったので。 */""}
-          <button class="row js-scope">
-            <span class="row-main">
-              <span class="row-title">Daily Log に出す範囲</span>
-              <span class="row-sub">${s.dailyScope === "month"
-                ? "その月ぜんぶを、日ごとに縦へ並べます"
-                : "暦で選んでいる日の、一日ぶんだけ"}</span>
-            </span>
-            <span class="row-value">${s.dailyScope === "month" ? "月ぜんぶ" : "1日"}</span>
-          </button>
-          <button class="row js-logfull">
-            <span class="row-main">
-              <span class="row-title">Daily Log の見せ方</span>
-              <span class="row-sub">${full
-                ? "書いたものを全部そのまま出します"
-                : "はじめの三行だけ。続きは押して開けば読めます"}</span>
-            </span>
-            <span class="row-value">${full ? "全文" : "数行"}</span>
-          </button>
-          <button class="row js-daytimes">
-            <span class="row-main">
-              <span class="row-title">起床・就寝の時刻</span>
-              <span class="row-sub">${s.showDayTimes === false
-                ? "一覧には出しません（開けば書けます）"
-                : "Daily Log の一行ごとに出します"}</span>
-            </span>
-            <span class="row-value">${s.showDayTimes === false ? "オフ" : "オン"}</span>
-          </button>
-          <button class="row js-stamps">
-            <span class="row-main">
-              <span class="row-title">作成・更新の時刻</span>
-              <span class="row-sub">${s.showStamps === false
-                ? "出しません"
-                : "いつ書いて、いつ直したか（その日の話ではなく、帳簿のほう）"}</span>
-            </span>
-            <span class="row-value">${s.showStamps === false ? "オフ" : "オン"}</span>
-          </button>
-          <button class="row js-order">
-            <span class="row-main">
-              <span class="row-title">上に出すもの</span>
-              <span class="row-sub">${s.dailyOrder === "entries"
-                ? "積み上げが先。読んだ本や学んだことを集める使い方に"
-                : "Daily Log が先。その日の文を書く使い方に"}</span>
-            </span>
-            <span class="row-value">${s.dailyOrder === "entries" ? "積み上げ" : "Daily Log"}</span>
-          </button>
-          ${/* 月のまとめ。出すか出さないかと、出すならどちら側か。位置は
-                「上か下か」のどちらかに決め打ちで、日の間に挟まりません
-                ——まとめは月ぜんぶの話なので、日の列に混ぜると、どの日の
-                話か分からなくなります。 */""}
-          <button class="row js-digest">
-            <span class="row-main">
-              <span class="row-title">月のまとめを出す</span>
-              <span class="row-sub">${s.showDigest === false
-                ? "出しません"
-                : "その月に記録のあった日と、どこから来た記録かの件数"}</span>
-            </span>
-            <span class="row-value">${s.showDigest === false ? "オフ" : "オン"}</span>
-          </button>
-          ${s.showDigest === false ? "" : html`
-            <button class="row js-digestpos">
-              <span class="row-main">
-                <span class="row-title">月のまとめの位置</span>
-                <span class="row-sub">${s.digestPos === "top"
-                  ? "Daily Log の上。開いてすぐ、月の姿が目に入ります"
-                  : "Daily Log の下。まず日を読んで、最後にまとめを見ます"}</span>
-              </span>
-              <span class="row-value">${s.digestPos === "top" ? "上" : "下"}</span>
-            </button>
-          `}
-        </div>
-      </section>
-    `);
-
-    wrap.querySelector(".js-month-export").addEventListener("click", openMonthExport);
-    wrap.querySelector(".js-then").addEventListener("click", () => {
-      const on = s.showThen === false;
-      dailySet("showThen", on, on ? "「あの日」を出します" : "「あの日」を出しません");
-    });
-    wrap.querySelector(".js-scope").addEventListener("click", () => {
-      const toMonth = s.dailyScope !== "month";
-      dailySet("dailyScope", toMonth ? "month" : "day",
-        toMonth ? "その月ぜんぶを並べます" : "選んでいる日の、一日ぶんだけ出します");
-    });
-    wrap.querySelector(".js-logfull").addEventListener("click", () => {
-      dailySet("logFull", !full, full ? "はじめの三行だけ出します" : "全文を出します");
-    });
-    wrap.querySelector(".js-daytimes").addEventListener("click", () => {
-      const on = s.showDayTimes === false;
-      dailySet("showDayTimes", on, on ? "起床・就寝を出します" : "起床・就寝を出しません");
-    });
-    wrap.querySelector(".js-stamps").addEventListener("click", () => {
-      const on = s.showStamps === false;
-      dailySet("showStamps", on, on ? "作成・更新を出します" : "作成・更新を出しません");
-    });
-    wrap.querySelector(".js-order").addEventListener("click", () => {
-      const toEntries = s.dailyOrder !== "entries";
-      dailySet("dailyOrder", toEntries ? "entries" : "log",
-        toEntries ? "積み上げを上にします" : "Daily Log を上にします");
-    });
-    wrap.querySelector(".js-digest").addEventListener("click", () => {
-      const on = s.showDigest === false;
-      dailySet("showDigest", on, on ? "月のまとめを出します" : "月のまとめを出しません");
-    });
-    const posRow = wrap.querySelector(".js-digestpos");
-    if (posRow) posRow.addEventListener("click", () => {
-      const toTop = s.digestPos !== "top";
-      dailySet("digestPos", toTop ? "top" : "bottom",
-        toTop ? "月のまとめを上に出します" : "月のまとめを下に出します");
-    });
-    wrap.querySelector(".js-cal-slot").replaceWith(calRow("archive", "Daily Log"));
-    return wrap;
+    return [
+      card(
+        calSwitch("archive"),
+        switchRow({
+          title: "「あの日」を出す", on: s.showThen !== false,
+          onTap: (v) => dailySet("showThen", v),
+        })
+      ),
+      foot("「あの日」は、暦のすぐ下に、何年か前の同じ日に書いたものを一つ出します。"),
+      card(
+        pickRow({
+          title: "出す範囲", value: s.dailyScope === "month" ? "月ぜんぶ" : "1日",
+          onTap: () => choose({
+            title: "Daily Log に出す範囲",
+            value: s.dailyScope === "month" ? "month" : "day",
+            options: [
+              { id: "day",   label: "1日",      note: "暦で選んでいる日だけ" },
+              { id: "month", label: "月ぜんぶ", note: "その月を、日ごとに縦へ" },
+            ],
+            onPick: (v) => dailySet("dailyScope", v),
+          }),
+        }),
+        pickRow({
+          title: "見せ方", value: full ? "全文" : "数行",
+          onTap: () => choose({
+            title: "Daily Log の見せ方", value: full ? "full" : "short",
+            options: [
+              { id: "full",  label: "全文", note: "書いたものをそのまま" },
+              { id: "short", label: "数行", note: "はじめの三行。押せば続きが開く" },
+            ],
+            onPick: (v) => dailySet("logFull", v === "full"),
+          }),
+        }),
+        pickRow({
+          title: "上に出すもの", value: s.dailyOrder === "entries" ? "積み上げ" : "Daily Log",
+          onTap: () => choose({
+            title: "上に出すもの", value: s.dailyOrder === "entries" ? "entries" : "log",
+            options: [
+              { id: "log",     label: "Daily Log", note: "その日の文を書く使い方に" },
+              { id: "entries", label: "積み上げ",  note: "読んだ本や学んだことを集める使い方に" },
+            ],
+            onPick: (v) => dailySet("dailyOrder", v),
+          }),
+        })
+      ),
+      card(
+        switchRow({
+          title: "起床・就寝の時刻", on: s.showDayTimes !== false,
+          onTap: (v) => dailySet("showDayTimes", v),
+        }),
+        switchRow({
+          title: "作成・更新の時刻", on: s.showStamps !== false,
+          onTap: (v) => dailySet("showStamps", v),
+        })
+      ),
+      foot("「作成・更新」は、いつ書いていつ直したか（その日の話ではなく、帳簿のほう）。"),
+      card(
+        switchRow({
+          title: "月のまとめを出す", on: s.showDigest !== false,
+          onTap: (v) => dailySet("showDigest", v),
+        }),
+        /* 位置は「上か下か」の決め打ちで、日の間には挟まりません——まとめは
+           月ぜんぶの話なので、日の列に混ぜると、どの日の話か分からなくなります。 */
+        s.showDigest === false ? null : pickRow({
+          title: "まとめの位置", value: s.digestPos === "top" ? "上" : "下",
+          onTap: () => choose({
+            title: "月のまとめの位置", value: s.digestPos === "top" ? "top" : "bottom",
+            options: [
+              { id: "top",    label: "上", note: "開いてすぐ、月の姿が目に入る" },
+              { id: "bottom", label: "下", note: "まず日を読んで、最後にまとめ" },
+            ],
+            onPick: (v) => dailySet("digestPos", v),
+          }),
+        })
+      ),
+      card(
+        navRow({
+          ico: "download", tint: TINT.sub, title: "月ぶんを書き出す",
+          onTap: openMonthExport,
+        })
+      ),
+    ];
   }
 
   /* 書き出す月を選ぶ紙。記録のある月だけを、新しい順に並べます——
@@ -1322,110 +1216,58 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  /* ---------------- ダイエット ---------------- */
+  /* ---------------- ダイエット ----------------
 
-  function dietGroup() {
-    const d = store.get().diet;
-    const aiOn = KN.dietAI.configured();
-    const wrap = node(html`
-      <section class="settings-group">
-        <h2 class="section-title">health</h2>
-        <div class="rows">
-          <span class="js-cal-slot"></span>
-          <button class="row js-goal">
-            <span class="row-main">
-              <span class="row-title">目標</span>
-              <span class="row-sub">${d.goal.targetKg == null ? "決めていません"
-                : `${d.goal.targetKg}kg${d.goal.targetDay ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`}</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
-          <button class="row js-auto">
-            <span class="row-main">
-              <span class="row-title">開いたときに自動で読む</span>
-              <span class="row-sub">${store.get().settings.dietAutoSync === false
-                ? "オフ"
-                : KN.healthRelay.configured()
-                  ? "ダイエットを開いた時に、中継所に届いているデータを取り込みます"
-                  : "ダイエットを開いた時に、コピー済みの健康データがあれば取り込みます"}</span>
-            </span>
-            <span class="row-value">${store.get().settings.dietAutoSync === false ? "オフ" : "オン"}</span>
-          </button>
-          <button class="row js-sync">
-            <span class="row-main">
-              <span class="row-title">ヘルスケアから取り込む</span>
-              <span class="row-sub">${d.sync.lastAt ? `最後の取り込み：${KN.util.formatStamp(d.sync.lastAt)}` : "ショートカットで書き出したものを読みます"}</span>
-            </span>
-            <span class="row-chevron">${icon("download")}</span>
-          </button>
-          <button class="row js-relay">
-            <span class="row-main">
-              <span class="row-title">中継所</span>
-              <span class="row-sub">${KN.healthRelay.configured()
-                ? `${KN.util.escapeHtml(KN.healthRelay.host())} ・ コピーと貼り付けなしで受け取ります`
-                : "未設定（ショートカットを走らせるだけで取り込めるようになります）"}</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
-          <button class="row js-insight">
-            <span class="row-main">
-              <span class="row-title">気づいたこと</span>
-              <span class="row-sub">${store.get().settings.showInsight === true
-                ? "ダイエットの画面に、体重と食事から読み取れたことを出します"
-                : "出しません（標本が足りないうちは、当たり障りのないことしか言えないので）"}</span>
-            </span>
-            <span class="row-value">${store.get().settings.showInsight === true ? "オン" : "オフ"}</span>
-          </button>
-          <button class="row js-ai">
-            <span class="row-main">
-              <span class="row-title">AIの窓口</span>
-              <span class="row-sub">${aiOn ? KN.util.escapeHtml(KN.dietAI.url()) : "未設定（写真の推定とAI相談に使います）"}</span>
-            </span>
-            <span class="row-chevron">${icon("chevron")}</span>
-          </button>
-          <button class="row js-diet-clear">
-            <span class="row-main">
-              <span class="row-title" style="color:var(--c-danger)">ダイエットの記録を消す</span>
-              <span class="row-sub">体重 ${d.weights.length}件・食事 ${d.meals.length}件・ヘルスケア ${d.health.length}件</span>
-            </span>
-            <span class="row-chevron">${icon("trash")}</span>
-          </button>
-        </div>
-      </section>
-    `);
+     「ダイエットの記録を消す」はここから外しました。戻せない操作なのに、
+     目標や中継所と同じ列に、同じ高さで並んでいたからです。行き先は
+     一般 → バックアップと書き出し → データを消す（三段奥）。 */
 
-    // openGoalSheet/openSyncSheet は共通の画面契約（mount/render/dockButton）の
-    // 外にあるダイエット画面だけの窓口です。screen-diet.js の export の
-    // コメントにあるとおり、設定画面から開けるように意図して公開されています。
-    wrap.querySelector(".js-goal").addEventListener("click", () => KN.screens.diet && KN.screens.diet.openGoalSheet());
-    wrap.querySelector(".js-sync").addEventListener("click", () => KN.screens.diet && KN.screens.diet.openSyncSheet());
-    wrap.querySelector(".js-auto").addEventListener("click", () => {
-      const off = store.get().settings.dietAutoSync === false;
-      store.update((s) => { s.settings.dietAutoSync = off; });
-      render();
-      KN.ui.toast(off ? "開いたときに読みます" : "自動では読みません");
-    });
-    wrap.querySelector(".js-insight").addEventListener("click", () => {
-      const on = store.get().settings.showInsight !== true;
-      store.update((s) => { s.settings.showInsight = on; });
-      render();
-      KN.ui.toast(on ? "気づいたことを出します" : "気づいたことを出しません");
-    });
-    wrap.querySelector(".js-relay").addEventListener("click", openRelaySheet);
-    wrap.querySelector(".js-ai").addEventListener("click", openAiSheet);
-    wrap.querySelector(".js-diet-clear").addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({
-        title: "ダイエットの記録を消す",
-        message: "体重・食事・ヘルスケアの記録がすべて消えます。買い物リストとやることはそのままです。直前の状態は自動バックアップに残ります。",
-        okLabel: "消す", danger: true,
-      });
-      if (!ok) return;
-      store.clearDiet();
-      render();
-      KN.ui.toast("消しました");
-    });
-    wrap.querySelector(".js-cal-slot").replaceWith(calRow("diet", "その日の記録"));
-    return wrap;
+  function dietRows() {
+    const s = store.get();
+    const d = s.diet;
+    const goal = d.goal.targetKg == null
+      ? "未設定"
+      : `${d.goal.targetKg}kg${d.goal.targetDay
+          ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`;
+
+    return [
+      card(
+        calSwitch("diet"),
+        switchRow({
+          title: "開いたときに自動で読む", on: s.settings.dietAutoSync !== false,
+          onTap: (v) => { store.update((x) => { x.settings.dietAutoSync = v; }); render(); },
+        }),
+        switchRow({
+          title: "気づいたことを出す", on: s.settings.showInsight === true,
+          onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); render(); },
+        })
+      ),
+      foot("「気づいたこと」は、体重と食事から読み取れたことを画面に出します。"),
+      card(
+        navRow({
+          ico: "target", tint: TINT.goal, title: "目標", value: goal,
+          onTap: () => KN.screens.diet && KN.screens.diet.openGoalSheet(),
+        })
+      ),
+      card(
+        navRow({
+          ico: "download", tint: TINT.sync, title: "ヘルスケアから取り込む",
+          value: d.sync.lastAt ? KN.util.formatStamp(d.sync.lastAt) : "",
+          onTap: () => KN.screens.diet && KN.screens.diet.openSyncSheet(),
+        }),
+        navRow({
+          ico: "route", tint: TINT.relay, title: "中継所",
+          value: KN.healthRelay.configured() ? KN.healthRelay.host() : "未設定",
+          onTap: openRelaySheet,
+        }),
+        navRow({
+          ico: "sparkles", tint: TINT.ai, title: "AIの窓口",
+          value: KN.dietAI.configured() ? "設定済み" : "未設定",
+          onTap: openAiSheet,
+        })
+      ),
+      foot("中継所を建てると、ショートカットを走らせるだけで歩数や睡眠が入ります。"),
+    ];
   }
 
   /* ---------------- 中継所 ----------------
@@ -1461,17 +1303,10 @@
           読み方は手入力とまったく同じで、増えるのは入口だけです。
         </p>
         <p class="diet-note">
-          <b>渡しても消えません。</b>かわりに「いちばん新しい便を置いた時刻」を
-          版として持っていて、変わっていなければ空の返事を返します。だから
-          何度覗いてもタダで、<b>取りこぼしも二度取り込みも起きません</b>。
-          前は渡した時点で消していたので、iPhoneがロック中に走った空振りの便を
-          断ると、その一回ぶんが永久に失われていました。
-        </p>
-        <p class="diet-note">
-          <b>すでに中継所を建てている方は、置き直しが要ります。</b>
-          この仕掛けは中継所側のものなので、アプリだけ新しくしても効きません。
-          下の「中継所のコードをコピー」から貼り直すか、②の「Cloudflareに置く」で
-          もう一度配置してください（URLも道もそのままで構いません）。
+          <b>すでに建てている方は、置き直しが要ります。</b>渡した便を消さない
+          作りに変わったので、アプリだけ新しくしても効きません。下の「中継所の
+          コードをコピー」から貼り直すか、②でもう一度配置してください
+          （URLも道もそのままで構いません）。
         </p>
         <p class="diet-note">
           <b>iPhoneだけで建てられます。</b>パソコンは要りません。下の①〜④を
@@ -1726,13 +1561,11 @@
                  placeholder="https://example.workers.dev/kurashi"
                  value="${KN.dietAI.url()}">
         </label>
-        <p class="diet-note">
-          APIキーはこのアプリには入れません。ここは静的なページなので、書いた鍵は
-          誰にでも読めてしまいます。鍵は窓口の向こう側（Cloudflare Workers など）に
-          置いてください。このアプリが送るのは、ダイエットの記録だけです——
-          買い物リストとやることは送りません。
+        <p class="set-foot is-flush">
+          <b>APIキーはここに入れません。</b>このページの中身は誰でも読めるので、鍵は
+          窓口の向こう側（Cloudflare Workers など）に置いてください。送るのは
+          ダイエットの記録だけです。受ける形は README の「AIの窓口」に。
         </p>
-        <p class="diet-note">窓口が受ける形は README の「AIの窓口」に書いてあります。</p>
       </div>
     `);
     const foot = node(html`
@@ -1811,22 +1644,18 @@
     const gaps = collectIconGaps();
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="section-title">絵が見つからない言葉</h2>
-        <p class="row-sub" style="padding:0 4px 12px">
-          いま保存されている題・食事・商品の名前を、その場で辞書に通した
-          結果です。回数の多い順に並びます。ここに出ている言葉をコピーして
-          伝えていただくと、辞書に足す作業に回せます。
-        </p>
+        <h2 class="set-head is-flush">絵が見つからない言葉</h2>
         ${gaps.length ? html`
-          <div class="rows js-gap-rows"></div>
-          <div class="rows" style="margin-top:12px">
-            <button class="row js-gap-copy">
-              <span class="row-main"><span class="row-title">一覧をコピー</span></span>
-              <span class="row-chevron">${icon("copy")}</span>
+          <div class="set-card js-gap-rows"></div>
+          <div class="set-card" style="margin-top:12px">
+            <button type="button" class="set-row js-gap-copy">
+              <span class="set-title">一覧をコピー</span>
+              <span class="set-glyph is-plain">${icon("copy")}</span>
             </button>
           </div>
+          <p class="set-foot is-flush">辞書に当たらなかった言葉です。コピーして伝えていただくと、辞書に足せます。</p>
         ` : html`
-          <p class="row-sub" style="padding:0 4px">いまのところ、ありません。</p>
+          <div class="set-card"><p class="set-empty">いまのところ、ありません。</p></div>
         `}
       </section>
     `);
@@ -1835,12 +1664,9 @@
       const rows = wrap.querySelector(".js-gap-rows");
       gaps.slice(0, 200).forEach((g) => {
         rows.append(node(html`
-          <div class="row">
-            <span class="row-main">
-              <span class="row-title">${g.name}</span>
-              <span class="row-sub">${g.kind}</span>
-            </span>
-            <span class="row-value">${g.count}件</span>
+          <div class="set-row">
+            <span class="set-title">${g.name}<span class="set-note">${g.kind}</span></span>
+            <span class="set-val">${g.count}件</span>
           </div>
         `));
       });
@@ -1886,12 +1712,7 @@
 
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="section-title">報告した絵のちがい</h2>
-        <p class="row-sub" style="padding:0 4px 12px">
-          食事の絵をタップして「この絵はちがう、と設定に記録する」を押すと、
-          ここに残ります。送り先はありません——次にお願いするときに、この
-          一覧をコピーして渡すための場所です。
-        </p>
+        <h2 class="set-head is-flush">報告した絵のちがい</h2>
         ${/* 空のときと件があるときで、中身の形がまるごと変わります
               （一覧＋コピー行、か、一行の案内文か）。だから空にするのは
               「入れ物」ではなく、その**中身**——js-rep-rows は常に同じ
@@ -1899,14 +1720,14 @@
               前は空のとき要素ごと差し替えていて、二回目の repaint が
               もう外れた要素を触っていました。 */""}
         <div class="js-rep-body"></div>
-        <div class="field" style="margin-top:12px">
-          <span class="field-label">手で書き足す</span>
+        <div class="set-card is-pad" style="margin-top:12px">
           <div style="display:flex;gap:8px">
             <input class="input js-rep-text" placeholder="例：一本満足バー" style="flex:1"
                    autocomplete="off" autocapitalize="off" spellcheck="false">
             <button type="button" class="btn btn-soft js-rep-add">追加</button>
           </div>
         </div>
+        <p class="set-foot is-flush">送り先はありません。次にお願いするときに、コピーして渡すための控えです。</p>
       </section>
     `);
 
@@ -1941,17 +1762,14 @@
       const reports = store.get().iconReports || [];
       body.innerHTML = "";
       if (!reports.length) {
-        body.append(node(html`<p class="row-sub" style="padding:0 4px">いまのところ、ありません。</p>`));
+        body.append(node(html`<div class="set-card"><p class="set-empty">いまのところ、ありません。</p></div>`));
         return;
       }
-      const rows = node(html`<div class="rows"></div>`);
+      const rows = node(html`<div class="set-card"></div>`);
       reports.forEach((r) => {
         const row = node(html`
-          <div class="row">
-            <span class="row-main">
-              <span class="row-title">${r.text}</span>
-              <span class="row-sub">${screenLabel[r.screen] || r.screen || "？"}・いま出る絵：${iconLabel(r.gotIcon)}</span>
-            </span>
+          <div class="set-row">
+            <span class="set-title">${r.text}<span class="set-note">${screenLabel[r.screen] || r.screen || "？"}・いま出る絵：${iconLabel(r.gotIcon)}</span></span>
             <button type="button" class="icon-btn js-rep-del" aria-label="「${r.text}」の報告を消す">${icon("close")}</button>
           </div>
         `);
@@ -1964,10 +1782,10 @@
       body.append(rows);
 
       const copyRow = node(html`
-        <div class="rows" style="margin-top:12px">
-          <button type="button" class="row js-rep-copy">
-            <span class="row-main"><span class="row-title">一覧をコピー</span></span>
-            <span class="row-chevron">${icon("copy")}</span>
+        <div class="set-card" style="margin-top:12px">
+          <button type="button" class="set-row js-rep-copy">
+            <span class="set-title">一覧をコピー</span>
+            <span class="set-glyph is-plain">${icon("copy")}</span>
           </button>
         </div>
       `);
@@ -1988,90 +1806,30 @@
     return wrap;
   }
 
-  function dataGroup() {
-    const st = store.get();
-    const wrap = node(html`
-      <section class="settings-group">
-        <h2 class="section-title">データ</h2>
-        <div class="rows">
-          <button class="row js-export">
-            <span class="row-main">
-              <span class="row-title">バックアップを保存</span>
-              <span class="row-sub">${exportSub(st)}</span>
-            </span>
-            <span class="row-chevron">${icon("download")}</span>
-          </button>
-          <button class="row js-import">
-            <span class="row-main">
-              <span class="row-title">バックアップから復元</span>
-              <span class="row-sub">書き出したJSONを読み込みます</span>
-            </span>
-            <span class="row-chevron">${icon("upload")}</span>
-          </button>
-          ${/* 控えとは別の道です。あちらはアプリに戻すためのぜんぶ、
-                こちらは人とAIが読むための、日ごとの表。 */""}
-          <button class="row js-records">
-            <span class="row-main">
-              <span class="row-title">記録を書き出す（AIに渡す用）</span>
-              <span class="row-sub">体重・食事・歩数・お酒を、日ごとの表にします</span>
-            </span>
-            <span class="row-chevron">${icon("copy")}</span>
-          </button>
-          <button class="row js-snapshots">
-            <span class="row-main">
-              <span class="row-title">自動バックアップから戻す</span>
-              <span class="row-sub">${snapshotSub()}</span>
-            </span>
-            <span class="row-chevron">${icon("upload")}</span>
-          </button>
-          <button class="row js-learned">
-            <span class="row-main">
-              <span class="row-title">おぼえた振り分け</span>
-              <span class="row-sub">${learnedSub()}</span>
-            </span>
-            <span class="row-chevron">${icon("sparkles")}</span>
-          </button>
-          <button class="row js-sample">
-            <span class="row-main">
-              <span class="row-title">サンプルデータを入れる</span>
-              <span class="row-sub">お試し用のお店と商品を読み込みます</span>
-            </span>
-            <span class="row-chevron">${icon("sparkles")}</span>
-          </button>
-          <button class="row js-reset">
-            <span class="row-main">
-              <span class="row-title" style="color:var(--c-danger)">すべて削除</span>
-              <span class="row-sub">リスト・商品・価格・お店をすべて消します</span>
-            </span>
-            <span class="row-chevron">${icon("trash")}</span>
-          </button>
-        </div>
-        <input type="file" accept="application/json,.json" class="js-file" hidden>
-      </section>
-    `);
+  /* ---------------- バックアップと書き出し（「›」の先） ---------------- */
 
-    wrap.querySelector(".js-export").addEventListener("click", () => {
-      const blob = new Blob([store.exportJSON()], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const d = new Date();
-      const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-      a.href = url;
-      a.download = `kaimono-note-${stamp}.json`;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      KN.backup.markExported();
-      KN.ui.toast("バックアップを保存しました");
-    });
+  function saveBackup() {
+    const blob = new Blob([store.exportJSON()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    a.href = url;
+    a.download = `kaimono-note-${stamp}.json`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    KN.backup.markExported();
+    KN.ui.toast("バックアップを保存しました");
+    render();
+  }
 
-    wrap.querySelector(".js-records").addEventListener("click", openRecordExport);
-    wrap.querySelector(".js-snapshots").addEventListener("click", openSnapshots);
-    wrap.querySelector(".js-learned").addEventListener("click", openLearned);
-
-    const file = wrap.querySelector(".js-file");
-    wrap.querySelector(".js-import").addEventListener("click", () => file.click());
+  /** 復元に使う、隠したファイル選択。**画面に置いたまま**にします——
+      押してから開くまでのあいだに組み直しが走ると、選び終わった file が
+      もう外れた要素に届きます。 */
+  function importInput() {
+    const file = node(html`<input type="file" accept="application/json,.json" class="js-file" hidden>`);
     file.addEventListener("change", async () => {
       const f = file.files && file.files[0];
       if (!f) return;
@@ -2092,34 +1850,100 @@
         KN.ui.toast("読み込めませんでした（ファイル形式を確認してください）");
       }
     });
+    return file;
+  }
 
-    wrap.querySelector(".js-sample").addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({
-        title: "サンプルを入れますか？",
-        message: "いまのデータはすべて置き換わります。",
-        okLabel: "入れる",
-        danger: true,
-      });
-      if (!ok) return;
-      KN.backup.snapshot("サンプル読込前");
-      store.loadSample();
-      KN.ui.toast("サンプルを読み込みました");
-    });
+  function dataRows() {
+    const st = store.get();
+    const file = importInput();
+    const snaps = KN.backup.list();
+    return [
+      card(
+        navRow({ ico: "download", tint: TINT.data, title: "バックアップを保存", onTap: saveBackup }),
+        navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", onTap: () => file.click() })
+      ),
+      foot(exportSub(st)),
+      card(
+        navRow({
+          ico: "undo", tint: TINT.sub, title: "自動バックアップから戻す",
+          value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
+        }),
+        navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport }),
+        navRow({
+          ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
+          value: `${store.learnedList().length}件`, onTap: openLearned,
+        })
+      ),
+      foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。"),
+      /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
+         「戻す」の隣に「消す」が並ぶことになります。 */
+      card(
+        navRow({ ico: "trash", tint: TINT.danger, title: "データを消す", onTap: () => go("danger") })
+      ),
+      file,
+    ];
+  }
 
-    wrap.querySelector(".js-reset").addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({
-        title: "すべて削除しますか？",
-        message: "買い物リスト・商品・価格・お店だけでなく、やること・ダイエットの記録（体重・食事・お酒・目標）や設定もすべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
-        okLabel: "削除する",
-        danger: true,
-      });
-      if (!ok) return;
-      KN.backup.snapshot("削除前");
-      store.reset();
-      KN.ui.toast("すべて削除しました");
-    });
+  /* ---------------- データを消す（三段奥） ----------------
 
-    return wrap;
+     どれも**戻せない**操作です。参考画面（Structured）が「アプリを初期化」を
+     詳細設定のいちばん下に置いているのと同じ考えで、ここだけ一段深くして
+     あります。「サンプルデータを入れる」も、見た目は足す操作ですが、中身は
+     いまの記録を**全部置き換える**ものなので、同じ棚に置きます。
+
+     四角の絵は着せません——あれは「押すと続きがある」の印なので、戻れない
+     操作に着せると、普通の行き先と同じ顔になります。 */
+
+  function dangerRows() {
+    const d = store.get().diet;
+    return [
+      foot("ここから先は、押すと戻せません。どれも直前の状態を自動バックアップに残しますが、端末を替えたあとでは戻せません。"),
+      card(dangerRow({
+        ico: "trash", title: "ダイエットの記録を消す",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "ダイエットの記録を消す",
+            message: "体重・食事・ヘルスケアの記録がすべて消えます。買うものとやることはそのままです。直前の状態は自動バックアップに残ります。",
+            okLabel: "消す", danger: true,
+          });
+          if (!ok) return;
+          store.clearDiet();
+          render();
+          KN.ui.toast("消しました");
+        },
+      })),
+      foot(`体重 ${d.weights.length}件・食事 ${d.meals.length}件・ヘルスケア ${d.health.length}件。`),
+      card(dangerRow({
+        ico: "sparkles", title: "サンプルデータを入れる",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "サンプルを入れますか？",
+            message: "いまのデータはすべて置き換わります。",
+            okLabel: "入れる", danger: true,
+          });
+          if (!ok) return;
+          KN.backup.snapshot("サンプル読込前");
+          store.loadSample();
+          KN.ui.toast("サンプルを読み込みました");
+        },
+      })),
+      foot("お試し用のお店と商品に置き換えます。いまの記録は消えます。"),
+      card(dangerRow({
+        ico: "trash", title: "すべて削除",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "すべて削除しますか？",
+            message: "買うもの・やること・daily・ダイエットの記録（体重・食事・お酒・目標）と設定が、すべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
+            okLabel: "削除する", danger: true,
+          });
+          if (!ok) return;
+          KN.backup.snapshot("削除前");
+          store.reset();
+          KN.ui.toast("すべて削除しました");
+        },
+      })),
+      foot("買うもの・やること・daily・ダイエット・設定、ぜんぶ消えます。"),
+    ];
   }
 
   /* 目次のいちばん下には、かごの絵と「くらしノート」「データはこの端末の
