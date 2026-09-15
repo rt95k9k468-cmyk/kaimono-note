@@ -1293,6 +1293,65 @@ button, [role="tab"] {
 .row-chevron { color: var(--c-text-3); flex: none; display: grid; place-items: center; }
 .row-chevron svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 
+/* ---------------- toggle（オン/オフのスイッチ） ----------------
+
+   参考画面（Structured）の実測（3倍の実機画面を画素で数え、3で割った値）。
+   **iOS の素のスイッチではありません**——素のものは 51×31 で丸いつまみ
+   ですが、あちらは **63×28 に 38px幅の平たいつまみ**で、オンのときだけ
+   中に白い縦棒が一本入ります。丸いつまみのつもりで描くと、同じ画面に
+   並べたときに一つだけ形が違って見えます。
+
+     track  63 × 28、角 14      knob  38 × 25、角 12.5、上下1.5px の余白
+     off    #c5c5c7（実測 197,197,199）
+     on     基調色の塗り
+     しるし  オンのとき、左から14px に 白い縦棒（幅1・丈9.3px） */
+
+.toggle {
+  flex: none;
+  position: relative;
+  width: 63px; height: 28px;
+  border-radius: 14px;
+  background: #c5c5c7;
+  transition: background var(--m-state) var(--ease);
+}
+.toggle-knob {
+  position: absolute;
+  top: 1.5px; left: 1.5px;
+  width: 38px; height: 25px;
+  border-radius: 12.5px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
+  transition: transform var(--m-state) var(--ease);
+}
+/* オンの目印。**丸のほうには何も無い**（実測で、オフの地は無地の灰でした
+   ——iOS の「オン/オフラベル」なら丸も出るはずなので、あちらの自前の絵
+   です）。だから、こちらもオンにだけ置きます。 */
+.toggle-mark {
+  position: absolute;
+  top: 50%; left: 14px;
+  width: 2px; height: 10px;
+  margin-top: -5px;
+  border-radius: 1px;
+  background: #fff;
+  opacity: 0;
+  transition: opacity var(--m-state) var(--ease);
+}
+
+[aria-checked="true"] .toggle { background: var(--c-primary-fill); }
+[aria-checked="true"] .toggle .toggle-knob { transform: translateX(22px); }
+[aria-checked="true"] .toggle .toggle-mark { opacity: .9; }
+
+/* 暗い面では、オフの地も一段落とす（明るい灰のままだと、切ってあるほうが
+   光って見えます）。iOS の暗い面のスイッチと同じ濃さ。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .toggle { background: #39393d; }
+}
+:root[data-theme="dark"] .toggle { background: #39393d; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle, .toggle-knob, .toggle-mark { transition: none; }
+}
+
 /* ---------------- misc ---------------- */
 
 .divider { height: 1px; background: var(--c-border); }
