@@ -2310,9 +2310,20 @@
 
    新しい見た目は作りません。カード、行、チップ、数字の等幅——ぜんぶ
    買い物とやることが使っているものです。ここで足しているのは、
-   「大きい数字ひとつ」と「グラフ」の二つだけ。 */
+   「大きい数字ひとつ」と「グラフ」の二つだけ。
 
-.diet { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-6); }
+   この画面の本文は、共通の `--fs-*` よりも一段大きくします
+   （設定画面が `--set-*` で一段大きくしているのと同じ考えかた）。
+   ここで上書きするのは `#screen-diet` の中だけなので、他の画面や、
+   設定から開くダイエットの紙（`.diet-note` など）には及びません。
+   SVGグラフの軸ラベル（`.diet-axis` / `.diet-goal-tag`）は var を
+   使わず固定pxで描いているので、この上書きの影響を受けません——
+   グラフの寸法計算が崩れないように、意図して触っていません。 */
+
+.diet {
+  --fs-xs: 12.5px; --fs-sm: 14px; --fs-md: 15.5px; --fs-lg: 17.5px;
+  display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-6);
+}
 
 /* ---- その日の紙 ----
 
