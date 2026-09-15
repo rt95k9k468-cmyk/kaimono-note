@@ -2485,20 +2485,15 @@ button.section-note:active { opacity: .55; }
 .diet-slot-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
 
-/* 書いたものの絵。「トースト、ゆで卵、コーヒー」と打つと、その三つが
-   ここに並びます（screen-diet.js の slotMarks）。字を読まなくても、
-   今日の朝に何を食べたかが見えます。
-
-   .p-icon は置き場所ごとに大きさが決まります（行25px・価格28px・タイル34px）。
-   ここは四つめの置き場所で 20px——五つ並べて 区分名 と kcal のあいだに
-   収まる幅であり、かつ「何の絵か」がまだ読める下限です。少し重ねるのは、
-   絵と絵のあいだの隙間を詰めるためではなく、**一皿**に見せるためです。 */
-.diet-slot-marks { display: inline-flex; align-items: center; margin-left: 2px; }
-.diet-slot-mark { display: block; line-height: 0; margin-left: -3px; }
-.diet-slot-mark:first-child { margin-left: 0; }
-.diet-slot-mark .p-icon { width: 20px; height: 20px; display: block; }
-
 .diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text); }
+
+/* 見るだけの一行（buildSlotBoxes の非シート側）。Daily Log と同じ
+   「紙に書いてある」見た目にするため、見出しと書き込む枠の二段組みを
+   やめ、絵を左に置いた一本の行にします。絵は行の高さの中央、その右へ
+   書いた文が続きます。 */
+.diet-slot-view { flex-direction: row; align-items: center; gap: var(--sp-2); cursor: pointer; }
+.diet-slot-text { flex: 1; min-width: 0; font-size: var(--fs-lg); line-height: var(--lh-body); }
+.diet-slot-text.is-blank { color: var(--c-text-3); }
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
    拡大します（拡大したままでは、次の枠が見えません）。 */
 .diet-slot-memo {
@@ -4185,7 +4180,6 @@ a.btn { text-decoration: none; }
    暦の日の丸だけは別（`.cal-mark .p-icon.is-todo` が白抜き）。 */
 .item-emoji .p-icon.is-todo,
 .product-emoji .p-icon.is-todo,
-.diet-slot-mark .p-icon.is-todo,
 .icon-pick-mark .p-icon.is-todo,
 .icon-cell-mark .p-icon.is-todo {
   color: color-mix(in srgb, var(--cat, var(--c-primary)) 85%, var(--c-text));
