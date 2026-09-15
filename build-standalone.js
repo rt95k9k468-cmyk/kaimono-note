@@ -52,6 +52,7 @@ const JS = [
   "js/insights.js",
   "js/pull-refresh.js",
   "js/cal-peek.js",
+  "js/edge-back.js",
   "js/day-swipe.js",
   "js/cal-swipe.js",
   "js/notify.js",

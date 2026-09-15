@@ -1824,60 +1824,310 @@
    .diet-hero-label / .diet-hero-note は名前が似ていますが別物で、
    ダイエットの画面が自分で持っています。 */
 
-/* ================= SETTINGS SCREEN ================= */
+/* ================= SETTINGS SCREEN =================
 
-.settings-group { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+   参考にした画面（Structured）の実測を写したものです（1284×2778＝3倍の
+   実機画面を画素で数え、3で割った値）。
 
-/* ---- 目次（設定の一段目） ----
+     地              rgb(242,242,245)   ＝ いまの --c-bg とほぼ同じ
+     カードの左右     20px（画面428のうち388）
+     カードの角       18px
+     行の高さ         行き先 52px ／ スイッチ 56px
+     仕切り           1px rgb(231,231,232)、**絵の右**から（カード左端+58px）
+     絵の四角         30px角・角丸7px・白抜き、カード左端から18px
+     題               17px・**標準の太さ**（太字ではない）
+     右の値           17px・灰
+     「›」            7×12px・灰、カード右端から20px
+     節の見出し       15px・灰、カード左端から20px
+     カードの下の説明 13px・灰、同じく20px、カードから10px下
 
-   参考にした画面（Structured）と同じ組みです。小さな灰色の見出しの下に、
-   角の丸い白いカードが一枚。行は［色の付いた四角の絵］［名前］［いまの値］
-   ［›］で、押すと一段下がります。
+   **字は他の画面より一段大きい**（本文14 → 17px）。設定は一行ずつ読んで
+   選ぶ画面で、一覧を眺める画面ではないからです。ここだけの変数に閉じて
+   あるので、他の画面には出ていきません。 */
 
-   見出しは**カードの内側の余白と左端をそろえます**（画面の端から
-   16＋16＝32px）。字の頭が揃っていないと、見出しがどのカードのものか
-   毎回目で探すことになります。 */
-.set-head {
-  margin: var(--sp-6) 0 var(--sp-2);
-  padding: 0 calc(var(--sp-4) * 2);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--c-text-3);
+/* 変数は :root に置きます。**設定の中だけに閉じません**——選ぶ紙
+   （KN.ui.sheet）は `.sheet` の中に出るので、`#screen-settings` に
+   閉じると、紙の中の行だけ寸法と仕切りが消えます（実際に消えました）。
+   使うのは `.set-*` の札だけなので、根に置いても他の画面には出ていきません。 */
+:root {
+  --set-gut: 20px;   /* カードの左右 */
+  --set-pad: 18px;   /* カードの中の左右（絵の左端） */
+  --set-tile: 30px;
+  --set-gap: 10px;   /* 絵と題のあいだ */
+  --set-fs: 17px;
+  --set-fs-head: 15px;
+  --set-fs-foot: 13px;
+  --set-line: rgba(60, 60, 67, .1);
+  --set-chev: #c4c4c8;
 }
-/* 目次にも上の帯が戻ったので、ノッチの深さはそちらが持ちます。ここは
-   帯のすぐ下の一段ぶんだけ。（帯が無かったころ、ここが `--safe-t` を
-   引き受けていました。二重に取ると、最初の見出しだけが深く沈みます。） */
-.js-body > .set-head:first-child,
-.js-body > .settings-group:first-child { margin-top: var(--sp-4); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; }
+}
+:root[data-theme="dark"] { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; }
 
-.set-card {
-  margin: 0 var(--sp-4);
-  /* 参考画面の角は、行の高さの三分の一ほど。中の四角の絵より一回り丸く
-     ないと、絵がカードの角に刺さって見えます。 */
-  border-radius: 18px;
+/* ---- 一段は、紙の重なり ----
+
+   「›」の先は、中身の差し替えではなく**本物の紙**（.set-layer）です。奥へ
+   行けば右から一枚入ってきて、下の一枚は控えへ引く。左端から指で引けば、
+   その途中の姿がそのまま見えます（js/edge-back.js）。
+
+   **送る器は紙のほう**（画面ではない）。画面を送る器のままにすると、戻った
+   ときに読んでいた場所が失われるうえ、重なった紙が一緒に動きます。
+   `KN.app.scrollerOf()` にもそう教えてあります。 */
+#screen-settings {
+  overflow: hidden;
+  /* 下の帯のぶんの余白は、**紙の中**が持ちます（器の外に置いても、中身の
+     下には空きができない）。 */
+  padding-bottom: 0;
 }
 
-/* 行そのものは、これまでの .row を借ります（同じ押し心地）。高さは参考
-   画面の実測（47pt）に寄せて、絵が収まるぶんだけ足します。 */
-.set-row { min-height: 54px; gap: var(--sp-3); }
-/* 仕切りは、**絵の右**から。端から端まで引くと、絵の列が縦の帯に見えて、
-   名前より先に色が読まれます。 */
-.set-card .set-row { border-bottom: none; position: relative; }
-.set-card .set-row + .set-row::before {
+.set-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg);
+}
+
+/* 送るのは、帯と帯のあいだだけ。**帯を送る箱の外へ出した**ので、貼りつける
+   仕掛け（sticky）は要りません——上の帯はいつもそこに居て、下の帯（保存・
+   外す）も中身の長さに関わらず同じところに居ます。 */
+.set-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  /* 縦はブラウザに残し、横だけこちらで取ります（day-swipe.js と同じ手）。
+     `preventDefault` は投げません——投げると、戻らないと決めたあとの縦送り
+     まで止まります。 */
+  touch-action: pan-y;
+  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+}
+
+/* 押せば決まるもの（保存・外す）の帯。紙のときは中身の最後に置いていま
+   したが、一枚ぶんの高さがあると、短い欄の紙でボタンが画面のまん中に
+   浮きます。下の帯（タブ）のぶんだけ、自分で空けます。 */
+.set-bar {
+  flex: none;
+  padding: var(--sp-3) var(--set-gut) calc(var(--tabbar-space) + var(--sp-2));
+  background: var(--c-bg);
+  box-shadow: 0 -1px 0 var(--set-line);
+}
+.set-bar > * { width: 100%; }
+
+/* 紙のかわりに押しのけている一枚。中身は紙のつもりで組まれているので、
+   紙が持っていた余白と段の空きを、そのままここが持ちます
+   （`.sheet-body` の実測：左右 20px・下 20px・段の空き 16px）。 */
+.set-layer.is-sheetish .js-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+}
+/* 選ぶ一枚（二択の行）は、設定のカードと同じ幅・同じ角に揃えます。 */
+.set-layer.is-sheetish .set-choose { border-radius: 18px; }
+
+/* 影は**動いている一枚にだけ**。止まっているあいだ左端に影があると、そこに
+   何かが重なっているという嘘になります。 */
+.set-layer.is-edge-lift,
+#screen-settings.is-edge .set-layer:last-child {
+  box-shadow: var(--push-shadow);
+}
+
+/* ---- 頭（大きな題と、貼りつく帯） ----
+
+   参考画面は大きな「設定」が出ていて、送ると帯のまん中の小さい題に
+   入れ替わります。くらしノートの設定は歯車から開く引き出しなので、
+   左上に丸い戻るが**いつも**居ます（参考画像3の中の画面と同じ形）。 */
+
+.set-nav {
+  flex: none;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: calc(var(--safe-t) + var(--sp-1)) var(--sp-4) var(--sp-1);
+  min-height: 44px;
+  /* **透かしません。**下を白いカードが流れるので（base.css の上の帯と
+     同じ理由）。地と同じ色なので、透かして得るものがありません。 */
+  background: var(--c-bg);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur) var(--ease);
+}
+.set-nav.is-stuck { border-bottom-color: var(--c-border); }
+
+/* 丸い戻る。参考画像3と同じで、面を持った円。 */
+.set-back {
+  flex: none;
+  width: 34px; height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: var(--shadow-1);
+  position: relative;
+}
+.set-back svg { width: 19px; height: 19px; transform: rotate(180deg); }
+/* 絵は34pxでも、**指の的は44px**（.icon-btn と同じ手）。 */
+.set-back::after {
   content: "";
   position: absolute;
-  left: calc(var(--sp-4) + 30px + var(--sp-3));
+  inset: -5px;
+}
+.set-back:active { background: var(--c-surface-2); }
+
+.set-nav-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: var(--set-fs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* 大きな題が帯の下へ隠れてから出します（二つ同時に「設定」と書いて
+     あるのは、同じことを二度言うこと）。 */
+  opacity: 0;
+  transition: opacity var(--m-state) var(--ease);
+}
+.set-nav.is-titled .set-nav-title { opacity: 1; }
+.set-nav-pad { flex: none; width: 34px; }   /* 題をまん中に置くための空き */
+
+.set-hero {
+  margin: var(--sp-2) 0 var(--sp-4);
+  padding: 0 calc(var(--set-gut) + 2px);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+
+/* ---- 節の見出しと、カードの下の説明 ---- */
+
+.set-head {
+  margin: var(--sp-6) 0 var(--sp-2);
+  padding: 0 calc(var(--set-gut) + var(--sp-5));
+  font-size: var(--set-fs-head);
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+.js-body > .set-head:first-child { margin-top: var(--sp-2); }
+/* 「›」の先は帯のすぐ下から始まるので、いちばん上の一枚だけ空きを足す。 */
+.js-body > .set-card:first-child,
+.js-body > .set-foot:first-child,
+.js-body > .settings-group:first-child { margin-top: var(--sp-4); }
+/* 紙の中・節の中では、外側の余白をそちらが持っている。 */
+.set-head.is-flush { padding-left: var(--sp-5); padding-right: var(--sp-5); }
+
+/* **説明はカードの外・下**。行の中に入れると、行の高さを説明が決めて
+   しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
+.set-foot {
+  margin: var(--sp-3) 0 0;
+  padding: 0 calc(var(--set-gut) + var(--sp-5));
+  font-size: var(--set-fs-foot);
+  line-height: var(--lh-ui);
+  color: var(--c-text-3);
+}
+/* 紙の中（シート）で使うぶんは、外側の余白を紙が持っているので詰める。 */
+.set-foot.is-flush { padding: 0; margin: 0 0 var(--sp-2); }
+
+/* ---- カードと行 ---- */
+
+.set-card {
+  margin: 0 var(--set-gut);
+  background: var(--c-surface);
+  border-radius: 18px;
+  overflow: hidden;
+}
+/* 行ではないもの（明るさの札・基調色の丸）を入れるカード。 */
+.set-card.is-pad { padding: var(--sp-3) var(--set-pad); }
+/* 保存できていない、を言うカード。直るまで居座ります。 */
+.set-card.is-alert { background: var(--c-danger-soft); box-shadow: inset 0 0 0 1px var(--c-danger); }
+.set-card.is-alert .set-title { color: var(--c-danger); }
+.set-card.is-alert .set-note { color: var(--c-danger); opacity: .85; }
+/* 節の中でカードが続くときの間。参考画面の実測は 24px。 */
+.set-card + .set-card { margin-top: var(--sp-6); }
+.set-foot + .set-card { margin-top: var(--sp-3); }
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: var(--set-gap);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--sp-2) var(--set-gut);
+  text-align: left;
+  font-size: var(--set-fs);
+  color: var(--c-text);
+  position: relative;
+  transition: background var(--m-state) var(--ease);
+}
+.set-row.is-sw { min-height: 56px; }
+/* 絵の付く行だけ、左を少し詰める（絵の左端がカードから18px）。 */
+.set-row.is-nav { padding-left: var(--set-pad); }
+.set-row:active { background: var(--c-surface-2); }
+@media (hover: hover) {
+  .set-row:hover { background: var(--c-surface-2); }
+}
+
+/* 仕切りは**絵の右**から。端から端まで引くと、絵の列が縦の帯に見えて、
+   名前より先に色が読まれます。絵のない行（スイッチ）は、題の左から。 */
+.set-row + .set-row::before {
+  content: "";
+  position: absolute;
+  left: var(--set-gut);
   right: 0; top: 0;
   height: 1px;
-  background: var(--c-border);
+  background: var(--set-line);
 }
+.set-row.is-nav + .set-row::before,
+.set-row + .set-row.is-nav::before {
+  left: calc(var(--set-pad) + var(--set-tile) + var(--set-gap));
+}
+
+.set-title {
+  flex: 1;
+  min-width: 0;
+  /* **太字にしません。** 参考画面の題は標準の太さです——設定は一行ずつ
+     読んで選ぶ画面なので、全部が太いと、どれが見出しかが言えなくなります。 */
+  font-weight: 400;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+.set-note {
+  font-size: var(--set-fs-foot);
+  color: var(--c-text-3);
+  margin-top: 2px;
+}
+.set-val {
+  flex: none;
+  color: var(--c-text-3);
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.set-chev {
+  flex: none;
+  color: var(--set-chev);
+  display: grid;
+  place-items: center;
+  margin-left: -2px;
+}
+.set-chev svg { width: 15px; height: 15px; }
 
 .set-tile {
   flex: none;
-  width: 30px; height: 30px;
+  width: var(--set-tile); height: var(--set-tile);
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 7px;
   /* 絵は白抜き。ここは一本線のUIの絵で、手描きの品物の絵ではありません
      ——あちらは色そのものが「何の品物か」を言うので白く抜けません
      （CLAUDE.md）。こちらの色は「どの設定か」の目印なので、抜けます。 */
@@ -1885,7 +2135,6 @@
 }
 .set-tile svg { width: 18px; height: 18px; stroke-width: 2.1; }
 
-.set-value { font-weight: 600; color: var(--c-text-3); }
 /* 外観の行は、字ではなく**いまの色そのもの**を出します（参考画面と同じ）。 */
 .set-dot {
   display: block;
@@ -1893,14 +2142,77 @@
   border-radius: var(--r-full);
 }
 
-/* ---- 中（設定の二段目） ---- */
-.set-back svg { transform: rotate(180deg); }
-/* 題はまん中。左の戻るボタンと同じ幅を右にも空けます。 */
-.set-top-title { flex: 1; min-width: 0; text-align: center; }
-.set-back-pad { flex: none; width: 38px; }   /* .icon-btn と同じ幅 */
-.set-page { padding-top: var(--sp-3); }
-/* 帯が題を言っているので、中の一つめの見出しは JS が落とします。残った
-   見出し（買うものの中の「お店」「カテゴリ」）は、これまでどおり。 */
+/* 戻せない操作。**四角ではなく、赤い絵と赤い字**（参考画面の「アプリを
+   初期化」と同じ）——色の付いた四角は「行き先」の印なので、そのまま
+   着せると、消す操作が普通の行き先と同じ顔になります。 */
+.set-row.is-danger { color: var(--c-danger); padding-left: var(--set-pad); }
+.set-glyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--set-tile); height: var(--set-tile);
+  color: var(--c-danger);
+}
+.set-glyph svg { width: 20px; height: 20px; }
+
+/* ---- 選ぶ紙（二択だが「オン/オフ」ではないもの） ---- */
+.set-choose {
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.set-choose .set-row { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+.set-choose .set-row + .set-row::before { left: var(--sp-4); }
+.set-check { flex: none; width: 20px; color: var(--c-primary); display: grid; place-items: center; }
+.set-check svg { width: 18px; height: 18px; }
+
+/* ---- 「›」の先の、古い組みの面倒を見る ----
+
+   お店・カテゴリ・アイコンの三枚は、これまでの settings-group / rows を
+   そのまま使っています。**中身は変えず、面だけカードに寄せます**
+   ——書き換えると、並べ替えの掴み手や絵の報告の欄まで巻き込むので。 */
+#screen-settings .settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 var(--set-gut);
+  margin-bottom: var(--sp-6);
+}
+/* 節の中では、左右の空きは節が持っている——カードが自分でも取ると二重。 */
+#screen-settings .settings-group .set-card { margin-left: 0; margin-right: 0; }
+#screen-settings .rows {
+  background: var(--c-surface);
+  border: none;
+  border-radius: 18px;
+}
+#screen-settings .row { padding: var(--sp-3) var(--set-gut); min-height: 52px; border-bottom-color: var(--set-line); }
+#screen-settings .section-title { font-size: var(--set-fs-head); color: var(--c-text-3); padding: 0 var(--sp-5); }
+#screen-settings .section-hint { padding: 0 var(--sp-5); }
+
+/* 並べ替えられる行（お店・カテゴリ）も、同じ一枚のカードの中へ。
+   **地は持たせること**——持ち上げたときの影だけが宙に浮きます
+   （reorder.js の ghost は cloneNode なので、地が無いと透ける）。 */
+#screen-settings .manage-row {
+  border: none;
+  border-radius: 0;
+  background: var(--c-surface);
+  padding: var(--sp-2) var(--set-gut);
+  min-height: 52px;
+  font-size: var(--set-fs);
+}
+#screen-settings .manage-row + .manage-row { box-shadow: inset 0 1px 0 var(--set-line); }
+#screen-settings .manage-name { font-weight: 400; }
+#screen-settings .set-row.is-add { color: var(--c-primary); }
+#screen-settings .set-row.is-add .set-glyph { color: var(--c-primary); }
+/* 行き先でも切り替えでもない絵（コピー等）。四角も色も着せない。 */
+.set-glyph.is-plain { color: var(--c-text-3); width: auto; }
+.set-empty {
+  margin: 0;
+  padding: var(--sp-4) var(--set-gut);
+  font-size: var(--set-fs-foot);
+  line-height: var(--lh-ui);
+  color: var(--c-text-3);
+}
 
 .seg {
   display: grid;
