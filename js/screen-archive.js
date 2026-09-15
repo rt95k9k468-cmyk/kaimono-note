@@ -102,29 +102,16 @@
        目標に対する割合は出しません（daily は評価しない、の一部）。
 
        歩数・総消費・睡眠はヘルスケアから自動で入ってくる値なので、日が
-       終わっていなければ**まだ途中の数**です。「何時に取り込んだ値か」を
-       添えないと、朝いちばんの歩数を一日ぶんの歩数として読まれてしまいます。
-       添えるのは `importedAt`（取り込んだ時刻）——手で打った値は
-       importedAt を持たないので、その場合は時刻を添えません。 */
-    function healthAsOf(types) {
-      const stamps = types
-        .flatMap((t) => store.healthOfDay(day, t))
-        .map((h) => h.importedAt)
-        .filter(Boolean)
-        .sort();
-      if (!stamps.length) return "";
-      const d = new Date(stamps[stamps.length - 1]);
-      if (isNaN(d.getTime())) return "";
-      return `（${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}時点）`;
-    }
-
+       終わっていなければ**まだ途中の数**です。ここに書くのは値だけ——
+       何時時点かは画面（`.js-fresh`）がすでに言っているので、コピーする
+       文にまで添えません（二重に言うと、かえって長くなるだけです）。 */
     const card = KN.diet.dayCard(day);
     const bodyParts = [];
     if (card.weight && card.weight.kg != null) bodyParts.push(`体重 ${card.weight.kg}kg`);
     if (card.weight && card.weight.fat != null) bodyParts.push(`体脂肪率 ${card.weight.fat}%`);
-    if (card.steps != null) bodyParts.push(`歩数 ${Math.round(card.steps).toLocaleString()}歩${healthAsOf(["steps"])}`);
-    if (card.burned != null) bodyParts.push(`総消費 ${Math.round(card.burned).toLocaleString()}kcal${healthAsOf(["activeEnergy", "restingEnergy"])}`);
-    if (card.sleep != null) bodyParts.push(`睡眠 ${Math.floor(card.sleep / 60)}時間${String(Math.round(card.sleep % 60)).padStart(2, "0")}分${healthAsOf(["sleep"])}`);
+    if (card.steps != null) bodyParts.push(`歩数 ${Math.round(card.steps).toLocaleString()}歩`);
+    if (card.burned != null) bodyParts.push(`総消費 ${Math.round(card.burned).toLocaleString()}kcal`);
+    if (card.sleep != null) bodyParts.push(`睡眠 ${Math.floor(card.sleep / 60)}時間${String(Math.round(card.sleep % 60)).padStart(2, "0")}分`);
     if (card.drinkTotals) bodyParts.push(`飲酒 純アルコール${card.drinkTotals.alcoholG}g`);
     if (bodyParts.length) blocks.push(["からだの記録", `・${bodyParts.join(" ・ ")}`].join("\n"));
 
@@ -138,11 +125,15 @@
        まだ済んでいない先の予定と、いつやるか決めていない長期タスクです。
        見出しに「（参考）」と「まだ済んでいない」を必ず書きます。上のブロック
        と地続きに読むと「この日にあったこと」に混ざって見えるためです。 */
+    /* くり返しの用事（毎日・毎週月曜…）は、先の日にもずっと立ち続けます
+       （`store.fallsOn`）。7日ぶん先まで並べると、同じ「夜のルーティン」が
+       何度も出てくるだけで、参考として読む値がありません。ここに書くのは
+       **その日限りの**予定だけにします。 */
     const upcoming = [];
     for (let i = 1; i <= 7; i++) {
       const d = U.shiftDay(day, i);
       store.get().todos.forEach((t) => {
-        if (t.done || t.archived || t.trace) return;
+        if (t.done || t.archived || t.trace || t.repeat) return;
         if (!store.fallsOn(t, d)) return;
         upcoming.push(`・${U.formatDay(d)} ${t.title}`);
       });
