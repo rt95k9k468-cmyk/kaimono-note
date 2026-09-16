@@ -155,6 +155,10 @@
       <div class="stack" style="gap:14px">
         <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
                autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
+        <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
+          ${icon("flag")}
+          <span class="icon-report-text">この絵はちがう、と記録する</span>
+        </button>
         <div class="stack js-grids" style="gap:14px"></div>
       </div>
     `);
@@ -163,7 +167,49 @@
 
     const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
 
+    /* 報告は「選ぶ」のついでに残します。押した瞬間には何が正しいかまだ
+       分からない（分かっていれば選んでいる）ので、ここでは腕を組むだけ
+       （armed）——次に choose() が呼ばれたとき（グリッドの絵、または
+       「おまかせにする」）、その結果を chosen として一緒に書きます。
+       「おまかせ」のまま報告すれば、chosen は空——「正しい絵はまだ無い」
+       という記録そのものです。
+
+       いま出す絵は自動の推測（findKey、カテゴリの当たりも含む）で、
+       いま product.icon に入っている値ではありません——手で選んだ絵を
+       挟んだあとに報告しても、辞書がどちらの困りごとを起こしているかは
+       変わらないので。 */
+    let armed = false;
+    const reportBtn = body.querySelector(".js-report-toggle");
+    reportBtn.addEventListener("click", () => {
+      armed = !armed;
+      reportBtn.classList.toggle("is-on", armed);
+      reportBtn.setAttribute("aria-pressed", String(armed));
+      reportBtn.querySelector(".icon-report-text").textContent = armed
+        ? "次に選ぶ絵を「ちがう」として記録します"
+        : "この絵はちがう、と記録する";
+    });
+
+    function autoGuess() {
+      const p = store.getProduct(productId);
+      if (!p) return "";
+      const name = String(p.name || "").trim();
+      if (!name) return "";
+      const cat = store.get().categories.find((c) => c.id === p.categoryId)
+        || store.get().categories.find((c) => c.id === store.OTHER_CATEGORY)
+        || store.get().categories[0];
+      return KN.productIcons.findKey(name) || (cat && KN.productIcons.findKey(cat.name)) || "";
+    }
+
     function choose(key) {
+      if (armed) {
+        const p = store.getProduct(productId);
+        const gotIcon = autoGuess();
+        store.addIconReport({
+          text: (p && p.name) || "", screen: "shop", gotIcon,
+          kind: gotIcon ? "wrong" : "missing", chosen: key || "",
+        });
+        KN.ui.toast("記録しました");
+      }
       store.update((s) => {
         const rec = s.products.find((x) => x.id === productId);
         if (rec) rec.icon = key || null;
