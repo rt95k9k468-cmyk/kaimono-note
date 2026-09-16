@@ -770,39 +770,42 @@
      "label": "炊飯器",
      "sec": "キッチン道具",
      "words": "炊飯器・すいはんき",
-     "verdict": "split"
+     "verdict": "set:mingcute:electric-cooker-fill",
+     "note": "段15の束1：core 0.486／既存との最小 0.222（goods:jar）／束1内の最小 0.272（speaker）。"
     },
     {
      "key": "microwave",
      "label": "電子れんじ",
      "sec": "家電・機器",
      "words": "電子れんじ・れんじ・でんしれんじ",
-     "verdict": "split"
+     "verdict": "set:fluent:microwave-20-filled",
+     "note": "段15の束1：core 0.352／既存との最小 0.197（goods:inputDev）／束1内の最小 0.252（tv）。"
     },
     {
      "key": "ovenToaster",
      "label": "トースター",
      "sec": "家電・機器",
      "words": "とーすたー・おーぶん・おーぶんとーすたー",
-     "verdict": "split"
+     "verdict": "set:material-symbols:oven-gen-rounded",
+     "note": "段15の束1：core 0.447／既存との最小 0.275（goods:bathScale）／束1内の最小 0.195（airConditioner）。"
     },
     {
      "key": "washingMachine",
      "label": "洗濯機",
      "sec": "家電・機器",
      "words": "洗濯機・せんたくき・せんたっき",
-     "verdict": "split",
+     "verdict": "set:ph:washing-machine-fill",
      "pair": "clothesDryer",
-     "note": "段15の段0：`clothesDryer` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
+     "note": "段15の段0：`clothesDryer` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。段15の束1：core 0.496／既存との最小 0.253（goods:bathScale）／束1内の最小 0.221（airConditioner）。"
     },
     {
      "key": "clothesDryer",
      "label": "乾燥機",
      "sec": "家電・機器",
      "words": "乾燥機・かんそうき・衣類乾燥機",
-     "verdict": "split",
+     "verdict": "set:ph:washing-machine-fill",
      "pair": "washingMachine",
-     "note": "段15の段0：`washingMachine` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
+     "note": "段15の段0：`washingMachine` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。段15の束1：core 0.496／既存との最小 0.253（goods:bathScale）／束1内の最小 0.221（airConditioner）。"
     },
     {
      "key": "printer",
@@ -816,14 +819,16 @@
      "label": "ルーター",
      "sec": "家電・機器",
      "words": "るーたー・wifi・無線らん",
-     "verdict": "split"
+     "verdict": "set:mingcute:router-modem-fill",
+     "note": "段15の束1：core 0.511／既存との最小 0.294（food:bento）／束1内の最小 0.35（ovenToaster）。"
     },
     {
      "key": "dishwasher",
      "label": "食洗機",
      "sec": "家電・機器",
      "words": "食洗機・しょくせんき・食器洗い機",
-     "verdict": "split"
+     "verdict": "set:fluent:dishwasher-24-filled",
+     "note": "段15の束1：core 0.516／既存との最小 0.288（goods:fridge）／束1内の最小 0.315（tablet）。"
     },
     {
      "key": "laminator",
@@ -1104,7 +1109,8 @@
      "label": "スピーカー",
      "sec": "家電・機器",
      "words": "すぴーかー・ぶるーとぅーすすぴーかー",
-     "verdict": "split"
+     "verdict": "set:fluent:speaker-box-24-filled",
+     "note": "段15の束1：core 0.589／既存との最小 0.206（goods:householdBook）／束1内の最小 0.243（remoteCtl）。"
     },
     {
      "key": "headphones",
@@ -1118,7 +1124,8 @@
      "label": "まいく",
      "sec": "家電・機器",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:microphone-fill",
+     "note": "段15の束1：core 0.527／既存との最小 0.201（food:wasabi）／束1内の最小 0.286（usbMemory）。"
     },
     {
      "key": "radio",
@@ -2220,7 +2227,8 @@
      "label": "電気けとる",
      "sec": "家電・機器",
      "words": "電気けとる・電気ぽっと・けとる",
-     "verdict": "split"
+     "verdict": "set:material-symbols:kettle-rounded",
+     "note": "段15の束1：core 0.413／既存との最小 0.258（goods:householdBook）／束1内の最小 0.264（remoteCtl）。"
     }
    ],
    "n": 6,
@@ -2506,7 +2514,8 @@
      "label": "てれび",
      "sec": "家電・機器",
      "words": "てれび・液晶てれび・もにたー",
-     "verdict": "split"
+     "verdict": "set:material-symbols:tv-gen-rounded",
+     "note": "段15の束1：core 0.777／既存との最小 0.214（goods:battery）／束1内の最小 0.21（tablet）。"
     },
     {
      "key": "laptop",
@@ -2520,14 +2529,16 @@
      "label": "たぶれっと",
      "sec": "家電・機器",
      "words": "たぶれっと・あいぱっど・ipad",
-     "verdict": "split"
+     "verdict": "set:ph:device-tablet-fill",
+     "note": "段15の束1：core 0.633／既存との最小 0.246（goods:battery）／束1内の最小 0.21（tv）。"
     },
     {
      "key": "smartphone",
      "label": "すまほ",
      "sec": "家電・機器",
      "words": "すまほ・すまーとふぉん・携帯電話",
-     "verdict": "split"
+     "verdict": "set:ph:device-mobile-fill",
+     "note": "段15の束1：core 0.653／既存との最小 0.162（food:pickles）／束1内の最小 0.201（mouse）。"
     }
    ],
    "n": 5,
@@ -2934,7 +2945,8 @@
      "label": "ホットプレート",
      "sec": "家電・機器",
      "words": "ほっとぷれーと・たこ焼き器・電気なべ",
-     "verdict": "split"
+     "verdict": "set:material-symbols:skillet-cooktop-rounded",
+     "note": "段15の束1：core 0.459／既存との最小 0.231（food:watermelon）／束1内の最小 0.314（microphone）。"
     }
    ],
    "n": 2,
@@ -5265,7 +5277,8 @@
      "label": "えあこん",
      "sec": "家電・機器",
      "words": "えあこん・くーらー・冷房",
-     "verdict": "split"
+     "verdict": "set:material-symbols:hvac-rounded",
+     "note": "段15の束1：core 0.427／既存との最小 0.292（goods:bathScale）／束1内の最小 0.195（ovenToaster）。"
     },
     {
      "key": "humidifier",
@@ -5842,14 +5855,16 @@
      "label": "usbめもり",
      "sec": "家電・機器",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:fluent:usb-stick-24-filled",
+     "note": "段15の束1：core 0.667／既存との最小 0.196（food:honey）／束1内の最小 0.25（mouse）。"
     },
     {
      "key": "disc",
      "label": "cd",
      "sec": "家電・機器",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:disc-fill",
+     "note": "段15の束1：core 0.685／既存との最小 0.242（food:curry）／束1内の最小 0.327（speaker）。"
     }
    ],
    "n": 3,
@@ -6572,7 +6587,8 @@
      "label": "まうす",
      "sec": "家電・機器",
      "words": "まうす・わいやれすまうす",
-     "verdict": "split"
+     "verdict": "set:material-symbols:mouse-rounded",
+     "note": "段15の束1：core 0.632／既存との最小 0.179（food:pickles）／束1内の最小 0.201（smartphone）。"
     },
     {
      "key": "keyboardDevice",
@@ -6630,7 +6646,8 @@
      "label": "りもこん",
      "sec": "家電・機器",
      "words": "りもこん・りもーと",
-     "verdict": "split"
+     "verdict": "set:mingcute:remote-control-fill",
+     "note": "段15の束1：core 0.451／既存との最小 0.234（goods:householdBook）／束1内の最小 0.228（smartphone）。"
     },
     {
      "key": "gamePad",
@@ -6659,7 +6676,8 @@
      "label": "ミキサー",
      "sec": "家電・機器",
      "words": "みきさー・ぶれんだー・ふーどぷろせっさー",
-     "verdict": "split"
+     "verdict": "set:tabler:blender-filled",
+     "note": "段15の束1：core 0.612／既存との最小 0.26（food:pickles）／束1内の最小 0.241（smartphone）。"
     },
     {
      "key": "coffeeMaker",
@@ -7496,10 +7514,11 @@
   "pass": "段11a（またぐ52群）＋段11b（残り116群） ＋段15の段0（描く前に枚数を減らす）",
   "done": "2026-09-16",
   "tally": {
-   "split": 272,
+   "split": 252,
    "keep": 401,
    "move": 15,
-   "drop": 4
+   "drop": 4,
+   "set": 20
   },
   "stage15_step0": {
    "done": "2026-09-16",
@@ -7525,7 +7544,20 @@
     "pillow",
     "cushion"
    ]
-  ]
+  ],
+  "stage15_bundle1": {
+   "done": "2026-09-16",
+   "shelf": "家電・機器22鍵＋炊飯器＝23鍵",
+   "result": "20鍵を19枚で（洗濯機と乾燥機が一枚を分け合う）。3鍵は候補なしで参考画像待ち。",
+   "pending": {
+    "shaver": "シェーバー。セットにあるのはひげの絵だけ",
+    "heater": "ヒーター。暖炉とサーモスタットしか無い（どちらも別物）",
+    "humidifier": "加湿器。`material-symbols:air-purifier` は既存の空気清浄機と距離 0.000＝同じ絵。`humidity-indoor` は家＋しずくで「室内の湿度」であって機械ではない"
+   },
+   "gates": "6枚が門にわずかに未達（電子レンジ core 0.352／トースター 0.447／電気ケトル 0.413／エアコン 0.427／スマホ 距離0.162／マウス 距離0.179）。実寸（丸薬32px・暦11px）で読めることを確かめて、利用者の判断で採用。",
+   "lesson": "**新しい枚数どうしの距離も測ること。** 既存との距離だけ見ていたら、食洗機（material-symbols:dishwasher-gen、core 0.559）とスピーカーが 0.107 で溶けていた——どちらも「縦長の箱＋中に丸いもの」。中身が皿と分かる fluent 版に替えて 0.342 へ。同じ理由で、タブレットは core の高い tabler 版（袋と 0.157）をやめ ph 版（0.246）に、CD は fluent 版（カレーの皿と 0.138）をやめ ph 版（0.242）にした。",
+   "index": "5セット22,814枚の「面」の絵（outline を除いて18,764枚）。ph・fluent・material-symbols・tabler・mingcute。"
+  }
  },
  "applied": {
   "pass": "段12（またぐ52群の判定を割り当てへ）",
