@@ -833,7 +833,7 @@
     /* 干ししいたけは想像描きの型を畳んで消した（`ICON-DEIMAGINE.md`）。
        セットの候補は西洋のマッシュルーム然としていて日本の乾物と見た目が
        違い、しかも既存の `mushroom` 型と意味が重複するため。 */
-    mushroom: ["driedShiitake", "koyaTofu", "fu"],
+    mushroom: ["driedShiitake"],
     springOnion: ["asparagus", "celery", "sprout", "myoga"],
     peas: ["edamame", "snapPeas", "beans"],
     /* 果物 */
@@ -872,8 +872,7 @@
     /* かれーるー（`curryRoux`）は想像描きの型を畳んで消した
        （`ICON-DEIMAGINE.md`）。当初は「板 vs 盛り付け」で実物として別物
        と保留していたが、あらためて利用者の判断で `curry` へ畳んだ。 */
-    curry: ["pot", "okonomiyaki", "pizza", "burger", "hotdog", "takoyaki", "dumpling",
-      "curryRoux", "consomme", "stockPack", "yeast", "sesame"],
+    curry: ["pot", "curryRoux"],
     /* しりある（cereal）は、ここから外した。弁当箱の丸みは「盛り付け・
        出来合いの食事」を言う形で、箱入りの乾いた穀物とは実物として別物
        ——報告で「シリアルの絵がカレー・弁当箱と同じ」と指摘された、その
@@ -895,7 +894,6 @@
        塩麹）は新しい代表`honey`へ移した。利用者から後日、瓶ものの
        参考画像が届く予定（`ICON-DEIMAGINE.md`）。 */
     honey: ["doubanjiang", "gochujang", "peanutButter", "marmalade", "shioKoji"],
-    flour: ["salt"],
     /* 果物の缶詰は想像描きの型を畳んで消した（`ICON-DEIMAGINE.md`）。
        「缶」という同じ実物の入れ物なので `tin` へ——どちらもまだ想像描き
        のまま（Phase 3未着手）だが、由来の統一は後回しにできる型の整理。 */
@@ -916,7 +914,7 @@
     teaBag: ["coffeeBeans"],
     /* 惣菜・冷凍・乾物 */
     tempura: ["croquette", "friedFood", "springRoll"],
-    gratin: ["omelette", "oden", "potatoSalad", "saladChicken", "miso"],
+    gratin: ["oden"],
     frozenGyoza: ["saladPack"],
     icePop: ["shavedIce"],
   };
@@ -926,8 +924,7 @@
     /* `icon-silhouette-types.json` の `toFoodType`。食材の型で足りるので、
        描き起こさずにここへ回します。**繋いだとき、この6キーだけ色つきの絵が
        残っていました**（米が手描きのまま出ていたのがこれ）。 */
-    rice: "flour", blackPepper: "honey", mentsuyu: "oil", seaweedWakame: "nori",
-    driedSeaweedSoup: "mushroom", instantSoup: "tin",
+    blackPepper: "honey", mentsuyu: "oil",
 };
   Object.keys(TYPES).forEach((rep) => {
     OF[rep] = rep;
