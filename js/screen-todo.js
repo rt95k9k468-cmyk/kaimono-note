@@ -1888,11 +1888,26 @@
       if (query) {
         const hits = KN.iconsTodo.search(query).concat(KN.productIcons.search(query).map(art));
         if (!hits.length) {
-          grids.append(node(html`
-            <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
-              「${query}」に合う絵はありません
-            </p>
-          `));
+          /* product-sheet.js の openIconPicker と同じ仕掛け。「合う絵は
+             ありません」を行き止まりにせず、いま打った言葉をその場で
+             記録できるようにします。 */
+          const empty = node(html`
+            <div class="stack" style="gap:10px">
+              <p style="color:var(--c-text-3);font-size:13px;padding:8px 0 0">
+                「${query}」に合う絵はありません
+              </p>
+              <button type="button" class="icon-report-toggle js-report-empty">
+                ${icon("flag")}
+                <span class="icon-report-text">「${query}」の絵が無い、と記録する</span>
+              </button>
+            </div>
+          `);
+          empty.querySelector(".js-report-empty").addEventListener("click", () => {
+            const gotIcon = KN.iconsTodo.findKey(query) || KN.productIcons.findKey(query) || "";
+            store.addIconReport({ text: query, screen: "todo", gotIcon, kind: gotIcon ? "wrong" : "missing" });
+            KN.ui.toast("記録しました");
+          });
+          grids.append(empty);
           return;
         }
         grids.append(grid(hits));

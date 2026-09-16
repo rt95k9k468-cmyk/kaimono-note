@@ -310,11 +310,27 @@
       if (query) {
         const hits = KN.productIcons.search(query);
         if (!hits.length) {
-          grids.append(node(html`
-            <p style="color:var(--c-text-3);font-size:13px;padding:8px 0">
-              「${query}」に合う絵はありません
-            </p>
-          `));
+          /* 「合う絵はありません」で行き止まりにしません。ここで探した
+             言葉そのものに絵が無い、という発見そのものが**報告の材料**
+             なので、その場で残せるようにします（腕組みボタンを押す手間を
+             飛ばして、いま打った言葉を直接記録する一本道）。 */
+          const empty = node(html`
+            <div class="stack" style="gap:10px">
+              <p style="color:var(--c-text-3);font-size:13px;padding:8px 0 0">
+                「${query}」に合う絵はありません
+              </p>
+              <button type="button" class="icon-report-toggle js-report-empty">
+                ${icon("flag")}
+                <span class="icon-report-text">「${query}」の絵が無い、と記録する</span>
+              </button>
+            </div>
+          `);
+          empty.querySelector(".js-report-empty").addEventListener("click", () => {
+            const gotIcon = KN.productIcons.findKey(query) || "";
+            store.addIconReport({ text: query, screen: "shop", gotIcon, kind: gotIcon ? "wrong" : "missing" });
+            KN.ui.toast("記録しました");
+          });
+          grids.append(empty);
           return;
         }
         grids.append(grid(hits));

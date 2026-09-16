@@ -904,8 +904,55 @@
      to the person buying it. So the picture can be set by hand — and for that
      every icon needs a name to be listed under. The first keyword is it: it
      is the plainest word for the thing, which is why it was written first. */
-  const LABELS = { package: "むじるしの箱" };
-  KEYS.forEach(([key, words]) => { if (!LABELS[key]) LABELS[key] = words[0]; });
+
+  /* **借用語の一語目は、ひらがなではなくカタカナで名乗ります。**
+     キーワードそのものは打った字を拾うための表なので、平仮名でも
+     片仮名でも構わないのですが、**名前として見せる**（絵選び紙の
+     文字・報告の一覧）となると話が別で、「しりある」「こーひー」の
+     ままでは、それが何の絵か読むのに一段余計にかかります。日本語の
+     借用語は片仮名で書くのが普通なので、ここだけ字を変えます。
+     **キーワードは一文字も変えません**——引き当ての表はそのまま。
+
+     借用語かどうかを一つずつ判定するかわりに、**長音符号（ー）**を
+     手がかりにします。ネイティブの日本語の語に長音符号が出ることは
+     まずありません——出ていれば、まず借用語です（「しゃんぷー」
+     「こーひー」「はんばーがー」）。**ひらがな＋長音符号だけで
+     できている一語目だけ**を対象にします。「ぱん」「かぼちゃ」の
+     ように長音符号を持たない借用語・借用語まがいの語は、ネイティブ語
+     との判定がここでは割れる（店の値札では片仮名で書かれることも
+     多いが、辞書としてはどちらも通用する）ので、広げずに残します
+     ——広げるほど、人の判断が要る語が増えるので。 */
+  function toKatakana(s) {
+    return s.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
+  }
+  function isHiraganaLoanword(s) {
+    return /ー/.test(s) && [...s].every((c) => (c >= "぀" && c <= "ゟ") || c === "ー");
+  }
+
+  /* 長音符号の無い借用語は、機械の手がかりが無いので個別に直します。
+     広げる基準は二つだけ——①**実在の言葉として読めない**（「しりある」は
+     どう読んでも日本語の語にならない）、②**別の言葉に読み違える**
+     （「ますから」は「だから」の仲間の接続語そのもの）。「とまと」
+     「りんご」「ばなな」のような、ひらがなのままで実在の読みが立つ語には
+     触れません——**広げるほど、店の値札で片仮名か平仮名かが分かれる語**
+     まで手を出すことになり、そこは辞書の役目ではありません。 */
+  const LABELS = {
+    package: "むじるしの箱",
+    cereal: "シリアル",           // 「しりある」は日本語の語として読めない
+    mascara: "マスカラ",          // 「ますから」は接続語「だから」の仲間に読める
+    lactic: "ヤクルト",           // 銘柄名は片仮名が通例
+    tabasco: "タバスコ",          // 同上
+    gochujang: "コチュジャン",     // 借用語（韓国語由来）
+    balsamic: "バルサミコ",       // 借用語（イタリア語由来）
+    hotdog: "ホットドッグ",       // 「ほっとどっぐ」は語として読めない
+    drugstore: "ドラッグストア",   // 同上（長い当て字の連なり）
+    makeupRemover: "クレンジング", // 「くれんじんぐ」は語として読めない
+  };
+  KEYS.forEach(([key, words]) => {
+    if (LABELS[key]) return;
+    const w0 = words[0];
+    LABELS[key] = isHiraganaLoanword(w0) ? toKatakana(w0) : w0;
+  });
 
   /** Every icon, in the order KEYS groups them. */
   const ORDER = KEYS.map(([key]) => key)
@@ -989,11 +1036,23 @@
   /** 同じものを、見出しで束ねて返します（`SECTIONS` / `SECTION_ORDER`）。
       `[{ label, items: [{ key, label, svg }] }]`。中身も件数も `list()` と
       同じで、変わるのは**順番と、あいだに入る見出し**だけです。 */
-  function groups() {
-    const bag = new Map();
+  /* key → 見出し、一つの表から。`groups()` の描く順と、`search()` の
+     「見出し名でも当たる」を、同じ対応から出します——二か所に別々に
+     歩かせると、境界の鍵を直したときに片方だけ直る日が来ます。 */
+  const sectionByKey = (() => {
+    const m = new Map();
     let at = "そのほか";
     ORDER.forEach((key) => {
       if (SECTIONS[key]) at = SECTIONS[key];
+      m.set(key, at);
+    });
+    return m;
+  })();
+
+  function groups() {
+    const bag = new Map();
+    ORDER.forEach((key) => {
+      const at = sectionByKey.get(key);
       if (!bag.has(at)) bag.set(at, []);
       bag.get(at).push(key);
     });
@@ -1072,14 +1131,20 @@
       .map(([key]) => key);
   }
 
-  /** Icons whose name or keywords contain the query. */
+  /** Icons whose name or keywords contain the query. Also answers to the
+      **section heading** its picture sits under（`groups()` と同じ見出し）
+      ——「そうじ」で探しても「洗剤・掃除」の棚がまるごと出るように。
+      **`findKey` はここに寄りません**（狭めるのは `findKey` の役目だけ、
+      という決めごとは変えません）。広く拾うのは、選ぶのが人だからです。 */
   function search(query) {
     const q = KN.util.foldKana(String(query || ""));
     if (!q) return list();
     return list().filter(({ key, label }) => {
       if (KN.util.foldKana(label).includes(q)) return true;
       const entry = KEYS.find(([k]) => k === key);
-      return !!entry && entry[1].some((w) => KN.util.foldKana(w).includes(q));
+      if (entry && entry[1].some((w) => KN.util.foldKana(w).includes(q))) return true;
+      const section = sectionByKey.get(key);
+      return !!section && KN.util.foldKana(section).includes(q);
     });
   }
 
