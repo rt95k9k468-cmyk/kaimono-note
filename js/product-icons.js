@@ -992,6 +992,14 @@
     tempura: "惣菜・冷凍・乾物", formula: "ベビー・こども", cleanerSpray: "掃除・洗濯",
     pan: "キッチン道具",        serum: "衛生・美容",      pillSheet: "薬・健康",
     pen: "文具・書類",          tshirt: "衣類",          chair: "家具・寝具",
+    /* `ORDER` のこの一続きは「衣類**・そのほか**」で、後ろ半分は衣類では
+       ありません。境界を書かずに `tshirt` へ任せていたので、猫砂・わかめ
+       すーぷ・貼るかいろが衣類の棚に並んでいました。**一続きの見出しは、
+       コメントの見出しをそのまま写さないこと**——「・そのほか」が付いて
+       いたら、そこで切れています。 */
+    catLitter: "行事・そのほか",  flower: "家具・寝具",
+    refillPouchGreen: "掃除・洗濯", handWarmerBox: "薬・健康",
+    driedSeaweedSoup: "惣菜・冷凍・乾物",
     pencil: "文具・書類",       saucepan: "キッチン道具",  spoon: "キッチン道具",
     microwave: "家電・機器",
     /* 旧語彙（`KN.iconsV2Keys`）。場所・ことに寄ったものが多い。 */
