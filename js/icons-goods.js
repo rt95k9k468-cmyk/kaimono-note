@@ -816,6 +816,11 @@
        同じ形のものが、すでに個別の絵を持っていた——型を新しく立てるのでは
        なく、その一枚へ回します。 */
     powerBank: "battery", lightBattery: "battery",
+    /* 段15の段0。袋で買うものを「袋」（自立パウチ・ジップの帯）へ回す
+       ——`pizzaCheese` は `cheese`（くさび）から、`saladPack` は
+       `frozenGyoza`（餃子）から split されたが、監査自身の覚え書きが
+       「ピザチーズは袋」と書いている。`zipBag` と同じ一枚で足りる。 */
+    pizzaCheese: "bag", saladPack: "bag",
     electricToothbrush: "toothbrush", interdental: "toothbrush",
     mail: "envelope", postBox: "envelope",
   };

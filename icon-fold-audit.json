@@ -407,14 +407,16 @@
      "label": "食材",
      "sec": "掃除・洗濯",
      "words": "食材・食料品・食料",
-     "verdict": "split"
+     "verdict": "drop",
+     "note": "段15の段0：品物ではなく分類の言葉で、実物の形を持てない。間違った絵より、絵が無いほうがよい。"
     },
     {
      "key": "household",
      "label": "日用品",
      "sec": "掃除・洗濯",
      "words": "日用品・雑貨・消耗品",
-     "verdict": "split"
+     "verdict": "drop",
+     "note": "段15の段0：品物ではなく分類の言葉で、実物の形を持てない。間違った絵より、絵が無いほうがよい。"
     },
     {
      "key": "ecoBag",
@@ -789,14 +791,18 @@
      "label": "洗濯機",
      "sec": "家電・機器",
      "words": "洗濯機・せんたくき・せんたっき",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "clothesDryer",
+     "note": "段15の段0：`clothesDryer` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     },
     {
      "key": "clothesDryer",
      "label": "乾燥機",
      "sec": "家電・機器",
      "words": "乾燥機・かんそうき・衣類乾燥機",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "washingMachine",
+     "note": "段15の段0：`washingMachine` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     },
     {
      "key": "printer",
@@ -1583,7 +1589,9 @@
      "label": "だしぱっく",
      "sec": "調味料・粉",
      "words": "だしぱっく・顆粒だし・粉末だし",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "dashiPack",
+     "note": "段15の段0：`dashiPack` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     },
     {
      "key": "sesame",
@@ -1806,7 +1814,9 @@
      "label": "割り箸",
      "sec": "掃除・洗濯",
      "words": "割り箸・わりばし",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "chopstickPair",
+     "note": "段15の段0：`chopstickPair` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     },
     {
      "key": "straw",
@@ -1869,7 +1879,9 @@
      "label": "箸",
      "sec": "キッチン道具",
      "words": "箸・お箸・はし",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "chopsticks",
+     "note": "段15の段0：`chopsticks` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     }
    ],
    "n": 10,
@@ -2361,7 +2373,8 @@
      "label": "支払い",
      "sec": "役所・お金",
      "words": "",
-     "verdict": "split"
+     "verdict": "drop",
+     "note": "段15の段0：品物ではなく分類の言葉で、実物の形を持てない。間違った絵より、絵が無いほうがよい。"
     }
    ],
    "n": 5,
@@ -3180,7 +3193,8 @@
      "label": "すぱいす",
      "sec": "調味料・粉",
      "words": "すぱいす・香辛料・くみん",
-     "verdict": "split"
+     "verdict": "move:f:furikake",
+     "note": "段15の段0：その実物の絵がすでにあるので、新しく描かずに回した。"
     },
     {
      "key": "shiroDashi",
@@ -3790,7 +3804,8 @@
      "label": "こしょう",
      "sec": "調味料・粉",
      "words": "",
-     "verdict": "split"
+     "verdict": "move:f:furikake",
+     "note": "段15の段0：その実物の絵がすでにあるので、新しく描かずに回した。"
     }
    ],
    "n": 7,
@@ -4410,7 +4425,8 @@
      "label": "ピザチーズ",
      "sec": "乳製品・卵",
      "words": "ぴざちーず・とろけるちーず・しゅれっどちーず",
-     "verdict": "split"
+     "verdict": "move:g:bag",
+     "note": "段15の段0：その実物の絵がすでにあるので、新しく描かずに回した。"
     },
     {
      "key": "creamCheese",
@@ -5168,7 +5184,9 @@
      "label": "枕",
      "sec": "家具・寝具",
      "words": "枕・まくら・まくらかばー",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "cushion",
+     "note": "段15の段0：`cushion` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     }
    ],
    "n": 4,
@@ -5793,7 +5811,9 @@
      "label": "くっしょん",
      "sec": "家具・寝具",
      "words": "くっしょん・座布団・ざぶとん",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "pillow",
+     "note": "段15の段0：`pillow` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     }
    ],
    "n": 3,
@@ -5966,7 +5986,8 @@
      "label": "健康診断",
      "sec": "薬・健康",
      "words": "",
-     "verdict": "split"
+     "verdict": "drop",
+     "note": "段15の段0：品物ではなく分類の言葉で、実物の形を持てない。間違った絵より、絵が無いほうがよい。"
     },
     {
      "key": "vaccination",
@@ -6118,7 +6139,8 @@
      "label": "かっとやさい",
      "sec": "惣菜・冷凍・乾物",
      "words": "かっとやさい・さらだぱっく・千切りきゃべつ",
-     "verdict": "split"
+     "verdict": "move:g:bag",
+     "note": "段15の段0：その実物の絵がすでにあるので、新しく描かずに回した。"
     }
    ],
    "n": 2,
@@ -6140,7 +6162,9 @@
      "label": "だし",
      "sec": "大豆製品・和のもの",
      "words": "だし・出汁・煮干し",
-     "verdict": "split"
+     "verdict": "split",
+     "pair": "stockPack",
+     "note": "段15の段0：`stockPack` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
     },
     {
      "key": "furikake",
@@ -6350,7 +6374,8 @@
      "label": "つな",
      "sec": "肉・魚",
      "words": "つな・つな缶・しーちきん",
-     "verdict": "split"
+     "verdict": "move:f:tin",
+     "note": "段15の段0：その実物の絵がすでにあるので、新しく描かずに回した。"
     }
    ],
    "n": 2,
@@ -6379,7 +6404,8 @@
      "label": "こーひー豆",
      "sec": "飲みもの",
      "words": "こーひー豆・珈琲豆・どりっぷ",
-     "verdict": "split"
+     "verdict": "move:f:coffee",
+     "note": "段15の段0：その実物の絵がすでにあるので、新しく描かずに回した。"
     }
    ],
    "n": 2,
@@ -7467,13 +7493,39 @@
   }
  ],
  "verdicts": {
-  "pass": "段11a（またぐ52群）＋段11b（残り116群）",
+  "pass": "段11a（またぐ52群）＋段11b（残り116群） ＋段15の段0（描く前に枚数を減らす）",
   "done": "2026-09-16",
   "tally": {
-   "split": 282,
+   "split": 272,
    "keep": 401,
-   "move": 9
-  }
+   "move": 15,
+   "drop": 4
+  },
+  "stage15_step0": {
+   "done": "2026-09-16",
+   "move": "6鍵（coffeeBeans→coffee／tuna→tin／spice・blackPepper→furikake／pizzaCheese・saladPack→bag）。監査は別の群で見ていたので「別物」と出たが、その実物の絵はすでにある。",
+   "drop": "4鍵（食材・日用品・支払い・健康診断）。分類の言葉で実物の形を持てない。",
+   "pairs": "4組（箸／割り箸、だし／だしぱっく、洗濯機／乾燥機、枕／くっしょん）。新しい型を一つ立てて二鍵で分け合う＝絵は4枚減る。",
+   "note": "絵が要る鍵は282→272、要る絵は282→268枚。babyRoom型（未使用・絵＝ベビーチェア）は、同群のsplit5鍵のどれにも実物として当たらないので、そのまま置く。"
+  },
+  "pairs": [
+   [
+    "chopstickPair",
+    "chopsticks"
+   ],
+   [
+    "dashiPack",
+    "stockPack"
+   ],
+   [
+    "washingMachine",
+    "clothesDryer"
+   ],
+   [
+    "pillow",
+    "cushion"
+   ]
+  ]
  },
  "applied": {
   "pass": "段12（またぐ52群の判定を割り当てへ）",
