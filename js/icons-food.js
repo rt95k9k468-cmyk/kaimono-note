@@ -820,55 +820,36 @@
      （自分が自分の型なのは当たり前なので）。 */
   const MEMBERS = {
     /* 野菜 */
-    cabbage: [
-      "lettuce", "chineseCabbage", "spinach", "salad", "shiso", "parsley", "kale", "herb",
-    ],
+    cabbage: ["lettuce"],
     broccoli: ["cauliflower"],
-    carrot: ["daikon", "burdock", "yam", "lotusRoot", "bambooShoot"],
-    potato: ["sweetPotato", "ginger"],
+    carrot: ["daikon", "burdock", "yam"],
+    potato: ["sweetPotato"],
     onion: ["garlic"],
     turnip: ["radish"],
-    tomato: ["pumpkin", "avocado", "pepper", "winterMelon"],
-    cucumber: ["eggplant", "zucchini", "bittergourd", "okra", "chili"],
+    cucumber: ["zucchini", "okra", "chili"],
     /* 干ししいたけは想像描きの型を畳んで消した（`ICON-DEIMAGINE.md`）。
        セットの候補は西洋のマッシュルーム然としていて日本の乾物と見た目が
        違い、しかも既存の `mushroom` 型と意味が重複するため。 */
     mushroom: ["driedShiitake"],
-    springOnion: ["asparagus", "celery", "sprout", "myoga"],
-    peas: ["edamame", "snapPeas", "beans"],
+    springOnion: ["asparagus", "celery"],
+    peas: ["edamame", "snapPeas"],
     /* 果物 */
     apple: ["peach", "pear", "persimmon", "apricot", "pomegranate", "loquat"],
-    orange: ["lemon", "kumquat"],
-    grape: ["strawberry", "blueberry", "raspberry", "cherry"],
-    watermelon: ["melon"],
-    banana: ["pineapple", "mango", "papaya", "dragonFruit", "kiwi", "fig"],
-    chestnut: ["driedFruit"],
+    orange: ["kumquat"],
     /* 肉・魚 */
     meat: ["steak", "lamb", "liver", "roastBeef", "hormone", "chicken"],
-    hamburgSteak: ["minced", "meatball", "tsukune"],
     bacon: ["ham", "prosciutto"],
-    sausage: ["yakitori"],
-    fish: ["grilledFish", "eel", "shirasu"],
-    sushi: ["tuna"],
-    shrimp: ["crab", "shellfish", "scallop", "seaUrchin"],
-    squid: ["octopus"],
-    kamaboko: ["chikuwa"],
-    roe: ["mentaiko", "katsuobushi"],
+    fish: ["grilledFish"],
     /* 乳製品・卵 */
     milk: ["soyMilk", "drinkYogurt"],
-    cheese: ["slicedCheese", "pizzaCheese", "creamCheese", "camembert"],
     butter: ["margarine"],
-    yogurt: ["pudding", "cream", "condensedMilk"],
+    yogurt: ["pudding"],
     /* 大豆製品・和のもの */
-    tofu: ["natto", "konjac", "fishCake"],
-    furikake: ["dashiPack"],
     /* 主食・パン */
-    bread: ["toast", "sandwich"],
-    croissant: ["bagel", "sweetBun", "melonBun", "baguette", "pancake"],
-    noodles: ["soba", "udon", "somen", "cupNoodle", "yakisoba"],
+    bread: ["toast"],
+    noodles: ["soba", "udon", "somen"],
     /* ぱすたそーす（`pastaSauce`）は想像描きの型を畳んで消した
        （`ICON-DEIMAGINE.md`）。利用者の判断で `pasta` へ畳んだ。 */
-    pasta: ["driedNoodle", "pastaSauce", "ramenSoup"],
     /* かれーるー（`curryRoux`）は想像描きの型を畳んで消した
        （`ICON-DEIMAGINE.md`）。当初は「板 vs 盛り付け」で実物として別物
        と保留していたが、あらためて利用者の判断で `curry` へ畳んだ。 */
@@ -885,8 +866,7 @@
     /* 調味料 */
     oil: [
       "sesameOil", "chiliOil", "fishSauce", "balsamic", "tabasco", "mirin",
-      "shiroDashi", "syrup", "vinegar", "sauceBottle", "spice",
-    ],
+      "shiroDashi", "syrup", "vinegar", "sauceBottle"],
     wasabi: ["gingerTube", "garlicTube", "mustard", "karashi"],
     mayo: ["ketchup"],
     /* みそ（`miso`）は`gratin`（お椀もの）へ畳んだので、道連れの瓶もの
@@ -902,21 +882,14 @@
     chips: ["nuts", "gummy", "marshmallow", "dryFood", "popcorn"],
     /* せんべい（`riceCracker`）は想像描きの型を畳んで消した
        （`ICON-DEIMAGINE.md`）。利用者の判断で `cookie` へ畳んだ。 */
-    cookie: ["cracker", "pocky", "gum", "wafer", "cerealBar", "riceCracker"],
-    chocolate: ["candy", "caramel", "chocoBar", "ramuneCandy", "throatCandy"],
-    cake: ["tart", "jelly", "dorayaki", "daifuku", "dango", "manju", "castella"],
+    cookie: ["cracker", "riceCracker"],
+    chocolate: ["chocoBar"],
+    cake: ["castella"],
     /* 飲みもの */
-    water: ["oolong", "tea", "juice", "soda", "barleyTea", "drink"],
-    amazake: ["milkTea", "aojiru"],
-    beer: ["tonic", "lactic", "protein", "energyDrink"],
-    coffee: ["latte", "cocoa", "matcha", "smoothie"],
-    wine: ["sake", "whisky", "plum", "cocktail"],
-    teaBag: ["coffeeBeans"],
+    water: ["milkTea", "oolong", "tea", "juice", "soda", "barleyTea", "drink"],
+    wine: ["sake", "whisky", "plum"],
     /* 惣菜・冷凍・乾物 */
-    tempura: ["croquette", "friedFood", "springRoll"],
     gratin: ["oden"],
-    frozenGyoza: ["saladPack"],
-    icePop: ["shavedIce"],
   };
 
   /* 品目 → 型。代表は自分自身を指します。 */
@@ -924,7 +897,7 @@
     /* `icon-silhouette-types.json` の `toFoodType`。食材の型で足りるので、
        描き起こさずにここへ回します。**繋いだとき、この6キーだけ色つきの絵が
        残っていました**（米が手描きのまま出ていたのがこれ）。 */
-    blackPepper: "honey", mentsuyu: "oil",
+    mentsuyu: "oil",
 };
   Object.keys(TYPES).forEach((rep) => {
     OF[rep] = rep;
