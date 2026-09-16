@@ -33,49 +33,49 @@
      "label": "病院",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "school",
      "label": "学校",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cityHall",
      "label": "役所",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "postOffice",
      "label": "郵便局",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "inn",
      "label": "旅館",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "museum",
      "label": "博物館",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bank",
      "label": "銀行",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 7,
@@ -87,7 +87,9 @@
     "趣味・スポーツ"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "列柱のある公共建築",
+   "note": "役所・銀行・郵便局・博物館・学校は、実物として列柱の公共建築で通る。病院は十字が要る、旅館は和風で別物。"
   },
   {
    "id": "g:bottle",
@@ -99,133 +101,133 @@
      "label": "食器用洗剤",
      "sec": "掃除・洗濯",
      "words": "食器用洗剤・台所用洗剤・食器洗剤",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "softener",
      "label": "柔軟剤",
      "sec": "掃除・洗濯",
      "words": "柔軟剤・じゅうなんざい・そふらん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bleach",
      "label": "漂白剤",
      "sec": "掃除・洗濯",
      "words": "漂白剤・ひょうはくざい・はいたー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "shampoo",
      "label": "シャンプー",
      "sec": "掃除・洗濯",
      "words": "しゃんぷー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "rinse",
      "label": "りんす",
      "sec": "掃除・洗濯",
      "words": "りんす・こんでぃしょなー・とりーとめんと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bodySoap",
      "label": "ボディソープ",
      "sec": "掃除・洗濯",
      "words": "ぼでぃそーぷ・ぼでぃーそーぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "handSoap",
      "label": "ハンドソープ",
      "sec": "掃除・洗濯",
      "words": "はんどそーぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "faceWash",
      "label": "洗顔",
      "sec": "掃除・洗濯",
      "words": "洗顔・せんがん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sunscreen",
      "label": "日焼け止め",
      "sec": "掃除・洗濯",
      "words": "日焼け止め・ひやけどめ・日やけ止め",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "toner",
      "label": "化粧水",
      "sec": "掃除・洗濯",
      "words": "化粧水・けしょうすい・ろーしょん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "babyBottle",
      "label": "哺乳瓶",
      "sec": "ベビー・こども",
      "words": "哺乳瓶・ほにゅうびん・赤ちゃん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pipeCleaner",
      "label": "ぱいぷ",
      "sec": "掃除・洗濯",
      "words": "ぱいぷ・排水口洗剤・ぱいぷくりーなー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cleanser",
      "label": "クレンザー",
      "sec": "掃除・洗濯",
      "words": "くれんざー・磨き粉・みがき粉",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "serum",
      "label": "美容液",
      "sec": "衛生・美容",
      "words": "美容液・びようえき・顔ぱっく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hairOil",
      "label": "へあおいる",
      "sec": "衛生・美容",
      "words": "へあおいる・つばき油・洗い流さない",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mouthwash",
      "label": "まうすうぉっしゅ",
      "sec": "衛生・美容",
      "words": "まうすうぉっしゅ・洗口液・もんだみん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "perfume",
      "label": "香水",
      "sec": "衛生・美容",
      "words": "香水・こうすい・おーでとわれ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "contactSolution",
      "label": "こんたくと",
      "sec": "衛生・美容",
      "words": "こんたくと・洗浄液・保存液",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "thermos",
      "label": "水筒",
      "sec": "キッチン道具",
      "words": "水筒・すいとう・まほうびん",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 19,
@@ -236,7 +238,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "細口の洗剤ボトル",
+   "note": "洗剤・シャンプー・化粧水は実物として同じボトル。哺乳瓶は乳首、水筒は魔法瓶、香水は角瓶＋噴霧口で別物。ポンプ付き／取っ手付きの割り直しは段15の上積みで、嘘ではない。"
   },
   {
    "id": "g:cloth",
@@ -248,63 +252,63 @@
      "label": "ふきん",
      "sec": "掃除・洗濯",
      "words": "ふきん・布巾・雑巾",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "towel",
      "label": "たおる",
      "sec": "衛生・美容",
      "words": "たおる・ばすたおる・はんかち",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bodyTowel",
      "label": "ぼでぃたおる",
      "sec": "衛生・美容",
      "words": "ぼでぃたおる・浴用たおる・垢すり",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "blanket",
      "label": "毛布",
      "sec": "家具・寝具",
      "words": "毛布・もうふ・ブランケット",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bedSheet",
      "label": "シーツ",
      "sec": "家具・寝具",
      "words": "しーつ・ぼっくすしーつ・べっどかばー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "rug",
      "label": "らぐ",
      "sec": "家具・寝具",
      "words": "らぐ・かーぺっと・絨毯",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "curtain",
      "label": "カーテン",
      "sec": "家具・寝具",
      "words": "かーてん・れーすかーてん・遮光かーてん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "doormat",
      "label": "玄関まっと",
      "sec": "家具・寝具",
      "words": "玄関まっと・どあまっと・足ふきまっと",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "stole",
      "label": "ストール",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 9,
@@ -315,7 +319,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "たたんだタオル",
+   "note": "ふきん・タオル・毛布・シーツ・ストールはたたんだ布そのもの。カーテンは吊るした形、ラグとマットは敷く平面。"
   },
   {
    "id": "g:box",
@@ -327,56 +333,56 @@
      "label": "文房具",
      "sec": "掃除・洗濯",
      "words": "文房具・ぶんぼうぐ",
-     "verdict": ""
+     "verdict": "move:g:penTool"
     },
     {
      "key": "formula",
      "label": "粉みるく",
      "sec": "ベビー・こども",
      "words": "粉みるく・こなみるく・ふぉろー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "container",
      "label": "保存容器",
      "sec": "掃除・洗濯",
      "words": "保存容器・たっぱー・たっぱ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bakingSoda",
      "label": "重曹",
      "sec": "掃除・洗濯",
      "words": "重曹・じゅうそう",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "citricAcid",
      "label": "くえん酸",
      "sec": "掃除・洗濯",
      "words": "くえん酸",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pencilCase",
      "label": "筆箱",
      "sec": "文具・書類",
      "words": "筆箱・ふでばこ・ぺんけーす",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "lunchBox",
      "label": "弁当箱",
      "sec": "キッチン道具",
      "words": "弁当箱・べんとうばこ・らんちぼっくす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "iceTray",
      "label": "製氷皿",
      "sec": "キッチン道具",
      "words": "製氷皿・せいひょうざら・製氷器",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 8,
@@ -387,7 +393,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ふた付きの保存容器",
+   "note": "粉ミルクは缶、重曹・クエン酸は容器入りで通る。筆箱は平たいポーチ、製氷皿は窪みの並んだ盆。文房具は容器ではなく筆記具。"
   },
   {
    "id": "g:carryBag",
@@ -399,56 +407,56 @@
      "label": "食材",
      "sec": "掃除・洗濯",
      "words": "食材・食料品・食料",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "household",
      "label": "日用品",
      "sec": "掃除・洗濯",
      "words": "日用品・雑貨・消耗品",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "ecoBag",
      "label": "えこばっぐ",
      "sec": "掃除・洗濯",
      "words": "えこばっぐ・買い物袋・れじ袋",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "coolerBag",
      "label": "クーラーバッグ",
      "sec": "掃除・洗濯",
      "words": "くーらーばっぐ・保冷ばっぐ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "schoolBag",
      "label": "らんどせる",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "babyCarrier",
      "label": "抱っこ紐",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "suitcase",
      "label": "旅行",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bag",
      "label": "ばっぐ",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 8,
@@ -459,7 +467,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "取っ手付きの角ばった鞄",
+   "note": "絵は書類鞄・スーツケースの形。旅行とクーラーバッグは角ばった鞄で合う。食材・日用品・エコバッグは柔らかいトート、ランドセルは箱型リュック、抱っこ紐は帯で、どれも別物。"
   },
   {
    "id": "g:jar",
@@ -471,42 +481,42 @@
      "label": "乳液",
      "sec": "掃除・洗濯",
      "words": "乳液・にゅうえき・くりーむ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "babyFood",
      "label": "離乳食",
      "sec": "ベビー・こども",
      "words": "離乳食・りにゅうしょく・べびーふーど",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "foundation",
      "label": "ファンデーション",
      "sec": "衛生・美容",
      "words": "ふぁんでーしょん・ふぁんで・びーびーくりーむ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hairWax",
      "label": "わっくす",
      "sec": "衛生・美容",
      "words": "わっくす・整髪・へあじぇる",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bathSalt",
      "label": "入浴剤",
      "sec": "衛生・美容",
      "words": "入浴剤・にゅうよくざい・ばすそると",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "storageJar",
      "label": "保存瓶",
      "sec": "キッチン道具",
      "words": "保存瓶・きゃにすたー・がらす瓶",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 6,
@@ -517,7 +527,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ふた付きの広口瓶",
+   "note": "離乳食・ワックス・入浴剤・乳液・保存瓶は広口の容器で通る。ファンデーションはボトルかコンパクト。"
   },
   {
    "id": "g:tube",
@@ -529,35 +541,35 @@
      "label": "歯磨き粉",
      "sec": "掃除・洗濯",
      "words": "歯磨き粉・歯みがき粉・はみがき粉",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "makeupRemover",
      "label": "クレンジング",
      "sec": "衛生・美容",
      "words": "くれんじんぐ・めいく落とし・化粧落とし",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "handCream",
      "label": "ハンドクリーム",
      "sec": "衛生・美容",
      "words": "はんどくりーむ・ぼでぃくりーむ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "ointment",
      "label": "軟膏",
      "sec": "薬・健康",
      "words": "軟膏・なんこう・塗り薬",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "glue",
      "label": "接着剤",
      "sec": "文具・書類",
      "words": "接着剤・すてぃっくのり・でんぷんのり",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 5,
@@ -568,7 +580,9 @@
     "文具・書類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "チューブ",
+   "note": "歯磨き粉・クレンジング・ハンドクリーム・軟膏・接着剤——五つとも実物がチューブ。ここは触らない。"
   },
   {
    "id": "g:brushTool",
@@ -580,70 +594,70 @@
      "label": "すぽんじ",
      "sec": "掃除・洗濯",
      "words": "すぽんじ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "razor",
      "label": "かみそり",
      "sec": "掃除・洗濯",
      "words": "かみそり・剃刀・髭剃り",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "cottonSwab",
      "label": "綿棒",
      "sec": "掃除・洗濯",
      "words": "綿棒・めんぼう",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "scrubBrush",
      "label": "たわし",
      "sec": "掃除・洗濯",
      "words": "たわし・ぶらし・でっきぶらし",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "nailClipper",
      "label": "爪切り",
      "sec": "衛生・美容",
      "words": "爪切り・つめきり・毛抜き",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "comb",
      "label": "くし",
      "sec": "衛生・美容",
      "words": "くし・櫛",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hairTie",
      "label": "へあごむ",
      "sec": "衛生・美容",
      "words": "へあごむ・髪ごむ・しゅしゅ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "paintBrush",
      "label": "筆",
      "sec": "文具・書類",
      "words": "筆・ふで・書道",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hairBrush",
      "label": "へあぶらし",
      "sec": "衛生・美容",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "nailFile",
      "label": "爪やすり",
      "sec": "衛生・美容",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 10,
@@ -653,7 +667,9 @@
     "文具・書類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "毛の短いたわし",
+   "note": "たわしとヘアブラシは『台に毛』で同じ作り。スポンジは塊、かみそり・爪切りは刃物、綿棒・爪やすりは細い棒、くしは歯、ヘアゴムは輪、筆は細い穂——どれも別物。"
   },
   {
    "id": "g:spray",
@@ -665,70 +681,70 @@
      "label": "消臭剤",
      "sec": "掃除・洗濯",
      "words": "消臭剤・しょうしゅう・ふぁぶりーず",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "insect",
      "label": "虫よけ",
      "sec": "掃除・洗濯",
      "words": "虫よけ・虫除け・殺虫剤",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cleanerSpray",
      "label": "クリーナー",
      "sec": "掃除・洗濯",
      "words": "くりーなー・住居用洗剤・掃除すぷれー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "kitchenSpray",
      "label": "きっちん洗剤",
      "sec": "掃除・洗濯",
      "words": "きっちん洗剤・きっちん用洗剤",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bathCleaner",
      "label": "風呂用洗剤",
      "sec": "掃除・洗濯",
      "words": "風呂用洗剤・ばす洗剤・浴室",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "toiletCleaner",
      "label": "といれ洗剤",
      "sec": "掃除・洗濯",
      "words": "といれ洗剤・といれくりーなー・さんぽーる",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mold",
      "label": "かび取り",
      "sec": "掃除・洗濯",
      "words": "かび取り・かびきらー・防かび",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hairSpray",
      "label": "ヘアスプレー",
      "sec": "衛生・美容",
      "words": "へあすぷれー・けーぷ・すたいりんぐ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "airFreshener",
      "label": "芳香剤",
      "sec": "衛生・美容",
      "words": "芳香剤・ほうこうざい・るーむふれぐらんす",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "disinfectant",
      "label": "消毒",
      "sec": "薬・健康",
      "words": "消毒・しょうどく・あるこーる",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 10,
@@ -738,7 +754,9 @@
     "薬・健康"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "引き金付きスプレー",
+   "note": "洗剤類・消臭剤・虫よけ・消毒は引き金スプレーで合う。ヘアスプレーは円筒のエアゾール缶、芳香剤は据え置きの容器。"
   },
   {
    "id": "g:boxAppl",
@@ -750,63 +768,63 @@
      "label": "炊飯器",
      "sec": "キッチン道具",
      "words": "炊飯器・すいはんき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "microwave",
      "label": "電子れんじ",
      "sec": "家電・機器",
      "words": "電子れんじ・れんじ・でんしれんじ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "ovenToaster",
      "label": "トースター",
      "sec": "家電・機器",
      "words": "とーすたー・おーぶん・おーぶんとーすたー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "washingMachine",
      "label": "洗濯機",
      "sec": "家電・機器",
      "words": "洗濯機・せんたくき・せんたっき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "clothesDryer",
      "label": "乾燥機",
      "sec": "家電・機器",
      "words": "乾燥機・かんそうき・衣類乾燥機",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "printer",
      "label": "プリンター",
      "sec": "家電・機器",
      "words": "ぷりんたー・複合機・ふくごうき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "router",
      "label": "ルーター",
      "sec": "家電・機器",
      "words": "るーたー・wifi・無線らん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "dishwasher",
      "label": "食洗機",
      "sec": "家電・機器",
      "words": "食洗機・しょくせんき・食器洗い機",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "laminator",
      "label": "ラミネーター",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 9,
@@ -816,7 +834,9 @@
     "文具・書類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "プリンター",
+   "note": "**この型はプリンターの絵**（名前に騙されるところ）。紙を通す機械はラミネーターまで。電子レンジ・トースター・洗濯機・乾燥機・食洗機・炊飯器・ルーターがプリンターなのは、はっきり嘘。"
   },
   {
    "id": "g:diaper",
@@ -828,63 +848,63 @@
      "label": "おむつ",
      "sec": "掃除・洗濯",
      "words": "おむつ・生理用品・なぷきん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "plaster",
      "label": "絆創膏",
      "sec": "薬・健康",
      "words": "絆創膏・ばんそうこう",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "icePack",
      "label": "保冷剤",
      "sec": "掃除・洗濯",
      "words": "保冷剤・ほれいざい",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bandage",
      "label": "包帯",
      "sec": "薬・健康",
      "words": "包帯・ほうたい・がーぜ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "heatPad",
      "label": "かいろ",
      "sec": "薬・健康",
      "words": "かいろ・ほっかいろ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "petSheet",
      "label": "ペットシーツ",
      "sec": "衣類",
      "words": "ぺっとしーつ・といれしーつ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "handWarmerBox",
      "label": "貼るかいろ",
      "sec": "衣類",
      "words": "貼るかいろ・はるかいろ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "coolingSheet",
      "label": "冷却しーと",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "poultice",
      "label": "湿布",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 9,
@@ -894,7 +914,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "絆創膏",
+   "note": "**この型は絆創膏の絵**。湿布・冷却シート・貼るカイロ・カイロ・保冷剤は『貼る/当てる小さな当て物』で通る。おむつは立体的な形、ペットシーツは大判の敷物。"
   },
   {
    "id": "g:card",
@@ -906,42 +928,42 @@
      "label": "名刺",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "nameTag",
      "label": "名札",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "qrPay",
      "label": "qr決済",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "licenseCard",
      "label": "免許証",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cash",
      "label": "現金",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "ticket",
      "label": "ちけっと",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 6,
@@ -951,7 +973,9 @@
     "おでかけ"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "顔写真入りの身分証",
+   "note": "名刺・名札・免許証はカード。QR決済は符号、現金は紙幣と硬貨、チケットは半券付きで別物。"
   },
   {
    "id": "f:mushroom",
@@ -963,35 +987,35 @@
      "label": "きのこ",
      "sec": "野菜",
      "words": "きのこ・しめじ・えのき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "driedShiitake",
      "label": "干ししいたけ",
      "sec": "惣菜・冷凍・乾物",
      "words": "干ししいたけ・乾しいたけ・干し椎茸",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "koyaTofu",
      "label": "高野豆腐",
      "sec": "惣菜・冷凍・乾物",
      "words": "高野豆腐・こうやどうふ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "fu",
      "label": "麸",
      "sec": "惣菜・冷凍・乾物",
      "words": "麸・焼き麸",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "driedSeaweedSoup",
      "label": "ワカメスープ",
      "sec": "衣類",
      "words": "わかめすーぷ・即席すーぷ",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -1001,7 +1025,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "きのこ",
+   "note": "干し椎茸は干したきのこそのもの。高野豆腐は角の立った塊、麸は輪や花の形、ワカメスープは汁物で別物。"
   },
   {
    "id": "f:tin",
@@ -1013,35 +1039,35 @@
      "label": "缶詰",
      "sec": "調味料・粉",
      "words": "缶詰・かんづめ・とまと缶",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cannedFruit",
      "label": "ふるーつ缶",
      "sec": "惣菜・冷凍・乾物",
      "words": "ふるーつ缶・みかん缶・もも缶",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cannedCorn",
      "label": "こーん缶",
      "sec": "惣菜・冷凍・乾物",
      "words": "こーん缶",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cannedFish",
      "label": "さば缶",
      "sec": "惣菜・冷凍・乾物",
      "words": "さば缶・鯖缶・いわし缶",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "instantSoup",
      "label": "カップスープ",
      "sec": "衣類",
      "words": "かっぷすーぷ・ぽたーじゅ・こーんすーぷ",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -1051,7 +1077,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "缶詰の缶",
+   "note": "缶は缶。カップスープは粉末の小袋かカップ。"
   },
   {
    "id": "g:audio",
@@ -1063,35 +1091,35 @@
      "label": "いやほん",
      "sec": "文具・書類",
      "words": "いやほん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "speaker",
      "label": "スピーカー",
      "sec": "家電・機器",
      "words": "すぴーかー・ぶるーとぅーすすぴーかー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "headphones",
      "label": "へっどほん",
      "sec": "家電・機器",
      "words": "へっどほん・へっどせっと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "microphone",
      "label": "まいく",
      "sec": "家電・機器",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "radio",
      "label": "らじお",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -1101,7 +1129,9 @@
     "趣味・スポーツ"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ヘッドホン",
+   "note": "イヤホンは耳栓型で別物、スピーカーは箱、マイクは握り、ラジオは箱にダイヤル。"
   },
   {
    "id": "g:plantPot",
@@ -1113,28 +1143,28 @@
      "label": "生花",
      "sec": "衣類",
      "words": "生花・切り花・ふらわー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "plant",
      "label": "観葉植物",
      "sec": "衣類",
      "words": "観葉植物・かんようしょくぶつ・肥料",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "vase",
      "label": "花瓶",
      "sec": "家具・寝具",
      "words": "花瓶・かびん・べーす",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "gardenTrowel",
      "label": "園芸",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -1144,7 +1174,9 @@
     "工具・DIY"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "鉢植え",
+   "note": "観葉植物と園芸は鉢植えで通る。切り花と花瓶は、根のない花と器で別物。"
   },
   {
    "id": "g:tissue",
@@ -1156,28 +1188,28 @@
      "label": "おしりふき",
      "sec": "ベビー・こども",
      "words": "おしりふき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "wipes",
      "label": "除菌しーと",
      "sec": "掃除・洗濯",
      "words": "除菌しーと・うぇっとてぃっしゅ・おそうじしーと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "floorWipes",
      "label": "掃除しーと",
      "sec": "掃除・洗濯",
      "words": "掃除しーと・ふろあしーと・くいっくる",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cottonPad",
      "label": "こっとん",
      "sec": "衛生・美容",
      "words": "こっとん・ぱふ・こっとんぱふ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -1187,7 +1219,9 @@
     "衛生・美容"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "箱入りの紙（個別絵）",
+   "note": "おしりふき・除菌シート・掃除シート・コットン——どれも『箱／袋に入った薄い紙の束』で、実物として同じ。触らない。"
   },
   {
    "id": "g:glove",
@@ -1199,21 +1233,21 @@
      "label": "ごむ手袋",
      "sec": "掃除・洗濯",
      "words": "ごむ手袋・炊事手袋",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "gloves",
      "label": "手袋",
      "sec": "衣類",
      "words": "手袋・てぶくろ・軍手",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "ovenMitt",
      "label": "鍋つかみ",
      "sec": "キッチン道具",
      "words": "鍋つかみ・なべつかみ・みとん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -1223,7 +1257,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ミトン",
+   "note": "鍋つかみと手袋はミトン型。ゴム手袋は五本指で別物。"
   },
   {
    "id": "g:paperSheet",
@@ -1235,112 +1271,112 @@
      "label": "付箋",
      "sec": "文具・書類",
      "words": "付箋・ふせん・ぽすといっと",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "copyPaper",
      "label": "こぴー用紙",
      "sec": "文具・書類",
      "words": "こぴー用紙・印刷用紙・上質紙",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "looseLeaf",
      "label": "ルーズリーフ",
      "sec": "文具・書類",
      "words": "るーずりーふ・替え紙",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "postcard",
      "label": "はがき",
      "sec": "文具・書類",
      "words": "はがき・葉書・年賀状",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "labelSticker",
      "label": "シール",
      "sec": "文具・書類",
      "words": "しーる・らべる・ねーむしーる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "document",
      "label": "書類",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "letterPack",
      "label": "レターパック",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "deskPad",
      "label": "下敷き",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "deliverySlip",
      "label": "宅配伝票",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "origami",
      "label": "折り紙",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "contract",
      "label": "契約書",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "utilityBill",
      "label": "公共料金",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "receipt",
      "label": "レシート",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "homeLoan",
      "label": "住宅ろーん",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "officialPaper",
      "label": "住民票",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "insurance",
      "label": "保険",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 16,
@@ -1349,7 +1385,9 @@
     "役所・お金"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "罫線入りの書類",
+   "note": "書類・契約書・住民票・レシート・伝票・コピー用紙・ルーズリーフ・はがき・下敷きは、紙そのもの。付箋は小さな四角、シールは台紙、レターパックは厚い封筒、折り紙は色の付いた正方形。"
   },
   {
    "id": "g:shop",
@@ -1361,98 +1399,98 @@
      "label": "薬局",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "drugstore",
      "label": "ドラッグストア",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "convenienceStore",
      "label": "こんびに",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hairSalon",
      "label": "美容院",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "barber",
      "label": "理容院",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bakery",
      "label": "ぱん屋",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "homeCenter",
      "label": "ホームセンター",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "repairShop",
      "label": "修理店",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "greengrocer",
      "label": "八百屋",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "electronicsStore",
      "label": "家電量販店",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bookstore",
      "label": "書店",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "departmentStore",
      "label": "百貨店",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hundredYenShop",
      "label": "100円しょっぷ",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "superMarket",
      "label": "スーパーマーケット",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 14,
@@ -1461,7 +1499,9 @@
     "お店"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "日よけ付きの店構え",
+   "note": "14件すべて店。実物として同じ『店構え』で、ここは寄せてよい。触らない。"
   },
   {
    "id": "f:curry",
@@ -1473,91 +1513,91 @@
      "label": "鍋",
      "sec": "パン・主食",
      "words": "鍋・しちゅー・すーぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "curry",
      "label": "カレー",
      "sec": "パン・主食",
      "words": "かれー・かれーらいす・はやしらいす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "dumpling",
      "label": "餃子",
      "sec": "パン・主食",
      "words": "餃子・ぎょうざ・しゅうまい",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pizza",
      "label": "ぴざ",
      "sec": "パン・主食",
      "words": "ぴざ・ぴっつぁ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "burger",
      "label": "ハンバーガー",
      "sec": "パン・主食",
      "words": "はんばーがー・ばーがー・ふぁすとふーど",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hotdog",
      "label": "ホットドッグ",
      "sec": "パン・主食",
      "words": "ほっとどっぐ・ちりどっぐ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "okonomiyaki",
      "label": "お好み焼き",
      "sec": "パン・主食",
      "words": "お好み焼き・おこのみやき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "takoyaki",
      "label": "たこ焼き",
      "sec": "パン・主食",
      "words": "たこ焼き・たこやき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "curryRoux",
      "label": "カレールー",
      "sec": "調味料・粉",
      "words": "かれーるー・はやしるー・しちゅーるー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "consomme",
      "label": "こんそめ",
      "sec": "調味料・粉",
      "words": "こんそめ・ぶいよん・固形すーぷ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "stockPack",
      "label": "だしぱっく",
      "sec": "調味料・粉",
      "words": "だしぱっく・顆粒だし・粉末だし",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "sesame",
      "label": "ごま",
      "sec": "調味料・粉",
      "words": "ごま・胡麻・すりごま",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "yeast",
      "label": "ドライイースト",
      "sec": "調味料・粉",
      "words": "どらいいーすと・いーすと・べーきんぐぱうだー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 13,
@@ -1566,7 +1606,9 @@
     "調味料・粉"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "カレーの皿",
+   "note": "汁物の皿で通るのはカレーと鍋まで。餃子・ピザ・ハンバーガー・ホットドッグ・お好み焼き・たこ焼きは形のはっきりした別の食べもの。こんそめ・だしぱっく・ごま・ドライイーストに至っては粉と粒で、料理ですらない。"
   },
   {
    "id": "g:leisure",
@@ -1578,84 +1620,84 @@
      "label": "きゃんぷ",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "park",
      "label": "公園",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "zoo",
      "label": "動物園",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "mountain",
      "label": "登山",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "aquarium",
      "label": "水族館",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "sea",
      "label": "海水浴",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "onsen",
      "label": "温泉",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "golf",
      "label": "ごるふ",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "soccerBall",
      "label": "サッカー",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tennis",
      "label": "てにす",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "movie",
      "label": "映画",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "cinema",
      "label": "映画館",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 12,
@@ -1664,7 +1706,9 @@
     "趣味・スポーツ"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "山と太陽の風景",
+   "note": "山の風景で通るのは山と野外まで。海水浴・動物園・水族館・温泉は別の場所、ゴルフ・サッカー・テニスは道具、映画・映画館は屋内。"
   },
   {
    "id": "g:clip",
@@ -1676,70 +1720,70 @@
      "label": "ほちきす",
      "sec": "文具・書類",
      "words": "ほちきす・すてーぷらー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "paperClip",
      "label": "くりっぷ",
      "sec": "文具・書類",
      "words": "くりっぷ・ぜむくりっぷ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "binderClip",
      "label": "だぶるくりっぷ",
      "sec": "文具・書類",
      "words": "だぶるくりっぷ・ばいんだーくりっぷ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pushPin",
      "label": "画びょう",
      "sec": "文具・書類",
      "words": "画びょう・がびょう・押しぴん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "rubberBand",
      "label": "輪ごむ",
      "sec": "文具・書類",
      "words": "輪ごむ・わごむ・ごむばんど",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "staples",
      "label": "ほちきす針",
      "sec": "文具・書類",
      "words": "ほちきす針・ほちきすの針・すてーぷらー針",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "holePunch",
      "label": "ぱんち",
      "sec": "文具・書類",
      "words": "ぱんち・穴あけぱんち",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "magnetPin",
      "label": "まぐねっと",
      "sec": "文具・書類",
      "words": "まぐねっと・磁石・じしゃく",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "screw",
      "label": "ねじ",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hook",
      "label": "ふっく",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 10,
@@ -1748,7 +1792,9 @@
     "工具・DIY"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "画びょう",
+   "note": "**この型は画びょうの絵**。ホチキス・クリップ・ダブルクリップ・輪ゴム・パンチ・マグネット・ネジ・フックは、どれも画びょうではない。"
   },
   {
    "id": "g:cutlery",
@@ -1760,70 +1806,70 @@
      "label": "割り箸",
      "sec": "掃除・洗濯",
      "words": "割り箸・わりばし",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "straw",
      "label": "ストロー",
      "sec": "掃除・洗濯",
      "words": "すとろー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "toothpick",
      "label": "つまようじ",
      "sec": "掃除・洗濯",
      "words": "つまようじ・爪楊枝・ようじ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "cutlery",
      "label": "カトラリー",
      "sec": "キッチン道具",
      "words": "かとらりー・食器",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "measuringSpoon",
      "label": "計量すぷーん",
      "sec": "キッチン道具",
      "words": "計量すぷーん・小さじ・大さじ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "spoon",
      "label": "スプーン",
      "sec": "キッチン道具",
      "words": "すぷーん・さじ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "fork",
      "label": "フォーク",
      "sec": "キッチン道具",
      "words": "ふぉーく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "tableKnife",
      "label": "テーブルナイフ",
      "sec": "キッチン道具",
      "words": "てーぶるないふ・ばたーないふ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "renge",
      "label": "れんげ",
      "sec": "キッチン道具",
      "words": "れんげ・散り蓮華",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chopstickPair",
      "label": "箸",
      "sec": "キッチン道具",
      "words": "箸・お箸・はし",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 10,
@@ -1832,7 +1878,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "フォークとスプーン",
+   "note": "スプーン・フォーク・ナイフ・レンゲ・計量スプーンは洋食器の一族。箸は二本の棒、ストローは管、つまようじは細い棒で別物。"
   },
   {
    "id": "g:bag",
@@ -1844,63 +1892,63 @@
      "label": "ドッグフード",
      "sec": "掃除・洗濯",
      "words": "どっぐふーど・きゃっとふーど・ぺっとふーど",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "zipBag",
      "label": "保存袋",
      "sec": "掃除・洗濯",
      "words": "保存袋・じっぷろっく・ふりーざーばっぐ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "laundryNet",
      "label": "洗濯ねっと",
      "sec": "掃除・洗濯",
      "words": "洗濯ねっと・らんどりーねっと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "dryingAgent",
      "label": "乾燥剤",
      "sec": "掃除・洗濯",
      "words": "乾燥剤・除湿・湿気取り",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "detergentPod",
      "label": "ジェルボール",
      "sec": "掃除・洗濯",
      "words": "じぇるぼーる・洗剤ぼーる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "refillPouch",
      "label": "詰め替え",
      "sec": "掃除・洗濯",
      "words": "詰め替え・つめかえ・詰替",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "drainNet",
      "label": "排水口ねっと",
      "sec": "掃除・洗濯",
      "words": "排水口ねっと・水切りねっと・三角こーなー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "catLitter",
      "label": "猫砂",
      "sec": "衣類",
      "words": "猫砂・ねこ砂・ねこすな",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "refillPouchGreen",
      "label": "詰め替え用",
      "sec": "衣類",
      "words": "詰め替え用・つめかえ用",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 9,
@@ -1909,7 +1957,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "口を閉じる保存袋",
+   "note": "保存袋・詰め替え・乾燥剤・洗濯ネット・排水口ネット・ドッグフード・猫砂は、袋入りで実物が合う。ジェルボールは球状の粒。"
   },
   {
    "id": "g:notebook",
@@ -1921,56 +1971,56 @@
      "label": "ノート",
      "sec": "文具・書類",
      "words": "のーと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "binder",
      "label": "バインダー",
      "sec": "文具・書類",
      "words": "ばいんだー・とじこみ・2穴ふぁいる",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "letterPad",
      "label": "便箋",
      "sec": "文具・書類",
      "words": "便箋・びんせん・れたーせっと",
-     "verdict": ""
+     "verdict": "move:g:paperSheet"
     },
     {
      "key": "memoPad",
      "label": "めも帳",
      "sec": "文具・書類",
      "words": "めも帳・めもちょう・めも用紙",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "diary",
      "label": "手帳",
      "sec": "文具・書類",
      "words": "手帳・てちょう・日記",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sketchbook",
      "label": "すけっちぶっく",
      "sec": "文具・書類",
      "words": "すけっちぶっく・画帳・らくがき帳",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "textbook",
      "label": "参考書",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "guidebook",
      "label": "がいどぶっく",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 8,
@@ -1979,7 +2029,9 @@
     "おでかけ"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "しおり付きのノート",
+   "note": "ノート・バインダー・メモ帳・手帳・スケッチブック・参考書・ガイドブックは綴じた本。便箋は綴じていない紙なので、紙のほうへ。"
   },
   {
    "id": "g:topWear",
@@ -1991,56 +2043,56 @@
      "label": "ティーシャツ",
      "sec": "衣類",
      "words": "てぃーしゃつ・しゃつ・肌着",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "underwear",
      "label": "下着",
      "sec": "衣類",
      "words": "下着・したぎ・ぱんつ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pyjamas",
      "label": "ぱじゃま",
      "sec": "衣類",
      "words": "ぱじゃま・ねまき・寝間着",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "babyClothes",
      "label": "べびー服",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sweater",
      "label": "セーター",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hoodie",
      "label": "パーカー",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "dressShirt",
      "label": "ぶらうす",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sportswear",
      "label": "スポーツウェア",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 8,
@@ -2049,7 +2101,9 @@
     "ベビー・こども"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "Tシャツ",
+   "note": "Tシャツ・セーター・パーカー・ブラウス・スポーツウェア・ベビー服・パジャマは上に着るもの。下着は別の衣類。"
   },
   {
    "id": "f:gratin",
@@ -2061,42 +2115,42 @@
      "label": "味噌",
      "sec": "調味料・粉",
      "words": "味噌・みそ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "gratin",
      "label": "ぐらたん",
      "sec": "惣菜・冷凍・乾物",
      "words": "ぐらたん・どりあ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "omelette",
      "label": "玉子焼き",
      "sec": "惣菜・冷凍・乾物",
      "words": "玉子焼き・たまごやき・おむれつ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "saladChicken",
      "label": "さらだちきん",
      "sec": "惣菜・冷凍・乾物",
      "words": "さらだちきん・蒸し鶏",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "potatoSalad",
      "label": "ぽてとさらだ",
      "sec": "惣菜・冷凍・乾物",
      "words": "ぽてとさらだ・まかろにさらだ・ぽてさら",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "oden",
      "label": "おでん",
      "sec": "惣菜・冷凍・乾物",
      "words": "おでん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 6,
@@ -2105,7 +2159,9 @@
     "惣菜・冷凍・乾物"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "グラタン皿（湯気つき）",
+   "note": "熱い器ものはグラタンとおでんまで。味噌は練り物の容器、玉子焼きは巻いた形、サラダチキンは袋入り、ポテトサラダは盛り物で別物。"
   },
   {
    "id": "g:pot",
@@ -2117,42 +2173,42 @@
      "label": "やかん",
      "sec": "キッチン道具",
      "words": "やかん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "saucepan",
      "label": "片手鍋",
      "sec": "キッチン道具",
      "words": "片手鍋・milkぱん・小鍋",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pressureCooker",
      "label": "圧力鍋",
      "sec": "キッチン道具",
      "words": "圧力鍋・あつりょくなべ・無水鍋",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "wok",
      "label": "中華鍋",
      "sec": "キッチン道具",
      "words": "中華鍋・ちゅうかなべ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "potLid",
      "label": "鍋ぶた",
      "sec": "キッチン道具",
      "words": "鍋ぶた・なべぶた・鍋蓋",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "electricKettle",
      "label": "電気けとる",
      "sec": "家電・機器",
      "words": "電気けとる・電気ぽっと・けとる",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 6,
@@ -2161,7 +2217,9 @@
     "家電・機器"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "湯気の立つ鍋",
+   "note": "片手鍋・圧力鍋・中華鍋は鍋。やかんとケトルは注ぎ口と持ち手が要る別物、鍋ぶたは蓋だけ。"
   },
   {
    "id": "g:babyRoom",
@@ -2173,35 +2231,35 @@
      "label": "赤ちゃん",
      "sec": "掃除・洗濯",
      "words": "赤ちゃん・べびー・乳児",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "nursery",
      "label": "保育園",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "babyGate",
      "label": "ベビーゲート",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "babyBath",
      "label": "ベビーバス",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "babyCrib",
      "label": "ベビーベッド",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -2210,7 +2268,9 @@
     "ベビー・こども"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ベビーチェア",
+   "note": "5件すべて外す。ベビーチェアの絵に当たるものが一つも無い——赤ちゃん・保育園は人と場所、ベビーゲートは柵、ベビーバスは盥、ベビーベッドは柵付きの寝床。絵そのものは段15で使い道がある（ベビーチェアの語彙を足すとき）。"
   },
   {
    "id": "g:cup",
@@ -2222,35 +2282,35 @@
      "label": "紙こっぷ",
      "sec": "掃除・洗濯",
      "words": "紙こっぷ・かみこっぷ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "measuringCup",
      "label": "計量かっぷ",
      "sec": "キッチン道具",
      "words": "計量かっぷ・けいりょう",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tumbler",
      "label": "タンブラー",
      "sec": "キッチン道具",
      "words": "たんぶらー・すてんれすかっぷ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "mug",
      "label": "まぐかっぷ",
      "sec": "キッチン道具",
      "words": "まぐかっぷ・まぐ・こーひーかっぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "glassCup",
      "label": "こっぷ",
      "sec": "キッチン道具",
      "words": "こっぷ・ぐらす・ころっぷ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 5,
@@ -2259,7 +2319,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "取っ手付きのマグ",
+   "note": "マグとコップは取っ手の有無こそあれ飲む器。紙コップは使い捨ての円錐台、計量カップは注ぎ口と目盛り、タンブラーは蓋付きの筒。"
   },
   {
    "id": "g:phone",
@@ -2271,35 +2333,35 @@
      "label": "宅配便",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "postBox",
      "label": "郵便",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "move:g:envelope"
     },
     {
      "key": "phone",
      "label": "電話",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mail",
      "label": "メール",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "move:g:envelope"
     },
     {
      "key": "payment",
      "label": "支払い",
      "sec": "役所・お金",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -2308,7 +2370,9 @@
     "行事・そのほか"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "受話器",
+   "note": "受話器は電話だけ。メールと郵便は封筒の個別絵があるので、そちらへ寄せる。宅配便は箱、支払いは行いで別物。"
   },
   {
    "id": "g:plugCable",
@@ -2320,35 +2384,35 @@
      "label": "充電器",
      "sec": "文具・書類",
      "words": "充電器・じゅうでんき・あだぷた",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "lightBattery",
      "label": "充電池",
      "sec": "文具・書類",
      "words": "充電池・じゅうでんち・えねるーぷ",
-     "verdict": ""
+     "verdict": "move:g:battery"
     },
     {
      "key": "powerStrip",
      "label": "電源たっぷ",
      "sec": "家電・機器",
      "words": "電源たっぷ・延長こーど・たっぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "powerBank",
      "label": "モバイルバッテリー",
      "sec": "家電・機器",
      "words": "もばいるばってりー・充電ばってりー",
-     "verdict": ""
+     "verdict": "move:g:battery"
     },
     {
      "key": "usbCable",
      "label": "ケーブル",
      "sec": "家電・機器",
      "words": "けーぶる・usbけーぶる・らいとにんぐけーぶる",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 5,
@@ -2357,7 +2421,9 @@
     "家電・機器"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "プラグとケーブル",
+   "note": "充電器・電源タップ・ケーブルはプラグの一族。電池とモバイルバッテリーは電池の個別絵があるので、そちらへ。"
   },
   {
    "id": "g:ruler",
@@ -2369,35 +2435,35 @@
      "label": "定規",
      "sec": "文具・書類",
      "words": "定規・じょうぎ・ものさし",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "protractor",
      "label": "分度器",
      "sec": "文具・書類",
      "words": "分度器・ぶんどき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "compass",
      "label": "こんぱす",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "setSquare",
      "label": "三角定規",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tapeMeasure",
      "label": "メジャー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 5,
@@ -2406,7 +2472,9 @@
     "工具・DIY"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "目盛りのある定規",
+   "note": "定規とメジャーは目盛りを当てるもの。三角定規は三角、分度器は半円、コンパスは脚の開く道具で、形がはっきり違う。"
   },
   {
    "id": "g:screenDev",
@@ -2418,35 +2486,35 @@
      "label": "ホワイトボード",
      "sec": "文具・書類",
      "words": "ほわいとぼーど・黒板・こくばん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tv",
      "label": "てれび",
      "sec": "家電・機器",
      "words": "てれび・液晶てれび・もにたー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "laptop",
      "label": "ぱそこん",
      "sec": "家電・機器",
      "words": "ぱそこん・のーとぱそこん・のーとpc",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "tablet",
      "label": "たぶれっと",
      "sec": "家電・機器",
      "words": "たぶれっと・あいぱっど・ipad",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "smartphone",
      "label": "すまほ",
      "sec": "家電・機器",
      "words": "すまほ・すまーとふぉん・携帯電話",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -2455,7 +2523,9 @@
     "家電・機器"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ノートパソコン",
+   "note": "折りたたみの形はパソコンだけ。タブレットとスマホは一枚板、テレビは台に載った横長、ホワイトボードは壁の板。"
   },
   {
    "id": "g:hairDryer",
@@ -2467,28 +2537,28 @@
      "label": "ドライヤー",
      "sec": "家電・機器",
      "words": "どらいやー・へあどらいやー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "shaver",
      "label": "シェーバー",
      "sec": "家電・機器",
      "words": "しぇーばー・電気しぇーばー・電動しぇーばー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "electricToothbrush",
      "label": "電動歯ぶらし",
      "sec": "家電・機器",
      "words": "電動歯ぶらし・音波歯ぶらし",
-     "verdict": ""
+     "verdict": "move:g:toothbrush"
     },
     {
      "key": "massager",
      "label": "マッサージ",
      "sec": "衛生・美容",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -2497,7 +2567,9 @@
     "衛生・美容"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ドライヤー",
+   "note": "電動歯ブラシは歯ブラシの個別絵へ。シェーバーとマッサージ器は別物。"
   },
   {
    "id": "g:shoe",
@@ -2509,28 +2581,28 @@
      "label": "靴",
      "sec": "衛生・美容",
      "words": "靴・くつ・靴磨き",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "slippers",
      "label": "すりっぱ",
      "sec": "衣類",
      "words": "すりっぱ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "sandals",
      "label": "さんだる",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "boots",
      "label": "ブーツ",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -2539,7 +2611,9 @@
     "衣類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ヒールのある靴",
+   "note": "ブーツは筒、スリッパは甲だけ、サンダルは帯で、どれも輪郭が違う。"
   },
   {
    "id": "g:tool",
@@ -2551,28 +2625,28 @@
      "label": "電動工具",
      "sec": "家電・機器",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "doorStopper",
      "label": "ドアストッパー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "screwdriver",
      "label": "ドライバー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hammer",
      "label": "ハンマー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -2581,7 +2655,9 @@
     "工具・DIY"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "スパナ",
+   "note": "『工具』という括りの語はスパナで通るが、ドライバーは細い棒、ハンマーは頭の付いた柄、ドアストッパーは楔で別物。"
   },
   {
    "id": "g:toothCare",
@@ -2593,28 +2669,28 @@
      "label": "ふろす",
      "sec": "衛生・美容",
      "words": "ふろす・糸ようじ・でんたるふろす",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "interdental",
      "label": "歯間ぶらし",
      "sec": "衛生・美容",
      "words": "歯間ぶらし・しかんぶらし",
-     "verdict": ""
+     "verdict": "move:g:toothbrush"
     },
     {
      "key": "dentist",
      "label": "歯科",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "denture",
      "label": "入れ歯",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -2623,7 +2699,9 @@
     "薬・健康"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "歯",
+   "note": "歯科と入れ歯は歯そのもの。フロスは糸、歯間ブラシは歯ブラシの個別絵へ。"
   },
   {
    "id": "f:flour",
@@ -2635,21 +2713,21 @@
      "label": "米",
      "sec": "パン・主食",
      "words": "米・こめ・ごはん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "salt",
      "label": "塩",
      "sec": "調味料・粉",
      "words": "塩・しお・砂糖",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "flour",
      "label": "小麦粉",
      "sec": "調味料・粉",
      "words": "小麦粉・こむぎこ・薄力粉",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -2658,7 +2736,9 @@
     "調味料・粉"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "麦の描かれた粉袋",
+   "note": "麦の袋は小麦粉だけ。米は粒が違う（しかも毎日使う語）、塩は粉でも麦ではない。"
   },
   {
    "id": "g:lamp",
@@ -2670,21 +2750,21 @@
      "label": "電球",
      "sec": "掃除・洗濯",
      "words": "電球・でんきゅう・led電球",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "deskLamp",
      "label": "照明",
      "sec": "家具・寝具",
      "words": "照明・でんきすたんど・すたんどらいと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "ceilingLight",
      "label": "シーリングライト",
      "sec": "家具・寝具",
      "words": "しーりんぐらいと・しーりんぐ・天井照明",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -2693,7 +2773,9 @@
     "家具・寝具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "傘付きのスタンド",
+   "note": "照明はスタンドで通る。電球は球そのもの、シーリングライトは天井に付く円盤。"
   },
   {
    "id": "g:toy",
@@ -2705,21 +2787,21 @@
      "label": "おもちゃ",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "plushToy",
      "label": "ぬいぐるみ",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "handcraft",
      "label": "手芸",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -2728,7 +2810,9 @@
     "趣味・スポーツ"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "木馬",
+   "note": "おもちゃは木馬で通る。ぬいぐるみは別の形、手芸は道具と糸の話で、おもちゃですらない。"
   },
   {
    "id": "f:nori",
@@ -2740,14 +2824,14 @@
      "label": "海苔",
      "sec": "大豆製品・和のもの",
      "words": "海苔・のり・焼きのり",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "seaweedWakame",
      "label": "わかめ",
      "sec": "調味料・粉",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -2756,7 +2840,9 @@
     "調味料・粉"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "重ねた海苔",
+   "note": "海苔は四角い板。わかめは波打った葉で別物。"
   },
   {
    "id": "g:apron",
@@ -2768,14 +2854,14 @@
      "label": "えぷろん",
      "sec": "キッチン道具",
      "words": "えぷろん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bib",
      "label": "すたい",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -2784,7 +2870,9 @@
     "ベビー・こども"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "エプロン",
+   "note": "エプロンとスタイは、首から下げて前を覆う同じ作り。触らない。"
   },
   {
    "id": "g:frame",
@@ -2796,14 +2884,14 @@
      "label": "フォトフレーム",
      "sec": "家具・寝具",
      "words": "ふぉとふれーむ・写真立て・額縁",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "calendarSheet",
      "label": "カレンダー",
      "sec": "文具・書類",
      "words": "かれんだー・暦・日めくり",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -2812,7 +2900,9 @@
     "文具・書類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "写真立て",
+   "note": "カレンダーは日付の並んだ紙で、額ではない。"
   },
   {
    "id": "g:fryPan",
@@ -2824,14 +2914,14 @@
      "label": "ふらいぱん",
      "sec": "キッチン道具",
      "words": "ふらいぱん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hotplate",
      "label": "ホットプレート",
      "sec": "家電・機器",
      "words": "ほっとぷれーと・たこ焼き器・電気なべ",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -2840,7 +2930,9 @@
     "家電・機器"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "フライパン",
+   "note": "ホットプレートは電源と平たい面を持つ別の器具。"
   },
   {
    "id": "g:knife",
@@ -2852,14 +2944,14 @@
      "label": "包丁",
      "sec": "キッチン道具",
      "words": "包丁・ほうちょう・ないふ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cutter",
      "label": "カッター",
      "sec": "文具・書類",
      "words": "かったー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -2868,7 +2960,9 @@
     "文具・書類"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "包丁",
+   "note": "カッターは刃を送る細い柄で、包丁とは別物。"
   },
   {
    "id": "g:map",
@@ -2880,14 +2974,14 @@
      "label": "地図",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mapPin",
      "label": "待ち合わせ",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -2896,7 +2990,9 @@
     "行事・そのほか"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "折りたたんだ地図",
+   "note": "待ち合わせは場所を指す印（ピン）で、地図そのものではない。"
   },
   {
    "id": "g:plate",
@@ -2908,14 +3004,14 @@
      "label": "紙皿",
      "sec": "掃除・洗濯",
      "words": "紙皿・かみざら",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "plateDish",
      "label": "皿",
      "sec": "キッチン道具",
      "words": "皿・さら・ぷれーと",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -2924,7 +3020,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "皿",
+   "note": "皿と紙皿は同じ形。使い捨てかどうかは形の話ではない。触らない。"
   },
   {
    "id": "g:rack",
@@ -2936,14 +3034,14 @@
      "label": "洗濯かご",
      "sec": "家具・寝具",
      "words": "洗濯かご・らんどりーばすけっと・洗濯かご",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "dishRack",
      "label": "水切りかご",
      "sec": "キッチン道具",
      "words": "水切りかご・水切りらっく・食器かご",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -2952,7 +3050,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "かご",
+   "note": "洗濯かごと水切りかごは、どちらも口の開いたかご。触らない。"
   },
   {
    "id": "g:scissors",
@@ -2964,14 +3064,14 @@
      "label": "はさみ",
      "sec": "文具・書類",
      "words": "はさみ・鋏",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "kitchenScissors",
      "label": "きっちんばさみ",
      "sec": "キッチン道具",
      "words": "きっちんばさみ・調理ばさみ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -2980,7 +3080,9 @@
     "キッチン道具"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "はさみ",
+   "note": "はさみとキッチンばさみは同じ形。触らない。"
   },
   {
    "id": "g:spoutPot",
@@ -2992,14 +3094,14 @@
      "label": "急須",
      "sec": "キッチン道具",
      "words": "急須・きゅうす・てぃーぽっと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "wateringCan",
      "label": "水やり",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -3008,7 +3110,9 @@
     "行事・そのほか"
    ],
    "cross": true,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "注ぎ口のある器",
+   "note": "急須とじょうろは、どちらも注ぎ口と持ち手のある器。触らない。"
   },
   {
    "id": "f:oil",
@@ -7129,5 +7233,14 @@
    "cross": false,
    "verdict": ""
   }
- ]
+ ],
+ "verdicts": {
+  "pass": "段11a（またぐ52群）",
+  "done": "2026-09-16",
+  "tally": {
+   "split": 131,
+   "keep": 180,
+   "move": 8
+  }
+ }
 }
