@@ -874,7 +874,15 @@
        と保留していたが、あらためて利用者の判断で `curry` へ畳んだ。 */
     curry: ["pot", "okonomiyaki", "pizza", "burger", "hotdog", "takoyaki", "dumpling",
       "curryRoux", "consomme", "stockPack", "yeast", "sesame"],
-    bento: ["cereal", "frozen"],
+    /* しりある（cereal）は、ここから外した。弁当箱の丸みは「盛り付け・
+       出来合いの食事」を言う形で、箱入りの乾いた穀物とは実物として別物
+       ——報告で「シリアルの絵がカレー・弁当箱と同じ」と指摘された、その
+       もの。71型のどれにも箱そのものの形（角の立った縦長の紙箱）が無く、
+       いま手元に参考画像も無いので、**似て非なる型へ畳み直すのは見送る**
+       （`ICON-DEIMAGINE.md` の手順どおり、参考画像をなぞってから描くのが
+       筋）。無印の色つき丸へ戻るだけになるが、**間違った絵より、絵が無い
+       ほうがよい**——この表がずっと守ってきた物差しのまま。 */
+    bento: ["frozen"],
     /* 調味料 */
     oil: [
       "sesameOil", "chiliOil", "fishSauce", "balsamic", "tabasco", "mirin",
