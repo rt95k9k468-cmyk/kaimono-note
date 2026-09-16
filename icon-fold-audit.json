@@ -1,0 +1,7133 @@
+{
+ "generated": "2026-09-16",
+ "about": [
+  "707鍵が、いまどの絵を共有しているかの一覧。第3期（型の飲み込みの総点検）の作業台。",
+  "判定は members[].verdict に一件ずつ入れる：",
+  "  keep  … 実物として同じ形。同じ絵でよい（醤油と酢の瓶）",
+  "  drop  … 別物。絵を外す（ごまとカレー）。間違った絵より、絵が無いほうがよい",
+  "  split … 別物で、絵が要る。外したうえで『絵が無い言葉』の一覧に載せ、あとで描く/探す",
+  "群まるごと同じ判定なら groups[].verdict に書いてよい（members が空なら群の判定を継ぐ）。",
+  "物差しは『実物が同じ形か』。25pxで見分けられるかどうかではない——見分けられない",
+  "なら、嘘をつくのではなく絵を持たない、というのがこの表の立場。",
+  "鍵もキーワードも変えない。変えるのは『どの絵を出すか』の割り当てだけ。"
+ ],
+ "summary": {
+  "keys": 707,
+  "pictures": 182,
+  "groupsMulti": 135,
+  "keysInMulti": 659,
+  "groupsCross": 52,
+  "keysInCross": 319,
+  "groupsSolo": 33,
+  "own": 14,
+  "none": 1
+ },
+ "groups": [
+  {
+   "id": "g:building",
+   "src": "goods",
+   "type": "building",
+   "members": [
+    {
+     "key": "hospital",
+     "label": "病院",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "school",
+     "label": "学校",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "cityHall",
+     "label": "役所",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "postOffice",
+     "label": "郵便局",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "inn",
+     "label": "旅館",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "museum",
+     "label": "博物館",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "bank",
+     "label": "銀行",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "薬・健康",
+    "ベビー・こども",
+    "役所・お金",
+    "おでかけ",
+    "趣味・スポーツ"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:bottle",
+   "src": "goods",
+   "type": "bottle",
+   "members": [
+    {
+     "key": "dishSoap",
+     "label": "食器用洗剤",
+     "sec": "掃除・洗濯",
+     "words": "食器用洗剤・台所用洗剤・食器洗剤",
+     "verdict": ""
+    },
+    {
+     "key": "softener",
+     "label": "柔軟剤",
+     "sec": "掃除・洗濯",
+     "words": "柔軟剤・じゅうなんざい・そふらん",
+     "verdict": ""
+    },
+    {
+     "key": "bleach",
+     "label": "漂白剤",
+     "sec": "掃除・洗濯",
+     "words": "漂白剤・ひょうはくざい・はいたー",
+     "verdict": ""
+    },
+    {
+     "key": "shampoo",
+     "label": "シャンプー",
+     "sec": "掃除・洗濯",
+     "words": "しゃんぷー",
+     "verdict": ""
+    },
+    {
+     "key": "rinse",
+     "label": "りんす",
+     "sec": "掃除・洗濯",
+     "words": "りんす・こんでぃしょなー・とりーとめんと",
+     "verdict": ""
+    },
+    {
+     "key": "bodySoap",
+     "label": "ボディソープ",
+     "sec": "掃除・洗濯",
+     "words": "ぼでぃそーぷ・ぼでぃーそーぷ",
+     "verdict": ""
+    },
+    {
+     "key": "handSoap",
+     "label": "ハンドソープ",
+     "sec": "掃除・洗濯",
+     "words": "はんどそーぷ",
+     "verdict": ""
+    },
+    {
+     "key": "faceWash",
+     "label": "洗顔",
+     "sec": "掃除・洗濯",
+     "words": "洗顔・せんがん",
+     "verdict": ""
+    },
+    {
+     "key": "sunscreen",
+     "label": "日焼け止め",
+     "sec": "掃除・洗濯",
+     "words": "日焼け止め・ひやけどめ・日やけ止め",
+     "verdict": ""
+    },
+    {
+     "key": "toner",
+     "label": "化粧水",
+     "sec": "掃除・洗濯",
+     "words": "化粧水・けしょうすい・ろーしょん",
+     "verdict": ""
+    },
+    {
+     "key": "babyBottle",
+     "label": "哺乳瓶",
+     "sec": "ベビー・こども",
+     "words": "哺乳瓶・ほにゅうびん・赤ちゃん",
+     "verdict": ""
+    },
+    {
+     "key": "pipeCleaner",
+     "label": "ぱいぷ",
+     "sec": "掃除・洗濯",
+     "words": "ぱいぷ・排水口洗剤・ぱいぷくりーなー",
+     "verdict": ""
+    },
+    {
+     "key": "cleanser",
+     "label": "クレンザー",
+     "sec": "掃除・洗濯",
+     "words": "くれんざー・磨き粉・みがき粉",
+     "verdict": ""
+    },
+    {
+     "key": "serum",
+     "label": "美容液",
+     "sec": "衛生・美容",
+     "words": "美容液・びようえき・顔ぱっく",
+     "verdict": ""
+    },
+    {
+     "key": "hairOil",
+     "label": "へあおいる",
+     "sec": "衛生・美容",
+     "words": "へあおいる・つばき油・洗い流さない",
+     "verdict": ""
+    },
+    {
+     "key": "mouthwash",
+     "label": "まうすうぉっしゅ",
+     "sec": "衛生・美容",
+     "words": "まうすうぉっしゅ・洗口液・もんだみん",
+     "verdict": ""
+    },
+    {
+     "key": "perfume",
+     "label": "香水",
+     "sec": "衛生・美容",
+     "words": "香水・こうすい・おーでとわれ",
+     "verdict": ""
+    },
+    {
+     "key": "contactSolution",
+     "label": "こんたくと",
+     "sec": "衛生・美容",
+     "words": "こんたくと・洗浄液・保存液",
+     "verdict": ""
+    },
+    {
+     "key": "thermos",
+     "label": "水筒",
+     "sec": "キッチン道具",
+     "words": "水筒・すいとう・まほうびん",
+     "verdict": ""
+    }
+   ],
+   "n": 19,
+   "sections": [
+    "掃除・洗濯",
+    "ベビー・こども",
+    "衛生・美容",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:cloth",
+   "src": "goods",
+   "type": "cloth",
+   "members": [
+    {
+     "key": "dishcloth",
+     "label": "ふきん",
+     "sec": "掃除・洗濯",
+     "words": "ふきん・布巾・雑巾",
+     "verdict": ""
+    },
+    {
+     "key": "towel",
+     "label": "たおる",
+     "sec": "衛生・美容",
+     "words": "たおる・ばすたおる・はんかち",
+     "verdict": ""
+    },
+    {
+     "key": "bodyTowel",
+     "label": "ぼでぃたおる",
+     "sec": "衛生・美容",
+     "words": "ぼでぃたおる・浴用たおる・垢すり",
+     "verdict": ""
+    },
+    {
+     "key": "blanket",
+     "label": "毛布",
+     "sec": "家具・寝具",
+     "words": "毛布・もうふ・ブランケット",
+     "verdict": ""
+    },
+    {
+     "key": "bedSheet",
+     "label": "シーツ",
+     "sec": "家具・寝具",
+     "words": "しーつ・ぼっくすしーつ・べっどかばー",
+     "verdict": ""
+    },
+    {
+     "key": "rug",
+     "label": "らぐ",
+     "sec": "家具・寝具",
+     "words": "らぐ・かーぺっと・絨毯",
+     "verdict": ""
+    },
+    {
+     "key": "curtain",
+     "label": "カーテン",
+     "sec": "家具・寝具",
+     "words": "かーてん・れーすかーてん・遮光かーてん",
+     "verdict": ""
+    },
+    {
+     "key": "doormat",
+     "label": "玄関まっと",
+     "sec": "家具・寝具",
+     "words": "玄関まっと・どあまっと・足ふきまっと",
+     "verdict": ""
+    },
+    {
+     "key": "stole",
+     "label": "ストール",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 9,
+   "sections": [
+    "掃除・洗濯",
+    "衛生・美容",
+    "家具・寝具",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:box",
+   "src": "goods",
+   "type": "box",
+   "members": [
+    {
+     "key": "stationery",
+     "label": "文房具",
+     "sec": "掃除・洗濯",
+     "words": "文房具・ぶんぼうぐ",
+     "verdict": ""
+    },
+    {
+     "key": "formula",
+     "label": "粉みるく",
+     "sec": "ベビー・こども",
+     "words": "粉みるく・こなみるく・ふぉろー",
+     "verdict": ""
+    },
+    {
+     "key": "container",
+     "label": "保存容器",
+     "sec": "掃除・洗濯",
+     "words": "保存容器・たっぱー・たっぱ",
+     "verdict": ""
+    },
+    {
+     "key": "bakingSoda",
+     "label": "重曹",
+     "sec": "掃除・洗濯",
+     "words": "重曹・じゅうそう",
+     "verdict": ""
+    },
+    {
+     "key": "citricAcid",
+     "label": "くえん酸",
+     "sec": "掃除・洗濯",
+     "words": "くえん酸",
+     "verdict": ""
+    },
+    {
+     "key": "pencilCase",
+     "label": "筆箱",
+     "sec": "文具・書類",
+     "words": "筆箱・ふでばこ・ぺんけーす",
+     "verdict": ""
+    },
+    {
+     "key": "lunchBox",
+     "label": "弁当箱",
+     "sec": "キッチン道具",
+     "words": "弁当箱・べんとうばこ・らんちぼっくす",
+     "verdict": ""
+    },
+    {
+     "key": "iceTray",
+     "label": "製氷皿",
+     "sec": "キッチン道具",
+     "words": "製氷皿・せいひょうざら・製氷器",
+     "verdict": ""
+    }
+   ],
+   "n": 8,
+   "sections": [
+    "掃除・洗濯",
+    "ベビー・こども",
+    "文具・書類",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:carryBag",
+   "src": "goods",
+   "type": "carryBag",
+   "members": [
+    {
+     "key": "groceries",
+     "label": "食材",
+     "sec": "掃除・洗濯",
+     "words": "食材・食料品・食料",
+     "verdict": ""
+    },
+    {
+     "key": "household",
+     "label": "日用品",
+     "sec": "掃除・洗濯",
+     "words": "日用品・雑貨・消耗品",
+     "verdict": ""
+    },
+    {
+     "key": "ecoBag",
+     "label": "えこばっぐ",
+     "sec": "掃除・洗濯",
+     "words": "えこばっぐ・買い物袋・れじ袋",
+     "verdict": ""
+    },
+    {
+     "key": "coolerBag",
+     "label": "クーラーバッグ",
+     "sec": "掃除・洗濯",
+     "words": "くーらーばっぐ・保冷ばっぐ",
+     "verdict": ""
+    },
+    {
+     "key": "schoolBag",
+     "label": "らんどせる",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "babyCarrier",
+     "label": "抱っこ紐",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "suitcase",
+     "label": "旅行",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "bag",
+     "label": "ばっぐ",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 8,
+   "sections": [
+    "掃除・洗濯",
+    "ベビー・こども",
+    "おでかけ",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:jar",
+   "src": "goods",
+   "type": "jar",
+   "members": [
+    {
+     "key": "milkyLotion",
+     "label": "乳液",
+     "sec": "掃除・洗濯",
+     "words": "乳液・にゅうえき・くりーむ",
+     "verdict": ""
+    },
+    {
+     "key": "babyFood",
+     "label": "離乳食",
+     "sec": "ベビー・こども",
+     "words": "離乳食・りにゅうしょく・べびーふーど",
+     "verdict": ""
+    },
+    {
+     "key": "foundation",
+     "label": "ファンデーション",
+     "sec": "衛生・美容",
+     "words": "ふぁんでーしょん・ふぁんで・びーびーくりーむ",
+     "verdict": ""
+    },
+    {
+     "key": "hairWax",
+     "label": "わっくす",
+     "sec": "衛生・美容",
+     "words": "わっくす・整髪・へあじぇる",
+     "verdict": ""
+    },
+    {
+     "key": "bathSalt",
+     "label": "入浴剤",
+     "sec": "衛生・美容",
+     "words": "入浴剤・にゅうよくざい・ばすそると",
+     "verdict": ""
+    },
+    {
+     "key": "storageJar",
+     "label": "保存瓶",
+     "sec": "キッチン道具",
+     "words": "保存瓶・きゃにすたー・がらす瓶",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "掃除・洗濯",
+    "ベビー・こども",
+    "衛生・美容",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:tube",
+   "src": "goods",
+   "type": "tube",
+   "members": [
+    {
+     "key": "toothpaste",
+     "label": "歯磨き粉",
+     "sec": "掃除・洗濯",
+     "words": "歯磨き粉・歯みがき粉・はみがき粉",
+     "verdict": ""
+    },
+    {
+     "key": "makeupRemover",
+     "label": "クレンジング",
+     "sec": "衛生・美容",
+     "words": "くれんじんぐ・めいく落とし・化粧落とし",
+     "verdict": ""
+    },
+    {
+     "key": "handCream",
+     "label": "ハンドクリーム",
+     "sec": "衛生・美容",
+     "words": "はんどくりーむ・ぼでぃくりーむ",
+     "verdict": ""
+    },
+    {
+     "key": "ointment",
+     "label": "軟膏",
+     "sec": "薬・健康",
+     "words": "軟膏・なんこう・塗り薬",
+     "verdict": ""
+    },
+    {
+     "key": "glue",
+     "label": "接着剤",
+     "sec": "文具・書類",
+     "words": "接着剤・すてぃっくのり・でんぷんのり",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "掃除・洗濯",
+    "衛生・美容",
+    "薬・健康",
+    "文具・書類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:brushTool",
+   "src": "goods",
+   "type": "brushTool",
+   "members": [
+    {
+     "key": "sponge",
+     "label": "すぽんじ",
+     "sec": "掃除・洗濯",
+     "words": "すぽんじ",
+     "verdict": ""
+    },
+    {
+     "key": "razor",
+     "label": "かみそり",
+     "sec": "掃除・洗濯",
+     "words": "かみそり・剃刀・髭剃り",
+     "verdict": ""
+    },
+    {
+     "key": "cottonSwab",
+     "label": "綿棒",
+     "sec": "掃除・洗濯",
+     "words": "綿棒・めんぼう",
+     "verdict": ""
+    },
+    {
+     "key": "scrubBrush",
+     "label": "たわし",
+     "sec": "掃除・洗濯",
+     "words": "たわし・ぶらし・でっきぶらし",
+     "verdict": ""
+    },
+    {
+     "key": "nailClipper",
+     "label": "爪切り",
+     "sec": "衛生・美容",
+     "words": "爪切り・つめきり・毛抜き",
+     "verdict": ""
+    },
+    {
+     "key": "comb",
+     "label": "くし",
+     "sec": "衛生・美容",
+     "words": "くし・櫛",
+     "verdict": ""
+    },
+    {
+     "key": "hairTie",
+     "label": "へあごむ",
+     "sec": "衛生・美容",
+     "words": "へあごむ・髪ごむ・しゅしゅ",
+     "verdict": ""
+    },
+    {
+     "key": "paintBrush",
+     "label": "筆",
+     "sec": "文具・書類",
+     "words": "筆・ふで・書道",
+     "verdict": ""
+    },
+    {
+     "key": "hairBrush",
+     "label": "へあぶらし",
+     "sec": "衛生・美容",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "nailFile",
+     "label": "爪やすり",
+     "sec": "衛生・美容",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 10,
+   "sections": [
+    "掃除・洗濯",
+    "衛生・美容",
+    "文具・書類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:spray",
+   "src": "goods",
+   "type": "spray",
+   "members": [
+    {
+     "key": "deodorant",
+     "label": "消臭剤",
+     "sec": "掃除・洗濯",
+     "words": "消臭剤・しょうしゅう・ふぁぶりーず",
+     "verdict": ""
+    },
+    {
+     "key": "insect",
+     "label": "虫よけ",
+     "sec": "掃除・洗濯",
+     "words": "虫よけ・虫除け・殺虫剤",
+     "verdict": ""
+    },
+    {
+     "key": "cleanerSpray",
+     "label": "クリーナー",
+     "sec": "掃除・洗濯",
+     "words": "くりーなー・住居用洗剤・掃除すぷれー",
+     "verdict": ""
+    },
+    {
+     "key": "kitchenSpray",
+     "label": "きっちん洗剤",
+     "sec": "掃除・洗濯",
+     "words": "きっちん洗剤・きっちん用洗剤",
+     "verdict": ""
+    },
+    {
+     "key": "bathCleaner",
+     "label": "風呂用洗剤",
+     "sec": "掃除・洗濯",
+     "words": "風呂用洗剤・ばす洗剤・浴室",
+     "verdict": ""
+    },
+    {
+     "key": "toiletCleaner",
+     "label": "といれ洗剤",
+     "sec": "掃除・洗濯",
+     "words": "といれ洗剤・といれくりーなー・さんぽーる",
+     "verdict": ""
+    },
+    {
+     "key": "mold",
+     "label": "かび取り",
+     "sec": "掃除・洗濯",
+     "words": "かび取り・かびきらー・防かび",
+     "verdict": ""
+    },
+    {
+     "key": "hairSpray",
+     "label": "ヘアスプレー",
+     "sec": "衛生・美容",
+     "words": "へあすぷれー・けーぷ・すたいりんぐ",
+     "verdict": ""
+    },
+    {
+     "key": "airFreshener",
+     "label": "芳香剤",
+     "sec": "衛生・美容",
+     "words": "芳香剤・ほうこうざい・るーむふれぐらんす",
+     "verdict": ""
+    },
+    {
+     "key": "disinfectant",
+     "label": "消毒",
+     "sec": "薬・健康",
+     "words": "消毒・しょうどく・あるこーる",
+     "verdict": ""
+    }
+   ],
+   "n": 10,
+   "sections": [
+    "掃除・洗濯",
+    "衛生・美容",
+    "薬・健康"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:boxAppl",
+   "src": "goods",
+   "type": "boxAppl",
+   "members": [
+    {
+     "key": "riceCooker",
+     "label": "炊飯器",
+     "sec": "キッチン道具",
+     "words": "炊飯器・すいはんき",
+     "verdict": ""
+    },
+    {
+     "key": "microwave",
+     "label": "電子れんじ",
+     "sec": "家電・機器",
+     "words": "電子れんじ・れんじ・でんしれんじ",
+     "verdict": ""
+    },
+    {
+     "key": "ovenToaster",
+     "label": "トースター",
+     "sec": "家電・機器",
+     "words": "とーすたー・おーぶん・おーぶんとーすたー",
+     "verdict": ""
+    },
+    {
+     "key": "washingMachine",
+     "label": "洗濯機",
+     "sec": "家電・機器",
+     "words": "洗濯機・せんたくき・せんたっき",
+     "verdict": ""
+    },
+    {
+     "key": "clothesDryer",
+     "label": "乾燥機",
+     "sec": "家電・機器",
+     "words": "乾燥機・かんそうき・衣類乾燥機",
+     "verdict": ""
+    },
+    {
+     "key": "printer",
+     "label": "プリンター",
+     "sec": "家電・機器",
+     "words": "ぷりんたー・複合機・ふくごうき",
+     "verdict": ""
+    },
+    {
+     "key": "router",
+     "label": "ルーター",
+     "sec": "家電・機器",
+     "words": "るーたー・wifi・無線らん",
+     "verdict": ""
+    },
+    {
+     "key": "dishwasher",
+     "label": "食洗機",
+     "sec": "家電・機器",
+     "words": "食洗機・しょくせんき・食器洗い機",
+     "verdict": ""
+    },
+    {
+     "key": "laminator",
+     "label": "ラミネーター",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 9,
+   "sections": [
+    "キッチン道具",
+    "家電・機器",
+    "文具・書類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:diaper",
+   "src": "goods",
+   "type": "diaper",
+   "members": [
+    {
+     "key": "diaper",
+     "label": "おむつ",
+     "sec": "掃除・洗濯",
+     "words": "おむつ・生理用品・なぷきん",
+     "verdict": ""
+    },
+    {
+     "key": "plaster",
+     "label": "絆創膏",
+     "sec": "薬・健康",
+     "words": "絆創膏・ばんそうこう",
+     "verdict": ""
+    },
+    {
+     "key": "icePack",
+     "label": "保冷剤",
+     "sec": "掃除・洗濯",
+     "words": "保冷剤・ほれいざい",
+     "verdict": ""
+    },
+    {
+     "key": "bandage",
+     "label": "包帯",
+     "sec": "薬・健康",
+     "words": "包帯・ほうたい・がーぜ",
+     "verdict": ""
+    },
+    {
+     "key": "heatPad",
+     "label": "かいろ",
+     "sec": "薬・健康",
+     "words": "かいろ・ほっかいろ",
+     "verdict": ""
+    },
+    {
+     "key": "petSheet",
+     "label": "ペットシーツ",
+     "sec": "衣類",
+     "words": "ぺっとしーつ・といれしーつ",
+     "verdict": ""
+    },
+    {
+     "key": "handWarmerBox",
+     "label": "貼るかいろ",
+     "sec": "衣類",
+     "words": "貼るかいろ・はるかいろ",
+     "verdict": ""
+    },
+    {
+     "key": "coolingSheet",
+     "label": "冷却しーと",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "poultice",
+     "label": "湿布",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 9,
+   "sections": [
+    "掃除・洗濯",
+    "薬・健康",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:card",
+   "src": "goods",
+   "type": "card",
+   "members": [
+    {
+     "key": "businessCard",
+     "label": "名刺",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "nameTag",
+     "label": "名札",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "qrPay",
+     "label": "qr決済",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "licenseCard",
+     "label": "免許証",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "cash",
+     "label": "現金",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "ticket",
+     "label": "ちけっと",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "文具・書類",
+    "役所・お金",
+    "おでかけ"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:mushroom",
+   "src": "food",
+   "type": "mushroom",
+   "members": [
+    {
+     "key": "mushroom",
+     "label": "きのこ",
+     "sec": "野菜",
+     "words": "きのこ・しめじ・えのき",
+     "verdict": ""
+    },
+    {
+     "key": "driedShiitake",
+     "label": "干ししいたけ",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "干ししいたけ・乾しいたけ・干し椎茸",
+     "verdict": ""
+    },
+    {
+     "key": "koyaTofu",
+     "label": "高野豆腐",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "高野豆腐・こうやどうふ",
+     "verdict": ""
+    },
+    {
+     "key": "fu",
+     "label": "麸",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "麸・焼き麸",
+     "verdict": ""
+    },
+    {
+     "key": "driedSeaweedSoup",
+     "label": "ワカメスープ",
+     "sec": "衣類",
+     "words": "わかめすーぷ・即席すーぷ",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "野菜",
+    "惣菜・冷凍・乾物",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:tin",
+   "src": "food",
+   "type": "tin",
+   "members": [
+    {
+     "key": "tin",
+     "label": "缶詰",
+     "sec": "調味料・粉",
+     "words": "缶詰・かんづめ・とまと缶",
+     "verdict": ""
+    },
+    {
+     "key": "cannedFruit",
+     "label": "ふるーつ缶",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "ふるーつ缶・みかん缶・もも缶",
+     "verdict": ""
+    },
+    {
+     "key": "cannedCorn",
+     "label": "こーん缶",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "こーん缶",
+     "verdict": ""
+    },
+    {
+     "key": "cannedFish",
+     "label": "さば缶",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "さば缶・鯖缶・いわし缶",
+     "verdict": ""
+    },
+    {
+     "key": "instantSoup",
+     "label": "カップスープ",
+     "sec": "衣類",
+     "words": "かっぷすーぷ・ぽたーじゅ・こーんすーぷ",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "調味料・粉",
+    "惣菜・冷凍・乾物",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:audio",
+   "src": "goods",
+   "type": "audio",
+   "members": [
+    {
+     "key": "earphone",
+     "label": "いやほん",
+     "sec": "文具・書類",
+     "words": "いやほん",
+     "verdict": ""
+    },
+    {
+     "key": "speaker",
+     "label": "スピーカー",
+     "sec": "家電・機器",
+     "words": "すぴーかー・ぶるーとぅーすすぴーかー",
+     "verdict": ""
+    },
+    {
+     "key": "headphones",
+     "label": "へっどほん",
+     "sec": "家電・機器",
+     "words": "へっどほん・へっどせっと",
+     "verdict": ""
+    },
+    {
+     "key": "microphone",
+     "label": "まいく",
+     "sec": "家電・機器",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "radio",
+     "label": "らじお",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "文具・書類",
+    "家電・機器",
+    "趣味・スポーツ"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:plantPot",
+   "src": "goods",
+   "type": "plantPot",
+   "members": [
+    {
+     "key": "flower",
+     "label": "生花",
+     "sec": "衣類",
+     "words": "生花・切り花・ふらわー",
+     "verdict": ""
+    },
+    {
+     "key": "plant",
+     "label": "観葉植物",
+     "sec": "衣類",
+     "words": "観葉植物・かんようしょくぶつ・肥料",
+     "verdict": ""
+    },
+    {
+     "key": "vase",
+     "label": "花瓶",
+     "sec": "家具・寝具",
+     "words": "花瓶・かびん・べーす",
+     "verdict": ""
+    },
+    {
+     "key": "gardenTrowel",
+     "label": "園芸",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "衣類",
+    "家具・寝具",
+    "工具・DIY"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:tissue",
+   "src": "goods",
+   "type": "tissue",
+   "members": [
+    {
+     "key": "babyWipes",
+     "label": "おしりふき",
+     "sec": "ベビー・こども",
+     "words": "おしりふき",
+     "verdict": ""
+    },
+    {
+     "key": "wipes",
+     "label": "除菌しーと",
+     "sec": "掃除・洗濯",
+     "words": "除菌しーと・うぇっとてぃっしゅ・おそうじしーと",
+     "verdict": ""
+    },
+    {
+     "key": "floorWipes",
+     "label": "掃除しーと",
+     "sec": "掃除・洗濯",
+     "words": "掃除しーと・ふろあしーと・くいっくる",
+     "verdict": ""
+    },
+    {
+     "key": "cottonPad",
+     "label": "こっとん",
+     "sec": "衛生・美容",
+     "words": "こっとん・ぱふ・こっとんぱふ",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "ベビー・こども",
+    "掃除・洗濯",
+    "衛生・美容"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:glove",
+   "src": "goods",
+   "type": "glove",
+   "members": [
+    {
+     "key": "rubberGloves",
+     "label": "ごむ手袋",
+     "sec": "掃除・洗濯",
+     "words": "ごむ手袋・炊事手袋",
+     "verdict": ""
+    },
+    {
+     "key": "gloves",
+     "label": "手袋",
+     "sec": "衣類",
+     "words": "手袋・てぶくろ・軍手",
+     "verdict": ""
+    },
+    {
+     "key": "ovenMitt",
+     "label": "鍋つかみ",
+     "sec": "キッチン道具",
+     "words": "鍋つかみ・なべつかみ・みとん",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "掃除・洗濯",
+    "衣類",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:paperSheet",
+   "src": "goods",
+   "type": "paperSheet",
+   "members": [
+    {
+     "key": "stickyNote",
+     "label": "付箋",
+     "sec": "文具・書類",
+     "words": "付箋・ふせん・ぽすといっと",
+     "verdict": ""
+    },
+    {
+     "key": "copyPaper",
+     "label": "こぴー用紙",
+     "sec": "文具・書類",
+     "words": "こぴー用紙・印刷用紙・上質紙",
+     "verdict": ""
+    },
+    {
+     "key": "looseLeaf",
+     "label": "ルーズリーフ",
+     "sec": "文具・書類",
+     "words": "るーずりーふ・替え紙",
+     "verdict": ""
+    },
+    {
+     "key": "postcard",
+     "label": "はがき",
+     "sec": "文具・書類",
+     "words": "はがき・葉書・年賀状",
+     "verdict": ""
+    },
+    {
+     "key": "labelSticker",
+     "label": "シール",
+     "sec": "文具・書類",
+     "words": "しーる・らべる・ねーむしーる",
+     "verdict": ""
+    },
+    {
+     "key": "document",
+     "label": "書類",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "letterPack",
+     "label": "レターパック",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "deskPad",
+     "label": "下敷き",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "deliverySlip",
+     "label": "宅配伝票",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "origami",
+     "label": "折り紙",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "contract",
+     "label": "契約書",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "utilityBill",
+     "label": "公共料金",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "receipt",
+     "label": "レシート",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "homeLoan",
+     "label": "住宅ろーん",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "officialPaper",
+     "label": "住民票",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "insurance",
+     "label": "保険",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 16,
+   "sections": [
+    "文具・書類",
+    "役所・お金"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:shop",
+   "src": "goods",
+   "type": "shop",
+   "members": [
+    {
+     "key": "pharmacy",
+     "label": "薬局",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "drugstore",
+     "label": "ドラッグストア",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "convenienceStore",
+     "label": "こんびに",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "hairSalon",
+     "label": "美容院",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "barber",
+     "label": "理容院",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "bakery",
+     "label": "ぱん屋",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "homeCenter",
+     "label": "ホームセンター",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "repairShop",
+     "label": "修理店",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "greengrocer",
+     "label": "八百屋",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "electronicsStore",
+     "label": "家電量販店",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "bookstore",
+     "label": "書店",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "departmentStore",
+     "label": "百貨店",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "hundredYenShop",
+     "label": "100円しょっぷ",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "superMarket",
+     "label": "スーパーマーケット",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 14,
+   "sections": [
+    "薬・健康",
+    "お店"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:curry",
+   "src": "food",
+   "type": "curry",
+   "members": [
+    {
+     "key": "pot",
+     "label": "鍋",
+     "sec": "パン・主食",
+     "words": "鍋・しちゅー・すーぷ",
+     "verdict": ""
+    },
+    {
+     "key": "curry",
+     "label": "カレー",
+     "sec": "パン・主食",
+     "words": "かれー・かれーらいす・はやしらいす",
+     "verdict": ""
+    },
+    {
+     "key": "dumpling",
+     "label": "餃子",
+     "sec": "パン・主食",
+     "words": "餃子・ぎょうざ・しゅうまい",
+     "verdict": ""
+    },
+    {
+     "key": "pizza",
+     "label": "ぴざ",
+     "sec": "パン・主食",
+     "words": "ぴざ・ぴっつぁ",
+     "verdict": ""
+    },
+    {
+     "key": "burger",
+     "label": "ハンバーガー",
+     "sec": "パン・主食",
+     "words": "はんばーがー・ばーがー・ふぁすとふーど",
+     "verdict": ""
+    },
+    {
+     "key": "hotdog",
+     "label": "ホットドッグ",
+     "sec": "パン・主食",
+     "words": "ほっとどっぐ・ちりどっぐ",
+     "verdict": ""
+    },
+    {
+     "key": "okonomiyaki",
+     "label": "お好み焼き",
+     "sec": "パン・主食",
+     "words": "お好み焼き・おこのみやき",
+     "verdict": ""
+    },
+    {
+     "key": "takoyaki",
+     "label": "たこ焼き",
+     "sec": "パン・主食",
+     "words": "たこ焼き・たこやき",
+     "verdict": ""
+    },
+    {
+     "key": "curryRoux",
+     "label": "カレールー",
+     "sec": "調味料・粉",
+     "words": "かれーるー・はやしるー・しちゅーるー",
+     "verdict": ""
+    },
+    {
+     "key": "consomme",
+     "label": "こんそめ",
+     "sec": "調味料・粉",
+     "words": "こんそめ・ぶいよん・固形すーぷ",
+     "verdict": ""
+    },
+    {
+     "key": "stockPack",
+     "label": "だしぱっく",
+     "sec": "調味料・粉",
+     "words": "だしぱっく・顆粒だし・粉末だし",
+     "verdict": ""
+    },
+    {
+     "key": "sesame",
+     "label": "ごま",
+     "sec": "調味料・粉",
+     "words": "ごま・胡麻・すりごま",
+     "verdict": ""
+    },
+    {
+     "key": "yeast",
+     "label": "ドライイースト",
+     "sec": "調味料・粉",
+     "words": "どらいいーすと・いーすと・べーきんぐぱうだー",
+     "verdict": ""
+    }
+   ],
+   "n": 13,
+   "sections": [
+    "パン・主食",
+    "調味料・粉"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:leisure",
+   "src": "goods",
+   "type": "leisure",
+   "members": [
+    {
+     "key": "camping",
+     "label": "きゃんぷ",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "park",
+     "label": "公園",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "zoo",
+     "label": "動物園",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "mountain",
+     "label": "登山",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "aquarium",
+     "label": "水族館",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "sea",
+     "label": "海水浴",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "onsen",
+     "label": "温泉",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "golf",
+     "label": "ごるふ",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "soccerBall",
+     "label": "サッカー",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "tennis",
+     "label": "てにす",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "movie",
+     "label": "映画",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "cinema",
+     "label": "映画館",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 12,
+   "sections": [
+    "おでかけ",
+    "趣味・スポーツ"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:clip",
+   "src": "goods",
+   "type": "clip",
+   "members": [
+    {
+     "key": "stapler",
+     "label": "ほちきす",
+     "sec": "文具・書類",
+     "words": "ほちきす・すてーぷらー",
+     "verdict": ""
+    },
+    {
+     "key": "paperClip",
+     "label": "くりっぷ",
+     "sec": "文具・書類",
+     "words": "くりっぷ・ぜむくりっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "binderClip",
+     "label": "だぶるくりっぷ",
+     "sec": "文具・書類",
+     "words": "だぶるくりっぷ・ばいんだーくりっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "pushPin",
+     "label": "画びょう",
+     "sec": "文具・書類",
+     "words": "画びょう・がびょう・押しぴん",
+     "verdict": ""
+    },
+    {
+     "key": "rubberBand",
+     "label": "輪ごむ",
+     "sec": "文具・書類",
+     "words": "輪ごむ・わごむ・ごむばんど",
+     "verdict": ""
+    },
+    {
+     "key": "staples",
+     "label": "ほちきす針",
+     "sec": "文具・書類",
+     "words": "ほちきす針・ほちきすの針・すてーぷらー針",
+     "verdict": ""
+    },
+    {
+     "key": "holePunch",
+     "label": "ぱんち",
+     "sec": "文具・書類",
+     "words": "ぱんち・穴あけぱんち",
+     "verdict": ""
+    },
+    {
+     "key": "magnetPin",
+     "label": "まぐねっと",
+     "sec": "文具・書類",
+     "words": "まぐねっと・磁石・じしゃく",
+     "verdict": ""
+    },
+    {
+     "key": "screw",
+     "label": "ねじ",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "hook",
+     "label": "ふっく",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 10,
+   "sections": [
+    "文具・書類",
+    "工具・DIY"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:cutlery",
+   "src": "goods",
+   "type": "cutlery",
+   "members": [
+    {
+     "key": "chopsticks",
+     "label": "割り箸",
+     "sec": "掃除・洗濯",
+     "words": "割り箸・わりばし",
+     "verdict": ""
+    },
+    {
+     "key": "straw",
+     "label": "ストロー",
+     "sec": "掃除・洗濯",
+     "words": "すとろー",
+     "verdict": ""
+    },
+    {
+     "key": "toothpick",
+     "label": "つまようじ",
+     "sec": "掃除・洗濯",
+     "words": "つまようじ・爪楊枝・ようじ",
+     "verdict": ""
+    },
+    {
+     "key": "cutlery",
+     "label": "カトラリー",
+     "sec": "キッチン道具",
+     "words": "かとらりー・食器",
+     "verdict": ""
+    },
+    {
+     "key": "measuringSpoon",
+     "label": "計量すぷーん",
+     "sec": "キッチン道具",
+     "words": "計量すぷーん・小さじ・大さじ",
+     "verdict": ""
+    },
+    {
+     "key": "spoon",
+     "label": "スプーン",
+     "sec": "キッチン道具",
+     "words": "すぷーん・さじ",
+     "verdict": ""
+    },
+    {
+     "key": "fork",
+     "label": "フォーク",
+     "sec": "キッチン道具",
+     "words": "ふぉーく",
+     "verdict": ""
+    },
+    {
+     "key": "tableKnife",
+     "label": "テーブルナイフ",
+     "sec": "キッチン道具",
+     "words": "てーぶるないふ・ばたーないふ",
+     "verdict": ""
+    },
+    {
+     "key": "renge",
+     "label": "れんげ",
+     "sec": "キッチン道具",
+     "words": "れんげ・散り蓮華",
+     "verdict": ""
+    },
+    {
+     "key": "chopstickPair",
+     "label": "箸",
+     "sec": "キッチン道具",
+     "words": "箸・お箸・はし",
+     "verdict": ""
+    }
+   ],
+   "n": 10,
+   "sections": [
+    "掃除・洗濯",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:bag",
+   "src": "goods",
+   "type": "bag",
+   "members": [
+    {
+     "key": "petFood",
+     "label": "ドッグフード",
+     "sec": "掃除・洗濯",
+     "words": "どっぐふーど・きゃっとふーど・ぺっとふーど",
+     "verdict": ""
+    },
+    {
+     "key": "zipBag",
+     "label": "保存袋",
+     "sec": "掃除・洗濯",
+     "words": "保存袋・じっぷろっく・ふりーざーばっぐ",
+     "verdict": ""
+    },
+    {
+     "key": "laundryNet",
+     "label": "洗濯ねっと",
+     "sec": "掃除・洗濯",
+     "words": "洗濯ねっと・らんどりーねっと",
+     "verdict": ""
+    },
+    {
+     "key": "dryingAgent",
+     "label": "乾燥剤",
+     "sec": "掃除・洗濯",
+     "words": "乾燥剤・除湿・湿気取り",
+     "verdict": ""
+    },
+    {
+     "key": "detergentPod",
+     "label": "ジェルボール",
+     "sec": "掃除・洗濯",
+     "words": "じぇるぼーる・洗剤ぼーる",
+     "verdict": ""
+    },
+    {
+     "key": "refillPouch",
+     "label": "詰め替え",
+     "sec": "掃除・洗濯",
+     "words": "詰め替え・つめかえ・詰替",
+     "verdict": ""
+    },
+    {
+     "key": "drainNet",
+     "label": "排水口ねっと",
+     "sec": "掃除・洗濯",
+     "words": "排水口ねっと・水切りねっと・三角こーなー",
+     "verdict": ""
+    },
+    {
+     "key": "catLitter",
+     "label": "猫砂",
+     "sec": "衣類",
+     "words": "猫砂・ねこ砂・ねこすな",
+     "verdict": ""
+    },
+    {
+     "key": "refillPouchGreen",
+     "label": "詰め替え用",
+     "sec": "衣類",
+     "words": "詰め替え用・つめかえ用",
+     "verdict": ""
+    }
+   ],
+   "n": 9,
+   "sections": [
+    "掃除・洗濯",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:notebook",
+   "src": "goods",
+   "type": "notebook",
+   "members": [
+    {
+     "key": "notebook",
+     "label": "ノート",
+     "sec": "文具・書類",
+     "words": "のーと",
+     "verdict": ""
+    },
+    {
+     "key": "binder",
+     "label": "バインダー",
+     "sec": "文具・書類",
+     "words": "ばいんだー・とじこみ・2穴ふぁいる",
+     "verdict": ""
+    },
+    {
+     "key": "letterPad",
+     "label": "便箋",
+     "sec": "文具・書類",
+     "words": "便箋・びんせん・れたーせっと",
+     "verdict": ""
+    },
+    {
+     "key": "memoPad",
+     "label": "めも帳",
+     "sec": "文具・書類",
+     "words": "めも帳・めもちょう・めも用紙",
+     "verdict": ""
+    },
+    {
+     "key": "diary",
+     "label": "手帳",
+     "sec": "文具・書類",
+     "words": "手帳・てちょう・日記",
+     "verdict": ""
+    },
+    {
+     "key": "sketchbook",
+     "label": "すけっちぶっく",
+     "sec": "文具・書類",
+     "words": "すけっちぶっく・画帳・らくがき帳",
+     "verdict": ""
+    },
+    {
+     "key": "textbook",
+     "label": "参考書",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "guidebook",
+     "label": "がいどぶっく",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 8,
+   "sections": [
+    "文具・書類",
+    "おでかけ"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:topWear",
+   "src": "goods",
+   "type": "topWear",
+   "members": [
+    {
+     "key": "tshirt",
+     "label": "ティーシャツ",
+     "sec": "衣類",
+     "words": "てぃーしゃつ・しゃつ・肌着",
+     "verdict": ""
+    },
+    {
+     "key": "underwear",
+     "label": "下着",
+     "sec": "衣類",
+     "words": "下着・したぎ・ぱんつ",
+     "verdict": ""
+    },
+    {
+     "key": "pyjamas",
+     "label": "ぱじゃま",
+     "sec": "衣類",
+     "words": "ぱじゃま・ねまき・寝間着",
+     "verdict": ""
+    },
+    {
+     "key": "babyClothes",
+     "label": "べびー服",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "sweater",
+     "label": "セーター",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "hoodie",
+     "label": "パーカー",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "dressShirt",
+     "label": "ぶらうす",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "sportswear",
+     "label": "スポーツウェア",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 8,
+   "sections": [
+    "衣類",
+    "ベビー・こども"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:gratin",
+   "src": "food",
+   "type": "gratin",
+   "members": [
+    {
+     "key": "miso",
+     "label": "味噌",
+     "sec": "調味料・粉",
+     "words": "味噌・みそ",
+     "verdict": ""
+    },
+    {
+     "key": "gratin",
+     "label": "ぐらたん",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "ぐらたん・どりあ",
+     "verdict": ""
+    },
+    {
+     "key": "omelette",
+     "label": "玉子焼き",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "玉子焼き・たまごやき・おむれつ",
+     "verdict": ""
+    },
+    {
+     "key": "saladChicken",
+     "label": "さらだちきん",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "さらだちきん・蒸し鶏",
+     "verdict": ""
+    },
+    {
+     "key": "potatoSalad",
+     "label": "ぽてとさらだ",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "ぽてとさらだ・まかろにさらだ・ぽてさら",
+     "verdict": ""
+    },
+    {
+     "key": "oden",
+     "label": "おでん",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "おでん",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "調味料・粉",
+    "惣菜・冷凍・乾物"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:pot",
+   "src": "goods",
+   "type": "pot",
+   "members": [
+    {
+     "key": "kettle",
+     "label": "やかん",
+     "sec": "キッチン道具",
+     "words": "やかん",
+     "verdict": ""
+    },
+    {
+     "key": "saucepan",
+     "label": "片手鍋",
+     "sec": "キッチン道具",
+     "words": "片手鍋・milkぱん・小鍋",
+     "verdict": ""
+    },
+    {
+     "key": "pressureCooker",
+     "label": "圧力鍋",
+     "sec": "キッチン道具",
+     "words": "圧力鍋・あつりょくなべ・無水鍋",
+     "verdict": ""
+    },
+    {
+     "key": "wok",
+     "label": "中華鍋",
+     "sec": "キッチン道具",
+     "words": "中華鍋・ちゅうかなべ",
+     "verdict": ""
+    },
+    {
+     "key": "potLid",
+     "label": "鍋ぶた",
+     "sec": "キッチン道具",
+     "words": "鍋ぶた・なべぶた・鍋蓋",
+     "verdict": ""
+    },
+    {
+     "key": "electricKettle",
+     "label": "電気けとる",
+     "sec": "家電・機器",
+     "words": "電気けとる・電気ぽっと・けとる",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "キッチン道具",
+    "家電・機器"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:babyRoom",
+   "src": "goods",
+   "type": "babyRoom",
+   "members": [
+    {
+     "key": "baby",
+     "label": "赤ちゃん",
+     "sec": "掃除・洗濯",
+     "words": "赤ちゃん・べびー・乳児",
+     "verdict": ""
+    },
+    {
+     "key": "nursery",
+     "label": "保育園",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "babyGate",
+     "label": "ベビーゲート",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "babyBath",
+     "label": "ベビーバス",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "babyCrib",
+     "label": "ベビーベッド",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "掃除・洗濯",
+    "ベビー・こども"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:cup",
+   "src": "goods",
+   "type": "cup",
+   "members": [
+    {
+     "key": "paperCup",
+     "label": "紙こっぷ",
+     "sec": "掃除・洗濯",
+     "words": "紙こっぷ・かみこっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "measuringCup",
+     "label": "計量かっぷ",
+     "sec": "キッチン道具",
+     "words": "計量かっぷ・けいりょう",
+     "verdict": ""
+    },
+    {
+     "key": "tumbler",
+     "label": "タンブラー",
+     "sec": "キッチン道具",
+     "words": "たんぶらー・すてんれすかっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "mug",
+     "label": "まぐかっぷ",
+     "sec": "キッチン道具",
+     "words": "まぐかっぷ・まぐ・こーひーかっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "glassCup",
+     "label": "こっぷ",
+     "sec": "キッチン道具",
+     "words": "こっぷ・ぐらす・ころっぷ",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "掃除・洗濯",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:phone",
+   "src": "goods",
+   "type": "phone",
+   "members": [
+    {
+     "key": "delivery",
+     "label": "宅配便",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "postBox",
+     "label": "郵便",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "phone",
+     "label": "電話",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "mail",
+     "label": "メール",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "payment",
+     "label": "支払い",
+     "sec": "役所・お金",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "役所・お金",
+    "行事・そのほか"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:plugCable",
+   "src": "goods",
+   "type": "plugCable",
+   "members": [
+    {
+     "key": "charger",
+     "label": "充電器",
+     "sec": "文具・書類",
+     "words": "充電器・じゅうでんき・あだぷた",
+     "verdict": ""
+    },
+    {
+     "key": "lightBattery",
+     "label": "充電池",
+     "sec": "文具・書類",
+     "words": "充電池・じゅうでんち・えねるーぷ",
+     "verdict": ""
+    },
+    {
+     "key": "powerStrip",
+     "label": "電源たっぷ",
+     "sec": "家電・機器",
+     "words": "電源たっぷ・延長こーど・たっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "powerBank",
+     "label": "モバイルバッテリー",
+     "sec": "家電・機器",
+     "words": "もばいるばってりー・充電ばってりー",
+     "verdict": ""
+    },
+    {
+     "key": "usbCable",
+     "label": "ケーブル",
+     "sec": "家電・機器",
+     "words": "けーぶる・usbけーぶる・らいとにんぐけーぶる",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "文具・書類",
+    "家電・機器"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:ruler",
+   "src": "goods",
+   "type": "ruler",
+   "members": [
+    {
+     "key": "ruler",
+     "label": "定規",
+     "sec": "文具・書類",
+     "words": "定規・じょうぎ・ものさし",
+     "verdict": ""
+    },
+    {
+     "key": "protractor",
+     "label": "分度器",
+     "sec": "文具・書類",
+     "words": "分度器・ぶんどき",
+     "verdict": ""
+    },
+    {
+     "key": "compass",
+     "label": "こんぱす",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "setSquare",
+     "label": "三角定規",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "tapeMeasure",
+     "label": "メジャー",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "文具・書類",
+    "工具・DIY"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:screenDev",
+   "src": "goods",
+   "type": "screenDev",
+   "members": [
+    {
+     "key": "whiteboard",
+     "label": "ホワイトボード",
+     "sec": "文具・書類",
+     "words": "ほわいとぼーど・黒板・こくばん",
+     "verdict": ""
+    },
+    {
+     "key": "tv",
+     "label": "てれび",
+     "sec": "家電・機器",
+     "words": "てれび・液晶てれび・もにたー",
+     "verdict": ""
+    },
+    {
+     "key": "laptop",
+     "label": "ぱそこん",
+     "sec": "家電・機器",
+     "words": "ぱそこん・のーとぱそこん・のーとpc",
+     "verdict": ""
+    },
+    {
+     "key": "tablet",
+     "label": "たぶれっと",
+     "sec": "家電・機器",
+     "words": "たぶれっと・あいぱっど・ipad",
+     "verdict": ""
+    },
+    {
+     "key": "smartphone",
+     "label": "すまほ",
+     "sec": "家電・機器",
+     "words": "すまほ・すまーとふぉん・携帯電話",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "文具・書類",
+    "家電・機器"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:hairDryer",
+   "src": "goods",
+   "type": "hairDryer",
+   "members": [
+    {
+     "key": "hairDryer",
+     "label": "ドライヤー",
+     "sec": "家電・機器",
+     "words": "どらいやー・へあどらいやー",
+     "verdict": ""
+    },
+    {
+     "key": "shaver",
+     "label": "シェーバー",
+     "sec": "家電・機器",
+     "words": "しぇーばー・電気しぇーばー・電動しぇーばー",
+     "verdict": ""
+    },
+    {
+     "key": "electricToothbrush",
+     "label": "電動歯ぶらし",
+     "sec": "家電・機器",
+     "words": "電動歯ぶらし・音波歯ぶらし",
+     "verdict": ""
+    },
+    {
+     "key": "massager",
+     "label": "マッサージ",
+     "sec": "衛生・美容",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "家電・機器",
+    "衛生・美容"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:shoe",
+   "src": "goods",
+   "type": "shoe",
+   "members": [
+    {
+     "key": "shoeCare",
+     "label": "靴",
+     "sec": "衛生・美容",
+     "words": "靴・くつ・靴磨き",
+     "verdict": ""
+    },
+    {
+     "key": "slippers",
+     "label": "すりっぱ",
+     "sec": "衣類",
+     "words": "すりっぱ",
+     "verdict": ""
+    },
+    {
+     "key": "sandals",
+     "label": "さんだる",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "boots",
+     "label": "ブーツ",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "衛生・美容",
+    "衣類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:tool",
+   "src": "goods",
+   "type": "tool",
+   "members": [
+    {
+     "key": "powerTool",
+     "label": "電動工具",
+     "sec": "家電・機器",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "doorStopper",
+     "label": "ドアストッパー",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "screwdriver",
+     "label": "ドライバー",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "hammer",
+     "label": "ハンマー",
+     "sec": "工具・DIY",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "家電・機器",
+    "工具・DIY"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:toothCare",
+   "src": "goods",
+   "type": "toothCare",
+   "members": [
+    {
+     "key": "floss",
+     "label": "ふろす",
+     "sec": "衛生・美容",
+     "words": "ふろす・糸ようじ・でんたるふろす",
+     "verdict": ""
+    },
+    {
+     "key": "interdental",
+     "label": "歯間ぶらし",
+     "sec": "衛生・美容",
+     "words": "歯間ぶらし・しかんぶらし",
+     "verdict": ""
+    },
+    {
+     "key": "dentist",
+     "label": "歯科",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "denture",
+     "label": "入れ歯",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "衛生・美容",
+    "薬・健康"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:flour",
+   "src": "food",
+   "type": "flour",
+   "members": [
+    {
+     "key": "rice",
+     "label": "米",
+     "sec": "パン・主食",
+     "words": "米・こめ・ごはん",
+     "verdict": ""
+    },
+    {
+     "key": "salt",
+     "label": "塩",
+     "sec": "調味料・粉",
+     "words": "塩・しお・砂糖",
+     "verdict": ""
+    },
+    {
+     "key": "flour",
+     "label": "小麦粉",
+     "sec": "調味料・粉",
+     "words": "小麦粉・こむぎこ・薄力粉",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "パン・主食",
+    "調味料・粉"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:lamp",
+   "src": "goods",
+   "type": "lamp",
+   "members": [
+    {
+     "key": "bulb",
+     "label": "電球",
+     "sec": "掃除・洗濯",
+     "words": "電球・でんきゅう・led電球",
+     "verdict": ""
+    },
+    {
+     "key": "deskLamp",
+     "label": "照明",
+     "sec": "家具・寝具",
+     "words": "照明・でんきすたんど・すたんどらいと",
+     "verdict": ""
+    },
+    {
+     "key": "ceilingLight",
+     "label": "シーリングライト",
+     "sec": "家具・寝具",
+     "words": "しーりんぐらいと・しーりんぐ・天井照明",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "掃除・洗濯",
+    "家具・寝具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:toy",
+   "src": "goods",
+   "type": "toy",
+   "members": [
+    {
+     "key": "toy",
+     "label": "おもちゃ",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "plushToy",
+     "label": "ぬいぐるみ",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "handcraft",
+     "label": "手芸",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "ベビー・こども",
+    "趣味・スポーツ"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:nori",
+   "src": "food",
+   "type": "nori",
+   "members": [
+    {
+     "key": "nori",
+     "label": "海苔",
+     "sec": "大豆製品・和のもの",
+     "words": "海苔・のり・焼きのり",
+     "verdict": ""
+    },
+    {
+     "key": "seaweedWakame",
+     "label": "わかめ",
+     "sec": "調味料・粉",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "大豆製品・和のもの",
+    "調味料・粉"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:apron",
+   "src": "goods",
+   "type": "apron",
+   "members": [
+    {
+     "key": "apron",
+     "label": "えぷろん",
+     "sec": "キッチン道具",
+     "words": "えぷろん",
+     "verdict": ""
+    },
+    {
+     "key": "bib",
+     "label": "すたい",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "キッチン道具",
+    "ベビー・こども"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:frame",
+   "src": "goods",
+   "type": "frame",
+   "members": [
+    {
+     "key": "photoFrame",
+     "label": "フォトフレーム",
+     "sec": "家具・寝具",
+     "words": "ふぉとふれーむ・写真立て・額縁",
+     "verdict": ""
+    },
+    {
+     "key": "calendarSheet",
+     "label": "カレンダー",
+     "sec": "文具・書類",
+     "words": "かれんだー・暦・日めくり",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "家具・寝具",
+    "文具・書類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:fryPan",
+   "src": "goods",
+   "type": "fryPan",
+   "members": [
+    {
+     "key": "pan",
+     "label": "ふらいぱん",
+     "sec": "キッチン道具",
+     "words": "ふらいぱん",
+     "verdict": ""
+    },
+    {
+     "key": "hotplate",
+     "label": "ホットプレート",
+     "sec": "家電・機器",
+     "words": "ほっとぷれーと・たこ焼き器・電気なべ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "キッチン道具",
+    "家電・機器"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:knife",
+   "src": "goods",
+   "type": "knife",
+   "members": [
+    {
+     "key": "knife",
+     "label": "包丁",
+     "sec": "キッチン道具",
+     "words": "包丁・ほうちょう・ないふ",
+     "verdict": ""
+    },
+    {
+     "key": "cutter",
+     "label": "カッター",
+     "sec": "文具・書類",
+     "words": "かったー",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "キッチン道具",
+    "文具・書類"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:map",
+   "src": "goods",
+   "type": "map",
+   "members": [
+    {
+     "key": "map",
+     "label": "地図",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "mapPin",
+     "label": "待ち合わせ",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "おでかけ",
+    "行事・そのほか"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:plate",
+   "src": "goods",
+   "type": "plate",
+   "members": [
+    {
+     "key": "paperPlate",
+     "label": "紙皿",
+     "sec": "掃除・洗濯",
+     "words": "紙皿・かみざら",
+     "verdict": ""
+    },
+    {
+     "key": "plateDish",
+     "label": "皿",
+     "sec": "キッチン道具",
+     "words": "皿・さら・ぷれーと",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "掃除・洗濯",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:rack",
+   "src": "goods",
+   "type": "rack",
+   "members": [
+    {
+     "key": "laundryBasket",
+     "label": "洗濯かご",
+     "sec": "家具・寝具",
+     "words": "洗濯かご・らんどりーばすけっと・洗濯かご",
+     "verdict": ""
+    },
+    {
+     "key": "dishRack",
+     "label": "水切りかご",
+     "sec": "キッチン道具",
+     "words": "水切りかご・水切りらっく・食器かご",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "家具・寝具",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:scissors",
+   "src": "goods",
+   "type": "scissors",
+   "members": [
+    {
+     "key": "scissors",
+     "label": "はさみ",
+     "sec": "文具・書類",
+     "words": "はさみ・鋏",
+     "verdict": ""
+    },
+    {
+     "key": "kitchenScissors",
+     "label": "きっちんばさみ",
+     "sec": "キッチン道具",
+     "words": "きっちんばさみ・調理ばさみ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "文具・書類",
+    "キッチン道具"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "g:spoutPot",
+   "src": "goods",
+   "type": "spoutPot",
+   "members": [
+    {
+     "key": "teapot",
+     "label": "急須",
+     "sec": "キッチン道具",
+     "words": "急須・きゅうす・てぃーぽっと",
+     "verdict": ""
+    },
+    {
+     "key": "wateringCan",
+     "label": "水やり",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "キッチン道具",
+    "行事・そのほか"
+   ],
+   "cross": true,
+   "verdict": ""
+  },
+  {
+   "id": "f:oil",
+   "src": "food",
+   "type": "oil",
+   "members": [
+    {
+     "key": "sauceBottle",
+     "label": "醤油",
+     "sec": "調味料・粉",
+     "words": "醤油・しょうゆ・そーす",
+     "verdict": ""
+    },
+    {
+     "key": "oil",
+     "label": "油",
+     "sec": "調味料・粉",
+     "words": "油・あぶら・さらだ油",
+     "verdict": ""
+    },
+    {
+     "key": "vinegar",
+     "label": "酢",
+     "sec": "調味料・粉",
+     "words": "酢・料理酒",
+     "verdict": ""
+    },
+    {
+     "key": "chiliOil",
+     "label": "らー油",
+     "sec": "調味料・粉",
+     "words": "らー油・ラー油",
+     "verdict": ""
+    },
+    {
+     "key": "sesameOil",
+     "label": "ごま油",
+     "sec": "調味料・粉",
+     "words": "ごま油・胡麻油",
+     "verdict": ""
+    },
+    {
+     "key": "fishSauce",
+     "label": "ナンプラー",
+     "sec": "調味料・粉",
+     "words": "なんぷらー・魚醤",
+     "verdict": ""
+    },
+    {
+     "key": "balsamic",
+     "label": "バルサミコ",
+     "sec": "調味料・粉",
+     "words": "ばるさみこ",
+     "verdict": ""
+    },
+    {
+     "key": "tabasco",
+     "label": "タバスコ",
+     "sec": "調味料・粉",
+     "words": "たばすこ",
+     "verdict": ""
+    },
+    {
+     "key": "spice",
+     "label": "すぱいす",
+     "sec": "調味料・粉",
+     "words": "すぱいす・香辛料・くみん",
+     "verdict": ""
+    },
+    {
+     "key": "shiroDashi",
+     "label": "白だし",
+     "sec": "調味料・粉",
+     "words": "白だし・しろだし",
+     "verdict": ""
+    },
+    {
+     "key": "syrup",
+     "label": "しろっぷ",
+     "sec": "調味料・粉",
+     "words": "しろっぷ・めーぷる・がむしろっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "mirin",
+     "label": "みりん",
+     "sec": "調味料・粉",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "mentsuyu",
+     "label": "めんつゆ",
+     "sec": "調味料・粉",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 13,
+   "sections": [
+    "調味料・粉"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:utensil",
+   "src": "goods",
+   "type": "utensil",
+   "members": [
+    {
+     "key": "peeler",
+     "label": "ピーラー",
+     "sec": "キッチン道具",
+     "words": "ぴーらー・皮むき",
+     "verdict": ""
+    },
+    {
+     "key": "ladle",
+     "label": "おたま",
+     "sec": "キッチン道具",
+     "words": "おたま・お玉・れーどる",
+     "verdict": ""
+    },
+    {
+     "key": "turner",
+     "label": "ふらい返し",
+     "sec": "キッチン道具",
+     "words": "ふらい返し・ふらいがえし・たーなー",
+     "verdict": ""
+    },
+    {
+     "key": "whisk",
+     "label": "泡立て器",
+     "sec": "キッチン道具",
+     "words": "泡立て器・あわだて器・ほいっぱー",
+     "verdict": ""
+    },
+    {
+     "key": "tongs",
+     "label": "とんぐ",
+     "sec": "キッチン道具",
+     "words": "とんぐ・菜箸とんぐ",
+     "verdict": ""
+    },
+    {
+     "key": "grater",
+     "label": "おろし金",
+     "sec": "キッチン道具",
+     "words": "おろし金・おろしがね・すりおろし器",
+     "verdict": ""
+    },
+    {
+     "key": "rollingPin",
+     "label": "麺棒",
+     "sec": "キッチン道具",
+     "words": "麺棒・のし棒",
+     "verdict": ""
+    },
+    {
+     "key": "canOpener",
+     "label": "缶切り",
+     "sec": "キッチン道具",
+     "words": "缶切り・かんきり",
+     "verdict": ""
+    },
+    {
+     "key": "bottleOpener",
+     "label": "栓抜き",
+     "sec": "キッチン道具",
+     "words": "栓抜き・せんぬき",
+     "verdict": ""
+    },
+    {
+     "key": "corkscrew",
+     "label": "ワインオープナー",
+     "sec": "キッチン道具",
+     "words": "わいんおーぷなー・こるく抜き・そむりえないふ",
+     "verdict": ""
+    },
+    {
+     "key": "ricePaddle",
+     "label": "しゃもじ",
+     "sec": "キッチン道具",
+     "words": "しゃもじ・杓文字",
+     "verdict": ""
+    }
+   ],
+   "n": 11,
+   "sections": [
+    "キッチン道具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:penTool",
+   "src": "goods",
+   "type": "penTool",
+   "members": [
+    {
+     "key": "pen",
+     "label": "ぺん",
+     "sec": "文具・書類",
+     "words": "ぺん・ぼーるぺん",
+     "verdict": ""
+    },
+    {
+     "key": "pencil",
+     "label": "鉛筆",
+     "sec": "文具・書類",
+     "words": "鉛筆・えんぴつ",
+     "verdict": ""
+    },
+    {
+     "key": "mechanicalPencil",
+     "label": "シャーペン",
+     "sec": "文具・書類",
+     "words": "しゃーぺん・しゃーぷぺんしる・しゃーぷぺん",
+     "verdict": ""
+    },
+    {
+     "key": "pencilLead",
+     "label": "しゃー芯",
+     "sec": "文具・書類",
+     "words": "しゃー芯・替え芯・かえしん",
+     "verdict": ""
+    },
+    {
+     "key": "marker",
+     "label": "まじっく",
+     "sec": "文具・書類",
+     "words": "まじっく・さいんぺん・油性ぺん",
+     "verdict": ""
+    },
+    {
+     "key": "highlighter",
+     "label": "蛍光ぺん",
+     "sec": "文具・書類",
+     "words": "蛍光ぺん・けいこうぺん・らいんまーかー",
+     "verdict": ""
+    },
+    {
+     "key": "crayon",
+     "label": "くれよん",
+     "sec": "文具・書類",
+     "words": "くれよん・くれぱす・ぱす",
+     "verdict": ""
+    },
+    {
+     "key": "colorPencils",
+     "label": "色鉛筆",
+     "sec": "文具・書類",
+     "words": "色鉛筆・いろえんぴつ",
+     "verdict": ""
+    },
+    {
+     "key": "paintSet",
+     "label": "絵の具",
+     "sec": "文具・書類",
+     "words": "絵の具・えのぐ・水彩",
+     "verdict": ""
+    },
+    {
+     "key": "inkCartridge",
+     "label": "いんく",
+     "sec": "文具・書類",
+     "words": "いんく・ぷりんたーいんく・となー",
+     "verdict": ""
+    }
+   ],
+   "n": 10,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:cabbage",
+   "src": "food",
+   "type": "cabbage",
+   "members": [
+    {
+     "key": "cabbage",
+     "label": "きゃべつ",
+     "sec": "野菜",
+     "words": "きゃべつ・きゃべつ",
+     "verdict": ""
+    },
+    {
+     "key": "salad",
+     "label": "さらだ",
+     "sec": "野菜",
+     "words": "さらだ・野菜",
+     "verdict": ""
+    },
+    {
+     "key": "lettuce",
+     "label": "れたす",
+     "sec": "野菜",
+     "words": "れたす・さにーれたす・さんちゅ",
+     "verdict": ""
+    },
+    {
+     "key": "chineseCabbage",
+     "label": "白菜",
+     "sec": "野菜",
+     "words": "白菜・はくさい",
+     "verdict": ""
+    },
+    {
+     "key": "spinach",
+     "label": "ほうれん草",
+     "sec": "野菜",
+     "words": "ほうれん草・ほうれんそう・小松菜",
+     "verdict": ""
+    },
+    {
+     "key": "herb",
+     "label": "ハーブ",
+     "sec": "野菜",
+     "words": "はーぶ・ばじる・ぱくちー",
+     "verdict": ""
+    },
+    {
+     "key": "shiso",
+     "label": "大葉",
+     "sec": "野菜",
+     "words": "大葉・おおば・しそ",
+     "verdict": ""
+    },
+    {
+     "key": "parsley",
+     "label": "ぱせり",
+     "sec": "野菜",
+     "words": "ぱせり・三つ葉・みつば",
+     "verdict": ""
+    },
+    {
+     "key": "kale",
+     "label": "ケール",
+     "sec": "野菜",
+     "words": "けーる",
+     "verdict": ""
+    }
+   ],
+   "n": 9,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:cake",
+   "src": "food",
+   "type": "cake",
+   "members": [
+    {
+     "key": "cake",
+     "label": "ケーキ",
+     "sec": "菓子",
+     "words": "けーき・まふぃん・どーなつ",
+     "verdict": ""
+    },
+    {
+     "key": "jelly",
+     "label": "ゼリー",
+     "sec": "菓子",
+     "words": "ぜりー・寒天・かんてん",
+     "verdict": ""
+    },
+    {
+     "key": "dorayaki",
+     "label": "どら焼き",
+     "sec": "菓子",
+     "words": "どら焼き・どらやき",
+     "verdict": ""
+    },
+    {
+     "key": "daifuku",
+     "label": "大福",
+     "sec": "菓子",
+     "words": "大福・だいふく・もなか",
+     "verdict": ""
+    },
+    {
+     "key": "dango",
+     "label": "団子",
+     "sec": "菓子",
+     "words": "団子・だんご・みたらし",
+     "verdict": ""
+    },
+    {
+     "key": "manju",
+     "label": "まんじゅう",
+     "sec": "菓子",
+     "words": "まんじゅう・饅頭・蒸しぱん",
+     "verdict": ""
+    },
+    {
+     "key": "castella",
+     "label": "かすてら",
+     "sec": "菓子",
+     "words": "かすてら・ばうむくーへん",
+     "verdict": ""
+    },
+    {
+     "key": "tart",
+     "label": "たると",
+     "sec": "菓子",
+     "words": "たると・ぱい",
+     "verdict": ""
+    }
+   ],
+   "n": 8,
+   "sections": [
+    "菓子"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:apple",
+   "src": "food",
+   "type": "apple",
+   "members": [
+    {
+     "key": "apple",
+     "label": "りんご",
+     "sec": "果物",
+     "words": "りんご・林檎・あっぷる",
+     "verdict": ""
+    },
+    {
+     "key": "peach",
+     "label": "桃",
+     "sec": "果物",
+     "words": "桃・ぴーち",
+     "verdict": ""
+    },
+    {
+     "key": "pear",
+     "label": "梨",
+     "sec": "果物",
+     "words": "梨・らふらんす",
+     "verdict": ""
+    },
+    {
+     "key": "persimmon",
+     "label": "柿",
+     "sec": "果物",
+     "words": "柿・かき",
+     "verdict": ""
+    },
+    {
+     "key": "pomegranate",
+     "label": "ざくろ",
+     "sec": "果物",
+     "words": "ざくろ",
+     "verdict": ""
+    },
+    {
+     "key": "loquat",
+     "label": "びわ",
+     "sec": "果物",
+     "words": "びわ・枇杷",
+     "verdict": ""
+    },
+    {
+     "key": "apricot",
+     "label": "あんず",
+     "sec": "果物",
+     "words": "あんず・杏・ねくたりん",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "果物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:banana",
+   "src": "food",
+   "type": "banana",
+   "members": [
+    {
+     "key": "banana",
+     "label": "ばなな",
+     "sec": "果物",
+     "words": "ばなな",
+     "verdict": ""
+    },
+    {
+     "key": "pineapple",
+     "label": "ぱいなっぷる",
+     "sec": "果物",
+     "words": "ぱいなっぷる",
+     "verdict": ""
+    },
+    {
+     "key": "kiwi",
+     "label": "きうい",
+     "sec": "果物",
+     "words": "きうい",
+     "verdict": ""
+    },
+    {
+     "key": "mango",
+     "label": "マンゴー",
+     "sec": "果物",
+     "words": "まんごー",
+     "verdict": ""
+    },
+    {
+     "key": "fig",
+     "label": "いちじく",
+     "sec": "果物",
+     "words": "いちじく・無花果",
+     "verdict": ""
+    },
+    {
+     "key": "papaya",
+     "label": "ぱぱいや",
+     "sec": "果物",
+     "words": "ぱぱいや",
+     "verdict": ""
+    },
+    {
+     "key": "dragonFruit",
+     "label": "ドラゴンフルーツ",
+     "sec": "果物",
+     "words": "どらごんふるーつ・らいち",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "果物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:cookie",
+   "src": "food",
+   "type": "cookie",
+   "members": [
+    {
+     "key": "cookie",
+     "label": "クッキー",
+     "sec": "菓子",
+     "words": "くっきー・びすけっと・お菓子",
+     "verdict": ""
+    },
+    {
+     "key": "riceCracker",
+     "label": "せんべい",
+     "sec": "菓子",
+     "words": "せんべい・煎餅・おかき",
+     "verdict": ""
+    },
+    {
+     "key": "cracker",
+     "label": "クラッカー",
+     "sec": "菓子",
+     "words": "くらっかー",
+     "verdict": ""
+    },
+    {
+     "key": "pocky",
+     "label": "ポッキー",
+     "sec": "菓子",
+     "words": "ぽっきー・ぷりっつ",
+     "verdict": ""
+    },
+    {
+     "key": "gum",
+     "label": "がむ",
+     "sec": "菓子",
+     "words": "がむ・ふりすく・たぶれっと菓子",
+     "verdict": ""
+    },
+    {
+     "key": "wafer",
+     "label": "ウエハース",
+     "sec": "菓子",
+     "words": "うえはーす",
+     "verdict": ""
+    },
+    {
+     "key": "cerealBar",
+     "label": "シリアルバー",
+     "sec": "菓子",
+     "words": "しりあるばー・かろりーめいと・そいじょい",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "菓子"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:honey",
+   "src": "food",
+   "type": "honey",
+   "members": [
+    {
+     "key": "honey",
+     "label": "はちみつ",
+     "sec": "調味料・粉",
+     "words": "はちみつ・蜂蜜・じゃむ",
+     "verdict": ""
+    },
+    {
+     "key": "doubanjiang",
+     "label": "豆板醤",
+     "sec": "調味料・粉",
+     "words": "豆板醤・とうばんじゃん",
+     "verdict": ""
+    },
+    {
+     "key": "gochujang",
+     "label": "コチュジャン",
+     "sec": "調味料・粉",
+     "words": "こちゅじゃん",
+     "verdict": ""
+    },
+    {
+     "key": "shioKoji",
+     "label": "塩麹",
+     "sec": "調味料・粉",
+     "words": "塩麹・しおこうじ・甘酒麹",
+     "verdict": ""
+    },
+    {
+     "key": "peanutButter",
+     "label": "ピーナッツバター",
+     "sec": "調味料・粉",
+     "words": "ぴーなっつばたー・ぴーなっつくりーむ",
+     "verdict": ""
+    },
+    {
+     "key": "marmalade",
+     "label": "マーマレード",
+     "sec": "調味料・粉",
+     "words": "まーまれーど",
+     "verdict": ""
+    },
+    {
+     "key": "blackPepper",
+     "label": "こしょう",
+     "sec": "調味料・粉",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "調味料・粉"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:meat",
+   "src": "food",
+   "type": "meat",
+   "members": [
+    {
+     "key": "meat",
+     "label": "肉",
+     "sec": "肉・魚",
+     "words": "肉・にく・牛肉",
+     "verdict": ""
+    },
+    {
+     "key": "chicken",
+     "label": "鶏",
+     "sec": "肉・魚",
+     "words": "鶏・鶏肉・とり肉",
+     "verdict": ""
+    },
+    {
+     "key": "steak",
+     "label": "ステーキ",
+     "sec": "肉・魚",
+     "words": "すてーき",
+     "verdict": ""
+    },
+    {
+     "key": "liver",
+     "label": "レバー",
+     "sec": "肉・魚",
+     "words": "ればー・肝",
+     "verdict": ""
+    },
+    {
+     "key": "lamb",
+     "label": "らむ肉",
+     "sec": "肉・魚",
+     "words": "らむ肉・羊肉・まとん",
+     "verdict": ""
+    },
+    {
+     "key": "roastBeef",
+     "label": "ローストビーフ",
+     "sec": "肉・魚",
+     "words": "ろーすとびーふ",
+     "verdict": ""
+    },
+    {
+     "key": "hormone",
+     "label": "ほるもん",
+     "sec": "肉・魚",
+     "words": "ほるもん・もつ",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:water",
+   "src": "food",
+   "type": "water",
+   "members": [
+    {
+     "key": "water",
+     "label": "水",
+     "sec": "飲みもの",
+     "words": "水・みず・みねらるうぉーたー",
+     "verdict": ""
+    },
+    {
+     "key": "drink",
+     "label": "飲みもの",
+     "sec": "飲みもの",
+     "words": "飲みもの・飲み物・飲物",
+     "verdict": ""
+    },
+    {
+     "key": "tea",
+     "label": "お茶",
+     "sec": "飲みもの",
+     "words": "お茶・おちゃ・茶",
+     "verdict": ""
+    },
+    {
+     "key": "juice",
+     "label": "ジュース",
+     "sec": "飲みもの",
+     "words": "じゅーす・野菜じゅーす",
+     "verdict": ""
+    },
+    {
+     "key": "soda",
+     "label": "コーラ",
+     "sec": "飲みもの",
+     "words": "こーら・炭酸・さいだー",
+     "verdict": ""
+    },
+    {
+     "key": "oolong",
+     "label": "ウーロン",
+     "sec": "飲みもの",
+     "words": "うーろん・烏龍",
+     "verdict": ""
+    },
+    {
+     "key": "barleyTea",
+     "label": "麦茶",
+     "sec": "飲みもの",
+     "words": "麦茶・むぎ茶",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "飲みもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:medicine",
+   "src": "goods",
+   "type": "medicine",
+   "members": [
+    {
+     "key": "medicine",
+     "label": "薬",
+     "sec": "薬・健康",
+     "words": "薬・くすり・鎮痛剤",
+     "verdict": ""
+    },
+    {
+     "key": "pillSheet",
+     "label": "錠剤",
+     "sec": "薬・健康",
+     "words": "錠剤・じょうざい",
+     "verdict": ""
+    },
+    {
+     "key": "coldMedicine",
+     "label": "風邪薬",
+     "sec": "薬・健康",
+     "words": "風邪薬・かぜぐすり・解熱",
+     "verdict": ""
+    },
+    {
+     "key": "stomachMedicine",
+     "label": "胃薬",
+     "sec": "薬・健康",
+     "words": "胃薬・いぐすり・整腸",
+     "verdict": ""
+    },
+    {
+     "key": "eyeDrops",
+     "label": "目薬",
+     "sec": "薬・健康",
+     "words": "目薬・めぐすり",
+     "verdict": ""
+    },
+    {
+     "key": "supplement",
+     "label": "さぷり",
+     "sec": "薬・健康",
+     "words": "さぷり・さぷりめんと・びたみん",
+     "verdict": ""
+    },
+    {
+     "key": "gargle",
+     "label": "うがい薬",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 7,
+   "sections": [
+    "薬・健康"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:carrot",
+   "src": "food",
+   "type": "carrot",
+   "members": [
+    {
+     "key": "carrot",
+     "label": "にんじん",
+     "sec": "野菜",
+     "words": "にんじん・人参・きゃろっと",
+     "verdict": ""
+    },
+    {
+     "key": "daikon",
+     "label": "大根",
+     "sec": "野菜",
+     "words": "大根・だいこん",
+     "verdict": ""
+    },
+    {
+     "key": "burdock",
+     "label": "ごぼう",
+     "sec": "野菜",
+     "words": "ごぼう・牛蒡・きんぴら",
+     "verdict": ""
+    },
+    {
+     "key": "lotusRoot",
+     "label": "れんこん",
+     "sec": "野菜",
+     "words": "れんこん・蓮根",
+     "verdict": ""
+    },
+    {
+     "key": "bambooShoot",
+     "label": "たけのこ",
+     "sec": "野菜",
+     "words": "たけのこ・筍",
+     "verdict": ""
+    },
+    {
+     "key": "yam",
+     "label": "長芋",
+     "sec": "野菜",
+     "words": "長芋・ながいも・山芋",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:chips",
+   "src": "food",
+   "type": "chips",
+   "members": [
+    {
+     "key": "chips",
+     "label": "すなっく",
+     "sec": "菓子",
+     "words": "すなっく・ぽてとちっぷす・ぽてち",
+     "verdict": ""
+    },
+    {
+     "key": "nuts",
+     "label": "なっつ",
+     "sec": "菓子",
+     "words": "なっつ・あーもんど・ぴーなっつ",
+     "verdict": ""
+    },
+    {
+     "key": "gummy",
+     "label": "ぐみ",
+     "sec": "菓子",
+     "words": "ぐみ",
+     "verdict": ""
+    },
+    {
+     "key": "marshmallow",
+     "label": "ましゅまろ",
+     "sec": "菓子",
+     "words": "ましゅまろ",
+     "verdict": ""
+    },
+    {
+     "key": "dryFood",
+     "label": "するめ",
+     "sec": "菓子",
+     "words": "するめ・じゃーきー・さきいか",
+     "verdict": ""
+    },
+    {
+     "key": "popcorn",
+     "label": "ポップコーン",
+     "sec": "菓子",
+     "words": "ぽっぷこーん",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "菓子"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:chocolate",
+   "src": "food",
+   "type": "chocolate",
+   "members": [
+    {
+     "key": "chocolate",
+     "label": "ちょこ",
+     "sec": "菓子",
+     "words": "ちょこ・ちょこれーと",
+     "verdict": ""
+    },
+    {
+     "key": "candy",
+     "label": "飴",
+     "sec": "菓子",
+     "words": "飴・あめ・きゃんでぃ",
+     "verdict": ""
+    },
+    {
+     "key": "caramel",
+     "label": "きゃらめる",
+     "sec": "菓子",
+     "words": "きゃらめる・ぬがー",
+     "verdict": ""
+    },
+    {
+     "key": "chocoBar",
+     "label": "チョコバー",
+     "sec": "菓子",
+     "words": "ちょこばー・きのこの山・たけのこの里",
+     "verdict": ""
+    },
+    {
+     "key": "ramuneCandy",
+     "label": "らむね",
+     "sec": "菓子",
+     "words": "らむね",
+     "verdict": ""
+    },
+    {
+     "key": "throatCandy",
+     "label": "のど飴",
+     "sec": "菓子",
+     "words": "のど飴・のどあめ・こうがい",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "菓子"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:croissant",
+   "src": "food",
+   "type": "croissant",
+   "members": [
+    {
+     "key": "croissant",
+     "label": "くろわっさん",
+     "sec": "パン・主食",
+     "words": "くろわっさん・でにっしゅ",
+     "verdict": ""
+    },
+    {
+     "key": "baguette",
+     "label": "ばげっと",
+     "sec": "パン・主食",
+     "words": "ばげっと・ふらんすぱん",
+     "verdict": ""
+    },
+    {
+     "key": "bagel",
+     "label": "ベーグル",
+     "sec": "パン・主食",
+     "words": "べーぐる",
+     "verdict": ""
+    },
+    {
+     "key": "sweetBun",
+     "label": "菓子ぱん",
+     "sec": "パン・主食",
+     "words": "菓子ぱん・あんぱん・くりーむぱん",
+     "verdict": ""
+    },
+    {
+     "key": "melonBun",
+     "label": "めろんぱん",
+     "sec": "パン・主食",
+     "words": "めろんぱん",
+     "verdict": ""
+    },
+    {
+     "key": "pancake",
+     "label": "パンケーキ",
+     "sec": "パン・主食",
+     "words": "ぱんけーき・ほっとけーき・わっふる",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "パン・主食"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:cucumber",
+   "src": "food",
+   "type": "cucumber",
+   "members": [
+    {
+     "key": "cucumber",
+     "label": "きゅうり",
+     "sec": "野菜",
+     "words": "きゅうり・胡瓜",
+     "verdict": ""
+    },
+    {
+     "key": "eggplant",
+     "label": "なす",
+     "sec": "野菜",
+     "words": "なす・茄子",
+     "verdict": ""
+    },
+    {
+     "key": "zucchini",
+     "label": "ズッキーニ",
+     "sec": "野菜",
+     "words": "ずっきーに",
+     "verdict": ""
+    },
+    {
+     "key": "okra",
+     "label": "おくら",
+     "sec": "野菜",
+     "words": "おくら",
+     "verdict": ""
+    },
+    {
+     "key": "chili",
+     "label": "とうがらし",
+     "sec": "野菜",
+     "words": "とうがらし・唐辛子・ししとう",
+     "verdict": ""
+    },
+    {
+     "key": "bittergourd",
+     "label": "ゴーヤ",
+     "sec": "野菜",
+     "words": "ごーや・にがうり",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:noodles",
+   "src": "food",
+   "type": "noodles",
+   "members": [
+    {
+     "key": "noodles",
+     "label": "ラーメン",
+     "sec": "パン・主食",
+     "words": "らーめん・麺・春雨",
+     "verdict": ""
+    },
+    {
+     "key": "cupNoodle",
+     "label": "かっぷ麺",
+     "sec": "パン・主食",
+     "words": "かっぷ麺・かっぷらーめん・かっぷぬーどる",
+     "verdict": ""
+    },
+    {
+     "key": "soba",
+     "label": "そば",
+     "sec": "パン・主食",
+     "words": "そば・蕎麦",
+     "verdict": ""
+    },
+    {
+     "key": "udon",
+     "label": "うどん",
+     "sec": "パン・主食",
+     "words": "うどん",
+     "verdict": ""
+    },
+    {
+     "key": "somen",
+     "label": "そうめん",
+     "sec": "パン・主食",
+     "words": "そうめん・ひやむぎ・冷や麦",
+     "verdict": ""
+    },
+    {
+     "key": "yakisoba",
+     "label": "焼きそば",
+     "sec": "パン・主食",
+     "words": "焼きそば・やきそば",
+     "verdict": ""
+    }
+   ],
+   "n": 6,
+   "sections": [
+    "パン・主食"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:beer",
+   "src": "food",
+   "type": "beer",
+   "members": [
+    {
+     "key": "beer",
+     "label": "ビール",
+     "sec": "飲みもの",
+     "words": "びーる・発泡酒・ちゅーはい",
+     "verdict": ""
+    },
+    {
+     "key": "energyDrink",
+     "label": "エナジー",
+     "sec": "飲みもの",
+     "words": "えなじー・もんすたー・れっどぶる",
+     "verdict": ""
+    },
+    {
+     "key": "tonic",
+     "label": "栄養どりんく",
+     "sec": "飲みもの",
+     "words": "栄養どりんく・りぽびたん・どりんく剤",
+     "verdict": ""
+    },
+    {
+     "key": "protein",
+     "label": "ぷろていん",
+     "sec": "飲みもの",
+     "words": "ぷろていん",
+     "verdict": ""
+    },
+    {
+     "key": "lactic",
+     "label": "ヤクルト",
+     "sec": "飲みもの",
+     "words": "やくると・乳酸菌・かるぴす",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "飲みもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:cheese",
+   "src": "food",
+   "type": "cheese",
+   "members": [
+    {
+     "key": "cheese",
+     "label": "チーズ",
+     "sec": "乳製品・卵",
+     "words": "ちーず・ぱるめざん",
+     "verdict": ""
+    },
+    {
+     "key": "slicedCheese",
+     "label": "スライスチーズ",
+     "sec": "乳製品・卵",
+     "words": "すらいすちーず",
+     "verdict": ""
+    },
+    {
+     "key": "pizzaCheese",
+     "label": "ピザチーズ",
+     "sec": "乳製品・卵",
+     "words": "ぴざちーず・とろけるちーず・しゅれっどちーず",
+     "verdict": ""
+    },
+    {
+     "key": "creamCheese",
+     "label": "クリームチーズ",
+     "sec": "乳製品・卵",
+     "words": "くりーむちーず",
+     "verdict": ""
+    },
+    {
+     "key": "camembert",
+     "label": "カマンベール",
+     "sec": "乳製品・卵",
+     "words": "かまんべーる・ぶるーちーず・もっつぁれら",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "乳製品・卵"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:coffee",
+   "src": "food",
+   "type": "coffee",
+   "members": [
+    {
+     "key": "coffee",
+     "label": "コーヒー",
+     "sec": "飲みもの",
+     "words": "こーひー・珈琲・かふぇおれ",
+     "verdict": ""
+    },
+    {
+     "key": "cocoa",
+     "label": "ここあ",
+     "sec": "飲みもの",
+     "words": "ここあ・みろ",
+     "verdict": ""
+    },
+    {
+     "key": "matcha",
+     "label": "抹茶",
+     "sec": "飲みもの",
+     "words": "抹茶・まっちゃ",
+     "verdict": ""
+    },
+    {
+     "key": "latte",
+     "label": "らて",
+     "sec": "飲みもの",
+     "words": "らて・かふぇらて・かぷちーの",
+     "verdict": ""
+    },
+    {
+     "key": "smoothie",
+     "label": "スムージー",
+     "sec": "飲みもの",
+     "words": "すむーじー・みっくすじゅーす",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "飲みもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:grape",
+   "src": "food",
+   "type": "grape",
+   "members": [
+    {
+     "key": "strawberry",
+     "label": "いちご",
+     "sec": "果物",
+     "words": "いちご・苺・すとろべりー",
+     "verdict": ""
+    },
+    {
+     "key": "grape",
+     "label": "ぶどう",
+     "sec": "果物",
+     "words": "ぶどう・葡萄・ますかっと",
+     "verdict": ""
+    },
+    {
+     "key": "cherry",
+     "label": "さくらんぼ",
+     "sec": "果物",
+     "words": "さくらんぼ・ちぇりー",
+     "verdict": ""
+    },
+    {
+     "key": "blueberry",
+     "label": "ブルーベリー",
+     "sec": "果物",
+     "words": "ぶるーべりー",
+     "verdict": ""
+    },
+    {
+     "key": "raspberry",
+     "label": "ラズベリー",
+     "sec": "果物",
+     "words": "らずべりー・べりー",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "果物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:shrimp",
+   "src": "food",
+   "type": "shrimp",
+   "members": [
+    {
+     "key": "shrimp",
+     "label": "えび",
+     "sec": "肉・魚",
+     "words": "えび・海老",
+     "verdict": ""
+    },
+    {
+     "key": "shellfish",
+     "label": "あさり",
+     "sec": "肉・魚",
+     "words": "あさり・しじみ・牡蠣",
+     "verdict": ""
+    },
+    {
+     "key": "crab",
+     "label": "かに",
+     "sec": "肉・魚",
+     "words": "かに・蟹",
+     "verdict": ""
+    },
+    {
+     "key": "seaUrchin",
+     "label": "うに",
+     "sec": "肉・魚",
+     "words": "うに・雲丹",
+     "verdict": ""
+    },
+    {
+     "key": "scallop",
+     "label": "ほたて",
+     "sec": "肉・魚",
+     "words": "ほたて・帆立",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:springOnion",
+   "src": "food",
+   "type": "springOnion",
+   "members": [
+    {
+     "key": "springOnion",
+     "label": "ねぎ",
+     "sec": "野菜",
+     "words": "ねぎ・葱・長ねぎ",
+     "verdict": ""
+    },
+    {
+     "key": "asparagus",
+     "label": "あすぱら",
+     "sec": "野菜",
+     "words": "あすぱら・あすぱらがす",
+     "verdict": ""
+    },
+    {
+     "key": "celery",
+     "label": "せろり",
+     "sec": "野菜",
+     "words": "せろり",
+     "verdict": ""
+    },
+    {
+     "key": "sprout",
+     "label": "もやし",
+     "sec": "野菜",
+     "words": "もやし・かいわれ・すぷらうと",
+     "verdict": ""
+    },
+    {
+     "key": "myoga",
+     "label": "みょうが",
+     "sec": "野菜",
+     "words": "みょうが・茗荷",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:tomato",
+   "src": "food",
+   "type": "tomato",
+   "members": [
+    {
+     "key": "tomato",
+     "label": "とまと",
+     "sec": "野菜",
+     "words": "とまと",
+     "verdict": ""
+    },
+    {
+     "key": "pepper",
+     "label": "ピーマン",
+     "sec": "野菜",
+     "words": "ぴーまん・ぱぷりか",
+     "verdict": ""
+    },
+    {
+     "key": "avocado",
+     "label": "あぼかど",
+     "sec": "野菜",
+     "words": "あぼかど",
+     "verdict": ""
+    },
+    {
+     "key": "pumpkin",
+     "label": "かぼちゃ",
+     "sec": "野菜",
+     "words": "かぼちゃ・南瓜",
+     "verdict": ""
+    },
+    {
+     "key": "winterMelon",
+     "label": "とうがん",
+     "sec": "野菜",
+     "words": "とうがん・冬瓜",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:wasabi",
+   "src": "food",
+   "type": "wasabi",
+   "members": [
+    {
+     "key": "wasabi",
+     "label": "わさび",
+     "sec": "調味料・粉",
+     "words": "わさび・山葵",
+     "verdict": ""
+    },
+    {
+     "key": "gingerTube",
+     "label": "おろし生姜",
+     "sec": "調味料・粉",
+     "words": "おろし生姜・生姜ちゅーぶ・おろししょうが",
+     "verdict": ""
+    },
+    {
+     "key": "garlicTube",
+     "label": "おろしにんにく",
+     "sec": "調味料・粉",
+     "words": "おろしにんにく・にんにくちゅーぶ",
+     "verdict": ""
+    },
+    {
+     "key": "mustard",
+     "label": "マスタード",
+     "sec": "調味料・粉",
+     "words": "ますたーど",
+     "verdict": ""
+    },
+    {
+     "key": "karashi",
+     "label": "からし",
+     "sec": "調味料・粉",
+     "words": "からし・辛子",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "調味料・粉"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:wine",
+   "src": "food",
+   "type": "wine",
+   "members": [
+    {
+     "key": "sake",
+     "label": "酒",
+     "sec": "飲みもの",
+     "words": "酒・日本酒・焼酎",
+     "verdict": ""
+    },
+    {
+     "key": "wine",
+     "label": "わいん",
+     "sec": "飲みもの",
+     "words": "わいん",
+     "verdict": ""
+    },
+    {
+     "key": "whisky",
+     "label": "ウイスキー",
+     "sec": "飲みもの",
+     "words": "ういすきー・うぃすきー・ぶらんでー",
+     "verdict": ""
+    },
+    {
+     "key": "plum",
+     "label": "梅酒",
+     "sec": "飲みもの",
+     "words": "梅酒・うめしゅ",
+     "verdict": ""
+    },
+    {
+     "key": "cocktail",
+     "label": "かくてる",
+     "sec": "飲みもの",
+     "words": "かくてる・さわー・れもんさわー",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "飲みもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:gift",
+   "src": "goods",
+   "type": "gift",
+   "members": [
+    {
+     "key": "christmas",
+     "label": "くりすます",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "present",
+     "label": "ぷれぜんと",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "newYear",
+     "label": "正月",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "mothersDay",
+     "label": "母の日",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "birthdayCake",
+     "label": "誕生日",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 5,
+   "sections": [
+    "行事・そのほか"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:fish",
+   "src": "food",
+   "type": "fish",
+   "members": [
+    {
+     "key": "fish",
+     "label": "魚",
+     "sec": "肉・魚",
+     "words": "魚・さかな・鮭",
+     "verdict": ""
+    },
+    {
+     "key": "eel",
+     "label": "うなぎ",
+     "sec": "肉・魚",
+     "words": "うなぎ・鰻・あなご",
+     "verdict": ""
+    },
+    {
+     "key": "shirasu",
+     "label": "しらす",
+     "sec": "肉・魚",
+     "words": "しらす・ちりめん・じゃこ",
+     "verdict": ""
+    },
+    {
+     "key": "grilledFish",
+     "label": "焼き魚",
+     "sec": "肉・魚",
+     "words": "焼き魚・焼魚・ほっけ",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:hamburgSteak",
+   "src": "food",
+   "type": "hamburgSteak",
+   "members": [
+    {
+     "key": "minced",
+     "label": "ひき肉",
+     "sec": "肉・魚",
+     "words": "ひき肉・みんち・挽肉",
+     "verdict": ""
+    },
+    {
+     "key": "hamburgSteak",
+     "label": "ハンバーグ",
+     "sec": "肉・魚",
+     "words": "はんばーぐ",
+     "verdict": ""
+    },
+    {
+     "key": "meatball",
+     "label": "ミートボール",
+     "sec": "肉・魚",
+     "words": "みーとぼーる・肉団子",
+     "verdict": ""
+    },
+    {
+     "key": "tsukune",
+     "label": "つくね",
+     "sec": "肉・魚",
+     "words": "つくね",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:pasta",
+   "src": "food",
+   "type": "pasta",
+   "members": [
+    {
+     "key": "pasta",
+     "label": "ぱすた",
+     "sec": "パン・主食",
+     "words": "ぱすた・すぱげってぃ・まかろに",
+     "verdict": ""
+    },
+    {
+     "key": "driedNoodle",
+     "label": "乾麺",
+     "sec": "パン・主食",
+     "words": "乾麺・中華麺・生麺",
+     "verdict": ""
+    },
+    {
+     "key": "pastaSauce",
+     "label": "パスタソース",
+     "sec": "パン・主食",
+     "words": "ぱすたそーす・みーとそーす・かるぼなーら",
+     "verdict": ""
+    },
+    {
+     "key": "ramenSoup",
+     "label": "ラーメンスープ",
+     "sec": "パン・主食",
+     "words": "らーめんすーぷ・つけ汁",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "パン・主食"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:peas",
+   "src": "food",
+   "type": "peas",
+   "members": [
+    {
+     "key": "beans",
+     "label": "大豆",
+     "sec": "野菜",
+     "words": "大豆・だいず・豆",
+     "verdict": ""
+    },
+    {
+     "key": "peas",
+     "label": "さやえんどう",
+     "sec": "野菜",
+     "words": "さやえんどう・きぬさや・ぐりんぴーす",
+     "verdict": ""
+    },
+    {
+     "key": "edamame",
+     "label": "枝豆",
+     "sec": "野菜",
+     "words": "枝豆・えだまめ",
+     "verdict": ""
+    },
+    {
+     "key": "snapPeas",
+     "label": "すなっぷ",
+     "sec": "野菜",
+     "words": "すなっぷ",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:tempura",
+   "src": "food",
+   "type": "tempura",
+   "members": [
+    {
+     "key": "tempura",
+     "label": "天ぷら",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "天ぷら・てんぷら・かき揚げ",
+     "verdict": ""
+    },
+    {
+     "key": "croquette",
+     "label": "ころっけ",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "ころっけ",
+     "verdict": ""
+    },
+    {
+     "key": "friedFood",
+     "label": "ふらい",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "ふらい・揚げ物・唐揚げ",
+     "verdict": ""
+    },
+    {
+     "key": "springRoll",
+     "label": "春巻",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "春巻・はるまき",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "惣菜・冷凍・乾物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:tofu",
+   "src": "food",
+   "type": "tofu",
+   "members": [
+    {
+     "key": "natto",
+     "label": "納豆",
+     "sec": "大豆製品・和のもの",
+     "words": "納豆・なっとう",
+     "verdict": ""
+    },
+    {
+     "key": "tofu",
+     "label": "豆腐",
+     "sec": "大豆製品・和のもの",
+     "words": "豆腐・とうふ・厚揚げ",
+     "verdict": ""
+    },
+    {
+     "key": "konjac",
+     "label": "こんにゃく",
+     "sec": "大豆製品・和のもの",
+     "words": "こんにゃく・蒟蒻・しらたき",
+     "verdict": ""
+    },
+    {
+     "key": "fishCake",
+     "label": "はんぺん",
+     "sec": "大豆製品・和のもの",
+     "words": "はんぺん・さつま揚げ・練り物",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "大豆製品・和のもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:yogurt",
+   "src": "food",
+   "type": "yogurt",
+   "members": [
+    {
+     "key": "cream",
+     "label": "生くりーむ",
+     "sec": "乳製品・卵",
+     "words": "生くりーむ・ほいっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "yogurt",
+     "label": "ヨーグルト",
+     "sec": "乳製品・卵",
+     "words": "よーぐると",
+     "verdict": ""
+    },
+    {
+     "key": "pudding",
+     "label": "ぷりん",
+     "sec": "乳製品・卵",
+     "words": "ぷりん",
+     "verdict": ""
+    },
+    {
+     "key": "condensedMilk",
+     "label": "れんにゅう",
+     "sec": "乳製品・卵",
+     "words": "れんにゅう・練乳・こんでんすみるく",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "乳製品・卵"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bed",
+   "src": "goods",
+   "type": "bed",
+   "members": [
+    {
+     "key": "bed",
+     "label": "べっど",
+     "sec": "家具・寝具",
+     "words": "べっど・べっと・ベット",
+     "verdict": ""
+    },
+    {
+     "key": "mattress",
+     "label": "まっとれす",
+     "sec": "家具・寝具",
+     "words": "まっとれす・敷きぱっど・べっどぱっど",
+     "verdict": ""
+    },
+    {
+     "key": "futon",
+     "label": "布団",
+     "sec": "家具・寝具",
+     "words": "布団・ふとん・掛け布団",
+     "verdict": ""
+    },
+    {
+     "key": "pillow",
+     "label": "枕",
+     "sec": "家具・寝具",
+     "words": "枕・まくら・まくらかばー",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "家具・寝具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bowl",
+   "src": "goods",
+   "type": "bowl",
+   "members": [
+    {
+     "key": "strainer",
+     "label": "ざる",
+     "sec": "キッチン道具",
+     "words": "ざる・水切り",
+     "verdict": ""
+    },
+    {
+     "key": "teacup",
+     "label": "湯のみ",
+     "sec": "キッチン道具",
+     "words": "湯のみ・ゆのみ・湯呑",
+     "verdict": ""
+    },
+    {
+     "key": "riceBowl",
+     "label": "茶碗",
+     "sec": "キッチン道具",
+     "words": "茶碗・ちゃわん・ご飯茶碗",
+     "verdict": ""
+    },
+    {
+     "key": "donburi",
+     "label": "どんぶり",
+     "sec": "キッチン道具",
+     "words": "どんぶり・丼・丼ぶり",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "キッチン道具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:fanAppl",
+   "src": "goods",
+   "type": "fanAppl",
+   "members": [
+    {
+     "key": "electricFan",
+     "label": "扇風機",
+     "sec": "家電・機器",
+     "words": "扇風機・せんぷうき・さーきゅれーたー",
+     "verdict": ""
+    },
+    {
+     "key": "heater",
+     "label": "ヒーター",
+     "sec": "家電・機器",
+     "words": "ひーたー・すとーぶ・電気ひーたー",
+     "verdict": ""
+    },
+    {
+     "key": "airConditioner",
+     "label": "えあこん",
+     "sec": "家電・機器",
+     "words": "えあこん・くーらー・冷房",
+     "verdict": ""
+    },
+    {
+     "key": "humidifier",
+     "label": "加湿器",
+     "sec": "家電・機器",
+     "words": "加湿器・かしつき・除湿機",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:mopStick",
+   "src": "goods",
+   "type": "mopStick",
+   "members": [
+    {
+     "key": "broom",
+     "label": "掃除",
+     "sec": "掃除・洗濯",
+     "words": "掃除・そうじ・ほうき",
+     "verdict": ""
+    },
+    {
+     "key": "mop",
+     "label": "もっぷ",
+     "sec": "掃除・洗濯",
+     "words": "もっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "floorWiper",
+     "label": "フロアワイパー",
+     "sec": "掃除・洗濯",
+     "words": "ふろあわいぱー・わいぱー",
+     "verdict": ""
+    },
+    {
+     "key": "dustpan",
+     "label": "ちりとり",
+     "sec": "掃除・洗濯",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:service",
+   "src": "goods",
+   "type": "service",
+   "members": [
+    {
+     "key": "cleaners",
+     "label": "クリーニング",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "gasStation",
+     "label": "がそりんすたんど",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "carWash",
+     "label": "洗車",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "coinLaundry",
+     "label": "コインランドリー",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "お店"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:shelf",
+   "src": "goods",
+   "type": "shelf",
+   "members": [
+    {
+     "key": "bookshelf",
+     "label": "本棚",
+     "sec": "家具・寝具",
+     "words": "本棚・ほんだな・書棚",
+     "verdict": ""
+    },
+    {
+     "key": "shelfUnit",
+     "label": "棚",
+     "sec": "家具・寝具",
+     "words": "棚・たな・らっく",
+     "verdict": ""
+    },
+    {
+     "key": "chestDrawers",
+     "label": "たんす",
+     "sec": "家具・寝具",
+     "words": "たんす・箪笥・ちぇすと",
+     "verdict": ""
+    },
+    {
+     "key": "storageBox",
+     "label": "収納ぼっくす",
+     "sec": "家具・寝具",
+     "words": "収納ぼっくす・収納ケース・収納",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "家具・寝具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:stamp",
+   "src": "goods",
+   "type": "stamp",
+   "members": [
+    {
+     "key": "postageStamp",
+     "label": "切手",
+     "sec": "文具・書類",
+     "words": "切手・きって・収入印紙",
+     "verdict": ""
+    },
+    {
+     "key": "nameStamp",
+     "label": "印鑑",
+     "sec": "文具・書類",
+     "words": "印鑑・いんかん・はんこ",
+     "verdict": ""
+    },
+    {
+     "key": "inkPad",
+     "label": "朱肉",
+     "sec": "文具・書類",
+     "words": "朱肉・しゅにく・すたんぷ台",
+     "verdict": ""
+    },
+    {
+     "key": "rubberStamp",
+     "label": "すたんぷ",
+     "sec": "文具・書類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:train",
+   "src": "goods",
+   "type": "train",
+   "members": [
+    {
+     "key": "station",
+     "label": "駅",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "bus",
+     "label": "ばす",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "busStop",
+     "label": "ばす停",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "train",
+     "label": "電車",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 4,
+   "sections": [
+    "おでかけ"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:amazake",
+   "src": "food",
+   "type": "amazake",
+   "members": [
+    {
+     "key": "milkTea",
+     "label": "ミルクティー",
+     "sec": "飲みもの",
+     "words": "みるくてぃー・ろいやるみるくてぃー",
+     "verdict": ""
+    },
+    {
+     "key": "aojiru",
+     "label": "青汁",
+     "sec": "飲みもの",
+     "words": "青汁・あおじる",
+     "verdict": ""
+    },
+    {
+     "key": "amazake",
+     "label": "甘酒",
+     "sec": "飲みもの",
+     "words": "甘酒・あまざけ",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "飲みもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:bacon",
+   "src": "food",
+   "type": "bacon",
+   "members": [
+    {
+     "key": "bacon",
+     "label": "ベーコン",
+     "sec": "肉・魚",
+     "words": "べーこん",
+     "verdict": ""
+    },
+    {
+     "key": "ham",
+     "label": "はむ",
+     "sec": "肉・魚",
+     "words": "はむ・すぱむ",
+     "verdict": ""
+    },
+    {
+     "key": "prosciutto",
+     "label": "生はむ",
+     "sec": "肉・魚",
+     "words": "生はむ",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:bread",
+   "src": "food",
+   "type": "bread",
+   "members": [
+    {
+     "key": "bread",
+     "label": "ぱん",
+     "sec": "パン・主食",
+     "words": "ぱん・食パン・しょくぱん",
+     "verdict": ""
+    },
+    {
+     "key": "sandwich",
+     "label": "さんどいっち",
+     "sec": "パン・主食",
+     "words": "さんどいっち・さんど",
+     "verdict": ""
+    },
+    {
+     "key": "toast",
+     "label": "トースト",
+     "sec": "パン・主食",
+     "words": "とーすと",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "パン・主食"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:milk",
+   "src": "food",
+   "type": "milk",
+   "members": [
+    {
+     "key": "milk",
+     "label": "牛乳",
+     "sec": "乳製品・卵",
+     "words": "牛乳・ぎゅうにゅう・みるく",
+     "verdict": ""
+    },
+    {
+     "key": "soyMilk",
+     "label": "豆乳",
+     "sec": "乳製品・卵",
+     "words": "豆乳・とうにゅう",
+     "verdict": ""
+    },
+    {
+     "key": "drinkYogurt",
+     "label": "飲むよーぐると",
+     "sec": "乳製品・卵",
+     "words": "飲むよーぐると・のむよーぐると",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "乳製品・卵"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:orange",
+   "src": "food",
+   "type": "orange",
+   "members": [
+    {
+     "key": "orange",
+     "label": "みかん",
+     "sec": "果物",
+     "words": "みかん・蜜柑・おれんじ",
+     "verdict": ""
+    },
+    {
+     "key": "lemon",
+     "label": "れもん",
+     "sec": "果物",
+     "words": "れもん・らいむ・ゆず",
+     "verdict": ""
+    },
+    {
+     "key": "kumquat",
+     "label": "きんかん",
+     "sec": "果物",
+     "words": "きんかん・金柑",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "果物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:potato",
+   "src": "food",
+   "type": "potato",
+   "members": [
+    {
+     "key": "potato",
+     "label": "じゃがいも",
+     "sec": "野菜",
+     "words": "じゃがいも・馬鈴薯・ぽてと",
+     "verdict": ""
+    },
+    {
+     "key": "sweetPotato",
+     "label": "さつまいも",
+     "sec": "野菜",
+     "words": "さつまいも・薩摩芋・焼き芋",
+     "verdict": ""
+    },
+    {
+     "key": "ginger",
+     "label": "しょうが",
+     "sec": "野菜",
+     "words": "しょうが・生姜・じんじゃー",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:roe",
+   "src": "food",
+   "type": "roe",
+   "members": [
+    {
+     "key": "mentaiko",
+     "label": "明太子",
+     "sec": "肉・魚",
+     "words": "明太子・めんたいこ・たらこ",
+     "verdict": ""
+    },
+    {
+     "key": "roe",
+     "label": "いくら",
+     "sec": "肉・魚",
+     "words": "いくら・数の子・かずのこ",
+     "verdict": ""
+    },
+    {
+     "key": "katsuobushi",
+     "label": "鰹節",
+     "sec": "肉・魚",
+     "words": "鰹節・かつおぶし・かつお節",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bottomWear",
+   "src": "goods",
+   "type": "bottomWear",
+   "members": [
+    {
+     "key": "jeans",
+     "label": "ジーンズ",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "skirt",
+     "label": "スカート",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "tights",
+     "label": "たいつ",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "衣類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:chair",
+   "src": "goods",
+   "type": "chair",
+   "members": [
+    {
+     "key": "chair",
+     "label": "椅子",
+     "sec": "家具・寝具",
+     "words": "椅子・いす・ちぇあ",
+     "verdict": ""
+    },
+    {
+     "key": "sofa",
+     "label": "そふぁ",
+     "sec": "家具・寝具",
+     "words": "そふぁ・そふぁー・長椅子",
+     "verdict": ""
+    },
+    {
+     "key": "cushion",
+     "label": "くっしょん",
+     "sec": "家具・寝具",
+     "words": "くっしょん・座布団・ざぶとん",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "家具・寝具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:chip",
+   "src": "goods",
+   "type": "chip",
+   "members": [
+    {
+     "key": "sdCard",
+     "label": "sdかーど",
+     "sec": "家電・機器",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "usbMemory",
+     "label": "usbめもり",
+     "sec": "家電・機器",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "disc",
+     "label": "cd",
+     "sec": "家電・機器",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:outerWear",
+   "src": "goods",
+   "type": "outerWear",
+   "members": [
+    {
+     "key": "coat",
+     "label": "コート",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "jacket",
+     "label": "じゃけっと",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "suit",
+     "label": "スーツ",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "衣類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:stick",
+   "src": "goods",
+   "type": "stick",
+   "members": [
+    {
+     "key": "lipBalm",
+     "label": "りっぷ",
+     "sec": "衛生・美容",
+     "words": "りっぷ・りっぷくりーむ",
+     "verdict": ""
+    },
+    {
+     "key": "lipstick",
+     "label": "口紅",
+     "sec": "衛生・美容",
+     "words": "口紅・くちべに",
+     "verdict": ""
+    },
+    {
+     "key": "mascara",
+     "label": "マスカラ",
+     "sec": "衛生・美容",
+     "words": "ますから・あいらいなー・あいしゃどう",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "衛生・美容"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:table",
+   "src": "goods",
+   "type": "table",
+   "members": [
+    {
+     "key": "desk",
+     "label": "机",
+     "sec": "家具・寝具",
+     "words": "机・つくえ・ですく",
+     "verdict": ""
+    },
+    {
+     "key": "diningTable",
+     "label": "テーブル",
+     "sec": "家具・寝具",
+     "words": "てーぶる・食卓・ちゃぶ台",
+     "verdict": ""
+    },
+    {
+     "key": "kotatsu",
+     "label": "こたつ",
+     "sec": "家具・寝具",
+     "words": "こたつ・炬燵・こたつ布団",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "家具・寝具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:testKit",
+   "src": "goods",
+   "type": "testKit",
+   "members": [
+    {
+     "key": "testKit",
+     "label": "検査きっと",
+     "sec": "薬・健康",
+     "words": "検査きっと・抗原・妊娠検査",
+     "verdict": ""
+    },
+    {
+     "key": "healthCheck",
+     "label": "健康診断",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "vaccination",
+     "label": "予防接種",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 3,
+   "sections": [
+    "薬・健康"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:bento",
+   "src": "food",
+   "type": "bento",
+   "members": [
+    {
+     "key": "bento",
+     "label": "弁当",
+     "sec": "パン・主食",
+     "words": "弁当・べんとう・惣菜",
+     "verdict": ""
+    },
+    {
+     "key": "frozen",
+     "label": "冷凍",
+     "sec": "パン・主食",
+     "words": "冷凍・れいとう・氷",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "パン・主食"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:broccoli",
+   "src": "food",
+   "type": "broccoli",
+   "members": [
+    {
+     "key": "broccoli",
+     "label": "ブロッコリー",
+     "sec": "野菜",
+     "words": "ぶろっこりー",
+     "verdict": ""
+    },
+    {
+     "key": "cauliflower",
+     "label": "カリフラワー",
+     "sec": "野菜",
+     "words": "かりふらわー・芽きゃべつ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:butter",
+   "src": "food",
+   "type": "butter",
+   "members": [
+    {
+     "key": "butter",
+     "label": "バター",
+     "sec": "乳製品・卵",
+     "words": "ばたー",
+     "verdict": ""
+    },
+    {
+     "key": "margarine",
+     "label": "マーガリン",
+     "sec": "乳製品・卵",
+     "words": "まーがりん",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "乳製品・卵"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:chestnut",
+   "src": "food",
+   "type": "chestnut",
+   "members": [
+    {
+     "key": "chestnut",
+     "label": "栗",
+     "sec": "果物",
+     "words": "栗・くり・ぎんなん",
+     "verdict": ""
+    },
+    {
+     "key": "driedFruit",
+     "label": "ドライフルーツ",
+     "sec": "果物",
+     "words": "どらいふるーつ・れーずん・ぷるーん",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "果物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:frozenGyoza",
+   "src": "food",
+   "type": "frozenGyoza",
+   "members": [
+    {
+     "key": "frozenGyoza",
+     "label": "冷凍餃子",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "冷凍餃子・冷凍食品",
+     "verdict": ""
+    },
+    {
+     "key": "saladPack",
+     "label": "かっとやさい",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "かっとやさい・さらだぱっく・千切りきゃべつ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "惣菜・冷凍・乾物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:furikake",
+   "src": "food",
+   "type": "furikake",
+   "members": [
+    {
+     "key": "dashiPack",
+     "label": "だし",
+     "sec": "大豆製品・和のもの",
+     "words": "だし・出汁・煮干し",
+     "verdict": ""
+    },
+    {
+     "key": "furikake",
+     "label": "ふりかけ",
+     "sec": "大豆製品・和のもの",
+     "words": "ふりかけ・お茶漬け・おちゃづけ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "大豆製品・和のもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:icePop",
+   "src": "food",
+   "type": "icePop",
+   "members": [
+    {
+     "key": "icePop",
+     "label": "アイスバー",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "あいすばー・がりがり・あいすきゃんでぃ",
+     "verdict": ""
+    },
+    {
+     "key": "shavedIce",
+     "label": "かき氷",
+     "sec": "惣菜・冷凍・乾物",
+     "words": "かき氷・かきごおり",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "惣菜・冷凍・乾物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:kamaboko",
+   "src": "food",
+   "type": "kamaboko",
+   "members": [
+    {
+     "key": "kamaboko",
+     "label": "かまぼこ",
+     "sec": "肉・魚",
+     "words": "かまぼこ・蒲鉾・なると",
+     "verdict": ""
+    },
+    {
+     "key": "chikuwa",
+     "label": "ちくわ",
+     "sec": "肉・魚",
+     "words": "ちくわ・竹輪",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:mayo",
+   "src": "food",
+   "type": "mayo",
+   "members": [
+    {
+     "key": "ketchup",
+     "label": "けちゃっぷ",
+     "sec": "調味料・粉",
+     "words": "けちゃっぷ",
+     "verdict": ""
+    },
+    {
+     "key": "mayo",
+     "label": "マヨネーズ",
+     "sec": "調味料・粉",
+     "words": "まよねーず・どれっしんぐ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "調味料・粉"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:onion",
+   "src": "food",
+   "type": "onion",
+   "members": [
+    {
+     "key": "onion",
+     "label": "玉ねぎ",
+     "sec": "野菜",
+     "words": "玉ねぎ・たまねぎ・玉葱",
+     "verdict": ""
+    },
+    {
+     "key": "garlic",
+     "label": "にんにく",
+     "sec": "野菜",
+     "words": "にんにく・がーりっく",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:sausage",
+   "src": "food",
+   "type": "sausage",
+   "members": [
+    {
+     "key": "sausage",
+     "label": "ソーセージ",
+     "sec": "肉・魚",
+     "words": "そーせーじ・ういんなー・ふらんく",
+     "verdict": ""
+    },
+    {
+     "key": "yakitori",
+     "label": "焼き鳥",
+     "sec": "肉・魚",
+     "words": "焼き鳥・やきとり・焼鳥",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:squid",
+   "src": "food",
+   "type": "squid",
+   "members": [
+    {
+     "key": "squid",
+     "label": "いか",
+     "sec": "肉・魚",
+     "words": "いか・烏賊",
+     "verdict": ""
+    },
+    {
+     "key": "octopus",
+     "label": "たこ",
+     "sec": "肉・魚",
+     "words": "たこ・蛸",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:sushi",
+   "src": "food",
+   "type": "sushi",
+   "members": [
+    {
+     "key": "sushi",
+     "label": "刺身",
+     "sec": "肉・魚",
+     "words": "刺身・さしみ・寿司",
+     "verdict": ""
+    },
+    {
+     "key": "tuna",
+     "label": "つな",
+     "sec": "肉・魚",
+     "words": "つな・つな缶・しーちきん",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "肉・魚"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:teaBag",
+   "src": "food",
+   "type": "teaBag",
+   "members": [
+    {
+     "key": "teaBag",
+     "label": "ティーバッグ",
+     "sec": "飲みもの",
+     "words": "てぃーばっぐ・紅茶ぱっく・お茶ぱっく",
+     "verdict": ""
+    },
+    {
+     "key": "coffeeBeans",
+     "label": "こーひー豆",
+     "sec": "飲みもの",
+     "words": "こーひー豆・珈琲豆・どりっぷ",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "飲みもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:turnip",
+   "src": "food",
+   "type": "turnip",
+   "members": [
+    {
+     "key": "turnip",
+     "label": "かぶ",
+     "sec": "野菜",
+     "words": "かぶ・蕪",
+     "verdict": ""
+    },
+    {
+     "key": "radish",
+     "label": "らでぃっしゅ",
+     "sec": "野菜",
+     "words": "らでぃっしゅ・二十日大根",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:watermelon",
+   "src": "food",
+   "type": "watermelon",
+   "members": [
+    {
+     "key": "watermelon",
+     "label": "すいか",
+     "sec": "果物",
+     "words": "すいか・西瓜",
+     "verdict": ""
+    },
+    {
+     "key": "melon",
+     "label": "めろん",
+     "sec": "果物",
+     "words": "めろん",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "果物"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:car",
+   "src": "goods",
+   "type": "car",
+   "members": [
+    {
+     "key": "taxi",
+     "label": "タクシー",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "car",
+     "label": "自動車",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "おでかけ"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:eatery",
+   "src": "goods",
+   "type": "eatery",
+   "members": [
+    {
+     "key": "restaurant",
+     "label": "れすとらん",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "cafe",
+     "label": "かふぇ",
+     "sec": "お店",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "お店"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:hanger",
+   "src": "goods",
+   "type": "hanger",
+   "members": [
+    {
+     "key": "hanger",
+     "label": "ハンガー",
+     "sec": "掃除・洗濯",
+     "words": "はんがー・物干し・ものほし",
+     "verdict": ""
+    },
+    {
+     "key": "clothespin",
+     "label": "洗濯ばさみ",
+     "sec": "掃除・洗濯",
+     "words": "洗濯ばさみ・せんたくばさみ・ぴんち",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:inputDev",
+   "src": "goods",
+   "type": "inputDev",
+   "members": [
+    {
+     "key": "mouse",
+     "label": "まうす",
+     "sec": "家電・機器",
+     "words": "まうす・わいやれすまうす",
+     "verdict": ""
+    },
+    {
+     "key": "keyboardDevice",
+     "label": "キーボード",
+     "sec": "家電・機器",
+     "words": "きーぼーど",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:music",
+   "src": "goods",
+   "type": "music",
+   "members": [
+    {
+     "key": "guitar",
+     "label": "ギター",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "piano",
+     "label": "ぴあの",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "趣味・スポーツ"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:remote",
+   "src": "goods",
+   "type": "remote",
+   "members": [
+    {
+     "key": "remote",
+     "label": "りもこん",
+     "sec": "家電・機器",
+     "words": "りもこん・りもーと",
+     "verdict": ""
+    },
+    {
+     "key": "gamePad",
+     "label": "ゲーム",
+     "sec": "家電・機器",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:smallAppl",
+   "src": "goods",
+   "type": "smallAppl",
+   "members": [
+    {
+     "key": "blender",
+     "label": "ミキサー",
+     "sec": "家電・機器",
+     "words": "みきさー・ぶれんだー・ふーどぷろせっさー",
+     "verdict": ""
+    },
+    {
+     "key": "coffeeMaker",
+     "label": "コーヒーメーカー",
+     "sec": "家電・機器",
+     "words": "こーひーめーかー・えすぷれっそましん・こーひーましん",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:support",
+   "src": "goods",
+   "type": "support",
+   "members": [
+    {
+     "key": "brace",
+     "label": "サポーター",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    },
+    {
+     "key": "crutch",
+     "label": "松葉杖",
+     "sec": "薬・健康",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "薬・健康"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:tapeRoll",
+   "src": "goods",
+   "type": "tapeRoll",
+   "members": [
+    {
+     "key": "tape",
+     "label": "セロテープ",
+     "sec": "文具・書類",
+     "words": "せろてーぷ・てーぷ・がむてーぷ",
+     "verdict": ""
+    },
+    {
+     "key": "correctionTape",
+     "label": "修正てーぷ",
+     "sec": "文具・書類",
+     "words": "修正てーぷ・しゅうせいてーぷ・修正液",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:trashCan",
+   "src": "goods",
+   "type": "trashCan",
+   "members": [
+    {
+     "key": "trashCan",
+     "label": "ごみ箱",
+     "sec": "掃除・洗濯",
+     "words": "ごみ箱・ごみばこ・だすとぼっくす",
+     "verdict": ""
+    },
+    {
+     "key": "trashOut",
+     "label": "ごみ出し",
+     "sec": "掃除・洗濯",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 2,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:corn",
+   "src": "food",
+   "type": "corn",
+   "members": [
+    {
+     "key": "corn",
+     "label": "とうもろこし",
+     "sec": "野菜",
+     "words": "とうもろこし・こーん",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "野菜"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:egg",
+   "src": "food",
+   "type": "egg",
+   "members": [
+    {
+     "key": "egg",
+     "label": "卵",
+     "sec": "乳製品・卵",
+     "words": "卵・たまご・玉子",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "乳製品・卵"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:iceCream",
+   "src": "food",
+   "type": "iceCream",
+   "members": [
+    {
+     "key": "iceCream",
+     "label": "あいす",
+     "sec": "乳製品・卵",
+     "words": "あいす・あいすくりーむ・ぱるむ",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "乳製品・卵"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:mochi",
+   "src": "food",
+   "type": "mochi",
+   "members": [
+    {
+     "key": "mochi",
+     "label": "餅",
+     "sec": "大豆製品・和のもの",
+     "words": "餅・もち・切り餅",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "大豆製品・和のもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:onigiri",
+   "src": "food",
+   "type": "onigiri",
+   "members": [
+    {
+     "key": "onigiri",
+     "label": "おにぎり",
+     "sec": "パン・主食",
+     "words": "おにぎり・おむすび",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "パン・主食"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "f:pickles",
+   "src": "food",
+   "type": "pickles",
+   "members": [
+    {
+     "key": "pickles",
+     "label": "漬物",
+     "sec": "大豆製品・和のもの",
+     "words": "漬物・つけもの・きむち",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "大豆製品・和のもの"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:airplane",
+   "src": "goods",
+   "type": "airplane",
+   "members": [
+    {
+     "key": "airplane",
+     "label": "飛行機",
+     "sec": "おでかけ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "おでかけ"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bar",
+   "src": "goods",
+   "type": "bar",
+   "members": [
+    {
+     "key": "soapBar",
+     "label": "石鹸",
+     "sec": "掃除・洗濯",
+     "words": "石鹸・石けん・せっけん",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bathScale",
+   "src": "goods",
+   "type": "bathScale",
+   "members": [
+    {
+     "key": "kitchenScale",
+     "label": "はかり",
+     "sec": "キッチン道具",
+     "words": "はかり・きっちんすけーる・計り",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "キッチン道具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:belt",
+   "src": "goods",
+   "type": "belt",
+   "members": [
+    {
+     "key": "belt",
+     "label": "べると",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "衣類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bicycle",
+   "src": "goods",
+   "type": "bicycle",
+   "members": [
+    {
+     "key": "bicycle",
+     "label": "自転車",
+     "sec": "趣味・スポーツ",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "趣味・スポーツ"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:bucket",
+   "src": "goods",
+   "type": "bucket",
+   "members": [
+    {
+     "key": "bucket",
+     "label": "ばけつ",
+     "sec": "掃除・洗濯",
+     "words": "ばけつ・洗面器",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:calculator",
+   "src": "goods",
+   "type": "calculator",
+   "members": [
+    {
+     "key": "calculator",
+     "label": "電卓",
+     "sec": "文具・書類",
+     "words": "電卓・でんたく",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:camera",
+   "src": "goods",
+   "type": "camera",
+   "members": [
+    {
+     "key": "camera",
+     "label": "かめら",
+     "sec": "家電・機器",
+     "words": "かめら・でじかめ・一眼れふ",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:clock",
+   "src": "goods",
+   "type": "clock",
+   "members": [
+    {
+     "key": "wallClock",
+     "label": "時計",
+     "sec": "家具・寝具",
+     "words": "時計・とけい・掛け時計",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "家具・寝具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:detergentBottle",
+   "src": "goods",
+   "type": "detergentBottle",
+   "members": [
+    {
+     "key": "laundry",
+     "label": "洗濯洗剤",
+     "sec": "掃除・洗濯",
+     "words": "洗濯洗剤・洗たく洗剤・衣料用洗剤",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:eraser",
+   "src": "goods",
+   "type": "eraser",
+   "members": [
+    {
+     "key": "eraser",
+     "label": "消しごむ",
+     "sec": "文具・書類",
+     "words": "消しごむ・けしごむ",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:folder",
+   "src": "goods",
+   "type": "folder",
+   "members": [
+    {
+     "key": "fileFolder",
+     "label": "ふぁいる",
+     "sec": "文具・書類",
+     "words": "ふぁいる・くりあふぁいる・ふぉるだ",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:hat",
+   "src": "goods",
+   "type": "hat",
+   "members": [
+    {
+     "key": "hat",
+     "label": "帽子",
+     "sec": "衣類",
+     "words": "帽子・ぼうし・きゃっぷ",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "衣類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:iron",
+   "src": "goods",
+   "type": "iron",
+   "members": [
+    {
+     "key": "iron",
+     "label": "あいろん",
+     "sec": "家電・機器",
+     "words": "あいろん・衣類すちーまー",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "家電・機器"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:maskWear",
+   "src": "goods",
+   "type": "maskWear",
+   "members": [
+    {
+     "key": "mask",
+     "label": "ますく",
+     "sec": "掃除・洗濯",
+     "words": "ますく・不織布",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:mirror",
+   "src": "goods",
+   "type": "mirror",
+   "members": [
+    {
+     "key": "mirror",
+     "label": "鏡",
+     "sec": "家具・寝具",
+     "words": "鏡・かがみ・みらー",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "家具・寝具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:mosquito",
+   "src": "goods",
+   "type": "mosquito",
+   "members": [
+    {
+     "key": "mosquitoCoil",
+     "label": "蚊取り線香",
+     "sec": "掃除・洗濯",
+     "words": "蚊取り線香・かとりせんこう",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:necktie",
+   "src": "goods",
+   "type": "necktie",
+   "members": [
+    {
+     "key": "necktie",
+     "label": "ねくたい",
+     "sec": "衣類",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "衣類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:petThing",
+   "src": "goods",
+   "type": "petThing",
+   "members": [
+    {
+     "key": "pet",
+     "label": "ぺっと",
+     "sec": "行事・そのほか",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "行事・そのほか"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:socks",
+   "src": "goods",
+   "type": "socks",
+   "members": [
+    {
+     "key": "socks",
+     "label": "靴下",
+     "sec": "掃除・洗濯",
+     "words": "靴下・くつした",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:stroller",
+   "src": "goods",
+   "type": "stroller",
+   "members": [
+    {
+     "key": "stroller",
+     "label": "ベビーカー",
+     "sec": "ベビー・こども",
+     "words": "",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "ベビー・こども"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:thermo",
+   "src": "goods",
+   "type": "thermo",
+   "members": [
+    {
+     "key": "thermometer",
+     "label": "体温計",
+     "sec": "薬・健康",
+     "words": "体温計・たいおんけい",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "薬・健康"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:timer",
+   "src": "goods",
+   "type": "timer",
+   "members": [
+    {
+     "key": "kitchenTimer",
+     "label": "タイマー",
+     "sec": "キッチン道具",
+     "words": "たいまー・きっちんたいまー",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "キッチン道具"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:toiletRoll",
+   "src": "goods",
+   "type": "toiletRoll",
+   "members": [
+    {
+     "key": "kitchenRoll",
+     "label": "キッチンペーパー",
+     "sec": "掃除・洗濯",
+     "words": "きっちんぺーぱー・きっちんたおる・ぺーぱーたおる",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:umbrella",
+   "src": "goods",
+   "type": "umbrella",
+   "members": [
+    {
+     "key": "umbrella",
+     "label": "傘",
+     "sec": "文具・書類",
+     "words": "傘・かさ・びにーる傘",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "文具・書類"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:vacuum",
+   "src": "goods",
+   "type": "vacuum",
+   "members": [
+    {
+     "key": "vacuum",
+     "label": "掃除機",
+     "sec": "掃除・洗濯",
+     "words": "掃除機・そうじき・ころころ",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  },
+  {
+   "id": "g:wrap",
+   "src": "goods",
+   "type": "wrap",
+   "members": [
+    {
+     "key": "foil",
+     "label": "あるみほいる",
+     "sec": "掃除・洗濯",
+     "words": "あるみほいる・ほいる・あるみはく",
+     "verdict": ""
+    }
+   ],
+   "n": 1,
+   "sections": [
+    "掃除・洗濯"
+   ],
+   "cross": false,
+   "verdict": ""
+  }
+ ]
+}
