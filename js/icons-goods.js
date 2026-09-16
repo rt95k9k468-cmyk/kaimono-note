@@ -676,19 +676,29 @@
     mosquito: F("<path d=\"M248 144a8 8 0 0 1-16 0a96.11 96.11 0 0 0-96-96c-1.4 0-2.8 0-4.18.1A80.06 80.06 0 0 0 56 128a64.07 64.07 0 0 0 64 64a44.05 44.05 0 0 0 44-44a32 32 0 0 0-32-32a8 8 0 0 0 0 16a16 16 0 0 1 16 16a28 28 0 0 1-28 28a48.05 48.05 0 0 1-48-48a64.07 64.07 0 0 1 64-64a80.09 80.09 0 0 1 80 80a88.1 88.1 0 0 1-88 88a96.11 96.11 0 0 1-96-96A104.11 104.11 0 0 1 136 32a112.12 112.12 0 0 1 112 112\"/>", 1, -12, -4),
   };
 
-  /* キー → 型。ここに載っているキーは ICONS には置きません（家は一つ）。 */
+  /* キー → 型。ここに載っているキーは ICONS には置きません（家は一つ）。
+
+     **ここから外れたキーは、絵を持ちません**（無地の色つき丸に戻ります）。
+     段12（`icon-fold-audit.json`）で、実物として別物なのに同じ絵になって
+     いたものを外しました——電子レンジ・洗濯機・炊飯器がそろってプリンター、
+     湿布と絆創膏が同じ、といったぐあいに、型が飲み込みすぎていたためです。
+     **間違った絵より、絵が無いほうがよい**：絵が要るものは
+     `icon-fold-audit.json` の `split` に載っているので、そこから一枚ずつ
+     探す／なぞる（手順は `ICON-DEIMAGINE.md`）。
+     鍵もキーワードも一文字も変えていないので、利用者が手で選んだ絵
+     （`product.icon` / `t.icon`）は一つも動きません。 */
   const OF = {
-    bodySoap: "bottle", handSoap: "bottle", faceWash: "bottle", cleanser: "bottle", shampoo: "bottle", dishSoap: "bottle", rinse: "bottle", softener: "bottle", bleach: "bottle", toner: "bottle", mouthwash: "bottle", contactSolution: "bottle", pipeCleaner: "bottle", serum: "bottle", hairOil: "bottle", perfume: "bottle", babyBottle: "bottle",
+    bodySoap: "bottle", handSoap: "bottle", faceWash: "bottle", cleanser: "bottle", shampoo: "bottle", dishSoap: "bottle", rinse: "bottle", softener: "bottle", bleach: "bottle", toner: "bottle", mouthwash: "bottle", contactSolution: "bottle", pipeCleaner: "bottle", serum: "bottle", hairOil: "bottle",
     laundry: "detergentBottle",
-    cleanerSpray: "spray", kitchenSpray: "spray", bathCleaner: "spray", toiletCleaner: "spray", mold: "spray", hairSpray: "spray", deodorant: "spray", airFreshener: "spray", insect: "spray", disinfectant: "spray",
+    cleanerSpray: "spray", kitchenSpray: "spray", bathCleaner: "spray", toiletCleaner: "spray", mold: "spray", deodorant: "spray", insect: "spray", disinfectant: "spray",
     toothpaste: "tube", handCream: "tube", ointment: "tube", makeupRemover: "tube", glue: "tube",
-    milkyLotion: "jar", hairWax: "jar", bathSalt: "jar", storageJar: "jar", babyFood: "jar", foundation: "jar",
+    milkyLotion: "jar", hairWax: "jar", bathSalt: "jar", storageJar: "jar", babyFood: "jar",
     lipstick: "stick", lipBalm: "stick", mascara: "stick",
     soapBar: "bar",
-    refillPouch: "bag", refillPouchGreen: "bag", zipBag: "bag", catLitter: "bag", petFood: "bag", detergentPod: "bag", dryingAgent: "bag",
-    bakingSoda: "box", citricAcid: "box", formula: "box", lunchBox: "box", container: "box", iceTray: "box",
+    refillPouch: "bag", refillPouchGreen: "bag", zipBag: "bag", catLitter: "bag", petFood: "bag", dryingAgent: "bag",
+    bakingSoda: "box", citricAcid: "box", formula: "box", lunchBox: "box", container: "box",
     medicine: "medicine", coldMedicine: "medicine", stomachMedicine: "medicine", gargle: "medicine", pillSheet: "medicine", supplement: "medicine", eyeDrops: "medicine",
-    mug: "cup", glassCup: "cup", tumbler: "cup", paperCup: "cup", measuringCup: "cup", thermos: "bottle",
+    mug: "cup", glassCup: "cup",
     riceBowl: "bowl", donburi: "bowl", teacup: "bowl", strainer: "bowl",
     plateDish: "plate",
     teapot: "spoutPot", wateringCan: "spoutPot",
@@ -696,103 +706,99 @@
 
     /* 道具まわり（一束目）。「開ける道具」の3キーは 調理の柄もの に、
        「ねっと」の2キーは 袋 に畳んであります。 */
-    saucepan: "pot", pressureCooker: "pot", wok: "pot", potLid: "pot", kettle: "pot", electricKettle: "pot",
-    pan: "fryPan", hotplate: "fryPan",
-    spoon: "cutlery", fork: "cutlery", tableKnife: "cutlery", renge: "cutlery", chopstickPair: "cutlery", chopsticks: "cutlery", cutlery: "cutlery", straw: "cutlery", toothpick: "cutlery", measuringSpoon: "cutlery",
+    saucepan: "pot", pressureCooker: "pot", wok: "pot",
+    pan: "fryPan",
+    spoon: "cutlery", fork: "cutlery", tableKnife: "cutlery", renge: "cutlery", cutlery: "cutlery", measuringSpoon: "cutlery",
     ladle: "utensil", turner: "utensil", whisk: "utensil", tongs: "utensil", ricePaddle: "utensil", peeler: "utensil", grater: "utensil", rollingPin: "utensil", canOpener: "utensil", bottleOpener: "utensil", corkscrew: "utensil",
     scissors: "scissors", kitchenScissors: "scissors",
-    knife: "knife", cutter: "knife",
+    knife: "knife",
     dishRack: "rack", laundryBasket: "rack",
     kitchenTimer: "timer",
     mop: "mopStick", floorWiper: "mopStick", broom: "mopStick", dustpan: "mopStick",
-    scrubBrush: "brushTool", hairBrush: "brushTool", comb: "brushTool", paintBrush: "brushTool", sponge: "brushTool",
-    rubberGloves: "glove", gloves: "glove", ovenMitt: "glove",
+    scrubBrush: "brushTool", hairBrush: "brushTool",
+    gloves: "glove", ovenMitt: "glove",
     apron: "apron", bib: "apron",
     trashCan: "trashCan", trashOut: "trashCan",
     vacuum: "vacuum",
-    dishcloth: "cloth", towel: "cloth", bodyTowel: "cloth", rug: "cloth", doormat: "cloth", curtain: "cloth", blanket: "cloth", bedSheet: "cloth", stole: "cloth",
+    dishcloth: "cloth", towel: "cloth", bodyTowel: "cloth", blanket: "cloth", bedSheet: "cloth", stole: "cloth",
     drainNet: "bag", laundryNet: "bag",
 
     /* 家電と家具（二束目）。 */
     hanger: "hanger", clothespin: "hanger",
-    tv: "screenDev", laptop: "screenDev", tablet: "screenDev", smartphone: "screenDev", whiteboard: "screenDev",
-    microwave: "boxAppl", ovenToaster: "boxAppl", washingMachine: "boxAppl", clothesDryer: "boxAppl", dishwasher: "boxAppl", printer: "boxAppl", riceCooker: "boxAppl", laminator: "boxAppl", router: "boxAppl",
+    laptop: "screenDev",
+    printer: "boxAppl", laminator: "boxAppl",
     electricFan: "fanAppl", airConditioner: "fanAppl", humidifier: "fanAppl", heater: "fanAppl",
     blender: "smallAppl", coffeeMaker: "smallAppl",
-    speaker: "audio", headphones: "audio", earphone: "audio", radio: "audio", microphone: "audio",
+    headphones: "audio",
     camera: "camera",
-    charger: "plugCable", usbCable: "plugCable", powerStrip: "plugCable", powerBank: "plugCable", lightBattery: "plugCable",
+    charger: "plugCable", usbCable: "plugCable", powerStrip: "plugCable",
     sdCard: "chip", usbMemory: "chip", disc: "chip",
     remote: "remote", gamePad: "remote",
     mouse: "inputDev", keyboardDevice: "inputDev",
-    hairDryer: "hairDryer", shaver: "hairDryer", electricToothbrush: "hairDryer", massager: "hairDryer",
+    hairDryer: "hairDryer",
     iron: "iron",
     chair: "chair", sofa: "chair", cushion: "chair",
     desk: "table", diningTable: "table", kotatsu: "table",
     bed: "bed", mattress: "bed", futon: "bed", pillow: "bed",
     bookshelf: "shelf", shelfUnit: "shelf", chestDrawers: "shelf", storageBox: "shelf",
-    deskLamp: "lamp", ceilingLight: "lamp", bulb: "lamp",
+    deskLamp: "lamp",
     wallClock: "clock",
     mirror: "mirror",
 
     /* 文房具・紙もの・衣類（三束目）。付箋は紙へ、ほちきすは留めるものへ、
        筆箱は箱へ畳んであります。 */
-    photoFrame: "frame", calendarSheet: "frame",
-    plant: "plantPot", flower: "plantPot", vase: "plantPot", gardenTrowel: "plantPot",
+    photoFrame: "frame",
+    plant: "plantPot", gardenTrowel: "plantPot",
     umbrella: "umbrella",
     pen: "penTool", pencil: "penTool", mechanicalPencil: "penTool", pencilLead: "penTool", marker: "penTool", highlighter: "penTool", crayon: "penTool", colorPencils: "penTool", paintSet: "penTool", inkCartridge: "penTool",
-    notebook: "notebook", diary: "notebook", memoPad: "notebook", sketchbook: "notebook", textbook: "notebook", binder: "notebook", letterPad: "notebook", guidebook: "notebook",
-    copyPaper: "paperSheet", looseLeaf: "paperSheet", document: "paperSheet", postcard: "paperSheet", origami: "paperSheet", deskPad: "paperSheet", letterPack: "paperSheet", officialPaper: "paperSheet", contract: "paperSheet", insurance: "paperSheet", utilityBill: "paperSheet", homeLoan: "paperSheet", receipt: "paperSheet", deliverySlip: "paperSheet",
-    stickyNote: "paperSheet", labelSticker: "paperSheet",
+    notebook: "notebook", diary: "notebook", memoPad: "notebook", sketchbook: "notebook", textbook: "notebook", binder: "notebook", letterPad: "paperSheet", guidebook: "notebook",
+    copyPaper: "paperSheet", looseLeaf: "paperSheet", document: "paperSheet", postcard: "paperSheet", deskPad: "paperSheet", officialPaper: "paperSheet", contract: "paperSheet", insurance: "paperSheet", utilityBill: "paperSheet", homeLoan: "paperSheet", receipt: "paperSheet", deliverySlip: "paperSheet",
     fileFolder: "folder",
-    paperClip: "clip", binderClip: "clip", pushPin: "clip", rubberBand: "clip", staples: "clip", hook: "clip", screw: "clip", magnetPin: "clip",
-    stapler: "clip", holePunch: "clip",
-    ruler: "ruler", setSquare: "ruler", protractor: "ruler", tapeMeasure: "ruler", compass: "ruler",
-    pencilCase: "box", stationery: "box",
+    pushPin: "clip",
+    ruler: "ruler", tapeMeasure: "ruler",
+    stationery: "penTool",
     eraser: "eraser",
     calculator: "calculator",
     nameStamp: "stamp", rubberStamp: "stamp", inkPad: "stamp", postageStamp: "stamp",
-    businessCard: "card", nameTag: "card", licenseCard: "card", ticket: "card", qrPay: "card", cash: "card",
-    tshirt: "topWear", sweater: "topWear", hoodie: "topWear", dressShirt: "topWear", sportswear: "topWear", babyClothes: "topWear", pyjamas: "topWear", underwear: "topWear",
+    businessCard: "card", nameTag: "card", licenseCard: "card",
+    tshirt: "topWear", sweater: "topWear", hoodie: "topWear", dressShirt: "topWear", sportswear: "topWear", babyClothes: "topWear", pyjamas: "topWear",
     coat: "outerWear", jacket: "outerWear", suit: "outerWear",
     jeans: "bottomWear", skirt: "bottomWear", tights: "bottomWear",
     tape: "tapeRoll", correctionTape: "tapeRoll",
 
     /* 身につけるもの・赤ちゃん・からだ・お店（四束目）。 */
     necktie: "necktie",
-    slippers: "shoe", sandals: "shoe", boots: "shoe", shoeCare: "shoe",
+    shoeCare: "shoe",
     socks: "socks",
     hat: "hat",
     belt: "belt",
     mask: "maskWear",
-    bag: "carryBag", suitcase: "carryBag", schoolBag: "carryBag", ecoBag: "carryBag", coolerBag: "carryBag", babyCarrier: "carryBag", groceries: "carryBag", package: "carryBag", household: "carryBag",
-    diaper: "diaper", petSheet: "diaper", icePack: "diaper", handWarmerBox: "diaper", heatPad: "diaper", coolingSheet: "diaper", poultice: "diaper", plaster: "diaper", bandage: "diaper",
+    bag: "carryBag", suitcase: "carryBag", coolerBag: "carryBag", package: "carryBag",
+    icePack: "diaper", handWarmerBox: "diaper", heatPad: "diaper", coolingSheet: "diaper", poultice: "diaper", plaster: "diaper", bandage: "diaper",
     stroller: "stroller",
-    babyGate: "babyRoom", babyCrib: "babyRoom", babyBath: "babyRoom", baby: "babyRoom", nursery: "babyRoom",
     pet: "petThing",
     thermometer: "thermo",
     testKit: "testKit", healthCheck: "testKit", vaccination: "testKit",
     brace: "support", crutch: "support",
-    floss: "toothCare", interdental: "toothCare", denture: "toothCare", dentist: "toothCare",
-    nailClipper: "brushTool", nailFile: "brushTool", hairTie: "brushTool", cottonSwab: "brushTool", razor: "brushTool",
+    denture: "toothCare", dentist: "toothCare",
     convenienceStore: "shop", superMarket: "shop", greengrocer: "shop", bakery: "shop", bookstore: "shop", homeCenter: "shop", electronicsStore: "shop", departmentStore: "shop", hundredYenShop: "shop", repairShop: "shop", drugstore: "shop", pharmacy: "shop",
     hairSalon: "shop", barber: "shop",
-    school: "building", cityHall: "building", postOffice: "building", bank: "building", hospital: "building", museum: "building", inn: "building",
+    school: "building", cityHall: "building", postOffice: "building", bank: "building", museum: "building",
     restaurant: "eatery", cafe: "eatery",
 
     /* 出かける先・乗りもの・贈りもの・工具（五束目）。 */
     cleaners: "service", coinLaundry: "service", gasStation: "service", carWash: "service",
-    park: "leisure", zoo: "leisure", aquarium: "leisure", cinema: "leisure", onsen: "leisure", sea: "leisure", mountain: "leisure", camping: "leisure", movie: "leisure", golf: "leisure", tennis: "leisure", soccerBall: "leisure",
+    park: "leisure", mountain: "leisure", camping: "leisure",
     car: "car", taxi: "car",
     train: "train", station: "train", bus: "train", busStop: "train",
     airplane: "airplane",
     bicycle: "bicycle",
-    map: "map", mapPin: "map",
+    map: "map",
     present: "gift", christmas: "gift", mothersDay: "gift", birthdayCake: "gift", newYear: "gift",
-    toy: "toy", plushToy: "toy", handcraft: "toy",
+    toy: "toy",
     guitar: "music", piano: "music",
-    screwdriver: "tool", hammer: "tool", powerTool: "tool", doorStopper: "tool",
-    phone: "phone", mail: "phone", delivery: "phone", postBox: "phone", payment: "phone",
+    powerTool: "tool",
+    phone: "phone",
     mosquitoCoil: "mosquito",
 
     /* 型の表の `toContainerType`。食材まわりだが、容器の型で足りるもの。 */
@@ -807,6 +813,12 @@
     kitchenRoll: "toiletRoll",
     foil: "wrap",
     wipes: "tissue", floorWipes: "tissue", babyWipes: "tissue", cottonPad: "tissue",
+    /* 段12（型の総点検）で、寄せすぎた型から引き取ったぶん。実物として
+       同じ形のものが、すでに個別の絵を持っていた——型を新しく立てるのでは
+       なく、その一枚へ回します。 */
+    powerBank: "battery", lightBattery: "battery",
+    electricToothbrush: "toothbrush", interdental: "toothbrush",
+    mail: "envelope", postBox: "envelope",
   };
 
   /* 保存済みの `t.icon` はキー文字列なので、キーは `product-icons.js` と
