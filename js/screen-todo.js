@@ -1822,19 +1822,19 @@
        同期で入れ、残りはフレームごとに継ぎ足します。 */
     const CHUNK = 120;
     let painting = 0;
+    function cellOf({ key, label, svg }) {
+      const cell = node(html`
+        <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
+                data-key="${key}" aria-pressed="${String(key === current)}">
+          <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
+          <span class="icon-cell-label">${label}</span>
+        </button>
+      `);
+      cell.addEventListener("click", () => choose(key));
+      return cell;
+    }
     function grid(items) {
       const g = node(html`<div class="icon-grid"></div>`);
-      const cellOf = ({ key, label, svg }) => {
-        const cell = node(html`
-          <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
-                  data-key="${key}" aria-pressed="${String(key === current)}">
-            <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
-            <span class="icon-cell-label">${label}</span>
-          </button>
-        `);
-        cell.addEventListener("click", () => choose(key));
-        return cell;
-      };
       const head = items.slice(0, CHUNK);
       head.forEach((it) => g.append(cellOf(it)));
       if (items.length > CHUNK) {
@@ -1851,6 +1851,29 @@
         requestAnimationFrame(more);
       }
       return g;
+    }
+
+    /* 品物の側は見出しで束ねて出します（product-sheet.js の paintGroups と
+       同じ作り・同じ理由——`grid()` を見出しごとに呼ぶと `painting` の札が
+       前の流し込みを殺し、しかもどの見出しも CHUNK 未満なので刻まれずに
+       707枚が同期で入ってしまう）。 */
+    function paintGroups(gs, into) {
+      const mine = ++painting;
+      const put = (g) => {
+        into.append(heading(g.label));
+        const box = node(html`<div class="icon-grid"></div>`);
+        g.items.forEach((it) => box.append(cellOf(it)));
+        into.append(box);
+      };
+      const HEAD = 2;
+      gs.slice(0, HEAD).forEach(put);
+      let at = HEAD;
+      const more = () => {
+        if (mine !== painting || !into.isConnected) return;
+        put(gs[at++]);
+        if (at < gs.length) requestAnimationFrame(more);
+      };
+      if (at < gs.length) requestAnimationFrame(more);
     }
 
     const heading = (text) => node(html`<span class="field-label">${text}</span>`);
@@ -1898,12 +1921,21 @@
         grids.append(grid(pool.filter((x) => maybe.includes(x.key))
           .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
       }
-      /* 二つに分けて出します。数がまるで違う（こと93・品物708）ので、
-         混ぜると こと が品物の海に沈みます。 */
-      grids.append(heading("こと"));
-      grids.append(grid(KN.iconsTodo.list()));
-      grids.append(heading("品物"));
-      grids.append(grid(KN.productIcons.list().map(art)));
+      /* 二つに分けて出します。数がまるで違う（こと108・品物707）ので、
+         混ぜると こと が品物の海に沈みます。
+
+         **こと は束ねません。** 108個は6列で18行——見出しを入れて切るほど
+         の長さではなく、切ると「こと」という括り自体がぼやけます。品物の
+         ほうだけ、見出しで束ねます。
+
+         **ただし、流し込みは「こと」も込みで一本にします。** ここで
+         `grid()` を呼んでから `paintGroups()` に移ると、あちらの
+         `++painting` が「こと」の流し込みを降ろします。いまは こと が
+         108枚（CHUNK=120 未満）なので刻まれず、たまたま無事なだけ
+         ——**増えた日に黙って壊れる形**なので、はじめから一本にします。 */
+      paintGroups([{ label: "こと", items: KN.iconsTodo.list() }].concat(
+        KN.productIcons.groups().map((g) => ({ label: g.label, items: g.items.map(art) }))
+      ), grids);
     }
     q.addEventListener("input", KN.util.debounce(paint, 160));
     paint();

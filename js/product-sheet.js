@@ -225,21 +225,21 @@
     /* 開いているシートが閉じたら、まだ流し込んでいるぶんは止めます。 */
     let painting = 0;
 
-    function grid(items) {
+    function cellOf({ key, label, svg }) {
       const current = store.getProduct(productId).icon || "";
-      const g = node(html`<div class="icon-grid"></div>`);
+      const cell = node(html`
+        <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
+                data-key="${key}" aria-pressed="${String(key === current)}">
+          <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
+          <span class="icon-cell-label">${label}</span>
+        </button>
+      `);
+      cell.addEventListener("click", () => choose(key));
+      return cell;
+    }
 
-      const cellOf = ({ key, label, svg }) => {
-        const cell = node(html`
-          <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
-                  data-key="${key}" aria-pressed="${String(key === current)}">
-            <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
-            <span class="icon-cell-label">${label}</span>
-          </button>
-        `);
-        cell.addEventListener("click", () => choose(key));
-        return cell;
-      };
+    function grid(items) {
+      const g = node(html`<div class="icon-grid"></div>`);
 
       /* 絵が557個だったころは、全部いちどに組んで差し込んでも 70ms でした。
          857個になると DOM が 8,000 節点・HTML が 700KB を超えて、実機では
@@ -247,7 +247,7 @@
 
          そこで最初の一掴みだけを同期で入れ、残りはフレームごとに継ぎ足します。
          総量は同じでも、一フレームに載る仕事が減るので、開く動作は止まりません。
-         「ぜんぶ」の中身は変わらないので、探すことにも選ぶことにも影響しません。 */
+         中身は変わらないので、探すことにも選ぶことにも影響しません。 */
       const head = items.slice(0, CHUNK);
       head.forEach((it) => g.append(cellOf(it)));
 
@@ -266,6 +266,37 @@
         requestAnimationFrame(more);
       }
       return g;
+    }
+
+    /* 「ぜんぶ」は見出しで束ねて出します（`KN.productIcons.groups()`）。
+       707枚が見出しの無い一本の格子で流れていたので、探す欄で当たらなかった
+       人には、そこから先の手がかりがありませんでした。
+
+       **刻むのは見出し単位で、`grid()` は使いません。** `grid()` の流し込みは
+       `painting` の札で「最後の一本だけを生かす」作りなので、見出しごとに
+       呼ぶと、二つ目が始まった時点で一つ目の流し込みが死にます。しかも
+       どの見出しも120枚（CHUNK）未満なので、そもそも刻まれず 707枚が
+       まるごと同期で入ります——**実機でシートが開く手が止まる**、あの形に
+       戻ってしまう。だから流し込みは一本のまま、切り口を見出しへ移します。 */
+    function paintGroups(gs, into) {
+      const mine = ++painting;
+      const put = (g) => {
+        into.append(heading(g.label));
+        const box = node(html`<div class="icon-grid"></div>`);
+        g.items.forEach((it) => box.append(cellOf(it)));
+        into.append(box);
+      };
+      /* 最初の一手で見えるぶんだけ同期で。残りはフレームごとに一見出しずつ
+         ——いちばん大きい見出しでも76枚なので、一フレームの仕事は前より軽い。 */
+      const HEAD = 2;
+      gs.slice(0, HEAD).forEach(put);
+      let at = HEAD;
+      const more = () => {
+        if (mine !== painting || !into.isConnected) return;
+        put(gs[at++]);
+        if (at < gs.length) requestAnimationFrame(more);
+      };
+      if (at < gs.length) requestAnimationFrame(more);
     }
 
     const heading = (text) => node(html`<span class="field-label">${text}</span>`);
@@ -313,8 +344,7 @@
           .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
       }
 
-      grids.append(heading("ぜんぶ"));
-      grids.append(grid(KN.productIcons.list()));
+      paintGroups(KN.productIcons.groups(), grids);
     }
 
     q.addEventListener("input", debounce(paint, 160));

@@ -477,7 +477,6 @@
     ["formula",     ["粉みるく", "こなみるく", "ふぉろー", "液体みるく"]],
     ["babyFood",    ["離乳食", "りにゅうしょく", "べびーふーど"]],
     ["babyBottle",  ["哺乳瓶", "ほにゅうびん", "赤ちゃん", "べびー", "baby"]],
-    ["babyBottle",  ["哺乳瓶", "ほにゅうびん"]],
     ["babyWipes",   ["おしりふき"]],
 
     /* 掃除・洗濯 */
@@ -912,6 +911,65 @@
   const ORDER = KEYS.map(([key]) => key)
     .concat(Object.keys(ICONS).filter((k) => !KEYS.some(([key]) => key === k)));
 
+  /* ---------------- 「ぜんぶ」を束ねる見出し ----------------
+
+     絵選び紙の「ぜんぶ」は、708枚が**見出しの無い一本の格子**で流れて
+     いました。探す欄で当たらなかった人には、そこから先の手がかりが
+     何もない——「だいたいこの辺」が言えていない一覧でした。
+
+     **`ORDER` そのものは動かしません。** 動かすと `suggest` の出る順まで
+     変わります（あちらは `ORDER` 由来）。ここで持つのは「**この鍵から
+     新しい見出し**」という小さな表だけで、変わるのは**絵選び紙の描画順**
+     ——引き当て（`findKey`）にも探すこと（`search`）にも影響しません。
+
+     **辞書の並びは、テーマが二周しています**（一度目の追加と、二度目の
+     大きな追加）。「野菜」も「菓子」も二か所にあるので、同じ見出しは
+     `groups()` の側で**一つにまとめます**——同じ題の棚が一覧に二度出ると、
+     見出しとして用をなさないので。
+
+     境界の鍵は、辞書の中のテーマのコメントから機械的に拾ったものです。
+     **鍵を消す・並べ替えるときは、ここも見ること**——境界の鍵が `ORDER`
+     から消えると、その見出しは丸ごと前の見出しに吸われます。 */
+  const SECTIONS = {
+    /* 一周目 */
+    dishSoap: "掃除・洗濯",    medicine: "薬・健康",     milk: "乳製品・卵",
+    natto: "大豆製品・和のもの", tomato: "野菜",          apple: "果物",
+    meat: "肉・魚",            rice: "パン・主食",       salt: "調味料・粉",
+    chocolate: "菓子",         water: "飲みもの",
+    /* 二周目。**同じテーマがもう一度出てきます**——`lettuce` や `cherry` を
+       書き落とすと、二周目の野菜・果物がまるごと手前の見出しに吸われます
+       （実測：飲みものが 27→76枚 に膨らんだ）。 */
+    lettuce: "野菜",           cherry: "果物",          steak: "肉・魚",
+    gummy: "菓子",             cocoa: "飲みもの",
+    baguette: "パン・主食",     wasabi: "調味料・粉",     slicedCheese: "乳製品・卵",
+    tempura: "惣菜・冷凍・乾物", formula: "ベビー・こども", cleanerSpray: "掃除・洗濯",
+    pan: "キッチン道具",        serum: "衛生・美容",      pillSheet: "薬・健康",
+    pen: "文具・書類",          tshirt: "衣類",          chair: "家具・寝具",
+    pencil: "文具・書類",       saucepan: "キッチン道具",  spoon: "キッチン道具",
+    microwave: "家電・機器",
+    /* 旧語彙（`KN.iconsV2Keys`）。場所・ことに寄ったものが多い。 */
+    hospital: "薬・健康",       hairBrush: "衛生・美容",  bathScale: "薬・健康",
+    nailFile: "衛生・美容",     school: "ベビー・こども",  document: "文具・書類",
+    cityHall: "役所・お金",     convenienceStore: "お店", suitcase: "おでかけ",
+    phone: "行事・そのほか",     sdCard: "家電・機器",     coat: "衣類",
+    dustpan: "掃除・洗濯",      doorStopper: "工具・DIY", denture: "薬・健康",
+    disc: "家電・機器",         gardenTrowel: "工具・DIY", guitar: "趣味・スポーツ",
+    blackPepper: "調味料・粉",  superMarket: "お店",      bank: "役所・お金",
+    train: "おでかけ",          trashOut: "掃除・洗濯",   payment: "役所・お金",
+  };
+
+  /* 出す順。食べもの → 暮らしの品 → でかける・こと、の三つの流れです
+     （`ORDER` の並びは暮らしと食が交互に来るので、そのままだと見出しを
+     付けても行ったり来たりになる）。ここに無い見出しは、最後に回します
+     ——書き漏らしても消えないように。 */
+  const SECTION_ORDER = [
+    "野菜", "果物", "肉・魚", "パン・主食", "乳製品・卵", "大豆製品・和のもの",
+    "調味料・粉", "惣菜・冷凍・乾物", "菓子", "飲みもの",
+    "掃除・洗濯", "キッチン道具", "衛生・美容", "薬・健康", "文具・書類",
+    "衣類", "家具・寝具", "家電・機器", "工具・DIY", "ベビー・こども",
+    "お店", "おでかけ", "役所・お金", "趣味・スポーツ", "行事・そのほか",
+  ];
+
   /** The icon a key names, or "" for a key that is not one.
    *
    * The picture itself no longer lives in `ICONS` (see above) — it comes
@@ -927,6 +985,32 @@
     (key && ((KN.iconsGoods && KN.iconsGoods.byKey(key)) || (KN.iconsFood && KN.iconsFood.byKey(key)))) || "";
 
   const list = () => ORDER.map((key) => ({ key, label: LABELS[key] || key, svg: byKey(key) }));
+
+  /** 同じものを、見出しで束ねて返します（`SECTIONS` / `SECTION_ORDER`）。
+      `[{ label, items: [{ key, label, svg }] }]`。中身も件数も `list()` と
+      同じで、変わるのは**順番と、あいだに入る見出し**だけです。 */
+  function groups() {
+    const bag = new Map();
+    let at = "そのほか";
+    ORDER.forEach((key) => {
+      if (SECTIONS[key]) at = SECTIONS[key];
+      if (!bag.has(at)) bag.set(at, []);
+      bag.get(at).push(key);
+    });
+    const item = (key) => ({ key, label: LABELS[key] || key, svg: byKey(key) });
+    const out = [];
+    SECTION_ORDER.forEach((label) => {
+      const keys = bag.get(label);
+      if (keys && keys.length) out.push({ label, items: keys.map(item) });
+      bag.delete(label);
+    });
+    /* 表に書き漏らした見出し（と「そのほか」）は、最後に回します
+       ——**落とさないこと**。ここで捨てると、絵が一覧から消えます。 */
+    bag.forEach((keys, label) => {
+      if (keys.length) out.push({ label, items: keys.map(item) });
+    });
+    return out;
+  }
 
   /** The longest run of characters two strings share. */
   function sharedRun(a, b) {
@@ -999,5 +1083,5 @@
     });
   }
 
-  KN.productIcons = { find, findKey, fallback, ICONS, list, byKey, suggest, search, LABELS };
+  KN.productIcons = { find, findKey, fallback, ICONS, list, groups, byKey, suggest, search, LABELS };
 })();
