@@ -3124,91 +3124,91 @@
      "label": "醤油",
      "sec": "調味料・粉",
      "words": "醤油・しょうゆ・そーす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "oil",
      "label": "油",
      "sec": "調味料・粉",
      "words": "油・あぶら・さらだ油",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "vinegar",
      "label": "酢",
      "sec": "調味料・粉",
      "words": "酢・料理酒",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chiliOil",
      "label": "らー油",
      "sec": "調味料・粉",
      "words": "らー油・ラー油",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sesameOil",
      "label": "ごま油",
      "sec": "調味料・粉",
      "words": "ごま油・胡麻油",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "fishSauce",
      "label": "ナンプラー",
      "sec": "調味料・粉",
      "words": "なんぷらー・魚醤",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "balsamic",
      "label": "バルサミコ",
      "sec": "調味料・粉",
      "words": "ばるさみこ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "tabasco",
      "label": "タバスコ",
      "sec": "調味料・粉",
      "words": "たばすこ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "spice",
      "label": "すぱいす",
      "sec": "調味料・粉",
      "words": "すぱいす・香辛料・くみん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "shiroDashi",
      "label": "白だし",
      "sec": "調味料・粉",
      "words": "白だし・しろだし",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "syrup",
      "label": "しろっぷ",
      "sec": "調味料・粉",
      "words": "しろっぷ・めーぷる・がむしろっぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mirin",
      "label": "みりん",
      "sec": "調味料・粉",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mentsuyu",
      "label": "めんつゆ",
      "sec": "調味料・粉",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 13,
@@ -3216,7 +3216,9 @@
     "調味料・粉"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "細口の調味料びん",
+   "note": "すぱいすは振りかけの小瓶で、注ぐびんではない"
   },
   {
    "id": "g:utensil",
@@ -3228,77 +3230,77 @@
      "label": "ピーラー",
      "sec": "キッチン道具",
      "words": "ぴーらー・皮むき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "ladle",
      "label": "おたま",
      "sec": "キッチン道具",
      "words": "おたま・お玉・れーどる",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "turner",
      "label": "ふらい返し",
      "sec": "キッチン道具",
      "words": "ふらい返し・ふらいがえし・たーなー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "whisk",
      "label": "泡立て器",
      "sec": "キッチン道具",
      "words": "泡立て器・あわだて器・ほいっぱー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tongs",
      "label": "とんぐ",
      "sec": "キッチン道具",
      "words": "とんぐ・菜箸とんぐ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "grater",
      "label": "おろし金",
      "sec": "キッチン道具",
      "words": "おろし金・おろしがね・すりおろし器",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "rollingPin",
      "label": "麺棒",
      "sec": "キッチン道具",
      "words": "麺棒・のし棒",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "canOpener",
      "label": "缶切り",
      "sec": "キッチン道具",
      "words": "缶切り・かんきり",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "bottleOpener",
      "label": "栓抜き",
      "sec": "キッチン道具",
      "words": "栓抜き・せんぬき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "corkscrew",
      "label": "ワインオープナー",
      "sec": "キッチン道具",
      "words": "わいんおーぷなー・こるく抜き・そむりえないふ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "ricePaddle",
      "label": "しゃもじ",
      "sec": "キッチン道具",
      "words": "しゃもじ・杓文字",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 11,
@@ -3306,7 +3308,9 @@
     "キッチン道具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "おたま（柄の先に椀）",
+   "note": "泡立て器・麺棒・缶切り・おろし金は、おたまとは別の道具。柄があることだけが共通で、柄は道具の名前ではない"
   },
   {
    "id": "g:penTool",
@@ -3318,70 +3322,70 @@
      "label": "ぺん",
      "sec": "文具・書類",
      "words": "ぺん・ぼーるぺん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pencil",
      "label": "鉛筆",
      "sec": "文具・書類",
      "words": "鉛筆・えんぴつ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mechanicalPencil",
      "label": "シャーペン",
      "sec": "文具・書類",
      "words": "しゃーぺん・しゃーぷぺんしる・しゃーぷぺん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pencilLead",
      "label": "しゃー芯",
      "sec": "文具・書類",
      "words": "しゃー芯・替え芯・かえしん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "marker",
      "label": "まじっく",
      "sec": "文具・書類",
      "words": "まじっく・さいんぺん・油性ぺん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "highlighter",
      "label": "蛍光ぺん",
      "sec": "文具・書類",
      "words": "蛍光ぺん・けいこうぺん・らいんまーかー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "crayon",
      "label": "くれよん",
      "sec": "文具・書類",
      "words": "くれよん・くれぱす・ぱす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "colorPencils",
      "label": "色鉛筆",
      "sec": "文具・書類",
      "words": "色鉛筆・いろえんぴつ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "paintSet",
      "label": "絵の具",
      "sec": "文具・書類",
      "words": "絵の具・えのぐ・水彩",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "inkCartridge",
      "label": "いんく",
      "sec": "文具・書類",
      "words": "いんく・ぷりんたーいんく・となー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 10,
@@ -3389,7 +3393,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "鉛筆／ぺん",
+   "note": "替え芯・絵の具・いんくは書く棒ではなく、補充する中身"
   },
   {
    "id": "f:cabbage",
@@ -3401,63 +3407,63 @@
      "label": "きゃべつ",
      "sec": "野菜",
      "words": "きゃべつ・きゃべつ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "salad",
      "label": "さらだ",
      "sec": "野菜",
      "words": "さらだ・野菜",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "lettuce",
      "label": "れたす",
      "sec": "野菜",
      "words": "れたす・さにーれたす・さんちゅ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chineseCabbage",
      "label": "白菜",
      "sec": "野菜",
      "words": "白菜・はくさい",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "spinach",
      "label": "ほうれん草",
      "sec": "野菜",
      "words": "ほうれん草・ほうれんそう・小松菜",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "herb",
      "label": "ハーブ",
      "sec": "野菜",
      "words": "はーぶ・ばじる・ぱくちー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "shiso",
      "label": "大葉",
      "sec": "野菜",
      "words": "大葉・おおば・しそ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "parsley",
      "label": "ぱせり",
      "sec": "野菜",
      "words": "ぱせり・三つ葉・みつば",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "kale",
      "label": "ケール",
      "sec": "野菜",
      "words": "けーる",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 9,
@@ -3465,7 +3471,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "結球した葉の球（キャベツ）",
+   "note": "白菜は縦長、ほうれん草・ハーブ・大葉・ぱせりは束や一枚。球になるのはキャベツとレタスだけ"
   },
   {
    "id": "f:cake",
@@ -3477,56 +3485,56 @@
      "label": "ケーキ",
      "sec": "菓子",
      "words": "けーき・まふぃん・どーなつ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "jelly",
      "label": "ゼリー",
      "sec": "菓子",
      "words": "ぜりー・寒天・かんてん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "dorayaki",
      "label": "どら焼き",
      "sec": "菓子",
      "words": "どら焼き・どらやき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "daifuku",
      "label": "大福",
      "sec": "菓子",
      "words": "大福・だいふく・もなか",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "dango",
      "label": "団子",
      "sec": "菓子",
      "words": "団子・だんご・みたらし",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "manju",
      "label": "まんじゅう",
      "sec": "菓子",
      "words": "まんじゅう・饅頭・蒸しぱん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "castella",
      "label": "かすてら",
      "sec": "菓子",
      "words": "かすてら・ばうむくーへん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "tart",
      "label": "たると",
      "sec": "菓子",
      "words": "たると・ぱい",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 8,
@@ -3534,7 +3542,9 @@
     "菓子"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ショートケーキの一切れ",
+   "note": "大福・団子・まんじゅうは丸いもの、ゼリーはカップ、たるとは浅い器"
   },
   {
    "id": "f:apple",
@@ -3546,49 +3556,49 @@
      "label": "りんご",
      "sec": "果物",
      "words": "りんご・林檎・あっぷる",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "peach",
      "label": "桃",
      "sec": "果物",
      "words": "桃・ぴーち",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pear",
      "label": "梨",
      "sec": "果物",
      "words": "梨・らふらんす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "persimmon",
      "label": "柿",
      "sec": "果物",
      "words": "柿・かき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pomegranate",
      "label": "ざくろ",
      "sec": "果物",
      "words": "ざくろ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "loquat",
      "label": "びわ",
      "sec": "果物",
      "words": "びわ・枇杷",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "apricot",
      "label": "あんず",
      "sec": "果物",
      "words": "あんず・杏・ねくたりん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 7,
@@ -3596,7 +3606,9 @@
     "果物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "へたと葉のある丸い果実",
+   "note": "桃・梨・柿・ざくろ・びわ・あんずは、どれも同じ『丸い実に葉』の形。ここは畳んでよい折りかた"
   },
   {
    "id": "f:banana",
@@ -3608,49 +3620,49 @@
      "label": "ばなな",
      "sec": "果物",
      "words": "ばなな",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pineapple",
      "label": "ぱいなっぷる",
      "sec": "果物",
      "words": "ぱいなっぷる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "kiwi",
      "label": "きうい",
      "sec": "果物",
      "words": "きうい",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "mango",
      "label": "マンゴー",
      "sec": "果物",
      "words": "まんごー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "fig",
      "label": "いちじく",
      "sec": "果物",
      "words": "いちじく・無花果",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "papaya",
      "label": "ぱぱいや",
      "sec": "果物",
      "words": "ぱぱいや",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "dragonFruit",
      "label": "ドラゴンフルーツ",
      "sec": "果物",
      "words": "どらごんふるーつ・らいち",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 7,
@@ -3658,7 +3670,9 @@
     "果物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ばななの房",
+   "note": ""
   },
   {
    "id": "f:cookie",
@@ -3670,49 +3684,49 @@
      "label": "クッキー",
      "sec": "菓子",
      "words": "くっきー・びすけっと・お菓子",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "riceCracker",
      "label": "せんべい",
      "sec": "菓子",
      "words": "せんべい・煎餅・おかき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cracker",
      "label": "クラッカー",
      "sec": "菓子",
      "words": "くらっかー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pocky",
      "label": "ポッキー",
      "sec": "菓子",
      "words": "ぽっきー・ぷりっつ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "gum",
      "label": "がむ",
      "sec": "菓子",
      "words": "がむ・ふりすく・たぶれっと菓子",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "wafer",
      "label": "ウエハース",
      "sec": "菓子",
      "words": "うえはーす",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "cerealBar",
      "label": "シリアルバー",
      "sec": "菓子",
      "words": "しりあるばー・かろりーめいと・そいじょい",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 7,
@@ -3720,7 +3734,9 @@
     "菓子"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "丸い焼き菓子",
+   "note": "ぽっきー・がむ・ウエハース・シリアルバーは棒と板"
   },
   {
    "id": "f:honey",
@@ -3732,49 +3748,49 @@
      "label": "はちみつ",
      "sec": "調味料・粉",
      "words": "はちみつ・蜂蜜・じゃむ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "doubanjiang",
      "label": "豆板醤",
      "sec": "調味料・粉",
      "words": "豆板醤・とうばんじゃん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "gochujang",
      "label": "コチュジャン",
      "sec": "調味料・粉",
      "words": "こちゅじゃん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "shioKoji",
      "label": "塩麹",
      "sec": "調味料・粉",
      "words": "塩麹・しおこうじ・甘酒麹",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "peanutButter",
      "label": "ピーナッツバター",
      "sec": "調味料・粉",
      "words": "ぴーなっつばたー・ぴーなっつくりーむ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "marmalade",
      "label": "マーマレード",
      "sec": "調味料・粉",
      "words": "まーまれーど",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "blackPepper",
      "label": "こしょう",
      "sec": "調味料・粉",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 7,
@@ -3782,7 +3798,9 @@
     "調味料・粉"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ふた付きの瓶（ジャー）",
+   "note": "こしょうは振りかけるもので、すくう瓶ではない"
   },
   {
    "id": "f:meat",
@@ -3794,49 +3812,49 @@
      "label": "肉",
      "sec": "肉・魚",
      "words": "肉・にく・牛肉",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chicken",
      "label": "鶏",
      "sec": "肉・魚",
      "words": "鶏・鶏肉・とり肉",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "steak",
      "label": "ステーキ",
      "sec": "肉・魚",
      "words": "すてーき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "liver",
      "label": "レバー",
      "sec": "肉・魚",
      "words": "ればー・肝",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "lamb",
      "label": "らむ肉",
      "sec": "肉・魚",
      "words": "らむ肉・羊肉・まとん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "roastBeef",
      "label": "ローストビーフ",
      "sec": "肉・魚",
      "words": "ろーすとびーふ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "hormone",
      "label": "ほるもん",
      "sec": "肉・魚",
      "words": "ほるもん・もつ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 7,
@@ -3844,7 +3862,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "肉のかたまり",
+   "note": "鶏・らむ・レバー・ローストビーフ・ほるもんは、どれも『切った肉』。同じ実物の形"
   },
   {
    "id": "f:water",
@@ -3856,49 +3876,49 @@
      "label": "水",
      "sec": "飲みもの",
      "words": "水・みず・みねらるうぉーたー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "drink",
      "label": "飲みもの",
      "sec": "飲みもの",
      "words": "飲みもの・飲み物・飲物",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "tea",
      "label": "お茶",
      "sec": "飲みもの",
      "words": "お茶・おちゃ・茶",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "juice",
      "label": "ジュース",
      "sec": "飲みもの",
      "words": "じゅーす・野菜じゅーす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "soda",
      "label": "コーラ",
      "sec": "飲みもの",
      "words": "こーら・炭酸・さいだー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "oolong",
      "label": "ウーロン",
      "sec": "飲みもの",
      "words": "うーろん・烏龍",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "barleyTea",
      "label": "麦茶",
      "sec": "飲みもの",
      "words": "麦茶・むぎ茶",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 7,
@@ -3906,7 +3926,9 @@
     "飲みもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ペットボトル",
+   "note": "お茶・ジュース・コーラ・ウーロン・麦茶は、どれもペットボトルで売られている"
   },
   {
    "id": "g:medicine",
@@ -3918,49 +3940,49 @@
      "label": "薬",
      "sec": "薬・健康",
      "words": "薬・くすり・鎮痛剤",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pillSheet",
      "label": "錠剤",
      "sec": "薬・健康",
      "words": "錠剤・じょうざい",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "coldMedicine",
      "label": "風邪薬",
      "sec": "薬・健康",
      "words": "風邪薬・かぜぐすり・解熱",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "stomachMedicine",
      "label": "胃薬",
      "sec": "薬・健康",
      "words": "胃薬・いぐすり・整腸",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "eyeDrops",
      "label": "目薬",
      "sec": "薬・健康",
      "words": "目薬・めぐすり",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "supplement",
      "label": "さぷり",
      "sec": "薬・健康",
      "words": "さぷり・さぷりめんと・びたみん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "gargle",
      "label": "うがい薬",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 7,
@@ -3968,7 +3990,9 @@
     "薬・健康"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "十字のついた薬瓶",
+   "note": "錠剤は銀色の板、目薬は小さな点眼容器。どちらも瓶ではない"
   },
   {
    "id": "f:carrot",
@@ -3980,42 +4004,42 @@
      "label": "にんじん",
      "sec": "野菜",
      "words": "にんじん・人参・きゃろっと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "daikon",
      "label": "大根",
      "sec": "野菜",
      "words": "大根・だいこん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "burdock",
      "label": "ごぼう",
      "sec": "野菜",
      "words": "ごぼう・牛蒡・きんぴら",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "lotusRoot",
      "label": "れんこん",
      "sec": "野菜",
      "words": "れんこん・蓮根",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "bambooShoot",
      "label": "たけのこ",
      "sec": "野菜",
      "words": "たけのこ・筍",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "yam",
      "label": "長芋",
      "sec": "野菜",
      "words": "長芋・ながいも・山芋",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 6,
@@ -4023,7 +4047,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "先のすぼまった根菜",
+   "note": "れんこんは穴の並んだ輪切り、たけのこは皮の重なった円錐"
   },
   {
    "id": "f:chips",
@@ -4035,42 +4061,42 @@
      "label": "すなっく",
      "sec": "菓子",
      "words": "すなっく・ぽてとちっぷす・ぽてち",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "nuts",
      "label": "なっつ",
      "sec": "菓子",
      "words": "なっつ・あーもんど・ぴーなっつ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "gummy",
      "label": "ぐみ",
      "sec": "菓子",
      "words": "ぐみ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "marshmallow",
      "label": "ましゅまろ",
      "sec": "菓子",
      "words": "ましゅまろ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "dryFood",
      "label": "するめ",
      "sec": "菓子",
      "words": "するめ・じゃーきー・さきいか",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "popcorn",
      "label": "ポップコーン",
      "sec": "菓子",
      "words": "ぽっぷこーん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 6,
@@ -4078,7 +4104,9 @@
     "菓子"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "菓子の袋",
+   "note": "なっつ・ぐみ・ましゅまろ・するめ・ポップコーンは、どれも袋で売られている。実物は袋"
   },
   {
    "id": "f:chocolate",
@@ -4090,42 +4118,42 @@
      "label": "ちょこ",
      "sec": "菓子",
      "words": "ちょこ・ちょこれーと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "candy",
      "label": "飴",
      "sec": "菓子",
      "words": "飴・あめ・きゃんでぃ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "caramel",
      "label": "きゃらめる",
      "sec": "菓子",
      "words": "きゃらめる・ぬがー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "chocoBar",
      "label": "チョコバー",
      "sec": "菓子",
      "words": "ちょこばー・きのこの山・たけのこの里",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "ramuneCandy",
      "label": "らむね",
      "sec": "菓子",
      "words": "らむね",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "throatCandy",
      "label": "のど飴",
      "sec": "菓子",
      "words": "のど飴・のどあめ・こうがい",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 6,
@@ -4133,7 +4161,9 @@
     "菓子"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "板チョコ",
+   "note": ""
   },
   {
    "id": "f:croissant",
@@ -4145,42 +4175,42 @@
      "label": "くろわっさん",
      "sec": "パン・主食",
      "words": "くろわっさん・でにっしゅ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "baguette",
      "label": "ばげっと",
      "sec": "パン・主食",
      "words": "ばげっと・ふらんすぱん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "bagel",
      "label": "ベーグル",
      "sec": "パン・主食",
      "words": "べーぐる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "sweetBun",
      "label": "菓子ぱん",
      "sec": "パン・主食",
      "words": "菓子ぱん・あんぱん・くりーむぱん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "melonBun",
      "label": "めろんぱん",
      "sec": "パン・主食",
      "words": "めろんぱん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pancake",
      "label": "パンケーキ",
      "sec": "パン・主食",
      "words": "ぱんけーき・ほっとけーき・わっふる",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 6,
@@ -4188,7 +4218,9 @@
     "パン・主食"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "くろわっさん",
+   "note": "ばげっとは棒、ベーグルは輪、菓子ぱん・めろんぱんは丸、パンケーキは重ねた円盤"
   },
   {
    "id": "f:cucumber",
@@ -4200,42 +4232,42 @@
      "label": "きゅうり",
      "sec": "野菜",
      "words": "きゅうり・胡瓜",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "eggplant",
      "label": "なす",
      "sec": "野菜",
      "words": "なす・茄子",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "zucchini",
      "label": "ズッキーニ",
      "sec": "野菜",
      "words": "ずっきーに",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "okra",
      "label": "おくら",
      "sec": "野菜",
      "words": "おくら",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chili",
      "label": "とうがらし",
      "sec": "野菜",
      "words": "とうがらし・唐辛子・ししとう",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "bittergourd",
      "label": "ゴーヤ",
      "sec": "野菜",
      "words": "ごーや・にがうり",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 6,
@@ -4243,7 +4275,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "細長い青物",
+   "note": "なすはへたの張った丸み、ゴーヤは表面のこぶが名前そのもの"
   },
   {
    "id": "f:noodles",
@@ -4255,42 +4289,42 @@
      "label": "ラーメン",
      "sec": "パン・主食",
      "words": "らーめん・麺・春雨",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cupNoodle",
      "label": "かっぷ麺",
      "sec": "パン・主食",
      "words": "かっぷ麺・かっぷらーめん・かっぷぬーどる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "soba",
      "label": "そば",
      "sec": "パン・主食",
      "words": "そば・蕎麦",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "udon",
      "label": "うどん",
      "sec": "パン・主食",
      "words": "うどん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "somen",
      "label": "そうめん",
      "sec": "パン・主食",
      "words": "そうめん・ひやむぎ・冷や麦",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "yakisoba",
      "label": "焼きそば",
      "sec": "パン・主食",
      "words": "焼きそば・やきそば",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 6,
@@ -4298,7 +4332,9 @@
     "パン・主食"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "湯気の立つ麺の丼",
+   "note": "かっぷ麺は容器、焼きそばは汁のない皿"
   },
   {
    "id": "f:beer",
@@ -4310,35 +4346,35 @@
      "label": "ビール",
      "sec": "飲みもの",
      "words": "びーる・発泡酒・ちゅーはい",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "energyDrink",
      "label": "エナジー",
      "sec": "飲みもの",
      "words": "えなじー・もんすたー・れっどぶる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tonic",
      "label": "栄養どりんく",
      "sec": "飲みもの",
      "words": "栄養どりんく・りぽびたん・どりんく剤",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "protein",
      "label": "ぷろていん",
      "sec": "飲みもの",
      "words": "ぷろていん",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "lactic",
      "label": "ヤクルト",
      "sec": "飲みもの",
      "words": "やくると・乳酸菌・かるぴす",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4346,7 +4382,9 @@
     "飲みもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "泡の立ったジョッキ",
+   "note": "エナジーは缶、栄養どりんくは小瓶、ぷろていんはタンク、ヤクルトは小さな容器"
   },
   {
    "id": "f:cheese",
@@ -4358,35 +4396,35 @@
      "label": "チーズ",
      "sec": "乳製品・卵",
      "words": "ちーず・ぱるめざん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "slicedCheese",
      "label": "スライスチーズ",
      "sec": "乳製品・卵",
      "words": "すらいすちーず",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pizzaCheese",
      "label": "ピザチーズ",
      "sec": "乳製品・卵",
      "words": "ぴざちーず・とろけるちーず・しゅれっどちーず",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "creamCheese",
      "label": "クリームチーズ",
      "sec": "乳製品・卵",
      "words": "くりーむちーず",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "camembert",
      "label": "カマンベール",
      "sec": "乳製品・卵",
      "words": "かまんべーる・ぶるーちーず・もっつぁれら",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4394,7 +4432,9 @@
     "乳製品・卵"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "穴あきのチーズのくさび",
+   "note": "スライスは平たい四角、ピザチーズは袋、クリームチーズは箱、カマンベールは白い円盤"
   },
   {
    "id": "f:coffee",
@@ -4406,35 +4446,35 @@
      "label": "コーヒー",
      "sec": "飲みもの",
      "words": "こーひー・珈琲・かふぇおれ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cocoa",
      "label": "ここあ",
      "sec": "飲みもの",
      "words": "ここあ・みろ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "matcha",
      "label": "抹茶",
      "sec": "飲みもの",
      "words": "抹茶・まっちゃ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "latte",
      "label": "らて",
      "sec": "飲みもの",
      "words": "らて・かふぇらて・かぷちーの",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "smoothie",
      "label": "スムージー",
      "sec": "飲みもの",
      "words": "すむーじー・みっくすじゅーす",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4442,7 +4482,9 @@
     "飲みもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "コーヒー豆（一粒）",
+   "note": "ここあ・抹茶は粉、らて・スムージーは飲みものの器"
   },
   {
    "id": "f:grape",
@@ -4454,35 +4496,35 @@
      "label": "いちご",
      "sec": "果物",
      "words": "いちご・苺・すとろべりー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "grape",
      "label": "ぶどう",
      "sec": "果物",
      "words": "ぶどう・葡萄・ますかっと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cherry",
      "label": "さくらんぼ",
      "sec": "果物",
      "words": "さくらんぼ・ちぇりー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "blueberry",
      "label": "ブルーベリー",
      "sec": "果物",
      "words": "ぶるーべりー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "raspberry",
      "label": "ラズベリー",
      "sec": "果物",
      "words": "らずべりー・べりー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4490,7 +4532,9 @@
     "果物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ぶどうの房",
+   "note": "いちごは円錐、さくらんぼは二粒と柄、ブルーベリー・ラズベリーは粒"
   },
   {
    "id": "f:shrimp",
@@ -4502,35 +4546,35 @@
      "label": "えび",
      "sec": "肉・魚",
      "words": "えび・海老",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "shellfish",
      "label": "あさり",
      "sec": "肉・魚",
      "words": "あさり・しじみ・牡蠣",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "crab",
      "label": "かに",
      "sec": "肉・魚",
      "words": "かに・蟹",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "seaUrchin",
      "label": "うに",
      "sec": "肉・魚",
      "words": "うに・雲丹",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "scallop",
      "label": "ほたて",
      "sec": "肉・魚",
      "words": "ほたて・帆立",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4538,7 +4582,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "えび",
+   "note": ""
   },
   {
    "id": "f:springOnion",
@@ -4550,35 +4596,35 @@
      "label": "ねぎ",
      "sec": "野菜",
      "words": "ねぎ・葱・長ねぎ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "asparagus",
      "label": "あすぱら",
      "sec": "野菜",
      "words": "あすぱら・あすぱらがす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "celery",
      "label": "せろり",
      "sec": "野菜",
      "words": "せろり",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sprout",
      "label": "もやし",
      "sec": "野菜",
      "words": "もやし・かいわれ・すぷらうと",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "myoga",
      "label": "みょうが",
      "sec": "野菜",
      "words": "みょうが・茗荷",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4586,7 +4632,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "長い茎もの（ねぎ）",
+   "note": "もやしは細い束、みょうがは小さな芽"
   },
   {
    "id": "f:tomato",
@@ -4598,35 +4646,35 @@
      "label": "とまと",
      "sec": "野菜",
      "words": "とまと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pepper",
      "label": "ピーマン",
      "sec": "野菜",
      "words": "ぴーまん・ぱぷりか",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "avocado",
      "label": "あぼかど",
      "sec": "野菜",
      "words": "あぼかど",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pumpkin",
      "label": "かぼちゃ",
      "sec": "野菜",
      "words": "かぼちゃ・南瓜",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "winterMelon",
      "label": "とうがん",
      "sec": "野菜",
      "words": "とうがん・冬瓜",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4634,7 +4682,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "へたのついた丸い実（とまと）",
+   "note": "ピーマンは肩の張った角ばった形、あぼかどは洋梨形、かぼちゃは筋の入った扁球"
   },
   {
    "id": "f:wasabi",
@@ -4646,35 +4696,35 @@
      "label": "わさび",
      "sec": "調味料・粉",
      "words": "わさび・山葵",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "gingerTube",
      "label": "おろし生姜",
      "sec": "調味料・粉",
      "words": "おろし生姜・生姜ちゅーぶ・おろししょうが",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "garlicTube",
      "label": "おろしにんにく",
      "sec": "調味料・粉",
      "words": "おろしにんにく・にんにくちゅーぶ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mustard",
      "label": "マスタード",
      "sec": "調味料・粉",
      "words": "ますたーど",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "karashi",
      "label": "からし",
      "sec": "調味料・粉",
      "words": "からし・辛子",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 5,
@@ -4682,7 +4732,9 @@
     "調味料・粉"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "チューブ",
+   "note": "おろし生姜・おろしにんにく・マスタード・からしは、どれもチューブ。実物は同じ"
   },
   {
    "id": "f:wine",
@@ -4694,35 +4746,35 @@
      "label": "酒",
      "sec": "飲みもの",
      "words": "酒・日本酒・焼酎",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "wine",
      "label": "わいん",
      "sec": "飲みもの",
      "words": "わいん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "whisky",
      "label": "ウイスキー",
      "sec": "飲みもの",
      "words": "ういすきー・うぃすきー・ぶらんでー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "plum",
      "label": "梅酒",
      "sec": "飲みもの",
      "words": "梅酒・うめしゅ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cocktail",
      "label": "かくてる",
      "sec": "飲みもの",
      "words": "かくてる・さわー・れもんさわー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4730,7 +4782,9 @@
     "飲みもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "首の長い酒びん",
+   "note": "かくてるはグラスの飲みもの"
   },
   {
    "id": "g:gift",
@@ -4742,35 +4796,35 @@
      "label": "くりすます",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "present",
      "label": "ぷれぜんと",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "newYear",
      "label": "正月",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "mothersDay",
      "label": "母の日",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "birthdayCake",
      "label": "誕生日",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 5,
@@ -4778,7 +4832,9 @@
     "行事・そのほか"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "リボンのかかった箱",
+   "note": "くりすます・正月・母の日・誕生日は、それぞれ別の絵が要る行事"
   },
   {
    "id": "f:fish",
@@ -4790,28 +4846,28 @@
      "label": "魚",
      "sec": "肉・魚",
      "words": "魚・さかな・鮭",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "eel",
      "label": "うなぎ",
      "sec": "肉・魚",
      "words": "うなぎ・鰻・あなご",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "shirasu",
      "label": "しらす",
      "sec": "肉・魚",
      "words": "しらす・ちりめん・じゃこ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "grilledFish",
      "label": "焼き魚",
      "sec": "肉・魚",
      "words": "焼き魚・焼魚・ほっけ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -4819,7 +4875,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "魚一匹",
+   "note": "うなぎは細長い、しらすは小魚の群れ（袋入り）"
   },
   {
    "id": "f:hamburgSteak",
@@ -4831,28 +4889,28 @@
      "label": "ひき肉",
      "sec": "肉・魚",
      "words": "ひき肉・みんち・挽肉",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "hamburgSteak",
      "label": "ハンバーグ",
      "sec": "肉・魚",
      "words": "はんばーぐ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "meatball",
      "label": "ミートボール",
      "sec": "肉・魚",
      "words": "みーとぼーる・肉団子",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tsukune",
      "label": "つくね",
      "sec": "肉・魚",
      "words": "つくね",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -4860,7 +4918,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ハンバーグ（網目）",
+   "note": "ひき肉は山、ミートボール・つくねは丸と串"
   },
   {
    "id": "f:pasta",
@@ -4872,28 +4932,28 @@
      "label": "ぱすた",
      "sec": "パン・主食",
      "words": "ぱすた・すぱげってぃ・まかろに",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "driedNoodle",
      "label": "乾麺",
      "sec": "パン・主食",
      "words": "乾麺・中華麺・生麺",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "pastaSauce",
      "label": "パスタソース",
      "sec": "パン・主食",
      "words": "ぱすたそーす・みーとそーす・かるぼなーら",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "ramenSoup",
      "label": "ラーメンスープ",
      "sec": "パン・主食",
      "words": "らーめんすーぷ・つけ汁",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -4901,7 +4961,9 @@
     "パン・主食"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "パスタの皿とフォーク",
+   "note": "乾麺は束、パスタソースは瓶、ラーメンスープは袋"
   },
   {
    "id": "f:peas",
@@ -4913,28 +4975,28 @@
      "label": "大豆",
      "sec": "野菜",
      "words": "大豆・だいず・豆",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "peas",
      "label": "さやえんどう",
      "sec": "野菜",
      "words": "さやえんどう・きぬさや・ぐりんぴーす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "edamame",
      "label": "枝豆",
      "sec": "野菜",
      "words": "枝豆・えだまめ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "snapPeas",
      "label": "すなっぷ",
      "sec": "野菜",
      "words": "すなっぷ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -4942,7 +5004,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "豆のさや",
+   "note": "大豆はさやから出た粒"
   },
   {
    "id": "f:tempura",
@@ -4954,28 +5018,28 @@
      "label": "天ぷら",
      "sec": "惣菜・冷凍・乾物",
      "words": "天ぷら・てんぷら・かき揚げ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "croquette",
      "label": "ころっけ",
      "sec": "惣菜・冷凍・乾物",
      "words": "ころっけ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "friedFood",
      "label": "ふらい",
      "sec": "惣菜・冷凍・乾物",
      "words": "ふらい・揚げ物・唐揚げ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "springRoll",
      "label": "春巻",
      "sec": "惣菜・冷凍・乾物",
      "words": "春巻・はるまき",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -4983,7 +5047,9 @@
     "惣菜・冷凍・乾物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "えび天",
+   "note": "ころっけは小判形、ふらいは衣の切り身、春巻は筒"
   },
   {
    "id": "f:tofu",
@@ -4995,28 +5061,28 @@
      "label": "納豆",
      "sec": "大豆製品・和のもの",
      "words": "納豆・なっとう",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tofu",
      "label": "豆腐",
      "sec": "大豆製品・和のもの",
      "words": "豆腐・とうふ・厚揚げ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "konjac",
      "label": "こんにゃく",
      "sec": "大豆製品・和のもの",
      "words": "こんにゃく・蒟蒻・しらたき",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "fishCake",
      "label": "はんぺん",
      "sec": "大豆製品・和のもの",
      "words": "はんぺん・さつま揚げ・練り物",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5024,7 +5090,9 @@
     "大豆製品・和のもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "お椀に盛った豆腐（ごま散らし）",
+   "note": "納豆は糸を引く粒とパック、こんにゃくは灰色の板、はんぺんは白い三角。どれも豆腐の椀ではない"
   },
   {
    "id": "f:yogurt",
@@ -5036,28 +5104,28 @@
      "label": "生くりーむ",
      "sec": "乳製品・卵",
      "words": "生くりーむ・ほいっぷ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "yogurt",
      "label": "ヨーグルト",
      "sec": "乳製品・卵",
      "words": "よーぐると",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pudding",
      "label": "ぷりん",
      "sec": "乳製品・卵",
      "words": "ぷりん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "condensedMilk",
      "label": "れんにゅう",
      "sec": "乳製品・卵",
      "words": "れんにゅう・練乳・こんでんすみるく",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5065,7 +5133,9 @@
     "乳製品・卵"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "スプーンの刺さったカップ",
+   "note": "生くりーむは紙パック、れんにゅうはチューブ"
   },
   {
    "id": "g:bed",
@@ -5077,28 +5147,28 @@
      "label": "べっど",
      "sec": "家具・寝具",
      "words": "べっど・べっと・ベット",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mattress",
      "label": "まっとれす",
      "sec": "家具・寝具",
      "words": "まっとれす・敷きぱっど・べっどぱっど",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "futon",
      "label": "布団",
      "sec": "家具・寝具",
      "words": "布団・ふとん・掛け布団",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "pillow",
      "label": "枕",
      "sec": "家具・寝具",
      "words": "枕・まくら・まくらかばー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5106,7 +5176,9 @@
     "家具・寝具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ベッド",
+   "note": ""
   },
   {
    "id": "g:bowl",
@@ -5118,28 +5190,28 @@
      "label": "ざる",
      "sec": "キッチン道具",
      "words": "ざる・水切り",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "teacup",
      "label": "湯のみ",
      "sec": "キッチン道具",
      "words": "湯のみ・ゆのみ・湯呑",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "riceBowl",
      "label": "茶碗",
      "sec": "キッチン道具",
      "words": "茶碗・ちゃわん・ご飯茶碗",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "donburi",
      "label": "どんぶり",
      "sec": "キッチン道具",
      "words": "どんぶり・丼・丼ぶり",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -5147,7 +5219,9 @@
     "キッチン道具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "深い椀",
+   "note": "ざるは網の籠、湯のみは背の高い筒"
   },
   {
    "id": "g:fanAppl",
@@ -5159,28 +5233,28 @@
      "label": "扇風機",
      "sec": "家電・機器",
      "words": "扇風機・せんぷうき・さーきゅれーたー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "heater",
      "label": "ヒーター",
      "sec": "家電・機器",
      "words": "ひーたー・すとーぶ・電気ひーたー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "airConditioner",
      "label": "えあこん",
      "sec": "家電・機器",
      "words": "えあこん・くーらー・冷房",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "humidifier",
      "label": "加湿器",
      "sec": "家電・機器",
      "words": "加湿器・かしつき・除湿機",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5188,7 +5262,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "扇風機の羽",
+   "note": "ヒーター・えあこん・加湿器に羽は無い"
   },
   {
    "id": "g:mopStick",
@@ -5200,28 +5276,28 @@
      "label": "掃除",
      "sec": "掃除・洗濯",
      "words": "掃除・そうじ・ほうき",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mop",
      "label": "もっぷ",
      "sec": "掃除・洗濯",
      "words": "もっぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "floorWiper",
      "label": "フロアワイパー",
      "sec": "掃除・洗濯",
      "words": "ふろあわいぱー・わいぱー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "dustpan",
      "label": "ちりとり",
      "sec": "掃除・洗濯",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5229,7 +5305,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "柄の先の刷毛",
+   "note": ""
   },
   {
    "id": "g:service",
@@ -5241,28 +5319,28 @@
      "label": "クリーニング",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "gasStation",
      "label": "がそりんすたんど",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "carWash",
      "label": "洗車",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "coinLaundry",
      "label": "コインランドリー",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5270,7 +5348,9 @@
     "お店"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "ガソリンの給油機",
+   "note": "型の名前は service だが、絵は給油機。クリーニング・洗車・コインランドリーは別物"
   },
   {
    "id": "g:shelf",
@@ -5282,28 +5362,28 @@
      "label": "本棚",
      "sec": "家具・寝具",
      "words": "本棚・ほんだな・書棚",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "shelfUnit",
      "label": "棚",
      "sec": "家具・寝具",
      "words": "棚・たな・らっく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chestDrawers",
      "label": "たんす",
      "sec": "家具・寝具",
      "words": "たんす・箪笥・ちぇすと",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "storageBox",
      "label": "収納ぼっくす",
      "sec": "家具・寝具",
      "words": "収納ぼっくす・収納ケース・収納",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5311,7 +5391,9 @@
     "家具・寝具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "本の入った棚",
+   "note": "たんすは引き出し、収納ぼっくすは蓋のある箱"
   },
   {
    "id": "g:stamp",
@@ -5323,28 +5405,28 @@
      "label": "切手",
      "sec": "文具・書類",
      "words": "切手・きって・収入印紙",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "nameStamp",
      "label": "印鑑",
      "sec": "文具・書類",
      "words": "印鑑・いんかん・はんこ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "inkPad",
      "label": "朱肉",
      "sec": "文具・書類",
      "words": "朱肉・しゅにく・すたんぷ台",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "rubberStamp",
      "label": "すたんぷ",
      "sec": "文具・書類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 4,
@@ -5352,7 +5434,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "スタンプ（押す印）",
+   "note": "切手は紙、朱肉は平たい容器"
   },
   {
    "id": "g:train",
@@ -5364,28 +5448,28 @@
      "label": "駅",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "bus",
      "label": "ばす",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "busStop",
      "label": "ばす停",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "train",
      "label": "電車",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 4,
@@ -5393,7 +5477,9 @@
     "おでかけ"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "バス",
+   "note": "型の名前は train だが、絵はバス。電車・駅・ばす停は別物"
   },
   {
    "id": "f:amazake",
@@ -5405,21 +5491,21 @@
      "label": "ミルクティー",
      "sec": "飲みもの",
      "words": "みるくてぃー・ろいやるみるくてぃー",
-     "verdict": ""
+     "verdict": "move:f:water"
     },
     {
      "key": "aojiru",
      "label": "青汁",
      "sec": "飲みもの",
      "words": "青汁・あおじる",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "amazake",
      "label": "甘酒",
      "sec": "飲みもの",
      "words": "甘酒・あまざけ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5427,7 +5513,9 @@
     "飲みもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "首の細い小瓶",
+   "note": "ミルクティーはペットボトルで売られているので、そちらの絵へ。青汁は粉の小袋"
   },
   {
    "id": "f:bacon",
@@ -5439,21 +5527,21 @@
      "label": "ベーコン",
      "sec": "肉・魚",
      "words": "べーこん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "ham",
      "label": "はむ",
      "sec": "肉・魚",
      "words": "はむ・すぱむ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "prosciutto",
      "label": "生はむ",
      "sec": "肉・魚",
      "words": "生はむ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5461,7 +5549,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ベーコンの薄切り",
+   "note": "はむ・生はむも同じ『薄く切った加工肉のパック』"
   },
   {
    "id": "f:bread",
@@ -5473,21 +5563,21 @@
      "label": "ぱん",
      "sec": "パン・主食",
      "words": "ぱん・食パン・しょくぱん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sandwich",
      "label": "さんどいっち",
      "sec": "パン・主食",
      "words": "さんどいっち・さんど",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "toast",
      "label": "トースト",
      "sec": "パン・主食",
      "words": "とーすと",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5495,7 +5585,9 @@
     "パン・主食"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "山型の食パン",
+   "note": ""
   },
   {
    "id": "f:milk",
@@ -5507,21 +5599,21 @@
      "label": "牛乳",
      "sec": "乳製品・卵",
      "words": "牛乳・ぎゅうにゅう・みるく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "soyMilk",
      "label": "豆乳",
      "sec": "乳製品・卵",
      "words": "豆乳・とうにゅう",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "drinkYogurt",
      "label": "飲むよーぐると",
      "sec": "乳製品・卵",
      "words": "飲むよーぐると・のむよーぐると",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5529,7 +5621,9 @@
     "乳製品・卵"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "牛乳の紙パック",
+   "note": "豆乳・飲むよーぐるとも同じ紙パック"
   },
   {
    "id": "f:orange",
@@ -5541,21 +5635,21 @@
      "label": "みかん",
      "sec": "果物",
      "words": "みかん・蜜柑・おれんじ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "lemon",
      "label": "れもん",
      "sec": "果物",
      "words": "れもん・らいむ・ゆず",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "kumquat",
      "label": "きんかん",
      "sec": "果物",
      "words": "きんかん・金柑",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5563,7 +5657,9 @@
     "果物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "葉のついた丸い柑橘",
+   "note": "れもんは両端のとがった楕円"
   },
   {
    "id": "f:potato",
@@ -5575,21 +5671,21 @@
      "label": "じゃがいも",
      "sec": "野菜",
      "words": "じゃがいも・馬鈴薯・ぽてと",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sweetPotato",
      "label": "さつまいも",
      "sec": "野菜",
      "words": "さつまいも・薩摩芋・焼き芋",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "ginger",
      "label": "しょうが",
      "sec": "野菜",
      "words": "しょうが・生姜・じんじゃー",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -5597,7 +5693,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "いも（斑点のある楕円）",
+   "note": "しょうがはこぶの連なった根茎"
   },
   {
    "id": "f:roe",
@@ -5609,21 +5707,21 @@
      "label": "明太子",
      "sec": "肉・魚",
      "words": "明太子・めんたいこ・たらこ",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "roe",
      "label": "いくら",
      "sec": "肉・魚",
      "words": "いくら・数の子・かずのこ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "katsuobushi",
      "label": "鰹節",
      "sec": "肉・魚",
      "words": "鰹節・かつおぶし・かつお節",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -5631,7 +5729,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "いくらの軍艦巻き",
+   "note": "明太子は帯状のたらこ、鰹節は削り節の袋"
   },
   {
    "id": "g:bottomWear",
@@ -5643,21 +5743,21 @@
      "label": "ジーンズ",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "skirt",
      "label": "スカート",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "tights",
      "label": "たいつ",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5665,7 +5765,9 @@
     "衣類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ズボン",
+   "note": ""
   },
   {
    "id": "g:chair",
@@ -5677,21 +5779,21 @@
      "label": "椅子",
      "sec": "家具・寝具",
      "words": "椅子・いす・ちぇあ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "sofa",
      "label": "そふぁ",
      "sec": "家具・寝具",
      "words": "そふぁ・そふぁー・長椅子",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cushion",
      "label": "くっしょん",
      "sec": "家具・寝具",
      "words": "くっしょん・座布団・ざぶとん",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -5699,7 +5801,9 @@
     "家具・寝具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "肘掛けのある椅子",
+   "note": ""
   },
   {
    "id": "g:chip",
@@ -5711,21 +5815,21 @@
      "label": "sdかーど",
      "sec": "家電・機器",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "usbMemory",
      "label": "usbめもり",
      "sec": "家電・機器",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "disc",
      "label": "cd",
      "sec": "家電・機器",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -5733,7 +5837,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "SDカード",
+   "note": "usbめもりは差し込む棒、cdは円盤"
   },
   {
    "id": "g:outerWear",
@@ -5745,21 +5851,21 @@
      "label": "コート",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "jacket",
      "label": "じゃけっと",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "suit",
      "label": "スーツ",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5767,7 +5873,9 @@
     "衣類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "上着",
+   "note": "コート・じゃけっと・スーツは、どれも前開きの上着"
   },
   {
    "id": "g:stick",
@@ -5779,21 +5887,21 @@
      "label": "りっぷ",
      "sec": "衛生・美容",
      "words": "りっぷ・りっぷくりーむ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "lipstick",
      "label": "口紅",
      "sec": "衛生・美容",
      "words": "口紅・くちべに",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mascara",
      "label": "マスカラ",
      "sec": "衛生・美容",
      "words": "ますから・あいらいなー・あいしゃどう",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 3,
@@ -5801,7 +5909,9 @@
     "衛生・美容"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "口紅（繰り出す棒）",
+   "note": "マスカラは筆の入った細い筒"
   },
   {
    "id": "g:table",
@@ -5813,21 +5923,21 @@
      "label": "机",
      "sec": "家具・寝具",
      "words": "机・つくえ・ですく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "diningTable",
      "label": "テーブル",
      "sec": "家具・寝具",
      "words": "てーぶる・食卓・ちゃぶ台",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "kotatsu",
      "label": "こたつ",
      "sec": "家具・寝具",
      "words": "こたつ・炬燵・こたつ布団",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5835,7 +5945,9 @@
     "家具・寝具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "机",
+   "note": "テーブル・こたつも脚のある天板"
   },
   {
    "id": "g:testKit",
@@ -5847,21 +5959,21 @@
      "label": "検査きっと",
      "sec": "薬・健康",
      "words": "検査きっと・抗原・妊娠検査",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "healthCheck",
      "label": "健康診断",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "vaccination",
      "label": "予防接種",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 3,
@@ -5869,7 +5981,9 @@
     "薬・健康"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "注射器",
+   "note": "型の名前は testKit だが、絵は注射器。検査きっと・健康診断は別物"
   },
   {
    "id": "f:bento",
@@ -5881,14 +5995,14 @@
      "label": "弁当",
      "sec": "パン・主食",
      "words": "弁当・べんとう・惣菜",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "frozen",
      "label": "冷凍",
      "sec": "パン・主食",
      "words": "冷凍・れいとう・氷",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -5896,7 +6010,9 @@
     "パン・主食"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "仕切りのある弁当箱",
+   "note": "冷凍食品は、盛り付けられた出来合いの食事という点で同じ（既存の判断のまま）"
   },
   {
    "id": "f:broccoli",
@@ -5908,14 +6024,14 @@
      "label": "ブロッコリー",
      "sec": "野菜",
      "words": "ぶろっこりー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cauliflower",
      "label": "カリフラワー",
      "sec": "野菜",
      "words": "かりふらわー・芽きゃべつ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -5923,7 +6039,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "房のある花蕾",
+   "note": ""
   },
   {
    "id": "f:butter",
@@ -5935,14 +6053,14 @@
      "label": "バター",
      "sec": "乳製品・卵",
      "words": "ばたー",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "margarine",
      "label": "マーガリン",
      "sec": "乳製品・卵",
      "words": "まーがりん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -5950,7 +6068,9 @@
     "乳製品・卵"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "バターの塊とナイフ",
+   "note": ""
   },
   {
    "id": "f:chestnut",
@@ -5962,14 +6082,14 @@
      "label": "栗",
      "sec": "果物",
      "words": "栗・くり・ぎんなん",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "driedFruit",
      "label": "ドライフルーツ",
      "sec": "果物",
      "words": "どらいふるーつ・れーずん・ぷるーん",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -5977,7 +6097,9 @@
     "果物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "栗",
+   "note": ""
   },
   {
    "id": "f:frozenGyoza",
@@ -5989,14 +6111,14 @@
      "label": "冷凍餃子",
      "sec": "惣菜・冷凍・乾物",
      "words": "冷凍餃子・冷凍食品",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "saladPack",
      "label": "かっとやさい",
      "sec": "惣菜・冷凍・乾物",
      "words": "かっとやさい・さらだぱっく・千切りきゃべつ",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6004,7 +6126,9 @@
     "惣菜・冷凍・乾物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "餃子",
+   "note": "かっとやさいは袋入りの野菜"
   },
   {
    "id": "f:furikake",
@@ -6016,14 +6140,14 @@
      "label": "だし",
      "sec": "大豆製品・和のもの",
      "words": "だし・出汁・煮干し",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "furikake",
      "label": "ふりかけ",
      "sec": "大豆製品・和のもの",
      "words": "ふりかけ・お茶漬け・おちゃづけ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6031,7 +6155,9 @@
     "大豆製品・和のもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "振りかける容器",
+   "note": "だしぱっくは煮出す小袋"
   },
   {
    "id": "f:icePop",
@@ -6043,14 +6169,14 @@
      "label": "アイスバー",
      "sec": "惣菜・冷凍・乾物",
      "words": "あいすばー・がりがり・あいすきゃんでぃ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "shavedIce",
      "label": "かき氷",
      "sec": "惣菜・冷凍・乾物",
      "words": "かき氷・かきごおり",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6058,7 +6184,9 @@
     "惣菜・冷凍・乾物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "棒アイス",
+   "note": ""
   },
   {
    "id": "f:kamaboko",
@@ -6070,14 +6198,14 @@
      "label": "かまぼこ",
      "sec": "肉・魚",
      "words": "かまぼこ・蒲鉾・なると",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "chikuwa",
      "label": "ちくわ",
      "sec": "肉・魚",
      "words": "ちくわ・竹輪",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6085,7 +6213,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "板つきのかまぼこ",
+   "note": "ちくわは穴のあいた筒"
   },
   {
    "id": "f:mayo",
@@ -6097,14 +6227,14 @@
      "label": "けちゃっぷ",
      "sec": "調味料・粉",
      "words": "けちゃっぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "mayo",
      "label": "マヨネーズ",
      "sec": "調味料・粉",
      "words": "まよねーず・どれっしんぐ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6112,7 +6242,9 @@
     "調味料・粉"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "絞り出す容器",
+   "note": "けちゃっぷも同じ絞り出しボトル"
   },
   {
    "id": "f:onion",
@@ -6124,14 +6256,14 @@
      "label": "玉ねぎ",
      "sec": "野菜",
      "words": "玉ねぎ・たまねぎ・玉葱",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "garlic",
      "label": "にんにく",
      "sec": "野菜",
      "words": "にんにく・がーりっく",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6139,7 +6271,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "球根（玉ねぎ）",
+   "note": "にんにくも同じ球根の形"
   },
   {
    "id": "f:sausage",
@@ -6151,14 +6285,14 @@
      "label": "ソーセージ",
      "sec": "肉・魚",
      "words": "そーせーじ・ういんなー・ふらんく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "yakitori",
      "label": "焼き鳥",
      "sec": "肉・魚",
      "words": "焼き鳥・やきとり・焼鳥",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6166,7 +6300,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ソーセージの連なり",
+   "note": "焼き鳥は串"
   },
   {
    "id": "f:squid",
@@ -6178,14 +6314,14 @@
      "label": "いか",
      "sec": "肉・魚",
      "words": "いか・烏賊",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "octopus",
      "label": "たこ",
      "sec": "肉・魚",
      "words": "たこ・蛸",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6193,7 +6329,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "いか",
+   "note": ""
   },
   {
    "id": "f:sushi",
@@ -6205,14 +6343,14 @@
      "label": "刺身",
      "sec": "肉・魚",
      "words": "刺身・さしみ・寿司",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "tuna",
      "label": "つな",
      "sec": "肉・魚",
      "words": "つな・つな缶・しーちきん",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6220,7 +6358,9 @@
     "肉・魚"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "にぎり寿司",
+   "note": "つなは缶詰"
   },
   {
    "id": "f:teaBag",
@@ -6232,14 +6372,14 @@
      "label": "ティーバッグ",
      "sec": "飲みもの",
      "words": "てぃーばっぐ・紅茶ぱっく・お茶ぱっく",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "coffeeBeans",
      "label": "こーひー豆",
      "sec": "飲みもの",
      "words": "こーひー豆・珈琲豆・どりっぷ",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6247,7 +6387,9 @@
     "飲みもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ティーバッグ",
+   "note": ""
   },
   {
    "id": "f:turnip",
@@ -6259,14 +6401,14 @@
      "label": "かぶ",
      "sec": "野菜",
      "words": "かぶ・蕪",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "radish",
      "label": "らでぃっしゅ",
      "sec": "野菜",
      "words": "らでぃっしゅ・二十日大根",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6274,7 +6416,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "葉のついた丸い根菜",
+   "note": ""
   },
   {
    "id": "f:watermelon",
@@ -6286,14 +6430,14 @@
      "label": "すいか",
      "sec": "果物",
      "words": "すいか・西瓜",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "melon",
      "label": "めろん",
      "sec": "果物",
      "words": "めろん",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6301,7 +6445,9 @@
     "果物"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "すいかの一切れ",
+   "note": "めろんは網目の入った丸ごとの実"
   },
   {
    "id": "g:car",
@@ -6313,14 +6459,14 @@
      "label": "タクシー",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "car",
      "label": "自動車",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6328,7 +6474,9 @@
     "おでかけ"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "乗用車",
+   "note": ""
   },
   {
    "id": "g:eatery",
@@ -6340,14 +6488,14 @@
      "label": "れすとらん",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "cafe",
      "label": "かふぇ",
      "sec": "お店",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6355,7 +6503,9 @@
     "お店"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "交差したフォークとスプーン",
+   "note": "食べに行く場所、という一つの意味。かふぇもそこに入る"
   },
   {
    "id": "g:hanger",
@@ -6367,14 +6517,14 @@
      "label": "ハンガー",
      "sec": "掃除・洗濯",
      "words": "はんがー・物干し・ものほし",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "clothespin",
      "label": "洗濯ばさみ",
      "sec": "掃除・洗濯",
      "words": "洗濯ばさみ・せんたくばさみ・ぴんち",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6382,7 +6532,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ハンガー",
+   "note": ""
   },
   {
    "id": "g:inputDev",
@@ -6394,14 +6546,14 @@
      "label": "まうす",
      "sec": "家電・機器",
      "words": "まうす・わいやれすまうす",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "keyboardDevice",
      "label": "キーボード",
      "sec": "家電・機器",
      "words": "きーぼーど",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6409,7 +6561,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "キーボード",
+   "note": ""
   },
   {
    "id": "g:music",
@@ -6421,14 +6575,14 @@
      "label": "ギター",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "piano",
      "label": "ぴあの",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6436,7 +6590,9 @@
     "趣味・スポーツ"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ギター",
+   "note": ""
   },
   {
    "id": "g:remote",
@@ -6448,14 +6604,14 @@
      "label": "りもこん",
      "sec": "家電・機器",
      "words": "りもこん・りもーと",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "gamePad",
      "label": "ゲーム",
      "sec": "家電・機器",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6463,7 +6619,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "十字キー（ゲームのコントローラ）",
+   "note": "型の名前は remote だが、絵は十字キー。テレビのりもこんに十字キーは無い"
   },
   {
    "id": "g:smallAppl",
@@ -6475,14 +6633,14 @@
      "label": "ミキサー",
      "sec": "家電・機器",
      "words": "みきさー・ぶれんだー・ふーどぷろせっさー",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "coffeeMaker",
      "label": "コーヒーメーカー",
      "sec": "家電・機器",
      "words": "こーひーめーかー・えすぷれっそましん・こーひーましん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6490,7 +6648,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "コーヒーメーカー",
+   "note": ""
   },
   {
    "id": "g:support",
@@ -6502,14 +6662,14 @@
      "label": "サポーター",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "split"
     },
     {
      "key": "crutch",
      "label": "松葉杖",
      "sec": "薬・健康",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6517,7 +6677,9 @@
     "薬・健康"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "杖",
+   "note": "サポーターは巻くもので、突くものではない"
   },
   {
    "id": "g:tapeRoll",
@@ -6529,14 +6691,14 @@
      "label": "セロテープ",
      "sec": "文具・書類",
      "words": "せろてーぷ・てーぷ・がむてーぷ",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "correctionTape",
      "label": "修正てーぷ",
      "sec": "文具・書類",
      "words": "修正てーぷ・しゅうせいてーぷ・修正液",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 2,
@@ -6544,7 +6706,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "テープの輪",
+   "note": "修正てーぷは持ち手のある器具"
   },
   {
    "id": "g:trashCan",
@@ -6556,14 +6720,14 @@
      "label": "ごみ箱",
      "sec": "掃除・洗濯",
      "words": "ごみ箱・ごみばこ・だすとぼっくす",
-     "verdict": ""
+     "verdict": "keep"
     },
     {
      "key": "trashOut",
      "label": "ごみ出し",
      "sec": "掃除・洗濯",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 2,
@@ -6571,7 +6735,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ごみ箱",
+   "note": ""
   },
   {
    "id": "f:corn",
@@ -6583,7 +6749,7 @@
      "label": "とうもろこし",
      "sec": "野菜",
      "words": "とうもろこし・こーん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6591,7 +6757,9 @@
     "野菜"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "とうもろこし",
+   "note": ""
   },
   {
    "id": "f:egg",
@@ -6603,7 +6771,7 @@
      "label": "卵",
      "sec": "乳製品・卵",
      "words": "卵・たまご・玉子",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6611,7 +6779,9 @@
     "乳製品・卵"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "卵",
+   "note": ""
   },
   {
    "id": "f:iceCream",
@@ -6623,7 +6793,7 @@
      "label": "あいす",
      "sec": "乳製品・卵",
      "words": "あいす・あいすくりーむ・ぱるむ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6631,7 +6801,9 @@
     "乳製品・卵"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ソフトクリーム",
+   "note": ""
   },
   {
    "id": "f:mochi",
@@ -6643,7 +6815,7 @@
      "label": "餅",
      "sec": "大豆製品・和のもの",
      "words": "餅・もち・切り餅",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6651,7 +6823,9 @@
     "大豆製品・和のもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "鏡餅",
+   "note": ""
   },
   {
    "id": "f:onigiri",
@@ -6663,7 +6837,7 @@
      "label": "おにぎり",
      "sec": "パン・主食",
      "words": "おにぎり・おむすび",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6671,7 +6845,9 @@
     "パン・主食"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "おにぎり",
+   "note": ""
   },
   {
    "id": "f:pickles",
@@ -6683,7 +6859,7 @@
      "label": "漬物",
      "sec": "大豆製品・和のもの",
      "words": "漬物・つけもの・きむち",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6691,7 +6867,9 @@
     "大豆製品・和のもの"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "漬物の瓶",
+   "note": ""
   },
   {
    "id": "g:airplane",
@@ -6703,7 +6881,7 @@
      "label": "飛行機",
      "sec": "おでかけ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6711,7 +6889,9 @@
     "おでかけ"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "飛行機",
+   "note": ""
   },
   {
    "id": "g:bar",
@@ -6723,7 +6903,7 @@
      "label": "石鹸",
      "sec": "掃除・洗濯",
      "words": "石鹸・石けん・せっけん",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6731,7 +6911,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "石鹸",
+   "note": ""
   },
   {
    "id": "g:bathScale",
@@ -6743,7 +6925,7 @@
      "label": "はかり",
      "sec": "キッチン道具",
      "words": "はかり・きっちんすけーる・計り",
-     "verdict": ""
+     "verdict": "split"
     }
    ],
    "n": 1,
@@ -6751,7 +6933,9 @@
     "キッチン道具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "split",
+   "shape": "体重計",
+   "note": "はかり（調理用）は台に皿の載った別の道具。体重計ではない"
   },
   {
    "id": "g:belt",
@@ -6763,7 +6947,7 @@
      "label": "べると",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6771,7 +6955,9 @@
     "衣類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ベルト",
+   "note": ""
   },
   {
    "id": "g:bicycle",
@@ -6783,7 +6969,7 @@
      "label": "自転車",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6791,7 +6977,9 @@
     "趣味・スポーツ"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "自転車",
+   "note": ""
   },
   {
    "id": "g:bucket",
@@ -6803,7 +6991,7 @@
      "label": "ばけつ",
      "sec": "掃除・洗濯",
      "words": "ばけつ・洗面器",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6811,7 +6999,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "バケツ",
+   "note": ""
   },
   {
    "id": "g:calculator",
@@ -6823,7 +7013,7 @@
      "label": "電卓",
      "sec": "文具・書類",
      "words": "電卓・でんたく",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6831,7 +7021,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "電卓",
+   "note": ""
   },
   {
    "id": "g:camera",
@@ -6843,7 +7035,7 @@
      "label": "かめら",
      "sec": "家電・機器",
      "words": "かめら・でじかめ・一眼れふ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6851,7 +7043,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "カメラ",
+   "note": ""
   },
   {
    "id": "g:clock",
@@ -6863,7 +7057,7 @@
      "label": "時計",
      "sec": "家具・寝具",
      "words": "時計・とけい・掛け時計",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6871,7 +7065,9 @@
     "家具・寝具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "時計",
+   "note": ""
   },
   {
    "id": "g:detergentBottle",
@@ -6883,7 +7079,7 @@
      "label": "洗濯洗剤",
      "sec": "掃除・洗濯",
      "words": "洗濯洗剤・洗たく洗剤・衣料用洗剤",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6891,7 +7087,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "洗剤のボトル",
+   "note": ""
   },
   {
    "id": "g:eraser",
@@ -6903,7 +7101,7 @@
      "label": "消しごむ",
      "sec": "文具・書類",
      "words": "消しごむ・けしごむ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6911,7 +7109,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "消しごむ",
+   "note": ""
   },
   {
    "id": "g:folder",
@@ -6923,7 +7123,7 @@
      "label": "ふぁいる",
      "sec": "文具・書類",
      "words": "ふぁいる・くりあふぁいる・ふぉるだ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6931,7 +7131,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ふぁいる",
+   "note": ""
   },
   {
    "id": "g:hat",
@@ -6943,7 +7145,7 @@
      "label": "帽子",
      "sec": "衣類",
      "words": "帽子・ぼうし・きゃっぷ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6951,7 +7153,9 @@
     "衣類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "帽子",
+   "note": ""
   },
   {
    "id": "g:iron",
@@ -6963,7 +7167,7 @@
      "label": "あいろん",
      "sec": "家電・機器",
      "words": "あいろん・衣類すちーまー",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6971,7 +7175,9 @@
     "家電・機器"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "あいろん",
+   "note": ""
   },
   {
    "id": "g:maskWear",
@@ -6983,7 +7189,7 @@
      "label": "ますく",
      "sec": "掃除・洗濯",
      "words": "ますく・不織布",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -6991,7 +7197,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ますく",
+   "note": ""
   },
   {
    "id": "g:mirror",
@@ -7003,7 +7211,7 @@
      "label": "鏡",
      "sec": "家具・寝具",
      "words": "鏡・かがみ・みらー",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7011,7 +7219,9 @@
     "家具・寝具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "鏡",
+   "note": ""
   },
   {
    "id": "g:mosquito",
@@ -7023,7 +7233,7 @@
      "label": "蚊取り線香",
      "sec": "掃除・洗濯",
      "words": "蚊取り線香・かとりせんこう",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7031,7 +7241,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "蚊取り線香",
+   "note": ""
   },
   {
    "id": "g:necktie",
@@ -7043,7 +7255,7 @@
      "label": "ねくたい",
      "sec": "衣類",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7051,7 +7263,9 @@
     "衣類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ねくたい",
+   "note": ""
   },
   {
    "id": "g:petThing",
@@ -7063,7 +7277,7 @@
      "label": "ぺっと",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7071,7 +7285,9 @@
     "行事・そのほか"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "肉球",
+   "note": ""
   },
   {
    "id": "g:socks",
@@ -7083,7 +7299,7 @@
      "label": "靴下",
      "sec": "掃除・洗濯",
      "words": "靴下・くつした",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7091,7 +7307,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "靴下",
+   "note": ""
   },
   {
    "id": "g:stroller",
@@ -7103,7 +7321,7 @@
      "label": "ベビーカー",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7111,7 +7329,9 @@
     "ベビー・こども"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "ベビーカー",
+   "note": ""
   },
   {
    "id": "g:thermo",
@@ -7123,7 +7343,7 @@
      "label": "体温計",
      "sec": "薬・健康",
      "words": "体温計・たいおんけい",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7131,7 +7351,9 @@
     "薬・健康"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "体温計",
+   "note": ""
   },
   {
    "id": "g:timer",
@@ -7143,7 +7365,7 @@
      "label": "タイマー",
      "sec": "キッチン道具",
      "words": "たいまー・きっちんたいまー",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7151,7 +7373,9 @@
     "キッチン道具"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "タイマー",
+   "note": ""
   },
   {
    "id": "g:toiletRoll",
@@ -7163,7 +7387,7 @@
      "label": "キッチンペーパー",
      "sec": "掃除・洗濯",
      "words": "きっちんぺーぱー・きっちんたおる・ぺーぱーたおる",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7171,7 +7395,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "紙の巻きもの",
+   "note": "キッチンペーパーも同じ『芯に巻いた紙』"
   },
   {
    "id": "g:umbrella",
@@ -7183,7 +7409,7 @@
      "label": "傘",
      "sec": "文具・書類",
      "words": "傘・かさ・びにーる傘",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7191,7 +7417,9 @@
     "文具・書類"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "傘",
+   "note": ""
   },
   {
    "id": "g:vacuum",
@@ -7203,7 +7431,7 @@
      "label": "掃除機",
      "sec": "掃除・洗濯",
      "words": "掃除機・そうじき・ころころ",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7211,7 +7439,9 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "掃除機",
+   "note": ""
   },
   {
    "id": "g:wrap",
@@ -7223,7 +7453,7 @@
      "label": "あるみほいる",
      "sec": "掃除・洗濯",
      "words": "あるみほいる・ほいる・あるみはく",
-     "verdict": ""
+     "verdict": "keep"
     }
    ],
    "n": 1,
@@ -7231,16 +7461,18 @@
     "掃除・洗濯"
    ],
    "cross": false,
-   "verdict": ""
+   "verdict": "keep",
+   "shape": "刃のついた箱",
+   "note": "あるみほいるも同じ『刃のついた巻きもの箱』"
   }
  ],
  "verdicts": {
-  "pass": "段11a（またぐ52群）",
+  "pass": "段11a（またぐ52群）＋段11b（残り116群）",
   "done": "2026-09-16",
   "tally": {
-   "split": 131,
-   "keep": 180,
-   "move": 8
+   "split": 282,
+   "keep": 401,
+   "move": 9
   }
  },
  "applied": {
