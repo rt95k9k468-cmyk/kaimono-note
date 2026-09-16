@@ -81,7 +81,14 @@
          またはコピーして次のセッションで渡す先です。設定の
          「絵が見つからない言葉」と対になる場所ですが、あちらは「絵が
          無い」を自動で集めるのに対し、こちらは「絵はあるが違う」を
-         手で残します。 */
+         手で残します。
+
+         **困りごとは二種類あって、種類は自分で判る**（`kind`）——辞書が
+         その言葉を一つも引けないのが「言葉が無い」（`"missing"`）、
+         引けたのに出てきた絵が別物なのが「絵がちがう」（`"wrong"`）。
+         直しかたが根本から違います：前者は辞書に言葉を足せば済み、
+         後者は絵そのもの（型の割り当て）を直すしかない。分けずに
+         溜めると、渡された側がもう一度分け直すことになります。 */
       iconReports: [],
       // layout: "rows" | "tiles" — one setting for both lists, because a
       // person who wants square tiles wants them on the screen they are
@@ -567,7 +574,9 @@
     out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
     out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
     out.iconOverrides = (s.iconOverrides && typeof s.iconOverrides === "object" && !Array.isArray(s.iconOverrides)) ? s.iconOverrides : {};
-    out.iconReports = Array.isArray(s.iconReports) ? s.iconReports.filter((r) => r && r.id && r.text) : [];
+    out.iconReports = Array.isArray(s.iconReports)
+      ? s.iconReports.filter((r) => r && r.id && r.text).map(cleanIconReport)
+      : [];
 
     /* daily。この機能より前に保存された人には、空の箱を渡します。 */
     const arc = (s.archive && typeof s.archive === "object") ? s.archive : {};
@@ -2421,16 +2430,57 @@
     });
   }
 
+  /** 報告を一件、いまの形へそろえます。`kind` / `chosen` / `note` は
+      2026年9月に足した欄なので、それより前に残した報告は持っていません
+      ——**欠けていたら `gotIcon` から割り出します**（絵が出ていたなら
+      「絵がちがう」、出ていなかったなら「言葉が無い」）。読む側は、いつ
+      書かれた報告でも同じ形で受け取れます。
+
+      `reconcile()` から呼ばれる＝**load の経路にいる**ので、`function` 宣言で
+      置くこと（`const` で下に書くと TDZ で落ちます）。 */
+  function cleanIconReport(r) {
+    const gotIcon = String(r.gotIcon || "");
+    const kind = (r.kind === "missing" || r.kind === "wrong")
+      ? r.kind
+      : (gotIcon ? "wrong" : "missing");
+    return {
+      id: r.id,
+      text: String(r.text),
+      screen: String(r.screen || ""),
+      gotIcon,
+      kind,
+      /* 「正しくはこの絵」。報告のついでに選び直したものがあれば、その鍵。
+         「おまかせにする」を選んだときは空——**空文字列と「選んでいない」を
+         区別しません**。どちらも「正解はまだ言えていない」で同じなので
+         （`iconOverrides` が空を値に持たない理由とは、逆向きに同じ話です）。 */
+      chosen: String(r.chosen || ""),
+      note: String(r.note || ""),
+      createdAt: r.createdAt || "",
+    };
+  }
+
   /** 「この絵はちがう」の記録を1件足します。送り先が無いので、この端末に
-      残すだけです——見返す、またはコピーして次に伝える先。 */
-  function addIconReport({ text, screen, gotIcon }) {
+      残すだけです——見返す、またはコピーして次に伝える先。
+
+      `kind` は**呼ぶ側が渡します**。引く順番（やること＝こと辞書→品物辞書、
+      買うもの＝品物辞書）を知っているのは画面の側だけなので、ここで
+      引き直すと画面と違う答えを出しかねません。渡されなければ `gotIcon`
+      から割り出します。
+
+      同じ言葉・同じ画面の報告がすでにあれば**差し替えます**。同じ言葉が
+      並ぶと、渡された側は何件あるのか数えることになりますが、知りたいのは
+      「どの言葉が困っているか」だけなので。新しいほうが選び直した絵
+      （`chosen`）を持っている、という理由もあります。 */
+  function addIconReport({ text, screen, gotIcon, kind, chosen, note }) {
     const t = String(text || "").trim();
     if (!t) return;
+    const rec = cleanIconReport({
+      id: KN.util.uid("ir"), text: t, screen: screen || "", gotIcon: gotIcon || "",
+      kind, chosen, note, createdAt: KN.util.today(),
+    });
+    const same = (r) => r.text === rec.text && r.screen === rec.screen;
     update((s) => {
-      s.iconReports.unshift({
-        id: KN.util.uid("ir"), text: t, screen: screen || "", gotIcon: gotIcon || "",
-        createdAt: KN.util.today(),
-      });
+      s.iconReports = [rec, ...s.iconReports.filter((r) => !same(r))];
     });
   }
 
