@@ -876,8 +876,17 @@
     honey: ["doubanjiang", "gochujang", "peanutButter", "marmalade", "shioKoji"],
     /* 果物の缶詰は想像描きの型を畳んで消した（`ICON-DEIMAGINE.md`）。
        「缶」という同じ実物の入れ物なので `tin` へ——どちらもまだ想像描き
-       のまま（Phase 3未着手）だが、由来の統一は後回しにできる型の整理。 */
-    tin: ["cannedFruit", "cannedCorn", "cannedFish"],
+       のまま（Phase 3未着手）だが、由来の統一は後回しにできる型の整理。
+       段15の段0で `tuna` を足した——監査は `sushi`（にぎり寿司）の群で
+       見ていたので「別物」と出たが、ツナは缶で買うものなので、実物として
+       同じ入れもの。 */
+    tin: ["cannedFruit", "cannedCorn", "cannedFish", "tuna"],
+    /* 振りかける容器。段15の段0で、寄せすぎた型から引き取ったぶん
+       ——`spice` は `oil`（注ぐびん）から、`blackPepper` は `honey`
+       （ふた付きの瓶）から split されたが、監査自身の覚え書きが
+       「振りかけの小瓶」と書いている。**その形の絵はすでにここにある**ので、
+       新しく描くのではなく一枚へ回す。 */
+    furikake: ["spice", "blackPepper"],
     /* 菓子 */
     chips: ["nuts", "gummy", "marshmallow", "dryFood", "popcorn"],
     /* せんべい（`riceCracker`）は想像描きの型を畳んで消した
@@ -887,6 +896,10 @@
     cake: ["castella"],
     /* 飲みもの */
     water: ["milkTea", "oolong", "tea", "juice", "soda", "barleyTea", "drink"],
+    /* `coffee` の絵は**コーヒー豆一粒**（Phosphor Fill `coffee-bean-fill`）。
+       段15の段0で `coffeeBeans` を足した——監査は `teaBag`（ティーバッグ）の
+       群で見ていたので「別物」と出たが、こーひー豆そのものの絵がここにある。 */
+    coffee: ["coffeeBeans"],
     wine: ["sake", "whisky", "plum"],
     /* 惣菜・冷凍・乾物 */
     gratin: ["oden"],
