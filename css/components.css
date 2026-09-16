@@ -322,6 +322,32 @@ button, [role="tab"] {
 .icon-pick-name { font-weight: 700; }
 .icon-pick-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
 
+/* 「この絵はちがう、と記録する」。探す欄のすぐ下に置く小さな腕組みボタン
+   ——押すと「次に選ぶ絵と一緒に記録する」腕組み状態になり、そのまま
+   グリッドか「おまかせ」を選ぶと report が書かれる。地の色は icon-auto と
+   同じ考え方（is-on で基調色に染める）。 */
+.icon-report-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  transition: background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease);
+}
+.icon-report-toggle svg { width: 16px; height: 16px; flex: none; }
+.icon-report-toggle.is-on {
+  border-color: var(--c-primary);
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+}
+.icon-report-text { flex: 1; min-width: 0; }
+
 /* Six across on a phone: big enough to tell a jug from a bottle, small
    enough that the whole set is a few flicks rather than a scroll. */
 .icon-grid {

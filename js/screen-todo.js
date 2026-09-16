@@ -1778,6 +1778,10 @@
       <div class="stack" style="gap:14px">
         <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
                autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
+        <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
+          ${icon("flag")}
+          <span class="icon-report-text">この絵はちがう、と記録する</span>
+        </button>
         <div class="stack js-grids" style="gap:14px"></div>
       </div>
     `);
@@ -1785,7 +1789,29 @@
     const q = body.querySelector(".js-q");
     const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
 
+    /* product-sheet.js の openIconPicker と同じ仕掛け（腕を組んで、次の
+       choose() の結果を一緒に書く）。ここでの自動の推測は、行の絵と同じ
+       引き方（こと辞書 → 品物辞書、iconMarkHtml と同じ順）です。 */
+    let armed = false;
+    const reportBtn = body.querySelector(".js-report-toggle");
+    reportBtn.addEventListener("click", () => {
+      armed = !armed;
+      reportBtn.classList.toggle("is-on", armed);
+      reportBtn.setAttribute("aria-pressed", String(armed));
+      reportBtn.querySelector(".icon-report-text").textContent = armed
+        ? "次に選ぶ絵を「ちがう」として記録します"
+        : "この絵はちがう、と記録する";
+    });
+
     function choose(key) {
+      if (armed) {
+        const gotIcon = KN.iconsTodo.findKey(titleText || "") || KN.productIcons.findKey(titleText || "") || "";
+        store.addIconReport({
+          text: titleText || "", screen: "todo", gotIcon,
+          kind: gotIcon ? "wrong" : "missing", chosen: key || "",
+        });
+        KN.ui.toast("記録しました");
+      }
       KN.motion.fire("select");
       onChoose(key || null);
       handle.close();
@@ -1976,7 +2002,13 @@
                   aria-label="${t.title} を終わりにする">${checkMark()}</button>
           ${every ? html`<span class="todo-every">${every}</span>` : ""}
         </span>
-        ${todoMark(t)}
+        ${/* 一覧（棚）だけ：丸そのものを押すと、詳細の紙を経由せずアイコン
+              選びへ直行します——買うものの一覧（screen-list.js の js-emoji）
+              と同じ揃え。時間割の丸薬（.tl-node）はここには来ません、
+              あちらは時刻を持っている絵なので詳細の紙のままです。 */""}
+        <button type="button" class="todo-mark-btn js-icon-pick" aria-label="${t.title} の絵を選ぶ">
+          ${todoMark(t)}
+        </button>
         <button class="item-body">
           <span class="item-name">${t.title}</span>
           ${meta.length ? html`<span class="item-meta">${meta}</span>` : ""}
@@ -1993,6 +2025,13 @@
       haptic(12);
     });
     row.querySelector(".item-body").addEventListener("click", () => openSheet(t.id));
+
+    const iconBtn = row.querySelector(".js-icon-pick");
+    if (iconBtn) iconBtn.addEventListener("click", () => {
+      openTodoIconPicker(t.icon, t.title, (key) => {
+        store.updateTodo(t.id, { icon: key });
+      });
+    });
 
     KN.ui.swipeActions(wrap, row, {
       tiles,

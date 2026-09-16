@@ -1912,6 +1912,14 @@
      ここではその置き場所を出すだけです。食事メモの絵は出さなくなった
      ので（キリがなかったので）、いまはこの二画面ぶんです。
 
+     **困りごとは二種類あって、見出しも二つに割ります**（`kind`）。
+     「言葉が無い」は上の「絵が見つからない言葉」と近い話に見えますが、
+     あちらは辞書に一度も当たらなかった記録を**自動で**拾ったもの、
+     こちらは**手で**「この言葉には、まだ正しい絵が無い」と残したもの
+     ——絵選び紙で「おまかせにする」を選びながら報告すると、ここに載ります。
+     「絵がちがう」は自動では拾えません（辞書は当たっているので）。
+     選び直した絵があれば、そのまま次の直しの入力として使えます。
+
      **送り先はありません。** このアプリが外と話す唯一の口は中継所URLで、
      それは資格情報なので触れません（このファイルの最優先の約束事）。
      だから報告は**この端末に溜まるだけ**——見返す、またはコピーして
@@ -1922,22 +1930,22 @@
 
     const wrap = node(html`
       <section class="settings-group">
-        <h2 class="set-head is-flush">報告した絵のちがい</h2>
         ${/* 空のときと件があるときで、中身の形がまるごと変わります
               （一覧＋コピー行、か、一行の案内文か）。だから空にするのは
-              「入れ物」ではなく、その**中身**——js-rep-rows は常に同じ
+              「入れ物」ではなく、その**中身**——js-rep-body は常に同じ
               一つの要素のまま、中を repaint のたびに詰め替えます。
               前は空のとき要素ごと差し替えていて、二回目の repaint が
               もう外れた要素を触っていました。 */""}
         <div class="js-rep-body"></div>
-        <div class="set-card is-pad" style="margin-top:12px">
+        <h2 class="set-head is-flush">ことばを確かめる</h2>
+        <div class="set-card is-pad">
           <div style="display:flex;gap:8px">
             <input class="input js-rep-text" placeholder="例：一本満足バー" style="flex:1"
                    autocomplete="off" autocapitalize="off" spellcheck="false">
-            <button type="button" class="btn btn-soft js-rep-add">追加</button>
+            <button type="button" class="btn btn-soft js-rep-add">報告する</button>
           </div>
         </div>
-        <p class="set-foot is-flush">送り先はありません。次にお願いするときに、コピーして渡すための控えです。</p>
+        <p class="set-foot is-flush">辞書に当たれば「絵がちがう」、当たらなければ「言葉が無い」に、自分で振り分けます。送り先はありません。次にお願いするときに、コピーして渡すための控えです。</p>
       </section>
     `);
 
@@ -1945,7 +1953,7 @@
 
     function copyReports(reports) {
       const text = JSON.stringify(reports.map((r) => (
-        { screen: r.screen, text: r.text, gotIcon: r.gotIcon }
+        { kind: r.kind, screen: r.screen, text: r.text, gotIcon: r.gotIcon, chosen: r.chosen, note: r.note }
       )), null, 1);
       const ok = () => KN.ui.toast("コピーしました");
       const fallback = () => {
@@ -1968,18 +1976,28 @@
       }
     }
 
-    function paint() {
-      const reports = store.get().iconReports || [];
-      body.innerHTML = "";
+    /* 一つの種類ぶん（絵がちがう／言葉が無い）を、見出し・一覧・コピー行の
+       ひとかたまりで描きます。二つの見出しが同じ形をしていること・同じ
+       手つき（消す・コピー）を持つことを、ここ一か所で保ちます。 */
+    function kindBlock(kind, title, emptyText) {
+      const reports = (store.get().iconReports || []).filter((r) => r.kind === kind);
+      const frag = document.createDocumentFragment();
+      frag.append(node(html`<h2 class="set-head is-flush">${title}</h2>`));
+
       if (!reports.length) {
-        body.append(node(html`<div class="set-card"><p class="set-empty">いまのところ、ありません。</p></div>`));
-        return;
+        frag.append(node(html`<div class="set-card"><p class="set-empty">${emptyText}</p></div>`));
+        return frag;
       }
+
       const rows = node(html`<div class="set-card"></div>`);
       reports.forEach((r) => {
+        const detail = kind === "wrong"
+          ? `${screenLabel[r.screen] || r.screen || "？"}・いま出る絵：${iconLabel(r.gotIcon)}`
+              + (r.chosen ? `・正しくは：${iconLabel(r.chosen)}` : "")
+          : `${screenLabel[r.screen] || r.screen || "？"}`;
         const row = node(html`
           <div class="set-row">
-            <span class="set-title">${r.text}<span class="set-note">${screenLabel[r.screen] || r.screen || "？"}・いま出る絵：${iconLabel(r.gotIcon)}</span></span>
+            <span class="set-title">${r.text}<span class="set-note">${detail}</span></span>
             <button type="button" class="icon-btn js-rep-del" aria-label="「${r.text}」の報告を消す">${icon("close")}</button>
           </div>
         `);
@@ -1989,7 +2007,7 @@
         });
         rows.append(row);
       });
-      body.append(rows);
+      frag.append(rows);
 
       const copyRow = node(html`
         <div class="set-card" style="margin-top:12px">
@@ -2000,7 +2018,14 @@
         </div>
       `);
       copyRow.querySelector(".js-rep-copy").addEventListener("click", () => copyReports(reports));
-      body.append(copyRow);
+      frag.append(copyRow);
+      return frag;
+    }
+
+    function paint() {
+      body.innerHTML = "";
+      body.append(kindBlock("wrong", "報告した「絵がちがう」", "いまのところ、ありません。"));
+      body.append(kindBlock("missing", "報告した「言葉が無い」", "いまのところ、ありません。"));
     }
     paint();
 
@@ -2008,7 +2033,12 @@
       const input = wrap.querySelector(".js-rep-text");
       const text = input.value.trim();
       if (!text) return;
-      store.addIconReport({ text, screen: "shop", gotIcon: KN.productIcons.findKey(text) });
+      /* どの画面のつもりかを、この欄は知りません（品目にも用事にも
+         まだ結びついていない、思いついた言葉を確かめるための入口
+         なので）。両方の辞書に聞いて、当たったほうを採ります——こと
+         辞書→品物辞書は、やることの絵選び紙と同じ順番です。 */
+      const gotIcon = (KN.iconsTodo && KN.iconsTodo.findKey(text)) || KN.productIcons.findKey(text) || "";
+      store.addIconReport({ text, screen: "", gotIcon, kind: gotIcon ? "wrong" : "missing" });
       input.value = "";
       paint();
     });

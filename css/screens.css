@@ -903,6 +903,12 @@
   padding: 4px var(--sp-3) 4px 10px;
 }
 
+/* 丸そのものを押せるように包んだ器。買うものの .item-emoji.js-emoji と
+   同じ役目——中の .todo-mark は、包んでも直下の子と同じ扱いを受けます
+   （子孫セレクタなので、あいだにボタンを挟んでも `.item.todo:not(.is-tile)
+   .todo-mark` はそのまま効きます）。 */
+.todo-mark-btn { flex: none; }
+
 /* やることの絵。買うものの行と同じ 25px・同じ並び順（丸→絵→名前）に
    してあります。二つの画面を行き来したときに、目が同じところを見るように。 */
 .item.todo:not(.is-tile) .todo-mark {
