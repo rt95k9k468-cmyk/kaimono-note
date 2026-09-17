@@ -61,7 +61,8 @@
      "label": "旅館",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:hotel-rounded",
+     "note": "段15の束3：core 0.472／既存との最小 0.204（food:bread）／束内の最小 0.283（cash）。"
     },
     {
      "key": "museum",
@@ -423,7 +424,8 @@
      "label": "えこばっぐ",
      "sec": "掃除・洗濯",
      "words": "えこばっぐ・買い物袋・れじ袋",
-     "verdict": "split"
+     "verdict": "set:ph:tote-simple-fill",
+     "note": "段15の束3：core 0.728／既存との最小 0.19（food:orange）／束内の最小 0.241（radio）。"
     },
     {
      "key": "coolerBag",
@@ -953,7 +955,8 @@
      "label": "qr決済",
      "sec": "役所・お金",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:qr-code-fill",
+     "note": "段15の束3：core 0.543／既存との最小 0.306（goods:ovenToaster）／束内の最小 0.349（tennis）。"
     },
     {
      "key": "licenseCard",
@@ -967,14 +970,16 @@
      "label": "現金",
      "sec": "役所・お金",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:money-wavy-fill",
+     "note": "段15の束3：core 0.438／既存との最小 0.258（goods:tissue）／束内の最小 0.28（ticket）。"
     },
     {
      "key": "ticket",
      "label": "ちけっと",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:fluent:ticket-20-filled",
+     "note": "段15の束3：core 0.71／既存との最小 0.2（goods:battery）／束内の最小 0.261（delivery）。"
     }
    ],
    "n": 6,
@@ -1133,7 +1138,8 @@
      "label": "らじお",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:radio-fill",
+     "note": "段15の束3：core 0.524／既存との最小 0.246（goods:rack）／束内の最小 0.241（ecoBag）。"
     }
    ],
    "n": 5,
@@ -1548,7 +1554,8 @@
      "label": "ぴざ",
      "sec": "パン・主食",
      "words": "ぴざ・ぴっつぁ",
-     "verdict": "split"
+     "verdict": "set:material-symbols:local-pizza-rounded",
+     "note": "段15の束3：core 0.652／既存との最小 0.216（food:mushroom）／束内の最小 0.269（mapPin）。"
     },
     {
      "key": "burger",
@@ -1650,7 +1657,8 @@
      "label": "動物園",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:bear-fill",
+     "note": "段15の束3：core 0.649／既存との最小 0.237（goods:clock）／束内の最小 0.303（tennis）。"
     },
     {
      "key": "mountain",
@@ -1664,56 +1672,64 @@
      "label": "水族館",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:fish-fill",
+     "note": "段15の束3：core 0.691／既存との最小 0.249（food:potato）／束内の最小 0.278（candy）。"
     },
     {
      "key": "sea",
      "label": "海水浴",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:beach-access-rounded",
+     "note": "段15の束3：core 0.503／既存との最小 0.337（food:potatoSalad）／束内の最小 0.345（candy）。"
     },
     {
      "key": "onsen",
      "label": "温泉",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:tabler:bath-filled",
+     "note": "段15の束3：core 0.615／既存との最小 0.247（food:gratin）／束内の最小 0.243（carWash）。"
     },
     {
      "key": "golf",
      "label": "ごるふ",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:tabler:golf-filled",
+     "note": "段15の束3：core 0.343／既存との最小 0.224（food:wasabi）／束内の最小 0.307（mothersDay）。"
     },
     {
      "key": "soccerBall",
      "label": "サッカー",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:football-fill",
+     "note": "段15の束3：core 0.409／既存との最小 0.278（food:cabbage）／束内の最小 0.289（tennis）。"
     },
     {
      "key": "tennis",
      "label": "てにす",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:tennis-ball-fill",
+     "note": "段15の束3：core 0.637／既存との最小 0.234（food:curry）／束内の最小 0.286（cinema）。"
     },
     {
      "key": "movie",
      "label": "映画",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:film-slate-fill",
+     "note": "段15の束3：core 0.628／既存との最小 0.267（food:roe）／束内の最小 0.274（ecoBag）。"
     },
     {
      "key": "cinema",
      "label": "映画館",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:theaters-rounded",
+     "note": "段15の束3：core 0.541／既存との最小 0.221（goods:cloth）／束内の最小 0.286（tennis）。"
     }
    ],
    "n": 12,
@@ -2357,7 +2373,8 @@
      "label": "宅配便",
      "sec": "役所・お金",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:tabler:truck-filled",
+     "note": "段15の束3：core 0.616／既存との最小 0.201（goods:folder）／束内の最小 0.261（ticket）。"
     },
     {
      "key": "postBox",
@@ -2831,7 +2848,8 @@
      "label": "手芸",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:needle-fill",
+     "note": "段15の束3：core 0.495／既存との最小 0.237（food:springOnion）／束内の最小 0.313（candy）。"
     }
    ],
    "n": 3,
@@ -3013,7 +3031,8 @@
      "label": "待ち合わせ",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:map-pin-fill",
+     "note": "段15の束3：core 0.673／既存との最小 0.216（goods:mouse）／束内の最小 0.269（pizza）。"
     }
    ],
    "n": 2,
@@ -4161,7 +4180,8 @@
      "label": "飴",
      "sec": "菓子",
      "words": "飴・あめ・きゃんでぃ",
-     "verdict": "split"
+     "verdict": "set:mingcute:candy-fill",
+     "note": "段15の束3：core 0.63／既存との最小 0.204（food:carrot）／束内の最小 0.278（aquarium）。"
     },
     {
      "key": "caramel",
@@ -4840,7 +4860,8 @@
      "label": "くりすます",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:tabler:christmas-tree-filled",
+     "note": "段15の束3：core 0.671／既存との最小 0.213（goods:microphone）／束内の最小 0.266（mothersDay）。"
     },
     {
      "key": "present",
@@ -4854,21 +4875,24 @@
      "label": "正月",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:tabler:confetti-filled",
+     "note": "段15の束3：core 0.484／既存との最小 0.31（food:natto）／束内の最小 0.345（carWash）。"
     },
     {
      "key": "mothersDay",
      "label": "母の日",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:rose-fill",
+     "note": "段15の束3：core 0.611／既存との最小 0.228（goods:microphone）／束内の最小 0.266（christmas）。"
     },
     {
      "key": "birthdayCake",
      "label": "誕生日",
      "sec": "行事・そのほか",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:cake-rounded",
+     "note": "段15の束3：core 0.582／既存との最小 0.239（goods:trashBag）／束内の最小 0.312（carWash）。"
     }
    ],
    "n": 5,
@@ -5387,14 +5411,16 @@
      "label": "洗車",
      "sec": "お店",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:local-car-wash-rounded",
+     "note": "段15の束3：core 0.418／既存との最小 0.243（food:miso）／束内の最小 0.243（onsen）。"
     },
     {
      "key": "coinLaundry",
      "label": "コインランドリー",
      "sec": "お店",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:laundry-rounded",
+     "note": "段15の束3：core 0.584／既存との最小 0.251（goods:topWear）／束内の最小 0.279（pizza）。"
     }
    ],
    "n": 4,
@@ -5502,7 +5528,8 @@
      "label": "駅",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:subway-rounded",
+     "note": "段15の束3：core 0.467／既存との最小 0.25（goods:washingMachine）／束内の最小 0.302（soccerBall）。"
     },
     {
      "key": "bus",
@@ -5516,14 +5543,16 @@
      "label": "ばす停",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:bus-map-pin-rounded",
+     "note": "段15の束3：core 0.442／既存との最小 0.329（goods:microwave）／束内の最小 0.363（movie）。"
     },
     {
      "key": "train",
      "label": "電車",
      "sec": "おでかけ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:train-simple-fill",
+     "note": "段15の束3：core 0.541／既存との最小 0.236（goods:heater）／束内の最小 0.308（pizza）。"
     }
    ],
    "n": 4,
@@ -6647,7 +6676,8 @@
      "label": "ぴあの",
      "sec": "趣味・スポーツ",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:piano-keys-fill",
+     "note": "段15の束3：core 0.311／既存との最小 0.296（food:honey）／束内の最小 0.343（mothersDay）。"
     }
    ],
    "n": 2,
@@ -7537,11 +7567,11 @@
   "pass": "段11a（またぐ52群）＋段11b（残り116群） ＋段15の段0（描く前に枚数を減らす）",
   "done": "2026-09-16",
   "tally": {
-   "split": 229,
+   "split": 199,
    "keep": 401,
    "move": 15,
    "drop": 4,
-   "set": 19,
+   "set": 49,
    "traced": 23,
    "folded": 1
   },
@@ -7609,6 +7639,13 @@
    "lesson": "**塗りつぶしを閉じる強さは、絵ごとに測って決めること。** ミートボールは3pxだと左の玉の輪郭の切れ目（右の玉が重なるところ）から漏れて、右しか塗れなかった——6pxで両方とも塗れた。ところが同じ6pxをカマンベールに掛けると、絵ぜんぶが一つの角い塊に潰れる。一つの数で通せると思ってはいけない。",
    "lesson2": "**色つきのイラストも、輪郭を忠実にシルエットへ起こせる。** カマンベールは灰色の輪郭線を拾って中を塗りつぶし、内側の線を白い抜きとして残した。色（白い皮とクリーム色の中身）は落ちるが形はそのまま——線画と同じ手当てが、そのまま効く。",
    "lesson3": "**参考が画面の写しなら、絵のところだけ切り出すこと。** ミートボールの参考は iPhone のスクリーンショットで、上の時刻の帯と下の検索欄が入っていた。切らずに掛けると、それごと輪郭になる。"
+  },
+  "stage15_bundle3": {
+   "done": "2026-09-17",
+   "shelf": "趣味・おでかけ・役所・行事・お店＋evalの残り＝33鍵",
+   "result": "30枚をセットから採った。3鍵は意味の合う絵が無く参考画像待ち（哺乳瓶・ホットドッグ・クリーニング）。",
+   "lesson": "**距離 0.000 は「同じ絵がすでにある」の合図。** この束で三度出た——肉球（動物園の候補）が `petThing` と、はさみ（手芸の候補）が `scissors` と、衣紋掛け（クリーニングの候補）が `hanger` と。core の高さで選ぶ前に、まずここを見ること。",
+   "lesson2": "**core がいちばん高い候補が、いちばん意味の合う候補とは限らない。** 映画は「脚本の紙」が core 0.70 で首位に来たが採らなかった（字の書かれた紙で、映画ではない）。サッカーは楕円のアメフト球と兜が 0.64・0.59 で並び、正しい五角形の球は 0.41 だった。ゴルフは球とティーが 0.61 だが `iceCream` と 0.155 で溶けるので、旗（0.343）を採った。"
   }
  },
  "applied": {
