@@ -33,7 +33,8 @@
      "label": "病院",
      "sec": "薬・健康",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:hospital-fill",
+     "note": "段15の束4〜6：core 0.428／既存との最小 0.329（food:cookie）／束内の最小 0.321（massager）。"
     },
     {
      "key": "school",
@@ -214,7 +215,8 @@
      "label": "香水",
      "sec": "衛生・美容",
      "words": "香水・こうすい・おーでとわれ",
-     "verdict": "split"
+     "verdict": "set:material-symbols:fragrance-rounded",
+     "note": "段15の束4〜6：core 0.554／既存との最小 0.304（food:natto）／束内の最小 0.308（hairSpray）。"
     },
     {
      "key": "contactSolution",
@@ -288,14 +290,16 @@
      "label": "らぐ",
      "sec": "家具・寝具",
      "words": "らぐ・かーぺっと・絨毯",
-     "verdict": "split"
+     "verdict": "set:ph:rug-fill",
+     "note": "段15の束4〜6：core 0.617／既存との最小 0.218（goods:clock）／束内の最小 0.283（schoolBag）。"
     },
     {
      "key": "curtain",
      "label": "カーテン",
      "sec": "家具・寝具",
      "words": "かーてん・れーすかーてん・遮光かーてん",
-     "verdict": "split"
+     "verdict": "set:mingcute:curtain-fill",
+     "note": "段15の束4〜6：core 0.558／既存との最小 0.285（goods:carryBag）／束内の最小 0.407（storageBox）。"
     },
     {
      "key": "doormat",
@@ -439,7 +443,8 @@
      "label": "らんどせる",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:backpack-fill",
+     "note": "段15の束4〜6：core 0.464／既存との最小 0.25（food:onigiri）／束内の最小 0.283（rug）。"
     },
     {
      "key": "babyCarrier",
@@ -647,7 +652,8 @@
      "label": "筆",
      "sec": "文具・書類",
      "words": "筆・ふで・書道",
-     "verdict": "split"
+     "verdict": "set:ph:paint-brush-fill",
+     "note": "段15の束4〜6：core 0.485／既存との最小 0.247（goods:plugCable）／束内の最小 0.255（screwdriver）。"
     },
     {
      "key": "hairBrush",
@@ -734,14 +740,16 @@
      "label": "ヘアスプレー",
      "sec": "衛生・美容",
      "words": "へあすぷれー・けーぷ・すたいりんぐ",
-     "verdict": "split"
+     "verdict": "set:fluent:spray-can-16-filled",
+     "note": "段15の束4〜6：core 0.55／既存との最小 0.206（food:cupNoodle）／束内の最小 0.304（airFreshener）。"
     },
     {
      "key": "airFreshener",
      "label": "芳香剤",
      "sec": "衛生・美容",
      "words": "芳香剤・ほうこうざい・るーむふれぐらんす",
-     "verdict": "split"
+     "verdict": "set:material-symbols:air-freshener-rounded",
+     "note": "段15の束4〜6：core 0.658／既存との最小 0.178（goods:humidifier）／束内の最小 0.203（skirt）。"
     },
     {
      "key": "disinfectant",
@@ -1108,7 +1116,8 @@
      "label": "いやほん",
      "sec": "文具・書類",
      "words": "いやほん",
-     "verdict": "split"
+     "verdict": "set:material-symbols:earbud-left-rounded",
+     "note": "段15の束4〜6：core 0.627／既存との最小 0.286（food:mushroom）／束内の最小 0.335（whiteboard）。"
     },
     {
      "key": "speaker",
@@ -1163,7 +1172,8 @@
      "label": "生花",
      "sec": "衣類",
      "words": "生花・切り花・ふらわー",
-     "verdict": "split"
+     "verdict": "set:mingcute:flower-fill",
+     "note": "段15の束4〜6：core 0.471／既存との最小 0.248（food:turnip）／束内の最小 0.311（ceilingLight）。"
     },
     {
      "key": "plant",
@@ -1291,7 +1301,8 @@
      "label": "付箋",
      "sec": "文具・書類",
      "words": "付箋・ふせん・ぽすといっと",
-     "verdict": "split"
+     "verdict": "set:material-symbols:sticky-note-2-rounded",
+     "note": "段15の束4〜6：core 0.61／既存との最小 0.223（goods:bathScale）／束内の最小 0.253（labelSticker）。"
     },
     {
      "key": "copyPaper",
@@ -1319,7 +1330,8 @@
      "label": "シール",
      "sec": "文具・書類",
      "words": "しーる・らべる・ねーむしーる",
-     "verdict": "split"
+     "verdict": "set:ph:sticker-fill",
+     "note": "段15の束4〜6：core 0.732／既存との最小 0.259（goods:cloth）／束内の最小 0.253（stickyNote）。"
     },
     {
      "key": "document",
@@ -1547,7 +1559,8 @@
      "label": "餃子",
      "sec": "パン・主食",
      "words": "餃子・ぎょうざ・しゅうまい",
-     "verdict": "split"
+     "verdict": "set:tabler:dumpling-filled",
+     "note": "段15の束4〜6：core 0.798／既存との最小 0.2（goods:paintSet）／束内の最小 0.233（lemon）。"
     },
     {
      "key": "pizza",
@@ -1562,7 +1575,8 @@
      "label": "ハンバーガー",
      "sec": "パン・主食",
      "words": "はんばーがー・ばーがー・ふぁすとふーど",
-     "verdict": "split"
+     "verdict": "set:mingcute:hamburger-fill",
+     "note": "段15の束4〜6：core 0.57／既存との最小 0.216（goods:storageBox）／束内の最小 0.275（lemon）。"
     },
     {
      "key": "hotdog",
@@ -1576,7 +1590,8 @@
      "label": "お好み焼き",
      "sec": "パン・主食",
      "words": "お好み焼き・おこのみやき",
-     "verdict": "split"
+     "verdict": "set:material-symbols:okonomiyaki-rounded",
+     "note": "段15の束4〜6：core 0.589／既存との最小 0.2（goods:screw）／束内の最小 0.265（bagel）。"
     },
     {
      "key": "takoyaki",
@@ -1759,7 +1774,8 @@
      "label": "くりっぷ",
      "sec": "文具・書類",
      "words": "くりっぷ・ぜむくりっぷ",
-     "verdict": "split"
+     "verdict": "set:ph:paperclip-fill",
+     "note": "段15の束4〜6：core 0.491／既存との最小 0.223（food:curry）／束内の最小 0.252（screw）。"
     },
     {
      "key": "binderClip",
@@ -1801,14 +1817,16 @@
      "label": "まぐねっと",
      "sec": "文具・書類",
      "words": "まぐねっと・磁石・じしゃく",
-     "verdict": "split"
+     "verdict": "set:ph:magnet-straight-fill",
+     "note": "段15の束4〜6：core 0.578／既存との最小 0.243（goods:clock）／束内の最小 0.297（screw）。"
     },
     {
      "key": "screw",
      "label": "ねじ",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:nut-fill",
+     "note": "段15の束4〜6：core 0.7／既存との最小 0.204（food:curry）／束内の最小 0.252（paperClip）。"
     },
     {
      "key": "hook",
@@ -2271,7 +2289,8 @@
      "label": "赤ちゃん",
      "sec": "掃除・洗濯",
      "words": "赤ちゃん・べびー・乳児",
-     "verdict": "split"
+     "verdict": "set:ph:baby-fill",
+     "note": "段15の束4〜6：core 0.621／既存との最小 0.202（goods:outerWear）／束内の最小 0.342（bulb）。"
     },
     {
      "key": "nursery",
@@ -2285,7 +2304,8 @@
      "label": "ベビーゲート",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:tabler:fence-filled",
+     "note": "段15の束4〜6：core 0.493／既存との最小 0.263（food:miso）／束内の最小 0.303（rug）。"
     },
     {
      "key": "babyBath",
@@ -2299,7 +2319,8 @@
      "label": "ベビーベッド",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "move:g:babyRoom",
+     "note": "段15の束5：候補（`ms:crib-rounded`）が、使われないまま残していた `babyRoom` の絵と距離 0.000＝同じ絵だった。新しい一枚は要らない。"
     }
    ],
    "n": 5,
@@ -2322,7 +2343,8 @@
      "label": "紙こっぷ",
      "sec": "掃除・洗濯",
      "words": "紙こっぷ・かみこっぷ",
-     "verdict": "split"
+     "verdict": "set:fluent:drink-to-go-24-filled",
+     "note": "段15の束4〜6：core 0.53／既存との最小 0.25（food:smoothie）／束内の最小 0.272（bulb）。"
     },
     {
      "key": "measuringCup",
@@ -2528,7 +2550,8 @@
      "label": "ホワイトボード",
      "sec": "文具・書類",
      "words": "ほわいとぼーど・黒板・こくばん",
-     "verdict": "split"
+     "verdict": "set:ph:chalkboard-fill",
+     "note": "段15の束4〜6：core 0.436／既存との最小 0.23（goods:topWear）／束内の最小 0.327（screwdriver）。"
     },
     {
      "key": "tv",
@@ -2604,7 +2627,8 @@
      "label": "マッサージ",
      "sec": "衛生・美容",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:material-symbols:massage-rounded",
+     "note": "段15の束4〜6：core 0.465／既存との最小 0.285（food:icePop）／束内の最小 0.321（hospital）。"
     }
    ],
    "n": 4,
@@ -2648,7 +2672,8 @@
      "label": "ブーツ",
      "sec": "衣類",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:ph:boot-fill",
+     "note": "段15の束4〜6：core 0.495／既存との最小 0.205（goods:delivery）／束内の最小 0.321（hospital）。"
     }
    ],
    "n": 4,
@@ -2685,14 +2710,16 @@
      "label": "ドライバー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:screwdriver-fill",
+     "note": "段15の束4〜6：core 0.512／既存との最小 0.213（goods:penTool）／束内の最小 0.255（paintBrush）。"
     },
     {
      "key": "hammer",
      "label": "ハンマー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:hammer-fill",
+     "note": "段15の束4〜6：core 0.604／既存との最小 0.247（goods:tube）／束内の最小 0.398（earphone）。"
     }
    ],
    "n": 4,
@@ -2797,7 +2824,8 @@
      "label": "電球",
      "sec": "掃除・洗濯",
      "words": "電球・でんきゅう・led電球",
-     "verdict": "split"
+     "verdict": "set:ph:lightbulb-fill",
+     "note": "段15の束4〜6：core 0.675／既存との最小 0.187（food:iceCream）／束内の最小 0.272（paperCup）。"
     },
     {
      "key": "deskLamp",
@@ -2811,7 +2839,8 @@
      "label": "シーリングライト",
      "sec": "家具・寝具",
      "words": "しーりんぐらいと・しーりんぐ・天井照明",
-     "verdict": "split"
+     "verdict": "set:mingcute:ceiling-lamp-fill",
+     "note": "段15の束4〜6：core 0.515／既存との最小 0.238（food:turnip）／束内の最小 0.29（schoolBag）。"
     }
    ],
    "n": 3,
@@ -2841,7 +2870,8 @@
      "label": "ぬいぐるみ",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:fluent:teddy-24-filled",
+     "note": "段15の束4〜6：core 0.602／既存との最小 0.221（goods:zoo）／束内の最小 0.31（rug）。"
     },
     {
      "key": "handcraft",
@@ -2940,7 +2970,8 @@
      "label": "カレンダー",
      "sec": "文具・書類",
      "words": "かれんだー・暦・日めくり",
-     "verdict": "split"
+     "verdict": "set:ph:calendar-blank-fill",
+     "note": "段15の束4〜6：core 0.661／既存との最小 0.236（goods:bathScale）／束内の最小 0.286（stickyNote）。"
     }
    ],
    "n": 2,
@@ -3001,7 +3032,8 @@
      "label": "カッター",
      "sec": "文具・書類",
      "words": "かったー",
-     "verdict": "split"
+     "verdict": "set:tabler:blade-filled",
+     "note": "段15の束4〜6：core 0.613／既存との最小 0.233（goods:diaper）／束内の最小 0.333（paintSet）。"
     }
    ],
    "n": 2,
@@ -3296,7 +3328,8 @@
      "label": "ふらい返し",
      "sec": "キッチン道具",
      "words": "ふらい返し・ふらいがえし・たーなー",
-     "verdict": "split"
+     "verdict": "set:mingcute:spatula-fill",
+     "note": "段15の束4〜6：core 0.507／既存との最小 0.237（goods:music）／束内の最小 0.369（paperCup）。"
     },
     {
      "key": "whisk",
@@ -3430,7 +3463,8 @@
      "label": "絵の具",
      "sec": "文具・書類",
      "words": "絵の具・えのぐ・水彩",
-     "verdict": "split"
+     "verdict": "set:mingcute:palette-fill",
+     "note": "段15の束4〜6：core 0.704／既存との最小 0.229（food:curry）／束内の最小 0.282（paperClip）。"
     },
     {
      "key": "inkCartridge",
@@ -3567,7 +3601,8 @@
      "label": "団子",
      "sec": "菓子",
      "words": "団子・だんご・みたらし",
-     "verdict": "split"
+     "verdict": "set:material-symbols:hanami-dango-rounded",
+     "note": "段15の束4〜6：core 0.682／既存との最小 0.218（goods:utensil）／束内の最小 0.258（yakitori）。"
     },
     {
      "key": "manju",
@@ -4002,7 +4037,8 @@
      "label": "錠剤",
      "sec": "薬・健康",
      "words": "錠剤・じょうざい",
-     "verdict": "split"
+     "verdict": "set:tabler:pill-filled",
+     "note": "段15の束4〜6：core 0.564／既存との最小 0.235（goods:eraser）／束内の最小 0.283（testKit）。"
     },
     {
      "key": "coldMedicine",
@@ -4238,14 +4274,16 @@
      "label": "ばげっと",
      "sec": "パン・主食",
      "words": "ばげっと・ふらんすぱん",
-     "verdict": "split"
+     "verdict": "set:mingcute:bread-fill",
+     "note": "段15の束4〜6：core 0.643／既存との最小 0.214（goods:diaper）／束内の最小 0.242（dumpling）。"
     },
     {
      "key": "bagel",
      "label": "ベーグル",
      "sec": "パン・主食",
      "words": "べーぐる",
-     "verdict": "split"
+     "verdict": "set:mingcute:donut-fill",
+     "note": "段15の束4〜6：core 0.459／既存との最小 0.236（food:curry）／束内の最小 0.265（okonomiyaki）。"
     },
     {
      "key": "sweetBun",
@@ -4574,7 +4612,8 @@
      "label": "さくらんぼ",
      "sec": "果物",
      "words": "さくらんぼ・ちぇりー",
-     "verdict": "split"
+     "verdict": "set:tabler:cherry-filled",
+     "note": "段15の束4〜6：core 0.585／既存との最小 0.304（goods:fanAppl）／束内の最小 0.326（avocado）。"
     },
     {
      "key": "blueberry",
@@ -4724,14 +4763,16 @@
      "label": "あぼかど",
      "sec": "野菜",
      "words": "あぼかど",
-     "verdict": "split"
+     "verdict": "set:ph:avocado-fill",
+     "note": "段15の束4〜6：core 0.635／既存との最小 0.237（food:pickles）／束内の最小 0.326（cherry）。"
     },
     {
      "key": "pumpkin",
      "label": "かぼちゃ",
      "sec": "野菜",
      "words": "かぼちゃ・南瓜",
-     "verdict": "split"
+     "verdict": "set:mingcute:pumpkin-fill",
+     "note": "段15の束4〜6：core 0.514／既存との最小 0.244（goods:baby）／束内の最小 0.283（okonomiyaki）。"
     },
     {
      "key": "winterMelon",
@@ -4838,7 +4879,8 @@
      "label": "かくてる",
      "sec": "飲みもの",
      "words": "かくてる・さわー・れもんさわー",
-     "verdict": "split"
+     "verdict": "set:ph:martini-fill",
+     "note": "段15の束4〜6：core 0.343／既存との最小 0.265（food:turnip）／束内の最小 0.393（dango）。"
     }
    ],
    "n": 5,
@@ -5456,14 +5498,16 @@
      "label": "たんす",
      "sec": "家具・寝具",
      "words": "たんす・箪笥・ちぇすと",
-     "verdict": "split"
+     "verdict": "set:material-symbols:dresser-rounded",
+     "note": "段15の束4〜6：core 0.435／既存との最小 0.272（goods:dishwasher）／束内の最小 0.337（plushToy）。"
     },
     {
      "key": "storageBox",
      "label": "収納ぼっくす",
      "sec": "家具・寝具",
      "words": "収納ぼっくす・収納ケース・収納",
-     "verdict": "split"
+     "verdict": "set:mingcute:storage-fill",
+     "note": "段15の束4〜6：core 0.623／既存との最小 0.221（goods:bathScale）／束内の最小 0.347（chestDrawers）。"
     }
    ],
    "n": 4,
@@ -5725,7 +5769,8 @@
      "label": "れもん",
      "sec": "果物",
      "words": "れもん・らいむ・ゆず",
-     "verdict": "split"
+     "verdict": "set:tabler:lemon-2-filled",
+     "note": "段15の束4〜6：core 0.811／既存との最小 0.231（food:coffee）／束内の最小 0.233（dumpling）。"
     },
     {
      "key": "kumquat",
@@ -5833,7 +5878,8 @@
      "label": "スカート",
      "sec": "衣類",
      "words": "",
-     "verdict": "split"
+     "verdict": "set:mingcute:skirt-fill",
+     "note": "段15の束4〜6：core 0.604／既存との最小 0.241（goods:usbMemory）／束内の最小 0.203（airFreshener）。"
     },
     {
      "key": "tights",
@@ -6046,7 +6092,8 @@
      "label": "検査きっと",
      "sec": "薬・健康",
      "words": "検査きっと・抗原・妊娠検査",
-     "verdict": "split"
+     "verdict": "set:ph:test-tube-fill",
+     "note": "段15の束4〜6：core 0.488／既存との最小 0.216（goods:eraser）／束内の最小 0.283（pillSheet）。"
     },
     {
      "key": "healthCheck",
@@ -6267,7 +6314,8 @@
      "label": "かき氷",
      "sec": "惣菜・冷凍・乾物",
      "words": "かき氷・かきごおり",
-     "verdict": "split"
+     "verdict": "set:material-symbols:shaved-ice-rounded",
+     "note": "段15の束4〜6：core 0.511／既存との最小 0.237（goods:birthdayCake）／束内の最小 0.344（bagel）。"
     }
    ],
    "n": 2,
@@ -6383,7 +6431,8 @@
      "label": "焼き鳥",
      "sec": "肉・魚",
      "words": "焼き鳥・やきとり・焼鳥",
-     "verdict": "split"
+     "verdict": "set:material-symbols:yakitori-rounded",
+     "note": "段15の束4〜6：core 0.701／既存との最小 0.216（food:meatball）／束内の最小 0.258（dango）。"
     }
    ],
    "n": 2,
@@ -6530,7 +6579,8 @@
      "label": "めろん",
      "sec": "果物",
      "words": "めろん",
-     "verdict": "split"
+     "verdict": "set:tabler:melon-filled",
+     "note": "段15の束4〜6：core 0.732／既存との最小 0.241（food:banana）／束内の最小 0.37（okonomiyaki）。"
     }
    ],
    "n": 2,
@@ -7022,7 +7072,8 @@
      "label": "はかり",
      "sec": "キッチン道具",
      "words": "はかり・きっちんすけーる・計り",
-     "verdict": "split"
+     "verdict": "set:material-symbols:scale-rounded",
+     "note": "段15の束4〜6：core 0.384／既存との最小 0.342（goods:ovenToaster）／束内の最小 0.445（bulb）。"
     }
    ],
    "n": 1,
@@ -7567,11 +7618,11 @@
   "pass": "段11a（またぐ52群）＋段11b（残り116群） ＋段15の段0（描く前に枚数を減らす）",
   "done": "2026-09-16",
   "tally": {
-   "split": 199,
+   "split": 148,
    "keep": 401,
-   "move": 15,
+   "move": 16,
    "drop": 4,
-   "set": 49,
+   "set": 99,
    "traced": 23,
    "folded": 1
   },
@@ -7646,6 +7697,13 @@
    "result": "30枚をセットから採った。3鍵は意味の合う絵が無く参考画像待ち（哺乳瓶・ホットドッグ・クリーニング）。",
    "lesson": "**距離 0.000 は「同じ絵がすでにある」の合図。** この束で三度出た——肉球（動物園の候補）が `petThing` と、はさみ（手芸の候補）が `scissors` と、衣紋掛け（クリーニングの候補）が `hanger` と。core の高さで選ぶ前に、まずここを見ること。",
    "lesson2": "**core がいちばん高い候補が、いちばん意味の合う候補とは限らない。** 映画は「脚本の紙」が core 0.70 で首位に来たが採らなかった（字の書かれた紙で、映画ではない）。サッカーは楕円のアメフト球と兜が 0.64・0.59 で並び、正しい五角形の球は 0.41 だった。ゴルフは球とティーが 0.61 だが `iceCream` と 0.155 で溶けるので、旗（0.343）を採った。"
+  },
+  "stage15_bundle4to6": {
+   "done": "2026-09-17",
+   "result": "文具・工具31鍵→13枚／台所・掃除35鍵→5枚／衛生・薬・家具・ベビー・衣類41鍵→18枚＋move 1／食品94鍵→14枚。合計201鍵を掛けて50枚＋move 1。",
+   "lesson": "**棚によって歩留まりがまるで違う。** 家電は23鍵中20枚（87%）、場所・行事は33鍵中30枚（91%）だったのに、台所道具は35鍵中5枚（14%）、食品は94鍵中14枚（15%）。UIアイコンセットは「機械と場所と記号」の語彙で、**手で使う道具と食べ物の語彙を持っていない**。`ICON-DEIMAGINE.md` が食材で測った12%が、道具にもそのまま当てはまる。",
+   "lesson2": "**Material Symbols には和食の絵がある**——焼き鳥・お好み焼き・団子・かき氷・うどん・そば・ラーメン。和食で詰まったら、まずこのセットを名前で引くこと。",
+   "lesson3": "**距離 0.000 は合計6回出た**（肉球＝petThing／はさみ＝scissors／衣紋掛け＝hanger／体温計＝thermo／絆創膏＝diaper／ゴム手袋＝glove）。そのうち一件は**拾いもの**だった——ベビーベッドの候補が、使われないまま残していた `babyRoom` の絵と同じで、新しい一枚を描かずに済んだ。"
   }
  },
  "applied": {
