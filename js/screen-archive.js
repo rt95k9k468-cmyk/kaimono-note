@@ -712,11 +712,8 @@
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
           </span>
           <span class="arc-log-text">
-            ${/* まだ何も書いていない日は、「-」ではなく**押せば書ける**と
-                  言います。無いことを数えた字にはしません（daily は評価
-                  しないので、「書けていない」とも言いません）。 */""}
             <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank ? "is-blank" : ""}"
-                  >${d.isBlank ? "押して、この日のことを書く" : orDash(d.memo)}</span>
+                  >${d.isBlank ? "—" : orDash(d.memo)}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
