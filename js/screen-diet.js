@@ -2154,7 +2154,7 @@
             <span class="diet-memo-body">${ai && ai.ai
               ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
                 + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
-              : "食べたものをAIに推してもらいます"}</span>
+              : "—"}</span>
           </button>
           <div class="diet-ai-btns">
             <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
@@ -2259,7 +2259,7 @@
            ${tappable ? U.raw('role="button" tabindex="0"') : ""}
            aria-label="${sl.label}${text ? "に食べたもの" : "を書く"}">
         <span class="diet-slot-ico">${icon(sl.ico)}</span>
-        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || `押して、${sl.label}を書く`}</span>
+        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || "—"}</span>
         <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
       </div>
     `);
