@@ -2151,10 +2151,8 @@
               <b>AI推計</b>
               <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
             </span>
-            <span class="diet-memo-body">${ai && ai.ai
-              ? `${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件`
-                + (ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : "")
-              : "—"}</span>
+            ${ai && ai.ai ? html`
+              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}</span>` : ""}
           </button>
           <div class="diet-ai-btns">
             <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>

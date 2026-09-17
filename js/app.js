@@ -763,6 +763,9 @@
     applyAccent(store.get().settings.accent || "orange");
     buildTabs();
 
+    // 閉じているあいだに日をまたいでいたら、終わらなかった用事を今日へ運ぶ。
+    store.rescheduleOverdue();
+
     const fromHash = location.hash.slice(1);
     show(KN.screens[fromHash] ? fromHash : HOME);
 
@@ -815,6 +818,7 @@
     let dueNow = store.todosDue().length;
     KN.app.onMinute = () => {
       const key = KN.util.todayKey();
+      if (key !== dayNow) store.rescheduleOverdue();
       const due = store.todosDue().length;
       if (key === dayNow && due === dueNow) return;
       dayNow = key;

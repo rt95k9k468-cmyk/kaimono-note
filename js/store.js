@@ -2034,6 +2034,27 @@
     });
   }
 
+  /**
+   * その日のうちに終わらなかった用事を、今日へ運びます。
+   *
+   * くり返しの用事は対象外です——`due` は「次にやる日」という別の意味を
+   * 持っていて、`fallsOn()` がすでに先の日にも出す仕組みを持っているので、
+   * ここでまで動かすと二重になります。
+   *
+   * 呼ぶ側（app.js）が日の変わり目を見つけて呼びます。ここは「今日より
+   * 前に居る、くり返しでない未完了」を今日へ動かすだけです。
+   */
+  function rescheduleOverdue() {
+    const today = KN.util.todayKey();
+    const staleIds = openTodos()
+      .filter((t) => !t.repeat && t.due && t.due < today)
+      .map((t) => t.id);
+    if (!staleIds.length) return;
+    update((s) => {
+      s.todos.forEach((t) => { if (staleIds.includes(t.id)) t.due = today; });
+    });
+  }
+
   /** Today's timed todos whose time has not come round yet — waiting, not due. */
   function todosWaiting() {
     const now = KN.util.nowTime();
@@ -3246,7 +3267,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, rescheduleOverdue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
