@@ -898,42 +898,268 @@
       .join("\n");
   }
 
+  /* 日ごとの一塊。`exportText` と、その下の「AIに分析してもらう」が
+     分け合います——書式を二か所に書くと、片方だけ直した日に二つの
+     書き出しが違う顔をします。
+
+     `opts` を渡さなければ、前からある書き出しと**一字もちがいません**。
+     増えるのは、渡されたぶんだけです（睡眠の型・食事の中身・運動・お酒の
+     一本ごと）。 */
+  function dayLine(r, opts) {
+    const o = opts || {};
+    const bits = [];
+    if (r.weightKg != null) {
+      bits.push(`体重${r.weightKg}kg`
+        + (r.weightTime ? `（${r.weightTime}）` : "")
+        + (r.fatPct != null ? `／体脂肪${r.fatPct}%` : "")
+        + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
+    }
+    if (r.steps != null) bits.push(`歩数${Math.round(r.steps).toLocaleString()}`);
+    if (r.burned != null) bits.push(`総消費${Math.round(r.burned).toLocaleString()}kcal`);
+    if (r.sleepMin != null) {
+      bits.push(`睡眠${Math.floor(r.sleepMin / 60)}時間${String(Math.round(r.sleepMin % 60)).padStart(2, "0")}分`
+        + (o.stages && r.stages ? `（${stageText(r.stages)}）` : ""));
+    }
+    if (r.kcal != null) {
+      bits.push(`摂取${r.kcal.toLocaleString()}kcal`
+        + (r.low != null && r.high != null ? `（${r.low}〜${r.high}）` : "")
+        + `／P${r.p} F${r.f} C${r.c}` + (r.fiber != null ? ` 繊維${r.fiber}` : ""));
+      if (r.kBreakfast != null) {
+        bits.push(`内わけ 朝${r.kBreakfast}／昼${r.kLunch}／夜${r.kDinner}／間食${r.kSnack}`);
+      }
+    }
+    if (r.alcoholG != null) bits.push(`飲酒 純アルコール${r.alcoholG}g（${r.drinks || ""}）`);
+    /* 数はまだ無くてメモだけ、という日があります（AIに聞く前）。
+       そこに「記録なし」と書くと、書いたものが無かったことになります。 */
+    const head = `■ ${r.day}` + (bits.length ? `　${bits.join("／")}` : "");
+    const tail = [];
+    if (o.foods && r.foods && r.foods.length) tail.push(`　食事：${foodText(r.foods, o.full)}`);
+    if (r.memo) tail.push(`　食事メモ：${String(r.memo).replace(/\n/g, " / ")}`);
+    if (o.foods && r.workouts && r.workouts.length) {
+      tail.push(`　運動：${r.workouts.map((w) => (w.label || "運動")
+        + (w.min != null ? `${Math.round(w.min)}分` : "")
+        + (w.kcal != null ? ` ${Math.round(w.kcal)}kcal` : "")).join("、")}`);
+    }
+    if (o.full && r.drinkList && r.drinkList.length) {
+      tail.push(`　お酒：${r.drinkList.map(drinkText).join("、")}`);
+    }
+    return [head].concat(tail).join("\n");
+  }
+
   /** AIに貼るための文。表よりも、日ごとの塊のほうが読み違えられません。 */
   function exportText(fromDay, toDay) {
     const rows = exportRows(fromDay, toDay).filter(hasSomething);
     if (!rows.length) return "";
-    const line = (r) => {
-      const bits = [];
-      if (r.weightKg != null) {
-        bits.push(`体重${r.weightKg}kg`
-          + (r.weightTime ? `（${r.weightTime}）` : "")
-          + (r.fatPct != null ? `／体脂肪${r.fatPct}%` : "")
-          + [r.meal, r.clothed].filter(Boolean).map((x) => `［${x}］`).join(""));
-      }
-      if (r.steps != null) bits.push(`歩数${Math.round(r.steps).toLocaleString()}`);
-      if (r.burned != null) bits.push(`総消費${Math.round(r.burned).toLocaleString()}kcal`);
-      if (r.sleepMin != null) bits.push(`睡眠${Math.floor(r.sleepMin / 60)}時間${String(Math.round(r.sleepMin % 60)).padStart(2, "0")}分`);
-      if (r.kcal != null) {
-        bits.push(`摂取${r.kcal.toLocaleString()}kcal`
-          + (r.low != null && r.high != null ? `（${r.low}〜${r.high}）` : "")
-          + `／P${r.p} F${r.f} C${r.c}` + (r.fiber != null ? ` 繊維${r.fiber}` : ""));
-        if (r.kBreakfast != null) {
-          bits.push(`内わけ 朝${r.kBreakfast}／昼${r.kLunch}／夜${r.kDinner}／間食${r.kSnack}`);
-        }
-      }
-      if (r.alcoholG != null) bits.push(`飲酒 純アルコール${r.alcoholG}g（${r.drinks || ""}）`);
-      /* 数はまだ無くてメモだけ、という日があります（AIに聞く前）。
-         そこに「記録なし」と書くと、書いたものが無かったことになります。 */
-      const head = `■ ${r.day}` + (bits.length ? `　${bits.join("／")}` : "");
-      return r.memo ? `${head}\n　食事メモ：${String(r.memo).replace(/\n/g, " / ")}` : head;
-    };
     return [
       `くらしノート 記録の書き出し（${rows[0].day}〜${rows[rows.length - 1].day}／${rows.length}日ぶん）`,
       "※ 摂取カロリーとPFCはAIによる推定を含みます。飲酒は摂取カロリーに含めていません。",
       "※ 書いていない項目は「未測定」です（0ではありません）。"
         + "体重は測った時刻・食前後・着衣のあるなしで動くので、分かっているものは添えてあります。",
       "",
-    ].concat(rows.map(line)).join("\n");
+    ].concat(rows.map((r) => dayLine(r, null))).join("\n");
+  }
+
+  /* ---------------- AIに分析してもらうための書き出し ----------------
+
+     「記録を書き出す」(exportText) と分けてあるのは、**宛先が違う**から
+     です。あちらは表計算で開く・あとで自分が読み返すためのもの。こちらは
+     AIに読ませて考えてもらうための一枚で、頭に問いが付き、睡眠の型と
+     食事の中身まで降ります。
+
+     `exportRows` には触っていません——あそこの列を増やすと、いままでの
+     CSVの形が変わります。足すぶんは、この下で**上から被せて**います。
+
+     送りません。組み立てるところまでです。出来たものを人がコピーして、
+     好きなAIに貼ります——アプリから外へ出す道は、ここには作りません。 */
+
+  const AI_DETAIL = ["summary", "named", "full"];
+
+  /** 聞きかたの下書き。文言をここに置くのは、貼る文の一部だからです。 */
+  const AI_ASKS = [
+    { id: "overview", label: "総合",
+      text: "この記録から読み取れることを教えてください。目立つ傾向と、気をつけたほうがよいことを。" },
+    { id: "weight", label: "体重",
+      text: "体重と体脂肪の動きについて、この記録から読み取れることを教えてください。" },
+    { id: "sleep", label: "睡眠",
+      text: "睡眠の長さと型が、食事・体重・歩数とどう関わっているか教えてください。" },
+    { id: "meal", label: "食事",
+      text: "食事の内容とカロリー・PFCのバランスについて、気づいたことを教えてください。" },
+    { id: "drink", label: "飲酒",
+      text: "飲酒が、体重・睡眠・食事にどう関わっているか教えてください。" },
+    { id: "energy", label: "消費",
+      text: "摂取カロリーと総消費カロリーの差が、体重の動きとどう合っているか教えてください。" },
+  ];
+
+  /* 分を「N時間M分」に。1時間を超えたものだけ分を二桁にします——同じ行に
+     睡眠の長さ（前からある書式）と型が並ぶので、そこで揃えるためです。
+     1時間に満たないものまで「08分」にすると、時計の読みになります。 */
+  const hmOf = (min) => {
+    const m = Math.round(min);
+    if (m < 60) return `${m}分`;
+    const h = Math.floor(m / 60);
+    return m % 60 ? `${h}時間${String(m % 60).padStart(2, "0")}分` : `${h}時間`;
+  };
+
+  /** 睡眠の型。四つの長さと、寝た・起きた時刻。 */
+  function stageText(s) {
+    const parts = [];
+    if (s.deep != null) parts.push(`深い${hmOf(s.deep)}`);
+    if (s.core != null) parts.push(`コア${hmOf(s.core)}`);
+    if (s.rem != null) parts.push(`レム${hmOf(s.rem)}`);
+    if (s.awake != null) parts.push(`覚醒${hmOf(s.awake)}`);
+    const clock = s.bedTime && s.wakeTime ? `${s.bedTime}就寝 ${s.wakeTime}起床` : "";
+    return [parts.join("・"), clock].filter(Boolean).join("／");
+  }
+
+  /** 食べたもの。`full` なら分量とPFCまで。区分は変わり目にだけ書きます。 */
+  function foodText(foods, full) {
+    let slot = null;
+    const out = [];
+    foods.forEach((f) => {
+      const head = f.slot && f.slot !== slot ? `【${SLOT_LABEL[f.slot]}】` : "";
+      if (f.slot) slot = f.slot;
+      const g = full && f.grams != null ? ` ${f.grams}g` : "";
+      const pfc = full && (f.p || f.f || f.c)
+        ? `（P${f.p} F${f.f} C${f.c}${f.fiber != null ? ` 繊維${f.fiber}` : ""}）` : "";
+      out.push(`${head}${f.name}${g} ${f.kcal}kcal${pfc}`);
+    });
+    return out.join("、");
+  }
+
+  /** お酒の一本ごと。時刻と、そのとき書いた言葉まで。 */
+  function drinkText(d) {
+    const mood = [d.mood, (d.moodTags || []).join("・")].filter(Boolean).join(" ");
+    const nums = [
+      d.alcoholG != null ? `純アルコール${d.alcoholG}g` : "",
+      d.kcal != null ? `${Math.round(d.kcal)}kcal` : "",
+    ].filter(Boolean).join("・");
+    return (d.time ? `${d.time} ` : "")
+      + KN.drinks.describeItem(d)
+      + (nums ? `（${nums}）` : "")
+      + (mood ? `［${mood}］` : "");
+  }
+
+  /**
+   * その日の睡眠の型。
+   *
+   * 取り込み口（health-sync）が daily の帳簿へ書いているので、読むのも
+   * そこからです。**読むのは `sleepStages` だけ**——同じ帳簿にある日記の
+   * 本文には、ここからは一度も触れません。
+   */
+  function sleepStagesOf(day) {
+    const log = store.dayLog(day);
+    const s = log && log.sleepStages;
+    if (!s) return null;
+    return {
+      deep: s.deep, core: s.core, rem: s.rem, awake: s.awake,
+      asleepMin: s.asleepMin, inBedMin: s.inBedMin,
+      bedTime: s.bedTime, wakeTime: s.wakeTime,
+    };
+  }
+
+  /** その日食べたもの。区分は食品ごとのものを先に、無ければ紙のものを。 */
+  function foodsOf(day) {
+    const out = [];
+    store.mealsOfDay(day).forEach((m) => m.items.forEach((it) => {
+      out.push({
+        slot: MEAL_SLOTS.includes(it.slot) ? it.slot
+          : (MEAL_SLOTS.includes(m.slot) ? m.slot : null),
+        name: it.name, grams: it.grams, kcal: it.kcal,
+        p: it.p, f: it.f, c: it.c, fiber: it.fiber,
+      });
+    }));
+    const order = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
+    return out.sort((a, b) => (order[a.slot] == null ? 9 : order[a.slot])
+                            - (order[b.slot] == null ? 9 : order[b.slot]));
+  }
+
+  /** 書き出しの行に、健康タブの残りぜんぶを被せます。 */
+  function aiRows(fromDay, toDay) {
+    return exportRows(fromDay, toDay).map((r) => ({
+      ...r,
+      stages: sleepStagesOf(r.day),
+      foods: foodsOf(r.day),
+      workouts: store.healthOfDay(r.day, "workout")
+        .map((h) => ({ label: h.label, min: h.value, kcal: h.kcal })),
+      drinkList: store.drinksOfDay(r.day),
+    }));
+  }
+
+  /* 運動しかしていない日を落とさないために、判定をひとつ広げます
+     （`hasSomething` が見ているのはCSVの列だけなので）。 */
+  const hasAnything = (r) => hasSomething(r)
+    || (r.workouts && r.workouts.length) || (r.foods && r.foods.length);
+
+  /**
+   * AIに貼る一枚。
+   *
+   * @param {string} fromDay  はじめの日
+   * @param {string} toDay    おわりの日
+   * @param {{detail?:string, question?:string}} opts
+   *        detail … "summary"（合計だけ）／"named"（品目つき）／"full"（ぜんぶ）
+   */
+  function aiText(fromDay, toDay, opts) {
+    const o = opts || {};
+    const detail = AI_DETAIL.includes(o.detail) ? o.detail : "summary";
+    const rows = aiRows(fromDay, toDay).filter(hasAnything);
+    if (!rows.length) return "";
+
+    const span = daysBetween(fromDay, toDay).length;
+    const lineOpts = { stages: true, foods: detail !== "summary", full: detail === "full" };
+    const g = store.get().diet.goal;
+    const sum = weightSummary(span, toDay);
+
+    /* PFCは1日のカロリーの内わけなので、続けて書きます（別の項目として
+       「／」で割ると、一日の目標が二つあるように読めます）。 */
+    const pfcTarget = (g.pTarget != null || g.fTarget != null || g.cTarget != null)
+      ? `（P${g.pTarget != null ? g.pTarget : "-"} F${g.fTarget != null ? g.fTarget : "-"} C${g.cTarget != null ? g.cTarget : "-"}）`
+      : "";
+    const goalBits = [
+      g.heightCm != null ? `身長${g.heightCm}cm` : "",
+      g.targetKg != null ? `目標${g.targetKg}kg${g.targetDay ? `（${g.targetDay}まで）` : ""}` : "",
+      g.kcalTarget != null ? `1日${g.kcalTarget}kcal${pfcTarget}`
+        : (pfcTarget ? `1日のPFC${pfcTarget}` : ""),
+    ].filter(Boolean).join("／");
+
+    /* 「目標まで 10.4kg」だけだと、増やすのか減らすのかが書いてありません。
+       数の向きは読む側が決めることではないので、言葉のほうで言います。 */
+    const toGoal = sum.toGoal;
+    const toGoalText = toGoal == null ? ""
+      : toGoal > 0 ? `目標まで あと${round(toGoal, 1)}kg`
+        : toGoal < 0 ? `目標より ${round(-toGoal, 1)}kg 下` : "目標ちょうど";
+
+    const sumBits = [
+      sum.latest ? `最新 ${sum.latest.kg}kg` : "",
+      sum.ma7Now != null ? `7日平均 ${round(sum.ma7Now, 1)}kg` : "",
+      sum.trendPerWeek != null ? `週あたり ${sum.trendPerWeek > 0 ? "+" : ""}${round(sum.trendPerWeek, 2)}kg` : "",
+      sum.bmi != null ? `BMI ${round(sum.bmi, 1)}` : "",
+      toGoalText,
+    ].filter(Boolean).join("／");
+
+    const detailLabel = { summary: "1日の合計まで", named: "食べたものの名前まで", full: "分量とPFCまで" };
+    const out = [
+      "くらしノート 健康記録の書き出し",
+      `期間：${fromDay} 〜 ${toDay}（${span}日間・記録のある日 ${rows.length}日）`,
+      `詳しさ：${detailLabel[detail]}`,
+      "",
+    ];
+    if (String(o.question || "").trim()) {
+      out.push("【聞きたいこと】", String(o.question).trim(), "");
+    }
+    out.push(
+      "【読むときの約束】",
+      "・書いていない項目は「未測定」です（0ではありません）。測っていない日を0として平均しないでください。",
+      "・摂取カロリーとPFCは推定を含みます。細かい差を、意味のあるものとして扱わないでください。",
+      "・飲酒のカロリーは摂取カロリーに含めていません（別に「飲酒」として書いてあります）。",
+      "・体重は測った時刻・食前後・着衣のあるなしで動きます。条件の違う日どうしの差を、体の変化として読まないでください。",
+      "・睡眠時間は 深い＋コア＋レム です（覚醒は含みません）。",
+      "・相関を因果と断定しないでください。データが足りないことは「わからない」と言ってください。",
+      "",
+    );
+    if (goalBits) out.push("【本人の目標】", goalBits, "");
+    if (sumBits) out.push("【期間のまとめ】", sumBits, "");
+    out.push("【日ごとの記録】");
+    return out.concat(rows.map((r) => dayLine(r, lineOpts))).join("\n");
   }
 
   KN.diet = {
@@ -943,6 +1169,7 @@
     dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit,
     analyze, coverage,
     EXPORT_COLS, exportRows, exportCsv, exportText,
+    AI_DETAIL, AI_ASKS, aiRows, aiText,
     MIN_GROUP,
   };
 })();
