@@ -1153,7 +1153,10 @@
         .filter(Boolean).sort();
       return { from: days.length ? days[0] : today, to: today };
     }
-    return { from: KN.util.shiftDay(today, -29), to: today };
+    /* 数の id は「今日を入れて N 日」。前からある "30" は、これまでどおり
+       今日から数えて30日ぶんです。 */
+    const n = Math.max(1, Number(id) || 30);
+    return { from: U.shiftDay(today, -(n - 1)), to: today };
   }
 
   function openRecordExport() {
@@ -1470,6 +1473,14 @@
       ),
       card(
         navRow({
+          ico: "chart", tint: TINT.ai, title: "AIに分析してもらう",
+          onTap: openAiAnalyze,
+        })
+      ),
+      foot("歩数・総消費・睡眠・食事・体重・お酒を、期間を選んで一枚の文にします。"
+        + "コピーして、お使いのAIに貼ってください（このアプリからは送りません）。"),
+      card(
+        navRow({
           ico: "download", tint: TINT.sync, title: "ヘルスケアから取り込む",
           value: d.sync.lastAt ? KN.util.formatStamp(d.sync.lastAt) : "",
           onTap: () => KN.screens.diet && KN.screens.diet.openSyncSheet(),
@@ -1487,6 +1498,126 @@
       ),
       foot("中継所を建てると、ショートカットを走らせるだけで歩数や睡眠が入ります。"),
     ];
+  }
+
+  /* ---------------- AIに分析してもらう ----------------
+
+     健康の記録を、期間を選んで一枚の文にします。**送りません**——出来た
+     ものをコピーして、好きなAIに自分で貼ります。アプリから外へ出す道を
+     ここに作らない、というのがこの画面の決めごとです（「AIの窓口」は
+     別のもので、あちらは自分で建てた窓口へ聞きにいきます）。
+
+     「記録を書き出す」（バックアップと書き出しの中）と似ていますが、
+     宛先が違います。あちらは表計算で開く・あとで自分が読み返すためのもの。
+     こちらは頭に問いが付き、睡眠の型と食事の中身まで降ります。 */
+
+  const AI_SPANS = [
+    { id: "7", label: "7日" },
+    { id: "30", label: "30日" },
+    { id: "90", label: "90日" },
+    { id: "month", label: "今月" },
+    { id: "all", label: "全部" },
+  ];
+
+  const AI_DETAILS = [
+    { id: "summary", label: "合計だけ" },
+    { id: "named", label: "品目つき" },
+    { id: "full", label: "ぜんぶ" },
+  ];
+
+  function openAiAnalyze() {
+    let span = "30";
+    let detail = "summary";
+    let ask = "overview";
+
+    const body = node(html`
+      <div class="stack">
+        <p class="set-foot is-flush">
+          歩数・総消費・睡眠（型まで）・食事・体重・体脂肪・お酒を、一枚の文に
+          まとめます。コピーして、お使いのAIに貼って聞いてください。
+          このアプリから送ることはしません。
+        </p>
+        <p class="diet-note">期間</p>
+        <div class="js-span"></div>
+        <p class="diet-note">詳しさ</p>
+        <div class="js-detail"></div>
+        <p class="diet-note">聞きたいこと</p>
+        <div class="js-ask"></div>
+        <textarea class="textarea js-q" rows="2"
+          placeholder="自分で書く（書いたら、こちらが使われます）"
+          aria-label="聞きたいこと"></textarea>
+        <p class="diet-note js-count"></p>
+        <textarea class="textarea js-out" rows="10" readonly
+          aria-label="書き出したもの"></textarea>
+      </div>
+    `);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-file" style="flex:1">${icon("download")}ファイルに保存</button>
+        <button class="btn btn-primary js-copy" style="flex:1">${icon("copy")}コピー</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "AIに分析してもらう", content: body, footer: foot });
+
+    /** 打ちかけの問いも拾うので、コピーする直前にも呼びます。 */
+    function build() {
+      const { from, to } = spanRange(span);
+      const typed = body.querySelector(".js-q").value.trim();
+      const preset = (KN.diet.AI_ASKS.find((a) => a.id === ask) || {}).text || "";
+      const text = KN.diet.aiText(from, to, { detail, question: typed || preset });
+      body.querySelector(".js-out").value = text || "この期間には記録がありません。";
+      /* 長さは、貼る前に知りたいことです。AIによって入る量が違うので、
+         こちらで勝手に切らずに、数だけ見せて決めてもらいます。 */
+      const n = text.length;
+      body.querySelector(".js-count").textContent = `${from} 〜 ${to}　${n.toLocaleString()}文字`
+        + (n > 100000 ? "　長すぎて入りきらないかもしれません。期間を短くするか、詳しさを下げてください。"
+          : n > 30000 ? "　AIによっては長いかもしれません。" : "");
+      return text;
+    }
+
+    function paint() {
+      KN.ui.chipRow(body.querySelector(".js-span"), AI_SPANS,
+        { activeId: span, onPick: (id) => { span = String(id); paint(); } });
+      KN.ui.chipRow(body.querySelector(".js-detail"), AI_DETAILS,
+        { activeId: detail, onPick: (id) => { detail = String(id); paint(); } });
+      KN.ui.chipRow(body.querySelector(".js-ask"), KN.diet.AI_ASKS,
+        { activeId: ask, onPick: (id) => { ask = String(id); paint(); } });
+      build();
+    }
+    paint();
+
+    /* 打っているあいだは組み直しません——全期間だと、一文字ごとに数万字を
+       組み直すことになります。欄から離れたときに反映します。 */
+    body.querySelector(".js-q").addEventListener("change", build);
+
+    foot.querySelector(".js-copy").addEventListener("click", () => {
+      const text = build();
+      const done = (ok) => {
+        if (ok) { KN.ui.toast("コピーしました"); return; }
+        const out = body.querySelector(".js-out");
+        out.focus();
+        try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 読めれば足ります */ }
+        KN.ui.toast("自動でコピーできませんでした。欄を長押しでコピーしてください");
+      };
+      if (!navigator.clipboard || !navigator.clipboard.writeText) { done(false); return; }
+      navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+    });
+
+    foot.querySelector(".js-file").addEventListener("click", () => {
+      const text = build();
+      const { from, to } = spanRange(span);
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kurashi-kenko-${from}_${to}.txt`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      KN.ui.toast("保存しました");
+      h.close();
+    });
   }
 
   /* ---------------- 中継所 ----------------
