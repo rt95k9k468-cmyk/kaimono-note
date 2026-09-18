@@ -2726,6 +2726,79 @@ button.section-note:active { opacity: .55; }
 /* 気分の言葉。数字と並ぶので、字は小さく色は控えめに。 */
 .diet-mood { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--c-text-3); }
 
+/* ---- 飲みたくなったとき ----
+
+   **警告色を使いません。** 5 を赤く、1 を緑に——とやると、そこにあるのは
+   記録ではなく点数になります（この画面がずっと避けてきたもの）。五つの
+   段は、選ばれたものだけが基調色に染まり、残りは同じ顔で並びます。
+   強さの差を言うのは**数字そのもの**で、色ではありません。 */
+
+.urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* 1〜5。指の的は44pxを割らないように、高さで取ります（横は五等分）。 */
+.urge-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.urge-lv {
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  color: var(--c-text-2);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background .16s var(--ease), color .16s var(--ease),
+              border-color .16s var(--ease), transform .12s;
+}
+.urge-lv:active { transform: scale(.95); }
+/* 選ばれた段は、同じ紙の上の札（.chip.is-on）と**同じ色**にします。
+   `--c-primary-fill`（塗りのコーラル）で試したところ、白抜きが 2.06:1 で
+   17pxの数字が薄れ、すぐ下の「飲まなかった」の札だけがはっきり読める、
+   という見え方になりました。ここは字が主役なので、字の色のほう
+   （`--c-primary`、4.7:1）を地に使います。 */
+.urge-lv.is-on {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+/* 両端の言葉。数だけだと、1 と 5 のどちらが強いのか決まっていません。 */
+.urge-ends {
+  display: flex; justify-content: space-between;
+  font-size: var(--fs-xs); color: var(--c-text-3);
+  padding: 0 2px;
+}
+
+/* 経過した分数。事実として置くだけなので、色も強調も付けません。 */
+.urge-since { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 400; }
+
+.urge-hr { border: 0; border-top: 1px solid var(--c-border); margin: var(--sp-1) 0; }
+
+/* 日の紙に並ぶ行。ここは帯の地の上なので、面を持たせません——白い札を
+   敷くと、からだの段の中にもう一枚の紙が現れます（価格の行と同じ考え）。
+   分かれ目は細い線だけ。 */
+.urge-rows { display: flex; flex-direction: column; }
+.urge-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  width: 100%; min-height: 38px; padding: var(--sp-2) 2px;
+  background: none; border: 0; border-top: 1px solid var(--c-border);
+  text-align: left; color: var(--c-text);
+}
+.urge-rows .urge-row:first-child { border-top: 0; }
+.urge-row:active { opacity: .6; }
+.urge-row-time { font-size: var(--fs-sm); color: var(--c-text-3); flex: none; }
+/* 「4 → 2」。矢は書かれたことの記録で、良し悪しではないので色を変えません。 */
+.urge-row-lv {
+  font-size: var(--fs-md); font-weight: 700; color: var(--c-primary);
+  flex: none; display: inline-flex; align-items: center; gap: 3px;
+}
+.urge-row-lv i { font-style: normal; color: var(--c-text-3); font-weight: 400; }
+.urge-row-text {
+  font-size: var(--fs-sm); color: var(--c-text-2);
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
+.urge-row-go svg { width: 14px; height: 14px; }
+
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 /* ---- 食事 ---- */
