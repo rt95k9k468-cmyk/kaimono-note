@@ -351,6 +351,8 @@
       workouts,
       drinks: store.drinksOfDay(d),
       drinkTotals: store.drinkTotals(d),
+      // 飲みたくなったとき。飲んだ記録と同じ日の紙に並ぶので、ここで一緒に引きます。
+      urges: store.urgesOfDay(d),
     };
   }
 

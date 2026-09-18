@@ -1419,6 +1419,415 @@
     foot.querySelector(".js-edit").addEventListener("click", () => { h.close(); openDrinkSheet(day); });
   }
 
+  /* ---------------- 飲みたくなったとき ----------------
+
+     お酒の記録は「飲んだ」しか持っていませんでした。飲まなかった晩には
+     何も残らないので、**飲みたくなったこと自体が起きなかったこと**に
+     なります。減らそうとしている人にとって、いちばん起きているのは
+     そっちなのに。
+
+     ここが持つのは、できごとの筋です——
+
+       飲みたくなった → 一度立ち止まった → 何かを試した
+       → 欲求がどう動いた → 最終的にどうした
+
+     **採点はしません。** 連続日数も達成率も、成功も失敗もありません
+     （daily と同じ決めごと）。「飲んだ」は失敗ではなく、その晩に起きた
+     ことの記録です。ここが点数を付けはじめたら、点の悪い晩は**書かれなく
+     なります**——そして書かれなかった晩こそ、あとで読み返したいものです。
+
+     ■ 二段に分けてあります
+
+     五つを一枚に並べません。「しばらく経った後の強さ」と「最終的に
+     どうしたか」は、**飲みたくなった瞬間にはまだ起きていない**からです。
+     一枚に並べると、後ろの二つは空欄か、その場で作った数になります。
+     そして飲みたくなっている人は、たいてい疲れているかいらだっている。
+     そこで五項目を求めれば、三日でやめます（drinks.js の頭と同じ反省）。
+
+       一段目（その瞬間） … 強さだけ必須。**押すもの一つで保存できます**
+       二段目（あとで）   … 行を押すと、試したこと・いまの強さ・結果が出る
+
+     二段目は**書かなくてかまいません**。書かれなかった記録は「未完」では
+     なく、そこまでしか書かなかった晩です。
+
+     ■ 20分は、線ではありません
+
+     「20分待てば成功」にはしません。それは条件であり、条件は採点だから
+     です。出すのは**経過した分数という事実**だけ——タイマーも通知も
+     ありません（ホーム画面のWebアプリでは、どちらも当てになりません）。 */
+
+  const URGE_OUTCOMES = [
+    { id: "none",  label: "飲まなかった" },
+    { id: "wait",  label: "もう少し待つ" },
+    { id: "drank", label: "飲んだ" },
+  ];
+  const urgeOutcomeLabel = (id) => (URGE_OUTCOMES.find((o) => o.id === id) || {}).label || "";
+
+  /* 語彙は**その人の言葉**から作ります。用意した八つを並べると、その八つの
+     中から選ぶことになって、自分のことが他人の言葉で記録されます
+     （drinks の気分の札と同じ理由）。例は placeholder で見せる——見えては
+     いるが、記録に入るのは打った言葉のほう、という置き方です。
+
+     きっかけの語彙は、**飲んだ記録の気分の札と分け合います**。「なぜ
+     飲みたかったか」と「どんな気分で飲んだか」は同じ言葉で書かれるので、
+     すでにお酒を記録している人には、はじめから自分の札が出ます。 */
+  function urgeWords(field, max) {
+    const d = store.get().diet;
+    const pairs = (d.urges || []).map((u) => ({ words: u[field] || [], at: u.at }));
+    if (field === "trigger") {
+      (d.drinks || []).forEach((dr) => {
+        const w = (dr.moodTags || []).slice();
+        const m = String(dr.mood || "").trim();
+        if (m && m.length <= DR.MOOD_MAX_LEN && !w.includes(m)) w.push(m);
+        if (w.length) pairs.push({ words: w, at: dr.at });
+      });
+    }
+    const n = new Map(), last = new Map();
+    pairs.forEach(({ words, at }) => (words || []).forEach((w) => {
+      n.set(w, (n.get(w) || 0) + 1);
+      if (!last.has(w) || String(at) > String(last.get(w))) last.set(w, at);
+    }));
+    return [...n.keys()]
+      .sort((a, b) => n.get(b) - n.get(a)
+                   || String(last.get(b) || "").localeCompare(String(last.get(a) || "")))
+      .slice(0, max || 6);
+  }
+
+  /** 書かれた時刻。直していなければ、書いた瞬間のものを使います。 */
+  function urgeTime(u) {
+    if (u.time) return u.time;
+    const d = new Date(u.at);
+    return Number.isNaN(d.getTime()) ? ""
+      : String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  /** 何分たったか。今日の、まだ決まっていない一件にだけ意味があります。 */
+  function urgeElapsed(u) {
+    if (u.day !== U.todayKey()) return null;
+    const t = urgeTime(u);
+    if (!U.isTime(t)) return null;
+    const [h, m] = t.split(":").map(Number);
+    const then = new Date(); then.setHours(h, m, 0, 0);
+    const min = Math.floor((Date.now() - then.getTime()) / 60000);
+    return min >= 0 ? min : null;
+  }
+
+  const urgeSpan = (min) => (min < 60 ? `${min}分`
+    : `${Math.floor(min / 60)}時間${min % 60 ? (min % 60) + "分" : ""}`);
+
+  /** 1〜5 を押して決める段。色は一つ——強いほど赤く、はしません（それは採点）。 */
+  function urgeScale(host, value, onPick, opts) {
+    const o = opts || {};
+    host.innerHTML = "";
+    const row = node(html`<div class="urge-scale" role="group" aria-label="${o.label || "強さ"}"></div>`);
+    for (let i = 1; i <= 5; i++) {
+      const on = value === i;
+      const b = node(html`<button type="button" class="urge-lv ${on ? "is-on" : ""}"
+        aria-pressed="${String(on)}" aria-label="${i}">${i}</button>`);
+      b.addEventListener("click", () => {
+        // 押し直すと外れます（「まだ言っていない」へ戻る道。一段目の
+        // 強さだけは外せません——それが無いと記録になりません）。
+        onPick(on && o.clearable ? null : i);
+        KN.motion.fire("select");
+      });
+      row.append(b);
+    }
+    host.append(row);
+    host.append(node(html`<div class="urge-ends"><span>すこし</span><span>とても</span></div>`));
+  }
+
+  /** 自由に書く欄と、これまでの自分の言葉の札。 */
+  function urgeWordField(host, field, label, placeholder, picked, onChange) {
+    host.innerHTML = "";
+    const box = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field-label">${label}</span>
+          <input class="input js-w" placeholder="${placeholder}"
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
+        </label>
+        <div class="diet-chips js-tags"></div>
+      </div>
+    `);
+    const input = box.querySelector(".js-w");
+    const tagHost = box.querySelector(".js-tags");
+
+    function paintTags() {
+      const words = [...new Set(urgeWords(field, 6).concat(picked))];
+      tagHost.innerHTML = "";
+      words.forEach((w) => {
+        const on = picked.includes(w);
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${w}</button>`);
+        chip.addEventListener("click", () => {
+          const i = picked.indexOf(w);
+          if (i >= 0) picked.splice(i, 1); else picked.push(w);
+          paintTags(); onChange(); KN.motion.fire("select");
+        });
+        tagHost.append(chip);
+      });
+    }
+    /* 打った言葉は、欄を離れたときに札になります。一文字ごとに拾うと、
+       「疲れた」と打っている途中の「疲」が札として残ります。 */
+    const take = () => {
+      const v = input.value.trim().slice(0, 24);
+      input.value = "";
+      if (!v || picked.includes(v)) return;
+      picked.push(v); paintTags(); onChange();
+    };
+    input.addEventListener("change", take);
+    input.addEventListener("blur", take);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); take(); }
+    });
+    paintTags();
+    host.append(box);
+    return { flush: take };
+  }
+
+  /**
+   * 飲みたくなったときの紙。
+   *
+   * 新しく書くとき（editId なし）は**一段目だけ**——強さと、きっかけ。
+   * 行を押して開いたとき（editId あり）は、続きの欄まで全部出します。
+   */
+  function openUrgeSheet(day0, editId) {
+    const day = day0 || U.todayKey();
+    const editing = editId ? store.urgesOfDay(day).find((u) => u.id === editId) : null;
+
+    let before  = editing ? editing.before : null;
+    let after   = editing ? editing.after : null;
+    let outcome = editing ? editing.outcome : null;
+    const trigger = editing ? editing.trigger.slice() : [];
+    const tried   = editing ? editing.tried.slice() : [];
+
+    const elapsed = editing ? urgeElapsed(editing) : null;
+
+    const body = node(html`
+      <div class="stack">
+        <div class="diet-daynav">
+          <b>${U.formatDay(day)}</b>
+          ${editing && elapsed != null && !editing.outcome
+            ? html`<span class="urge-since">${urgeSpan(elapsed)}たちました</span>` : ""}
+        </div>
+
+        <div class="field">
+          <span class="field-label">${editing ? "そのとき、どれくらい飲みたかったですか" : "いま、どれくらい飲みたいですか"}</span>
+          <div class="js-before"></div>
+        </div>
+
+        <div class="js-trigger"></div>
+
+        ${editing ? html`
+          <div class="time-row">
+            <span class="time-label">時刻</span>
+            <input class="input js-time" type="time" aria-label="時刻" value="${urgeTime(editing)}">
+          </div>
+
+          <hr class="urge-hr">
+
+          <div class="js-tried"></div>
+
+          <div class="field">
+            <span class="field-label">いま、どれくらいですか（まだなら空のまま）</span>
+            <div class="js-after"></div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">どうなりましたか（まだなら空のまま）</span>
+            <div class="diet-chips js-outcome"></div>
+          </div>
+
+          <div class="js-link"></div>
+
+          <label class="field">
+            <span class="field-label">メモ（任意）</span>
+            <input class="input js-memo" value="${editing.memo || ""}"
+                   placeholder="あとで読み返したときの手がかり">
+          </label>
+        ` : html`
+          <p class="diet-note">続き——試したこと、そのあとの強さ、どうなったか——は、
+            あとから同じ行を押して書き足せます。<b>いまは、ここまでで足ります。</b></p>
+        `}
+
+        <div class="js-list"></div>
+      </div>
+    `);
+
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
+        <button class="btn btn-primary js-save" style="flex:2">${editing ? "書く" : "記録する"}</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({
+      title: editing ? "飲みたくなったとき" : "飲みたくなった",
+      content: body, footer: foot, guard: true,
+    });
+
+    const saveBtn = foot.querySelector(".js-save");
+    const syncSave = () => { saveBtn.disabled = before == null; };
+
+    function paintBefore() {
+      urgeScale(body.querySelector(".js-before"), before, (v) => {
+        before = v; paintBefore(); syncSave();
+      }, { label: "飲みたい強さ" });
+    }
+    paintBefore();
+    syncSave();
+
+    const trigField = urgeWordField(body.querySelector(".js-trigger"), "trigger",
+      "きっかけ（任意）", "疲れた／いらいら／暇／ごほうび／習慣…", trigger, () => {});
+
+    let triedField = null;
+    if (editing) {
+      triedField = urgeWordField(body.querySelector(".js-tried"), "tried",
+        "試したこと（任意）", "水／炭酸水／お風呂／散歩／休む／音楽…", tried, () => {});
+
+      const paintAfter = () => urgeScale(body.querySelector(".js-after"), after, (v) => {
+        after = v; paintAfter();
+      }, { label: "いまの強さ", clearable: true });
+      paintAfter();
+
+      const linkHost = body.querySelector(".js-link");
+      const paintOutcome = () => {
+        const host = body.querySelector(".js-outcome");
+        host.innerHTML = "";
+        URGE_OUTCOMES.forEach((o) => {
+          const on = outcome === o.id;
+          const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+            aria-pressed="${String(on)}">${o.label}</button>`);
+          chip.addEventListener("click", () => {
+            outcome = on ? null : o.id;
+            paintOutcome(); paintLink(); KN.motion.fire("select");
+          });
+          host.append(chip);
+        });
+      };
+      /* 「飲んだ」のときだけ、飲んだ記録への道を出します。**勝手には
+         書きません**——量も種類もこちらは知らないので、書けば嘘になります。
+         押した人だけが、いつもの紙へ行きます。 */
+      const paintLink = () => {
+        linkHost.innerHTML = "";
+        if (outcome !== "drank") return;
+        const b = node(html`
+          <button type="button" class="btn btn-soft btn-block js-go-drink">${icon("drink")}飲んだものも記録する</button>`);
+        b.addEventListener("click", () => { save({ then: () => openDrinkSheet(day) }); });
+        linkHost.append(b);
+      };
+      paintOutcome();
+      paintLink();
+    }
+
+    /* その日のぶん。ここから続きを書きにいけます。 */
+    function paintList() {
+      const list = body.querySelector(".js-list");
+      list.innerHTML = "";
+      const mine = store.urgesOfDay(day).filter((u) => !editing || u.id !== editing.id);
+      if (!mine.length) return;
+      list.append(node(html`<div class="section-title">この日の記録</div>`));
+      const rows = node(html`<div class="rows"></div>`);
+      mine.forEach((u) => {
+        const row = node(html`
+          <button class="row">
+            <span class="row-main">
+              <span class="row-title">${urgeTime(u)}　飲みたい ${u.before}${
+                u.after != null ? " → " + u.after : ""}</span>
+              <span class="row-sub">${urgeSummary(u) || "続きはまだ書かれていません"}</span>
+            </span>
+            <span class="row-chevron">${icon("edit")}</span>
+          </button>
+        `);
+        row.addEventListener("click", () => { h.close(); openUrgeSheet(day, u.id); });
+        rows.append(row);
+      });
+      list.append(rows);
+    }
+    paintList();
+
+    function save(opts) {
+      if (before == null) { KN.ui.toast("飲みたい強さを選んでください"); return; }
+      // 打ちかけの字を札に落としてから拾います（書いたのに消える欄を作らない）。
+      trigField.flush();
+      if (triedField) triedField.flush();
+      const patch = { day, before, trigger, tried, after, outcome };
+      if (editing) {
+        patch.time = body.querySelector(".js-time").value || null;
+        patch.memo = body.querySelector(".js-memo").value;
+        store.updateUrge(editing.id, patch);
+      } else {
+        store.addUrge(patch);
+      }
+      h.close();
+      render();
+      KN.motion.fire("save");
+      if (opts && opts.then) { opts.then(); return; }
+      KN.ui.toast(editing ? "書きました" : "記録しました");
+    }
+
+    saveBtn.addEventListener("click", () => save());
+
+    const del = foot.querySelector(".js-del");
+    if (del) del.addEventListener("click", () => {
+      store.removeUrge(editing.id);
+      h.close();
+      render();
+      KN.ui.toast("消しました");
+    });
+  }
+
+  /** 行の下に出す一行。書かれたことだけを、書かれた順に並べます。 */
+  function urgeSummary(u) {
+    const parts = [];
+    if (u.trigger.length) parts.push(u.trigger.join("・"));
+    if (u.tried.length) parts.push(u.tried.join("・"));
+    if (u.outcome) parts.push(urgeOutcomeLabel(u.outcome));
+    return parts.join(" ・ ");
+  }
+
+  /* 入口。からだの輪のすぐ下——飲酒の輪と同じ一日の、同じ面の話なので。
+
+     日の紙に出すのは**回数だけ**です。「うち◯回は飲まなかった」は事実の
+     記述ですが、並べた瞬間に分子と分母の顔をして達成率になります。 */
+  function renderUrges(host, card) {
+    const rows = card.urges || [];
+    const canAdd = card.day <= U.todayKey();
+    if (!canAdd && !rows.length) return;
+
+    const sec = node(html`
+      <div class="urge-bar">
+        ${canAdd ? html`
+          <button class="btn btn-soft btn-block js-urge">${icon("clock")}飲みたくなった</button>` : ""}
+        ${rows.length ? html`<div class="urge-rows"></div>` : ""}
+      </div>
+    `);
+
+    const add = sec.querySelector(".js-urge");
+    if (add) add.addEventListener("click", () => { KN.motion.fire("select"); openUrgeSheet(card.day); });
+
+    const list = sec.querySelector(".urge-rows");
+    if (list) rows.forEach((u) => {
+      const open = !u.outcome;
+      const el = node(html`
+        <button class="urge-row" type="button">
+          <span class="urge-row-time mono-num">${urgeTime(u)}</span>
+          ${/* 矢は絵なので raw で通します——`html` は補間した値を escape するので、
+                そのまま書くと「4<i>→</i>2」という字が出ます（実際に出しました）。 */""}
+          <span class="urge-row-lv mono-num">${u.before}${
+            KN.util.raw(u.after != null ? `<i>→</i>${u.after}` : "")}</span>
+          <span class="urge-row-text">${urgeSummary(u) || (open ? "続きを書く" : "")}</span>
+          ${/* 押せることの手がかり。続きを書く道はここにしかないので、
+                押せると分からないと、二段目が一度も書かれません。 */""}
+          <span class="urge-row-go" aria-hidden="true">${icon("chevron")}</span>
+        </button>
+      `);
+      el.addEventListener("click", () => { KN.motion.fire("select"); openUrgeSheet(card.day, u.id); });
+      list.append(el);
+    });
+
+    host.append(sec);
+  }
+
   /* ---------------- からだ ---------------- */
 
   /* 数の並びは、見るためだけのものにしません。取り込んだ値を直せず消せず、
@@ -1594,6 +2003,10 @@
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
             </button>`).join(""))}
         </div>
+        ${/* 「飲みたくなった」の入口は、輪のすぐ下に置きます。飲酒の輪と
+              同じ一日の、同じ面の話なので——別の段に離すと、二つの別々の
+              機能に見えます（renderUrges が中身を組みます）。 */""}
+        <div class="js-urges"></div>
         ${card.workouts.length ? html`
           <div class="diet-workouts">
             ${KN.util.raw(card.workouts.map((w) =>
@@ -1612,6 +2025,7 @@
     });
     const fresh = sec.querySelector(".js-fresh");
     if (fresh) fresh.addEventListener("click", askForFresh);
+    renderUrges(sec.querySelector(".js-urges"), card);
     host.append(sec);
   }
 
