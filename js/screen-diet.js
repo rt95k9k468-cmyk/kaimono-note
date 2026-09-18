@@ -1815,9 +1815,12 @@
                 そのまま書くと「4<i>→</i>2」という字が出ます（実際に出しました）。 */""}
           <span class="urge-row-lv mono-num">${u.before}${
             KN.util.raw(u.after != null ? `<i>→</i>${u.after}` : "")}</span>
-          <span class="urge-row-text">${urgeSummary(u) || (open ? "続きを書く" : "")}</span>
-          ${/* 押せることの手がかり。続きを書く道はここにしかないので、
-                押せると分からないと、二段目が一度も書かれません。 */""}
+          <span class="urge-row-text">${urgeSummary(u)}</span>
+          ${/* まだ結果を書いていない行にだけ。続きを書く道はここにしかないので、
+                押せると分からないと、二段目が一度も書かれません。**急かしません**
+                ——小さく、警告色を使わず、書けば消えるだけ。書かないままでも
+                その記録は完成しています（そういう晩だった、ということなので）。 */""}
+          ${open ? html`<span class="urge-row-open">続きを書く</span>` : ""}
           <span class="urge-row-go" aria-hidden="true">${icon("chevron")}</span>
         </button>
       `);

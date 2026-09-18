@@ -2796,6 +2796,11 @@ button.section-note:active { opacity: .55; }
   flex: 1 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* 続きの道。小さく、警告色を使わず、書けば消えます。`--c-text-3` では
+   薄すぎて手がかりにならず、赤や太字では急かすことになるので、その間を取って
+   このアプリが「押せる字」に使っている色（`--c-primary`）を、いちばん小さい
+   大きさで置きます。 */
+.urge-row-open { flex: none; font-size: var(--fs-xs); color: var(--c-primary); }
 .urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
 .urge-row-go svg { width: 14px; height: 14px; }
 
