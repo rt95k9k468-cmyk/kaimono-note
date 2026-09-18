@@ -38,7 +38,7 @@
      二つの言い方で持つことになります。
 
      **すでに毎朝・毎晩で持っているものは、そのままにします。** 記録の形
-     （part: "dawn"/"dusk"）も、それを見ている並べ替え・夜の色・plan.js も
+     （part: "dawn"/"dusk"）も、それを見ている並べ替え・plan.js も
      手を付けていません——選べなくなるだけで、あるものは動きません。
      作り替えが要るなら、勝手にやらずに先に相談すること。 */
   const REPEATS = [
@@ -3992,31 +3992,10 @@
 
      済ませたものも色のまま残します（参考にした画面と同じ）。やった
      ことが灰色になって沈むと、朝からの半日が空白に見えるので。 */
-  /* ---------------- 夜は、夜の色 ----------------
-
-     一日ぶんは基調の塗りひとつで並べていました。参考にした画面（Structured）
-     も昼のあいだはそうですが、**一日の終わりだけ青**にしてあります（実測。
-     色は --c-night）。理屈も分かります——夕方から先は、同じ「やること」でも
-     体感の色が違う。暗くなってからの一件が朝の一件と同じ色で並んでいると、
-     一日が一本調子に見えます。
-
-     夜と決めるのは二つ。**毎晩**（part: "dusk"）は、時刻を持っていても
-     いなくても夜です。それ以外は**組み立てが置いた時刻**で見ます
-     ——t.time ではなく置かれた位置で見るのは、時刻を決めていない用事も
-     夜に落ちれば夜だからです。 */
-  const NIGHT_FROM = 18 * 60;      // 18:00 から先
-
-  function isNight(t, atMin) {
-    if (t && t.part === "dusk") return true;
-    const m = isFinite(atMin) ? Number(atMin) : KN.plan.toMin(t && t.time);
-    return m != null && isFinite(m) && m >= NIGHT_FROM;
-  }
-
   function tlColorOf(t, atMin) {
     /* 一日ずつのときは、棚がありません。坂（締切までの遠さ）も、比べる
-       相手が画面に無いので何も言えません。基調の塗りひとつで揃えます
-       ——夜のぶんを除いて。 */
-    if (oneDay()) return isNight(t, atMin) ? "var(--c-night)" : "var(--c-primary-fill)";
+       相手が画面に無いので何も言えません。基調の塗りひとつで揃えます。 */
+    if (oneDay()) return "var(--c-primary-fill)";
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   }
@@ -4103,24 +4082,10 @@
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
     const dash = f.minutes > TL_JOIN_GAP;
-    /* 空きも、夜に入ったところから夜の色にします。線は一日を通す一本な
-       ので、空きだけ昼の色のままだと、夜の用事のあいだで色が切れて
-       「別の線」に見えます。切り替わるのは、その空きが**夜に入る**
-       ところ（18時をまたぐ空きは、夜のぶんが半分でも夜側で数えます
-       ——点線のなかで色を変えると、そこに何かがあるように見えるので）。
-
-       **ただし、過ぎたぶんは「始まり」で決めます**（--cat-a）。夕方まで
-       予定の無い日は、空きの行が一つで昼から夜までを持ちます。終わりだけ
-       で決めると、朝に済ませた用事の丸薬の下に**夜の青が数px** 顔を出し
-       ました——過ぎたぶんは上の丸薬から続く線なので、そこは上と同じ色で
-       なければいけません。まだのぶん（灰色）のほうが夜を含みます。 */
-    const night = f.untilMin > NIGHT_FROM;
-    const nightAt = f.atMin >= NIGHT_FROM;
     return node(html`
       <li class="tl-free-row ${past ? "is-past" : ""}"
           data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
-          style="--cat:${night ? "var(--c-night)" : "var(--c-primary-fill)"};
-                 --cat-a:${nightAt ? "var(--c-night)" : "var(--c-primary-fill)"}">
+          style="--cat:var(--c-primary-fill)">
         <span class="tl-time"></span>
         <span class="tl-rail ${dash ? "is-dash" : ""}"></span>
       </li>
