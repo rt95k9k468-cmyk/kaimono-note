@@ -385,10 +385,17 @@
      一度に五つ書かせないための null です——飲みたくなった瞬間に
      「しばらく経った後の強さ」は、まだこの世に存在しないので。
 
-     `trigger` / `tried` は**その人が書いた言葉**をそのまま持ちます。決まった
-     選択肢に寄せません（drinks の moodTags と同じ理由——用意した五つを
-     並べると、その五つの中から選ぶことになって、自分のことが他人の言葉で
-     記録されます）。語彙は drinks の moodTags と分け合うので、すでに
+     `scene` と `trigger` は**別の欄**です。認知行動療法の機能分析が、
+     飲む前の状況を **外側（external antecedent ＝ いつ・どこ・誰と）** と
+     **内側（internal antecedent ＝ 気持ち・考え・からだ）** に分けるのと
+     同じ切り方です。一つの欄にまとめると「帰宅後」と「疲れた」が同じ列で
+     競合して、**「帰宅後はどんな気分でも飲みたくなる」と「疲れていれば
+     いつでも」が見分けられなくなります**。手の打ち方も別で、外側は
+     段取りを変えて避けられ、内側は別の行動で乗り切るものです。
+
+     `trigger` / `tried` / `scene` は**その人が書いた言葉**を持ちます。
+     候補を出すかどうかは画面側の判断で、ここは受け取った語をそのまま
+     しまうだけです。語彙は drinks の moodTags と分け合うので、すでに
      お酒を記録している人には、はじめから自分の札が出ます。 */
   function cleanUrge(u) {
     if (!u || typeof u !== "object") return null;
@@ -412,6 +419,9 @@
       day: dayStr(u.day) || todayKey(),
       time: KN.util.isTime(u.time) ? u.time : null,
       before,
+      /* どんなときか（外側）。持っていない古い記録は空で足すだけなので、
+         入れ直しても既存のデータは何も動きません。 */
+      scene: words(u.scene),
       trigger: words(u.trigger),
       tried: words(u.tried),
       after: lv(u.after),
