@@ -1039,7 +1039,7 @@ button, [role="tab"] {
   display: grid; place-items: center;
   flex: none;
   width: 26px; height: 26px;
-  color: var(--c-primary-fill);
+  color: var(--c-primary);
 }
 .d-ico svg { width: 21px; height: 21px; stroke-width: 2; }
 .d-label {

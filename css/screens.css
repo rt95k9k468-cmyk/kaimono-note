@@ -364,7 +364,7 @@
   font-weight: 700;
   letter-spacing: -.02em;
   line-height: 1.25;
-  color: var(--c-primary-fill);
+  color: var(--c-primary);
   margin: 0;
 }
 
@@ -373,10 +373,10 @@
    画面が暦の帯で今日の数だけ色を変えているのと同じで、「開いているのが
    今日かどうか」を、字の色そのものが言います。残り（年◯月・日（火））は
    黒のまま。 */
-.day-y { color: var(--c-primary-fill); }
+.day-y { color: var(--c-primary); }
 .day-pre, .day-post { color: var(--c-text); }
 .day-d { color: var(--c-text); }
-.day-d.is-today { color: var(--c-primary-fill); }
+.day-d.is-today { color: var(--c-primary); }
 
 .topbar-day:active { opacity: .6; }
 
@@ -403,7 +403,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--c-primary-fill);
+  color: var(--c-primary);
 }
 .topbar-today svg { width: 17px; height: 17px; }
 /* 未来の日からは左向き（時間を遡る）、過去の日からは右向き（時間を進める）。
@@ -561,7 +561,7 @@
 .cal-wd {
   text-align: center;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--c-text-3);
   padding-bottom: 3px;
 }
@@ -592,7 +592,7 @@
   width: 27px; height: 27px;
   border-radius: var(--r-full);
   font-size: 17px;
-  font-weight: 500;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--c-text-2);
@@ -1954,7 +1954,7 @@
   min-width: 0;
   text-align: center;
   font-size: var(--set-fs);
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1981,7 +1981,7 @@
   margin: var(--sp-6) 0 var(--sp-2);
   padding: 0 calc(var(--set-gut) + var(--sp-5));
   font-size: var(--set-fs-head);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--c-text-3);
 }
 .js-body > .set-head:first-child { margin-top: var(--sp-2); }
@@ -3252,7 +3252,7 @@ a.btn { text-decoration: none; }
    最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.arc-log-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-log-head h2 { font-size: var(--fs-lg); font-weight: 700; flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
 
 .arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
@@ -3269,7 +3269,7 @@ a.btn { text-decoration: none; }
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 30px; flex: none; padding-top: 1px; }
-.arc-log-day b { font-size: var(--fs-xl); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.arc-log-day b { font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .arc-log-day i { font-size: var(--fs-xs); font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -3319,7 +3319,7 @@ a.btn { text-decoration: none; }
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-stack-head h2 { font-size: var(--fs-lg); font-weight: 700; flex: 1; min-width: 0; letter-spacing: -.01em; }
 
 /* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
    札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
@@ -3645,13 +3645,13 @@ a.btn { text-decoration: none; }
   transform: translateY(calc((50px - var(--tl-h, 50px)) / 2));
   padding-right: 3px;
   font-size: var(--fs-sm);
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 /* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
 .tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
-.tl-time.is-now { color: var(--c-primary); font-weight: 800; }
+.tl-time.is-now { color: var(--c-primary); font-weight: 700; }
 
 /* 線。行の高さいっぱいに引いて、丸を上に乗せます。 */
 .tl-rail {
@@ -5061,7 +5061,7 @@ a.btn { text-decoration: none; }
   background: var(--c-primary);
   color: #fff;
   font-size: var(--fs-xs);
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -5352,7 +5352,7 @@ a.btn { text-decoration: none; }
 .arc-counts-head {
   margin: 0 0 var(--sp-3);
   font-size: var(--fs-lg);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -.01em;
 }
 .arc-counts-days {
@@ -5362,7 +5362,7 @@ a.btn { text-decoration: none; }
 }
 .arc-counts-days b {
   font-size: var(--fs-xl);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
@@ -5378,7 +5378,7 @@ a.btn { text-decoration: none; }
 }
 .arc-counts-label { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 700; }
 .arc-counts-n {
-  font-size: var(--fs-lg); font-weight: 800;
+  font-size: var(--fs-lg); font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--c-text);
 }
