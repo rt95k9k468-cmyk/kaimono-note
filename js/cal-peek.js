@@ -77,6 +77,14 @@
      ブラウザが手を出さなかったからです。 */
   const SLOP = 5;
   const DONE = 0.34;    // ここまで来ていたら、行った先へ収めます
+  /* **速く払ったら、短くても行きます。**
+
+     ここは長いあいだ距離だけで決めていました——`DONE` まで来ていなければ
+     戻る。だから**ぱっと弾いても戻り、のろのろ引くと開く**という、紙の節
+     （「紙は、指につく」）で一度直したのとまったく同じことが残っていました。
+     日送り（day-swipe）は前から勢いを見ているので、同じ数に揃えます。 */
+  const FLING_V   = 0.35;   // px/ms。これだけ速ければ、短くても行った先へ
+  const FLING_MIN = 8;      // ただし、まったく動いていないものは払いではない
 
   /**
    * 暦の三層を組んで、節に足します。中身（曜日・日のマス）を書くのは
@@ -260,7 +268,7 @@
 
   /** 指を離したあと。行き先まで滑らせて**から**、はじめて設定に書きます。
       先に書くと暦が組み直されて、途中の姿から跳んでしまいます。 */
-  function settle(o, m, to) {
+  function settle(o, m, to, fling) {
     const cal = o.cal();
     if (!cal || !m) return;
     const done = () => {
@@ -279,6 +287,23 @@
     };
     m.from = at(o);
     if (KN.motion.still()) { done(); return; }
+
+    /* **長さと曲線は、残りの道のりと指の勢いから**（`KN.motion.glide`）。
+
+       ここは決まった長さ（`--m-grow`）でした。だから**ゆっくり引いても
+       勢いよく弾いても、収まるまでの時間が同じ**で、指の動きと絵が
+       そこで切れていました——day-swipe・cal-swipe・edge-back・紙の面は
+       もう glide を通っているのに、ここだけ残っていた、というだけです。
+
+       数は `--cal-ms` / `--cal-ease` に置いて、**transition の宣言は
+       CSS のまま**にします（どこがどう動くかは CSS が持つ、という決めごと。
+       読めなければ `--m-grow` に落ちます）。 */
+    const sp = (fling && fling.span) || 1;
+    const from = (fling && typeof fling.from === "number") ? fling.from : m.from;
+    const g = KN.motion.glide((to - from) * sp, (fling && fling.v) || 0, { span: sp });
+    cal.style.setProperty("--cal-ms", g.ms + "ms");
+    cal.style.setProperty("--cal-ease", g.ease);
+
     cal.classList.add("is-settling");
     if (o.root) o.root.classList.remove("is-cal-peek");   // ここからは滑らせます
     paint(o, m, to);
@@ -288,10 +313,14 @@
       over = true;
       clearTimeout(tm);
       m.clip.removeEventListener("transitionend", fin);
+      cal.style.removeProperty("--cal-ms");
+      cal.style.removeProperty("--cal-ease");
       done();
     };
     m.clip.addEventListener("transitionend", fin);
-    const tm = setTimeout(fin, 420);
+    /* 保険の時計も、glide が決めた長さに合わせます（決め打ちの 420ms が
+       残っていると、短い滑りのあとに長く待つことになります）。 */
+    const tm = setTimeout(fin, g.ms + 120);
   }
 
   /**
@@ -311,6 +340,9 @@
   function wire(o) {
     const el = o.sheet;
     let pid = null, x0 = 0, y0 = 0, p0 = 0, p = 0, m = null, live = false, on = false;
+    /* 指の速さ（px/ms、下向きが正）。行くか戻るかと、離したあとの滑りの
+       長さ・曲線が、ここから出ます。 */
+    let lastT = 0, lastY = 0, vy = 0;
     /* いま動いているのは、どの段のあいだか。[lo, hi] と、その道のり（span）。 */
     let lo = 0, hi = 1, span = 1;
     /* 掴み手から始めたかどうか。上へ押し戻すのは、ここからだけです。 */
@@ -332,6 +364,7 @@
       if (!byGrip) return;
       pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
       p0 = at(o); p = p0;
+      lastT = performance.now(); lastY = e.clientY; vy = 0;
       live = true; on = false;
       /* 掴み手からのぶんは、この場で指を預かります。上へ押すと紙のほうが
          縮んで指の下から逃げるので、預けておかないと、途中から動きが
@@ -368,6 +401,8 @@
       }
       // 取ったからには、スクロールには渡しません。
       if (e.cancelable) e.preventDefault();
+      const now = performance.now();
+      if (now > lastT) { vy = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
       const moved = dy - Math.sign(dy) * SLOP;
       p = Math.min(hi, Math.max(lo, p0 + moved / (span || 1)));
       paint(o, m, p);
@@ -376,13 +411,18 @@
     const up = (e) => {
       if (!live || e.pointerId !== pid) return;
       const was = on, mm = m, pp = p, from = p0, a = lo, b = hi;
+      const v = vy, sp = span, dy = e.clientY - y0;
       drop();
       if (!was) return;
-      /* 出てきた側から DONE ぶん離れていたら、行った先へ。離れていなければ
-         元の段へ戻します。 */
-      const to = from === a ? (pp > a + DONE ? b : a) : (pp < b - DONE ? a : b);
+      /* 出てきた側から DONE ぶん離れていたら、行った先へ。**または、
+         そこまで来ていなくても、速く払っていたら**——距離だけで決めると、
+         ぱっと弾いた指が戻されます（紙の節で一度直したのと同じ話）。 */
+      const fling = Math.abs(v) > FLING_V && Math.abs(dy) >= FLING_MIN;
+      const toward = v > 0 ? b : a;          // 下へ払えば開くほう、上へ払えば畳むほう
+      const to = fling ? toward
+        : (from === a ? (pp > a + DONE ? b : a) : (pp < b - DONE ? a : b));
       if (to !== from) haptic();
-      settle(o, mm, to);
+      settle(o, mm, to, { v, span: sp, from: pp });
     };
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
