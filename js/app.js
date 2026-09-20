@@ -342,7 +342,11 @@
      なので、同じ番号を持たせます——ふた面をめくるのは横へ動くことでは
      ないので、そこは流しません（これまでどおりの入りかた）。 */
   const SLIDE = { archive: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
-  const SLIDE_MS = 280;
+  /* 流れ終わった面を片づけるまでの待ち時間。**CSS から読みます**
+     ——動かしているのは base.css の `--m-nav`（席を移る）と `--m-push`
+     （引き出しが押しのける）で、ここに数字を持つと二重帳簿になります。
+     押しのけのほうが長いので、そのときはそちらを待ちます。 */
+  const slideMs = (push) => KN.motion.ms(push ? "--m-push" : "--m-nav") + 40;
   let slideT = null;
 
   /* **タブの流れと、引き出しの押しのけは別のもの。**
@@ -381,7 +385,10 @@
      行き先は 0（買うものの紙が全面）か 1（下がりきって価格の紙が全面）の
      二つ。途中で離したら、近いほうへ滑らせます。 */
   const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
-  const FACE_MS = 280;
+  /* 紙が行き先まで滑る長さ。CSS の `--m-swipe`（base.css の
+     `.is-face-settle`）と**同じ数**でなければならないので、そこから読みます。
+     **束②で、ここは「残りの道のりと指の勢いから出す」に変わります。** */
+  const FACE_MS = () => KN.motion.ms("--m-swipe");
   const FRONT = "list", BACK = "prices";
   /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
      画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
@@ -510,7 +517,7 @@
       }
       show(to > 0.5 ? BACK : FRONT, "settled");
       syncFaceGrips();
-    }, FACE_MS + 20);
+    }, FACE_MS() + 20);
   }
 
   /** 指を使わずに、紙をその位置まで滑らせます（帯を押したときの道）。
@@ -703,7 +710,7 @@
           s.classList.remove(...ALL);
           s.hidden = true;
         });
-      }, SLIDE_MS + 40);
+      }, slideMs(push));
     }
 
     ensureMounted(id);

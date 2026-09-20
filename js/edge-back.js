@@ -88,7 +88,11 @@
     const settle = (to) => new Promise((done) => {
       if (!live) { done(); return; }
       const ms = (KN.motion && KN.motion.still && KN.motion.still()) ? 0 : SETTLE;
-      const ease = "cubic-bezier(.32,.72,0,1)";
+      /* 曲線は CSS の `--push-e` から。ここには同じ数字が**文字列として
+         べた書き**してありました——押して戻るのと指で引いて戻るのとで、
+         同じ一段が二通りに動きうる形です（深さの数 `--push-p` / PARALLAX
+         で、すでに一度踏んでいる罠）。 */
+      const ease = KN.motion.ease("--push-e", "cubic-bezier(.32,.72,0,1)");
       [live.top, live.under].forEach((el) => {
         if (el) el.style.transition = ms ? `transform ${ms}ms ${ease}` : "";
       });
@@ -171,7 +175,10 @@
       @param {Element} under その下の一枚
       @param {number} dir    +1 ＝ 奥へ進む、-1 ＝ 手前へ戻る */
   function push(top, under, dir) {
-    const ms = (KN.motion && KN.motion.still && KN.motion.still()) ? 0 : 300;
+    /* 押して一段動かすのは、CSS の `scr-push-*` とまったく同じ出来事です
+       ——長さも同じところ（`--m-push`）から出します。 */
+    const ms = (KN.motion && KN.motion.still && KN.motion.still())
+      ? 0 : KN.motion.ms("--m-push");
     const w = (top.getBoundingClientRect().width) || 1;
     const from = dir > 0 ? w : 0;
     const to   = dir > 0 ? 0 : w;
@@ -186,7 +193,7 @@
         return;
       }
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        const ease = "cubic-bezier(.32,.72,0,1)";
+        const ease = KN.motion.ease("--push-e", "cubic-bezier(.32,.72,0,1)");
         [top, under].forEach((el) => { if (el) el.style.transition = `transform ${ms}ms ${ease}`; });
         put(top, to);
         put(under, underAt(to, w));

@@ -191,6 +191,48 @@
   --shadow-3: 0 8px 24px rgba(20, 40, 28, .12), 0 2px 8px rgba(20, 40, 28, .08);
   --shadow-up: 0 -2px 16px rgba(20, 40, 28, .07);
 
+  /* --- ガラス（下の帯・＋・＋から立ち上がる札） ---
+
+     この三つは**同じ高さに浮いている一枚のガラス**です。材が違うと、同じ
+     高さに見えません。だから材はここ一か所から出します。
+
+     **ここは三か所に手で写してありました**（背景3枚＋ぼかし＋縁の光＋
+     暗い面の上書きで、合わせて18ブロック）。そして**すでに割れていました**
+     ——`-webkit-backdrop-filter` の側にだけ `brightness` が無く、つまり
+     iPhone では「ガラスの効きどころ」と自分で書いた一手が、一度も効いて
+     いませんでした。一つの変数から出せば、次に割れようがありません。
+
+     四枚に分けてあるのは、重なる順に意味が違うからです：
+
+       --glass-sheen  面のつや。上から下へ引く光。
+       --glass-crown  上の縁で拾う光。厚みのあるガラスは、ここが明るい。
+       --glass-base   地。透けていることが見える濃さ（52%）。
+       --glass-rim    縁の一本。**上下で明るさが違う輪**です——ガラスの縁は
+                      上で空を映し、下で地面を映し、いちばん下でまた薄く
+                      光ります。一様な白い線だと、プラスチックの縁取り。
+
+     `--glass-tint` は、地に色を差したいとき（＋のボタン）だけ差し替える
+     ための札です。既定では `--glass-base` そのもの。
+
+     **三枚を一つの札（--glass-fill）にまとめてはいけません。** いちどそう
+     書いて、＋のコーラルが消えました——`var()` の中身は**その変数を書いた
+     要素の上で**解決されるので、`:root` で組んだ一枚は `:root` の
+     `--glass-tint` を焼きつけて配られます。＋が自分の `--glass-tint` を
+     上書きしても、もう手遅れです。**三枚は、使う側で並べること。** */
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%);
+  --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%);
+  --glass-base:  color-mix(in srgb, var(--c-bg-elev) 52%, transparent);
+  --glass-tint:  var(--glass-base);
+  /* brightness を少しだけ上げるのが、iOS 26 のガラスの効きどころです
+     ——後ろのものを暗くせずに拾い上げるので、重ねても画面が沈みません。
+     彩度も上げます（ぼかすと色は濁るので、戻してやらないと灰色の靄）。 */
+  --glass-blur:  saturate(240%) brightness(1.06) blur(22px);
+  --glass-rim: linear-gradient(180deg,
+    rgba(255, 255, 255, .9),
+    rgba(255, 255, 255, .22) 34%,
+    rgba(255, 255, 255, .08) 62%,
+    rgba(255, 255, 255, .45));
+
   /* --- radii --- */
   --r-sm: 8px;
   /* 上に重なる一枚を、下の一枚がどれだけ控えて受けるか。**一つの数から
@@ -258,6 +300,17 @@
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --ease-in: cubic-bezier(.55, 0, .85, .3);
   --spring: cubic-bezier(.34, 1.42, .5, 1);
+  /* 曲線が二本足りませんでした——**場所ごとに生の数字で書かれていた**ので、
+     名前が無いことに気づけなかったぶんです。
+
+     --ease-glide  よけるもの。**両端がやわらかい。**つまんだ行のために
+                   隣がどくときの動きで、「放り投げられた」ではなく
+                   「静かに場所を空けた」に見せるための曲線です。
+     --ease-settle 収まるもの。**進むぶんのほとんどが前半**で、最後の
+                   数pxが漂って着きます。組み直しのあと、行がもといた
+                   場所から滑ってくるところ（FLIP）。 */
+  --ease-glide: cubic-bezier(.32, .72, .24, 1);
+  --ease-settle: cubic-bezier(.16, .84, .24, 1);
   --dur: .22s;
 
   /* 指の下で起きること。速い＝じかに触っている感じ。 */
@@ -280,8 +333,12 @@
   /* 増える・減る。減るほうを少し速く——去るものを見送らせないため。 */
   --m-add: .32s;
   --m-delete: .24s;
-  /* 並びが変わる（FLIP）。行が「移動した」と読める最短の長さです。 */
-  --m-reorder: .32s;
+  /* 位置が変わる。つまんだ行のためにまわりが「よける」、暦の輪が隣の日へ
+     滑る、電卓が上がり下がりする——**いま起きている移動**の長さです。
+     .32s と書いてありましたが、**どこからも読まれていませんでした**
+     ——それらの CSS は .24s を直に書いていたので。使われているほうの数に
+     合わせます（名前が現実に追いつく、の意味）。 */
+  --m-reorder: .24s;
   /* 紙。開くのはゆっくり、閉じるのは速く。 */
   --m-sheet-open: .34s;
   --m-sheet-close: .2s;
@@ -290,6 +347,38 @@
   /* うまくいった／気をつけて。 */
   --m-success: .42s;
   --m-warn: .36s;
+
+  /* ---- ここから下は、名前の無かった出来事たち ----
+
+     生の秒数を名前へ移すときに、**どの名前にも当てはまらない出来事**が
+     五つ残りました。無理に近い名前へ押しこむと、そのうち「同じ名前なのに
+     違う速さで動くべきもの」が出て、また数字が直に書かれ始めます。
+     出来事があるなら、名前を作るほうが正しい。 */
+
+  /* 引き出しが押しのける（設定）。タブどうしの席替え（--m-nav）とは
+     別の出来事なので、別の名前です——`--push-e` / `--push-p` と同じ一族。 */
+  --m-push: .3s;
+  /* 押したところから育つ紙。`--m-sheet-open` より長いのは、小さいうちの
+     姿を見せるためです（components.css の .is-from-origin に経緯）。 */
+  --m-sheet-grow: .42s;
+  /* 払って、指を離してから行き先まで滑る。
+     **束②で、ここは「残りの道のりと指の勢いから出す」に変わります。**
+     いまは CSS 側だけがこの名前を読み、JS 側はまだ自分の数を持っています
+     （day-swipe.js / cal-swipe.js / edge-back.js の SETTLE）。 */
+  --m-swipe: .28s;
+  /* 押した瞬間に、一度だけ出る光。帯のガラスが拾う光と、済ませた火花。 */
+  --m-spark: .46s;
+  /* 器そのものが伸び縮みする（暦が開く、帯が出入りする、欄が育つ）。
+     中身が動くのではなく、入れものの高さが変わる、という出来事です。 */
+  --m-grow: .3s;
+  /* 組み直したあと、行が**もといた場所から**滑ってきて収まる（FLIP）。
+     `--m-reorder`（よける）より倍ちかく長いのは、あちらが指の下でいま
+     起きている移動なのに対して、こちらは「並びが変わった」という**結果**
+     を読ませるものだからです。速いと、行が入れ替わったことに気づけません。 */
+  --m-settle: .52s;
+  /* 一度だけ、そこを見てほしい（足した行がどこへ入ったかを示す光）。
+     他のどれよりも長いのは、**目が探しに行く時間**だからです。 */
+  --m-flash: 1.4s;
 
   /* --- layout --- */
 
@@ -383,6 +472,20 @@
     --c-slot-l-soft: #142b36;
     --c-slot-d-soft: #1f2244;
     --c-slot-s-soft: #33203a;
+    /* ---- 夜のガラス ----
+       白いまま置くと、縁だけが浮いて輪郭線に見えます（夜のガラスは、昼と
+       同じようには光りません）。地のほうは逆に少し濃くします——暗い背景に
+       暗いガラスを重ねると、境目が消えるので。
+       **ぼかし（--glass-blur）は変えません**。明暗で変わるのは光のほうで、
+       ガラスの厚みではないからです。 */
+    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%);
+    --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%);
+    --glass-base:  color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+    --glass-rim: linear-gradient(180deg,
+      rgba(255, 255, 255, .28),
+      rgba(255, 255, 255, .07) 34%,
+      rgba(255, 255, 255, .03) 62%,
+      rgba(255, 255, 255, .13));
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 2px 8px rgba(0,0,0,.45);
     --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -438,6 +541,15 @@
   --c-slot-l-soft: #142b36;
   --c-slot-d-soft: #1f2244;
   --c-slot-s-soft: #33203a;
+  /* 夜のガラス（上の @media と同じ。自分で「暗い」を選んだときにも効かせます）。 */
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%);
+  --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%);
+  --glass-base:  color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
+  --glass-rim: linear-gradient(180deg,
+    rgba(255, 255, 255, .28),
+    rgba(255, 255, 255, .07) 34%,
+    rgba(255, 255, 255, .03) 62%,
+    rgba(255, 255, 255, .13));
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -549,14 +661,6 @@ a { color: var(--c-primary); }
   border-radius: var(--r-sm);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-  }
-}
-
 /* ---------------- app shell ---------------- */
 
 .app {
@@ -612,7 +716,7 @@ a { color: var(--c-primary); }
 
 .screen.is-active {
   display: flex;
-  animation: screen-in .26s var(--ease-out);
+  animation: screen-in var(--m-nav) var(--ease-out);
 }
 
 @keyframes screen-in {
@@ -644,10 +748,10 @@ a { color: var(--c-primary); }
    **指で引いて戻るときも、同じ数から出します**（js/edge-back.js の
    PARALLAX）——押して戻るのと指で戻るのとで深さが違うと、同じ一段が
    二通りの遠さに見えます。 */
-.screen.is-active.is-push-in   { animation: scr-push-in .3s var(--push-e); }
-.screen.is-leaving.is-push-under { animation: scr-push-under .3s var(--push-e) forwards; }
-.screen.is-active.is-pop-in    { animation: scr-pop-in .3s var(--push-e); }
-.screen.is-leaving.is-pop-out  { animation: scr-pop-out .3s var(--push-e) forwards; }
+.screen.is-active.is-push-in   { animation: scr-push-in var(--m-push) var(--push-e); }
+.screen.is-leaving.is-push-under { animation: scr-push-under var(--m-push) var(--push-e) forwards; }
+.screen.is-active.is-pop-in    { animation: scr-pop-in var(--m-push) var(--push-e); }
+.screen.is-leaving.is-pop-out  { animation: scr-pop-out var(--m-push) var(--push-e) forwards; }
 /* 影は動いている一枚にだけ。止まっているあいだ画面の左端に影があると、
    そこに何かが重なっているという嘘になります。 */
 .screen.is-push-in, .screen.is-pop-out, .screen.is-over { box-shadow: var(--push-shadow); }
@@ -661,10 +765,14 @@ a { color: var(--c-primary); }
 }
 .screen.is-over { z-index: 2; }
 
-.screen.is-active.is-in-r { animation: scr-in-r .28s var(--ease-out); }
-.screen.is-active.is-in-l { animation: scr-in-l .28s var(--ease-out); }
-.screen.is-leaving.is-out-l { animation: scr-out-l .28s var(--ease-out) forwards; }
-.screen.is-leaving.is-out-r { animation: scr-out-r .28s var(--ease-out) forwards; }
+/* 入る面と出る面で、**曲線が違います**。入ってくるものは速く出て静かに
+   着き（--ease-out）、去るものは静かに離れて速く消える（--ease-in）
+   ——motion の節に書いてある決めごとそのままです。四行とも --ease-out に
+   なっていたので、去る面が「出てくる動き」で出ていっていました。 */
+.screen.is-active.is-in-r { animation: scr-in-r var(--m-nav) var(--ease-out); }
+.screen.is-active.is-in-l { animation: scr-in-l var(--m-nav) var(--ease-out); }
+.screen.is-leaving.is-out-l { animation: scr-out-l var(--m-nav) var(--ease-in) forwards; }
+.screen.is-leaving.is-out-r { animation: scr-out-r var(--m-nav) var(--ease-in) forwards; }
 
 /* ---- 買うもの ⇄ 価格：紙一枚と、その後ろの地 ----
 
@@ -715,7 +823,7 @@ a { color: var(--c-primary); }
   will-change: transform;
 }
 .screen.is-face-front.is-face-settle .stack > .tl-sheet {
-  transition: transform .28s var(--ease-out);
+  transition: transform var(--m-swipe) var(--ease-out);
 }
 /* 下がった紙は「紙」に見えなければいけません。上の角はもともと丸いので、
    足すのは影だけ——後ろとのあいだに厚みが出ます。 */
@@ -746,7 +854,7 @@ a { color: var(--c-primary); }
 .screen.is-face-front.is-face-settle .js-filter,
 .screen.is-face-front.is-face-settle .face-t,
 .screen.is-face-back.is-face-settle .js-filter > * {
-  transition: opacity .28s var(--ease-out);
+  transition: opacity var(--m-swipe) var(--ease-out);
 }
 /* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは一覧
    だけで、**自分の上の一組——バー・探す欄・カテゴリの札——はまとめて
@@ -958,22 +1066,11 @@ a { color: var(--c-primary); }
   position: absolute;
   inset: 2px var(--sp-3) var(--tab-drop);
   border-radius: var(--r-full);
-  /* 三枚重ね。下から順に、地・面のつや・上の縁の光。
-
-     ガラスに見えるかどうかを決めるのは、透けている度合いよりも
-     **光の当たり方**です。すりガラスは面が一様に曇りますが、厚みのある
-     ガラスは上の縁で光を拾い、面の上半分がうっすら明るくなります。
-     その二つを重ねると、同じ透け具合でも「板」ではなく「かたまり」に
-     見えます。 */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
-    color-mix(in srgb, var(--c-bg-elev) 52%, transparent);
-  /* brightness を少しだけ上げるのが、iOS 26 のガラスの効きどころです
-     ——後ろのものを暗くせずに拾い上げるので、重ねても画面が沈みません。
-     彩度も上げます（ぼかすと色は濁るので、戻してやらないと灰色の靄）。 */
-  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
-  -webkit-backdrop-filter: saturate(240%) blur(22px);
+  /* 材は `--glass-*` から。三枚重ね（地・面のつや・上の縁の光）の中身と、
+     なぜ三枚なのかは :root のガラスの節にあります。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-3);
 }
 
@@ -985,53 +1082,30 @@ a { color: var(--c-primary); }
 
    作り方は、1px の余白に色を敷いて、内側をマスクで抜く——border では
    一色しか置けないので、こうします。指は素通りさせます。 */
-.tabbar::after {
+/* **縁の光は、三つとも同じ一枚です。** 違うのは器の形（inset と丸み）
+   だけなので、そこだけ各々が言います。
+
+   ＋（.add-fab）と ＋の札（.fab-menu-b）は screens.css に居ますが、材の
+   話なのでここに書きます——**材は一か所**、というのがこの節の言い分です。 */
+.tabbar::after,
+.add-fab::after,
+.fab-menu-b::after {
   content: "";
   position: absolute;
-  inset: 2px var(--sp-3) var(--tab-drop);
-  border-radius: var(--r-full);
+  inset: 0;
+  border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, .9),
-    rgba(255, 255, 255, .22) 34%,
-    rgba(255, 255, 255, .08) 62%,
-    rgba(255, 255, 255, .45));
+  background: var(--glass-rim);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
   pointer-events: none;
 }
-/* 暗い画面では、光を落とします。夜のガラスは、昼と同じようには光りません
-   ——白いまま置くと、縁だけが浮いて輪郭線に見えます。地のほうは逆に少し
-   濃くします（暗い背景に暗いガラスを重ねると、境目が消えるので）。 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .tabbar::before {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
-      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
-      color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
-  }
-  :root:not([data-theme="light"]) .tabbar::after {
-    background: linear-gradient(180deg,
-      rgba(255, 255, 255, .28),
-      rgba(255, 255, 255, .07) 34%,
-      rgba(255, 255, 255, .03) 62%,
-      rgba(255, 255, 255, .13));
-  }
-}
-:root[data-theme="dark"] .tabbar::before {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
-    color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
-}
-:root[data-theme="dark"] .tabbar::after {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, .28),
-    rgba(255, 255, 255, .07) 34%,
-    rgba(255, 255, 255, .03) 62%,
-    rgba(255, 255, 255, .13));
+/* 帯だけは、カプセルが帯そのものより内側にいるので、形を言い直します。 */
+.tabbar::after {
+  inset: 2px var(--sp-3) var(--tab-drop);
+  border-radius: var(--r-full);
 }
 
 /* 押したところから生まれる光。
@@ -1070,7 +1144,7 @@ a { color: var(--c-primary); }
     transparent 70%);
   opacity: 0;
 }
-.tab-glow.is-lit::after { animation: tab-lit .46s var(--ease-out); }
+.tab-glow.is-lit::after { animation: tab-lit var(--m-spark) var(--ease-out); }
 @keyframes tab-lit {
   0%   { opacity: 0;   transform: scale(.12); }
   18%  { opacity: 1; }
@@ -1170,7 +1244,7 @@ a { color: var(--c-primary); }
   place-items: center;
   width: 40px; height: 26px;
   border-radius: var(--r-full);
-  transition: background .2s var(--ease), transform .2s var(--ease-out);
+  transition: background var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 
 /* 一枚しか無いボタンは、いままでどおり真ん中に一つ。 */

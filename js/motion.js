@@ -85,8 +85,25 @@
   if (window.matchMedia) {
     try {
       window.matchMedia("(prefers-reduced-motion: reduce)")
-        .addEventListener("change", () => cache.clear());
+        .addEventListener("change", () => { cache.clear(); easeCache.clear(); });
     } catch (_) { /* 古い Safari。無くても困りません */ }
+  }
+
+  /* 曲線も、同じ理由で CSS から読みます。
+     `edge-back.js` は "cubic-bezier(.32,.72,0,1)" を**文字列としてべた書き**
+     していました——`--push-e` とまったく同じ数字です。片方だけ直した日に、
+     押して戻るのと指で引いて戻るのとで動きが割れます（深さの数
+     `--push-p` / PARALLAX で、同じ罠を一度踏んでいます）。 */
+  const easeCache = new Map();
+  function ease(token, fallback) {
+    if (easeCache.has(token)) return easeCache.get(token);
+    let out = fallback || "ease";
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+      if (v) out = v;
+    } catch (_) { /* 既定のまま */ }
+    easeCache.set(token, out);
+    return out;
   }
 
   function buzz(spec) {
@@ -141,5 +158,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, still, EVENTS };
+  KN.motion = { fire, press, ms, ease, still, EVENTS };
 })();
