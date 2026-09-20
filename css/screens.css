@@ -21,7 +21,7 @@
   left: 0;
   right: 0;
   bottom: calc(var(--tabbar-space) + var(--sp-3));
-  z-index: 20;
+  z-index: var(--z-head);
   pointer-events: none;
 }
 
@@ -283,7 +283,7 @@
 .cal {
   position: sticky;
   top: var(--topbar-h, 0px);
-  z-index: 12;
+  z-index: var(--z-stick);
   padding: var(--sp-3) var(--sp-4) var(--sp-2);
   /* 上のバーと同じ理由で、透かしません（base.css の .topbar）。下を白い
      紙が流れるので、透かすと日付や曜日の裏に行の字が重なります。 */
@@ -1584,7 +1584,14 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  background: var(--c-surface-2);
+  position: relative;
+  /* 材はガラスの一組から（base.css）。**縁の屈折（厚み）は着せません**
+     ——あれは浮いているものの話で、ここは面にはめ込まれた欄です。
+     浮いていないものに厚みを着せると、どこにも乗っていないのに影だけ
+     持っている、という嘘になります。縁の一本だけ回します。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--r-md);
   padding: 0 var(--sp-3);
   height: 46px;
@@ -1882,7 +1889,12 @@
 .set-bar {
   flex: none;
   padding: var(--sp-3) var(--set-gut) calc(var(--tabbar-space) + var(--sp-2));
-  background: var(--c-bg);
+  /* 送る箱の上に浮いている一枚なので、材はガラスの一組から（base.css の
+     ガラスの節）。**縁の輪は着せません**——画面いっぱいで角も立っている
+     ので、境目を言うのは前からある上の一本のほうです。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: 0 -1px 0 var(--set-line);
 }
 .set-bar > * { width: 100%; }
@@ -1914,7 +1926,7 @@
 
 .set-nav {
   flex: none;
-  z-index: 20;
+  z-index: var(--z-head);
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -4568,6 +4580,31 @@ a.btn { text-decoration: none; }
 .item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }
 .item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
 
+/* ---- 品物の名前は、二行まで折り返す ----
+
+   決めごとは同じ（一行・はみ出したら…）でしたが、**行の広さが違う**ので、
+   同じ名前が買うもので「トイレットペー…」と切れ、価格では最後まで出る、
+   ということが起きていました——同じ品物の同じ名前なのに、画面によって
+   どこまで読めるかが変わる。
+
+   折り返すほうへ揃えます。やること（`.item.todo`）と、時間割の題と、
+   タイルは**もう二行まで折り返しています**——一行に縛っていたのは、
+   この二つの一覧だけでした。三行めは要りません（名前が三行要るなら、
+   それは名前ではなくメモです）。
+
+   `overflow-wrap: anywhere` を足すのは、区切りの無い長い一語
+   （「トイレットペーパー」）が一行めをはみ出して、二行めが空のまま
+   切れるのを防ぐためです。 */
+.item-wrap:not(.is-tile-wrap) .item:not(.todo) .item-name,
+.product-wrap:not(.is-tile-wrap) .product-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 /* ---- 単色シルエットは、カテゴリの色で塗ります ----
 
    品物の絵は 2026年9月5日に単色シルエット（`is-todo`）へ切り替わりました。
@@ -4970,7 +5007,7 @@ a.btn { text-decoration: none; }
    少しだけ持ち上げて、影を落とす——紙から浮いている、という絵。 */
 .tl-ghost {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-lift);
   margin: 0;
   pointer-events: none;
   /* **縮めたカード**です。行の原寸で持ち上げると、指の下が広く塞がって

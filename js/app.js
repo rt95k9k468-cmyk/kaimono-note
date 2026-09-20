@@ -316,8 +316,17 @@
     const existing = tab.querySelector(".tab-badge");
     if (count > 0) {
       const text = count > 99 ? "99+" : String(count);
-      if (existing) existing.textContent = text;
-      else tab.append(node(html`<span class="tab-badge">${text}</span>`));
+      if (existing) {
+        /* **数が変わったときだけ**、一度だけ持ち上げます（`--m-number`）。
+           出来事の名前は先に用意してありましたが、**どこからも呼ばれて
+           いませんでした**——数が変わるのは画面のあちこちで起きますが、
+           いちばん人が見ているのはここ（片づけると減る札）です。
+           組み直しのたびに鳴らすと、何も変わっていない拍まで動きます。 */
+        if (existing.textContent !== text) {
+          existing.textContent = text;
+          KN.motion.fire("number", existing);
+        }
+      } else tab.append(node(html`<span class="tab-badge">${text}</span>`));
     } else if (existing) {
       existing.remove();
     }

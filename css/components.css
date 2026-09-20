@@ -666,19 +666,33 @@ button, [role="tab"] {
 
 /* ---------------- sheet (bottom modal) ---------------- */
 
-/* All the blurring happens here rather than on the sheet itself. The sheet is
-   moved by `transform`, and a backdrop-filter inside a transformed element is
-   unreliable — Safari has shipped versions where it samples nothing at all.
-   This layer is untransformed and covers the whole window, so blurring it once
-   and letting the translucent sheet sit on top gives the frosted look with
-   nothing depending on that. */
+/* ---- 覆いのぼかしと、紙のぼかしは、別のことを言っている ----
+
+   **ぼかしは全部ここに置いてありました。** 紙は `transform` で動かすもので、
+   動くものの中の `backdrop-filter` は当てにならない（Safari には、まるで
+   拾わない版があった）——それが理由です。理由は正しいのですが、結果として
+   **紙の縁でぼけが切れません**でした。紙の外も中も、同じだけぼけている。
+   ぼけているのに、その形が紙の形をしていない、ということです。
+
+   分けます。
+
+     覆い（ここ）… **下の画面から気をそらす**ためのぼかし。画面ぜんぶ。
+     紙（下）　　… **その紙の後ろだけ**、もう一段ぼかす。だから縁で切れる。
+
+   覆いのほうは 18px → 12px に下げます（役目が「気をそらす」だけになった
+   ので、それで足ります）。紙は自分のぶんを重ねるので、紙の後ろは前より
+   深くぼけます——**その差が、紙の形**です。
+
+   **もとの但し書きは生きています。** 動くものの中のぼかしが拾われない端末
+   では、紙のぶんだけが効かず、覆いのぼかしがそのまま残ります——つまり
+   **いままでと同じ絵**に落ちるだけで、字が透けて読めなくなることはない。 */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(10, 20, 14, .24);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  z-index: 100;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  z-index: var(--z-sheet);
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
 }
@@ -705,9 +719,13 @@ button, [role="tab"] {
      「下の画面より手前にいる」の話、内側の一本は「これが紙のふち」の話で、
      別のことを言っているので両方置きます。 */
   background: color-mix(in srgb, var(--c-sheet) 76%, transparent);
+  /* 紙は自分のぶんをぼかします（上の「覆いのぼかしと、紙のぼかしは〜」）。
+     丸角にも `border-radius` がそのまま効くので、**ぼけが紙の形に沿い**ます。 */
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--shadow-3), inset 0 1px 0 var(--c-sheet-edge);
-  z-index: 101;
+  z-index: calc(var(--z-sheet) + 1);
   display: flex;
   flex-direction: column;
   transform: translate(-50%, 100%);
@@ -1237,7 +1255,7 @@ button, [role="tab"] {
 .kn-burst {
   position: fixed;
   width: 0; height: 0;
-  z-index: 600;
+  z-index: var(--z-top);
   pointer-events: none;
 }
 /* 点は**丸**です。星の形（clip-path の十角形）をやめました——参考にした
@@ -1268,7 +1286,7 @@ button, [role="tab"] {
   left: 50%;
   bottom: calc(var(--tabbar-space) + var(--sp-3));
   translate: -50% 0;
-  z-index: 200;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -1282,13 +1300,28 @@ button, [role="tab"] {
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
+  position: relative;
   /* See-through, because it lands on top of the very rows it is talking about
      — 「「牛乳」を削除しました」 sits over the place 牛乳 just left. Blurred
-     behind, so the text stays readable over anything underneath. */
-  background: rgba(35, 42, 36, .78);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  color: #f2f6f1;
+     behind, so the text stays readable over anything underneath.
+
+     **材はガラスの一組から**（base.css のガラスの節）。ここは生の暗い緑
+     （rgba(35,42,36,.78) と #8fe0b0）でした——基調がコーラルになったいま、
+     **アプリで唯一の緑**で、基調色を変えてもここだけ付いてきませんでした。
+
+     ただし、明暗は**夜のほうに固定**します（`--glass-night-*`）。これは
+     一覧の上に置かれる短い知らせで、下にどんな行が流れていても白い字が
+     読めることのほうが要るからです。濃さだけ 62% → 82%——帯は「下に続きが
+     ある」を言うためのガラスですが、こちらは**読ませるため**のガラスなので。 */
+  background: var(--glass-night-sheen), var(--glass-night-crown),
+              color-mix(in srgb, var(--glass-night-cast) 82%, transparent);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  /* 縁の一本も夜のほうから。明るい面の縁は白が強いので、暗い地に回すと
+     線だけが浮いて、ガラスのふちではなく別の部品に見えます
+     （紙のふちで同じことを一度やっています——「紙の地は 250」の節）。 */
+  --glass-rim: var(--glass-night-rim);
+  color: #f2f2f4;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);
   font-weight: 700;
@@ -1299,20 +1332,21 @@ button, [role="tab"] {
   animation: toast-in var(--m-add) var(--ease-out);
 }
 
-/* Without the blur, transparency alone would run the list through the text. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .toast { background: #232a24; }
-}
+/* ぼかしの効かない環境の受け皿は、**base.css の一か所**に移しました
+   （`--glass-a` / `--glass-night-a` を上げる）。ここだけに置いてあった
+   ころは、下の帯が「半分透けた板」のまま残って、行の字が素通しでした。
 
-:root[data-theme="dark"] .toast { background: rgba(51, 61, 51, .78); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .toast { background: rgba(51, 61, 51, .78); }
-}
+   明るい／暗いの上書きも要りません——材が夜に固定なので、どちらの面でも
+   同じ濃さです（そこが帯や＋と違うところで、上の但し書きの理由）。 */
 
 .toast.is-out { animation: toast-out var(--m-delete) var(--ease-in) forwards; }
 .toast-msg { flex: 1; min-width: 0; }
 .toast-action {
-  color: #8fe0b0;
+  /* 押せる字も、生の薄緑でした。**選んだ基調色から出す**こと——暗い地の
+     上なので、白をひとさじ混ぜます（`.is-on-dark` の席と同じ手。
+     `--c-primary` 自身に混ぜると自分を参照する循環になるので、
+     混ぜるのは `color:` の側で）。 */
+  color: color-mix(in srgb, #fff 42%, var(--c-primary));
   font-weight: 700;
   padding: 6px 10px;
   border-radius: var(--r-sm);
@@ -1461,9 +1495,14 @@ button, [role="tab"] {
   width: min(100%, var(--maxw));
   /* Above every sheet, however deep they are stacked (see the z-index each
      sheet is given as it opens). */
-  z-index: 400;
+  z-index: var(--z-pad);
   padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + var(--safe-b));
-  background: var(--c-bg-elev);
+  /* 紙の上に浮いている一枚なので、材はガラスの一組から（base.css）。
+     **縁の輪は着せません**——画面いっぱいの板で、角も立っています。
+     ここが「境目」だと言っているのは、前からある上の一本のほうです。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-top: 1px solid var(--c-border);
   box-shadow: var(--shadow-3);
   transition: transform var(--m-reorder) var(--ease-out);
@@ -1575,9 +1614,16 @@ button, [role="tab"] {
 /* 印が付いた。ほんの少し行き過ぎて戻ります——指で押した手ごたえ。 */
 @keyframes m-check {
   0%   { transform: scale(1); }
-  38%  { transform: scale(.9); }
+  38%  { transform: scale(1.16); }
   100% { transform: scale(1); }
 }
+/* **向きを、実際に印を描いているものへ揃えました**（.9 → 1.16）。
+   時間割の丸（`tl-pop`）も買うものの丸（`mark-pop`）も 1.16 まで**膨らむ**
+   のに、共通の「印が付いた」だけが **.9 まで縮んで**いました。同じ出来事を、
+   共通の語彙と各画面とが逆向きに言っていた、ということです
+   ——この仕組みが止めようとしていた「画面ごとのばらけ」そのものでした。
+   （いまのところ `fire("check")` は絵を渡さない呼び方しかしていないので、
+   これは**次に渡した人**のための直しです。） */
 .is-m-check { animation: m-check var(--m-check) var(--spring); }
 
 /* 増えた。下から入ってきて、静かに着きます。 */

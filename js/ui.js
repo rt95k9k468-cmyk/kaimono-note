@@ -12,6 +12,11 @@
 
   const openSheets = [];
 
+  /* 紙の段は CSS が持っています（base.css の「重なりの順」）。重なるたびに
+     二段ずつ上げるので、**その足もとだけ**をここで読みます。 */
+  const zSheet = () => parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 100;
+
   /* ---------------- 紙が生まれるところ ----------------
 
      紙は画面の下からせり上がっていました。＋を押して出てくる紙が、押した
@@ -243,12 +248,22 @@
        sheet sits at the same z-index and the new sheet's backdrop lands
        *under* the old sheet — so the one underneath stays sharp and bright and
        you end up reading two forms at once through the frosted glass. */
+    /* いちばん下の段は **CSS の `--z-sheet`** から読みます。数を二か所に
+       書くと、段の名前を直した日にここだけ置いていかれます
+       （--push-p / PARALLAX と同じ罠）。 */
     const depth = openSheets.length;
-    backdrop.style.zIndex = String(100 + depth * 2);
-    el.style.zIndex = String(101 + depth * 2);
+    const floor = zSheet();
+    backdrop.style.zIndex = String(floor + depth * 2);
+    el.style.zIndex = String(floor + 1 + depth * 2);
 
     sheetRoot().append(backdrop, el);
     document.body.style.overflow = "hidden";
+    /* 出来事の名前を鳴らします。**いままで呼ばれていませんでした**
+       ——`sheetOpen` / `sheetClose` は motion.js に用意だけしてあって、
+       どこからも呼ばれない名前でした（--m-sheet-close が誰にも読まれて
+       いなかったのと同じ形です）。いまは震えも絵も持たない出来事ですが、
+       名前が現に呼ばれていれば、あとで手ごたえを足すのはここ一か所です。 */
+    KN.motion.fire("sheetOpen");
 
     /* 押されたところから育てます（育てないなら null で、これまでどおり
        下からせり上がります）。 */
@@ -261,7 +276,7 @@
       const bloom = node(html`<i class="sheet-bloom" aria-hidden="true"></i>`);
       bloom.style.left = `${seed.x}px`;
       bloom.style.top = `${seed.y}px`;
-      bloom.style.zIndex = String(100 + depth * 2);
+      bloom.style.zIndex = String(floor + depth * 2);
       sheetRoot().append(bloom);
       /* 光は紙が育ちきるまでのあいだだけ。長さは CSS 側（--m-sheet-grow）
          から出します——光は「紙より先に終わる」ことが決めごとなので、
@@ -281,6 +296,7 @@
       closed = true;
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
+      KN.motion.fire("sheetClose");
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
       /* Nor does the caret. A field removed while still focused is never
