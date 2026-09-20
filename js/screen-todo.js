@@ -2287,6 +2287,19 @@
        スクロールは0へ落ちるので、組み直したあとに返します——一件
        片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
     const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
+
+    /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
+       `settle()` を呼ぶと、動いた行が**もといた場所から**滑ってきます
+       （`ui.js` の `flipRows`）。
+
+       **行には前から `data-flip` が付いていました**——買うもの・daily は
+       これを使っているのに、ここだけ呼んでいませんでした（目印だけ置いて、
+       見る人が居なかった）。時間割に一件足すと、その下の行がいっせいに
+       瞬間移動していたのは、それです。
+
+       日を丸ごと替えたときは、向こうが自分で見送ります（新顔が半分を
+       超えたら「編集ではなく行き先の変更」と見なして何もしない）。 */
+    const settle = KN.ui.flipRows(els.body, ".tl-row");
     els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
@@ -2349,6 +2362,7 @@
         </div>
       `));
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2359,6 +2373,7 @@
         </p>
       `));
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2398,6 +2413,7 @@
       const grip = sheet.querySelector(".tl-grip");
       if (grip) grip.setAttribute("data-pull-own", "cal");
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2419,6 +2435,7 @@
 
     if (closed.length) sheet.append(archiveSection(closed, tiles));
     restoreTop(keepTop);
+    settle();
   }
 
   /* ---------------- 一日ぶん ---------------- */
