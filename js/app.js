@@ -891,6 +891,33 @@
     const outCls = push ? (dir > 0 ? "is-push-under" : "is-pop-out")
                         : (dir > 0 ? "is-out-l" : "is-out-r");
 
+    /* **組み立ては、動かす前に済ませます。**
+
+       前はここが逆で、入場の class を付けて transition を走らせてから
+       `render()` を呼んでいました。組み直しは重い仕事なので（やることで
+       117〜168ms／CPU 4倍）、動き出した直後に main thread がそのぶん
+       固まります——実測で、席を移るたびに **100〜244ms** の長タスク。
+       絵としては「流れずに、いきなり出てくる」。
+
+       先に組んでおけば、そのあいだ画面に出ているのは**まだ前の席**です
+       （入場の class は下で付けます）。押してから動き出すまでの間は
+       変わらず、**動き出してからが詰まらなくなります。**
+
+       **見える状態にしてから組むこと。** 隠れた面（`hidden` ＝ display:none）
+       の中で組むと、測るものが軒並み 0 を返します——暦の厚み（`fitCalH`）、
+       選んでいる日の輪の位置、「いま」の線。だからここで先に `is-active`
+       だけ付けて、**動かす class（`inCls`）は下の輪の中で付けます**。
+       この二つのあいだに描画は挟まらないので（同じ一拍のうち）、前の席が
+       消えて見えることはありません。 */
+    const inEl = document.querySelector(`.screen[data-screen="${id}"]`);
+    if (inEl) {
+      inEl.hidden = false;
+      inEl.classList.remove(...ALL);
+      inEl.classList.add("is-active");
+    }
+    ensureMounted(id);
+    KN.screens[id].render();
+
     document.querySelectorAll(".screen").forEach((s) => {
       const on = s.dataset.screen === id;
       /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
@@ -921,9 +948,6 @@
         });
       }, slideMs(push));
     }
-
-    ensureMounted(id);
-    KN.screens[id].render();
 
     /* 画面によっては、開いたこと自体が合図になります。呼ぶのはここ——
        タブを押した一拍のうちなので、ブラウザの「操作のうちに」を満たします。 */
