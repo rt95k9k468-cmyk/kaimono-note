@@ -1367,31 +1367,69 @@ a { color: var(--c-primary); }
   color: color-mix(in srgb, #fff 38%, var(--c-primary));
 }
 
-/* 押したところで、ガラスが凹む。
+/* ---- 押しているあいだ、その席がふくらむ ----
 
-   ここは**中心から広がる閃光**でした。それは「波紋」で、Android の作法
-   です。ガラスは波紋を出しません——**それ自身が凹む／膨らむ**ものです。
-   だから、広がって消えるのをやめて、押したところに**窪みが立ち上がって
-   戻る**形にしました。
+   ここは長いこと**一度だけ出る絵**でした。はじめは中心から広がる閃光
+   （波紋。Android の作法で、ガラスの言い方ではない）、次がその作り直しで、
+   押したところに窪みが立ち上がって戻る `tab-dimple` ——**絵としては
+   そこまで来ていました**。それでも直っていなかったのは、絵の中身ではなく
+   **時計を誰が持っているか**のほうです。
 
-   窪みの絵は三層で一枚：まん中に光が集まり（凹んだ底に光が寄る）、その
-   外にわずかに沈んだ輪（凹みのふち）、いちばん外に主色をひとさじ。
-   大きさも変えました——200px は「画面を横切る波」でしたが、指が押すのは
-   指のぶんだけなので 132px。
+   一度だけ出るものは「**まだ押している**」を言えません。0.46秒で終わるので、
+   長く押しても、押したまま指を滑らせても、絵はもう終わっている。指はまだ
+   そこに居るのに、画面のほうが先に離れている——**指と絵が切れている**、
+   というのが紙の節（`ui.js` の「紙は、指につく」）で三つとも同じ形で
+   直したことでした。帯にも同じことが残っていた、というだけです。
 
-   ＋と札の「押したときの変形」は、それぞれの `:active` が持っています
-   （＋は膨らみ、札は縮む）。ここは、一枚しかないカプセルの上で
-   **押された場所だけ**が凹む、という言い方になります。
+   だから**動きではなく状態**にします。押しているあいだ膨らんだまま、
+   離すと戻る。時計を持っているのは指のほうで、こちらではありません。
 
-   カプセルと**同じ形に切り抜いた一枚**です（inset も丸みも ::before と
-   同じ）。窪みは指の下（--gx / --gy）に出ます。ここをタブごとに分けない
-   のは、カプセルが一枚のガラスだからです——分けると、隣との境目で
-   凹みが四角く切れます。
+   膨らむのは二段：
+
+     ① **席ぜんぶ**（`.tab`、1.09倍）… 絵も字も点も一緒に。押されているのは
+        「絵」ではなく**その席**なので、まとまりごと動かないと、部品の一つを
+        押したように見えます。
+     ② **選択カプセル**（`.tab-ico`、さらに 1.05倍 ＝ 合わせて 1.14倍）…
+        選ばれている席では、これが色の付いた丸そのもの。席よりわずかに
+        大きく膨らむので、**カプセルが押されている**と読めます。
+
+   **倍率は `scale:` 独立プロパティで書くこと。`transform` ではありません。**
+   `.tab-ico` の `transform` は選ばれている印（`translateY(-1px)`）が
+   すでに使っていて、しかも `.tab[aria-selected="true"] .tab-ico` と
+   `.tab.is-held .tab-ico` は**詳細度が同じ**（0,3,0）です——同じ
+   プロパティに書くと、あとに書いたほうだけが効いて、選ばれている席では
+   膨らまない／選ばれていない席では 1px 落ちる、のどちらかになります
+   （時間割の `is-clash-above` でまったく同じ踏み方をしました）。
+   `scale:` は `transform` と**掛け算で重なる**別のプロパティなので、
+   二つは取り合いません。
+
+   **行きと帰りで速さを分けます**（class の付け外しで分ける、動きの節の
+   決めごと）。行きは `--m-press`（指の下で起きること）を `--ease-out` で
+   ——指に遅れない。帰りは `--m-state` を `--spring` で——わずかに行き過ぎて
+   から収まるのが、押していたものを離した手ごたえです。 */
+.tabbar { --hold-s: 1.09; --hold-c: 1.05; }
+
+.tab.is-held { scale: var(--hold-s); transition: scale var(--m-press) var(--ease-out); }
+.tab.is-held .tab-ico { scale: var(--hold-c); transition: scale var(--m-press) var(--ease-out); }
+
+/* ---- 押しているあいだ、ガラスが光を集める ----
+
+   膨らむだけだと、ガラスではなく**絵を拡大した**ように見えます。本物の
+   ガラスは、押されて形が変わったところに光が寄る。だから指の下（--gx /
+   --gy）にうすい光を**置いたままにします**——広がりません（広がるのが
+   波紋、その場に居るのが変形）。
+
+   **タブごとに分けません。** カプセルは一枚のガラスなので、光も一枚の上に
+   出ます——分けると、隣との境目で光が四角く切れます。だからカプセルと
+   同じ形に切り抜いた一枚（inset も丸みも ::before と同じ）です。
+
+   **指が動けば、光も動きます。**`--gx/--gy` に transition は置きません
+   ——遅れて追うと、そこでまた指と絵が切れます。
 
    重ね順は 0。カプセルの地と縁の光（どちらも z-index: auto の擬似要素）
    より後、ボタン（z-index: 1）より前に入ります。だから絵と字は光に
    埋もれません。 */
-.tab-glow {
+.tab-hold {
   position: absolute;
   inset: 2px var(--sp-3) var(--tab-drop);
   border-radius: var(--r-full);
@@ -1399,45 +1437,66 @@ a { color: var(--c-primary); }
   pointer-events: none;
   z-index: 0;
 }
-.has-fab .tab-glow { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
-.tab-glow::after {
+.tab-hold::after {
   content: "";
   position: absolute;
   left: var(--gx, 50%);
   top: var(--gy, 50%);
-  width: 132px; height: 132px;
-  margin: -66px 0 0 -66px;
+  /* **丸ではなく、カプセルに収まる楕円**です。132px の丸は、60px の
+     カプセルの中では上下が切り落とされて**まっすぐな縁**になり、さらに
+     左右は隣の席まで届いていました——実測で、押した席の左右に一つずつ、
+     合わせて三席ぶんが染まった（絵としては「光」ではなく染み）。
+     一席ぶんの幅（カプセル 302px ÷ 4 ＝ 76px）に合わせ、丈はカプセルの
+     中に収まる 46px。これなら切り落とされる縁がありません。 */
+  width: 96px; height: 46px;
+  margin: -23px 0 0 -48px;
   border-radius: var(--r-full);
-  /* 白い閃光にはしません。ガラスが拾うのは**色を含んだ光**なので、白の
-     芯のまわりに主色をひとさじ置きます。真っ白だけだと、ガラスではなく
-     ストロボに見えます。
-     まん中の光と外の主色のあいだに、**わずかに沈んだ輪**を挟みます
-     ——これが「凹んでいる」を言っている一枚で、抜くとただの光に戻ります。 */
-  background: radial-gradient(circle,
-    rgba(255, 255, 255, .62) 0%,
-    rgba(255, 255, 255, .2) 24%,
-    color-mix(in srgb, var(--c-text) 12%, transparent) 44%,
-    color-mix(in srgb, var(--c-primary) 18%, transparent) 58%,
-    transparent 74%);
+  /* 白い閃光にはしません。ガラスが拾うのは**色を含んだ光**なので、白の芯の
+     まわりに主色をひとさじ置きます。真っ白だけだと、ガラスではなく
+     ストロボです。**閃光だったころよりずっと薄く**してあります
+     （白 .62 → .20、主色 18% → 7%）——一度きりなら強くても消えますが、
+     **押しているあいだ居座るもの**が同じ濃さだと、そこだけ染みに見えます。
+     言いたいのは「ここに光が寄った」であって、「ここが光っている」では
+     ありません。 */
+  background: radial-gradient(closest-side,
+    rgba(255, 255, 255, .2) 0%,
+    rgba(255, 255, 255, .08) 38%,
+    color-mix(in srgb, var(--c-primary) 7%, transparent) 64%,
+    transparent 100%);
   opacity: 0;
+  scale: .88;
+  transition: opacity var(--m-state) var(--ease-in), scale var(--m-state) var(--ease-in);
 }
-.tab-glow.is-dimpled::after { animation: tab-dimple var(--m-spark) var(--ease-out); }
-/* **広がりません。** 押したところに窪みが立ち上がり（行き過ぎてから
-   落ち着き）、面へ戻ります。0.12 から 1 へ広がるのが波紋、指のぶんの
-   大きさで出て戻るのが変形です。 */
-@keyframes tab-dimple {
-  0%   { opacity: 0; transform: scale(.52); }
-  16%  { opacity: 1; transform: scale(1.06); }
-  100% { opacity: 0; transform: scale(.96); }
+.tab-hold.is-on::after {
+  opacity: 1;
+  scale: 1;
+  transition: opacity var(--m-press) var(--ease-out), scale var(--m-press) var(--ease-out);
 }
+
+/* 動きを減らす設定では、**膨らませません**（倍率を 1 に戻すだけ——
+   `is-held` の行そのものは残すので、光のほうは静かな状態変化として
+   そのまま残ります。押した手ごたえがまるごと消えるほうが不親切なので）。 */
 @media (prefers-reduced-motion: reduce) {
-  .tab-glow { display: none; }
+  .tabbar { --hold-s: 1; --hold-c: 1; }
 }
 
 /* ボタンだけが指を受けます。z-index を一つ持たせるのは、縁の光（::after）が
    要素の**最後の子**として、ボタンより後に描かれるからです——放っておくと
-   光の輪が絵と字の上に乗ります。 */
-.tab { pointer-events: auto; z-index: 1; }
+   光の輪が絵と字の上に乗ります。
+
+   **`touch-action: none` は、押した指を最後まで見とどけるため。** 無いと、
+   押したまま指を動かした瞬間にブラウザが「送るつもりだな」と判断して
+   `pointercancel` を投げ、以後の `pointermove` も `pointerup` も来ません
+   ——実測で、隣の席へ滑らせたところで見張りが黙り、**離さずに戻っても
+   膨らみ直しませんでした**（そして光も指についてきませんでした）。
+   帯は送る面ではないので、ここで渡すものは何もありません。
+
+   **`.tabbar` を足して詳細度を上げてあります。** `.tab` だけだと、
+   `components.css` の `button, [role="tab"], …{ touch-action: manipulation }`
+   と同じ詳細度（0,1,0）で、あちらが後ろに読み込まれるぶん勝ちます
+   ——実測で `touch-action` は `manipulation` のままでした（`manipulation` は
+   送りを許すので、指が滑った瞬間にブラウザが持っていきます）。 */
+.tabbar .tab { pointer-events: auto; z-index: 1; touch-action: none; }
 
 /* The shopping button names both of its faces. The one you are looking at is
    lit and the other is dim — which is at the same time a label for what
@@ -1511,7 +1570,10 @@ a { color: var(--c-primary); }
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: .01em;
-  transition: color var(--m-state) var(--ease);
+  /* `scale` の帰り道（離したときに戻る速さ）はここ。行き道は
+     `.tab.is-held` が持ちます——開く速さと閉じる速さを class の付け外しで
+     分ける、動きの節の決めごとです。 */
+  transition: color var(--m-state) var(--ease), scale var(--m-state) var(--spring);
   position: relative;
 }
 
@@ -1524,7 +1586,8 @@ a { color: var(--c-primary); }
   place-items: center;
   width: 40px; height: 26px;
   border-radius: var(--r-full);
-  transition: background var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
+  transition: background var(--m-state) var(--ease), transform var(--m-state) var(--ease-out),
+              scale var(--m-state) var(--spring);
 }
 
 /* 一枚しか無いボタンは、いままでどおり真ん中に一つ。 */
@@ -1620,13 +1683,19 @@ a { color: var(--c-primary); }
 
 .has-fab .tabbar { padding-right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
 /* ＋が居るとき、カプセルはその手前で終わります。**カプセルの形をしている
-   もの（地・縁の光・縁の屈折）は、三つとも一緒に縮めること。**
+   ものは、一つ残らず一緒に縮めること**——地（::before）・縁の光（::after）・
+   縁の屈折（`.tab-edge`）・押しているあいだの光（`.tab-hold`）の四つです。
    `.tab-edge` をここに書き忘れて、縁の屈折だけが帯の端まで伸びたまま
    ——**カプセルと＋をまとめて囲む大きな輪**が出ました（内と外で材が違う
-   ので、別々のものを重ねて置いたように見えます）。 */
+   ので、別々のものを重ねて置いたように見えます）。
+
+   **四つとも、この一か所で縮めること。** `.tab-hold` の前身（`.tab-glow`）は
+   自分の `right` を別の行に持っていて、それが「三つ」と数え違えた元です
+   ——離して書くと、次に一つ足した人が必ずどれかを落とします。 */
 .has-fab .tabbar::before,
 .has-fab .tabbar::after,
-.has-fab .tab-edge { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+.has-fab .tab-edge,
+.has-fab .tab-hold { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
 
 /* ＋ の置き場。帯のカプセルと上下の中心を合わせます。 */
 .has-fab .dock {
