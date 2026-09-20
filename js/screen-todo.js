@@ -2235,8 +2235,20 @@
     renderBody();
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
-       （掴み手はそのぶん下に貼りつくので）。 */
-    fitCalH();
+       （掴み手はそのぶん下に貼りつくので）。**ただし一拍おいてから**
+       ——組み立て終わりに測ると、そこでレイアウトが強制されます。一拍
+       待てば、ブラウザがどのみち一度やるレイアウトに相乗りできます。
+       そのあいだ掴み手は前の床のままですが、床が変わるのは月と週を
+       行き来したときだけなので、ふだんは同じ数です。 */
+    fitCalSoon();
+  }
+
+  /* 一拍あとに一度だけ測ります。組み直しはスイッチ一つでも走るので、
+     まとめないと同じ測りが何度も積まれます。 */
+  let calFit = 0;
+  function fitCalSoon() {
+    if (calFit) return;
+    calFit = requestAnimationFrame(() => { calFit = 0; fitCalH(); });
   }
 
   let groups = [];
@@ -2269,7 +2281,16 @@
     els.cal = null;
     if (!query) {
       els.cal = monthCalendar(store.openTodos());
-      if (root && root.scrollTop > 4) els.cal.classList.add("is-stuck");
+      /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
+         二つ理由があります。
+         ① ここは `els.body.innerHTML = ""` の**あと**なので、測ると
+            組み立ての途中でレイアウトが強制されます（実測：render 1回に
+            レイアウト 3.1回。その1回ぶんがこれ）。
+         ② 前は `root.scrollTop` を読んでいました。**送る器は紙のほう**
+            なので（`scrollerOf`）、根っこはいつも 0——送った先で組み直すと
+            `is-stuck` が付かず、次に指が動くまで境目の線が出ませんでした
+            （「送る器を変えたら教えること」の、拾い残しの一つ）。 */
+      if (keepTop > 4) els.cal.classList.add("is-stuck");
       els.body.append(els.cal);
     }
 
@@ -3240,16 +3261,31 @@
     return last;
   }
 
+  /* **先に測って、あとから書く。**
+
+     前は `markPass`（書く）→ `nowY`（読む）→ `clearOfClocks`（読む）の
+     順でした。書いたすぐあとに測ると、ブラウザはそこでレイアウトを
+     やり直さないと答えられません——組み直しのたびに、余分な一回。
+
+     入れ替えても答えは同じです。`markPass` が書くのは色（`--pass`・
+     線の色・`is-live` のうすい地）だけで、**高さも位置も動かさない**ので、
+     測る前に書いても後に書いても、測れる数は変わりません。 */
   function paintNow(sec, list, axis, isToday) {
-    axis.textContent = "";
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
+
+    // ① 測る（まだ何も書かない）
+    let at = null;
+    if (nowMin != null) {
+      const y = nowY(sec, list, nowMin);
+      if (y != null) at = clearOfClocks(sec, list, y);
+    }
+
+    // ② 書く
+    axis.textContent = "";
     markPass(list, nowMin);
-    if (nowMin == null) return;
-    const y = nowY(sec, list, nowMin);
-    if (y == null) return;
-    axis.append(nowMark(nowMin, clearOfClocks(sec, list, y)));
+    if (at != null) axis.append(nowMark(nowMin, at));
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
