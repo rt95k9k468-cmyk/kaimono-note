@@ -662,7 +662,15 @@
     /* 記録の無い日は、**空の一行**を作って出します。`isBlank` を立てて
        おくのは、`createdAt` の有無で見分けると取りこぼすから——古い記録は
        持っていないことがあります。 */
-    const days = only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine;
+    /* 「何も書いていない日」は、**記録が無い日だけではありません。**
+       日記の紙を開いて何も書かずに閉じると、`ensureDayLog` が空の一件を
+       置いていきます。それを「ある日」として描くと、意味のない横棒が
+       四つ並びました——「20 日　—　起床 - ・ 就寝 -　作成 -」。
+       決めごとは「書いていない日は、起床・就寝も帳簿も出さない」なので、
+       **有無ではなく中身で見分けること。** */
+    const blank = (d) => !String(d.memo || "").trim() && !d.wake && !d.sleep;
+    const days = (only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine)
+      .map((d) => (d.isBlank || blank(d)) ? Object.assign({}, d, { isBlank: true }) : d);
     const sec = node(html`
       <section class="card arc-log">
         <header class="arc-log-head">
