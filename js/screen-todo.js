@@ -2983,12 +2983,27 @@
          日で絞る前のもの）。掴んでいるあいだ組み直しは止まっているので、
          この控えが古くなることはありません。 */
       slide: (d) => daySlide(d, open),
-      commit: (next) => {
+      /* **組み直しません。** 滑りきった `kept` が、もう「その日」の紙です
+         ——同じものをもう一度組むために 134ms 固まると、次の日が「いきなり
+         出てきた」ように見えます（実測・CPU 4倍）。
+
+         塗り直すのは、紙の**外**で変わったものだけ：暦の輪と週の帯と
+         日付の題（`markDay` がまとめて持っています）。紙の中の「いま」の
+         線は、`watchNow` の ResizeObserver が付いた瞬間に置き直します
+         ——親に付く前は高さが 0 なので、あそこはもともとその口です。
+
+         月をまたいだときだけ、暦の盤を差し替えます（`setCalMonth`）。
+         あれは暦だけを描き直すもので、画面ぜんぶではありません。 */
+      commit: (next, kept) => {
         viewDay = next === todayKey() ? null : next;
+        const d = KN.util.dayDate(next), m = shownMonth();
+        if (d.getFullYear() !== m.year || d.getMonth() !== m.month) {
+          setCalMonth(d.getFullYear(), d.getMonth());
+          fitCalH();
+        }
         markDay(next, true);
-        /* goDay と違って、読んでいた場所は動かしません——滑りきった紙の
-           続きがそのまま出るように（renderBody が位置を返します）。 */
-        render();
+        // 控えが渡らなかったとき（掴み直しなど）だけ、これまでどおり。
+        if (!kept) render();
       },
       busy: () => !!tlDrag || KN.reorder.isActive(),
       lock: (on) => { swiping = on; },
