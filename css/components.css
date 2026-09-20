@@ -1337,7 +1337,8 @@ button, [role="tab"] {
   /* 縁の一本も夜のほうから。明るい面の縁は白が強いので、暗い地に回すと
      線だけが浮いて、ガラスのふちではなく別の部品に見えます
      （紙のふちで同じことを一度やっています——「紙の地は 250」の節）。 */
-  --glass-rim: var(--glass-night-rim);
+  --glass-rim-spec: var(--glass-night-rim-spec);
+  --glass-rim-ring: var(--glass-night-rim-ring);
   color: #f2f2f4;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);

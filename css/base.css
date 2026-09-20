@@ -207,9 +207,14 @@
        --glass-sheen  面のつや。上から下へ引く光。
        --glass-crown  上の縁で拾う光。厚みのあるガラスは、ここが明るい。
        --glass-base   地。透けていることが見える濃さ（52%）。
-       --glass-rim    縁の一本。**上下で明るさが違う輪**です——ガラスの縁は
+       --glass-rim-ring  縁の一本。**上下で明るさが違う輪**です——ガラスの縁は
                       上で空を映し、下で地面を映し、いちばん下でまた薄く
                       光ります。一様な白い線だと、プラスチックの縁取り。
+       --glass-rim-spec  その輪の上を横へ走る鏡面の山。居場所は
+                      `--glass-sweep`。**二つを並べるのは使う側**です
+                      （`.tabbar::after` ほか5つ）——`:root` で一枚に
+                      すると、そこの `--glass-sweep` が焼きつくうえに、
+                      書き換えが文書ぜんぶを巻き込みます。
 
      `--glass-tint` は、地に色を差したいとき（＋のボタン）だけ差し替える
      ための札です。既定では `--glass-base` そのもの。
@@ -268,9 +273,24 @@
      光の山を横へ走らせます。数を書くのは `js/app.js`（送っている器の
      scrollTop から）。
 
-     **書き込む先は `:root`。** `--glass-rim` はここで組まれるので、
-     `--glass-sweep` も同じ `:root` に居ないと、焼きついた既定値のまま
-     動きません（＋のコーラルが消えたのと同じ道理）。 */
+     **書き込む先は `:root` ではありません。ガラスの器そのものです。**
+
+     ここは長いあいだ `:root` でした——`--glass-rim` がここで組まれるので、
+     同じところに居ないと焼きつくから、という理由で。理屈は正しいのですが、
+     **代償を測っていませんでした**。カスタムプロパティは継承するので、
+     `:root` に書き換えが入ると、それを読む5つの器だけでなく**文書の
+     すべての要素**が style を計算し直します。実測（2026年9月20日、
+     CPU 4倍・390×844）：
+
+       縦に一覧を送る … p90 **50.0ms**、96フレーム中 **21落ち**
+       この一行を止めるだけで … p90 **16.7ms**、**0落ち**
+       書き換え1回あたり **48.9ms**（帯の裏を読む backdropLum は 2ms しか
+       かかっていない＝重いのは読むほうではなく、**書くほう**）
+
+     つまり「どの画面でもうっすら重い」の正体が、この一行でした。だから
+     **組み立てるのを使う側へ移し**（下の `--glass-rim-spec` / `-ring`）、
+     数もその器へ書きます。材は `:root` の一か所のまま、**並べるのだけが
+     使う側**——`--glass-fill` で踏んだ罠と、同じ決めごとの裏返しです。 */
   --glass-sweep: .5;
   /* **縁の白は、ガラスの地に釣り合わせること。**
 
@@ -281,10 +301,15 @@
      輪郭線として立ちました**（段差 +12。＋は -5 → +9）。
 
      そうなると、ガラスの縁ではなく「濃い板のまわりに白い線を引いたもの」
-     に見えます——実際そう見えました。**地を動かしたら、縁も動かすこと。** */
-  --glass-rim:
-    radial-gradient(42% 150% at calc(var(--glass-sweep) * 100%) 0%,
-      rgba(255, 255, 255, .4), rgba(255, 255, 255, 0) 62%),
+     に見えます——実際そう見えました。**地を動かしたら、縁も動かすこと。**
+
+     **二つに分けてあります。**動くのは鏡面（`-spec`）だけで、輪
+     （`-ring`）は動きません。分けたのは、`var(--glass-sweep)` を含む一枚を
+     `:root` で組むと、そこで焼きついたうえに**文書ぜんぶを巻き込む**から
+     です（一つ上の `--glass-sweep` の節）。**材はここ一か所**のまま、
+     並べるのは使う側（下の `.tabbar::after` ほか）。 */
+  --glass-rim-spec: rgba(255, 255, 255, .4);
+  --glass-rim-ring:
     linear-gradient(180deg,
       rgba(255, 255, 255, .34),
       rgba(255, 255, 255, .1) 34%,
@@ -305,9 +330,10 @@
   --glass-night-cast:     #1c1c22;
   --glass-night-cast-lit: #33333d;
   --glass-night-a:        62%;
-  --glass-night-rim:
-    radial-gradient(42% 150% at calc(var(--glass-sweep) * 100%) 0%,
-      rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 62%),
+  /* 夜も同じ分け方（鏡面と輪）。片方だけ分けると、明るい面と暗い面で
+     組み立て方が変わって、次に触る人がどちらかを見落とします。 */
+  --glass-night-rim-spec: rgba(255, 255, 255, .42);
+  --glass-night-rim-ring:
     linear-gradient(180deg,
       rgba(255, 255, 255, .18),
       rgba(255, 255, 255, .07) 34%,
@@ -599,7 +625,8 @@
     --glass-cast-lit: var(--glass-night-cast-lit);
     --glass-a:        var(--glass-night-a);
     --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-    --glass-rim:   var(--glass-night-rim);
+    --glass-rim-spec: var(--glass-night-rim-spec);
+    --glass-rim-ring: var(--glass-night-rim-ring);
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 2px 8px rgba(0,0,0,.45);
     --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -662,7 +689,8 @@
   --glass-cast-lit: var(--glass-night-cast-lit);
   --glass-a:        var(--glass-night-a);
   --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-  --glass-rim:   var(--glass-night-rim);
+  --glass-rim-spec: var(--glass-night-rim-spec);
+  --glass-rim-ring: var(--glass-night-rim-ring);
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);
@@ -1264,7 +1292,19 @@ a { color: var(--c-primary); }
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: var(--glass-rim);
+  /* **ここで並べます。`:root` ではありません。**
+
+     `var()` はそれを**書いた要素の上で**解決されるので、`--glass-sweep` を
+     含む一枚を `:root` で組むと、そこの数が焼きついて配られます
+     （`--glass-fill` で一度踏んだ罠）。かつてはそれを「だから数も `:root`
+     へ書く」で通していましたが、`:root` の書き換えは**文書ぜんぶ**の style
+     再計算を呼ぶので、送るたびに一覧が粘っていました（`--glass-sweep` の節の
+     実測）。並べるのを使う側へ移せば、数もこの器へ書けて、巻き込むのは
+     この器の中だけで済みます。 */
+  background:
+    radial-gradient(42% 150% at calc(var(--glass-sweep) * 100%) 0%,
+      var(--glass-rim-spec), rgba(255, 255, 255, 0) 62%),
+    var(--glass-rim-ring);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -1350,7 +1390,8 @@ a { color: var(--c-primary); }
   --glass-cast-lit: var(--glass-night-cast-lit);
   --glass-a:        var(--glass-night-a);
   --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-  --glass-rim:   var(--glass-night-rim);
+  --glass-rim-spec: var(--glass-night-rim-spec);
+  --glass-rim-ring: var(--glass-night-rim-ring);
   /* 字も一緒に返すこと。ガラスだけ暗くして字を黒のままにすると、
      読めるようにするための仕掛けが、読めなくするだけのものになります。 */
   --c-text:   #ececed;
