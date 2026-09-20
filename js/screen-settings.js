@@ -1728,6 +1728,11 @@
         KN.healthRelay.selfTest(v).then((r) => {
           relayTest = { message: r.message, steps: r.steps || [] };
           paintResult();
+          /* 届いた、という出来事。**`success` はここまで一度も呼ばれて
+             いませんでした**——用意してあるのに誰も鳴らさない名前でした。
+             うまくいったと言うべき場所で、かつ絵の当たる相手（結果の札）が
+             いるのは、ここです。 */
+          if (r.ok) KN.motion.fire("success", result.firstElementChild);
           if (r.ok && KN.screens.diet) KN.screens.diet.render();
         }).catch((err) => {
           relayTest = { message: "確かめられませんでした（" + (err && err.message || err) + "）", steps: [] };

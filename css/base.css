@@ -304,6 +304,36 @@
       rgba(255, 255, 255, .03) 62%,
       rgba(255, 255, 255, .13));
 
+  /* ---- 重なりの順。**名前で持ちます** ----
+
+     ここは 0 から 600 まで**17通りの数**がばらばらに書いてありました
+     （帯 30・紙 100/101・トースト 200・電卓 400・火花 600…）。名前が無い
+     ので、新しく重ねるものを足すたびに**勘で数を選ぶ**ことになります
+     ——そして勘は、どれか一つと必ずぶつかります。
+
+     段はこれだけです。**数そのものより、順番と理由**のほうが大事なので、
+     名前にはその段が何であるかを持たせます。
+
+       --z-stick  貼りつくもの（暦）。上のバーの**下**に潜る
+       --z-head   画面の頭（上のバー・設定の帯・ドックの器）
+       --z-bar    浮いているもの（下の帯・＋）
+       --z-lift   指が運んでいるもの。どの面よりも上、紙よりは下
+       --z-sheet  紙と、その覆い（js/ui.js が重なった深さぶん足します）
+       --z-toast  お知らせ。紙の上にも出る
+       --z-pad    字を打つための道具（電卓）。紙の**上**でないと使えない
+       --z-top    いちばん上。一度だけ出る光
+
+     **行や札の中の 0〜6 は、ここには含めません。** あれは「この部品の中で
+     どちらが手前か」の話で、画面の段ではないからです。 */
+  --z-stick:  12;
+  --z-head:   20;
+  --z-bar:    30;
+  --z-lift:   60;
+  --z-sheet: 100;
+  --z-toast: 200;
+  --z-pad:   400;
+  --z-top:   600;
+
   /* --- radii --- */
   --r-sm: 8px;
   /* 上に重なる一枚を、下の一枚がどれだけ控えて受けるか。**一つの数から
@@ -627,6 +657,27 @@
   --shadow-2: 0 2px 8px rgba(0,0,0,.45);
   --shadow-3: 0 10px 30px rgba(0,0,0,.55);
   --shadow-up: 0 -2px 18px rgba(0,0,0,.4);
+}
+
+/* ---- ぼかしの効かない環境の受け皿。**ここ一か所です** ----
+
+   `backdrop-filter` が無いと、ガラスは**半分透けただけの板**になります
+   ——下の行がそのまま素通しで読めて、帯の字と重なる。受け皿が用意して
+   あったのは**トーストだけ**でした（下の帯も＋も札も、透けたまま）。
+
+   直しかたは一つ、**地を濃くする**こと。材は `--glass-a` の一つから
+   出しているので、そこを上げれば三つとも——あとから足したものも——
+   まとめて受かります。ぼかしも光も、そのまま無害に残ります。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-a:       96%;
+    --glass-night-a: 94%;
+  }
+  /* トーストは自分の濃さを持っています（読ませるためのガラスなので）。 */
+  .toast {
+    background: var(--glass-night-sheen), var(--glass-night-crown),
+                color-mix(in srgb, var(--glass-night-cast) 97%, transparent);
+  }
 }
 
 /* Category tints: the same mix reads as almost nothing against a dark surface,
@@ -1058,7 +1109,7 @@ a { color: var(--c-primary); }
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--z-head);
   /* **題の帯ではなくなりました。** どの画面の題（「買い物リスト」
      「ダイエット」…）も外してあります——同じ名前を下の帯がすでに言って
      いて、上でもう一度言うために一段ぶんの高さを使っていました。
@@ -1148,7 +1199,7 @@ a { color: var(--c-primary); }
      下の一覧に触れたままにしておきたいので。 */
   background: none;
   pointer-events: none;
-  z-index: 30;
+  z-index: var(--z-bar);
 }
 
 /* カプセル本体。
@@ -1195,7 +1246,9 @@ a { color: var(--c-primary); }
    話なのでここに書きます——**材は一か所**、というのがこの節の言い分です。 */
 .tabbar::after,
 .add-fab::after,
-.fab-menu-b::after {
+.fab-menu-b::after,
+.toast::after,
+.search-bar::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1232,7 +1285,8 @@ a { color: var(--c-primary); }
    ＋と札では ::before が受けます。 */
 .tab-edge,
 .add-fab::before,
-.fab-menu-b::before {
+.fab-menu-b::before,
+.toast::before {
   content: "";
   position: absolute;
   inset: 0;
