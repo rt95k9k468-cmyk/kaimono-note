@@ -155,7 +155,7 @@
 
     const chips = [{ id: "", label: "すべて" }].concat(
       store.sortedCategories().filter((c) => counts.has(c.id)).map((c) => ({
-        id: c.id, label: c.name, emoji: c.emoji, color: c.color, count: counts.get(c.id),
+        id: c.id, label: c.name, color: c.color, count: counts.get(c.id),
       })));
 
     KN.ui.chipRow(els.filter, chips, {

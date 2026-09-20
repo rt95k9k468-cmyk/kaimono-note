@@ -560,7 +560,24 @@ button, [role="tab"] {
   font-weight: 700;
 }
 
-.chip-emoji { font-size: 15px; line-height: 1; }
+/* 棚を言う丸。**絵文字の跡地です**——「アプリ内UIに絵文字を使わない」の
+   約束を守りつつ、札が「どの棚か」を言えなくならないように。色はこの
+   アプリがすでに棚を指すのに使っているもの（行の丸・暦の丸・丸薬）と
+   同じ一つなので、新しい言葉を増やしていません。
+
+   **選ばれた札の中では白抜きに戻します。** あちらは地が `--cat` そのもの
+   なので、同じ色の丸を置くと消えます（`currentColor` ＝ そのときの字の色
+   ＝ 白）。 */
+.chip-dot {
+  width: 9px; height: 9px;
+  flex: none;
+  border-radius: var(--r-full);
+  background: var(--cat, var(--c-text-3));
+}
+.chip[aria-pressed="true"] .chip-dot,
+.chip.is-on .chip-dot { background: currentColor; }
+
+/* `.chip-emoji` は**消しました**（描くところがもうありません）。 */
 
 /* ---------------- cards ---------------- */
 

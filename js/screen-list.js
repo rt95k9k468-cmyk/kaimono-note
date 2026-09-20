@@ -292,7 +292,8 @@
           if (it) it.fav = true;
         });
         const c = store.getCategory(product.categoryId);
-        KN.ui.toast(`${c.emoji} ${c.name} に「${product.name}」を追加しました`);
+        // 絵文字は出しません（最優先の約束事）。棚の名前だけで足ります。
+        KN.ui.toast(`${c.name} に「${product.name}」を追加しました`);
       }
       KN.motion.fire("save");
       /* Closed, not cleared. Staying open was meant to save a tap on a long
@@ -411,7 +412,7 @@
 
     const chips = [{ id: "", label: "すべて" }].concat(
       store.sortedCategories().filter((c) => counts.has(c.id)).map((c) => ({
-        id: c.id, label: c.name, emoji: c.emoji, color: c.color, count: counts.get(c.id),
+        id: c.id, label: c.name, color: c.color, count: counts.get(c.id),
       })));
 
     KN.ui.chipRow(els.filter, chips, {

@@ -842,11 +842,16 @@
          an empty value, not an absent one, so `var(--cat, var(--c-primary))`
          would substitute nothing and the selected 「すべて」 chip would lose
          its green rather than fall back to it. */
+      /* **絵文字はやめました**（「アプリ内UIに絵文字を使わない」——最優先の
+         約束事）。かわりに置くのは**カテゴリ色の丸**です。色はこの画面で
+         すでに「どの棚か」を言っているもの（行の丸・暦の丸・丸薬と同じ）
+         なので、同じ言葉を札でも一度使うだけで済みます。
+         保存済みの `emoji` 欄は**消していません**——描くのをやめただけです。 */
       const el = node(html`
         <button type="button" class="chip" data-id="${c.id}"
                 aria-pressed="${String(c.id === activeId)}"
                 ${c.color ? KN.util.raw(`style="--cat:${c.color}"`) : ""}>
-          ${c.emoji ? html`<span class="chip-emoji">${c.emoji}</span>` : ""}${c.label}
+          ${c.color ? html`<span class="chip-dot" aria-hidden="true"></span>` : ""}${c.label}
           ${c.count != null ? html`<span class="chip-count">${String(c.count)}</span>` : ""}
         </button>
       `);
@@ -868,10 +873,14 @@
       container.innerHTML = "";
       const wrap = node(html`<div class="chip-wrap"></div>`);
       KN.store.sortedCategories().forEach((c) => {
+        /* 色があるときだけ `--cat` を書きます。`--cat:` を空で書くと、
+           それは「無い」ではなく「空の値」なので、`var(--cat, …)` が
+           何にも落ちません（すぐ上の chipRow の但し書きと同じ罠——
+           ここは書きっぱなしでした）。 */
         const chip = node(html`
           <button type="button" class="chip" aria-pressed="${String(c.id === current)}"
-                  style="--cat:${c.color || ""}">
-            <span class="chip-emoji">${c.emoji}</span>${c.name}
+                  ${c.color ? KN.util.raw(`style="--cat:${c.color}"`) : ""}>
+            ${c.color ? html`<span class="chip-dot" aria-hidden="true"></span>` : ""}${c.name}
           </button>
         `);
         chip.addEventListener("click", () => {
