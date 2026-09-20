@@ -233,9 +233,11 @@
        端まで行ったら向こうから戻ってくる形（往復）にします。 */
     const sc = KN.app.scrollerOf(activeScreen() || document.body);
     const top = sc ? (sc === document.scrollingElement ? window.scrollY : sc.scrollTop) : 0;
-    const t = (top % 720) / 720;
-    const sweep = t < .5 ? t * 2 : 2 - t * 2;    // 0→1→0
-    root.style.setProperty("--glass-sweep", (.06 + sweep * .88).toFixed(3));
+    /* 止まっているときは**まん中**に居させます。端に寄った姿から始まると、
+       光が当たっているのではなく「左が明るい絵」に見えるので。
+       行って戻る形（sin）にするのは、折り返しで速さが跳ねないため。 */
+    const sweep = .5 + .38 * Math.sin(top / 115);
+    root.style.setProperty("--glass-sweep", sweep.toFixed(3));
 
     const L = backdropLum();
     if (L != null) {
