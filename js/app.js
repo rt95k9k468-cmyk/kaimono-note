@@ -385,10 +385,10 @@
      行き先は 0（買うものの紙が全面）か 1（下がりきって価格の紙が全面）の
      二つ。途中で離したら、近いほうへ滑らせます。 */
   const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
-  /* 紙が行き先まで滑る長さ。CSS の `--m-swipe`（base.css の
-     `.is-face-settle`）と**同じ数**でなければならないので、そこから読みます。
-     **束②で、ここは「残りの道のりと指の勢いから出す」に変わります。** */
-  const FACE_MS = () => KN.motion.ms("--m-swipe");
+  /* 少ししか引いていなくても、ぱっと払った指は「めくる」と言っています
+     （day-swipe / edge-back と同じ決めごと）。 */
+  const FACE_FLING_V   = 0.35;  // px/ms
+  const FACE_FLING_MIN = 8;     // ただし、まったく動いていないものは払いではない
   const FRONT = "list", BACK = "prices";
   /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
      画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
@@ -498,11 +498,23 @@
       下の帯の上にのぞかせて、そこに留まります——そこが指で戻る道なので。
       画面としては価格が前に出る（`show(BACK)`）ので、前の面は自分の題と
       札を伏せて、頭だけの一枚になります（css の `.is-face-parked`）。 */
-  function faceSettle(o, to) {
+  function faceSettle(o, to, vy) {
     /* 印は**二枚とも**に付けます。指で引いているあいだ `--face-p` は毎フレーム
        動くので中身も滑らかに入れ替わりますが、離した先へ滑るときは数が一度に
        跳びます——紙だけが滑って、題と札はぱっと切り替わる。後ろの札もここで
        薄れる側なので、あちらにも要ります。 */
+    /* **長さと曲線は、残りの道のりと指の勢いから**（`KN.motion.glide`）。
+       CSS は `--face-ms` / `--face-ease` を読むので、材の置き場所は
+       これまでどおり CSS のまま、数だけが指から来ます。 */
+    const box = screensEl();
+    const d0 = faceVar("--face-d") || 1;
+    const p0 = faceVar("--face-p");
+    const now = isFinite(p0) ? p0 : (to > 0.5 ? 0 : 1);
+    const g = KN.motion.glide((to - now) * d0, vy || 0, { span: d0 });
+    if (box) {
+      box.style.setProperty("--face-ms", g.ms + "ms");
+      box.style.setProperty("--face-ease", g.ease);
+    }
     o.front.classList.add("is-face-settle");
     o.back.classList.add("is-face-settle");
     facePaint(o, to);
@@ -517,7 +529,11 @@
       }
       show(to > 0.5 ? BACK : FRONT, "settled");
       syncFaceGrips();
-    }, FACE_MS() + 20);
+      if (box) {
+        box.style.removeProperty("--face-ms");
+        box.style.removeProperty("--face-ease");
+      }
+    }, g.ms + 20);
   }
 
   /** 指を使わずに、紙をその位置まで滑らせます（帯を押したときの道）。
@@ -581,9 +597,12 @@
       flip();
     });
     let pid = null, y0 = 0, on = false, o = null, p = 0, dist = 1, moved = false, from = 0;
+    /* 指の速さ（px/ms）。離したあとの滑りをここから出します。 */
+    let lastT = 0, lastY = 0, vy = 0;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
+      lastT = performance.now(); lastY = e.clientY; vy = 0;
       /* 始まりは**いまの姿**。留まっているところから掴んだら 1 から始まって、
          指を上げるぶんだけ 0 へ向かいます。 */
       from = faceAt(); p = from;
@@ -606,6 +625,8 @@
         dist = faceVar("--face-d") || 1;
         facePaint(o, p);
       }
+      const now = performance.now();
+      if (now > lastT) { vy = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
       p = Math.max(0, Math.min(1, from + dy / dist));
       facePaint(o, p);
     }, { passive: false });
@@ -615,9 +636,13 @@
       /* 引かずに離した＝押した、ということ。指の道が無くてもめくれます。
          取り上げられた（pointercancel）ぶんは、押したことにしません。 */
       if (!o) { if (tapped && !moved) flip(); return; }
-      const to = Math.abs(p - from) > FACE_DONE ? (from ? 0 : 1) : from;
+      /* 行き先は、引いた量だけでなく**勢い**でも決まります——少ししか
+         引いていなくても、ぱっと払った指は「めくる」と言っています。 */
+      const fling = Math.abs(vy) > FACE_FLING_V && Math.abs(p - from) * dist >= FACE_FLING_MIN
+        && (from ? vy < 0 : vy > 0);
+      const to = (Math.abs(p - from) > FACE_DONE || fling) ? (from ? 0 : 1) : from;
       if (to !== from) haptic();
-      faceSettle(o, to);
+      faceSettle(o, to, vy);
       o = null;
     };
     grip.addEventListener("pointerup", () => done(true));

@@ -46,7 +46,9 @@
   const COMMIT    = 26;   // これだけ動けば、指を離したときに隣へ
   const FLING_V   = 0.35; // 短い距離でも、これだけ速ければ隣へ
   const FLING_MIN = 8;    // ただし、まったく動いていないものは払いではない
-  const SETTLE    = 200;  // 離したあと、行き先まで滑る時間
+  /* 離したあとの滑りは、**残りの道のりと指の勢いから**出します
+     （`KN.motion.glide`）。ここには 200ms と直に書いてあって、27px で
+     離しても 380px で離しても同じ時間かけていました。 */
 
   /**
    * @param {object} o
@@ -66,6 +68,9 @@
 
     let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0, pageW = 0;
     let lastT = 0, lastX = 0, vx = 0, peeks = null;
+    /* 滑っている最中に掴み直されたら、走っている settle の後始末を
+       黙らせるための番号。増やすだけで、古いほうは何もせずに終わります。 */
+    let gen = 0;
 
     /* transform だけを書き換えます（レイアウトに触れる幅・高さ・位置は
        一切読み書きしません）。frame は rAF の間引き用で、一度のフレームに
@@ -113,17 +118,38 @@
       track.classList.remove("is-dragging");
     }
 
-    /** 三枚のうち、どれを画面いっぱいに見せて止まるか。0=前 1=いま 2=次 */
+    /** いま track が本当に居るところ（px）。滑っている最中でも取れるので、
+        掴み直しの起点になります。transform が無ければ、いまの dx から。 */
+    function liveX() {
+      try {
+        const t = getComputedStyle(track).transform;
+        if (t && t !== "none") return new DOMMatrixReadOnly(t).m41;
+      } catch (_) { /* 読めなければ、控えのほうで */ }
+      return -pageW + dx;
+    }
+
+    /** 三枚のうち、どれを画面いっぱいに見せて止まるか。0=前 1=いま 2=次
+        @returns {Promise<boolean>} false ＝ 途中で掴み直された（何もしないこと） */
     const settle = (index) => new Promise((resolve) => {
-      if (!peeks) { resolve(); return; }
-      const ms = KN.motion && KN.motion.still() ? 0 : SETTLE;
-      track.style.transition = ms ? `transform ${ms}ms var(--ease-out)` : "";
-      track.style.transform = `translate3d(${-pageW * index}px,0,0)`;
-      setTimeout(() => { track.style.transition = ""; resolve(); }, ms);
+      if (!peeks) { resolve(true); return; }
+      const mine = ++gen;
+      const to = -pageW * index;
+      const from = liveX();
+      /* 残りの道のりと、離したときの指の速さから。近くで離せば短く、
+         勢いよく払えばその速さのまま走り出して静かに着きます。 */
+      const g = KN.motion.glide(to - from, vx, { span: pageW });
+      track.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}` : "";
+      track.style.transform = `translate3d(${to}px,0,0)`;
+      setTimeout(() => {
+        if (mine !== gen) { resolve(false); return; }
+        track.style.transition = "";
+        resolve(true);
+      }, g.ms);
     });
 
     /** 戻ってきた。隣の二枚を片づけて、素の状態に返します。 */
-    const back = () => settle(1).then(() => {
+    const back = () => settle(1).then((done) => {
+      if (!done) return;   // 滑っている途中で掴み直された。向こうの指のもの。
       unmount();
       if (o.lock) o.lock(false);
     });
@@ -141,7 +167,12 @@
 
     viewport.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
-      const mx = e.clientX - x0, my = e.clientY - y0;
+      /* mx は **let**。滑っている最中に掴み直したときだけ、この下で x0 を
+         引き直すので、そこから先は新しい x0 で測り直す必要があります
+         ——`const` のままだと、せっかく拾った位置を、同じ一回の中で
+         古い mx が上書きします（実測：160px 跳んだ）。 */
+      let mx = e.clientX - x0;
+      const my = e.clientY - y0;
       if (!axis) {
         if (Math.abs(mx) < AXIS_LOCK && Math.abs(my) < AXIS_LOCK) return;
         axis = Math.abs(mx) >= Math.abs(my) * 0.85 ? "x" : "y";
@@ -156,7 +187,21 @@
            自動同期など、指と関係の無い理由で store が動いても、掴んでいる
            紙が組み直されないように）。 */
         if (o.lock) o.lock(true);
-        mount();
+        if (peeks) {
+          /* **滑っている最中の掴み直し。** いま居るところを起点にします
+             ——ここを 0 から始めると、行き先へ向かっていた紙が真ん中へ
+             跳びます（`mount()` は peeks があると素通りするので、位置を
+             書く者が誰も居なくなる、というのが正体でした）。
+
+             黙らせるのは**ここ**で、指が触れた時点ではありません
+             ——触れただけで離した指のために、滑りを止めてしまうので。 */
+          gen++;
+          track.style.transition = "";
+          x0 = e.clientX - (liveX() + pageW);   // 以後の mx が、そのまま続きの dx
+          mx = e.clientX - x0;                  // この一回ぶんも、引き直す
+        } else {
+          mount();
+        }
       }
       if (axis !== "x") return;
       const now = performance.now();
@@ -182,7 +227,7 @@
       const key = o.step(o.day(), moved < 0 ? 1 : -1);
       if (!key) { back(); return; }
       if (KN.motion) KN.motion.fire("nav");
-      await settle(moved < 0 ? 2 : 0);
+      if (!await settle(moved < 0 ? 2 : 0)) return;   // 途中で掴み直された
       /* 滑りきった、その位置のまま次へ渡します。組み直したあとの真ん中は、
          いま画面いっぱいに見えているのと同じ日なので、見た目の続きが
          切れません。commit の中で render が走るので、その前に下ろします。 */
