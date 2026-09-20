@@ -64,7 +64,7 @@
      の二段でまとまります。 */
   --c-text:        #111113;
   --c-text-2:      #636363;   /* 実測（副題・時刻） */
-  --c-text-3:      #8e8e93;
+  --c-text-3:      #686870;
   --c-text-on:     #ffffff;
 
   /* --- lines --- */
@@ -429,7 +429,7 @@
     --c-sheet-edge:  #33333c;
     --c-text:        #ececed;
     --c-text-2:      #a6a6ab;
-    --c-text-3:      #7c7c83;
+    --c-text-3:      #92929a;
     --c-border:      #2e2e36;
     --c-border-2:    #3e3e48;
     /* 暗い地の上のコーラル。明るい面と同じ考え方——彩度を保ちつつ、
@@ -504,7 +504,7 @@
   --c-sheet-edge:  #33333c;
   --c-text:        #ececed;
   --c-text-2:      #a6a6ab;
-  --c-text-3:      #7c7c83;
+  --c-text-3:      #92929a;
   --c-border:      #2e2e36;
   --c-border-2:    #3e3e48;
   --c-primary:     #f2938e;
