@@ -108,14 +108,14 @@
   transform: scale(1.06);
   --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 42%);
   --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .4), transparent 60%);
-  --glass-base: color-mix(in srgb, var(--c-bg-elev) 58%, transparent);
+  --glass-base: color-mix(in srgb, var(--glass-cast-lit) 58%, transparent);
   --glass-fab: 22%;
 }
 @media (hover: hover) {
   .add-fab:hover {
     --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%);
     --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .3), transparent 58%);
-    --glass-base: color-mix(in srgb, var(--c-bg-elev) 54%, transparent);
+    --glass-base: color-mix(in srgb, var(--glass-cast-lit) 54%, transparent);
     --glass-fab: 20%;
   }
 }
@@ -3435,9 +3435,21 @@ a.btn { text-decoration: none; }
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text);
-  /* 立ち上がる前は、＋ の中に畳まれている位置に置きます。 */
+  /* **立ち上がる前は、＋ の中に畳まれています。**
+
+     ここは `translateY(18px) scale(.9)` でした——「＋ の中に畳まれている」
+     と書いてありましたが、実際には**ただ少し下から出てくる**だけで、
+     ＋ とは何の関わりも見えていませんでした。二つは同じ材のガラスなのに、
+     別々に湧いて出ていた、ということです。
+
+     いまは ＋ の**まん中へ寄せて、丸くすぼめます**。札はもともと丸み
+     いっぱいの形（`--r-full`）なので、縮めるとそのまま ＋ と同じ丸に
+     なります——**だから形を変える必要がありません**。寄せる向きは
+     `--morph-x` / `--morph-y`（`js/app.js` の `fabMenu` が、開く直前に
+     ＋ と札の**実際の位置を測って**書きます。札の数も並びも呼ぶ側しだい
+     なので、CSS では決め打ちできません）。 */
   opacity: 0;
-  transform: translateY(18px) scale(.9);
+  transform: translate(var(--morph-x, 0px), var(--morph-y, 18px)) scale(.28);
   /* しまうときは、迷いなく。出るときだけ、下の .is-on で長くとります。 */
   transition: opacity var(--m-state) var(--ease), transform var(--m-reorder) var(--ease-out);
 }
@@ -3459,7 +3471,10 @@ a.btn { text-decoration: none; }
   /* --i は上から数えた番号なので、逆から遅らせます（指のいちばん近くが先）。 */
   transition-delay: calc((2 - var(--i)) * 62ms);
 }
-.fab-menu-b:active { transform: scale(.96); }
+/* 押したときの変形。**`.fab-menu.is-on .fab-menu-b`（0,3,0）に負けて
+   いた**ので、開いているあいだ——つまり押せるあいだ——一度も効いて
+   いませんでした。同じ詳細度まで上げます。 */
+.fab-menu.is-on .fab-menu-b:active { transform: scale(.96); }
 .fab-menu-ico {
   display: grid; place-items: center;
   width: 30px; height: 30px; flex: none;
@@ -3473,9 +3488,18 @@ a.btn { text-decoration: none; }
 /* 夜の光の上書きも、丸ごと要らなくなりました——`--glass-*` が夜の値に
    なるだけで、帯・＋ と同じだけ光が落ちます。 */
 
-/* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
+/* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。
+   傾くだけでなく、**一度ふくらみます**——札は ＋ から分かれて出るので、
+   出す側にも「押し出した」動きが要ります。傾きと膨らみを一つの
+   `@keyframes` にまとめるのは、二つが同じ一回の出来事だからです
+   （transition で別々に書くと、傾きだけが残って膨らみが消えます）。 */
 .add-fab { transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease); }
-.add-fab.is-open { transform: rotate(45deg); }
+.add-fab.is-open { transform: rotate(45deg); animation: fab-part var(--m-sheet-grow) var(--spring); }
+@keyframes fab-part {
+  0%   { transform: rotate(0deg)  scale(1); }
+  36%  { transform: rotate(26deg) scale(1.11); }
+  100% { transform: rotate(45deg) scale(1); }
+}
 .add-fab.is-open:active { transform: rotate(45deg) scale(1.06); }
 
 /* ---------------- 済ませたときの動き（やること） ----------------
