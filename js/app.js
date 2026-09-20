@@ -438,6 +438,13 @@
        留まった紙を頭の高さで切るのにも同じ数を使うので、書き出しておきます。 */
     const peek = hb.height || FACE_PEEK;
     box.style.setProperty("--face-peek", peek.toFixed(1) + "px");
+    /* 留まった紙が薄れはじめる高さ（＝頭の下端＝下の帯の上）を、面の箱の
+       中の座標で書き出します。**マスクは面（.screen）に掛けます**——紙に
+       掛けると、箱の外へ出る影（頭の上の落ち影）ごと切り取られるので
+       （実測：マスクあり 240,239,243 ／ なし 218,217,221。影が消えた）。
+       面の箱を基準にした数はここでしか分からないので、ここで出します。 */
+    box.style.setProperty("--face-cut",
+      (floor - front.getBoundingClientRect().top).toFixed(1) + "px");
     return Math.max(1, floor - peek - rest);
   }
 
