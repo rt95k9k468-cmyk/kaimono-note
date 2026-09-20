@@ -136,17 +136,23 @@
       bar.append(btn);
     });
 
-    /* ---- 押したところから、光が生まれる ----
+    /* ---- 押したところで、ガラスが凹む ----
 
-       帯はガラスです。ガラスは触られたところで光を拾うので、押した合図は
-       「ボタンの色が変わる」ではなく「そこから光が広がる」であってほしい。
+       帯はガラスです。ガラスは押されたところで**それ自身が凹み**ます。
+       ここは「中心から光が広がる」でしたが、あれは波紋——Android の作法で、
+       ガラスの言い方ではありませんでした（base.css の `tab-dimple`）。
 
-       光を置くのは**帯のカプセル全体**で、押されたタブの中ではありません。
-       タブごとに区切ると、隣との境目で光が四角く切れます——カプセルは一枚の
-       ガラスなので、光もその一枚の上を広がります。丸みはカプセルと同じ。
+       凹みを置くのは**帯のカプセル全体**で、押されたタブの中ではありません。
+       タブごとに区切ると、隣との境目で凹みが四角く切れます——カプセルは
+       一枚のガラスなので、凹みもその一枚の上に出ます。丸みはカプセルと同じ。
 
        座標は指の位置そのもの（clientX/Y）です。ボタンの真ん中ではありません
        ——「押した場所から」と言うなら、指の下から出ないと嘘になります。 */
+    /* 縁の屈折の一枚（base.css の「縁の屈折」）。帯は ::before と ::after を
+       地と縁の光で使いきっているので、ここだけ本物の一枚が要ります。
+       縁の光より**先に**置くこと——重ね順は「地 → 屈折 → 縁の光」です。 */
+    bar.append(node(html`<i class="tab-edge" aria-hidden="true"></i>`));
+
     const glow = node(html`<i class="tab-glow" aria-hidden="true"></i>`);
     bar.append(glow);
     bar.addEventListener("pointerdown", (e) => {
@@ -155,14 +161,106 @@
       if (!r.width) return;
       glow.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
       glow.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
-      /* 同じところを続けて押しても光り直すように、いちど外して測り直します
+      /* 同じところを続けて押しても凹み直すように、いちど外して測り直します
          （class を付け直すだけでは、同じアニメーションは巻き戻りません）。 */
-      glow.classList.remove("is-lit");
+      glow.classList.remove("is-dimpled");
       void glow.offsetWidth;
-      glow.classList.add("is-lit");
+      glow.classList.add("is-dimpled");
     });
 
     paintTabs();
+  }
+
+  /* ---------------- ガラスは、まわりを見ている ----------------
+
+     ガラスが本物に見えるのは、**まわりを映しているから**です。いまの帯は
+     まわりを見ていませんでした——縁の光は上下固定のグラデで、ものが動いても
+     光は動かず、後ろに何が来ても明るさは同じ。
+
+     ここが見るのは二つだけです。
+
+       ① `--glass-sweep`（0〜1）… 鏡面光が縁のどこに居るか。送っている器の
+          位置から出します。世界が動けば、映りこみも動く。
+       ② 帯の裏の明るさ … 暗いものが来たら、ガラスごと夜へ返す
+          （base.css の `.is-on-dark`）。
+
+     **書き込む先は `:root`。** `--glass-rim` は `:root` で組まれるので、
+     `--glass-sweep` も同じところに居ないと、焼きついた既定値のままです
+     （＋のコーラルが消えたのと同じ道理——base.css のガラスの節）。 */
+
+  /* 明るさ（0〜1）。WCAG の相対輝度と同じ式で、比べるためだけに使います。 */
+  function lumOf(r, g, b) {
+    const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+    return .2126 * f(r) + .7152 * f(g) + .0722 * f(b);
+  }
+
+  /** 帯の裏にあるものの明るさ。地を持っている要素が見つからなければ null。 */
+  function backdropLum() {
+    const bar = document.getElementById("tabbar");
+    if (!bar) return null;
+    const r = bar.getBoundingClientRect();
+    if (!r.width) return null;
+    const y = r.top + 14;
+    let sum = 0, n = 0;
+    [.22, .5, .78].forEach((f) => {
+      const x = r.left + r.width * f;
+      /* 帯とドックは**自分自身**なので飛ばします。地を持っていない要素
+         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。 */
+      const els = document.elementsFromPoint(x, y) || [];
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (el.closest && el.closest("#tabbar, #dock")) continue;
+        const m = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/
+          .exec(getComputedStyle(el).backgroundColor || "");
+        if (!m) continue;
+        if (m[4] !== undefined && parseFloat(m[4]) < .5) continue;
+        sum += lumOf(+m[1], +m[2], +m[3]); n++;
+        break;
+      }
+    });
+    return n ? sum / n : null;
+  }
+
+  /* 行きつ戻りつしないよう、**境目は二つ**。暗いと決めるのは .42 未満、
+     明るいへ返すのは .52 超え。一つの境目だと、そのあたりを漂う地の上で
+     帯が明滅します。 */
+  let onDark = false;
+
+  function paintGlass() {
+    const root = document.documentElement;
+    /* 鏡面光の居場所。送っている器の位置を、縁の長さに畳んで回します
+       ——「何px 送ったか」ではなく「まわりがどれだけ動いたか」なので、
+       端まで行ったら向こうから戻ってくる形（往復）にします。 */
+    const sc = KN.app.scrollerOf(activeScreen() || document.body);
+    const top = sc ? (sc === document.scrollingElement ? window.scrollY : sc.scrollTop) : 0;
+    const t = (top % 720) / 720;
+    const sweep = t < .5 ? t * 2 : 2 - t * 2;    // 0→1→0
+    root.style.setProperty("--glass-sweep", (.06 + sweep * .88).toFixed(3));
+
+    const L = backdropLum();
+    if (L != null) {
+      if (!onDark && L < .42) onDark = true;
+      else if (onDark && L > .52) onDark = false;
+    }
+    ["tabbar", "dock"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("is-on-dark", onDark);
+    });
+  }
+
+  function watchGlass() {
+    let queued = false;
+    const soon = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; paintGlass(); });
+    };
+    /* scroll は泡立たないので、**捕まえる側**で聞きます——送っているのは
+       画面ごとの紙で、window ではありません（「送る器を変えたら〜」）。 */
+    document.addEventListener("scroll", soon, { capture: true, passive: true });
+    window.addEventListener("resize", soon);
+    KN.app.paintGlass = paintGlass;
+    paintGlass();
   }
 
   function paintTabs() {
@@ -206,6 +304,10 @@
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
        daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
+
+    /* 席が変われば、帯の裏に来るものも変わります。送りの合図は来ないので、
+       ここで一度見直すこと（ガラスは、まわりを見ている）。 */
+    paintGlass();
   }
 
   function paintTabBadge(tabId, count) {
@@ -801,6 +903,7 @@
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
     buildTabs();
+    watchGlass();
 
     // 閉じているあいだに日をまたいでいたら、終わらなかった用事を今日へ運ぶ。
     store.rescheduleOverdue();
@@ -1384,6 +1487,30 @@
     });
     dock.insertBefore(menu, dock.firstChild);
     dock.classList.add("is-menu");
+
+    /* ---- 札は、＋ から分かれて出る ----
+
+       畳まれている姿は「＋ の中」です（screens.css の `.fab-menu-b`）。
+       そこへ寄せる向きは、**開く直前に測る**しかありません——札の数も
+       高さも呼ぶ側しだいなので、CSS では決め打ちできないからです。
+
+       測るのは**素の位置**なので、いったん transform を外します。外した
+       ぶんが動きとして出てしまわないよう、そのあいだは transition も
+       止めて、畳まれた姿に戻してから一息（`offsetWidth`）置きます。 */
+    const bs = Array.prototype.slice.call(menu.querySelectorAll(".fab-menu-b"));
+    const fr = fab.getBoundingClientRect();
+    bs.forEach((b) => { b.style.transition = "none"; b.style.transform = "none"; });
+    bs.forEach((b) => {
+      const r = b.getBoundingClientRect();
+      b.style.setProperty("--morph-x",
+        ((fr.left + fr.width / 2) - (r.left + r.width / 2)).toFixed(1) + "px");
+      b.style.setProperty("--morph-y",
+        ((fr.top + fr.height / 2) - (r.top + r.height / 2)).toFixed(1) + "px");
+    });
+    bs.forEach((b) => { b.style.transform = ""; });
+    void menu.offsetWidth;
+    bs.forEach((b) => { b.style.transition = ""; });
+
     fab.classList.add("is-open");
     requestAnimationFrame(() => menu.classList.add("is-on"));
 
