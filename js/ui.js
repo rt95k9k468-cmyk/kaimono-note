@@ -263,7 +263,10 @@
       bloom.style.top = `${seed.y}px`;
       bloom.style.zIndex = String(100 + depth * 2);
       sheetRoot().append(bloom);
-      setTimeout(() => bloom.remove(), 520);
+      /* 光は紙が育ちきるまでのあいだだけ。長さは CSS 側（--m-sheet-grow）
+         から出します——光は「紙より先に終わる」ことが決めごとなので、
+         紙の速さを直したら一緒についてこないと意味がありません。 */
+      setTimeout(() => bloom.remove(), KN.motion.ms("--m-sheet-grow") + 100);
     }
 
     // Next frame so the transition runs.
@@ -290,9 +293,14 @@
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";
       /* 育って出てきた紙は、同じ道を縮んで帰ります（.is-open を外すだけで
-         逆再生になります）。そのぶん片づけるのを待ちます。 */
-      setTimeout(() => { backdrop.remove(); el.remove(); },
-        el.classList.contains("is-from-origin") ? 460 : 300);
+         逆再生になります）。そのぶん片づけるのを待ちます。
+
+         **待つ長さは CSS から読みます。** ここには 460 / 300 と直に書いて
+         ありましたが、紙の速さを決めているのは CSS の `--m-sheet-*` の
+         ほうです。二か所に持つと、片方だけ直した日に「まだ動いているのに
+         消える」か「もう止まっているのに残る」のどちらかが起きます。 */
+      const closeMs = KN.motion.ms("--m-sheet-close");
+      setTimeout(() => { backdrop.remove(); el.remove(); }, closeMs + 60);
       onClose && onClose();
     }
 

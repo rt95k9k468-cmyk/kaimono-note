@@ -15,7 +15,7 @@
   font-size: var(--fs-md);
   font-weight: 700;
   white-space: nowrap;
-  transition: background .16s var(--ease), transform .12s var(--ease), opacity .16s;
+  transition: background var(--m-state) var(--ease), transform var(--m-press) var(--ease), opacity var(--m-state);
   user-select: none;
 }
 
@@ -175,7 +175,7 @@ button, [role="tab"] {
   width: 38px; height: 38px;
   border-radius: var(--r-full);
   color: var(--c-text-2);
-  transition: background .16s var(--ease), color .16s var(--ease), transform .12s;
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), transform var(--m-press);
   flex: none;
 }
 /* 38px of artwork, 44px of reach. Rows that stack these use a 12px gap,
@@ -218,7 +218,7 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   font-size: var(--fs-lg);
   color: var(--c-text);
-  transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+  transition: border-color var(--m-state) var(--ease), box-shadow var(--m-state) var(--ease);
   min-width: 0;
 }
 
@@ -295,7 +295,7 @@ button, [role="tab"] {
   background: var(--c-surface-2);
   border: 1.5px solid transparent;
   border-radius: var(--r-md);
-  transition: background .16s var(--ease), border-color .16s var(--ease);
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease);
 }
 .icon-auto.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
 
@@ -338,7 +338,7 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   color: var(--c-text-2);
   font-size: var(--fs-sm);
-  transition: background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease);
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
 .icon-report-toggle svg { width: 16px; height: 16px; flex: none; }
 .icon-report-toggle.is-on {
@@ -365,7 +365,7 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   border: 1.5px solid transparent;
   background: var(--c-surface-2);
-  transition: background .14s var(--ease), border-color .14s var(--ease), transform .12s;
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-press);
 }
 .icon-cell:active { transform: scale(.94); }
 .icon-cell.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
@@ -404,7 +404,7 @@ button, [role="tab"] {
   display: grid;
   place-items: center;
   box-shadow: var(--shadow-1);
-  transition: transform .12s var(--ease), background .16s var(--ease);
+  transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease);
 }
 /* 数を増減する丸ボタン。太さだけは主より強く——ここは＋と−の二本の線
    しか無いので、同じ太さだと丸のなかで痩せて見えます。 */
@@ -536,8 +536,8 @@ button, [role="tab"] {
   font-weight: 700;
   white-space: nowrap;
   flex: none;
-  transition: background .16s var(--ease), color .16s var(--ease),
-              border-color .16s var(--ease), transform .12s;
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
+              border-color var(--m-state) var(--ease), transform var(--m-press);
 }
 
 .chip:active { transform: scale(.95); }
@@ -711,11 +711,23 @@ button, [role="tab"] {
   display: flex;
   flex-direction: column;
   transform: translate(-50%, 100%);
-  transition: transform .3s var(--ease-out);
+  /* **開くのはゆっくり、閉じるのは速く。**
+     その決めごとのために `--m-sheet-open` / `--m-sheet-close` という名前を
+     二つ用意してありましたが、**どちらも読まれておらず**、紙は開くのも
+     閉じるのも同じ .3s でした。
+
+     素の状態に「閉じる速さ」を、`.is-open` に「開く速さ」を置きます
+     ——class が付いたときは付いた側の、外れたときは素のほうの指定が
+     使われる、というのが CSS の決まりなので、これで向きごとに分かれます。
+     曲線も出来事に合わせます（出てくるもの＝--ease-out、去るもの＝--ease-in）。 */
+  transition: transform var(--m-sheet-close) var(--ease-in);
   padding-bottom: var(--safe-b);
 }
 
-.sheet.is-open { transform: translate(-50%, 0); }
+.sheet.is-open {
+  transform: translate(-50%, 0);
+  transition: transform var(--m-sheet-open) var(--ease-out);
+}
 
 /* ---------------- 押したところから育つ紙 ----------------
 
@@ -735,12 +747,24 @@ button, [role="tab"] {
    出だしが速すぎて、実測で**時間の3%で6割**まで進みます——せり上がるだけの
    紙ならそれでいいのですが、育つ紙では小さいうちの姿が一瞬で終わって、
    「＋から出てきた」ことが見えません。iOS の紙と同じ、途中がちゃんと見える
-   曲線にします。 */
+   曲線にします。**それは `--push-e` と同じ曲線です**（引き出しが押しのける
+   ときの曲線——「途中が見える」を要る場所が、この二つ）。数字を写さずに
+   名前で指すこと。
+
+   長さも名前に移しました（`--m-sheet-grow`）。育つのはゆっくりですが、
+   **帰りは他の紙と同じ速さ**です（素の `.sheet` の --m-sheet-close）
+   ——見せ場は「出てくる」ほうで、やめるときに待たせる理由はありません。 */
 .sheet.is-from-origin {
   transition:
-    transform .42s cubic-bezier(.32, .72, 0, 1),
-    opacity .18s var(--ease),
-    border-radius .42s cubic-bezier(.32, .72, 0, 1);
+    transform var(--m-sheet-close) var(--ease-in),
+    opacity var(--m-state) var(--ease),
+    border-radius var(--m-sheet-close) var(--ease-in);
+}
+.sheet.is-from-origin.is-open {
+  transition:
+    transform var(--m-sheet-grow) var(--push-e),
+    opacity var(--m-state) var(--ease),
+    border-radius var(--m-sheet-grow) var(--push-e);
 }
 .sheet.is-from-origin:not(.is-open) {
   transform: translate(-50%, 0) translate(var(--sx, 0px), var(--sy, 0px)) scale(.3);
@@ -764,7 +788,7 @@ button, [role="tab"] {
      画面ぜんぶが桃色に染まりました——紙の地は 76% しか塗っていないので、
      下の光がそのまま透けます。光は「＋がいま光った」と言うだけのもので、
      紙が大きくなるころには役目が終わっています。 */
-  animation: sheet-bloom .3s var(--ease-out) forwards;
+  animation: sheet-bloom calc(var(--m-sheet-grow) * .72) var(--ease-out) forwards;
 }
 @keyframes sheet-bloom {
   0%   { transform: scale(.14); opacity: .5; }
@@ -784,9 +808,14 @@ button, [role="tab"] {
     border-radius: var(--r-xl);
     max-height: min(86dvh, 760px, var(--vvh, 100dvh));
     width: min(100% - 32px, 520px);
-    transition: transform .28s var(--ease-out), opacity .2s var(--ease);
+    /* 広い画面では真ん中の一枚になりますが、開く／閉じるの分け方は同じです。 */
+    transition: transform var(--m-sheet-close) var(--ease-in), opacity var(--m-state) var(--ease);
   }
-  .sheet.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .sheet.is-open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    transition: transform var(--m-sheet-open) var(--ease-out), opacity var(--m-state) var(--ease);
+  }
   .sheet-handle { display: none; }
 }
 
@@ -1138,7 +1167,7 @@ button, [role="tab"] {
 }
 
 .is-reordering > * {
-  transition: transform .24s cubic-bezier(.32, .72, .24, 1);
+  transition: transform var(--m-reorder) var(--ease-glide);
 }
 
 /* The faded copy of the row, sitting in the gap it will drop into. Its own
@@ -1155,7 +1184,7 @@ button, [role="tab"] {
   opacity: .34;
   filter: saturate(.7);
   animation: none !important;
-  transition: top .24s cubic-bezier(.32, .72, .24, 1), opacity .18s var(--ease);
+  transition: top var(--m-reorder) var(--ease-glide), opacity var(--m-state) var(--ease);
 }
 .is-reordering > .reorder-ghost.is-going { opacity: 0; }
 
@@ -1177,7 +1206,7 @@ button, [role="tab"] {
 .reorder-drop {
   position: relative;
   z-index: 6;
-  transition: transform .19s var(--ease-out), scale .19s var(--ease-out);
+  transition: transform var(--m-state) var(--ease-out), scale var(--m-state) var(--ease-out);
 }
 
 /* ---------------- 弾み（済ませた瞬間の火花） ---------------- */
@@ -1201,7 +1230,7 @@ button, [role="tab"] {
   background: var(--c-primary-fill);
   transform: rotate(var(--a)) translateY(0) scale(0);
   opacity: 0;
-  animation: kn-spark .46s var(--ease-out, ease) forwards;
+  animation: kn-spark var(--m-spark) var(--ease-out, ease) forwards;
 }
 @keyframes kn-spark {
   0%   { transform: rotate(var(--a)) translateY(calc(-1 * var(--d) * .45)) scale(0); opacity: 1; }
@@ -1244,7 +1273,7 @@ button, [role="tab"] {
   /* Anywhere on it dismisses it, so it is never in the way longer than it
      takes to read. */
   cursor: pointer;
-  animation: toast-in .3s var(--ease-out);
+  animation: toast-in var(--m-add) var(--ease-out);
 }
 
 /* Without the blur, transparency alone would run the list through the text. */
@@ -1257,7 +1286,7 @@ button, [role="tab"] {
   :root:not([data-theme="light"]) .toast { background: rgba(51, 61, 51, .78); }
 }
 
-.toast.is-out { animation: toast-out .22s var(--ease) forwards; }
+.toast.is-out { animation: toast-out var(--m-delete) var(--ease-in) forwards; }
 .toast-msg { flex: 1; min-width: 0; }
 .toast-action {
   color: #8fe0b0;
@@ -1302,7 +1331,7 @@ button, [role="tab"] {
   padding: var(--sp-3) var(--sp-4);
   text-align: left;
   border-bottom: 1px solid var(--c-border);
-  transition: background .14s var(--ease);
+  transition: background var(--m-state) var(--ease);
   min-height: 52px;
 }
 
@@ -1414,7 +1443,7 @@ button, [role="tab"] {
   background: var(--c-bg-elev);
   border-top: 1px solid var(--c-border);
   box-shadow: var(--shadow-3);
-  transition: transform .24s var(--ease-out);
+  transition: transform var(--m-reorder) var(--ease-out);
   /* Fast repeated taps must not be read as a double-tap: without this iOS
      holds each press back to see whether a zoom is coming, and a quick
      「1」「1」 can lose its second half. The keys carry it too, but the gaps
@@ -1452,7 +1481,7 @@ button, [role="tab"] {
   display: grid;
   place-items: center;
   line-height: 1;
-  transition: background .1s var(--ease), transform .08s;
+  transition: background var(--m-press) var(--ease), transform var(--m-press);
 }
 
 /* The gaps between the keys were dead pixels: a fast thumb landing in one
