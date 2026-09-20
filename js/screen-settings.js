@@ -53,7 +53,7 @@
           <span class="set-nav-pad" aria-hidden="true"></span>
         </header>
         <div class="set-scroll js-scroll">
-          ${root2 ? html`<h1 class="set-hero js-hero">設定</h1>` : ""}
+          ${root2 ? html`<h1 class="set-hero js-hero">Settings</h1>` : ""}
           <div class="js-body"></div>
         </div>
       </div>
@@ -67,7 +67,10 @@
       scroll: el.querySelector(".js-scroll"),
       body: el.querySelector(".js-body"),
     };
-    L.navTitle.textContent = page ? page.title : (opts.title || "設定");
+    /* 帯の題。根っこは**席の名前**なので英語（daily / tasks / shopping /
+       health と同じ系列）。「›」の先は**中身の名前**（外観・バックアップ…）
+       なので日本語のまま——線は「席か、中身か」で引いています。 */
+    L.navTitle.textContent = page ? page.title : (opts.title || "Settings");
     /* 押せば決まるもの（保存・外す）は、下に貼りつけた帯へ。紙のときは
        中身の最後に置いていましたが、一枚ぶんの高さがあると、短い欄の紙で
        ボタンが画面のまん中に浮きます。 */
@@ -492,7 +495,9 @@
     const tab = TAB[fromTab] || TAB.archive;
     L.body.append(head(tab.label));
     put(tab.rows());
-    L.body.append(head("一般"));
+    /* 上の見出しは席の名前（tab.label ＝ shopping など）。その続きなので、
+       ここも同じ系列の言葉にします。 */
+    L.body.append(head("General"));
     put(generalRows());
   }
 
@@ -917,8 +922,9 @@
       const used = store.get().products.filter((p) => p.categoryId === c.id).length;
       const row = node(html`
         <div class="manage-row" style="--cat:${c.color || ""}">
+          ${/* 絵文字の列はやめました（最優先の約束事）。すぐ左の色の帯が
+                同じことを——どの棚か——もう言っています。 */""}
           <span class="manage-swatch" style="background:${c.color || "transparent"}"></span>
-          <span class="manage-emoji">${c.emoji}</span>
           <span class="manage-name">${c.name}</span>
           <span style="font-size:11px;color:var(--c-text-3);flex:none">${used}商品</span>
           <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
@@ -971,17 +977,11 @@
           <span class="field-label">名前</span>
           <input class="input js-name" value="${cat ? cat.name : ""}" placeholder="例：おやつ">
         </label>
-        <div class="field">
-          <span class="field-label">絵文字（1文字）</span>
-          <!-- No placeholder here. An emoji placeholder paints itself in its
-               own colours whatever ::placeholder says, so 🍪 sat in the box
-               looking exactly like a value someone had already typed. The
-               example belongs outside the box, where nothing can be mistaken
-               for the field's contents. -->
-          <input class="input js-emoji" value="${cat ? cat.emoji : ""}" maxlength="4"
-                 aria-label="絵文字" style="width:100px;text-align:center;font-size:24px">
-          <span class="field-hint">例：🍪 🧺 🥫 ／ 空のままなら 🏷️ になります</span>
-        </div>
+        ${/* **絵文字の欄は出しません。** 「アプリ内UIに絵文字を使わない」と
+              決めてあるのに、ここは打ちこませる口でした——打てるのに出ない、
+              では打った人の字が消えたように見えます。棚を見分けるのは下の
+              色です。**保存済みの `emoji` 欄は消していません**（消すと既存の
+              値が戻せないので、そのまま持ったまま、描かないだけ）。 */""}
         <div class="field">
           <span class="field-label">色（このカテゴリの品物の背景になります）</span>
           <div class="swatches js-swatches"></div>
@@ -1007,16 +1007,21 @@
 
     foot.addEventListener("click", () => {
       const name = body.querySelector(".js-name").value.trim();
-      const emoji = body.querySelector(".js-emoji").value.trim() || "🏷️";
       if (!name) { KN.ui.toast("名前を入力してください"); return; }
 
       store.update((s) => {
         if (cat) {
           const rec = s.categories.find((x) => x.id === cat.id);
-          if (rec) { rec.name = name; rec.emoji = emoji; rec.color = color; }
+          /* `emoji` には**触りません**。もう描いていませんが、欄は残して
+             あるので、ここで書き替えると保存済みの値が黙って消えます。 */
+          if (rec) { rec.name = name; rec.color = color; }
         } else {
           s.categories.push({
-            id: KN.util.uid("c"), name, emoji, color,
+            /* `emoji` は**空で持たせます**。もう描きませんが、欄そのものは
+               残す決めごとなので（保存済みの値を消さないため）、新しい棚も
+               同じ形で持たせておきます——形が揃っていないと、あとで
+               `reconcile()` や書き出しが棚ごとに違う顔を見ることになります。 */
+            id: KN.util.uid("c"), name, emoji: "", color,
             order: Math.max(-1, ...s.categories.map((x) => x.order ?? 0)) + 1,
           });
         }

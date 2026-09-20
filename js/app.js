@@ -55,7 +55,10 @@
     list:     { label: "shopping", icon: "cart" },
     prices:   { label: "prices",   icon: "tag" },
     diet:     { label: "health",   icon: "heart" },
-    settings: { label: "設定",     icon: "gear" },
+    /* 席の名前は英語で通します。ここだけ「設定」で、設定の画面では
+       「shopping」の下に「一般」が並ぶ——**同じ系列の中で、そこだけ
+       言葉が変わる**のが混ざって見えていた正体でした。 */
+    settings: { label: "Settings", icon: "gear" },
   };
 
   /** その席が、いまの画面を受け持っているか。 */
