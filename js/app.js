@@ -139,37 +139,77 @@
       bar.append(btn);
     });
 
-    /* ---- 押したところで、ガラスが凹む ----
-
-       帯はガラスです。ガラスは押されたところで**それ自身が凹み**ます。
-       ここは「中心から光が広がる」でしたが、あれは波紋——Android の作法で、
-       ガラスの言い方ではありませんでした（base.css の `tab-dimple`）。
-
-       凹みを置くのは**帯のカプセル全体**で、押されたタブの中ではありません。
-       タブごとに区切ると、隣との境目で凹みが四角く切れます——カプセルは
-       一枚のガラスなので、凹みもその一枚の上に出ます。丸みはカプセルと同じ。
-
-       座標は指の位置そのもの（clientX/Y）です。ボタンの真ん中ではありません
-       ——「押した場所から」と言うなら、指の下から出ないと嘘になります。 */
     /* 縁の屈折の一枚（base.css の「縁の屈折」）。帯は ::before と ::after を
        地と縁の光で使いきっているので、ここだけ本物の一枚が要ります。
        縁の光より**先に**置くこと——重ね順は「地 → 屈折 → 縁の光」です。 */
     bar.append(node(html`<i class="tab-edge" aria-hidden="true"></i>`));
 
-    const glow = node(html`<i class="tab-glow" aria-hidden="true"></i>`);
-    bar.append(glow);
-    bar.addEventListener("pointerdown", (e) => {
-      if (!e.target || !e.target.closest || !e.target.closest(".tab")) return;
-      const r = glow.getBoundingClientRect();
+    /* ---- 押しているあいだ、その席がふくらむ ----
+
+       絵と速さは base.css（「押しているあいだ、その席がふくらむ」）。
+       ここが持つのは**指の居場所**だけです。
+
+       **押されているのは状態で、出来事ではありません。** 前はここで一度
+       きりのアニメーションを焚いていて（`is-dimpled` を付け外しして
+       `tab-dimple` を巻き戻す、という書き方そのものが、時計をこちらが
+       持っている証拠でした）、だから長く押しても 0.46秒で終わっていました。
+       いまは押したら付け、離したら外す——**時計は指が持ちます。**
+
+       見張りは `document` です。`pointerdown` は帯で拾えますが、離す指は
+       帯の外に居ることがあります（マウスで押したまま外へ出る、など）。
+       帯だけで見ていると `pointerup` が降りてこず、**膨らんだまま戻らない**
+       席が残ります（`reorder.js` / `day-swipe.js` と同じ理由・同じ手）。
+
+       **指が席から外れたら、いったん戻します。離さずに戻ってくれば、また
+       膨らみます。** 押している席の外で離してもタブは変わらない（click は
+       押したところと離したところが同じでなければ出ない）ので、膨らんだまま
+       だと「ここへ行く」という嘘になります。行き先を言うのは指の居場所で、
+       最初に触れた場所ではありません。 */
+    const hold = node(html`<i class="tab-hold" aria-hidden="true"></i>`);
+    bar.append(hold);
+
+    /* 光は指の下へ。座標は帯の中の位置で、ボタンの真ん中ではありません
+       ——「押したところ」と言うなら、指の下から出ないと嘘になります。 */
+    function aimHold(e) {
+      const r = hold.getBoundingClientRect();
       if (!r.width) return;
-      glow.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
-      glow.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
-      /* 同じところを続けて押しても凹み直すように、いちど外して測り直します
-         （class を付け直すだけでは、同じアニメーションは巻き戻りません）。 */
-      glow.classList.remove("is-dimpled");
-      void glow.offsetWidth;
-      glow.classList.add("is-dimpled");
+      hold.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
+      hold.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
+    }
+
+    let heldTab = null;
+    /** 押している席を、膨らませる／戻す。光も一緒（同じ一つの状態なので）。 */
+    function paintHeld(on) {
+      if (heldTab) heldTab.classList.toggle("is-held", on);
+      hold.classList.toggle("is-on", on);
+    }
+    /** 指がその席の上にいるか。箱で見ます（掴んだ指は捕まっているので、
+        `pointermove` の target は動かしても押した席のままです）。 */
+    function overTab(el, e) {
+      const r = el.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right
+          && e.clientY >= r.top && e.clientY <= r.bottom;
+    }
+
+    bar.addEventListener("pointerdown", (e) => {
+      const t = e.target && e.target.closest ? e.target.closest(".tab") : null;
+      if (!t) return;
+      paintHeld(false);
+      heldTab = t;
+      aimHold(e);
+      paintHeld(true);
     });
+    document.addEventListener("pointermove", (e) => {
+      if (!heldTab) return;
+      const on = overTab(heldTab, e);
+      paintHeld(on);
+      if (on) aimHold(e);
+    }, { passive: true });
+    /* 離した・取り消された（iOS の長押しメニュー、電話の着信…）。どちらも
+       「指がもう居ない」なので、同じところへ帰します。 */
+    const letGo = () => { if (!heldTab) return; paintHeld(false); heldTab = null; };
+    document.addEventListener("pointerup", letGo);
+    document.addEventListener("pointercancel", letGo);
 
     paintTabs();
   }
