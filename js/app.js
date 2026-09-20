@@ -269,8 +269,23 @@
      帯が明滅します。 */
   let onDark = false;
 
+  /* 鏡面光を読む器（縁の光 `::after` を持つ5つ）。**ここへ書きます——
+     `:root` ではありません。**
+
+     カスタムプロパティは継承するので、`:root` に書き換えが入ると、読む5つ
+     だけでなく**文書のすべての要素**が style を計算し直します。実測
+     （2026年9月20日、CPU 4倍・390×844）で、一覧を縦に送るときの p90 が
+     **50.0ms**、96フレーム中 **21落ち**——この一行を止めるだけで p90
+     **16.7ms**・**0落ち**になりました（1回の書き換えが 48.9ms）。
+     「どの画面でもうっすら重い」の正体がこれです。
+
+     並べるのは CSS の使う側へ移してあります（base.css の
+     `.tabbar::after` ほか＝`--glass-rim-spec` / `-ring`）。だから数は、
+     その器へ書けば届きます。**片方だけ直さないこと**——CSS で `:root` に
+     組み直すと、ここで書いた数は焼きついた既定値に負けて動かなくなります。 */
+  const GLASS = ".tabbar, .add-fab, .fab-menu-b, .toast, .search-bar";
+
   function paintGlass() {
-    const root = document.documentElement;
     /* 鏡面光の居場所。送っている器の位置を、縁の長さに畳んで回します
        ——「何px 送ったか」ではなく「まわりがどれだけ動いたか」なので、
        端まで行ったら向こうから戻ってくる形（往復）にします。 */
@@ -279,8 +294,14 @@
     /* 止まっているときは**まん中**に居させます。端に寄った姿から始まると、
        光が当たっているのではなく「左が明るい絵」に見えるので。
        行って戻る形（sin）にするのは、折り返しで速さが跳ねないため。 */
-    const sweep = .5 + .38 * Math.sin(top / 115);
-    root.style.setProperty("--glass-sweep", sweep.toFixed(3));
+    const sweep = (.5 + .38 * Math.sin(top / 115)).toFixed(3);
+    /* 同じ数なら書きません。書き換えはその器の中を巻き込むので、止まって
+       いるあいだ（sin の折り返しなど）に同じ数を置き直す意味はありません。 */
+    document.querySelectorAll(GLASS).forEach((el) => {
+      if (el.dataset.sweep === sweep) return;
+      el.dataset.sweep = sweep;
+      el.style.setProperty("--glass-sweep", sweep);
+    });
 
     const L = backdropLum();
     if (L != null) {
