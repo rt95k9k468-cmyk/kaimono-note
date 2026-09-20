@@ -352,30 +352,97 @@
       }, ms));
     });
 
-    // Drag-down-to-dismiss, only while the sheet is anchored to the bottom
-    // (above 640px it becomes a centred dialog with a different transform).
+    /* ---- 下へ払って閉じる ----
+
+       紙が画面の下に留まっているあいだだけ（640px より広いと真ん中の
+       一枚になり、transform の形が違います）。
+
+       **三つ直しました。**
+
+       ① **紙が指についてきませんでした。** 指の位置を毎フレーム紙に
+          書いているのに、紙は `.sheet` の「--m-sheet-close かけて動く」を
+          着たままでした。だから一フレームごとに、なめらか移動がやり直され、
+          紙はねばるように遅れて追ってきます（実測：指の位置を当てても、
+          移動時間は 0.3秒のまま）。掴んでいるあいだは transition を切ります。
+
+       ② **速さを見ていませんでした。** 閉じるかどうかが `dy > 90` の
+          距離だけだったので、**ぱっと弾くと戻り、のろのろ 95px 引くと
+          閉じる**——iPhone の紙と逆です。勢いも見ます。
+
+       ③ **上へは道がありません**でした（`dy > 0` 以外は無視）。指は動くのに
+          絵が動かないと、そこで指と絵が切れます。上へは**だんだん重く**して、
+          ついてはくるが進まない、という形で「ここまで」を言います。 */
     const isBottomSheet = () => window.matchMedia("(max-width: 639px)").matches;
-    let startY = null;
+    /* 閉じる境目は**紙の丈に対する割合**です（iPhone の紙と同じ考えかた）
+       ——ただし上下で止めます。短い紙で 44px、長い紙で 154px では、同じ
+       「下へ払う」が紙によって別の手つきになってしまうので。 */
+    const DISMISS   = 0.22;   // 紙の丈の、これだけ引けば閉じる
+    const DISMISS_MIN = 56, DISMISS_MAX = 140;
+    const FLING_V   = 0.4;    // 短くても、これだけ速ければ閉じる（px/ms）
+    const FLING_MIN = 10;     // ただし、まったく動いていないものは払いではない
+    let startY = null, dy = 0, lastT = 0, lastY = 0, vy = 0;
     const head = el.querySelector(".sheet-head");
     const handleBar = el.querySelector(".sheet-handle");
+
+    const dragTo = (y) => { el.style.transform = `translate(-50%, ${y}px)`; };
+    /** 戻す／閉じきる、どちらも「残りの道のりと指の勢い」から。 */
+    const slideTo = (y) => {
+      const h = el.getBoundingClientRect().height || 1;
+      const g = KN.motion.glide(y - dy, vy,
+        { span: h, base: KN.motion.ms("--m-sheet-close") });
+      el.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}` : "";
+      if (y) dragTo(y); else el.style.transform = "";
+      return g.ms;
+    };
+
     [head, handleBar].forEach((zone) => {
+      if (!zone) return;
       zone.addEventListener("touchstart", (e) => {
-        startY = isBottomSheet() ? e.touches[0].clientY : null;
+        if (!isBottomSheet()) { startY = null; return; }
+        startY = e.touches[0].clientY;
+        dy = 0; lastT = performance.now(); lastY = startY; vy = 0;
+        el.style.transition = "none";          // ① 指につかせる
       }, { passive: true });
+
       zone.addEventListener("touchmove", (e) => {
         if (startY == null) return;
-        const dy = e.touches[0].clientY - startY;
-        if (dy > 0) el.style.transform = `translate(-50%, ${dy}px)`;
+        const y = e.touches[0].clientY;
+        const now = performance.now();
+        if (now > lastT) { vy = (y - lastY) / (now - lastT); lastT = now; lastY = y; }
+        const raw = y - startY;
+        dy = raw >= 0 ? raw : KN.motion.rubber(raw, 50);   // ③ 上はゴム
+        dragTo(dy);
       }, { passive: true });
-      zone.addEventListener("touchend", (e) => {
+
+      const release = (dismissable) => {
         if (startY == null) return;
-        const dy = (e.changedTouches[0] || {}).clientY - startY;
-        el.style.transform = "";
-        /* 下へ払って閉じるときは、下へ帰します。指が下へ送ったものが
-           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。 */
-        if (dy > 90) { el.classList.remove("is-from-origin"); tryClose(); }
         startY = null;
-      });
+        const h = el.getBoundingClientRect().height || 1;
+        const far = Math.min(DISMISS_MAX, Math.max(DISMISS_MIN, h * DISMISS));
+        const fling = vy > FLING_V && dy >= FLING_MIN;     // ②
+        if (!dismissable || !(dy > far || fling)) {
+          const ms = slideTo(0);
+          setTimeout(() => { if (!closed) el.style.transition = ""; }, ms + 20);
+          return;
+        }
+        /* 下へ払って閉じるときは、**下へ帰します**。指が下へ送ったものが
+           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
+           そのまま下まで滑らせながら閉じにいきます。 */
+        el.classList.remove("is-from-origin");
+        const ms = slideTo(h);
+        tryClose();
+        /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
+           そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
+           居ることになります。 */
+        setTimeout(() => {
+          if (closed || !el.isConnected) return;
+          dy = h; vy = 0;
+          const back = slideTo(0);
+          setTimeout(() => { if (!closed) el.style.transition = ""; }, back + 20);
+        }, ms + 20);
+      };
+      zone.addEventListener("touchend", () => release(true));
+      zone.addEventListener("touchcancel", () => release(false));
     });
 
     /* tryClose も渡します。Escape で閉じる道（下の keydown）が close() を

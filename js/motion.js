@@ -106,6 +106,94 @@
     return out;
   }
 
+  /* ---------------------------------------------------------------
+     指を離したあと、行き先まで滑る
+
+     ここは長いあいだ「決まった時間」でした——day-swipe 200ms、cal-swipe
+     200ms、edge-back 260ms、紙の面 280ms。指の速さ（vx）は計算しては
+     いましたが、**「行くか戻るか」の真偽にしか使われていません**でした。
+
+     だから 27px で離すと 363px を 200ms で駆け抜け、380px まで引いて
+     離すと 10px を 200ms かけて——**同じ時間**。前者は弾かれたように、
+     後者はもたついて見えます。
+
+     いま決めるのは二つです。
+
+     ■ どれだけの時間で行くか
+
+       ・指に勢いがあるなら、**その速さで行けば着く時間**（dist / v）。
+         速く払った人は、速く着く。
+       ・勢いが無いなら、**残りの道のりに比例**（span に対する割合）。
+         あと10pxなら短く、半分残っていれば `--m-swipe` ぶん。
+       短いほうを採り、上下で頭打ちにします（速すぎても遅すぎても
+       「滑った」に見えないので）。
+
+     ■ どんな曲線で行くか
+
+       **出だしの傾きを、離したときの指の速さに合わせます。** これが
+       「勢いを引き継ぐ」の正体で、`--ease-out` を一律に当てていたころ
+       は、ゆっくり離しても出だしだけ速く、指の動きと繋がりませんでした。
+
+       ベジェ (0,0)→(p1)→(p2)→(1,1) の出だしの傾きは p1y/p1x です。
+       道のり d を時間 t で行くとき、初速 v を正規化すると v·t/d。
+       p1x を固定して p1y をそこに合わせれば、離した瞬間の速さのまま
+       走り出して、静かに着きます。
+     --------------------------------------------------------------- */
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+  /**
+   * @param {number} dist 残りの道のり。**符号つき**（右・下へ行くなら正）。
+   * @param {number} v    指の速さ。**同じ軸の符号つき**（px/ms）。
+   *                      向きが合っているかはこちらで見ます——呼ぶ側で
+   *                      掛け算させると、いつか符号を落とす日が来るので。
+   * @param {object} [o]
+   * @param {number} [o.span] この手つきの全長（px）。既定は dist。
+   * @param {number} [o.base] 基準の長さ（ms）。既定は --m-swipe。
+   * @returns {{ms:number, ease:string}} 動きを減らす設定なら ms は 0。
+   */
+  function glide(dist, v, o) {
+    const opt = o || {};
+    const d = Math.abs(dist) || 0;
+    const base = opt.base || ms("--m-swipe");
+    if (still()) return { ms: 0, ease: "linear" };
+    /* 行き先へ向かっている成分だけを見ます。逆向きに離した指は
+       「助けていない」＝勢い無しとして扱います（負のまま使うと、
+       出だしの傾きが後ろを向きます）。 */
+    v = d ? Math.sign(dist) * (v || 0) : 0;
+
+    const span = Math.max(1, Math.abs(opt.span || d || 1));
+    const lo = base * 0.45, hi = base * 1.6;
+
+    /* 道のりから（勢いが無いとき）。近いほど短いが、下限は置きます
+       ——1pxでも「滑った」と読める最短は要るので。 */
+    const byDist = base * clamp(d / span, 0.35, 1);
+    /* 勢いから。ほとんど止まっている指（0.05px/ms 未満）は無いものとして
+       扱います——割ると出てくるのは、ただの大きな数なので。 */
+    const byVel = v > 0.05 ? d / v : Infinity;
+
+    const t = clamp(Math.min(byDist, byVel), lo, hi);
+
+    /* 出だしの傾き。p1x は 0.25 に固定（そこから先は減速に使う区間）。
+       上を 1.4 で止めるのは、行き過ぎて戻る形になるのを防ぐため
+       ——ここは弾みではなく、慣性の引き継ぎなので。 */
+    const p1x = 0.25;
+    const p1y = clamp((Math.max(0, v) * t / Math.max(1, d)) * p1x, 0, 1.4);
+    return { ms: Math.round(t), ease: `cubic-bezier(${p1x}, ${p1y.toFixed(3)}, .2, 1)` };
+  }
+
+  /* 端をこえて引いたぶんは、だんだん重くする（ゴム）。
+
+     いくら引いても 1:1 で付いてくると、そちらに道があるように見えます。
+     指は動くのに行き先が近づかない、という手ざわりが「ここまで」を言う
+     ——それを距離で言うと、どこまで引けるかを**数字で決める**ことになる
+     ので、こちらは**行けない向きにも指はついてくる**まま、重さだけで
+     伝えます。 */
+  function rubber(over, limit) {
+    const lim = limit || 120;
+    const x = Math.abs(over);
+    return Math.sign(over) * (lim * (1 - 1 / (x / lim + 1)));
+  }
+
   function buzz(spec) {
     if (!navigator.vibrate) return;
     try {
@@ -158,5 +246,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, still, EVENTS };
+  KN.motion = { fire, press, ms, ease, glide, rubber, still, EVENTS };
 })();

@@ -819,13 +819,36 @@ button, [role="tab"] {
   .sheet-handle { display: none; }
 }
 
+/* 掴み手。**見えているのは 40×4px ですが、指の的はその外に取ります。**
+
+   ここは 4px しか無く、指の的を広げる手当て（`.hit-44`）も通っていません
+   でした——紙の上端のいちばん掴みたい棒が、アプリでいちばん細い的だった、
+   ということです。やることの紙の掴み手（`.tl-grip`）は前から上下12pxずつ
+   広げてあり、同じ決めごとをここにも通します。
+
+   `touch-action: none` は、掴んだ指をブラウザに渡さないため——渡すと、
+   下へ払おうとした指が紙の中身の送りとして取られます（`.tl-grip` と
+   同じ理由）。頭（`.sheet-head`）にも同じものが要ります。 */
 .sheet-handle {
+  position: relative;
   width: 40px; height: 4px;
   border-radius: var(--r-full);
   background: var(--c-border-2);
   margin: var(--sp-2) auto 0;
   flex: none;
+  touch-action: none;
 }
+.sheet-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 96px; height: 40px;
+  transform: translate(-50%, -50%);
+}
+/* 頭の行も掴めます（そちらは高さがあるので、要るのは touch-action だけ）。
+   中のボタン（×・⋯）は**押せるまま**です——`touch-action` が止めるのは
+   ブラウザの送り・拡大であって、押したことではありません。 */
+.sheet-head { touch-action: none; }
 
 .sheet-head {
   display: flex;

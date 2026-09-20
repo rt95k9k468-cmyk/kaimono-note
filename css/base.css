@@ -822,8 +822,11 @@ a { color: var(--c-primary); }
   transform: translateY(calc(var(--face-p, 0) * var(--face-d, 0px)));
   will-change: transform;
 }
+/* 滑る長さと曲線は、**指が決めます**（app.js の faceSettle が
+   `--face-ms` / `--face-ease` を書きます）。材の置き場所はここのまま、
+   数だけが指から来る——書いていないときは `--m-swipe` に落ちます。 */
 .screen.is-face-front.is-face-settle .stack > .tl-sheet {
-  transition: transform var(--m-swipe) var(--ease-out);
+  transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
 /* 下がった紙は「紙」に見えなければいけません。上の角はもともと丸いので、
    足すのは影だけ——後ろとのあいだに厚みが出ます。 */
@@ -854,7 +857,7 @@ a { color: var(--c-primary); }
 .screen.is-face-front.is-face-settle .js-filter,
 .screen.is-face-front.is-face-settle .face-t,
 .screen.is-face-back.is-face-settle .js-filter > * {
-  transition: opacity var(--m-swipe) var(--ease-out);
+  transition: opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
 /* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは一覧
    だけで、**自分の上の一組——バー・探す欄・カテゴリの札——はまとめて
