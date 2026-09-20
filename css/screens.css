@@ -498,8 +498,8 @@
    まま、ずれは0）——JSが指の下で高さとずれを書いているあいだだけ効きます。
    月をめくるときの横ずれは中の .cal-grid が持つので、縦と横で層が別です。 */
 .cal-clip { overflow: hidden; }
-.cal.is-settling .cal-clip { transition: height var(--m-grow) var(--ease-out); }
-.cal.is-settling .cal-slide { transition: transform var(--m-grow) var(--ease-out); }
+.cal.is-settling .cal-clip { transition: height var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
+.cal.is-settling .cal-slide { transition: transform var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 
 /* ---- 週を横に払うあいだ、隣の週を先に見せる（js/cal-swipe.js）----
 
@@ -535,9 +535,11 @@
    （transition）だけです。 */
 .cal.is-peek .cal-wds { overflow: hidden; }
 .cal.is-settling .cal-wds {
-  transition: height var(--m-grow) var(--ease-out), opacity var(--m-grow) var(--ease-out);
+  transition: height var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
+              opacity var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out));
 }
-.cal.is-settling { transition: padding var(--m-grow) var(--ease-out), border-color var(--dur) var(--ease); }
+.cal.is-settling { transition: padding var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
+                   border-color var(--dur) var(--ease); }
 /* **暦は、紙より前に居たままにします**（z-index は動かしません）。紙の箱は
    画面の上へはみ出しているので、紙を前に出すと、送った先では紙の地が暦を
    丸ごと隠します——実測で、ダイエットで下まで送ってから引くと暦が一度も
