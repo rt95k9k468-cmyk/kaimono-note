@@ -439,6 +439,21 @@
      消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
      月をめくったときや、画面を組み直したときは滑らせません（前にいた
      場所と関係のないところから飛んでくるため）。 */
+  /* **置き場所を測るのは、一拍あと。**
+
+     輪の居場所は、そのマスを測らないと決まりません。ところがここは
+     組み立ての**途中**から呼ばれるので、測った瞬間にブラウザは画面ぜんぶの
+     レイアウトをやり直します——実測（CPU 4倍）で、この二行が
+     **組み直し 1回の 46%**（32ms のうち 14.6ms）を占めていました。
+
+     一拍おけば、ブラウザがどのみち一度やるレイアウトに相乗りできます。
+     **絵は変わりません**——`.cal-ring` は `is-on` が付くまで透明なので、
+     その一拍のあいだ輪は出ていない（前の場所に出たままにはならない）。
+     組み直した直後は跳ばせる決めごとなので、一拍あとに跳んでも同じです。
+     日を押して滑らせる場合も、transform が変わるのは一拍あとというだけで、
+     滑り自体はそこから始まります。 */
+  let ringAt = 0, ringWant = null;
+
   function moveRing(grid, cell, jump) {
     if (!grid) return;
     let ring = grid.querySelector(".cal-ring");
@@ -446,18 +461,32 @@
       ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
       grid.prepend(ring);
     }
-    if (!cell) { ring.classList.remove("is-on"); return; }
-    const n = cell.querySelector(".cal-n");
+    if (!cell) { ring.classList.remove("is-on"); ringWant = null; return; }
+    ringWant = { grid, ring, cell, jump: !!jump };
+    if (ringAt) return;                            // すでに一拍ぶん待っている
+    ringAt = requestAnimationFrame(() => { ringAt = 0; placeRing(); });
+  }
+
+  function placeRing() {
+    const w = ringWant;
+    ringWant = null;
+    if (!w) return;
+    /* 待っているあいだに組み直されていたら、その盤はもう画面にいません。
+       新しい盤のぶんは、そちらの `paintHere` があらためて頼みます。 */
+    if (!w.grid.isConnected || !w.cell.isConnected || !w.ring.isConnected) return;
+    const n = w.cell.querySelector(".cal-n");
     if (!n) return;
-    const g = grid.getBoundingClientRect();
+    const g = w.grid.getBoundingClientRect();
     const b = n.getBoundingClientRect();
     if (!g.width || !b.width) return;              // まだ並んでいない
-    const first = !ring.classList.contains("is-on");
-    ring.classList.toggle("is-jump", !!jump || first);
-    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
-    ring.classList.add("is-on");
-    if (jump || first) {
+    const first = !w.ring.classList.contains("is-on");
+    w.ring.classList.toggle("is-jump", w.jump || first);
+    w.ring.style.transform =
+      `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    w.ring.classList.add("is-on");
+    if (w.jump || first) {
       // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      const ring = w.ring;
       requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
     }
   }
