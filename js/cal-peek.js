@@ -165,15 +165,32 @@
     }
     m.cal.style.paddingTop = (m.padT * keep).toFixed(1) + "px";
     m.cal.style.paddingBottom = (m.padB * keep).toFixed(1) + "px";
-    if (o.root) {
+    /* ---- 毎フレームの数は、**読む相手そのもの**へ書きます ----
+
+       ふだん（止まっているとき）この二つを持っているのは画面の根っこで、
+       それでかまいません——書くのは組み直しのときだけなので。**引いて
+       いるあいだは違います。** カスタムプロパティは継承するので、根っこに
+       毎フレーム書くと、読む相手が何個であろうと**画面ぜんぶ**（やることで
+       575要素）の style を計算し直します。実測（2026年9月20日・CPU 4倍）：
+       引いているあいだの style 再計算が **64回で 1385ms**（1回 22ms）、
+       81フレーム中 **22落ち**。レイアウトは 48回で 116ms しかないので、
+       重かったのは**測ることではなく、配ること**のほうでした。
+
+       読む相手は、実際には二つだけです：
+         --cal-p … `.cal.is-peek .cal-day.is-off-week`（暦の中だけ）
+         --cal-h … `.tl-grip`（**一つの要素だけ**）
+       だから引いているあいだは、そこへ直に書きます。指を離したら `bare`
+       が剥がして、ふだんの数（根っこ）へ返します——**根っこの値には
+       一度も触れません**ので、剥がした瞬間に正しい姿へ戻ります。 */
+    if (m.cal) {
       /* 画面へ渡すのは 0〜1 だけ。負の側は「暦が消えていく」ことで、
          「どれだけ開いているか」ではありません。 */
-      o.root.style.setProperty("--cal-p", open.toFixed(3));
-      /* 掴み手の床。**毎フレーム、暦の高さと同じ数**を書きます——これが
-         無いと、送った先で掴み手だけが暦に潜ります（ダイエットは暦の
-         厚みを誰も測っていないので、まるごと88px 潜っていました）。 */
-      o.root.style.setProperty("--cal-h", visibleH(m, p).toFixed(1) + "px");
+      m.cal.style.setProperty("--cal-p", open.toFixed(3));
     }
+    /* 掴み手の床。**毎フレーム、暦の高さと同じ数**を書きます——これが
+       無いと、送った先で掴み手だけが暦に潜ります（ダイエットは暦の
+       厚みを誰も測っていないので、まるごと88px 潜っていました）。 */
+    if (m.grip) m.grip.style.setProperty("--cal-h", visibleH(m, p).toFixed(1) + "px");
   }
 
   /** 指の下で書いた寸法を、ぜんぶ剥がします。 */
@@ -184,13 +201,11 @@
     if (m.wds) { m.wds.style.height = ""; m.wds.style.opacity = ""; }
     m.cal.style.paddingTop = "";
     m.cal.style.paddingBottom = "";
-    /* 床は、引く前の値へ戻します（ふだん誰が持っているかは画面ごとに
-       違うので、消すのではなく**元へ**戻すこと）。このあと画面が組み
-       直せば、そちらの fitCalH が正しい値を書きます。 */
-    if (o.root) {
-      if (m.calHWas) o.root.style.setProperty("--cal-h", m.calHWas);
-      else o.root.style.removeProperty("--cal-h");
-    }
+    /* 指の下で書いたぶんを剥がすと、二つとも**根っこの値**（ふだんの数）が
+       そのまま見えます——引いているあいだ、根っこには一度も書いていないので。
+       このあと画面が組み直せば、そちらの fitCalH が新しい値を書きます。 */
+    m.cal.style.removeProperty("--cal-p");
+    if (m.grip) m.grip.style.removeProperty("--cal-h");
   }
 
   function end(o) {
@@ -230,7 +245,10 @@
     if (!m) { end(o); return null; }
     m.stuck = stuck;
     m.scroll = scroll0;
-    if (o.root) m.calHWas = o.root.style.getPropertyValue("--cal-h");
+    /* 床（`--cal-h`）を読むのは掴み手ひとつだけなので、引いているあいだは
+       そこへ直に書きます（`paint` の節）。掴み手は組み直しのたびに別の
+       要素になるので、掴んだこの時点で見つけておくこと。 */
+    m.grip = o.sheet ? o.sheet.querySelector(".tl-grip") : null;
     paint(o, m, at(o));
     /* 測るあいだに伸びたぶんを、ブラウザが追いかけていたら戻します。 */
     if (sc0) { void o.root.offsetHeight; sc0.scrollTop = scroll0; }
