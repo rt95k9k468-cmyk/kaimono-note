@@ -2431,7 +2431,7 @@
   text-align: left; flex: 1 1 auto; min-width: 0;
   padding: 0; background: none; border: 0;
 }
-.diet-hero-label { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; }
+.diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: 800; letter-spacing: -.01em; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
   font-size: 40px; line-height: 1.05; font-weight: 700; color: var(--c-text);
@@ -2612,7 +2612,7 @@
   display: inline-block; vertical-align: -2px; line-height: 0;
   color: var(--c-primary); opacity: .8; margin-right: 4px;
 }
-.diet-hero-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+.diet-hero-ico svg { width: 18px; height: 18px; stroke-width: var(--ico-sm-w); }
 .diet-stat-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
 /* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
@@ -3149,7 +3149,7 @@ a.btn { text-decoration: none; }
    最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.arc-log-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-log-head h2 { font-size: var(--fs-xl); font-weight: 800; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
 
 .arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
@@ -3216,7 +3216,7 @@ a.btn { text-decoration: none; }
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: 800; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
 
 /* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
    札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
@@ -5292,8 +5292,9 @@ a.btn { text-decoration: none; }
 .arc-counts { padding: 0 var(--sp-4); }
 .arc-counts-head {
   margin: 0 0 var(--sp-3);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-xl);
   font-weight: 800;
+  color: var(--c-primary);
   letter-spacing: -.01em;
 }
 .arc-counts-days {
