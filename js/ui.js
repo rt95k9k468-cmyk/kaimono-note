@@ -555,6 +555,16 @@
         if (was == null) {
           // 新しく来た行だけが、名乗りを上げます。
           el.classList.add("is-arriving");
+          /* **名乗り終わったら、札は外します。** `row-arrive` は
+             `animation-fill-mode: both` なので、終わったあとも
+             `transform: none` を押さえ続けます——アニメーションは
+             インラインの style より強いので、**札を持ったままの行は
+             二度と FLIP で滑れません**。
+             行が毎回新しく組まれているあいだは、札も一緒に消えていたので
+             出ませんでした。行を使い回す画面（やることの時間割）が
+             できたので、ここで始末します。 */
+          el.addEventListener("animationend", () => el.classList.remove("is-arriving"),
+            { once: true });
           return;
         }
         const dy = was - el.getBoundingClientRect().top;

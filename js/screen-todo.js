@@ -2282,6 +2282,35 @@
 
   let groups = [];
 
+  /* ---------------- 日の紙の控え ----------------
+
+     `renderBody` が置いた `.tl-sheet` と、そのときの見分け字。次の組み直しで
+     同じ字が出たら、紙には指一本触れません。 */
+  let sheetNode = null;
+  let sheetSig = null;
+
+  /** 紙に出ているものを、まるごと一本の字にする。
+
+      **数えるものを選びません。** 選ぶと、いつか選び落とします——紙は
+      用事の題・メモ・時刻・長さ・手順・期限・並び順まで描くうえ、
+      組み立て（`KN.plan.buildDay`）は設定の一日の始まり／終わりと、
+      **いま何時か**まで見ます（時刻を書いていないものが、いまから先に
+      並ぶので）。だから用事ぜんぶと設定ぜんぶをそのまま字にします。
+      `todos` 65件で **0.16ms**（CPU 4倍）——組み直し一回の 0.3% です。
+
+      分まで入れるのは**今日を見ているときだけ**。過ぎた日・先の日の
+      組み立ては「いま」を渡されないので、分が変わっても絵は動きません。 */
+  function sheetDigest(day) {
+    const st = store.get();
+    return JSON.stringify([
+      day, todayKey(),
+      day === todayKey() ? KN.util.nowTime() : "",
+      st.settings,
+      [...openSubs].sort(),
+      st.todos,
+    ]);
+  }
+
   function renderBody() {
     /* 書き替えても、読んでいた場所は動かしません。中身を空にすると
        スクロールは0へ落ちるので、組み直したあとに返します——一件
@@ -2326,7 +2355,28 @@
        37.8ms。外さなければ **28.7ms**）。だから中身を空にするのは
        「残す一枚」を決めたあと、その一枚だけ残して消す形にします。 */
     els.cal = query ? null : monthCalendar(store.openTodos());
-    [...els.body.childNodes].forEach((n) => { if (n !== els.cal) n.remove(); });
+
+    /* **日の紙も、変わっていなければ組み直しません。** 暦と同じ話で、
+       同じ理由で**外しません**（外して付け直すだけで、その木ぶんの
+       レイアウトが要る）。
+
+       違うのは**見分けかた**です。暦は「絵を変えるものだけ」を数えれば
+       足りましたが、紙のほうは用事の題・メモ・時刻・長さ・手順・期限……と
+       ほとんど全部を描くうえ、**組み立て（`KN.plan.buildDay`）が「いま
+       何時か」まで見ます**（時刻を書いていないものが、いまから先に並ぶ）。
+       数え落とすと、直したはずの字が出ないまま残ります。だから**丸ごと
+       見ます**——用事ぜんぶ・設定ぜんぶ・ひらいている手順・日・今日・
+       今日を見ているなら分。どれか一つでも動けば組み直す、という、
+       いままでと同じ形のまま。得があるのは「**何も変わっていない**」
+       とき——席を移る、暦を開け閉めする、設定のスイッチを押す——で、
+       残っていた長タスクはちょうどそこでした。 */
+    const keepSheet = (!query && oneDay() && sheetNode
+      && sheetNode.parentNode === els.body
+      && sheetSig === sheetDigest(shownDay())) ? sheetNode : null;
+
+    [...els.body.childNodes].forEach((n) => {
+      if (n !== els.cal && n !== keepSheet) n.remove();
+    });
     if (els.cal) {
       if (els.cal.parentNode !== els.body) els.body.append(els.cal);
       /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
@@ -2343,6 +2393,11 @@
          持ったままになります。 */
       els.cal.classList.toggle("is-stuck", keepTop > 4);
     }
+
+    /* 紙がそのままなら、ここでおしまい。中の配線（払う・引く・運ぶ・
+       30秒の拍）は紙に付いたままなので、何も起こしません。 */
+    if (keepSheet) { restoreTop(keepTop); settle(); return; }
+    sheetNode = null;
 
     /* 一日ぶんは、**白い紙**の上に乗ります。
 
@@ -2420,6 +2475,9 @@
          なっていたのは、これでした）。 */
       const grip = sheet.querySelector(".tl-grip");
       if (grip) grip.setAttribute("data-pull-own", "cal");
+      /* 次の組み直しで使い回せるように、いまの姿を控えます。 */
+      sheetNode = sheet;
+      sheetSig = sheetDigest(shownDay());
       restoreTop(keepTop);
       settle();
       return;
@@ -3131,6 +3189,13 @@
          あれは暦だけを描き直すもので、画面ぜんぶではありません。 */
       commit: (next, kept) => {
         viewDay = next === todayKey() ? null : next;
+        /* **控えを捨てます。** 滑りきった一枚を据える（adopt）のは
+           組み直しを通らない道なので、紙の中身は `sheetSig` が言っている
+           日と違うものに変わっています。捨てないと、払って戻ってきたときに
+           「字は合っているから紙はそのまま」と読まれて、**隣の日の時間割が
+           そのまま居座ります**（実測：今日→明日と払って「今日へ戻る」を
+           押すと、題と暦だけ今日になり、紙は明日のままでした）。 */
+        sheetSig = null;
         const d = KN.util.dayDate(next), m = shownMonth();
         if (d.getFullYear() !== m.year || d.getMonth() !== m.month) {
           setCalMonth(d.getFullYear(), d.getMonth());
