@@ -406,12 +406,29 @@
     return next > U.todayKey() ? null : next;
   }
 
-  /** その日へ移ります（暦の月も、その日を含む月へ連れていきます）。 */
-  function goDayTo(key) {
+  /** その日へ移ります（暦の月も、その日を含む月へ連れていきます）。
+
+      `opts.keep` は「紙はもうそこに居るので、組み直さなくてよい」の合図です
+      （横に払って着いたとき）。そのときは紙の**外**だけを塗ります。 */
+  function goDayTo(key, opts) {
     const ym = key.slice(0, 7);
     viewMonth = ym === ymOf(new Date()) ? null : ym;
     viewDay = key === U.todayKey() ? null : key;
-    render();
+    if (!(opts && opts.keep)) { render(); return; }
+    const here = viewDay || U.todayKey();
+    if (els.cal) {
+      markWeek(els.cal, here);
+      const grid = els.cal.querySelector(".cal-grid");
+      const cell = els.cal.querySelector(`.cal-day[data-day="${here}"]`);
+      /* **`is-here` も付け替えること。** ここは組み直しのときに
+         `fillCalendar` が書いている印で（やることの `paintHere` にあたる
+         ものが、この画面には無い）、組み直さないと前の日に残ります
+         ——輪だけが動いて、色の付いたマスが一日ずれる。 */
+      els.cal.querySelectorAll(".cal-day.is-here")
+        .forEach((c) => c.classList.remove("is-here"));
+      if (cell) cell.classList.add("is-here");
+      if (grid) moveRing(grid, cell);
+    }
   }
 
   function wireDaySwipe(viewport, track) {
@@ -421,7 +438,16 @@
       day: focusDay,
       step: stepDay,
       slide: daySlide,
-      commit: goDayTo,
+      /* **組み直しません。** 滑りきった `kept` が、もう「その日」の紙です
+         （`daySlide` は覗き見用の作りを持たないので、そのまま本物です）。
+         塗り直すのは紙の**外**だけ——週の帯と題（`markWeek`）と、暦の輪。
+
+         月をまたいだときは盤ごと変わるので、そこだけ組み直します。 */
+      commit: (key, kept) => {
+        const now = viewMonth || ymOf(new Date());
+        const crossed = key.slice(0, 7) !== now;
+        goDayTo(key, { keep: !!kept && !crossed });
+      },
       lock: (on) => { swiping = on; },
     });
   }
@@ -662,7 +688,15 @@
     /* 記録の無い日は、**空の一行**を作って出します。`isBlank` を立てて
        おくのは、`createdAt` の有無で見分けると取りこぼすから——古い記録は
        持っていないことがあります。 */
-    const days = only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine;
+    /* 「何も書いていない日」は、**記録が無い日だけではありません。**
+       日記の紙を開いて何も書かずに閉じると、`ensureDayLog` が空の一件を
+       置いていきます。それを「ある日」として描くと、意味のない横棒が
+       四つ並びました——「20 日　—　起床 - ・ 就寝 -　作成 -」。
+       決めごとは「書いていない日は、起床・就寝も帳簿も出さない」なので、
+       **有無ではなく中身で見分けること。** */
+    const blank = (d) => !String(d.memo || "").trim() && !d.wake && !d.sleep;
+    const days = (only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine)
+      .map((d) => (d.isBlank || blank(d)) ? Object.assign({}, d, { isBlank: true }) : d);
     const sec = node(html`
       <section class="card arc-log">
         <header class="arc-log-head">

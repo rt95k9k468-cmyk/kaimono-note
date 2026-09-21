@@ -516,6 +516,14 @@
         return next > U.todayKey() ? null : next;
       },
       slide: (d) => buildDaySlide(d, { peek: true, chartEl: chart() }),
+      /* **ここだけは、着いてから組み直します**（`kept` を受け取りません）。
+         やること・daily は隣の紙も本物なので、滑りきった一枚をそのまま
+         据えられますが、この画面の隣の二枚は `peek: true` ——押せない・
+         打てない作りで、食事の段も別に組まれています（`buildSlotBoxes` の
+         `!peek`）。それを据えると、着いた先の紙に**何も書き込めません**。
+
+         払いはじめのカクつきのほうは、隣の二枚を先に組んでおく仕掛け
+         （day-swipe.js の控え）が受け持つので、ここは素直に組み直します。 */
       commit: (next) => {
         viewDay = next === U.todayKey() ? null : next;
         const dd = U.dayDate(next);

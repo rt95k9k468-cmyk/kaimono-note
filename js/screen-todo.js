@@ -439,6 +439,21 @@
      消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
      月をめくったときや、画面を組み直したときは滑らせません（前にいた
      場所と関係のないところから飛んでくるため）。 */
+  /* **置き場所を測るのは、一拍あと。**
+
+     輪の居場所は、そのマスを測らないと決まりません。ところがここは
+     組み立ての**途中**から呼ばれるので、測った瞬間にブラウザは画面ぜんぶの
+     レイアウトをやり直します——実測（CPU 4倍）で、この二行が
+     **組み直し 1回の 46%**（32ms のうち 14.6ms）を占めていました。
+
+     一拍おけば、ブラウザがどのみち一度やるレイアウトに相乗りできます。
+     **絵は変わりません**——`.cal-ring` は `is-on` が付くまで透明なので、
+     その一拍のあいだ輪は出ていない（前の場所に出たままにはならない）。
+     組み直した直後は跳ばせる決めごとなので、一拍あとに跳んでも同じです。
+     日を押して滑らせる場合も、transform が変わるのは一拍あとというだけで、
+     滑り自体はそこから始まります。 */
+  let ringAt = 0, ringWant = null;
+
   function moveRing(grid, cell, jump) {
     if (!grid) return;
     let ring = grid.querySelector(".cal-ring");
@@ -446,18 +461,32 @@
       ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
       grid.prepend(ring);
     }
-    if (!cell) { ring.classList.remove("is-on"); return; }
-    const n = cell.querySelector(".cal-n");
+    if (!cell) { ring.classList.remove("is-on"); ringWant = null; return; }
+    ringWant = { grid, ring, cell, jump: !!jump };
+    if (ringAt) return;                            // すでに一拍ぶん待っている
+    ringAt = requestAnimationFrame(() => { ringAt = 0; placeRing(); });
+  }
+
+  function placeRing() {
+    const w = ringWant;
+    ringWant = null;
+    if (!w) return;
+    /* 待っているあいだに組み直されていたら、その盤はもう画面にいません。
+       新しい盤のぶんは、そちらの `paintHere` があらためて頼みます。 */
+    if (!w.grid.isConnected || !w.cell.isConnected || !w.ring.isConnected) return;
+    const n = w.cell.querySelector(".cal-n");
     if (!n) return;
-    const g = grid.getBoundingClientRect();
+    const g = w.grid.getBoundingClientRect();
     const b = n.getBoundingClientRect();
     if (!g.width || !b.width) return;              // まだ並んでいない
-    const first = !ring.classList.contains("is-on");
-    ring.classList.toggle("is-jump", !!jump || first);
-    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
-    ring.classList.add("is-on");
-    if (jump || first) {
+    const first = !w.ring.classList.contains("is-on");
+    w.ring.classList.toggle("is-jump", w.jump || first);
+    w.ring.style.transform =
+      `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    w.ring.classList.add("is-on");
+    if (w.jump || first) {
       // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      const ring = w.ring;
       requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
     }
   }
@@ -2235,8 +2264,20 @@
     renderBody();
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
-       （掴み手はそのぶん下に貼りつくので）。 */
-    fitCalH();
+       （掴み手はそのぶん下に貼りつくので）。**ただし一拍おいてから**
+       ——組み立て終わりに測ると、そこでレイアウトが強制されます。一拍
+       待てば、ブラウザがどのみち一度やるレイアウトに相乗りできます。
+       そのあいだ掴み手は前の床のままですが、床が変わるのは月と週を
+       行き来したときだけなので、ふだんは同じ数です。 */
+    fitCalSoon();
+  }
+
+  /* 一拍あとに一度だけ測ります。組み直しはスイッチ一つでも走るので、
+     まとめないと同じ測りが何度も積まれます。 */
+  let calFit = 0;
+  function fitCalSoon() {
+    if (calFit) return;
+    calFit = requestAnimationFrame(() => { calFit = 0; fitCalH(); });
   }
 
   let groups = [];
@@ -2246,6 +2287,19 @@
        スクロールは0へ落ちるので、組み直したあとに返します——一件
        片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
     const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
+
+    /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
+       `settle()` を呼ぶと、動いた行が**もといた場所から**滑ってきます
+       （`ui.js` の `flipRows`）。
+
+       **行には前から `data-flip` が付いていました**——買うもの・daily は
+       これを使っているのに、ここだけ呼んでいませんでした（目印だけ置いて、
+       見る人が居なかった）。時間割に一件足すと、その下の行がいっせいに
+       瞬間移動していたのは、それです。
+
+       日を丸ごと替えたときは、向こうが自分で見送ります（新顔が半分を
+       超えたら「編集ではなく行き先の変更」と見なして何もしない）。 */
+    const settle = KN.ui.flipRows(els.body, ".tl-row");
     els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
@@ -2269,7 +2323,16 @@
     els.cal = null;
     if (!query) {
       els.cal = monthCalendar(store.openTodos());
-      if (root && root.scrollTop > 4) els.cal.classList.add("is-stuck");
+      /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
+         二つ理由があります。
+         ① ここは `els.body.innerHTML = ""` の**あと**なので、測ると
+            組み立ての途中でレイアウトが強制されます（実測：render 1回に
+            レイアウト 3.1回。その1回ぶんがこれ）。
+         ② 前は `root.scrollTop` を読んでいました。**送る器は紙のほう**
+            なので（`scrollerOf`）、根っこはいつも 0——送った先で組み直すと
+            `is-stuck` が付かず、次に指が動くまで境目の線が出ませんでした
+            （「送る器を変えたら教えること」の、拾い残しの一つ）。 */
+      if (keepTop > 4) els.cal.classList.add("is-stuck");
       els.body.append(els.cal);
     }
 
@@ -2299,6 +2362,7 @@
         </div>
       `));
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2309,6 +2373,7 @@
         </p>
       `));
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2348,6 +2413,7 @@
       const grip = sheet.querySelector(".tl-grip");
       if (grip) grip.setAttribute("data-pull-own", "cal");
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2369,6 +2435,7 @@
 
     if (closed.length) sheet.append(archiveSection(closed, tiles));
     restoreTop(keepTop);
+    settle();
   }
 
   /* ---------------- 一日ぶん ---------------- */
@@ -2983,12 +3050,27 @@
          日で絞る前のもの）。掴んでいるあいだ組み直しは止まっているので、
          この控えが古くなることはありません。 */
       slide: (d) => daySlide(d, open),
-      commit: (next) => {
+      /* **組み直しません。** 滑りきった `kept` が、もう「その日」の紙です
+         ——同じものをもう一度組むために 134ms 固まると、次の日が「いきなり
+         出てきた」ように見えます（実測・CPU 4倍）。
+
+         塗り直すのは、紙の**外**で変わったものだけ：暦の輪と週の帯と
+         日付の題（`markDay` がまとめて持っています）。紙の中の「いま」の
+         線は、`watchNow` の ResizeObserver が付いた瞬間に置き直します
+         ——親に付く前は高さが 0 なので、あそこはもともとその口です。
+
+         月をまたいだときだけ、暦の盤を差し替えます（`setCalMonth`）。
+         あれは暦だけを描き直すもので、画面ぜんぶではありません。 */
+      commit: (next, kept) => {
         viewDay = next === todayKey() ? null : next;
+        const d = KN.util.dayDate(next), m = shownMonth();
+        if (d.getFullYear() !== m.year || d.getMonth() !== m.month) {
+          setCalMonth(d.getFullYear(), d.getMonth());
+          fitCalH();
+        }
         markDay(next, true);
-        /* goDay と違って、読んでいた場所は動かしません——滑りきった紙の
-           続きがそのまま出るように（renderBody が位置を返します）。 */
-        render();
+        // 控えが渡らなかったとき（掴み直しなど）だけ、これまでどおり。
+        if (!kept) render();
       },
       busy: () => !!tlDrag || KN.reorder.isActive(),
       lock: (on) => { swiping = on; },
@@ -3225,16 +3307,31 @@
     return last;
   }
 
+  /* **先に測って、あとから書く。**
+
+     前は `markPass`（書く）→ `nowY`（読む）→ `clearOfClocks`（読む）の
+     順でした。書いたすぐあとに測ると、ブラウザはそこでレイアウトを
+     やり直さないと答えられません——組み直しのたびに、余分な一回。
+
+     入れ替えても答えは同じです。`markPass` が書くのは色（`--pass`・
+     線の色・`is-live` のうすい地）だけで、**高さも位置も動かさない**ので、
+     測る前に書いても後に書いても、測れる数は変わりません。 */
   function paintNow(sec, list, axis, isToday) {
-    axis.textContent = "";
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
+
+    // ① 測る（まだ何も書かない）
+    let at = null;
+    if (nowMin != null) {
+      const y = nowY(sec, list, nowMin);
+      if (y != null) at = clearOfClocks(sec, list, y);
+    }
+
+    // ② 書く
+    axis.textContent = "";
     markPass(list, nowMin);
-    if (nowMin == null) return;
-    const y = nowY(sec, list, nowMin);
-    if (y == null) return;
-    axis.append(nowMark(nowMin, clearOfClocks(sec, list, y)));
+    if (at != null) axis.append(nowMark(nowMin, at));
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。

@@ -3140,7 +3140,11 @@
         memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
         wake: w.v,
         sleep: sl.v,
-        createdAt: cur ? cur.createdAt : stamp(),
+        /* 空の一件（`ensureDayLog` が置いたもの）は `createdAt` を持ちません
+           ——まだ人が書いていないので。だから**持っていなければ、いま押す**
+           こと。`cur ? cur.createdAt : stamp()` と書いていたころは、紙を一度
+           開いてから書いた日だけ「作成 -」のまま残りました。 */
+        createdAt: (cur && cur.createdAt) ? cur.createdAt : stamp(),
       };
       /* 実際に書き替えた欄だけ、書き手の印を更新します（メモだけ直したときに
          時刻の出どころが人へ移ってしまわないように）。 */
