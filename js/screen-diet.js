@@ -2105,7 +2105,7 @@
 
     const sec = node(html`
       <div class="stack">
-        <div class="section-title">${icon("heart")}${dayName(card.day)}のからだ
+        <div class="section-title is-block-head">${icon("heart")}${dayName(card.day)}のからだ
           ${KN.util.raw(freshNoteHtml(card.day))}
         </div>
         <div class="diet-grid">
@@ -2645,7 +2645,7 @@
 
     const sec = node(html`
       <div class="stack">
-        <div class="section-title">${icon("meal")}${dayName(card.day)}の食事</div>
+        <div class="section-title is-block-head">${icon("meal")}${dayName(card.day)}の食事</div>
 
         <div class="diet-kcal">
           <div class="diet-kcal-main">
