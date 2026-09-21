@@ -605,6 +605,18 @@ button, [role="tab"] {
    card. */
 .section-title svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; stroke-width: var(--ico-sm-w); }
 
+/* タブの中の一番上の見出し（「今日のからだ」「今日の食事」など）だけ、
+   他の（体重の推移・ワークアウト・AI推計結果…といった）小見出しより
+   一段大きく、テーマ色で立てます。`.section-title` は共有クラスなので、
+   ここを直接変えると小見出しまで巻き込みます。 */
+.section-title.is-block-head {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--c-primary);
+  letter-spacing: -.01em;
+}
+.section-title.is-block-head svg { width: 18px; height: 18px; }
+
 /* One line under a section title, for a gesture that has nothing on screen to
    advertise it. */
 .section-hint {
