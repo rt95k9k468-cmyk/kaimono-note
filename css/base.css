@@ -1670,10 +1670,15 @@ a { color: var(--c-primary); }
 .tab-flip i.is-on { opacity: 1; }
 
 .tab[aria-selected="true"] { color: var(--c-primary); }
-.tab[aria-selected="true"] .tab-ico {
-  background: var(--c-primary-soft);
-  transform: translateY(-1px);
-}
+/* **地はもうここが持ちません。** いま居る席の印は、席ごとの丸ではなく
+   **席から席へ滑る一枚のレンズ**（`.tab-lens`、下の節）になりました。
+   ここに `background` を戻すと、レンズの下にもう一枚の丸が出ます
+   ——滑っているあいだ、置いてきたほうの席に丸が残ったままになります。
+
+   持ち上げ（`translateY(-1px)`）と、押しているあいだの倍率
+   （`.tab.is-held .tab-ico`）はそのまま残します。前者は絵の座りの話、
+   後者は**指の下で起きること**で、どちらもレンズとは別の仕事です。 */
+.tab[aria-selected="true"] .tab-ico { transform: translateY(-1px); }
 .tab[aria-selected="true"] svg { stroke-width: 2.3; }
 .tab.is-pair .tab-ico-face:not(.is-on) svg { stroke-width: 2.4; }
 
@@ -1710,6 +1715,149 @@ a { color: var(--c-primary); }
   line-height: 1;
 }
 
+/* ---------------- いま居る席は、滑る一枚のレンズ ----------------
+
+   絵と実測は `js/tab-lens.js` の頭にあります。ここが持つのは見た目だけ。
+
+   **休んでいるときと、滑っているときで、別のものになります。**
+
+     休み … `--c-primary-soft` のべた塗りの丸薬。**席の絵と字の後ろ**に
+             居ます（z-index 0）。いまのところ、前の姿と同じ材です。
+     滑り … 乳白のガラス。**席の絵と字の前**へ出て（z-index 2）、
+             元の行を覆い、その上に**歪ませた写し**を置きます。
+
+   前へ出る理由は一つ——覆わないと、歪んだ写しと歪んでいない元が
+   二重に見えるからです。覆えるのは、丸薬の地が不透明だから。
+   だから `--lens-warp` が 0 のところ（＝滑り出す瞬間と着いた瞬間）では、
+   地は `--c-primary-soft` のまま・写しは歪まないまま元の位置。
+   **画素が一つも変わらない**ので、そこで z-index を入れ替えても
+   跳ねません。 */
+.tab-lens {
+  position: absolute;
+  left: 0; top: 0;
+  /* 大きさと位置は JS が書きます（transform で運ぶので、レイアウトは
+     動きません）。 */
+  border-radius: var(--r-full);
+  background: var(--c-primary-soft);
+  pointer-events: none;
+  z-index: 0;
+  /* 滑っているあいだ歪んだ写しがふちを越えないように。丸みもここで
+     効きます（写しはこの箱の中でだけ生きています）。 */
+  overflow: hidden;
+  /* 押しているあいだ膨らむぶん（`.tab-ico` から引き継いだ二段目）。
+     `transform` は位置に使っているので、**`scale:` の独立プロパティ**で
+     書くこと——同じところに書くと取り合います（`.tab-ico` で一度
+     踏んだ罠。「帯を押しているあいだ、その席がふくらむ」）。 */
+  scale: 1;
+  transition: scale var(--m-state) var(--spring);
+  --lens-warp: 0;
+}
+.tab-lens.is-held { scale: var(--hold-c); transition: scale var(--m-press) var(--ease-out); }
+
+/* ガラスの地。**べた塗りの丸薬の上に、滑っているぶんだけ重ねます。**
+   材は `--glass-*` の一組から（`.is-on-dark` もそのままついてきます）。
+
+   **濃さを上げるのは、下の元の行を消すため。** 透けると、歪んだ写しの
+   下に歪んでいない字が見えます。残した 12% はぼかしごしなので、
+   二重には読めません（かすかな靄として、ガラスらしさのほうに効きます）。
+
+   **明るくしないこと。** 実測（参考画面）では、レンズの中は 246 ／
+   帯の白は 253 ——**帯より 7階調ぶん暗い**。レンズを目立たせているのは
+   地ではなく**縁の輪**（232 ＝ −21）のほうです。はじめここを
+   `--glass-cast-lit` の 94% で置いたら、帯より **+19** 明るい白い玉に
+   なって、ガラスではなく「白い風船」に見えました。
+   だから地は、帯のカプセルが出している色（`--glass-cast` を
+   `--glass-a` ＝52% で地に混ぜたもの）より**一段濃く**取ります。 */
+.tab-lens::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    var(--glass-sheen),
+    color-mix(in srgb,
+      color-mix(in srgb, var(--glass-cast) 64%, var(--c-bg)) 88%, transparent);
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  opacity: var(--lens-warp);
+}
+/* 縁の輪。**歪ませません**——参考画面でも、ふちだけは最後まできれいな
+   弧のままでした（曲がるのは中身のほう）。
+
+   **レンズを「そこに在る」と言っているのは、この一本です。** 地のほうは
+   帯とほとんど同じ濃さ（実測 −3〜−5）なので、輪が無いと何も見えません
+   ——実際、`--glass-rim-ring` をそのまま借りていたときの縁は帯より
+   **−8** しかなく、玉の輪郭がどこにも出ませんでした。参考画面の実測は
+   **−21**（232／帯 253）。
+
+   上は明るく、下は暗く。ガラスの縁は上で空を、下で地面を映すので、
+   一様な線を引くとプラスチックの縁取りになります（帯の縁の光と同じ
+   言い分）。太さは 1.5px ——実機の 3倍では 4〜5画素で、実測の輪と同じ。 */
+.tab-lens::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, .80) 0%,
+    rgba(255, 255, 255, .10) 30%,
+    rgba(0, 0, 0, .055) 64%,
+    rgba(0, 0, 0, .105) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: var(--lens-warp);
+}
+
+.tab-lens.is-flying {
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, calc(.10 * var(--lens-warp)));
+}
+
+/* 歪ませる一枚。`filter` は JS が着せます（フィルタの id を CSS と JS の
+   二か所に書かないため）。 */
+.tab-lens-warp {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+/* 帯の行の写し。**元の行とまったく同じ場所**に置きます——JS が
+   レンズの位置だけ打ち消すので、ここは素のままにしておくこと。
+   色は一色（`--c-primary`）に寄せます：参考画面でも、レンズの下を
+   通った絵と名前は、選ばれている席の色になっていました。 */
+.tab-lens-copy {
+  position: absolute;
+  left: 0; top: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: stretch;
+  padding: 2px var(--sp-3) var(--tab-drop);
+  color: var(--c-primary);
+  /* **`font-style: normal` が要ります。** 入れものは `<i>` です
+     （`.tab-edge` / `.tab-hold` と同じ書き方に揃えたので）——そして
+     `<i>` の既定は**斜体**です。写しの中の名前だけが、ブラウザの
+     合成斜体で傾いていました（絵は傾かないので、字だけが斜めという
+     妙な絵になる）。歪んでいる最中は歪みのせいに見えて気づかず、
+     **フィルタを殺した試験の絵**——つまりいちばん「ふつうに見える
+     はず」のところ——で見つかりました。 */
+  font-style: normal;
+}
+.tab-lens-copy .tab,
+.tab-lens-copy .tab-label { color: var(--c-primary); }
+/* 写しの中では、押した印も選んだ印も持たせません——あれは指と store の
+   話で、絵の写しには関係がない（残すと、写しだけが膨らみます）。 */
+.tab-lens-copy .tab { scale: 1 !important; }
+.tab-lens-copy .tab-badge { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* 滑りも歪みも出しません（`tab-lens.js` が `KN.motion.still()` を見て
+     そもそも滑らせません）。ここは、万一 class が残ったときの受け皿。 */
+  .tab-lens { transition: none; }
+  .tab-lens::before, .tab-lens::after { opacity: 0; }
+}
+
 /* ---------------- ＋ は帯のとなりに ----------------
 
    ＋ は帯の上に浮いていました。参考にした画面（Structured）では、帯と
@@ -1737,6 +1885,17 @@ a { color: var(--c-primary); }
 .has-fab .tabbar::after,
 .has-fab .tab-edge,
 .has-fab .tab-hold { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
+
+/* レンズは**この四つに入りません。** あれは「カプセルの形をしているもの」
+   ——帯いっぱいに広がっていて、＋の手前で終わらせる必要があるものです。
+   レンズは席一つぶんの大きさで、位置も大きさも JS が席の箱から測って
+   書くので、＋のぶんはすでに入っています（席がそのぶん狭い）。
+   ここへ足すと、`right` と `transform` が取り合って行き先がずれます。
+
+   写しのほうは帯そのものの写しなので、**帯と同じだけ**右を空けること
+   ——空けないと、写しの中で四つの席が＋の下まで広がって、歪ませる前から
+   元の行と 16px ずれます。 */
+.has-fab .tab-lens-copy { padding-right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
 
 /* ＋ の置き場。帯のカプセルと上下の中心を合わせます。 */
 .has-fab .dock {

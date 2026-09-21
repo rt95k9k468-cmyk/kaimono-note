@@ -55,6 +55,7 @@ const ASSETS = [
   "js/screen-list.js",
   "js/screen-prices.js",
   "js/screen-settings.js",
+  "js/tab-lens.js",
   "js/app.js",
   "manifest.webmanifest",
   "icons/icon.svg",

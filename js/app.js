@@ -144,6 +144,11 @@
        縁の光より**先に**置くこと——重ね順は「地 → 屈折 → 縁の光」です。 */
     bar.append(node(html`<i class="tab-edge" aria-hidden="true"></i>`));
 
+    /* いま居る席の印。**席ごとの丸ではなく、席から席へ滑る一枚のレンズ**
+       です（`js/tab-lens.js`）。ここでは置くだけ——どこへ滑るかは
+       `paintTabs` が言います。 */
+    if (KN.tabLens) KN.tabLens.mount(bar);
+
     /* ---- 押しているあいだ、その席がふくらむ ----
 
        絵と速さは base.css（「押しているあいだ、その席がふくらむ」）。
@@ -182,6 +187,10 @@
     function paintHeld(on) {
       if (heldTab) heldTab.classList.toggle("is-held", on);
       hold.classList.toggle("is-on", on);
+      /* 二段目の膨らみ（`--hold-c`）は、いま居る席では**レンズ**が受け
+         持ちます——席の印がそこへ移ったので。押しているのが別の席なら、
+         レンズは動きません（そこはまだ行き先ではないので）。 */
+      if (KN.tabLens) KN.tabLens.hold(on ? heldTab : null);
     }
     /** 指がその席の上にいるか。箱で見ます（掴んだ指は捕まっているので、
         `pointermove` の target は動かしても押した席のままです）。 */
@@ -325,15 +334,21 @@
        画面ごとの紙で、window ではありません（「送る器を変えたら〜」）。 */
     document.addEventListener("scroll", soon, { capture: true, passive: true });
     window.addEventListener("resize", soon);
+    /* 席の幅が変わったら、レンズも置きなおします（回転・キーボード）。
+       **送りのたびには呼びません**——あれは席の箱を測るので、
+       `paintGlass` の拍に混ぜると毎フレームのレイアウトが一つ増えます。 */
+    window.addEventListener("resize", () => { if (KN.tabLens) KN.tabLens.sync(); });
     KN.app.paintGlass = paintGlass;
     paintGlass();
   }
 
   function paintTabs() {
+    let hereBtn = null;
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
       if (!btn) return;
       const here = holdsId(t, active);
+      if (here) hereBtn = btn;
       /* 帯が言うのは**その席の名前**です。価格を見ているあいだも「買うもの」
          のまま——いま居るのは買うもののタブで、その紙を下げているだけ
          なので。帯はいる場所を言うもので、紙の位置を言うものではありません。 */
@@ -370,6 +385,15 @@
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
        daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
+
+    /* いま居る席の印を、そこへ滑らせます。**席が変わっていなければ
+       `to()` は動きません**（同じ席を渡されたら置きなおすだけ）ので、
+       組み直しのたびに呼んでも、滑りが焚き直されることはありません。
+
+       写しを取るのはこの**あと**でないといけません——`to()` が滑り出す
+       瞬間に `snap()` するので、絵と名前が新しくなる前に呼ぶと、
+       レンズの中だけ前の行が残ります。 */
+    if (KN.tabLens && hereBtn) KN.tabLens.to(hereBtn);
 
     /* 席が変われば、帯の裏に来るものも変わります。送りの合図は来ないので、
        ここで一度見直すこと（ガラスは、まわりを見ている）。 */
