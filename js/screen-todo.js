@@ -2300,7 +2300,6 @@
        日を丸ごと替えたときは、向こうが自分で見送ります（新顔が半分を
        超えたら「編集ではなく行き先の変更」と見なして何もしない）。 */
     const settle = KN.ui.flipRows(els.body, ".tl-row");
-    els.body.innerHTML = "";
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
     const all = store.sortedTodos();
@@ -2320,9 +2319,16 @@
        downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
        いるのか」 not at all — 8月17日 four screens down is a date without a
        shape. Left out while searching: a filtered list is not a month. */
-    els.cal = null;
-    if (!query) {
-      els.cal = monthCalendar(store.openTodos());
+    /* **暦は、組み直すより先に決めます。** 使い回せる盤は、**外さずに
+       そのまま置いておく**ためです——`innerHTML = ""` で一度外すと、
+       付け直したところでブラウザはその木ぶんのレイアウトをやり直します
+       （実測：外して付け直すと、盤を組み直さなくても強制レイアウトが
+       37.8ms。外さなければ **28.7ms**）。だから中身を空にするのは
+       「残す一枚」を決めたあと、その一枚だけ残して消す形にします。 */
+    els.cal = query ? null : monthCalendar(store.openTodos());
+    [...els.body.childNodes].forEach((n) => { if (n !== els.cal) n.remove(); });
+    if (els.cal) {
+      if (els.cal.parentNode !== els.body) els.body.append(els.cal);
       /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
          二つ理由があります。
          ① ここは `els.body.innerHTML = ""` の**あと**なので、測ると
@@ -2332,8 +2338,10 @@
             なので（`scrollerOf`）、根っこはいつも 0——送った先で組み直すと
             `is-stuck` が付かず、次に指が動くまで境目の線が出ませんでした
             （「送る器を変えたら教えること」の、拾い残しの一つ）。 */
-      if (keepTop > 4) els.cal.classList.add("is-stuck");
-      els.body.append(els.cal);
+      /* **`toggle` であること。** 盤は使い回すことがあるので（`monthCalendar`）、
+         `add` だけだと、いちど貼りついた盤がいちばん上へ戻っても線を
+         持ったままになります。 */
+      els.cal.classList.toggle("is-stuck", keepTop > 4);
     }
 
     /* 一日ぶんは、**白い紙**の上に乗ります。
@@ -2708,7 +2716,57 @@
      その1pxは、ノッチのタップを聞くために置いてある1pxです（app.js）。
      つまり月をめくるたびに「上へ戻れ」と言ったことになり、画面が
      いちばん上まで飛びます。中身だけ入れ替えれば、節は動きません。 */
+  /* ---------------- 暦は、変わっていなければ組み直さない ----------------
+
+     実測（2026年9月21日・CPU 4倍・390×844）で、組み直し一回のうち暦が
+     **28.1ms**（JS の取り分の76%）、しかも要素数では **531個のうち 369個**
+     ——画面の7割が暦でした。そのうえ組み直した木は**まるごとレイアウトを
+     やり直す**ので、そのあとの強制レイアウト 32.3ms もほとんどが暦ぶんです。
+
+     暦が描いているのは「その月の、日ごとの絵と件数」だけで、用事の題や
+     時刻をいじってもそこは動きません。**入力が同じなら、前の盤をそのまま
+     使い回します**——`els.body.innerHTML = ""` で外れるだけで、節そのものは
+     生きています（cal-peek・cal-swipe の配線も、押したときの口も付いたまま）。
+
+     **見分けるのは `calDigest`**——月・今日・棚の色と、日を持つ用事の
+     （id・日・くり返し・絵・題）だけ。そこだけが盤の絵を変えるものなので。
+     安いほう（期限切れの帯・週の印・輪）は、使い回したときも毎回やります
+     ——あちらは「いま見ている日」で変わるもので、盤の中身ではありません。 */
+  let calNode = null;
+  let calSig = null;
+
+  /** 盤の絵を決めているものだけを、一本の字にする。 */
+  function calDigest(open) {
+    const today = todayKey();
+    const m = shownMonth();
+    const parts = [m.year, m.month, today, oneDay() ? 1 : 0];
+    groups.forEach((g) => parts.push(g.id, g.color, g.day || "", g.from || "", g.to || ""));
+    (open || []).forEach((t) => {
+      if (!t.due) return;
+      parts.push(t.id, t.due, t.repeat ? 1 : 0, t.icon || "", t.title);
+    });
+    store.get().todos.forEach((t) => {
+      if (!t.due || t.due >= today || !(t.done || t.archived)) return;
+      parts.push("d", t.id, t.due, t.icon || "", t.title);
+    });
+    return parts.join("\u0001");
+  }
+
   function monthCalendar(open) {
+    const sig = calDigest(open);
+    /* 前の盤がそのまま使えるなら、組みません。**外れていても外れていなくても
+       同じ一枚を返します**——置き場所は呼んだ側（`renderBody`）が決めます。 */
+    if (calNode && calSig === sig) {
+      fillCalTail(calNode, open);
+      return calNode;
+    }
+    const sec = buildCalendar(open);
+    calNode = sec;
+    calSig = sig;
+    return sec;
+  }
+
+  function buildCalendar(open) {
     const U = KN.util;
     const sec = node(html`
       <section class="cal">
@@ -2931,6 +2989,16 @@
     }
     outer.trail.forEach((key) => grid.append(outCell(key, marks)));
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
+    /* 生きている盤へ直に描いたので、控えの見分け字はもう当てになりません
+       （`setCalMonth` はここを通ります）。次の組み直しで組み直させます。 */
+    if (sec === calNode) calSig = null;
+    fillCalTail(sec, open);
+  }
+
+  /** 盤の中身ではなく、**いま見ている日**で変わるぶん。使い回した盤にも
+      毎回これだけは置き直します（どれも安い）。 */
+  function fillCalTail(sec, open) {
+    const today = todayKey();
     /* 期限切れ。一日の中には居場所がないので、**あることだけ**言って、
        受け皿（一覧）への口を出します。
 
