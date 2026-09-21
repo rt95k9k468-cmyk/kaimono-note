@@ -1489,11 +1489,14 @@
 
      どの欄も**自由に打てます**。打った言葉は次から自分の札になり、
      候補より前に並びます。きっかけの語彙は**飲んだ記録の気分の札と
-     分け合う**ので、すでにお酒を記録している人には自分の言葉が出ます。 */
+     分け合う**ので、すでにお酒を記録している人には自分の言葉が出ます。
+
+     **段の下の説明文（`note`）は、どんなとき・試したことからは外しました。**
+     見出し（絵＋題）と候補の札だけで用は足りていて、字が増えるほど紙が
+     長くなる——理由はこのコメントに書いてあれば足ります。 */
   const URGE_FIELDS = {
     scene: {
       title: "どんなとき", ico: "clock",
-      note: "あとで「いつが多いか」を数えるところです。",
       ph: "ほかにもあれば打ってください",
       hints: ["仕事終わり", "帰宅後", "食事のとき", "一段落したとき", "お風呂のあと",
               "寝る前", "一人のとき", "人といるとき", "休みの日"],
@@ -1506,7 +1509,6 @@
     },
     tried: {
       title: "試したこと", ico: "sprout",
-      note: "先に並べてあります。その場で思いつくのは、たいてい難しいので。",
       ph: "ほかにもあれば打ってください",
       hints: ["水を飲む", "炭酸水", "お茶", "歯をみがく", "お風呂", "散歩",
               "体を動かす", "何か食べる", "横になる", "音楽", "動画・ゲーム",
@@ -1686,8 +1688,18 @@
       <div class="urge-form">
         <div class="urge-top">
           <b class="urge-top-day">${U.formatDay(day)}</b>
-          ${editing && elapsed != null && !editing.outcome
-            ? html`<span class="urge-since">${icon("clock")}${urgeSpan(elapsed)}たちました</span>` : ""}
+          ${/* 時刻は打たせません。「いつのことか」を尋ねると、飲みたくなった
+                瞬間なのか、続きを書いているいまなのかが読み手には分からず、
+                実際にそう聞かれました。答えは常に一つ——**その段を押した瞬間**
+                です（`addUrge`/`updateUrge` が押した瞬間の時計を控えます）。
+                ここは、その控えを**見せるだけ**の場所にします。
+                続きが決まっている一件は記録した時刻を、まだの一件は経過分数を。
+                両方は要りません——決まった瞬間、「あと何分」より「何時何分に
+                どうなったか」のほうが読み返すときに要る情報だからです。 */
+            editing ? html`<span class="urge-since">${icon("clock")}${
+              editing.outcome ? urgeTime(editing) + "の記録"
+                : (elapsed != null ? urgeSpan(elapsed) + "たちました" : urgeTime(editing))
+            }</span>` : ""}
         </div>
         <div class="js-now"></div>
         <div class="js-scene"></div>
@@ -1701,7 +1713,6 @@
           <div class="js-after"></div>
           <div class="js-outcome"></div>
           <div class="js-link"></div>
-          <div class="js-when"></div>
           <div class="js-memo"></div>
         </div>
         <div class="js-list"></div>
@@ -1732,9 +1743,14 @@
         note: "飲みたさは、たいてい15〜30分で山を越えるとされています（個人差があります）。",
       });
     body.querySelector(".js-now").append(nowSec);
+    /* **押し直せば外れます**（`clearable`）。強さが必須なことは保存ボタンの
+       活き死に（`syncSave`）が言うので、段のほうまで「外せない」にする
+       必要はありません——外せないと、他の四つ（気持ち・場面・試したこと・
+       あとの強さ）と手ざわりが揃わず、「押し直しても戻らない」が不具合に
+       見えます（実際そう報告されました）。 */
     const paintBefore = () => urgeScale(nowSec.querySelector(".urge-sec-body"), before, (v) => {
       before = v; paintBefore(); syncSave();
-    }, { label: "飲みたい強さ" });
+    }, { label: "飲みたい強さ", clearable: true });
     paintBefore();
     syncSave();
 
@@ -1791,12 +1807,6 @@
     paintOutcome();
     paintLink();
 
-    const whenSec = urgeSec("時刻", "calendar", { optional: true });
-    body.querySelector(".js-when").append(whenSec);
-    whenSec.querySelector(".urge-sec-body").append(node(html`
-      <input class="input js-time" type="time" aria-label="時刻"
-             value="${editing ? urgeTime(editing) : U.nowTime()}">`));
-
     const memoSec = urgeSec("メモ", "paper", { optional: true });
     body.querySelector(".js-memo").append(memoSec);
     memoSec.querySelector(".urge-sec-body").append(node(html`
@@ -1845,9 +1855,12 @@
       if (before == null) { KN.ui.toast("飲みたい強さを選んでください"); return; }
       // 打ちかけの字を札に落としてから拾います（書いたのに消える欄を作らない）。
       sceneField.flush(); trigField.flush(); triedField.flush();
+      /* `time` は渡しません。新規なら `addUrge` が押した瞬間の時計を
+         控え、続きを書くだけなら元の記録の時刻（＝飲みたくなった瞬間）が
+         そのまま残ります——ここで上書きすると、続きを書いた時刻で
+         「いつ飲みたくなったか」が塗り替わってしまいます。 */
       const patch = {
         day, before, scene, trigger, tried, after, outcome,
-        time: body.querySelector(".js-time").value || null,
         memo: body.querySelector(".js-memo-in").value,
       };
       if (editing) store.updateUrge(editing.id, patch);
