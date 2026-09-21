@@ -71,6 +71,7 @@ const JS = [
   "js/screen-list.js",
   "js/screen-prices.js",
   "js/screen-settings.js",
+  "js/tab-lens.js",
   "js/app.js",
 ];
 
