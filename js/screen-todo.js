@@ -1738,14 +1738,37 @@
       || KN.productIcons.byKey(key))) || "";
   }
 
+  /* ---------------- 引いた答えは、覚えておく ----------------
+
+     辞書を引くのは安くありません——`findKey` は品物2131語・こと684語を
+     順に当てにいくので、実測（CPU 4倍）で**組み直し一回に 12.9ms**、
+     `somedaySection` が5行で 28.8ms かかっていた中身のほとんどがこれ
+     でした。行は組み直しのたびに作り直すので、**同じ題を何度も引きます**。
+
+     辞書は動きません。だから（どちらの引きかたか・保存済みの絵の名前・題）
+     が同じなら、答えも必ず同じです。
+
+     **`iconOverrides` が動くなら、ここを捨てること。** いまは書く側に
+     呼び出し元がありません（CLAUDE.md「自分だけの言い換えと、絵の報告」）。
+     `KN.iconsTodo.use()` / `KN.icons.use()` で一族を差し替えるときも同じ
+     ——あれは調べもののための口なので、覚えは持ち越しません。 */
+  const artCache = new Map();
+  function cachedArt(kind, key, title, resolve) {
+    const ck = kind + "\u0001" + (key || "") + "\u0001" + (title || "");
+    let v = artCache.get(ck);
+    if (v === undefined) { v = resolve() || ""; artCache.set(ck, v); }
+    return v;
+  }
+
   /** 自分で選んだ絵（あれば）、無ければ題から推した絵。無ければ丸だけ。
    *  シート内の「いまの見え方」プレビューと、行そのものの両方が使います。 */
   function iconMarkHtml(titleText, key) {
     /* 保存済みの絵の名前は、どちらの辞書のものかを持っていません（前は
        買うものしか無かったので）。両方に聞いて、答えたほうを使います。 */
-    const svg = (key && (KN.iconsTodo.byKey(key) || productArt(key)))
+    const svg = cachedArt("mark", key, titleText, () =>
+      (key && (KN.iconsTodo.byKey(key) || productArt(key)))
       || KN.iconsTodo.find(titleText || "")
-      || productArt(KN.productIcons.findKey(titleText || ""));
+      || productArt(KN.productIcons.findKey(titleText || "")));
     return svg
       ? html`<span class="todo-mark">${KN.util.raw(svg)}</span>`
       : html`<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
@@ -1787,10 +1810,13 @@
    *  色つきの絵ならそのまま。 */
   function tlMark(t) {
     const key = t.icon;
-    const sil = (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
+    /* 引きかたが `iconMarkHtml` と違う（色つきへ落ちる前に、シルエットだけを
+       三つ聞く）ので、覚えも別の棚に置きます。 */
+    const sil = cachedArt("sil", key, t.title, () =>
+      (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
         || KN.iconsFood.byKey(key)))
       || KN.iconsTodo.find(t.title || "")
-      || productArt(KN.productIcons.findKey(t.title || ""));
+      || productArt(KN.productIcons.findKey(t.title || "")));
     if (!sil) return todoMark(t);
     return html`<span class="todo-mark is-split"
                       style="--icon:${KN.util.raw(maskUrl(sil))}"></span>`;
