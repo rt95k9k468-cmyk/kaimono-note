@@ -144,7 +144,10 @@
   function dietRecordCount(state) {
     const d = (state && state.diet) || {};
     return (d.weights || []).length + (d.meals || []).length
-      + (d.health || []).length + (d.drinks || []).length + (d.foods || []).length;
+      + (d.health || []).length + (d.drinks || []).length + (d.foods || []).length
+      // 飲みたくなったときの記録も、失って痛いものなので数えます。ここに
+      // 足さないと、それしか書いていない人の控えが「空」と判定されます。
+      + (d.urges || []).length;
   }
 
   function isEmpty(state) {

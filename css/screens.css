@@ -21,7 +21,7 @@
   left: 0;
   right: 0;
   bottom: calc(var(--tabbar-space) + var(--sp-3));
-  z-index: 20;
+  z-index: var(--z-head);
   pointer-events: none;
 }
 
@@ -59,19 +59,18 @@
 .add-fab {
   width: 56px; height: 56px;
   border-radius: var(--r-full);
-  /* 地は、下の帯（base.css の .tabbar::before）とまったく同じ組み立てです
-     ——三枚重ねの光と、同じぼかし・彩度・明るさ。二つは同じ高さに浮いて
-     いるので、材が違うと同じ高さに見えません。
+  /* 地は、下の帯（base.css の .tabbar::before）とまったく同じ材です
+     ——二つは同じ高さに浮いているので、材が違うと同じ高さに見えません。
+     だから `--glass-*` の一組から出します（base.css のガラスの節）。
 
-     違うのは主色を一割だけ差してあることだけ。「押すもの」と分かるぶん
-     だけで、緑の板にはしません（＋そのものが緑を持ちます）。 */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
-    color-mix(in srgb, var(--c-primary) 12%,
-      color-mix(in srgb, var(--c-bg-elev) 52%, transparent));
-  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
-  -webkit-backdrop-filter: saturate(240%) blur(22px);
+     違うのは**地に主色をひとさじ差す**ことだけ。「押すもの」と分かるぶん
+     だけで、色の板にはしません（＋そのものが色を持ちます）。差す量だけを
+     `--glass-fab` として持ち、暗い面ではそこだけ一段上げます。 */
+  --glass-fab: 12%;
+  --glass-tint: color-mix(in srgb, var(--c-primary) var(--glass-fab), var(--glass-base));
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   color: var(--c-primary);
   display: grid;
   place-items: center;
@@ -84,53 +83,16 @@
   transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease);
 }
 
-/* 縁の光。帯と同じ作り方（1pxの余白に色を敷いて、内側をマスクで抜く）。
-   丸なので、上で明るく下で薄く光る輪になります。 */
-.add-fab::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: var(--r-full);
-  padding: 1px;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, .9),
-    rgba(255, 255, 255, .22) 34%,
-    rgba(255, 255, 255, .08) 62%,
-    rgba(255, 255, 255, .45));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  pointer-events: none;
-}
+/* 縁の光（`.add-fab::after`）は base.css の一枚が受け持ちます——帯・＋・
+   ＋の札で**まったく同じ一枚**なので、形（丸み）だけ器から継ぎます。
 
-/* 暗い画面では、帯と同じだけ光を落とします。 */
+   暗い面の光も、`--glass-rim` が夜の値になるだけで済みます。ここには
+   帯と同じ上書きが丸ごと二組ありましたが、ぜんぶ要らなくなりました。
+   残るのは「主色を差す量」だけ——夜は地が濃いので、一段上げます。 */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .add-fab {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
-      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
-      color-mix(in srgb, var(--c-primary) 14%,
-        color-mix(in srgb, var(--c-bg-elev) 62%, transparent));
-  }
-  :root:not([data-theme="light"]) .add-fab::after {
-    background: linear-gradient(180deg,
-      rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
-      rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
-  }
+  :root:not([data-theme="light"]) .add-fab { --glass-fab: 14%; }
 }
-:root[data-theme="dark"] .add-fab {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
-    color-mix(in srgb, var(--c-primary) 14%,
-      color-mix(in srgb, var(--c-bg-elev) 62%, transparent));
-}
-:root[data-theme="dark"] .add-fab::after {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
-    rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
-}
+:root[data-theme="dark"] .add-fab { --glass-fab: 14%; }
 
 /* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
    縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
@@ -139,21 +101,23 @@
    これでした——押した瞬間に丸が一回り大きくなり、色が一段明るいほうへ振れる。
    縮む動きは「引っ込む」ことなので、これから何かが出てくるボタンの合図と
    しては逆を向いています。 */
+/* 押した／指を乗せたときも、**差し替えるのは材の三枚だけ**です
+   （`background` の式そのものは `.add-fab` の一行のまま）。光を強め、
+   主色を濃くする——つまり「ガラスが、より多くの光を拾った」。 */
 .add-fab:active {
   transform: scale(1.06);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 42%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .4), transparent 60%),
-    color-mix(in srgb, var(--c-primary) 22%,
-      color-mix(in srgb, var(--c-bg-elev) 58%, transparent));
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 42%);
+  --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .4), transparent 60%);
+  --glass-base: color-mix(in srgb, var(--glass-cast-lit) 58%, transparent);
+  --glass-fab: 22%;
 }
 @media (hover: hover) {
-  .add-fab:hover { background:
-    linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .3), transparent 58%),
-    color-mix(in srgb, var(--c-primary) 20%,
-      color-mix(in srgb, var(--c-bg-elev) 54%, transparent)); }
-}
+  .add-fab:hover {
+    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%);
+    --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .3), transparent 58%);
+    --glass-base: color-mix(in srgb, var(--glass-cast-lit) 54%, transparent);
+    --glass-fab: 20%;
+  }
 }
 
 /* suggestions, under the name field in the add sheet */
@@ -214,7 +178,7 @@
   height: 100%;
   background: linear-gradient(90deg, var(--c-primary), var(--c-primary-2));
   border-radius: var(--r-full);
-  transition: width .45s var(--ease-out);
+  transition: width var(--m-grow) var(--ease-out);
 }
 
 /* category group — no heading any more, just a run of rows wearing the same
@@ -234,7 +198,7 @@
   position: relative;
   border-radius: var(--r-md);
   overflow: hidden;
-  animation: item-in .24s var(--ease-out);
+  animation: item-in var(--m-add) var(--ease-out);
 }
 
 .item {
@@ -257,8 +221,8 @@
   /* The row settling into place is deliberately unhurried — long enough to
      read as the row gliding, with an easing that keeps almost all the travel
      up front and lets the last few pixels drift in. */
-  transition: opacity .2s var(--ease), background var(--m-state) var(--ease),
-              transform .52s cubic-bezier(.16, .84, .24, 1);
+  transition: opacity var(--m-state) var(--ease), background var(--m-state) var(--ease),
+              transform var(--m-settle) var(--ease-settle);
   /* Vertical stays with the list so it can still scroll; horizontal comes to
      the swipe handler. The buttons inside need it too, otherwise a swipe that
      starts on the star is claimed by the browser as a pan. */
@@ -319,7 +283,7 @@
 .cal {
   position: sticky;
   top: var(--topbar-h, 0px);
-  z-index: 12;
+  z-index: var(--z-stick);
   padding: var(--sp-3) var(--sp-4) var(--sp-2);
   /* 上のバーと同じ理由で、透かしません（base.css の .topbar）。下を白い
      紙が流れるので、透かすと日付や曜日の裏に行の字が重なります。 */
@@ -400,7 +364,7 @@
   font-weight: 700;
   letter-spacing: -.02em;
   line-height: 1.25;
-  color: var(--c-primary-fill);
+  color: var(--c-primary);
   margin: 0;
 }
 
@@ -409,10 +373,10 @@
    画面が暦の帯で今日の数だけ色を変えているのと同じで、「開いているのが
    今日かどうか」を、字の色そのものが言います。残り（年◯月・日（火））は
    黒のまま。 */
-.day-y { color: var(--c-primary-fill); }
+.day-y { color: var(--c-primary); }
 .day-pre, .day-post { color: var(--c-text); }
 .day-d { color: var(--c-text); }
-.day-d.is-today { color: var(--c-primary-fill); }
+.day-d.is-today { color: var(--c-primary); }
 
 .topbar-day:active { opacity: .6; }
 
@@ -439,7 +403,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--c-primary-fill);
+  color: var(--c-primary);
 }
 .topbar-today svg { width: 17px; height: 17px; }
 /* 未来の日からは左向き（時間を遡る）、過去の日からは右向き（時間を進める）。
@@ -534,8 +498,8 @@
    まま、ずれは0）——JSが指の下で高さとずれを書いているあいだだけ効きます。
    月をめくるときの横ずれは中の .cal-grid が持つので、縦と横で層が別です。 */
 .cal-clip { overflow: hidden; }
-.cal.is-settling .cal-clip { transition: height .3s var(--ease-out); }
-.cal.is-settling .cal-slide { transition: transform .3s var(--ease-out); }
+.cal.is-settling .cal-clip { transition: height var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
+.cal.is-settling .cal-slide { transition: transform var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 
 /* ---- 週を横に払うあいだ、隣の週を先に見せる（js/cal-swipe.js）----
 
@@ -571,9 +535,11 @@
    （transition）だけです。 */
 .cal.is-peek .cal-wds { overflow: hidden; }
 .cal.is-settling .cal-wds {
-  transition: height .3s var(--ease-out), opacity .3s var(--ease-out);
+  transition: height var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
+              opacity var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out));
 }
-.cal.is-settling { transition: padding .3s var(--ease-out), border-color var(--dur) var(--ease); }
+.cal.is-settling { transition: padding var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
+                   border-color var(--dur) var(--ease); }
 /* **暦は、紙より前に居たままにします**（z-index は動かしません）。紙の箱は
    画面の上へはみ出しているので、紙を前に出すと、送った先では紙の地が暦を
    丸ごと隠します——実測で、ダイエットで下まで送ってから引くと暦が一度も
@@ -597,7 +563,7 @@
 .cal-wd {
   text-align: center;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--c-text-3);
   padding-bottom: 3px;
 }
@@ -628,7 +594,7 @@
   width: 27px; height: 27px;
   border-radius: var(--r-full);
   font-size: 17px;
-  font-weight: 500;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--c-text-2);
@@ -672,7 +638,7 @@
   box-shadow: inset 0 0 0 2px var(--c-primary);
   pointer-events: none;
   opacity: 0;
-  transition: transform .24s var(--ease-out), opacity var(--m-state) var(--ease);
+  transition: transform var(--m-reorder) var(--ease-out), opacity var(--m-state) var(--ease);
 }
 .cal-ring.is-on { opacity: 1; }
 /* 置き直した直後（月をめくった、画面を組み直した）は滑らせません。
@@ -772,7 +738,7 @@
                 var(--shadow-2);
   }
 }
-.item-wrap.is-flash .item { animation: row-flash 1.4s var(--ease) 1; }
+.item-wrap.is-flash .item { animation: row-flash var(--m-flash) var(--ease) 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .item-wrap.is-flash .item { animation-duration: .01ms; }
@@ -1357,7 +1323,7 @@
 }
 /* 大きさは輪（18px）が決めます。太さ 3.2 は白い✓が緑に沈まないための
    もので、二段階の外です——輪の中身なので、輪と一緒に決まります。 */
-.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity var(--m-state), transform .2s var(--ease-out); }
+.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity var(--m-state), transform var(--m-state) var(--ease-out); }
 @media (hover: hover) {
   .check:hover { border-color: var(--c-primary); }
 }
@@ -1378,7 +1344,7 @@
   display: grid;
   place-items: center;
   pointer-events: none;
-  transition: opacity var(--m-state) var(--ease), transform .2s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 .check-repeat svg {
   width: 13px; height: 13px;
@@ -1485,7 +1451,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  transition: color .2s var(--ease);
+  transition: color var(--m-state) var(--ease);
 }
 
 .is-checked .item-name { text-decoration: line-through; color: var(--c-text-2); }
@@ -1585,7 +1551,7 @@
   font-weight: 700;
   color: var(--c-text-2);
 }
-.done-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform .2s var(--ease); }
+.done-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform var(--m-state) var(--ease); }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
 
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
@@ -1620,7 +1586,14 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  background: var(--c-surface-2);
+  position: relative;
+  /* 材はガラスの一組から（base.css）。**縁の屈折（厚み）は着せません**
+     ——あれは浮いているものの話で、ここは面にはめ込まれた欄です。
+     浮いていないものに厚みを着せると、どこにも乗っていないのに影だけ
+     持っている、という嘘になります。縁の一本だけ回します。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--r-md);
   padding: 0 var(--sp-3);
   height: 46px;
@@ -1692,7 +1665,7 @@
   padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
   box-shadow: var(--shadow-1);
   transition: background var(--m-state) var(--ease),
-              transform .52s cubic-bezier(.16, .84, .24, 1);
+              transform var(--m-settle) var(--ease-settle);
   /* Vertical stays with the screen so it can still scroll; horizontal comes
      to the swipe handler — the buttons inside included. */
   touch-action: pan-y;
@@ -1918,7 +1891,12 @@
 .set-bar {
   flex: none;
   padding: var(--sp-3) var(--set-gut) calc(var(--tabbar-space) + var(--sp-2));
-  background: var(--c-bg);
+  /* 送る箱の上に浮いている一枚なので、材はガラスの一組から（base.css の
+     ガラスの節）。**縁の輪は着せません**——画面いっぱいで角も立っている
+     ので、境目を言うのは前からある上の一本のほうです。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: 0 -1px 0 var(--set-line);
 }
 .set-bar > * { width: 100%; }
@@ -1950,7 +1928,7 @@
 
 .set-nav {
   flex: none;
-  z-index: 20;
+  z-index: var(--z-head);
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -1990,7 +1968,7 @@
   min-width: 0;
   text-align: center;
   font-size: var(--set-fs);
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2017,7 +1995,7 @@
   margin: var(--sp-6) 0 var(--sp-2);
   padding: 0 calc(var(--set-gut) + var(--sp-5));
   font-size: var(--set-fs-head);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--c-text-3);
 }
 .js-body > .set-head:first-child { margin-top: var(--sp-2); }
@@ -2255,7 +2233,6 @@
 
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
-.manage-emoji { font-size: 19px; flex: none; width: 28px; text-align: center; }
 
 /* The colour the category paints its rows with, shown where it is chosen. */
 .manage-swatch {
@@ -2382,9 +2359,11 @@
 /* 隣の紙は本物ですが、押せません（指はカルーセルの外枠が引き受けます）。
    inert 属性でも塞ぎますが、保険としてCSSでも。 */
 .day-slide.is-peek { pointer-events: none; }
-/* 行けない側（今日より先など）は、中身の無い一枚で場所だけ取ります
-   ——真ん中を -100% に置くための足場なので、無いと位置がずれます。 */
-.day-slide.is-void { min-height: 1px; }
+/* 行けない側（今日より先など）には、**何も置きません**。以前は中身の無い
+   一枚で場所を取っていました——真ん中を -100% に置くための足場として。
+   いまは真ん中の居場所を数（`originX`）で持っているので、足場が要りません。
+   動くのは transform だけなので、置いても置かなくても同じ絵で、置いたぶん
+   だけレイアウトの費用がかかります（`.is-void` ごと外しました）。 */
 /* daily の紙は、段どうしのあいだを紙自身が空けていました（.tl-sheet.is-daily
    の gap）。中身がカルーセルの一枚へ移ったので、その役目もここへ移します
    ——移さないと、六つの段が隙間なく積み上がります。 */
@@ -2431,7 +2410,7 @@
   text-align: left; flex: 1 1 auto; min-width: 0;
   padding: 0; background: none; border: 0;
 }
-.diet-hero-label { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; }
+.diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: 700; letter-spacing: -.01em; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
   font-size: 40px; line-height: 1.05; font-weight: 700; color: var(--c-text);
@@ -2612,7 +2591,7 @@
   display: inline-block; vertical-align: -2px; line-height: 0;
   color: var(--c-primary); opacity: .8; margin-right: 4px;
 }
-.diet-hero-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
+.diet-hero-ico svg { width: 18px; height: 18px; stroke-width: var(--ico-sm-w); }
 .diet-stat-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
 /* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
@@ -2725,6 +2704,145 @@ button.section-note:active { opacity: .55; }
 .diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* 気分の言葉。数字と並ぶので、字は小さく色は控えめに。 */
 .diet-mood { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--c-text-3); }
+
+/* ---- 飲みたくなったとき ----
+
+   **警告色を使いません。** 5 を赤く、1 を緑に——とやると、そこにあるのは
+   記録ではなく点数になります（この画面がずっと避けてきたもの）。五つの
+   段は、選ばれたものだけが基調色に染まり、残りは同じ顔で並びます。
+   強さの差を言うのは**数字そのもの**で、色ではありません。
+
+   **余白は、意味の近さで決めます。** 前は `.field-label`（12px・薄墨）が
+   一定の間隔で並んでいるだけで、どこからどこまでが一つの問いなのかが
+   絵に出ていませんでした。段の中は 10px、段と段のあいだは 26px。
+   見出しは絵と題で一組（15.5px・太字）にして、添えの説明はその下へ。 */
+
+.urge-form { display: flex; flex-direction: column; gap: 26px; }
+.urge-rest { display: flex; flex-direction: column; gap: 26px; }
+
+/* 日付と、経過した分数。紙の頭で「いつの、どの一件か」を言います。 */
+.urge-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-2); flex-wrap: wrap;
+}
+.urge-top-day { font-size: var(--fs-lg); color: var(--c-text); }
+/* 経過した分数。事実として置くだけなので、色も強調も付けません。 */
+.urge-since {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 400;
+}
+.urge-since svg { width: 13px; height: 13px; }
+
+/* ---- 段 ---- */
+
+.urge-sec { display: flex; flex-direction: column; gap: 10px; }
+.urge-sec-head { display: flex; align-items: center; gap: 7px; }
+.urge-sec-ico { line-height: 0; color: var(--c-primary); flex: none; }
+.urge-sec-ico svg { width: 17px; height: 17px; }
+.urge-sec-title { font-size: 15.5px; font-weight: 700; color: var(--c-text); }
+/* 「任意」は、書かなくてよいことを一目で言うため。薄い地の小さな札で、
+   題より前に出ないようにします。 */
+.urge-sec-opt {
+  font-size: 10.5px; font-weight: 700; color: var(--c-text-3);
+  background: var(--c-surface-2); border-radius: var(--r-full);
+  padding: 2px 7px; line-height: 1.5;
+}
+.urge-sec-note {
+  font-size: var(--fs-sm); color: var(--c-text-3);
+  line-height: 1.65; margin: -2px 0 0;
+}
+.urge-sec-body { display: flex; flex-direction: column; gap: 10px; }
+/* 札は段の中では少しゆったり（既定の 6px だと、40pxの札が詰まって見える）。 */
+.urge-sec .diet-chips { gap: 8px; }
+.urge-words { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- 1〜5 ---- */
+
+/* 指の的は44pxを割らないように、高さで取ります（横は五等分）。 */
+.urge-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+.urge-lv {
+  height: 52px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1.5px solid transparent;
+  color: var(--c-text-2);
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
+              border-color var(--m-state) var(--ease), transform var(--m-press);
+}
+.urge-lv:active { transform: scale(.95); }
+/* 選ばれた段は、同じ紙の上の札（.chip.is-on）と**同じ色**にします。
+   `--c-primary-fill`（塗りのコーラル）で試したところ、白抜きが 2.06:1 で
+   数字が薄れ、すぐ下の「飲まなかった」の札だけがはっきり読める、という
+   見え方になりました。ここは字が主役なので、字の色のほう
+   （`--c-primary`、4.7:1）を地に使います。 */
+.urge-lv.is-on {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+/* 両端の言葉。数だけだと、1 と 5 のどちらが強いのか決まっていません。 */
+.urge-ends {
+  display: flex; justify-content: space-between;
+  font-size: var(--fs-xs); color: var(--c-text-3);
+  padding: 0 4px;
+}
+
+/* ---- 続きの開け閉め ----
+
+   畳んであるのは隠すためではなく順番のためなので、**押せることが
+   はっきり見える**形にします（点線の枠は「まだ中身がある」の合図）。 */
+.urge-more {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; min-height: 48px; padding: 0 var(--sp-3);
+  background: none;
+  border: 1.5px dashed var(--c-border-2);
+  border-radius: var(--r-md);
+  color: var(--c-primary);
+  font-size: var(--fs-md); font-weight: 700;
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-press);
+}
+.urge-more:active { transform: scale(.98); }
+.urge-more.is-open { border-style: solid; border-color: var(--c-border); color: var(--c-text-3); }
+.urge-more-c { line-height: 0; transition: transform var(--m-state) var(--ease); }
+.urge-more-c svg { width: 15px; height: 15px; }
+.urge-more.is-open .urge-more-c { transform: rotate(90deg); }
+
+/* ---- 日の紙に並ぶ行 ----
+
+   ここは帯の地の上なので、面を持たせません——白い札を敷くと、からだの段の
+   中にもう一枚の紙が現れます（価格の行と同じ考え）。分かれ目は細い線だけ。 */
+.urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
+.urge-rows { display: flex; flex-direction: column; }
+.urge-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  width: 100%; min-height: 42px; padding: 9px 2px;
+  background: none; border: 0; border-top: 1px solid var(--c-border);
+  text-align: left; color: var(--c-text);
+}
+.urge-rows .urge-row:first-child { border-top: 0; }
+.urge-row:active { opacity: .6; }
+.urge-row-time { font-size: var(--fs-sm); color: var(--c-text-3); flex: none; }
+/* 「4 → 2」。矢は書かれたことの記録で、良し悪しではないので色を変えません。 */
+.urge-row-lv {
+  font-size: var(--fs-lg); font-weight: 700; color: var(--c-primary);
+  flex: none; display: inline-flex; align-items: center; gap: 3px;
+}
+.urge-row-lv i { font-style: normal; color: var(--c-text-3); font-weight: 400; font-size: var(--fs-md); }
+.urge-row-text {
+  font-size: var(--fs-sm); color: var(--c-text-2);
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 続きの道。小さく、警告色を使わず、書けば消えます。`--c-text-3` では
+   薄すぎて手がかりにならず、赤や太字では急かすことになるので、その間を取って
+   このアプリが「押せる字」に使っている色（`--c-primary`）を、いちばん小さい
+   大きさで置きます。 */
+.urge-row-open { flex: none; font-size: var(--fs-xs); color: var(--c-primary); }
+.urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
+.urge-row-go svg { width: 14px; height: 14px; }
 
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
@@ -3149,7 +3267,7 @@ a.btn { text-decoration: none; }
    最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.arc-log-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-log-head h2 { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
 
 .arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
@@ -3166,7 +3284,7 @@ a.btn { text-decoration: none; }
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 30px; flex: none; padding-top: 1px; }
-.arc-log-day b { font-size: var(--fs-xl); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.arc-log-day b { font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .arc-log-day i { font-size: var(--fs-xs); font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -3216,7 +3334,7 @@ a.btn { text-decoration: none; }
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-lg); font-weight: 800; flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
 
 /* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
    札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
@@ -3321,47 +3439,38 @@ a.btn { text-decoration: none; }
   border-radius: var(--r-full);
   position: relative;
   /* 地は、＋（.add-fab）と下の帯（base.css の .tabbar::before）と
-     まったく同じ組み立てです——三枚重ねの光と、同じぼかし・彩度・明るさ。
-     この三つは同じ高さに浮いているので、材が違うと同じ高さに見えません。
-     ＋ を押して立ち上がるものが不透明な板だと、ガラスの上に紙を置いた
-     ように見えていました。 */
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%),
-    color-mix(in srgb, var(--c-bg-elev) 52%, transparent);
-  backdrop-filter: saturate(240%) brightness(1.06) blur(22px);
-  -webkit-backdrop-filter: saturate(240%) blur(22px);
+     まったく同じ材です。この三つは同じ高さに浮いているので、材が違うと
+     同じ高さに見えません。＋ を押して立ち上がるものが不透明な板だと、
+     ガラスの上に紙を置いたように見えていました。 */
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: none;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text);
-  /* 立ち上がる前は、＋ の中に畳まれている位置に置きます。 */
+  /* **立ち上がる前は、＋ の中に畳まれています。**
+
+     ここは `translateY(18px) scale(.9)` でした——「＋ の中に畳まれている」
+     と書いてありましたが、実際には**ただ少し下から出てくる**だけで、
+     ＋ とは何の関わりも見えていませんでした。二つは同じ材のガラスなのに、
+     別々に湧いて出ていた、ということです。
+
+     いまは ＋ の**まん中へ寄せて、丸くすぼめます**。札はもともと丸み
+     いっぱいの形（`--r-full`）なので、縮めるとそのまま ＋ と同じ丸に
+     なります——**だから形を変える必要がありません**。寄せる向きは
+     `--morph-x` / `--morph-y`（`js/app.js` の `fabMenu` が、開く直前に
+     ＋ と札の**実際の位置を測って**書きます。札の数も並びも呼ぶ側しだい
+     なので、CSS では決め打ちできません）。 */
   opacity: 0;
-  transform: translateY(18px) scale(.9);
+  transform: translate(var(--morph-x, 0px), var(--morph-y, 18px)) scale(.28);
   /* しまうときは、迷いなく。出るときだけ、下の .is-on で長くとります。 */
-  transition: opacity var(--m-state) var(--ease), transform .24s var(--ease-out);
+  transition: opacity var(--m-state) var(--ease), transform var(--m-reorder) var(--ease-out);
 }
 
-/* 縁の光。帯・＋ と同じ作り方（1px の余白に色を敷いて、内側をマスクで
-   抜く）。丸みの強い錠剤なので、上で明るく下で薄く光る輪になります。 */
-.fab-menu-b::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: var(--r-full);
-  padding: 1px;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, .9),
-    rgba(255, 255, 255, .22) 34%,
-    rgba(255, 255, 255, .08) 62%,
-    rgba(255, 255, 255, .45));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  pointer-events: none;
-}
+/* 縁の光は base.css の一枚が受け持ちます（帯・＋ と同じ一枚）。丸みは
+   `border-radius: inherit` で器から継ぐので、ここでは何も言いません。 */
 /* 縁の光は最後の子として描かれるので、字と丸を一段上げます。 */
 .fab-menu-label, .fab-menu-ico { position: relative; z-index: 1; }
 
@@ -3373,11 +3482,14 @@ a.btn { text-decoration: none; }
 .fab-menu.is-on .fab-menu-b {
   opacity: 1;
   transform: none;
-  transition: opacity .34s var(--ease), transform .46s var(--ease-out);
+  transition: opacity var(--m-sheet-open) var(--ease), transform var(--m-sheet-grow) var(--ease-out);
   /* --i は上から数えた番号なので、逆から遅らせます（指のいちばん近くが先）。 */
   transition-delay: calc((2 - var(--i)) * 62ms);
 }
-.fab-menu-b:active { transform: scale(.96); }
+/* 押したときの変形。**`.fab-menu.is-on .fab-menu-b`（0,3,0）に負けて
+   いた**ので、開いているあいだ——つまり押せるあいだ——一度も効いて
+   いませんでした。同じ詳細度まで上げます。 */
+.fab-menu.is-on .fab-menu-b:active { transform: scale(.96); }
 .fab-menu-ico {
   display: grid; place-items: center;
   width: 30px; height: 30px; flex: none;
@@ -3388,35 +3500,21 @@ a.btn { text-decoration: none; }
 /* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
 .fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }
 
-/* 暗い画面では、帯・＋ と同じだけ光を落とします。 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .fab-menu-b {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
-      radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
-      color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
-  }
-  :root:not([data-theme="light"]) .fab-menu-b::after {
-    background: linear-gradient(180deg,
-      rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
-      rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
-  }
-}
-:root[data-theme="dark"] .fab-menu-b {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%),
-    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%),
-    color-mix(in srgb, var(--c-bg-elev) 62%, transparent);
-}
-:root[data-theme="dark"] .fab-menu-b::after {
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, .28), rgba(255, 255, 255, .07) 34%,
-    rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .13));
-}
+/* 夜の光の上書きも、丸ごと要らなくなりました——`--glass-*` が夜の値に
+   なるだけで、帯・＋ と同じだけ光が落ちます。 */
 
-/* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。 */
+/* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。
+   傾くだけでなく、**一度ふくらみます**——札は ＋ から分かれて出るので、
+   出す側にも「押し出した」動きが要ります。傾きと膨らみを一つの
+   `@keyframes` にまとめるのは、二つが同じ一回の出来事だからです
+   （transition で別々に書くと、傾きだけが残って膨らみが消えます）。 */
 .add-fab { transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease); }
-.add-fab.is-open { transform: rotate(45deg); }
+.add-fab.is-open { transform: rotate(45deg); animation: fab-part var(--m-sheet-grow) var(--spring); }
+@keyframes fab-part {
+  0%   { transform: rotate(0deg)  scale(1); }
+  36%  { transform: rotate(26deg) scale(1.11); }
+  100% { transform: rotate(45deg) scale(1); }
+}
 .add-fab.is-open:active { transform: rotate(45deg) scale(1.06); }
 
 /* ---------------- 済ませたときの動き（やること） ----------------
@@ -3430,7 +3528,7 @@ a.btn { text-decoration: none; }
 
 /* ① 光る。棚の色（--cat）を借りて、行そのものが一度明るくなります。 */
 .item.is-glow {
-  animation: todo-glow .26s var(--ease-out) forwards;
+  animation: todo-glow var(--m-check) var(--ease-out) forwards;
 }
 @keyframes todo-glow {
   0%   { box-shadow: var(--shadow-1); }
@@ -3444,7 +3542,7 @@ a.btn { text-decoration: none; }
 
 /* ②-a 一度きりのものは、その場で畳まれて消えます。 */
 .item.is-finishing {
-  animation: todo-finish .24s var(--ease) forwards;
+  animation: todo-finish var(--m-delete) var(--ease-in) forwards;
   pointer-events: none;
 }
 @keyframes todo-finish {
@@ -3454,7 +3552,7 @@ a.btn { text-decoration: none; }
 /* ②-b 繰り返すものは消えません。次の設定日へ**滑って**いきます——その場で
    消えると「終わった」に見え、明日また出ることが伝わりません。 */
 .item.is-sliding {
-  animation: todo-slide .3s var(--ease) forwards;
+  animation: todo-slide var(--m-swipe) var(--ease-in) forwards;
   pointer-events: none;
 }
 @keyframes todo-slide {
@@ -3465,7 +3563,7 @@ a.btn { text-decoration: none; }
    ——買ったものは横へ去るのではなく、下の「買ったもの」の山へ**落ちます**。
    向きがそのまま行き先を指しているので、どこへ行ったかを探さずに済みます。 */
 .item.is-dropping {
-  animation: item-drop .28s var(--ease) forwards;
+  animation: item-drop var(--m-delete) var(--ease-in) forwards;
   pointer-events: none;
 }
 @keyframes item-drop {
@@ -3481,7 +3579,7 @@ a.btn { text-decoration: none; }
    上から降りてくるのは、足したものが一覧の頭に付くからです（daily は更新順、
    買うものは足した順）。下から生えると、来た方向と置かれた場所が食い違います。 */
 .is-arriving {
-  animation: row-arrive .34s var(--ease-out) both;
+  animation: row-arrive var(--m-sheet-open) var(--ease-out) both;
 }
 @keyframes row-arrive {
   from { opacity: 0; transform: translateY(-10px) scale(.98); }
@@ -3586,13 +3684,13 @@ a.btn { text-decoration: none; }
   transform: translateY(calc((50px - var(--tl-h, 50px)) / 2));
   padding-right: 3px;
   font-size: var(--fs-sm);
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 /* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
 .tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
-.tl-time.is-now { color: var(--c-primary); font-weight: 800; }
+.tl-time.is-now { color: var(--c-primary); font-weight: 700; }
 
 /* 線。行の高さいっぱいに引いて、丸を上に乗せます。 */
 .tl-rail {
@@ -3745,17 +3843,9 @@ a.btn { text-decoration: none; }
    染まっていきます。 */
 .tl-row, .tl-free-row {
   --p: calc(var(--pass, 1) * 100%);
-  /* まだ来ていないぶんの色。**まっさらな一色の灰**です。
-
-     ここには棚の色を6%混ぜていました——「夜の用事は18時を過ぎるまで
-     ずっとこちら側なので、混ぜないと夜の青が済んでからしか出てこない」
-     という理由です。**その理由は無くなりました**：丸薬の地をべた塗りに
-     したので、夜の色は済んだ時点ではっきり出ますし、これからの丸薬でも
-     中の絵が `--cat`（＝夜なら青）で描かれています。
-
-     混ぜたままにすると、**灰色が行ごとに変わります**。実測で、昼側の
-     (232,225,224) と夜側の (223,225,227) が空きの行の境目でぶつかって
-     いました。線は一日を通す一本なので、そこで色が変わってはいけません。 */
+  /* まだ来ていないぶんの色。**まっさらな一色の灰**です。棚の色は混ぜません
+     ——混ぜると行ごとに灰色が微妙に変わり、線は一日を通す一本なので、
+     どこかで色が変わって見えてはいけません。 */
   --tl-wait: var(--c-surface-2);
   /* 過ぎたぶんの色。丸薬の地も、丸薬をつなぐ線も、ここから出ます。
      **一つの変数から出すのが肝**です——二か所に書くと、片方だけ直した日に
@@ -3765,7 +3855,7 @@ a.btn { text-decoration: none; }
      色つきの手描きで、地を濃くすると絵が沈んだからでした。いまは中が
      白抜きのシルエットなので、地は濃いほうが読めます——薄い地に白を
      抜くと、白が消えます。 */
-  --tl-fill: var(--cat-a, var(--cat, var(--c-primary-fill)));
+  --tl-fill: var(--cat, var(--c-primary-fill));
 }
 /* 丸薬の**実際の高さと、実際の置き場所**は、この二つの変数だけから出します
    （重なりで育つぶん・ずれるぶんも含めて）。中の絵の色の境目も、線の色の
@@ -4493,6 +4583,31 @@ a.btn { text-decoration: none; }
 .item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }
 .item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
 
+/* ---- 品物の名前は、二行まで折り返す ----
+
+   決めごとは同じ（一行・はみ出したら…）でしたが、**行の広さが違う**ので、
+   同じ名前が買うもので「トイレットペー…」と切れ、価格では最後まで出る、
+   ということが起きていました——同じ品物の同じ名前なのに、画面によって
+   どこまで読めるかが変わる。
+
+   折り返すほうへ揃えます。やること（`.item.todo`）と、時間割の題と、
+   タイルは**もう二行まで折り返しています**——一行に縛っていたのは、
+   この二つの一覧だけでした。三行めは要りません（名前が三行要るなら、
+   それは名前ではなくメモです）。
+
+   `overflow-wrap: anywhere` を足すのは、区切りの無い長い一語
+   （「トイレットペーパー」）が一行めをはみ出して、二行めが空のまま
+   切れるのを防ぐためです。 */
+.item-wrap:not(.is-tile-wrap) .item:not(.todo) .item-name,
+.product-wrap:not(.is-tile-wrap) .product-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 /* ---- 単色シルエットは、カテゴリの色で塗ります ----
 
    品物の絵は 2026年9月5日に単色シルエット（`is-todo`）へ切り替わりました。
@@ -4895,7 +5010,7 @@ a.btn { text-decoration: none; }
    少しだけ持ち上げて、影を落とす——紙から浮いている、という絵。 */
 .tl-ghost {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-lift);
   margin: 0;
   pointer-events: none;
   /* **縮めたカード**です。行の原寸で持ち上げると、指の下が広く塞がって
@@ -4915,7 +5030,7 @@ a.btn { text-decoration: none; }
   /* **持ち上がる動きだけ、時間をかけます。** 運んでいる最中の縦は指の
      ぶんそのままなので、transform に transition を掛けてはいけません
      （掛けると指から遅れて、狙った高さと影の高さがずれます）。 */
-  animation: tl-ghost-in .16s var(--ease-out) both;
+  animation: tl-ghost-in var(--m-state) var(--ease-out) both;
 }
 @keyframes tl-ghost-in {
   from { box-shadow: none; opacity: .6; }
@@ -4960,7 +5075,7 @@ a.btn { text-decoration: none; }
   color: #fff;
   box-shadow: 0 6px 18px rgba(0, 0, 0, .22);
   pointer-events: none;
-  animation: tl-ghost-in .16s var(--ease-out) both;
+  animation: tl-ghost-in var(--m-state) var(--ease-out) both;
   transition: transform var(--m-press) var(--ease-out);
 }
 .tl-trash svg { width: 26px; height: 26px; }
@@ -5010,7 +5125,7 @@ a.btn { text-decoration: none; }
   background: var(--c-primary);
   color: #fff;
   font-size: var(--fs-xs);
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -5300,8 +5415,9 @@ a.btn { text-decoration: none; }
 .arc-counts { padding: 0 var(--sp-4); }
 .arc-counts-head {
   margin: 0 0 var(--sp-3);
-  font-size: var(--fs-lg);
-  font-weight: 800;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--c-primary);
   letter-spacing: -.01em;
 }
 .arc-counts-days {
@@ -5311,7 +5427,7 @@ a.btn { text-decoration: none; }
 }
 .arc-counts-days b {
   font-size: var(--fs-xl);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
@@ -5327,7 +5443,7 @@ a.btn { text-decoration: none; }
 }
 .arc-counts-label { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 700; }
 .arc-counts-n {
-  font-size: var(--fs-lg); font-weight: 800;
+  font-size: var(--fs-lg); font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--c-text);
 }

@@ -55,7 +55,10 @@
     list:     { label: "shopping", icon: "cart" },
     prices:   { label: "prices",   icon: "tag" },
     diet:     { label: "health",   icon: "heart" },
-    settings: { label: "設定",     icon: "gear" },
+    /* 席の名前は英語で通します。ここだけ「設定」で、設定の画面では
+       「shopping」の下に「一般」が並ぶ——**同じ系列の中で、そこだけ
+       言葉が変わる**のが混ざって見えていた正体でした。 */
+    settings: { label: "Settings", icon: "gear" },
   };
 
   /** その席が、いまの画面を受け持っているか。 */
@@ -136,40 +139,216 @@
       bar.append(btn);
     });
 
-    /* ---- 押したところから、光が生まれる ----
+    /* 縁の屈折の一枚（base.css の「縁の屈折」）。帯は ::before と ::after を
+       地と縁の光で使いきっているので、ここだけ本物の一枚が要ります。
+       縁の光より**先に**置くこと——重ね順は「地 → 屈折 → 縁の光」です。 */
+    bar.append(node(html`<i class="tab-edge" aria-hidden="true"></i>`));
 
-       帯はガラスです。ガラスは触られたところで光を拾うので、押した合図は
-       「ボタンの色が変わる」ではなく「そこから光が広がる」であってほしい。
+    /* いま居る席の印。**席ごとの丸ではなく、席から席へ滑る一枚のレンズ**
+       です（`js/tab-lens.js`）。ここでは置くだけ——どこへ滑るかは
+       `paintTabs` が言います。 */
+    if (KN.tabLens) KN.tabLens.mount(bar);
 
-       光を置くのは**帯のカプセル全体**で、押されたタブの中ではありません。
-       タブごとに区切ると、隣との境目で光が四角く切れます——カプセルは一枚の
-       ガラスなので、光もその一枚の上を広がります。丸みはカプセルと同じ。
+    /* ---- 押しているあいだ、その席がふくらむ ----
 
-       座標は指の位置そのもの（clientX/Y）です。ボタンの真ん中ではありません
-       ——「押した場所から」と言うなら、指の下から出ないと嘘になります。 */
-    const glow = node(html`<i class="tab-glow" aria-hidden="true"></i>`);
-    bar.append(glow);
-    bar.addEventListener("pointerdown", (e) => {
-      if (!e.target || !e.target.closest || !e.target.closest(".tab")) return;
-      const r = glow.getBoundingClientRect();
+       絵と速さは base.css（「押しているあいだ、その席がふくらむ」）。
+       ここが持つのは**指の居場所**だけです。
+
+       **押されているのは状態で、出来事ではありません。** 前はここで一度
+       きりのアニメーションを焚いていて（`is-dimpled` を付け外しして
+       `tab-dimple` を巻き戻す、という書き方そのものが、時計をこちらが
+       持っている証拠でした）、だから長く押しても 0.46秒で終わっていました。
+       いまは押したら付け、離したら外す——**時計は指が持ちます。**
+
+       見張りは `document` です。`pointerdown` は帯で拾えますが、離す指は
+       帯の外に居ることがあります（マウスで押したまま外へ出る、など）。
+       帯だけで見ていると `pointerup` が降りてこず、**膨らんだまま戻らない**
+       席が残ります（`reorder.js` / `day-swipe.js` と同じ理由・同じ手）。
+
+       **指が席から外れたら、いったん戻します。離さずに戻ってくれば、また
+       膨らみます。** 押している席の外で離してもタブは変わらない（click は
+       押したところと離したところが同じでなければ出ない）ので、膨らんだまま
+       だと「ここへ行く」という嘘になります。行き先を言うのは指の居場所で、
+       最初に触れた場所ではありません。 */
+    const hold = node(html`<i class="tab-hold" aria-hidden="true"></i>`);
+    bar.append(hold);
+
+    /* 光は指の下へ。座標は帯の中の位置で、ボタンの真ん中ではありません
+       ——「押したところ」と言うなら、指の下から出ないと嘘になります。 */
+    function aimHold(e) {
+      const r = hold.getBoundingClientRect();
       if (!r.width) return;
-      glow.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
-      glow.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
-      /* 同じところを続けて押しても光り直すように、いちど外して測り直します
-         （class を付け直すだけでは、同じアニメーションは巻き戻りません）。 */
-      glow.classList.remove("is-lit");
-      void glow.offsetWidth;
-      glow.classList.add("is-lit");
+      hold.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
+      hold.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
+    }
+
+    let heldTab = null;
+    /** 押している席を、膨らませる／戻す。光も一緒（同じ一つの状態なので）。 */
+    function paintHeld(on) {
+      if (heldTab) heldTab.classList.toggle("is-held", on);
+      hold.classList.toggle("is-on", on);
+      /* 二段目の膨らみ（`--hold-c`）は、いま居る席では**レンズ**が受け
+         持ちます——席の印がそこへ移ったので。押しているのが別の席なら、
+         レンズは動きません（そこはまだ行き先ではないので）。 */
+      if (KN.tabLens) KN.tabLens.hold(on ? heldTab : null);
+    }
+    /** 指がその席の上にいるか。箱で見ます（掴んだ指は捕まっているので、
+        `pointermove` の target は動かしても押した席のままです）。 */
+    function overTab(el, e) {
+      const r = el.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right
+          && e.clientY >= r.top && e.clientY <= r.bottom;
+    }
+
+    bar.addEventListener("pointerdown", (e) => {
+      const t = e.target && e.target.closest ? e.target.closest(".tab") : null;
+      if (!t) return;
+      paintHeld(false);
+      heldTab = t;
+      aimHold(e);
+      paintHeld(true);
     });
+    document.addEventListener("pointermove", (e) => {
+      if (!heldTab) return;
+      const on = overTab(heldTab, e);
+      paintHeld(on);
+      if (on) aimHold(e);
+    }, { passive: true });
+    /* 離した・取り消された（iOS の長押しメニュー、電話の着信…）。どちらも
+       「指がもう居ない」なので、同じところへ帰します。 */
+    const letGo = () => { if (!heldTab) return; paintHeld(false); heldTab = null; };
+    document.addEventListener("pointerup", letGo);
+    document.addEventListener("pointercancel", letGo);
 
     paintTabs();
   }
 
+  /* ---------------- ガラスは、まわりを見ている ----------------
+
+     ガラスが本物に見えるのは、**まわりを映しているから**です。いまの帯は
+     まわりを見ていませんでした——縁の光は上下固定のグラデで、ものが動いても
+     光は動かず、後ろに何が来ても明るさは同じ。
+
+     ここが見るのは二つだけです。
+
+       ① `--glass-sweep`（0〜1）… 鏡面光が縁のどこに居るか。送っている器の
+          位置から出します。世界が動けば、映りこみも動く。
+       ② 帯の裏の明るさ … 暗いものが来たら、ガラスごと夜へ返す
+          （base.css の `.is-on-dark`）。
+
+     **書き込む先は `:root`。** `--glass-rim` は `:root` で組まれるので、
+     `--glass-sweep` も同じところに居ないと、焼きついた既定値のままです
+     （＋のコーラルが消えたのと同じ道理——base.css のガラスの節）。 */
+
+  /* 明るさ（0〜1）。WCAG の相対輝度と同じ式で、比べるためだけに使います。 */
+  function lumOf(r, g, b) {
+    const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+    return .2126 * f(r) + .7152 * f(g) + .0722 * f(b);
+  }
+
+  /** 帯の裏にあるものの明るさ。地を持っている要素が見つからなければ null。 */
+  function backdropLum() {
+    const bar = document.getElementById("tabbar");
+    if (!bar) return null;
+    const r = bar.getBoundingClientRect();
+    if (!r.width) return null;
+    const y = r.top + 14;
+    let sum = 0, n = 0;
+    [.22, .5, .78].forEach((f) => {
+      const x = r.left + r.width * f;
+      /* 帯とドックは**自分自身**なので飛ばします。地を持っていない要素
+         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。 */
+      const els = document.elementsFromPoint(x, y) || [];
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (el.closest && el.closest("#tabbar, #dock")) continue;
+        const m = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/
+          .exec(getComputedStyle(el).backgroundColor || "");
+        if (!m) continue;
+        if (m[4] !== undefined && parseFloat(m[4]) < .5) continue;
+        sum += lumOf(+m[1], +m[2], +m[3]); n++;
+        break;
+      }
+    });
+    return n ? sum / n : null;
+  }
+
+  /* 行きつ戻りつしないよう、**境目は二つ**。暗いと決めるのは .42 未満、
+     明るいへ返すのは .52 超え。一つの境目だと、そのあたりを漂う地の上で
+     帯が明滅します。 */
+  let onDark = false;
+
+  /* 鏡面光を読む器（縁の光 `::after` を持つ5つ）。**ここへ書きます——
+     `:root` ではありません。**
+
+     カスタムプロパティは継承するので、`:root` に書き換えが入ると、読む5つ
+     だけでなく**文書のすべての要素**が style を計算し直します。実測
+     （2026年9月20日、CPU 4倍・390×844）で、一覧を縦に送るときの p90 が
+     **50.0ms**、96フレーム中 **21落ち**——この一行を止めるだけで p90
+     **16.7ms**・**0落ち**になりました（1回の書き換えが 48.9ms）。
+     「どの画面でもうっすら重い」の正体がこれです。
+
+     並べるのは CSS の使う側へ移してあります（base.css の
+     `.tabbar::after` ほか＝`--glass-rim-spec` / `-ring`）。だから数は、
+     その器へ書けば届きます。**片方だけ直さないこと**——CSS で `:root` に
+     組み直すと、ここで書いた数は焼きついた既定値に負けて動かなくなります。 */
+  const GLASS = ".tabbar, .add-fab, .fab-menu-b, .toast, .search-bar";
+
+  function paintGlass() {
+    /* 鏡面光の居場所。送っている器の位置を、縁の長さに畳んで回します
+       ——「何px 送ったか」ではなく「まわりがどれだけ動いたか」なので、
+       端まで行ったら向こうから戻ってくる形（往復）にします。 */
+    const sc = KN.app.scrollerOf(activeScreen() || document.body);
+    const top = sc ? (sc === document.scrollingElement ? window.scrollY : sc.scrollTop) : 0;
+    /* 止まっているときは**まん中**に居させます。端に寄った姿から始まると、
+       光が当たっているのではなく「左が明るい絵」に見えるので。
+       行って戻る形（sin）にするのは、折り返しで速さが跳ねないため。 */
+    const sweep = (.5 + .38 * Math.sin(top / 115)).toFixed(3);
+    /* 同じ数なら書きません。書き換えはその器の中を巻き込むので、止まって
+       いるあいだ（sin の折り返しなど）に同じ数を置き直す意味はありません。 */
+    document.querySelectorAll(GLASS).forEach((el) => {
+      if (el.dataset.sweep === sweep) return;
+      el.dataset.sweep = sweep;
+      el.style.setProperty("--glass-sweep", sweep);
+    });
+
+    const L = backdropLum();
+    if (L != null) {
+      if (!onDark && L < .42) onDark = true;
+      else if (onDark && L > .52) onDark = false;
+    }
+    ["tabbar", "dock"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("is-on-dark", onDark);
+    });
+  }
+
+  function watchGlass() {
+    let queued = false;
+    const soon = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; paintGlass(); });
+    };
+    /* scroll は泡立たないので、**捕まえる側**で聞きます——送っているのは
+       画面ごとの紙で、window ではありません（「送る器を変えたら〜」）。 */
+    document.addEventListener("scroll", soon, { capture: true, passive: true });
+    window.addEventListener("resize", soon);
+    /* 席の幅が変わったら、レンズも置きなおします（回転・キーボード）。
+       **送りのたびには呼びません**——あれは席の箱を測るので、
+       `paintGlass` の拍に混ぜると毎フレームのレイアウトが一つ増えます。 */
+    window.addEventListener("resize", () => { if (KN.tabLens) KN.tabLens.sync(); });
+    KN.app.paintGlass = paintGlass;
+    paintGlass();
+  }
+
   function paintTabs() {
+    let hereBtn = null;
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
       if (!btn) return;
       const here = holdsId(t, active);
+      if (here) hereBtn = btn;
       /* 帯が言うのは**その席の名前**です。価格を見ているあいだも「買うもの」
          のまま——いま居るのは買うもののタブで、その紙を下げているだけ
          なので。帯はいる場所を言うもので、紙の位置を言うものではありません。 */
@@ -206,6 +385,19 @@
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
        daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
+
+    /* いま居る席の印を、そこへ滑らせます。**席が変わっていなければ
+       `to()` は動きません**（同じ席を渡されたら置きなおすだけ）ので、
+       組み直しのたびに呼んでも、滑りが焚き直されることはありません。
+
+       写しを取るのはこの**あと**でないといけません——`to()` が滑り出す
+       瞬間に `snap()` するので、絵と名前が新しくなる前に呼ぶと、
+       レンズの中だけ前の行が残ります。 */
+    if (KN.tabLens && hereBtn) KN.tabLens.to(hereBtn);
+
+    /* 席が変われば、帯の裏に来るものも変わります。送りの合図は来ないので、
+       ここで一度見直すこと（ガラスは、まわりを見ている）。 */
+    paintGlass();
   }
 
   function paintTabBadge(tabId, count) {
@@ -214,8 +406,17 @@
     const existing = tab.querySelector(".tab-badge");
     if (count > 0) {
       const text = count > 99 ? "99+" : String(count);
-      if (existing) existing.textContent = text;
-      else tab.append(node(html`<span class="tab-badge">${text}</span>`));
+      if (existing) {
+        /* **数が変わったときだけ**、一度だけ持ち上げます（`--m-number`）。
+           出来事の名前は先に用意してありましたが、**どこからも呼ばれて
+           いませんでした**——数が変わるのは画面のあちこちで起きますが、
+           いちばん人が見ているのはここ（片づけると減る札）です。
+           組み直しのたびに鳴らすと、何も変わっていない拍まで動きます。 */
+        if (existing.textContent !== text) {
+          existing.textContent = text;
+          KN.motion.fire("number", existing);
+        }
+      } else tab.append(node(html`<span class="tab-badge">${text}</span>`));
     } else if (existing) {
       existing.remove();
     }
@@ -342,7 +543,11 @@
      なので、同じ番号を持たせます——ふた面をめくるのは横へ動くことでは
      ないので、そこは流しません（これまでどおりの入りかた）。 */
   const SLIDE = { archive: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
-  const SLIDE_MS = 280;
+  /* 流れ終わった面を片づけるまでの待ち時間。**CSS から読みます**
+     ——動かしているのは base.css の `--m-nav`（席を移る）と `--m-push`
+     （引き出しが押しのける）で、ここに数字を持つと二重帳簿になります。
+     押しのけのほうが長いので、そのときはそちらを待ちます。 */
+  const slideMs = (push) => KN.motion.ms(push ? "--m-push" : "--m-nav") + 40;
   let slideT = null;
 
   /* **タブの流れと、引き出しの押しのけは別のもの。**
@@ -381,7 +586,10 @@
      行き先は 0（買うものの紙が全面）か 1（下がりきって価格の紙が全面）の
      二つ。途中で離したら、近いほうへ滑らせます。 */
   const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
-  const FACE_MS = 280;
+  /* 少ししか引いていなくても、ぱっと払った指は「めくる」と言っています
+     （day-swipe / edge-back と同じ決めごと）。 */
+  const FACE_FLING_V   = 0.35;  // px/ms
+  const FACE_FLING_MIN = 8;     // ただし、まったく動いていないものは払いではない
   const FRONT = "list", BACK = "prices";
   /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
      画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
@@ -431,6 +639,13 @@
        留まった紙を頭の高さで切るのにも同じ数を使うので、書き出しておきます。 */
     const peek = hb.height || FACE_PEEK;
     box.style.setProperty("--face-peek", peek.toFixed(1) + "px");
+    /* 留まった紙が薄れはじめる高さ（＝頭の下端＝下の帯の上）を、面の箱の
+       中の座標で書き出します。**マスクは面（.screen）に掛けます**——紙に
+       掛けると、箱の外へ出る影（頭の上の落ち影）ごと切り取られるので
+       （実測：マスクあり 240,239,243 ／ なし 218,217,221。影が消えた）。
+       面の箱を基準にした数はここでしか分からないので、ここで出します。 */
+    box.style.setProperty("--face-cut",
+      (floor - front.getBoundingClientRect().top).toFixed(1) + "px");
     return Math.max(1, floor - peek - rest);
   }
 
@@ -491,11 +706,23 @@
       下の帯の上にのぞかせて、そこに留まります——そこが指で戻る道なので。
       画面としては価格が前に出る（`show(BACK)`）ので、前の面は自分の題と
       札を伏せて、頭だけの一枚になります（css の `.is-face-parked`）。 */
-  function faceSettle(o, to) {
+  function faceSettle(o, to, vy) {
     /* 印は**二枚とも**に付けます。指で引いているあいだ `--face-p` は毎フレーム
        動くので中身も滑らかに入れ替わりますが、離した先へ滑るときは数が一度に
        跳びます——紙だけが滑って、題と札はぱっと切り替わる。後ろの札もここで
        薄れる側なので、あちらにも要ります。 */
+    /* **長さと曲線は、残りの道のりと指の勢いから**（`KN.motion.glide`）。
+       CSS は `--face-ms` / `--face-ease` を読むので、材の置き場所は
+       これまでどおり CSS のまま、数だけが指から来ます。 */
+    const box = screensEl();
+    const d0 = faceVar("--face-d") || 1;
+    const p0 = faceVar("--face-p");
+    const now = isFinite(p0) ? p0 : (to > 0.5 ? 0 : 1);
+    const g = KN.motion.glide((to - now) * d0, vy || 0, { span: d0 });
+    if (box) {
+      box.style.setProperty("--face-ms", g.ms + "ms");
+      box.style.setProperty("--face-ease", g.ease);
+    }
     o.front.classList.add("is-face-settle");
     o.back.classList.add("is-face-settle");
     facePaint(o, to);
@@ -510,7 +737,11 @@
       }
       show(to > 0.5 ? BACK : FRONT, "settled");
       syncFaceGrips();
-    }, FACE_MS + 20);
+      if (box) {
+        box.style.removeProperty("--face-ms");
+        box.style.removeProperty("--face-ease");
+      }
+    }, g.ms + 20);
   }
 
   /** 指を使わずに、紙をその位置まで滑らせます（帯を押したときの道）。
@@ -574,9 +805,12 @@
       flip();
     });
     let pid = null, y0 = 0, on = false, o = null, p = 0, dist = 1, moved = false, from = 0;
+    /* 指の速さ（px/ms）。離したあとの滑りをここから出します。 */
+    let lastT = 0, lastY = 0, vy = 0;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
+      lastT = performance.now(); lastY = e.clientY; vy = 0;
       /* 始まりは**いまの姿**。留まっているところから掴んだら 1 から始まって、
          指を上げるぶんだけ 0 へ向かいます。 */
       from = faceAt(); p = from;
@@ -599,6 +833,8 @@
         dist = faceVar("--face-d") || 1;
         facePaint(o, p);
       }
+      const now = performance.now();
+      if (now > lastT) { vy = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
       p = Math.max(0, Math.min(1, from + dy / dist));
       facePaint(o, p);
     }, { passive: false });
@@ -608,9 +844,13 @@
       /* 引かずに離した＝押した、ということ。指の道が無くてもめくれます。
          取り上げられた（pointercancel）ぶんは、押したことにしません。 */
       if (!o) { if (tapped && !moved) flip(); return; }
-      const to = Math.abs(p - from) > FACE_DONE ? (from ? 0 : 1) : from;
+      /* 行き先は、引いた量だけでなく**勢い**でも決まります——少ししか
+         引いていなくても、ぱっと払った指は「めくる」と言っています。 */
+      const fling = Math.abs(vy) > FACE_FLING_V && Math.abs(p - from) * dist >= FACE_FLING_MIN
+        && (from ? vy < 0 : vy > 0);
+      const to = (Math.abs(p - from) > FACE_DONE || fling) ? (from ? 0 : 1) : from;
       if (to !== from) haptic();
-      faceSettle(o, to);
+      faceSettle(o, to, vy);
       o = null;
     };
     grip.addEventListener("pointerup", () => done(true));
@@ -675,6 +915,33 @@
     const outCls = push ? (dir > 0 ? "is-push-under" : "is-pop-out")
                         : (dir > 0 ? "is-out-l" : "is-out-r");
 
+    /* **組み立ては、動かす前に済ませます。**
+
+       前はここが逆で、入場の class を付けて transition を走らせてから
+       `render()` を呼んでいました。組み直しは重い仕事なので（やることで
+       117〜168ms／CPU 4倍）、動き出した直後に main thread がそのぶん
+       固まります——実測で、席を移るたびに **100〜244ms** の長タスク。
+       絵としては「流れずに、いきなり出てくる」。
+
+       先に組んでおけば、そのあいだ画面に出ているのは**まだ前の席**です
+       （入場の class は下で付けます）。押してから動き出すまでの間は
+       変わらず、**動き出してからが詰まらなくなります。**
+
+       **見える状態にしてから組むこと。** 隠れた面（`hidden` ＝ display:none）
+       の中で組むと、測るものが軒並み 0 を返します——暦の厚み（`fitCalH`）、
+       選んでいる日の輪の位置、「いま」の線。だからここで先に `is-active`
+       だけ付けて、**動かす class（`inCls`）は下の輪の中で付けます**。
+       この二つのあいだに描画は挟まらないので（同じ一拍のうち）、前の席が
+       消えて見えることはありません。 */
+    const inEl = document.querySelector(`.screen[data-screen="${id}"]`);
+    if (inEl) {
+      inEl.hidden = false;
+      inEl.classList.remove(...ALL);
+      inEl.classList.add("is-active");
+    }
+    ensureMounted(id);
+    KN.screens[id].render();
+
     document.querySelectorAll(".screen").forEach((s) => {
       const on = s.dataset.screen === id;
       /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
@@ -703,11 +970,8 @@
           s.classList.remove(...ALL);
           s.hidden = true;
         });
-      }, SLIDE_MS + 40);
+      }, slideMs(push));
     }
-
-    ensureMounted(id);
-    KN.screens[id].render();
 
     /* 画面によっては、開いたこと自体が合図になります。呼ぶのはここ——
        タブを押した一拍のうちなので、ブラウザの「操作のうちに」を満たします。 */
@@ -762,6 +1026,10 @@
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
     buildTabs();
+    watchGlass();
+
+    // 閉じているあいだに日をまたいでいたら、終わらなかった用事を今日へ運ぶ。
+    store.rescheduleOverdue();
 
     const fromHash = location.hash.slice(1);
     show(KN.screens[fromHash] ? fromHash : HOME);
@@ -815,6 +1083,7 @@
     let dueNow = store.todosDue().length;
     KN.app.onMinute = () => {
       const key = KN.util.todayKey();
+      if (key !== dayNow) store.rescheduleOverdue();
       const due = store.todosDue().length;
       if (key === dayNow && due === dueNow) return;
       dayNow = key;
@@ -1341,6 +1610,30 @@
     });
     dock.insertBefore(menu, dock.firstChild);
     dock.classList.add("is-menu");
+
+    /* ---- 札は、＋ から分かれて出る ----
+
+       畳まれている姿は「＋ の中」です（screens.css の `.fab-menu-b`）。
+       そこへ寄せる向きは、**開く直前に測る**しかありません——札の数も
+       高さも呼ぶ側しだいなので、CSS では決め打ちできないからです。
+
+       測るのは**素の位置**なので、いったん transform を外します。外した
+       ぶんが動きとして出てしまわないよう、そのあいだは transition も
+       止めて、畳まれた姿に戻してから一息（`offsetWidth`）置きます。 */
+    const bs = Array.prototype.slice.call(menu.querySelectorAll(".fab-menu-b"));
+    const fr = fab.getBoundingClientRect();
+    bs.forEach((b) => { b.style.transition = "none"; b.style.transform = "none"; });
+    bs.forEach((b) => {
+      const r = b.getBoundingClientRect();
+      b.style.setProperty("--morph-x",
+        ((fr.left + fr.width / 2) - (r.left + r.width / 2)).toFixed(1) + "px");
+      b.style.setProperty("--morph-y",
+        ((fr.top + fr.height / 2) - (r.top + r.height / 2)).toFixed(1) + "px");
+    });
+    bs.forEach((b) => { b.style.transform = ""; });
+    void menu.offsetWidth;
+    bs.forEach((b) => { b.style.transition = ""; });
+
     fab.classList.add("is-open");
     requestAnimationFrame(() => menu.classList.add("is-on"));
 

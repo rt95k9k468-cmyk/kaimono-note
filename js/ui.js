@@ -12,6 +12,11 @@
 
   const openSheets = [];
 
+  /* 紙の段は CSS が持っています（base.css の「重なりの順」）。重なるたびに
+     二段ずつ上げるので、**その足もとだけ**をここで読みます。 */
+  const zSheet = () => parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 100;
+
   /* ---------------- 紙が生まれるところ ----------------
 
      紙は画面の下からせり上がっていました。＋を押して出てくる紙が、押した
@@ -243,12 +248,22 @@
        sheet sits at the same z-index and the new sheet's backdrop lands
        *under* the old sheet — so the one underneath stays sharp and bright and
        you end up reading two forms at once through the frosted glass. */
+    /* いちばん下の段は **CSS の `--z-sheet`** から読みます。数を二か所に
+       書くと、段の名前を直した日にここだけ置いていかれます
+       （--push-p / PARALLAX と同じ罠）。 */
     const depth = openSheets.length;
-    backdrop.style.zIndex = String(100 + depth * 2);
-    el.style.zIndex = String(101 + depth * 2);
+    const floor = zSheet();
+    backdrop.style.zIndex = String(floor + depth * 2);
+    el.style.zIndex = String(floor + 1 + depth * 2);
 
     sheetRoot().append(backdrop, el);
     document.body.style.overflow = "hidden";
+    /* 出来事の名前を鳴らします。**いままで呼ばれていませんでした**
+       ——`sheetOpen` / `sheetClose` は motion.js に用意だけしてあって、
+       どこからも呼ばれない名前でした（--m-sheet-close が誰にも読まれて
+       いなかったのと同じ形です）。いまは震えも絵も持たない出来事ですが、
+       名前が現に呼ばれていれば、あとで手ごたえを足すのはここ一か所です。 */
+    KN.motion.fire("sheetOpen");
 
     /* 押されたところから育てます（育てないなら null で、これまでどおり
        下からせり上がります）。 */
@@ -261,9 +276,12 @@
       const bloom = node(html`<i class="sheet-bloom" aria-hidden="true"></i>`);
       bloom.style.left = `${seed.x}px`;
       bloom.style.top = `${seed.y}px`;
-      bloom.style.zIndex = String(100 + depth * 2);
+      bloom.style.zIndex = String(floor + depth * 2);
       sheetRoot().append(bloom);
-      setTimeout(() => bloom.remove(), 520);
+      /* 光は紙が育ちきるまでのあいだだけ。長さは CSS 側（--m-sheet-grow）
+         から出します——光は「紙より先に終わる」ことが決めごとなので、
+         紙の速さを直したら一緒についてこないと意味がありません。 */
+      setTimeout(() => bloom.remove(), KN.motion.ms("--m-sheet-grow") + 100);
     }
 
     // Next frame so the transition runs.
@@ -278,6 +296,7 @@
       closed = true;
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
+      KN.motion.fire("sheetClose");
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
       /* Nor does the caret. A field removed while still focused is never
@@ -290,9 +309,14 @@
       if (idx >= 0) openSheets.splice(idx, 1);
       if (!openSheets.length) document.body.style.overflow = "";
       /* 育って出てきた紙は、同じ道を縮んで帰ります（.is-open を外すだけで
-         逆再生になります）。そのぶん片づけるのを待ちます。 */
-      setTimeout(() => { backdrop.remove(); el.remove(); },
-        el.classList.contains("is-from-origin") ? 460 : 300);
+         逆再生になります）。そのぶん片づけるのを待ちます。
+
+         **待つ長さは CSS から読みます。** ここには 460 / 300 と直に書いて
+         ありましたが、紙の速さを決めているのは CSS の `--m-sheet-*` の
+         ほうです。二か所に持つと、片方だけ直した日に「まだ動いているのに
+         消える」か「もう止まっているのに残る」のどちらかが起きます。 */
+      const closeMs = KN.motion.ms("--m-sheet-close");
+      setTimeout(() => { backdrop.remove(); el.remove(); }, closeMs + 60);
       onClose && onClose();
     }
 
@@ -344,30 +368,97 @@
       }, ms));
     });
 
-    // Drag-down-to-dismiss, only while the sheet is anchored to the bottom
-    // (above 640px it becomes a centred dialog with a different transform).
+    /* ---- 下へ払って閉じる ----
+
+       紙が画面の下に留まっているあいだだけ（640px より広いと真ん中の
+       一枚になり、transform の形が違います）。
+
+       **三つ直しました。**
+
+       ① **紙が指についてきませんでした。** 指の位置を毎フレーム紙に
+          書いているのに、紙は `.sheet` の「--m-sheet-close かけて動く」を
+          着たままでした。だから一フレームごとに、なめらか移動がやり直され、
+          紙はねばるように遅れて追ってきます（実測：指の位置を当てても、
+          移動時間は 0.3秒のまま）。掴んでいるあいだは transition を切ります。
+
+       ② **速さを見ていませんでした。** 閉じるかどうかが `dy > 90` の
+          距離だけだったので、**ぱっと弾くと戻り、のろのろ 95px 引くと
+          閉じる**——iPhone の紙と逆です。勢いも見ます。
+
+       ③ **上へは道がありません**でした（`dy > 0` 以外は無視）。指は動くのに
+          絵が動かないと、そこで指と絵が切れます。上へは**だんだん重く**して、
+          ついてはくるが進まない、という形で「ここまで」を言います。 */
     const isBottomSheet = () => window.matchMedia("(max-width: 639px)").matches;
-    let startY = null;
+    /* 閉じる境目は**紙の丈に対する割合**です（iPhone の紙と同じ考えかた）
+       ——ただし上下で止めます。短い紙で 44px、長い紙で 154px では、同じ
+       「下へ払う」が紙によって別の手つきになってしまうので。 */
+    const DISMISS   = 0.22;   // 紙の丈の、これだけ引けば閉じる
+    const DISMISS_MIN = 56, DISMISS_MAX = 140;
+    const FLING_V   = 0.4;    // 短くても、これだけ速ければ閉じる（px/ms）
+    const FLING_MIN = 10;     // ただし、まったく動いていないものは払いではない
+    let startY = null, dy = 0, lastT = 0, lastY = 0, vy = 0;
     const head = el.querySelector(".sheet-head");
     const handleBar = el.querySelector(".sheet-handle");
+
+    const dragTo = (y) => { el.style.transform = `translate(-50%, ${y}px)`; };
+    /** 戻す／閉じきる、どちらも「残りの道のりと指の勢い」から。 */
+    const slideTo = (y) => {
+      const h = el.getBoundingClientRect().height || 1;
+      const g = KN.motion.glide(y - dy, vy,
+        { span: h, base: KN.motion.ms("--m-sheet-close") });
+      el.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}` : "";
+      if (y) dragTo(y); else el.style.transform = "";
+      return g.ms;
+    };
+
     [head, handleBar].forEach((zone) => {
+      if (!zone) return;
       zone.addEventListener("touchstart", (e) => {
-        startY = isBottomSheet() ? e.touches[0].clientY : null;
+        if (!isBottomSheet()) { startY = null; return; }
+        startY = e.touches[0].clientY;
+        dy = 0; lastT = performance.now(); lastY = startY; vy = 0;
+        el.style.transition = "none";          // ① 指につかせる
       }, { passive: true });
+
       zone.addEventListener("touchmove", (e) => {
         if (startY == null) return;
-        const dy = e.touches[0].clientY - startY;
-        if (dy > 0) el.style.transform = `translate(-50%, ${dy}px)`;
+        const y = e.touches[0].clientY;
+        const now = performance.now();
+        if (now > lastT) { vy = (y - lastY) / (now - lastT); lastT = now; lastY = y; }
+        const raw = y - startY;
+        dy = raw >= 0 ? raw : KN.motion.rubber(raw, 50);   // ③ 上はゴム
+        dragTo(dy);
       }, { passive: true });
-      zone.addEventListener("touchend", (e) => {
+
+      const release = (dismissable) => {
         if (startY == null) return;
-        const dy = (e.changedTouches[0] || {}).clientY - startY;
-        el.style.transform = "";
-        /* 下へ払って閉じるときは、下へ帰します。指が下へ送ったものが
-           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。 */
-        if (dy > 90) { el.classList.remove("is-from-origin"); tryClose(); }
         startY = null;
-      });
+        const h = el.getBoundingClientRect().height || 1;
+        const far = Math.min(DISMISS_MAX, Math.max(DISMISS_MIN, h * DISMISS));
+        const fling = vy > FLING_V && dy >= FLING_MIN;     // ②
+        if (!dismissable || !(dy > far || fling)) {
+          const ms = slideTo(0);
+          setTimeout(() => { if (!closed) el.style.transition = ""; }, ms + 20);
+          return;
+        }
+        /* 下へ払って閉じるときは、**下へ帰します**。指が下へ送ったものが
+           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
+           そのまま下まで滑らせながら閉じにいきます。 */
+        el.classList.remove("is-from-origin");
+        const ms = slideTo(h);
+        tryClose();
+        /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
+           そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
+           居ることになります。 */
+        setTimeout(() => {
+          if (closed || !el.isConnected) return;
+          dy = h; vy = 0;
+          const back = slideTo(0);
+          setTimeout(() => { if (!closed) el.style.transition = ""; }, back + 20);
+        }, ms + 20);
+      };
+      zone.addEventListener("touchend", () => release(true));
+      zone.addEventListener("touchcancel", () => release(false));
     });
 
     /* tryClose も渡します。Escape で閉じる道（下の keydown）が close() を
@@ -464,6 +555,16 @@
         if (was == null) {
           // 新しく来た行だけが、名乗りを上げます。
           el.classList.add("is-arriving");
+          /* **名乗り終わったら、札は外します。** `row-arrive` は
+             `animation-fill-mode: both` なので、終わったあとも
+             `transform: none` を押さえ続けます——アニメーションは
+             インラインの style より強いので、**札を持ったままの行は
+             二度と FLIP で滑れません**。
+             行が毎回新しく組まれているあいだは、札も一緒に消えていたので
+             出ませんでした。行を使い回す画面（やることの時間割）が
+             できたので、ここで始末します。 */
+          el.addEventListener("animationend", () => el.classList.remove("is-arriving"),
+            { once: true });
           return;
         }
         const dy = was - el.getBoundingClientRect().top;
@@ -751,11 +852,16 @@
          an empty value, not an absent one, so `var(--cat, var(--c-primary))`
          would substitute nothing and the selected 「すべて」 chip would lose
          its green rather than fall back to it. */
+      /* **絵文字はやめました**（「アプリ内UIに絵文字を使わない」——最優先の
+         約束事）。かわりに置くのは**カテゴリ色の丸**です。色はこの画面で
+         すでに「どの棚か」を言っているもの（行の丸・暦の丸・丸薬と同じ）
+         なので、同じ言葉を札でも一度使うだけで済みます。
+         保存済みの `emoji` 欄は**消していません**——描くのをやめただけです。 */
       const el = node(html`
         <button type="button" class="chip" data-id="${c.id}"
                 aria-pressed="${String(c.id === activeId)}"
                 ${c.color ? KN.util.raw(`style="--cat:${c.color}"`) : ""}>
-          ${c.emoji ? html`<span class="chip-emoji">${c.emoji}</span>` : ""}${c.label}
+          ${c.color ? html`<span class="chip-dot" aria-hidden="true"></span>` : ""}${c.label}
           ${c.count != null ? html`<span class="chip-count">${String(c.count)}</span>` : ""}
         </button>
       `);
@@ -777,10 +883,14 @@
       container.innerHTML = "";
       const wrap = node(html`<div class="chip-wrap"></div>`);
       KN.store.sortedCategories().forEach((c) => {
+        /* 色があるときだけ `--cat` を書きます。`--cat:` を空で書くと、
+           それは「無い」ではなく「空の値」なので、`var(--cat, …)` が
+           何にも落ちません（すぐ上の chipRow の但し書きと同じ罠——
+           ここは書きっぱなしでした）。 */
         const chip = node(html`
           <button type="button" class="chip" aria-pressed="${String(c.id === current)}"
-                  style="--cat:${c.color || ""}">
-            <span class="chip-emoji">${c.emoji}</span>${c.name}
+                  ${c.color ? KN.util.raw(`style="--cat:${c.color}"`) : ""}>
+            ${c.color ? html`<span class="chip-dot" aria-hidden="true"></span>` : ""}${c.name}
           </button>
         `);
         chip.addEventListener("click", () => {

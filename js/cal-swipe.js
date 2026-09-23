@@ -58,6 +58,10 @@
     if (!sec || !grid) return;
 
     let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0;
+    /* 指の速さ（px/ms）。**ここは速さを測っていませんでした**——離したあと
+       の滑りが決まった時間だったので、測る理由が無かったからです。
+       `KN.motion.glide` がそれを読むようになったので、要ります。 */
+    let lastT = 0, lastX = 0, vx = 0;
     /* 週のときだけ組む三枚。track が null なら、月めくりのほうです。 */
     let track = null, home = null, pageW = 0;
 
@@ -159,22 +163,32 @@
       active = false;
     }
 
-    /** 三枚のうち、どれを見せて止まるか。0=前 1=いま 2=次 */
+    /** 三枚のうち、どれを見せて止まるか。0=前 1=いま 2=次
+
+        長さと曲線は `KN.motion.glide`——**残りの道のりと指の勢いから**
+        出します（ここには 200ms と直に書いてありました）。 */
     const settle = (index) => new Promise((resolve) => {
       if (!track) { resolve(); return; }
-      const ms = KN.motion && KN.motion.still() ? 0 : SETTLE;
-      track.style.transition = ms ? `transform ${ms}ms var(--ease-out)` : "";
-      track.style.transform = `translate3d(${-pageW * index}px,0,0)`;
-      setTimeout(resolve, ms);
+      const to = -pageW * index;
+      const from = -pageW + dx;
+      const g = KN.motion.glide(to - from, vx, { span: pageW });
+      track.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}` : "";
+      track.style.transform = `translate3d(${to}px,0,0)`;
+      setTimeout(resolve, g.ms);
     });
 
     /* ---- 月：盤ごとずらして、薄くする ---- */
 
+    /* 月の盤は、ずらしたぶんを戻すだけ。ここも道のりと勢いから出します
+       ——少しだけ動かして離した人を、毎回 220ms 待たせない。 */
     const resetMonth = () => {
-      grid.style.transition = "transform .22s var(--ease-out), opacity .22s";
+      const g = KN.motion.glide(-dx, vx,
+        { span: pageW || grid.getBoundingClientRect().width || 1 });
+      grid.style.transition = g.ms
+        ? `transform ${g.ms}ms ${g.ease}, opacity ${g.ms}ms ${g.ease}` : "";
       dx = 0;
       paint();
-      setTimeout(() => { grid.style.transition = ""; }, 240);
+      setTimeout(() => { grid.style.transition = ""; }, g.ms + 20);
     };
 
     /* ---- 指 ---- */
@@ -185,6 +199,7 @@
       // 矢印はボタンです。押せるままにします。
       if (e.target.closest && e.target.closest("button.cal-arrow, button.cal-more")) return;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
+      lastT = performance.now(); lastX = e.clientX; vx = 0;
       grid.style.transition = "";
     });
 
@@ -203,6 +218,8 @@
       }
       if (axis !== "x") return;
       if (e.cancelable) e.preventDefault();
+      const now = performance.now();
+      if (now > lastT) { vx = (e.clientX - lastX) / (now - lastT); lastT = now; lastX = e.clientX; }
       if (track) {
         /* 行けない向きだけ重くします。それ以外は指と1:1で追わせます。 */
         const blocked = mx < 0 ? !o.step(1) : !o.step(-1);
