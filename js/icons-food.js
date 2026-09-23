@@ -36,7 +36,24 @@
   const KN = (window.KN = window.KN || {});
   /* 形の部品は「こと」の絵から借ります（`icons-todo.js` が先に読まれること）。
      角丸の作り方が二通りあると、片方だけ直した日に一族が割れるので。 */
-  const { rr, cir, ell, svg: S, F, P } = KN.iconsTodo.geom;
+  const { rr, cir, ell, svg: S, F: geomF, P } = KN.iconsTodo.geom;
+
+  /* よそのセットの絵を、うちの器にかぶせる。
+     `icons-todo.js` の F() が取るのは **path の d だけ** ですが、ここには
+     **body ごと**（`<path/>` が二枚・`clip-rule` 付き）で写した絵が16枚あります
+     ——`icons-goods.js` の F() が body を取るのと同じ形です。両方を受けるのは、
+     d の頭が `<` になることは無いから。**見分けを外さないこと**——外すと
+     body が d の中へ差し込まれて `d="<path fill=…"` になります。構文は通り、
+     `node --check` も試験も黙り、**絵だけが何も描かれません**。実際に16枚
+     （かんでぃ・ぴざ・れもん・めろん・あぼかど・かぼちゃ・さくらんぼ・
+     やきとり・ぎょうざ・はんばーがー・おこのみやき・ばげっと・べーぐる・
+     だんご・かくてる・かきごおり）がそうなっていて、**無地の丸のまま**
+     出ていました。 */
+  const F = (a, s, x, y, evenodd) =>
+    String(a).trim().startsWith("<")
+      ? `<svg class="p-icon is-todo" viewBox="-8 -8 272 272" aria-hidden="true">`
+        + `<g transform="translate(${x} ${y}) scale(${s})" fill="currentColor">${a}</g></svg>`
+      : geomF(a, s, x, y, evenodd);
 
   /* ---------------- 71型 ---------------- */
 
