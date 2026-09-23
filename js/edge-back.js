@@ -41,7 +41,8 @@
   const COMMIT   = 0.33;  // 画面の幅の、これだけ引けば戻る
   const FLING_V  = 0.4;   // 短くても、これだけ速ければ戻る（px/ms）
   const FLING_MIN = 12;   // ただし、まったく動いていないものは払いではない
-  const SETTLE   = 260;   // 離したあと、行き先まで滑る時間
+  /* 離したあとの滑りは、**残りの道のりと指の勢いから**（`KN.motion.glide`）。
+     ここには 260ms と直に書いてありました。 */
   const PARALLAX = 0.28;  // 後ろの一枚が控えている深さ
 
   /** 後ろの一枚が、上の一枚の位置（dx）に対して居るところ。 */
@@ -84,17 +85,20 @@
       put(live.under, underAt(dx, w));
     };
 
-    /** 行き先まで滑らせる。0 は戻らない、w は戻る。 */
+    /** 行き先まで滑らせる。0 は戻らない、w は戻る。
+
+        長さも曲線も `KN.motion.glide` から——**出だしの傾きが、離した
+        ときの指の速さに合う**ので、そこで動きが途切れません。指がもう
+        止まっていれば、ふつうの減速になります。 */
     const settle = (to) => new Promise((done) => {
       if (!live) { done(); return; }
-      const ms = (KN.motion && KN.motion.still && KN.motion.still()) ? 0 : SETTLE;
-      const ease = "cubic-bezier(.32,.72,0,1)";
+      const g = KN.motion.glide(to - dx, vx, { span: w });
       [live.top, live.under].forEach((el) => {
-        if (el) el.style.transition = ms ? `transform ${ms}ms ${ease}` : "";
+        if (el) el.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}` : "";
       });
       put(live.top, to);
       put(live.under, underAt(to, w));
-      setTimeout(done, ms + 20);
+      setTimeout(done, g.ms + 20);
     });
 
     const finish = async (go) => {
@@ -141,7 +145,11 @@
       if (axis !== "x") return;
       const now = performance.now();
       if (now > lastT) { vx = (e.clientX - lastX) / (now - lastT); lastT = now; lastX = e.clientX; }
-      dx = Math.max(0, Math.min(w, mx));
+      /* 左へ引く（戻らない向き）ぶんと、画面幅を越えたぶんは、重くします
+         ——止めてしまうと、そこで指と絵が切れます。 */
+      dx = mx < 0 ? KN.motion.rubber(mx, 60)
+         : mx > w ? w + KN.motion.rubber(mx - w, 40)
+         : mx;
       if (!frame) frame = requestAnimationFrame(paint);
     }, { passive: true });
 
@@ -171,7 +179,10 @@
       @param {Element} under その下の一枚
       @param {number} dir    +1 ＝ 奥へ進む、-1 ＝ 手前へ戻る */
   function push(top, under, dir) {
-    const ms = (KN.motion && KN.motion.still && KN.motion.still()) ? 0 : 300;
+    /* 押して一段動かすのは、CSS の `scr-push-*` とまったく同じ出来事です
+       ——長さも同じところ（`--m-push`）から出します。 */
+    const ms = (KN.motion && KN.motion.still && KN.motion.still())
+      ? 0 : KN.motion.ms("--m-push");
     const w = (top.getBoundingClientRect().width) || 1;
     const from = dir > 0 ? w : 0;
     const to   = dir > 0 ? 0 : w;
@@ -186,7 +197,7 @@
         return;
       }
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        const ease = "cubic-bezier(.32,.72,0,1)";
+        const ease = KN.motion.ease("--push-e", "cubic-bezier(.32,.72,0,1)");
         [top, under].forEach((el) => { if (el) el.style.transition = `transform ${ms}ms ${ease}`; });
         put(top, to);
         put(under, underAt(to, w));

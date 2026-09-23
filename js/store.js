@@ -200,6 +200,17 @@
       // お酒。食事とは別に持ちます——飲んだ量と純アルコール量は、
       // 食べたものの栄養とは別の軸で見るものなので。
       drinks: [],
+      /* 飲みたくなったとき。drinks の裏返しではなく、**別の軸**です。
+         drinks が持っているのは「飲んだという行い」で、こちらが持つのは
+         「飲みたくなった、というできごとと、その後どうなったか」。
+         飲まなかった日には drinks に何も残りませんが、飲みたくなった
+         ことは起きているので、そこが記録できる場所がありませんでした。
+
+         **評価はしません**（daily と同じ決めごとです）。連続日数・達成率・
+         成功/失敗・点数を持たないので、そういう欄がここにも無い。
+         あとから読めるのは「何回あったか」「どんなきっかけだったか」
+         「何を試したか」——数えられる事実だけです。 */
+      urges: [],
       goal: {
         heightCm: null,
         targetKg: null,
@@ -362,6 +373,65 @@
     };
   }
 
+  /* 飲みたくなったときの一件。
+
+     **強さ（1〜5）が無ければ、記録として成り立ちません**——きっかけも
+     試したことも空でよいが、「どれくらい飲みたかったか」が無いと、
+     あとから読んでも何のことか分かりません。だから before だけが必須です。
+     逆に言えば、**押すもの一つで記録が済む**ということでもあります。
+
+     `after` / `outcome` が null なのは「まだ書いていない」で、0 や「無かった」
+     ではありません（when-parse.js の「null と言っていないは別」と同じ）。
+     一度に五つ書かせないための null です——飲みたくなった瞬間に
+     「しばらく経った後の強さ」は、まだこの世に存在しないので。
+
+     `scene` と `trigger` は**別の欄**です。認知行動療法の機能分析が、
+     飲む前の状況を **外側（external antecedent ＝ いつ・どこ・誰と）** と
+     **内側（internal antecedent ＝ 気持ち・考え・からだ）** に分けるのと
+     同じ切り方です。一つの欄にまとめると「帰宅後」と「疲れた」が同じ列で
+     競合して、**「帰宅後はどんな気分でも飲みたくなる」と「疲れていれば
+     いつでも」が見分けられなくなります**。手の打ち方も別で、外側は
+     段取りを変えて避けられ、内側は別の行動で乗り切るものです。
+
+     `trigger` / `tried` / `scene` は**その人が書いた言葉**を持ちます。
+     候補を出すかどうかは画面側の判断で、ここは受け取った語をそのまま
+     しまうだけです。語彙は drinks の moodTags と分け合うので、すでに
+     お酒を記録している人には、はじめから自分の札が出ます。 */
+  function cleanUrge(u) {
+    if (!u || typeof u !== "object") return null;
+    const lv = (v) => {
+      const n = num(v);
+      if (n == null) return null;
+      const r = Math.round(n);
+      return r >= 1 && r <= 5 ? r : null;
+    };
+    const before = lv(u.before);
+    if (before == null) return null;
+    const words = (a) => [...new Set((Array.isArray(a) ? a : [])
+      .map((t) => String(t || "").trim().slice(0, 24))
+      .filter(Boolean))].slice(0, 8);
+    const OUTCOMES = ["none", "wait", "drank"];
+    return {
+      id: u.id || uid("ur"),
+      /* ローカルの日（todayKey）。`today()` は UTC なので、ここで混ぜると
+         JST の夜9時の記録が翌日に付きます——飲みたくなるのはたいてい夜
+         なので、この機能ではそのずれが毎日出ます。 */
+      day: dayStr(u.day) || todayKey(),
+      time: KN.util.isTime(u.time) ? u.time : null,
+      before,
+      /* どんなときか（外側）。持っていない古い記録は空で足すだけなので、
+         入れ直しても既存のデータは何も動きません。 */
+      scene: words(u.scene),
+      trigger: words(u.trigger),
+      tried: words(u.tried),
+      after: lv(u.after),
+      outcome: OUTCOMES.includes(u.outcome) ? u.outcome : null,
+      memo: String(u.memo || "").trim().slice(0, 200),
+      at: u.at || new Date().toISOString(),
+      closedAt: u.closedAt || null,
+    };
+  }
+
   /** AIの推計。何も無ければ null（「まだ聞いていない」と「0だった」は別）。 */
   function cleanMealAI(a) {
     if (!a || typeof a !== "object") return null;
@@ -478,6 +548,11 @@
       /* 前からある記録には drinks がありません。空で足すだけなので、
          入れ直しても既存のデータは何も動きません。 */
       drinks: (Array.isArray(src.drinks) ? src.drinks : []).map(cleanDrink).filter(Boolean),
+      /* urges も同じく、前からある記録には入っていません。空で足すだけです。
+         `diet` の中に置いてあるので、書き出し・復元（`importJSON` は
+         `s.diet = next.diet` で丸ごと入れ替える）と自動バックアップには、
+         何も足さずに乗ります。 */
+      urges: (Array.isArray(src.urges) ? src.urges : []).map(cleanUrge).filter(Boolean),
       goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
       sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },
     };
@@ -2034,6 +2109,27 @@
     });
   }
 
+  /**
+   * その日のうちに終わらなかった用事を、今日へ運びます。
+   *
+   * くり返しの用事は対象外です——`due` は「次にやる日」という別の意味を
+   * 持っていて、`fallsOn()` がすでに先の日にも出す仕組みを持っているので、
+   * ここでまで動かすと二重になります。
+   *
+   * 呼ぶ側（app.js）が日の変わり目を見つけて呼びます。ここは「今日より
+   * 前に居る、くり返しでない未完了」を今日へ動かすだけです。
+   */
+  function rescheduleOverdue() {
+    const today = KN.util.todayKey();
+    const staleIds = openTodos()
+      .filter((t) => !t.repeat && t.due && t.due < today)
+      .map((t) => t.id);
+    if (!staleIds.length) return;
+    update((s) => {
+      s.todos.forEach((t) => { if (staleIds.includes(t.id)) t.due = today; });
+    });
+  }
+
   /** Today's timed todos whose time has not come round yet — waiting, not due. */
   function todosWaiting() {
     const now = KN.util.nowTime();
@@ -2295,6 +2391,7 @@
       weights: groupByDay(d.weights),
       meals: groupByDay(d.meals),
       drinks: groupByDay(d.drinks),
+      urges: groupByDay(d.urges),
       health: groupByDay(d.health),
     };
     dietIndexVersion = version;
@@ -2600,6 +2697,48 @@
   /** その日の合計。飲んでいない日は null（0 と「無い」は別のことです）。 */
   function drinkTotals(day) {
     return KN.drinks ? KN.drinks.totals(drinksOfDay(day)) : null;
+  }
+
+  /* --- 飲みたくなったとき --- */
+
+  function addUrge(u) {
+    const rec = cleanUrge({ time: KN.util.nowTime(), ...u, day: (u && u.day) || todayKey() });
+    if (!rec) return null;
+    // あとから一気に書いた一件（結果まで入っている）も、決まった時刻を持ちます
+    // ——updateUrge と同じ扱いにしないと、書き方で欄の有無が変わります。
+    if (rec.outcome && !rec.closedAt) rec.closedAt = rec.at;
+    update((st) => { st.diet.urges.push(rec); });
+    return rec;
+  }
+
+  function updateUrge(id, patch) {
+    let out = null;
+    update((st) => {
+      const i = st.diet.urges.findIndex((x) => x.id === id);
+      if (i < 0) return;
+      const was = st.diet.urges[i];
+      const merged = cleanUrge({ ...was, ...patch, id });
+      if (!merged) return;
+      /* 「どうなったか」を書いた時刻。あとから「何分で決まったか」を
+         数えるために持ちます——書いた本人にしか分からない数なので、
+         推さずに、書かれた瞬間のものを取ります。一度入ったら、その後
+         書き直しても最初の時刻のままにします（決まったのはそのときなので）。 */
+      if (merged.outcome && !was.outcome) merged.closedAt = new Date().toISOString();
+      if (!merged.outcome) merged.closedAt = null;
+      st.diet.urges[i] = merged;
+      out = merged;
+    });
+    return out;
+  }
+
+  function removeUrge(id) {
+    update((st) => { st.diet.urges = st.diet.urges.filter((x) => x.id !== id); });
+  }
+
+  function urgesOfDay(day) {
+    return (dietIndex_().urges.get(day) || []).slice()
+      .sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))
+                   || String(a.at).localeCompare(String(b.at)));
   }
 
   /** --- その人の食品 --- */
@@ -3001,7 +3140,11 @@
         memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
         wake: w.v,
         sleep: sl.v,
-        createdAt: cur ? cur.createdAt : stamp(),
+        /* 空の一件（`ensureDayLog` が置いたもの）は `createdAt` を持ちません
+           ——まだ人が書いていないので。だから**持っていなければ、いま押す**
+           こと。`cur ? cur.createdAt : stamp()` と書いていたころは、紙を一度
+           開いてから書いた日だけ「作成 -」のまま残りました。 */
+        createdAt: (cur && cur.createdAt) ? cur.createdAt : stamp(),
       };
       /* 実際に書き替えた欄だけ、書き手の印を更新します（メモだけ直したときに
          時刻の出どころが人へ移ってしまわないように）。 */
@@ -3246,7 +3389,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, rescheduleOverdue, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
@@ -3260,6 +3403,7 @@
     slotMemo, setSlotMemo,
     getIconOverride, setIconOverride, addIconReport, removeIconReport,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
+    addUrge, updateUrge, removeUrge, urgesOfDay,
     addUserFood, removeUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue, healthSeenAt,
     setGoal, markSynced, markSyncLocked, clearDiet,

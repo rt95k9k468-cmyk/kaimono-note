@@ -38,7 +38,7 @@
      二つの言い方で持つことになります。
 
      **すでに毎朝・毎晩で持っているものは、そのままにします。** 記録の形
-     （part: "dawn"/"dusk"）も、それを見ている並べ替え・夜の色・plan.js も
+     （part: "dawn"/"dusk"）も、それを見ている並べ替え・plan.js も
      手を付けていません——選べなくなるだけで、あるものは動きません。
      作り替えが要るなら、勝手にやらずに先に相談すること。 */
   const REPEATS = [
@@ -439,6 +439,21 @@
      消えて別の場所に現れるのではなく、**そこまで動いて**ほしいので。
      月をめくったときや、画面を組み直したときは滑らせません（前にいた
      場所と関係のないところから飛んでくるため）。 */
+  /* **置き場所を測るのは、一拍あと。**
+
+     輪の居場所は、そのマスを測らないと決まりません。ところがここは
+     組み立ての**途中**から呼ばれるので、測った瞬間にブラウザは画面ぜんぶの
+     レイアウトをやり直します——実測（CPU 4倍）で、この二行が
+     **組み直し 1回の 46%**（32ms のうち 14.6ms）を占めていました。
+
+     一拍おけば、ブラウザがどのみち一度やるレイアウトに相乗りできます。
+     **絵は変わりません**——`.cal-ring` は `is-on` が付くまで透明なので、
+     その一拍のあいだ輪は出ていない（前の場所に出たままにはならない）。
+     組み直した直後は跳ばせる決めごとなので、一拍あとに跳んでも同じです。
+     日を押して滑らせる場合も、transform が変わるのは一拍あとというだけで、
+     滑り自体はそこから始まります。 */
+  let ringAt = 0, ringWant = null;
+
   function moveRing(grid, cell, jump) {
     if (!grid) return;
     let ring = grid.querySelector(".cal-ring");
@@ -446,18 +461,32 @@
       ring = node(html`<i class="cal-ring is-jump" aria-hidden="true"></i>`);
       grid.prepend(ring);
     }
-    if (!cell) { ring.classList.remove("is-on"); return; }
-    const n = cell.querySelector(".cal-n");
+    if (!cell) { ring.classList.remove("is-on"); ringWant = null; return; }
+    ringWant = { grid, ring, cell, jump: !!jump };
+    if (ringAt) return;                            // すでに一拍ぶん待っている
+    ringAt = requestAnimationFrame(() => { ringAt = 0; placeRing(); });
+  }
+
+  function placeRing() {
+    const w = ringWant;
+    ringWant = null;
+    if (!w) return;
+    /* 待っているあいだに組み直されていたら、その盤はもう画面にいません。
+       新しい盤のぶんは、そちらの `paintHere` があらためて頼みます。 */
+    if (!w.grid.isConnected || !w.cell.isConnected || !w.ring.isConnected) return;
+    const n = w.cell.querySelector(".cal-n");
     if (!n) return;
-    const g = grid.getBoundingClientRect();
+    const g = w.grid.getBoundingClientRect();
     const b = n.getBoundingClientRect();
     if (!g.width || !b.width) return;              // まだ並んでいない
-    const first = !ring.classList.contains("is-on");
-    ring.classList.toggle("is-jump", !!jump || first);
-    ring.style.transform = `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
-    ring.classList.add("is-on");
-    if (jump || first) {
+    const first = !w.ring.classList.contains("is-on");
+    w.ring.classList.toggle("is-jump", w.jump || first);
+    w.ring.style.transform =
+      `translate(${(b.left - g.left).toFixed(1)}px, ${(b.top - g.top).toFixed(1)}px)`;
+    w.ring.classList.add("is-on");
+    if (w.jump || first) {
       // 次からは滑らせます（描き直した直後の一回だけ跳ばせたいので）。
+      const ring = w.ring;
       requestAnimationFrame(() => requestAnimationFrame(() => ring.classList.remove("is-jump")));
     }
   }
@@ -1709,14 +1738,37 @@
       || KN.productIcons.byKey(key))) || "";
   }
 
+  /* ---------------- 引いた答えは、覚えておく ----------------
+
+     辞書を引くのは安くありません——`findKey` は品物2131語・こと684語を
+     順に当てにいくので、実測（CPU 4倍）で**組み直し一回に 12.9ms**、
+     `somedaySection` が5行で 28.8ms かかっていた中身のほとんどがこれ
+     でした。行は組み直しのたびに作り直すので、**同じ題を何度も引きます**。
+
+     辞書は動きません。だから（どちらの引きかたか・保存済みの絵の名前・題）
+     が同じなら、答えも必ず同じです。
+
+     **`iconOverrides` が動くなら、ここを捨てること。** いまは書く側に
+     呼び出し元がありません（CLAUDE.md「自分だけの言い換えと、絵の報告」）。
+     `KN.iconsTodo.use()` / `KN.icons.use()` で一族を差し替えるときも同じ
+     ——あれは調べもののための口なので、覚えは持ち越しません。 */
+  const artCache = new Map();
+  function cachedArt(kind, key, title, resolve) {
+    const ck = kind + "\u0001" + (key || "") + "\u0001" + (title || "");
+    let v = artCache.get(ck);
+    if (v === undefined) { v = resolve() || ""; artCache.set(ck, v); }
+    return v;
+  }
+
   /** 自分で選んだ絵（あれば）、無ければ題から推した絵。無ければ丸だけ。
    *  シート内の「いまの見え方」プレビューと、行そのものの両方が使います。 */
   function iconMarkHtml(titleText, key) {
     /* 保存済みの絵の名前は、どちらの辞書のものかを持っていません（前は
        買うものしか無かったので）。両方に聞いて、答えたほうを使います。 */
-    const svg = (key && (KN.iconsTodo.byKey(key) || productArt(key)))
+    const svg = cachedArt("mark", key, titleText, () =>
+      (key && (KN.iconsTodo.byKey(key) || productArt(key)))
       || KN.iconsTodo.find(titleText || "")
-      || productArt(KN.productIcons.findKey(titleText || ""));
+      || productArt(KN.productIcons.findKey(titleText || "")));
     return svg
       ? html`<span class="todo-mark">${KN.util.raw(svg)}</span>`
       : html`<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
@@ -1758,10 +1810,13 @@
    *  色つきの絵ならそのまま。 */
   function tlMark(t) {
     const key = t.icon;
-    const sil = (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
+    /* 引きかたが `iconMarkHtml` と違う（色つきへ落ちる前に、シルエットだけを
+       三つ聞く）ので、覚えも別の棚に置きます。 */
+    const sil = cachedArt("sil", key, t.title, () =>
+      (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
         || KN.iconsFood.byKey(key)))
       || KN.iconsTodo.find(t.title || "")
-      || productArt(KN.productIcons.findKey(t.title || ""));
+      || productArt(KN.productIcons.findKey(t.title || "")));
     if (!sil) return todoMark(t);
     return html`<span class="todo-mark is-split"
                       style="--icon:${KN.util.raw(maskUrl(sil))}"></span>`;
@@ -2235,18 +2290,71 @@
     renderBody();
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
-       （掴み手はそのぶん下に貼りつくので）。 */
-    fitCalH();
+       （掴み手はそのぶん下に貼りつくので）。**ただし一拍おいてから**
+       ——組み立て終わりに測ると、そこでレイアウトが強制されます。一拍
+       待てば、ブラウザがどのみち一度やるレイアウトに相乗りできます。
+       そのあいだ掴み手は前の床のままですが、床が変わるのは月と週を
+       行き来したときだけなので、ふだんは同じ数です。 */
+    fitCalSoon();
+  }
+
+  /* 一拍あとに一度だけ測ります。組み直しはスイッチ一つでも走るので、
+     まとめないと同じ測りが何度も積まれます。 */
+  let calFit = 0;
+  function fitCalSoon() {
+    if (calFit) return;
+    calFit = requestAnimationFrame(() => { calFit = 0; fitCalH(); });
   }
 
   let groups = [];
+
+  /* ---------------- 日の紙の控え ----------------
+
+     `renderBody` が置いた `.tl-sheet` と、そのときの見分け字。次の組み直しで
+     同じ字が出たら、紙には指一本触れません。 */
+  let sheetNode = null;
+  let sheetSig = null;
+
+  /** 紙に出ているものを、まるごと一本の字にする。
+
+      **数えるものを選びません。** 選ぶと、いつか選び落とします——紙は
+      用事の題・メモ・時刻・長さ・手順・期限・並び順まで描くうえ、
+      組み立て（`KN.plan.buildDay`）は設定の一日の始まり／終わりと、
+      **いま何時か**まで見ます（時刻を書いていないものが、いまから先に
+      並ぶので）。だから用事ぜんぶと設定ぜんぶをそのまま字にします。
+      `todos` 65件で **0.16ms**（CPU 4倍）——組み直し一回の 0.3% です。
+
+      分まで入れるのは**今日を見ているときだけ**。過ぎた日・先の日の
+      組み立ては「いま」を渡されないので、分が変わっても絵は動きません。 */
+  function sheetDigest(day) {
+    const st = store.get();
+    return JSON.stringify([
+      day, todayKey(),
+      day === todayKey() ? KN.util.nowTime() : "",
+      st.settings,
+      [...openSubs].sort(),
+      st.todos,
+    ]);
+  }
 
   function renderBody() {
     /* 書き替えても、読んでいた場所は動かしません。中身を空にすると
        スクロールは0へ落ちるので、組み直したあとに返します——一件
        片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
     const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
-    els.body.innerHTML = "";
+
+    /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
+       `settle()` を呼ぶと、動いた行が**もといた場所から**滑ってきます
+       （`ui.js` の `flipRows`）。
+
+       **行には前から `data-flip` が付いていました**——買うもの・daily は
+       これを使っているのに、ここだけ呼んでいませんでした（目印だけ置いて、
+       見る人が居なかった）。時間割に一件足すと、その下の行がいっせいに
+       瞬間移動していたのは、それです。
+
+       日を丸ごと替えたときは、向こうが自分で見送ります（新顔が半分を
+       超えたら「編集ではなく行き先の変更」と見なして何もしない）。 */
+    const settle = KN.ui.flipRows(els.body, ".tl-row");
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
     const all = store.sortedTodos();
@@ -2266,12 +2374,56 @@
        downwards, which answers 「次に何をするか」 well and 「今月どのあたりに
        いるのか」 not at all — 8月17日 four screens down is a date without a
        shape. Left out while searching: a filtered list is not a month. */
-    els.cal = null;
-    if (!query) {
-      els.cal = monthCalendar(store.openTodos());
-      if (root && root.scrollTop > 4) els.cal.classList.add("is-stuck");
-      els.body.append(els.cal);
+    /* **暦は、組み直すより先に決めます。** 使い回せる盤は、**外さずに
+       そのまま置いておく**ためです——`innerHTML = ""` で一度外すと、
+       付け直したところでブラウザはその木ぶんのレイアウトをやり直します
+       （実測：外して付け直すと、盤を組み直さなくても強制レイアウトが
+       37.8ms。外さなければ **28.7ms**）。だから中身を空にするのは
+       「残す一枚」を決めたあと、その一枚だけ残して消す形にします。 */
+    els.cal = query ? null : monthCalendar(store.openTodos());
+
+    /* **日の紙も、変わっていなければ組み直しません。** 暦と同じ話で、
+       同じ理由で**外しません**（外して付け直すだけで、その木ぶんの
+       レイアウトが要る）。
+
+       違うのは**見分けかた**です。暦は「絵を変えるものだけ」を数えれば
+       足りましたが、紙のほうは用事の題・メモ・時刻・長さ・手順・期限……と
+       ほとんど全部を描くうえ、**組み立て（`KN.plan.buildDay`）が「いま
+       何時か」まで見ます**（時刻を書いていないものが、いまから先に並ぶ）。
+       数え落とすと、直したはずの字が出ないまま残ります。だから**丸ごと
+       見ます**——用事ぜんぶ・設定ぜんぶ・ひらいている手順・日・今日・
+       今日を見ているなら分。どれか一つでも動けば組み直す、という、
+       いままでと同じ形のまま。得があるのは「**何も変わっていない**」
+       とき——席を移る、暦を開け閉めする、設定のスイッチを押す——で、
+       残っていた長タスクはちょうどそこでした。 */
+    const keepSheet = (!query && oneDay() && sheetNode
+      && sheetNode.parentNode === els.body
+      && sheetSig === sheetDigest(shownDay())) ? sheetNode : null;
+
+    [...els.body.childNodes].forEach((n) => {
+      if (n !== els.cal && n !== keepSheet) n.remove();
+    });
+    if (els.cal) {
+      if (els.cal.parentNode !== els.body) els.body.append(els.cal);
+      /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
+         二つ理由があります。
+         ① ここは `els.body.innerHTML = ""` の**あと**なので、測ると
+            組み立ての途中でレイアウトが強制されます（実測：render 1回に
+            レイアウト 3.1回。その1回ぶんがこれ）。
+         ② 前は `root.scrollTop` を読んでいました。**送る器は紙のほう**
+            なので（`scrollerOf`）、根っこはいつも 0——送った先で組み直すと
+            `is-stuck` が付かず、次に指が動くまで境目の線が出ませんでした
+            （「送る器を変えたら教えること」の、拾い残しの一つ）。 */
+      /* **`toggle` であること。** 盤は使い回すことがあるので（`monthCalendar`）、
+         `add` だけだと、いちど貼りついた盤がいちばん上へ戻っても線を
+         持ったままになります。 */
+      els.cal.classList.toggle("is-stuck", keepTop > 4);
     }
+
+    /* 紙がそのままなら、ここでおしまい。中の配線（払う・引く・運ぶ・
+       30秒の拍）は紙に付いたままなので、何も起こしません。 */
+    if (keepSheet) { restoreTop(keepTop); settle(); return; }
+    sheetNode = null;
 
     /* 一日ぶんは、**白い紙**の上に乗ります。
 
@@ -2299,6 +2451,7 @@
         </div>
       `));
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2309,6 +2462,7 @@
         </p>
       `));
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2347,7 +2501,11 @@
          なっていたのは、これでした）。 */
       const grip = sheet.querySelector(".tl-grip");
       if (grip) grip.setAttribute("data-pull-own", "cal");
+      /* 次の組み直しで使い回せるように、いまの姿を控えます。 */
+      sheetNode = sheet;
+      sheetSig = sheetDigest(shownDay());
       restoreTop(keepTop);
+      settle();
       return;
     }
 
@@ -2369,6 +2527,7 @@
 
     if (closed.length) sheet.append(archiveSection(closed, tiles));
     restoreTop(keepTop);
+    settle();
   }
 
   /* ---------------- 一日ぶん ---------------- */
@@ -2641,7 +2800,57 @@
      その1pxは、ノッチのタップを聞くために置いてある1pxです（app.js）。
      つまり月をめくるたびに「上へ戻れ」と言ったことになり、画面が
      いちばん上まで飛びます。中身だけ入れ替えれば、節は動きません。 */
+  /* ---------------- 暦は、変わっていなければ組み直さない ----------------
+
+     実測（2026年9月21日・CPU 4倍・390×844）で、組み直し一回のうち暦が
+     **28.1ms**（JS の取り分の76%）、しかも要素数では **531個のうち 369個**
+     ——画面の7割が暦でした。そのうえ組み直した木は**まるごとレイアウトを
+     やり直す**ので、そのあとの強制レイアウト 32.3ms もほとんどが暦ぶんです。
+
+     暦が描いているのは「その月の、日ごとの絵と件数」だけで、用事の題や
+     時刻をいじってもそこは動きません。**入力が同じなら、前の盤をそのまま
+     使い回します**——`els.body.innerHTML = ""` で外れるだけで、節そのものは
+     生きています（cal-peek・cal-swipe の配線も、押したときの口も付いたまま）。
+
+     **見分けるのは `calDigest`**——月・今日・棚の色と、日を持つ用事の
+     （id・日・くり返し・絵・題）だけ。そこだけが盤の絵を変えるものなので。
+     安いほう（期限切れの帯・週の印・輪）は、使い回したときも毎回やります
+     ——あちらは「いま見ている日」で変わるもので、盤の中身ではありません。 */
+  let calNode = null;
+  let calSig = null;
+
+  /** 盤の絵を決めているものだけを、一本の字にする。 */
+  function calDigest(open) {
+    const today = todayKey();
+    const m = shownMonth();
+    const parts = [m.year, m.month, today, oneDay() ? 1 : 0];
+    groups.forEach((g) => parts.push(g.id, g.color, g.day || "", g.from || "", g.to || ""));
+    (open || []).forEach((t) => {
+      if (!t.due) return;
+      parts.push(t.id, t.due, t.repeat ? 1 : 0, t.icon || "", t.title);
+    });
+    store.get().todos.forEach((t) => {
+      if (!t.due || t.due >= today || !(t.done || t.archived)) return;
+      parts.push("d", t.id, t.due, t.icon || "", t.title);
+    });
+    return parts.join("\u0001");
+  }
+
   function monthCalendar(open) {
+    const sig = calDigest(open);
+    /* 前の盤がそのまま使えるなら、組みません。**外れていても外れていなくても
+       同じ一枚を返します**——置き場所は呼んだ側（`renderBody`）が決めます。 */
+    if (calNode && calSig === sig) {
+      fillCalTail(calNode, open);
+      return calNode;
+    }
+    const sec = buildCalendar(open);
+    calNode = sec;
+    calSig = sig;
+    return sec;
+  }
+
+  function buildCalendar(open) {
     const U = KN.util;
     const sec = node(html`
       <section class="cal">
@@ -2864,6 +3073,16 @@
     }
     outer.trail.forEach((key) => grid.append(outCell(key, marks)));
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
+    /* 生きている盤へ直に描いたので、控えの見分け字はもう当てになりません
+       （`setCalMonth` はここを通ります）。次の組み直しで組み直させます。 */
+    if (sec === calNode) calSig = null;
+    fillCalTail(sec, open);
+  }
+
+  /** 盤の中身ではなく、**いま見ている日**で変わるぶん。使い回した盤にも
+      毎回これだけは置き直します（どれも安い）。 */
+  function fillCalTail(sec, open) {
+    const today = todayKey();
     /* 期限切れ。一日の中には居場所がないので、**あることだけ**言って、
        受け皿（一覧）への口を出します。
 
@@ -2983,12 +3202,34 @@
          日で絞る前のもの）。掴んでいるあいだ組み直しは止まっているので、
          この控えが古くなることはありません。 */
       slide: (d) => daySlide(d, open),
-      commit: (next) => {
+      /* **組み直しません。** 滑りきった `kept` が、もう「その日」の紙です
+         ——同じものをもう一度組むために 134ms 固まると、次の日が「いきなり
+         出てきた」ように見えます（実測・CPU 4倍）。
+
+         塗り直すのは、紙の**外**で変わったものだけ：暦の輪と週の帯と
+         日付の題（`markDay` がまとめて持っています）。紙の中の「いま」の
+         線は、`watchNow` の ResizeObserver が付いた瞬間に置き直します
+         ——親に付く前は高さが 0 なので、あそこはもともとその口です。
+
+         月をまたいだときだけ、暦の盤を差し替えます（`setCalMonth`）。
+         あれは暦だけを描き直すもので、画面ぜんぶではありません。 */
+      commit: (next, kept) => {
         viewDay = next === todayKey() ? null : next;
+        /* **控えを捨てます。** 滑りきった一枚を据える（adopt）のは
+           組み直しを通らない道なので、紙の中身は `sheetSig` が言っている
+           日と違うものに変わっています。捨てないと、払って戻ってきたときに
+           「字は合っているから紙はそのまま」と読まれて、**隣の日の時間割が
+           そのまま居座ります**（実測：今日→明日と払って「今日へ戻る」を
+           押すと、題と暦だけ今日になり、紙は明日のままでした）。 */
+        sheetSig = null;
+        const d = KN.util.dayDate(next), m = shownMonth();
+        if (d.getFullYear() !== m.year || d.getMonth() !== m.month) {
+          setCalMonth(d.getFullYear(), d.getMonth());
+          fitCalH();
+        }
         markDay(next, true);
-        /* goDay と違って、読んでいた場所は動かしません——滑りきった紙の
-           続きがそのまま出るように（renderBody が位置を返します）。 */
-        render();
+        // 控えが渡らなかったとき（掴み直しなど）だけ、これまでどおり。
+        if (!kept) render();
       },
       busy: () => !!tlDrag || KN.reorder.isActive(),
       lock: (on) => { swiping = on; },
@@ -3225,16 +3466,31 @@
     return last;
   }
 
+  /* **先に測って、あとから書く。**
+
+     前は `markPass`（書く）→ `nowY`（読む）→ `clearOfClocks`（読む）の
+     順でした。書いたすぐあとに測ると、ブラウザはそこでレイアウトを
+     やり直さないと答えられません——組み直しのたびに、余分な一回。
+
+     入れ替えても答えは同じです。`markPass` が書くのは色（`--pass`・
+     線の色・`is-live` のうすい地）だけで、**高さも位置も動かさない**ので、
+     測る前に書いても後に書いても、測れる数は変わりません。 */
   function paintNow(sec, list, axis, isToday) {
-    axis.textContent = "";
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
+
+    // ① 測る（まだ何も書かない）
+    let at = null;
+    if (nowMin != null) {
+      const y = nowY(sec, list, nowMin);
+      if (y != null) at = clearOfClocks(sec, list, y);
+    }
+
+    // ② 書く
+    axis.textContent = "";
     markPass(list, nowMin);
-    if (nowMin == null) return;
-    const y = nowY(sec, list, nowMin);
-    if (y == null) return;
-    axis.append(nowMark(nowMin, clearOfClocks(sec, list, y)));
+    if (at != null) axis.append(nowMark(nowMin, at));
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
@@ -3992,31 +4248,10 @@
 
      済ませたものも色のまま残します（参考にした画面と同じ）。やった
      ことが灰色になって沈むと、朝からの半日が空白に見えるので。 */
-  /* ---------------- 夜は、夜の色 ----------------
-
-     一日ぶんは基調の塗りひとつで並べていました。参考にした画面（Structured）
-     も昼のあいだはそうですが、**一日の終わりだけ青**にしてあります（実測。
-     色は --c-night）。理屈も分かります——夕方から先は、同じ「やること」でも
-     体感の色が違う。暗くなってからの一件が朝の一件と同じ色で並んでいると、
-     一日が一本調子に見えます。
-
-     夜と決めるのは二つ。**毎晩**（part: "dusk"）は、時刻を持っていても
-     いなくても夜です。それ以外は**組み立てが置いた時刻**で見ます
-     ——t.time ではなく置かれた位置で見るのは、時刻を決めていない用事も
-     夜に落ちれば夜だからです。 */
-  const NIGHT_FROM = 18 * 60;      // 18:00 から先
-
-  function isNight(t, atMin) {
-    if (t && t.part === "dusk") return true;
-    const m = isFinite(atMin) ? Number(atMin) : KN.plan.toMin(t && t.time);
-    return m != null && isFinite(m) && m >= NIGHT_FROM;
-  }
-
   function tlColorOf(t, atMin) {
     /* 一日ずつのときは、棚がありません。坂（締切までの遠さ）も、比べる
-       相手が画面に無いので何も言えません。基調の塗りひとつで揃えます
-       ——夜のぶんを除いて。 */
-    if (oneDay()) return isNight(t, atMin) ? "var(--c-night)" : "var(--c-primary-fill)";
+       相手が画面に無いので何も言えません。基調の塗りひとつで揃えます。 */
+    if (oneDay()) return "var(--c-primary-fill)";
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   }
@@ -4103,24 +4338,10 @@
   function freeRow(f, nowMin) {
     const past = nowMin != null && f.untilMin <= nowMin;
     const dash = f.minutes > TL_JOIN_GAP;
-    /* 空きも、夜に入ったところから夜の色にします。線は一日を通す一本な
-       ので、空きだけ昼の色のままだと、夜の用事のあいだで色が切れて
-       「別の線」に見えます。切り替わるのは、その空きが**夜に入る**
-       ところ（18時をまたぐ空きは、夜のぶんが半分でも夜側で数えます
-       ——点線のなかで色を変えると、そこに何かがあるように見えるので）。
-
-       **ただし、過ぎたぶんは「始まり」で決めます**（--cat-a）。夕方まで
-       予定の無い日は、空きの行が一つで昼から夜までを持ちます。終わりだけ
-       で決めると、朝に済ませた用事の丸薬の下に**夜の青が数px** 顔を出し
-       ました——過ぎたぶんは上の丸薬から続く線なので、そこは上と同じ色で
-       なければいけません。まだのぶん（灰色）のほうが夜を含みます。 */
-    const night = f.untilMin > NIGHT_FROM;
-    const nightAt = f.atMin >= NIGHT_FROM;
     return node(html`
       <li class="tl-free-row ${past ? "is-past" : ""}"
           data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
-          style="--cat:${night ? "var(--c-night)" : "var(--c-primary-fill)"};
-                 --cat-a:${nightAt ? "var(--c-night)" : "var(--c-primary-fill)"}">
+          style="--cat:var(--c-primary-fill)">
         <span class="tl-time"></span>
         <span class="tl-rail ${dash ? "is-dash" : ""}"></span>
       </li>
