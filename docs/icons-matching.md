@@ -145,9 +145,11 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 変わったのは**9件だけ**で、全部が意図した改善だった——この数が二桁になったら、
 どこかで別のものを壊している。
 
-**この表を回す道具（node harness）は `js/icon-system.js` → `js/icons-v2.js`
+**この表を回す道具（node harness）は `js/icon-system.js` → `js/icons-v2-keys.js`
 → `js/util.js` → `js/product-icons.js` → `js/icons-todo.js` →
-`js/food-data.js` の順で読み込むこと。** `icons-v2.js` を抜かすと
+`js/food-data.js` の順で読み込むこと。**（言葉の表は2026年9月27日に
+`icons-v2.js` から `icons-v2-keys.js` へ分けた。C3。絵のほうは起動で読まない。）
+`icons-v2-keys.js` を抜かすと
 `KN.iconsV2Keys`（`product-icons.js` が `KEYS.push(...KN.iconsV2Keys)` で
 取り込む旧語彙——mail・movie・trashOut・seaweedWakame 等）が無いまま動くので、
 実際のブラウザでは当たる4件が道具の中だけ外れて見える（段階Cでこれにハマった）。

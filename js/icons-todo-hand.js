@@ -4,6 +4,8 @@
    いまの既定は **Phosphor Fill** です（`icons-todo.js`）。ここはその前に
    手で描いた108枚を、**消さずに**置いてあるものです。`icons-legacy.js` と
    同じ扱いで、`KN.iconsTodo.use("hand")` の一行で入れ替わります。
+   **起動では読みません**（docs/improvements.md の C3）。戻すときは index.html・
+   sw.js・build-standalone.js の三か所で icons-todo.js の後ろに足すこと。
 
    なぜ差し替えたか
    ----------------

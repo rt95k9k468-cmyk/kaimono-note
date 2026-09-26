@@ -519,6 +519,10 @@
 
      既定は Phosphor Fill。手で描いた108枚は `icons-todo-hand.js` に消さずに
      置いてあり、`KN.iconsTodo.use("hand")` の一行で入れ替わります。
+     ただし手描きは**起動では読みません**（docs/improvements.md の C3）。戻すときは
+     index.html・sw.js・build-standalone.js の三か所で、このファイルの後ろに
+     icons-todo-hand.js を足してから use("hand") を呼びます。読んでいなければ
+     use("hand") は何もせずに false を返します。
      **画面はどの一族かを知りません**——見るのは `ICONS` だけです。 */
   const FAMILIES = { phosphor: RAW };
   const ICONS = {};
