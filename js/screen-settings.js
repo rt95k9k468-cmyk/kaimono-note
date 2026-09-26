@@ -1033,11 +1033,37 @@
 
   /* ---------------- data ---------------- */
 
-  function exportSub(st) {
+  /* 前は「◯商品・◯店舗をJSONで書き出します」で、やること・daily・
+     ダイエットも入っていることが伝わりませんでした。 */
+  function exportSub() {
     const last = KN.backup.lastExportAt();
-    const size = `${st.products.length}商品・${st.stores.length}店舗`;
-    if (!last) return `${size}をJSONで書き出します`;
-    return `${size}／前回 ${formatDate(last)}`;
+    const what = "買うもの・やること・daily・ダイエット・設定を、一つのファイルにまとめて書き出します";
+    if (!last) return `${what}。`;
+    return `${what}。前回 ${snapStamp(last)}（保存できたと確かめた書き出し）。`;
+  }
+
+  /** 記録の数を一行で。控えの一覧・復元の確認・書き出しの確かめで使います。 */
+  function countText(c) {
+    return `商品 ${c.products}・やること ${c.todos}・daily ${c.days}日・積み上げ ${c.entries}・ダイエット ${c.diet}`;
+  }
+
+  /** 字数を「約◯万字」で。小さいときは、細かく言わない。 */
+  function charText(n) {
+    if (n < 10000) return "1万字未満";
+    return `約${(n / 10000).toFixed(n < 100000 ? 1 : 0)}万字`;
+  }
+
+  /* 戻せない操作の前の控え。**取れなかったら、進む前に知らせます。**
+     確認の文は「直前の状態は自動バックアップに残る」と約束しているので、
+     残らなかったのに黙って進むと、その約束が嘘になります。"same"（同じ
+     中身がもう控えにある）と "empty"（守るものが無い）は、取れたのと同じ。 */
+  async function keepBefore(reason) {
+    if (KN.backup.take(reason) !== "failed") return true;
+    return KN.ui.confirm({
+      title: "控えを取れませんでした",
+      message: "空き容量が足りず、いまの状態を自動バックアップに残せませんでした。このまま進むと、元に戻せません。先に「バックアップを保存」でファイルに書き出すことをおすすめします。",
+      okLabel: "それでも進む", cancelLabel: "やめる", danger: true,
+    });
   }
 
   /** Several snapshots can land on one day (削除前, 復元前…), so the clock
@@ -1262,11 +1288,15 @@
     let sheetHandle = null;
     const rows = body.querySelector(".js-snaps");
     snaps.forEach((s) => {
+      // 2026年9月26日より前に取った控えは、買うものの数しか持っていません。
+      const sub = s.summary.todos == null
+        ? `${s.summary.products}商品・${s.summary.stores}店舗・リスト${s.summary.items}件`
+        : countText(s.summary);
       const row = node(html`
         <button class="row">
           <span class="row-main">
             <span class="row-title">${snapStamp(s.at)}（${s.reason}）</span>
-            <span class="row-sub">${s.summary.products}商品・${s.summary.stores}店舗・リスト${s.summary.items}件</span>
+            <span class="row-sub">${sub}</span>
           </span>
           <span class="row-chevron">${icon("chevron")}</span>
         </button>
@@ -1280,7 +1310,19 @@
         });
         if (!ok) return;
         try {
-          KN.backup.restore(s.at);
+          try {
+            KN.backup.restore(s.at);
+          } catch (err) {
+            if (err.code !== "keep-failed") throw err;
+            // 戻す前の控えが取れなかった。黙って戻すと、いまの状態へは戻れない。
+            const go = await KN.ui.confirm({
+              title: "控えを取れませんでした",
+              message: "空き容量が足りず、戻す前の状態を控えに残せませんでした。このまま戻すと、いまの状態へはやり直せません。",
+              okLabel: "それでも戻す", cancelLabel: "やめる", danger: true,
+            });
+            if (!go) return;
+            KN.backup.restore(s.at, { force: true });
+          }
           KN.ui.toast(`${snapStamp(s.at)} の状態に戻しました`);
           if (sheetHandle) sheetHandle.close();
         } catch (err) {
@@ -2189,61 +2231,183 @@
 
   /* ---------------- バックアップと書き出し（「›」の先） ---------------- */
 
-  function saveBackup() {
-    const blob = new Blob([store.exportJSON()], { type: "application/json" });
+  /* 保存できたかどうかを、**押した瞬間には記録しません。** 前は押した直後に
+     「前回の書き出し」を今にして「保存しました」と出していたので、iPhone で
+     保存の画面を取り消しても、失敗しても、設定には前回の日付が出て、守られて
+     いるつもりになりました。
+
+     指で触る端末で、ファイルを共有シートで渡せるなら、そちらを使います——
+     渡し終えたときにだけ果たされ、取り消しは AbortError で分かるので、
+     確かめてから記録できます。それ以外は、ダウンロードのあとに一度だけ
+     「保存できましたか？」と訊きます。**share はタップの流れの中で呼ぶこと**
+     （手前で await すると、端末が「人が押した」と見なさなくなります）。 */
+  async function saveBackup() {
+    const at = new Date().toISOString();
+    const d = new Date(at);
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    const name = `kaimono-note-${stamp}.json`;
+    const text = store.exportJSON(at);
+
+    const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    let file = null;
+    try { file = new File([text], name, { type: "application/json" }); } catch (err) { file = null; }
+    if (coarse && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name });
+        KN.backup.markExported(at);
+        KN.ui.toast("バックアップを書き出しました");
+        render();
+        return;
+      } catch (err) {
+        if (err && err.name === "AbortError") {
+          KN.ui.toast("書き出しをやめました（記録していません）");
+          return;
+        }
+        // 共有そのものが使えなかったときだけ、ダウンロードの道へ。
+      }
+    }
+    await downloadBackup(name, text, at);
+  }
+
+  async function downloadBackup(name, text, at) {
+    const blob = new Blob([text], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const d = new Date();
-    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
     a.href = url;
-    a.download = `kaimono-note-${stamp}.json`;
+    a.download = name;
     document.body.append(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    KN.backup.markExported();
-    KN.ui.toast("バックアップを保存しました");
+    /* 1秒で捨てていたのを1分に。「ダウンロードしますか？」に答えてから
+       中身を取りに来る端末では、迷っているあいだに捨てると取りに行けません。 */
+    setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+    const ok = await KN.ui.confirm({
+      title: "保存できましたか？",
+      message: `「${name}」がファイルやダウンロードの中にあれば、保存できています。できていたときだけ、前回の書き出しとして記録します。`,
+      okLabel: "保存できた", cancelLabel: "できなかった",
+    });
+    if (ok) {
+      KN.backup.markExported(at);
+      KN.ui.toast("前回の書き出しとして記録しました");
+    } else {
+      KN.ui.toast("記録していません。もう一度お試しください");
+    }
     render();
   }
 
   /** 復元に使う、隠したファイル選択。**画面に置いたまま**にします——
       押してから開くまでのあいだに組み直しが走ると、選び終わった file が
-      もう外れた要素に届きます。 */
+      もう外れた要素に届きます。
+
+      **置き換える前に、中身を確かめて見せます。** daily の月の書き出しや
+      日記の取り込み道具の出力も同じ .json で、前はそれを選ぶと、空の
+      state で全部が置き換わりました（store.js の readBackup）。 */
   function importInput() {
     const file = node(html`<input type="file" accept="application/json,.json" class="js-file" hidden>`);
     file.addEventListener("change", async () => {
       const f = file.files && file.files[0];
       if (!f) return;
+      let text = "";
+      try { text = await f.text(); } catch (err) { text = ""; }
+      file.value = "";
+      const r = store.inspectBackup(text);
+      if (!r.ok) {
+        KN.ui.toast(`復元できません：${r.reason}（何も変えていません）`, { duration: 6000 });
+        return;
+      }
+      const when = r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出し` : "書き出し日時の無いファイル";
       const ok = await KN.ui.confirm({
         title: "復元しますか？",
-        message: "いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。",
+        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。`,
         okLabel: "復元する",
         danger: true,
       });
-      file.value = "";
       if (!ok) return;
+      if (!(await keepBefore("復元前"))) return;
       try {
-        KN.backup.snapshot("復元前");
-        store.importJSON(await f.text());
+        store.importJSON(text);
         KN.ui.toast("復元しました");
       } catch (err) {
         console.error(err);
-        KN.ui.toast("読み込めませんでした（ファイル形式を確認してください）");
+        KN.ui.toast(`読み込めませんでした：${String((err && err.message) || err)}`);
       }
     });
     return file;
   }
 
+  /* 保存したファイルを、**戻さずに**読んで確かめます。書き出した日時と
+     記録の数を、いまの記録と並べて見せるだけで、記録には何も触れません。
+     読めたファイルは確かに手元にあるので、その書き出し日時を「前回の
+     書き出し」として記録します（前の記録より古ければ巻き戻しません）。 */
+  function verifyInput() {
+    const file = node(html`<input type="file" accept="application/json,.json" class="js-verify" hidden>`);
+    file.addEventListener("change", async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      let text = "";
+      try { text = await f.text(); } catch (err) { text = ""; }
+      file.value = "";
+      showVerify(f.name, store.inspectBackup(text));
+    });
+    return file;
+  }
+
+  function showVerify(name, r) {
+    const now = store.countsOf();
+    const kinds = [
+      ["商品", "products"], ["やること", "todos"], ["daily（日）", "days"],
+      ["積み上げ", "entries"], ["ダイエット", "diet"],
+    ];
+    let lead = `「${name}」は、戻せるバックアップではありません。${r.reason || ""}。`;
+    let verdict = "";
+    if (r.ok) {
+      lead = `「${name}」は読めました。${r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出しです。` : ""}`;
+      verdict = kinds.every(([, k]) => r.counts[k] === now[k])
+        ? "数は、いまの記録と同じです（中身の一字一字までは比べていません）。"
+        : "このファイルのあとに、増えたり減ったりした記録があります。新しく書き出しておくと安心です。";
+      if (r.exportedAt) KN.backup.markExported(r.exportedAt);
+    }
+    const body = node(html`
+      <div class="stack" style="gap:12px">
+        <p style="color:var(--c-text-2);line-height:1.6">${lead}</p>
+        ${r.ok ? html`
+          <table class="verify-table">
+            <tr><th></th><th>このファイル</th><th>いま</th></tr>
+            ${kinds.map(([label, k]) => html`<tr><td>${label}</td><td>${r.counts[k]}</td><td>${now[k]}</td></tr>`)}
+          </table>
+          <p style="color:var(--c-text-2);line-height:1.6">${verdict}</p>` : ""}
+      </div>
+    `);
+    const foot = node(html`<button class="btn btn-soft btn-block">閉じる</button>`);
+    const h = KN.ui.sheet({
+      title: r.ok ? "バックアップを確かめました" : "バックアップではありません",
+      content: body, footer: foot, guard: false, as: "dialog",
+    });
+    foot.addEventListener("click", () => h.close());
+    render();
+  }
+
+  /** 設定に出す、この端末の中の量（backup.usage）。 */
+  function usageText(u) {
+    const diary = u.diaryChars ? `（うち日記 ${charText(u.diaryChars)}）` : "";
+    let t = `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。二つで、端末の保存の枠（iPhone でおよそ5MB）を分け合っています。`;
+    if (u.tight) {
+      t += `記録が大きくなったので、自動バックアップは${u.fits}件ぶんまでしか持てず、直近の細かい控えから減ります。こまめに「バックアップを保存」を。`;
+    }
+    return t;
+  }
+
   function dataRows() {
-    const st = store.get();
     const file = importInput();
+    const verify = verifyInput();
     const snaps = KN.backup.list();
     return [
       card(
         navRow({ ico: "download", tint: TINT.data, title: "バックアップを保存", onTap: saveBackup }),
+        navRow({ ico: "check", tint: TINT.data, title: "保存したバックアップを確かめる", onTap: () => verify.click() }),
         navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", onTap: () => file.click() })
       ),
-      foot(exportSub(st)),
+      foot(exportSub()),
       card(
         navRow({
           ico: "undo", tint: TINT.sub, title: "自動バックアップから戻す",
@@ -2255,6 +2419,7 @@
           value: `${store.learnedList().length}件`, onTap: openLearned,
         })
       ),
+      foot(usageText(KN.backup.usage())),
       foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。"),
       /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
          「戻す」の隣に「消す」が並ぶことになります。 */
@@ -2262,6 +2427,7 @@
         navRow({ ico: "trash", tint: TINT.danger, title: "データを消す", onTap: () => go("danger") })
       ),
       file,
+      verify,
     ];
   }
 
@@ -2288,6 +2454,10 @@
             okLabel: "消す", danger: true,
           });
           if (!ok) return;
+          /* 前はここで控えを取っていませんでした。確認の文は「直前の状態は
+             自動バックアップに残ります」と言うのに、残っていたのは最後に
+             アプリを離れたときの状態でした。 */
+          if (!(await keepBefore("削除前"))) return;
           store.clearDiet();
           render();
           KN.ui.toast("消しました");
@@ -2303,7 +2473,7 @@
             okLabel: "入れる", danger: true,
           });
           if (!ok) return;
-          KN.backup.snapshot("サンプル読込前");
+          if (!(await keepBefore("サンプル読込前"))) return;
           store.loadSample();
           KN.ui.toast("サンプルを読み込みました");
         },
@@ -2318,7 +2488,7 @@
             okLabel: "削除する", danger: true,
           });
           if (!ok) return;
-          KN.backup.snapshot("削除前");
+          if (!(await keepBefore("削除前"))) return;
           store.reset();
           KN.ui.toast("すべて削除しました");
         },

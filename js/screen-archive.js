@@ -967,13 +967,21 @@
        しておけば、何も打たずに閉じたときは「変わっていない」扱いになり
        ます——空の日を覗いただけで記録ができてしまうのを防ぎます。 */
     let last = JSON.stringify([memoInit, cur.wake || "", cur.sleep || ""]);
+    /* 下書き（日付とカウントダウン）は、**本文に触れたときだけ**残します。
+       保存は本文・起床・就寝をまとめて比べて走るので、前は起きた・寝た
+       時刻だけを入れても、下書きの日付だけの本文が残り、自分で書いた
+       本文と見分けがつきませんでした。触れていなければ、本文は元のまま。 */
+    const drafted = memoInit !== (cur.memo || "");
+    let touched = false;
+    memo.addEventListener("input", () => { touched = true; });
+    const memoOut = () => (drafted && !touched ? (cur.memo || "") : memo.value);
     const save = () => {
       clearTimeout(timer); timer = 0;
       const now = JSON.stringify([memo.value, wakeEl.value, sleepEl.value]);
       if (now === last) return;
       last = now;
       store.setDayLog(day, {
-        memo: memo.value, wake: wakeEl.value || null, sleep: sleepEl.value || null,
+        memo: memoOut(), wake: wakeEl.value || null, sleep: sleepEl.value || null,
       });
       render();
     };
