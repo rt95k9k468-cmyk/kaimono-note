@@ -460,6 +460,7 @@
       const shown = appendGroups(active);
       if (!shown && categoryFilter) els.body.append(noneInCategory());
       if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]));
+      els.body.append(lowSection());
       if (checked.length) els.body.append(checkedSection(checked));
       settle();
       return;
@@ -496,6 +497,7 @@
       els.body.append(shareRow([{ title: "今回買うもの", list: trip }, { title: "そのほか", list: rest }]));
     }
 
+    els.body.append(lowSection());
     if (checked.length) els.body.append(checkedSection(checked));
     settle();
   }
@@ -553,6 +555,57 @@
       if (err && err.name === "AbortError") return;
       copy();
     });
+  }
+
+  /* ---------------- そろそろ切れそう（D6） ----------------
+
+     いつもの間隔で、そろそろ買うころのもの（js/insights.js の runningLow）。
+     置き場所は買うものの終わり、アーカイブの手前——数えている相手が
+     アーカイブの「買った」なので、その上に。押せば買うものへ入って、
+     ここからは消えます（入ったものは数えない）。
+
+     「要らない」を押す欄は置きません。覚えておく入れ物が要るので。
+     かわりに、いつもの 2.5 倍を過ぎたら黙ります（insights.js）。
+     探しているあいだ・札で絞っているあいだは出しません——どちらも
+     「リストの見方」で、そこに外のものを混ぜると見方が崩れるので。 */
+  function lowSection() {
+    if (query || categoryFilter) return document.createDocumentFragment();
+    const low = KN.insights.runningLow();
+    if (!low.length) return document.createDocumentFragment();
+    const section = node(html`
+      <section class="low" aria-label="そろそろ切れそう">
+        <h2 class="trip-head trip-head-rest">${icon("clock")}<span>そろそろ切れそう</span></h2>
+        <div class="low-list"></div>
+      </section>
+    `);
+    const listEl = section.querySelector(".low-list");
+    low.forEach(({ product, every, since }) => {
+      const cat = store.getCategory(product.categoryId);
+      const row = node(html`
+        <div class="low-row" style="--cat:${(cat && cat.color) || ""}">
+          <span class="low-mark" aria-hidden="true">${store.productMark(product)}</span>
+          <span class="low-main">
+            <span class="low-name">${product.name}</span>
+            <span class="low-meta">だいたい${every}日ごと・前は${since}日前</span>
+          </span>
+          <button type="button" class="low-add" aria-label="${product.name} を買うものに入れる">
+            ${icon("plus")}<span>入れる</span>
+          </button>
+        </div>
+      `);
+      row.querySelector(".low-add").addEventListener("click", (e) => {
+        KN.motion.fire("add", e.currentTarget);
+        const rec = store.addItem(product.id);
+        KN.ui.toast(`「${product.name}」を買うものに入れました`, {
+          action: {
+            label: "元に戻す",
+            onClick: () => store.update((s) => { s.items = s.items.filter((i) => i.id !== rec.id); }),
+          },
+        });
+      });
+      listEl.append(row);
+    });
+    return section;
   }
 
   /* ---------------- 「いつ行くか」を、予定のほうへ ----------------
@@ -642,7 +695,7 @@
          same thing without taking a line. The grouping stays: it is what
          makes the colours run in blocks, and what a drag reorders within. */
       const group = node(html`
-        <section class="cat-group" style="--cat:${cat.color || ""}">
+        <section class="cat-group is-run" style="--cat:${cat.color || ""}">
           <div class="item-list"></div>
         </section>
       `);

@@ -27,10 +27,10 @@
    速さは css/base.css の --m-* を読みます。JS 側に数字を二重に持つと、
    いつか必ず片方だけ直されるので、**CSS を唯一の出どころ**にします。
 
-   震えについて：iOS の Safari は navigator.vibrate を持ちません。つまり
-   ホーム画面のこのアプリでは、いまのところ震えません。それでも呼ぶ形だけ
-   残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator へ
-   差し替える一点になるからです。呼び出し側を書き換えずに済みます。
+   震えについて：iOS の Safari は navigator.vibrate を持ちません。それでも
+   呼ぶ形を残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator
+   へ差し替える一点になるからです。呼び出し側を書き換えずに済みます。
+   iPhone では、三つの出来事だけ別の手で震わせます（下の `tick`。C1）。
    ========================================================= */
 (function () {
   "use strict";
@@ -194,11 +194,64 @@
     return Math.sign(over) * (lim * (1 - 1 / (x / lim + 1)));
   }
 
-  function buzz(spec) {
-    if (!navigator.vibrate) return;
+  function buzz(spec, name) {
+    if (!navigator.vibrate) { tick(name); return; }
     try {
       if (spec.pattern) navigator.vibrate(spec.pattern);
       else if (spec.ms) navigator.vibrate(spec.ms);
+    } catch (_) { /* 震えないことは失敗ではありません */ }
+  }
+
+  /* ---------------------------------------------------------------
+     iPhone で震わせる（docs/improvements.md の C1）
+
+     iOS 18 から、Safari の `<input type="checkbox" switch>`（切り替えの
+     つまみ）は、切り替わるときに端末を軽く震わせます。見えないつまみを
+     一つ置いて、その札（label）を押したことにすれば、震えだけが返ります。
+
+     **公式の道ではありません。** いつかの iOS で黙って効かなくなりうる
+     ——だから使うのは三つだけにします：
+       check … 済ませた（やること・買うもの）
+       drop  … 持ち上げて、置いた（時間割・買うものの並べ替え）
+       close … 紙を下へ払って、閉じた
+     押すたびに震えるものにはしません。効かなくなった日に困らないもの
+     だけ、効いている日には手ごたえになるもの。
+
+     ・震えるのは人が押した流れの中だけ（iOS が決めること）。どれも指を
+       離したその場で呼ばれます。
+     ・振動の機能（navigator.vibrate）を持つ端末では、何もしません
+       ——そちらは上の `buzz` がいつもどおり震わせます。
+     ・押したことにした click が、ほかの仕掛け（外を押したら閉じる、
+       など）に届かないよう、札とつまみの上で止めます。札は head の中に
+       一つだけ置いて、使い回します（見えず、読み上げにも出ない）。
+     --------------------------------------------------------------- */
+  const TICKS = new Set(["check", "drop", "close"]);
+  const apple = (() => {
+    try {
+      const ua = navigator.userAgent || "";
+      return /iP(hone|ad|od)/.test(ua)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    } catch (_) { return false; }
+  })();
+  let knob = null;
+  function tick(name) {
+    if (!apple || navigator.vibrate || !TICKS.has(name)) return;
+    try {
+      if (!knob || !knob.isConnected) {
+        knob = document.createElement("label");
+        knob.setAttribute("aria-hidden", "true");
+        knob.style.display = "none";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.setAttribute("switch", "");
+        input.tabIndex = -1;
+        knob.append(input);
+        const stop = (e) => e.stopPropagation();
+        knob.addEventListener("click", stop);
+        input.addEventListener("click", stop);
+        (document.head || document.documentElement).append(knob);
+      }
+      knob.click();
     } catch (_) { /* 震えないことは失敗ではありません */ }
   }
 
@@ -213,7 +266,7 @@
   function fire(name, el) {
     const spec = EVENTS[name];
     if (!spec) return Promise.resolve();
-    buzz(spec);
+    buzz(spec, name);
     const dur = ms(spec.tok);
     if (!el || !spec.cls || still()) {
       return new Promise((done) => setTimeout(done, still() ? 0 : dur));
@@ -246,5 +299,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, glide, rubber, still, EVENTS };
+  KN.motion = { fire, press, ms, ease, glide, rubber, still, tick, EVENTS };
 })();

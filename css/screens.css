@@ -187,6 +187,22 @@
 .cat-group { margin-bottom: var(--sp-3); }
 .cat-group:last-child { margin-bottom: 0; }
 
+/* B7（docs/shopping.md）：カテゴリの切れ目には、細い線を一本。
+   見出しが無いので、12px の空きだけだと「行間が揃っていない」に見えて
+   いました。線は**その空きの真ん中**に引きます——前の組の下の 12px を、
+   上に 6px 寄せて（負の margin）、寄せたぶんを内側の 6px で返すので、
+   行の位置は一画素も動きません。線は地の画像で描きます（組に position を
+   持たせると、中の絶対配置の相手が変わるので）。左右は行の中身と同じだけ
+   空けます。 `is-run` はカテゴリの組だけ（アーカイブ・タイルには付けない）。 */
+.cat-group.is-run + .cat-group.is-run {
+  margin-top: calc(var(--sp-3) / -2);
+  padding-top: calc(var(--sp-3) / 2);
+  background-image: linear-gradient(var(--c-border), var(--c-border));
+  background-size: calc(100% - 2 * var(--sp-4)) 1px;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
 .cat-head-count { color: var(--c-text-3); font-weight: 700; }
 
 .item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -4659,6 +4675,7 @@ a.btn { text-decoration: none; }
 .item-emoji .p-icon.is-todo,
 .product-emoji .p-icon.is-todo,
 .icon-pick-mark .p-icon.is-todo,
+.low-mark .p-icon.is-todo,
 .icon-cell-mark .p-icon.is-todo {
   color: color-mix(in srgb, var(--cat, var(--c-primary)) 85%, var(--c-text));
 }
@@ -5190,6 +5207,43 @@ a.btn { text-decoration: none; }
    「今日の予定に入れる」と同じ一本——どちらも、このリストを外へ渡す口なので。
    置き場所は買うものの終わり、アーカイブの手前。 */
 .list-share { padding: var(--sp-3) var(--sp-4) var(--sp-2); }
+
+/* 「そろそろ切れそう」（screen-list.js の lowSection・D6）。買うものの終わり、
+   アーカイブの手前。**まだリストに無いもの**なので、行の形は買うものの行に
+   寄せず、静かに：絵の丸は同じ（色で種類が分かる）、名前の下に間隔、右に
+   「入れる」。見出しの絵は★と違って意味の色を持たないので、字と同じ灰色。 */
+.low { padding-bottom: var(--sp-2); }
+.low .trip-head svg { color: var(--c-text-3); fill: currentColor; }
+.low-list { display: flex; flex-direction: column; }
+.low-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 8px var(--sp-4);
+}
+.low-mark {
+  flex: none;
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
+  line-height: 1;
+}
+.low-mark .p-icon { width: 24px; height: 24px; }
+.low-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.low-name { font-weight: 700; overflow-wrap: anywhere; }
+.low-meta { font-size: var(--fs-sm); color: var(--c-text-2); }
+.low-add {
+  flex: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--c-surface-2);
+  color: var(--c-primary);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  transition: background var(--m-press) var(--ease);
+}
+.low-add svg { width: 16px; height: 16px; }
 
 /* 時間割で、買い物の一件が「いま何個ぶんか」。 */
 .tl-shop { font-variant-numeric: tabular-nums; }

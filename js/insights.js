@@ -128,6 +128,71 @@
     return out;
   }
 
+  /* ---------------- そろそろ切れそう（D6） ----------------
+
+     買うものの「買った」（アーカイブに残る、チェックした日時 `checkedAt`）
+     から、品物ごとの**いつもの間隔**を出します。記録の入れ物は増やしません
+     ——いまある「買った」の行を、そのつど数えるだけです（Daily Log の
+     「写さず引く」と同じ）。アーカイブの行を消せば、そのぶん数えなくなる。
+
+     値段の記録の日付は使いません。値段は店で見かけただけでも付けるので、
+     それを「買った」と数えると間隔が縮んで、まだあるものを急かします。
+
+     決めごと：
+     ・同じ日に二度買ったのは一回（日で数える。日はローカル、dayKey）。
+     ・**三回以上**買ったものだけ（間隔が二つ無いと「いつも」は言えない）。
+     ・いつもの間隔は、間隔の**真ん中の値**（平均だと、一度の買い忘れで
+       大きく伸びる）。2日未満（毎日のように買うもの）は出しません。
+     ・出すのは、前に買ってから、いつもの 0.85 倍を過ぎたころから、
+       2.5 倍まで。それより空いたら、もう買っていないものとして黙ります
+       ——「要らない」を押させる欄を置かないかわりに、ここで引く。
+     ・いま買うものに入っているもの・しまったものは出さない。 */
+  const LOW_MIN_BUYS = 3;
+  const LOW_FROM = 0.85;
+  const LOW_UNTIL = 2.5;
+  const LOW_LIMIT = 5;
+
+  const dayDiff = (a, b) => Math.round(
+    (KN.util.dayDate(b).getTime() - KN.util.dayDate(a).getTime()) / 86400000);
+
+  /**
+   * @param {object} [o]
+   * @param {string} [o.today] dayKey（試験用。既定は今日）
+   * @returns {Array<{product, every:number, since:number}>} 急ぐ順
+   */
+  function runningLow(o) {
+    const today = (o && o.today) || KN.util.todayKey();
+    const st = store.get();
+    const onList = new Set();
+    const bought = new Map();            // productId → Set(dayKey)
+    st.items.forEach((i) => {
+      if (!i.checked) { onList.add(i.productId); return; }
+      if (!i.checkedAt) return;
+      const t = new Date(i.checkedAt);
+      if (isNaN(t)) return;
+      if (!bought.has(i.productId)) bought.set(i.productId, new Set());
+      bought.get(i.productId).add(KN.util.dayKey(t));
+    });
+
+    const out = [];
+    bought.forEach((daySet, pid) => {
+      if (onList.has(pid) || daySet.size < LOW_MIN_BUYS) return;
+      const p = store.getProduct(pid);
+      if (!p || p.archived) return;
+      const days = [...daySet].sort();
+      const gaps = [];
+      for (let k = 1; k < days.length; k++) gaps.push(dayDiff(days[k - 1], days[k]));
+      gaps.sort((a, b) => a - b);
+      const mid = gaps.length >> 1;
+      const every = gaps.length % 2 ? gaps[mid] : Math.round((gaps[mid - 1] + gaps[mid]) / 2);
+      if (!(every >= 2)) return;
+      const since = dayDiff(days[days.length - 1], today);
+      if (since < every * LOW_FROM || since > every * LOW_UNTIL) return;
+      out.push({ product: p, every, since });
+    });
+    return out.sort((a, b) => (b.since / b.every) - (a.since / a.every)).slice(0, LOW_LIMIT);
+  }
+
   /* ---------------- public ---------------- */
 
   /**
@@ -161,5 +226,5 @@
     return [...bestOfKind.values()].sort((a, b) => b.weight - a.weight).slice(0, limit);
   }
 
-  KN.insights = { forItems, STALE_DAYS };
+  KN.insights = { forItems, runningLow, STALE_DAYS };
 })();

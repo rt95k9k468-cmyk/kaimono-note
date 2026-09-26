@@ -2395,6 +2395,136 @@
     render();
   }
 
+  /* ---------------- 日記を取り込む（D7） ----------------
+
+     取り込み道具（tools/diary-import.html）が作った控え（`diary-sealed`）を、
+     作ったときの合言葉で開いて、daily の本文にします。開いた本文は**暗号に
+     しないまま**、ほかの日記と同じところへ入ります（利用者が決めた。
+     docs/storage.md）。
+
+     ・すでに本文のある日には触れません（store.importDiary）。
+     ・入れる前に、記録がどれだけ大きくなるかを測ります。記録はいまも一つの
+       文字列でまるごと元（localStorage）に書いているので、枠からあふれると、
+       日記だけでなく**やることや買うものの保存まで止まります**。入りきら
+       ないなら、何も変えずに断ります（そのときは docs/storage.md の「次の段」
+       ——元から本文を外す——が先に要る）。
+     ・入れる前に、自動の控え（「日記の取り込み前」）。
+     ・件数は言いません（daily は数えない）。言うのは期間と、大きさ。 */
+
+  /* 取り込んだあとの記録が、この字数を越えるなら断ります。iPhone の枠は
+     およそ5MBで、日本語の混じる文字列は一字2バイトで数えられるので、
+     入るのは260万字ほど。そこから、これから書く日記やほかの記録のぶんを
+     空けておきます。 */
+  const DIARY_LIVE_LIMIT = 2000000;
+
+  function diaryImportInput() {
+    const file = node(html`<input type="file" accept="application/json,.json" class="js-diary-file" hidden>`);
+    file.addEventListener("change", async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      let text = "";
+      try { text = await f.text(); } catch (err) { text = ""; }
+      file.value = "";
+      importDiaryFile(text);
+    });
+    return file;
+  }
+
+  async function importDiaryFile(text) {
+    let sealed = null;
+    try { sealed = JSON.parse(text); } catch (err) { sealed = null; }
+    const ok = sealed && sealed.app === "kaimono-note" && sealed.kind === "diary-sealed"
+      && sealed.lock && Array.isArray(sealed.days);
+    if (!ok) {
+      KN.ui.toast("日記の取り込み道具で作ったファイルではありません（何も変えていません）", { duration: 6000 });
+      return;
+    }
+    const X = KN.diaryCrypto;
+    if (!X || !window.crypto || !window.crypto.subtle) {
+      KN.ui.toast("この端末では、控えを開けません（何も変えていません）");
+      return;
+    }
+    /* 日記の写しの突き合わせが済む前に書くと、写しから戻るはずの本文と
+       行き違います（書き出しと同じ門）。 */
+    if (KN.diaryIdb && !KN.diaryIdb.settled()) {
+      KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度選んでください");
+      return;
+    }
+
+    let key = null;
+    for (;;) {
+      const pw = await KN.ui.prompt({
+        title: "合言葉",
+        label: "取り込み道具で控えを作ったときの合言葉",
+        okLabel: "開く",
+        secret: true,
+      });
+      if (pw == null || pw === "") return;
+      KN.ui.toast("合言葉を確かめています…");
+      try { key = await X.openLock(sealed.lock, pw); } catch (err) { key = null; }
+      if (key) break;
+      KN.ui.toast("合言葉が違います");
+    }
+
+    const list = [];
+    let broken = 0;
+    for (let i = 0; i < sealed.days.length; i++) {
+      const d = sealed.days[i];
+      try {
+        list.push({ date: d.date, body: await X.open(key, d) });
+      } catch (err) {
+        broken++;
+      }
+    }
+    if (!list.length) {
+      KN.ui.toast("控えを開けませんでした（何も変えていません）");
+      return;
+    }
+
+    const plan = store.importDiary(list, { dry: true });
+    if (!plan.add && !plan.fill) {
+      KN.ui.toast("この控えの日記は、もう全部入っています（何も変えていません）");
+      return;
+    }
+    const after = JSON.stringify(store.get()).length + plan.chars;
+    if (after > DIARY_LIVE_LIMIT) {
+      await KN.ui.confirm({
+        title: "入りきりません",
+        message: `取り込むと、記録が${charText(after)}になり、この端末の記録の置き場（iPhone でおよそ5MB）に入りきりません。あふれると、日記だけでなく、ほかの記録も保存できなくなるので、取り込みませんでした（何も変えていません）。`,
+        okLabel: "わかった", cancelLabel: "閉じる",
+      });
+      return;
+    }
+
+    const span = plan.from === plan.to ? dayText(plan.from) : `${dayText(plan.from)}〜${dayText(plan.to)}`;
+    const notes = [
+      plan.kept ? "すでに本文のある日は、そのままにします（上書きしません）。" : "",
+      broken ? "開けなかった日がありました（その日は入れません）。" : "",
+    ].join("");
+    const go = await KN.ui.confirm({
+      title: "日記を取り込みますか？",
+      message: `${span}の日記です。本文の無い日にだけ入れます。${notes}取り込むと、記録は${charText(after)}になります。直前の状態は自動バックアップに残ります。`,
+      okLabel: "取り込む",
+    });
+    if (!go) return;
+    if (!(await keepBefore("日記の取り込み前"))) return;
+    try {
+      store.importDiary(list);
+      KN.motion.fire("success");
+      KN.ui.toast(plan.kept ? "取り込みました（本文のあった日は、そのままです）" : "取り込みました", { duration: 5000 });
+    } catch (err) {
+      console.error(err);
+      KN.ui.toast(`取り込めませんでした：${String((err && err.message) || err)}`);
+    }
+    render();
+  }
+
+  /* "2019-04-01" → "2019年4月1日" */
+  function dayText(key) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ""));
+    return m ? `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日` : "";
+  }
+
   /** 設定に出す、この端末の中の量（backup.usage）。 */
   function usageText(u) {
     const diary = u.diaryChars ? `（うち日記 ${charText(u.diaryChars)}）` : "";
@@ -2429,6 +2559,7 @@
   function dataRows() {
     const file = importInput();
     const verify = verifyInput();
+    const diaryFile = diaryImportInput();
     const snaps = KN.backup.list();
     return [
       card(
@@ -2450,6 +2581,12 @@
       ),
       foot(usageText(KN.backup.usage())),
       foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。"),
+      /* 日記の取り込み（D7）。取り込み道具の README が「設定 → 日記を取り込む」
+         と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
+      card(
+        navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() })
+      ),
+      foot("取り込み道具（パソコンで日記の PDF から作る控え）を読みます。本文の無い日にだけ入れ、すでに書いてある日には触れません。"),
       /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
          「戻す」の隣に「消す」が並ぶことになります。 */
       card(
@@ -2457,6 +2594,7 @@
       ),
       file,
       verify,
+      diaryFile,
     ];
   }
 

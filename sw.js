@@ -42,6 +42,7 @@ const ASSETS = [
   "js/day-swipe.js",
   "js/cal-swipe.js",
   "js/notify.js",
+  "js/ics.js",
   "js/food-data.js",
   "js/diet.js",
   "js/drinks.js",

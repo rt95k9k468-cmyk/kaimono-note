@@ -247,6 +247,9 @@
     d.el.classList.add("reorder-drop");
     d.el.style.transform = `translate3d(0, ${Math.round(landing - a.top + scrolled)}px, 0)`;
     haptic(12);
+    /* iPhone（motion.js の C1）。下で click を食べる前に——後にすると、
+       震わせるための click まで食べます。 */
+    KN.motion.tick("drop");
 
     // The press that lifted the row would otherwise land as a tap on release
     // and open whatever the row opens.
