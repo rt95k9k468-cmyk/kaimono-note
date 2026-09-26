@@ -1182,7 +1182,11 @@
       const bar = e.target.closest && e.target.closest(".topbar");
       if (!bar) return;
       if (e.target.closest("button, a, input, textarea, select, label")) return;
-      glideToTop(activeScreen());
+      /* 戻すのは**送る器**です（紙が器になった画面では、画面そのものは
+         送れない）。`activeScreen()` のままだった二つ（ここと、下のノッチ）は、
+         押しても何も起きていませんでした（実測：やること・daily・買うもの・
+         ダイエットで、600px 送った紙が 600px のまま）。 */
+      glideToTop(scrollerOf(activeScreen()));
     });
 
     /* And the status bar — only on a touch screen, which is the only place
@@ -1224,7 +1228,7 @@
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
       const quiet = !touching && !isGliding() && !(KN.reorder && KN.reorder.isActive());
-      const el = quiet ? activeScreen() : null;
+      const el = quiet ? scrollerOf(activeScreen()) : null;
       // The pixel goes back either way, so the next tap has something to take.
       window.scrollTo(0, TOP_TAP_PARK);
       if (el && el.scrollTop > 0) { glideToTop(el); haptic(); }
