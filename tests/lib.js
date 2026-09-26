@@ -32,14 +32,16 @@ async function ensureServer() {
   throw new Error(`サーバーが立ち上がらない（${PORT}）`);
 }
 
-/** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors } */
-async function open({ viewport = { width: 390, height: 844 } } = {}) {
+/** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
+    before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
+async function open({ viewport = { width: 390, height: 844 }, before } = {}) {
   await ensureServer();
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ serviceWorkers: "block", viewport });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  if (before) await before(ctx, page);
   await page.goto(URL);
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
   await page.waitForTimeout(300);
