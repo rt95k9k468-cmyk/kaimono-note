@@ -41,6 +41,10 @@ jobs:
       - name: Stamp the build into the service worker and asset URLs
         run: node stamp-build.js
 
+      # The test scripts (tests/) are for local runs only; keep them off the site.
+      - name: Leave the test scripts out of the site
+        run: rm -rf tests
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
