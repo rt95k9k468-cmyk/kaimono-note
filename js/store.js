@@ -260,13 +260,20 @@
   function num(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
   function posNum(v) { const n = num(v); return n != null && n > 0 ? n : null; }
   function dayStr(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
+  /* 記録の日。**欠けた・読めない日を today() で埋めない**——あれは時刻つきの
+     UTC の文字列で、どの日のかぎ（YYYY-MM-DD）とも一致しないので、記録が
+     どの日にも出なくなります（しかも読み込むたびに新しい時刻へ書き換わる）。
+     時刻を持つ値はローカルの日に直し（toDayKey）、何の手がかりも無いときだけ
+     今日に置きます。load の途中（reconcileDiet）から呼ばれるので、巻き上がる
+     function 宣言で。 */
+  function recDay(v) { return toDayKey(v) || todayKey(); }
 
   function cleanWeight(w, i) {
     const kg = posNum(w.kg);
     if (!kg || kg > 400) return null;
     return {
       id: w.id || uid("w"),
-      day: dayStr(w.day) || today(),
+      day: recDay(w.day),
       time: KN.util.isTime(w.time) ? w.time : null,
       kg: Math.round(kg * 100) / 100,
       // 体脂肪率。0 は「測れなかった」であって 0% ではないので、null に倒します。
@@ -344,7 +351,7 @@
     if (!volumeMl) return null;
     return {
       id: d.id || uid("dr"),
-      day: dayStr(d.day) || today(),
+      day: recDay(d.day),
       time: KN.util.isTime(d.time) ? d.time : null,
       kind,
       kindLabel: label,
@@ -416,7 +423,7 @@
       /* ローカルの日（todayKey）。`today()` は UTC なので、ここで混ぜると
          JST の夜9時の記録が翌日に付きます——飲みたくなるのはたいてい夜
          なので、この機能ではそのずれが毎日出ます。 */
-      day: dayStr(u.day) || todayKey(),
+      day: recDay(u.day),
       time: KN.util.isTime(u.time) ? u.time : null,
       before,
       /* どんなときか（外側）。持っていない古い記録は空で足すだけなので、
@@ -469,7 +476,7 @@
     if (!items.length && !ai && !String(m.memo || "").trim()) return null;
     return {
       id: m.id || uid("m"),
-      day: dayStr(m.day) || today(),
+      day: recDay(m.day),
       time: KN.util.isTime(m.time) ? m.time : null,
       slot: MEAL_SLOTS.includes(m.slot) ? m.slot : "snack",
       items,
@@ -518,7 +525,7 @@
     return {
       id: h.id || uid("h"),
       type: h.type,
-      day: dayStr(h.day) || today(),
+      day: recDay(h.day),
       time: KN.util.isTime(h.time) ? h.time : null,
       value,
       unit: typeof h.unit === "string" ? h.unit : "",
