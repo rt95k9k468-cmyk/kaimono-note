@@ -993,14 +993,14 @@
       if (!name) { KN.ui.toast("題を書くと、カレンダーに入れられます"); return; }
       haptic();
       const memoBox = body.querySelector(".js-memo");
-      KN.ics.offer(KN.ics.make({
+      KN.ics.send({
         uid: `${todoId || "new-" + Date.now()}-${day}@kurashi-note`,
         title: due ? name : `${name}（期限）`,
         memo: memoBox ? memoBox.value : (t && t.memo) || "",
         day,
         time: due ? time : null,
         minutes,
-      }), day);
+      });
     });
 
     /* The days a todo is nearly always for, in one press each. Typing a date
@@ -4448,7 +4448,13 @@
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
           style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
-        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
+        ${/* 時刻を決めていない用事の時刻は、その場で詰めた**目安**なので「ごろ」を
+              添えます（B6）。前は字の太さだけが違い、「17:03」を決めた時刻と
+              読み違えました（詳細を開くと「時刻なし」）。「ごろ」は時刻の**下**に
+              浮かせます——列は 44px で横に並べる幅が無く、行の中に積むと時刻の
+              字が丸の中心からずれるので。済ませたもの（押した時刻）には付けない。 */""}
+        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}${
+          !it.fixed && !closed && it.at ? html`<span class="tl-about">ごろ</span>` : ""}</span>
         <span class="tl-rail"><span class="tl-node">${tlMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
 

@@ -3751,6 +3751,18 @@ a.btn { text-decoration: none; }
 /* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
 .tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
 .tl-time.is-now { color: var(--c-primary); font-weight: 700; }
+/* 決めていない時刻の「ごろ」（B6）。時刻の字の真下に浮かせます——入れものの
+   高さは変えないので、時刻は丸の中心に残り、clearOfClocks の測る箱も同じ。 */
+.tl-time { position: relative; }
+.tl-about {
+  position: absolute;
+  right: 3px;
+  top: 100%;
+  font-size: var(--fs-xs);
+  line-height: 1;
+  color: var(--c-text-3);
+  white-space: nowrap;
+}
 
 /* 線。行の高さいっぱいに引いて、丸を上に乗せます。 */
 .tl-rail {
