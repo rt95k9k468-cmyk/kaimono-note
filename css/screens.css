@@ -2023,6 +2023,12 @@
 /* 紙の中（シート）で使うぶんは、外側の余白を紙が持っているので詰める。 */
 .set-foot.is-flush { padding: 0; margin: 0 0 var(--sp-2); }
 
+/* 保存したバックアップを確かめた結果。このファイルといまを、数で並べるだけ。 */
+.verify-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.verify-table th, .verify-table td { padding: var(--sp-1) 0; text-align: right; }
+.verify-table th:first-child, .verify-table td:first-child { text-align: left; color: var(--c-text-2); }
+.verify-table th { font-size: var(--set-fs-foot); font-weight: 400; color: var(--c-text-3); }
+
 /* ---- カードと行 ---- */
 
 .set-card {

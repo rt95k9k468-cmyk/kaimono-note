@@ -633,6 +633,18 @@
     return emptyState();
   }
 
+  /* 日のかぎ（YYYY-MM-DD）に揃えます。**時刻を持つ値はローカルの日に直す**
+     ——先頭10文字で切ると UTC の日付になり、日本時間の0〜9時のものが前の日に
+     付きます（today() と dayKey() の取り違え）。読めない値は ""。
+     load の途中（reconcile）から呼ばれるので、巻き上がる function 宣言で。 */
+  function toDayKey(v) {
+    const str = String(v == null ? "" : v).trim();
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? "" : KN.util.dayKey(d);
+  }
+
   /** Fill in anything a older/partial save is missing so the app never crashes. */
   function reconcile(s) {
     const base = emptyState();
@@ -661,10 +673,16 @@
     };
     /* 書いた時刻・直した時刻。並び順がこれで決まるので、持っていないものが
        混ざると先頭に来たり最後に沈んだりします。日付しか無いものには、その日を
-       充てておきます（嘘の時刻を作るより、粗いほうがまだ読めます）。 */
+       充てておきます（嘘の時刻を作るより、粗いほうがまだ読めます）。
+
+       **日付そのものが無い・読めないとき**は、まず記録自身の作成時刻の日から
+       取ります。前はいきなり今日で埋めていたので、読み込んだ日へ黙って
+       引っ越し、次の保存でそのまま固まっていました。今日で埋めるのは、何の
+       手がかりも無いときだけ——どの日にも出ない記録になるよりは、まだ
+       見つけて直せるので。 */
     out.archive.entries = out.archive.entries.filter((e) => e && e.id && e.type);
     out.archive.entries.forEach((e) => {
-      e.date = String(e.date || "").slice(0, 10) || todayKey();
+      e.date = toDayKey(e.date) || toDayKey(e.createdAt) || todayKey();
       if (!e.createdAt) e.createdAt = e.date;
       if (!e.updatedAt) e.updatedAt = e.createdAt;
       if (!Array.isArray(e.tags)) e.tags = [];
@@ -1008,6 +1026,24 @@
      ずっと出る行を表示できます（一度きりのトーストは読み飛ばされるので）。 */
   let saveError = null;
 
+  /* live を書きます。**容量で落ちたら、自動の控えに退いてもらってから**
+     もう一度書きます（backup.js の makeRoom）。控えは本体を守るための
+     ものなので、控えのせいで本体が書けないのは逆さまです——前はこの順番を
+     控えの側（backup.js の write）しか守っていませんでした。 */
+  function writeLive() {
+    /* 読めなかった日は、書きません（persist と同じ理由）。flushPending は
+       前これを見ずに書いていたので、隠れる直前の一拍だけは、空の state で
+       本物を上書きできました。ここで塞げば、どの道から来ても同じです。 */
+    if (loadError) return;
+    const json = JSON.stringify(state);
+    try {
+      localStorage.setItem(KEY, json);
+    } catch (err) {
+      const makeRoom = KN.backup && KN.backup.makeRoom;
+      if (!makeRoom || !makeRoom(() => localStorage.setItem(KEY, json))) throw err;
+    }
+  }
+
   let saveTimer = null;
   function persist() {
     clearTimeout(saveTimer);
@@ -1022,7 +1058,7 @@
          直った版で開き直せば、そのまま元のデータが読めます。 */
       if (loadError) return;
       try {
-        localStorage.setItem(KEY, JSON.stringify(state));
+        writeLive();
         if (saveError) {
           saveError = null;
           KN.ui && KN.ui.toast("保存を再開しました");
@@ -1061,7 +1097,7 @@
     if (!saveTimer) return;
     clearTimeout(saveTimer);
     saveTimer = null;
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* the next save reports it */ }
+    try { writeLive(); } catch (err) { /* the next save reports it */ }
   }
 
   /* Re-read what is actually on disk. Each tab — or the same installed app
@@ -2907,8 +2943,17 @@
   /* 日付は「日のかぎ」（YYYY-MM-DD）で持ちます。today() は時刻まで持つので、
      そのまま入れると こよみの粒も「その日だけ」の絞り込みも当たりません
      （月の絞り込みだけは先頭7文字で偶然当たるので、気づきにくい種類の食い違い
-     です）。入口で一度だけ削ります。 */
-  const dayKeyOf = (v) => String(v || todayKey()).slice(0, 10);
+     です）。入口で一度だけ削ります。
+
+     **削る前に、時刻を持つ値はローカルの日に直します**（toDayKey）。先頭
+     10文字で切るだけだと、today() の値は UTC の日になり、日本時間の0〜9時の
+     ものが前の日に付きます。いまの呼び出し元はみな日のかぎを渡しているので
+     実際には起きていませんが、切るだけの形は、渡し間違えた日にだけ静かに
+     ずれる罠なので。読めない値だけは、これまでどおり先頭10文字。 */
+  const dayKeyOf = (v) => {
+    const s = String(v || todayKey());
+    return toDayKey(s) || s.slice(0, 10);
+  };
 
   const archive = () => state.archive || (state.archive = emptyArchive());
   const stamp = () => new Date().toISOString();
@@ -3284,29 +3329,78 @@
 
   /* ---------------- import / export ---------------- */
 
-  function exportJSON() {
-    return JSON.stringify({ ...state, exportedAt: today(), app: "kaimono-note" }, null, 2);
+  /** `at` を渡すと、その時刻を書き出し日時にします（保存できたと分かった
+      ときに、同じ時刻を「前回の書き出し」として記録するため）。 */
+  function exportJSON(at) {
+    return JSON.stringify({ ...state, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
+  }
+
+  /** 記録の数。復元の前後・自動の控え・書き出しの確かめで、同じ物差しを
+      使うためのものです。daily の日は、中身のある日だけを数えます。 */
+  function countsOf(s) {
+    const st = s || state;
+    const len = (a) => (Array.isArray(a) ? a.length : 0);
+    const d = (st && st.diet) || {};
+    const arc = (st && st.archive) || {};
+    const days = (Array.isArray(arc.days) ? arc.days : []).filter((x) => x
+      && (String(x.memo || "").trim() || x.wake || x.sleep || x.sleepStages)).length;
+    return {
+      products: len(st && st.products),
+      stores: len(st && st.stores),
+      items: len(st && st.items),
+      todos: len(st && st.todos),
+      days,
+      entries: len(arc.entries),
+      diet: len(d.weights) + len(d.meals) + len(d.health) + len(d.drinks)
+        + len(d.foods) + len(d.urges),
+    };
+  }
+
+  /* 丸ごとのバックアップではないもの。どれも同じ .json なので、ファイルを
+     選ぶ画面では見分けがつきません。前はこれも古い形（v1）として読み、
+     買うものしか拾わない migrateV1 が**空の state** を返して、全部を
+     置き換えていました（しかも「復元しました」と出ました）。 */
+  const NOT_BACKUP = {
+    "daily-month": "daily の月の書き出しです",
+    "diary-sealed": "日記の取り込み道具で作ったファイルです",
+  };
+
+  /** 読んで、確かめて、戻せる形にします。**何も書き換えません。**
+      バックアップでなければ、理由を言う Error を投げます。 */
+  function readBackup(text) {
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (err) { throw new Error("JSON として読めないファイルです"); }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("形式が正しくありません");
+    // 丸ごとのバックアップ（書き出し・自動の控え）は kind を持ちません。
+    if (parsed.kind) throw new Error(`${NOT_BACKUP[parsed.kind] || "丸ごとのバックアップではないファイルです"}。バックアップではありません`);
+    if (parsed.app && parsed.app !== "kaimono-note") throw new Error("くらしノートのファイルではありません");
+    if (parsed.schema >= 2) return { parsed, next: reconcile(parsed) };
+    // 古い形（v1）は、買うものを必ず持っていました。
+    if (Array.isArray(parsed.products)) return { parsed, next: migrateV1(parsed) };
+    throw new Error("バックアップの形をしていません");
+  }
+
+  /** 戻す前・確かめるときに、中身を見るだけ。`{ ok, reason, exportedAt, counts }` */
+  function inspectBackup(text) {
+    try {
+      const { parsed, next } = readBackup(text);
+      return { ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next) };
+    } catch (err) {
+      return { ok: false, reason: String((err && err.message) || err) };
+    }
   }
 
   function importJSON(text) {
-    const parsed = JSON.parse(text);
-    if (!parsed || typeof parsed !== "object") throw new Error("形式が正しくありません");
-    const next = parsed.schema >= 2 ? reconcile(parsed) : migrateV1(parsed);
+    const { next } = readBackup(text);
     update((s) => {
+      /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
+         おぼえた振り分け（learned）と daily を足し忘れて直したあとも、
+         `iconOverrides`（食事メモの絵の言い換え）と `iconReports` が
+         漏れていました——書き出しと自動の控えには入っているのに、戻すと
+         入らない。足し忘れる形そのものをやめます。書き出しの付けたし
+         （exportedAt・app）は state の欄ではないので、戻しません。 */
+      Object.keys(emptyState()).forEach((k) => { s[k] = next[k]; });
       s.schema = SCHEMA;
-      s.categories = next.categories;
-      s.stores = next.stores;
-      s.products = next.products;
-      s.items = next.items;
-      s.todos = next.todos;
-      s.diet = next.diet;
-      s.settings = next.settings;
-      // おぼえた振り分け（商品名→カテゴリ）。書き出しには入っているのに
-      // ここで戻し忘れていたので、復元すると学習だけが消えていました。
-      s.learned = next.learned;
-      // daily。上と同じ理由で、ここに書きます——この列挙は足し忘れると
-      // 「書き出しには入っているのに、戻すと消える」を静かに起こします。
-      s.archive = next.archive;
     });
   }
 
@@ -3412,6 +3506,6 @@
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth, archiveThen,
-    exportJSON, importJSON, reset, loadSample,
+    exportJSON, importJSON, inspectBackup, countsOf, reset, loadSample,
   };
 })();
