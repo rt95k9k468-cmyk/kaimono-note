@@ -2155,7 +2155,6 @@
     wrap.append(row);
 
     row.querySelector(".check").addEventListener("click", (e) => tick(t.id, e.currentTarget));
-    KN.motion.feel(row.querySelector(".check"));   // iPhone で震える（C1）
     row.querySelector(".fav").addEventListener("click", () => {
       store.updateTodo(t.id, { flagged: !t.flagged });
       haptic(12);
@@ -4510,7 +4509,6 @@
         if (t.trace) { untrace(t); return; }
         tick(t.id, e.currentTarget);
       });
-      if (!t.trace) KN.motion.feel(box);   // iPhone で震える（C1）
     }
 
     /* 手順は、行の下にたたんで置きます。
