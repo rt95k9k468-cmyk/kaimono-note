@@ -75,24 +75,27 @@
 
 ## テストの回し方
 
-- Playwright を使う。テストスクリプトはリポジトリの外
-  （セッションのスクラッチディレクトリ）に置き、コミットしない。
+- Playwright を使う。**台本は `tests/` に置いてコミットする**（2026年9月26日から。
+  サイトには載らない——デプロイが上げる前に消す。`sw.js` / `build-standalone.js`
+  には入れない）。一覧と決めごとは `tests/README.md`。文脈・待ち方・サーバーは
+  `tests/lib.js` の `open()` に寄せてあるので、新しい台本もそれを使う。
 - ローカルサーバー：
   ```
   (setsid python3 -m http.server 8765 --directory "$(git rev-parse --show-toplevel)" >/dev/null 2>&1 < /dev/null &)
   ```
   サーバーはターンをまたぐと落ちていることがあるので、テスト前に生きて
   いるか確認し、必要なら上のコマンドで再起動する。
-- 実行：`NODE_PATH=/opt/node22/lib/node_modules node <test>.js`
+- 実行：`NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`
+  （`lib.js` はサーバーが落ちていれば自分で立ち上げる）
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
   （`app.js` の `controllerchange`）。`newContext({ serviceWorkers: "block" })` で作る。
   日記の本文と控えは IndexedDB にもあり、reload をまたいで残る（docs/storage.md の
   「試験の罠」）。
-- 既存のテスト資産（daily-rules.js / daily2-smoke.js / aimeal.js など）は
-  過去のセッションのスクラッチ領域にあり、新しいセッションでは失われて
-  いる。テストを再走行したい場合は、対象の挙動から新しく書き起こす。
-- 変更のたびに、触った画面の主要テストと `daily-rules.js`（dailyの非評価
-  原則）は必ず走らせる。
+- `tests/` に無い試験（daily2-smoke.js / aimeal.js など、9月26日より前の
+  もの）は失われている。要るときは対象の挙動から書き起こし、`tests/` に足す
+  ——書き直しの浪費は一度で終わらせる。
+- 変更のたびに、触った画面の主要テストと `tests/daily-rules.js`（dailyの
+  非評価原則）は必ず走らせる。
 - **localStorage に直に書いてから `reload()` するなら、立ち上げを待つこと。**
   待たずにやると、**注入した中身ごと消えます**。`app.js` が `pagehide` で
   `store.flush()` を呼ぶので、120msデバウンスの保存が待機中のまま reload
