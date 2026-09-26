@@ -772,42 +772,68 @@
                  onTap: () => go("calHow") })
       ) : null,
       KN.ics && KN.ics.apple() ? foot(
-        "オンにすると、「カレンダーに入れる」を押すだけで、決めたカレンダーにそのまま入ります。先にショートカット App で手順を一度だけ組んでください。") : null,
+        "オンにすると、「カレンダーに入れる」を押すだけで、決めたカレンダーにそのまま入ります。先にショートカット App で、二つの小さなショートカットを一度だけ組んでください。") : null,
     ];
   }
 
   /** ショートカットの組み方。アプリから渡すもの（KN.ics.shortcutText）と
-      一対なので、キーの名前を変えるときは両方を。 */
+      一対なので、キーの名前を変えるときは両方を。
+
+      書き方は**端末に出る字のとおり**（iOS 17・18 の日本語表記）。前は
+      「if文」で終日を分ける一本にしていたが、そこが分かりにくいと言われ、
+      二本（時刻あり・終日）の一本道にした。二本目は複製して一か所変えるだけ。 */
   function calHowRows() {
-    const name = KN.ics.SHORTCUT;
+    const one = KN.ics.SHORTCUT, day = KN.ics.SHORTCUT_DAY;
     const nameCard = node(html`
       <div class="set-card is-pad">
-        <div class="diet-relaykey"><code>${name}</code></div>
-        <button type="button" class="btn btn-soft btn-block js-copyname" style="margin-top:10px">
-          名前をコピー
+        <div class="diet-relaykey"><code>${one}</code></div>
+        <button type="button" class="btn btn-soft btn-block js-copy1" style="margin-top:8px">
+          一つ目の名前をコピー
+        </button>
+        <div class="diet-relaykey" style="margin-top:14px"><code>${day}</code></div>
+        <button type="button" class="btn btn-soft btn-block js-copy2" style="margin-top:8px">
+          二つ目の名前をコピー
         </button>
       </div>
     `);
-    nameCard.querySelector(".js-copyname").addEventListener("click", () => copyText(name, "名前"));
-    const steps = node(html`
+    nameCard.querySelector(".js-copy1").addEventListener("click", () => copyText(one, "名前"));
+    nameCard.querySelector(".js-copy2").addEventListener("click", () => copyText(day, "名前"));
+    const first = node(html`
       <div class="set-card is-pad">
         <ol class="diet-steps">
-          <li>「ショートカット」App で右上の<b>＋</b>を押し、新しいショートカットを作る。名前は上の<b>${name}</b>（一字でも違うと動きません）</li>
-          <li>アクション<b>「入力から辞書を取得」</b>を足す。入力は<b>「ショートカットの入力」</b></li>
-          <li>アクション<b>「if文」</b>（もし）を足す。入力に<b>「辞書」</b>を選び、それを押してキーに <b>allday</b>。条件は<b>「が次と等しい」</b>で <b>yes</b></li>
-          <li>「if文」の中に<b>「新規イベントを追加」</b>を足し、カレンダーを<b>入れたいもの（自宅など）</b>にする。<b>終日</b>をオン</li>
-          <li>「その他の場合」の中にも<b>「新規イベントを追加」</b>を足す（カレンダーは同じ。<b>終日はオフ</b>）</li>
-          <li>二つの「新規イベントを追加」のそれぞれで、欄に<b>「辞書」</b>を入れ、押してキーを書く——題は <b>title</b>、開始日は <b>start</b>、終了日は <b>end</b>、メモは <b>memo</b></li>
-          <li>ここへ戻り、「カレンダーはショートカットで入れる」をオンにする</li>
+          <li>「ショートカット」App を開き、下の<b>「ショートカット」</b>タブで、右上の<b>＋</b>を押す</li>
+          <li>いちばん上の<b>「新規ショートカット」</b>を押し、<b>「名前を変更」</b>を押して <b>${one}</b> にする（上の「一つ目の名前をコピー」を押してから貼り付けると確実です）</li>
+          <li>下の検索欄（<b>「アクションを検索」</b>）に <b>辞書</b> と打ち、出てきた<b>「入力から辞書を取得」</b>を押す</li>
+          <li>足された行の、青い字の<b>「入力」</b>を押し、<b>「ショートカットの入力」</b>を選ぶ。行が「ショートカットの入力 から辞書を取得」になれば正しい（上に「受け取る」の行が増えても、そのままで大丈夫）</li>
+          <li>もう一度、下の検索欄に <b>カレンダー</b> と打ち、<b>「新規予定を追加」</b>を押す</li>
+          <li>「新規予定を追加」の行の、青い字の<b>「タイトル」</b>を押す。キーボードの上に<b>「辞書」</b>が出るので、それを押す（出ていなければ<b>「変数を選択」</b>を押し、上の「入力から辞書を取得」の行を押す）</li>
+          <li>いま入った<b>「辞書」</b>を、もう一度押す。出てきたメニューの<b>いちばん下</b>にある<b>「キーの値を取得」</b>の欄に <b>title</b> と打ち、<b>「完了」</b></li>
+          <li>青い字の<b>「カレンダー」</b>を押し、入れたいカレンダー（<b>自宅</b>など）を選ぶ</li>
+          <li>始まりの日時の欄（最初は「今日 …」のような字）を押し、中の字を消してから、6・7と同じやり方で「辞書」を入れて、キーは <b>start</b></li>
+          <li>終わりの日時の欄も同じやり方で、キーは <b>end</b></li>
+          <li>行の右下の<b>「＞」</b>（版によっては<b>「表示を増やす」</b>）を押して続きを開く。<b>「終日」はオフのまま</b>。<b>「メモ」</b>にも同じやり方で「辞書」を入れ、キーは <b>memo</b>（メモが要らなければ、ここは飛ばしてよい）</li>
+          <li>右上の<b>「完了」</b>を押して閉じる</li>
+        </ol>
+      </div>
+    `);
+    const second = node(html`
+      <div class="set-card is-pad">
+        <ol class="diet-steps">
+          <li>「ショートカット」タブの一覧で、いま作った<b>「${one}」を長押し</b>し、<b>「複製」</b>を押す</li>
+          <li>増えたほう（名前の後ろに<b> 1</b> が付いたもの）を開き、いちばん上の名前を押して<b>「名前を変更」</b>で <b>${day}</b> にする</li>
+          <li>「新規予定を追加」の行の<b>「＞」</b>（または「表示を増やす」）を開き、<b>「終日」をオン</b>にする。ほかは触らない</li>
+          <li>右上の<b>「完了」</b></li>
         </ol>
       </div>
     `);
     return [
       head("名前"),
       nameCard,
-      head("組み方"),
-      steps,
-      foot("キーは半角の小文字で。終わったら、左上の「◀ くらしノート」で戻れます。予定の中身は、この端末のショートカット App に渡るだけで、どこにも送りません。"),
+      head("一つ目（時刻のある予定）"),
+      first,
+      head("二つ目（終日の予定）"),
+      second,
+      foot("終わったら、ここへ戻って「カレンダーはショートカットで入れる」をオンにしてください。キー（title・start・end・memo）は半角の小文字で。予定を入れたあとは、左上の「◀ くらしノート」で戻れます。予定の中身は、この端末のショートカット App に渡るだけで、どこにも送りません。"),
     ];
   }
 

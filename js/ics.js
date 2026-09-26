@@ -204,10 +204,15 @@
 
      ・日時は「2026/09/27 17:00」の形。ショートカットは日付の欄に入れた字を
        日付として読みます。終日なら時刻を付けず、始まりも終わりも同じ日。
-     ・`allday` は "yes" / "no" の字。手順の「もし」で字を比べます。
-     ・名前（`SHORTCUT`）は手順のほうと一字でも違えば動かないので、変えない。
+     ・ショートカットは**二つ**：時刻のある予定は `SHORTCUT`、終日は `SHORTCUT_DAY`。
+       最初は一つにして中で「if文」で分けていたが、if文の組み方が分かりにくいと
+       言われた。二つなら、どちらも「辞書を取得 → 新規予定を追加」の一本道で、
+       二つ目は一つ目を複製して「終日」をオンにするだけ。
+     ・`allday`（"yes" / "no"）は残してある（使わなくても害はない）。
+     ・名前は手順のほうと一字でも違えば動かないので、変えない。
      ・中身は URL に載ってショートカット App へ渡るだけで、どこにも送りません。 */
   const SHORTCUT = "くらしノートの予定";
+  const SHORTCUT_DAY = "くらしノートの終日";
 
   /** iPhone・iPad・Mac（どれもショートカット App がある）。 */
   const apple = () => {
@@ -247,7 +252,8 @@
   }
 
   function shortcutURL(ev) {
-    return "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT)
+    const allDay = !(ev.time && KN.plan.toMin(ev.time) != null);
+    return "shortcuts://run-shortcut?name=" + encodeURIComponent(allDay ? SHORTCUT_DAY : SHORTCUT)
       + "&input=text&text=" + encodeURIComponent(shortcutText(ev));
   }
 
@@ -262,5 +268,5 @@
   }
 
   KN.ics = { make, save, offer, send, payload, helperURL, fileName, fold, esc,
-             apple, SHORTCUT, shortcutText, shortcutURL };
+             apple, SHORTCUT, SHORTCUT_DAY, shortcutText, shortcutURL };
 })();
