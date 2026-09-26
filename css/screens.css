@@ -1876,7 +1876,12 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
+  /* **ブラウザ本来の跳ね返りは切りません**（紙 `.tl-sheet` と同じ）。
+     `overscroll-behavior-y: none` にしていたころは、勢いで端に着くと一度
+     ぴたりと止まり、そのあと pull-refresh の小さな帯（最大 46px）が
+     別に動くだけで、跳ね返りが甘かった——中身が画面より長い health と
+     daily の設定で目立った。端から外へ引き始めた指の give は、紙と同じく
+     pull-refresh が返します。 */
   -webkit-overflow-scrolling: touch;
   /* 縦はブラウザに残し、横だけこちらで取ります（day-swipe.js と同じ手）。
      `preventDefault` は投げません——投げると、戻らないと決めたあとの縦送り

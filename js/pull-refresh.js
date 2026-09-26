@@ -220,14 +220,14 @@
   /* **帯を出すのは、ブラウザが自分では跳ね返さない器だけです。**
 
      前は `.screen` だけを見ていました。画面そのものが送っていたころの名残で、
-     紙が器になったいま、**画面が自分で送る画面は一つも無く**（ダイエットも
-     紙が送る）、この帯は一度も出ていませんでした（実測：五画面とも両端 0px）。
-     設定（`.set-scroll`）は `overscroll-behavior-y: none` で本来の跳ね返りも
-     切ってあるので、勢いよく払うと**両端とも**壁に当たって止まっていました。
+     紙が器になったいま、画面が自分で送るのは価格だけです。
 
-     紙（`.tl-sheet`）は本来の跳ね返りを残してある（sheet-scroll の docs）ので、
-     ここで帯まで出すと二重に跳ねます。だから器の名前ではなく
-     `overscroll-behavior-y` を見ます。測るのは端に着いた一瞬だけです。 */
+     紙（`.tl-sheet`）と設定（`.set-scroll`）は本来の跳ね返りを残してある
+     （sheet-scroll の docs）ので、ここで帯まで出すと二重に跳ねます。だから
+     器の名前ではなく `overscroll-behavior-y` を見ます。測るのは端に着いた
+     一瞬だけです。**この帯は本来の跳ね返りの代わりにはなりません**
+     ——いったん壁で止まってから別に動くので、甘い。設定を `none` に
+     していたころ、health と daily の設定でそれが目立ちました。 */
   function bounceless(el) {
     const active = host.querySelector(".screen.is-active");
     const sc = (KN.app && KN.app.scrollerOf) ? KN.app.scrollerOf(active) : active;
