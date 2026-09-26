@@ -922,7 +922,7 @@
         const n = daysUntil(due);
         const near = n === 0 ? "今日" : n === 1 ? "明日" : n === 2 ? "明後日"
           : n === -1 ? "昨日" : (n < 0 ? `${-n}日前` : `${n}日後`);
-        const full = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）`;
+        const full = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})`;
         row(".js-row-due", full, near);
       } else {
         row(".js-row-due", "日付なし", "");
@@ -937,7 +937,7 @@
         const near = n === 0 ? "今日まで" : n === 1 ? "明日まで"
           : n < 0 ? `${-n}日すぎています` : `あと${n}日`;
         row(".js-row-limit",
-            `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）まで`, near);
+            `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})まで`, near);
       } else {
         row(".js-row-limit", "期限なし", "");
       }

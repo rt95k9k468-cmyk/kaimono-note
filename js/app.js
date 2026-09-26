@@ -393,7 +393,11 @@
        写しを取るのはこの**あと**でないといけません——`to()` が滑り出す
        瞬間に `snap()` するので、絵と名前が新しくなる前に呼ぶと、
        レンズの中だけ前の行が残ります。 */
-    if (KN.tabLens && hereBtn) KN.tabLens.to(hereBtn);
+    if (KN.tabLens) {
+      if (hereBtn) KN.tabLens.to(hereBtn);
+      // 設定のように席を持たない画面では、印を伏せます（tab-lens.js の clear）。
+      else KN.tabLens.clear();
+    }
 
     /* 席が変われば、帯の裏に来るものも変わります。送りの合図は来ないので、
        ここで一度見直すこと（ガラスは、まわりを見ている）。 */

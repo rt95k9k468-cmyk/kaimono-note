@@ -787,6 +787,11 @@ body {
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  /* 禁則は厳しいほうで。既定（normal）だと、長音・小さい仮名の前でも
+     折り返すので、「トイレットペーパ／ー」のように**「ー」一字だけが
+     次の行へ落ちます**（品名の欄は値段と店名に押されて狭いので、よく
+     起きていました）。継承するので、ここ一か所で全画面に効きます。 */
+  line-break: strict;
 }
 
 /* 動きを減らす設定の端末では、揺れ・拡大縮小・弾みをすべて瞬時にします。
