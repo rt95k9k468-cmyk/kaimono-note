@@ -460,6 +460,7 @@
     stores: { title: "お店",                 build: () => [storesGroup()] },
     cats:   { title: "カテゴリ",              build: () => [categoriesGroup()] },
     icons:  { title: "アイコンについて",       build: () => [iconGapsGroup(), iconReportsGroup()] },
+    calHow:   { title: "ショートカットの組み方", build: calHowRows },
     relay:    { title: "中継所",   build: relayRows },
     relayHow: { title: "建てかた", build: relayHowRows },
   };
@@ -754,6 +755,59 @@
       canNotify ? foot(notifyBlocked
         ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
         : "アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます。") : null,
+      /* 「カレンダーに入れる」の近道（docs/todo-items.md の「カレンダーに入れる」）。
+         ショートカット App のある端末だけに出します。**既定はオフ**——手順を
+         組む前にオンにすると、押しても「ショートカットが見つかりません」に
+         なるので。組み方はすぐ下の「›」の先。 */
+      KN.ics && KN.ics.apple() ? card(
+        switchRow({
+          title: "カレンダーはショートカットで入れる", on: s.calShortcut === true,
+          onTap: (v) => {
+            store.update((x) => { x.settings.calShortcut = v; });
+            render();
+            KN.motion.fire("select");
+          },
+        }),
+        navRow({ ico: "calendar", tint: TINT.sync, title: "ショートカットの組み方",
+                 onTap: () => go("calHow") })
+      ) : null,
+      KN.ics && KN.ics.apple() ? foot(
+        "オンにすると、「カレンダーに入れる」を押すだけで、決めたカレンダーにそのまま入ります。先にショートカット App で手順を一度だけ組んでください。") : null,
+    ];
+  }
+
+  /** ショートカットの組み方。アプリから渡すもの（KN.ics.shortcutText）と
+      一対なので、キーの名前を変えるときは両方を。 */
+  function calHowRows() {
+    const name = KN.ics.SHORTCUT;
+    const nameCard = node(html`
+      <div class="set-card is-pad">
+        <div class="diet-relaykey"><code>${name}</code></div>
+        <button type="button" class="btn btn-soft btn-block js-copyname" style="margin-top:10px">
+          名前をコピー
+        </button>
+      </div>
+    `);
+    nameCard.querySelector(".js-copyname").addEventListener("click", () => copyText(name, "名前"));
+    const steps = node(html`
+      <div class="set-card is-pad">
+        <ol class="diet-steps">
+          <li>「ショートカット」App で右上の<b>＋</b>を押し、新しいショートカットを作る。名前は上の<b>${name}</b>（一字でも違うと動きません）</li>
+          <li>アクション<b>「入力から辞書を取得」</b>を足す。入力は<b>「ショートカットの入力」</b></li>
+          <li>アクション<b>「if文」</b>（もし）を足す。入力に<b>「辞書」</b>を選び、それを押してキーに <b>allday</b>。条件は<b>「が次と等しい」</b>で <b>yes</b></li>
+          <li>「if文」の中に<b>「新規イベントを追加」</b>を足し、カレンダーを<b>入れたいもの（自宅など）</b>にする。<b>終日</b>をオン</li>
+          <li>「その他の場合」の中にも<b>「新規イベントを追加」</b>を足す（カレンダーは同じ。<b>終日はオフ</b>）</li>
+          <li>二つの「新規イベントを追加」のそれぞれで、欄に<b>「辞書」</b>を入れ、押してキーを書く——題は <b>title</b>、開始日は <b>start</b>、終了日は <b>end</b>、メモは <b>memo</b></li>
+          <li>ここへ戻り、「カレンダーはショートカットで入れる」をオンにする</li>
+        </ol>
+      </div>
+    `);
+    return [
+      head("名前"),
+      nameCard,
+      head("組み方"),
+      steps,
+      foot("キーは半角の小文字で。終わったら、左上の「◀ くらしノート」で戻れます。予定の中身は、この端末のショートカット App に渡るだけで、どこにも送りません。"),
     ];
   }
 

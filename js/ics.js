@@ -179,12 +179,88 @@
    */
   function offer(text, day) {
     if (!(appleTouch() && standalone())) { save(text, fileName(day)); return; }
+    open(helperURL(text).replace(/^http/, "x-safari-http"));
+  }
+
+  function open(href) {
     const a = document.createElement("a");
-    a.href = helperURL(text).replace(/^http/, "x-safari-http");
+    a.href = href;
     document.body.append(a);
     a.click();
     a.remove();
   }
 
-  KN.ics = { make, save, offer, payload, helperURL, fileName, fold, esc };
+  /* ---------------- ショートカット App で、決めたカレンダーへ ----------------
+
+     Safari の道は、最後の二手（どのカレンダーか・戻る）が iPhone の側の決まりで
+     省けません。利用者が「ショートカット」App に**一度だけ**小さな手順を組めば、
+     押すだけで決めたカレンダー（自宅など）にそのまま入ります（設定の
+     「カレンダーはショートカットで入れる」。組み方は設定の「›」の先）。
+
+     渡すのは .ics ではなく、手順が読みやすい小さな JSON です。
+
+       { "title": "…", "start": "2026/09/27 17:00", "end": "2026/09/27 17:30",
+         "allday": "no", "memo": "…" }
+
+     ・日時は「2026/09/27 17:00」の形。ショートカットは日付の欄に入れた字を
+       日付として読みます。終日なら時刻を付けず、始まりも終わりも同じ日。
+     ・`allday` は "yes" / "no" の字。手順の「もし」で字を比べます。
+     ・名前（`SHORTCUT`）は手順のほうと一字でも違えば動かないので、変えない。
+     ・中身は URL に載ってショートカット App へ渡るだけで、どこにも送りません。 */
+  const SHORTCUT = "くらしノートの予定";
+
+  /** iPhone・iPad・Mac（どれもショートカット App がある）。 */
+  const apple = () => {
+    try {
+      return appleTouch() || /Macintosh|Mac OS X/.test(navigator.userAgent || "");
+    } catch (_) { return false; }
+  };
+
+  function useShortcut() {
+    try {
+      return apple() && KN.store.get().settings.calShortcut === true;
+    } catch (_) { return false; }
+  }
+
+  function shortcutText(ev) {
+    const day = KN.util.dayDate(ev.day);
+    const at = ev.time ? KN.plan.toMin(ev.time) : null;
+    const d = (x) => `${x.getFullYear()}/${pad(x.getMonth() + 1)}/${pad(x.getDate())}`;
+    const dt = (x) => `${d(x)} ${pad(x.getHours())}:${pad(x.getMinutes())}`;
+    let start, end;
+    if (at == null) {
+      start = end = d(day);
+    } else {
+      const s = new Date(day);
+      s.setHours(0, at, 0, 0);
+      const e = new Date(s);
+      e.setMinutes(e.getMinutes() + (ev.minutes || KN.plan.DEFAULT_MINUTES));
+      start = dt(s);
+      end = dt(e);
+    }
+    return JSON.stringify({
+      title: String(ev.title || ""),
+      start, end,
+      allday: at == null ? "yes" : "no",
+      memo: String(ev.memo || "").trim(),
+    });
+  }
+
+  function shortcutURL(ev) {
+    return "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT)
+      + "&input=text&text=" + encodeURIComponent(shortcutText(ev));
+  }
+
+  /**
+   * 一件を、端末のカレンダーへ。設定でショートカットを選んでいればそちら、
+   * そうでなければ .ics（`offer`）。**押した流れの中で呼ぶこと。**
+   * @param {object} ev  make() と同じ形
+   */
+  function send(ev) {
+    if (useShortcut()) { open(shortcutURL(ev)); return; }
+    offer(make(ev), ev.day);
+  }
+
+  KN.ics = { make, save, offer, send, payload, helperURL, fileName, fold, esc,
+             apple, SHORTCUT, shortcutText, shortcutURL };
 })();
