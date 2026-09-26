@@ -2612,7 +2612,10 @@
 .diet-cell-value { font-size: var(--fs-md); font-weight: 700; white-space: nowrap; }
 /* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
 .diet-cell-value.is-over { color: var(--c-danger); }
-.diet-cell-unit { font-size: 10px; color: var(--c-text-3); white-space: nowrap; }
+/* 目標の一行。10px では小さすぎて読めなかったので、字の段のいちばん小さい
+   ところ（--fs-xs）へ。この画面は `.diet` が段を一つ上げているので 12.5px
+   （実測）。四つ並べても「目標 5h00m」が枠に収まります（はみ出し 0）。 */
+.diet-cell-unit { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 
 /* ---- からだの輪 ----
 

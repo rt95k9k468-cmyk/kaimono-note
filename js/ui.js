@@ -832,7 +832,7 @@
    * @param {{activeId:string, onPick:Function}} opts
    */
   function chipRow(host, chips, { activeId, onPick }) {
-    const sig = chips.map((c) => `${c.id} ${c.label} ${c.count == null ? "" : c.count}`).join("|");
+    const sig = chips.map((c) => `${c.id}\u0000${c.label}\u0000${c.count == null ? "" : c.count}`).join("|");
     let row = host.querySelector(".chip-row");
 
     if (row && row.dataset.sig === sig) {

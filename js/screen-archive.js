@@ -929,7 +929,7 @@
   function openLogSheet(day) {
     const cur = store.dayLog(day) || {};
     const dt = U.dayDate(day);
-    const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
+    const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日(${U.weekdayJa(day)})` : day;
     const memoInit = (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
 
     /* 文字数の上限は置きません。前は200字で止めて残りを数えていましたが、

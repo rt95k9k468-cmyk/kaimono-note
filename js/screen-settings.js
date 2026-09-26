@@ -1953,9 +1953,9 @@
     const T = KN.iconsTodo, P = KN.productIcons;
     if (!T || !P) return [];
 
-    const byKey = new Map(); // "kind name" -> { name, kind, count }
+    const byKey = new Map(); // "kind\u0000name" -> { name, kind, count }
     const bump = (name, kind) => {
-      const k = kind + " " + name;
+      const k = kind + "\u0000" + name;
       const cur = byKey.get(k);
       if (cur) cur.count++;
       else byKey.set(k, { name, kind, count: 1 });
