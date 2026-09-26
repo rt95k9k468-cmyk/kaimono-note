@@ -592,6 +592,14 @@
   const RESCUE_KEY = KEY + "-rescue";
   let loadError = null;
 
+  /* 書いた回数。writeLive のたびに一つ進め、localStorage の一本に一緒に
+     書きます（`lsSeq`）。日記の写し（js/diary-idb.js）が、元と写しの
+     どちらが新しいかを比べるための番号で、**state の欄ではありません**
+     （読むときに外すので、画面にも書き出しにも控えにも乗りません）。
+     loadInfo は、読んだときの番号と、元に何か入っていたか。 */
+  let lsSeq = 0;
+  let loadInfo = { seq: 0, hadData: false };
+
   let migratedOnLoad = false;
   let state = load();
   const listeners = new Set();
@@ -624,8 +632,15 @@
   function load() {
     let rawV2 = null;
     try { rawV2 = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+    lsSeq = 0;
+    loadInfo = { seq: 0, hadData: !!rawV2 };
     if (rawV2) {
-      try { return reconcile(JSON.parse(rawV2)); }
+      try {
+        const parsed = JSON.parse(rawV2);
+        const seq = parsed && typeof parsed === "object" ? Number(parsed.lsSeq) : 0;
+        if (seq > 0 && isFinite(seq)) { lsSeq = seq; loadInfo.seq = seq; }
+        return reconcile(parsed);
+      }
       catch (err) { rescue(rawV2, err); return emptyState(); }
     }
     try {
@@ -656,6 +671,7 @@
   function reconcile(s) {
     const base = emptyState();
     const out = { ...base, ...s };
+    delete out.lsSeq;   // 書いた回数（上の lsSeq）。state の欄ではありません
     out.settings = { ...base.settings, ...(s.settings || {}) };
     /* 知らない基調色は、既定へ戻します。色を減らした・名前を変えたときに、
        選んだ覚えのない色で画面が出てこないように。 */
@@ -1042,12 +1058,20 @@
        前これを見ずに書いていたので、隠れる直前の一拍だけは、空の state で
        本物を上書きできました。ここで塞げば、どの道から来ても同じです。 */
     if (loadError) return;
-    const json = JSON.stringify(state);
+    const seq = lsSeq + 1;
+    const json = JSON.stringify(Object.assign({}, state, { lsSeq: seq }));
     try {
-      localStorage.setItem(KEY, json);
-    } catch (err) {
-      const makeRoom = KN.backup && KN.backup.makeRoom;
-      if (!makeRoom || !makeRoom(() => localStorage.setItem(KEY, json))) throw err;
+      try {
+        localStorage.setItem(KEY, json);
+      } catch (err) {
+        const makeRoom = KN.backup && KN.backup.makeRoom;
+        if (!makeRoom || !makeRoom(() => localStorage.setItem(KEY, json))) throw err;
+      }
+      lsSeq = seq;
+    } finally {
+      /* 日記の写しへ（js/diary-idb.js）。**元が書けなかったときも**写しには
+         書きます——容量で落ちているあいだに書いた日記を、写しの側に残すため。 */
+      if (KN.diaryIdb) KN.diaryIdb.afterWrite(seq, lsSeq === seq);
     }
   }
 
@@ -1116,6 +1140,7 @@
     flushPending();
     state = load();
     version++;
+    if (KN.diaryIdb) KN.diaryIdb.reloaded();
     emit();
   }
 
@@ -3480,6 +3505,12 @@
     /* 読めなかったかどうか。画面はこれを見て「保存を止めています」と
        言えます（黙って動かないのが、いちばん困るので）。 */
     loadError: () => loadError,
+    // 書いた回数と、読んだときの様子。日記の写し（js/diary-idb.js）が使います。
+    lsSeq: () => lsSeq, loadInfo: () => loadInfo,
+    /* 番号を、写しの番号より下にしない。元が読めなかった日（空で始まった日）
+       にも、次の番号が写しの番号の続きになるように——でないと、元の番号が
+       1 から振り直され、次に元が読めた日に古い元が「新しい」と見なされます。 */
+    seqAtLeast: (n) => { if (Number(n) > lsSeq) lsSeq = Number(n); },
     get, update, subscribe, reload, flush,
     saveError: () => saveError,
     getProduct, getStore, getCategory,

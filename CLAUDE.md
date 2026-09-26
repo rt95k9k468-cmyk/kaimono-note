@@ -57,7 +57,7 @@
   `build-standalone.js`（`JS` 配列）。
 - store（`js/store.js`）は単一の localStorage キー `kaimono-note-v2`。
   `reconcile()` が `{...base, ...saved}` でマージする。**`let state = load()`
-  はモジュール評価の途中（いまは590行目あたり）で走る**ので、load パスが触れる
+  はモジュール評価の途中（いまは600行目あたり）で走る**ので、load パスが触れる
   ものは、それより上に書くか、巻き上げられる `function` 宣言にすること
   （`const` で下に書くと TDZ で落ちる——過去のデータ消失事故の原因）。
 - `KN.util.today()` は **UTC ISO**（`toISOString()`）、`dayKey()` /
@@ -84,6 +84,10 @@
   サーバーはターンをまたぐと落ちていることがあるので、テスト前に生きて
   いるか確認し、必要なら上のコマンドで再起動する。
 - 実行：`NODE_PATH=/opt/node22/lib/node_modules node <test>.js`
+- 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
+  （`app.js` の `controllerchange`）。`newContext({ serviceWorkers: "block" })` で作る。
+  日記の本文と控えは IndexedDB にもあり、reload をまたいで残る（docs/storage.md の
+  「試験の罠」）。
 - 既存のテスト資産（daily-rules.js / daily2-smoke.js / aimeal.js など）は
   過去のセッションのスクラッチ領域にあり、新しいセッションでは失われて
   いる。テストを再走行したい場合は、対象の挙動から新しく書き起こす。
@@ -138,6 +142,7 @@
 | 買うもの・価格（`screen-list.js` / `screen-prices.js`・紙の面 `--face-p`） | `docs/shopping.md` |
 | ダイエット（中継所 `health-relay.js` / `relay/`・飲みたくなった `diet.urges`） | `docs/health.md` |
 | daily（`screen-archive.js`） | `docs/daily.md` |
+| 保存の置き場（`store.js` の書き込み・`backup.js`・`idb.js`・`diary-idb.js`）・日記の写し・自動の控え | `docs/storage.md` |
 | 動きの速さ・曲線（`--m-*`・`motion.js`・`KN.motion.glide`） | `docs/motion.md` |
 | ガラス（`--glass-*`） | `docs/glass.md` |
 | 色・字の太さ・重なりの順（`--z-*`）・絵文字・席の名前 | `docs/look.md` |

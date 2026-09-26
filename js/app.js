@@ -1103,7 +1103,16 @@
     trackKeyboard();
     watchAppBadge();
     KN.pullRefresh.init();
+    /* 日記の写しの突き合わせ（js/diary-idb.js）を先に。控えはそれが済むのを
+       待ってから取ります（済む前の控えは、写しから戻る本文を取りこぼしうる）。 */
+    if (KN.diaryIdb) KN.diaryIdb.start();
     KN.backup.init();
+    /* 大きな保存場所の中身（控えの数・日記の写しの様子）が動いたら、設定が
+       出ているときだけ描き直します。控えは離れるたびに取るので、ほかの
+       画面まで描き直す理由はありません。 */
+    if (KN.idb) KN.idb.onChange(() => {
+      if (active === "settings" && KN.screens.settings) KN.screens.settings.render();
+    });
     KN.notify.init();
     /* 中継所の見張り。**画面ではなくここから立てます**——前はダイエットと
        daily がそれぞれ持っていて、その二つが出ているときしか覗きませんでした

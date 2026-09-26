@@ -1058,7 +1058,7 @@
      残らなかったのに黙って進むと、その約束が嘘になります。"same"（同じ
      中身がもう控えにある）と "empty"（守るものが無い）は、取れたのと同じ。 */
   async function keepBefore(reason) {
-    if (KN.backup.take(reason) !== "failed") return true;
+    if ((await KN.backup.take(reason)) !== "failed") return true;
     return KN.ui.confirm({
       title: "控えを取れませんでした",
       message: "空き容量が足りず、いまの状態を自動バックアップに残せませんでした。このまま進むと、元に戻せません。先に「バックアップを保存」でファイルに書き出すことをおすすめします。",
@@ -1311,7 +1311,7 @@
         if (!ok) return;
         try {
           try {
-            KN.backup.restore(s.at);
+            await KN.backup.restore(s.at);
           } catch (err) {
             if (err.code !== "keep-failed") throw err;
             // 戻す前の控えが取れなかった。黙って戻すと、いまの状態へは戻れない。
@@ -1321,7 +1321,7 @@
               okLabel: "それでも戻す", cancelLabel: "やめる", danger: true,
             });
             if (!go) return;
-            KN.backup.restore(s.at, { force: true });
+            await KN.backup.restore(s.at, { force: true });
           }
           KN.ui.toast(`${snapStamp(s.at)} の状態に戻しました`);
           if (sheetHandle) sheetHandle.close();
@@ -2242,6 +2242,14 @@
      「保存できましたか？」と訊きます。**share はタップの流れの中で呼ぶこと**
      （手前で await すると、端末が「人が押した」と見なさなくなります）。 */
   async function saveBackup() {
+    /* 日記の写し（js/diary-idb.js）の突き合わせが済む前は、写しから戻る
+       はずの本文が、まだ記録に入っていないことがあります。開いた直後の
+       一瞬だけのことなので、待たずに断ります（ここで await すると、下の
+       共有シートが「人が押した」流れから外れます）。 */
+    if (KN.diaryIdb && !KN.diaryIdb.settled()) {
+      KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
+      return;
+    }
     const at = new Date().toISOString();
     const d = new Date(at);
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
@@ -2390,11 +2398,32 @@
   /** 設定に出す、この端末の中の量（backup.usage）。 */
   function usageText(u) {
     const diary = u.diaryChars ? `（うち日記 ${charText(u.diaryChars)}）` : "";
-    let t = `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。二つで、端末の保存の枠（iPhone でおよそ5MB）を分け合っています。`;
+    /* 控えが大きな保存場所（IndexedDB）にあれば、もう記録と枠を分け合って
+       いません。そう言わないと、前の「分け合っています」を読んだ人が、
+       控えを減らさなければと思い続けます。 */
+    let t = u.where === "idb"
+      ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。自動バックアップ ${u.count}件（${charText(u.snapChars)}）は、記録とは別の、大きな保存場所にあります。`
+      : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。二つで、端末の保存の枠（iPhone でおよそ5MB）を分け合っています。`;
+    t += diaryCopyText(u.diary);
     if (u.tight) {
       t += `記録が大きくなったので、自動バックアップは${u.fits}件ぶんまでしか持てず、直近の細かい控えから減ります。こまめに「バックアップを保存」を。`;
     }
     return t;
+  }
+
+  /* 日記の写し（js/diary-idb.js）の様子。**元（記録の中）を消していない**
+     ことと、開くたびに突き合わせた結果を言います——元を記録から外すかどうか
+     を決めるときの手がかりなので。日記の中身や、書いた日の数には触れません
+     （daily は数えない・評価しない）。 */
+  function diaryCopyText(d) {
+    if (!d || d.phase === "idle" || d.phase === "starting") return "";
+    if (d.phase === "off") return "日記は、記録の中だけにあります（大きな保存場所へは写していません）。";
+    const n = d.opens || 0;
+    const how = !n ? "写したあと、読み比べて一字も違わないことを確かめました"
+      : d.fixed ? `開くたびに突き合わせていて、これまで${n}回のうち${d.fixed}回は、食い違いを直しました`
+      : `開くたびに突き合わせていて、これまで${n}回とも食い違いはありません`;
+    const stuck = d.error ? "いまは写しへの書き足しが止まっています（記録の中には残っています）。" : "";
+    return `日記の本文は、記録の中に残したまま、大きな保存場所にも写してあります（${how}）。${stuck}`;
   }
 
   function dataRows() {
