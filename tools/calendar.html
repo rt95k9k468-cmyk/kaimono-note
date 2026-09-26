@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>カレンダーに入れる — くらしノート</title>
+<!--
+  くらしノートの「カレンダーに入れる」の受け渡しページ（docs/todo-items.md）。
+
+  ホーム画面のくらしノートは、iPhone のカレンダーへ予定を直接は渡せない
+  （Safari と違って、カレンダーのファイルを受け取る口が無い）。そこでアプリは
+  Safari 本体にこのページを開かせ、予定の中身（.ics の文字）を URL の `#` の
+  後ろに載せて渡す。`#` の後ろはサーバーへは送られない。
+
+  このページはアプリの一部ではない（sw.js の ASSETS にも build-standalone.js
+  にも載せない）。どこにも送らず、ここで作ったファイルを Safari に開かせるだけ。
+-->
+<style>
+  :root {
+    --bg: #f0eff3; --card: #ffffff; --text: #1d1d22; --text-2: #5d5d66; --line: #e4e4e8;
+    --primary: #c4533f; --primary-text: #ffffff; --soft: #e9e8ee;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151518; --card: #1f1f24; --text: #f1f1f4; --text-2: #a9a9b3; --line: #2e2e36;
+            --primary: #e07a66; --primary-text: #1d1d22; --soft: #2a2a31; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 400 17px/1.6 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 8px 0 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .what { font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+  .when { color: var(--text-2); margin-top: 4px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 52px; padding: 0 16px; border-radius: 14px;
+    font-size: 17px; font-weight: 700; text-decoration: none;
+  }
+  .btn-primary { background: var(--primary); color: var(--primary-text); }
+  .btn-soft { background: var(--soft); color: var(--text); }
+  .note { color: var(--text-2); font-size: 15px; margin: 0; }
+  .bad { color: var(--primary); font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <h1>カレンダーに入れる</h1>
+  <div class="card" id="card" hidden>
+    <div class="what" id="what"></div>
+    <div class="when" id="when"></div>
+  </div>
+  <a class="btn btn-primary" id="add" hidden>カレンダーに追加</a>
+  <a class="btn btn-soft" id="alt" hidden>うまく出ないとき：別のやり方で開く</a>
+  <p class="note" id="msg">読み込んでいます…</p>
+</main>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  /* URL の # の後ろ（base64url の UTF-8）から、.ics の文字を戻します。 */
+  function unpack(s) {
+    try {
+      const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+      const bin = atob(b64 + "===".slice((b64.length + 3) % 4));
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch (_) { return ""; }
+  }
+  const text = unpack(location.hash.slice(1));
+  if (!/^BEGIN:VCALENDAR\r?\n/.test(text) || !/END:VCALENDAR/.test(text)) {
+    $("msg").innerHTML = '<span class="bad">予定を読み取れませんでした。</span>くらしノートに戻って、もう一度「カレンダーに入れる」を押してください。';
+    return;
+  }
+
+  /* 見せるための読み取り（題と日時）。折り返しを戻し、逃がし文字を戻すだけ。 */
+  const lines = text.replace(/\r\n[ \t]/g, "").split(/\r\n/);
+  const field = (name) => {
+    const l = lines.find((x) => x.startsWith(name + ":") || x.startsWith(name + ";"));
+    return l ? l.slice(l.indexOf(":") + 1) : "";
+  };
+  const unesc = (v) => v.replace(/\\(.)/g, (m, c) => (c === "n" || c === "N" ? "\n" : c));
+  const when = (() => {
+    const v = field("DTSTART");
+    const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/.exec(v);
+    if (!m) return "";
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const wd = "日月火水木金土"[d.getDay()];
+    const day = `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日（${wd}）`;
+    return m[4] ? `${day} ${Number(m[4])}:${m[5]}` : `${day} 終日`;
+  })();
+  $("what").textContent = unesc(field("SUMMARY"));
+  $("when").textContent = when;
+  $("card").hidden = false;
+
+  /* 一つ目：ファイルとして受け取らせる（Safari はカレンダーのファイルを受け
+     取ると「カレンダーに追加」を出す）。二つ目：同じ中身を、ページとして
+     開く（こちらは中身の種類で Safari が判断する）。どちらが効くかは端末の
+     版で違いうるので、二つとも置きます。 */
+  const add = $("add");
+  add.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(text);
+  add.download = (field("DTSTART").slice(0, 8) ? `yotei-${field("DTSTART").slice(0, 4)}-${field("DTSTART").slice(4, 6)}-${field("DTSTART").slice(6, 8)}` : "yotei") + ".ics";
+  add.hidden = false;
+  const alt = $("alt");
+  alt.href = URL.createObjectURL(new Blob([text], { type: "text/calendar" }));
+  alt.hidden = false;
+  $("msg").textContent = "追加したら、くらしノートに戻ってください。";
+})();
+</script>
+</body>
+</html>

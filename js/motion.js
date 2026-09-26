@@ -30,7 +30,7 @@
    震えについて：iOS の Safari は navigator.vibrate を持ちません。それでも
    呼ぶ形を残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator
    へ差し替える一点になるからです。呼び出し側を書き換えずに済みます。
-   iPhone では、三つの出来事だけ別の手で震わせます（下の `tick`。C1）。
+   iPhone では「済ませた」だけ、別の手で震わせます（下の `feel`。C1）。
    ========================================================= */
 (function () {
   "use strict";
@@ -194,8 +194,8 @@
     return Math.sign(over) * (lim * (1 - 1 / (x / lim + 1)));
   }
 
-  function buzz(spec, name) {
-    if (!navigator.vibrate) { tick(name); return; }
+  function buzz(spec) {
+    if (!navigator.vibrate) return;
     try {
       if (spec.pattern) navigator.vibrate(spec.pattern);
       else if (spec.ms) navigator.vibrate(spec.ms);
@@ -203,56 +203,54 @@
   }
 
   /* ---------------------------------------------------------------
-     iPhone で震わせる（docs/improvements.md の C1）
+     iPhone で「済ませた」を震わせる（docs/motion.md の C1）
 
      iOS 18 から、Safari の `<input type="checkbox" switch>`（切り替えの
-     つまみ）は、切り替わるときに端末を軽く震わせます。見えないつまみを
-     一つ置いて、その札（label）を押したことにすれば、震えだけが返ります。
+     つまみ）は、**指で押されて**切り替わるときに端末を軽く震わせます。
 
-     **公式の道ではありません。** いつかの iOS で黙って効かなくなりうる
-     ——だから使うのは三つだけにします：
-       check … 済ませた（やること・買うもの）
-       drop  … 持ち上げて、置いた（時間割・買うものの並べ替え）
-       close … 紙を下へ払って、閉じた
-     押すたびに震えるものにはしません。効かなくなった日に困らないもの
-     だけ、効いている日には手ごたえになるもの。
+     **押したことにする（`label.click()`）では震えません。** 前はそうして
+     いて、実機で震えませんでした。WebKit は click が本物か（isTrusted）を
+     見ていて、本物でない切り替えでは震わせない（CheckboxInputType.cpp の
+     willDispatchClick → `state.trusted` のときだけ
+     performSwitchVisuallyOnAnimation。2026年9月に WebKit のソースで確認）。
 
-     ・震えるのは人が押した流れの中だけ（iOS が決めること）。どれも指を
-       離したその場で呼ばれます。
-     ・振動の機能（navigator.vibrate）を持つ端末では、何もしません
-       ——そちらは上の `buzz` がいつもどおり震わせます。
-     ・押したことにした click が、ほかの仕掛け（外を押したら閉じる、
-       など）に届かないよう、札とつまみの上で止めます。札は head の中に
-       一つだけ置いて、使い回します（見えず、読み上げにも出ない）。
+     だから、**指が本当にそのつまみを押す**ようにします。済ませる丸の中に、
+     見えないつまみを丸と同じ大きさで重ねる。指はつまみを押し（震える）、
+     その click は丸（button）へ上がって、いつもの「済ませる」が走ります。
+
+     ・重ねるのは Apple の指で触る端末だけ。ほかの端末の DOM は変えません
+       （そちらは navigator.vibrate が上の buzz で震わせる）。
+     ・つまみは読み上げにも Tab にも出しません（丸の button がそれを持つ）。
+     ・つまみは見えない（opacity 0）が、**描かれている**必要があります
+       ——WebKit は描かれていないつまみの指を受け取らないので、
+       display:none や head の中では震えません。
+     ・一度の指で click が二度来ても、丸へは一度だけ渡します（350ms）。
+     ・持ち上げて「置いた」、払って「閉じた」は震わせられません。そこには
+       指で押すつまみが無いので（前の版はそこでも試みていた）。
      --------------------------------------------------------------- */
-  const TICKS = new Set(["check", "drop", "close"]);
-  const apple = (() => {
+  const appleTouch = (() => {
     try {
       const ua = navigator.userAgent || "";
       return /iP(hone|ad|od)/.test(ua)
         || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     } catch (_) { return false; }
   })();
-  let knob = null;
-  function tick(name) {
-    if (!apple || navigator.vibrate || !TICKS.has(name)) return;
-    try {
-      if (!knob || !knob.isConnected) {
-        knob = document.createElement("label");
-        knob.setAttribute("aria-hidden", "true");
-        knob.style.display = "none";
-        const input = document.createElement("input");
-        input.type = "checkbox";
-        input.setAttribute("switch", "");
-        input.tabIndex = -1;
-        knob.append(input);
-        const stop = (e) => e.stopPropagation();
-        knob.addEventListener("click", stop);
-        input.addEventListener("click", stop);
-        (document.head || document.documentElement).append(knob);
-      }
-      knob.click();
-    } catch (_) { /* 震えないことは失敗ではありません */ }
+  function feel(btn) {
+    if (!btn || !appleTouch || navigator.vibrate) return;
+    if (btn.querySelector(":scope > .feel-switch")) return;
+    const sw = document.createElement("input");
+    sw.type = "checkbox";
+    sw.setAttribute("switch", "");
+    sw.className = "feel-switch";
+    sw.tabIndex = -1;
+    sw.setAttribute("aria-hidden", "true");
+    let last = 0;
+    sw.addEventListener("click", (e) => {
+      const now = Date.now();
+      if (now - last < 350) { e.stopPropagation(); return; }
+      last = now;
+    });
+    btn.append(sw);
   }
 
   /**
@@ -266,7 +264,7 @@
   function fire(name, el) {
     const spec = EVENTS[name];
     if (!spec) return Promise.resolve();
-    buzz(spec, name);
+    buzz(spec);
     const dur = ms(spec.tok);
     if (!el || !spec.cls || still()) {
       return new Promise((done) => setTimeout(done, still() ? 0 : dur));
@@ -299,5 +297,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, glide, rubber, still, tick, EVENTS };
+  KN.motion = { fire, press, ms, ease, glide, rubber, still, feel, EVENTS };
 })();

@@ -1344,6 +1344,23 @@
   .check:hover { border-color: var(--c-primary); }
 }
 .check:active { transform: scale(.85); }
+/* iPhone で「済ませた」を震わせる、見えないつまみ（motion.js の feel・C1）。
+   **丸（26px）にぴったり重ねるだけ**で、指の的（::after の 44px）までは
+   広げません。つまみの上から指を滑らせると、iPhone はそれを「つまみを
+   動かす」と受け取って、画面を送らないことがあるので——送る指が当たる
+   ところを、見えている丸の中だけにとどめます。丸のまわりを押したときは、
+   これまでどおり済みますが、震えません。
+   z-index は ::after（丸より後に描かれる、指の的）より上に置くため。
+   見えなくても**描かれている**こと（opacity 0。display:none は不可）。 */
+.check > .feel-switch {
+  position: absolute;
+  top: -2px; left: -2px;
+  width: calc(100% + 4px); height: calc(100% + 4px);
+  margin: 0; padding: 0;
+  opacity: 0;
+  z-index: 1;
+  border-radius: var(--r-full);
+}
 .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
 .check[aria-checked="true"] svg { opacity: 1; transform: scale(1); }
 

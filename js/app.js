@@ -1097,6 +1097,11 @@
       paintAppBadge(true);
     };
     setInterval(KN.app.onMinute, 30000);
+    /* 戻ってきたときにも、すぐ一度。止まっていたあいだに日をまたいでいたら、
+       30秒待たずに運びます——待つあいだ、運ぶ前の「期限切れ」が見えるので。 */
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") KN.app.onMinute();
+    });
 
     requestPersistentStorage();
     watchTopTap();

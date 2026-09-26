@@ -837,6 +837,7 @@
       priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
     }
 
+    KN.motion.feel(row.querySelector(".check"));   // iPhone で震える（C1）
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
       const commit = () => store.update((s) => {

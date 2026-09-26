@@ -94,15 +94,26 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Navigations: network first so a deploy is picked up, cache as fallback.
+  /* 「index.html」として控えるのは、**アプリの入口を開いたときだけ**。
+     前はどのページを開いても控えていたので、tools/ の道具や受け渡しの
+     ページ（tools/calendar.html）を一度開くと、それがアプリの入口として
+     残り、電波の無いところで開いたときにアプリのかわりに出るところでした。
+     入口以外は、ネットから取れなければそのページの控え（無ければ無し）。 */
   if (req.mode === "navigate") {
+    const last = url.pathname.split("/").pop();
+    const shell = last === "" || last === "index.html" || !last.includes(".");
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("index.html", copy));
+          if (shell && res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put("index.html", copy));
+          }
           return res;
         })
-        .catch(() => caches.match("index.html").then((r) => r || caches.match("./")))
+        .catch(() => (shell
+          ? caches.match("index.html").then((r) => r || caches.match("./"))
+          : caches.match(req)))
     );
     return;
   }

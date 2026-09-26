@@ -598,6 +598,15 @@
             <span class="d-value js-notify-value"></span>
             <span class="d-go">${icon("chevron")}</span>
           </button>
+          ${/* 端末のカレンダーへ（D3。js/ics.js）。前は頭の「⋯」の中でしたが、
+                利用者の希望で決めごとの並びへ——「いつ」の札のすぐ下に居れば、
+                日付と時刻を決めたその場で押せます。 */""}
+          <button type="button" class="d-row js-row-cal">
+            <span class="d-ico">${icon("upload")}</span>
+            <span class="d-label js-cal-label"></span>
+            <span class="d-value js-cal-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
         </div>
 
         ${/* ---- 中身：手順とメモ ---- */""}
@@ -787,36 +796,6 @@
         icon: "star",
         onPick: () => { flagged = !flagged; paintHeroFacts(); },
       },
-      /* 端末のカレンダーへ（D3。js/ics.js）。渡すのは**この紙にいま出ている
-         中身**——保存する前に直した日付や題も、見えているとおりに入ります。
-         くり返しは次の一回ぶんだけ（くり返しの決まりまで写すと、アプリの
-         「第2火曜」「平日」などと端末の読み方がずれた日に、二か所で違う日に
-         立ちます）。日付が無ければ期限の日に、終日で。 */
-      {
-        id: "calendar",
-        label: () => "カレンダーに入れる",
-        sub: "端末のカレンダーへ。くり返しは次の1回ぶん",
-        icon: "calendar",
-        onPick: () => {
-          const day = due || deadline;
-          if (!KN.ics || !KN.util.dayDate(day)) {
-            KN.ui.toast("日付を決めると、カレンダーに入れられます");
-            return;
-          }
-          const name = titleEl.value.trim() || (t && t.title) || "";
-          if (!name) { KN.ui.toast("題を書くと、カレンダーに入れられます"); return; }
-          const memoBox = body.querySelector(".js-memo");
-          const text = KN.ics.make({
-            uid: `${todoId || "new-" + Date.now()}-${day}@kurashi-note`,
-            title: due ? name : `${name}（期限）`,
-            memo: memoBox ? memoBox.value : (t && t.memo) || "",
-            day,
-            time: due ? time : null,
-            minutes,
-          });
-          KN.ics.save(text, KN.ics.fileName(day));
-        },
-      },
     ];
     if (editing) {
       /* 写しを作ります。似たものを続けて足すとき——同じ手順を持つ用事を
@@ -985,6 +964,10 @@
       row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
           time ? (on ? "オン" : "オフ") : "");
       body.querySelector(".js-row-notify").disabled = !time;
+      /* 日付が無ければ期限の日に、終日で。どちらも無ければ押せません。 */
+      row(".js-row-cal", due || deadline ? "カレンダーに入れる" : "日付を決めるとカレンダーに入れられます",
+          !due && deadline ? "期限の日に" : "");
+      body.querySelector(".js-row-cal").disabled = !(due || deadline);
       paintHeroFacts();
     }
     body.querySelector(".js-row-due").addEventListener("click", () => openPick("いつまでに", pickDue));
@@ -998,6 +981,26 @@
       haptic();
       if (nt.enabled()) { nt.disable(); paintRows(); KN.ui.toast("お知らせを止めました"); return; }
       nt.enable().then(() => { paintRows(); }).catch(() => {});
+    });
+    /* 渡すのは**この紙にいま出ている中身**——保存する前に直した日付や題も、
+       見えているとおりに入ります。くり返しは次の一回ぶんだけ（くり返しの
+       決まりまで写すと、アプリの「第2火曜」「平日」などと端末の読み方が
+       ずれた日に、二か所で違う日に立ちます）。 */
+    body.querySelector(".js-row-cal").addEventListener("click", () => {
+      const day = due || deadline;
+      if (!KN.ics || !KN.util.dayDate(day)) return;
+      const name = titleEl.value.trim() || (t && t.title) || "";
+      if (!name) { KN.ui.toast("題を書くと、カレンダーに入れられます"); return; }
+      haptic();
+      const memoBox = body.querySelector(".js-memo");
+      KN.ics.offer(KN.ics.make({
+        uid: `${todoId || "new-" + Date.now()}-${day}@kurashi-note`,
+        title: due ? name : `${name}（期限）`,
+        memo: memoBox ? memoBox.value : (t && t.memo) || "",
+        day,
+        time: due ? time : null,
+        minutes,
+      }), day);
     });
 
     /* The days a todo is nearly always for, in one press each. Typing a date
@@ -2152,6 +2155,7 @@
     wrap.append(row);
 
     row.querySelector(".check").addEventListener("click", (e) => tick(t.id, e.currentTarget));
+    KN.motion.feel(row.querySelector(".check"));   // iPhone で震える（C1）
     row.querySelector(".fav").addEventListener("click", () => {
       store.updateTodo(t.id, { flagged: !t.flagged });
       haptic(12);
@@ -2258,7 +2262,6 @@
     if (wasDone || !row) {
       const res = store.toggleTodo(id);
       haptic(wasDone ? 12 : [16, 40, 16]);
-      if (!wasDone) KN.motion.tick("check");   // iPhone（C1）
       if (!wasDone && checkEl) KN.ui.burst(checkEl);
       if (res.repeated) sayMoved(t, res);
       return;
@@ -2270,7 +2273,6 @@
        済ませたことを見せてから、消す（または次の日へ送る）順にします。 */
     finishing.add(id);
     haptic([16, 40, 16]);
-    KN.motion.tick("check");   // iPhone（C1。motion.js）
     checkEl.setAttribute("aria-checked", "true");   // 指にはすぐ応える
     KN.ui.burst(checkEl);
 
@@ -4165,7 +4167,6 @@
        置き場が見えていることと、そこへ置くと言ったことは別なので、
        指が動いていなければ帰します。 */
     if (!d.moved) { render(); return; }
-    KN.motion.tick("drop");   // 置いた（iPhone。motion.js の C1）
 
     /* 週の帯の日へ落とした。**日付を変えます。**
 
@@ -4509,6 +4510,7 @@
         if (t.trace) { untrace(t); return; }
         tick(t.id, e.currentTarget);
       });
+      if (!t.trace) KN.motion.feel(box);   // iPhone で震える（C1）
     }
 
     /* 手順は、行の下にたたんで置きます。
