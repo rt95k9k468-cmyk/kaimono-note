@@ -106,6 +106,18 @@
     const ok = known.some((a) => a.id === accent);
     if (ok && accent !== "orange") root.setAttribute("data-accent", accent);
     else root.removeAttribute("data-accent");
+
+    /* アイコンの地も基調色に合わせます（icons/accent/）。タブの絵はすぐ変わり、
+       ホーム画面の絵は「ホーム画面に追加」した時点の色で焼きつきます——
+       追加済みの絵を後から塗り替える手段は、ウェブアプリには無いからです。 */
+    const id = ok ? accent : "orange";
+    const fav = document.querySelector('link[rel="icon"]');
+    const touch = document.querySelector('link[rel="apple-touch-icon"]');
+    /* 一枚にまとめた版（build-standalone.js）は絵を data: で抱えていて、
+       icons/ が隣に無いので触りません。 */
+    if (fav && fav.getAttribute("href").startsWith("data:")) return;
+    if (fav) fav.href = id === "orange" ? "icons/icon.svg" : `icons/accent/${id}.svg`;
+    if (touch) touch.href = id === "orange" ? "icons/apple-touch-icon.png" : `icons/accent/${id}-180.png`;
   }
   KN.app.applyAccent = applyAccent;
 

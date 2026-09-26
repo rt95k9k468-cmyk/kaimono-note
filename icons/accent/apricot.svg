@@ -1,16 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-<!-- くらしノートのアイコン（B5 の A 案、しおりなし）。一冊のノートだけ。
-     地の色は基調色（設定 → 基調色）に合わせる。icons/accent/ に8色ぶんあり、
-     app.js の applyAccent がタブの絵とホーム画面用の絵を差し替える。 -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f5a6a0"/><stop offset="1" stop-color="#d36f6a"/>
+      <stop offset="0" stop-color="#ebab82"/><stop offset="1" stop-color="#c78052"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="114" fill="url(#bg)"/>
   <g>
     <rect x="132" y="96" width="248" height="320" rx="36" fill="#ffffff"/>
-    <g fill="#f9c7c3">
+    <g fill="#f2cab0">
       <rect x="176" y="176" width="160" height="20" rx="10"/>
       <rect x="176" y="236" width="160" height="20" rx="10"/>
       <rect x="176" y="296" width="104" height="20" rx="10"/>
