@@ -5265,6 +5265,10 @@ a.btn { text-decoration: none; }
 .low-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .low-name { font-weight: 700; overflow-wrap: anywhere; }
 .low-meta { font-size: var(--fs-sm); color: var(--c-text-2); }
+/* 地が灰の札（--c-surface-2 #e8e8e8）なので、--c-primary では 4.21 で
+   小さい字の 4.5 に届かない。字だけ --c-primary-ink（6.16）にする。
+   明るい面だけの話——暗い面の -ink は淡い桜色（#f8c5c1）で見た目が
+   変わってしまうので、そちらは --c-primary のまま（地 #26262d で足りている）。 */
 .low-add {
   flex: none;
   display: inline-flex; align-items: center; gap: 4px;
@@ -5272,12 +5276,16 @@ a.btn { text-decoration: none; }
   padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   background: var(--c-surface-2);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   font-size: var(--fs-sm);
   font-weight: 700;
   transition: background var(--m-press) var(--ease);
 }
 .low-add svg { width: 16px; height: 16px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .low-add { color: var(--c-primary); }
+}
+:root[data-theme="dark"] .low-add { color: var(--c-primary); }
 
 /* 時間割で、買い物の一件が「いま何個ぶんか」。 */
 .tl-shop { font-variant-numeric: tabular-nums; }
