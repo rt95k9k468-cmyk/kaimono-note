@@ -1,41 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<!-- くらしノートのアイコン（B5 の A 案、しおりなし）。一冊のノートだけ。
+     地の色は基調色（設定 → 基調色）に合わせる。icons/accent/ に8色ぶんあり、
+     app.js の applyAccent がタブの絵とホーム画面用の絵を差し替える。 -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3aa76b"/>
-      <stop offset="1" stop-color="#25714a"/>
-    </linearGradient>
-    <linearGradient id="tag" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f4a45f"/>
-      <stop offset="1" stop-color="#d8722f"/>
+      <stop offset="0" stop-color="#f5a6a0"/><stop offset="1" stop-color="#d36f6a"/>
     </linearGradient>
   </defs>
-
   <rect width="512" height="512" rx="114" fill="url(#bg)"/>
-
-  <!-- The note itself: what the app is, rather than what one of its tabs is.
-       Two lines ticked off and one still to do — the same picture whether the
-       line is 「ゴミ出し」 or 「食器用洗剤」. -->
-  <g transform="translate(0 -6)">
-    <rect x="104" y="96" width="304" height="316" rx="40" fill="#ffffff"/>
-
-    <g stroke="#2f8f5b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M150 178l24 24 44-46"/>
-      <path d="M150 264l24 24 44-46"/>
+  <g>
+    <rect x="132" y="96" width="248" height="320" rx="36" fill="#ffffff"/>
+    <g fill="#f9c7c3">
+      <rect x="176" y="176" width="160" height="20" rx="10"/>
+      <rect x="176" y="236" width="160" height="20" rx="10"/>
+      <rect x="176" y="296" width="104" height="20" rx="10"/>
     </g>
-    <circle cx="174" cy="332" r="24" fill="none" stroke="#c3d3ca" stroke-width="18"/>
-
-    <g fill="#d7e2da">
-      <rect x="244" y="180" width="120" height="22" rx="11"/>
-      <rect x="244" y="266" width="120" height="22" rx="11"/>
-      <rect x="244" y="322" width="86" height="22" rx="11"/>
-    </g>
-  </g>
-
-  <!-- The price tag stays: the shopping half of the app is still half of it,
-       and it is what the icon has always had a corner of. -->
-  <g transform="translate(286 268)">
-    <path d="M0 22A22 22 0 0 1 22 0h74a22 22 0 0 1 15.6 6.4l54 54a22 22 0 0 1 0 31.2l-74 74a22 22 0 0 1-31.2 0l-54-54A22 22 0 0 1 0 96z"
-          fill="url(#tag)" stroke="#ffffff" stroke-width="16" stroke-linejoin="round"/>
-    <circle cx="40" cy="40" r="14" fill="#ffffff"/>
   </g>
 </svg>
