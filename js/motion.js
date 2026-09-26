@@ -30,7 +30,7 @@
    震えについて：iOS の Safari は navigator.vibrate を持ちません。それでも
    呼ぶ形を残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator
    へ差し替える一点になるからです。呼び出し側を書き換えずに済みます。
-   iPhone では「済ませた」だけ、別の手で震わせます（下の `feel`。C1）。
+   iPhone では、主な押すものだけ別の手で震わせます（下の FEEL。C1）。
    ========================================================= */
 (function () {
   "use strict";
@@ -203,31 +203,62 @@
   }
 
   /* ---------------------------------------------------------------
-     iPhone で「済ませた」を震わせる（docs/motion.md の C1）
+     iPhone で、主な押すものを震わせる（docs/motion.md の C1）
 
      iOS 18 から、Safari の `<input type="checkbox" switch>`（切り替えの
      つまみ）は、**指で押されて**切り替わるときに端末を軽く震わせます。
 
-     **押したことにする（`label.click()`）では震えません。** 前はそうして
-     いて、実機で震えませんでした。WebKit は click が本物か（isTrusted）を
-     見ていて、本物でない切り替えでは震わせない（CheckboxInputType.cpp の
-     willDispatchClick → `state.trusted` のときだけ
+     **押したことにする（`label.click()`）では震えません。** 最初の版は
+     そうしていて、実機で震えませんでした。WebKit は click が本物か
+     （isTrusted）を見ていて、本物でない切り替えでは震わせない
+     （CheckboxInputType.cpp の willDispatchClick → `state.trusted` のときだけ
      performSwitchVisuallyOnAnimation。2026年9月に WebKit のソースで確認）。
 
-     だから、**指が本当にそのつまみを押す**ようにします。済ませる丸の中に、
-     見えないつまみを丸と同じ大きさで重ねる。指はつまみを押し（震える）、
-     その click は丸（button）へ上がって、いつもの「済ませる」が走ります。
+     だから、**指が本当にそのつまみを押す**ようにします。押すもの（button）の
+     中に、見えないつまみを同じ大きさで重ねる。指はつまみを押し（震える）、
+     その click は button へ上がって、いつもの動きが走ります。
 
-     ・重ねるのは Apple の指で触る端末だけ。ほかの端末の DOM は変えません
-       （そちらは navigator.vibrate が上の buzz で震わせる）。
-     ・つまみは読み上げにも Tab にも出しません（丸の button がそれを持つ）。
-     ・つまみは見えない（opacity 0）が、**描かれている**必要があります
-       ——WebKit は描かれていないつまみの指を受け取らないので、
-       display:none や head の中では震えません。
-     ・一度の指で click が二度来ても、丸へは一度だけ渡します（350ms）。
+     **どれに重ねるかは、下の FEEL の一覧だけが決めます。** 画面に出てきた
+     ものへ、見張り（MutationObserver）が付けて回ります——画面ごとに呼ぶと、
+     組み直しのたびに付け忘れが生まれるので。
+
+     一覧に入れないもの（入れると壊れるもの）：
+     ・**送る面の上の広いもの**（行・カード・札の並び）。iPhone は、つまみの
+       上で始まった指を「つまみを動かす」と受け取り、画面を送りません
+       （WebKit は touchstart を自分で受け取る＝defaultHandled）。小さな丸や
+       ★のように、送る指がめったに乗らないものだけ。
+     ・**押したまま滑らせるもの**（下の帯の席・掴み手・並べ替え）。つまみは
+       指を離した場所に関係なく「押した」と受け取るので、「席の外で離せば
+       変わらない」が崩れる。
+     ・**a 要素**（リンク）。中のつまみが押されると、リンクのほうは開かない
+       （一度の click で動くのは、いちばん内側の一つだけ）。
+     ・**form の送信ボタン**（type="submit" で form を持つもの）。同じ理由で、
+       送信が起きなくなる（商品の紙の値段の「追加」がこれ）。一覧の書き方に
+       かかわらず、付けるときに外します。
+
+     ・重ねるのは Apple の指で触る端末で、navigator.vibrate が無いときだけ。
+       ほかの端末の DOM は変えません（そちらは上の buzz が震わせる）。
+     ・つまみは読み上げにも Tab にも出しません（button がそれを持つ）。
+     ・見えない（opacity 0）が**描かれている**こと——WebKit は描かれていない
+       つまみの指を受け取らないので、display:none や head の中では震えない。
+     ・押せない button（disabled）は `pointer-events: none` を子へ継ぐので、
+       つまみも押されない（震えない）。
+     ・一度の指で click が二度来ても、button へは一度だけ渡します（指を
+       置いた回数で数えるので、数字キーの速い連打は落としません）。
      ・持ち上げて「置いた」、払って「閉じた」は震わせられません。そこには
-       指で押すつまみが無いので（前の版はそこでも試みていた）。
+       指で押すつまみが無いので。
      --------------------------------------------------------------- */
+  const FEEL = [
+    "button.check",        // 済ませる（やること・手順・買うもの）
+    "button.fav",          // ★ 今回買う
+    "button.btn-primary",  // 保存・追加・記録する（紙の足もと・確かめの紙）
+    "button.btn-danger",   // 消す・置き換える（確かめの紙）
+    "button.add-fab",      // ＋
+    "button.fab-menu-b",   // ＋ から出る行き先
+    "button.key",          // 数字キー
+    "button.low-add",      // そろそろ切れそう → 入れる
+  ].join(",");
+
   const appleTouch = (() => {
     try {
       const ua = navigator.userAgent || "";
@@ -235,22 +266,66 @@
         || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     } catch (_) { return false; }
   })();
-  function feel(btn) {
-    if (!btn || !appleTouch || navigator.vibrate) return;
-    if (btn.querySelector(":scope > .feel-switch")) return;
+  const feels = () => appleTouch && !navigator.vibrate;
+
+  function makeSwitch() {
     const sw = document.createElement("input");
     sw.type = "checkbox";
     sw.setAttribute("switch", "");
     sw.className = "feel-switch";
     sw.tabIndex = -1;
     sw.setAttribute("aria-hidden", "true");
-    let last = 0;
+    /* 一度の指に、button へ渡す click は一つ。数えるのは指を置いた回数
+       （pointerdown）——時間で切ると、数字キーの速い連打を落とします。 */
+    let downs = 0, used = -1;
+    sw.addEventListener("pointerdown", () => { downs++; });
     sw.addEventListener("click", (e) => {
-      const now = Date.now();
-      if (now - last < 350) { e.stopPropagation(); return; }
-      last = now;
+      if (used === downs) { e.stopPropagation(); return; }
+      used = downs;
     });
-    btn.append(sw);
+    return sw;
+  }
+
+  /* 付けて回る。まず全部の要否と位置を**読んでから**、まとめて書く
+     （一つずつ読み書きすると、そのたびに組み直しの計算が走るので）。 */
+  function attach(buttons) {
+    const need = buttons.filter((b) => b.isConnected
+      && !(b.type === "submit" && b.form)
+      && !b.querySelector(":scope > .feel-switch"));
+    if (!need.length) return;
+    const statics = need.filter((b) => getComputedStyle(b).position === "static");
+    statics.forEach((b) => { b.style.position = "relative"; });
+    need.forEach((b) => b.append(makeSwitch()));
+  }
+
+  function collect(node, into) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.matches(FEEL)) into.push(node);
+    node.querySelectorAll(FEEL).forEach((b) => into.push(b));
+  }
+
+  function watchFeel() {
+    if (!feels() || !window.MutationObserver) return;
+    const first = [];
+    collect(document.body, first);
+    attach(first);
+    new MutationObserver((records) => {
+      const found = [];
+      records.forEach((r) => {
+        r.addedNodes.forEach((n) => collect(n, found));
+        /* 中身を書き直された button（textContent など）は、つまみを失う。 */
+        if (r.target.nodeType === 1 && r.target.matches(FEEL)) found.push(r.target);
+      });
+      if (found.length) attach(found);
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.body) watchFeel();
+  else document.addEventListener("DOMContentLoaded", watchFeel, { once: true });
+
+  /** 一覧の外のものに、そのつど付けたいとき（いまは使っていない）。 */
+  function feel(btn) {
+    if (!btn || !feels()) return;
+    attach([btn]);
   }
 
   /**

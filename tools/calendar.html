@@ -55,8 +55,7 @@
     <div class="what" id="what"></div>
     <div class="when" id="when"></div>
   </div>
-  <a class="btn btn-primary" id="add" hidden>カレンダーに追加</a>
-  <a class="btn btn-soft" id="alt" hidden>うまく出ないとき：別のやり方で開く</a>
+  <a class="btn btn-primary" id="add" hidden>「カレンダーに追加」をもう一度出す</a>
   <p class="note" id="msg">読み込んでいます…</p>
 </main>
 <script>
@@ -75,7 +74,9 @@
   }
   const text = unpack(location.hash.slice(1));
   if (!/^BEGIN:VCALENDAR\r?\n/.test(text) || !/END:VCALENDAR/.test(text)) {
-    $("msg").innerHTML = '<span class="bad">予定を読み取れませんでした。</span>くらしノートに戻って、もう一度「カレンダーに入れる」を押してください。';
+    $("msg").textContent = location.hash
+      ? "予定を読み取れませんでした。くらしノートに戻って、もう一度「カレンダーに入れる」を押してください。"
+      : "くらしノートに戻ってください。";
     return;
   }
 
@@ -99,18 +100,23 @@
   $("when").textContent = when;
   $("card").hidden = false;
 
-  /* 一つ目：ファイルとして受け取らせる（Safari はカレンダーのファイルを受け
-     取ると「カレンダーに追加」を出す）。二つ目：同じ中身を、ページとして
-     開く（こちらは中身の種類で Safari が判断する）。どちらが効くかは端末の
-     版で違いうるので、二つとも置きます。 */
+  /* 中身の種類を「カレンダー」にした一枚を、ページとして開きます。Safari は
+     それを見て「カレンダーに追加」を出す。実機で通ったのはこちらのやり方
+     （ファイルとして落とす data: ＋ download のほうは、出なかった）。
+
+     **開いたとたんに一度だけ**出します（押す手間を一つ減らす）。そのあと URL
+     から `#` の後ろを消しておく——Safari がタブを開き直したときに、もう一度
+     出て、同じ予定を二つ入れてしまわないように。出なかったとき・閉じて
+     しまったときのために、同じものを出すボタンを一つ残します。 */
+  const url = URL.createObjectURL(new Blob([text], { type: "text/calendar" }));
   const add = $("add");
-  add.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(text);
-  add.download = (field("DTSTART").slice(0, 8) ? `yotei-${field("DTSTART").slice(0, 4)}-${field("DTSTART").slice(4, 6)}-${field("DTSTART").slice(6, 8)}` : "yotei") + ".ics";
+  add.href = url;
   add.hidden = false;
-  const alt = $("alt");
-  alt.href = URL.createObjectURL(new Blob([text], { type: "text/calendar" }));
-  alt.hidden = false;
   $("msg").textContent = "追加したら、くらしノートに戻ってください。";
+  setTimeout(() => {
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (_) { /* 消せなくても困らない */ }
+    location.href = url;
+  }, 250);
 })();
 </script>
 </body>

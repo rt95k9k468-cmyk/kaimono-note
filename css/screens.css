@@ -1344,21 +1344,26 @@
   .check:hover { border-color: var(--c-primary); }
 }
 .check:active { transform: scale(.85); }
-/* iPhone で「済ませた」を震わせる、見えないつまみ（motion.js の feel・C1）。
-   **丸（26px）にぴったり重ねるだけ**で、指の的（::after の 44px）までは
-   広げません。つまみの上から指を滑らせると、iPhone はそれを「つまみを
-   動かす」と受け取って、画面を送らないことがあるので——送る指が当たる
-   ところを、見えている丸の中だけにとどめます。丸のまわりを押したときは、
-   これまでどおり済みますが、震えません。
-   z-index は ::after（丸より後に描かれる、指の的）より上に置くため。
-   見えなくても**描かれている**こと（opacity 0。display:none は不可）。 */
-.check > .feel-switch {
+/* iPhone で震わせる、見えないつまみ（motion.js の FEEL・C1）。押すもの
+   （button）にぴったり重ねる。見えなくても**描かれている**こと（opacity 0。
+   display:none は不可——WebKit は描かれていないつまみの指を受け取らない）。
+   z-index は、押すものの中の飾りや ::after（指の的）より上に置くため。
+   つまみは button の枠の中だけ。指の的を広げてある ::after（44px）までは
+   広げない——送る指が当たるところを、見えているものの中にとどめるので
+   （motion.js の但し書き）。広げた的を押したときは、動くが震えない。 */
+.feel-switch {
   position: absolute;
-  top: -2px; left: -2px;
-  width: calc(100% + 4px); height: calc(100% + 4px);
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   margin: 0; padding: 0;
   opacity: 0;
   z-index: 1;
+  border-radius: inherit;
+}
+/* 済ませる丸は、縁（2px）が見えている輪そのもの。縁まで覆う。 */
+.check > .feel-switch {
+  top: -2px; left: -2px;
+  width: calc(100% + 4px); height: calc(100% + 4px);
   border-radius: var(--r-full);
 }
 .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
