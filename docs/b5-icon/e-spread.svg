@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4a19a"/><stop offset="1" stop-color="#cf5a52"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <path d="M252 140c-40-22-96-30-156-26v260c60-4 116 4 156 26z" fill="#ffffff"/>
+  <path d="M260 140c40-22 96-30 156-26v260c-60-4-116 4-156 26z" fill="#fff6f5"/>
+  <g fill="#f0d6d3">
+    <rect x="128" y="186" width="92" height="16" rx="8"/>
+    <rect x="128" y="226" width="92" height="16" rx="8"/>
+    <rect x="128" y="266" width="92" height="16" rx="8"/>
+    <rect x="128" y="306" width="60" height="16" rx="8"/>
+  </g>
+  <path d="M296 214l18 18 36-38" fill="none" stroke="#b84944" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M296 294l18 18 36-38" fill="none" stroke="#b84944" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="360" y="212" width="28" height="16" rx="8" fill="#f0d6d3"/>
+  <rect x="360" y="292" width="28" height="16" rx="8" fill="#f0d6d3"/>
+</svg>

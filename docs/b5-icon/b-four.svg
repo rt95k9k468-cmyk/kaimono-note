@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="114" fill="#f0eff3"/>
+  <rect x="92" y="92" width="152" height="152" rx="40" fill="#d9625b"/>
+  <rect x="268" y="92" width="152" height="152" rx="40" fill="#ffffff"/>
+  <rect x="92" y="268" width="152" height="152" rx="40" fill="#ffffff"/>
+  <rect x="268" y="268" width="152" height="152" rx="40" fill="#ffffff"/>
+  <g fill="#ffffff">
+    <rect x="128" y="138" width="80" height="16" rx="8"/>
+    <rect x="128" y="168" width="80" height="16" rx="8"/>
+    <rect x="128" y="198" width="52" height="16" rx="8"/>
+  </g>
+  <path d="M308 170l22 22 44-46" fill="none" stroke="#b84944" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(124 300)">
+    <path d="M0 14a14 14 0 0 1 14-14h40a14 14 0 0 1 10 4l30 30a14 14 0 0 1 0 20l-40 40a14 14 0 0 1-20 0l-30-30a14 14 0 0 1-4-10z" fill="#b84944"/>
+    <circle cx="24" cy="24" r="9" fill="#ffffff"/>
+  </g>
+  <path d="M344 384c-30-20-50-38-50-60a24 24 0 0 1 50-6 24 24 0 0 1 50 6c0 22-20 40-50 60z" fill="#b84944"/>
+</svg>
