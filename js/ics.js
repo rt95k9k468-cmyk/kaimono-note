@@ -6,13 +6,22 @@
 
    **どこにも送りません。** 作るのも渡すのも、この端末の中だけです。
 
-   渡し方は「.ics を開く」です（`save`）。iPhone の Safari はカレンダーの
-   ファイルを受け取ると「カレンダーに追加」を出します。共有シートでは
-   渡しません——iPhone の共有シートにはカレンダーが並ばず、ファイルに
-   保存してから開き直すことになるので。パソコンではファイルとして落ちて、
-   開けばカレンダーのアプリが受け取ります。
+   渡し方は端末で分けます（`offer`）。
 
-   DOM も store も知りません（`save` だけが a 要素を一つ使います）。
+   ・パソコン・Android … .ics をファイルとして落とす（`save`）。開けば
+     カレンダーのアプリが受け取ります。
+   ・iPhone の Safari（タブ）… 同じく `save`。Safari はカレンダーの
+     ファイルを受け取ると「カレンダーに追加」を出します。
+   ・iPhone の**ホーム画面のアプリ** … `save` では**入りませんでした**
+     （利用者が実機で確かめた。2026年9月27日）。ホーム画面のアプリは
+     Safari と違って、カレンダーのファイルを受け取る口を持っていない。
+     そこで、Safari 本体に受け渡しのページ（tools/calendar.html）を開かせ、
+     そこで入れてもらいます（`x-safari-https:` は Safari で開けという
+     iOS の決まりの書き方）。予定の中身は URL の `#` の後ろに載せるので、
+     サーバーには届きません。もう一つの道として、共有シートにファイルで
+     渡すボタンも並べます。
+
+   DOM は `save` と `offer` だけが使います（a 要素一つと、選ぶ紙一枚）。
    ========================================================= */
 (function () {
   "use strict";
@@ -129,5 +138,81 @@
     a.remove();
   }
 
-  KN.ics = { make, save, fileName, fold, esc };
+  /* ---------------- iPhone のホーム画面のアプリから ---------------- */
+
+  const appleTouch = () => {
+    try {
+      return /iP(hone|ad|od)/.test(navigator.userAgent || "")
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    } catch (_) { return false; }
+  };
+  const standalone = () => {
+    try {
+      return navigator.standalone === true
+        || !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    } catch (_) { return false; }
+  };
+
+  /* 中身を URL の `#` の後ろへ載せる形（UTF-8 を base64url に）。`#` の後ろは
+     サーバーへ送られないので、予定の題がどこかに残ることはありません
+     （Safari の履歴には残ります）。 */
+  function payload(text) {
+    const bytes = enc.encode(text);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  /** 受け渡しのページの URL。アプリの置き場所から数えます。 */
+  function helperURL(text) {
+    return new URL("tools/calendar.html", document.baseURI).href + "#" + payload(text);
+  }
+
+  /** 共有シートへ、ファイルで。使えなければ false（呼ぶ側が別の道へ）。 */
+  function share(text, name) {
+    let file = null;
+    try { file = new File([text], name, { type: "text/calendar" }); } catch (_) { file = null; }
+    if (!file || !navigator.canShare || !navigator.canShare({ files: [file] })) return false;
+    navigator.share({ files: [file] }).catch(() => { /* 閉じただけなら、何もしない */ });
+    return true;
+  }
+
+  /**
+   * 渡します。端末で道を分けます（冒頭の説明）。**押した流れの中で呼ぶこと。**
+   * @param {string} text  make() の返したもの
+   * @param {string} day   ファイルの名前に使う日（"YYYY-MM-DD"）
+   */
+  function offer(text, day) {
+    const name = fileName(day);
+    if (!(appleTouch() && standalone())) { save(text, name); return; }
+
+    const url = helperURL(text);
+    const body = KN.util.node(KN.util.html`
+      <div class="stack" style="gap:8px">
+        <p style="color:var(--c-text-2);line-height:1.6">
+          ホーム画面のアプリからは、iPhone のカレンダーへ直接は渡せません。Safari で開いて、そこから入れます。
+        </p>
+      </div>
+    `);
+    /* Safari で開くのは a の href そのもの。押した指がそのまま iOS に
+       「Safari で開け」を渡すので、途中で止められません。 */
+    const foot = KN.util.node(KN.util.html`
+      <div class="stack" style="gap:8px;width:100%">
+        <a class="btn btn-primary btn-block js-cal-safari" href="${url.replace(/^http/, "x-safari-http")}">Safari で開いて入れる</a>
+        <button type="button" class="btn btn-soft btn-block js-cal-share">共有シートで渡す</button>
+      </div>
+    `);
+    const h = KN.ui.sheet({ title: "カレンダーに入れる", content: body, footer: foot, guard: false, as: "dialog" });
+    foot.querySelector(".js-cal-safari").addEventListener("click", () => {
+      setTimeout(() => h.close(), 300);
+    });
+    foot.querySelector(".js-cal-share").addEventListener("click", () => {
+      if (!share(text, name)) save(text, name);
+      h.close();
+    });
+  }
+
+  KN.ics = { make, save, offer, share, payload, helperURL, fileName, fold, esc };
 })();

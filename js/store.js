@@ -2178,24 +2178,56 @@
   }
 
   /**
-   * その日のうちに終わらなかった用事を、今日へ運びます。
+   * 日が変わったら、**期限切れを作らない**ように運びます（利用者の希望。
+   * docs/todo-items.md の「期限切れは作らない」）。
    *
-   * くり返しの用事は対象外です——`due` は「次にやる日」という別の意味を
-   * 持っていて、`fallsOn()` がすでに先の日にも出す仕組みを持っているので、
-   * ここでまで動かすと二重になります。
+   * ① くり返しでない用事で、やる日（due）が過ぎたもの → 今日へ。時刻は
+   *    持ったまま（「10:00 病院」を逃したら、今日の 10:00 に居る）。
+   * ② 長期タスク（due なし）で、期限（deadline）が過ぎたもの → 今日へ。
+   *    やる日を決めないまま締め切りを越えたので、今日の時間割に出します。
+   * ③ くり返しの用事（ルーティン）で、次にやる日を逃したもの → **今日から
+   *    先で、決まりに当たる最初の日**へ。毎日なら今日、毎週火曜なら次の火曜。
+   *    逃した日は「やった」にも「やらなかった」にもしません（何も残さない）。
    *
-   * 呼ぶ側（app.js）が日の変わり目を見つけて呼びます。ここは「今日より
-   * 前に居る、くり返しでない未完了」を今日へ動かすだけです。
+   * ③が無かったころは、逃したルーティンが「期限切れ」に並び続け、今日
+   * 済ませると、その「やった」が逃した日のほうに付いて、今日のぶんは
+   * 済んでいないまま残りました（`toggleTodo` は due の日に写しを残すので）。
+   *
+   * 呼ぶ側（app.js）が、起動したとき・日の変わり目・戻ってきたときに呼びます。
+   * 何も動かさないときは、何も書きません。
    */
   function rescheduleOverdue() {
     const today = KN.util.todayKey();
-    const staleIds = openTodos()
-      .filter((t) => !t.repeat && t.due && t.due < today)
-      .map((t) => t.id);
-    if (!staleIds.length) return;
-    update((s) => {
-      s.todos.forEach((t) => { if (staleIds.includes(t.id)) t.due = today; });
+    const moves = new Map();          // id → 新しい due
+    /* 買い物の一件（`shop`）は、その日に一つ。今日にもうあるなら、昨日の
+       ぶんを運ぶと二つ並ぶので、運びません。 */
+    const shopToday = get().todos.some((t) => t.shop && t.due === today && !t.archived && !t.trace);
+    openTodos().forEach((t) => {
+      if (t.repeat) {
+        if (!t.due || t.due >= today) return;
+        const next = firstFallOn(t, today);
+        if (next && next !== t.due) moves.set(t.id, next);
+        return;
+      }
+      const late = (t.due && t.due < today) || (!t.due && t.deadline && t.deadline < today);
+      if (!late) return;
+      if (t.shop && shopToday) return;
+      moves.set(t.id, today);
     });
+    if (!moves.size) return;
+    update((s) => {
+      s.todos.forEach((t) => { if (moves.has(t.id)) t.due = moves.get(t.id); });
+    });
+  }
+
+  /** くり返しの用事が、`from` の日から先で最初に立つ日（`fallsOn` の読み方で）。
+      見つからなければ null（決まりが壊れているなど。そのときは動かしません）。 */
+  function firstFallOn(t, from) {
+    const U = KN.util;
+    for (let i = 0, day = from; i <= 400; i++, day = U.shiftDay(from, i)) {
+      if (fallsOn(t, day)) return day;
+    }
+    return null;
   }
 
   /** Today's timed todos whose time has not come round yet — waiting, not due. */

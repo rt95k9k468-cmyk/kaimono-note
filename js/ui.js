@@ -446,7 +446,6 @@
            そのまま下まで滑らせながら閉じにいきます。 */
         el.classList.remove("is-from-origin");
         const ms = slideTo(h);
-        KN.motion.tick("close");   // 払って閉じた（iPhone。motion.js の C1）
         tryClose();
         /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
            そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
