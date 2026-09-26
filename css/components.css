@@ -29,8 +29,24 @@
    the surrounding gap so the enlarged area lands in padding and never
    steals a tap from the neighbouring control.
    ========================================================= */
-.hit-44 { position: relative; }
-.hit-44::after {
+/* 同じ手当てを、クラスを足さずに名指しで通しているもの（docs/improvements.md
+   の B2、2026年9月26日。390×844 で実測）。広げたぶんが隣に届かないこと：
+   - 題の日付（高さ26px）… 上の帯（43px）の中に収まる
+   - カテゴリの札（40px）… 札の帯の上下 4px の余白に 2px ずつ
+   - 品物の絵の丸（40×40）… 左の★・右の名前とは 12px ずつ空いている
+   - 「AI推計」の帯（22px）… 下のボタンまで 12px、上は枠の余白
+   やることの行の題と、食事の四枠は、中心から 44px ではなく空きに合わせて
+   広げます（screens.css の `.tl-open` と `.diet-slot-view`）。 */
+.hit-44,
+.topbar-day,
+.js-filter .chip,
+.item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji,
+.diet-memo-open { position: relative; }
+.hit-44::after,
+.topbar-day::after,
+.js-filter .chip::after,
+.item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji::after,
+.diet-memo-open::after {
   content: "";
   position: absolute;
   top: 50%;

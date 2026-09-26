@@ -2952,7 +2952,15 @@ button.section-note:active { opacity: .55; }
    「紙に書いてある」見た目にするため、見出しと書き込む枠の二段組みを
    やめ、絵を左に置いた一本の行にします。絵は行の高さの中央、その右へ
    書いた文が続きます。 */
-.diet-slot-view { flex-direction: row; align-items: center; gap: var(--sp-2); cursor: pointer; }
+.diet-slot-view { position: relative; flex-direction: row; align-items: center; gap: var(--sp-2); cursor: pointer; }
+/* 指の的は、枠と枠のあいだの空きの半分ずつまで（B2）。一枠は35pxで、
+   あいだの8pxはどちらを押しても何も起きない隙間でした。半分ずつなら
+   四枠が隙間なくつながり、隣の枠の的には一画素もかかりません。 */
+.diet-slot-view::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--sp-2) / -2) 0;
+}
 .diet-slot-text { flex: 1; min-width: 0; font-size: var(--fs-lg); line-height: var(--lh-body); }
 .diet-slot-text.is-blank { color: var(--c-text-3); }
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
@@ -4035,6 +4043,7 @@ a.btn { text-decoration: none; }
 /* 題を押すところ。事実の行（手順の丸薬が乗る）はこの外です——button の
    中に button は置けないので。 */
 .tl-open {
+  position: relative;
   display: block;
   width: 100%;
   text-align: left;
@@ -4042,6 +4051,17 @@ a.btn { text-decoration: none; }
   border: none;
   padding: 0;
 }
+/* 指の的は、題の上下の空きまで（docs/improvements.md の B2）。題は一行だと
+   高さ21pxで、行の上下の空き（丸薬のぶんの背伸び）はどこを押しても何も
+   起きない面でした。上下に12pxずつ——一行の題で 45px。
+   **下に事実の行（.tl-facts）があるときは、下へは広げません。** あそこには
+   手順の丸薬という別の押せるものが乗っています。 */
+.tl-open::after {
+  content: "";
+  position: absolute;
+  inset: -12px 0;
+}
+.tl-open:not(:last-child)::after { bottom: 0; }
 
 /* 題の上の前置き（メモ）。読むための文脈なので、題より先に目を
    引かないように薄く小さく。 */
@@ -5166,6 +5186,10 @@ a.btn { text-decoration: none; }
   background: color-mix(in srgb, var(--c-primary) 12%, transparent);
   color: var(--c-primary);
 }
+/* 「このリストを送る」（screen-list.js の shareRow）。見た目は上の
+   「今日の予定に入れる」と同じ一本——どちらも、このリストを外へ渡す口なので。
+   置き場所は買うものの終わり、アーカイブの手前。 */
+.list-share { padding: var(--sp-3) var(--sp-4) var(--sp-2); }
 
 /* 時間割で、買い物の一件が「いま何個ぶんか」。 */
 .tl-shop { font-variant-numeric: tabular-nums; }

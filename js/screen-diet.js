@@ -2073,8 +2073,13 @@
     const sg = stepsGoal(), bg = burnGoal(), slg = sleepGoal();
     /* 輪の真ん中に出す字。ふつうの三つは目標に対する％（超えたら100を
        超えた数がそのまま出ます——超えたことが読めるように）。飲酒だけは
-       量そのもの（g）です。％は下の行が言うので、同じ数を二度書きません。 */
-    const ringPct = (r) => (r.pct == null ? "—" : r.pct + "%");
+       量そのもの（g）です。％は下の行が言うので、同じ数を二度書きません。
+
+       **まだ無いときは、輪の中は空けます。** 「—」は下の数の欄が言います。
+       輪の中にも書いていたので、空の日は一つの枠に「—」が二つずつ、
+       画面ぜんたいで十七個並んでいました（docs/improvements.md の B9）。
+       空の輪そのものが「まだ無い」を言っています。 */
+    const ringPct = (r) => (r.pct == null ? "" : r.pct + "%");
     const rSteps = ringOf("steps", card.steps, sg);
     const rBurn  = ringOf("burned", card.burned, bg);
     const rSleep = ringOf("sleep", card.sleep, slg);
@@ -2100,7 +2105,7 @@
         value: drinkPending ? "—" : pct + "%",
         unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
         over: !drinkPending && pct > 100,
-        ring: rDrink, mid: drinkPending ? "—" : `${dt ? dt.alcoholG : 0}g` },
+        ring: rDrink, mid: drinkPending ? "" : `${dt ? dt.alcoholG : 0}g` },
     ];
 
     const sec = node(html`
@@ -2787,12 +2792,15 @@
       置きます——タップすると「食事を書く」の紙が開き、そこがほんとうの
       書く場所です。カルーセルの前日・翌日（peek）は押せません。 */
   function slotViewRow(day, sl, text, kcal, tappable) {
+    /* まだ書いていない枠は、**その枠の名前を薄い字で**出します（朝食・昼食…）。
+       「—」を四つ並べていましたが、絵だけでは何の枠か読めず、空の日の
+       「—」の列を長くしていただけでした（B9）。薄い字は `.is-blank` のまま。 */
     const row = node(html`
       <div class="diet-slot diet-slot-view" data-slot="${sl.id}"
            ${tappable ? U.raw('role="button" tabindex="0"') : ""}
            aria-label="${sl.label}${text ? "に食べたもの" : "を書く"}">
         <span class="diet-slot-ico">${icon(sl.ico)}</span>
-        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || "—"}</span>
+        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || sl.label}</span>
         <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
       </div>
     `);

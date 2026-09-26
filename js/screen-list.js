@@ -387,6 +387,7 @@
        describe the whole trip, because a search is a way of looking at the
        list rather than a change to it. */
     renderBody(query ? items.filter(matchesQuery) : items);
+    awake.recheck();
   }
 
   /** Name, memo, or category — whichever the query happens to be. */
@@ -458,6 +459,7 @@
          back the moment something is starred, where they mean this trip. */
       const shown = appendGroups(active);
       if (!shown && categoryFilter) els.body.append(noneInCategory());
+      if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]));
       if (checked.length) els.body.append(checkedSection(checked));
       settle();
       return;
@@ -490,9 +492,67 @@
       els.body.append(sectionHead("そのほか", rest.length, "rest"));
       appendGroups(rest);
     }
+    if (!query) {
+      els.body.append(shareRow([{ title: "今回買うもの", list: trip }, { title: "そのほか", list: rest }]));
+    }
 
     if (checked.length) els.body.append(checkedSection(checked));
     settle();
+  }
+
+  /* ---------------- リストを、文字にして送る ----------------
+
+     LINE などへ渡すための一行（docs/improvements.md の D4）。送るのは
+     **いま画面に出ている買うもの**そのまま——★があれば「今回買うもの」と
+     「そのほか」に分けて、札で絞っていればその札のぶんだけ、並びも画面と
+     同じ。買ったもの（アーカイブ）は入れません。探しているあいだは出しません
+     （探した結果はリストではなく、リストの見方なので）。
+
+     渡し方は共有シート。無い端末ではクリップボードへ写します。共有シートを
+     閉じただけ（AbortError）なら、何も言いません——取り消しは取り消しなので。 */
+  function shareRow(parts) {
+    const text = listText(parts);
+    if (!text) return document.createDocumentFragment();
+    const row = node(html`
+      <div class="list-share">
+        <button type="button" class="trip-plan-btn js-share">
+          ${icon("upload")}<span>このリストを送る</span>
+        </button>
+      </div>
+    `);
+    row.querySelector(".js-share").addEventListener("click", () => sendList(listText(parts)));
+    return row;
+  }
+
+  function listText(parts) {
+    const cat = categoryFilter && store.getCategory(categoryFilter);
+    const blocks = parts.map(({ title, list }) => {
+      const lines = [];
+      const groups = groupsOf(list);
+      store.sortedCategories().forEach((c) => {
+        (groups.get(c.id) || []).forEach(({ item, product }) => {
+          lines.push(`・${product.name}${item.qty > 1 ? ` ×${item.qty}` : ""}`
+            + `${item.memo ? `（${String(item.memo).replace(/\s+/g, " ").trim()}）` : ""}`);
+        });
+      });
+      return lines.length ? `${title}${cat ? `（${cat.name}）` : ""}\n${lines.join("\n")}` : "";
+    }).filter(Boolean);
+    return blocks.join("\n\n");
+  }
+
+  function sendList(text) {
+    const copy = () => (navigator.clipboard && navigator.clipboard.writeText
+      ? navigator.clipboard.writeText(text).then(() => true, () => false)
+      : Promise.resolve(false)
+    ).then((ok) => {
+      if (ok) KN.motion.fire("select");
+      KN.ui.toast(ok ? "リストをコピーしました" : "送れませんでした");
+    });
+    if (!navigator.share) { copy(); return; }
+    navigator.share({ text }).catch((err) => {
+      if (err && err.name === "AbortError") return;
+      copy();
+    });
   }
 
   /* ---------------- 「いつ行くか」を、予定のほうへ ----------------
@@ -534,8 +594,9 @@
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
-  function appendGroups(list, host) {
-    const into = host || els.body;
+  /** 画面に出る組：カテゴリごと、札の絞り込みも効かせて。並べるのは
+      `store.sortedCategories()` の順（appendGroups と、送る文の両方が使う）。 */
+  function groupsOf(list) {
     const groups = new Map();
     list.forEach((item) => {
       const p = store.getProduct(item.productId);
@@ -544,6 +605,12 @@
       if (!groups.has(p.categoryId)) groups.set(p.categoryId, []);
       groups.get(p.categoryId).push({ item, product: p });
     });
+    return groups;
+  }
+
+  function appendGroups(list, host) {
+    const into = host || els.body;
+    const groups = groupsOf(list);
 
     /* Tiles are one grid for the lot. A separate grid per category would give
        a category of one item a row of its own and two empty cells beside it —
@@ -925,6 +992,58 @@
     return fab;
   }
 
+  /* ---------------- 買い物中は、画面を消さない ----------------
+
+     買うものの画面が出ていて、まだ買うものが残っているあいだは、画面を
+     暗くしません（Screen Wake Lock。docs/improvements.md の D5）。カゴを
+     持った手で、消えた画面をもう一度起こすのは手間なので。設定は置きません
+     ——効くのはこの画面を見ているあいだだけで、放っておけば消えるので。
+
+     - **最後に触ってから5分で手放します。** 机に置いたままの画面を、電池が
+       尽きるまで点けておかないために。触れば、また持ちます。
+     - 持つのは触ったとき・画面に入ったとき・戻ってきたとき。組み直し
+       （買った・消した）では**延ばさず**、要らなくなっていたら手放すだけ
+       ——延ばすのは人の手だけにしないと、5分が数えられません。
+     - 隠れるとブラウザが自分で手放すので、戻ってきたら持ち直します。
+     - 使えない端末では何もしません（iOS のホーム画面アプリで効くのは
+       18.4 からとされます。実機では未確認）。 */
+  const awake = (() => {
+    const IDLE_MS = 5 * 60 * 1000;
+    let lock = null, asking = false, idleT = 0, pend = 0;
+    const wanted = () => document.visibilityState === "visible"
+      && ["list", "prices"].indexOf(KN.app.activeScreen && KN.app.activeScreen()) >= 0
+      && store.get().items.some((i) => !i.checked);
+    function release() {
+      clearTimeout(idleT);
+      const l = lock;
+      lock = null;
+      if (l) l.release().catch(() => {});
+    }
+    function hold() {
+      if (!wanted()) { release(); return; }
+      clearTimeout(idleT);
+      idleT = setTimeout(release, IDLE_MS);
+      if (lock || asking || !navigator.wakeLock) return;
+      asking = true;
+      navigator.wakeLock.request("screen").then((l) => {
+        asking = false;
+        if (!wanted()) { l.release().catch(() => {}); return; }
+        lock = l;
+        l.addEventListener("release", () => { if (lock === l) lock = null; });
+      }, () => { asking = false; });
+    }
+    /** 人の手（触った・入った・戻った）。一拍おくのは、タブを押した手なら
+        画面が切り替わってから確かめるため。 */
+    function touched() {
+      if (!pend) pend = setTimeout(() => { pend = 0; hold(); }, 0);
+    }
+    /** 組み直し。要らなくなっていたら手放すだけ。 */
+    function recheck() { if (lock && !wanted()) release(); }
+    return { touched, recheck };
+  })();
+  ["pointerup", "click", "keydown"].forEach((t) => document.addEventListener(t, awake.touched, true));
+  document.addEventListener("visibilitychange", awake.touched);
+
   KN.screens = KN.screens || {};
-  KN.screens.list = { mount, render, dockButton };
+  KN.screens.list = { mount, render, dockButton, onEnter: awake.touched };
 })();
