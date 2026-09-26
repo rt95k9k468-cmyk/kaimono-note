@@ -112,8 +112,9 @@
   // touchMove … / touchEnd は touchPoints: []
   ```
   対になる**当たり判定**も一緒に置くこと：掴み手ではないところ（紙の本体）を
-  引いたら、`.screen` に transform が付く——付かないなら、その試験は
-  そもそも「引いて更新」を動かせていない、と分かります。
+  上端で下へ引いたら、送る器（`KN.app.scrollerOf()` の返すもの）に transform が
+  付く——付かないなら、その試験はそもそも端の give を動かせていない、と
+  分かります（引いて更新はもう無い。sheet-scroll）。
 
 ## 詳しい決めごとは `docs/` にある（触る前に、該当するものだけ読む）
 
@@ -152,8 +153,9 @@
 
 ## 横断の罠（どの画面でも踏む。詳しくは括弧の docs）
 
-- **送る器は紙**（やること・daily・買うもの）。`root.scrollTop` と書かず、
-  `KN.app.scrollerOf()` を通す。（sheet-scroll）
+- **送る器は紙**（やること・daily・買うもの・ダイエット。設定は `.set-scroll`）。
+  `root.scrollTop` や `activeScreen()` を送る相手にせず、`KN.app.scrollerOf()` を
+  通す。（sheet-scroll）
 - **毎フレーム書くカスタムプロパティは `:root` に書かない。** 継承で文書の
   全要素の style 再計算を呼ぶ。読む相手そのものへ書く。（calendar-swipe・glass）
 - **`var()` は、それを書いた要素の上で解決される。** `:root` で組んだ一枚は

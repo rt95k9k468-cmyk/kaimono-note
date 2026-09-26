@@ -863,10 +863,10 @@ a { color: var(--c-primary); }
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* The browser's own bounce is off at both ends: at the top it fought the
-     pull-to-refresh chip and the list wobbled under it. pull-refresh.js hands
-     both edges their give back — the chip at the top, a plain band at the
-     bottom — so nothing here stops dead against nothing. */
+  /* The browser's own bounce is off at both ends: at the top it once fought
+     the pull-to-refresh chip and the list wobbled under it. The chip is gone;
+     pull-refresh.js hands both edges the same plain band instead, so nothing
+     here stops dead against nothing. */
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   display: none;
@@ -876,8 +876,8 @@ a { color: var(--c-primary); }
      最後の一件の下にあったのと同じ余白です。 */
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
   scrollbar-width: thin;
-  /* Opaque, so the refresh chip parked above the screen stays hidden until a
-     pull slides the screen off it. */
+  /* Opaque, so nothing behind a screen shows through while the band at
+     either end slides it. */
   background: var(--c-bg);
 }
 
