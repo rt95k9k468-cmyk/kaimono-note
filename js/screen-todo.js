@@ -787,6 +787,36 @@
         icon: "star",
         onPick: () => { flagged = !flagged; paintHeroFacts(); },
       },
+      /* 端末のカレンダーへ（D3。js/ics.js）。渡すのは**この紙にいま出ている
+         中身**——保存する前に直した日付や題も、見えているとおりに入ります。
+         くり返しは次の一回ぶんだけ（くり返しの決まりまで写すと、アプリの
+         「第2火曜」「平日」などと端末の読み方がずれた日に、二か所で違う日に
+         立ちます）。日付が無ければ期限の日に、終日で。 */
+      {
+        id: "calendar",
+        label: () => "カレンダーに入れる",
+        sub: "端末のカレンダーへ。くり返しは次の1回ぶん",
+        icon: "calendar",
+        onPick: () => {
+          const day = due || deadline;
+          if (!KN.ics || !KN.util.dayDate(day)) {
+            KN.ui.toast("日付を決めると、カレンダーに入れられます");
+            return;
+          }
+          const name = titleEl.value.trim() || (t && t.title) || "";
+          if (!name) { KN.ui.toast("題を書くと、カレンダーに入れられます"); return; }
+          const memoBox = body.querySelector(".js-memo");
+          const text = KN.ics.make({
+            uid: `${todoId || "new-" + Date.now()}-${day}@kurashi-note`,
+            title: due ? name : `${name}（期限）`,
+            memo: memoBox ? memoBox.value : (t && t.memo) || "",
+            day,
+            time: due ? time : null,
+            minutes,
+          });
+          KN.ics.save(text, KN.ics.fileName(day));
+        },
+      },
     ];
     if (editing) {
       /* 写しを作ります。似たものを続けて足すとき——同じ手順を持つ用事を
@@ -2228,6 +2258,7 @@
     if (wasDone || !row) {
       const res = store.toggleTodo(id);
       haptic(wasDone ? 12 : [16, 40, 16]);
+      if (!wasDone) KN.motion.tick("check");   // iPhone（C1）
       if (!wasDone && checkEl) KN.ui.burst(checkEl);
       if (res.repeated) sayMoved(t, res);
       return;
@@ -2239,6 +2270,7 @@
        済ませたことを見せてから、消す（または次の日へ送る）順にします。 */
     finishing.add(id);
     haptic([16, 40, 16]);
+    KN.motion.tick("check");   // iPhone（C1。motion.js）
     checkEl.setAttribute("aria-checked", "true");   // 指にはすぐ応える
     KN.ui.burst(checkEl);
 
@@ -4133,6 +4165,7 @@
        置き場が見えていることと、そこへ置くと言ったことは別なので、
        指が動いていなければ帰します。 */
     if (!d.moved) { render(); return; }
+    KN.motion.tick("drop");   // 置いた（iPhone。motion.js の C1）
 
     /* 週の帯の日へ落とした。**日付を変えます。**
 

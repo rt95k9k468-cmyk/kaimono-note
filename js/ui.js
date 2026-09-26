@@ -446,6 +446,7 @@
            そのまま下まで滑らせながら閉じにいきます。 */
         el.classList.remove("is-from-origin");
         const ms = slideTo(h);
+        KN.motion.tick("close");   // 払って閉じた（iPhone。motion.js の C1）
         tryClose();
         /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
            そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
@@ -729,14 +730,17 @@
 
   /* ---------------- prompt ---------------- */
 
-  function prompt({ title, label, value = "", placeholder = "", okLabel = "保存", inputMode }) {
+  /* secret … 合言葉のように、伏せて打つもの。前後の空白も**そのまま**返します
+     （合言葉の空白を黙って削ると、合っているのに開かなくなります）。 */
+  function prompt({ title, label, value = "", placeholder = "", okLabel = "保存", inputMode, secret = false }) {
     return new Promise((resolve) => {
       let settled = false;
       const body = node(html`
         <label class="field">
           ${label ? html`<span class="field-label">${label}</span>` : ""}
           <input class="input js-input" value="${value}" placeholder="${placeholder}"
-                 ${inputMode ? KN.util.raw(`inputmode="${inputMode}"`) : ""}>
+                 ${inputMode ? KN.util.raw(`inputmode="${inputMode}"`) : ""}
+                 ${secret ? KN.util.raw(`type="password" autocomplete="off" autocapitalize="none" spellcheck="false"`) : ""}>
         </label>
       `);
       const foot = node(html`
@@ -754,7 +758,7 @@
       const input = body.querySelector(".js-input");
       function submit() {
         settled = true;
-        resolve(input.value.trim());
+        resolve(secret ? input.value : input.value.trim());
         h.close();
       }
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });

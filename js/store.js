@@ -3248,6 +3248,71 @@
     return dayLog(day);
   }
 
+  /**
+   * 日記の取り込み（D7。設定 → 日記を取り込む）。取り込み道具
+   * （tools/diary-import.html）の控えを開いた、`[{date, body}]` を入れます。
+   *
+   * **すでに本文のある日には、一字も触れません**（上書きしない・書き足さない）。
+   * 入れるのは、その日の行が無い日と、行はあっても本文が空の日だけ。同じ本文
+   * なら何もしません（取り込みを二度押しても、同じものが二つにならない）。
+   * 同じ日付の行が二つあるときは、先の一つだけを見ます（日記の写しと同じ。
+   * docs/storage.md）。
+   *
+   * 取り込んだ行の「作成」「更新」は空のまま（「-」で出ます）——いま作った
+   * わけでも、いま書き直したわけでもないので。
+   *
+   * @param {Array<{date:string, body:string}>} list
+   * @param {{dry?: boolean}} [opts] dry なら数えるだけで書きません
+   * @returns {{add:number, fill:number, same:number, kept:number, chars:number,
+   *   from:string, to:string}}
+   *   chars は、書けば記録に増える字数のおおよそ（容量の見積もり用）。
+   *   from / to は、読めた日の最初と最後（暦に無い日は含まない）。
+   */
+  function importDiary(list, opts) {
+    const r = { add: 0, fill: 0, same: 0, kept: 0, chars: 0, from: "", to: "" };
+    const want = new Map();
+    (Array.isArray(list) ? list : []).forEach((x) => {
+      const d = x && toDayKey(x.date);
+      const body = x && typeof x.body === "string" ? x.body : "";
+      // 同じ日が二度来たら、先のものを。空の本文は入れる意味が無いので飛ばします。
+      // 暦に無い日（2月30日など）は、どの日にも出ない行になるので入れません。
+      const real = d && KN.util.dayKey(KN.util.dayDate(d)) === d;
+      if (real && d === x.date && body.trim() && !want.has(d)) want.set(d, body);
+    });
+    const keys = [...want.keys()].sort();
+    r.from = keys[0] || "";
+    r.to = keys[keys.length - 1] || "";
+    const plan = (days) => {
+      const act = [];
+      want.forEach((body, date) => {
+        const cur = days.find((d) => d.date === date);
+        const mine = cur ? String(cur.memo || "") : "";
+        if (cur && mine === body) { r.same++; return; }
+        if (cur && mine.trim()) { r.kept++; return; }
+        if (cur) r.fill++; else r.add++;
+        /* JSON にしたときの長さ。行を足すなら、欄の名前ぶんも。 */
+        r.chars += JSON.stringify(body).length + (cur ? 0 : 160);
+        act.push({ date, body, cur: !!cur });
+      });
+      return act;
+    };
+    if (opts && opts.dry) { plan(archive().days); return r; }
+    update((s) => {
+      plan(s.archive.days).forEach(({ date, body, cur }) => {
+        if (cur) {
+          s.archive.days.find((d) => d.date === date).memo = body;
+          return;
+        }
+        s.archive.days.push({
+          date, memo: body, wake: null, sleep: null,
+          wakeSource: "manual", sleepSource: "manual",
+          createdAt: null, updatedAt: null,
+        });
+      });
+    });
+    return r;
+  }
+
   /* 月ぶんの地の文。**日付の新しい順**です。
      いちどは「書いた・直した順」にしていましたが、これは日誌には向きません
      ——26日に一行足しただけで、26日が27日の上に来ます。暦の並びが崩れると、
@@ -3543,7 +3608,7 @@
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth, archiveThen,
+    dayLog, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen,
     exportJSON, importJSON, inspectBackup, countsOf, reset, loadSample,
   };
 })();
