@@ -3415,7 +3415,9 @@
         return;
       }
       const next = parts[i + 1];
-      list.append(itemRow(part.it, !!next && next.kind === "item", day));
+      const prev = parts[i - 1];
+      const touch = !!prev && prev.kind === "item" && landsInside(prev.it, part.it);
+      list.append(itemRow(part.it, !!next && next.kind === "item", day, touch));
     });
 
     /* 重なっている二つは、**丸薬どうしがぶつかって**見えます（下の CSS）。
@@ -3590,6 +3592,9 @@
 
      30秒ごとに置き直します（軸と同じ拍）。組み直しはしません。 */
   function markPass(list, nowMin) {
+    /* 線の上で「いま」が居る行に、もう着いたか。着くまでの行の線は全部
+       過ぎたぶん（色）、着いたあとの行の線は全部これから（灰色）。 */
+    let reached = false;
     for (const li of list.children) {
       if (!li.classList) continue;
       const row = li.classList.contains("tl-row");
@@ -3602,20 +3607,41 @@
       else if (nowMin <= a) pass = 0;
       else pass = (nowMin - a) / (u - a);
       li.style.setProperty("--pass", pass.toFixed(3));
-      if (!row) continue;
       /* 丸薬の**外**の線の色。丸薬の中の境目は CSS が丸薬の寸法から出す
          ので（--rail-p）、ここが渡すのは外の二本だけです。
 
          外の線は時間を持ちません——丸薬と丸薬をつなぐ、ただの繋ぎです。
-         だから途中で色が変わってはならず、二値で決まります：上は
-         **始まったか**、下は**終わったか**。
+         だから途中で色が変わってはならず、二値で決まります。
+
+         **決めるのは、一本の線の上の「いま」の位置です。行ごとの
+         pass ではありません。** 前は行ごとに「上は始まったか・下は
+         終わったか」で塗っていて、二つの場面で**色の付いた短い線**が
+         丸薬の上下から灰色の線の中へ突き出ました（「丸薬に線が刺さって
+         いる」。2026年9月27日の画面）：
+           - 済ませたもの（pass は時計に関わらず 1）… 夕方の用事を朝に
+             済ませると、夕方の丸薬の上下 5〜10px だけが色になる。
+           - 重なり … 4時間のルーティンの途中で済ませた用事は、始まって
+             いて終わってもいるので上下とも色、上のルーティンはまだ
+             終わっていないので下は灰色——灰色 → 色 → 丸薬 → 色 → 灰色。
+         「いま」の行は `nowY` と同じ引き方（時刻の順に見て、まだ終わって
+         いない最初の行）で決めるので、線の色の境目は、いまの時刻の札と
+         同じところに一つだけ落ちます。丸薬の塗り（pass）は、そのまま
+         その用事の進み具合・済んだかを言います——線は時間、丸薬は用事。
 
          下（--rail-bot-c）は、手順の段（.tl-sub-wrap）の背骨も継ぎます。
          あそこの高さは手順の件数で決まっていて時間ではないので、割合を
          渡してはいけません（渡していた時期があり、それが「線が丸薬を
          追い越す」の正体でした）。 */
-      li.style.setProperty("--rail-top-c", pass > 0 ? "var(--tl-fill)" : "var(--tl-wait)");
-      li.style.setProperty("--rail-bot-c", pass >= 1 ? "var(--tl-fill)" : "var(--tl-wait)");
+      let top = true, bot = true;
+      if (nowMin != null && reached) top = bot = false;
+      else if (nowMin != null && known && nowMin < u) {
+        reached = true;
+        top = nowMin > a;
+        bot = false;
+      }
+      if (!row) continue;
+      li.style.setProperty("--rail-top-c", top ? "var(--tl-fill)" : "var(--tl-wait)");
+      li.style.setProperty("--rail-bot-c", bot ? "var(--tl-fill)" : "var(--tl-wait)");
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
@@ -4407,7 +4433,30 @@
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  function itemRow(it, joined, day) {
+  /** 下の行が、すぐ上の行の**時間の中で**起きたか（丸薬どうしをぶつけるか）。
+
+      組み立ての `clash` は「時刻を決めたものどうし」しか見ません。済ませた
+      ものは押した時刻に置かれる（plan.js の doneSpan）ので、4時間の朝の
+      ルーティンの途中で済ませた用事は、ルーティンの**下の行**に、線で
+      つながれて並びます。すると絵は「ルーティンが終わってから、次の用事」
+      と読めて、ルーティンの丸薬がまだ途中まで（`--pass` 0.27）なのに、
+      その下の丸薬だけ色が付いている——時間が逆に流れて見えました
+      （2026年9月27日の画面）。重なりは重なりとして、ぶつけて見せます。
+
+      **決めた長さどうしのときだけ。** 長さを書いていない用事の 30分は、
+      置き場所を決めるための仮の数です（nodeH の但し書き）。仮の数で
+      重なりを言うと、続けて二つ済ませただけで丸薬がぶつかります。
+      だから上の行は長さを持っていること、下の行は**本当の時刻**
+      （決めた時刻・長さから出した始まり・済ませた時刻）がその中にあること。 */
+  function landsInside(above, it) {
+    if (!above || !above.todo || !Number(above.todo.minutes)) return false;
+    const real = it.fixed || Number(it.todo && it.todo.minutes)
+      ? it.atMin
+      : (it.doneAtMin != null ? it.doneAtMin : null);
+    return real != null && real >= above.atMin && real < above.untilMin;
+  }
+
+  function itemRow(it, joined, day, touch) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
@@ -4454,7 +4503,7 @@
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const closed = t.done || t.archived;
     const li = node(html`
-      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
+      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash || touch ? "is-clash" : ""}
                  ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
