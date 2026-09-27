@@ -39,7 +39,7 @@
   let pressed = null;
   document.addEventListener("pointerdown", (e) => {
     const b = e.target && e.target.closest
-      && e.target.closest("button, [role='button'], a[href]");
+      && e.target.closest("button, [role='button'], a[href], [data-grow]");
     pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
   }, true);
 
@@ -80,6 +80,84 @@
     void getComputedStyle(el).transform;
     el.style.transition = "";
     return { x: pressed.x, y: pressed.y };
+  }
+
+  /* ---- 押した行の丸薬が、紙の頭の丸薬へ伸びていく（C2） ----
+
+     紙は押した点から育ちますが、それだけだと「どの行の続きなのか」は
+     題の位置でしか言えません。行の丸薬（from）そのものが、紙の頭の丸薬
+     （to）の場所・大きさへ伸びていけば、頭の粒が**あの行の丸薬の続き**だと
+     絵が言います。
+
+     動くのは影武者の一枚（to の写し）で、飛んでいるあいだは本物の二つを
+     隠します——紙そのものは押した点から縮んだ姿で育ってくる途中なので、
+     頭の丸薬を紙に乗せたまま動かすと、行き先が毎フレーム動いて追えません。
+
+     行き先は**開き終えたときの箱**です。紙に `.is-open` を付けた姿を、
+     動きを止めたまま一度だけ測ります（seedFrom と同じ「止めて、読んで、
+     戻す」）。rAF の中で測るのは、紙を開いたあとで頭の字（いつ・印）が
+     埋まり、丸薬の縦の位置が変わるからです。
+
+     速さと曲線は紙が育つのと同じ（--m-sheet-grow / --push-e）——同じ時に
+     着くので、着いた瞬間に本物へ入れ替えても継ぎ目が出ません。
+
+     返すのは、途中で紙が閉じたときの後始末。 */
+  function morphPill(morph, el, z) {
+    const from = morph && morph.from;
+    const to = morph && morph.to;
+    if (!from || !to || !from.isConnected || !el.contains(to)) return null;
+    const a = from.getBoundingClientRect();
+    if (!a.width || !a.height) return null;
+    el.style.transition = "none";
+    el.classList.add("is-open");
+    const b = to.getBoundingClientRect();
+    el.classList.remove("is-open");
+    void getComputedStyle(el).transform;
+    el.style.transition = "";
+    if (!b.width || !b.height) return null;
+
+    const cs = getComputedStyle(to);
+    const ghost = to.cloneNode(true);
+    ghost.className = "hero-node sheet-morph";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.style.background = cs.backgroundColor;
+    ghost.style.zIndex = String(z);
+    sheetRoot().append(ghost);
+    from.style.visibility = "hidden";
+    to.style.visibility = "hidden";
+
+    const ms = KN.motion.ms("--m-sheet-grow");
+    const easing = KN.motion.ease("--push-e");
+    const box = (r) => ({
+      left: `${r.left}px`, top: `${r.top}px`,
+      width: `${r.width}px`, height: `${r.height}px`,
+    });
+    const run = ghost.animate([
+      { ...box(a), borderRadius: getComputedStyle(from).borderRadius,
+        boxShadow: "0 0 0 0 transparent" },
+      { ...box(b), borderRadius: cs.borderRadius, boxShadow: cs.boxShadow },
+    ], { duration: ms, easing, fill: "both" });
+    /* 絵は行では 32px、頭では 38px。箱と一緒に育てます。 */
+    const mark = ghost.firstElementChild;
+    const fromMark = from.firstElementChild;
+    if (mark && fromMark && mark.getBoundingClientRect) {
+      const k = (fromMark.getBoundingClientRect().width || 32)
+        / (to.firstElementChild ? to.firstElementChild.getBoundingClientRect().width || 38 : 38);
+      mark.animate([{ transform: `scale(${k.toFixed(3)})` }, { transform: "none" }],
+        { duration: ms, easing, fill: "both" });
+    }
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      from.style.visibility = "";
+      to.style.visibility = "";
+      ghost.remove();
+    };
+    run.onfinish = finish;
+    run.oncancel = finish;
+    return finish;
   }
 
   /* ---------------- bottom sheet ---------------- */
@@ -285,7 +363,11 @@
     }
 
     // Next frame so the transition runs.
+    let unmorph = null;
     requestAnimationFrame(() => {
+      /* 行の丸薬から伸びるのは、押した点から育つときだけ（行き先の箱の
+         出し方が、下から出る紙の形に寄りかかっているので）。 */
+      if (seed && opts && opts.morph && !closed) unmorph = morphPill(opts.morph, el, floor + 1 + depth * 2);
       backdrop.classList.add("is-open");
       el.classList.add("is-open");
     });
@@ -294,6 +376,7 @@
     function close() {
       if (closed) return;
       closed = true;
+      if (unmorph) unmorph();
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
       KN.motion.fire("sheetClose");

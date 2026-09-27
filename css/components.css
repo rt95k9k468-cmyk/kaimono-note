@@ -964,6 +964,13 @@ button, [role="tab"] {
 }
 .hero-node .todo-mark,
 .hero-node .todo-mark svg { width: 38px; height: 38px; }
+/* 行の丸薬から頭の丸薬へ伸びていく影武者（ui.js の morphPill）。箱の
+   位置・大きさ・丸み・輪は、JS が測った数で動かします。 */
+.sheet-morph {
+  position: fixed;
+  margin: 0;
+  pointer-events: none;
+}
 .hero-node .todo-dot {
   width: 14px; height: 14px; border-radius: var(--r-full);
   background: #fff; opacity: .92;

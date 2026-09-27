@@ -514,7 +514,9 @@
   /* One sheet for both, because a todo written in a hurry is the same object
      as a todo corrected later, and two forms that differ by a title bar is two
      places for a field to go missing from. */
-  function openSheet(todoId) {
+  /* from … 押した行の丸薬（`.tl-node`）。渡すと、それが紙の頭の丸薬へ
+     伸びていきます（ui.js の morphPill）。 */
+  function openSheet(todoId, from) {
     const editing = !!todoId;
     const t = editing ? store.getTodo(todoId) : null;
     if (editing && !t) return;
@@ -845,6 +847,7 @@
     const handle = KN.ui.sheet({
       title: editing ? "やることを直す" : "やることを追加",
       hero,
+      morph: editing && from ? { from, to: hero.querySelector(".js-hero-node") } : null,
       menu: heroMenu,
       content: body,
       footer: foot,
@@ -4455,7 +4458,7 @@
               字が丸の中心からずれるので。済ませたもの（押した時刻）には付けない。 */""}
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}${
           !it.fixed && !closed && it.at ? html`<span class="tl-about">ごろ</span>` : ""}</span>
-        <span class="tl-rail"><span class="tl-node">${tlMark(t)}</span></span>
+        <span class="tl-rail" data-grow><span class="tl-node">${tlMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
 
               前置き（メモ）が上にあるのは、それが**題を読むための文脈**
@@ -4499,7 +4502,8 @@
         </div>
       </li>
     `);
-    li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id));
+    li.querySelector(".tl-open").addEventListener("click",
+      () => openSheet(t.id, li.querySelector(".tl-node")));
     /* 絵（レールの丸）も、押せば詳細が開きます。行の中で絵だけが「押しても
        何も起きないところ」でした——見た目には題と同じ一つの行なので、
        どちらを押しても同じ場所へ行くのが素直です。
@@ -4507,7 +4511,8 @@
        運んだ指が離れぎわに起こす click は、lift() の eatClick が食べるので、
        ここには来ません（置きなおすたびに詳細が開くことはありません）。 */
     const rail = li.querySelector(".tl-rail");
-    if (rail) rail.addEventListener("click", () => openSheet(t.id));
+    if (rail) rail.addEventListener("click",
+      () => openSheet(t.id, li.querySelector(".tl-node")));
     const box = li.querySelector("button.check");
     if (box) {
       box.addEventListener("click", (e) => {
