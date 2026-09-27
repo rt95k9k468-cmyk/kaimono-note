@@ -10,6 +10,9 @@
      紙の上端が暦の下端に来る。月のまま daily へ移っても帯は動かない。
      当たり判定：紙の本体を上端で下へ引くと送る器に transform が付く。
    - 暦のマスの印はタブごと（ダイエットの飲酒の帯が daily・やることに出ない）。
+     席を移るときは印だけ重ねて替わる（出ていく印の写しが同じ位置で薄れ、
+     入ってきた印が浮かぶ。写しは `.cal` の外・押せない）。買うものの暦には
+     その日に買ったものの丸（三つまで・同じ品物は一つ）（段4）。
    - 虫めがねは共通・窓はタブ側（暦の下）に開き、開いても帯は動かない。
    - 題を押したときの応えはタブごと（やること：週⇄月、daily：月を選ぶ紙）。
    - 設定は帯ごと押しのける（deck が動き、設定の一枚が帯の上に重なる）。
@@ -191,6 +194,68 @@ const { open, checker } = require("./lib");
     await page.$$eval("#head .cal .cal-bar", (x) => x.length) === 0);
   c.check("帯の暦は一枚だけ", await page.$$eval("#head .cal", (x) => x.length) === 1);
 
+  /* ---- 席を移るとき、印は重ねて替わる（段4） ----
+     やること（今日に用事の丸）→ ダイエット。移った直後、出ていく印の写しが
+     帯の直下に同じ位置で重なり、入ってきた暦の印は浮かび上がる途中。
+     写しは `.cal` の外なので、そのあいだも「暦は一枚・daily の約束」は崩れない。
+     流れ終われば写しは消える。 */
+  const before = await page.evaluate(() => {
+    const d = document.querySelector(`#head .cal .cal-day[data-day="${KN.util.todayKey()}"] .cal-dots`);
+    const r = d.getBoundingClientRect();
+    return { n: d.querySelectorAll(".cal-mark").length, x: r.left, y: r.top };
+  });
+  await tapSel('.tab[data-tab="diet"]');
+  const mid = await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => {
+    const g = document.querySelector("#head > .head-ghost");
+    const m = g && g.querySelector(".cal-dots");
+    const r = m && m.getBoundingClientRect();
+    const cal = document.querySelector("#head .cal");
+    res({ ghost: !!g, marks: g ? g.querySelectorAll(".cal-mark").length : 0,
+      x: r ? r.left : null, y: r ? r.top : null, op: g ? Number(getComputedStyle(g).opacity) : null,
+      fadingIn: cal.classList.contains("is-marks-in"), cals: document.querySelectorAll("#head .cal").length,
+      inert: g ? g.getAttribute("aria-hidden") === "true" && getComputedStyle(g).pointerEvents === "none" : false });
+  })));
+  c.check("移った直後：出ていく印の写しが重なる", mid.ghost && mid.marks === before.n && before.n > 0,
+    JSON.stringify({ mid, before }));
+  c.check("写しは元の印と同じ位置", Math.abs(mid.x - before.x) < 0.6 && Math.abs(mid.y - before.y) < 0.6,
+    JSON.stringify({ mid, before }));
+  c.check("入ってきた暦の印は浮かび上がる途中・暦は一枚のまま", mid.fadingIn && mid.cals === 1);
+  c.check("写しは押せず、読み上げにも出ない", mid.inert);
+  await page.waitForTimeout(700);
+  c.check("流れ終わると写しは消え、印は出きっている", await page.evaluate(() =>
+    !document.querySelector("#head .head-ghost")
+    && !document.querySelector("#head .cal").classList.contains("is-marks-in")));
+
+  /* ---- 買うものの暦：その日に買ったものの丸（段4） ----
+     やることの暦と同じ `.cal-mark`。同じ品物は一つ、三つまで。買っていない
+     （チェックの無い）ものは出さない。 */
+  await page.evaluate(() => {
+    const s = KN.store.get();
+    const ps = s.products.slice(0, 5);
+    const at = (h) => new Date(2026, 8, 14, h, 0).toISOString();
+    const when = new Map();
+    ps.forEach((p, i) => when.set(KN.store.addItem(p.id).id, at(9 + i)));
+    /* 同じ品物をもう一度（丸は一つのまま）。 */
+    when.set(KN.store.addItem(ps[0].id).id, at(16));
+    KN.store.update((st) => st.items.forEach((i) => {
+      if (when.has(i.id)) { i.checked = true; i.checkedAt = when.get(i.id); }
+    }));
+  });
+  await go("list");
+  const shopMarks = await page.evaluate(() => {
+    const cell = (k) => document.querySelector(`#head .cal .cal-day[data-day="${k}"]`);
+    const m14 = cell("2026-09-14").querySelectorAll(".cal-mark");
+    return { n14: m14.length, n15: cell("2026-09-15").querySelectorAll(".cal-mark").length,
+      drawn: [...m14].every((m) => !!m.querySelector(".todo-mark svg, .todo-mark .todo-dot")),
+      tinted: [...m14].every((m) => !!m.style.getPropertyValue("--cat")) };
+  });
+  c.check("買うものの暦：買った日に丸が出る（三つまで）", shopMarks.n14 === 3, JSON.stringify(shopMarks));
+  c.check("買っていない日には出ない", shopMarks.n15 === 0, JSON.stringify(shopMarks));
+  c.check("丸の中に絵（当たらなければ小さな丸）・カテゴリの色", shopMarks.drawn && shopMarks.tinted);
+  /* 片づけ（この先の試験は、買うものの暦を印なしの前提で見ている）。 */
+  await page.evaluate(() => KN.store.update((s) => { s.items = s.items.filter((i) => !i.checked); }));
+  await go("todo");
+
   /* ---- 虫めがね：共通のボタン、窓はタブ側（暦の下）に開く ---- */
   await startRec();
   await tapSel("#head .js-search-btn");
@@ -291,7 +356,7 @@ const { open, checker } = require("./lib");
       dp.worst === 0 && fp.length > 10, `${dp.worst}px ${dp.what}`);
     c.check(`${mode}：価格へ移っても暦は同じ一枚・題も同じ`,
       (await calEl()) === id0 && (await title()) === t0, `${t0} → ${await title()}`);
-    c.check(`${mode}：買うもの・価格の暦に印は無い`,
+    c.check(`${mode}：買っていなければ、買うもの・価格の暦に印は無い`,
       await page.$$eval("#head .cal .cal-dots", (x) => x.length > 0 && x.every((d) => !d.childElementCount)));
 
     /* 価格の地：帯の下から始まり、いちばん下の行まで送れる。紙の頭は下の帯の上。 */

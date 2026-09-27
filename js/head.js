@@ -31,9 +31,12 @@
    一枚で、その下に居るのは歯車を押した画面の帯のままなので（左端から
    引くと、それが見える）。
 
-   ■ 買うもの・価格の暦（段3）
+   席を移るときは、印だけを重ねて替えます（段4。下の crossMarks）。
 
-   印を描かない暦を、ここで**一枚だけ**組みます（`shopCal()`）。買うものと
+   ■ 買うもの・価格の暦（段3・段4）
+
+   その日に買ったものの丸（段4）を描く暦を、ここで**一枚だけ**組みます
+   （`shopCal()`）。買うものと
    価格は同じ一枚を置くので、紙を下げて価格へ移っても暦は差し替わりません。
    日を押すと動くのは共通の日（`dayShare`、席を移るとき app.js の show() が
    `day()` を読んで置いていく）と題だけ——買うものの紙そのものは変わりません
@@ -112,6 +115,10 @@
       root.hidden = true;
       return;
     }
+    /* 持ち主が替わるなら、出ていく暦の印を写しておきます（putCal が、
+       差し替えたあとの重ねに使います）。ここで撮るのは、組み直しの**前**
+       ——配置がまだ前の一拍のままで、測るのが安いので。 */
+    snap = id !== owner ? snapMarks() : null;
     owner = id;
     root.hidden = false;
     /* 虫めがねは一つなので、光るかどうかは入ってくるタブの窓で決めます
@@ -128,15 +135,73 @@
       レイアウトがやり直しになります（screen-todo.js の renderBody）。 */
   function putCal(id, cal) {
     if (!root || !mine(id)) return;
+    const s = snap;
+    snap = null;
     if (!cal) { if (els.cal.firstChild) els.cal.replaceChildren(); return; }
     if (cal.parentNode === els.cal && els.cal.childNodes.length === 1) return;
     els.cal.replaceChildren(cal);
+    if (s) crossMarks(s, cal);
+  }
+
+  /* ---------------- 席を移るとき、印だけをふわっと替える（段4） ----------------
+
+     枠（曜日・数字・輪）は動きませんが、マスの印はタブごとに違うので、
+     要素を差し替えた一拍で**いきなり**替わっていました（実機で「急に出て
+     くる」）。そこで、出ていく暦の印（`.cal-dots`）の写しを同じ位置に重ねて
+     薄れさせ、入ってきた暦の印は下から浮かび上がらせます——紙が流れる
+     のと同じ長さ（`--m-nav`）で。
+
+     写しは `.cal` の外、帯の直下（`.head-ghost`）に置きます。暦の中に
+     置くと「帯の暦は一枚だけ」「daily の暦にダイエットの棒が無い」
+     （tests/head-still.js・daily-rules の約束）が、重ねのあいだだけ嘘に
+     なります。写しは押せず、読み上げにも出ません。 */
+  let snap = null;        // enter が撮った、出ていく暦の印の写し
+  let fadeT = 0;
+  let fading = null;      // 浮かび上がらせている最中の暦
+
+  function snapMarks() {
+    const old = els.cal && els.cal.querySelector(":scope > .cal");
+    if (!old || KN.motion.still()) return null;
+    const base = root.getBoundingClientRect();
+    const clip = (old.querySelector(".cal-clip") || old).getBoundingClientRect();
+    const out = [];
+    old.querySelectorAll(".cal-dots").forEach((d) => {
+      if (!d.childElementCount) return;
+      const r = d.getBoundingClientRect();
+      if (!r.width || r.bottom <= clip.top || r.top >= clip.bottom) return;   // 伏せてある週
+      out.push({ el: d.cloneNode(true), x: r.left - base.left, y: r.top - base.top, w: r.width });
+    });
+    return out;
+  }
+
+  function crossMarks(s, cal) {
+    clearTimeout(fadeT);
+    root.querySelectorAll(":scope > .head-ghost").forEach((g) => g.remove());
+    if (fading) fading.classList.remove("is-marks-in");
+    let ghost = null;
+    if (s.length) {
+      ghost = node(html`<div class="head-ghost" aria-hidden="true"></div>`);
+      s.forEach((m) => {
+        m.el.style.left = `${m.x.toFixed(1)}px`;
+        m.el.style.top = `${m.y.toFixed(1)}px`;
+        m.el.style.width = `${m.w.toFixed(1)}px`;
+        ghost.append(m.el);
+      });
+      root.append(ghost);
+    }
+    fading = cal;
+    cal.classList.add("is-marks-in");
+    fadeT = setTimeout(() => {
+      if (ghost) ghost.remove();
+      cal.classList.remove("is-marks-in");
+      if (fading === cal) fading = null;
+    }, KN.motion.ms("--m-nav") + 40);
   }
 
   /** 帯を持つタブか。 */
   const has = (id) => TABS.includes(id);
 
-  /* ---------------- 買うもの・価格の暦（印なし） ---------------- */
+  /* ---------------- 買うもの・価格の暦（段4から、買ったものの丸） ---------------- */
 
   const shopMine = () => owner === "list" || owner === "prices";
   const calOpen = () => KN.store.calPrefs("list").open;
@@ -219,10 +284,68 @@
     sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
   }
 
-  /** 日のマス一つ。**印は描きません**——`.cal-dots` は空のまま置きます
+  /* ---- 買ったものの絵（段4） ----
+
+     その日に買ったもの（買うものの「買った」、`checkedAt`）を、やることの
+     暦と同じ丸で出します（`.cal-mark`——カテゴリの色に染まった丸の中に、
+     その品物の絵を白抜きで）。三つまで。材料は daily の「その日に買った
+     もの」（store.dayFeed の③）と同じで、写しは持ちません。
+
+     `checkedAt` は UTC の ISO なので、日は `dayKey(new Date(...))` で
+     ローカルに直して数えます（頭10文字を切ると、朝の買い物が前の日へ
+     回ります——store.js の dayOfStamp）。
+
+     絵を決める順は store.productMark と同じ（手で選んだ絵→名前→カテゴリの
+     名前）。当たらなければ、やることと同じ小さな丸だけ——包みの絵
+     （productIcons.fallback）は色つきで、白抜きの丸に入れると塗りが潰れます。
+     引いた答えは覚えておきます（findKey は安くありません。screen-todo.js の
+     cachedArt と同じ理由）。 */
+  const artMemo = new Map();
+  function boughtArt(p) {
+    const P = KN.productIcons;
+    const cat = KN.store.getCategory(p.categoryId);
+    const ck = `${p.icon || ""}\u0001${p.name}\u0001${(cat && cat.name) || ""}`;
+    let v = artMemo.get(ck);
+    if (v === undefined) {
+      const key = (p.icon && P.byKey(p.icon) && p.icon)
+        || P.findKey(p.name) || (cat && P.findKey(cat.name)) || "";
+      v = (key && P.byKey(key)) || "";
+      artMemo.set(ck, v);
+    }
+    return v;
+  }
+
+  /** 日ごとの、その日に買った品物（同じ品物は一つ、買った順に三つまで）。 */
+  function boughtByDay() {
+    const s = KN.store.get();
+    const by = new Map();
+    (s.items || []).filter((i) => i.checked && i.checkedAt)
+      .sort((a, b) => String(a.checkedAt).localeCompare(String(b.checkedAt)))
+      .forEach((i) => {
+        const k = U.dayKey(new Date(i.checkedAt));
+        const p = k && KN.store.getProduct(i.productId);
+        if (!p) return;
+        const list = by.get(k) || [];
+        if (list.length < 3 && !list.includes(p)) list.push(p);
+        by.set(k, list);
+      });
+    return by;
+  }
+
+  function marksHtml(list) {
+    return (list || []).map((p) => {
+      const svg = boughtArt(p);
+      const inner = svg
+        ? `<span class="todo-mark">${svg}</span>`
+        : `<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
+      return `<i class="cal-mark" style="--cat:${KN.store.productColor(p) || "var(--c-primary-fill)"}">${inner}</i>`;
+    }).join("");
+  }
+
+  /** 日のマス一つ。`.cal-dots` は、買ったものが無い日も空のまま置きます
       （マスの背丈をほかのタブの暦とそろえるため。そろわないと、タブを
       移るたびに帯の厚みが変わります）。 */
-  function cell(key, cls) {
+  function cell(key, cls, bought) {
     const d = U.dayDate(key);
     const wd = d ? d.getDay() : 0;
     const today = key === U.todayKey();
@@ -233,7 +356,7 @@
               ${cls.includes("is-out") ? U.raw('tabindex="-1"') : ""}
               aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}${today ? "（今日）" : ""}">
         <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots"></span>
+        <span class="cal-dots">${U.raw(marksHtml(bought && bought.get(key)))}</span>
       </button>
     `);
     b.addEventListener("click", () => pick(key, b));
@@ -269,12 +392,15 @@
       <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
     `)));
     const outer = U.outDays(year, month);
-    outer.lead.forEach((k) => grid.append(cell(k, "is-out")));
+    /* 隣の月のマスにも出します（やることの outCell と同じ理由——空にすると
+       「翌月1日は何も無い」と嘘をつく）。 */
+    const bought = boughtByDay();
+    outer.lead.forEach((k) => grid.append(cell(k, "is-out", bought)));
     for (let d = 1; d <= total; d++) {
       const k = U.dayKey(new Date(year, month, d));
-      grid.append(cell(k, k === here ? "is-here" : ""));
+      grid.append(cell(k, k === here ? "is-here" : "", bought));
     }
-    outer.trail.forEach((k) => grid.append(cell(k, "is-out")));
+    outer.trail.forEach((k) => grid.append(cell(k, "is-out", bought)));
     if (only) return;
     markWeek(sec);
     paintTitle();
