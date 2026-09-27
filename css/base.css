@@ -418,8 +418,12 @@
      広さに（--lh-body）。 */
   --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
           "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
-  --fs-xs: 11px; --fs-sm: 12.5px; --fs-md: 14px;
-  --fs-lg: 16px; --fs-xl: 19px;  --fs-2xl: 24px;
+  /* --fs-k は文字の大きさの倍率（設定 → 外観 → 文字の大きさ。app.js の
+     applyTextSize が :root に一度だけ書く）。字の大きさは**どれもこれを掛けて**
+     書くこと——掛け忘れた字だけが、大きくしても取り残される（docs/look.md）。 */
+  --fs-k: 1;
+  --fs-xs: calc(11px * var(--fs-k)); --fs-sm: calc(12.5px * var(--fs-k)); --fs-md: calc(14px * var(--fs-k));
+  --fs-lg: calc(16px * var(--fs-k)); --fs-xl: calc(19px * var(--fs-k));  --fs-2xl: calc(24px * var(--fs-k));
 
   --fw-regular: 400;
   --fw-bold:    700;
@@ -1741,7 +1745,7 @@ a { color: var(--c-primary); }
   border-radius: var(--r-full);
   background: var(--c-accent);
   color: #fff;
-  font-size: 10px;
+  font-size: calc(10px * var(--fs-k));
   font-weight: 700;
   display: grid;
   place-items: center;

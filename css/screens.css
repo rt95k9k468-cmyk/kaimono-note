@@ -150,7 +150,7 @@
 @media (hover: hover) {
   .ac-item:hover { background: var(--c-primary-soft); }
 }
-.ac-emoji { font-size: 20px; flex: none; display: flex; align-items: center; }
+.ac-emoji { font-size: calc(20px * var(--fs-k)); flex: none; display: flex; align-items: center; }
 .ac-new-mark { width: 25px; color: var(--c-primary); }
 /* 丸い印（32px）の中身。入れものが大きさを決めます（二段階の外）。 */
 .ac-new-mark svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9;
@@ -252,7 +252,7 @@
 .item-emoji {
   flex: none;
   width: 24px;
-  font-size: 19px;
+  font-size: calc(19px * var(--fs-k));
   line-height: 1;
   text-align: center;
 }
@@ -362,7 +362,7 @@
      曜日（「（火）」＝ 3文字ぶん）が加わったぶん、係数はそのままでは
      320px 級で19px・375px級で1px、文字が欠けます（実測）。係数を
      6.4vw/26px → 5.4vw/23px に下げて収めています。 */
-  font-size: clamp(16px, 5.4vw, 23px);
+  font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
   font-weight: 700;
   letter-spacing: -.02em;
   white-space: nowrap;
@@ -376,7 +376,7 @@
    なく、ふつうの本文には使えませんが、ここは `.day-y` と同じ「いまどこか」
    を言う大きな字で、隣に並べたときに同じ色に見えることのほうが要ります。 */
 .tab-title {
-  font-size: clamp(18px, 6.4vw, 26px);
+  font-size: calc(clamp(18px, 6.4vw, 26px) * var(--fs-k));
   font-weight: 700;
   letter-spacing: -.02em;
   line-height: 1.25;
@@ -578,7 +578,7 @@
 
 .cal-wd {
   text-align: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs-k));
   font-weight: 400;
   color: var(--c-text-3);
   padding-bottom: 3px;
@@ -609,7 +609,7 @@
   place-items: center;
   width: 27px; height: 27px;
   border-radius: var(--r-full);
-  font-size: 17px;
+  font-size: calc(17px * var(--fs-k));
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -857,7 +857,7 @@
   display: inline-flex;
   align-items: center;
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs-k));
   font-weight: 700;
   color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
 }
@@ -1008,7 +1008,7 @@
    under the name. */
 .todo-at {
   flex: none;
-  font-size: 10px;
+  font-size: calc(10px * var(--fs-k));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
@@ -1022,7 +1022,7 @@
 /* And the rule under it. No ↻ — the circle it is sitting beneath has one. */
 .todo-every {
   flex: none;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--fs-k));
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -.02em;
@@ -1046,7 +1046,7 @@
    and this is for when the row is read somewhere else — the archive, a search. */
 .todo-part {
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs-k));
   font-weight: 700;
   color: var(--cat, var(--c-text-2));
   border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
@@ -1056,7 +1056,7 @@
 
 .todo-tag {
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs-k));
   font-weight: 700;
   color: var(--c-text-3);
   border: 1px solid var(--c-border);
@@ -1065,7 +1065,7 @@
 }
 
 .tile-when {
-  font-size: 11px;
+  font-size: calc(11px * var(--fs-k));
   font-weight: 700;
   color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
@@ -1201,7 +1201,7 @@
 .product.is-tile .product-emoji {
   width: 34px; height: 34px;
   background: none;
-  font-size: 27px;
+  font-size: calc(27px * var(--fs-k));
   line-height: 1;
   display: grid;
   place-items: center;
@@ -1239,7 +1239,7 @@
    already know is enough to recognise it. */
 .tile-store {
   max-width: 100%;
-  font-size: 10px;
+  font-size: calc(10px * var(--fs-k));
   font-weight: 700;
   color: var(--c-text-2);
   line-height: 1.2;
@@ -1532,7 +1532,7 @@
    figures line up. */
 .item-when {
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs-k));
   font-weight: 700;
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
@@ -1542,7 +1542,7 @@
 }
 
 .tile-when {
-  font-size: 10px;
+  font-size: calc(10px * var(--fs-k));
   font-weight: 700;
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
@@ -1741,7 +1741,7 @@
   background: var(--c-surface-2);
   display: grid;
   place-items: center;
-  font-size: 21px;
+  font-size: calc(21px * var(--fs-k));
 }
 
 /* Also a <button> — the part of the card that opens the product. */
@@ -1871,9 +1871,9 @@
   --set-pad: 18px;   /* カードの中の左右（絵の左端） */
   --set-tile: 30px;
   --set-gap: 10px;   /* 絵と題のあいだ */
-  --set-fs: 17px;
-  --set-fs-head: 15px;
-  --set-fs-foot: 13px;
+  --set-fs: calc(17px * var(--fs-k));
+  --set-fs-head: calc(15px * var(--fs-k));
+  --set-fs-foot: calc(13px * var(--fs-k));
   --set-line: rgba(60, 60, 67, .1);
   --set-chev: #c4c4c8;
 }
@@ -2026,7 +2026,7 @@
 .set-hero {
   margin: var(--sp-2) 0 var(--sp-4);
   padding: 0 calc(var(--set-gut) + 2px);
-  font-size: 34px;
+  font-size: calc(34px * var(--fs-k));
   font-weight: 700;
   letter-spacing: -.02em;
   line-height: 1.2;
@@ -2353,7 +2353,7 @@
    グラフの寸法計算が崩れないように、意図して触っていません。 */
 
 .diet {
-  --fs-xs: 12.5px; --fs-sm: 14px; --fs-md: 15.5px; --fs-lg: 17.5px;
+  --fs-xs: calc(12.5px * var(--fs-k)); --fs-sm: calc(14px * var(--fs-k)); --fs-md: calc(15.5px * var(--fs-k)); --fs-lg: calc(17.5px * var(--fs-k));
   display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-6);
 }
 
@@ -2462,7 +2462,7 @@
 .diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: 700; letter-spacing: -.01em; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
-  font-size: 40px; line-height: 1.05; font-weight: 700; color: var(--c-text);
+  font-size: calc(40px * var(--fs-k)); line-height: 1.05; font-weight: 700; color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
 .diet-hero-value small { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text-2); }
@@ -2491,7 +2491,7 @@
 .diet-stat-value.is-good { color: var(--c-primary); }
 .diet-stat-value.is-warn { color: var(--c-accent); }
 .diet-stat-unit {
-  font-size: 10px; color: var(--c-text-3); white-space: nowrap;
+  font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap;
   max-width: 46px; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -2585,7 +2585,7 @@
 .diet-plot-chart { flex: 1 1 auto; min-width: 0; }
 .diet-with { flex: none; width: 52px; display: flex; flex-direction: column; gap: 3px; }
 .diet-with-label {
-  display: block; font-size: 10px; color: var(--c-text-3); text-align: center;
+  display: block; font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); text-align: center;
 }
 .diet-with .chip-row {
   flex: 1 1 auto;
@@ -2657,7 +2657,7 @@
 .diet-cell-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 /* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
-.diet-cell-label { font-size: 11px; color: var(--c-text-3); white-space: nowrap; }
+.diet-cell-label { font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap; }
 .diet-cell-value { font-size: var(--fs-md); font-weight: 700; white-space: nowrap; }
 /* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
 .diet-cell-value.is-over { color: var(--c-danger); }
@@ -2706,7 +2706,7 @@
 }
 .diet-ring-mid {
   position: relative; z-index: 1;
-  font-size: 12.5px; font-weight: 700; font-style: normal;
+  font-size: calc(12.5px * var(--fs-k)); font-weight: 700; font-style: normal;
   color: var(--fill); white-space: nowrap;
 }
 .diet-ring.is-none .diet-ring-mid { color: var(--c-text-3); }
@@ -2791,11 +2791,11 @@ button.section-note:active { opacity: .55; }
 .urge-sec-head { display: flex; align-items: center; gap: 7px; }
 .urge-sec-ico { line-height: 0; color: var(--c-primary); flex: none; }
 .urge-sec-ico svg { width: 17px; height: 17px; }
-.urge-sec-title { font-size: 15.5px; font-weight: 700; color: var(--c-text); }
+.urge-sec-title { font-size: calc(15.5px * var(--fs-k)); font-weight: 700; color: var(--c-text); }
 /* 「任意」は、書かなくてよいことを一目で言うため。薄い地の小さな札で、
    題より前に出ないようにします。 */
 .urge-sec-opt {
-  font-size: 10.5px; font-weight: 700; color: var(--c-text-3);
+  font-size: calc(10.5px * var(--fs-k)); font-weight: 700; color: var(--c-text-3);
   background: var(--c-surface-2); border-radius: var(--r-full);
   padding: 2px 7px; line-height: 1.5;
 }
@@ -2818,7 +2818,7 @@ button.section-note:active { opacity: .55; }
   background: var(--c-surface-2);
   border: 1.5px solid transparent;
   color: var(--c-text-2);
-  font-size: 19px;
+  font-size: calc(19px * var(--fs-k));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
@@ -2902,7 +2902,7 @@ button.section-note:active { opacity: .55; }
 
 .diet-kcal { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
 .diet-kcal-main { display: flex; align-items: baseline; gap: 6px; }
-.diet-kcal-main b { font-size: 30px; font-weight: 700; line-height: 1; }
+.diet-kcal-main b { font-size: calc(30px * var(--fs-k)); font-weight: 700; line-height: 1; }
 .diet-kcal-main small { font-size: var(--fs-md); color: var(--c-text-2); font-weight: 700; }
 .diet-kcal-rem { font-size: var(--fs-sm); color: var(--c-text-2); text-align: right; }
 .diet-kcal-rem b { font-size: var(--fs-lg); color: var(--c-primary); }
@@ -3088,7 +3088,7 @@ button.section-note:active { opacity: .55; }
 .diet-steps b { color: var(--c-text); }
 .diet-code {
   margin: 0; padding: var(--sp-3); background: var(--c-surface-2);
-  border-radius: var(--r-md); font-size: 11.5px; line-height: var(--lh-body);
+  border-radius: var(--r-md); font-size: calc(11.5px * var(--fs-k)); line-height: var(--lh-body);
   overflow-x: auto; white-space: pre; color: var(--c-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -3218,7 +3218,7 @@ a.btn { text-decoration: none; }
 }
 .diet-edit-name { font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-edit-unit { font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-edit-src { font-size: 10px; color: var(--c-text-3); text-align: right; }
+.diet-edit-src { font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); text-align: right; }
 
 /* ---- 取り込みの、生の中身 ---- */
 
@@ -3230,7 +3230,7 @@ a.btn { text-decoration: none; }
 }
 .diet-got-head { font-size: var(--fs-xs); color: var(--c-text-3); }
 .diet-got pre {
-  margin: 0; font-size: 12px; line-height: var(--lh-body); color: var(--c-text);
+  margin: 0; font-size: calc(12px * var(--fs-k)); line-height: var(--lh-body); color: var(--c-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap; word-break: break-all;
 }
@@ -3384,7 +3384,7 @@ a.btn { text-decoration: none; }
    数字が同じ顔で四つ並ぶと、どれがその日の話なのか読み取れません。 */
 .arc-log-meta { display: flex; flex-wrap: wrap; gap: 4px; }
 .arc-stamp {
-  font-size: 10px; color: var(--c-text-3);
+  font-size: calc(10px * var(--fs-k)); color: var(--c-text-3);
   background: var(--c-surface-2);
   border-radius: var(--r-sm);
   padding: 1px 6px;
@@ -4135,7 +4135,7 @@ a.btn { text-decoration: none; }
   flex: none;
   /* 実測 16px。17px から一段落としました——参考画面の題は、副題との差で
      大きく見えているので、絶対値はここまでで足ります。 */
-  font-size: 16px;
+  font-size: calc(16px * var(--fs-k));
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: -.01em;
@@ -4662,7 +4662,7 @@ a.btn { text-decoration: none; }
   width: 40px; height: 40px;
   border-radius: var(--r-full);
   background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
-  font-size: 20px;
+  font-size: calc(20px * var(--fs-k));
 }
 .item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }
 .item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
@@ -5391,7 +5391,7 @@ a.btn { text-decoration: none; }
 .tl-sub-name {
   position: relative;
   display: inline-block;
-  font-size: 15px;
+  font-size: calc(15px * var(--fs-k));
   color: var(--c-text);
 }
 /* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。

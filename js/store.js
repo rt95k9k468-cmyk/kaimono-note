@@ -105,7 +105,7 @@
          daily ログの下に出ていたので、いまお使いの方の画面が変わりません。
          要らない方は設定で消せます。 */
       settings: {
-        theme: "auto", accent: "orange", showChecked: true, layout: "rows",
+        theme: "auto", accent: "orange", textSize: "std", showChecked: true, layout: "rows",
         showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
       },
     };
@@ -677,6 +677,8 @@
        選んだ覚えのない色で画面が出てこないように。 */
     out.settings.accent = cleanAccent(out.settings.accent);
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
+    /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */
+    if (!["std", "l", "xl", "auto"].includes(out.settings.textSize)) out.settings.textSize = "std";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];

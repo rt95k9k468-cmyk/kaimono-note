@@ -121,6 +121,32 @@
   }
   KN.app.applyAccent = applyAccent;
 
+  /* 文字の大きさ（B11）。字の大きさはどれも --fs-k を掛けて書いてあるので
+     （base.css）、倍率を一つ書けば画面ぜんぶの字がそろって変わります。
+     「端末に合わせる」は iPhone の「文字サイズ」を読みます——Safari は
+     -apple-system-body に端末の文字サイズを載せるので、その大きさを素の
+     17px で割る。ほかのブラウザはこの書体名を知らず、17px のままなので 1。
+
+     上下に枠を付けます（0.9〜1.3）。iPhone の文字サイズは「さらに大きな
+     文字」で3倍まで行くので、そのまま掛けると一行に字が入りきりません。 */
+  const TEXT_K = { std: 1, l: 1.12, xl: 1.25 };
+  function deviceTextK() {
+    const probe = document.createElement("span");
+    probe.style.cssText = "position:absolute;visibility:hidden;font-size:17px;font:-apple-system-body";
+    probe.textContent = "あ";
+    document.body.append(probe);
+    const px = parseFloat(getComputedStyle(probe).fontSize) || 17;
+    probe.remove();
+    return Math.min(1.3, Math.max(0.9, px / 17));
+  }
+  function applyTextSize(size) {
+    const k = size === "auto" ? deviceTextK() : (TEXT_K[size] || 1);
+    const root = document.documentElement;
+    if (k === 1) root.style.removeProperty("--fs-k");
+    else root.style.setProperty("--fs-k", String(Math.round(k * 100) / 100));
+  }
+  KN.app.applyTextSize = applyTextSize;
+
   /* ---------------- tabs ---------------- */
 
   function buildTabs() {
@@ -1041,6 +1067,12 @@
   function boot() {
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
+    applyTextSize(store.get().settings.textSize || "std");
+    /* 「端末に合わせる」なら、戻ってくるたびに読み直す（アプリを離れて
+       iPhone の文字サイズを変えてきた、に追いつくため）。 */
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && store.get().settings.textSize === "auto") applyTextSize("auto");
+    });
     buildTabs();
     watchGlass();
 

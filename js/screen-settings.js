@@ -610,9 +610,34 @@
        ことをページには何も言いません。だからスイッチ側が言います。 */
     const badgeBlocked = canBadge && badgeOn && badge.blocked && badge.blocked();
 
+    /* 文字の大きさ。明るさと同じで、押したその場で画面ぜんぶが変わる
+       ——いま読んでいるこの一枚の字で、大きさを確かめられるように。 */
+    const size = s.textSize || "std";
+    const sizes = node(html`
+      <div class="set-card is-pad">
+        <div class="seg">
+          <button class="seg-btn" data-size="std"  aria-pressed="${String(size === "std")}">標準</button>
+          <button class="seg-btn" data-size="l"    aria-pressed="${String(size === "l")}">大きめ</button>
+          <button class="seg-btn" data-size="xl"   aria-pressed="${String(size === "xl")}">特大</button>
+          <button class="seg-btn" data-size="auto" aria-pressed="${String(size === "auto")}">端末</button>
+        </div>
+      </div>
+    `);
+    sizes.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.size;
+        store.update((x) => { x.settings.textSize = v; });
+        KN.app.applyTextSize(v);
+        haptic();
+        render();
+      });
+    });
+
     return [
       head("明るさ"), seg,
       head("基調色"), accents,
+      head("文字の大きさ"), sizes,
+      foot("「端末」は iPhone の設定の「文字サイズ」に合わせます。"),
       head("表示"),
       card(
         pickRow({
@@ -892,7 +917,7 @@
         <div class="manage-row">
           <span class="dot" style="background:${st.color};width:14px;height:14px"></span>
           <span class="manage-name">${st.name}</span>
-          <span style="font-size:11px;color:var(--c-text-3);flex:none">${usage}件の価格</span>
+          <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">${usage}件の価格</span>
           <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
           <button class="icon-btn is-danger js-del" aria-label="削除">${icon("trash")}</button>
         </div>
@@ -1006,7 +1031,7 @@
                 同じことを——どの棚か——もう言っています。 */""}
           <span class="manage-swatch" style="background:${c.color || "transparent"}"></span>
           <span class="manage-name">${c.name}</span>
-          <span style="font-size:11px;color:var(--c-text-3);flex:none">${used}商品</span>
+          <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">${used}商品</span>
           <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
           ${c.id === store.OTHER_CATEGORY
             ? ""
@@ -1185,7 +1210,7 @@
           <div class="manage-row" style="--cat:${(r.category && r.category.color) || ""}">
             <span class="manage-swatch" style="background:${(r.category && r.category.color) || "transparent"}"></span>
             <span class="manage-name">${r.label}</span>
-            <span style="font-size:11px;color:var(--c-text-3);flex:none">
+            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">
               → ${r.category ? r.category.name : "（消えたカテゴリ）"}
             </span>
             <button class="icon-btn is-danger js-forget" aria-label="この振り分けを忘れる">${icon("close")}</button>
