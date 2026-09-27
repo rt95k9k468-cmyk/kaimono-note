@@ -278,13 +278,45 @@
     /* 一度の指に、button へ渡す click は一つ。数えるのは指を置いた回数
        （pointerdown）——時間で切ると、数字キーの速い連打を落とします。 */
     let downs = 0, used = -1;
-    sw.addEventListener("pointerdown", () => { downs++; });
+    /* 送った指は、押したことにしない。iPhone のつまみは、指が上下に動いて
+       画面が送られても、離したところで click を出す（実機で踏んだ：★や丸の
+       上から送ると、離した瞬間に押されていた）。ふつうの button なら
+       ブラウザが「送ったから押していない」と決めるところを、ここで決める。
+       見るのは三つ——指が SLOP より動いた・何かが送られた（紙の scroll は
+       泡立たないので window の capture で聞く）・pointercancel。どれか一つ
+       でも立てば、その指の click は button へ渡さない。 */
+    let x0 = 0, y0 = 0, moved = false;
+    const onScroll = () => { moved = true; };
+    const stopWatch = () => window.removeEventListener("scroll", onScroll, true);
+    const begin = (x, y) => {
+      x0 = x; y0 = y; moved = false;
+      window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    };
+    sw.addEventListener("pointerdown", (e) => { downs++; begin(e.clientX, e.clientY); });
+    sw.addEventListener("pointercancel", () => { moved = true; });
+    sw.addEventListener("touchstart", (e) => {
+      const p = e.touches[0];
+      if (p) begin(p.clientX, p.clientY);
+    }, { passive: true });
+    sw.addEventListener("touchmove", (e) => {
+      const p = e.touches[0];
+      if (p && Math.hypot(p.clientX - x0, p.clientY - y0) > SLOP) moved = true;
+    }, { passive: true });
+    sw.addEventListener("touchend", stopWatch, { passive: true });
+    sw.addEventListener("touchcancel", () => { moved = true; stopWatch(); }, { passive: true });
     sw.addEventListener("click", (e) => {
-      if (used === downs) { e.stopPropagation(); return; }
+      stopWatch();
+      if (moved || used === downs) {
+        e.stopPropagation();
+        e.preventDefault();   // つまみの入/切も戻す（見えないが、次の指のため）
+        return;
+      }
       used = downs;
     });
     return sw;
   }
+  /* 「押した」と「送った」の境目。指先の震えは押したうち、それを越えたら送った。 */
+  const SLOP = 10;
 
   /* 付けて回る。まず全部の要否と位置を**読んでから**、まとめて書く
      （一つずつ読み書きすると、そのたびに組み直しの計算が走るので）。 */
