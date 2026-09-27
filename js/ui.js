@@ -102,6 +102,23 @@
      着くので、着いた瞬間に本物へ入れ替えても継ぎ目が出ません。
 
      返すのは、途中で紙が閉じたときの後始末。 */
+  /* 写した要素に、元の見た目を焼きつけます。行の丸薬の塗り・絵のマスクは
+     `.tl-row` の中でだけ効く規則と変数から出ているので、外へ出した写しには
+     掛かりません。算出された値（変数は解決済み）を、子まで一つずつ移します。 */
+  const FREEZE = ["width", "height", "background-color", "background-image",
+    "border-radius", "color", "fill", "opacity", "mask-image", "mask-size",
+    "mask-position", "mask-repeat", "-webkit-mask-image", "-webkit-mask-size",
+    "-webkit-mask-position", "-webkit-mask-repeat"];
+  function freeze(src, dst) {
+    const cs = getComputedStyle(src);
+    for (const p of FREEZE) {
+      const v = cs.getPropertyValue(p);
+      if (v) dst.style.setProperty(p, v);
+    }
+    const a = src.children, b = dst.children;
+    for (let i = 0; i < a.length && i < b.length; i++) freeze(a[i], b[i]);
+  }
+
   function morphPill(morph, el, z) {
     const from = morph && morph.from;
     const to = morph && morph.to;
@@ -120,8 +137,26 @@
     const ghost = to.cloneNode(true);
     ghost.className = "hero-node sheet-morph";
     ghost.setAttribute("aria-hidden", "true");
+    ghost.inert = true;
     ghost.style.background = cs.backgroundColor;
+    /* 字の色も写します。絵は currentColor で塗られていて、頭の白は
+       `.sheet-hero` から継いでいたもの——紙の外に置いた写しは地の字の色
+       （黒）を継ぎ、飛んでいるあいだだけ真っ黒なシルエットになっていました。 */
+    ghost.style.color = cs.color;
     ghost.style.zIndex = String(z);
+    /* 出だしは行の丸薬の見た目のまま。その写し（下の freeze）を上に重ねて、
+       飛ぶあいだに薄めて消します——頭の色へ一度に塗り替わると、押した
+       瞬間にパッと色が変わって見えるので。 */
+    const under = from.cloneNode(true);
+    freeze(from, under);
+    under.removeAttribute("class");
+    Object.assign(under.style, {
+      position: "absolute", inset: "0", left: "0", top: "0",
+      width: "auto", height: "auto", transform: "none", margin: "0",
+      display: "grid", placeItems: "center", borderRadius: "inherit",
+      visibility: "visible",
+    });
+    ghost.append(under);
     sheetRoot().append(ghost);
     from.style.visibility = "hidden";
     to.style.visibility = "hidden";
@@ -140,12 +175,20 @@
     /* 絵は行では 32px、頭では 38px。箱と一緒に育てます。 */
     const mark = ghost.firstElementChild;
     const fromMark = from.firstElementChild;
-    if (mark && fromMark && mark.getBoundingClientRect) {
-      const k = (fromMark.getBoundingClientRect().width || 32)
-        / (to.firstElementChild ? to.firstElementChild.getBoundingClientRect().width || 38 : 38);
+    /* 大きさは変形の掛からない値（算出された width）で比べます。頭の絵は
+       縮んだ紙の中にあるので、見えている箱で測ると何分の一にもなり、
+       影武者の絵が 2.4 倍に膨らんでいました。 */
+    const sizeOf = (x, d) => (x && parseFloat(getComputedStyle(x).width)) || d;
+    if (mark && fromMark) {
+      const k = sizeOf(fromMark, 32) / sizeOf(to.firstElementChild, 38);
       mark.animate([{ transform: `scale(${k.toFixed(3)})` }, { transform: "none" }],
         { duration: ms, easing, fill: "both" });
+      const underMark = under.firstElementChild;
+      if (underMark) underMark.animate(
+        [{ transform: "none" }, { transform: `scale(${(1 / k).toFixed(3)})` }],
+        { duration: ms, easing, fill: "both" });
     }
+    under.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing, fill: "both" });
 
     let done = false;
     const finish = () => {

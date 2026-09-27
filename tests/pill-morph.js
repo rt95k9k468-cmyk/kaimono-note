@@ -4,6 +4,10 @@
    - 飛んでいるあいだは本物の二つを隠し、着いたら戻して影武者を消す
    - 途中で閉じても、隠したものが残らない
    - 動きを減らす設定・広い画面（紙がダイアログ）・新しく足す紙では出さない
+   - 飛んでいるあいだ絵は頭と同じ色（紙の外の黒を継がない）。出だしは行の
+     丸薬の見た目の写しを重ね、薄めて消す（パッと色が変わらない）
+   - 絵は 32〜38px のまま（膨らまない）
+   - パレットの丸は無い。頭の粒を押すと絵選びが開く
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/pill-morph.js */
 const { open, checker } = require("./lib");
 
@@ -27,13 +31,17 @@ const { open, checker } = require("./lib");
 
   /* 影武者の箱を毎フレーム控える。消えたら止まる。 */
   const record = () => page.evaluate(() => new Promise((ok) => {
-    const out = { frames: [], hidden: [] };
+    const out = { frames: [], hidden: [], colors: [], under: [], marks: [] };
     const t0 = performance.now();
     const tick = () => {
       const g = document.querySelector(".sheet-morph");
       if (g) {
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+        out.colors.push(getComputedStyle(g).color);
+        out.marks.push(g.firstElementChild ? g.firstElementChild.getBoundingClientRect().width : 0);
+        const u = g.lastElementChild;
+        out.under.push(u && u !== g.firstElementChild ? +getComputedStyle(u).opacity : -1);
         const hero = document.querySelector(".sheet .js-hero-node");
         const node = document.querySelector(".screen.is-active .tl-row .tl-node[style*='visibility']");
         out.hidden.push(!!(hero && hero.style.visibility === "hidden") && !!node);
@@ -51,8 +59,10 @@ const { open, checker } = require("./lib");
     const rec = record();
     await page.mouse.down();
     await page.mouse.up();
-    const { frames, hidden } = await rec;
+    const { frames, hidden, colors, under, marks } = await rec;
     const hero = await rectOf(page.locator(".sheet.is-open .js-hero-node"));
+    const heroColor = await page.locator(".sheet.is-open .js-hero-node")
+      .evaluate((el) => getComputedStyle(el).color);
     t.check(`${label}：影武者が出る`, frames.length > 5, `frames=${frames.length}`);
     if (frames.length) {
       /* 最初に控えられるのは動き出して一コマ目。--push-e は出だしが速いので、
@@ -64,6 +74,15 @@ const { open, checker } = require("./lib");
         `${fmt(frames[frames.length - 1])} / ${fmt(hero)}`);
       t.check(`${label}：途中は間を通る`, frames.some((f) => !near(f, from, 3) && !near(f, hero, 3)));
       t.check(`${label}：飛んでいるあいだ本物の二つは隠れる`, hidden.every(Boolean));
+      t.check(`${label}：絵は頭と同じ色のまま（黒くならない）`,
+        colors.every((c) => c === heroColor), `${colors[0]} / ${heroColor}`);
+      /* 絵は行の 32px から頭の 38px へ。縮んだ紙の中で測ると倍率が狂って
+         2.4 倍に膨らんでいた（一瞬の大きな黒いシルエット）。 */
+      t.check(`${label}：絵は膨らまない（32〜38px）`,
+        marks.every((w) => w > 30 && w < 40), `${Math.min(...marks).toFixed(1)}〜${Math.max(...marks).toFixed(1)}`);
+      t.check(`${label}：出だしは行の丸薬の写しが上にある`, under[0] > 0.8, `under=${under[0]}`);
+      t.check(`${label}：写しは薄まっていく`, under[under.length - 1] < 0.1,
+        `under=${under[under.length - 1]}`);
     }
     t.check(`${label}：着いたら影武者は消える`, (await page.locator(".sheet-morph").count()) === 0);
     t.check(`${label}：頭の丸薬が見えている`,
@@ -76,6 +95,23 @@ const { open, checker } = require("./lib");
 
   await tryOpen("題を押す", row.locator(".tl-open"));
   await tryOpen("丸薬を押す", row.locator(".tl-node"));
+
+  /* パレットの丸は無く、頭の粒そのものが絵選びを開く。 */
+  {
+    const box = await row.locator(".tl-open").boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(700);
+    t.check("パレットの丸は無い", (await page.locator(".sheet.is-open .hero-paint").count()) === 0);
+    const sheets = await page.locator(".sheet.is-open").count();
+    await page.locator(".sheet.is-open .js-hero-node").click();
+    await page.waitForTimeout(500);
+    t.check("頭の粒を押すと絵選びが開く",
+      (await page.locator(".sheet.is-open").count()) === sheets + 1);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+  }
 
   /* 途中で閉じる。 */
   {
