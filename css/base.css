@@ -894,7 +894,23 @@ a { color: var(--c-primary); }
   display: flex;
   flex-direction: column;
 }
-.head { flex: none; background: var(--c-bg); }
+.head { flex: none; position: relative; background: var(--c-bg); }
+/* 席を移るとき、暦の印だけを重ねて替えます（head.js の crossMarks）。
+   出ていく暦の印の写し（`.head-ghost`）を同じ位置に置いて薄れさせ、
+   入ってきた暦の印は浮かび上がらせる——紙が流れるのと同じ `--m-nav` で。
+   写しは暦（`--z-stick`、地が塗ってある）より手前に要るので同じ段に置き、
+   あとに書かれたぶん上に来ます。 */
+.head-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-stick);
+  pointer-events: none;
+  animation: head-marks-out var(--m-nav) var(--ease-in) forwards;
+}
+.head-ghost .cal-dots { position: absolute; }
+.cal.is-marks-in .cal-dots { animation: head-marks-in var(--m-nav) var(--ease-out) both; }
+@keyframes head-marks-out { to { opacity: 0; } }
+@keyframes head-marks-in { from { opacity: 0; } }
 .panes {
   flex: 1;
   min-height: 0;
