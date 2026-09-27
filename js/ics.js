@@ -210,9 +210,15 @@
        二つ目は一つ目を複製して「終日」をオンにするだけ。
      ・`allday`（"yes" / "no"）は残してある（使わなくても害はない）。
      ・名前は手順のほうと一字でも違えば動かないので、変えない。
-     ・中身は URL に載ってショートカット App へ渡るだけで、どこにも送りません。 */
+     ・中身は URL に載ってショートカット App へ渡るだけで、どこにも送りません。
+     ・`back` は戻り先（このアプリの URL の `#` から後ろを `BACK` にしたもの）。
+       ショートカットの最後の「URLを開く」がこれを開いて、くらしノートへ戻す
+       （2026年9月27日。前は左上の「◀ くらしノート」を押す一手が残っていた）。
+       `#` の後ろだけが違う URL なので、アプリが開いたままなら読み直しに
+       ならず、詳細の紙も開いたまま（`cameBack`）。 */
   const SHORTCUT = "くらしノートの予定";
   const SHORTCUT_DAY = "くらしノートの終日";
+  const BACK = "cal-back";
 
   /** iPhone・iPad・Mac（どれもショートカット App がある）。 */
   const apple = () => {
@@ -248,7 +254,20 @@
       start, end,
       allday: at == null ? "yes" : "no",
       memo: String(ev.memo || "").trim(),
+      back: location.href.split("#")[0] + "#" + BACK,
     });
+  }
+
+  /**
+   * ショートカットから `#cal-back` で戻ってきたとき（app.js が呼ぶ）。
+   * ホーム画面のアプリに戻れたなら、何もしない。**Safari のタブで開いて
+   * しまった**なら、そう言う——Safari の記録はホーム画面のアプリとは別の
+   * 置き場なので、そこに出るくらしノートは空か古い。黙っていると「記録が
+   * 消えた」に見える。
+   */
+  function cameBack() {
+    if (standalone() || !appleTouch()) return;
+    KN.ui.toast("ここは Safari です。記録はホーム画面のくらしノートにあります。ショートカットの最後の「URLを開く」は消してください（設定 → やること → ショートカットの組み方）", { duration: 12000 });
   }
 
   function shortcutURL(ev) {
@@ -268,5 +287,5 @@
   }
 
   KN.ics = { make, save, offer, send, payload, helperURL, fileName, fold, esc,
-             apple, SHORTCUT, SHORTCUT_DAY, shortcutText, shortcutURL };
+             apple, SHORTCUT, SHORTCUT_DAY, BACK, cameBack, shortcutText, shortcutURL };
 })();

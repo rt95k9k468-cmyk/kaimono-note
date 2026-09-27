@@ -1113,8 +1113,12 @@
     // 閉じているあいだに日をまたいでいたら、終わらなかった用事を今日へ運ぶ。
     store.rescheduleOverdue();
 
-    const fromHash = location.hash.slice(1);
+    /* `#cal-back` は、ショートカットでカレンダーに入れたあとの戻り道
+       （js/ics.js の BACK）。入れたのはやることの紙からなので、やることへ。 */
+    const calBack = !!KN.ics && location.hash.slice(1) === KN.ics.BACK;
+    const fromHash = calBack ? "todo" : location.hash.slice(1);
     show(KN.screens[fromHash] ? fromHash : HOME);
+    if (calBack) KN.ics.cameBack();
 
     /* The hash is how the back button knows where it is, but it is also what
        iOS hands back when it restores a standalone app it had killed — and a
@@ -1142,6 +1146,12 @@
 
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
+      /* 開いたままのところへショートカットが戻してきた。画面も紙もそのまま、
+         印だけ戻す（読み直しにはならない——`#` の後ろだけが違う URL なので）。 */
+      if (KN.ics && id === KN.ics.BACK) {
+        history.replaceState(null, "", "#" + active);
+        return;
+      }
       if (KN.screens[id] && id !== active) show(id);
     });
 
