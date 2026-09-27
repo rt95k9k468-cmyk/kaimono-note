@@ -950,6 +950,9 @@
       s.classList.remove("is-under");
       s.style.transform = "";
     });
+    /* 設定の下から指で引いたときに動かしたのは deck（帯ごと）です。 */
+    const deck = document.getElementById("deck");
+    if (deck) deck.style.transform = "";
     const from = active;
     active = id;
     /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
@@ -959,7 +962,15 @@
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */
-    const dir = face ? 0 : slideDir(from, id);
+    /* **段2の暫定：帯を持つタブと、持たないタブ（買うもの・価格）のあいだは
+       流しません。** 帯は一つで、持たないタブへ移ると隠れます。流しながら
+       隠すと、出ていく画面が帯の厚みぶん跳ね上がって見えるので、その一回
+       だけは切り替えにします（docs/shared-header.md。段3で買うもの・価格も
+       帯を持てば、この行は要らなくなります）。設定は帯ごと押しのけるので、
+       ここには入りません。 */
+    const cross = !!from && !OFF_BAR.includes(from) && !OFF_BAR.includes(id)
+      && KN.head.has(from) !== KN.head.has(id);
+    const dir = (face || cross) ? 0 : slideDir(from, id);
     const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r",
                  "is-push-in", "is-push-under", "is-pop-in", "is-pop-out"];
     const push = dir !== 0 && pushy(from, id);
@@ -1000,6 +1011,9 @@
       inEl.classList.remove(...ALL);
       inEl.classList.add("is-active");
     }
+    /* 上の帯の持ち主を、組む**前**に入ってくるタブへ（js/head.js）。組む側は
+       `render()` の中で自分の暦と題を帯に置きます。 */
+    KN.head.enter(id);
     ensureMounted(id);
     KN.screens[id].render();
 
@@ -1024,6 +1038,12 @@
         s.hidden = true;
       }
     });
+    /* 押しのけは deck（帯と、その下の画面）ごと。下の画面の class は
+       出入りの目印として残し、動きそのものは deck が持ちます（base.css）。 */
+    if (deck) {
+      deck.classList.remove("is-push-under", "is-pop-in");
+      if (push) deck.classList.add(dir > 0 ? "is-push-under" : "is-pop-in");
+    }
     clearTimeout(slideT);
     if (dir) {
       slideT = setTimeout(() => {
@@ -1031,6 +1051,7 @@
           s.classList.remove(...ALL);
           s.hidden = true;
         });
+        if (deck) deck.classList.remove("is-push-under", "is-pop-in");
       }, slideMs(push));
     }
 
@@ -1675,6 +1696,10 @@
     try { KN.screens[to].render(); } catch (err) { /* 出すことを妨げない */ }
     el.hidden = false;
     el.classList.add("is-under");
+    /* 指が動かすのは、その画面ではなく **deck**（上の帯ごと）。設定は帯ごと
+       押しのけて重なった一枚なので、戻るときも帯ごと戻ってきます。 */
+    const deck = document.getElementById("deck");
+    if (deck) { deck.classList.remove("is-push-under", "is-pop-in"); return deck; }
     return el;
   };
 
@@ -1685,6 +1710,8 @@
       s.style.transform = "";
       if (s.dataset.screen !== active) s.hidden = true;
     });
+    const deck = document.getElementById("deck");
+    if (deck) { deck.style.transform = ""; deck.style.transition = ""; }
   };
 
   /** どの**タブ**から潜ってきたか。設定の画面が、出すものを選ぶのに使います

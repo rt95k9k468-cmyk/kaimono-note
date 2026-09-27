@@ -19,9 +19,16 @@ const { open, checker } = require("./lib");
     await page.evaluate((i) => KN.app.showScreen(i), id);
     await page.waitForTimeout(700);
   };
-  const title = (id) => page.$eval(`#screen-${id} .js-day-title`, (e) => e.textContent.replace(/\s+/g, ""));
+  /* 題と暦は全タブで一つの帯（#head、段2）。読む前に、帯の持ち主がその
+     タブであることも見る——よそのタブの題を読んで通ってしまわないように。 */
+  const title = (id) => page.evaluate((i) => (KN.head.mine(i)
+    ? document.querySelector("#head .js-day-title").textContent.replace(/\s+/g, "")
+    : `（帯の持ち主が ${i} ではない）`), id);
   const tap = async (id, day) => {
-    await page.$eval(`#screen-${id} .cal-day[data-day="${day}"]`, (e) => e.click());
+    await page.evaluate(([i, d]) => {
+      if (!KN.head.mine(i)) throw new Error(`帯の持ち主が ${i} ではない`);
+      document.querySelector(`#head .cal-day[data-day="${d}"]`).click();
+    }, [id, day]);
     await page.waitForTimeout(500);
   };
 
@@ -39,7 +46,7 @@ const { open, checker } = require("./lib");
   c.check("daily の未来の紙は見るだけ（inert）", ahead);
   const back = await page.evaluate(() => {
     // 一日戻る向きは通る（未来から今日へ戻る道）。
-    const t = document.querySelector("#screen-archive .js-go-today");
+    const t = document.querySelector("#head .js-go-today");
     return !!t && !t.hidden;
   });
   c.check("daily に「今日へ戻る」が出ている", back);
@@ -75,7 +82,7 @@ const { open, checker } = require("./lib");
     await page.$eval("#screen-diet", (s) => !!s.querySelector(".day-track .day-slide.is-peek.diet-day[data-day='2026-09-18']")));
 
   // 暦の段：ダイエットで月へ開く → やること・daily も月。
-  await page.$eval("#screen-diet .js-day-title", (e) => e.click());
+  await page.$eval("#head .js-day-title", (e) => e.click());
   await page.waitForTimeout(600);
   c.check("ダイエットで開いた段が札に入る", await page.evaluate(() => KN.store.calPrefs("todo").open === true));
   await tap("diet", "2026-09-10");
@@ -85,17 +92,17 @@ const { open, checker } = require("./lib");
   await go("todo");
   c.check("買うものを挟んでも、やることの題は 10日", (await title("todo")).includes("9月10日"), await title("todo"));
   c.check("やることの暦も月（is-week でない）",
-    await page.$eval("#screen-todo .cal", (e) => !e.classList.contains("is-week")));
+    await page.$eval("#head .cal", (e) => !e.classList.contains("is-week")));
 
   // やることで週へ畳む → daily も週。
-  await page.$eval("#screen-todo .js-day-title", (e) => e.click());
+  await page.$eval("#head .js-day-title", (e) => e.click());
   await page.waitForTimeout(600);
   await go("archive");
-  c.check("daily の暦も週", await page.$eval("#screen-archive .cal", (e) => e.classList.contains("is-week")));
+  c.check("daily の暦も週", await page.$eval("#head .cal", (e) => e.classList.contains("is-week")));
   c.check("daily の題は 10日", (await title("archive")).includes("9月10日"), await title("archive"));
 
   // 今日へ戻る → 他のタブも今日。
-  await page.$eval("#screen-archive .js-go-today", (e) => e.click());
+  await page.$eval("#head .js-go-today", (e) => e.click());
   await page.waitForTimeout(500);
   await go("todo");
   c.check("daily で今日へ戻ると、やることも今日", (await title("todo")).includes("9月15日"), await title("todo"));

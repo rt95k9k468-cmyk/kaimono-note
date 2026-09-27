@@ -96,29 +96,19 @@
 
   /* ---------------- 組み立て ---------------- */
 
+  /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
+  function mine() { return KN.head.mine("diet"); }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
 
+    /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+       一つの帯（js/head.js）に居ます（docs/shared-header.md）。題を押すと
+       暦が月ぜんぶに開く——応えだけが、この画面のもの。ここに残るのは帯より
+       下：探す窓（暦の下に開く）と紙。 */
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 題は、いま見ている日。やること・daily と同じひと組を KN.util
-                  から借ります——年は差し色、日にちの数は今日のときだけ差し色、
-                  右に「›」。押すと暦が月ぜんぶに開きます。
-                  月と年を別に出す見出しの行（「8月 2026」）と「週」の札、
-                  ‹ › は、この題に吸収して消えました。 */""}
-            ${U.dayTitleBar()}
-            ${/* 右上は**二つだけ**です——さがす と 設定。暦の出し入れと
-                  ヘルスケアからの取り込みは、たまにしか使いません。たまに
-                  使うものは設定の中へ（取り込みの札は前からそこにあります）。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="食べたものを探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
         ${/* ほかの三画面と同じバーです。題の裏に隠してあって、少し下へ
               引くと出てきます（ui.js の parkSearch）。探す先だけが違って、
               ここは**食べたもの**——「あの日、何食べたっけ」に答えます。 */""}
@@ -137,24 +127,23 @@
     `);
     root.append(chrome);
 
+    const head = KN.head.els;
     els = {
-      dayRow: chrome.querySelector(".topbar-dayrow"),
-      dayTitle: chrome.querySelector(".js-day-title"),
+      dayRow: head.dayRow,
+      dayTitle: head.dayTitle,
       body: chrome.querySelector(".js-body"),
-      topbar: chrome.querySelector(".topbar"),
       screen: root,
-      searchBtn: chrome.querySelector(".js-search-btn"),
+      mine,
+      searchBtn: head.searchBtn,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search: chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
     };
 
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
-
     /* 題を押すと、暦が月ぜんぶに開きます（やること・daily の「›」と同じ）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです。 */
     els.dayTitle.addEventListener("click", () => {
+      if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
       store.setCalPref("diet", { open: !calOpen() });
     });
@@ -162,7 +151,8 @@
     /* 題の右の「今日へ戻る」。`viewDay` も `calMonth` も落とすと、どちらも
        今日を指しなおします（curDay / shownMonth の既定がそれ）。今日を見て
        いるあいだは `paintDayTitleInto` が押せなくしています。 */
-    chrome.querySelector(".js-go-today").addEventListener("click", () => {
+    head.today.addEventListener("click", () => {
+      if (!mine()) return;
       KN.motion.fire("select");
       viewDay = null;
       calMonth = null;
@@ -440,8 +430,13 @@
     flushSlots();
     flushSlots = () => {};
     const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
+    /* 暦は帯（画面の外、全タブで一つ）に置きます。**探しているあいだも
+       出したまま**——前は紙ごと外していましたが、帯の暦が消えると帯の厚みが
+       変わり、「探しているタブだけ帯が縮む」ことになります。 */
+    els.cal = monthCalendar();
+    KN.head.putCal("diet", els.cal);
     // 探しているあいだは、その日の紙のかわりに、見つかった日を並べます。
-    if (query.trim()) { renderFound(); return; }
+    if (query.trim()) { renderFound(); placeRing(true); return; }
     const day = curDay();
     const card = D.dayCard(day);
     // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
@@ -456,8 +451,6 @@
     /* 日付は暦と、その日の紙の見出しが持っています。題の下でもう一度
        言う必要はありません（「さがす」の結果だけは、ここに出します）。 */
     els.body.innerHTML = "";
-    els.cal = monthCalendar();
-    els.body.append(els.cal);
     /* その日の話は、一枚の紙にまとめます。からだ・食事・体重は
        別々の話ではなく、同じ一日の三つの面なので——横に払って日を
        めくるときも、三つが**一緒に**流れたほうが「日が変わった」と読めます。
@@ -614,7 +607,8 @@
 
   /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
-    if (!els.dayRow || !els.dayRow.isConnected) return;
+    // 帯は全タブで一つ。持ち主でないときに塗ると、よそのタブの題を上書きします。
+    if (!els.dayRow || !mine()) return;
     U.paintDayTitleInto(els.dayRow, curDay(),
       `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));

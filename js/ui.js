@@ -1305,7 +1305,8 @@
      出したままになります。探すものが無いくらい短い一覧なので、それで
      困りません。
 
-     @param els  { screen, searchBtn, searchWrap, search, searchClear }
+     @param els  { screen, searchBtn, searchWrap, search, searchClear, mine? }
+                 mine … 虫めがねを他の画面と分け合うとき、押されたのが自分の番か
      @param onChange  called after the query changes; repaint the list
      @param setQuery  hands the folded query back to the screen
   */
@@ -1406,6 +1407,9 @@
     tuck();
 
     els.searchBtn.addEventListener("click", () => {
+      /* 虫めがねが全タブで一つの帯に居る画面（やること・daily・ダイエット、
+         js/head.js）は、同じボタンに三つが結んでいます。応えるのは持ち主だけ。 */
+      if (els.mine && !els.mine()) return;
       const tucked = els.searchWrap && els.searchWrap.hidden;
       const showing = !tucked && scroller && scroller.scrollTop < 2;
       if (showing && (els.search.value || document.activeElement === els.search)) {

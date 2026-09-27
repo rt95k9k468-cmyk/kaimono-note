@@ -232,7 +232,8 @@
       題だけ月を言うと**紙と題が違うことを言います**。日を選んでいない
       ときに紙が出しているのは focusDay()——そこを、そのまま題にします。 */
   function paintDayTitle() {
-    if (!els.dayRow || !els.dayRow.isConnected) return;
+    // 帯は全タブで一つ。持ち主でないときに塗ると、よそのタブの題を上書きします。
+    if (!els.dayRow || !mine()) return;
     KN.util.paintDayTitleInto(els.dayRow, focusDay(), "押すと月を選ぶ");
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
   }
@@ -1505,33 +1506,19 @@
      画面
      ================================================================ */
 
+  /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
+  function mine() { return KN.head.mine("archive"); }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
+    /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+       一つの帯（js/head.js）に居ます（docs/shared-header.md）。題は、いま
+       見ている**日**（やること・ダイエットと同じひと組を KN.util から）。
+       押すと月を選ぶ紙が開く——応えだけが、この画面のもの。ここに残るのは
+       帯より下：探す窓（暦の下に開く）と紙。 */
     root.append(node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 題は、いま見ている**日**。やること・ダイエットと同じひと組を
-                  KN.util から借ります——年は差し色、日にちの数は今日のときだけ
-                  差し色、右に「›」。押すと月を選ぶ紙が開きます。
-                  月と年を別に出す見出しの行（「8月 2026」）と「週」の札は、
-                  この題に吸収されて消えました。
-
-                  「日を選んでいなければ 8月 まで」という書き方をしていました
-                  ——月ぜんぶを縦に並べていたころの名残です。Daily Log が
-                  一日ぶんになったいま、紙に出ているのはその**日**なので、
-                  題も日まで言います（言わないと、紙と題が別のことを言う）。 */""}
-            ${KN.util.dayTitleBar()}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）・
-                  暦の出し入れ・月の書き出しは、たまにしか使いません。たまに
-                  使うものは設定の中へ。右上に居るのは「どの画面でも同じ
-                  二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="文字でさがす">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
         <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
@@ -1546,50 +1533,40 @@
       </div>
     `));
 
+    const head = KN.head.els;
     els = {
       body: root.querySelector(".js-body"),
       screen: root,
-      topbar: root.querySelector(".topbar"),
-      dayRow: root.querySelector(".topbar-dayrow"),
-      dayTitle: root.querySelector(".js-day-title"),
-      searchBtn: root.querySelector(".js-search-btn"),
+      dayRow: head.dayRow,
+      dayTitle: head.dayTitle,
+      searchBtn: head.searchBtn,
       searchWrap: root.querySelector(".js-search-wrap"),
       search: root.querySelector(".js-search"),
       searchClear: root.querySelector(".js-search-clear"),
+      mine,
     };
 
     /* ほかの三画面とまったく同じ配線です。バーは題の裏に隠してあって、
        少し下へ引くと出てきます（ui.js の parkSearch）。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
-    root.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
 
     /* 題を押すと、暦が月ぜんぶに開きます（やることの「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
        ——暦は描き直されますが、バーは残るので。 */
     els.dayTitle.addEventListener("click", () => {
+      if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
       openMonthPicker();
     });
 
     /* 題の右の「今日へ戻る」。今日を見ているあいだは `paintDayTitleInto` が
        押せなくしているので、ここで日を見る必要はありません。 */
-    root.querySelector(".js-go-today").addEventListener("click", () => {
+    head.today.addEventListener("click", () => {
+      if (!mine()) return;
       KN.motion.fire("select");
       goDayTo(U.todayKey());
     });
 
-
-    /* ずっと見えている暦は、上のバーのすぐ下に貼りつきます。バーの高さは
-       ノッチの深さで変わるので、実測して渡します——CSSに数字を焼き込むと、
-       機種が変わった日にずれます（やることと同じ）。 */
-    const fitCal = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitCal();
-    window.addEventListener("resize", fitCal);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
 
     /* 暦の厚み。**掴み手はこのぶんだけ下に貼りつきます**——暦もバーも
        sticky で上に居るので、数えないと掴み手がその裏へ潜ります
@@ -1600,7 +1577,8 @@
        ResizeObserver が鳴ると、輪になります。 */
     let calRO = null, calSeen = null, calH = -1;
     fitCalH = () => {
-      const c = root.querySelector(".cal");
+      /* 暦は帯（画面の外）に居るので、根っこから探さずに持っている一枚を。 */
+      const c = els.cal;
       /* **引いているあいだは測りません。** 紙を引くと暦は月ぜんぶの姿で
          留められる（cal-peek の begin）ので、そのまま測ると床が月の高さに
          なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
@@ -1618,12 +1596,9 @@
     fitCalH();
     window.addEventListener("resize", () => fitCalH());
 
-    const sc0 = KN.app.scrollerOf(root);
-    sc0.addEventListener("scroll", () => {
-      const stuck = sc0.scrollTop > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
-    }, { passive: true });
+    /* 帯と暦の「貼りついた」印（is-stuck・境目の線）は、もう付けません。
+       帯は画面の外に居て送られないので——付けると、全タブで一つの帯が
+       タブごとに違う顔をします（screen-todo.js と同じ）。 */
 
     /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
        消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の daily にも
@@ -1712,7 +1687,9 @@
     els.searchClear.hidden = !els.search.value;
     els.body.innerHTML = "";
 
-    els.body.append(els.cal);
+    /* 暦は帯（画面の外、全タブで一つ）に置きます。印（粒）はこの画面のもの
+       ——daily に他のタブの印を出さないこと（tests/daily-rules.js）。 */
+    KN.head.putCal("archive", els.cal);
     fillCalendar(els.cal);
 
     /* 暦から下は、**白い紙**の上に乗ります（やることと同じ組み）。角の丸い

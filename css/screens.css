@@ -4404,7 +4404,8 @@ a.btn { text-decoration: none; }
    引いたときブラウザが「選んだ字を運ぶ」ほうの手つきを始めて、こちらの
    指を取り上げてしまいます。 */
 .is-cal-peek .tl-sheet,
-.is-cal-peek .cal {
+.is-cal-peek .cal,
+.head .cal.is-peek {
   -webkit-user-select: none;
   user-select: none;
 }
@@ -4472,6 +4473,12 @@ a.btn { text-decoration: none; }
 }
 .tl-late-go svg { width: 14px; height: 14px; }
 .tl-late:active { opacity: .6; }
+/* 札の置き場は、暦の中から**やることの頭（帯のすぐ下）**へ移りました
+   （docs/shared-header.md の段2）。暦は全タブで一つの帯に居るので、中に
+   置くとやることの暦だけ札のぶん背が高くなり、タブを移るたびに紙が
+   上下します。左右の余白は、暦の中に居たときに暦が持っていたぶん。 */
+#screen-todo .js-late:not(:empty) { padding: 0 var(--sp-4) var(--sp-2); }
+#screen-todo .js-late > .tl-late { margin-top: 0; }
 
 /* 用事を運んでいるあいだ、指の下にある日。ここへ落とすと日付が変わります
    ——棚を縦に積んでいたころ、下の棚へ運んでいたのと同じことです。 */

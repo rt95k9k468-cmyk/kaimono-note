@@ -875,6 +875,38 @@ a { color: var(--c-primary); }
   overflow: hidden;
 }
 
+/* ---- 上の帯と暦は、全タブで一つ（docs/shared-header.md の段2） ----
+
+   `.deck` は帯（`.head`）と紙の画面たち（`.panes`）のひと組。タブの流れは
+   `.panes` の中の画面だけを動かすので、帯は 1px も動きません。設定は deck
+   の外に居て、押しのけるときは **deck ごと**動かします（共通の帯ごと）。
+
+   **`z-index: 0` で積み重ねを閉じます。** 帯の `.topbar`（`--z-head`）と
+   暦（`--z-stick`）は数を持っているので、閉じないと上に重なる設定の一枚
+   より手前に出ます。前は各画面の中に居て、出ていく画面の `is-leaving`
+   （z-index: 0）が同じ役をしていました。画面の中に帯より手前へ出るべき
+   ものは無く（持ち上げた行 `.tl-ghost` は body の直下）、下の帯
+   （`--z-bar`）は deck の外なので、閉じて困るものはありません。 */
+.deck {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+}
+.head { flex: none; background: var(--c-bg); }
+.panes {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+/* 設定へ押しのけるときは、帯ごと動かします——下の画面だけを動かすと、
+   帯が置き去りになって「帯の下の画面だけが押しのけられた」絵になります。 */
+.deck.is-push-under { animation: scr-push-under var(--m-push) var(--push-e) forwards; }
+.deck.is-pop-in     { animation: scr-pop-in var(--m-push) var(--push-e); }
+.panes > .screen.is-leaving.is-push-under,
+.panes > .screen.is-active.is-pop-in { animation: none; }
+
 .screen {
   position: absolute;
   inset: 0;
@@ -1153,7 +1185,7 @@ a { color: var(--c-primary); }
 @keyframes scr-pop-out    { from { transform: none; }                        to { transform: translateX(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen.is-active, .screen.is-leaving { animation: none; }
+  .screen.is-active, .screen.is-leaving, .deck { animation: none; }
 }
 
 .screen::-webkit-scrollbar { width: 8px; }
