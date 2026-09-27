@@ -184,7 +184,8 @@
 
     /* いま居る席の印。**席ごとの丸ではなく、席から席へ滑る一枚のレンズ**
        です（`js/tab-lens.js`）。ここでは置くだけ——どこへ滑るかは
-       `paintTabs` が言います。 */
+       `paintTabs` が言います。縁の屈折の**あと**に入ります（屈折に
+       ぼかされないように。tab-lens.js の mount）。 */
     if (KN.tabLens) KN.tabLens.mount(bar);
 
     /* ---- 押しているあいだ、その席がふくらむ ----
@@ -295,9 +296,19 @@
     [.22, .5, .78].forEach((f) => {
       const x = r.left + r.width * f;
       /* 帯とドックは**自分自身**なので飛ばします。地を持っていない要素
-         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。 */
+         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。
+
+         **数えるのは、帯より下に重なっているものだけ。** `elementsFromPoint` は
+         上に重なっているものから返します。紙（`.sheet`）が開いていると、帯の
+         真上に紙の足もと——「保存」の主色のボタン——が来て、それを「後ろが
+         暗い」と読んでいました（主色は明るさ .17〜.27 で、境目 .42 の下）。
+         紙が閉じても、次に送るまで帯は夜のまま残ります（2026年9月27日、
+         買うもの・やることの帯が暗い丸薬で出ていた正体）。帯の席（`.tab`）に
+         当たるまでに出てきたものは、帯の**手前**にあるので飛ばします。
+         席に一度も当たらない点（席のあいだの隙間など）は、従来どおり上から。 */
       const els = document.elementsFromPoint(x, y) || [];
-      for (let i = 0; i < els.length; i++) {
+      const behind = els.findIndex((el) => el.closest && el.closest("#tabbar"));
+      for (let i = behind >= 0 ? behind : 0; i < els.length; i++) {
         const el = els[i];
         if (el.closest && el.closest("#tabbar, #dock")) continue;
         const m = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/
@@ -1335,6 +1346,27 @@
     const app = document.getElementById("app");
     if (!app) return;
 
+    /* 下に貼るもの（紙・電卓）の**床がどこにあるか**を測る、見えない一点。
+
+       `--kb` は「innerHeight − 可視の高さ」で出していて、iPhone のホーム画面
+       アプリでは 0 でした——あそこでは innerHeight も可視と一緒に縮むので。
+       それで足りていたのは、**`position: fixed` の床も一緒に上がっていた**
+       からです。iOS 26 ではそこが変わり、innerHeight と可視は縮むのに、
+       fixed の床は画面の底に残ります。紙は `bottom: var(--kb)` ＝ 0 の
+       ままキーボードの裏に沈み、見えるのは頭（「食事を書く」）だけで、
+       欄はキーボードと道具棚（∧ ∨ ✓）の下でした（2026年9月27日の画面）。
+
+       だから数で推さず、**床そのものを測ります**。fixed で bottom:0 に置いた
+       高さ0の点の上端が床、可視の下端（offsetTop + height）がキーボードの
+       上端。その差が、紙を持ち上げる量です。床も一緒に上がる端末では差が
+       0 になるので、前と同じ答えに落ちます。`.app` の中には置かないこと
+       （transform を持つ祖先があると、fixed の基準がそちらへ移ります）。 */
+    const floor = document.createElement("i");
+    floor.setAttribute("aria-hidden", "true");
+    floor.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:0;"
+      + "visibility:hidden;pointer-events:none";
+    document.body.append(floor);
+
     const fit = () => {
       /* 他のアプリから戻ったとき、タブ欄の下にキーボードひとつぶんの
          空白が残ることがありました。iOS はページを眠らせているあいだの
@@ -1356,6 +1388,13 @@
       const typing = isTyping();
       const stale = !typing && (full - visible) > KB_MIN;
       const shell = stale ? full : visible;
+      /* 床とキーボードの上端の差（上の `floor`）。**打っているあいだだけ**
+         使います——キーボードが出ていないときの差は、指で拡大しているときの
+         ような別の話で、そこで紙を浮かせる理由はありません。
+         書くより先に測ること（書いたあとに測ると、そこでレイアウトが一回増える）。 */
+      const sunk = typing
+        ? Math.round(floor.getBoundingClientRect().top - (vv.offsetTop + vv.height))
+        : 0;
       app.style.height = shell + "px";
 
       /* Publish the same two numbers to CSS, for the things that are not the
@@ -1373,7 +1412,8 @@
       root.style.setProperty("--vvh", shell + "px");
       // --kb も同じ値から。古い値を弾いたなら、空けるべき隙間もありません
       // （空けたままだと、下に貼る棒がその高さだけ浮きます）。
-      root.style.setProperty("--kb", stale ? "0px" : Math.max(0, full - visible) + "px");
+      // 床が画面の底に残る端末（iOS 26 のホーム画面アプリ）では、その差のぶん。
+      root.style.setProperty("--kb", stale ? "0px" : Math.max(0, full - visible, sunk) + "px");
 
       /* Then put the document back. iOS scrolls it to reveal the focused
          field while the shell is still full height; once it is not, that
