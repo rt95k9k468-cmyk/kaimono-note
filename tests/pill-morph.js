@@ -8,6 +8,8 @@
      丸薬の見た目の写しを重ね、薄めて消す（パッと色が変わらない）
    - 絵は 32〜38px のまま（膨らまない）
    - パレットの丸は無い。頭の粒を押すと絵選びが開く
+   - 閉じると、頭の丸薬が行の丸薬へ帰る。保存で行が動いても（FLIP の最中でも）
+     動いた先に着く。行が無くなったら帰らない。着いたら行の丸薬が見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/pill-morph.js */
 const { open, checker } = require("./lib");
 
@@ -17,6 +19,7 @@ const { open, checker } = require("./lib");
 
   await page.evaluate(() => {
     KN.store.addTodo({ title: "試験の用事", due: KN.util.todayKey(), time: "09:00", minutes: 60 });
+    KN.store.addTodo({ title: "間の用事", due: KN.util.todayKey(), time: "11:00", minutes: 30 });
     KN.app.showScreen("todo");
   });
   await page.waitForTimeout(600);
@@ -90,11 +93,84 @@ const { open, checker } = require("./lib");
     t.check(`${label}：行の丸薬が見えている`,
       await row.locator(".tl-node").evaluate((el) => el.style.visibility === ""));
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
   }
 
   await tryOpen("題を押す", row.locator(".tl-open"));
   await tryOpen("丸薬を押す", row.locator(".tl-node"));
+
+  /* ---- 閉じると、頭の丸薬が行の丸薬へ帰る ---- */
+  const recordBack = () => page.evaluate(() => new Promise((ok) => {
+    const out = { frames: [], under: [], rowHidden: [] };
+    const t0 = performance.now();
+    const tick = () => {
+      const g = document.querySelector(".sheet-morph");
+      if (g) {
+        const r = g.getBoundingClientRect();
+        out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+        out.under.push(+getComputedStyle(g.lastElementChild).opacity);
+        const n = document.querySelector(".screen.is-active .tl-row[data-todo-id] .tl-node[style*='hidden']");
+        out.rowHidden.push(!!n);
+      }
+      if (performance.now() - t0 < 1100) requestAnimationFrame(tick);
+      else ok(out);
+    };
+    requestAnimationFrame(tick);
+  }));
+  const idOf = await row.getAttribute("data-todo-id");
+  const nodeOf = () => page.locator(`.screen.is-active .tl-row[data-todo-id="${idOf}"] .tl-node`);
+  async function openAndSettle() {
+    const box = await row.locator(".tl-open").boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(700);
+  }
+  async function tryBack(label, before) {
+    await openAndSettle();
+    const hero = await rectOf(page.locator(".sheet.is-open .js-hero-node"));
+    const rec = recordBack();
+    if (before) await page.evaluate(before, idOf);
+    await page.keyboard.press("Escape");
+    const { frames, under, rowHidden } = await rec;
+    const home = await rectOf(nodeOf());
+    t.check(`${label}：影武者が出る`, frames.length > 5, `frames=${frames.length}`);
+    if (frames.length > 5) {
+      const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.w - b.w, a.h - b.h);
+      t.check(`${label}：頭の丸薬の箱から出る`, d(frames[0], hero) < d(hero, home) * 0.15,
+        `${fmt(frames[0])} / ${fmt(hero)}`);
+      t.check(`${label}：行の丸薬の箱に着く`, near(frames[frames.length - 1], home, 1.5),
+        `${fmt(frames[frames.length - 1])} / ${fmt(home)}`);
+      t.check(`${label}：色は頭から行へ薄めて移る`, under[0] < 0.2 && under[under.length - 1] > 0.9,
+        `${under[0]} → ${under[under.length - 1]}`);
+      t.check(`${label}：飛んでいるあいだ行の丸薬は隠れる`, rowHidden.every(Boolean));
+    }
+    t.check(`${label}：着いたら影武者は消える`, (await page.locator(".sheet-morph").count()) === 0);
+    t.check(`${label}：行の丸薬が見えている`,
+      await nodeOf().evaluate((el) => el.style.visibility === ""));
+    return home;
+  }
+  const stay = await tryBack("そのまま閉じる");
+  /* 閉じる直前に時刻を動かす（保存で組み直されるのと同じ）。行は FLIP で
+     滑ってくる最中で、影武者はそれを追いかけて、動いた先に着く。 */
+  const moved = await tryBack("行が動く", (id) => {
+    KN.store.updateTodo(id, { time: "14:00" });
+  });
+  t.check("行が動く：行き先は動いた先", Math.abs(moved.y - stay.y) > 20, `${stay.y} → ${moved.y}`);
+  await page.evaluate((id) => KN.store.updateTodo(id, { time: "09:00" }), idOf);
+  await page.waitForTimeout(700);
+  /* 行が無くなったら（別の日へ移した）、帰らない。 */
+  {
+    await openAndSettle();
+    await page.evaluate((id) => {
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      KN.store.updateTodo(id, { due: KN.util.dayKey(d) });
+    }, idOf);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(40);
+    t.check("行が無くなったら帰らない", (await page.locator(".sheet-morph").count()) === 0);
+    await page.waitForTimeout(400);
+    await page.evaluate((id) => KN.store.updateTodo(id, { due: KN.util.todayKey() }), idOf);
+    await page.waitForTimeout(700);
+  }
 
   /* パレットの丸は無く、頭の粒そのものが絵選びを開く。 */
   {
@@ -110,7 +186,7 @@ const { open, checker } = require("./lib");
     await page.keyboard.press("Escape");
     await page.waitForTimeout(400);
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
   }
 
   /* 途中で閉じる。 */
