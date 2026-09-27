@@ -498,9 +498,9 @@
   --m-sheet-close: .2s;
   /* 画面が変わる。 */
   --m-nav: .26s;
-  /* 席を移るとき、暦の印を替える。消える→出る を**順に**するので、
-     この長さを二回（出ていく印が消えきってから、入ってくる印が出る）。 */
-  --m-marks: .2s;
+  /* 席を移るとき、暦の印を替える。出ていく印が半ばまで薄れたところで、
+     入ってくる印が出はじめる（半分ずつ重ねて、ゆっくり）。全体で一回半。 */
+  --m-marks: .4s;
   /* うまくいった／気をつけて。 */
   --m-success: .42s;
   --m-warn: .36s;
@@ -900,9 +900,10 @@ a { color: var(--c-primary); }
 .head { flex: none; position: relative; background: var(--c-bg); }
 /* 席を移るとき、暦の印だけを替えます（head.js の crossMarks）。
    出ていく暦の印の写し（`.head-ghost`）を同じ位置に置いて薄れさせ、
-   **消えきってから**、入ってきた暦の印を浮かび上がらせます（`--m-marks` を
-   二つ、順に）。同時に替えると、半ばで両方が半分ずつ見えて、同じマスに
-   二タブぶんの印が重なって見えました（実機）。
+   半ばまで薄れたところで、入ってきた暦の印を浮かび上がらせます（`--m-marks`
+   の半分だけ遅らせて重ねる）。まったく同時だと同じマスに二タブぶんの印が
+   重なって見え（実機）、消えきってから順にすると間が空いて急に見えたので、
+   その間を取りました。
    写しは暦（`--z-stick`、地が塗ってある）より手前に要るので同じ段に置き、
    あとに書かれたぶん上に来ます。 */
 .head-ghost {
@@ -913,7 +914,7 @@ a { color: var(--c-primary); }
   animation: head-marks-out var(--m-marks) var(--ease-in) forwards;
 }
 .head-ghost .cal-dots { position: absolute; }
-.cal.is-marks-in .cal-dots { animation: head-marks-in var(--m-marks) var(--ease-out) var(--m-marks) both; }
+.cal.is-marks-in .cal-dots { animation: head-marks-in var(--m-marks) var(--ease-out) calc(var(--m-marks) / 2) both; }
 @keyframes head-marks-out { to { opacity: 0; } }
 @keyframes head-marks-in { from { opacity: 0; } }
 .panes {
