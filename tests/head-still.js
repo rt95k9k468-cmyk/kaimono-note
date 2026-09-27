@@ -237,8 +237,9 @@ const { open, checker } = require("./lib");
     JSON.stringify({ mid, before }));
   c.check("入ってきた暦の印は浮かび上がる途中・暦は一枚のまま", mid.fadingIn && mid.cals === 1);
   c.check("写しは押せず、読み上げにも出ない", mid.inert);
-  /* 消える→出る は順に。毎フレーム、写しと入ってきた印の不透明度を測り、
-     両方が同時に見えている一拍が無いこと（実機で重なって見えた）。 */
+  /* 消える→出る は半分ずつ重ねて。毎フレーム、写しと入ってきた印の不透明度を
+     測る。入ってきた印は写しが薄れはじめてから出はじめ（同時ではない）、
+     重なる一拍はあってよい（順にすると急に見えた——実機）。 */
   const seq = await page.evaluate(() => new Promise((res) => {
     const out = [];
     const t0 = performance.now();
@@ -246,13 +247,15 @@ const { open, checker } = require("./lib");
       const g = document.querySelector("#head > .head-ghost");
       const d = document.querySelector("#head .cal .cal-dots:not(:empty)");
       out.push([g ? Number(getComputedStyle(g).opacity) : 0, d ? Number(getComputedStyle(d).opacity) : 1]);
-      if (performance.now() - t0 < 600) requestAnimationFrame(tick); else res(out);
+      if (performance.now() - t0 < 900) requestAnimationFrame(tick); else res(out);
     };
     tick();
   }));
-  const both = seq.filter(([g, d]) => g > 0.02 && d > 0.02);
-  c.check("写しと入ってきた印は、同時には見えない", both.length === 0 && seq.some(([g]) => g > 0.02),
-    JSON.stringify(both.slice(0, 4)));
+  const firstIn = seq.findIndex(([, d]) => d > 0.02);
+  c.check("入ってきた印は、写しが薄れはじめてから出はじめる",
+    firstIn > 0 && seq[0][1] <= 0.02 && seq[firstIn][0] < 0.9, JSON.stringify(seq.slice(0, 12)));
+  c.check("写しが消えきる前に、入ってきた印が出はじめる（重ねて替える）",
+    seq.some(([g, d]) => g > 0.02 && d > 0.02), JSON.stringify(seq.slice(0, 40)));
   await page.waitForTimeout(300);
   c.check("流れ終わると写しは消え、印は出きっている", await page.evaluate(() =>
     !document.querySelector("#head .head-ghost")
