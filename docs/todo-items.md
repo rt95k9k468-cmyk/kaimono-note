@@ -232,6 +232,18 @@ node の表で測れます（`icon-eval.json` と同じ考えかた。道具は�
   - `#` の後ろはサーバーへ送られない（Safari の履歴には残る）。受け渡しのページは
     アプリの一部ではない（ASSETS にも standalone にも載せない）。
 
+### 閉じていても鳴る（`js/bell.js`・D1）
+
+2026年9月27日。時刻のお知らせ（`notify.js`）は開いているあいだだけ鳴る。設定の
+「閉じていても鳴らす」を入れると、中継所が時刻に押し、Service Worker が端末の写しから
+題を出す。**中継所へ渡すのは時刻だけ**。決めごとは docs/health.md の「閉じていても
+鳴る通知」、写しの置き場は docs/storage.md の「鳴らす役の写し」。
+
+- 鳴らす列は `store.fallsOn` で開く（くり返しは記録一件のまま、7日先まで）。回の
+  書き方は `notifiedFor` と同じ「日付 時刻」——Service Worker が鳴らした回は、アプリが
+  開いたとき `markAnnounced` へ渡る（`bell.absorb`）。回の書き方を変えるなら三か所
+  （`store.js` の `occurrenceOf`・`bell.js`・`sw.js`）。
+
 ### 期限切れは作らない（`store.rescheduleOverdue`）
 
 2026年9月27日（利用者の希望：「ルーティンは期限切れにならないでほしい。期限切れの

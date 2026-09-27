@@ -50,6 +50,7 @@ const ASSETS = [
   "js/health-sync.js",
   "js/relay-code.js",
   "js/health-relay.js",
+  "js/bell.js",
   "js/product-sheet.js",
   "js/screen-archive.js",
   "js/screen-todo.js",
@@ -132,6 +133,98 @@ self.addEventListener("fetch", (event) => {
       return cached || network;
     })
   );
+});
+
+/* ---------------- 閉じていても鳴る通知（D1。js/bell.js） ----------------
+
+   中継所は中身なしで押してきます。何の時刻かは知らせてこない——中継所に
+   題を渡していないので（利用者が決めたこと）。だから、アプリが写しておいた
+   {時刻, 題, id, 回} の列（IndexedDB `kaimono-note-bell`）から、いまの時刻に
+   当たるものを探して題を出します。
+
+   出す形は notify.js の tick() と同じ（「19:30 題 ほか◯件」）。見つからなければ
+   「やることの時刻です」。**押されたら必ず何か出すこと**——出さない押しが
+   続くと、iPhone は押し先を取り上げます（userVisibleOnly の約束）。
+
+   開き方と棚の形は js/bell.js と同じ。変えるときは両方を。 */
+const BELL_DB = "kaimono-note-bell";
+/* 中継所は分の頭に、その分までの時刻を押します。だから先の側は時計のずれ
+   ぶんだけ見ればよく、一分まで広げると隣の分の用事を早く鳴らします。 */
+const BELL_EARLY = 40 * 1000;
+const BELL_LATE = 11 * 60 * 1000;   // 押しの寿命（TTL）は10分
+
+function bellDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(BELL_DB, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("plan")) db.createObjectStore("plan", { keyPath: "k" });
+      if (!db.objectStoreNames.contains("rung")) db.createObjectStore("rung", { keyPath: "key" });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function bellRead(db) {
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(["plan", "rung"], "readonly");
+    const p = t.objectStore("plan").get("list");
+    const r = t.objectStore("rung").getAll();
+    t.oncomplete = () => resolve({ list: (p.result && p.result.list) || [], rung: r.result || [] });
+    t.onerror = t.onabort = () => reject(t.error);
+  });
+}
+
+function bellMark(db, rows, now) {
+  return new Promise((resolve) => {
+    const t = db.transaction(["rung"], "readwrite");
+    rows.forEach((x) => t.objectStore("rung").put({ key: `${x.id} ${x.occ}`, id: x.id, occ: x.occ, at: now }));
+    t.oncomplete = () => resolve();
+    t.onerror = t.onabort = () => resolve();
+  });
+}
+
+/** いまの押しで出すもの。{ title, body, renotify } */
+async function bellNotice(now) {
+  const plain = { title: "やることの時刻です", body: "", renotify: true };
+  let db;
+  try { db = await bellDb(); } catch (err) { return plain; }
+  try {
+    const { list, rung } = await bellRead(db);
+    const said = new Set(rung.map((r) => r.key));
+    const hit = list.filter((x) => x.at <= now + BELL_EARLY && x.at >= now - BELL_LATE);
+    if (!hit.length) return plain;
+    const fresh = hit.filter((x) => !said.has(`${x.id} ${x.occ}`));
+    /* ぜんぶ、もうアプリが鳴らしていた（開いていた）。同じ札を静かに
+       出し直すだけにして、二度は震わせません。 */
+    const show = fresh.length ? fresh : hit;
+    const first = show[0];
+    const title = show.length === 1
+      ? `${first.time} ${first.title}`
+      : `${first.time} ${first.title} ほか${show.length - 1}件`;
+    const body = show.length === 1
+      ? "やることの時刻です"
+      : show.map((x) => `${x.time} ${x.title}`).join("\n");
+    if (fresh.length) await bellMark(db, fresh, now);
+    return { title, body, renotify: fresh.length > 0 };
+  } catch (err) {
+    return plain;
+  } finally {
+    try { db.close(); } catch (err) { /* もう閉じている */ }
+  }
+}
+
+self.addEventListener("push", (event) => {
+  event.waitUntil(bellNotice(Date.now()).then((n) => self.registration.showNotification(n.title, {
+    body: n.body,
+    tag: "kn-todo-time",          // notify.js の tick() と同じ札（重ねず差し替える）
+    icon: "icons/icon-192.png",
+    badge: "icons/icon-192.png",
+    lang: "ja",
+    renotify: n.renotify,
+    data: { screen: "todo" },
+  })));
 });
 
 /* Tapping the notification should land in the app, on the screen the

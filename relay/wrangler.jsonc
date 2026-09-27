@@ -22,5 +22,10 @@
 
   "kv_namespaces": [
     { "binding": "MAIL" }
-  ]
+  ],
+
+  // 閉じていても鳴る通知（worker.js の「鳴らす役」）。毎分、時刻の列を見て
+  // 来たものだけ押します。コードを手で貼って建てた人は、Cloudflare の
+  // Settings → Triggers → Cron Triggers で「* * * * *」を足してください。
+  "triggers": { "crons": ["* * * * *"] }
 }

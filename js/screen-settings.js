@@ -750,6 +750,8 @@
     const canNotify = notify && notify.supported();
     const notifyOn = canNotify && notify.enabled();
     const notifyBlocked = canNotify && notifyOn && notify.blocked();
+    const bellCan = canNotify && !!KN.bell && KN.bell.available();
+    const bellOn = bellCan && s.todoBell === true;
 
     return [
       card(
@@ -777,9 +779,34 @@
           },
         })
       ) : null,
-      canNotify ? foot(notifyBlocked
+      canNotify && !bellOn ? foot(notifyBlocked
         ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
-        : "アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます。") : null,
+        : bellCan
+          ? "アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます。下を入れると、閉じていても鳴ります。"
+          : "アプリを閉じているあいだは鳴らず、次に開いたときにまとめて出ます。") : null,
+      /* 閉じていても鳴らす（js/bell.js、D1）。中継所があって、時刻のお知らせが
+         入っているときだけ出します。**既定はオフ**——時刻を端末の外へ出すのは、
+         利用者が入れたときだけにするため。 */
+      bellCan ? card(
+        switchRow({
+          title: "閉じていても鳴らす", on: bellOn,
+          onTap: async (v) => {
+            if (!v) { await KN.bell.stop(); render(); return; }
+            const res = await KN.bell.start();
+            render();
+            if (!res.ok) {
+              KN.ui.toast(res.reason === "old"
+                ? "中継所のコードが古いため入れられません。中継所を置き直してください"
+                : res.reason === "push"
+                  ? "この端末では、閉じているあいだの通知を受け取れませんでした"
+                  : "中継所につながりませんでした");
+            }
+          },
+        })
+      ) : null,
+      bellCan && bellOn ? foot(notifyBlocked
+        ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
+        : "中継所から、閉じていても鳴らします。中継所へ渡すのは時刻だけで、題やメモは渡しません（題はこの端末の中から出ます）。今日から7日先までを、開くたびに送り直すので、7日開かないと鳴らなくなります。") : null,
       /* 「カレンダーに入れる」の近道（docs/todo-items.md の「カレンダーに入れる」）。
          ショートカット App のある端末だけに出します。**既定はオフ**——手順を
          組む前にオンにすると、押しても「ショートカットが見つかりません」に
