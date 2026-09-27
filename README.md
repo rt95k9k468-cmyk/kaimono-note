@@ -640,6 +640,9 @@ POST <窓口のURL>   Content-Type: application/json
   それはもう推定ではなくあなたの申告だからです
 - 窓口を決めていなければ、写真とAI相談のボタンは**出ません**（押せない
   ボタンを並べても仕方がないので）
+- **窓口の見本は `ai/` にあります**（Cloudflare Worker。Claude を呼びます）。
+  建て方は中継所と同じ三段で、アプリの AIの窓口 の紙に並んでいます。
+  くわしくは [ai/README.md](ai/README.md)
 
 #### まだ無いもの
 
@@ -648,6 +651,7 @@ POST <窓口のURL>   Content-Type: application/json
 - **バーコードからの商品特定**——入れ物（市販商品として別に持つ仕組み）は
   できていますが、読み取りとデータ源はまだです
 - **写真のAI解析**——アプリ側は動きますが、**窓口を自分で立てる**必要があります
+  （見本は `ai/`。Anthropic の APIキーと、使ったぶんの料金が要ります）
 - **ネイティブアプリでの常時同期**——②で十分に回るので、要ると分かってから
 
 ### 気づいたこと
@@ -856,6 +860,13 @@ relay/                  ← GitHubからそのまま配置できる形にして�
   setup.sh              パソコンがある場合に、①〜④を一度にやる
   verify.sh             建てた中継所を、コマンドラインから確かめる
   README.md             中継所の建て方とショートカットの直し方
+ai/                     ← AIの窓口の見本（relay/ と同じく、GitHubからそのまま配置できる形）
+  wrangler.jsonc        設計図（置き場は持たない）
+  worker.js             窓口の本体（鍵を預かり、Claude を呼ぶ）
+  .dev.vars.example     配置のときに AI_PATH と ANTHROPIC_API_KEY を尋ねさせるため
+  package.json          Claude の公式 SDK
+  worker.test.mjs       窓口のふるまいのテスト（Claude の偽物を使うので外に出ません）
+  README.md             窓口の建て方と、気にしておくこと
 ```
 
 データはブラウザの `localStorage` に `kaimono-note-v2` というキーで保存されます。

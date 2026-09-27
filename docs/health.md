@@ -113,6 +113,31 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 - 試験は `tests/siri-inbox.js`（中継所には繋がず、`relay.invalid` を
   `page.route` で受ける）と `relay/worker.test.mjs` の「受け箱」。
 
+### AIの窓口の見本（`ai/`、D8・2026年9月27日）
+
+設定の「AIの窓口」は URL しか持たない（鍵をページに置けないので）。その向こう側の
+見本が `ai/`——中継所の `relay/` と同じく「Cloudflareに置く」ボタンから置ける形。
+
+- **中継所とは別の Worker**（`kurashi-ai`）。中継所に足さなかったのは、鍵と料金が
+  絡むものを、健康データの郵便受けと同じ合言葉に載せないため。道も別に作らせる。
+- 合言葉は `AI_PATH`、鍵は `ANTHROPIC_API_KEY`（どちらも Secret、`.dev.vars.example`
+  で配置のときに尋ねさせる）。どちらかが無ければ 500 で止まる。
+- **置き場を持たない・何も残さない**（KV なし、observability 切り）。
+- Claude は公式 SDK（`@anthropic-ai/sdk`）で呼ぶ。モデル `claude-opus-5`、effort は
+  `medium`（アプリが相談45秒・写真60秒で待ちきるため）、断られたら
+  `fallbacks: "default"` で答え直させる。写真は structured outputs で型を縛り、
+  断られた・途中で切れたときは**数を作らず空**で返す（アプリは「何も読み取れません
+  でした」）。
+- GET は「確かめる」。`models.retrieve` を一件引くだけ（文章を作らない＝料金なし）。
+  アプリの紙の「確かめる」がこれを呼ぶ（`KN.dietAI.check`）。
+- しくじったら `{ error }` を返し、`diet-ai.js` の `readReply` がその文を出す
+  （前は「窓口が 502 を返しました」だけで、鍵の違いと混雑が見分けられなかった）。
+  自前の窓口が `{ error }` を返さなくても、前と同じ文に落ちる。
+- アプリの道（`aiPath`）は中継所の `relayPath` と同じく紙の外に持つ。保存するのは
+  つないだあとの URL だけ（`settings.dietAiUrl`、前からある欄。移行なし）。
+- 試験は `ai/worker.test.mjs`（fetch を差し替えた Claude の偽物。外に出ない・料金
+  なし。`cd ai && npm install` が先に要る——`node_modules/` はコミットしない）。
+
 ### 飲みたくなったとき（`diet.urges`）
 
 お酒の記録（`diet.drinks`）が持っているのは「**飲んだという行い**」だけでした。

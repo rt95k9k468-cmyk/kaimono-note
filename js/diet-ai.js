@@ -24,6 +24,11 @@
                          "kcal":281, "p":4.5, "f":0.5, "c":66.8 } ],
             "note": "…" }
 
+     ③ 確かめる  GET <窓口のURL>  → { "ok": true, "model": "…" }（任意。無くても①②は動きます）
+
+   しくじったときに { "error": "…" } を返せば、その文を画面に出します。
+   この約束どおりの見本（Cloudflare Worker）は ai/ にあります。
+
    写真から返ってくる数は **推定** です。このアプリはそれを estimated: true
    の印つきで保存し、画面でも「約」と書きます。計算した値と推定した値が
    同じ顔で並ぶと、記録全体の信頼度が、いちばん低いところまで落ちます。 */
@@ -52,9 +57,35 @@
       body: JSON.stringify(body),
       signal: ctrl ? ctrl.signal : undefined,
     })
-      .then((res) => {
-        if (!res.ok) throw new Error(`窓口が ${res.status} を返しました`);
-        return res.json();
+      .then(readReply)
+      .finally(() => { if (timer) clearTimeout(timer); });
+  }
+
+  /* しくじった窓口が { "error": "…" } を返していれば、その文を出します
+     （見本の ai/worker.js はそう返します）。「502 を返しました」だけでは、
+     鍵が違うのか、混んでいるのか、見分けがつかないので。 */
+  function readReply(res) {
+    if (res.ok) return res.json();
+    return res.json()
+      .catch(() => null)
+      .then((j) => {
+        const why = j && typeof j.error === "string" && j.error.trim();
+        throw new Error(why || `窓口が ${res.status} を返しました`);
+      });
+  }
+
+  /** 確かめる。見本の窓口は GET に { ok, model } を返します（料金はかかりません）。
+      保存する前の欄の値でも確かめられるように、URLを受け取ります。 */
+  function check(target) {
+    const u = String(target || url()).trim();
+    if (!/^https:\/\/\S+$/.test(u)) return Promise.reject(new Error("https:// で始まるURLにしてください"));
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
+    return fetch(u, { method: "GET", signal: ctrl ? ctrl.signal : undefined })
+      .then(readReply)
+      .then((r) => {
+        if (!r || r.ok !== true) throw new Error("窓口の返事の形が違います");
+        return r;
       })
       .finally(() => { if (timer) clearTimeout(timer); });
   }
@@ -181,5 +212,5 @@
     });
   }
 
-  KN.dietAI = { configured, url, setUrl, coach, analyzePhoto, shrink, payload };
+  KN.dietAI = { configured, url, setUrl, check, coach, analyzePhoto, shrink, payload };
 })();

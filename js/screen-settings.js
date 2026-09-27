@@ -2054,21 +2054,67 @@
     ];
   }
 
+  /* 「Cloudflareに置く」の行き先（AIの窓口）。リポジトリの ai/ を指します——
+     Cloudflare がそこの .dev.vars.example を見て、合言葉と鍵を尋ねてきます。 */
+  const AI_DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url="
+    + "https://github.com/rt95k9k468-cmyk/kaimono-note/tree/main/ai";
+
+  /* AIの窓口の道（合言葉）。中継所の道と同じく、覚えておくのは紙を閉じるまで
+     ——保存されるのは、つないだあとのURLのほうだけです。 */
+  let aiPath = "";
+
   /* 鍵ではなくURLを預かります。ここに鍵を書かせないのは方針ではなく事実で、
-     このページの中身は誰でも読めるからです。そのことを画面にも書きます。 */
+     このページの中身は誰でも読めるからです。そのことを画面にも書きます。
+
+     窓口の見本は ai/ にあります（中継所の relay/ と同じ形）。建て方も
+     中継所と同じ三段で、難しいところ（当てられない合言葉・長いURLの継ぎ足し）は
+     アプリがやります。 */
   function openAiSheet() {
     const body = node(html`
       <div class="stack">
         <label class="field">
           <span class="field-label">窓口のURL（https://…）</span>
           <input class="input js-url" inputmode="url" autocapitalize="off" spellcheck="false"
-                 placeholder="https://example.workers.dev/kurashi"
+                 placeholder="https://kurashi-ai.あなた.workers.dev"
                  value="${KN.dietAI.url()}">
         </label>
+        <button type="button" class="btn btn-soft btn-block js-check" style="margin:var(--sp-2) 0 var(--sp-3)">確かめる</button>
+        <p class="set-foot is-flush js-check-out" style="display:none"></p>
         <p class="set-foot is-flush">
           <b>APIキーはここに入れません。</b>このページの中身は誰でも読めるので、鍵は
-          窓口の向こう側（Cloudflare Workers など）に置いてください。送るのは
-          ダイエットの記録だけです。受ける形は README の「AIの窓口」に。
+          窓口の向こう側（Cloudflare Workers）に置きます。送るのは
+          ダイエットの記録と、推定に使う食事の写真だけです。
+        </p>
+        <p class="set-foot is-flush" style="margin-top:var(--sp-3)"><b>建て方</b>（パソコンは要りません。Cloudflareの画面はSafariで）</p>
+        <div class="set-card is-pad" style="margin:0 0 var(--sp-3)">
+          <p class="set-foot is-flush">① 道（合言葉）をつくる</p>
+          <div class="diet-relaykey" style="margin-top:8px">
+            <code class="js-path">${aiPath || "（まだ作っていません）"}</code>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button type="button" class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
+            <button type="button" class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
+          </div>
+        </div>
+        <div class="set-card is-pad" style="margin:0 0 var(--sp-3)">
+          <p class="set-foot is-flush">② 窓口を置く</p>
+          <a class="btn btn-primary btn-block" style="margin-top:8px"
+             href="${AI_DEPLOY_URL}" target="_blank" rel="noopener">Cloudflareに置く</a>
+          <ol class="diet-steps" style="margin-top:12px">
+            <li>Cloudflareに登録して、GitHubとつなぐ画面が出たら許可する</li>
+            <li><b>AI_PATH</b> を聞かれたら、①でコピーした道を<b>ペースト</b></li>
+            <li><b>ANTHROPIC_API_KEY</b> には、Anthropic の Console（console.anthropic.com）の API Keys で作った鍵を<b>ペースト</b></li>
+            <li><b>Deploy</b>（Create and deploy）を押す</li>
+          </ol>
+        </div>
+        <p class="set-foot is-flush">
+          ③ Workerの画面に出ている …workers.dev を上の欄に貼って「保存」。①の道が
+          後ろに付きます。そのあと「確かめる」。
+        </p>
+        <p class="set-foot is-flush">
+          料金は Anthropic から、使ったぶんだけ来ます。URLを知られると、その人も
+          あなたの鍵で呼べるので、Console の Limits で<b>月の上限額</b>を決めておいてください。
+          くわしくは ai/README.md に。
         </p>
       </div>
     `);
@@ -2079,8 +2125,37 @@
       </div>
     `);
     const h = KN.ui.sheet({ title: "AIの窓口", content: body, footer: foot });
+    const input = body.querySelector(".js-url");
+    const label = body.querySelector(".js-path");
+    const out = body.querySelector(".js-check-out");
+
+    /* 道の付いていないURLには、①の道を継ぎます（中継所と同じ joinUrl）。
+       道が付いていれば、そのまま——自分で建てた別の窓口も入れられます。 */
+    const joined = () => {
+      const v = input.value.trim();
+      return v && aiPath ? KN.healthRelay.joinUrl(v, aiPath) : v;
+    };
+
+    body.querySelector(".js-newpath").addEventListener("click", () => {
+      aiPath = KN.healthRelay.makePath();
+      label.textContent = aiPath;
+      copyText(aiPath, "道");
+    });
+    body.querySelector(".js-copypath").addEventListener("click", () => {
+      if (!aiPath) { KN.ui.toast("先に「道をつくる」を押してください"); return; }
+      copyText(aiPath, "道");
+    });
+    body.querySelector(".js-check").addEventListener("click", () => {
+      const v = joined();
+      if (!/^https:\/\/\S+$/.test(v)) { KN.ui.toast("https:// で始まるURLを入れてください"); return; }
+      out.style.display = "";
+      out.textContent = "確かめています…";
+      KN.dietAI.check(v)
+        .then((r) => { out.textContent = `通りました（${r.model || "モデル不明"}）。「保存」を押してください。`; })
+        .catch((err) => { out.textContent = "通りませんでした：" + (err && err.message || err); });
+    });
     foot.querySelector(".js-save").addEventListener("click", () => {
-      const v = body.querySelector(".js-url").value.trim();
+      const v = joined();
       if (v && !/^https:\/\//.test(v)) { KN.ui.toast("https:// で始まるURLにしてください"); return; }
       KN.dietAI.setUrl(v);
       h.close(); render();
