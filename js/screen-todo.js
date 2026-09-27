@@ -417,7 +417,7 @@
   /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
     if (!els.dayRow || !els.dayRow.isConnected) return;
-    const key = oneDay() ? shownDay() : (hereDay || todayKey());
+    const key = titleDay();
     KN.util.paintDayTitleInto(els.dayRow, key,
       `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
@@ -2331,6 +2331,7 @@
        します）。指の下で紙が組み直されると、掴んでいたものが別の絵に
        なります。 */
     if (swiping) return;
+    takeSharedDay();
     renderBody();
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
@@ -2584,6 +2585,25 @@
      ように、todayKey() を焼き付けません）。 */
   let viewDay = null;
   const shownDay = () => viewDay || todayKey();
+  /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
+  const titleDay = () => (oneDay() ? shownDay() : (hereDay || todayKey()));
+
+  /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
+     席を移るとき app.js の show() が置いていきます）。`goDay` と同じ三つ
+     ——出す日・印・暦の月——を、組み直す前に書き換えるだけ。 */
+  let dayVer = 0;
+  function takeSharedDay() {
+    const t = KN.util.dayShare.take(dayVer);
+    dayVer = t.ver;
+    if (!t.day || t.day === titleDay()) return;
+    viewDay = t.day === todayKey() ? null : t.day;
+    hereDay = t.day;
+    dayPinned = true;
+    const d = KN.util.dayDate(t.day);
+    const now = KN.util.dayDate(todayKey());
+    calMonth = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+      ? null : { year: d.getFullYear(), month: d.getMonth() };
+  }
 
   /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
   /** その日ぶんの紙まるごと（時間割＋長期タスク）。横に払うと、この一枚が
@@ -4939,5 +4959,5 @@
   function onEnter() { requestAnimationFrame(toNow); }
 
   KN.screens = KN.screens || {};
-  KN.screens.todo = { mount, render, dockButton, onEnter };
+  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay() };
 })();

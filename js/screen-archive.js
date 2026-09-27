@@ -61,6 +61,22 @@
   /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
   const oneDayLog = () => S().dailyScope !== "month";
 
+  /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
+  const writeDay = () => (viewDay && viewDay <= U.todayKey() ? viewDay : U.todayKey());
+
+  /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
+     席を移るとき app.js の show() が置いていきます）。月もその日へ。 */
+  let dayVer = 0;
+  function takeSharedDay() {
+    const t = U.dayShare.take(dayVer);
+    dayVer = t.ver;
+    if (!t.day || t.day === focusDay()) return;
+    const today = U.todayKey();
+    viewDay = t.day === today ? null : t.day;
+    const ym = t.day.slice(0, 7);
+    viewMonth = ym === ymOf(new Date()) ? null : ym;
+  }
+
   /** クリップボードへ。断られたら false を返します（例外は投げません）。 */
   function copyText(text) {
     if (!navigator.clipboard || !navigator.clipboard.writeText) return Promise.resolve(false);
@@ -281,7 +297,7 @@
       画面なので）。行けないなら null——払っても重くなるだけです。 */
   function stepWeek(delta) {
     const next = U.shiftDay(focusDay(), delta * 7);
-    return next > U.todayKey() ? null : next;
+    return next > U.todayKey() && delta > 0 ? null : next;
   }
 
   /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
@@ -302,7 +318,7 @@
   function goMonth(delta, quiet) {
     const m = shownMonth();
     const d = new Date(m.year, m.month + delta, 1);
-    if (ymOf(d) > ymOf(new Date())) return false;   // 先の月には行きません
+    if (delta > 0 && ymOf(d) > ymOf(new Date())) return false;   // 先の月には行きません（戻るのはよい）
     if (!quiet) KN.motion.fire("select");
     viewMonth = ymOf(d) === ymOf(new Date()) ? null : ymOf(d);
     viewDay = null;
@@ -403,7 +419,9 @@
     const d = U.dayDate(key);
     if (!d) return null;
     const next = U.dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + dir));
-    return next > U.todayKey() ? null : next;
+    /* 先へは進めません。ただし、やることから未来の日を持ち込まれたときに
+       今日へ戻る道は要るので、戻る向きは通します（docs/shared-header.md）。 */
+    return next > U.todayKey() && dir > 0 ? null : next;
   }
 
   /** その日へ移ります（暦の月も、その日を含む月へ連れていきます）。
@@ -1662,6 +1680,10 @@
     if (digest && S().digestPos !== "top") logBlock.append(digest);
     if (S().dailyOrder === "entries") el.append(entries, logBlock);
     else el.append(logBlock, entries);
+    /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
+       日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
+       その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
+    if (day > U.todayKey()) { el.inert = true; el.classList.add("is-ahead"); }
     return el;
   }
 
@@ -1671,6 +1693,7 @@
        します）。指の下で紙が組み直されると、掴んでいたものが別の絵に
        なります。 */
     if (swiping) return;
+    takeSharedDay();
     const ym = curYm();
 
     /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
@@ -1760,7 +1783,7 @@
       e.stopPropagation();
       KN.app.fabMenu(e.currentTarget, [
         { label: "Daily Log", icon: "edit",
-          onPick: () => openLogSheet(viewDay || U.todayKey()) },
+          onPick: () => openLogSheet(writeDay()) },
         { label: "記録", icon: "book", onPick: () => openEntrySheet(null) },
       ]);
     });
@@ -1788,5 +1811,5 @@
     if (KN.healthRelay) KN.healthRelay.pullNow();
   }
 
-  KN.screens.archive = { mount, render, dockButton, onEnter };
+  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay() };
 })();

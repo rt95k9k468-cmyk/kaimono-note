@@ -1481,11 +1481,17 @@
      出す・しまうも同じで、画面ごとに持ちます。暦が無いほうが広く使える
      画面があるので。 */
 
-  const CAL_TABS = ["todo", "diet", "archive"];
 
-  function calPrefs(tab) {
-    const s = get().settings;
-    const key = CAL_TABS.includes(tab) ? tab : "todo";
+  /* **→ 2026年9月27日から、全タブで一つに戻しました**（docs/shared-header.md）。
+     上の帯と暦を全タブで同じ一つにする作りでは、席を移っても暦が動いては
+     いけません——タブごとに段が違えば、移ったとたんに暦が伸び縮みします。
+
+     札は新しく `settings.calAll` に一つ。**タブごとの `calBy` は消さずに
+     残し、読まなくなるだけ**です（戻したくなったら、ここを戻せば元どおり）。
+     `calAll` をまだ持っていない保存は、これまでのやることの見かたから
+     始めます——いちばん開く画面の見かたが、いきなり変わらないように。
+     引数の `tab` は、呼ぶ側を書き換えずに済むよう受けたまま使いません。 */
+  function calPrefsOf(s, key) {
     const by = (s.calBy && typeof s.calBy === "object") ? s.calBy : {};
     const one = (by[key] && typeof by[key] === "object") ? by[key] : {};
     return {
@@ -1498,11 +1504,21 @@
     };
   }
 
+  function calPrefs(tab) {
+    const s = get().settings;
+    const base = calPrefsOf(s, "todo");
+    const all = (s.calAll && typeof s.calAll === "object") ? s.calAll : null;
+    if (!all) return base;
+    return {
+      open: typeof all.open === "boolean" ? all.open : base.open,
+      shown: typeof all.shown === "boolean" ? all.shown : base.shown,
+    };
+  }
+
   function setCalPref(tab, patch) {
-    const key = CAL_TABS.includes(tab) ? tab : "todo";
+    const cur = calPrefs(tab);
     update((s) => {
-      if (!s.settings.calBy || typeof s.settings.calBy !== "object") s.settings.calBy = {};
-      s.settings.calBy[key] = { ...(s.settings.calBy[key] || {}), ...patch };
+      s.settings.calAll = { open: cur.open, shown: cur.shown, ...patch };
     });
   }
 

@@ -49,6 +49,8 @@
   let query = "";
   const curDay = () => viewDay || U.todayKey();
   const isViewToday = () => curDay() === U.todayKey();
+  /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
+  const writeDay = () => (curDay() > U.todayKey() ? U.todayKey() : curDay());
   /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。
       引数を渡せばその日、渡さなければ**いま見ている日**（既定の使い方）。
       カルーセルの前日・翌日の紙は、いま見ている日とは別の日を描くので、
@@ -431,6 +433,7 @@
     if (saving) return;
     // 指でカルーセルを払っているあいだも、組み直しません（上の dragging を参照）。
     if (dragging) return;
+    takeSharedDay();
     /* 食事の四枠は打った先から保存しますが、最後の一拍が残っている
        ことがあります。組み直す前に落とします（消える書きかけを
        作らないため）。 */
@@ -493,7 +496,10 @@
     /* 並べておくのは、いま見ている日の一枚だけです。隣の二枚は、横に
        払うと決まった瞬間に day-swipe.js が組みます（下の slide）。 */
     const track = els.body.querySelector(".js-track");
-    track.append(buildDaySlide(day, { peek: false, card, sum, chartEl: chart() }));
+    /* まだ来ていない日は、見るだけ（隣の日を覗くときと同じ、押せない紙）。
+       見ている日は全タブで一つなので、やることで来週を見たまま移って
+       くると、ここにその日が来ます（docs/shared-header.md）。 */
+    track.append(buildDaySlide(day, { peek: day > U.todayKey(), card, sum, chartEl: chart() }));
 
     /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
        出さないなら、この紙自体を置きません（中身が無い枠が浮くので）。 */
@@ -513,7 +519,9 @@
          日には記録がありません。 */
       step: (d, dir) => {
         const next = U.shiftDay(d, dir);
-        return next > U.todayKey() ? null : next;
+        /* 戻る向きは通します——やることから未来の日を持ち込まれたとき、
+           今日へ戻る道が要るので（docs/shared-header.md）。 */
+        return next > U.todayKey() && dir > 0 ? null : next;
       },
       slide: (d) => buildDaySlide(d, { peek: true, chartEl: chart() }),
       /* **ここだけは、着いてから組み直します**（`kept` を受け取りません）。
@@ -721,7 +729,7 @@
       行けないなら null——払っても重くなるだけです。 */
   function stepWeek(delta) {
     const next = U.shiftDay(curDay(), delta * 7);
-    return next > U.todayKey() ? null : next;
+    return next > U.todayKey() && delta > 0 ? null : next;
   }
 
   /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
@@ -4926,9 +4934,9 @@ distance=6.0km</pre>
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
       KN.app.fabMenu(e.currentTarget, [
-        { label: "今日の食事", icon: "meal", onPick: () => openMealMemoSheet(curDay()) },
-        { label: "今日のからだ", icon: "steps", onPick: () => openBodySheet(curDay()) },
-        { label: "体重", icon: "scale", onPick: () => openWeightSheet(null, curDay()) },
+        { label: "今日の食事", icon: "meal", onPick: () => openMealMemoSheet(writeDay()) },
+        { label: "今日のからだ", icon: "steps", onPick: () => openBodySheet(writeDay()) },
+        { label: "体重", icon: "scale", onPick: () => openWeightSheet(null, writeDay()) },
       ]);
     });
     return fab;
@@ -4939,7 +4947,21 @@ distance=6.0km</pre>
      外しました。引く手つきは全タブから無くなっていて、掛け直しは中継所の
      見張り（health-relay.js）が持っています。押して取りに行く道は、
      からだの枠の「◯:◯◯ 時点」と、取り込みシートの中にあります。 */
-  KN.screens.diet = { mount, render, dockButton, onEnter,
+  /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
+     席を移るとき app.js の show() が置いていきます）。暦の月もその日へ。 */
+  let dayVer = 0;
+  function takeSharedDay() {
+    const t = U.dayShare.take(dayVer);
+    dayVer = t.ver;
+    if (!t.day || t.day === curDay()) return;
+    viewDay = t.day === U.todayKey() ? null : t.day;
+    const d = U.dayDate(t.day);
+    const now = U.dayDate(U.todayKey());
+    calMonth = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+      ? null : { year: d.getFullYear(), month: d.getMonth() };
+  }
+
+  KN.screens.diet = { mount, render, dockButton, onEnter, day: curDay,
     // 設定やテストから開けるように
     openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet,
     // 前の名前でも開けるように（設定や、外から呼んでいるところのため）

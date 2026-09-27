@@ -501,6 +501,39 @@
    * @param {string} key   いま見ている日
    * @param {string} [action] 題を押すと何が起きるか（読み上げ用）
    */
+  /* ---------------- いま見ている日は、全タブで一つ ----------------
+
+     上の帯（題と暦）は全タブで同じもの、という作り（docs/shared-header.md）。
+     帯が同じなら、題が言う日も同じでなければなりません——タブを移った
+     とたんに題の日付が変われば、帯は動いて見えます。
+
+     持つのは「どの日か」と、それが**他の画面によって**変わったかどうかを
+     見分けるための番号だけ。null は今日（日付を焼き込まないのは、開き
+     っぱなしで日付が変わっても今日についていくため——各画面の viewDay と
+     同じ決めごと）。保存はしません（前から各画面の viewDay も持たない）。
+
+     流れ：席を移るとき、`app.js` の `show()` が出ていく画面の日を
+     `set` し、入ってくる画面は `render()` の頭で番号を見て、変わっていれば
+     その日を引き取ります（`take`）。 */
+  const dayShare = (() => {
+    let day = null, ver = 0;
+    const norm = (d) => (d && d !== todayKey() ? String(d) : null);
+    return {
+      /** いま見ている日（今日なら今日のキー）。 */
+      get: () => norm(day) || todayKey(),
+      set(d) {
+        const n = norm(d);
+        if (n !== norm(day)) { day = n; ver++; }
+        return ver;
+      },
+      /** 前に見た番号から変わっていれば、その日を返します（なければ null）。
+          呼んだ側は返ってきた番号を覚えておきます。 */
+      take(seen) {
+        return seen === ver ? { ver, day: null } : { ver, day: norm(day) || todayKey() };
+      },
+    };
+  })();
+
   function paintDayTitleInto(row, key, action) {
     if (!row) return;
     const p = dayTitleParts(key);
@@ -679,7 +712,7 @@
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, WEEKDAY_COLS, nthWeekdayOf, weekdayNth,
-    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto,
+    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto, dayShare,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,
