@@ -975,21 +975,11 @@ button, [role="tab"] {
   width: 14px; height: 14px; border-radius: var(--r-full);
   background: #fff; opacity: .92;
 }
-/* 絵を選ぶ丸。粒の左下に、はみ出して掛かります——参考画面と同じ置き方で、
-   「この粒の見た目を変えるもの」だと、位置が言っています。 */
-.hero-paint {
-  position: absolute;
-  left: -10px; bottom: -6px;
-  display: grid; place-items: center;
-  width: 34px; height: 34px;
-  border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 88%, #000);
-  box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
-  color: #fff;
-  transition: transform var(--m-press) var(--ease);
-}
-.hero-paint:active { transform: scale(.9); }
-.hero-paint svg { width: 17px; height: 17px; }
+/* 粒そのものが「絵を選ぶ」ボタン。左下に掛けていたパレットの丸は外しました
+   ——紙が開き終えてから、伸びてきた粒の上に後から乗ってくるように見えたので。
+   押したときに少し沈むのが、押せるものだという合図です。 */
+button.hero-node { transition: scale var(--m-press) var(--ease); }
+button.hero-node:active { scale: .94; }
 
 .hero-text { min-width: 0; display: block; flex: 1; }
 .hero-cap {

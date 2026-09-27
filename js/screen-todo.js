@@ -738,10 +738,11 @@
     const hero = node(html`
       <div class="sheet-hero" style="--cat:${editing ? tlColorOf(t) : "var(--c-primary-fill)"}">
         <span class="hero-mark">
-          <span class="hero-node js-hero-node"></span>
-          <button type="button" class="hero-paint js-icon-pick" aria-label="絵を選ぶ">
-            ${icon("palette")}
-          </button>
+          ${/* 粒そのものが「絵を選ぶ」ボタンです。前は左下にパレットの丸を
+                掛けていましたが、紙が開き終えてから上に乗ってくるように見えて
+                いました（C2 の手直し）。 */""}
+          <button type="button" class="hero-node js-hero-node js-icon-pick"
+                  aria-label="絵を選ぶ"></button>
         </span>
         <span class="hero-text">
           <span class="hero-cap js-hero-when"></span>
