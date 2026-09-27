@@ -416,6 +416,11 @@ iPhone へ押します。
 
 - **worker を入れ替える必要があります。** 古い中継所だと「中継所のコードが
   古いため入れられません」と出ます。
+  **「Cloudflareに置く」ボタンで建てた人の中継所は、ボタンが作った写しの
+  リポジトリ（例：`kurashi-relay`）から置かれています**——`kaimono-note` を
+  直しても、写しには届きません。写しの `worker.js` を新しくすれば、Cloudflare が
+  自分で置き直します（2026年9月27日、利用者の中継所はこれで直した。写しの
+  `wrangler.jsonc` にある KV の `id` は消さないこと——消すと置き場が作り直される）。
 - **毎分の見回り（Cron）が要ります。** Cloudflare に置く ボタン（②）や
   Import a repository で置いた人は、設計図（`wrangler.jsonc` の `triggers`）が
   足します。**コードを手で貼った人は**、Worker の画面の
