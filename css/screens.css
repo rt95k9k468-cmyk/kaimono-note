@@ -731,15 +731,21 @@
 
    だから一本の帯にします。長さはその日の量（目安に対する割合）、
    色はその意味——飲まなかった日は青、目安の内は緑、超えた日は赤。
-   色だけで量が分かるわけではないので、長さも一緒に動かします。 */
+   色だけで量が分かるわけではないので、長さも一緒に動かします。
+
+   色は**淡く**——ほかのタブの丸（`.cal-mark`）と同じ、地へ 55% 混ぜた色。
+   地のまま（濃い青・赤）だと、暦の中でここだけ強く浮いていました（実機）。 */
 .cal-bar {
   width: 22px; height: 3px; border-radius: var(--r-full);
   background: var(--c-border-2); overflow: hidden;
 }
-.cal-bar i { display: block; height: 100%; border-radius: var(--r-full); }
-.cal-bar i.is-dry  { background: #4a8fd9; }
-.cal-bar i.is-ok   { background: var(--c-primary); }
-.cal-bar i.is-over { background: var(--c-danger); }
+.cal-bar i {
+  display: block; height: 100%; border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--bar) 55%, var(--c-bg));
+}
+.cal-bar i.is-dry  { --bar: var(--c-m-drink); }
+.cal-bar i.is-ok   { --bar: var(--c-primary-fill); }
+.cal-bar i.is-over { --bar: var(--c-danger); }
 
 /* Arriving from the calendar, the rows for the day you tapped say so once.
 
