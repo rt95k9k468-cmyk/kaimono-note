@@ -1484,6 +1484,7 @@
   function dailyRows() {
     const s = store.get().settings;
     const full = s.logFull !== false;
+    const entryFull = s.entryFull !== false;
     return [
       card(
         switchRow({
@@ -1514,6 +1515,17 @@
               { id: "short", label: "数行", note: "はじめの三行。押せば続きが開く" },
             ],
             onPick: (v) => dailySet("logFull", v === "full"),
+          }),
+        }),
+        pickRow({
+          title: "積み上げのメモ", value: entryFull ? "全文" : "数行",
+          onTap: () => choose({
+            title: "積み上げのメモの見せ方", value: entryFull ? "full" : "short",
+            options: [
+              { id: "full",  label: "全文", note: "書いたものをそのまま" },
+              { id: "short", label: "数行", note: "はじめの三行。押せば全文が開く" },
+            ],
+            onPick: (v) => dailySet("entryFull", v === "full"),
           }),
         }),
         pickRow({

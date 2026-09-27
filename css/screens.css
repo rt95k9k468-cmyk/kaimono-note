@@ -3433,6 +3433,14 @@ a.btn { text-decoration: none; }
 .arc-sub { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .arc-sub span:first-child { color: var(--arc-c); font-weight: 700; }
 .arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.6; white-space: pre-wrap; }
+/* 積み上げのメモも、設定で「数行」を選んだら三行で切ります（Daily Log の
+   .arc-log-memo.is-clamped と同じ決め方）。続きは押して開く紙で読めます。 */
+.arc-memo.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* 行の中の check / fav は、しごとの他の画面（やること・買うもの）と
    同じ部品をそのまま使います。ここでだけ揃えるのは並び位置だけです。 */
