@@ -19,36 +19,11 @@
 
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 帰り道のボタンはありません。価格は**買うものの裏面**になり、
-                  帯の同じところをもう一度押せば表へ戻ります。引き出しでは
-                  なくなったので、帰り道も帯そのものです。 */""}
-            <div style="flex:1;min-width:0">
-              ${/* 数（「12商品・3店舗」）は、ここには置きません。題の下に
-                   一行足すと、この画面の帯だけが他のタブより 15px 高く
-                   なります。帯の高さは四つのタブで揃っていること——
-                   ここだけ深いと、一段下の階層にいるように見えるので。
-                   数は下（.js-count）へ移しました。 */""}
-              <h1 class="topbar-title tab-title">prices</h1>
-            </div>
-            ${/* The ＋ is not up here any more — it is the same floating
-                 button the list screen has, in the dock at the bottom
-                 middle. Two screens that both add a thing should add it with
-                 the same motion, and the corner of a top bar is the far end
-                 of a phone from where the hand is.
-
-                 右から 設定・並べ方・さがす。買うものの帯と同じ順です
-                 （あちらの左端は「価格へ」、こちらの左端は「戻る」）。 */""}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
-                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
-                  たまにしか使いません。たまに使うものは設定の中へ。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
+        ${/* 上の帯と暦は、この画面の外——全タブで一つの帯（js/head.js）に
+              居ます（docs/shared-header.md の段3）。前はここに自前の帯があり、
+              題が「prices」でした。いまは買うものと同じ日付の題と、同じ一枚の
+              暦（印なし）。買うものへ戻る道は、紙の頭（留まった掴み手）と、
+              下の帯の「買うもの」。 */""}
         ${/* Folded away until asked for. It used to sit open under the title on
               every visit, spending a row of the screen on a question asked
               once in a while. */""}
@@ -85,36 +60,24 @@
     root.append(chrome);
 
     els = {
-
-      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchBtn: KN.head.els.searchBtn,
+      mine:    () => KN.head.mine("prices"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:  chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
-      topbar:  chrome.querySelector(".topbar"),
     };
 
-    const fitBar = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitBar();
-    window.addEventListener("resize", fitBar);
     /* 掴み手は**結びません**（そもそも持っていません）。指で動くのは前に
        居る一枚だけで、こちらは動かない地です——動かないから後ろに見えます。
        買うものへ戻る道は、帯の「買うもの」を押すこと（app.js が faceTo(0)
        で紙を上げます）。 */
 
+    /* 歯車は帯（head.js）が結びます。虫めがねは共通の一つで、応えるのは
+       持ち主のときだけ（`els.mine`）。 */
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
-
-    root.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", root.scrollTop > 4);
-    });
   }
 
   async function createProduct() {
@@ -138,7 +101,9 @@
   }
 
   function render() {
-    const st = store.get();
+    /* 買うものと同じ一枚の暦（印なし）。同じ要素なので、紙を下げて
+       ここへ移っても差し替わりません（head.js の putCal）。 */
+    KN.head.putCal("prices", KN.head.shopCal());
     renderFilter();
     renderBody();
   }
@@ -512,5 +477,5 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.prices = { mount, render, dockButton };
+  KN.screens.prices = { mount, render, dockButton, day: () => KN.head.shopDay() };
 })();
