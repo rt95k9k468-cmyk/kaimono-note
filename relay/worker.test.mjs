@@ -309,6 +309,55 @@ const verOf = (res) => res.headers.get("x-kn-ver");
   check("PUT は POST と同じに扱う", r2.status === 200, String(r2.status));
 }
 
+/* ---------- 受け箱（?slot=add）は差し替えずに溜める ----------
+
+   Siri から続けて三つ足したとき、差し替える棚だと一つ目が消えます。
+   受け箱だけは継ぎ足し、一通ごとに前より大きい数を添えます。 */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "steps=100");
+  const r1 = await call(env, "POST", PATH + "?slot=add", "牛乳");
+  await call(env, "POST", PATH + "?slot=add", "卵");
+  await call(env, "POST", PATH + "?slot=add", "卵");
+  check("受け箱に置ける", r1.status === 200, String(r1.status));
+  check("受け箱を持っている印が出る", r1.headers.get("x-kn-inbox") === "1");
+  check("印はブラウザから読める",
+    (r1.headers.get("access-control-expose-headers") || "").includes("X-Kn-Inbox"));
+
+  const raw = env.MAIL._m.get("box:add");
+  const lines = raw.split("\n");
+  check("一行目が印", lines[0] === "kn-inbox", lines[0]);
+  const rows = lines.slice(1).map((l) => JSON.parse(l));
+  check("三通とも残っている（同じ中身の二通も）", rows.length === 3,
+    rows.map((r) => r.text).join(","));
+  check("中身はそのまま", rows[0].text === "牛乳" && rows[1].text === "卵");
+  check("添えた数は必ず前より大きい",
+    rows[0].at < rows[1].at && rows[1].at < rows[2].at, rows.map((r) => r.at).join(","));
+  check("受け箱には「ひとつ前」を作らない", !env.MAIL._m.has("box:add:prev"));
+
+  const got = await call(env, "GET", PATH);
+  const parts = (await got.text()).split(SEP);
+  check("GET で健康の便と受け箱が別の一通で渡る",
+    parts.includes("steps=100") && parts.some((p) => p.startsWith("kn-inbox\n")),
+    parts.map((p) => p.slice(0, 12)).join(" | "));
+  check("版は受け箱のいちばん新しい数", verOf(got) === String(rows[2].at));
+  check("健康の棚には触れていない", env.MAIL._m.get("box:text") === "steps=100");
+
+  const big = await call(env, "POST", PATH + "?slot=add", "あ".repeat(1025));
+  check("受け箱の一通は小さく（1024字まで）", big.status === 413, String(big.status));
+
+  /* 一週間より古い一通は、次に置いたときに落ちる。 */
+  const old = JSON.stringify({ at: Date.now() - 8 * 86400 * 1000, text: "古い" });
+  env.MAIL._m.set("box:add", "kn-inbox\n" + old + "\n" + lines.slice(1).join("\n"));
+  await call(env, "POST", PATH + "?slot=add", "パン");
+  const after = env.MAIL._m.get("box:add").split("\n").slice(1).map((l) => JSON.parse(l).text);
+  check("一週間より古い一通は落ちる", after.join(",") === "牛乳,卵,卵,パン", after.join(","));
+
+  await call(env, "DELETE", PATH + "?slot=add");
+  check("受け箱も DELETE で空にできる", !env.MAIL._m.has("box:add"));
+  check("そのとき健康の棚は残る", env.MAIL._m.get("box:text") === "steps=100");
+}
+
 /* ---------- アプリに埋めた写しが、元とずれていない ---------- */
 {
   /* アプリの「コードをコピー」が配るのは js/relay-code.js の中の文字列です。

@@ -2214,6 +2214,8 @@
         return;
       }
       if (res && res.locked) { KN.ui.toast(res.error); return; }
+      // Siri から買うものが届いたときは、そちらの知らせを上書きしない。
+      if (res && res.inbox) return;
       if (res && res.empty) {
         KN.ui.toast(name
           ? "中継所に新しいデータはありません"

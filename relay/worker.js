@@ -7,6 +7,7 @@
      POST   <URL>            本文をしまう（同じ差出人の前の便は「ひとつ前」へ下がる）
      GET    <URL>            しまってあるものを**ぜんぶ**渡す。**消しません**
      GET    <URL>?since=版   版が変わっていなければ 204（＝新しい便は無い）
+     POST   <URL>?slot=add   受け箱へ継ぎ足す（Siri から買うものへ。下の「受け箱」）
      DELETE <URL>            ぜんぶ捨てる（?slot=名前 でその差出人だけ）
 
    ---- 仕切りが要る理由 ----
@@ -47,6 +48,19 @@
    「いまの便が読めればそれが残り、読めなければひとつ前が残る」に
    なります。中身は相変わらず読みません——**順番だけ**で決めています。
 
+   ---- 受け箱（?slot=add）だけは、差し替えずに溜める ----
+
+   Siri から「牛乳」「卵」と続けて足すと、差し替える棚では三つ目で一つ目が
+   消えます。健康データは新しい一通が古い一通を含んでいますが、買うものは
+   一通ずつが別の頼みなので、**溜めないと取りこぼします**。
+
+   だから `?slot=add` の棚だけは、一通ごとに**置いた時刻（版と同じ数え方で、
+   必ず前より大きい）**を添えて後ろへ継ぎ足します。消すのは一週間経った
+   ものだけ。読む側は「どこまで足したか」をその数で覚えておけば、何度
+   渡されても二度足しません——消さないので、取りに行ったあいだに置かれた
+   一通を消してしまう心配もありません。中身は相変わらず読みません
+   （JSON の文字列に包むだけです）。
+
    **URLの道そのものが合言葉です。** 当てられない長い道にしてください。
    ここに認証ヘッダを足さないのは手抜きではなく、追加のヘッダを付けると
    ブラウザが事前問い合わせ（preflight）を挟み、受け止める作りが要るからです。
@@ -72,6 +86,12 @@ const SEP = "\u001E";
    置いた直後に見えないことがあります）。 */
 const INDEX = "box:slots";
 
+/* 受け箱。この棚だけは差し替えずに継ぎ足します（頭のコメント）。
+   一行目の印で、読む側は健康データの便と見分けます。 */
+const INBOX = "add";
+const INBOX_HEAD = "kn-inbox";
+const INBOX_MAX = 200;          // 一週間でこれを越えることはまず無い。越えたら古いほうから
+
 const slotOf = (url, body) => {
   const q = url.searchParams.get("slot");
   if (q && /^[a-zA-Z0-9_-]{1,16}$/.test(q)) return q;
@@ -89,7 +109,20 @@ const CORS = {
 
 /* ブラウザは、許した名前のヘッダしか読めません。版が読めないと、アプリは
    この中継所を「古い形」と判断して昔の道に落ちます。 */
-const EXPOSE = "X-Kn-Ver, X-Kn-Parts";
+const EXPOSE = "X-Kn-Ver, X-Kn-Parts, X-Kn-Inbox";
+
+/* 受け箱を持っている中継所だ、という印。アプリの「確かめる」がこれを見て、
+   古いコードのままなら置き直しを勧めます。 */
+const CAN = { "X-Kn-Inbox": "1" };
+
+/** 受け箱の中身を、一週間より古いものと多すぎるぶんを落として読みます。 */
+function inboxLines(raw, now) {
+  if (!raw) return [];
+  return raw.split("\n").slice(1).filter((line) => {
+    try { return now - Number(JSON.parse(line).at) < TTL * 1000; }
+    catch (err) { return false; }
+  }).slice(-(INBOX_MAX - 1));
+}
 
 /** 控えを読みます。古い形（"text,json" のコンマ並び）も読めます。 */
 async function readIndex(kv) {
@@ -163,25 +196,40 @@ export default {
          同じ中身がもう一度来たときは下ろしません——同じものを二通持っても、
          読む側にできることは増えないので。 */
       const slot = slotOf(url, body);
-      const cur = await env.MAIL.get("box:" + slot);
-      if (cur != null && cur !== body) {
-        await env.MAIL.put("box:" + slot + ":prev", cur, { expirationTtl: TTL });
+      /* 受け箱に来るのは品物の名前一つか二つです。一通を小さく抑えて、
+         二百通溜まっても棚が膨らまないようにします。 */
+      if (slot === INBOX && body.length > 1024) {
+        return new Response("大きすぎます", { status: 413, headers: CORS });
       }
-      await env.MAIL.put("box:" + slot, body, { expirationTtl: TTL });
 
       /* 版は**必ず進めます**。時計の分解能はミリ秒なので、二本の
          ショートカットが同じ拍で置くと同じ数になり、読む側が「変わって
          いない」と読んでしまいます。前より大きいことだけが要るので、
-         同じか古ければ 1 足します。 */
+         同じか古ければ 1 足します。受け箱の一通に添える数もこれです。 */
       const slots = await readIndex(env.MAIL);
       const now = Date.now();
       const top = Number(verOf(slots)) || 0;
-      slots[slot] = now > top ? now : top + 1;
+      const stamp = now > top ? now : top + 1;
+
+      if (slot === INBOX) {
+        const kept = inboxLines(await env.MAIL.get("box:" + slot), now);
+        kept.push(JSON.stringify({ at: stamp, text: body }));
+        await env.MAIL.put("box:" + slot, [INBOX_HEAD].concat(kept).join("\n"),
+          { expirationTtl: TTL });
+      } else {
+        const cur = await env.MAIL.get("box:" + slot);
+        if (cur != null && cur !== body) {
+          await env.MAIL.put("box:" + slot + ":prev", cur, { expirationTtl: TTL });
+        }
+        await env.MAIL.put("box:" + slot, body, { expirationTtl: TTL });
+      }
+
+      slots[slot] = stamp;
       await writeIndex(env.MAIL, slots);
 
       return new Response("ok", {
         status: 200,
-        headers: { ...CORS, "Content-Type": "text/plain; charset=utf-8",
+        headers: { ...CORS, ...CAN, "Content-Type": "text/plain; charset=utf-8",
                    "Access-Control-Expose-Headers": EXPOSE,
                    "X-Kn-Ver": verOf(slots) },
       });
@@ -204,6 +252,7 @@ export default {
       const ver = verOf(slots);
       const head = {
         ...CORS,
+        ...CAN,
         "Cache-Control": "no-store",
         "Access-Control-Expose-Headers": EXPOSE,
         "X-Kn-Ver": ver,
@@ -252,7 +301,7 @@ export default {
       await writeIndex(env.MAIL, slots);
       return new Response("ok", {
         status: 200,
-        headers: { ...CORS, "Content-Type": "text/plain; charset=utf-8",
+        headers: { ...CORS, ...CAN, "Content-Type": "text/plain; charset=utf-8",
                    "Access-Control-Expose-Headers": EXPOSE,
                    "X-Kn-Ver": verOf(slots) },
       });

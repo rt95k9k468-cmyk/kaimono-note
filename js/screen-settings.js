@@ -1917,6 +1917,13 @@
         onSave: (v) => { KN.healthRelay.setShortcutName(v); KN.ui.toast(v ? "覚えました" : "外しました"); },
       }),
       foot("入れておくと、ダイエットの「◯:◯◯ 時点」を押したときに、そのショートカットをその場で走らせます。ショートカットアプリに出ている名前を、記号や空白まで一字たがえずに。"),
+      /* Siri から買うものへ（D2）。置き先は中継所のURLに ?slot=add を足した
+         もので、組み立ては KN.healthRelay がします（ここは渡すだけ）。 */
+      on ? card(navRow({
+        ico: "copy", tint: TINT.sub, title: "Siri 用のURLをコピー",
+        onTap: () => copyText(KN.healthRelay.inboxUrl(), "Siri 用のURL"),
+      })) : null,
+      on ? foot("ショートカットを「入力を要求 → URLの内容を取得（方法 POST・本文を要求 ファイル・ファイル＝入力）」で組み、このURLを入れます。名前を「買うものに追加」にすると、「Hey Siri、買うものに追加」で品物を聞かれ、言った名前が買うものに入ります。いくつかなら「牛乳、卵」のように区切って。") : null,
       card(navRow({
         ico: "route", tint: TINT.relay, title: "建てかた",
         onTap: () => go("relayHow"),
