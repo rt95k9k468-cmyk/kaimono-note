@@ -1169,6 +1169,8 @@
        入った記録は store に乗り、いま出ている画面は上の subscribe が
        描き直すので、覗く側が画面を知っている必要はありません。 */
     KN.healthRelay.watch();
+    /* 閉じていても鳴る通知（js/bell.js）。中継所の見張りとは別の拍です。 */
+    if (KN.bell) KN.bell.init();
     registerServiceWorker();
   }
 

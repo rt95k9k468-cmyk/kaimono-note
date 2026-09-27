@@ -143,7 +143,7 @@
 | 画面の移り変わり（`app.js` の `show`）・帯の構成・上の題（`dayTitleBar`） | `docs/screens-nav.md` |
 | 下の帯（押してふくらむ・席の印 `tab-lens.js`） | `docs/tabbar.md` |
 | 買うもの・価格（`screen-list.js` / `screen-prices.js`・紙の面 `--face-p`） | `docs/shopping.md` |
-| ダイエット（中継所 `health-relay.js` / `relay/`・飲みたくなった `diet.urges`） | `docs/health.md` |
+| ダイエット（中継所 `health-relay.js` / `relay/`・飲みたくなった `diet.urges`）・閉じていても鳴る通知（`bell.js`・`sw.js` の push） | `docs/health.md` |
 | daily（`screen-archive.js`） | `docs/daily.md` |
 | 保存の置き場（`store.js` の書き込み・`backup.js`・`idb.js`・`diary-idb.js`）・日記の写し・自動の控え | `docs/storage.md` |
 | 動きの速さ・曲線（`--m-*`・`motion.js`・`KN.motion.glide`） | `docs/motion.md` |

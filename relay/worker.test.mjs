@@ -358,6 +358,124 @@ const verOf = (res) => res.headers.get("x-kn-ver");
   check("そのとき健康の棚は残る", env.MAIL._m.get("box:text") === "steps=100");
 }
 
+/* ---------- 鳴らす役（?bell=） ----------
+
+   棚とは別の鍵に置き、GET の「ぜんぶ渡す」に混ぜないこと。押すのは毎分の
+   見回りで、押し先への fetch は偽物に差し替えて、外に出ません。 */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "steps=100");
+  const before = await (await call(env, "GET", PATH)).text();
+  const verBefore = env.MAIL._m.get("box:slots");
+
+  const k1 = await call(env, "POST", PATH + "?bell=key");
+  const pub = await k1.text();
+  check("鍵を頼むと 200", k1.status === 200, String(k1.status));
+  check("鳴らす役の印がブラウザから読める",
+    k1.headers.get("x-kn-bell") === "1"
+    && (k1.headers.get("access-control-expose-headers") || "").includes("X-Kn-Bell"));
+  const raw = Uint8Array.from(atob(pub.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  check("公開の鍵は P-256 の生の65バイト", raw.length === 65 && raw[0] === 4, String(raw.length));
+  const k2 = await (await call(env, "POST", PATH + "?bell=key")).text();
+  check("二度目も同じ鍵（作り直さない）", k2 === pub);
+  check("秘密の鍵は渡さない", !/"d"/.test(pub));
+
+  check("GET で鍵は頼めない（棚の道と混ぜない）",
+    (await call(env, "GET", PATH + "?bell=key")).status === 405);
+  check("中身の読めない押し先は断る",
+    (await call(env, "POST", PATH + "?bell=sub", "{\"endpoint\":\"http://x\"}")).status === 400);
+
+  const SUB = JSON.stringify({ endpoint: "https://push.test/abc", keys: { p256dh: "x", auth: "y" } });
+  check("押し先を置ける", (await call(env, "POST", PATH + "?bell=sub", SUB)).status === 200);
+
+  const now = Date.now();
+  const at1 = now - 60 * 1000, at2 = now + 3600 * 1000, old = now - 30 * 60 * 1000;
+  const far = now + 30 * 86400 * 1000;
+  const tr = await call(env, "POST", PATH + "?bell=times", JSON.stringify([at2, at1, at1, old, far, "x"]));
+  check("時刻の列を置ける", tr.status === 200, String(tr.status));
+  const stored = JSON.parse(env.MAIL._m.get("bell:times"));
+  check("列は並べて・重ねず・古すぎるものと遠すぎるものを落とす",
+    stored.times.join() === [at1, at2].join(), stored.times.join());
+
+  const puts = env.MAIL._puts.length;
+  await call(env, "POST", PATH + "?bell=times", JSON.stringify([at1, at2]));
+  check("同じ列なら書かない（書き込みの無料枠）", env.MAIL._puts.length === puts);
+
+  check("棚の控えに bell が混ざらない", env.MAIL._m.get("box:slots") === verBefore);
+  const after = await (await call(env, "GET", PATH)).text();
+  check("GET の「ぜんぶ渡す」は前と同じ（鍵も押し先も時刻も出ない）", after === before, after);
+  check("?since= の版も動かない",
+    (await call(env, "GET", PATH + "?since=" + JSON.parse(verBefore).slots.text)).status === 204);
+
+  /* 見回り。押し先への fetch を偽物にして、何を送ったかを控えます。 */
+  const sent = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { sent.push({ u: String(u), init }); return new Response(null, { status: 201 }); };
+  try {
+    await worker.scheduled({ scheduledTime: now }, env, { waitUntil() {} });
+    check("来た時刻で一度だけ押す", sent.length === 1 && sent[0].u === "https://push.test/abc", String(sent.length));
+    const h = (sent[0] && sent[0].init.headers) || {};
+    check("中身なし（本文を送らない）", sent[0] && sent[0].init.body === undefined);
+    check("TTL と Urgency", h.TTL === "600" && h.Urgency === "high");
+    const m = /^vapid t=([^.]+)\.([^.]+)\.([^.]+), k=(\S+)$/.exec(h.Authorization || "");
+    check("VAPID の名乗り（t= と k=）", !!m && m[4] === pub, h.Authorization);
+    if (m) {
+      const dec = (s) => JSON.parse(atob(s.replace(/-/g, "+").replace(/_/g, "/")));
+      const claims = dec(m[2]);
+      check("aud は押し先の origin", claims.aud === "https://push.test", claims.aud);
+      check("sub（連絡先）がある", /^https:\/\//.test(claims.sub || ""));
+      check("exp は24時間より先にしない", claims.exp - now / 1000 <= 24 * 3600 && claims.exp > now / 1000);
+      const key = await crypto.subtle.importKey("raw", raw, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+      const sig = Uint8Array.from(atob(m[3].replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+      const okSig = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, sig,
+        new TextEncoder().encode(m[1] + "." + m[2]));
+      check("署名が公開の鍵で通る", okSig);
+    }
+    const left = JSON.parse(env.MAIL._m.get("bell:times"));
+    check("押した時刻は列から外れ、先のものは残る", left.times.join() === String(at2), left.times.join());
+
+    sent.length = 0;
+    await worker.scheduled({ scheduledTime: now + 1000 }, env, {});
+    check("同じ時刻を二度押さない", sent.length === 0, String(sent.length));
+
+    /* 鳴らした時刻を含む古い列が、見回りのあとに着いたとき。 */
+    await call(env, "POST", PATH + "?bell=times", JSON.stringify([at1, at2]));
+    await worker.scheduled({ scheduledTime: now + 2000 }, env, {});
+    check("鳴らした時刻を送り直されても、もう押さない", sent.length === 0, String(sent.length));
+
+    /* 見回りが止まっていて、時刻が10分より古くなったとき。 */
+    env.MAIL._m.set("bell:times", JSON.stringify({ times: [now - 20 * 60 * 1000], rung: 0 }));
+    await worker.scheduled({ scheduledTime: now }, env, {});
+    check("10分より古い時刻は鳴らさずに捨てる",
+      sent.length === 0 && JSON.parse(env.MAIL._m.get("bell:times")).times.length === 0);
+
+    const reads = [];
+    const env2 = env0();
+    const g = env2.MAIL.get;
+    env2.MAIL.get = async (k) => { reads.push(k); return g(k); };
+    await worker.scheduled({ scheduledTime: now }, env2, {});
+    check("列が空なら、読むのは一回だけ・書かない", reads.length === 1 && env2.MAIL._puts.length === 0,
+      reads.join());
+
+    /* 押し先がもう無い。 */
+    globalThis.fetch = async () => new Response(null, { status: 410 });
+    env.MAIL._m.set("bell:times", JSON.stringify({ times: [now], rung: 0 }));
+    await worker.scheduled({ scheduledTime: now }, env, {});
+    check("押し先が 410 なら捨てる", !env.MAIL._m.has("bell:sub"));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  check("off は本文なしの POST", (await call(env, "POST", PATH + "?bell=off")).status === 200);
+  check("off で時刻の列も消える", !env.MAIL._m.has("bell:times"));
+  check("off でも健康の棚は残る", env.MAIL._m.get("box:text") === "steps=100");
+  check("off でも鍵は残る（押し先を作り直さずに済む）", env.MAIL._m.has("bell:vapid"));
+  check("棚の DELETE は bell に触れない",
+    (await call(env, "DELETE", PATH)).status === 200 && env.MAIL._m.has("bell:vapid"));
+  check("道が違えば bell も 404",
+    (await call(env, "POST", "/kn-wrongpath000?bell=key")).status === 404);
+}
+
 /* ---------- アプリに埋めた写しが、元とずれていない ---------- */
 {
   /* アプリの「コードをコピー」が配るのは js/relay-code.js の中の文字列です。
