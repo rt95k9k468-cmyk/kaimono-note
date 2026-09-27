@@ -848,7 +848,14 @@
     const handle = KN.ui.sheet({
       title: editing ? "やることを直す" : "やることを追加",
       hero,
-      morph: editing && from ? { from, to: hero.querySelector(".js-hero-node") } : null,
+      /* back … 閉じるときの帰り先。保存で時間割が組み直されると行は別の
+         要素になるので、要素ではなく**引き方**を渡します（出ている画面に
+         絞って、id から）。 */
+      morph: editing && from ? {
+        from, to: hero.querySelector(".js-hero-node"),
+        back: () => document.querySelector(
+          `.screen.is-active .tl-row[data-todo-id="${CSS.escape(todoId)}"] .tl-node`),
+      } : null,
       menu: heroMenu,
       content: body,
       footer: foot,

@@ -102,6 +102,7 @@
      着くので、着いた瞬間に本物へ入れ替えても継ぎ目が出ません。
 
      返すのは、途中で紙が閉じたときの後始末。 */
+
   /* 写した要素に、元の見た目を焼きつけます。行の丸薬の塗り・絵のマスクは
      `.tl-row` の中でだけ効く規則と変数から出ているので、外へ出した写しには
      掛かりません。算出された値（変数は解決済み）を、子まで一つずつ移します。 */
@@ -119,6 +120,68 @@
     for (let i = 0; i < a.length && i < b.length; i++) freeze(a[i], b[i]);
   }
 
+  /* 影武者を一枚こしらえます。行き（行 → 頭）と帰り（頭 → 行）で同じもの。
+
+     地は頭の丸薬の写し（hero）。その上に、行の丸薬の写し（row を freeze
+     したもの）を重ねます——行の側では、上の写しが見えていて、頭の側では
+     消えている。飛ぶあいだにその濃さを動かすので、色がパッと変わりません。
+
+     `k` は絵の倍率（行の絵 ÷ 頭の絵）。大きさは変形の掛からない値（算出
+     された width）で比べます。頭の絵は縮んだ紙の中にあるので、見えている
+     箱で測ると何分の一にもなり、影武者の絵が 2.4 倍に膨らんでいました。 */
+  function pillGhost(hero, row, z) {
+    const cs = getComputedStyle(hero);
+    const ghost = hero.cloneNode(true);
+    ghost.className = "hero-node sheet-morph";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.inert = true;
+    ghost.style.background = cs.backgroundColor;
+    /* 字の色も写します。絵は currentColor で塗られていて、頭の白は
+       `.sheet-hero` から継いでいたもの——紙の外に置いた写しは地の字の色
+       （黒）を継ぎ、飛んでいるあいだだけ真っ黒なシルエットになっていました。 */
+    ghost.style.color = cs.color;
+    ghost.style.zIndex = String(z);
+    const under = row.cloneNode(true);
+    freeze(row, under);
+    under.removeAttribute("class");
+    Object.assign(under.style, {
+      position: "absolute", inset: "0", left: "0", top: "0",
+      width: "auto", height: "auto", transform: "none", margin: "0",
+      display: "grid", placeItems: "center", borderRadius: "inherit",
+      visibility: "visible",
+    });
+    ghost.append(under);
+    const sizeOf = (x, d) => (x && parseFloat(getComputedStyle(x).width)) || d;
+    const k = sizeOf(row.firstElementChild, 32) / sizeOf(hero.firstElementChild, 38);
+    const rowLook = { borderRadius: getComputedStyle(row).borderRadius,
+      boxShadow: "0 0 0 0 transparent" };
+    const heroLook = { borderRadius: cs.borderRadius, boxShadow: cs.boxShadow };
+    return { ghost, under, k, rowLook, heroLook };
+  }
+
+  const pillBox = (r) => ({
+    left: `${r.left}px`, top: `${r.top}px`,
+    width: `${r.width}px`, height: `${r.height}px`,
+  });
+
+  /* 影武者の中身を動かします。t0 → t1 は「行らしさ」（1 ＝ 行、0 ＝ 頭）。
+     絵は行では 32px、頭では 38px。箱と一緒に伸び縮みさせます。 */
+  function pillInner(g, t0, t1, timing) {
+    const sc = (t) => (t ? `scale(${g.k.toFixed(3)})` : "none");
+    const usc = (t) => (t ? "none" : `scale(${(1 / g.k).toFixed(3)})`);
+    const mark = g.ghost.firstElementChild;
+    if (mark && mark !== g.under) {
+      mark.animate([{ transform: sc(t0) }, { transform: sc(t1) }], timing);
+    }
+    const underMark = g.under.firstElementChild;
+    if (underMark) {
+      underMark.animate([{ transform: usc(t0) }, { transform: usc(t1) }], timing);
+    }
+    g.under.animate([{ opacity: t0 }, { opacity: t1 }], timing);
+  }
+
+  /* 行き（行 → 頭）。わけは上の「押した行の丸薬が、紙の頭の丸薬へ伸びていく」。
+     返すのは、途中で紙が閉じたときの後始末（`.flying()` で、まだ飛んでいるか）。 */
   function morphPill(morph, el, z) {
     const from = morph && morph.from;
     const to = morph && morph.to;
@@ -133,62 +196,18 @@
     el.style.transition = "";
     if (!b.width || !b.height) return null;
 
-    const cs = getComputedStyle(to);
-    const ghost = to.cloneNode(true);
-    ghost.className = "hero-node sheet-morph";
-    ghost.setAttribute("aria-hidden", "true");
-    ghost.inert = true;
-    ghost.style.background = cs.backgroundColor;
-    /* 字の色も写します。絵は currentColor で塗られていて、頭の白は
-       `.sheet-hero` から継いでいたもの——紙の外に置いた写しは地の字の色
-       （黒）を継ぎ、飛んでいるあいだだけ真っ黒なシルエットになっていました。 */
-    ghost.style.color = cs.color;
-    ghost.style.zIndex = String(z);
-    /* 出だしは行の丸薬の見た目のまま。その写し（下の freeze）を上に重ねて、
-       飛ぶあいだに薄めて消します——頭の色へ一度に塗り替わると、押した
-       瞬間にパッと色が変わって見えるので。 */
-    const under = from.cloneNode(true);
-    freeze(from, under);
-    under.removeAttribute("class");
-    Object.assign(under.style, {
-      position: "absolute", inset: "0", left: "0", top: "0",
-      width: "auto", height: "auto", transform: "none", margin: "0",
-      display: "grid", placeItems: "center", borderRadius: "inherit",
-      visibility: "visible",
-    });
-    ghost.append(under);
-    sheetRoot().append(ghost);
+    const g = pillGhost(to, from, z);
+    sheetRoot().append(g.ghost);
     from.style.visibility = "hidden";
     to.style.visibility = "hidden";
 
-    const ms = KN.motion.ms("--m-sheet-grow");
-    const easing = KN.motion.ease("--push-e");
-    const box = (r) => ({
-      left: `${r.left}px`, top: `${r.top}px`,
-      width: `${r.width}px`, height: `${r.height}px`,
-    });
-    const run = ghost.animate([
-      { ...box(a), borderRadius: getComputedStyle(from).borderRadius,
-        boxShadow: "0 0 0 0 transparent" },
-      { ...box(b), borderRadius: cs.borderRadius, boxShadow: cs.boxShadow },
-    ], { duration: ms, easing, fill: "both" });
-    /* 絵は行では 32px、頭では 38px。箱と一緒に育てます。 */
-    const mark = ghost.firstElementChild;
-    const fromMark = from.firstElementChild;
-    /* 大きさは変形の掛からない値（算出された width）で比べます。頭の絵は
-       縮んだ紙の中にあるので、見えている箱で測ると何分の一にもなり、
-       影武者の絵が 2.4 倍に膨らんでいました。 */
-    const sizeOf = (x, d) => (x && parseFloat(getComputedStyle(x).width)) || d;
-    if (mark && fromMark) {
-      const k = sizeOf(fromMark, 32) / sizeOf(to.firstElementChild, 38);
-      mark.animate([{ transform: `scale(${k.toFixed(3)})` }, { transform: "none" }],
-        { duration: ms, easing, fill: "both" });
-      const underMark = under.firstElementChild;
-      if (underMark) underMark.animate(
-        [{ transform: "none" }, { transform: `scale(${(1 / k).toFixed(3)})` }],
-        { duration: ms, easing, fill: "both" });
-    }
-    under.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing, fill: "both" });
+    const timing = { duration: KN.motion.ms("--m-sheet-grow"),
+      easing: KN.motion.ease("--push-e"), fill: "both" };
+    const run = g.ghost.animate([
+      { ...pillBox(a), ...g.rowLook },
+      { ...pillBox(b), ...g.heroLook },
+    ], timing);
+    pillInner(g, 1, 0, timing);
 
     let done = false;
     const finish = () => {
@@ -196,11 +215,87 @@
       done = true;
       from.style.visibility = "";
       to.style.visibility = "";
-      ghost.remove();
+      g.ghost.remove();
     };
+    finish.flying = () => !done;
     run.onfinish = finish;
     run.oncancel = finish;
     return finish;
+  }
+
+  /* ---- 閉じるときは、頭の丸薬が行の丸薬へ帰る ----
+
+     行きの逆です。ただ、行き先が**じっとしていません**：保存すると時間割が
+     組み直され、行は別の要素になったうえで、もといた場所から FLIP で
+     滑ってきます（`flipRows`）。だから行き先は、動き出す前に一度決めるの
+     ではなく、**毎フレーム探し直して**（morph.back() が id から引く）、
+     動きの終わりの形を書き換えます（setKeyframes）。進み具合と曲線は
+     ブラウザが持ったままなので、行き先が動いても速さは途切れません。
+
+     速さと曲線は、行が収まる FLIP と同じ一族（--m-settle / --ease-settle）。
+     「並びが変わった」結果を読ませる速さで、同じ場所へ一緒に収まります。
+
+     帰らないとき：行が見つからない（別の日へ移した・消した）、画面の外、
+     行きの影武者がまだ飛んでいる。途中で行を見失ったら、その場で薄れて消えます。 */
+  function morphBack(morph, z) {
+    const hero = morph && morph.to;
+    const find = morph && morph.back;
+    if (!hero || !find || !hero.isConnected) return;
+    let row = find();
+    if (!row) return;
+    const a = hero.getBoundingClientRect();
+    let b = row.getBoundingClientRect();
+    const seen = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
+      && r.right > 0 && r.left < window.innerWidth;
+    if (!a.width || !a.height || !seen(b)) return;
+
+    const g = pillGhost(hero, row, z);
+    sheetRoot().append(g.ghost);
+    hero.style.visibility = "hidden";
+    row.style.visibility = "hidden";
+
+    const timing = { duration: KN.motion.ms("--m-settle"),
+      easing: KN.motion.ease("--ease-settle"), fill: "both" };
+    const frames = (r) => [{ ...pillBox(a), ...g.heroLook }, { ...pillBox(r), ...g.rowLook }];
+    const run = g.ghost.animate(frames(b), timing);
+    pillInner(g, 0, 1, timing);
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (row) row.style.visibility = "";
+      hero.style.visibility = "";
+      g.ghost.remove();
+    };
+    const lose = () => {
+      if (row) row.style.visibility = "";
+      row = null;
+      const fade = g.ghost.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: KN.motion.ms("--m-state"), easing: KN.motion.ease("--ease-in"),
+          fill: "forwards" });
+      fade.onfinish = () => { run.cancel(); finish(); };
+    };
+    const follow = () => {
+      if (done || !row) return;
+      const now = find();
+      if (!now) { lose(); return; }
+      if (now !== row) {
+        row.style.visibility = "";
+        row = now;
+        row.style.visibility = "hidden";
+      }
+      const r = row.getBoundingClientRect();
+      if (Math.abs(r.left - b.left) + Math.abs(r.top - b.top)
+          + Math.abs(r.width - b.width) + Math.abs(r.height - b.height) > 0.5) {
+        b = r;
+        run.effect.setKeyframes(frames(b));
+      }
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
+    run.onfinish = finish;
+    run.oncancel = () => { if (row) finish(); };
   }
 
   /* ---------------- bottom sheet ---------------- */
@@ -419,7 +514,13 @@
     function close() {
       if (closed) return;
       closed = true;
+      /* 頭の丸薬は、行の丸薬へ帰ります（行きの影武者がまだ飛んでいる
+         あいだに閉じたときは帰しません——出どころの箱が決まらないので）。 */
+      const flying = unmorph && unmorph.flying();
       if (unmorph) unmorph();
+      if (seed && opts && opts.morph && opts.morph.back && !flying && !still()) {
+        morphBack(opts.morph, floor + 1 + depth * 2);
+      }
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
       KN.motion.fire("sheetClose");
