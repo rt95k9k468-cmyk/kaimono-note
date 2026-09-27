@@ -1106,7 +1106,7 @@
           <span class="arc-main">
             <span class="arc-title">${e.title || t.label}</span>
             <span class="arc-sub">${U.raw(subBits.map((b) => `<span>${U.escapeHtml ? U.escapeHtml(b) : b}</span>`).join(""))}</span>
-            <span class="arc-memo">${e.memo ? e.memo : "-"}</span>
+            <span class="arc-memo ${S().entryFull === false && e.memo ? "is-clamped" : ""}">${e.memo ? e.memo : "-"}</span>
           </span>
         </button>
       </div>
