@@ -24,11 +24,19 @@
 
 <div class="app" id="app">
   <main class="screens" id="screens">
-    <section class="screen"           id="screen-archive"  data-screen="archive"  role="tabpanel" aria-label="daily" hidden></section>
-    <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="tasks" hidden></section>
-    <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="shopping"></section>
-    <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="prices" hidden></section>
-    <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="health" hidden></section>
+    <!-- 上の帯と暦は、全タブで一つ（docs/shared-header.md）。帯（#head）は
+         タブの流れ（#panes の中の画面）の外に居るので、席を移っても動かない。
+         設定は deck の外——共通の帯ごと押しのけて上に重なる一枚なので。 -->
+    <div class="deck" id="deck">
+      <div class="head" id="head" hidden></div>
+      <div class="panes" id="panes">
+        <section class="screen"           id="screen-archive"  data-screen="archive"  role="tabpanel" aria-label="daily" hidden></section>
+        <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="tasks" hidden></section>
+        <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="shopping"></section>
+        <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="prices" hidden></section>
+        <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="health" hidden></section>
+      </div>
+    </div>
     <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="Settings" hidden></section>
   </main>
 
@@ -86,6 +94,7 @@
 <script src="js/edge-back.js"></script>
 <script src="js/day-swipe.js"></script>
 <script src="js/cal-swipe.js"></script>
+<script src="js/head.js"></script>
 <script src="js/notify.js"></script>
 <script src="js/ics.js"></script>
 <script src="js/food-data.js"></script>

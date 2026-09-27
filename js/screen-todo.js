@@ -109,35 +109,22 @@
 
   /* ---------------- mount ---------------- */
 
+  /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
+  function mine() { return KN.head.mine("todo"); }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
 
+    /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+       一つの帯（js/head.js）に居ます。タブを移っても帯が 1px も動かないのは、
+       帯がタブの流れの外に居るからです（docs/shared-header.md）。ここに残るのは
+       帯より下：探す窓（暦の下に開く）、期限切れの札、紙。
+
+       題の形と書式は KN.util が持ちます（daily・ダイエットと同じひと組）。
+       右上は**二つだけ**——さがす と 設定。並べ方と暦の出し入れは設定の中。 */
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 題は「やること」ではなく、**いま見ている日**です。タブの名前は
-                  下の帯がすでに言っているので、上で二度言う必要がありません。
-
-                  一度は一段下げて暦の見出しに置きました。幅が足りなかった
-                  からです——四つのボタンと同居できなかった。設定が帯へ移って
-                  一つ減ったので、ここへ戻せます。戻したぶん、暦の見出しの
-                  行がまるごと消えました。
-
-                  形も書式も KN.util が持ちます（daily・ダイエットと同じ
-                  ひと組）——三か所に書き写すと、片方だけ直した日に三つの
-                  題が違う顔をするので。 */""}
-            ${KN.util.dayTitleBar()}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
-                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
-                  たまにしか使いません。たまに使うものは設定の中へ。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
         <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
@@ -148,25 +135,26 @@
           </div>
         </div>
 
+        <div class="js-late"></div>
         <div class="js-body"></div>
       </div>
     `);
 
     root.append(chrome);
 
+    const head = KN.head.els;
     els = {
-      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchBtn: head.searchBtn,
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:    chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       body:      chrome.querySelector(".js-body"),
-      topbar:    chrome.querySelector(".topbar"),
+      late:      chrome.querySelector(".js-late"),
+      mine,
     };
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
@@ -177,16 +165,18 @@
     /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
        ——暦は描き直されますが、バーは残るので。 */
-    els.dayRow = chrome.querySelector(".topbar-dayrow");
-    els.dayTitle = chrome.querySelector(".js-day-title");
+    els.dayRow = head.dayRow;
+    els.dayTitle = head.dayTitle;
     els.dayTitle.addEventListener("click", () => {
+      if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
     });
     /* 題の右の「今日へ戻る」。一日ずつの紙なら日を入れ替え、一覧で見て
        いるときは今日の棚まで運びます（暦の送りと同じ二通り）。今日を見て
        いるあいだは `paintDayTitleInto` が押せなくしています。 */
-    chrome.querySelector(".js-go-today").addEventListener("click", () => {
+    head.today.addEventListener("click", () => {
+      if (!mine()) return;
       haptic();
       const today = todayKey();
       const d = KN.util.dayDate(today);
@@ -195,17 +185,6 @@
       markDay(today, true);
       jumpToDay(today);
     });
-    /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
-       高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
-       焼き込むと、機種が変わった日にずれます。 */
-    const fitCal = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitCal();
-    window.addEventListener("resize", fitCal);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
-
     /* 暦の厚み。**掴み手はこのぶんだけ下に貼りつきます**——暦もバーも
        sticky で上に居るので、数えないと掴み手がその裏へ潜ります
        （実際そうなっていて、暦を出しているあいだだけ掴み手が消えていた）。
@@ -215,7 +194,8 @@
        ResizeObserver が鳴ると、輪になります。 */
     let calRO = null, calSeen = null, calH = -1;
     fitCalH = () => {
-      const c = root.querySelector(".cal");
+      /* 暦は帯（画面の外）に居るので、根っこから探さずに持っている一枚を。 */
+      const c = els.cal;
       /* **引いているあいだは測りません。** 紙を引くと暦は月ぜんぶの姿で
          留められる（cal-peek の begin）ので、そのまま測ると床が月の高さに
          なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
@@ -237,16 +217,14 @@
     root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
     root.addEventListener("wheel", unpinOnTouch, { passive: true, capture: true });
 
+    /* 帯と暦の「貼りついた」印（is-stuck・境目の線）は、もう付けません。
+       帯は画面の外に居て、送られることがないので——付けると、送った画面と
+       送っていない画面のあいだで線が出たり消えたりして、全タブで一つの帯が
+       タブごとに違う顔をします。 */
     let lastTop = 0;
     const sc0 = KN.app.scrollerOf(root);
     sc0.addEventListener("scroll", () => {
       const top = sc0.scrollTop;
-      const stuck = top > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      /* 印を付けるのは境目の線のためと、chromeInset が「いま貼りついて
-         いるか」を知るため。**高さは変えません**——指を動かしている最中に
-         足場の背が変わると、読んでいる行がずれます。 */
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
 
       /* 月を追いかけるのは、**位置が変わったとき** だけ。scroll は、行が
          増えて高さが変わっただけでも飛んできます。 */
@@ -416,7 +394,8 @@
 
   /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
-    if (!els.dayRow || !els.dayRow.isConnected) return;
+    // 帯は全タブで一つ。持ち主でないときに塗ると、よそのタブの題を上書きします。
+    if (!els.dayRow || !mine()) return;
     const key = titleDay();
     KN.util.paintDayTitleInto(els.dayRow, key,
       `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
@@ -2425,7 +2404,11 @@
        （実測：外して付け直すと、盤を組み直さなくても強制レイアウトが
        37.8ms。外さなければ **28.7ms**）。だから中身を空にするのは
        「残す一枚」を決めたあと、その一枚だけ残して消す形にします。 */
-    els.cal = query ? null : monthCalendar(store.openTodos());
+    /* 暦は帯（画面の外、全タブで一つ）に置きます。**探しているあいだも
+       出したまま**——前は外していましたが、帯の暦が消えると帯の厚みが変わり、
+       帯は全タブで一つなので「探しているタブだけ帯が縮む」ことになります。 */
+    els.cal = monthCalendar(store.openTodos());
+    KN.head.putCal("todo", els.cal);
 
     /* **日の紙も、変わっていなければ組み直しません。** 暦と同じ話で、
        同じ理由で**外しません**（外して付け直すだけで、その木ぶんの
@@ -2446,24 +2429,8 @@
       && sheetSig === sheetDigest(shownDay())) ? sheetNode : null;
 
     [...els.body.childNodes].forEach((n) => {
-      if (n !== els.cal && n !== keepSheet) n.remove();
+      if (n !== keepSheet) n.remove();
     });
-    if (els.cal) {
-      if (els.cal.parentNode !== els.body) els.body.append(els.cal);
-      /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
-         二つ理由があります。
-         ① ここは `els.body.innerHTML = ""` の**あと**なので、測ると
-            組み立ての途中でレイアウトが強制されます（実測：render 1回に
-            レイアウト 3.1回。その1回ぶんがこれ）。
-         ② 前は `root.scrollTop` を読んでいました。**送る器は紙のほう**
-            なので（`scrollerOf`）、根っこはいつも 0——送った先で組み直すと
-            `is-stuck` が付かず、次に指が動くまで境目の線が出ませんでした
-            （「送る器を変えたら教えること」の、拾い残しの一つ）。 */
-      /* **`toggle` であること。** 盤は使い回すことがあるので（`monthCalendar`）、
-         `add` だけだと、いちど貼りついた盤がいちばん上へ戻っても線を
-         持ったままになります。 */
-      els.cal.classList.toggle("is-stuck", keepTop > 4);
-    }
 
     /* 紙がそのままなら、ここでおしまい。中の配線（払う・引く・運ぶ・
        30秒の拍）は紙に付いたままなので、何も起こしません。 */
@@ -2790,15 +2757,9 @@
    * to find, short enough not to be a state anyone has to dismiss.
    */
   /** 上に貼りついているもの（バーと、いまはカレンダー）の厚み。 */
-  function chromeInset() {
-    const bar = root.querySelector(".topbar");
-    let h = bar ? bar.getBoundingClientRect().height : 0;
-    // 貼りついている（＝すでに上にいる）カレンダーのぶんだけ、さらに下げます。
-    if (els.cal && els.cal.classList.contains("is-stuck")) {
-      h += els.cal.getBoundingClientRect().height;
-    }
-    return h;
-  }
+  /* 上の帯と暦は画面の外（全タブで一つの帯）に移ったので、画面の中で
+     上に貼りついて行を隠すものは、もうありません。 */
+  function chromeInset() { return 0; }
 
   function scrollToSection(target, willStick) {
     /* Scrolled by hand rather than with scrollIntoView. That asks *every*
@@ -2809,10 +2770,7 @@
     /* 送ったあとに暦が貼りつくと、着いた先の見出しがその裏に隠れます
        ——いま貼りついていないぶんは、chromeInset が数えていないので。
        これから貼りつくと分かっているときは、その高さも先に引きます。 */
-    let inset = chromeInset();
-    if (willStick && els.cal && !els.cal.classList.contains("is-stuck")) {
-      inset += els.cal.getBoundingClientRect().height;
-    }
+    const inset = chromeInset();
     const top = root.scrollTop
       + target.getBoundingClientRect().top - root.getBoundingClientRect().top - inset;
     KN.app.glideTo(root, Math.max(0, top));
@@ -3157,9 +3115,14 @@
 
        今日を見ているときだけ。過ぎた日を見ているときに「期限切れ」と
        言われても、することがありません。 */
-    const oldBar = sec.querySelector(".tl-late");
+    /* 札の置き場は、暦の中ではなく**帯のすぐ下（この画面の頭）**です。
+       暦は全タブで一つの帯に居るので、中に置くと、やることの暦だけが
+       札のぶん背が高くなり、タブを移るたびに紙が上下します。画面の頭も
+       紙の外で送られないので、「どこまで送っても居る」はそのまま。 */
+    const host = els.late;
+    const oldBar = host && host.querySelector(".tl-late");
     if (oldBar) oldBar.remove();
-    const late = oneDay() && shownDay() === today
+    const late = host && oneDay() && shownDay() === today
       ? (open || []).filter((t) => t.due && t.due < today) : [];
     if (late.length) {
       const bar = node(html`
@@ -3174,7 +3137,7 @@
         store.update((st) => { st.settings.todoTimeline = false; });
         KN.ui.toast("一覧で出します。設定から戻せます");
       });
-      sec.append(bar);
+      host.append(bar);
     }
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
