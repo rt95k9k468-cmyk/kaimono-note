@@ -5575,17 +5575,6 @@ a.btn { text-decoration: none; }
   color: var(--c-primary);
   letter-spacing: -.01em;
 }
-.arc-counts-days {
-  margin: 0 0 var(--sp-3);
-  font-size: var(--fs-md);
-  color: var(--c-text-2);
-}
-.arc-counts-days b {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-}
 .arc-counts-list {
   display: flex; flex-wrap: wrap; gap: 8px;
   margin: 0; padding: 0; list-style: none;

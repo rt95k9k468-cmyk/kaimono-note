@@ -921,7 +921,6 @@
     return node(html`
       <section class="card arc-counts">
         <h3 class="arc-counts-head">${month + 1}月のまとめ</h3>
-        <p class="arc-counts-days">記録のある日 <b>${d.daysWith.length}</b> 日</p>
         ${bits.length ? html`
           <ul class="arc-counts-list">
             ${bits.map((b) => html`
@@ -1046,12 +1045,20 @@
      ④積み上げ項目 — 読書・学習・種・達成・変化
      ================================================================ */
 
+  /* **月ぜんぶを常に出します**（その日だけに絞りません）。日を送っている
+     最中の一枚（`daySlide`）は、ここが読む `ym` だけを頼りに組みます——
+     外側の `viewDay` を読むと、前の日から今日へ払って戻ったときに
+     ちょうど今日の紙を組んでいる瞬間はまだ「前の日」のままで、前の日に
+     積み上げが無ければ、そのまま「まだ記録はありません」が今日の紙に
+     焼き付いて残っていました（払いきった紙は組み直さないので、次に
+     全体を組み直すまでそのままでした）。月で読めば `ym` は毎回その紙の
+     ものなので、この揺れが起きません。未来の日を持ち込まれたときも、
+     同じ月ぶんが出ます——その日だけを見せると、月に入っている積み上げが
+     急に消えて見えるので。 */
   function visibleEntries(ym) {
     let list;
     if (query.trim()) {
       list = store.searchEntries(query);
-    } else if (viewDay) {
-      list = store.entriesOfDay(viewDay);
     } else {
       list = store.entriesOfMonth(ym);
     }
