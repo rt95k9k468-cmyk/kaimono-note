@@ -3766,10 +3766,10 @@
      おきます——手順を一つ押すたびに畳まれては、続けて押せません。 */
   const openSubs = new Set();
 
-  /* 手順のボタンを押した拍を、要素ではなく id で覚えておきます。
-     pointerup で store を書き換えると、その一拍で画面ぜんぶが描き直され
-     （app.js の store.subscribe）、押したボタン自身も新しい要素に
-     差し替わります。タッチでは pointerup のあとに「代替の」click が続けて
+  /* 手順のボタンを押した拍を、要素ではなく id で覚えておきます（値は時刻。
+     指を置き直すと消える）。長押しで store を書き換えると、その一拍で
+     画面ぜんぶが描き直され（app.js の store.subscribe）、押したボタン自身も
+     新しい要素に差し替わります。タッチでは指を離したあとに「代替の」click が続けて
      発行され、その click は差し替わった**新しい**要素をあらためて叩く
      ——preventDefault では止まりません（touchstart 側で止める必要が
      あり、pointer イベントだけでは間に合わない）。要素ではなく id を
@@ -4631,7 +4631,7 @@
            走る」の正体でした）。だから「扱った」の印はボタン要素にもこの
            描画のクロージャにも持たせず、手順の id で見張ります
            （subGestureAt、モジュール直下＝描き直しをまたいで生きています）。 */
-        let holdTimer = 0, holdFired = false, heldPointerId = null;
+        let holdTimer = 0, holdFired = false;
         const clearHold = () => { clearTimeout(holdTimer); holdTimer = 0; };
         /* 長押し確定。指を離すのを待たず、ここで「できなかった」を立てます
            ——離したときにしか反応しないと、0.5秒経っても何も起きていないように
@@ -4639,7 +4639,7 @@
         function commitHold() {
           holdFired = true;
           holdTimer = 0;
-          subGestureAt.set(gestureKey, { t: Date.now(), pid: heldPointerId });
+          subGestureAt.set(gestureKey, Date.now());
           KN.motion.fire("warn", btn);
           store.toggleSubSkip(t.id, s.id, day);
           paint();
@@ -4659,16 +4659,18 @@
              ここで防がないと長押しの直後に完了/選択なしがもう一度走り、
              せっかく立てた「できなかった」が一拍でまた消えます。
 
-             **見分けるのは pointerId。** 0.8秒という時間の物差しだけだと、
-             すぐあとに同じ手順を本当にもう一度押した（できなかった→選択
-             なし、を続けてやりたいときは普通にあります）のまで弾いて
-             しまいます。同じ指（同じ pointerId）から続けて来たものだけを
-             「さっきの続き」として弾き、違う指（＝新しいタップ）は時間が
-             近くても通します。 */
-          const rec = subGestureAt.get(gestureKey);
-          const pid = e && e.pointerId != null ? e.pointerId : null;
-          if (rec && pid != null && rec.pid === pid && Date.now() - rec.t < 2000) return;
-          subGestureAt.set(gestureKey, { t: Date.now(), pid });
+             **見分けるのは「指を置き直したか」。** 新しいタップは必ず
+             pointerdown（キーボードなら keydown）から始まり、そこで印を
+             消します（下）。印が残っているうちに来たものは、同じ指の
+             続きです。時間の物差しだけだと、すぐあとに同じ手順を本当に
+             もう一度押した（できなかった→選択なし、を続けてやりたいときは
+             普通にあります）のまで弾いてしまいます。
+             前は pointerId で見分けていましたが、iPhone の震えるつまみ
+             （motion.js の FEEL）が出す click は pointerId を持たないことが
+             あり、それだと長押しの直後の click を通してしまいます。 */
+          const at = subGestureAt.get(gestureKey);
+          if (at && Date.now() - at < 2000) return;
+          subGestureAt.set(gestureKey, Date.now());
           const fresh = store.getTodo(t.id);
           const raw = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
           const cur = fresh ? store.subStatus(fresh, raw, day) : { done: s.done, skipped: s.skipped };
@@ -4687,17 +4689,25 @@
         }
         btn.addEventListener("pointerdown", (e) => {
           if (e.pointerType === "mouse" && e.button !== 0) return;
+          subGestureAt.delete(gestureKey);   // 新しい指。前の指の印を消す
           holdFired = false;
-          heldPointerId = e.pointerId;
           holdTimer = setTimeout(commitHold, HOLD_MS);
         });
-        btn.addEventListener("pointerup", (e) => release(true, e));
+        btn.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") subGestureAt.delete(gestureKey);
+        });
+        /* 短いタップを決めるのは click だけ。pointerup では決めません。
+           pointerup で store を書き換えると、その場で行ごと描き直され、
+           iPhone の震えるつまみ（motion.js の FEEL）が、震える前に DOM から
+           外れていました——手順の丸だけ震えなかったのはこれ。click まで
+           待てば、つまみは震えてから click を出し、それがここへ上がって
+           きます。送った指の click は、つまみが button へ渡しません。 */
+        btn.addEventListener("pointerup", (e) => release(false, e));
         btn.addEventListener("pointercancel", (e) => release(false, e));
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
-          // タッチの代替clickです（キーボードからの押下は pointerdown が
-          // 起きないので、ここには来ません）。直前に同じ指で扱っていたら
-          // release の中の見張りが黙って弾きます。
+          // 長押しを決めたあとの同じ指の click は、release の中の見張りが
+          // 黙って弾きます。
           release(true, e);
         });
         list.append(line);
