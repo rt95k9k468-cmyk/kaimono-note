@@ -1,8 +1,9 @@
-/* 上の帯と暦は、全タブで一つ（docs/shared-header.md の段2、2026年9月27日）。
+/* 上の帯と暦は、全タブで一つ（docs/shared-header.md の段2・段3、2026年9月27日）。
 
    時計を 2026年9月15日(火) 10:00 に止めて開く。
    - タブを移っているあいだ、帯・題・暦・曜日の行・日のマスの位置と大きさを
-     **毎フレーム**測り、動いた量が 0px であること（週・月の両方、六通りの移り方）。
+     **毎フレーム**測り、動いた量が 0px であること（週・月の両方、十二通りの移り方。
+     買うものも入る）。
      入ってくる画面のほうは本当に流れていること（流れていなければ試験にならない）。
      下の帯のボタンは CDP の本物のタッチで押す。
    - 掴み手を本物のタッチで下へ引くと、帯の暦が月へ開き（帯の題は動かない）、
@@ -12,7 +13,12 @@
    - 虫めがねは共通・窓はタブ側（暦の下）に開き、開いても帯は動かない。
    - 題を押したときの応えはタブごと（やること：週⇄月、daily：月を選ぶ紙）。
    - 設定は帯ごと押しのける（deck が動き、設定の一枚が帯の上に重なる）。
-   - 買うものへ移ると帯は隠れ（段2の暫定）、戻ると出る。 */
+   - 買うもの・価格でも帯は動かない（段3）：掴み手を本物のタッチで引いて価格へ・
+     帯の「買うもの」で戻る・価格からよそのタブへ、のどれも 0px。暦は一枚のまま
+     差し替わらず、印は無い。題を押すと週⇄月。日を押すと題と共通の日だけが動き、
+     紙は組み直さない。紙を横に払っても日は動かない。月に開いた暦のぶん狭く
+     なっても、価格の地は帯の下から始まり、いちばん下の行まで送れ、留まった紙の
+     頭は下の帯の上に居る。 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -85,13 +91,20 @@ const { open, checker } = require("./lib");
      暦に結ばれない（前からの作り）ので、時間割の紙を出しておく。 */
   await page.evaluate(() => {
     KN.store.addTodo({ title: "試験の用事", due: KN.util.todayKey(), time: "11:00" });
+    /* 買うものに三件、価格に二十品（価格の地が送れる長さ）。 */
+    for (let i = 0; i < 20; i++) {
+      const p = KN.store.addProduct({ name: `試験の品${i + 1}` });
+      if (i < 3) KN.store.addItem(p.id);
+    }
     KN.store.setCalPref(null, { shown: true, open: false });
   });
   await go("todo");
 
   /* ---- タブを移っても、帯と暦は 1px も動かない（週・月） ---- */
   const hops = [["todo", "archive"], ["archive", "diet"], ["diet", "todo"],
-                ["todo", "diet"], ["diet", "archive"], ["archive", "todo"]];
+                ["todo", "diet"], ["diet", "archive"], ["archive", "todo"],
+                ["todo", "list"], ["list", "diet"], ["diet", "list"],
+                ["list", "archive"], ["archive", "list"], ["list", "todo"]];
   for (const open of [false, true]) {
     await page.evaluate((o) => KN.store.setCalPref(null, { shown: true, open: o }), open);
     await page.waitForTimeout(500);
@@ -247,16 +260,143 @@ const { open, checker } = require("./lib");
     && await page.evaluate(() => document.getElementById("head").getBoundingClientRect().left === 0
       && !document.getElementById("deck").style.transform));
 
-  /* ---- 買うもの（段2の暫定）：帯は隠れ、戻ると出る ---- */
+  /* ---- 買うもの・価格（段3）：帯は動かない ---- */
+  const calEl = () => page.evaluate(() => {
+    const c = document.querySelector("#head .cal");
+    if (c && !c.__id) c.__id = Math.random();
+    return c ? c.__id : null;
+  });
+  const title = () => page.$eval("#head .js-day-title", (e) => e.textContent.replace(/\s+/g, ""));
+  /** 掴み手を本物のタッチで下へ引いて、価格へ。帯の記録つき。 */
+  const toPrices = async () => {
+    if ((await owner()) !== "list") await go("list");
+    const g = await center("#screen-list .tl-grip");
+    await startRec();
+    await drag(g.x, g.y, 300);
+    await page.waitForTimeout(800);
+    return stopRec();
+  };
+  for (const open of [false, true]) {
+    const mode = open ? "月" : "週";
+    await page.evaluate((o) => KN.store.setCalPref(null, { shown: true, open: o }), open);
+    await go("list");
+    await page.waitForTimeout(300);
+    const id0 = await calEl();
+    const t0 = await title();
+    const fp = await toPrices();
+    const dp = drift(fp);
+    c.check(`${mode}：掴み手を引いて価格へ（本物のタッチ）`, (await owner()) === "prices",
+      String(await owner()));
+    c.check(`${mode}：買うもの → 価格 で帯と暦が動かない（${fp.length}フレーム）`,
+      dp.worst === 0 && fp.length > 10, `${dp.worst}px ${dp.what}`);
+    c.check(`${mode}：価格へ移っても暦は同じ一枚・題も同じ`,
+      (await calEl()) === id0 && (await title()) === t0, `${t0} → ${await title()}`);
+    c.check(`${mode}：買うもの・価格の暦に印は無い`,
+      await page.$$eval("#head .cal .cal-dots", (x) => x.length > 0 && x.every((d) => !d.childElementCount)));
+
+    /* 価格の地：帯の下から始まり、いちばん下の行まで送れる。紙の頭は下の帯の上。 */
+    const ground = await page.evaluate(async () => {
+      const head = document.getElementById("head").getBoundingClientRect();
+      const scr = document.getElementById("screen-prices");
+      const bar = document.getElementById("tabbar").getBoundingClientRect();
+      const grip = document.querySelector("#screen-list .tl-grip").getBoundingClientRect();
+      scr.scrollTop = scr.scrollHeight;
+      await new Promise((r) => setTimeout(r, 200));
+      const rows = [...scr.querySelectorAll(".prices-ground .product")];
+      const last = rows.length ? rows[rows.length - 1].getBoundingClientRect() : null;
+      const first = scr.getBoundingClientRect();
+      scr.scrollTop = 0;
+      return { headBottom: head.bottom, scrTop: first.top, barTop: bar.top,
+        gripTop: grip.top, gripBottom: grip.bottom, rows: rows.length,
+        lastBottom: last && last.bottom, canScroll: scr.scrollHeight > scr.clientHeight };
+    });
+    c.check(`${mode}：価格の地は帯と暦の下から始まる`,
+      Math.abs(ground.scrTop - ground.headBottom) <= 1, JSON.stringify(ground));
+    c.check(`${mode}：価格のいちばん下の行まで送れる（下の帯より上に出る）`,
+      ground.rows >= 20 && ground.canScroll && ground.lastBottom <= ground.barTop + 1, JSON.stringify(ground));
+    c.check(`${mode}：留まった紙の頭は下の帯のすぐ上`,
+      ground.gripBottom <= ground.barTop + 1 && ground.gripTop > ground.headBottom, JSON.stringify(ground));
+
+    // 価格 → 帯の「買うもの」で戻る
+    await startRec();
+    await page.waitForTimeout(60);
+    await tapSel('.tab[data-tab="list"]');
+    await page.waitForTimeout(800);
+    const db = drift(await stopRec());
+    c.check(`${mode}：価格 → 買うもの（帯を押して）で帯と暦が動かない`,
+      db.worst === 0 && (await owner()) === "list", `${db.worst}px ${db.what}`);
+    // 価格 → よそのタブ
+    for (const b of ["todo", "diet"]) {
+      await toPrices();
+      await startRec();
+      await page.waitForTimeout(60);
+      await tapSel(`.tab[data-tab="${b}"]`);
+      await page.waitForTimeout(700);
+      const rec = await stopRec();
+      const d = drift(rec);
+      c.check(`${mode}：価格 → ${b} で帯と暦が動かない`,
+        d.worst === 0 && (await owner()) === b, `${d.worst}px ${d.what}`);
+      c.check(`${mode}：価格 → ${b} で留まった紙が片づく`,
+        await page.evaluate(() => !document.querySelector(".screen.is-face-parked")));
+    }
+  }
+  await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
+
+  /* 題を押すと週⇄月（買うもの・価格の応え） */
+  await go("list");
+  await tapSel("#head .js-day-title");
+  await page.waitForTimeout(600);
+  c.check("買うものの題：週⇄月", await page.evaluate(() => KN.store.calPrefs(null).open === true
+    && !document.querySelector("#head .cal").classList.contains("is-week")));
+  await tapSel("#head .js-day-title");
+  await page.waitForTimeout(600);
+  c.check("もう一度押すと週へ", await page.evaluate(() => KN.store.calPrefs(null).open === false));
+
+  /* 日を押す：題と共通の日だけが動き、紙は組み直さない */
+  await page.evaluate(() => { document.querySelector("#screen-list .js-body").firstElementChild.__keep = 1; });
+  await tapSel('#head .cal .cal-day[data-day="2026-09-17"]');
+  await page.waitForTimeout(400);
+  c.check("暦の日を押すと題がその日に", (await title()).includes("9月17日"), await title());
+  c.check("日を押しても買うものの紙は組み直さない", await page.evaluate(() =>
+    document.querySelector("#screen-list .js-body").firstElementChild.__keep === 1));
+  c.check("輪がその日に", await page.evaluate(() =>
+    !!document.querySelector('#head .cal .cal-day.is-here[data-day="2026-09-17"]')));
+  await tapSel('.tab[data-tab="todo"]');
+  await page.waitForTimeout(700);
+  c.check("やることへ移ると、その日（共通の日）", (await title()).includes("9月17日")
+    && await page.evaluate(() => KN.screens.todo.day() === "2026-09-17"), await title());
+  await tapSel("#head .js-go-today");
+  await page.waitForTimeout(500);
   await tapSel('.tab[data-tab="list"]');
   await page.waitForTimeout(700);
-  c.check("買うものでは帯が隠れる", await page.evaluate(() => document.getElementById("head").hidden));
-  c.check("買うものの題はそのまま出ている",
-    await page.evaluate(() => !!document.querySelector("#screen-list .topbar").getBoundingClientRect().height));
-  await tapSel('.tab[data-tab="diet"]');
-  await page.waitForTimeout(700);
-  c.check("ダイエットへ戻ると帯が出る", await page.evaluate(() => !document.getElementById("head").hidden
-    && KN.head.mine("diet") && !!document.querySelector("#head .cal .cal-bar")));
+  c.check("やることで今日へ戻ってから買うものへ：買うものも今日", (await title()).includes("9月15日"),
+    await title());
+
+  /* 紙を横に払っても、日は動かない（day-swipe は付けない） */
+  const sheet = await page.evaluate(() => {
+    const r = document.querySelector("#screen-list .tl-sheet").getBoundingClientRect();
+    return { x: r.left + r.width * 0.75, y: r.top + 120 };
+  });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(sheet.x, sheet.y) });
+  for (let i = 1; i <= 12; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(sheet.x - i * 18, sheet.y) });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(600);
+  c.check("買うものの紙を横に払っても日は動かない", (await title()).includes("9月15日")
+    && (await owner()) === "list", await title());
+
+  /* 虫めがね：買うものの窓が開き、よそは開かない */
+  await tapSel("#head .js-search-btn");
+  await page.waitForTimeout(500);
+  c.check("虫めがねで買うものの窓が開く（暦の下）", await page.evaluate(() => {
+    const w = document.querySelector("#screen-list .search-wrap");
+    return !w.hidden && w.getBoundingClientRect().top >= document.querySelector("#head .cal").getBoundingClientRect().bottom - 1
+      && document.querySelector("#screen-todo .search-wrap").hidden;
+  }));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
 
   c.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();

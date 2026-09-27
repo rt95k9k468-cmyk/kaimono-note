@@ -1071,7 +1071,6 @@ a { color: var(--c-primary); }
    `--face-p` が毎フレーム動くので何も要りませんが、離すと数が一度に跳んで、
    **紙だけが滑って題と札はぱっと切り替わり**ました。 */
 .screen.is-face-front.is-face-settle .js-filter,
-.screen.is-face-front.is-face-settle .face-t,
 .screen.is-face-back.is-face-settle .js-filter > * {
   transition: opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
@@ -1090,8 +1089,6 @@ a { color: var(--c-primary); }
   z-index: 0;
   pointer-events: none;
 }
-.screen.is-face-back > .stack > .topbar,
-.screen.is-face-back .stack > .topbar,
 .screen.is-face-back .search-wrap { visibility: hidden; }
 
 /* ---- 価格に着いたあと、買うものの紙は頭だけ残る ----
@@ -1140,8 +1137,6 @@ a { color: var(--c-primary); }
   -webkit-mask-image: var(--face-fade);
           mask-image: var(--face-fade);
 }
-.screen.is-face-parked > .stack > .topbar,
-.screen.is-face-parked .stack > .topbar,
 .screen.is-face-parked .search-wrap,
 .screen.is-face-parked .js-filter { visibility: hidden; }
 .screen.is-face-parked .stack > .tl-sheet {
@@ -1155,24 +1150,9 @@ a { color: var(--c-primary); }
    切るのをやめたので、その手当ても要りません。 */
 .screen.is-face-parked .tl-grip { pointer-events: auto; }
 
-/* 題も、同じ数（--face-p）から出します。**帯そのものは動きません**
-   ——動くのは中身（名前）だけ。
-
-   **重ねません。** 薄めて重ねるのも縦に送るのも試して外しました：どちらも
-   途中で二語が同時に見え、日本語は字が詰まっているので別の字に読めます
-   （実測：「買うもの」と「価格」が一塊になった）。
-   かわりに**順に**やります——先に「買うもの」が消えきってから（p .04→.30）、
-   「価格」が出てくる（p .30→.62）。決まり目で切り替える階段
-   （1000倍の clamp）ではなくなったので、じわっと変わりますが、二つが同時に
-   読めることはありません。上の札の帯と、**同じ拍・同じ区間**にすること。 */
-.face-title { position: relative; }
-.face-t { display: block; }
-.face-t-front { opacity: clamp(0, calc((.30 - var(--face-p, 0)) / .26), 1); }
-.face-t-back {
-  position: absolute;
-  inset: 0;
-  opacity: clamp(0, calc((var(--face-p, 0) - .30) / .32), 1);
-}
+/* 題（「shopping」⇄「prices」）の入れ替わりは、段3で外しました
+   （docs/shared-header.md）。題は全タブで一つの帯（js/head.js）の日付で、
+   紙を下げて価格へ移っても変わりません。入れ替わるのは札の帯だけです。 */
 
 @keyframes scr-in-r  { from { transform: translateX(100%); }  to { transform: none; } }
 @keyframes scr-in-l  { from { transform: translateX(-100%); } to { transform: none; } }

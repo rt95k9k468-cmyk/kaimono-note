@@ -962,15 +962,9 @@
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */
-    /* **段2の暫定：帯を持つタブと、持たないタブ（買うもの・価格）のあいだは
-       流しません。** 帯は一つで、持たないタブへ移ると隠れます。流しながら
-       隠すと、出ていく画面が帯の厚みぶん跳ね上がって見えるので、その一回
-       だけは切り替えにします（docs/shared-header.md。段3で買うもの・価格も
-       帯を持てば、この行は要らなくなります）。設定は帯ごと押しのけるので、
-       ここには入りません。 */
-    const cross = !!from && !OFF_BAR.includes(from) && !OFF_BAR.includes(id)
-      && KN.head.has(from) !== KN.head.has(id);
-    const dir = (face || cross) ? 0 : slideDir(from, id);
+    /* 帯は全タブで一つ（買うもの・価格も、段3から）。どのタブのあいだも
+       帯の下の画面だけが流れます（docs/shared-header.md）。 */
+    const dir = face ? 0 : slideDir(from, id);
     const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r",
                  "is-push-in", "is-push-under", "is-pop-in", "is-pop-out"];
     const push = dir !== 0 && pushy(from, id);

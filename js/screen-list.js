@@ -25,47 +25,11 @@
 
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            <div style="flex:1;min-width:0">
-              ${/* 題は出します。ただし帯の高さは他のタブと同じまま——題の
-                   ぶんだけ帯が太ると、この画面だけ一段深いところにいるように
-                   見えるので。色は「2026年」と同じコーラル（--c-primary）で、
-                   どのタブでも「いまどこか」を言う字は同じ色にします。 */""}
-              ${/* 題は二枚重ねて、`--face-p` で入れ替えます。紙を下げていくと
-                    「買うもの」が薄れ、「価格」が出てくる——動いているのは紙
-                    ですが、いま前に居るのはどちらか、を題も一緒に言います。
-                    下げきったところで app.js が本物の価格の画面に差し替える
-                    ので、そのとき題はもう「価格」になっていて、継ぎ目が
-                    見えません。 */""}
-              <h1 class="topbar-title tab-title face-title">
-                <span class="face-t face-t-front">shopping</span>
-                <span class="face-t face-t-back" aria-hidden="true">prices</span>
-              </h1>
-              <div class="topbar-sub js-sub"></div>
-            </div>
-            ${/* No 「まとめて削除」 on this bar any more. Having bought
-                 something is not a reason to throw the record of it away, and
-                 there is no moment in a shop where that is the thing you
-                 reach for. What is bought drops into the archive below,
-                 dated, and stays there.
-
-                 The three that are here are the same three, in the same
-                 order, on this screen and on 価格: くらべる・並べ方・さがす. */""}
-            ${/* 価格の画面へ。ここにあったのは「お店をくらべる」でした——
-                  行き先を決めるときに何度か使うもので、買い物の途中で押す
-                  ものではなかったので、外しました。かわりに、値段を仕込む
-                  ところ（商品と価格）への戸を置きます。値札の絵にしたのは、
-                  行った先の画面が値札を並べているからです。 */""}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
-                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
-                  たまにしか使いません。たまに使うものは設定の中へ。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
+        ${/* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+              一つの帯（js/head.js）に居ます（docs/shared-header.md の段3）。
+              前はここに自前の帯があり、題が「shopping」⇄「prices」と入れ替わって
+              いました。いまは題も日付で、紙を下げて価格へ移っても変わりません。
+              暦は印を描かない一枚（`KN.head.shopCal()`）で、価格と分け合います。 */""}
         <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
@@ -94,37 +58,22 @@
     root.append(chrome);
 
     els = {
-      sub:        chrome.querySelector(".js-sub"),
-      searchBtn:  chrome.querySelector(".js-search-btn"),
+      searchBtn:  KN.head.els.searchBtn,
+      mine:       () => KN.head.mine("list"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       filter:     chrome.querySelector(".js-filter"),
       body:       chrome.querySelector(".js-body"),
-      topbar:     chrome.querySelector(".topbar"),
     };
 
-    /* 掴み手は上のバーのすぐ下に貼りつきます。バーの高さはノッチの深さで
-       変わるので、実測して渡します（CSSに焼き込むと機種でずれる）。 */
-    const fitBar = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitBar();
-    window.addEventListener("resize", fitBar);
     KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { role: "front" });
 
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
+    /* 歯車は帯（head.js）が結びます。虫めがねは共通の一つで、応えるのは
+       持ち主のときだけ（`els.mine`）。境目の線（is-stuck）は、ほかのタブと
+       同じく出しません——帯は送られないので「貼りついた」がありません。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
-
-    /* 送っているのは画面ではなく紙です（css の「外枠と、その中を流れる
-       中身」）。見張る相手を間違えると、上のバーの影が一生出ません。 */
-    const sc = KN.app.scrollerOf(root);
-    sc.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", sc.scrollTop > 4);
-    });
   }
 
   /* ---------------- the add sheet ---------------- */
@@ -364,23 +313,12 @@
   /* ---------------- render ---------------- */
 
   function render() {
-    const st = store.get();
-    const items = st.items;
+    const items = store.get().items;
 
-    // Once anything is starred the header tracks that trip rather than the whole
-    // list, so it agrees with the tab badge instead of quoting a second number.
-    const scope = items.some((i) => i.fav) ? items.filter((i) => i.fav) : items;
-    const done = scope.filter((i) => i.checked).length;
-    const label = scope === items ? "" : "今回買うもの ";
-
-    /* 表題の下には、何も出しません。
-
-       「8件中8件購入済み」と書いていましたが、すぐ下の見出しが件数を持ち、
-       その下に進み具合の帯もあります。同じことを三度言っていました。
-       題のすぐ下は目がいちばん先に行く場所なので、そこは空けます。 */
-    els.sub.textContent = "";
-
-
+    /* 暦は帯（全タブで一つ）に置きます。印の無い一枚で、価格と分け合う
+       ——紙を下げて価格へ移っても、暦は差し替わりません（head.js）。
+       題に「いま見ている日」を塗るのも、あちらが持ちます。 */
+    KN.head.putCal("list", KN.head.shopCal());
 
     renderFilter(items);
     /* Searching narrows the rows, not the header: the counts above still
@@ -1098,5 +1036,7 @@
   document.addEventListener("visibilitychange", awake.touched);
 
   KN.screens = KN.screens || {};
-  KN.screens.list = { mount, render, dockButton, onEnter: awake.touched };
+  /* `day()` は共通の日を答えます（席を移るとき、app.js の show() が置いて
+     いく——買うものの暦で押した日を、ほかのタブへ持っていくため）。 */
+  KN.screens.list = { mount, render, dockButton, onEnter: awake.touched, day: () => KN.head.shopDay() };
 })();
