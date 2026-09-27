@@ -986,6 +986,14 @@
        だけ付けて、**動かす class（`inCls`）は下の輪の中で付けます**。
        この二つのあいだに描画は挟まらないので（同じ一拍のうち）、前の席が
        消えて見えることはありません。 */
+    /* **いま見ている日は、全タブで一つ**（util の dayShare）。出ていく画面の
+       日を置いてから、入ってくる画面を組みます——組む側は `render()` の頭で
+       それを引き取ります。日を持たない画面（買うもの・価格・設定）からは
+       何も置かないので、その前に見ていた日がそのまま残ります。 */
+    const fromScr = from && KN.screens[from];
+    if (fromScr && fromScr.day && from !== id) {
+      try { KN.util.dayShare.set(fromScr.day()); } catch (err) { /* 移ることを妨げない */ }
+    }
     const inEl = document.querySelector(`.screen[data-screen="${id}"]`);
     if (inEl) {
       inEl.hidden = false;

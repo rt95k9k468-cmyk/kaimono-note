@@ -657,9 +657,10 @@
             store.update((x) => { x.settings.searchBar = v; });
             render();
           },
-        })
+        }),
+        calSwitch()
       ),
-      foot("並べ方は、買うもの・価格・やることの三つが分け合います。探す窓を出さないときは、虫めがねを押すと出ます。"),
+      foot("並べ方は、買うもの・価格・やることの三つが分け合います。探す窓を出さないときは、虫めがねを押すと出ます。暦は、どのタブでも同じものが出ます。"),
       canBadge ? card(
         switchRow({
           title: "アイコンにも数を出す", on: badgeOn,
@@ -685,13 +686,14 @@
      暦は消え、下へ引けば戻ります（js/cal-peek.js の三段）。ここは
      「そんな手つきがあると知らない人」のための、もう一つの入口です。
 
-     タブごとに持ちます（store.calPrefs）。ダイエットは月ぜんぶを眺めたいが
-     やることは今週でいい、というように、見たい単位が画面ごとに違うので。 */
-  function calSwitch(tab) {
-    const on = store.calPrefs(tab).shown;
+     **全タブで一つです**（2026年9月27日から。docs/shared-header.md）。
+     上の帯と暦は全タブで同じ一つ、という作りなので、タブごとの三つの札を
+     外観の「表示」に一つだけ置きます。 */
+  function calSwitch() {
+    const on = store.calPrefs().shown;
     return switchRow({
       title: "暦を出す", on,
-      onTap: (v) => { store.setCalPref(tab, { shown: v }); render(); },
+      onTap: (v) => { store.setCalPref(null, { shown: v }); render(); },
     });
   }
 
@@ -762,8 +764,7 @@
             render();
             KN.motion.fire("select");
           },
-        }),
-        calSwitch("todo")
+        })
       ),
       card(
         pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
@@ -1485,7 +1486,6 @@
     const full = s.logFull !== false;
     return [
       card(
-        calSwitch("archive"),
         switchRow({
           title: "「あの日」を出す", on: s.showThen !== false,
           onTap: (v) => dailySet("showThen", v),
@@ -1633,7 +1633,6 @@
 
     return [
       card(
-        calSwitch("diet"),
         switchRow({
           title: "開いたときに自動で読む", on: s.settings.dietAutoSync !== false,
           onTap: (v) => { store.update((x) => { x.settings.dietAutoSync = v; }); render(); },
