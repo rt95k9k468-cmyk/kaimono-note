@@ -316,7 +316,7 @@
              飛ばして、いま打った言葉を直接記録する一本道）。 */
           const empty = node(html`
             <div class="stack" style="gap:10px">
-              <p style="color:var(--c-text-3);font-size:13px;padding:8px 0 0">
+              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
                 「${query}」に合う絵はありません
               </p>
               <button type="button" class="icon-report-toggle js-report-empty">
@@ -378,7 +378,7 @@
           <span class="field-label">数量</span>
           <div style="display:flex;align-items:center;gap:12px">
             <button class="icon-btn js-minus" aria-label="減らす" style="background:var(--c-surface-2)">${icon("minus")}</button>
-            <span class="js-qty mono-num" style="font-size:22px;font-weight:800;min-width:44px;text-align:center">${item.qty}</span>
+            <span class="js-qty mono-num" style="font-size:calc(22px * var(--fs-k));font-weight:800;min-width:44px;text-align:center">${item.qty}</span>
             <button class="icon-btn js-plus" aria-label="増やす" style="background:var(--c-surface-2)">${icon("plus")}</button>
             <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
           </div>
@@ -579,7 +579,7 @@
 
     if (!prices.length) {
       section.append(node(html`
-        <p style="color:var(--c-text-3);font-size:13px;line-height:1.6">
+        <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));line-height:1.6">
           まだ登録がありません。下のフォームからお店と値段を追加すると、いちばん安いお店が分かります。
         </p>
       `));
@@ -892,12 +892,12 @@
                  placeholder="値段" style="flex:1.2" required>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
         </div>
-        <p class="js-store-note" style="font-size:11px;color:var(--c-warn);margin:0;line-height:1.5" hidden></p>
+        <p class="js-store-note" style="font-size:calc(11px * var(--fs-k));color:var(--c-warn);margin:0;line-height:1.5" hidden></p>
         <div class="calc-row js-calc" hidden>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
         ${perItemPrice(1, p.amount, p.unit)
-          ? html`<p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
+          ? html`<p class="js-hint" style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);margin:0">
                    ${formatSize(p.amount, p.unit)}入りとして、1${p.unit}あたりの値段も出します
                  </p>`
           : ""}
@@ -1034,8 +1034,8 @@
             <path class="spark-line" d="${line}"></path>
           </svg>
           <div class="spread" style="margin-top:6px">
-            <span style="font-size:11px;color:var(--c-text-3)">いちばん安いとき ${yen(min)}</span>
-            <span style="font-size:11px;color:var(--c-text-3)">高いとき ${yen(max)}</span>
+            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3)">いちばん安いとき ${yen(min)}</span>
+            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3)">高いとき ${yen(max)}</span>
           </div>
         </div>
       </div>

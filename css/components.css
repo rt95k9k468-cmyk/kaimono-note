@@ -388,7 +388,7 @@ button, [role="tab"] {
 .icon-cell-mark { display: grid; place-items: center; height: 30px; }
 .icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }
 .icon-cell-label {
-  font-size: 10px;
+  font-size: calc(10px * var(--fs-k));
   line-height: 1.15;
   color: var(--c-text-2);
   text-align: center;
@@ -1016,7 +1016,7 @@ button, [role="tab"] {
   border-radius: 0;
   color: #fff;
   font-family: inherit;
-  font-size: 20px;
+  font-size: calc(20px * var(--fs-k));
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: -.01em;
@@ -1233,7 +1233,7 @@ button, [role="tab"] {
    Icon Design System の上で描かれている」ことを示す印として要ります。 */
 
 .sheet-mark {
-  font-size: 21px;
+  font-size: calc(21px * var(--fs-k));
   line-height: 1;
   margin-right: var(--sp-2);
   display: inline-flex;
@@ -1584,7 +1584,7 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   color: var(--c-text);
-  font-size: 22px;
+  font-size: calc(22px * var(--fs-k));
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -1614,7 +1614,7 @@ button, [role="tab"] {
   gap: 0;
   line-height: 1.05;
 }
-.key-tax-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
+.key-tax-cap  { font-size: calc(10px * var(--fs-k)); font-weight: 700; opacity: .75; }
 .key-tax-rate { font-size: var(--fs-lg); font-weight: 700; }
 
 /* 割引: the shelf tag's 「−20%」. Built like the 税 keys because it does the
@@ -1626,7 +1626,7 @@ button, [role="tab"] {
   gap: 0;
   line-height: 1.05;
 }
-.key-off-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
+.key-off-cap  { font-size: calc(10px * var(--fs-k)); font-weight: 700; opacity: .75; }
 .key-off-main { font-size: var(--fs-lg); font-weight: 700; }
 
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same
@@ -1638,7 +1638,7 @@ button, [role="tab"] {
   font-size: var(--fs-lg);
   font-weight: 700;
 }
-.key-ok.is-equals { font-size: 25px; font-weight: 700; }
+.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); font-weight: 700; }
 .key-ok:active { background: var(--c-primary-2); }
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */

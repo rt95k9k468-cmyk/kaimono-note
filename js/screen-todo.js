@@ -1981,7 +1981,7 @@
              記録できるようにします。 */
           const empty = node(html`
             <div class="stack" style="gap:10px">
-              <p style="color:var(--c-text-3);font-size:13px;padding:8px 0 0">
+              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
                 「${query}」に合う絵はありません
               </p>
               <button type="button" class="icon-report-toggle js-report-empty">
