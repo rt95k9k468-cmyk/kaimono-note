@@ -186,6 +186,22 @@ const { open, checker } = require("./lib");
   await go("diet");
   const dietBars = await page.$$eval("#head .cal .cal-bar", (x) => x.length);
   c.check("ダイエットの暦には飲酒の帯が出る", dietBars > 0, `${dietBars}`);
+  /* 帯の色は淡く（ほかのタブの丸と同じ、地へ 55% 混ぜた色）。元の色のままでは
+     暦の中でここだけ濃く浮いた（実機）。明るさで、元の色より地に寄っていること。 */
+  const pale = await page.evaluate(() => {
+    const i = document.querySelector("#head .cal .cal-bar i");
+    const lum = (c) => { const p = document.createElement("i"); p.style.color = c; document.body.append(p);
+      const t = getComputedStyle(p).color; p.remove();
+      const m = t.replace(/^color\(srgb/, "").match(/[\d.]+/g).map(Number);
+      const k = t.startsWith("color(") ? 255 : 1;          // color-mix は color(srgb 0..1)
+      return (m[0] + m[1] + m[2]) * k / 3; };
+    const raw = getComputedStyle(i).getPropertyValue("--bar").trim();
+    const bg = getComputedStyle(document.body).getPropertyValue("--c-bg").trim();
+    const now = lum(getComputedStyle(i).backgroundColor);
+    return { raw: lum(raw), now, bg: lum(bg) };
+  });
+  c.check("飲酒の帯は淡い色（元の色と地のあいだ）",
+    Math.abs(pale.now - pale.bg) < Math.abs(pale.raw - pale.bg) * 0.6, JSON.stringify(pale));
   await go("archive");
   c.check("daily の暦にダイエットの帯を出さない",
     await page.$$eval("#head .cal .cal-bar", (x) => x.length) === 0);
@@ -221,7 +237,23 @@ const { open, checker } = require("./lib");
     JSON.stringify({ mid, before }));
   c.check("入ってきた暦の印は浮かび上がる途中・暦は一枚のまま", mid.fadingIn && mid.cals === 1);
   c.check("写しは押せず、読み上げにも出ない", mid.inert);
-  await page.waitForTimeout(700);
+  /* 消える→出る は順に。毎フレーム、写しと入ってきた印の不透明度を測り、
+     両方が同時に見えている一拍が無いこと（実機で重なって見えた）。 */
+  const seq = await page.evaluate(() => new Promise((res) => {
+    const out = [];
+    const t0 = performance.now();
+    const tick = () => {
+      const g = document.querySelector("#head > .head-ghost");
+      const d = document.querySelector("#head .cal .cal-dots:not(:empty)");
+      out.push([g ? Number(getComputedStyle(g).opacity) : 0, d ? Number(getComputedStyle(d).opacity) : 1]);
+      if (performance.now() - t0 < 600) requestAnimationFrame(tick); else res(out);
+    };
+    tick();
+  }));
+  const both = seq.filter(([g, d]) => g > 0.02 && d > 0.02);
+  c.check("写しと入ってきた印は、同時には見えない", both.length === 0 && seq.some(([g]) => g > 0.02),
+    JSON.stringify(both.slice(0, 4)));
+  await page.waitForTimeout(300);
   c.check("流れ終わると写しは消え、印は出きっている", await page.evaluate(() =>
     !document.querySelector("#head .head-ghost")
     && !document.querySelector("#head .cal").classList.contains("is-marks-in")));
