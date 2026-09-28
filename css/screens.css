@@ -1657,6 +1657,9 @@
   background: linear-gradient(var(--c-border), var(--c-border))
               no-repeat var(--sp-4) 0 / calc(100% - 2 * var(--sp-4)) 1px;
 }
+/* 買ったものの行の★（今日でない日は丸も）は、描かずに場所だけ残します
+   ——列をリストの行と揃えるため（screen-list.js の dayBought）。 */
+.day-bought .is-void { visibility: hidden; }
 .day-bought-head {
   display: flex;
   align-items: center;

@@ -894,12 +894,19 @@
     const list = section.querySelector(".item-list");
     /* 買ったものの行に★は要りません（今回買うかどうかは、もう済んだ話）。
        丸も要らない——ただし今日の行だけは残します。押しまちがえたとき、
-       その場で買うものへ戻せるように（同じ夜、利用者）。 */
+       その場で買うものへ戻せるように（同じ夜、利用者）。
+       **消さずに、場所だけ残します**（`.is-void`：見えない・押せない・
+       読み上げない）。抜くと絵と名前が左へ、値段が右の端へ寄って、リストの
+       行とも、日を払った隣の日とも列がずれた（利用者：「わざわざ両端に寄せる
+       必要はない」、同じ夜・五度目）。 */
     bought.forEach((item) => {
       const p = store.getProduct(item.productId);
       if (!p) return;
       const row = itemRow(item, p);
-      row.querySelectorAll(isToday ? ".fav" : ".fav, .check").forEach((b) => b.remove());
+      row.querySelectorAll(isToday ? ".fav" : ".fav, .check").forEach((b) => {
+        b.classList.add("is-void");
+        b.tabIndex = -1;
+      });
       list.append(row);
     });
     return section;
