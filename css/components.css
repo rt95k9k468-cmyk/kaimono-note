@@ -1018,6 +1018,13 @@ button.hero-node:active { scale: .94; }
   line-height: 1.35;
   letter-spacing: -.01em;
   transition: border-color var(--m-state) var(--ease);
+  /* 一行の textarea（R1。貼りつけた改行を持てるように）。input と同じ顔に。 */
+  -webkit-appearance: none;
+  appearance: none;
+  resize: none;
+  overflow: hidden;
+  min-height: 0;
+  vertical-align: top;
 }
 .hero-title::placeholder { color: color-mix(in srgb, #fff 55%, transparent); }
 .hero-title:focus { outline: none; border-bottom-color: #fff; }

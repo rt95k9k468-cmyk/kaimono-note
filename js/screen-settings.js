@@ -1556,6 +1556,13 @@
       foot("「作成・更新」は、いつ書いていつ直したか（その日の話ではなく、帳簿のほう）。"),
       card(
         switchRow({
+          title: "季節のひとこと", on: s.showSeason !== false,
+          onTap: (v) => dailySet("showSeason", v),
+        })
+      ),
+      foot("その日の二十四節気と七十二候を、Daily Log の見出しの下に一行。端末の中で計算します。"),
+      card(
+        switchRow({
           title: "月のまとめを出す", on: s.showDigest !== false,
           onTap: (v) => dailySet("showDigest", v),
         }),

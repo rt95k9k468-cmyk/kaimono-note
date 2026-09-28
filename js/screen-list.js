@@ -203,8 +203,34 @@
         known.hidden = true;
       }
       if (!picked && !catTouched) cat.set(typed ? store.guessCategory(typed) : store.OTHER_CATEGORY);
+      /* 分けて入れるときは、押す前にボタンがそう言います（R1）。 */
+      const n = pieces().length;
+      addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
       renderSuggestions(nameEl, acHost, typed, choose);
     }
+
+    /* 「牛乳、卵、パン」は三つ（docs/roadmap.md の R1）。候補から選んだ品物は、
+       名前に読点があっても一つ。登録済みの名前に入っている読点でも分けない。 */
+    function pieces() {
+      if (picked) return [picked.name];
+      const S = KN.splitItems;
+      const typed = nameEl.value.trim();
+      if (!S || !typed) return typed ? [typed] : [];
+      return S.shop(typed, store.get().products.map((p) => p.name));
+    }
+
+    /* 一行の欄は改行を持てないので、貼りつけた改行は読点にして見せます
+       ——黙って消すと「牛乳卵パン」という一つの名前になります。 */
+    nameEl.addEventListener("paste", (e) => {
+      const txt = e.clipboardData && e.clipboardData.getData("text");
+      if (!txt || !/[\r\n]/.test(txt.trim())) return;
+      e.preventDefault();
+      const flat = txt.trim().split(/\s*(?:\r?\n|\r)+\s*/).filter(Boolean).join("、");
+      const a = nameEl.selectionStart ?? nameEl.value.length;
+      const b = nameEl.selectionEnd ?? a;
+      nameEl.setRangeText(flat, a, b, "end");
+      onName();
+    });
 
     /* A suggestion tapped: from here the form is about that product, so its
        category comes along and the sheet says which one it landed on. */
@@ -238,6 +264,9 @@
     function submit() {
       const name = nameEl.value.trim();
       if (!name) { nameEl.focus(); return; }
+
+      const many = pieces();
+      if (many.length >= 2) { submitMany(name, many); return; }
 
       const product = picked || store.findProductByName(name)
         || store.addProduct({ name, categoryId: cat.current });
@@ -283,6 +312,67 @@
          instead of at the line that appeared. One add, one close, and the ＋
          is right there under the thumb for the next one. */
       handle.close();
+    }
+
+    /* 分けて入れる（R1）。棚は一つずつ推し直します——「牛乳、洗剤」を同じ棚に
+       入れる理由はないので。手で選んだ棚だけは、新しく作る品物みんなへ。
+       ★とメモは、打った人が一度に言ったことなので、どの行にも付けます
+       （消すより、余ったものを直すほうが安い）。 */
+    function submitMany(whole, names) {
+      const memo = memoEl.value.trim();
+      const made = [];      // この一押しで作った品物（ひとつにするとき片づける）
+      const added = [];     // この一押しで足した行
+      let dup = 0;
+      names.forEach((name) => {
+        let product = store.findProductByName(name);
+        if (!product) {
+          product = store.addProduct({ name,
+            categoryId: catTouched ? cat.current : store.guessCategory(name) });
+          if (!product) return;
+          made.push(product.id);
+        }
+        if (store.get().items.some((i) => i.productId === product.id && !i.checked)) { dup++; return; }
+        const rec = store.addItem(product.id, { memo });
+        if (fav) store.update((s) => {
+          const it = s.items.find((i) => i.id === rec.id);
+          if (it) it.fav = true;
+        });
+        added.push(rec.id);
+      });
+      KN.motion.fire("save");
+      handle.close();
+
+      if (!added.length) {
+        KN.ui.toast("どれも、もうリストにあります");
+        return;
+      }
+      KN.ui.toast(`${added.length}つに分けて入れました${dup ? `（${dup}つはもうリストに）` : ""}`, {
+        action: { label: "ひとつにする", onClick: () => joinBack(whole, added, made, memo) },
+      });
+    }
+
+    /* 「ひとつにする」：分けて足した行と、そのとき作った品物を片づけて、打った
+       とおりの一つの名前で入れ直します。作った品物は、そのあと値段が付いて
+       いたら残します（もう別の用で使われているので）。 */
+    function joinBack(whole, added, made, memo) {
+      const drop = new Set(added);
+      store.update((s) => {
+        s.items = s.items.filter((i) => !drop.has(i.id));
+        const used = new Set(s.items.map((i) => i.productId));
+        s.products = s.products.filter((p) =>
+          !made.includes(p.id) || used.has(p.id) || (p.prices && p.prices.length));
+      });
+      const product = store.findProductByName(whole)
+        || store.addProduct({ name: whole,
+          categoryId: catTouched ? cat.current : store.guessCategory(whole) });
+      if (!product) return;
+      if (store.get().items.some((i) => i.productId === product.id && !i.checked)) return;
+      const rec = store.addItem(product.id, { memo });
+      if (fav) store.update((s) => {
+        const it = s.items.find((i) => i.id === rec.id);
+        if (it) it.fav = true;
+      });
+      KN.ui.toast(`「${product.name}」ひとつにしました`);
     }
 
     return handle;

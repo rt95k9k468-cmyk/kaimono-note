@@ -3413,6 +3413,13 @@ a.btn { text-decoration: none; }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
 .arc-log-head h2 { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
+/* 季節のひとこと（R2）。小ささと空きで引っこめる（薄さではなく。docs/look.md）。
+   長い読み（「かみなりすなわちこえをおさむ」）は折り返してよい——切ると言葉が欠ける。 */
+.arc-season {
+  margin: calc(-1 * var(--sp-2)) 0 var(--sp-4);
+  font-size: var(--fs-sm); font-weight: 400; line-height: 1.5;
+  color: var(--c-text-2); letter-spacing: .02em;
+}
 
 .arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
 

@@ -35,6 +35,8 @@ const JS = [
   "js/motion.js",
   "js/plan.js",
   "js/when-parse.js",
+  "js/split-items.js",
+  "js/season.js",
   "js/icon-system.js",
   "js/icons-v2-keys.js",
   "js/product-icons.js",
