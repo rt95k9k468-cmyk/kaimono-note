@@ -107,6 +107,8 @@
       settings: {
         theme: "auto", accent: "orange", textSize: "std", showChecked: true, layout: "rows",
         showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
+        /* 季節のひとこと（二十四節気・七十二候、R2）。既定は出す。設定で消せる。 */
+        showSeason: true,
       },
     };
   }
@@ -677,6 +679,7 @@
        選んだ覚えのない色で画面が出てこないように。 */
     out.settings.accent = cleanAccent(out.settings.accent);
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
+    out.settings.showSeason = out.settings.showSeason !== false;
     /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */
     if (!["std", "l", "xl", "auto"].includes(out.settings.textSize)) out.settings.textSize = "std";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;

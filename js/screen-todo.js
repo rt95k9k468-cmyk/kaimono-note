@@ -725,10 +725,14 @@
         </span>
         <span class="hero-text">
           <span class="hero-cap js-hero-when"></span>
-          <input class="hero-title js-title" placeholder="例：ゴミ出し・電球を替える"
-                 value="${editing ? t.title : ""}"
+          ${/* 一行の textarea です（R1）。input は貼りつけた改行を黙って消すので、
+                「牛乳を買う⏎銀行」が「牛乳を買う銀行」という一件になります。
+                Enter は下で止めてあるので、打って改行はできません——改行が
+                入るのは貼りつけたときだけ。wrap="off" で、一行のあいだは
+                input と同じく横へ流れます。 */""}
+          <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="例：ゴミ出し・電球を替える"
                  autocomplete="off" autocapitalize="off" spellcheck="false"
-                 aria-label="やること">
+                 aria-label="やること">${editing ? t.title : ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
         </span>
       </div>
@@ -1232,6 +1236,7 @@
         if (el) KN.ui.focusNow(el);
       }
       paintHeroFacts();   // 頭の「☑ 2/5」も、増減についていきます
+      paintSplit();       // 手順が入った紙は分けない（R1）。ボタンの字もそれに合わせる
     }
     /* 手順の並べ替え。掴み手からだけ、押した瞬間に持ち上がります。
        運び終わったら控えの配列を並べ替えて、そのまま描き直します
@@ -1467,19 +1472,65 @@
        入っています。 */
     titleEl.addEventListener("input", () => { titleTouched = true; });
 
+    /* ---- 一行に並べたものを、分けて入れる（docs/roadmap.md の R1） ----
+
+       やることは**改行だけ**で分けます。「銀行、郵便局に寄る」は一件の用事
+       なので、読点では分けません。改行が入るのは貼りつけたときだけです
+       （Enter は止めてあります）。分けるのは新しく足す紙だけで、行ごとに
+       「いつ」を読みます（when-parse）。**手順を書いた紙は分けません**
+       ——手順がどの行のものか分からないので。 */
+    function splitLines() {
+      if (editing || !KN.splitItems) return null;
+      if (subs.some((s) => String(s.title || "").trim())) return null;
+      const lines = KN.splitItems.todo(titleEl.value);
+      return lines.length >= 2 ? lines : null;
+    }
+    /* **function で書くこと。** whenPeek は組み立ての途中（paintRows →
+       paintHeroFacts）から読まれるので、const だと TDZ で落ちます。 */
+    function hasBreak() { return /[\r\n]/.test(titleEl.value.trim()); }
+    /* 分けないときの一件の題。改行は「、」にして一行へ。 */
+    function flatTitle(v) {
+      return String(v).trim().split(/\s*(?:\r?\n|\r)+\s*/).filter(Boolean).join("、");
+    }
+
+    /* ボタンが先に言います（「3件に分けて追加」）。欄も行の数だけ伸ばします。 */
+    function paintSplit() {
+      const rows = Math.min(6, Math.max(1, titleEl.value.split(/\r?\n|\r/).length));
+      if (titleEl.rows !== rows) titleEl.rows = rows;
+      if (editing) return;
+      const lines = splitLines();
+      const label = lines ? `${lines.length}件に分けて追加` : "追加";
+      if (foot.textContent.trim() !== label) foot.textContent = label;
+    }
+    titleEl.addEventListener("input", paintSplit);
+    subHost.addEventListener("input", paintSplit);
+    /* 直しに来た紙では、貼りつけた改行は空きにします（input だったころと同じ）。 */
+    titleEl.addEventListener("paste", (e) => {
+      if (!editing) return;
+      const txt = e.clipboardData && e.clipboardData.getData("text");
+      if (!txt || !/[\r\n]/.test(txt)) return;
+      e.preventDefault();
+      const a = titleEl.selectionStart ?? titleEl.value.length;
+      const b = titleEl.selectionEnd ?? a;
+      titleEl.setRangeText(txt.trim().replace(/\s*(?:\r?\n|\r)+\s*/g, " "), a, b, "end");
+      titleEl.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
     function whenPeek() {
       const W = KN.whenParse;
-      if (!W || !titleTouched) return null;
+      if (!W || !titleTouched || hasBreak()) return null;
       const res = W.parse(titleEl.value);
       return W.found(res) ? res : null;
     }
 
-    /* 題を差し替えます。**value 属性にも書く**こと——運んでいるあいだの
-       控え（cloneNode）は属性を読むので、書かないと打つ前の字が出ます。 */
+    /* 題を差し替えます。**中身（textContent）にも書く**こと——運んでいる
+       あいだの控え（cloneNode）が打つ前の字を出さないように（input だった
+       ころは value 属性に書いていました。textarea の既定の字は中身です）。 */
     function setTitle(v) {
       titleEl.value = v;
-      titleEl.setAttribute("value", v);
+      titleEl.textContent = v;
       foot.disabled = !v.trim();
+      paintSplit();
       if (!iconKey) paintIcon();
     }
 
@@ -1503,7 +1554,7 @@
 
     function whenApply(opts) {
       const W = KN.whenParse;
-      if (!W || !titleTouched) return;
+      if (!W || !titleTouched || hasBreak()) return;
       const res = W.parse(titleEl.value);
       if (!W.found(res)) return;
       const back = { title: titleEl.value, due, time, minutes, part, deadline,
@@ -1557,9 +1608,11 @@
       /* 打ちっぱなしで押されたぶんも、ここで読みます（欄から離れる前に
          押されたら、change はまだ来ていません）。 */
       whenApply({ quiet: true });
-      const title = titleEl.value.trim();
-      if (!title) return;
       const memo = body.pick(".js-memo").value;
+      const lines = splitLines();
+      if (lines) { addMany(lines, memo); return; }
+      const title = flatTitle(titleEl.value);
+      if (!title) return;
       /* 「毎週 火・金」 with a Monday on it is a rule and a date that disagree.
          The rule is the one that was just chosen on purpose, so the date moves
          to the first day the rule actually falls on. */
@@ -1595,6 +1648,58 @@
       haptic(12);
       handle.close();
     });
+
+    /* 分けて入れる（R1）。紙で決めたこと（日・時刻・長さ・くり返し・期限・
+       メモ・旗）は、どの行にも同じく。そのうえで行ごとに「いつ」を読み、
+       読めた欄だけ差し替えます（whenApply と同じ移し方）。絵は行ごとに
+       おまかせ——一つの絵を三件に配る理由はないので。 */
+    function addMany(lines, memo) {
+      const W = KN.whenParse;
+      const made = [];
+      lines.forEach((line) => {
+        let v = { title: line, due, time, minutes, part, deadline, repeat, repeatDays, repeatNth };
+        const res = W ? W.parse(line) : null;
+        if (res && W.found(res)) {
+          v.title = res.title;
+          if (res.due) v.due = res.due;
+          if (res.time) v.time = res.time;
+          if (res.minutes) v.minutes = res.minutes;
+          if (res.deadline) v.deadline = res.deadline;
+          if (res.repeat) {
+            v.repeat = res.repeat;
+            v.repeatDays = res.repeatDays || [];
+            v.repeatNth = res.repeatNth || null;
+            if (isBookend(v.part)) v.part = null;
+          }
+          if (v.time && !v.due) v.due = (oneDay() ? shownDay() : todayKey()) || todayKey();
+        }
+        const fx = v.due ? store.snapToRule(v, v.due) : v.due;
+        const rec = store.addTodo({ title: v.title, due: fx, deadline: v.deadline,
+          part: fx ? v.part : null, time: fx ? v.time : null,
+          repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth,
+          memo, flagged, minutes: v.minutes });
+        if (rec) made.push(rec.id);
+      });
+      haptic(12);
+      handle.close();
+      if (!made.length) return;
+      KN.ui.toast(`${made.length}件に分けて入れました`, {
+        action: {
+          label: "ひとつにする",
+          /* 分けて足した行を片づけ、打ったとおりの一件に（行は「、」でつなぐ）。
+             行ごとに読んだ「いつ」は使わず、紙で決めたことだけで入れ直します。 */
+          onClick: () => {
+            made.forEach((id) => store.removeTodo(id));
+            const title = lines.join("、");
+            const fixed = due ? store.snapToRule({ repeat, repeatDays, repeatNth }, due) : due;
+            store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null,
+              time: fixed ? time : null, repeat, repeatDays, repeatNth,
+              memo, flagged, minutes, icon: iconKey });
+            KN.ui.toast(`「${title}」ひとつにしました`);
+          },
+        },
+      });
+    }
 
     /* 削除は ⋯ の中へ移りました（上の heroMenu）。紙のいちばん下に置くと、
        毎回そこを通ることになります——たまに、一度だけ使うものなので。 */

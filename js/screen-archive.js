@@ -772,6 +772,12 @@
               ${icon("copy")}
             </button>` : ""}
         </header>
+        ${/* 季節のひとこと（R2）。その日の二十四節気と七十二候を、日付の行の
+              すぐ上に小さく一行。一日ぶんのときだけ——月ぜんぶでは「どの日の」が
+              一つに決まらないので。色は変えず、字を一行足すだけ。数えも比べも
+              しない、ただの暦の言葉です（daily は評価しない）。 */
+            only && S().showSeason !== false && KN.season ? html`
+          <p class="arc-season">${KN.season.line(only)}</p>` : ""}
         <div class="arc-log-body"></div>
       </section>
     `);
