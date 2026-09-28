@@ -523,6 +523,11 @@
      いまは CSS 側だけがこの名前を読み、JS 側はまだ自分の数を持っています
      （day-swipe.js / cal-swipe.js / edge-back.js の SETTLE）。 */
   --m-swipe: .28s;
+  /* 買うものの紙が、価格との間を行き来する（app.js の faceSettle が glide の
+     `base` に渡す）。`--m-swipe` の払いと違って、動くのは画面の丈ほどの
+     紙一枚——同じ .28s では、価格から戻るときに「速すぎる」と言われた
+     （2026年9月28日、実機）。 */
+  --m-face: .46s;
   /* 押した瞬間に、一度だけ出る光。帯のガラスが拾う光と、済ませた火花。 */
   --m-spark: .46s;
   /* 器そのものが伸び縮みする（暦が開く、帯が出入りする、欄が育つ）。
@@ -1070,12 +1075,18 @@ a { color: var(--c-primary); }
    `--face-ms` / `--face-ease` を書きます）。材の置き場所はここのまま、
    数だけが指から来る——書いていないときは `--m-swipe` に落ちます。 */
 .screen.is-face-front.is-face-settle .stack > .tl-sheet {
-  transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
+  transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
+              box-shadow var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
 /* 下がった紙は「紙」に見えなければいけません。上の角はもともと丸いので、
-   足すのは影だけ——後ろとのあいだに厚みが出ます。 */
+   足すのは影だけ——後ろとのあいだに厚みが出ます。
+
+   **影は、紙が家へ近づくほど薄れます**（`--face-p` の 0〜.3 で 0 → .14）。
+   濃さを一定にしていたころ、価格から戻りきる直前に、紙の上の帯が影で
+   暗くなって、着いた瞬間にぱっと明るく戻っていました（2026年9月28日、
+   実機「一瞬、後ろが暗くなる」。家に居る紙は影を持たないので）。 */
 .screen.is-face-front .stack > .tl-sheet {
-  box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, calc(.14 * clamp(0, var(--face-p, 0) / .3, 1)));
 }
 
 /* ---- 価格の札は、紙の下から出てくる ----
@@ -1085,8 +1096,20 @@ a { color: var(--c-primary); }
    の札を外した**ので、入れ替える相手がいません。買うものの紙は暦のすぐ下
    から始まり、価格の札はその紙の下に居て、紙が下がると露出します——
    暦を引いたときに紙が下がるのと同じ、重なりの素直な見え方です。
-   地は後ろの札が持ったまま（紙の隙間から価格の行が透けないように）。 */
-.screen.is-face-back .js-filter { background: var(--c-bg); }
+   地は後ろの札が持ったまま（紙の隙間から価格の行が透けないように）。
+
+   **札の帯は、紙が家へ近づくほど薄れます**（影と同じ `--face-p` の 0〜.3）。
+   価格の札の帯は、買うものの紙の頭より**上**から始まるので、紙が戻りきっても
+   覆われません。薄れさせないと、戻りきる直前まで札（と、その地）が紙の上に
+   居残り、着いた瞬間に消えていました——これが「一瞬暗くなる」のもう半分。
+   帯ごと（地も）薄めてよいのは、そのとき後ろの一覧は紙に隠れているからです。 */
+.screen.is-face-back .js-filter {
+  background: var(--c-bg);
+  opacity: clamp(0, var(--face-p, 0) / .3, 1);
+}
+.screen.is-face-back.is-face-settle .js-filter {
+  transition: opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
+}
 
 /* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは一覧
    だけで、**自分の上の一組——バー・探す欄・カテゴリの札——はまとめて
