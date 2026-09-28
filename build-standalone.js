@@ -15,6 +15,8 @@
 
    The dist/web pair is the whole app in two files — drop them at the root of
    any static host for an installable, offline-capable PWA.
+
+   dist/ is in .gitignore — never commit it (docs/storage.md, trap f).
    ========================================================= */
 
 const fs = require("fs");
