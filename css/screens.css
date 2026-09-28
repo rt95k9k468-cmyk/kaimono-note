@@ -5803,11 +5803,36 @@ a.btn { text-decoration: none; }
 }
 
 /* ---------- これからの二週間（R7・js/upcoming.js） ----------
-   日ごとの見出しと、その日に立つ用事。見出しも行も、押せばやることの
-   その日へ（section ごと一つの的）。評価の色は付けません——期限の札も
-   地の色は塗らず、字と細い枠だけ。 */
-.up { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
-.up-day { cursor: pointer; }
+   日ごとの一枚（カード）と、その日に立つ用事。見出しも行も、押せば
+   やることのその日へ（section ごと一つの的）。
+
+   **色は曜日の色**（2026年9月28日、「味気なくて読みづらい」の声から）。
+   日曜は赤み・土曜は藍、平日は黄・橙・緑・赤紫・空色を一つずつ。どれも
+   既にある色の札（--c-m-* / --c-slot-* / --c-primary）を借りるので、夜の
+   色にもそのまま追随します。**評価の色ではありません**——「どの日か」を
+   目で拾うための色で、期限の札も地は塗らず字と細い枠だけ。字は色に
+   しません（黄の字は読めないので）。色は左の帯・地のうっすら・時刻の札だけ。 */
+.up { display: flex; flex-direction: column; gap: var(--sp-3); padding-bottom: var(--sp-4); }
+.up-day {
+  --up-c: var(--c-m-steps);
+  cursor: pointer;
+  position: relative;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2) calc(var(--sp-3) + 6px);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--up-c) 9%, var(--c-surface));
+  overflow: hidden;
+}
+.up-day::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: var(--up-c);
+}
+.up-day[data-wd="0"] { --up-c: var(--c-primary); }
+.up-day[data-wd="1"] { --up-c: var(--c-slot-b); }
+.up-day[data-wd="2"] { --up-c: var(--c-m-burn); }
+.up-day[data-wd="3"] { --up-c: var(--c-m-steps); }
+.up-day[data-wd="4"] { --up-c: var(--c-slot-s); }
+.up-day[data-wd="5"] { --up-c: var(--c-m-drink); }
+.up-day[data-wd="6"] { --up-c: var(--c-m-sleep); }
 .up-head {
   display: flex; align-items: baseline; gap: var(--sp-2);
   width: 100%; padding: 0; border: none; background: none; text-align: left;
@@ -5819,16 +5844,21 @@ a.btn { text-decoration: none; }
 .up-go svg { width: 14px; height: 14px; }
 .up-rows { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
 .up-row {
-  display: flex; align-items: center; gap: var(--sp-2);
-  min-height: 36px;
-  border-top: 1px solid var(--c-border);
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-height: 44px; padding: 6px 0;
+  line-height: 1.5;
+  border-top: 1px solid color-mix(in srgb, var(--up-c) 22%, transparent);
 }
 .up-time {
-  flex: none; width: 3.2em;
+  flex: none; min-width: 3.4em; text-align: center;
   font-variant-numeric: tabular-nums;
-  color: var(--c-text-2); font-size: var(--fs-sm);
+  font-size: var(--fs-sm); color: var(--c-text);
+  border-radius: 999px; padding: 1px 6px;
+  background: color-mix(in srgb, var(--up-c) 20%, var(--c-surface));
 }
-.up-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.up-time:empty { background: none; }
+.up-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.up-row.is-dl .up-title { color: var(--c-text-2); }
 .up-rep { flex: none; color: var(--c-text-3); display: grid; }
 .up-rep svg { width: 14px; height: 14px; }
 .up-dl {
@@ -5836,8 +5866,38 @@ a.btn { text-decoration: none; }
   border: 1px solid currentColor; border-radius: 999px; padding: 0 .5em;
 }
 .up-empty { color: var(--c-text-2); margin: var(--sp-4) 0; }
+.up-note { color: var(--c-text-2); font-size: var(--fs-sm); margin: var(--sp-2) 0 0; line-height: 1.6; }
 /* 帯に暦の絵が一つ増えたぶん、狭い画面（360px）では日付の題が 8px 欠けた。
    そこでだけ帯の間を 12 → 8px に。指の的（44px）は隣と 2px 重なるだけ。 */
 @media (max-width: 374px) {
   .topbar-row { gap: var(--sp-2); }
 }
+
+/* ---------- ぜんぶをさがす（R8・js/search-all.js） ----------
+   虫めがねの窓のすぐ下の一行（ほかの場所に◯件／その月の daily へ）と、
+   押すと開く紙。窓の役目（タブの中の絞り込み）はそのまま。 */
+.sa-hint {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  padding: var(--sp-2) 0 0;
+}
+.sa-link {
+  display: inline-flex; align-items: center; gap: 2px;
+  min-height: 32px; padding: 0 var(--sp-3);
+  border: 1px solid var(--c-border); border-radius: 999px;
+  background: var(--c-surface); color: var(--c-primary);
+  font-size: var(--fs-sm);
+}
+.sa-link svg { width: 12px; height: 12px; }
+.sa { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
+.sa-head { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); margin: 0 0 var(--sp-1); }
+.sa-rows { display: flex; flex-direction: column; }
+.sa-row {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; min-height: 44px; padding: var(--sp-2) 0;
+  border: none; border-top: 1px solid var(--c-border); background: none;
+  text-align: left; color: var(--c-text); line-height: 1.5;
+}
+.sa-title { overflow-wrap: anywhere; }
+.sa-sub { font-size: var(--fs-xs); color: var(--c-text-2); }
+.sa-jump { border: 1px solid var(--c-border); border-radius: 12px; padding: var(--sp-2) var(--sp-3); }
+.sa-more-note, .sa-note { color: var(--c-text-2); font-size: var(--fs-sm); margin: var(--sp-1) 0 0; }

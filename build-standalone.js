@@ -63,6 +63,7 @@ const JS = [
   "js/cal-swipe.js",
   "js/head.js",
   "js/upcoming.js",
+  "js/search-all.js",
   "js/notify.js",
   "js/ics.js",
   "js/food-data.js",
