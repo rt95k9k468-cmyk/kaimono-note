@@ -1387,6 +1387,7 @@
       setQuery("");
       onChange();
       paint();
+      if (KN.searchAll) KN.searchAll.hint(els);
     };
 
     /* 窓を置きっぱなしにしない設定のときは、ふだんは畳んでおきます。
@@ -1431,6 +1432,9 @@
       setQuery(KN.util.foldKana(els.search.value));
       onChange();
       paint();
+      /* ほかの場所にもあれば、窓の下に一行（R8・js/search-all.js）。
+         タブの中の絞り込みは、上の三行のまま。 */
+      if (KN.searchAll) KN.searchAll.hint(els);
     });
 
     els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });

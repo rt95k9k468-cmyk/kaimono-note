@@ -1,7 +1,7 @@
 /* これからの二週間（docs/roadmap.md の R7）。
 
    前半は数え方（KN.upcoming.days）：今日から14日ぶん、store.fallsOn が立つと
-   答えた日にだけ並ぶ。毎日は14回・曜日の毎週は2回・「済ませてから◯日」は次の
+   答えた日にだけ並ぶ。毎日・週5日以上・毎朝毎晩の端は出さない（ルーティン）・曜日の毎週は2回・「済ませてから◯日」は次の
    一回だけ・毎月は範囲に入った日だけ・15日目より先は出ない・済ませたもの／棚の
    ものは出ない・期限は期限の日に「期限」として（やる日と同じなら一行にまとめる）・
    時刻の順・何も無い日は入れない。記録は一件も増えない。
@@ -27,6 +27,8 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     const add = (o) => S.addTodo(o);
     add({ title: "歯医者", due: d(3), time: "19:00" });
     add({ title: "朝の薬", due: today, repeat: "daily", time: "08:00" });
+    add({ title: "平日の支度", due: today, repeat: "weekly", repeatDays: [1, 2, 3, 4, 5] });
+    add({ title: "今日の用事", due: today });
     const wd = U.dayOfWeek(d(2));
     add({ title: "ごみ出し", due: d(2), repeat: "weekly", repeatDays: [wd] });
     add({ title: "シーツ", due: d(5), repeat: "after", repeatEvery: 3 });
@@ -45,7 +47,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     const on = (title) => list.filter((g) => g.rows.some((x) => x.t.title === title)).map((g) => g.day);
     return {
       today, days: list.map((g) => g.day), before, after: S.get().todos.length,
-      dentist: on("歯医者"), pill: on("朝の薬"), trash: on("ごみ出し"), sheets: on("シーツ"),
+      dentist: on("歯医者"), pill: on("朝の薬"), weekday: on("平日の支度"), trash: on("ごみ出し"), sheets: on("シーツ"),
       rent: on("家賃"), far: on("遠い"), license: on("免許"), done: on("済んだ"), arch: on("棚"),
       docs: list.filter((g) => g.day === d(7)).map((g) => g.rows.filter((x) => x.t.title === "書類")
         .map((x) => ({ due: x.due, dl: x.deadline })))[0],
@@ -58,7 +60,8 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   });
   const E = r.expect;
   t.check("一回きりはその日にだけ", JSON.stringify(r.dentist) === JSON.stringify([E.d3]), JSON.stringify(r.dentist));
-  t.check("毎日は14回（今日から13日後まで）", r.pill.length === 14 && r.pill[0] === r.today, r.pill.length);
+  t.check("毎日のくり返しは出ない", r.pill.length === 0, r.pill.length);
+  t.check("週5日以上のくり返しも出ない", r.weekday.length === 0, r.weekday.length);
   t.check("曜日の毎週は2回", JSON.stringify(r.trash) === JSON.stringify([E.d2, E.d9]), JSON.stringify(r.trash));
   t.check("済ませてから◯日は次の一回だけ", JSON.stringify(r.sheets) === JSON.stringify([E.d5]), JSON.stringify(r.sheets));
   t.check("毎月は範囲に入った日だけ", JSON.stringify(r.rent) === JSON.stringify([E.d4]), JSON.stringify(r.rent));
@@ -69,9 +72,9 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   t.check("やる日と期限が違えば、それぞれの日に", JSON.stringify(r.apply) === JSON.stringify([E.d1, E.d9b])
     && r.applyDl.length === 1 && !r.applyDl[0].due && r.applyDl[0].dl, JSON.stringify([r.apply, r.applyDl]));
   t.check("済ませたもの・棚のものは出ない", !r.done.length && !r.arch.length);
-  t.check("時刻の順", JSON.stringify(r.order3) === JSON.stringify(["朝の早い", "朝の薬", "歯医者"]), JSON.stringify(r.order3));
+  t.check("時刻の順", JSON.stringify(r.order3) === JSON.stringify(["朝の早い", "歯医者"]), JSON.stringify(r.order3));
   t.check("記録は一件も増えない", r.before === r.after);
-  t.check("何も無い日は入れない（毎日があるので14日ぶん）", r.days.length === 14);
+  t.check("何も無い日は入れない（9日ぶん）", r.days.length === 9, r.days.length);
 
   /* ---- 画面 ---- */
   const openSheet = async () => {
@@ -93,13 +96,18 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
       dl: sh.querySelectorAll(".up-dl").length,
       rep: sh.querySelectorAll(".up-rep").length,
       text: sh.textContent,
+      note: !!sh.querySelector(".up-note"),
+      wd: [...sh.querySelectorAll(".up-day")].every((e) => e.dataset.wd !== undefined),
+      tint: getComputedStyle(sh.querySelector(".up-day")).backgroundColor,
     };
   });
   t.check("紙の題は「これからの二週間」", s.title === "これからの二週間", s.title);
   t.check("見出しは今日・明日から", s.heads[0] === "今日" && s.heads[1] === "明日", JSON.stringify(s.heads));
-  t.check("14日ぶんの見出し", s.n === 14, s.n);
+  t.check("9日ぶんの見出し", s.n === 9, s.n);
+  t.check("毎日のくり返しは載せていない、の一言", s.note);
+  t.check("日ごとに曜日の色", s.wd && s.tint !== "rgba(0, 0, 0, 0)", s.tint);
   t.check("期限の札が3つ", s.dl === 3, s.dl);
-  t.check("くり返しの印", s.rep >= 14, s.rep);
+  t.check("くり返しの印（ごみ出し2・家賃・シーツ）", s.rep === 4, s.rep);
   t.check("絵文字なし", !EMOJI.test(s.text));
   // 買うものから、4日後を押す
   await page.click(`.sheet .js-up-day[data-day="${E.d4}"]`);
