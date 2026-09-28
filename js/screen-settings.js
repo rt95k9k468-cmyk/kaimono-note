@@ -2670,9 +2670,16 @@
       return;
     }
     /* 日記の写しの突き合わせが済む前に書くと、写しから戻るはずの本文と
-       行き違います（書き出しと同じ門）。 */
-    if (KN.diaryIdb && !KN.diaryIdb.settled()) {
+       行き違います（書き出しと同じ門）。大きな保存場所を読めなかった日も
+       入れません——daily の本文は書かせない日なので（docs/storage.md）。 */
+    const diaryNow = KN.diaryIdb ? KN.diaryIdb.body() : "ok";
+    if (diaryNow === "loading") {
       KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度選んでください");
+      return;
+    }
+    if (diaryNow === "off") {
+      KN.diaryIdb.retry();
+      KN.ui.toast("日記の保存場所を読めない日なので、取り込めません（何も変えていません）", { duration: 6000 });
       return;
     }
 
@@ -2772,7 +2779,7 @@
      （daily は数えない・評価しない）。 */
   function diaryCopyText(d) {
     if (!d || d.phase === "idle" || d.phase === "starting") return "";
-    if (d.phase === "off") return "日記は、記録の中だけにあります（大きな保存場所へは写していません）。";
+    if (d.phase === "off") return "日記の保存場所（大きな保存場所）を読めなかったので、daily の本文は「読めません」と出して、書けないようにしています（本文は記録の中に残っています。アプリを前に出すと、もう一度読みにいきます）。";
     const n = d.opens || 0;
     const how = !n ? "写したあと、読み比べて一字も違わないことを確かめました"
       : d.fixed ? `開くたびに突き合わせていて、これまで${n}回のうち${d.fixed}回は、食い違いを直しました`
