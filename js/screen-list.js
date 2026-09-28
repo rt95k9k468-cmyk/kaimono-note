@@ -892,9 +892,15 @@
       </section>
     `);
     const list = section.querySelector(".item-list");
+    /* 買ったものの行に★は要りません（今回買うかどうかは、もう済んだ話）。
+       丸も要らない——ただし今日の行だけは残します。押しまちがえたとき、
+       その場で買うものへ戻せるように（同じ夜、利用者）。 */
     bought.forEach((item) => {
       const p = store.getProduct(item.productId);
-      if (p) list.append(itemRow(item, p));
+      if (!p) return;
+      const row = itemRow(item, p);
+      row.querySelectorAll(isToday ? ".fav" : ".fav, .check").forEach((b) => b.remove());
+      list.append(row);
     });
     return section;
   }
