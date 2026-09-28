@@ -89,6 +89,8 @@
     root.innerHTML = "";
     stack = [makeLayer(null)];
     root.append(stack[0].el);
+    /* Dropbox へ送った・送れなかったは store の外で動くので、別に聞きます。 */
+    if (KN.dropbox) KN.dropbox.onChange(render);
 
     /* 左端から引いて一段戻る。設定の中では紙の重なり、いちばん外では
        画面そのものが動きます——どちらも「上の一枚と、その下の一枚」なので、
@@ -457,6 +459,7 @@
     look:   { title: "外観",                 build: lookRows },
     data:   { title: "バックアップと書き出し", build: dataRows },
     danger: { title: "データを消す",          build: dangerRows },
+    dropbox: { title: "Dropbox へ送る",       build: dropboxRows },
     stores: { title: "お店",                 build: () => [storesGroup()] },
     cats:   { title: "カテゴリ",              build: () => [categoriesGroup()] },
     icons:  { title: "アイコンについて",       build: () => [iconGapsGroup(), iconReportsGroup()] },
@@ -2841,6 +2844,11 @@
         navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", onTap: () => file.click() })
       ),
       foot(exportSub()),
+      KN.dropbox ? card(navRow({
+        ico: "upload", tint: TINT.data, title: "Dropbox へ自動で送る",
+        value: dropboxValue(KN.dropbox.status()),
+        onTap: () => go("dropbox"),
+      })) : null,
       card(
         navRow({
           ico: "undo", tint: TINT.sub, title: "自動バックアップから戻す",
@@ -2868,6 +2876,98 @@
       file,
       verify,
       diaryFile,
+    ];
+  }
+
+  /* ---------------- Dropbox へ送る（js/dropbox.js） ----------------
+
+     つなぐまでは三行（App key・ゆるす・コードを貼る）。つないだあとは、
+     最後に送った時刻と、いま送る・切る。送る中身と溜まり方は
+     docs/storage.md の「Dropbox へ送る」。 */
+
+  function dropboxValue(s) {
+    if (s.connected) return s.error ? "送れていません" : "つないでいます";
+    return s.needsAuth ? "つなぎ直しが要ります" : "";
+  }
+
+  function whenText(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
+  }
+
+  function dropboxRows() {
+    const db = KN.dropbox;
+    const s = db.status();
+    if (!s.connected) {
+      db.prepare();
+      return [
+        foot("記録をまるごと、Dropbox の「アプリ」フォルダへ自動で送ります。開いたとき・書き換えて少ししたときに、変わっていれば送ります。"),
+        fieldCard({
+          label: "App key", value: s.appKey, placeholder: "Dropbox の App Console に出ている英数字",
+          onSave: (v) => { db.setAppKey(v); render(); },
+        }),
+        card(
+          navRow({
+            ico: "route", tint: TINT.data, title: "Dropbox でゆるす",
+            value: s.appKey ? "" : "App key が要ります",
+            onTap: () => {
+              const url = db.authUrl();
+              if (!url) {
+                KN.ui.toast(s.appKey ? "用意しています。少し待ってから、もう一度押してください" : "先に App key を入れてください");
+                return;
+              }
+              window.open(url, "_blank", "noopener");
+            },
+          }),
+          navRow({
+            ico: "check", tint: TINT.data, title: "出てきたコードを貼る",
+            onTap: async () => {
+              if (!db.authUrl()) { KN.ui.toast("先に「Dropbox でゆるす」を"); return; }
+              const code = await KN.ui.prompt({ title: "Dropbox のコード", label: "ゆるしたあとに出てきたコード", okLabel: "つなぐ" });
+              if (code == null || !String(code).trim()) return;
+              try {
+                const r = await db.finish(code);
+                KN.ui.toast(r === "sent" ? "つなぎました。最初の控えを送りました" : "つなぎました");
+              } catch (err) {
+                KN.ui.toast("つなげませんでした（" + ((err && err.message) || err) + "）");
+              }
+              render();
+            },
+          })
+        ),
+        foot(s.needsAuth
+          ? "Dropbox の側でつながりが外れました。もう一度ゆるして、コードを貼ってください。"
+          : "「ゆるす」を押すと Dropbox の画面が開きます。ゆるすと出てくるコードを写して、ここへ戻って貼ります。"),
+      ];
+    }
+    const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
+    const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。次に開いたときに、また送ります。` : "";
+    return [
+      card(navRow({
+        ico: "upload", tint: TINT.data, title: "いま送る",
+        onTap: async () => {
+          const r = await db.sync();
+          KN.ui.toast(r === "sent" ? "送りました" : r === "same" ? "前に送ったものと同じです" : "送れませんでした");
+          render();
+        },
+      })),
+      foot(last + err),
+      foot(`「kurashi-latest.json」は送るたびに上書きします。「daily」には一日一つ、その日はじめて送った中身を置き、新しいほうから${s.keep}日ぶんを残します。どれも「バックアップから復元」で読めます。`),
+      card(dangerRow({
+        ico: "close", title: "Dropbox とのつながりを切る",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "つながりを切りますか？",
+            message: "これからは送りません。Dropbox に置いたファイルはそのまま残ります。",
+            okLabel: "切る", danger: true,
+          });
+          if (!ok) return;
+          await db.disconnect();
+          render();
+        },
+      })),
     ];
   }
 

@@ -33,6 +33,7 @@ const ASSETS = [
   "js/reorder.js",
   "js/keypad.js",
   "js/backup.js",
+  "js/dropbox.js",
   "js/insights.js",
   "js/pull-refresh.js",
   "js/cal-peek.js",
