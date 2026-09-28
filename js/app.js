@@ -38,7 +38,8 @@
     { id: "archive", label: "daily", icon: "book" },
     { id: "todo", label: "tasks", icon: "checklist" },
     /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
-       そこへは掴み手を下げて行きます。だから帯には席を持たず、価格を見て
+       そこへは、買うものに居るところでこの席を押して、紙を下げて行きます
+       （2026年9月28日まで掴み手を引いていた。いまの掴み手は暦のもの）。だから帯には席を持たず、価格を見て
        いるあいだも帯が言うのは「買うもの」——いま居るのは買うもののタブで、
        その紙を下げているだけなので。`holds` は「この席が受け持つ画面」。 */
     { id: "list", holds: ["prices"], label: "shopping", icon: "cart" },
@@ -169,9 +170,16 @@
       `);
       /* 価格を見ているところで「買うもの」を押したら、**紙を戻します**
          ——差し替えるのではなく。あの二つは重なった二枚なので、行き来は
-         紙の動きで見えていないと、どちらが前に居るのか分からなくなります。 */
+         紙の動きで見えていないと、どちらが前に居るのか分からなくなります。
+
+         **買うものを見ているところで押したら、紙を下げて価格へ**
+         （2026年9月28日から）。前は掴み手を下へ引くのが価格への道でしたが、
+         掴み手はほかのタブと同じく暦を開くものになったので、価格への入口は
+         この席が受け持ちます。動きは引いたときと同じ——紙が下がって後ろの
+         地が出ます。戻るのは、もう一度押すか、留まった頭を上へ引くか。 */
       btn.addEventListener("click", () => {
         if (t.holds && t.holds.indexOf(active) >= 0) { faceTo(0); return; }
+        if (t.holds && active === t.id) { faceTo(1); return; }
         show(t.id);
       });
       bar.append(btn);
@@ -751,6 +759,9 @@
       box.style.removeProperty("--face-p");
       box.style.removeProperty("--face-d");
     }
+    /* 掴み手の名札も言い直します（価格からよそのタブへ移ったとき、ここを
+       通るだけで faceSettle を通らないので）。 */
+    syncFaceGrips();
   }
 
   /** 行き先まで滑らせて、着いたら片づけます。
@@ -809,6 +820,7 @@
     faceSettle(o, p);
   }
   KN.app.faceTo = faceTo;
+  KN.app.faceAt = faceAt;
 
   /* 面をめくる掴み手たち。名札を state に合わせて言い直すために控えます
      ——同じ一つの棒が、下ろす前は「価格をひらく」、留まっているあいだは
@@ -816,9 +828,22 @@
   const faceGrips = [];
   function syncFaceGrips() {
     const at = faceAt();
-    faceGrips.forEach((g) => g.setAttribute("aria-label", at
-      ? "買うものへ戻る（上へ引いても戻ります）"
-      : "価格をひらく（下へ引いてもひらきます）"));
+    faceGrips.forEach((g) => {
+      /* 紙が上に居るあいだ、この掴み手は暦のもの（cal-peek）で、押しても
+         何も起きません——ほかのタブの掴み手と同じく、読み上げにもキーにも
+         出しません。価格への道は帯の「shopping」です。 */
+      if (!at) {
+        g.removeAttribute("role");
+        g.removeAttribute("tabindex");
+        g.removeAttribute("aria-label");
+        g.setAttribute("aria-hidden", "true");
+        return;
+      }
+      g.setAttribute("role", "button");
+      g.setAttribute("tabindex", "0");
+      g.removeAttribute("aria-hidden");
+      g.setAttribute("aria-label", "買うものへ戻る（上へ引いても戻ります）");
+    });
   }
 
   /** 紙の掴み手に、面をめくる手つきを結びます。
@@ -827,19 +852,16 @@
       掴み手を持ちません——持つと丸角と掴み手が二組出ます（base.css の
       「紙一枚と、その後ろの地」）。
 
-      同じ一つの棒が**往復を受け持ちます**。向きは `opts.role` ではなく
-      **いま紙がどこに居るか**（`faceAt()`）で決まります：上に居れば下へ、
-      下に留まっていれば上へ。役目を固定していたころは、下ろしたあとの
-      掴み手が「下へしか行けない」ままで、戻り道が塞がっていました。 */
-  KN.app.wireFaceGrip = function wireFaceGrip(grip, opts) {
+      **受け持つのは戻る道だけです**（2026年9月28日から）。紙が上に居る
+      あいだ、同じ掴み手は暦を開くもの（cal-peek、ほかのタブと同じ）で、
+      ここは何もしません。価格へ下げるのは帯の「shopping」（faceTo(1)）。
+      下に留まっているときだけ、上へ引く・押すで買うものへ戻します
+      ——価格の画面に暦は関係ないので、戻る手つきはこれまでどおり。 */
+  KN.app.wireFaceGrip = function wireFaceGrip(grip) {
     if (!grip) return;
-    /* **押しても、めくれます。** 引くのが本筋ですが、そこにしか道が無いと
-       価格へは指で引ける人しか行けません（暦の段と違って、あちらには
-       この画面でしか見られない中身——商品と値段と店——があります）。
-       押す道があれば、キーボードにも読み上げにも通ります。 */
-    grip.setAttribute("role", "button");
-    grip.setAttribute("tabindex", "0");
-    grip.removeAttribute("aria-hidden");
+    /* **押しても戻れます。** 引くのが本筋ですが、そこにしか道が無いと
+       指で引ける人しか戻れません。押す道があれば、キーボードにも読み上げ
+       にも通ります（名札と role は syncFaceGrips が state に合わせます）。 */
     /* **「引いて更新」に、この指を渡しません。**
 
        これが無いと、掴み手を下へ引いた指を pull-refresh も一緒に取ります。
@@ -851,7 +873,7 @@
     grip.setAttribute("data-pull-own", "face");
     faceGrips.push(grip);
     syncFaceGrips();
-    const flip = () => faceTo(faceAt() ? 0 : 1);
+    const flip = () => { if (faceAt()) faceTo(0); };
     grip.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
@@ -862,6 +884,8 @@
     let lastT = 0, lastY = 0, vy = 0;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      // 紙が上に居るあいだは、暦の番です（cal-peek が紙の上で聞いています）。
+      if (!faceAt()) return;
       pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
       lastT = performance.now(); lastY = e.clientY; vy = 0;
       /* 始まりは**いまの姿**。留まっているところから掴んだら 1 から始まって、

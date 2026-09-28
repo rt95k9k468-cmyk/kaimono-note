@@ -273,7 +273,12 @@
       sec.querySelectorAll(".is-off-week").forEach((c) => c.classList.remove("is-off-week"));
       return;
     }
-    const here = sCur();
+    tagOffWeek(sec, sCur());
+  }
+
+  /** いまの週の外に印を付けます（月で見ているときも。cal-peek が引きはじめに
+      呼ぶ——行きと帰りで見え方が違わないように）。 */
+  function tagOffWeek(sec, here) {
     const first = sec.querySelector(".cal-day");
     const hasHere = !!sec.querySelector(`.cal-day[data-day="${here}"]`);
     const w = U.weekOf(hasHere ? here : (first ? first.dataset.day : here));
@@ -472,7 +477,35 @@
     return sCal;
   }
 
+  /**
+   * 買うものの紙の掴み手を引くと、暦が開く（2026年9月28日から。ほかのタブと
+   * 同じ js/cal-peek.js の三段——下へ引けば週→月、週から上へ押せば暦なし）。
+   * 前はこの掴み手が価格へのものでしたが、価格へは帯の「shopping」を押して
+   * 行くようになりました（app.js）。**紙が価格へ下がって留まっているあいだは
+   * 引きません**——そのときの掴み手は、買うものへ戻る道（wireFaceGrip）なので。
+   */
+  function shopPeek(o) {
+    KN.calPeek.wire({
+      sheet: o.sheet,
+      root: o.root,
+      cal: () => sCal,
+      isOpen: calOpen,
+      isShown: calShown,
+      enabled: () => o.enabled() && owner === "list" && !KN.app.faceAt(),
+      busy: () => KN.calSwipe.isActive(),
+      here: sCur,
+      tagOffWeek,
+      /* 段が変わったら書くだけ（組み直しは store の subscribe から）。
+         変わらなかったときは、引きはじめに付けた印を塗り直します。 */
+      commit: ({ shown, open }) => {
+        if (open !== calOpen() || shown !== calShown()) {
+          KN.store.setCalPref("list", { open, shown });
+        } else if (sCal) markWeek(sCal);
+      },
+    });
+  }
+
   mount();
 
-  KN.head = { els, mine, enter, putCal, has, TABS, shopCal, shopDay: sCur, shopGo };
+  KN.head = { els, mine, enter, putCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
 })();
