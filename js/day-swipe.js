@@ -574,11 +574,22 @@
       const go = fling ? (v < 0 ? 1 : -1) === want : Math.abs(moved) >= COMMIT;
       const key = go ? o.step(o.day(), want) : null;
       if (nudge) {
-        if (key) {
-          if (KN.motion) KN.motion.fire("nav");
-          o.commit(key);
-        }
-        home(v);
+        if (!key) { home(v); return; }
+        if (KN.motion) KN.motion.fire("nav");
+        /* 日が動くなら、**紙を素の位置・素の層に戻してから**中身を渡します。
+           指についてずれた層（will-change: transform）の中身を丸ごと差し
+           替えて、そのまま滑って戻すと、iPhone（WebKit）ではずれた位置の
+           古い絵が層に取り残され、掴み手を引いたときに新しい中身と二重に
+           出ました（2026年9月28日、買うもの。中身が日で変わるようになった
+           その日に出た）。中身が入れ替わるので、戻す滑りも要りません。 */
+        gen++;
+        settling = null;
+        track.style.transition = "";
+        track.style.transform = "";
+        track.style.willChange = "";
+        void track.offsetWidth;
+        if (o.lock) o.lock(false);
+        o.commit(key);
         return;
       }
       if (!key) { back(v); return; }

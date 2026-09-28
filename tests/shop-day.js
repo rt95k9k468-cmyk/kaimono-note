@@ -61,6 +61,8 @@ const touch = (cdp) => async (x, y, dx) => {
     b.firstElementChild && b.firstElementChild.classList.contains("day-bought")));
   const flips = await page.$$eval("#screen-list .js-body [data-flip]", (xs) => xs.map((x) => x.dataset.flip));
   c.check("data-flip が重ならない", new Set(flips).size === flips.length, flips.join(","));
+  c.check("過去の日の行に★も丸も無い", await page.$$eval("#screen-list .day-bought .item",
+    (xs) => xs.every((x) => !x.querySelector(".fav, .check"))));
   c.check("過去の日の紙は、その日に買ったものだけ（まだ買っていないもの・送る・アーカイブが無い）",
     await page.$eval("#screen-list .js-body", (b) => b.children.length === 1
       && !b.querySelector(".list-share, .done-head, .low, .trip")
@@ -92,6 +94,15 @@ const touch = (cdp) => async (x, y, dx) => {
   c.check("今日の紙にはリストが戻る", await page.$$eval("#screen-list .js-body .item:not(.is-checked)", (xs) => xs.length > 0));
 
   // 今日買ったものは、リストの終わりに「今日買ったもの」
+  await page.evaluate(() => KN.store.update((s) => {
+    s.items[3].checked = true; s.items[3].checkedAt = new Date().toISOString();
+  }));
+  await page.waitForTimeout(400);
+  c.check("今日買ったものの行は★が無く、丸だけ残る（押しまちがいを戻せる）", await page.$$eval(
+    "#screen-list .day-bought .item", (xs) => xs.length === 1 && !xs[0].querySelector(".fav") && !!xs[0].querySelector(".check")));
+  await page.click("#screen-list .day-bought .check");
+  await page.waitForTimeout(500);
+  c.check("今日の丸を押すと買うものへ戻る", await page.evaluate(() => !KN.store.get().items[3].checked));
   await page.evaluate(() => KN.store.update((s) => {
     s.items[3].checked = true; s.items[3].checkedAt = new Date().toISOString();
   }));
@@ -130,6 +141,10 @@ const touch = (cdp) => async (x, y, dx) => {
   await flick(row.x - 60, row.y, 160);
   await page.waitForTimeout(800);
   c.check("行の上を右へ払うと、日が一日戻る", await page.evaluate((k) => KN.head.shopDay() === k, yk));
+  c.check("日が動いた紙は、ずれた層のまま残らない（transform も will-change も無い）", await page.evaluate(() => {
+    const b = document.querySelector("#screen-list .js-body");
+    return !b.style.transform && !b.style.willChange && getComputedStyle(b).transform === "none";
+  }));
   const after = await page.evaluate((id) => {
     const it = KN.store.get().items.find((i) => i.id === id);
     return { fav: !!it.fav, archived: !!KN.store.getProduct(it.productId).archived };
