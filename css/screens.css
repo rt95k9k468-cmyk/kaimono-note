@@ -3533,7 +3533,7 @@ a.btn { text-decoration: none; }
 
 /* ---- 書くシート ---- */
 
-.arc-pick { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.arc-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .arc-pick-b {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 11px; border-radius: var(--r-full);
@@ -3547,6 +3547,20 @@ a.btn { text-decoration: none; }
   background: color-mix(in srgb, var(--arc-c) 10%, var(--c-surface));
 }
 .arc-pick-b.is-on svg { color: var(--arc-c); }
+/* 日記の札（新しく書くときだけ、並びの先頭）。種類ではなく行き先なので、
+   同じ大きさにすると埋もれる——一回り大きく、主色の字で、あとに余白。 */
+.arc-pick-diary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: var(--r-full);
+  margin-inline-end: var(--sp-3);
+  font-size: var(--fs-md); font-weight: 700;
+  color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary-fill) 12%, var(--c-surface));
+  border: 1.5px solid color-mix(in srgb, var(--c-primary) 45%, transparent);
+  transition: scale var(--m-press) var(--ease);
+}
+.arc-pick-diary svg { color: var(--c-primary); }
+.arc-pick-diary:active { scale: .96; }
 
 /* 本／論文の切り替え。arc-pick-b と同じ見た目にし、種類の色ではなく
    主色（primary）で選ばれたことを言います——読書という種類はもう

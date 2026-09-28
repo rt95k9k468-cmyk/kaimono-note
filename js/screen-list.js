@@ -141,6 +141,7 @@
                  aria-autocomplete="list">
           <div class="js-ac"></div>
           <span class="field-hint js-known" hidden></span>
+          <button type="button" class="dest-chip js-dest" hidden></button>
         </div>
 
         <div class="field">
@@ -207,7 +208,28 @@
       const n = pieces().length;
       addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
       renderSuggestions(nameEl, acHost, typed, choose);
+      paintDest();
     }
+
+    /* 行き先の札（R4）。「明日 19:00 歯医者」は、やることらしい——押せばそちらへ。
+       押さなければ今までどおり買うものに入る。 */
+    const paintDest = KN.capture
+      ? KN.capture.bindChip(body.querySelector(".js-dest"), {
+        from: "list",
+        text: () => (picked ? "" : nameEl.value),
+        go: (g) => {
+          const rec = KN.capture.toTodo(nameEl.value.trim(), g.when);
+          handle.close();
+          if (!rec) return;
+          const W = KN.whenParse;
+          const w = g.when && W ? W.describe(g.when) : "";
+          KN.motion.fire("save");
+          KN.ui.toast(`やることに「${rec.title}」を入れました${w ? `（${w}）` : ""}`, {
+            action: { label: "戻す", onClick: () => store.removeTodo(rec.id) },
+          });
+        },
+      })
+      : () => {};
 
     /* 「牛乳、卵、パン」は三つ（docs/roadmap.md の R1）。候補から選んだ品物は、
        名前に読点があっても一つ。登録済みの名前に入っている読点でも分けない。 */
@@ -247,6 +269,7 @@
         ? `登録済みの商品です・${st.name} ${yen(best.price)} が最安`
         : "登録済みの商品です";
       acHost.innerHTML = "";
+      paintDest();
       nameEl.focus();
     }
 

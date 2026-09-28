@@ -109,6 +109,9 @@
         showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
         /* 季節のひとこと（二十四節気・七十二候、R2）。既定は出す。設定で消せる。 */
         showSeason: true,
+        /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
+           → "todo" | "list"。既定は空（js/capture.js の learn）。 */
+        captureDest: {},
       },
     };
   }
@@ -680,6 +683,8 @@
     out.settings.accent = cleanAccent(out.settings.accent);
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
     out.settings.showSeason = out.settings.showSeason !== false;
+    { const cd = out.settings.captureDest;
+      out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
     /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */
     if (!["std", "l", "xl", "auto"].includes(out.settings.textSize)) out.settings.textSize = "std";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;

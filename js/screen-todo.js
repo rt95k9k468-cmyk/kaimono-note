@@ -734,6 +734,7 @@
                  autocomplete="off" autocapitalize="off" spellcheck="false"
                  aria-label="やること">${editing ? t.title : ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
+          <button type="button" class="dest-chip js-dest" hidden></button>
         </span>
       </div>
     `);
@@ -1596,6 +1597,25 @@
     }
 
     titleEl.addEventListener("input", paintHeroFacts);
+    /* 行き先の札（R4）。新しく足す紙で、打った字が買うものらしいときだけ
+       （「牛乳」「電池を買う」）。押せば買うものへ入り、紙は閉じる。 */
+    if (!editing && KN.capture) {
+      const paintDest = KN.capture.bindChip(hero.querySelector(".js-dest"), {
+        from: "todo",
+        text: () => titleEl.value,
+        go: (g) => {
+          const got = KN.capture.toList(g.title);
+          handle.close();
+          if (!got) return;
+          haptic(12);
+          if (!got.item) { KN.ui.toast(`「${got.product.name}」はもうリストにあります`); return; }
+          KN.ui.toast(`買うものに「${got.product.name}」を入れました`, {
+            action: { label: "戻す", onClick: got.undo },
+          });
+        },
+      });
+      titleEl.addEventListener("input", paintDest);
+    }
     titleEl.addEventListener("change", () => whenApply());
     titleEl.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter") return;

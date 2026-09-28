@@ -193,11 +193,32 @@
     return product.name;
   }
 
-  /** 受け箱のまだ足していない一通を、買うものに足します。@returns 読んだ名前の数 */
+  /* 「くらしノートに入れる」（R5）。頭に @ を付けて送った一通は、行き先を
+     アプリの側で推します（js/capture.js）。中継所は中身を読まないまま——印も
+     本文の一部として運ばれるだけなので、worker の置き直しは要りません。
+     印の無い一通は、今までどおり買うもの。 */
+  const ANY_MARK = /^\s*[@＠]\s*/;
+
+  /* 声は「牛乳と卵」とつなぐ。どの片も品物に当たるときだけ「と」で切ります
+     （capture.voiceSplit。「とうもろこし」「さといも」は切らない）。 */
+  function voiceNames(text) {
+    const C = KN.capture;
+    const names = itemNames(text);
+    if (!C) return names;
+    const c = C.ctx();
+    const isItem = (n) => c.isProduct(n) || !!c.iconKey(n) || c.learnedCat(n);
+    const out = [];
+    names.forEach((n) => C.voiceSplit(n, isItem).forEach((x) => out.push(x)));
+    return out;
+  }
+
+  /** 受け箱のまだ足していない一通を、買うもの（印があれば推した行き先）に
+      足します。@returns 読んだ名前の数 */
   function takeInbox(parts) {
     const since = inboxAt();
     let top = since;
     const names = [];
+    const todos = [];
     (parts || []).forEach((p) => {
       String(p).split("\n").slice(1).forEach((line) => {
         let row = null;
@@ -205,7 +226,27 @@
         const at = Number(row && row.at) || 0;
         if (at <= since) return;
         if (at > top) top = at;
-        itemNames(row.text).forEach((n) => names.push(n));
+        const text = String(row.text || "");
+        if (ANY_MARK.test(text) && KN.capture) {
+          const body = text.replace(ANY_MARK, "").trim();
+          if (!body) return;
+          const g = KN.capture.guess(body, KN.capture.ctx());
+          if (!g) {
+            /* 「牛乳と卵」のように、切ればどれも品物になる字は買うもの。 */
+            const c = KN.capture.ctx();
+            const vs = voiceNames(body);
+            if (vs.length >= 2 && vs.every((n) => c.isProduct(n) || !!c.iconKey(n) || c.learnedCat(n))) {
+              vs.forEach((n) => names.push(n));
+              return;
+            }
+          }
+          /* 推せなかったものは、やることへ（今日）。品物なら絵の辞書か
+             登録済みの名前がたいてい知っていて、知らない字は用事のほうが多い。 */
+          if (!g || g.dest === "todo") { todos.push({ text: body, when: g && g.when }); return; }
+          voiceNames(g.title).forEach((n) => names.push(n));
+          return;
+        }
+        voiceNames(text).forEach((n) => names.push(n));
       });
     });
     if (top === since) return 0;
@@ -220,12 +261,20 @@
       if (got) { if (added.indexOf(got) < 0) added.push(got); }
       else if (had.indexOf(n) < 0) had.push(n);
     });
+    const made = [];
+    todos.forEach((x) => {
+      const rec = KN.capture.toTodo(x.text, x.when);
+      if (rec) made.push(rec.title);
+    });
     const q = (list) => list.map((n) => "「" + n + "」").join("");
     if (KN.ui && KN.ui.toast) {
-      if (added.length) KN.ui.toast("Siri から買うものに" + q(added) + "を入れました");
+      const bits = [];
+      if (added.length) bits.push("買うものに" + q(added));
+      if (made.length) bits.push("やることに" + q(made));
+      if (bits.length) KN.ui.toast("Siri から" + bits.join("、") + "を入れました");
       else if (had.length) KN.ui.toast(q(had) + "はもうリストにあります");
     }
-    return names.length;
+    return names.length + todos.length;
   }
 
   /* ---------------- iPhoneだけで建てるための道具 ----------------
@@ -643,7 +692,7 @@
 
   KN.healthRelay = { configured, url, setUrl, host, pull, pullAndImport,
                      makePath, joinUrl, selfTest,
-                     inboxUrl, itemNames, takeInbox,
+                     inboxUrl, itemNames, voiceNames, takeInbox,
                      watch, pullNow, seenVer,
                      shortcutName, setShortcutName, runShortcut,
                      BOOST_SHORTCUT };
