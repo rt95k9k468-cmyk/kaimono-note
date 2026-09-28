@@ -5,13 +5,25 @@
      昨日買った二品だけが、買ったものの姿（is-checked）で紙の頭に出る。
      同じ行は下のアーカイブにも残る。data-flip は取り違えないよう別の名。
    - 押す道（暦の日を押す）でも組み直る・今日へ戻ると消える。
+   - 帯の「今日へ戻る」ボタンでも消える（前は日だけ戻って紙が前日のまま）。
+   - 行の上を本物のタッチで横に払うと日が動く。★もアーカイブも起きない
+     （行ごとの払いは外した。行に払いの裏地も無い）。
    - 価格から戻る：戻りきる直前（p≈0）には紙の影も価格の札の帯も薄れきっている
      （前は影 .14 と札の帯が居残って「一瞬暗くなる」）。滑りは --m-swipe より長い。 */
 const { open, checker } = require("./lib.js");
+const touch = (cdp) => async (x, y, dx) => {
+  const pts = (px) => [{ x: px, y, radiusX: 12, radiusY: 12, force: 1 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(x) });
+  for (let i = 1; i <= 12; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(x + dx * i / 12) });
+    await new Promise((ok) => setTimeout(ok, 16));
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+};
 
 (async () => {
   const c = checker("shop-day");
-  const { browser, page, errors } = await open();
+  const { browser, ctx, page, errors } = await open();
   await page.evaluate(() => {
     KN.store.loadSample();
     const y = new Date(); y.setDate(y.getDate() - 1); y.setHours(15, 0, 0, 0);
@@ -64,6 +76,39 @@ const { open, checker } = require("./lib.js");
   await page.evaluate(() => KN.head.shopGo(KN.util.todayKey()));
   await page.waitForTimeout(400);
   c.check("今日へ戻ると消える", (await dayRows()).length === 0);
+
+  // 帯の「今日へ戻る」ボタン（実機で前日のままになっていた道）
+  await page.evaluate((k) => KN.head.shopGo(k), yk);
+  await page.waitForTimeout(400);
+  c.check("（前提）昨日に居て、頭に二品", (await dayRows()).length === 2);
+  await page.click("#head .js-go-today");
+  await page.waitForTimeout(500);
+  c.check("「今日へ戻る」ボタンで、その日に買ったものが消える", (await dayRows()).length === 0);
+  c.check("「今日へ戻る」ボタンで、日が今日に", await page.evaluate(() =>
+    KN.head.shopDay() === KN.util.todayKey()));
+
+  // 行の上を横に払う：日が動く・★もアーカイブも起きない
+  c.check("行に払いの裏地（今回買う／アーカイブ）が無い",
+    await page.$$eval("#screen-list .swipe-yes, #screen-list .swipe-arch", (xs) => xs.length === 0));
+  const row = await page.evaluate(() => {
+    const w = [...document.querySelectorAll("#screen-list .js-body .item-wrap")]
+      .find((e) => !e.querySelector(".is-checked"));
+    const r = w.querySelector(".item-body").getBoundingClientRect();
+    const it = KN.store.get().items.find((i) => i.id === w.dataset.itemId);
+    return { id: w.dataset.itemId, x: r.left + r.width / 2, y: r.top + r.height / 2, fav: !!it.fav };
+  });
+  const flick = touch(await ctx.newCDPSession(page));
+  await flick(row.x - 60, row.y, 160);
+  await page.waitForTimeout(800);
+  c.check("行の上を右へ払うと、日が一日戻る", await page.evaluate((k) => KN.head.shopDay() === k, yk));
+  const after = await page.evaluate((id) => {
+    const it = KN.store.get().items.find((i) => i.id === id);
+    return { fav: !!it.fav, archived: !!KN.store.getProduct(it.productId).archived };
+  }, row.id);
+  c.check("払っても★は変わらない・アーカイブされない",
+    after.fav === row.fav && !after.archived, JSON.stringify(after));
+  await page.click("#head .js-go-today");
+  await page.waitForTimeout(500);
 
   await page.evaluate((k) => KN.head.shopGo(k), yk);
   await page.waitForTimeout(300);
