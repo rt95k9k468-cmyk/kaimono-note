@@ -18,6 +18,7 @@ const ASSETS = [
   "js/plan.js",
   "js/when-parse.js",
   "js/split-items.js",
+  "js/capture.js",
   "js/season.js",
   "js/icon-system.js",
   "js/icons-v2-keys.js",

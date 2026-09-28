@@ -1742,3 +1742,25 @@ button.hero-node:active { scale: .94; }
 .row-times .input { height: 40px; width: auto; flex: 1; min-width: 0; text-align: center; }
 .row-dash { color: var(--c-text-3); flex: none; }
 .row.js-day-span { align-items: flex-start; }
+
+/* 行き先の札（R4・js/capture.js）。打った字が、いまのタブと違う行き先らしい
+   ときだけ、入力欄の下に一つ。押せばそちらへ入る。 */
+.dest-chip {
+  display: inline-flex; align-items: center;
+  margin-top: var(--sp-2);
+  min-height: 36px; padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1.5px solid color-mix(in srgb, var(--c-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--c-primary-fill) 10%, var(--c-surface));
+  color: var(--c-primary);
+  font-size: var(--fs-sm); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: scale var(--m-press) var(--ease);
+}
+.dest-chip[hidden] { display: none; }
+.dest-chip:active { scale: .96; }
+.sheet-hero .dest-chip {
+  border-color: color-mix(in srgb, #fff 45%, transparent);
+  background: color-mix(in srgb, #fff 16%, transparent);
+  color: #fff;
+}

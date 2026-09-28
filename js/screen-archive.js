@@ -1482,10 +1482,31 @@
     };
     paintKind();
 
-    /* 種類の札。読書だけ専用の欄に切り替わります。 */
+    /* 種類の札。読書だけ専用の欄に切り替わります。
+
+       新しく書くときだけ、並びの先頭に**日記**の札を置きます（＋が記録の紙を
+       先に開くので、日記への入口はここ）。種類とは別の行き先なので、同じ
+       大きさで並べると埋もれる——一回り大きく、主色の字で、区切りの余白を
+       あけて先頭に。押すと紙を閉じて（書きかけがあれば、ほかの閉じ方と
+       同じく保存を試みて）、その日の日記を開きます。 */
     const pick = body.querySelector(".js-pick");
+    let toDiary = false;
     const paintPick = () => {
       pick.innerHTML = "";
+      if (!e) {
+        const d = node(html`
+          <button type="button" class="arc-pick-diary js-to-diary">
+            ${icon("edit", "is-sub")}<span>日記</span>
+          </button>
+        `);
+        d.addEventListener("click", () => {
+          KN.motion.fire("select");
+          toDiary = true;
+          h.tryClose();
+          setTimeout(() => { toDiary = false; }, 400);
+        });
+        pick.append(d);
+      }
       store.ARCHIVE_TYPES.forEach((t) => {
         const b = node(html`
           <button type="button" class="arc-pick-b ${t.id === type ? "is-on" : ""}"
@@ -1518,7 +1539,8 @@
       </div>
     `);
 
-    const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true });
+    const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
+      onClose: () => { if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); } } });
 
     footer.querySelector(".js-ok").addEventListener("click", () => {
       const isReading = type === "reading";
@@ -1825,22 +1847,19 @@
     KN.ui.toast(`${ym} を書き出しました`);
   }
 
-  /* ＋ は二つのことを始められます（その日のことを書く／積み上げを一つ足す）。
-     どちらかに決め打ちすると、もう片方は画面のどこかを探すことになるので、
-     押したその場に二つ並べます。 */
+  /* ＋ は、まず**記録の紙**を開きます（2026年9月28日）。前は押すと「Daily Log／
+     記録」の二択が出て、どちらかを選ぶ一手が毎回はさまっていた。＋で書きたく
+     なるのはたいてい記録のほうなので、そちらを先に開き、日記は紙の頭の札
+     （種類の札の並びの先頭、ほかより一回り大きい一枚）から一押しで移れます。 */
   function dockButton() {
     const fab = node(html`
       <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="書く" aria-haspopup="menu">${icon("plus")}</button>
+        <button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button>
       </div>
     `);
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
-      KN.app.fabMenu(e.currentTarget, [
-        { label: "Daily Log", icon: "edit",
-          onPick: () => openLogSheet(writeDay()) },
-        { label: "記録", icon: "book", onPick: () => openEntrySheet(null) },
-      ]);
+      openEntrySheet(null);
     });
     return fab;
   }

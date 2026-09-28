@@ -1095,5 +1095,8 @@
     });
   }
 
-  KN.productIcons = { find, findKey, fallback, ICONS, list, groups, byKey, suggest, search, LABELS };
+  /** 絵の見出し（「野菜」「お店」…）。行き先の推し（js/capture.js）が、品物の絵と
+      場所・用事の絵（銀行・病院）を見分けるのに使います。 */
+  const sectionOf = (key) => sectionByKey.get(key) || "";
+  KN.productIcons = { find, findKey, fallback, ICONS, list, groups, byKey, suggest, search, LABELS, sectionOf };
 })();
