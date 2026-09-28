@@ -35,6 +35,15 @@
      本文だけ「読めません」と出して書かせない（docs/storage.md）。 */
   const diaryBody = () => (KN.diaryIdb ? KN.diaryIdb.body() : "ok");
   const UNREAD = "読めません";
+  const MISSING = "本文が見つかりません";
+  /** 本文を元から外した行（store.memoOut。docs/storage.md の「段2の案」）の、
+      本文の欄に出す字。印の行でなければ null。印の行は本文のある日です
+      ——写しから戻る前は「読み込み中」、写しにも無ければ「本文が見つかりません」。 */
+  function outText(d) {
+    if (!store.memoOut(d)) return null;
+    const b = diaryBody();
+    return b === "loading" ? "読み込み中" : b === "off" ? UNREAD : MISSING;
+  }
   /** 本文に触る操作の前に。できないときは理由を言って true を返します。 */
   function bodyBlocked() {
     const b = diaryBody();
@@ -735,7 +744,8 @@
        四つ並びました——「20 日　—　起床 - ・ 就寝 -　作成 -」。
        決めごとは「書いていない日は、起床・就寝も帳簿も出さない」なので、
        **有無ではなく中身で見分けること。** */
-    const blank = (d) => !String(d.memo || "").trim() && !d.wake && !d.sleep;
+    // 本文を外した行（印）は、本文のある日です。
+    const blank = (d) => !String(d.memo || "").trim() && !d.wake && !d.sleep && !store.memoOut(d);
     const days = (only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine)
       .map((d) => (d.isBlank || blank(d)) ? Object.assign({}, d, { isBlank: true }) : d);
     const sec = node(html`
@@ -779,6 +789,7 @@
     days.forEach((d) => {
       const dt = U.dayDate(d.date);
       const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+      const out = unread ? null : outText(d);
       /* **button ではなく div です。** iOS も含め、button の中の字は選べません
          （長押しは「押しっぱなし」として扱われ、選択もコピーの吹き出しも
          出ません）。ここに出ているのはその日に書いた文そのものなので、
@@ -799,8 +810,8 @@
                   書いていない日ごとに同じ字が並んで「書かなかった日」の一覧に
                   見えるので、そちらは「—」のまま。色は薄い字（`.is-blank`）の
                   まま、責める色は当てません（daily は評価しない）。 */""}
-            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank || unread ? "is-blank" : ""}"
-                  >${unread ? UNREAD : d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo)}</span>
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
+                  >${unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
@@ -984,9 +995,13 @@
        ないので、書けます（本文だけ「読めません」）。 */
     const can = diaryBody();
     if (can === "loading") { bodyBlocked(); return; }
-    const readable = can === "ok";
-    if (!readable) KN.diaryIdb.retry();
+    if (can !== "ok") KN.diaryIdb.retry();
     const cur = store.dayLog(day) || {};
+    /* 本文を元から外した行（印）で、写しにも本文が無い日も、本文の欄を出し
+       ません。書かせると、どこかに残っているかもしれない本文の上に書くことに
+       なるので（印の行は上書きしない。store.setDayLog も本文を受け取りません）。 */
+    const missing = can === "ok" && store.memoOut(cur);
+    const readable = can === "ok" && !missing;
     const dt = U.dayDate(day);
     const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日(${U.weekdayJa(day)})` : day;
     const memoInit = !readable ? "" : (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
@@ -1003,7 +1018,9 @@
         </label>` : html`
         <div class="field">
           <span class="field-label">その日あったこと・したこと</span>
-          <p class="field-hint js-memo-unread">${UNREAD}（日記の保存場所を読めませんでした）。起きた・寝たは書けます。</p>
+          <p class="field-hint js-memo-unread">${missing
+            ? `${MISSING}（日記の保存場所にもありませんでした。バックアップのファイルから戻せることがあります）`
+            : `${UNREAD}（日記の保存場所を読めませんでした）`}。起きた・寝たは書けます。</p>
         </div>`}
         <div class="arc-times">
           <label class="field">

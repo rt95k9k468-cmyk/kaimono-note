@@ -1579,9 +1579,26 @@
     ];
   }
 
+  /* 月の書き出しには日記の本文が入ります。日記の写し（js/diary-idb.js）の
+     突き合わせが済む前は、写しから戻るはずの本文がまだ入っていないことがあり、
+     大きな保存場所を読めない日は本文を出さない日です。daily 画面の月の書き出し
+     （bodyBlocked）と同じ門。できないときは理由を言って true を返します。 */
+  function monthExportBlocked() {
+    const b = KN.diaryIdb ? KN.diaryIdb.body() : "ok";
+    if (b === "ok") return false;
+    if (b === "loading") {
+      KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
+    } else {
+      KN.diaryIdb.retry();
+      KN.ui.toast("日記の保存場所を読めない日なので、月ぶんは書き出せません（何も書き出していません）", { duration: 6000 });
+    }
+    return true;
+  }
+
   /* 書き出す月を選ぶ紙。記録のある月だけを、新しい順に並べます——
      空の月を書き出しても意味がないので、選べるのは中身のある月だけです。 */
   function openMonthExport() {
+    if (monthExportBlocked()) return;
     const arc = store.get().archive || { entries: [], days: [] };
     const months = new Set();
     (arc.entries || []).forEach((e) => { if (e.date) months.add(String(e.date).slice(0, 7)); });
@@ -1608,6 +1625,8 @@
         </button>
       `);
       row.addEventListener("click", () => {
+        // 紙を開いたあとで写しの様子が変わることがあるので、押したときにも。
+        if (monthExportBlocked()) return;
         downloadJSON(`daily-${ym}.json`, store.exportMonth(ym));
         KN.ui.toast(`${ym} を書き出しました`);
         if (handle) handle.close();
@@ -2779,13 +2798,35 @@
      （daily は数えない・評価しない）。 */
   function diaryCopyText(d) {
     if (!d || d.phase === "idle" || d.phase === "starting") return "";
-    if (d.phase === "off") return "日記の保存場所（大きな保存場所）を読めなかったので、daily の本文は「読めません」と出して、書けないようにしています（本文は記録の中に残っています。アプリを前に出すと、もう一度読みにいきます）。";
+    /* 記録の中から本文を外した日（印 memoOut。docs/storage.md の「段2の案」）が
+       あるか。あれば「本文は記録の中に残っています」は事実でないので言いません（罠c）。 */
+    const outs = ((store.get().archive || {}).days || []).some(store.memoOut);
+    if (d.phase === "off") {
+      return `日記の保存場所（大きな保存場所）を読めなかったので、daily の本文は「読めません」と出して、書けないようにしています（${outs
+        ? "記録の中から本文を外してある日は、保存場所が読めるまで出せません"
+        : "本文は記録の中に残っています"}。アプリを前に出すと、もう一度読みにいきます）。`;
+    }
     const n = d.opens || 0;
+    /* 直した向き。向きは2026年9月28日から数えているので、それより前に直した
+       回は「向きを数える前」として分けます。一度に両方の向きを直した回は、
+       両方に数えます。 */
+    const dir = [];
+    if (d.fixedCopy) dir.push(`写しから記録へ${d.fixedCopy}回`);
+    if (d.fixedLive) dir.push(`記録から写しへ${d.fixedLive}回`);
+    if (dir.length && d.fixedBefore) dir.push(`向きを数える前に${d.fixedBefore}回`);
     const how = !n ? "写したあと、読み比べて一字も違わないことを確かめました"
-      : d.fixed ? `開くたびに突き合わせていて、これまで${n}回のうち${d.fixed}回は、食い違いを直しました`
+      : d.fixed ? `開くたびに突き合わせていて、これまで${n}回のうち${d.fixed}回は、食い違いを直しました${dir.length ? `（${dir.join("・")}）` : ""}`
       : `開くたびに突き合わせていて、これまで${n}回とも食い違いはありません`;
-    const stuck = d.error ? "いまは写しへの書き足しが止まっています（記録の中には残っています）。" : "";
-    return `日記の本文は、記録の中に残したまま、大きな保存場所にも写してあります（${how}）。${stuck}`;
+    const stuck = d.error ? `いまは写しへの書き足しが止まっています${outs ? "" : "（記録の中には残っています）"}。` : "";
+    const notes = [
+      d.restored ? "記録の中から外した本文を写しから戻したのは、食い違いには数えていません。" : "",
+      d.unverified ? "写しを確かめた記録が見つからなかったので、写し直さずに（写しを消さずに）突き合わせています。" : "",
+      d.missing ? "本文を外した日のうち、写しにも本文が見つからない日があります（その日は「本文が見つかりません」と出ます。バックアップのファイルから戻せることがあります）。" : "",
+    ].join("");
+    const lead = outs
+      ? "日記の本文は、大きな保存場所に写してあり、記録の中からは外してある日もあります"
+      : "日記の本文は、記録の中に残したまま、大きな保存場所にも写してあります";
+    return `${lead}（${how}）。${stuck}${notes}`;
   }
 
   function dataRows() {
