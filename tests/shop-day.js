@@ -46,6 +46,15 @@ const touch = (cdp) => async (x, y, dx) => {
     .map((i) => KN.store.getProduct(i.productId).name));
 
   c.check("今日は「その日に買ったもの」を出さない", (await dayRows()).length === 0);
+  /* 列：絵の丸の左・値段の右。買ったものの行も、リストの行と同じ列に並ぶ
+     （★と丸を抜いて両端へ寄せない。同じ夜・五度目）。 */
+  const cols = (sel) => page.$$eval(sel, (xs) => xs.map((x) => ({
+    emoji: Math.round(x.querySelector(".item-emoji").getBoundingClientRect().left),
+    price: Math.round(x.querySelector(".item-price").getBoundingClientRect().right) })));
+  const listCol = (await cols("#screen-list .js-body .item:not(.is-checked)"))[0];
+  const sameCols = (cs) => cs.length > 0 && cs.every((c) => c.emoji === listCol.emoji && c.price === listCol.price);
+  const unseen = (sel) => page.$$eval(sel, (xs) =>
+    xs.length > 0 && xs.every((b) => getComputedStyle(b).visibility === "hidden" && b.tabIndex === -1));
 
   const yk = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -1));
   await page.evaluate((k) => KN.head.shopGo(k), yk);
@@ -61,8 +70,10 @@ const touch = (cdp) => async (x, y, dx) => {
     b.firstElementChild && b.firstElementChild.classList.contains("day-bought")));
   const flips = await page.$$eval("#screen-list .js-body [data-flip]", (xs) => xs.map((x) => x.dataset.flip));
   c.check("data-flip が重ならない", new Set(flips).size === flips.length, flips.join(","));
-  c.check("過去の日の行に★も丸も無い", await page.$$eval("#screen-list .day-bought .item",
-    (xs) => xs.every((x) => !x.querySelector(".fav, .check"))));
+  c.check("過去の日の行に★も丸も見えない（押せない）", await unseen("#screen-list .day-bought .fav, #screen-list .day-bought .check"));
+  const pastCols = await cols("#screen-list .day-bought .item");
+  c.check("過去の日の行も、今日のリストの行と同じ列（両端へ寄せない）", sameCols(pastCols),
+    JSON.stringify({ list: listCol, past: pastCols }));
   c.check("過去の日の紙は、その日に買ったものだけ（まだ買っていないもの・送る・アーカイブが無い）",
     await page.$eval("#screen-list .js-body", (b) => b.children.length === 1
       && !b.querySelector(".list-share, .done-head, .low, .trip")
@@ -98,8 +109,12 @@ const touch = (cdp) => async (x, y, dx) => {
     s.items[3].checked = true; s.items[3].checkedAt = new Date().toISOString();
   }));
   await page.waitForTimeout(400);
-  c.check("今日買ったものの行は★が無く、丸だけ残る（押しまちがいを戻せる）", await page.$$eval(
-    "#screen-list .day-bought .item", (xs) => xs.length === 1 && !xs[0].querySelector(".fav") && !!xs[0].querySelector(".check")));
+  c.check("今日買ったものの行は★が見えず、丸だけ残る（押しまちがいを戻せる）",
+    await unseen("#screen-list .day-bought .fav") && await page.$$eval("#screen-list .day-bought .check",
+      (xs) => xs.length === 1 && getComputedStyle(xs[0]).visibility === "visible"));
+  const todayCols = await cols("#screen-list .day-bought .item");
+  c.check("今日買ったものの行も、リストの行と同じ列", sameCols(todayCols),
+    JSON.stringify({ list: listCol, today: todayCols }));
   await page.click("#screen-list .day-bought .check");
   await page.waitForTimeout(500);
   c.check("今日の丸を押すと買うものへ戻る", await page.evaluate(() => !KN.store.get().items[3].checked));
@@ -151,6 +166,39 @@ const touch = (cdp) => async (x, y, dx) => {
   }, row.id);
   c.check("払っても★は変わらない・アーカイブされない",
     after.fav === row.fav && !after.archived, JSON.stringify(after));
+
+  /* 最後の動きと同じ拍に離す。前は、動きが頼んだ描画（rAF）が離したあとに
+     走って、素に戻した紙を指のぶん（44px まで）横へずらし直していた
+     ——日が替わったあとも紙の中身が横にずれたまま・はみ出したまま
+     （iPhone、同じ日の夜・五度目）。iPhone では離す知らせが最後の動きと
+     同じ拍に来る。Chromium は動きを描画の拍に揃えて配るので、本物の
+     タッチ（CDP）ではこの順が作れない——ここだけは一つの拍の中で
+     pointer の down→move→up を投げる。行き・帰りの両方で見る。 */
+  const bodyX = () => page.evaluate(() => {
+    const b = document.querySelector("#screen-list .js-body");
+    return { tf: b.style.transform || "", left: Math.round(b.getBoundingClientRect().left),
+      sheet: Math.round(b.closest(".tl-sheet").getBoundingClientRect().left) };
+  });
+  for (const [dx, want] of [[-160, 1], [160, -1]]) {
+    const from = await page.evaluate(() => KN.head.shopDay());
+    await page.evaluate((dx) => {
+      const s = document.querySelector("#screen-list .tl-sheet");
+      const r = s.getBoundingClientRect();
+      const x = r.left + r.width / 2 - dx / 2, y = r.top + r.height / 2;
+      const ev = (type, px) => s.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true,
+        pointerId: 7, pointerType: "touch", isPrimary: true, clientX: px, clientY: y }));
+      ev("pointerdown", x);
+      for (let i = 1; i <= 12; i++) ev("pointermove", x + dx * i / 12);
+      ev("pointerup", x + dx);
+    }, dx);
+    await page.waitForTimeout(800);
+    const moved = await page.evaluate(([f, w]) => KN.head.shopDay() === KN.util.shiftDay(f, w), [from, want]);
+    const x = await bodyX();
+    c.check(`すぐ離しても日が動く（${dx < 0 ? "次" : "前"}の日へ）`, moved);
+    c.check(`すぐ離しても、紙の中身は横にずれたまま残らない（${dx < 0 ? "次" : "前"}の日へ）`,
+      !x.tf && x.left === x.sheet, JSON.stringify(x));
+  }
+
   await page.click("#head .js-go-today");
   await page.waitForTimeout(500);
 

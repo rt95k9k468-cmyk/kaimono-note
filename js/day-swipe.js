@@ -176,6 +176,18 @@
       frame = 0;
       track.style.transform = `translate3d(${originX + dx}px,0,0)`;
     };
+    /** 頼んだまま走っていない paint を取り消します。**指を離したら、まず
+        これ。** iPhone では離す知らせが最後の動きと同じ拍に来るので、
+        動きが頼んだ paint は離したあとに走ります。取り消さないと、素に
+        戻した紙（や、行き先へ滑らせはじめた紙）を、離す前の指の位置へ
+        書き戻します——買うものでは日が替わったあとも紙の中身が横に
+        ずれたまま残り、字が紙からはみ出し、層の取り残しと重なって二重に
+        見えました（2026年9月28日の夜・五度目。実測 34.5px）。Chromium は
+        動きを描画の拍に揃えて配るので、本物のタッチの試験では出ません。 */
+    const unpaint = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+    };
 
     /** 覗き見の一枚にします。
 
@@ -565,6 +577,7 @@
       const wasX = axis === "x";
       const moved = mx, v = velocity(e.timeStamp);
       id = null; axis = null;
+      unpaint();
       /* 縦の払い（や、動かなかったタップ）は、横には何も触れていません。
          ここで settle を呼ぶと、並べてもいない track に一瞬だけ
          translate を乗せてしまいます。 */
@@ -627,6 +640,7 @@
       if (e.pointerId !== id) return;
       const wasX = axis === "x";
       id = null; axis = null;
+      unpaint();
       if (!wasX) return;
       if (nudge) home(0);
       else back(0);
