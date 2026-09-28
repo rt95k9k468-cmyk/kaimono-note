@@ -522,16 +522,16 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
   c.check("もう一度押すと週へ", await page.evaluate(() => KN.store.calPrefs(null).open === false));
 
-  /* 日を押す：題と共通の日が動く。紙は、その日に買ったものが無ければ中身は
-     同じ（2026年9月28日から、今日でない日には「その日に買ったもの」を頭に出す
-     ——tests/shop-day.js。買うものの行は日で変わらない）。 */
+  /* 日を押す：題と共通の日が動く。今日でない日の紙は、その日に買ったもの
+     だけ（2026年9月28日夜から——tests/shop-day.js）。 */
   const rowsOf = () => page.$$eval("#screen-list .js-body .item-name", (xs) => xs.map((x) => x.textContent.trim()).join("|"));
   const rows1 = await rowsOf();
   await tapSel('#head .cal .cal-day[data-day="2026-09-17"]');
   await page.waitForTimeout(400);
   c.check("暦の日を押すと題がその日に", (await title()).includes("9月17日"), await title());
-  c.check("日を押しても買うものの行はそのまま（その日に買ったものが無い）",
-    (await rowsOf()) === rows1 && !(await page.$("#screen-list .day-bought")));
+  c.check("何も買っていない日を押すと、紙は「9月17日に買ったもの 0」だけ（同じ夜から）",
+    rows1 && (await rowsOf()) === "" && await page.$eval("#screen-list .day-bought-head",
+      (e) => e.textContent.replace(/\s+/g, "") === "9月17日に買ったもの0"));
   c.check("輪がその日に", await page.evaluate(() =>
     !!document.querySelector('#head .cal .cal-day.is-here[data-day="2026-09-17"]')));
   await tapSel('.tab[data-tab="todo"]');
@@ -576,7 +576,9 @@ const { open, checker } = require("./lib");
     await swipeAt(blank, -200);
     c.check("買うものの空白を左へ払うと次の日", (await title()).includes("9月16日")
       && (await owner()) === "list", await title());
-    c.check("払っても買うものの行はそのまま・元の位置に戻る", (await rowsOf()) === rows2
+    c.check("払った先（今日でない日）は、その日に買ったものだけ・紙は元の位置に戻る",
+      rows2 && (await rowsOf()) === ""
+      && !!(await page.$("#screen-list .day-bought"))
       && await page.evaluate(() => !document.querySelector("#screen-list .js-body").style.transform));
     c.check("払った日に暦の輪", await page.evaluate(() =>
       !!document.querySelector('#head .cal .cal-day.is-here[data-day="2026-09-16"]')));

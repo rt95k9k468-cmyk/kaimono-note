@@ -3,7 +3,9 @@
 
    - 今日は「その日に買ったもの」を出さない。昨日へ送ると（shopGo＝払いの道）
      昨日買った二品だけが、買ったものの姿（is-checked）で紙の頭に出る。
-     同じ行は下のアーカイブにも残る。data-flip は取り違えないよう別の名。
+     紙はそれだけ——まだ買っていないもの・「このリストを送る」・アーカイブは
+     出ない（同じ夜）。何も買っていない日は「◯月◯日に買ったもの 0」だけ。
+   - アーカイブの段は無い。今日買ったものはリストの終わりに「今日買ったもの」。
    - 押す道（暦の日を押す）でも組み直る・今日へ戻ると消える。
    - 帯の「今日へ戻る」ボタンでも消える（前は日だけ戻って紙が前日のまま）。
    - 行の上を本物のタッチで横に払うと日が動く。★もアーカイブも起きない
@@ -58,10 +60,20 @@ const touch = (cdp) => async (x, y, dx) => {
   c.check("紙のいちばん上に出る", await page.$eval("#screen-list .js-body", (b) =>
     b.firstElementChild && b.firstElementChild.classList.contains("day-bought")));
   const flips = await page.$$eval("#screen-list .js-body [data-flip]", (xs) => xs.map((x) => x.dataset.flip));
-  c.check("data-flip が重ならない（アーカイブの同じ行と取り違えない）",
-    new Set(flips).size === flips.length, flips.join(","));
-  c.check("下のアーカイブにも残る", await page.$$eval("#screen-list .js-done .item-name",
-    (xs, n) => n.slice(0, 2).every((x) => xs.some((e) => e.textContent.trim() === x)), names));
+  c.check("data-flip が重ならない", new Set(flips).size === flips.length, flips.join(","));
+  c.check("過去の日の紙は、その日に買ったものだけ（まだ買っていないもの・送る・アーカイブが無い）",
+    await page.$eval("#screen-list .js-body", (b) => b.children.length === 1
+      && !b.querySelector(".list-share, .done-head, .low, .trip")
+      && [...b.querySelectorAll(".item")].every((x) => x.closest(".day-bought"))));
+
+  // 何も買っていない日：「◯月◯日に買ったもの 0」だけ
+  const nk = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -2));
+  await page.evaluate((k) => KN.head.shopGo(k), nk);
+  await page.waitForTimeout(400);
+  const d2 = new Date(); d2.setDate(d2.getDate() - 2);
+  c.check("何も買っていない日は「◯月◯日に買ったもの 0」だけ", await page.$eval("#screen-list .js-body", (b, want) =>
+    b.children.length === 1 && b.querySelector(".day-bought-head").textContent.replace(/\s+/g, "") === want
+      && !b.querySelector(".item"), `${d2.getMonth() + 1}月${d2.getDate()}日に買ったもの0`));
 
   // 押す道：暦の日を押す（3日前）。週の外なら月で開いて押す。
   const zk = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -3));
@@ -76,6 +88,23 @@ const touch = (cdp) => async (x, y, dx) => {
   await page.evaluate(() => KN.head.shopGo(KN.util.todayKey()));
   await page.waitForTimeout(400);
   c.check("今日へ戻ると消える", (await dayRows()).length === 0);
+  c.check("今日の紙にアーカイブの段が無い", !(await page.$("#screen-list .done-head")));
+  c.check("今日の紙にはリストが戻る", await page.$$eval("#screen-list .js-body .item:not(.is-checked)", (xs) => xs.length > 0));
+
+  // 今日買ったものは、リストの終わりに「今日買ったもの」
+  await page.evaluate(() => KN.store.update((s) => {
+    s.items[3].checked = true; s.items[3].checkedAt = new Date().toISOString();
+  }));
+  await page.waitForTimeout(400);
+  c.check("今日買ったものがリストの終わりに出る", await page.$eval("#screen-list .js-body", (b) => {
+    const last = b.lastElementChild;
+    return last.classList.contains("day-bought")
+      && last.querySelector(".day-bought-head").textContent.replace(/\s+/g, "") === "今日買ったもの1";
+  }));
+  await page.evaluate(() => KN.store.update((s) => { s.items[3].checked = false; s.items[3].checkedAt = null; }));
+  await page.waitForTimeout(400);
+  c.check("今日何も買っていなければ出さない", (await dayRows()).length === 0
+    && !(await page.$("#screen-list .day-bought")));
 
   // 帯の「今日へ戻る」ボタン（実機で前日のままになっていた道）
   await page.evaluate((k) => KN.head.shopGo(k), yk);
