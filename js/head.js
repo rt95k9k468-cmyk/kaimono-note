@@ -66,6 +66,7 @@
       <header class="topbar">
         <div class="topbar-row">
           ${KN.util.dayTitleBar()}
+          <button class="icon-btn js-upcoming" aria-label="これからの二週間">${icon("calendar")}</button>
           <button class="icon-btn js-search-btn" aria-label="さがす">${icon("search")}</button>
           <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
         </div>
@@ -78,7 +79,12 @@
     els.today = root.querySelector(".js-go-today");
     els.searchBtn = root.querySelector(".js-search-btn");
     els.cal = root.querySelector(".head-cal");
-    /* 歯車だけは、どのタブでも同じことをします。 */
+    /* 歯車と「これからの二週間」（R7・js/upcoming.js）は、どのタブでも同じ
+       ことをします。二週間の一覧で日を押すと、やることのその日へ。 */
+    root.querySelector(".js-upcoming").addEventListener("click", () => {
+      KN.motion.fire("select");
+      KN.upcoming.open();
+    });
     root.querySelector(".js-settings").addEventListener("click",
       () => KN.app.showScreen("settings"));
     /* 買うもの・価格の題と「今日へ戻る」の応えは、ここが持ちます（二つの

@@ -5115,5 +5115,16 @@
 
   KN.screens = KN.screens || {};
   /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
-  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id) };
+  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id),
+    /* ほかから「その日を見せて」（これからの二週間・js/upcoming.js）。暦の月も
+       その日へ合わせます——一日ずつの紙でなければ、その日の棚まで運びます
+       （「今日へ戻る」と同じ二通り）。 */
+    goDay: (day) => {
+      const d = KN.util.dayDate(day);
+      if (!d) return;
+      setCalMonth(d.getFullYear(), d.getMonth(), true);
+      if (oneDay()) { goDay(day, day > shownDay() ? 1 : -1); return; }
+      markDay(day, true);
+      jumpToDay(day);
+    } };
 })();

@@ -5801,3 +5801,43 @@ a.btn { text-decoration: none; }
   font-size: var(--fs-sm);
   color: var(--c-text-2);
 }
+
+/* ---------- これからの二週間（R7・js/upcoming.js） ----------
+   日ごとの見出しと、その日に立つ用事。見出しも行も、押せばやることの
+   その日へ（section ごと一つの的）。評価の色は付けません——期限の札も
+   地の色は塗らず、字と細い枠だけ。 */
+.up { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
+.up-day { cursor: pointer; }
+.up-head {
+  display: flex; align-items: baseline; gap: var(--sp-2);
+  width: 100%; padding: 0; border: none; background: none; text-align: left;
+  color: var(--c-text);
+}
+.up-name { font-size: var(--fs-lg); font-weight: 700; }
+.up-date { font-size: var(--fs-sm); color: var(--c-text-2); }
+.up-go { margin-left: auto; color: var(--c-text-3); align-self: center; }
+.up-go svg { width: 14px; height: 14px; }
+.up-rows { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
+.up-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  min-height: 36px;
+  border-top: 1px solid var(--c-border);
+}
+.up-time {
+  flex: none; width: 3.2em;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-2); font-size: var(--fs-sm);
+}
+.up-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.up-rep { flex: none; color: var(--c-text-3); display: grid; }
+.up-rep svg { width: 14px; height: 14px; }
+.up-dl {
+  flex: none; font-size: var(--fs-xs); color: var(--c-primary);
+  border: 1px solid currentColor; border-radius: 999px; padding: 0 .5em;
+}
+.up-empty { color: var(--c-text-2); margin: var(--sp-4) 0; }
+/* 帯に暦の絵が一つ増えたぶん、狭い画面（360px）では日付の題が 8px 欠けた。
+   そこでだけ帯の間を 12 → 8px に。指の的（44px）は隣と 2px 重なるだけ。 */
+@media (max-width: 374px) {
+  .topbar-row { gap: var(--sp-2); }
+}
