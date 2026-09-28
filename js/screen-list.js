@@ -377,6 +377,18 @@
     const settle = KN.ui.flipRows(els.body, ".item-wrap");
     els.body.innerHTML = "";
 
+    /* 暦で今日でない日に合わせていたら、紙は**その日に買ったもの**だけ
+       （2026年9月28日夜、利用者：「その下に、まだ買ってないものやリストを
+       送るやアーカイブがあるのがおかしい。要らないでしょ」）。何も買って
+       いない日は「◯月◯日に買ったもの 0」だけ。探しているあいだは、日に
+       関係なくリストを探します（探した結果によその日を混ぜないので）。 */
+    const day = KN.head.shopDay();
+    if (!query && day && day !== KN.util.todayKey()) {
+      els.body.append(dayBought(items.filter((i) => i.checked), day));
+      settle();
+      return;
+    }
+
     if (!items.length) {
       // An empty search is not an empty list, and offering 「サンプルを入れて
       // 試す」 to someone who just typed a name would be answering the wrong
@@ -394,11 +406,6 @@
     const checked = items.filter((i) => i.checked);
     const trip = active.filter((i) => i.fav);
 
-    /* 暦で今日でない日に合わせていたら、**その日に買ったもの**を頭に出します
-       （2026年9月28日から）。探しているあいだは出しません（探した結果に
-       よその日の記録を混ぜると、リストの見方が崩れるので）。 */
-    if (!query) els.body.append(dayBought(checked));
-
     if (!trip.length) {
       /* Nothing starred: just the list. A total and a 「今回は◯◯だけで足ります」
          underneath would be answering a question nobody asked — the whole list
@@ -408,7 +415,7 @@
       const shown = appendGroups(active);
       if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]));
       els.body.append(lowSection());
-      if (checked.length) els.body.append(checkedSection(checked));
+      if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
       settle();
       return;
     }
@@ -444,7 +451,7 @@
     }
 
     els.body.append(lowSection());
-    if (checked.length) els.body.append(checkedSection(checked));
+    if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
     settle();
   }
 
@@ -853,29 +860,31 @@
 
   /* ---------------- その日に買ったもの（2026年9月28日） ----------------
 
-     暦で**今日でない日**に合わせると、その日に買ったものが紙の頭に出ます
-     （利用者：「shopping で買った日に日付を合わせたら、その日に買ったものが
-     出るように。過去と分かるように薄字かな」）。
+     暦で合わせた日に買ったもの（利用者：「shopping で買った日に日付を合わせ
+     たら、その日に買ったものが出るように。過去と分かるように薄字かな」）。
 
-     - 数えるのは暦の丸と同じ相手——アーカイブに残る「買った」（`checkedAt`
-       をローカルの日で）。**写さず引く**：記録の入れ物は増やしません。
-     - 行はアーカイブの行そのまま（`itemRow`）なので、**買ったものの姿**
-       ——線が引かれて薄い——で出ます。それが「過去」の印です。丸を押せば
-       アーカイブと同じく買うものへ戻せます。
-     - 下のリストはそのまま残します。買うものは日に属さない、ずっと続く
-       控えなので、日を替えても消しません。
-     - 今日は出しません。今日買ったものは、いつものアーカイブの頭に居るので。
-       何も買っていない日も出しません（暦に丸が無いことが、もう言っている）。 */
-  function dayBought(checked) {
-    const day = KN.head.shopDay();
-    if (!day || day === KN.util.todayKey()) return document.createDocumentFragment();
+     - 数えるのは暦の丸と同じ相手——買った印（`checkedAt` をローカルの日で）。
+       **写さず引く**：記録の入れ物は増やしません。
+     - 行は買ったものの姿（`itemRow` の is-checked：線が引かれて薄い）。丸を
+       押せば買うものへ戻せます。
+     - **今日でない日は、紙はこれだけ**（同じ日の夜、利用者：「まだ買ってない
+       ものやリストを送るやアーカイブがあるのがおかしい」）。何も買っていない
+       日も「◯月◯日に買ったもの 0」を出します（「それ以外は何も要らない」）。
+     - **アーカイブの段は外しました**（同じ夜、「アーカイブ自体要らなくない？」）。
+       前の日に買ったものは、暦でその日へ行けば見えます。今日買ったものは、
+       リストの終わりに「今日買ったもの」として出ます（0 なら出さない——
+       今日の紙の主役はリストのほう）。買った印（checked / checkedAt）は
+       一つも消していません。描かないだけです。 */
+  function dayBought(checked, day) {
+    const isToday = day === KN.util.todayKey();
     const bought = checked
       .filter((i) => i.checkedAt && KN.util.dayKey(new Date(i.checkedAt)) === day)
       .sort((a, b) => String(a.checkedAt).localeCompare(String(b.checkedAt)));
-    if (!bought.length) return document.createDocumentFragment();
+    if (isToday && !bought.length) return document.createDocumentFragment();
 
     const d = KN.util.dayDate(day);
-    const label = d ? `${d.getMonth() + 1}月${d.getDate()}日に買ったもの` : "この日に買ったもの";
+    const label = isToday ? "今日買ったもの"
+      : d ? `${d.getMonth() + 1}月${d.getDate()}日に買ったもの` : "この日に買ったもの";
     const section = node(html`
       <section class="day-bought" aria-label="${label}">
         <h2 class="day-bought-head">${label} <span class="cat-head-count">${bought.length}</span></h2>
@@ -885,46 +894,8 @@
     const list = section.querySelector(".item-list");
     bought.forEach((item) => {
       const p = store.getProduct(item.productId);
-      if (!p) return;
-      const row = itemRow(item, p);
-      /* 同じ行が下のアーカイブにも居ます。組み直しの目印（data-flip）まで
-         同じだと、flipRows がどちらの行か取り違えるので、ここだけ別の名に。 */
-      row.dataset.flip = "day:" + item.id;
-      list.append(row);
-    });
-    return section;
-  }
-
-  /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
-     uses. They are the same idea — done with, kept, dated, out of the way of
-     what is still to do — and calling one of them something else made them
-     look like two different mechanisms. Newest first: an archive is read from
-     the most recent end. */
-  function checkedSection(checked) {
-    const st = store.get();
-    const open = st.settings.showChecked !== false;
-
-    const section = node(html`
-      <section class="cat-group">
-        <button class="done-head" aria-expanded="${String(open)}">
-          ${icon("chevron")} アーカイブ <span class="cat-head-count">${checked.length}</span>
-        </button>
-        <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
-      </section>
-    `);
-
-    const list = section.querySelector(".js-done");
-    const newestFirst = checked.slice().sort((a, b) =>
-      String(b.checkedAt || "").localeCompare(String(a.checkedAt || "")));
-    newestFirst.forEach((item) => {
-      const p = store.getProduct(item.productId);
       if (p) list.append(itemRow(item, p));
     });
-
-    section.querySelector(".done-head").addEventListener("click", () => {
-      store.update((s) => { s.settings.showChecked = !open; });
-    });
-
     return section;
   }
 

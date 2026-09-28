@@ -1644,15 +1644,18 @@
 }
 .done-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform var(--m-state) var(--ease); }
 
-/* その日に買ったもの（暦で今日でない日に合わせたとき。screen-list.js の
-   dayBought）。行はアーカイブの行そのままで、買ったものの姿（線と薄さ）が
-   「過去」を言います。見出しも同じ薄さの字で、下のリストと切れ目の線で分けます。 */
+/* その日に買ったもの（screen-list.js の dayBought）。今日でない日は紙に
+   これだけ、今日はリストの終わりに「今日買ったもの」。行は買ったものの姿
+   （線と薄さ）が「過去」を言います。見出しも同じ薄さの字。リストの後ろに
+   来るとき（今日）だけ、上に切れ目の線を引きます。 */
 .day-bought {
   padding-bottom: var(--sp-2);
-  margin-bottom: var(--sp-2);
+}
+.day-bought:not(:first-child) {
+  margin-top: var(--sp-2);
   /* 線は行の中身と同じく左右 16px 空けます（カテゴリの切れ目の線と同じ）。 */
   background: linear-gradient(var(--c-border), var(--c-border))
-              no-repeat var(--sp-4) 100% / calc(100% - 2 * var(--sp-4)) 1px;
+              no-repeat var(--sp-4) 0 / calc(100% - 2 * var(--sp-4)) 1px;
 }
 .day-bought-head {
   display: flex;
