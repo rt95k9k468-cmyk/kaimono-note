@@ -46,7 +46,11 @@
     { id: "daily",   label: "毎日" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
+    /* 暦ではなく、済ませた日から数える（R6）。「14日ごと（済ませた日から）」。 */
+    { id: "after",   label: "済ませてから" },
   ];
+  /* 「済ませてから◯日」の◯の早見。これ以外は −／＋ で。 */
+  const EVERY_PICKS = [3, 7, 10, 14, 30, 60, 90];
   const WD = KN.util.WEEKDAYS;
 
   /* 今日 is one shelf, not four.
@@ -79,6 +83,7 @@
     if (!t.repeat) return "";
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "after") return `${t.repeatEvery || 7}日ごと`;
     if (t.repeat === "weekly") {
       const d = t.repeatDays || [];
       return d.length ? d.map((n) => WD[n]).join("・") : "毎週";
@@ -95,6 +100,7 @@
     // 「毎朝」 already says both how often and when; 「毎日 毎朝」 says it twice.
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "after") return `済ませてから${t.repeatEvery || 7}日ごと`;
     if (t.repeat === "weekly") {
       // 表示だけ月曜はじまりに揃えます（保存している repeatDays の並びは
       // 変えません——曜日チップの並びと同じ理由です）。
@@ -512,6 +518,8 @@
     let repeat = editing ? t.repeat : null;
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
+    // 「済ませてから◯日」の◯。ほかの種類のあいだも覚えておく（選び直したとき用）。
+    let repeatEvery = editing && t.repeatEvery ? t.repeatEvery : 7;
     let flagged = editing ? !!t.flagged : false;
     let minutes = editing ? (t.minutes || null) : null;
     let iconKey = editing ? (t.icon || null) : null;
@@ -806,7 +814,7 @@
             title: `${src.title}(コピー)`,
             due: src.due, deadline: src.deadline, part: src.part, time: src.time,
             repeat: src.repeat, repeatDays: src.repeatDays, repeatNth: src.repeatNth,
-            memo: src.memo, flagged: src.flagged, minutes: src.minutes,
+            repeatEvery: src.repeatEvery, memo: src.memo, flagged: src.flagged, minutes: src.minutes,
             shop: src.shop, icon: src.icon,
             // 手順は形だけ写して、済ませた印は落とします。
             subs: (src.subs || []).map((x) => ({ title: x.title })),
@@ -953,7 +961,8 @@
         .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
       row(".js-row-repeat", rid ? rw : "くりかえさない",
           repeat === "weekly" && repeatDays.length
-            ? orderedRepeatDays.map((d) => WD[d]).join("・") : "");
+            ? orderedRepeatDays.map((d) => WD[d]).join("・")
+            : repeat === "after" ? `${repeatEvery}日ごと` : "");
       const nt = KN.notify;
       const on = !!(nt && nt.supported() && nt.enabled() && !nt.blocked());
       row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
@@ -1379,9 +1388,41 @@
     function paintRepeatDetail() {
       paintRows();
       detailEl.innerHTML = "";
-      detailEl.hidden = repeat !== "weekly" && repeat !== "monthly";
+      detailEl.hidden = repeat !== "weekly" && repeat !== "monthly" && repeat !== "after";
       repeatHint.hidden = detailEl.hidden;
       if (detailEl.hidden) return;
+
+      /* 「済ませてから◯日」（R6）。早見の数と、−／＋。打ちこむ欄は置かない
+         ——数を選ぶだけのことに、キーボードを出すほどの手間はかけない。 */
+      if (repeat === "after") {
+        const row = node(html`<div class="chip-row js-every"></div>`);
+        const setEvery = (n) => {
+          repeatEvery = Math.max(1, Math.min(365, n));
+          paintRepeatDetail();
+          haptic();
+        };
+        const minus = node(html`<button type="button" class="chip js-every-minus" aria-label="1日へらす">−</button>`);
+        minus.disabled = repeatEvery <= 1;
+        minus.addEventListener("click", () => setEvery(repeatEvery - 1));
+        row.append(minus);
+        const shown = EVERY_PICKS.includes(repeatEvery) ? EVERY_PICKS : EVERY_PICKS.concat(repeatEvery).sort((a, b) => a - b);
+        shown.forEach((n) => {
+          const on = n === repeatEvery;
+          const chip = node(html`
+            <button type="button" class="chip ${on ? "is-on" : ""}" aria-pressed="${String(on)}"
+                    data-every="${String(n)}">${n}日</button>
+          `);
+          chip.addEventListener("click", () => setEvery(n));
+          row.append(chip);
+        });
+        const plus = node(html`<button type="button" class="chip js-every-plus" aria-label="1日ふやす">＋</button>`);
+        plus.disabled = repeatEvery >= 365;
+        plus.addEventListener("click", () => setEvery(repeatEvery + 1));
+        row.append(plus);
+        detailEl.append(row);
+        repeatHint.textContent = `済ませた日から${repeatEvery}日後に、次が立ちます（早めても遅れても、そこから数え直します）`;
+        return;
+      }
 
       if (repeat === "weekly") {
         const row = node(html`<div class="chip-row js-days"></div>`);
@@ -1559,7 +1600,7 @@
       const res = W.parse(titleEl.value);
       if (!W.found(res)) return;
       const back = { title: titleEl.value, due, time, minutes, part, deadline,
-        repeat, repeatDays: repeatDays.slice(), repeatNth };
+        repeat, repeatDays: repeatDays.slice(), repeatNth, repeatEvery };
       setTitle(res.title);
       if (res.due) due = res.due;
       if (res.time) time = res.time;
@@ -1569,6 +1610,7 @@
         repeat = res.repeat;
         repeatDays = res.repeatDays || [];
         repeatNth = res.repeatNth || null;
+        if (res.repeatEvery) repeatEvery = res.repeatEvery;
         /* 毎朝・毎晩は記録の上では「毎日＋日の端」です。くり返しを言い直された
            のだから、古い端は外します。 */
         if (isBookend(part)) part = null;
@@ -1590,6 +1632,7 @@
             due = back.due; time = back.time; minutes = back.minutes; part = back.part;
             deadline = back.deadline;
             repeat = back.repeat; repeatDays = back.repeatDays; repeatNth = back.repeatNth;
+            repeatEvery = back.repeatEvery;
             repaintWhen();
           },
         },
@@ -1653,14 +1696,14 @@
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, deadline,
           part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes, icon: iconKey });
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes, icon: iconKey });
         /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
            知らない欄を混ぜると黙って落ちます。 */
         store.setSubs(todoId, subs);
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes, subs, icon: iconKey });
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes, subs, icon: iconKey });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -1677,7 +1720,7 @@
       const W = KN.whenParse;
       const made = [];
       lines.forEach((line) => {
-        let v = { title: line, due, time, minutes, part, deadline, repeat, repeatDays, repeatNth };
+        let v = { title: line, due, time, minutes, part, deadline, repeat, repeatDays, repeatNth, repeatEvery };
         const res = W ? W.parse(line) : null;
         if (res && W.found(res)) {
           v.title = res.title;
@@ -1689,6 +1732,7 @@
             v.repeat = res.repeat;
             v.repeatDays = res.repeatDays || [];
             v.repeatNth = res.repeatNth || null;
+            if (res.repeatEvery) v.repeatEvery = res.repeatEvery;
             if (isBookend(v.part)) v.part = null;
           }
           if (v.time && !v.due) v.due = (oneDay() ? shownDay() : todayKey()) || todayKey();
@@ -1697,7 +1741,7 @@
         const rec = store.addTodo({ title: v.title, due: fx, deadline: v.deadline,
           part: fx ? v.part : null, time: fx ? v.time : null,
           repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth,
-          memo, flagged, minutes: v.minutes });
+          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes });
         if (rec) made.push(rec.id);
       });
       haptic(12);
@@ -1713,7 +1757,7 @@
             const title = lines.join("、");
             const fixed = due ? store.snapToRule({ repeat, repeatDays, repeatNth }, due) : due;
             store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null,
-              time: fixed ? time : null, repeat, repeatDays, repeatNth,
+              time: fixed ? time : null, repeat, repeatDays, repeatNth, repeatEvery,
               memo, flagged, minutes, icon: iconKey });
             KN.ui.toast(`「${title}」ひとつにしました`);
           },

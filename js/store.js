@@ -796,10 +796,13 @@
 
          持っていない記録は null に落ちるので、古い保存もそのまま読めます。 */
       deadline: /^\d{4}-\d{2}-\d{2}$/.test(t.deadline) ? t.deadline : null,
-      repeat: ["daily", "weekly", "monthly"].includes(t.repeat) ? t.repeat : null,
+      repeat: cleanRepeat(t.repeat),
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
+      /* 「済ませてから◯日」の◯（R6）。repeat が "after" のときだけ持ちます。
+         持っていない古い記録は null に落ちるだけで、読み方は変わりません。 */
+      repeatEvery: t.repeat === "after" ? cleanEvery(t.repeatEvery) : null,
       // 毎朝 / 毎晩、または時刻そのもの。どちらか一方だけを持ちます——両方ある
       // と食い違えるので。日のなかの並びは todoPart() が時刻から読みます。
       part: cleanPart(t.part),
@@ -973,6 +976,23 @@
     t.repeatNth = null;
     if (!t.due) t.due = KN.util.todayKey();
     return t;
+  }
+
+  /**
+   * くり返しの種類。暦どおりの三つ（毎日・毎週・毎月）と、R6 の
+   * 「済ませてから◯日」（"after"）。知らない字は「くり返さない」に落とします。
+   *
+   * **function 宣言にしてあること。** reconcile() が load() の道から呼ぶので、
+   * 種類の表を const で下に置くと TDZ で落ちます（CLAUDE.md の約束事）。
+   */
+  function cleanRepeat(v) {
+    return v === "daily" || v === "weekly" || v === "monthly" || v === "after" ? v : null;
+  }
+
+  /** 「済ませてから◯日」の◯。1〜365 の整数、それ以外は既定の 7。 */
+  function cleanEvery(v) {
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 1 && n <= 365 ? n : 7;
   }
 
   /** 0..6, no repeats, in week order — anything else is not a set of days. */
@@ -1438,7 +1458,7 @@
 
   function addTodo({ title, due = null, deadline = null, part = null, time = null,
                      repeat = null, repeatDays = [],
-                     repeatNth = null, memo = "", flagged = false, minutes = null,
+                     repeatNth = null, repeatEvery = null, memo = "", flagged = false, minutes = null,
                      shop = false, subs = [], icon = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
@@ -1449,9 +1469,10 @@
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
       // いつまでに。やる日（due）とは別（上の reconcile の但し書きを見ること）。
       deadline: /^\d{4}-\d{2}-\d{2}$/.test(deadline) ? deadline : null,
-      repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
+      repeat: cleanRepeat(repeat),
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
+      repeatEvery: repeat === "after" ? cleanEvery(repeatEvery) : null,
       /* 時刻があっても part は落としません。毎朝・毎晩は「一日の端に置く」
          という並び順の指定で、時刻は「いつ報せるか」——別のことなので。
          （毎朝・毎晩でない part は、そもそも cleanPart が落とします。） */
@@ -1833,7 +1854,11 @@
       if ("title" in patch) t.title = String(patch.title || "").trim() || t.title;
       if ("due" in patch) t.due = /^\d{4}-\d{2}-\d{2}$/.test(patch.due) ? patch.due : null;
       if ("repeat" in patch) {
-        t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
+        t.repeat = cleanRepeat(patch.repeat);
+      }
+      if ("repeat" in patch || "repeatEvery" in patch) {
+        t.repeatEvery = t.repeat === "after"
+          ? cleanEvery("repeatEvery" in patch ? patch.repeatEvery : t.repeatEvery) : null;
       }
       /* 時刻と、毎朝・毎晩は**両立します**。
          かつては排他でした（「19:30」と「朝」のどちらが本当か決めなおす
@@ -1881,6 +1906,11 @@
     /* Counted from the due date, then walked forward past any dates already
        gone: ticking off a bin day three weeks late should set the next one to
        the coming week, not to a date still in the past. */
+    /* 「済ませてから◯日」は、暦ではなく**済ませた日**から数えます。
+       次の日は済ませたその日（今日）＋◯日——予定より早く済ませても、
+       遅れて済ませても、そこから数え直すのがこの種類の意味です。 */
+    if (todo.repeat === "after") return U.shiftDay(U.todayKey(), cleanEvery(todo.repeatEvery));
+
     let next = from;
     const step = () => {
       if (todo.repeat === "daily") { next = U.shiftDay(next, 1); return; }
@@ -1943,6 +1973,11 @@
     // くり返しは「その日から」。始まる前の日には立ちません。
     if (!todo.due || day < todo.due) return todo.due === day;
     if (todo.due === day) return true;
+
+    /* 「済ませてから◯日」の次は、済ませるまで決まりません。先の日に
+       「たぶんこの日」と立てると、済ませた日しだいで嘘になるので、
+       立つのは次にやる日（due）だけです。 */
+    if (todo.repeat === "after") return false;
 
     if (todo.repeat === "daily") return true;
 
@@ -2015,6 +2050,11 @@
        ほうは今までどおり次の日へ移ります。写しはアーカイブには入れません
        ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
     const traceId = repeating ? uid("t") : null;
+    /* 「済ませてから◯日」を先の日で早めに済ませたら、やった跡は**済ませた
+       今日**に残します（次もそこから数えるので、跡と数え始めを揃える）。 */
+    const todayK = KN.util.todayKey();
+    const traceDay = before.repeat === "after" && before.due && before.due > todayK
+      ? todayK : before.due;
 
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
@@ -2024,8 +2064,8 @@
           s.todos.push({
             ...t,
             id: traceId,
-            due: t.due,          // 済ませた、その日のぶん
-            repeat: null, repeatDays: [], repeatNth: null,
+            due: traceDay,       // 済ませた、その日のぶん
+            repeat: null, repeatDays: [], repeatNth: null, repeatEvery: null,
             notifiedFor: null,
             done: true,
             doneAt: today(),
@@ -2234,7 +2274,9 @@
     openTodos().forEach((t) => {
       if (t.repeat) {
         if (!t.due || t.due >= today) return;
-        const next = firstFallOn(t, today);
+        // 「済ませてから◯日」は、決まりに当たる日が今日から先に無い
+        // （fallsOn は due の日だけ）。逃したら、今日へ。
+        const next = t.repeat === "after" ? today : firstFallOn(t, today);
         if (next && next !== t.due) moves.set(t.id, next);
         return;
       }

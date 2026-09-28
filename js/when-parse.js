@@ -207,6 +207,19 @@
      境目チェック。空きか、文字列の端でだけ止まってよい。 */
   const WORD_END = "(?=[\\s　]|$)";
 
+  /* 「◯日ごと」の後ろの境目。「に」ならそのまま食べ、でなければ空き・読点・
+     端でだけ止まる。**「の」では止まらない**——「3日ごとの記録をつける」の
+     「3日ごとの」は記録の中身を言っていて、くり返しの指定とは限らないので。 */
+  const EVERY_END = "(?:に|(?=[\\s　、,]|$))";
+
+  /** ◯日ごと。1日は毎日、7日ちょうどの「1週間ごと」も暦の毎週ではなく
+      済ませてから7日（週の言い方でも日の言い方でも、同じ意味に揃える）。 */
+  function everyDays(n) {
+    if (!Number.isInteger(n) || n < 1 || n > 365) return null;
+    if (n === 1) return { repeat: "daily" };
+    return { repeat: "after", repeatEvery: n };
+  }
+
   const RAW = [
     /* ---- くり返し ---- */
     { kind: "repeat", re: "毎月第([1-5])" + RE_WD,
@@ -241,6 +254,23 @@
         return { repeat: "weekly", repeatDays: days, due };
       } },
     { kind: "repeat", re: "毎週", read: () => ({ repeat: "weekly", repeatDays: [] }) },
+
+    /* 「3日ごと」「2週間ごと」「10日に1回」→ 済ませてから◯日（R6）。
+     *
+     * **後ろに境目が要ります**：「に」か、空き・読点・文字列の端。
+     * 「30日ごとチャレンジ」の頭を食べて「チャレンジ」だけにしないため。
+     * **「おき」は読みません**：辞書では「1日おき」は隔日（2日ごと）なのに、
+     * 「10日おき」は10日ごとの意味で打たれることが多く、どちらに決めても
+     * 片方を黙って読み違えます（docs/todo-items.md の誤読の表）。
+     * 月の「ごと」も読みません（暦の毎月と、日数のどちらか決まらないので）。 */
+    { kind: "repeat", re: "(\\d{1,3})日(?:ごと|毎)" + EVERY_END,
+      read: (m) => everyDays(Number(m[1])) },
+    { kind: "repeat", re: "(\\d{1,2})週間?(?:ごと|毎)" + EVERY_END,
+      read: (m) => everyDays(Number(m[1]) * 7) },
+    { kind: "repeat", re: "(\\d{1,3})日に[1１一]回" + EVERY_END,
+      read: (m) => everyDays(Number(m[1])) },
+    { kind: "repeat", re: "(\\d{1,2})週間?に[1１一]回" + EVERY_END,
+      read: (m) => everyDays(Number(m[1]) * 7) },
     { kind: "repeat", re: "毎日", read: () => ({ repeat: "daily" }) },
 
     /* ---- 期限（まで）----
@@ -421,6 +451,7 @@
   /** くり返しを、札と同じ言い方で。 */
   function repeatWord(res) {
     if (res.repeat === "daily") return "毎日";
+    if (res.repeat === "after") return `済ませてから${res.repeatEvery || 7}日ごと`;
     if (res.repeat === "weekly") {
       const d = res.repeatDays || [];
       return d.length ? "毎週 " + d.map((n) => WDS[n]).join("・") : "毎週";
