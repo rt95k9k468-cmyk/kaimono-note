@@ -2852,7 +2852,7 @@
       parts.push(t.id, t.due, t.repeat ? 1 : 0, t.icon || "", t.title);
     });
     store.get().todos.forEach((t) => {
-      if (!t.due || t.due >= today || !(t.done || t.archived)) return;
+      if (!t.due || t.due >= today || t.repeat || t.trace || !(t.done || t.archived)) return;
       parts.push("d", t.id, t.due, t.icon || "", t.title);
     });
     return parts.join("\u0001");
@@ -3040,9 +3040,13 @@
        消えていました。過去のマスは記録なので、片づけたことでその日に
        何があったか読めなくなるのは本末転倒です。今日から先はこれまで
        どおり `open` だけ（まだ起きていないことを「済んだ」と出すと
-       嘘になるので）。 */
+       嘘になるので）。
+
+       ただし**繰り返しのぶんは、済んだ記録としては出しません**（2026年9月28日。済ませると残る控え＝`trace` も同じ）。
+       毎週のものは、済ませるたびに過去の日へ絵が並び、暦が「済んだ印」だらけ
+       になるので。まだこれからの繰り返しは、上のとおり出ます。 */
     const doneForMarks = store.get().todos
-      .filter((t) => (t.done || t.archived) && t.due && t.due < today);
+      .filter((t) => (t.done || t.archived) && !t.repeat && !t.trace && t.due && t.due < today);
     const marks = new Map();
     (open || []).concat(doneForMarks).forEach((t) => {
       if (!t.due) return;
