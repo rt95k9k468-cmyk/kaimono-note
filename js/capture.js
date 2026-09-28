@@ -191,6 +191,7 @@
       repeat: found ? res.repeat || null : null,
       repeatDays: found ? res.repeatDays || [] : [],
       repeatNth: found ? res.repeatNth || null : null,
+      repeatEvery: found ? res.repeatEvery || null : null,
     });
     if (rec && KN.bell && KN.bell.sync) { try { KN.bell.sync(); } catch (e) { /* 鳴らす側の都合 */ } }
     return rec;
