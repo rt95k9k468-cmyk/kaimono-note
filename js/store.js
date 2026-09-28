@@ -725,7 +725,10 @@
          「日が変わったので用意しただけ」の今日なので、null のまま——
          画面では「-」と出ます。ここで埋めると、書いてもいない日に
          作成時刻が付きます。 */
-      const written = !!(String(d.memo || "").trim() || d.wake || d.sleep);
+      /* 本文を外した印（memoOut）は、本文が空のときだけ意味を持ちます。
+         本文があれば、ふつうの行です（docs/storage.md の「段2の案」）。 */
+      if (d.memoOut !== true || d.memo) delete d.memoOut;
+      const written = !!(String(d.memo || "").trim() || d.wake || d.sleep || memoOut(d));
       if (written) {
         if (!d.updatedAt) d.updatedAt = d.date;
         if (!d.createdAt) d.createdAt = d.updatedAt;
@@ -1773,7 +1776,7 @@
     /* 地の文（日記）だけ書いた日も「記録のあった日」です。 */
     (get().archive.days || []).forEach((row) => {
       if (String(row.date || "").slice(0, 7) !== key) return;
-      if (!String(row.memo || "").trim()) return;
+      if (!String(row.memo || "").trim() && !memoOut(row)) return;
       if (!daysWith.includes(row.date)) daysWith.push(row.date);
     });
     daysWith.sort();
@@ -3208,6 +3211,19 @@
   const dayLog = (day) => archive().days.find((d) => d.date === day) || null;
 
   /**
+   * 本文を元（localStorage）から外した行か（docs/storage.md の「段2の案」）。
+   * 外した行は `memo: ""` と印 `memoOut: true` を持ち、本文は日記の写し
+   * （js/diary-idb.js）にだけあります。**印の行は「本文がある行」**——消さない・
+   * 空と見なさない・上書きしない・印を落とさない。印を外すのは、写しから
+   * 本文を戻したとき（突き合わせ・復元で当てたとき）だけ。印があっても本文が
+   * 空でなければ、ふつうの行です（段1の版が本文を書き戻した場合）。
+   * `let state = load()` より先に呼ばれるので、巻き上げられる function で。
+   */
+  function memoOut(d) {
+    return !!(d && d.memoOut === true && !d.memo);
+  }
+
+  /**
    * その日の行を、無ければ用意します。
    *
    * 日が変わったら、その日の欄が**最初からそこにある**ようにするためです。
@@ -3247,6 +3263,10 @@
     const from = (opts && opts.source) || "manual";
     update((s) => {
       const cur = s.archive.days.find((d) => d.date === day);
+      /* 本文を外した行（memoOut）は、本文に触れません——空にも、上書きにも
+         しません。本文は写しにだけあるので、ここで空と見なすと、行ごと消えて
+         写しからも消えます。時刻だけは書けます（読めない日の紙と同じ）。 */
+      const out = memoOut(cur);
       /* 印は**起床と就寝で別々に**持ちます。一つで兼ねると、取り込みが
          起床を書いた時点で印が health に変わり、その同じ便の次の一手で
          就寝の手入力保護が外れます（実データで踏みました）。 */
@@ -3264,7 +3284,7 @@
       const w = keepTime("wake"), sl = keepTime("sleep");
       const next = {
         date: day,
-        memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
+        memo: out ? "" : patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
         wake: w.v,
         sleep: sl.v,
         /* 空の一件（`ensureDayLog` が置いたもの）は `createdAt` を持ちません
@@ -3284,8 +3304,9 @@
         ? (cur ? cur.sleepStages : null)
         : (patch.sleepStages || null);
       if (stages) next.sleepStages = stages;
+      if (out) next.memoOut = true;
 
-      const empty = !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
+      const empty = !out && !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
         /* 「更新」は**人が書き直したこと**を言う印です。毎朝の取り込みで
@@ -3338,7 +3359,8 @@
         const cur = days.find((d) => d.date === date);
         const mine = cur ? String(cur.memo || "") : "";
         if (cur && mine === body) { r.same++; return; }
-        if (cur && mine.trim()) { r.kept++; return; }
+        // 本文を外した行（memoOut）も、本文のある日です。
+        if (cur && (mine.trim() || memoOut(cur))) { r.kept++; return; }
         if (cur) r.fill++; else r.add++;
         /* JSON にしたときの長さ。行を足すなら、欄の名前ぶんも。 */
         r.chars += JSON.stringify(body).length + (cur ? 0 : 160);
@@ -3490,7 +3512,7 @@
     const d = (st && st.diet) || {};
     const arc = (st && st.archive) || {};
     const days = (Array.isArray(arc.days) ? arc.days : []).filter((x) => x
-      && (String(x.memo || "").trim() || x.wake || x.sleep || x.sleepStages)).length;
+      && (String(x.memo || "").trim() || x.wake || x.sleep || x.sleepStages || memoOut(x))).length;
     return {
       products: len(st && st.products),
       stores: len(st && st.stores),
@@ -3537,9 +3559,29 @@
     }
   }
 
+  /* 戻すファイルの、本文を外した行（memoOut）へ、**いま持っている本文**を
+     当てます。当てるものが無ければ印のまま（写しの行は、書くたびの diffInto が
+     印の日を消さないので残ります）。当てるのはファイルの時点の本文ではなく、
+     いまの本文です——ファイルに無い本文は、ファイルからは戻せません
+     （docs/storage.md の「段2の案」）。 */
+  function fillMemoOut(next, s) {
+    const have = new Map();
+    ((s.archive && s.archive.days) || []).forEach((d) => {
+      if (d && d.date && !have.has(d.date)) have.set(d.date, d);
+    });
+    ((next.archive && next.archive.days) || []).forEach((d) => {
+      if (!memoOut(d)) return;
+      const mine = have.get(d.date);
+      if (!mine || memoOut(mine) || typeof mine.memo !== "string" || !mine.memo) return;
+      d.memo = mine.memo;
+      delete d.memoOut;
+    });
+  }
+
   function importJSON(text) {
     const { next } = readBackup(text);
     update((s) => {
+      fillMemoOut(next, s);
       /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
          おぼえた振り分け（learned）と daily を足し忘れて直したあとも、
          `iconOverrides`（食事メモの絵の言い換え）と `iconReports` が
@@ -3658,7 +3700,7 @@
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen,
+    dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen,
     exportJSON, importJSON, inspectBackup, countsOf, reset, loadSample,
   };
 })();

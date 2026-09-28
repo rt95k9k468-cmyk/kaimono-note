@@ -35,6 +35,15 @@
      書き出させない・控えを取らせない。大きな保存場所を読めなかった日は
      「読めない」——daily の本文だけ「読めません」と出して、書かせない
      （ほかのタブは通常どおり）。前に出てきたとき、もう一度読みにいきます。
+
+   本文を外した印（段2の2a・2026年9月28日。**まだ誰も外していません**）
+     元から本文を外した行は `memo: ""` と印 `memoOut: true`（store.memoOut）。
+     印の行は「本文がある行」です。
+     ・書くたびの diffInto は、印の日を写しから消さない（最後の砦）。
+     ・突き合わせで写しから本文を戻したら、印を外す。これは食い違いには
+       数えない（向きごとに数える：写し→元／元→写し／外してあったので戻した）。
+     ・元に印の行があるのに写しが確かめ済みでないときは、migrate しない（罠e）。
+     ・写しに届いたと確かめた本文を committed に覚える（delivered()）。
    ========================================================= */
 (function () {
   "use strict";
@@ -47,6 +56,11 @@
 
   let phase = "idle";        // idle → starting → on | off
   let known = null;          // Map 日付 → 本文：写しに入っているはずのもの（null＝分からない）
+  /* Map 日付 → 本文：写しに**届いたと確かめた**もの（null＝分からない）。
+     読んだ行・取引が済んだ（strict）書き足しだけを入れ、失敗では変えません
+     （失敗した取引は丸ごと戻るので）。known は「送ったもの」なので別に持ちます。
+     元から本文を外す（段2の2b）ときに、外してよい本文かをこれで見ます。 */
+  let committed = null;
   let pendingSeq = 0;        // 突き合わせが済む前に来た書き込みの番号
   let batch = null;          // 書き足し待ち { seq, puts: Map, dels: Set }
   let busy = false;
@@ -70,6 +84,21 @@
       if (!d || !d.date || seen.has(d.date)) continue;
       seen.add(d.date);
       if (typeof d.memo === "string" && d.memo) out.set(d.date, d);
+    }
+    return out;
+  }
+
+  /* 本文を元から外した日（印 memoOut の行。store.memoOut）。daysOf と同じく、
+     同じ日付の先の一つだけを見ます。印の行は「本文がある行」——写しから
+     消さない・空と見なさない（docs/storage.md の「段2の案」）。 */
+  function outOf(s) {
+    const out = new Set();
+    const seen = new Set();
+    const days = (s && s.archive && s.archive.days) || [];
+    for (const d of days) {
+      if (!d || !d.date || seen.has(d.date)) continue;
+      seen.add(d.date);
+      if (store.memoOut(d)) out.add(d.date);
     }
     return out;
   }
@@ -130,13 +159,22 @@
       if (!KN.idb || !KN.idb.available()) throw new Error("この端末では、大きな保存場所が使えません");
       retryable = true;
       const got = await readAll();
-      if (!got.meta || got.meta.phase !== "verified") await migrate();
-      else await reconcile(got, seqNow);
+      if (got.meta && got.meta.phase === "verified") await reconcile(got, seqNow);
+      /* 元に本文を外した日（印の行）があるのに、写しの記録が確かめ済みでない
+         （写しを丸ごと失った・別の端末で戻した）。migrate は写しを空にして元から
+         写し直し、「確かめ済み」にします——元に無い本文を持っているかもしれない
+         写しを空にし、本文の無い日を 0 日と数えて済ませることになる。だから
+         migrate せず、写しを消さない突き合わせで、写しにある本文は戻し、無い日は
+         「本文が見つかりません」と出します（docs/storage.md の罠e）。確かめ済み
+         にはしないので、印の行が残るあいだは開くたびにこの道を通ります。 */
+      else if (outOf(store.get()).size) await reconcile(got, seqNow, { unverified: true });
+      else await migrate();
       phase = "on";
     } catch (err) {
       console.warn("diary copy is off:", err);
       phase = "off";
       known = null;
+      committed = null;
       info = { ...info, reason: say(err) };
     }
   }
@@ -174,6 +212,7 @@
                 last: { at, mode: "copied", days: 0 } };
     await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").put({ k: META, v }); });
     known = new Map([...days].map(([date, d]) => [date, d.memo]));
+    committed = new Map(got);   // 読み直して一字も違わなかったもの
     info = v;
   }
 
@@ -184,9 +223,10 @@
      ここでは写しの行を一つも消さず、写しにだけある日は元へ戻します。
      利用者が消した日が、写しへの書き足しが届かないうちに閉じられて
      戻ってくることはありえます（消えるよりマシ、のほう）。 */
-  async function reconcile(got, seqNow) {
+  async function reconcile(got, seqNow, opts) {
     const inBox = new Map(got.rows.map((r) => [r.date, r]));
     const days = daysOf(store.get());
+    const outs = outOf(store.get());   // 本文を元から外した日
     /* 元のほうが新しいと言えるのは、元の番号が写しの番号より大きいときだけ
        （写しへ届かなかった書き込みが、元にある）。番号の無い元（直に書いた・
        古い版）は、新しいと言えません。 */
@@ -199,6 +239,7 @@
     const puts = [];       // 元 → 写し（足す・書き直す。消さない）
     const loseLive = [];   // 置き換わる元の本文がある日
     const loseBox = [];    // 置き換わる写しの本文がある日
+    let back = 0;          // bring のうち、元から外してあったので戻しただけの日（食い違いではない）
     inBox.forEach((r, date) => {
       const d = days.get(date);
       if (d && d.memo === r.memo) return;
@@ -207,11 +248,20 @@
         if (!d.memo.startsWith(r.memo)) loseBox.push(date);   // 元が続きを書いただけなら、失うものは無い
       } else {
         bring.push(date);
+        if (outs.has(date)) back++;
         if (d && !r.memo.startsWith(d.memo)) loseLive.push(date);   // 写しが続きを書いただけなら、失うものは無い
       }
     });
     days.forEach((d, date) => { if (!inBox.has(date)) puts.push(rec(date, d)); });
-    const n = bring.length + puts.length;
+    /* 数え方は向きで分けます。元から外した本文を戻すのは、外したあと（段2）
+       では毎回のことなので、食い違いには数えません（数えると「直した」回数が
+       毎回増えて、ほんとうの食い違いが埋もれる。罠c）。 */
+    const toLive = bring.length - back;   // 写し → 元（元に無い・写しが新しい）
+    const toBox = puts.length;            // 元 → 写し（写しに無い・元が新しい）
+    const n = toLive + toBox;
+    // 本文を外したのに、写しにも無い日（「本文が見つかりません」）。日の数は画面に出しません。
+    let missing = 0;
+    outs.forEach((date) => { if (!inBox.has(date)) missing++; });
 
     if (loseLive.length) await keep(null);   // 置き換わる前の元を、控えに
     if (loseBox.length) await keep(withBox(store.get(), inBox, loseBox));
@@ -222,6 +272,7 @@
           const row = s.archive.days.find((d) => d.date === date);
           if (!row) { s.archive.days.push(blankDay(date, r)); return; }
           row.memo = r.memo;
+          delete row.memoOut;   // 写しから本文を戻したので、印を外す
           if (r.at) row.updatedAt = r.at;
           if (!row.createdAt) row.createdAt = row.updatedAt || date;
         });
@@ -229,13 +280,22 @@
     }
 
     const prev = got.meta || {};
-    const mode = !n ? "match" : bring.length && puts.length ? "both" : bring.length ? "copy" : "live";
+    const mode = !n ? (back ? "restored" : "match")
+      : toLive && toBox ? "both" : toLive ? "copy" : "live";
+    /* opens・matched・fixed は段1から。fixed は向きを問わない回数のまま
+       （設定の「食い違いを直した」回数）。fixedCopy・fixedLive はその向き別で、
+       2026年9月28日（段2の2a）から数えています。それより前に直した回は
+       fixedBefore（向きが分からない）。restored は外してあったので戻した回。 */
     const v = {
       ...prev,
       opens: (prev.opens || 0) + 1,
       matched: (prev.matched || 0) + (n ? 0 : 1),
       fixed: (prev.fixed || 0) + (n ? 1 : 0),
-      last: { at: now, mode, days: n },
+      fixedBefore: prev.fixedBefore != null ? prev.fixedBefore : (prev.fixed || 0),
+      fixedCopy: (prev.fixedCopy || 0) + (toLive ? 1 : 0),
+      fixedLive: (prev.fixedLive || 0) + (toBox ? 1 : 0),
+      restored: (prev.restored || 0) + (back ? 1 : 0),
+      last: { at: now, mode, days: n, copy: toLive, live: toBox, restored: back, missing },
     };
     await KN.idb.run(["diary", "meta"], "readwrite", (t) => {
       const box = t.objectStore("diary");
@@ -250,7 +310,11 @@
     const next = new Map([...inBox].map(([date, r]) => [date, r.memo]));
     puts.forEach((r) => next.set(r.date, r.memo));
     known = next;
-    info = v;
+    /* 写しから読んだ行（元へ戻した本文も）と、いま済んだ取引で書いた行は、
+       写しに届いています。戻した本文を「まだ届いていない」と扱うと、外した
+       あと（段2）の最初の保存で元へ全部書くことになり、枠からあふれます（罠a）。 */
+    committed = new Map(next);
+    info = { ...v, unverified: !!(opts && opts.unverified), missing };
   }
 
   /* 突き合わせで置き換わる本文を、先に自動バックアップへ。 */
@@ -295,12 +359,18 @@
 
   function diffInto(seq) {
     const days = daysOf(store.get());
+    /* 最後の砦：本文を元から外した日（印の行）は、写しから消しません。
+       印の行は「本文がある行」です。本文を持たない控え・書き出しを復元した
+       ときも、ここで写しの本文が残ります（docs/storage.md の「段2の案」）。 */
+    const outs = outOf(store.get());
     let puts = null;
     let dels = null;
     days.forEach((d, date) => {
       if (known.get(date) !== d.memo) (puts || (puts = [])).push(rec(date, d));
     });
-    known.forEach((_, date) => { if (!days.has(date)) (dels || (dels = [])).push(date); });
+    known.forEach((_, date) => {
+      if (!days.has(date) && !outs.has(date)) (dels || (dels = [])).push(date);
+    });
     if (!puts && !dels) return;
     if (!batch) batch = { seq, puts: new Map(), dels: new Set() };
     batch.seq = Math.max(batch.seq, seq);
@@ -321,6 +391,11 @@
       t.objectStore("meta").put({ k: SEQ, v: b.seq });
     }).then(() => {
       info.error = null;
+      // 取引が済んだ（strict）ので、写しに届いています。
+      if (committed) {
+        b.puts.forEach((r) => committed.set(r.date, r.memo));
+        b.dels.forEach((date) => committed.delete(date));
+      }
     }, (err) => {
       /* 写しの中身が分からなくなりました。次に書くときに読み直して合わせます。
          元（localStorage）は無事なので、失われるものはありません。 */
@@ -339,6 +414,7 @@
     resyncing = true;
     readAll().then((got) => {
       known = new Map(got.rows.map((r) => [r.date, r.memo]));
+      committed = new Map(known);   // 読めた行は、写しに届いている
       const s = pendingSeq;
       pendingSeq = 0;
       diffInto(s);
@@ -352,6 +428,7 @@
     if (phase !== "on") return;
     phase = "starting";
     known = null;
+    committed = null;
     readyP = new Promise((r) => { settle = r; });
     run();
   }
@@ -367,6 +444,7 @@
     if (phase !== "off" || !retryable || Date.now() - lastTry < 5000) return false;
     phase = "starting";
     known = null;
+    committed = null;
     readyP = new Promise((r) => { settle = r; });
     run();
     return true;
@@ -404,5 +482,15 @@
     return { ...info, phase, days: known ? known.size : null };
   }
 
-  KN.diaryIdb = { start, ready, settled, body, retry, onChange, status, afterWrite, reloaded };
+  /**
+   * その日のその本文が、写しに届いたと確かめてあるか。元から本文を外して
+   * よいのは、これが true の本文だけ（段2の2b で writeLive が使う。いまは
+   * 誰も外していません）。
+   */
+  function delivered(date, memo) {
+    return phase === "on" && !!committed && typeof memo === "string" && !!memo
+      && committed.get(date) === memo;
+  }
+
+  KN.diaryIdb = { start, ready, settled, body, retry, onChange, status, delivered, afterWrite, reloaded };
 })();

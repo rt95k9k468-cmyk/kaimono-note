@@ -10,6 +10,20 @@
    - 大きな保存場所を読めない日は、本文だけ「読めません」、書かせない、
      時刻は書ける、ほかのタブは通常どおり、前に出てきたら読み直す
 
+   段2の2a（2026年9月28日。まだ誰も本文を外していないので、印の行は元を
+   直に書き換えて作る。docs/storage.md の「段2の案」）
+   - 印の行（memo が空で memoOut: true）は、突き合わせで写しから戻して印を外す。
+     それは食い違いに数えない（向きごとに数える）
+   - 写しにも無い印の日は「本文が見つかりません」。紙は本文の欄なし、時刻は書ける
+   - setDayLog は印の行の本文を空にも上書きにもしない・行を消さない
+   - importDiary は印の行を「本文のある日」として触れない。countsOf は数える
+   - diffInto は印の日を写しから消さない（最後の砦）
+   - importJSON は印の行へ、いま持っている本文を当てる（無ければ印のまま）
+   - 罠e：印の行があるのに写しの記録が無い → migrate しない（写しを空にしない・
+     確かめ済みにしない）。写しにある本文は戻す
+   - 読み込み中の印の行は「読み込み中」。設定の「月ぶんを書き出す」は、読み込み中・
+     読めない日は断る（罠d）
+
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-idb.js */
 const { open, checker } = require("./lib");
 
@@ -70,6 +84,50 @@ const snapCount = (page) => page.evaluate(() => KN.idb.run(["snaps"], "readonly"
 }));
 
 const toastText = (page) => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((e) => e.textContent).join(" / "));
+
+/* 元（localStorage）のその日の行を、そのまま。 */
+const liveRow = (page, date) => page.evaluate(({ K, date }) => {
+  const p = JSON.parse(localStorage.getItem(K) || "null");
+  return p ? (p.archive.days.find((d) => d.date === date) || null) : null;
+}, { K: KEY, date });
+
+/* 写しの記録（meta の diary）。 */
+const boxMeta = (page) => page.evaluate(() => KN.idb.run(["meta"], "readonly", (t) => {
+  const r = t.objectStore("meta").get("diary");
+  return () => (r.result ? r.result.v : null);
+}));
+
+/* daily のその日の行の、本文の欄の字（出ていなければ null）。 */
+const rowMemo = (page, date) => page.evaluate((date) => {
+  const r = document.querySelector(`.arc-log-row[data-day="${date}"] .arc-log-memo`);
+  return r ? r.textContent.trim() : null;
+}, date);
+
+/* 大きな保存場所の返事を ms 遅らせる（開いた直後の「読み込み中」を長くする）。 */
+const slowIdb = (ms) => (ctx) => ctx.addInitScript((ms) => {
+  const orig = IDBFactory.prototype.open;
+  IDBFactory.prototype.open = function (...a) {
+    const req = orig.apply(this, a);
+    let h = null;
+    Object.defineProperty(req, "onsuccess", {
+      configurable: true,
+      get() { return h; },
+      set(fn) { h = fn; req.addEventListener("success", (e) => setTimeout(() => fn.call(req, e), ms)); },
+    });
+    return req;
+  };
+}, ms);
+
+/* 設定（daily の歯車）の「月ぶんを書き出す」を押す。押したあと、その紙が出ているか。 */
+async function tapMonthExport(page) {
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForTimeout(500);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "月ぶんを書き出す" }).first().click();
+  await page.waitForTimeout(400);
+  return page.evaluate(() => [...document.querySelectorAll(".sheet")].some((s) => s.textContent.includes("月ぶんを書き出す")));
+}
 
 (async () => {
   const t = checker("diary-idb");
@@ -186,26 +244,198 @@ const toastText = (page) => page.evaluate(() => [...document.querySelectorAll(".
     await browser.close();
   }
 
-  /* ================= 読み込み中：書かせない・写させない・控えを取らない ================= */
+  /* ================= 段2の2a：印の行（memoOut）を手で作った記録で ================= */
   {
+    const { browser, page, errors } = await open();
+    await settled(page);
+    const today = await page.evaluate(() => KN.util.todayKey());
+    const BA = "印の試験：写しにある一日目";
+    const BB = "印の試験：写しにある二日目";
+    await page.evaluate(({ A, B, BA, BB }) => {
+      KN.store.setDayLog(A, { memo: BA });
+      KN.store.setDayLog(B, { memo: BB });
+    }, { A, B, BA, BB });
+    await page.waitForTimeout(600);
+    const st0 = await page.evaluate(() => KN.diaryIdb.status());
+
+    /* 元から A の本文を外し（印）、写しに無い今日にも印を置く。元の番号は写しより
+       大きく——元が新しくても、印の日は写しから戻る（本文を外したのは元の側なので）。 */
+    await editLive(page, `
+      const a = p.archive.days.find((d) => d.date === arg.A);
+      a.memo = ""; a.memoOut = true;
+      // 今日の行は、開いたときに空の一行（ensureDayLog）があればそれに印を。
+      const t = p.archive.days.find((d) => d.date === arg.today);
+      if (t) { t.memo = ""; t.memoOut = true; }
+      else p.archive.days.push({ date: arg.today, memo: "", memoOut: true, wake: null, sleep: null,
+        wakeSource: "manual", sleepSource: "manual", createdAt: arg.today, updatedAt: arg.today });
+      p.lsSeq = arg.seq + 5;`, { A, today, seq: (await box(page)).seq });
+    const memA = await page.evaluate((A) => KN.store.dayLog(A), A);
+    t.check("印の行は、写しから本文が戻って印が外れる", memA && memA.memo === BA && !("memoOut" in memA), JSON.stringify(memA));
+    const rowA = await liveRow(page, A);
+    t.check("戻した本文は元にも書かれる（印なし）", rowA && rowA.memo === BA && !rowA.memoOut, JSON.stringify(rowA));
+    let bx = await box(page);
+    t.check("写しは一行も減らない", bx.rows[A] === BA && bx.rows[B] === BB && !(today in bx.rows), JSON.stringify(bx.rows));
+    let st = await page.evaluate(() => KN.diaryIdb.status());
+    t.check("外してあったので戻した：食い違いには数えない",
+      (st.fixed || 0) === (st0.fixed || 0) && (st.fixedCopy || 0) === 0 && (st.fixedLive || 0) === 0 && st.last.mode === "restored",
+      JSON.stringify({ fixed: st.fixed, fixedCopy: st.fixedCopy, fixedLive: st.fixedLive, last: st.last }));
+    t.check("外してあったので戻した回を、別に数える", st.restored === (st0.restored || 0) + 1 && st.last.restored === 1, JSON.stringify(st));
+    t.check("写しにも無い印の日がある、と分かる", st.missing === 1 && st.last.missing === 1, JSON.stringify(st.last));
+    t.check("戻した本文は「写しに届いている」（committed）",
+      await page.evaluate(({ A, BA }) => KN.diaryIdb.delivered(A, BA), { A, BA }));
+    t.check("違う本文は「届いている」と言わない",
+      !(await page.evaluate((A) => KN.diaryIdb.delivered(A, "違う本文"), A)));
+
+    /* 写しにも無い印の日（今日）：画面は「本文が見つかりません」、紙は本文の欄なし。 */
+    const memT = await page.evaluate((d) => KN.store.dayLog(d), today);
+    t.check("写しにも無い印の日は、印のまま", memT && memT.memo === "" && memT.memoOut === true, JSON.stringify(memT));
+    t.check("countsOf は印の行を「中身のある日」と数える", await page.evaluate(() => KN.store.countsOf().days) === 3,
+      String(await page.evaluate(() => KN.store.countsOf().days)));
+    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.waitForTimeout(400);
+    t.check("写しにも無い印の日は「本文が見つかりません」", (await rowMemo(page, today)) === "本文が見つかりません", await rowMemo(page, today));
+    await page.click(`.arc-log-row[data-day="${today}"]`);
+    await page.waitForTimeout(400);
+    const sheet = await page.evaluate(() => {
+      const n = document.querySelector(".sheet .js-memo-unread");
+      return { memo: !!document.querySelector(".sheet .js-memo"), note: n ? n.textContent : "", wake: !!document.querySelector(".sheet .js-wake") };
+    });
+    t.check("紙は本文の欄なしで開き、「本文が見つかりません」と言う（時刻は書ける）",
+      !sheet.memo && sheet.note.includes("本文が見つかりません") && sheet.wake, JSON.stringify(sheet));
+    await page.fill(".sheet .js-wake", "06:10");
+    await page.evaluate(() => document.querySelector(".sheet .js-ok").click());
+    await page.waitForTimeout(600);
+    const rowT = await liveRow(page, today);
+    t.check("時刻は書け、印は残る", rowT && rowT.wake === "06:10" && rowT.memo === "" && rowT.memoOut === true, JSON.stringify(rowT));
+
+    /* setDayLog：印の行の本文を空にも上書きにもしない・行を消さない。 */
+    await page.evaluate((d) => KN.store.setDayLog(d, { memo: "上書きの試験" }), today);
+    let m = await page.evaluate((d) => KN.store.dayLog(d), today);
+    t.check("setDayLog は印の行を上書きしない", m && m.memo === "" && m.memoOut === true, JSON.stringify(m));
+    await page.evaluate((d) => KN.store.setDayLog(d, { memo: "", wake: null, sleep: null }), today);
+    m = await page.evaluate((d) => KN.store.dayLog(d), today);
+    t.check("setDayLog で全部を空にしても、印の行は消えない", m && m.memoOut === true, JSON.stringify(m));
+    await page.evaluate((d) => KN.store.setDayLog(d, { wake: "05:50" }, { source: "health" }), today);
+    m = await page.evaluate((d) => KN.store.dayLog(d), today);
+    t.check("取り込み（時刻だけ）でも印は落ちない", m && m.memoOut === true && m.wake === "05:50", JSON.stringify(m));
+
+    /* importDiary：印の行は本文のある日。 */
+    const plan = await page.evaluate((d) => KN.store.importDiary([{ date: d, body: "取り込みの試験" }], { dry: true }), today);
+    t.check("importDiary は印の行に入れない（本文のある日として残す）", plan.kept === 1 && !plan.fill && !plan.add, JSON.stringify(plan));
+
+    /* diffInto の砦：記憶の中で A に印を付けて書く → 写しの A は消えない。 */
+    await page.evaluate((A) => KN.store.update((s) => {
+      const a = s.archive.days.find((d) => d.date === A);
+      a.memo = ""; a.memoOut = true;
+    }), A);
+    await page.waitForTimeout(600);
+    bx = await box(page);
+    t.check("書くたびの写し（diffInto）は、印の日を写しから消さない", bx.rows[A] === BA && bx.rows[B] === BB, JSON.stringify(bx.rows));
+
+    /* importJSON：印の行へ、いま持っている本文を当てる。B はいまの本文があるので当たる。
+       A はいまも印（本文を持っていない）なので印のまま、写しの A も消えない。C は
+       どこにも本文が無いので印のまま。 */
+    const file = await page.evaluate(({ B, C }) => {
+      const p = JSON.parse(KN.store.exportJSON());
+      const b = p.archive.days.find((d) => d.date === B);
+      b.memo = ""; b.memoOut = true;
+      p.archive.days.push({ date: C, memo: "", memoOut: true, wake: null, sleep: null,
+        wakeSource: "manual", sleepSource: "manual", createdAt: C, updatedAt: C });
+      return JSON.stringify(p);
+    }, { B, C });
+    const seen = await page.evaluate((text) => KN.store.inspectBackup(text), file);
+    t.check("確かめる紙の数は、印の行も数える", seen.ok && seen.counts.days === 4, JSON.stringify(seen));
+    await page.evaluate((text) => KN.store.importJSON(text), file);
+    await page.waitForTimeout(600);
+    const after = await page.evaluate(({ A, B, C }) => ({
+      A: KN.store.dayLog(A), B: KN.store.dayLog(B), C: KN.store.dayLog(C),
+    }), { A, B, C });
+    t.check("復元：印の行へ、いまの本文を当てる（印が外れる）", after.B && after.B.memo === BB && !after.B.memoOut, JSON.stringify(after.B));
+    t.check("復元：いまも本文が無ければ印のまま", after.A && after.A.memoOut === true && after.C && after.C.memoOut === true,
+      JSON.stringify([after.A, after.C]));
+    bx = await box(page);
+    t.check("復元しても、印の日の写しは消えない", bx.rows[A] === BA && bx.rows[B] === BB, JSON.stringify(bx.rows));
+
+    /* 開き直すと、写しにある A は戻る。 */
+    await page.reload();
+    await settled(page);
+    const memA2 = await page.evaluate((A) => KN.store.dayLog(A), A);
+    t.check("開き直すと、写しにある本文が戻る", memA2 && memA2.memo === BA && !memA2.memoOut, JSON.stringify(memA2));
+    st = await page.evaluate(() => KN.diaryIdb.status());
+    t.check("写しにも無い印の日（今日・C）は、見つからないまま", st.missing === 2, JSON.stringify(st.last));
+
+    t.check("ページのエラーが無い（印の行）", !errors.length, errors.join(" | "));
+    await browser.close();
+  }
+
+  /* ================= 罠e：印の行があるのに、写しの記録が無い ================= */
+  {
+    const NORMAL = "罠eの試験：ふつうの一日";
     const { browser, page, errors } = await open({
       before: async (ctx) => {
-        await ctx.addInitScript(() => {
-          // 大きな保存場所の返事を 2.5 秒遅らせる（開いた直後の「読み込み中」を長くする）
-          const orig = IDBFactory.prototype.open;
-          IDBFactory.prototype.open = function (...a) {
-            const req = orig.apply(this, a);
-            let h = null;
-            Object.defineProperty(req, "onsuccess", {
-              configurable: true,
-              get() { return h; },
-              set(fn) { h = fn; req.addEventListener("success", (e) => setTimeout(() => fn.call(req, e), 2500)); },
-            });
-            return req;
-          };
-        });
+        await slowIdb(2500)(ctx);
+        // まっさらの端末に、印の行を持つ元だけがある（写しは丸ごと失った形）。
+        await ctx.addInitScript(({ K, A, NORMAL }) => {
+          if (localStorage.getItem(K) || sessionStorage.getItem("__seeded")) return;
+          sessionStorage.setItem("__seeded", "1");
+          const n = new Date();
+          const k = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+          const row = (date, memo, out) => Object.assign({ date, memo, wake: null, sleep: null,
+            wakeSource: "manual", sleepSource: "manual", createdAt: date, updatedAt: date }, out ? { memoOut: true } : {});
+          localStorage.setItem(K, JSON.stringify({ schema: 2, archive: { entries: [], days: [row(k, "", true), row(A, NORMAL)] } }));
+        }, { K: KEY, A, NORMAL });
       },
     });
+    const today = await page.evaluate(() => KN.util.todayKey());
+    t.check("（前提）元に印の行がある", await page.evaluate((d) => KN.store.memoOut(KN.store.dayLog(d)), today));
+    t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
+    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.waitForTimeout(300);
+    t.check("読み込み中の印の行は「読み込み中」", (await rowMemo(page, today)) === "読み込み中", await rowMemo(page, today));
+    await settled(page);
+    await page.waitForTimeout(300);
+
+    t.check("写しは使える（読める日）", await page.evaluate(() => KN.diaryIdb.body()) === "ok");
+    let meta = await boxMeta(page);
+    t.check("migrate しない：確かめ済みにしない", !meta || meta.phase !== "verified", JSON.stringify(meta));
+    let st = await page.evaluate(() => KN.diaryIdb.status());
+    t.check("写しの記録が無いまま突き合わせた、と分かる", st.unverified === true && st.missing === 1, JSON.stringify(st));
+    let bx = await box(page);
+    t.check("元にある本文は写しへ足す", bx.rows[A] === NORMAL, JSON.stringify(bx.rows));
+    t.check("印の日は「本文が見つかりません」", (await rowMemo(page, today)) === "本文が見つかりません", await rowMemo(page, today));
+
+    /* 写しの記録（meta）だけが無く、写しには印の日の本文がある形。migrate なら写しを
+       空にして、この本文を失う。 */
+    const FOUND = "罠eの試験：写しにだけ残っていた本文";
+    await page.evaluate(({ today, FOUND }) => KN.idb.run(["diary", "meta"], "readwrite", (t) => {
+      t.objectStore("diary").put({ date: today, memo: FOUND, at: null });
+      t.objectStore("meta").delete("diary");
+    }), { today, FOUND });
+    await page.reload();
+    await settled(page);
+    await page.waitForTimeout(300);
+    const memT = await page.evaluate((d) => KN.store.dayLog(d), today);
+    t.check("写しの記録が無くても、写しを空にせず本文を戻す", memT && memT.memo === FOUND && !memT.memoOut, JSON.stringify(memT));
+    bx = await box(page);
+    t.check("写しの行は残っている", bx.rows[today] === FOUND && bx.rows[A] === NORMAL, JSON.stringify(bx.rows));
+
+    /* 印が無くなれば、次に開いたときはいつもの migrate で確かめ済みに。 */
+    await page.reload();
+    await settled(page);
+    await page.waitForTimeout(300);
+    meta = await boxMeta(page);
+    bx = await box(page);
+    t.check("印が無くなれば、写し直して確かめ済みに", meta && meta.phase === "verified" && bx.rows[today] === FOUND && bx.rows[A] === NORMAL,
+      JSON.stringify({ meta, rows: bx.rows }));
+
+    t.check("ページのエラーが無い（罠e）", !errors.length, errors.join(" | "));
+    await browser.close();
+  }
+
+  /* ================= 読み込み中：書かせない・写させない・控えを取らない ================= */
+  {
+    // 大きな保存場所の返事を 4 秒遅らせる（開いた直後の「読み込み中」を長くする）
+    const { browser, page, errors } = await open({ before: slowIdb(4000) });
     t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
     await page.evaluate(() => KN.app.showScreen("archive"));
     await page.waitForTimeout(200);
@@ -214,6 +444,12 @@ const toastText = (page) => page.evaluate(() => [...document.querySelectorAll(".
     await page.waitForTimeout(200);
     t.check("読み込み中は日記の紙を開かない", await page.evaluate(() => !document.querySelector(".sheet .js-memo")));
     t.check("読み込み中と知らせる", (await toastText(page)).includes("読み込んでいる"), await toastText(page));
+    const monthSheet = await tapMonthExport(page);
+    t.check("読み込み中は、設定の「月ぶんを書き出す」を断る（罠d）",
+      !monthSheet && (await toastText(page)).includes("読み込んでいる") && (await page.evaluate(() => KN.diaryIdb.body())) === "loading",
+      `${monthSheet} ${await toastText(page)}`);
+    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.waitForTimeout(200);
     await page.evaluate(() => { window.__took = null; KN.backup.take("試験").then((r) => { window.__took = r; }); });
     await page.waitForTimeout(300);
     t.check("読み込み中は控えを取らない（済むのを待つ）", await page.evaluate(() => window.__took === null));
@@ -295,6 +531,12 @@ const toastText = (page) => page.evaluate(() => [...document.querySelectorAll(".
     await page.waitForTimeout(600);
     t.check("ほかのタブは書ける（やること）", await page.evaluate((K) => JSON.parse(localStorage.getItem(K)).todos.some((x) => x.title === "試験のやること"), KEY));
     t.check("やることの画面に出る", await page.evaluate(() => document.body.textContent.includes("試験のやること")));
+
+    /* 読めない日は、設定の「月ぶんを書き出す」も断る（daily 画面の月の書き出しと同じ門）。 */
+    const monthSheet = await tapMonthExport(page);
+    t.check("読めない日は、設定の「月ぶんを書き出す」を断る（罠d）",
+      !monthSheet && (await toastText(page)).includes("月ぶんは書き出せません"), `${monthSheet} ${await toastText(page)}`);
+    await page.waitForTimeout(300);   // 断るときの読み直し（retry）が、また読めずに終わるのを待つ
 
     /* 直ったら、前に出てきたときに読み直す。 */
     await page.evaluate(() => KN.app.showScreen("archive"));
