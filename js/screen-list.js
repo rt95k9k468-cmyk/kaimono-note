@@ -70,6 +70,24 @@
 
     KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { role: "front" });
 
+    /* 紙を横に払うと、日が動きます（ほかのタブと同じ手つき・同じ一つの
+       仕掛け js/day-swipe.js）。買うものの紙は日で中身が変わらないので、
+       隣の紙は組みません——紙は指に少しついて戻り、動くのは題と暦の日
+       だけです（docs/shared-header.md の「決めたこと」の2を、2026年9月28日に
+       利用者と改めた）。行そのものの払い（右で★・左でアーカイブ）は行の
+       もの、掴み手は価格へ引くものなので、そこから始まった指は取りません。 */
+    const sheet = chrome.querySelector(".js-sheet");
+    KN.daySwipe.wire({
+      viewport: sheet,
+      surface: sheet,
+      track: els.body,
+      ignore: ".item-wrap, .tl-grip",
+      day: () => KN.head.shopDay(),
+      step: (d, dir) => KN.util.shiftDay(d, dir),
+      commit: (key) => KN.head.shopGo(key),
+      busy: () => !KN.head.mine("list") || KN.reorder.isActive(),
+    });
+
     /* 歯車は帯（head.js）が結びます。虫めがねは共通の一つで、応えるのは
        持ち主のときだけ（`els.mine`）。境目の線（is-stuck）は、ほかのタブと
        同じく出しません——帯は送られないので「貼りついた」がありません。 */

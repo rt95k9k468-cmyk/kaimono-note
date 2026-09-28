@@ -19,7 +19,7 @@
    - 買うもの・価格でも帯は動かない（段3）：掴み手を本物のタッチで引いて価格へ・
      帯の「買うもの」で戻る・価格からよそのタブへ、のどれも 0px。暦は一枚のまま
      差し替わらず、印は無い。題を押すと週⇄月。日を押すと題と共通の日だけが動き、
-     紙は組み直さない。紙を横に払っても日は動かない。月に開いた暦のぶん狭く
+     紙は組み直さない。紙の空白を横に払うと日が動く（紙は組み直さない）。月に開いた暦のぶん狭く
      なっても、価格の地は帯の下から始まり、いちばん下の行まで送れ、留まった紙の
      頭は下の帯の上に居る。 */
 const { open, checker } = require("./lib");
@@ -472,20 +472,46 @@ const { open, checker } = require("./lib");
   c.check("やることで今日へ戻ってから買うものへ：買うものも今日", (await title()).includes("9月15日"),
     await title());
 
-  /* 紙を横に払っても、日は動かない（day-swipe は付けない） */
-  const sheet = await page.evaluate(() => {
-    const r = document.querySelector("#screen-list .tl-sheet").getBoundingClientRect();
-    return { x: r.left + r.width * 0.75, y: r.top + 120 };
+  /* 紙を横に払うと、日が動く（2026年9月28日から。紙は組み直さず、指に少し
+     ついて戻るだけ）。払うのは行の無いところ——行の上は行の払い（★・
+     アーカイブ）のもの。 */
+  const blank = await page.evaluate(() => {
+    const sh = document.querySelector("#screen-list .tl-sheet");
+    const r = sh.getBoundingClientRect();
+    const bar = document.querySelector(".tabbar");
+    // 帯の席は、見えている縁より上まで指を拾う（タッチの半径も効く）ので、少し離す。
+    const floor = Math.min(r.bottom, bar ? bar.getBoundingClientRect().top : r.bottom) - 48;
+    const x = r.left + r.width * 0.75;
+    for (let y = floor; y > r.top + 40; y -= 6) {
+      const el = document.elementFromPoint(x, y);
+      if (el && sh.contains(el) && !el.closest(".item-wrap, .tl-grip")) return { x, y };
+    }
+    return null;
   });
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(sheet.x, sheet.y) });
-  for (let i = 1; i <= 12; i++) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(sheet.x - i * 18, sheet.y) });
-    await page.waitForTimeout(16);
+  c.check("買うものの紙に、行の無いところがある", !!blank);
+  const swipeAt = async (p, dx) => {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(p.x, p.y) });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(p.x + (dx * i) / 12, p.y) });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(700);
+  };
+  if (blank) {
+    await page.evaluate(() => { document.querySelector("#screen-list .js-body").firstElementChild.__keep = 2; });
+    await swipeAt(blank, -200);
+    c.check("買うものの空白を左へ払うと次の日", (await title()).includes("9月16日")
+      && (await owner()) === "list", await title());
+    c.check("払っても買うものの紙は組み直さない・元の位置に戻る", await page.evaluate(() => {
+      const b = document.querySelector("#screen-list .js-body");
+      return b.firstElementChild.__keep === 2 && !b.style.transform;
+    }));
+    c.check("払った日に暦の輪", await page.evaluate(() =>
+      !!document.querySelector('#head .cal .cal-day.is-here[data-day="2026-09-16"]')));
+    await swipeAt(blank, 200);
+    c.check("右へ払うと前の日（今日）", (await title()).includes("9月15日"), await title());
   }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await page.waitForTimeout(600);
-  c.check("買うものの紙を横に払っても日は動かない", (await title()).includes("9月15日")
-    && (await owner()) === "list", await title());
 
   /* 虫めがね：買うものの窓が開き、よそは開かない */
   await tapSel("#head .js-search-btn");

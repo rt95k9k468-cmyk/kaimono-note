@@ -226,7 +226,7 @@
     /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
        右の「›」の傾きも、隣の週の濃さも、これを見て決まります。指で
        引いているあいだは、この数が指について動きます（やることと同じ）。 */
-    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    if (root) KN.util.setVar(root, "--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません——開いているかどうかは、題の右の「›」が
        回ることで言います（paintDayTitle）。 */
@@ -459,6 +459,7 @@
       `opts.keep` は「紙はもうそこに居るので、組み直さなくてよい」の合図です
       （横に払って着いたとき）。そのときは紙の**外**だけを塗ります。 */
   function goDayTo(key, opts) {
+    const was = focusDay();
     const ym = key.slice(0, 7);
     viewMonth = ym === ymOf(new Date()) ? null : ym;
     viewDay = key === U.todayKey() ? null : key;
@@ -475,14 +476,19 @@
       els.cal.querySelectorAll(".cal-day.is-here")
         .forEach((c) => c.classList.remove("is-here"));
       if (cell) cell.classList.add("is-here");
-      if (grid) moveRing(grid, cell);
+      /* 週をまたいだら、週の帯を送った向きから滑り込ませ、輪は滑らせずに
+         置き直します（やることの commit と同じ）。 */
+      const crossed = U.otherWeek(was, here);
+      if (crossed) U.slideWeek(els.cal, here > was ? 1 : -1);
+      if (grid) moveRing(grid, cell, crossed);
     }
   }
 
-  function wireDaySwipe(viewport, track) {
+  function wireDaySwipe(viewport, track, surface) {
     KN.daySwipe.wire({
       viewport,
       track,
+      surface,
       day: focusDay,
       step: stepDay,
       slide: daySlide,
@@ -1779,7 +1785,8 @@
     const track = car.querySelector(".day-track");
     track.append(daySlide(focusDay()));
     sheet.append(car);
-    wireDaySwipe(car, track);
+    /* 指を受けるのは紙ぜんぶ（中身の下の空白からも払えるように）。 */
+    wireDaySwipe(car, track, sheet);
 
     if (keepTop) keepScroller.scrollTop = keepTop;
     rendering = false;
