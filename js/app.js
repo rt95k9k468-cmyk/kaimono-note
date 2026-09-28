@@ -782,7 +782,10 @@
     const d0 = faceVar("--face-d") || 1;
     const p0 = faceVar("--face-p");
     const now = isFinite(p0) ? p0 : (to > 0.5 ? 0 : 1);
-    const g = KN.motion.glide((to - now) * d0, vy || 0, { span: d0 });
+    /* 基準は `--m-face`（払いの `--m-swipe` より長い）。動くのは画面の丈ほどの
+       紙一枚で、払いと同じ .28s では戻りが「速すぎる」と言われました。 */
+    const g = KN.motion.glide((to - now) * d0, vy || 0,
+      { span: d0, base: KN.motion.ms("--m-face") });
     if (box) {
       box.style.setProperty("--face-ms", g.ms + "ms");
       box.style.setProperty("--face-ease", g.ease);

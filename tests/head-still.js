@@ -18,8 +18,8 @@
    - 設定は帯ごと押しのける（deck が動き、設定の一枚が帯の上に重なる）。
    - 買うもの・価格でも帯は動かない（段3）：掴み手を本物のタッチで引いて価格へ・
      帯の「買うもの」で戻る・価格からよそのタブへ、のどれも 0px。暦は一枚のまま
-     差し替わらず、印は無い。題を押すと週⇄月。日を押すと題と共通の日だけが動き、
-     紙は組み直さない。紙の空白を横に払うと日が動く（紙は組み直さない）。月に開いた暦のぶん狭く
+     差し替わらず、印は無い。題を押すと週⇄月。日を押すと題と共通の日が動き、
+     買うものの行はそのまま。紙の空白を横に払うと日が動く（行はそのまま）。月に開いた暦のぶん狭く
      なっても、価格の地は帯の下から始まり、いちばん下の行まで送れ、留まった紙の
      頭は下の帯の上に居る。 */
 const { open, checker } = require("./lib");
@@ -522,13 +522,16 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
   c.check("もう一度押すと週へ", await page.evaluate(() => KN.store.calPrefs(null).open === false));
 
-  /* 日を押す：題と共通の日だけが動き、紙は組み直さない */
-  await page.evaluate(() => { document.querySelector("#screen-list .js-body").firstElementChild.__keep = 1; });
+  /* 日を押す：題と共通の日が動く。紙は、その日に買ったものが無ければ中身は
+     同じ（2026年9月28日から、今日でない日には「その日に買ったもの」を頭に出す
+     ——tests/shop-day.js。買うものの行は日で変わらない）。 */
+  const rowsOf = () => page.$$eval("#screen-list .js-body .item-name", (xs) => xs.map((x) => x.textContent.trim()).join("|"));
+  const rows1 = await rowsOf();
   await tapSel('#head .cal .cal-day[data-day="2026-09-17"]');
   await page.waitForTimeout(400);
   c.check("暦の日を押すと題がその日に", (await title()).includes("9月17日"), await title());
-  c.check("日を押しても買うものの紙は組み直さない", await page.evaluate(() =>
-    document.querySelector("#screen-list .js-body").firstElementChild.__keep === 1));
+  c.check("日を押しても買うものの行はそのまま（その日に買ったものが無い）",
+    (await rowsOf()) === rows1 && !(await page.$("#screen-list .day-bought")));
   c.check("輪がその日に", await page.evaluate(() =>
     !!document.querySelector('#head .cal .cal-day.is-here[data-day="2026-09-17"]')));
   await tapSel('.tab[data-tab="todo"]');
@@ -569,14 +572,12 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(700);
   };
   if (blank) {
-    await page.evaluate(() => { document.querySelector("#screen-list .js-body").firstElementChild.__keep = 2; });
+    const rows2 = await rowsOf();
     await swipeAt(blank, -200);
     c.check("買うものの空白を左へ払うと次の日", (await title()).includes("9月16日")
       && (await owner()) === "list", await title());
-    c.check("払っても買うものの紙は組み直さない・元の位置に戻る", await page.evaluate(() => {
-      const b = document.querySelector("#screen-list .js-body");
-      return b.firstElementChild.__keep === 2 && !b.style.transform;
-    }));
+    c.check("払っても買うものの行はそのまま・元の位置に戻る", (await rowsOf()) === rows2
+      && await page.evaluate(() => !document.querySelector("#screen-list .js-body").style.transform));
     c.check("払った日に暦の輪", await page.evaluate(() =>
       !!document.querySelector('#head .cal .cal-day.is-here[data-day="2026-09-16"]')));
     await swipeAt(blank, 200);

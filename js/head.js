@@ -369,31 +369,43 @@
     return b;
   }
 
-  /** 日を押した。共通の日を動かすだけで、紙は組み直しません。 */
+  /** 日が動いたことを、買うものの紙へ知らせます（2026年9月28日から）。
+      紙は、今日でない日に合わせると、その日に買ったものを頭に出すので
+      （screen-list.js の `dayBought`）。組み直すのは紙の中身だけで、暦は
+      ここで塗ったまま——`render()` を呼ぶと暦まで組み直して輪が跳びます。
+      価格は日で中身が変わらないので、知らせません。 */
+  function dayMoved() {
+    if (owner !== "list") return;
+    const scr = KN.screens && KN.screens.list;
+    if (scr && scr.dayMoved) scr.dayMoved();
+  }
+
+  /** 日を押した。共通の日を動かし、買うものの紙には知らせます（dayMoved）。 */
   function pick(key, b) {
     KN.motion.fire("select");
     const cur = shownMonth();
     setDay(key);
     const m = shownMonth();
     /* 隣の月のマス（週で見ているときの端）なら、その月で組み直します。 */
-    if (m.year !== cur.year || m.month !== cur.month) { fill(sCal); return; }
+    if (m.year !== cur.year || m.month !== cur.month) { fill(sCal); dayMoved(); return; }
     sCal.querySelectorAll(".cal-day.is-here").forEach((c) => c.classList.remove("is-here"));
     b.classList.add("is-here");
     moveRing(sCal.querySelector(".cal-grid"), b);
     paintTitle();
+    dayMoved();
   }
 
   /** 紙を横に払って、日を送った（買うもの。2026年9月28日から）。
-      暦の日を押したのと同じく、共通の日を動かすだけで紙は組み直しません
-      ——ただ、送った先が週の外なら出す週も替えます（押すときは、見えて
+      暦の日を押したのと同じく、共通の日を動かして紙に知らせます（dayMoved）
+      ——送った先が週の外なら出す週も替えます（押すときは、見えて
       いる週の日しか押せないので要らなかった）。 */
   function shopGo(key) {
     if (!key) return;
     const cur = shownMonth(), was = sCur();
     setDay(key);
-    if (!sCal) { paintTitle(); return; }
+    if (!sCal) { paintTitle(); dayMoved(); return; }
     const m = shownMonth();
-    if (m.year !== cur.year || m.month !== cur.month) { fill(sCal); return; }
+    if (m.year !== cur.year || m.month !== cur.month) { fill(sCal); dayMoved(); return; }
     sCal.querySelectorAll(".cal-day.is-here").forEach((c) => c.classList.remove("is-here"));
     const b = sCal.querySelector(`.cal-day[data-day="${key}"]`);
     if (b) b.classList.add("is-here");
@@ -402,6 +414,7 @@
     if (crossed) U.slideWeek(sCal, key > was ? 1 : -1);
     moveRing(sCal.querySelector(".cal-grid"), b, crossed);
     paintTitle();
+    dayMoved();
   }
 
   /** 組みます。`only` を渡すのは、隣の週を先に見せるために離れたところへ
@@ -470,6 +483,7 @@
             sMonth = { year: d.getFullYear(), month: d.getMonth() };
           }
           fill(sCal);
+          if (!calOpen()) dayMoved();
         },
       });
     }

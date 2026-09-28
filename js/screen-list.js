@@ -393,6 +393,11 @@
     const checked = items.filter((i) => i.checked);
     const trip = active.filter((i) => i.fav);
 
+    /* 暦で今日でない日に合わせていたら、**その日に買ったもの**を頭に出します
+       （2026年9月28日から）。探しているあいだは出しません（探した結果に
+       よその日の記録を混ぜると、リストの見方が崩れるので）。 */
+    if (!query) els.body.append(dayBought(checked));
+
     if (!trip.length) {
       /* Nothing starred: just the list. A total and a 「今回は◯◯だけで足ります」
          underneath would be answering a question nobody asked — the whole list
@@ -872,6 +877,50 @@
     KN.motion.fire("save");
   }
 
+  /* ---------------- その日に買ったもの（2026年9月28日） ----------------
+
+     暦で**今日でない日**に合わせると、その日に買ったものが紙の頭に出ます
+     （利用者：「shopping で買った日に日付を合わせたら、その日に買ったものが
+     出るように。過去と分かるように薄字かな」）。
+
+     - 数えるのは暦の丸と同じ相手——アーカイブに残る「買った」（`checkedAt`
+       をローカルの日で）。**写さず引く**：記録の入れ物は増やしません。
+     - 行はアーカイブの行そのまま（`itemRow`）なので、**買ったものの姿**
+       ——線が引かれて薄い——で出ます。それが「過去」の印です。丸を押せば
+       アーカイブと同じく買うものへ戻せます。
+     - 下のリストはそのまま残します。買うものは日に属さない、ずっと続く
+       控えなので、日を替えても消しません。
+     - 今日は出しません。今日買ったものは、いつものアーカイブの頭に居るので。
+       何も買っていない日も出しません（暦に丸が無いことが、もう言っている）。 */
+  function dayBought(checked) {
+    const day = KN.head.shopDay();
+    if (!day || day === KN.util.todayKey()) return document.createDocumentFragment();
+    const bought = checked
+      .filter((i) => i.checkedAt && KN.util.dayKey(new Date(i.checkedAt)) === day)
+      .sort((a, b) => String(a.checkedAt).localeCompare(String(b.checkedAt)));
+    if (!bought.length) return document.createDocumentFragment();
+
+    const d = KN.util.dayDate(day);
+    const label = d ? `${d.getMonth() + 1}月${d.getDate()}日に買ったもの` : "この日に買ったもの";
+    const section = node(html`
+      <section class="day-bought" aria-label="${label}">
+        <h2 class="day-bought-head">${label} <span class="cat-head-count">${bought.length}</span></h2>
+        <div class="item-list"></div>
+      </section>
+    `);
+    const list = section.querySelector(".item-list");
+    bought.forEach((item) => {
+      const p = store.getProduct(item.productId);
+      if (!p) return;
+      const row = itemRow(item, p);
+      /* 同じ行が下のアーカイブにも居ます。組み直しの目印（data-flip）まで
+         同じだと、flipRows がどちらの行か取り違えるので、ここだけ別の名に。 */
+      row.dataset.flip = "day:" + item.id;
+      list.append(row);
+    });
+    return section;
+  }
+
   /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
      uses. They are the same idea — done with, kept, dated, out of the way of
      what is still to do — and calling one of them something else made them
@@ -1029,5 +1078,13 @@
   KN.screens = KN.screens || {};
   /* `day()` は共通の日を答えます（席を移るとき、app.js の show() が置いて
      いく——買うものの暦で押した日を、ほかのタブへ持っていくため）。 */
-  KN.screens.list = { mount, render, dockButton, onEnter: awake.touched, day: () => KN.head.shopDay() };
+  /* 暦で日が動いた（head.js の dayMoved）。組み直すのは紙の中身だけ——
+     `render()` だと暦まで組み直して、いま動いている輪が跳ぶので。 */
+  function dayMoved() {
+    if (!root) return;
+    const items = store.get().items;
+    renderBody(query ? items.filter(matchesQuery) : items);
+  }
+
+  KN.screens.list = { mount, render, dockButton, dayMoved, onEnter: awake.touched, day: () => KN.head.shopDay() };
 })();
