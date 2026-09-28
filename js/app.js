@@ -1117,6 +1117,15 @@
     }
   }
 
+  /* 通知から来た用事の紙。画面が組み上がってから開きます。先に、閉じている
+     あいだに鳴った回を受け取っておく——受け取る前に紙から時刻を直すと、
+     古い回が「まだ鳴っていない」ままになり、開いた拍に鳴り直すので。 */
+  function openDue(ids) {
+    const go = () => setTimeout(() => KN.dueSheet.open(ids), 60);
+    if (KN.bell && KN.bell.absorb) KN.bell.absorb().then(go, go);
+    else go();
+  }
+
   function ensureMounted(id) {
     if (mounted.has(id)) return;
     KN.screens[id].mount(document.getElementById("screen-" + id));
@@ -1143,9 +1152,13 @@
     /* `#cal-back` は、ショートカットでカレンダーに入れたあとの戻り道
        （js/ics.js の BACK）。入れたのはやることの紙からなので、やることへ。 */
     const calBack = !!KN.ics && location.hash.slice(1) === KN.ics.BACK;
-    const fromHash = calBack ? "todo" : location.hash.slice(1);
+    /* `#due=id,id` は、時刻の通知を押して来た道（sw.js の notificationclick）。
+       やることを出して、その用事の紙を開く（js/due-sheet.js・R3）。 */
+    const dueIds = KN.dueSheet ? KN.dueSheet.idsFromHash(location.hash) : null;
+    const fromHash = calBack || dueIds ? "todo" : location.hash.slice(1);
     show(KN.screens[fromHash] ? fromHash : HOME);
     if (calBack) KN.ics.cameBack();
+    if (dueIds) openDue(dueIds);
 
     /* The hash is how the back button knows where it is, but it is also what
        iOS hands back when it restores a standalone app it had killed — and a
@@ -1177,6 +1190,14 @@
          印だけ戻す（読み直しにはならない——`#` の後ろだけが違う URL なので）。 */
       if (KN.ics && id === KN.ics.BACK) {
         history.replaceState(null, "", "#" + active);
+        return;
+      }
+      /* 開いたままのところへ、通知が用事を持って来た（R3）。 */
+      const dueIds = KN.dueSheet ? KN.dueSheet.idsFromHash(id) : null;
+      if (dueIds) {
+        if (active !== "todo") show("todo");
+        else history.replaceState(null, "", "#todo");
+        openDue(dueIds);
         return;
       }
       if (KN.screens[id] && id !== active) show(id);

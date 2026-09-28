@@ -79,7 +79,8 @@
   /* iOS shows nothing for `new Notification()` in a standalone app; it wants
      the service worker's registration to do it. Desktop browsers take either,
      so the registration is tried first and the constructor is the fallback. */
-  function show(title, body, tag) {
+  /* due … その時刻の用事の id。押したら、その用事の紙が開きます（R3・js/due-sheet.js）。 */
+  function show(title, body, tag, due) {
     const opts = {
       body,
       tag: tag || "kn-todo",
@@ -87,7 +88,7 @@
       badge: "icons/icon-192.png",
       lang: "ja",
       renotify: true,
-      data: { screen: "todo" },
+      data: { screen: "todo", due: due || [] },
     };
     const viaSW = navigator.serviceWorker && navigator.serviceWorker.ready;
     if (viaSW) {
@@ -126,7 +127,7 @@
     store.markAnnounced(due.map((t) => t.id));
     // 閉じていても鳴る（bell.js）の側に、もう鳴らしたと知らせる。
     if (KN.bell) KN.bell.noteRung(due);
-    return show(title, body, "kn-todo-time").then(() => due.length, () => due.length);
+    return show(title, body, "kn-todo-time", due.map((t) => t.id)).then(() => due.length, () => due.length);
   }
 
   /* ---------------- keeping watch ---------------- */
