@@ -354,7 +354,7 @@
     /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
        右の「›」の傾きも、隣の月の日の濃さも、これを見て決まります。指で
        引いているあいだは、この数が指について動きます。 */
-    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    if (root) KN.util.setVar(root, "--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません——開いているかどうかは、題の右の「›」が
        回ることで言います（paintDayTitle）。 */
@@ -2502,7 +2502,9 @@
       const track = car.querySelector(".day-track");
       track.append(daySlide(shownDay(), open));
       sheet.append(car);
-      wireDaySwipe(car, track, open);
+      /* 指を受けるのは紙ぜんぶ——長期タスクの下の空白からも払えるように
+         （day-swipe.js の「受け口は紙ぜんぶ」）。 */
+      wireDaySwipe(car, track, open, sheet);
       wireCalPull(sheet);
       /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました
          ——紙のどこを持っても下へ引けば暦が出た時期の名残です。段を
@@ -3215,10 +3217,11 @@
      日送りに取られては困ります。 */
   let swiping = false;
 
-  function wireDaySwipe(viewport, track, open) {
+  function wireDaySwipe(viewport, track, open, surface) {
     KN.daySwipe.wire({
       viewport,
       track,
+      surface,
       day: shownDay,
       /* 先の日へも行けます。ここは「これから何をするか」を組む画面なので、
          明日・あさっての時間割にも用があります。 */
@@ -3239,6 +3242,7 @@
          月をまたいだときだけ、暦の盤を差し替えます（`setCalMonth`）。
          あれは暦だけを描き直すもので、画面ぜんぶではありません。 */
       commit: (next, kept) => {
+        const was = shownDay();
         viewDay = next === todayKey() ? null : next;
         /* **控えを捨てます。** 滑りきった一枚を据える（adopt）のは
            組み直しを通らない道なので、紙の中身は `sheetSig` が言っている
@@ -3253,6 +3257,13 @@
           fitCalH();
         }
         markDay(next, true);
+        /* 週をまたいだら、週の帯を送った向きから滑り込ませ、輪は滑らせずに
+           置き直します（帯ごと入れ替わるので、前の週の端から輪が横切って
+           くると、動きが二つ重なって見えます）。 */
+        if (KN.util.otherWeek(was, next)) {
+          KN.util.slideWeek(els.cal, next > was ? 1 : -1);
+          paintHere(true);
+        }
         // 控えが渡らなかったとき（掴み直しなど）だけ、これまでどおり。
         if (!kept) render();
       },

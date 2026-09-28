@@ -166,7 +166,8 @@
   `root.scrollTop` や `activeScreen()` を送る相手にせず、`KN.app.scrollerOf()` を
   通す。（sheet-scroll）
 - **毎フレーム書くカスタムプロパティは `:root` に書かない。** 継承で文書の
-  全要素の style 再計算を呼ぶ。読む相手そのものへ書く。（calendar-swipe・glass）
+  全要素の style 再計算を呼ぶ。読む相手そのものへ書く。同じ値の書き直しも
+  しない（`KN.util.setVar`）。（calendar-swipe・glass）
 - **`var()` は、それを書いた要素の上で解決される。** `:root` で組んだ一枚は
   `:root` の値を焼きつけて配られる——三枚重ねや `--face-cut` は、使う側で組む。
   （glass・shopping）

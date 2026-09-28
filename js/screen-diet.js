@@ -507,6 +507,10 @@
     KN.daySwipe.wire({
       viewport: els.body.querySelector(".js-carousel"),
       track,
+      /* 指を受けるのは紙ぜんぶ（「気づいたこと」や下の空白からも払える）。 */
+      surface: sheet,
+      /* 着いたら画面ごと組み直すので、控えの回し直しも先組みも要りません。 */
+      recycle: false,
       day: curDay,
       /* 先の日へは行けません。ここは記録を見るところで、まだ来ていない
          日には記録がありません。 */
@@ -526,10 +530,13 @@
          払いはじめのカクつきのほうは、隣の二枚を先に組んでおく仕掛け
          （day-swipe.js の控え）が受け持つので、ここは素直に組み直します。 */
       commit: (next) => {
+        const was = curDay();
         viewDay = next === U.todayKey() ? null : next;
         const dd = U.dayDate(next);
         calMonth = { year: dd.getFullYear(), month: dd.getMonth() };
         render();
+        // 週をまたいだら、週の帯を送った向きから（やること・daily と同じ）。
+        if (U.otherWeek(was, next)) U.slideWeek(els.cal, next > was ? 1 : -1);
       },
       lock: (on) => { dragging = on; },
     });
@@ -575,7 +582,7 @@
     /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
        右の「›」の傾きも、隣の週の濃さも、これを見て決まります（やること・
        daily と同じ）。 */
-    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    if (root) KN.util.setVar(root, "--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません。 */
     paintDayTitle();

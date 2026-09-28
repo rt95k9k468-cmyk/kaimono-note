@@ -378,6 +378,27 @@
     paintTitle();
   }
 
+  /** 紙を横に払って、日を送った（買うもの。2026年9月28日から）。
+      暦の日を押したのと同じく、共通の日を動かすだけで紙は組み直しません
+      ——ただ、送った先が週の外なら出す週も替えます（押すときは、見えて
+      いる週の日しか押せないので要らなかった）。 */
+  function shopGo(key) {
+    if (!key) return;
+    const cur = shownMonth(), was = sCur();
+    setDay(key);
+    if (!sCal) { paintTitle(); return; }
+    const m = shownMonth();
+    if (m.year !== cur.year || m.month !== cur.month) { fill(sCal); return; }
+    sCal.querySelectorAll(".cal-day.is-here").forEach((c) => c.classList.remove("is-here"));
+    const b = sCal.querySelector(`.cal-day[data-day="${key}"]`);
+    if (b) b.classList.add("is-here");
+    markWeek(sCal);
+    const crossed = U.otherWeek(was, key);
+    if (crossed) U.slideWeek(sCal, key > was ? 1 : -1);
+    moveRing(sCal.querySelector(".cal-grid"), b, crossed);
+    paintTitle();
+  }
+
   /** 組みます。`only` を渡すのは、隣の週を先に見せるために離れたところへ
       組むときだけ（そのぶんは画面に出ないので、週の印も輪も置きません）。 */
   function fill(sec, only) {
@@ -453,5 +474,5 @@
 
   mount();
 
-  KN.head = { els, mine, enter, putCal, has, TABS, shopCal, shopDay: sCur };
+  KN.head = { els, mine, enter, putCal, has, TABS, shopCal, shopDay: sCur, shopGo };
 })();

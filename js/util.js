@@ -541,11 +541,20 @@
     const q = (s) => row.querySelector(s);
     const dEl = q(".day-d");
     if (!dEl) return;
-    q(".day-y").textContent = p.y;
-    q(".day-pre").textContent = p.pre;
-    dEl.textContent = p.d;
+    /* 日が変わったときだけ、変わった字を転がして入れ替えます（下の
+       `rollText`）。初めて塗るとき・同じ日を塗り直すとき（組み直し・
+       席を移る）は、そのまま書きます——帯は全タブで一つなので、席を
+       移るたびに転がると「動かない帯」が動いて見えます。 */
+    const prev = row.dataset.dayKey;
+    row.dataset.dayKey = key;
+    const roll = !!prev && prev !== key && row.isConnected
+      && !(KN.motion && KN.motion.still());
+    const dir = key > prev ? 1 : -1;
+    rollText(q(".day-y"), p.y, roll, dir, 0);
+    rollText(q(".day-pre"), p.pre, roll, dir, 1);
+    rollText(dEl, p.d, roll, dir, 2);
     dEl.classList.toggle("is-today", p.isToday);
-    q(".day-post").textContent = p.post;
+    rollText(q(".day-post"), p.post, roll, dir, 3);
     const btn = q(".js-day-title");
     if (btn) btn.setAttribute("aria-label", dayTitleText(key) + (action ? `。${action}` : ""));
     /* 今日を見ているあいだは隠します。押せる日だけ、向きも決まります
@@ -559,6 +568,86 @@
         home.setAttribute("aria-label", "今日へ戻る");
       }
     }
+  }
+
+  /* ---------------- 題の字を、転がして入れ替える ----------------
+
+     日を送るたびに数字がぱっと差し替わるのは、機械が数を書き換えている
+     ように見えます（利用者の言葉、2026年9月28日）。**変わった字だけ**を、
+     古い字が上へ抜けていき、新しい字が下から浮かんでくる形で入れ替えます
+     （前の日へ戻るときは逆向き）。「28日」→「29日」なら動くのは「8」だけ、
+     曜日も「(日)」→「(月)」の中の一字だけ。年・月・日・曜日の順に、少し
+     ずつ遅らせて流します。
+
+     去る字は **疑似要素**（`::before` の `attr(data-old)`）で描きます。
+     DOM の字ではないので、転がっているあいだも `textContent` は新しい
+     日のまま——読み上げも、題を読む試験も、途中の姿を拾いません。
+     終わったら素の字に戻します（span を残さない）。
+
+     速さは `--m-roll`（css/base.css）。数字で書かないこと。 */
+  function rollText(el, text, roll, dir, order) {
+    if (!el) return;
+    const old = el.textContent;
+    if (old === text) return;
+    if (el._rollT) { clearTimeout(el._rollT); el._rollT = 0; }
+    if (!roll || !old) { el.textContent = text; return; }
+    let a = 0;
+    while (a < old.length && a < text.length && old[a] === text[a]) a++;
+    let b = 0;
+    while (b < old.length - a && b < text.length - a
+      && old[old.length - 1 - b] === text[text.length - 1 - b]) b++;
+    const r = document.createElement("span");
+    r.className = `roll ${dir > 0 ? "is-up" : "is-down"}`;
+    r.dataset.old = old.slice(a, old.length - b);
+    r.style.setProperty("--roll-i", String(order));
+    const inner = document.createElement("span");
+    inner.className = "roll-in";
+    inner.textContent = text.slice(a, text.length - b);
+    r.append(inner);
+    el.textContent = text.slice(0, a);
+    el.append(r, text.slice(text.length - b));
+    const M = KN.motion;
+    const wait = M ? M.ms("--m-roll") + order * M.ms("--m-roll-step") : 0;
+    el._rollT = setTimeout(() => {
+      el._rollT = 0;
+      if (el.textContent === text) el.textContent = text;
+    }, wait + 60);
+  }
+
+  /** 日を送って週をまたいだとき、週の帯を送った向きから滑り込ませます。
+
+      週で見ているときの暦は、週の外のマスを隠しているだけなので、週が
+      変わると一行がぱっと差し替わっていました——紙は横に滑って隣の日へ
+      行ったのに、帯だけ瞬間移動する。次の週は右から、前の週は左から。
+      動くのは `.cal-grid` の transform と opacity だけで、Web Animations で
+      かけるので、横に払う手つき（cal-swipe）が書く transform とは取り合い
+      ません（あちらが動いていないときにしか呼ばれない）。
+      @param {Element} sec  暦（.cal）
+      @param {number} dir   +1 ＝ 次の週へ／-1 ＝ 前の週へ */
+  function slideWeek(sec, dir) {
+    if (!sec || !dir || !sec.classList.contains("is-week")) return;
+    const M = KN.motion;
+    if (!M || M.still()) return;
+    const grid = sec.querySelector(".cal-grid");
+    if (!grid || !grid.animate) return;
+    grid.animate([
+      { transform: `translateX(${dir * 28}px)`, opacity: 0 },
+      { transform: "none", opacity: 1 },
+    ], { duration: M.ms("--m-nav"), easing: M.ease("--ease-out") });
+  }
+
+  /** 二つの日が別の週か（週の頭で比べる）。 */
+  const otherWeek = (a, b) => !!a && !!b && weekOf(a).from !== weekOf(b).from;
+
+  /** カスタムプロパティを、**値が変わるときだけ**書きます。
+
+      継承する数を画面の根っこに書くと、読む相手が何個であろうと画面
+      ぜんぶの style が計算し直されます。同じ値の書き直しでも、ブラウザに
+      よってはそれが起きる——日を払い終えた一拍で、暦の開き具合（`--cal-p`）
+      を毎回同じ値で書き直していて、そのぶんのスタイル計算が乗っていました。 */
+  function setVar(el, name, value) {
+    if (!el) return;
+    if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
   }
 
   function relativeDate(iso) {
@@ -711,7 +800,8 @@
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, WEEKDAY_COLS, nthWeekdayOf, weekdayNth,
-    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto, dayShare,
+    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto, dayShare, setVar,
+    slideWeek, otherWeek,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
     icon, haptic,

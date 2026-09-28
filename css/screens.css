@@ -391,8 +391,55 @@
    黒のまま。 */
 .day-y { color: var(--c-primary); }
 .day-pre, .day-post { color: var(--c-text); }
-.day-d { color: var(--c-text); }
+/* 日にちの数は、字の幅をそろえます——「18」→「19」で後ろの「日(金)」が
+   数px跳ねないように。色は、今日へ着いたときに一拍かけて差し色へ。 */
+.day-d {
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--m-state) var(--ease);
+}
 .day-d.is-today { color: var(--c-primary); }
+
+/* ---- 題の字が入れ替わる（util.js の rollText） ----
+
+   変わった字だけを包みます。新しい字（.roll-in）は下から浮かび、古い字
+   （::before の attr(data-old)）は上へ抜けていく。前の日へ戻るときは
+   逆向き（.is-down）。どちらも少しぼかして薄めるので、数字が「書き換わる」
+   のではなく「移り変わる」に見えます。動くのは transform・opacity・
+   filter だけ（題の幅や高さは動かさない）。 */
+.topbar-title .roll {
+  position: relative;
+  display: inline-block;
+  --roll-d: calc(var(--roll-i, 0) * var(--m-roll-step));
+}
+.topbar-title .roll > .roll-in {
+  display: inline-block;
+  animation: roll-in var(--m-roll) var(--ease-out) var(--roll-d) both;
+}
+.topbar-title .roll::before {
+  content: attr(data-old);
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: roll-out var(--m-roll) var(--ease-out) var(--roll-d) both;
+}
+.topbar-title .roll.is-up   { --roll-from: .5em;  --roll-to: -.5em; }
+.topbar-title .roll.is-down { --roll-from: -.5em; --roll-to: .5em; }
+@keyframes roll-in {
+  from { transform: translateY(var(--roll-from)); opacity: 0; filter: blur(2.5px); }
+  to   { transform: none; opacity: 1; filter: none; }
+}
+@keyframes roll-out {
+  from { transform: none; opacity: 1; filter: none; }
+  to   { transform: translateY(var(--roll-to)); opacity: 0; filter: blur(2.5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar-title .roll > .roll-in,
+  .topbar-title .roll::before { animation: none; }
+  .topbar-title .roll::before { content: none; }
+}
 
 .topbar-day:active { opacity: .6; }
 
@@ -2405,15 +2452,20 @@
      （器は overflow:hidden なので、そろえたまま縮めると切れます）。 */
   align-items: flex-start;
 }
-/* 指が動いているあいだだけ、合成レイヤーへの昇格をお願いしておきます。
-   常時つけっぱなしにはしません（使わない間もメモリを持ち続けるだけなので）
-   ——ドラッグの最初の一拍でその場で昇格すると、そこだけ一段重くなって
-   カクついて見えることがあるため、掴んだ瞬間に先に済ませておきます。 */
-.day-track.is-dragging { will-change: transform; }
+/* **いつも合成レイヤーに置きます**（2026年9月28日から）。前は指が動いて
+   いるあいだだけ昇格させていましたが、昇格も降格も**紙ぜんぶの描き直し**
+   を呼びます——掴んだ一拍と、滑り終えて据えた一拍の両方で、紙が一瞬
+   止まって見えた原因の一つでした（実測・CPU 4倍：払い一回の描画
+   35〜51ms → 18ms）。層は見えているところのタイルしか描かれないので、
+   持ち続けるメモリは画面一枚ぶんほどです。
+   中に `position: fixed` を置かないこと（この層が基準になります。運ぶ
+   ときの写し `.tl-ghost` は body に置いてあります）。 */
+.day-track { will-change: transform; }
 .day-track > .day-slide { flex: 0 0 100%; min-width: 0; }
-/* 隣の紙は本物ですが、押せません（指はカルーセルの外枠が引き受けます）。
-   inert 属性でも塞ぎますが、保険としてCSSでも。 */
-.day-slide.is-peek { pointer-events: none; }
+/* 隣の紙は本物ですが、押せません——指はカルーセルの外枠が引き受け、滑って
+   いる途中の click は day-swipe.js が止めます。**`pointer-events: none` は
+   書かないこと**（2026年9月28日に外した）。子へ継がれる性質なので、据える
+   ときに外すと紙ぜんぶのスタイルが計算し直され、滑り終えた一拍が重くなる。 */
 /* 行けない側（今日より先など）には、**何も置きません**。以前は中身の無い
    一枚で場所を取っていました——真ん中を -100% に置くための足場として。
    いまは真ん中の居場所を数（`originX`）で持っているので、足場が要りません。
@@ -4922,6 +4974,12 @@ a.btn { text-decoration: none; }
      ところ——切らないと、角の隙間を行が通ります。 */
   border-radius: 22px 22px 0 0;
   -webkit-overflow-scrolling: touch;
+  /* 縦の送りはブラウザに、横はこちらに（紙を払って日を送る・行を払う）。
+     紙ぜんぶが払いの受け口になったので（day-swipe.js の `surface`）、
+     中身の下の空白で横に動かした指も、ブラウザに取られずこちらへ届きます。
+     つまんで拡大するのは残します（`pinch-zoom`。読めない端末ではこの一行
+     ごと捨てられて素の auto に戻り、横は day-swipe の touchmove が止める）。 */
+  touch-action: pan-y pinch-zoom;
   /* 下の帯のぶんは、紙の中の余白が持ちます（器が変わったので、画面の
      padding では中身の下に空きができません）。 */
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
