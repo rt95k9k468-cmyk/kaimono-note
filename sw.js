@@ -13,7 +13,6 @@ const ASSETS = [
   "css/screens.css",
   "js/util.js",
   "js/icons.js",
-  "js/icons-legacy.js",
   "js/icons-phosphor.js",
   "js/motion.js",
   "js/plan.js",
