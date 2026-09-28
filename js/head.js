@@ -89,12 +89,13 @@
       KN.motion.fire("select");
       KN.store.setCalPref("list", { open: !calOpen() });   // 組み直しは subscribe が
     });
+    /* 今日へ戻るのも、払いと同じ道（shopGo）を通します。前は日を戻して
+       暦を塗るだけで、紙に知らせて（dayMoved）いなかったので、前の日の
+       「その日に買ったもの」が紙に居残っていました（2026年9月28日、実機）。 */
     els.today.addEventListener("click", () => {
       if (!shopMine()) return;
       KN.motion.fire("select");
-      sDay = null;
-      sMonth = null;
-      if (sCal) fill(sCal);
+      shopGo(U.todayKey());
     });
   }
 

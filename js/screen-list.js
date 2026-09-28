@@ -87,14 +87,15 @@
        仕掛け js/day-swipe.js）。買うものの紙は日で中身が変わらないので、
        隣の紙は組みません——紙は指に少しついて戻り、動くのは題と暦の日
        だけです（docs/shared-header.md の「決めたこと」の2を、2026年9月28日に
-       利用者と改めた）。行そのものの払い（右で★・左でアーカイブ）は行の
-       もの、掴み手は暦を引くものなので、そこから始まった指は取りません。 */
+       利用者と改めた）。掴み手は暦を引くものなので、そこから始まった指は
+       取りません。行の上からも払えます——行ごとの払い（右で★・左で
+       アーカイブ）は、日を払うのと取り合うので外しました（同じ日、利用者）。 */
     const sheet = chrome.querySelector(".js-sheet");
     KN.daySwipe.wire({
       viewport: sheet,
       surface: sheet,
       track: els.body,
-      ignore: ".item-wrap, .tl-grip",
+      ignore: ".tl-grip",
       day: () => KN.head.shopDay(),
       step: (d, dir) => KN.util.shiftDay(d, dir),
       commit: (key) => KN.head.shopGo(key),
@@ -692,10 +693,10 @@
     const bestStore = best ? store.getStore(best.storeId) : null;
     const tiles = KN.ui.isTiles();
 
-    /* Both ways spring back and land as they go, the same as the price
-       screen: right is ★, left is the archive. Tiles swipe too, on a shorter
-       throw and with the icons alone — a third of a screen has no room for
-       the wording. */
+    /* 行を横に払う手つき（右で★・左でアーカイブ）は、2026年9月28日に
+       外しました。紙を横に払うと日が動くようになり、行の上で指が二つの
+       意味を取り合うので（利用者：「左右フリックで日付を変えたいので」）。
+       ★は行の★を押す。アーカイブは価格の画面で（そちらの払いは残す）。 */
     const wrap = node(html`
       ${/* data-flip は「組み直しの前後で、同じ行かどうか」の目印です
             （ui.js の flipRows）。data-item-id とは役目が別なので、
@@ -704,12 +705,6 @@
       <article class="item-wrap ${tiles ? "is-tile-wrap" : ""}"
                data-item-id="${item.id}" data-flip="${item.id}"
                style="--cat:${store.productColor(product)}">
-        <div class="swipe-yes">
-          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
-        </div>
-        <div class="swipe-arch">
-          <span>アーカイブ</span>${icon("download")}
-        </div>
       </article>
     `);
 
@@ -842,28 +837,7 @@
       KN.productSheet.openIconPicker(product.id, () => {});
     });
 
-    KN.ui.swipeActions(wrap, row, {
-      tiles,
-      onRight: () => toggleFav(item.id),
-      onLeft: () => archive(product),
-    });
     return wrap;
-  }
-
-  /* The same one archive as the price screen's, not a second one: the product
-     goes into the drawer at the bottom of 価格, and this row leaves the list —
-     which is also what puts out the painted edge over there.
-
-     It is also how a row leaves the list without being bought. There used to
-     be a 「削除」 next to it, which only cleared the row and left the product
-     sitting in the price list as though nothing had been decided about it;
-     saying 「しばらく買わない」 once, in one place, is the honest version. */
-  function archive(product) {
-    KN.motion.fire("save");
-    const undo = store.setArchived(product.id, true);
-    KN.ui.toast(`「${product.name}」をアーカイブしました`, {
-      action: { label: "元に戻す", onClick: undo },
-    });
   }
 
   /* ---------------- ★ ---------------- */
