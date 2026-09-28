@@ -5050,5 +5050,6 @@
   function onEnter() { requestAnimationFrame(toNow); }
 
   KN.screens = KN.screens || {};
-  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay() };
+  /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
+  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id) };
 })();

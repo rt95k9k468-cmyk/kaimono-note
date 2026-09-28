@@ -54,6 +54,7 @@ const ASSETS = [
   "js/relay-code.js",
   "js/health-relay.js",
   "js/bell.js",
+  "js/due-sheet.js",
   "js/product-sheet.js",
   "js/screen-archive.js",
   "js/screen-todo.js",
@@ -188,9 +189,9 @@ function bellMark(db, rows, now) {
   });
 }
 
-/** いまの押しで出すもの。{ title, body, renotify } */
+/** いまの押しで出すもの。{ title, body, renotify, ids }（ids は押したときに開く用事、R3） */
 async function bellNotice(now) {
-  const plain = { title: "やることの時刻です", body: "", renotify: true };
+  const plain = { title: "やることの時刻です", body: "", renotify: true, ids: [] };
   let db;
   try { db = await bellDb(); } catch (err) { return plain; }
   try {
@@ -210,7 +211,7 @@ async function bellNotice(now) {
       ? "やることの時刻です"
       : show.map((x) => `${x.time} ${x.title}`).join("\n");
     if (fresh.length) await bellMark(db, fresh, now);
-    return { title, body, renotify: fresh.length > 0 };
+    return { title, body, renotify: fresh.length > 0, ids: show.map((x) => x.id) };
   } catch (err) {
     return plain;
   } finally {
@@ -226,7 +227,7 @@ self.addEventListener("push", (event) => {
     badge: "icons/icon-192.png",
     lang: "ja",
     renotify: n.renotify,
-    data: { screen: "todo" },
+    data: { screen: "todo", due: n.ids },   // 押したら、その用事の紙（js/due-sheet.js）
   })));
 });
 
@@ -235,8 +236,13 @@ self.addEventListener("push", (event) => {
    rather than opening a second one beside it. */
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const screen = (event.notification.data && event.notification.data.screen) || "todo";
-  const target = new URL("./#" + screen, self.location.href).href;
+  const data = event.notification.data || {};
+  const screen = data.screen || "todo";
+  /* 時刻の通知は、その時刻の用事の id を持っています（R3）。`#due=` で開くと
+     app.js が js/due-sheet.js の紙を出します。 */
+  const due = Array.isArray(data.due) ? data.due.filter((x) => typeof x === "string" && x) : [];
+  const hash = due.length ? "due=" + due.map(encodeURIComponent).join(",") : screen;
+  const target = new URL("./#" + hash, self.location.href).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {

@@ -175,7 +175,7 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     const reg = self.registration;
     const real = reg.showNotification.bind(reg);
     reg.showNotification = (title, opts) => {
-      self.__shown.push({ title, body: opts.body, tag: opts.tag, renotify: opts.renotify });
+      self.__shown.push({ title, body: opts.body, tag: opts.tag, renotify: opts.renotify, data: opts.data });
       return real(title, opts).catch(() => {});
     };
   });
@@ -212,6 +212,28 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   const hitA = n1.find((n) => n.tag === "kn-todo-time");
   t.check("押されたら写しの題で出る（19:30 題 の形）",
     !!hitA && hitA.title === `${occA.slice(11)} 秘密の用事A2`, JSON.stringify(n1));
+  t.check("押しの通知は、その用事の id を持つ（R3）",
+    !!hitA && hitA.data && JSON.stringify(hitA.data.due) === JSON.stringify([ids.a]), JSON.stringify(hitA && hitA.data));
+  /* 押したら `#due=id` で開く。窓の一覧と開き方を偽物にして、行き先だけ見る。 */
+  const clickTo = (data) => sw.evaluate(async (d) => {
+    const went = [];
+    const real = { m: self.clients.matchAll, o: self.clients.openWindow };
+    self.clients.matchAll = () => Promise.resolve([]);
+    self.clients.openWindow = (u) => { went.push(u); return Promise.resolve(null); };
+    const e = new Event("notificationclick");
+    let wait = Promise.resolve();
+    e.notification = { data: d, close() {} };
+    e.waitUntil = (p) => { wait = p; };
+    self.dispatchEvent(e);
+    await wait;
+    self.clients.matchAll = real.m;
+    self.clients.openWindow = real.o;
+    return went[0] || "";
+  }, data);
+  const to1 = await clickTo(hitA ? hitA.data : {});
+  t.check("押したら #due=その用事 で開く", to1.endsWith("#due=" + encodeURIComponent(ids.a)), to1);
+  const to0 = await clickTo({ screen: "todo" });
+  t.check("用事の無い通知は、これまでどおり #todo", to0.endsWith("#todo"), to0);
   const again = await push();
   t.check("同じ回をもう一度押されても、同じ札を静かに出し直すだけ",
     again.length === 1 && again[0].title === hitA.title && again[0].renotify === false, JSON.stringify(again));
@@ -237,6 +259,8 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   const n2 = await push();
   t.check("写しに無ければ「やることの時刻です」",
     n2.some((n) => n.title === "やることの時刻です"), JSON.stringify(n2));
+  t.check("写しに無い押しは用事を持たない（押すとやることへ）",
+    n2.every((n) => !n.data || !n.data.due || n.data.due.length === 0), JSON.stringify(n2));
 
   /* 切る。 */
   sent.length = 0;
