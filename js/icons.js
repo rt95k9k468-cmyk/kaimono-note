@@ -7,19 +7,21 @@
 
    ■ 一族（provider）
 
-   一族は名前で登録します。いまは二つ：
+   一族は名前で登録します。いまは一つ：
 
-     phosphor … Phosphor Icons v2.1.1（MIT）。いま使っているもの
-     legacy   … 手描きの55個。一族まるごと戻す口は封じてあります
-                （下の「逃げ場」参照）——一つだけ、Phosphor に無い
-                絵（体重計）を拾うためだけに残っています。
+     phosphor … Phosphor Icons v2.1.1（MIT）。体重計（scale）だけは
+                Phosphor に無いので、手で描いた一枚を同じ一族に
+                入れてあります（icons-phosphor.js のいちばん下）。
+
+   かつてはもう一つ、手描きの55個（legacy）があり、Phosphor に無い名前の
+   逃げ場として残していました。2026年9月28日にファイルごと消しました。
 
    ■ 版が違うと、絵の作りも違う
 
-   手描きのほうは「線の絵」でした——`fill:none` に `stroke` を引き、太さは
-   CSS（--ico-w）が決める。Phosphor は逆で、**輪郭の形そのものを塗った絵**
-   です（viewBox は 24 ではなく 256、paths は fill）。だから太さは CSS では
-   なく**どの weight のファイルを持ってくるか**で決まります。標準は Regular。
+   手で描いた絵（いまは体重計だけ）は「線の絵」です——`fill:none` に
+   `stroke` を引き、太さは CSS が決める。Phosphor は逆で、**輪郭の形そのものを
+   塗った絵**です（viewBox は 24 ではなく 256、paths は fill）。だから太さは
+   CSS ではなく**どの weight のファイルを持ってくるか**で決まります。標準は Regular。
 
    この違いを画面に漏らさないため、`get()` は絵と一緒に「どう塗るか」
    （mode）と「どの升目か」（viewBox）を返し、`svg()` がそれに合わせて
@@ -48,11 +50,9 @@
   /* 一族ごとの絵の帳面。{ name: { body, solid, viewBox, mode } } */
   const providers = Object.create(null);
 
-  /* 使う一族は固定。そこに無い名前の逃げ場だけを残してあります——
-     Phosphor に見つからなかった一つ（体重計）が手描きのまま拾えるように。
-     一族をまるごと入れ替える口（かつての `use()`）は封じました。 */
+  /* 使う一族は固定。一族をまるごと入れ替える口（かつての `use()`）は
+     封じました。 */
   const current = "phosphor";
-  const fallback = "legacy";
 
   function register(id, set) {
     providers[id] = Object.assign(providers[id] || Object.create(null), set);
@@ -61,16 +61,13 @@
   const provider = () => current;
   const has = (id, name) => !!(providers[id] && providers[id][name]);
 
-  /** その名前の絵。いまの一族に無ければ逃げ場から。どちらにも無ければ null。 */
+  /** その名前の絵。無ければ null。 */
   function get(name) {
-    const a = providers[current] && providers[current][name];
-    if (a) return a;
-    const b = providers[fallback] && providers[fallback][name];
-    return b || null;
+    return (providers[current] && providers[current][name]) || null;
   }
 
-  /* 升目と塗り方の既定。手描きの55個は 24 の升目に線で描かれていて、
-     Phosphor は 256 の升目に面で描かれています。 */
+  /* 升目と塗り方の既定。手で描いた絵（体重計）は 24 の升目に線で描かれて
+     いて、Phosphor は 256 の升目に面で描かれています。 */
   const DEFAULT_BOX = "0 0 24 24";
 
   /**

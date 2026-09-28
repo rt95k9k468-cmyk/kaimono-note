@@ -148,7 +148,8 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 **この表を回す道具（node harness）は `js/icon-system.js` → `js/icons-v2-keys.js`
 → `js/util.js` → `js/product-icons.js` → `js/icons-todo.js` →
 `js/food-data.js` の順で読み込むこと。**（言葉の表は2026年9月27日に
-`icons-v2.js` から `icons-v2-keys.js` へ分けた。C3。絵のほうは起動で読まない。）
+`icons-v2.js` から `icons-v2-keys.js` へ分けた。C3。絵のほうの `icons-v2.js` は
+2026年9月28日に消した。）
 `icons-v2-keys.js` を抜かすと
 `KN.iconsV2Keys`（`product-icons.js` が `KEYS.push(...KN.iconsV2Keys)` で
 取り込む旧語彙——mail・movie・trashOut・seaweedWakame 等）が無いまま動くので、

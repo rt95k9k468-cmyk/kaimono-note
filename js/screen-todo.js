@@ -1772,9 +1772,7 @@
      が同じなら、答えも必ず同じです。
 
      **`iconOverrides` が動くなら、ここを捨てること。** いまは書く側に
-     呼び出し元がありません（CLAUDE.md「自分だけの言い換えと、絵の報告」）。
-     `KN.iconsTodo.use()` / `KN.icons.use()` で一族を差し替えるときも同じ
-     ——あれは調べもののための口なので、覚えは持ち越しません。 */
+     呼び出し元がありません（CLAUDE.md「自分だけの言い換えと、絵の報告」）。 */
   const artCache = new Map();
   function cachedArt(kind, key, title, resolve) {
     const ck = kind + "\u0001" + (key || "") + "\u0001" + (title || "");

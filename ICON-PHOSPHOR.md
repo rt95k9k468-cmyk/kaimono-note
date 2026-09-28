@@ -1,5 +1,10 @@
 # UIアイコンを Phosphor へ — 調査と移行
 
+> **［2026年9月28日］** 手描きの55個（`js/icons-legacy.js`）は**消しました**。
+> Phosphor に無かった体重計（`scale`）の一枚だけは、`js/icons-phosphor.js` の
+> いちばん下へ移して使い続けています。以下で `icons-legacy.js` や
+> `use("legacy")` と書いてあるのは、移した当時の記録です。
+
 対象: `KN.util.icon(name)` が引く **UIアイコン 55個**（操作の記号）
 移行先: [Phosphor Icons](https://phosphoricons.com/) v2.1.1 / MIT License / © 2023 Phosphor Icons
 
