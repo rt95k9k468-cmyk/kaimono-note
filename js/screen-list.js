@@ -10,7 +10,6 @@
 
   let root = null;
   let els = {};
-  let categoryFilter = null;   // categoryId or null = all
   let query = "";              // folded, from the search bar
   /* 「買った」の三段（光る → 落ちる → 組み直す）を走っている最中の id。
      途中でもう一度押されても、二度目は無視します——押した回数ぶん
@@ -44,10 +43,15 @@
              言っていて、帯はそれを絵にし直しているだけ——しかも買い物の
              途中で見るのは「あと何を買うか」であって、達成率ではないので。 */""}
 
-        <div class="js-filter"></div>
-        ${/* 紙と掴み手。やること・daily と同じ器です。**掴み手を下へ引くと
-              価格の面が出ます**——この二つは横に並んだ二つのタブではなく、
-              買うものの後ろに価格がいる、という重なりなので。 */""}
+        ${/* カテゴリで絞る札の帯は、2026年9月28日に外しました（利用者：
+              「shopping ではタグは要らない。使わないから」）。札があると、
+              暦と掴み手のあいだに一段はさまって、ほかのタブと同じ「引くと
+              暦が開く」の形になりません。価格の札は残っています。
+
+              紙と掴み手。やること・daily と同じ器です。**掴み手を下へ引くと
+              暦が開きます**（ほかのタブと同じ cal-peek）。価格は買うものの
+              紙の後ろにいて、そこへは帯の「shopping」を押して行きます
+              （紙が下がる。app.js の faceTo）。 */""}
         <div class="tl-sheet js-sheet">
           <span class="tl-grip js-grip" aria-hidden="true"><i></i></span>
           <div class="js-body"></div>
@@ -64,18 +68,27 @@
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
-      filter:     chrome.querySelector(".js-filter"),
       body:       chrome.querySelector(".js-body"),
     };
 
-    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { role: "front" });
+    /* 掴み手は二役です。紙が上に居るあいだは暦を開くもの（ほかのタブと
+       同じ cal-peek。head.js が暦を持っているので、結ぶのもあちら）、
+       紙が価格へ下がって留まっているあいだは買うものへ戻る道（app.js）。 */
+    const grip = chrome.querySelector(".js-grip");
+    KN.app.wireFaceGrip(grip);
+    KN.head.shopPeek({
+      sheet: chrome.querySelector(".js-sheet"),
+      root,
+      // 探している最中だけ引きません（ほかのタブと同じ）。
+      enabled: () => !query.trim(),
+    });
 
     /* 紙を横に払うと、日が動きます（ほかのタブと同じ手つき・同じ一つの
        仕掛け js/day-swipe.js）。買うものの紙は日で中身が変わらないので、
        隣の紙は組みません——紙は指に少しついて戻り、動くのは題と暦の日
        だけです（docs/shared-header.md の「決めたこと」の2を、2026年9月28日に
        利用者と改めた）。行そのものの払い（右で★・左でアーカイブ）は行の
-       もの、掴み手は価格へ引くものなので、そこから始まった指は取りません。 */
+       もの、掴み手は暦を引くものなので、そこから始まった指は取りません。 */
     const sheet = chrome.querySelector(".js-sheet");
     KN.daySwipe.wire({
       viewport: sheet,
@@ -338,7 +351,6 @@
        題に「いま見ている日」を塗るのも、あちらが持ちます。 */
     KN.head.putCal("list", KN.head.shopCal());
 
-    renderFilter(items);
     /* Searching narrows the rows, not the header: the counts above still
        describe the whole trip, because a search is a way of looking at the
        list rather than a change to it. */
@@ -356,36 +368,10 @@
       || (!!cat && KN.util.foldKana(cat.name).includes(query));
   }
 
-  function renderFilter(items) {
-    const counts = new Map();
-    items.filter((i) => !i.checked).forEach((i) => {
-      const p = store.getProduct(i.productId);
-      if (!p) return;
-      counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1);
-    });
-
-    if (counts.size < 2) { categoryFilter = null; els.filter.innerHTML = ""; return; }
-    if (categoryFilter && !counts.has(categoryFilter)) categoryFilter = null;
-
-    const chips = [{ id: "", label: "すべて" }].concat(
-      store.sortedCategories().filter((c) => counts.has(c.id)).map((c) => ({
-        id: c.id, label: c.name, color: c.color, count: counts.get(c.id),
-      })));
-
-    KN.ui.chipRow(els.filter, chips, {
-      activeId: categoryFilter || "",
-      onPick: (id) => {
-        categoryFilter = id && id !== categoryFilter ? id : null;
-        KN.motion.fire("select");
-        render();
-      },
-    });
-  }
-
   function renderBody(items) {
     /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
        settle() を呼ぶと、動いた行が「もといた場所」から滑ってきます
-       （ui.js の flipRows）。丸ごと入れ替わるとき（検索・カテゴリの切り替え）
+       （ui.js の flipRows）。丸ごと入れ替わるとき（検索）
        は、向こうが自分で見送ります。 */
     const settle = KN.ui.flipRows(els.body, ".item-wrap");
     els.body.innerHTML = "";
@@ -414,7 +400,6 @@
          adding up a year of sometime gives a number with no occasion. Both come
          back the moment something is starred, where they mean this trip. */
       const shown = appendGroups(active);
-      if (!shown && categoryFilter) els.body.append(noneInCategory());
       if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]));
       els.body.append(lowSection());
       if (checked.length) els.body.append(checkedSection(checked));
@@ -438,8 +423,7 @@
     const box = node(html`<section class="trip"></section>`);
     box.append(sectionHead("今回買うもの", trip.length, "trip"));
     const inner = node(html`<div class="trip-body"></div>`);
-    const tripShown = appendGroups(trip, inner);
-    if (!tripShown && categoryFilter) inner.append(noneInCategory());
+    appendGroups(trip, inner);
     box.append(inner);
     box.append(tripPlanRow());
     els.body.append(box);
@@ -462,8 +446,7 @@
 
      LINE などへ渡すための一行（docs/improvements.md の D4）。送るのは
      **いま画面に出ている買うもの**そのまま——★があれば「今回買うもの」と
-     「そのほか」に分けて、札で絞っていればその札のぶんだけ、並びも画面と
-     同じ。買ったもの（アーカイブ）は入れません。探しているあいだは出しません
+     「そのほか」に分けて、並びも画面と同じ。買ったもの（アーカイブ）は入れません。探しているあいだは出しません
      （探した結果はリストではなく、リストの見方なので）。
 
      渡し方は共有シート。無い端末ではクリップボードへ写します。共有シートを
@@ -483,7 +466,6 @@
   }
 
   function listText(parts) {
-    const cat = categoryFilter && store.getCategory(categoryFilter);
     const blocks = parts.map(({ title, list }) => {
       const lines = [];
       const groups = groupsOf(list);
@@ -493,7 +475,7 @@
             + `${item.memo ? `（${String(item.memo).replace(/\s+/g, " ").trim()}）` : ""}`);
         });
       });
-      return lines.length ? `${title}${cat ? `（${cat.name}）` : ""}\n${lines.join("\n")}` : "";
+      return lines.length ? `${title}\n${lines.join("\n")}` : "";
     }).filter(Boolean);
     return blocks.join("\n\n");
   }
@@ -522,10 +504,10 @@
 
      「要らない」を押す欄は置きません。覚えておく入れ物が要るので。
      かわりに、いつもの 2.5 倍を過ぎたら黙ります（insights.js）。
-     探しているあいだ・札で絞っているあいだは出しません——どちらも
-     「リストの見方」で、そこに外のものを混ぜると見方が崩れるので。 */
+     探しているあいだは出しません——探した結果は「リストの見方」で、
+     そこに外のものを混ぜると見方が崩れるので。 */
   function lowSection() {
-    if (query || categoryFilter) return document.createDocumentFragment();
+    if (query) return document.createDocumentFragment();
     const low = KN.insights.runningLow();
     if (!low.length) return document.createDocumentFragment();
     const section = node(html`
@@ -603,14 +585,13 @@
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
-  /** 画面に出る組：カテゴリごと、札の絞り込みも効かせて。並べるのは
+  /** 画面に出る組：カテゴリごと。並べるのは
       `store.sortedCategories()` の順（appendGroups と、送る文の両方が使う）。 */
   function groupsOf(list) {
     const groups = new Map();
     list.forEach((item) => {
       const p = store.getProduct(item.productId);
       if (!p) return;
-      if (categoryFilter && p.categoryId !== categoryFilter) return;
       if (!groups.has(p.categoryId)) groups.set(p.categoryId, []);
       groups.get(p.categoryId).push({ item, product: p });
     });
@@ -698,14 +679,6 @@
         <span>${label}</span>
         <span class="cat-head-count">${count}</span>
       </h2>
-    `);
-  }
-
-  function noneInCategory() {
-    return node(html`
-      <p style="text-align:center;color:var(--c-text-3);padding:32px 16px">
-        このカテゴリに未購入の商品はありません
-      </p>
     `);
   }
 

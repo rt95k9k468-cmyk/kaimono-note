@@ -1048,10 +1048,9 @@ a { color: var(--c-primary); }
   background: none;
   pointer-events: auto;
 }
-/* 探す欄とカテゴリの札は、自分の地を持っていません（画面の地の上に置く
-   前提だったので）。前の面を透かすあいだだけ、ここにも地を敷きます。 */
-.screen.is-face-front .search-wrap,
-.screen.is-face-front .js-filter { background: var(--c-bg); }
+/* 探す欄は、自分の地を持っていません（画面の地の上に置く前提だったので）。
+   前の面を透かすあいだだけ、ここにも地を敷きます。 */
+.screen.is-face-front .search-wrap { background: var(--c-bg); }
 
 /* **動くのは紙だけです。題の帯も札の帯も、動きません。**
 
@@ -1079,30 +1078,16 @@ a { color: var(--c-primary); }
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
 }
 
-/* ---- 帯の中身が、じわっと入れ替わる ----
+/* ---- 価格の札は、紙の下から出てくる ----
 
-   紙が下がるにつれて、前の面の札が薄れ、後ろの面の札が出てきます。
-   **重なりません**：先に前が消えきって（p .04→.30）、それから後ろが
-   出てくる（p .30→.62）。下の題の但し書きと同じ理由で、二つが同時に
-   見えると、日本語は字が詰まっているので一塊に読めてしまいます。
-
-   **地は後ろの札が持ちます**（`background`、薄めない）。前の札を薄めた
-   だけだと、消えきった一瞬に地も無くなって、札の帯のところに価格の行が
-   透けます。後ろにいつも一枚あれば、その隙間ができません。 */
-.screen.is-face-front .js-filter {
-  opacity: clamp(0, calc((.30 - var(--face-p, 0)) / .26), 1);
-}
+   前は、同じ位置で買うものの札が薄れてから価格の札が出てくる（重ねない）
+   作りでした（`--face-p` の .04→.30 と .30→.62）。**2026年9月28日に買うもの
+   の札を外した**ので、入れ替える相手がいません。買うものの紙は暦のすぐ下
+   から始まり、価格の札はその紙の下に居て、紙が下がると露出します——
+   暦を引いたときに紙が下がるのと同じ、重なりの素直な見え方です。
+   地は後ろの札が持ったまま（紙の隙間から価格の行が透けないように）。 */
 .screen.is-face-back .js-filter { background: var(--c-bg); }
-.screen.is-face-back .js-filter > * {
-  opacity: clamp(0, calc((var(--face-p, 0) - .30) / .32), 1);
-}
-/* 離した先へ滑るあいだは、濃さにも時間をかけます。指で引いているあいだは
-   `--face-p` が毎フレーム動くので何も要りませんが、離すと数が一度に跳んで、
-   **紙だけが滑って題と札はぱっと切り替わり**ました。 */
-.screen.is-face-front.is-face-settle .js-filter,
-.screen.is-face-back.is-face-settle .js-filter > * {
-  transition: opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
-}
+
 /* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは一覧
    だけで、**自分の上の一組——バー・探す欄・カテゴリの札——はまとめて
    伏せます。** そこには前の面の同じ三つが居るので、二枚重ねると字が
@@ -1166,8 +1151,7 @@ a { color: var(--c-primary); }
   -webkit-mask-image: var(--face-fade);
           mask-image: var(--face-fade);
 }
-.screen.is-face-parked .search-wrap,
-.screen.is-face-parked .js-filter { visibility: hidden; }
+.screen.is-face-parked .search-wrap { visibility: hidden; }
 .screen.is-face-parked .stack > .tl-sheet {
   transform: translateY(calc(var(--face-p, 1) * var(--face-d, 0px)));
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);

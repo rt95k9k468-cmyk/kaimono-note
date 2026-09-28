@@ -70,6 +70,8 @@ const { open, checker } = require("./lib");
         cal: box("#head .cal"), wds: box("#head .cal-wds"), grid: box("#head .cal-clip"),
         slide: Math.max(...[...document.querySelectorAll(".panes > .screen")].map((s) => Math.abs(tx(s)))),
         deck: tx(document.getElementById("deck")),
+        face: (() => { const e = document.querySelector("#screen-list .tl-sheet");
+          return e ? Math.abs(new DOMMatrix(getComputedStyle(e).transform).m42) : 0; })(),
       });
       requestAnimationFrame(loop);
     };
@@ -367,12 +369,13 @@ const { open, checker } = require("./lib");
     return c ? c.__id : null;
   });
   const title = () => page.$eval("#head .js-day-title", (e) => e.textContent.replace(/\s+/g, ""));
-  /** 掴み手を本物のタッチで下へ引いて、価格へ。帯の記録つき。 */
+  /** 買うものに居るところで帯の「shopping」を押して、価格へ（2026年9月28日
+      から。掴み手は暦のものになった）。帯の記録つき。 */
   const toPrices = async () => {
     if ((await owner()) !== "list") await go("list");
-    const g = await center("#screen-list .tl-grip");
     await startRec();
-    await drag(g.x, g.y, 300);
+    await page.waitForTimeout(60);
+    await tapSel('.tab[data-tab="list"]');
     await page.waitForTimeout(800);
     return stopRec();
   };
@@ -385,8 +388,10 @@ const { open, checker } = require("./lib");
     const t0 = await title();
     const fp = await toPrices();
     const dp = drift(fp);
-    c.check(`${mode}：掴み手を引いて価格へ（本物のタッチ）`, (await owner()) === "prices",
+    c.check(`${mode}：買うもので帯の「shopping」を押すと価格へ`, (await owner()) === "prices",
       String(await owner()));
+    const slid = Math.max(...fp.map((f) => f.face || 0));
+    c.check(`${mode}：価格へは紙が下がって行く（差し替えではない）`, slid > 100, `最大 ${slid}px`);
     c.check(`${mode}：買うもの → 価格 で帯と暦が動かない（${fp.length}フレーム）`,
       dp.worst === 0 && fp.length > 10, `${dp.worst}px ${dp.what}`);
     c.check(`${mode}：価格へ移っても暦は同じ一枚・題も同じ`,
@@ -417,6 +422,21 @@ const { open, checker } = require("./lib");
     c.check(`${mode}：留まった紙の頭は下の帯のすぐ上`,
       ground.gripBottom <= ground.barTop + 1 && ground.gripTop > ground.headBottom, JSON.stringify(ground));
 
+    // 価格 → 留まった頭を本物のタッチで上へ引いて戻る（暦は関係ない）
+    {
+      const g = await center("#screen-list .tl-grip");
+      const pref0 = await page.evaluate(() => JSON.stringify(KN.store.calPrefs(null)));
+      await startRec();
+      await drag(g.x, g.y, -300);
+      await page.waitForTimeout(800);
+      const du = drift(await stopRec());
+      c.check(`${mode}：価格で留まった頭を上へ引くと買うものへ（本物のタッチ）`,
+        (await owner()) === "list" && !(await page.evaluate(() => KN.app.faceAt())), String(await owner()));
+      c.check(`${mode}：頭を引いて戻っても帯と暦は動かず、暦の段も変わらない`,
+        du.worst === 0 && pref0 === await page.evaluate(() => JSON.stringify(KN.store.calPrefs(null))),
+        `${du.worst}px ${du.what}`);
+      await toPrices();
+    }
     // 価格 → 帯の「買うもの」で戻る
     await startRec();
     await page.waitForTimeout(60);
@@ -441,6 +461,56 @@ const { open, checker } = require("./lib");
     }
   }
   await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
+
+  /* ---- 買うものの掴み手は暦のもの（2026年9月28日から。ほかのタブと同じ） ---- */
+  await go("list");
+  await page.waitForTimeout(300);
+  c.check("買うものにカテゴリの札の帯は無い",
+    await page.evaluate(() => !document.querySelector("#screen-list .js-filter, #screen-list .chip")));
+  c.check("買うものの掴み手は押す相手ではない（読み上げにも出ない）", await page.evaluate(() => {
+    const g = document.querySelector("#screen-list .tl-grip");
+    return !g.hasAttribute("role") && g.getAttribute("aria-hidden") === "true" && !g.hasAttribute("tabindex");
+  }));
+  {
+    const g = await center("#screen-list .tl-grip");
+    await startRec();
+    await drag(g.x, g.y, 260);
+    await page.waitForTimeout(700);
+    const pr = drift(await stopRec(), ["bar", "title"]);
+    c.check("買うもので掴み手を引くと暦が月へ（本物のタッチ）", await page.evaluate(() =>
+      KN.store.calPrefs(null).open === true && (KN.head.mine("list")) && !KN.app.faceAt()),
+      String(await owner()));
+    c.check("引いているあいだ、帯の題は動かない（買うもの）", pr.worst === 0, `${pr.worst}px ${pr.what}`);
+    const seam2 = await page.evaluate(() => {
+      const cal = document.querySelector("#head .cal").getBoundingClientRect();
+      const sheet = document.querySelector("#screen-list .tl-sheet").getBoundingClientRect();
+      return Math.abs(sheet.top - cal.bottom);
+    });
+    c.check("買うものの紙の上端が暦の下端に来る（±1px）", seam2 <= 1, `${seam2}px`);
+    // 月から上へ押すと週へ、週から上へ押すと暦なし、下へ引けば週に戻る（三段）
+    const g2 = await center("#screen-list .tl-grip");
+    await drag(g2.x, g2.y, -260);
+    await page.waitForTimeout(700);
+    c.check("月から上へ押すと週へ", await page.evaluate(() =>
+      KN.store.calPrefs(null).open === false && KN.store.calPrefs(null).shown === true));
+    const g3 = await center("#screen-list .tl-grip");
+    await drag(g3.x, g3.y, -200);
+    await page.waitForTimeout(700);
+    c.check("週から上へ押すと暦なし", await page.evaluate(() => KN.store.calPrefs(null).shown === false));
+    const g4 = await center("#screen-list .tl-grip");
+    await drag(g4.x, g4.y, 200);
+    await page.waitForTimeout(700);
+    c.check("暦なしから下へ引くと週に戻る", await page.evaluate(() =>
+      KN.store.calPrefs(null).shown === true && KN.store.calPrefs(null).open === false));
+    // 掴み手を押しても（引かずに離しても）価格へは行かない
+    const g5 = await center("#screen-list .tl-grip");
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(g5.x, g5.y) });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(700);
+    c.check("買うものの掴み手を押しても価格へは行かない", (await owner()) === "list");
+  }
+  await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
+  await page.waitForTimeout(400);
 
   /* 題を押すと週⇄月（買うもの・価格の応え） */
   await go("list");
