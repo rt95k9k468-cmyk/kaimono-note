@@ -36,14 +36,18 @@
 - `main` への直接pushの手順（`<branch>` は現在の作業ブランチ）：
   ```
   git push -u origin <branch>
-  git checkout main && git merge --ff-only <branch>
-  git push origin main
-  git checkout <branch>
+  git push origin <branch>:main
   ```
-- デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。
-  `mcp__github__actions_list`（method: list_workflow_runs, branch: main）で
-  確認できるが、出力が大きいので `.txt` に保存されたものを python で
-  スライスして読む。
+  **ローカルの `main` は使わない（checkout も merge もしない）。** 容器は環境の
+  古い写しから始まるので、ローカルの `main` は写しを取った日のまま。取得も浅い
+  （`--depth 50`）ので `origin/main` とのつながりが見えず、`merge --ff-only` は
+  必ず失敗する。早送りかどうかは GitHub 側が見る（`--force` は付けない）。
+  断られたら先に誰かが流している：`git fetch origin main && git merge origin/main`
+  → テスト → もう一度。
+- デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。確かめるのは
+  必要なときだけ：`mcp__github__actions_list`（method: list_workflow_runs,
+  workflow_runs_filter: {branch: "main"}, **perPage: 1**）。perPage を省くと
+  30件返って大きい。
 - `stamp-build.js` は**絶対にローカルで実行してコミットしない**
   （ビルド時にCI側が使うもの）。
 - PRは明示的に頼まれない限り作らない。
@@ -96,32 +100,14 @@
   ——書き直しの浪費は一度で終わらせる。
 - 変更のたびに、触った画面の主要テストと `tests/daily-rules.js`（dailyの
   非評価原則）は必ず走らせる。
-- **localStorage に直に書いてから `reload()` するなら、立ち上げを待つこと。**
-  待たずにやると、**注入した中身ごと消えます**。`app.js` が `pagehide` で
-  `store.flush()` を呼ぶので、120msデバウンスの保存が待機中のまま reload
-  すると、**注入する前の in-memory 状態**が上書きで書き戻るからです
-  （`store.js` の `flushPending`）。`reconcile()` が落ちたわけでも、
-  データが壊れたわけでもありません——**アプリ側の仕掛けは正しく働いて
-  います**（隠れた瞬間に必ず書き出す、というのがあの一行の仕事）。
-  `waitForFunction(() => KN.store)` のあとに 300ms 置けば収まります。
-  一度これを「全部のデータが消えるバグ」と読み違えて、半時間ぶん
-  bisect しました。
-- **指の手つきは、本物のタッチで試すこと。** `new PointerEvent(...)` を
-  自分で投げるやり方では、`touchstart` / `touchmove` を見ているものが
-  **まるごと動きません**——`pull-refresh.js` がそれです。買うものの掴み手に
-  `data-pull-own` が無い不具合（帯まで一緒に降りてくる）は、PointerEvent の
-  試験を何度通しても出ませんでした。**「テストが通ったのに実機で崩れる」の
-  正体がこれ**です。
-  ```js
-  const cdp = await ctx.newCDPSession(page);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart",
-    touchPoints: [{ x, y, radiusX: 12, radiusY: 12, force: 1 }] });
-  // touchMove … / touchEnd は touchPoints: []
-  ```
-  対になる**当たり判定**も一緒に置くこと：掴み手ではないところ（紙の本体）を
-  上端で下へ引いたら、送る器（`KN.app.scrollerOf()` の返すもの）に transform が
-  付く——付かないなら、その試験はそもそも端の give を動かせていない、と
-  分かります（引いて更新はもう無い。sheet-scroll）。
+- **localStorage に直に書いてから `reload()` するなら、
+  `waitForFunction(() => KN.store)` のあと 300ms 待つ。** 待たないと `pagehide` の
+  `store.flush()` が注入前の中身を書き戻し、注入ごと消える（アプリの不具合では
+  ない。これを「全データが消えるバグ」と読み違えたことがある）。
+- **指の手つきは本物のタッチ（CDP の `Input.dispatchTouchEvent`）で試す。**
+  自前の `PointerEvent` では `touchstart` を見るもの（`pull-refresh.js`）が動かず、
+  「テストが通ったのに実機で崩れる」になる。当たり判定も一緒に置く。
+- この二つの全文と書き方は `tests/README.md` の「試験の罠」。
 
 ## 詳しい決めごとは `docs/` にある（触る前に、該当するものだけ読む）
 

@@ -46,3 +46,35 @@
 
 **台本を足したら、この表に一行足す。** 画面を触ったら、その画面の台本と
 `daily-rules.js` を走らせる。
+
+## 試験の罠
+
+2026年9月29日に CLAUDE.md から移した全文（CLAUDE.md は毎回の会話に丸ごと載るので、
+あちらには要点だけ残した）。
+
+- **localStorage に直に書いてから `reload()` するなら、立ち上げを待つこと。**
+  待たずにやると、**注入した中身ごと消えます**。`app.js` が `pagehide` で
+  `store.flush()` を呼ぶので、120msデバウンスの保存が待機中のまま reload
+  すると、**注入する前の in-memory 状態**が上書きで書き戻るからです
+  （`store.js` の `flushPending`）。`reconcile()` が落ちたわけでも、
+  データが壊れたわけでもありません——**アプリ側の仕掛けは正しく働いて
+  います**（隠れた瞬間に必ず書き出す、というのがあの一行の仕事）。
+  `waitForFunction(() => KN.store)` のあとに 300ms 置けば収まります。
+  一度これを「全部のデータが消えるバグ」と読み違えて、半時間ぶん
+  bisect しました。
+- **指の手つきは、本物のタッチで試すこと。** `new PointerEvent(...)` を
+  自分で投げるやり方では、`touchstart` / `touchmove` を見ているものが
+  **まるごと動きません**——`pull-refresh.js` がそれです。買うものの掴み手に
+  `data-pull-own` が無い不具合（帯まで一緒に降りてくる）は、PointerEvent の
+  試験を何度通しても出ませんでした。**「テストが通ったのに実機で崩れる」の
+  正体がこれ**です。
+  ```js
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart",
+    touchPoints: [{ x, y, radiusX: 12, radiusY: 12, force: 1 }] });
+  // touchMove … / touchEnd は touchPoints: []
+  ```
+  対になる**当たり判定**も一緒に置くこと：掴み手ではないところ（紙の本体）を
+  上端で下へ引いたら、送る器（`KN.app.scrollerOf()` の返すもの）に transform が
+  付く——付かないなら、その試験はそもそも端の give を動かせていない、と
+  分かります（引いて更新はもう無い。sheet-scroll）。
