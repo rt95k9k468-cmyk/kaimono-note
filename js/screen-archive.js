@@ -29,6 +29,26 @@
   const { html, node, icon } = U;
   const store = KN.store;
 
+  /* 日記の本文を、いま読める・書けるか（js/diary-idb.js の body()）。
+     "loading" は開いた直後の一瞬（写しとの突き合わせの途中）で、本文を
+     書かせない・書き出させない。"off" は大きな保存場所を読めなかった日で、
+     本文だけ「読めません」と出して書かせない（docs/storage.md）。 */
+  const diaryBody = () => (KN.diaryIdb ? KN.diaryIdb.body() : "ok");
+  const UNREAD = "読めません";
+  /** 本文に触る操作の前に。できないときは理由を言って true を返します。 */
+  function bodyBlocked() {
+    const b = diaryBody();
+    if (b === "ok") return false;
+    if (b === "loading") {
+      KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
+    } else {
+      const again = KN.diaryIdb.retry();
+      KN.ui.toast(again ? "日記の保存場所を、もう一度読みにいっています"
+        : "日記の本文を読めません（日記の保存場所を読めませんでした）");
+    }
+    return true;
+  }
+
   let root = null;
   /* 暦の厚みを測り直す。mount が中身を入れます（render から呼びます）。 */
   let fitCalH = () => {};
@@ -654,7 +674,9 @@
           ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
         </span>
         <span class="arc-then-date">${when}</span>
-        ${then.memo ? html`<span class="arc-then-memo">${then.memo}</span>` : ""}
+        ${!then.memo ? "" : diaryBody() === "off"
+          ? html`<span class="arc-then-memo is-blank">${UNREAD}</span>`
+          : html`<span class="arc-then-memo">${then.memo}</span>`}
         ${shown.length ? html`
           <span class="arc-then-rows">
             ${U.raw(shown.map((e) => {
@@ -740,6 +762,7 @@
     const body = sec.querySelector(".arc-log-body");
     const copyBtn = sec.querySelector(".js-log-copy");
     if (copyBtn) copyBtn.addEventListener("click", () => {
+      if (bodyBlocked()) return;   // 写しから戻るはずの本文が、まだ入っていないことがある
       copyText(dailyCopyText(only)).then((ok) => {
         KN.motion.fire("select");
         KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
@@ -749,6 +772,10 @@
     if (!days.length) {
       body.append(node(html`<p class="arc-log-empty">-</p>`));
     }
+    /* 大きな保存場所を読めなかった日は、本文の欄だけ「読めません」。書いて
+       いない日も同じ字にします——元から本文を外したあと（次の段）は、どの日に
+       書いてあったかも分からないので、いまからその形に揃えておきます。 */
+    const unread = diaryBody() === "off";
     days.forEach((d) => {
       const dt = U.dayDate(d.date);
       const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
@@ -772,8 +799,8 @@
                   書いていない日ごとに同じ字が並んで「書かなかった日」の一覧に
                   見えるので、そちらは「—」のまま。色は薄い字（`.is-blank`）の
                   まま、責める色は当てません（daily は評価しない）。 */""}
-            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank ? "is-blank" : ""}"
-                  >${d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo)}</span>
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank || unread ? "is-blank" : ""}"
+                  >${unread ? UNREAD : d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo)}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
@@ -952,20 +979,32 @@
   }
 
   function openLogSheet(day) {
+    /* 開いた直後（写しとの突き合わせの途中）は開きません。大きな保存場所を
+       読めなかった日は、本文の欄を出さずに開きます——起きた・寝たは本文では
+       ないので、書けます（本文だけ「読めません」）。 */
+    const can = diaryBody();
+    if (can === "loading") { bodyBlocked(); return; }
+    const readable = can === "ok";
+    if (!readable) KN.diaryIdb.retry();
     const cur = store.dayLog(day) || {};
     const dt = U.dayDate(day);
     const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日(${U.weekdayJa(day)})` : day;
-    const memoInit = (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
+    const memoInit = !readable ? "" : (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
 
     /* 文字数の上限は置きません。前は200字で止めて残りを数えていましたが、
        書ける量をこちらが決める理由がありません——短く書きたい人は短く書きます。
        数えるのをやめると、書いている最中に「あと何字」が目に入らなくなります。 */
     const body = node(html`
       <div class="stack" style="gap:16px">
+        ${readable ? html`
         <label class="field">
           <span class="field-label">その日あったこと・したこと</span>
           <textarea class="textarea js-memo" rows="5">${memoInit}</textarea>
-        </label>
+        </label>` : html`
+        <div class="field">
+          <span class="field-label">その日あったこと・したこと</span>
+          <p class="field-hint js-memo-unread">${UNREAD}（日記の保存場所を読めませんでした）。起きた・寝たは書けます。</p>
+        </div>`}
         <div class="arc-times">
           <label class="field">
             <span class="field-label">起きた</span>
@@ -998,20 +1037,20 @@
        本文と見分けがつきませんでした。触れていなければ、本文は元のまま。 */
     const drafted = memoInit !== (cur.memo || "");
     let touched = false;
-    memo.addEventListener("input", () => { touched = true; });
+    if (memo) memo.addEventListener("input", () => { touched = true; });
     const memoOut = () => (drafted && !touched ? (cur.memo || "") : memo.value);
     const save = () => {
       clearTimeout(timer); timer = 0;
-      const now = JSON.stringify([memo.value, wakeEl.value, sleepEl.value]);
+      const now = JSON.stringify([memo ? memo.value : "", wakeEl.value, sleepEl.value]);
       if (now === last) return;
       last = now;
-      store.setDayLog(day, {
-        memo: memoOut(), wake: wakeEl.value || null, sleep: sleepEl.value || null,
-      });
+      const times = { wake: wakeEl.value || null, sleep: sleepEl.value || null };
+      // 本文の欄が無い（読めない日）ときは、本文を渡しません——元の本文はそのまま。
+      store.setDayLog(day, memo ? Object.assign({ memo: memoOut() }, times) : times);
       render();
     };
     const queue = () => { clearTimeout(timer); timer = setTimeout(save, 500); };
-    [memo, wakeEl, sleepEl].forEach((el) => {
+    [memo, wakeEl, sleepEl].filter(Boolean).forEach((el) => {
       el.addEventListener("input", queue);
       el.addEventListener("change", save);
       el.addEventListener("blur", save);
@@ -1036,6 +1075,7 @@
        置くと、続きを書こうとした人が毎回いちばん下まで指で送ることに
        なります（日記は足していくものなので、書き足す場所はいつも末尾
        です）。 */
+    if (!memo) return;
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* time 欄などでは投げます */ }
     memo.scrollTop = memo.scrollHeight;
@@ -1739,6 +1779,7 @@
    * 言葉にしてもらうときに、そのまま渡せる形にしてあります。
    */
   function exportThisMonth() {
+    if (bodyBlocked()) return;   // 月の書き出しには日記の本文が入るので
     const ym = curYm();
     const data = store.exportMonth(ym);
     const text = JSON.stringify(data, null, 2);

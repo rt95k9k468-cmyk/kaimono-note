@@ -1198,7 +1198,20 @@
     KN.pullRefresh.init();
     /* 日記の写しの突き合わせ（js/diary-idb.js）を先に。控えはそれが済むのを
        待ってから取ります（済む前の控えは、写しから戻る本文を取りこぼしうる）。 */
-    if (KN.diaryIdb) KN.diaryIdb.start();
+    if (KN.diaryIdb) {
+      KN.diaryIdb.start();
+      /* 突き合わせが済んだら（読めた・読めなかった、どちらでも）daily を
+         描き直します——「読めません」を出す・引っ込める。写しから戻した
+         本文は store の subscribe が描くので、ここは中身が同じだったときの分。 */
+      KN.diaryIdb.onChange(() => {
+        if (active === "archive" && KN.screens.archive) KN.screens.archive.render();
+      });
+      /* 読めなかった日は、前に出てきたときにもう一度読みにいきます
+         （ホーム画面のアプリは、何日も裏で生きたままなので）。 */
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") KN.diaryIdb.retry();
+      });
+    }
     KN.backup.init();
     /* 大きな保存場所の中身（控えの数・日記の写しの様子）が動いたら、設定が
        出ているときだけ描き直します。控えは離れるたびに取るので、ほかの

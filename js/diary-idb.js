@@ -17,15 +17,24 @@
      ③ 元は消さない。②で一つでも違えば、写したほうを捨てて、いままで
         どおり元だけで持つ（次に開いたとき、また試す）。
 
-   どちらが新しいか（二回目から）
-     元は、書くたびに番号（store の lsSeq）を一つ進めて一緒に書きます。
-     写しの側も、書き足すたびに「元の何番に合わせたか」を持ちます。
-     ・写しの番号のほうが大きい → 元の保存が（容量で）落ちたあいだに
-       書いたぶんが、写しにだけある。写しから戻す。
-     ・元が空（はじめての端末・元だけ消えた）→ 写しから戻す。
-     ・それ以外 → 元が新しい（書いた直後に閉じた、など）。写しを直す。
-     写しから戻すときは、**元にしか無い日を消しません。** どちらの向きでも、
-     置き換わる側の本文は先に自動バックアップへ残します（「日記の突き合わせ前」）。
+   開くたびの突き合わせ（二回目から）——**写しが正しい**（2026年9月28日から）
+     元は「写しへ届かなかった書き込み」を拾うためだけに見ます。
+     ・写しにだけある日 → 元へ戻す。**写しの行は、突き合わせでは一つも
+       消しません。** 写しを消すのは、利用者が日記を消す・すべて削除・
+       復元をしたとき（書くたびの diffInto）だけ。
+     ・元にだけある日 → 写しへ足す。
+     ・両方にあって違う日 → 写しを元へ。ただし元の番号（store の lsSeq）が
+       写しの番号（「元の何番に合わせたか」）より大きいときだけは、元が
+       新しい（書いた直後に閉じて、写しへの書き足しが届かなかった）ので、
+       元を写しへ。
+     どちらの向きでも、置き換わる側の本文は先に自動バックアップへ残します
+     （「日記の突き合わせ前」）。
+
+   読み込み中と、読めない日（body()）
+     突き合わせが済むまでは「読み込み中」。daily の本文を書かせない・
+     書き出させない・控えを取らせない。大きな保存場所を読めなかった日は
+     「読めない」——daily の本文だけ「読めません」と出して、書かせない
+     （ほかのタブは通常どおり）。前に出てきたとき、もう一度読みにいきます。
    ========================================================= */
 (function () {
   "use strict";
@@ -45,6 +54,9 @@
   let info = {};             // 設定に出すもの（status()）
   let settle = null;
   let readyP = new Promise((r) => { settle = r; });
+  let retryable = false;     // 読めなかったのが、読み直せば直りうる理由か
+  let lastTry = 0;
+  const listeners = new Set();
 
   /* 本文のある日。**一字でもあれば**持ちます（空白だけでも、元にあるなら
      写しにも）——読み比べは一字も違わないことを見るので、片方だけが
@@ -101,17 +113,25 @@
         diffInto(s);
       }
       if (KN.idb) KN.idb.changed();
+      listeners.forEach((fn) => { try { fn(); } catch (err) { console.error(err); } });
     });
   }
 
   async function boot() {
-    const at = store.loadInfo();   // 読んだときの元の番号と、元に何かあったか
+    lastTry = Date.now();
+    /* 元の番号は、**読んだときの**もの。読めなかった日のあとで読み直すとき
+       も同じです——読めなかったあいだは本文を書かせないので、元の本文は
+       読んだときのまま。そのあいだに進んだ番号（やること・買うものなどの書き込み）で
+       比べると、古い元の本文が新しい写しに勝ってしまいます。 */
+    const seqNow = store.loadInfo().seq;
+    retryable = false;
     try {
       if (store.loadError()) throw new Error("記録が読めなかった日なので、写しには触れません");
       if (!KN.idb || !KN.idb.available()) throw new Error("この端末では、大きな保存場所が使えません");
+      retryable = true;
       const got = await readAll();
       if (!got.meta || got.meta.phase !== "verified") await migrate();
-      else await reconcile(got, at);
+      else await reconcile(got, seqNow);
       phase = "on";
     } catch (err) {
       console.warn("diary copy is off:", err);
@@ -121,7 +141,10 @@
     }
   }
 
-  /* ①写す → ②読み比べる → ③元は消さない。 */
+  /* ①写す → ②読み比べる → ③元は消さない。
+     写しを一度空にするのは、確かめ終えていない写し（途中で止まった・読み比べで
+     違った）だけ——それは前の migrate が元から写したもので、書き足しは
+     確かめ終えるまで一度も届いていないので、元に無いものは入っていません。 */
   async function migrate() {
     const days = daysOf(store.get());
     const seq = store.lsSeq();
@@ -154,80 +177,78 @@
     info = v;
   }
 
-  /* 開くたびの突き合わせ。 */
-  async function reconcile(got, at) {
+  /* 開くたびの突き合わせ。**写しが正しい**（上の説明）。
+
+     元に無いことは、消した証拠になりません——元だけ消えた・元の保存が
+     落ちた・書き足しが途中で止まった、どれでも同じ形になるので。だから
+     ここでは写しの行を一つも消さず、写しにだけある日は元へ戻します。
+     利用者が消した日が、写しへの書き足しが届かないうちに閉じられて
+     戻ってくることはありえます（消えるよりマシ、のほう）。 */
+  async function reconcile(got, seqNow) {
     const inBox = new Map(got.rows.map((r) => [r.date, r]));
     const days = daysOf(store.get());
-    const diff = [];
-    days.forEach((d, date) => { const r = inBox.get(date); if (!r || r.memo !== d.memo) diff.push(date); });
-    inBox.forEach((r, date) => { if (!days.has(date)) diff.push(date); });
-
-    const mode = !at.hadData ? "copy" : !at.seq ? "live" : got.seq > at.seq ? "copy" : "live";
+    /* 元のほうが新しいと言えるのは、元の番号が写しの番号より大きいときだけ
+       （写しへ届かなかった書き込みが、元にある）。番号の無い元（直に書いた・
+       古い版）は、新しいと言えません。 */
+    const liveNewer = seqNow > got.seq;
     // 次に元を書く番号は、写しの番号の続きから（store.seqAtLeast の説明）。
     store.seqAtLeast(got.seq);
     const now = new Date().toISOString();
-    const puts = [];
-    const dels = [];
-    let seq = got.seq;
 
-    if (diff.length && mode === "copy") {
-      /* 写しから戻す。写しにあって元と違う日だけ——**元にしか無い日は
-         消しません**（それは写しのほうへ足します）。 */
-      const bring = diff.filter((date) => inBox.has(date));
-      const lose = bring.filter((date) => {
-        const d = days.get(date);
-        return d && !inBox.get(date).memo.startsWith(d.memo);   // 写しが続きを書いただけなら、失うものは無い
-      });
-      if (lose.length) await keep(null);   // 置き換わる前の元を、控えに
-      if (bring.length) {
-        store.update((s) => {
-          bring.forEach((date) => {
-            const r = inBox.get(date);
-            const row = s.archive.days.find((d) => d.date === date);
-            if (!row) { s.archive.days.push(blankDay(date, r)); return; }
-            row.memo = r.memo;
-            if (r.at) row.updatedAt = r.at;
-            if (!row.createdAt) row.createdAt = row.updatedAt || date;
-          });
-        });
+    const bring = [];      // 写し → 元
+    const puts = [];       // 元 → 写し（足す・書き直す。消さない）
+    const loseLive = [];   // 置き換わる元の本文がある日
+    const loseBox = [];    // 置き換わる写しの本文がある日
+    inBox.forEach((r, date) => {
+      const d = days.get(date);
+      if (d && d.memo === r.memo) return;
+      if (d && liveNewer) {
+        puts.push(rec(date, d));
+        if (!d.memo.startsWith(r.memo)) loseBox.push(date);   // 元が続きを書いただけなら、失うものは無い
+      } else {
+        bring.push(date);
+        if (d && !r.memo.startsWith(d.memo)) loseLive.push(date);   // 写しが続きを書いただけなら、失うものは無い
       }
-      diff.filter((date) => !inBox.has(date)).forEach((date) => puts.push(rec(date, days.get(date))));
-      // 番号は下げません——元がまだ書けていないうちに下げると、次に開いたとき元が勝ってしまう。
-    } else if (diff.length) {
-      /* 元に合わせて、写しを直す。 */
-      const lose = diff.filter((date) => {
-        const r = inBox.get(date);
-        const d = days.get(date);
-        return r && !(d && d.memo.startsWith(r.memo));   // 元が続きを書いただけなら、失うものは無い
+    });
+    days.forEach((d, date) => { if (!inBox.has(date)) puts.push(rec(date, d)); });
+    const n = bring.length + puts.length;
+
+    if (loseLive.length) await keep(null);   // 置き換わる前の元を、控えに
+    if (loseBox.length) await keep(withBox(store.get(), inBox, loseBox));
+    if (bring.length) {
+      store.update((s) => {
+        bring.forEach((date) => {
+          const r = inBox.get(date);
+          const row = s.archive.days.find((d) => d.date === date);
+          if (!row) { s.archive.days.push(blankDay(date, r)); return; }
+          row.memo = r.memo;
+          if (r.at) row.updatedAt = r.at;
+          if (!row.createdAt) row.createdAt = row.updatedAt || date;
+        });
       });
-      if (lose.length) await keep(withBox(store.get(), inBox, lose));
-      diff.forEach((date) => {
-        const d = days.get(date);
-        if (d) puts.push(rec(date, d));
-        else dels.push(date);
-      });
-      seq = store.lsSeq();
     }
 
     const prev = got.meta || {};
+    const mode = !n ? "match" : bring.length && puts.length ? "both" : bring.length ? "copy" : "live";
     const v = {
       ...prev,
       opens: (prev.opens || 0) + 1,
-      matched: (prev.matched || 0) + (diff.length ? 0 : 1),
-      fixed: (prev.fixed || 0) + (diff.length ? 1 : 0),
-      last: { at: now, mode: diff.length ? mode : "match", days: diff.length },
+      matched: (prev.matched || 0) + (n ? 0 : 1),
+      fixed: (prev.fixed || 0) + (n ? 1 : 0),
+      last: { at: now, mode, days: n },
     };
     await KN.idb.run(["diary", "meta"], "readwrite", (t) => {
       const box = t.objectStore("diary");
       puts.forEach((r) => box.put(r));
-      dels.forEach((date) => box.delete(date));
-      if (puts.length || dels.length) t.objectStore("meta").put({ k: SEQ, v: seq });
+      /* 写しを元に合わせたぶん、番号も元に。写しから戻しただけのときは
+         番号を動かしません——元がまだ書けていないうちに上げ下げすると、
+         次に開いたとき、どちらが新しいかを取り違えます。 */
+      if (puts.length) t.objectStore("meta").put({ k: SEQ, v: Math.max(got.seq, store.lsSeq()) });
       t.objectStore("meta").put({ k: META, v });
     });
 
     const next = new Map([...inBox].map(([date, r]) => [date, r.memo]));
     puts.forEach((r) => next.set(r.date, r.memo));
-    dels.forEach((date) => next.delete(date));
     known = next;
     info = v;
   }
@@ -335,6 +356,22 @@
     run();
   }
 
+  /**
+   * 読めなかった日に、もう一度読みにいきます（前に出てきたとき・daily の
+   * 本文を押したとき）。iPhone のホーム画面のアプリは、閉じたつもりでも
+   * 何日も裏で生きているので、「開き直せば読み直す」だけでは足りません。
+   * 読み直しても直らない理由（記録が読めない・この端末に無い）と、試して
+   * すぐ（5秒以内）は、何もしません。始めたら true。
+   */
+  function retry() {
+    if (phase !== "off" || !retryable || Date.now() - lastTry < 5000) return false;
+    phase = "starting";
+    known = null;
+    readyP = new Promise((r) => { settle = r; });
+    run();
+    return true;
+  }
+
   /* ---------------- 外から ---------------- */
 
   /** 突き合わせが済んだ（または、写しを使わないと決まった）ら果たされる約束。 */
@@ -346,10 +383,26 @@
   /** 済んだか。済む前の書き出しは、写しから戻るはずの本文を取りこぼしうる。 */
   const settled = () => phase === "on" || phase === "off";
 
+  /**
+   * daily の本文を、いま読める・書けるか。
+   *   "ok"       読める・書ける
+   *   "loading"  突き合わせの途中（開いた直後の一瞬）。書かせない・書き出させない
+   *              （控えは backup.take が ready() を待つ）
+   *   "off"      大きな保存場所を読めなかった。本文は「読めません」と出し、書かせない
+   */
+  function body() {
+    if (phase === "on") return "ok";
+    if (phase === "off") return "off";
+    return "loading";
+  }
+
+  /** 突き合わせが済むたびに（読めた・読めなかった、どちらでも）。 */
+  function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+
   /** 設定に出すもの。 */
   function status() {
     return { ...info, phase, days: known ? known.size : null };
   }
 
-  KN.diaryIdb = { start, ready, settled, status, afterWrite, reloaded };
+  KN.diaryIdb = { start, ready, settled, body, retry, onChange, status, afterWrite, reloaded };
 })();
