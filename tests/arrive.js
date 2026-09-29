@@ -236,7 +236,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       KN.store.setHealth(day, "restingEnergy", 1500);
       KN.store.addMeal({ day, time: "07:30", slot: "breakfast", items: [{ name: "パン", kcal: 400 }] });
       KN.store.addMeal({ day, time: "12:30", slot: "lunch", items: [{ name: "定食", kcal: 600 }] });
-      KN.store.addMeal({ day, time: "19:30", slot: "dinner", items: [{ name: "煮物", kcal: 500 }] });
+      KN.store.addMeal({ day, time: "19:30", slot: "dinner", items: [{ name: "煮物", kcal: 1200 }] });   // 総消費 1,900 を超える
     }, DAY);
     await page.click('.tab[data-tab="todo"]');
     await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
@@ -248,10 +248,12 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
         const mid = r && r.querySelector(".diet-ring-mid");
         if (r) window.__rec.push({ cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
           target: parseFloat(r.dataset.p || "NaN"), n: mid ? Number(mid.dataset.n) : null, show: mid ? mid.dataset.show : undefined });
-        const segs = [...document.querySelectorAll("#screen-diet .diet-stack > i:not(.is-rest)")];
+        const segs = [...document.querySelectorAll("#screen-diet .diet-stack-fill > i")];
+        const stack = document.querySelector("#screen-diet .diet-stack");
         if (segs.length) (window.__bar = window.__bar || []).push({ at: performance.now() - t0,
           w: segs.map((e) => e.getBoundingClientRect().width), full: segs.map((e) => e.offsetWidth),
-          ids: segs.map((e) => e.className) });
+          ids: segs.map((e) => e.className), over: stack.classList.contains("is-over"),
+          rim: getComputedStyle(stack).boxShadow });
         if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
       };
       tick();
@@ -275,34 +277,41 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("赤の超えたぶんと数は一緒に動く（どのフレームでも揃う）", off === 0, `${off}フレーム ${worst}`);
     t.check("終われば本当の値", Math.abs(end.p - end.target) < 1e-3 && end.show == null, JSON.stringify(end));
 
-    /* 今日の食事の帯：朝 → 昼 → 夜 → 飲酒の順に、自分の左端から伸びる。区切りで一瞬ゆるむ。 */
+    /* 今日の食事の帯：入れものごと左から伸び、朝・昼・夜はいつも最後の比率のまま一緒に伸びる。
+       超えた日の赤い縁は、帯が端に着いてから。 */
     const bar = await page.evaluate(() => window.__bar || []);
-    const ids = bar.length ? bar[bar.length - 1].ids : [];
-    t.check("帯は朝・昼・夜（と飲酒）の順", ids.length >= 3 && /is-breakfast/.test(ids[0]) && /is-lunch/.test(ids[1])
-      && /is-dinner/.test(ids[2]), JSON.stringify(ids));
-    const first = bar.find((f) => f.w.some((w) => w > 0.5));
+    const lastBar = bar[bar.length - 1] || { ids: [], w: [], full: [] };
+    t.check("帯は朝・昼・夜（と飲酒）", lastBar.ids.length >= 3 && /is-breakfast/.test(lastBar.ids[0])
+      && /is-lunch/.test(lastBar.ids[1]) && /is-dinner/.test(lastBar.ids[2]), JSON.stringify(lastBar.ids));
     t.check("はじめは空（伸びる前）", bar.length > 10 && bar[0].w.every((w, i) => w <= bar[0].full[i] * 0.05),
       JSON.stringify(bar[0] && bar[0].w));
-    let order = true, orderAt = "";
-    bar.forEach((f) => f.w.forEach((w, i) => {
-      if (i && w > 1 && f.w[i - 1] < f.full[i - 1] - 1) { order = false; orderAt = `${Math.round(f.at)}ms 区分${i}`; }
-    }));
-    t.check("前の区分が伸びきってから、次が伸び始める（先頭は一本で進む）", order, orderAt);
-    /* 先頭の位置と速さ。区切り（朝→昼）の前後は、昼の中ほどより遅い。 */
-    const front = bar.map((f) => ({ at: f.at, x: f.w.reduce((a, b) => a + b, 0) }));
-    const v = front.map((f, i) => (i ? (f.x - front[i - 1].x) / Math.max(1, f.at - front[i - 1].at) : 0));
-    const b1 = bar[bar.length - 1].full[0], b2 = b1 + bar[bar.length - 1].full[1];
-    const near = v.filter((_, i) => i && Math.abs(front[i].x - b1) < (b2 - b1) * 0.08);
-    const midV = v.filter((_, i) => i && Math.abs(front[i].x - (b1 + b2) / 2) < (b2 - b1) * 0.15);
-    const avg = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
-    t.check("朝→昼の区切りで一瞬ゆるむ（区切りの速さ < 昼の中ほどの速さ）",
-      near.length && midV.length && avg(near) < avg(midV) * 0.85,
-      `区切り ${avg(near).toFixed(3)} / 中ほど ${avg(midV).toFixed(3)} px/ms`);
-    t.check("区切りで止まりはしない（速さは 0 にならない）", near.every((x) => x > 0.01), JSON.stringify(near.map((x) => x.toFixed(3))));
-    const lastBar = bar[bar.length - 1];
+    const fullSum = lastBar.full.reduce((a, b) => a + b, 0);
+    const growing = bar.filter((f) => { const x = f.w.reduce((a, b) => a + b, 0); return x > fullSum * 0.1 && x < fullSum * 0.9; });
+    let ratioOff = 0, ratioAt = "";
+    growing.forEach((f) => {
+      const x = f.w.reduce((a, b) => a + b, 0);
+      f.w.forEach((w, i) => {
+        const want = lastBar.full[i] * x / fullSum;
+        if (Math.abs(w - want) > 1) { ratioOff++; ratioAt = `${Math.round(f.at)}ms 区分${i}: ${w.toFixed(1)} / ${want.toFixed(1)}`; }
+      });
+    });
+    t.check("伸びている途中も、区分はいつも最後の比率のまま（全部が一緒に伸びる）",
+      growing.length >= 3 && ratioOff === 0, `${growing.length}フレーム中 ${ratioOff} ${ratioAt}`);
+    const front = bar.map((f) => f.w.reduce((a, b) => a + b, 0));
+    t.check("帯は減らない（伸びていくだけ）", front.every((x, i) => !i || x >= front[i - 1] - 0.01));
+    const endAt = bar.find((f) => f.w.reduce((a, b) => a + b, 0) >= fullSum - 0.5);
+    const fillMs = await page.evaluate(() => KN.motion.ms("--m-fill"));
+    t.check("長さは輪と同じ --m-fill（それより長く伸び続けない）",
+      endAt && endAt.at <= fillMs + 400, `${endAt && Math.round(endAt.at)}ms / ${fillMs}ms`);
     t.check("伸び終われば本当の幅", lastBar.w.every((w, i) => Math.abs(w - lastBar.full[i]) < 0.5),
       JSON.stringify([lastBar.w, lastBar.full]));
-    void first;
+    /* 赤い縁（超えた日）。はじめは見えず、端に着いてから出る。 */
+    const rimAlpha = (bs) => { const m = /rgba?\(([^)]+)\)/.exec(bs || ""); if (!m) return 0; const v = m[1].split(",").map(Number); return v.length > 3 ? v[3] : 1; };
+    const earlyRim = bar.filter((f) => f.at < fillMs * 0.5).map((f) => rimAlpha(f.rim));
+    t.check("超えた日の帯（is-over）", lastBar.over, JSON.stringify(lastBar));
+    t.check("赤い縁は、伸びているあいだは出ない（空の帯を枠だけが囲まない）",
+      earlyRim.length > 3 && earlyRim.every((a) => a < 0.05), JSON.stringify(earlyRim.slice(0, 5)));
+    t.check("伸び終われば縁の指定は元どおり（赤。止まった帯では区分に隠れる）", rimAlpha(lastBar.rim) > 0.9, lastBar.rim);
     t.check("エラーなし（飲みすぎた日）", errors.length === 0, errors.join("\n"));
     await browser.close();
   }
