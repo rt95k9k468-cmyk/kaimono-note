@@ -21,7 +21,7 @@ const NOT_SCRIPTS = new Set(["lib.js", "run-all.js"]);
 
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */
-const GATE = ["registry", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit"];
+const GATE = ["registry", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp"];
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */

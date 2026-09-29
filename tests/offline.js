@@ -63,6 +63,9 @@ const TABS = ["archive", "todo", "list", "diet"];
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("console", (m) => {
+    if (m.type() === "error" && /Content Security Policy/i.test(m.text())) errors.push(`CSP: ${m.text().slice(0, 200)}`);
+  });
 
   /* ---- Service Worker だけを入れる（アプリの頁は開かない） ---- */
   await page.goto(new URL("manifest.webmanifest", APP).href);
