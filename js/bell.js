@@ -86,6 +86,7 @@
    * 今日から7日先までの「時刻のあるやること」。くり返しは `fallsOn` で開く。
    * 返すのは {at, time, title, id, occ} の、時刻の早い順。
    * もう過ぎた時刻と、もう知らせた回（`notifiedFor`）は入れません。
+   * 「前に◯分」（`lead`、段7）を持つものは、出る時刻の一件も足します。
    */
   function plan(now) {
     const U = KN.util;
@@ -102,6 +103,19 @@
         const o = occ(day, t.time);
         if (t.notifiedFor === o) continue;
         out.push({ at, time: t.time, title: String(t.title || ""), id: t.id, occ: o });
+        /* 出る時刻（段7）。「前に30分」なら、その時刻にも一度。回は別の名前
+           （`… 出る`）にして、absorb が本体の回と取り違えないように——出る時刻に
+           鳴っても、時刻そのものはまだ知らせていないので。sw.js は「時刻 題」を
+           出すので、題の側に「出る時刻 · 13:00 病院」と書いておきます（sw.js は
+           変えずに済み、古い Service Worker でも同じ字になる）。 */
+        const lead = Number(t.lead) > 0 ? Number(t.lead) : 0;
+        const leave = at - lead * 60000;
+        if (lead && leave > at0) {
+          const d = new Date(leave);
+          const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+          out.push({ at: leave, time: hm, title: `出る時刻 · ${t.time} ${String(t.title || "")}`,
+                     id: t.id, occ: `${o} 出る` });
+        }
       }
     });
     return out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));

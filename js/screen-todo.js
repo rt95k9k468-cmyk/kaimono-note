@@ -522,6 +522,8 @@
     let repeatEvery = editing && t.repeatEvery ? t.repeatEvery : 7;
     let flagged = editing ? !!t.flagged : false;
     let minutes = editing ? (t.minutes || null) : null;
+    // 出る時刻の「前に◯分」（段7）。時刻を決めたときだけ欄が出る。
+    let lead = editing ? (t.lead || null) : null;
     /* くり返しの用事の、いつもの長さ（段4。済ませた記録から引く。言えなければ null）。
        黙って minutes に入れはしません——決めるのは本人なので、札を一つ足すだけ。 */
     const usual = editing ? store.usualMinutes(t) : null;
@@ -679,6 +681,14 @@
             タイミングです。並ぶ場所は毎朝・毎晩のままです。</span>
         </div>
 
+        ${/* 出る時刻（段7）。時刻を決めた用事にだけ出します。移動のある約束
+              （病院・駅）の「何時に出るか」を、時刻と別に持てるように。 */""}
+        <div class="field js-lead-field" hidden>
+          <span class="field-label">前に出る</span>
+          <div class="js-lead"></div>
+          <span class="field-hint js-lead-note" hidden></span>
+        </div>
+
         ${/* どれくらいかかるか。締め切りでも目標でもありません——**今日の
               時間割を組むための長さ**です。決めなくても構いません。 */""}
         <div class="field">
@@ -818,7 +828,7 @@
             due: src.due, deadline: src.deadline, part: src.part, time: src.time,
             repeat: src.repeat, repeatDays: src.repeatDays, repeatNth: src.repeatNth,
             repeatEvery: src.repeatEvery, memo: src.memo, flagged: src.flagged, minutes: src.minutes,
-            shop: src.shop, icon: src.icon,
+            lead: src.lead, shop: src.shop, icon: src.icon,
             // 手順は形だけ写して、済ませた印は落とします。
             subs: (src.subs || []).map((x) => ({ title: x.title })),
           });
@@ -1053,6 +1063,7 @@
        screen. */
     /** 「7:00 〜 7:30　30分」。時刻と長さの両方が決まったときだけ。 */
     function paintSpanNote() {
+      paintLead();   // 時刻が変わる合流点なので、出る時刻の欄もここで
       const el = body.pick(".js-span-note");
       if (!el) return;
       const P = KN.plan;
@@ -1137,6 +1148,33 @@
        （買い物へ行く、通院、旅行の移動など）。上限は cleanMinutes と
        同じ12時間——それ以上は一日の別の使い方（複数の用事に割る）の話
        なので、ここでは扱いません。 */
+    /* 出る時刻の「前に◯分」（段7）。札は三つと「なし」だけ——見積もりはそこまで
+       細かくならない（長さの札と同じ言い分）。時刻が無ければ欄ごと隠します。
+       毎回 pick するのは、paintSpanNote（この上で組み立ての途中から呼ばれる）が
+       呼ぶので、下に const で持つと TDZ になるから。 */
+    function paintLead() {
+      const field = body.pick(".js-lead-field");
+      if (!field) return;
+      const at = KN.plan.toMin(time);
+      field.hidden = at == null;
+      if (at == null) return;
+      const LEADS = [15, 30, 60];
+      KN.ui.chipRow(body.pick(".js-lead"), [{ id: "", label: "なし" }].concat(
+        LEADS.concat(lead && !LEADS.includes(lead) ? [lead] : [])
+          .map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
+      ), {
+        activeId: lead ? String(lead) : "",
+        onPick: (id) => {
+          lead = id ? Number(id) : null;
+          KN.motion.fire("select");
+          paintLead();
+        },
+      });
+      const note = body.pick(".js-lead-note");
+      note.hidden = !lead;
+      note.textContent = lead ? `${tlClock(KN.plan.toTime(Math.max(0, at - lead)))} に出る` : "";
+    }
+
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
     const minsHost = body.pick(".js-mins");
     function paintMins() {
@@ -1704,14 +1742,16 @@
       if (editing) {
         store.updateTodo(todoId, { title, due: fixed, deadline,
           part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes, icon: iconKey });
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
+          lead: at ? lead : null, icon: iconKey });
         /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
            知らない欄を混ぜると黙って落ちます。 */
         store.setSubs(todoId, subs);
         KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
       } else {
         store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes, subs, icon: iconKey });
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
+          lead: at ? lead : null, subs, icon: iconKey });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -2805,11 +2845,24 @@
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
     return KN.dayRoad.build({
-      plan, today: isToday,
+      plan, today: isToday, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
       open: (id) => openSheet(id),
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
       decide: (id, at) => decideOnRoad(id, at, day),
     });
+  }
+
+  /** その日の最初の停留所（時刻を決めた、まだの用事）。{ at: 分, title } か null。
+      道の次の一行が、今日の決まった予定が済んだあとに「明日は 9:00 病院から」と
+      添えるため（段6）。くり返しは fallsOn で開く（時間割と同じ読み方）。 */
+  function firstStopOn(day) {
+    let best = null;
+    store.openTodos().forEach((t) => {
+      if (t.trace || !KN.util.isTime(t.time) || !store.fallsOn(t, day)) return;
+      const at = KN.plan.toMin(t.time);
+      if (!best || at < best.at) best = { at, title: t.title };
+    });
+    return best;
   }
 
   /* 道の上で時刻を決めた（段2）。時間割で時刻の列へ運んだときと同じ書き換えと
