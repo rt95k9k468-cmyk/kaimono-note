@@ -3912,6 +3912,31 @@
     }
   }
 
+  /** 線の上で、その行が受け持つ時間 { a, u }（分）と、その用事の本当の終わり end。
+
+      ふつうは用事の始まり〜終わりそのものです。**下の行とぶつかっている行
+      （`is-clash-above`）だけ、受け持ちは下の行が始まるまで**です。
+
+      20:00〜22:00 のルーティンの途中、20:55 に「テスト」があるとき、二つは
+      一本の線の上に上下に並びます。上の丸薬をルーティン自身の進み具合で塗ると、
+      20:57 には上の丸薬のまん中に「いま」が来て、その下の、もう始まっている
+      テストが灰色——上から下へ読むと時間が戻ります（2026年9月29日の画面）。
+      線の上の順に読めば、上の丸薬の見えているところは「テストが始まるまで」
+      なので、そこまでで塗り切ります。運ぶときの目盛り（`axisOf`）も、もとから
+      そう読んでいます。
+
+      end はうすい地（`is-live`）のため——ルーティン自体はまだ続いているので。 */
+  function shownSpan(li) {
+    const a = Number(li.dataset.at), end = Number(li.dataset.until);
+    let u = end;
+    if (li.classList.contains("is-clash-above")) {
+      const nx = li.nextElementSibling;
+      const na = nx ? Number(nx.dataset.at) : NaN;
+      if (isFinite(na) && na < u) u = Math.max(a, na);
+    }
+    return { a, u, end };
+  }
+
   /** いまの時刻が、リストのどの高さに当たるか。無ければ null。
 
       **行の中にも入ります。** ここには「行と行のあいだにしか置けない」と
@@ -3929,7 +3954,7 @@
     for (const li of list.children) {
       const rail = li.querySelector(".tl-rail");
       if (!rail) continue;
-      const a = Number(li.dataset.at), u = Number(li.dataset.until);
+      const { a, u } = shownSpan(li);
       if (!isFinite(a) || !isFinite(u) || u <= a) continue;
       const r = rail.getBoundingClientRect();
       if (r.height <= 0) continue;
@@ -4034,8 +4059,8 @@
       if (!li.classList) continue;
       const row = li.classList.contains("tl-row");
       if (!row && !li.classList.contains("tl-free-row")) continue;
-      const a = Number(li.dataset.at), u = Number(li.dataset.until);
-      const known = isFinite(a) && isFinite(u) && u > a;
+      const { a, u, end } = shownSpan(li);
+      const known = isFinite(a) && isFinite(end) && end > a;
       let pass;
       if (nowMin == null || !known || li.classList.contains("is-done")) pass = 1;
       else if (nowMin >= u) pass = 1;
@@ -4080,7 +4105,7 @@
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
-      const live = nowMin != null && known && pass > 0 && pass < 1
+      const live = nowMin != null && known && nowMin > a && nowMin < end
         && !li.classList.contains("is-done");
       li.classList.toggle("is-live", live);
       if (live) li.setAttribute("aria-current", "time");
