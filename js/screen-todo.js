@@ -2472,6 +2472,8 @@
         wait = Math.round(Math.min(620, Math.max(220, (w / SPEED) * 1000)));
         item.style.setProperty("--strike-ms", wait + "ms");
         KN.motion.fire("check");
+        /* 下の帯のチェックリストも跳ねる（片づいたことを、席が受け止める）。 */
+        KN.app.pokeTab("todo");
         item.classList.add("is-striking");
         node0.classList.add("is-pop");
         tl.classList.add("is-flash");
@@ -2505,6 +2507,7 @@
     finishing.add(id);
     haptic([16, 40, 16]);
     checkEl.setAttribute("aria-checked", "true");   // 指にはすぐ応える
+    KN.app.pokeTab("todo");
     KN.ui.burst(checkEl);
 
     /* 繰り返しは消えません。次の設定日へ移るので、そちらへ**滑って**いきます

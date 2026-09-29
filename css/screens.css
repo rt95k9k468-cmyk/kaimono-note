@@ -1421,6 +1421,21 @@
 }
 .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
 .check[aria-checked="true"] svg { opacity: 1; transform: scale(1); }
+/* ---- ✓は描かれる（2026年9月29日）----
+   押した丸の✓が、**ペンで引くように左から**出る（短い払いから長い払いへ）。✓の絵は
+   塗りの形（Phosphor）なので線の長さでは引けない——左から開く幕（clip-path）で
+   引いたように見せる。丸が満ちるのを追いかけて、少し遅れて始まる。
+   - `inset()` どうしでないと途中が無い（`none` との間は跳ぶ）ので、既定は幕の開いた
+     `inset(0)`、閉じるのは `aria-checked="false"` のときだけ。「できなかった」（mixed）の
+     −や、aria-checked の無い丸は、いままでどおり。
+   - ↻（`.check-repeat` の中の svg）は幕の外——子の svg だけ（`>`）に掛ける。
+   - 組み直しで最初から済んだ姿で出た丸は、動かない（transition は変わったときだけ）。 */
+.check > svg { clip-path: inset(0 0 0 0); }
+.check[aria-checked="false"] > svg { clip-path: inset(0 100% 0 0); }
+.check[aria-checked="true"] > svg {
+  transition: opacity var(--m-state), transform var(--m-state) var(--ease-out),
+              clip-path var(--m-check) var(--ease-out) calc(var(--m-state) * .5);
+}
 
 /* ↻ inside the circle, for a repeating todo.
 
@@ -3782,8 +3797,9 @@ a.btn { text-decoration: none; }
   opacity: 1;
   transform: none;
   transition: opacity var(--m-sheet-open) var(--ease), transform var(--m-sheet-grow) var(--ease-out);
-  /* --i は上から数えた番号なので、逆から遅らせます（指のいちばん近くが先）。 */
-  transition-delay: calc((2 - var(--i)) * 62ms);
+  /* --i は上から数えた番号なので、逆から遅らせます（指のいちばん近くが先）。
+     間は `--m-stagger`（62ms を直に書いていた。速さは名前で持つ）。 */
+  transition-delay: calc((2 - var(--i)) * var(--m-stagger));
 }
 /* 押したときの変形。**`.fab-menu.is-on .fab-menu-b`（0,3,0）に負けて
    いた**ので、開いているあいだ——つまり押せるあいだ——一度も効いて

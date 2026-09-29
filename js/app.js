@@ -465,6 +465,15 @@
     paintGlass();
   }
 
+  /* 画面の中で起きたことに、下の帯の席の絵が応える（docs/tabbar.md の「押した席の
+     絵が応える」）。買った・★を付けた → カートが押し出される、やることを済ませた →
+     チェックリストが跳ねる。**行き先の席が受け止めた**、を言うためのもので、帯を
+     押したときと同じ動き（絵の名前ごと）を使う。 */
+  KN.app.pokeTab = (tabId) => {
+    const face = document.querySelector(`.tab[data-tab="${tabId}"] .tab-ico-face`);
+    if (face) KN.motion.fire("poke", face);
+  };
+
   function paintTabBadge(tabId, count) {
     const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
     if (!tab) return;

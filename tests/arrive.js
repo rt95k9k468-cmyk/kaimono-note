@@ -188,6 +188,71 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await browser.close();
   }
 
+  /* 画面の中の出来事に、帯の席が応える（★・買った → カート、済ませた → チェックリスト）。
+     ✓は左から描かれる。空の絵は開いたとき咲く。 */
+  {
+    const { browser, page, errors } = await open({
+      before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 10, 0)); },
+    });
+    const faceOf = (tab) => page.evaluate((tab) => {
+      const f = document.querySelector(`.tab[data-tab="${tab}"] .tab-ico-face`);
+      return { on: f.classList.contains("is-poke"), name: getComputedStyle(f).animationName };
+    }, tab);
+    const settle = () => page.waitForFunction(() => !document.querySelector(".tab-ico-face.is-poke, .screen.is-m-arrive"),
+      null, { timeout: 5000 });
+
+    /* 空の買うもの。 */
+    await page.click('.tab[data-tab="todo"]');
+    await settle();
+    await page.click('.tab[data-tab="list"]');
+    const empty = await page.evaluate(() => {
+      const a = document.querySelector("#screen-list .empty-art");
+      return a ? getComputedStyle(a).animationName : null;
+    });
+    t.check("空の絵は開いたとき咲く（empty-bloom）", empty === "empty-bloom", String(empty));
+    await settle();
+
+    await page.evaluate(() => {
+      const p = KN.store.addProduct({ name: "牛乳" });
+      KN.store.addItem(p.id || p);
+    });
+    await page.waitForSelector("#screen-list .item .fav");
+    await page.click("#screen-list .item .fav");
+    const favPoke = await faceOf("list");
+    t.check("★を付けると、帯のカートが応える", favPoke.on && favPoke.name === "poke-roll", JSON.stringify(favPoke));
+    await settle();
+    await page.click("#screen-list .item .fav");
+    t.check("★を外したときは黙る", !(await faceOf("list")).on);
+
+    await page.click('#screen-list .item .check[aria-checked="false"]');
+    const tick = await page.evaluate(() => {
+      const c = document.querySelector("#screen-list .item .check");
+      const svg = c && c.querySelector(":scope > svg");
+      return { checked: c && c.getAttribute("aria-checked"),
+               clipAnim: svg ? svg.getAnimations().some((a) => a.transitionProperty === "clip-path") : false };
+    });
+    t.check("買うと、丸はすぐ満ちて✓が左から描かれる（clip-path が動く）",
+      tick.checked === "true" && tick.clipAnim, JSON.stringify(tick));
+    await page.waitForFunction(() => document.querySelector('.tab[data-tab="list"] .tab-ico-face.is-poke'),
+      null, { timeout: 3000 }).catch(() => {});
+    const dropPoke = await faceOf("list");
+    t.check("落ちていく行を、帯のカートが受け止める", dropPoke.on && dropPoke.name === "poke-roll", JSON.stringify(dropPoke));
+
+    /* やること。 */
+    await settle();
+    await page.evaluate(() => KN.store.addTodo({ title: "手紙を出す", due: KN.util.todayKey() }));
+    await page.click('.tab[data-tab="todo"]');
+    await settle();
+    const sel = '#screen-todo .check[aria-label^="手紙を出す"][aria-checked="false"]';
+    await page.waitForSelector(sel);
+    await page.click(sel);
+    const todoPoke = await faceOf("todo");
+    t.check("やることを済ませると、帯のチェックリストが跳ねる", todoPoke.on && todoPoke.name === "poke-hop",
+      JSON.stringify(todoPoke));
+    t.check("エラーなし（席が応える）", errors.length === 0, errors.join("\n"));
+    await browser.close();
+  }
+
   /* 動きを減らす設定。 */
   {
     const { browser, page, errors } = await open({
