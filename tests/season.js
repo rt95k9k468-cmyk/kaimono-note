@@ -94,15 +94,15 @@ t.check("日付でないものには何も言わない", SE.of("") === null && S
     const head = root.querySelector(".arc-log-head");
     const row = root.querySelector(".arc-log-row");
     return {
-      text: el ? el.textContent.trim() : null,
-      want: KN.season.line(KN.util.todayKey()),
+      text: el ? [...el.querySelectorAll(".arc-season-row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()).join(" | ") : null,
+      want: KN.season.rows(KN.util.todayKey()).map(([k, v]) => `${k}${v}`).join(" | "),
       afterHead: !!(el && head && el.previousElementSibling === head),
       aboveRow: !!(el && row && (el.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)),
       weight: el ? getComputedStyle(el).fontWeight : null,
       all: root.innerText,
     };
   });
-  t.check("daily の一日ぶんに、その日の節気と候が一行", !!scr.text && scr.text === scr.want, `${scr.text} / ${scr.want}`);
+  t.check("daily の一日ぶんに、二十四節気と七十二候が名前つきの二行", !!scr.text && scr.text === scr.want, `${scr.text} / ${scr.want}`);
   t.check("置き場所は Daily Log の見出しのすぐ下・日の行の上", scr.afterHead && scr.aboveRow);
   t.check("字の太さは 400", scr.weight === "400", scr.weight);
   const hits2 = FORBIDDEN.filter((w) => scr.all.includes(w));
