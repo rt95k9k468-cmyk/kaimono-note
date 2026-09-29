@@ -41,7 +41,8 @@ window.__diff = function (a, b, p) {
     const S = KN.store;
     S.loadSample();
     const p = S.get().products[0];
-    S.saveSet("試験の組", [p.id, S.get().products[1].id]);
+    /* 組（R11）は画面から外したが、保存済みの sets は持ち続ける——復元でも残るかを見る。 */
+    S.update((s) => { s.sets = [{ id: "g-rp", name: "試験の組", productIds: [p.id, S.get().products[1].id] }]; });
     S.learnCategory("試験の品", "c-food");
     S.setIconOverride("試験の一品", "apple");
     S.addIconReport({ text: "試験の言葉", screen: "list", kind: "wrong" });

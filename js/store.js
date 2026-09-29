@@ -53,7 +53,8 @@
       /* いつもの組（R11）。「カレー」と、その品物（products の id）の並び。
          記録ではなく「型」——いつ買ったかは持たず、押せばリストに無いものだけを
          入れます。品物のメモでは足りない：メモは一つの品物に付く字で、ほかの
-         品物を指せないので。既定は空（鍵が無い保存も空）。 */
+         品物を指せないので。既定は空（鍵が無い保存も空）。
+         **2026年9月29日に機能は外した**が、保存済みの組は消さずに持つ（描かないだけ）。 */
       sets: [],
       // やること。買い物とは別の暮らしの用事で、値段も店も持たない代わりに
       // 日付と繰り返しを持つ。
@@ -2634,72 +2635,9 @@
     });
   }
 
-  /* ---------------- いつもの組（R11） ----------------
-
-     組は品物の id の並びだけを持ちます。絵・カテゴリ・価格は品物の側に
-     あるので、組の品は自然にそれとつながります（写さない）。消えた品物を
-     指す id は、使うときに見ないだけ。 */
-  function setProducts(g) {
-    if (!g) return [];
-    const ps = get().products;
-    return g.productIds.map((id) => ps.find((p) => p.id === id)).filter(Boolean);
-  }
-
-  function findSetByName(name) {
-    const key = foldKana(String(name || "").trim());
-    if (!key) return null;
-    return get().sets.find((g) => foldKana(g.name) === key && setProducts(g).length) || null;
-  }
-
-  /** リストにまだ無い（買っていない行が無い）組の品物。 */
-  function setMissing(g) {
-    const on = new Set(get().items.filter((i) => !i.checked).map((i) => i.productId));
-    return setProducts(g).filter((p) => !on.has(p.id));
-  }
-
-  /**
-   * 同じ名前の組があれば置き換え、無ければ足します。
-   * @returns {{ set: object, undo: () => void }}
-   */
-  function saveSet(name, productIds) {
-    const clean = String(name || "").trim();
-    const ids = [...new Set((productIds || []).filter(Boolean))];
-    if (!clean || !ids.length) return null;
-    const key = foldKana(clean);
-    const before = get().sets.slice();
-    const prev = before.find((g) => foldKana(g.name) === key);
-    const rec = prev
-      ? { ...prev, name: clean, productIds: ids }
-      : { id: uid("g"), name: clean, productIds: ids, createdAt: today() };
-    update((s) => {
-      s.sets = prev ? s.sets.map((g) => (g.id === prev.id ? rec : g)) : [...s.sets, rec];
-    });
-    return { set: rec, replaced: !!prev, undo: () => update((s) => { s.sets = before; }) };
-  }
-
-  /** @returns {() => void} 消す前へ戻す（同じ場所に）。 */
-  function removeSet(id) {
-    const before = get().sets.slice();
-    update((s) => { s.sets = s.sets.filter((g) => g.id !== id); });
-    return () => update((s) => { s.sets = before; });
-  }
-
-  /**
-   * 組のうち、リストに無いものだけを入れます（あるものは入れない・二重にしない）。
-   * @returns {string[]} 足した行の id（戻すときに使う）
-   */
-  function addSet(id, { fav = false } = {}) {
-    const g = get().sets.find((x) => x.id === id);
-    const added = [];
-    setMissing(g).slice().reverse().forEach((p) => {
-      const rec = addItem(p.id);
-      added.push(rec.id);
-    });
-    if (fav && added.length) update((s) => {
-      s.items.forEach((i) => { if (added.includes(i.id)) i.fav = true; });
-    });
-    return added;
-  }
+  /* いつもの組（R11）は 2026年9月29日に外した（利用者が「要らない」と）。
+     保存済みの `sets` は消さずに持ち続ける——読み込み・書き出し・控えには
+     今までどおり乗る。描かないだけ（CLAUDE.md の「保存済みの欄は消さない」）。 */
 
   function addPrice(productId, { storeId, price, amount, date }) {
     const rec = {
@@ -4062,7 +4000,6 @@
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
-    setProducts, findSetByName, setMissing, saveSet, removeSet, addSet,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
     addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
