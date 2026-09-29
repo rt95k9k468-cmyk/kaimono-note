@@ -2692,30 +2692,22 @@
   function energyBar(day) {
     const sp = D.energySplit(day);
     if (!sp) return null;
-    /* 開いたとき、帯は左から伸びる（screens.css の「帯は左から伸びる」）。朝 → 昼 →
-       夜…と一つずつ、**幅に比例した時間**で（どの区分も同じ速さで伸びて見える）。
-       `--seg-at` はその区分が伸び始める時刻、`--seg-len` は伸びる長さで、どちらも
-       `--m-draw` に対する割合。帯ぜんぶ（100%）で `--m-draw` ちょうど、短い帯は
-       それより短く（ただし 0.45 倍より短くはしない——一瞬で終わると伸びたと読めない）。 */
+    /* 区分は一つの入れもの（`.diet-stack-fill`、幅は摂取の割合）に入れて、中の幅は
+       入れものに対する割合で持つ。開いたとき、**入れものごと**左から伸びる
+       （screens.css の「帯は左から伸びる」）——朝・昼・夜は、いつも最後の比率の
+       まま一緒に伸びる。残りは帯の地（入れものの外）なので、描くものは無い。 */
     const sum = sp.parts.reduce((a, x) => a + x.pct, 0) || 1;
-    const span = Math.max(0.45, Math.min(1, sum / 100));
-    let at = 0;
-    const seg = sp.parts.map((x) => {
-      const len = span * x.pct / sum;
-      const out = `--seg-at:${at.toFixed(3)};--seg-len:${len.toFixed(3)}`;
-      at += len;
-      return out;
-    });
     const el = node(html`
       <div class="diet-stack-wrap">
         <div class="diet-stack ${sp.over ? "is-over" : ""}" role="img"
              aria-label="${sp.known
                ? `総消費${Math.round(sp.burned).toLocaleString()}kcalのうち、摂取${sp.intake.toLocaleString()}kcal`
                : `摂取${sp.intake.toLocaleString()}kcalの内わけ`}">
-          ${KN.util.raw(sp.parts.map((x, i) =>
-            `<i class="is-${x.id}${i === sp.parts.length - 1 ? " is-last" : ""}" style="width:${x.pct}%;${seg[i]}"`
-            + ` title="${x.label} ${x.kcal.toLocaleString()}kcal"></i>`).join(""))}
-          ${sp.restPct > 0 ? KN.util.raw(`<i class="is-rest" style="width:${sp.restPct}%"></i>`) : ""}
+          <span class="diet-stack-fill" style="width:${Math.min(100, sum).toFixed(2)}%">
+            ${KN.util.raw(sp.parts.map((x) =>
+              `<i class="is-${x.id}" style="width:${(x.pct / sum * 100).toFixed(3)}%"`
+              + ` title="${x.label} ${x.kcal.toLocaleString()}kcal"></i>`).join(""))}
+          </span>
         </div>
         <div class="diet-stack-legend">
           ${KN.util.raw(sp.parts.map((x) =>
