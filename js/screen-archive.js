@@ -817,7 +817,7 @@
               一つに決まらないので。色は変えず、字を一行足すだけ。数えも比べも
               しない、ただの暦の言葉です（daily は評価しない）。 */
             only && S().showSeason !== false && KN.season ? html`
-          <p class="arc-season">${KN.season.line(only)}</p>` : ""}
+          <p class="arc-season">${KN.season.rows(only).map(([k, v]) => html`<span class="arc-season-row"><span class="arc-season-k">${k}</span>${v}</span>`)}</p>` : ""}
         <div class="arc-log-body"></div>
       </section>
     `);
