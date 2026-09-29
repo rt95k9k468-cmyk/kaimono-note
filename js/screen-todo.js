@@ -3357,12 +3357,75 @@
       });
       host.append(bar);
     }
+    /* 段3：前の日から運んできたもの。**あることと、置き直す口だけ**言います。
+       押さなければ今日に居続ける（9月27日の「期限切れは作らない」のまま）。
+       数は件数だけ——「できなかった」「◯日持ち越し」は言いません。 */
+    const oldCarry = host && host.querySelector(".tl-carry");
+    if (oldCarry) oldCarry.remove();
+    const carried = host && oneDay() && shownDay() === today ? store.carriedToday() : [];
+    if (carried.length) {
+      const bar = node(html`
+        <button type="button" class="tl-late tl-carry">
+          <span class="tl-late-n">${carried.length}</span>
+          <span>前の日から運んだもの</span>
+          <span class="tl-late-go">置き直す${icon("chevron")}</span>
+        </button>
+      `);
+      bar.addEventListener("click", () => { haptic(); carrySheet(); });
+      host.append(bar);
+    }
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);
     // 描き直したぶん、いま見ている日の印は消えています。付け直します
     // （枠ごと入れ替わったので、輪は滑らせずに置きます）。
     paintHere(true);
+  }
+
+  /* 段3：運んできたものを、一件ずつ選び直す紙（docs/todo-timeline.md
+     「崩れたときの置き直し」）。選ぶと行が消え、報せに「元に戻す」。
+     片づけ終えたら紙は閉じる（通知から来た紙 due-sheet.js と同じ拍）。 */
+  function carrySheet() {
+    const rows = store.carriedToday();
+    if (!rows.length) return;
+    const week = store.carryWeek();
+    const picks = [
+      { key: "today", label: "今日のどこか", done: "今日のどこかに" },
+      { key: "tomorrow", label: "明日", done: "明日へ" },
+      { key: "week", label: week.next ? "来週" : "今週", done: week.next ? "来週中に" : "今週中に" },
+      { key: "someday", label: "長期タスクへ", done: "長期タスクへ" },
+      { key: "stop", label: "やめる", done: "アーカイブしました" },
+    ];
+    const box = node(html`<div class="carry-list"></div>`);
+    let handle = null;
+    let left = rows.length;
+    rows.forEach((t) => {
+      const was = t.carried && t.carried.time;
+      const row = node(html`
+        <div class="carry-row" data-id="${t.id}">
+          <div class="carry-head">
+            <span class="carry-title">${t.title}</span>
+            ${was ? html`<span class="carry-was">前は ${was}</span>` : ""}
+          </div>
+          <div class="carry-acts">
+            ${picks.map((p) => html`<button type="button" class="btn btn-soft btn-sm js-carry" data-key="${p.key}">${p.label}</button>`)}
+          </div>
+        </div>
+      `);
+      row.querySelectorAll(".js-carry").forEach((b) => b.addEventListener("click", () => {
+        const p = picks.find((x) => x.key === b.dataset.key);
+        const undo = store.settleCarried(t.id, p.key);
+        haptic();
+        KN.motion.fire("save");
+        row.remove();
+        if (!--left && handle) { handle.close(); handle = null; }
+        KN.ui.toast(`「${t.title}」を${p.done}`, {
+          action: { label: "元に戻す", onClick: undo },
+        });
+      }));
+      box.append(row);
+    });
+    handle = KN.ui.sheet({ title: "前の日から運んだもの", content: box, onClose: () => { handle = null; } });
   }
 
   function groupSection(g, rows, tiles) {

@@ -1900,6 +1900,8 @@
       if ("time" in patch) {
         t.time = KN.util.isTime(patch.time) ? patch.time : null;
       }
+      // 日か時刻を自分で決め直したら、もう「運んできたもの」ではない（段3）。
+      if (("due" in patch || "time" in patch) && t.carried) delete t.carried;
       if ("part" in patch) t.part = cleanPart(patch.part);
       if (!t.due) { t.part = null; t.time = null; }
       fixBookend(t);
@@ -2281,7 +2283,8 @@
    * docs/todo-items.md の「期限切れは作らない」）。
    *
    * ① くり返しでない用事で、やる日（due）が過ぎたもの → 今日へ。時刻は
-   *    持ったまま（「10:00 病院」を逃したら、今日の 10:00 に居る）。
+   *    **外して**印（carried）に控えます（2026年9月29日・段3。前は持ったまま
+   *    だった——昨日の「10:00 病院」が、今日の約束として道に立っていた）。
    * ② 長期タスク（due なし）で、期限（deadline）が過ぎたもの → 今日へ。
    *    やる日を決めないまま締め切りを越えたので、今日の時間割に出します。
    * ③ くり返しの用事（ルーティン）で、次にやる日を逃したもの → **今日から
@@ -2301,6 +2304,7 @@
     /* 買い物の一件（`shop`）は、その日に一つ。今日にもうあるなら、昨日の
        ぶんを運ぶと二つ並ぶので、運びません。 */
     const shopToday = get().todos.some((t) => t.shop && t.due === today && !t.archived && !t.trace);
+    const carry = new Set();          // ①② のぶん（朝に置き直せるもの）
     openTodos().forEach((t) => {
       if (t.repeat) {
         if (!t.due || t.due >= today) return;
@@ -2314,10 +2318,79 @@
       if (!late) return;
       if (t.shop && shopToday) return;
       moves.set(t.id, today);
+      carry.add(t.id);
     });
     if (!moves.size) return;
     update((s) => {
-      s.todos.forEach((t) => { if (moves.has(t.id)) t.due = moves.get(t.id); });
+      s.todos.forEach((t) => {
+        if (!moves.has(t.id)) return;
+        t.due = moves.get(t.id);
+        if (!carry.has(t.id)) return;
+        /* 段3（2026年9月29日・利用者が選んだ）。**時刻は外して「連れ」に**
+           します——昨日の「13:00」は、今日の約束ではないので（一日の道では
+           停留所＝本人が決めた約束）。外した時刻は印に控えて、置き直しの紙で
+           「前は 13:00」と言うのにだけ使います。二日続けて運んだら、最初の
+           時刻を持ち続けます。 */
+        const was = t.carried && t.carried.time;
+        t.carried = { on: today, time: t.time || was || null };
+        t.time = null;
+      });
+    });
+  }
+
+  /* ---- 段3：運んだものの置き直し（docs/todo-timeline.md「崩れたときの置き直し」） ----
+
+     運ぶのは上の rescheduleOverdue が黙ってやります（9月27日の決めごとのまま）。
+     ここは、運んできたものを朝に一度「今日のどこか・明日・今週・長期タスクへ・
+     やめる」から選び直せるようにするだけ。選ばなければ今日に居続けます。
+     印（`carried`）は今日のものだけ数えます——日が変われば、印ごと古くなる。 */
+
+  /** 今日、前の日から運んできたもので、まだ選び直していないもの。 */
+  function carriedToday() {
+    const today = KN.util.todayKey();
+    return openTodos().filter((t) =>
+      !t.repeat && !t.trace && t.carried && t.carried.on === today && t.due === today);
+  }
+
+  /** 「今週」の行き先。週の終わりまで二日を切っていたら、来週の終わり。 */
+  function carryWeek() {
+    const U = KN.util;
+    const today = U.todayKey();
+    const end = U.weekOf(today).to;
+    if (end > U.shiftDay(today, 1)) return { day: end, next: false };
+    return { day: U.weekOf(U.shiftDay(end, 1)).to, next: true };
+  }
+
+  /**
+   * 運んだものを選び直す。where は "today" | "tomorrow" | "week" | "someday" | "stop"。
+   * @returns {() => void} 元に戻す
+   */
+  function settleCarried(id, where) {
+    const U = KN.util;
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const keys = ["due", "time", "part", "deadline", "carried", "archived", "archivedAt"];
+    const was = {};
+    keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
+    const today = U.todayKey();
+    /* 過ぎた期限を持ったまま長期タスクへ戻すと、見回りがすぐ今日へ運び返すので
+       外します（元に戻せば戻る）。 */
+    const lapsed = t0.deadline && t0.deadline < today;
+    if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1) });
+    else if (where === "week") {
+      const end = carryWeek().day;
+      const keep = t0.deadline && t0.deadline >= today && t0.deadline < end;
+      updateTodo(id, { due: null, deadline: keep ? t0.deadline : end });
+    } else if (where === "someday") updateTodo(id, lapsed ? { due: null, deadline: null } : { due: null });
+    else if (where === "stop") archiveTodo(id, true);
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t) delete t.carried;
+    });
+    return () => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      keys.forEach((k) => { if (was[k] === undefined) delete t[k]; else t[k] = was[k]; });
     });
   }
 
@@ -3861,7 +3934,7 @@
     addStore, addProduct, addItem, addPrice, setArchived,
     setProducts, findSetByName, setMissing, saveSet, removeSet, addSet,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, rescheduleOverdue, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
