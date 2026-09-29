@@ -918,6 +918,9 @@
       if (finishing.has(item.id)) return;      // 二度押しても一度だけ
       finishing.add(item.id);
       KN.motion.fire("check");
+      /* 丸はすぐ満ち、✓が左から描かれる（やることと同じ「指にはすぐ応える」。
+         screens.css の「✓は描かれる」）。組み直しで本物の買った姿に引き継ぐ。 */
+      e.currentTarget.setAttribute("aria-checked", "true");
       KN.ui.burst(e.currentTarget);
       const mark = row.querySelector(".item-emoji");
       if (mark) KN.ui.burst(mark);
@@ -932,6 +935,8 @@
 
       setTimeout(() => {
         row.classList.add("is-dropping");
+        /* 落ちていく行を、下の帯のカートが受け止める。 */
+        KN.app.pokeTab("list");
         setTimeout(() => {
           finishing.delete(item.id);
           commit();
@@ -971,11 +976,15 @@
 
   /** ★ marks an item as part of the trip being shopped right now. */
   function toggleFav(itemId) {
+    let on = false;
     store.update((s) => {
       const rec = s.items.find((i) => i.id === itemId);
-      if (rec) rec.fav = !rec.fav;
+      if (rec) { rec.fav = !rec.fav; on = rec.fav; }
     });
     KN.motion.fire("save");
+    /* ★を付けた＝今回のかごに入れた。下の帯のカートが応える（外したときは黙る
+       ——取り消しに見せ場は作らない、済ませる丸と同じ約束）。 */
+    if (on) KN.app.pokeTab("list");
   }
 
   /* ---------------- その日に買ったもの（2026年9月28日） ----------------

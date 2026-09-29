@@ -707,6 +707,16 @@ button, [role="tab"] {
   display: block;
   width: 68px; height: 68px;
 }
+/* 開いたとき（motion.js の arrive）、空の絵はふわりと咲いて、中の絵が一度だけ
+   小さく跳ねる。空の画面は「何も無い」ではなく「ここから始まる」の場所なので、
+   迎える側が少しだけ動く。組み直しでは動かない（is-m-arrive のあいだだけ）。 */
+.is-m-arrive .empty-art { animation: empty-bloom var(--m-fill) var(--spring) both; }
+.is-m-arrive .empty-art .empty-svg {
+  animation: poke-hop var(--m-poke) var(--ease) both;
+  animation-delay: calc(var(--m-fill) * .4);
+  transform-origin: 50% 90%;
+}
+@keyframes empty-bloom { from { opacity: 0; scale: .72; } }
 
 .empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
 .empty-text  { font-size: var(--fs-md); max-width: 30ch; line-height: var(--lh-body); }
