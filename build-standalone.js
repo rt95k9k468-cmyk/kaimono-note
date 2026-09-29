@@ -82,6 +82,7 @@ const JS = [
   "js/screen-diet.js",
   "js/screen-list.js",
   "js/screen-prices.js",
+  "js/yearbook.js",
   "js/screen-settings.js",
   "js/tab-lens.js",
   "js/app.js",

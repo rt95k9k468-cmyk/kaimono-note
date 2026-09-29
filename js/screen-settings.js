@@ -1593,14 +1593,14 @@
      突き合わせが済む前は、写しから戻るはずの本文がまだ入っていないことがあり、
      大きな保存場所を読めない日は本文を出さない日です。daily 画面の月の書き出し
      （bodyBlocked）と同じ門。できないときは理由を言って true を返します。 */
-  function monthExportBlocked() {
+  function monthExportBlocked(what = "月ぶん") {
     const b = KN.diaryIdb ? KN.diaryIdb.body() : "ok";
     if (b === "ok") return false;
     if (b === "loading") {
       KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
     } else {
       KN.diaryIdb.retry();
-      KN.ui.toast("日記の保存場所を読めない日なので、月ぶんは書き出せません（何も書き出していません）", { duration: 6000 });
+      KN.ui.toast(`日記の保存場所を読めない日なので、${what}は書き出せません（何も書き出していません）`, { duration: 6000 });
     }
     return true;
   }
@@ -1645,6 +1645,71 @@
     });
 
     handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
+  }
+
+  /* ---------------- 年の本（R10、js/yearbook.js） ----------------
+
+     一年ぶんを事実だけの一冊に。選べるのは記録のある年だけ（新しい順）。
+     本文が入るので、月ぶんと同じ門（突き合わせの前・読めない日は断る）。
+     紙に言うのは中身の種類だけで、数は言いません（daily は数えない）。 */
+  function openYearbook() {
+    if (monthExportBlocked("年の本")) return;
+    const list = KN.yearbook.years();
+    const body = node(html`
+      <div class="stack">
+        <p class="set-foot is-flush">
+          その年の積み上げ・初めて買ったもの・よく買ったもの・日記を、一冊に
+          まとめます。印刷の画面で「PDF に保存」を選べば PDF に。Markdown は
+          アプリが無くても読める文字のファイルです。
+        </p>
+        <div class="js-years"></div>
+      </div>
+    `);
+    if (!list.length) {
+      body.querySelector(".js-years").append(node(html`<p class="diet-note">まだ書いたものがありません。</p>`));
+      KN.ui.sheet({ title: "年の本", content: body });
+      return;
+    }
+    let year = list.includes(KN.util.todayKey().slice(0, 4)) ? KN.util.todayKey().slice(0, 4) : list[0];
+    const paint = () => KN.ui.chipRow(body.querySelector(".js-years"),
+      list.map((y) => ({ id: y, label: `${y}年` })),
+      { activeId: year, onPick: (id) => { year = String(id); paint(); } });
+    paint();
+
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-md" style="flex:1">${icon("download")}Markdown</button>
+        <button class="btn btn-primary js-print" style="flex:1">${icon("book")}印刷・PDF</button>
+      </div>
+    `);
+    KN.ui.sheet({ title: "年の本", content: body, footer: foot });
+
+    foot.querySelector(".js-print").addEventListener("click", () => {
+      if (monthExportBlocked("年の本")) return;
+      KN.yearbook.print(year);
+    });
+    foot.querySelector(".js-md").addEventListener("click", () => {
+      if (monthExportBlocked("年の本")) return;
+      const name = `kurashi-${year}.md`;
+      const text = KN.yearbook.markdown(year);
+      /* 指で触る端末は共有シートで（ファイルへ保存・メモへ送る）。
+         share はタップの流れの中で呼ぶ（手前で await しない）。 */
+      const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+      let file = null;
+      try { file = new File([text], name, { type: "text/markdown" }); } catch (err) { file = null; }
+      if (coarse && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: name }).catch(() => {});
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
+      a.download = name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      KN.ui.toast(`${year}年の本を書き出しました`);
+    });
   }
 
   function downloadJSON(name, data) {
@@ -2862,13 +2927,14 @@
           value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
         }),
         navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport }),
+        navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook }),
         navRow({
           ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
           value: `${store.learnedList().length}件`, onTap: openLearned,
         })
       ),
       foot(usageText(KN.backup.usage())),
-      foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。"),
+      foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。「年の本」は、一年ぶんの積み上げ・買ったもの・日記を一冊に（印刷・PDF と Markdown）。"),
       /* 日記の取り込み（D7）。取り込み道具の README が「設定 → 日記を取り込む」
          と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
       card(
