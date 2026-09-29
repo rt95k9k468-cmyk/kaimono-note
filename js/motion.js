@@ -88,7 +88,7 @@
   if (window.matchMedia) {
     try {
       window.matchMedia("(prefers-reduced-motion: reduce)")
-        .addEventListener("change", () => { cache.clear(); easeCache.clear(); });
+        .addEventListener("change", () => { cache.clear(); easeCache.clear(); curveCache.clear(); });
     } catch (_) { /* 古い Safari。無くても困りません */ }
   }
 
@@ -396,7 +396,7 @@
 
      画面を開いた一拍（と、アプリへ戻ってきたとき）に、その画面へ
      `is-m-arrive` をしばらく付けます。**何が動くかは CSS が決めます**
-     （`.is-m-arrive .diet-ring` など）——ここが持つのは時計だけ。画面ごとに
+     （`.is-m-arrive .diet-ma7` など）——ここが持つのは時計だけ。画面ごとに
      「開いたら輪を満たす」を書くと、組み直しのたびに誰が何を動かしたかが
      散らばるので、入口を一つにしました。
 
@@ -404,16 +404,19 @@
        要素は、そのとき始まるので）。外したあとの組み直しは動きません
        ——保存のたびに輪が満ち直すと、動きが「開いた」ではなく「何か
        起きた」を言ってしまうので。
-     ・輪が 0 から満ちるのは、角度を `@property` で登録してあるから（登録の
-       無い値は途中を持たず、半分のところで跳ぶ）。登録できないブラウザ
-       では付けません——跳ぶくらいなら、動かないほうがいい。
+     ・**CSS だけでは揃わないものは、ここへ手を出す**（`onArrive`）。health の
+       輪と真ん中の数がそれ（screen-diet.js の fillRings）——二つを同じ一つの
+       時計で進めないと、輪と数がずれる。はじめは輪を `@property` の
+       アニメーションで、数を CSS の counter で動かしていたが、iPhone の Safari は
+       counter を途中で描き直さず、数だけ最後に「パン」と出た（2026年9月29日、
+       実機を見た利用者の声）。
      ・動きを減らす設定では付けません。
      --------------------------------------------------------------- */
   const ARRIVE = "is-m-arrive";
   const arriveT = new WeakMap();
-  const canArrive = () => !!(window.CSS && CSS.registerProperty) && !still();
+  const arriveHooks = [];
   function arrive(root) {
-    if (!root || !canArrive()) return;
+    if (!root || still()) return;
     clearTimeout(arriveT.get(root));
     /* もう付いていたら、外して読んでから付け直す（頭からやり直す）。 */
     if (root.classList.contains(ARRIVE)) {
@@ -421,9 +424,52 @@
       void root.offsetWidth;
     }
     root.classList.add(ARRIVE);
+    arriveHooks.forEach((fn) => { try { fn(root); } catch (_) { /* 開くことを妨げない */ } });
     /* いちばん遅く始まる輪（四つめ）と、いちばん長い線が終わるまで。 */
     const dur = Math.max(ms("--m-fill") * 1.4, ms("--m-draw")) + ms("--m-stagger") * 4 + 60;
     arriveT.set(root, setTimeout(() => root.classList.remove(ARRIVE), dur));
+  }
+  /** 開いたときに、JS で動かすものがある画面が名乗る。fn(root) は arrive のたびに呼ばれる。 */
+  function onArrive(fn) { arriveHooks.push(fn); }
+
+  /* ---------------------------------------------------------------
+     曲線を JS で引く（`--ease-out` などの cubic-bezier を、進み具合の関数に）
+
+     CSS に任せられない動き（輪と数を一つの時計で進める、など）でも、曲線は
+     CSS と同じ名前から読みます——JS に数字を二重に持たないため（上の ms /
+     ease と同じ決めごと）。読めない曲線（`ease` などの名前）は ease-out 相当。
+     --------------------------------------------------------------- */
+  const curveCache = new Map();
+  function curve(token) {
+    if (curveCache.has(token)) return curveCache.get(token);
+    const m = /cubic-bezier\(([^)]+)\)/.exec(ease(token, ""));
+    const [x1, y1, x2, y2] = m ? m[1].split(",").map(Number) : [0.16, 1, 0.3, 1];
+    const bx = (t) => 3 * x1 * t * (1 - t) * (1 - t) + 3 * x2 * t * t * (1 - t) + t * t * t;
+    const by = (t) => 3 * y1 * t * (1 - t) * (1 - t) + 3 * y2 * t * t * (1 - t) + t * t * t;
+    const dx = (t) => 3 * x1 * (1 - t) * (1 - t) + 6 * (x2 - x1) * t * (1 - t) + 3 * (1 - x2) * t * t;
+    const fn = (x) => {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      /* x から t を引く：ニュートン法、だめなら二分法。 */
+      let t = x;
+      for (let i = 0; i < 6; i++) {
+        const d = dx(t), e = bx(t) - x;
+        if (Math.abs(e) < 1e-5) return by(t);
+        if (Math.abs(d) < 1e-6) break;
+        t -= e / d;
+      }
+      let lo = 0, hi = 1;
+      t = x;
+      for (let i = 0; i < 30; i++) {
+        const e = bx(t) - x;
+        if (Math.abs(e) < 1e-5) break;
+        if (e > 0) hi = t; else lo = t;
+        t = (lo + hi) / 2;
+      }
+      return by(t);
+    };
+    curveCache.set(token, fn);
+    return fn;
   }
 
   /* 押している間だけ縮むもの。CSS の :active で足りる場所には要りません
@@ -442,5 +488,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, glide, rubber, still, feel, arrive, EVENTS };
+  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, EVENTS };
 })();
