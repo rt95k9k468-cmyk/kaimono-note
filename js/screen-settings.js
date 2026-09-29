@@ -497,6 +497,12 @@
     /* 保存できていないことは、いちばん先に言います。中へ入る前に目に
        入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) L.body.append(saveErrorBanner());
+    /* 歯車の点（R25）の中身を、頭に一行。押すとバックアップと書き出しへ。 */
+    const stale = KN.backup.offDeviceStale && KN.backup.offDeviceStale();
+    if (stale) L.body.append(card(navRow({
+      ico: "download", tint: TINT.data, title: staleText(stale),
+      onTap: () => go("data"),
+    })));
     const tab = TAB[fromTab] || TAB.archive;
     L.body.append(head(tab.label));
     put(tab.rows());
@@ -504,6 +510,12 @@
        ここも同じ系列の言葉にします。 */
     L.body.append(head("General"));
     put(generalRows());
+  }
+
+  function staleText(x) {
+    if (x.stuck) return `Dropbox へ${x.days}日送れていません`;
+    if (x.days === null) return "端末の外の控えが、まだありません";
+    return `端末の外の控えが${x.days}日前のままです`;
   }
 
   /** どの画面から開いても、下半分はこれ。 */
