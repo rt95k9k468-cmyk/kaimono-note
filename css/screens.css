@@ -3453,6 +3453,8 @@ a.btn { text-decoration: none; }
 /* 何を指すかの名前（「二十四節気」「七十二候」）を前に。行ごとに改める。 */
 .arc-season-row { display: block; }
 .arc-season-k { margin-right: var(--sp-2); color: var(--c-text-3); }
+/* 期間は日付の途中で折り返さない（「9月28 / 日〜」を避ける）。入らなければ丸ごと次の行へ。 */
+.arc-season-span { display: inline-block; white-space: nowrap; margin-left: var(--sp-2); color: var(--c-text-3); }
 
 .arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
 
