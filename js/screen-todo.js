@@ -1996,17 +1996,22 @@
     return u;
   }
 
-  /** 時間割の丸薬の中に置く絵。シルエットなら二色に割れる形で、
-   *  色つきの絵ならそのまま。 */
-  function tlMark(t) {
+  /** 単色シルエットの絵（無ければ ""）。丸薬の中と、一日の道の連れの丸が使う。 */
+  function silOf(t) {
     const key = t.icon;
     /* 引きかたが `iconMarkHtml` と違う（色つきへ落ちる前に、シルエットだけを
        三つ聞く）ので、覚えも別の棚に置きます。 */
-    const sil = cachedArt("sil", key, t.title, () =>
+    return cachedArt("sil", key, t.title, () =>
       (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
         || KN.iconsFood.byKey(key)))
       || KN.iconsTodo.find(t.title || "")
       || productArt(KN.productIcons.findKey(t.title || "")));
+  }
+
+  /** 時間割の丸薬の中に置く絵。シルエットなら二色に割れる形で、
+   *  色つきの絵ならそのまま。 */
+  function tlMark(t) {
+    const sil = silOf(t);
     if (!sil) return todoMark(t);
     return html`<span class="todo-mark is-split"
                       style="--icon:${KN.util.raw(maskUrl(sil))}"></span>`;
@@ -2764,6 +2769,9 @@
     const ahead = day >= todayKey();
     const rows = open.filter((t) => (ahead ? store.fallsOn(t, day) : t.due === day));
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
+    /* 一日の道は、何も無い日にも出します。空いた一日が、道の長さそのままで
+       見えることにも意味があるので（今日なら、そこに人が立っています）。 */
+    if (roadOn()) sec.append(dayRoad(day, rows.concat(done)));
     if (!rows.length && !done.length) {
       sec.append(node(html`
         <p class="todo-today-empty">${day === todayKey()
@@ -2773,6 +2781,26 @@
     }
     sec.append(timeline(rows, { id: "day", day }));
     return sec;
+  }
+
+  /* ---------------- 一日の道（js/day-road.js） ----------------
+
+     時間割の上に、その日を一本の道にした地図を置きます（利用者の手描きがもと。
+     2026年9月29日）。組み立ては時間割と同じ `buildDay`——二つが別々に数えると、
+     地図と時間割が食い違うので。設定の「一日の道を出す」で外せます。 */
+  const roadOn = () => store.get().settings.todoRoad !== false;
+
+  function dayRoad(day, todos) {
+    const s = store.get().settings;
+    const isToday = day === todayKey();
+    const plan = KN.plan.buildDay(day, todos, {
+      start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
+    });
+    return KN.dayRoad.build({
+      plan, today: isToday,
+      open: (id) => openSheet(id),
+      markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
+    });
   }
 
   /* ---------------- 長期タスク ----------------
@@ -3835,10 +3863,33 @@
        ので）。戻ってきたときは ResizeObserver が呼んでくれます。 */
     if (!root.offsetParent && root.offsetHeight === 0) return;
     if (tlDrag) return;                       // 運んでいる最中は触りません
+    paintNowAll();
+  }, NOW_TICK);
+
+  function paintNowAll() {
     root.querySelectorAll(".tl-axis").forEach((el) => {
       if (typeof el.__paint === "function") el.__paint();
     });
-  }, NOW_TICK);
+    if (KN.dayRoad) KN.dayRoad.paintAll(root);
+  }
+
+  /* **戻ってきたら、すぐ一度。** 30秒の見回りだけでは、アプリへ戻ってから
+     最初の拍までのあいだ「いま」が閉じた時刻のまま残ります（7:43 に開いて
+     「7:34」と出ていた。2026年9月29日の画面）。いまを指す字が古いのは、
+     無いより悪い——見た人はそれを信じるので。
+     組み直しも頼みます。紙の見分け字は今日なら分まで持つので、分が変わって
+     いれば、時刻を決めていないものが**いまから先へ**置き直されます（頼まないと、
+     朝に組んだ「7:00ごろ」が、昼に開いても過ぎた場所に残ったままになり得た）。
+     開いて見ているあいだは組み直しません（読んでいる途中で行が動くので）。 */
+  function wakeNow() {
+    if (!root || document.visibilityState !== "visible") return;
+    if (!root.offsetParent && root.offsetHeight === 0) return;
+    if (tlDrag) return;
+    render();
+    paintNowAll();
+  }
+  document.addEventListener("visibilitychange", wakeNow);
+  window.addEventListener("pageshow", wakeNow);
 
   /* ---------------- つまんで、置きなおす ----------------
 
@@ -5090,6 +5141,17 @@
 
   function toNow() {
     if (!root) return;
+    /* 一日の道が出ていれば、「いま」は紙のいちばん上（道の上の人）にいます。
+       時間割の「いま」まで送ると、道が画面の外へ出ていくので、頭へ戻すだけ。 */
+    if (root.querySelector(".day-road")) {
+      const sc = KN.app.scrollerOf(root);
+      if (sc.scrollTop > 0) {
+        restoring = true;
+        sc.scrollTop = 0;
+        setTimeout(() => { restoring = false; }, 60);
+      }
+      return;
+    }
     const mark = root.querySelector(".tl-now")
       || root.querySelector(".tl-row:not(.is-done)");
     if (!mark) return;
