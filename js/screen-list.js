@@ -1039,9 +1039,9 @@
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
         <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
       `));
-    } else if (priceBox) {
-      priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
     }
+    /* 値段が無い行は、空のまま（「値段は未登録」は出さない——利用者が選んだ、
+       2026年9月29日・R27）。器は残るので、列は他の行と揃う。 */
 
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
