@@ -169,6 +169,67 @@ const { open, checker } = require("./lib");
   t.check("片づけ終えたら紙が閉じる", end.rows === 0, JSON.stringify(end));
   t.check("頭の一行も消える", !end.bar && end.left === 0, JSON.stringify(end));
 
+  /* ---- 同じ日に二回目に開く（読み直し）：印が reconcile を通って残る ----
+     一回目に開いたとき運んで印が付き、二回目は due が今日なのでもう運ばない。
+     印が読み直しで落ちると、頭の一行が黙って消える。 */
+  await page.evaluate(() => {
+    const S = KN.store, U = KN.util;
+    const y = U.shiftDay(U.todayKey(), -1);
+    S.update((s) => { s.todos = []; s.settings.todoTimeline = true; });
+    S.addTodo({ title: "病院", due: y, time: "13:00" });
+    S.addTodo({ title: "書類", due: y });
+    S.rescheduleOverdue();
+    S.flush();
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.KN && KN.store && KN.app);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => KN.app.showScreen("todo"));
+  await page.waitForTimeout(500);
+  const again = await page.evaluate(() => {
+    const b = document.querySelector("#screen-todo .tl-carry");
+    const S = KN.store;
+    return {
+      bar: b ? b.textContent.replace(/\s+/g, " ").trim() : null,
+      list: S.carriedToday().map((x) => x.title).sort(),
+      was: (S.get().todos.find((x) => x.title === "病院") || {}).carried || null,
+    };
+  });
+  t.check("二回目に開いても印が残る", JSON.stringify(again.list) === JSON.stringify(["書類", "病院"]), JSON.stringify(again));
+  t.check("二回目に開いても「前は」の時刻が残る", again.was && again.was.time === "13:00", JSON.stringify(again.was));
+  t.check("二回目に開いても頭の一行が出る", again.bar && /2\s*前の日から運んだもの\s*置き直す/.test(again.bar), JSON.stringify(again.bar));
+
+  /* 形の崩れた印は落とす。印の無い記録に欄を足さない（既存の記録は書き換えない）。 */
+  await page.evaluate(() => {
+    const K = "kaimono-note-v2";
+    const s = JSON.parse(localStorage.getItem(K));
+    const today = KN.util.todayKey();
+    const base = { due: today, done: false, archived: false, createdAt: today };
+    s.todos = [
+      { ...base, id: "c1", title: "よい印", carried: { on: today, time: "09:30" }, order: 0 },
+      { ...base, id: "c2", title: "時刻なしの印", carried: { on: today, time: null }, order: 1 },
+      { ...base, id: "c3", title: "日の崩れた印", carried: { on: "昨日", time: "09:30" }, order: 2 },
+      { ...base, id: "c4", title: "文字の印", carried: "yes", order: 3 },
+      { ...base, id: "c5", title: "時刻の崩れた印", carried: { on: today, time: "25時" }, order: 4 },
+      { ...base, id: "c6", title: "印なし", order: 5 },
+    ];
+    delete s.lsSeq;
+    localStorage.setItem(K, JSON.stringify(s));
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.KN && KN.store);
+  await page.waitForTimeout(300);
+  const shape = await page.evaluate(() => {
+    const o = {};
+    KN.store.get().todos.forEach((x) => { o[x.id] = "carried" in x ? x.carried : "(なし)"; });
+    return { o, today: KN.util.todayKey() };
+  });
+  const c = shape.o;
+  t.check("形の正しい印は残る", c.c1 && c.c1.on === shape.today && c.c1.time === "09:30" && c.c2 && c.c2.time === null, JSON.stringify(c));
+  t.check("日の崩れた・文字の印は落とす", c.c3 === "(なし)" && c.c4 === "(なし)", JSON.stringify(c));
+  t.check("時刻だけ崩れた印は時刻を null に", c.c5 && c.c5.on === shape.today && c.c5.time === null, JSON.stringify(c.c5));
+  t.check("印の無い記録に欄を足さない", c.c6 === "(なし)", JSON.stringify(c.c6));
+
   t.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();
