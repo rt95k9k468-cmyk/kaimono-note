@@ -184,27 +184,185 @@
      腕・ズボンを太い線と面で。奥の脚は一段濃く、奥の腕はシャツの後ろ。
      描くのは元の絵の座標（1200四方・足もとが y=1100）で、0.021 倍して足もとを
      (0,0) に。右へ歩いている向きで、左へ進む段では左右を返します（外の scale）。
-     まわりに紙の色の縁（halo）——道や札の上でも形が読めるように。 */
+     まわりに紙の色の縁（halo）——道や札の上でも形が読めるように。
+     四つめは歩くときの呼び名（下の「歩く」が、縁と絵の両方を data-w で引く）。 */
   const ME_PARTS = [
-    ["me-skin", "M470 440L378 492L338 688", 74],       // 奥の腕
-    ["me-shirt", "M555 356L445 452", 82],              // 奥の袖
-    ["me-leg-b", "M478 690L425 878L325 1050", 100],    // 奥の脚
-    ["me-leg", "M540 690L690 890L775 1050", 100],      // 手前の脚
-    ["me-shirt", "M468 643L512 462L540 350Q575 325 615 325Q690 330 700 405L637 685Z", 0],
-    ["me-skin", "M705 550L700 612L862 663", 72],       // 手前の腕
-    ["me-shirt-d", "M680 400L712 555", 74],            // 手前の袖
+    ["me-skin", "M470 440L378 492L338 688", 74, "armB"],        // 奥の腕
+    ["me-shirt", "M555 356L445 452", 82, "sleeveB"],            // 奥の袖
+    ["me-leg-b", "M478 690L425 878L325 1050", 100, "legB"],     // 奥の脚
+    ["me-leg", "M540 690L690 890L775 1050", 100, "legF"],       // 手前の脚
+    ["me-shirt", "M468 643L512 462L540 350Q575 325 615 325Q690 330 700 405L637 685Z", 0, "body"],
+    ["me-skin", "M705 550L700 612L862 663", 72, "armF"],        // 手前の腕
+    ["me-shirt-d", "M680 400L712 555", 74, "sleeveF"],          // 手前の袖
   ];
   const HALO = 110;             // 縁の太さ（元の絵の単位。約 2.9px）
   function meSvg(halo) {
-    const parts = ME_PARTS.map(([cls, d, w]) => (w
-      ? `<path class="${halo ? "" : cls + " me-line"}" d="${d}" stroke-width="${w + (halo ? HALO : 0)}"/>`
-      : `<path class="${halo ? "" : cls + " me-fill"}" d="${d}"${halo ? ` stroke-width="${HALO}"` : ""}/>`));
-    parts.push(`<circle class="${halo ? "" : "me-skin me-fill"}" cx="662" cy="187" r="88"`
+    const parts = ME_PARTS.map(([cls, d, w, key]) => (w
+      ? `<path class="${halo ? "" : cls + " me-line"}" data-w="${key}" d="${d}" stroke-width="${w + (halo ? HALO : 0)}"/>`
+      : `<path class="${halo ? "" : cls + " me-fill"}" data-w="${key}" d="${d}"${halo ? ` stroke-width="${HALO}"` : ""}/>`));
+    parts.push(`<circle class="${halo ? "" : "me-skin me-fill"}" data-w="head" cx="662" cy="187" r="88"`
       + `${halo ? ` stroke-width="${HALO}"` : ""}/>`);
     return `<g transform="scale(0.021) translate(-560 -1100)">${parts.join("")}</g>`;
   }
   const ME_HALO = meSvg(true), ME_INK = meSvg(false);
   const ME_HEAD = (1100 - 187) * 0.021 * ME_K;   // 足もとから頭の中心まで
+
+  /* ---------------- 歩く（やることを開いたとき） ----------------
+
+     タブを開いた瞬間に、道の人が四歩あるいて、いつもの形で止まります
+     （2026年9月29日・利用者の声）。**その場で足踏み**です——人の立つ点は
+     「いま」なので、道の上を進ませると、そのあいだ時刻が嘘になる。
+
+     止まった形は利用者が選んだ絵のまま（手前の脚が前）。そこから出て、
+     そこへ戻る二周（一周で二歩）。関節は絵そのものから読みます（腰・膝・足、
+     肩・肘・手）——数を二重に持たない。
+     - 脚は二本の骨の IK。足の通り道（着いたら後ろへ送られ、離れたら弧を
+       描いて前へ）を決めて、膝は前へ曲がる側に解きます。届かなければ
+       つま先が浮く（蹴り出し）だけで、足は地面より下へ行きません。
+     - 元の絵は手前の脚が長く、腰も手前が前に出ています（奥行きの描き方）。
+       これを**腰のひねり**として読み、脚が前後を入れ替えるのに合わせて、
+       腰の位置と腿・すねの長さも入れ替えます。入れ替えないと一歩目が大股・
+       二歩目が小股になって、足を引きずって見えた（試作で踏んだ）。
+     - 腕は脚と逆に振ります。ただ止まった形は「手前の脚と手前の腕が両方前」
+       なので、**最初と最後の一歩は腕を止め、あいだの二歩だけ振る**。振りの
+       端は止まった形の左右を入れ替えた角度（奥の腕が前へ来たら、手前の腕の
+       角度に）で、動き出す・止まる瞬間は振り子の端（速さ 0）なので、
+       つなぎ目が出ません。
+     - 体は一歩ごとに少し浮きます（片足で立つところがいちばん高い）。
+     - 速さは台形（はじめの 15% で 0 から上がり、おわりの 25% で 0 まで）。
+     一歩の長さは `--m-walk`。動きを減らす設定では歩きません。書き換えるのは
+     人の中の d と transform だけで、組み直しも、測ることもしません。 */
+  const WALK = {
+    steps: 4,           // 歩数。止まった形へ戻るので偶数
+    stance: 0.55,       // 一周のうち、足が地面にある割合
+    lift: 55,           // 振り出す足の上がり（元の絵の単位。約 1.7px）
+    bob: 18,            // 体の浮き（同じ。約 0.5px）
+    rampIn: 0.15,       // 速さの台形：上がりきるまで
+    rampOut: 0.25,      //              止まるまで
+  };
+  const ptsOf = (d) => {
+    const v = d.match(/-?\d+(?:\.\d+)?/g).map(Number);
+    const out = [];
+    for (let i = 0; i + 1 < v.length; i += 2) out.push({ x: v[i], y: v[i + 1] });
+    return out;
+  };
+  /* 回す。a が正なら「前へ」（真下を向いたものが +x へ）。 */
+  function rot(p, c, a) {
+    const cs = Math.cos(a), sn = Math.sin(a), dx = p.x - c.x, dy = p.y - c.y;
+    return { x: c.x + dx * cs + dy * sn, y: c.y - dx * sn + dy * cs };
+  }
+  let RIG = null;
+  function rig() {
+    if (RIG) return RIG;
+    const P = {};
+    ME_PARTS.forEach(([, d, w, key]) => { if (w) P[key] = ptsOf(d); });
+    const len = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+    const ang = (a, b) => Math.atan2(b.x - a.x, b.y - a.y);   // 真下から前へ
+    const arm = (sleeve, skin) => {
+      const up = ang(sleeve[0], skin[1]);
+      return { up, flex: ang(skin[1], skin[2]) - up };
+    };
+    const [hF, kF, fF] = P.legF, [hB, kB, fB] = P.legB;
+    const aF = arm(P.sleeveF, P.armF), aB = arm(P.sleeveB, P.armB);
+    RIG = {
+      P,
+      front: [len(hF, kF), len(kF, fF)], back: [len(hB, kB), len(kB, fB)],
+      hipX: (hF.x + hB.x) / 2, hipW: (hF.x - hB.x) / 2, hipY: hF.y,
+      footF: fF.x, footB: fB.x, ground: fF.y,
+      swing: aF.up - aB.up, flex: aF.flex - aB.flex,
+    };
+    return RIG;
+  }
+  /* 足の通り道。q は一周の中の位置（0＝前に着いたところ）。 */
+  function footAt(q) {
+    const R = rig();
+    q -= Math.floor(q);
+    const per = (R.footB - R.footF) / 0.5;      // 半周で、前から後ろへ送られる
+    if (q < WALK.stance) return { x: R.footF + per * q, y: R.ground };
+    const toe = R.footF + per * WALK.stance;
+    const u = (q - WALK.stance) / (1 - WALK.stance);
+    return { x: toe + (R.footF - toe) * (1 - Math.cos(Math.PI * u)) / 2,
+             y: R.ground - WALK.lift * Math.sin(Math.PI * u) };
+  }
+  /* 二本の骨（腿 a・すね b）で、腰から足へ。膝は前へ曲げる。 */
+  function ik(hip, foot, a, b) {
+    let dx = foot.x - hip.x, dy = foot.y - hip.y, d = Math.hypot(dx, dy);
+    const max = a + b - 0.01;
+    if (d > max) { dx *= max / d; dy *= max / d; d = max; }
+    const ux = dx / d, uy = dy / d;
+    const c = Math.max(-1, Math.min(1, (a * a + d * d - b * b) / (2 * a * d)));
+    const s = Math.sqrt(1 - c * c);
+    return [hip, { x: hip.x + a * (ux * c + uy * s), y: hip.y + a * (-ux * s + uy * c) },
+            { x: hip.x + dx, y: hip.y + dy }];
+  }
+  /* ph は 0〜steps/2（整数のところが止まった形の脚）。 */
+  function walkPose(ph) {
+    const R = rig(), n = WALK.steps / 2;
+    const bob = -WALK.bob * (1 - Math.cos(4 * Math.PI * ph)) / 2;
+    const leg = (q) => {
+      const c = Math.cos(2 * Math.PI * q), w = (1 - c) / 2;   // 0＝前に出た形、1＝後ろ
+      return ik({ x: R.hipX + R.hipW * c, y: R.hipY + bob }, footAt(q),
+        R.front[0] + (R.back[0] - R.front[0]) * w, R.front[1] + (R.back[1] - R.front[1]) * w);
+    };
+    /* 腕の振り。0 が止まった形、1 が左右を入れ替えた形。 */
+    const k = ph > 0.5 && ph < n - 0.5 ? (1 - Math.cos(2 * Math.PI * (ph - 0.5))) / 2 : 0;
+    const arm = (sleeve, skin, sign) => {
+      const up = sign * k * R.swing, fl = sign * k * R.flex;
+      const f = (p) => { const q = rot(p, sleeve[0], up); return { x: q.x, y: q.y + bob }; };
+      return { sleeve: sleeve.map(f), skin: [f(skin[0]), f(skin[1]), f(rot(skin[2], skin[1], fl))] };
+    };
+    const aB = arm(R.P.sleeveB, R.P.armB, 1), aF = arm(R.P.sleeveF, R.P.armF, -1);
+    return { bob, legF: leg(ph), legB: leg(ph + 0.5),
+             armB: aB.skin, sleeveB: aB.sleeve, armF: aF.skin, sleeveF: aF.sleeve };
+  }
+  /* 経った割合 τ（0〜1）→ 一周の位置。速さの台形を積んだもの。 */
+  function walkPhase(tau) {
+    const a = WALK.rampIn, b = WALK.rampOut, area = 1 - a / 2 - b / 2;
+    const t = Math.max(0, Math.min(1, tau));
+    const x = t < a ? t * t / (2 * a)
+      : t <= 1 - b ? a / 2 + (t - a)
+      : area - (1 - t) * (1 - t) / (2 * b);
+    return (WALK.steps / 2) * x / area;
+  }
+  const dOf = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${n1(p.x)} ${n1(p.y)}`).join("");
+
+  /** その根の中の、今日の道の人を歩かせる。歩いている途中なら、そのまま。 */
+  function walk(root) {
+    if (!root || KN.motion.still()) return;
+    const me = root.querySelector(".day-road .road-me");
+    if (!me || me.style.display === "none" || me.__walk) return;
+    const step = KN.motion.ms("--m-walk");
+    if (!(step > 0)) return;
+    const els = {};
+    me.querySelectorAll("[data-w]").forEach((el) => {
+      (els[el.dataset.w] = els[el.dataset.w] || []).push(el);
+    });
+    const set = (key, attr, v) => (els[key] || []).forEach((el) => {
+      if (v == null) el.removeAttribute(attr);
+      else el.setAttribute(attr, v);
+    });
+    /* 上がりきったときに、一歩がちょうど step。 */
+    const dur = WALK.steps * step / (1 - WALK.rampIn / 2 - WALK.rampOut / 2);
+    const t0 = performance.now();
+    me.__walk = true;
+    const rest = () => {
+      me.__walk = false;
+      ME_PARTS.forEach(([, d, , key]) => set(key, "d", d));
+      set("body", "transform", null);
+      set("head", "transform", null);
+    };
+    const tick = (now) => {
+      const tau = (now - t0) / dur;
+      if (tau >= 1 || !me.isConnected) { rest(); return; }
+      const q = walkPose(walkPhase(tau));
+      ["legB", "legF", "armB", "sleeveB", "armF", "sleeveF"].forEach((key) => set(key, "d", dOf(q[key])));
+      const lift = `translate(0 ${n1(q.bob)})`;
+      set("body", "transform", lift);
+      set("head", "transform", lift);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
 
   /* ---------------- 組み立て ---------------- */
 
@@ -729,5 +887,5 @@
     root.querySelectorAll(".day-road").forEach(paint);
   }
 
-  KN.dayRoad = { build, paint, paintAll, geom, snap, W };
+  KN.dayRoad = { build, paint, paintAll, geom, snap, walk, W };
 })();
