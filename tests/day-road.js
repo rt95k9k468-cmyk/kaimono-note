@@ -335,6 +335,30 @@ const DAY = "2026-09-29";
   await page.waitForTimeout(900);
   const t9 = await title();
   c.check("道の上を左へ払うと、次の日へ", t0.includes("29日") && t9.includes("30日"), `${t0} → ${t9}`);
+
+  /* 角ちょうどで終わる区間（R17）：7:00〜8:00 が段の終わりで曲がると、角の「8:00」と
+     区間の終わりの「8:00」が上下に二つ並んでいた。先の日（人が居ない）に、最初の角で
+     終わる1時間の用事を置いて、その時刻の札が一つだけかを見る。 */
+  const FAR = "2026-10-02";
+  await goDay(FAR);
+  const corner = await page.evaluate(() => {
+    const g = document.querySelector("#screen-todo .day-road").__road.g;
+    return g.start + g.rowSpan;
+  });
+  const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  await page.evaluate(([d, t]) => KN.store.addTodo({ title: "角で終わる用事", due: d, time: t, minutes: 60 }),
+    [FAR, hm(corner - 60)]);
+  await page.waitForTimeout(500);
+  const turnSaid = await page.evaluate((cm) => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const g = road.__road.g;
+    const txt = `${Math.floor(cm / 60)}:${String(cm % 60).padStart(2, "0")}`;
+    const said = [...road.querySelectorAll(".road-turn, .road-until, .road-edge")].map((e) => e.textContent.trim());
+    return { still: g.start + g.rowSpan === cm, txt, n: said.filter((x) => x === txt).length,
+      until: [...road.querySelectorAll(".road-until")].map((e) => e.textContent.trim()), said };
+  }, corner);
+  c.check("角ちょうどで終わる区間：角の時刻の札は一つだけ（区間の終わりを重ねない）",
+    turnSaid.still && turnSaid.n === 1 && !turnSaid.until.includes(turnSaid.txt), JSON.stringify(turnSaid));
   await goDay(DAY);
 
   /* 設定で外せる */

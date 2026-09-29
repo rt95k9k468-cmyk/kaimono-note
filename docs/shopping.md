@@ -377,3 +377,12 @@ shopping のアイコンを押すと prices になるように」）。
   押せば、入れた行に★。押さなければ今までどおり一つの品物として入る。
 - 部品は `store.js` の `saveSet` / `removeSet` / `addSet` / `setMissing` / `findSetByName` /
   `setProducts`、画面は `screen-list.js` の `setRow` / `openSetSheet`。試験は `tests/sets.js`。
+
+### 持ち主の無い品物は、飛ばして描く（R18・2026年9月29日）
+
+`items` に、`products` に無い `productId` の品物があると、リストは「空ではない」のに
+描ける行が無く、空の案内も出ずに真っ白だった。`screen-list.js` の `drawable()` で
+**描けるものだけ**を render / dayMoved に渡す。一つも描けなければ空の案内。
+**孤児は消さない**（読み込みでは前から `reconcile()` が外している。ここに来るのは
+動いている最中の食い違いだけ）。数えるのは設定の「記録を点検する」（R28）。
+`tests/audit.js`。
