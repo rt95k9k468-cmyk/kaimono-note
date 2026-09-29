@@ -1136,7 +1136,12 @@
   /* 通知から来た用事の紙。画面が組み上がってから開きます。先に、閉じている
      あいだに鳴った回を受け取っておく——受け取る前に紙から時刻を直すと、
      古い回が「まだ鳴っていない」ままになり、開いた拍に鳴り直すので。 */
+  /* 同じ押しが二つの道（`#due=` と控え）で届いても、紙は一度だけ。 */
+  let lastDue = { key: "", at: 0 };
   function openDue(ids) {
+    const key = (ids || []).slice().sort().join(",");
+    if (key === lastDue.key && Date.now() - lastDue.at < 5000) return;
+    lastDue = { key, at: Date.now() };
     const go = () => setTimeout(() => KN.dueSheet.open(ids), 60);
     if (KN.bell && KN.bell.absorb) KN.bell.absorb().then(go, go);
     else go();
@@ -1183,6 +1188,27 @@
     show(KN.screens[fromHash] ? fromHash : HOME);
     if (calBack) KN.ics.cameBack();
     if (dueIds) openDue(dueIds);
+
+    /* 押したことの控え（sw.js・js/due-sheet.js の take）。`#due=` が届かなかった
+       iPhone の道の受け皿：開いたとき・戻ってきたとき・sw.js からの一言で読む。 */
+    const pullDue = () => {
+      if (!KN.dueSheet || !KN.dueSheet.take) return;
+      KN.dueSheet.take().then((ids) => {
+        if (!ids) return;
+        if (active !== "todo") show("todo");
+        if (ids.length) openDue(ids);
+        else KN.ui.toast("その時刻の用事は、もう片づいています");
+      });
+    };
+    pullDue();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") pullDue();
+    });
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener("message", (e) => {
+        if (e.data && e.data.type === "due-click") pullDue();
+      });
+    }
 
     /* The hash is how the back button knows where it is, but it is also what
        iOS hands back when it restores a standalone app it had killed — and a

@@ -2776,11 +2776,17 @@
 /* ---- からだの輪 ----
 
    目標に対してどこまで来たかを、数字ではなく形で出します。
-   角度（--deg）だけを JS が渡し、色はここが決めます——そうしないと
-   明るい／暗いの切り替えで色が固定されてしまうので。
+   どこまで満ちたか（--ring-p、**周**で 0〜2）だけを JS が渡し、色はここが
+   決めます——そうしないと明るい／暗いの切り替えで色が固定されてしまうので。
 
-   ふつうの三つ：--fill が目標までのぶん、超えたら --lit が二周目として
-   上に重なります。飲酒だけは向きが逆で、残っているぶんが色です。 */
+   ふつうの三つ：--fill が目標までのぶん（一周目）、超えたら --lit が二周目として
+   頭から上に重なります。飲酒だけは向きが逆で、残っているぶんが色です。
+
+   **一周目と二周目を一本の数で持つ**（2026年9月29日）。前は角度（--deg）と、
+   超えた日だけ別の式にしていて、開いたときの満ち方を「一周ぶん」と「超えたぶん」の
+   二段に分けるしかなく、100% で一度止まった。いまは 1.35 周なら、0 から 1.35 まで
+   一本の道——一周目は min(p, 1)、二周目は max(p − 1, 0)。超えていない輪は二周目の
+   幅が 0 なので、同じ式のまま前と同じ絵になる。 */
 .diet-ring {
   order: -1;                       /* 字の並びは変えずに、輪だけ上へ */
   position: relative;
@@ -2790,14 +2796,10 @@
   --fill: var(--c-primary);
   --lit:  var(--c-primary-2);
   --rest: color-mix(in srgb, var(--c-text-3) 22%, transparent);
-  background: conic-gradient(var(--fill) 0 var(--deg), var(--rest) var(--deg) 360deg);
-}
-/* 超えたぶんは、明るいほうの色で二周目として頭から重ねます。`--lap`（一周目の
-   どこまで満ちたか）は開いたときの二段の満ち方のためのもので、ふだんは 360deg
-   ＝一周目は満ちきっている（下の「開いたとき、満ちる」）。 */
-.diet-ring.is-over {
-  background: conic-gradient(var(--lit) 0 var(--deg), var(--fill) var(--deg) var(--lap, 360deg),
-                             var(--rest) var(--lap, 360deg) 360deg);
+  background: conic-gradient(
+    var(--lit)  0 calc(max(var(--ring-p, 0) - 1, 0) * 360deg),
+    var(--fill) 0 calc(min(var(--ring-p, 0), 1) * 360deg),
+    var(--rest) 0);
 }
 /* 記録が無い日は、輪だけ薄く置きます（数字は「—」）。 */
 .diet-ring.is-none { background: conic-gradient(var(--rest) 0 360deg); }
@@ -2823,59 +2825,24 @@
 /* 飲みすぎた日の真ん中は赤（輪の色が灰色になっているので、そちらから取らない）。 */
 .diet-ring.is-drink.is-over .diet-ring-mid { color: var(--c-danger); }
 
-/* ---- 開いたとき、満ちる（motion.js の arrive、docs/motion.md）----
+/* ---- 開いたとき、満ちる（screen-diet.js の fillRings、docs/motion.md）----
 
-   タブを開いた一拍（とアプリへ戻ってきたとき）、画面に `is-m-arrive` が
-   しばらく付きます。そのあいだだけ、輪が 0 から「グン」と満ち、真ん中の数も
-   一緒に数え上がる。四つは左から `--m-stagger` ずつずらして始めます。
+   タブを開いた一拍（とアプリへ戻ってきたとき）、輪が 0 から「グン」と満ち、
+   真ん中の数も**輪の位置どおりに**数え上がる。動かすのは JS の一つの時計で、
+   ここが持つのは「数えているあいだの見せ方」だけ。
 
-   - **角度と数は `@property` で登録する。** 登録の無いカスタムプロパティは
-     途中の値を持たず、半分のところで跳びます。登録すれば `from` だけ書いた
-     keyframes が、行の style に書いた本当の値まで滑る。登録は `inherits: false`
-     （輪の上でしか読まないので、子へ継がせる理由がない）。
-   - **超えた日（`is-over`）は二段。** まず一周ぶん（`--lap`）が満ち、続けて
-     超えたぶん（`--deg`）が明るい色で頭から重なる。`--lap` の既定は 360deg
-     なので、動いていないときの絵は前と同じ。
-   - **数は字を書き換えずに見せる。** 本当の字は透明にして、上に `counter()` を
-     重ねるだけ。textContent はいつも本当の数（screen-diet.js の countUp）。
+   - **数は字を書き換えずに見せる。** 数えているあいだ、JS が `data-show` に
+     いまの数を書く。本当の字は透明にして、その上に `attr(data-show)` を重ねる
+     だけ。textContent はいつも本当の数（screen-diet.js の countUp）。
      `mono-num`（数字の幅が揃う）なので、数えているあいだ字の幅が揺れない。
-   - 付けていないとき（開いたあとの組み直し）は、何も動きません。 */
-@property --deg    { syntax: "<angle>";   inherits: false; initial-value: 0deg; }
-@property --lap    { syntax: "<angle>";   inherits: false; initial-value: 360deg; }
-@property --ring-n { syntax: "<integer>"; inherits: false; initial-value: 0; }
-
-.diet-cell:nth-child(2) { --ring-i: 1; }
-.diet-cell:nth-child(3) { --ring-i: 2; }
-.diet-cell:nth-child(4) { --ring-i: 3; }
-
-.is-m-arrive .diet-ring {
-  animation: ring-fill var(--m-fill) var(--ease-out) both;
-  animation-delay: calc(var(--m-stagger) * var(--ring-i, 0));
-}
-.is-m-arrive .diet-ring.is-over {
-  animation-name: ring-lap;
-  animation-duration: calc(var(--m-fill) * 1.4);
-}
-.is-m-arrive .diet-ring-mid[data-u] {
-  -webkit-text-fill-color: transparent;
-  counter-reset: ring-n var(--ring-n);
-  animation: ring-count var(--m-fill) var(--ease-out) both;
-  animation-delay: calc(var(--m-stagger) * var(--ring-i, 0));
-}
-.is-m-arrive .diet-ring.is-over .diet-ring-mid[data-u] { animation-duration: calc(var(--m-fill) * 1.4); }
-.is-m-arrive .diet-ring-mid[data-u]::after {
-  content: counter(ring-n) attr(data-u);
+   - **counter() では数えない。** 一度そうして、iPhone の Safari が途中を描き直さず
+     最後に「パン」と出た。属性が変われば描き直すのは、どのブラウザも同じ。 */
+.diet-ring-mid[data-show] { -webkit-text-fill-color: transparent; }
+.diet-ring-mid[data-show]::after {
+  content: attr(data-show);
   position: absolute; inset: 0;
   display: grid; place-items: center;
   -webkit-text-fill-color: currentColor;
-}
-@keyframes ring-fill  { from { --deg: 0deg; } }
-@keyframes ring-count { from { --ring-n: 0; } }
-/* 超えた日：前の 55% で一周ぶん、残りで超えたぶん。曲線は区切りごとに
-   掛かるので、「グン、グン」と二度満ちる。 */
-@keyframes ring-lap {
-  0%  { --lap: 0deg;   --deg: 0deg; }
-  55% { --lap: 360deg; --deg: 0deg; }
 }
 
 /* 体重の線は左から引かれ、量った点は線がそこへ来たころに出ます。点の遅れは

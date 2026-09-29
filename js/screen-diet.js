@@ -2053,6 +2053,65 @@
     return { cls: `is-${kind}`, deg: pct * 3.6, pct: Math.round(pct) };
   }
 
+  /* 輪がどこまで満ちているかを「周」で（0〜2）。1 までが一周目（--fill）、1 を
+     超えたぶんが二周目（--lit）。超えた日も**一本の数**で持つので、開いたときの
+     満ち方が 100% で止まらない（fillRings）。 */
+  const ringTurns = (ring) => ((/is-over/.test(ring.cls) ? 1 : 0) + ring.deg / 360).toFixed(4);
+
+  /* ---- 開いたとき、輪と数を一つの時計で満たす（2026年9月29日） ----
+
+     輪（`--ring-p`）と真ん中の数（`data-show`）を、**同じ進み具合**で毎フレーム
+     書きます。輪は `--ease-out` で「グン」と満ち、数はいつも輪の位置どおり。
+
+     - はじめは輪を CSS のアニメーション、数を CSS の counter で動かしていた。
+       **超えた日は一周ぶんと超えたぶんを別の区切りにしていたので、曲線が
+       区切りごとに掛かり、100% で一度止まった。** 数は iPhone で途中を描かず、
+       最後に「パン」と出た（実機を見た利用者の声）。いまは超えた日も 0→1.35 周の
+       一本の道で、数はその道の上の位置から出す——ずれようがない。
+     - 超えた日は長く（`--m-fill` の 1.4 倍）。道が長いぶん、同じ速さに見えるように。
+     - 四つは左から `--m-stagger` ずつ遅れて始まる。
+     - 毎フレーム**画面の中から輪を引き直す**。途中で組み直されても、新しい輪が
+       いまの進み具合から続く（頭から満ち直さない）。
+     - 書く相手は輪そのもの（`:root` ではない。横断の罠）。終われば `--ring-p` を
+       輪の本当の値へ戻し、`data-show` を外す。 */
+  const ringRun = new WeakMap();
+  function fillRings(root) {
+    if (!root.querySelector(".diet-ring")) return;
+    const M = KN.motion, ease = M.curve("--ease-out");
+    const base = M.ms("--m-fill"), step = M.ms("--m-stagger");
+    const t0 = performance.now();
+    const token = {};
+    ringRun.set(root, token);
+    const frame = (now) => {
+      if (ringRun.get(root) !== token) return;           // 次の arrive が引き継いだ
+      let live = false;
+      root.querySelectorAll(".diet-ring:not(.is-none)").forEach((ring, i) => {
+        const cell = ring.closest(".diet-cell");
+        const idx = cell && cell.parentNode ? [...cell.parentNode.children].indexOf(cell) : i;
+        const over = ring.classList.contains("is-over");
+        const dur = base * (over ? 1.4 : 1);
+        const x = Math.max(0, Math.min(1, (now - t0 - step * idx) / dur));
+        const k = ease(x);
+        const target = ring.dataset.p || (ring.dataset.p = ring.style.getPropertyValue("--ring-p").trim());
+        const mid = ring.querySelector(".diet-ring-mid[data-n]");
+        if (x < 1) {
+          live = true;
+          U.setVar(ring, "--ring-p", (parseFloat(target) * k).toFixed(4));
+          if (mid) {
+            const show = Math.round(Number(mid.dataset.n) * k) + mid.dataset.u;
+            if (mid.dataset.show !== show) mid.dataset.show = show;
+          }
+        } else {
+          U.setVar(ring, "--ring-p", target);
+          if (mid && mid.dataset.show != null) delete mid.dataset.show;
+        }
+      });
+      if (live && root.isConnected) requestAnimationFrame(frame);
+    };
+    frame(t0);   // 描かれる前に 0 の姿へ（満ちた輪が一瞬見えないように）
+  }
+  KN.motion.onArrive((root) => { if (root.id === "screen-diet") fillRings(root); });
+
   function renderBodyStats(host, card) {
     const dt = card.drinkTotals;
 
@@ -2094,14 +2153,14 @@
        画面ぜんたいで十七個並んでいました（docs/improvements.md の B9）。
        空の輪そのものが「まだ無い」を言っています。 */
     const ringPct = (r) => (r.pct == null ? "" : r.pct + "%");
-    /* 開いたとき、真ん中の数も 0 から数え上がります（screens.css の「開いたとき、
-       満ちる」）。**字そのものは書き換えません**——数えているあいだは CSS の
-       counter が上に重なって見せるだけで、textContent はいつも本当の数のまま
-       （読み上げも、字を読む試験も、途中の数を拾わない）。数え上げられるのは
-       整数と単位一つの形だけ（小数の g などは、そのまま出します）。 */
+    /* 開いたとき、真ん中の数も輪と一緒に 0 から数え上がります（fillRings）。
+       **字そのものは書き換えません**——数えているあいだは `data-show` の字が
+       上に重なって見えるだけで、textContent はいつも本当の数のまま（読み上げも、
+       字を読む試験も、途中の数を拾わない）。数え上げられるのは整数と単位一つの
+       形だけ（小数の g などは、そのまま出します）。 */
     const countUp = (mid) => {
       const m = /^(\d+)(%|g)$/.exec(mid);
-      return m ? ` data-u="${m[2]}" style="--ring-n:${m[1]}"` : "";
+      return m ? ` data-n="${m[1]}" data-u="${m[2]}"` : "";
     };
     const rSteps = ringOf("steps", card.steps, sg);
     const rBurn  = ringOf("burned", card.burned, bg);
@@ -2145,7 +2204,7 @@
               r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
               <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
                 r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
-              <span class="diet-ring ${r.ring.cls}" style="--deg:${r.ring.deg.toFixed(1)}deg" aria-hidden="true">
+              <span class="diet-ring ${r.ring.cls}" style="--ring-p:${ringTurns(r.ring)}" aria-hidden="true">
                 <i class="diet-ring-mid mono-num"${countUp(r.mid)}>${r.mid}</i>
               </span>
               <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
