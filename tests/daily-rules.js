@@ -49,8 +49,9 @@ const FORBIDDEN = [
       settings: Object.keys(s.settings),
     };
   }, days.ym);
-  t.check("archive の器は entries と days だけ",
-    JSON.stringify(shape.archive) === JSON.stringify(["days", "entries"]), shape.archive.join(","));
+  /* quiet は「あの日」に出さない日の印（R9）。日付の並びだけで、数も目標も持たない。 */
+  t.check("archive の器は entries・days・quiet（出さない日の印）だけ",
+    JSON.stringify(shape.archive) === JSON.stringify(["days", "entries", "quiet"]), shape.archive.join(","));
   t.check("monthDigest は daysWith・bySrc・total だけ（割合・連続・比較を持たない）",
     JSON.stringify(shape.digest) === JSON.stringify(["bySrc", "daysWith", "total"]), shape.digest.join(","));
   t.check("monthDigest.bySrc は todo・entry・item だけ",

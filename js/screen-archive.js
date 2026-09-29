@@ -668,7 +668,47 @@
      出すのは一日ぶん、一枚だけ。並べると流れになり、流れは読み飛ばすもの
      になります。選び方は store.archiveThen にあります。 */
 
+  /* 同じ日の年々（R9）。同じ月日の記録が二年以上あるときだけ、紙の10年日記
+     のように年ごとに一行ずつ（遠い年から）。記録の無い年は行ごと出しません
+     ——空いた年を置くと、書かなかった年の一覧になります。年の数も言いません。
+     一行ずつ押せて、その日へ行きます（だから枠はボタンではなく、行がボタン）。 */
+  function yearsCard(years) {
+    const dt = U.dayDate(years[0].date);
+    const md = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日` : "";
+    const rowText = (y) => {
+      if (y.memo) return diaryBody() === "off" ? null : y.memo;
+      const shown = y.entries.slice(0, 2).map((e) => e.title || store.archiveType(e.type).label);
+      return shown.join("・") + (y.entries.length > shown.length ? "　ほかにも" : "");
+    };
+    const sec = node(html`
+      <div class="card arc-then is-years">
+        <span class="arc-then-head">
+          <span class="arc-then-ico">${icon("clock", "is-sub")}</span>
+          <b>あの日</b>
+          <i class="arc-then-when">${md}の年々</i>
+        </span>
+        ${U.raw(years.map((y) => {
+          const t = rowText(y);
+          const yr = String(y.date).slice(0, 4);
+          return `<button type="button" class="arc-year" data-day="${U.escapeHtml(y.date)}">`
+            + `<span class="arc-year-y">${yr}年<small>${U.escapeHtml(U.weekdayJa(y.date))}</small></span>`
+            + (t == null
+              ? `<span class="arc-year-text is-blank">${UNREAD}</span>`
+              : `<span class="arc-year-text">${U.escapeHtml(t)}</span>`)
+            + `</button>`;
+        }).join(""))}
+      </div>
+    `);
+    sec.querySelectorAll(".arc-year").forEach((b) => b.addEventListener("click", () => {
+      KN.motion.fire("select");
+      goToDay(b.dataset.day);
+    }));
+    return sec;
+  }
+
   function thenCard() {
+    const years = store.archiveYears();
+    if (years) return yearsCard(years);
     const then = store.archiveThen();
     if (!then) return null;             // 無ければ、何も置かない
 
@@ -1044,8 +1084,33 @@
             <input type="time" class="input js-sleep" value="${cur.sleep || ""}">
           </label>
         </div>
+        <div class="arc-quiet">
+          <p class="field-hint js-quiet-hint"></p>
+          <button type="button" class="btn btn-ghost btn-sm js-quiet"></button>
+        </div>
       </div>
     `);
+
+    /* 出さない日（R9）。この日を「あの日」「同じ日の年々」に出さない印。
+       記録は消えません——暦から来れば、いつでも読めます。押したらすぐ効きます。 */
+    const quietBtn = body.querySelector(".js-quiet");
+    const quietHint = body.querySelector(".js-quiet-hint");
+    const paintQuiet = () => {
+      const q = store.isQuietDay(day);
+      quietBtn.textContent = q ? "「あの日」にまた出す" : "この日を「あの日」に出さない";
+      quietBtn.setAttribute("aria-pressed", String(q));
+      quietHint.textContent = q
+        ? "この日は「あの日」に出しません。記録はそのまま残ります。"
+        : "";
+      quietHint.hidden = !q;
+    };
+    paintQuiet();
+    quietBtn.addEventListener("click", () => {
+      store.setQuietDay(day, !store.isQuietDay(day));
+      KN.motion.fire("select");
+      paintQuiet();
+      render();
+    });
 
     const memo = body.querySelector(".js-memo");
     const wakeEl = body.querySelector(".js-wake");
