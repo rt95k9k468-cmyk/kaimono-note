@@ -187,6 +187,7 @@
    *   today  … 今日を見ているか（人が立つのは今日だけ）
    *   open   … (todoId, 押した要素) 詳細の紙を開く
    *   markOf … (todo) 連れの丸に入れる絵（マスクの url()）。無ければ ""
+   *   decide … (todoId, "HH:MM") 空いた道の上で決めた時刻を付ける（段2）
    */
   function build(o) {
     const plan = o.plan;
@@ -251,6 +252,7 @@
       + `<g class="road-steps">${stepSvg}</g>`
       + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME}</g>`
       + `<g class="road-me-ink">${ME}</g></g>`
+      + `<path class="road-free"/>`
       + hitSvg
       + `</svg>`;
 
@@ -267,8 +269,12 @@
     el.__road = { g, today, past, stops, steps, loose, later,
                   markOf: o.markOf, last: undefined, drawn: false };
 
-    /* 押したものを一か所で受けます（札・透明な線・連れ）。 */
+    /* 押したものを一か所で受けます（札・透明な線・連れ・空いた道）。 */
     el.addEventListener("click", (e) => {
+      if (e.target.classList && e.target.classList.contains("road-free")) {
+        decideAt(el, o, e);
+        return;
+      }
       const hit = e.target.closest("[data-k], [data-l], [data-b], .road-more");
       if (!hit || !el.contains(hit)) return;
       if (hit.classList.contains("road-more")) {
@@ -309,6 +315,13 @@
     const wentTo = st.past ? g.total : dNow;
     if (wentTo > 0) went.setAttribute("d", g.path(0, wentTo));
     else went.removeAttribute("d");
+
+    /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
+       付けても、過ぎた約束になるだけなので。過ぎた日には無し。 */
+    const free = svg.querySelector(".road-free");
+    const from = st.past ? null : dNow == null ? 0 : dNow;
+    if (from != null && from < g.total) free.setAttribute("d", g.path(from, g.total));
+    else free.removeAttribute("d");
 
     /* ② 停留所の塗り。時間割の丸薬と同じ決めごと：時計が通ったところまで
        塗る。済ませたものは時計に関わらず塗りきる（手が先に進むことはある）。 */
@@ -551,11 +564,111 @@
     return "";
   }
 
+  /* ---------------- 道の上で決める（段2） ----------------
+
+     空いた道を押すと、その時刻（15分きざみ）と前後の空きを出し、「時刻を
+     決めていないもの」から一つ選べば、その時刻が付いて停留所になります。
+
+     **決めるのは本人。** 空いているから何か入れろとは言いません——選ぶものが
+     無ければ無いと言うだけで、新しく書く欄も出しません（入力を増やさない）。
+     「空き」は長さを言うだけで、埋めるべき余白としては言いません。 */
+
+  /** viewBox の点 → いちばん近い時刻（分）。1分ずつ道をなぞって探します
+      （一日で千回ほど。押したときに一度だけなので、逆算の式を持つより素直）。 */
+  function timeNear(g, x, y) {
+    let best = g.start, bd = Infinity;
+    for (let t = g.start; t <= g.end; t++) {
+      for (const tail of [false, true]) {
+        const p = g.point(g.dist(t, tail));
+        const dd = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+        if (dd < bd) { bd = dd; best = t; }
+      }
+    }
+    return best;
+  }
+
+  /** 時刻 raw のまわりの空き。前後の停留所（時刻を決めたもの）のあいだで、
+      今日なら「いま」より前は数えません。長さを決めていない停留所は点なので、
+      始まりの時刻で区切ります。停留所の中なら、その停留所を返します。 */
+  function gapAt(st, raw, nowMin) {
+    const g = st.g;
+    let lo = g.start, hi = g.end, inside = null;
+    st.stops.forEach((s) => {
+      const end = s.len ? s.until : s.at;
+      if (s.len && s.at <= raw && raw < s.until) inside = s;
+      if (end <= raw) lo = Math.max(lo, end);
+      if (s.at > raw) hi = Math.min(hi, s.at);
+    });
+    if (nowMin != null) lo = Math.max(lo, nowMin);
+    return { lo, hi, inside };
+  }
+
+  /** 空きの中で、押した時刻にいちばん近い15分きざみ。空きの尻ちょうど
+      （次の停留所の頭）は選ばず、その15分前まで。 */
+  function snap(raw, lo, hi) {
+    const Q = 15;
+    const first = Math.ceil(lo / Q) * Q;
+    const last = Math.floor((hi - 1) / Q) * Q;
+    if (first > last) return first;
+    return Math.max(first, Math.min(last, Math.round(raw / Q) * Q));
+  }
+
+  function decideAt(el, o, e) {
+    const st = el.__road;
+    if (!st || st.past) return;
+    const map = el.querySelector(".road-map").getBoundingClientRect();
+    const k = map.width / W;
+    if (!(k > 0)) return;
+    const g = st.g;
+    const nowMin = st.today ? KN.plan.toMin(U.nowTime()) : null;
+    const raw = timeNear(g, (e.clientX - map.left) / k, (e.clientY - map.top) / k);
+    const gap = gapAt(st, nowMin != null ? Math.max(raw, nowMin) : raw, nowMin);
+    if (gap.inside) { if (o.open) o.open(gap.inside.t.id, e.target); return; }
+    const at = snap(raw, gap.lo, gap.hi);
+    if (at >= g.end) return;
+
+    const cands = st.loose.concat(st.later);
+    const rows = cands.map((c) => {
+      const m = st.markOf ? st.markOf(c.t) : "";
+      const len = Number(c.t.minutes) > 0 ? KN.plan.humanSpan(Number(c.t.minutes)) : "";
+      const row = node(html`
+        <button type="button" class="act-row road-pick" data-id="${c.t.id}">
+          <span class="act-ico"><span class="road-pick-mark ${m ? "" : "is-plain"}"
+                ${m ? U.raw(`style="--icon:${m}"`) : ""}></span></span>
+          <span class="act-main">
+            <span class="act-label">${c.t.title}</span>
+            ${len ? html`<span class="act-sub">${len}</span>` : ""}
+          </span>
+        </button>
+      `);
+      return { row, id: c.t.id };
+    });
+    const box = node(html`
+      <div class="road-decide">
+        ${gap.hi > gap.lo ? html`<p class="road-gap"><b>${clock(gap.lo)}〜${clock(gap.hi)}</b>
+          <span>空き${KN.plan.humanSpan(gap.hi - gap.lo)}</span></p>` : ""}
+        ${cands.length
+          ? html`<p class="road-decide-head">時刻を決めていないもの</p><div class="act-list"></div>`
+          : html`<p class="road-decide-none">時刻を決めていないものはありません</p>`}
+      </div>
+    `);
+    const list = box.querySelector(".act-list");
+    const handle = KN.ui.sheet({ title: clock(at), content: box, as: "dialog" });
+    rows.forEach(({ row, id }) => {
+      row.addEventListener("click", () => {
+        handle.close();
+        /* 閉じ終わってから（ほかの操作の紙と同じ拍）。 */
+        setTimeout(() => { if (o.decide) o.decide(id, KN.plan.toTime(at)); }, 40);
+      });
+      list.append(row);
+    });
+  }
+
   /** その根の中の道を、ぜんぶ描き直す（分が変わっていなければ何もしない）。 */
   function paintAll(root) {
     if (!root) return;
     root.querySelectorAll(".day-road").forEach(paint);
   }
 
-  KN.dayRoad = { build, paint, paintAll, geom, W };
+  KN.dayRoad = { build, paint, paintAll, geom, snap, W };
 })();
