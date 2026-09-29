@@ -67,7 +67,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
                    show: mid ? mid.dataset.show : undefined, text: mid ? mid.textContent : "" };
         });
         window.__rec.push({ at: performance.now() - t0, rows });
-        if (performance.now() - t0 < 2200) requestAnimationFrame(tick);
+        if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
       };
       tick();
     });
