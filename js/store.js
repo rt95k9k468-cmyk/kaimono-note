@@ -845,6 +845,10 @@
       /* 出る時刻（段7・2026年9月29日）。時刻の何分前に出るか（15・30・60）。
          持っていない古い記録は null——「前の時間なし」。移し替えは要りません。 */
       lead: cleanLead(t.lead),
+      /* 前の日から運んだ印（段3。docs/todo-timeline.md「崩れたときの置き直し」）。
+         ここに無かったので、同じ日に二回目に開くと印が落ち、「前の日から運んだ
+         もの」が黙って消えていました。持っていない記録には欄を足しません。 */
+      ...carriedField(t.carried),
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
@@ -936,6 +940,13 @@
     const n = Number(v);
     if (!isFinite(n) || n <= 0) return null;
     return Math.min(180, Math.max(5, Math.round(n / 5) * 5));
+  }
+
+  /* 運んだ印 `carried: { on: 日, time: 時刻|null }`。日の読めないものは印ごと
+     落とし（無ければ「運んでいない」）、時刻だけ崩れていれば null に。 */
+  function carriedField(c) {
+    if (!c || typeof c !== "object" || !/^\d{4}-\d{2}-\d{2}$/.test(c.on)) return {};
+    return { carried: { on: c.on, time: KN.util.isTime(c.time) ? c.time : null } };
   }
 
   function cleanMinutes(v) {
