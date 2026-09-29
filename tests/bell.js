@@ -158,6 +158,28 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   const kinds2 = sent.map((x) => x.bell).join(",");
   t.check("時刻が変われば送り直す（押し先は送り直さない）", kinds2 === "key,times", kinds2);
 
+  /* 作ってすぐ閉じる（2026年9月29日、iPhone で閉じていたら来なかった）。3秒待たずに、
+     隠れた瞬間に時刻の列だけ（鍵の往復なし）を送る。 */
+  sent.length = 0;
+  await page.evaluate(() => {
+    const x = new Date(Date.now() + 5 * 60000);
+    const pad = (n) => String(n).padStart(2, "0");
+    KN.store.addTodo({ title: "すぐ閉じる用事", due: KN.util.dayKey(x), time: `${pad(x.getHours())}:${pad(x.getMinutes())}` });
+  });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.waitForTimeout(800);
+  const kinds3 = sent.map((x) => x.bell).join(",");
+  t.check("作ってすぐ閉じても、隠れた瞬間に時刻の列を送る（鍵の往復なし・3秒待たない）", kinds3 === "times", kinds3);
+  await page.waitForTimeout(3000);
+  t.check("閉じる瞬間に送ったら、3秒後に二度は送らない", sent.map((x) => x.bell).join(",") === "times", sent.map((x) => x.bell).join(","));
+  await page.evaluate(() => {
+    delete document.visibilityState;
+  });
+
   /* 押しを届ける。CDP で登録の番号を取る。 */
   const cdp = await ctx.newCDPSession(page);
   const regId = await new Promise(async (ok) => {

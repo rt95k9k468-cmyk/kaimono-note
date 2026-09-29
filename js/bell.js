@@ -144,7 +144,8 @@
     return u.href;
   }
 
-  async function post(what, body) {
+  /* keepalive … アプリが隠れたあとも送り終える（閉じる瞬間の flush 用。本文は小さい）。 */
+  async function post(what, body, keepalive) {
     const ctl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = ctl ? setTimeout(() => ctl.abort(), TIMEOUT) : null;
     try {
@@ -153,6 +154,7 @@
         method: "POST",
         body: body == null ? "" : body,
         cache: "no-store",
+        keepalive: !!keepalive,
         signal: ctl ? ctl.signal : undefined,
       });
     } finally {
@@ -340,9 +342,30 @@
     /* 開くたび。7日の窓がずれて、新しい日の時刻が列に入ります。 */
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && active()) sync();
+      if (document.visibilityState === "hidden") flush();
     });
+    window.addEventListener("pagehide", flush);
     if (active()) sync({ force: true });
   }
 
-  KN.bell = { supported, available, active, plan, sync, start, stop, absorb, noteRung, init, DB };
+  /* 閉じる瞬間（2026年9月29日、iPhone で「閉じていたら通知が来なかった」）。用事を
+     作ってすぐ閉じると、上の3秒待ちのうちにアプリが止まり、中継所が新しい時刻を
+     知らないままだった。待っている送りがあれば**その場で**：この開いているあいだに
+     押し先を送れていれば、鍵の往復を飛ばして時刻の列だけを keepalive で。まだなら
+     ふつうの sync（間に合えば届く）。写し（題）も書き始める。 */
+  function flush() {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    if (!active()) return;
+    const list = plan();
+    const sig = list.map((x) => x.at).join(",");
+    writePlan(list).catch(() => {});
+    if (!lastSub) { sync(); return; }
+    if (sig === lastSig) return;
+    post("times", JSON.stringify(list.map((x) => x.at)), true)
+      .then((r) => { if (r.ok) lastSig = sig; }, () => {});
+  }
+
+  KN.bell = { supported, available, active, plan, sync, flush, start, stop, absorb, noteRung, init, DB };
 })();
