@@ -2,3 +2,6 @@
 # 古いまま残ると、本物と同じ保存場所を古いコードが読み書きし（docs/storage.md の f）、
 # 全体の写しが3つ増えて、探す・読むたびに Claude Code の制限を余分に使う。
 dist/
+
+# 試験の門（R22）で入れる playwright。手元では /opt/node22 のものを NODE_PATH で使う。
+node_modules/

@@ -635,12 +635,17 @@
     /* 角の時刻は、人がそこに立っているときは出しません（頭と重なる。
        人の足もとの時刻の札が、同じことを言っています）。 */
     const me = dNow == null ? null : g.point(dNow);
+    /* もう言った時刻（始まり・終わり・角）。区間の終わりが同じ時刻なら、そちらは
+       出しません——7:00〜8:00 の用事が段の終わりで曲がると、「8:00」が角と区間の
+       終わりで上下に二つ並んでいました（R17）。 */
+    const said = new Set([g.start, g.end]);
     for (let i = 0; i < g.rows - 1; i++) {
       const x = i % 2 === 0 ? XR + R * 0.36 : XL - R * 0.36;
       const y = g.rowY(i) + R;
       if (me && Math.abs(me.x - x) < 26 && Math.abs(me.y - ME_HEAD - y) < 30) continue;
-      out.push(html`<span class="road-turn" style="${at(x, y)}">${
-        clock(g.start + (i + 1) * g.rowSpan)}</span>`);
+      const turn = g.start + (i + 1) * g.rowSpan;
+      said.add(turn);
+      out.push(html`<span class="road-turn" style="${at(x, y)}">${clock(turn)}</span>`);
     }
 
     /* 1. 人の頭・連れ・いまの時刻。
@@ -721,7 +726,7 @@
 
     // 3. 区間の終わりの時刻
     st.stops.forEach((s) => {
-      if (!s.len || s.until - s.at < 45) return;
+      if (!s.len || s.until - s.at < 45 || said.has(s.until)) return;
       const p = g.point(s.d1);
       const txt = clock(s.until);
       const box = fitMid(lane(p.row, "d"), p.x, textW(txt, FS * 0.92) + 2);

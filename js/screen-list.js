@@ -487,8 +487,15 @@
 
   /* ---------------- render ---------------- */
 
+  /* 描けるものだけ（R18）。`products` に無い `productId` の品物が一つでもあると、
+     リストは「空ではない」のに描ける行が無く、空の案内も出ずに真っ白でした。
+     読み込みでは reconcile() が外しますが、動いている最中の食い違い（品物を消す
+     途中で落ちた・戻した控えが崩れていた）はここまで来ます。**消さない**——
+     飛ばして描くだけ。 */
+  const drawable = () => store.get().items.filter((i) => store.getProduct(i.productId));
+
   function render() {
-    const items = store.get().items;
+    const items = drawable();
 
     /* 暦は帯（全タブで一つ）に置きます。印の無い一枚で、価格と分け合う
        ——紙を下げて価格へ移っても、暦は差し替わりません（head.js）。
@@ -1303,7 +1310,7 @@
      `render()` だと暦まで組み直して、いま動いている輪が跳ぶので。 */
   function dayMoved() {
     if (!root) return;
-    const items = store.get().items;
+    const items = drawable();
     renderBody(query ? items.filter(matchesQuery) : items);
   }
 

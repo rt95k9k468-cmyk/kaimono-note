@@ -7,7 +7,6 @@
 const http = require("http");
 const path = require("path");
 const { spawn } = require("child_process");
-const { chromium } = require("playwright");
 
 const PORT = 8765;
 const ROOT = path.resolve(__dirname, "..");
@@ -36,6 +35,9 @@ async function ensureServer() {
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
 async function open({ viewport = { width: 390, height: 844 }, before } = {}) {
   await ensureServer();
+  /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
+     無いところでも走れるように。 */
+  const { chromium } = require("playwright");
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ serviceWorkers: "block", viewport });
   const page = await ctx.newPage();

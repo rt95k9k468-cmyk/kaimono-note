@@ -49,7 +49,10 @@ const { open, checker } = require("./lib");
         const node = document.querySelector(".screen.is-active .tl-row .tl-node[style*='visibility']");
         out.hidden.push(!!(hero && hero.style.visibility === "hidden") && !!node);
       }
-      if (performance.now() - t0 < 900) requestAnimationFrame(tick);
+      /* 影武者が消えるまで（着いて片づくまで）。決め打ちの 900ms で切っていたときは、
+         CPU が混むと動きの途中で記録が終わり、着いた箱が 2px ずれて落ちた（R19）。 */
+      if (!g && out.frames.length) ok(out);
+      else if (performance.now() - t0 < 4000) requestAnimationFrame(tick);
       else ok(out);
     };
     requestAnimationFrame(tick);

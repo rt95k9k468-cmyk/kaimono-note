@@ -1196,6 +1196,23 @@
     return `商品 ${c.products}・やること ${c.todos}・daily ${c.days}日・積み上げ ${c.entries}・ダイエット ${c.diet}`;
   }
 
+  /* 記録の点検（R28、js/audit.js）。数えるだけで、記録は変えません。
+     ファイルは reconcile() を通す前の中身を見ます——読み込むときに直るもの
+     （持ち主の無い品物を外す、など）も「このファイルの食い違い」なので。
+     古い形（v1）は形が違うので数えません。 */
+  function auditOfText(text) {
+    if (!KN.audit) return null;
+    try {
+      const raw = JSON.parse(text);
+      return raw && raw.schema >= 2 ? KN.audit.check(raw) : null;
+    } catch (err) { return null; }
+  }
+  function auditText(a) {
+    if (!a || !a.total) return "";
+    const parts = KN.audit.LABELS.filter(([k]) => a[k]).map(([k, label]) => `${label} ${a[k]}`);
+    return `このファイルには食い違いが${a.total}件あります（${parts.join("・")}）。`;
+  }
+
   /** 字数を「約◯万字」で。小さいときは、細かく言わない。 */
   function charText(n) {
     if (n < 10000) return "1万字未満";
@@ -1658,6 +1675,28 @@
     });
 
     handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
+  }
+
+  /* ---------------- 記録を点検する（R28、js/audit.js） ----------------
+
+     いまの記録の食い違いを数えて見せるだけ。直す手は置きません——直すのは
+     記録の作り替えなので、別の段で、先に利用者へ話してから（CLAUDE.md）。 */
+  function openAudit() {
+    const a = KN.audit.check(store.get());
+    const body = node(html`
+      <div class="stack" style="gap:12px">
+        <p style="color:var(--c-text-2);line-height:1.6">${a.total
+          ? `食い違いが${a.total}件ありました。`
+          : "食い違いは見つかりませんでした。"}</p>
+        <table class="verify-table js-audit">
+          ${KN.audit.LABELS.map(([k, label]) => html`<tr><td>${label}</td><td>${String(a[k])}</td></tr>`)}
+        </table>
+        <p style="color:var(--c-text-2);line-height:1.6">数えるだけで、記録は変えていません。</p>
+      </div>
+    `);
+    const foot = node(html`<button class="btn btn-soft btn-block">閉じる</button>`);
+    const h = KN.ui.sheet({ title: "記録の点検", content: body, footer: foot, guard: false, as: "dialog" });
+    foot.addEventListener("click", () => h.close());
   }
 
   /* ---------------- 年の本（R10、js/yearbook.js） ----------------
@@ -2658,7 +2697,7 @@
       const when = r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出し` : "書き出し日時の無いファイル";
       const ok = await KN.ui.confirm({
         title: "復元しますか？",
-        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。`,
+        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。`,
         okLabel: "復元する",
         danger: true,
       });
@@ -2687,12 +2726,12 @@
       let text = "";
       try { text = await f.text(); } catch (err) { text = ""; }
       file.value = "";
-      showVerify(f.name, store.inspectBackup(text));
+      showVerify(f.name, store.inspectBackup(text), auditOfText(text));
     });
     return file;
   }
 
-  function showVerify(name, r) {
+  function showVerify(name, r, audit) {
     const now = store.countsOf();
     const kinds = [
       ["商品", "products"], ["やること", "todos"], ["daily（日）", "days"],
@@ -2715,7 +2754,8 @@
             <tr><th></th><th>このファイル</th><th>いま</th></tr>
             ${kinds.map(([label, k]) => html`<tr><td>${label}</td><td>${r.counts[k]}</td><td>${now[k]}</td></tr>`)}
           </table>
-          <p style="color:var(--c-text-2);line-height:1.6">${verdict}</p>` : ""}
+          <p style="color:var(--c-text-2);line-height:1.6">${verdict}</p>
+          ${auditText(audit) ? html`<p class="js-audit-line" style="color:var(--c-text-2);line-height:1.6">${auditText(audit)}</p>` : ""}` : ""}
       </div>
     `);
     const foot = node(html`<button class="btn btn-soft btn-block">閉じる</button>`);
@@ -2941,6 +2981,7 @@
         }),
         navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport }),
         navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook }),
+        navRow({ ico: "check", tint: TINT.sub, title: "記録を点検する", onTap: openAudit }),
         navRow({
           ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
           value: `${store.learnedList().length}件`, onTap: openLearned,

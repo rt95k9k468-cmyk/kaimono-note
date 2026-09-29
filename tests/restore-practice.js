@@ -219,6 +219,11 @@ window.__diff = function (a, b, p) {
   const kept = await page.evaluate(() => KN.backup.list().map((h) => h.reason));
   t.check("E. 復元の直前に「復元前」の控えが増えている", kept.includes("復元前"), kept.join(","));
 
+  /* 点検（R28）：鍵ぜんぶの材料を戻した記録に、食い違いは無い。わざと食い違いを
+     入れたファイルは tests/audit.js。 */
+  const au = await page.evaluate(() => KN.audit.check(KN.store.get()));
+  t.check("F. 戻した記録を点検すると、食い違いは0件", au.total === 0, JSON.stringify(au));
+
   t.check("エラーが出ていない", errors.length === 0, errors.join("\n"));
   await browser.close();
   t.done();
