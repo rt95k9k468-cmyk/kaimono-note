@@ -77,10 +77,14 @@
   const BUDGET_IDB = 20_000_000;
   // 昔の呼び名。設定画面などが見ているので残します。
   const KEEP = 24 * FINE_DAYS + KEEP_DAYS;
-  const REMIND_AFTER_DAYS = 30;
+  /* 端末の外の控えの見張り（R25）。いちばん新しい外の控えがこれより古いか、
+     Dropbox をつないでいて送れないまま STUCK_DAYS たったら、歯車に点。 */
+  const REMIND_AFTER_DAYS = 14;
+  const REMIND_STUCK_DAYS = 3;
   const REMIND_MIN_PRODUCTS = 5;
   const REMIND_MIN_TODOS = 5;
   const REMIND_MIN_DIET_RECORDS = 5;
+  const REMIND_MIN_DAILY = 5;
 
   function read() {
     try {
@@ -557,24 +561,50 @@
     });
   }
 
-  /** True once there is real data and no file has been written out in a while. */
-  function exportDue() {
+  /** 端末の外にある、いちばん新しい控えの時刻（手の書き出しと、Dropbox に
+      最後に届いた時刻の新しいほう）。無ければ null。 */
+  function offDeviceAt() {
+    const a = lastExportAt();
+    const b = KN.dropbox ? KN.dropbox.status().lastAt : "";
+    const t = (x) => (x ? new Date(x).getTime() : NaN);
+    const best = [a, b].filter((x) => isFinite(t(x))).sort((x, y) => t(y) - t(x))[0];
+    return best || null;
+  }
+
+  /** 端末の外の控えが古くなったか（R25）。読むだけ。古ければ
+      `{ days, stuck }`（days は外の控えからの日数、無ければ null。stuck は
+      Dropbox が送れないまま止まっている）、そうでなければ null。
+      数える記録に日記・積み上げも入れます——いちばん失いたくないものなので。 */
+  function offDeviceStale(now) {
     const st = store.get();
+    const arc = st.archive || {};
     const worth = (st.products || []).length >= REMIND_MIN_PRODUCTS
       || (st.todos || []).length >= REMIND_MIN_TODOS
-      || dietRecordCount(st) >= REMIND_MIN_DIET_RECORDS;
-    if (!worth) return false;
-    const last = lastExportAt();
-    if (!last) return true;
-    const days = (Date.now() - new Date(last).getTime()) / 86400000;
-    return !(days < REMIND_AFTER_DAYS);
+      || dietRecordCount(st) >= REMIND_MIN_DIET_RECORDS
+      || (arc.days || []).length >= REMIND_MIN_DAILY
+      || (arc.entries || []).length >= REMIND_MIN_DAILY;
+    if (!worth) return null;
+    const at = now || Date.now();
+    const last = offDeviceAt();
+    const days = last ? Math.floor((at - new Date(last).getTime()) / 86400000) : null;
+    const db = KN.dropbox ? KN.dropbox.status() : null;
+    const stuck = !!(db && db.connected && db.error && days !== null && days >= REMIND_STUCK_DAYS);
+    if (stuck || days === null || days >= REMIND_AFTER_DAYS) return { days, stuck };
+    return null;
   }
+
+  /** 昔の呼び名（真偽だけ）。 */
+  function exportDue() { return !!offDeviceStale(); }
 
   /* 自動の控えは取り続けますが、**催促はしません**。
      頼んでもいないのに出る知らせは、出るたびに読み飛ばす癖をつけます。
      そうなると、本当に伝えたいこと（取り込めた／取り込めなかった）まで
      一緒に読み飛ばされます。書き出しどきかどうかは exportDue() が
-     答えるので、設定の画面に「前回いつ書き出したか」として静かに出ます。 */
+     答えるので、設定の画面に「前回いつ書き出したか」として静かに出ます。
+     ただ一つの例外が R25（2026年9月29日、利用者が X4 で決めた）：端末の外の
+     控えが古くなったら、**歯車に小さな点だけ**。点は押すまで何も言わない
+     （トースト・通知・赤は使わない）。いちばん痛いのは「控えがあると思って
+     いたのに、無かった」なので。 */
   function init() {
     ensure().then(() => maybeHourly());
 
@@ -602,7 +632,7 @@
     SNAP_KEY, KEEP, EVERY_MS, FINE_DAYS, KEEP_DAYS, BUDGET, BUDGET_IDB,
     snapshot, take, makeRoom, usage,
     maybeDaily, maybeHourly, maybeEvery, prune, list, restore, clear,
-    lastExportAt, markExported, exportDue,
+    lastExportAt, markExported, exportDue, offDeviceAt, offDeviceStale,
     init,
     // 置き場が決まったら果たされる約束と、いまの置き場（"idb" / "ls"）。
     ready: ensure, where: () => where, moved: () => moved,
