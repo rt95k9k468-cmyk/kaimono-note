@@ -21,7 +21,8 @@
    - **済ませたものは、押した時刻の道の上に足あと。** 写さず引く——doneAt から
      そのつど数えます。
    - **歩いたぶんの道は濃く、これからは薄く。** 人が立つのは今日だけ。過ぎた日は
-     道ぜんぶが歩いたあと、先の日はぜんぶがこれから。
+     道を薄いままにして停留所だけ塗り、区間は決めたとおりに描いて、押した時刻に
+     白い粒。先の日はぜんぶがこれから。
 
    評価はしません。遅れも達成も言いません。言うのは「いま何時で、次に何が
    あって、そこまでどれだけ空いているか」だけです。
@@ -515,8 +516,10 @@
     const g = st.g;
     st.stops.forEach((s) => {
       s.late = !!(s.len && nowMin != null && !closed(s.t) && nowMin > s.until);
+      /* 過ぎた日は、押した時刻まで延ばさない（決めた区間のまま。押した時刻は
+         paint が小さな白い粒で置く）。2026年9月29日。 */
       s.eu = s.late ? Math.max(s.until, Math.min(nowMin, g.end))
-        : s.len && s.doneMin != null && s.doneMin > s.until ? s.doneMin : s.until;
+        : !st.past && s.len && s.doneMin != null && s.doneMin > s.until ? s.doneMin : s.until;
       s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu, true)) : s.d0;
     });
     laneOut(st.stops);
@@ -603,7 +606,7 @@
          隠れて、一日の半分ほどで物差しが消えていた。塗った上は白、まだの白い中は
          塗りの色で。 */
       + `<path class="road-ticks is-over"/><path class="road-ticks is-ink"/>`
-      + `<g class="road-steps">${stepSvg}</g>`
+      + `<g class="road-steps">${stepSvg}</g><g class="road-steps is-stops"></g>`
       + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME_HALO}</g>`
       + `<g class="road-me-ink">${ME_INK}</g></g>`
       + `<path class="road-free"/>`
@@ -688,11 +691,21 @@
         const hit = svg.querySelector(`.road-hit[data-k="${k}"]`);
         if (hit) hit.setAttribute("d", d);
       });
+      /* 過ぎた日の、時刻を決めたものを押した時刻（2026年9月29日）。区間は決めた
+         まま描くので、押した時刻は足あとと同じ白い粒で。区間の中なら、その車線に。 */
+      const dots = svg.querySelector(".road-steps.is-stops");
+      if (dots) dots.innerHTML = !st.past ? "" : st.stops.filter((s) => s.doneMin != null).map((s) => {
+        const inside = s.doneMin >= s.at && s.doneMin <= s.eu;
+        const p = g.point(g.dist(s.doneMin), inside ? s.off : 0);
+        return `<circle class="road-step is-stop" cx="${n1(p.x)}" cy="${n1(p.y)}" r="2.8"/>`;
+      }).join("");
     }
 
     // ① 歩いたぶんの道
     const went = svg.querySelector(".road-went");
-    const wentTo = st.past ? g.total : dNow;
+    /* 過ぎた日は道を「これから」の薄い色のまま、停留所だけ塗る（2026年9月29日）。
+       道ぜんぶを塗ると、どこに何があったかが塗りに沈んでいた。 */
+    const wentTo = st.past ? null : dNow;
     if (wentTo > 0) went.setAttribute("d", g.path(0, wentTo));
     else went.removeAttribute("d");
 
