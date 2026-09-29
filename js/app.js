@@ -1187,7 +1187,10 @@
     const fromHash = calBack || dueIds ? "todo" : location.hash.slice(1);
     show(KN.screens[fromHash] ? fromHash : HOME);
     if (calBack) KN.ics.cameBack();
-    if (dueIds) openDue(dueIds);
+    if (dueIds) {
+      openDue(dueIds);
+      if (KN.dueSheet.trail) KN.dueSheet.trail(`印（#due=）から開いた（id ${dueIds.length}件）`);
+    }
 
     /* 押したことの控え（sw.js・js/due-sheet.js の take）。`#due=` が届かなかった
        iPhone の道の受け皿：開いたとき・戻ってきたとき・sw.js からの一言で読む。 */
@@ -1200,10 +1203,17 @@
         else KN.ui.toast("その時刻の用事は、もう片づいています");
       });
     };
+    /* 起動の直後は、sw.js が控えを置くより先に見に行くことがある（閉じていた
+       アプリを通知が起こすと、アプリの起動と notificationclick が同時に走る）。
+       だから少し間を置いて二度見直す。前に出たとき（focus・pageshow）も。 */
     pullDue();
+    setTimeout(pullDue, 1500);
+    setTimeout(pullDue, 4000);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") pullDue();
     });
+    window.addEventListener("focus", pullDue);
+    window.addEventListener("pageshow", pullDue);
     if (navigator.serviceWorker) {
       navigator.serviceWorker.addEventListener("message", (e) => {
         if (e.data && e.data.type === "due-click") pullDue();
@@ -1248,6 +1258,7 @@
         if (active !== "todo") show("todo");
         else history.replaceState(null, "", "#todo");
         openDue(dueIds);
+        if (KN.dueSheet.trail) KN.dueSheet.trail(`印（#due=）が開いたところへ届いた（id ${dueIds.length}件）`);
         return;
       }
       if (KN.screens[id] && id !== active) show(id);
