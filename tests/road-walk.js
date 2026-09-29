@@ -6,6 +6,7 @@
    - 腕は最初から最後まで振り、半ばでは脚と逆（止まった形は「手前の脚と手前の腕が両方前」）
    - 腕はちゃんと振れる（奥の手が前へ 150 以上）
    - 長さは --m-walk から（四歩と速さの台形で 2.0s）
+   - 腕は終わりで急がない（形を τ で引いて、後半の振りが半ばより速くならない）
    - 歩いている途中にもう一度タブを押しても、頭からやり直さない（止まった形へ跳ばない）
    - 戻ってきたら（visibilitychange）歩く
    - 動きを減らす設定では歩かない */
@@ -178,6 +179,27 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
   c.check("長さは --m-walk から：四歩と速さの台形で 2.0s（1.8〜2.4s で止まった形へ）",
     k === 400 && took != null && took >= 1800 && took <= 2400, JSON.stringify({ k, took }));
   c.check("止まった形とぴったり同じで止まる", isStill(F[F.length - 1]), JSON.stringify(F[F.length - 1]));
+
+  /* 腕は終わりで急がない（9月29日・利用者の声「人のアイコンも最後だけ動きが速く
+     なっておかしい」）。前は後半で腕のずれを先へ送って一周させていて、その送りが
+     後半で急ぐ曲線だったので、脚が止まりはじめる 70〜85% で腕がいちばん速く振れた。
+     フレームの揺れを避けて、形を経った割合 τ で引き（KN.dayRoad.pose）、肩から手の
+     向きが変わる速さを比べる。 */
+  const pace = await page.evaluate(() => {
+    const armA = (q) => Math.atan2(q.armB[2].y - q.sleeveB[0].y, q.armB[2].x - q.sleeveB[0].x);
+    const legA = (q) => Math.atan2(q.legF[2].y - q.legF[0].y, q.legF[2].x - q.legF[0].x);
+    const N = 400, arm = [], leg = [];
+    for (let i = 0; i < N; i++) {
+      const a = KN.dayRoad.pose(i / N), b = KN.dayRoad.pose((i + 1) / N);
+      arm.push(Math.abs(armA(b) - armA(a)) * N);
+      leg.push(Math.abs(legA(b) - legA(a)) * N);
+    }
+    const max = (xs, lo, hi) => Math.round(Math.max(...xs.slice(lo * N, hi * N)) * 100) / 100;
+    return { armMid: max(arm, 0.3, 0.55), armEnd: max(arm, 0.6, 1),
+             legMid: max(leg, 0.3, 0.55), legEnd: max(leg, 0.6, 1) };
+  });
+  c.check("腕は終わりで急がない：後半（60%〜）の腕の振りは、半ば（30〜55%）より速くならない",
+    pace.armEnd <= pace.armMid * 1.02, JSON.stringify(pace));
 
   /* ---- 歩いている途中にもう一度押しても、頭からやり直さない ---- */
   await page.click('.tab[data-tab="archive"]');

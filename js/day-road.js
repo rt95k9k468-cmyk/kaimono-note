@@ -103,24 +103,30 @@
     }
     const total = dist(start + span, true);
 
+    /* 並走（off）。時刻の重なった停留所は、道を横に割った車線に描きます（
+       2026年9月29日）。off は**進む向きの左へ**のずらし：右へ進む段では上、左へ
+       進む段では下。右の曲がり角では外回り（半径 R + off）、左の角では内回り
+       （R − off）になり、角をはさんでも同じ車線のまま次の段へつながります。 */
+    const rOf = (i, off) => (i % 2 === 0 ? R + off : R - off);
+
     /** 長さ → 点。まっすぐなところなら、その段と向きも。 */
-    function point(d) {
+    function point(d, off = 0) {
       const dd = Math.max(0, Math.min(total, d));
       const i = Math.max(0, Math.min(rows - 1, Math.floor(dd / SEG + 1e-9)));
       const rem = dd - i * SEG;
       const y = rowY(i);
       const ltr = i % 2 === 0;
-      if (rem <= RUN + 1e-9) return { x: ltr ? XL + rem : XR - rem, y, row: i, ltr };
-      const a = (rem - RUN) / R;
+      if (rem <= RUN + 1e-9) return { x: ltr ? XL + rem : XR - rem, y: y + (ltr ? -off : off), row: i, ltr };
+      const a = (rem - RUN) / R, r = rOf(i, off);
       const s = Math.sin(a), c = Math.cos(a);
-      return { x: ltr ? XR + R * s : XL - R * s, y: y + R - R * c, row: i, ltr, arc: true };
+      return { x: ltr ? XR + r * s : XL - r * s, y: y + R - r * c, row: i, ltr, arc: true };
     }
 
     /** 長さ d0〜d1 の道筋（SVG の d）。長さが無ければ点——丸い端が丸を描きます。 */
-    function path(d0, d1) {
+    function path(d0, d1, off = 0) {
       let a = Math.max(0, Math.min(total, d0));
       const b = Math.max(a, Math.min(total, d1));
-      const p = point(a);
+      const p = point(a, off);
       let s = `M${n1(p.x)} ${n1(p.y)}`;
       if (b - a < 0.05) return s + "l0.01 0";
       for (let guard = 0; b - a > 1e-6 && guard < 64; guard++) {
@@ -129,33 +135,42 @@
         let to;
         if (a - base < RUN - 1e-6) {
           to = Math.min(b, base + RUN);
-          const q = point(to);
+          const q = point(to, off);
           s += `L${n1(q.x)} ${n1(q.y)}`;
         } else {
           /* 曲がり角は四分の一ずつ。半周を一度に描くと、始点と終点が直径の
              両端になって、どちら回りかが決まりません。 */
           const half = base + RUN + ARC / 2;
           to = Math.min(b, a < half - 1e-6 ? half : base + SEG);
-          const q = point(to);
-          s += `A${R} ${R} 0 0 ${i % 2 === 0 ? 1 : 0} ${n1(q.x)} ${n1(q.y)}`;
+          const q = point(to, off), r = n1(rOf(i, off));
+          s += `A${r} ${r} 0 0 ${i % 2 === 0 ? 1 : 0} ${n1(q.x)} ${n1(q.y)}`;
         }
         a = to;
       }
       return s;
     }
 
-    /** 一時間ごとの目盛り。曲がり角の上には置きません（そこは札が言うので）。 */
-    function ticks() {
-      let s = "";
+    /** 一時間ごとの目盛りの時刻。曲がり角の上には置きません（そこは札が言うので）。
+        道の始まりはちょうどの時へ切り下げてあるので（`reach`）、角も目盛りも
+        「ちょうどの時」にそろいます。 */
+    function tickTimes() {
+      const out = [];
       for (let t = Math.floor(start / 60) * 60 + 60; t < start + span; t += 60) {
-        if ((t - start) % rowSpan === 0) continue;
-        const p = point(dist(t));
-        s += `M${n1(p.x)} ${n1(p.y - 3)}V${n1(p.y + 3)}`;
+        if ((t - start) % rowSpan !== 0) out.push(t);
       }
-      return s;
+      return out;
     }
+    /** 目盛りの道筋。half は目盛りの半分の長さ、off は車線。 */
+    function tickPath(ts, off = 0, half = 3) {
+      return ts.map((t) => {
+        const p = point(dist(t), off);
+        return `M${n1(p.x)} ${n1(p.y - half)}V${n1(p.y + half)}`;
+      }).join("");
+    }
+    const ticks = () => tickPath(tickTimes());
 
-    return { start, end: start + span, rowSpan, rows, H, total, rowY, dist, point, path, ticks };
+    return { start, end: start + span, rowSpan, rows, H, total, rowY, dist, point, path,
+             ticks, tickTimes, tickPath };
   }
 
   /* ---------------- 札の幅の見積もり ----------------
@@ -305,12 +320,20 @@
         R.front[0] + (R.back[0] - R.front[0]) * w, R.front[1] + (R.back[1] - R.front[1]) * w);
     };
     /* 腕の振り。0 が止まった形、1 が左右を入れ替えた形。脚と逆（ずれ π）に振るが、
-       止まった形は脚と同じ側なので、ずれを 0 → π（半ばで）→ 2π と送る。はじめと
-       おわりで大きく送る（速さの台形で遅いところ）。 */
+       止まった形は脚と同じ側なので、ずれを 0 → π（半ばで）→ 0 と送って戻す。
+       はじめは大きく送る（速さの台形で遅いところ）。 */
     /* 足がいちばん後ろへ来るのは半周ではなく stance のところなので、半ばのずれも
-       そのぶん詰める（mid）。 */
+       そのぶん詰める（mid）。
+       **後半はずれを戻す（mid → 0）。** 前は先へ送って一周（mid → 2π）にしていたが、
+       その送りが後半で急ぐ曲線だったので、脚が止まりはじめるところで腕だけが
+       いちばん速く振れた（脚 15.7 に対して腕 26。利用者の声「最後だけ動きが速い」、
+       9月29日）。戻す向きなら腕は脚より遅くなるだけで、振りの総量も脚と同じ。
+       戻しは v = 2u − 1 の頭 0.2 でなめらかに立ち上げ、あとは一定（腕は脚の半分の
+       速さ）。一定より強く戻すと、脚の遅い終わりで腕が逆に回る。 */
     const u = ph / n, mid = Math.PI * (2 - 2 * WALK.stance);
-    const lag = u <= 0.5 ? mid * (1 - (1 - 2 * u) ** 3) : mid + (2 * Math.PI - mid) * (2 * u - 1) ** 3;
+    const v = Math.max(0, 2 * u - 1);
+    const back = (v < 0.2 ? v * v / 0.4 : v - 0.1) / 0.9;
+    const lag = u <= 0.5 ? mid * (1 - (1 - 2 * u) ** 3) : mid * (1 - back);
     const k = (1 - Math.cos(2 * Math.PI * ph + lag)) / 2;
     const arm = (sleeve, skin, sign) => {
       const up = sign * k * R.swing, fl = sign * k * R.flex;
@@ -381,9 +404,63 @@
    *   decide … (todoId, "HH:MM") 空いた道の上で決めた時刻を付ける（段2）
    *   tomorrow … { at: 分, title } 明日の最初の停留所（段6。今日だけ。無ければ null）
    */
+  /* 道の端（2026年9月29日・利用者の声「5:30 スタートなのに最初に 6:30」）。
+     設定の一日（dayStart〜dayEnd）を、**はみ出す停留所まで伸ばし**、始まりは
+     **ちょうどの時へ切り下げ**ます。
+     - 前は設定の端で切っていたので、起きる時刻を 6:30 にした人の 5:30 の用事が
+       道の頭（6:30）に点で押しつぶされ、「5:30」の札が 6:30 の場所に立っていた。
+     - 始まりが「〜:30」だと、角は「〜:30」・目盛りは「〜:00」で物差しが二つに
+       なっていた。一段は1時間単位なので、始まりをちょうどの時にすれば角も
+       ちょうどの時になる。
+     終わりは切り上げません（手描きの道も「22:30」で止まっていた）。
+     描くだけで、設定も記録も書き換えません。 */
+  function reach(plan) {
+    let a = plan.startMin, b = plan.endMin;
+    plan.items.forEach((it) => {
+      if (!it.fixed) return;
+      a = Math.min(a, it.atMin);
+      b = Math.max(b, Number(it.todo.minutes) > 0 ? it.untilMin : it.atMin);
+    });
+    return [Math.max(0, Math.floor(a / 60) * 60), Math.min(24 * 60, b)];
+  }
+
+  /* 時刻の重なった停留所（長さのあるものどうし）は、道を横に割った車線へ
+     （2026年9月29日）。前は同じところに重ねて描いていたので、あとの一本が
+     上に乗って一本に見え、重なっていることが道から読めなかった。
+     重なりでつながった一群（クラスター）ごとに、早い順に空いた車線へ入れ、
+     その群の車線の数で道の太さを割ります。**重なった区間だけでなく、その用事の
+     全体を車線に描く**——途中で太さが変わると、塗り（歩いたぶん）の描き直しが
+     継ぎ目を持つので。長さの無い停留所（点）は割らない（点そのものが印）。
+     評価はしません（「重複」の警告色は出さない。時間割の丸薬と同じ）。 */
+  function laneOut(stops) {
+    const spans = stops.filter((s) => s.len).sort((p, q) => p.at - q.at || p.until - q.until);
+    let group = [], reachEnd = -Infinity, id = 0;
+    const close = () => {
+      const n = group.length ? Math.max(...group.map((s) => s.lane)) + 1 : 1;
+      group.forEach((s) => { s.lanes = n; s.cl = n > 1 ? id : null; });
+      id++;
+      group = [];
+    };
+    spans.forEach((s) => {
+      if (s.at >= reachEnd) { close(); reachEnd = -Infinity; }
+      const busy = group.filter((x) => x.until > s.at).map((x) => x.lane);
+      let lane = 0;
+      while (busy.includes(lane)) lane++;
+      s.lane = lane;
+      group.push(s);
+      reachEnd = Math.max(reachEnd, s.until);
+    });
+    close();
+    stops.forEach((s) => {
+      if (!s.lanes) { s.lanes = 1; s.lane = 0; s.cl = null; }
+      /* 車線の中心。車線ひとつの幅は STOP / n で、左（進む向きの左）から順に。 */
+      s.off = s.lanes > 1 ? ((s.lanes - 1) / 2 - s.lane) * (STOP / s.lanes) : 0;
+    });
+  }
+
   function build(o) {
     const plan = o.plan;
-    const g = geom(plan.startMin, plan.endMin);
+    const g = geom(...reach(plan));
     const today = !!o.today;
     const past = !today && plan.day < U.todayKey();
 
@@ -417,10 +494,14 @@
       }
       loose.push({ t });
     });
+    laneOut(stops);
+    /* 車線に割った停留所は、群の車線の数（--lanes）で太さを割ります（CSS）。 */
+    const laneCls = (s) => (s.lanes > 1 ? " is-lanes" : "");
+    const laneCss = (s) => (s.lanes > 1 ? ` style="--lanes:${s.lanes}"` : "");
 
     const stopSvg = stops.map((s, k) => {
-      const d = g.path(s.d0, s.d1);
-      return `<g class="road-stop${closed(s.t) ? " is-done" : ""}" data-s="${k}">`
+      const d = g.path(s.d0, s.d1, s.off);
+      return `<g class="road-stop${closed(s.t) ? " is-done" : ""}${laneCls(s)}"${laneCss(s)} data-s="${k}">`
         + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
         + `<path class="road-stop-went"/></g>`;
     }).join("");
@@ -441,7 +522,7 @@
     /* 押せるのは、見えている区間より太い透明な線。停留所の丸は 21 単位で、
        指には細いので。 */
     const hitSvg = stops.map((s, k) =>
-      `<path class="road-hit" data-k="${k}" data-grow d="${g.path(s.d0, s.d1)}"/>`).join("")
+      `<path class="road-hit${laneCls(s)}"${laneCss(s)} data-k="${k}" data-grow d="${g.path(s.d0, s.d1, s.off)}"/>`).join("")
       + later.map((s, k) =>
         `<path class="road-hit" data-l="${k}" data-grow d="${g.path(s.d0, s.d1)}"/>`).join("");
 
@@ -451,6 +532,10 @@
       + `<path class="road-went"/>`
       + `<path class="road-ticks" d="${g.ticks()}"/>`
       + stopSvg + laterSvg
+      /* 停留所の上の目盛り（paint が引く）。道の目盛りは停留所の太い線の下に
+         隠れて、一日の半分ほどで物差しが消えていた。塗った上は白、まだの白い中は
+         塗りの色で。 */
+      + `<path class="road-ticks is-over"/><path class="road-ticks is-ink"/>`
       + `<g class="road-steps">${stepSvg}</g>`
       + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME_HALO}</g>`
       + `<g class="road-me-ink">${ME_INK}</g></g>`
@@ -529,6 +614,7 @@
     /* ② 停留所の塗り。時間割の丸薬と同じ決めごと：時計が通ったところまで
        塗る。済ませたものは時計に関わらず塗りきる（手が先に進むことはある）。 */
     const stopEls = svg.querySelectorAll(".road-stop[data-s]");
+    const over = [], ink = [];
     st.stops.forEach((s, k) => {
       const grp = stopEls[k];
       if (!grp) return;
@@ -538,10 +624,23 @@
       if (done || st.past) to = s.d1;
       else if (nowMin != null && nowMin >= s.at) to = s.len ? Math.min(dNow, s.d1) : s.d1;
       if (to == null) w.removeAttribute("d");
-      else w.setAttribute("d", g.path(s.d0, to));
+      else w.setAttribute("d", g.path(s.d0, to, s.off));
       grp.classList.toggle("is-live",
         !done && s.len && nowMin != null && nowMin >= s.at && nowMin < s.until);
+      /* 停留所の上の目盛り。始まりと終わりちょうどは札と丸い端が言うので置かない。
+         塗ったところは白、まだの白い中は塗りの色。車線に割ったものは車線の中だけ。 */
+      if (!s.len) return;
+      const half = 3 / s.lanes;
+      g.tickTimes().filter((t) => t > s.at && t < s.until).forEach((t) => {
+        (to != null && g.dist(t) <= to + 1e-6 ? over : ink).push(g.tickPath([t], s.off, half));
+      });
     });
+    const tickD = (el, parts) => {
+      if (parts.length) el.setAttribute("d", parts.join(""));
+      else el.removeAttribute("d");
+    };
+    tickD(svg.querySelector(".road-ticks.is-over"), over);
+    tickD(svg.querySelector(".road-ticks.is-ink"), ink);
 
     /* ③ 人。道の上に立ちます。停留所の中に居るときは、停留所のふちの上に
        （道の太さのところに立たせると、足がふちの中へ埋まる）。 */
@@ -691,10 +790,10 @@
     /* 2. 停留所の「時刻 題」。試す順：上に全部 → 下に全部 → 上で縮めて →
        下で縮めて → 逆向き → 時刻だけ。縮めるより、下の通りへ移すほうが先
        （題が「朝のル…」になるより、一段下に全部読めるほうがいい）。 */
-    function place(p, time, title, tries) {
+    function place(p, time, title, tries, extra = 0) {
       const tw = textW(time, FS) + 1;
-      const full = tw + 4 + textW(title, FS) + 1;
-      const min = tw + 4 + FS * 1.6;
+      const full = tw + 4 + textW(title, FS) + 1 + extra;
+      const min = tw + 4 + FS * 1.6 + extra;
       const dir = p.ltr ? 1 : -1;
       const anchor = p.x + (p.ltr ? -3 : 3);
       for (const [side, d, mode] of tries) {
@@ -711,16 +810,53 @@
     }
     const TRIES = [["u", 1, "full"], ["d", 1, "full"], ["u", 1], ["d", 1],
                    ["u", -1], ["d", -1], ["u", 1, "time"], ["d", 1, "time"]];
+    /* 置く順は前のまま（早い停留所から）。時刻の重なった群（車線に割ったもの）で
+       札が入りきらなかったものは、同じ群の最初の札に「ほか1」と添えます——
+       道には車線が見えているのに、札が黙って一つ消えていたので。押せばその札の
+       用事が開き、残りは時間割にあります。
+       「ほか1」の幅は一度目には分からないので、入りきらない札が出たときだけ、
+       添える札にその幅を足して**置き直します**（足さずに添えると、題が「…」に
+       つぶれて「11:30 ほか1」になる）。 */
+    const saved = Object.entries(lanes).map(([key, v]) => [key, Object.assign(v.slice(), { lo: v.lo, hi: v.hi })]);
+    const placeAll = (room) => st.stops.map((s, k) => place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
+    /* 入りきらなかった札ごとに、同じ群で時間が重なり、札の出た停留所のうち始まりが
+       いちばん近いものへ数を寄せる（群の最初の札だと、朝の長い用事に「ほか1」が
+       付いて、昼の込み合いから遠くなった）。 */
+    const carriers = (got) => {
+      const n = {};
+      st.stops.forEach((h, k) => {
+        if (got[k] || h.cl == null) return;
+        let best = -1;
+        st.stops.forEach((s, j) => {
+          if (!got[j] || s.cl !== h.cl || !(s.at < h.until && h.at < s.until)) return;
+          if (best < 0 || Math.abs(s.at - h.at) < Math.abs(st.stops[best].at - h.at)) best = j;
+        });
+        if (best >= 0) n[best] = (n[best] || 0) + 1;
+      });
+      return n;
+    };
+    let placed = placeAll({});
+    let more = carriers(placed);
+    if (Object.keys(more).length) {
+      const room = {};
+      Object.keys(more).forEach((k) => { room[k] = textW(`ほか${more[k]}`, FS) + 4; });
+      Object.keys(lanes).forEach((key) => { delete lanes[key]; });
+      saved.forEach(([key, v]) => { lanes[key] = v; });
+      placed = placeAll(room);
+      more = carriers(placed);
+    }
     st.stops.forEach((s, k) => {
-      const time = clock(s.at);
-      const b = place(g.point(s.d0), time, s.t.title, TRIES);
+      const b = placed[k];
       if (!b) return;
+      const time = clock(s.at);
+      const extra = more[k] || 0;
       const done = closed(s.t);
       out.push(html`
         <button type="button" class="road-label ${b.rev ? "is-rev" : ""} ${done ? "is-done" : ""}"
                 data-k="${String(k)}" style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
-                aria-label="${time} ${s.t.title}${done ? "（済み）" : ""}">
-          <b>${time}</b>${b.only ? "" : html`<span>${s.t.title}</span>`}
+                aria-label="${time} ${s.t.title}${done ? "（済み）" : ""}${extra ? `、ほか${extra}件` : ""}">
+          <b>${time}</b>${b.only ? "" : html`<span>${s.t.title}</span>`}${extra
+            ? html`<em>ほか${extra}</em>` : ""}
         </button>`);
     });
 
@@ -898,5 +1034,7 @@
     root.querySelectorAll(".day-road").forEach(paint);
   }
 
-  KN.dayRoad = { build, paint, paintAll, geom, snap, walk, W };
+  /* pose(τ) は試験用：歩きの経った割合 τ（0〜1）での形（腕と脚の速さを数で見る）。 */
+  KN.dayRoad = { build, paint, paintAll, geom, snap, walk, W,
+                 pose: (tau) => walkPose(walkPhase(tau)) };
 })();

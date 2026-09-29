@@ -5986,6 +5986,15 @@ a.btn { text-decoration: none; }
 /* 塗りは中の白より少し太く。同じ太さだと、白の縁のにじみが塗りきった停留所の
    内側に細い線で残ります（ふちと同じ色なので、はみ出しても見えない）。 */
 .road-stop-went { stroke: var(--road-go); stroke-width: 17; }
+/* 時刻の重なった停留所は、道を横に割った車線（day-road.js の laneOut。--lanes は
+   その群の車線の数）。ふちは車線の幅より 1 太く、となりの車線のふちと重ねて
+   あいだに一本の仕切りを作る。中の白は仕切りと外のふちが読める細さに。 */
+.road-stop.is-lanes .road-stop-edge { stroke-width: calc(21px / var(--lanes) + 1px); }
+.road-stop.is-lanes .road-stop-in { stroke-width: calc(21px / var(--lanes) - 3px); }
+.road-stop.is-lanes .road-stop-went { stroke-width: calc(21px / var(--lanes) - 2px); }
+/* 停留所の上の目盛り（paint が引く）。塗った上は白（.road-ticks のまま）、
+   まだの白い中は塗りの色で。 */
+.road-ticks.is-ink { stroke: var(--road-go); opacity: .6; }
 /* 毎晩の、時刻を決めていないもの。決めた時刻ではないので、ふちを点線に。
    端も角にします（丸い端だと、中の白がふちの外へはみ出す）。 */
 .road-stop.is-later path { stroke-linecap: butt; }
@@ -6003,6 +6012,9 @@ a.btn { text-decoration: none; }
   stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* 車線に割った停留所の的は、太さ 30 を車線の数で分ける（重ねると、あとの一本が
+   ぜんぶ取る）。 */
+.road-hit.is-lanes { stroke-width: calc(30px / var(--lanes)); }
 /* 人。塗りの歩く人（day-road.js の ME_PARTS）で、まわりに紙の色の縁（道や札の
    上でも読めるように）。線の太さは day-road.js が元の絵の単位で書きます。 */
 .road-me path { stroke-linecap: round; stroke-linejoin: round; }
@@ -6039,6 +6051,8 @@ a.btn { text-decoration: none; }
 .road-label b { flex: none; font-weight: 700; }
 .road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .road-label.is-done span { text-decoration: line-through; color: var(--c-text-3); }
+/* 時刻の重なった群で、入りきらなかった札の数（「ほか1」）。 */
+.road-label em { flex: none; font-style: normal; color: var(--c-text-2); }
 .road-label.is-later { color: var(--c-text-2); }
 .road-label.is-later b { font-weight: 400; }
 .road-now {

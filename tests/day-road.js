@@ -13,6 +13,8 @@
      元に戻せる・入力欄なし・歩いたぶんと過ぎた日は押せない
    - 時刻と長さを変えると、停留所が動き、長さが倍になる
    - 過ぎた日：人・連れ・次の一行なし、道ぜんぶが歩いたあと。先の日：歩いたぶんなし
+   - 停留所の上にも目盛り。道の端はちょうどの時・はみ出す停留所まで伸びる（利用者の 6:30）
+   - 時刻の重なった停留所は車線に割る・入りきらない札は「ほか n」
    - 設定で外せる。紙の上で本物の指で横に払えば、日が動く
    - 評価の言葉・割合・絵文字を出さない
    `SHOTS=<置き場>` で道を撮る。 */
@@ -143,6 +145,18 @@ const DAY = "2026-09-29";
     JSON.stringify(r.stopWent));
   c.check("次の一行「次は 8:00 朝のBaby · あと17分」",
     /次は\s*8:00 朝のBaby/.test(r.next) && /あと17分/.test(r.next), r.next);
+
+  /* 停留所の上の目盛り（9月29日・利用者の声「1時間ごとの切れ目がわかりにくい」）。
+     道の目盛りは停留所の太い線の下に隠れていた。5:00 始まりなので角は 8・11・14・
+     17・20 時（目盛りは置かない）。ルーティン（5:30〜6:30、時計が通った）の 6:00 は
+     塗りの上の白、朝のBaby（8:00〜12:00、まだ）の 9:00・10:00 は白い中の塗りの色。 */
+  const ticksOn = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const n = (sel) => ((road.querySelector(sel).getAttribute("d") || "").match(/M/g) || []).length;
+    return { over: n(".road-ticks.is-over"), ink: n(".road-ticks.is-ink") };
+  });
+  c.check("停留所の上にも目盛り：塗った上に白が一つ（6:00）、まだの白い中に塗りの色が二つ（9:00・10:00）",
+    ticksOn.over === 1 && ticksOn.ink === 2, JSON.stringify(ticksOn));
 
   if (process.env.SHOTS) {
     const box = await page.locator("#screen-todo .day-road").boundingBox();
@@ -359,6 +373,113 @@ const DAY = "2026-09-29";
   }, corner);
   c.check("角ちょうどで終わる区間：角の時刻の札は一つだけ（区間の終わりを重ねない）",
     turnSaid.still && turnSaid.n === 1 && !turnSaid.until.includes(turnSaid.txt), JSON.stringify(turnSaid));
+
+  /* 道の端（9月29日・利用者の声「5:30 スタートなのに最初に 6:30 とあって、しかも
+     二つ」）。起きる時刻を 6:30 にした人の 5:30 の用事が、道の頭（6:30）に点で押し
+     つぶされていた。道ははみ出す停留所まで伸び、始まりはちょうどの時へ切り下げる
+     （角と目盛りが同じ「ちょうどの時」にそろう）。 */
+  const EDGE = "2026-10-03";
+  await page.evaluate(() => KN.store.update((s) => { s.settings.dayStart = "06:30"; s.settings.dayEnd = "22:30"; }));
+  await goDay(EDGE);
+  const edgeRead = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const st = road.__road, g = st.g;
+    const early = st.stops.find((s) => s.t.title === "朝のルーティン");
+    return { start: g.start, end: g.end, d0: early ? early.d0 : null, d1: early ? early.d1 : null,
+             first: road.querySelector(".road-edge").textContent.trim(),
+             turns: [...road.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()),
+             said: [...road.querySelectorAll(".road-edge, .road-turn, .road-until")].map((e) => e.textContent.trim()) };
+  });
+  let edge = await edgeRead();
+  c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:00 から：点に押しつぶされず 5:30〜6:30 の区間",
+    edge.start === 300 && edge.first === "5:00" && edge.d0 > 0 && edge.d1 - edge.d0 > 40, JSON.stringify(edge));
+  c.check("角の時刻はちょうどの時（「〜:30」が混ざらない）",
+    edge.turns.length > 0 && edge.turns.every((t) => /:00$/.test(t)), JSON.stringify(edge.turns));
+  c.check("「6:30」を二度言わない", edge.said.filter((t) => t === "6:30").length <= 1, JSON.stringify(edge.said));
+  /* 早い用事の無い一日は、組み立てに直に渡して見る（この試験の日には毎日のルーティンがある）。 */
+  const bare = await page.evaluate(() => {
+    const el = KN.dayRoad.build({ plan: { day: "2026-10-03", startMin: 390, endMin: 1350, items: [] }, today: false });
+    return { start: el.__road.g.start, end: el.__road.g.end,
+             turns: [...el.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()) };
+  });
+  c.check("早い用事の無い日：起きる時刻 6:30 の道は 6:00 から（ちょうどの時へ）、終わりは 22:30 のまま",
+    bare.start === 360 && bare.end === 1350 && bare.turns.every((t) => /:00$/.test(t)), JSON.stringify(bare));
+  await page.evaluate((d) => KN.store.addTodo({ title: "夜ふけの用事", due: d, time: "23:00", minutes: 30 }), EDGE);
+  await page.waitForTimeout(500);
+  edge = await edgeRead();
+  c.check("23:00〜23:30 の用事があれば、道は 23:30 まで伸びる", edge.end === 1410, JSON.stringify(edge));
+  await page.evaluate(() => KN.store.update((s) => { delete s.settings.dayStart; delete s.settings.dayEnd; }));
+
+  /* 時刻の重なった停留所は車線に（9月29日・利用者の声「今後時間が被る予定が出たら
+     どうする？」）。前は同じところに重ねて描いていて、一本に見えた。
+     毎日の朝のBaby（8:00〜12:00）と重ならないよう、12:00 から（12:00 ちょうどは重ならない）。 */
+  const LANES = "2026-10-05";
+  await goDay(LANES);
+  await page.evaluate((d) => {
+    KN.store.addTodo({ title: "会議", due: d, time: "12:00", minutes: 90 });
+    KN.store.addTodo({ title: "電話", due: d, time: "12:30", minutes: 60 });
+    KN.store.addTodo({ title: "散歩", due: d, time: "16:00", minutes: 60 });
+  }, LANES);
+  await page.waitForTimeout(500);
+  const laneRead = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const st = road.__road, g = st.g;
+    const grp = (k) => road.querySelector(`.road-stop[data-s="${k}"]`);
+    const y0 = (k) => Number((grp(k).querySelector(".road-stop-edge").getAttribute("d").match(/^M[-\d.]+ ([-\d.]+)/) || [])[1]);
+    return {
+      stops: st.stops.map((s, k) => ({ title: s.t.title, lanes: s.lanes, y: y0(k),
+        cls: grp(k).getAttribute("class"), style: grp(k).getAttribute("style") || "" })),
+      labels: [...road.querySelectorAll(".road-label")].map((b) => b.textContent.replace(/\s+/g, " ").trim()),
+      more: [...road.querySelectorAll(".road-label em")].map((e) => e.textContent.trim()),
+      /* 「ほか n」を添えた札の題が、幅に収まっているか（切れていれば「…」）。 */
+      moreCut: [...road.querySelectorAll(".road-label")].filter((b) => b.querySelector("em"))
+        .map((b) => { const sp = b.querySelector("span"); return !sp || sp.scrollWidth > sp.clientWidth + 1; }),
+      row: g.rowY(g.point(g.dist(720)).row),
+    };
+  });
+  let ln = await laneRead();
+  const by = (t) => ln.stops.find((s) => s.title === t);
+  c.check("重なった二つは二車線（太さを割る）、重ならない一つはそのまま",
+    by("会議").lanes === 2 && by("電話").lanes === 2 && by("散歩").lanes === 1
+      && /is-lanes/.test(by("会議").cls) && /--lanes:\s*2/.test(by("会議").style) && !/is-lanes/.test(by("散歩").cls),
+    JSON.stringify(ln.stops));
+  c.check("二車線は道の中心から半分ずつずれる（右へ進む段：早いほうが上）",
+    Math.abs(by("会議").y - (ln.row - 5.25)) < 0.2 && Math.abs(by("電話").y - (ln.row + 5.25)) < 0.2,
+    JSON.stringify([ln.row, by("会議").y, by("電話").y]));
+  c.check("重なった二つとも札が出る", ln.labels.some((l) => l.includes("会議")) && ln.labels.some((l) => l.includes("電話")),
+    JSON.stringify(ln.labels));
+  const tapLane = async (min, off) => {
+    const xy = await page.evaluate(([m, o]) => {
+      const road = document.querySelector("#screen-todo .day-road");
+      const g = road.__road.g;
+      const map = road.querySelector(".road-map").getBoundingClientRect();
+      const k = map.width / KN.dayRoad.W;
+      const p = g.point(g.dist(m), o);
+      return { x: map.left + p.x * k, y: map.top + p.y * k };
+    }, [min, off]);
+    await page.mouse.click(xy.x, xy.y);
+    return sheetTitle();
+  };
+  /* 札の指の的（上下の余白）が上の車線にかかるので、札の無い 13:28 で押す。 */
+  const tA = await tapLane(808, 5.25), tB = await tapLane(808, -5.25);
+  c.check("車線を押すと、その車線の用事が開く（13:28 の上は会議、下は電話）",
+    !!tA && tA.includes("会議") && !!tB && tB.includes("電話"), JSON.stringify([tA, tB]).slice(0, 120));
+  await page.evaluate((d) => {
+    ["来客", "宅配", "修理"].forEach((t) => KN.store.addTodo({ title: t, due: d, time: "12:30", minutes: 30 }));
+  }, LANES);
+  await page.waitForTimeout(500);
+  ln = await laneRead();
+  const GROUP = ["会議", "電話", "来客", "宅配", "修理"];
+  const inGroup = ln.labels.filter((l) => GROUP.some((t) => l.includes(t))).length;
+  const moreN = ln.more.reduce((n, m) => n + Number(m.replace(/\D/g, "")), 0);
+  c.check("五つ重なれば五車線", GROUP.every((t) => by(t).lanes === 5),
+    JSON.stringify(ln.stops.map((s) => [s.title, s.lanes])));
+  c.check("入りきらない札は黙って消えず、同じ群の札に「ほか n」（出た札＋ほか＝五つ）",
+    ln.more.length === 1 && moreN > 0 && inGroup + moreN === 5, JSON.stringify([ln.labels, ln.more]));
+  c.check("「ほか n」は込み合いのそば（12:30 の札）に付く",
+    ln.labels.filter((l) => /ほか/.test(l)).every((l) => l.startsWith("12:30")), JSON.stringify(ln.labels));
+  c.check("「ほか n」を添えた札も題が読める（「…」につぶれない）",
+    ln.moreCut.length === 1 && !ln.moreCut[0], JSON.stringify([ln.labels, ln.moreCut]));
   await goDay(DAY);
 
   /* 設定で外せる */
