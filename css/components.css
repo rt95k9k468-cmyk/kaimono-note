@@ -1210,6 +1210,8 @@ button.hero-node:active { scale: .94; }
 .carry-was { flex: none; margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .carry-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .carry-acts > .btn { flex: 1 1 auto; }
+/* 段5の紙の頭の一言（時刻を外すとどうなるか）。 */
+.passed-note { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); color: var(--c-text-2); }
 
 .sheet-body {
   overflow-y: auto;

@@ -5953,6 +5953,12 @@ a.btn { text-decoration: none; }
   --road-go: var(--c-primary-fill);
   --road-wait: color-mix(in srgb, var(--c-primary-fill) 24%, var(--c-sheet));
   --road-in: var(--c-sheet-edge);
+  /* 歩く人の色（利用者が選んだ絵のまま。脚だけ白い紙で沈まないよう少し濃く）。 */
+  --me-skin: #f7a845;
+  --me-shirt: #7f8ccd;
+  --me-shirt-d: #6571c4;
+  --me-leg: #c6c1bd;
+  --me-leg-b: #a29d9a;
   padding: var(--sp-2) var(--sp-4) var(--sp-2);
 }
 .road-map { position: relative; max-width: 440px; margin: 0 auto; }
@@ -5985,10 +5991,19 @@ a.btn { text-decoration: none; }
   stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* 人。手描きと同じ棒の人で、まわりに紙の色の縁（道や札の上でも読めるように）。 */
-.road-me path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.road-me-halo { stroke: var(--c-sheet); stroke-width: 4.6; fill: var(--c-sheet); }
-.road-me-ink { stroke: var(--c-text); stroke-width: 1.8; fill: var(--c-text); }
+/* 人。塗りの歩く人（day-road.js の ME_PARTS）で、まわりに紙の色の縁（道や札の
+   上でも読めるように）。線の太さは day-road.js が元の絵の単位で書きます。 */
+.road-me path { stroke-linecap: round; stroke-linejoin: round; }
+.road-me-halo > g > * { fill: var(--c-sheet); stroke: var(--c-sheet); }
+.road-me-ink .me-line { fill: none; }
+.road-me-ink .me-fill { stroke: none; }
+.me-line.me-skin { stroke: var(--me-skin); }
+.me-fill.me-skin { fill: var(--me-skin); }
+.me-line.me-shirt { stroke: var(--me-shirt); }
+.me-fill.me-shirt { fill: var(--me-shirt); }
+.me-line.me-shirt-d { stroke: var(--me-shirt-d); }
+.me-line.me-leg { stroke: var(--me-leg); }
+.me-line.me-leg-b { stroke: var(--me-leg-b); }
 
 /* 札の層は図の上に一枚かぶさるので、押せるのは中の button だけ（でないと、
    下の透明な線に指が届きません）。 */

@@ -3382,6 +3382,7 @@
       bar.addEventListener("click", () => { haptic(); carrySheet(); });
       host.append(bar);
     }
+    paintPassed(true);
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);
@@ -3434,6 +3435,81 @@
       box.append(row);
     });
     handle = KN.ui.sheet({ title: "前の日から運んだもの", content: box, onClose: () => { handle = null; } });
+  }
+
+  /* 段5：その日のうちの置き直し（docs/todo-timeline.md「その日のうちの置き直し」）。
+     時刻を過ぎたのにまだのものが**あることと、置き直す口だけ**を、段3の札の隣に
+     言います。件数だけで、赤くしません——「遅れ」「できなかった」は言いません。
+     組み直しを待たず、30秒の見回りでも数え直します（見ているあいだに時刻が過ぎる
+     ことのほうが多いので）。数が変わらなければ触りません。 */
+  function paintPassed(force) {
+    const host = els.late;
+    if (!host) return;
+    const old = host.querySelector(".tl-passed");
+    const list = oneDay() && shownDay() === todayKey() ? store.passedToday() : [];
+    if (!force && (old ? Number(old.dataset.n) : 0) === list.length) return;
+    if (old) old.remove();
+    if (!list.length) return;
+    const bar = node(html`
+      <button type="button" class="tl-late tl-passed" data-n="${String(list.length)}">
+        <span class="tl-late-n">${list.length}</span>
+        <span>時刻を過ぎたもの</span>
+        <span class="tl-late-go">置き直す${icon("chevron")}</span>
+      </button>
+    `);
+    bar.addEventListener("click", () => { haptic(); passedSheet(); });
+    host.append(bar);
+  }
+
+  /* 段5の紙。段3の紙（carrySheet）と同じ形で、一件ずつ選び直します。
+     「いまから」はいまの次の15分きざみ。「時刻を外す」と連れに戻り、道の空いた
+     ところを押せば、また時刻を付けられます（段2）。 */
+  function passedSheet() {
+    const rows = store.passedToday();
+    if (!rows.length) return;
+    const now = KN.plan.toMin(KN.util.nowTime());
+    const soon = Math.ceil((now + 1) / 15) * 15;
+    const soonAt = soon < 24 * 60 ? KN.plan.toTime(soon) : null;
+    const picks = [
+      soonAt && { key: "now", label: `いまから（${soonAt.replace(/^0/, "")}）`, done: `${soonAt.replace(/^0/, "")} に` },
+      { key: "loose", label: "時刻を外す", done: "連れに戻しました" },
+      { key: "tomorrow", label: "明日", done: "明日へ" },
+      { key: "someday", label: "長期タスクへ", done: "長期タスクへ" },
+      { key: "stop", label: "やめる", done: "アーカイブしました" },
+    ].filter(Boolean);
+    const box = node(html`
+      <div class="carry-list">
+        <p class="passed-note">時刻を外すと、道の人と一緒に歩く「連れ」に戻ります。道の空いたところを押せば、また時刻を付けられます。</p>
+      </div>
+    `);
+    let handle = null;
+    let left = rows.length;
+    rows.forEach((t) => {
+      const row = node(html`
+        <div class="carry-row" data-id="${t.id}">
+          <div class="carry-head">
+            <span class="carry-title">${t.title}</span>
+            <span class="carry-was">${t.time.replace(/^0/, "")} の予定</span>
+          </div>
+          <div class="carry-acts">
+            ${picks.map((p) => html`<button type="button" class="btn btn-soft btn-sm js-passed" data-key="${p.key}">${p.label}</button>`)}
+          </div>
+        </div>
+      `);
+      row.querySelectorAll(".js-passed").forEach((b) => b.addEventListener("click", () => {
+        const p = picks.find((x) => x.key === b.dataset.key);
+        const undo = store.settlePassed(t.id, p.key, soonAt);
+        haptic();
+        KN.motion.fire("save");
+        row.remove();
+        if (!--left && handle) { handle.close(); handle = null; }
+        KN.ui.toast(`「${t.title}」を${p.done}`, {
+          action: { label: "元に戻す", onClick: undo },
+        });
+      }));
+      box.append(row);
+    });
+    handle = KN.ui.sheet({ title: "時刻を過ぎたもの", content: box, onClose: () => { handle = null; } });
   }
 
   function groupSection(g, rows, tiles) {
@@ -3959,6 +4035,7 @@
       if (typeof el.__paint === "function") el.__paint();
     });
     if (KN.dayRoad) KN.dayRoad.paintAll(root);
+    paintPassed(false);
   }
 
   /* **戻ってきたら、すぐ一度。** 30秒の見回りだけでは、アプリへ戻ってから
