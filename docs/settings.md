@@ -124,6 +124,26 @@ SETTINGS SCREEN に表がある。
   「このファイルには食い違いが◯件」——ファイルは `reconcile()` を通す前の中身を見る
   （読み込むときに直るものも、そのファイルの食い違いなので）。`tests/audit.js`。
 
+- **使用量の内訳と枠までの目安**（R24、2026年9月29日）：日記と並べて **AI の原文**
+  （`diet.meals[].ai` の raw＋analysis）の字数、**iPhone の枠（目安でおよそ260万字）の
+  何割か**（控えが記録と同じ枠にあれば控えも数える）。6割を越えたら一行「記録が大きく
+  なってきました」——色は変えない・催促しない。読むだけ（backup.js には触れず、設定の
+  側で数える）。R26（保存を軽くする）をやるかは、この数字を見て利用者が決める。
+- **困ったときの記録**（R23、2026年9月29日、`js/errlog.js`）：一般の「›」の先。`window` の
+  `error`・`unhandledrejection` と保存の失敗を、store の外の鍵 `kaimono-note-errors` に
+  新しい50件（時刻・版・画面・200字までの文・ファイルと行）。日記の道（diary の名の
+  ファイル）は種類だけ。続けて同じものは一件に数を足す。一覧が先に見え、「コピー」で字に。
+  書き出し・控え・Dropbox に乗らず、「すべて削除」で消える。errlog.js はどのスクリプト
+  より先に読む（読み込みの途中で落ちたものも拾う）。
+- **二つ目の鍵（CSP）**（R29、2026年9月29日）：`index.html` の meta。`script-src 'self'`
+  （直書きのスクリプトは無い）・`object-src 'none'`・`base-uri 'self'`・`img-src 'self' data:
+  blob:`・`style-src 'self' 'unsafe-inline'`（style 属性）・`connect-src 'self' https:`（中継所・
+  AI の窓口・Dropbox は利用者が決める URL）。**`connect-src` に data: は無い**——data: の
+  URL を fetch すると止まる（写真は FileReader → Image なので当たらない）。単体版
+  （build-standalone.js）は自分の頭を組むので、この meta は写らない（写ると直書きの
+  スクリプトが止まる）。`tools/diary-import.html` は別の頁で、まだ入れていない。
+  試験は lib.js が CSP の違反をエラーとして数える＋`tests/csp.js`。
+
 #### 頭は、大きな題＋丸い戻る
 
 参考画面は大きな「設定」が出て、送ると帯のまん中の小さい題に入れ替わる。

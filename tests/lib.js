@@ -43,6 +43,11 @@ async function open({ viewport = { width: 390, height: 844 }, before } = {}) {
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  /* CSP（R29）が何かを止めたら、それもエラーとして数える——iPhone で黙って
+     動かなくなる種類なので。 */
+  page.on("console", (m) => {
+    if (m.type() === "error" && /Content Security Policy/i.test(m.text())) errors.push(`CSP: ${m.text().slice(0, 200)}`);
+  });
   if (before) await before(ctx, page);
   await page.goto(URL);
   await page.waitForFunction(() => window.KN && KN.store && KN.app);

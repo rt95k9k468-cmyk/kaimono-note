@@ -1567,6 +1567,14 @@
   min-height: 18px;
 }
 
+/* メモも買った時刻も無い行（R27、2026年9月29日）。上の min-height は、メモを
+   足しても行の高さが跳ねないための取り置き（メモあり 73px・なし 71px）。
+   ただ空の段が品名の下に残ると、品名だけ約11px上に寄って、値段と丸（行の
+   真ん中）からずれていた。**取り置きの高さはそのまま**、段を消して同じ高さ
+   （18px＋上の gap 3px）を品名の上下に半分ずつ置く。 */
+.item:not(.todo):not(.is-tile) .item-body:not(:has(.item-meta > *)) { padding-block: 10.5px; }
+.item:not(.todo):not(.is-tile) .item-body:not(:has(.item-meta > *)) .item-meta { display: none; }
+
 /* Two lines rather than one clipped one. A memo on a shopping list is short
    and worth reading — 「詰め替え用、青いほう」 cut off at 「詰め替え」 is the
    half that tells you nothing. Anything longer is in the row's own sheet,

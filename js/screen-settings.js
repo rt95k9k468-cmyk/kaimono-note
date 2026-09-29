@@ -459,6 +459,7 @@
     look:   { title: "外観",                 build: lookRows },
     data:   { title: "バックアップと書き出し", build: dataRows },
     danger: { title: "データを消す",          build: dangerRows },
+    errors: { title: "困ったときの記録",      build: errorRows },
     dropbox: { title: "Dropbox へ送る",       build: dropboxRows },
     stores: { title: "お店",                 build: () => [storesGroup()] },
     cats:   { title: "カテゴリ",              build: () => [categoriesGroup()] },
@@ -526,8 +527,40 @@
           ico: "tag", tint: TINT.icons, title: "アイコンについて",
           value: notes ? `${notes}件` : "",
           onTap: () => go("icons"),
-        })
+        }),
+        KN.errlog ? navRow({
+          ico: "copy", tint: TINT.sub, title: "困ったときの記録",
+          value: errCount() ? `${errCount()}件` : "なし",
+          onTap: () => go("errors"),
+        }) : null
       ),
+    ];
+  }
+
+  /* ---------------- 困ったときの記録（R23、js/errlog.js） ----------------
+
+     アプリの中で起きたエラーの控え（新しい50件）。iPhone で「動かない」が出たとき、
+     ここでコピーして次のセッションに貼る。控えは記録の外の鍵にあるので、書き出し・
+     自動の控え・Dropbox には乗らない。**コピーする前に、一覧で中身が見える。** */
+  const errCount = () => (KN.errlog ? KN.errlog.list().length : 0);
+  function errorRows() {
+    const list = KN.errlog.list();
+    const when = (iso) => {
+      const d = new Date(iso);
+      return isFinite(d) ? `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+    };
+    const rows = list.map((r) => node(html`
+      <div class="set-row js-err-row">
+        <span class="set-title">${r.msg || r.kind}<span class="set-note">${when(r.at)} · ${r.screen || "—"} · ${r.file ? `${r.file}:${r.line || "?"}` : r.kind}${r.n ? ` · ${r.n}回` : ""} · 版 ${r.ver}</span></span>
+      </div>
+    `));
+    return [
+      list.length
+        ? card(...rows)
+        : foot("いまは何もありません。"),
+      list.length ? card(navRow({ ico: "copy", tint: TINT.data, title: "コピー",
+        onTap: () => copyText(KN.errlog.text(), "困ったときの記録") })) : null,
+      foot("アプリの中で起きたエラーと、保存できなかったときの控えです（新しい50件まで）。時刻・版・画面・短い文・ファイルと行だけを持ちます。日記を保存する道で起きたものは、種類だけ。書き出し・バックアップ・Dropbox には乗りません。「すべて削除」で消えます。"),
     ];
   }
 
@@ -2905,14 +2938,42 @@
   }
 
   /** 設定に出す、この端末の中の量（backup.usage）。 */
+  /* iPhone の保存の枠の目安（R24）。正確な値はブラウザも端末も教えてくれないので、
+     docs/storage.md の見積もり（およそ5MB）を字数にしたもの。「目安」と言う。 */
+  const IPHONE_CHARS = 2600000;
+
+  /** AI の推計が持つ原文と分析の字数（diet.meals[].ai の raw＋analysis）。読むだけ。
+      一日一回で一年に約120万字——記録の中でいちばん育つ棚なので、日記と並べて言う。 */
+  function aiChars() {
+    const meals = ((store.get().diet || {}).meals) || [];
+    return meals.reduce((n, m) => {
+      const a = m && m.ai;
+      return a ? n + String(a.raw || "").length + String(a.analysis || "").length : n;
+    }, 0);
+  }
+
+  /** 枠までの目安（R24）。控えが記録と同じ枠（localStorage）にあれば、それも数える。
+      6割を越えたら一行だけ。色は変えない・催促しない（backup.js の決めごと）。 */
+  function roomText(u) {
+    const used = u.where === "idb" ? u.liveChars : u.liveChars + (u.snapChars || 0);
+    const share = used / IPHONE_CHARS;
+    const tenths = Math.round(share * 10);
+    const part = tenths < 1 ? "1割未満" : `約${Math.min(tenths, 10)}割`;
+    return `iPhone の保存の枠（目安でおよそ260万字）の${part}です。${share >= 0.6 ? "記録が大きくなってきました。" : ""}`;
+  }
+
   function usageText(u) {
-    const diary = u.diaryChars ? `（うち日記 ${charText(u.diaryChars)}）` : "";
+    const ai = aiChars();
+    const inner = [u.diaryChars ? `日記 ${charText(u.diaryChars)}` : "", ai ? `AI の原文 ${charText(ai)}` : ""]
+      .filter(Boolean).join("・");
+    const diary = inner ? `（うち${inner}）` : "";
     /* 控えが大きな保存場所（IndexedDB）にあれば、もう記録と枠を分け合って
        いません。そう言わないと、前の「分け合っています」を読んだ人が、
        控えを減らさなければと思い続けます。 */
     let t = u.where === "idb"
       ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。自動バックアップ ${u.count}件（${charText(u.snapChars)}）は、記録とは別の、大きな保存場所にあります。`
       : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。二つで、端末の保存の枠（iPhone でおよそ5MB）を分け合っています。`;
+    t += roomText(u);
     t += diaryCopyText(u.diary);
     if (u.tight) {
       t += `記録が大きくなったので、自動バックアップは${u.fits}件ぶんまでしか持てず、直近の細かい控えから減ります。こまめに「バックアップを保存」を。`;
@@ -3157,6 +3218,7 @@
           if (!ok) return;
           if (!(await keepBefore("削除前"))) return;
           store.reset();
+          if (KN.errlog) KN.errlog.clear();
           KN.ui.toast("すべて削除しました");
         },
       })),

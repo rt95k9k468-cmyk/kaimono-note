@@ -1182,6 +1182,8 @@
         }
       } catch (err) {
         console.error("save failed", err);
+        /* 困ったときの記録（R23、js/errlog.js）。store の外の鍵に控える。 */
+        if (KN.errlog) KN.errlog.note("save", err, { file: "store.js" });
         if (!saveError) {
           saveError = String((err && err.message) || err);
           KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");

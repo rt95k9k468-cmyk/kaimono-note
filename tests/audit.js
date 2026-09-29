@@ -5,6 +5,7 @@
    後半は画面：
    - 買うもの：products に無い productId の品物が一つだけ → 空の案内が出る（前は真っ白）。
      描ける品物と混ざっていれば、描けるものだけ出る。**孤児は消さない**（記録に残る）
+   - 買うもの：メモの無い行でも品名が行の真ん中・行の高さはメモのある行と同じ（R27）
    - 設定 → バックアップと書き出し →「記録を点検する」：数の表・「記録は変えていません」
    - 復元でファイルを選ぶと、確認に「このファイルには食い違いが◯件」。確かめの紙にも。 */
 const { open, checker } = require("./lib");
@@ -69,6 +70,19 @@ const { open, checker } = require("./lib");
   });
   t.check("描ける品物と混ざれば、描けるものだけ出る", !L2.empty && L2.rows === 1 && L2.text.includes("試験の牛乳"),
     JSON.stringify({ ...L2, text: undefined }));
+
+  /* 品名の位置（R27）：メモの無い行でも品名が行の真ん中・行の高さは取り置きのまま */
+  await page.evaluate(() => { const p = KN.store.addProduct({ name: "試験のたまご" }); KN.store.addItem(p.id, { memo: "10個入り" }); });
+  await page.waitForTimeout(300);
+  const M = await page.evaluate(() => [...document.querySelectorAll("#screen-list .item:not(.is-tile)")].map((it) => {
+    const c = (el) => { const b = el.getBoundingClientRect(); return b.top + b.height / 2; };
+    return { name: it.querySelector(".item-name").textContent, off: c(it.querySelector(".item-name")) - c(it),
+      h: it.getBoundingClientRect().height };
+  }));
+  const plain = M.find((x) => x.name === "試験の牛乳"), memoed = M.find((x) => x.name === "試験のたまご");
+  t.check("メモの無い行：品名が行の真ん中（±1px）", !!plain && Math.abs(plain.off) <= 1, JSON.stringify(M));
+  t.check("メモの無い行とある行で、行の高さがほぼ同じ（±3px。メモを足しても跳ねない）",
+    !!plain && !!memoed && Math.abs(plain.h - memoed.h) <= 3, JSON.stringify(M));
 
   /* ---------------- 後半：設定の「記録を点検する」 ---------------- */
   const before = await page.evaluate(() => JSON.stringify(KN.store.get()));
