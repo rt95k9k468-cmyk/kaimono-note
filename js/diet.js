@@ -397,6 +397,30 @@
     const out = [];
     const pts = weightPoints(from, today);
 
+    /* --- 前半と後半の確かめ（docs/roadmap.md の R13） ---
+
+       項目が増えるほど、どれかが偶然に当たります（多重比較）。統計の正式な
+       補正より言葉で説明できる形にして、期間を日付で前半と後半に分け、
+       **どちらでも同じ向き**のときだけ「傾向」と言います。片方に記録が
+       無ければ確かめられないので、やはり言いません。数そのものは消さず、
+       言い切りの一文だけを差し替えます。a・b は { day, v } の並び。 */
+    const mid = U.shiftDay(from, Math.floor(win / 2));   // 後半の初日
+    const steadyOf = (a, b) => {
+      const d = [false, true].map((late) => {
+        const pa = a.filter((x) => (x.day >= mid) === late).map((x) => x.v);
+        const pb = b.filter((x) => (x.day >= mid) === late).map((x) => x.v);
+        return pa.length && pb.length ? mean(pa) - mean(pb) : null;
+      });
+      if (d[0] == null || d[1] == null) return { ok: false, why: "short" };
+      const ok = d[0] !== 0 && Math.sign(d[0]) === Math.sign(d[1]);
+      return { ok, why: ok ? null : "flip", first: round(d[0], 2), second: round(d[1], 2) };
+    };
+    const UNSTEADY = {
+      short: "ただ、前半と後半の片方に記録が足りず、同じ向きか確かめられないので、傾向とまでは言えません。",
+      flip: "ただ、期間の前半と後半に分けると向きがそろわないので、傾向とまでは言えません。",
+    };
+    const vals = (xs) => xs.map((x) => x.v);
+
     /* --- 期間の増減 --- */
     if (pts.length >= 2) {
       const ma = movingAverage(pts, 7).filter((m) => m.value != null);
@@ -422,6 +446,7 @@
         .map((d) => store.healthValue(d, "steps")).filter((v) => v != null);
       if (!stepsDays.length) return null;
       return {
+        day: wk.to,
         delta: inWk[inWk.length - 1].kg - inWk[0].kg,
         steps: mean(stepsDays),
         kcal: mean(daysBetween(wk.from, wk.to).map((d) => {
@@ -435,24 +460,29 @@
     if (down.length >= 2 && up.length >= 2) {
       const ds = Math.round(mean(down.map((r) => r.steps)));
       const us = Math.round(mean(up.map((r) => r.steps)));
+      const flat = Math.abs(ds - us) < 500;
+      const st = flat ? null : steadyOf(
+        down.map((r) => ({ day: r.day, v: r.steps })), up.map((r) => ({ day: r.day, v: r.steps })));
       out.push({
         id: "steps-weeks",
         title: "歩数と体重の動き",
         text: `体重が減った週の平均は ${ds.toLocaleString()}歩、増えた週は ${us.toLocaleString()}歩でした`
           + `（減った週 ${down.length}週 / 増えた週 ${up.length}週）。`
-          + (Math.abs(ds - us) < 500 ? "差はほとんどありません。" : "関連が見られます。"),
-        tone: "info", n: weekRows.length,
+          + (flat ? "差はほとんどありません。" : (st.ok ? "関連が見られます。" : UNSTEADY[st.why])),
+        tone: "info", n: weekRows.length, steady: st ? st.ok : null,
       });
-      const dk = down.map((r) => r.kcal).filter((v) => v != null);
-      const uk = up.map((r) => r.kcal).filter((v) => v != null);
+      const dk = down.filter((r) => r.kcal != null).map((r) => ({ day: r.day, v: r.kcal }));
+      const uk = up.filter((r) => r.kcal != null).map((r) => ({ day: r.day, v: r.kcal }));
       if (dk.length >= 2 && uk.length >= 2) {
+        const sk = steadyOf(dk, uk);
         out.push({
           id: "kcal-weeks",
           title: "摂取カロリーと体重の動き",
-          text: `減った週の平均は ${Math.round(mean(dk)).toLocaleString()}kcal/日、`
-            + `増えた週は ${Math.round(mean(uk)).toLocaleString()}kcal/日でした`
-            + `（食事を記録した日だけの平均）。`,
-          tone: "info", n: dk.length + uk.length,
+          text: `減った週の平均は ${Math.round(mean(vals(dk))).toLocaleString()}kcal/日、`
+            + `増えた週は ${Math.round(mean(vals(uk))).toLocaleString()}kcal/日でした`
+            + `（食事を記録した日だけの平均）。`
+            + (sk.ok ? "" : UNSTEADY[sk.why]),
+          tone: "info", n: dk.length + uk.length, steady: sk.ok,
         });
       }
     }
@@ -467,19 +497,21 @@
       if (ma == null) return;
       const sleepPrev = store.healthValue(p.day, "sleep");   // その朝までの睡眠
       if (sleepPrev == null) return;
-      (sleepPrev < 360 ? short : normal).push(p.kg - ma);
+      (sleepPrev < 360 ? short : normal).push({ day: p.day, v: p.kg - ma });
     });
     if (short.length >= MIN_GROUP && normal.length >= MIN_GROUP) {
-      const diff = round(mean(short) - mean(normal), 2);
+      const diff = round(mean(vals(short)) - mean(vals(normal)), 2);
+      const st = Math.abs(diff) < 0.1 ? null : steadyOf(short, normal);
       out.push({
         id: "sleep",
         title: "睡眠と体重",
-        text: Math.abs(diff) < 0.1
+        text: !st
           ? `睡眠6時間未満の日（${short.length}日）と、それ以外の日（${normal.length}日）で、`
             + `その週の平均からのずれに目立った差はありません。`
           : `睡眠6時間未満の日は、その週の平均より ${diff > 0 ? "+" : ""}${diff}kg でした`
-            + `（6時間未満 ${short.length}日 / それ以外 ${normal.length}日）。傾向が見られます。`,
-        tone: "info", n: short.length + normal.length,
+            + `（6時間未満 ${short.length}日 / それ以外 ${normal.length}日）。`
+            + (st.ok ? "傾向が見られます。" : UNSTEADY[st.why]),
+        tone: "info", n: short.length + normal.length, steady: st ? st.ok : null,
       });
     }
 
@@ -518,8 +550,8 @@
       const a = [], b = [];
       pts.forEach((p) => {
         const side = pick(p);
-        if (side === true) a.push(p.kg - line(p.day));
-        else if (side === false) b.push(p.kg - line(p.day));
+        if (side === true) a.push({ day: p.day, v: p.kg - line(p.day) });
+        else if (side === false) b.push({ day: p.day, v: p.kg - line(p.day) });
       });
       return { a, b };
     };
@@ -527,16 +559,17 @@
     const condition = (id, title, pick, nameA, nameB) => {
       const { a, b } = splitBy(pick);
       if (a.length < MIN_GROUP || b.length < MIN_GROUP) return;
-      const diff = round(mean(a) - mean(b), 2);
+      const diff = round(mean(vals(a)) - mean(vals(b)), 2);
+      const st = Math.abs(diff) < 0.1 ? null : steadyOf(a, b);
       out.push({
         id, title,
-        text: Math.abs(diff) < 0.1
+        text: !st
           ? `${nameA}（${a.length}日）と${nameB}（${b.length}日）で、`
             + `その週の平均からのずれに目立った差はありません。`
           : `${nameA}は${nameB}より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
             + `（${nameA} ${a.length}日 / ${nameB} ${b.length}日）。`
-            + `体の変化ではなく、量り方の差として読めます。`,
-        value: diff, tone: "info", n: a.length + b.length,
+            + (st.ok ? `体の変化ではなく、量り方の差として読めます。` : UNSTEADY[st.why]),
+        value: diff, tone: "info", n: a.length + b.length, steady: st ? st.ok : null,
       });
     };
 
@@ -652,22 +685,25 @@
         const p = pts.find((x) => x.day === next);
         const ma = maMap.get(next);
         if (!p || ma == null) return;
-        (s.share >= med ? heavy : light).push(p.kg - ma);
+        (s.share >= med ? heavy : light).push({ day: next, v: p.kg - ma });
       });
       if (heavy.length >= MIN_GROUP && light.length >= MIN_GROUP) {
-        const diff = round(mean(heavy) - mean(light), 2);
+        const diff = round(mean(vals(heavy)) - mean(vals(light)), 2);
+        const st = Math.abs(diff) < 0.1 ? null : steadyOf(heavy, light);
         out.push({
           id: "dinner",
           title: "夕食が重かった日の翌朝",
-          text: Math.abs(diff) < 0.1
+          text: !st
             ? `夕食の割合が高かった日（${heavy.length}日）と、そうでない日（${light.length}日）で、`
               + `翌朝の体重に、7日平均からのずれの差はほとんどありません。`
             : `夕食の割合が高かった日の翌朝は、そうでない日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
               + `（分け目はこの期間の真ん中、夕食 ${Math.round(med * 100)}%。`
               + `高いほう ${heavy.length}日 / 低いほう ${light.length}日）。`
-              + `並びの差であって、夕食が原因だとは言えません`
-              + `——重い夕食の日は、外食や飲酒と重なりやすいところです。`,
-          value: diff, tone: "info", n: heavy.length + light.length,
+              + (st.ok
+                ? `並びの差であって、夕食が原因だとは言えません`
+                  + `——重い夕食の日は、外食や飲酒と重なりやすいところです。`
+                : UNSTEADY[st.why]),
+          value: diff, tone: "info", n: heavy.length + light.length, steady: st ? st.ok : null,
         });
       }
     }
@@ -708,10 +744,11 @@
     });
     const soberDays = pts.filter((p) => !store.drinkTotals(U.shiftDay(p.day, -1)));
     const dr = [], so = [];
-    drinkDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) dr.push(p.kg - m); });
-    soberDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) so.push(p.kg - m); });
+    drinkDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) dr.push({ day: p.day, v: p.kg - m }); });
+    soberDays.forEach((p) => { const m = maMap.get(p.day); if (m != null) so.push({ day: p.day, v: p.kg - m }); });
     if (dr.length >= MIN_GROUP && so.length >= MIN_GROUP) {
-      const diff = round(mean(dr) - mean(so), 2);
+      const diff = round(mean(vals(dr)) - mean(vals(so)), 2);
+      const st = Math.abs(diff) < 0.1 ? null : steadyOf(dr, so);
       const gTotal = drinkDays.reduce((a, p) => {
         const t = store.drinkTotals(U.shiftDay(p.day, -1));
         return a + (t ? t.alcoholG : 0);
@@ -719,15 +756,17 @@
       out.push({
         id: "drink",
         title: "飲んだ翌日の体重",
-        text: Math.abs(diff) < 0.1
+        text: !st
           ? `飲んだ翌日（${dr.length}日）と、そうでない日（${so.length}日）で、`
             + `7日平均からのずれに目立った差はありません。`
           : `飲んだ翌日は、そうでない日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
             + `（飲んだ翌日 ${dr.length}日 / そうでない日 ${so.length}日、`
             + `純アルコール 平均${round(gTotal / dr.length, 1)}g）。`
-            + `並びに差があるということで、飲酒が原因だとは言えません`
-            + `——飲む日は外食の日でもあり、塩分も水分も一緒に動きます。`,
-        value: diff, tone: "info", n: dr.length + so.length,
+            + (st.ok
+              ? `並びに差があるということで、飲酒が原因だとは言えません`
+                + `——飲む日は外食の日でもあり、塩分も水分も一緒に動きます。`
+              : UNSTEADY[st.why]),
+        value: diff, tone: "info", n: dr.length + so.length, steady: st ? st.ok : null,
       });
     }
 
@@ -737,18 +776,20 @@
       const ma = maMap.get(p.day);
       if (ma == null) return;
       const dow = U.dayOfWeek(p.day);
-      (dow === 0 || dow === 6 ? we : wd).push(p.kg - ma);
+      (dow === 0 || dow === 6 ? we : wd).push({ day: p.day, v: p.kg - ma });
     });
     if (wd.length >= MIN_GROUP && we.length >= MIN_GROUP) {
-      const diff = round(mean(we) - mean(wd), 2);
+      const diff = round(mean(vals(we)) - mean(vals(wd)), 2);
+      const st = Math.abs(diff) < 0.1 ? null : steadyOf(we, wd);
       out.push({
         id: "weekend",
         title: "平日と休日",
-        text: Math.abs(diff) < 0.1
+        text: !st
           ? `休日（${we.length}日）と平日（${wd.length}日）で、平均からのずれはほぼ同じです。`
           : `休日は平日より平均 ${diff > 0 ? "+" : ""}${diff}kg でした`
-            + `（休日 ${we.length}日 / 平日 ${wd.length}日）。`,
-        tone: "info", n: wd.length + we.length,
+            + `（休日 ${we.length}日 / 平日 ${wd.length}日）。`
+            + (st.ok ? "" : UNSTEADY[st.why]),
+        tone: "info", n: wd.length + we.length, steady: st ? st.ok : null,
       });
     }
 
