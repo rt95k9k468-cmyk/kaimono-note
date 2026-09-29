@@ -123,10 +123,14 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
 
   /* 2. 丸の上から送る。iPhone のつまみの「離したら click」を手で真似る */
   const scrollFrom = async (sel, label, state) => {
-    await page.evaluate(() => {
+    /* 一日の道（約400px）が時間割の上に載ったので、上端のままでは丸が画面の外。
+       最初の丸を画面の中ほど（y 400）へ送ってから掴む。 */
+    await page.evaluate((sel) => {
       const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
       sc.scrollTop = 0;
-    });
+      const b = document.querySelector(sel);
+      if (b) sc.scrollTop += b.getBoundingClientRect().top - 400;
+    }, sel);
     await page.waitForTimeout(200);
     const box = await page.evaluate((sel) => {
       const b = [...document.querySelectorAll(sel)].find((x) => {
@@ -165,7 +169,11 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   /* 3. 見張りの印を一つずつ：指の動きだけ（pointercancel も scroll も無し）で止まる・
         SLOP 以内の震えなら押したことになる */
   const synth = (dy) => page.evaluate((dy) => {
-    const b = [...document.querySelectorAll("#screen-todo .tl-row .check:not(.is-sub)")]
+    const all = [...document.querySelectorAll("#screen-todo .tl-row .check:not(.is-sub)")];
+    const first = all.find((x) => x.getAttribute("aria-checked") === "false");
+    const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
+    if (first) sc.scrollTop += first.getBoundingClientRect().top - 400;   // 道の下にあるので中ほどへ
+    const b = all
       .find((x) => x.getAttribute("aria-checked") === "false"
         && x.getBoundingClientRect().top > 100 && x.getBoundingClientRect().bottom < 700);
     const sw = b.querySelector(".feel-switch");
