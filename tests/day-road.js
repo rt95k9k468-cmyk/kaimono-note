@@ -148,15 +148,16 @@ const DAY = "2026-09-29";
 
   /* 停留所の上の目盛り（9月29日・利用者の声「1時間ごとの切れ目がわかりにくい」）。
      道の目盛りは停留所の太い線の下に隠れていた。5:00 始まりなので角は 8・11・14・
-     17・20 時（目盛りは置かない）。ルーティン（5:30〜6:30、時計が通った）の 6:00 は
-     塗りの上の白、朝のBaby（8:00〜12:00、まだ）の 9:00・10:00 は白い中の塗りの色。 */
+     17・20 時（目盛りは置かない）。ルーティン（5:30〜6:30、まだなので 9月30日から
+     人の足もと 7:43 まで延びる）の 6:00・7:00 は塗りの上の白、朝のBaby（8:00〜12:00、
+     まだ）の 9:00・10:00 は白い中の塗りの色。 */
   const ticksOn = await page.evaluate(() => {
     const road = document.querySelector("#screen-todo .day-road");
     const n = (sel) => ((road.querySelector(sel).getAttribute("d") || "").match(/M/g) || []).length;
     return { over: n(".road-ticks.is-over"), ink: n(".road-ticks.is-ink") };
   });
-  c.check("停留所の上にも目盛り：塗った上に白が一つ（6:00）、まだの白い中に塗りの色が二つ（9:00・10:00）",
-    ticksOn.over === 1 && ticksOn.ink === 2, JSON.stringify(ticksOn));
+  c.check("停留所の上にも目盛り：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が二つ（9:00・10:00）",
+    ticksOn.over === 2 && ticksOn.ink === 2, JSON.stringify(ticksOn));
 
   if (process.env.SHOTS) {
     const box = await page.locator("#screen-todo .day-road").boundingBox();
@@ -247,8 +248,9 @@ const DAY = "2026-09-29";
     KN.dayRoad.snap(470, 463, 480), KN.dayRoad.snap(1375, 1290, 1380)]);
   c.check("15分に丸める。空きの尻（次の停留所の頭・一日の終わり）へは丸めず、頭は空きの中へ",
     JSON.stringify(sn) === "[765,720,465,1365]", JSON.stringify(sn));
-  /* 歩いたぶんの道（7:00）は押しても何も開かない */
-  await tapAt(7 * 60);
+  /* 歩いたぶんの道（5:10）は押しても何も開かない。5:30〜7:43 は、まだの朝のルーティンが
+     人の足もとまで延びて（9月30日）停留所になっているので、その手前で押す。 */
+  await tapAt(5 * 60 + 10);
   c.check("歩いたぶんの道は、押しても決める紙を出さない",
     await page.evaluate(() => !document.querySelector(".sheet.is-open")));
   const freeD = () => page.evaluate(() => document.querySelector("#screen-todo .day-road .road-free").getAttribute("d"));
@@ -294,7 +296,11 @@ const DAY = "2026-09-29";
     return { len: p.getTotalLength(), at: road.__road.stops[i].at };
   });
   /* 13:00〜14:30 は 14:00 の曲がり角をまたぐ（角の長さが混ざる）ので、先に 11:00 へ
-     動かしてから、同じ段の中で長さを比べる。 */
+     動かしてから、同じ段の中で長さを比べる。14:20 のままだと 11:00〜 は過ぎていて
+     人の足もとまで延びる（9月30日）ので、時計を 9:00 にして比べる。 */
+  await page.clock.setFixedTime(new Date(2026, 8, 29, 9, 0));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(400);
   await page.evaluate((id) => KN.store.update((st) => {
     const x = st.todos.find((y) => y.id === id); x.time = "11:00";
   }), ids.clinic);
@@ -310,6 +316,9 @@ const DAY = "2026-09-29";
     JSON.stringify([after, r.labels]));
   c.check("長さを 90→180分にすると、区間の長さが倍", Math.abs(after.len / before.len - 2) < 0.02,
     `${before.len.toFixed(1)} → ${after.len.toFixed(1)}`);
+  await page.clock.setFixedTime(new Date(2026, 8, 29, 14, 20));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(400);
 
   /* 過ぎた日・先の日 */
   const goDay = async (d) => {
@@ -458,8 +467,9 @@ const DAY = "2026-09-29";
     by("会議").lanes === 2 && by("電話").lanes === 2 && by("散歩").lanes === 1
       && /is-lanes/.test(by("会議").cls) && /--lanes:\s*2/.test(by("会議").style) && !/is-lanes/.test(by("散歩").cls),
     JSON.stringify(ln.stops));
-  c.check("二車線は道の中心から半分ずつずれる（右へ進む段：早いほうが上）",
-    Math.abs(by("会議").y - (ln.row - 5.25)) < 0.2 && Math.abs(by("電話").y - (ln.row + 5.25)) < 0.2,
+  /* 9月30日：長いほうが道の中心、短いほうはそれにくっついて外（進む向きの右）へ。 */
+  c.check("二車線は長いほう（会議）が道の中心、短いほう（電話）がその外にくっつく（右へ進む段：下）",
+    Math.abs(by("会議").y - ln.row) < 0.2 && Math.abs(by("電話").y - (ln.row + 10.5)) < 0.2,
     JSON.stringify([ln.row, by("会議").y, by("電話").y]));
   c.check("重なった二つとも札が出る", ln.labels.some((l) => l.includes("会議")) && ln.labels.some((l) => l.includes("電話")),
     JSON.stringify(ln.labels));
@@ -476,8 +486,8 @@ const DAY = "2026-09-29";
     return sheetTitle();
   };
   /* 札の指の的（上下の余白）が上の車線にかかるので、札の無い 13:28 で押す。 */
-  const tA = await tapLane(808, 5.25), tB = await tapLane(808, -5.25);
-  c.check("車線を押すと、その車線の用事が開く（13:28 の上は会議、下は電話）",
+  const tA = await tapLane(808, 0), tB = await tapLane(808, -10.5);
+  c.check("車線を押すと、その車線の用事が開く（13:28 の中心は会議、下は電話）",
     !!tA && tA.includes("会議") && !!tB && tB.includes("電話"), JSON.stringify([tA, tB]).slice(0, 120));
   await page.evaluate((d) => {
     ["来客", "宅配", "修理"].forEach((t) => KN.store.addTodo({ title: t, due: d, time: "12:30", minutes: 30 }));
@@ -489,6 +499,8 @@ const DAY = "2026-09-29";
   const moreN = ln.more.reduce((n, m) => n + Number(m.replace(/\D/g, "")), 0);
   c.check("五つ重なれば五車線", GROUP.every((t) => by(t).lanes === 5),
     JSON.stringify(ln.stops.map((s) => [s.title, s.lanes])));
+  c.check("五車線でも、いちばん長い会議が道の中心", Math.abs(by("会議").y - ln.row) < 0.2,
+    JSON.stringify([ln.row, by("会議").y]));
   c.check("入りきらない札は黙って消えず、同じ群の札に「ほか n」（出た札＋ほか＝五つ）",
     ln.more.length === 1 && moreN > 0 && inGroup + moreN === 5, JSON.stringify([ln.labels, ln.more]));
   c.check("「ほか n」は込み合いのそば（12:30 の札）に付く",

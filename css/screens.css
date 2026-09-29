@@ -6042,6 +6042,7 @@ a.btn { text-decoration: none; }
   --road-go: var(--c-primary-fill);
   --road-wait: color-mix(in srgb, var(--c-primary-fill) 24%, var(--c-sheet));
   --road-in: var(--c-sheet-edge);
+  --road-late: #f0a35e;
   /* 歩く人の色（利用者が選んだ絵のまま。脚だけ白い紙で沈まないよう少し濃く）。 */
   --me-skin: #f7a845;
   --me-shirt: #7f8ccd;
@@ -6073,6 +6074,10 @@ a.btn { text-decoration: none; }
 .road-stop.is-lanes .road-stop-edge { stroke-width: calc(21px / var(--lanes) + 1px); }
 .road-stop.is-lanes .road-stop-in { stroke-width: calc(21px / var(--lanes) - 3px); }
 .road-stop.is-lanes .road-stop-went { stroke-width: calc(21px / var(--lanes) - 2px); }
+/* 時刻を過ぎても済んでいない区間（day-road.js の shape）。人の足もとまで延びて、
+   済ませるまでのあいだだけ色を変える（2026年9月30日・利用者の声「オレンジとか、
+   普通の色とはちょっと変えて」）。塗りと同じ明るさの橙で、赤（警告）にはしない。 */
+.road-stop.is-late { --road-go: var(--road-late); }
 /* 停留所の上の目盛り（paint が引く）。塗った上は白（.road-ticks のまま）、
    まだの白い中は塗りの色で。 */
 .road-ticks.is-ink { stroke: var(--road-go); opacity: .6; }
