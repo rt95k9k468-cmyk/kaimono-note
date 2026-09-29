@@ -142,7 +142,6 @@
           <div class="js-ac"></div>
           <span class="field-hint js-known" hidden></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
-          <button type="button" class="dest-chip set-chip js-set" hidden></button>
         </div>
 
         <div class="field">
@@ -210,35 +209,7 @@
       addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
       renderSuggestions(nameEl, acHost, typed, choose);
       paintDest();
-      paintSet();
     }
-
-    /* いつもの組（R11）。組の名前を打つと「組：カレー（5品）」。押すと、
-       リストに無いものだけを入れる。押さなければ今までどおり一つの品物。 */
-    const setChip = body.querySelector(".js-set");
-    let setHit = null;
-    function paintSet() {
-      setHit = store.findSetByName(nameEl.value);
-      setChip.hidden = !setHit;
-      if (setHit) setChip.textContent = `組：${setHit.name}（${store.setProducts(setHit).length}品）`;
-    }
-    setChip.addEventListener("click", () => {
-      const g = setHit;
-      if (!g) return;
-      const added = store.addSet(g.id, { fav });
-      KN.motion.fire("save");
-      handle.close();
-      if (!added.length) {
-        KN.ui.toast(`「${g.name}」の品は、もう全部リストにあります`);
-        return;
-      }
-      const drop = new Set(added);
-      KN.ui.toast(`「${g.name}」から${added.length}品を入れました`, {
-        action: { label: "戻す", onClick: () => store.update((s) => {
-          s.items = s.items.filter((i) => !drop.has(i.id));
-        }) },
-      });
-    });
 
     /* 行き先の札（R4）。「明日 19:00 歯医者」は、やることらしい——押せばそちらへ。
        押さなければ今までどおり買うものに入る。 */
@@ -299,7 +270,6 @@
         : "登録済みの商品です";
       acHost.innerHTML = "";
       paintDest();
-      paintSet();
       nameEl.focus();
     }
 
@@ -563,7 +533,7 @@
          adding up a year of sometime gives a number with no occasion. Both come
          back the moment something is starred, where they mean this trip. */
       const shown = appendGroups(active);
-      if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]), setRow(active));
+      if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]));
       els.body.append(lowSection());
       if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
       settle();
@@ -597,8 +567,7 @@
       appendGroups(rest);
     }
     if (!query) {
-      els.body.append(shareRow([{ title: "今回買うもの", list: trip }, { title: "そのほか", list: rest }]),
-        setRow(active));
+      els.body.append(shareRow([{ title: "今回買うもの", list: trip }, { title: "そのほか", list: rest }]));
     }
 
     els.body.append(lowSection());
@@ -627,125 +596,6 @@
     `);
     row.querySelector(".js-share").addEventListener("click", () => sendList(listText(parts)));
     return row;
-  }
-
-  /* ---------------- いつもの組にして残す（R11） ----------------
-
-     いまのリストから品物を選んで、名前を付けて残します。次からは＋で名前を
-     打てば「組：カレー（5品）」が出て、押せばリストに無いものだけが入る。
-     残した組を消すのも、この紙で。 */
-  function setRow(active) {
-    if (!active.length) return document.createDocumentFragment();
-    const row = node(html`
-      <div class="list-share list-set">
-        <button type="button" class="trip-plan-btn js-set-save">
-          ${icon("list")}<span>いつもの組にして残す</span>
-        </button>
-      </div>
-    `);
-    row.querySelector(".js-set-save").addEventListener("click", () => openSetSheet(active));
-    return row;
-  }
-
-  function openSetSheet(active) {
-    const products = [];
-    active.forEach((i) => {
-      const p = store.getProduct(i.productId);
-      if (p && !products.some((x) => x.id === p.id)) products.push(p);
-    });
-    const on = new Set(products.map((p) => p.id));
-
-    const body = node(html`
-      <div class="stack" style="gap:18px">
-        <label class="field">
-          <span class="field-label">組の名前</span>
-          <input class="input js-set-name" placeholder="例：カレー" autocomplete="off">
-        </label>
-        <div class="field">
-          <span class="field-label">入れる品物</span>
-          <div class="chip-wrap js-set-items"></div>
-        </div>
-        <div class="field js-set-list-wrap">
-          <span class="field-label">いまある組</span>
-          <div class="set-list js-set-list"></div>
-        </div>
-      </div>
-    `);
-    const nameEl = body.querySelector(".js-set-name");
-    const itemsEl = body.querySelector(".js-set-items");
-    const listWrap = body.querySelector(".js-set-list-wrap");
-    const listEl = body.querySelector(".js-set-list");
-    const foot = node(html`<button class="btn btn-primary btn-block js-set-ok" disabled>組にする</button>`);
-    const handle = KN.ui.sheet({ title: "いつもの組", content: body, footer: foot, guard: true });
-
-    products.forEach((p) => {
-      const c = store.getCategory(p.categoryId);
-      const chip = node(html`
-        <button type="button" class="chip is-on" aria-pressed="true" style="--cat:${c.color}">${p.name}</button>`);
-      chip.addEventListener("click", () => {
-        if (on.has(p.id)) on.delete(p.id); else on.add(p.id);
-        const yes = on.has(p.id);
-        chip.classList.toggle("is-on", yes);
-        chip.setAttribute("aria-pressed", String(yes));
-        paint();
-      });
-      itemsEl.append(chip);
-    });
-
-    function paint() {
-      const name = nameEl.value.trim();
-      const same = name && store.get().sets.find((g) => KN.util.foldKana(g.name) === KN.util.foldKana(name));
-      foot.disabled = !name || !on.size;
-      foot.textContent = same ? `「${same.name}」を置き換える（${on.size}品）` : `組にする（${on.size}品）`;
-    }
-
-    function paintList() {
-      const sets = store.get().sets;
-      listWrap.hidden = !sets.length;
-      listEl.innerHTML = "";
-      sets.forEach((g) => {
-        const n = store.setProducts(g).length;
-        const row = node(html`
-          <div class="set-row">
-            <span class="set-row-name">${g.name}</span>
-            <span class="set-row-count">${n}品</span>
-            <button type="button" class="icon-btn js-set-del" aria-label="「${g.name}」の組を消す">${icon("trash")}</button>
-          </div>`);
-        row.querySelector(".js-set-del").addEventListener("click", () => {
-          const undo = store.removeSet(g.id);
-          KN.motion.fire("select");
-          paintList();
-          paint();
-          KN.ui.toast(`「${g.name}」の組を消しました`, {
-            action: { label: "戻す", onClick: () => { undo(); if (listEl.isConnected) { paintList(); paint(); } } },
-          });
-        });
-        listEl.append(row);
-      });
-    }
-
-    nameEl.addEventListener("input", paint);
-    nameEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); save(); }
-    });
-    foot.addEventListener("click", save);
-
-    function save() {
-      const name = nameEl.value.trim();
-      if (!name || !on.size) return;
-      const ids = products.map((p) => p.id).filter((id) => on.has(id));
-      const res = store.saveSet(name, ids);
-      if (!res) return;
-      KN.motion.fire("save");
-      handle.close();
-      KN.ui.toast(`${res.replaced ? "置き換えました" : "組にしました"}：${res.set.name}（${ids.length}品）`, {
-        action: { label: "戻す", onClick: res.undo },
-      });
-    }
-
-    paint();
-    paintList();
-    return handle;
   }
 
   function listText(parts) {

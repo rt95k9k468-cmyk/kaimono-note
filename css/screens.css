@@ -5412,18 +5412,6 @@ a.btn { text-decoration: none; }
    「今日の予定に入れる」と同じ一本——どちらも、このリストを外へ渡す口なので。
    置き場所は買うものの終わり、アーカイブの手前。 */
 .list-share { padding: var(--sp-3) var(--sp-4) var(--sp-2); }
-/* 「いつもの組にして残す」（R11、screen-list.js の setRow）。送る一本のすぐ下に、
-   同じ形でもう一本。組の紙の「いまある組」は、名前・品数・消す。 */
-.list-share.list-set { padding-top: 0; }
-.set-list { display: flex; flex-direction: column; }
-.set-row {
-  display: flex; align-items: center; gap: var(--sp-2);
-  min-height: 44px;
-  border-top: 1px solid var(--c-border);
-}
-.set-row:first-child { border-top: 0; }
-.set-row-name { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
-.set-row-count { color: var(--c-text-2); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 
 /* 「そろそろ切れそう」（screen-list.js の lowSection・D6）。買うものの終わり、
    アーカイブの手前。**まだリストに無いもの**なので、行の形は買うものの行に
