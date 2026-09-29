@@ -751,12 +751,14 @@
        出しません——7:00〜8:00 の用事が段の終わりで曲がると、「8:00」が角と区間の
        終わりで上下に二つ並んでいました（R17）。 */
     const said = new Set([g.start, g.end]);
+    const turnAt = new Map();   // 角の時刻 → out の中の位置（停留所の札と重なれば、あとで外す）
     for (let i = 0; i < g.rows - 1; i++) {
       const x = i % 2 === 0 ? XR + R * 0.36 : XL - R * 0.36;
       const y = g.rowY(i) + R;
       if (me && Math.abs(me.x - x) < 26 && Math.abs(me.y - ME_HEAD - y) < 30) continue;
       const turn = g.start + (i + 1) * g.rowSpan;
       said.add(turn);
+      turnAt.set(turn, out.length);
       out.push(html`<span class="road-turn" style="${at(x, y)}">${clock(turn)}</span>`);
     }
 
@@ -861,6 +863,11 @@
     st.stops.forEach((s, k) => {
       const b = placed[k];
       if (!b) return;
+      /* 角ちょうどに始まる停留所（8:00 の朝のBaby）は、札の太字が同じ時刻を
+         言うので、角の小さな「8:00」は外します——上下に二つ並んでいました
+         （2026年9月29日、iPhone。R17 は「角で終わる」側だけだった）。札が
+         置けなかったときは外さない（時刻が消えないように）。 */
+      if (turnAt.has(s.at)) { out[turnAt.get(s.at)] = ""; turnAt.delete(s.at); }
       const time = clock(s.at);
       const extra = more[k] || 0;
       const done = closed(s.t);
