@@ -5186,6 +5186,13 @@ a.btn { text-decoration: none; }
   margin-top: calc((var(--name-line, 26px) - 40px) / 2);
 }
 .item-wrap:not(.is-tile-wrap) .item-body { align-self: flex-start; }
+/* メモも時刻も無い行（R27）は、品名が上下に 10.5px ずつ取って行の真ん中に居る
+   ので、絵も真ん中へ。上の「名前の一行に合わせる」だけだと、品名だけ下がって
+   絵が約10px上に残った（2026年9月29日、iPhone で）。 */
+.item-wrap:not(.is-tile-wrap) .item:not(.todo):not(:has(.item-meta > *)) .item-emoji {
+  align-self: center;
+  margin-top: 0;
+}
 
 /* ---------------- つまんで、置きなおす ----------------
 
