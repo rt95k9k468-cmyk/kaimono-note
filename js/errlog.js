@@ -80,6 +80,9 @@
   window.addEventListener("error", (e) => {
     /* 読み込めなかった絵などは ErrorEvent ではない（ここへは泡で来ない）。 */
     if (!e || !(e instanceof ErrorEvent)) return;
+    /* ブラウザの無害な知らせ（ResizeObserver が一コマで追いつかなかった）。控えると、
+       ほんとうのエラーが50件の枠から押し出される。 */
+    if (/ResizeObserver loop/i.test(String(e.message || ""))) return;
     note("error", e.error || e.message, { file: e.filename, line: e.lineno });
   });
   window.addEventListener("unhandledrejection", (e) => {

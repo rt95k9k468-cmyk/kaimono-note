@@ -91,7 +91,10 @@
   サーバーはターンをまたぐと落ちていることがあるので、テスト前に生きて
   いるか確認し、必要なら上のコマンドで再起動する。
 - 実行：`NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`
-  （`lib.js` はサーバーが落ちていれば自分で立ち上げる）
+  （`lib.js` はサーバーが落ちていれば自分で立ち上げる）。全部は `tests/run-all.js`
+  （3本ずつ並べて約3分、要約だけ）。
+- **main へ push すると GitHub が門（`run-all.js --gate`）を回し、落ちたら配られない。**
+  流したあとは `actions_list` で結論を一度見る（門の決めごとは `tests/README.md`）。
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
   （`app.js` の `controllerchange`）。`newContext({ serviceWorkers: "block" })` で作る。
   日記の本文と控えは IndexedDB にもあり、reload をまたいで残る（docs/storage.md の
