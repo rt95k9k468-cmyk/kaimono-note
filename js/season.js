@@ -126,5 +126,12 @@
     return r ? `${r.sekki}　${r.kou}（${r.kouYomi}）` : "";
   }
 
-  KN.season = { of, line, longitude, SEKKI, KOU };
+  /** 画面に出す二行。何を指すかの名前つき。
+      「二十四節気　秋分」「七十二候　蟄虫坏戸（むしかくれてとをふさぐ）」 */
+  function rows(day) {
+    const r = of(day);
+    return r ? [["二十四節気", r.sekki], ["七十二候", `${r.kou}（${r.kouYomi}）`]] : [];
+  }
+
+  KN.season = { of, line, rows, longitude, SEKKI, KOU };
 })();
