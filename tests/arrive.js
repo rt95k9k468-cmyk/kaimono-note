@@ -305,13 +305,10 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       endAt && endAt.at <= fillMs + 400, `${endAt && Math.round(endAt.at)}ms / ${fillMs}ms`);
     t.check("伸び終われば本当の幅", lastBar.w.every((w, i) => Math.abs(w - lastBar.full[i]) < 0.5),
       JSON.stringify([lastBar.w, lastBar.full]));
-    /* 赤い縁（超えた日）。はじめは見えず、端に着いてから出る。 */
-    const rimAlpha = (bs) => { const m = /rgba?\(([^)]+)\)/.exec(bs || ""); if (!m) return 0; const v = m[1].split(",").map(Number); return v.length > 3 ? v[3] : 1; };
-    const earlyRim = bar.filter((f) => f.at < fillMs * 0.5).map((f) => rimAlpha(f.rim));
+    /* 超えた日も、帯に縁は付けない（利用者が選んだ。超えたことは下の一文の赤字が言う）。 */
     t.check("超えた日の帯（is-over）", lastBar.over, JSON.stringify(lastBar));
-    t.check("赤い縁は、伸びているあいだは出ない（空の帯を枠だけが囲まない）",
-      earlyRim.length > 3 && earlyRim.every((a) => a < 0.05), JSON.stringify(earlyRim.slice(0, 5)));
-    t.check("伸び終われば縁の指定は元どおり（赤。止まった帯では区分に隠れる）", rimAlpha(lastBar.rim) > 0.9, lastBar.rim);
+    t.check("超えた日も帯に縁は無い（伸びているあいだも、止まってからも）",
+      bar.every((f) => !f.rim || f.rim === "none"), JSON.stringify(bar.map((f) => f.rim).filter((r) => r !== "none").slice(0, 2)));
     t.check("エラーなし（飲みすぎた日）", errors.length === 0, errors.join("\n"));
     await browser.close();
   }
