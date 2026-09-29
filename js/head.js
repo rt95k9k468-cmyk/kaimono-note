@@ -526,7 +526,32 @@
     });
   }
 
+  /* 端末の外の控えの見張り（R25、js/backup.js の offDeviceStale）。古く
+     なったら歯車に小さな点だけ。押すまで何も言いません（トースト・通知・赤
+     なし）。書き出し・Dropbox の送信はどちらも store を書き換えるので、
+     subscribe で消えます。一フレームにまとめて、同じ値なら書き直しません。 */
+  let dotQueued = false;
+  function paintDot() {
+    dotQueued = false;
+    const btn = root && root.querySelector(".js-settings");
+    if (!btn || !KN.backup || !KN.backup.offDeviceStale) return;
+    const on = !!KN.backup.offDeviceStale();
+    if (btn.classList.contains("has-dot") === on) return;
+    btn.classList.toggle("has-dot", on);
+    btn.setAttribute("aria-label", on ? "設定（端末の外の控えが古くなっています）" : "設定");
+  }
+  function queueDot() {
+    if (dotQueued) return;
+    dotQueued = true;
+    requestAnimationFrame(paintDot);
+  }
+
   mount();
+  paintDot();
+  if (KN.store) KN.store.subscribe(queueDot);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") queueDot();
+  });
 
   KN.head = { els, mine, enter, putCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
 })();

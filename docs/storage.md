@@ -311,3 +311,10 @@
   アプリ側は棚が足りなければ作り足すので壊れはしないが、試験の前提が変わる。
 - 容量で落ちる場面は `Storage.prototype.setItem` を `kaimono-note-v2` だけ投げるように
   すれば作れる。そのとき `makeRoom` が localStorage の控えを手放すのは正しい動き。
+
+## 端末の外の控えの見張り（R25、2026年9月29日）
+
+- `backup.offDeviceStale()` は読むだけ。外の控え＝手の書き出し（`lastExportAt`）と Dropbox の `lastAt` の新しいほう。
+  14日を越えたか、Dropbox をつないでいて送れないまま3日で、歯車（`head.js` の `.js-settings.has-dot`）に点、
+  設定の頭に一行。トースト・通知・赤は使わない（「催促はしない」の唯一の例外、利用者が X4 で決めた）。
+- 数える記録に daily の日・積み上げも入れる（どれか5件から）。試験は `tests/offdevice-watch.js`。
