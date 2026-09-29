@@ -127,6 +127,19 @@ const touch = (cdp) => async (x, y, dx) => {
     return last.classList.contains("day-bought")
       && last.querySelector(".day-bought-head").textContent.replace(/\s+/g, "") === "今日買ったもの1";
   }));
+  // 見出しの ＞ で閉じる・開く（2026年9月29日）。開け閉めは showChecked に残る
+  c.check("今日の紙に「このリストを送る」が無い", !(await page.$("#screen-list .list-share, #screen-list .js-share")));
+  c.check("品目（カテゴリの組）の間に線が無い", await page.$$eval("#screen-list .cat-group",
+    (xs) => xs.every((x) => getComputedStyle(x).backgroundImage === "none")));
+  await page.click("#screen-list .day-bought-toggle");
+  await page.waitForTimeout(400);
+  c.check("＞ で閉じると行が消え、見出しは残る", (await dayRows()).length === 0
+    && await page.$eval("#screen-list .day-bought-toggle", (b) => b.getAttribute("aria-expanded") === "false")
+    && await page.evaluate(() => KN.store.get().settings.showChecked === false));
+  await page.click("#screen-list .day-bought-toggle");
+  await page.waitForTimeout(400);
+  c.check("もう一度押すと開く", (await dayRows()).length === 1
+    && await page.evaluate(() => KN.store.get().settings.showChecked === true));
   await page.evaluate(() => KN.store.update((s) => { s.items[3].checked = false; s.items[3].checkedAt = null; }));
   await page.waitForTimeout(400);
   c.check("今日何も買っていなければ出さない", (await dayRows()).length === 0
