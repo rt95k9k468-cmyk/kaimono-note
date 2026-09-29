@@ -9,6 +9,8 @@
    - 次の一行「次は 8:00 朝のBaby · あと17分」
    - 札・連れを押すと、その用事の紙が開く
    - 戻ってきたら（visibilitychange）すぐ「いま」が動く：道の人も、時間割の「いま」も
+   - 空いた道を押すと 15分きざみの時刻と前後の空き、時刻なしから選ぶと停留所になる（段2）。
+     元に戻せる・入力欄なし・歩いたぶんと過ぎた日は押せない
    - 時刻と長さを変えると、停留所が動き、長さが倍になる
    - 過ぎた日：人・連れ・次の一行なし、道ぜんぶが歩いたあと。先の日：歩いたぶんなし
    - 設定で外せる。紙の上で本物の指で横に払えば、日が動く
@@ -165,6 +167,77 @@ const DAY = "2026-09-29";
   const t2 = await sheetTitle();
   c.check("連れを押すと、その用事の紙が開く", !!t2 && t2.includes("片付け"), String(t2).slice(0, 60));
 
+  /* 道の上で決める（段2）：空いた道を押すと、その時刻（15分きざみ）と前後の空き。
+     時刻を決めていないものから一つ選ぶと、その時刻が付いて停留所になる。 */
+  const tapAt = async (min, tail) => {
+    const xy = await page.evaluate(([m, tl]) => {
+      const road = document.querySelector("#screen-todo .day-road");
+      const G = road.__road.g, p = G.point(G.dist(m, tl));
+      const r = road.querySelector(".road-map").getBoundingClientRect();
+      const k = r.width / KN.dayRoad.W;
+      return { x: r.left + p.x * k, y: r.top + p.y * k };
+    }, [min, !!tail]);
+    await page.mouse.click(xy.x, xy.y);
+    await page.waitForTimeout(700);
+  };
+  const decideSheet = () => page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    if (!sh || !sh.querySelector(".road-decide")) return null;
+    return {
+      title: sh.querySelector(".sheet-title").textContent.trim(),
+      gap: (sh.querySelector(".road-gap") || { textContent: "" }).textContent.replace(/\s+/g, " ").trim(),
+      picks: [...sh.querySelectorAll(".road-pick .act-label")].map((x) => x.textContent.trim()),
+      inputs: sh.querySelectorAll("input, textarea, [contenteditable]").length,
+      text: sh.textContent,
+    };
+  });
+  await tapAt(15 * 60 + 52);
+  let ds = await decideSheet();
+  c.check("空いた道（15:52）を押すと、15分きざみの 15:45 の紙", !!ds && ds.title === "15:45", JSON.stringify(ds));
+  c.check("前後の空き「14:30〜21:00 空き6時間30分」", !!ds && /14:30〜21:00/.test(ds.gap) && /空き6時間30分/.test(ds.gap),
+    ds && ds.gap);
+  c.check("選べるのは時刻を決めていないもの（連れ三件と、毎晩の一件）",
+    !!ds && ds.picks.length === 4 && ["メール", "片付け", "買い物", "ストレッチ"].every((w) => ds.picks.includes(w)),
+    ds && JSON.stringify(ds.picks));
+  c.check("決める紙に入力欄は無い", !!ds && ds.inputs === 0, ds && String(ds.inputs));
+  c.check("決める紙も評価しない・絵文字なし",
+    !!ds && !/遅れ|予定通り|達成|未達|埋め|もったいない|%|％/.test(ds.text) && !/\p{Extended_Pictographic}/u.test(ds.text),
+    ds && ds.text);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/day-road-decide.png` });
+  await page.locator(".sheet.is-open .road-pick", { hasText: "片付け" }).click();
+  await page.waitForTimeout(800);
+  const tidy = await page.evaluate((id) => KN.store.get().todos.find((x) => x.id === id), ids.tidy);
+  r = await read();
+  c.check("選ぶと 15:45 が付き、やる日はその日", tidy.time === "15:45" && tidy.due === DAY, JSON.stringify([tidy.time, tidy.due]));
+  c.check("道の上に停留所「15:45 片付け」が立ち、連れは二件に",
+    r.stops === 5 && r.labels.some((l) => l.includes("15:45") && l.includes("片付け")) && r.beads.length === 2,
+    JSON.stringify([r.stops, r.labels, r.beads.length]));
+  await page.locator(".toast button", { hasText: "元に戻す" }).click();
+  await page.waitForTimeout(600);
+  const tidy2 = await page.evaluate((id) => KN.store.get().todos.find((x) => x.id === id), ids.tidy);
+  r = await read();
+  c.check("「元に戻す」で時刻が外れ、連れに戻る", !tidy2.time && r.stops === 4 && r.beads.length === 3,
+    JSON.stringify([tidy2.time, r.stops, r.beads.length]));
+
+  /* 停留所と停留所のあいだ：12:40 → 12:45（12:00〜13:00 の空き） */
+  await tapAt(12 * 60 + 40);
+  ds = await decideSheet();
+  c.check("あいだの空き（12:40 → 12:45、12:00〜13:00 空き1時間）",
+    !!ds && ds.title === "12:45" && /12:00〜13:00/.test(ds.gap) && /空き1時間$/.test(ds.gap), JSON.stringify(ds));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+  const sn = await page.evaluate(() => [KN.dayRoad.snap(775, 720, 780), KN.dayRoad.snap(725, 720, 780),
+    KN.dayRoad.snap(470, 463, 480), KN.dayRoad.snap(1375, 1290, 1380)]);
+  c.check("15分に丸める。空きの尻（次の停留所の頭・一日の終わり）へは丸めず、頭は空きの中へ",
+    JSON.stringify(sn) === "[765,720,465,1365]", JSON.stringify(sn));
+  /* 歩いたぶんの道（7:00）は押しても何も開かない */
+  await tapAt(7 * 60);
+  c.check("歩いたぶんの道は、押しても決める紙を出さない",
+    await page.evaluate(() => !document.querySelector(".sheet.is-open")));
+  const freeD = () => page.evaluate(() => document.querySelector("#screen-todo .day-road .road-free").getAttribute("d"));
+  c.check("決められる道は、人の足もとから", /^M([-\d.]+) /.test(await freeD())
+    && Math.abs(Number((await freeD()).match(/^M([-\d.]+) /)[1]) - p743.x) < 0.3, await freeD());
+
   /* 戻ってきたら、すぐ「いま」が動く（30秒の見回りを待たない） */
   await page.clock.setFixedTime(new Date(2026, 8, 29, 13, 40));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
@@ -181,6 +254,20 @@ const DAY = "2026-09-29";
     const box = await page.locator("#screen-todo .day-road").boundingBox();
     await page.screenshot({ path: `${process.env.SHOTS}/day-road-1340.png`, clip: box });
   }
+
+  /* 今日の空きは、いまから：16:10 に 17:02 を押す → 17:00（16:10〜21:00 空き4時間50分） */
+  await page.clock.setFixedTime(new Date(2026, 8, 29, 16, 10));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(400);
+  await tapAt(17 * 60 + 2);
+  ds = await decideSheet();
+  c.check("今日の空きは、いまから次の停留所まで（16:10〜21:00 空き4時間50分）",
+    !!ds && ds.title === "17:00" && /16:10〜21:00/.test(ds.gap) && /空き4時間50分/.test(ds.gap), JSON.stringify(ds));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+  await page.clock.setFixedTime(new Date(2026, 8, 29, 13, 40));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(400);
 
   /* 時刻と長さを変えると、停留所が動き、長さが倍になる */
   const len = () => page.evaluate(() => {
@@ -213,12 +300,14 @@ const DAY = "2026-09-29";
     r && JSON.stringify([r.cls, r.meShown, r.beads.length, r.next]));
   c.check("過ぎた日：道ぜんぶが歩いたあと", r.went === r.base, r.went.slice(0, 40));
   c.check("過ぎた日：停留所は塗りきり", r.stopWent.every(Boolean), JSON.stringify(r.stopWent));
+  c.check("過ぎた日：道の上で決めることはできない", await freeD() === null, String(await freeD()));
   await goDay("2026-09-30");
   r = await read();
   c.check("先の日：人は立たず、歩いたぶんも無い", /is-ahead/.test(r.cls) && !r.meShown && r.went === "",
     JSON.stringify([r.cls, r.meShown, r.went]));
   c.check("先の日：くり返しのルーティンも停留所で立つ", r.labels.some((l) => l.includes("朝のルーティン")),
     JSON.stringify(r.labels));
+  c.check("先の日：道ぜんぶで決められる", await freeD() === r.base, String(await freeD()).slice(0, 40));
   await goDay(DAY);
 
   /* 本物の指で、道の上を横に払うと日が動く */

@@ -2800,6 +2800,23 @@
       plan, today: isToday,
       open: (id) => openSheet(id),
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
+      decide: (id, at) => decideOnRoad(id, at, day),
+    });
+  }
+
+  /* 道の上で時刻を決めた（段2）。時間割で時刻の列へ運んだときと同じ書き換えと
+     報せ。くり返しの用事は**やる日を動かしません**——動かすと、今日より前の
+     回が消えるので（時刻だけが、毎回の時刻として付きます）。 */
+  function decideOnRoad(id, at, day) {
+    const t = store.get().todos.find((x) => x.id === id);
+    if (!t) return;
+    const was = { time: t.time, due: t.due };
+    const patch = { time: at };
+    if (!t.repeat || !t.due) patch.due = day;
+    store.updateTodo(id, patch);
+    KN.motion.fire("save");
+    KN.ui.toast(`「${t.title}」を ${at} に`, {
+      action: { label: "元に戻す", onClick: () => store.updateTodo(id, was) },
     });
   }
 

@@ -5978,7 +5978,10 @@ a.btn { text-decoration: none; }
 .road-stop.is-later .road-stop-edge { stroke-dasharray: 3 3; }
 /* 足あと（済ませた、時刻の無いもの）。歩いたぶんの道の上の、白い粒。 */
 .road-step { fill: var(--road-in); }
-.road-hit {
+/* 押せる透明な線。停留所（.road-hit）と、これからの空いた道（.road-free、段2：
+   押すとその時刻に決める紙）。停留所のほうが後ろに書いてあるので、重なれば
+   停留所が勝ちます。 */
+.road-hit, .road-free {
   stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -5987,7 +5990,10 @@ a.btn { text-decoration: none; }
 .road-me-halo { stroke: var(--c-sheet); stroke-width: 4.6; fill: var(--c-sheet); }
 .road-me-ink { stroke: var(--c-text); stroke-width: 1.8; fill: var(--c-text); }
 
-.road-marks { position: absolute; inset: 0; }
+/* 札の層は図の上に一枚かぶさるので、押せるのは中の button だけ（でないと、
+   下の透明な線に指が届きません）。 */
+.road-marks { position: absolute; inset: 0; pointer-events: none; }
+.road-marks button { pointer-events: auto; }
 .road-label, .road-now, .road-until, .road-edge, .road-turn {
   position: absolute; white-space: nowrap; line-height: 1.2;
 }
@@ -6055,3 +6061,22 @@ a.btn { text-decoration: none; }
 }
 .road-next b { font-weight: 700; color: var(--c-text); }
 .road-sep { margin: 0 .45em; color: var(--c-text-3); }
+
+/* 道の上で決める紙（段2）。いちばん上に、押した時刻の前後の空き。 */
+.road-decide { padding: 0 var(--sp-1) var(--sp-2); }
+.road-gap {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .6em;
+  margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--c-text-2);
+}
+.road-gap b { font-weight: 700; color: var(--c-text); }
+.road-decide-head { margin: 0 0 var(--sp-1); font-size: var(--fs-xs); color: var(--c-text-3); }
+.road-decide-none { margin: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
+.road-pick-mark {
+  display: block; width: 18px; height: 18px; background: var(--c-primary);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+          mask: var(--icon) center / contain no-repeat;
+}
+.road-pick-mark.is-plain {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--c-primary-fill);
+  -webkit-mask: none; mask: none;
+}
