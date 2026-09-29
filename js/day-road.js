@@ -368,13 +368,20 @@
   })();
   const ME_HALO = meSvg(true), ME_INK = meSvg(false);
 
-  /** その根の中の、今日の道の人を歩かせる。歩いている途中なら、そのまま。 */
-  function walk(root) {
+  /* 人の置き場所（paint が me.__at に覚える）→ transform。 */
+  const meAt = (a) => `translate(${a.x.toFixed(2)} ${a.y.toFixed(2)}) scale(${a.sx} ${ME_K})`;
+
+  /** その根の中の、今日の道の人を歩かせる。歩いている途中なら、そのまま。
+      from（前の置き場所）があれば、歩くあいだにそこから今の足もとへ進む
+      （分が変わったとき。paint）。進み方は脚と同じ速さの台形。 */
+  function walk(root, from) {
     if (!root || KN.motion.still()) return;
     const me = root.querySelector(".day-road .road-me");
-    if (!me || me.style.display === "none" || me.__walk) return;
+    if (!me || me.style.display === "none") return;
+    if (me.__walk) return;
     const step = KN.motion.ms("--m-walk");
     if (!(step > 0)) return;
+    const glide = from && me.__at ? from : null;
     const els = {};
     me.querySelectorAll("[data-w]").forEach((el) => {
       (els[el.dataset.w] = els[el.dataset.w] || []).push(el);
@@ -392,10 +399,16 @@
       ME_PARTS.forEach(([, , , key]) => set(key, "d", REST[key]));
       set("body", "transform", REST.lift);
       set("head", "transform", REST.lift);
+      if (me.__at) me.setAttribute("transform", meAt(me.__at));
     };
     const tick = (now) => {
       const tau = (now - t0) / dur;
       if (tau >= 1 || !me.isConnected) { rest(); return; }
+      if (glide) {
+        const k = walkPhase(tau) / (WALK.steps / 2), to = me.__at;
+        me.setAttribute("transform", meAt({ x: glide.x + (to.x - glide.x) * k,
+                                            y: glide.y + (to.y - glide.y) * k, sx: to.sx }));
+      }
       const q = walkPose(tau);
       ["legB", "legF", "armB", "sleeveB", "armF", "sleeveF"].forEach((key) => set(key, "d", dOf(q[key])));
       const lift = `translate(0 ${n1(q.bob)})`;
@@ -444,31 +457,69 @@
      その群の車線の数で道の太さを割ります。**重なった区間だけでなく、その用事の
      全体を車線に描く**——途中で太さが変わると、塗り（歩いたぶん）の描き直しが
      継ぎ目を持つので。長さの無い停留所（点）は割らない（点そのものが印）。
-     評価はしません（「重複」の警告色は出さない。時間割の丸薬と同じ）。 */
+     評価はしません（「重複」の警告色は出さない。時間割の丸薬と同じ）。
+
+     **長いほうが道の中心**（2026年9月30日・利用者の声「あくまで中心は長い方で、
+     それにぴったりくっつく形で外側に短いタスクが出る」）。前は早い順に左から
+     詰めていたので、一日の軸になる長い用事まで道の中心から外れていた。群の中を
+     長い順に、中心 → 進む向きの右 → 左 → 右の二つ目……と、時間の重ならない
+     車線へ入れます。車線の幅は STOP / n（n は使った車線の端から端まで）のまま
+     なので、中心と右だけなら、短いほうは道の外へ半分はみ出します（それでいい、
+     と利用者）。重なりは「延びた終わり」（`eu`）で見ます。 */
   function laneOut(stops) {
-    const spans = stops.filter((s) => s.len).sort((p, q) => p.at - q.at || p.until - q.until);
-    let group = [], reachEnd = -Infinity, id = 0;
-    const close = () => {
-      const n = group.length ? Math.max(...group.map((s) => s.lane)) + 1 : 1;
-      group.forEach((s) => { s.lanes = n; s.cl = n > 1 ? id : null; });
-      id++;
-      group = [];
-    };
+    const spans = stops.filter((s) => s.len).sort((p, q) => p.at - q.at || p.eu - q.eu);
+    const groups = [];
+    let cur = null, reachEnd = -Infinity;
     spans.forEach((s) => {
-      if (s.at >= reachEnd) { close(); reachEnd = -Infinity; }
-      const busy = group.filter((x) => x.until > s.at).map((x) => x.lane);
-      let lane = 0;
-      while (busy.includes(lane)) lane++;
-      s.lane = lane;
-      group.push(s);
-      reachEnd = Math.max(reachEnd, s.until);
+      if (!cur || s.at >= reachEnd) { groups.push(cur = []); reachEnd = -Infinity; }
+      cur.push(s);
+      reachEnd = Math.max(reachEnd, s.eu);
     });
-    close();
-    stops.forEach((s) => {
-      if (!s.lanes) { s.lanes = 1; s.lane = 0; s.cl = null; }
-      /* 車線の中心。車線ひとつの幅は STOP / n で、左（進む向きの左）から順に。 */
-      s.off = s.lanes > 1 ? ((s.lanes - 1) / 2 - s.lane) * (STOP / s.lanes) : 0;
+    stops.forEach((s) => { s.lanes = 1; s.slot = 0; s.cl = null; s.off = 0; });
+    groups.forEach((grp, id) => {
+      if (grp.length < 2) return;
+      const put = [];
+      grp.slice().sort((p, q) => (q.eu - q.at) - (p.eu - p.at) || p.at - q.at).forEach((s) => {
+        for (let i = 0; i < 64; i++) {
+          const slot = i % 2 ? (i + 1) / 2 : -i / 2;     // 0, 1, -1, 2, -2 …（正が右）
+          if (put.some((x) => x.slot === slot && x.at < s.eu && s.at < x.eu)) continue;
+          s.slot = slot;
+          put.push(s);
+          break;
+        }
+      });
+      const slots = grp.map((s) => s.slot);
+      const n = Math.max(...slots) - Math.min(...slots) + 1;
+      /* off は進む向きの左が正なので、右の車線は負。 */
+      grp.forEach((s) => { s.lanes = n; s.cl = n > 1 ? id : null; s.off = n > 1 ? -s.slot * STOP / n : 0; });
     });
+  }
+
+  /* 時刻を過ぎても済んでいない区間は、**人の足もとまで引っぱる**（2026年9月30日・
+     利用者の声「朝のルーティンは7時までなのに過ぎている。でも表示は何も変わらない」）。
+     終わりを「いま」に延ばし、色を一時的に変えます（`.is-late`）。済ませたら、押した
+     時刻でそこに止まり、色は戻ります（済ませた時刻が決めた終わりより後なら、その
+     時刻まで）。記録は書き換えません——描くときに `doneAt` からそのつど引くだけ。
+     延びた終わりは `eu`。車線（laneOut）も札もこれで見ます。返りは形の見分け字
+     （変わったときだけ道筋を引き直す）。 */
+  function shape(st, nowMin) {
+    const g = st.g;
+    st.stops.forEach((s) => {
+      s.late = !!(s.len && nowMin != null && !closed(s.t) && nowMin > s.until);
+      s.eu = s.late ? Math.max(s.until, Math.min(nowMin, g.end))
+        : s.len && s.doneMin != null && s.doneMin > s.until ? s.doneMin : s.until;
+      s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu, true)) : s.d0;
+    });
+    laneOut(st.stops);
+    return st.stops.map((s) => `${n1(s.d1)}/${n1(s.off)}/${s.lanes}/${s.late ? 1 : 0}`).join(",");
+  }
+
+  /* 済ませた時刻（分）。その日のうちに押したものだけ。 */
+  function doneMinOf(t, day) {
+    if (!closed(t) || !t.doneAt) return null;
+    const d = new Date(t.doneAt);
+    if (isNaN(d.getTime()) || U.dayKey(d) !== day) return null;
+    return d.getHours() * 60 + d.getMinutes();
   }
 
   function build(o) {
@@ -491,7 +542,7 @@
         const lead = !closed(t) && Number(t.lead) > 0 ? Number(t.lead) : 0;
         stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
                      dl: lead ? g.dist(Math.max(g.start, it.atMin - lead)) : d0,
-                     d1: len ? Math.max(d0, g.dist(it.untilMin, true)) : d0 });
+                     doneMin: doneMinOf(t, plan.day) });
         return;
       }
       if (closed(t)) {
@@ -507,17 +558,12 @@
       }
       loose.push({ t });
     });
-    laneOut(stops);
-    /* 車線に割った停留所は、群の車線の数（--lanes）で太さを割ります（CSS）。 */
-    const laneCls = (s) => (s.lanes > 1 ? " is-lanes" : "");
-    const laneCss = (s) => (s.lanes > 1 ? ` style="--lanes:${s.lanes}"` : "");
-
-    const stopSvg = stops.map((s, k) => {
-      const d = g.path(s.d0, s.d1, s.off);
-      return `<g class="road-stop${closed(s.t) ? " is-done" : ""}${laneCls(s)}"${laneCss(s)} data-s="${k}">`
-        + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
-        + `<path class="road-stop-went"/></g>`;
-    }).join("");
+    /* 停留所の道筋・車線・延び（is-late）は paint が引きます（いまに合わせて
+       延びるので）。 */
+    const stopSvg = stops.map((s, k) =>
+      `<g class="road-stop${closed(s.t) ? " is-done" : ""}" data-s="${k}">`
+        + `<path class="road-stop-edge"/><path class="road-stop-in"/>`
+        + `<path class="road-stop-went"/></g>`).join("");
     /* 出る時刻からの区間は、道の下に敷く点線の帯（道の上下に点がのぞく）。
        停留所のふちの点線（夜のごろ）と同じ言い分で、決めた約束そのものでは
        ない「そこへ向かう時間」だと読めるように。 */
@@ -534,8 +580,7 @@
     }).join("");
     /* 押せるのは、見えている区間より太い透明な線。停留所の丸は 21 単位で、
        指には細いので。 */
-    const hitSvg = stops.map((s, k) =>
-      `<path class="road-hit${laneCls(s)}"${laneCss(s)} data-k="${k}" data-grow d="${g.path(s.d0, s.d1, s.off)}"/>`).join("")
+    const hitSvg = stops.map((s, k) => `<path class="road-hit" data-k="${k}" data-grow/>`).join("")
       + later.map((s, k) =>
         `<path class="road-hit" data-l="${k}" data-grow d="${g.path(s.d0, s.d1)}"/>`).join("");
 
@@ -605,11 +650,36 @@
     if (!st) return;
     const nowMin = st.today ? KN.plan.toMin(U.nowTime()) : null;
     if (st.drawn && st.last === nowMin) return;
+    const moved = st.drawn && st.last != null && nowMin != null;
     st.last = nowMin;
     st.drawn = true;
     const g = st.g;
     const dNow = nowMin == null ? null : g.dist(nowMin);
     const svg = el.querySelector(".road-svg");
+
+    /* ⓪ 停留所の道筋と車線。延びる区間（過ぎてまだのもの）があると、分ごとに
+       形が変わります。変わったときだけ引き直す。 */
+    const sig = shape(st, nowMin);
+    if (sig !== st.sig) {
+      st.sig = sig;
+      const grpEls = svg.querySelectorAll(".road-stop[data-s]");
+      st.stops.forEach((s, k) => {
+        const d = g.path(s.d0, s.d1, s.off);
+        const lanes = s.lanes > 1;
+        [grpEls[k], svg.querySelector(`.road-hit[data-k="${k}"]`)].forEach((x) => {
+          if (!x) return;
+          x.classList.toggle("is-lanes", lanes);
+          if (lanes) x.style.setProperty("--lanes", s.lanes);
+          else x.style.removeProperty("--lanes");
+        });
+        if (grpEls[k]) {
+          grpEls[k].classList.toggle("is-late", s.late);
+          grpEls[k].querySelectorAll(".road-stop-edge, .road-stop-in").forEach((x) => x.setAttribute("d", d));
+        }
+        const hit = svg.querySelector(`.road-hit[data-k="${k}"]`);
+        if (hit) hit.setAttribute("d", d);
+      });
+    }
 
     // ① 歩いたぶんの道
     const went = svg.querySelector(".road-went");
@@ -644,7 +714,7 @@
          塗ったところは白、まだの白い中は塗りの色。車線に割ったものは車線の中だけ。 */
       if (!s.len) return;
       const half = 3 / s.lanes;
-      g.tickTimes().filter((t) => t > s.at && t < s.until).forEach((t) => {
+      g.tickTimes().filter((t) => t > s.at && t < s.eu).forEach((t) => {
         (to != null && g.dist(t) <= to + 1e-6 ? over : ink).push(g.tickPath([t], s.off, half));
       });
     });
@@ -661,10 +731,18 @@
     if (dNow == null) me.style.display = "none";
     else {
       const p = g.point(dNow);
-      const onStop = st.stops.some((s) => s.len && nowMin >= s.at && nowMin < s.until);
+      /* 延びた区間（is-late）は足もとで終わるので、そのふちの上に。 */
+      const onStop = st.stops.some((s) => s.len && nowMin >= s.at && (nowMin < s.until || s.late));
+      const was = me.__at;
+      const to = { x: p.x, y: p.y - (onStop ? STOP : ROAD) / 2, sx: p.ltr ? ME_K : -ME_K, row: p.row };
+      me.__at = to;
       me.style.display = "";
-      me.setAttribute("transform", `translate(${n1(p.x)} ${n1(p.y - (onStop ? STOP : ROAD) / 2)})`
-        + ` scale(${p.ltr ? ME_K : -ME_K} ${ME_K})`);
+      if (!me.__walk) me.setAttribute("transform", meAt(to));
+      /* 分が変わったら、歩いて次の足もとへ（2026年9月30日・利用者の声「時刻が
+         1分進むなど変わると、人が動くように」）。一分は道の上で 1〜2 単位しか
+         ないので、動いたと分かるのは歩く形のほう。段が変わる（角を回る）ときは
+         まっすぐ横切らせず、その場で歩くだけ。 */
+      if (moved) walk(el, was && was.row === to.row ? was : null);
     }
 
     // ④ 札・連れ・いまの時刻
@@ -690,6 +768,19 @@
     /* 通りは段ごとに上（u）と下（d）。**曲がり角の側は、角の手前まで**
        ——上の段から降りてくる角・下の段へ降りる角が、通りの端を横切るので
        （特大の字で、札の尻が角の道に触れた）。 */
+    /* 道の外へはみ出した車線（長いほうが中心で、短いほうが外。laneOut）が
+       ある段の側は、通りを外へずらします（dy）。ずらさないと札の字が車線の
+       ふちに乗る。 */
+    const bump = {};
+    st.stops.forEach((s) => {
+      if (s.lanes < 2) return;
+      const out = Math.abs(s.off) + STOP / s.lanes / 2 + 0.5 - STOP / 2;
+      if (out <= 0.1) return;
+      for (let r = g.point(s.d0).row; r <= g.point(s.d1).row; r++) {
+        const key = r + ((s.off > 0) === (r % 2 === 0) ? "u" : "d");
+        bump[key] = Math.max(bump[key] || 0, out);
+      }
+    });
     const lanes = {};
     const lane = (row, side) => {
       const key = row + side;
@@ -697,6 +788,7 @@
       const occ = [];
       const ltr = row % 2 === 0;
       occ.lo = 2; occ.hi = W - 2;
+      occ.dy = bump[key] || 0;
       if (side === "u" && row > 0) { if (ltr) occ.lo = XL - 12; else occ.hi = XR + 12; }
       if (side === "d" && row < g.rows - 1) { if (ltr) occ.hi = XR + 12; else occ.lo = XL - 12; }
       return (lanes[key] = occ);
@@ -778,7 +870,7 @@
         const far = p.x + back * (BEAD_BACK + (count - 1) * BEAD);
         const dir = far - 9 >= 2 && far + 9 <= W - 2 ? back : -back;
         const xs = Array.from({ length: count }, (_, i) => p.x + dir * (BEAD_BACK + i * BEAD));
-        const y = p.y - LANE;
+        const y = p.y - LANE - lane(p.row, "u").dy;
         lane(p.row, "u").push([Math.min(...xs) - 9, Math.max(...xs) + 9]);
         shown.forEach((c, b) => {
           const m = st.markOf ? st.markOf(c.t) : "";
@@ -798,7 +890,7 @@
       const box = fitMid(lane(p.row, "d"), p.x, textW(txt, FS) + 2);
       if (box) {
         lane(p.row, "d").push(box);
-        out.push(html`<span class="road-now" style="${at(box[0], p.y + LANE)}">${txt}</span>`);
+        out.push(html`<span class="road-now" style="${at(box[0], p.y + LANE + lane(p.row, "d").dy)}">${txt}</span>`);
       }
     }
 
@@ -818,7 +910,7 @@
           only ? tw : mode === "full" ? full : min);
         if (!box) continue;
         occ.push(box);
-        return { lo: box[0], hi: box[1], y: p.y + (side === "u" ? -LANE : LANE),
+        return { lo: box[0], hi: box[1], y: p.y + (side === "u" ? -1 : 1) * (LANE + occ.dy),
                  rev: d * dir < 0, only };
       }
       return null;
@@ -832,7 +924,7 @@
        「ほか1」の幅は一度目には分からないので、入りきらない札が出たときだけ、
        添える札にその幅を足して**置き直します**（足さずに添えると、題が「…」に
        つぶれて「11:30 ほか1」になる）。 */
-    const saved = Object.entries(lanes).map(([key, v]) => [key, Object.assign(v.slice(), { lo: v.lo, hi: v.hi })]);
+    const saved = Object.entries(lanes).map(([key, v]) => [key, Object.assign(v.slice(), { lo: v.lo, hi: v.hi, dy: v.dy })]);
     const placeAll = (room) => st.stops.map((s, k) => place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
     /* 入りきらなかった札ごとに、同じ群で時間が重なり、札の出た停留所のうち始まりが
        いちばん近いものへ数を寄せる（群の最初の札だと、朝の長い用事に「ほか1」が
@@ -843,7 +935,7 @@
         if (got[k] || h.cl == null) return;
         let best = -1;
         st.stops.forEach((s, j) => {
-          if (!got[j] || s.cl !== h.cl || !(s.at < h.until && h.at < s.until)) return;
+          if (!got[j] || s.cl !== h.cl || !(s.at < h.eu && h.at < s.eu)) return;
           if (best < 0 || Math.abs(s.at - h.at) < Math.abs(st.stops[best].at - h.at)) best = j;
         });
         if (best >= 0) n[best] = (n[best] || 0) + 1;
@@ -882,13 +974,14 @@
 
     // 3. 区間の終わりの時刻
     st.stops.forEach((s) => {
-      if (!s.len || s.until - s.at < 45 || said.has(s.until)) return;
+      /* 延びている区間の終わりは人の足もとで、いまの時刻の札が言います。 */
+      if (!s.len || s.late || s.eu - s.at < 45 || said.has(s.eu)) return;
       const p = g.point(s.d1);
-      const txt = clock(s.until);
+      const txt = clock(s.eu);
       const box = fitMid(lane(p.row, "d"), p.x, textW(txt, FS * 0.92) + 2);
       if (!box) return;
       lane(p.row, "d").push(box);
-      out.push(html`<span class="road-until" style="${at(box[0], p.y + LANE)}">${txt}</span>`);
+      out.push(html`<span class="road-until" style="${at(box[0], p.y + LANE + lane(p.row, "d").dy)}">${txt}</span>`);
     });
 
     // 4. 夜のごろ

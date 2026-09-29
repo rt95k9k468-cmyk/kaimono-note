@@ -4123,15 +4123,19 @@
      組み直しはしません。線だけ置き直せば足ります（行の高さは変わらない
      ので、置き場所は同じ折れ線から読めます）。組み直すと、読んでいる
      途中で行が動いたり、つまんでいるものが落ちたりします。 */
-  const NOW_TICK = 30000;
-  setInterval(() => {
+  /* 拍は**分の変わり目**にそろえます（2026年9月30日）。前は30秒ごとで、
+     時計が 7:34 になってから最大30秒、道の人と「いま」が 7:33 のまま残り、
+     分が変わると歩く人（day-road.js の paint）も遅れて歩いていました。 */
+  const nowTick = () => setTimeout(() => {
+    nowTick();
     if (!root || document.hidden) return;
     /* 別のタブを見ているときは、測っても 0 しか返りません（消えている
        ので）。戻ってきたときは ResizeObserver が呼んでくれます。 */
     if (!root.offsetParent && root.offsetHeight === 0) return;
     if (tlDrag) return;                       // 運んでいる最中は触りません
     paintNowAll();
-  }, NOW_TICK);
+  }, 60000 - (Date.now() % 60000) + 250);
+  nowTick();
 
   function paintNowAll() {
     root.querySelectorAll(".tl-axis").forEach((el) => {
