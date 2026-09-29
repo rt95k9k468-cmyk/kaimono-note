@@ -91,6 +91,13 @@ const DAY = "2026-09-30";
     return { k, eu: k >= 0 ? st.stops[k].eu : null, late: grp && grp.classList.contains("is-late"),
              done: grp && grp.classList.contains("is-done") };
   });
+  /* 過ぎた日で見る用に、7:00〜7:20 の書類を 7:40 に済ませる（今日は 7:40 まで延びる）。 */
+  const paper = await page.evaluate((day) => {
+    const t = KN.store.addTodo({ title: "書類を出す", due: day, time: "07:00", minutes: 20 });
+    KN.store.toggleTodo(t.id);
+    return t.id;
+  }, DAY);
+  await page.waitForTimeout(400);
   c.check("済ませたら、その時刻（7:40）で止まり、色は戻る",
     done.k >= 0 && done.eu === 7 * 60 + 40 && !done.late && done.done, JSON.stringify(done));
   await page.clock.setFixedTime(new Date(2026, 8, 30, 8, 10));
@@ -100,6 +107,45 @@ const DAY = "2026-09-30";
     return st.stops.find((s) => s.t.title === "朝のルーティン").eu;
   });
   c.check("済ませたあとは、時計が進んでも延びない", later === 7 * 60 + 40, String(later));
+
+  const paperEu = await page.evaluate(() =>
+    document.querySelector("#screen-todo .day-road").__road.stops.find((s) => s.t.title === "書類を出す").eu);
+  c.check("今日は、決めた終わりより後に済ませると押した時刻まで延びる（変えない）", paperEu === 7 * 60 + 40, String(paperEu));
+
+  /* 過ぎた日（2026年9月29日・A＋C）：次の日の時計にして、この日を開く。
+     道は薄いまま停留所だけ塗る。区間は押した時刻まで延ばさず、押した時刻に白い粒。 */
+  await page.clock.setFixedTime(new Date(2026, 9, 1, 9, 0));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(400);
+  await page.evaluate((d) => KN.screens.todo.goDay(d), DAY);
+  await page.waitForTimeout(900);
+  const past = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const st = road.__road, g = st.g;
+    const k = st.stops.findIndex((s) => s.t.title === "書類を出す");
+    const s = st.stops[k];
+    const grp = road.querySelector(`.road-stop[data-s="${k}"]`);
+    const want = g.point(g.dist(7 * 60 + 40));
+    const dots = [...road.querySelectorAll(".road-steps.is-stops circle")]
+      .map((c) => ({ x: Number(c.getAttribute("cx")), y: Number(c.getAttribute("cy")) }));
+    return {
+      cls: road.className, went: road.querySelector(".road-went").getAttribute("d"),
+      eu: s.eu, d1: s.d1, d1Want: g.dist(7 * 60 + 20, true),
+      stopWent: !!grp.querySelector(".road-stop-went").getAttribute("d"),
+      late: grp.classList.contains("is-late"),
+      fill: getComputedStyle(road.querySelector(".road-steps.is-stops circle") || road).fill,
+      dots, want: { x: want.x, y: want.y },
+    };
+  });
+  c.check("過ぎた日：道は塗らない（これからの薄い色のまま）", /is-past/.test(past.cls) && !past.went,
+    JSON.stringify([past.cls, past.went]));
+  c.check("過ぎた日：停留所は塗る", past.stopWent && !past.late, JSON.stringify([past.stopWent, past.late]));
+  c.check("過ぎた日：区間は押した時刻（7:40）まで延ばさず、決めた 7:20 のまま",
+    past.eu === 7 * 60 + 20 && Math.abs(past.d1 - past.d1Want) < 0.01, JSON.stringify([past.eu, past.d1, past.d1Want]));
+  c.check("過ぎた日：押した時刻（7:40）の道の上に白い粒",
+    past.dots.some((d) => Math.abs(d.x - past.want.x) < 0.2 && Math.abs(d.y - past.want.y) < 0.2)
+      && /rgb\(255, 255, 255\)/.test(past.fill),
+    JSON.stringify([past.dots, past.want, past.fill]));
 
   c.check("評価の言葉を出さない", !/遅れ|予定通り|達成|未達|できなかった|超過/.test(r.text), r.text);
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));

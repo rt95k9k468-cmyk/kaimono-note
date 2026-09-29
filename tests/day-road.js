@@ -330,7 +330,7 @@ const DAY = "2026-09-29";
   r = await read();
   c.check("過ぎた日：人も連れも次の一行も無い", r && /is-past/.test(r.cls) && !r.meShown && !r.beads.length && r.next === null,
     r && JSON.stringify([r.cls, r.meShown, r.beads.length, r.next]));
-  c.check("過ぎた日：道ぜんぶが歩いたあと", r.went === r.base, r.went.slice(0, 40));
+  c.check("過ぎた日：道は塗らず「これから」の薄い色のまま（9月29日）", r.went === "", String(r.went).slice(0, 40));
   c.check("過ぎた日：停留所は塗りきり", r.stopWent.every(Boolean), JSON.stringify(r.stopWent));
   c.check("過ぎた日：道の上で決めることはできない", await freeD() === null, String(await freeD()));
   await goDay("2026-09-30");
