@@ -201,10 +201,9 @@
     [].concat(dawn, middle, dusk).filter(fixedOf).forEach((t) => {
       const len = minutesOf(t);
       const start = toMin(t.time);
-      // 先に置いた固定と重なっているか。動かさずに、重なりとして言います。
-      const clash = blocks.some((b) => start < b.end && start + len > b.start);
+      // 重なっているかは、並べ終わってから時刻の順に見ます（下の sorted）。
       items.push({ todo: t, atMin: start, untilMin: start + len,
-                   minutes: len, fixed: true, clash });
+                   minutes: len, fixed: true, clash: false });
       addBlock(blocks, start, start + len);
     });
 
@@ -262,6 +261,19 @@
 
     const sorted = items.slice().sort((a, b) => a.atMin - b.atMin || a.untilMin - b.untilMin);
     sorted.forEach((it) => { it.at = toTime(it.atMin); it.until = toTime(it.untilMin); });
+
+    /* 時刻を決めたものが、**時刻の順で前の**固定と重なっているか。動かさずに、
+       重なりとして言います。
+
+       前は ① で置きながら「先に置いた固定と」見ていました。置く順は毎朝→
+       あいだ→毎晩なので、20:00〜22:00 の「夜のルーティン」（毎晩）が 20:55 の
+       「テスト」（あいだ）より**あとに**置かれ、早いほうのルーティンに
+       「前と重なっています」が付きました。画面ではそれが上の行の頭の白い抜きと、
+       空きの点線へ伸びた丸薬になっていました（2026年9月29日の画面）。 */
+    const fixedSorted = sorted.filter((it) => it.fixed);
+    fixedSorted.forEach((it, i) => {
+      it.clash = fixedSorted.slice(0, i).some((b) => it.atMin < b.untilMin && it.untilMin > b.atMin);
+    });
 
     /* 空き。となりどうしのあいだと、一日の始まり・終わりの端。 */
     const free = [];

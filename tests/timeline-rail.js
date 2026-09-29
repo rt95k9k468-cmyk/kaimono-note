@@ -4,6 +4,9 @@
      突き出ない（「丸薬に線が刺さっている」）。
    - 長さを決めた用事の時間の中で起きた用事は、すぐ上の丸薬とぶつかる（is-clash）。
      長さを決めていない用事どうし（仮の30分）は、ぶつけない。
+   - ぶつかった上の丸薬は、下の用事が始まるまでを受け持つ（2026年9月29日）。
+     ルーティンの途中で済ませた用事の上で、ルーティンが途中まで・下が色、と
+     時間が戻って見えない。うすい地（いま進んでいる）はルーティンに残る。
    `SHOTS=<置き場>` で時間割を撮る。 */
 const { open, checker } = require("./lib");
 
@@ -49,26 +52,37 @@ const DAY = "2026-09-27";
         pass: parseFloat(cs.getPropertyValue("--pass")),
         top: li.style.getPropertyValue("--rail-top-c"),
         bot: li.style.getPropertyValue("--rail-bot-c"),
+        live: li.classList.contains("is-live"),
       };
     });
+  });
+  /* いまの札が、ルーティンの途中で済ませた用事の丸薬より下にいるか。 */
+  const nowBelow = await page.evaluate(() => {
+    const scr = document.querySelector("#screen-todo");
+    const row = [...scr.querySelectorAll(".tl-row")].find((li) => li.textContent.includes("誕生日"));
+    const now = scr.querySelector(".tl-now");
+    return !!row && !!now
+      && now.getBoundingClientRect().top >= row.querySelector(".tl-node").getBoundingClientRect().bottom - 1;
   });
   const find = (w) => rows.find((r) => r.title.includes(w)) || {};
   const idx = (w) => rows.findIndex((r) => r.title.includes(w));
   const FILL = "var(--tl-fill)", WAIT = "var(--tl-wait)";
 
   const baby = find("朝のBaby");
-  c.check("進行中のルーティン：丸薬は途中まで（0 < pass < 1）", baby.pass > 0 && baby.pass < 1, JSON.stringify(baby));
-  c.check("進行中のルーティン：上の線は色・下の線は灰色", baby.top === FILL && baby.bot === WAIT, JSON.stringify(baby));
-
   const bday = find("誕生日");
   c.check("ルーティンの途中で済ませた用事は、ルーティンの丸薬とぶつかる",
-    bday.clash && find("朝のBaby").above, JSON.stringify({ bday, baby }));
+    bday.clash && baby.above, JSON.stringify({ bday, baby }));
+  c.check("ぶつかったルーティンの丸薬は、下の用事が始まるところまで塗り切る",
+    baby.pass === 1, JSON.stringify(baby));
+  c.check("…でもルーティンはまだ続いているので、うすい地（いま）は残る", baby.live, JSON.stringify(baby));
   c.check("その用事の丸薬は色（済んだ）", bday.pass === 1);
-  c.check("…でも上下の線は灰色（いまより下なので、色の短い線が突き出ない）",
-    bday.top === WAIT && bday.bot === WAIT, JSON.stringify(bday));
+  c.check("時間が戻らない：ルーティンと、その途中で済ませた用事の線は色",
+    baby.top === FILL && baby.bot === FILL && bday.top === FILL && bday.bot === FILL,
+    JSON.stringify({ baby, bday }));
+  c.check("いまの時刻の札は、その用事より下", nowBelow, String(nowBelow));
 
-  const later = rows.slice(idx("朝のBaby") + 1);
-  c.check("いまの行より下の線は、一本も色を持たない",
+  const later = rows.slice(idx("誕生日") + 1);
+  c.check("いまより下の線は、一本も色を持たない",
     later.every((r) => r.kind === "free" ? r.pass === 0 || r.title === "" : r.top === WAIT && r.bot === WAIT),
     JSON.stringify(later));
 
