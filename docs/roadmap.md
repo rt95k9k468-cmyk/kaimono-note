@@ -190,7 +190,7 @@ iPhone のウェブ通知では押しボタンを当てにできないので、*
 | 3 | R12 | レシピの文から組を（AI の窓口・任意） | 家 | 中 | なし | health（D8） | 未 |
 | 4 | R13 | 気づいたことに「前半と後半」の確かめ | からだ | 小〜中 | なし | health | 済（2026年9月29日。`tests/insights-halves.js`。移行なし（記録の形は変えていない）。比べる8項目（歩数・カロリー・睡眠・食前食後・服装・夕食・飲酒・平日休日）。iPhone での見え方は未確認） |
 | 5 | R14 | 起動の固まり（C3 の残り） | 土台 | 中 | なし | improvements（C3） | 未（iPhone の実測から） |
-| 5 | R15 | 復元の練習を試験に | 土台 | 小 | なし | storage | 済（2026年9月29日。`tests/restore-practice.js`。コードは触っていない。**試験が見つけた不具合が一つ、報告待ち**＝お酒の `kind` が読み込みのたびに `"other"` になる（下の R15 の節）） |
+| 5 | R15 | 復元の練習を試験に | 土台 | 小 | なし | storage | 済（2026年9月29日。`tests/restore-practice.js`。見つけたお酒の `kind` の不具合も同日に直した——下の R15 の節） |
 
 **おすすめの順**：R1＋R2（一回で）→ R3 → R4＋R5 → R6 → R7 → R8 → R9 → R10（12月まで）→
 R11 → R13。R12・R14・R15 はあいだに。
@@ -433,16 +433,17 @@ R11 → R13。R12・R14・R15 はあいだに。
   記録に足りない欄を既定値で足すため（`products.order`・`items.fav`・`todos.deadline` など。
   読み込みで足されるのと同じ）。空の状態は控えに残さない決まり（`"empty"`）なので、「復元前」
   を見る試験は戻す前に何か一つ書く。
-- **見つけたもの（実行せず報告待ち）**：`js/store.js`（`index.html` の87行）は `js/drinks.js`
-  （107行）より先に読まれ、`let state = load()` の時点で `KN.drinks` が無い。`cleanDrink` の
-  `kinds` が空になり、**保存済みのお酒の `kind`（beer・wine…）が、開くたびに `"other"` になる**
-  （`kindLabel`・量・度数は残る。localStorage には次の保存で書かれる）。書き出し・復元とは
-  関係なく、読み込みの経路の不具合。CLAUDE.md の「`let state = load()` の時点で走るものは上に
-  書く」と同じ根。直し方の案：`cleanDrink` が `KN.drinks` を引かず種類の id の表を store 内に持つ／
-  `drinks.js` を `store.js` より前に読む（`sw.js`・`build-standalone.js` の並びも）。
-  過去に開いた記録の `kind` が `"other"` になっているかは、利用者の端末で見ないと分からない
-  （`kindLabel` から戻せる可能性が高い）。**直すか・どう戻すかは利用者に訊いてから。**
-  試験は `restore-practice.js` の B で「既知・報告待ち」として除外している（直したら外す）。
+- **見つけたもの → 直した（2026年9月29日）**：`store.js` が `drinks.js` より先に読まれ、
+  `let state = load()` の時点で `KN.drinks` が無く、`cleanDrink` の `kinds` が空になって、
+  保存済みのお酒の `kind` が開くたびに `"other"` になっていた（`kindLabel`・量・度数は残る）。
+  **直し方**：`drinks.js` を `store.js` の直前へ移した（`index.html`・`sw.js`・
+  `build-standalone.js` の三つの並び）。`drinks.js` が読み込み時に使うのは `KN.util` だけ
+  （`util.js` は先に読まれる）。`store.js` にはコメントを足しただけ。
+  `restore-practice.js` の「既知・報告待ち」の除外は外した（28/28）。
+- **要相談（実行していない）**：直す前に開いた端末では、`kind` が `"other"` のまま
+  localStorage に書かれている可能性が高い。直しても自動では戻らない。`kindLabel`（「ビール」など）
+  と種類表の `label` を突き合わせれば戻せる見込み。既存の記録の作り替えなので、やるなら
+  利用者の判断で。先に端末で `"other"` が実際にあるか見る。
 
 **（参考）A1(b) 段2**：利用者の判断待ち（docs/improvements.md）。数年ぶんの日記を
 取り込むなら、先に要る。
