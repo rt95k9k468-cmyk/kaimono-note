@@ -115,7 +115,9 @@ const { open, checker } = require("./lib");
         const n = document.querySelector(".screen.is-active .tl-row[data-todo-id] .tl-node[style*='hidden']");
         out.rowHidden.push(!!n);
       }
-      if (performance.now() - t0 < 1100) requestAnimationFrame(tick);
+      /* 影武者が消えるまで（上限4秒）。決め打ちの 1100ms は、混むと途中で切れる（R19）。 */
+      if (!g && out.frames.length) ok(out);
+      else if (performance.now() - t0 < 4000) requestAnimationFrame(tick);
       else ok(out);
     };
     requestAnimationFrame(tick);
@@ -125,7 +127,12 @@ const { open, checker } = require("./lib");
   async function openAndSettle() {
     const box = await row.locator(".tl-open").boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(700);
+    /* 開き終わるまで：紙が開き、開く影武者が消えている。決め打ちの 700ms では、混むと
+       開く影武者がまだ飛んでいるうちに閉じる記録が始まり、その一コマ目を「頭から出た」
+       と測って落ちた（R19）。 */
+    await page.waitForFunction(() => document.querySelector(".sheet.is-open .js-hero-node")
+      && !document.querySelector(".sheet-morph"), null, { timeout: 4000 });
+    await page.waitForTimeout(100);
   }
   async function tryBack(label, before) {
     await openAndSettle();
