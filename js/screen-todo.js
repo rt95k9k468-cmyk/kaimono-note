@@ -4098,13 +4098,17 @@
      組み直しも頼みます。紙の見分け字は今日なら分まで持つので、分が変わって
      いれば、時刻を決めていないものが**いまから先へ**置き直されます（頼まないと、
      朝に組んだ「7:00ごろ」が、昼に開いても過ぎた場所に残ったままになり得た）。
-     開いて見ているあいだは組み直しません（読んでいる途中で行が動くので）。 */
-  function wakeNow() {
+     開いて見ているあいだは組み直しません（読んでいる途中で行が動くので）。
+     アプリへ戻ってきたのも「開いた」うちなので、道の人も歩きます。読み込みの
+     pageshow（persisted でない）は数えません——そちらは onEnter が歩かせて
+     いて、組み直しが挟まると、歩きの途中から頭へ跳ぶので。 */
+  function wakeNow(e) {
     if (!root || document.visibilityState !== "visible") return;
     if (!root.offsetParent && root.offsetHeight === 0) return;
     if (tlDrag) return;
     render();
     paintNowAll();
+    if (KN.dayRoad && e && (e.type === "visibilitychange" || e.persisted)) KN.dayRoad.walk(root);
   }
   document.addEventListener("visibilitychange", wakeNow);
   window.addEventListener("pageshow", wakeNow);
@@ -5390,8 +5394,12 @@
     setTimeout(() => { restoring = false; }, 60);
   }
 
-  /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。 */
-  function onEnter() { requestAnimationFrame(toNow); }
+  /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。
+     道の人は、開いた瞬間に四歩あるいて止まります（day-road.js の「歩く」）。 */
+  function onEnter() {
+    requestAnimationFrame(toNow);
+    if (KN.dayRoad) KN.dayRoad.walk(root);
+  }
 
   KN.screens = KN.screens || {};
   /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */

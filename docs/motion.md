@@ -28,6 +28,7 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 | `--m-roll` / `--m-roll-step` | 題の日付が入れ替わる（変わった字だけが転がる。年・月・日・曜日の順に step ずつ遅らせる。`util.js` の `rollText`、docs/calendar-swipe.md） |
 | `--m-grow` | **器そのもの**が伸び縮みする（暦・帯・欄） |
 | `--m-spark` / `--m-flash` | 一度だけ出る光／一度だけ見てほしい |
+| `--m-walk` | 道の人の一歩（やることを開いたとき、その場で四歩あるいて止まる。台形の上がり下がりを足して全体 2.0s。docs/todo-timeline.md の「歩く」） |
 | `--m-success` / `--m-warn` | うまくいった／気をつけて |
 
 曲線も同じ（`--ease` / `--ease-out` / `--ease-in` / `--spring` / `--push-e` /
