@@ -25,6 +25,10 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
 
   const row = page.locator(".screen.is-active .tl-row", { hasText: "試験の用事" }).first();
+  /* 行を画面のまん中へ。一日の道が高くなると（2026年9月30日、段の間 64 → 80）、
+     行が下の帯の裏へ下がって、押しても紙が開かなかった。 */
+  await row.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(300);
   const rectOf = (loc) => loc.evaluate((el) => {
     const r = el.getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height };
