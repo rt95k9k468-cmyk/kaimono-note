@@ -149,5 +149,44 @@
     return handle;
   }
 
-  KN.dueSheet = { open, later, idsFromHash, LATER, PREFIX };
+  /* ---------------- 押したことの控え（sw.js の notificationclick） ----------------
+
+     iPhone では `#due=` が届かないことがある（眠っている窓への navigate が効かない・
+     閉じていたときの openWindow が印を落とす）。sw.js が押した時刻と id を小さな
+     控えに置くので、開いたとき・戻ってきたときにここで読んで消す。id が無い控え
+     （写しに見つからなかった押し）は、押した時刻の前30分〜後5分に時刻が来た、
+     今日のまだの用事を探す。10分より古い控えは使わない（押したあと開かなかった）。 */
+  const BOX = "kn-due-click";
+  const KEY = "./__due-click";
+  const FRESH = 10 * 60 * 1000;
+
+  function dueNear(at) {
+    const d = new Date(at);
+    const mins = d.getHours() * 60 + d.getMinutes();
+    const m = (hm) => { const [h, mi] = String(hm).split(":").map(Number); return h * 60 + mi; };
+    return store.openTodos()
+      .filter((t) => t.due && t.time && KN.util.daysUntil(t.due) === 0
+        && m(t.time) <= mins + 5 && m(t.time) >= mins - 30)
+      .map((t) => t.id);
+  }
+
+  /** 控えがあれば id の並び（読んだら消す）。無ければ null。 */
+  async function take(now) {
+    if (!("caches" in window)) return null;
+    try {
+      const box = await caches.open(BOX);
+      const res = await box.match(KEY);
+      if (!res) return null;
+      await box.delete(KEY);
+      const rec = await res.json();
+      const t = now == null ? Date.now() : now;
+      if (!rec || !(t - rec.at < FRESH)) return null;
+      const ids = Array.isArray(rec.due) ? rec.due.filter((x) => typeof x === "string" && x) : [];
+      return ids.length ? ids : dueNear(rec.at);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  KN.dueSheet = { open, later, idsFromHash, take, dueNear, LATER, PREFIX, BOX, KEY };
 })();

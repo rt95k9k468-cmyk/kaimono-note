@@ -367,12 +367,27 @@ const DAY = "2026-09-29";
     const road = document.querySelector("#screen-todo .day-road");
     const g = road.__road.g;
     const txt = `${Math.floor(cm / 60)}:${String(cm % 60).padStart(2, "0")}`;
-    const said = [...road.querySelectorAll(".road-turn, .road-until, .road-edge")].map((e) => e.textContent.trim());
+    const said = [...road.querySelectorAll(".road-turn, .road-until, .road-edge, .road-label b")].map((e) => e.textContent.trim());
     return { still: g.start + g.rowSpan === cm, txt, n: said.filter((x) => x === txt).length,
       until: [...road.querySelectorAll(".road-until")].map((e) => e.textContent.trim()), said };
   }, corner);
   c.check("角ちょうどで終わる区間：角の時刻の札は一つだけ（区間の終わりを重ねない）",
     turnSaid.still && turnSaid.n === 1 && !turnSaid.until.includes(turnSaid.txt), JSON.stringify(turnSaid));
+
+  /* 角ちょうどで始まる停留所（2026年9月29日、iPhone で「8:00」「朝のBaby 8:00」が上下に
+     二つ）。同じ先の日に、二つ目の角で始まる用事を置いて、その時刻の字が札の一つだけか。 */
+  const corner2 = await page.evaluate(() => { const g = document.querySelector("#screen-todo .day-road").__road.g; return g.start + 2 * g.rowSpan; });
+  await page.evaluate(([d, t]) => KN.store.addTodo({ title: "角で始まる用事", due: d, time: t, minutes: 60 }), [FAR, hm(corner2)]);
+  await page.waitForTimeout(500);
+  const startSaid = await page.evaluate((cm) => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const txt = `${Math.floor(cm / 60)}:${String(cm % 60).padStart(2, "0")}`;
+    const turns = [...road.querySelectorAll(".road-turn")].map((e) => e.textContent.trim());
+    const labels = [...road.querySelectorAll(".road-label b")].map((e) => e.textContent.trim());
+    return { txt, turns, labels, other: turns.filter((x) => x !== txt).length };
+  }, corner2);
+  c.check("角ちょうどで始まる停留所：角の小さな時刻は出さず、札の太字の一つだけ（ほかの角は残る）",
+    !startSaid.turns.includes(startSaid.txt) && startSaid.labels.includes(startSaid.txt) && startSaid.other >= 1, JSON.stringify(startSaid));
 
   /* 道の端（9月29日・利用者の声「5:30 スタートなのに最初に 6:30 とあって、しかも
      二つ」）。起きる時刻を 6:30 にした人の 5:30 の用事が、道の頭（6:30）に点で押し
