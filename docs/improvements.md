@@ -922,3 +922,29 @@ Safari が開いて「ここは Safari です」が出たら、「URLを開く�
   消さない」ほか3件が落ちることを確かめた。`daily-rules.js`・`shared-day.js`・
   `head-still.js`・`startup.js`・`text-size.js` も通した。机の上の Chromium なので、
   **iPhone の実機では確かめていない**。
+
+## iPhone で確かめた結果（2026年9月29日、R16 の残り二つ）
+
+`docs/iphone-check.md` の続き。同日の先のセッションで 1〜18 と通知（R3）は済み
+（いつもの組 R11 は外した・R26 は見送り）。残りの二つ：
+
+- **12 R5 Siri の受け箱：◯。** ショートカットから「牛乳」を送ると、買うものに入った。
+- **19 写真から推定（AI の窓口）：—（見送り）。** 窓口がまだ無かったので、確かめられていない。
+  利用者が Anthropic の Console でクレジットを5ドル買い、Cloudflare で `kurashi-ai` を
+  置くところまで進めたが、疲れて中断。つまずいた点を次のために残す：
+  - Cloudflare の配置ボタンは、自分のリポジトリ `kurashi-ai` へ中身をコピーしてから置く。
+    やり直しで「Import a repository → `kaimono-note`」を選ぶと、Root directory に
+    `ai` を入れないと `package.json` が見つからず失敗する。
+  - Worker ができても、Domains の **workers.dev のスイッチがオフ**（"No active routes"）
+    だった。オンにして URL が出た。
+  - Settings の **Build の Variables and secrets はビルド用**で、窓口は受け取れない。
+    鍵（`ANTHROPIC_API_KEY`）と道（`AI_PATH`）は **Runtime 側**に Secret で置く。
+  - アプリの「確かめる」が**タイムアウト**した。窓口が返事をしていない——Runtime に
+    Secret が入っていないか、Root directory が `ai` でなく設計図が読まれていない
+    （Compatibility date が今日の日付だった）疑い。Safari で窓口の URL を開いて
+    「not found」が出るかが、次の切り分け。
+  - コードの不具合ではなさそう（`ai/worker.js` は鍵・道が無ければ数秒で 500 を返す）。
+    `ai/README.md` の手順に、上の三点（Root directory・workers.dev・Runtime の Secret）
+    を足すのがよい。
+  - 費用の目安：写真一枚で数円、相談一回で十円前後（README。実測ではない）。
+
