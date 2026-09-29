@@ -3100,28 +3100,36 @@ button.section-note:active { opacity: .55; }
 .diet-stack i.is-snack     { background: var(--c-slot-s); }
 .diet-stack i.is-other     { background: var(--c-text-3); }
 .diet-stack i.is-drink     { background: var(--c-accent); }
-.diet-stack i.is-rest      { background: transparent; }
 /* 総消費を超えた日。帯は摂取いっぱいまで使い、縁で「はみ出た」と言います。 */
 .diet-stack.is-over { box-shadow: inset 0 0 0 1.5px var(--c-danger); }
-/* ---- 帯は左から伸びる（2026年9月29日・利用者の声「今日の食事の棒グラフも開いた
-   時に左から。朝食、昼食…とほんの一瞬だけスピードに緩急つけながら」）----
+/* 区分の入れもの。幅は摂取の割合（総消費を超えた日は 100%）、中の区分は入れものに
+   対する割合。残り（前は透明の `is-rest`）は、入れものの外に見えている帯の地。 */
+.diet-stack-fill { display: flex; height: 100%; flex: none; }
 
-   開いたとき（`is-m-arrive` のあいだ）、区分が朝 → 昼 → 夜…の順に、**自分の左端
-   から**伸びる（`scale: 0 1` → 1。左端は前の区分の右端なので、先頭は切れずに一本で
-   進む）。時刻と長さは screen-diet.js の energyBar が区分ごとに書く（`--seg-at` /
-   `--seg-len`、`--m-draw` に対する割合）。
+/* ---- 帯は左から伸びる（2026年9月29日・利用者の声）----
 
-   - 曲線は区分ごとに `--ease-relay`：区切りで一瞬ゆるみ、中ほどで速い。最後の区分
-     だけ `--ease-out` で静かに着く。
-   - 残り（is-rest）は透明で、地は帯そのもの（`--c-surface-3`）なので動かさない。
+   開いたとき（`is-m-arrive` のあいだ）、**入れものごと**左から伸びる（`scale: 0 1` → 1）。
+   朝・昼・夜は入れものの中の割合なので、いつも最後の比率のまま一緒に伸びる。輪と同じ
+   `--m-fill` / `--ease-out`（「グン」）。
+
+   - 一度は区分ごとに順に伸ばし、区切りで一瞬ゆるむ曲線（`--ease-relay`）を付けた。
+     **遅く見え**、利用者の声で「比率に合わせて全体が伸びる」へ替えた。
+   - **超えた日の赤い縁は、伸びているあいだ出さない。** 縁は帯（地）の inset の影で、
+     区分の**下**に描かれる。伸びる前から空の帯を囲んでいると「枠だけがある」絵になった
+     （実機の画面）。縁の色だけを動かし、時間の 9 割までは透明。
+     なお、超えた日の区分は帯いっぱい（100%）なので、**止まった帯では縁は区分に隠れて
+     見えていない**（前から。2026年9月29日に気づいた。見せるなら区分の上に重ねる一枚が要る
+     ——利用者に訊いてから）。
    - 組み直しでは動かない（is-m-arrive のあいだだけ）。 */
-.is-m-arrive .diet-stack > i:not(.is-rest) {
+.is-m-arrive .diet-stack-fill {
   transform-origin: 0 50%;
-  animation: seg-grow calc(var(--m-draw) * var(--seg-len, .2)) var(--ease-relay) both;
-  animation-delay: calc(var(--m-draw) * var(--seg-at, 0));
+  animation: stack-grow var(--m-fill) var(--ease-out) both;
 }
-.is-m-arrive .diet-stack > i.is-last { animation-timing-function: var(--ease-out); }
-@keyframes seg-grow { from { scale: 0 1; } }
+.is-m-arrive .diet-stack.is-over { animation: stack-rim var(--m-fill) linear both; }
+@keyframes stack-grow { from { scale: 0 1; } }
+@keyframes stack-rim {
+  0%, 88% { box-shadow: inset 0 0 0 1.5px transparent; }
+}
 
 .diet-stack-legend {
   display: flex; flex-wrap: wrap; gap: 4px var(--sp-3);
