@@ -1397,6 +1397,7 @@
       if (els.search.value || document.activeElement === els.search) return;
       els.searchWrap.hidden = true;
       els.searchWrap.style.opacity = "";
+      if (els.searchClear) els.searchClear.hidden = true;
       const stack = els.searchWrap.parentElement;
       if (stack) { stack.style.flexShrink = ""; stack.style.minHeight = ""; }
     };
@@ -1404,22 +1405,40 @@
       if (!els.searchWrap || !els.searchWrap.hidden) return;
       els.searchWrap.hidden = false;
       els.searchWrap.style.opacity = "";
+      paintClear();
     };
     tuck();
+
+    /* 出ているか。置きっぱなしの設定では、窓はいつも在るので「使っている
+       最中か」で見ます（裏へ送ったものは閉じている）。 */
+    const isOpen = () => {
+      if (!els.searchWrap) return false;
+      if (searchBarAlways()) return !!els.search.value || document.activeElement === els.search;
+      return !els.searchWrap.hidden;
+    };
+    /* 閉じる：字を消し、キーボードを下ろし、畳む（置きっぱなしなら裏へ送る）。 */
+    const close = () => {
+      if (els.search.value) clear();
+      els.search.blur();
+      if (searchBarAlways()) parkSearch(scroller, true);
+      else tuck();
+    };
+    /* ×は、字があれば消す・空なら閉じる。だから開いているあいだは出しておく。 */
+    const paintClear = () => {
+      const open = !els.searchWrap || !els.searchWrap.hidden;
+      els.searchClear.hidden = !(els.search.value || (open && !searchBarAlways()));
+      els.searchClear.setAttribute("aria-label", els.search.value ? "検索をクリア" : "探す窓を閉じる");
+    };
 
     els.searchBtn.addEventListener("click", () => {
       /* 虫めがねが全タブで一つの帯に居る画面（やること・daily・ダイエット、
          js/head.js）は、同じボタンに三つが結んでいます。応えるのは持ち主だけ。 */
       if (els.mine && !els.mine()) return;
-      const tucked = els.searchWrap && els.searchWrap.hidden;
-      const showing = !tucked && scroller && scroller.scrollTop < 2;
-      if (showing && (els.search.value || document.activeElement === els.search)) {
-        // 出ていて、使っている最中に押したら「やめる」。
-        clear();
-        els.search.blur();
-        if (searchBarAlways()) parkSearch(scroller, true);
-        else tuck();
-      } else {
+      /* 出ているなら、押すと閉じる（2026年9月29日、実機で「消す方法がない」）。
+         前は「使っている最中（字が入っている・指が入っている）」だけ閉じて、
+         キーボードを下ろしたあとの空の窓は、押しても開き直すだけでした。 */
+      if (isOpen()) close();
+      else {
         untuck();
         revealSearch(scroller, els.search);
       }
@@ -1428,7 +1447,7 @@
 
     els.search.addEventListener("input", () => {
       // Folded, so 「え」 finds 「エマール」 — the same rule the suggestions use.
-      els.searchClear.hidden = !els.search.value;
+      paintClear();
       setQuery(KN.util.foldKana(els.search.value));
       onChange();
       paint();
@@ -1437,16 +1456,16 @@
       if (KN.searchAll) KN.searchAll.hint(els);
     });
 
-    els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });
+    els.searchClear.addEventListener("click", () => {
+      if (els.search.value) { clear(); paintClear(); els.search.focus(); }
+      else close();
+    });
 
     /* 打ち終えて改行を押したら、キーボードだけ下ろします（絞り込みは
        残したまま——見に行くのはこれからなので）。 */
     els.search.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); els.search.blur(); }
-      if (e.key === "Escape") {
-        clear(); els.search.blur();
-        if (searchBarAlways()) parkSearch(scroller, true); else tuck();
-      }
+      if (e.key === "Escape") close();
     });
 
     /* 送られていくあいだ、薄くなっていきます。

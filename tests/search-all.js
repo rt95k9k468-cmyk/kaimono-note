@@ -149,6 +149,32 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.waitForTimeout(300);
   t.check("窓を消すと一行も消える", !(await page.$("#screen-list .sa-hint")));
 
+  /* 閉じる（2026年9月29日、実機で「消す方法がない」）。キーボードを下ろしたあと
+     の空の窓も、虫めがね・×のどちらでも閉じる。 */
+  const wrapHidden = () => page.$eval("#screen-list .js-search-wrap", (e) => e.hidden);
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.waitForTimeout(200);
+  t.check("キーボードを下ろした空の窓にも ×（閉じる）が出ている",
+    !(await wrapHidden()) && await page.$eval("#screen-list .js-search-clear", (e) => !e.hidden && e.getAttribute("aria-label") === "探す窓を閉じる"));
+  await page.click("#screen-list .js-search-clear");
+  await page.waitForTimeout(300);
+  t.check("空の窓で × を押すと閉じる", await wrapHidden());
+  await page.click("#head .js-search-btn");
+  await page.waitForTimeout(300);
+  await page.fill("#screen-list .js-search", "しおかぜ");
+  await page.evaluate(() => document.activeElement.blur());
+  await page.waitForTimeout(200);
+  await page.click("#head .js-search-btn");
+  await page.waitForTimeout(300);
+  t.check("字が入ったままキーボードを下ろしても、虫めがねで閉じる（字も消える）",
+    await wrapHidden() && await page.$eval("#screen-list .js-search", (e) => e.value === ""));
+  await page.click("#head .js-search-btn");
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.activeElement.blur());
+  await page.click("#head .js-search-btn");
+  await page.waitForTimeout(300);
+  t.check("空の窓も、虫めがねをもう一度押すと閉じる", await wrapHidden());
+
   t.check("ページのエラーなし", !errors.length, errors.join(" / "));
   await browser.close();
   t.done();

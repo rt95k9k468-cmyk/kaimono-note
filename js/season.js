@@ -143,18 +143,17 @@
     return { from: f(at(a)), to: f(at(b)), days: b - a + 1 };
   }
 
-  /* 「9月23日〜10月7日」。年をまたぐときだけ年を足す（冬至〜小寒など）。 */
-  function spanText(sp, day) {
+  /* 「9/23-10/7」（利用者の選んだ書き方、2026年9月29日）。年をまたいでも
+     月日だけ（「12/22-1/4」）——冬至から小寒へ、読めば分かるので。 */
+  function spanText(sp) {
     if (!sp) return "";
-    const p = (k) => { const [y, mo, d] = k.split("-").map(Number); return { y, mo, d }; };
-    const a = p(sp.from), z = p(sp.to);
-    const yr = a.y !== z.y;
-    return `${yr ? `${a.y}年` : ""}${a.mo}月${a.d}日〜${yr ? `${z.y}年` : ""}${z.mo}月${z.d}日`;
+    const md = (k) => { const [, mo, d] = k.split("-").map(Number); return `${mo}/${d}`; };
+    return `${md(sp.from)}-${md(sp.to)}`;
   }
 
   /** 画面に出す二行。[名前, 中身, 期間]。
-      「二十四節気」「秋分」「9月23日〜10月7日」
-      「七十二候」「蟄虫坏戸（むしかくれてとをふさぐ）」「9月28日〜10月2日」 */
+      「二十四節気」「秋分」「9/23-10/7」
+      「七十二候」「蟄虫坏戸（むしかくれてとをふさぐ）」「9/28-10/2」 */
   function rows(day) {
     const r = of(day);
     if (!r) return [];
