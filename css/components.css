@@ -1764,3 +1764,34 @@ button.hero-node:active { scale: .94; }
   background: color-mix(in srgb, #fff 16%, transparent);
   color: #fff;
 }
+
+/* ---------------- 年の本（R10、js/yearbook.js） ----------------
+   印刷のあいだだけ、body の直下の本の一枚を出し、ほかを隠します。
+   画面には出ません。紙は白地に黒い字（暗い見た目のままでも紙は白いので、
+   ここだけは色の名前ではなく紙の色を書きます）。 */
+#yearbook-print { display: none; }
+@media print {
+  html.is-printing-book, html.is-printing-book body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  html.is-printing-book body > *:not(#yearbook-print) { display: none !important; }
+  html.is-printing-book #yearbook-print {
+    display: block;
+    color: #000;
+    font-size: 11pt;
+    line-height: 1.8;
+    font-weight: 400;
+  }
+  #yearbook-print h1 { font-size: 20pt; font-weight: 700; margin: 0 0 4pt; }
+  #yearbook-print h2 { font-size: 14pt; font-weight: 700; margin: 20pt 0 6pt; break-after: avoid; }
+  #yearbook-print h2.yb-diary { break-before: page; }
+  #yearbook-print h3 { font-size: 11pt; font-weight: 700; margin: 12pt 0 2pt; break-after: avoid; }
+  #yearbook-print ul { margin: 0; padding-left: 1.2em; }
+  #yearbook-print li { break-inside: avoid; }
+  #yearbook-print .yb-made { color: #555; margin: 0; }
+  #yearbook-print .yb-day { display: inline-block; min-width: 5.5em; }
+  #yearbook-print .yb-text { white-space: pre-wrap; text-align: justify; }
+  #yearbook-print li .yb-text { color: #333; }
+}
