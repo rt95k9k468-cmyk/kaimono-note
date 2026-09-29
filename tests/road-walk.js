@@ -3,7 +3,7 @@
    - 起動してやることが出たら歩き、止まった形（ME_PARTS の字のまま）で止まる
    - 別のタブからやることへ入ると、また歩く：脚も腕も動き、縁（halo）は絵と同じ形で動く
    - 足は地面より下へ行かない・膝は前へ曲がる・体は浮くだけ（沈まない）
-   - 最初と最後の一歩は腕を止める（止まった形は「手前の脚と手前の腕が両方前」）
+   - 腕は最初から最後まで振り、半ばでは脚と逆（止まった形は「手前の脚と手前の腕が両方前」）
    - 腕はちゃんと振れる（奥の手が前へ 150 以上）
    - 長さは --m-walk から（四歩と速さの台形で 2.0s）
    - 歩いている途中にもう一度タブを押しても、頭からやり直さない（止まった形へ跳ばない）
@@ -59,6 +59,13 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
     }, KEYS);
     if (act) await act();
     await page.waitForTimeout(ms);
+    /* 決め打ちの ms だけだと、ページの時計が遅れた回に歩き終わる前に撮り終える
+       （3回に1回、最後のフレームが歩きの途中だった）。歩き終わるまで待つ。 */
+    await page.waitForFunction(() => {
+      const m = document.querySelector('.screen[data-screen="todo"] .day-road .road-me');
+      return !m || !m.__walk;
+    }, null, { polling: 50, timeout: 4000 });
+    await page.waitForTimeout(80);
     return page.evaluate(() => {
       const log = window.__walkLog;
       log.stop = true;
@@ -148,10 +155,24 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
     JSON.stringify({ sink, maxRise }));
   const handX = Math.max(...F.map((r) => pts(r.armB)[2].x));
   c.check("腕はちゃんと振れる：奥の手が前へ 150 以上", handX - 338 > 150, String(handX));
-  c.check("最初の一歩は腕を振らない（脚が動き出してから 250ms は、肩から手への向きがそのまま）",
-    legs && arms && arms.from - legs.from >= 250, JSON.stringify({ legs, arms }));
-  c.check("最後の一歩も腕を振らない（腕の向きが止まった形へ戻ってから 250ms 脚が歩く）",
-    legs && arms && legs.last - arms.last >= 250, JSON.stringify({ legs, arms }));
+  c.check("腕は最初から振る（脚が動き出してから 150ms 以内に、肩から手への向きが変わる）",
+    legs && arms && arms.from - legs.from < 150, JSON.stringify({ legs, arms }));
+  c.check("腕は最後まで振る（脚が止まる 150ms 前より後まで、腕も動いている）",
+    legs && arms && legs.last - arms.last < 150, JSON.stringify({ legs, arms }));
+  /* 半ばでは脚と逆：手前の足が前（x が大きい）のとき、奥の手が前。 */
+  let with_ = 0, against = 0;
+  F.filter((r) => r.t > legs.from + 800 && r.t < legs.last - 800).forEach((r) => {
+    const dFoot = pts(r.legF)[2].x - pts(r.legB)[2].x, dHand = pts(r.armB)[2].x - pts(r.armF)[2].x;
+    if (Math.abs(dFoot) < 60 || Math.abs(dHand) < 60) return;
+    if (dFoot * dHand > 0) against++; else with_++;
+  });
+  c.check("半ばの腕は脚と逆に振る", against > 5 && with_ === 0, JSON.stringify({ against, with_ }));
+  let jump = 0;
+  for (let i = 1; i < F.length; i++) {
+    const a = pts(F[i - 1].armB)[2], b = pts(F[i].armB)[2];
+    jump = Math.max(jump, Math.hypot(b.x - a.x, b.y - a.y));
+  }
+  c.check("腕は一フレームで跳ばない（奥の手の動きが 1 フレーム 80 以内）", jump < 80, String(jump));
   const k = await page.evaluate(() => KN.motion.ms("--m-walk"));
   const took = sp && sp.back != null ? sp.back - click : null;
   c.check("長さは --m-walk から：四歩と速さの台形で 2.0s（1.8〜2.4s で止まった形へ）",
