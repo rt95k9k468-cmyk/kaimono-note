@@ -6,7 +6,7 @@
    - 腕は最初から最後まで振り、半ばでは脚と逆（止まった形は「手前の脚と手前の腕が両方前」）
    - 腕はちゃんと振れる（奥の手が前へ 150 以上）
    - 長さは --m-walk から（四歩と速さの台形で 2.0s）
-   - 腕は終わりで急がない（形を τ で引いて、後半の振りが半ばより速くならない）
+   - 腕と脚は同じ拍・腕ははじめ・おわりで急がない（形を τ で引いて見る）
    - 歩いている途中にもう一度タブを押しても、頭からやり直さない（止まった形へ跳ばない）
    - 戻ってきたら（visibilitychange）歩く
    - 動きを減らす設定では歩かない */
@@ -195,11 +195,38 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
       leg.push(Math.abs(legA(b) - legA(a)) * N);
     }
     const max = (xs, lo, hi) => Math.round(Math.max(...xs.slice(lo * N, hi * N)) * 100) / 100;
-    return { armMid: max(arm, 0.3, 0.55), armEnd: max(arm, 0.6, 1),
-             legMid: max(leg, 0.3, 0.55), legEnd: max(leg, 0.6, 1) };
+    return { armStart: max(arm, 0, 0.25), armMid: max(arm, 0.3, 0.6), armEnd: max(arm, 0.7, 1),
+             legMid: max(leg, 0.3, 0.6), legEnd: max(leg, 0.7, 1) };
   });
-  c.check("腕は終わりで急がない：後半（60%〜）の腕の振りは、半ば（30〜55%）より速くならない",
+  c.check("腕は終わりで急がない：止まりぎわ（70%〜）の腕の振りは、半ば（30〜60%）より速くならない",
     pace.armEnd <= pace.armMid * 1.02, JSON.stringify(pace));
+  c.check("腕は歩き出しでも急がない：はじめ（〜25%）の腕の振りは、半ばより速くならない",
+    pace.armStart <= pace.armMid * 1.02, JSON.stringify(pace));
+
+  /* 腕と脚は同じ拍（9月29日・利用者の声「まだ腕と足の速さが合ってない」）。前の二つの
+     作りは、腕と脚のずれを途中で動かして止まった形と帳尻を合わせていたので、ずれが
+     動くあいだ腕の拍が脚と違った。拍が同じなら、脚が一周して同じ形に戻ったとき、腕も
+     同じ形に戻っている。振りの大きさが育ちきった 26〜30% の形を、脚が同じ形になる
+     一周あと（探す）と比べる。 */
+  const lock = await page.evaluate(() => {
+    const P = KN.dayRoad.pose;
+    const foot = (a, b) => ["legF", "legB"].reduce((s, k) => s + Math.hypot(a[k][2].x - b[k][2].x, a[k][2].y - b[k][2].y), 0);
+    const hand = (a, b) => ["armF", "armB"].reduce((s, k) => s + Math.hypot(a[k][2].x - b[k][2].x, a[k][2].y - b[k][2].y), 0);
+    let legWorst = 0, armWorst = 0;
+    for (let t1 = 0.26; t1 <= 0.30001; t1 += 0.01) {
+      const a = P(t1);
+      let at = null, bd = Infinity;
+      for (let t2 = t1 + 0.3; t2 <= t1 + 0.44; t2 += 0.0005) {
+        const d = foot(a, P(t2));
+        if (d < bd) { bd = d; at = t2; }
+      }
+      legWorst = Math.max(legWorst, bd);
+      armWorst = Math.max(armWorst, hand(a, P(at)));
+    }
+    return { leg: Math.round(legWorst * 10) / 10, arm: Math.round(armWorst * 10) / 10 };
+  });
+  c.check("腕と脚は同じ拍：脚が一周して同じ形に戻ると、腕も同じ形（手の違いが元の絵の単位で 6 以内）",
+    lock.leg < 3 && lock.arm < 6, JSON.stringify(lock));
 
   /* ---- 歩いている途中にもう一度押しても、頭からやり直さない ---- */
   await page.click('.tab[data-tab="archive"]');
