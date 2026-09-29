@@ -3,7 +3,7 @@
    - 起動してやることが出たら歩き、止まった形（ME_PARTS の字のまま）で止まる
    - 別のタブからやることへ入ると、また歩く：脚も腕も動き、縁（halo）は絵と同じ形で動く
    - 足は地面より下へ行かない・膝は前へ曲がる・体は浮くだけ（沈まない）
-   - 腕は最初から最後まで振り、半ばでは脚と逆（止まった形は「手前の脚と手前の腕が両方前」）
+   - 腕は最初から最後まで脚と同じ拍・同じ大きさで振り、半ばでは脚と逆（止まった形の腕は、その振りの一周の頭）
    - 腕はちゃんと振れる（奥の手が前へ 150 以上）
    - 長さは --m-walk から（四歩と速さの台形で 2.0s）
    - 腕と脚は同じ拍・腕ははじめ・おわりで急がない（形を τ で引いて見る）
@@ -13,11 +13,12 @@
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-29";
-/* 止まった形。利用者が選んだ絵（day-road.js の ME_PARTS）。 */
+/* 止まった形。脚は利用者が選んだ絵（day-road.js の ME_PARTS）のまま、腕は歩きの振りの
+   一周の頭の形（REST：手前の腕が後ろ・奥の腕が前。9月29日に利用者が選んだ）。 */
 const STILL = {
-  armB: "M470 440L378 492L338 688", sleeveB: "M555 356L445 452",
+  armB: "M578 473.3L570.5 578.7L759 645.6", sleeveB: "M555 356L574.2 500.7",
   legB: "M478 690L425 878L325 1050", legF: "M540 690L690 890L775 1050",
-  armF: "M705 550L700 612L862 663", sleeveF: "M680 400L712 555",
+  armF: "M568.8 503.8L514.4 533.9L486.4 701.4", sleeveF: "M680 400L568.5 512.4",
 };
 const KEYS = Object.keys(STILL);
 const LEGS = ["legB", "legF"];
@@ -154,8 +155,9 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
   c.check("膝は前へ曲がる（後ろへ折れない）", kneeBack === 0, `${kneeBack} 本`);
   c.check("体は浮くだけで沈まない（元の絵の単位で 0〜18）", sink === 0 && maxRise > 5 && maxRise <= 18.05,
     JSON.stringify({ sink, maxRise }));
-  const handX = Math.max(...F.map((r) => pts(r.armB)[2].x));
-  c.check("腕はちゃんと振れる：奥の手が前へ 150 以上", handX - 338 > 150, String(handX));
+  const handXs = F.map((r) => pts(r.armB)[2].x);
+  const handRange = Math.max(...handXs) - Math.min(...handXs);
+  c.check("腕はちゃんと振れる：奥の手が前後に 150 以上動く", handRange > 150, String(handRange));
   c.check("腕は最初から振る（脚が動き出してから 150ms 以内に、肩から手への向きが変わる）",
     legs && arms && arms.from - legs.from < 150, JSON.stringify({ legs, arms }));
   c.check("腕は最後まで振る（脚が止まる 150ms 前より後まで、腕も動いている）",
@@ -203,29 +205,37 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
   c.check("腕は歩き出しでも急がない：はじめ（〜25%）の腕の振りは、半ばより速くならない",
     pace.armStart <= pace.armMid * 1.02, JSON.stringify(pace));
 
-  /* 腕と脚は同じ拍（9月29日・利用者の声「まだ腕と足の速さが合ってない」）。前の二つの
-     作りは、腕と脚のずれを途中で動かして止まった形と帳尻を合わせていたので、ずれが
-     動くあいだ腕の拍が脚と違った。拍が同じなら、脚が一周して同じ形に戻ったとき、腕も
-     同じ形に戻っている。振りの大きさが育ちきった 26〜30% の形を、脚が同じ形になる
-     一周あと（探す）と比べる。 */
+  /* 腕と脚は同じ拍、はじめからおわりまで（9月29日・利用者の声「まだ腕と足の速さが
+     合ってない」「終わり方が不自然。そのままの動きで遅くしてほしい」）。
+     - ずれを途中で動かした二つの作りは、ずれが動くあいだ腕の拍が脚と違った。
+     - 振りの大きさでつないだ作りは、止まりぎわで腕だけ引き返した。
+     どれも「脚が同じ形なのに腕が違う形」になる。半ばと同じ動きが速く・遅くなるだけなら、
+     脚が一周して同じ形に戻ったとき、腕も同じ形。歩きの頭から尻まで（2〜98%）、脚が
+     同じ形になる一周となり（探す）と比べる。 */
   const lock = await page.evaluate(() => {
     const P = KN.dayRoad.pose;
     const foot = (a, b) => ["legF", "legB"].reduce((s, k) => s + Math.hypot(a[k][2].x - b[k][2].x, a[k][2].y - b[k][2].y), 0);
     const hand = (a, b) => ["armF", "armB"].reduce((s, k) => s + Math.hypot(a[k][2].x - b[k][2].x, a[k][2].y - b[k][2].y), 0);
-    let legWorst = 0, armWorst = 0;
-    for (let t1 = 0.26; t1 <= 0.30001; t1 += 0.01) {
+    let legWorst = 0, armWorst = 0, worstAt = null;
+    /* 一周あと（前半）か一周まえ（後半）。0.46〜0.5 は一周あとが歩きの外に出るので飛ばす。 */
+    const t1s = [];
+    for (let t = 0.02; t <= 0.46; t += 0.04) t1s.push(t);
+    for (let t = 0.5; t <= 0.98; t += 0.04) t1s.push(t);
+    t1s.forEach((t1) => {
       const a = P(t1);
+      const [lo, hi] = t1 <= 0.46 ? [t1 + 0.2, 1] : [0, t1 - 0.2];
       let at = null, bd = Infinity;
-      for (let t2 = t1 + 0.3; t2 <= t1 + 0.44; t2 += 0.0005) {
+      for (let t2 = lo; t2 <= hi; t2 += 0.0003) {
         const d = foot(a, P(t2));
         if (d < bd) { bd = d; at = t2; }
       }
       legWorst = Math.max(legWorst, bd);
-      armWorst = Math.max(armWorst, hand(a, P(at)));
-    }
-    return { leg: Math.round(legWorst * 10) / 10, arm: Math.round(armWorst * 10) / 10 };
+      const h = hand(a, P(at));
+      if (h > armWorst) { armWorst = h; worstAt = Math.round(t1 * 100); }
+    });
+    return { leg: Math.round(legWorst * 10) / 10, arm: Math.round(armWorst * 10) / 10, worstAt };
   });
-  c.check("腕と脚は同じ拍：脚が一周して同じ形に戻ると、腕も同じ形（手の違いが元の絵の単位で 6 以内）",
+  c.check("腕と脚は同じ拍、はじめからおわりまで：脚が一周して同じ形に戻ると、腕も同じ形（手の違いが元の絵の単位で 6 以内）",
     lock.leg < 3 && lock.arm < 6, JSON.stringify(lock));
 
   /* ---- 歩いている途中にもう一度押しても、頭からやり直さない ---- */
