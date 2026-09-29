@@ -100,7 +100,12 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
   /* 編集の紙 */
   await page.locator("#screen-todo .road-label", { hasText: "薬" }).first().click();
   await page.waitForTimeout(700);
-  await page.locator(".sheet.is-open .js-row-time").last().click();   // 「時刻と長さ」
+  /* 長さは「時間」の札の紙、終わりの時刻は「時刻」の札の紙（2026年9月29日に分けた） */
+  const durRow = await page.evaluate(() => {
+    const r = [...document.querySelectorAll(".sheet.is-open .js-row-dur")].pop();
+    return r ? r.textContent : "";
+  });
+  await page.locator(".sheet.is-open .js-row-dur").last().click();   // 「時間」
   await page.waitForTimeout(700);
   const ed = await page.evaluate(() => {
     const sh = [...document.querySelectorAll(".sheet.is-open")].reverse().find((x) => x.querySelector(".js-mins"));
@@ -108,9 +113,17 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
     const chips = [...sh.querySelectorAll(".js-mins button")].map((b) => ({
       label: b.textContent.trim(), on: b.classList.contains("is-active") || b.getAttribute("aria-pressed") === "true",
     }));
-    const note = sh.querySelector(".js-span-note");
-    return { chips, note: note ? note.textContent : "", text: sh.textContent };
+    return { chips, text: sh.textContent };
   });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+  await page.locator(".sheet.is-open .js-row-time").last().click();   // 「時刻」
+  await page.waitForTimeout(700);
+  if (ed) ed.note = await page.evaluate(() => {
+    const n = [...document.querySelectorAll(".sheet.is-open .js-span-note")].pop();
+    return n ? n.textContent : "";
+  });
+  c.check("「時間」の札に「25分（いつもの長さ）」", /25分（いつもの長さ）/.test(durRow), durRow);
   const labels = ed ? ed.chips.map((x) => x.label) : [];
   c.check("長さの札に「いつもの25分」が「決めない」の次", labels[0] === "決めない" && labels[1] === "いつもの25分",
     JSON.stringify(labels.slice(0, 4)));

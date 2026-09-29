@@ -211,13 +211,15 @@
     ["me-shirt-d", "M680 400L712 555", 74, "sleeveF"],          // 手前の袖
   ];
   const HALO = 110;             // 縁の太さ（元の絵の単位。約 2.9px）
-  /* 描くのは止まった形（REST：腕だけ左右を入れ替えた形。下の「歩く」で組む）。 */
+  /* 描くのは止まった形（REST。元の絵と同じ位置で、前の脚が奥の脚。下の「歩く」で組む）。 */
   function meSvg(halo) {
+    const lift = REST.lift ? ` transform="${REST.lift}"` : "";
     const parts = ME_PARTS.map(([cls, , w, key]) => (w
       ? `<path class="${halo ? "" : cls + " me-line"}" data-w="${key}" d="${REST[key]}" stroke-width="${w + (halo ? HALO : 0)}"/>`
-      : `<path class="${halo ? "" : cls + " me-fill"}" data-w="${key}" d="${REST[key]}"${halo ? ` stroke-width="${HALO}"` : ""}/>`));
+      : `<path class="${halo ? "" : cls + " me-fill"}" data-w="${key}" d="${REST[key]}"${lift}`
+        + `${halo ? ` stroke-width="${HALO}"` : ""}/>`));
     parts.push(`<circle class="${halo ? "" : "me-skin me-fill"}" data-w="head" cx="662" cy="187" r="88"`
-      + `${halo ? ` stroke-width="${HALO}"` : ""}/>`);
+      + `${lift}${halo ? ` stroke-width="${HALO}"` : ""}/>`);
     return `<g transform="scale(0.021) translate(-560 -1100)">${parts.join("")}</g>`;
   }
   const ME_HEAD = (1100 - 187) * 0.021 * ME_K;   // 足もとから頭の中心まで
@@ -228,9 +230,10 @@
      （2026年9月29日・利用者の声）。**その場で足踏み**です——人の立つ点は
      「いま」なので、道の上を進ませると、そのあいだ時刻が嘘になる。
 
-     止まった形は利用者が選んだ絵（手前の脚が前）で、腕だけ左右を入れ替えた形
-     （REST。下の「腕」）。そこから出て、そこへ戻る二周（一周で二歩）。関節は
-     絵そのものから読みます（腰・膝・足、肩・肘・手）——数を二重に持たない。
+     止まった形は利用者が選んだ絵と同じ位置で、**前に出ている脚を奥の脚**として
+     描いたもの（REST。下の「止まった形」）。そこから出て、そこへ戻る二周（一周で
+     二歩）。関節は絵そのものから読みます（腰・膝・足、肩・肘・手）——数を二重に
+     持たない。
      - 脚は二本の骨の IK。足の通り道（着いたら後ろへ送られ、離れたら弧を
        描いて前へ）を決めて、膝は前へ曲がる側に解きます。届かなければ
        つま先が浮く（蹴り出し）だけで、足は地面より下へ行きません。
@@ -240,8 +243,8 @@
        二歩目が小股になって、足を引きずって見えた（試作で踏んだ）。
      - 腕は脚と逆に、**最初から最後まで**、**脚と同じ拍・同じ大きさで**振ります
        （9月29日・利用者の声）。歩き出しと止まりぎわは、半ばと同じ動きが速く・
-       遅くなるだけ。止まった形の腕（手前の腕が後ろ）は、その振りの一周の頭の形です。
-       振りの端は元の絵の腕と、その左右を入れ替えた角度。
+       遅くなるだけで、腕と脚は同時に止まります。振りの端は元の絵の腕と、その
+       左右を入れ替えた角度。
      - 体は一歩ごとに少し浮きます（片足で立つところがいちばん高い）。
      - 速さは台形（はじめの 15% で 0 から上がり、おわりの 25% で 0 まで）。
      一歩の長さは `--m-walk`。動きを減らす設定では歩きません。書き換えるのは
@@ -309,9 +312,12 @@
     return [hip, { x: hip.x + a * (ux * c + uy * s), y: hip.y + a * (-ux * s + uy * c) },
             { x: hip.x + dx, y: hip.y + dy }];
   }
-  /* 経った割合 τ（0〜1）での形。ph は 0〜steps/2（整数のところが止まった形の脚）。 */
+  /* 経った割合 τ（0〜1）での形。ph は一周の位置（手前の脚が 0 で前に着く）。頭と尻は
+     REST_PH：**奥の脚が前に着き、手前の脚が後ろ**のところ。この形は元の絵とぴったり
+     同じ位置（前の脚・後ろの脚の腰と膝と足）で、前に出ているのが奥の脚になるだけ。 */
+  const REST_PH = 0.5;
   function walkPose(tau) {
-    const R = rig(), ph = walkPhase(tau);
+    const R = rig(), ph = REST_PH + walkPhase(tau);
     const bob = -WALK.bob * (1 - Math.cos(4 * Math.PI * ph)) / 2;
     const leg = (q) => {
       const c = Math.cos(2 * Math.PI * q), w = (1 - c) / 2;   // 0＝前に出た形、1＝後ろ
@@ -321,14 +327,8 @@
     /* 腕の振り。0 が元の絵の腕、1 が左右を入れ替えた腕。
        **腕はいつも脚と同じ拍・同じ大きさで、逆に振る**（脚とのずれ lag は一定）。
        歩き出しも止まりぎわも、半ばと同じ動きが速さの台形で速く・遅くなるだけ。
-       そのため止まった形の腕は、元の絵ではなく**この振りの一周の頭の形**（REST）。
        足がいちばん後ろへ来るのは半周ではなく stance のところなので、ずれはちょうど π
-       ではなく、そのぶん詰める。
-       ここは四度作り直した（9月29日、docs/todo-timeline.md の「歩く」）。元の絵の腕
-       （手前の脚と手前の腕が両方前）で止めようとすると、どこかで腕だけ別の動きを
-       しなければならない：ずれを途中で動かすと拍が脚と違い（終わりで腕だけ急ぐ／
-       後半ずっと半分の拍）、振りの大きさでつなぐと止まる直前に腕だけ引き返した
-       （利用者の声「終わり方が不自然。そのままの動きで遅くしてほしい」）。 */
+       ではなく、そのぶん詰める。 */
     const lag = Math.PI * (2 - 2 * WALK.stance);
     const k = (1 - Math.cos(2 * Math.PI * ph + lag)) / 2;
     const arm = (sleeve, skin, sign) => {
@@ -351,15 +351,19 @@
   }
   const dOf = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${n1(p.x)} ${n1(p.y)}`).join("");
 
-  /* 止まった形（2026年9月29日・利用者が選んだ）。脚・体・頭は元の絵の字のまま、
-     腕だけ歩きの振りの一周の頭の形（手前の腕が後ろ・奥の腕が前）。歩き出しも
-     止まりぎわも同じ動きの速い・遅いだけになるように——元の絵の腕（手前の腕も前）
-     で止めると、腕だけ別の動きが要った。歩き終わりの形（τ = 1）もこれと同じ字になる
-     （一周の頭と同じ位置・浮きも 0）。 */
+  /* 止まった形（2026年9月29日・利用者が選んだ）。元の絵は「手前の脚が前・手前の腕も前」
+     で、歩きには出てこない形（歩けば手前の脚が前のとき手前の腕は後ろ）——そこで
+     止めようとすると、どこかで腕だけ別の動きが要った（五度作り直した。docs/todo-
+     timeline.md の「歩く」）。**前に出ている脚を奥の脚として描けば**、元の絵と同じ
+     位置のまま「奥の脚が前・手前の腕が前」という歩きの一瞬になる（REST_PH）。
+     脚は元の絵の字とぴったり同じ（前の脚と後ろの脚の字が入れ替わるだけ）、腕は元の
+     絵から手の位置で 0.3px ほど、浮きは 0。歩き終わりの形（τ = 1）も同じ字になる。
+     見た目で変わるのは、前の脚が一段濃く（奥の脚の色）、後ろの脚が薄くなること。 */
   const REST = (() => {
     const q = walkPose(0), out = {};
     ME_PARTS.forEach(([, d, , key]) => { out[key] = d; });
-    ["armB", "sleeveB", "armF", "sleeveF"].forEach((key) => { out[key] = dOf(q[key]); });
+    ["legB", "legF", "armB", "sleeveB", "armF", "sleeveF"].forEach((key) => { out[key] = dOf(q[key]); });
+    out.lift = n1(q.bob) ? `translate(0 ${n1(q.bob)})` : null;
     return out;
   })();
   const ME_HALO = meSvg(true), ME_INK = meSvg(false);
@@ -385,9 +389,9 @@
     me.__walk = true;
     const rest = () => {
       me.__walk = false;
-      Object.keys(REST).forEach((key) => set(key, "d", REST[key]));
-      set("body", "transform", null);
-      set("head", "transform", null);
+      ME_PARTS.forEach(([, , , key]) => set(key, "d", REST[key]));
+      set("body", "transform", REST.lift);
+      set("head", "transform", REST.lift);
     };
     const tick = (now) => {
       const tau = (now - t0) / dur;
