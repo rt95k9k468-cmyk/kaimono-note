@@ -5938,3 +5938,120 @@ a.btn { text-decoration: none; }
 .sa-sub { font-size: var(--fs-xs); color: var(--c-text-2); }
 .sa-jump { border: 1px solid var(--c-border); border-radius: 12px; padding: var(--sp-2) var(--sp-3); }
 .sa-more-note, .sa-note { color: var(--c-text-2); font-size: var(--fs-sm); margin: var(--sp-1) 0 0; }
+
+/* ---------------- 一日の道（js/day-road.js・docs/todo-timeline.md の「一日の道」） ----------------
+
+   やることの紙の頭の、その日を一本の道にした地図。数は viewBox の単位
+   （幅360 ≒ 紙の中身の px）で、道の太さ 9・停留所 21（ふち）／16（中）は
+   `day-road.js` の寸法と組みで決めてあります——札の通り（道の中心から±19）は
+   停留所の丸みの外に来るように置いてあるので、太さを変えたら LANE も見ること。
+
+   色は時間割と同じ言い分です：**歩いたぶん（時計が通ったところ）は塗り、
+   これからは薄く**。道の「これから」だけは灰色ではなく塗りのうすい色にしました
+   ——道は面が広いので、灰色だと紙の地に沈んで道に見えませんでした。 */
+.day-road {
+  --road-go: var(--c-primary-fill);
+  --road-wait: color-mix(in srgb, var(--c-primary-fill) 24%, var(--c-sheet));
+  --road-in: var(--c-sheet-edge);
+  padding: var(--sp-2) var(--sp-4) var(--sp-2);
+}
+.road-map { position: relative; max-width: 440px; margin: 0 auto; }
+.road-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  overflow: visible; pointer-events: none;
+}
+.road-svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.road-base, .road-went { stroke-width: 9; }
+.road-base { stroke: var(--road-wait); }
+.road-went { stroke: var(--road-go); }
+.road-ticks { stroke: var(--road-in); stroke-width: 1.3; stroke-linecap: butt; opacity: .9; }
+/* 停留所は、ふち取りした区間（手描きの、道をくるんだ枠）。ふちは塗りの色、
+   中はまだなら白、時計が通ったぶんは塗り。 */
+.road-stop-edge { stroke: var(--road-go); stroke-width: 21; }
+.road-stop-in { stroke: var(--road-in); stroke-width: 16; }
+/* 塗りは中の白より少し太く。同じ太さだと、白の縁のにじみが塗りきった停留所の
+   内側に細い線で残ります（ふちと同じ色なので、はみ出しても見えない）。 */
+.road-stop-went { stroke: var(--road-go); stroke-width: 17; }
+/* 毎晩の、時刻を決めていないもの。決めた時刻ではないので、ふちを点線に。
+   端も角にします（丸い端だと、中の白がふちの外へはみ出す）。 */
+.road-stop.is-later path { stroke-linecap: butt; }
+.road-stop.is-later .road-stop-edge { stroke-dasharray: 3 3; }
+/* 足あと（済ませた、時刻の無いもの）。歩いたぶんの道の上の、白い粒。 */
+.road-step { fill: var(--road-in); }
+.road-hit {
+  stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 人。手描きと同じ棒の人で、まわりに紙の色の縁（道や札の上でも読めるように）。 */
+.road-me path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.road-me-halo { stroke: var(--c-sheet); stroke-width: 4.6; fill: var(--c-sheet); }
+.road-me-ink { stroke: var(--c-text); stroke-width: 1.8; fill: var(--c-text); }
+
+.road-marks { position: absolute; inset: 0; }
+.road-label, .road-now, .road-until, .road-edge, .road-turn {
+  position: absolute; white-space: nowrap; line-height: 1.2;
+}
+/* 停留所の札。幅は day-road.js が決めて（まわりの札とぶつからない幅）、入り
+   きらない題は「…」。時刻は、始まりの点の側に来るように（左へ進む段では
+   並びを返す）。上下の余白は指の的で、見た目は字の一行ぶん。 */
+.road-label {
+  display: flex; align-items: baseline; gap: 4px;
+  transform: translateY(-50%);
+  margin: 0; padding: 6px 0; border: 0; background: none;
+  font: inherit; font-size: var(--fs-xs); color: var(--c-text);
+  text-align: left; cursor: pointer; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.road-label.is-rev { flex-direction: row-reverse; }
+.road-label b { flex: none; font-weight: 700; }
+.road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.road-label.is-done span { text-decoration: line-through; color: var(--c-text-3); }
+.road-label.is-later { color: var(--c-text-2); }
+.road-label.is-later b { font-weight: 400; }
+.road-now {
+  transform: translateY(-50%); pointer-events: none;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary);
+}
+.road-until {
+  transform: translateY(-50%); pointer-events: none;
+  font-size: calc(10px * var(--fs-k)); color: var(--c-text-2);
+}
+.road-edge {
+  transform: translateY(-50%); pointer-events: none;
+  font-size: calc(10px * var(--fs-k)); font-weight: 700; color: var(--c-text-2);
+}
+.road-edge.is-before { transform: translate(-100%, -50%); }
+.road-turn {
+  transform: translate(-50%, -50%); pointer-events: none;
+  font-size: calc(9.5px * var(--fs-k)); color: var(--c-text-3);
+}
+/* 連れ（時刻を決めていないもの）。人のすぐ後ろ、道の上の小さな丸。中の絵は
+   時間割の丸薬と同じシルエット（マスク）。 */
+.road-bead {
+  position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; padding: 0;
+  border-radius: 50%; border: 1.5px solid var(--road-go); background: var(--road-in);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.road-bead::before {
+  content: ""; position: absolute; inset: 2.5px;
+  background: var(--c-primary);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+          mask: var(--icon) center / contain no-repeat;
+}
+.road-bead.is-plain::before {
+  inset: 4.5px; border-radius: 50%; background: var(--road-go);
+  -webkit-mask: none; mask: none;
+}
+.road-bead::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+.road-more {
+  font: inherit; font-size: calc(9px * var(--fs-k)); font-weight: 700;
+  line-height: 15px; text-align: center; color: var(--c-primary);
+}
+.road-more::before { content: none; }
+/* 次の一行。「次は 13:00 病院 · あと5時間17分」 */
+.road-next {
+  margin: 2px 0 0; padding: 0 var(--sp-1);
+  font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); text-align: center;
+}
+.road-next b { font-weight: 700; color: var(--c-text); }
+.road-sep { margin: 0 .45em; color: var(--c-text-3); }

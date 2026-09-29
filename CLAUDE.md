@@ -121,7 +121,7 @@
 
 | 触るもの | 読む docs |
 |---|---|
-| やることの時間割（丸薬・線・運ぶ・「いま」・`plan.js`）、組み直しの速さ（`calDigest` / `sheetDigest`） | `docs/todo-timeline.md` |
+| やることの時間割（丸薬・線・運ぶ・「いま」・`plan.js`）、一日の道（`day-road.js`）、組み直しの速さ（`calDigest` / `sheetDigest`） | `docs/todo-timeline.md` |
 | 手順（サブタスク）・長期タスク・期限（`deadline`）・くり返し（`fallsOn`）・`when-parse.js` | `docs/todo-items.md` |
 | 紙（`.tl-sheet` / `.sheet`）・送る器（`scrollerOf`）・`pull-refresh.js`・紙を閉じる／払って閉じる・キーボードと紙の底（`--kb`） | `docs/sheet-scroll.md` |
 | `day-swipe.js`・`cal-swipe.js`・`cal-peek.js`・暦の三段 | `docs/calendar-swipe.md` |

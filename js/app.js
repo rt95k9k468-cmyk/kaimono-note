@@ -1719,7 +1719,8 @@
         // An installed app can stay open for days, so look for a new build
         // every time it comes back to the foreground rather than only at boot.
         document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") reg.update().catch(() => {});
+          /* 登録が空で返る場（試験の、Service Worker を止めたブラウザ）では何もしない。 */
+          if (reg && document.visibilityState === "visible") reg.update().catch(() => {});
         });
       }).catch((err) => {
         console.warn("service worker registration failed", err);

@@ -769,6 +769,19 @@
           },
         })
       ),
+      /* 一日の道（js/day-road.js）。時間割の上の地図なので、時間割で見ている
+         ときだけ効きます。既定は出す（設定を持たない保存は `!== false` で出る）。 */
+      card(
+        switchRow({
+          title: "一日の道を出す", on: s.todoRoad !== false,
+          onTap: (v) => {
+            store.update((x) => { x.settings.todoRoad = v; });
+            render();
+            KN.motion.fire("select");
+          },
+        })
+      ),
+      foot("時間割の上に、その日を一本の道にした図を出します。時刻を決めたものは道の上に、決めていないものは「いま」の人と一緒に並びます。"),
       card(
         pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
       ),
