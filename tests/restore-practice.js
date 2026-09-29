@@ -134,8 +134,9 @@ window.__diff = function (a, b, p) {
   t.check("B. 新品の端末に戻した中身が、元の端末に戻した中身と一字も違わない", B.after === A.after,
     B.after === A.after ? "" : `元の端末${A.after.length}字 新品${B.after.length}字`);
   /* 読み直しで動くのは、決まりどおりの二つだけ：
-       ① 過ぎた用事の日が今日へ（rescheduleOverdue）② 今日の空の日の行（ensureDayLog） */
-  const KNOWN = [/^\.todos\.\d+\.due:/, /^\.archive\.days\.\d+: undefined ->/];
+       ① 過ぎた用事の日が今日へ（rescheduleOverdue。段3から、運んだ印 carried と
+          時刻を外すのも）② 今日の空の日の行（ensureDayLog） */
+  const KNOWN = [/^\.todos\.\d+\.(due|carried|time):/, /^\.archive\.days\.\d+: undefined ->/];
   const drift = B.drift.filter((d) => !KNOWN.some((re) => re.test(d)));
   t.check("B. 読み直しても、戻した中身が残っている（決まりどおりの動きを除く）", drift.length === 0, drift.slice(0, 6).join("\n      "));
   t.check("B. 試験中にエラーが出ていない", B.errors.length === 0, B.errors.join("\n"));
