@@ -215,6 +215,7 @@
    *   open   … (todoId, 押した要素) 詳細の紙を開く
    *   markOf … (todo) 連れの丸に入れる絵（マスクの url()）。無ければ ""
    *   decide … (todoId, "HH:MM") 空いた道の上で決めた時刻を付ける（段2）
+   *   tomorrow … { at: 分, title } 明日の最初の停留所（段6。今日だけ。無ければ null）
    */
   function build(o) {
     const plan = o.plan;
@@ -231,7 +232,11 @@
       if (it.fixed) {
         const len = Number(t.minutes) > 0;
         const d0 = g.dist(it.atMin);
-        stops.push({ t, at: it.atMin, until: it.untilMin, len, d0,
+        /* 出る時刻（段7）。「前に30分」なら、停留所の手前30分に点線の区間。
+           済ませたものには描きません（もう出ることはないので）。 */
+        const lead = !closed(t) && Number(t.lead) > 0 ? Number(t.lead) : 0;
+        stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
+                     dl: lead ? g.dist(Math.max(g.start, it.atMin - lead)) : d0,
                      d1: len ? Math.max(d0, g.dist(it.untilMin, true)) : d0 });
         return;
       }
@@ -255,6 +260,11 @@
         + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
         + `<path class="road-stop-went"/></g>`;
     }).join("");
+    /* 出る時刻からの区間は、道の下に敷く点線の帯（道の上下に点がのぞく）。
+       停留所のふちの点線（夜のごろ）と同じ言い分で、決めた約束そのものでは
+       ない「そこへ向かう時間」だと読めるように。 */
+    const leadSvg = stops.filter((s) => s.lead && s.d0 - s.dl > 0.5)
+      .map((s) => `<path class="road-lead" d="${g.path(s.dl, s.d0)}"/>`).join("");
     const laterSvg = later.map((s) => {
       const d = g.path(s.d0, s.d1);
       return `<g class="road-stop is-later"><path class="road-stop-edge" d="${d}"/>`
@@ -272,6 +282,7 @@
         `<path class="road-hit" data-l="${k}" data-grow d="${g.path(s.d0, s.d1)}"/>`).join("");
 
     const svg = `<svg class="road-svg" viewBox="0 0 ${W} ${g.H}" aria-hidden="true" focusable="false">`
+      + leadSvg
       + `<path class="road-base" d="${g.path(0, g.total)}"/>`
       + `<path class="road-went"/>`
       + `<path class="road-ticks" d="${g.ticks()}"/>`
@@ -294,6 +305,7 @@
       </div>
     `);
     el.__road = { g, today, past, stops, steps, loose, later,
+                  tomorrow: today && o.tomorrow ? o.tomorrow : null,
                   markOf: o.markOf, last: undefined, drawn: false };
 
     /* 押したものを一か所で受けます（札・透明な線・連れ・空いた道）。 */
@@ -581,16 +593,29 @@
     const open = st.stops.filter((s) => !closed(s.t));
     const cur = open.find((s) => s.len && nowMin >= s.at && nowMin < s.until);
     const next = open.find((s) => s.at > nowMin);
-    const nextTxt = next ? html`次は <b>${clock(next.at)} ${next.t.title}</b>` : "";
     const sep = html`<span class="road-sep" aria-hidden="true">·</span>`;
+    /* 出る時刻（段7）。まだ来ていないときだけ言い、「あと」もそこまでの空きに
+       します——空いているのは、出るまでなので。過ぎたら（向かっている途中）
+       言わず、「あと」は停留所まで。 */
+    const leave = next && next.lead && next.at - next.lead > nowMin ? next.at - next.lead : null;
+    const nextTxt = next
+      ? html`次は <b>${clock(next.at)} ${next.t.title}</b>${leave != null
+        ? html`${sep}<b>${clock(leave)}</b> に出る` : ""}`
+      : "";
     if (cur) {
       return html`いまは <b>${cur.t.title}</b>（${clock(cur.until)}まで）${next ? html`${sep}${nextTxt}` : ""}`;
     }
     if (next) {
-      const left = next.at - nowMin;
+      const left = (leave != null ? leave : next.at) - nowMin;
       return html`${nextTxt}${sep}${left > 0 ? `あと${KN.plan.humanSpan(left)}` : "いまから"}`;
     }
-    if (nowMin < st.g.end) return html`このあと、決まった予定はありません`;
+    /* 今日の決まった予定が済んだら、明日の最初の停留所を一つだけ（段6）。
+       見通しを言うだけで、明日の数や量は言いません。無ければ何も足さない。 */
+    if (nowMin < st.g.end) {
+      const tm = st.tomorrow;
+      return html`このあと、決まった予定はありません${tm
+        ? html`${sep}明日は <b>${clock(tm.at)} ${tm.title}</b>から` : ""}`;
+    }
     return "";
   }
 

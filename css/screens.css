@@ -5982,6 +5982,10 @@ a.btn { text-decoration: none; }
    端も角にします（丸い端だと、中の白がふちの外へはみ出す）。 */
 .road-stop.is-later path { stroke-linecap: butt; }
 .road-stop.is-later .road-stop-edge { stroke-dasharray: 3 3; }
+/* 出る時刻からの区間（段7）。道の下に敷く点線の帯で、道の上下に点がのぞく
+   （day-road.js の leadSvg）。停留所の手前の「向かう時間」。
+   端は角に（`.road-svg path` の丸い端に勝つよう、詳細度を一つ上げて）。 */
+.road-svg .road-lead { stroke: var(--road-go); stroke-width: 17; stroke-dasharray: 2 3; stroke-linecap: butt; }
 /* 足あと（済ませた、時刻の無いもの）。歩いたぶんの道の上の、白い粒。 */
 .road-step { fill: var(--road-in); }
 /* 押せる透明な線。停留所（.road-hit）と、これからの空いた道（.road-free、段2：

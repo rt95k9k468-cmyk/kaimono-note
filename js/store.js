@@ -842,6 +842,9 @@
          「まだ決めていない」がほとんどなので。時間軸はこれを読んで
          その用事の帯の長さを決め、持たないものには既定の長さを当てます。 */
       minutes: cleanMinutes(t.minutes),
+      /* 出る時刻（段7・2026年9月29日）。時刻の何分前に出るか（15・30・60）。
+         持っていない古い記録は null——「前の時間なし」。移し替えは要りません。 */
+      lead: cleanLead(t.lead),
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
@@ -927,6 +930,14 @@
      私はその注意書きのすぐ下に const を置いて、**実際に人のデータを
      消しました。** 長さを決めていないもの（minutes が null）は最初の
      行で返るので落ちず、長さを決めた人だけが全部を失う、という形でした。 */
+  /* 出る時刻の「前に◯分」。5分きざみ・3時間まで。**function 宣言**（load の
+     途中の reconcile から呼ばれるので。const だと TDZ で落ちる）。 */
+  function cleanLead(v) {
+    const n = Number(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return Math.min(180, Math.max(5, Math.round(n / 5) * 5));
+  }
+
   function cleanMinutes(v) {
     const MIN = 5, MAX = 720;
     const n = Number(v);
@@ -1489,7 +1500,7 @@
   function addTodo({ title, due = null, deadline = null, part = null, time = null,
                      repeat = null, repeatDays = [],
                      repeatNth = null, repeatEvery = null, memo = "", flagged = false, minutes = null,
-                     shop = false, subs = [], icon = null } = {}) {
+                     lead = null, shop = false, subs = [], icon = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1510,6 +1521,8 @@
       time: at,
       // かかる時間（分）。決めていなければ null。時間軸が読みます。
       minutes: cleanMinutes(minutes),
+      // 出る時刻の「前に◯分」（段7）。時刻が無ければ持たない。
+      lead: at ? cleanLead(lead) : null,
       notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
@@ -1913,6 +1926,10 @@
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
       if ("minutes" in patch) t.minutes = cleanMinutes(patch.minutes);
+      if ("lead" in patch) t.lead = cleanLead(patch.lead);
+      /* 出る時刻は時刻に付くもの（段7）。時刻が外れたら一緒に外す
+         ——あとで別の時刻を付けたとき、前の「前に30分」が黙って蘇らないように。 */
+      if (!t.time) t.lead = null;
       if ("icon" in patch) t.icon = cleanIcon(patch.icon);
     });
   }
@@ -2419,7 +2436,7 @@
     const U = KN.util;
     const t0 = getTodo(id);
     if (!t0) return () => {};
-    const keys = ["due", "time", "part", "deadline", "carried", "archived", "archivedAt"];
+    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt"];
     const was = {};
     keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
     const today = U.todayKey();
@@ -2477,7 +2494,7 @@
     const U = KN.util;
     const t0 = getTodo(id);
     if (!t0) return () => {};
-    const keys = ["due", "time", "part", "deadline", "carried", "archived", "archivedAt"];
+    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt"];
     const was = {};
     keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
     const today = U.todayKey();
