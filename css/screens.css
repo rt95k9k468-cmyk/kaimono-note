@@ -6063,17 +6063,15 @@ a.btn { text-decoration: none; }
 .road-ticks { stroke: var(--road-in); stroke-width: 1.3; stroke-linecap: butt; opacity: .9; }
 /* 停留所は、ふち取りした区間（手描きの、道をくるんだ枠）。ふちは塗りの色、
    中はまだなら白、時計が通ったぶんは塗り。 */
-.road-stop-edge { stroke: var(--road-go); stroke-width: 21; }
-.road-stop-in { stroke: var(--road-in); stroke-width: 16; }
+/* 太さは day-road.js の STOP と同じ数（はじめは 21／16／17。2026年9月30日に細く）。 */
+.road-stop-edge { stroke: var(--road-go); stroke-width: 16; }
+.road-stop-in { stroke: var(--road-in); stroke-width: 11; }
 /* 塗りは中の白より少し太く。同じ太さだと、白の縁のにじみが塗りきった停留所の
    内側に細い線で残ります（ふちと同じ色なので、はみ出しても見えない）。 */
-.road-stop-went { stroke: var(--road-go); stroke-width: 17; }
-/* 時刻の重なった停留所は、道を横に割った車線（day-road.js の laneOut。--lanes は
-   その群の車線の数）。ふちは車線の幅より 1 太く、となりの車線のふちと重ねて
-   あいだに一本の仕切りを作る。中の白は仕切りと外のふちが読める細さに。 */
-.road-stop.is-lanes .road-stop-edge { stroke-width: calc(21px / var(--lanes) + 1px); }
-.road-stop.is-lanes .road-stop-in { stroke-width: calc(21px / var(--lanes) - 3px); }
-.road-stop.is-lanes .road-stop-went { stroke-width: calc(21px / var(--lanes) - 2px); }
+.road-stop-went { stroke: var(--road-go); stroke-width: 12; }
+/* 時刻の重なった停留所（day-road.js の laneOut）は、**太さを変えずに**横へ並べる。
+   車線どうしは LANE_P（STOP − 2.5）ずつ離れ、ふちが一本ぶん重なって、あいだに
+   外のふちと同じ太さの仕切りができる。前は群の車線の数で太さを割っていた。 */
 /* 時刻を過ぎても済んでいない区間（day-road.js の shape）。人の足もとまで延びて、
    済ませるまでのあいだだけ色を変える（2026年9月30日・利用者の声「オレンジとか、
    普通の色とはちょっと変えて」）。塗りと同じ明るさの橙で、赤（警告）にはしない。 */
@@ -6088,7 +6086,7 @@ a.btn { text-decoration: none; }
 /* 出る時刻からの区間（段7）。道の下に敷く点線の帯で、道の上下に点がのぞく
    （day-road.js の leadSvg）。停留所の手前の「向かう時間」。
    端は角に（`.road-svg path` の丸い端に勝つよう、詳細度を一つ上げて）。 */
-.road-svg .road-lead { stroke: var(--road-go); stroke-width: 17; stroke-dasharray: 2 3; stroke-linecap: butt; }
+.road-svg .road-lead { stroke: var(--road-go); stroke-width: 13; stroke-dasharray: 2 3; stroke-linecap: butt; }
 /* 足あと（済ませた、時刻の無いもの）。歩いたぶんの道の上の、白い粒。 */
 .road-step { fill: var(--road-in); }
 /* 押せる透明な線。停留所（.road-hit）と、これからの空いた道（.road-free、段2：
@@ -6098,9 +6096,9 @@ a.btn { text-decoration: none; }
   stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* 車線に割った停留所の的は、太さ 30 を車線の数で分ける（重ねると、あとの一本が
-   ぜんぶ取る）。 */
-.road-hit.is-lanes { stroke-width: calc(30px / var(--lanes)); }
+/* 車線に割った停留所の的は、車線どうしの間（LANE_P）と同じ幅（重ねると、あとの
+   一本がぜんぶ取る）。 */
+.road-hit.is-lanes { stroke-width: 13.5px; }
 /* 人。塗りの歩く人（day-road.js の ME_PARTS）で、まわりに紙の色の縁（道や札の
    上でも読めるように）。線の太さは day-road.js が元の絵の単位で書きます。 */
 .road-me path { stroke-linecap: round; stroke-linejoin: round; }
@@ -6119,7 +6117,7 @@ a.btn { text-decoration: none; }
    下の透明な線に指が届きません）。 */
 .road-marks { position: absolute; inset: 0; pointer-events: none; }
 .road-marks button { pointer-events: auto; }
-.road-label, .road-now, .road-until, .road-edge, .road-turn {
+.road-label, .road-now, .road-edge, .road-turn {
   position: absolute; white-space: nowrap; line-height: 1.2;
 }
 /* 停留所の札。幅は day-road.js が決めて（まわりの札とぶつからない幅）、入り
@@ -6144,10 +6142,6 @@ a.btn { text-decoration: none; }
 .road-now {
   transform: translateY(-50%); pointer-events: none;
   font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary);
-}
-.road-until {
-  transform: translateY(-50%); pointer-events: none;
-  font-size: calc(10px * var(--fs-k)); color: var(--c-text-2);
 }
 .road-edge {
   transform: translateY(-50%); pointer-events: none;

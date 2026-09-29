@@ -64,7 +64,7 @@ const DAY = "2026-09-30";
 
   /* 重なり：長いほうが中心、短いほうは外にくっつく（右へ進む段：下） */
   c.check("長い散歩が道の中心、短いジモティーはその外（下）にくっつく",
-    Math.abs(r.walkY - r.row) < 0.2 && Math.abs(r.jimY - (r.row + 10.5)) < 0.2,
+    Math.abs(r.walkY - r.row) < 0.2 && Math.abs(r.jimY - (r.row + 13.5)) < 0.2,
     JSON.stringify([r.row, r.walkY, r.jimY, r.lanes]));
 
   /* 分が変わる → 延びも人も進む。人は歩く。 */
