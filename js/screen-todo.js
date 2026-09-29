@@ -571,6 +571,14 @@
             <span class="d-value js-time-value"></span>
             <span class="d-go">${icon("chevron")}</span>
           </button>
+          ${/* 時間（かかる長さ）。前は「時刻と長さ」の紙の中でしたが、利用者の
+                希望で一つの札に。時刻を決めない用事でも、長さは時間割に効くので。 */""}
+          <button type="button" class="d-row js-row-dur">
+            <span class="d-ico">${icon("hourglass")}</span>
+            <span class="d-label js-dur-label"></span>
+            <span class="d-value js-dur-value"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
           ${/* 期限。**日付（いつやるか）とは別のこと**です——長期タスクは
                 やる日を決めていないだけで、締め切りはあることがあります。
                 時刻と長さのすぐ下に置くのは、どちらも「いつ」の話だから。 */""}
@@ -689,19 +697,23 @@
           <span class="field-hint js-lead-note" hidden></span>
         </div>
 
-        ${/* どれくらいかかるか。締め切りでも目標でもありません——**今日の
-              時間割を組むための長さ**です。決めなくても構いません。 */""}
-        <div class="field">
-          <span class="field-label">どれくらい かかる</span>
-          <div class="js-mins"></div>
-        </div>
-
         ${/* **その長さが入る空き**を、そのまま押せる形で。時刻を決めるのに
               「何時なら空いていたか」を思い出させるのは、この画面がもう
               知っていることを人にやらせています。 */""}
         <div class="field js-slot-field" hidden>
           <span class="field-label">空いているところ</span>
           <div class="js-slots"></div>
+        </div>
+      </div>
+    `);
+
+    /* どれくらいかかるか。締め切りでも目標でもありません——**今日の
+       時間割を組むための長さ**です。決めなければ30分として組みます。 */
+    const pickDur = node(html`
+      <div class="stack" style="gap:14px">
+        <div class="field">
+          <div class="js-mins"></div>
+          <span class="field-hint">時間割を組むための長さです。決めなければ30分として並べます。</span>
         </div>
       </div>
     `);
@@ -719,7 +731,7 @@
     /* 紙の中の部品を、body から探せるようにします——下の配線は
        body.querySelector で書かれているので、探す先を広げるだけで
        そのまま通ります。 */
-    const parts = [body, pickDue, pickTime, pickRepeat];
+    const parts = [body, pickDue, pickTime, pickDur, pickRepeat];
     body.pick = (sel) => {
       for (const el of parts) { const hit = el.querySelector(sel); if (hit) return hit; }
       return null;
@@ -952,8 +964,12 @@
       } else {
         row(".js-row-due", "日付なし", "");
       }
-      row(".js-row-time", time ? `${tlClock(time)}${minutes ? " 〜 " + tlClock(KN.plan.toTime(KN.plan.toMin(time) + minutes)) : ""}` : "時刻なし",
-          minutes ? KN.plan.humanSpan(minutes) : "");
+      /* 時刻の札は時刻だけ。長さは下の「時間」の札が持ちます。終わりの時刻は、
+         長さを決めていなくても組み立てと同じ長さ（いつもの長さ → 30分）で。 */
+      const len = minutes || usual || KN.plan.DEFAULT_MINUTES;
+      row(".js-row-time", time ? `${tlClock(time)} 〜 ${tlClock(KN.plan.toTime(KN.plan.toMin(time) + len))}` : "時刻なし", "");
+      row(".js-row-dur", "時間", KN.plan.humanSpan(len)
+          + (minutes ? "" : usual ? "（いつもの長さ）" : ""));
       /* 期限。過ぎていたら、その旨をそのまま書きます（色だけで言うと、
          色の意味を知っている人にしか伝わらないので）。 */
       if (deadline) {
@@ -988,7 +1004,8 @@
       paintHeroFacts();
     }
     body.querySelector(".js-row-due").addEventListener("click", () => openPick("いつまでに", pickDue));
-    body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻と長さ", pickTime));
+    body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻", pickTime));
+    body.querySelector(".js-row-dur").addEventListener("click", () => openPick("時間", pickDur));
     body.querySelector(".js-row-limit").addEventListener("click", () => openPick("期限", pickLimit));
     body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
     body.querySelector(".js-row-notify").addEventListener("click", () => {
@@ -1180,11 +1197,16 @@
     function paintMins() {
       /* いつもの長さが言えるなら、「決めない」の次に「いつもの25分」。
          同じ長さの札があれば、そちらをこの札に置き換えます（同じ答えが二つ並ぶので）。 */
+      /* いつもの長さが無ければ、標準は30分（組み立てが使う長さと同じ）。
+         「決めない」の札は置かず、30分の札が選ばれた姿で見せます——決めて
+         いないときに並ぶ長さを、そのまま言うほうが伝わるので。保存は押すまで
+         しません（null のまま。組み立ては30分として扱います）。 */
       const own = usual ? [{ id: String(usual), label: `いつもの${KN.plan.humanSpan(usual)}` }] : [];
-      KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(own,
+      const none = usual ? [{ id: "", label: "決めない" }] : [];
+      KN.ui.chipRow(minsHost, none.concat(own,
         MINS.filter((m) => m !== usual).map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
       ), {
-        activeId: minutes ? String(minutes) : "",
+        activeId: minutes ? String(minutes) : usual ? "" : String(KN.plan.DEFAULT_MINUTES),
         onPick: (id) => {
           minutes = id ? Number(id) : null;
           KN.motion.fire("select");
