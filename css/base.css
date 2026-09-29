@@ -552,6 +552,18 @@
      day-road.js の「歩く」）。人の歩き（一歩 .5s ほど）より少し速い、
      きびきびした歩き。上がり下がりの台形を足して、全体で 2.0s。 */
   --m-walk: .4s;
+  /* 開いたとき、満ちる（health の輪が 0 から満ち、真ん中の数も一緒に数え上がる。
+     motion.js の arrive、docs/motion.md の「開いたとき、満ちる」）。「グン」と
+     言えるよう、出だしが速く終わりが長い `--ease-out` で使います。 */
+  --m-fill: .9s;
+  /* 線が引かれる（体重の線が左から右へ）。輪より少し長いのは、目が線を
+     なぞって追いつく時間です。 */
+  --m-draw: 1.1s;
+  /* 並んだものを、一つずつずらして始める間（四つの輪が左から順に満ちる）。 */
+  --m-stagger: .07s;
+  /* 席の絵が、押されて一度だけ応える（席ごとに違う動き。docs/tabbar.md の
+     「押した席の絵が応える」）。 */
+  --m-poke: .56s;
 
   /* --- layout --- */
 
@@ -1782,6 +1794,69 @@ a { color: var(--c-primary); }
 .tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-line { display: none; }
 .tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-solid { display: block; }
 
+/* ---- 押した席の絵が、一度だけ応える（docs/tabbar.md の「押した席の絵が応える」）----
+
+   押しているあいだの膨らみ（`.tab.is-held`）は**指が時計を持つ状態**で、これは
+   **離して席が決まった**という出来事への返事です。だから click で一度だけ
+   （`KN.motion.fire("poke")`）。絵ごとに違う動きをします——同じ跳ねが四つ
+   並ぶより、押した席が「その席らしく」返るほうが、どこを押したかが残るので。
+
+   - やること（checklist）… しゃがんで跳ねる
+   - 買うもの（cart）…… 押し出されて前輪が浮く（価格を見ているあいだも席の絵は
+     カートのまま——帯が言うのは席の名前なので。app.js の paintTabs）
+   - health（heart）…… 二拍打つ
+   - daily（book）……… 持ち上げられて傾く
+
+   **`translate` / `rotate` / `scale` の独立プロパティで書くこと。** 外側の
+   `.tab-ico` は `transform`（選ばれた席の持ち上げ）と `scale:`（押しているあいだの
+   膨らみ）を使っていて、ここはその内側の一枚なので取り合いは起きないが、
+   いつか `transform` を足す日のために。見分けは絵の名前（`data-sig`）——席の
+   絵が差し替わる日が来ても、動きは絵についていくように。 */
+.tab-ico-face.is-poke {
+  animation: poke-hop var(--m-poke) var(--ease);
+  transform-origin: 50% 85%;
+}
+.tab-ico-face.is-poke[data-sig="cart"]  { animation-name: poke-roll; }
+.tab-ico-face.is-poke[data-sig="heart"] { animation-name: poke-beat; transform-origin: 50% 55%; }
+.tab-ico-face.is-poke[data-sig="book"]  { animation-name: poke-rock; transform-origin: 50% 100%; }
+
+@keyframes poke-hop {
+  0%   { translate: 0 0;    scale: 1; }
+  18%  { translate: 0 0;    scale: 1.12 .86; }
+  45%  { translate: 0 -5px; scale: .94 1.08; }
+  72%  { translate: 0 0;    scale: 1.06 .94; }
+  100% { translate: 0 0;    scale: 1; }
+}
+@keyframes poke-roll {
+  0%   { translate: 0 0;    rotate: 0deg; }
+  30%  { translate: 5px 0;  rotate: -9deg; }
+  62%  { translate: -2px 0; rotate: 4deg; }
+  100% { translate: 0 0;    rotate: 0deg; }
+}
+@keyframes poke-beat {
+  0%   { scale: 1; }
+  16%  { scale: 1.24; }
+  32%  { scale: .96; }
+  50%  { scale: 1.14; }
+  72%  { scale: .99; }
+  100% { scale: 1; }
+}
+@keyframes poke-rock {
+  0%   { translate: 0 0;    rotate: 0deg; }
+  28%  { translate: 0 -3px; rotate: -11deg; }
+  58%  { translate: 0 0;    rotate: 7deg; }
+  80%  { rotate: -2deg; }
+  100% { translate: 0 0;    rotate: 0deg; }
+}
+
+/* 設定の歯車は、押すと半周まわる（head.js）。歯は8つ（45度ごと）なので、半周で
+   元と同じ形に戻る——止まったところで絵が跳ねない。 */
+.head-gear.is-poke svg { animation: poke-spin var(--m-poke) var(--ease-out); }
+@keyframes poke-spin {
+  from { rotate: 0deg; }
+  to   { rotate: 180deg; }
+}
+
 /* 数のバッジ。絵の右上に、少しはみ出して乗ります。
 
    上端をカプセルから 3px 下げるのは、縁に食い込ませないためです——
@@ -1802,6 +1877,18 @@ a { color: var(--c-primary); }
   display: grid;
   place-items: center;
   line-height: 1;
+  /* 出てきたとき（0 → 1 件）は、ぽんと膨らんで現れる。数が変わったときの
+     持ち上げ（`is-m-number`、app.js）は `transform`、これは `scale:` なので
+     取り合わない。付くのは要素ができたときだけ（数が変わっても作り直さない）。 */
+  animation: badge-in var(--m-poke) var(--spring) both;
+}
+@keyframes badge-in { from { scale: 0; opacity: 0; } }
+/* 数が変わったときの持ち上げは、**badge-in を並べたまま**足すこと。
+   `.is-m-number` の `animation: m-number` だけにすると、外した瞬間に
+   animation の名前が badge-in へ戻り、そこで頭から始まり直す——数が
+   変わるたびに、札が 0 から膨らみ直す。名前が残っていれば続きのまま。 */
+.tab-badge.is-m-number {
+  animation: badge-in var(--m-poke) var(--spring) both, m-number var(--m-number) var(--ease-out);
 }
 
 /* ---------------- いま居る席の印は、滑る一枚 ----------------

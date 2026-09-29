@@ -68,7 +68,7 @@
           ${KN.util.dayTitleBar()}
           <button class="icon-btn js-upcoming" aria-label="これからの二週間">${icon("calendar")}</button>
           <button class="icon-btn js-search-btn" aria-label="さがす">${icon("search")}</button>
-          <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
+          <button class="icon-btn head-gear js-settings" aria-label="設定">${icon("gear")}</button>
         </div>
       </header>
     `));
@@ -85,8 +85,11 @@
       KN.motion.fire("select");
       KN.upcoming.open();
     });
-    root.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
+    root.querySelector(".js-settings").addEventListener("click", (e) => {
+      KN.app.showScreen("settings");
+      /* 歯車が半周まわる（base.css の「押した席の絵が応える」）。 */
+      KN.motion.fire("poke", e.currentTarget);
+    });
     /* 買うもの・価格の題と「今日へ戻る」の応えは、ここが持ちます（二つの
        画面は日を持たないので、暦と日はこのファイルの中にあります）。ほかの
        タブと同じく、持ち主でなければ黙ります。 */

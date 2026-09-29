@@ -1359,15 +1359,20 @@
               いつもの面を敷いたので、こんどは**線そのものを光らせます**。
               太い薄緑を線の下に一本、同じ道筋で。線の色は変えません。 */""}
         ${towardGoal && ma7.length > 1
-          ? KN.util.raw(`<path class="diet-goal-glow" d="${path(ma7, (m) => m.value)}"/>`) : ""}
-        ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" d="${path(ma7, (m) => m.value)}"/>`) : ""}
+          ? KN.util.raw(`<path class="diet-goal-glow" pathLength="1" d="${path(ma7, (m) => m.value)}"/>`) : ""}
+        ${/* pathLength="1"：開いたとき、線が左から引かれます（screens.css の「開いたとき、
+              満ちる」）。長さを 1 と言っておけば、線の実の長さを測らずに済みます。 */""}
+        ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" pathLength="1" d="${path(ma7, (m) => m.value)}"/>`) : ""}
         ${/* 量った点。線と同じ色にします——前は灰色で、線とは別のものを
               指しているように見えていました。今日の点だけは大きく、地の色で
               縁取って、線の先端がどこかを言います。 */""}
         ${KN.util.raw(pts.map((p, i) => {
           const now = i === pts.length - 1;
           return `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""} ${now ? "is-now" : ""}"`
-            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 1.8}"/>`;
+            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 1.8}"`
+            /* 左からどれだけ来たところか（0〜1）。開いたとき、線がそこまで引かれた
+               ころに点が出ます（screens.css の「開いたとき、満ちる」）。 */
+            + ` style="--f:${Math.max(0, Math.min(1, (x(p.day) - padL) / Math.max(1, W - padL - padR))).toFixed(2)}"/>`;
         }).join(""))}
         ${KN.util.raw(marks.map((m) => {
           /* 濃さは純アルコール量で。「飲酒あり」とだけ出すと、350mlを一本と
@@ -2089,6 +2094,15 @@
        画面ぜんたいで十七個並んでいました（docs/improvements.md の B9）。
        空の輪そのものが「まだ無い」を言っています。 */
     const ringPct = (r) => (r.pct == null ? "" : r.pct + "%");
+    /* 開いたとき、真ん中の数も 0 から数え上がります（screens.css の「開いたとき、
+       満ちる」）。**字そのものは書き換えません**——数えているあいだは CSS の
+       counter が上に重なって見せるだけで、textContent はいつも本当の数のまま
+       （読み上げも、字を読む試験も、途中の数を拾わない）。数え上げられるのは
+       整数と単位一つの形だけ（小数の g などは、そのまま出します）。 */
+    const countUp = (mid) => {
+      const m = /^(\d+)(%|g)$/.exec(mid);
+      return m ? ` data-u="${m[2]}" style="--ring-n:${m[1]}"` : "";
+    };
     const rSteps = ringOf("steps", card.steps, sg);
     const rBurn  = ringOf("burned", card.burned, bg);
     const rSleep = ringOf("sleep", card.sleep, slg);
@@ -2132,7 +2146,7 @@
               <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
                 r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
               <span class="diet-ring ${r.ring.cls}" style="--deg:${r.ring.deg.toFixed(1)}deg" aria-hidden="true">
-                <i class="diet-ring-mid mono-num">${r.mid}</i>
+                <i class="diet-ring-mid mono-num"${countUp(r.mid)}>${r.mid}</i>
               </span>
               <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}

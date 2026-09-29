@@ -2777,9 +2777,12 @@
   --rest: color-mix(in srgb, var(--c-text-3) 22%, transparent);
   background: conic-gradient(var(--fill) 0 var(--deg), var(--rest) var(--deg) 360deg);
 }
-/* 超えたぶんは、明るいほうの色で二周目として頭から重ねます。 */
+/* 超えたぶんは、明るいほうの色で二周目として頭から重ねます。`--lap`（一周目の
+   どこまで満ちたか）は開いたときの二段の満ち方のためのもので、ふだんは 360deg
+   ＝一周目は満ちきっている（下の「開いたとき、満ちる」）。 */
 .diet-ring.is-over {
-  background: conic-gradient(var(--lit) 0 var(--deg), var(--fill) var(--deg) 360deg);
+  background: conic-gradient(var(--lit) 0 var(--deg), var(--fill) var(--deg) var(--lap, 360deg),
+                             var(--rest) var(--lap, 360deg) 360deg);
 }
 /* 記録が無い日は、輪だけ薄く置きます（数字は「—」）。 */
 .diet-ring.is-none { background: conic-gradient(var(--rest) 0 360deg); }
@@ -2804,6 +2807,91 @@
 .diet-ring.is-none .diet-ring-mid { color: var(--c-text-3); }
 /* 飲みすぎた日の真ん中は赤（輪の色が灰色になっているので、そちらから取らない）。 */
 .diet-ring.is-drink.is-over .diet-ring-mid { color: var(--c-danger); }
+
+/* ---- 開いたとき、満ちる（motion.js の arrive、docs/motion.md）----
+
+   タブを開いた一拍（とアプリへ戻ってきたとき）、画面に `is-m-arrive` が
+   しばらく付きます。そのあいだだけ、輪が 0 から「グン」と満ち、真ん中の数も
+   一緒に数え上がる。四つは左から `--m-stagger` ずつずらして始めます。
+
+   - **角度と数は `@property` で登録する。** 登録の無いカスタムプロパティは
+     途中の値を持たず、半分のところで跳びます。登録すれば `from` だけ書いた
+     keyframes が、行の style に書いた本当の値まで滑る。登録は `inherits: false`
+     （輪の上でしか読まないので、子へ継がせる理由がない）。
+   - **超えた日（`is-over`）は二段。** まず一周ぶん（`--lap`）が満ち、続けて
+     超えたぶん（`--deg`）が明るい色で頭から重なる。`--lap` の既定は 360deg
+     なので、動いていないときの絵は前と同じ。
+   - **数は字を書き換えずに見せる。** 本当の字は透明にして、上に `counter()` を
+     重ねるだけ。textContent はいつも本当の数（screen-diet.js の countUp）。
+     `mono-num`（数字の幅が揃う）なので、数えているあいだ字の幅が揺れない。
+   - 付けていないとき（開いたあとの組み直し）は、何も動きません。 */
+@property --deg    { syntax: "<angle>";   inherits: false; initial-value: 0deg; }
+@property --lap    { syntax: "<angle>";   inherits: false; initial-value: 360deg; }
+@property --ring-n { syntax: "<integer>"; inherits: false; initial-value: 0; }
+
+.diet-cell:nth-child(2) { --ring-i: 1; }
+.diet-cell:nth-child(3) { --ring-i: 2; }
+.diet-cell:nth-child(4) { --ring-i: 3; }
+
+.is-m-arrive .diet-ring {
+  animation: ring-fill var(--m-fill) var(--ease-out) both;
+  animation-delay: calc(var(--m-stagger) * var(--ring-i, 0));
+}
+.is-m-arrive .diet-ring.is-over {
+  animation-name: ring-lap;
+  animation-duration: calc(var(--m-fill) * 1.4);
+}
+.is-m-arrive .diet-ring-mid[data-u] {
+  -webkit-text-fill-color: transparent;
+  counter-reset: ring-n var(--ring-n);
+  animation: ring-count var(--m-fill) var(--ease-out) both;
+  animation-delay: calc(var(--m-stagger) * var(--ring-i, 0));
+}
+.is-m-arrive .diet-ring.is-over .diet-ring-mid[data-u] { animation-duration: calc(var(--m-fill) * 1.4); }
+.is-m-arrive .diet-ring-mid[data-u]::after {
+  content: counter(ring-n) attr(data-u);
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  -webkit-text-fill-color: currentColor;
+}
+@keyframes ring-fill  { from { --deg: 0deg; } }
+@keyframes ring-count { from { --ring-n: 0; } }
+/* 超えた日：前の 55% で一周ぶん、残りで超えたぶん。曲線は区切りごとに
+   掛かるので、「グン、グン」と二度満ちる。 */
+@keyframes ring-lap {
+  0%  { --lap: 0deg;   --deg: 0deg; }
+  55% { --lap: 360deg; --deg: 0deg; }
+}
+
+/* 体重の線は左から引かれ、量った点は線がそこへ来たころに出ます。点の遅れは
+   左からの位置（`--f`、screen-diet.js）の 0.4 倍——線は `--ease-out` で
+   引かれるので、時間の 4 割ほどで道のりの 9 割まで来ています。今日の点だけは
+   最後に弾んで出る（線の先がどこかは、いちばん知りたいことなので）。
+   棒は下から伸び、面は線を追って浮かびます。 */
+.is-m-arrive .diet-ma7,
+.is-m-arrive .diet-goal-glow {
+  stroke-dasharray: 1 1;
+  animation: line-draw var(--m-draw) var(--ease-out) both;
+}
+.is-m-arrive .diet-dot {
+  animation: arrive-fade calc(var(--m-draw) * .3) var(--ease-out) both;
+  animation-delay: calc(var(--m-draw) * .4 * var(--f, 0));
+}
+.is-m-arrive .diet-dot.is-now {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: arrive-pop var(--m-poke) var(--spring) both;
+  animation-delay: calc(var(--m-draw) * .45);
+}
+.is-m-arrive .diet-area,
+.is-m-arrive .diet-ma14 { animation: arrive-fade var(--m-draw) var(--ease) both; }
+.is-m-arrive .diet-bar {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: bar-grow var(--m-fill) var(--ease-out) both;
+}
+@keyframes line-draw   { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes arrive-fade { from { opacity: 0; } }
+@keyframes arrive-pop  { from { opacity: 0; scale: 0; } }
+@keyframes bar-grow    { from { scale: 1 0; } }
 
 /* 輪が入ったぶん、枠の中は縦に伸びます。絵は文字の隣へ。
    絵の色は、その指標の色にそろえます——全部が主色の緑のままだと、
