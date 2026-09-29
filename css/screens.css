@@ -3396,6 +3396,28 @@ a.btn { text-decoration: none; }
 /* 三つ目からは畳みます。「ほか3件」と数えると、その日の量の話になります。 */
 .arc-then-more { font-size: var(--fs-xs); color: var(--c-text-3); padding-left: 21px; }
 
+/* 同じ日の年々（R9）。枠そのものは押せず、年の一行ずつが押せます。 */
+.arc-then.is-years:active { transform: none; background: var(--c-surface-2); }
+.arc-year {
+  display: flex; align-items: baseline; gap: var(--sp-3);
+  width: 100%; margin-top: 4px; padding: 4px 0;
+  text-align: left; background: none; border: 0; color: inherit; font: inherit;
+  border-radius: var(--r-sm);
+  transition: background var(--m-state) var(--ease);
+}
+.arc-year:active { background: var(--c-surface-3); }
+.arc-year-y {
+  flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.arc-year-y small { margin-left: 4px; font-size: var(--fs-xs); font-weight: 400; color: var(--c-text-3); }
+.arc-year-text {
+  min-width: 0; font-size: var(--fs-md); color: var(--c-text); line-height: var(--lh-body);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; word-break: break-word;
+}
+.arc-year-text.is-blank { color: var(--c-text-3); }
+
 /* 「◯月の積み上がり」（.arc-rollup / .arc-count）はここにありました。
    数を絞り込みの札のほうへ入れて、行ごと畳みました——五つの種類を、
    数えるほうと押すほうで二度並べていたので。screen-archive.js に経緯。 */
@@ -3583,6 +3605,9 @@ a.btn { text-decoration: none; }
 .arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; margin: -4px 0 0; }
 
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+/* 出さない日（R9）。紙の終わりに小さく——書く手の邪魔にならないところ。 */
+.arc-quiet { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.arc-quiet .field-hint[hidden] { display: none; }
 
 /* 中身は紙（.tl-sheet.is-daily）の中へ移りました。ここに残っているのは
    暦と紙の二つだけで、そのあいだは空けません——空けると、暦の下に地の

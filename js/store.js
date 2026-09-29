@@ -133,7 +133,7 @@
      残す場所で、達成度を測る場所ではないので、**そもそも型として持ちません**。
      後から足せてしまう形にしておくと、いつか足します。 */
   function emptyArchive() {
-    return { entries: [], days: [] };
+    return { entries: [], days: [], quiet: [] };
   }
 
   /* ---------------- 基調色 ----------------
@@ -703,6 +703,13 @@
     out.archive = {
       entries: Array.isArray(arc.entries) ? arc.entries : [],
       days:    Array.isArray(arc.days)    ? arc.days    : [],
+      /* 出さない日（R9）。「あの日」「同じ日の年々」に出さない日付の並び。
+         鍵が無い保存（この機能より前）は空——どの日も今までどおり出ます。
+         印は日の行（days）に持たせません：空にした行は行ごと消えるので、
+         一緒に印まで消えます。 */
+      quiet: Array.isArray(arc.quiet)
+        ? [...new Set(arc.quiet.map((d) => toDayKey(d)).filter(Boolean))].sort()
+        : [],
     };
     /* 書いた時刻・直した時刻。並び順がこれで決まるので、持っていないものが
        混ざると先頭に来たり最後に沈んだりします。日付しか無いものには、その日を
@@ -3493,8 +3500,25 @@
     return out;
   }
 
-  /** その日に何か書いてあるか（記録か、地の文か）。 */
+  /* 出さない日（R9）。つらい日を思い出させないための印で、既定は出す。
+     消すのではなく**出さないだけ**——その日の記録も本文もそのまま残り、
+     暦から行けばいつでも読めます。 */
+  function isQuietDay(date) {
+    return (archive().quiet || []).includes(date);
+  }
+  function setQuietDay(date, on) {
+    const day = toDayKey(date);
+    if (!day) return;
+    update((s) => {
+      const list = (s.archive.quiet || []).filter((d) => d !== day);
+      if (on) list.push(day);
+      s.archive.quiet = list.sort();
+    });
+  }
+
+  /** その日に何か書いてあるか（記録か、地の文か）。出さない日は null。 */
   function thenOfDay(date, label) {
+    if (isQuietDay(date)) return null;
     const rows = entriesOfDay(date);
     const log = dayLog(date);
     const memo = log && String(log.memo || "").trim();
@@ -3520,11 +3544,29 @@
     const past = [...new Set([
       ...archive().entries.map((e) => e.date),
       ...archive().days.filter((d) => String(d.memo || "").trim()).map((d) => d.date),
-    ])].filter((d) => d && d < today).sort();
+    ])].filter((d) => d && d < today && !isQuietDay(d)).sort();
     if (!past.length) return null;
     const seed = Number(String(today).replace(/-/g, "")) % past.length;
     const pick = past[seed];
     return thenOfDay(pick, null);
+  }
+
+  /**
+   * 同じ日の年々（R9）。紙の10年日記の見かた——同じ月日の、過ぎた年の記録を
+   * 年ごとに一つずつ、遠い年から。**二年以上あるときだけ**返し、そうでなければ
+   * null（いつもの「あの日」の一枚になります）。記録の無い年は並びに入れません
+   * ——空いた年を行として置くと、書かなかった年の一覧になるので。出さない日も
+   * 入りません。何年ぶんあるかは数えません。
+   *
+   * @param {string} [day] 今日として扱う日。試験のために外から渡せます。
+   */
+  function archiveYears(day) {
+    const today = dayKeyOf(day || todayKey());
+    const years = thenCandidates(today)
+      .filter((c) => /年前/.test(c.label))
+      .map((c) => thenOfDay(c.date, c.label))
+      .filter(Boolean);
+    return years.length >= 2 ? years : null;
   }
 
   /**
@@ -3750,7 +3792,7 @@
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen,
+    dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen, archiveYears, isQuietDay, setQuietDay,
     exportJSON, importJSON, inspectBackup, countsOf, reset, loadSample,
   };
 })();
