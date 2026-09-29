@@ -2148,6 +2148,56 @@
     };
   }
 
+  /* 自分の速さ（段4。docs/todo-timeline.md の「自分の速さ」）。
+
+     くり返しの用事の「いつもは25分くらい」を、済ませた記録（写し）から
+     そのつど引きます。**記録は増やしません**——始めた時刻は持っていないので、
+     時刻を決めてあった回だけ「済ませた時刻 − 決めていた時刻」を長さの代わりに
+     使います。遅れて始めた日・あとでまとめて済ませた日は長く出るので、
+     1〜240分の回だけ、新しいほうから8回の**中央値**にして、5分に丸めます。
+     3回に満たなければ言いません（言えるほど記録が無い）。
+
+     写しと元は、undoTrace と同じく題と区分でつながっています。題を変えると
+     それまでの記録から切れます（新しい欄で結ぶのはやめた——記録を増やさない）。
+
+     出すのは長さだけで、速い・遅い・前より、は言いません。 */
+  const USUAL_MIN = 1, USUAL_MAX = 240, USUAL_LAST = 8, USUAL_ENOUGH = 3;
+  let usualIx = null, usualVer = -1;
+  const usualKey = (t) => `${t.title}\u0001${t.part || ""}`;
+  function usualIndex() {
+    if (usualIx && usualVer === version) return usualIx;
+    const runs = new Map();
+    get().todos.forEach((t) => {
+      if (!t.trace || !t.doneAt || !t.due || !KN.util.isTime(t.time)) return;
+      const at = new Date(t.doneAt);
+      /* 済ませたのが別の日なら、その日の長さとは言えません。 */
+      if (isNaN(at.getTime()) || KN.util.dayKey(at) !== t.due) return;
+      const [h, m] = t.time.split(":").map(Number);
+      const took = at.getHours() * 60 + at.getMinutes() - (h * 60 + m);
+      if (took < USUAL_MIN || took > USUAL_MAX) return;
+      const k = usualKey(t);
+      if (!runs.has(k)) runs.set(k, []);
+      runs.get(k).push({ due: t.due, took });
+    });
+    const ix = new Map();
+    runs.forEach((list, k) => {
+      const last = list.sort((a, b) => (a.due < b.due ? 1 : a.due > b.due ? -1 : 0))
+        .slice(0, USUAL_LAST).map((x) => x.took).sort((a, b) => a - b);
+      if (last.length < USUAL_ENOUGH) return;
+      const n = last.length;
+      const mid = n % 2 ? last[(n - 1) / 2] : (last[n / 2 - 1] + last[n / 2]) / 2;
+      ix.set(k, Math.max(5, Math.round(mid / 5) * 5));
+    });
+    usualIx = ix; usualVer = version;
+    return ix;
+  }
+
+  /** くり返しの用事の、いつもの長さ（分）。言えなければ null。 */
+  function usualMinutes(t) {
+    if (!t || t.trace || !t.repeat || !t.title) return null;
+    return usualIndex().get(usualKey(t)) || null;
+  }
+
   /**
    * 「やった記録」を取り消します。
    *
@@ -3934,7 +3984,7 @@
     addStore, addProduct, addItem, addPrice, setArchived,
     setProducts, findSetByName, setMissing, saveSet, removeSet, addSet,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

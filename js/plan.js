@@ -79,7 +79,10 @@
     return m ? `${h}時間${m}分` : `${h}時間`;
   }
 
-  const minutesOf = (t) => (t && t.minutes) || DEFAULT_MINUTES;
+  /* 人が決めた長さ → くり返しの用事なら、いつもの長さ（段4。済ませた記録から
+     store がそのつど引く）→ 30分。道は決めた長さしか描かないので、ここだけの話。 */
+  const usualOf = (t) => (KN.store && KN.store.usualMinutes ? KN.store.usualMinutes(t) : null);
+  const minutesOf = (t) => (t && t.minutes) || usualOf(t) || DEFAULT_MINUTES;
 
   /* ---------------- 並べる ---------------- */
 
@@ -334,6 +337,6 @@
 
   KN.plan = {
     buildDay, slotsFor, humanSpan, toMin, toTime,
-    DEFAULT_MINUTES, DEFAULT_START, DEFAULT_END, MIN_GAP,
+    DEFAULT_MINUTES, minutesOf, DEFAULT_START, DEFAULT_END, MIN_GAP,
   };
 })();

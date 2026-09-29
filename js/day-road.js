@@ -630,7 +630,11 @@
     const cands = st.loose.concat(st.later);
     const rows = cands.map((c) => {
       const m = st.markOf ? st.markOf(c.t) : "";
-      const len = Number(c.t.minutes) > 0 ? KN.plan.humanSpan(Number(c.t.minutes)) : "";
+      /* 決めた長さが無ければ、くり返しの用事のいつもの長さ（段4）。空きに入るかを
+         見るための目安で、道には描きません。 */
+      const own = Number(c.t.minutes) > 0 ? 0 : KN.store.usualMinutes(c.t);
+      const len = Number(c.t.minutes) > 0 ? KN.plan.humanSpan(Number(c.t.minutes))
+        : own ? `いつもは${KN.plan.humanSpan(own)}くらい` : "";
       const row = node(html`
         <button type="button" class="act-row road-pick" data-id="${c.t.id}">
           <span class="act-ico"><span class="road-pick-mark ${m ? "" : "is-plain"}"

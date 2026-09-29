@@ -522,6 +522,9 @@
     let repeatEvery = editing && t.repeatEvery ? t.repeatEvery : 7;
     let flagged = editing ? !!t.flagged : false;
     let minutes = editing ? (t.minutes || null) : null;
+    /* くり返しの用事の、いつもの長さ（段4。済ませた記録から引く。言えなければ null）。
+       黙って minutes に入れはしません——決めるのは本人なので、札を一つ足すだけ。 */
+    const usual = editing ? store.usualMinutes(t) : null;
     let iconKey = editing ? (t.icon || null) : null;
     let deadline = editing ? (t.deadline || null) : null;
     /* この紙で題に手が入ったか。**打った字から日付や時刻を読むのは、
@@ -1055,9 +1058,11 @@
       const P = KN.plan;
       const at = P.toMin(time);
       if (at == null) { el.hidden = true; el.textContent = ""; return; }
-      const len = minutes || P.DEFAULT_MINUTES;
+      const len = minutes || usual || P.DEFAULT_MINUTES;
       const until = P.toTime(at + len);
-      const guess = minutes ? "" : "（長さを決めていないので、30分として）";
+      const guess = minutes ? ""
+        : usual ? "（長さを決めていないので、いつもの長さで）"
+        : "（長さを決めていないので、30分として）";
       /* 時刻の書き方は、時間割の左の列と揃えます（頭の0を落とす）。
          同じ時刻が画面によって「07:00」と「7:00」に見えると、同じもの
          だと気づくのに一拍かかります。 */
@@ -1135,8 +1140,11 @@
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
     const minsHost = body.pick(".js-mins");
     function paintMins() {
-      KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(
-        MINS.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
+      /* いつもの長さが言えるなら、「決めない」の次に「いつもの25分」。
+         同じ長さの札があれば、そちらをこの札に置き換えます（同じ答えが二つ並ぶので）。 */
+      const own = usual ? [{ id: String(usual), label: `いつもの${KN.plan.humanSpan(usual)}` }] : [];
+      KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(own,
+        MINS.filter((m) => m !== usual).map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
       ), {
         activeId: minutes ? String(minutes) : "",
         onPick: (id) => {
@@ -1175,7 +1183,7 @@
         start: cfg.dayStart, end: cfg.dayEnd,
         now: isToday ? KN.util.nowTime() : null,
       });
-      const slots = KN.plan.slotsFor(plan, minutes || KN.plan.DEFAULT_MINUTES,
+      const slots = KN.plan.slotsFor(plan, minutes || usual || KN.plan.DEFAULT_MINUTES,
         isToday ? KN.util.nowTime() : "00:00");
       slotField.hidden = !slots.length;
       if (!slots.length) return;
@@ -4134,7 +4142,7 @@
   function lift(row, id, list, day, y0) {
     const t = store.getTodo(id);
     if (!t) return;
-    const len = t.minutes || KN.plan.DEFAULT_MINUTES;
+    const len = KN.plan.minutesOf(t);
 
     /* 持ち上げた指の位置を控えます。**動かさずに離したら、何もしません**
        ——下の drop() を見ること。 */
