@@ -2089,14 +2089,19 @@
         const cell = ring.closest(".diet-cell");
         const idx = cell && cell.parentNode ? [...cell.parentNode.children].indexOf(cell) : i;
         const over = ring.classList.contains("is-over");
-        const dur = base * (over ? 1.4 : 1);
+        /* 飲みすぎた日の一周目は灰（`--fill` が `--rest`＝下地と同じ色）。0 から
+           満たすと一周目のあいだ**見た目が何も変わらず**、数だけ先に動いて赤が
+           最後に出た（2026年9月29日・利用者の声）。だから一周目は満ちた姿（＝灰の
+           輪。下地と同じ絵なので跳ばない）から始め、動くのは赤の超えたぶんだけ。 */
+        const from = over && ring.classList.contains("is-drink") ? 1 : 0;
+        const dur = base * (over && !from ? 1.4 : 1);
         const x = Math.max(0, Math.min(1, (now - t0 - step * idx) / dur));
         const k = ease(x);
         const target = ring.dataset.p || (ring.dataset.p = ring.style.getPropertyValue("--ring-p").trim());
         const mid = ring.querySelector(".diet-ring-mid[data-n]");
         if (x < 1) {
           live = true;
-          U.setVar(ring, "--ring-p", (parseFloat(target) * k).toFixed(4));
+          U.setVar(ring, "--ring-p", (from + (parseFloat(target) - from) * k).toFixed(4));
           if (mid) {
             const show = Math.round(Number(mid.dataset.n) * k) + mid.dataset.u;
             if (mid.dataset.show !== show) mid.dataset.show = show;

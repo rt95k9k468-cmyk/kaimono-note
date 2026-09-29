@@ -223,6 +223,51 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await browser.close();
   }
 
+  /* 飲みすぎた日：一周目は灰（下地と同じ色）なので、灰の輪から始まり、赤の超えたぶんと
+     数が一緒に動く（数だけ先に動いて赤が最後、にならない）。 */
+  {
+    const { browser, page, errors } = await open({
+      before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 21, 0)); },
+    });
+    await page.evaluate((day) => {
+      KN.store.addDrink({ day, time: "19:00", kind: "beer", name: "ビール", ml: 500, count: 2, abv: 5, volumeMl: 1000, alcoholG: 40 });
+    }, DAY);
+    await page.click('.tab[data-tab="todo"]');
+    await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
+    await page.evaluate(() => {
+      window.__rec = [];
+      const t0 = performance.now();
+      const tick = () => {
+        const r = document.querySelector("#screen-diet .diet-ring.is-drink");
+        const mid = r && r.querySelector(".diet-ring-mid");
+        if (r) window.__rec.push({ cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
+          target: parseFloat(r.dataset.p || "NaN"), n: mid ? Number(mid.dataset.n) : null, show: mid ? mid.dataset.show : undefined });
+        if (performance.now() - t0 < 2500) requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    await page.click('.tab[data-tab="diet"]');
+    await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
+      null, { timeout: 6000 });
+    await page.waitForTimeout(300);
+    const rec = (await page.evaluate(() => window.__rec)).filter((f) => /is-drink/.test(f.cls));
+    const moving = rec.filter((f) => f.show != null);
+    const end = rec[rec.length - 1] || {};
+    t.check("飲みすぎた日の輪（is-drink is-over、1 周より先）", /is-over/.test(end.cls || "") && end.target > 1 && end.n > 0,
+      JSON.stringify(end));
+    t.check("灰の一周目は満ちた姿から始まる（1 より下へ行かない）", moving.length > 5 && moving.every((f) => f.p >= 1 - 1e-4),
+      JSON.stringify(moving.slice(0, 3)));
+    let off = 0, worst = "";
+    moving.forEach((f) => {
+      const want = Math.round(f.n * (f.p - 1) / (f.target - 1));
+      if (Math.abs(parseInt(f.show, 10) - want) > 1) { off++; worst = `${f.show} / ${want}`; }
+    });
+    t.check("赤の超えたぶんと数は一緒に動く（どのフレームでも揃う）", off === 0, `${off}フレーム ${worst}`);
+    t.check("終われば本当の値", Math.abs(end.p - end.target) < 1e-3 && end.show == null, JSON.stringify(end));
+    t.check("エラーなし（飲みすぎた日）", errors.length === 0, errors.join("\n"));
+    await browser.close();
+  }
+
   /* 画面の中の出来事に、帯の席が応える（★・買った → カート、済ませた → チェックリスト）。
      ✓は左から描かれる。空の絵は開いたとき咲く。 */
   {
