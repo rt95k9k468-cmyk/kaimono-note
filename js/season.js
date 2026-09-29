@@ -126,12 +126,43 @@
     return r ? `${r.sekki}　${r.kou}（${r.kouYomi}）` : "";
   }
 
-  /** 画面に出す二行。何を指すかの名前つき。
-      「二十四節気　秋分」「七十二候　蟄虫坏戸（むしかくれてとをふさぐ）」 */
-  function rows(day) {
-    const r = of(day);
-    return r ? [["二十四節気", r.sekki], ["七十二候", `${r.kou}（${r.kouYomi}）`]] : [];
+  /* その日を含む、同じ節気（unit=3）／同じ候（unit=1）が続く期間。初日と終日
+     （"YYYY-MM-DD"）。境目の判定は of() と同じ（日の終わりの黄経）ので、
+     画面の「その日」と食い違わない。前後どちらへも最長 20 日まで探す。 */
+  function span(day, unit) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+    if (!m) return null;
+    const idx = (d) => Math.floor(Math.floor(longitude(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()) / 5) % 72 / unit);
+    const base = new Date(+m[1], +m[2] - 1, +m[3]);
+    const at = (n) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
+    const want = idx(base);
+    let a = 0, b = 0;
+    while (a > -20 && idx(at(a - 1)) === want) a--;
+    while (b < 20 && idx(at(b + 1)) === want) b++;
+    const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { from: f(at(a)), to: f(at(b)), days: b - a + 1 };
   }
 
-  KN.season = { of, line, rows, longitude, SEKKI, KOU };
+  /* 「9月23日〜10月7日」。年をまたぐときだけ年を足す（冬至〜小寒など）。 */
+  function spanText(sp, day) {
+    if (!sp) return "";
+    const p = (k) => { const [y, mo, d] = k.split("-").map(Number); return { y, mo, d }; };
+    const a = p(sp.from), z = p(sp.to);
+    const yr = a.y !== z.y;
+    return `${yr ? `${a.y}年` : ""}${a.mo}月${a.d}日〜${yr ? `${z.y}年` : ""}${z.mo}月${z.d}日`;
+  }
+
+  /** 画面に出す二行。[名前, 中身, 期間]。
+      「二十四節気」「秋分」「9月23日〜10月7日」
+      「七十二候」「蟄虫坏戸（むしかくれてとをふさぐ）」「9月28日〜10月2日」 */
+  function rows(day) {
+    const r = of(day);
+    if (!r) return [];
+    return [
+      ["二十四節気", r.sekki, spanText(span(day, 3))],
+      ["七十二候", `${r.kou}（${r.kouYomi}）`, spanText(span(day, 1))],
+    ];
+  }
+
+  KN.season = { of, line, rows, span, longitude, SEKKI, KOU };
 })();

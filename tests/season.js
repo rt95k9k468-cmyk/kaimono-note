@@ -64,6 +64,22 @@ t.check("2026年に72の候がどれも出る", seen.size === 72, String(seen.si
 const allText = SE.KOU.flat().concat(SE.SEKKI.flat()).join(" ");
 const hits = FORBIDDEN.filter((w) => allText.includes(w));
 t.check("節気・候の字が daily の禁止語に当たらない", !hits.length, hits.join(","));
+{
+  const r = (d) => SE.rows(d).map((x) => x.join(" ")).join(" / ");
+  t.check("期間：2026-09-29 は秋分 9月23日〜10月7日・候は9月28日〜10月2日",
+    r("2026-09-29") === "二十四節気 秋分 9月23日〜10月7日 / 七十二候 蟄虫坏戸（むしかくれてとをふさぐ） 9月28日〜10月2日", r("2026-09-29"));
+  t.check("期間：節気の初日と終日でも同じ期間（境目でずれない）",
+    SE.span("2026-09-23", 3).from === "2026-09-23" && SE.span("2026-10-07", 3).to === "2026-10-07"
+    && SE.span("2026-09-23", 3).to === SE.span("2026-10-07", 3).to);
+  t.check("期間：年をまたぐ冬至は年を足す", /2026年12月22日〜2027年1月4日/.test(r("2026-12-25")), r("2026-12-25"));
+  let ok = true;
+  for (let d = new Date(2026, 0, 1); d.getFullYear() === 2026; d.setDate(d.getDate() + 1)) {
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const a = SE.span(k, 3), b = SE.span(k, 1);
+    if (!a || !b || a.days < 14 || a.days > 16 || b.days < 4 || b.days > 6 || k < a.from || k > a.to || k < b.from || k > b.to) { ok = false; break; }
+  }
+  t.check("期間：2026年の毎日で、節気は14〜16日・候は4〜6日・その日を含む", ok);
+}
 t.check("日付でないものには何も言わない", SE.of("") === null && SE.line("x") === "");
 
 (async () => {
@@ -94,8 +110,8 @@ t.check("日付でないものには何も言わない", SE.of("") === null && S
     const head = root.querySelector(".arc-log-head");
     const row = root.querySelector(".arc-log-row");
     return {
-      text: el ? [...el.querySelectorAll(".arc-season-row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()).join(" | ") : null,
-      want: KN.season.rows(KN.util.todayKey()).map(([k, v]) => `${k}${v}`).join(" | "),
+      text: el ? [...el.querySelectorAll(".arc-season-row")].map((r) => r.textContent.replace(/\s+/g, "")).join(" | ") : null,
+      want: KN.season.rows(KN.util.todayKey()).map((x) => x.join("").replace(/\s+/g, "")).join(" | "),
       afterHead: !!(el && head && el.previousElementSibling === head),
       aboveRow: !!(el && row && (el.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)),
       weight: el ? getComputedStyle(el).fontWeight : null,
