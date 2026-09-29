@@ -78,4 +78,12 @@ t.check("ASSETS に同じものが二度無い", !dupAssets.length, dupAssets.jo
 const testsIn = [...assets, ...buildJs].filter((a) => a.startsWith("tests/"));
 t.check("試験の台本はサイトの登録に入っていない", !testsIn.length, testsIn.join(", "));
 
+/* sw.js が文として読めるか（2026年9月29日、置き換えの残りで sw.js が壊れ、Service Worker
+   ごと入らなくなった——手元の bell 試験で捕まえた）。門でも見る。 */
+{
+  let err = "";
+  try { new (require("vm").Script)(fs.readFileSync(path.join(ROOT, "sw.js"), "utf8"), { filename: "sw.js" }); }
+  catch (e) { err = String(e); }
+  t.check("sw.js が文として読める", !err, err);
+}
 t.done();

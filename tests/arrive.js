@@ -2,9 +2,10 @@
    「開いたとき、満ちる」、docs/tabbar.md の「押した席の絵が応える」）。
    時計を 21:00 に止め、今日のからだと体重を入れて：
    - health の席を押すと、画面に is-m-arrive が付き、席の絵（heart）が二拍打つ
-   - 輪は 0 から満ちていく（途中の角度が本当の角度より小さい）→ 終われば本当の角度
-   - 超えた日の輪は一周ぶん（--lap）から満ちる
-   - 真ん中の数は counter が数え上げ、字（textContent）は途中もずっと本当の数
+   - 輪は 0 から満ちていく（毎フレーム記録して、減らない）→ 終われば本当の値
+   - **超えた日の輪は 100% で止まらない**（1 をまたぐ前後のフレームで速さが落ちない）
+   - **真ん中の数は輪の位置どおり**（どのフレームでも round(数 × 進み具合)）で、
+     途中の数がいくつも出る（最後に「パン」と出ない）。字（textContent）はずっと本当の数
    - 四つは左から順に始まる（--m-stagger ずつの遅れ）
    - 体重の線は左から引かれ（stroke-dashoffset 1 → 0）、今日の点は弾んで出る
    - 終われば is-m-arrive は外れ、そのあと組み直しても輪は動かない
@@ -18,7 +19,7 @@ const t = checker("arrive");
 const seed = async (page) => {
   await page.evaluate((day) => {
     const S = KN.store;
-    S.setHealth(day, "steps", 50000);          // 超える日
+    S.setHealth(day, "steps", 6750);           // 超える日（目標 5,000 なら 135%）
     S.setHealth(day, "sleep", 240);            // 満ちきらない日
     S.setHealth(day, "activeEnergy", 300);
     S.setHealth(day, "restingEnergy", 1400);
@@ -30,17 +31,13 @@ const seed = async (page) => {
   }, DAY);
 };
 
-/* 輪の角度（登録してあるので、計算済みの値は "123.4deg" の形で返る）。 */
+/* 輪のいま（周）と、本当の値（周）。 */
 const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-ring")].map((r) => {
-  const cs = getComputedStyle(r);
   const mid = r.querySelector(".diet-ring-mid");
   return {
-    cls: r.className, deg: parseFloat(cs.getPropertyValue("--deg")) || 0,
-    lap: parseFloat(cs.getPropertyValue("--lap")),
-    target: parseFloat(r.style.getPropertyValue("--deg")) || 0,
-    text: mid ? mid.textContent : "", unit: mid ? mid.dataset.u || "" : "",
-    after: mid ? getComputedStyle(mid, "::after").content : "",
-    anims: r.getAnimations().length,
+    cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
+    target: parseFloat(r.dataset.p || r.style.getPropertyValue("--ring-p")) || 0,
+    text: mid ? mid.textContent : "", show: mid ? mid.dataset.show : undefined,
   };
 }));
 
@@ -50,14 +47,31 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 21, 0)); },
     });
     await seed(page);
-    t.check("@property が使える（試験のブラウザ）", await page.evaluate(() => !!(CSS && CSS.registerProperty)));
 
     /* まず別の席へ（health から始まっていても、入り直すため）。 */
     await page.click('.tab[data-tab="todo"]');
     await page.waitForFunction(() => KN.app.activeScreen() === "todo");
     await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
 
+    /* 押した一拍から、毎フレーム記録する（ページの中の rAF で。外から覗くと間が飛ぶ）。 */
     const stamp = await page.evaluate(() => performance.now());
+    await page.evaluate(() => {
+      window.__rec = [];
+      const t0 = performance.now();
+      const tick = () => {
+        const rows = [...document.querySelectorAll("#screen-diet .diet-ring")].map((r) => {
+          const mid = r.querySelector(".diet-ring-mid");
+          return { cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
+                   target: parseFloat(r.dataset.p || "NaN"),
+                   n: mid && mid.dataset.n != null ? Number(mid.dataset.n) : null,
+                   show: mid ? mid.dataset.show : undefined, text: mid ? mid.textContent : "" };
+        });
+        window.__rec.push({ at: performance.now() - t0, rows });
+        if (performance.now() - t0 < 2200) requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    /* 押すのは本物の指で（帯は pointer を見ているので、el.click() では席を移らない）。 */
     await page.click('.tab[data-tab="diet"]');
     const early = await page.evaluate(() => {
       const scr = document.getElementById("screen-diet");
@@ -66,74 +80,95 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
         arrive: scr.classList.contains("is-m-arrive"),
         poke: face.classList.contains("is-poke"),
         pokeName: getComputedStyle(face).animationName,
-        sig: face.dataset.sig,
       };
     });
     t.check("health を押すと画面に is-m-arrive", early.arrive);
     t.check("health の絵（heart）は二拍打つ（poke-beat）", early.poke && early.pokeName === "poke-beat",
       JSON.stringify(early));
 
-    /* 途中を見る：輪は本当の角度より小さく、字は本当の数のまま。 */
-    await page.waitForTimeout(120);
-    const mid = await readRings(page);
-    const texts0 = mid.map((r) => r.text);
-    const withTarget = mid.filter((r) => !/is-none/.test(r.cls) && r.target > 20);
-    t.check("輪が四つ・数の出る輪がある", mid.length === 4 && withTarget.length >= 2, JSON.stringify(mid));
-    t.check("途中の輪は本当の角度より小さい（0 から満ちていく）",
-      withTarget.every((r) => r.deg < r.target - 1 || (/is-over/.test(r.cls) && r.lap < 359)),
-      JSON.stringify(withTarget.map((r) => [r.cls, r.deg, r.target, r.lap])));
-    const over = mid.find((r) => /is-steps/.test(r.cls));
-    t.check("超えた日の輪は一周ぶん（--lap）から満ちる", over && /is-over/.test(over.cls) && over.lap < 359,
-      JSON.stringify(over));
-    t.check("数は counter が数え上げる（::after に counter）",
-      mid.filter((r) => r.unit).every((r) => /counter/.test(r.after) || /^"\d+[%g]"$/.test(r.after)),
-      JSON.stringify(mid.map((r) => r.after)));
-    const sleep = mid.find((r) => /is-sleep/.test(r.cls));
-    const burn = mid.find((r) => /is-burned/.test(r.cls));
-    t.check("左から順に始まる（二つめは三つめより先に進んでいる）",
-      burn && sleep && burn.deg / burn.target >= sleep.deg / sleep.target,
-      JSON.stringify([burn, sleep].map((r) => r && [r.deg, r.target])));
-
-    /* 体重の線。 */
+    /* 体重の線（途中）。 */
+    await page.waitForTimeout(150);
     const line = await page.evaluate(() => {
       const p = document.querySelector("#screen-diet .diet-ma7");
       const now = document.querySelector("#screen-diet .diet-dot.is-now");
       if (!p) return null;
       const cs = getComputedStyle(p);
-      return { len: p.getAttribute("pathLength"), dash: cs.strokeDasharray,
-               off: parseFloat(cs.strokeDashoffset), nowAnim: now ? getComputedStyle(now).animationName : "" };
+      return { len: p.getAttribute("pathLength"), off: parseFloat(cs.strokeDashoffset),
+               nowAnim: now ? getComputedStyle(now).animationName : "" };
     });
     t.check("体重の線は引かれている途中（dashoffset が 0 と 1 のあいだ）",
       line && line.len === "1" && line.off > 0 && line.off < 1, JSON.stringify(line));
     t.check("今日の点は弾んで出る（arrive-pop）", line && line.nowAnim === "arrive-pop", JSON.stringify(line));
 
-    /* 字はずっと本当の数（途中を何度か見る）。終わりを待つのは印（class が外れる）で。 */
-    let textsStable = true;
-    for (let i = 0; i < 6; i++) {
-      await page.waitForTimeout(90);
-      const r = await readRings(page);
-      if (r.map((x) => x.text).join("|") !== texts0.join("|")) textsStable = false;
-    }
-    t.check("数えているあいだも textContent は本当の数", textsStable);
     await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
       null, { timeout: 5000 });
     const took = (await page.evaluate(() => performance.now())) - stamp;
+    const rec = await page.evaluate(() => window.__rec);
     const [fill, draw, stag] = await page.evaluate(() => ["--m-fill", "--m-draw", "--m-stagger"].map((k) => KN.motion.ms(k)));
+
+    /* 輪ごとの道のり。 */
+    const kinds = ["steps", "burned", "sleep", "drink"];
+    const series = kinds.map((k) => rec.map((f) => f.rows.find((r) => r.cls.includes(`is-${k}`))).filter(Boolean));
+    const live = series.filter((s) => s.length && !/is-none/.test(s[0].cls) && s[s.length - 1].target > 0.05);
+    t.check("数の出る輪が三つ以上・十分なフレーム", live.length >= 3 && rec.length > 30,
+      `${live.length}本・${rec.length}フレーム`);
+    t.check("はじめは 0 のあたり（満ちた輪が先に見えない）",
+      live.every((s) => s[0].p <= s[s.length - 1].target * 0.05), JSON.stringify(live.map((s) => [s[0].p, s[s.length - 1].target])));
+    t.check("輪は減らない（満ちていくだけ）",
+      live.every((s) => s.every((f, i) => !i || f.p >= s[i - 1].p - 1e-4)));
+    const last = live.map((s) => s[s.length - 1]);
+    t.check("終われば本当の値・数の重ねは消える",
+      last.every((f) => Math.abs(f.p - f.target) < 1e-3 && f.show == null), JSON.stringify(last));
+
+    /* 超えた日：1 をまたぐ前後で速さが落ちない。 */
+    const steps = series[0];
+    t.check("歩数は超えた日（is-over、1 周より先まで）", steps.length && /is-over/.test(steps[0].cls)
+      && steps[steps.length - 1].target > 1.1, JSON.stringify(steps[steps.length - 1]));
+    const k = steps.findIndex((f) => f.p >= 1);
+    const vBefore = k > 1 ? (steps[k - 1].p - steps[k - 2].p) : 0;
+    const vAfter = k > 0 && k + 1 < steps.length ? (steps[k + 1].p - steps[k].p) : 0;
+    t.check("超えた日の輪は 100% で止まらない（またぐ前後で速さが続く）",
+      k > 1 && vBefore > 0 && vAfter > vBefore * 0.6,
+      `k=${k} 前 ${vBefore.toFixed(4)} 後 ${vAfter.toFixed(4)}`);
+    const stall = steps.some((f, i) => i > 0 && f.p < f.target - 1e-3 && f.p > 0.9 && f.p < 1.1
+      && Math.abs(f.p - steps[i - 1].p) < 1e-5);
+    t.check("100% のあたりで同じ値に留まるフレームが無い", !stall);
+
+    /* 数は輪の位置どおり・途中の数がいくつも出る・字は本当の数のまま。 */
+    let off = 0, worst = "";
+    live.forEach((s) => s.forEach((f) => {
+      if (f.show == null || f.n == null) return;
+      const want = Math.round(f.n * (f.p / f.target));
+      if (Math.abs(parseInt(f.show, 10) - want) > 1) { off++; worst = `${f.cls}: ${f.show} / ${want}`; }
+    }));
+    t.check("真ん中の数は、どのフレームでも輪の位置どおり", off === 0, `${off}フレーム ${worst}`);
+    /* 数が 20 以上の輪で見る（飲酒 0g の輪は、数えるものが無い）。 */
+    const distinct = live.filter((s) => (s[s.length - 1].n || 0) >= 20)
+      .map((s) => new Set(s.map((f) => f.show).filter((v) => v != null)).size);
+    t.check("途中の数がいくつも出る（最後にパンと出ない）", distinct.length >= 2 && distinct.every((n) => n >= 8),
+      JSON.stringify(distinct));
+    const textOk = live.every((s) => s.every((f) => f.text === s[s.length - 1].text));
+    t.check("数えているあいだも textContent は本当の数", textOk);
+
+    /* 左から順に：半分まで来たのが、左の輪ほど早い。 */
+    const halfAt = live.map((s) => {
+      const i = s.findIndex((x) => x.p >= x.target * 0.5);
+      return i < 0 ? Infinity : rec[i].at;
+    });
+    t.check("左から順に始まる（二つめ・三つめは一つめより遅れて半分に着く）",
+      halfAt[1] >= halfAt[0] && halfAt[2] >= halfAt[1] - 20, JSON.stringify(halfAt.map(Math.round)));
+
     t.check("is-m-arrive は満ち終わると外れる（長さは --m-* から）",
       took >= Math.max(fill * 1.4, draw) && took < Math.max(fill * 1.4, draw) + stag * 4 + 1500, `${Math.round(took)}ms`);
-    const after = await readRings(page);
-    t.check("終われば本当の角度", after.every((r) => Math.abs(r.deg - r.target) < 0.5 || /is-none/.test(r.cls)),
-      JSON.stringify(after.map((r) => [r.deg, r.target])));
-    t.check("終われば数の重ねは消える", after.every((r) => r.after === "none" || r.after === "normal"),
-      JSON.stringify(after.map((r) => r.after)));
-    const off = await page.evaluate(() => getComputedStyle(document.querySelector("#screen-diet .diet-ma7")).strokeDasharray);
-    t.check("終われば線はふつうの実線（破線の指定なし）", off === "none", off);
+    const offLine = await page.evaluate(() => getComputedStyle(document.querySelector("#screen-diet .diet-ma7")).strokeDasharray);
+    t.check("終われば線はふつうの実線（破線の指定なし）", offLine === "none", offLine);
 
     /* そのあと組み直しても動かない。 */
     await page.evaluate(() => KN.screens.diet.render());
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     const again = await readRings(page);
-    t.check("開いたあとの組み直しでは輪は動かない", again.every((r) => r.anims === 0),
-      JSON.stringify(again.map((r) => r.anims)));
+    t.check("開いたあとの組み直しでは輪は動かない（すぐ本当の値・数の重ね無し）",
+      again.every((r) => Math.abs(r.p - r.target) < 1e-3 && r.show == null), JSON.stringify(again));
 
     /* 買うもの → cart、もう一度で価格 → tag。 */
     await page.click('.tab[data-tab="list"]');
@@ -271,7 +306,8 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     }));
     t.check("動きを減らす設定では満ちない・応えない", !r.arrive && !r.poke, JSON.stringify(r));
     const rings = await readRings(page);
-    t.check("動きを減らす設定でも輪は本当の角度", rings.every((x) => Math.abs(x.deg - x.target) < 0.5 || /is-none/.test(x.cls)));
+    t.check("動きを減らす設定でも輪は本当の値（数の重ね無し）", rings.every((x) => (Math.abs(x.p - x.target) < 1e-3 && x.show == null) || /is-none/.test(x.cls)),
+      JSON.stringify(rings));
     t.check("エラーなし（動きを減らす）", errors.length === 0, errors.join("\n"));
     await browser.close();
   }
