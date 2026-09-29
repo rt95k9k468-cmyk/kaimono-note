@@ -171,6 +171,44 @@ const { open, checker, URL: APP } = require("./lib");
   const tickData = shown.got.map((o) => o.data)[0] || {};
   t.check("tick() の通知も用事の id を持つ", Array.isArray(tickData.due) && tickData.due.includes(shown.id), JSON.stringify(shown.got));
 
+  /* 押したことの控え（2026年9月29日、iPhone で「通知は来るけど、押しても何も」）。
+     `#due=` が届かなくても、sw.js が置いた控えを開いたとき・戻ったときに読む。
+     試験では控えを直に置く（sw.js と同じ箱と鍵）。 */
+  const putNote = (due, ago = 0) => page.evaluate(async ([d, a]) => {
+    const c = await caches.open(KN.dueSheet.BOX);
+    await c.put(KN.dueSheet.KEY, new Response(JSON.stringify({ at: Date.now() - a, due: d })));
+  }, [due, ago]);
+  const closeSheets = () => page.evaluate(() => document.querySelectorAll(".sheet .js-close, .sheet [aria-label='閉じる']").forEach((b) => b.click()));
+  const f = await page.evaluate(() => {
+    const x = new Date(Date.now() - 2 * 60000);
+    const pad = (n) => String(n).padStart(2, "0");
+    return KN.store.addTodo({ title: "用事F", due: KN.util.dayKey(x), time: `${pad(x.getHours())}:${pad(x.getMinutes())}` }).id;
+  });
+  await page.waitForTimeout(400);
+  await closeSheets();
+  await putNote([f]);
+  await page.goto(APP);                 // 印（#due=）を落とした起動
+  await page.waitForFunction(() => window.KN && KN.store && KN.app);
+  await page.waitForTimeout(900);
+  txt = await sheetText();
+  t.check("印が落ちても、控えから用事の紙が開く", txt.includes("用事F") && txt.includes("時刻になりました"), txt);
+  t.check("読んだ控えは消える", await page.evaluate(async () => !(await (await caches.open(KN.dueSheet.BOX)).match(KN.dueSheet.KEY))));
+
+  await closeSheets();
+  await page.waitForTimeout(400);
+  await putNote([]);                    // id の無い控え（写しに見つからなかった押し）
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(900);
+  txt = await sheetText();
+  t.check("id の無い控えでも、戻ったときに時刻の来た用事を探して開く", txt.includes("用事F"), txt);
+
+  await closeSheets();
+  await page.waitForTimeout(400);
+  await putNote([f], 11 * 60000);       // 11分前の控え
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(900);
+  t.check("10分より古い控えは使わない", !(await page.evaluate(() => !!document.querySelector(".sheet .due-list"))));
+
   t.check("頁の誤りが無い", !errors.length, errors.join("\n"));
   await ctx.close();
   await browser.close();
