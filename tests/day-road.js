@@ -35,22 +35,25 @@ const DAY = "2026-09-29";
     return {
       rows: G.rows, rowSpan: G.rowSpan,
       mono: ts.every((v, i) => i === 0 || v >= ts[i - 1]),
-      head10: G.dist(600), tail10: G.dist(600, true),
-      p10: G.point(G.dist(600)), e10: G.point(G.dist(600, true)),
+      head11: G.dist(660), tail11: G.dist(660, true),
+      p11: G.point(G.dist(660)), e11: G.point(G.dist(660, true)),
       arcs: (d.match(/A/g) || []).length,
       total: G.total, end: G.point(G.total),
-      p1300: G.point(G.dist(780)),
+      p1000: G.point(G.dist(600)),
     };
   });
-  c.check("5:00〜23:00 は一段5時間の四段", g.rows === 4 && g.rowSpan === 300, JSON.stringify(g));
+  c.check("5:00〜23:00 は一段3時間の六段", g.rows === 6 && g.rowSpan === 180, JSON.stringify(g));
   c.check("時刻が進めば、道の上も進む（戻らない）", g.mono);
-  c.check("折り返しは時間を持たない：10:00 は段の尻と次の段の頭の両方",
-    g.head10 > g.tail10 && Math.abs(g.p10.y - g.e10.y) > 60 && Math.abs(g.p10.x - g.e10.x) < 0.5,
-    JSON.stringify([g.p10, g.e10]));
-  c.check("道筋は曲がり角を四分の一ずつ（三つの角で6つ）", g.arcs === 6, String(g.arcs));
-  c.check("最後の段は余ったぶんだけで、道はそこで終わる", g.end.row === 3 && g.end.x > 60, JSON.stringify(g.end));
-  c.check("二段目は右から左へ（13:00 は段の左寄り）", g.p1300.row === 1 && !g.p1300.ltr && g.p1300.x < 180,
-    JSON.stringify(g.p1300));
+  c.check("折り返しは時間を持たない：11:00 は段の尻と次の段の頭の両方",
+    g.head11 > g.tail11 && Math.abs(g.p11.y - g.e11.y) > 60 && Math.abs(g.p11.x - g.e11.x) < 0.5,
+    JSON.stringify([g.p11, g.e11]));
+  c.check("道筋は曲がり角を四分の一ずつ（五つの角で10）", g.arcs === 10, String(g.arcs));
+  c.check("割り切れる日は、六段目の尻で道が終わる", g.end.row === 5, JSON.stringify(g.end));
+  const r7 = await page.evaluate(() => { const G = KN.dayRoad.geom(420, 1320); return [G.rows, G.rowSpan, G.point(G.total)]; });
+  c.check("割り切れない日（7:00〜22:00）は一段3時間の五段、最後の段は途中で終わる",
+    r7[0] === 5 && r7[1] === 180 && r7[2].row === 4 && r7[2].x > 60, JSON.stringify(r7));
+  c.check("二段目は右から左へ（10:00 は段の左寄り）", g.p1000.row === 1 && !g.p1000.ltr && g.p1000.x < 180,
+    JSON.stringify(g.p1000));
 
   /* ---------------- 後半：画面 ---------------- */
   const ids = await page.evaluate((day) => {
@@ -239,20 +242,20 @@ const DAY = "2026-09-29";
     && Math.abs(Number((await freeD()).match(/^M([-\d.]+) /)[1]) - p743.x) < 0.3, await freeD());
 
   /* 戻ってきたら、すぐ「いま」が動く（30秒の見回りを待たない） */
-  await page.clock.setFixedTime(new Date(2026, 8, 29, 13, 40));
+  await page.clock.setFixedTime(new Date(2026, 8, 29, 14, 20));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(400);
   r = await read();
-  const p1340 = await pointOf(13 * 60 + 40);
-  c.check("戻ってきたら、道の人がすぐ 13:40 へ", r.me && Math.abs(r.me.x - p1340.x) < 0.3, JSON.stringify([r.me, p1340]));
-  c.check("戻ってきたら、時間割の「いま」もすぐ 13:40", r.nowTl === "13:40", String(r.nowTl));
+  const p1420 = await pointOf(14 * 60 + 20);
+  c.check("戻ってきたら、道の人がすぐ 14:20 へ", r.me && Math.abs(r.me.x - p1420.x) < 0.3, JSON.stringify([r.me, p1420]));
+  c.check("戻ってきたら、時間割の「いま」もすぐ 14:20", r.nowTl === "14:20", String(r.nowTl));
   c.check("病院の途中：停留所は is-live、次の一行は「いまは 病院（14:30まで）」",
     r.live[2] === true && /いまは\s*病院（14:30まで）/.test(r.next), JSON.stringify([r.live, r.next]));
-  c.check("二段目は左へ進むので、連れは人の右", r.beads.every((b) => b.x > p1340.x + 8),
-    JSON.stringify(r.beads.map((b) => b.x)) + " / " + p1340.x);
+  c.check("四段目は左へ進むので、連れは人の右", r.beads.every((b) => b.x > p1420.x + 8),
+    JSON.stringify(r.beads.map((b) => b.x)) + " / " + p1420.x);
   if (process.env.SHOTS) {
     const box = await page.locator("#screen-todo .day-road").boundingBox();
-    await page.screenshot({ path: `${process.env.SHOTS}/day-road-1340.png`, clip: box });
+    await page.screenshot({ path: `${process.env.SHOTS}/day-road-1420.png`, clip: box });
   }
 
   /* 今日の空きは、いまから：16:10 に 17:02 を押す → 17:00（16:10〜21:00 空き4時間50分） */
@@ -265,7 +268,7 @@ const DAY = "2026-09-29";
     !!ds && ds.title === "17:00" && /16:10〜21:00/.test(ds.gap) && /空き4時間50分/.test(ds.gap), JSON.stringify(ds));
   await page.keyboard.press("Escape");
   await page.waitForTimeout(600);
-  await page.clock.setFixedTime(new Date(2026, 8, 29, 13, 40));
+  await page.clock.setFixedTime(new Date(2026, 8, 29, 14, 20));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(400);
 
@@ -276,9 +279,15 @@ const DAY = "2026-09-29";
     const p = road.querySelectorAll(".road-stop[data-s] .road-stop-edge")[i];
     return { len: p.getTotalLength(), at: road.__road.stops[i].at };
   });
+  /* 13:00〜14:30 は 14:00 の曲がり角をまたぐ（角の長さが混ざる）ので、先に 11:00 へ
+     動かしてから、同じ段の中で長さを比べる。 */
+  await page.evaluate((id) => KN.store.update((st) => {
+    const x = st.todos.find((y) => y.id === id); x.time = "11:00";
+  }), ids.clinic);
+  await page.waitForTimeout(400);
   const before = await len();
   await page.evaluate((id) => KN.store.update((st) => {
-    const x = st.todos.find((y) => y.id === id); x.time = "11:00"; x.minutes = 180;
+    const x = st.todos.find((y) => y.id === id); x.minutes = 180;
   }), ids.clinic);
   await page.waitForTimeout(400);
   const after = await len();

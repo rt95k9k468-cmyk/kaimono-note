@@ -2444,6 +2444,56 @@
     });
   }
 
+  /* ---- 段5：その日のうちの置き直し（docs/todo-timeline.md「その日のうちの置き直し」） ----
+
+     段3は日をまたいだ崩れを拾います。ここは**その日のうちに**崩れたもの——10:00 に
+     やるつもりの用事が、11時を過ぎてもまだ、という場面。道では時計が通った停留所は
+     塗られ、「10:00」という過ぎた約束のまま後ろに残ります。黙って時刻を外すことは
+     しません（決めるのは本人）。あることと、置き直す口だけを出します。 */
+
+  /** 今日、時刻を決めてあって、その時刻（長さがあれば終わり、無ければ30分後）を
+      過ぎたのにまだのもの。くり返しの用事は入れません——時刻を外すと毎回の時刻が
+      消えるので（段3と同じく、ルーティンは前のまま）。 */
+  function passedToday() {
+    const U = KN.util;
+    const today = U.todayKey();
+    const toMin = (hm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(hm); return m ? +m[1] * 60 + +m[2] : null; };
+    const now = toMin(U.nowTime());
+    return openTodos().filter((t) => {
+      if (t.repeat || t.trace || t.due !== today || !U.isTime(t.time)) return false;
+      const end = toMin(t.time) + (Number(t.minutes) > 0 ? Number(t.minutes) : 30);
+      return end <= now;
+    }).sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  }
+
+  /**
+   * 時刻を過ぎたものを選び直す。where は
+   * "now"（いまから：at に付け直す）| "loose"（時刻を外して連れに）| "tomorrow" |
+   * "someday"（長期タスクへ）| "stop"（やめる＝アーカイブ）。
+   * 明日と長期タスクへは時刻も外します——過ぎた「10:00」を明日の約束にしないので。
+   * @returns {() => void} 元に戻す
+   */
+  function settlePassed(id, where, at) {
+    const U = KN.util;
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const keys = ["due", "time", "part", "deadline", "carried", "archived", "archivedAt"];
+    const was = {};
+    keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
+    const today = U.todayKey();
+    const lapsed = t0.deadline && t0.deadline < today;
+    if (where === "now") updateTodo(id, { time: at });
+    else if (where === "loose") updateTodo(id, { time: null });
+    else if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1), time: null });
+    else if (where === "someday") updateTodo(id, lapsed ? { due: null, deadline: null } : { due: null });
+    else if (where === "stop") archiveTodo(id, true);
+    return () => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      keys.forEach((k) => { if (was[k] === undefined) delete t[k]; else t[k] = was[k]; });
+    });
+  }
+
   /** くり返しの用事が、`from` の日から先で最初に立つ日（`fallsOn` の読み方で）。
       見つからなければ null（決まりが壊れているなど。そのときは動かしません）。 */
   function firstFallOn(t, from) {
@@ -3984,7 +4034,7 @@
     addStore, addProduct, addItem, addPrice, setArchived,
     setProducts, findSetByName, setMissing, saveSet, removeSet, addSet,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

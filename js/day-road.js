@@ -57,11 +57,17 @@
   const STOP = 21;              // 停留所の太さ（ふち）
   const LANE = 19;              // 道の中心から、上・下の札の中心まで
   const GAP = 4;                // 札どうしのすきま
-  const ME_K = 1.25;            // 人の大きさ（下の形の何倍で描くか）
-  const ME_W = 8;               // 人の頭の半分の幅（上の札がよける）
+  const ME_K = 1.45;            // 人の大きさ（下の形の何倍で描くか。背の高さ約30）
+  const ME_W = 9;               // 人の半分の幅（上の札がよける）
   const BEAD = 19;              // 連れどうしの間（丸は 18px）
   const BEAD_BACK = 16;         // 人から、最初の連れまで
   const BEADS_MAX = 5;
+  /* 一日を何段に折るか。はじめは四段（高さ 268・15分が 14px）でしたが、
+     スマホの縦に合わせて六段にしました（2026年9月29日・利用者の声）。
+     5:00〜23:00 なら一段3時間・高さ 396 で、15分が 23px——段2の「押して
+     決める」が指に合い、札も入りやすくなります。段の間（PITCH）を広げる
+     手はとりません（折り返しの半円が大きくなるだけで、時間は細かくならない）。 */
+  const ROWS = 6;
 
   const n1 = (v) => Math.round(v * 10) / 10;
   const clock = (min) => KN.plan.toTime(min).replace(/^0(\d:)/, "$1");
@@ -70,18 +76,18 @@
   /* ---------------- 時刻と、道の上の位置 ----------------
 
      道は段ごとに向きを変えます（一段目は右へ、二段目は左へ……）。一段は
-     **ちょうどの時間**を持ちます——一日を四段に割り、1時間単位に切り上げ。
-     5:00〜23:00 なら一段5時間で、10:00・15:00・20:00 で折り返します。最後の
-     段は余ったぶんだけで、道はそこで終わります（手描きの道も、最後の段は端まで
+     **ちょうどの時間**を持ちます——一日を六段（ROWS）に割り、1時間単位に切り上げ。
+     5:00〜23:00 なら一段3時間で、8:00・11:00・14:00・17:00・20:00 で折り返します。
+     割り切れない日は、最後の段が余ったぶんだけで、道はそこで終わります（手描きの道も、最後の段は端まで
      行かずに「22:30」で止まっていました）。
 
      **折り返しは時間を持ちません。** 段の尻と次の段の頭は同じ時刻で、曲がり
      角はそのあいだをつなぐだけの線です。持たせると一時間の長さが段の途中で
-     変わらないかわりに、折り返しの時刻が半端になり、角の札（「10:00」）で
+     変わらないかわりに、折り返しの時刻が半端になり、角の札（「11:00」）で
      物差しを言えなくなります。 */
   function geom(start, end) {
     const span = Math.max(60, end - start);
-    const rowSpan = Math.max(120, Math.ceil(span / 4 / 60) * 60);
+    const rowSpan = Math.max(120, Math.ceil(span / ROWS / 60) * 60);
     const rows = Math.max(1, Math.ceil(span / rowSpan - 1e-9));
     const H = TOP + (rows - 1) * PITCH + BOT;
     const rowY = (i) => TOP + i * PITCH;
@@ -174,10 +180,31 @@
     return v > 0 ? v : 1;
   }
 
-  /* 人の形。手描きと同じ、棒の人。足もとが (0,0)、右へ歩いている向き
-     （左へ進む段では左右を返します）。前の腕を少し上げて。 */
-  const ME_PATH = "M0 -13.2V-6.6L-3.2 -0.2M0 -6.6L3.4 -0.2M-3.6 -8.4L0 -11.4L4.2 -13.6";
-  const ME = `<circle cx="0.4" cy="-17.2" r="3.7"/><path d="${ME_PATH}"/>`;
+  /* 人の形。利用者が選んだ絵（2026年9月29日）：塗りの、歩く人。頭・シャツ・
+     腕・ズボンを太い線と面で。奥の脚は一段濃く、奥の腕はシャツの後ろ。
+     描くのは元の絵の座標（1200四方・足もとが y=1100）で、0.021 倍して足もとを
+     (0,0) に。右へ歩いている向きで、左へ進む段では左右を返します（外の scale）。
+     まわりに紙の色の縁（halo）——道や札の上でも形が読めるように。 */
+  const ME_PARTS = [
+    ["me-skin", "M470 440L378 492L338 688", 74],       // 奥の腕
+    ["me-shirt", "M555 356L445 452", 82],              // 奥の袖
+    ["me-leg-b", "M478 690L425 878L325 1050", 100],    // 奥の脚
+    ["me-leg", "M540 690L690 890L775 1050", 100],      // 手前の脚
+    ["me-shirt", "M468 643L512 462L540 350Q575 325 615 325Q690 330 700 405L637 685Z", 0],
+    ["me-skin", "M705 550L700 612L862 663", 72],       // 手前の腕
+    ["me-shirt-d", "M680 400L712 555", 74],            // 手前の袖
+  ];
+  const HALO = 110;             // 縁の太さ（元の絵の単位。約 2.9px）
+  function meSvg(halo) {
+    const parts = ME_PARTS.map(([cls, d, w]) => (w
+      ? `<path class="${halo ? "" : cls + " me-line"}" d="${d}" stroke-width="${w + (halo ? HALO : 0)}"/>`
+      : `<path class="${halo ? "" : cls + " me-fill"}" d="${d}"${halo ? ` stroke-width="${HALO}"` : ""}/>`));
+    parts.push(`<circle class="${halo ? "" : "me-skin me-fill"}" cx="662" cy="187" r="88"`
+      + `${halo ? ` stroke-width="${HALO}"` : ""}/>`);
+    return `<g transform="scale(0.021) translate(-560 -1100)">${parts.join("")}</g>`;
+  }
+  const ME_HALO = meSvg(true), ME_INK = meSvg(false);
+  const ME_HEAD = (1100 - 187) * 0.021 * ME_K;   // 足もとから頭の中心まで
 
   /* ---------------- 組み立て ---------------- */
 
@@ -250,8 +277,8 @@
       + `<path class="road-ticks" d="${g.ticks()}"/>`
       + stopSvg + laterSvg
       + `<g class="road-steps">${stepSvg}</g>`
-      + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME}</g>`
-      + `<g class="road-me-ink">${ME}</g></g>`
+      + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME_HALO}</g>`
+      + `<g class="road-me-ink">${ME_INK}</g></g>`
       + `<path class="road-free"/>`
       + hitSvg
       + `</svg>`;
@@ -413,7 +440,10 @@
           hi = a - GAP; lo = Math.max(occ.lo, hi - want);
         }
       }
-      return hi - lo >= min ? [lo, hi] : null;
+      /* 小数の誤差を許す。ちょうどの幅（want = min）で 229 − 40.1 を引くと
+         40.0999… になり、空いた通りでも「入らない」と言って札が消えていました
+         （六段にして座標が変わったとき、9:00 の札で出た）。 */
+      return hi - lo >= min - 1e-6 ? [lo, hi] : null;
     }
     /** 真ん中に置けるか（縮めない）。 */
     function fitMid(occ, x, w) {
@@ -432,7 +462,7 @@
     for (let i = 0; i < g.rows - 1; i++) {
       const x = i % 2 === 0 ? XR + R * 0.36 : XL - R * 0.36;
       const y = g.rowY(i) + R;
-      if (me && Math.abs(me.x - x) < 26 && Math.abs(me.y - 24 - y) < 30) continue;
+      if (me && Math.abs(me.x - x) < 26 && Math.abs(me.y - ME_HEAD - y) < 30) continue;
       out.push(html`<span class="road-turn" style="${at(x, y)}">${
         clock(g.start + (i + 1) * g.rowSpan)}</span>`);
     }
