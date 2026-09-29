@@ -47,8 +47,9 @@
   → テスト → もう一度。
 - デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。確かめるのは
   必要なときだけ：`mcp__github__actions_list`（method: list_workflow_runs,
-  workflow_runs_filter: {branch: "main"}, **perPage: 1**）。perPage を省くと
-  30件返って大きい。
+  **resource_id: "pages.yml"**, **perPage: 1**）。perPage を省くと30件返って大きい。
+  `workflow_runs_filter: {branch: "main"}` で引くと**古い run（9月21日の #403）が
+  返った**ことがある（2026年9月29日）——run_number と head_sha を push したものと照らすこと。
 - `stamp-build.js` は**絶対にローカルで実行してコミットしない**
   （ビルド時にCI側が使うもの）。
 - PRは明示的に頼まれない限り作らない。
