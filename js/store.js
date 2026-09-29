@@ -353,6 +353,9 @@
      古い記録も読み直せます。 */
   function cleanDrink(d) {
     if (!d || typeof d !== "object") return null;
+    /* drinks.js は store.js より前に読む（index.html / sw.js / build-standalone.js）。
+       `let state = load()` の時点で KN.drinks が無いと、kinds が空になって
+       保存済みの kind がぜんぶ "other" に書き換わる。 */
     const kinds = (KN.drinks && KN.drinks.KINDS) || [];
     const kind = kinds.some((k) => k.id === d.kind) ? d.kind : "other";
     const label = String(d.kindLabel || "").trim()

@@ -133,19 +133,11 @@ window.__diff = function (a, b, p) {
   t.check("B. 新品の端末に戻すと、件数が元と同じ", JSON.stringify(B.counts) === JSON.stringify(A.beforeCounts), JSON.stringify(B.counts));
   t.check("B. 新品の端末に戻した中身が、元の端末に戻した中身と一字も違わない", B.after === A.after,
     B.after === A.after ? "" : `元の端末${A.after.length}字 新品${B.after.length}字`);
-  /* 読み直しで動くのは、決まりどおりの三つだけ：
-       ① 過ぎた用事の日が今日へ（rescheduleOverdue）② 今日の空の日の行（ensureDayLog）
-       ③ 【既知・報告待ち】お酒の kind が "other" になる——store.js（87行）が drinks.js
-          （107行）より先に読まれ、`let state = load()` の時点で KN.drinks が無く、
-          cleanDrink の kinds が空になるため。kindLabel は残る。直すのは読み込みの
-          経路なので、利用者に報告してから（CLAUDE.md の最優先の約束事）。直したら
-          この除外を外す。 */
+  /* 読み直しで動くのは、決まりどおりの二つだけ：
+       ① 過ぎた用事の日が今日へ（rescheduleOverdue）② 今日の空の日の行（ensureDayLog） */
   const KNOWN = [/^\.todos\.\d+\.due:/, /^\.archive\.days\.\d+: undefined ->/];
-  const KNOWN_DRINK = /^\.diet\.drinks\.\d+\.kind: /;
-  const drift = B.drift.filter((d) => !KNOWN.some((re) => re.test(d)) && !KNOWN_DRINK.test(d));
-  const drinkDrift = B.drift.filter((d) => KNOWN_DRINK.test(d));
+  const drift = B.drift.filter((d) => !KNOWN.some((re) => re.test(d)));
   t.check("B. 読み直しても、戻した中身が残っている（決まりどおりの動きを除く）", drift.length === 0, drift.slice(0, 6).join("\n      "));
-  if (drinkDrift.length) console.log(`  --  既知・報告待ち：読み込みでお酒の kind が変わる（${drinkDrift.length}件）`);
   t.check("B. 試験中にエラーが出ていない", B.errors.length === 0, B.errors.join("\n"));
 
   /* ================= C. 自動の控え：取る → 空にする → 控えから戻す ================= */
