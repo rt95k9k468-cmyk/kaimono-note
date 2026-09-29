@@ -223,6 +223,90 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await browser.close();
   }
 
+  /* 飲みすぎた日：一周目は灰（下地と同じ色）なので、灰の輪から始まり、赤の超えたぶんと
+     数が一緒に動く（数だけ先に動いて赤が最後、にならない）。 */
+  {
+    const { browser, page, errors } = await open({
+      before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 21, 0)); },
+    });
+    await page.evaluate((day) => {
+      KN.store.addDrink({ day, time: "19:00", kind: "beer", name: "ビール", ml: 500, count: 2, abv: 5, volumeMl: 1000, alcoholG: 40 });
+      /* 今日の食事の帯（朝・昼・夜）。総消費が分かる日にする。 */
+      KN.store.setHealth(day, "activeEnergy", 400);
+      KN.store.setHealth(day, "restingEnergy", 1500);
+      KN.store.addMeal({ day, time: "07:30", slot: "breakfast", items: [{ name: "パン", kcal: 400 }] });
+      KN.store.addMeal({ day, time: "12:30", slot: "lunch", items: [{ name: "定食", kcal: 600 }] });
+      KN.store.addMeal({ day, time: "19:30", slot: "dinner", items: [{ name: "煮物", kcal: 500 }] });
+    }, DAY);
+    await page.click('.tab[data-tab="todo"]');
+    await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
+    await page.evaluate(() => {
+      window.__rec = [];
+      const t0 = performance.now();
+      const tick = () => {
+        const r = document.querySelector("#screen-diet .diet-ring.is-drink");
+        const mid = r && r.querySelector(".diet-ring-mid");
+        if (r) window.__rec.push({ cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
+          target: parseFloat(r.dataset.p || "NaN"), n: mid ? Number(mid.dataset.n) : null, show: mid ? mid.dataset.show : undefined });
+        const segs = [...document.querySelectorAll("#screen-diet .diet-stack > i:not(.is-rest)")];
+        if (segs.length) (window.__bar = window.__bar || []).push({ at: performance.now() - t0,
+          w: segs.map((e) => e.getBoundingClientRect().width), full: segs.map((e) => e.offsetWidth),
+          ids: segs.map((e) => e.className) });
+        if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    await page.click('.tab[data-tab="diet"]');
+    await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
+      null, { timeout: 6000 });
+    await page.waitForTimeout(300);
+    const rec = (await page.evaluate(() => window.__rec)).filter((f) => /is-drink/.test(f.cls));
+    const moving = rec.filter((f) => f.show != null);
+    const end = rec[rec.length - 1] || {};
+    t.check("飲みすぎた日の輪（is-drink is-over、1 周より先）", /is-over/.test(end.cls || "") && end.target > 1 && end.n > 0,
+      JSON.stringify(end));
+    t.check("灰の一周目は満ちた姿から始まる（1 より下へ行かない）", moving.length > 5 && moving.every((f) => f.p >= 1 - 1e-4),
+      JSON.stringify(moving.slice(0, 3)));
+    let off = 0, worst = "";
+    moving.forEach((f) => {
+      const want = Math.round(f.n * (f.p - 1) / (f.target - 1));
+      if (Math.abs(parseInt(f.show, 10) - want) > 1) { off++; worst = `${f.show} / ${want}`; }
+    });
+    t.check("赤の超えたぶんと数は一緒に動く（どのフレームでも揃う）", off === 0, `${off}フレーム ${worst}`);
+    t.check("終われば本当の値", Math.abs(end.p - end.target) < 1e-3 && end.show == null, JSON.stringify(end));
+
+    /* 今日の食事の帯：朝 → 昼 → 夜 → 飲酒の順に、自分の左端から伸びる。区切りで一瞬ゆるむ。 */
+    const bar = await page.evaluate(() => window.__bar || []);
+    const ids = bar.length ? bar[bar.length - 1].ids : [];
+    t.check("帯は朝・昼・夜（と飲酒）の順", ids.length >= 3 && /is-breakfast/.test(ids[0]) && /is-lunch/.test(ids[1])
+      && /is-dinner/.test(ids[2]), JSON.stringify(ids));
+    const first = bar.find((f) => f.w.some((w) => w > 0.5));
+    t.check("はじめは空（伸びる前）", bar.length > 10 && bar[0].w.every((w, i) => w <= bar[0].full[i] * 0.05),
+      JSON.stringify(bar[0] && bar[0].w));
+    let order = true, orderAt = "";
+    bar.forEach((f) => f.w.forEach((w, i) => {
+      if (i && w > 1 && f.w[i - 1] < f.full[i - 1] - 1) { order = false; orderAt = `${Math.round(f.at)}ms 区分${i}`; }
+    }));
+    t.check("前の区分が伸びきってから、次が伸び始める（先頭は一本で進む）", order, orderAt);
+    /* 先頭の位置と速さ。区切り（朝→昼）の前後は、昼の中ほどより遅い。 */
+    const front = bar.map((f) => ({ at: f.at, x: f.w.reduce((a, b) => a + b, 0) }));
+    const v = front.map((f, i) => (i ? (f.x - front[i - 1].x) / Math.max(1, f.at - front[i - 1].at) : 0));
+    const b1 = bar[bar.length - 1].full[0], b2 = b1 + bar[bar.length - 1].full[1];
+    const near = v.filter((_, i) => i && Math.abs(front[i].x - b1) < (b2 - b1) * 0.08);
+    const midV = v.filter((_, i) => i && Math.abs(front[i].x - (b1 + b2) / 2) < (b2 - b1) * 0.15);
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+    t.check("朝→昼の区切りで一瞬ゆるむ（区切りの速さ < 昼の中ほどの速さ）",
+      near.length && midV.length && avg(near) < avg(midV) * 0.85,
+      `区切り ${avg(near).toFixed(3)} / 中ほど ${avg(midV).toFixed(3)} px/ms`);
+    t.check("区切りで止まりはしない（速さは 0 にならない）", near.every((x) => x > 0.01), JSON.stringify(near.map((x) => x.toFixed(3))));
+    const lastBar = bar[bar.length - 1];
+    t.check("伸び終われば本当の幅", lastBar.w.every((w, i) => Math.abs(w - lastBar.full[i]) < 0.5),
+      JSON.stringify([lastBar.w, lastBar.full]));
+    void first;
+    t.check("エラーなし（飲みすぎた日）", errors.length === 0, errors.join("\n"));
+    await browser.close();
+  }
+
   /* 画面の中の出来事に、帯の席が応える（★・買った → カート、済ませた → チェックリスト）。
      ✓は左から描かれる。空の絵は開いたとき咲く。 */
   {
