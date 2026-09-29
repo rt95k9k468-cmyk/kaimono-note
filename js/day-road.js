@@ -238,11 +238,11 @@
        これを**腰のひねり**として読み、脚が前後を入れ替えるのに合わせて、
        腰の位置と腿・すねの長さも入れ替えます。入れ替えないと一歩目が大股・
        二歩目が小股になって、足を引きずって見えた（試作で踏んだ）。
-     - 腕は脚と逆に、**最初から最後まで**振ります（9月29日・利用者の声）。
-       止まった形は「手前の脚と手前の腕が両方前」（同じ側）なので、脚との
-       ずれを 0 → π → 2π と送ります：出だしは脚と同じ側、半ばで逆、止まる
-       ときにまた同じ側へ。振りの端は止まった形の左右を入れ替えた角度で、
-       動き出す・止まる瞬間は振り子の端（速さ 0）なので、つなぎ目が出ません。
+     - 腕は脚と逆に、**最初から最後まで**、**脚と同じ拍で**振ります（9月29日・
+       利用者の声）。止まった形は「手前の脚と手前の腕が両方前」（同じ側）なので、
+       はじめとおわりは振りの大きさを育てて・しぼませてつなぎます（walkPose）。
+       振りの端は止まった形の左右を入れ替えた角度で、動き出す・止まる瞬間は
+       速さ 0 なので、つなぎ目が出ません。
      - 体は一歩ごとに少し浮きます（片足で立つところがいちばん高い）。
      - 速さは台形（はじめの 15% で 0 から上がり、おわりの 25% で 0 まで）。
      一歩の長さは `--m-walk`。動きを減らす設定では歩きません。書き換えるのは
@@ -254,6 +254,11 @@
     bob: 18,            // 体の浮き（同じ。約 0.5px）
     rampIn: 0.15,       // 速さの台形：上がりきるまで
     rampOut: 0.25,      //              止まるまで
+    /* 腕の振りの大きさを育てる・しぼませる長さ（経った割合）。速さの台形より少し長く
+       して、腕の振りの速さが半ば（脚と同じ拍）を超えないように：短くすると、はじめの
+       一振りが速くなる（0.15 で半ばの1.3倍）。 */
+    fadeIn: 0.25,
+    fadeOut: 0.3,
   };
   const ptsOf = (d) => {
     const v = d.match(/-?\d+(?:\.\d+)?/g).map(Number);
@@ -310,31 +315,30 @@
     return [hip, { x: hip.x + a * (ux * c + uy * s), y: hip.y + a * (-ux * s + uy * c) },
             { x: hip.x + dx, y: hip.y + dy }];
   }
-  /* ph は 0〜steps/2（整数のところが止まった形の脚）。 */
-  function walkPose(ph) {
-    const R = rig(), n = WALK.steps / 2;
+  /* 経った割合 τ（0〜1）での形。ph は 0〜steps/2（整数のところが止まった形の脚）。 */
+  function walkPose(tau) {
+    const R = rig(), ph = walkPhase(tau);
     const bob = -WALK.bob * (1 - Math.cos(4 * Math.PI * ph)) / 2;
     const leg = (q) => {
       const c = Math.cos(2 * Math.PI * q), w = (1 - c) / 2;   // 0＝前に出た形、1＝後ろ
       return ik({ x: R.hipX + R.hipW * c, y: R.hipY + bob }, footAt(q),
         R.front[0] + (R.back[0] - R.front[0]) * w, R.front[1] + (R.back[1] - R.front[1]) * w);
     };
-    /* 腕の振り。0 が止まった形、1 が左右を入れ替えた形。脚と逆（ずれ π）に振るが、
-       止まった形は脚と同じ側なので、ずれを 0 → π（半ばで）→ 0 と送って戻す。
-       はじめは大きく送る（速さの台形で遅いところ）。 */
-    /* 足がいちばん後ろへ来るのは半周ではなく stance のところなので、半ばのずれも
-       そのぶん詰める（mid）。
-       **後半はずれを戻す（mid → 0）。** 前は先へ送って一周（mid → 2π）にしていたが、
-       その送りが後半で急ぐ曲線だったので、脚が止まりはじめるところで腕だけが
-       いちばん速く振れた（脚 15.7 に対して腕 26。利用者の声「最後だけ動きが速い」、
-       9月29日）。戻す向きなら腕は脚より遅くなるだけで、振りの総量も脚と同じ。
-       戻しは v = 2u − 1 の頭 0.2 でなめらかに立ち上げ、あとは一定（腕は脚の半分の
-       速さ）。一定より強く戻すと、脚の遅い終わりで腕が逆に回る。 */
-    const u = ph / n, mid = Math.PI * (2 - 2 * WALK.stance);
-    const v = Math.max(0, 2 * u - 1);
-    const back = (v < 0.2 ? v * v / 0.4 : v - 0.1) / 0.9;
-    const lag = u <= 0.5 ? mid * (1 - (1 - 2 * u) ** 3) : mid * (1 - back);
-    const k = (1 - Math.cos(2 * Math.PI * ph + lag)) / 2;
+    /* 腕の振り。0 が止まった形、1 が左右を入れ替えた形。
+       **腕はいつも脚と同じ拍で、逆に振る**（脚とのずれ lag は一定）。止まった形は
+       「手前の脚と手前の腕が両方前」（同じ側）なので、はじめとおわりは**振りの
+       大きさ**（fade）で止まった形とつなぐ：振りを 0 から育て、0 へしぼませる。
+       人も歩き出しは腕の振りが小さく、だんだん大きくなる。
+       前は、ずれそのものを途中で動かしていた（0 → π → 2π、次に 0 → π → 0）。ずれが
+       動くあいだは腕の拍が脚と必ず違い、終わりで腕だけ急いだり（脚の1.6倍）、後半ずっと
+       脚の半分の速さになったりした（利用者の声「最後だけ動きが速い」「まだ腕と足の
+       速さが合ってない」、9月29日）。
+       足がいちばん後ろへ来るのは半周ではなく stance のところなので、ずれはちょうど π
+       ではなく、そのぶん詰める（mid）。 */
+    const lag = Math.PI * (2 - 2 * WALK.stance);
+    const S = (x) => { const y = Math.max(0, Math.min(1, x)); return y * y * (3 - 2 * y); };
+    const fade = Math.min(S(tau / WALK.fadeIn), S((1 - tau) / WALK.fadeOut));
+    const k = fade * (1 - Math.cos(2 * Math.PI * ph + lag)) / 2;
     const arm = (sleeve, skin, sign) => {
       const up = sign * k * R.swing, fl = sign * k * R.flex;
       const f = (p) => { const q = rot(p, sleeve[0], up); return { x: q.x, y: q.y + bob }; };
@@ -383,7 +387,7 @@
     const tick = (now) => {
       const tau = (now - t0) / dur;
       if (tau >= 1 || !me.isConnected) { rest(); return; }
-      const q = walkPose(walkPhase(tau));
+      const q = walkPose(tau);
       ["legB", "legF", "armB", "sleeveB", "armF", "sleeveF"].forEach((key) => set(key, "d", dOf(q[key])));
       const lift = `translate(0 ${n1(q.bob)})`;
       set("body", "transform", lift);
@@ -1036,5 +1040,5 @@
 
   /* pose(τ) は試験用：歩きの経った割合 τ（0〜1）での形（腕と脚の速さを数で見る）。 */
   KN.dayRoad = { build, paint, paintAll, geom, snap, walk, W,
-                 pose: (tau) => walkPose(walkPhase(tau)) };
+                 pose: walkPose };
 })();
