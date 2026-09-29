@@ -187,21 +187,8 @@
 .cat-group { margin-bottom: var(--sp-3); }
 .cat-group:last-child { margin-bottom: 0; }
 
-/* B7（docs/shopping.md）：カテゴリの切れ目には、細い線を一本。
-   見出しが無いので、12px の空きだけだと「行間が揃っていない」に見えて
-   いました。線は**その空きの真ん中**に引きます——前の組の下の 12px を、
-   上に 6px 寄せて（負の margin）、寄せたぶんを内側の 6px で返すので、
-   行の位置は一画素も動きません。線は地の画像で描きます（組に position を
-   持たせると、中の絶対配置の相手が変わるので）。左右は行の中身と同じだけ
-   空けます。 `is-run` はカテゴリの組だけ（アーカイブ・タイルには付けない）。 */
-.cat-group.is-run + .cat-group.is-run {
-  margin-top: calc(var(--sp-3) / -2);
-  padding-top: calc(var(--sp-3) / 2);
-  background-image: linear-gradient(var(--c-border), var(--c-border));
-  background-size: calc(100% - 2 * var(--sp-4)) 1px;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
+/* B7 のカテゴリの切れ目の線は、2026年9月29日に外しました（利用者：「品目の
+   間の線も要らない」）。組と組のあいだは 12px の空きだけ（docs/shopping.md）。 */
 
 .cat-head-count { color: var(--c-text-3); font-weight: 700; }
 
@@ -1674,12 +1661,7 @@
 .day-bought {
   padding-bottom: var(--sp-2);
 }
-.day-bought:not(:first-child) {
-  margin-top: var(--sp-2);
-  /* 線は行の中身と同じく左右 16px 空けます（カテゴリの切れ目の線と同じ）。 */
-  background: linear-gradient(var(--c-border), var(--c-border))
-              no-repeat var(--sp-4) 0 / calc(100% - 2 * var(--sp-4)) 1px;
-}
+.day-bought:not(:first-child) { margin-top: var(--sp-2); }
 /* 買ったものの行の★（今日でない日は丸も）は、描かずに場所だけ残します
    ——列をリストの行と揃えるため（screen-list.js の dayBought）。 */
 .day-bought .is-void { visibility: hidden; }
@@ -1693,6 +1675,19 @@
   color: var(--c-text-3);
 }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
+/* 今日買ったもの の開け閉め（screen-list.js の dayBought）。見出しの字の
+   並びはそのまま、左に ＞ を足すだけ。指の的は高さ 44px。 */
+.day-bought.is-today .day-bought-head { padding-top: var(--sp-2); padding-bottom: 0; }
+.day-bought-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  font: inherit;
+  color: inherit;
+}
+.day-bought-toggle svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform var(--m-state) var(--ease); }
+.day-bought-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
 
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
    them: at three rows down a heading has scrolled away and the two halves of
@@ -5498,10 +5493,6 @@ a.btn { text-decoration: none; }
   background: color-mix(in srgb, var(--c-primary) 12%, transparent);
   color: var(--c-primary);
 }
-/* 「このリストを送る」（screen-list.js の shareRow）。見た目は上の
-   「今日の予定に入れる」と同じ一本——どちらも、このリストを外へ渡す口なので。
-   置き場所は買うものの終わり、アーカイブの手前。 */
-.list-share { padding: var(--sp-3) var(--sp-4) var(--sp-2); }
 
 /* 「そろそろ切れそう」（screen-list.js の lowSection・D6）。買うものの終わり、
    アーカイブの手前。**まだリストに無いもの**なので、行の形は買うものの行に

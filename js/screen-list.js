@@ -532,8 +532,7 @@
          is a standing note of things to buy sometime, not a shopping trip, and
          adding up a year of sometime gives a number with no occasion. Both come
          back the moment something is starred, where they mean this trip. */
-      const shown = appendGroups(active);
-      if (shown && !query) els.body.append(shareRow([{ title: "買うもの", list: active }]));
+      appendGroups(active);
       els.body.append(lowSection());
       if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
       settle();
@@ -566,67 +565,13 @@
       els.body.append(sectionHead("そのほか", rest.length, "rest"));
       appendGroups(rest);
     }
-    if (!query) {
-      els.body.append(shareRow([{ title: "今回買うもの", list: trip }, { title: "そのほか", list: rest }]));
-    }
-
     els.body.append(lowSection());
     if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
     settle();
   }
 
-  /* ---------------- リストを、文字にして送る ----------------
-
-     LINE などへ渡すための一行（docs/improvements.md の D4）。送るのは
-     **いま画面に出ている買うもの**そのまま——★があれば「今回買うもの」と
-     「そのほか」に分けて、並びも画面と同じ。買ったもの（アーカイブ）は入れません。探しているあいだは出しません
-     （探した結果はリストではなく、リストの見方なので）。
-
-     渡し方は共有シート。無い端末ではクリップボードへ写します。共有シートを
-     閉じただけ（AbortError）なら、何も言いません——取り消しは取り消しなので。 */
-  function shareRow(parts) {
-    const text = listText(parts);
-    if (!text) return document.createDocumentFragment();
-    const row = node(html`
-      <div class="list-share">
-        <button type="button" class="trip-plan-btn js-share">
-          ${icon("upload")}<span>このリストを送る</span>
-        </button>
-      </div>
-    `);
-    row.querySelector(".js-share").addEventListener("click", () => sendList(listText(parts)));
-    return row;
-  }
-
-  function listText(parts) {
-    const blocks = parts.map(({ title, list }) => {
-      const lines = [];
-      const groups = groupsOf(list);
-      store.sortedCategories().forEach((c) => {
-        (groups.get(c.id) || []).forEach(({ item, product }) => {
-          lines.push(`・${product.name}${item.qty > 1 ? ` ×${item.qty}` : ""}`
-            + `${item.memo ? `（${String(item.memo).replace(/\s+/g, " ").trim()}）` : ""}`);
-        });
-      });
-      return lines.length ? `${title}\n${lines.join("\n")}` : "";
-    }).filter(Boolean);
-    return blocks.join("\n\n");
-  }
-
-  function sendList(text) {
-    const copy = () => (navigator.clipboard && navigator.clipboard.writeText
-      ? navigator.clipboard.writeText(text).then(() => true, () => false)
-      : Promise.resolve(false)
-    ).then((ok) => {
-      if (ok) KN.motion.fire("select");
-      KN.ui.toast(ok ? "リストをコピーしました" : "送れませんでした");
-    });
-    if (!navigator.share) { copy(); return; }
-    navigator.share({ text }).catch((err) => {
-      if (err && err.name === "AbortError") return;
-      copy();
-    });
-  }
+  /* 「このリストを送る」は、2026年9月29日に外しました（利用者：「リストを
+     送るの機能も要らない」）。docs/shopping.md の D4。 */
 
   /* ---------------- そろそろ切れそう（D6） ----------------
 
@@ -1014,13 +959,26 @@
     const d = KN.util.dayDate(day);
     const label = isToday ? "今日買ったもの"
       : d ? `${d.getMonth() + 1}月${d.getDate()}日に買ったもの` : "この日に買ったもの";
+    /* 今日の「今日買ったもの」は、見出しの ＞ で閉じられます（2026年9月29日、
+       利用者）。開け閉めは使っていなかった `settings.showChecked`（既定 true）
+       に覚えさせます——新しい入れ物は増やしません。今日でない日は紙がこれ
+       だけなので、閉じる口は置きません。 */
+    const open = !isToday || store.get().settings.showChecked !== false;
     const section = node(html`
-      <section class="day-bought" aria-label="${label}">
-        <h2 class="day-bought-head">${label} <span class="cat-head-count">${bought.length}</span></h2>
-        <div class="item-list"></div>
+      <section class="day-bought ${isToday ? "is-today" : ""}" aria-label="${label}">
+        ${isToday
+          ? html`<h2 class="day-bought-head"><button type="button" class="day-bought-toggle" aria-expanded="${String(open)}">${icon("chevron")}<span>${label}</span> <span class="cat-head-count">${bought.length}</span></button></h2>`
+          : html`<h2 class="day-bought-head">${label} <span class="cat-head-count">${bought.length}</span></h2>`}
+        <div class="item-list" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
     `);
     const list = section.querySelector(".item-list");
+    if (isToday) {
+      section.querySelector(".day-bought-toggle").addEventListener("click", () => {
+        store.update((s) => { s.settings.showChecked = !open; });
+      });
+    }
+    if (!open) return section;
     /* 買ったものの行に★は要りません（今回買うかどうかは、もう済んだ話）。
        丸も要らない——ただし今日の行だけは残します。押しまちがえたとき、
        その場で買うものへ戻せるように（同じ夜、利用者）。
