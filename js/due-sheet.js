@@ -170,6 +170,11 @@
       .map((t) => t.id);
   }
 
+  /* 通知の足あと（困ったときの記録へ。題や本文は書かない——件数と道だけ）。 */
+  function trail(msg) {
+    if (KN.errlog) KN.errlog.note("notice", `通知：${msg}`, { file: "due-sheet.js" });
+  }
+
   /** 控えがあれば id の並び（読んだら消す）。無ければ null。 */
   async function take(now) {
     if (!("caches" in window)) return null;
@@ -180,13 +185,19 @@
       await box.delete(KEY);
       const rec = await res.json();
       const t = now == null ? Date.now() : now;
-      if (!rec || !(t - rec.at < FRESH)) return null;
+      const secs = rec ? Math.round((t - rec.at) / 1000) : null;
+      if (!rec || !(t - rec.at < FRESH)) {
+        trail(`控えが古いので使わない（押して${secs}秒）`);
+        return null;
+      }
       const ids = Array.isArray(rec.due) ? rec.due.filter((x) => typeof x === "string" && x) : [];
-      return ids.length ? ids : dueNear(rec.at);
+      const got = ids.length ? ids : dueNear(rec.at);
+      trail(`控えを読んだ（押して${secs}秒・道 ${rec.via || "?"}・id ${ids.length}件→開く${got.length}件）`);
+      return got;
     } catch (err) {
       return null;
     }
   }
 
-  KN.dueSheet = { open, later, idsFromHash, take, dueNear, LATER, PREFIX, BOX, KEY };
+  KN.dueSheet = { open, later, idsFromHash, take, dueNear, trail, LATER, PREFIX, BOX, KEY };
 })();

@@ -261,20 +261,25 @@ self.addEventListener("notificationclick", (event) => {
   const timed = screen === "todo" && event.notification.tag === "kn-todo-time";
   const hash = due.length ? "due=" + due.map(encodeURIComponent).join(",") : screen;
   const target = new URL("./#" + hash, self.location.href).href;
-  const note = timed
-    ? caches.open(DUE_BOX).then((c) => c.put(DUE_KEY, new Response(JSON.stringify({ at: Date.now(), due }),
+  /* 控えには、どの道で開こうとしたか（via）も書く——iPhone で「出ない」とき、
+     アプリの「困ったときの記録」に足あととして残り、どこで途切れたかが分かる。 */
+  const put = (via) => (timed
+    ? caches.open(DUE_BOX).then((c) => c.put(DUE_KEY, new Response(JSON.stringify({ at: Date.now(), due, via, ver: VERSION }),
         { headers: { "content-type": "application/json" } }))).catch(() => {})
-    : Promise.resolve();
-  event.waitUntil(note.then(() =>
+    : Promise.resolve());
+  event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const client of list) {
-        if (client.url.startsWith(self.registration.scope) && "focus" in client) {
+      const client = list.find((c) => c.url.startsWith(self.registration.scope) && "focus" in c);
+      if (client) {
+        const nav = "navigate" in client;
+        return put(nav ? "focus+navigate" : "focus").then(() => {
           if (timed) client.postMessage({ type: "due-click" });
-          if ("navigate" in client) client.navigate(target).catch(() => {});
+          if (nav) client.navigate(target).catch(() => {});
           return client.focus();
-        }
+        });
       }
-      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+      return put(self.clients.openWindow ? "openWindow" : "none")
+        .then(() => (self.clients.openWindow ? self.clients.openWindow(target) : undefined));
     })
-  ));
+  );
 });
