@@ -178,9 +178,13 @@
          この席が受け持ちます。動きは引いたときと同じ——紙が下がって後ろの
          地が出ます。戻るのは、もう一度押すか、留まった頭を上へ引くか。 */
       btn.addEventListener("click", () => {
-        if (t.holds && t.holds.indexOf(active) >= 0) { faceTo(0); return; }
-        if (t.holds && active === t.id) { faceTo(1); return; }
-        show(t.id);
+        if (t.holds && t.holds.indexOf(active) >= 0) faceTo(0);
+        else if (t.holds && active === t.id) faceTo(1);
+        else show(t.id);
+        /* 押した席の絵が、一度だけその絵らしく応える（base.css の「押した席の
+           絵が応える」）。いま居る席をもう一度押しても応えます——押したことへの
+           返事なので、行き先が変わったかどうかとは別。 */
+        KN.motion.fire("poke", btn.querySelector(".tab-ico-face"));
       });
       bar.append(btn);
     });
@@ -1081,6 +1085,9 @@
     if (KN.screens[id].onEnter) {
       try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
     }
+    /* 開いたとき、満ちるもの（health の輪・体重の線）。何が動くかは CSS が
+       決めます（motion.js の arrive）。 */
+    KN.motion.arrive(inEl);
 
     /* 「文字でさがす」のバーは、題のすぐ下に置いてあって、開いた時点では
        その一段ぶんだけ先へ送ってあります（ui.js の parkSearch）。少し下へ
@@ -1145,6 +1152,14 @@
     });
     buildTabs();
     watchGlass();
+    /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
+       同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
+       ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
+    const arriveHere = () => KN.motion.arrive(document.querySelector(`.screen[data-screen="${active}"]`));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") arriveHere();
+    });
+    window.addEventListener("pageshow", (e) => { if (e.persisted) arriveHere(); });
 
     // 閉じているあいだに日をまたいでいたら、終わらなかった用事を今日へ運ぶ。
     store.rescheduleOverdue();

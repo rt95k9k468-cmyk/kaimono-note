@@ -55,6 +55,9 @@
     sheetClose: { ms: 0,  cls: null,          tok: "--m-sheet-close" },
     nav:        { ms: 4,  cls: null,          tok: "--m-nav" },
     number:     { ms: 0,  cls: "is-m-number", tok: "--m-number" },
+    /* 押された絵が、一度だけその絵らしく応える（席の絵・歯車）。震えは
+       席を移る nav が受け持つので、ここでは鳴らしません（二度鳴ると重い）。 */
+    poke:       { ms: 0,  cls: "is-poke",     tok: "--m-poke" },
     /* うまくいった・気をつけて。ここだけ二拍にします——一拍だと
        「何か起きた」しか言えず、良し悪しが伝わらないので。 */
     success:    { ms: 0,  cls: "is-m-success", tok: "--m-success", pattern: [10, 40, 18] },
@@ -388,6 +391,41 @@
     }, dur));
   }
 
+  /* ---------------------------------------------------------------
+     開いたとき、満ちる（docs/motion.md の「開いたとき、満ちる」）
+
+     画面を開いた一拍（と、アプリへ戻ってきたとき）に、その画面へ
+     `is-m-arrive` をしばらく付けます。**何が動くかは CSS が決めます**
+     （`.is-m-arrive .diet-ring` など）——ここが持つのは時計だけ。画面ごとに
+     「開いたら輪を満たす」を書くと、組み直しのたびに誰が何を動かしたかが
+     散らばるので、入口を一つにしました。
+
+     ・付けているあいだに組み直された中身も、同じく頭から動きます（新しい
+       要素は、そのとき始まるので）。外したあとの組み直しは動きません
+       ——保存のたびに輪が満ち直すと、動きが「開いた」ではなく「何か
+       起きた」を言ってしまうので。
+     ・輪が 0 から満ちるのは、角度を `@property` で登録してあるから（登録の
+       無い値は途中を持たず、半分のところで跳ぶ）。登録できないブラウザ
+       では付けません——跳ぶくらいなら、動かないほうがいい。
+     ・動きを減らす設定では付けません。
+     --------------------------------------------------------------- */
+  const ARRIVE = "is-m-arrive";
+  const arriveT = new WeakMap();
+  const canArrive = () => !!(window.CSS && CSS.registerProperty) && !still();
+  function arrive(root) {
+    if (!root || !canArrive()) return;
+    clearTimeout(arriveT.get(root));
+    /* もう付いていたら、外して読んでから付け直す（頭からやり直す）。 */
+    if (root.classList.contains(ARRIVE)) {
+      root.classList.remove(ARRIVE);
+      void root.offsetWidth;
+    }
+    root.classList.add(ARRIVE);
+    /* いちばん遅く始まる輪（四つめ）と、いちばん長い線が終わるまで。 */
+    const dur = Math.max(ms("--m-fill") * 1.4, ms("--m-draw")) + ms("--m-stagger") * 4 + 60;
+    arriveT.set(root, setTimeout(() => root.classList.remove(ARRIVE), dur));
+  }
+
   /* 押している間だけ縮むもの。CSS の :active で足りる場所には要りません
      ——これは「指を離しても少しだけ効いていてほしい」ところ用です。 */
   function press(el) {
@@ -404,5 +442,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, glide, rubber, still, feel, EVENTS };
+  KN.motion = { fire, press, ms, ease, glide, rubber, still, feel, arrive, EVENTS };
 })();
