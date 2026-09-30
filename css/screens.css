@@ -6140,7 +6140,7 @@ a.btn { text-decoration: none; }
 .road-label.is-later { color: var(--c-text-2); }
 .road-label.is-later b { font-weight: 400; }
 .road-now {
-  transform: translateY(-50%); pointer-events: none;
+  transform: translate(-50%, -50%); pointer-events: none;
   font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary);
 }
 .road-edge {
