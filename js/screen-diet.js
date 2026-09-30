@@ -2788,8 +2788,13 @@
               <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
             </span>
             ${ai && ai.ai ? html`
-              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}</span>` : ""}
+              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${KN.dietAI.costLabel(ai.ai.cost)}` : ""}</span>` : ""}
           </button>
+          ${/* 窓口（設定の「AIの窓口」）があれば、コピーして外のAIへ持って
+                いく往復の代わりに、同じ文を窓口へ送って返事をそのまま読みます。 */""}
+          ${KN.dietAI.configured() ? html`
+            <button type="button" class="btn btn-primary btn-sm btn-block diet-ai-run js-ai-run">${icon("sparkles")}AIに推計してもらう</button>
+          ` : ""}
           <div class="diet-ai-btns">
             <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
             <button type="button" class="btn btn-soft btn-sm js-ai-paste">${icon("download")}貼り付け</button>
@@ -2801,12 +2806,6 @@
               「AI推計」を開けば同じ文が出ます）。 */""}
         ${ai && ai.ai && ai.ai.analysis ? html`
           <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
-
-        ${/* 窓口（設定の「AIの窓口」）があるときだけ。上の「AI推計」は
-              他のアプリへ持っていく道、こちらは窓口に直に聞く道です。 */""}
-        ${KN.dietAI.configured() ? html`
-          <button type="button" class="btn btn-soft btn-block js-ai-ask">${icon("sparkles")}${dayName(card.day)}の食事についてAIに聞く</button>
-        ` : ""}
 
         ${/* 食品ごとの内わけは、持ってはいますが並べません。
               「納豆 90kcal P7 F5 C5」の行が十件並んでも、次の一手は
@@ -2847,8 +2846,8 @@
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
     sec.querySelector(".js-ai-prompt").addEventListener("click", () => copyAiPrompt(card.day));
     sec.querySelector(".js-ai-paste").addEventListener("click", () => pasteAiResult(card.day));
-    const ask = sec.querySelector(".js-ai-ask");
-    if (ask) ask.addEventListener("click", () => askAI({ day: card.day }));
+    const run = sec.querySelector(".js-ai-run");
+    if (run) run.addEventListener("click", () => runAiEstimate(card.day, run));
     host.append(sec);
     // 高さは、置いてからでないと測れません（幅が決まっていないので）。
     sec.querySelectorAll(".js-slot-memo").forEach(grow);
@@ -3528,21 +3527,47 @@
   }
 
   /** ②AIの返事を、読み取ってそのまま保存します。 */
-  function saveAiReply(day, text) {
+  function saveAiReply(day, text, cost) {
     const res = readAiReply(text);
     if (!res.found) {
-      KN.ui.toast("読み取れませんでした。AIの返事をそのまま貼ってください");
+      KN.ui.toast(cost ? "返事を読み取れませんでした。もう一度試してください"
+                       : "読み取れませんでした。AIの返事をそのまま貼ってください");
       return false;
     }
     const ai = { ...res, raw: text, at: new Date().toISOString() };
+    if (cost) ai.cost = cost;
     delete ai.found;
     const cur = store.dayMemo(day);
     const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
     store.setDayMemo(day, cur ? cur.memo : "", handItems.concat(aiItem(ai)), ai);
     KN.motion.fire("save");
     render();
-    KN.ui.toast("保存しました");
+    KN.ui.toast(cost ? `保存しました（${KN.dietAI.costLabel(cost)}）` : "保存しました");
     return true;
+  }
+
+  /* 窓口に推計を頼む。送るのは①と同じ文（食事メモ・その日と直近の体の
+     記録）だけです。Web で調べながら答えるので一分ほどかかることがあり、
+     そのあいだはボタンに「推計しています…」と出して二度押しを止めます。
+     返事は②の貼り付けと同じ読み取りで保存します。 */
+  let estimating = false;
+  function runAiEstimate(day, btn) {
+    if (estimating) return;
+    const memoText = dayMemoText(day);
+    if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
+    const text = aiPrompt(memoText, { body: dayBodyText(day), recent: recentText(day, 7) });
+    estimating = true;
+    btn.disabled = true;
+    btn.textContent = "推計しています…（1分ほど）";
+    KN.motion.fire("select");
+    KN.dietAI.estimate(text)
+      .then((r) => { saveAiReply(day, r.text, r.cost); })
+      .catch((err) => { KN.ui.toast(`うまくいきませんでした：${err.message}`); })
+      .finally(() => {
+        estimating = false;
+        // 保存すると画面は組み直されます。残っていれば（しくじったとき）戻します。
+        if (btn.isConnected) { btn.disabled = false; btn.textContent = "AIに推計してもらう"; }
+      });
   }
 
   /** ②貼り付け。押した拍のうちに、クリップボードを直接読んでそのまま
@@ -3832,22 +3857,18 @@
     host.append(sec);
   }
 
-  /* 相談の紙。opts.day を渡すと（食事の画面から開いたとき）、その日の
-     食事の中身——書いた文・品名・量——も送る側から始めます。一日の合計
-     だけでは「何を食べたか」が見えないので。送るかどうかは紙の上で選べて、
-     送るのはダイエットの記録だけです。 */
-  function askAI(opts) {
-    const forDay = opts && opts.day;
-    const day = forDay || U.todayKey();
-    let withMeals = !!forDay;
+  /* 相談の紙。「今日の食事の中身も」を選ぶと、合計だけでは見えない
+     「何を食べたか」（書いた文・品名・量）も送ります。送るのはダイエットの
+     記録だけです。 */
+  function askAI() {
+    const day = U.todayKey();
+    let withMeals = false;
     const name = dayName(day);
     const body = node(html`
       <div class="stack">
         <label class="field">
           <span class="field-label">聞きたいこと</span>
-          <input class="input js-q" value="${forDay
-            ? `${name}の食事を見て、足りないものと、次の食事で気をつけるといいことを教えて`
-            : "ここ2週間の傾向と、来週やるといいことを教えて"}">
+          <input class="input js-q" value="ここ2週間の傾向と、来週やるといいことを教えて">
         </label>
         <div class="js-meals-pick"></div>
         <p class="diet-note js-what"></p>
@@ -3866,16 +3887,17 @@
         onPick: (id) => { withMeals = id === "meals"; sayWhat(); } });
     sayWhat();
     const foot = node(html`<button class="btn btn-primary btn-block js-go">相談する</button>`);
-    KN.ui.sheet({ title: forDay ? `${name}の食事についてAIに聞く` : "AIに相談", content: body, footer: foot });
+    KN.ui.sheet({ title: "AIに相談", content: body, footer: foot });
     // foot はボタンそのもの（querySelector は自分を探さないので、前は null で落ちていた）
     foot.addEventListener("click", () => {
       const out = body.querySelector(".js-out");
       out.innerHTML = "";
       out.append(node(html`<p class="diet-note">考えています…</p>`));
       KN.dietAI.coach(body.querySelector(".js-q").value, 30, withMeals ? { mealDay: day } : null)
-        .then((text) => {
+        .then((r) => {
           out.innerHTML = "";
-          out.append(node(html`<div class="diet-ai-out">${text}</div>`));
+          out.append(node(html`<div class="diet-ai-out">${r.text}</div>`));
+          if (r.cost) out.append(node(html`<p class="diet-note js-cost">この相談：${KN.dietAI.costLabel(r.cost)}</p>`));
         })
         .catch((err) => {
           out.innerHTML = "";

@@ -3214,6 +3214,7 @@ button.section-note:active { opacity: .55; }
 /* 押すだけで完結する二つのボタン。①コピー ②貼り付け、同じ重さで並べます。 */
 .diet-ai-btns { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
 .diet-ai-btns .btn { flex: 1; }
+.diet-ai-run { margin-top: var(--sp-2); }
 .diet-old-meals { margin-top: var(--sp-2); }
 
 .diet-total {
