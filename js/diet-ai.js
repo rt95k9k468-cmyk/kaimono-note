@@ -95,15 +95,16 @@
    * 材料なので、生の記録そのものを渡します——ただし渡すのは
    * **ダイエットの数字だけ**。買い物リストもやることも、ここには入りません。
    */
-  function payload(days) {
+  function payload(days, opts) {
     const U = KN.util;
     const D = KN.diet;
     const n = days || 30;
     const today = U.todayKey();
     const list = D.daysBetween(U.shiftDay(today, -(n - 1)), today);
     const g = store.get().diet.goal;
+    const mealDay = opts && opts.mealDay;
 
-    return {
+    const out = {
       today,
       goal: {
         heightCm: g.heightCm, targetKg: g.targetKg, targetDay: g.targetDay,
@@ -160,10 +161,42 @@
         + "体重は weighedMeal（食前=before/食後=after）と weighedClothed（着衣の有無）で"
         + "条件が変わる。条件の違う日どうしの差を、体の変化として読まないこと。",
     };
+    if (mealDay) {
+      out.meals = mealsOf(mealDay);
+      out.note += "meals はその日の食事の中身。memo は本人が書いたままの文で、量（amount）は目分量。"
+        + "品目の数（kcal など）が無い食事は、数を推して断定しないこと。";
+    }
+    return out;
   }
 
-  function coach(question, days) {
-    return post({ kind: "coach", question: String(question || ""), data: payload(days) })
+  /**
+   * 一日ぶんの食事の中身（本人が頼んだときだけ足す）。days の合計だけでは
+   * 「何を食べたか」が見えないので、その日に書いた文と品目をそのまま渡します。
+   * 読むのは食事の記録（diet.meals）だけです。
+   */
+  function mealsOf(day) {
+    return {
+      day,
+      entries: store.mealsOfDay(day).map((m) => ({
+        slot: m.slot,
+        time: m.time || null,
+        memo: String(m.memo || "").trim() || null,
+        items: m.items.map((it) => ({
+          name: it.name,
+          slot: it.slot || null,
+          amount: it.amount || null,
+          grams: it.grams,
+          kcal: it.kcal, p: it.p, f: it.f, c: it.c,
+          fiber: it.fiber,
+          estimated: it.estimated,
+        })),
+      })).filter((m) => m.memo || m.items.length),
+    };
+  }
+
+  /** opts.mealDay を渡すと、その日の食事の中身も材料に足します。 */
+  function coach(question, days, opts) {
+    return post({ kind: "coach", question: String(question || ""), data: payload(days, opts) })
       .then((r) => String(r && r.text || "").trim() || "返事が空でした");
   }
 

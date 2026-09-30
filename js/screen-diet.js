@@ -2802,6 +2802,12 @@
         ${ai && ai.ai && ai.ai.analysis ? html`
           <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
 
+        ${/* 窓口（設定の「AIの窓口」）があるときだけ。上の「AI推計」は
+              他のアプリへ持っていく道、こちらは窓口に直に聞く道です。 */""}
+        ${KN.dietAI.configured() ? html`
+          <button type="button" class="btn btn-soft btn-block js-ai-ask">${icon("sparkles")}${dayName(card.day)}の食事についてAIに聞く</button>
+        ` : ""}
+
         ${/* 食品ごとの内わけは、持ってはいますが並べません。
               「納豆 90kcal P7 F5 C5」の行が十件並んでも、次の一手は
               変わらないからです。使うのは、区分ごとの合計（上の帯）と
@@ -2841,6 +2847,8 @@
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
     sec.querySelector(".js-ai-prompt").addEventListener("click", () => copyAiPrompt(card.day));
     sec.querySelector(".js-ai-paste").addEventListener("click", () => pasteAiResult(card.day));
+    const ask = sec.querySelector(".js-ai-ask");
+    if (ask) ask.addEventListener("click", () => askAI({ day: card.day }));
     host.append(sec);
     // 高さは、置いてからでないと測れません（幅が決まっていないので）。
     sec.querySelectorAll(".js-slot-memo").forEach(grow);
@@ -3820,29 +3828,51 @@
       { activeId: analysisWindow, onPick: (id) => { analysisWindow = Number(id); render(); } });
 
     const ai = sec.querySelector(".js-ai");
-    if (ai) ai.addEventListener("click", askAI);
+    if (ai) ai.addEventListener("click", () => askAI());
     host.append(sec);
   }
 
-  function askAI() {
+  /* 相談の紙。opts.day を渡すと（食事の画面から開いたとき）、その日の
+     食事の中身——書いた文・品名・量——も送る側から始めます。一日の合計
+     だけでは「何を食べたか」が見えないので。送るかどうかは紙の上で選べて、
+     送るのはダイエットの記録だけです。 */
+  function askAI(opts) {
+    const forDay = opts && opts.day;
+    const day = forDay || U.todayKey();
+    let withMeals = !!forDay;
+    const name = dayName(day);
     const body = node(html`
       <div class="stack">
         <label class="field">
           <span class="field-label">聞きたいこと</span>
-          <input class="input js-q" value="ここ2週間の傾向と、来週やるといいことを教えて">
+          <input class="input js-q" value="${forDay
+            ? `${name}の食事を見て、足りないものと、次の食事で気をつけるといいことを教えて`
+            : "ここ2週間の傾向と、来週やるといいことを教えて"}">
         </label>
-        <p class="diet-note">直近30日ぶんの体重・食事・歩数・睡眠を窓口へ送ります。
-          買い物リストとやることは送りません。</p>
+        <div class="js-meals-pick"></div>
+        <p class="diet-note js-what"></p>
         <div class="js-out"></div>
       </div>
     `);
+    const what = body.querySelector(".js-what");
+    const sayWhat = () => {
+      what.textContent = "直近30日ぶんの体重・食事の合計・歩数・睡眠"
+        + (withMeals ? `と、${name}の食事の中身（書いた文・品名・量）` : "")
+        + "を窓口へ送ります。買い物リスト・やること・日記は送りません。";
+    };
+    KN.ui.chipRow(body.querySelector(".js-meals-pick"),
+      [{ id: "sum", label: "合計だけ" }, { id: "meals", label: `${name}の食事の中身も` }],
+      { activeId: withMeals ? "meals" : "sum",
+        onPick: (id) => { withMeals = id === "meals"; sayWhat(); } });
+    sayWhat();
     const foot = node(html`<button class="btn btn-primary btn-block js-go">相談する</button>`);
-    const h = KN.ui.sheet({ title: "AIに相談", content: body, footer: foot });
-    foot.querySelector(".js-go").addEventListener("click", () => {
+    KN.ui.sheet({ title: forDay ? `${name}の食事についてAIに聞く` : "AIに相談", content: body, footer: foot });
+    // foot はボタンそのもの（querySelector は自分を探さないので、前は null で落ちていた）
+    foot.addEventListener("click", () => {
       const out = body.querySelector(".js-out");
       out.innerHTML = "";
       out.append(node(html`<p class="diet-note">考えています…</p>`));
-      KN.dietAI.coach(body.querySelector(".js-q").value, 30)
+      KN.dietAI.coach(body.querySelector(".js-q").value, 30, withMeals ? { mealDay: day } : null)
         .then((text) => {
           out.innerHTML = "";
           out.append(node(html`<div class="diet-ai-out">${text}</div>`));
