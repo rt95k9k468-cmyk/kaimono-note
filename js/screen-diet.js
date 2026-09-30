@@ -1419,13 +1419,13 @@
               <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
               ${moodOf(d) ? `<span class="diet-mood">${KN.util.escapeHtml(moodOf(d))}</span>` : ""}
             </div>`).join(""))}
-          ${rows.length > 1 ? `
+          ${rows.length > 1 ? KN.util.raw(`
             <div class="diet-drink-row is-sum">
               <b>合計</b>
               <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
               <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
               <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
-            </div>` : ""}
+            </div>`) : ""}
         </div>
       </div>
     `);
@@ -2323,7 +2323,10 @@
      入る中身を見てから押してもらいます。確認の画面を別に挟むのではなく、
      同じ画面に出す——押す回数は増やさずに、見えるようにするだけ。 */
 
-  const EXAMPLES = ["ビール350ml 2本", "ワイン半分", "日本酒1合", "ハイボール2杯", "焼酎100ml"];
+  /* 2026年9月30日から、書く前に「よく飲むもの」の札を置きました（drinks.js の
+     favorites）。押せば一本、同じ札をもう一度押すか ＋ で二本。毎晩同じものを
+     飲むなら、キーボードは一度も出ません。書く欄は、札に無いもののために残します。
+     直すときは一件の話なので、札は出さず書く欄だけにします。 */
 
   /** 札と自由入力をひと続きに。同じ言葉が二度出ないようにします。 */
   function moodOf(d) {
@@ -2342,13 +2345,18 @@
         <div class="diet-daynav">
           <b>${U.formatDay(day)}</b>
         </div>
+        ${editing ? "" : html`
+          <div class="field">
+            <span class="field-label">よく飲むもの</span>
+            <div class="drink-fav js-fav"></div>
+          </div>
+          <div class="drink-picks js-picks"></div>`}
         <label class="field">
-          <span class="field-label">飲んだもの</span>
+          <span class="field-label">${editing ? "飲んだもの" : "札に無いものは書いて"}</span>
           <input class="input js-q" placeholder="ビール350ml 2本"
                  autocomplete="off" autocapitalize="off" spellcheck="false"
                  value="${editing ? editing.raw || DR.describeItem(editing) : ""}">
         </label>
-        <div class="diet-chips js-ex"></div>
         <div class="js-read"></div>
 
         ${/* 飲むたびに書き足すものなので、時刻を持たせます。あとで
@@ -2384,31 +2392,64 @@
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
     let items = [];
+    let typed = [];
     let tags = editing ? (editing.moodTags || []).slice() : [];
 
-    /* よくある書き方を、押せる形で。何をどう書けばいいかは、
-       説明文より例のほうが早く伝わります。 */
-    EXAMPLES.forEach((ex) => {
-      const chip = node(html`<button type="button" class="chip">${ex}</button>`);
-      chip.addEventListener("click", () => {
-        q.value = q.value.trim() ? q.value.trim() + "、" + ex : ex;
-        paint();
-        KN.motion.fire("select");
+    /* ---- よく飲むもの ----
+       並びは紙を開いたときに一度だけ決めます（押す先が逃げないように）。
+       picks は札の key → 本数。0 になったら行ごと消えます。 */
+    const favs = editing ? [] : DR.favorites(store.get().diet.drinks);
+    const picks = new Map();
+    function bump(key, by) {
+      const n = Math.max(0, (picks.get(key) || 0) + by);
+      if (n) picks.set(key, n); else picks.delete(key);
+      KN.motion.fire("select");
+      paintFav();
+      paint();
+    }
+    function paintFav() {
+      const host = body.querySelector(".js-fav");
+      if (!host) return;
+      host.innerHTML = "";
+      favs.forEach((t) => {
+        const on = picks.has(t.key);
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${t.label}</button>`);
+        chip.addEventListener("click", () => bump(t.key, 1));
+        host.append(chip);
       });
-      body.querySelector(".js-ex").append(chip);
-    });
+      const list = body.querySelector(".js-picks");
+      list.innerHTML = "";
+      favs.filter((t) => picks.has(t.key)).forEach((t) => {
+        const n = picks.get(t.key);
+        const row = node(html`
+          <div class="drink-pick">
+            <span class="drink-pick-name">${t.label}</span>
+            <div class="stepper">
+              <button type="button" class="stepper-btn js-minus" aria-label="${t.label}を一つ減らす">${icon("minus")}</button>
+              <span class="stepper-value mono-num">${String(n)}<small>${t.unit}</small></span>
+              <button type="button" class="stepper-btn js-plus" aria-label="${t.label}を一つ増やす">${icon("plus")}</button>
+            </div>
+          </div>`);
+        row.querySelector(".js-minus").addEventListener("click", () => bump(t.key, -1));
+        row.querySelector(".js-plus").addEventListener("click", () => bump(t.key, 1));
+        list.append(row);
+      });
+    }
 
     function paint() {
       const res = DR.parse(q.value);
-      items = res.items;
+      typed = res.items;
+      const picked = favs.filter((t) => picks.has(t.key)).map((t) => DR.fromFavorite(t, picks.get(t.key)));
+      items = picked.concat(typed);
       readBox.innerHTML = "";
-      if (!q.value.trim()) return;
+      if (!q.value.trim() && !picked.length) return;
 
-      if (!items.length) {
+      if (q.value.trim() && !typed.length) {
         readBox.append(node(html`
           <p class="diet-note is-warn">読めませんでした。
             「ビール350ml 2本」のように、<b>お酒の種類</b>と量を書いてみてください。</p>`));
-        return;
+        if (!picked.length) return;
       }
       const t = DR.totals(items);
       readBox.append(node(html`
@@ -2420,13 +2461,13 @@
               <span class="mono-num">純アルコール ${it.estimated ? "約" : ""}${it.alcoholG}g</span>
               <span class="mono-num">${it.estimated ? "約" : ""}${it.kcal.toLocaleString()}kcal</span>
             </div>`).join(""))}
-          ${items.length > 1 ? `
+          ${items.length > 1 ? KN.util.raw(`
             <div class="diet-drink-row is-sum">
               <b>合計 ${items.length}種類</b>
               <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
               <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
               <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
-            </div>` : ""}
+            </div>`) : ""}
         </div>
       `));
       readBox.append(node(html`
@@ -2438,6 +2479,7 @@
     }
 
     q.addEventListener("input", paint);
+    paintFav();
     paint();
 
     /* ---- 気分の札 ----
@@ -2509,7 +2551,8 @@
         store.updateDrink(editing.id, { ...items[0], ...extra });
         items.slice(1).forEach((it) => store.addDrink({ ...it, ...extra }));
       } else {
-        items.forEach((it) => store.addDrink({ ...it, ...extra }));
+        // 札から入れたものは、それぞれ自分の raw（読み直せる文）を持ちます。
+        items.forEach((it) => store.addDrink({ ...it, ...extra, raw: typed.includes(it) ? extra.raw : it.raw }));
       }
       h.close();
       render();
@@ -5068,7 +5111,7 @@ distance=6.0km</pre>
 
   KN.screens.diet = { mount, render, dockButton, onEnter, day: curDay,
     // 設定やテストから開けるように
-    openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet,
+    openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet, openDrinkSheet,
     // 前の名前でも開けるように（設定や、外から呼んでいるところのため）
     openMemoSheet: openMealMemoSheet,
     // 聞き方と読み取りは、画面を通さずに確かめられるように出しておきます。

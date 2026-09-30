@@ -2911,6 +2911,27 @@ button.section-note:active { opacity: .55; }
 .diet-drink-row b { font-size: var(--fs-sm); color: var(--c-text); flex: 1 1 100%; }
 .diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
 .diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* よく飲むもの（お酒の紙）。2列の格子——札の場所が決まっていれば、
+   毎晩同じところを押せます。指の的は44px（時刻の札と同じ）。 */
+.sheet .drink-fav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.sheet .drink-fav .chip {
+  height: 44px; min-width: 0; padding: 0 var(--sp-2);
+  justify-content: center;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.drink-picks { display: flex; flex-direction: column; gap: var(--sp-2); }
+.drink-picks:empty { display: none; }
+.drink-pick { display: flex; align-items: center; gap: var(--sp-2); }
+.drink-pick-name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drink-pick .stepper { flex: 0 0 auto; align-self: center; }
+.drink-pick .stepper-value { min-width: 56px; font-size: var(--fs-lg); }
+.drink-pick .stepper-value small { font-size: var(--fs-sm); font-weight: 400; margin-left: 2px; }
 /* 気分の言葉。数字と並ぶので、字は小さく色は控えめに。 */
 .diet-mood { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--c-text-3); }
 
