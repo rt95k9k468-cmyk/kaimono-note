@@ -2790,11 +2790,6 @@
             ${ai && ai.ai ? html`
               <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${KN.dietAI.costLabel(ai.ai.cost)}` : ""}</span>` : ""}
           </button>
-          ${/* 窓口（設定の「AIの窓口」）があれば、コピーして外のAIへ持って
-                いく往復の代わりに、同じ文を窓口へ送って返事をそのまま読みます。 */""}
-          ${KN.dietAI.configured() ? html`
-            <button type="button" class="btn btn-primary btn-sm btn-block diet-ai-run js-ai-run">${icon("sparkles")}AIに推計してもらう</button>
-          ` : ""}
           <div class="diet-ai-btns">
             <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
             <button type="button" class="btn btn-soft btn-sm js-ai-paste">${icon("download")}貼り付け</button>
@@ -2846,8 +2841,6 @@
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
     sec.querySelector(".js-ai-prompt").addEventListener("click", () => copyAiPrompt(card.day));
     sec.querySelector(".js-ai-paste").addEventListener("click", () => pasteAiResult(card.day));
-    const run = sec.querySelector(".js-ai-run");
-    if (run) run.addEventListener("click", () => runAiEstimate(card.day, run));
     host.append(sec);
     // 高さは、置いてからでないと測れません（幅が決まっていないので）。
     sec.querySelectorAll(".js-slot-memo").forEach(grow);
@@ -3527,47 +3520,21 @@
   }
 
   /** ②AIの返事を、読み取ってそのまま保存します。 */
-  function saveAiReply(day, text, cost) {
+  function saveAiReply(day, text) {
     const res = readAiReply(text);
     if (!res.found) {
-      KN.ui.toast(cost ? "返事を読み取れませんでした。もう一度試してください"
-                       : "読み取れませんでした。AIの返事をそのまま貼ってください");
+      KN.ui.toast("読み取れませんでした。AIの返事をそのまま貼ってください");
       return false;
     }
     const ai = { ...res, raw: text, at: new Date().toISOString() };
-    if (cost) ai.cost = cost;
     delete ai.found;
     const cur = store.dayMemo(day);
     const handItems = cur ? cur.items.filter((i) => i.from !== "ai").map((i) => ({ ...i })) : [];
     store.setDayMemo(day, cur ? cur.memo : "", handItems.concat(aiItem(ai)), ai);
     KN.motion.fire("save");
     render();
-    KN.ui.toast(cost ? `保存しました（${KN.dietAI.costLabel(cost)}）` : "保存しました");
+    KN.ui.toast("保存しました");
     return true;
-  }
-
-  /* 窓口に推計を頼む。送るのは①と同じ文（食事メモ・その日と直近の体の
-     記録）だけです。Web で調べながら答えるので一分ほどかかることがあり、
-     そのあいだはボタンに「推計しています…」と出して二度押しを止めます。
-     返事は②の貼り付けと同じ読み取りで保存します。 */
-  let estimating = false;
-  function runAiEstimate(day, btn) {
-    if (estimating) return;
-    const memoText = dayMemoText(day);
-    if (!memoText) { KN.ui.toast("先に食べたものを書いてください"); return; }
-    const text = aiPrompt(memoText, { body: dayBodyText(day), recent: recentText(day, 7) });
-    estimating = true;
-    btn.disabled = true;
-    btn.textContent = "推計しています…（1分ほど）";
-    KN.motion.fire("select");
-    KN.dietAI.estimate(text)
-      .then((r) => { saveAiReply(day, r.text, r.cost); })
-      .catch((err) => { KN.ui.toast(`うまくいきませんでした：${err.message}`); })
-      .finally(() => {
-        estimating = false;
-        // 保存すると画面は組み直されます。残っていれば（しくじったとき）戻します。
-        if (btn.isConnected) { btn.disabled = false; btn.textContent = "AIに推計してもらう"; }
-      });
   }
 
   /** ②貼り付け。押した拍のうちに、クリップボードを直接読んでそのまま

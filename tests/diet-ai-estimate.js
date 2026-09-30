@@ -1,15 +1,10 @@
-/* AI推計を窓口に代わりにやってもらう（2026年9月30日、docs/health.md の「AIの窓口の見本」）。
+/* AIの窓口と食事の推計（2026年9月30日、docs/health.md の「AIの窓口の見本」）。
 
-   時計は 2026年9月30日 10:08 に止める。
-   - 窓口が無ければ「AIに推計してもらう」は出ない（コピーと貼り付けの二つはそのまま）
-   - 窓口があれば出る。押すと、①「プロンプトをコピー」と同じ文を { kind: "estimate", prompt } で送る
-     （文には食事メモ。やることの題は入らない。送る欄は kind と prompt だけ）
-   - 返事は貼り付けと同じ読み取りで保存される（摂取・区分の合計・評価）。料金の目安
-     （cost）も記録に残り、帯と報せに「約$…（約…円）・検索n回」
-   - 押しているあいだは「推計しています…」で二度押ししない
-   - 窓口の { error } はそのまま報せに出て、記録は変わらない
+   窓口に推計を代わりにやってもらうボタンは、料金が割に合わないので外した（同日）。
+   - 窓口があっても、食事の画面に「AIに推計してもらう」は出ない。コピーと貼り付けは出る
+   - 前に窓口で推計した記録の料金（ai.cost）は、読み直しても落ちず、帯に出る
+   - 貼り付けた推計には cost が付かない
    - 相談の紙：最初は「合計だけ」、「今日の食事の中身も」で meals を足す、返事の下に料金
-   - 読み直しても cost が残る。貼り付けた推計には cost が付かない
    本物の窓口には繋がない（`ai.invalid` を `page.route` で受ける）。 */
 const { open, checker } = require("./lib");
 
@@ -32,7 +27,6 @@ const COST = { model: "claude-opus-5", inputTokens: 4000, outputTokens: 1500, se
   });
 
   const posted = [];
-  let mode = "ok";
   await page.route("https://ai.invalid/**", async (route) => {
     const req = route.request();
     const body = JSON.parse(req.postData() || "{}");
@@ -42,11 +36,7 @@ const COST = { model: "claude-opus-5", inputTokens: 4000, outputTokens: 1500, se
       return route.fulfill({ status: 200, headers: head,
         body: JSON.stringify({ text: "ふつうです（試験）", cost: { ...COST, searches: 0, usd: 0.02 } }) });
     }
-    if (mode === "error") {
-      return route.fulfill({ status: 502, headers: head, body: JSON.stringify({ error: "混んでいます（試験）" }) });
-    }
-    await new Promise((r) => setTimeout(r, 600));   // 押しているあいだを見るため
-    return route.fulfill({ status: 200, headers: head, body: JSON.stringify({ text: ANSWER, cost: COST }) });
+    return route.fulfill({ status: 400, headers: head, body: JSON.stringify({ error: "coach だけ（試験）" }) });
   });
 
   await page.evaluate(() => {
@@ -61,62 +51,29 @@ const COST = { model: "claude-opus-5", inputTokens: 4000, outputTokens: 1500, se
     await page.waitForFunction(() => KN.app.activeScreen() === "diet" && document.querySelector("#screen-diet .js-meals .diet-memo"));
     await page.waitForTimeout(300);
   };
-  const runBtn = () => page.locator("#screen-diet .js-ai-run:visible").first();
 
-  // 1. 窓口が無ければ出ない
+  // 1. 窓口があっても推計のボタンは出ない
+  await page.evaluate(() => KN.dietAI.setUrl("https://ai.invalid/kn-test"));
   await show();
-  t.check("窓口が無ければ「AIに推計してもらう」なし", (await page.locator("#screen-diet .js-ai-run").count()) === 0);
+  t.check("窓口があっても「AIに推計してもらう」なし", (await page.locator("#screen-diet .js-ai-run").count()) === 0
+    && !/AIに推計してもらう/.test(await page.locator("#screen-diet").textContent()));
   t.check("コピーと貼り付けはそのまま", (await page.locator("#screen-diet .js-ai-prompt:visible").count()) >= 1
     && (await page.locator("#screen-diet .js-ai-paste:visible").count()) >= 1);
 
-  // 2. 窓口を置くと出る → 押す
-  await page.evaluate(() => KN.dietAI.setUrl("https://ai.invalid/kn-test"));
-  await show();
-  t.check("窓口があれば「AIに推計してもらう」", (await runBtn().count()) === 1);
-  await runBtn().click();
-  await page.waitForTimeout(150);
-  const busy = await page.evaluate(() => {
-    const b = [...document.querySelectorAll("#screen-diet .js-ai-run")].find((x) => x.offsetParent);
-    return b ? { dis: b.disabled, text: b.textContent.trim() } : null;
-  });
-  t.check("押しているあいだは「推計しています…」で押せない", busy && busy.dis && /推計しています/.test(busy.text), JSON.stringify(busy));
-  await page.waitForFunction(() => { const m = KN.store.dayMemo(KN.util.todayKey()); return m && m.ai; }, null, { timeout: 5000 }).catch(() => {});
-  await page.waitForTimeout(300);
-
-  const sent = posted.find((b) => b.kind === "estimate") || {};
-  t.check("一度だけ送る", posted.filter((b) => b.kind === "estimate").length === 1);
-  t.check("送る欄は kind と prompt だけ", Object.keys(sent).sort().join(",") === "kind,prompt", Object.keys(sent).join(","));
-  t.check("文は「AI推計」の聞き方と食事メモ", /栄養を推定してください/.test(sent.prompt || "") && /卵、納豆/.test(sent.prompt || ""));
-  t.check("やることの題は送らない", !/歯医者を予約する試験用/.test(sent.prompt || ""));
-
-  const ai = await page.evaluate(() => (KN.store.dayMemo(KN.util.todayKey()) || {}).ai || null);
-  t.check("摂取と区分の合計を保存", ai && ai.kcal === 170 && ai.slots && ai.slots.breakfast === 170, JSON.stringify(ai && { kcal: ai.kcal, slots: ai.slots }));
-  t.check("評価を保存", ai && /170kcal/.test(ai.analysis || ""));
-  t.check("料金の目安を記録に残す", ai && ai.cost && ai.cost.usd === 0.0775 && ai.cost.searches === 2, JSON.stringify(ai && ai.cost));
-  const strip = await page.locator("#screen-diet .diet-memo-body:visible").first().textContent().catch(() => "");
-  t.check("帯に料金「約$0.077（約12円）・検索2回」", /約\$0\.077（約12円）・検索2回/.test(strip || ""), strip);
-  const toast = await page.evaluate(() => [...document.querySelectorAll(".toast, [role=status]")].map((x) => x.textContent).join(" "));
-  t.check("報せに料金", /保存しました（約\$0\.077/.test(toast), toast);
-  t.check("ボタンは元に戻る", /^AIに推計してもらう$/.test(((await runBtn().textContent()) || "").trim()));
-
-  // 3. 読み直しても残る
+  // 2. 前に窓口で推計した記録の料金は落ちない
+  await page.evaluate(([text, cost]) => {
+    KN.store.setDayMemo(KN.util.todayKey(), "【朝】卵、納豆", [], { raw: text, kcal: 170, at: new Date().toISOString(), cost });
+  }, [ANSWER, COST]);
+  await page.waitForFunction(() => KN.store);
   await page.waitForTimeout(300);
   await page.reload();
   await page.waitForFunction(() => KN.store);
   await page.waitForTimeout(300);
   const kept = await page.evaluate(() => ((KN.store.dayMemo(KN.util.todayKey()) || {}).ai || {}).cost || null);
-  t.check("読み直しても料金が残る", kept && kept.usd === 0.0775, JSON.stringify(kept));
-
-  // 4. 窓口の { error } は報せに出て、記録は変わらない
-  mode = "error";
+  t.check("読み直しても料金が残る", kept && kept.usd === 0.0775 && kept.searches === 2, JSON.stringify(kept));
   await show();
-  await runBtn().click();
-  await page.waitForTimeout(800);
-  const toast2 = await page.evaluate(() => [...document.querySelectorAll(".toast, [role=status]")].map((x) => x.textContent).join(" "));
-  t.check("しくじったら窓口の文を出す", /混んでいます（試験）/.test(toast2), toast2);
-  const same = await page.evaluate(() => ((KN.store.dayMemo(KN.util.todayKey()) || {}).ai || {}).kcal);
-  t.check("しくじっても前の推計はそのまま", same === 170);
-  t.check("しくじったらボタンが戻る", !(await runBtn().isDisabled()));
+  const strip = await page.locator("#screen-diet .diet-memo-body:visible").first().textContent().catch(() => "");
+  t.check("帯に料金「約$0.077（約12円）・検索2回」", /約\$0\.077（約12円）・検索2回/.test(strip || ""), strip);
 
   // 5. 貼り付けた推計には料金が付かない
   const pasted = await page.evaluate((text) => {
@@ -149,6 +106,7 @@ const COST = { model: "claude-opus-5", inputTokens: 4000, outputTokens: 1500, se
     t.check("「AIに相談する」がある", false);
   }
 
+  t.check("推計を窓口へ送らない", !posted.some((b) => b.kind === "estimate"));
   const emoji = await page.evaluate(() => /\p{Extended_Pictographic}/u.test(document.querySelector("#screen-diet").textContent));
   t.check("絵文字なし", !emoji);
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
