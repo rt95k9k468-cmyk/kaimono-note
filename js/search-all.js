@@ -308,11 +308,11 @@
     });
     if (r.bodyNote) {
       body.append(node(html`<p class="sa-note">${r.bodyNote === "loading"
-        ? "日記の本文は読み込み中なので、まだ探していません"
-        : "日記の本文は、いま読めないので探していません"}</p>`));
+        ? "日記の本文は読み込み中です"
+        : "日記の本文はいま読めません"}</p>`));
     }
     if (!r.groups.length && !r.when) {
-      body.append(node(html`<p class="sa-note">ほかの場所には見つかりませんでした</p>`));
+      body.append(node(html`<p class="sa-note">見つかりませんでした</p>`));
     }
     handle = KN.ui.sheet({ title: `「${raw.trim()}」をぜんぶから`, content: body });
     return handle;

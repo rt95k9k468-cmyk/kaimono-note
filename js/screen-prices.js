@@ -143,10 +143,7 @@
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.priceTag)}</div>
           <h2 class="empty-title">商品がまだありません</h2>
-          <p class="empty-text">
-            買い物リストに追加した商品はここに自動で並びます。
-            お店ごとの値段を登録すると、いちばん安いお店が分かります。
-          </p>
+          <p class="empty-text">買うものに入れた商品が、ここに並びます。</p>
         </div>
       `));
       return;
@@ -254,7 +251,7 @@
         const first = store.reorderProducts(ids);
         KN.motion.fire("save");
         // 初めてその棚に手を入れたときだけ、これから何が起きるかを言います。
-        if (first) KN.ui.toast("この並びで覚えました（あとから増えた商品は後ろに付きます）");
+        if (first) KN.ui.toast("この並びで覚えました");
       },
     });
   }

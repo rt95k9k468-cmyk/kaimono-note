@@ -91,8 +91,8 @@ const { open, checker } = require("./lib");
       .every((x) => D1.includes(x)), D1.slice(0, 200));
   await back();
   const D2 = await into("書き出し");
-  t.check("書き出しの先に「月ぶんを書き出す」「年の本」と年の本の説明",
-    D2.includes("月ぶんを書き出す") && D2.includes("年の本") && D2.includes("一年ぶんの積み上げ"), D2.slice(0, 200));
+  t.check("書き出しの先に「月ぶんを書き出す」「年の本」（説明は置かない）",
+    D2.includes("月ぶんを書き出す") && D2.includes("年の本") && !D2.includes("一年ぶんの積み上げ"), D2.slice(0, 200));
   await back();
 
   await openSettings("list");
@@ -100,8 +100,8 @@ const { open, checker } = require("./lib");
 
   await openSettings("diet");
   const H0 = await page.locator(top).innerText();
-  t.check("health の根っこに「記録を書き出す」と説明・「取り込み ›」",
-    H0.includes("記録を書き出す") && H0.includes("日ごとの表") && H0.includes("取り込み")
+  t.check("health の根っこに「記録を書き出す」（説明は置かない）・「取り込み ›」",
+    H0.includes("記録を書き出す") && !H0.includes("日ごとの表") && H0.includes("取り込み")
       && !H0.includes("ヘルスケアから取り込む") && !H0.includes("AIの窓口"), H0.slice(0, 300));
   const H1 = await into("取り込み");
   t.check("取り込みの先にヘルスケア・中継所・AIの窓口",
@@ -181,7 +181,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ""));
   t.check("コピーすると、一覧の中身が字になる", clip.includes("一覧に出るエラー") && clip.includes("screen-list.js:12"), clip.slice(0, 120));
-  t.check("書き出し・バックアップ・Dropbox に乗らないと言う", E2.includes("乗りません"));
+  t.check("上限（50件）だけを一行で言う", E2.includes("50件まで"));
   await back();
 
   /* ---------------- 使用量（R24） ---------------- */
@@ -194,7 +194,7 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U1 = await page.locator(top).innerText();
   t.check("使用量に AI の原文の字数が並ぶ", /AI の原文/.test(U1), (U1.match(/この端末の中[^\n]*/) || [""])[0]);
-  t.check("iPhone の枠の何割か（目安）を言う", /iPhone の保存の枠（目安でおよそ260万字）の(1割未満|約\d+割)です/.test(U1));
+  t.check("iPhone の枠の何割か（目安）を言う", /iPhone の枠（約260万字）の(1割未満|約\d+割)/.test(U1));
   t.check("6割に届かなければ「大きくなってきました」は出ない", !U1.includes("記録が大きくなってきました"));
   await back();
   const big = await page.evaluate(() => {

@@ -348,6 +348,7 @@ button, [role="tab"] {
 .icon-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .icon-pick-name { font-weight: 700; }
 .icon-pick-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
+.icon-pick-sub:empty { display: none; }
 
 /* 「この絵はちがう、と記録する」。探す欄のすぐ下に置く小さな腕組みボタン
    ——押すと「次に選ぶ絵と一緒に記録する」腕組み状態になり、そのまま
@@ -680,9 +681,9 @@ button, [role="tab"] {
    advertise it. */
 .section-hint {
   margin: -2px 0 2px;
-  font-size: var(--fs-xs);
-  line-height: var(--lh-body);
-  color: var(--c-text-3);
+  font-size: var(--fs-md);
+  line-height: var(--lh-ui);
+  color: var(--c-text-2);
 }
 
 /* ---------------- badges ---------------- */
@@ -751,7 +752,7 @@ button, [role="tab"] {
 @keyframes empty-bloom { from { opacity: 0; scale: .72; } }
 
 .empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
-.empty-text  { font-size: var(--fs-md); max-width: 30ch; line-height: var(--lh-body); }
+.empty-text  { font-size: var(--fs-lg); max-width: 30ch; line-height: var(--lh-ui); }
 
 /* 画面の主役ではない空きのとき（daily の積み上げのように、上にもう中身が
    ある一段）。**同じ大きさで出すと、無いもののほうが大きく見えます。**
@@ -1249,7 +1250,7 @@ button.hero-node:active { scale: .94; }
 .due-later { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
 .due-later[hidden] { display: none; }
 .due-later > .btn { min-height: 44px; padding-left: 0; padding-right: 0; }
-.due-note { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.6; }
+.due-note { font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); }
 .due-open { align-self: flex-start; }
 
 /* ---------------- 前の日から運んだもの（段3・screen-todo.js の carrySheet） ----------------
@@ -1264,7 +1265,33 @@ button.hero-node:active { scale: .94; }
 .carry-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .carry-acts > .btn { flex: 1 1 auto; }
 /* 段5の紙の頭の一言（時刻を外すとどうなるか）。 */
-.passed-note { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); color: var(--c-text-2); }
+.passed-note { margin: 0 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-text-2); }
+
+/* めったに要らない説明（つまずいたとき・込み入った組み方）は畳む
+   （`KN.settingsParts.more()` と、ヘルスケアの紙）。閉じているあいだは
+   見出しの一行だけ。 */
+.set-more {
+  margin: var(--sp-3) calc(var(--set-gut) + var(--sp-5)) 0;
+  font-size: var(--set-fs-foot);
+  line-height: var(--lh-ui);
+  color: var(--c-text-2);
+}
+.stack > .set-more { margin: 0; }
+.set-more > summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: var(--sp-1) 0;
+  color: var(--c-primary);
+  cursor: pointer;
+  list-style: none;
+}
+.set-more > summary::-webkit-details-marker { display: none; }
+.set-more > summary::after {
+  content: ""; width: 7px; height: 7px;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  rotate: -45deg;
+}
+.set-more[open] > summary::after { rotate: 45deg; }
+.set-more > p, .set-more > ol, .set-more > pre { margin: var(--sp-2) 0 0; }
 
 .sheet-body {
   overflow-y: auto;

@@ -416,8 +416,8 @@
       return { ok, why: ok ? null : "flip", first: round(d[0], 2), second: round(d[1], 2) };
     };
     const UNSTEADY = {
-      short: "ただ、前半と後半の片方に記録が足りず、同じ向きか確かめられないので、傾向とまでは言えません。",
-      flip: "ただ、期間の前半と後半に分けると向きがそろわないので、傾向とまでは言えません。",
+      short: "ただ、前半か後半の記録が足りず確かめられないので、傾向とまでは言えません。",
+      flip: "ただ、前半と後半に分けると向きがそろわないので、傾向とまでは言えません。",
     };
     const vals = (xs) => xs.map((x) => x.v);
 
@@ -590,9 +590,9 @@
       const rate = (xs) => (xs.length ? xs.filter((p) => p.clothed).length / xs.length : null);
       const ra = rate(after), rb = rate(before);
       if (ra != null && rb != null && Math.abs(ra - rb) > 0.5) {
-        const note = `なお、この期間は食前・食後と服装がほとんど一緒に動いています`
-          + `（食後の${Math.round(ra * 100)}%、食前の${Math.round(rb * 100)}%が着衣あり）。`
-          + `上の二つの差は切り分けられていないので、それぞれ多めに出ています。`;
+        const note = `なお、食前・食後と服装がほぼ一緒に動いているので`
+          + `（着衣あり：食後${Math.round(ra * 100)}%・食前${Math.round(rb * 100)}%）、`
+          + `上の二つの差は多めに出ています。`;
         ["meal", "clothed"].forEach((id) => {
           const f = out.find((x) => x.id === id);
           if (f) { f.text += note; f.tone = "warn"; f.entangled = true; }
@@ -634,9 +634,7 @@
           + `${perWeek > 0 ? "+" : ""}${perWeek}kg ぶんの計算になります。`
           + (changed
             ? `実測は同じ期間で ${changed.value > 0 ? "+" : ""}${changed.value}kg でした。`
-              + `計算と実測がずれるのはふつうです（摂取も総消費も推定なので）。`
-              + `どちらかに合わせにいくより、同じ測り方で続けたときの向きを見てください。`
-            : `摂取も総消費も推定なので、実測の体重の動きと突き合わせて読んでください。`),
+            : ""),
         value: round(gap, 0), tone: gap > 0 ? "warn" : "good", n: balDays.length,
       });
     }
