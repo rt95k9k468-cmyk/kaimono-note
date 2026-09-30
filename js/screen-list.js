@@ -149,7 +149,6 @@
             <span class="icon-pick-mark js-fav-mark">${icon("star")}</span>
             <span class="icon-pick-text">
               <span class="icon-pick-name">今回買う</span>
-              <span class="icon-pick-sub js-fav-sub">★を付けると、今回の買い物としてまとまります</span>
             </span>
           </button>
         </div>
@@ -171,7 +170,6 @@
     const acHost = body.querySelector(".js-ac");
     const known  = body.querySelector(".js-known");
     const favBtn = body.querySelector(".js-fav");
-    const favSub = body.querySelector(".js-fav-sub");
 
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
@@ -187,9 +185,6 @@
       fav = !fav;
       favBtn.classList.toggle("is-on", fav);
       favBtn.setAttribute("aria-pressed", String(fav));
-      favSub.textContent = fav
-        ? "今回の買い物としてまとまります"
-        : "★を付けると、今回の買い物としてまとまります";
       KN.motion.fire("save");
     });
 
@@ -264,10 +259,8 @@
       cat.set(product.categoryId);
       const best = store.bestPrice(product);
       const st = best ? store.getStore(best.storeId) : null;
-      known.hidden = false;
-      known.textContent = best && st
-        ? `登録済みの商品です・${st.name} ${yen(best.price)} が最安`
-        : "登録済みの商品です";
+      known.hidden = !(best && st);
+      known.textContent = best && st ? `最安 ${st.name} ${yen(best.price)}` : "";
       acHost.innerHTML = "";
       paintDest();
       nameEl.focus();
@@ -1031,17 +1024,14 @@
       <div class="empty">
         <div class="empty-art">${KN.util.raw(KN.emptyArt.basket)}</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
-        <p class="empty-text">
-          下の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
-          お店ごとの値段を登録すると「どこが一番安いか」が分かります。
-        </p>
+        <p class="empty-text">下の欄に商品名を入れるだけ。</p>
         <button class="btn btn-soft js-sample" style="margin-top:8px">サンプルを入れて試す</button>
       </div>
     `);
     wrap.querySelector(".js-sample").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
         title: "サンプルを入れますか？",
-        message: "3つのお店と7つの商品・価格が入ったサンプルデータを読み込みます。あとから設定画面で全部消せます。",
+        message: "お試し用のお店と商品を入れます。",
         okLabel: "入れる",
       });
       if (ok) { store.loadSample(); KN.ui.toast("サンプルを読み込みました"); }

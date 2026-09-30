@@ -360,6 +360,11 @@
       しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
   const foot = (text) => (text ? node(html`<p class="set-foot">${text}</p>`) : null);
 
+  /** めったに要らない説明（つまずいたとき・込み入った組み方）。畳んでおき、
+      押した人にだけ開きます。 */
+  const more = (title, text) => node(html`
+    <details class="set-more"><summary>${title}</summary><p>${text}</p></details>`);
+
   /** 先へ進む行。**色の付いた四角が付くのは、ここだけ**です——あれは
       「押すと続きがある」の合図で、その場で切り替わるスイッチの行には
       要りません（参考画面もそうなっています）。 */
@@ -616,7 +621,7 @@
       <section class="settings-group">
         <div class="set-card is-alert">
           <div class="set-row">
-            <span class="set-title">保存できていません<span class="set-note">空き容量が足りないなど、変更がこの端末に保存できていません。</span></span>
+            <span class="set-title">保存できていません<span class="set-note">端末の空き容量を確かめてください。</span></span>
           </div>
         </div>
       </section>
@@ -632,7 +637,7 @@
      立ち上げたときの面が済ませていますし、保存先の話はバックアップの中で
      もう一度、必要な文脈と一緒に出てきます。 */
 
-  Object.assign(S, { back, go, TINT, card, head, foot, navRow, dangerRow, switchRow, pickRow, choose, render, copyText, fieldCard });
+  Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, choose, render, copyText, fieldCard });
 
   KN.screens = KN.screens || {};
   KN.screens.settings = { mount, render, onEnter };

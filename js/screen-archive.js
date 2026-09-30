@@ -49,11 +49,11 @@
     const b = diaryBody();
     if (b === "ok") return false;
     if (b === "loading") {
-      KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
+      KN.ui.toast("日記を読み込んでいるところです");
     } else {
       const again = KN.diaryIdb.retry();
       KN.ui.toast(again ? "日記の保存場所を、もう一度読みにいっています"
-        : "日記の本文を読めません（日記の保存場所を読めませんでした）");
+        : "日記の本文を読めません");
     }
     return true;
   }
@@ -1071,8 +1071,8 @@
         <div class="field">
           <span class="field-label">その日あったこと・したこと</span>
           <p class="field-hint js-memo-unread">${missing
-            ? `${MISSING}（日記の保存場所にもありませんでした。バックアップのファイルから戻せることがあります）`
-            : `${UNREAD}（日記の保存場所を読めませんでした）`}。起きた・寝たは書けます。</p>
+            ? `${MISSING}（バックアップから戻せることがあります）`
+            : UNREAD}</p>
         </div>`}
         <div class="arc-times">
           <label class="field">
@@ -1085,7 +1085,6 @@
           </label>
         </div>
         <div class="arc-quiet">
-          <p class="field-hint js-quiet-hint"></p>
           <button type="button" class="btn btn-ghost btn-sm js-quiet"></button>
         </div>
       </div>
@@ -1094,15 +1093,10 @@
     /* 出さない日（R9）。この日を「あの日」「同じ日の年々」に出さない印。
        記録は消えません——暦から来れば、いつでも読めます。押したらすぐ効きます。 */
     const quietBtn = body.querySelector(".js-quiet");
-    const quietHint = body.querySelector(".js-quiet-hint");
     const paintQuiet = () => {
       const q = store.isQuietDay(day);
       quietBtn.textContent = q ? "「あの日」にまた出す" : "この日を「あの日」に出さない";
       quietBtn.setAttribute("aria-pressed", String(q));
-      quietHint.textContent = q
-        ? "この日は「あの日」に出しません。記録はそのまま残ります。"
-        : "";
-      quietHint.hidden = !q;
     };
     paintQuiet();
     quietBtn.addEventListener("click", () => {

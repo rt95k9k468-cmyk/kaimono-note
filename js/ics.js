@@ -267,7 +267,7 @@
    */
   function cameBack() {
     if (standalone() || !appleTouch()) return;
-    KN.ui.toast("ここは Safari です。記録はホーム画面のくらしノートにあります。ショートカットの最後の「URLを開く」は消してください（設定 → やること → ショートカットの組み方）", { duration: 12000 });
+    KN.ui.toast("ここは Safari です。ホーム画面のくらしノートを開いてください", { duration: 8000 });
   }
 
   function shortcutURL(ev) {

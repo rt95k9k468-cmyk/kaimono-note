@@ -18,9 +18,8 @@
      ダイエットも入っていることが伝わりませんでした。 */
   function exportSub() {
     const last = KN.backup.lastExportAt();
-    const what = "買うもの・やること・daily・ダイエット・設定を、一つのファイルにまとめて書き出します";
-    if (!last) return `${what}。`;
-    return `${what}。前回 ${snapStamp(last)}（保存できたと確かめた書き出し）。`;
+    if (!last) return "";
+    return `前回 ${snapStamp(last)}`;
   }
 
   /** 記録の数を一行で。控えの一覧・復元の確認・書き出しの確かめで使います。 */
@@ -94,7 +93,7 @@
 
     const body = node(html`
       <div class="stack">
-        <p class="set-foot is-flush">この端末の中だけの控えです。機種変更にそなえるには「バックアップを保存」を。</p>
+        <p class="set-foot is-flush">この端末の中だけの控えです。</p>
         <div class="rows js-snaps"></div>
       </div>
     `);
@@ -164,7 +163,7 @@
         <table class="verify-table js-audit">
           ${KN.audit.LABELS.map(([k, label]) => html`<tr><td>${label}</td><td>${String(a[k])}</td></tr>`)}
         </table>
-        <p style="color:var(--c-text-2);line-height:1.6">数えるだけで、記録は変えていません。</p>
+        <p style="color:var(--c-text-2);line-height:1.6">記録は変えていません。</p>
       </div>
     `);
     const foot = node(html`<button class="btn btn-soft btn-block">閉じる</button>`);
@@ -234,7 +233,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
     const ok = await KN.ui.confirm({
       title: "保存できましたか？",
-      message: `「${name}」がファイルやダウンロードの中にあれば、保存できています。できていたときだけ、前回の書き出しとして記録します。`,
+      message: `「${name}」がファイルやダウンロードにあれば、保存できています。`,
       okLabel: "保存できた", cancelLabel: "できなかった",
     });
     if (ok) {
@@ -314,8 +313,8 @@
     if (r.ok) {
       lead = `「${name}」は読めました。${r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出しです。` : ""}`;
       verdict = kinds.every(([, k]) => r.counts[k] === now[k])
-        ? "数は、いまの記録と同じです（中身の一字一字までは比べていません）。"
-        : "このファイルのあとに、増えたり減ったりした記録があります。新しく書き出しておくと安心です。";
+        ? "数は、いまの記録と同じです。"
+        : "このあと増減した記録があります。新しく書き出しておくと安心です。";
       if (r.exportedAt) KN.backup.markExported(r.exportedAt);
     }
     const body = node(html`
@@ -498,7 +497,7 @@
     const share = used / IPHONE_CHARS;
     const tenths = Math.round(share * 10);
     const part = tenths < 1 ? "1割未満" : `約${Math.min(tenths, 10)}割`;
-    return `iPhone の保存の枠（目安でおよそ260万字）の${part}です。${share >= 0.6 ? "記録が大きくなってきました。" : ""}`;
+    return `iPhone の枠（約260万字）の${part}。${share >= 0.6 ? "記録が大きくなってきました。" : ""}`;
   }
 
   function usageText(u) {
@@ -510,12 +509,12 @@
        いません。そう言わないと、前の「分け合っています」を読んだ人が、
        控えを減らさなければと思い続けます。 */
     let t = u.where === "idb"
-      ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。自動バックアップ ${u.count}件（${charText(u.snapChars)}）は、記録とは別の、大きな保存場所にあります。`
-      : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。二つで、端末の保存の枠（iPhone でおよそ5MB）を分け合っています。`;
+      ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。自動バックアップ ${u.count}件は別の保存場所。`
+      : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。`;
     t += roomText(u);
     t += diaryCopyText(u.diary);
     if (u.tight) {
-      t += `記録が大きくなったので、自動バックアップは${u.fits}件ぶんまでしか持てず、直近の細かい控えから減ります。こまめに「バックアップを保存」を。`;
+      t += `自動バックアップは${u.fits}件まで。こまめに「バックアップを保存」を。`;
     }
     return t;
   }
@@ -530,9 +529,9 @@
        あるか。あれば「本文は記録の中に残っています」は事実でないので言いません（罠c）。 */
     const outs = ((store.get().archive || {}).days || []).some(store.memoOut);
     if (d.phase === "off") {
-      return `日記の保存場所（大きな保存場所）を読めなかったので、daily の本文は「読めません」と出して、書けないようにしています（${outs
-        ? "記録の中から本文を外してある日は、保存場所が読めるまで出せません"
-        : "本文は記録の中に残っています"}。アプリを前に出すと、もう一度読みにいきます）。`;
+      return `日記の保存場所を読めないため、本文は書けません（${outs
+        ? "外した日の本文は出せません"
+        : "本文は記録の中にあります"}）。`;
     }
     const n = d.opens || 0;
     /* 直した向き。向きは2026年9月28日から数えているので、それより前に直した
@@ -542,19 +541,15 @@
     if (d.fixedCopy) dir.push(`写しから記録へ${d.fixedCopy}回`);
     if (d.fixedLive) dir.push(`記録から写しへ${d.fixedLive}回`);
     if (dir.length && d.fixedBefore) dir.push(`向きを数える前に${d.fixedBefore}回`);
-    const how = !n ? "写したあと、読み比べて一字も違わないことを確かめました"
-      : d.fixed ? `開くたびに突き合わせていて、これまで${n}回のうち${d.fixed}回は、食い違いを直しました${dir.length ? `（${dir.join("・")}）` : ""}`
-      : `開くたびに突き合わせていて、これまで${n}回とも食い違いはありません`;
-    const stuck = d.error ? `いまは写しへの書き足しが止まっています${outs ? "" : "（記録の中には残っています）"}。` : "";
+    const how = !n ? "確かめ済み"
+      : d.fixed ? `${n}回のうち${d.fixed}回直しました${dir.length ? `（${dir.join("・")}）` : ""}`
+      : `${n}回とも食い違いなし`;
+    const stuck = d.error ? "写しへの書き足しが止まっています。" : "";
     const notes = [
-      d.restored ? "記録の中から外した本文を写しから戻したのは、食い違いには数えていません。" : "",
-      d.unverified ? "写しを確かめた記録が見つからなかったので、写し直さずに（写しを消さずに）突き合わせています。" : "",
-      d.missing ? "本文を外した日のうち、写しにも本文が見つからない日があります（その日は「本文が見つかりません」と出ます。バックアップのファイルから戻せることがあります）。" : "",
+      d.unverified ? "写しの確認記録が無いまま突き合わせています。" : "",
+      d.missing ? "写しにも本文が無い日があります（バックアップから戻せることがあります）。" : "",
     ].join("");
-    const lead = outs
-      ? "日記の本文は、大きな保存場所に写してあり、記録の中からは外してある日もあります"
-      : "日記の本文は、記録の中に残したまま、大きな保存場所にも写してあります";
-    return `${lead}（${how}）。${stuck}${notes}`;
+    return `日記の写し：${how}。${stuck}${notes}`;
   }
 
   function dataRows() {
@@ -590,7 +585,7 @@
       card(
         navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() })
       ),
-      foot("取り込み道具（パソコンで日記の PDF から作る控え）を読みます。本文の無い日にだけ入れ、すでに書いてある日には触れません。"),
+      foot("本文の無い日にだけ入れます。"),
       /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
          「戻す」の隣に「消す」が並ぶことになります。 */
       card(
@@ -626,7 +621,6 @@
     if (!s.connected) {
       db.prepare();
       return [
-        foot("記録をまるごと、Dropbox の「アプリ」フォルダへ自動で送ります。開いたとき・書き換えて少ししたときに、変わっていれば送ります。"),
         fieldCard({
           label: "App key", value: s.appKey, placeholder: "Dropbox の App Console に出ている英数字",
           onSave: (v) => { db.setAppKey(v); render(); },
@@ -662,11 +656,11 @@
         ),
         foot(s.needsAuth
           ? "Dropbox の側でつながりが外れました。もう一度ゆるして、コードを貼ってください。"
-          : "「ゆるす」を押すと Dropbox の画面が開きます。ゆるすと出てくるコードを写して、ここへ戻って貼ります。"),
+          : "ゆるすと出るコードを、ここへ貼ります。"),
       ];
     }
     const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
-    const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。次に開いたときに、また送ります。` : "";
+    const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。` : "";
     return [
       card(navRow({
         ico: "upload", tint: TINT.data, title: "いま送る",
@@ -677,7 +671,6 @@
         },
       })),
       foot(last + err),
-      foot(`「kurashi-latest.json」は送るたびに上書きします。「daily」には一日一つ、その日はじめて送った中身を置き、新しいほうから${s.keep}日ぶんを残します。どれも「バックアップから復元」で読めます。`),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",
         onTap: async () => {
@@ -707,13 +700,13 @@
   function dangerRows() {
     const d = store.get().diet;
     return [
-      foot("ここから先は、押すと戻せません。どれも直前の状態を自動バックアップに残しますが、端末を替えたあとでは戻せません。"),
+      foot("押すと戻せません。"),
       card(dangerRow({
         ico: "trash", title: "ダイエットの記録を消す",
         onTap: async () => {
           const ok = await KN.ui.confirm({
             title: "ダイエットの記録を消す",
-            message: "体重・食事・ヘルスケアの記録がすべて消えます。買うものとやることはそのままです。直前の状態は自動バックアップに残ります。",
+            message: "体重・食事・ヘルスケアの記録が消えます。直前の状態は自動バックアップに残ります。",
             okLabel: "消す", danger: true,
           });
           if (!ok) return;
@@ -741,13 +734,13 @@
           KN.ui.toast("サンプルを読み込みました");
         },
       })),
-      foot("お試し用のお店と商品に置き換えます。いまの記録は消えます。"),
+      foot("いまの記録は消えます。"),
       card(dangerRow({
         ico: "trash", title: "すべて削除",
         onTap: async () => {
           const ok = await KN.ui.confirm({
             title: "すべて削除しますか？",
-            message: "買うもの・やること・daily・ダイエットの記録（体重・食事・お酒・目標）と設定が、すべて消えます。直前の状態は自動バックアップに残るので、あとから戻せます。",
+            message: "すべての記録と設定が消えます。直前の状態は自動バックアップに残ります。",
             okLabel: "削除する", danger: true,
           });
           if (!ok) return;
@@ -757,7 +750,6 @@
           KN.ui.toast("すべて削除しました");
         },
       })),
-      foot("買うもの・やること・daily・ダイエット・設定、ぜんぶ消えます。"),
     ];
   }
 

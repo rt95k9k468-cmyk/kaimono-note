@@ -663,8 +663,6 @@
               ${icon("close")}
             </button>
           </div>
-          <span class="field-hint">やる日とは別です。長期タスクは、やる日を
-            決めていなくても期限だけ持てます。</span>
         </div>
       </div>
     `);
@@ -706,8 +704,7 @@
           <span class="field-hint js-span-note" hidden></span>
           ${/* 毎朝・毎晩のときだけ出します。そう言っておかないと「毎朝なのに
                 19:30 と書いていいのか」で迷います。 */""}
-          <span class="field-hint js-time-note" hidden>時刻は、お知らせを出す
-            タイミングです。並ぶ場所は毎朝・毎晩のままです。</span>
+          <span class="field-hint js-time-note" hidden>お知らせの時刻です。並びは毎朝・毎晩のまま。</span>
         </div>
 
         ${/* 出る時刻（段7）。時刻を決めた用事にだけ出します。移動のある約束
@@ -726,7 +723,6 @@
       <div class="stack" style="gap:14px">
         <div class="field">
           <div class="js-mins"></div>
-          <span class="field-hint">時間割を組むための長さです。決めなければ30分として並べます。</span>
         </div>
       </div>
     `);
@@ -825,7 +821,6 @@
       {
         id: "flag",
         label: () => (flagged ? "★をはずす" : "★をつける"),
-        sub: "同じ日のなかで先に出てきます",
         icon: "star",
         onPick: () => { flagged = !flagged; paintHeroFacts(); },
       },
@@ -844,7 +839,6 @@
          元がもう済んでいるかどうかとは関わりがないので。 */
       heroMenu.push({
         id: "copy", label: () => "このやることをコピー", icon: "copy",
-        sub: "同じ中身で、もう一件つくります",
         onPick: () => {
           const src = store.getTodo(todoId);
           if (!src) return;
@@ -1114,8 +1108,8 @@
       const len = minutes || usual || P.DEFAULT_MINUTES;
       const until = P.toTime(at + len);
       const guess = minutes ? ""
-        : usual ? "（長さを決めていないので、いつもの長さで）"
-        : "（長さを決めていないので、30分として）";
+        : usual ? "（いつもの長さ）"
+        : "（仮に30分）";
       /* 時刻の書き方は、時間割の左の列と揃えます（頭の0を落とす）。
          同じ時刻が画面によって「07:00」と「7:00」に見えると、同じもの
          だと気づくのに一拍かかります。 */
@@ -1141,14 +1135,12 @@
       if (time) {
         const nt = KN.notify;
         if (nt && nt.supported() && nt.enabled() && !nt.blocked()) {
-          hintEl.textContent =
-            `${time}になったらお知らせします（閉じているあいだは、次に開いたときに）`;
+          hintEl.textContent = `${time}にお知らせします`;
           return;
         }
-        hintEl.textContent = `${formatDay(due)} ${time}まではアイコンの数に入りません`;
         if (nt && nt.supported() && !nt.enabled()) {
           const b = node(html`
-            <span>　その時刻に知らせるには
+            <span>知らせるには
               <button type="button" class="link-btn js-notify-on">オンにする</button></span>
           `);
           b.querySelector(".js-notify-on").addEventListener("click", async () => {
@@ -1162,8 +1154,8 @@
       }
       if (isBookend(part)) {
         hintEl.textContent = part === "dawn"
-          ? "毎日くり返して、その日のいちばん上に出ます"
-          : "毎日くり返して、その日のいちばん下に出ます";
+          ? "毎日、いちばん上に出ます"
+          : "毎日、いちばん下に出ます";
         return;
       }
       /* 日付を選んだだけのときは、何も言いません。「その日が来ると
@@ -1572,7 +1564,7 @@
         plus.addEventListener("click", () => setEvery(repeatEvery + 1));
         row.append(plus);
         detailEl.append(row);
-        repeatHint.textContent = `済ませた日から${repeatEvery}日後に、次が立ちます（早めても遅れても、そこから数え直します）`;
+        repeatHint.textContent = `済ませた日から${repeatEvery}日後に次が立ちます`;
         return;
       }
 
@@ -1602,7 +1594,7 @@
           .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
         repeatHint.textContent = repeatDays.length
           ? `毎週 ${orderedDays.map((n) => KN.util.WEEKDAYS[n]).join("・")} にくり返します`
-          : "曜日を選ばないと、いまの日付と同じ曜日で1週間ごとにくり返します";
+          : "選ばなければ、いまの日付と同じ曜日で";
         return;
       }
 
@@ -1630,9 +1622,7 @@
         row.append(chip);
       });
       detailEl.append(row);
-      repeatHint.textContent = repeatNth
-        ? "月によって日付は変わります（31日のない月も飛ばしません）"
-        : "その月に無い日は、その月の最後の日になります";
+      repeatHint.textContent = repeatNth ? "" : "無い月は月末になります";
     }
 
     paintRepeat();
@@ -2785,10 +2775,7 @@
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
           <h2 class="empty-title">やることはありません</h2>
-          <p class="empty-text">
-            下の＋から追加できます。日付を決めておくと、その日が来たときに
-            アプリのアイコンに数が出ます。
-          </p>
+          <p class="empty-text">下の＋から追加できます。</p>
         </div>
       `));
       restoreTop(keepTop);
@@ -3641,7 +3628,7 @@
     ].filter(Boolean);
     const box = node(html`
       <div class="carry-list">
-        <p class="passed-note">時刻を外すと、道の人と一緒に歩く「連れ」に戻ります。道の空いたところを押せば、また時刻を付けられます。</p>
+        <p class="passed-note">時刻を外すと「連れ」に戻ります。</p>
       </div>
     `);
     let handle = null;
