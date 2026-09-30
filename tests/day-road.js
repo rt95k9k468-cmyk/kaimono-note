@@ -414,8 +414,9 @@ const DAY = "2026-09-29";
 
   /* 道の端（9月29日・利用者の声「5:30 スタートなのに最初に 6:30 とあって、しかも
      二つ」）。起きる時刻を 6:30 にした人の 5:30 の用事が、道の頭（6:30）に点で押し
-     つぶされていた。道ははみ出す停留所まで伸び、始まりはちょうどの時へ切り下げる
-     （角と目盛りが同じ「ちょうどの時」にそろう）。 */
+     つぶされていた。道ははみ出す停留所まで伸び、段の割りはちょうどの時へ切り下げる
+     （角と目盛りが同じ「ちょうどの時」にそろう）。道そのものは 5:30 から（9月30日・
+     利用者の声「5:00 じゃなく 5:30 スタートに。1行目の道が短くなってもいい」）。 */
   const EDGE = "2026-10-03";
   await page.evaluate(() => KN.store.update((s) => { s.settings.dayStart = "06:30"; s.settings.dayEnd = "22:30"; }));
   await goDay(EDGE);
@@ -423,25 +424,27 @@ const DAY = "2026-09-29";
     const road = document.querySelector("#screen-todo .day-road");
     const st = road.__road, g = st.g;
     const early = st.stops.find((s) => s.t.title === "朝のルーティン");
-    return { start: g.start, end: g.end, d0: early ? early.d0 : null, d1: early ? early.d1 : null,
+    return { start: g.start, begin: g.begin, road0: g.d0, end: g.end, d0: early ? early.d0 : null, d1: early ? early.d1 : null,
              first: road.querySelector(".road-edge").textContent.trim(),
              turns: [...road.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()),
              said: [...road.querySelectorAll(".road-edge, .road-turn, .road-until")].map((e) => e.textContent.trim()) };
   });
   let edge = await edgeRead();
-  c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:00 から：点に押しつぶされず 5:30〜6:30 の区間",
-    edge.start === 300 && edge.first === "5:00" && edge.d0 > 0 && edge.d1 - edge.d0 > 40, JSON.stringify(edge));
+  c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:30 から（段の割りは 5:00）：点に押しつぶされず 5:30〜6:30 の区間",
+    edge.start === 300 && edge.begin === 330 && edge.first === "5:30" && edge.road0 > 30
+      && Math.abs(edge.d0 - edge.road0) < 0.01 && edge.d1 - edge.d0 > 40, JSON.stringify(edge));
   c.check("角の時刻はちょうどの時（「〜:30」が混ざらない）",
     edge.turns.length > 0 && edge.turns.every((t) => /:00$/.test(t)), JSON.stringify(edge.turns));
   c.check("「6:30」を二度言わない", edge.said.filter((t) => t === "6:30").length <= 1, JSON.stringify(edge.said));
   /* 早い用事の無い一日は、組み立てに直に渡して見る（この試験の日には毎日のルーティンがある）。 */
   const bare = await page.evaluate(() => {
     const el = KN.dayRoad.build({ plan: { day: "2026-10-03", startMin: 390, endMin: 1350, items: [] }, today: false });
-    return { start: el.__road.g.start, end: el.__road.g.end,
+    return { start: el.__road.g.start, begin: el.__road.g.begin, end: el.__road.g.end,
+             first: el.querySelector(".road-edge").textContent.trim(),
              turns: [...el.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()) };
   });
-  c.check("早い用事の無い日：起きる時刻 6:30 の道は 6:00 から（ちょうどの時へ）、終わりは 22:30 のまま",
-    bare.start === 360 && bare.end === 1350 && bare.turns.every((t) => /:00$/.test(t)), JSON.stringify(bare));
+  c.check("早い用事の無い日：起きる時刻 6:30 の道は 6:30 から（段の割りは 6:00）、終わりは 22:30 のまま",
+    bare.start === 360 && bare.begin === 390 && bare.first === "6:30" && bare.end === 1350 && bare.turns.every((t) => /:00$/.test(t)), JSON.stringify(bare));
   await page.evaluate((d) => KN.store.addTodo({ title: "夜ふけの用事", due: d, time: "23:00", minutes: 30 }), EDGE);
   await page.waitForTimeout(500);
   edge = await edgeRead();

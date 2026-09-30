@@ -94,23 +94,30 @@
      角はそのあいだをつなぐだけの線です。持たせると一時間の長さが段の途中で
      変わらないかわりに、折り返しの時刻が半端になり、角の札（「11:00」）で
      物差しを言えなくなります。 */
-  function geom(start, end) {
+  /* 段の割りはちょうどの時（start）から、道そのものは begin から（2026年9月30日・
+     利用者の声「5:00 じゃなく 5:30 スタートに。1行目の道が短くなってもいい」）。
+     前は道の頭まで 5:00 へ切り下げていて、起きてもいない 5:00〜5:30 に道があった。
+     いまは一段目の頭の 30分ぶんを空けて、角と目盛りは「ちょうどの時」のまま。
+     空いた頭には寝床が置かれる（下の「寝床」）。 */
+  function geom(begin, end) {
+    const start = Math.floor(begin / 60) * 60;
     const span = Math.max(60, end - start);
     const rowSpan = Math.max(120, Math.ceil(span / ROWS / 60) * 60);
     const rows = Math.max(1, Math.ceil(span / rowSpan - 1e-9));
     const H = TOP + (rows - 1) * PITCH + BOT;
     const rowY = (i) => TOP + i * PITCH;
 
-    /** 時刻 → 道の始まりからの長さ。境目ちょうどの時刻は、`tail` なら前の段の
+    /** 時刻 → 段の割りの頭（start）からの長さ。境目ちょうどの時刻は、`tail` なら前の段の
         尻、でなければ次の段の頭へ——区間の終わりが曲がり角を回り込んで、次の
-        段の頭まで伸びないように。 */
+        段の頭まで伸びないように。道の始まり（begin）より前は、始まりに寄せる。 */
     function dist(t, tail) {
-      const u = (Math.max(start, Math.min(start + span, t)) - start) / rowSpan;
+      const u = (Math.max(begin, Math.min(start + span, t)) - start) / rowSpan;
       let i = tail ? Math.ceil(u - 1e-9) - 1 : Math.floor(u + 1e-9);
       i = Math.max(0, Math.min(rows - 1, i));
       return i * SEG + Math.max(0, Math.min(1, u - i)) * RUN;
     }
     const total = dist(start + span, true);
+    const d0 = dist(begin);                     // 道の始まり（一段目の途中のこともある）
 
     /* 並走（off）。時刻の重なった停留所は、道を横に割った車線に描きます（
        2026年9月29日）。off は**進む向きの左へ**のずらし：右へ進む段では上、左へ
@@ -178,7 +185,7 @@
     }
     const ticks = () => tickPath(tickTimes());
 
-    return { start, end: start + span, rowSpan, rows, H, total, rowY, dist, point, path,
+    return { start, begin, end: start + span, rowSpan, rows, H, total, d0, rowY, dist, point, path,
              ticks, tickTimes, tickPath };
   }
 
@@ -232,6 +239,54 @@
     return `<g transform="scale(0.021) translate(-560 -1100)">${parts.join("")}</g>`;
   }
   const ME_HEAD = (1100 - 187) * 0.021 * ME_K;   // 足もとから頭の中心まで
+
+  /* 寝床（2026年9月30日・利用者の声「5:30 の前と 22:30 の後に、この就寝アイコンを。
+     歩く人との整合性も取りながら」）。道の両端の外に置く——起きる前と寝たあとは、
+     道の外にいる。利用者が貼った絵（ベッドに寝た人と z Z）を、歩く人と同じ描き方で：
+     塗りの面、頭は歩く人と同じ肌の丸（髪は描かない）、寝巻きは歩く人のシャツの色、
+     紙の色の縁。元の絵の座標（1280幅・床が y=700）のまま、幅 BED_W に縮める。
+     向きは**歩く人の逆**（朝は左右を返す。利用者の声「朝は左右反転かな」）——朝は
+     頭が道の側（起きて、そのまま歩き出す）、夜は足もとが道の側（歩いてきて、もぐりこむ）。
+     z Z は縮めない（元の割合だと 3px で読めない）。道を外れた時間にアプリを開いて
+     いれば、z Z がいびきのように上へのぼる（.is-snore。paint が付ける）。 */
+  const BED_W = 38;             // 寝床の幅
+  const BED_GAP = 6;            // 道の端から寝床まで（道の丸い端 4.5 のすぐ外）
+  const BED_K = BED_W / (1205 - 118);
+  const BED_PARTS = [
+    ["bed-frame", "M118 700V231a36 36 0 0 1 72 0V700Z"],             // 頭板
+    ["bed-frame", "M190 515H1205V700H190Z"],                          // 台
+    ["bed-sheet", "M190 400H530V515H190Z"],                           // 枕とシーツ
+    ["me-shirt", "M395 515Q425 420 470 388Q500 366 530 364V515Z"],    // 寝巻きの肩
+    ["bed-quilt", "M528 345H1150Q1205 345 1205 400V590H528Z"],        // 掛けぶとん
+    ["bed-fold", "M528 325H640V590H528Z"],                            // 折り返し
+  ];
+  const zPath = (cx, cy, w) => `M${n1(cx - w / 2)} ${n1(cy - w / 2)}H${n1(cx + w / 2)}`
+    + `L${n1(cx - w / 2)} ${n1(cy + w / 2)}H${n1(cx + w / 2)}`;
+  function bedSvg(k, b) {
+    const shapes = (halo) => BED_PARTS.map(([cls, d]) => `<path class="${halo ? "" : cls}" d="${d}"/>`).join("")
+      + `<circle class="${halo ? "" : "me-skin"}" cx="340" cy="405" r="72"/>`;
+    const inner = (halo) => `<g transform="scale(${n1(BED_K * 1e4) / 1e4}) translate(-661.5 -700)">${shapes(halo)}</g>`;
+    /* z Z は字なので返さない（返すと「S」に見える）。置き場所とのぼる向きだけ返す。 */
+    const at = `translate(${n1(b.cx)} ${n1(b.y + ROAD / 2)})`;
+    return `<g class="road-bed" data-bed="${k}">`
+      + `<g class="road-bed-body" transform="${at} scale(${b.sx} 1)">`
+      + `<g class="road-bed-halo">${inner(true)}</g><g class="road-bed-ink">${inner(false)}</g></g>`
+      + `<g transform="${at}"${b.sx < 0 ? ` style="--zx:-1"` : ""}>`
+      + `<path class="road-z" d="${zPath(b.sx * -9, -20.5, 4.6)}"/>`
+      + `<path class="road-z is-big" d="${zPath(b.sx * -2, -27, 6.2)}"/></g></g>`;
+  }
+  const BED_TOP = 34;           // 床から z Z のてっぺんまで。いびきでのぼるぶん（4）も（札がよける）
+  /** 道の両端の寝床の置き場所。[朝, 夜]。道の外側（始まりの手前・終わりの先）に。 */
+  function bedsOf(g) {
+    return [g.d0, g.total].map((d, i) => {
+      const p = g.point(d, 0);
+      const fwd = p.ltr ? 1 : -1;
+      const side = i === 0 ? -fwd : fwd;          // 道の端から、寝床の側
+      const a = p.x + side * BED_GAP, b = a + side * BED_W;
+      return { lo: Math.min(a, b), hi: Math.max(a, b), cx: (a + b) / 2, y: p.y, row: p.row,
+               side, sx: -fwd, road: p };
+    });
+  }
 
   /* ---------------- 歩く（やることを開いたとき） ----------------
 
@@ -449,6 +504,8 @@
        なっていた。一段は1時間単位なので、始まりをちょうどの時にすれば角も
        ちょうどの時になる。
      終わりは切り上げません（手描きの道も「22:30」で止まっていた）。
+     **切り下げるのは段の割りだけ**（9月30日から。geom の頭）：道そのものは 5:30 から
+     描き、角と目盛りは 8:00・11:00……のまま。
      描くだけで、設定も記録も書き換えません。 */
   function reach(plan) {
     let a = plan.startMin, b = plan.endMin;
@@ -457,7 +514,7 @@
       a = Math.min(a, it.atMin);
       b = Math.max(b, Number(it.todo.minutes) > 0 ? it.untilMin : it.atMin);
     });
-    return [Math.max(0, Math.floor(a / 60) * 60), Math.min(24 * 60, b)];
+    return [Math.max(0, a), Math.min(24 * 60, b)];
   }
 
   /* 時刻の重なった停留所（長さのあるものどうし）は、道を横に割った車線へ
@@ -559,7 +616,7 @@
            済ませたものには描きません（もう出ることはないので）。 */
         const lead = !closed(t) && Number(t.lead) > 0 ? Number(t.lead) : 0;
         stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
-                     dl: lead ? g.dist(Math.max(g.start, it.atMin - lead)) : d0,
+                     dl: lead ? g.dist(Math.max(g.begin, it.atMin - lead)) : d0,
                      doneMin: doneMinOf(t, plan.day) });
         return;
       }
@@ -578,6 +635,7 @@
     });
     /* 停留所の道筋・車線・延び（is-late）は paint が引きます（いまに合わせて
        延びるので）。 */
+    const beds = bedsOf(g);
     const stopSvg = stops.map((s, k) =>
       `<g class="road-stop${closed(s.t) ? " is-done" : ""}" data-s="${k}">`
         + `<path class="road-stop-edge"/><path class="road-stop-in"/>`
@@ -604,7 +662,7 @@
 
     const svg = `<svg class="road-svg" viewBox="0 0 ${W} ${g.H}" aria-hidden="true" focusable="false">`
       + leadSvg
-      + `<path class="road-base" d="${g.path(0, g.total)}"/>`
+      + `<path class="road-base" d="${g.path(g.d0, g.total)}"/>`
       + `<path class="road-went"/>`
       + `<path class="road-ticks" d="${g.ticks()}"/>`
       + stopSvg + laterSvg
@@ -613,6 +671,7 @@
          塗りの色で。 */
       + `<path class="road-ticks is-over"/><path class="road-ticks is-ink"/>`
       + `<g class="road-steps">${stepSvg}</g><g class="road-steps is-stops"></g>`
+      + beds.map((b, k) => bedSvg(k, b)).join("")
       + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME_HALO}</g>`
       + `<g class="road-me-ink">${ME_INK}</g></g>`
       + `<path class="road-free"/>`
@@ -631,7 +690,7 @@
     `);
     /* 長期タスク（段8の段B）。過ぎた日には出さない（置ける道が無い）。 */
     const someday = past ? [] : (o.someday || []).filter((t) => !closed(t) && !t.trace).map((t) => ({ t }));
-    el.__road = { g, today, past, stops, steps, loose, later, someday,
+    el.__road = { g, today, past, stops, steps, loose, later, someday, beds,
                   tomorrow: today && o.tomorrow ? o.tomorrow : null,
                   markOf: o.markOf, last: undefined, drawn: false };
 
@@ -693,6 +752,10 @@
     const g = st.g;
     const dNow = nowMin == null ? null : g.dist(nowMin);
     const svg = el.querySelector(".road-svg");
+    /* 道を外れた時間（起きる前・寝たあと）は、人は道に立たず寝床にいる。
+       0 なら朝の寝床、1 なら夜の寝床、道の上なら null。 */
+    st.sleep = nowMin == null ? null : nowMin < g.begin ? 0 : nowMin > g.end ? 1 : null;
+    svg.querySelectorAll(".road-bed").forEach((b, k) => b.classList.toggle("is-snore", st.sleep === k));
 
     /* ⓪ 停留所の道筋と車線。延びる区間（過ぎてまだのもの）があると、分ごとに
        形が変わります。変わったときだけ引き直す。 */
@@ -732,13 +795,13 @@
     /* 過ぎた日は道を「これから」の薄い色のまま、停留所だけ塗る（2026年9月29日）。
        道ぜんぶを塗ると、どこに何があったかが塗りに沈んでいた。 */
     const wentTo = st.past ? null : dNow;
-    if (wentTo > 0) went.setAttribute("d", g.path(0, wentTo));
+    if (wentTo > g.d0) went.setAttribute("d", g.path(g.d0, wentTo));
     else went.removeAttribute("d");
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
        付けても、過ぎた約束になるだけなので。過ぎた日には無し。 */
     const free = svg.querySelector(".road-free");
-    const from = st.past ? null : dNow == null ? 0 : dNow;
+    const from = st.past ? null : dNow == null ? g.d0 : dNow;
     if (from != null && from < g.total) free.setAttribute("d", g.path(from, g.total));
     else free.removeAttribute("d");
 
@@ -777,7 +840,7 @@
     /* ③ 人。道の上に立ちます。停留所の中に居るときは、停留所のふちの上に
        （道の太さのところに立たせると、足がふちの中へ埋まる）。 */
     const me = svg.querySelector(".road-me");
-    if (dNow == null) me.style.display = "none";
+    if (dNow == null || st.sleep != null) { me.style.display = "none"; me.__at = null; }
     else {
       const p = g.point(dNow);
       /* 延びた区間（is-late）は足もとで終わるので、そのふちの上に。 */
@@ -894,19 +957,23 @@
     const keep = [];
     const EFS = 10 * fsK();
 
-    // 始まりと終わりの時刻、曲がり角の時刻（物差し）
-    const p0 = g.point(0), pe = g.point(g.total);
-    out.push(html`<span class="road-edge is-before" style="${at(p0.x - 9, p0.y)}">${clock(g.start)}</span>`);
-    out.push(html`<span class="road-edge ${pe.ltr ? "" : "is-before"}"
-                        style="${at(pe.x + (pe.ltr ? 9 : -9), pe.y)}">${clock(g.end)}</span>`);
-    [[p0, false, clock(g.start)], [pe, pe.ltr, clock(g.end)]].forEach(([p, after, s]) => {
+    /* 始まりと終わりの時刻は、両端の寝床の下に（寝床が道の端のすぐ外に居るので）。
+       寝床と z Z のぶんは、上と下の通りを空けさせる。 */
+    const sleep = dNow == null ? null : st.sleep;
+    st.beds.forEach((b, k) => {
+      const s = clock(k === 0 ? g.begin : g.end);
       const w = textW(s, EFS) + 2;
-      const x = p.x + (after ? 9 : -9 - w);
-      keep.push([x, x + w, p.y - EFS * 0.7, p.y + EFS * 0.7]);
+      const ey = b.y + ROAD / 2 + 2 + EFS * 0.6;
+      out.push(html`<span class="road-edge is-under" style="${at(b.cx, ey)}">${s}</span>`);
+      const lo = Math.min(b.lo, b.cx - w / 2), hi = Math.max(b.hi, b.cx + w / 2);
+      lane(b.row, "u").push([b.lo - 2, b.hi + 2]);
+      lane(b.row, "d").push([lo - 2, hi + 2]);
+      keep.push([b.lo - 2, b.hi + 2, b.y + ROAD / 2 - BED_TOP, b.y + ROAD / 2]);
+      keep.push([b.cx - w / 2, b.cx + w / 2, ey - EFS * 0.7, ey + EFS * 0.7]);
     });
     /* 角の時刻は、人がそこに立っているときは出しません（頭と重なる。
        人の足もとの時刻の札が、同じことを言っています）。 */
-    const me = dNow == null ? null : g.point(dNow);
+    const me = dNow == null || sleep != null ? null : g.point(dNow);
     const turnAt = new Map();   // 角の時刻 → out の中の位置（停留所の札と重なれば、あとで外す）
     for (let i = 0; i < g.rows - 1; i++) {
       const x = i % 2 === 0 ? XR + R * 0.36 : XL - R * 0.36;
@@ -924,16 +991,20 @@
        後ろに入りきらない（段の頭に居る）ときは、まとめて前へ。 */
     if (dNow != null) {
       const p = g.point(dNow);
-      lane(p.row, "u").push([p.x - ME_W, p.x + ME_W]);
-      // 人の形（足もとが停留所のふちの上まで上がることもあるので、高いほうに合わせて）
-      keep.push([p.x - ME_W - 2, p.x + ME_W + 2, p.y - STOP / 2 - ME_HEAD - 6, p.y]);
+      const bed = sleep == null ? null : st.beds[sleep];
+      if (!bed) {
+        lane(p.row, "u").push([p.x - ME_W, p.x + ME_W]);
+        // 人の形（足もとが停留所のふちの上まで上がることもあるので、高いほうに合わせて）
+        keep.push([p.x - ME_W - 2, p.x + ME_W + 2, p.y - STOP / 2 - ME_HEAD - 6, p.y]);
+      }
       if (st.loose.length) {
         const many = st.loose.length > BEADS_MAX;
         const shown = many ? st.loose.slice(0, BEADS_MAX - 1) : st.loose;
         const count = shown.length + (many ? 1 : 0);
         const back = p.ltr ? -1 : 1;
         const far = p.x + back * (BEAD_BACK + (count - 1) * BEAD);
-        const dir = far - 9 >= 2 && far + 9 <= W - 2 ? back : -back;
+        /* 寝ているあいだは、連れは寝床と反対の側（道の側）に並ぶ。 */
+        const dir = bed ? -bed.side : far - 9 >= 2 && far + 9 <= W - 2 ? back : -back;
         const xs = Array.from({ length: count }, (_, i) => p.x + dir * (BEAD_BACK + i * BEAD));
         const y = p.y - LANE - lane(p.row, "u").dy;
         lane(p.row, "u").push([Math.min(...xs) - 9, Math.max(...xs) + 9]);
@@ -957,9 +1028,10 @@
          食いこむときだけ、そこを空けさせる。 */
       const txt = clock(nowMin);
       const w = textW(txt, FS) + 2;
-      const hx = Math.max(2 + w / 2, Math.min(W - 2 - w / 2, p.x));
-      // 足もとは停留所のふちの上（STOP / 2）まで上がることがあるので、高いほうに合わせる
-      const hy = p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
+      const hx = Math.max(2 + w / 2, Math.min(W - 2 - w / 2, bed ? bed.cx : p.x));
+      // 足もとは停留所のふちの上（STOP / 2）まで上がることがあるので、高いほうに合わせる。
+      // 寝ているあいだは、寝床の z Z の上
+      const hy = bed ? bed.y + ROAD / 2 - BED_TOP - 2 - FS * 0.6 : p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
       if (p.row > 0) {
         const above = lane(p.row - 1, "d");
         if (g.rowY(p.row - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
@@ -1193,7 +1265,7 @@
   /** 道の上の、1分ごとの点（境目ちょうどの時刻は、前の段の尻と次の段の頭の二つ）。 */
   function roadPts(g) {
     const out = [];
-    for (let t = g.start; t <= g.end; t++) {
+    for (let t = g.begin; t <= g.end; t++) {
       for (const tail of [false, true]) {
         const p = g.point(g.dist(t, tail));
         out.push({ t, x: p.x, y: p.y });
@@ -1221,7 +1293,7 @@
       始まりの時刻で区切ります。停留所の中なら、その停留所を返します。 */
   function gapAt(st, raw, nowMin) {
     const g = st.g;
-    let lo = g.start, hi = g.end, inside = null;
+    let lo = g.begin, hi = g.end, inside = null;
     st.stops.forEach((s) => {
       const end = s.len ? s.until : s.at;
       if (s.len && s.at <= raw && raw < s.until) inside = s;
@@ -1416,7 +1488,7 @@
   function carryAt(st, raw) {
     if (st.past) return null;
     const g = st.g;
-    const lo = st.today ? KN.plan.toMin(U.nowTime()) : g.start;
+    const lo = st.today ? KN.plan.toMin(U.nowTime()) : g.begin;
     if (raw < lo) return null;
     const at = snap(raw, lo, g.end);
     return at < g.end ? at : null;
