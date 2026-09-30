@@ -3630,15 +3630,33 @@
    * 取り込んだ行の「作成」「更新」は空のまま（「-」で出ます）——いま作った
    * わけでも、いま書き直したわけでもないので。
    *
+   * **上掛け（`replace`。2026年9月30日、利用者が決めた）**：くらしノートで
+   * 書いてからジャーナルに写し、そこで書き足す使い方があるので、本文のある日を
+   * 控えの本文で置き換えることもできます。本文のある日は三つに分けて見ます
+   * （空白・改行と全角半角の違いは、PDF の読み取りで変わるので見ません）。
+   *   - 同じ（`same`）…… 何もしない。
+   *   - 書き足し（`grow`）…… くらしノートの文が、控えの本文の中にそのまま
+   *     ある。`replace` が "grow" か "all" なら置き換える。
+   *   - 変わった（`differ`）…… それ以外。`replace` が "all" のときだけ置き換える。
+   *     どの日かは `differDays` に（画面が日付を見せて、利用者が決める）。
+   *   本文を外した行（memoOut）は、どのときも触れません。
+   *   置き換えても「作成」「更新」は動かしません（取り込みは更新日時に触れない）。
+   *
    * @param {Array<{date:string, body:string}>} list
-   * @param {{dry?: boolean}} [opts] dry なら数えるだけで書きません
-   * @returns {{add:number, fill:number, same:number, kept:number, chars:number,
+   * @param {{dry?: boolean, replace?: ""|"grow"|"all"}} [opts] dry なら数えるだけで書きません
+   * @returns {{add:number, fill:number, same:number, kept:number, grow:number,
+   *   differ:number, differDays:string[], replaced:number, chars:number,
    *   from:string, to:string}}
+   *   kept は、本文があって、そのままにする日（置き換えない書き足し・変わった日も含む）。
    *   chars は、書けば記録に増える字数のおおよそ（容量の見積もり用）。
    *   from / to は、読めた日の最初と最後（暦に無い日は含まない）。
    */
   function importDiary(list, opts) {
-    const r = { add: 0, fill: 0, same: 0, kept: 0, chars: 0, from: "", to: "" };
+    const replace = (opts && opts.replace) || "";
+    const r = { add: 0, fill: 0, same: 0, kept: 0, grow: 0, differ: 0, differDays: [], replaced: 0, chars: 0, from: "", to: "" };
+    /* 比べるときだけの形。PDF から読んだ字は、改行や空白の位置、全角半角が
+       くらしノートの本文と違ってくるので、そこは見ません。 */
+    const flat = (t) => String(t).normalize("NFKC").replace(/\s+/g, "");
     const want = new Map();
     (Array.isArray(list) ? list : []).forEach((x) => {
       const d = x && toDayKey(x.date);
@@ -3657,13 +3675,26 @@
         const cur = days.find((d) => d.date === date);
         const mine = cur ? String(cur.memo || "") : "";
         if (cur && mine === body) { r.same++; return; }
-        // 本文を外した行（memoOut）も、本文のある日です。
-        if (cur && (mine.trim() || memoOut(cur))) { r.kept++; return; }
+        // 本文を外した行（memoOut）も、本文のある日です。上掛けでも触れません。
+        if (cur && memoOut(cur)) { r.kept++; return; }
+        if (cur && mine.trim()) {
+          const a = flat(mine), b = flat(body);
+          if (a === b) { r.same++; return; }
+          const grow = b.includes(a);
+          if (grow) r.grow++;
+          else { r.differ++; r.differDays.push(date); }
+          if (!(replace === "all" || (grow && replace === "grow"))) { r.kept++; return; }
+          r.replaced++;
+          r.chars += Math.max(0, JSON.stringify(body).length - JSON.stringify(mine).length);
+          act.push({ date, body, cur: true });
+          return;
+        }
         if (cur) r.fill++; else r.add++;
         /* JSON にしたときの長さ。行を足すなら、欄の名前ぶんも。 */
         r.chars += JSON.stringify(body).length + (cur ? 0 : 160);
         act.push({ date, body, cur: !!cur });
       });
+      r.differDays.sort();
       return act;
     };
     if (opts && opts.dry) { plan(archive().days); return r; }

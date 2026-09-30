@@ -346,7 +346,8 @@
      しないまま**、ほかの日記と同じところへ入ります（利用者が決めた。
      docs/storage.md）。
 
-     ・すでに本文のある日には触れません（store.importDiary）。
+     ・本文のある日は、書き足しなら控えの文に。中身が変わった日は日付を見せて
+       利用者が決める（上掛け。store.importDiary）。
      ・入れる前に、記録がどれだけ大きくなるかを測ります。記録はいまも一つの
        文字列でまるごと元（localStorage）に書いているので、枠からあふれると、
        日記だけでなく**やることや買うものの保存まで止まります**。入りきら
@@ -432,9 +433,29 @@
       return;
     }
 
-    const plan = store.importDiary(list, { dry: true });
-    if (!plan.add && !plan.fill) {
+    /* 上掛け（2026年9月30日）。くらしノートの文がそのまま入っている日（書き足し）は
+       控えの本文にします。中身が変わった日だけは、日付を見せて利用者に決めてもらう
+       ——本文は見せない・引かない。閉じたら「そのまま」（安全なほう）。 */
+    const first = store.importDiary(list, { dry: true, replace: "grow" });
+    if (!first.add && !first.fill && !first.grow && !first.differ) {
       KN.ui.toast("この控えの日記は、もう全部入っています（何も変えていません）");
+      return;
+    }
+    let replace = "grow";
+    if (first.differ) {
+      const SHOW = 15;
+      const days = first.differDays.slice(0, SHOW).map(shortDay).join("・")
+        + (first.differDays.length > SHOW ? " ほか" : "");
+      const all = await KN.ui.confirm({
+        title: "中身の変わった日があります",
+        message: `くらしノートの文と控えの文が、書き足しではなく違っている日です：${days}。控えの文にすると、くらしノートの文は取り込み前の自動バックアップにだけ残ります。`,
+        okLabel: "控えの文にする", cancelLabel: "くらしノートのまま",
+      });
+      if (all) replace = "all";
+    }
+    const plan = store.importDiary(list, { dry: true, replace });
+    if (!plan.add && !plan.fill && !plan.replaced) {
+      KN.ui.toast("入れるものがありませんでした（何も変えていません）");
       return;
     }
     const after = JSON.stringify(store.get()).length + plan.chars;
@@ -449,20 +470,22 @@
 
     const span = plan.from === plan.to ? dayText(plan.from) : `${dayText(plan.from)}〜${dayText(plan.to)}`;
     const notes = [
-      plan.kept ? "すでに本文のある日は、そのままにします（上書きしません）。" : "",
+      plan.grow ? "くらしノートの文に書き足してある日は、控えの文にします。" : "",
+      replace === "all" ? "中身の変わった日も、控えの文にします。" : "",
+      plan.kept ? "そのほかの本文のある日は、そのままにします。" : "",
       broken ? "開けなかった日がありました（その日は入れません）。" : "",
     ].join("");
     const go = await KN.ui.confirm({
       title: "日記を取り込みますか？",
-      message: `${span}の日記です。本文の無い日にだけ入れます。${notes}取り込むと、記録は${charText(after)}になります。直前の状態は自動バックアップに残ります。`,
+      message: `${span}の日記です。本文の無い日に入れます。${notes}取り込むと、記録は${charText(after)}になります。直前の状態は自動バックアップに残ります。`,
       okLabel: "取り込む",
     });
     if (!go) return;
     if (!(await keepBefore("日記の取り込み前"))) return;
     try {
-      store.importDiary(list);
+      store.importDiary(list, { replace });
       KN.motion.fire("success");
-      KN.ui.toast(plan.kept ? "取り込みました（本文のあった日は、そのままです）" : "取り込みました", { duration: 5000 });
+      KN.ui.toast(plan.kept ? "取り込みました（そのままにした日もあります）" : "取り込みました", { duration: 5000 });
     } catch (err) {
       console.error(err);
       KN.ui.toast(`取り込めませんでした：${String((err && err.message) || err)}`);
@@ -474,6 +497,13 @@
   function dayText(key) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ""));
     return m ? `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日` : "";
+  }
+  /* "2026-04-03" → "4月3日"（今年でなければ年も） */
+  function shortDay(key) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ""));
+    if (!m) return "";
+    const md = `${Number(m[2])}月${Number(m[3])}日`;
+    return Number(m[1]) === new Date().getFullYear() ? md : `${Number(m[1])}年${md}`;
   }
 
   /** 設定に出す、この端末の中の量（backup.usage）。 */
@@ -590,7 +620,7 @@
       card(
         navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() })
       ),
-      foot("取り込み道具（パソコンで日記の PDF から作る控え）を読みます。本文の無い日にだけ入れ、すでに書いてある日には触れません。"),
+      foot("取り込み道具（パソコンで日記の PDF から作る控え）を読みます。本文の無い日に入れ、書き足しのある日は控えの文にします。中身の変わった日は、入れる前に訊きます。"),
       /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
          「戻す」の隣に「消す」が並ぶことになります。 */
       card(
