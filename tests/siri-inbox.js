@@ -114,6 +114,8 @@ const SEP = "\u001E";
   await page.waitForTimeout(400);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "取り込み" }).first().click();
+  await page.waitForTimeout(500);
   await page.locator(".set-layer:last-child .set-row", { hasText: "中継所" }).first().click();
   await page.waitForTimeout(500);
   t.check("中継所の紙に「Siri 用のURLをコピー」がある",

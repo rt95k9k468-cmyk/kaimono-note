@@ -118,12 +118,14 @@ const slowIdb = (ms) => (ctx) => ctx.addInitScript((ms) => {
   };
 }, ms);
 
-/* 設定（daily の歯車）の「月ぶんを書き出す」を押す。押したあと、その紙が出ているか。 */
+/* 設定（daily の歯車）→ 書き出し →「月ぶんを書き出す」を押す。押したあと、その紙が出ているか。 */
 async function tapMonthExport(page) {
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "書き出し" }).first().click();
+  await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "月ぶんを書き出す" }).first().click();
   await page.waitForTimeout(400);
   return page.evaluate(() => [...document.querySelectorAll(".sheet")].some((s) => s.textContent.includes("月ぶんを書き出す")));

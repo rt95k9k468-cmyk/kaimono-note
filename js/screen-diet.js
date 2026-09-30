@@ -4684,9 +4684,9 @@
         </p>
         <p class="diet-note">
           ${KN.healthRelay.configured()
-            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>（設定 → ダイエット → 中継所で変えられます）`
+            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>（設定 → ダイエット → 取り込み → 中継所で変えられます）`
             : html`まだ設定していません。<b>iPhoneだけで建てられます</b>——パソコンは
-                   要りません。手順はぜんぶ<b>設定 → ダイエット → 中継所</b>の中に
+                   要りません。手順はぜんぶ<b>設定 → ダイエット → 取り込み → 中継所</b>の中に
                    書いてあります（コードのコピーも、合言葉づくりも、動くかの確認も、
                    その画面のボタンで済みます）。`}
         </p>
@@ -4699,7 +4699,7 @@
               <span class="row-title">中継所から取り込む</span>
               <span class="row-sub">${KN.healthRelay.configured()
                 ? "ショートカットが置いたデータを受け取ります"
-                : "未設定（設定 → ダイエット → 中継所）"}</span>
+                : "未設定（設定 → ダイエット → 取り込み → 中継所）"}</span>
             </span>
             <span class="row-chevron">${icon("download")}</span>
           </button>
@@ -4820,7 +4820,7 @@ distance=6.0km</pre>
        押したのに何も言われないのが、いちばん困ります。 */
     body.querySelector(".js-relay").addEventListener("click", () => {
       if (!KN.healthRelay.configured()) {
-        KN.ui.toast("設定 → ダイエット → 中継所 でURLを入れてください");
+        KN.ui.toast("設定 → ダイエット → 取り込み → 中継所 でURLを入れてください");
         return;
       }
       const btn = body.querySelector(".js-relay");

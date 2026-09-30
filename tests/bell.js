@@ -307,6 +307,9 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   await page.waitForTimeout(400);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
+  // 時刻のお知らせの行は tasks の「通知 ›」の先（docs/settings.md の「二段の一覧」）
+  await page.locator(".set-layer:last-child .set-row", { hasText: "通知" }).first().click();
+  await page.waitForTimeout(500);
   const rowText = await page.locator(".set-layer:last-child").innerText();
   t.check("設定に「閉じていても鳴らす」", rowText.includes("閉じていても鳴らす"), rowText.slice(0, 300));
 

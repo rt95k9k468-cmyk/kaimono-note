@@ -2,7 +2,7 @@
 
    記録が少ないうちは点を出さない・外の控えが一つも無ければ点・書き出しが新しければ
    消える・14日たてば点・Dropbox をつないで送れないまま3日で点（14日より前でも）・
-   点は歯車の ::before で赤ではない・設定の頭に一行が出て押すとバックアップと書き出しへ・
+   点は歯車の ::before で赤ではない・設定の頭に一行が出て押すとバックアップへ・
    トーストは出さない。記録の中身は書き換えない（lastExportAt の日付だけ動かす）。 */
 const { open, checker } = require("./lib");
 
@@ -42,7 +42,7 @@ const { open, checker } = require("./lib");
   await page.locator(".set-layer:last-child .set-row").first().click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
   await page.waitForTimeout(300);
-  t.check("押すとバックアップと書き出しへ", (await page.locator(".set-layer:last-child").innerText()).includes("バックアップを保存"));
+  t.check("押すとバックアップへ", (await page.locator(".set-layer:last-child").innerText()).includes("バックアップを保存"));
   t.check("トーストは出さない", (await page.locator(".toast").count()) === 0
     || !(await page.locator(".toast").allInnerTexts()).some((x) => x.includes("控え")));
 

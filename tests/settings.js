@@ -32,7 +32,7 @@ const { open, checker } = require("./lib");
   await openSettings("todo");
   const rootText = await page.locator(top).innerText();
   t.check("やることの歯車から：その画面の設定と「一般」が一枚に並ぶ",
-    rootText.includes("一日の道を出す") && rootText.includes("外観") && rootText.includes("バックアップと書き出し"),
+    rootText.includes("一日の道を出す") && rootText.includes("外観") && rootText.includes("バックアップ"),
     rootText.slice(0, 120));
 
   const sw = page.locator(`${top} .set-row.is-sw`, { hasText: "一日の道を出す" }).first();
@@ -60,6 +60,60 @@ const { open, checker } = require("./lib");
     await page.evaluate(() => KN.store.get().settings.todoRoad === false && KN.store.get().settings.theme === "dark"
       && document.documentElement.dataset.theme === "dark"));
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.todoRoad; s.settings.theme = "auto"; }));
+
+  /* ---------------- 二段の一覧（2026年9月30日） ----------------
+     根っこは一覧、長いものは「›」の先。行の置き場だけが変わり、鍵は変わらない。 */
+  const into = async (title) => {
+    await rowOf(title).click();
+    await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
+    await page.waitForTimeout(300);
+    return page.locator(top).innerText();
+  };
+  await openSettings("todo");
+  const T0 = await page.locator(top).innerText();
+  const notifyOn = await page.evaluate(() => KN.notify.enabled());
+  t.check("tasks の根っこに「通知 ›」といまの状態、スイッチ二つは出ない",
+    new RegExp(`通知\\s*${notifyOn ? "オン" : "オフ"}`).test(T0) && !T0.includes("やることの時刻を知らせる"), T0.slice(0, 200));
+  t.check("「カレンダー ›」はショートカット App のある端末だけ",
+    T0.includes("カレンダー") === (await page.evaluate(() => !!(KN.ics && KN.ics.apple()))));
+  const T1 = await into("通知");
+  t.check("通知の先に「やることの時刻を知らせる」", T1.includes("やることの時刻を知らせる"), T1.slice(0, 200));
+  await back();
+
+  await openSettings("archive");
+  const D0 = await page.locator(top).innerText();
+  t.check("daily の根っこは「あの日」・表示 ›・書き出し ›",
+    D0.includes("「あの日」を出す") && /表示/.test(D0) && /書き出し/.test(D0)
+      && !D0.includes("出す範囲") && !D0.includes("月ぶんを書き出す"), D0.slice(0, 200));
+  const D1 = await into("表示");
+  t.check("表示の先に見え方の行（出す範囲・季節のひとこと・月のまとめ）",
+    ["出す範囲", "見せ方", "積み上げのメモ", "上に出すもの", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "月のまとめを出す"]
+      .every((x) => D1.includes(x)), D1.slice(0, 200));
+  await back();
+  const D2 = await into("書き出し");
+  t.check("書き出しの先に「月ぶんを書き出す」「年の本」と年の本の説明",
+    D2.includes("月ぶんを書き出す") && D2.includes("年の本") && D2.includes("一年ぶんの積み上げ"), D2.slice(0, 200));
+  await back();
+
+  await openSettings("list");
+  t.check("shopping の根っこに「おぼえた振り分け」", (await page.locator(top).innerText()).includes("おぼえた振り分け"));
+
+  await openSettings("diet");
+  const H0 = await page.locator(top).innerText();
+  t.check("health の根っこに「記録を書き出す」と説明・「取り込み ›」",
+    H0.includes("記録を書き出す") && H0.includes("日ごとの表") && H0.includes("取り込み")
+      && !H0.includes("ヘルスケアから取り込む") && !H0.includes("AIの窓口"), H0.slice(0, 300));
+  const H1 = await into("取り込み");
+  t.check("取り込みの先にヘルスケア・中継所・AIの窓口",
+    H1.includes("ヘルスケアから取り込む") && H1.includes("中継所") && H1.includes("AIの窓口"), H1.slice(0, 200));
+  await back();
+  const B0 = await into("バックアップ");
+  t.check("「バックアップ」の一枚から、移した三つが消えている",
+    B0.includes("バックアップを保存") && B0.includes("データを消す")
+      && !B0.includes("記録を書き出す") && !B0.includes("年の本") && !B0.includes("おぼえた振り分け"), B0.slice(0, 200));
+  t.check("帯の題は「バックアップ」",
+    (await page.locator(`${top} .js-nav-title`).innerText()).trim() === "バックアップ");
+  await back();
 
   /* ---------------- 困ったときの記録（R23） ---------------- */
   await page.evaluate(() => KN.errlog.clear());
@@ -136,7 +190,7 @@ const { open, checker } = require("./lib");
       ai: { kcal: 500, raw: "あ".repeat(3000), analysis: "い".repeat(1500) } });
   });
   await openSettings("list");
-  await rowOf("バックアップと書き出し").click();
+  await rowOf("バックアップ").click();
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U1 = await page.locator(top).innerText();
   t.check("使用量に AI の原文の字数が並ぶ", /AI の原文/.test(U1), (U1.match(/この端末の中[^\n]*/) || [""])[0]);
@@ -148,7 +202,7 @@ const { open, checker } = require("./lib");
     KN.backup.usage = () => ({ ...real(), liveChars: 1700000, where: "idb" });
     return true;
   });
-  await rowOf("バックアップと書き出し").click();
+  await rowOf("バックアップ").click();
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U2 = await page.locator(top).innerText();
   const warnColor = await page.evaluate(() => {
@@ -161,7 +215,7 @@ const { open, checker } = require("./lib");
   await back();
 
   /* ---------------- すべて削除で、困ったときの記録も消える ---------------- */
-  await rowOf("バックアップと書き出し").click();
+  await rowOf("バックアップ").click();
   await page.waitForTimeout(300);
   await rowOf("データを消す").click();
   await page.waitForTimeout(300);

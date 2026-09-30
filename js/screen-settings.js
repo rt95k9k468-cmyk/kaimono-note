@@ -457,7 +457,12 @@
   /** 「›」の先。ここに載るのは**一画面ぶんある中身**だけです。 */
   const PAGES = {
     look:   { title: "外観",                 build: lookRows },
-    data:   { title: "バックアップと書き出し", build: dataRows },
+    data:   { title: "バックアップ",          build: dataRows },
+    notify:    { title: "通知",     build: notifyRows },
+    cal:       { title: "カレンダー", build: calRows },
+    dailyView: { title: "表示",     build: dailyViewRows },
+    dailyOut:  { title: "書き出し", build: dailyOutRows },
+    intake:    { title: "取り込み", build: intakeRows },
     danger: { title: "データを消す",          build: dangerRows },
     errors: { title: "困ったときの記録",      build: errorRows },
     dropbox: { title: "Dropbox へ送る",       build: dropboxRows },
@@ -497,7 +502,7 @@
     /* 保存できていないことは、いちばん先に言います。中へ入る前に目に
        入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) L.body.append(saveErrorBanner());
-    /* 歯車の点（R25）の中身を、頭に一行。押すとバックアップと書き出しへ。 */
+    /* 歯車の点（R25）の中身を、頭に一行。押すとバックアップへ。 */
     const stale = KN.backup.offDeviceStale && KN.backup.offDeviceStale();
     if (stale) L.body.append(card(navRow({
       ico: "download", tint: TINT.data, title: staleText(stale),
@@ -531,8 +536,10 @@
           value: a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null,
           onTap: () => go("look"),
         }),
+        /* 前は「バックアップと書き出し」。書き出しの三つがタブへ移ったので、
+           名前を中身に合わせました。 */
         navRow({
-          ico: "download", tint: TINT.data, title: "バックアップと書き出し",
+          ico: "download", tint: TINT.data, title: "バックアップ",
           onTap: () => go("data"),
         }),
         navRow({
@@ -792,16 +799,8 @@
     /* 「05:00」ではなく「5:00」。時刻の欄が返す形と、画面に書く形は別。 */
     const trim = (t) => String(t).replace(/^0/, "");
     const span = `${trim(s.dayStart || P.DEFAULT_START)}〜${trim(s.dayEnd || P.DEFAULT_END)}`;
-
-    /* 時刻のお知らせ。何をするかは**カードの下**で言います——「通知」と
-       だけ書くと「19:30 に鳴る」と読まれますが、アプリを閉じているあいだは
-       鳴りません。そこを言うかどうかが、機能と、黙って裏切るものの差です。 */
     const notify = KN.notify;
     const canNotify = notify && notify.supported();
-    const notifyOn = canNotify && notify.enabled();
-    const notifyBlocked = canNotify && notifyOn && notify.blocked();
-    const bellCan = canNotify && !!KN.bell && KN.bell.available();
-    const bellOn = bellCan && s.todoBell === true;
 
     return [
       card(
@@ -830,6 +829,36 @@
       card(
         pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
       ),
+      /* 通知とカレンダーは、どちらもスイッチ二つ（か、スイッチと手順）に
+         それぞれの説明が付いて、一画面ぶんあります。根っこに並べると tasks の
+         列が説明で埋まるので「›」の先へ（docs/settings.md の「二段の一覧」）。 */
+      card(
+        canNotify ? navRow({
+          ico: "bell", tint: TINT.goal, title: "通知",
+          value: notify.enabled() ? "オン" : "オフ", onTap: () => go("notify"),
+        }) : null,
+        KN.ics && KN.ics.apple() ? navRow({
+          ico: "calendar", tint: TINT.sync, title: "カレンダー",
+          value: s.calShortcut === true ? "オン" : "オフ", onTap: () => go("cal"),
+        }) : null
+      ),
+    ];
+  }
+
+  /** 通知（tasks の「›」の先）。 */
+  function notifyRows() {
+    const s = store.get().settings;
+    /* 時刻のお知らせ。何をするかは**カードの下**で言います——「通知」と
+       だけ書くと「19:30 に鳴る」と読まれますが、アプリを閉じているあいだは
+       鳴りません。そこを言うかどうかが、機能と、黙って裏切るものの差です。 */
+    const notify = KN.notify;
+    const canNotify = notify && notify.supported();
+    const notifyOn = canNotify && notify.enabled();
+    const notifyBlocked = canNotify && notifyOn && notify.blocked();
+    const bellCan = canNotify && !!KN.bell && KN.bell.available();
+    const bellOn = bellCan && s.todoBell === true;
+
+    return [
       canNotify ? card(
         switchRow({
           title: "やることの時刻を知らせる", on: notifyOn,
@@ -869,11 +898,17 @@
       bellCan && bellOn ? foot(notifyBlocked
         ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
         : "中継所から、閉じていても鳴らします。中継所へ渡すのは時刻だけで、題やメモは渡しません（題はこの端末の中から出ます）。今日から7日先までを、開くたびに送り直すので、7日開かないと鳴らなくなります。") : null,
+    ];
+  }
+
+  /** カレンダー（tasks の「›」の先）。行はショートカット App のある端末だけに出ます。 */
+  function calRows() {
+    const s = store.get().settings;
+    return [
       /* 「カレンダーに入れる」の近道（docs/todo-items.md の「カレンダーに入れる」）。
-         ショートカット App のある端末だけに出します。**既定はオフ**——手順を
-         組む前にオンにすると、押しても「ショートカットが見つかりません」に
-         なるので。組み方はすぐ下の「›」の先。 */
-      KN.ics && KN.ics.apple() ? card(
+         **既定はオフ**——手順を組む前にオンにすると、押しても「ショートカットが
+         見つかりません」になるので。組み方はすぐ下の「›」の先。 */
+      card(
         switchRow({
           title: "カレンダーはショートカットで入れる", on: s.calShortcut === true,
           onTap: (v) => {
@@ -884,9 +919,8 @@
         }),
         navRow({ ico: "calendar", tint: TINT.sync, title: "ショートカットの組み方",
                  onTap: () => go("calHow") })
-      ) : null,
-      KN.ics && KN.ics.apple() ? foot(
-        "オンにすると、「カレンダーに入れる」を押すだけで、決めたカレンダーにそのまま入ります。先にショートカット App で、二つの小さなショートカットを一度だけ組んでください。") : null,
+      ),
+      foot("オンにすると、「カレンダーに入れる」を押すだけで、決めたカレンダーにそのまま入ります。先にショートカット App で、二つの小さなショートカットを一度だけ組んでください。"),
     ];
   }
 
@@ -968,6 +1002,12 @@
         navRow({
           ico: "tag", tint: TINT.cat, title: "カテゴリ",
           value: `${(s.categories || []).length}件`, onTap: () => go("cats"),
+        }),
+        /* バックアップの一枚から移しました。カテゴリの自動判定の話なので、
+           カテゴリのすぐ下に。 */
+        navRow({
+          ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
+          value: `${store.learnedList().length}件`, onTap: openLearned,
         })
       ),
       foot(`${s.products.length}商品・${s.stores.length}店舗が登録されています。`),
@@ -1559,10 +1599,11 @@
     render();
   };
 
+  /* 根っこには「あの日」だけを置き、見え方の十行は「表示 ›」、書き出しの
+     二行は「書き出し ›」へ。十行を根っこに並べると、daily の歯車から開いた
+     一枚が daily の設定だけで埋まり、一般まで遠くなります。 */
   function dailyRows() {
     const s = store.get().settings;
-    const full = s.logFull !== false;
-    const entryFull = s.entryFull !== false;
     return [
       card(
         switchRow({
@@ -1571,6 +1612,19 @@
         })
       ),
       foot("「あの日」は、暦のすぐ下に、何年か前の同じ日に書いたものを一つ出します。同じ日の記録が二年以上あれば、年ごとに一行ずつ。出したくない日は、その日の log の紙で「出さない」にできます。"),
+      card(
+        navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
+        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") })
+      ),
+    ];
+  }
+
+  /** 表示（daily の「›」の先）。 */
+  function dailyViewRows() {
+    const s = store.get().settings;
+    const full = s.logFull !== false;
+    const entryFull = s.entryFull !== false;
+    return [
       card(
         pickRow({
           title: "出す範囲", value: s.dailyScope === "month" ? "月ぜんぶ" : "1日",
@@ -1655,12 +1709,22 @@
           }),
         })
       ),
+    ];
+  }
+
+  /** 書き出し（daily の「›」の先）。年の本はバックアップの一枚から移しました
+      ——中身の大半が daily の積み上げと日記なので。置き場は設定のままで、
+      daily の画面は変わりません（docs/daily.md の「年の本」）。 */
+  function dailyOutRows() {
+    return [
       card(
         navRow({
           ico: "download", tint: TINT.sub, title: "月ぶんを書き出す",
           onTap: openMonthExport,
-        })
+        }),
+        navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook })
       ),
+      foot("「年の本」は、一年ぶんの積み上げ・買ったもの・日記を一冊に（印刷・PDF と Markdown）。"),
     ];
   }
 
@@ -1824,7 +1888,7 @@
 
      「ダイエットの記録を消す」はここから外しました。戻せない操作なのに、
      目標や中継所と同じ列に、同じ高さで並んでいたからです。行き先は
-     一般 → バックアップと書き出し → データを消す（三段奥）。 */
+     一般 → バックアップ → データを消す（三段奥）。 */
 
   function dietRows() {
     const s = store.get();
@@ -1860,6 +1924,23 @@
       ),
       foot("歩数・総消費・睡眠・食事・体重・お酒を、期間を選んで一枚の文にします。"
         + "コピーして、お使いのAIに貼ってください（このアプリからは送りません）。"),
+      /* バックアップの一枚から移しました。中身はダイエットの記録だけなので。 */
+      card(
+        navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport })
+      ),
+      foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。"),
+      /* 取り込みの三行（ヘルスケア・中継所・AIの窓口）は、建てたあとは
+         めったに開かないので「›」の先へ。 */
+      card(
+        navRow({ ico: "download", tint: TINT.sync, title: "取り込み", onTap: () => go("intake") })
+      ),
+    ];
+  }
+
+  /** 取り込み（health の「›」の先）。 */
+  function intakeRows() {
+    const d = store.get().diet;
+    return [
       card(
         navRow({
           ico: "download", tint: TINT.sync, title: "ヘルスケアから取り込む",
@@ -1888,7 +1969,7 @@
      ここに作らない、というのがこの画面の決めごとです（「AIの窓口」は
      別のもので、あちらは自分で建てた窓口へ聞きにいきます）。
 
-     「記録を書き出す」（バックアップと書き出しの中）と似ていますが、
+     「記録を書き出す」（すぐ下の行）と似ていますが、
      宛先が違います。あちらは表計算で開く・あとで自分が読み返すためのもの。
      こちらは頭に問いが付き、睡眠の型と食事の中身まで降ります。 */
 
@@ -2645,7 +2726,7 @@
     return wrap;
   }
 
-  /* ---------------- バックアップと書き出し（「›」の先） ---------------- */
+  /* ---------------- バックアップ（「›」の先） ---------------- */
 
   /* 保存できたかどうかを、**押した瞬間には記録しません。** 前は押した直後に
      「前回の書き出し」を今にして「保存しました」と出していたので、iPhone で
@@ -3052,16 +3133,12 @@
           ico: "undo", tint: TINT.sub, title: "自動バックアップから戻す",
           value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
         }),
-        navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport }),
-        navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook }),
-        navRow({ ico: "check", tint: TINT.sub, title: "記録を点検する", onTap: openAudit }),
-        navRow({
-          ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
-          value: `${store.learnedList().length}件`, onTap: openLearned,
-        })
+        /* 記録を書き出す（→ health）・年の本（→ daily の書き出し）・おぼえた
+           振り分け（→ shopping）は、中身の持ち主のタブへ移しました。ここに
+           残すのは、全部の記録にかかわるものだけ。 */
+        navRow({ ico: "check", tint: TINT.sub, title: "記録を点検する", onTap: openAudit })
       ),
       foot(usageText(KN.backup.usage())),
-      foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。「年の本」は、一年ぶんの積み上げ・買ったもの・日記を一冊に（印刷・PDF と Markdown）。"),
       /* 日記の取り込み（D7）。取り込み道具の README が「設定 → 日記を取り込む」
          と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
       card(
