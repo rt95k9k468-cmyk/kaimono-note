@@ -847,7 +847,8 @@ js/
   health-relay.js       中継所ごしの取り込み（読み方は health-sync.js のまま）
   relay-code.js         中継所のコードの写し（アプリからコピーさせるため・自動生成）
   diet-ai.js            AIの窓口（鍵は持たず、URLだけ）
-  screen-settings.js    設定画面
+  screen-settings.js    設定画面の土台（紙の重なり・行の部品・PAGES）
+  settings-*.js         設定の中身（look・todo・list・daily・diet・relay・backup）
   diary.js              日記を IndexedDB へ暗号にして置く仕組み（まだ使っていない）
   （ほかに、絵：icons-*.js・product-icons.js、動き：motion.js など）
 relay/                  ← GitHubからそのまま配置できる形にしてあります
