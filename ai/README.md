@@ -73,6 +73,22 @@ Worker の画面に出ている `…workers.dev` をコピーして、アプリ�
 「確かめる」は、鍵でモデルの情報を一件引くだけです。文章は作らないので、料金は
 かかりません。
 
+### つまずきどころ（2026年9月29日、実際にあった）
+
+- **配置ボタンは、自分のリポジトリ `kurashi-ai` へ中身をコピーしてから置きます。**
+  やり直しで「Import a repository → kaimono-note」を選ぶなら、**Root directory に `ai`**
+  を入れます（無いと `package.json` が見つからず、リポジトリ全体が静的サイトとして
+  置かれます）。Worker の URL を開いて**アプリが出たら**、これです。窓口なら道なしで
+  開くと `not found` だけが出ます
+- **workers.dev のスイッチがオフ**のままだと URL が出ません（Domains & Routes で
+  オンにします）
+- **Settings の Builds 側の Variables and secrets はビルド用**で、窓口は受け取れません。
+  `AI_PATH` と `ANTHROPIC_API_KEY` は **Runtime 側**に Secret で置きます。Settings の
+  上のほうに「Variables cannot be added to a Worker that only has static assets」と出て
+  いたら、窓口のコードがまだ載っていません
+- Root directory を直したあとは、**新しいビルドが走るまで反映されません**。
+  リポジトリに何か一つ push すれば走ります
+
 ## パソコンがある場合
 
 ```sh
