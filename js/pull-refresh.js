@@ -105,6 +105,7 @@
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */
   function blocked() {
     if (KN.reorder.isActive()) return true;
+    if (KN.dayRoad && KN.dayRoad.carrying()) return true;
     if (document.documentElement.classList.contains("kb-open")) return true;
     if (document.querySelector(".sheet")) return true;
     if (document.querySelector(".item-wrap.is-open")) return true;
@@ -156,6 +157,9 @@
     if (!armed) return;
     // A row lifted out of the list mid-press: that gesture is now a reorder.
     if (KN.reorder.isActive()) { armed = false; return; }
+    /* 道で連れを持ち上げた指も同じ（day-road.js の段8）。持ち上がるのは指を
+       置いてから 0.38秒後なので、ここでも見る。 */
+    if (KN.dayRoad && KN.dayRoad.carrying()) { armed = false; return; }
     const t = e.touches[0];
     const dy = t.clientY - startY;
     const dx = t.clientX - startX;

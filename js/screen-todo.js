@@ -3781,7 +3781,8 @@
         // 控えが渡らなかったとき（掴み直しなど）だけ、これまでどおり。
         if (!kept) render();
       },
-      busy: () => !!tlDrag || KN.reorder.isActive(),
+      /* 道で連れを運んでいる指も向こうのもの（day-road.js の段8）。 */
+      busy: () => !!tlDrag || KN.reorder.isActive() || KN.dayRoad.carrying(),
       lock: (on) => { swiping = on; },
     });
   }
@@ -4203,7 +4204,7 @@
     /* 別のタブを見ているときは、測っても 0 しか返りません（消えている
        ので）。戻ってきたときは ResizeObserver が呼んでくれます。 */
     if (!root.offsetParent && root.offsetHeight === 0) return;
-    if (tlDrag) return;                       // 運んでいる最中は触りません
+    if (tlDrag || KN.dayRoad.carrying()) return;   // 運んでいる最中は触りません
     paintNowAll();
   }, 60000 - (Date.now() % 60000) + 250);
   nowTick();
