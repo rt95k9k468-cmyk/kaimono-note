@@ -2912,19 +2912,28 @@ button.section-note:active { opacity: .55; }
 .diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
 .diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* よく飲むもの（お酒の紙）。2列の格子——札の場所が決まっていれば、
-   毎晩同じところを押せます。指の的は44px（時刻の札と同じ）。 */
+/* よく飲むもの（お酒の紙）。3列×2段の格子で、縦に同じ種類（ビール／糖質ゼロ、
+   焼酎／焼酎半分、ワイン／ワイン半分）。札の場所が決まっていれば、毎晩同じ
+   ところを押せます。絵を上に、名前を下に——指の的は44px以上（時刻の札と同じ）。 */
 .sheet .drink-fav {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
   gap: var(--sp-2);
 }
 .sheet .drink-fav .chip {
-  height: 44px; min-width: 0; padding: 0 var(--sp-2);
-  justify-content: center;
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
+  flex-direction: column; justify-content: center; gap: 2px;
+  height: 68px; min-width: 0; padding: 0 var(--sp-1);
+  border-radius: var(--r-lg, 18px);
+  overflow: hidden;
 }
+.sheet .drink-fav .chip.is-on { /* 赤い警告色にしない。選んだ札は基調色 */
+  background: var(--c-primary-fill); border-color: var(--c-primary-fill);
+}
+.drink-fav-ico { line-height: 0; flex: none; }
+.drink-fav-ico svg { width: 26px; height: 26px; }
+.drink-fav-name { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .drink-picks { display: flex; flex-direction: column; gap: var(--sp-2); }
 .drink-picks:empty { display: none; }
 .drink-pick { display: flex; align-items: center; gap: var(--sp-2); }
