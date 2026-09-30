@@ -47,8 +47,9 @@
   const PAD = 10;
   /* 段と段の、中心どうしのあいだ。はじめは 64 で、札が上下の段と詰まって
      読みにくかったので 80 に（2026年9月30日・利用者の声「道の間の縦幅ももう
-     少し」）。折り返しの半径も大きくなり、一段のまっすぐな長さは 276 → 260。 */
-  const PITCH = 80;
+     少し」）。折り返しの半径も大きくなり、一段のまっすぐな長さは 276 → 260。
+     同じ日にもう一度、利用者の声で 96 に（まっすぐは 244）。 */
+  const PITCH = 96;
   const R = PITCH / 2;          // 折り返しの半径
   const XL = PAD + R;           // 段のまっすぐなところの左端
   const XR = W - PAD - R;       // 右端
@@ -661,6 +662,19 @@
      組み直しはしません。30秒ごと（screen-todo の見回り）と、アプリへ戻って
      きたときに呼ばれ、**分が変わっていたときだけ**、歩いたぶん・停留所の塗り・
      人・札・次の一行を置き直します。 */
+  /* 停留所の丸い端は、線の端から太さの半分（STOP / 2）外へ出ます。そのまま
+     描くと 6:00 に始まる区間の頭が 6:00 より手前に見えた（2026年9月30日・
+     利用者の声「始点と終点がちょっとずれて見える」）。道筋を両端で半分ずつ内へ
+     詰めて、**丸い端の外側がちょうど始まりと終わり**に来るように。太さより短い
+     区間は、まん中の丸（太さぶん）になる。押す的は詰めない（指の当たり）。 */
+  const WENT_R = 6;             // 塗りの半分の太さ（CSS の .road-stop-went 12）
+  function capIn(s) {
+    if (!s.len) return [s.d0, s.d1];
+    const k = STOP / 2;
+    if (s.d1 - s.d0 <= 2 * k) { const m = (s.d0 + s.d1) / 2; return [m, m]; }
+    return [s.d0 + k, s.d1 - k];
+  }
+
   function paint(el) {
     const st = el && el.__road;
     if (!st) return;
@@ -680,7 +694,8 @@
       st.sig = sig;
       const grpEls = svg.querySelectorAll(".road-stop[data-s]");
       st.stops.forEach((s, k) => {
-        const d = g.path(s.d0, s.d1, s.off);
+        const [a, b] = capIn(s);
+        const d = g.path(a, b, s.off);
         const lanes = s.lanes > 1;
         [grpEls[k], svg.querySelector(`.road-hit[data-k="${k}"]`)].forEach((x) => {
           if (!x) return;
@@ -693,7 +708,7 @@
           grpEls[k].querySelectorAll(".road-stop-edge, .road-stop-in").forEach((x) => x.setAttribute("d", d));
         }
         const hit = svg.querySelector(`.road-hit[data-k="${k}"]`);
-        if (hit) hit.setAttribute("d", d);
+        if (hit) hit.setAttribute("d", g.path(s.d0, s.d1, s.off));
       });
       /* 過ぎた日の、時刻を決めたものを押した時刻（2026年9月29日）。区間は決めた
          まま描くので、押した時刻は足あとと同じ白い粒で。区間の中なら、その車線に。 */
@@ -732,8 +747,10 @@
       let to = null;
       if (done || st.past) to = s.d1;
       else if (nowMin != null && nowMin >= s.at) to = s.len ? Math.min(dNow, s.d1) : s.d1;
+      /* 塗りの丸い端（半径 WENT_R）も、塗った時刻で止まるように内へ。 */
+      const [a, b] = capIn(s);
       if (to == null) w.removeAttribute("d");
-      else w.setAttribute("d", g.path(s.d0, to, s.off));
+      else w.setAttribute("d", g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off));
       grp.classList.toggle("is-live",
         !done && s.len && nowMin != null && nowMin >= s.at && nowMin < s.until);
       /* 停留所の上の目盛り。始まりと終わりちょうどは札と丸い端が言うので置かない。
