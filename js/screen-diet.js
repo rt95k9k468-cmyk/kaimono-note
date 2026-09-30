@@ -2414,7 +2414,9 @@
       favs.forEach((t) => {
         const on = picks.has(t.key);
         const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
-          aria-pressed="${String(on)}">${t.label}</button>`);
+          aria-pressed="${String(on)}" aria-label="${t.detail}">
+          <span class="drink-fav-ico">${KN.util.raw(KN.productIcons.byKey(t.icon) || "")}</span>
+          <span class="drink-fav-name">${t.label}</span></button>`);
         chip.addEventListener("click", () => bump(t.key, 1));
         host.append(chip);
       });
@@ -2424,11 +2426,11 @@
         const n = picks.get(t.key);
         const row = node(html`
           <div class="drink-pick">
-            <span class="drink-pick-name">${t.label}</span>
+            <span class="drink-pick-name">${t.detail}</span>
             <div class="stepper">
-              <button type="button" class="stepper-btn js-minus" aria-label="${t.label}を一つ減らす">${icon("minus")}</button>
+              <button type="button" class="stepper-btn js-minus" aria-label="${t.detail}を一つ減らす">${icon("minus")}</button>
               <span class="stepper-value mono-num">${String(n)}<small>${t.unit}</small></span>
-              <button type="button" class="stepper-btn js-plus" aria-label="${t.label}を一つ増やす">${icon("plus")}</button>
+              <button type="button" class="stepper-btn js-plus" aria-label="${t.detail}を一つ増やす">${icon("plus")}</button>
             </div>
           </div>`);
         row.querySelector(".js-minus").addEventListener("click", () => bump(t.key, -1));

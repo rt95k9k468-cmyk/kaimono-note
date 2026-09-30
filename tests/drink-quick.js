@@ -1,10 +1,11 @@
 /* お酒の紙の「よく飲むもの」の札と −/＋（2026年9月30日、docs/health.md の「よく飲むもの」）。
 
-   - 記録が無ければ既定の6つ（ビール350・ビール500・ハイボール・チューハイ・ワイン・日本酒）。
+   - 札は固定の6つ（ビール・糖質ゼロ・焼酎・焼酎半分・ワイン・ワイン半分）。記録があっても増えない。
+   - 並びは縦に同じ種類（ビール/糖質ゼロ、焼酎/焼酎半分、ワイン/ワイン半分）。札に絵がある。
    - 札を押すと一本、もう一度押すか ＋ で二本。− で 0 になれば行ごと消える。
    - 保存は今までと同じ一件の形。純アルコールは ml × 度数 ÷ 100 × 0.8。
    - raw を読み直すと同じ中身になる（「直す」の紙は raw を読み直すので）。
-   - 記録したものが札に上がる（銘柄・度数ごと）。既存の記録は変わらない。
+   - 糖質ゼロ・焼酎・ワインの量と純アルコール、raw の読み直し。既存の記録は変わらない。
    - 札も −/＋ も指の的は44px以上。横にはみ出さない。絵文字なし・例外なし。 */
 const { open, checker } = require("./lib");
 
@@ -17,12 +18,13 @@ const { open, checker } = require("./lib");
     const w = sh.getBoundingClientRect().right;
     return [...sh.querySelectorAll(".js-fav .chip")].map((b) => {
       const r = b.getBoundingClientRect();
-      return { label: b.textContent.trim(), on: b.getAttribute("aria-pressed") === "true", h: r.height, out: r.right > w };
+      return { label: b.textContent.trim().replace(/\s+/g, " "), on: b.getAttribute("aria-pressed") === "true", h: r.height, out: r.right > w,
+        x: Math.round(r.left), y: Math.round(r.top), ico: !!b.querySelector("svg") };
     });
   });
   const tap = (label) => page.evaluate((l) => {
     const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
-    [...sh.querySelectorAll(".js-fav .chip")].find((b) => b.textContent.trim() === l).click();
+    [...sh.querySelectorAll(".js-fav .chip")].find((b) => b.textContent.trim().replace(/\s+/g, " ") === l).click();
   }, label);
   const step = (i, cls) => page.evaluate(([i, cls]) => {
     const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
@@ -51,29 +53,37 @@ const { open, checker } = require("./lib");
 
   let f = await favs();
   c.check("札は6つ", f.length === 6, JSON.stringify(f.map((x) => x.label)));
-  c.check("記録が一つなら、その日本酒180mlと既定が並ぶ（重ならない）",
+  c.check("記録が一つあっても、固定の6つ（字は名前だけ）",
     JSON.stringify(f.map((x) => x.label)) === JSON.stringify(
-      ["ビール 350ml", "ビール 500ml", "ハイボール 350ml", "チューハイ 350ml", "ワイン 120ml", "日本酒 180ml"]),
+      ["ビール", "糖質ゼロ", "焼酎", "焼酎 半分", "ワイン", "ワイン 半分"]),
     JSON.stringify(f.map((x) => x.label)));
+  const at = (l) => f.find((x) => x.label === l);
+  c.check("縦に同じ種類（同じ列に並び、上がふつう・下が別）",
+    at("ビール").x === at("糖質ゼロ").x && at("ビール").y < at("糖質ゼロ").y
+    && at("焼酎").x === at("焼酎 半分").x && at("焼酎").y < at("焼酎 半分").y
+    && at("ワイン").x === at("ワイン 半分").x && at("ワイン").y < at("ワイン 半分").y
+    && at("ビール").x < at("焼酎").x && at("焼酎").x < at("ワイン").x
+    && at("ビール").y === at("焼酎").y && at("焼酎").y === at("ワイン").y, JSON.stringify(f));
+  c.check("どの札にも絵がある", f.every((x) => x.ico), JSON.stringify(f));
   c.check("札の的は44px以上・はみ出さない", f.every((x) => x.h >= 44 && !x.out), JSON.stringify(f));
 
-  await tap("ビール 350ml");
+  await tap("ビール");
   await page.waitForTimeout(150);
   let p = await picks();
   c.check("押すと一本の行が出る", p.length === 1 && p[0].n === "1本", JSON.stringify(p));
   c.check("−/＋の的は44px以上", p.every((x) => x.h >= 44), JSON.stringify(p));
-  await tap("ビール 350ml");
+  await tap("ビール");
   await step(0, ".js-plus");
   await page.waitForTimeout(150);
   p = await picks();
   c.check("もう一度押す・＋ で三本", p[0].n === "3本", JSON.stringify(p));
   await step(0, ".js-minus");
-  await tap("ワイン 120ml");
+  await tap("ワイン");
   await page.waitForTimeout(150);
   p = await picks();
-  c.check("− で二本、ワインが増える", p.length === 2 && p[0].n === "2本" && p[1].n === "1杯", JSON.stringify(p));
+  c.check("− で二本、ワインが増える", p.length === 2 && p[0].n === "2本" && p[1].n === "1本", JSON.stringify(p));
   f = await favs();
-  c.check("選んだ札が点く", f.filter((x) => x.on).map((x) => x.label).join() === "ビール 350ml,ワイン 120ml", JSON.stringify(f));
+  c.check("選んだ札が点く", f.filter((x) => x.on).map((x) => x.label).join() === "ビール,ワイン", JSON.stringify(f));
   await step(1, ".js-minus");
   await page.waitForTimeout(150);
   p = await picks();
@@ -84,7 +94,7 @@ const { open, checker } = require("./lib");
     return sh.querySelector(".js-read").textContent.replace(/\s+/g, " ");
   });
   c.check("合計の行が字のまま出ない（タグが見えない）", !/<div|<span/.test(read), read);
-  await tap("ワイン 120ml");
+  await tap("ワイン");
   await page.waitForTimeout(150);
   const read2 = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open")].pop()
     .querySelector(".js-read").textContent.replace(/\s+/g, " "));
@@ -105,22 +115,23 @@ const { open, checker } = require("./lib");
   c.check("raw を読み直すと同じ中身", !!again && again.alcoholG === s0.alcoholG && again.volumeMl === s0.volumeMl
     && again.kind === s0.kind && again.estimated === s0.estimated, `${s0.raw} → ${JSON.stringify(again)}`);
 
-  /* 銘柄・度数つきで書いた記録が札に上がる */
-  const brand = await page.evaluate(() => {
-    const it = KN.drinks.parse("スーパードライ ビール 500ml 1本").items[0];
-    KN.store.addDrink({ ...it, day: KN.util.todayKey(), raw: "x" });
-    const st = KN.drinks.parse("ストロング チューハイ 350ml 9% 1本").items[0];
-    KN.store.addDrink({ ...st, day: KN.util.todayKey(), raw: "y" });
+  /* 糖質ゼロ・焼酎・ワイン。書き直すと同じ量になる */
+  const six = await page.evaluate(() => {
     const fv = KN.drinks.favorites(KN.store.get().diet.drinks);
-    const strong = fv.find((t) => t.abv === 9);
-    const one = strong && KN.drinks.fromFavorite(strong, 2);
-    const back = one && KN.drinks.parseOne(one.raw);
-    return { labels: fv.map((t) => t.label), one, back };
+    return fv.map((t) => {
+      const one = KN.drinks.fromFavorite(t, 1);
+      const back = KN.drinks.parseOne(one.raw);
+      return { label: t.label, g: one.alcoholG, raw: one.raw, backG: back && back.alcoholG, backMl: back && back.volumeMl,
+        backName: back && back.name, ml: one.volumeMl };
+    });
   });
-  c.check("銘柄・度数ごとに札になる", brand.labels.includes("スーパードライ 500ml") && brand.labels.includes("チューハイ 350ml 9%")
-    && brand.labels.length === 6, JSON.stringify(brand.labels));
-  c.check("度数つきの札も読み直して同じ量（9%×700ml＝50.4g）",
-    brand.one.alcoholG === 50.4 && brand.back.alcoholG === 50.4, JSON.stringify(brand));
+  const g = (l) => six.find((x) => x.label === l);
+  c.check("純アルコール：ビール14g・糖質ゼロ14g・焼酎70ml 14g・半分7g・ワイン700ml 67.2g・半分33.6g",
+    g("ビール").g === 14 && g("糖質ゼロ").g === 14 && g("焼酎").g === 14 && g("焼酎 半分").g === 7
+    && g("ワイン").g === 67.2 && g("ワイン 半分").g === 33.6, JSON.stringify(six));
+  c.check("どの札も raw を読み直して同じ量・同じ純アルコール",
+    six.every((x) => x.backG === x.g && x.backMl === x.ml), JSON.stringify(six));
+  c.check("糖質ゼロは名前が残る", g("糖質ゼロ").backName === "糖質ゼロ", JSON.stringify(g("糖質ゼロ")));
 
   const after = await page.evaluate((id) => JSON.stringify(KN.store.get().diet.drinks.find((d) => d.id === id)), JSON.parse(before).id);
   c.check("既存の記録は変わらない", after === before, `${before}\n${after}`);
