@@ -6168,6 +6168,9 @@ a.btn { text-decoration: none; }
 .road-label b { flex: none; font-weight: 700; }
 .road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .road-label.is-done span { text-decoration: line-through; color: var(--c-text-3); }
+/* 済ませたものは、時刻も細い灰色で（2026年9月30日・利用者の声「終わった用事の
+   時刻が太字の黒なのはおかしい」）。 */
+.road-label.is-done b { font-weight: 400; color: var(--c-text-3); }
 /* 時刻の重なった群で、入りきらなかった札の数（「ほか1」）。 */
 .road-label em { flex: none; font-style: normal; color: var(--c-text-2); }
 .road-label.is-later { color: var(--c-text-2); }

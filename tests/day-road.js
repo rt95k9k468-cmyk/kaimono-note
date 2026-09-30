@@ -293,7 +293,9 @@ const DAY = "2026-09-29";
     const road = document.querySelector("#screen-todo .day-road");
     const i = road.__road.stops.findIndex((s) => s.t.title === "病院");
     const p = road.querySelectorAll(".road-stop[data-s] .road-stop-edge")[i];
-    return { len: p.getTotalLength(), at: road.__road.stops[i].at };
+    /* 道筋は両端で太さの半分ずつ内へ詰めてある（丸い端の外がちょうど始まりと
+       終わり。9月30日）ので、見える長さは道筋 + 太さ（16）。 */
+    return { len: p.getTotalLength() + 16, at: road.__road.stops[i].at };
   });
   /* 13:00〜14:30 は 14:00 の曲がり角をまたぐ（角の長さが混ざる）ので、先に 11:00 へ
      動かしてから、同じ段の中で長さを比べる。14:20 のままだと 11:00〜 は過ぎていて
@@ -314,6 +316,16 @@ const DAY = "2026-09-29";
   r = await read();
   c.check("時刻を 13:00→11:00 に変えると、停留所の札も 11:00", after.at === 660 && r.labels.some((l) => l.includes("11:00") && l.includes("病院")),
     JSON.stringify([after, r.labels]));
+  const capAt = await page.evaluate(() => {
+    const road = [...document.querySelectorAll(".day-road")].find((x) => x.offsetParent);
+    const st = road.__road, i = st.stops.findIndex((s) => s.t.title === "病院");
+    const s = st.stops[i], p = road.querySelectorAll(".road-stop[data-s] .road-stop-edge")[i];
+    const a = p.getPointAtLength(0), b = p.getPointAtLength(p.getTotalLength());
+    const q0 = st.g.point(s.d0, s.off), q1 = st.g.point(s.d1, s.off);
+    return [Math.hypot(a.x - q0.x, a.y - q0.y), Math.hypot(b.x - q1.x, b.y - q1.y)];
+  });
+  c.check("停留所の丸い端の外が、ちょうど始まりと終わり（道筋は太さの半分ずつ内）",
+    capAt.every((v) => Math.abs(v - 8) < 0.2), JSON.stringify(capAt));
   c.check("長さを 90→180分にすると、区間の長さが倍", Math.abs(after.len / before.len - 2) < 0.02,
     `${before.len.toFixed(1)} → ${after.len.toFixed(1)}`);
   await page.clock.setFixedTime(new Date(2026, 8, 29, 14, 20));
