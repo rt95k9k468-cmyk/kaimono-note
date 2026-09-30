@@ -34,6 +34,9 @@ const { open, checker } = require("./lib");
     await page.locator(".set-layer:last-child .set-row", { hasText: "AIの窓口" }).first().click();
     await page.waitForTimeout(500);
   };
+  // AIの窓口は health の「取り込み ›」の先（docs/settings.md の「二段の一覧」）
+  await page.locator(".set-layer:last-child .set-row", { hasText: "取り込み" }).first().click();
+  await page.waitForTimeout(500);
   await openSheet();
 
   t.check("紙に「Cloudflareに置く」があり、ai/ を指す",

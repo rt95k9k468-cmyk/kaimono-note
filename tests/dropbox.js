@@ -65,7 +65,7 @@ const { open, checker } = require("./lib");
   // 1. つなぐ前は何も送らない・紙に三行
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップと書き出し" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox へ自動で送る" }).first().click();
   await page.waitForTimeout(400);

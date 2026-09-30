@@ -6,7 +6,7 @@
    - 買うもの：products に無い productId の品物が一つだけ → 空の案内が出る（前は真っ白）。
      描ける品物と混ざっていれば、描けるものだけ出る。**孤児は消さない**（記録に残る）
    - 買うもの：メモの無い行でも品名が行の真ん中・行の高さはメモのある行と同じ（R27）
-   - 設定 → バックアップと書き出し →「記録を点検する」：数の表・「記録は変えていません」
+   - 設定 → バックアップ →「記録を点検する」：数の表・「記録は変えていません」
    - 復元でファイルを選ぶと、確認に「このファイルには食い違いが◯件」。確かめの紙にも。 */
 const { open, checker } = require("./lib");
 
@@ -97,7 +97,7 @@ const { open, checker } = require("./lib");
   const before = await page.evaluate(() => JSON.stringify(KN.store.get()));
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings");
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップと書き出し" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
   await page.locator(".set-layer:last-child .set-row", { hasText: "記録を点検する" }).first().click();
   await page.waitForSelector(".js-audit");
   const S1 = await page.evaluate(() => {

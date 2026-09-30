@@ -4,7 +4,7 @@
    「達成」は「やったこと」・初めて買ったものは前の年に買ったものを入れない・
    よく買ったものは二回から回数つき・日記は日付の順で本文そのまま・ほかの年が
    混ざらない・禁止語と割合が無い・記録は増えない（書き出しても state が同じ）。
-   後半は画面：設定 → バックアップと書き出し → 年の本・年の札・Markdown が
+   後半は画面：設定（daily の歯車）→ 書き出し → 年の本・年の札・Markdown が
    中身と同じ・印刷のあいだだけ本が出てほかが隠れる・印刷が済めば消える・
    日記を読めない日は断る。
 
@@ -99,9 +99,12 @@ const FORBIDDEN = [
     !empty.includes("## ") && !/ありません|なし/.test(empty), empty);
 
   /* ================= 画面 ================= */
+  // 年の本は daily の設定の「書き出し ›」の先（docs/settings.md の「二段の一覧」）
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(400);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップと書き出し" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "書き出し" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "年の本" }).first().click();
   await page.waitForTimeout(500);
