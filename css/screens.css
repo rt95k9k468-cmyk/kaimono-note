@@ -6214,6 +6214,12 @@ a.btn { text-decoration: none; }
   line-height: 15px; text-align: center; color: var(--c-primary);
 }
 .road-more::before { content: none; }
+/* 長期タスク（段8の段B）。道の外周のくぼみに浮かぶ丸で、連れより一段淡く。
+   淡さは色で（opacity は持ち上げた印 .is-lifted が使うので、取り合わない）。
+   絵なしの丸は .road-bead.is-plain::before と同じ詳細度になるので、一つ上げる。 */
+.road-bead.is-someday { border-color: color-mix(in srgb, var(--road-go) 50%, var(--road-in)); }
+.road-bead.is-someday::before { background: color-mix(in srgb, var(--c-primary) 50%, var(--road-in)); }
+.road-bead.is-someday.is-plain::before { background: color-mix(in srgb, var(--road-go) 50%, var(--road-in)); }
 /* 道へ運ぶ（段8、day-road.js の lift）。持ち上げた連れは元の場所で薄く残り
    （どこから来たか）、写しが指の上に浮く。写しは紙の外（body）に置くので、
    道の色の名前をここで持たせる。 */

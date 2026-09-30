@@ -438,6 +438,7 @@
    *   markOf … (todo) 連れの丸に入れる絵（マスクの url()）。無ければ ""
    *   decide … (todoId, "HH:MM") 空いた道の上で決めた時刻を付ける（段2）
    *   tomorrow … { at: 分, title } 明日の最初の停留所（段6。今日だけ。無ければ null）
+   *   someday … 長期タスク（期限の近い順。段8の段B：道の外周のくぼみに浮かべる）
    */
   /* 道の端（2026年9月29日・利用者の声「5:30 スタートなのに最初に 6:30」）。
      設定の一日（dayStart〜dayEnd）を、**はみ出す停留所まで伸ばし**、始まりは
@@ -628,27 +629,32 @@
         ${today ? html`<p class="road-next"></p>` : ""}
       </div>
     `);
-    el.__road = { g, today, past, stops, steps, loose, later,
+    /* 長期タスク（段8の段B）。過ぎた日には出さない（置ける道が無い）。 */
+    const someday = past ? [] : (o.someday || []).filter((t) => !closed(t) && !t.trace).map((t) => ({ t }));
+    el.__road = { g, today, past, stops, steps, loose, later, someday,
                   tomorrow: today && o.tomorrow ? o.tomorrow : null,
                   markOf: o.markOf, last: undefined, drawn: false };
 
-    /* 押したものを一か所で受けます（札・透明な線・連れ・空いた道）。 */
+    /* 押したものを一か所で受けます（札・透明な線・連れ・くぼみ・空いた道）。 */
     el.addEventListener("click", (e) => {
       if (e.target.classList && e.target.classList.contains("road-free")) {
         decideAt(el, o, e);
         return;
       }
-      const hit = e.target.closest("[data-k], [data-l], [data-b], .road-more");
+      const hit = e.target.closest("[data-k], [data-l], [data-b], [data-h], .road-more");
       if (!hit || !el.contains(hit)) return;
       if (hit.classList.contains("road-more")) {
         /* 連れが多すぎて丸に入りきらないときの「+3」。全部は時間割にあるので、
-           そこへ送ります。 */
-        const list = el.parentNode && el.parentNode.querySelector(".tl-list");
+           そこへ送ります。くぼみの「+n」は、長期タスクの欄へ。 */
+        const list = hit.hasAttribute("data-more")
+          ? (el.closest(".day-slide") || document).querySelector(".tl-someday-sec")
+          : el.parentNode && el.parentNode.querySelector(".tl-list");
         if (list) list.scrollIntoView({ block: "start", behavior: KN.motion.still() ? "auto" : "smooth" });
         return;
       }
       const pick = hit.hasAttribute("data-k") ? stops[Number(hit.getAttribute("data-k"))]
         : hit.hasAttribute("data-l") ? later[Number(hit.getAttribute("data-l"))]
+        : hit.hasAttribute("data-h") ? someday[Number(hit.getAttribute("data-h"))]
         : loose[Number(hit.getAttribute("data-b"))];
       if (pick && o.open) o.open(pick.t.id, hit);
     });
@@ -792,7 +798,7 @@
     el.querySelector(".road-marks").innerHTML = String(marks(st, nowMin, dNow));
     /* 運んでいる最中に描き直したら、持ち上げた丸は薄いまま（段8）。 */
     if (carry && carry.el === el) {
-      const b = el.querySelector(`.road-bead[data-b="${carry.k}"]`);
+      const b = el.querySelector(carry.sel);
       if (b) b.classList.add("is-lifted");
     }
 
@@ -883,11 +889,21 @@
       return occ.every(([a, b]) => lo + w + GAP <= a || lo >= b + GAP) ? [lo, lo + w] : null;
     }
 
+    /* 通りの外に置いたもの（道の端の時刻・人・人の頭の上の時刻）の箱
+       [左, 右, 上, 下]。くぼみの丸（段8の段B）がよける。 */
+    const keep = [];
+    const EFS = 10 * fsK();
+
     // 始まりと終わりの時刻、曲がり角の時刻（物差し）
     const p0 = g.point(0), pe = g.point(g.total);
     out.push(html`<span class="road-edge is-before" style="${at(p0.x - 9, p0.y)}">${clock(g.start)}</span>`);
     out.push(html`<span class="road-edge ${pe.ltr ? "" : "is-before"}"
                         style="${at(pe.x + (pe.ltr ? 9 : -9), pe.y)}">${clock(g.end)}</span>`);
+    [[p0, false, clock(g.start)], [pe, pe.ltr, clock(g.end)]].forEach(([p, after, s]) => {
+      const w = textW(s, EFS) + 2;
+      const x = p.x + (after ? 9 : -9 - w);
+      keep.push([x, x + w, p.y - EFS * 0.7, p.y + EFS * 0.7]);
+    });
     /* 角の時刻は、人がそこに立っているときは出しません（頭と重なる。
        人の足もとの時刻の札が、同じことを言っています）。 */
     const me = dNow == null ? null : g.point(dNow);
@@ -909,6 +925,8 @@
     if (dNow != null) {
       const p = g.point(dNow);
       lane(p.row, "u").push([p.x - ME_W, p.x + ME_W]);
+      // 人の形（足もとが停留所のふちの上まで上がることもあるので、高いほうに合わせて）
+      keep.push([p.x - ME_W - 2, p.x + ME_W + 2, p.y - STOP / 2 - ME_HEAD - 6, p.y]);
       if (st.loose.length) {
         const many = st.loose.length > BEADS_MAX;
         const shown = many ? st.loose.slice(0, BEADS_MAX - 1) : st.loose;
@@ -947,6 +965,7 @@
         if (g.rowY(p.row - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
       }
       out.push(html`<span class="road-now" style="${at(hx, hy)}">${txt}</span>`);
+      keep.push([hx - w / 2, hx + w / 2, hy - FS * 0.7, hy + FS * 0.7]);
     }
 
     /* 2. 停留所の「時刻 題」。試す順：上に全部 → 下に全部 → 上で縮めて →
@@ -1056,7 +1075,73 @@
         </button>`);
     });
 
+    /* 4. 長期タスク（段8の段B）。道の外周のくぼみに丸で浮かべる。札・人・道と
+       重なる場所は使わない（札のほうが先。くぼみは空いたところだけ）。入りきら
+       なければ最後の丸を「+n」にして、押すと長期タスクの欄へ送る。 */
+    if (st.someday.length) {
+      const hh = FS * 0.7;
+      const boxes = keep.slice();
+      Object.keys(lanes).forEach((key) => {
+        const occ = lanes[key];
+        const y = g.rowY(parseInt(key, 10)) + (key.slice(-1) === "u" ? -1 : 1) * (LANE + occ.dy);
+        occ.forEach(([a, b]) => boxes.push([a, b, y - hh, y + hh]));
+      });
+      const r = HOLLOW_BEAD / 2 + 2;
+      const hitsBox = (x, y) => boxes.some(([a, b, t, u]) => {
+        const cx = Math.max(a, Math.min(b, x)), cy = Math.max(t, Math.min(u, y));
+        return (cx - x) * (cx - x) + (cy - y) * (cy - y) < r * r;
+      });
+      const free = hollowSlots(g).filter((s) => !hitsBox(s.x, s.y)
+        && clearOfRoad(st, s.x, s.y, HOLLOW_BEAD / 2 + STOP / 2 + 1.5));
+      const many = st.someday.length > free.length;
+      const shown = many ? st.someday.slice(0, Math.max(0, free.length - 1)) : st.someday;
+      shown.forEach((c, h) => {
+        const m = st.markOf ? st.markOf(c.t) : "";
+        out.push(html`
+          <button type="button" class="road-bead is-someday ${m ? "" : "is-plain"}" data-h="${String(h)}"
+                  style="${at(free[h].x, free[h].y)}${m ? U.raw(";--icon:" + m) : ""}"
+                  aria-label="${c.t.title}（長期タスク）"></button>`);
+      });
+      if (many && free.length) {
+        const rest = st.someday.length - shown.length;
+        const s = free[free.length - 1];
+        out.push(html`
+          <button type="button" class="road-bead road-more is-someday" data-more="someday"
+                  style="${at(s.x, s.y)}" aria-label="長期タスク、ほかに${rest}件">+${rest}</button>`);
+      }
+    }
+
     return html`${out}`;
+  }
+
+  /* くぼみ（段8の段B）＝折り返しの外側の空き。右の折り返しは (0,1)(2,3)(4,5) 段を
+     つなぐので、右のくぼみは (1,2)(3,4) 段のあいだ、左は (0,1)(2,3)(4,5) 段のあいだ。
+     右を先に、足りなければ左。一つに丸18が2列×3段。道に近い列から、上から順に。 */
+  const HOLLOW_BEAD = 18;
+  function hollowSlots(g) {
+    const out = [];
+    const put = (i, right) => {
+      if (i + 1 >= g.rows) return;
+      const xs = right ? [XR + 17, XR + 37] : [XL - 17, XL - 37];
+      [24, 44, 64].forEach((dy) => xs.forEach((x) => out.push({ x, y: g.rowY(i) + dy, row: i, right })));
+    };
+    for (let i = 1; i < g.rows; i += 2) put(i, true);
+    for (let i = 0; i < g.rows; i += 2) put(i, false);
+    return out;
+  }
+  /** (x, y) が道と停留所（車線も）から r 以上離れているか。 */
+  function clearOfRoad(st, x, y, r) {
+    const g = st.g;
+    const pts = st.pts || (st.pts = roadPts(g));
+    if (nearest(pts, x, y).d < r) return false;
+    return st.stops.every((s) => {
+      if (!s.off) return true;
+      for (let t = s.at; t <= s.eu; t += 2) {
+        const p = g.point(g.dist(t), s.off);
+        if (Math.hypot(p.x - x, p.y - y) < r) return false;
+      }
+      return true;
+    });
   }
 
   /* ---------------- 次の一行 ----------------
@@ -1214,8 +1299,9 @@
 
   /* ---------------- 道へ運ぶ（段8・2026年9月30日） ----------------
 
-     連れ（時刻を決めていないもの）を長押しで持ち上げ、道の上へ運んで離すと、
-     その時刻が付いて停留所になります。書き換えは段2と同じ `o.decide`（時間割で
+     連れ（時刻を決めていないもの）と、くぼみの長期タスク（段B。marks の 4.）を
+     長押しで持ち上げ、道の上へ運んで離すと、その時刻が付いて停留所になります
+     （長期タスクは、その日も付く）。書き換えは段2と同じ `o.decide`（時間割で
      時刻の列へ運んだときと同じ書き換えと「元に戻す」）。手つきは時間割の
      「つまんで、置きなおす」（screen-todo.js の wireDrag / lift）と同じ作りです。
      - 0.38秒押さえたら持ち上がる。その前に 8px 動いたら、ただの送り。短く押せば、
@@ -1243,13 +1329,15 @@
     el.addEventListener("pointerdown", (e) => {
       if (carry || !o.decide) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      const bead = e.target.closest && e.target.closest(".road-bead[data-b]");
+      /* 運べるのは連れ（data-b）と、くぼみの長期タスク（data-h）。夜のごろと「+n」は運ばない。 */
+      const bead = e.target.closest && e.target.closest(".road-bead[data-b], .road-bead[data-h]");
       const st = el.__road;
       if (!bead || !st || st.past || !el.contains(bead)) return;
-      const k = Number(bead.getAttribute("data-b"));
-      if (!st.loose[k]) return;
+      const key = bead.hasAttribute("data-b") ? "b" : "h";
+      const k = Number(bead.getAttribute("data-" + key));
+      if (!(key === "b" ? st.loose : st.someday)[k]) return;
       const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
-      let timer = setTimeout(() => { timer = null; off(); lift(el, o, k, x0, y0, pid); }, CARRY_HOLD);
+      let timer = setTimeout(() => { timer = null; off(); lift(el, o, key, k, x0, y0, pid); }, CARRY_HOLD);
       const off = () => {
         if (timer) { clearTimeout(timer); timer = null; }
         document.removeEventListener("pointermove", moved);
@@ -1269,14 +1357,15 @@
   }
 
   /** 持ち上げる。丸は元の場所で薄く残り（どこから来たか）、写しが指の上に浮く。 */
-  function lift(el, o, k, x0, y0, pid) {
+  function lift(el, o, key, k, x0, y0, pid) {
     const st = el.__road;
-    const c = st && st.loose[k];
+    const c = st && (key === "b" ? st.loose : st.someday)[k];
     const map = el.querySelector(".road-map");
     if (!c || !map || !el.isConnected) return;
     KN.motion.fire("reorder");
     try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
-    const bead = el.querySelector(`.road-bead[data-b="${k}"]`);
+    const sel = `.road-bead[data-${key}="${k}"]`;
+    const bead = el.querySelector(sel);
     if (bead) bead.classList.add("is-lifted");
     el.classList.add("is-carrying");
 
@@ -1295,7 +1384,7 @@
     /* 道の位置は持ち上げたときに一度だけ測る。運んでいるあいだは送らない
        （touchmove を止める）ので動かない。 */
     const box = map.getBoundingClientRect();
-    carry = { el, o, st, k, id: c.t.id, pid, x0, y0, box, pts: roadPts(st.g),
+    carry = { el, o, st, sel, id: c.t.id, pid, x0, y0, box, pts: st.pts || (st.pts = roadPts(st.g)),
               ghost, tag, aim, eat, at: null, moved: false };
 
     const move = (ev) => {
@@ -1377,7 +1466,7 @@
     d.tag.remove();
     d.aim.remove();
     d.el.classList.remove("is-carrying");
-    const bead = d.el.querySelector(`.road-bead[data-b="${d.k}"]`);
+    const bead = d.el.querySelector(d.sel);
     if (bead) bead.classList.remove("is-lifted");
     /* click は離した直後に来る。来なかったぶんは片づける（置いたままだと、
        次にどこかを押したときに食べてしまう）。 */

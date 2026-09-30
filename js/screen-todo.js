@@ -2915,7 +2915,7 @@
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     /* 一日の道は、何も無い日にも出します。空いた一日が、道の長さそのままで
        見えることにも意味があるので（今日なら、そこに人が立っています）。 */
-    if (roadOn()) sec.append(dayRoad(day, rows.concat(done)));
+    if (roadOn()) sec.append(dayRoad(day, rows.concat(done), open));
     if (!rows.length && !done.length) {
       sec.append(node(html`
         <p class="todo-today-empty">${day === todayKey()
@@ -2934,14 +2934,22 @@
      地図と時間割が食い違うので。設定の「一日の道を出す」で外せます。 */
   const roadOn = () => store.get().settings.todoRoad !== false;
 
-  function dayRoad(day, todos) {
+  function dayRoad(day, todos, open) {
     const s = store.get().settings;
     const isToday = day === todayKey();
     const plan = KN.plan.buildDay(day, todos, {
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
+    /* 長期タスク（段8・段B）。道の外周のくぼみに浮かべ、道へ運べば日と時刻が付く。
+       過ぎた日には出さない（置ける道が無いので）。並びは**期限の近い順**——くぼみの
+       位置が時刻を言っているように読めないように。同じ期限・期限なしは手で決めた順。 */
+    const someday = day < todayKey() ? [] : (open || [])
+      .filter((t) => !t.due && !t.done && !t.archived && !t.trace)
+      .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999")
+        || (a.order || 0) - (b.order || 0));
     return KN.dayRoad.build({
       plan, today: isToday, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
+      someday,
       open: (id) => openSheet(id),
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
       decide: (id, at) => decideOnRoad(id, at, day),

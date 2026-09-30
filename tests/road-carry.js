@@ -242,6 +242,138 @@ const DAY = "2026-09-30";
   await wait(600);
   c.check("当たり判定：紙の本体を上端で引くと送る器に transform が付く", gave);
 
+  /* ================= 段B：長期タスクをくぼみに浮かべて運ぶ ================= */
+  const ids2 = await page.evaluate((day) => {
+    const s = KN.store;
+    const done = s.addTodo({ title: "済んだ長期" }).id;
+    s.toggleTodo(done);
+    const shelf = s.addTodo({ title: "しまった長期" }).id;
+    s.archiveTodo(shelf, true);
+    return {
+      tax: s.addTodo({ title: "税の書類", deadline: "2026-10-20" }).id,
+      card: s.addTodo({ title: "年賀状", deadline: "2026-10-05" }).id,
+      shelf2: s.addTodo({ title: "本棚を組む" }).id,
+      /* 右のくぼみ（1,2段のあいだ）へ札が入りこむ停留所（段の終わり近く・右向きの段）。 */
+      pick: s.addTodo({ title: "受け取りに行く", due: day, time: "13:40" }).id,
+    };
+  }, DAY);
+  await wait(600);
+  const hollows = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .road-bead[data-h]")]
+    .map((b) => b.getAttribute("aria-label").replace(/（長期タスク）$/, "")));
+  c.check("長期タスクはくぼみに、期限の近い順（済み・アーカイブは出ない）",
+    JSON.stringify(await hollows()) === JSON.stringify(["年賀状", "税の書類", "本棚を組む"]),
+    JSON.stringify(await hollows()));
+
+  /* くぼみの丸は道・停留所・札・人・連れ・時刻と重ならない。道と停留所は SVG の
+     isPointInStroke で丸のふち16点を見る（太さは CSS のまま）。 */
+  const overlap = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const svg = road.querySelector(".road-svg");
+    const box = road.querySelector(".road-map").getBoundingClientRect();
+    const k = box.width / KN.dayRoad.W;
+    const strokes = [...svg.querySelectorAll(".road-base, .road-stop-edge, .road-lead")].filter((p) => p.getAttribute("d"));
+    const others = [...road.querySelectorAll(".road-label b, .road-label span, .road-label em, .road-now, .road-edge, .road-turn, .road-bead[data-b], .road-more:not([data-more])")]
+      .map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
+    const bad = [];
+    road.querySelectorAll(".road-bead[data-h], .road-more[data-more]").forEach((b) => {
+      const r = b.getBoundingClientRect();
+      if (others.some((o) => r.left < o.right - 0.5 && o.left < r.right - 0.5 && r.top < o.bottom - 0.5 && o.top < r.bottom - 0.5)) {
+        bad.push(`${b.getAttribute("aria-label")} と札`);
+      }
+      const cx = (r.left + r.width / 2 - box.left) / k, cy = (r.top + r.height / 2 - box.top) / k;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const p = svg.createSVGPoint();
+        p.x = cx + 9 * Math.cos(a); p.y = cy + 9 * Math.sin(a);
+        if (strokes.some((s) => s.isPointInStroke(p))) { bad.push(`${b.getAttribute("aria-label")} と道`); break; }
+      }
+    });
+    /* 試験の歯：道のまん中の点は道の上と判る */
+    const g = road.__road.g, q = g.point(g.total / 2), pp = svg.createSVGPoint();
+    pp.x = q.x; pp.y = q.y;
+    return { bad, n: road.querySelectorAll(".road-bead[data-h], .road-more[data-more]").length,
+             sane: svg.querySelector(".road-base").isPointInStroke(pp) };
+  });
+  let ov = await overlap();
+  c.check("くぼみの丸は道・札と重ならない（3件）", ov.sane && ov.n === 3 && !ov.bad.length, JSON.stringify(ov));
+
+  /* 長期タスクを運ぶ：長押し → 16:00 → 離す：due がその日・time 16:00、元に戻すで戻る */
+  const taxBefore = await todo(ids2.tax);
+  from = await beadAt("税の書類");
+  await touch("touchStart", from.x, from.y);
+  await wait(460);
+  s = await state();
+  c.check("くぼみの丸も 0.38秒で持ち上がる", s.carrying && s.ghost && s.lifted, JSON.stringify(s));
+  const at16 = await roadPoint(16 * 60, 5);
+  await glide(from, at16, 8);
+  s = await state();
+  c.check("16:00 の道の上で札「16:00」", s.aim && s.tag === "16:00", JSON.stringify(s));
+  await touch("touchEnd");
+  await wait(700);
+  let tax = await todo(ids2.tax);
+  c.check("長期タスクを運ぶと due がその日・time 16:00", tax.due === DAY && tax.time === "16:00",
+    JSON.stringify([taxBefore, tax]));
+  c.check("くぼみから外れて停留所に", !(await hollows()).includes("税の書類")
+    && await page.evaluate(() => document.querySelector("#screen-todo .day-road").__road.stops.some((x) => x.t.title === "税の書類")));
+  c.check("運んで離しても紙は開かない（くぼみ）", !(await sheetOpen()));
+  await page.locator(".toast button", { hasText: "元に戻す" }).click();
+  await wait(500);
+  tax = await todo(ids2.tax);
+  c.check("元に戻すで長期タスクへ戻る（due・time なし）", !tax.due && !tax.time, JSON.stringify(tax));
+
+  /* 短く押すと、その長期タスクの紙が開く */
+  from = await beadAt("年賀状");
+  await touch("touchStart", from.x, from.y);
+  await wait(90);
+  await touch("touchEnd");
+  await wait(700);
+  const opened2 = await page.evaluate(() => {
+    const sh = document.querySelector(".sheet.is-open");
+    if (!sh) return null;
+    const f = sh.querySelector("textarea, input[type=text]");
+    return f ? f.value : sh.textContent;
+  });
+  c.check("くぼみの丸を短く押すと、その紙が開く", !!opened2 && opened2.includes("年賀状"), String(opened2).slice(0, 60));
+  await closeSheets();
+
+  /* 入りきらなければ最後を「+n」、押すと長期タスクの欄へ */
+  await page.evaluate(() => { for (let i = 0; i < 36; i++) KN.store.addTodo({ title: `いつかの用事${i}` }); });
+  await wait(700);
+  const more = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const m = road.querySelector(".road-more[data-more]");
+    return { shown: road.querySelectorAll(".road-bead[data-h]").length, total: road.__road.someday.length,
+             n: m ? Number(m.textContent.replace("+", "")) : null };
+  });
+  c.check("入りきらなければ最後の丸が「+n」（出た数＋n＝全部）", more.n > 0 && more.shown + more.n === more.total,
+    JSON.stringify(more));
+  ov = await overlap();
+  c.check("くぼみの丸は道・札と重ならない（いっぱい）", !ov.bad.length && ov.n === more.shown + 1, JSON.stringify(ov));
+  await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 0; });
+  await wait(200);
+  const mb = await page.locator("#screen-todo .road-more[data-more]").boundingBox();
+  await touch("touchStart", mb.x + mb.width / 2, mb.y + mb.height / 2);
+  await wait(80);
+  await touch("touchEnd");
+  await wait(1200);
+  const went = await page.evaluate(() => {
+    const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
+    const sec = document.querySelector("#screen-todo .tl-someday-sec");
+    return { top: sc.scrollTop, gap: sec.getBoundingClientRect().top - sc.getBoundingClientRect().top };
+  });
+  c.check("「+n」を押すと長期タスクの欄へ送る", went.top > 100 && Math.abs(went.gap) < 80, JSON.stringify(went));
+  c.check("「+n」を押しても紙は開かない", !(await sheetOpen()));
+
+  /* 過ぎた日には出さない・先の日には出る */
+  await page.evaluate(() => KN.screens.todo.goDay("2026-09-29"));
+  await wait(900);
+  c.check("過ぎた日にはくぼみの丸を出さない", (await hollows()).length === 0);
+  await page.evaluate(() => KN.screens.todo.goDay("2026-10-02"));
+  await wait(900);
+  c.check("先の日にはくぼみの丸が出る", (await hollows()).length > 0);
+  await page.evaluate(() => KN.screens.todo.goDay("2026-09-30"));
+  await wait(900);
+
   /* 評価の言葉・絵文字を出さない（道の字と時刻の札） */
   const text = await page.evaluate(() => document.querySelector("#screen-todo .day-road").textContent);
   c.check("評価の言葉なし", !/(遅れ|達成|予定通り|超過|できなかった|%)/.test(text), text.slice(0, 80));
