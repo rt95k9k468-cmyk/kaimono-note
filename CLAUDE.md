@@ -130,7 +130,7 @@
 | 手順（サブタスク）・長期タスク・期限（`deadline`）・くり返し（`fallsOn`）・`when-parse.js` | `docs/todo-items.md` |
 | 紙（`.tl-sheet` / `.sheet`）・送る器（`scrollerOf`）・`pull-refresh.js`・紙を閉じる／払って閉じる・キーボードと紙の底（`--kb`） | `docs/sheet-scroll.md` |
 | `day-swipe.js`・`cal-swipe.js`・`cal-peek.js`・暦の三段 | `docs/calendar-swipe.md` |
-| 設定（`screen-settings.js`・`edge-back.js`・`KN.ui.setPageHost`・中継所の紙） | `docs/settings.md` |
+| 設定（`screen-settings.js`・`settings-*.js`・`edge-back.js`・`KN.ui.setPageHost`・中継所の紙） | `docs/settings.md` |
 | 画面の移り変わり（`app.js` の `show`）・帯の構成・上の題（`dayTitleBar`） | `docs/screens-nav.md` |
 | 上の帯と暦を全タブで一つに（計画の段1〜4・共通の日 `dayShare`・暦の段 `calAll`） | `docs/shared-header.md` |
 | 下の帯（押してふくらむ・席の印 `tab-lens.js`） | `docs/tabbar.md` |

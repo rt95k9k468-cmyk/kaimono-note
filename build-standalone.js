@@ -87,6 +87,13 @@ const JS = [
   "js/screen-prices.js",
   "js/yearbook.js",
   "js/screen-settings.js",
+  "js/settings-look.js",
+  "js/settings-todo.js",
+  "js/settings-list.js",
+  "js/settings-daily.js",
+  "js/settings-diet.js",
+  "js/settings-relay.js",
+  "js/settings-backup.js",
   "js/tab-lens.js",
   "js/app.js",
 ];

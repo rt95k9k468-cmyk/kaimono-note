@@ -344,3 +344,38 @@ AIの窓口・お店の編集・カテゴリの編集・目標・ヘルスケア
 iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in` /
 `is-pop-out`）——入る面は 100% → 0、下の面は 0 → -28% しか動かず、入る面の
 左端に影が付きます。どちらを使うかは `pushy(from, to)`（`OFF_BAR` が絡むか）。
+
+### ファイルの分け方（2026年9月30日）
+
+`screen-settings.js` は約3,300行あった。**動きは一つも変えずに**、中身ごとに分けた
+（保存の鍵・読み書き・見た目はそのまま。手で写さず、構文解析で行の範囲と参照を洗い出して
+移したので、元の本文の行はどれも、どれか一つのファイルにある）。
+
+| ファイル | 中身 |
+|---|---|
+| `screen-settings.js`（土台） | 紙の重なり（`stack`・`makeLayer`・`go`・`back`・`openAsPage`・`paintLayer`）・行の部品（`card`・`head`・`foot`・`navRow`・`switchRow`・`pickRow`・`dangerRow`・`choose`・`copyText`・`fieldCard`）・`TINT`・`TAB`・`PAGES`・根っこ（`renderRoot`・`generalRows`・`saveErrorBanner`） |
+| `settings-look.js` | 外観・暦を出すか・アイコンについて・困ったときの記録 |
+| `settings-todo.js` | tasks（一日の始まりと終わり・通知・カレンダー） |
+| `settings-list.js` | shopping（お店・カテゴリ・おぼえた振り分け） |
+| `settings-daily.js` | daily（表示・書き出し・年の本） |
+| `settings-diet.js` | health（記録を書き出す・取り込み・AIに分析） |
+| `settings-relay.js` | 中継所・建てかた・AIの窓口 |
+| `settings-backup.js` | バックアップ（保存・確かめる・復元・自動バックアップ・点検・使用量・日記を取り込む・Dropbox・データを消す） |
+
+- **部品は `KN.settingsParts`（中では `S`）で渡す。** 土台が作って部品を置き、中身の
+  ファイルは読み込んだときに `const { card, navRow, … } = S` で受け取り、最後に
+  `Object.assign(S, { … })` で自分の行を置く。
+- **土台がいちばん先。** 中身は読み込んだ時点で `S` から部品を取り出すので、index.html・
+  sw.js・build-standalone.js の三か所とも `screen-settings.js` の**すぐ後**に並べる
+  （`app.js` より前——`mount` を呼ぶのは app.js）。中身どうしの順は問わない。
+- **`TAB` / `PAGES` は `build: () => S.lookRows()` の形で引く。** 一つのファイルだった
+  ころは関数の巻き上げで `build: lookRows` と書けたが、中身は土台より後に読まれるので、
+  そう書くと `undefined` を焼きつける。組むときに引く。
+- **ファイルをまたぐ呼び出しも、呼ぶときに `S.` から**（`generalRows` の
+  `S.collectIconGaps()`・`S.errCount()`、health の取り込みの `S.openAiSheet`）。
+- **紙の重なりの変数（`stack`・`root`・`moving`・`fromTab`）は土台の外へ出さない。** 中身は
+  `go` / `back` / `render` を通してだけ触る。中継所の道（`relayPath`・`relayTest`・
+  `aiPath`）は `settings-relay.js` の中だけ（紙の外に持つ理由は上の「中継所の設定は二枚」）。
+- 新しい一枚を足すとき：中身は該当するファイルに書いて `Object.assign(S, …)` に名前を足し、
+  `PAGES` に `build: () => S.名前()` を一行。新しいファイルを作るなら三か所に登録する
+  （同じ順かは `tests/registry.js` が見る）。
