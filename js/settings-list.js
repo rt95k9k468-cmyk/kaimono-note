@@ -37,7 +37,7 @@
           value: `${store.learnedList().length}件`, onTap: openLearned,
         })
       ),
-      foot(`${s.products.length}商品・${s.stores.length}店舗が登録されています。`),
+      foot(`${s.products.length}商品・${s.stores.length}店舗`),
     ];
   }
 
@@ -46,9 +46,6 @@
     const wrap = node(html`
       <section class="settings-group">
         <div class="set-card js-rows"></div>
-        ${stores.length > 1
-          ? html`<p class="set-foot is-flush">長押しで並べ替えられます。</p>`
-          : ""}
         <div class="set-card">
           <button type="button" class="set-row is-add js-add">
             <span class="set-glyph">${icon("plus")}</span>
@@ -61,7 +58,7 @@
     const rows = wrap.querySelector(".js-rows");
     if (!stores.length) {
       rows.append(node(html`
-        <p class="set-empty">お店を登録すると、商品ごとに値段を記録して比べられます。</p>
+        <p class="set-empty">まだありません。</p>
       `));
     }
 
@@ -168,7 +165,6 @@
     const wrap = node(html`
       <section class="settings-group">
         <div class="set-card js-rows"></div>
-        <p class="set-foot is-flush">長押しで並べ替えられます。</p>
         <div class="set-card">
           <button type="button" class="set-row is-add js-add">
             <span class="set-glyph">${icon("plus")}</span>
@@ -303,7 +299,6 @@
 
     const body = node(html`
       <div class="stack">
-        <p class="set-foot is-flush">カテゴリを手で選ぶと、次から同じ名前はそこに入ります。</p>
         <div class="stack js-rules" style="gap:8px"></div>
         <button class="btn btn-soft btn-sm js-forget-all" style="margin-top:4px">すべて忘れる</button>
       </div>

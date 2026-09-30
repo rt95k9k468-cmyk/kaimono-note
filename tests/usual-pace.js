@@ -128,7 +128,7 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
   c.check("長さの札に「いつもの25分」が「決めない」の次", labels[0] === "決めない" && labels[1] === "いつもの25分",
     JSON.stringify(labels.slice(0, 4)));
   c.check("決めないが選ばれたまま（黙って決めない）", !!ed && ed.chips[0].on && !ed.chips[1].on, ed && JSON.stringify(ed.chips.slice(0, 2)));
-  c.check("時刻の下に「9:00 〜 9:25」と「いつもの長さで」", !!ed && /9:00 〜 9:25/.test(ed.note) && /いつもの長さで/.test(ed.note),
+  c.check("時刻の下に「9:00 〜 9:25」と「いつもの長さ」", !!ed && /9:00 〜 9:25/.test(ed.note) && /いつもの長さ/.test(ed.note),
     ed && ed.note);
   c.check("編集の紙も評価しない・絵文字なし", !!ed && !BAN.test(ed.text) && !/\p{Extended_Pictographic}/u.test(ed.text));
   for (let i = 0; i < 3 && await page.locator(".sheet.is-open").count(); i++) {

@@ -86,7 +86,7 @@
           ${t.repeat ? "" : html`<div class="due-later" hidden>
             ${LATER.map((x) => html`<button type="button" class="btn btn-soft js-pick" data-key="${x.key}">${x.label}</button>`)}
           </div>`}
-          ${t.repeat ? html`<p class="due-note">くり返す用事は、あとでにできません（次の回の時刻も動くので）。時刻は用事の紙で直せます。</p>` : ""}
+          ${t.repeat ? html`<p class="due-note">くり返す用事は「あとで」にできません。</p>` : ""}
           <button type="button" class="btn btn-ghost due-open js-open">用事の紙を開く</button>
         </div>
       `);

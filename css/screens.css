@@ -1905,7 +1905,8 @@
 }
 
 /* one store's price, in full */
-.field-hint { font-size: var(--fs-xs); color: var(--c-text-3); line-height: var(--lh-body); }
+.field-hint { font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); }
+.field-hint:empty { display: none; }
 
 .cmp { font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-body); }
 .cmp b { color: var(--c-text); }
@@ -1970,7 +1971,9 @@
   --set-gap: 10px;   /* 絵と題のあいだ */
   --set-fs: calc(17px * var(--fs-k));
   --set-fs-head: calc(15px * var(--fs-k));
-  --set-fs-foot: calc(13px * var(--fs-k));
+  /* 説明は少なく、大きく（2026年9月30日）。13px の薄い字で長く書くのを
+     やめて、残した一行を 15px で読めるように。 */
+  --set-fs-foot: calc(15px * var(--fs-k));
   --set-line: rgba(60, 60, 67, .1);
   --set-chev: #c4c4c8;
 }
@@ -2153,7 +2156,7 @@
   padding: 0 calc(var(--set-gut) + var(--sp-5));
   font-size: var(--set-fs-foot);
   line-height: var(--lh-ui);
-  color: var(--c-text-3);
+  color: var(--c-text-2);
 }
 /* 紙の中（シート）で使うぶんは、外側の余白を紙が持っているので詰める。 */
 .set-foot.is-flush { padding: 0; margin: 0 0 var(--sp-2); }
@@ -2598,7 +2601,7 @@
 }
 
 .diet-hero-note, .diet-note {
-  font-size: var(--fs-xs); color: var(--c-text-2); line-height: var(--lh-body); margin: 0;
+  font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); margin: 0;
 }
 .diet-note b { color: var(--c-text); }
 .diet-note.is-warn { color: var(--c-danger); }
@@ -2733,7 +2736,7 @@
 .ta-clear:active { background: var(--c-surface-3); color: var(--c-text); }
 
 .diet-empty { padding: var(--sp-4) var(--sp-2); }
-.diet-empty .empty-text { font-size: var(--fs-sm); line-height: var(--lh-body); }
+.diet-empty .empty-text { font-size: var(--fs-md); line-height: var(--lh-ui); }
 
 /* ---- からだ ---- */
 
@@ -2987,8 +2990,8 @@ button.section-note:active { opacity: .55; }
   padding: 2px 7px; line-height: 1.5;
 }
 .urge-sec-note {
-  font-size: var(--fs-sm); color: var(--c-text-3);
-  line-height: 1.65; margin: -2px 0 0;
+  font-size: var(--fs-md); color: var(--c-text-2);
+  line-height: var(--lh-ui); margin: -2px 0 0;
 }
 .urge-sec-body { display: flex; flex-direction: column; gap: 10px; }
 /* 札は段の中では少しゆったり（既定の 6px だと、40pxの札が詰まって見える）。 */
@@ -3235,7 +3238,7 @@ button.section-note:active { opacity: .55; }
 .diet-memo-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
 .diet-memo-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-memo.is-blank .diet-memo-ico { color: var(--c-text-3); opacity: .5; }
-.diet-memo-hint { font-size: var(--fs-xs); color: var(--c-text-3); margin-left: auto; }
+.diet-memo-hint { font-size: var(--fs-sm); color: var(--c-text-2); margin-left: auto; }
 .diet-memo-body {
   font-size: var(--fs-sm); color: var(--c-text); line-height: var(--lh-body);
   white-space: pre-wrap; word-break: break-word;
@@ -3287,9 +3290,9 @@ button.section-note:active { opacity: .55; }
    自前の行だから）。ここは手順そのものなので、番号を返します。 */
 .diet-steps {
   margin: 0; padding-left: 1.6em; list-style: decimal;
-  font-size: var(--fs-xs); color: var(--c-text-2); line-height: var(--lh-body);
+  font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui);
 }
-.diet-steps li { margin-bottom: 2px; }
+.diet-steps li { margin-bottom: 4px; }
 .diet-steps li::marker { color: var(--c-text-3); font-weight: 700; }
 .diet-steps b { color: var(--c-text); }
 .diet-code {
@@ -3442,7 +3445,7 @@ a.btn { text-decoration: none; }
 }
 
 .diet-why summary {
-  font-size: var(--fs-xs); color: var(--c-text-2);
+  font-size: var(--fs-sm); color: var(--c-text-2);
   cursor: pointer; padding: 4px 0;
 }
 .diet-why[open] summary { color: var(--c-text); font-weight: 700; }
@@ -6022,7 +6025,7 @@ a.btn { text-decoration: none; }
   border: 1px solid currentColor; border-radius: 999px; padding: 0 .5em;
 }
 .up-empty { color: var(--c-text-2); margin: var(--sp-4) 0; }
-.up-note { color: var(--c-text-2); font-size: var(--fs-sm); margin: var(--sp-2) 0 0; line-height: 1.6; }
+.up-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-2) 0 0; line-height: var(--lh-ui); }
 /* 帯に暦の絵が一つ増えたぶん、狭い画面（360px）では日付の題が 8px 欠けた。
    そこでだけ帯の間を 12 → 8px に。指の的（44px）は隣と 2px 重なるだけ。 */
 @media (max-width: 374px) {
@@ -6056,7 +6059,7 @@ a.btn { text-decoration: none; }
 .sa-title { overflow-wrap: anywhere; }
 .sa-sub { font-size: var(--fs-xs); color: var(--c-text-2); }
 .sa-jump { border: 1px solid var(--c-border); border-radius: 12px; padding: var(--sp-2) var(--sp-3); }
-.sa-more-note, .sa-note { color: var(--c-text-2); font-size: var(--fs-sm); margin: var(--sp-1) 0 0; }
+.sa-more-note, .sa-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-1) 0 0; }
 
 /* ---------------- 一日の道（js/day-road.js・docs/todo-timeline.md の「一日の道」） ----------------
 

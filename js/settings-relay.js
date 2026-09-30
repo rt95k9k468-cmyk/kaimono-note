@@ -9,7 +9,7 @@
   const KN = window.KN;
   const { html, node } = KN.util;
   const S = KN.settingsParts;
-  const { back, go, TINT, card, head, foot, navRow, dangerRow, render, copyText, fieldCard } = S;
+  const { back, go, TINT, card, head, foot, more, navRow, dangerRow, render, copyText, fieldCard } = S;
 
   /* ---------------- 中継所 ----------------
 
@@ -89,7 +89,6 @@
     });
 
     return [
-      foot("iPhoneのショートカットがここへ健康データを置き、くらしノートが取りにいきます。読み方は手入力とまったく同じで、増えるのは入口だけです。"),
       fieldCard({
         label: "中継所のURL", value: url,
         placeholder: "https://…workers.dev/kn-…",
@@ -105,25 +104,23 @@
       }),
       card(verify),
       result,
-      foot("置く・取る・消える・道が合言葉になっている——を一往復して確かめます。古い形の中継所につないでいると、一行目でそう出ます。"),
       fieldCard({
         label: "ショートカットの名前", value: KN.healthRelay.shortcutName(),
         placeholder: "くらしノート健康",
         onSave: (v) => { KN.healthRelay.setShortcutName(v); KN.ui.toast(v ? "覚えました" : "外しました"); },
       }),
-      foot("入れておくと、ダイエットの「◯:◯◯ 時点」を押したときに、そのショートカットをその場で走らせます。ショートカットアプリに出ている名前を、記号や空白まで一字たがえずに。"),
+      foot("「◯:◯◯ 時点」を押すと走らせます。名前は一字たがえずに。"),
       /* Siri から買うものへ（D2）。置き先は中継所のURLに ?slot=add を足した
          もので、組み立ては KN.healthRelay がします（ここは渡すだけ）。 */
       on ? card(navRow({
         ico: "copy", tint: TINT.sub, title: "Siri 用のURLをコピー",
         onTap: () => copyText(KN.healthRelay.inboxUrl(), "Siri 用のURL"),
       })) : null,
-      on ? foot("ショートカットを「入力を要求 → URLの内容を取得（方法 POST・本文を要求 ファイル・ファイル＝入力）」で組み、このURLを入れます。名前を「買うものに追加」にすると、「Hey Siri、買うものに追加」で品物を聞かれ、言った名前が買うものに入ります。いくつかなら「牛乳、卵」のように区切って。") : null,
+      on ? more("Siri 用の組み方", "ショートカットを「入力を要求 → URLの内容を取得（方法 POST・本文を要求 ファイル・ファイル＝入力）」で組み、このURLを入れます。名前を「買うものに追加」にすると、「Hey Siri、買うものに追加」で入れられます。いくつかなら「牛乳、卵」のように区切って。") : null,
       card(navRow({
         ico: "route", tint: TINT.relay, title: "建てかた",
         onTap: () => go("relayHow"),
       })),
-      foot("まだ建てていない方はこちら。iPhoneだけで建てられます。"),
       on ? card(dangerRow({
         ico: "close", title: "中継所を外す",
         onTap: async () => {
@@ -191,7 +188,7 @@
         <a class="btn btn-primary btn-block js-deploy"
            href="${DEPLOY_URL}" target="_blank" rel="noopener">Cloudflareに置く</a>
         <ol class="diet-steps" style="margin-top:12px">
-          <li>Cloudflareに登録（メールアドレスだけ。カードは要りません）</li>
+          <li>Cloudflareに登録（カード不要）</li>
           <li>GitHubとつなぐ画面が出たら許可する</li>
           <li><b>RELAY_PATH</b> を聞かれたら、①でコピーした道を<b>ペースト</b></li>
           <li><b>Deploy</b>（Create and deploy）を押す</li>
@@ -231,21 +228,21 @@
     }));
 
     return [
-      foot("パソコンは要りません。Cloudflareの画面はSafariで開いてください（無料・カード不要）。"),
+      foot("iPhone の Safari だけで建てられます（無料）。"),
       head("① 道（合言葉）をつくる"),
       pathCard,
-      foot("これが合言葉です。知られると、その人も同じ郵便受けを開けられます。②の途中で貼るので、先に作ってコピーしておきます。"),
+      foot("合言葉です。人に見せないでください。"),
       head("② 中継所を置く"),
       deployCard,
       /* 逃げ道は一段にまとめます。三つに割ると、どれも同じ重さの手順に
          見えて、**まっすぐ進める人にも三段ぶん読ませる**ことになります。 */
-      foot("つまずいたら：RELAY_PATH を聞かれなかったら、置いたあとに Settings → Variables and Secrets → Add で Type を Secret、名前を RELAY_PATH にして Deploy。置く画面が出なければ Create → Import a repository → kaimono-note を選び、Root directory に relay。置き場（KV）が用意されなかったときだけ Storage & Databases → KV で作り、Settings → Bindings で MAIL に結びます。"),
+      more("つまずいたら", "RELAY_PATH を聞かれなかったら、置いたあとに Settings → Variables and Secrets → Add で Type を Secret、名前を RELAY_PATH にして Deploy。置く画面が出なければ Create → Import a repository → kaimono-note を選び、Root directory に relay。置き場（KV）が用意されなかったときだけ Storage & Databases → KV で作り、Settings → Bindings で MAIL に結びます。"),
       codeCard,
-      foot("手で貼るのは、iPhoneでは勧めません（編集画面が指で扱いにくいため）。すでに建てている方は、ここから貼り直してください——渡した便を消さない作りに変わったので、アプリだけ新しくしても効きません。URLも道もそのままで構いません。"),
+      foot("建て済みの方も、ここから貼り直してください（URLはそのまま）。"),
       head("③ URLをつなげる"),
       joinCard,
-      foot("Workerの画面の上のほうに出ている …workers.dev を貼ると、①の道が後ろに付いて保存されます。手で打ち継ぐ必要はありません。"),
-      foot("ショートカットを3本目以降増やすときは、URLの末尾に ?slot=名前 を付けて名乗ってください（例：?slot=weight）。名乗らないと、同じ書式の便どうしが上書きし合います。"),
+      foot("…workers.dev を貼ると、①の道が後ろに付きます。"),
+      more("ショートカットを3本以上にするとき", "URLの末尾に ?slot=名前 を付けます（例：?slot=weight）。付けないと、同じ書式どうしが上書きし合います。"),
     ];
   }
 
@@ -275,12 +272,8 @@
         </label>
         <button type="button" class="btn btn-soft btn-block js-check" style="margin:var(--sp-2) 0 var(--sp-3)">確かめる</button>
         <p class="set-foot is-flush js-check-out" style="display:none"></p>
-        <p class="set-foot is-flush">
-          <b>APIキーはここに入れません。</b>このページの中身は誰でも読めるので、鍵は
-          窓口の向こう側（Cloudflare Workers）に置きます。送るのは
-          ダイエットの記録と、推定に使う食事の写真だけです。
-        </p>
-        <p class="set-foot is-flush" style="margin-top:var(--sp-3)"><b>建て方</b>（パソコンは要りません。Cloudflareの画面はSafariで）</p>
+        <p class="set-foot is-flush"><b>APIキーはここに入れません</b>（窓口の側に置きます）。</p>
+        <p class="set-foot is-flush" style="margin-top:var(--sp-3)"><b>建て方</b></p>
         <div class="set-card is-pad" style="margin:0 0 var(--sp-3)">
           <p class="set-foot is-flush">① 道（合言葉）をつくる</p>
           <div class="diet-relaykey" style="margin-top:8px">
@@ -302,15 +295,8 @@
             <li><b>Deploy</b>（Create and deploy）を押す</li>
           </ol>
         </div>
-        <p class="set-foot is-flush">
-          ③ Workerの画面に出ている …workers.dev を上の欄に貼って「保存」。①の道が
-          後ろに付きます。そのあと「確かめる」。
-        </p>
-        <p class="set-foot is-flush">
-          料金は Anthropic から、使ったぶんだけ来ます。URLを知られると、その人も
-          あなたの鍵で呼べるので、Console の Limits で<b>月の上限額</b>を決めておいてください。
-          くわしくは ai/README.md に。
-        </p>
+        <p class="set-foot is-flush">③ …workers.dev を上の欄に貼って「確かめる」→「保存」。</p>
+        <p class="set-foot is-flush">Console の Limits で<b>月の上限額</b>を決めておいてください。</p>
       </div>
     `);
     const foot = node(html`

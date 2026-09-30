@@ -36,7 +36,7 @@
           onTap: (v) => dailySet("showThen", v),
         })
       ),
-      foot("「あの日」は、暦のすぐ下に、何年か前の同じ日に書いたものを一つ出します。同じ日の記録が二年以上あれば、年ごとに一行ずつ。出したくない日は、その日の log の紙で「出さない」にできます。"),
+      foot("何年か前の同じ日に書いたものを、暦の下に出します。"),
       card(
         navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") })
@@ -57,8 +57,8 @@
             title: "Daily Log に出す範囲",
             value: s.dailyScope === "month" ? "month" : "day",
             options: [
-              { id: "day",   label: "1日",      note: "暦で選んでいる日だけ" },
-              { id: "month", label: "月ぜんぶ", note: "その月を、日ごとに縦へ" },
+              { id: "day",   label: "1日" },
+              { id: "month", label: "月ぜんぶ" },
             ],
             onPick: (v) => dailySet("dailyScope", v),
           }),
@@ -68,8 +68,8 @@
           onTap: () => choose({
             title: "Daily Log の見せ方", value: full ? "full" : "short",
             options: [
-              { id: "full",  label: "全文", note: "書いたものをそのまま" },
-              { id: "short", label: "数行", note: "はじめの三行。押せば続きが開く" },
+              { id: "full",  label: "全文" },
+              { id: "short", label: "数行" },
             ],
             onPick: (v) => dailySet("logFull", v === "full"),
           }),
@@ -79,8 +79,8 @@
           onTap: () => choose({
             title: "積み上げのメモの見せ方", value: entryFull ? "full" : "short",
             options: [
-              { id: "full",  label: "全文", note: "書いたものをそのまま" },
-              { id: "short", label: "数行", note: "はじめの三行。押せば全文が開く" },
+              { id: "full",  label: "全文" },
+              { id: "short", label: "数行" },
             ],
             onPick: (v) => dailySet("entryFull", v === "full"),
           }),
@@ -90,8 +90,8 @@
           onTap: () => choose({
             title: "上に出すもの", value: s.dailyOrder === "entries" ? "entries" : "log",
             options: [
-              { id: "log",     label: "Daily Log", note: "その日の文を書く使い方に" },
-              { id: "entries", label: "積み上げ",  note: "読んだ本や学んだことを集める使い方に" },
+              { id: "log",     label: "Daily Log" },
+              { id: "entries", label: "積み上げ" },
             ],
             onPick: (v) => dailySet("dailyOrder", v),
           }),
@@ -107,14 +107,13 @@
           onTap: (v) => dailySet("showStamps", v),
         })
       ),
-      foot("「作成・更新」は、いつ書いていつ直したか（その日の話ではなく、帳簿のほう）。"),
       card(
         switchRow({
           title: "季節のひとこと", on: s.showSeason !== false,
           onTap: (v) => dailySet("showSeason", v),
         })
       ),
-      foot("その日の二十四節気と七十二候を、Daily Log の見出しの下に一行。端末の中で計算します。"),
+      foot("二十四節気と七十二候を一行。"),
       card(
         switchRow({
           title: "月のまとめを出す", on: s.showDigest !== false,
@@ -127,8 +126,8 @@
           onTap: () => choose({
             title: "月のまとめの位置", value: s.digestPos === "top" ? "top" : "bottom",
             options: [
-              { id: "top",    label: "上", note: "開いてすぐ、月の姿が目に入る" },
-              { id: "bottom", label: "下", note: "まず日を読んで、最後にまとめ" },
+              { id: "top",    label: "上" },
+              { id: "bottom", label: "下" },
             ],
             onPick: (v) => dailySet("digestPos", v),
           }),
@@ -149,7 +148,6 @@
         }),
         navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook })
       ),
-      foot("「年の本」は、一年ぶんの積み上げ・買ったもの・日記を一冊に（印刷・PDF と Markdown）。"),
     ];
   }
 
@@ -221,11 +219,7 @@
     const list = KN.yearbook.years();
     const body = node(html`
       <div class="stack">
-        <p class="set-foot is-flush">
-          その年の積み上げ・初めて買ったもの・よく買ったもの・日記を、一冊に
-          まとめます。印刷の画面で「PDF に保存」を選べば PDF に。Markdown は
-          アプリが無くても読める文字のファイルです。
-        </p>
+        <p class="set-foot is-flush">PDF は印刷の画面の「PDF に保存」から。</p>
         <div class="js-years"></div>
       </div>
     `);

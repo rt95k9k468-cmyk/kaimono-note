@@ -32,10 +32,10 @@
     return [
       list.length
         ? card(...rows)
-        : foot("いまは何もありません。"),
+        : foot("ありません。"),
       list.length ? card(navRow({ ico: "copy", tint: TINT.data, title: "コピー",
         onTap: () => copyText(KN.errlog.text(), "困ったときの記録") })) : null,
-      foot("アプリの中で起きたエラーと、保存できなかったときの控えです（新しい50件まで）。時刻・版・画面・短い文・ファイルと行だけを持ちます。日記を保存する道で起きたものは、種類だけ。書き出し・バックアップ・Dropbox には乗りません。「すべて削除」で消えます。"),
+      foot("新しい50件まで。日記の中身は残しません。"),
     ];
   }
 
@@ -133,7 +133,7 @@
       head("明るさ"), seg,
       head("基調色"), accents,
       head("文字の大きさ"), sizes,
-      foot("「端末」は iPhone の設定の「文字サイズ」に合わせます。"),
+      foot("「端末」は iPhone の文字サイズに合わせます。"),
       head("表示"),
       card(
         pickRow({
@@ -141,8 +141,8 @@
           onTap: () => choose({
             title: "並べ方", value: KN.ui.isTiles() ? "tiles" : "list",
             options: [
-              { id: "list",  label: "リスト", note: "一行に一つ。名前が読みやすい" },
-              { id: "tiles", label: "タイル", note: "絵を大きく、三つずつ" },
+              { id: "list",  label: "リスト" },
+              { id: "tiles", label: "タイル" },
             ],
             onPick: () => { KN.ui.toggleLayout(); render(); },
           }),
@@ -156,7 +156,6 @@
         }),
         calSwitch()
       ),
-      foot("並べ方は、買うもの・価格・やることの三つが分け合います。探す窓を出さないときは、虫めがねを押すと出ます。暦は、どのタブでも同じものが出ます。"),
       canBadge ? card(
         switchRow({
           title: "アイコンにも数を出す", on: badgeOn,
@@ -169,9 +168,7 @@
           },
         })
       ) : null,
-      canBadge ? foot(badgeBlocked
-        ? "許可が要ります。端末の設定で、このアプリの通知を許可してください。"
-        : "ホーム画面の絵に、今回買うものと、いま手をつけられるやることの数が出ます。") : null,
+      badgeBlocked ? foot("端末の設定で通知を許可してください。") : null,
     ];
   }
 
@@ -259,9 +256,8 @@
               <span class="set-glyph is-plain">${icon("copy")}</span>
             </button>
           </div>
-          <p class="set-foot is-flush">辞書に当たらなかった言葉です。コピーして伝えていただくと、辞書に足せます。</p>
         ` : html`
-          <div class="set-card"><p class="set-empty">いまのところ、ありません。</p></div>
+          <div class="set-card"><p class="set-empty">ありません。</p></div>
         `}
       </section>
     `);
@@ -342,7 +338,6 @@
             <button type="button" class="btn btn-soft js-rep-add">報告する</button>
           </div>
         </div>
-        <p class="set-foot is-flush">辞書に当たれば「絵がちがう」、当たらなければ「言葉が無い」に、自分で振り分けます。送り先はありません。次にお願いするときに、コピーして渡すための控えです。</p>
       </section>
     `);
 
@@ -421,8 +416,8 @@
 
     function paint() {
       body.innerHTML = "";
-      body.append(kindBlock("wrong", "報告した「絵がちがう」", "いまのところ、ありません。"));
-      body.append(kindBlock("missing", "報告した「言葉が無い」", "いまのところ、ありません。"));
+      body.append(kindBlock("wrong", "報告した「絵がちがう」", "ありません。"));
+      body.append(kindBlock("missing", "報告した「言葉が無い」", "ありません。"));
     }
     paint();
 

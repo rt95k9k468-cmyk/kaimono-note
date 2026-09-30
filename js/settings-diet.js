@@ -61,10 +61,6 @@
 
     const body = node(html`
       <div class="stack">
-        <p class="set-foot is-flush">
-          AIに貼るときは「文」、表計算で見るときは「CSV」。アプリに戻すための
-          ファイルは「バックアップを保存」のほうです。
-        </p>
         <div class="js-span"></div>
         <div class="js-form"></div>
         <p class="diet-note js-count"></p>
@@ -160,7 +156,6 @@
           onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); render(); },
         })
       ),
-      foot("「気づいたこと」は、体重と食事から読み取れたことを画面に出します。"),
       card(
         navRow({
           ico: "target", tint: TINT.goal, title: "目標", value: goal,
@@ -173,13 +168,10 @@
           onTap: openAiAnalyze,
         })
       ),
-      foot("歩数・総消費・睡眠・食事・体重・お酒を、期間を選んで一枚の文にします。"
-        + "コピーして、お使いのAIに貼ってください（このアプリからは送りません）。"),
       /* バックアップの一枚から移しました。中身はダイエットの記録だけなので。 */
       card(
         navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport })
       ),
-      foot("「記録を書き出す」は、体重・食事・歩数・お酒を日ごとの表にします（AIに渡す用）。"),
       /* 取り込みの三行（ヘルスケア・中継所・AIの窓口）は、建てたあとは
          めったに開かないので「›」の先へ。 */
       card(
@@ -209,7 +201,6 @@
           onTap: S.openAiSheet,
         })
       ),
-      foot("中継所を建てると、ショートカットを走らせるだけで歩数や睡眠が入ります。"),
     ];
   }
 
@@ -245,11 +236,7 @@
 
     const body = node(html`
       <div class="stack">
-        <p class="set-foot is-flush">
-          歩数・総消費・睡眠（型まで）・食事・体重・体脂肪・お酒を、一枚の文に
-          まとめます。コピーして、お使いのAIに貼って聞いてください。
-          このアプリから送ることはしません。
-        </p>
+        <p class="set-foot is-flush">コピーしてAIに貼ります。アプリからは送りません。</p>
         <p class="diet-note">期間</p>
         <div class="js-span"></div>
         <p class="diet-note">詳しさ</p>
@@ -257,7 +244,7 @@
         <p class="diet-note">聞きたいこと</p>
         <div class="js-ask"></div>
         <textarea class="textarea js-q" rows="2"
-          placeholder="自分で書く（書いたら、こちらが使われます）"
+          placeholder="自分で書く"
           aria-label="聞きたいこと"></textarea>
         <p class="diet-note js-count"></p>
         <textarea class="textarea js-out" rows="10" readonly
