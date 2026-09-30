@@ -652,6 +652,7 @@
         : loose[Number(hit.getAttribute("data-b"))];
       if (pick && o.open) o.open(pick.t.id, hit);
     });
+    wireCarry(el, o);
 
     paint(el);
     return el;
@@ -789,6 +790,11 @@
 
     // ④ 札・連れ・いまの時刻
     el.querySelector(".road-marks").innerHTML = String(marks(st, nowMin, dNow));
+    /* 運んでいる最中に描き直したら、持ち上げた丸は薄いまま（段8）。 */
+    if (carry && carry.el === el) {
+      const b = el.querySelector(`.road-bead[data-b="${carry.k}"]`);
+      if (b) b.classList.add("is-lifted");
+    }
 
     // ⑤ 次の一行
     const next = el.querySelector(".road-next");
@@ -1099,18 +1105,30 @@
      無ければ無いと言うだけで、新しく書く欄も出しません（入力を増やさない）。
      「空き」は長さを言うだけで、埋めるべき余白としては言いません。 */
 
-  /** viewBox の点 → いちばん近い時刻（分）。1分ずつ道をなぞって探します
-      （一日で千回ほど。押したときに一度だけなので、逆算の式を持つより素直）。 */
-  function timeNear(g, x, y) {
-    let best = g.start, bd = Infinity;
+  /** 道の上の、1分ごとの点（境目ちょうどの時刻は、前の段の尻と次の段の頭の二つ）。 */
+  function roadPts(g) {
+    const out = [];
     for (let t = g.start; t <= g.end; t++) {
       for (const tail of [false, true]) {
         const p = g.point(g.dist(t, tail));
-        const dd = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
-        if (dd < bd) { bd = dd; best = t; }
+        out.push({ t, x: p.x, y: p.y });
       }
     }
-    return best;
+    return out;
+  }
+  /** 点の中で (x, y) にいちばん近いもの → { t: 分, d: 道の中心からの距離 }。 */
+  function nearest(pts, x, y) {
+    let best = pts[0], bd = Infinity;
+    pts.forEach((p) => {
+      const dd = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+      if (dd < bd) { bd = dd; best = p; }
+    });
+    return { t: best.t, d: Math.sqrt(bd) };
+  }
+  /** viewBox の点 → いちばん近い時刻（分）。1分ずつ道をなぞって探します
+      （一日で千回ほど。押したときに一度だけなので、逆算の式を持つより素直）。 */
+  function timeNear(g, x, y) {
+    return nearest(roadPts(g), x, y).t;
   }
 
   /** 時刻 raw のまわりの空き。前後の停留所（時刻を決めたもの）のあいだで、
@@ -1194,6 +1212,180 @@
     });
   }
 
+  /* ---------------- 道へ運ぶ（段8・2026年9月30日） ----------------
+
+     連れ（時刻を決めていないもの）を長押しで持ち上げ、道の上へ運んで離すと、
+     その時刻が付いて停留所になります。書き換えは段2と同じ `o.decide`（時間割で
+     時刻の列へ運んだときと同じ書き換えと「元に戻す」）。手つきは時間割の
+     「つまんで、置きなおす」（screen-todo.js の wireDrag / lift）と同じ作りです。
+     - 0.38秒押さえたら持ち上がる。その前に 8px 動いたら、ただの送り。短く押せば、
+       今までどおり紙が開く。
+     - 時刻は段2と同じく、指にいちばん近い道の時刻を1分ずつなぞって探し、15分
+       きざみ（snap）。指が道の中心から AIM_NEAR 以内のときだけ、狙いの点と時刻の
+       札を出す。置けるのは**これからの道だけ**（`.road-free` と同じ）。停留所と
+       重なってもよい（車線に割れる。警告の色は出さない）。
+     - 道の外・歩いたぶんで離したら、何も書かない。丸は元の場所へ戻る。
+     - 道は一画面に入るので、端の自動送りは付けない。
+     - 見張りは document（day-swipe.js が外枠でポインタを捕まえても届くように）。
+       持ち上げたら touchmove を止め（送りを始めさせない）、離したあとの click を
+       一度だけ食べる（でないと離したところで紙が開く）。day-swipe・pull-refresh は
+       `carrying()` を見て、この指を取らない。 */
+  const CARRY_HOLD = 380;       // screen-todo.js の DRAG_HOLD と同じ
+  const CARRY_SLOP = 8;         //                   DRAG_SLOP と同じ
+  const AIM_NEAR = 24;          // 道の中心から、狙える近さ（viewBox の単位 ≒ px）
+  /* 持ち上げた丸と時刻の札は、指の腹（触れた点からおよそ 24px 外へ広がる）に
+     隠れないよう、指の上に積みます（札の下端が指から 58px 上）。 */
+  const GHOST_UP = 40;
+  const LABEL_UP = 58;
+  let carry = null;
+
+  function wireCarry(el, o) {
+    el.addEventListener("pointerdown", (e) => {
+      if (carry || !o.decide) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const bead = e.target.closest && e.target.closest(".road-bead[data-b]");
+      const st = el.__road;
+      if (!bead || !st || st.past || !el.contains(bead)) return;
+      const k = Number(bead.getAttribute("data-b"));
+      if (!st.loose[k]) return;
+      const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+      let timer = setTimeout(() => { timer = null; off(); lift(el, o, k, x0, y0, pid); }, CARRY_HOLD);
+      const off = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        document.removeEventListener("pointermove", moved);
+        document.removeEventListener("pointerup", off);
+        document.removeEventListener("pointercancel", off);
+      };
+      const moved = (ev) => {
+        if (ev.pointerId !== pid) return;
+        if (Math.abs(ev.clientX - x0) > CARRY_SLOP || Math.abs(ev.clientY - y0) > CARRY_SLOP) off();
+      };
+      document.addEventListener("pointermove", moved);
+      document.addEventListener("pointerup", off);
+      document.addEventListener("pointercancel", off);
+    });
+    /* 長押しで端末が出す選択肢は、運んでいるあいだは出さない。 */
+    el.addEventListener("contextmenu", (e) => { if (carry) e.preventDefault(); });
+  }
+
+  /** 持ち上げる。丸は元の場所で薄く残り（どこから来たか）、写しが指の上に浮く。 */
+  function lift(el, o, k, x0, y0, pid) {
+    const st = el.__road;
+    const c = st && st.loose[k];
+    const map = el.querySelector(".road-map");
+    if (!c || !map || !el.isConnected) return;
+    KN.motion.fire("reorder");
+    try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
+    const bead = el.querySelector(`.road-bead[data-b="${k}"]`);
+    if (bead) bead.classList.add("is-lifted");
+    el.classList.add("is-carrying");
+
+    const m = st.markOf ? st.markOf(c.t) : "";
+    const ghost = node(html`<span class="road-bead road-ghost ${m ? "" : "is-plain"}" aria-hidden="true"></span>`);
+    if (m) ghost.style.setProperty("--icon", m);
+    const tag = node(html`<span class="road-carry-time" aria-hidden="true"></span>`);
+    const aim = node(html`<span class="road-aim" aria-hidden="true"></span>`);
+    document.body.append(ghost, tag);
+    map.append(aim);
+
+    /* 離したあとの click を一度だけ食べる（連れの丸は押すと紙が開くので）。 */
+    const eat = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    el.addEventListener("click", eat, { capture: true, once: true });
+
+    /* 道の位置は持ち上げたときに一度だけ測る。運んでいるあいだは送らない
+       （touchmove を止める）ので動かない。 */
+    const box = map.getBoundingClientRect();
+    carry = { el, o, st, k, id: c.t.id, pid, x0, y0, box, pts: roadPts(st.g),
+              ghost, tag, aim, eat, at: null, moved: false };
+
+    const move = (ev) => {
+      if (!carry || ev.pointerId !== pid) return;
+      if (Math.abs(ev.clientX - x0) > CARRY_SLOP || Math.abs(ev.clientY - y0) > CARRY_SLOP) carry.moved = true;
+      follow(ev.clientX, ev.clientY);
+    };
+    /* 送りを止めるのは touchmove のほう（pointermove で止めても、ブラウザは送りを
+       始めて指の追跡ごと取り上げる。screen-todo.js の lift と同じ話）。 */
+    const hold = (ev) => { if (carry && ev.cancelable) ev.preventDefault(); };
+    const done = (ev) => { if (ev.pointerId !== pid) return; follow(ev.clientX, ev.clientY); dropCarry(true); };
+    /* 取り上げられたときは置かない（指を離していないので、どこへとも言っていない）。 */
+    const give = (ev) => { if (ev.pointerId === pid) dropCarry(false); };
+    carry.off = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("touchmove", hold);
+      document.removeEventListener("pointerup", done);
+      document.removeEventListener("pointercancel", give);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("touchmove", hold, { passive: false });
+    document.addEventListener("pointerup", done);
+    document.addEventListener("pointercancel", give);
+    follow(x0, y0);
+  }
+
+  /** 運んで狙った時刻（15分きざみ）。置けない（歩いたぶん・過ぎた日・一日の
+      終わり）なら null。停留所の中でもかまわない（車線に割れる）。 */
+  function carryAt(st, raw) {
+    if (st.past) return null;
+    const g = st.g;
+    const lo = st.today ? KN.plan.toMin(U.nowTime()) : g.start;
+    if (raw < lo) return null;
+    const at = snap(raw, lo, g.end);
+    return at < g.end ? at : null;
+  }
+
+  /** 指の位置へ。写しは指の上、狙いの点は道の上、時刻の札は写しの上。 */
+  function follow(x, y) {
+    const d = carry;
+    if (!d) return;
+    /* 位置は translate で（transform で書くと、CSS の scale: 1.3 が移動量まで
+       1.3 倍して、写しが指から右下へずれた）。 */
+    d.ghost.style.translate = `${x.toFixed(1)}px ${(y - GHOST_UP).toFixed(1)}px`;
+    const g = d.st.g;
+    const kk = d.box.width / W;
+    let at = null;
+    if (d.moved && kk > 0) {
+      const hit = nearest(d.pts, (x - d.box.left) / kk, (y - d.box.top) / kk);
+      if (hit.d <= AIM_NEAR) at = carryAt(d.st, hit.t);
+    }
+    if (at === d.at && d.aim.classList.contains("is-on") === (at != null)) {
+      if (at != null) d.tag.style.transform = tagAt(x, y);
+      return;
+    }
+    d.at = at;
+    d.aim.classList.toggle("is-on", at != null);
+    d.tag.classList.toggle("is-on", at != null);
+    if (at == null) return;
+    const p = g.point(g.dist(at));
+    d.aim.style.left = (p.x / W * 100).toFixed(3) + "%";
+    d.aim.style.top = (p.y / g.H * 100).toFixed(3) + "%";
+    d.tag.textContent = clock(at);
+    d.tag.style.transform = tagAt(x, y);
+  }
+  /* 札は指の真上。画面の左右の端では内へ寄せる（札の幅はおよそ 56px）。 */
+  const tagAt = (x, y) => {
+    const cx = Math.max(32, Math.min(window.innerWidth - 32, x));
+    return `translate(${cx.toFixed(1)}px, ${Math.max(4, y - LABEL_UP).toFixed(1)}px) translate(-50%, -100%)`;
+  };
+
+  /** 離した・取り上げられた。置けるところで離したときだけ書く。 */
+  function dropCarry(commit) {
+    const d = carry;
+    carry = null;
+    if (!d) return;
+    d.off();
+    d.ghost.remove();
+    d.tag.remove();
+    d.aim.remove();
+    d.el.classList.remove("is-carrying");
+    const bead = d.el.querySelector(`.road-bead[data-b="${d.k}"]`);
+    if (bead) bead.classList.remove("is-lifted");
+    /* click は離した直後に来る。来なかったぶんは片づける（置いたままだと、
+       次にどこかを押したときに食べてしまう）。 */
+    setTimeout(() => d.el.removeEventListener("click", d.eat, true), 0);
+    if (!commit || !d.moved || d.at == null) { paint(d.el); return; }
+    d.o.decide(d.id, KN.plan.toTime(d.at));
+  }
+
   /** その根の中の道を、ぜんぶ描き直す（分が変わっていなければ何もしない）。 */
   function paintAll(root) {
     if (!root) return;
@@ -1201,6 +1393,8 @@
   }
 
   /* pose(τ) は試験用：歩きの経った割合 τ（0〜1）での形（腕と脚の速さを数で見る）。 */
+  /* carrying() は、道で運んでいる最中か（day-swipe・pull-refresh がこの指を取らない）。 */
   KN.dayRoad = { build, paint, paintAll, geom, snap, walk, W,
+                 carrying: () => !!carry,
                  pose: walkPose };
 })();

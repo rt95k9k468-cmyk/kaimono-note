@@ -6194,6 +6194,9 @@ a.btn { text-decoration: none; }
   position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; padding: 0;
   border-radius: 50%; border: 1.5px solid var(--road-go); background: var(--road-in);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
+  /* 長押しで持ち上げる（段8）ので、端末の選択や吹き出しを出さない。 */
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  transition: opacity var(--m-state) var(--ease-out);
 }
 .road-bead::before {
   content: ""; position: absolute; inset: 2.5px;
@@ -6211,6 +6214,39 @@ a.btn { text-decoration: none; }
   line-height: 15px; text-align: center; color: var(--c-primary);
 }
 .road-more::before { content: none; }
+/* 道へ運ぶ（段8、day-road.js の lift）。持ち上げた連れは元の場所で薄く残り
+   （どこから来たか）、写しが指の上に浮く。写しは紙の外（body）に置くので、
+   道の色の名前をここで持たせる。 */
+.road-bead.is-lifted { opacity: .3; }
+.road-bead.road-ghost {
+  --road-go: var(--c-primary-fill);
+  --road-in: var(--c-sheet-edge);
+  position: fixed; left: 0; top: 0; z-index: var(--z-lift);
+  pointer-events: none; scale: 1.3;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .2), 0 1px 3px rgba(0, 0, 0, .12);
+  animation: road-ghost-in var(--m-state) var(--ease-out) both;
+}
+@keyframes road-ghost-in { from { scale: 1; box-shadow: none; } }
+/* 狙いの点：置く時刻（15分きざみ）の道の上。長さを決めていない停留所と同じ形
+   （ふちは塗りの色、中は白）に、狙っている印のうすい輪。 */
+.road-aim {
+  position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border-radius: 50%; border: 2.5px solid var(--road-go); background: var(--road-in);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--road-go) 35%, transparent);
+  pointer-events: none; opacity: 0;
+}
+.road-aim.is-on { opacity: 1; }
+/* 時刻の札は写しの上（指に隠れない）。時間割で運ぶときの札（.tl-band-time）と同じ姿。 */
+.road-carry-time {
+  position: fixed; left: 0; top: 0; z-index: var(--z-lift);
+  padding: 3px 8px; border-radius: var(--r-full);
+  background: var(--c-primary); color: #fff;
+  font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums;
+  white-space: nowrap; pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+  opacity: 0;
+}
+.road-carry-time.is-on { opacity: 1; }
 /* 次の一行。「次は 13:00 病院 · あと5時間17分」 */
 .road-next {
   margin: 2px 0 0; padding: 0 var(--sp-1);
