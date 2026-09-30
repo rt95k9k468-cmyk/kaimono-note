@@ -480,6 +480,16 @@
       if (v != null) hasSlot = true;
     });
     if (hasSlot) out.slots = slots;
+    /* 窓口に推計を頼んだときの、その一回の料金の目安。貼り付けた推計と
+       前からある記録は持ちません（欄ごと無し）。 */
+    if (a.cost && typeof a.cost === "object") {
+      const c = a.cost;
+      const n = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+      const cost = { usd: n(c.usd), searches: n(c.searches) || 0,
+        inputTokens: n(c.inputTokens), outputTokens: n(c.outputTokens),
+        model: typeof c.model === "string" ? c.model.slice(0, 60) : "" };
+      if (cost.usd != null || cost.inputTokens != null) out.cost = cost;
+    }
     const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
     return anyNum || hasSlot || raw || analysis ? out : null;
   }

@@ -170,6 +170,56 @@ const call = (env, method, path, body, headers) =>
   check("途中で切れたら、数を作らず空で返す", cut.items.length === 0 && /切れました/.test(cut.note), cut.note);
 }
 
+/* ---------- AI推計の代行 ---------- */
+{
+  const prompt = "次の「食事メモ」から、その日に食べたものの栄養を推定してください。\n【朝】卵、納豆";
+  const answer = "食品: 卵\n量: 1個\nカロリー: 80\n区分: 朝\n摂取カロリー: 170\n評価: 朝の時点です。";
+  sent.length = 0;
+  let n = 0;
+  // 一度目は検索の途中で止まり（pause_turn）、二度目で答えが届く
+  reply = () => {
+    n++;
+    const m = n === 1
+      ? message([{ type: "server_tool_use", id: "srvtoolu_1", name: "web_search", input: { query: "納豆 栄養成分" } }], "pause_turn")
+      : message([{ type: "text", text: answer }]);
+    m.body.usage = { input_tokens: 1000, output_tokens: 500, server_tool_use: { web_search_requests: n === 1 ? 2 : 1 } };
+    return m;
+  };
+  const res = await call(env0(), "POST", PATH, { kind: "estimate", prompt });
+  const out = await res.json();
+  check("推計は 200", res.status === 200, String(res.status));
+  check("答えの文をそのまま返す", out.text === answer, out.text);
+  check("途中で止まったら続きを頼む（二回呼ぶ）", sent.length === 2);
+  const b = sent[0].body;
+  check("推計の文をそのまま渡す", b.messages[0].content === prompt);
+  check("Web検索を使える", b.tools && b.tools[0].type === "web_search_20260209" && b.tools[0].max_uses > 0);
+  check("推計でも断られたら答え直させる", b.fallbacks === "default");
+  check("続きの頼みに止まった答えを返す", sent[1].body.messages[1].role === "assistant"
+    && sent[1].body.messages[1].content[0].type === "server_tool_use" && sent[1].body.messages.length === 2);
+  check("料金はトークンと検索を二回ぶん足す",
+    out.cost.inputTokens === 2000 && out.cost.outputTokens === 1000 && out.cost.searches === 3, JSON.stringify(out.cost));
+  // 2000×5/1e6 + 1000×25/1e6 + 3×0.01 = 0.01 + 0.025 + 0.03
+  check("料金の目安（claude-opus-5 と検索）", out.cost.usd === 0.065, String(out.cost.usd));
+
+  sent.length = 0;
+  const empty = await call(env0(), "POST", PATH, { kind: "estimate", prompt: "  " });
+  check("空の推計は 400 で Claude を呼ばない", empty.status === 400 && sent.length === 0);
+
+  reply = message([], "refusal");
+  const refused = await call(env0(), "POST", PATH, { kind: "estimate", prompt });
+  const rj = await refused.json();
+  check("推計を断られたら { error } と料金", refused.status === 502 && /推計できません/.test(rj.error) && rj.cost, rj.error);
+
+  reply = message([{ type: "text", text: "ok" }]);
+  reply.body.model = "claude-unknown-9";
+  const unk = await (await call(env0(), "POST", PATH, { kind: "estimate", prompt })).json();
+  check("単価を知らないモデルなら額は null", unk.cost.usd === null && unk.cost.model === "claude-unknown-9");
+
+  reply = message([{ type: "text", text: "ふつうです" }]);
+  const co = await (await call(env0(), "POST", PATH, { kind: "coach", question: "x", data: {} })).json();
+  check("相談にも料金が付く", co.cost && co.cost.usd > 0, JSON.stringify(co.cost));
+}
+
 /* ---------- 形の違う頼み ---------- */
 {
   sent.length = 0;

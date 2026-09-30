@@ -11,6 +11,10 @@
                     → { "text": "…" }
                   { "kind": "photo", "image": "data:image/jpeg;base64,…", "hint": "…" }
                     → { "items": [ { "name", "grams", "kcal", "p", "f", "c" } ], "note": "…" }
+                  { "kind": "estimate", "prompt": "…" }
+                    → { "text": "…", "cost": { … } }
+                  （アプリの「AI推計」の文をそのまま受け取り、Web検索を使って答える。
+                    coach と photo の返事にも cost が付く）
 
    しくじったときは { "error": "…" } を、4xx / 5xx で返します。アプリは
    その文をそのまま画面に出します。
@@ -53,6 +57,32 @@ const EFFORT = "medium";
 const MAX_BODY = 6 * 1024 * 1024;
 const MAX_QUESTION = 2000;
 const MAX_HINT = 500;
+/* 「AI推計」の文。決まった聞き方（2千字ほど）＋食事メモ＋直近の記録。 */
+const MAX_PROMPT = 20000;
+
+/* 推計は Web で栄養成分を確かめてから答えるので、相談より長くかかります。
+   検索の回数は、市販品が何品かある日でも足りるぶんだけにします（一回ごとに
+   料金がかかるので）。アプリは150秒で待ちきります。 */
+const ESTIMATE_TIMEOUT = 140 * 1000;
+const WEB_SEARCH = { type: "web_search_20260209", name: "web_search", max_uses: 8 };
+/* 検索が長引くと、答えの途中で一度止まって返ってきます（pause_turn）。
+   続きを頼む回数の上限。 */
+const MAX_CONTINUE = 3;
+
+/* 一回ごとの料金の目安（米ドル、100万トークンあたり）。答え直しで別の
+   モデルが答えることがあるので、返ってきたモデルの名前で引きます。
+   表に無いモデルは、トークン数だけ返して額は出しません。
+   Web検索は 1,000 回で 10 ドル。 */
+const PRICE = {
+  "claude-opus-5":     { in: 5, out: 25 },
+  "claude-opus-5-5":   { in: 4, out: 20 },
+  "claude-opus-4-8":   { in: 5, out: 25 },
+  "claude-sonnet-5-5": { in: 2, out: 10 },
+  "claude-sonnet-5":   { in: 2, out: 10 },
+  "claude-fable-5-1":  { in: 10, out: 50 },
+  "claude-fable-5":    { in: 10, out: 50 },
+};
+const SEARCH_USD = 10 / 1000;
 
 /* アプリのページから呼べるようにするための約束。POST に Content-Type:
    application/json を付けるので、ブラウザが先に OPTIONS を投げてきます。
@@ -162,6 +192,26 @@ function apiFailure(err) {
   return fail(502, "Claude に届きませんでした");
 }
 
+/** 使ったトークンと検索の回数を足し合わせます（続きを頼んだぶんも）。 */
+function addUsage(acc, message) {
+  const u = message.usage || {};
+  acc.model = message.model || acc.model;
+  acc.inputTokens += (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+  acc.outputTokens += u.output_tokens || 0;
+  acc.searches += (u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+  return acc;
+}
+const newUsage = () => ({ model: MODEL, inputTokens: 0, outputTokens: 0, searches: 0 });
+
+/** 料金の目安。キャッシュは使っていないので、入力はすべて通常の単価で数えます。 */
+function costOf(acc) {
+  const p = PRICE[String(acc.model || "").replace(/-\d{8}$/, "")];
+  const usd = p
+    ? (acc.inputTokens * p.in + acc.outputTokens * p.out) / 1e6 + acc.searches * SEARCH_USD
+    : null;
+  return { ...acc, usd: usd == null ? null : Math.round(usd * 10000) / 10000 };
+}
+
 async function coach(client, body) {
   const question = String(body.question || "").trim().slice(0, MAX_QUESTION);
   if (!question) return fail(400, "質問が空です");
@@ -182,10 +232,51 @@ async function coach(client, body) {
     }],
   });
 
+  const cost = costOf(addUsage(newUsage(), message));
   if (message.stop_reason === "refusal") {
-    return json({ text: "この相談には答えられませんでした。聞き方を変えてみてください。" });
+    return json({ text: "この相談には答えられませんでした。聞き方を変えてみてください。", cost });
   }
-  return json({ text: textOf(message) });
+  return json({ text: textOf(message), cost });
+}
+
+const ESTIMATE_SYSTEM = [
+  "あなたは、くらしノートというアプリの中で、本人が書いた食事メモから栄養を推定します。",
+  "頼みの文に書かれた条件と返し方に、そのまま従ってください。前置きや見出しは付けず、指定の形の行だけを返してください。",
+  "市販品を確かめるときは web_search を使えます。検索は必要な品目だけにしてください。",
+].join("\n");
+
+/* 「AI推計」の代行。アプリがコピーさせていた文を、そのまま受け取って答えます。
+   返事の形はアプリの貼り付けと同じ読み取り（readAiReply）で読むので、
+   ここでは形を縛りません。 */
+async function estimate(client, body) {
+  const prompt = String(body.prompt || "").trim().slice(0, MAX_PROMPT);
+  if (!prompt) return fail(400, "推計の文が空です");
+
+  const usage = newUsage();
+  const messages = [{ role: "user", content: prompt }];
+  let message;
+  for (let i = 0; ; i++) {
+    message = await client.beta.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      ...FALLBACK,
+      output_config: { effort: EFFORT },
+      system: ESTIMATE_SYSTEM,
+      tools: [WEB_SEARCH],
+      messages,
+    }, { timeout: ESTIMATE_TIMEOUT });
+    addUsage(usage, message);
+    if (message.stop_reason !== "pause_turn" || i >= MAX_CONTINUE) break;
+    // 途中で止まったぶんを返して、続きから答えてもらいます（「続けて」は足しません）。
+    messages.push({ role: "assistant", content: message.content });
+  }
+  const cost = costOf(usage);
+
+  if (message.stop_reason === "refusal") return json({ error: "この食事メモは推計できませんでした", cost }, 502);
+  if (message.stop_reason === "pause_turn") return json({ error: "検索が長引いて、答えまで届きませんでした。もう一度試してください", cost }, 504);
+  const text = textOf(message);
+  if (!text) return json({ error: "返事が空でした", cost }, 502);
+  return json({ text, cost });
 }
 
 async function photo(client, body) {
@@ -224,7 +315,7 @@ async function photo(client, body) {
   try { out = JSON.parse(textOf(message)); }
   catch (err) { return json({ items: [], note: "推定を読み取れませんでした" }); }
   const items = Array.isArray(out.items) ? out.items : [];
-  return json({ items, note: String(out.note || "") });
+  return json({ items, note: String(out.note || ""), cost: costOf(addUsage(newUsage(), message)) });
 }
 
 /* 確かめる。モデルの一覧を一件引くだけなので、文章を作る料金はかかりません。
@@ -272,7 +363,8 @@ export default {
 
       if (body && body.kind === "coach") return await coach(client, body);
       if (body && body.kind === "photo") return await photo(client, body);
-      return fail(400, "kind は coach か photo です");
+      if (body && body.kind === "estimate") return await estimate(client, body);
+      return fail(400, "kind は coach・photo・estimate のどれかです");
     } catch (err) {
       return apiFailure(err);
     }
