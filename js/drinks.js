@@ -356,8 +356,95 @@
       .slice(0, max || 5);
   }
 
+  /* ---------------- よく飲むもの（2026年9月30日） ----------------
+
+     毎晩書くのは、たいてい同じもの——「いつものビール350を2本」。それを
+     毎回キーボードで打たせるより、**これまでに記録したもの**を札にして、
+     押したら本数を −/＋ で変えるだけにします。
+
+     札の中身は「種類＋銘柄＋一本ぶんの量＋度数」の組。記録が無い人には
+     既定の6つを出します（量の違うビール二つと、よくある一杯）。
+     **保存の形は書いたときと同じ一件**です（新しい欄は足しません）。
+     raw には、読み直せば同じ中身になる文を入れておきます——「直す」の紙は
+     raw を欄に出して読み直すので。 */
+
+  const FAV_MAX = 6;
+  const FAV_DEFAULT = [
+    ["beer", 350, "本"], ["beer", 500, "本"], ["highball", 350, "本"],
+    ["chuhai", 350, "本"], ["wine", 120, "杯"], ["sake", 180, "杯"],
+  ];
+  const round1 = (n) => Math.round(n * 10) / 10;
+  const favKey = (t) => [t.kind, t.name || "", t.ml, t.abv].join("|");
+
+  /** 札の字。「ビール 350ml」「スーパードライ 350ml」「チューハイ 350ml 9%」 */
+  function favLabel(t) {
+    const k = byId(t.kind);
+    return `${t.name || k.label} ${trim(t.ml)}ml${t.abv !== k.abv ? ` ${trim(t.abv)}%` : ""}`;
+  }
+
+  /**
+   * これまでの記録から、よく飲むものの札を作ります。
+   * 並びは種類の順・量の順——数の順に並べると、飲むたびに札の場所が
+   * 動いて、指が覚えられません（時刻の札と同じ理由）。
+   * @param {Array} list これまでのお酒の記録
+   * @returns {Array<{key,kind,kindLabel,name,ml,abv,unit,estimated,label}>}
+   */
+  function favorites(list, max) {
+    const cap = max || FAV_MAX;
+    const seen = new Map();
+    (Array.isArray(list) ? list : []).forEach((r) => {
+      if (!r || !r.kind) return;
+      const ml = round1(r.ml || (r.count ? (r.volumeMl || 0) / r.count : 0));
+      if (!ml) return;
+      const t = {
+        kind: r.kind, kindLabel: r.kindLabel || byId(r.kind).label,
+        name: String(r.name || "").trim(), ml, abv: Number(r.abv) || byId(r.kind).abv,
+        unit: r.unit === "杯" ? "杯" : "本", estimated: r.estimated !== false,
+      };
+      const key = favKey(t);
+      const s = seen.get(key) || { t, n: 0, at: "" };
+      s.n++;
+      if (String(r.at || "") >= s.at) { s.at = String(r.at || ""); s.t = t; }
+      seen.set(key, s);
+    });
+    const mine = [...seen.values()]
+      .sort((a, b) => b.n - a.n || b.at.localeCompare(a.at))
+      .slice(0, cap).map((s) => s.t);
+    FAV_DEFAULT.forEach(([kind, ml, unit]) => {
+      if (mine.length >= cap) return;
+      const k = byId(kind);
+      if (mine.some((t) => t.kind === kind && t.ml === ml && !t.name)) return;
+      mine.push({ kind, kindLabel: k.label, name: "", ml, abv: k.abv, unit, estimated: true });
+    });
+    const order = (t) => KINDS.findIndex((k) => k.id === t.kind);
+    return mine
+      .sort((a, b) => order(a) - order(b) || a.ml - b.ml || a.name.localeCompare(b.name) || a.abv - b.abv)
+      .map((t) => ({ ...t, key: favKey(t), label: favLabel(t) }));
+  }
+
+  /**
+   * 札と本数から、一件ぶん。parseOne が返すのと同じ形です。
+   * 度数計算も parseOne と同じ式（ml × 度数 ÷ 100 × 0.8、kcal は種類の目安）。
+   */
+  function fromFavorite(t, count) {
+    const k = byId(t.kind);
+    const n = Math.max(0, Number(count) || 0);
+    const volume = round1(t.ml * n);
+    const alcoholG = round1(volume * (t.abv / 100) * 0.8);
+    const kcal = k.kcal100 ? Math.round(volume * k.kcal100 / 100) : Math.round(alcoholG * 7);
+    // 種類の目安と同じ度数なら書かない——書くと、読み直したときに「量った」扱いになる。
+    const raw = [t.name, t.kindLabel || k.label, `${trim(t.ml)}ml`,
+      t.abv !== k.abv ? `${trim(t.abv)}%` : "", `${trim(n)}${t.unit}`].filter(Boolean).join(" ");
+    return {
+      kind: t.kind, kindLabel: t.kindLabel || k.label, name: t.name || "",
+      ml: t.ml, count: n, unit: t.unit, volumeMl: volume, abv: t.abv,
+      alcoholG, kcal, estimated: !!t.estimated, raw,
+    };
+  }
+
   KN.drinks = {
-    KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN,
+    KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN, FAV_MAX,
     kindOf, byId, parse, parseOne, describeItem, totals, moodSuggestions,
+    favorites, fromFavorite,
   };
 })();
