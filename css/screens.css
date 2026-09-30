@@ -6082,6 +6082,12 @@ a.btn { text-decoration: none; }
   --me-shirt-d: #6571c4;
   --me-leg: #c6c1bd;
   --me-leg-b: #a29d9a;
+  /* 寝床（利用者が貼った絵の色を、歩く人の色に寄せて。台は奥の袖の藍）。 */
+  --bed-frame: var(--me-shirt-d);
+  --bed-sheet: #bfe2f2;
+  --bed-quilt: #f2b3b5;
+  --bed-fold: #f8d5d8;
+  --bed-z: #f0b04e;
   padding: var(--sp-2) var(--sp-4) var(--sp-2);
 }
 .road-map { position: relative; max-width: 440px; margin: 0 auto; }
@@ -6145,6 +6151,37 @@ a.btn { text-decoration: none; }
 .me-line.me-shirt-d { stroke: var(--me-shirt-d); }
 .me-line.me-leg { stroke: var(--me-leg); }
 .me-line.me-leg-b { stroke: var(--me-leg-b); }
+/* 寝床（day-road.js の bedSvg）。道の両端の外。歩く人と同じ紙の色の縁。 */
+.road-svg .road-bed-halo * { fill: var(--c-sheet); stroke: var(--c-sheet); stroke-width: 80; stroke-linejoin: round; }
+.road-bed-ink .bed-frame { fill: var(--bed-frame); }
+.road-bed-ink .bed-sheet { fill: var(--bed-sheet); }
+.road-bed-ink .bed-quilt { fill: var(--bed-quilt); }
+.road-bed-ink .bed-fold { fill: var(--bed-fold); }
+.road-bed-ink .me-shirt { fill: var(--me-shirt); }
+.road-bed-ink .me-skin { fill: var(--me-skin); }
+.road-svg .road-z {
+  stroke: var(--bed-z); stroke-width: 1.5;
+  transform-box: fill-box; transform-origin: center;
+}
+.road-svg .road-z.is-big { stroke-width: 1.8; }
+/* 道を外れた時間（起きる前・寝たあと）に開いていれば、z Z がいびきのように
+   ふくらみながら上へのぼって消え、また出る（2026年9月30日・利用者の声）。
+   のぼる高さ（4）は day-road.js の BED_TOP に入れてある（札がよける）。
+   小さい z と大きい Z は半拍ずらす。 */
+.road-bed.is-snore .road-z {
+  animation: road-snore var(--m-snore) var(--ease-glide) infinite both;
+}
+.road-bed.is-snore .road-z.is-big { animation-delay: calc(var(--m-snore) / -2); }
+@keyframes road-snore {
+  0% { opacity: 0; translate: calc(var(--zx, 1) * -1px) 3px; scale: .6; }
+  25% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; translate: calc(var(--zx, 1) * 2px) -4px; scale: 1.1; }
+}
+/* 動きを減らす設定では、のぼらせずに置いたまま（一回で終わらせると消えたままになる）。 */
+@media (prefers-reduced-motion: reduce) {
+  .road-bed.is-snore .road-z { animation: none; }
+}
 
 /* 札の層は図の上に一枚かぶさるので、押せるのは中の button だけ（でないと、
    下の透明な線に指が届きません）。 */
@@ -6184,6 +6221,7 @@ a.btn { text-decoration: none; }
   font-size: calc(10px * var(--fs-k)); font-weight: 700; color: var(--c-text-2);
 }
 .road-edge.is-before { transform: translate(-100%, -50%); }
+.road-edge.is-under { transform: translate(-50%, -50%); }
 .road-turn {
   transform: translate(-50%, -50%); pointer-events: none;
   font-size: calc(9.5px * var(--fs-k)); color: var(--c-text-3);
