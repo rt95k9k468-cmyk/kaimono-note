@@ -112,6 +112,28 @@ const DAY = "2026-09-30";
     document.querySelector("#screen-todo .day-road").__road.stops.find((s) => s.t.title === "書類を出す").eu);
   c.check("今日は、決めた終わりより後に済ませると押した時刻まで延びる（変えない）", paperEu === 7 * 60 + 40, String(paperEu));
 
+  /* 決めた終わりより前に済ませたら縮む（2026年9月30日・12:00〜12:30 を 12:02 に）。
+     いまの時刻は人の頭の上。札の題は見積もりで切り、時刻とのあいだに空白を残さない。 */
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 2));
+  await page.evaluate((id) => KN.store.toggleTodo(id), ids.jimoty);
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 20));
+  await page.evaluate(() => KN.dayRoad.paintAll(document.querySelector("#screen-todo")));
+  await page.waitForTimeout(600);
+  const noon = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const s = road.__road.stops.find((x) => x.t.title === "ジモティー受け渡し");
+    const me = road.querySelector(".road-me").getBoundingClientRect();
+    const now = road.querySelector(".road-now");
+    const nr = now && now.getBoundingClientRect();
+    const labels = [...road.querySelectorAll(".road-label span")].map((x) => [x.textContent, x.scrollWidth - x.clientWidth]);
+    return { eu: s.eu, now: now && now.textContent, above: nr && nr.bottom <= me.top + 1,
+             across: nr && nr.left < me.right && nr.right > me.left, labels };
+  });
+  c.check("決めた終わりより前に済ませると、押した時刻（12:02）で縮む", noon.eu === 12 * 60 + 2, String(noon.eu));
+  c.check("いまの時刻は人の頭の上", noon.now === "12:20" && noon.above && noon.across, JSON.stringify(noon));
+  c.check("札の題は CSS の省略に頼らない（時刻とのあいだに空白が残らない）",
+    noon.labels.every(([, over]) => over <= 1), JSON.stringify(noon.labels));
+
   /* 過ぎた日（2026年9月29日・A＋C）：次の日の時計にして、この日を開く。
      道は薄いまま停留所だけ塗る。区間は押した時刻まで延ばさず、押した時刻に白い粒。 */
   await page.clock.setFixedTime(new Date(2026, 9, 1, 9, 0));

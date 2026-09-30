@@ -518,8 +518,12 @@
       s.late = !!(s.len && nowMin != null && !closed(s.t) && nowMin > s.until);
       /* 過ぎた日は、押した時刻まで延ばさない（決めた区間のまま。押した時刻は
          paint が小さな白い粒で置く）。2026年9月29日。 */
+      /* 今日、決めた終わりより前に済ませたら、押した時刻で**縮める**（2026年9月30日・
+         利用者の声「12:00-12:30 のタスクを 12:02 で終えたのに、丸薬はそのままの長さ」）。
+         延びと同じ言い分——道の形はいまの本当を言う。始まりより前に済ませても、
+         最低1分ぶん（丸い端どうしで、ほぼ丸）は残す。 */
       s.eu = s.late ? Math.max(s.until, Math.min(nowMin, g.end))
-        : !st.past && s.len && s.doneMin != null && s.doneMin > s.until ? s.doneMin : s.until;
+        : !st.past && s.len && s.doneMin != null ? Math.max(s.at + 1, s.doneMin) : s.until;
       s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu, true)) : s.d0;
     });
     laneOut(st.stops);
@@ -906,12 +910,20 @@
                     aria-label="時刻を決めていないもの、ほかに${rest}件">+${rest}</button>`);
         }
       }
+      /* いまの時刻は**人の頭の上**（2026年9月30日・利用者の声「現在時刻は分かり
+         にくいので、人の頭の上に」）。前は道の下の通りに置いていて、隣の札の時刻
+         （「12:00」と「12:20」）と並んで読み分けられなかった。上の段の下の通りに
+         食いこむときだけ、そこを空けさせる。 */
       const txt = clock(nowMin);
-      const box = fitMid(lane(p.row, "d"), p.x, textW(txt, FS) + 2);
-      if (box) {
-        lane(p.row, "d").push(box);
-        out.push(html`<span class="road-now" style="${at(box[0], p.y + LANE + lane(p.row, "d").dy)}">${txt}</span>`);
+      const w = textW(txt, FS) + 2;
+      const hx = Math.max(2 + w / 2, Math.min(W - 2 - w / 2, p.x));
+      // 足もとは停留所のふちの上（STOP / 2）まで上がることがあるので、高いほうに合わせる
+      const hy = p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
+      if (p.row > 0) {
+        const above = lane(p.row - 1, "d");
+        if (g.rowY(p.row - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
       }
+      out.push(html`<span class="road-now" style="${at(hx, hy)}">${txt}</span>`);
     }
 
     /* 2. 停留所の「時刻 題」。試す順：上に全部 → 下に全部 → 上で縮めて →
@@ -983,14 +995,30 @@
       const time = clock(s.at);
       const extra = more[k] || 0;
       const done = closed(s.t);
+      const title = b.only ? "" : cut(s.t.title, b.hi - b.lo - textW(time, FS) - 1 - 4 - 1 - extra);
       out.push(html`
         <button type="button" class="road-label ${b.rev ? "is-rev" : ""} ${done ? "is-done" : ""}"
                 data-k="${String(k)}" style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
                 aria-label="${time} ${s.t.title}${done ? "（済み）" : ""}${extra ? `、ほか${extra}件` : ""}">
-          <b>${time}</b>${b.only ? "" : html`<span>${s.t.title}</span>`}${extra
+          <b>${time}</b>${b.only ? "" : html`<span>${title}</span>`}${extra
             ? html`<em>ほか${extra}</em>` : ""}
         </button>`);
     });
+
+    /* 入りきらない題は、ここで字を落として「…」を付けます（2026年9月30日・利用者の声
+       「ジモティー受け渡し…   12:00 と、時刻と字の間が空き過ぎて同じ札だと思わなかった」）。
+       CSS の省略は字の境目で切るので、かな漢字だと最大一字ぶんの空白が「…」の後ろに
+       残り、左へ進む段（時刻が右）ではそれが題と時刻のあいだに来ていました。見積もりで
+       切れば、余りは札の外側（時刻と反対の端）に出ます。CSS の省略は、画面が 360 より
+       狭いときの受け止めとして残します。 */
+    function cut(s, room) {
+      const chars = [...String(s)];
+      if (textW(s, FS) <= room + 1e-6) return s;
+      const dots = FS;   // 日本語の字体では「…」は全角
+      let w = 0, n = 0;
+      while (n < chars.length && w + textW(chars[n], FS) + dots <= room + 1e-6) w += textW(chars[n++], FS);
+      return chars.slice(0, Math.max(1, n)).join("") + "…";
+    }
 
     // 3. 夜のごろ
     st.later.forEach((s, k) => {
