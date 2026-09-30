@@ -116,6 +116,7 @@ const call = (env, method, path, body, headers) =>
   check("本人の記録を渡す", b.messages[0].content[0].text.includes('"weightKg":60.2'));
   check("相談の文を渡す", b.messages[0].content[1].text.includes("最近どう？"));
   check("相関を因果と言わせない一言が system にある", /相関を因果と断定しない/.test(b.system));
+  check("食事の中身（meals）の読み方が system にある", /meals がある相談は/.test(b.system));
 
   sent.length = 0;
   const empty = await call(env0(), "POST", PATH, { kind: "coach", question: "  ", data });
