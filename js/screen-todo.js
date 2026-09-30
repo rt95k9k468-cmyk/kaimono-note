@@ -669,15 +669,36 @@
       </div>
     `);
 
+    /* 時刻の紙は、上から「押すだけで決まる」順に並べます（2026年9月30日、
+       docs/todo-items.md の「時刻の紙」）。
+         よく使う時刻 … 押せば決まって、紙も閉じる。いちばん多い道。
+         空いているところ … その日の空き（前からあったもの）。
+         細かく … 車輪（端末の時刻欄）と、±15分。「18:00 の札 → ＋15分」で
+                   18:15 になるので、車輪を回すのは本当に半端な時刻だけ。 */
     const pickTime = node(html`
       <div class="stack" style="gap:14px">
         <div class="field">
-          <span class="field-label">時刻</span>
+          <span class="field-label">よく使う時刻</span>
+          <div class="time-grid js-quick-times"></div>
+        </div>
+
+        ${/* **その長さが入る空き**を、そのまま押せる形で。時刻を決めるのに
+              「何時なら空いていたか」を思い出させるのは、この画面がもう
+              知っていることを人にやらせています。 */""}
+        <div class="field js-slot-field" hidden>
+          <span class="field-label">空いているところ</span>
+          <div class="js-slots"></div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">細かく決める</span>
           <div class="date-row">
+            <button type="button" class="time-nudge js-time-down" aria-label="15分早く">−15分</button>
             <span class="date-cell is-time">
               <input class="input js-time" type="time" aria-label="時刻を選ぶ">
               <span class="date-empty js-time-empty" aria-hidden="true">--:--</span>
             </span>
+            <button type="button" class="time-nudge js-time-up" aria-label="15分遅く">＋15分</button>
             <button type="button" class="icon-btn js-time-clear" aria-label="時刻をはずす" hidden>
               ${icon("close")}
             </button>
@@ -695,14 +716,6 @@
           <span class="field-label">前に出る</span>
           <div class="js-lead"></div>
           <span class="field-hint js-lead-note" hidden></span>
-        </div>
-
-        ${/* **その長さが入る空き**を、そのまま押せる形で。時刻を決めるのに
-              「何時なら空いていたか」を思い出させるのは、この画面がもう
-              知っていることを人にやらせています。 */""}
-        <div class="field js-slot-field" hidden>
-          <span class="field-label">空いているところ</span>
-          <div class="js-slots"></div>
         </div>
       </div>
     `);
@@ -943,9 +956,19 @@
 
        押すと、その一つだけの紙が開きます。中身は上で組んだ pickDue /
        pickTime / pickRepeat をそのまま差し込むので、選び方は前と同じです。 */
+    let pickHandle = null;
     function openPick(title, el) {
       el.hidden = false;
-      KN.ui.sheet({ title, content: el });
+      pickHandle = KN.ui.sheet({ title, content: el });
+    }
+    /* 札（今日・明日・18:00・空き）を押して決めたら、その紙は閉じます。
+       決めたあとにもう一度「閉じる」を押させるのは、一回ぶん余計です。
+       札が点くのを一拍見せてから閉じます（押したものが効いたと分かるように）。
+       車輪・±15分では閉じません——そちらは何度か触って合わせるものなので。 */
+    function closePick() {
+      const h = pickHandle;
+      pickHandle = null;
+      if (h) setTimeout(() => h.close(), KN.motion.ms("--m-state"));
     }
     function paintRows() {
       const row = (sel, label, value) => {
@@ -1003,7 +1026,7 @@
       body.querySelector(".js-row-cal").disabled = !(due || deadline);
       paintHeroFacts();
     }
-    body.querySelector(".js-row-due").addEventListener("click", () => openPick("いつまでに", pickDue));
+    body.querySelector(".js-row-due").addEventListener("click", () => openPick("日付", pickDue));
     body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻", pickTime));
     body.querySelector(".js-row-dur").addEventListener("click", () => openPick("時間", pickDur));
     body.querySelector(".js-row-limit").addEventListener("click", () => openPick("期限", pickLimit));
@@ -1069,7 +1092,9 @@
           paintPart();
           paintHint();
           paintRepeatDetail();
+          paintSlots();      // 日が変われば、空いているところも変わります（日付欄と同じ）
           haptic();
+          closePick();
         },
       });
     }
@@ -1247,7 +1272,8 @@
         isToday ? KN.util.nowTime() : "00:00");
       slotField.hidden = !slots.length;
       if (!slots.length) return;
-      KN.ui.chipRow(slotHost, slots.map((s) => ({ id: s.at, label: s.at })), {
+      // 書き方は上の「よく使う時刻」・時間割の左の列と揃えます（頭の0を落とす）。
+      KN.ui.chipRow(slotHost, slots.map((s) => ({ id: s.at, label: tlClock(s.at) })), {
         activeId: time || "",
         onPick: (id) => {
           /* もう一度押したら外れます。決めたものを外す道が無いのは不便です。 */
@@ -1256,10 +1282,45 @@
           paintPart();
           paintHint();
           paintSlots();
+          if (time) closePick();
         },
       });
     }
     paintMins();
+
+    /* よく使う時刻。**この人がこれまでに決めた時刻**から、二度以上使ったものを
+       多い順に取り、足りないぶんを朝・昼・夕・夜の区切りで埋めて8つ。並びは
+       時刻の順（数の順に並べると、使うたびに札の場所が動いて、指が覚えられない）。
+       設定には置きません——決めた時刻がそのまま覚えられていくので、直しに
+       行く先を作るより、使っていれば合っていくほうが手数が少ない。 */
+    function quickTimes() {
+      const QUICK_TIMES = ["07:00", "08:00", "09:00", "12:00", "15:00", "18:00", "20:00", "21:00"];
+      const n = new Map();
+      store.get().todos.forEach((x) => {
+        if (KN.util.isTime(x.time)) n.set(x.time, (n.get(x.time) || 0) + 1);
+      });
+      const mine = [...n].filter(([, c]) => c >= 2)
+        .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+        .map(([k]) => k).slice(0, QUICK_TIMES.length);
+      return mine.concat(QUICK_TIMES.filter((x) => !mine.includes(x)))
+        .slice(0, QUICK_TIMES.length).sort();
+    }
+    /* 並びは紙を開いたときに一度だけ決めます（押す先が逃げないように）。
+       組み立ての途中から呼ばれても落ちないよう、const では持ちません（TDZ）。 */
+    function paintQuickTimes() {
+      if (!paintQuickTimes.list) paintQuickTimes.list = quickTimes();
+      KN.ui.chipRow(body.pick(".js-quick-times"), paintQuickTimes.list.map((x) => ({ id: x, label: tlClock(x) })), {
+        activeId: time || "",
+        onPick: (id) => {
+          time = time === id ? null : id;
+          KN.motion.fire("select");
+          paintPart();
+          paintHint();
+          paintSlots();
+          if (time) closePick();
+        },
+      });
+    }
 
     /* ---- 中の段取りを書くところ ----
 
@@ -1351,7 +1412,30 @@
       if (ph) ph.hidden = !!time;
       const note = body.pick(".js-time-note");
       if (note) note.hidden = !isBookend(part);
+      /* ±15分は、時刻が決まっているときだけ押せます（何も無いところから
+         15分動かす先がありません）。 */
+      body.pick(".js-time-down").disabled = !time;
+      body.pick(".js-time-up").disabled = !time;
+      paintQuickTimes();   // 車輪や±15分で合わせた時刻が札にあれば、その札も点ける
     }
+
+    /* 15分の目へ寄せながら動かします。18:10 の「＋」は 18:15（18:25 ではなく）
+       ——半端な時刻から始めても、押すたびに切りのいい時刻に乗るように。
+       一日の端（0:00・23:45）より外へは出しません。 */
+    function nudgeTime(dir) {
+      const m = KN.plan.toMin(time);
+      if (m == null) return;
+      const next = dir > 0 ? Math.floor(m / 15) * 15 + 15 : Math.ceil(m / 15) * 15 - 15;
+      const to = Math.min(23 * 60 + 45, Math.max(0, next));
+      if (to === m) return;
+      time = KN.plan.toTime(to);
+      haptic();
+      paintPart();
+      paintHint();
+      paintSlots();
+    }
+    body.pick(".js-time-down").addEventListener("click", () => nudgeTime(-1));
+    body.pick(".js-time-up").addEventListener("click", () => nudgeTime(1));
 
     timeEl.addEventListener("change", () => {
       time = KN.util.isTime(timeEl.value) ? timeEl.value : null;

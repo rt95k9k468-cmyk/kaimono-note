@@ -545,6 +545,38 @@ button, [role="tab"] {
 }
 .sheet .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
 
+/* よく使う時刻（やることの時刻の紙）。8つを4列×2段の格子に——時刻は
+   横に流すと桁がずれて探しにくく、格子なら「夕方は下の段」と指が覚えます。
+   指の的は44px（chip の40pxから、ここだけ上げる）。 */
+.sheet .time-grid .chip-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+.sheet .time-grid .chip {
+  height: 44px; padding: 0; min-width: 0;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ±15分。時刻の欄の両わきに置く、字の札（絵より「15分」と読めるほうが早い）。 */
+.time-nudge {
+  flex: 0 1 auto;
+  min-width: 0; height: 44px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  color: var(--c-text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--m-press);
+}
+.time-nudge:active { transform: scale(.95); }
+.time-nudge:disabled { color: var(--c-text-3); }
+
 .chip-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 .chip {
