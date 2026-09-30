@@ -1694,7 +1694,6 @@ a { color: var(--c-primary); }
      二段階の外です。 */
   .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
   .rotate-note b { font-size: var(--fs-xl); font-weight: 700; }
-  .rotate-note span { font-size: var(--fs-sm); color: var(--c-text-2); }
 }
 
 .tab {

@@ -94,7 +94,7 @@
         tone: "good",
         title: `今回は${top.st.name}だけで足ります`,
         body: extra <= 0
-          ? `${priced.length}品を ${yen(top.total)} で買えます。店を回る必要はありません。`
+          ? `${priced.length}品を ${yen(top.total)} で買えます。`
           : `${priced.length}品を ${yen(top.total)}。店を分けても ${yen(extra)} しか変わりません。`,
       }];
     }
@@ -122,7 +122,7 @@
         icon: "clock",
         tone: "mute",
         title: `${p.name}の値段が古くなっています`,
-        body: `最後に記録したのは ${formatDate(best.date)}。次に見かけたら確かめると合計が正確になります。`,
+        body: `最後の記録は ${formatDate(best.date)}。`,
       });
     });
     return out;

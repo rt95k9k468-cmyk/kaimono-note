@@ -118,7 +118,7 @@
       body.append(sec);
     });
     if (hidden) {
-      body.append(node(html`<p class="up-note">毎日のくり返し（朝・夜のルーティンなど）は、ここには載せていません</p>`));
+      body.append(node(html`<p class="up-note">毎日のくり返しは載せていません</p>`));
     }
     handle = KN.ui.sheet({ title: "これからの二週間", content: body });
     return handle;

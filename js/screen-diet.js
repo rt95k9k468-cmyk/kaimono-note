@@ -950,8 +950,7 @@
           <span class="field-label">${isAvg ? "平均" : "傾き"}を出す日数</span>
           <input class="input js-days" inputmode="numeric" placeholder="7" value="${cur}">
         </label>
-        <p class="diet-note">空なら7日で数えます。長くするほど揺れが減り、短くするほど
-          直近の変化に敏感になります。</p>
+        <p class="diet-note">空なら7日。</p>
       </div>
     `);
     const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
@@ -1093,8 +1092,7 @@
     if (pts.length < 2) {
       return node(html`
         <div class="empty diet-empty">
-          <div class="empty-text">${pts.length ? "まだ1日ぶんです。" : "この期間の記録がありません。"}
-            線が引けるのは2日ぶんからです。</div>
+          <div class="empty-text">${pts.length ? "線は2日ぶんから引けます。" : "この期間の記録がありません。"}</div>
         </div>
       `);
     }
@@ -1762,7 +1760,6 @@
            ——条件は採点だからです。飲みたさは山を越えて引いていくもので、
            その山がどれくらい続くかを知っていること自体が、待つときの支えに
            なります（Marlatt のいう urge surfing の考え方）。 */
-        note: "飲みたさは、たいてい15〜30分で山を越えるとされています（個人差があります）。",
       });
     body.querySelector(".js-now").append(nowSec);
     /* **押し直せば外れます**（`clearable`）。強さが必須なことは保存ボタンの
@@ -2304,9 +2301,7 @@
       // Siri から買うものが届いたときは、そちらの知らせを上書きしない。
       if (res && res.inbox) return;
       if (res && res.empty) {
-        KN.ui.toast(name
-          ? "中継所に新しいデータはありません"
-          : "中継所に新しいデータはありません（設定でショートカットの名前を入れると、ここから走らせられます）");
+        KN.ui.toast("中継所に新しいデータはありません");
         return;
       }
       KN.ui.toast((res && res.error) || "取りに行けませんでした");
@@ -2449,8 +2444,7 @@
 
       if (q.value.trim() && !typed.length) {
         readBox.append(node(html`
-          <p class="diet-note is-warn">読めませんでした。
-            「ビール350ml 2本」のように、<b>お酒の種類</b>と量を書いてみてください。</p>`));
+          <p class="diet-note is-warn">読めませんでした（例：ビール350ml 2本）</p>`));
         if (!picked.length) return;
       }
       const t = DR.totals(items);
@@ -2472,12 +2466,6 @@
             </div>`) : ""}
         </div>
       `));
-      readBox.append(node(html`
-        <p class="diet-note">
-          純アルコール量は <b>ml × 度数% ÷ 100 × 0.8</b> で数えます。
-          ${t.estimated ? "度数や量を書かなかったぶんは、種類ごとの目安から推しました（「約」と付けています）。" : ""}
-          ${t.alcoholG >= DR.GUIDE_G ? `なお「節度ある適度な飲酒」は一日 純アルコール${DR.GUIDE_G}g程度とされています（個人差があります）。` : ""}
-        </p>`));
     }
 
     q.addEventListener("input", paint);
@@ -2497,11 +2485,11 @@
       const words = [...new Set(seen.map((x) => x.word).concat(tags))];
       host.innerHTML = "";
       if (!words.length) {
-        note.textContent = "書いた言葉は、次から押せる札になります"
-          + "（よくある言葉をこちらで並べることはしません——自分の言葉のほうが、あとで読み返したときに当たります）。";
+        note.hidden = false;
+        note.textContent = "書いた言葉は、次から押せる札になります。";
         return;
       }
-      note.textContent = "札は、これまでに自分が書いた言葉から作られます。";
+      note.hidden = true;
       words.forEach((w) => {
         const on = tags.includes(w);
         const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
@@ -2617,11 +2605,7 @@
                 </label>`;
             }).join(""))}
           </div>
-          <p class="diet-note">
-            欄を<b>空にして保存すると、その値は消えます</b>。消せば、次の取り込みで
-            またヘルスケアの値が入ります。<br>
-            手で書いた値には「手入力」と付き、<b>取り込みでは上書きされません</b>。
-          </p>
+          <p class="diet-note">空で保存すると消えます。手入力の値は取り込みで上書きされません。</p>
 
           <div class="section-title">ワークアウト</div>
           ${workouts.length ? html`
@@ -2769,10 +2753,7 @@
             （<b>${sp.intakePct}%</b>）。${sp.over
               ? html`<b class="is-warn">${sp.overKcal.toLocaleString()}kcal 超えています。</b>`
               : ""}
-          ` : html`
-            総消費がまだ分からない日なので、割合ではなく<b>内わけ</b>として出しています
-            （歩数や消費が入ると、総消費に対する割合になります）。
-          `}
+          ` : ""}
         </p>
       </div>
     `);
@@ -2854,10 +2835,8 @@
               残しています。 */""}
         ${card.drinkTotals ? html`
           <p class="diet-note">
-            上の ${t ? t.kcal.toLocaleString() : "0"}kcal は<b>食べたもの</b>だけの数です。
-            お酒のぶんを足すと
+            お酒を足すと
             <b class="mono-num">${((t ? t.kcal : 0) + card.drinkTotals.kcal).toLocaleString()}kcal</b>
-            になります（お酒は栄養の内わけを持たないので、PFCには入れていません）。
           </p>` : ""}
         ${/* PFCは数だけ置きます。棒にすると、目標を決めていない人には
               「内わけ」、決めた人には「進み具合」と、同じ絵が二つの
@@ -3385,11 +3364,6 @@
       <div class="stack">
         <div class="diet-daynav"><b>${U.formatDay(day)}</b></div>
         <div class="diet-slots js-slots"></div>
-        <p class="diet-note">
-          量は書いても書かなくてもかまいません（書いていないものは、AIが
-          一般的な一人前として推します）。時刻は要りません——あとで使うのは
-          「どの食事だったか」だけです。
-        </p>
         ${legacyText ? html`
           <div class="field">
             <span class="field-label">前に一日ぶんで書いたもの</span>
@@ -3615,18 +3589,9 @@
         ${memoText ? html`
           <div class="diet-read"><div class="diet-drink-row"><b>${memoText}</b></div></div>
         ` : html`
-          <p class="diet-note is-warn">この日の食事がまだ書かれていません。
-            先に「食事を書く」で、食べたものを入れてください。</p>`}
+          <p class="diet-note is-warn">先に「食事を書く」で食べたものを入れてください。</p>`}
         <button class="btn btn-soft btn-block js-prompt">${icon("copy")}AI用プロンプトを作成</button>
-        <p class="diet-note">
-          決まった聞き方と、食事メモ・<b>今日の体重や歩数・総消費・睡眠・飲酒</b>・
-          直近の記録をひとつの文にしてコピーします。ChatGPTなどに貼ってください
-          （<b>Web検索や情報源の確認、栄養推定、傾向の分析</b>は、貼った先のAIが行います
-          ——くらしノート自身は検索しません）。
-          返ってきた行をそのまま下の欄に貼り戻せば、<b>食品ごとの内わけ（根拠・情報源つき）</b>、
-          <b>朝・昼・夜・間食それぞれの合計</b>、<b>一日の合計</b>、<b>その日の評価</b>が保存されます。
-          <b>お酒は入れません</b>——お酒は別に記録していて、カロリーもそちらで数えます。
-        </p>
+        <p class="diet-note">コピーして AI に貼り、返ってきた文を下の欄に貼り戻します。</p>
 
         <div class="divider"></div>
         <div class="section-title">AI推計結果</div>
@@ -3687,7 +3652,7 @@
       const host = body.querySelector(".js-items");
       host.innerHTML = "";
       if (!ai) {
-        host.append(node(html`<p class="diet-note">まだ推計はありません。食事メモだけでも保存されています。</p>`));
+        host.append(node(html`<p class="diet-note">まだ推計はありません。</p>`));
         return;
       }
       /* 食品ごとの数は、保存はしますが並べません（読み合わせても
@@ -3730,11 +3695,8 @@
             <div class="diet-read"><div class="diet-drink-row"><b>${ai.analysis}</b></div></div>
           </div>`));
       }
-      host.append(node(html`
-        <p class="diet-note">${ai.summed
-          ? "合計は書かれていなかったので、食品ごとの数を足しました。"
-          : "この内容で保存します。"}
-          数が違っていれば、AIの返事の欄を直してもう一度「AI結果を読み取る」を押してください。</p>`));
+      if (ai.summed) host.append(node(html`
+        <p class="diet-note">合計が無かったので、食品ごとの数を足しました。</p>`));
     }
 
     /* 貼った（打った）そばから読みます。読めた・読めないは下に出るので、
@@ -3849,7 +3811,7 @@
         ` : html`
           <div class="empty diet-empty">
             <div class="empty-text">まだ言えることがありません。<br>
-              直近${cov.days}日のうち、体重 ${cov.weight}日・食事 ${cov.meals}日・歩数 ${cov.steps}日ぶんの記録です。</div>
+              直近${cov.days}日：体重 ${cov.weight}日・食事 ${cov.meals}日・歩数 ${cov.steps}日</div>
           </div>`}
         ${/* 「これは関連であって因果ではありません」の但し書きは外しました。
               毎回同じ文が下に付くと、読み飛ばす癖のほうが先に付きます。
@@ -3889,9 +3851,9 @@
     `);
     const what = body.querySelector(".js-what");
     const sayWhat = () => {
-      what.textContent = "直近30日ぶんの体重・食事の合計・歩数・睡眠"
-        + (withMeals ? `と、${name}の食事の中身（書いた文・品名・量）` : "")
-        + "を窓口へ送ります。買い物リスト・やること・日記は送りません。";
+      what.textContent = "直近30日の体重・食事の合計・歩数・睡眠"
+        + (withMeals ? `・${name}の食事の中身` : "")
+        + "を送ります。買い物リスト・やること・日記は送りません。";
     };
     KN.ui.chipRow(body.querySelector(".js-meals-pick"),
       [{ id: "sum", label: "合計だけ" }, { id: "meals", label: `${name}の食事の中身も` }],
@@ -4026,19 +3988,13 @@
           <span class="field-label">服装</span>
           <div class="js-wear"></div>
         </div>
-        <p class="diet-note">
-          食前か食後かで1kg近く、着ているかどうかで0.5kg以上動きます。
-          書いておくと、その差を分けて読めます（<b>次からは前回と同じものが
-          選ばれます</b>）。
-        </p>
 
         <label class="field">
           <span class="field-label">メモ</span>
           <input class="input js-memo" placeholder="例：飲んだ翌日" value="${w ? w.memo : ""}">
         </label>
         ${w && w.source === "health" ? html`
-          <p class="diet-note">これはヘルスケアから入った記録です。ここで直すと、
-            手で書いた値として扱われます（次の取り込みで上書きされません）。</p>` : ""}
+          <p class="diet-note">ヘルスケアから入った記録です。直すと手入力になります。</p>` : ""}
       </div>
     `);
 
@@ -4130,8 +4086,7 @@
           </div>
         </label>
         <div class="js-suggest"></div>
-        <p class="diet-note">量を書かないと、一食ぶんの目安で入ります。あとから数字は直せます。
-          値の出どころは${KN.foodData.SOURCE}です。</p>
+        <p class="diet-note">出典：${KN.foodData.SOURCE}</p>
 
         <div class="js-items"></div>
         <div class="js-total"></div>
@@ -4222,7 +4177,7 @@
             <label class="field" style="flex:1"><span class="field-label">C (g)</span>
               <input class="input js-c" inputmode="decimal" value="${it.c}"></label>
           </div>
-          ${it.estimated ? html`<p class="diet-note">この数は推定です。直すと推定の印は外れます。</p>` : ""}
+          ${it.estimated ? html`<p class="diet-note">推定の数です。</p>` : ""}
         </div>
       `);
       const f = node(html`<button class="btn btn-primary btn-block">直す</button>`);
@@ -4412,7 +4367,6 @@
               ${icon("close")}
             </button>
           </div>
-          <span class="field-hint">決めていなくてもかまいません。</span>
         </div>
 
         <div class="divider"></div>
@@ -4457,10 +4411,7 @@
           </label>
         </div>
         <p class="diet-note">
-          空なら <b>${n0(STEPS_DEFAULT)}歩 / ${n0(BURN_DEFAULT)}kcal / ${SLEEP_DEFAULT / 60}時間</b> で数えます。
-          ここは <b>届く高さ</b>に置いてください——超えたぶんは、輪の二周目として
-          明るい色で乗ります。直近の平均に合わせると、頑張るほど目盛りが遠のいて、
-          いつまでも埋まらない輪になります。
+          空なら <b>${n0(STEPS_DEFAULT)}歩 / ${n0(BURN_DEFAULT)}kcal / ${SLEEP_DEFAULT / 60}時間</b>。届く高さがおすすめです。
         </p>
 
         <label class="field">
@@ -4469,10 +4420,7 @@
                  value="${g.alcoholG == null ? "" : String(g.alcoholG)}">
         </label>
         <p class="diet-note">
-          空なら <b>${DR.GUIDE_G}g</b> で数えます。厚生労働省は「節度ある適度な飲酒」を
-          一日 純アルコール<b>20g程度</b>（ビール中瓶1本ほど）としていて、
-          男性で<b>40g以上</b>が生活習慣病のリスクを高める量とされています。
-          今日のからだの「飲酒」は、この目安を100%とした割合で出します。
+          空なら <b>${DR.GUIDE_G}g</b>（厚生労働省の「節度ある適度な飲酒」の目安）。
         </p>
       </div>
     `);
@@ -4552,11 +4500,8 @@
 
     const el = node(html`
       <div class="diet-suggest-box">
-        <p class="diet-note">直近${burn.length}日の消費は、1日あたり平均 <b>${avg.toLocaleString()}kcal</b> でした
-          （ヘルスケアのアクティブ＋安静時）。
-          ${suggest != null ? html`目標日までのペースから逆算すると、摂取の目安は
-            <b>${Math.round(suggest).toLocaleString()}kcal</b> あたりです。` : ""}
-          あくまで目安で、体調や測り方で動きます。</p>
+        <p class="diet-note">直近${burn.length}日の消費は平均 <b>${avg.toLocaleString()}kcal</b>。
+          ${suggest != null ? html`摂取の目安は <b>${Math.round(suggest).toLocaleString()}kcal</b>。` : ""}</p>
         ${suggest != null ? html`<button class="btn btn-soft btn-sm js-use">この目安を入れる</button>` : ""}
       </div>
     `);
@@ -4622,102 +4567,27 @@
 
   function openSyncSheet() {
     const sync = store.get().diet.sync;
+    /* 取り込む口を先に。手順は一度組めば読まないので、その下へ。 */
     const body = node(html`
       <div class="stack">
-        <p class="diet-note">
-          iPhoneのヘルスケアは、Webアプリから直接は読めません（Safariにその窓口が
-          無いためで、設定の問題ではありません）。かわりに<b>ショートカット</b>に
-          読み出させて、その結果をここへ渡します。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">① まず、手で試す</div>
-        <p class="diet-note">
-          ショートカットを作る前に、<b>入る形</b>を先に見ておくのがいちばん近道です。
-          下の欄に打つと、読めたものがその場に出ます。
-        </p>
-        <textarea class="textarea js-t" rows="4" spellcheck="false"
-                  autocapitalize="off" autocorrect="off">${SAMPLE_MIN}</textarea>
-        <div class="js-preview"></div>
-        <button class="btn btn-primary btn-block js-take">これを取り込む</button>
-
-        <div class="divider"></div>
-        <div class="section-title">② 毎日を楽にする（ショートカット）</div>
-        <p class="diet-note">
-          ①と同じ文字を、ショートカットに書かせます。<b>まず「歩数」だけで作って、
-          動いたら残りを足す</b>——先に全部並べると、動かないときにどこが悪いのか
-          分からなくなります。
-        </p>
-        <ol class="diet-steps">
-          <li>「ショートカット」アプリ →「＋」で新規作成</li>
-          <li><b>「ヘルスサンプルを検索」</b>を追加。
-            <b>種類</b>を「歩数」、<b>フィルタ</b>を「開始日」が「今日」に</li>
-          <li><b>「統計を計算」</b>を追加。<b>合計</b>を選び、対象は上の結果</li>
-          <li><b>「テキスト」</b>を追加して、こう打つ：<br>
-            <code>steps=</code> と打ち、その右に一つ前の結果の変数を差し込む</li>
-          <li><b>「クリップボードにコピー」</b>を追加</li>
-          <li>実行 → このアプリに戻って、下の<b>「コピーしたものを取り込む」</b></li>
-        </ol>
-        <p class="diet-note">
-          動いたら、2〜4をもう一度ずつ足していけば種類が増えます。「テキスト」は
-          <b>一つにまとめて</b>、行ごとに <code>distance=</code> <code>sleep=</code> …と
-          並べてください。全部そろうとこうなります。
-        </p>
-        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
-        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
-        <p class="diet-note">
-          最後に<b>オートメーション</b>（毎朝7時など）に登録しておけば、あとは
-          このアプリで一度押すだけになります。<br>
-          ひとつだけ気をつけることがあります。<b>iPhoneがロックされているあいだ、
-          ヘルスケアは読めません</b>（<code>Protected health data is inaccessible</code>）。
-          走る時刻は<b>ふだん端末を触っている時間</b>に寄せるか、ショートカットの先頭に
-          「待機」を挟んで読み直すようにしてください。読めなかった便は、このアプリでは
-          <b>取り込まずに待ちます</b>——0で塗り替えないためです。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">③ コピーもやめる（中継所）</div>
-        <p class="diet-note">
-          ②まで来ると、残る手間は「アプリに戻って一度押す」だけです。それも
-          消したいときは、<b>中継所</b>を一つ立てます。ショートカットの最後を
-          「クリップボードにコピー」から<b>「URLの内容を取得」（POST）</b>に変えると、
-          データはいったん自分の中継所に置かれ、次にこのタブを開いた時に
-          くらしノートが自分で受け取ります。受け取ったら中継所からは消えます。
-        </p>
-        <p class="diet-note">
-          ${KN.healthRelay.configured()
-            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>（設定 → ダイエット → 取り込み → 中継所で変えられます）`
-            : html`まだ設定していません。<b>iPhoneだけで建てられます</b>——パソコンは
-                   要りません。手順はぜんぶ<b>設定 → ダイエット → 取り込み → 中継所</b>の中に
-                   書いてあります（コードのコピーも、合言葉づくりも、動くかの確認も、
-                   その画面のボタンで済みます）。`}
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">取り込む</div>
         <div class="rows">
           <button class="row js-relay">
             <span class="row-main">
               <span class="row-title">中継所から取り込む</span>
-              <span class="row-sub">${KN.healthRelay.configured()
-                ? "ショートカットが置いたデータを受け取ります"
-                : "未設定（設定 → ダイエット → 取り込み → 中継所）"}</span>
+              ${KN.healthRelay.configured() ? "" : html`<span class="row-sub">未設定</span>`}
             </span>
             <span class="row-chevron">${icon("download")}</span>
           </button>
           <button class="row js-paste">
             <span class="row-main">
               <span class="row-title">コピーしたものを取り込む</span>
-              <span class="row-sub">${store.get().settings.clipboardBlocked
-                ? "この端末では自動で読めないので、貼り付けの欄を開きます"
-                : "ショートカットがコピーした中身を読みます"}</span>
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
           <button class="row js-file">
             <span class="row-main">
               <span class="row-title">ファイルから取り込む</span>
-              <span class="row-sub">「ファイルに保存」したテキストやJSON</span>
+              <span class="row-sub">テキストや JSON</span>
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
@@ -4726,28 +4596,54 @@
         ${sync.lastAt ? html`<p class="diet-note">最後の取り込み：${U.formatStamp(sync.lastAt)}</p>` : ""}
         ${sync.lockedAt ? html`
           <p class="diet-note is-warn">
-            ${U.formatStamp(sync.lockedAt)} に届いた便は、<b>ヘルスケアが読めない状態</b>でした
-            （iPhoneがロックされているあいだ、ショートカットはヘルスケアを読めません）。
-            <b>取り込んでいないので、それまでの記録はそのまま</b>です。少し待って何度か
-            取りにいき、それでも駄目なら、次にこのタブを開いたときにまた取りにいきます。
+            ${U.formatStamp(sync.lockedAt)} の便は、iPhone のロック中で読めなかったので取り込んでいません。
           </p>
-          <div class="divider"></div>
-          <div class="section-title">ロック中でも取れるようにする</div>
-          <p class="diet-note">
-            大もとはショートカット側です。オートメーションが走ったとき画面がロックされて
-            いると、ヘルスケアは暗号化されたままで読めません
-            （<code>Protected health data is inaccessible</code>）。次のどれかで直ります。
-          </p>
-          <ol class="diet-steps">
-            <li>オートメーションの<b>「実行前に尋ねる」を切り</b>、時刻を
-              <b>ふだん端末を使っている時間</b>に寄せる（起床直後より、通勤中や昼など）</li>
-            <li>ショートカットの先頭に<b>「待機 30秒」→ もう一度ヘルスサンプルを検索</b>を足して、
-              一度目で空だったときの取り直しを作る（<b>「If」で結果が0件なら</b>のかたちにすると、
-              うまくいった日は待ちません）</li>
-            <li><b>0 を送らない</b>——「統計を計算」は読めなかったとき 0 を返します。
-              <b>「If 歩数 が 0 でない」</b>で囲んでおくと、読めなかった日は何も送りません
-              （このアプリも 0 だけの便は取り込みませんが、送らないほうが確かです）</li>
-          </ol>` : ""}
+          <details class="set-more">
+            <summary>ロック中でも取れるようにする</summary>
+            <ol class="diet-steps">
+              <li>オートメーションの<b>「実行前に尋ねる」を切り</b>、時刻を<b>ふだん端末を使う時間</b>に寄せる</li>
+              <li>先頭に<b>「待機 30秒」→ もう一度ヘルスサンプルを検索</b>を足す</li>
+              <li><b>「If 歩数 が 0 でない」</b>で囲み、読めなかった日は送らない</li>
+            </ol>
+          </details>` : ""}
+
+        <div class="divider"></div>
+        <div class="section-title">① 手で試す</div>
+        <p class="diet-note">打つと、読めたものがその場に出ます。</p>
+        <textarea class="textarea js-t" rows="4" spellcheck="false"
+                  autocapitalize="off" autocorrect="off">${SAMPLE_MIN}</textarea>
+        <div class="js-preview"></div>
+        <button class="btn btn-primary btn-block js-take">これを取り込む</button>
+
+        <div class="divider"></div>
+        <div class="section-title">② ショートカットに書かせる</div>
+        <p class="diet-note">まず「歩数」だけで作り、動いたら足していきます。</p>
+        <ol class="diet-steps">
+          <li>「ショートカット」アプリ →「＋」で新規作成</li>
+          <li><b>「ヘルスサンプルを検索」</b>を追加。
+            <b>種類</b>を「歩数」、<b>フィルタ</b>を「開始日」が「今日」に</li>
+          <li><b>「統計を計算」</b>を追加。<b>合計</b>を選び、対象は上の結果</li>
+          <li><b>「テキスト」</b>を追加して、こう打つ：<br>
+            <code>steps=</code> と打ち、その右に一つ前の結果の変数を差し込む</li>
+          <li><b>「クリップボードにコピー」</b>を追加</li>
+          <li>実行 → このアプリに戻って、上の<b>「コピーしたものを取り込む」</b></li>
+        </ol>
+        <p class="diet-note">「テキスト」は一つにまとめ、行ごとに並べます。全部そろうとこうなります。</p>
+        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
+        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
+        <p class="diet-note">
+          オートメーション（毎朝7時など）に登録すると楽です。
+          <b>ロック中はヘルスケアを読めない</b>ので、ふだん端末を触っている時間に。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">③ 中継所でコピーも省く</div>
+        <p class="diet-note">
+          最後を<b>「URLの内容を取得」（POST）</b>に変えると、開いたときに自動で入ります。
+          ${KN.healthRelay.configured()
+            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>`
+            : html`建て方は<b>設定 → ダイエット → 取り込み → 中継所</b>。`}
+        </p>
 
         <div class="divider"></div>
         <div class="section-title">書ける言葉</div>
@@ -4759,23 +4655,15 @@
               <span class="diet-key-ex">${KN.util.escapeHtml(ex)}</span>
             </div>`).join(""))}
         </div>
-        <p class="diet-note">
-          値が取れなかった行は<b>空のままで大丈夫</b>です（空は「無かった」として扱い、
-          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数のように
-          足せるものは<b>合計</b>されます。JSON形式でも読めます。
-        </p>
-        <p class="diet-note">
-          <b>歩行距離だけは、足すと二重になります。</b>Apple Watch と iPhone が
-          どちらも一日ぶんを持っているので、両方を合計すると倍近くになります
-          （実測で 7.8km と 6.0km を足して 13.9km になりました）。
-          <code>source=</code> を書いて機械ごとに分けて送れば、
-          <b>Apple Watch のほうを採ります</b>（ヘルスケアの値と一致します）。
-          分けずに一つだけ送るぶんには、これまでと何も変わりません。
-        </p>
-        <pre class="diet-code">source=Apple Watch
+        <p class="diet-note">取れなかった行は空のままで大丈夫です。同じ種類が何行もあれば合計します。JSON も読めます。</p>
+        <details class="set-more">
+          <summary>歩行距離が二重になるとき</summary>
+          <p>Apple Watch と iPhone の両方を足すと倍近くになります。<code>source=</code> で分けて送れば、Apple Watch のほうを採ります。</p>
+          <pre class="diet-code">source=Apple Watch
 distance=7.8km
 source=iPhone
 distance=6.0km</pre>
+        </details>
       </div>
     `);
 
@@ -4915,11 +4803,7 @@ distance=6.0km</pre>
   function openPasteSheet(diag, done) {
     const b = node(html`
       <div class="stack">
-        <p class="diet-note">
-          この端末では、アプリからクリップボードを読み取れませんでした。
-          かわりに<b>下の欄を長押しして「ペースト」</b>を押してください。
-          貼り付けた時点で読み取ります。
-        </p>
+        <p class="diet-note">自動で読めませんでした。<b>下の欄を長押しして「ペースト」</b>してください。</p>
         <textarea class="textarea js-p" rows="4" spellcheck="false"
                   autocapitalize="off" autocorrect="off"
                   placeholder="ここに長押し →「ペースト」"></textarea>
