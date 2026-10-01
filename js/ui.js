@@ -695,7 +695,9 @@
     openSheets.push(handle);
 
     // Focus the first meaningful control.
+    /* もう紙の中に居るカーソル（＋から本文へ入れたもの）は奪いません。 */
     setTimeout(() => {
+      if (el.contains(document.activeElement)) return;
       const target = el.querySelector("input, textarea, select, button:not(.js-close)");
       if (target && !("ontouchstart" in window)) target.focus();
     }, 320);

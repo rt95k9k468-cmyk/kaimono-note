@@ -226,8 +226,8 @@ const { open, checker } = require("./lib");
   await page.waitForSelector(".sheet.is-note.is-open");
   t.check("開いたノートにはカーソルを入れない（キーボードを出さない）",
     await page.evaluate(() => !document.activeElement || !document.activeElement.closest(".sheet")));
-  await page.click(".sheet.is-note .js-menu");
-  await page.click(".act-row.is-danger");
+  await page.click(".sheet.is-note .js-note-more");
+  await page.click(".note-pop-item.is-danger");
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note.is-open"), null, { timeout: 3000 });
   await page.waitForTimeout(400);
   t.check("消したノートは一覧から外れる", !(await page.$(`.note-row[data-id="${n1.id}"]`)));

@@ -86,9 +86,10 @@
   /** 題。無ければ本文の一行目（notes-idb.js。ぜんぶをさがすも同じものを使う）。 */
   const headOf = (n) => N().headOf(n);
 
-  /** 本文の冒頭。題を本文の一行目から借りたときは、その次から。 */
+  /** 本文の冒頭。題を本文の一行目から借りたときは、その次から。
+      行頭の印（# - 1. - [ ] > ---）は外して見せます（段4）。 */
   function leadOf(n) {
-    let lines = n.body.split("\n").map((l) => l.trim()).filter(Boolean);
+    let lines = n.body.split("\n").map((l) => KN.noteFormat.plain(l)).filter(Boolean);
     if (!n.title.trim()) lines = lines.slice(1);
     return lines.join(" ").slice(0, 120);
   }
@@ -226,23 +227,34 @@
       KN.ui.toast(st === "off" ? "ノートを開けませんでした" : "ノートを読み込んでいるところです");
       return;
     }
+    const F = KN.noteFormat;
     const fresh = !id;
     const note = fresh ? N().draft() : N().get(id);
     if (!note) return;
     let stored = !fresh;
+    let h = null;
+    let closed = false;
     N().begin(note.id);
 
+    /* 全画面の一枚（段4。2026年10月1日、iPhone で「記事を書くときはフル
+       画面が絶対使いやすい」）。頭の行はノートブック（左）とタグ（右）、
+       その下に大きな題・作った日時・本文。 */
     const body = node(html`
       <div class="note-edit">
+        <div class="note-meta">
+          <button class="note-nb-btn js-nb">${icon("book")}<span class="js-nb-name"></span></button>
+          <div class="note-labels js-labels"></div>
+        </div>
         <input class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
                autocomplete="off">
         <time class="note-when js-when" datetime="${note.createdAt}">${stampOf(note.createdAt)}</time>
-        <div class="note-labels js-labels"></div>
+        <div class="note-view js-view" hidden></div>
         <textarea class="note-body-in js-text" aria-label="本文" rows="6"></textarea>
       </div>
     `);
     const titleIn = body.querySelector(".js-title");
     const textIn = body.querySelector(".js-text");
+    const viewEl = body.querySelector(".js-view");
     /* 値は欄へ直に入れます（テンプレートに書くと、textarea は頭の改行を
        一つ落とします——本文は打ったままの形で持つので。docs/notes.md）。 */
     titleIn.value = note.title;
@@ -263,19 +275,168 @@
       }
       N().edit(note.id, { title: titleIn.value, body: textIn.value });
     };
+
+    /* ---- 読むときは整え、書くときは印（段4） ----
+
+       本文の欄に居ないあいだは、整えた姿（.note-view）を出します。押すと、
+       押した行の終わりにカーソルを入れて素の文字へ。**押した流れの中で
+       同期に focus します**（iOS はそうしないとキーボードを出さない）。
+       欄から出たら（キーボードを閉じた・題へ移った）、また整えた姿へ。 */
+    let writing = false;
+    const paintView = () => { F.render(textIn.value, viewEl); };
+    const toView = () => {
+      writing = false;
+      paintView();
+      viewEl.hidden = false;
+      textIn.hidden = true;
+      if (h) h.el.classList.remove("is-writing");
+    };
+    const toWrite = (caret) => {
+      writing = true;
+      viewEl.hidden = true;
+      textIn.hidden = false;
+      grow();
+      try { textIn.focus({ preventScroll: true }); } catch (_) { textIn.focus(); }
+      if (caret != null) textIn.setSelectionRange(caret, caret);
+      if (h) h.el.classList.add("is-writing");
+      paintTools();
+    };
+    viewEl.addEventListener("click", (e) => {
+      /* チェックの四角は、整えた姿のまま付け外し（書く欄へは入らない）。 */
+      const box = e.target.closest(".js-tick");
+      if (box) {
+        e.stopPropagation();
+        U.haptic();
+        hist.note("tick", true);
+        const at = Number(box.closest("[data-at]").dataset.at);
+        textIn.value = F.toggleTask(textIn.value, at);
+        changed();
+        return;
+      }
+      const ln = e.target.closest("[data-at]");
+      toWrite(ln ? Number(ln.dataset.end) : textIn.value.length);
+    });
+    textIn.addEventListener("focus", () => {
+      if (!writing) toWrite(null);
+    });
+    textIn.addEventListener("blur", () => {
+      /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */
+      setTimeout(() => {
+        if (document.activeElement !== textIn && !closed) toView();
+      }, 0);
+    });
+
+    /* ---- やり直し（道具の帯の ↶ ↷）。前の版とは別で、紙を開いているあいだだけ ---- */
+    const hist = F.history(
+      () => ({ v: textIn.value, s: textIn.selectionStart, e: textIn.selectionEnd }),
+      (st2) => {
+        textIn.value = st2.v;
+        if (writing) textIn.setSelectionRange(st2.s, st2.e);
+        changed();
+      },
+    );
+    /* 中身が変わったあとに、いつも通る道。 */
+    const changed = () => {
+      if (writing) grow(); else paintView();
+      sync();
+      paintTools();
+    };
+    /* 置き換えを一つ当てる（道具の帯・改行の続き）。 */
+    const apply = (r, kind) => {
+      if (!r) return;
+      hist.note(kind, true);
+      textIn.setRangeText(r.text, r.from, r.to, "end");
+      textIn.setSelectionRange(r.s, r.e);
+      changed();
+    };
+
+    textIn.addEventListener("beforeinput", (e) => {
+      const t = e.inputType || "";
+      if (t === "insertLineBreak" || t === "insertParagraph") {
+        if (e.isComposing) return;
+        const r = F.onEnter(textIn.value, textIn.selectionStart, textIn.selectionEnd);
+        if (r) { e.preventDefault(); apply(r, "br"); return; }
+        hist.note("br", true);
+        return;
+      }
+      if (t === "historyUndo" || t === "historyRedo") return;
+      hist.note(t.startsWith("delete") ? "del" : "type");
+    });
     titleIn.addEventListener("input", sync);
-    textIn.addEventListener("input", () => { grow(); sync(); });
+    textIn.addEventListener("input", () => { grow(); sync(); paintTools(); });
     /* 題で改行を押したら、本文へ。 */
     titleIn.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.isComposing) return;
       e.preventDefault();
-      textIn.focus();
+      toWrite(0);
     });
 
-    /* ノートブックとタグ（段3）。日時のすぐ下に、付いているものと「＋」。
-       置く前の新しいノートは、手元の一件に持っておいて、置くときに一緒に
-       入ります（★と同じ）。 */
+    /* ---- 道具の帯（キーボードの上） ----
+
+       本文に居るあいだだけ出ます。押しても欄からカーソルを奪わないよう、
+       押し始めの既定を止めます（キーボードが下がらない）。 */
+    const TOOLS = [
+      { k: "undo", ico: "undo", label: "取り消す", run: () => hist.undo() },
+      { k: "redo", ico: "redo", label: "やり直す", run: () => hist.redo() },
+      { k: "head", ico: "heading", label: "見出し" },
+      { k: "bullet", ico: "list", label: "箇条書き" },
+      { k: "num", ico: "numbers", label: "番号" },
+      { k: "task", ico: "checkbox", label: "チェック" },
+      { k: "quote", ico: "quote", label: "引用" },
+      { k: "rule", ico: "minus", label: "区切り",
+        run: () => apply(F.rule(textIn.value, textIn.selectionStart), "tool") },
+      { k: "outdent", ico: "outdent", label: "上げる",
+        run: () => apply(F.shift(textIn.value, textIn.selectionStart, textIn.selectionEnd, -1), "tool") },
+      { k: "indent", ico: "indent", label: "下げる",
+        run: () => apply(F.shift(textIn.value, textIn.selectionStart, textIn.selectionEnd, 1), "tool") },
+    ];
+    const tools = node(html`
+      <div class="note-tools" role="toolbar" aria-label="装飾">
+        <div class="note-tools-in">
+          ${TOOLS.map((t) => html`<button type="button" class="note-tool js-tool" data-k="${t.k}" aria-label="${t.label}">${icon(t.ico)}</button>`)}
+        </div>
+        <button type="button" class="note-tool note-tool-done js-tool" data-k="done" aria-label="キーボードを閉じる">${icon("chevron-down")}</button>
+      </div>
+    `);
+    const keep = (e) => e.preventDefault();
+    tools.addEventListener("pointerdown", keep);
+    tools.addEventListener("mousedown", keep);
+    tools.addEventListener("click", (e) => {
+      const b = e.target.closest(".js-tool");
+      if (!b) return;
+      const k = b.dataset.k;
+      if (k === "done") { textIn.blur(); return; }
+      if (b.getAttribute("aria-disabled") === "true") return;
+      U.haptic();
+      /* 押した拍にカーソルが外れていたら（端末によっては帯を押すと欄から
+         出る）、最後に居た場所へ戻してから当てます。 */
+      if (document.activeElement !== textIn) {
+        const [a, b] = lastSel;
+        toWrite(null);
+        textIn.setSelectionRange(a, b);
+      }
+      const t = TOOLS.find((x) => x.k === k);
+      if (t.run) t.run();
+      else apply(F.setKind(textIn.value, textIn.selectionStart, textIn.selectionEnd, k), "tool");
+    });
+    let lastSel = [textIn.value.length, textIn.value.length];
+    const paintTools = () => {
+      if (document.activeElement === textIn) lastSel = [textIn.selectionStart, textIn.selectionEnd];
+      const can = hist.can();
+      const kind = F.kindAt(textIn.value, textIn.selectionStart);
+      tools.querySelectorAll(".js-tool").forEach((b) => {
+        const k = b.dataset.k;
+        if (k === "undo" || k === "redo") b.setAttribute("aria-disabled", String(!can[k]));
+        else if (["head", "bullet", "num", "task", "quote"].includes(k)) b.setAttribute("aria-pressed", String(kind === k));
+      });
+    };
+    /* カーソルが動いたら、押されている印を合わせます。 */
+    const onSel = () => { if (writing && document.activeElement === textIn) paintTools(); };
+    document.addEventListener("selectionchange", onSel);
+
+    /* ---- ノートブック（左上）とタグ（右上）。段3の口を、頭の行へ ---- */
     const labelsEl = body.querySelector(".js-labels");
+    const nbBtn = body.querySelector(".js-nb");
     const setLabels = (patch) => {
       if (stored) N().setLabels(note.id, patch);
       else {
@@ -285,10 +446,11 @@
       paintLabels();
     };
     const paintLabels = () => {
+      nbBtn.querySelector(".js-nb-name").textContent = note.notebook || "ノートブック";
+      nbBtn.classList.toggle("is-empty", !note.notebook);
       labelsEl.innerHTML = "";
       labelsEl.append(node(html`
         <div class="note-labels-in">
-          ${note.notebook ? html`<button class="chip js-nb">${icon("book")}<span>${note.notebook}</span></button>` : ""}
           ${note.tags.map((t) => html`<button class="chip js-tags">${dot(t)}<span>${t}</span></button>`)}
           <button class="chip note-tag-add js-tags" aria-label="タグ">${icon("plus")}${note.tags.length ? "" : html`<span>タグ</span>`}</button>
         </div>
@@ -297,15 +459,16 @@
         KN.motion.fire("select");
         pickTags(note, (tags) => setLabels({ tags }));
       }));
-      const nb = labelsEl.querySelector(".js-nb");
-      if (nb) nb.addEventListener("click", () => {
-        KN.motion.fire("select");
-        pickNotebook(note, (name) => setLabels({ notebook: name }));
-      });
     };
+    nbBtn.addEventListener("click", () => {
+      KN.motion.fire("select");
+      pickNotebook(note, (name) => setLabels({ notebook: name }));
+    });
     paintLabels();
 
     const finish = () => {
+      closed = true;
+      document.removeEventListener("selectionchange", onSel);
       sync();
       /* 何も書かずに閉じた新しいノートは残しません。 */
       if (fresh && stored && blank()) N().drop(note.id);
@@ -313,53 +476,109 @@
       renderBody();
     };
 
-    const h = KN.ui.sheet({
+    /* 「⋯」はその場の小窓（段4。紙をもう一枚重ねると、目が画面の下まで
+       行って戻る）。★・前の版・削除。ノートブックは頭の行に出ている。 */
+    const menu = [
+      { icon: "star",
+        label: () => (note.fav ? "★を外す" : "★を付ける"),
+        onPick: () => {
+          if (stored) N().setFav(note.id, !note.fav);
+          else note.fav = !note.fav;
+        } },
+      { icon: "clock", label: "前の版",
+        onPick: () => {
+          if (!stored) { KN.ui.toast("前の版はありません"); return; }
+          sync();
+          openVersions(note.id, (v) => {
+            hist.note("revert", true);
+            titleIn.value = v.title;
+            textIn.value = v.body;
+            changed();
+          });
+        } },
+      { icon: "trash", label: "削除", danger: true,
+        onPick: () => {
+          if (stored && !blank()) {
+            sync();
+            N().remove(note.id);
+            KN.ui.toast("最近削除した項目へ移しました", {
+              action: { label: "戻す", onClick: () => N().restore(note.id) },
+            });
+          }
+          h.close();
+        } },
+    ];
+
+    h = KN.ui.sheet({
       title: "",
       content: body,
       guard: false,
-      menu: [
-        { id: "fav", icon: "star",
-          label: () => (note.fav ? "★を外す" : "★を付ける"),
-          onPick: () => {
-            if (stored) N().setFav(note.id, !note.fav);
-            else note.fav = !note.fav;
-          } },
-        { id: "notebook", icon: "book", label: "ノートブック",
-          onPick: () => pickNotebook(note, (name) => setLabels({ notebook: name })) },
-        { id: "versions", icon: "clock", label: "前の版",
-          onPick: () => {
-            if (!stored) { KN.ui.toast("前の版はありません"); return; }
-            sync();
-            openVersions(note.id, (v) => {
-              titleIn.value = v.title;
-              textIn.value = v.body;
-              grow();
-            });
-          } },
-        { id: "delete", icon: "trash", label: "削除", danger: true,
-          onPick: () => {
-            if (stored && !blank()) {
-              sync();
-              N().remove(note.id);
-              KN.ui.toast("最近削除した項目へ移しました", {
-                action: { label: "戻す", onClick: () => N().restore(note.id) },
-              });
-            }
-            h.close();
-          } },
-      ],
       onClose: finish,
     });
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
-    grow();
+    /* 頭：左に戻る ‹、右に ⋯（Evernote の並び）。閉じ方は紙のまま
+       （×と同じ tryClose。払っても閉じる）。 */
+    const closeBtn = h.el.querySelector(".js-close");
+    closeBtn.innerHTML = icon("chevron-left");
+    closeBtn.setAttribute("aria-label", "戻る");
+    const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu); });
+    h.el.querySelector(".sheet-head").append(moreBtn);
+    h.el.append(tools);
 
     /* ＋から来たときは、**押した流れのまま**本文へカーソルを入れます（iOS は
        ここで同期に focus しないとキーボードを出しません。ui.js の focusNow）。
-       開いたノートには入れません——読みに来ただけのときにキーボードが
-       画面の半分を取るので。 */
-    if (fresh) KN.ui.focusNow(textIn);
+       開いたノートは整えた姿で開き、カーソルを入れません——読みに来ただけの
+       ときにキーボードが画面の半分を取るので。 */
+    if (fresh) {
+      writing = true;
+      viewEl.hidden = true;
+      h.el.classList.add("is-writing");
+      grow();
+      paintTools();
+      KN.ui.focusNow(textIn);
+    } else {
+      toView();
+    }
     return h;
+  }
+
+  /* ---------------- 「⋯」の小窓（段4） ----------------
+
+     押した「⋯」のすぐ下に、項目を縦に並べた小さな一枚を出します。外を
+     押すか、項目を選ぶと閉じます。重なりは開いている紙の一段上。 */
+  function popMenu(anchor, items) {
+    const sheetEl = anchor.closest(".sheet");
+    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
+    const r = anchor.getBoundingClientRect();
+    const cover = node(html`<div class="note-pop-cover"></div>`);
+    const pop = node(html`<div class="note-pop" role="menu"></div>`);
+    cover.style.zIndex = String(z + 1);
+    pop.style.zIndex = String(z + 2);
+    pop.style.top = `${Math.round(r.bottom + 4)}px`;
+    pop.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
+    let gone = false;
+    const close = () => {
+      if (gone) return;
+      gone = true;
+      pop.classList.remove("is-open");
+      document.removeEventListener("keydown", onKey, true);
+      cover.remove();
+      setTimeout(() => pop.remove(), KN.motion.ms("--m-state") + 40);
+    };
+    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    items.forEach((it) => {
+      const label = typeof it.label === "function" ? it.label() : it.label;
+      const b = node(html`<button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${icon(it.icon)}<span>${label}</span></button>`);
+      b.addEventListener("click", () => { KN.motion.fire("select"); close(); it.onPick(); });
+      pop.append(b);
+    });
+    cover.addEventListener("click", close);
+    document.addEventListener("keydown", onKey, true);
+    document.body.append(cover, pop);
+    requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
+    return { close };
   }
 
   /* ---------------- タグ・ノートブックを選ぶ紙（段3） ----------------

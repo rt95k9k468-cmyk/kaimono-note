@@ -36,7 +36,8 @@ const { open, checker } = require("./lib");
     await page.waitForSelector(".sheet.is-note.is-open");
   };
   const typeEnd = async (s) => {
-    await page.focus(".sheet.is-note .js-text");
+    /* 開いたノートは整えた姿（段4）。本文の下を押すと書く欄へ。 */
+    if (!(await page.$(".sheet.is-note .js-text:focus"))) await page.click(".sheet.is-note .note-view");
     await page.keyboard.press("End");
     await page.keyboard.press("Control+End");
     await page.keyboard.insertText(s);
@@ -112,8 +113,8 @@ const { open, checker } = require("./lib");
   /* ---- 「前の版」から読んで戻す ---- */
   await toNotes();
   await openRow(id);
-  await page.click(".sheet.is-note .js-menu");
-  await page.locator(".action-sheet button, .sheet button", { hasText: "前の版" }).last().click();
+  await page.click(".sheet.is-note .js-note-more");
+  await page.locator(".note-pop-item", { hasText: "前の版" }).click();
   await page.waitForSelector(".notes-versions");
   const rowsShown = await page.$$eval(".notes-versions .note-ver", (rs) => rs.length);
   t.check("前の版の並びが出る（日時つき）", rowsShown === 3

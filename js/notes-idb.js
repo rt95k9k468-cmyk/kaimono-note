@@ -381,8 +381,11 @@
   /** 題。無ければ本文の一行目（一覧と、ぜんぶをさがすの行に）。 */
   function headOf(n) {
     if (String(n.title || "").trim()) return n.title.trim();
-    const line = String(n.body || "").split("\n").find((l) => l.trim());
-    return line ? line.trim() : "";
+    /* 本文から借りるときは、行頭の印（# - 1. - [ ] > ---）を外した字で
+       （段4。js/note-format.js）。 */
+    const plain = KN.noteFormat ? KN.noteFormat.plain : (l) => l.trim();
+    const line = String(n.body || "").split("\n").map(plain).find(Boolean);
+    return line || "";
   }
 
   /** 消す → 最近削除した項目へ。 */
