@@ -242,6 +242,52 @@ const { open, checker } = require("./lib");
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
   await closeSheet();
 
+  /* ---- 短いノート：キーボードで見える高さが縮んでも、題は飛ばない（段4.2のあと） ----
+     本文の欄は短くても 38vh ある。欄の底を「最後の行」と読んで見せようとすると、
+     空いたところを押しただけで題ごと上へ送っていた（2026年10月1日、iPhone）。 */
+  await page.click("#dock .add-fab");
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.keyboard.insertText("短い本文");
+  await page.fill(".sheet.is-note .js-title", "短い題");
+  await page.waitForTimeout(200);
+  await closeSheet();
+  const shortId = await page.evaluate(() => (KN.notes.list().find((n) => n.title === "短い題") || {}).id);
+  await page.click(`#screen-notes .note-row[data-id="${shortId}"] .js-open`);
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.waitForTimeout(500);
+  const blankAt = await page.$eval(".sheet.is-note .js-view", (v) => {
+    const r = v.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.bottom - 20 };
+  });
+  await page.mouse.click(blankAt.x, blankAt.y);
+  /* キーボードが出て、見えている高さが縮んだ（iOS 26 のホーム画面アプリ：可視は
+     縮み、fixed の床は底に残る）。アプリ自身の測り方（app.js の trackKeyboard）に
+     通すため、visualViewport の高さを差し替えて resize を送る。 */
+  await page.evaluate(() => {
+    Object.defineProperty(visualViewport, "height", { configurable: true, get: () => 464 });
+    visualViewport.dispatchEvent(new Event("resize"));
+  });
+  await page.waitForTimeout(800);
+  const shortJump = async () => page.$eval(".sheet.is-note", (s) => ({
+    top: s.querySelector(".sheet-body").scrollTop,
+    writing: document.activeElement === s.querySelector(".js-text"),
+    folded: s.classList.contains("is-folded"),
+    vvh: document.documentElement.style.getPropertyValue("--vvh"),
+  }));
+  const sj1 = await shortJump();
+  t.check("短い本文の空いたところを押しても、題は上へ飛ばない（見える高さが縮んでも）",
+    sj1.writing && sj1.top < 4 && !sj1.folded && sj1.vvh === "464px", JSON.stringify(sj1));
+  await page.keyboard.insertText("続き");
+  await page.waitForTimeout(300);
+  const sj2 = await shortJump();
+  t.check("短い本文の最後の行で打っても、題は上へ飛ばない",
+    sj2.writing && sj2.top < 4 && !sj2.folded && sj2.vvh === "464px", JSON.stringify(sj2));
+  await page.evaluate(() => {
+    delete visualViewport.height;
+    visualViewport.dispatchEvent(new Event("resize"));
+  });
+  await closeSheet();
+
   /* ---- 長いノート：押して書き始めても題は飛ばない・下へ送ると頭に題（段4.2） ---- */
   await page.click("#dock .add-fab");
   await page.waitForSelector(".sheet.is-note.is-open");
@@ -272,6 +318,21 @@ const { open, checker } = require("./lib");
       inHead: nb.bottom <= head.bottom + 1 };
   });
   t.check("下へ送ると、頭の行に題が小さく（ノートブックはその下）", folded.on && folded.text === "長い題" && folded.shown && folded.inHead, JSON.stringify(folded));
+  /* 長い本文の最後の行で打つと、その行は帯の上へ（followEnd）。 */
+  await page.$eval(".sheet.is-note", (s) => {
+    s.querySelector(".sheet-body").scrollTop = 0;
+    const ta = s.querySelector(".js-text");
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  });
+  await page.keyboard.insertText("末");
+  await page.waitForTimeout(300);
+  const endLine = await page.$eval(".sheet.is-note", (s) => {
+    const ta = s.querySelector(".js-text").getBoundingClientRect();
+    const bar = s.querySelector(".note-tools").getBoundingClientRect();
+    return { bottom: Math.round(ta.bottom), barTop: Math.round(bar.top), top: s.querySelector(".sheet-body").scrollTop };
+  });
+  t.check("長い本文の最後の行で打つと、その行は帯の上に見える",
+    endLine.top > 0 && endLine.bottom <= endLine.barTop && endLine.bottom > endLine.barTop - 80, JSON.stringify(endLine));
   await closeSheet();
   t.check("閉じたらページの地は元へ", await page.evaluate(() => !document.documentElement.classList.contains("is-note-full")));
 
