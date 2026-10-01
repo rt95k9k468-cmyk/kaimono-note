@@ -368,6 +368,16 @@
     emit();
   }
 
+  /** 作った日時を差し替えます（Evernote から移した過去のノート）。★と
+      同じく、並びも更新日も動かさず、前の版も取りません。 */
+  function setCreated(id, iso) {
+    const n = byId.get(id);
+    if (!n || phase !== "on" || isNaN(new Date(iso).getTime())) return;
+    n.createdAt = iso;
+    touch(id);
+    emit();
+  }
+
   /** いま使われているノートブック・タグの名前（消していないノートから、
       そのつど組み立てます。入れ物は持ちません）。名前の順。 */
   function namesOf(pick) {
@@ -452,7 +462,7 @@
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
     begin, versions, revert, merge,
-    setLabels, cleanTags, notebooks, tagNames, headOf,
+    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 

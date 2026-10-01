@@ -36,6 +36,9 @@
     return TAG_COLORS[h % TAG_COLORS.length];
   }
   const dot = (t) => html`<span class="chip-dot" style="--cat:${tagColor(t)}"></span>`;
+  /* ノートブックの本の絵にも、名前から決まった一色（2026年10月1日、利用者が
+     「それぞれに色が欲しい」）。タグと同じ引き方なので、同じ名前なら同じ色。 */
+  const book = (b) => html`<span class="nb-ico" style="--cat:${tagColor(b)}">${icon("book")}</span>`;
 
   function mount(el) {
     root = el;
@@ -172,7 +175,7 @@
       <div class="chip-row notes-chips" role="group" aria-label="絞り込み">
         ${chip("all", "", "すべて")}
         ${hasFav ? chip("fav", "", icon("star"), "★") : ""}
-        ${books.map((b) => chip("nb", b, html`${icon("book")}<span>${b}</span>`))}
+        ${books.map((b) => chip("nb", b, html`${book(b)}<span>${b}</span>`))}
         ${tags.map((t) => chip("tag", t, html`${dot(t)}<span>${t}</span>`))}
       </div>
     `);
@@ -199,7 +202,7 @@
           ${lead ? html`<span class="note-x">${lead}</span>` : ""}
           <span class="note-foot">
             <span class="note-d">${whenOf(n.updatedAt)}</span>
-            ${n.notebook ? html`<span class="note-nb">${icon("book")}<span>${n.notebook}</span></span>` : ""}
+            ${n.notebook ? html`<span class="note-nb">${book(n.notebook)}<span>${n.notebook}</span></span>` : ""}
             ${n.tags.map((t) => html`<span class="note-tag">${dot(t)}<span>${t}</span></span>`)}
           </span>
         </button>
@@ -244,10 +247,10 @@
        出ると、書く場所が狭い）。 */
     const body = node(html`
       <div class="note-edit">
-        <input class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
-               autocomplete="off">
+        <textarea class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
+                  rows="1" autocomplete="off"></textarea>
         <div class="note-sub">
-          <time class="note-when js-when" datetime="${note.createdAt}">${stampOf(note.createdAt)}</time>
+          <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt)}</button>
           <div class="note-labels js-labels"></div>
         </div>
         <div class="note-view js-view" hidden></div>
@@ -259,7 +262,7 @@
     const mid = node(html`
       <div class="note-head-mid">
         <span class="note-head-t js-head-t" aria-hidden="true"></span>
-        <button class="note-nb-btn js-nb">${icon("book")}<span class="js-nb-name"></span></button>
+        <button class="note-nb-btn js-nb"><span class="nb-ico js-nb-ico">${icon("book")}</span><span class="js-nb-name"></span></button>
       </div>
     `);
     const headT = mid.querySelector(".js-head-t");
@@ -272,6 +275,12 @@
     textIn.value = note.body;
     const paintHeadT = () => { headT.textContent = titleIn.value.trim(); };
     paintHeadT();
+    /* 題は折り返して全部見せます（長い本の題が右で切れて読めなかった。
+       2026年10月1日、iPhone）。改行は持たない一行なので、貼った改行は空白に。 */
+    const growTitle = () => {
+      titleIn.style.height = "0";
+      titleIn.style.height = `${titleIn.scrollHeight}px`;
+    };
 
     /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。字のある高さ
        （textH）も測っておく——欄は短くても 38vh あるので、欄の底は最後の
@@ -424,7 +433,16 @@
       if (t === "historyUndo" || t === "historyRedo") return;
       hist.note(t.startsWith("delete") ? "del" : "type");
     });
-    titleIn.addEventListener("input", () => { paintHeadT(); sync(); });
+    titleIn.addEventListener("input", () => {
+      if (titleIn.value.includes("\n")) {
+        const at = titleIn.selectionStart;
+        titleIn.value = titleIn.value.replace(/\r?\n/g, " ");
+        titleIn.setSelectionRange(at, at);
+      }
+      growTitle();
+      paintHeadT();
+      sync();
+    });
     textIn.addEventListener("input", () => { grow(); followEnd(); sync(); paintTools(); });
     /* 題で改行を押したら、本文へ。 */
     titleIn.addEventListener("keydown", (e) => {
@@ -507,6 +525,8 @@
     };
     const paintLabels = () => {
       nbBtn.querySelector(".js-nb-name").textContent = note.notebook || "ノートブック";
+      if (note.notebook) nbBtn.style.setProperty("--cat", tagColor(note.notebook));
+      else nbBtn.style.removeProperty("--cat");
       nbBtn.classList.toggle("is-empty", !note.notebook);
       labelsEl.innerHTML = "";
       labelsEl.append(node(html`
@@ -525,6 +545,18 @@
       pickNotebook(nbBtn, note, (name) => setLabels({ notebook: name }));
     });
     paintLabels();
+
+    /* ---- 作った日（Evernote から移した過去のノートを、その日へ） ----
+       日時を押すと、年・月・日の回る列。時刻はそのまま持ち越します。 */
+    const whenBtn = body.querySelector(".js-when");
+    whenBtn.addEventListener("click", () => {
+      KN.motion.fire("select");
+      pickDate(whenBtn, note.createdAt, (iso) => {
+        if (stored) N().setCreated(note.id, iso);
+        else note.createdAt = iso;
+        whenBtn.textContent = stampOf(note.createdAt);
+      });
+    });
 
     const finish = () => {
       closed = true;
@@ -599,6 +631,8 @@
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
+    growTitle();
+    requestAnimationFrame(() => { if (!closed) growTitle(); });
     /* 大きな題が上へ隠れたら、頭の行に題を小さく（.is-folded）。 */
     if ("IntersectionObserver" in window) {
       fold = new IntersectionObserver(([e]) => {
@@ -636,6 +670,7 @@
       b.addEventListener("click", () => { KN.motion.fire("select"); p.close(); it.onPick(); });
       p.el.append(b);
     });
+    p.place();
     return p;
   }
 
@@ -653,8 +688,6 @@
     const top = Math.round(r.bottom + 4);
     pop.style.top = `${top}px`;
     pop.style.setProperty("--pop-top", `${top}px`);
-    if (side === "left") pop.style.left = `${Math.max(8, Math.round(r.left))}px`;
-    else pop.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
     let gone = false;
     const close = () => {
       if (gone) return;
@@ -669,8 +702,18 @@
     cover.addEventListener("click", close);
     document.addEventListener("keydown", onKey, true);
     document.body.append(cover, pop);
+    /* 横は left で決め、画面の中へ収めます。right で置くと、口が左寄りで
+       小窓が幅広いとき（タグの「＋」）、左の外へはみ出していた（2026年10月1日、
+       iPhone）。幅は中身を足したあとに測るので、place() は呼ぶ側も呼べる。 */
+    const place = () => {
+      const vw = document.documentElement.clientWidth || window.innerWidth;
+      const w = Math.min(pop.offsetWidth, vw - 16);
+      const want = side === "left" ? r.left : r.right - w;
+      pop.style.left = `${Math.round(Math.max(8, Math.min(want, vw - 8 - w)))}px`;
+    };
+    place();
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
-    return { el: pop, close };
+    return { el: pop, close, place };
   }
 
   /* ---------------- タグ・ノートブックを選ぶ小窓（段3、段4.1で紙から小窓へ） ----------------
@@ -725,6 +768,7 @@
     const p = popOver(anchor, { side: "right", label: "タグ", onClose: addTyped });
     p.el.classList.add("is-pick");
     p.el.append(box);
+    p.place();
   }
 
   function pickNotebook(anchor, note, done) {
@@ -744,7 +788,7 @@
     [""].concat(names).forEach((nb) => {
       const b = node(html`
         <button class="chip" aria-pressed="${String(note.notebook === nb)}">
-          ${nb ? html`${icon("book")}<span>${nb}</span>` : "なし"}
+          ${nb ? html`${book(nb)}<span>${nb}</span>` : "なし"}
         </button>`);
       b.addEventListener("click", () => { U.haptic(); choose(nb); });
       chipsEl.append(b);
@@ -757,6 +801,99 @@
     });
     p.el.classList.add("is-pick");
     p.el.append(box);
+    p.place();
+  }
+
+  /* ---------------- 作った日を選ぶ回る列 ----------------
+
+     年・月・日の三列。指で回して、止まった真ん中の行が選ばれます。決めるのは
+     小窓を閉じたとき（外を押す・Escape）。時・分は元のまま持ち越します。 */
+  const ROW_H = 40;
+  function pickDate(anchor, iso, done) {
+    const was = new Date(iso);
+    const base = isNaN(was.getTime()) ? new Date() : was;
+    const thisYear = new Date().getFullYear();
+    const y0 = Math.min(1990, base.getFullYear());
+    const years = [];
+    for (let y = y0; y <= Math.max(thisYear, base.getFullYear()); y++) years.push(y);
+    const at = { y: base.getFullYear(), m: base.getMonth() + 1, d: base.getDate() };
+    const daysIn = () => new Date(at.y, at.m, 0).getDate();
+
+    const box = node(html`<div class="note-wheels" role="group" aria-label="作った日"></div>`);
+    const col = (k, values, fmt, label) => {
+      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
+      let idx = -1;
+      let t = 0;
+      const fill = (vals) => {
+        el.innerHTML = "";
+        vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option" data-v="${v}">${fmt(v)}</div>`)));
+      };
+      const mark = (i) => {
+        if (i === idx) return;
+        const rows = el.children;
+        if (rows[idx]) rows[idx].removeAttribute("aria-selected");
+        idx = i;
+        if (rows[idx]) rows[idx].setAttribute("aria-selected", "true");
+      };
+      const read = () => Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / ROW_H)));
+      const settle = () => {
+        const i = read();
+        mark(i);
+        const v = Number(el.children[i].dataset.v);
+        if (at[k] !== v) { at[k] = v; if (k !== "d") fitDays(); }
+      };
+      el.addEventListener("scroll", () => {
+        mark(read());
+        clearTimeout(t);
+        t = setTimeout(settle, 120);
+      }, { passive: true });
+      /* 押した行へ回す（指で回さなくても選べる）。 */
+      el.addEventListener("click", (e) => {
+        const r = e.target.closest(".note-wheel-row");
+        if (!r) return;
+        el.scrollTo({ top: [...el.children].indexOf(r) * ROW_H, behavior: "smooth" });
+      });
+      const go = (v) => {
+        const i = Math.max(0, [...el.children].findIndex((r) => Number(r.dataset.v) === v));
+        el.scrollTop = i * ROW_H;
+        mark(i);
+      };
+      return { el, fill, go, settle: () => { clearTimeout(t); settle(); } };
+    };
+    const yc = col("y", years, (v) => `${v}年`, "年");
+    const mc = col("m", null, (v) => `${v}月`, "月");
+    const dc = col("d", null, (v) => `${v}日`, "日");
+    yc.fill(years);
+    mc.fill([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    let dn = 0;
+    function fitDays() {
+      const n = daysIn();
+      if (n === dn) return;
+      dn = n;
+      at.d = Math.min(at.d, n);
+      dc.fill(Array.from({ length: n }, (_, i) => i + 1));
+      dc.go(at.d);
+    }
+    fitDays();
+    box.append(yc.el, mc.el, dc.el);
+
+    const p = popOver(anchor, {
+      side: "left",
+      label: "作った日",
+      onClose: () => {
+        /* 回し終わりを待たずに閉じても、止まっている行で決める。 */
+        yc.settle(); mc.settle(); dc.settle();
+        const next = new Date(at.y, at.m - 1, at.d, base.getHours(), base.getMinutes(), base.getSeconds());
+        if (U.dayKey(next) !== U.dayKey(base)) done(next.toISOString());
+      },
+    });
+    p.el.classList.add("is-pick", "is-wheel");
+    p.el.append(box);
+    p.place();
+    /* 中身が入って高さが決まってから、いまの日へ回しておく。 */
+    yc.go(at.y);
+    mc.go(at.m);
+    dc.go(at.d);
   }
 
   /* ---------------- 前の版（段2） ----------------

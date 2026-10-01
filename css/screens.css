@@ -5317,6 +5317,8 @@ a.btn { text-decoration: none; }
   color: var(--c-text-2);
 }
 .note-nb-btn svg { width: 16px; height: 16px; flex: none; }
+/* ノートブックの本の絵は、名前から決まった一色（screen-notes.js の book）。 */
+.nb-ico { display: inline-flex; flex: none; color: var(--cat, currentColor); }
 .note-nb-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet.is-note.is-folded .note-head-t:not(:empty) + .note-nb-btn { min-height: 0; font-size: var(--fs-sm); }
 /* 題のすぐ下の一行：作った日時と、タグ（段4.2。頭の行から移した）。 */
@@ -5391,6 +5393,13 @@ a.btn { text-decoration: none; }
   outline: none;
 }
 .note-title-in { font-size: var(--fs-xl); font-weight: 700; }
+/* 書く紙の題は折り返す textarea（screen-notes.js の growTitle）。 */
+textarea.note-title-in {
+  display: block;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+}
 .sheet.is-note .note-title-in { font-size: var(--fs-2xl); line-height: var(--lh-tight); }
 .note-body-in,
 .note-view {
@@ -5541,6 +5550,45 @@ a.btn { text-decoration: none; }
   overflow-y: auto;
   padding: var(--sp-3);
 }
+/* 作った日の回る列（年・月・日）。真ん中の一行が選ばれる。 */
+.note-pop.is-wheel { width: min(300px, calc(100vw - 16px)); padding: var(--sp-2); overflow: hidden; }
+.note-wheels {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+}
+.note-wheels::before {
+  content: "";
+  position: absolute;
+  inset: 80px 0 auto;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2, rgba(120, 120, 128, .12));
+  pointer-events: none;
+}
+.note-wheel {
+  position: relative;
+  height: 200px;
+  padding: 80px 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent);
+  mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent);
+}
+.note-wheel::-webkit-scrollbar { display: none; }
+.note-wheel-row {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  font-size: var(--fs-lg);
+  color: var(--c-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.note-wheel-row[aria-selected="true"] { color: var(--c-text); font-weight: 700; }
 .note-pop-item {
   display: flex;
   align-items: center;
@@ -5555,6 +5603,7 @@ a.btn { text-decoration: none; }
 .note-pop-item svg { width: 20px; height: 20px; flex: none; }
 .note-pop-item.is-danger { color: var(--c-danger); }
 /* いつ書いたか（作った日時）。題のすぐ下に小さく。 */
+button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .note-when {
   margin-top: calc(-1 * var(--sp-2));
   font-size: var(--fs-sm);
