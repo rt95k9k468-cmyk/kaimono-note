@@ -298,6 +298,167 @@
     run.oncancel = () => { if (row) finish(); };
   }
 
+  /* ---- 一覧のカードが膨らんで紙になり、閉じると縮んでカードへ戻る ----
+
+     ノートの書く紙（段4.3）。行の丸薬（上）と違って、動くのは**紙そのもの**
+     です：紙は初めから開いた場所にいて、見える窓（clip-path）だけがカードの
+     箱から紙いっぱいへ広がる。字は縮めない（transform で縮めると字がつぶれて
+     見える）ので、紙の中身は窓が広がるあとから現れ、カードの字は写しが
+     上へ滑りながら薄れます。
+
+     帰りは窓をカードの箱へ戻します。行き先は**毎フレーム探し直す**
+     （grow.back() が id から引く。直したノートは一覧の先頭へ移るので）——
+     morphBack と同じ考え方。下へ払っていたら、その場所から戻ります。
+
+     電話の幅だけ（広い画面は真ん中の一枚で、transform の形が違う）。動きを
+     減らす設定なら使いません。 */
+  const phone = () => window.matchMedia("(max-width: 639px)").matches;
+
+  /** いまの transform を外した、開いたときの紙の箱。 */
+  function restBox(el) {
+    const r = el.getBoundingClientRect();
+    const t = getComputedStyle(el).transform;
+    const dy = t && t !== "none" ? new DOMMatrixReadOnly(t).m42 : 0;
+    return { left: r.left, right: r.right, top: r.top - dy, bottom: r.bottom - dy };
+  }
+  const radiusOf = (x) => parseFloat(getComputedStyle(x).borderTopLeftRadius) || 0;
+  const cardClip = (s, b, rad) =>
+    `inset(${b.top - s.top}px ${s.right - b.right}px ${s.bottom - b.bottom}px ${b.left - s.left}px round ${rad}px)`;
+  const fullClip = (el) => {
+    const R = radiusOf(el);
+    return `inset(0px round ${R}px ${R}px 0px 0px)`;
+  };
+  const seenBox = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
+    && r.right > 0 && r.left < window.innerWidth;
+
+  /** カードの写し（字が薄れて／現れて入れ替わるためのもの）。 */
+  function cardGhost(card, r, z) {
+    const g = card.cloneNode(true);
+    g.setAttribute("aria-hidden", "true");
+    g.inert = true;
+    g.classList.add("sheet-morph");
+    Object.assign(g.style, {
+      position: "fixed", margin: "0", boxSizing: "border-box", pointerEvents: "none",
+      left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+      zIndex: String(z), visibility: "visible",
+    });
+    sheetRoot().append(g);
+    return g;
+  }
+  const kids = (el) => [...el.children];
+
+  /** 行き。育てたら true。 */
+  function growCard(grow, el, z) {
+    const card = grow && grow.from;
+    if (!card || !card.isConnected || still() || !phone()) return false;
+    const a = card.getBoundingClientRect();
+    if (!seenBox(a)) return false;
+    el.style.transition = "none";
+    el.classList.add("is-open");
+    const s = restBox(el);
+    const timing = { duration: KN.motion.ms("--m-sheet-grow"), easing: KN.motion.ease("--push-e") };
+    const run = el.animate([{ clipPath: cardClip(s, a, radiusOf(card)) }, { clipPath: fullClip(el) }], timing);
+    kids(el).forEach((k) => k.animate([{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], timing));
+    const g = cardGhost(card, a, z + 1);
+    g.animate([
+      { opacity: 1, transform: "none" },
+      { opacity: 0, transform: `translate(${s.left - a.left}px, ${s.top - a.top}px)`, offset: .45 },
+      { opacity: 0, transform: `translate(${s.left - a.left}px, ${s.top - a.top}px)` },
+    ], timing);
+    card.style.visibility = "hidden";
+    let over = false;
+    const done = () => {
+      if (over) return;
+      over = true;
+      g.remove();
+      card.style.visibility = "";
+      /* 膨らみきる前に閉じたときは、閉じる側が transition を握っている。 */
+      if (el.classList.contains("is-open")) el.style.transition = "";
+    };
+    run.onfinish = done;
+    run.oncancel = done;
+    /* カードが隠れたまま残ると、ノートが消えたように見える。終わりの知らせが
+       来なくても必ず戻す。 */
+    setTimeout(done, timing.duration + 200);
+    return true;
+  }
+
+  /** 帰り。紙を片づけてよくなるまでの ms（帰らないなら 0）。from は閉じる前の
+      transform（下へ払っていたら、その場所）。 */
+  function shrinkCard(grow, el, z, from) {
+    const find = grow && grow.back;
+    let card = find && find();
+    const a = card && card.getBoundingClientRect();
+    if (!card || !seenBox(a)) {
+      /* 戻るカードが無い・画面の外：紙がふつうに帰るのと同じ形で。 */
+      const to = getComputedStyle(el);
+      const run = el.animate([
+        { transform: from.transform, opacity: from.opacity, borderRadius: from.radius },
+        { transform: to.transform, opacity: to.opacity, borderRadius: to.borderRadius },
+      ], { duration: KN.motion.ms("--m-sheet-close"), easing: KN.motion.ease("--ease-in"), fill: "forwards" });
+      return run.effect.getComputedTiming().endTime;
+    }
+    /* ＋から育った紙も、帰りはカードへ（畳んだ姿＝透明には戻らない）。 */
+    el.classList.remove("is-from-origin");
+    const s = restBox(el);
+    let b = a;
+    const rad = radiusOf(card);
+    const rest = `translate(-50%, 0px)`;
+    const frames = (r) => [
+      { transform: from.transform, clipPath: fullClip(el) },
+      { transform: rest, clipPath: cardClip(s, r, rad) },
+    ];
+    const timing = { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" };
+    const run = el.animate(frames(b), timing);
+    kids(el).forEach((k) => k.animate([{ opacity: 1 }, { opacity: 0, offset: .5 }, { opacity: 0 }], timing));
+    const g = cardGhost(card, b, z + 1);
+    const fade = g.animate([{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1 }], timing);
+    card.style.visibility = "hidden";
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      el.style.visibility = "hidden";
+      if (card) card.style.visibility = "";
+      g.remove();
+    };
+    const follow = () => {
+      if (done) return;
+      const now = find();
+      if (!now) {
+        /* 見失ったら、その場で薄れて消えます。 */
+        if (card) card.style.visibility = "";
+        card = null;
+        fade.cancel();
+        g.remove();
+        el.animate([{ opacity: 1 }, { opacity: 0 }],
+          { duration: KN.motion.ms("--m-state"), easing: KN.motion.ease("--ease-in"), fill: "forwards" })
+          .onfinish = () => { run.cancel(); finish(); };
+        return;
+      }
+      if (now !== card) {
+        if (card) card.style.visibility = "";
+        card = now;
+        card.style.visibility = "hidden";
+      }
+      const r = card.getBoundingClientRect();
+      if (Math.abs(r.left - b.left) + Math.abs(r.top - b.top)
+          + Math.abs(r.width - b.width) + Math.abs(r.height - b.height) > 0.5) {
+        b = r;
+        run.effect.setKeyframes(frames(b));
+        Object.assign(g.style, { left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
+      }
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
+    run.onfinish = finish;
+    /* 見失って薄れるぶん（--m-state）まで待つ。知らせが来なくても、カードは必ず戻す。 */
+    const ms = timing.duration + KN.motion.ms("--m-state");
+    setTimeout(finish, ms + 40);
+    return ms;
+  }
+
   /* ---------------- bottom sheet ---------------- */
 
   /**
@@ -420,8 +581,13 @@
       return pageHost.open(opts);
     }
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
+    /* cls … 紙に足す class（開く前の形を決めるもの。growCard が測るので）。
+       clear … 電話の幅では後ろを暗くしない（ノートの書く紙。段4.3）。
+       grow … { from: 押したカード, back: () => 戻るカード }（上の growCard）。 */
+    const grow = opts && opts.grow;
+    if (opts && opts.clear) backdrop.classList.add("is-clear");
     const el = node(html`
-      <div class="sheet ${hero ? "has-hero" : ""}" role="dialog" aria-modal="true"
+      <div class="sheet ${hero ? "has-hero" : ""} ${(opts && opts.cls) || ""}" role="dialog" aria-modal="true"
            aria-label="${title || ""}">
         <div class="sheet-handle"></div>
         <header class="sheet-head">
@@ -483,7 +649,7 @@
 
     /* 押されたところから育てます（育てないなら null で、これまでどおり
        下からせり上がります）。 */
-    const seed = seedFrom(el);
+    const seed = grow && grow.from ? null : seedFrom(el);
     if (seed) {
       /* 押した丸から、いちど光がにじみ出ます。紙が育ちきるまでの一拍を、
          ＋のあった場所が受け持つためのものです——紙が小さいあいだ、画面に
@@ -502,6 +668,8 @@
 
     // Next frame so the transition runs.
     let unmorph = null;
+    /* カードから膨らむときは、紙はもう開いた場所にいます（窓だけが広がる）。 */
+    if (grow) growCard(grow, el, floor + 1 + depth * 2);
     requestAnimationFrame(() => {
       /* 行の丸薬から伸びるのは、押した点から育つときだけ（行き先の箱の
          出し方が、下から出る紙の形に寄りかかっているので）。 */
@@ -520,6 +688,16 @@
       if (unmorph) unmorph();
       if (seed && opts && opts.morph && opts.morph.back && !flying && !still()) {
         morphBack(opts.morph, floor + 1 + depth * 2);
+      }
+      /* カードへ縮んで帰る紙は、CSS の帰り道を走らせません（帰り道は
+         onClose のあと、一覧を組み直してから決める。下の shrinkCard）。 */
+      const shrinks = grow && grow.back && !still() && phone();
+      let from = null;
+      if (shrinks) {
+        const cs = getComputedStyle(el);
+        from = { transform: cs.transform, opacity: cs.opacity, radius: cs.borderRadius };
+        el.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+        el.style.transition = "none";
       }
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
@@ -543,8 +721,10 @@
          ほうです。二か所に持つと、片方だけ直した日に「まだ動いているのに
          消える」か「もう止まっているのに残る」のどちらかが起きます。 */
       const closeMs = KN.motion.ms("--m-sheet-close");
-      setTimeout(() => { backdrop.remove(); el.remove(); }, closeMs + 60);
+      const tidy = (ms) => setTimeout(() => { backdrop.remove(); el.remove(); }, ms + 60);
+      if (!shrinks) tidy(closeMs);
       onClose && onClose();
+      if (shrinks) tidy(shrinkCard(grow, el, floor + 1 + depth * 2, from));
     }
 
     /* ---- 書きかけのまま閉じようとしたとき ----
@@ -675,7 +855,8 @@
            ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
            そのまま下まで滑らせながら閉じにいきます。 */
         el.classList.remove("is-from-origin");
-        const ms = slideTo(h);
+        /* カードへ縮んで帰る紙は、払った場所から縮みます（shrinkCard）。 */
+        const ms = grow && grow.back && !still() ? 0 : slideTo(h);
         tryClose();
         /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
            そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に

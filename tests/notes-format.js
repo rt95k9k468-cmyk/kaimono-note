@@ -8,13 +8,15 @@
    入らない）／押した行の終わりにカーソル／本文は印のまま入れ物へ／一覧の冒頭と題は印を
    外す／「⋯」はその場の小窓（★・前の版・削除。紙を重ねない）／カードの★は縦の真ん中／
    localStorage は変わらない。
+   段4.3：書く紙は帯のすぐ下からのカード（上が丸角・持ち手・暗幕なし）／一覧のカードから
+   膨らみ、閉じると（‹・本物のタッチで払う）先頭へ移ったカードへ縮む／動きを減らす設定。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-format.js */
 const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("notes-format");
-  const { browser, page, errors } = await open();
+  const { browser, ctx, page, errors } = await open();
 
   const active = () => page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen);
   const settled = (id) => page.waitForFunction((i) =>
@@ -85,7 +87,7 @@ const { open, checker } = require("./lib");
   t.check("一段下げる", unit.indent === "  - a", JSON.stringify(unit.indent));
   t.check("印を外した字（一覧・題）", unit.plain === "題|済|一||引", unit.plain);
 
-  /* ---- ＋：全画面・書く欄と道具の帯 ---- */
+  /* ---- ＋：帯のすぐ下からのカード・書く欄と道具の帯 ---- */
   await toNotes();
   await page.click("#dock .add-fab");
   await page.waitForSelector(".sheet.is-note.is-open");
@@ -94,7 +96,20 @@ const { open, checker } = require("./lib");
     const r = e.getBoundingClientRect();
     return { top: r.top, h: r.height / innerHeight, w: r.width / innerWidth };
   });
-  t.check("書く紙は全画面", box.top <= 1 && box.h >= 0.98 && box.w >= 0.99, JSON.stringify(box));
+  t.check("書く紙は帯のすぐ下から、幅いっぱい", box.top <= 1 && box.h >= 0.98 && box.w >= 0.99, JSON.stringify(box));
+  const look = await page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note");
+    const cs = getComputedStyle(s);
+    const hd = s.querySelector(".sheet-handle");
+    const bd = s.previousElementSibling;
+    return { tl: parseFloat(cs.borderTopLeftRadius), tr: parseFloat(cs.borderTopRightRadius),
+      bl: parseFloat(cs.borderBottomLeftRadius),
+      handle: !!hd && getComputedStyle(hd).display !== "none" && hd.getBoundingClientRect().height > 0,
+      clear: bd.classList.contains("sheet-backdrop") && getComputedStyle(bd).backgroundColor === "rgba(0, 0, 0, 0)"
+        && getComputedStyle(bd).backdropFilter === "none" };
+  });
+  t.check("上が丸角のカード（下は角）・持ち手がある", look.tl > 0 && look.tr > 0 && look.bl === 0 && look.handle, JSON.stringify(look));
+  t.check("後ろは暗くしない", look.clear, JSON.stringify(look));
   const head = await page.$eval(".sheet.is-note .sheet-head", (h) => {
     const b = h.querySelector(".js-close");
     const m = h.querySelector(".js-note-more");
@@ -167,9 +182,9 @@ const { open, checker } = require("./lib");
   });
   t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 10 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
   t.check("道具の帯は底から少し浮く、丸いガラスの一本", bar.gap === 8 && bar.side === 8 && bar.round && bar.glass && bar.over, JSON.stringify(bar));
-  t.check("開いているあいだ、ページの地も紙の白（上の帯の色）", await page.evaluate(() =>
-    document.documentElement.classList.contains("is-note-full") && getComputedStyle(document.body).backgroundColor === "rgb(255, 255, 255)"));
-  t.check("開いているあいだ、上の帯（theme-color）は紙の白", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).every((c) => c === "#ffffff"));
+  t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
+    !document.documentElement.classList.contains("is-note-full")
+    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f0eff3,#121216"));
 
   /* ---- 欄から出る（キーボードを閉じる）→ 整えた姿 ---- */
   await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
@@ -334,7 +349,117 @@ const { open, checker } = require("./lib");
   t.check("長い本文の最後の行で打つと、その行は帯の上に見える",
     endLine.top > 0 && endLine.bottom <= endLine.barTop && endLine.bottom > endLine.barTop - 80, JSON.stringify(endLine));
   await closeSheet();
-  t.check("閉じたらページの地は元へ", await page.evaluate(() => !document.documentElement.classList.contains("is-note-full")));
+
+  /* ---- 段4.3：カードから膨らみ、カードへ縮んで戻る ---- */
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
+  /* 紙の見える窓（clip-path）を、画面の箱に直す。 */
+  const clipAt = (where) => page.evaluate((w) => {
+    const s = document.querySelector(".sheet.is-note");
+    const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.clipPath));
+    if (!a) return null;
+    const t0 = a.currentTime;
+    a.pause();
+    a.currentTime = w === "start" ? 0 : a.effect.getComputedTiming().duration;
+    const cs = getComputedStyle(s);
+    const n = (cs.clipPath.match(/-?[\d.]+px/g) || []).map(parseFloat);
+    const r = s.getBoundingClientRect();
+    const dy = new DOMMatrixReadOnly(cs.transform).m42;
+    const box = { top: r.top - dy + n[0], right: r.right - n[1], bottom: r.bottom - dy - n[2], left: r.left + n[3] };
+    a.currentTime = t0;   // play() は終わりにいる動きを頭へ巻き戻すので、元の時刻へ
+    a.play();
+    return box;
+  }, where);
+  const near = (b, r) => !!b && !!r && ["top", "right", "bottom", "left"].every((k) => Math.abs(b[k] - r[k]) < 1.5);
+  const cardBox = (sel) => page.$eval(sel, (e) => {
+    const r = e.getBoundingClientRect();
+    return { top: r.top, right: r.right, bottom: r.bottom, left: r.left, id: e.dataset.id, hidden: getComputedStyle(e).visibility === "hidden" };
+  });
+  await page.evaluate(() => KN.app.scrollerOf() && (KN.app.scrollerOf().scrollTop = 0));
+  const firstSel = ".notes-list .note-row";
+
+  /* ＋から書いた新しいノートは、閉じたら先頭にできたカードへ収まる。 */
+  await page.click("#dock .add-fab");
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.waitForTimeout(600);
+  await page.keyboard.insertText("段4.3 一つ目");
+  await page.click(".sheet.is-note .js-close");
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const plusEnd = await clipAt("end");
+  const plusCard = await cardBox(firstSel);
+  t.check("＋から書いたノートは、閉じると先頭にできたカードへ縮む", near(plusEnd, plusCard) && plusCard.hidden, JSON.stringify({ plusEnd, plusCard }));
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
+  t.check("縮み終えたらカードが見える", !(await cardBox(firstSel)).hidden);
+
+  /* 二番目のカードを押す → そのカードの箱から膨らむ。 */
+  const second = ".notes-list .note-row:nth-child(2)";
+  const sc = await cardBox(second);
+  await page.evaluate((sel) => document.querySelector(`${sel} .js-open`).click(), second);
+  const growStart = await clipAt("start");
+  const growing = await cardBox(second);
+  t.check("押したカードの箱から膨らむ", near(growStart, sc), JSON.stringify({ growStart, sc }));
+  t.check("膨らむあいだ、元のカードは隠れている", growing.hidden);
+  t.check("紙の中身は、膨らむあとから現れる", await page.$eval(".sheet.is-note .sheet-body", (b) => b.getAnimations().length > 0));
+  await page.waitForTimeout(700);
+  t.check("膨らみ終えたら窓は紙いっぱい・カードは戻る", await page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note");
+    return !s.getAnimations().length && getComputedStyle(s).clipPath === "none" && s.style.transition === "";
+  }) && !(await cardBox(second)).hidden);
+
+  /* 直す → 先頭へ移ったカードへ縮む（行き先は毎フレーム探し直す）。 */
+  await page.click(".sheet.is-note .js-view");
+  await page.keyboard.insertText("直した");
+  await page.click(".sheet.is-note .js-close");
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const backEnd = await clipAt("end");
+  const top1 = await cardBox(firstSel);
+  t.check("直したノートは、先頭へ移ったカードへ縮んで戻る", top1.id === sc.id && near(backEnd, top1), JSON.stringify({ backEnd, top1, was: sc }));
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
+
+  /* 本物の指で、持ち手を下へ払う。 */
+  const cdp = await ctx.newCDPSession(page);
+  const pts = (x, y) => [{ x, y, radiusX: 8, radiusY: 8, force: 1 }];
+  const drag = async (dist, steps, ms) => {
+    const hb = await page.locator(".sheet.is-note .sheet-handle").boundingBox();
+    const x = hb.x + hb.width / 2, y = hb.y + hb.height / 2;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(x, y) });
+    for (let i = 1; i <= steps; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(x, y + (dist * i) / steps) });
+      await page.waitForTimeout(ms);
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  };
+  const tc = await cardBox(firstSel);
+  await page.evaluate((sel) => document.querySelector(`${sel} .js-open`).click(), firstSel);
+  await page.waitForTimeout(700);
+  await drag(30, 6, 40);
+  await page.waitForTimeout(500);
+  t.check("持ち手を少しだけ下げて離すと、戻る", await page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note.is-open");
+    return !!s && Math.abs(s.getBoundingClientRect().top) < 1;
+  }));
+  await drag(260, 10, 16);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const swipeEnd = await clipAt("end");
+  t.check("持ち手を下へ払うと、払った場所からカードへ縮んで閉じる", near(swipeEnd, tc), JSON.stringify({ swipeEnd, tc }));
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
+  t.check("払って閉じたあと、カードは見えている", !(await cardBox(firstSel)).hidden);
+
+  /* 動きを減らす設定では動かさない。 */
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate((sel) => document.querySelector(`${sel} .js-open`).click(), firstSel);
+  t.check("動きを減らす設定では、膨らまない", await page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note");
+    return !s.getAnimations().some((x) => x.effect.getKeyframes().some((k) => k.clipPath))
+      && !document.querySelector(".notes-list .note-row[style*='hidden']");
+  }));
+  await page.waitForTimeout(400);
+  await page.click(".sheet.is-note .js-close");
+  t.check("動きを減らす設定では、縮まない", await page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note");
+    return !s || !s.getAnimations().some((x) => x.effect.getKeyframes().some((k) => k.clipPath));
+  }));
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));

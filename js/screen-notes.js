@@ -207,7 +207,7 @@
                 aria-label="${head || "ノート"} に★を付ける">${icon("star")}</button>
       </div>
     `);
-    el.querySelector(".js-open").addEventListener("click", () => openNote(n.id));
+    el.querySelector(".js-open").addEventListener("click", () => openNote(n.id, el));
     el.querySelector(".fav").addEventListener("click", (e) => {
       e.stopPropagation();
       U.haptic();
@@ -221,7 +221,8 @@
      ＋も一覧の行も、同じ紙を開きます（読む画面と編集ボタンは作りません）。
      保存は黙って：記憶は打つたびに直し、入れ物へは打ち終わりの少しあと
      （notes-idb.js）。閉じても払っても、閉じた拍に書き切ります。 */
-  function openNote(id) {
+  /* from … 押した一覧のカード。紙はそのカードから膨らむ（段4.3）。 */
+  function openNote(id, from) {
     const st = N().state();
     if (st !== "on") {
       KN.ui.toast(st === "off" ? "ノートを開けませんでした" : "ノートを読み込んでいるところです");
@@ -527,7 +528,6 @@
 
     const finish = () => {
       closed = true;
-      tintBar(false);
       if (fold) fold.disconnect();
       document.removeEventListener("selectionchange", onSel);
       sync();
@@ -571,15 +571,24 @@
         } },
     ];
 
+    /* 電話の幅では、帯のすぐ下から始まるカード（段4.3）。一覧のカードから
+       膨らみ、閉じると一覧のカードへ縮んで戻る（直したノートは先頭へ移る
+       ので、戻り先は毎フレーム探し直す）。＋からは＋から育ち、閉じたら
+       先頭にできたカードへ。後ろは暗くしない（角からのぞく灰を帯と同じに）。 */
     h = KN.ui.sheet({
       title: "",
       content: body,
       guard: false,
+      cls: "is-note",
+      clear: true,
+      grow: {
+        from: from || null,
+        back: () => (root && root.querySelector(`.notes-list .note-row[data-id="${CSS.escape(note.id)}"]`)) || null,
+      },
       onClose: finish,
     });
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
-    tintBar(true);
     /* 頭：左に戻る ‹、右に ⋯（Evernote の並び）。閉じ方は紙のまま
        （×と同じ tryClose。払っても閉じる）。 */
     const closeBtn = h.el.querySelector(".js-close");
@@ -613,31 +622,6 @@
       toView();
     }
     return h;
-  }
-
-  /* ---------------- 上の帯（時刻・電池）の色 ----------------
-
-     ホーム画面のアプリでは、時刻や電池の並ぶ帯はページの外で、色は
-     theme-color（灰の地）で塗られます。全画面の書く紙は白なので、開いて
-     いるあいだだけ帯も紙の色に合わせます（2026年10月1日、iPhone で「一番
-     上だけ灰色でおかしい」）。閉じたら元の値へ。
-     theme-color の差し替えだけでは iPhone の帯は灰のままだった（段4.1）。
-     iOS 26 は帯をページの地（html・body の背景）から取るとみて、地も紙の
-     色にする（html.is-note-full。電話の幅だけ——広い画面は紙が真ん中の
-     一枚で、まわりに地が見えている）。 */
-  let barSaved = null;
-  function tintBar(on) {
-    document.documentElement.classList.toggle("is-note-full", on);
-    const metas = [...document.querySelectorAll('meta[name="theme-color"]')];
-    if (on) {
-      if (barSaved) return;
-      barSaved = metas.map((m) => m.getAttribute("content"));
-      const c = getComputedStyle(document.documentElement).getPropertyValue("--c-surface").trim();
-      if (c) metas.forEach((m) => m.setAttribute("content", c));
-    } else if (barSaved) {
-      metas.forEach((m, i) => m.setAttribute("content", barSaved[i]));
-      barSaved = null;
-    }
   }
 
   /* ---------------- 「⋯」の小窓（段4） ----------------

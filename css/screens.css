@@ -5407,19 +5407,22 @@ a.btn { text-decoration: none; }
   height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   background: var(--c-surface);
 }
-/* 電話では全画面の一枚（段4。「記事を書くときはフル画面が絶対使いやすい」）。
-   見えている高さぜんぶを取り、底はいつもどおりキーボードの上端（--kb）。
-   丸角と掴み手は持たない（払って閉じるのは頭の行のまま）。広い画面は
-   真ん中の一枚のまま。 */
+/* 電話では、上の帯（時刻・電池）のすぐ下から始まるカード（段4.3）。上が
+   丸角で持ち手があり、下へ払うと閉じる。帯の灰は直せなかった（docs/notes.md
+   「段4.3」）ので、帯は地として見せる——後ろの暗幕は付けず（`clear`）、角から
+   のぞくのは帯と同じ灰の地。底はいつもどおりキーボードの上端（--kb）。広い
+   画面は真ん中の一枚のまま。 */
 @media (max-width: 639.98px) {
   .sheet.is-note {
-    height: calc(var(--vvh, 100dvh) - var(--pad, 0px));
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t));
     max-height: none;
-    border-radius: 0;
     box-shadow: none;
-    padding-top: var(--safe-t);
   }
-  .sheet.is-note .sheet-handle { display: none; }
+  .sheet-backdrop.is-clear {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 .sheet.is-note .sheet-head { padding: var(--sp-1) var(--sp-2); }
 /* 底の安全域（ホームの棒のぶん）は、キーボードが出ているあいだは要らない
@@ -5436,13 +5439,6 @@ a.btn { text-decoration: none; }
 .sheet.is-note.is-writing .sheet-body {
   padding-bottom: calc(var(--note-tools-h) + var(--sp-2) + var(--sp-5) + max(0px, var(--safe-b) - var(--kb, 0px)));
 }
-/* 上の帯（時刻・電池）はページの地から色を取る（screen-notes.js の
-   tintBar）。全画面の書く紙を開いているあいだは、地も紙の色に。 */
-@media (max-width: 639.98px) {
-  html.is-note-full,
-  html.is-note-full body { background: var(--c-surface); }
-}
-
 /* 整えた姿（読むとき。js/note-format.js の render）。字の大きさと行の高さは
    書く欄と同じ——押して入れ替わっても、字が跳ねないように。 */
 .note-view { color: var(--c-text); overflow-wrap: anywhere; cursor: text; }
