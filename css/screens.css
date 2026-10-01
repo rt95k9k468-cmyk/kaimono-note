@@ -5393,6 +5393,14 @@ a.btn { text-decoration: none; }
   .sheet.is-note .sheet-handle { display: none; }
 }
 .sheet.is-note .sheet-head { padding: var(--sp-1) var(--sp-2); }
+/* 底の安全域（ホームの棒のぶん）は、キーボードが出ているあいだは要らない
+   ——紙の底に残ると、道具の帯とキーボードの間に白い隙間が空く（2026年
+   10月1日、iPhone で「帯がキーボードにくっついていない」）。安全域は
+   キーボードの高さぶん差し引き、紙ではなく中身の側で持つ。 */
+.sheet.is-note { padding-bottom: 0; }
+/* 中身が短くても帯は底へ（中身の側が残りの高さを取る）。 */
+.sheet.is-note .sheet-body { flex: 1 1 auto; }
+.sheet.is-note .sheet-body { padding-bottom: calc(var(--sp-5) + max(0px, var(--safe-b) - var(--kb, 0px))); }
 
 /* 整えた姿（読むとき。js/note-format.js の render）。字の大きさと行の高さは
    書く欄と同じ——押して入れ替わっても、字が跳ねないように。 */
@@ -5436,27 +5444,23 @@ a.btn { text-decoration: none; }
 .nv-hr hr { margin: 0; border: 0; border-top: 1px solid var(--c-border-2); }
 
 /* 道具の帯（書いているあいだだけ。紙の底＝キーボードの上端に貼りつく）。
-   左は横へ流れ、右端の「キーボードを閉じる」だけは動かない。 */
+   ぜんぶを一列に詰めて出す（横へは流さない）。キーボードの無い底では
+   ホームの棒のぶんだけ浮く。 */
 .note-tools {
   display: none;
   flex: none;
   align-items: center;
+  justify-content: space-around;
   border-top: 1px solid var(--c-border);
   background: var(--c-surface);
-  padding: 2px var(--sp-1);
+  padding: 2px var(--sp-1) calc(2px + max(0px, var(--safe-b) - var(--kb, 0px)));
 }
 .sheet.is-note.is-writing .note-tools { display: flex; }
-.note-tools-in {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.note-tools-in::-webkit-scrollbar { display: none; }
 .note-tool {
-  flex: none;
-  width: 44px; height: 44px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 48px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5467,7 +5471,6 @@ a.btn { text-decoration: none; }
 .note-tool svg { width: 22px; height: 22px; }
 .note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary); }
 .note-tool[aria-disabled="true"] { opacity: .35; }
-.note-tool-done { border-left: 1px solid var(--c-border); border-radius: 0; }
 
 /* 「⋯」の小窓（押した ⋯ のすぐ下。js/screen-notes.js の popMenu）。 */
 .note-pop-cover { position: fixed; inset: 0; }
@@ -5483,7 +5486,15 @@ a.btn { text-decoration: none; }
   opacity: 0;
   transition: transform var(--m-state) var(--ease-out), opacity var(--m-state) var(--ease);
 }
+.note-pop.is-left { transform-origin: top left; }
 .note-pop.is-open { transform: none; opacity: 1; }
+/* ノートブック・タグを選ぶ小窓。キーボードが出ても見えている高さに収める。 */
+.note-pop.is-pick {
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(var(--vvh, 100dvh) - var(--pop-top, 0px) - 8px);
+  overflow-y: auto;
+  padding: var(--sp-3);
+}
 .note-pop-item {
   display: flex;
   align-items: center;
