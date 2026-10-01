@@ -166,9 +166,10 @@ const { open, checker } = require("./lib");
     const p = document.querySelector(".note-pop.is-pick").getBoundingClientRect();
     const a = document.querySelector(".sheet.is-note .note-tag-add").getBoundingClientRect();
     return { sheets: document.querySelectorAll(".sheet.is-open").length, below: p.top >= a.bottom && p.top - a.bottom < 12,
-      right: Math.abs(p.right - a.right) < 2, label: document.querySelector(".note-pop.is-pick").getAttribute("aria-label") };
+      /* 右そろえ。収まらなければ画面の中へ寄せる（左へはみ出していた。2026年10月1日）。 */
+      right: (Math.abs(p.right - a.right) < 2 || p.left >= 8 - 0.5) && p.left >= 0 && p.right <= document.documentElement.clientWidth, label: document.querySelector(".note-pop.is-pick").getAttribute("aria-label") };
   });
-  t.check("タグは紙でなく、口のすぐ下の小窓（右そろえ）", tp.sheets === 1 && tp.below && tp.right && tp.label === "タグ", JSON.stringify(tp));
+  t.check("タグは紙でなく、口のすぐ下の小窓（右そろえ・画面の中）", tp.sheets === 1 && tp.below && tp.right && tp.label === "タグ", JSON.stringify(tp));
   t.check("使われているタグが並ぶ", (await page.evaluate(() =>
     [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).sort().join(","))) === ["京都", "予定", "本"].sort().join(","));
   await page.fill(".note-pick .js-new", "家");
