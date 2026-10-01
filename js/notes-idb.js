@@ -14,6 +14,8 @@
    - 開けない日は「off」。localStorage へは退きません——ノートの面に一言出して、
      書かせません。
    - 段2：前の版（meta の `ver:<id>`）と、復元で合わせる（`merge`）。
+   - 段3：ノートブックとタグ（`setLabels`）。欄は段1から一件ずつにあるので、
+     入れ物の版も形も変えていません。
    ========================================================= */
 (function () {
   "use strict";
@@ -345,6 +347,44 @@
     emit();
   }
 
+  /** タグの並びをそろえます（前後の空白を落とし、空と重なりを捨てる）。 */
+  function cleanTags(tags) {
+    const out = [];
+    (Array.isArray(tags) ? tags : []).forEach((t) => {
+      const s = String(t == null ? "" : t).trim();
+      if (s && !out.includes(s)) out.push(s);
+    });
+    return out;
+  }
+
+  /** ノートブックとタグ（段3）。★と同じく、並びも更新日も動かしません
+      ——中身を直したのではないので。前の版も取りません。 */
+  function setLabels(id, patch) {
+    const n = byId.get(id);
+    if (!n || phase !== "on") return;
+    if ("notebook" in patch) n.notebook = String(patch.notebook || "").trim();
+    if ("tags" in patch) n.tags = cleanTags(patch.tags);
+    touch(id);
+    emit();
+  }
+
+  /** いま使われているノートブック・タグの名前（消していないノートから、
+      そのつど組み立てます。入れ物は持ちません）。名前の順。 */
+  function namesOf(pick) {
+    const set = new Set();
+    byId.forEach((n) => { if (!n.deletedAt) pick(n).forEach((x) => { if (x) set.add(x); }); });
+    return [...set].sort((a, b) => a.localeCompare(b, "ja"));
+  }
+  const notebooks = () => namesOf((n) => [n.notebook]);
+  const tagNames = () => namesOf((n) => n.tags);
+
+  /** 題。無ければ本文の一行目（一覧と、ぜんぶをさがすの行に）。 */
+  function headOf(n) {
+    if (String(n.title || "").trim()) return n.title.trim();
+    const line = String(n.body || "").split("\n").find((l) => l.trim());
+    return line ? line.trim() : "";
+  }
+
   /** 消す → 最近削除した項目へ。 */
   function remove(id) {
     const n = byId.get(id);
@@ -409,6 +449,7 @@
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
     begin, versions, revert, merge,
+    setLabels, cleanTags, notebooks, tagNames, headOf,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 

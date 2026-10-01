@@ -19,8 +19,23 @@
   let root = null;
   let els = {};
   let query = "";
+  /* 上のチップで選んだ絞り込み（段3）。null は「すべて」。一度に一つだけ。
+     記憶だけに持ちます（localStorage には書きません）。
+     { k: "fav" } ／ { k: "nb", v: 名前 } ／ { k: "tag", v: 名前 } */
+  let pick = null;
 
   const N = () => KN.notes;
+
+  /* タグの色。名前から決まった一色を引きます（色を選ばせない＝どこにも
+     しまわない）。色は買うもののカテゴリと同じ並び（灰の「その他」は外す
+     ——丸が見えなくなるので）。 */
+  const TAG_COLORS = ["#5ea55a", "#d4695f", "#d79a4a", "#5b9bd5", "#4fb3c4", "#9b7ede", "#48b39a", "#e07fa8"];
+  function tagColor(name) {
+    let h = 0;
+    for (const c of String(name)) h = (h * 31 + c.codePointAt(0)) >>> 0;
+    return TAG_COLORS[h % TAG_COLORS.length];
+  }
+  const dot = (t) => html`<span class="chip-dot" style="--cat:${tagColor(t)}"></span>`;
 
   function mount(el) {
     root = el;
@@ -68,12 +83,8 @@
 
   /* ---------------- 一覧 ---------------- */
 
-  /** 題。無ければ本文の一行目。 */
-  function headOf(n) {
-    if (n.title.trim()) return n.title.trim();
-    const line = n.body.split("\n").find((l) => l.trim());
-    return line ? line.trim() : "";
-  }
+  /** 題。無ければ本文の一行目（notes-idb.js。ぜんぶをさがすも同じものを使う）。 */
+  const headOf = (n) => N().headOf(n);
 
   /** 本文の冒頭。題を本文の一行目から借りたときは、その次から。 */
   function leadOf(n) {
@@ -99,11 +110,21 @@
     return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${wd}) ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  const hit = (n, q) => !q || U.foldKana(`${n.title}\n${n.body}`).includes(q);
+  /* 窓の字は、題・本文に加えてノートブックとタグの名前にも当てます。 */
+  const hit = (n, q) => !q || U.foldKana(`${n.title}\n${n.body}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q);
+
+  const picked = (n) => !pick
+    || (pick.k === "fav" ? n.fav
+      : pick.k === "nb" ? n.notebook === pick.v
+        : n.tags.includes(pick.v));
 
   function renderBody() {
     if (!els.body) return;
     const box = els.body;
+    /* チップの列は組み直しても横の位置を保ちます（右のほうのチップを押した
+       とたんに、列が頭へ戻らないように）。 */
+    const was = box.querySelector(".notes-chips");
+    const keepX = was ? was.scrollLeft : 0;
     box.innerHTML = "";
     const st = N().state();
     if (st === "off") {
@@ -112,7 +133,11 @@
     }
     if (st !== "on") return;
 
-    const rows = N().list().filter((n) => hit(n, query));
+    const all = N().list();
+    const chips = chipRow(all);
+    if (chips) { box.append(chips); chips.scrollLeft = keepX; }
+
+    const rows = all.filter((n) => picked(n) && hit(n, query));
     const list = node(html`<div class="notes-list"></div>`);
     rows.forEach((n) => list.append(row(n)));
     box.append(list);
@@ -125,15 +150,57 @@
     }
   }
 
+  /* ---------------- 絞り込みのチップ（段3） ----------------
+
+     すべて・★・ノートブック・タグ（色の丸）。並べるのは使われているもの
+     だけで、件数は出しません（daily の席なので）。「すべて」のほかに選べる
+     ものが無ければ、列ごと出しません。 */
+  function chipRow(all) {
+    const hasFav = all.some((n) => n.fav);
+    const books = N().notebooks();
+    const tags = N().tagNames();
+    /* 選んでいたものが無くなっていたら（最後の★を外した・名前を消した）、すべてへ。 */
+    if (pick && !(pick.k === "fav" ? hasFav : pick.k === "nb" ? books.includes(pick.v) : tags.includes(pick.v))) pick = null;
+    if (!hasFav && !books.length && !tags.length) return null;
+
+    const on = (k, v) => !!pick && pick.k === k && (k === "fav" || pick.v === v);
+    const chip = (k, v, inner, label) => html`
+      <button class="chip js-pick" data-k="${k}" data-v="${v || ""}" aria-pressed="${String(k === "all" ? !pick : on(k, v))}"
+              ${label ? html`aria-label="${label}"` : ""}>${inner}</button>`;
+    const el = node(html`
+      <div class="chip-row notes-chips" role="group" aria-label="絞り込み">
+        ${chip("all", "", "すべて")}
+        ${hasFav ? chip("fav", "", icon("star"), "★") : ""}
+        ${books.map((b) => chip("nb", b, html`${icon("book")}<span>${b}</span>`))}
+        ${tags.map((t) => chip("tag", t, html`${dot(t)}<span>${t}</span>`))}
+      </div>
+    `);
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest(".js-pick");
+      if (!b) return;
+      const k = b.dataset.k;
+      const v = b.dataset.v;
+      /* 選んでいるものをもう一度押したら、すべてへ戻ります。 */
+      pick = k === "all" || on(k, v) ? null : { k, v };
+      KN.motion.fire("select");
+      renderBody();
+    });
+    return el;
+  }
+
   function row(n) {
     const head = headOf(n);
     const lead = leadOf(n);
     const el = node(html`
-      <div class="note-row" data-id="${n.id}">
+      <div class="note-row is-card" data-id="${n.id}">
         <button class="note-open js-open">
           <span class="note-t">${head}</span>
           ${lead ? html`<span class="note-x">${lead}</span>` : ""}
-          <span class="note-d">${whenOf(n.updatedAt)}</span>
+          <span class="note-foot">
+            <span class="note-d">${whenOf(n.updatedAt)}</span>
+            ${n.notebook ? html`<span class="note-nb">${icon("book")}<span>${n.notebook}</span></span>` : ""}
+            ${n.tags.map((t) => html`<span class="note-tag">${dot(t)}<span>${t}</span></span>`)}
+          </span>
         </button>
         <button class="fav ${n.fav ? "is-on" : ""}" aria-pressed="${String(n.fav)}"
                 aria-label="${head || "ノート"} に★を付ける">${icon("star")}</button>
@@ -170,6 +237,7 @@
         <input class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
                autocomplete="off">
         <time class="note-when js-when" datetime="${note.createdAt}">${stampOf(note.createdAt)}</time>
+        <div class="note-labels js-labels"></div>
         <textarea class="note-body-in js-text" aria-label="本文" rows="6"></textarea>
       </div>
     `);
@@ -204,6 +272,39 @@
       textIn.focus();
     });
 
+    /* ノートブックとタグ（段3）。日時のすぐ下に、付いているものと「＋」。
+       置く前の新しいノートは、手元の一件に持っておいて、置くときに一緒に
+       入ります（★と同じ）。 */
+    const labelsEl = body.querySelector(".js-labels");
+    const setLabels = (patch) => {
+      if (stored) N().setLabels(note.id, patch);
+      else {
+        if ("notebook" in patch) note.notebook = String(patch.notebook || "").trim();
+        if ("tags" in patch) note.tags = N().cleanTags(patch.tags);
+      }
+      paintLabels();
+    };
+    const paintLabels = () => {
+      labelsEl.innerHTML = "";
+      labelsEl.append(node(html`
+        <div class="note-labels-in">
+          ${note.notebook ? html`<button class="chip js-nb">${icon("book")}<span>${note.notebook}</span></button>` : ""}
+          ${note.tags.map((t) => html`<button class="chip js-tags">${dot(t)}<span>${t}</span></button>`)}
+          <button class="chip note-tag-add js-tags" aria-label="タグ">${icon("plus")}${note.tags.length ? "" : html`<span>タグ</span>`}</button>
+        </div>
+      `));
+      labelsEl.querySelectorAll(".js-tags").forEach((b) => b.addEventListener("click", () => {
+        KN.motion.fire("select");
+        pickTags(note, (tags) => setLabels({ tags }));
+      }));
+      const nb = labelsEl.querySelector(".js-nb");
+      if (nb) nb.addEventListener("click", () => {
+        KN.motion.fire("select");
+        pickNotebook(note, (name) => setLabels({ notebook: name }));
+      });
+    };
+    paintLabels();
+
     const finish = () => {
       sync();
       /* 何も書かずに閉じた新しいノートは残しません。 */
@@ -223,6 +324,8 @@
             if (stored) N().setFav(note.id, !note.fav);
             else note.fav = !note.fav;
           } },
+        { id: "notebook", icon: "book", label: "ノートブック",
+          onPick: () => pickNotebook(note, (name) => setLabels({ notebook: name })) },
         { id: "versions", icon: "clock", label: "前の版",
           onPick: () => {
             if (!stored) { KN.ui.toast("前の版はありません"); return; }
@@ -257,6 +360,87 @@
        画面の半分を取るので。 */
     if (fresh) KN.ui.focusNow(textIn);
     return h;
+  }
+
+  /* ---------------- タグ・ノートブックを選ぶ紙（段3） ----------------
+
+     どちらも、いま使われている名前をチップで並べ、下の欄で新しい名前を
+     足します。欄に打ったまま閉じても、その名前は付きます（打った字が
+     消えたように見せないため）。 */
+  function nameField(placeholder) {
+    return node(html`
+      <input class="input note-name-in js-new" placeholder="${placeholder}" aria-label="${placeholder}"
+             autocomplete="off" spellcheck="false" enterkeyhint="done">
+    `);
+  }
+  const onEnter = (input, fn) => input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    e.preventDefault();
+    fn();
+  });
+
+  function pickTags(note, done) {
+    let mine = note.tags.slice();
+    const box = node(html`<div class="note-pick"><div class="chip-row js-chips"></div></div>`);
+    const chipsEl = box.querySelector(".js-chips");
+    const input = nameField("新しいタグ");
+    box.append(input);
+    const paint = () => {
+      const names = [...new Set(N().tagNames().concat(mine))].sort((a, b) => a.localeCompare(b, "ja"));
+      chipsEl.innerHTML = "";
+      chipsEl.hidden = !names.length;
+      names.forEach((t) => {
+        const b = node(html`<button class="chip" aria-pressed="${String(mine.includes(t))}">${dot(t)}<span>${t}</span></button>`);
+        b.addEventListener("click", () => {
+          U.haptic();
+          mine = mine.includes(t) ? mine.filter((x) => x !== t) : mine.concat(t);
+          done(mine);
+          paint();
+        });
+        chipsEl.append(b);
+      });
+    };
+    const addTyped = () => {
+      const t = input.value.trim();
+      input.value = "";
+      if (!t || mine.includes(t)) return;
+      mine = mine.concat(t);
+      done(mine);
+      paint();
+    };
+    onEnter(input, () => { U.haptic(); addTyped(); });
+    paint();
+    KN.ui.sheet({ title: "タグ", content: box, onClose: addTyped });
+  }
+
+  function pickNotebook(note, done) {
+    const box = node(html`<div class="note-pick"><div class="chip-row js-chips"></div></div>`);
+    const chipsEl = box.querySelector(".js-chips");
+    const input = nameField("新しいノートブック");
+    box.append(input);
+    let h = null;
+    let settled = false;
+    const choose = (name) => {
+      settled = true;
+      done(name);
+      if (h) h.close();
+    };
+    const names = N().notebooks();
+    if (note.notebook && !names.includes(note.notebook)) names.push(note.notebook);
+    [""].concat(names).forEach((nb) => {
+      const b = node(html`
+        <button class="chip" aria-pressed="${String(note.notebook === nb)}">
+          ${nb ? html`${icon("book")}<span>${nb}</span>` : "なし"}
+        </button>`);
+      b.addEventListener("click", () => { U.haptic(); choose(nb); });
+      chipsEl.append(b);
+    });
+    onEnter(input, () => { if (input.value.trim()) { U.haptic(); choose(input.value.trim()); } });
+    h = KN.ui.sheet({
+      title: "ノートブック",
+      content: box,
+      onClose: () => { if (!settled && input.value.trim()) done(input.value.trim()); },
+    });
   }
 
   /* ---------------- 前の版（段2） ----------------
