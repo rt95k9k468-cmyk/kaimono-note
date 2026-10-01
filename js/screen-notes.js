@@ -91,6 +91,14 @@
     return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
   }
 
+  /** 書く紙と前の版の日時。「2026年10月1日(木) 9:05」。 */
+  function stampOf(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const wd = "日月火水木金土"[d.getDay()];
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${wd}) ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
   const hit = (n, q) => !q || U.foldKana(`${n.title}\n${n.body}`).includes(q);
 
   function renderBody() {
@@ -155,11 +163,13 @@
     const note = fresh ? N().draft() : N().get(id);
     if (!note) return;
     let stored = !fresh;
+    N().begin(note.id);
 
     const body = node(html`
       <div class="note-edit">
         <input class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
                autocomplete="off">
+        <time class="note-when js-when" datetime="${note.createdAt}">${stampOf(note.createdAt)}</time>
         <textarea class="note-body-in js-text" aria-label="本文" rows="6"></textarea>
       </div>
     `);
@@ -213,6 +223,16 @@
             if (stored) N().setFav(note.id, !note.fav);
             else note.fav = !note.fav;
           } },
+        { id: "versions", icon: "clock", label: "前の版",
+          onPick: () => {
+            if (!stored) { KN.ui.toast("前の版はありません"); return; }
+            sync();
+            openVersions(note.id, (v) => {
+              titleIn.value = v.title;
+              textIn.value = v.body;
+              grow();
+            });
+          } },
         { id: "delete", icon: "trash", label: "削除", danger: true,
           onPick: () => {
             if (stored && !blank()) {
@@ -237,6 +257,51 @@
        画面の半分を取るので。 */
     if (fresh) KN.ui.focusNow(textIn);
     return h;
+  }
+
+  /* ---------------- 前の版（段2） ----------------
+
+     直す前の中身は、書く紙を開いて最初に直したときに残っています
+     （notes-idb.js）。並べて、押したら中身を読めて、戻せる。戻すと、
+     いまの中身も前の版に入るので、戻したことも戻せます。 */
+  async function openVersions(id, onRevert) {
+    let list = [];
+    try { list = await N().versions(id); } catch (err) { list = []; }
+    if (!list.length) { KN.ui.toast("前の版はありません"); return; }
+    const box = node(html`<div class="notes-versions"></div>`);
+    let h = null;
+    list.forEach((v) => {
+      const r = node(html`
+        <button class="note-open note-ver">
+          <span class="note-d">${stampOf(v.at)}</span>
+          <span class="note-t">${headOf(v) || " "}</span>
+          ${leadOf(v) ? html`<span class="note-x">${leadOf(v)}</span>` : ""}
+        </button>
+      `);
+      r.addEventListener("click", () => { KN.motion.fire("select"); openVersion(id, v, () => { if (h) h.close(); onRevert(v); }); });
+      box.append(r);
+    });
+    h = KN.ui.sheet({ title: "前の版", content: box });
+  }
+
+  function openVersion(id, v, done) {
+    const box = node(html`
+      <div class="note-edit is-read">
+        ${v.title.trim() ? html`<div class="note-title-in">${v.title}</div>` : ""}
+        <time class="note-when">${stampOf(v.at)}</time>
+        <div class="note-body-in note-read"></div>
+      </div>
+    `);
+    box.querySelector(".note-read").textContent = v.body;
+    const foot = node(html`<button class="btn btn-primary btn-block js-revert">この版に戻す</button>`);
+    const h = KN.ui.sheet({ title: "", content: box, footer: foot });
+    foot.addEventListener("click", () => {
+      U.haptic();
+      if (!N().revert(id, v)) return;
+      h.close();
+      done();
+      KN.ui.toast("戻しました");
+    });
   }
 
   /* ---------------- 最近削除した項目 ---------------- */

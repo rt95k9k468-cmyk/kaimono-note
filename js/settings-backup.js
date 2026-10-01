@@ -272,9 +272,12 @@
         return;
       }
       const when = r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出し` : "書き出し日時の無いファイル";
+      /* ノート（記録の外。docs/notes.md の段2）は置き換えずに合わせます。 */
+      let book = null;
+      try { book = JSON.parse(text).noteBook || null; } catch (err) { book = null; }
       const ok = await KN.ui.confirm({
         title: "復元しますか？",
-        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}いまのデータはすべて置き換わります。直前の状態は自動バックアップに残ります。`,
+        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
         okLabel: "復元する",
         danger: true,
       });
@@ -282,11 +285,18 @@
       if (!(await keepBefore("復元前"))) return;
       try {
         store.importJSON(text);
-        KN.ui.toast("復元しました");
       } catch (err) {
         console.error(err);
         KN.ui.toast(`読み込めませんでした：${String((err && err.message) || err)}`);
+        return;
       }
+      if (!book || !KN.notes) { KN.ui.toast("復元しました"); return; }
+      try {
+        if (await KN.notes.merge(book)) { KN.ui.toast("復元しました"); return; }
+      } catch (err) {
+        console.error(err);
+      }
+      KN.ui.toast("復元しました（ノートは合わせられませんでした）", { duration: 6000 });
     });
     return file;
   }

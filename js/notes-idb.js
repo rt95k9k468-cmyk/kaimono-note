@@ -13,6 +13,7 @@
      localStorage に流れ込むと容量からあふれて、全部の保存が止まります。
    - 開けない日は「off」。localStorage へは退きません——ノートの面に一言出して、
      書かせません。
+   - 段2：前の版（meta の `ver:<id>`）と、復元で合わせる（`merge`）。
    ========================================================= */
 (function () {
   "use strict";
@@ -24,12 +25,19 @@
   const SOON = 600;                       // 打ち終わりから書くまで（ms）
   const OPEN_WAIT = 8000;                 // これだけ待って開かなければ off
   const KEEP_DELETED = 30 * 864e5;        // 最近削除した項目に置いておく長さ
+  const KEEP_VERS = 30;                   // 一つのノートに残す前の版の数
 
   /* idle → loading → on / off。off から遅れて開けたら on へ。 */
   let phase = "idle";
   let db = null;
   const byId = new Map();
   const dirty = new Set();
+  /* 前の版（段2）。棚は meta の `ver:<id>`（版1の入れ物のまま。棚を足さない）。
+     書く前の版は、ノートと**同じ取引で**書きます——直した中身だけが残って、
+     前の中身がどこにも無い、という瞬間を作らないため。 */
+  const pendVer = new Map();              // id → まだ書いていない前の版
+  const verCache = new Map();             // id → 読んだ版の並び（新しい順）
+  const kept = new Set();                 // この書く回で、もう前の版を取ったノート
   let timer = null;
   let readyP = null;
   let settle = null;
@@ -126,14 +134,14 @@
   }
 
   /** 最近削除した項目のうち、30日を過ぎたものを本当に消します（開いたとき）。 */
-  function purge() {
+  function purge(hold) {
     const now = Date.now();
     byId.forEach((n, id) => {
       if (!n.deletedAt) return;
       const at = Date.parse(n.deletedAt);
       if (isFinite(at) && now - at > KEEP_DELETED) { byId.delete(id); dirty.add(id); }
     });
-    if (dirty.size) writeNow();
+    if (dirty.size && !hold) writeNow();
   }
 
   /* ---------------- 書く ---------------- */
@@ -157,19 +165,35 @@
     if (!dirty.size || phase !== "on") return Promise.resolve();
     const ids = [...dirty];
     dirty.clear();
+    const vers = new Map();
+    ids.forEach((id) => { if (pendVer.has(id)) { vers.set(id, pendVer.get(id)); pendVer.delete(id); } });
+    const wrote = new Map();
     return conn().then((d) => new Promise((resolve, reject) => {
-      const t = d.transaction(["notes"], "readwrite");
+      const t = d.transaction(["notes", "meta"], "readwrite");
       const st = t.objectStore("notes");
+      const meta = t.objectStore("meta");
       ids.forEach((id) => {
         const n = byId.get(id);
-        if (n) st.put(n); else st.delete(id);
+        if (n) st.put(n); else { st.delete(id); meta.delete(`ver:${id}`); }
+      });
+      vers.forEach((add, id) => {
+        if (!byId.has(id)) return;
+        const req = meta.get(`ver:${id}`);
+        req.onsuccess = () => {
+          const list = mergeVers(add, (req.result && req.result.list) || []);
+          meta.put({ k: `ver:${id}`, list });
+          wrote.set(id, list);
+        };
       });
       t.oncomplete = () => resolve();
       t.onerror = t.onabort = () => reject(t.error || new Error("書けませんでした"));
     })).then(() => {
+      wrote.forEach((list, id) => verCache.set(id, list));
+      ids.forEach((id) => { if (!byId.has(id)) verCache.delete(id); });
       if (KN.dropbox && KN.dropbox.soon) KN.dropbox.soon();
     }, (err) => {
       ids.forEach((id) => dirty.add(id));
+      vers.forEach((add, id) => pendVer.set(id, add.concat(pendVer.get(id) || [])));
       /* つなぎが裏で切れていた（iOS が閉じた）なら、開き直して一度だけ。 */
       if (!retried) {
         if (db) { try { db.close(); } catch (_) { /* もう閉じている */ } }
@@ -182,6 +206,105 @@
   }
 
   const touch = (id) => { dirty.add(id); schedule(); };
+
+  /* ---------------- 前の版 ---------------- */
+
+  const same = (a, b) => a.title === b.title && a.body === b.body;
+  const blankOf = (n) => !String(n.title || "").trim() && !String(n.body || "").trim();
+
+  /** 新しく足す版と、すでにある版を一つの並びに（新しい順・同じ中身は一つ・
+      KEEP_VERS まで）。 */
+  function mergeVers(add, old) {
+    const out = [];
+    add.concat(old)
+      .filter((v) => v && typeof v.body === "string" && typeof v.title === "string")
+      .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
+      .forEach((v) => { if (!out.some((o) => same(o, v))) out.push({ at: v.at || "", title: v.title, body: v.body }); });
+    return out.slice(0, KEEP_VERS);
+  }
+
+  /** いまの中身を、次に書くときに前の版として残します。空なら残しません。 */
+  function keepNow(n) {
+    if (blankOf(n)) return;
+    const v = { at: n.updatedAt, title: n.title, body: n.body };
+    pendVer.set(n.id, [v].concat(pendVer.get(n.id) || []));
+  }
+
+  /** 書く紙を開いたとき。この回で最初に直したときに、直す前を版に残します。 */
+  function begin(id) { kept.delete(id); }
+
+  /** 前の版（新しい順）。入れ物から読むので約束で返ります。 */
+  function versions(id) {
+    if (phase !== "on") return Promise.resolve([]);
+    const pend = pendVer.get(id) || [];
+    if (verCache.has(id)) return Promise.resolve(mergeVers(pend, verCache.get(id)));
+    return conn().then((d) => new Promise((resolve, reject) => {
+      const t = d.transaction(["meta"], "readonly");
+      const req = t.objectStore("meta").get(`ver:${id}`);
+      t.oncomplete = () => resolve((req.result && req.result.list) || []);
+      t.onerror = t.onabort = () => reject(t.error || new Error("読めませんでした"));
+    })).then((list) => {
+      verCache.set(id, list);
+      return mergeVers(pendVer.get(id) || [], list);
+    });
+  }
+
+  /** 前の版へ戻します。いまの中身は、戻す前に版へ残します（戻したことも
+      戻せるように）。 */
+  function revert(id, v) {
+    const n = byId.get(id);
+    if (!n || phase !== "on" || !v) return false;
+    if (same(n, v)) return true;
+    keepNow(n);
+    n.title = v.title;
+    n.body = v.body;
+    n.updatedAt = U.today();
+    kept.add(id);
+    dirty.add(id);
+    writeNow();
+    emit();
+    return true;
+  }
+
+  /* ---------------- 復元で合わせる ----------------
+
+     「バックアップを保存」・Dropbox の中身の `noteBook` を、いまのノートに
+     **合わせます**（置き換えません。いまあるノートは一つも消しません）。
+       - こちらに無いノート → 足す。
+       - 同じノートで中身が違う → 新しく直したほうを本文に。もう片方は
+         前の版に残す（どちらの中身も、どこかに残る）。
+       - ★・消した印はこちらのまま（こちらに無いノートはファイルのまま）。 */
+  function merge(book) {
+    return start().then(() => {
+      if (phase !== "on") return null;
+      const res = { added: 0, changed: 0 };
+      if (!book || book.v !== 1 || !Array.isArray(book.notes)) return res;
+      book.notes.forEach((raw) => {
+        if (!raw || typeof raw !== "object" || raw.id == null || raw.id === "") return;
+        const inc = shape(raw);
+        const mine = byId.get(inc.id);
+        if (!mine) {
+          byId.set(inc.id, inc);
+          dirty.add(inc.id);
+          res.added++;
+          return;
+        }
+        if (same(mine, inc)) return;
+        if (String(inc.updatedAt) > String(mine.updatedAt)) {
+          keepNow(mine);
+          mine.title = inc.title;
+          mine.body = inc.body;
+          mine.updatedAt = inc.updatedAt;
+        } else {
+          keepNow(inc);
+        }
+        dirty.add(inc.id);
+        res.changed++;
+      });
+      purge(true);
+      return writeNow().then(() => { emit(); return res; });
+    });
+  }
 
   /* ---------------- 外から ---------------- */
 
@@ -203,9 +326,11 @@
   function edit(id, patch) {
     const n = byId.get(id);
     if (!n || phase !== "on") return false;
-    let changed = false;
-    Object.keys(patch).forEach((k) => { if (n[k] !== patch[k]) { n[k] = patch[k]; changed = true; } });
+    const changed = Object.keys(patch).some((k) => n[k] !== patch[k]);
     if (!changed) return true;
+    /* この回で最初に直すときは、直す前を前の版へ。 */
+    if (!kept.has(id)) { kept.add(id); keepNow(n); }
+    Object.assign(n, patch);
     n.updatedAt = U.today();
     touch(id);
     return true;
@@ -271,7 +396,10 @@
 
   window.addEventListener("pagehide", () => { flush(); });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flush();
+    if (document.visibilityState !== "hidden") return;
+    flush();
+    /* 戻ってきて直したら、別の回として前の版を取ります。 */
+    kept.clear();
   });
 
   KN.notes = {
@@ -280,6 +408,7 @@
     settled: () => phase === "on" || phase === "off",
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
+    begin, versions, revert, merge,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 
