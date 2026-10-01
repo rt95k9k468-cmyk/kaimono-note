@@ -152,14 +152,14 @@ const { open, checker } = require("./lib");
   const bUpd = await page.evaluate((i) => KN.notes.get(i.b).updatedAt, ids);
   await page.click(`#screen-notes .note-row[data-id="${ids.b}"] .js-open`);
   await page.waitForSelector(".sheet.is-note.is-open");
-  /* 段4から、ノートブック（左）とタグ（右）は題の上の頭の行（Evernote の並び）。 */
+  /* 段4.2から、ノートブックは頭の行（‹ の隣）、タグは題の下の日時の行。 */
   const lab = await page.$eval(".sheet.is-note .note-labels", (e) => {
     const title = e.closest(".note-edit").querySelector(".note-title-in").getBoundingClientRect();
-    const nb = e.closest(".note-meta").querySelector(".js-nb").getBoundingClientRect();
+    const nb = document.querySelector(".sheet.is-note .sheet-head .js-nb").getBoundingClientRect();
     const r = e.getBoundingClientRect();
-    return { above: r.bottom <= title.top + 1, right: r.right > nb.right, text: e.textContent.trim() };
+    return { below: r.top >= title.bottom - 1, nbAbove: nb.bottom <= title.top + 1, text: e.textContent.trim() };
   });
-  t.check("題の上の頭の行に、ノートブック（左）とタグの口（右）", lab.above && lab.right && lab.text === "タグ", JSON.stringify(lab));
+  t.check("ノートブックは頭の行、タグの口は題の下", lab.below && lab.nbAbove && lab.text === "タグ", JSON.stringify(lab));
   await page.click(".sheet.is-note .note-tag-add");
   await popOpen();
   const tp = await page.evaluate(() => {
@@ -209,7 +209,7 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => !document.querySelector(".note-pop-cover"));
   t.check("新しいノートブックに入る", (await page.evaluate((i) => KN.notes.get(i.b).notebook, ids)) === "家のこと");
-  t.check("書く紙の口にノートブックが出る", (await page.$eval(".sheet.is-note .note-meta .js-nb", (e) => e.textContent.trim())) === "家のこと");
+  t.check("書く紙の口にノートブックが出る", (await page.$eval(".sheet.is-note .sheet-head .js-nb", (e) => e.textContent.trim())) === "家のこと");
   await escTop();
   t.check("タグ・ノートブックでは更新日が動かない", (await page.evaluate((i) => KN.notes.get(i.b).updatedAt, ids)) === bUpd);
 

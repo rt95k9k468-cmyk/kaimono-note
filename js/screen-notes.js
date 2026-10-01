@@ -234,24 +234,34 @@
     let stored = !fresh;
     let h = null;
     let closed = false;
+    let fold = null;
     N().begin(note.id);
 
     /* 全画面の一枚（段4。2026年10月1日、iPhone で「記事を書くときはフル
-       画面が絶対使いやすい」）。頭の行はノートブック（左）とタグ（右）、
-       その下に大きな題・作った日時・本文。 */
+       画面が絶対使いやすい」）。段4.2で詰めた：ノートブックは頭の行（‹ の
+       隣）、タグは日時と同じ行。題のまわりで一行ぶん浮く（キーボードが
+       出ると、書く場所が狭い）。 */
     const body = node(html`
       <div class="note-edit">
-        <div class="note-meta">
-          <button class="note-nb-btn js-nb">${icon("book")}<span class="js-nb-name"></span></button>
-          <div class="note-labels js-labels"></div>
-        </div>
         <input class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
                autocomplete="off">
-        <time class="note-when js-when" datetime="${note.createdAt}">${stampOf(note.createdAt)}</time>
+        <div class="note-sub">
+          <time class="note-when js-when" datetime="${note.createdAt}">${stampOf(note.createdAt)}</time>
+          <div class="note-labels js-labels"></div>
+        </div>
         <div class="note-view js-view" hidden></div>
-        <textarea class="note-body-in js-text" aria-label="本文" rows="6"></textarea>
+        <textarea class="note-body-in js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
       </div>
     `);
+    /* 頭の行のまん中：ノートブック。下へ送って大きな題が隠れたら、その
+       上に題を小さく出す（Notion の形。情報が上にまとまる）。 */
+    const mid = node(html`
+      <div class="note-head-mid">
+        <span class="note-head-t js-head-t" aria-hidden="true"></span>
+        <button class="note-nb-btn js-nb">${icon("book")}<span class="js-nb-name"></span></button>
+      </div>
+    `);
+    const headT = mid.querySelector(".js-head-t");
     const titleIn = body.querySelector(".js-title");
     const textIn = body.querySelector(".js-text");
     const viewEl = body.querySelector(".js-view");
@@ -259,6 +269,8 @@
        一つ落とします——本文は打ったままの形で持つので。docs/notes.md）。 */
     titleIn.value = note.title;
     textIn.value = note.body;
+    const paintHeadT = () => { headT.textContent = titleIn.value.trim(); };
+    paintHeadT();
 
     /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。 */
     const grow = () => {
@@ -314,8 +326,48 @@
         return;
       }
       const ln = e.target.closest("[data-at]");
+      /* 押した行の高さを、入れ替わる前に測っておく（整えた姿と書く欄は
+         字の大きさと行の高さが同じなので、書く欄でもほぼ同じところ）。 */
+      const v = viewEl.getBoundingClientRect();
+      const r = ln ? ln.getBoundingClientRect() : null;
       toWrite(ln ? Number(ln.dataset.end) : textIn.value.length);
+      if (r) afterKeyboard(() => reveal(r.top - v.top, r.bottom - v.top));
+      else afterKeyboard(followEnd);
     });
+
+    /* ---- カーソルの行を見せる（段4.2） ----
+
+       紙の送りを ui.js の「欄を真ん中へ」に任せない（data-own-scroll）。
+       本文の欄は中身ぶん伸びるので、いつも「見えきっていない」と読まれ、
+       欄の真ん中が画面の真ん中へ来る——打ち始めると題ごと上へ飛んでいた
+       （2026年10月1日、iPhone）。動かすのは、隠れたぶんだけ。底は道具の帯の
+       上端（帯は中身の上に浮いている）。 */
+    const reveal = (y0, y1) => {
+      const sc = h && h.el.querySelector(".sheet-body");
+      if (!sc || !writing) return;
+      const s = sc.getBoundingClientRect();
+      const t = textIn.getBoundingClientRect();
+      const bar = tools.getBoundingClientRect();
+      const floor = bar.height ? Math.min(s.bottom, bar.top) : s.bottom;
+      const room = 12;
+      if (t.top + y1 > floor - room) sc.scrollTop += t.top + y1 - (floor - room);
+      else if (t.top + y0 < s.top + room) sc.scrollTop -= s.top + room - (t.top + y0);
+    };
+    /* 最後の行で打っているあいだは、その行を帯の上に。途中の行は iOS が
+       自分で見せる。 */
+    let lineH = 0;
+    const followEnd = () => {
+      if (!writing || document.activeElement !== textIn) return;
+      if (textIn.value.indexOf("\n", textIn.selectionEnd) !== -1) return;
+      lineH = lineH || parseFloat(getComputedStyle(textIn).lineHeight) || 28;
+      reveal(textIn.offsetHeight - lineH, textIn.offsetHeight);
+    };
+    /* キーボードが出きるまで紙は縮み続けるので、何度か見直す（ui.js と同じ拍）。 */
+    const afterKeyboard = (fn) => {
+      [140, 340, 620].forEach((ms) => setTimeout(() => {
+        if (!closed && document.activeElement === textIn) fn();
+      }, ms));
+    };
     textIn.addEventListener("focus", () => {
       if (!writing) toWrite(null);
     });
@@ -337,7 +389,7 @@
     );
     /* 中身が変わったあとに、いつも通る道。 */
     const changed = () => {
-      if (writing) grow(); else paintView();
+      if (writing) { grow(); followEnd(); } else paintView();
       sync();
       paintTools();
     };
@@ -362,8 +414,8 @@
       if (t === "historyUndo" || t === "historyRedo") return;
       hist.note(t.startsWith("delete") ? "del" : "type");
     });
-    titleIn.addEventListener("input", sync);
-    textIn.addEventListener("input", () => { grow(); sync(); paintTools(); });
+    titleIn.addEventListener("input", () => { paintHeadT(); sync(); });
+    textIn.addEventListener("input", () => { grow(); followEnd(); sync(); paintTools(); });
     /* 題で改行を押したら、本文へ。 */
     titleIn.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.isComposing) return;
@@ -434,7 +486,7 @@
 
     /* ---- ノートブック（左上）とタグ（右上）。段3の口を、頭の行へ ---- */
     const labelsEl = body.querySelector(".js-labels");
-    const nbBtn = body.querySelector(".js-nb");
+    const nbBtn = mid.querySelector(".js-nb");
     const setLabels = (patch) => {
       if (stored) N().setLabels(note.id, patch);
       else {
@@ -467,6 +519,7 @@
     const finish = () => {
       closed = true;
       tintBar(false);
+      if (fold) fold.disconnect();
       document.removeEventListener("selectionchange", onSel);
       sync();
       /* 何も書かずに閉じた新しいノートは残しません。 */
@@ -492,6 +545,7 @@
             hist.note("revert", true);
             titleIn.value = v.title;
             textIn.value = v.body;
+            paintHeadT();
             changed();
           });
         } },
@@ -525,7 +579,15 @@
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
     moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu); });
     h.el.querySelector(".sheet-head").append(moreBtn);
+    closeBtn.after(mid);
     h.el.append(tools);
+    /* 大きな題が上へ隠れたら、頭の行に題を小さく（.is-folded）。 */
+    if ("IntersectionObserver" in window) {
+      fold = new IntersectionObserver(([e]) => {
+        h.el.classList.toggle("is-folded", !e.isIntersecting);
+      }, { root: h.el.querySelector(".sheet-body") });
+      fold.observe(titleIn);
+    }
 
     /* ＋から来たときは、**押した流れのまま**本文へカーソルを入れます（iOS は
        ここで同期に focus しないとキーボードを出しません。ui.js の focusNow）。
@@ -549,9 +611,14 @@
      ホーム画面のアプリでは、時刻や電池の並ぶ帯はページの外で、色は
      theme-color（灰の地）で塗られます。全画面の書く紙は白なので、開いて
      いるあいだだけ帯も紙の色に合わせます（2026年10月1日、iPhone で「一番
-     上だけ灰色でおかしい」）。閉じたら元の値へ。 */
+     上だけ灰色でおかしい」）。閉じたら元の値へ。
+     theme-color の差し替えだけでは iPhone の帯は灰のままだった（段4.1）。
+     iOS 26 は帯をページの地（html・body の背景）から取るとみて、地も紙の
+     色にする（html.is-note-full。電話の幅だけ——広い画面は紙が真ん中の
+     一枚で、まわりに地が見えている）。 */
   let barSaved = null;
   function tintBar(on) {
+    document.documentElement.classList.toggle("is-note-full", on);
     const metas = [...document.querySelectorAll('meta[name="theme-color"]')];
     if (on) {
       if (barSaved) return;
