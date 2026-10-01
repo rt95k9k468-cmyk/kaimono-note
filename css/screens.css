@@ -5352,6 +5352,7 @@ a.btn { text-decoration: none; }
   max-width: 100%;
   font-size: var(--fs-lg);
   font-weight: 700;
+  color: var(--c-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5451,6 +5452,9 @@ textarea.note-title-in {
 /* 整えた姿（読むとき。js/note-format.js の render）。字の大きさと行の高さは
    書く欄と同じ——押して入れ替わっても、字が跳ねないように。 */
 .note-view { color: var(--c-text); overflow-wrap: anywhere; cursor: text; }
+/* ノートの本文は両端揃え（2026年10月1日、利用者の希望）。書く欄も読む姿も前の版も。 */
+.note-view,
+.note-body-in { text-align: justify; text-justify: inter-character; }
 .note-view > * { white-space: pre-wrap; }
 .nv-h { font-weight: 700; line-height: var(--lh-tight); margin: .5em 0 .2em; }
 .nv-h1 { font-size: 1.45em; }

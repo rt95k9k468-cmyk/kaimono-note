@@ -369,11 +369,15 @@
   }
 
   /** 作った日時を差し替えます（Evernote から移した過去のノート）。★と
-      同じく、並びも更新日も動かさず、前の版も取りません。 */
-  function setCreated(id, iso) {
+      同じく、並びも更新日も動かさず、前の版も取りません。
+      noTime … 日だけ選んだ印（`noTime: true`）。時刻は出しません（段4.5）。
+      欄が無いノートは時刻ありのまま——前からのノートは何も変わりません。 */
+  function setCreated(id, iso, noTime) {
     const n = byId.get(id);
     if (!n || phase !== "on" || isNaN(new Date(iso).getTime())) return;
     n.createdAt = iso;
+    if (noTime) n.noTime = true;
+    else delete n.noTime;
     touch(id);
     emit();
   }
