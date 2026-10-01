@@ -272,10 +272,17 @@
     const paintHeadT = () => { headT.textContent = titleIn.value.trim(); };
     paintHeadT();
 
-    /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。 */
+    /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。字のある高さ
+       （textH）も測っておく——欄は短くても 38vh あるので、欄の底は最後の
+       行ではない（下の followEnd）。 */
+    let textH = 0;
     const grow = () => {
-      textIn.style.height = "auto";
-      textIn.style.height = `${textIn.scrollHeight}px`;
+      const s = textIn.style;
+      s.minHeight = "0";
+      s.height = "0";
+      textH = textIn.scrollHeight;
+      s.minHeight = "";
+      s.height = `${textH}px`;
     };
 
     const blank = () => !titleIn.value.trim() && !textIn.value.trim();
@@ -354,13 +361,15 @@
       else if (t.top + y0 < s.top + room) sc.scrollTop -= s.top + room - (t.top + y0);
     };
     /* 最後の行で打っているあいだは、その行を帯の上に。途中の行は iOS が
-       自分で見せる。 */
+       自分で見せる。最後の行は字のある高さの底（textH）で、欄の底では
+       ない——欄の底を見せようとすると、本文が短いときに題ごと上へ送って
+       いた（段4.2のあと、空の本文を押すと題が隠れた。2026年10月1日、iPhone）。 */
     let lineH = 0;
     const followEnd = () => {
       if (!writing || document.activeElement !== textIn) return;
       if (textIn.value.indexOf("\n", textIn.selectionEnd) !== -1) return;
       lineH = lineH || parseFloat(getComputedStyle(textIn).lineHeight) || 28;
-      reveal(textIn.offsetHeight - lineH, textIn.offsetHeight);
+      reveal(textH - lineH, textH);
     };
     /* キーボードが出きるまで紙は縮み続けるので、何度か見直す（ui.js と同じ拍）。 */
     const afterKeyboard = (fn) => {
