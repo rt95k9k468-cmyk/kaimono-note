@@ -3,7 +3,8 @@
    「5:30 以前と 22:30 以後に就寝アイコンを。朝は左右反転。道を外れた時間に開いて
    いたら z Z をいびきのように」。起きる時刻 5:30・寝る時刻 22:30 で、
    - 道は 5:30 から（段の割りは 5:00、角はちょうどの時）。一段目は短い
-   - 寝床は道の両端の外に二つ。朝は左右を返し（歩く人の逆）、夜は返さない
+   - 寝床は道の両端の外に二つ。朝も夜も同じ向き（10月1日、夜に揃えた）。道の端から離す
+   - 寝ている時間でなければ薄く（10月1日）
    - 道の端の時刻は寝床の下。寝床と札・時刻・連れは DOM の箱で重ならない
    - 4:50 と 23:10：人は出ず、その側の寝床だけ z Z がのぼる（is-snore・animation）、
      いまの時刻は寝床の上。12:00：人が立ち、どちらも止まっている
@@ -44,6 +45,7 @@ const read = (page) => page.evaluate(() => {
   const box = (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
   const beds = [...road.querySelectorAll(".road-bed")].map((b) => ({
     tf: b.querySelector(".road-bed-body").getAttribute("transform"), snore: b.classList.contains("is-snore"),
+    op: Number(getComputedStyle(b).opacity),
     anim: anim[[...road.querySelectorAll(".road-bed")].indexOf(b)],
     ink: box(b.querySelector(".road-bed-ink")), z: box(b.querySelector(".road-z.is-big")),
   }));
@@ -53,7 +55,7 @@ const read = (page) => page.evaluate(() => {
     return { l: r.left, r: r.right, t: r.top + parseFloat(s.paddingTop || 0), b: r.bottom - parseFloat(s.paddingBottom || 0) }; };
   return {
     start: g.start, begin: g.begin, end: g.end, d0: g.d0,
-    first: g.point(g.d0), last: g.point(g.total),
+    first: g.point(g.d0), last: g.point(g.total), bedHi: st.beds[0].hi,
     base: road.querySelector(".road-base").getAttribute("d"),
     edges: [...road.querySelectorAll(".road-edge")].map((e) => ({ txt: e.textContent.trim(), ...box(e) })),
     turns: [...road.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()),
@@ -80,8 +82,8 @@ const cx = (b) => (b.l + b.r) / 2;
     c.check("角はちょうどの時（8:00 から）", r.turns.length > 0 && r.turns.every((t) => /:00$/.test(t)), JSON.stringify(r.turns));
     c.check("終わりは 22:30", r.end === 1350);
     c.check("寝床は二つ", r.beds.length === 2, String(r.beds.length));
-    c.check("朝の寝床は左右を返し（歩く人の逆）、夜は返さない（最後の段は左へ進む）",
-      /scale\(-1 1\)/.test(r.beds[0].tf) && /scale\(1 1\)/.test(r.beds[1].tf) && !r.last.ltr, JSON.stringify(r.beds.map((b) => b.tf)));
+    c.check("朝も夜も同じ向き（夜に揃える。最後の段は左へ進むので返さない）",
+      /scale\(1 1\)/.test(r.beds[0].tf) && /scale\(1 1\)/.test(r.beds[1].tf) && !r.last.ltr, JSON.stringify(r.beds.map((b) => b.tf)));
     c.check("朝の寝床は道の始まりの手前（左）、夜の寝床は終わりの先（左）",
       r.beds[0].ink.r < r.texts.find((t) => /5:30/.test(t.txt) && /road-label/.test(t.cls)).l + 1
         && r.beds[1].ink.l > 0, JSON.stringify(r.beds.map((b) => b.ink)));
@@ -92,6 +94,10 @@ const cx = (b) => (b.l + b.r) / 2;
     const clash = [];
     r.beds.forEach((b, k) => [b.ink, b.z].forEach((bx) => r.texts.forEach((t) => { if (hit(bx, t)) clash.push([k, t.txt]); })));
     c.check("寝床（z Z も）と札・時刻・連れは重ならない", !clash.length, JSON.stringify(clash));
+    c.check("道の上（12:00）：どちらの寝床も薄い（寝ている時間ではない）", r.beds.every((b) => b.op < 0.5),
+      JSON.stringify(r.beds.map((b) => b.op)));
+    c.check("道の上（12:00）：寝床は道の端から離れている（くっつかない）",
+      r.first.x - r.bedHi >= 10, JSON.stringify([r.first.x, r.bedHi]));
     c.check("道の上（12:00）：人が立ち、どちらの寝床も止まっている",
       r.meShown && r.beds.every((b) => !b.snore && b.anim === "none"), JSON.stringify(r.beds.map((b) => [b.snore, b.anim])));
     c.check("評価の言葉と絵文字なし",
@@ -101,6 +107,8 @@ const cx = (b) => (b.l + b.r) / 2;
   errs.push(...await at(4, 50, async (page) => {
     const r = await read(page);
     c.check("4:50：人は道に居ない", !r.meShown);
+    c.check("4:50：朝の寝床は濃く、夜の寝床は薄い", r.beds[0].op === 1 && r.beds[1].op < 0.5,
+      JSON.stringify(r.beds.map((b) => b.op)));
     c.check("4:50：朝の寝床だけ z Z がのぼる", r.beds[0].snore && r.beds[0].anim === "road-snore"
       && !r.beds[1].snore, JSON.stringify(r.beds.map((b) => [b.snore, b.anim])));
     c.check("4:50：いまの時刻は朝の寝床の上", r.now === "4:50" && r.nowBox.b <= r.beds[0].z.t - 4
@@ -113,6 +121,8 @@ const cx = (b) => (b.l + b.r) / 2;
   errs.push(...await at(23, 10, async (page) => {
     const r = await read(page);
     c.check("23:10：人は道に居ない", !r.meShown);
+    c.check("23:10：夜の寝床は濃く、朝の寝床は薄い", r.beds[1].op === 1 && r.beds[0].op < 0.5,
+      JSON.stringify(r.beds.map((b) => b.op)));
     c.check("23:10：夜の寝床だけ z Z がのぼる", r.beds[1].snore && r.beds[1].anim === "road-snore" && !r.beds[0].snore,
       JSON.stringify(r.beds.map((b) => [b.snore, b.anim])));
     c.check("23:10：いまの時刻は夜の寝床の上", r.now === "23:10" && r.nowBox.b <= r.beds[1].z.t - 4,

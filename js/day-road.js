@@ -245,12 +245,16 @@
      道の外にいる。利用者が貼った絵（ベッドに寝た人と z Z）を、歩く人と同じ描き方で：
      塗りの面、頭は歩く人と同じ肌の丸（髪は描かない）、寝巻きは歩く人のシャツの色、
      紙の色の縁。元の絵の座標（1280幅・床が y=700）のまま、幅 BED_W に縮める。
-     向きは**歩く人の逆**（朝は左右を返す。利用者の声「朝は左右反転かな」）——朝は
-     頭が道の側（起きて、そのまま歩き出す）、夜は足もとが道の側（歩いてきて、もぐりこむ）。
+     向きは**朝も夜も同じ**（2026年10月1日・利用者の声「上の寝ている人の向きは、下の人に
+     揃えよう」）。夜の寝床（歩く人の逆。足もとが道の側）の向きを朝にも使う。前は朝だけ
+     左右を返していて、上と下で寝ている向きが違って見えた。
      z Z は縮めない（元の割合だと 3px で読めない）。道を外れた時間にアプリを開いて
      いれば、z Z がいびきのように上へのぼる（.is-snore。paint が付ける）。 */
   const BED_W = 38;             // 寝床の幅
-  const BED_GAP = 6;            // 道の端から寝床まで（道の丸い端 4.5 のすぐ外）
+  /* 道の端から寝床まで。はじめは 6（道の丸い端 4.5 のすぐ外）で、道にくっついて見えた
+     （2026年10月1日・利用者の声「道にぴったりくっつかないで」）。XL（54）で終わる道でも
+     54 − 12 − 38 = 4 で紙の中に収まる。 */
+  const BED_GAP = 12;
   const BED_K = BED_W / (1205 - 118);
   const BED_PARTS = [
     ["bed-frame", "M118 700V231a36 36 0 0 1 72 0V700Z"],             // 頭板
@@ -278,13 +282,14 @@
   const BED_TOP = 34;           // 床から z Z のてっぺんまで。いびきでのぼるぶん（4）も（札がよける）
   /** 道の両端の寝床の置き場所。[朝, 夜]。道の外側（始まりの手前・終わりの先）に。 */
   function bedsOf(g) {
+    const sx = g.point(g.total, 0).ltr ? -1 : 1;  // 夜の向き（歩く人の逆）を朝にも
     return [g.d0, g.total].map((d, i) => {
       const p = g.point(d, 0);
       const fwd = p.ltr ? 1 : -1;
       const side = i === 0 ? -fwd : fwd;          // 道の端から、寝床の側
       const a = p.x + side * BED_GAP, b = a + side * BED_W;
       return { lo: Math.min(a, b), hi: Math.max(a, b), cx: (a + b) / 2, y: p.y, row: p.row,
-               side, sx: -fwd, road: p };
+               side, sx, road: p };
     });
   }
 
@@ -581,8 +586,16 @@
          利用者の声「12:00-12:30 のタスクを 12:02 で終えたのに、丸薬はそのままの長さ」）。
          延びと同じ言い分——道の形はいまの本当を言う。始まりより前に済ませても、
          最低1分ぶん（丸い端どうしで、ほぼ丸）は残す。 */
+      /* 済ませた時刻まで延ばすのは、**次の停留所の始まりまで**（2026年10月1日・利用者の声
+         「朝のルーティンと朝のBabyのたった2つが重なったくらいで、道がおかしくないか」）。
+         6:00〜7:00 の用事を 10:49 に押すと 8:00 の用事まで延びて車線に割れ、塗りきった
+         二本が一つの塊に見えた。押すのが遅れただけのことが多いので、決めた予定どうしが
+         重なっていないのに、延びで重ねて車線を作らない。まだのもの（is-late）は前のまま
+         人の足もとまで。 */
+      const next = st.stops.reduce((m, q) => (q !== s && q.at >= s.until ? Math.min(m, q.at) : m), Infinity);
       s.eu = s.late ? Math.max(s.until, Math.min(nowMin, g.end))
-        : !st.past && s.len && s.doneMin != null ? Math.max(s.at + 1, s.doneMin) : s.until;
+        : !st.past && s.len && s.doneMin != null
+          ? Math.max(s.at + 1, Math.min(s.doneMin, Math.max(s.until, next))) : s.until;
       s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu, true)) : s.d0;
     });
     laneOut(st.stops);
@@ -615,9 +628,20 @@
         /* 出る時刻（段7）。「前に30分」なら、停留所の手前30分に点線の区間。
            済ませたものには描きません（もう出ることはないので）。 */
         const lead = !closed(t) && Number(t.lead) > 0 ? Number(t.lead) : 0;
+        const doneMin = doneMinOf(t, plan.day);
+        /* 今日、始まりより前に済ませたものは、**済ませた時刻**に置く（2026年10月1日・
+           利用者の声「夜のルーティンは 19:39 にすでに終わってるのに、道ではまだきていない
+           20時に終わってることになってる」）。前は決めた始まりに1分ぶんの丸で残り、
+           人より先の道に「済んだ」停留所が立っていた。札の時刻も済ませた時刻（道の物差しと
+           同じ）。記録は書き換えない。過ぎた日は決めた形のまま（押した時刻は白い粒）。 */
+        if (today && doneMin != null && doneMin < it.atMin) {
+          const d = g.dist(doneMin);
+          stops.push({ t, at: doneMin, until: doneMin + (len ? 1 : 0), len, d0: d, lead: 0, dl: d, doneMin });
+          return;
+        }
         stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
                      dl: lead ? g.dist(Math.max(g.begin, it.atMin - lead)) : d0,
-                     doneMin: doneMinOf(t, plan.day) });
+                     doneMin });
         return;
       }
       if (closed(t)) {
