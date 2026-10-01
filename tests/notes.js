@@ -295,7 +295,7 @@ const { open, checker } = require("./lib");
   });
   t.check("importJSON は noteBook を無視する（記録にも localStorage にも入らない）",
     imp.hadIt && !imp.inState && !imp.inLs, JSON.stringify(imp));
-  t.check("復元してもノートはそのまま（段1では合わせない）", imp.still);
+  t.check("importJSON だけではノートに触れない（合わせるのは復元の口。段2）", imp.still);
 
   /* ---- ノートを書いても localStorage の大きさは変わらない ---- */
   await page.evaluate(() => KN.app.showScreen("archive"));

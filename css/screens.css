@@ -5303,6 +5303,23 @@ a.btn { text-decoration: none; }
   resize: none;
   overflow: hidden;
 }
+/* 書く紙は白い一枚で、はじめから背いっぱい（2026年10月1日、iPhone で
+   「書くときが暗い」と言われたので）。ほかの紙の、透ける灰の地は書く面には
+   沈んで見え、半分の高さでは書く場所が狭い。 */
+.sheet.is-note {
+  height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
+  background: var(--c-surface);
+}
+/* いつ書いたか（作った日時）。題のすぐ下に小さく。 */
+.note-when {
+  margin-top: calc(-1 * var(--sp-2));
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  font-variant-numeric: tabular-nums;
+}
+/* 前の版：並びと、読むだけの一枚。 */
+.notes-versions { display: flex; flex-direction: column; }
+.note-read { min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ダイエットの紙。**面（白い地）は持ちません**——中の「今日のからだ」が
    すでに端から端までの面を持っていて、その上にもう一枚白を敷くと面が
