@@ -3864,8 +3864,10 @@
 
   /** `at` を渡すと、その時刻を書き出し日時にします（保存できたと分かった
       ときに、同じ時刻を「前回の書き出し」として記録するため）。 */
-  function exportJSON(at) {
-    return JSON.stringify({ ...state, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
+  /** `extra` は記録の外のもの（ノートの `noteBook`。docs/notes.md）を、呼ぶ側から
+      一番上の鍵として足すための口。記録の鍵とぶつかったら記録が勝ちます。 */
+  function exportJSON(at, extra) {
+    return JSON.stringify({ ...(extra || {}), ...state, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
   }
 
   /** 記録の数。復元の前後・自動の控え・書き出しの確かめで、同じ物差しを

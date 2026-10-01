@@ -635,7 +635,9 @@
       isOpen: calOpen,
       isShown: calShown,
       // 暦をしまっていても引けます（そこから週へ戻す道がここなので）。
-      enabled: () => true,
+      /* ただし、紙がノートへ下がって留まっているあいだは引きません——その
+         ときの掴み手は daily へ戻る道（app.js の wireFaceGrip）なので。 */
+      enabled: () => !KN.app.faceAt("archive"),
       /* 暦を横に払っている最中は、この指は向こうのものです（cal-swipe が
          生きている盤を運んでいるので、ここで高さまで書くと二つが同じ
          ものを取り合います）。 */
@@ -1867,6 +1869,10 @@
        そのまま譲ります。 */
     const grip = sheet.querySelector(".tl-grip");
     if (grip) grip.setAttribute("data-pull-own", "cal");
+    /* 掴み手は二役です（買うものと同じ）。紙が上に居るあいだは暦を開くもの、
+       ノートへ下がって留まっているあいだは daily へ戻る道（app.js）。紙は
+       組み直すたびに作り直すので、そのたびに結びます。 */
+    if (grip) KN.app.wireFaceGrip(grip);
 
     /* 中身は、横に払える一枚（.day-slide）にまとめて入れます。払っている
        あいだ、隣の日の紙が指のぶんだけ入ってきます。 */
@@ -1946,5 +1952,6 @@
     if (KN.healthRelay) KN.healthRelay.pullNow();
   }
 
-  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay() };
+  /* `cal` はノート（daily の裏）が帯に同じ暦を置くため（js/screen-notes.js）。 */
+  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay(), cal: () => els.cal };
 })();

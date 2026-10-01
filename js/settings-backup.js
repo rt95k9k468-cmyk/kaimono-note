@@ -192,11 +192,17 @@
       KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
       return;
     }
+    /* ノート（docs/notes.md）も同じ門。読み終える前の書き出しは、ノートを
+       取りこぼします。 */
+    if (KN.notes && !KN.notes.settled()) {
+      KN.ui.toast("ノートを読み込んでいるところです。少し待ってから、もう一度押してください");
+      return;
+    }
     const at = new Date().toISOString();
     const d = new Date(at);
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
     const name = `kaimono-note-${stamp}.json`;
-    const text = store.exportJSON(at);
+    const text = store.exportJSON(at, KN.notes ? KN.notes.forExport() : null);
 
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     let file = null;

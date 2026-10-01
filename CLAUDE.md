@@ -140,6 +140,7 @@
 | 買うもの・価格（`screen-list.js` / `screen-prices.js`・紙の面 `--face-p`） | `docs/shopping.md` |
 | ダイエット（中継所 `health-relay.js` / `relay/`・飲みたくなった `diet.urges`）・閉じていても鳴る通知（`bell.js`・`sw.js` の push） | `docs/health.md` |
 | daily（`screen-archive.js`） | `docs/daily.md` |
+| ノート（`screen-notes.js`・`notes-idb.js`） | `docs/notes.md` |
 | 保存の置き場（`store.js` の書き込み・`backup.js`・`idb.js`・`diary-idb.js`）・日記の写し・自動の控え | `docs/storage.md` |
 | 動きの速さ・曲線（`--m-*`・`motion.js`・`KN.motion.glide`） | `docs/motion.md` |
 | ガラス（`--glass-*`） | `docs/glass.md` |
