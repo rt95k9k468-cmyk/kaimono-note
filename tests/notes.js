@@ -47,7 +47,12 @@ const { open, checker } = require("./lib");
     await page.click("#dock .add-fab");
     await page.waitForSelector(".sheet.is-note.is-open");
   };
+  /* 読み直す前に、入れ物を一度読みます。閉じた拍に始まった書き込みは、
+     読みの前に終わる（IndexedDB は先に始まった書き込みのあとに読みを並べる）。
+     待たずに読み直すと、書き込みの途中でページが捨てられる（tests/README.md の
+     「試験の罠」）。人が開き直すまでの間の代わり。 */
   const reload = async () => {
+    await idb();
     await page.reload();
     await page.waitForFunction(() => window.KN && KN.store && KN.app && KN.notes);
     await page.waitForTimeout(300);
