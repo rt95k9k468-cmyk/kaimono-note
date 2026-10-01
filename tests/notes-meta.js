@@ -149,10 +149,34 @@ const { open, checker } = require("./lib");
   t.check("更新日は動かない", after.updatedAt === upd0, after.updatedAt);
   const shown = await page.$eval(".sheet.is-note .js-when", (e) => e.textContent);
   t.check("日時の字が変わる", shown.startsWith("2019年2月14日(木)"), shown);
+  /* 段4.5：日を選んだら時刻なし。 */
+  t.check("日を変えたら時刻なしの印", after.noTime === true, String(after.noTime));
+  t.check("書く紙の日時に時刻が出ない", shown.trim() === "2019年2月14日(木)", shown);
+  const body = await page.$eval(".sheet.is-note .note-view, .sheet.is-note .js-body", (e) => getComputedStyle(e).textAlign).catch(() => "");
+  t.check("本文は両端揃え", body === "justify", body);
 
   await closeNote();
   const order1 = await page.$$eval("#screen-notes .notes-list .note-row", (rs) => rs.map((r) => r.dataset.id));
   t.check("一覧の並びは動かない", JSON.stringify(ord0) === JSON.stringify(order1), JSON.stringify(order1));
+
+  /* ---- 段4.5：カードの日付は作った日（年月日、時刻ありなら時刻も）・題はテーマ色 ---- */
+  const cardD = await page.$eval(`#screen-notes .note-row[data-id="${id}"] .note-d`, (e) => e.textContent.trim());
+  t.check("カードは作った日を年月日で、時刻なし", cardD === "2019年2月14日", cardD);
+  const other = order1.find((x) => x !== id);
+  if (other) {
+    const od = await page.$eval(`#screen-notes .note-row[data-id="${other}"] .note-d`, (e) => e.textContent.trim());
+    t.check("時刻のあるノートは年月日と時刻", /^\d{4}年\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}$/.test(od), od);
+  }
+  const tc = await page.$eval("#screen-notes .note-t", (e) => [getComputedStyle(e).color,
+    getComputedStyle(document.documentElement).getPropertyValue("--c-primary").trim()]);
+  const rgb = await page.evaluate((c) => { const d = document.createElement("i"); d.style.color = c; document.body.append(d); const v = getComputedStyle(d).color; d.remove(); return v; }, tc[1]);
+  t.check("カードの題はテーマ色", tc[0] === rgb, JSON.stringify(tc));
+
+  /* ---- 段4.5：設定で作った日の順 ---- */
+  await page.evaluate(() => { KN.store.update((s) => { s.settings.notesOrder = "created"; }); KN.screens.notes.render(); });
+  const order2 = await page.$$eval("#screen-notes .notes-list .note-row", (rs) => rs.map((r) => r.dataset.id));
+  t.check("作った日の順では 2019年のノートが最後", order2[order2.length - 1] === id, JSON.stringify(order2));
+  await page.evaluate(() => { KN.store.update((s) => { delete s.settings.notesOrder; }); KN.screens.notes.render(); });
 
   /* ---- 読み直しても残る ---- */
   await page.evaluate(() => KN.notes.flush());
@@ -163,6 +187,7 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.notes.ready());
   const kept = await page.evaluate((i) => KN.notes.get(i).createdAt, id);
   t.check("読み直しても作った日が残る", kept === after.createdAt, kept);
+  t.check("読み直しても時刻なしが残る", await page.evaluate((i) => KN.notes.get(i).noTime === true, id));
 
   t.check("ページのエラーなし", !errors.length, errors.join(" / "));
   await browser.close();

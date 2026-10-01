@@ -97,22 +97,28 @@
     return lines.join(" ").slice(0, 120);
   }
 
-  /** 更新日。今日なら時刻、今年なら月日、それより前なら年から。 */
-  function whenOf(iso) {
-    const d = new Date(iso);
+  const hm = (d) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  /** カードの日付＝作った日。「2018年5月1日 20:20」。日だけ選んだノート
+      （`noTime`）は時刻を出しません（段4.5）。 */
+  function whenOf(n) {
+    const d = new Date(n.createdAt);
     if (isNaN(d.getTime())) return "";
-    if (U.dayKey(d) === U.todayKey()) return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-    const md = `${d.getMonth() + 1}月${d.getDate()}日`;
-    return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
+    const ymd = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+    return n.noTime ? ymd : `${ymd} ${hm(d)}`;
   }
 
-  /** 書く紙と前の版の日時。「2026年10月1日(木) 9:05」。 */
-  function stampOf(iso) {
+  /** 書く紙と前の版の日時。「2026年10月1日(木) 9:05」。noTime なら時刻なし。 */
+  function stampOf(iso, noTime) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";
     const wd = "日月火水木金土"[d.getDay()];
-    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${wd}) ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const day = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${wd})`;
+    return noTime ? day : `${day} ${hm(d)}`;
   }
+
+  /** 一覧の並び。設定（daily → 表示 → ノートの並び）で作った日の順にもできる。 */
+  const byCreated = () => (KN.store.get().settings || {}).notesOrder === "created";
 
   /* 窓の字は、題・本文に加えてノートブックとタグの名前にも当てます。 */
   const hit = (n, q) => !q || U.foldKana(`${n.title}\n${n.body}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q);
@@ -137,7 +143,8 @@
     }
     if (st !== "on") return;
 
-    const all = N().list();
+    let all = N().list();
+    if (byCreated()) all = all.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     const chips = chipRow(all);
     if (chips) { box.append(chips); chips.scrollLeft = keepX; }
 
@@ -201,7 +208,7 @@
           <span class="note-t">${head}</span>
           ${lead ? html`<span class="note-x">${lead}</span>` : ""}
           <span class="note-foot">
-            <span class="note-d">${whenOf(n.updatedAt)}</span>
+            <span class="note-d">${whenOf(n)}</span>
             ${n.notebook ? html`<span class="note-nb">${book(n.notebook)}<span>${n.notebook}</span></span>` : ""}
             ${n.tags.map((t) => html`<span class="note-tag">${dot(t)}<span>${t}</span></span>`)}
           </span>
@@ -250,7 +257,7 @@
         <textarea class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
                   rows="1" autocomplete="off"></textarea>
         <div class="note-sub">
-          <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt)}</button>
+          <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt, note.noTime)}</button>
           <div class="note-labels js-labels"></div>
         </div>
         <div class="note-view js-view" hidden></div>
@@ -547,14 +554,15 @@
     paintLabels();
 
     /* ---- 作った日（Evernote から移した過去のノートを、その日へ） ----
-       日時を押すと、年・月・日の回る列。時刻はそのまま持ち越します。 */
+       日時を押すと、年・月・日の回る列。日を変えたら「時刻なし」（noTime）に
+       します——移した日の時刻は、そのノートの時刻ではないので（段4.5）。 */
     const whenBtn = body.querySelector(".js-when");
     whenBtn.addEventListener("click", () => {
       KN.motion.fire("select");
       pickDate(whenBtn, note.createdAt, (iso) => {
-        if (stored) N().setCreated(note.id, iso);
-        else note.createdAt = iso;
-        whenBtn.textContent = stampOf(note.createdAt);
+        if (stored) N().setCreated(note.id, iso, true);
+        else { note.createdAt = iso; note.noTime = true; }
+        whenBtn.textContent = stampOf(note.createdAt, note.noTime);
       });
     });
 
