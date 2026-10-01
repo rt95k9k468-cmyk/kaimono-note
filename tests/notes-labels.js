@@ -145,11 +145,14 @@ const { open, checker } = require("./lib");
   const bUpd = await page.evaluate((i) => KN.notes.get(i.b).updatedAt, ids);
   await page.click(`#screen-notes .note-row[data-id="${ids.b}"] .js-open`);
   await page.waitForSelector(".sheet.is-note.is-open");
+  /* 段4から、ノートブック（左）とタグ（右）は題の上の頭の行（Evernote の並び）。 */
   const lab = await page.$eval(".sheet.is-note .note-labels", (e) => {
-    const when = e.parentElement.querySelector(".note-when").getBoundingClientRect();
-    return { below: e.getBoundingClientRect().top >= when.bottom - 1, text: e.textContent.trim() };
+    const title = e.closest(".note-edit").querySelector(".note-title-in").getBoundingClientRect();
+    const nb = e.closest(".note-meta").querySelector(".js-nb").getBoundingClientRect();
+    const r = e.getBoundingClientRect();
+    return { above: r.bottom <= title.top + 1, right: r.right > nb.right, text: e.textContent.trim() };
   });
-  t.check("日時のすぐ下にタグの口", lab.below && lab.text === "タグ", JSON.stringify(lab));
+  t.check("題の上の頭の行に、ノートブック（左）とタグの口（右）", lab.above && lab.right && lab.text === "タグ", JSON.stringify(lab));
   await page.click(".sheet.is-note .note-tag-add");
   await page.waitForFunction(() => document.querySelectorAll(".sheet.is-open").length === 2);
   t.check("タグの紙が開く", (await topSheet()) === "タグ", await topSheet());
@@ -170,10 +173,15 @@ const { open, checker } = require("./lib");
   t.check("打ったまま閉じても付く", JSON.stringify(await page.evaluate((i) => KN.notes.get(i.b).tags, ids)) === '["本","台所"]');
   t.check("書く紙の口にタグが出る", (await page.$$eval(".sheet.is-note .note-labels .chip", (cs) => cs.map((c) => c.textContent.trim()))).join(",") === "本,台所,");
 
-  /* 「⋯」→ノートブック */
-  await page.click(".sheet.is-note .js-menu");
-  await page.waitForSelector(".act-row");
-  await page.evaluate(() => [...document.querySelectorAll(".act-row")].find((r) => r.textContent.includes("ノートブック")).click());
+  /* 左上のノートブック（段4で「⋯」から頭の行へ出した） */
+  t.check("「⋯」にノートブックは無い", await (async () => {
+    await page.click(".sheet.is-note .js-note-more");
+    await page.waitForSelector(".note-pop-item");
+    const has = await page.$$eval(".note-pop-item", (bs) => bs.some((b) => b.textContent.includes("ノートブック")));
+    await page.click(".note-pop-cover");
+    return !has;
+  })());
+  await page.click(".sheet.is-note .js-nb");
   await page.waitForFunction(() => [...document.querySelectorAll(".sheet.is-open .sheet-title")].some((x) => x.textContent === "ノートブック"));
   t.check("ノートブックの紙に、なし・使われている名前", (await page.evaluate(() =>
     [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).join(","))) === "なし,旅");
@@ -181,7 +189,7 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => ![...document.querySelectorAll(".sheet.is-open .sheet-title")].some((x) => x.textContent === "ノートブック"));
   t.check("新しいノートブックに入る", (await page.evaluate((i) => KN.notes.get(i.b).notebook, ids)) === "家のこと");
-  t.check("書く紙の口にノートブックが出る", (await page.$eval(".sheet.is-note .note-labels .js-nb", (e) => e.textContent.trim())) === "家のこと");
+  t.check("書く紙の口にノートブックが出る", (await page.$eval(".sheet.is-note .note-meta .js-nb", (e) => e.textContent.trim())) === "家のこと");
   await escTop();
   t.check("タグ・ノートブックでは更新日が動かない", (await page.evaluate((i) => KN.notes.get(i.b).updatedAt, ids)) === bUpd);
 
@@ -192,7 +200,8 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.querySelectorAll(".sheet.is-open").length === 2);
   await page.evaluate(() => [...document.querySelectorAll(".note-pick .chip")].find((c) => c.textContent.trim() === "予定").click());
   await escTop();
-  await page.click(".sheet.is-note .note-body-in");
+  /* 本文から出たので整えた姿（段4）。本文の場所を押すと書く欄へ戻る。 */
+  await page.click(".sheet.is-note .note-view");
   await page.keyboard.insertText("あとで書く中身");
   await page.waitForTimeout(100);
   await escTop();

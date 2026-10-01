@@ -5240,7 +5240,8 @@ a.btn { text-decoration: none; }
   gap: var(--sp-3);
   padding: 0 var(--sp-5) 0 var(--sp-4);
 }
-/* 一覧は白いカード（段3）。地の上に、間を空けて一枚ずつ。★は右上。
+/* 一覧は白いカード（段3）。地の上に、間を空けて一枚ずつ。★はカードの
+   縦の真ん中（段4。右上では「高すぎる」と言われた）。
    カードにするのは一覧だけ——最近削除・前の版の紙の行は今のまま。 */
 .notes-list { gap: var(--sp-2); padding: var(--sp-2) var(--sp-4) 0; }
 .note-row.is-card {
@@ -5250,7 +5251,7 @@ a.btn { text-decoration: none; }
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-1);
 }
-.note-row.is-card .fav { margin-top: var(--sp-1); }
+.note-row.is-card .fav { align-self: center; }
 .note-foot {
   display: flex;
   flex-wrap: wrap;
@@ -5278,9 +5279,28 @@ a.btn { text-decoration: none; }
 .notes-chips .chip svg,
 .note-labels .chip svg,
 .note-pick .chip svg { width: 16px; height: 16px; flex: none; }
-/* 書く紙の、日時の下のタグとノートブック。チップは少し低く。 */
-.note-labels { margin-top: calc(-1 * var(--sp-1)); }
-.note-labels-in { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+/* 書く紙の頭の行（段4。Evernote の並び）：左にノートブック、右にタグ。
+   チップは少し低く。 */
+.note-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.note-nb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 50%;
+  min-height: 36px;
+  font-size: var(--fs-md);
+  color: var(--c-text-2);
+}
+.note-nb-btn svg { width: 16px; height: 16px; flex: none; }
+.note-nb-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-labels { flex: 1; min-width: 0; }
+.note-labels-in { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-2); }
 .note-labels .chip { height: 36px; }
 .note-tag-add { color: var(--c-text-2); }
 /* 選ぶ紙：使われている名前のチップと、新しい名前の欄。 */
@@ -5342,7 +5362,9 @@ a.btn { text-decoration: none; }
   outline: none;
 }
 .note-title-in { font-size: var(--fs-xl); font-weight: 700; }
-.note-body-in {
+.sheet.is-note .note-title-in { font-size: var(--fs-2xl); line-height: var(--lh-tight); }
+.note-body-in,
+.note-view {
   min-height: 38vh;
   font-size: var(--fs-lg);
   line-height: var(--lh-body);
@@ -5356,6 +5378,125 @@ a.btn { text-decoration: none; }
   height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   background: var(--c-surface);
 }
+/* 電話では全画面の一枚（段4。「記事を書くときはフル画面が絶対使いやすい」）。
+   見えている高さぜんぶを取り、底はいつもどおりキーボードの上端（--kb）。
+   丸角と掴み手は持たない（払って閉じるのは頭の行のまま）。広い画面は
+   真ん中の一枚のまま。 */
+@media (max-width: 639.98px) {
+  .sheet.is-note {
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px));
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding-top: var(--safe-t);
+  }
+  .sheet.is-note .sheet-handle { display: none; }
+}
+.sheet.is-note .sheet-head { padding: var(--sp-1) var(--sp-2); }
+
+/* 整えた姿（読むとき。js/note-format.js の render）。字の大きさと行の高さは
+   書く欄と同じ——押して入れ替わっても、字が跳ねないように。 */
+.note-view { color: var(--c-text); overflow-wrap: anywhere; cursor: text; }
+.note-view > * { white-space: pre-wrap; }
+.nv-h { font-weight: 700; line-height: var(--lh-tight); margin: .5em 0 .2em; }
+.nv-h1 { font-size: 1.45em; }
+.nv-h2 { font-size: 1.25em; }
+.nv-h3 { font-size: 1.1em; }
+.note-view > .nv-h:first-child { margin-top: 0; }
+.nv-blank { height: .7em; }
+.nv-li {
+  display: flex;
+  align-items: flex-start;
+  gap: .45em;
+  padding-left: calc(var(--lv, 0) * 1.4em);
+}
+.nv-li .nv-t { flex: 1; min-width: 0; }
+.nv-dot, .nv-n { flex: none; min-width: 1.1em; text-align: center; color: var(--c-text-2); }
+.nv-dot::before { content: "\2022"; }
+.nv-n { min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums; }
+/* チェックの四角。見えるのは字の高さの四角、指の的はまわりに広げる。 */
+.nv-box {
+  position: relative;
+  flex: none;
+  width: 1.15em; height: 1.15em;
+  margin-top: calc((var(--lh-body) * 1em - 1.15em) / 2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--c-text-2);
+  border-radius: 5px;
+  color: #fff;
+}
+.nv-box::after { content: ""; position: absolute; inset: -10px; }
+.nv-box svg { width: .8em; height: .8em; }
+.nv-li.is-done .nv-box { background: var(--c-primary); border-color: var(--c-primary); }
+.nv-li.is-done .nv-t { color: var(--c-text-2); text-decoration: line-through; }
+.nv-q { padding-left: .8em; border-left: 3px solid var(--c-border-2); color: var(--c-text-2); }
+.nv-hr { padding: .55em 0; }
+.nv-hr hr { margin: 0; border: 0; border-top: 1px solid var(--c-border-2); }
+
+/* 道具の帯（書いているあいだだけ。紙の底＝キーボードの上端に貼りつく）。
+   左は横へ流れ、右端の「キーボードを閉じる」だけは動かない。 */
+.note-tools {
+  display: none;
+  flex: none;
+  align-items: center;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
+  padding: 2px var(--sp-1);
+}
+.sheet.is-note.is-writing .note-tools { display: flex; }
+.note-tools-in {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.note-tools-in::-webkit-scrollbar { display: none; }
+.note-tool {
+  flex: none;
+  width: 44px; height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  color: var(--c-text);
+  touch-action: manipulation;
+}
+.note-tool svg { width: 22px; height: 22px; }
+.note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary); }
+.note-tool[aria-disabled="true"] { opacity: .35; }
+.note-tool-done { border-left: 1px solid var(--c-border); border-radius: 0; }
+
+/* 「⋯」の小窓（押した ⋯ のすぐ下。js/screen-notes.js の popMenu）。 */
+.note-pop-cover { position: fixed; inset: 0; }
+.note-pop {
+  position: fixed;
+  min-width: 200px;
+  padding: var(--sp-1) 0;
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  transform-origin: top right;
+  transform: scale(.92);
+  opacity: 0;
+  transition: transform var(--m-state) var(--ease-out), opacity var(--m-state) var(--ease);
+}
+.note-pop.is-open { transform: none; opacity: 1; }
+.note-pop-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-lg);
+  color: var(--c-text);
+  text-align: left;
+}
+.note-pop-item svg { width: 20px; height: 20px; flex: none; }
+.note-pop-item.is-danger { color: var(--c-danger); }
 /* いつ書いたか（作った日時）。題のすぐ下に小さく。 */
 .note-when {
   margin-top: calc(-1 * var(--sp-2));
