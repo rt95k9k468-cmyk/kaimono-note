@@ -5279,29 +5279,58 @@ a.btn { text-decoration: none; }
 .notes-chips .chip svg,
 .note-labels .chip svg,
 .note-pick .chip svg { width: 16px; height: 16px; flex: none; }
-/* 書く紙の頭の行（段4。Evernote の並び）：左にノートブック、右にタグ。
-   チップは少し低く。 */
-.note-meta {
+/* 書く紙の頭の行（段4.2）：‹ の隣にノートブック。下へ送って大きな題が
+   隠れたら（.is-folded）、その上に題を小さく（Notion の形）。 */
+.sheet.is-note .sheet-title { display: none; }
+.note-head-mid {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-3);
 }
+.note-head-t {
+  display: none;
+  max-width: 100%;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet.is-note.is-folded .note-head-t:not(:empty) {
+  display: block;
+  animation: note-fold-in var(--m-state) var(--ease-out);
+}
+@keyframes note-fold-in { from { opacity: 0; transform: translateY(4px); } }
 .note-nb-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  max-width: 50%;
+  max-width: 100%;
   min-height: 36px;
   font-size: var(--fs-md);
   color: var(--c-text-2);
 }
 .note-nb-btn svg { width: 16px; height: 16px; flex: none; }
 .note-nb-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.note-labels { flex: 1; min-width: 0; }
-.note-labels-in { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-2); }
-.note-labels .chip { height: 36px; }
+.sheet.is-note.is-folded .note-head-t:not(:empty) + .note-nb-btn { min-height: 0; font-size: var(--fs-sm); }
+/* 題のすぐ下の一行：作った日時と、タグ（段4.2。頭の行から移した）。 */
+.note-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: calc(-1 * var(--sp-2));
+}
+.note-sub .note-when { margin-top: 0; }
+.note-labels { min-width: 0; }
+.note-labels-in { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.note-labels .chip { height: 32px; font-size: var(--fs-sm); }
 .note-tag-add { color: var(--c-text-2); }
 /* 選ぶ紙：使われている名前のチップと、新しい名前の欄。 */
 .note-pick { display: flex; flex-direction: column; gap: var(--sp-4); }
@@ -5401,6 +5430,18 @@ a.btn { text-decoration: none; }
 /* 中身が短くても帯は底へ（中身の側が残りの高さを取る）。 */
 .sheet.is-note .sheet-body { flex: 1 1 auto; }
 .sheet.is-note .sheet-body { padding-bottom: calc(var(--sp-5) + max(0px, var(--safe-b) - var(--kb, 0px))); }
+/* 書いているあいだは、浮いている道具の帯のぶんも下に空ける（最後の行を
+   帯の上まで送れるように）。 */
+.sheet.is-note { --note-tools-h: 48px; }
+.sheet.is-note.is-writing .sheet-body {
+  padding-bottom: calc(var(--note-tools-h) + var(--sp-2) + var(--sp-5) + max(0px, var(--safe-b) - var(--kb, 0px)));
+}
+/* 上の帯（時刻・電池）はページの地から色を取る（screen-notes.js の
+   tintBar）。全画面の書く紙を開いているあいだは、地も紙の色に。 */
+@media (max-width: 639.98px) {
+  html.is-note-full,
+  html.is-note-full body { background: var(--c-surface); }
+}
 
 /* 整えた姿（読むとき。js/note-format.js の render）。字の大きさと行の高さは
    書く欄と同じ——押して入れ替わっても、字が跳ねないように。 */
@@ -5443,17 +5484,26 @@ a.btn { text-decoration: none; }
 .nv-hr { padding: .55em 0; }
 .nv-hr hr { margin: 0; border: 0; border-top: 1px solid var(--c-border-2); }
 
-/* 道具の帯（書いているあいだだけ。紙の底＝キーボードの上端に貼りつく）。
+/* 道具の帯（書いているあいだだけ）。キーボードのすぐ上に**浮く**ガラスの
+   丸い一本（段4.2。貼りついた白い帯は「ダサい」と言われた）。材は下の帯と
+   同じガラスの一組。中身はその下を通って送られる（透けて見える）。
    ぜんぶを一列に詰めて出す（横へは流さない）。キーボードの無い底では
-   ホームの棒のぶんだけ浮く。 */
+   ホームの棒のぶんだけ上に。 */
 .note-tools {
   display: none;
-  flex: none;
+  position: absolute;
+  left: var(--sp-2);
+  right: var(--sp-2);
+  bottom: calc(var(--sp-2) + max(0px, var(--safe-b) - var(--kb, 0px)));
+  height: var(--note-tools-h);
   align-items: center;
   justify-content: space-around;
-  border-top: 1px solid var(--c-border);
-  background: var(--c-surface);
-  padding: 2px var(--sp-1) calc(2px + max(0px, var(--safe-b) - var(--kb, 0px)));
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-3);
 }
 .sheet.is-note.is-writing .note-tools { display: flex; }
 .note-tool {

@@ -590,6 +590,9 @@
     el.addEventListener("focusin", (e) => {
       const field = e.target.closest("input, textarea, select");
       if (!field) return;
+      /* 自分で送る欄（ノートの本文：中身ぶん伸びるので、真ん中へ寄せると
+         題ごと飛ぶ。screen-notes.js の reveal）は任せてもらう。 */
+      if (field.hasAttribute("data-own-scroll")) return;
       [140, 340, 620].forEach((ms) => setTimeout(() => {
         if (document.activeElement === field) scrollFieldIntoView(field);
       }, ms));

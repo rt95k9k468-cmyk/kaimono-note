@@ -102,13 +102,18 @@ const { open, checker } = require("./lib");
       order: m && b.getBoundingClientRect().left < m.getBoundingClientRect().left };
   });
   t.check("頭の行：左に戻る ‹、右に ⋯", head.back === "chevron-left" && head.label === "戻る" && head.order, JSON.stringify(head));
-  const meta = await page.$eval(".sheet.is-note .note-meta", (m) => {
-    const nb = m.querySelector(".js-nb").getBoundingClientRect();
-    const tg = m.querySelector(".note-tag-add").getBoundingClientRect();
-    const title = m.closest(".note-edit").querySelector(".note-title-in").getBoundingClientRect();
-    return { nbLeft: nb.left < innerWidth / 3, tagRight: tg.right > innerWidth * 0.75, above: m.getBoundingClientRect().bottom <= title.top + 1 };
+  const meta = await page.$eval(".sheet.is-note", (s) => {
+    const head = s.querySelector(".sheet-head").getBoundingClientRect();
+    const back = s.querySelector(".js-close").getBoundingClientRect();
+    const nb = s.querySelector(".sheet-head .js-nb").getBoundingClientRect();
+    const title = s.querySelector(".note-title-in").getBoundingClientRect();
+    const when = s.querySelector(".note-sub .note-when").getBoundingClientRect();
+    const tg = s.querySelector(".note-sub .note-tag-add").getBoundingClientRect();
+    return { nbNextToBack: nb.left >= back.right && nb.left - back.right < 24 && nb.top >= head.top && nb.bottom <= head.bottom + 1,
+      tagWithDate: Math.abs((tg.top + tg.bottom) / 2 - (when.top + when.bottom) / 2) < 4 && tg.left > when.right,
+      below: when.top >= title.bottom - 1, gap: Math.round(title.top - head.bottom) };
   });
-  t.check("題の上に、左にノートブック・右にタグ", meta.nbLeft && meta.tagRight && meta.above, JSON.stringify(meta));
+  t.check("頭の行：‹ の隣にノートブック。題の下の一行に日時とタグ", meta.nbNextToBack && meta.tagWithDate && meta.below && meta.gap < 16, JSON.stringify(meta));
   const start = await page.evaluate(() => ({
     focus: document.activeElement && document.activeElement.classList.contains("note-body-in"),
     tools: getComputedStyle(document.querySelector(".sheet.is-note .note-tools")).display !== "none",
@@ -154,10 +159,16 @@ const { open, checker } = require("./lib");
     const bs = [...s.querySelectorAll(".note-tool")].map((b) => b.getBoundingClientRect());
     return { n: bs.length, inside: bs.every((r) => r.left >= tb.left - 0.5 && r.right <= tb.right + 0.5),
       oneRow: bs.every((r) => Math.abs(r.top - bs[0].top) < 1), done: !!s.querySelector('[data-k="done"]'),
-      gap: Math.round(s.getBoundingClientRect().bottom - tb.bottom) };
+      gap: Math.round(s.getBoundingClientRect().bottom - tb.bottom),
+      side: Math.round(tb.left - s.getBoundingClientRect().left),
+      round: parseFloat(getComputedStyle(s.querySelector(".note-tools")).borderTopLeftRadius) >= tb.height / 2 - 1,
+      glass: getComputedStyle(s.querySelector(".note-tools")).backdropFilter.includes("blur"),
+      over: getComputedStyle(s.querySelector(".note-tools")).position === "absolute" };
   });
   t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 10 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
-  t.check("道具の帯は紙の底に隙間なく", bar.gap === 0, JSON.stringify(bar));
+  t.check("道具の帯は底から少し浮く、丸いガラスの一本", bar.gap === 8 && bar.side === 8 && bar.round && bar.glass && bar.over, JSON.stringify(bar));
+  t.check("開いているあいだ、ページの地も紙の白（上の帯の色）", await page.evaluate(() =>
+    document.documentElement.classList.contains("is-note-full") && getComputedStyle(document.body).backgroundColor === "rgb(255, 255, 255)"));
   t.check("開いているあいだ、上の帯（theme-color）は紙の白", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).every((c) => c === "#ffffff"));
 
   /* ---- 欄から出る（キーボードを閉じる）→ 整えた姿 ---- */
@@ -230,6 +241,39 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(200);
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
   await closeSheet();
+
+  /* ---- 長いノート：押して書き始めても題は飛ばない・下へ送ると頭に題（段4.2） ---- */
+  await page.click("#dock .add-fab");
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.keyboard.insertText(Array.from({ length: 60 }, (_, i) => `行${i + 1}`).join("\n"));
+  await page.fill(".sheet.is-note .js-title", "長い題");
+  await page.waitForTimeout(200);
+  await closeSheet();
+  const longId = await page.evaluate(() => (KN.notes.list().find((n) => n.title === "長い題") || {}).id);
+  t.check("長いノートが残る", !!longId, await page.evaluate(() => JSON.stringify(KN.notes.list().map((n) => n.title))));
+  await page.click(`#screen-notes .note-row[data-id="${longId}"] .js-open`);
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.waitForTimeout(500);
+  await page.click(".sheet.is-note .note-view > :nth-child(2)");
+  await page.waitForTimeout(800);
+  const jump = await page.$eval(".sheet.is-note", (s) => ({
+    top: s.querySelector(".sheet-body").scrollTop,
+    writing: document.activeElement === s.querySelector(".js-text"),
+    folded: s.classList.contains("is-folded"),
+  }));
+  t.check("長い本文の行を押しても、題は上へ飛ばない", jump.writing && jump.top < 4 && !jump.folded, JSON.stringify(jump));
+  await page.$eval(".sheet.is-note .sheet-body", (sc) => { sc.scrollTop = sc.scrollHeight; });
+  await page.waitForTimeout(300);
+  const folded = await page.$eval(".sheet.is-note", (s) => {
+    const ht = s.querySelector(".note-head-t");
+    const head = s.querySelector(".sheet-head").getBoundingClientRect();
+    const nb = s.querySelector(".sheet-head .js-nb").getBoundingClientRect();
+    return { on: s.classList.contains("is-folded"), text: ht.textContent, shown: getComputedStyle(ht).display !== "none",
+      inHead: nb.bottom <= head.bottom + 1 };
+  });
+  t.check("下へ送ると、頭の行に題が小さく（ノートブックはその下）", folded.on && folded.text === "長い題" && folded.shown && folded.inHead, JSON.stringify(folded));
+  await closeSheet();
+  t.check("閉じたらページの地は元へ", await page.evaluate(() => !document.documentElement.classList.contains("is-note-full")));
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
