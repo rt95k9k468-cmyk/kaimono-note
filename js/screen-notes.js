@@ -374,7 +374,9 @@
     /* ---- 道具の帯（キーボードの上） ----
 
        本文に居るあいだだけ出ます。押しても欄からカーソルを奪わないよう、
-       押し始めの既定を止めます（キーボードが下がらない）。 */
+       押し始めの既定を止めます（キーボードが下がらない）。ぜんぶを一列に
+       詰めて出し、横へは流さない。キーボードを閉じる口は置かない（iOS の
+       キーボードの上の ✓ が閉じる。2026年10月1日、利用者）。 */
     const TOOLS = [
       { k: "undo", ico: "undo", label: "取り消す", run: () => hist.undo() },
       { k: "redo", ico: "redo", label: "やり直す", run: () => hist.redo() },
@@ -392,10 +394,7 @@
     ];
     const tools = node(html`
       <div class="note-tools" role="toolbar" aria-label="装飾">
-        <div class="note-tools-in">
-          ${TOOLS.map((t) => html`<button type="button" class="note-tool js-tool" data-k="${t.k}" aria-label="${t.label}">${icon(t.ico)}</button>`)}
-        </div>
-        <button type="button" class="note-tool note-tool-done js-tool" data-k="done" aria-label="キーボードを閉じる">${icon("chevron-down")}</button>
+        ${TOOLS.map((t) => html`<button type="button" class="note-tool js-tool" data-k="${t.k}" aria-label="${t.label}">${icon(t.ico)}</button>`)}
       </div>
     `);
     const keep = (e) => e.preventDefault();
@@ -405,7 +404,6 @@
       const b = e.target.closest(".js-tool");
       if (!b) return;
       const k = b.dataset.k;
-      if (k === "done") { textIn.blur(); return; }
       if (b.getAttribute("aria-disabled") === "true") return;
       U.haptic();
       /* 押した拍にカーソルが外れていたら（端末によっては帯を押すと欄から
@@ -457,17 +455,18 @@
       `));
       labelsEl.querySelectorAll(".js-tags").forEach((b) => b.addEventListener("click", () => {
         KN.motion.fire("select");
-        pickTags(note, (tags) => setLabels({ tags }));
+        pickTags(b, note, (tags) => setLabels({ tags }));
       }));
     };
     nbBtn.addEventListener("click", () => {
       KN.motion.fire("select");
-      pickNotebook(note, (name) => setLabels({ notebook: name }));
+      pickNotebook(nbBtn, note, (name) => setLabels({ notebook: name }));
     });
     paintLabels();
 
     const finish = () => {
       closed = true;
+      tintBar(false);
       document.removeEventListener("selectionchange", onSel);
       sync();
       /* 何も書かずに閉じた新しいノートは残しません。 */
@@ -517,6 +516,7 @@
     });
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
+    tintBar(true);
     /* 頭：左に戻る ‹、右に ⋯（Evernote の並び）。閉じ方は紙のまま
        （×と同じ tryClose。払っても閉じる）。 */
     const closeBtn = h.el.querySelector(".js-close");
@@ -544,20 +544,57 @@
     return h;
   }
 
+  /* ---------------- 上の帯（時刻・電池）の色 ----------------
+
+     ホーム画面のアプリでは、時刻や電池の並ぶ帯はページの外で、色は
+     theme-color（灰の地）で塗られます。全画面の書く紙は白なので、開いて
+     いるあいだだけ帯も紙の色に合わせます（2026年10月1日、iPhone で「一番
+     上だけ灰色でおかしい」）。閉じたら元の値へ。 */
+  let barSaved = null;
+  function tintBar(on) {
+    const metas = [...document.querySelectorAll('meta[name="theme-color"]')];
+    if (on) {
+      if (barSaved) return;
+      barSaved = metas.map((m) => m.getAttribute("content"));
+      const c = getComputedStyle(document.documentElement).getPropertyValue("--c-surface").trim();
+      if (c) metas.forEach((m) => m.setAttribute("content", c));
+    } else if (barSaved) {
+      metas.forEach((m, i) => m.setAttribute("content", barSaved[i]));
+      barSaved = null;
+    }
+  }
+
   /* ---------------- 「⋯」の小窓（段4） ----------------
 
      押した「⋯」のすぐ下に、項目を縦に並べた小さな一枚を出します。外を
      押すか、項目を選ぶと閉じます。重なりは開いている紙の一段上。 */
   function popMenu(anchor, items) {
+    const p = popOver(anchor, { role: "menu", side: "right" });
+    items.forEach((it) => {
+      const label = typeof it.label === "function" ? it.label() : it.label;
+      const b = node(html`<button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${icon(it.icon)}<span>${label}</span></button>`);
+      b.addEventListener("click", () => { KN.motion.fire("select"); p.close(); it.onPick(); });
+      p.el.append(b);
+    });
+    return p;
+  }
+
+  /* 押したもののすぐ下に出る小さな一枚（「⋯」・ノートブック・タグに共通）。
+     side は揃える側（左の口なら left、右の口なら right）。外を押す・Escape で
+     閉じ、閉じたら onClose。 */
+  function popOver(anchor, { role = "dialog", side = "right", label = "", onClose } = {}) {
     const sheetEl = anchor.closest(".sheet");
     const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
     const r = anchor.getBoundingClientRect();
     const cover = node(html`<div class="note-pop-cover"></div>`);
-    const pop = node(html`<div class="note-pop" role="menu"></div>`);
+    const pop = node(html`<div class="note-pop is-${side}" role="${role}" aria-label="${label}"></div>`);
     cover.style.zIndex = String(z + 1);
     pop.style.zIndex = String(z + 2);
-    pop.style.top = `${Math.round(r.bottom + 4)}px`;
-    pop.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
+    const top = Math.round(r.bottom + 4);
+    pop.style.top = `${top}px`;
+    pop.style.setProperty("--pop-top", `${top}px`);
+    if (side === "left") pop.style.left = `${Math.max(8, Math.round(r.left))}px`;
+    else pop.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
     let gone = false;
     const close = () => {
       if (gone) return;
@@ -566,26 +603,22 @@
       document.removeEventListener("keydown", onKey, true);
       cover.remove();
       setTimeout(() => pop.remove(), KN.motion.ms("--m-state") + 40);
+      if (onClose) onClose();
     };
     const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
-    items.forEach((it) => {
-      const label = typeof it.label === "function" ? it.label() : it.label;
-      const b = node(html`<button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${icon(it.icon)}<span>${label}</span></button>`);
-      b.addEventListener("click", () => { KN.motion.fire("select"); close(); it.onPick(); });
-      pop.append(b);
-    });
     cover.addEventListener("click", close);
     document.addEventListener("keydown", onKey, true);
     document.body.append(cover, pop);
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
-    return { close };
+    return { el: pop, close };
   }
 
-  /* ---------------- タグ・ノートブックを選ぶ紙（段3） ----------------
+  /* ---------------- タグ・ノートブックを選ぶ小窓（段3、段4.1で紙から小窓へ） ----------------
 
      どちらも、いま使われている名前をチップで並べ、下の欄で新しい名前を
      足します。欄に打ったまま閉じても、その名前は付きます（打った字が
-     消えたように見せないため）。 */
+     消えたように見せないため）。出るのは押した口のすぐ下（「⋯」と同じ。
+     2026年10月1日、iPhone で「シートでなく、そこにポンと出てほしい」）。 */
   function nameField(placeholder) {
     return node(html`
       <input class="input note-name-in js-new" placeholder="${placeholder}" aria-label="${placeholder}"
@@ -598,7 +631,7 @@
     fn();
   });
 
-  function pickTags(note, done) {
+  function pickTags(anchor, note, done) {
     let mine = note.tags.slice();
     const box = node(html`<div class="note-pick"><div class="chip-row js-chips"></div></div>`);
     const chipsEl = box.querySelector(".js-chips");
@@ -629,20 +662,22 @@
     };
     onEnter(input, () => { U.haptic(); addTyped(); });
     paint();
-    KN.ui.sheet({ title: "タグ", content: box, onClose: addTyped });
+    const p = popOver(anchor, { side: "right", label: "タグ", onClose: addTyped });
+    p.el.classList.add("is-pick");
+    p.el.append(box);
   }
 
-  function pickNotebook(note, done) {
+  function pickNotebook(anchor, note, done) {
     const box = node(html`<div class="note-pick"><div class="chip-row js-chips"></div></div>`);
     const chipsEl = box.querySelector(".js-chips");
     const input = nameField("新しいノートブック");
     box.append(input);
-    let h = null;
+    let p = null;
     let settled = false;
     const choose = (name) => {
       settled = true;
       done(name);
-      if (h) h.close();
+      if (p) p.close();
     };
     const names = N().notebooks();
     if (note.notebook && !names.includes(note.notebook)) names.push(note.notebook);
@@ -655,11 +690,13 @@
       chipsEl.append(b);
     });
     onEnter(input, () => { if (input.value.trim()) { U.haptic(); choose(input.value.trim()); } });
-    h = KN.ui.sheet({
-      title: "ノートブック",
-      content: box,
+    p = popOver(anchor, {
+      side: "left",
+      label: "ノートブック",
       onClose: () => { if (!settled && input.value.trim()) done(input.value.trim()); },
     });
+    p.el.classList.add("is-pick");
+    p.el.append(box);
   }
 
   /* ---------------- 前の版（段2） ----------------

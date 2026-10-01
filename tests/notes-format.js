@@ -148,8 +148,20 @@ const { open, checker } = require("./lib");
   t.check("やり直す", (await field()).v.endsWith("\n---\n"));
   await page.keyboard.insertText("おわり");
 
-  /* ---- キーボードを閉じる → 整えた姿 ---- */
-  await tool("done");
+  /* ---- 道具の帯：ぜんぶが一列に見える・閉じる口は無い・紙の底に貼りつく ---- */
+  const bar = await page.$eval(".sheet.is-note", (s) => {
+    const tb = s.querySelector(".note-tools").getBoundingClientRect();
+    const bs = [...s.querySelectorAll(".note-tool")].map((b) => b.getBoundingClientRect());
+    return { n: bs.length, inside: bs.every((r) => r.left >= tb.left - 0.5 && r.right <= tb.right + 0.5),
+      oneRow: bs.every((r) => Math.abs(r.top - bs[0].top) < 1), done: !!s.querySelector('[data-k="done"]'),
+      gap: Math.round(s.getBoundingClientRect().bottom - tb.bottom) };
+  });
+  t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 10 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
+  t.check("道具の帯は紙の底に隙間なく", bar.gap === 0, JSON.stringify(bar));
+  t.check("開いているあいだ、上の帯（theme-color）は紙の白", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).every((c) => c === "#ffffff"));
+
+  /* ---- 欄から出る（キーボードを閉じる）→ 整えた姿 ---- */
+  await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note .note-view").hidden);
   const view = await page.$eval(".sheet.is-note", (s) => ({
     h: s.querySelectorAll(".note-view .nv-h1").length,
