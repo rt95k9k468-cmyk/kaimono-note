@@ -75,7 +75,7 @@
     /* 帯の題。根っこは**席の名前**なので英語（daily / tasks / shopping /
        health と同じ系列）。「›」の先は**中身の名前**（外観・バックアップ…）
        なので日本語のまま——線は「席か、中身か」で引いています。 */
-    L.navTitle.textContent = page ? page.title : (opts.title || "Settings");
+    L.navTitle.textContent = page ? titleOf(page) : (opts.title || "Settings");
     /* 押せば決まるもの（保存・外す）は、下に貼りつけた帯へ。紙のときは
        中身の最後に置いていましたが、一枚ぶんの高さがあると、短い欄の紙で
        ボタンが画面のまん中に浮きます。 */
@@ -96,6 +96,9 @@
     root.append(stack[0].el);
     /* Dropbox へ送った・送れなかったは store の外で動くので、別に聞きます。 */
     if (KN.dropbox) KN.dropbox.onChange(render);
+    /* ノート（js/notes-idb.js）も store の外。読み終えたらノートブック・タグの
+       行が出るので、組み直します。 */
+    if (KN.notes) KN.notes.onChange(() => { if (KN.app.activeScreen() === "settings") render(); });
 
     /* 左端から引いて一段戻る。設定の中では紙の重なり、いちばん外では
        画面そのものが動きます——どちらも「上の一枚と、その下の一枚」なので、
@@ -296,8 +299,10 @@
     const keep = L.scroll.scrollTop;
     L.body.innerHTML = "";
     const page = L.id ? PAGES[L.id] : null;
-    if (page) page.build().flat().filter(Boolean).forEach((n) => L.body.append(n));
-    else renderRoot(L);
+    if (page) {
+      if (typeof page.title === "function") L.navTitle.textContent = titleOf(page);
+      page.build().flat().filter(Boolean).forEach((n) => L.body.append(n));
+    } else renderRoot(L);
     L.scroll.scrollTop = keep;
     paintNav(L);
   }
@@ -503,12 +508,16 @@
 
      中身の関数は、このファイルより後に読まれる settings-*.js にあります。
      読み込んだ時点ではまだ居ないので、組むときに `S` から引きます。 */
+  /* ノートは daily の席を分け合う（docs/notes.md）ので、daily のすぐ下に
+     notes の見出しで並べます（`more`）。daily から開いても、ノートの面から
+     開いても同じ順。 */
+  const NOTES = { label: "notes", rows: () => S.notesRows() };
   const TAB = {
     todo:    { label: "tasks",    rows: () => S.todoRows() },
     list:    { label: "shopping", rows: () => S.listRows() },
     prices:  { label: "shopping", rows: () => S.listRows() },
-    archive: { label: "daily",    rows: () => S.dailyRows() },
-    notes:   { label: "daily",    rows: () => S.dailyRows() },
+    archive: { label: "daily",    rows: () => S.dailyRows(), more: NOTES },
+    notes:   { label: "daily",    rows: () => S.dailyRows(), more: NOTES },
     diet:    { label: "health",   rows: () => S.dietRows() },
   };
 
@@ -530,7 +539,13 @@
     calHow:   { title: "ショートカットの組み方", build: () => S.calHowRows() },
     relay:    { title: "中継所",   build: () => S.relayRows() },
     relayHow: { title: "建てかた", build: () => S.relayHowRows() },
+    notesBooks: { title: "ノートブック", build: () => S.notesLabelList("nb") },
+    notesTags:  { title: "タグ",         build: () => S.notesLabelList("tag") },
+    /* 一つのノートブック・タグ。題はその名前なので、付け替えたら追いかけます
+       （`title` が関数なら、組み直すたびに引く）。 */
+    noteLabel:  { title: () => S.noteLabelTitle(), build: () => S.noteLabelRows() },
   };
+  const titleOf = (page) => (typeof page.title === "function" ? page.title() : page.title);
 
   function onEnter() {
     const from = KN.app.openedFrom && KN.app.openedFrom();
@@ -569,6 +584,10 @@
     const tab = TAB[fromTab] || TAB.archive;
     L.body.append(head(tab.label));
     put(tab.rows());
+    if (tab.more) {
+      L.body.append(head(tab.more.label));
+      put(tab.more.rows());
+    }
     /* 上の見出しは席の名前（tab.label ＝ shopping など）。その続きなので、
        ここも同じ系列の言葉にします。 */
     L.body.append(head("General"));

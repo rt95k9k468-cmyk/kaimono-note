@@ -47,9 +47,17 @@ General があと（`renderRoot`）はそのまま——**全タブの目次は�
 |---|---|---|
 | tasks | 通知（`notify`） | やることの時刻を知らせる・閉じていても鳴らす と、それぞれの説明。行の右にオン/オフ（`notify.enabled()`） |
 | tasks | カレンダー（`cal`） | カレンダーはショートカットで入れる・ショートカットの組み方 ›（`calHow`、三段目）。ショートカット App のある端末だけ |
-| daily | 表示（`dailyView`） | 出す範囲・見せ方・積み上げのメモ・上に出すもの・起床/就寝・作成/更新・季節のひとこと・月のまとめ・まとめの位置 |
+| daily | 表示（`dailyView`） | 出す範囲・見せ方・積み上げのメモ・上に出すもの・起床/就寝・作成/更新・季節のひとこと・月のまとめ・まとめの位置（ノートの並びは notes へ移した） |
 | daily | 書き出し（`dailyOut`） | 月ぶんを書き出す・**年の本**（← バックアップから） |
 | health | 取り込み（`intake`） | ヘルスケアから取り込む・中継所 ›（三段目。建てかたは四段目）・AIの窓口 |
+| notes | ノートブック（`notesBooks`）・タグ（`notesTags`） → 一つ（`noteLabel`） | 名前の付け替え・まとめる・色・外す（docs/notes.md の「設定」） |
+| notes | 書き出し（紙 → 設定の中では一枚） | 1件ずつ（zip）・1つにまとめる（md） |
+
+**notes は daily の下**（2026年10月1日）：ノートは daily の席を分け合うので、daily の
+歯車からもノートの面の歯車からも、daily の見出しのすぐ下に notes の見出し（`TAB` の
+`more`）。根っこには並び（← daily の表示から。鍵は `notesOrder` のまま）・ノートブック ›・
+タグ ›・書き出し ›。`PAGES` の `title` は関数でもよい（名前を題にする一枚が、付け替えを
+追いかけるため）。
 
 根っこに残したもの：tasks は時間割・一日の道・一日の始まりと終わり。daily は
 「あの日」だけ。health は自動で読む・気づいたこと・目標・AIに分析・**記録を書き出す**
@@ -360,6 +368,7 @@ iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in
 | `settings-todo.js` | tasks（一日の始まりと終わり・通知・カレンダー） |
 | `settings-list.js` | shopping（お店・カテゴリ・おぼえた振り分け） |
 | `settings-daily.js` | daily（表示・書き出し・年の本） |
+| `settings-notes.js` | notes（並び・ノートブック・タグ・書き出し。2026年10月1日） |
 | `settings-diet.js` | health（記録を書き出す・取り込み・AIに分析） |
 | `settings-relay.js` | 中継所・建てかた・AIの窓口 |
 | `settings-backup.js` | バックアップ（保存・確かめる・復元・自動バックアップ・点検・使用量・日記を取り込む・Dropbox・データを消す） |

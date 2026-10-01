@@ -382,6 +382,33 @@
     emit();
   }
 
+  /** ノートブック・タグの名前を付け替えます（設定の notes →「ノートブック」
+      「タグ」）。to が空なら外します（ノートは消えません）。もうある名前へ
+      付け替えれば一つにまとまります（タグの重なりは cleanTags が捨てる）。
+      最近削除したノートも同じにします——戻したときに古い名前がよみがえら
+      ないように。★・ラベルと同じく、更新日も並びも動かさず、前の版も取りません。
+      付け替えたノートの数を返します。 */
+  function renameLabel(kind, from, to) {
+    if (phase !== "on") return 0;
+    from = String(from == null ? "" : from).trim();
+    to = String(to == null ? "" : to).trim();
+    if (!from || from === to) return 0;
+    let count = 0;
+    byId.forEach((n) => {
+      if (kind === "nb") {
+        if (n.notebook !== from) return;
+        n.notebook = to;
+      } else {
+        if (!n.tags.includes(from)) return;
+        n.tags = cleanTags(n.tags.map((t) => (t === from ? to : t)));
+      }
+      dirty.add(n.id);
+      count++;
+    });
+    if (count) { writeNow(); emit(); }
+    return count;
+  }
+
   /** いま使われているノートブック・タグの名前（消していないノートから、
       そのつど組み立てます。入れ物は持ちません）。名前の順。 */
   function namesOf(pick) {
@@ -466,7 +493,7 @@
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
     begin, versions, revert, merge,
-    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf,
+    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 
