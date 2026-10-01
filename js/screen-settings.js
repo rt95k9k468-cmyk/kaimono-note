@@ -508,6 +508,7 @@
     list:    { label: "shopping", rows: () => S.listRows() },
     prices:  { label: "shopping", rows: () => S.listRows() },
     archive: { label: "daily",    rows: () => S.dailyRows() },
+    notes:   { label: "daily",    rows: () => S.dailyRows() },
     diet:    { label: "health",   rows: () => S.dietRows() },
   };
 

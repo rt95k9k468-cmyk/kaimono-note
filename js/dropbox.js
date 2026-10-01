@@ -286,14 +286,21 @@
       save();
       return "held";
     }
+    /* ノート（docs/notes.md）も読み終えるのを待ちます。中身は記録とは別の
+       一番上の鍵 noteBook。「前と同じなら送らない」にも数えます。 */
+    if (KN.notes) {
+      try { await KN.notes.ready(); } catch (err) { /* 読めない日は noteBook を付けずに */ }
+    }
+    const extra = KN.notes ? KN.notes.forExport() : {};
     dirty = false;
-    const hash = await sha(JSON.stringify(store.get()));
+    const hash = await sha(JSON.stringify(store.get())
+      + (extra.noteBook ? JSON.stringify(extra.noteBook) : ""));
     const day = dayKey(new Date());
     const same = hash && hash === cfg.lastHash;
     if (same && cfg.lastDay === day) return "same";
 
     const at = new Date().toISOString();
-    const text = store.exportJSON(at);
+    const text = store.exportJSON(at, extra);
     try {
       if (!same) await upload(LATEST, text, "overwrite");
       if (cfg.lastDay !== day) {
@@ -348,5 +355,6 @@
   });
   setTimeout(() => { prepare(); sync(); }, FIRST);
 
-  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, onChange, KEEP };
+  /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
+  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, onChange, KEEP };
 })();

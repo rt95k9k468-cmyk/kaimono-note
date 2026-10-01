@@ -35,7 +35,12 @@
      ——毎日そこへ「行く」ものではなく、何かを直したいときに開くもの。
      各タブの右上の歯車へ戻して、席は daily に譲ります。 */
   const TABS = [
-    { id: "archive", label: "daily", icon: "book" },
+    /* **ノートも daily の裏です**（docs/notes.md）。価格と同じく、daily に居て
+       この席を押すと紙が下がって後ろのノートが出ます。`names` は「出ている
+       あいだ、席がその面の名前と絵を名乗る画面」——ノートの面には札も題の
+       入れ替わりも無いので、帯が言わないと、いまどこに居るかを言うものが
+       ありません（価格は札の帯が言うので、席は shopping のまま）。 */
+    { id: "archive", holds: ["notes"], names: ["notes"], label: "daily", icon: "book" },
     { id: "todo", label: "tasks", icon: "checklist" },
     /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
        そこへは、買うものに居るところでこの席を押して、紙を下げて行きます
@@ -55,6 +60,7 @@
     archive:  { label: "daily",    icon: "book" },
     list:     { label: "shopping", icon: "cart" },
     prices:   { label: "prices",   icon: "tag" },
+    notes:    { label: "notes",    icon: "notes" },
     diet:     { label: "health",   icon: "heart" },
     /* 席の名前は英語で通します。ここだけ「設定」で、設定の画面では
        「shopping」の下に「一般」が並ぶ——**同じ系列の中で、そこだけ
@@ -178,8 +184,8 @@
          この席が受け持ちます。動きは引いたときと同じ——紙が下がって後ろの
          地が出ます。戻るのは、もう一度押すか、留まった頭を上へ引くか。 */
       btn.addEventListener("click", () => {
-        if (t.holds && t.holds.indexOf(active) >= 0) faceTo(0);
-        else if (t.holds && active === t.id) faceTo(1);
+        if (t.holds && t.holds.indexOf(active) >= 0) faceTo(0, t.id);
+        else if (t.holds && active === t.id) faceTo(1, t.id);
         else show(t.id);
         /* 押した席の絵が、一度だけその絵らしく応える（base.css の「押した席の
            絵が応える」）。いま居る席をもう一度押しても応えます——押したことへの
@@ -413,7 +419,7 @@
       /* 帯が言うのは**その席の名前**です。価格を見ているあいだも「買うもの」
          のまま——いま居るのは買うもののタブで、その紙を下げているだけ
          なので。帯はいる場所を言うもので、紙の位置を言うものではありません。 */
-      const face = FACES[t.id];
+      const face = FACES[t.names && t.names.indexOf(active) >= 0 ? active : t.id];
       btn.setAttribute("aria-selected", String(here));
       btn.querySelector(".tab-ico-face").classList.add("is-on");
       const ico = btn.querySelector(".tab-ico-face");
@@ -616,7 +622,7 @@
      並びは**下の帯の並び**です。買うもの と 価格 は同じ一つのタブの表と裏
      なので、同じ番号を持たせます——ふた面をめくるのは横へ動くことでは
      ないので、そこは流しません（これまでどおりの入りかた）。 */
-  const SLIDE = { archive: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
+  const SLIDE = { archive: 0, notes: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
   /* 流れ終わった面を片づけるまでの待ち時間。**CSS から読みます**
      ——動かしているのは base.css の `--m-nav`（席を移る）と `--m-push`
      （引き出しが押しのける）で、ここに数字を持つと二重帳簿になります。
@@ -664,7 +670,16 @@
      （day-swipe / edge-back と同じ決めごと）。 */
   const FACE_FLING_V   = 0.35;  // px/ms
   const FACE_FLING_MIN = 8;     // ただし、まったく動いていないものは払いではない
-  const FRONT = "list", BACK = "prices";
+  /* 紙と、その後ろの地の組（2026年10月1日から二組。docs/notes.md）。前は
+     `FRONT = "list", BACK = "prices"` の決め打ちでした。いま動かしている組は
+     `pair` で、帯を押したとき・掴み手を引いたときに、その席・その紙の組へ
+     切り替えます。`home` は留まった掴み手の名札。 */
+  const PAIRS = [
+    { front: "list", back: "prices", home: "買うものへ戻る（上へ引いても戻ります）" },
+    { front: "archive", back: "notes", home: "daily へ戻る（上へ引いても戻ります）" },
+  ];
+  const pairOf = (id) => PAIRS.find((x) => x.front === id || x.back === id) || null;
+  let pair = PAIRS[0];
   /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
      画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
      地なので、掴み手を持てない——base.css の「紙一枚と、その後ろの地」）。
@@ -674,8 +689,8 @@
   const screensEl = () => document.getElementById("screens");
 
   function faceEls() {
-    return { front: document.getElementById("screen-" + FRONT),
-             back: document.getElementById("screen-" + BACK) };
+    return { front: document.getElementById("screen-" + pair.front),
+             back: document.getElementById("screen-" + pair.back) };
   }
 
   /* **`--face-p` は `#screens` に書きます**（前の面ではなく）。
@@ -723,13 +738,18 @@
     return Math.max(1, floor - peek - rest);
   }
 
-  /** 二枚とも見えるようにして、動かせる形にします。 */
-  function faceOpen() {
+  /** 二枚とも見えるようにして、動かせる形にします。
+
+      `keepFront` は指で掴み手を引いているとき。前の紙は組み直しません
+      ——daily の紙は組み直すたびに掴み手ごと作り直すので、指の下の掴み手が
+      消えます（着いたら `show()` が組み直します）。 */
+  function faceOpen(keepFront) {
     const { front, back } = faceEls();
     const box = screensEl();
     if (!front || !back || !box) return null;
-    [FRONT, BACK].forEach((id) => {
+    [pair.front, pair.back].forEach((id) => {
       ensureMounted(id);
+      if (keepFront && id === pair.front) return;
       try { KN.screens[id].render(); } catch (_) { /* 組めなくても手つきは続けます */ }
     });
     back.hidden = false; front.hidden = false;
@@ -756,9 +776,12 @@
 
   /** いま紙はどちらに居るか（0＝買うものが全面、1＝価格が全面）。
       掴み手が「どちらへ引けるか」を、ここから決めます。 */
-  function faceAt() {
-    const { front } = faceEls();
+  function faceAt(id) {
+    /* 訊く組は、名指しされた画面の組（無ければ、いま居る画面の組）。 */
+    const pr = pairOf(id || active) || pair;
+    const front = document.getElementById("screen-" + pr.front);
     if (front && front.classList.contains("is-face-parked")) return 1;
+    if (pr !== pair) return 0;
     const p = faceVar("--face-p");
     return isFinite(p) && p > 0.5 ? 1 : 0;
   }
@@ -792,6 +815,7 @@
        CSS は `--face-ms` / `--face-ease` を読むので、材の置き場所は
        これまでどおり CSS のまま、数だけが指から来ます。 */
     const box = screensEl();
+    const pr = pair;       // 滑っているあいだに組が替わっても、着く先はこの組
     const d0 = faceVar("--face-d") || 1;
     const p0 = faceVar("--face-p");
     const now = isFinite(p0) ? p0 : (to > 0.5 ? 0 : 1);
@@ -815,7 +839,7 @@
       } else {
         faceUnpark();
       }
-      show(to > 0.5 ? BACK : FRONT, "settled");
+      show(to > 0.5 ? pr.back : pr.front, "settled");
       syncFaceGrips();
       if (box) {
         box.style.removeProperty("--face-ms");
@@ -826,7 +850,9 @@
 
   /** 指を使わずに、紙をその位置まで滑らせます（帯を押したときの道）。
       0＝買うものの紙が全面、1＝価格の紙が全面。 */
-  function faceTo(p) {
+  function faceTo(p, id) {
+    const pr = pairOf(id || active);
+    if (pr) pair = pr;
     const o = faceOpen();
     if (!o) return;
     facePaint(o, p > 0.5 ? 0 : 1);      // いまの姿から始めます
@@ -842,9 +868,19 @@
      ——同じ一つの棒が、下ろす前は「価格をひらく」、留まっているあいだは
      「買うものへ戻る」なので。 */
   const faceGrips = [];
+  const gripPair = (g) => {
+    const scr = g.closest(".screen");
+    return scr ? pairOf(scr.dataset.screen) : null;
+  };
   function syncFaceGrips() {
-    const at = faceAt();
+    /* daily の紙は組み直すたびに掴み手ごと作り直されるので、外れたものは
+       ここで捨てます。 */
+    for (let i = faceGrips.length - 1; i >= 0; i--) {
+      if (!faceGrips[i].isConnected) faceGrips.splice(i, 1);
+    }
     faceGrips.forEach((g) => {
+      const pr = gripPair(g);
+      const at = pr ? faceAt(pr.front) : 0;
       /* 紙が上に居るあいだ、この掴み手は暦のもの（cal-peek）で、押しても
          何も起きません——ほかのタブの掴み手と同じく、読み上げにもキーにも
          出しません。価格への道は帯の「shopping」です。 */
@@ -858,7 +894,7 @@
       g.setAttribute("role", "button");
       g.setAttribute("tabindex", "0");
       g.removeAttribute("aria-hidden");
-      g.setAttribute("aria-label", "買うものへ戻る（上へ引いても戻ります）");
+      g.setAttribute("aria-label", pr.home);
     });
   }
 
@@ -887,9 +923,11 @@
        やること・daily・ダイエットの掴み手には前から付いていて、ここだけ
        抜けていました。 */
     grip.setAttribute("data-pull-own", "face");
-    faceGrips.push(grip);
+    if (faceGrips.indexOf(grip) < 0) faceGrips.push(grip);
     syncFaceGrips();
-    const flip = () => { if (faceAt()) faceTo(0); };
+    /* この掴み手の組は、乗っている紙の画面から（買うもの・daily）。 */
+    const mine = () => gripPair(grip);
+    const flip = () => { const pr = mine(); if (pr && faceAt(pr.front)) faceTo(0, pr.front); };
     grip.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
@@ -901,12 +939,14 @@
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       // 紙が上に居るあいだは、暦の番です（cal-peek が紙の上で聞いています）。
-      if (!faceAt()) return;
+      const pr = mine();
+      if (!pr || !faceAt(pr.front)) return;
+      pair = pr;
       pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
       lastT = performance.now(); lastY = e.clientY; vy = 0;
       /* 始まりは**いまの姿**。留まっているところから掴んだら 1 から始まって、
          指を上げるぶんだけ 0 へ向かいます。 */
-      from = faceAt(); p = from;
+      from = faceAt(pr.front); p = from;
       try { grip.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
     });
     grip.addEventListener("pointermove", (e) => {
@@ -918,7 +958,7 @@
          逆向きはスクロールに渡します（暦の段と同じ決めごと）。 */
       if (!o) {
         if (from === 0 ? dy <= 2 : dy >= -2) return;
-        o = faceOpen();
+        o = faceOpen(true);
         if (!o) { on = false; return; }
         /* 道のりは、**取ると決めた時に一度だけ**（faceOpen が測って
            --face-d に書いたものを、そのまま指の換算にも使います。二か所で
@@ -998,7 +1038,9 @@
     /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
        のぞかせた頭は「この後ろに買うものがある」という札なので、daily や
        ダイエットの上に残っていては嘘になります。 */
-    if (id !== FRONT && id !== BACK) faceUnpark();
+    const inPair = pairOf(id);
+    if (!inPair || inPair !== pair) faceUnpark();
+    if (inPair) pair = inPair;
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */
@@ -1184,7 +1226,10 @@
     /* `#due=id,id` は、時刻の通知を押して来た道（sw.js の notificationclick）。
        やることを出して、その用事の紙を開く（js/due-sheet.js・R3）。 */
     const dueIds = KN.dueSheet ? KN.dueSheet.idsFromHash(location.hash) : null;
-    const fromHash = calBack || dueIds ? "todo" : location.hash.slice(1);
+    let fromHash = calBack || dueIds ? "todo" : location.hash.slice(1);
+    /* ノートは daily の紙の裏。留まった紙の無いところへ直に降ろすと戻り道が
+       無いので、daily から（docs/notes.md）。 */
+    if (fromHash === "notes") fromHash = "archive";
     show(KN.screens[fromHash] ? fromHash : HOME);
     if (calBack) KN.ics.cameBack();
     if (dueIds) {

@@ -52,7 +52,7 @@
   const { html, node, icon } = U;
 
   /** 帯を持つタブ。 */
-  const TABS = ["archive", "todo", "list", "prices", "diet"];
+  const TABS = ["archive", "notes", "todo", "list", "prices", "diet"];
 
   let root = null;
   let owner = null;
@@ -515,7 +515,7 @@
       cal: () => sCal,
       isOpen: calOpen,
       isShown: calShown,
-      enabled: () => o.enabled() && owner === "list" && !KN.app.faceAt(),
+      enabled: () => o.enabled() && owner === "list" && !KN.app.faceAt("list"),
       busy: () => KN.calSwipe.isActive(),
       here: sCur,
       tagOffWeek,

@@ -1088,14 +1088,18 @@ a { color: var(--c-primary); }
    です：位置はいつも同じところで、変わるのは**中身だけ**（「買うもの」→
    「価格」、買うものの札 → 価格の札）。動かない枠の中で名前が入れ替わる
    ほうが、「後ろの面が出てきた」と素直に読めます。 */
-.screen.is-face-front .stack > .tl-sheet {
+/* daily の紙（ノートの前の一枚）は `.arc-body` の中に居ます（docs/notes.md）。
+   紙の規則は、どれも二つの場所に効かせること。 */
+.screen.is-face-front .stack > .tl-sheet,
+.screen.is-face-front .arc-body > .tl-sheet {
   transform: translateY(calc(var(--face-p, 0) * var(--face-d, 0px)));
   will-change: transform;
 }
 /* 滑る長さと曲線は、**指が決めます**（app.js の faceSettle が
    `--face-ms` / `--face-ease` を書きます）。材の置き場所はここのまま、
    数だけが指から来る——書いていないときは `--m-swipe` に落ちます。 */
-.screen.is-face-front.is-face-settle .stack > .tl-sheet {
+.screen.is-face-front.is-face-settle .stack > .tl-sheet,
+.screen.is-face-front.is-face-settle .arc-body > .tl-sheet {
   transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
               box-shadow var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
@@ -1106,7 +1110,8 @@ a { color: var(--c-primary); }
    濃さを一定にしていたころ、価格から戻りきる直前に、紙の上の帯が影で
    暗くなって、着いた瞬間にぱっと明るく戻っていました（2026年9月28日、
    実機「一瞬、後ろが暗くなる」。家に居る紙は影を持たないので）。 */
-.screen.is-face-front .stack > .tl-sheet {
+.screen.is-face-front .stack > .tl-sheet,
+.screen.is-face-front .arc-body > .tl-sheet {
   box-shadow: 0 -10px 34px rgba(0, 0, 0, calc(.14 * clamp(0, var(--face-p, 0) / .3, 1)));
 }
 
@@ -1196,7 +1201,8 @@ a { color: var(--c-primary); }
           mask-image: var(--face-fade);
 }
 .screen.is-face-parked .search-wrap { visibility: hidden; }
-.screen.is-face-parked .stack > .tl-sheet {
+.screen.is-face-parked .stack > .tl-sheet,
+.screen.is-face-parked .arc-body > .tl-sheet {
   transform: translateY(calc(var(--face-p, 1) * var(--face-d, 0px)));
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
 }
