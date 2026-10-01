@@ -98,23 +98,6 @@
         })
       ),
       card(
-        pickRow({
-          title: "ノートの並び", value: s.notesOrder === "created" ? "作った日" : "直した日",
-          onTap: () => choose({
-            title: "ノートの並び", value: s.notesOrder === "created" ? "created" : "updated",
-            options: [
-              { id: "updated", label: "直した日" },
-              { id: "created", label: "作った日" },
-            ],
-            onPick: (v) => {
-              dailySet("notesOrder", v);
-              const ns = KN.screens.notes;
-              if (ns && ns.render) ns.render();
-            },
-          }),
-        })
-      ),
-      card(
         switchRow({
           title: "起床・就寝の時刻", on: s.showDayTimes !== false,
           onTap: (v) => dailySet("showDayTimes", v),

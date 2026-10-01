@@ -6283,6 +6283,14 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .accent-dot.is-on .accent-name { color: var(--c-text); font-weight: 700; }
 
+/* ノートブック・タグの色（設定の notes。docs/notes.md の「設定」）。名前を
+   添えない8色なので、折り返さずに一列で端から端まで。 */
+.accent-row.note-colors {
+  flex-wrap: nowrap; justify-content: space-between; gap: 0;
+  margin-top: 0;
+}
+.note-colors .accent-dot { padding: 6px 0; }
+
 /* ---- 月を選ぶ紙（daily の題を押すと出ます） ----
 
    daily は月ぶんを出す画面なので、題（「2026年9月」）を押したときの

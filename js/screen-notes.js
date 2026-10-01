@@ -30,15 +30,25 @@
      しまわない）。色は買うもののカテゴリと同じ並び（灰の「その他」は外す
      ——丸が見えなくなるので）。 */
   const TAG_COLORS = ["#5ea55a", "#d4695f", "#d79a4a", "#5b9bd5", "#4fb3c4", "#9b7ede", "#48b39a", "#e07fa8"];
-  function tagColor(name) {
+  const COLOR_NAMES = ["緑", "赤", "橙", "青", "水色", "紫", "青緑", "桃"];
+  function hashColor(name) {
     let h = 0;
     for (const c of String(name)) h = (h * 31 + c.codePointAt(0)) >>> 0;
     return TAG_COLORS[h % TAG_COLORS.length];
   }
-  const dot = (t) => html`<span class="chip-dot" style="--cat:${tagColor(t)}"></span>`;
-  /* ノートブックの本の絵にも、名前から決まった一色（2026年10月1日、利用者が
-     「それぞれに色が欲しい」）。タグと同じ引き方なので、同じ名前なら同じ色。 */
-  const book = (b) => html`<span class="nb-ico" style="--cat:${tagColor(b)}">${icon("book")}</span>`;
+  /* 設定（notes →「ノートブック」「タグ」）で選んだ色があればそれ。無ければ
+     名前から決まった一色。置き場は `settings.noteColors = { nb: {名前: 色},
+     tag: {名前: 色} }`——無い・知らない色は名前の色へ戻る（移行なし）。
+     kind は "nb"・"tag"。 */
+  function colorOf(kind, name) {
+    const all = (KN.store.get().settings || {}).noteColors;
+    const m = all && typeof all === "object" ? all[kind] : null;
+    const c = m && typeof m === "object" && Object.prototype.hasOwnProperty.call(m, name) ? m[name] : null;
+    return TAG_COLORS.includes(c) ? c : hashColor(name);
+  }
+  const dot = (t) => html`<span class="chip-dot" style="--cat:${colorOf("tag", t)}"></span>`;
+  /* ノートブックの本の絵にも色（2026年10月1日、利用者が「それぞれに色が欲しい」）。 */
+  const book = (b) => html`<span class="nb-ico" style="--cat:${colorOf("nb", b)}">${icon("book")}</span>`;
 
   function mount(el) {
     root = el;
@@ -117,7 +127,7 @@
     return noTime ? day : `${day} ${hm(d)}`;
   }
 
-  /** 一覧の並び。設定（daily → 表示 → ノートの並び）で作った日の順にもできる。 */
+  /** 一覧の並び。設定（notes → 並び）で作った日の順にもできる。 */
   const byCreated = () => (KN.store.get().settings || {}).notesOrder === "created";
 
   /* 窓の字は、題・本文に加えてノートブックとタグの名前にも当てます。 */
@@ -532,7 +542,7 @@
     };
     const paintLabels = () => {
       nbBtn.querySelector(".js-nb-name").textContent = note.notebook || "ノートブック";
-      if (note.notebook) nbBtn.style.setProperty("--cat", tagColor(note.notebook));
+      if (note.notebook) nbBtn.style.setProperty("--cat", colorOf("nb", note.notebook));
       else nbBtn.style.removeProperty("--cat");
       nbBtn.classList.toggle("is-empty", !note.notebook);
       labelsEl.innerHTML = "";
@@ -997,5 +1007,5 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.notes = { mount, render, dockButton, open: openNote };
+  KN.screens.notes = { mount, render, dockButton, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES };
 })();
