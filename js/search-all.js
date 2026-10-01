@@ -10,7 +10,8 @@
    - 一行を窓の下に置くのは、タブの一覧の「終わり」だと長い一覧では
      指が届かないから（そして、タブの中に一件も無いときほど要る）。
    - ほかの場所：やること（済んだものも）・買うもの（品物と価格）・daily
-     （日記の本文・積み上げ）・からだ（食べたもの・メモ・お酒）。いまの
+     （日記の本文・積み上げ）・からだ（食べたもの・メモ・お酒）・ノート
+     （題・本文・ノートブック・タグ。行を押すと daily の裏でそのノートを開く）。いまの
      タブの場所は数えません（もう絞り込んで見えているので）。
    - 「2025年9月」「去年の夏」「先月」のような**過去の**日付の言葉は、
      daily のその月へ飛ぶ口として出します。`when-parse` は先の日しか
@@ -96,7 +97,7 @@
   /* ---------------- 探す ---------------- */
 
   /** いまのタブが受け持つ場所（そこは数えない）。 */
-  const PLACE_OF = { todo: "todo", list: "shop", prices: "shop", archive: "daily", diet: "body" };
+  const PLACE_OF = { todo: "todo", list: "shop", prices: "shop", archive: "daily", diet: "body", notes: "notes" };
 
   /** 当たった前後を少しだけ（本文・メモの行に）。 */
   function around(text, q) {
@@ -191,11 +192,31 @@
     return out.sort(byDayDesc);
   }
 
+  /** ノート（daily の裏。docs/notes.md の段3）。題・本文・ノートブック・タグに
+      当てます。読み終えていない・開けない日は探しません。 */
+  function findNotes(s, q) {
+    const N = KN.notes;
+    if (!N || N.state() !== "on") return [];
+    return N.list()
+      .filter((n) => fold(`${n.title}\n${n.body}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q))
+      .map((n) => {
+        const head = N.headOf(n);
+        const inHead = fold(head).includes(q);
+        const d = new Date(n.updatedAt);
+        return {
+          title: inHead || !fold(n.body).includes(q) ? (head || "（題なし）") : around(n.body, q),
+          sub: [isNaN(d.getTime()) ? "" : dayLabel(U.dayKey(d)), n.notebook].filter(Boolean).join("・"),
+          go: { screen: "notes", note: n.id },
+        };
+      });
+  }
+
   const PLACES = [
     { id: "todo", label: "やること", find: findTodo },
     { id: "shop", label: "買うもの・価格", find: findShop },
     { id: "daily", label: "daily", find: findDaily },
     { id: "body", label: "からだ", find: findBody },
+    { id: "notes", label: "ノート", find: findNotes },
   ];
 
   /**
@@ -329,6 +350,16 @@
     const scr = to.screen;
     /* 先に移ってから日を置く——移るとき app.js の show() が、出ていく
        画面の日で共通の日を上書きするので。 */
+    /* ノートは daily の裏なので、daily へ移ってから紙を下げ、そのノートを開きます。 */
+    if (to.note) {
+      const at = KN.app.activeScreen();
+      if (at !== "notes") {
+        if (at !== "archive") KN.app.showScreen("archive");
+        KN.app.faceTo(1, "archive");
+      }
+      if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(to.note);
+      return;
+    }
     if (KN.app.activeScreen() !== scr) KN.app.showScreen(scr);
     const S = KN.screens[scr];
     if (to.day) {
