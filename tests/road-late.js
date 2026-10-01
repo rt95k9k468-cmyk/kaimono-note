@@ -106,7 +106,9 @@ const DAY = "2026-09-30";
     const st = document.querySelector("#screen-todo .day-road").__road;
     return st.stops.find((s) => s.t.title === "朝のルーティン").eu;
   });
-  c.check("済ませたあとは、時計が進んでも延びない", later === 7 * 60 + 40, String(later));
+  /* 7:00 から書類が始まるので、7:40 に押した朝のルーティンは 7:00 で止まる
+     （2026年10月1日。延びで重ねて車線を作らない）。時計が進んでも延びない。 */
+  c.check("済ませたあとは、時計が進んでも延びない（次の停留所の始まり 7:00 で止まる）", later === 7 * 60, String(later));
 
   const paperEu = await page.evaluate(() =>
     document.querySelector("#screen-todo .day-road").__road.stops.find((s) => s.t.title === "書類を出す").eu);

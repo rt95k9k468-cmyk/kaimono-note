@@ -6493,6 +6493,10 @@ a.btn { text-decoration: none; }
 .me-line.me-leg { stroke: var(--me-leg); }
 .me-line.me-leg-b { stroke: var(--me-leg-b); }
 /* 寝床（day-road.js の bedSvg）。道の両端の外。歩く人と同じ紙の色の縁。 */
+/* 寝ている時間（起きる前・寝たあと）でなければ、けっこう薄く（2026年10月1日・
+   利用者の声「寝ている人は常にいるのはおかしい」）。濃く出るのは .is-snore のときだけ。 */
+.road-svg .road-bed { opacity: .28; transition: opacity var(--m-state) var(--ease-glide); }
+.road-svg .road-bed.is-snore { opacity: 1; }
 .road-svg .road-bed-halo * { fill: var(--c-sheet); stroke: var(--c-sheet); stroke-width: 80; stroke-linejoin: round; }
 .road-bed-ink .bed-frame { fill: var(--bed-frame); }
 .road-bed-ink .bed-sheet { fill: var(--bed-sheet); }
