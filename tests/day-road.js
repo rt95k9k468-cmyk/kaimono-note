@@ -165,8 +165,20 @@ const DAY = "2026-09-29";
     const n = (sel) => road.querySelectorAll(sel + " text").length;
     return { over: n(".road-hours.is-over"), ink: n(".road-hours.is-ink") };
   });
-  c.check("停留所の上にも時の数字（10月2日から目盛りの代わり）：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が四つ（9:00・10:00・11:00・14:00）",
-    ticksOn.over === 2 && ticksOn.ink === 4, JSON.stringify(ticksOn));
+  /* 端ちょうどの時（8:00・12:00・13:00 と、夜の 20:00・21:00 ほか）も、端の丸の内に置く
+     （10月2日・「タスクの端だと時刻が見えない」）。 */
+  c.check("停留所の上にも時の数字（10月2日から目盛りの代わり）：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色（端ちょうども含む）",
+    ticksOn.over === 2 && ticksOn.ink === 9, JSON.stringify(ticksOn));
+  /* 停留所の端ちょうどの数字は、下の道のぶんを隠している（二重に出ない）。 */
+  const dup = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const shown = (sel) => [...road.querySelectorAll(sel + " text")].filter((x) => getComputedStyle(x).display !== "none")
+      .map((x) => x.getAttribute("data-t"));
+    const base = shown(".road-hours:not(.is-over):not(.is-ink)");
+    const top = shown(".road-hours.is-over").concat(shown(".road-hours.is-ink"));
+    return base.filter((t) => top.includes(t));
+  });
+  c.check("同じ時の数字が二重に出ない", dup.length === 0, JSON.stringify(dup));
 
   if (process.env.SHOTS) {
     const box = await page.locator("#screen-todo .day-road").boundingBox();

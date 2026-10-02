@@ -18,56 +18,70 @@ const { open, checker } = require("./lib");
     return r ? r.textContent.replace(/\s+/g, " ").trim() : "";
   }, sel);
 
-  /* 新しく足す紙 */
+  /* 新しく足す紙。10月2日から、時刻・時間・期限は「時刻」の一枚（車輪・時間の札・期限）。 */
   await page.evaluate(() => { KN.app.show && KN.app.show("todo"); KN.screens.todo.open(null); });
   await page.waitForTimeout(800);
   const rows = await page.evaluate(() => {
     const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
     return [...sh.querySelectorAll(".d-row")].map((r) => r.className);
   });
-  const ti = rows.findIndex((x) => /js-row-time/.test(x));
-  const di = rows.findIndex((x) => /js-row-dur/.test(x));
-  c.check("「時間」の札が時刻の札のすぐ下にある", ti >= 0 && di === ti + 1, JSON.stringify(rows));
-  c.check("「時間」の札は砂時計の絵", await page.evaluate(() =>
-    !![...document.querySelectorAll('.sheet.is-open .js-row-dur svg[data-ico="hourglass"] path')].length));
-  c.check("決めていなければ「時間 30分」", /時間\s*30分/.test(await rowText(".js-row-dur")), await rowText(".js-row-dur"));
+  c.check("時間・期限の札は別に無い（日付・時刻・くりかえし・通知・カレンダー）",
+    rows.length === 5 && !rows.some((x) => /js-row-dur|js-row-limit/.test(x)), JSON.stringify(rows));
+  c.check("決めていなければ「時刻なし 30分」", /時刻なし\s*30分/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
 
-  /* 時刻の紙には長さの札が無い */
   await page.locator(".sheet.is-open .js-row-time").last().click();
   await page.waitForTimeout(700);
-  c.check("時刻の紙に長さの札は無い", await page.evaluate(() => {
+  c.check("時刻の紙に車輪（時・分）と時間の札", await page.evaluate(() => {
     const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
-    return !!sh.querySelector(".js-time") && !sh.querySelector(".js-mins");
+    return sh.querySelectorAll(".note-wheel").length === 2 && !!sh.querySelector(".js-mins")
+      && !sh.querySelector("input[type=time]");
   }));
-  await page.locator(".sheet.is-open .js-time").last().fill("09:00");
-  await page.locator(".sheet.is-open .js-time").last().dispatchEvent("change");
-  await page.keyboard.press("Escape");
+  /* 分の車輪は5分きざみ（開いたときの時刻が5分の目に乗っていなければ、その分だけ足す） */
+  c.check("分の車輪は5分きざみ", await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const rows = [...sh.querySelectorAll(".note-wheel")][1].children.length;
+    return rows === 12 || rows === 13;
+  }));
+  await page.locator(".sheet.is-open .js-time-set").last().click();
+  await page.evaluate(() => {
+    const w = [...document.querySelectorAll(".sheet.is-open .note-wheel")];
+    w[0].scrollTop = 9 * 40;
+    w[1].scrollTop = 0;
+  });
   await page.waitForTimeout(600);
   const tt = await rowText(".js-row-time");
-  c.check("時刻の札は「9:00 〜 9:30」で、長さは言わない", /9:00 〜 9:30/.test(tt) && !/30分/.test(tt), tt);
-
-  /* 長さの紙 */
-  await page.locator(".sheet.is-open .js-row-dur").last().click();
-  await page.waitForTimeout(700);
+  c.check("時刻の札は「9:00 〜 9:30」", /9:00 〜 9:30/.test(tt), tt);
   const chips = await page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].reverse().find((x) => x.querySelector(".js-mins"));
-    return sh ? [...sh.querySelectorAll(".js-mins button")].map((b) => ({
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return [...sh.querySelectorAll(".js-mins button")].map((b) => ({
       label: b.textContent.trim(), on: b.classList.contains("is-active") || b.getAttribute("aria-pressed") === "true",
-    })) : [];
+    }));
   });
   const on = chips.filter((x) => x.on).map((x) => x.label);
   c.check("30分が選ばれた姿", on.length === 1 && on[0] === "30分", JSON.stringify(on));
   c.check("「決めない」は無い", chips.length > 0 && !chips.some((x) => x.label === "決めない"), JSON.stringify(chips.map((x) => x.label)));
   c.check("札に1時間がある", chips.some((x) => x.label === "1時間"), JSON.stringify(chips.map((x) => x.label)));
   await page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].reverse().find((x) => x.querySelector(".js-mins"));
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
     [...sh.querySelectorAll(".js-mins button")].find((b) => b.textContent.trim() === "1時間").click();
   });
   await page.waitForTimeout(300);
+  /* 期限：なし／ありを訊く。ありで日付が一行に出る */
+  c.check("期限は「なし」から始まり、日付欄は畳まれている", await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return sh.querySelector(".js-limit-cell").hidden === true;
+  }));
+  await page.locator(".sheet.is-open .js-limit-yn button", { hasText: "あり" }).last().click();
+  await page.waitForTimeout(200);
+  c.check("「あり」で日付欄が出る", await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return sh.querySelector(".js-limit-cell").hidden === false;
+  }));
+  await page.locator(".sheet.is-open .js-limit-yn button", { hasText: "なし" }).last().click();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(600);
-  c.check("1時間を押すと札も「1時間」、終わりは 10:00",
-    /1時間/.test(await rowText(".js-row-dur")) && /9:00 〜 10:00/.test(await rowText(".js-row-time")));
+  const t2 = await rowText(".js-row-time");
+  c.check("1時間を押すと札は「9:00 〜 10:00　1時間」", /9:00 〜 10:00/.test(t2) && /1時間/.test(t2), t2);
 
   await page.locator(".sheet.is-open .js-title").last().fill("時間の札の試し");
   await page.locator(".sheet.is-open .js-save").last().click();

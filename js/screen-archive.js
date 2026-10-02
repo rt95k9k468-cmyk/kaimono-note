@@ -1361,11 +1361,11 @@
     let titleAuto = false, authorAuto = false;
 
     const body = node(html`
-      <div class="stack" style="gap:16px">
+      <div class="stack" style="gap:10px">
         <div class="arc-pick js-pick"></div>
 
         <div class="js-reading-fields" hidden>
-          <div class="stack" style="gap:16px">
+          <div class="stack" style="gap:10px">
             <div class="arc-kind js-kind"></div>
             <label class="field">
               <span class="field-label">名前</span>
@@ -1385,7 +1385,7 @@
               </div>
               <div class="js-author-ac"></div>
             </label>
-            <div class="arc-times">
+            <div class="arc-pages">
               <label class="field">
                 <span class="field-label">開始ページ</span>
                 <input type="number" inputmode="numeric" class="input js-pagefrom"
@@ -1396,13 +1396,13 @@
                 <input type="number" inputmode="numeric" class="input js-pageto"
                        value="${e && e.pageTo != null ? e.pageTo : ""}">
               </label>
+              <p class="arc-pages-hint js-pages-calc">-</p>
             </div>
-            <p class="arc-pages-hint js-pages-calc">-</p>
           </div>
         </div>
 
         <div class="js-generic-fields">
-          <div class="stack" style="gap:16px">
+          <div class="stack" style="gap:10px">
             ${/* 種だけは、タイトル・数・単位を持ちません。種はメモそのものが
                   記録で、日付とメモの二つだけで足ります。数を測るものでは
                   ないので、単位も要りません。 */""}
@@ -1433,7 +1433,7 @@
 
         <label class="field">
           <span class="field-label">メモ</span>
-          <textarea class="textarea js-memo" rows="4">${e ? e.memo : ""}</textarea>
+          <textarea class="textarea js-memo" rows="2">${e ? e.memo : ""}</textarea>
         </label>
       </div>
     `);

@@ -216,10 +216,14 @@
     /** 目盛りの代わりの時の数字（2026年10月2日・利用者の声「時刻は24時間表記で、時間の線の
         ところに、線の上で書いてみて」）。道の上（off は車線）に「13」と、時だけ。
         角の上でも立てたまま。 */
-    function hourSvg(ts, off = 0, fs = 8.5) {
+    function hourSvg(ts, off = 0, fs = 8.5, inward = 0) {
       return ts.map((t) => {
-        const p = point(dist(t), off);
-        return `<text x="${n1(p.x)}" y="${n1(p.y)}" data-t="${t}" font-size="${n1(fs)}">${Math.floor(t / 60) % 24}</text>`;
+        const h = Math.floor(t / 60) % 24;
+        /* 始まりと終わりちょうどの数字は、丸い端の外へ半分はみ出して隠れる——端の内へ寄せる。 */
+        const p = point(dist(t) + inward, off);
+        /* 角のてっぺん（道が縦）では、二桁が道の幅（9）をこえるので、字を小さく。 */
+        const f = h >= 10 && Math.abs(p.nx) > 0.7 ? fs * 0.75 : fs;
+        return `<text x="${n1(p.x)}" y="${n1(p.y)}" data-t="${t}" font-size="${n1(f)}">${h}</text>`;
       }).join("");
     }
 
@@ -882,8 +886,11 @@
     if (wentTo > g.d0) went.setAttribute("d", g.path(g.d0, wentTo));
     else went.removeAttribute("d");
     /* 道の上の時の数字：歩いたぶんの上は白、これからの薄い道の上は塗りの色。 */
+    /* 停留所の上にある時の数字は、下の道のぶんを隠す（上の層が置き直す）。 */
     svg.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text").forEach((x) => {
-      x.classList.toggle("is-went", wentTo != null && g.dist(Number(x.getAttribute("data-t"))) <= wentTo + 1e-6);
+      const t = Number(x.getAttribute("data-t"));
+      x.classList.toggle("is-went", wentTo != null && g.dist(t) <= wentTo + 1e-6);
+      x.classList.toggle("is-under", st.stops.some((s) => s.len && !s.off && t >= s.at && t <= s.eu));
     });
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
@@ -916,8 +923,12 @@
       /* 横の車線には置かない（同じ時が車線の数だけ並んで、うるさかった）。 */
       if (!s.len || s.off) return;
       const fs = 8.5 * fsK();
-      g.tickTimes().filter((t) => t > s.at && t < s.eu).forEach((t) => {
-        (to != null && g.dist(t) <= to + 1e-6 ? over : ink).push(g.hourSvg([t], s.off, fs));
+      /* 端ちょうどの数字も置く（2026年10月2日・「タスクの端だと時刻が見えない」）。
+         端の丸の中へ STOP/2 寄せる。 */
+      const half = STOP / 2;
+      g.tickTimes().filter((t) => t >= s.at && t <= s.eu).forEach((t) => {
+        const inw = t === s.at ? half : t === s.eu ? -half : 0;
+        (to != null && g.dist(t) + inw <= to + 1e-6 ? over : ink).push(g.hourSvg([t], s.off, fs, inw));
       });
     });
     const put = (el, parts) => { const h = parts.join(""); if (el.__h !== h) { el.__h = h; el.innerHTML = h; } };
