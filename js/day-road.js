@@ -216,14 +216,10 @@
     /** 目盛りの代わりの時の数字（2026年10月2日・利用者の声「時刻は24時間表記で、時間の線の
         ところに、線の上で書いてみて」）。道の上（off は車線）に「13」と、時だけ。
         角の上でも立てたまま。 */
-    function hourSvg(ts, off = 0, fs = 8.5, inward = 0) {
+    function hourSvg(ts, off = 0, fs = HOUR_FS) {
       return ts.map((t) => {
-        const h = Math.floor(t / 60) % 24;
-        /* 始まりと終わりちょうどの数字は、丸い端の外へ半分はみ出して隠れる——端の内へ寄せる。 */
-        const p = point(dist(t) + inward, off);
-        /* 角のてっぺん（道が縦）では、二桁が道の幅（9）をこえるので、字を小さく。 */
-        const f = h >= 10 && Math.abs(p.nx) > 0.7 ? fs * 0.75 : fs;
-        return `<text x="${n1(p.x)}" y="${n1(p.y)}" data-t="${t}" font-size="${n1(f)}">${h}</text>`;
+        const p = point(dist(t), off);
+        return `<text x="${n1(p.x)}" y="${n1(p.y)}" data-t="${t}" font-size="${n1(fs)}">${Math.floor(t / 60) % 24}</text>`;
       }).join("");
     }
 
@@ -248,6 +244,11 @@
   }
 
   /* 文字の大きさの設定（特大＝1.25）。札の幅の見積もりに掛けます。 */
+  /* 時の数字の大きさ（2026年10月2日）。**二桁が細い道（太さ 9）に収まる大きさに、全部そろえる**
+     （利用者の声「角の二桁だけ小さくしないで。それなら全部を小さく」）。字の大きさの設定で
+     大きくはしない——道からはみ出すので。 */
+  const HOUR_FS = 7.4;
+  const hourFs = () => Math.min(HOUR_FS, HOUR_FS * fsK());
   function fsK() {
     const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fs-k"));
     return v > 0 ? v : 1;
@@ -752,13 +753,16 @@
       + leadSvg
       + `<path class="road-base" d="${g.path(g.d0, g.total)}"/>`
       + `<path class="road-went"/>`
-      + `<g class="road-hours" font-size="${n1(8.5 * fsK())}">${g.hourSvg(g.tickTimes(), 0, 8.5 * fsK())}</g>`
       + stopSvg + laterSvg
       /* 停留所の上の目盛り（paint が引く）。道の目盛りは停留所の太い線の下に
          隠れて、一日の半分ほどで物差しが消えていた。塗った上は白、まだの白い中は
          塗りの色で。 */
       + `<g class="road-hours is-over"></g><g class="road-hours is-ink"></g>`
       + `<g class="road-steps">${stepSvg}</g><g class="road-steps is-stops"></g>`
+      /* 道の上の時の数字は、足あとの白丸よりも上に（2026年10月2日）。停留所の上のぶんは
+         is-under で隠し、上の層（is-over / is-ink / is-rim）が同じ位置に置き直す。 */
+      + `<g class="road-hours" font-size="${n1(hourFs())}">${g.hourSvg(g.tickTimes(), 0, hourFs())}</g>`
+      + `<g class="road-hours is-rim"></g>`
       + beds.map((b, k) => bedSvg(k, b)).join("")
       + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME_HALO}</g>`
       + `<g class="road-me-ink">${ME_INK}</g></g>`
@@ -887,10 +891,14 @@
     else went.removeAttribute("d");
     /* 道の上の時の数字：歩いたぶんの上は白、これからの薄い道の上は塗りの色。 */
     /* 停留所の上にある時の数字は、下の道のぶんを隠す（上の層が置き直す）。 */
-    svg.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text").forEach((x) => {
+    svg.querySelectorAll(".road-hours:not(.is-over):not(.is-ink):not(.is-rim) text").forEach((x) => {
       const t = Number(x.getAttribute("data-t"));
       x.classList.toggle("is-went", wentTo != null && g.dist(t) <= wentTo + 1e-6);
-      x.classList.toggle("is-under", st.stops.some((s) => s.len && !s.off && t >= s.at && t <= s.eu));
+      x.classList.toggle("is-under", st.stops.some((s) => s.len && t >= s.at && t <= s.eu));
+      /* 足あとの白丸に重なる数字も縁取る（白丸の上で白い字が消えていた）。 */
+      const p = g.point(g.dist(t), 0);
+      x.classList.toggle("is-rimmed", [...svg.querySelectorAll(".road-step")].some((c) =>
+        Math.hypot(Number(c.getAttribute("cx")) - p.x, Number(c.getAttribute("cy")) - p.y) < 7));
     });
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
@@ -903,7 +911,7 @@
     /* ② 停留所の塗り。時間割の丸薬と同じ決めごと：時計が通ったところまで
        塗る。済ませたものは時計に関わらず塗りきる（手が先に進むことはある）。 */
     const stopEls = svg.querySelectorAll(".road-stop[data-s]");
-    const over = [], ink = [];
+    const over = [], ink = [], rim = [], rimT = new Set();
     st.stops.forEach((s, k) => {
       const grp = stopEls[k];
       if (!grp) return;
@@ -918,22 +926,22 @@
       else w.setAttribute("d", g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off));
       grp.classList.toggle("is-live",
         !done && s.len && nowMin != null && nowMin >= s.at && nowMin < s.until);
-      /* 停留所の上の時の数字。始まりと終わりちょうどは札と丸い端が言うので置かない。
-         塗ったところは白、まだの白い中は塗りの色。車線に割ったものは車線の中に。 */
-      /* 横の車線には置かない（同じ時が車線の数だけ並んで、うるさかった）。 */
-      if (!s.len || s.off) return;
-      const fs = 8.5 * fsK();
-      /* 端ちょうどの数字も置く（2026年10月2日・「タスクの端だと時刻が見えない」）。
-         端の丸の中へ STOP/2 寄せる。 */
-      const half = STOP / 2;
+      /* 停留所の上の時の数字。塗ったところは白、まだの白い中は塗りの色。
+         **位置は道の上の数字と同じところから動かさない**（2026年10月2日・利用者の声「線上の
+         時刻の数値は絶対に動かさないで。そこしか時刻を表すところがない」）。
+         端ちょうど（ふち・丸い端・道にまたがる）と、車線に割った停留所の上は、縁取りして
+         いちばん上に（rim）。車線のものは道のまん中に一つだけ（車線の数だけ並べない）。 */
+      if (!s.len) return;
+      const fs = hourFs();
       g.tickTimes().filter((t) => t >= s.at && t <= s.eu).forEach((t) => {
-        const inw = t === s.at ? half : t === s.eu ? -half : 0;
-        (to != null && g.dist(t) + inw <= to + 1e-6 ? over : ink).push(g.hourSvg([t], s.off, fs, inw));
+        if (s.off || t === s.at || t === s.eu) { if (!rimT.has(t)) { rimT.add(t); rim.push(g.hourSvg([t], 0, fs)); } return; }
+        (to != null && g.dist(t) <= to + 1e-6 ? over : ink).push(g.hourSvg([t], 0, fs));
       });
     });
     const put = (el, parts) => { const h = parts.join(""); if (el.__h !== h) { el.__h = h; el.innerHTML = h; } };
     put(svg.querySelector(".road-hours.is-over"), over);
     put(svg.querySelector(".road-hours.is-ink"), ink);
+    put(svg.querySelector(".road-hours.is-rim"), rim);
 
     /* ③ 人。道の上に立ちます。停留所の中に居るときは、停留所のふちの上に
        （道の太さのところに立たせると、足がふちの中へ埋まる）。 */

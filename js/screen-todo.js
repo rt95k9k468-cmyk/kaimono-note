@@ -631,28 +631,39 @@
       </div>
     `);
 
-    /* 時刻の紙（2026年10月2日）。時刻・時間・期限を一枚に。
-         車輪 … 時と、5分きざみの分。
-         時間 … かかる長さの札（前は別の紙）。
-         期限 … 「なし／あり」を訊き、ありなら日付を一行で。普段は使わないので畳んでおく。 */
+    /* 時刻の紙（2026年10月2日）。時刻・時間・期限を、詳細の紙と同じ一行ずつの枠に。
+         時刻 … 端末の時刻欄（iPhone では純正のドラムロールが出る）。空なら「なし」。
+         時間 … −／＋ で長さを一段ずつ。いちばん短い側が「なし」。
+         期限 … スイッチで「ある」にしたときだけ、同じ行に日付。 */
     const pickTime = node(html`
-      <div class="stack" style="gap:12px">
-        <div class="tw-head">
-          <span class="tw-note js-span-note"></span>
-          <button type="button" class="chip js-time-set">時刻を決める</button>
-          <button type="button" class="chip js-time-clear" hidden>はずす</button>
-        </div>
-        <div class="note-wheels tw js-time-wheels"></div>
-        <div class="field">
-          <span class="field-label">時間</span>
-          <div class="js-mins"></div>
-        </div>
-        <div class="tw-limit">
-          <span class="field-label">期限</span>
-          <div class="chip-row js-limit-yn"></div>
-          <span class="date-cell js-limit-cell" hidden>
-            <input class="input js-limit" type="date" aria-label="期限を選ぶ">
+      <div class="d-card tw-card">
+        <div class="d-row tw-row">
+          <span class="d-ico">${icon("clock")}</span>
+          <span class="d-label">時刻</span>
+          <span class="tw-field">
+            <input class="tw-input js-time" type="time" step="300" aria-label="時刻を選ぶ">
+            <span class="tw-empty js-time-empty" aria-hidden="true">なし</span>
           </span>
+          <button type="button" class="tw-x js-time-clear" aria-label="時刻をはずす" hidden>${icon("close")}</button>
+        </div>
+        <div class="d-row tw-row">
+          <span class="d-ico">${icon("hourglass")}</span>
+          <span class="d-label">時間</span>
+          <span class="tw-step">
+            <button type="button" class="tw-step-b js-dur-down" aria-label="短く">−</button>
+            <span class="tw-step-v js-dur-v"></span>
+            <button type="button" class="tw-step-b js-dur-up" aria-label="長く">＋</button>
+          </span>
+        </div>
+        <div class="d-row tw-row">
+          <span class="d-ico">${icon("flag")}</span>
+          <span class="d-label">期限</span>
+          <span class="tw-field js-limit-cell" hidden>
+            <input class="tw-input js-limit" type="date" aria-label="期限を選ぶ">
+          </span>
+          <button type="button" class="tw-sw js-limit-sw" role="switch" aria-checked="false" aria-label="期限">
+            <span class="toggle" aria-hidden="true"><span class="toggle-mark"></span><span class="toggle-knob"></span></span>
+          </button>
         </div>
       </div>
     `);
@@ -911,26 +922,25 @@
       } else {
         row(".js-row-due", "日付なし", "");
       }
-      /* 時刻と時間と期限は一つの札（2026年10月2日）。左が時刻、右が長さ。
-         終わりの時刻は、長さを決めていなくても組み立てと同じ長さ（いつもの長さ → 30分）で。 */
-      const len = minutes || usual || KN.plan.DEFAULT_MINUTES;
-      let dl = "";
-      if (deadline) {
-        const d = KN.util.dayDate(deadline);
-        dl = `　${d.getMonth() + 1}/${d.getDate()}まで`;
-      }
-      row(".js-row-time", time ? `${tlClock(time)} 〜 ${tlClock(KN.plan.toTime(KN.plan.toMin(time) + len))}` : "時刻なし",
-          KN.plan.humanSpan(len) + (minutes ? "" : usual ? "（いつもの長さ）" : "") + dl);
+      /* 時刻と時間と期限は一つの札（2026年10月2日）。左が時刻（長さが決まっていれば
+         「9:00 〜 9:30」）、右が長さと期限。長さが「なし」なら長さは言わない。 */
+      const len = minutes || usual || null;
+      const dl = deadline ? (() => { const d = KN.util.dayDate(deadline); return `${d.getMonth() + 1}/${d.getDate()}まで`; })() : "";
+      row(".js-row-time",
+          time ? (len ? `${tlClock(time)} 〜 ${tlClock(KN.plan.toTime(KN.plan.toMin(time) + len))}` : tlClock(time)) : "時刻なし",
+          [minutes ? KN.plan.humanSpan(minutes) : usual ? `いつもの${KN.plan.humanSpan(usual)}` : "", dl].filter(Boolean).join("　"));
       const rid = isBookend(part) ? part : (repeat || "");
       const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
       // 表示だけ月曜はじまりに揃えます（曜日チップ・repeatText と同じ並び。
       // 保存している repeatDays の並びそのものは変えません）。
       const orderedRepeatDays = repeatDays.slice()
         .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
-      row(".js-row-repeat", rid ? rw : "くりかえさない",
-          repeat === "weekly" && repeatDays.length
+      /* 左は「くりかえし」、右に決まり（無ければ「なし」）。前は「くりかえさない」で右が
+         空いていて、決めていないのか読み取れなかった（2026年10月2日）。 */
+      row(".js-row-repeat", "くりかえし",
+          [rid ? rw : "なし", repeat === "weekly" && repeatDays.length
             ? orderedRepeatDays.map((d) => WD[d]).join("・")
-            : repeat === "after" ? `${repeatEvery}日ごと` : "");
+            : repeat === "after" ? `${repeatEvery}日ごと` : ""].filter(Boolean).join(" "));
       const nt = KN.notify;
       const on = !!(nt && nt.supported() && nt.enabled() && !nt.blocked());
       row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
@@ -943,11 +953,7 @@
       paintHeroFacts();
     }
     body.querySelector(".js-row-due").addEventListener("click", () => openPick("日付", pickDue));
-    body.querySelector(".js-row-time").addEventListener("click", () => {
-      openPick("時刻", pickTime);
-      /* 車輪は紙が組まれてから合わせる（組む前は高さが無い）。 */
-      syncWheels(); requestAnimationFrame(syncWheels);
-    });
+    body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻", pickTime));
     body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
     body.querySelector(".js-row-notify").addEventListener("click", () => {
       const nt = KN.notify;
@@ -1091,8 +1097,8 @@
        when, and whichever was touched last is the answer. A time lights up the
        part it falls in, so 19:30 visibly *is* 夜 rather than something else
        sitting beside it. */
+    const timeEl = body.pick(".js-time");
     const timeClear = body.pick(".js-time-clear");
-    const timeSet = body.pick(".js-time-set");
 
     /* かかる時間。よく使う長さだけを札で出します——分を打たせると
        「25分か30分か」を考え始めてしまい、見積もりはそこまで細かく
@@ -1103,40 +1109,47 @@
        （買い物へ行く、通院、旅行の移動など）。上限は cleanMinutes と
        同じ12時間——それ以上は一日の別の使い方（複数の用事に割る）の話
        なので、ここでは扱いません。 */
+    /* かかる時間は −／＋ で一段ずつ（2026年10月2日。前は札が14枚並んでいた）。いちばん短い
+       側は「なし」（決めない＝minutes は null。組み立ては30分として扱う）。いつもの長さが
+       言える用事は、「なし」のかわりに「いつもの25分」（null のまま、いつもの長さで組む）。 */
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
-    const minsHost = body.pick(".js-mins");
+    const durSteps = () => [null].concat(MINS.filter((m) => m !== usual));
     function paintMins() {
-      /* いつもの長さが言えるなら、「決めない」の次に「いつもの25分」。
-         同じ長さの札があれば、そちらをこの札に置き換えます（同じ答えが二つ並ぶので）。 */
-      /* いつもの長さが無ければ、標準は30分（組み立てが使う長さと同じ）。
-         「決めない」の札は置かず、30分の札が選ばれた姿で見せます——決めて
-         いないときに並ぶ長さを、そのまま言うほうが伝わるので。保存は押すまで
-         しません（null のまま。組み立ては30分として扱います）。 */
-      const own = usual ? [{ id: String(usual), label: `いつもの${KN.plan.humanSpan(usual)}` }] : [];
-      const none = usual ? [{ id: "", label: "決めない" }] : [];
-      KN.ui.chipRow(minsHost, none.concat(own,
-        MINS.filter((m) => m !== usual).map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
-      ), {
-        activeId: minutes ? String(minutes) : usual ? "" : String(KN.plan.DEFAULT_MINUTES),
-        onPick: (id) => {
-          minutes = id ? Number(id) : null;
-          KN.motion.fire("select");
-          paintMins();
-          paintSpanNote();   // 終わりの時刻は、長さでも変わります
-          paintRows();
-        },
-      });
+      const steps = durSteps();
+      const i = Math.max(0, steps.indexOf(minutes || null));
+      body.pick(".js-dur-v").textContent = minutes ? KN.plan.humanSpan(minutes)
+        : usual ? `いつもの${KN.plan.humanSpan(usual)}` : "なし";
+      body.pick(".js-dur-down").disabled = i <= 0;
+      body.pick(".js-dur-up").disabled = i >= steps.length - 1;
     }
+    function stepMins(dir) {
+      const steps = durSteps();
+      let i = steps.indexOf(minutes || null);
+      /* 札に無い長さ（いつもの長さを選んであった、など）からは、近い段へ。 */
+      if (i < 0) i = dir > 0 ? steps.findIndex((m) => m && m > minutes) - 1 : steps.findIndex((m) => m && m >= minutes);
+      const next = steps[Math.max(0, Math.min(steps.length - 1, i + dir))];
+      if (next === (minutes || null)) return;
+      minutes = next;
+      haptic();
+      paintMins();
+      paintRows();
+    }
+    body.pick(".js-dur-down").addEventListener("click", () => stepMins(-1));
+    body.pick(".js-dur-up").addEventListener("click", () => stepMins(1));
 
     paintMins();
 
     /* ---- 中の段取りを書くところ ----
 
-       欄をそのまま並べます。ここで印を付けさせないのは、**書く**のと
-       **やる**が別のことだからです。印は時間割の行のほうで付けます
-       ——手順を直しに来て、ついでに済ませたことにしてしまう、という
-       取り違えが起きないように。 */
+       欄をそのまま並べます。2026年10月2日から、ここでも印を付けられます
+       （利用者の希望。前は「書く」と「やる」を分けて、時間割の行でだけ付けていた）。 */
     let subs = editing ? (t.subs || []).map((x) => ({ ...x })) : [];
+    /* 印を付ける日（くり返しの手順は日ごと）。時間割が出している日と同じ。 */
+    const subDay = oneDay() ? shownDay() : todayKey();
+    const subOn = (x) => {
+      const cur = editing && store.getTodo(todoId);
+      return cur && cur.repeat ? store.subStatus(cur, x, subDay).done : !!x.done;
+    };
     const subHost = body.pick(".js-subs");
     function paintSubs(focusAt) {
       subHost.textContent = "";
@@ -1149,6 +1162,8 @@
                   です。掴むための場所を別に置いたぶん、待たせる理由も
                   無くなりました。 */""}
             <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
+            <button type="button" class="sub-check js-sub-check ${subOn(s) ? "is-on" : ""}" role="checkbox"
+                    aria-checked="${String(subOn(s))}" aria-label="${i + 1}つめの手順を済ませる">${icon("check")}</button>
             <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
                    aria-label="${i + 1}つめの手順" autocomplete="off">
             <button type="button" class="icon-btn js-sub-del"
@@ -1170,6 +1185,22 @@
           ev.preventDefault();
           subs.splice(i + 1, 0, { id: "s" + Date.now() + i, title: "", done: false });
           paintSubs(i + 1);
+        });
+        line.querySelector(".js-sub-check").addEventListener("click", () => {
+          /* 詳細の紙の中でも済ませられる（2026年10月2日・利用者の希望）。保存してある
+             手順は時間割の行と同じ道（toggleSub。くり返しはその日だけ）ですぐに。まだ
+             保存していない手順は、紙の中の控えに印を付けて、保存で一緒に入る。 */
+          const saved = editing && store.getTodo(todoId);
+          if (saved && (saved.subs || []).some((x) => x.id === s.id)) {
+            store.toggleSub(todoId, s.id, subDay);
+            const now = store.getTodo(todoId);
+            const cur = (now.subs || []).find((x) => x.id === s.id);
+            if (!now.repeat && cur) { s.done = cur.done; s.skipped = cur.skipped; }
+          } else {
+            s.done = !s.done;
+          }
+          haptic();
+          paintSubs();
         });
         line.querySelector(".js-sub-del").addEventListener("click", () => {
           subs.splice(i, 1);
@@ -1212,98 +1243,14 @@
        問いへの二つの答えだから、と。ですが**並び順と、報せる時刻は別のこと**
        です。毎朝は一日のいちばん上に居てほしい、でもバッジは7時に出てほしい。
        前者は毎朝・毎晩が、後者は時刻が決めます。 */
-    /* 時刻の車輪：時（0〜23）と、5分きざみの分。端末の時刻欄は使いません。
-       すでに5分の目に乗っていない分（21:22 など）は、その分だけ列に足して、
-       開いただけでは時刻を書き換えない。決めていないあいだは薄く出し、
-       回すか「時刻を決める」で決まります。 */
-    const WHEEL_ROW = 40;
-    const wheelBox = body.pick(".js-time-wheels");
-    const wheels = { quiet: null };
-    function wheelCol(vals, label, fmt) {
-      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
-      let t = 0;
-      const col = {
-        el, vals,
-        index: () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / WHEEL_ROW))),
-        value: () => vals[col.index()],
-        go(v) {
-          const i = Math.max(0, vals.indexOf(v));
-          const to = i * WHEEL_ROW;
-          if (Math.abs(el.scrollTop - to) > 1) {
-            wheels.quiet = true;
-            clearTimeout(wheels.qt);
-            wheels.qt = setTimeout(() => { wheels.quiet = false; }, 300);
-            el.scrollTop = to;
-          }
-          col.mark(i);
-        },
-        mark(i) {
-          [...el.children].forEach((r, k) => r.toggleAttribute("aria-selected", k === i));
-        },
-      };
-      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
-      el.addEventListener("scroll", () => {
-        col.mark(col.index());
-        if (wheels.quiet) return;
-        clearTimeout(t);
-        t = setTimeout(() => {
-          const h = wheels.h.value(), m = wheels.m.value();
-          const next = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-          if (next === time) return;
-          time = next;
-          haptic();
-          paintPart(true);
-          paintHint();
-        }, 120);
-      }, { passive: true });
-      el.addEventListener("click", (e) => {
-        const r = e.target.closest(".note-wheel-row");
-        if (!r) return;
-        el.scrollTo({ top: [...el.children].indexOf(r) * WHEEL_ROW, behavior: "smooth" });
-      });
-      return col;
-    }
-    function buildWheels(at) {
-      const base = at || time || (() => {
-        const n = KN.plan.toMin(KN.util.nowTime());
-        return KN.plan.toTime(Math.min(23 * 60 + 55, Math.round(n / 5) * 5));
-      })();
-      const bm = Number(base.slice(3, 5));
-      const mins = Array.from({ length: 12 }, (_, i) => i * 5);
-      if (!mins.includes(bm)) mins.push(bm);
-      mins.sort((a, b) => a - b);
-      wheels.h = wheelCol(Array.from({ length: 24 }, (_, i) => i), "時", (v) => `${v}時`);
-      wheels.m = wheelCol(mins, "分", (v) => `${String(v).padStart(2, "0")}分`);
-      wheels.base = base;
-      wheelBox.append(wheels.h.el, wheels.m.el);
-    }
-    /** 車輪を、いま決めている時刻（無ければ出している値）へ合わせる。 */
-    function syncWheels() {
-      const v = time || wheels.base || (buildWheels(), wheels.base);
-      const m = Number(v.slice(3, 5));
-      if (!wheels.m || !wheels.m.vals.includes(m)) {
-        wheelBox.textContent = "";
-        buildWheels(v);
-      }
-      wheelBox.classList.toggle("is-off", !time);
-      wheels.h.go(Number(v.slice(0, 2)));
-      wheels.m.go(m);
-    }
-
-    function paintPart(fromWheel) {
+    function paintPart() {
+      timeEl.value = time || "";
+      body.pick(".js-time-empty").hidden = !!time;
       timeClear.hidden = !time;
-      timeSet.hidden = !!time;
-      wheelBox.classList.toggle("is-off", !time);
-      if (!fromWheel) syncWheels();
-      paintSpanNote();
     }
-
-    timeSet.addEventListener("click", () => {
-      if (!wheels.h) buildWheels();
-      const h = wheels.h.value(), m = wheels.m.value();
-      time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      haptic();
-      paintPart(true);
+    timeEl.addEventListener("change", () => {
+      time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
+      paintPart();
       paintHint();
     });
     timeClear.addEventListener("click", () => {
@@ -1318,25 +1265,24 @@
     paintPart();
     paintHint();
 
-    /* 期限。「なし／あり」を訊き、ありなら日付を一行で。外れても何も連れて
+    /* 期限。スイッチで「ある」にしたときだけ、同じ行に日付。外れても何も連れて
        いきません（時刻もくりかえしも、やる日の話なので）。 */
     const limitEl = body.pick(".js-limit");
     const limitCell = body.pick(".js-limit-cell");
+    const limitSw = body.pick(".js-limit-sw");
     let limitAsked = !!deadline;
     function paintLimit() {
       limitCell.hidden = !limitAsked;
       limitEl.value = deadline || "";
-      KN.ui.chipRow(body.pick(".js-limit-yn"), [{ id: "no", label: "なし" }, { id: "yes", label: "あり" }], {
-        activeId: limitAsked ? "yes" : "no",
-        onPick: (id) => {
-          limitAsked = id === "yes";
-          if (!limitAsked) deadline = null;
-          haptic();
-          paintLimit();
-        },
-      });
+      limitSw.setAttribute("aria-checked", String(limitAsked));
       paintRows();
     }
+    limitSw.addEventListener("click", () => {
+      limitAsked = !limitAsked;
+      if (!limitAsked) deadline = null;
+      haptic();
+      paintLimit();
+    });
     limitEl.addEventListener("change", () => {
       deadline = limitEl.value || null;
       paintRows();
@@ -3817,6 +3763,14 @@
     /* 重なっている二つは、**丸薬どうしがぶつかって**見えます（下の CSS）。
        ぶつかるには相手が要るので、重なった行の一つ上にも印を付けます。
        組み立ては時刻の順に並べているので、重なった相手はすぐ上の行です。 */
+    /* 済んだ行を畳んだとき、その前後の空き（点線）だけが長く残っていた（2026年10月2日）。
+       済んだ行に接している空きも一緒に畳む。 */
+    [...list.children].forEach((li) => {
+      if (!li.classList.contains("tl-free-row")) return;
+      const p = li.previousElementSibling, n = li.nextElementSibling;
+      const doneRow = (x) => !!x && x.classList.contains("tl-row") && x.classList.contains("is-done");
+      if (doneRow(p) || (!p && doneRow(n))) li.classList.add("is-by-done");
+    });
     [...list.children].forEach((li) => {
       if (!li.classList.contains("is-clash")) return;
       const prev = li.previousElementSibling;

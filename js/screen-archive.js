@@ -1570,7 +1570,10 @@
         });
         pick.append(d);
       }
-      store.ARCHIVE_TYPES.forEach((t) => {
+      /* 「変化」は書く札から外した（2026年10月2日・利用者の希望。札が一段減る）。種類そのもの
+         と書いた記録は残す——store の ARCHIVE_TYPES から消すと、読み直しで「達成」に化ける。
+         変化の記録を直すときだけ札を出す。 */
+      store.ARCHIVE_TYPES.filter((t) => t.id !== "change" || (e && e.type === "change")).forEach((t) => {
         const b = node(html`
           <button type="button" class="arc-pick-b ${t.id === type ? "is-on" : ""}"
                   style="--arc-c:${t.color}" data-t="${t.id}">
