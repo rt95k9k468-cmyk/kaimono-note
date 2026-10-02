@@ -3921,6 +3921,9 @@
     let hadDot = input.value.includes(".");
     const advance = () => {
       if (!next) return;
+      /* 最後の欄（体脂肪）は移る先が無いので、キーボードを閉じます。
+         打ち終えたのに鍵盤が残ると、下の保存ボタンが隠れたままになります。 */
+      if (next === "close") { setTimeout(() => input.blur(), 60); return; }
       /* 一拍おきます。iOS はこの入力の直後にまだ自分の仕事（変換の確定や
          キーボードの差し替え）をしていて、その最中に focus を移すと
          移った先の枠にキャレットが乗りません。 */
@@ -4010,7 +4013,7 @@
     const fatEl = body.querySelector(".js-fat");
     // 体重を打ち終えたら、そのまま体脂肪へ。
     autoDecimal(kgEl, fatEl);
-    autoDecimal(fatEl);
+    autoDecimal(fatEl, "close");   // 打ち終えたら鍵盤を閉じる
 
     const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
       activeId: meal || "",
