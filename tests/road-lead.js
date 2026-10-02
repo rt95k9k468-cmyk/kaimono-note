@@ -9,8 +9,7 @@
      出る · あと1時間20分」。出る時刻を過ぎたら「出る」は言わず、あとは停留所まで。
    - 段6：今日の決まった予定が無くなったら「このあと、決まった予定はありません ·
      明日は 9:00 病院から」。明日に無ければ何も足さない。くり返しの用事も明日に立つ。
-   - 編集の紙：「前に出る」は時刻を決めた用事にだけ。札は なし・15分・30分・1時間。
-     選ぶと「12:30 に出る」、保存で `lead` に入る。
+   - 編集の紙：10月2日から「前に出る」の欄は無い（値は道が読む）。
    - 評価の言葉・絵文字を出さない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/road-lead.js */
@@ -186,21 +185,6 @@ const BAN = /遅れ|予定通り|達成|未達|できなかった|急い|%|％/;
     };
   });
   await page.waitForTimeout(600);
-  const sheetOf = () => page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].reverse().find((x) => x.querySelector(".js-lead-field"));
-    if (!sh) return null;
-    const f = sh.querySelector(".js-lead-field");
-    const note = sh.querySelector(".js-lead-note");
-    return {
-      hidden: f.hidden || f.closest("[hidden]") !== null,
-      chips: [...f.querySelectorAll(".js-lead button")].map((b) => ({
-        label: b.textContent.trim(), on: b.classList.contains("is-active") || b.getAttribute("aria-pressed") === "true",
-      })),
-      note: note && !note.hidden ? note.textContent.trim() : "",
-      inputs: f.querySelectorAll("input, textarea, [contenteditable]").length,
-      text: f.textContent,
-    };
-  });
   const closeAll = async () => {
     for (let i = 0; i < 4 && await page.locator(".sheet.is-open").count(); i++) {
       await page.keyboard.press("Escape");
@@ -208,43 +192,19 @@ const BAN = /遅れ|予定通り|達成|未達|できなかった|急い|%|％/;
     }
   };
 
-  // 時刻の無い用事：欄は出ない
-  await page.evaluate((id) => KN.screens.todo.openSheet ? KN.screens.todo.openSheet(id) : null, ids.loose);
-  let opened = await page.locator(".sheet.is-open .js-row-time").count();
-  if (!opened) {
-    await page.locator("#screen-todo .tl-list .tl-item", { hasText: "メール" }).first().click();
-    await page.waitForTimeout(700);
-  }
-  await page.locator(".sheet.is-open .js-row-time").last().click();
-  await page.waitForTimeout(700);
-  let ed = await sheetOf();
-  c.check("時刻の無い用事には「前に出る」を出さない", !!ed && ed.hidden, JSON.stringify(ed));
-  await closeAll();
-
-  // 時刻のある用事
+  /* 10月2日から、時刻の紙に「前に出る」の欄は無い（利用者の声「意味不明」）。
+     持っている値（lead）は道が今までどおり読む。 */
   await page.locator("#screen-todo .road-label", { hasText: "病院" }).first().click();
   await page.waitForTimeout(700);
   await page.locator(".sheet.is-open .js-row-time").last().click();
   await page.waitForTimeout(700);
-  ed = await sheetOf();
-  c.check("時刻を決めた用事には出る", !!ed && !ed.hidden, JSON.stringify(ed));
-  c.check("札は なし・15分・30分・1時間（なしが選ばれたまま）",
-    !!ed && JSON.stringify(ed.chips.map((x) => x.label)) === JSON.stringify(["なし", "15分", "30分", "1時間"])
-    && ed.chips[0].on, ed && JSON.stringify(ed.chips));
-  c.check("打ちこむ欄は無い", !!ed && ed.inputs === 0);
-  await page.locator(".sheet.is-open .js-lead button", { hasText: "30分" }).last().click();
-  await page.waitForTimeout(400);
-  ed = await sheetOf();
-  c.check("選ぶと「12:30 に出る」", !!ed && ed.note === "12:30 に出る", ed && ed.note);
-  c.check("紙も評価しない・絵文字なし",
-    !!ed && !BAN.test(ed.text) && !/\p{Extended_Pictographic}/u.test(ed.text), ed && ed.text);
-  // 時刻の紙を閉じて、保存
-  await page.keyboard.press("Escape");
+  c.check("時刻の紙に「前に出る」は無い", await page.evaluate(() =>
+    !document.querySelector(".sheet.is-open .js-lead-field") && !/前に出る/.test(document.body.innerText)));
+  await closeAll();
+  await page.evaluate((id) => KN.store.update(() => { KN.store.getTodo(id).lead = 30; }), ids.timed);
   await page.waitForTimeout(600);
-  await page.locator(".sheet.is-open .js-save").last().click();
-  await page.waitForTimeout(800);
   const saved = await page.evaluate((id) => KN.store.getTodo(id).lead, ids.timed);
-  c.check("保存すると lead に 30 が入る", saved === 30, String(saved));
+  c.check("lead に 30 が入っている", saved === 30, String(saved));
   await closeAll();
   r = await road();
   c.check("保存すると道に点線の区間と「12:30 に出る」",
