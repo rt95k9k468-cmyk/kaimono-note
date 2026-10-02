@@ -165,17 +165,30 @@ const DAY = "2026-09-29";
     const n = (sel) => road.querySelectorAll(sel + " text").length;
     return { over: n(".road-hours.is-over"), ink: n(".road-hours.is-ink") };
   });
-  /* 端ちょうどの時（8:00・12:00・13:00 と、夜の 20:00・21:00 ほか）も、端の丸の内に置く
-     （10月2日・「タスクの端だと時刻が見えない」）。 */
-  c.check("停留所の上にも時の数字（10月2日から目盛りの代わり）：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色（端ちょうども含む）",
-    ticksOn.over === 2 && ticksOn.ink === 9, JSON.stringify(ticksOn));
+  /* 端ちょうどの時（8:00・12:00・13:00 ほか）は、位置を動かさず縁取りの層（is-rim）に
+     （10月2日・「線上の時刻の数値は絶対に動かさないで」）。 */
+  c.check("停留所の上にも時の数字（10月2日から目盛りの代わり）：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が四つ（9:00・10:00・11:00・14:00）",
+    ticksOn.over === 2 && ticksOn.ink === 4, JSON.stringify(ticksOn));
+  /* 停留所の上の数字は、道の上の数字と同じ位置（ずらさない）。 */
+  const moved = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const G = road.__road.g;
+    return [...road.querySelectorAll(".road-hours text")].filter((x) => {
+      const p = G.point(G.dist(Number(x.getAttribute("data-t"))), 0);
+      return Math.abs(Number(x.getAttribute("x")) - p.x) > 0.11 || Math.abs(Number(x.getAttribute("y")) - p.y) > 0.11;
+    }).map((x) => x.getAttribute("data-t"));
+  });
+  c.check("時の数字はどの層でも道の上の位置から動かさない", moved.length === 0, JSON.stringify(moved));
+  const sizes = await page.evaluate(() => [...new Set([...document.querySelectorAll("#screen-todo .day-road .road-hours text")]
+    .map((x) => x.getAttribute("font-size")))]);
+  c.check("時の数字は全部同じ大きさ（角の二桁だけ小さくしない）", sizes.length === 1, JSON.stringify(sizes));
   /* 停留所の端ちょうどの数字は、下の道のぶんを隠している（二重に出ない）。 */
   const dup = await page.evaluate(() => {
     const road = document.querySelector("#screen-todo .day-road");
     const shown = (sel) => [...road.querySelectorAll(sel + " text")].filter((x) => getComputedStyle(x).display !== "none")
       .map((x) => x.getAttribute("data-t"));
-    const base = shown(".road-hours:not(.is-over):not(.is-ink)");
-    const top = shown(".road-hours.is-over").concat(shown(".road-hours.is-ink"));
+    const base = shown(".road-hours:not(.is-over):not(.is-ink):not(.is-rim)");
+    const top = shown(".road-hours.is-over").concat(shown(".road-hours.is-ink"), shown(".road-hours.is-rim"));
     return base.filter((t) => top.includes(t));
   });
   c.check("同じ時の数字が二重に出ない", dup.length === 0, JSON.stringify(dup));
@@ -416,7 +429,7 @@ const DAY = "2026-09-29";
   }, corner);
   /* 10月2日から角の「8:00」の札は無く、道の上の時の数字（24時間表記の時だけ）が言う。 */
   const hrs = await page.evaluate(() => { const road = document.querySelector("#screen-todo .day-road");
-    return { hours: [...road.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text")].map((e) => e.textContent.trim()), turns: road.querySelectorAll(".road-turn").length }; });
+    return { hours: [...road.querySelectorAll(".road-hours:not(.is-over):not(.is-ink):not(.is-rim) text")].map((e) => e.textContent.trim()), turns: road.querySelectorAll(".road-turn").length }; });
   c.check("角ちょうどで終わる区間：角のまん中にも時の数字、角の札は無い",
     turnSaid.still && hrs.hours.includes(String(corner / 60)) && hrs.turns === 0 && !turnSaid.until.includes(turnSaid.txt),
     JSON.stringify([turnSaid, hrs]));

@@ -108,21 +108,12 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
   await page.locator(".sheet.is-open .js-row-time").last().click();
   await page.waitForTimeout(700);
   const ed = await page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].reverse().find((x) => x.querySelector(".js-mins"));
-    if (!sh) return null;
-    const chips = [...sh.querySelectorAll(".js-mins button")].map((b) => ({
-      label: b.textContent.trim(), on: b.classList.contains("is-active") || b.getAttribute("aria-pressed") === "true",
-    }));
-    const n = sh.querySelector(".js-span-note");
-    return { chips, text: sh.textContent, note: n ? n.textContent : "" };
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const v = sh.querySelector(".js-dur-v");
+    return v ? { dur: v.textContent.trim(), down: sh.querySelector(".js-dur-down").disabled, text: sh.textContent } : null;
   });
-  c.check("「時間」の札に「25分（いつもの長さ）」", /25分（いつもの長さ）/.test(durRow), durRow);
-  const labels = ed ? ed.chips.map((x) => x.label) : [];
-  c.check("長さの札に「いつもの25分」が「決めない」の次", labels[0] === "決めない" && labels[1] === "いつもの25分",
-    JSON.stringify(labels.slice(0, 4)));
-  c.check("決めないが選ばれたまま（黙って決めない）", !!ed && ed.chips[0].on && !ed.chips[1].on, ed && JSON.stringify(ed.chips.slice(0, 2)));
-  c.check("時刻の下に「9:00 〜 9:25」と「いつもの長さ」", !!ed && /9:00 〜 9:25/.test(ed.note) && /いつもの長さ/.test(ed.note),
-    ed && ed.note);
+  c.check("時刻の札に「9:00 〜 9:25」と「いつもの25分」", /9:00 〜 9:25/.test(durRow) && /いつもの25分/.test(durRow), durRow);
+  c.check("長さは「いつもの25分」（決めないまま。短い側の端）", !!ed && ed.dur === "いつもの25分" && ed.down, JSON.stringify(ed && { d: ed.dur, x: ed.down }));
   c.check("編集の紙も評価しない・絵文字なし", !!ed && !BAN.test(ed.text) && !/\p{Extended_Pictographic}/u.test(ed.text));
   for (let i = 0; i < 3 && await page.locator(".sheet.is-open").count(); i++) {
     await page.keyboard.press("Escape");

@@ -3983,7 +3983,7 @@ a.btn { text-decoration: none; }
   color: var(--c-text-2); font-weight: 700; font-size: var(--fs-sm);
 }
 .tl-done-toggle[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
-.tl.is-done-shut .tl-row.is-done { display: none; }
+.tl.is-done-shut .tl-row.is-done, .tl.is-done-shut .tl-free-row.is-by-done { display: none; }
 .tl-switch {
   margin-left: auto;
   padding: 6px 14px;
@@ -5604,18 +5604,40 @@ textarea.note-title-in {
   font-variant-numeric: tabular-nums;
 }
 .note-wheel-row[aria-selected="true"] { color: var(--c-text); font-weight: 700; }
-.note-wheels.tw { grid-template-columns: 1fr 1fr; }
-.tw::before { inset: 60px 0 auto; }
-.tw .note-wheel { height: 160px; padding: 60px 0; }
-.tw.is-off .note-wheel { opacity: .4; }
-/* 時刻の紙の頭：「21:22 〜 21:52」と、決める／はずす。 */
-.tw-head { display: flex; align-items: center; gap: var(--sp-3); min-height: 36px; }
-.tw-note { flex: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
-/* 期限は一行：ラベル・なし／あり・日付。 */
-.tw-limit { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: nowrap; }
-.tw-limit .field-label { flex: none; margin: 0; }
-.tw-limit .chip-row { flex: none; flex-wrap: nowrap; }
-.tw-limit .date-cell { flex: 1; min-width: 0; }
+/* 時刻の紙（2026年10月2日）。詳細の紙と同じ一行ずつの枠。右に、押せる値。 */
+.sub-check {
+  display: grid; place-items: center; flex: none;
+  width: 24px; height: 24px; border-radius: 7px;
+  border: 2px solid var(--c-border-2); color: transparent;
+}
+.sub-check svg { width: 14px; height: 14px; stroke-width: 3; }
+.sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: #fff; }
+.tw-row { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
+.tw-row:active { background: none; }
+.tw-field { position: relative; flex: none; }
+.tw-input {
+  min-width: 96px; height: 38px; padding: 0 var(--sp-3);
+  border: 0; border-radius: var(--r-md);
+  background: var(--c-surface-2); color: var(--c-text);
+  font: inherit; font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.tw-input::-webkit-date-and-time-value { text-align: center; }
+.tw-empty {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2); color: var(--c-text-3);
+  font-size: var(--fs-lg);
+  pointer-events: none;
+}
+.tw-x { display: grid; place-items: center; flex: none; width: 32px; height: 32px; color: var(--c-text-3); }
+.tw-x svg { width: 16px; height: 16px; }
+.tw-step { display: inline-flex; align-items: center; flex: none; border-radius: var(--r-md); background: var(--c-surface-2); }
+.tw-step-b { width: 40px; height: 38px; font-size: var(--fs-lg); font-weight: 700; color: var(--c-primary); }
+.tw-step-b:disabled { color: var(--c-text-3); opacity: .5; }
+.tw-step-v { min-width: 5.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-sw { flex: none; display: grid; place-items: center; min-height: 38px; }
 .note-pop-item {
   display: flex;
   align-items: center;
@@ -6531,6 +6553,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-variant-numeric: tabular-nums;
 }
 .road-hours text.is-under { display: none; }
+/* 停留所の端ちょうどの数字。ふち・丸い端・道・白丸のどれに重なっても読めるよう、
+   紙の色で縁取る（位置は動かさない）。 */
+.road-svg .road-hours.is-rim text, .road-svg .road-hours text.is-rimmed { fill: var(--c-primary); stroke: var(--c-sheet); stroke-width: 2.4px; paint-order: stroke; stroke-linejoin: round; }
 .road-hours text.is-went, .road-hours.is-over text { fill: var(--road-in); }
 /* 停留所は、ふち取りした区間（手描きの、道をくるんだ枠）。ふちは塗りの色、
    中はまだなら白、時計が通ったぶんは塗り。 */
