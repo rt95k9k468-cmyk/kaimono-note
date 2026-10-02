@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Artifact", "ArtifactComments", "ArtifactData", "DesignSync",
+      "mcp__Claude_Docs",
+      "mcp__claude-code-remote",
+      "Agent", "Task", "SendMessage", "ListAgents",
+      "TaskCreate", "TaskGet", "TaskList", "TaskUpdate",
+      "ShowOnboardingRolePicker", "SuggestSkills", "ReportFindings",
+      "ScheduleWakeup", "ReadNotifications", "CronCreate", "CronDelete", "CronList",
+      "ListConnectors", "SuggestConnectors", "ListPlugins", "SearchPlugins", "SuggestPluginInstall",
+      "ListSkills", "SearchSkills", "SearchMcpRegistry",
+      "ListMcpResourcesTool", "ReadMcpResourceTool", "ReadMcpResourceDirTool",
+      "EnterWorktree", "ExitWorktree", "NotebookEdit", "PushNotification"
+    ]
+  },
+  "skillOverrides": {
+    "session-start-hook": "user-invocable-only",
+    "dataviz": "user-invocable-only",
+    "artifact-design": "user-invocable-only",
+    "artifact-diagramming": "user-invocable-only",
+    "artifact-capabilities": "user-invocable-only",
+    "update-config": "user-invocable-only",
+    "keybindings-help": "user-invocable-only",
+    "code-review": "user-invocable-only",
+    "simplify": "user-invocable-only",
+    "fewer-permission-prompts": "user-invocable-only",
+    "loop": "user-invocable-only",
+    "claude-api": "user-invocable-only",
+    "run": "user-invocable-only",
+    "plugin-authoring": "user-invocable-only",
+    "init": "user-invocable-only",
+    "security-review": "user-invocable-only",
+    "anthropic-skills:docs": "user-invocable-only",
+    "anthropic-skills:docx": "user-invocable-only",
+    "anthropic-skills:google-workspace": "user-invocable-only",
+    "anthropic-skills:import-memory": "user-invocable-only",
+    "anthropic-skills:morning": "user-invocable-only",
+    "anthropic-skills:pdf": "user-invocable-only",
+    "anthropic-skills:pptx": "user-invocable-only",
+    "anthropic-skills:skill-creator": "user-invocable-only",
+    "anthropic-skills:xlsx": "user-invocable-only"
+  }
+}
