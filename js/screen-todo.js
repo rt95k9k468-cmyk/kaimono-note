@@ -579,24 +579,8 @@
           </button>
         </div>
 
-        ${/* 通知とカレンダーは「いつ」の枠から離します（2026年10月2日）。 */""}
-        <div class="d-card">
-          <button type="button" class="d-row js-row-notify">
-            <span class="d-ico">${icon("bell")}</span>
-            <span class="d-label js-notify-label"></span>
-            <span class="d-value js-notify-value"></span>
-            <span class="d-go">${icon("chevron")}</span>
-          </button>
-          ${/* 端末のカレンダーへ（D3。js/ics.js）。前は頭の「⋯」の中でしたが、
-                利用者の希望で決めごとの並びへ——「いつ」の札のすぐ下に居れば、
-                日付と時刻を決めたその場で押せます。 */""}
-          <button type="button" class="d-row js-row-cal">
-            <span class="d-ico">${icon("upload")}</span>
-            <span class="d-label js-cal-label"></span>
-            <span class="d-value js-cal-value"></span>
-            <span class="d-go">${icon("chevron")}</span>
-          </button>
-        </div>
+        ${/* 通知とカレンダーは頭の「⋯」の中（2026年10月2日・利用者の希望。知らせるは
+              オンが標準、カレンダーは普段使わない）。 */""}
 
         ${/* ---- 中身：手順とメモ ---- */""}
         <div class="d-card">
@@ -632,29 +616,24 @@
     `);
 
     /* 時刻の紙（2026年10月2日）。時刻・時間・期限を、詳細の紙と同じ一行ずつの枠に。
-         時刻 … 端末の時刻欄（iPhone では純正のドラムロールが出る）。空なら「なし」。
-         時間 … −／＋ で長さを一段ずつ。いちばん短い側が「なし」。
-         期限 … スイッチで「ある」にしたときだけ、同じ行に日付。 */
+         時刻 … 自前の車輪（時と5分きざみの分。選んだ時刻がまん中、上下に前後）。
+                 端末の時刻欄は iPhone で5分きざみに従わなかったのでやめた。空なら「なし」、×で外す。
+         時間 … 札（なし・15分…12時間）。−／＋ は8時間まで何度も押すことになり使いづらかった。
+         期限 … スイッチを入れたその場で日付を選ぶ。 */
     const pickTime = node(html`
       <div class="d-card tw-card">
         <div class="d-row tw-row">
           <span class="d-ico">${icon("clock")}</span>
           <span class="d-label">時刻</span>
-          <span class="tw-field">
-            <input class="tw-input js-time" type="time" step="300" aria-label="時刻を選ぶ">
-            <span class="tw-empty js-time-empty" aria-hidden="true">なし</span>
-          </span>
+          <span class="tw-val js-time-v"></span>
           <button type="button" class="tw-x js-time-clear" aria-label="時刻をはずす" hidden>${icon("close")}</button>
         </div>
+        <div class="note-wheels tw js-time-wheels"></div>
         <div class="d-row tw-row">
           <span class="d-ico">${icon("hourglass")}</span>
           <span class="d-label">時間</span>
-          <span class="tw-step">
-            <button type="button" class="tw-step-b js-dur-down" aria-label="短く">−</button>
-            <span class="tw-step-v js-dur-v"></span>
-            <button type="button" class="tw-step-b js-dur-up" aria-label="長く">＋</button>
-          </span>
         </div>
+        <div class="chip-row tw-mins js-mins"></div>
         <div class="d-row tw-row">
           <span class="d-ico">${icon("flag")}</span>
           <span class="d-label">期限</span>
@@ -765,6 +744,14 @@
         icon: "star",
         onPick: () => { flagged = !flagged; paintHeroFacts(); },
       },
+      {
+        id: "notify",
+        label: () => (KN.notify && KN.notify.supported() && KN.notify.enabled() && !KN.notify.blocked()
+          ? "時刻に知らせる：オン" : "時刻に知らせる：オフ"),
+        icon: "bell",
+        onPick: () => toggleNotify(),
+      },
+      { id: "cal", label: () => "カレンダーに入れる", icon: "upload", onPick: () => sendToCalendar() },
     ];
     if (editing) {
       /* 写しを作ります。似たものを続けて足すとき——同じ手順を持つ用事を
@@ -929,7 +916,9 @@
       row(".js-row-time",
           time ? (len ? `${tlClock(time)} 〜 ${tlClock(KN.plan.toTime(KN.plan.toMin(time) + len))}` : tlClock(time)) : "時刻なし",
           [minutes ? KN.plan.humanSpan(minutes) : usual ? `いつもの${KN.plan.humanSpan(usual)}` : "", dl].filter(Boolean).join("　"));
-      const rid = isBookend(part) ? part : (repeat || "");
+      /* 毎朝・毎晩（part が端）は毎日として言います。前は札に無い "dawn" を引いて空になり、
+         朝のルーティンが「くりかえし」だけで何も出ていなかった（2026年10月2日）。 */
+      const rid = repeatChipId();
       const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
       // 表示だけ月曜はじまりに揃えます（曜日チップ・repeatText と同じ並び。
       // 保存している repeatDays の並びそのものは変えません）。
@@ -941,34 +930,32 @@
           [rid ? rw : "なし", repeat === "weekly" && repeatDays.length
             ? orderedRepeatDays.map((d) => WD[d]).join("・")
             : repeat === "after" ? `${repeatEvery}日ごと` : ""].filter(Boolean).join(" "));
-      const nt = KN.notify;
-      const on = !!(nt && nt.supported() && nt.enabled() && !nt.blocked());
-      row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
-          time ? (on ? "オン" : "オフ") : "");
-      body.querySelector(".js-row-notify").disabled = !time;
-      /* 日付が無ければ期限の日に、終日で。どちらも無ければ押せません。 */
-      row(".js-row-cal", due || deadline ? "カレンダーに入れる" : "日付を決めるとカレンダーに入れられます",
-          !due && deadline ? "期限の日に" : "");
-      body.querySelector(".js-row-cal").disabled = !(due || deadline);
       paintHeroFacts();
     }
     body.querySelector(".js-row-due").addEventListener("click", () => openPick("日付", pickDue));
-    body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻", pickTime));
+    body.querySelector(".js-row-time").addEventListener("click", () => {
+      openPick("時刻", pickTime);
+      /* 車輪は紙が組まれてから合わせる（組む前は高さが無い）。 */
+      syncWheels(); requestAnimationFrame(syncWheels);
+    });
     body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
-    body.querySelector(".js-row-notify").addEventListener("click", () => {
+    /* 時刻に知らせる（「⋯」の中）。入り切りは端末ぜんたいの設定。 */
+    function toggleNotify() {
       const nt = KN.notify;
       if (!nt || !nt.supported()) { KN.ui.toast("この端末では知らせられません"); return; }
       if (nt.blocked()) { KN.ui.toast("端末の設定で、通知が止められています"); return; }
       haptic();
-      if (nt.enabled()) { nt.disable(); paintRows(); KN.ui.toast("お知らせを止めました"); return; }
-      nt.enable().then(() => { paintRows(); }).catch(() => {});
-    });
-    /* 渡すのは**この紙にいま出ている中身**——保存する前に直した日付や題も、
+      if (nt.enabled()) { nt.disable(); paintHint(); KN.ui.toast("お知らせを止めました"); return; }
+      nt.enable().then(() => { paintHint(); }).catch(() => {});
+    }
+    /* 端末のカレンダーへ（D3。js/ics.js。「⋯」の中）。日付が無ければ期限の日に、終日で。
+       渡すのは**この紙にいま出ている中身**——保存する前に直した日付や題も、
        見えているとおりに入ります。くり返しは次の一回ぶんだけ（くり返しの
        決まりまで写すと、アプリの「第2火曜」「平日」などと端末の読み方が
        ずれた日に、二か所で違う日に立ちます）。 */
-    body.querySelector(".js-row-cal").addEventListener("click", () => {
+    function sendToCalendar() {
       const day = due || deadline;
+      if (!day) { KN.ui.toast("日付を決めると、カレンダーに入れられます"); return; }
       if (!KN.ics || !KN.util.dayDate(day)) return;
       const name = titleEl.value.trim() || (t && t.title) || "";
       if (!name) { KN.ui.toast("題を書くと、カレンダーに入れられます"); return; }
@@ -982,7 +969,7 @@
         time: due ? time : null,
         minutes,
       });
-    });
+    }
 
     /* The days a todo is nearly always for, in one press each. Typing a date
        into a date field is four taps that 「明後日」 does in one, and the
@@ -1097,7 +1084,6 @@
        when, and whichever was touched last is the answer. A time lights up the
        part it falls in, so 19:30 visibly *is* 夜 rather than something else
        sitting beside it. */
-    const timeEl = body.pick(".js-time");
     const timeClear = body.pick(".js-time-clear");
 
     /* かかる時間。よく使う長さだけを札で出します——分を打たせると
@@ -1109,33 +1095,26 @@
        （買い物へ行く、通院、旅行の移動など）。上限は cleanMinutes と
        同じ12時間——それ以上は一日の別の使い方（複数の用事に割る）の話
        なので、ここでは扱いません。 */
-    /* かかる時間は −／＋ で一段ずつ（2026年10月2日。前は札が14枚並んでいた）。いちばん短い
-       側は「なし」（決めない＝minutes は null。組み立ては30分として扱う）。いつもの長さが
-       言える用事は、「なし」のかわりに「いつもの25分」（null のまま、いつもの長さで組む）。 */
+    /* かかる時間は札（2026年10月2日・利用者の希望で −／＋ から戻した。8時間まで何度も
+       押すことになるので）。先頭は「なし」（決めない＝minutes は null。組み立ては30分として
+       扱う）。いつもの長さが言える用事は、「なし」のかわりに「いつもの25分」（null のまま、
+       いつもの長さで組む）。札に無い長さを持っているものは、その長さも札に足す。 */
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
-    const durSteps = () => [null].concat(MINS.filter((m) => m !== usual));
     function paintMins() {
-      const steps = durSteps();
-      const i = Math.max(0, steps.indexOf(minutes || null));
-      body.pick(".js-dur-v").textContent = minutes ? KN.plan.humanSpan(minutes)
-        : usual ? `いつもの${KN.plan.humanSpan(usual)}` : "なし";
-      body.pick(".js-dur-down").disabled = i <= 0;
-      body.pick(".js-dur-up").disabled = i >= steps.length - 1;
+      const list = MINS.filter((m) => m !== usual);
+      if (minutes && !list.includes(minutes)) list.push(minutes), list.sort((a, b) => a - b);
+      KN.ui.chipRow(body.pick(".js-mins"),
+        [{ id: "", label: usual ? `いつもの${KN.plan.humanSpan(usual)}` : "なし" }]
+          .concat(list.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))), {
+          activeId: minutes ? String(minutes) : "",
+          onPick: (id) => {
+            minutes = id ? Number(id) : null;
+            haptic();
+            paintMins();
+            paintRows();
+          },
+        });
     }
-    function stepMins(dir) {
-      const steps = durSteps();
-      let i = steps.indexOf(minutes || null);
-      /* 札に無い長さ（いつもの長さを選んであった、など）からは、近い段へ。 */
-      if (i < 0) i = dir > 0 ? steps.findIndex((m) => m && m > minutes) - 1 : steps.findIndex((m) => m && m >= minutes);
-      const next = steps[Math.max(0, Math.min(steps.length - 1, i + dir))];
-      if (next === (minutes || null)) return;
-      minutes = next;
-      haptic();
-      paintMins();
-      paintRows();
-    }
-    body.pick(".js-dur-down").addEventListener("click", () => stepMins(-1));
-    body.pick(".js-dur-up").addEventListener("click", () => stepMins(1));
 
     paintMins();
 
@@ -1243,16 +1222,92 @@
        問いへの二つの答えだから、と。ですが**並び順と、報せる時刻は別のこと**
        です。毎朝は一日のいちばん上に居てほしい、でもバッジは7時に出てほしい。
        前者は毎朝・毎晩が、後者は時刻が決めます。 */
-    function paintPart() {
-      timeEl.value = time || "";
-      body.pick(".js-time-empty").hidden = !!time;
-      timeClear.hidden = !time;
-    }
-    timeEl.addEventListener("change", () => {
-      time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
-      paintPart();
+    /* 時刻の車輪：時（0〜23）と、5分きざみの分。選んでいる時刻がまん中の帯に乗り、
+       上下に前後の時刻が並ぶ。すでに5分の目に乗っていない分（21:22 など）は、その分だけ
+       列に足して、開いただけでは時刻を書き換えない。決めていないあいだは薄く出し、
+       回すか、行を押すと決まる。 */
+    const WHEEL_ROW = 40;
+    const wheelBox = body.pick(".js-time-wheels");
+    const wheels = { quiet: false };
+    const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    function takeWheels() {
+      const next = hhmm(wheels.h.value(), wheels.m.value());
+      if (next === time) return;
+      time = next;
+      haptic();
+      paintPart(true);
       paintHint();
-    });
+    }
+    function wheelCol(vals, label, fmt) {
+      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
+      let t = 0;
+      const col = {
+        el, vals,
+        index: () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / WHEEL_ROW))),
+        value: () => vals[col.index()],
+        go(v) {
+          const i = Math.max(0, vals.indexOf(v));
+          const to = i * WHEEL_ROW;
+          if (Math.abs(el.scrollTop - to) > 1) {
+            wheels.quiet = true;
+            clearTimeout(wheels.qt);
+            wheels.qt = setTimeout(() => { wheels.quiet = false; }, 300);
+            el.scrollTop = to;
+          }
+          col.mark(i);
+        },
+        mark(i) {
+          [...el.children].forEach((r, k) => r.setAttribute("aria-selected", String(k === i)));
+        },
+      };
+      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
+      el.addEventListener("scroll", () => {
+        col.mark(col.index());
+        if (wheels.quiet) return;
+        clearTimeout(t);
+        t = setTimeout(takeWheels, 120);
+      }, { passive: true });
+      /* 行を押すとそこへ回る。まん中の行（決めていないときの薄い時刻）を押せば、それで決まる。 */
+      el.addEventListener("click", (e) => {
+        const r = e.target.closest(".note-wheel-row");
+        if (!r) return;
+        const i = [...el.children].indexOf(r);
+        if (i === col.index()) { takeWheels(); return; }
+        el.scrollTo({ top: i * WHEEL_ROW, behavior: "smooth" });
+      });
+      return col;
+    }
+    function buildWheels(at) {
+      const base = at || time || (() => {
+        const n = KN.plan.toMin(KN.util.nowTime());
+        return KN.plan.toTime(Math.min(23 * 60 + 55, Math.round(n / 5) * 5));
+      })();
+      const bm = Number(base.slice(3, 5));
+      const mins = Array.from({ length: 12 }, (_, i) => i * 5);
+      if (!mins.includes(bm)) mins.push(bm);
+      mins.sort((a, b) => a - b);
+      wheelBox.textContent = "";
+      wheels.h = wheelCol(Array.from({ length: 24 }, (_, i) => i), "時", (v) => `${v}時`);
+      wheels.m = wheelCol(mins, "分", (v) => `${String(v).padStart(2, "0")}分`);
+      wheels.base = base;
+      wheelBox.append(wheels.h.el, wheels.m.el);
+    }
+    /** 車輪を、いま決めている時刻（無ければ出している値）へ合わせる。紙に置かれる前は
+        scrollTop が効かないので、開いたあとにもう一度呼ぶ（openPick）。 */
+    function syncWheels() {
+      if (!wheels.h) buildWheels();
+      const v = time || wheels.base;
+      const m = Number(v.slice(3, 5));
+      if (!wheels.m.vals.includes(m)) buildWheels(v);
+      wheels.h.go(Number(v.slice(0, 2)));
+      wheels.m.go(m);
+    }
+    function paintPart(fromWheel) {
+      body.pick(".js-time-v").textContent = time ? tlClock(time) : "なし";
+      timeClear.hidden = !time;
+      wheelBox.classList.toggle("is-off", !time);
+      if (!fromWheel) syncWheels();
+    }
     timeClear.addEventListener("click", () => {
       time = null;
       paintPart();
@@ -1277,11 +1332,21 @@
       limitSw.setAttribute("aria-checked", String(limitAsked));
       paintRows();
     }
+    /* 入れたその場で日付の暦を出す（2026年10月2日・利用者の希望）。押した手の中で
+       呼ばないと端末が出してくれないので、ここで直に。 */
+    function openLimitPicker() {
+      try {
+        if (typeof limitEl.showPicker === "function") { limitEl.showPicker(); return; }
+      } catch (e) { /* 出せない端末は下へ */ }
+      limitEl.focus();
+      limitEl.click();
+    }
     limitSw.addEventListener("click", () => {
       limitAsked = !limitAsked;
       if (!limitAsked) deadline = null;
       haptic();
       paintLimit();
+      if (limitAsked) openLimitPicker();
     });
     limitEl.addEventListener("change", () => {
       deadline = limitEl.value || null;
@@ -1309,7 +1374,9 @@
     /* 毎朝・毎晩は、記録の上では「毎日 ＋ 日の端」です。選択肢としては
        毎日の隣に一つずつ並びますが、しまうときは repeat と part に分かれます。
        だから光らせる印も、その二つから逆に組み立てます。 */
-    const repeatChipId = () => (isBookend(part) ? part : (repeat || ""));
+    /* 毎朝・毎晩は毎日の札を点けます（選べる先から外したので、端の札はもう無い）。
+       上の paintRows から先に呼ばれるので function 宣言で。 */
+    function repeatChipId() { return repeat || (isBookend(part) ? "daily" : ""); }
 
     function paintRepeat() {
       KN.ui.chipRow(body.pick(".js-repeat"),
@@ -1323,7 +1390,8 @@
               repeat = "daily";
               // 時刻は残します（バッジをいつ出すかの指定なので）。
             } else {
-              part = null;
+              // 毎朝・毎晩のものが毎日を押し直しても、端の置き場は残します。
+              if (!(id === "daily" && isBookend(part))) part = null;
               repeat = id || null;
             }
             if (repeat !== "weekly") repeatDays = [];
