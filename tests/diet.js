@@ -45,7 +45,15 @@ const { open, checker } = require("./lib");
   await plusPick("体重");
   t.check("＋ →「体重」で「体重を記録」の紙", (await page.locator(`${sheet} .sheet-title, ${sheet} h2`).first().innerText()).includes("体重を記録"));
   await page.locator(`${sheet} .js-kg`).fill("60.4");
-  await page.locator(`${sheet} .js-fat`).fill("21.5");
+  // 体脂肪を三桁打ち終えたら、鍵盤を閉じる（欄から focus が外れる）
+  await page.locator(`${sheet} .js-fat`).focus();
+  await page.keyboard.type("215");
+  await page.waitForTimeout(200);
+  const fatState = await page.evaluate((s) => {
+    const el = document.querySelector(`${s} .js-fat`);
+    return { v: el.value, focused: document.activeElement === el };
+  }, sheet);
+  t.check("体脂肪を三桁打つと 21.5 になり、鍵盤が閉じる", fatState.v === "21.5" && !fatState.focused, JSON.stringify(fatState));
   await saveSheet();
   let W = await page.evaluate(() => KN.store.get().diet.weights.map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source })));
   t.check("記録すると、その日の体重が一件入る", W.length === 1 && W[0].day === "2026-09-29" && W[0].kg === 60.4 && W[0].fat === 21.5
