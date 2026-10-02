@@ -49,7 +49,9 @@
      読みにくかったので 80 に（2026年9月30日・利用者の声「道の間の縦幅ももう
      少し」）。折り返しの半径も大きくなり、一段のまっすぐな長さは 276 → 260。
      同じ日にもう一度、利用者の声で 96 にしたが広すぎて 88 に（まっすぐは 252）。 */
-  const PITCH = 88;
+  /* 10月2日、角も時間を持って五段になったあと、利用者の声「段は増やさずに縦の幅を
+     少し広げて」で 94 に。 */
+  const PITCH = 94;
   const R = PITCH / 2;          // 折り返しの半径
   const XL = PAD + R;           // 段のまっすぐなところの左端
   const XR = W - PAD - R;       // 右端
@@ -211,9 +213,18 @@
       }).join("");
     }
     const ticks = () => tickPath(tickTimes());
+    /** 目盛りの代わりの時の数字（2026年10月2日・利用者の声「時刻は24時間表記で、時間の線の
+        ところに、線の上で書いてみて」）。道の上（off は車線）に「13」と、時だけ。
+        角の上でも立てたまま。 */
+    function hourSvg(ts, off = 0, fs = 8.5) {
+      return ts.map((t) => {
+        const p = point(dist(t), off);
+        return `<text x="${n1(p.x)}" y="${n1(p.y)}" data-t="${t}" font-size="${n1(fs)}">${Math.floor(t / 60) % 24}</text>`;
+      }).join("");
+    }
 
     return { start, begin, end, rowSpan, rows, H, total, d0, rowY, rowAt, dist, point, flat, path,
-             ticks, tickTimes, tickPath };
+             ticks, tickTimes, tickPath, hourSvg };
   }
 
   /* ---------------- 札の幅の見積もり ----------------
@@ -577,7 +588,19 @@
      長い順に、中心 → 進む向きの右 → 左 → 右の二つ目……と、時間の重ならない
      車線へ入れます。短いほうは、中心の停留所にくっついて道の外へ出ます
      （それでいい、と利用者）。重なりは「延びた終わり」（`eu`）で見ます。 */
-  function laneOut(stops) {
+  function laneOut(stops, g) {
+    /* 角にかかる用事は、車線を**角の内側**へ（2026年10月2日・利用者の声「曲線のところで
+       外側に重なりタスクを置くとおかしい。外に広がらないように」）。右の角（偶数段の尻）は
+       右へ曲がるので内側は進む向きの右、左の角は左。どちらの角に長くかかるかで決める。 */
+    const leftTurn = (s) => {
+      let r = 0, l = 0;
+      if (g) for (let j = 0; j < g.rows - 1; j++) {
+        const a = j * SEG + RUN, b = (j + 1) * SEG;
+        const o = Math.max(0, Math.min(b, s.d1) - Math.max(a, s.d0));
+        if (j % 2) l += o; else r += o;
+      }
+      return l > r;
+    };
     const spans = stops.filter((s) => s.len).sort((p, q) => p.at - q.at || p.eu - q.eu);
     const groups = [];
     let cur = null, reachEnd = -Infinity;
@@ -592,7 +615,7 @@
       const put = [];
       grp.slice().sort((p, q) => (q.eu - q.at) - (p.eu - p.at) || p.at - q.at).forEach((s) => {
         for (let i = 0; i < 64; i++) {
-          const slot = i % 2 ? (i + 1) / 2 : -i / 2;     // 0, 1, -1, 2, -2 …（正が右）
+          const slot = (i % 2 ? (i + 1) / 2 : -i / 2) * (leftTurn(s) ? -1 : 1);   // 0, 1, -1, 2, -2 …（正が右）
           if (put.some((x) => x.slot === slot && x.at < s.eu && s.at < x.eu)) continue;
           s.slot = slot;
           put.push(s);
@@ -635,7 +658,7 @@
           ? Math.max(s.at + 1, Math.min(s.doneMin, Math.max(s.until, next))) : s.until;
       s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu)) : s.d0;
     });
-    laneOut(st.stops);
+    laneOut(st.stops, g);
     return st.stops.map((s) => `${n1(s.d1)}/${n1(s.off)}/${s.lanes}/${s.late ? 1 : 0}`).join(",");
   }
 
@@ -725,12 +748,12 @@
       + leadSvg
       + `<path class="road-base" d="${g.path(g.d0, g.total)}"/>`
       + `<path class="road-went"/>`
-      + `<path class="road-ticks" d="${g.ticks()}"/>`
+      + `<g class="road-hours" font-size="${n1(8.5 * fsK())}">${g.hourSvg(g.tickTimes(), 0, 8.5 * fsK())}</g>`
       + stopSvg + laterSvg
       /* 停留所の上の目盛り（paint が引く）。道の目盛りは停留所の太い線の下に
          隠れて、一日の半分ほどで物差しが消えていた。塗った上は白、まだの白い中は
          塗りの色で。 */
-      + `<path class="road-ticks is-over"/><path class="road-ticks is-ink"/>`
+      + `<g class="road-hours is-over"></g><g class="road-hours is-ink"></g>`
       + `<g class="road-steps">${stepSvg}</g><g class="road-steps is-stops"></g>`
       + beds.map((b, k) => bedSvg(k, b)).join("")
       + `<g class="road-me" style="display:none"><g class="road-me-halo">${ME_HALO}</g>`
@@ -858,6 +881,10 @@
     const wentTo = st.past ? null : dNow;
     if (wentTo > g.d0) went.setAttribute("d", g.path(g.d0, wentTo));
     else went.removeAttribute("d");
+    /* 道の上の時の数字：歩いたぶんの上は白、これからの薄い道の上は塗りの色。 */
+    svg.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text").forEach((x) => {
+      x.classList.toggle("is-went", wentTo != null && g.dist(Number(x.getAttribute("data-t"))) <= wentTo + 1e-6);
+    });
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
        付けても、過ぎた約束になるだけなので。過ぎた日には無し。 */
@@ -884,19 +911,18 @@
       else w.setAttribute("d", g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off));
       grp.classList.toggle("is-live",
         !done && s.len && nowMin != null && nowMin >= s.at && nowMin < s.until);
-      /* 停留所の上の目盛り。始まりと終わりちょうどは札と丸い端が言うので置かない。
+      /* 停留所の上の時の数字。始まりと終わりちょうどは札と丸い端が言うので置かない。
          塗ったところは白、まだの白い中は塗りの色。車線に割ったものは車線の中に。 */
-      if (!s.len) return;
+      /* 横の車線には置かない（同じ時が車線の数だけ並んで、うるさかった）。 */
+      if (!s.len || s.off) return;
+      const fs = 8.5 * fsK();
       g.tickTimes().filter((t) => t > s.at && t < s.eu).forEach((t) => {
-        (to != null && g.dist(t) <= to + 1e-6 ? over : ink).push(g.tickPath([t], s.off));
+        (to != null && g.dist(t) <= to + 1e-6 ? over : ink).push(g.hourSvg([t], s.off, fs));
       });
     });
-    const tickD = (el, parts) => {
-      if (parts.length) el.setAttribute("d", parts.join(""));
-      else el.removeAttribute("d");
-    };
-    tickD(svg.querySelector(".road-ticks.is-over"), over);
-    tickD(svg.querySelector(".road-ticks.is-ink"), ink);
+    const put = (el, parts) => { const h = parts.join(""); if (el.__h !== h) { el.__h = h; el.innerHTML = h; } };
+    put(svg.querySelector(".road-hours.is-over"), over);
+    put(svg.querySelector(".road-hours.is-ink"), ink);
 
     /* ③ 人。道の上に立ちます。停留所の中に居るときは、停留所のふちの上に
        （道の太さのところに立たせると、足がふちの中へ埋まる）。 */
@@ -1032,19 +1058,8 @@
       keep.push([b.lo - 2, b.hi + 2, b.y + ROAD / 2 - BED_TOP, b.y + ROAD / 2]);
       keep.push([b.cx - w / 2, b.cx + w / 2, ey - EFS * 0.7, ey + EFS * 0.7]);
     });
-    /* 角の時刻は、角のまん中（いちばん外へ張り出したところ）のちょうどの時。札は
-       その内側に置く（そこに目盛りもある）。人がそこに立っているときは出しません
-       （頭と重なる。人の頭の上の時刻の札が、同じことを言っています）。 */
-    const me = dNow == null || sleep != null ? null : g.point(dNow);
-    const turnAt = new Map();   // 角の時刻 → out の中の位置（停留所の札と重なれば、あとで外す）
-    for (let i = 0; i < g.rows - 1; i++) {
-      const x = i % 2 === 0 ? XR + R * 0.36 : XL - R * 0.36;
-      const y = g.rowY(i) + R;
-      if (me && Math.abs(me.x - x) < 26 && Math.abs(me.y - ME_HEAD - y) < 30) continue;
-      const turn = g.start + (i + 1) * g.rowSpan;
-      turnAt.set(turn, out.length);
-      out.push(html`<span class="road-turn" style="${at(x, y)}">${clock(turn)}</span>`);
-    }
+    /* 角の時刻の札（「16:00」）は 10月2日に外した。道の上の時の数字（hourSvg）が、角の
+       まん中の「16」も言うので。 */
 
     /* 1. 人の頭・連れ・いまの時刻。
        **連れは道に乗せません。** 道の上は時刻そのものなので、人の後ろの道に
@@ -1135,14 +1150,62 @@
        添える札にその幅を足して**置き直します**（足さずに添えると、題が「…」に
        つぶれて「11:30 ほか1」になる）。 */
     const saved = Object.entries(lanes).map(([key, v]) => [key, Object.assign(v.slice(), { lo: v.lo, hi: v.hi, dy: v.dy })]);
-    /* 角の上で始まる停留所は、近いほうのまっすぐの端から（g.flat）。角の前半で始まる
-       ものは、進む向きが角へ突き当たるので、**逆向きを先に**試す（縮めるより先）。 */
-    const triesAt = (d, base) => {
-      const p = g.point(d);
-      return p.arc && p.a < Math.PI / 2 ? [["u", -1, "full"], ["d", -1, "full"], ...base] : base;
+    /* 角の上で始まる停留所の札は、**角の内側の空きに、丸薬の始まりの高さで**（2026年10月2日・
+       利用者の声「曲線のところにも書くようにして。じゃないと、丸薬の始点と合ってなくて
+       読みにくい」）。はじめは近いほうのまっすぐの端の通りに置いていた。
+       札は角の内側のふちから内へ伸ばし、時刻を角の側に（右の角は「題 時刻」、左の角は
+       「時刻 題」）。上下の段の道に触れない高さに収め、ほかの札・人・寝床とぶつかれば
+       少し上下にずらす。置いた箱は、そこに重なる通りにも控える（あとの札がよける）。 */
+    let arcBoxes = [];
+    const laneY = (key) => g.rowY(parseInt(key, 10)) + (key.slice(-1) === "u" ? -1 : 1) * (LANE + lanes[key].dy);
+    function placeArc(d0, off, time, title, extra = 0) {
+      const p = g.point(d0, off);
+      if (!p.arc) return null;
+      const i = p.row, right = i % 2 === 0;
+      const cx = right ? XR : XL, cy = g.rowY(i) + R;
+      const ri = (right ? R + off : R - off) - STOP / 2 - 2;
+      const h = FS * 0.7;
+      const top = g.rowY(i) + STOP / 2 + h + 1, bot = g.rowY(i + 1) - STOP / 2 - h - 1;
+      const ys = [];
+      [0, 14, -14, 28, -28].forEach((dy) => {
+        const y = Math.max(top, Math.min(bot, p.y + dy));
+        if (!ys.some((v) => Math.abs(v - y) < 1)) ys.push(y);
+      });
+      const tw = textW(time, FS) + 1;
+      const full = tw + 4 + textW(title, FS) + 1 + extra;
+      const min = tw + 4 + FS * 1.6 + extra;
+      const dir = right ? -1 : 1;
+      for (const mode of ["full", "min", "time"]) {
+        for (const y of ys) {
+          const dy = y - cy;
+          const anchor = cx - dir * Math.sqrt(Math.max(0, ri * ri - dy * dy));
+          const occ = [];
+          occ.lo = 2; occ.hi = W - 2;
+          const hit = (t, b) => t < y + h + 1 && b > y - h - 1;
+          Object.keys(lanes).forEach((key) => {
+            const ly = laneY(key);
+            if (hit(ly - h, ly + h)) lanes[key].forEach((iv) => occ.push(iv));
+          });
+          keep.concat(arcBoxes).forEach(([a, b, t, u]) => { if (hit(t, u)) occ.push([a, b]); });
+          const only = mode === "time";
+          const box = fit(occ, anchor, dir, only ? tw : full, only ? tw : mode === "full" ? full : min);
+          if (!box) continue;
+          arcBoxes.push([box[0], box[1], y - h, y + h]);
+          Object.keys(lanes).forEach((key) => {
+            const ly = laneY(key);
+            if (hit(ly - h, ly + h)) lanes[key].push(box);
+          });
+          return { lo: box[0], hi: box[1], y, rev: right, only };
+        }
+      }
+      return null;
+    }
+    const placeAll = (room) => {
+      arcBoxes = [];
+      return st.stops.map((s, k) => g.point(s.d0).arc
+        ? placeArc(s.d0, s.off, clock(s.at), s.t.title, room[k] || 0)
+        : place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
     };
-    const placeAll = (room) => st.stops.map((s, k) =>
-      place(g.flat(s.d0), clock(s.at), s.t.title, triesAt(s.d0, TRIES), room[k] || 0));
     /* 入りきらなかった札ごとに、同じ群で時間が重なり、札の出た停留所のうち始まりが
        いちばん近いものへ数を寄せる（群の最初の札だと、朝の長い用事に「ほか1」が
        付いて、昼の込み合いから遠くなった）。 */
@@ -1172,11 +1235,6 @@
     st.stops.forEach((s, k) => {
       const b = placed[k];
       if (!b) return;
-      /* 角ちょうどに始まる停留所（8:00 の朝のBaby）は、札の太字が同じ時刻を
-         言うので、角の小さな「8:00」は外します——上下に二つ並んでいました
-         （2026年9月29日、iPhone。R17 は「角で終わる」側だけだった）。札が
-         置けなかったときは外さない（時刻が消えないように）。 */
-      if (turnAt.has(s.at)) { out[turnAt.get(s.at)] = ""; turnAt.delete(s.at); }
       const time = clock(s.at);
       const extra = more[k] || 0;
       const done = closed(s.t);
@@ -1208,7 +1266,8 @@
     // 3. 夜のごろ
     st.later.forEach((s, k) => {
       const time = clock(s.at) + "ごろ";
-      const b = place(g.flat(s.d0), time, s.t.title, triesAt(s.d0, TRIES.slice(0, 6)));
+      const b = g.point(s.d0).arc ? placeArc(s.d0, 0, time, s.t.title)
+        : place(g.point(s.d0), time, s.t.title, TRIES.slice(0, 6));
       if (!b) return;
       out.push(html`
         <button type="button" class="road-label is-later ${b.rev ? "is-rev" : ""}"
@@ -1223,7 +1282,7 @@
        なければ最後の丸を「+n」にして、押すと長期タスクの欄へ送る。 */
     if (st.someday.length) {
       const hh = FS * 0.7;
-      const boxes = keep.slice();
+      const boxes = keep.concat(arcBoxes);   // 角の内側の札も
       Object.keys(lanes).forEach((key) => {
         const occ = lanes[key];
         const y = g.rowY(parseInt(key, 10)) + (key.slice(-1) === "u" ? -1 : 1) * (LANE + occ.dy);

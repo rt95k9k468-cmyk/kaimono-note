@@ -58,7 +58,7 @@ const read = (page) => page.evaluate(() => {
     first: g.point(g.d0), last: g.point(g.total), bedHi: st.beds[0].hi,
     base: road.querySelector(".road-base").getAttribute("d"),
     edges: [...road.querySelectorAll(".road-edge")].map((e) => ({ txt: e.textContent.trim(), ...box(e) })),
-    turns: [...road.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()),
+    turns: [...road.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text")].map((e) => e.textContent.trim()),
     labels: [...road.querySelectorAll(".road-label")].map((e) => ({ txt: e.textContent.replace(/\s+/g, " ").trim(), ...inner(e) })),
     beds, texts,
     meShown: road.querySelector(".road-me").style.display !== "none",
@@ -79,7 +79,7 @@ const cx = (b) => (b.l + b.r) / 2;
     c.check("道は 5:30 から（一段目は短い）",
       r.begin === 330 && r.d0 > 30 && r.first.row === 0 && !r.first.arc && r.first.x > 80, JSON.stringify([r.begin, r.start, r.d0, r.first]));
     c.check("道筋も 5:30 の点から引く", r.base.startsWith(`M${Math.round(r.first.x * 10) / 10} `), r.base.slice(0, 30));
-    c.check("角はちょうどの時（8:00 から）", r.turns.length > 0 && r.turns.every((t) => /:00$/.test(t)), JSON.stringify(r.turns));
+    c.check("時の数字はちょうどの時だけ（6 から）", r.turns[0] === "6" && r.turns.every((t) => /^\d{1,2}$/.test(t)), JSON.stringify(r.turns));
     c.check("終わりは 22:30", r.end === 1350);
     c.check("寝床は二つ", r.beds.length === 2, String(r.beds.length));
     /* 5:30〜22:30 は五段（10月2日から）で、最後の段は右へ進むので返す（足もとが道の側）。 */

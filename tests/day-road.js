@@ -52,7 +52,7 @@ const DAY = "2026-09-29";
   c.check("曲がり角も時間を持つ：角をまたぐ一時間も、まっすぐの一時間と同じ長さ",
     Math.abs(g.on - g.across) < 0.01 && g.on > 90, JSON.stringify([g.on, g.across]));
   c.check("角のまん中（いちばん外）がちょうどの時（8:00）、その前後は角の上",
-    !!g.p8.arc && Math.abs(g.p8.x - 350) < 0.01 && Math.abs(g.p8.y - (46 + 44)) < 0.01
+    !!g.p8.arc && Math.abs(g.p8.x - 350) < 0.01 && Math.abs(g.p8.y - (46 + 47)) < 0.01
       && !!g.p750.arc && !!g.p810.arc && g.p750.y < g.p8.y && g.p810.y > g.p8.y,
     JSON.stringify([g.p750, g.p8, g.p810]));
   c.check("道筋は曲がり角を四分の一ずつ（四つの角で8）", g.arcs === 8, String(g.arcs));
@@ -162,10 +162,10 @@ const DAY = "2026-09-29";
      11:00 と病院（13:00〜14:30）の 14:00 は白い中の塗りの色。 */
   const ticksOn = await page.evaluate(() => {
     const road = document.querySelector("#screen-todo .day-road");
-    const n = (sel) => ((road.querySelector(sel).getAttribute("d") || "").match(/M/g) || []).length;
-    return { over: n(".road-ticks.is-over"), ink: n(".road-ticks.is-ink") };
+    const n = (sel) => road.querySelectorAll(sel + " text").length;
+    return { over: n(".road-hours.is-over"), ink: n(".road-hours.is-ink") };
   });
-  c.check("停留所の上にも目盛り：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が四つ（9:00・10:00・11:00・14:00）",
+  c.check("停留所の上にも時の数字（10月2日から目盛りの代わり）：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が四つ（9:00・10:00・11:00・14:00）",
     ticksOn.over === 2 && ticksOn.ink === 4, JSON.stringify(ticksOn));
 
   if (process.env.SHOTS) {
@@ -402,8 +402,15 @@ const DAY = "2026-09-29";
     return { still: g.start + g.rowSpan === cm, txt, n: said.filter((x) => x === txt).length,
       until: [...road.querySelectorAll(".road-until")].map((e) => e.textContent.trim()), said };
   }, corner);
-  c.check("角ちょうどで終わる区間：角の時刻の札は一つだけ（区間の終わりを重ねない）",
-    turnSaid.still && turnSaid.n === 1 && !turnSaid.until.includes(turnSaid.txt), JSON.stringify(turnSaid));
+  /* 10月2日から角の「8:00」の札は無く、道の上の時の数字（24時間表記の時だけ）が言う。 */
+  const hrs = await page.evaluate(() => { const road = document.querySelector("#screen-todo .day-road");
+    return { hours: [...road.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text")].map((e) => e.textContent.trim()), turns: road.querySelectorAll(".road-turn").length }; });
+  c.check("角ちょうどで終わる区間：角のまん中にも時の数字、角の札は無い",
+    turnSaid.still && hrs.hours.includes(String(corner / 60)) && hrs.turns === 0 && !turnSaid.until.includes(turnSaid.txt),
+    JSON.stringify([turnSaid, hrs]));
+  c.check("時の数字は24時間表記の時だけ（毎時、道の始まりから終わりまで）",
+    hrs.hours.every((h) => /^\d{1,2}$/.test(h)) && hrs.hours.some((h) => Number(h) >= 13)
+      && hrs.hours.every((h, i) => i === 0 || Number(h) === Number(hrs.hours[i - 1]) + 1), JSON.stringify(hrs.hours));
   /* 9月30日・利用者の声「時刻が書かれ過ぎていて読みにくい」：区間の終わりの時刻は出さない。 */
   c.check("区間の終わりの時刻は出さない", turnSaid.until.length === 0, JSON.stringify(turnSaid.until));
 
@@ -419,8 +426,20 @@ const DAY = "2026-09-29";
     const labels = [...road.querySelectorAll(".road-label b")].map((e) => e.textContent.trim());
     return { txt, turns, labels, other: turns.filter((x) => x !== txt).length };
   }, corner2);
-  c.check("角ちょうどで始まる停留所：角の小さな時刻は出さず、札の太字の一つだけ（ほかの角は残る）",
-    !startSaid.turns.includes(startSaid.txt) && startSaid.labels.includes(startSaid.txt) && startSaid.other >= 1, JSON.stringify(startSaid));
+  /* 角の上で始まる停留所の札は、角の内側の、丸薬の始まりの高さに（10月2日）。 */
+  const arcLbl = await page.evaluate((cm) => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const st = road.__road, g = st.g, k = st.stops.findIndex((s) => s.t.title === "角で始まる用事");
+    const b = road.querySelector(`.road-label[data-k="${k}"]`);
+    const p = g.point(g.dist(cm));
+    return { y: b ? parseFloat(b.style.top) / 100 * g.H : null, py: p.y, arc: !!p.arc, row: p.row,
+             top: g.rowY(p.row), bot: g.rowY(p.row + 1), lo: b ? parseFloat(b.style.left) / 100 * KN.dayRoad.W : null, px: p.x };
+  }, corner2);
+  c.check("角ちょうどで始まる停留所：札は時刻を言い、角の札は出さない",
+    startSaid.labels.includes(startSaid.txt) && startSaid.turns.length === 0, JSON.stringify(startSaid));
+  c.check("角の上で始まる停留所の札は、角の内側で、丸薬の始まりの高さ",
+    arcLbl.arc && Math.abs(arcLbl.y - arcLbl.py) < 1 && arcLbl.y > arcLbl.top + 10 && arcLbl.y < arcLbl.bot - 10
+      && (arcLbl.row % 2 === 0 ? arcLbl.lo < arcLbl.px : arcLbl.lo > arcLbl.px), JSON.stringify(arcLbl));
 
   /* 道の端（9月29日・利用者の声「5:30 スタートなのに最初に 6:30 とあって、しかも
      二つ」）。起きる時刻を 6:30 にした人の 5:30 の用事が、道の頭（6:30）に点で押し
@@ -436,25 +455,25 @@ const DAY = "2026-09-29";
     const early = st.stops.find((s) => s.t.title === "朝のルーティン");
     return { start: g.start, begin: g.begin, road0: g.d0, end: g.end, d0: early ? early.d0 : null, d1: early ? early.d1 : null,
              first: road.querySelector(".road-edge").textContent.trim(),
-             turns: [...road.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()),
+             turns: [...road.querySelectorAll(".road-hours:not(.is-over):not(.is-ink) text")].map((e) => e.textContent.trim()),
              said: [...road.querySelectorAll(".road-edge, .road-turn, .road-until")].map((e) => e.textContent.trim()) };
   });
   let edge = await edgeRead();
   c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:30 から：点に押しつぶされず 5:30〜6:30 の区間",
     edge.begin === 330 && edge.first === "5:30" && edge.road0 > 30
       && Math.abs(edge.d0 - edge.road0) < 0.01 && edge.d1 - edge.d0 > 40, JSON.stringify(edge));
-  c.check("角の時刻はちょうどの時（「〜:30」が混ざらない）",
-    edge.turns.length > 0 && edge.turns.every((t) => /:00$/.test(t)), JSON.stringify(edge.turns));
+  c.check("時の数字はちょうどの時だけ（「〜:30」が混ざらない。5:30 の道は 6 から）",
+    edge.turns.length > 0 && edge.turns[0] === "6" && edge.turns.every((t) => /^\d{1,2}$/.test(t)), JSON.stringify(edge.turns));
   c.check("「6:30」を二度言わない", edge.said.filter((t) => t === "6:30").length <= 1, JSON.stringify(edge.said));
   /* 早い用事の無い一日は、組み立てに直に渡して見る（この試験の日には毎日のルーティンがある）。 */
   const bare = await page.evaluate(() => {
     const el = KN.dayRoad.build({ plan: { day: "2026-10-03", startMin: 390, endMin: 1350, items: [] }, today: false });
     return { start: el.__road.g.start, begin: el.__road.g.begin, end: el.__road.g.end,
              first: el.querySelector(".road-edge").textContent.trim(),
-             turns: [...el.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()) };
+             turns: [...el.querySelectorAll(".road-hours text")].map((e) => e.textContent.trim()) };
   });
   c.check("早い用事の無い日：起きる時刻 6:30 の道は 6:30 から、終わりは 22:30 のまま",
-    bare.begin === 390 && bare.first === "6:30" && bare.end === 1350 && bare.turns.every((t) => /:00$/.test(t)), JSON.stringify(bare));
+    bare.begin === 390 && bare.first === "6:30" && bare.end === 1350 && bare.turns[0] === "7" && bare.turns.every((t) => /^\d{1,2}$/.test(t)), JSON.stringify(bare));
   await page.evaluate((d) => KN.store.addTodo({ title: "夜ふけの用事", due: d, time: "23:00", minutes: 30 }), EDGE);
   await page.waitForTimeout(500);
   edge = await edgeRead();
