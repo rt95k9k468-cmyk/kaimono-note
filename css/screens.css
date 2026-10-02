@@ -5623,20 +5623,16 @@ textarea.note-title-in {
   text-align: center;
 }
 .tw-input::-webkit-date-and-time-value { text-align: center; }
-.tw-empty {
-  position: absolute; inset: 0;
-  display: grid; place-items: center;
-  border-radius: var(--r-md);
-  background: var(--c-surface-2); color: var(--c-text-3);
-  font-size: var(--fs-lg);
-  pointer-events: none;
-}
 .tw-x { display: grid; place-items: center; flex: none; width: 32px; height: 32px; color: var(--c-text-3); }
 .tw-x svg { width: 16px; height: 16px; }
-.tw-step { display: inline-flex; align-items: center; flex: none; border-radius: var(--r-md); background: var(--c-surface-2); }
-.tw-step-b { width: 40px; height: 38px; font-size: var(--fs-lg); font-weight: 700; color: var(--c-primary); }
-.tw-step-b:disabled { color: var(--c-text-3); opacity: .5; }
-.tw-step-v { min-width: 5.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-val { flex: none; font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 時刻の車輪。選んだ時刻がまん中の帯、上下に前後。決めていないあいだは薄く。 */
+.note-wheels.tw { grid-template-columns: 1fr 1fr; margin: 0 var(--sp-4) var(--sp-2); }
+.tw::before { inset: 60px 0 auto; }
+.tw .note-wheel { height: 160px; padding: 60px 0; }
+.tw.is-off .note-wheel { opacity: .4; }
+/* 時間の札。行の下に、折り返して全部見せる。 */
+.sheet .chip-row.tw-mins { padding: 0 var(--sp-4) var(--sp-3); }
 .tw-sw { flex: none; display: grid; place-items: center; min-height: 38px; }
 .note-pop-item {
   display: flex;
