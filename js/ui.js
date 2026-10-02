@@ -609,10 +609,9 @@
     if (menuBtn) {
       menuBtn.addEventListener("click", () => {
         haptic();
-        actionSheet(menu.map((m) => ({
-          label: typeof m.label === "function" ? m.label() : m.label,
-          sub: m.sub, icon: m.icon, danger: m.danger, onPick: m.onPick,
-        })));
+        /* 紙の「⋯」も、押した ⋯ のすぐ下に出る小窓（2026年10月2日・利用者の声
+           「シートではなくポッと表示されて欲しい」）。前は下から出る紙だった。 */
+        popMenu(menuBtn, menu);
       });
     }
     el.querySelector(".sheet-body").append(content);
@@ -1067,6 +1066,145 @@
       box.append(row);
     });
     return handle;
+  }
+
+  /* ---------------- 押したところに出る小窓 ----------------
+
+     押したもののすぐ下に出る小さな一枚（ノートの「⋯」・タグ・ノートブック・作った日、
+     やることの詳細の紙の「⋯」・日付・時刻・くりかえし・期限の暦）。下から出る紙では
+     なく、そこにポッと出る（2026年10月1日、ノートで利用者の声「シートでなく、そこに
+     ポンと出てほしい」。10月2日に、やることの詳細の紙でも同じ声）。
+     side は揃える側（左の口なら left、右の口なら right）。外を押す・Escape で閉じ、
+     閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
+     出す（place() は中身を足したあとに呼ぶ）。 */
+  const pops = [];   // 開いている小窓の close（上が後ろ）
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", onClose } = {}) {
+    const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
+    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
+    const r = anchor.getBoundingClientRect();
+    const cover = node(html`<div class="note-pop-cover"></div>`);
+    const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);
+    cover.style.zIndex = String(z + 1);
+    pop.style.zIndex = String(z + 2);
+    let gone = false;
+    const close = () => {
+      if (gone) return;
+      gone = true;
+      pops.splice(pops.indexOf(close), 1);
+      pop.classList.remove("is-open");
+      document.removeEventListener("keydown", onKey, true);
+      cover.remove();
+      setTimeout(() => pop.remove(), KN.motion.ms("--m-state") + 40);
+      if (onClose) onClose();
+    };
+    /* Escape は一番上の小窓だけが受ける（小窓の中から開いた暦で、下の小窓まで閉じていた）。 */
+    const onKey = (e) => {
+      if (e.key !== "Escape" || pops[pops.length - 1] !== close) return;
+      e.stopImmediatePropagation();
+      close();
+    };
+    pops.push(close);
+    cover.addEventListener("click", close);
+    document.addEventListener("keydown", onKey, true);
+    document.body.append(cover, pop);
+    /* 横は left で決め、画面の中へ収めます。right で置くと、口が左寄りで
+       小窓が幅広いとき（タグの「＋」）、左の外へはみ出していた（2026年10月1日、
+       iPhone）。縦は口の下、入りきらず上のほうが広ければ口の上（is-up）。 */
+    const place = () => {
+      const vw = document.documentElement.clientWidth || window.innerWidth;
+      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      const w = Math.min(pop.offsetWidth, vw - 16);
+      const want = side === "left" ? r.left : r.right - w;
+      pop.style.left = `${Math.round(Math.max(8, Math.min(want, vw - 8 - w)))}px`;
+      /* 口の上にも下にも入りきらない背の高いもの（時刻の小窓）は、口に重なってもいいので
+         画面の中に全部出す（中で送らせると、下の行が隠れた）。 */
+      const below = vh - r.bottom - 12, above = r.top - 12;
+      pop.style.maxHeight = `${Math.round(vh - 16)}px`;
+      const h = pop.offsetHeight;
+      const up = h > below && above > below;
+      let top = up ? Math.round(r.top - 4 - h) : Math.round(r.bottom + 4);
+      top = Math.max(8, Math.min(top, Math.round(vh - 8 - h)));
+      pop.classList.toggle("is-up", up);
+      pop.style.top = `${top}px`;
+      pop.style.setProperty("--pop-top", `${top}px`);
+    };
+    place();
+    requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
+    return { el: pop, close, place };
+  }
+
+  /** 「⋯」の中身を、押した ⋯ のすぐ下に縦に並べる。選ぶか外を押すと閉じる。 */
+  function popMenu(anchor, items) {
+    const p = popOver(anchor, { role: "menu", side: "right" });
+    (items || []).forEach((it) => {
+      const label = typeof it.label === "function" ? it.label() : it.label;
+      const b = node(html`
+        <button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${it.icon ? icon(it.icon) : ""}<span class="note-pop-main"><span>${label}</span>${it.sub ? html`<small class="note-pop-sub">${it.sub}</small>` : ""}</span></button>`);
+      b.addEventListener("click", () => {
+        KN.motion.fire("select");
+        p.close();
+        it.onPick();
+      });
+      p.el.append(b);
+    });
+    p.place();
+    return p;
+  }
+
+  /* ---------------- 日を選ぶ暦（小窓） ----------------
+
+     押したところに出る、一か月の暦。端末の日付欄（type="date"）は iPhone で
+     `showPicker()` に応えず、手で開くと画面が上へずれた（2026年10月2日・利用者の声
+     「期限をオンにしてもカレンダーは自動で開かない。手動で開くと画面が上にズレる」）。
+     欄に focus しないので、キーボードの扱いも画面のずれも起きない。週は月曜はじまり
+     （`WEEKDAY_COLS`）。日を押すと onPick(日付キー) で閉じる。 */
+  function popCalendar(anchor, { value, month, label = "日付", onPick, onClose } = {}) {
+    const U = KN.util;
+    const today = U.todayKey();
+    const sel = value || "";
+    let ym = (sel || month || today).slice(0, 7);
+    const p = popOver(anchor, { side: "left", label, cls: "is-cal", onClose });
+    const box = node(html`
+      <div class="pop-cal">
+        <div class="pop-cal-head">
+          <button type="button" class="icon-btn js-prev" aria-label="前の月">${icon("chevron-left")}</button>
+          <b class="js-ym" aria-live="polite"></b>
+          <button type="button" class="icon-btn js-next" aria-label="次の月">${icon("chevron")}</button>
+        </div>
+        <div class="pop-cal-grid js-grid" role="grid"></div>
+      </div>`);
+    const grid = box.querySelector(".js-grid");
+    const paint = () => {
+      const [y, m] = ym.split("-").map(Number);
+      box.querySelector(".js-ym").textContent = `${y}年${m}月`;
+      grid.innerHTML = "";
+      U.WEEKDAY_COLS.forEach((wd) => grid.append(node(html`<span class="pop-cal-wd">${U.WEEKDAYS[wd]}</span>`)));
+      const first = new Date(y, m - 1, 1);
+      const lead = (first.getDay() + 6) % 7;
+      for (let i = 0; i < lead; i++) grid.append(node(html`<span></span>`));
+      const n = new Date(y, m, 0).getDate();
+      for (let d = 1; d <= n; d++) {
+        const key = `${ym}-${String(d).padStart(2, "0")}`;
+        const b = node(html`
+          <button type="button" class="pop-cal-day ${key === today ? "is-today" : ""}"
+                  aria-pressed="${String(key === sel)}" data-day="${key}">${String(d)}</button>`);
+        b.addEventListener("click", () => { haptic(); p.close(); if (onPick) onPick(key); });
+        grid.append(b);
+      }
+    };
+    const step = (k) => {
+      const [y, m] = ym.split("-").map(Number);
+      const d = new Date(y, m - 1 + k, 1);
+      ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      paint();
+      p.place();
+    };
+    box.querySelector(".js-prev").addEventListener("click", () => step(-1));
+    box.querySelector(".js-next").addEventListener("click", () => step(1));
+    paint();
+    p.el.append(box);
+    p.place();
+    return p;
   }
 
   /* ---------------- toast ---------------- */
@@ -1703,7 +1841,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    sheet, actionSheet, popOver, popMenu, popCalendar, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, parkSearch, revealSearch,

@@ -5557,6 +5557,8 @@ textarea.note-title-in {
   transition: transform var(--m-state) var(--ease-out), opacity var(--m-state) var(--ease);
 }
 .note-pop.is-left { transform-origin: top left; }
+.note-pop.is-up { transform-origin: bottom right; }
+.note-pop.is-left.is-up { transform-origin: bottom left; }
 .note-pop.is-open { transform: none; opacity: 1; }
 /* ノートブック・タグを選ぶ小窓。キーボードが出ても見えている高さに収める。 */
 .note-pop.is-pick {
@@ -5565,6 +5567,25 @@ textarea.note-title-in {
   overflow-y: auto;
   padding: var(--sp-3);
 }
+/* やることの詳細の紙の日付・時刻・くりかえし・期限の暦（screen-todo.js の openPick）。
+   高さは popOver が口の上か下の空きに合わせる。 */
+.note-pop.is-form {
+  width: min(360px, calc(100vw - 16px));
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: var(--sp-3);
+}
+/* 日を選ぶ暦（ui.js の popCalendar）。月曜はじまりの七列。 */
+.note-pop.is-cal { width: min(320px, calc(100vw - 16px)); padding: var(--sp-2) var(--sp-3) var(--sp-3); }
+.pop-cal-head { display: flex; align-items: center; justify-content: space-between; }
+.pop-cal-head b { font-size: var(--fs-md); }
+.pop-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.pop-cal-wd { font-size: var(--fs-xs); color: var(--c-text-2); padding: var(--sp-1) 0; }
+.pop-cal-day {
+  min-height: 40px; border-radius: 999px; font-size: var(--fs-md); color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.pop-cal-day.is-today { color: var(--c-primary); font-weight: 700; }
+.pop-cal-day[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); font-weight: 700; }
 /* 作った日の回る列（年・月・日）。真ん中の一行が選ばれる。 */
 .note-pop.is-wheel { width: min(300px, calc(100vw - 16px)); padding: var(--sp-2); overflow: hidden; }
 .note-wheels {
@@ -5632,7 +5653,7 @@ textarea.note-title-in {
 .tw .note-wheel { height: 160px; padding: 60px 0; }
 .tw.is-off .note-wheel { opacity: .4; }
 /* 時間の札。行の下に、折り返して全部見せる。 */
-.sheet .chip-row.tw-mins { padding: 0 var(--sp-4) var(--sp-3); }
+.sheet .chip-row.tw-mins, .note-pop .chip-row.tw-mins { padding: 0 var(--sp-4) var(--sp-3); }
 .tw-sw { flex: none; display: grid; place-items: center; min-height: 38px; }
 .note-pop-item {
   display: flex;
@@ -5647,6 +5668,8 @@ textarea.note-title-in {
 }
 .note-pop-item svg { width: 20px; height: 20px; flex: none; }
 .note-pop-item.is-danger { color: var(--c-danger); }
+.note-pop-main { display: flex; flex-direction: column; min-width: 0; }
+.note-pop-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
 /* いつ書いたか（作った日時）。題のすぐ下に小さく。 */
 button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .note-when {

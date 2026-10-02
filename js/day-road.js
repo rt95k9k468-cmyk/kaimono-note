@@ -565,8 +565,14 @@
      描き、角と目盛りは「ちょうどの時」のまま。角も時間を持つようになってから（10月2日）は、
      角のまん中がちょうどの時になるように geom が段の割りを選ぶ。
      描くだけで、設定も記録も書き換えません。 */
-  function reach(plan) {
-    let a = plan.startMin, b = plan.endMin;
+  /* 起きた時刻が分かる日は、道の始まりを設定の「起きる時刻」ではなく**起きた時刻**に
+     （2026年10月2日・利用者の声「寝ていた時刻まで道を短くして、起きた時刻のところに
+     その時刻と寝る人を」）。寝床と端の時刻は道の始まりに付いてくるので、そのまま起きた
+     時刻に立つ。記録は daily の起床（ヘルスケアの写しも）から引くだけで、設定も記録も
+     書き換えない。終わりの1時間より後の値（昼寝の記録など）は使わない。 */
+  function reach(plan, wake) {
+    const w = Number.isFinite(wake) && wake >= 0 && wake < plan.endMin - 60 ? wake : null;
+    let a = w != null ? w : plan.startMin, b = plan.endMin;
     plan.items.forEach((it) => {
       if (!it.fixed) return;
       a = Math.min(a, it.atMin);
@@ -677,7 +683,7 @@
 
   function build(o) {
     const plan = o.plan;
-    const g = geom(...reach(plan));
+    const g = geom(...reach(plan, o.wake));
     const today = !!o.today;
     const past = !today && plan.day < U.todayKey();
 
@@ -826,11 +832,16 @@
      詰めて、**丸い端の外側がちょうど始まりと終わり**に来るように。太さより短い
      区間は、まん中の丸（太さぶん）になる。押す的は詰めない（指の当たり）。 */
   const WENT_R = 6;             // 塗りの半分の太さ（CSS の .road-stop-went 12）
+  /* まだのまま延びた区間（is-late）の尻は詰めない（2026年10月2日・利用者の声「超過した
+     丸薬が人の足もとまで追いついていない。ベースの道がはみ出して見える」）。尻を詰めると
+     丸い端の外がちょうど足もとで、ふちの側は手前で丸く引っこみ、歩いたぶんの道の丸い端
+     （半径 4.5）がその先へのぞいていた。尻の丸のまん中を足もとに置けば、丸い端（半径 8）が
+     足もとをくるみ、歩いたぶんの道の端を隠す。 */
   function capIn(s) {
     if (!s.len) return [s.d0, s.d1];
-    const k = STOP / 2;
-    if (s.d1 - s.d0 <= 2 * k) { const m = (s.d0 + s.d1) / 2; return [m, m]; }
-    return [s.d0 + k, s.d1 - k];
+    const k = STOP / 2, k1 = s.late ? 0 : k;
+    if (s.d1 - s.d0 <= k + k1) { const m = s.late ? s.d1 : (s.d0 + s.d1) / 2; return [Math.max(s.d0, m - k), m]; }
+    return [s.d0 + k, s.d1 - k1];
   }
 
   function paint(el) {
@@ -922,6 +933,7 @@
       else if (nowMin != null && nowMin >= s.at) to = s.len ? Math.min(dNow, s.d1) : s.d1;
       /* 塗りの丸い端（半径 WENT_R）も、塗った時刻で止まるように内へ。 */
       const [a, b] = capIn(s);
+      if (to != null && s.late) to = s.d1 + WENT_R;   // 延びた尻は足もとをくるむ丸まで塗る（capIn）
       if (to == null) w.removeAttribute("d");
       else w.setAttribute("d", g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off));
       grp.classList.toggle("is-live",
@@ -1177,19 +1189,27 @@
        少し上下にずらす。置いた箱は、そこに重なる通りにも控える（あとの札がよける）。 */
     let arcBoxes = [];
     const laneY = (key) => g.rowY(parseInt(key, 10)) + (key.slice(-1) === "u" ? -1 : 1) * (LANE + lanes[key].dy);
-    function placeArc(d0, off, time, title, extra = 0) {
+    /* 同じ角で同じ時刻に始まる車線の札（2026年10月2日・利用者の声「朝のBabyとテスト、
+       文字がどちらの文字なのか分かりにくいし、丸薬に文字が重なって読みづらい」）。
+       前は札の上下が次の段の車線の上下と逆に並び、角の内側のふちも自分の車線で測って
+       いたので、内の車線の丸薬に字が乗っていた。いまは、角の内側のふちを**その時刻に
+       居るいちばん内の車線**で測り、上下の通りも外へはみ出した車線（bump）ぶん空け、
+       同じ時刻の札は**次の段の車線と同じ上下の順**に詰めて積む（`stackY`）。 */
+    function placeArc(d0, off, time, title, extra = 0, prefer = null) {
       const p = g.point(d0, off);
       if (!p.arc) return null;
       const i = p.row, right = i % 2 === 0;
       const cx = right ? XR : XL, cy = g.rowY(i) + R;
-      const ri = (right ? R + off : R - off) - STOP / 2 - 2;
+      const rIn = st.stops.reduce((m, s) => (s.len && s.d0 <= d0 && d0 <= s.d1
+        ? Math.min(m, right ? R + s.off : R - s.off) : m), right ? R + off : R - off);
+      const ri = Math.min(R, rIn) - STOP / 2 - 2;
       const h = FS * 0.7;
-      const top = g.rowY(i) + STOP / 2 + h + 1, bot = g.rowY(i + 1) - STOP / 2 - h - 1;
+      const top = g.rowY(i) + STOP / 2 + (bump[i + "d"] || 0) + h + 1;
+      const bot = g.rowY(i + 1) - STOP / 2 - (bump[(i + 1) + "u"] || 0) - h - 1;
       const ys = [];
-      [0, 14, -14, 28, -28].forEach((dy) => {
-        const y = Math.max(top, Math.min(bot, p.y + dy));
-        if (!ys.some((v) => Math.abs(v - y) < 1)) ys.push(y);
-      });
+      [0, 14, -14, 28, -28].map((dy) => Math.max(top, Math.min(bot, p.y + dy)))
+        .concat(top, bot).forEach((y) => { if (!ys.some((v) => Math.abs(v - y) < 1)) ys.push(y); });
+      if (prefer != null && prefer >= top - 1e-6 && prefer <= bot + 1e-6) ys.unshift(prefer);
       const tw = textW(time, FS) + 1;
       const full = tw + 4 + textW(title, FS) + 1 + extra;
       const min = tw + 4 + FS * 1.6 + extra;
@@ -1219,10 +1239,28 @@
       }
       return null;
     }
+    /* 同じ角で同じ時刻に始まる札の高さ。次の段の車線の上下の順（右の角は off の小さい
+       ほうが上、左の角は大きいほうが上）に、ぶつからない間で積み、角の内側の高さに収める。 */
+    const stackY = (() => {
+      const ys = {}, by = {};
+      st.stops.forEach((s, k) => { if (g.point(s.d0).arc) (by[n1(s.d0)] = by[n1(s.d0)] || []).push(k); });
+      Object.values(by).forEach((ks) => {
+        if (ks.length < 2) return;
+        const p = g.point(st.stops[ks[0]].d0), i = p.row, right = i % 2 === 0;
+        const h = FS * 0.7, step = 2 * h + 2.5;
+        const top = g.rowY(i) + STOP / 2 + (bump[i + "d"] || 0) + h + 1;
+        const bot = g.rowY(i + 1) - STOP / 2 - (bump[(i + 1) + "u"] || 0) - h - 1;
+        ks.sort((a, b) => (right ? 1 : -1) * (st.stops[a].off - st.stops[b].off));
+        let y0 = p.y - (ks.length - 1) * step / 2;
+        y0 = Math.max(top, Math.min(bot - (ks.length - 1) * step, y0));
+        ks.forEach((k, j) => { ys[k] = y0 + j * step; });
+      });
+      return ys;
+    })();
     const placeAll = (room) => {
       arcBoxes = [];
       return st.stops.map((s, k) => g.point(s.d0).arc
-        ? placeArc(s.d0, s.off, clock(s.at), s.t.title, room[k] || 0)
+        ? placeArc(s.d0, s.off, clock(s.at), s.t.title, room[k] || 0, stackY[k])
         : place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
     };
     /* 入りきらなかった札ごとに、同じ群で時間が重なり、札の出た停留所のうち始まりが
