@@ -569,14 +569,18 @@
      （2026年10月2日・利用者の声「寝ていた時刻まで道を短くして、起きた時刻のところに
      その時刻と寝る人を」）。寝床と端の時刻は道の始まりに付いてくるので、そのまま起きた
      時刻に立つ。記録は daily の起床（ヘルスケアの写しも）から引くだけで、設定も記録も
-     書き換えない。終わりの1時間より後の値（昼寝の記録など）は使わない。 */
+     書き換えない。終わりの1時間より後の値（昼寝の記録など）は使わない。
+     **起きた時刻より前に決めた用事があっても、道は起きた時刻から**（10月2日・利用者の声
+     「起床より早く始めたタスクも、結局起きて以降しかでき始めていない」）。その用事は
+     起きた時刻に始まったものとして、長さはそのままで後ろへずらして描く（shiftOf）。 */
   function reach(plan, wake) {
     const w = Number.isFinite(wake) && wake >= 0 && wake < plan.endMin - 60 ? wake : null;
     let a = w != null ? w : plan.startMin, b = plan.endMin;
     plan.items.forEach((it) => {
       if (!it.fixed) return;
-      a = Math.min(a, it.atMin);
-      b = Math.max(b, Number(it.todo.minutes) > 0 ? it.untilMin : it.atMin);
+      if (w == null) a = Math.min(a, it.atMin);
+      const sh = w != null ? Math.max(0, w - it.atMin) : 0;
+      b = Math.max(b, (Number(it.todo.minutes) > 0 ? it.untilMin : it.atMin) + sh);
     });
     return [Math.max(0, a), Math.min(24 * 60, b)];
   }
@@ -695,6 +699,9 @@
       const t = it.todo;
       if (it.fixed) {
         const len = Number(t.minutes) > 0;
+        /* 起きた時刻より前の用事は、起きた時刻に始まったものとして（reach の注）。 */
+        const sh = Math.max(0, g.begin - it.atMin);
+        if (sh) it = { ...it, atMin: it.atMin + sh, untilMin: it.untilMin + sh };
         const d0 = g.dist(it.atMin);
         /* 出る時刻（段7）。「前に30分」なら、停留所の手前30分に点線の区間。
            済ませたものには描きません（もう出ることはないので）。 */

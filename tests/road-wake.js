@@ -3,7 +3,8 @@
    8:00〜11:00 の朝のBaby とテストが重なる）を置く。
    - まだのまま延びた区間は、尻の丸のまん中が足もと（丸い端が足もとをくるみ、歩いた道を隠す）
    - 同じ角で同じ時刻に始まる二つの札は、次の段の車線と同じ上下の順で、丸薬に重ならない
-   - 起きた時刻（daily の起床）があれば、道はそこから。寝床の下の時刻も起きた時刻 */
+   - 起きた時刻（daily の起床）があれば、道はそこから。寝床の下の時刻も起きた時刻
+   - 起きる前に決めた用事も、起きた時刻に始まったものとして描く */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-10-03";
@@ -69,7 +70,14 @@ const DAY = "2026-10-03";
   await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
   await page.waitForTimeout(600);
   r = await read();
-  c.check("起きた時刻 7:12 から道が始まる（記録の前の用事があればそこまで）", r.begin === 6 * 60, String(r.begin));
+  c.check("起きた時刻 7:12 から道が始まる（前に決めた用事があっても）", r.begin === 7 * 60 + 12, String(r.begin));
+  const early = await page.evaluate(() => {
+    const st = document.querySelector("#screen-todo .day-road").__road;
+    const s = st.stops.find((x) => x.t.title === "朝のルーティン");
+    return s && { at: s.at, until: s.until };
+  });
+  c.check("起きる前の用事は起きた時刻に始まったものとして、長さはそのまま",
+    !!early && early.at === 7 * 60 + 12 && early.until === 8 * 60 + 12, JSON.stringify(early));
   await page.evaluate((day) => {
     const s = KN.store;
     const t = s.get().todos.find((x) => x.title === "朝のルーティン");
