@@ -638,7 +638,7 @@
           <span class="d-ico">${icon("flag")}</span>
           <span class="d-label">期限</span>
           <span class="tw-field js-limit-cell" hidden>
-            <input class="tw-input js-limit" type="date" aria-label="期限を選ぶ">
+            <button type="button" class="tw-input js-limit" aria-label="期限を選ぶ"></button>
           </span>
           <button type="button" class="tw-sw js-limit-sw" role="switch" aria-checked="false" aria-label="期限">
             <span class="toggle" aria-hidden="true"><span class="toggle-mark"></span><span class="toggle-knob"></span></span>
@@ -878,10 +878,15 @@
 
        押すと、その一つだけの紙が開きます。中身は上で組んだ pickDue /
        pickTime / pickRepeat をそのまま差し込むので、選び方は前と同じです。 */
+    /* 2026年10月2日から、紙ではなく**押した札のすぐ下（入らなければ上）に出る小窓**
+       （利用者の声「日時・時刻・くりかえしは、シートではなくポッと表示されて欲しい」）。 */
     let pickHandle = null;
-    function openPick(title, el) {
+    function openPick(title, el, anchor) {
       el.hidden = false;
-      pickHandle = KN.ui.sheet({ title, content: el });
+      pickHandle = KN.ui.popOver(anchor, { side: "left", label: title, cls: "is-form",
+        onClose: () => { pickHandle = null; } });
+      pickHandle.el.append(el);
+      pickHandle.place();
     }
     /* 札（今日・明日・18:00・空き）を押して決めたら、その紙は閉じます。
        決めたあとにもう一度「閉じる」を押させるのは、一回ぶん余計です。
@@ -932,13 +937,13 @@
             : repeat === "after" ? `${repeatEvery}日ごと` : ""].filter(Boolean).join(" "));
       paintHeroFacts();
     }
-    body.querySelector(".js-row-due").addEventListener("click", () => openPick("日付", pickDue));
-    body.querySelector(".js-row-time").addEventListener("click", () => {
-      openPick("時刻", pickTime);
+    body.querySelector(".js-row-due").addEventListener("click", (e) => openPick("日付", pickDue, e.currentTarget));
+    body.querySelector(".js-row-time").addEventListener("click", (e) => {
+      openPick("時刻", pickTime, e.currentTarget);
       /* 車輪は紙が組まれてから合わせる（組む前は高さが無い）。 */
       syncWheels(); requestAnimationFrame(syncWheels);
     });
-    body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
+    body.querySelector(".js-row-repeat").addEventListener("click", (e) => openPick("くりかえし", pickRepeat, e.currentTarget));
     /* 時刻に知らせる（「⋯」の中）。入り切りは端末ぜんたいの設定。 */
     function toggleNotify() {
       const nt = KN.notify;
@@ -1328,30 +1333,26 @@
     let limitAsked = !!deadline;
     function paintLimit() {
       limitCell.hidden = !limitAsked;
-      limitEl.value = deadline || "";
+      limitEl.textContent = deadline ? formatDay(deadline) : "日付";
       limitSw.setAttribute("aria-checked", String(limitAsked));
       paintRows();
     }
-    /* 入れたその場で日付の暦を出す（2026年10月2日・利用者の希望）。押した手の中で
-       呼ばないと端末が出してくれないので、ここで直に。 */
+    /* 入れたその場で日付の暦を出す（2026年10月2日・利用者の希望）。端末の日付欄の
+       `showPicker()` は iPhone で開かず、手で開くと画面が上へずれたので、アプリの暦
+       （`KN.ui.popCalendar`）を押した行のそばに出す。 */
     function openLimitPicker() {
-      try {
-        if (typeof limitEl.showPicker === "function") { limitEl.showPicker(); return; }
-      } catch (e) { /* 出せない端末は下へ */ }
-      limitEl.focus();
-      limitEl.click();
+      KN.ui.popCalendar(limitEl, {
+        value: deadline, month: deadline || due || todayKey(), label: "期限",
+        onPick: (day) => { deadline = day; paintLimit(); },
+      });
     }
+    limitEl.addEventListener("click", openLimitPicker);
     limitSw.addEventListener("click", () => {
       limitAsked = !limitAsked;
       if (!limitAsked) deadline = null;
       haptic();
       paintLimit();
       if (limitAsked) openLimitPicker();
-    });
-    limitEl.addEventListener("change", () => {
-      deadline = limitEl.value || null;
-      paintRows();
-      haptic();
     });
     paintLimit();
 
@@ -1609,9 +1610,8 @@
       paintRepeatDetail();   // 中で paintRows も通ります
       paintHint();
       /* 期限（deadline）は due とは別欄です（CLAUDE.md「長期タスクと、
-         期限」）。limitEl の値を書き直さないと、欄の中の日付ピッカーは
-         打ち替える前の姿のまま残ります。 */
-      if (limitEl) limitEl.value = deadline || "";
+         期限」）。札の日付も打ち替えた値で塗り直します。 */
+      limitAsked = limitAsked || !!deadline;
       paintLimit();
     }
 
@@ -2554,6 +2554,7 @@
       day, todayKey(),
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
+      (store.dayLog(day) || {}).wake || "",
       [...openSubs].sort(),
       st.todos,
     ]);
@@ -2826,8 +2827,10 @@
       .filter((t) => !t.due && !t.done && !t.archived && !t.trace)
       .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999")
         || (a.order || 0) - (b.order || 0));
+    /* 起きた時刻（daily の記録・ヘルスケアの写し）があれば、道はそこから（写さず引く）。 */
+    const log = store.dayLog(day);
     return KN.dayRoad.build({
-      plan, today: isToday, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
+      plan, today: isToday, wake: log && log.wake ? KN.plan.toMin(log.wake) : null, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
       someday,
       open: (id) => openSheet(id),
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },

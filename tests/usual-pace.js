@@ -108,7 +108,7 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
   await page.locator(".sheet.is-open .js-row-time").last().click();
   await page.waitForTimeout(700);
   const ed = await page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const sh = document.querySelector(".note-pop.is-form");   // 時刻は押した札のそばの小窓
     const v = sh.querySelector(".js-mins .chip.is-active, .js-mins .chip[aria-pressed='true']");
     const first = sh.querySelector(".js-mins .chip");
     return v ? { dur: v.textContent.trim(), down: v === first, text: sh.textContent } : null;

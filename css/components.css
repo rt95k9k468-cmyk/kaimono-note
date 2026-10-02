@@ -530,7 +530,7 @@ button, [role="tab"] {
    edge and put 1か月後 and 「なし」 past it entirely, so clearing a date meant
    knowing there was something over there to scroll to. Wrapping costs a line
    and shows the whole question. */
-.sheet .chip-row {
+.sheet .chip-row, .note-pop.is-form .chip-row {
   flex-wrap: wrap;
   overflow-x: visible;
   row-gap: var(--sp-2);
@@ -539,12 +539,12 @@ button, [role="tab"] {
 
 /* The seven weekdays are one row whatever the screen: single characters that
    would look broken split 6 + 1. Equal columns fit them down to 320px. */
-.sheet .chip-row.js-days {
+.sheet .chip-row.js-days, .note-pop.is-form .chip-row.js-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
-.sheet .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
+.sheet .chip-row.js-days .chip, .note-pop.is-form .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
 
 /* よく使う時刻（やることの時刻の紙）。8つを4列×2段の格子に——時刻は
    横に流すと桁がずれて探しにくく、格子なら「夕方は下の段」と指が覚えます。

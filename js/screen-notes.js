@@ -676,63 +676,10 @@
     return h;
   }
 
-  /* ---------------- 「⋯」の小窓（段4） ----------------
-
-     押した「⋯」のすぐ下に、項目を縦に並べた小さな一枚を出します。外を
-     押すか、項目を選ぶと閉じます。重なりは開いている紙の一段上。 */
-  function popMenu(anchor, items) {
-    const p = popOver(anchor, { role: "menu", side: "right" });
-    items.forEach((it) => {
-      const label = typeof it.label === "function" ? it.label() : it.label;
-      const b = node(html`<button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${icon(it.icon)}<span>${label}</span></button>`);
-      b.addEventListener("click", () => { KN.motion.fire("select"); p.close(); it.onPick(); });
-      p.el.append(b);
-    });
-    p.place();
-    return p;
-  }
-
-  /* 押したもののすぐ下に出る小さな一枚（「⋯」・ノートブック・タグに共通）。
-     side は揃える側（左の口なら left、右の口なら right）。外を押す・Escape で
-     閉じ、閉じたら onClose。 */
-  function popOver(anchor, { role = "dialog", side = "right", label = "", onClose } = {}) {
-    const sheetEl = anchor.closest(".sheet");
-    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
-    const r = anchor.getBoundingClientRect();
-    const cover = node(html`<div class="note-pop-cover"></div>`);
-    const pop = node(html`<div class="note-pop is-${side}" role="${role}" aria-label="${label}"></div>`);
-    cover.style.zIndex = String(z + 1);
-    pop.style.zIndex = String(z + 2);
-    const top = Math.round(r.bottom + 4);
-    pop.style.top = `${top}px`;
-    pop.style.setProperty("--pop-top", `${top}px`);
-    let gone = false;
-    const close = () => {
-      if (gone) return;
-      gone = true;
-      pop.classList.remove("is-open");
-      document.removeEventListener("keydown", onKey, true);
-      cover.remove();
-      setTimeout(() => pop.remove(), KN.motion.ms("--m-state") + 40);
-      if (onClose) onClose();
-    };
-    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
-    cover.addEventListener("click", close);
-    document.addEventListener("keydown", onKey, true);
-    document.body.append(cover, pop);
-    /* 横は left で決め、画面の中へ収めます。right で置くと、口が左寄りで
-       小窓が幅広いとき（タグの「＋」）、左の外へはみ出していた（2026年10月1日、
-       iPhone）。幅は中身を足したあとに測るので、place() は呼ぶ側も呼べる。 */
-    const place = () => {
-      const vw = document.documentElement.clientWidth || window.innerWidth;
-      const w = Math.min(pop.offsetWidth, vw - 16);
-      const want = side === "left" ? r.left : r.right - w;
-      pop.style.left = `${Math.round(Math.max(8, Math.min(want, vw - 8 - w)))}px`;
-    };
-    place();
-    requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
-    return { el: pop, close, place };
-  }
+  /* 「⋯」とタグ・ノートブック・作った日の小窓は KN.ui.popMenu / popOver（2026年10月2日に
+     やることの詳細の紙と共用にした）。 */
+  const popMenu = (anchor, items) => KN.ui.popMenu(anchor, items);
+  const popOver = (anchor, o) => KN.ui.popOver(anchor, o);
 
   /* ---------------- タグ・ノートブックを選ぶ小窓（段3、段4.1で紙から小窓へ） ----------------
 
