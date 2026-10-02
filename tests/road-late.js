@@ -50,6 +50,7 @@ const DAY = "2026-09-30";
       walking: !!me.__walk,
       row: g.rowY(g.point(g.dist(720)).row),
       walkY: y0("散歩へ"), jimY: y0("ジモティー受け渡し"),
+      offs: Object.fromEntries(st.stops.map((x) => [x.t.title, x.off])),
       lanes: st.stops.map((x) => [x.t.title, x.lanes]),
       text: road.textContent,
     };
@@ -62,10 +63,12 @@ const DAY = "2026-09-30";
   c.check("延びた区間は色が変わる（塗りの色ではない橙）", /rgb\(240, 163, 94\)/.test(r.edgeColor), r.edgeColor);
   c.check("延びた区間は塗りきられている", !!r.went, String(r.went));
 
-  /* 重なり：長いほうが中心、短いほうは外にくっつく（右へ進む段：下） */
-  c.check("長い散歩が道の中心、短いジモティーはその外（下）にくっつく",
-    Math.abs(r.walkY - r.row) < 0.2 && Math.abs(r.jimY - (r.row + 13.5)) < 0.2,
-    JSON.stringify([r.row, r.walkY, r.jimY, r.lanes]));
+  /* 重なり：長いほうが中心、短いほうは外にくっつく（進む向きの右）。11:50・12:00 は
+     角（12:00 のまん中）の上なので（10月2日から角も時間を持つ）、道筋の高さではなく
+     車線のずらし（off：進む向きの左が正）で見る。 */
+  c.check("長い散歩が道の中心、短いジモティーはその外（進む向きの右）にくっつく",
+    r.offs["散歩へ"] === 0 && Math.abs(r.offs["ジモティー受け渡し"] + 13.5) < 0.01,
+    JSON.stringify([r.offs, r.lanes]));
 
   /* 分が変わる → 延びも人も進む。人は歩く。 */
   const me733 = r.me;
@@ -121,6 +124,8 @@ const DAY = "2026-09-30";
   await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 20));
   await page.evaluate(() => KN.dayRoad.paintAll(document.querySelector("#screen-todo")));
   await page.waitForTimeout(600);
+  /* 分が変わると人は歩いて次の足もとへ進む（角の上では高さも変わる）。歩き終わってから測る。 */
+  await page.waitForFunction(() => !document.querySelector("#screen-todo .road-me").__walk, null, { timeout: 4000 });
   const noon = await page.evaluate(() => {
     const road = document.querySelector("#screen-todo .day-road");
     const s = road.__road.stops.find((x) => x.t.title === "ジモティー受け渡し");

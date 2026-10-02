@@ -75,7 +75,9 @@
      5:00〜23:00 なら一段3時間・高さ 396 で、15分が 23px——段2の「押して
      決める」が指に合い、札も入りやすくなります。段の間（PITCH）は、時間を
      細かくするためには広げません（折り返しの半円が大きくなるだけ）——9月30日に
-     広げたのは、札の読みやすさのため。 */
+     広げたのは、札の読みやすさのため。
+     角も時間を持つようになって（10月2日）、六段は「多くても」の数になった（geom が
+     入りきるいちばん短い一段を選ぶので、長い一日は五段になることがある）。 */
   const ROWS = 6;
 
   const n1 = (v) => Math.round(v * 10) / 10;
@@ -84,39 +86,52 @@
 
   /* ---------------- 時刻と、道の上の位置 ----------------
 
-     道は段ごとに向きを変えます（一段目は右へ、二段目は左へ……）。一段は
-     **ちょうどの時間**を持ちます——一日を六段（ROWS）に割り、1時間単位に切り上げ。
-     5:00〜23:00 なら一段3時間で、8:00・11:00・14:00・17:00・20:00 で折り返します。
-     割り切れない日は、最後の段が余ったぶんだけで、道はそこで終わります（手描きの道も、最後の段は端まで
-     行かずに「22:30」で止まっていました）。
+     道は段ごとに向きを変えます（一段目は右へ、二段目は左へ……）。
 
-     **折り返しは時間を持ちません。** 段の尻と次の段の頭は同じ時刻で、曲がり
-     角はそのあいだをつなぐだけの線です。持たせると一時間の長さが段の途中で
-     変わらないかわりに、折り返しの時刻が半端になり、角の札（「11:00」）で
-     物差しを言えなくなります。 */
-  /* 段の割りはちょうどの時（start）から、道そのものは begin から（2026年9月30日・
-     利用者の声「5:00 じゃなく 5:30 スタートに。1行目の道が短くなってもいい」）。
-     前は道の頭まで 5:00 へ切り下げていて、起きてもいない 5:00〜5:30 に道があった。
-     いまは一段目の頭の 30分ぶんを空けて、角と目盛りは「ちょうどの時」のまま。
-     空いた頭には寝床が置かれる（下の「寝床」）。 */
+     **曲がり角も時間を持ちます**（2026年10月2日・利用者の声「1日の道の曲線部分にも、
+     時間を持たせよう」）。道は**どこでも同じ長さが同じ時間**——まっすぐも曲がり角も。
+     前は角が時間を持たず（段の尻と次の段の頭が同じ時刻）、角をまたぐ用事は時間の
+     無い線を回り込み、人も角で次の段へ跳んでいた。
+     - **角のまん中（いちばん外へ張り出したところ）がちょうどの時。** 角どうしの
+       あいだが一段ぶん（`rowSpan`、1時間単位）。角の札（「12:00」）は前と同じところで、
+       前と同じく物差しを言う。
+     - そのかわり、一段目の左の端（と最後の段の終わり）は半端な時刻になる。道そのものは
+       begin から描くので、端は見えない（空いた頭には寝床が入る）。
+     - 一段のまっすぐは `rowSpan` の 65% ほど、角が残りの 35% ほど。
+     - 段の数は六段まで（ROWS）。入りきるいちばん短い `rowSpan` を選ぶ（2時間から）。
+       角も時間を持つぶん、同じ一日が前より少ない段に入る（5:30〜22:30 なら一段4時間の
+       五段。15分は 24 単位で、前の六段の 21 より細かい）。
+     - 始まり（begin）と終わり（end）は、どちらもまっすぐの上に来るように選ぶ
+       （寝床が道の端の延長に置かれるので）。 */
   function geom(begin, end) {
-    const start = Math.floor(begin / 60) * 60;
-    const span = Math.max(60, end - start);
-    const rowSpan = Math.max(120, Math.ceil(span / ROWS / 60) * 60);
-    const rows = Math.max(1, Math.ceil(span / rowSpan - 1e-9));
+    end = Math.max(end, begin + 60);
+    const HALF = ARC / 2;
+    /* 一段 rowSpan、始まりの角の一つ前のちょうどの時 start を、小さい rowSpan から探す。
+       start は遅いほど一段目の空きが少ない。 */
+    let rowSpan = 0, start = 0, rows = 1, k = 1;
+    search:
+    for (let rs = 120; rs <= 24 * 60; rs += 60) {
+      const kk = SEG / rs;
+      const s0 = Math.floor((begin - HALF / kk) / 60) * 60;
+      for (let s = s0; s >= s0 - 180; s -= 60) {
+        const a = (begin - s) * kk - HALF, b = (end - s) * kk - HALF;
+        if (a < -1e-6 || a > RUN + 1e-6) continue;          // 始まりが一段目のまっすぐに無い
+        const n = Math.floor(b / SEG + 1e-9) + 1;
+        if (b - (n - 1) * SEG > RUN + 1e-6) continue;       // 終わりが曲がり角の上
+        rowSpan = rs; start = s; rows = n; k = kk;
+        if (n <= ROWS) break search;
+        break;                                                // この rowSpan では入らない
+      }
+    }
     const H = TOP + (rows - 1) * PITCH + BOT;
     const rowY = (i) => TOP + i * PITCH;
 
-    /** 時刻 → 段の割りの頭（start）からの長さ。境目ちょうどの時刻は、`tail` なら前の段の
-        尻、でなければ次の段の頭へ——区間の終わりが曲がり角を回り込んで、次の
-        段の頭まで伸びないように。道の始まり（begin）より前は、始まりに寄せる。 */
-    function dist(t, tail) {
-      const u = (Math.max(begin, Math.min(start + span, t)) - start) / rowSpan;
-      let i = tail ? Math.ceil(u - 1e-9) - 1 : Math.floor(u + 1e-9);
-      i = Math.max(0, Math.min(rows - 1, i));
-      return i * SEG + Math.max(0, Math.min(1, u - i)) * RUN;
+    /** 時刻 → 道の長さ。角 j（0から）のまん中が start + (j+1)·rowSpan。道の始まり（begin）
+        より前は始まりに、終わりより後は終わりに寄せる。 */
+    function dist(t) {
+      return (Math.max(begin, Math.min(end, t)) - start) * k - HALF;
     }
-    const total = dist(start + span, true);
+    const total = dist(end);
     const d0 = dist(begin);                     // 道の始まり（一段目の途中のこともある）
 
     /* 並走（off）。時刻の重なった停留所は、道を横に割った車線に描きます（
@@ -125,18 +140,32 @@
        （R − off）になり、角をはさんでも同じ車線のまま次の段へつながります。 */
     const rOf = (i, off) => (i % 2 === 0 ? R + off : R - off);
 
-    /** 長さ → 点。まっすぐなところなら、その段と向きも。 */
+    /** 長さ → 点。段と向き、進む向き（tx, ty）と、それに直交する向き（nx, ny。
+        まっすぐなら真下、角なら外向き）も。角の上なら arc と、角に入ってからの角度 a。 */
     function point(d, off = 0) {
       const dd = Math.max(0, Math.min(total, d));
       const i = Math.max(0, Math.min(rows - 1, Math.floor(dd / SEG + 1e-9)));
       const rem = dd - i * SEG;
       const y = rowY(i);
       const ltr = i % 2 === 0;
-      if (rem <= RUN + 1e-9) return { x: ltr ? XL + rem : XR - rem, y: y + (ltr ? -off : off), row: i, ltr };
+      if (rem <= RUN + 1e-9) {
+        return { x: ltr ? XL + rem : XR - rem, y: y + (ltr ? -off : off), row: i, ltr,
+                 tx: ltr ? 1 : -1, ty: 0, nx: 0, ny: 1 };
+      }
       const a = (rem - RUN) / R, r = rOf(i, off);
       const s = Math.sin(a), c = Math.cos(a);
-      return { x: ltr ? XR + r * s : XL - r * s, y: y + R - r * c, row: i, ltr, arc: true };
+      return { x: ltr ? XR + r * s : XL - r * s, y: y + R - r * c, row: i, ltr, arc: true, a,
+               tx: ltr ? c : -c, ty: s, nx: ltr ? s : -s, ny: -c };
     }
+    /** 札の置き場所に使う点。角の上なら、近いほうのまっすぐの端（角の前半は
+        その段の尻、後半は次の段の頭）。札の通りは、まっすぐな段の上と下にしか無いので。 */
+    function flat(d) {
+      const p = point(d);
+      if (!p.arc) return p;
+      return point(p.a < Math.PI / 2 ? p.row * SEG + RUN : (p.row + 1) * SEG);
+    }
+    /** y にいちばん近い段（角の上に居る人の、札の通りを決める）。 */
+    const rowAt = (y) => Math.max(0, Math.min(rows - 1, Math.round((y - TOP) / PITCH)));
 
     /** 長さ d0〜d1 の道筋（SVG の d）。長さが無ければ点——丸い端が丸を描きます。 */
     function path(d0, d1, off = 0) {
@@ -166,26 +195,24 @@
       return s;
     }
 
-    /** 一時間ごとの目盛りの時刻。曲がり角の上には置きません（そこは札が言うので）。
-        道の始まりはちょうどの時へ切り下げてあるので（`reach`）、角も目盛りも
-        「ちょうどの時」にそろいます。 */
+    /** 一時間ごとの目盛りの時刻（道の上にあるもの）。角のまん中もちょうどの時なので、
+        そこにも置く（角の札がその目盛りを言う）。 */
     function tickTimes() {
       const out = [];
-      for (let t = Math.floor(start / 60) * 60 + 60; t < start + span; t += 60) {
-        if ((t - start) % rowSpan !== 0) out.push(t);
-      }
+      for (let t = Math.floor(begin / 60) * 60 + 60; t < end; t += 60) out.push(t);
       return out;
     }
-    /** 目盛りの道筋。half は目盛りの半分の長さ、off は車線。 */
+    /** 目盛りの道筋。道に直交する短い線（角の上では外向き）。half は半分の長さ、off は車線。 */
     function tickPath(ts, off = 0, half = 3) {
       return ts.map((t) => {
         const p = point(dist(t), off);
-        return `M${n1(p.x)} ${n1(p.y - half)}V${n1(p.y + half)}`;
+        return `M${n1(p.x - p.nx * half)} ${n1(p.y - p.ny * half)}`
+          + `L${n1(p.x + p.nx * half)} ${n1(p.y + p.ny * half)}`;
       }).join("");
     }
     const ticks = () => tickPath(tickTimes());
 
-    return { start, begin, end: start + span, rowSpan, rows, H, total, d0, rowY, dist, point, path,
+    return { start, begin, end, rowSpan, rows, H, total, d0, rowY, rowAt, dist, point, flat, path,
              ticks, tickTimes, tickPath };
   }
 
@@ -439,6 +466,13 @@
 
   /* 人の置き場所（paint が me.__at に覚える）→ transform。 */
   const meAt = (a) => `translate(${a.x.toFixed(2)} ${a.y.toFixed(2)}) scale(${a.sx} ${ME_K})`;
+  /** 道の長さ d に立つ人の置き場所。h は足もとの道（停留所ならそのふち）の太さ。
+      まっすぐでは道の上のふちに立ち、角では立ったまま（傾けない）、道が縦になる
+      ほど足もとを道の中心へ寄せる。顔は進む向きの左右（角のまん中で向きが返る）。 */
+  function standAt(g, d, h) {
+    const p = g.point(d);
+    return { x: p.x, y: p.y - h / 2 * Math.abs(p.ny), sx: p.tx >= 0 ? ME_K : -ME_K, row: p.row, d, h };
+  }
 
   /** その根の中の、今日の道の人を歩かせる。歩いている途中なら、そのまま。
       from（前の置き場所）があれば、歩くあいだにそこから今の足もとへ進む
@@ -474,9 +508,11 @@
       const tau = (now - t0) / dur;
       if (tau >= 1 || !me.isConnected) { rest(); return; }
       if (glide) {
+        /* 道の長さで進める（角の上でも道に沿って）。 */
         const k = walkPhase(tau) / (WALK.steps / 2), to = me.__at;
-        me.setAttribute("transform", meAt({ x: glide.x + (to.x - glide.x) * k,
-                                            y: glide.y + (to.y - glide.y) * k, sx: to.sx }));
+        me.setAttribute("transform", meAt(me.__stand && glide.d != null && to.d != null
+          ? me.__stand(glide.d + (to.d - glide.d) * k, glide.h + (to.h - glide.h) * k)
+          : { x: glide.x + (to.x - glide.x) * k, y: glide.y + (to.y - glide.y) * k, sx: to.sx }));
       }
       const q = walkPose(tau);
       ["legB", "legF", "armB", "sleeveB", "armF", "sleeveF"].forEach((key) => set(key, "d", dOf(q[key])));
@@ -510,7 +546,8 @@
        ちょうどの時になる。
      終わりは切り上げません（手描きの道も「22:30」で止まっていた）。
      **切り下げるのは段の割りだけ**（9月30日から。geom の頭）：道そのものは 5:30 から
-     描き、角と目盛りは 8:00・11:00……のまま。
+     描き、角と目盛りは「ちょうどの時」のまま。角も時間を持つようになってから（10月2日）は、
+     角のまん中がちょうどの時になるように geom が段の割りを選ぶ。
      描くだけで、設定も記録も書き換えません。 */
   function reach(plan) {
     let a = plan.startMin, b = plan.endMin;
@@ -596,7 +633,7 @@
       s.eu = s.late ? Math.max(s.until, Math.min(nowMin, g.end))
         : !st.past && s.len && s.doneMin != null
           ? Math.max(s.at + 1, Math.min(s.doneMin, Math.max(s.until, next))) : s.until;
-      s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu, true)) : s.d0;
+      s.d1 = s.len ? Math.max(s.d0, g.dist(s.eu)) : s.d0;
     });
     laneOut(st.stops);
     return st.stops.map((s) => `${n1(s.d1)}/${n1(s.off)}/${s.lanes}/${s.late ? 1 : 0}`).join(",");
@@ -652,7 +689,7 @@
       if (t.part === "dusk") {
         const d0 = g.dist(it.atMin);
         later.push({ t, at: it.atMin, d0,
-                     d1: Math.max(d0 + 12, Number(t.minutes) > 0 ? g.dist(it.untilMin, true) : d0) });
+                     d1: Math.max(d0 + 12, Number(t.minutes) > 0 ? g.dist(it.untilMin) : d0) });
         return;
       }
       loose.push({ t });
@@ -866,19 +903,19 @@
     const me = svg.querySelector(".road-me");
     if (dNow == null || st.sleep != null) { me.style.display = "none"; me.__at = null; }
     else {
-      const p = g.point(dNow);
       /* 延びた区間（is-late）は足もとで終わるので、そのふちの上に。 */
       const onStop = st.stops.some((s) => s.len && nowMin >= s.at && (nowMin < s.until || s.late));
       const was = me.__at;
-      const to = { x: p.x, y: p.y - (onStop ? STOP : ROAD) / 2, sx: p.ltr ? ME_K : -ME_K, row: p.row };
+      me.__stand = (d, h) => standAt(g, d, h);
+      const to = me.__stand(dNow, onStop ? STOP : ROAD);
       me.__at = to;
       me.style.display = "";
       if (!me.__walk) me.setAttribute("transform", meAt(to));
       /* 分が変わったら、歩いて次の足もとへ（2026年9月30日・利用者の声「時刻が
-         1分進むなど変わると、人が動くように」）。一分は道の上で 1〜2 単位しか
-         ないので、動いたと分かるのは歩く形のほう。段が変わる（角を回る）ときは
-         まっすぐ横切らせず、その場で歩くだけ。 */
-      if (moved) walk(el, was && was.row === to.row ? was : null);
+         1分進むなど変わると、人が動くように」）。一分は道の上で 1〜3 単位しか
+         ないので、動いたと分かるのは歩く形のほう。角も時間を持つので（10月2日）、
+         道に沿って角を回る（まっすぐ横切らない）。一段より遠ければ、その場で歩くだけ。 */
+      if (moved) walk(el, was && Math.abs(was.d - to.d) <= SEG ? was : null);
     }
 
     // ④ 札・連れ・いまの時刻
@@ -921,7 +958,7 @@
       if (s.lanes < 2) return;
       const out = Math.abs(s.off) + 0.5;   // 車線は停留所と同じ太さなので、ずれたぶんだけ外へ
       if (out <= 0.1) return;
-      for (let r = g.point(s.d0).row; r <= g.point(s.d1).row; r++) {
+      for (let r = g.flat(s.d0).row; r <= g.flat(s.d1).row; r++) {
         const key = r + ((s.off > 0) === (r % 2 === 0) ? "u" : "d");
         bump[key] = Math.max(bump[key] || 0, out);
       }
@@ -995,8 +1032,9 @@
       keep.push([b.lo - 2, b.hi + 2, b.y + ROAD / 2 - BED_TOP, b.y + ROAD / 2]);
       keep.push([b.cx - w / 2, b.cx + w / 2, ey - EFS * 0.7, ey + EFS * 0.7]);
     });
-    /* 角の時刻は、人がそこに立っているときは出しません（頭と重なる。
-       人の足もとの時刻の札が、同じことを言っています）。 */
+    /* 角の時刻は、角のまん中（いちばん外へ張り出したところ）のちょうどの時。札は
+       その内側に置く（そこに目盛りもある）。人がそこに立っているときは出しません
+       （頭と重なる。人の頭の上の時刻の札が、同じことを言っています）。 */
     const me = dNow == null || sleep != null ? null : g.point(dNow);
     const turnAt = new Map();   // 角の時刻 → out の中の位置（停留所の札と重なれば、あとで外す）
     for (let i = 0; i < g.rows - 1; i++) {
@@ -1015,9 +1053,11 @@
        後ろに入りきらない（段の頭に居る）ときは、まとめて前へ。 */
     if (dNow != null) {
       const p = g.point(dNow);
+      /* 角の上に居るときは、近いほうの段の通り（角も時間を持つので、人は角を回る）。 */
+      const pr = g.rowAt(p.y);
       const bed = sleep == null ? null : st.beds[sleep];
       if (!bed) {
-        lane(p.row, "u").push([p.x - ME_W, p.x + ME_W]);
+        lane(pr, "u").push([p.x - ME_W, p.x + ME_W]);
         // 人の形（足もとが停留所のふちの上まで上がることもあるので、高いほうに合わせて）
         keep.push([p.x - ME_W - 2, p.x + ME_W + 2, p.y - STOP / 2 - ME_HEAD - 6, p.y]);
       }
@@ -1025,13 +1065,13 @@
         const many = st.loose.length > BEADS_MAX;
         const shown = many ? st.loose.slice(0, BEADS_MAX - 1) : st.loose;
         const count = shown.length + (many ? 1 : 0);
-        const back = p.ltr ? -1 : 1;
+        const back = p.tx >= 0 ? -1 : 1;
         const far = p.x + back * (BEAD_BACK + (count - 1) * BEAD);
         /* 寝ているあいだは、連れは寝床と反対の側（道の側）に並ぶ。 */
         const dir = bed ? -bed.side : far - 9 >= 2 && far + 9 <= W - 2 ? back : -back;
         const xs = Array.from({ length: count }, (_, i) => p.x + dir * (BEAD_BACK + i * BEAD));
-        const y = p.y - LANE - lane(p.row, "u").dy;
-        lane(p.row, "u").push([Math.min(...xs) - 9, Math.max(...xs) + 9]);
+        const y = p.y - LANE - lane(pr, "u").dy;
+        lane(pr, "u").push([Math.min(...xs) - 9, Math.max(...xs) + 9]);
         shown.forEach((c, b) => {
           const m = st.markOf ? st.markOf(c.t) : "";
           out.push(html`
@@ -1056,9 +1096,9 @@
       // 足もとは停留所のふちの上（STOP / 2）まで上がることがあるので、高いほうに合わせる。
       // 寝ているあいだは、寝床の z Z の上
       const hy = bed ? bed.y + ROAD / 2 - BED_TOP - 2 - FS * 0.6 : p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
-      if (p.row > 0) {
-        const above = lane(p.row - 1, "d");
-        if (g.rowY(p.row - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
+      if (pr > 0) {
+        const above = lane(pr - 1, "d");
+        if (g.rowY(pr - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
       }
       out.push(html`<span class="road-now" style="${at(hx, hy)}">${txt}</span>`);
       keep.push([hx - w / 2, hx + w / 2, hy - FS * 0.7, hy + FS * 0.7]);
@@ -1095,7 +1135,14 @@
        添える札にその幅を足して**置き直します**（足さずに添えると、題が「…」に
        つぶれて「11:30 ほか1」になる）。 */
     const saved = Object.entries(lanes).map(([key, v]) => [key, Object.assign(v.slice(), { lo: v.lo, hi: v.hi, dy: v.dy })]);
-    const placeAll = (room) => st.stops.map((s, k) => place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
+    /* 角の上で始まる停留所は、近いほうのまっすぐの端から（g.flat）。角の前半で始まる
+       ものは、進む向きが角へ突き当たるので、**逆向きを先に**試す（縮めるより先）。 */
+    const triesAt = (d, base) => {
+      const p = g.point(d);
+      return p.arc && p.a < Math.PI / 2 ? [["u", -1, "full"], ["d", -1, "full"], ...base] : base;
+    };
+    const placeAll = (room) => st.stops.map((s, k) =>
+      place(g.flat(s.d0), clock(s.at), s.t.title, triesAt(s.d0, TRIES), room[k] || 0));
     /* 入りきらなかった札ごとに、同じ群で時間が重なり、札の出た停留所のうち始まりが
        いちばん近いものへ数を寄せる（群の最初の札だと、朝の長い用事に「ほか1」が
        付いて、昼の込み合いから遠くなった）。 */
@@ -1161,7 +1208,7 @@
     // 3. 夜のごろ
     st.later.forEach((s, k) => {
       const time = clock(s.at) + "ごろ";
-      const b = place(g.point(s.d0), time, s.t.title, TRIES.slice(0, 6));
+      const b = place(g.flat(s.d0), time, s.t.title, triesAt(s.d0, TRIES.slice(0, 6)));
       if (!b) return;
       out.push(html`
         <button type="button" class="road-label is-later ${b.rev ? "is-rev" : ""}"
@@ -1286,14 +1333,12 @@
      無ければ無いと言うだけで、新しく書く欄も出しません（入力を増やさない）。
      「空き」は長さを言うだけで、埋めるべき余白としては言いません。 */
 
-  /** 道の上の、1分ごとの点（境目ちょうどの時刻は、前の段の尻と次の段の頭の二つ）。 */
+  /** 道の上の、1分ごとの点（角の上も。角も時間を持つので、道は一本の物差し）。 */
   function roadPts(g) {
     const out = [];
     for (let t = g.begin; t <= g.end; t++) {
-      for (const tail of [false, true]) {
-        const p = g.point(g.dist(t, tail));
-        out.push({ t, x: p.x, y: p.y });
-      }
+      const p = g.point(g.dist(t));
+      out.push({ t, x: p.x, y: p.y });
     }
     return out;
   }
