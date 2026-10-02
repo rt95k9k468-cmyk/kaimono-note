@@ -1,6 +1,7 @@
 /* 一日の道（2026年9月29日、docs/todo-timeline.md の「一日の道」）。
-   前半は道の寸法（geom）：時刻→長さが単調・折り返しは時間を持たない・区間の終わりは
-   曲がり角を回り込まない・道筋は曲がり角を四分の一ずつ描く。
+   前半は道の寸法（geom）：時刻→長さが単調・曲がり角も時間を持つ（どこでも同じ長さが
+   同じ時間、角のまん中がちょうどの時。2026年10月2日）・道の端はまっすぐの上・道筋は
+   曲がり角を四分の一ずつ描く。
    後半は画面：時計を 7:43 に止め、手描きと同じ一日（朝のルーティン・朝のBaby・病院・
    夜のルーティン）に、時刻なしの三件・済ませた一件・毎晩の時刻なしを置く。
    - 時刻を決めたものは停留所（札に「ごろ」なし）、毎晩の時刻なしは点線のふちと「ごろ」
@@ -34,28 +35,35 @@ const DAY = "2026-09-29";
     const ts = [];
     for (let t = 300; t <= 1380; t += 5) ts.push(G.dist(t));
     const d = G.path(0, G.total);
+    /* 同じ一時間の長さ：まっすぐの上（9:00〜10:00）と、角をまたぐところ（7:30〜8:30）。 */
+    const on = G.dist(600) - G.dist(540), across = G.dist(510) - G.dist(450);
     return {
-      rows: G.rows, rowSpan: G.rowSpan,
+      rows: G.rows, rowSpan: G.rowSpan, start: G.start,
       mono: ts.every((v, i) => i === 0 || v >= ts[i - 1]),
-      head11: G.dist(660), tail11: G.dist(660, true),
-      p11: G.point(G.dist(660)), e11: G.point(G.dist(660, true)),
+      on, across, p8: G.point(G.dist(480)), p750: G.point(G.dist(470)), p810: G.point(G.dist(490)),
       arcs: (d.match(/A/g) || []).length,
-      total: G.total, end: G.point(G.total),
-      p1000: G.point(G.dist(600)),
+      first: G.point(G.d0), end: G.point(G.total),
+      p900: G.point(G.dist(540)), p1100: G.point(G.dist(660)),
     };
   });
-  c.check("5:00〜23:00 は一段3時間の六段", g.rows === 6 && g.rowSpan === 180, JSON.stringify(g));
+  c.check("5:00〜23:00 は一段4時間の五段（角も時間を持つので、六段に入るいちばん短い一段）",
+    g.rows === 5 && g.rowSpan === 240, JSON.stringify(g));
   c.check("時刻が進めば、道の上も進む（戻らない）", g.mono);
-  c.check("折り返しは時間を持たない：11:00 は段の尻と次の段の頭の両方",
-    g.head11 > g.tail11 && Math.abs(g.p11.y - g.e11.y) > 60 && Math.abs(g.p11.x - g.e11.x) < 0.5,
-    JSON.stringify([g.p11, g.e11]));
-  c.check("道筋は曲がり角を四分の一ずつ（五つの角で10）", g.arcs === 10, String(g.arcs));
-  c.check("割り切れる日は、六段目の尻で道が終わる", g.end.row === 5, JSON.stringify(g.end));
-  const r7 = await page.evaluate(() => { const G = KN.dayRoad.geom(420, 1320); return [G.rows, G.rowSpan, G.point(G.total)]; });
-  c.check("割り切れない日（7:00〜22:00）は一段3時間の五段、最後の段は途中で終わる",
-    r7[0] === 5 && r7[1] === 180 && r7[2].row === 4 && r7[2].x > 60, JSON.stringify(r7));
-  c.check("二段目は右から左へ（10:00 は段の左寄り）", g.p1000.row === 1 && !g.p1000.ltr && g.p1000.x < 180,
-    JSON.stringify(g.p1000));
+  c.check("曲がり角も時間を持つ：角をまたぐ一時間も、まっすぐの一時間と同じ長さ",
+    Math.abs(g.on - g.across) < 0.01 && g.on > 90, JSON.stringify([g.on, g.across]));
+  c.check("角のまん中（いちばん外）がちょうどの時（8:00）、その前後は角の上",
+    !!g.p8.arc && Math.abs(g.p8.x - 350) < 0.01 && Math.abs(g.p8.y - (46 + 44)) < 0.01
+      && !!g.p750.arc && !!g.p810.arc && g.p750.y < g.p8.y && g.p810.y > g.p8.y,
+    JSON.stringify([g.p750, g.p8, g.p810]));
+  c.check("道筋は曲がり角を四分の一ずつ（四つの角で8）", g.arcs === 8, String(g.arcs));
+  c.check("道の始まりと終わりはまっすぐの上（寝床がその延長に入る）",
+    !g.first.arc && g.first.row === 0 && !g.end.arc && g.end.row === 4, JSON.stringify([g.first, g.end]));
+  const r7 = await page.evaluate(() => { const G = KN.dayRoad.geom(420, 1320); return [G.rows, G.rowSpan, G.start, G.point(G.total)]; });
+  c.check("7:00〜22:00 は一段3時間の六段（角は 9・12・15・18・21時）、最後の段は途中で終わる",
+    r7[0] === 6 && r7[1] === 180 && r7[2] === 360 && r7[3].row === 5 && !r7[3].arc && r7[3].x > 60, JSON.stringify(r7));
+  c.check("二段目は右から左へ（9:00 は段の右寄り、11:00 は左寄り）",
+    g.p900.row === 1 && !g.p900.ltr && !g.p900.arc && g.p900.x > 180 && g.p1100.row === 1 && g.p1100.x < 180,
+    JSON.stringify([g.p900, g.p1100]));
 
   /* ---------------- 後半：画面 ---------------- */
   const ids = await page.evaluate((day) => {
@@ -139,25 +147,26 @@ const DAY = "2026-09-29";
   c.check("済ませた洗濯は 6:50 の道の上に足あと",
     r.steps.length === 1 && Math.abs(r.steps[0].x - p650.x) < 0.3 && Math.abs(r.steps[0].y - p650.y) < 0.3,
     JSON.stringify([r.steps, p650]));
-  c.check("歩いたぶんの道は、人の足もとまで", /L([-\d.]+) ([-\d.]+)$/.test(r.went)
-    && Math.abs(Number(r.went.match(/L([-\d.]+) [-\d.]+$/)[1]) - p743.x) < 0.3, r.went);
+  /* 7:43 は一つ目の角の上（角も時間を持つ）なので、道筋の尻は L でも A でもよい。 */
+  c.check("歩いたぶんの道は、人の足もとまで", /([-\d.]+) ([-\d.]+)$/.test(r.went)
+    && Math.abs(Number(r.went.match(/([-\d.]+) [-\d.]+$/)[1]) - p743.x) < 0.3, r.went);
   c.check("過ぎたルーティンは塗り、先の三つは白いまま", JSON.stringify(r.stopWent) === "[true,false,false,false]",
     JSON.stringify(r.stopWent));
   c.check("次の一行「次は 8:00 朝のBaby · あと17分」",
     /次は\s*8:00 朝のBaby/.test(r.next) && /あと17分/.test(r.next), r.next);
 
   /* 停留所の上の目盛り（9月29日・利用者の声「1時間ごとの切れ目がわかりにくい」）。
-     道の目盛りは停留所の太い線の下に隠れていた。5:00 始まりなので角は 8・11・14・
-     17・20 時（目盛りは置かない）。ルーティン（5:30〜6:30、まだなので 9月30日から
-     人の足もと 7:43 まで延びる）の 6:00・7:00 は塗りの上の白、朝のBaby（8:00〜12:00、
-     まだ）の 9:00・10:00 は白い中の塗りの色。 */
+     道の目盛りは停留所の太い線の下に隠れていた。角は 8・12・16・20 時（10月2日から角の
+     まん中にも目盛り）。ルーティン（5:30〜6:30、まだなので 9月30日から人の足もと 7:43 まで
+     延びる）の 6:00・7:00 は塗りの上の白、朝のBaby（8:00〜12:00、まだ）の 9:00・10:00・
+     11:00 と病院（13:00〜14:30）の 14:00 は白い中の塗りの色。 */
   const ticksOn = await page.evaluate(() => {
     const road = document.querySelector("#screen-todo .day-road");
     const n = (sel) => ((road.querySelector(sel).getAttribute("d") || "").match(/M/g) || []).length;
     return { over: n(".road-ticks.is-over"), ink: n(".road-ticks.is-ink") };
   });
-  c.check("停留所の上にも目盛り：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が二つ（9:00・10:00）",
-    ticksOn.over === 2 && ticksOn.ink === 2, JSON.stringify(ticksOn));
+  c.check("停留所の上にも目盛り：塗った上に白が二つ（6:00・延びた 7:00）、まだの白い中に塗りの色が四つ（9:00・10:00・11:00・14:00）",
+    ticksOn.over === 2 && ticksOn.ink === 4, JSON.stringify(ticksOn));
 
   if (process.env.SHOTS) {
     const box = await page.locator("#screen-todo .day-road").boundingBox();
@@ -267,7 +276,7 @@ const DAY = "2026-09-29";
   c.check("戻ってきたら、時間割の「いま」もすぐ 14:20", r.nowTl === "14:20", String(r.nowTl));
   c.check("病院の途中：停留所は is-live、次の一行は「いまは 病院（14:30まで）」",
     r.live[2] === true && /いまは\s*病院（14:30まで）/.test(r.next), JSON.stringify([r.live, r.next]));
-  c.check("四段目は左へ進むので、連れは人の右", r.beads.every((b) => b.x > p1420.x + 8),
+  c.check("三段目は右へ進むので、連れは人の左", r.beads.every((b) => b.x < p1420.x - 8),
     JSON.stringify(r.beads.map((b) => b.x)) + " / " + p1420.x);
   if (process.env.SHOTS) {
     const box = await page.locator("#screen-todo .day-road").boundingBox();
@@ -297,14 +306,15 @@ const DAY = "2026-09-29";
        終わり。9月30日）ので、見える長さは道筋 + 太さ（16）。 */
     return { len: p.getTotalLength() + 16, at: road.__road.stops[i].at };
   });
-  /* 13:00〜14:30 は 14:00 の曲がり角をまたぐ（角の長さが混ざる）ので、先に 11:00 へ
-     動かしてから、同じ段の中で長さを比べる。14:20 のままだと 11:00〜 は過ぎていて
+  /* 角も時間を持つので（10月2日）、角をまたいでも長さは時間に比例する——ただし車線に
+     割れると角の内回り・外回りで長さが変わるので、朝のBaby（8:00〜12:00）と重ならない
+     12:00（左の角のまん中）へ動かして比べる。14:20 のままだと 12:00〜 は過ぎていて
      人の足もとまで延びる（9月30日）ので、時計を 9:00 にして比べる。 */
   await page.clock.setFixedTime(new Date(2026, 8, 29, 9, 0));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(400);
   await page.evaluate((id) => KN.store.update((st) => {
-    const x = st.todos.find((y) => y.id === id); x.time = "11:00";
+    const x = st.todos.find((y) => y.id === id); x.time = "12:00";
   }), ids.clinic);
   await page.waitForTimeout(400);
   const before = await len();
@@ -314,7 +324,7 @@ const DAY = "2026-09-29";
   await page.waitForTimeout(400);
   const after = await len();
   r = await read();
-  c.check("時刻を 13:00→11:00 に変えると、停留所の札も 11:00", after.at === 660 && r.labels.some((l) => l.includes("11:00") && l.includes("病院")),
+  c.check("時刻を 13:00→12:00 に変えると、停留所の札も 12:00", after.at === 720 && r.labels.some((l) => l.includes("12:00") && l.includes("病院")),
     JSON.stringify([after, r.labels]));
   const capAt = await page.evaluate(() => {
     const road = [...document.querySelectorAll(".day-road")].find((x) => x.offsetParent);
@@ -326,7 +336,7 @@ const DAY = "2026-09-29";
   });
   c.check("停留所の丸い端の外が、ちょうど始まりと終わり（道筋は太さの半分ずつ内）",
     capAt.every((v) => Math.abs(v - 8) < 0.2), JSON.stringify(capAt));
-  c.check("長さを 90→180分にすると、区間の長さが倍", Math.abs(after.len / before.len - 2) < 0.02,
+  c.check("長さを 90→180分にすると、区間の長さが倍（角をまたいでも）", Math.abs(after.len / before.len - 2) < 0.02,
     `${before.len.toFixed(1)} → ${after.len.toFixed(1)}`);
   await page.clock.setFixedTime(new Date(2026, 8, 29, 14, 20));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
@@ -430,8 +440,8 @@ const DAY = "2026-09-29";
              said: [...road.querySelectorAll(".road-edge, .road-turn, .road-until")].map((e) => e.textContent.trim()) };
   });
   let edge = await edgeRead();
-  c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:30 から（段の割りは 5:00）：点に押しつぶされず 5:30〜6:30 の区間",
-    edge.start === 300 && edge.begin === 330 && edge.first === "5:30" && edge.road0 > 30
+  c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:30 から：点に押しつぶされず 5:30〜6:30 の区間",
+    edge.begin === 330 && edge.first === "5:30" && edge.road0 > 30
       && Math.abs(edge.d0 - edge.road0) < 0.01 && edge.d1 - edge.d0 > 40, JSON.stringify(edge));
   c.check("角の時刻はちょうどの時（「〜:30」が混ざらない）",
     edge.turns.length > 0 && edge.turns.every((t) => /:00$/.test(t)), JSON.stringify(edge.turns));
@@ -443,8 +453,8 @@ const DAY = "2026-09-29";
              first: el.querySelector(".road-edge").textContent.trim(),
              turns: [...el.querySelectorAll(".road-turn")].map((e) => e.textContent.trim()) };
   });
-  c.check("早い用事の無い日：起きる時刻 6:30 の道は 6:30 から（段の割りは 6:00）、終わりは 22:30 のまま",
-    bare.start === 360 && bare.begin === 390 && bare.first === "6:30" && bare.end === 1350 && bare.turns.every((t) => /:00$/.test(t)), JSON.stringify(bare));
+  c.check("早い用事の無い日：起きる時刻 6:30 の道は 6:30 から、終わりは 22:30 のまま",
+    bare.begin === 390 && bare.first === "6:30" && bare.end === 1350 && bare.turns.every((t) => /:00$/.test(t)), JSON.stringify(bare));
   await page.evaluate((d) => KN.store.addTodo({ title: "夜ふけの用事", due: d, time: "23:00", minutes: 30 }), EDGE);
   await page.waitForTimeout(500);
   edge = await edgeRead();
@@ -453,12 +463,13 @@ const DAY = "2026-09-29";
 
   /* 時刻の重なった停留所は車線に（9月29日・利用者の声「今後時間が被る予定が出たら
      どうする？」）。前は同じところに重ねて描いていて、一本に見えた。
-     毎日の朝のBaby（8:00〜12:00）と重ならないよう、12:00 から（12:00 ちょうどは重ならない）。 */
+     毎日の朝のBaby（8:00〜12:00）と重ならず、角（12:00・16:00）にかからない 13:00 から
+     （三段目のまっすぐ。角の上だと道筋の頭が段の高さに無いので、車線の位置を比べにくい）。 */
   const LANES = "2026-10-05";
   await goDay(LANES);
   await page.evaluate((d) => {
-    KN.store.addTodo({ title: "会議", due: d, time: "12:00", minutes: 90 });
-    KN.store.addTodo({ title: "電話", due: d, time: "12:30", minutes: 60 });
+    KN.store.addTodo({ title: "会議", due: d, time: "13:00", minutes: 90 });
+    KN.store.addTodo({ title: "電話", due: d, time: "13:30", minutes: 60 });
     KN.store.addTodo({ title: "散歩", due: d, time: "16:00", minutes: 60 });
   }, LANES);
   await page.waitForTimeout(500);
@@ -476,7 +487,7 @@ const DAY = "2026-09-29";
       /* 「ほか n」を添えた札の題が、幅に収まっているか（切れていれば「…」）。 */
       moreCut: [...road.querySelectorAll(".road-label")].filter((b) => b.querySelector("em"))
         .map((b) => { const sp = b.querySelector("span"); return !sp || sp.scrollWidth > sp.clientWidth + 1; }),
-      row: g.rowY(g.point(g.dist(720)).row),
+      row: g.rowY(g.point(g.dist(840)).row),
     };
   });
   let ln = await laneRead();
@@ -506,12 +517,12 @@ const DAY = "2026-09-29";
     await page.mouse.click(xy.x, xy.y);
     return sheetTitle();
   };
-  /* 札の指の的（上下の余白）が上の車線にかかるので、札の無い 13:28 で押す。 */
-  const tA = await tapLane(808, 0), tB = await tapLane(808, -13.5);
-  c.check("車線を押すと、その車線の用事が開く（13:28 の中心は会議、下は電話）",
+  /* 札の指の的（上下の余白）が上の車線にかかるので、札の無い 14:28 で押す。 */
+  const tA = await tapLane(868, 0), tB = await tapLane(868, -13.5);
+  c.check("車線を押すと、その車線の用事が開く（14:28 の中心は会議、下は電話）",
     !!tA && tA.includes("会議") && !!tB && tB.includes("電話"), JSON.stringify([tA, tB]).slice(0, 120));
   await page.evaluate((d) => {
-    ["来客", "宅配", "修理"].forEach((t) => KN.store.addTodo({ title: t, due: d, time: "12:30", minutes: 30 }));
+    ["来客", "宅配", "修理"].forEach((t) => KN.store.addTodo({ title: t, due: d, time: "13:30", minutes: 30 }));
   }, LANES);
   await page.waitForTimeout(500);
   ln = await laneRead();
@@ -526,8 +537,8 @@ const DAY = "2026-09-29";
     JSON.stringify([ln.row, by("会議").y]));
   c.check("入りきらない札は黙って消えず、同じ群の札に「ほか n」（出た札＋ほか＝五つ）",
     ln.more.length === 1 && moreN > 0 && inGroup + moreN === 5, JSON.stringify([ln.labels, ln.more]));
-  c.check("「ほか n」は込み合いのそば（12:30 の札）に付く",
-    ln.labels.filter((l) => /ほか/.test(l)).every((l) => l.startsWith("12:30")), JSON.stringify(ln.labels));
+  c.check("「ほか n」は込み合いのそば（13:30 の札）に付く",
+    ln.labels.filter((l) => /ほか/.test(l)).every((l) => l.startsWith("13:30")), JSON.stringify(ln.labels));
   c.check("「ほか n」を添えた札も題が読める（「…」につぶれない）",
     ln.moreCut.length === 1 && !ln.moreCut[0], JSON.stringify([ln.labels, ln.moreCut]));
   await goDay(DAY);
