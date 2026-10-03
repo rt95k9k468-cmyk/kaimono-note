@@ -601,6 +601,8 @@
      流れ、札は予定。記録も `at`/`until` も書き換えない（描くたびに引き直すだけ）。
      車線はもう割らないので `off` は 0・`lanes` は 1（下の描き手はそのまま読む）。 */
   let hatchN = 0;   // 斜線の mask の id（build ごと）
+  /* 自分の区間の終わり。まだの延び（橙）は次の用事の上に重ねるだけなので数えない。 */
+  const own = (q) => (q.late ? Math.max(q.ga + 1, q.until) : q.eu);
   function shape(st, nowMin) {
     const g = st.g;
     let cursor = -Infinity, cl = -1;
@@ -621,7 +623,7 @@
         const used = new Set();
         for (let p; (p = put.find((q) => !used.has(q) && Math.abs(g.dist(q.ga) - g.dist(s.ga)) < STOP));) {
           used.add(p);
-          s.ga = Math.max(s.ga, p.eu);
+          s.ga = Math.max(s.ga, own(p));
         }
       }
       /* 過ぎた日は、押した時刻まで延ばさない（決めた区間のまま。押した時刻は
@@ -634,9 +636,13 @@
          押すのが遅れただけのことが多いので、決めた予定どうしが重なっていないのに、
          延びで次を押さない。まだのもの（is-late）も人の足もとまでだが、同じく**次の
          停留所の始まりで止める**（2026年10月3日。止めないと、押し忘れた朝の用事が
-         いままで延び、そのあとの一日がぜんぶ「いま」の後ろへ押し出された）。 */
+         いままで延び、そのあとの一日がぜんぶ「いま」の後ろへ押し出された）。
+         → **まだのものは止めず、次の用事の上に重ねていままで延ばす**（同日・利用者の声
+         「超過オレンジは、次のタスクの上に重なるように。次のタスクは全くずらさずに」）。
+         押すのは始まりが重なるときだけになったので、もう一日は押し出されない。延びたぶんは
+         押す・斜線の勘定に入れない（own）。橙は上に描く（paint の並べ替え）。 */
       const next = st.stops.reduce((m, q) => (q !== s && q.at >= s.until ? Math.min(m, q.at) : m), Infinity);
-      const end = s.late ? Math.max(s.until, Math.min(nowMin, g.end, next))
+      const end = s.late ? Math.max(s.until, Math.min(nowMin, g.end))
         : !st.past && s.len && s.doneMin != null
           ? Math.min(s.doneMin, Math.max(s.until, next)) : s.until;
       s.eu = s.len ? Math.max(s.ga + 1, end) : s.until;
@@ -656,7 +662,7 @@
     /* 前の丸薬の途中から重なって描くものは、中を斜線に（2026年10月3日・利用者の声「重なって
        いる丸薬の見た目同士が全く同じ」。色・点々・細く・縁と見比べて斜線だけに）。 */
     st.stops.forEach((s) => {
-      s.over = !!s.len && st.stops.some((q) => q !== s && q.len && q.ga < s.ga && s.ga < q.eu);
+      s.over = !!s.len && st.stops.some((q) => q !== s && q.len && q.ga < s.ga && s.ga < own(q));
     });
     return st.stops.map((s) => `${n1(s.d0)}/${n1(s.d1)}/${s.late ? 1 : 0}${s.over ? "/o" : ""}`).join(",");
   }
@@ -877,8 +883,9 @@
         const hit = hitOf(k);
         if (hit) hit.setAttribute("d", g.path(s.d0, s.d1, s.off));
       });
-      /* 重なった丸薬は、あとに始まるほうを上に（描く順も押せる順も）。shape の「道は一本」。 */
-      const ord = st.stops.map((s, k) => k).sort((a, b) => st.stops[a].d0 - st.stops[b].d0 || a - b);
+      /* 重なった丸薬は、あとに始まるほうを上に。まだの延び（橙）はいちばん上（描く順も押せる順も）。shape の「道は一本」。 */
+      const ord = st.stops.map((s, k) => k).sort((a, b) =>
+        (st.stops[a].late ? 1 : 0) - (st.stops[b].late ? 1 : 0) || st.stops[a].d0 - st.stops[b].d0 || a - b);
       [grpOf, hitOf].forEach((of) => {
         const els = ord.map(of).filter(Boolean);
         const last = els.reduce((m, x) => (m && m.compareDocumentPosition(x) & 4 ? x : m || x), null);
@@ -923,10 +930,10 @@
 
     /* ② 停留所の塗り。時間割の丸薬と同じ決めごと：時計が通ったところまで
        塗る。済ませたものは時計に関わらず塗りきる（手が先に進むことはある）。 */
-    const stopEls = svg.querySelectorAll(".road-stop[data-s]");
+    /* 番号で引く（並びは重なりの上下で入れ替わる。⓪の並べ替え）。 */
     const over = [], ink = [], rim = [], rimT = new Set();
     st.stops.forEach((s, k) => {
-      const grp = stopEls[k];
+      const grp = svg.querySelector(`.road-stop[data-s="${k}"]`);
       if (!grp) return;
       const w = grp.querySelector(".road-stop-went");
       const done = closed(s.t);
