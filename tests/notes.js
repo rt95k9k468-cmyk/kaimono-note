@@ -118,6 +118,16 @@ const { open, checker } = require("./lib");
   t.check("ノートでは暦をしまい、中身が帯のすぐ下から", !inNotes.cal && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
   t.check("ノートの題は Notes、日付と暦の絵は出ない",
     inNotes.name && !inNotes.date && !inNotes.upcoming, JSON.stringify(inNotes));
+  await page.click("#head .js-settings");
+  await settled("settings");
+  await page.waitForTimeout(700);
+  await page.evaluate(() => KN.app.backScreen());
+  await settled("notes");
+  await page.waitForTimeout(700);
+  const fromSet = await headLook();
+  t.check("設定から戻っても、暦はしまったまま・題は Notes・頭は留まったまま",
+    (await active()) === "notes" && (await parked()) && !fromSet.cal && fromSet.name && !fromSet.date
+    && Math.abs(fromSet.gap) <= 2, JSON.stringify(fromSet));
   await tab("archive");
   await settled("archive");
   t.check("もう一度押すと daily へ戻る", (await active()) === "archive" && !(await parked()) && (await label()) === "daily");
