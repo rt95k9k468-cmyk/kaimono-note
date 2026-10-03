@@ -99,13 +99,15 @@ const DAY = "2026-09-29";
       return { label: b.getAttribute("aria-label"), x: (r.left + r.width / 2 - map.left) / k,
                y: (r.top + r.height / 2 - map.top) / k };
     });
+    const bySlot = (r) => [...r.querySelectorAll(".road-stop[data-s]")].sort((x, y) => x.getAttribute("data-s") - y.getAttribute("data-s"));
     return {
       cls: road.className,
       labels: [...road.querySelectorAll(".road-label")].map((b) => b.textContent.replace(/\s+/g, " ").trim()),
       later: road.querySelectorAll(".road-stop.is-later").length,
       stops: road.querySelectorAll(".road-stop[data-s]").length,
-      live: [...road.querySelectorAll(".road-stop[data-s]")].map((s) => s.classList.contains("is-live")),
-      stopWent: [...road.querySelectorAll(".road-stop[data-s] .road-stop-went")].map((p) => !!p.getAttribute("d")),
+      /* 番号順に（描く順は重なりの上下で入れ替わる）。 */
+      live: bySlot(road).map((s) => s.classList.contains("is-live")),
+      stopWent: bySlot(road).map((s) => !!s.querySelector(".road-stop-went").getAttribute("d")),
       went: road.querySelector(".road-went").getAttribute("d") || "",
       base: road.querySelector(".road-base").getAttribute("d"),
       meShown: me.style.display !== "none",
@@ -335,7 +337,7 @@ const DAY = "2026-09-29";
   const len = () => page.evaluate(() => {
     const road = document.querySelector("#screen-todo .day-road");
     const i = road.__road.stops.findIndex((s) => s.t.title === "病院");
-    const p = road.querySelectorAll(".road-stop[data-s] .road-stop-edge")[i];
+    const p = road.querySelector(`.road-stop[data-s="${i}"] .road-stop-edge`);
     /* 道筋は両端で太さの半分ずつ内へ詰めてある（丸い端の外がちょうど始まりと
        終わり。9月30日）ので、見える長さは道筋 + 太さ（16）。 */
     return { len: p.getTotalLength() + 16, at: road.__road.stops[i].at };
@@ -363,7 +365,7 @@ const DAY = "2026-09-29";
   const capAt = await page.evaluate(() => {
     const road = [...document.querySelectorAll(".day-road")].find((x) => x.offsetParent);
     const st = road.__road, i = st.stops.findIndex((s) => s.t.title === "病院");
-    const s = st.stops[i], p = road.querySelectorAll(".road-stop[data-s] .road-stop-edge")[i];
+    const s = st.stops[i], p = road.querySelector(`.road-stop[data-s="${i}"] .road-stop-edge`);
     const a = p.getPointAtLength(0), b = p.getPointAtLength(p.getTotalLength());
     const q0 = st.g.point(s.d0, s.off), q1 = st.g.point(s.d1, s.off);
     return [Math.hypot(a.x - q0.x, a.y - q0.y), Math.hypot(b.x - q1.x, b.y - q1.y)];
