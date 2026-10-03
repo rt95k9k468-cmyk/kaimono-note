@@ -3217,6 +3217,10 @@ button.section-note:active { opacity: .55; }
   background: var(--c-surface); border: 1px solid var(--c-border);
   font-size: var(--fs-lg); line-height: var(--lh-body); resize: none; overflow: hidden;
 }
+/* 枠を押すと出る小窓（screen-diet.js の openSlotPop）。下に、前に書いた言葉の札。 */
+.diet-slot-pop-in { gap: var(--sp-2); }
+.diet-slot-cands { flex-wrap: wrap; gap: 6px; }
+.diet-slot-cands .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
@@ -4441,6 +4445,8 @@ a.btn { text-decoration: none; }
   color: var(--cat, var(--c-primary));
   font-variant-numeric: tabular-nums;
 }
+/* 押すと済ませた時刻を直せる（editDoneAt）。字の並びは事実の行のまま。 */
+button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; background: none; border: 0; cursor: pointer; }
 .tl-doneat i { font-style: normal; }
 .tl-doneat svg { width: 12px; height: 12px; stroke-width: 3; flex: none; }
 

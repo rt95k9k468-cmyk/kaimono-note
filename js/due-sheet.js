@@ -99,9 +99,7 @@
         syncBell();
         row.remove();
         finish(t.id);
-        KN.ui.toast(res.repeated ? `「${t.title}」を済ませました。次は ${KN.util.formatDay(res.due)}` : `「${t.title}」を済ませました`, {
-          action: { label: "元に戻す", onClick: () => { res.undo(); syncBell(); } },
-        });
+        KN.screens.todo.sayDone(t, { ...res, undo: () => { res.undo(); syncBell(); } });
       });
 
       const laterBtn = row.querySelector(".js-later");
