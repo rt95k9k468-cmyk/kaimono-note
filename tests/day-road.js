@@ -15,7 +15,7 @@
    - 時刻と長さを変えると、停留所が動き、長さが倍になる
    - 過ぎた日：人・連れ・次の一行なし、道ぜんぶが歩いたあと。先の日：歩いたぶんなし
    - 停留所の上にも目盛り。道の端はちょうどの時・はみ出す停留所まで伸びる（利用者の 6:30）
-   - 時刻の重なった停留所は一本道（途中から重なるものはそのまま上に・始まりが同じものだけ前の終わりから）・入りきらない札は「ほか n」
+   - 時刻の重なった停留所は一本道（途中から重なるものはそのまま上に・中は斜線・始まりが同じものだけ前の終わりから）・入りきらない札は「ほか n」
    - 設定で外せる。紙の上で本物の指で横に払えば、日が動く
    - 評価の言葉・割合・絵文字を出さない
    `SHOTS=<置き場>` で道を撮る。 */
@@ -554,6 +554,16 @@ const DAY = "2026-09-29";
     by("会議").w === by("散歩").w && by("電話").w === by("散歩").w, JSON.stringify(ln.stops.map((s) => [s.title, s.w])));
   c.check("途中から重なる電話は押さず、予定どおり 13:30〜14:30 に重ねる",
     by("電話").ga === 13 * 60 + 30 && by("電話").eu === 14 * 60 + 30, JSON.stringify(by("電話")));
+  c.check("途中から重なる電話だけ中が斜線（会議・散歩は無地）",
+    /is-over/.test(by("電話").cls) && !/is-over/.test(by("会議").cls) && !/is-over/.test(by("散歩").cls)
+      && await page.evaluate(() => {
+        const road = document.querySelector("#screen-todo .day-road");
+        const k = road.__road.stops.findIndex((s) => s.t.title === "電話");
+        const h = road.querySelector(`.road-stop[data-s="${k}"] .road-stop-hatch`);
+        const m = (h.getAttribute("mask") || "").match(/#([^)]+)/);
+        return !!h.getAttribute("d") && getComputedStyle(h).display !== "none" && !!m && !!road.querySelector(`mask#${m[1]}`);
+      }),
+    JSON.stringify(ln.stops.map((s) => [s.title, s.cls])));
   c.check("あとに始まる電話が上（描く順も押せる順も）",
     await page.evaluate(() => {
       const road = document.querySelector("#screen-todo .day-road");
