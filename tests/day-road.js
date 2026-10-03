@@ -15,7 +15,7 @@
    - 時刻と長さを変えると、停留所が動き、長さが倍になる
    - 過ぎた日：人・連れ・次の一行なし、道ぜんぶが歩いたあと。先の日：歩いたぶんなし
    - 停留所の上にも目盛り。道の端はちょうどの時・はみ出す停留所まで伸びる（利用者の 6:30）
-   - 時刻の重なった停留所は車線に割る・入りきらない札は「ほか n」
+   - 時刻の重なった停留所は一本道（あとの用事は前の終わりから・終わりは動かさない）・入りきらない札は「ほか n」
    - 設定で外せる。紙の上で本物の指で横に払えば、日が動く
    - 評価の言葉・割合・絵文字を出さない
    `SHOTS=<置き場>` で道を撮る。 */
@@ -514,8 +514,9 @@ const DAY = "2026-09-29";
   c.check("23:00〜23:30 の用事があれば、道は 23:30 まで伸びる", edge.end === 1410, JSON.stringify(edge));
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.dayStart; delete s.settings.dayEnd; }));
 
-  /* 時刻の重なった停留所は車線に（9月29日・利用者の声「今後時間が被る予定が出たら
-     どうする？」）。前は同じところに重ねて描いていて、一本に見えた。
+  /* 時刻の重なった停留所は一本道に（10月3日・利用者の声「時間を超過した方が超過した
+     ところまで伸びて、次の予定がそこから始まった方がいい」）。前は車線に割っていた。
+     あとの用事は前の終わりから始まり、終わりは動かさない（縮む・最低1分）。札は予定の時刻。
      毎日の朝のBaby（8:00〜12:00）と重ならず、角（12:00・16:00）にかからない 13:00 から
      （三段目のまっすぐ。角の上だと道筋の頭が段の高さに無いので、車線の位置を比べにくい）。 */
   const LANES = "2026-10-05";
@@ -532,7 +533,8 @@ const DAY = "2026-09-29";
     const grp = (k) => road.querySelector(`.road-stop[data-s="${k}"]`);
     const y0 = (k) => Number((grp(k).querySelector(".road-stop-edge").getAttribute("d").match(/^M[-\d.]+ ([-\d.]+)/) || [])[1]);
     return {
-      stops: st.stops.map((s, k) => ({ title: s.t.title, lanes: s.lanes, y: y0(k),
+      stops: st.stops.map((s, k) => ({ title: s.t.title, lanes: s.lanes, off: s.off, y: y0(k),
+        at: s.at, until: s.until, ga: s.ga, eu: s.eu,
         cls: grp(k).getAttribute("class"), style: grp(k).getAttribute("style") || "",
         w: getComputedStyle(grp(k).querySelector(".road-stop-edge")).strokeWidth })),
       labels: [...road.querySelectorAll(".road-label")].map((b) => b.textContent.replace(/\s+/g, " ").trim()),
@@ -545,16 +547,18 @@ const DAY = "2026-09-29";
   });
   let ln = await laneRead();
   const by = (t) => ln.stops.find((s) => s.title === t);
-  c.check("重なった二つは二車線、重ならない一つはそのまま",
-    by("会議").lanes === 2 && by("電話").lanes === 2 && by("散歩").lanes === 1
-      && /is-lanes/.test(by("会議").cls) && /--lanes:\s*2/.test(by("会議").style) && !/is-lanes/.test(by("散歩").cls),
+  c.check("重なっても車線に割らない（どれも一車線・ずらし無し）",
+    ln.stops.every((s) => s.lanes === 1 && s.off === 0 && !/is-lanes/.test(s.cls) && !/--lanes/.test(s.style)),
     JSON.stringify(ln.stops));
-  /* 9月30日・利用者の声「2つ以上重なったときも、太さを変えなくていいように」。 */
-  c.check("車線に割っても太さは変えない（会議・電話・散歩が同じ太さ）",
+  c.check("太さは変えない（会議・電話・散歩が同じ太さ）",
     by("会議").w === by("散歩").w && by("電話").w === by("散歩").w, JSON.stringify(ln.stops.map((s) => [s.title, s.w])));
-  /* 9月30日：長いほうが道の中心、短いほうはそれにくっついて外（進む向きの右）へ。 */
-  c.check("二車線は長いほう（会議）が道の中心、短いほう（電話）がその外にくっつく（右へ進む段：下）",
-    Math.abs(by("会議").y - ln.row) < 0.2 && Math.abs(by("電話").y - (ln.row + 13.5)) < 0.2,
+  c.check("電話は会議の終わり 14:30 から、終わり（14:30）は動かさず最低1分",
+    by("電話").ga === 14 * 60 + 30 && by("電話").eu === 14 * 60 + 31, JSON.stringify(by("電話")));
+  c.check("予定は書き換えない（電話は 13:30〜14:30 のまま）・札は予定の時刻",
+    by("電話").at === 13 * 60 + 30 && by("電話").until === 14 * 60 + 30 && ln.labels.some((l) => l.startsWith("13:30") && l.includes("電話")),
+    JSON.stringify([by("電話"), ln.labels]));
+  c.check("重ならない散歩は押されない（16:00 から）", by("散歩").ga === 16 * 60, JSON.stringify(by("散歩")));
+  c.check("会議も電話も道の中心", Math.abs(by("会議").y - ln.row) < 0.2 && Math.abs(by("電話").y - ln.row) < 0.2,
     JSON.stringify([ln.row, by("会議").y, by("電話").y]));
   c.check("重なった二つとも札が出る", ln.labels.some((l) => l.includes("会議")) && ln.labels.some((l) => l.includes("電話")),
     JSON.stringify(ln.labels));
@@ -570,10 +574,9 @@ const DAY = "2026-09-29";
     await page.mouse.click(xy.x, xy.y);
     return sheetTitle();
   };
-  /* 札の指の的（上下の余白）が上の車線にかかるので、札の無い 14:28 で押す。 */
-  const tA = await tapLane(868, 0), tB = await tapLane(868, -13.5);
-  c.check("車線を押すと、その車線の用事が開く（14:28 の中心は会議、下は電話）",
-    !!tA && tA.includes("会議") && !!tB && tB.includes("電話"), JSON.stringify([tA, tB]).slice(0, 120));
+  /* 札の指の的（上下の余白）を避け、札の無い 13:50 で押す。 */
+  const tA = await tapLane(830, 0);
+  c.check("道を押すと、そこにいる用事が開く（13:50 は会議）", !!tA && tA.includes("会議"), JSON.stringify(tA).slice(0, 120));
   await page.evaluate((d) => {
     ["来客", "宅配", "修理"].forEach((t) => KN.store.addTodo({ title: t, due: d, time: "13:30", minutes: 30 }));
   }, LANES);
@@ -582,18 +585,19 @@ const DAY = "2026-09-29";
   const GROUP = ["会議", "電話", "来客", "宅配", "修理"];
   const inGroup = ln.labels.filter((l) => GROUP.some((t) => l.includes(t))).length;
   const moreN = ln.more.reduce((n, m) => n + Number(m.replace(/\D/g, "")), 0);
-  c.check("五つ重なれば五車線", GROUP.every((t) => by(t).lanes === 5),
-    JSON.stringify(ln.stops.map((s) => [s.title, s.lanes])));
-  c.check("五車線でも太さは変えない", GROUP.every((t) => by(t).w === by("散歩").w),
-    JSON.stringify(ln.stops.map((s) => [s.title, s.w])));
-  c.check("五車線でも、いちばん長い会議が道の中心", Math.abs(by("会議").y - ln.row) < 0.2,
-    JSON.stringify([ln.row, by("会議").y]));
-  c.check("入りきらない札は黙って消えず、同じ群の札に「ほか n」（出た札＋ほか＝五つ）",
-    ln.more.length === 1 && moreN > 0 && inGroup + moreN === 5, JSON.stringify([ln.labels, ln.more]));
+  c.check("五つ重なっても一本道（どれも一車線・同じ太さ）",
+    GROUP.every((t) => by(t).lanes === 1 && by(t).off === 0 && by(t).w === by("散歩").w),
+    JSON.stringify(ln.stops.map((s) => [s.title, s.lanes, s.w])));
+  c.check("押された用事は前の終わりから順に、重ならない",
+    (() => { const xs = ln.stops.filter((s) => GROUP.includes(s.title)).sort((p, q) => p.ga - q.ga);
+      return xs.every((s, i) => i === 0 || s.ga >= xs[i - 1].eu); })(),
+    JSON.stringify(ln.stops.map((s) => [s.title, s.ga, s.eu])));
+  c.check("札は黙って消えない（出た札＋「ほか n」＝五つ）",
+    ln.more.length <= 1 && inGroup + moreN === 5, JSON.stringify([ln.labels, ln.more]));
   c.check("「ほか n」は込み合いのそば（13:30 の札）に付く",
     ln.labels.filter((l) => /ほか/.test(l)).every((l) => l.startsWith("13:30")), JSON.stringify(ln.labels));
   c.check("「ほか n」を添えた札も題が読める（「…」につぶれない）",
-    ln.moreCut.length === 1 && !ln.moreCut[0], JSON.stringify([ln.labels, ln.moreCut]));
+    ln.moreCut.every((cut) => !cut), JSON.stringify([ln.labels, ln.moreCut]));
   await goDay(DAY);
 
   /* 設定で外せる */

@@ -1,7 +1,8 @@
 /* 一日の道：10月2日の手直し（docs/todo-timeline.md の「10月2日の手直し」）。
    時計を 10/3 9:40 に止め、利用者の画面に近い一日（6:00〜7:00 の朝のルーティンがまだ・
    8:00〜11:00 の朝のBaby とテストが重なる）を置く。
-   - まだのまま延びた区間は、尻の丸のまん中が足もと（丸い端が足もとをくるみ、歩いた道を隠す）
+   - まだのまま延びた区間は、尻の丸のまん中が延びた終わり（丸い端でくるむ）。次の停留所（朝のBaby 8:00）が
+     始まっていれば、そこで止まる（10月3日。止めないと一日ぜんぶが「いま」の後ろへ押し出される）
    - 同じ角で同じ時刻に始まる二つの札は、次の段の車線と同じ上下の順で、丸薬に重ならない
    - 起きた時刻（daily の起床）があれば、道はそこから。寝床の下の時刻も起きた時刻
    - 起きる前に決めた用事も、起きた時刻に始まったものとして描く */
@@ -31,7 +32,7 @@ const DAY = "2026-10-03";
     const late = k < 0 ? null : (() => {
       const s = st.stops[k];
       const d = road.querySelector(`.road-stop[data-s="${k}"] .road-stop-edge`).getAttribute("d");
-      return { end: end(d), feet: g.point(g.dist(st.last), s.off) };
+      return { end: end(d), feet: g.point(g.dist(s.eu), s.off), eu: s.eu };
     })();
     const box = road.querySelector(".road-map").getBoundingClientRect();
     const kx = box.width / KN.dayRoad.W;
@@ -49,8 +50,8 @@ const DAY = "2026-10-03";
 
   let r = await read();
   c.check("まだのまま延びた区間がある", !!r.late);
-  c.check("延びた区間の尻の丸のまん中が足もと（丸い端が足もとをくるむ）",
-    !!r.late && Math.hypot(r.late.end.x - r.late.feet.x, r.late.end.y - r.late.feet.y) < 0.6, JSON.stringify(r.late));
+  c.check("延びた区間は次の停留所の始まり（8:00）で止まり、尻の丸のまん中がそこ",
+    !!r.late && r.late.eu === 8 * 60 && Math.hypot(r.late.end.x - r.late.feet.x, r.late.end.y - r.late.feet.y) < 0.6, JSON.stringify(r.late));
 
   const lab = (t) => r.labels.find((l) => l.title === t);
   const lane = (t) => r.lanes.find((l) => l.title === t);
