@@ -6587,9 +6587,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 塗りは中の白より少し太く。同じ太さだと、白の縁のにじみが塗りきった停留所の
    内側に細い線で残ります（ふちと同じ色なので、はみ出しても見えない）。 */
 .road-stop-went { stroke: var(--road-go); stroke-width: 12; }
-/* 時刻の重なった停留所（day-road.js の laneOut）は、**太さを変えずに**横へ並べる。
-   車線どうしは LANE_P（STOP − 2.5）ずつ離れ、ふちが一本ぶん重なって、あいだに
-   外のふちと同じ太さの仕切りができる。前は群の車線の数で太さを割っていた。 */
 /* 時刻を過ぎても済んでいない区間（day-road.js の shape）。人の足もとまで延びて、
    済ませるまでのあいだだけ色を変える（2026年9月30日・利用者の声「オレンジとか、
    普通の色とはちょっと変えて」）。塗りと同じ明るさの橙で、赤（警告）にはしない。 */
@@ -6613,9 +6610,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* 車線に割った停留所の的は、車線どうしの間（LANE_P）と同じ幅（重ねると、あとの
-   一本がぜんぶ取る）。 */
-.road-hit.is-lanes { stroke-width: 13.5px; }
 /* 人。塗りの歩く人（day-road.js の ME_PARTS）で、まわりに紙の色の縁（道や札の
    上でも読めるように）。線の太さは day-road.js が元の絵の単位で書きます。 */
 .road-me path { stroke-linecap: round; stroke-linejoin: round; }
