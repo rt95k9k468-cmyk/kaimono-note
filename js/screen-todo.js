@@ -2835,6 +2835,7 @@
       open: (id) => openSheet(id),
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
       decide: (id, at) => decideOnRoad(id, at, day),
+      unplan: (id) => unplanOnRoad(id),
     });
   }
 
@@ -2863,6 +2864,19 @@
     store.updateTodo(id, patch);
     KN.motion.fire("save");
     KN.ui.toast(`「${t.title}」を ${at} に`, {
+      action: { label: "元に戻す", onClick: () => store.updateTodo(id, was) },
+    });
+  }
+
+  /* 連れを道の外で離した（段8）。時間割で長期タスクの欄へ運んだときと同じく、
+     日付も時刻も手放す。くり返しは道のほうで運ばせない（回が消えるので）。 */
+  function unplanOnRoad(id) {
+    const t = store.get().todos.find((x) => x.id === id);
+    if (!t || t.repeat) return;
+    const was = { due: t.due, time: t.time };
+    store.updateTodo(id, { due: null, time: null });
+    KN.motion.fire("save");
+    KN.ui.toast(`「${t.title}」を長期タスクへ`, {
       action: { label: "元に戻す", onClick: () => store.updateTodo(id, was) },
     });
   }
