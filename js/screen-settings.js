@@ -529,6 +529,7 @@
     cal:       { title: "カレンダー", build: () => S.calRows() },
     dailyView: { title: "表示",     build: () => S.dailyViewRows() },
     dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
+    lock:      { title: "ロック",   build: () => S.lockRows() },
     intake:    { title: "取り込み", build: () => S.intakeRows() },
     danger: { title: "データを消す",          build: () => S.dangerRows() },
     errors: { title: "困ったときの記録",      build: () => S.errorRows() },

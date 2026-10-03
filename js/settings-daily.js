@@ -39,9 +39,35 @@
       foot("何年か前の同じ日に書いたものを、暦の下に出します。"),
       card(
         navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
-        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") })
+        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") }),
+        navRow({ ico: "lock", tint: TINT.data, title: "ロック",
+          value: KN.lock && KN.lock.enabled() ? "オン" : "オフ", onTap: () => go("lock") })
       ),
     ];
+  }
+
+  /** ロック（daily とノートの鍵。中身は js/lock.js）。 */
+  function lockRows() {
+    const L = KN.lock;
+    if (!L || !L.supported()) return [foot("この端末では使えません。")];
+    const done = () => render();
+    const rows = [card(switchRow({
+      title: "ロック", on: L.enabled(),
+      onTap: (v) => (v ? L.turnOn() : L.turnOff()).then(done),
+    }))];
+    if (!L.enabled()) return rows;
+    const bio = switchRow({
+      title: "Face ID・Touch ID", on: L.hasBio(),
+      onTap: (v) => { if (v) L.bioOn().then(done); else { L.bioOff(); done(); } },
+    });
+    bio.hidden = true;
+    L.bioAvailable().then((ok) => { bio.hidden = !ok && !L.hasBio(); });
+    rows.push(card(
+      bio,
+      navRow({ ico: "lock", tint: TINT.sub, title: "パスコードを変える", onTap: () => L.changeCode().then(done) })
+    ));
+    rows.push(foot("中身は暗号化されません。"));
+    return rows;
   }
 
   /** 表示（daily の「›」の先）。 */
@@ -281,5 +307,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  Object.assign(S, { dailyRows, dailyViewRows, dailyOutRows });
+  Object.assign(S, { dailyRows, dailyViewRows, dailyOutRows, lockRows });
 })();

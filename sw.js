@@ -80,6 +80,7 @@ const ASSETS = [
   "js/settings-diet.js",
   "js/settings-relay.js",
   "js/settings-backup.js",
+  "js/lock.js",
   "js/tab-lens.js",
   "js/app.js",
   "manifest.webmanifest",

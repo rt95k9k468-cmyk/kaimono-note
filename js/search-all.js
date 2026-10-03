@@ -234,6 +234,7 @@
     if (q) {
       PLACES.forEach((p) => {
         if (p.id === skip) return;
+        if (KN.lock && KN.lock.hides(p.id)) return;   // 鍵のかかった daily・ノート（js/lock.js）
         const rows = p.find(s, q, bodyState === "ok");
         if (!rows.length) return;
         total += rows.length;
@@ -244,7 +245,7 @@
       groups, total,
       when: pastWhen(raw),
       /* daily を探したのに、本文だけは探せなかった */
-      bodyNote: q && skip !== "daily" && bodyState !== "ok" ? bodyState : null,
+      bodyNote: q && skip !== "daily" && bodyState !== "ok" && !(KN.lock && KN.lock.hides("daily")) ? bodyState : null,
     };
   }
 
