@@ -1889,3 +1889,64 @@ button.hero-node:active { scale: .94; }
   #yearbook-print .yb-text { white-space: pre-wrap; text-align: justify; }
   #yearbook-print li .yb-text { color: #333; }
 }
+
+/* ---------------- daily・ノートの鍵（js/lock.js） ----------------
+   紙もトーストも隠すので、画面ぜんぶを覆います。ほかのタブへは左上の絵から。 */
+.lock-veil {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-lock);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+.lock-veil[hidden] { display: none; }
+.lock-away {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 16px;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-text-2);
+}
+.lock-away svg { width: 22px; height: 22px; }
+.lock-ico svg { width: 44px; height: 44px; color: var(--c-primary); }
+.lock-dots { display: flex; gap: 14px; min-height: 14px; }
+.lock-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-text-2);
+}
+.lock-dot.is-on { background: var(--c-text); border-color: var(--c-text); }
+.lock-dots.is-wrong { animation: lock-shake var(--m-delete) var(--ease-out); }
+@keyframes lock-shake {
+  25% { translate: -10px 0; }
+  50% { translate: 8px 0; }
+  75% { translate: -4px 0; }
+}
+.lock-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 16px 24px;
+}
+.lock-key {
+  width: 72px; height: 72px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 28px;
+  font-weight: 400;
+}
+.lock-key:active { background: var(--c-surface-3); }
+.lock-key.is-back, .lock-key.is-bio { background: transparent; }
+.lock-key.is-bio[hidden] { display: grid; visibility: hidden; }
+.lock-key svg { width: 28px; height: 28px; }

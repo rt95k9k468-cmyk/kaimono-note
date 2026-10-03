@@ -1106,6 +1106,8 @@
     /* 上の帯の持ち主を、組む**前**に入ってくるタブへ（js/head.js）。組む側は
        `render()` の中で自分の暦と題を帯に置きます。 */
     KN.head.enter(id);
+    /* daily・ノートの鍵（js/lock.js）。組む前に覆うので、中身は一瞬も出ません。 */
+    if (KN.lock) KN.lock.enter(id);
     ensureMounted(id);
     KN.screens[id].render();
 
