@@ -120,6 +120,11 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.click(".lock-key.is-bio");
   await page.waitForFunction(() => !KN.lock.isLocked(), null, { timeout: 5000 }).catch(() => {});
   t.check("Face ID で開く", !(await veilOn()));
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+  t.check("裏へ回ると閉じる（ノート）", await veilOn());
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForFunction(() => !KN.lock.isLocked(), null, { timeout: 5000 }).catch(() => {});
+  t.check("表へ戻ると、押さなくても Face ID が出て開く", !(await veilOn()));
 
   t.check("覆いに絵文字なし", !EMOJI.test(await page.evaluate(() => document.querySelector(".lock-veil").textContent)));
 

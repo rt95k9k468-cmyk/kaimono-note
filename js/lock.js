@@ -31,6 +31,7 @@
   const ITER = 100000;
 
   let locked = true;
+  let tried = false;
   let veil = null;
   let typed = "";
   let busy = false;
@@ -177,8 +178,14 @@
     dots();
   }
 
+  /* 一度出したら、閉じるまでは自分から出し直しません（顔の絵を押せば出る）。
+     ただし一瞬で断られたとき（＝iOS が出さなかった）は、出したうちに数えません。 */
   async function tryBio() {
-    if (await bio()) unlock();
+    if (busy) return;
+    tried = true;
+    const t0 = Date.now();
+    if (await bio()) { unlock(); return; }
+    if (Date.now() - t0 < 300) tried = false;
   }
 
   function unlock() {
@@ -213,11 +220,25 @@
   function close() {
     if (!enabled()) return;
     locked = true;
+    tried = false;
     paint();
   }
 
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") close(); });
+  /* 開いたとき・表へ戻ったときも、パスコードで待たずに Face ID を自分から
+     出します。閉じるたびに一度だけ（顔が合わなければパスコードか顔の絵で）。
+     iOS が操作のうちでないと出さない版なら、ここは黙って何もしません。 */
+  function autoBio() {
+    if (tried || !veil || veil.hidden || !devId() || document.visibilityState !== "visible") return;
+    tryBio();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") close();
+    else autoBio();
+  });
   window.addEventListener("pagehide", close);
+  window.addEventListener("pageshow", autoBio);
+  window.addEventListener("focus", autoBio);
 
   /* ---------------- 設定から ---------------- */
 
