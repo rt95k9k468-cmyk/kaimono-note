@@ -17,6 +17,10 @@ const DAY = "2026-09-29";
     before: async (ctx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 20, 57)); },
   });
 
+  /* 立ち上げは tasks（2026年10月3日〜）。この試験は daily から やること へ来る道で
+     書いたので、その道のままにする。 */
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(400);
   await page.evaluate((day) => {
     const s = KN.store;
     s.addTodo({ title: "夜のルーティン", due: day, part: "dusk", repeat: "daily",

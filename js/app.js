@@ -83,12 +83,10 @@
   let goingBack = false;
   const HOME_OF_DRAWER = "list";
 
-  /* 立ち上げたときは daily を出します。やること・買うものは「用がある
-     ときに開く」画面ですが、daily は開いてはじめて書くもので、開かなければ
-     書かれないままになるので。
-
-     daily は帯の一つめになったので、ここはそのまま帯の左端です。 */
-  const HOME = "archive";
+  /* 立ち上げたときは tasks を出します。daily は鍵（js/lock.js）がかかるので、
+     daily から始めると、開くたびに Face ID が出てしまうため（2026年10月3日）。
+     daily は帯の一つめのまま、左端の席を押せば開きます。 */
+  const HOME = "todo";
 
   let active = HOME;
   const mounted = new Set();

@@ -39,6 +39,11 @@ const { open, checker } = require("./lib");
   const tool = (k) => page.click(`.sheet.is-note .note-tool[data-k="${k}"]`);
 
   await page.evaluate(() => KN.notes.ready());
+  /* 立ち上げは tasks（2026年10月3日〜）。まっさらな端末は、最初に daily へ来たときの
+     保存が初めての書き込みになるので、先に一度来てから「変わらない」を測る。 */
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await settled("archive");
+  await page.waitForTimeout(600);
   const lsBefore = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length);
 
   /* ---- 印の読み方・書く手伝い（文字列だけ） ---- */

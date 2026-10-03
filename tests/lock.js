@@ -86,7 +86,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await cdp.send("WebAuthn.setUserVerified", { authenticatorId: authId, isUserVerified: false });
 
   /* ---- 開き直す ---- */
-  await page.evaluate(() => history.replaceState(null, "", location.pathname));
+  await page.evaluate(() => history.replaceState(null, "", location.pathname + "#archive"));
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
   await page.waitForTimeout(500);
