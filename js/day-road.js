@@ -549,6 +549,7 @@
    *   open   … (todoId, 押した要素) 詳細の紙を開く
    *   markOf … (todo) 連れの丸に入れる絵（マスクの url()）。無ければ ""
    *   decide … (todoId, "HH:MM") 空いた道の上で決めた時刻を付ける（段2）
+   *   unplan … (todoId) 連れを道の外で離した。日と時刻を外して長期タスクへ（段8）
    *   tomorrow … { at: 分, title } 明日の最初の停留所（段6。今日だけ。無ければ null）
    *   someday … 長期タスク（期限の近い順。段8の段B：道の外周のくぼみに浮かべる）
    */
@@ -1361,6 +1362,17 @@
         && clearOfRoad(st, s.x, s.y, HOLLOW_BEAD / 2 + STOP / 2 + 1.5));
       const many = st.someday.length > free.length;
       const shown = many ? st.someday.slice(0, Math.max(0, free.length - 1)) : st.someday;
+      /* くぼみを薄く塗る（置き場がここだと分かるように）。使った丸の外接に 5 の余白。 */
+      const pads = new Map();
+      free.slice(0, shown.length + (many ? 1 : 0)).forEach((s) => {
+        const k = s.row + (s.right ? "r" : "l");
+        const b = pads.get(k) || [Infinity, -Infinity, Infinity, -Infinity];
+        pads.set(k, [Math.min(b[0], s.x), Math.max(b[1], s.x), Math.min(b[2], s.y), Math.max(b[3], s.y)]);
+      });
+      const pr = HOLLOW_BEAD / 2 + 5;
+      pads.forEach(([x0, x1, y0, y1]) => out.push(html`
+        <span class="road-hollow" aria-hidden="true"
+              style="${at(x0 - pr, y0 - pr)};width:${pct(x1 - x0 + 2 * pr, W)};height:${pct(y1 - y0 + 2 * pr, g.H)}"></span>`));
       shown.forEach((c, h) => {
         const m = st.markOf ? st.markOf(c.t) : "";
         out.push(html`
@@ -1574,7 +1586,12 @@
        きざみ（snap）。指が道の中心から AIM_NEAR 以内のときだけ、狙いの点と時刻の
        札を出す。置けるのは**これからの道だけ**（`.road-free` と同じ）。停留所と
        重なってもよい（車線に割れる。警告の色は出さない）。
-     - 道の外・歩いたぶんで離したら、何も書かない。丸は元の場所へ戻る。
+     - 狙うのは指ではなく、**指の上に浮いた写しの位置**（GHOST_UP 上。2026年10月3日、
+       利用者の頼み：「浮いている丸のところが操作する場所に」）。
+     - 連れを道から離れたところ（OUT_FAR より外、道の絵の中）で離すと、日も時刻も
+       外れて長期タスクへ戻る（`o.unplan`。時間割で長期タスクの欄へ運んだときと同じ）。
+       くり返しは戻さない（due を外すと回が消える）。長期タスクは外で離しても何もしない。
+     - 歩いたぶんで離したら、何も書かない。丸は元の場所へ戻る。
      - 道は一画面に入るので、端の自動送りは付けない。
      - 見張りは document（day-swipe.js が外枠でポインタを捕まえても届くように）。
        持ち上げたら touchmove を止め（送りを始めさせない）、離したあとの click を
@@ -1583,6 +1600,7 @@
   const CARRY_HOLD = 380;       // screen-todo.js の DRAG_HOLD と同じ
   const CARRY_SLOP = 8;         //                   DRAG_SLOP と同じ
   const AIM_NEAR = 24;          // 道の中心から、狙える近さ（viewBox の単位 ≒ px）
+  const OUT_FAR = 34;           // これより道から離れたら「道の外」（長期タスクへ戻す）
   /* 持ち上げた丸と時刻の札は、指の腹（触れた点からおよそ 24px 外へ広がる）に
      隠れないよう、指の上に積みます（札の下端が指から 58px 上）。 */
   const GHOST_UP = 40;
@@ -1649,7 +1667,8 @@
        （touchmove を止める）ので動かない。 */
     const box = map.getBoundingClientRect();
     carry = { el, o, st, sel, id: c.t.id, pid, x0, y0, box, pts: st.pts || (st.pts = roadPts(st.g)),
-              ghost, tag, aim, eat, at: null, moved: false };
+              ghost, tag, aim, eat, at: null, out: false, moved: false,
+              canOut: key === "b" && !!o.unplan && !c.t.repeat };
 
     const move = (ev) => {
       if (!carry || ev.pointerId !== pid) return;
@@ -1686,27 +1705,34 @@
     return at < g.end ? at : null;
   }
 
-  /** 指の位置へ。写しは指の上、狙いの点は道の上、時刻の札は写しの上。 */
+  /** 指の位置へ。写しは指の上、狙いの点は道の上、時刻の札は写しの上。
+      狙うのは写しの位置（指の腹ではなく、浮いた丸のところ）。 */
   function follow(x, y) {
     const d = carry;
     if (!d) return;
+    const gy = y - GHOST_UP;
     /* 位置は translate で（transform で書くと、CSS の scale: 1.3 が移動量まで
        1.3 倍して、写しが指から右下へずれた）。 */
-    d.ghost.style.translate = `${x.toFixed(1)}px ${(y - GHOST_UP).toFixed(1)}px`;
+    d.ghost.style.translate = `${x.toFixed(1)}px ${gy.toFixed(1)}px`;
     const g = d.st.g;
     const kk = d.box.width / W;
-    let at = null;
+    let at = null, out = false;
     if (d.moved && kk > 0) {
-      const hit = nearest(d.pts, (x - d.box.left) / kk, (y - d.box.top) / kk);
+      const hit = nearest(d.pts, (x - d.box.left) / kk, (gy - d.box.top) / kk);
       if (hit.d <= AIM_NEAR) at = carryAt(d.st, hit.t);
+      else if (d.canOut && hit.d > OUT_FAR && gy >= d.box.top && gy <= d.box.bottom
+               && x >= d.box.left && x <= d.box.right) out = true;
     }
-    if (at === d.at && d.aim.classList.contains("is-on") === (at != null)) {
-      if (at != null) d.tag.style.transform = tagAt(x, y);
+    if (at === d.at && out === d.out && d.aim.classList.contains("is-on") === (at != null)) {
+      if (at != null || out) d.tag.style.transform = tagAt(x, y);
       return;
     }
     d.at = at;
+    d.out = out;
+    d.el.classList.toggle("is-carry-out", out);
     d.aim.classList.toggle("is-on", at != null);
-    d.tag.classList.toggle("is-on", at != null);
+    d.tag.classList.toggle("is-on", at != null || out);
+    if (out) { d.tag.textContent = "長期タスク"; d.tag.style.transform = tagAt(x, y); return; }
     if (at == null) return;
     const p = g.point(g.dist(at));
     d.aim.style.left = (p.x / W * 100).toFixed(3) + "%";
@@ -1714,9 +1740,9 @@
     d.tag.textContent = clock(at);
     d.tag.style.transform = tagAt(x, y);
   }
-  /* 札は指の真上。画面の左右の端では内へ寄せる（札の幅はおよそ 56px）。 */
+  /* 札は指の真上。画面の左右の端では内へ寄せる（札の幅はおよそ 56px、「長期タスク」で 80px）。 */
   const tagAt = (x, y) => {
-    const cx = Math.max(32, Math.min(window.innerWidth - 32, x));
+    const cx = Math.max(44, Math.min(window.innerWidth - 44, x));
     return `translate(${cx.toFixed(1)}px, ${Math.max(4, y - LABEL_UP).toFixed(1)}px) translate(-50%, -100%)`;
   };
 
@@ -1729,12 +1755,13 @@
     d.ghost.remove();
     d.tag.remove();
     d.aim.remove();
-    d.el.classList.remove("is-carrying");
+    d.el.classList.remove("is-carrying", "is-carry-out");
     const bead = d.el.querySelector(d.sel);
     if (bead) bead.classList.remove("is-lifted");
     /* click は離した直後に来る。来なかったぶんは片づける（置いたままだと、
        次にどこかを押したときに食べてしまう）。 */
     setTimeout(() => d.el.removeEventListener("click", d.eat, true), 0);
+    if (commit && d.moved && d.out) { d.o.unplan(d.id); return; }
     if (!commit || !d.moved || d.at == null) { paint(d.el); return; }
     d.o.decide(d.id, KN.plan.toTime(d.at));
   }

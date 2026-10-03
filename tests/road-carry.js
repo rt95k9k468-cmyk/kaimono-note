@@ -56,15 +56,24 @@ const DAY = "2026-09-30";
     const b = await page.locator(`#screen-todo .road-bead[aria-label^="${name}"]`).boundingBox();
     return b ? { x: b.x + b.width / 2, y: b.y + b.height / 2 } : null;
   };
-  /* 道の上の時刻 min の点（画面の座標）。off は道の中心から上下へずらす px。 */
+  /* 道の上の時刻 min を狙う指の位置（画面の座標）。狙うのは指の上 40px に浮いた写しなので、
+     指はその点の 40px 下。off は道の中心から上下へずらす px。 */
   const roadPoint = (min, off = 0) => page.evaluate(([m, o]) => {
     const road = document.querySelector("#screen-todo .day-road");
     const g = road.__road.g;
     const box = road.querySelector(".road-map").getBoundingClientRect();
     const k = box.width / KN.dayRoad.W;
     const p = g.point(g.dist(m));
-    return { x: box.left + p.x * k, y: box.top + p.y * k + o };
+    return { x: box.left + p.x * k, y: box.top + p.y * k + o + 40 };
   }, [min, off]);
+  /* 道の外（右のくぼみ、1・2段のあいだ）を狙う指の位置。 */
+  const outPoint = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const g = road.__road.g;
+    const box = road.querySelector(".road-map").getBoundingClientRect();
+    const k = box.width / KN.dayRoad.W;
+    return { x: box.right - 14, y: box.top + (g.rowY(1) + 44) * k + 40 };
+  });
   const state = () => page.evaluate(() => ({
     carrying: KN.dayRoad.carrying(),
     ghost: !!document.querySelector(".road-ghost"),
@@ -224,6 +233,25 @@ const DAY = "2026-09-30";
   c.check("短く押しても持ち上がらない", !(await state()).carrying);
   await closeSheets();
 
+  /* ---- 5b. 連れを道の外で離す：長期タスクへ戻る ---- */
+  from = await beadAt("メールを返す");
+  await touch("touchStart", from.x, from.y);
+  await wait(460);
+  const outAt = await outPoint();
+  await glide(from, outAt, 8);
+  s = await state();
+  c.check("道の外では狙いの点は出ず、札「長期タスク」", s.carrying && !s.aim && s.tag === "長期タスク", JSON.stringify(s));
+  await touch("touchEnd");
+  await wait(700);
+  c.check("道の外で離すと日も時刻も外れる", JSON.stringify(await todo(ids.b)) === JSON.stringify({ time: null, due: null }),
+    JSON.stringify(await todo(ids.b)));
+  const toastOut = await page.evaluate(() => (document.querySelector(".toast") || {}).textContent || "");
+  c.check("報せ「長期タスクへ」と元に戻す", /長期タスクへ/.test(toastOut) && /元に戻す/.test(toastOut), toastOut);
+  c.check("道の外で離しても紙は開かない", !(await sheetOpen()));
+  await page.locator(".toast button", { hasText: "元に戻す" }).click();
+  await wait(500);
+  c.check("元に戻すで連れへ戻る", JSON.stringify(await todo(ids.b)) === JSON.stringify({ time: null, due: DAY }));
+
   /* ---- 6. 当たり判定：紙の本体を上端で下へ引くと、送る器に transform が付く ---- */
   await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 0; });
   await wait(200);
@@ -263,6 +291,19 @@ const DAY = "2026-09-30";
   c.check("長期タスクはくぼみに、期限の近い順（済み・アーカイブは出ない）",
     JSON.stringify(await hollows()) === JSON.stringify(["年賀状", "税の書類", "本棚を組む"]),
     JSON.stringify(await hollows()));
+  const pad = await page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const pads = [...road.querySelectorAll(".road-hollow")].map((p) => p.getBoundingClientRect());
+    const inside = [...road.querySelectorAll(".road-bead[data-h]")].every((b) => {
+      const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      return pads.some((p) => x > p.left && x < p.right && y > p.top && y < p.bottom);
+    });
+    const b = road.querySelector(".road-bead[data-h]");
+    return { n: pads.length, inside, anim: getComputedStyle(b).animationName,
+             bg: pads[0] ? getComputedStyle(road.querySelector(".road-hollow")).backgroundColor : "" };
+  });
+  c.check("くぼみの置き場は薄く塗られ、丸はその中に", pad.n > 0 && pad.inside && !/rgba\(0, 0, 0, 0\)/.test(pad.bg), JSON.stringify(pad));
+  c.check("くぼみの丸はゆっくり浮き沈みする", pad.anim === "road-float", JSON.stringify(pad));
 
   /* くぼみの丸は道・停留所・札・人・連れ・時刻と重ならない。道と停留所は SVG の
      isPointInStroke で丸のふち16点を見る（太さは CSS のまま）。 */
