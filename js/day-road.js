@@ -594,8 +594,8 @@
      **道は一本**（2026年10月3日・利用者の声「時間を超過した方が超過したところまで
      伸びて、次の予定がそこから始まった方がいい」）。前は時刻の重なった停留所を道を
      横に割った車線（laneOut）に描いていたが、内側へずれた丸薬が道から浮いて見えた。
-     いまは早い順に並べ、前の用事の（延びた）終わりより前に始まる用事は、そこから
-     始まったものとして描く。**終わりは動かさず、始まりだけ遅らせて縮める**（就寝を
+     いまは早い順に並べ、**始まりが前の丸薬と重なる**用事だけ、その（延びた）終わりから
+     始まったものとして描く（途中から重なるものは上に重ねる。下の注）。**終わりは動かさず、始まりだけ遅らせて縮める**（就寝を
      越えない）。押されて始まりが決めた終わりを越えても、最低1分ぶんは残す。
      描く始まりは `ga`（分）と `d0`。**札は予定のまま**（`clock(s.at)`）——道は実際の
      流れ、札は予定。記録も `at`/`until` も書き換えない（描くたびに引き直すだけ）。
@@ -603,7 +603,7 @@
   function shape(st, nowMin) {
     const g = st.g;
     let cursor = -Infinity, cl = -1;
-    const cls = {};
+    const cls = {}, put = [];
     st.stops.slice().sort((p, q) => p.at - q.at || p.until - q.until).forEach((s) => {
       if (s.p0 == null) s.p0 = s.d0;   // 予定どおりの始まり（build が置いた位置）
       s.off = 0; s.lanes = 1; s.cl = null;
@@ -611,7 +611,18 @@
       /* 前の用事のあいだに済ませたもの（押した時刻が前の終わりより前）は、押さずに
          本当の時刻に置く——後ろへ回すと、済ませた時刻と違うところに立つので。 */
       const inside = !st.past && s.doneMin != null && s.doneMin <= cursor;
-      s.ga = s.len && !inside ? Math.max(s.at, cursor) : s.at;
+      /* 押すのは**始まりが重なるときだけ**（2026年10月3日・利用者の声「始点が重なるのは困る
+         けど、途中から途中まで、途中から終わり過ぎまでで重なるならまだ判別できる」）。
+         前の丸薬の途中から始まるものは、そのまま上に重ねて描く（あとに始まるほうが上。
+         paint が並べ替える）。始まりが停留所の太さ（丸い端の径）より近い丸薬があれば、その終わりから。 */
+      s.ga = s.at;
+      if (s.len && !inside) {
+        const used = new Set();
+        for (let p; (p = put.find((q) => !used.has(q) && Math.abs(g.dist(q.ga) - g.dist(s.ga)) < STOP));) {
+          used.add(p);
+          s.ga = Math.max(s.ga, p.eu);
+        }
+      }
       /* 過ぎた日は、押した時刻まで延ばさない（決めた区間のまま。押した時刻は
          paint が小さな白い粒で置く）。2026年9月29日。 */
       /* 今日、決めた終わりより前に済ませたら、押した時刻で**縮める**（2026年9月30日・
@@ -637,6 +648,7 @@
         s.cl = cl;
         cls[cl] = (cls[cl] || 0) + 1;
         cursor = Math.max(cursor, s.eu);
+        put.push(s);
       }
     });
     st.stops.forEach((s) => { if (s.cl != null && cls[s.cl] < 2) s.cl = null; });
@@ -838,16 +850,26 @@
     const sig = shape(st, nowMin);
     if (sig !== st.sig) {
       st.sig = sig;
-      const grpEls = svg.querySelectorAll(".road-stop[data-s]");
+      const grpOf = (k) => svg.querySelector(`.road-stop[data-s="${k}"]`);
+      const hitOf = (k) => svg.querySelector(`.road-hit[data-k="${k}"]`);
       st.stops.forEach((s, k) => {
         const [a, b] = capIn(s);
         const d = g.path(a, b, s.off);
-        if (grpEls[k]) {
-          grpEls[k].classList.toggle("is-late", s.late);
-          grpEls[k].querySelectorAll(".road-stop-edge, .road-stop-in").forEach((x) => x.setAttribute("d", d));
+        const grp = grpOf(k);
+        if (grp) {
+          grp.classList.toggle("is-late", s.late);
+          grp.querySelectorAll(".road-stop-edge, .road-stop-in").forEach((x) => x.setAttribute("d", d));
         }
-        const hit = svg.querySelector(`.road-hit[data-k="${k}"]`);
+        const hit = hitOf(k);
         if (hit) hit.setAttribute("d", g.path(s.d0, s.d1, s.off));
+      });
+      /* 重なった丸薬は、あとに始まるほうを上に（描く順も押せる順も）。shape の「道は一本」。 */
+      const ord = st.stops.map((s, k) => k).sort((a, b) => st.stops[a].d0 - st.stops[b].d0 || a - b);
+      [grpOf, hitOf].forEach((of) => {
+        const els = ord.map(of).filter(Boolean);
+        const last = els.reduce((m, x) => (m && m.compareDocumentPosition(x) & 4 ? x : m || x), null);
+        const ref = last && last.nextSibling;
+        els.forEach((x) => x.parentNode.insertBefore(x, ref));
       });
       /* 過ぎた日の、時刻を決めたものを押した時刻（2026年9月29日）。区間は決めた
          まま描くので、押した時刻は足あとと同じ白い粒で。区間の中なら、その車線に。 */

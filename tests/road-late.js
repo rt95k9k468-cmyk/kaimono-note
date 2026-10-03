@@ -5,7 +5,7 @@
    - 7:00 を過ぎてまだの朝のルーティンは、人の足もと（7:33）まで延び、色が変わる（is-late）
    - 分が変わる（7:34）と、延びも 7:34 へ、人は歩いて次の足もとへ
    - 済ませると（7:40）、その時刻で止まり、色は戻る
-   - 重なった二つは車線に割らず一本道：ジモティーは散歩の終わりから始まり、終わりは動かさない（縮む）
+   - 重なった二つは車線に割らず一本道：途中から重なるジモティーは押さず、散歩の上に重ねる
    - 評価の言葉を出さない */
 const { open, checker } = require("./lib");
 
@@ -65,14 +65,14 @@ const DAY = "2026-09-30";
   c.check("延びた区間は塗りきられている", !!r.went, String(r.went));
 
   /* 重なり：道は一本（2026年10月3日・利用者の声「時間を超過した方が超過したところまで
-     伸びて、次の予定がそこから始まった方がいい」）。車線に割らず、あとの用事は前の終わり
-     （17:50）から始まり、終わり（12:30）は動かさないので最低1分に縮む。予定（at/until）と
+     伸びて、次の予定がそこから始まった方がいい」）。車線に割らない。途中から重なるものは
+     押さず上に重ねる（同日・「途中から途中まで…ならまだ判別できる」）。予定（at/until）と
      札の時刻は元のまま。 */
   c.check("重なっても車線に割らない（どれも off 0・一車線）",
     Object.values(r.offs).every((o) => o === 0) && r.lanes.every(([, n]) => n === 1),
     JSON.stringify([r.offs, r.lanes]));
-  c.check("ジモティーは散歩の終わり 17:50 から、終わりは動かさず最低1分",
-    r.jim.ga === 17 * 60 + 50 && r.jim.eu === 17 * 60 + 51, JSON.stringify(r.jim));
+  c.check("途中から重なるジモティーは押さず、予定どおり 12:00〜12:30 に重ねる",
+    r.jim.ga === 12 * 60 && r.jim.eu === 12 * 60 + 30, JSON.stringify(r.jim));
   c.check("予定（12:00〜12:30）は書き換えず、札は予定の時刻",
     r.jim.at === 12 * 60 && r.jim.until === 12 * 60 + 30 && r.text.includes("12:00"), JSON.stringify(r.jim));
 
@@ -148,8 +148,8 @@ const DAY = "2026-09-30";
     noon.labels.every(([, over]) => over <= 1), JSON.stringify(noon.labels));
 
   /* 利用者の夜（2026年10月3日・「夜のオレンジ丸薬、道がおかしい」）：17:00〜21:00 の記念日を
-     21:58 に済ませ、19:00〜22:00 の夜の用事はまだ、いま 22:37。夜の用事は記念日の終わり
-     （21:58）から始まり、終わりは延びて道の終わり（寝る時刻）で止まる。予定は書き換えない。 */
+     21:58 に済ませ、19:00〜22:00 の夜の用事はまだ、いま 22:37。夜の用事は予定どおり 19:00 から
+     記念日の上に重なり、終わりは延びて道の終わり（寝る時刻）で止まる。予定は書き換えない。 */
   await page.clock.setFixedTime(new Date(2026, 8, 30, 17, 50));
   await page.evaluate((id) => KN.store.toggleTodo(id), ids.walk);
   const eve = await page.evaluate((day) => ({
@@ -170,9 +170,9 @@ const DAY = "2026-09-30";
     return { anniv: pick("記念日"), night: pick("夜の用事"), end: st.g.end,
              labels: [...road.querySelectorAll(".road-label")].map((b) => b.textContent.replace(/\s+/g, " ").trim()) };
   });
-  c.check("夜：記念日は散歩の終わり 17:50 から、済ませた 21:58 まで", night.anniv.ga === 17 * 60 + 50 && night.anniv.eu === 21 * 60 + 58, JSON.stringify(night.anniv));
-  c.check("夜：まだの夜の用事は記念日の終わり 21:58 から、道の終わり（寝る時刻）まで橙",
-    night.night.ga === 21 * 60 + 58 && night.night.eu === Math.min(22 * 60 + 37, night.end) && night.night.late,
+  c.check("夜：記念日は予定どおり 17:00 から、済ませた 21:58 まで", night.anniv.ga === 17 * 60 && night.anniv.eu === 21 * 60 + 58, JSON.stringify(night.anniv));
+  c.check("夜：まだの夜の用事は予定どおり 19:00 から重ね、道の終わり（寝る時刻）まで橙",
+    night.night.ga === 19 * 60 && night.night.eu === Math.min(22 * 60 + 37, night.end) && night.night.late,
     JSON.stringify([night.night, night.end]));
   c.check("夜：二つとも道の中心（車線に割らない）", night.anniv.off === 0 && night.night.off === 0, JSON.stringify(night));
   c.check("夜：予定（19:00〜22:00）は書き換えず、札は 19:00",
