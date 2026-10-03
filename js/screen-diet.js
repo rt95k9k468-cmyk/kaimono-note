@@ -2909,8 +2909,8 @@
   let saving = false;
 
   /** 見るだけの一行。Daily Log と同じで、書いてあることをそのまま紙に
-      置きます——タップすると「食事を書く」の紙が開き、そこがほんとうの
-      書く場所です。カルーセルの前日・翌日（peek）は押せません。 */
+      置きます——タップすると、その枠だけを書く小窓がその場に出ます
+      （openSlotPop）。カルーセルの前日・翌日（peek）は押せません。 */
   function slotViewRow(day, sl, text, kcal, tappable) {
     /* まだ書いていない枠は、**その枠の名前を薄い字で**出します（朝食・昼食…）。
        「—」を四つ並べていましたが、絵だけでは何の枠か読めず、空の日の
@@ -2925,7 +2925,7 @@
       </div>
     `);
     if (tappable) {
-      const open = () => openMealMemoSheet(day, null, sl.id);
+      const open = () => openSlotPop(row, day, sl);
       row.addEventListener("click", () => {
         // 選んでいる最中に開くと、選んだそばから選択が消えるので開きません。
         const sel = window.getSelection && window.getSelection();
@@ -2939,6 +2939,100 @@
       });
     }
     return row;
+  }
+
+  /* 枠を押したら、紙ではなく**その場に小窓**で書きます（2026年10月3日、利用者の声
+     「シートが開くのではなく、その場にポンと出て欲しい」「前に打った文字列は候補に
+     出て欲しい」）。候補は打ちかけの言葉で絞り、押すとその言葉に置き換わります。
+     保存は閉じたとき（外を押す・Escape・画面を離れる）。 */
+  function openSlotPop(anchor, day, sl) {
+    const saved = store.slotMemo(day, sl.id);
+    const words = store.mealWords(sl.id);
+    const fold = U.foldKana;
+    const p = KN.ui.popOver(anchor, { side: "left", label: sl.label, cls: "is-form diet-slot-pop",
+      onClose: () => { done(); } });
+    const box = node(html`
+      <div class="diet-slot diet-slot-pop-in" data-slot="${sl.id}">
+        <div class="diet-slot-head">
+          <span class="diet-slot-ico">${icon(sl.ico)}</span>
+          <b class="diet-slot-name">${sl.label}</b>
+        </div>
+        <textarea class="textarea diet-slot-memo" rows="1" spellcheck="false"
+                  autocapitalize="sentences" aria-label="${sl.label}に食べたもの"
+                  placeholder="${SLOT_PLACEHOLDER}">${saved}</textarea>
+        <div class="chip-row diet-slot-cands" role="list" aria-label="前に書いたもの"></div>
+      </div>
+    `);
+    const ta = box.querySelector("textarea");
+    const cands = box.querySelector(".diet-slot-cands");
+    const SEP = /[\s、,，。;；]/;
+    /** カーソルの手前の、打ちかけの言葉（区切りのあと）。 */
+    const typing = () => {
+      const upTo = ta.value.slice(0, ta.selectionEnd == null ? ta.value.length : ta.selectionEnd);
+      let i = upTo.length;
+      while (i > 0 && !SEP.test(upTo[i - 1])) i--;
+      return { from: i, to: upTo.length, word: upTo.slice(i) };
+    };
+    const paint = () => {
+      const cur = typing();
+      const q = fold(cur.word);
+      const have = new Set(ta.value.split(/[\s、,，。;；]+/).map(fold).filter(Boolean));
+      const hits = words.filter((w) => {
+        const k = fold(w);
+        if (have.has(k)) return false;
+        return !q || (k !== q && k.includes(q));
+      });
+      /* 頭が合うものを先に（「な」で「納豆」が「バナナ」より前）。 */
+      if (q) hits.sort((a, b) => Number(!fold(a).startsWith(q)) - Number(!fold(b).startsWith(q)));
+      cands.textContent = "";
+      hits.slice(0, 8).forEach((w) => {
+        const b = node(html`<button type="button" class="chip" role="listitem">${w}</button>`);
+        /* 押しても欄から focus を外しません（iPhone でキーボードが一度閉じて開くので）。 */
+        b.addEventListener("pointerdown", (e) => e.preventDefault());
+        b.addEventListener("click", () => {
+          const c = typing();
+          ta.value = ta.value.slice(0, c.from) + w + " " + ta.value.slice(c.to);
+          const at = c.from + w.length + 1;
+          ta.setSelectionRange(at, at);
+          U.haptic();
+          grow(ta);
+          paint();
+          ta.focus();
+        });
+        cands.append(b);
+      });
+      cands.hidden = !cands.childElementCount;
+      p.place();
+    };
+    let gone = false;
+    const done = () => {
+      if (gone) return;
+      gone = true;
+      document.removeEventListener("visibilitychange", onHide);
+      if (window.visualViewport) window.visualViewport.removeEventListener("resize", p.place);
+      const val = ta.value.trim();
+      if (val === saved.trim()) return;
+      store.setSlotMemo(day, sl.id, val);
+      KN.motion.fire("save");
+      render();
+    };
+    /* 画面を離れたら、閉じるのを待たずに書いておきます（押し忘れで消えないように）。 */
+    const onHide = () => {
+      if (document.visibilityState !== "hidden") return;
+      const val = ta.value.trim();
+      if (val !== store.slotMemo(day, sl.id).trim()) store.setSlotMemo(day, sl.id, val);
+    };
+    document.addEventListener("visibilitychange", onHide);
+    /* キーボードが上がったら、小窓を見えるところへ寄せ直します。 */
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", p.place);
+    ta.addEventListener("input", () => { grow(ta); paint(); });
+    ta.addEventListener("click", paint);
+    p.el.append(box);
+    grow(ta);
+    paint();
+    KN.ui.focusNow(ta);
+    const end = ta.value.length;
+    try { ta.setSelectionRange(end, end); } catch (_) { /* 置けなくても打てます */ }
   }
 
   function buildSlotBoxes(host, day, st, opts) {

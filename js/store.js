@@ -2177,6 +2177,8 @@
     return {
       repeated: repeating,
       due: repeating ? due : null,
+      /* 済ませた時刻を直すときの宛先（くり返しなら、その日に残した写し）。 */
+      doneId: was.done ? null : repeating ? (before.due ? traceId : null) : id,
       undo: () => update((s) => {
         const t = s.todos.find((x) => x.id === id);
         if (!t) return;
@@ -2187,6 +2189,29 @@
         if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
       }),
     };
+  }
+
+  /**
+   * 済ませた時刻を直します（押し忘れて、あとで押したとき）。日はそのまま、
+   * 時と分だけ。doneAt は UTC の ISO なので、地元の時刻で組んでから直します。
+   *
+   * @returns {(() => void)|null} 元に戻す
+   */
+  function setDoneTime(id, h, m) {
+    const t0 = getTodo(id);
+    if (!t0 || !t0.doneAt) return null;
+    const d = new Date(t0.doneAt);
+    if (isNaN(d.getTime())) return null;
+    const prev = t0.doneAt;
+    d.setHours(h, m, 0, 0);
+    const next = d.toISOString();
+    if (next === prev) return null;
+    const put = (v) => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t && t.doneAt) t.doneAt = v;
+    });
+    put(next);
+    return () => put(prev);
   }
 
   /* 自分の速さ（段4。docs/todo-timeline.md の「自分の速さ」）。
@@ -3010,6 +3035,29 @@
       .filter((m) => m.slot === slot && String(m.memo || "").trim())
       .map((m) => m.memo.trim())
       .join("\n");
+  }
+
+  /** これまでに書いた食事の言葉（打つときの候補。2026年10月3日）。写さず引く——
+      記録から開くたびに数えます。同じ区分で書いた回の多い順、次に全体の回数、
+      新しい順。区切りは空白・読点・改行。 */
+  function mealWords(slot) {
+    const fold = KN.util.foldKana;
+    const seen = new Map();
+    diet().meals.forEach((m) => {
+      String(m.memo || "").split(/[\s、,，。;；]+/).forEach((w) => {
+        if (!w || w.length > 24) return;
+        const k = fold(w);
+        if (!k) return;
+        const e = seen.get(k) || { word: w, n: 0, same: 0, day: "" };
+        e.n += 1;
+        if (m.slot === slot) e.same += 1;
+        if (String(m.day) >= e.day) { e.day = String(m.day); e.word = w; }
+        seen.set(k, e);
+      });
+    });
+    return [...seen.values()]
+      .sort((a, b) => (b.same - a.same) || (b.n - a.n) || b.day.localeCompare(a.day))
+      .map((e) => e.word);
   }
 
   /** その区分の文を書き換えます。空にすると、数を持たない記録は消えます。 */
@@ -4044,7 +4092,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
@@ -4054,7 +4102,7 @@
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
-    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo, searchDietDays,
+    addMeal, updateMeal, removeMeal, mealsOfDay, mealWords, dayMemo, setDayMemo, searchDietDays,
     slotMemo, setSlotMemo,
     getIconOverride, setIconOverride, addIconReport, removeIconReport,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,

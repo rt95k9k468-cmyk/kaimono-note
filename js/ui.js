@@ -1211,27 +1211,29 @@
 
   let toastTimer = null;
 
-  function toast(message, { action, duration = 3600 } = {}) {
+  function toast(message, { action, actions, duration = 3600 } = {}) {
     const root = toastRoot();
     root.innerHTML = "";
     clearTimeout(toastTimer);
+    /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
+    const acts = actions || (action ? [action] : []);
 
     const el = node(html`
       <div class="toast">
         <span class="toast-msg">${message}</span>
-        ${action ? html`<button class="toast-action">${action.label}</button>` : ""}
+        ${acts.map((a) => html`<button class="toast-action">${a.label}</button>`)}
       </div>
     `);
 
-    if (action) {
-      el.querySelector(".toast-action").addEventListener("click", (e) => {
+    el.querySelectorAll(".toast-action").forEach((b, i) => {
+      b.addEventListener("click", (e) => {
         // Stop it reaching the tap-to-dismiss below: the action closes the
         // toast itself, and running both would be doing the same work twice.
         e.stopPropagation();
-        action.onClick();
+        acts[i].onClick(b);
         dismiss();
       });
-    }
+    });
 
     /* Tapped anywhere else: gone. It is an aside, not a question, and sitting
        out its 3.6 seconds to see the row underneath is a poor deal. */

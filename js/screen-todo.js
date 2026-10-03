@@ -2439,7 +2439,8 @@
         finishing.delete(id);
         tl.classList.remove("is-flash");
         item.style.removeProperty("--strike-ms");
-        store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
+        const res = store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
+        if (!wasDone) sayDone(t, res);
       }, wait);
       return;
     }
@@ -2449,7 +2450,7 @@
       const res = store.toggleTodo(id);
       haptic(wasDone ? 12 : [16, 40, 16]);
       if (!wasDone && checkEl) KN.ui.burst(checkEl);
-      if (res.repeated) sayMoved(t, res);
+      if (!wasDone) sayDone(t, res);
       return;
     }
 
@@ -2476,7 +2477,7 @@
       setTimeout(() => {
         finishing.delete(id);
         const res = store.toggleTodo(id);      // ここで初めて組み直されます
-        if (res.repeated) sayMoved(t, res);
+        sayDone(t, res);
       }, repeating ? 300 : 240);
     }, 260);
   }
@@ -2491,10 +2492,56 @@
     });
   }
 
-  function sayMoved(t, res) {
-    KN.ui.toast(`「${t.title}」は次は ${formatDay(res.due)}`, {
-      action: { label: "元に戻す", onClick: res.undo },
-    });
+  /* 済ませたら、**押した時刻**を言って、その場で直せるようにします（2026年10月3日、
+     利用者の声「完了を押し忘れていたことがよくある」）。くり返しは次の日も言います。 */
+  function sayDone(t, res) {
+    const d = res.doneId && store.getTodo(res.doneId);
+    const at = d ? doneClock(d.doneAt) : "";
+    const msg = res.repeated
+      ? `「${t.title}」は次は ${formatDay(res.due)}`
+      : `「${t.title}」${at ? ` ${at}` : ""}`;
+    const acts = [];
+    if (at) acts.push({ label: "時刻", onClick: (b) => editDoneAt(res.doneId, b) });
+    acts.push({ label: "元に戻す", onClick: res.undo });
+    KN.ui.toast(msg, { actions: acts, duration: 5000 });
+  }
+
+  /** 済ませた時刻を、押したところに出る車輪で直す。閉じたときに一度だけ書きます
+      （回しているあいだ毎回書くと、そのたびに組み直しと保存が走るので）。 */
+  function editDoneAt(id, anchor) {
+    const t0 = store.getTodo(id);
+    if (!t0 || !doneClock(t0.doneAt)) return;
+    const was = new Date(t0.doneAt);
+    const ROW = 40;
+    const col = (vals, label, fmt) => {
+      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
+      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
+      const idx = () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / ROW)));
+      const mark = () => [...el.children].forEach((r, k) => r.setAttribute("aria-selected", String(k === idx())));
+      el.addEventListener("scroll", mark, { passive: true });
+      el.addEventListener("click", (e) => {
+        const r = e.target.closest(".note-wheel-row");
+        if (r) el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
+      });
+      return { el, value: () => vals[idx()], go: (v) => { el.scrollTop = vals.indexOf(v) * ROW; mark(); } };
+    };
+    const h = col(Array.from({ length: 24 }, (_, i) => i), "時", (v) => `${v}時`);
+    const m = col(Array.from({ length: 60 }, (_, i) => i), "分", (v) => `${String(v).padStart(2, "0")}分`);
+    const p = KN.ui.popOver(anchor, { side: "left", label: "済ませた時刻", cls: "is-wheel done-at-pop",
+      onClose: () => {
+        const undo = store.setDoneTime(id, h.value(), m.value());
+        if (!undo) return;
+        haptic();
+        KN.ui.toast(`「${t0.title}」 ${h.value()}:${String(m.value()).padStart(2, "0")}`, {
+          action: { label: "元に戻す", onClick: undo },
+        });
+      } });
+    const box = node(html`<div class="note-wheels tw"></div>`);
+    box.append(h.el, m.el);
+    p.el.append(box);
+    p.place();
+    h.go(was.getHours());
+    m.go(was.getMinutes());
   }
 
 
@@ -4291,7 +4338,7 @@
          したが、行の本文（題や事実の乗っているところ）自体が button なので、
          行を掴む道がどこにも無くなっていました。掴んで欲しくないのは、
          押したら別のことが起きる小さな丸——それだけ。 */
-      if (e.target.closest(".check, .fav, .tl-subs-chip")) return;
+      if (e.target.closest(".check, .fav, .tl-subs-chip, .tl-doneat")) return;
       const row = e.target.closest(".tl-row");
       /* 済ませたあとでも持てます——開始時刻がわかってから、事後的に
          リスケすることがあるので。止めていたのはここ一行だけでした。 */
@@ -4960,7 +5007,8 @@
        後者のほうです。 */
     if ((t.done || t.archived) && t.doneAt) {
       const c = doneClock(t.doneAt);
-      if (c) facts.push(html`<span class="tl-doneat">${icon("check")}<i>${c}</i></span>`);
+      if (c) facts.push(html`<button type="button" class="tl-doneat"
+        aria-label="${t.title} の済ませた時刻 ${c} を直す">${icon("check")}<i>${c}</i></button>`);
     }
     /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
        ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
@@ -5060,6 +5108,11 @@
     const rail = li.querySelector(".tl-rail");
     if (rail) rail.addEventListener("click",
       () => openSheet(t.id, li.querySelector(".tl-node")));
+    const at = li.querySelector(".tl-doneat");
+    if (at) at.addEventListener("click", (e) => {
+      e.stopPropagation();
+      editDoneAt(t.id, at);
+    });
     const box = li.querySelector("button.check");
     if (box) {
       box.addEventListener("click", (e) => {
@@ -5455,7 +5508,7 @@
 
   KN.screens = KN.screens || {};
   /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
-  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id),
+  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
     /* ほかから「その日を見せて」（これからの二週間・js/upcoming.js）。暦の月も
        その日へ合わせます——一日ずつの紙でなければ、その日の棚まで運びます
        （「今日へ戻る」と同じ二通り）。 */
