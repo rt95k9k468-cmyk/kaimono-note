@@ -721,8 +721,11 @@
        留まっているところ（p=1）から掴み直しても同じ道のりになるように。 */
     const p = faceVar("--face-p") || 0;
     const d0 = faceVar("--face-d") || 0;
+    /* ノートの組では、暦が `--face-p` に合わせて上へしまわれ、そのぶん面ごと
+       上がります（`--face-lift`）。測るのは**しまいきった姿の**頭の位置。 */
+    const lift = (faceVar("--face-lift") || 0) * (1 - p);
     const hb = head.getBoundingClientRect();
-    const rest = hb.top - p * d0;
+    const rest = hb.top - p * d0 - lift;
     /* のぞかせる量は**掴み手そのものの高さ**。CSS の余白を変えたら、ここも
        黙って付いてきます（数字を二か所に書くと、片方だけ直した日にずれる）。
        留まった紙を頭の高さで切るのにも同じ数を使うので、書き出しておきます。 */
@@ -734,7 +737,7 @@
        （実測：マスクあり 240,239,243 ／ なし 218,217,221。影が消えた）。
        面の箱を基準にした数はここでしか分からないので、ここで出します。 */
     box.style.setProperty("--face-cut",
-      (floor - front.getBoundingClientRect().top).toFixed(1) + "px");
+      (floor - front.getBoundingClientRect().top + lift).toFixed(1) + "px");
     return Math.max(1, floor - peek - rest);
   }
 
@@ -756,6 +759,14 @@
     back.classList.add("is-face-back");
     front.classList.add("is-face-front");
     front.classList.remove("is-face-settle");
+    /* **ノートでは暦を上へしまいます**（docs/notes.md「ノートでは暦をしまう」）。
+       しまう丈は、暦が出ているうちに一度だけ測ります（留まっているあいだは
+       測り直さない——もうしまってあるので 0 になる）。 */
+    if (pair.back === "notes" && !box.classList.contains("is-notes-lift")) {
+      const cal = document.querySelector("#head .head-cal");
+      box.style.setProperty("--face-lift", (cal ? cal.getBoundingClientRect().height : 0).toFixed(1) + "px");
+      box.classList.add("is-notes-lift");
+    }
     /* 道のりは、**取ると決めた時に一度だけ**測ります。途中で測り直すと、
        指の下で速さが変わります（暦の `span` と同じ決めごと）。
        留まっている印は、測ったあとで外すこと——先に外すと紙が跳んで、
@@ -794,6 +805,8 @@
     if (box) {
       box.style.removeProperty("--face-p");
       box.style.removeProperty("--face-d");
+      box.style.removeProperty("--face-lift");
+      box.classList.remove("is-notes-lift");
     }
     /* 掴み手の名札も言い直します（価格からよそのタブへ移ったとき、ここを
        通るだけで faceSettle を通らないので）。 */

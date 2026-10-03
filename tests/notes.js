@@ -102,9 +102,28 @@ const { open, checker } = require("./lib");
   t.check("留まった頭は下の帯のすぐ上", Math.abs(gripPos.bottom - gripPos.barTop) <= 2,
     `${gripPos.bottom} / ${gripPos.barTop}`);
   t.check("留まった掴み手の名札は daily へ戻る", /daily へ戻る/.test(gripPos.label || ""), gripPos.label);
+  const headLook = () => page.evaluate(() => {
+    const vis = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).opacity !== "0";
+    const top = document.querySelector(".topbar").getBoundingClientRect().bottom;
+    const cal = document.querySelector("#head .head-cal");
+    return {
+      gap: document.getElementById("panes").getBoundingClientRect().top - top,
+      cal: vis(cal) && cal.getBoundingClientRect().height > 0,
+      name: vis(document.querySelector(".head-name")),
+      date: vis(document.querySelector(".topbar-day")),
+      upcoming: vis(document.querySelector(".js-upcoming")),
+    };
+  });
+  const inNotes = await headLook();
+  t.check("ノートでは暦をしまい、中身が帯のすぐ下から", !inNotes.cal && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
+  t.check("ノートの題は Notes、日付と暦の絵は出ない",
+    inNotes.name && !inNotes.date && !inNotes.upcoming, JSON.stringify(inNotes));
   await tab("archive");
   await settled("archive");
   t.check("もう一度押すと daily へ戻る", (await active()) === "archive" && !(await parked()) && (await label()) === "daily");
+  const back = await headLook();
+  t.check("daily へ戻ると暦・日付・暦の絵が戻る",
+    back.cal && back.date && back.upcoming && !back.name, JSON.stringify(back));
   await tab("archive");
   await settled("notes");
   const g2 = await page.$eval("#screen-archive .tl-grip", (e) => {

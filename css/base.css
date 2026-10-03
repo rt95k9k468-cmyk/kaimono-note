@@ -950,6 +950,45 @@ a { color: var(--c-primary); }
 .cal.is-marks-in .cal-dots { animation: head-marks-in var(--m-marks) var(--ease-out) calc(var(--m-marks) / 2) both; }
 @keyframes head-marks-out { to { opacity: 0; } }
 @keyframes head-marks-in { from { opacity: 0; } }
+
+/* ---- ノートでは暦をしまう（docs/notes.md「ノートでは暦をしまう」） ----
+
+   daily の紙を下げてノートへ移るあいだ、暦は帯の裏へ上がって薄れ、
+   その丈（`--face-lift`、app.js の faceOpen が測る）だけ下の面が上がります。
+   数は紙と同じ `--face-p` 一つ——指で引いても、離して滑っても、紙・暦・題が
+   ずれません。留まった紙の位置は app.js の faceDist が、上がるぶんを足して
+   測ります。題は日付から「Notes」へ、右の暦の絵と今日へ戻るは消えます。 */
+.screens.is-notes-lift .head-cal {
+  margin-bottom: calc(-1 * var(--face-p, 0) * var(--face-lift, 0px));
+  translate: 0 calc(-1 * var(--face-p, 0) * var(--face-lift, 0px));
+  opacity: calc(1 - var(--face-p, 0));
+}
+.topbar-dayrow { position: relative; }
+.head-name {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
+  font-weight: 700;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+.screens.is-notes-lift .head-name { opacity: var(--face-p, 0); }
+.screens.is-notes-lift .topbar-day,
+.screens.is-notes-lift .js-go-today,
+.screens.is-notes-lift .js-upcoming { opacity: calc(1 - var(--face-p, 0)); }
+.screens.is-notes-lift:has(.is-face-settle) :is(.head-cal, .head-name, .topbar-day, .js-go-today, .js-upcoming) {
+  transition: margin var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
+              translate var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
+              opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
+}
+/* 見えなくなったものは押せません。暦の絵が場所ごと消えるのはノートに
+   着いてから——戻り始めたら（`.is-face-front`）場所だけ先に返します。 */
+.head.is-notes :is(.head-cal, .topbar-day, .js-go-today, .js-upcoming) { pointer-events: none; }
+.screens:not(:has(.is-face-front)) .head.is-notes .js-upcoming { display: none; }
 .panes {
   flex: 1;
   min-height: 0;

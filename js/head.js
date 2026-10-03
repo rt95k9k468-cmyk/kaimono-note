@@ -79,6 +79,10 @@
     els.today = root.querySelector(".js-go-today");
     els.searchBtn = root.querySelector(".js-search-btn");
     els.cal = root.querySelector(".head-cal");
+    /* ノートの題は日付ではなく「Notes」（docs/notes.md「ノートでは暦をしまう」）。
+       日付の題と同じ場所に重ね、紙を下げる `--face-p` で入れ替えます（CSS）。 */
+    els.name = node(html`<span class="topbar-title head-name" aria-hidden="true">Notes</span>`);
+    els.dayRow.append(els.name);
     /* 歯車と「これからの二週間」（R7・js/upcoming.js）は、どのタブでも同じ
        ことをします。二週間の一覧で日を押すと、やることのその日へ。 */
     root.querySelector(".js-upcoming").addEventListener("click", () => {
@@ -131,6 +135,9 @@
     snap = id !== owner ? snapMarks() : null;
     owner = id;
     root.hidden = false;
+    const notes = id === "notes";
+    root.classList.toggle("is-notes", notes);
+    els.name.setAttribute("aria-hidden", String(!notes));
     /* 虫めがねは一つなので、光るかどうかは入ってくるタブの窓で決めます
        （光るのは「いま絞り込んでいる」ときだけ——ui.js の wireSearch）。 */
     const input = document.querySelector(`#screen-${id} .js-search`);
