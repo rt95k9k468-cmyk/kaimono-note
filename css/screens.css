@@ -6592,6 +6592,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    普通の色とはちょっと変えて」）。塗りと同じ明るさの橙で、赤（警告）にはしない。 */
 .road-stop.is-past { --road-go: var(--road-past); }
 .road-stop.is-late { --road-go: var(--road-late); }
+/* 前の丸薬の途中から重なるものは、中を斜線に（day-road.js の shape の s.over）。塗り（went）は上に来る。 */
+.road-stop-hatch { stroke: var(--road-go); stroke-width: 11; display: none; }
+.road-stop.is-over .road-stop-hatch { display: inline; }
 /* 停留所の上の時の数字（paint が置く）。まだの白い中は塗りの色（.road-hours のまま）。 */
 /* 毎晩の、時刻を決めていないもの。決めた時刻ではないので、ふちを点線に。
    端も角にします（丸い端だと、中の白がふちの外へはみ出す）。 */

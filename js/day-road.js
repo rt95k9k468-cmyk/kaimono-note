@@ -600,6 +600,7 @@
      描く始まりは `ga`（分）と `d0`。**札は予定のまま**（`clock(s.at)`）——道は実際の
      流れ、札は予定。記録も `at`/`until` も書き換えない（描くたびに引き直すだけ）。
      車線はもう割らないので `off` は 0・`lanes` は 1（下の描き手はそのまま読む）。 */
+  let hatchN = 0;   // 斜線の mask の id（build ごと）
   function shape(st, nowMin) {
     const g = st.g;
     let cursor = -Infinity, cl = -1;
@@ -652,7 +653,12 @@
       }
     });
     st.stops.forEach((s) => { if (s.cl != null && cls[s.cl] < 2) s.cl = null; });
-    return st.stops.map((s) => `${n1(s.d0)}/${n1(s.d1)}/${s.late ? 1 : 0}`).join(",");
+    /* 前の丸薬の途中から重なって描くものは、中を斜線に（2026年10月3日・利用者の声「重なって
+       いる丸薬の見た目同士が全く同じ」。色・点々・細く・縁と見比べて斜線だけに）。 */
+    st.stops.forEach((s) => {
+      s.over = !!s.len && st.stops.some((q) => q !== s && q.len && q.ga < s.ga && s.ga < q.eu);
+    });
+    return st.stops.map((s) => `${n1(s.d0)}/${n1(s.d1)}/${s.late ? 1 : 0}${s.over ? "/o" : ""}`).join(",");
   }
 
   /* 済ませた時刻（分）。その日のうちに押したものだけ。 */
@@ -716,9 +722,16 @@
     /* 停留所の道筋・車線・延び（is-late）は paint が引きます（いまに合わせて
        延びるので）。 */
     const beds = bedsOf(g);
+    /* 重なった丸薬の斜線（shape の s.over）。丸薬の色（--road-go）を斜線の形に抜くので、
+       橙（is-late）や過ぎた日の色にもそのまま合う。id は道ごとに別。 */
+    const hid = `road-hatch-${++hatchN}`;
+    const hatchDefs = `<defs><pattern id="${hid}-p" patternUnits="userSpaceOnUse" width="4" height="4"`
+      + ` patternTransform="rotate(45)"><rect width="1.6" height="4" fill="#fff"/></pattern>`
+      + `<mask id="${hid}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${g.H}">`
+      + `<rect width="${W}" height="${g.H}" fill="url(#${hid}-p)"/></mask></defs>`;
     const stopSvg = stops.map((s, k) =>
       `<g class="road-stop${closed(s.t) ? " is-done" : ""}" data-s="${k}">`
-        + `<path class="road-stop-edge"/><path class="road-stop-in"/>`
+        + `<path class="road-stop-edge"/><path class="road-stop-in"/><path class="road-stop-hatch" mask="url(#${hid})"/>`
         + `<path class="road-stop-went"/></g>`).join("");
     /* 出る時刻からの区間は、道の下に敷く点線の帯（道の上下に点がのぞく）。
        停留所のふちの点線（夜のごろ）と同じ言い分で、決めた約束そのものでは
@@ -741,7 +754,7 @@
         `<path class="road-hit" data-l="${k}" data-grow d="${g.path(s.d0, s.d1)}"/>`).join("");
 
     const svg = `<svg class="road-svg" viewBox="0 0 ${W} ${g.H}" aria-hidden="true" focusable="false">`
-      + leadSvg
+      + hatchDefs + leadSvg
       + `<path class="road-base" d="${g.path(g.d0, g.total)}"/>`
       + `<path class="road-went"/>`
       + stopSvg + laterSvg
@@ -858,7 +871,8 @@
         const grp = grpOf(k);
         if (grp) {
           grp.classList.toggle("is-late", s.late);
-          grp.querySelectorAll(".road-stop-edge, .road-stop-in").forEach((x) => x.setAttribute("d", d));
+          grp.classList.toggle("is-over", s.over);
+          grp.querySelectorAll(".road-stop-edge, .road-stop-in, .road-stop-hatch").forEach((x) => x.setAttribute("d", d));
         }
         const hit = hitOf(k);
         if (hit) hit.setAttribute("d", g.path(s.d0, s.d1, s.off));
