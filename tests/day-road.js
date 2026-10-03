@@ -301,6 +301,15 @@ const DAY = "2026-09-29";
   c.check("戻ってきたら、時間割の「いま」もすぐ 14:20", r.nowTl === "14:20", String(r.nowTl));
   c.check("病院の途中：停留所は is-live、次の一行は「いまは 病院（14:30まで）」",
     r.live[2] === true && /いまは\s*病院（14:30まで）/.test(r.next), JSON.stringify([r.live, r.next]));
+  const tone = await page.evaluate(() => {
+    const R = document.querySelector("#screen-todo .day-road");
+    const live = R.querySelector(".road-stop.is-live");
+    const col = (el) => el && getComputedStyle(el).stroke;
+    return { past: !!live && live.classList.contains("is-past"), live: col(live && live.querySelector(".road-stop-went")),
+      went: col(R.querySelector(".road-went")) };
+  });
+  c.check("いまの丸だけ濃く、歩いたぶんの道は薄い塗り（10月3日）",
+    !tone.past && tone.live && tone.went && tone.live !== tone.went, JSON.stringify(tone));
   c.check("三段目は右へ進むので、連れは人の左", r.beads.every((b) => b.x < p1420.x - 8),
     JSON.stringify(r.beads.map((b) => b.x)) + " / " + p1420.x);
   if (process.env.SHOTS) {

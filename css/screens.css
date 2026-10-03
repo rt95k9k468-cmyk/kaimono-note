@@ -6542,6 +6542,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   --road-wait: color-mix(in srgb, var(--c-primary-fill) 24%, var(--c-sheet));
   --road-in: var(--c-sheet-edge);
   --road-late: #f0a35e;
+  /* 歩いたぶんの道と、通った・済ませた停留所（.is-past）の色。いまの丸だけを濃く残す
+     （2026年10月3日・利用者が三つ並べた中から 65% を選んだ。上の時刻は白のまま）。 */
+  --road-past: color-mix(in srgb, var(--c-primary-fill) 65%, var(--c-sheet));
   /* 歩く人の色（利用者が選んだ絵のまま。脚だけ白い紙で沈まないよう少し濃く）。 */
   --me-skin: #f7a845;
   --me-shirt: #7f8ccd;
@@ -6564,7 +6567,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .road-base, .road-went { stroke-width: 9; }
 .road-base { stroke: var(--road-wait); }
-.road-went { stroke: var(--road-go); }
+.road-went { stroke: var(--road-past); }
 /* 時の数字（目盛りの代わり。2026年10月2日）。道の上に、立てたまま。これからの薄い道の上は
    塗りの色、歩いたぶん（.is-went）と停留所の塗りの上（.is-over）は白。 */
 .road-hours text {
@@ -6590,6 +6593,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 時刻を過ぎても済んでいない区間（day-road.js の shape）。人の足もとまで延びて、
    済ませるまでのあいだだけ色を変える（2026年9月30日・利用者の声「オレンジとか、
    普通の色とはちょっと変えて」）。塗りと同じ明るさの橙で、赤（警告）にはしない。 */
+.road-stop.is-past { --road-go: var(--road-past); }
 .road-stop.is-late { --road-go: var(--road-late); }
 /* 停留所の上の時の数字（paint が置く）。まだの白い中は塗りの色（.road-hours のまま）。 */
 /* 毎晩の、時刻を決めていないもの。決めた時刻ではないので、ふちを点線に。
