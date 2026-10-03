@@ -972,6 +972,7 @@ a { color: var(--c-primary); }
   font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
   font-weight: 700;
   letter-spacing: -.02em;
+  color: var(--c-primary);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;

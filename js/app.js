@@ -1052,7 +1052,10 @@
        のぞかせた頭は「この後ろに買うものがある」という札なので、daily や
        ダイエットの上に残っていては嘘になります。 */
     const inPair = pairOf(id);
-    if (!inPair || inPair !== pair) faceUnpark();
+    /* ただし**引き出し（設定）は別**。開けたところへ帰る画面なので、紙は
+       留めたまま潜ります——片づけると、ノートへ帰ったとき暦と日付が出て、
+       戻り道の頭も消えていました。よそのタブへ移れば、そこで片づきます。 */
+    if ((!inPair || inPair !== pair) && !OFF_BAR.includes(id)) faceUnpark();
     if (inPair) pair = inPair;
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
