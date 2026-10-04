@@ -2552,6 +2552,16 @@
 /* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
    持たないので、ここで与えます）。 */
 .diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* 2.0（V24、V5 の画像で選んだ形）：一枚を「今日・記録・推移」に分ける。帯は `.seg`
+   （字は区画それぞれの中央）。今日＝からだの輪と体重の数、記録＝食事、推移＝グラフと
+   気づいたこと。印は `.diet` に付く（日を払って入る隣の紙も同じ区画で見える）。 */
+.is-v2 .diet.is-pane-today :is(.diet-block.is-meal, .diet-graph, .diet-look),
+.is-v2 .diet.is-pane-log :is(.diet-block.is-body, .diet-block.is-weight, .diet-look),
+.is-v2 .diet.is-pane-trend :is(.diet-block.is-body, .diet-block.is-meal, .diet-hero-top) { display: none; }
+/* 帯は紙の端から端ではなく、中の面の字と同じ左右の余白（`.diet-block`）に。 */
+.is-v2 .diet-panes { margin: var(--sp-2) var(--sp-4) var(--sp-3); }
+/* 推移ではグラフが頭なので、体重の数との仕切りの線は要らない。 */
+.is-v2 .diet.is-pane-trend .diet-graph { border-top: none; padding-top: 0; }
 
 /* ---- 今日 ---- */
 
