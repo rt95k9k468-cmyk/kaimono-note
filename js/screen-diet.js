@@ -3007,15 +3007,17 @@
     const paint = () => {
       const q = fold(typing().word);
       const have = new Set(ta.value.split(/[\s、,，。;；]+/).map(fold).filter(Boolean));
-      const hits = words.filter((w) => {
-        const k = fold(w);
+      /* 何も打っていなければ、この枠でくり返し書いているものだけ（often）。
+         打ちかけなら全部から——めったに書かない言葉も、探せば出る。 */
+      const hits = words.filter((e) => {
+        const k = fold(e.word);
         if (have.has(k)) return false;
-        return !q || (k !== q && k.includes(q));
-      });
+        return q ? (k !== q && k.includes(q)) : e.often;
+      }).map((e) => e.word);
       /* 頭が合うものを先に（「な」で「納豆」が「バナナ」より前）。 */
       if (q) hits.sort((x, y) => Number(!fold(x).startsWith(q)) - Number(!fold(y).startsWith(q)));
       cands.textContent = "";
-      hits.slice(0, 12).forEach((w) => {
+      hits.slice(0, 16).forEach((w) => {
         const b = node(html`<button type="button" class="chip" role="listitem">${w}</button>`);
         /* 押しても欄から focus を外しません（キーボードが一度閉じて開くので）。 */
         b.addEventListener("pointerdown", (e) => e.preventDefault());

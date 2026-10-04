@@ -3218,10 +3218,14 @@ button.section-note:active { opacity: .55; }
   font-size: var(--fs-lg); line-height: var(--lh-body); resize: none; overflow: hidden;
 }
 /* 枠を押すと、その場で書く欄になる（screen-diet.js の editSlotInline）。下に、前に
-   書いた言葉の札を横一列——数が変わっても高さを変えない（打つたびに紙が揺れないように）。 */
+   書いた言葉の札を二段——段数は数によらず二段ぶんの高さに決めてある（打つたびに紙が
+   揺れないように）。三段目からは隠れる。並びは mealWords の順なので、隠れるのはまれなもの。 */
 .diet-slot-edit { gap: var(--sp-2); }
-.diet-slot-cands { flex-wrap: nowrap; gap: 6px; min-height: 40px; }
-.diet-slot-cands .chip { flex: none; white-space: nowrap; }
+.diet-slot-cands {
+  flex-wrap: wrap; align-content: flex-start; gap: 6px;
+  overflow: hidden; box-sizing: border-box; height: calc(2 * 40px + 6px + 8px);
+}
+.diet-slot-cands .chip { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* キーボードで押し上げたぶんの余白（kbRoom）。しまっても紙が下がらない。 */
 .diet-kb-room { flex: none; pointer-events: none; }
 
