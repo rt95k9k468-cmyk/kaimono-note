@@ -113,10 +113,12 @@ button, [role="tab"] {
    塗りの面を持たない絵（暦など）はそのまま線で出ます。fill: currentColor
    の指定は、手描きの一族へ戻したときのために残してあります。 */
 .fav.is-on .ui-ico .ico-line,
+.pd-fav.is-on .ui-ico .ico-line,
 .fav-toggle.is-on .icon-pick-mark .ui-ico .ico-line,
 .trip-head .ui-ico .ico-line,
 .swipe-yes .ui-ico .ico-line { display: none; }
 .fav.is-on .ui-ico .ico-solid,
+.pd-fav.is-on .ui-ico .ico-solid,
 .fav-toggle.is-on .icon-pick-mark .ui-ico .ico-solid,
 .trip-head .ui-ico .ico-solid,
 .swipe-yes .ui-ico .ico-solid { display: block; }
@@ -1175,6 +1177,23 @@ button.hero-node:active { scale: .94; }
 }
 .d-memo::placeholder { color: var(--c-text-3); }
 .d-memo:focus { outline: none; }
+
+/* 買うものの紙（2.0、roadmap-2.0 の V23・product-sheet.js の frame）。やることの紙の頭と
+   札をそのまま使い、名前の右に小さな★（今回買う）。絵は行の絵と同じ淡い地に。 */
+.pd-name { display: flex; align-items: center; gap: var(--sp-2); }
+.pd-name .hero-title { flex: 1; min-width: 0; }
+.pd-fav {
+  display: grid; place-items: center; flex: none;
+  width: 36px; height: 36px;
+  border-radius: var(--r-full);
+  color: color-mix(in srgb, #fff 78%, transparent);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
+}
+.pd-fav svg { width: 22px; height: 22px; }
+.pd-fav.is-on { background: #fff; color: var(--c-warn); }
+.pd-hero .hero-node { background: color-mix(in srgb, var(--cat) 14%, var(--c-surface)); color: var(--cat); }
+.pd-hero .hero-node svg { width: 44px; height: 44px; }
+.pd-size { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--c-border); }
 
 /* ---------------- ほかの操作（⋯） ---------------- */
 .act-list { display: flex; flex-direction: column; }
