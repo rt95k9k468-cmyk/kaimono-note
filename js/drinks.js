@@ -356,8 +356,73 @@
       .slice(0, max || 5);
   }
 
+  /* ---------------- よく飲むもの（2026年9月30日） ----------------
+
+     毎晩書くのは、たいてい同じもの。それを毎回キーボードで打たせるより、
+     札を押して本数を −/＋ で変えるだけにします。
+
+     **札は固定の6つ**です（利用者が決めた：ビール・糖質ゼロ・焼酎・焼酎半分・
+     ワイン・ワイン半分）。最初は記録から札を作っていましたが、銘柄や度数ごとに
+     札が増えて「候補が多すぎる」「mlや%がごちゃごちゃする」ので、やめました。
+     札の字は名前だけ（量は押したあとの行と読み下しに出る）。
+     並びは 縦に同じ種類：
+         ビール  焼酎  ワイン
+         糖質0   焼酎半  ワイン半
+     **保存の形は書いたときと同じ一件**です（新しい欄は足しません）。
+     raw には、読み直せば同じ中身になる文を入れておきます——「直す」の紙は
+     raw を欄に出して読み直すので。 */
+
+  const FAV_MAX = 6;
+  // 並びは「縦に同じ種類」＝ 列ごとに二つ。画面側は grid-auto-flow: column で置く。
+  const FAV = [
+    { kind: "beer",   name: "",         ml: 350, abv: 5,  unit: "本", label: "ビール",       icon: "beer" },
+    { kind: "beer",   name: "糖質ゼロ", ml: 350, abv: 5,  unit: "本", label: "糖質ゼロ",     icon: "beer" },
+    { kind: "shochu", name: "",         ml: 70,  abv: 25, unit: "杯", label: "焼酎",         icon: "drink" },
+    { kind: "shochu", name: "",         ml: 35,  abv: 25, unit: "杯", label: "焼酎 半分",    icon: "drink" },
+    { kind: "wine",   name: "",         ml: 700, abv: 12, unit: "本", label: "ワイン",       icon: "wine" },
+    { kind: "wine",   name: "",         ml: 350, abv: 12, unit: "本", label: "ワイン 半分",  icon: "wine" },
+  ];
+  const round1 = (n) => Math.round(n * 10) / 10;
+  const favKey = (t) => [t.kind, t.name || "", t.ml, t.abv].join("|");
+
+  /**
+   * よく飲むものの札（固定の6つ）。引数は今までの呼び出しと合わせるために残してある。
+   * @returns {Array<{key,kind,kindLabel,name,ml,abv,unit,estimated,label,detail,icon}>}
+   */
+  function favorites() {
+    return FAV.map((f) => {
+      const k = byId(f.kind);
+      return {
+        kind: f.kind, kindLabel: k.label, name: f.name, ml: f.ml, abv: f.abv,
+        unit: f.unit, estimated: true, label: f.label, icon: f.icon,
+        detail: `${f.label} ${trim(f.ml)}ml`, key: favKey(f),
+      };
+    });
+  }
+
+  /**
+   * 札と本数から、一件ぶん。parseOne が返すのと同じ形です。
+   * 度数計算も parseOne と同じ式（ml × 度数 ÷ 100 × 0.8、kcal は種類の目安）。
+   */
+  function fromFavorite(t, count) {
+    const k = byId(t.kind);
+    const n = Math.max(0, Number(count) || 0);
+    const volume = round1(t.ml * n);
+    const alcoholG = round1(volume * (t.abv / 100) * 0.8);
+    const kcal = k.kcal100 ? Math.round(volume * k.kcal100 / 100) : Math.round(alcoholG * 7);
+    // 種類の目安と同じ度数なら書かない——書くと、読み直したときに「量った」扱いになる。
+    const raw = [t.name, t.kindLabel || k.label, `${trim(t.ml)}ml`,
+      t.abv !== k.abv ? `${trim(t.abv)}%` : "", `${trim(n)}${t.unit}`].filter(Boolean).join(" ");
+    return {
+      kind: t.kind, kindLabel: t.kindLabel || k.label, name: t.name || "",
+      ml: t.ml, count: n, unit: t.unit, volumeMl: volume, abv: t.abv,
+      alcoholG, kcal, estimated: !!t.estimated, raw,
+    };
+  }
+
   KN.drinks = {
-    KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN,
+    KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN, FAV_MAX,
     kindOf, byId, parse, parseOne, describeItem, totals, moodSuggestions,
+    favorites, fromFavorite,
   };
 })();

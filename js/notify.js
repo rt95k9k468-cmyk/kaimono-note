@@ -20,6 +20,10 @@
    So: an alarm while you are holding the phone, and a catch-up when you pick
    it up. The settings row says as much rather than saying 「通知」 and letting
    it be assumed.
+
+   追記（2026年9月27日、D1）：「something has to send it」は、もう建っている
+   中継所に持たせました（js/bell.js・relay/worker.js の「鳴らす役」）。設定の
+   「閉じていても鳴らす」を入れた人だけ。入れていない人には、上のとおりです。
    ========================================================= */
 (function () {
   "use strict";
@@ -65,6 +69,9 @@
 
   function disable() {
     store.update((s) => { s.settings.todoNotify = false; });
+    /* 閉じていても鳴る（bell.js）はこの上に乗っているので、一緒に止めます。
+       止めないと、切ったはずのお知らせが中継所から届き続けます。 */
+    if (KN.bell && store.get().settings.todoBell === true) KN.bell.stop();
   }
 
   /* ---------------- showing one ---------------- */
@@ -72,7 +79,8 @@
   /* iOS shows nothing for `new Notification()` in a standalone app; it wants
      the service worker's registration to do it. Desktop browsers take either,
      so the registration is tried first and the constructor is the fallback. */
-  function show(title, body, tag) {
+  /* due … その時刻の用事の id。押したら、その用事の紙が開きます（R3・js/due-sheet.js）。 */
+  function show(title, body, tag, due) {
     const opts = {
       body,
       tag: tag || "kn-todo",
@@ -80,7 +88,7 @@
       badge: "icons/icon-192.png",
       lang: "ja",
       renotify: true,
-      data: { screen: "todo" },
+      data: { screen: "todo", due: due || [] },
     };
     const viaSW = navigator.serviceWorker && navigator.serviceWorker.ready;
     if (viaSW) {
@@ -117,7 +125,9 @@
       : due.map((t) => `${t.time} ${t.title}`).join("\n");
 
     store.markAnnounced(due.map((t) => t.id));
-    return show(title, body, "kn-todo-time").then(() => due.length, () => due.length);
+    // 閉じていても鳴る（bell.js）の側に、もう鳴らしたと知らせる。
+    if (KN.bell) KN.bell.noteRung(due);
+    return show(title, body, "kn-todo-time", due.map((t) => t.id)).then(() => due.length, () => due.length);
   }
 
   /* ---------------- keeping watch ---------------- */
@@ -130,7 +140,13 @@
     /* Once a minute is as fine as the clock the times are written in. It is
        also what makes the badge correct: 19:30 arriving has to change the
        number on the icon whether or not anyone is looking at the screen. */
-    const beat = () => { tick(); if (KN.app.onMinute) KN.app.onMinute(); };
+    /* 閉じているあいだに Service Worker が鳴らした回を先に受け取ってから
+       （bell.js の absorb）。でないと、開いた瞬間に同じものをもう一度鳴らします。 */
+    const beat = () => {
+      const got = KN.bell ? KN.bell.absorb().catch(() => 0) : Promise.resolve(0);
+      got.then(tick);
+      if (KN.app.onMinute) KN.app.onMinute();
+    };
     if (timer) clearInterval(timer);
     timer = setInterval(beat, 30000);
 

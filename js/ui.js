@@ -39,8 +39,9 @@
   let pressed = null;
   document.addEventListener("pointerdown", (e) => {
     const b = e.target && e.target.closest
-      && e.target.closest("button, [role='button'], a[href]");
-    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+      && e.target.closest("button, [role='button'], a[href], [data-grow]");
+    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now(),
+      fab: !!b.closest(".add-fab, .fab-menu-b") } : null;
   }, true);
 
   const still = () => !!(window.matchMedia
@@ -79,7 +80,411 @@
     el.classList.add("is-from-origin");
     void getComputedStyle(el).transform;
     el.style.transition = "";
-    return { x: pressed.x, y: pressed.y };
+    return { x: pressed.x, y: pressed.y, fab: pressed.fab };
+  }
+
+  /* ---- ＋から出た紙は、＋へ縮んで帰る（docs/roadmap-2.0.md の V16） ----
+
+     ＋の上に立ち上がる札から開いた紙は、閉じるころには札がもう無いので、
+     押した点（札のあった所）へ帰ると何も無い所へ消えていきます。帰り先を、
+     閉じる瞬間の＋の真ん中に置き直します。＋が見えなければ（キーボードの
+     下など）押した点のまま。返すのは＋（着いたときに受け止めさせる）。 */
+  function aimHome(el) {
+    const fab = document.querySelector("#dock .add-fab");
+    const f = fab && fab.getBoundingClientRect();
+    if (!f || !f.width || f.top >= window.innerHeight || f.bottom <= 0) return null;
+    const r = el.getBoundingClientRect();
+    /* いまの姿は translate(-50%, 0)（開いた姿）。ずれていればそのぶんを引いて、
+       --sx/--sy が測る相手（開いた箱の真ん中）を出します。 */
+    const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+    const cx = r.left + r.width / 2 - (m.e + el.offsetWidth / 2);
+    const cy = r.top + r.height / 2 - m.f;
+    el.style.setProperty("--sx", `${(f.left + f.width / 2 - cx).toFixed(1)}px`);
+    el.style.setProperty("--sy", `${(f.top + f.height / 2 - cy).toFixed(1)}px`);
+    return fab;
+  }
+
+  /* ---- 押した行の丸薬が、紙の頭の丸薬へ伸びていく（C2） ----
+
+     紙は押した点から育ちますが、それだけだと「どの行の続きなのか」は
+     題の位置でしか言えません。行の丸薬（from）そのものが、紙の頭の丸薬
+     （to）の場所・大きさへ伸びていけば、頭の粒が**あの行の丸薬の続き**だと
+     絵が言います。
+
+     動くのは影武者の一枚（to の写し）で、飛んでいるあいだは本物の二つを
+     隠します——紙そのものは押した点から縮んだ姿で育ってくる途中なので、
+     頭の丸薬を紙に乗せたまま動かすと、行き先が毎フレーム動いて追えません。
+
+     行き先は**開き終えたときの箱**です。紙に `.is-open` を付けた姿を、
+     動きを止めたまま一度だけ測ります（seedFrom と同じ「止めて、読んで、
+     戻す」）。rAF の中で測るのは、紙を開いたあとで頭の字（いつ・印）が
+     埋まり、丸薬の縦の位置が変わるからです。
+
+     速さと曲線は紙が育つのと同じ（--m-sheet-grow / --push-e）——同じ時に
+     着くので、着いた瞬間に本物へ入れ替えても継ぎ目が出ません。
+
+     返すのは、途中で紙が閉じたときの後始末。 */
+
+  /* 写した要素に、元の見た目を焼きつけます。行の丸薬の塗り・絵のマスクは
+     `.tl-row` の中でだけ効く規則と変数から出ているので、外へ出した写しには
+     掛かりません。算出された値（変数は解決済み）を、子まで一つずつ移します。 */
+  const FREEZE = ["width", "height", "background-color", "background-image",
+    "border-radius", "color", "fill", "opacity", "mask-image", "mask-size",
+    "mask-position", "mask-repeat", "-webkit-mask-image", "-webkit-mask-size",
+    "-webkit-mask-position", "-webkit-mask-repeat"];
+  function freeze(src, dst) {
+    const cs = getComputedStyle(src);
+    for (const p of FREEZE) {
+      const v = cs.getPropertyValue(p);
+      if (v) dst.style.setProperty(p, v);
+    }
+    const a = src.children, b = dst.children;
+    for (let i = 0; i < a.length && i < b.length; i++) freeze(a[i], b[i]);
+  }
+
+  /* 影武者を一枚こしらえます。行き（行 → 頭）と帰り（頭 → 行）で同じもの。
+
+     地は頭の丸薬の写し（hero）。その上に、行の丸薬の写し（row を freeze
+     したもの）を重ねます——行の側では、上の写しが見えていて、頭の側では
+     消えている。飛ぶあいだにその濃さを動かすので、色がパッと変わりません。
+
+     `k` は絵の倍率（行の絵 ÷ 頭の絵）。大きさは変形の掛からない値（算出
+     された width）で比べます。頭の絵は縮んだ紙の中にあるので、見えている
+     箱で測ると何分の一にもなり、影武者の絵が 2.4 倍に膨らんでいました。 */
+  function pillGhost(hero, row, z) {
+    const cs = getComputedStyle(hero);
+    const ghost = hero.cloneNode(true);
+    ghost.className = "hero-node sheet-morph";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.inert = true;
+    ghost.style.background = cs.backgroundColor;
+    /* 字の色も写します。絵は currentColor で塗られていて、頭の白は
+       `.sheet-hero` から継いでいたもの——紙の外に置いた写しは地の字の色
+       （黒）を継ぎ、飛んでいるあいだだけ真っ黒なシルエットになっていました。 */
+    ghost.style.color = cs.color;
+    ghost.style.zIndex = String(z);
+    const under = row.cloneNode(true);
+    freeze(row, under);
+    under.removeAttribute("class");
+    Object.assign(under.style, {
+      position: "absolute", inset: "0", left: "0", top: "0",
+      width: "auto", height: "auto", transform: "none", margin: "0",
+      display: "grid", placeItems: "center", borderRadius: "inherit",
+      visibility: "visible",
+    });
+    ghost.append(under);
+    const sizeOf = (x, d) => (x && parseFloat(getComputedStyle(x).width)) || d;
+    const k = sizeOf(row.firstElementChild, 32) / sizeOf(hero.firstElementChild, 38);
+    const rowLook = { borderRadius: getComputedStyle(row).borderRadius,
+      boxShadow: "0 0 0 0 transparent" };
+    const heroLook = { borderRadius: cs.borderRadius, boxShadow: cs.boxShadow };
+    return { ghost, under, k, rowLook, heroLook };
+  }
+
+  const pillBox = (r) => ({
+    left: `${r.left}px`, top: `${r.top}px`,
+    width: `${r.width}px`, height: `${r.height}px`,
+  });
+
+  /* 影武者の中身を動かします。t0 → t1 は「行らしさ」（1 ＝ 行、0 ＝ 頭）。
+     絵は行では 32px、頭では 38px。箱と一緒に伸び縮みさせます。 */
+  function pillInner(g, t0, t1, timing) {
+    const sc = (t) => (t ? `scale(${g.k.toFixed(3)})` : "none");
+    const usc = (t) => (t ? "none" : `scale(${(1 / g.k).toFixed(3)})`);
+    const mark = g.ghost.firstElementChild;
+    if (mark && mark !== g.under) {
+      mark.animate([{ transform: sc(t0) }, { transform: sc(t1) }], timing);
+    }
+    const underMark = g.under.firstElementChild;
+    if (underMark) {
+      underMark.animate([{ transform: usc(t0) }, { transform: usc(t1) }], timing);
+    }
+    g.under.animate([{ opacity: t0 }, { opacity: t1 }], timing);
+  }
+
+  /* 行き（行 → 頭）。わけは上の「押した行の丸薬が、紙の頭の丸薬へ伸びていく」。
+     返すのは、途中で紙が閉じたときの後始末（`.flying()` で、まだ飛んでいるか）。 */
+  function morphPill(morph, el, z) {
+    const from = morph && morph.from;
+    const to = morph && morph.to;
+    if (!from || !to || !from.isConnected || !el.contains(to)) return null;
+    const a = from.getBoundingClientRect();
+    if (!a.width || !a.height) return null;
+    el.style.transition = "none";
+    el.classList.add("is-open");
+    const b = to.getBoundingClientRect();
+    el.classList.remove("is-open");
+    void getComputedStyle(el).transform;
+    el.style.transition = "";
+    if (!b.width || !b.height) return null;
+
+    const g = pillGhost(to, from, z);
+    sheetRoot().append(g.ghost);
+    from.style.visibility = "hidden";
+    to.style.visibility = "hidden";
+
+    const timing = { duration: KN.motion.ms("--m-sheet-grow"),
+      easing: KN.motion.ease("--push-e"), fill: "both" };
+    const run = g.ghost.animate([
+      { ...pillBox(a), ...g.rowLook },
+      { ...pillBox(b), ...g.heroLook },
+    ], timing);
+    pillInner(g, 1, 0, timing);
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      from.style.visibility = "";
+      to.style.visibility = "";
+      g.ghost.remove();
+    };
+    finish.flying = () => !done;
+    run.onfinish = finish;
+    run.oncancel = finish;
+    return finish;
+  }
+
+  /* ---- 閉じるときは、頭の丸薬が行の丸薬へ帰る ----
+
+     行きの逆です。ただ、行き先が**じっとしていません**：保存すると時間割が
+     組み直され、行は別の要素になったうえで、もといた場所から FLIP で
+     滑ってきます（`flipRows`）。だから行き先は、動き出す前に一度決めるの
+     ではなく、**毎フレーム探し直して**（morph.back() が id から引く）、
+     動きの終わりの形を書き換えます（setKeyframes）。進み具合と曲線は
+     ブラウザが持ったままなので、行き先が動いても速さは途切れません。
+
+     速さと曲線は、行が収まる FLIP と同じ一族（--m-settle / --ease-settle）。
+     「並びが変わった」結果を読ませる速さで、同じ場所へ一緒に収まります。
+
+     帰らないとき：行が見つからない（別の日へ移した・消した）、画面の外、
+     行きの影武者がまだ飛んでいる。途中で行を見失ったら、その場で薄れて消えます。 */
+  function morphBack(morph, z) {
+    const hero = morph && morph.to;
+    const find = morph && morph.back;
+    if (!hero || !find || !hero.isConnected) return;
+    let row = find();
+    if (!row) return;
+    const a = hero.getBoundingClientRect();
+    let b = row.getBoundingClientRect();
+    const seen = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
+      && r.right > 0 && r.left < window.innerWidth;
+    if (!a.width || !a.height || !seen(b)) return;
+
+    const g = pillGhost(hero, row, z);
+    sheetRoot().append(g.ghost);
+    hero.style.visibility = "hidden";
+    row.style.visibility = "hidden";
+
+    const timing = { duration: KN.motion.ms("--m-settle"),
+      easing: KN.motion.ease("--ease-settle"), fill: "both" };
+    const frames = (r) => [{ ...pillBox(a), ...g.heroLook }, { ...pillBox(r), ...g.rowLook }];
+    const run = g.ghost.animate(frames(b), timing);
+    pillInner(g, 0, 1, timing);
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (row) row.style.visibility = "";
+      hero.style.visibility = "";
+      g.ghost.remove();
+    };
+    const lose = () => {
+      if (row) row.style.visibility = "";
+      row = null;
+      const fade = g.ghost.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: KN.motion.ms("--m-state"), easing: KN.motion.ease("--ease-in"),
+          fill: "forwards" });
+      fade.onfinish = () => { run.cancel(); finish(); };
+    };
+    const follow = () => {
+      if (done || !row) return;
+      const now = find();
+      if (!now) { lose(); return; }
+      if (now !== row) {
+        row.style.visibility = "";
+        row = now;
+        row.style.visibility = "hidden";
+      }
+      const r = row.getBoundingClientRect();
+      if (Math.abs(r.left - b.left) + Math.abs(r.top - b.top)
+          + Math.abs(r.width - b.width) + Math.abs(r.height - b.height) > 0.5) {
+        b = r;
+        run.effect.setKeyframes(frames(b));
+      }
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
+    run.onfinish = finish;
+    run.oncancel = () => { if (row) finish(); };
+  }
+
+  /* ---- 一覧のカードが膨らんで紙になり、閉じると縮んでカードへ戻る ----
+
+     ノートの書く紙（段4.3）。行の丸薬（上）と違って、動くのは**紙そのもの**
+     です：紙は初めから開いた場所にいて、見える窓（clip-path）だけがカードの
+     箱から紙いっぱいへ広がる。字は縮めない（transform で縮めると字がつぶれて
+     見える）ので、紙の中身は窓が広がるあとから現れ、カードの字は写しが
+     上へ滑りながら薄れます。
+
+     帰りは窓をカードの箱へ戻します。行き先は**毎フレーム探し直す**
+     （grow.back() が id から引く。直したノートは一覧の先頭へ移るので）——
+     morphBack と同じ考え方。下へ払っていたら、その場所から戻ります。
+
+     電話の幅だけ（広い画面は真ん中の一枚で、transform の形が違う）。動きを
+     減らす設定なら使いません。 */
+  const phone = () => window.matchMedia("(max-width: 639px)").matches;
+
+  /** いまの transform を外した、開いたときの紙の箱。 */
+  function restBox(el) {
+    const r = el.getBoundingClientRect();
+    const t = getComputedStyle(el).transform;
+    const m = t && t !== "none" ? new DOMMatrixReadOnly(t) : null;
+    const dy = m ? m.m42 : 0;
+    /* 横は、真ん中に置く translate(-50%) から外れたぶん（左端から払っていた紙。V19）。 */
+    const dx = m ? m.m41 + r.width / 2 : 0;
+    return { left: r.left - dx, right: r.right - dx, top: r.top - dy, bottom: r.bottom - dy };
+  }
+  const radiusOf = (x) => parseFloat(getComputedStyle(x).borderTopLeftRadius) || 0;
+  const cardClip = (s, b, rad) =>
+    `inset(${b.top - s.top}px ${s.right - b.right}px ${s.bottom - b.bottom}px ${b.left - s.left}px round ${rad}px)`;
+  /* 紙の角は紙から読む（上だけ丸い紙も、四隅の丸いカード＝2.0 の V19 も）。 */
+  const fullClip = (el) => {
+    const cs = getComputedStyle(el);
+    const R = ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"]
+      .map((k) => `${parseFloat(cs[k]) || 0}px`).join(" ");
+    return `inset(0px round ${R})`;
+  };
+  const seenBox = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
+    && r.right > 0 && r.left < window.innerWidth;
+
+  /** カードの写し（字が薄れて／現れて入れ替わるためのもの）。 */
+  function cardGhost(card, r, z) {
+    const g = card.cloneNode(true);
+    g.setAttribute("aria-hidden", "true");
+    g.inert = true;
+    g.classList.add("sheet-morph");
+    Object.assign(g.style, {
+      position: "fixed", margin: "0", boxSizing: "border-box", pointerEvents: "none",
+      left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+      zIndex: String(z), visibility: "visible",
+    });
+    sheetRoot().append(g);
+    return g;
+  }
+  const kids = (el) => [...el.children];
+
+  /** 行き。育てたら true。 */
+  function growCard(grow, el, z) {
+    const card = grow && grow.from;
+    if (!card || !card.isConnected || still() || !phone()) return false;
+    const a = card.getBoundingClientRect();
+    if (!seenBox(a)) return false;
+    el.style.transition = "none";
+    el.classList.add("is-open");
+    const s = restBox(el);
+    const timing = { duration: KN.motion.ms("--m-sheet-grow"), easing: KN.motion.ease("--push-e") };
+    const run = el.animate([{ clipPath: cardClip(s, a, radiusOf(card)) }, { clipPath: fullClip(el) }], timing);
+    kids(el).forEach((k) => k.animate([{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], timing));
+    const g = cardGhost(card, a, z + 1);
+    g.animate([
+      { opacity: 1, transform: "none" },
+      { opacity: 0, transform: `translate(${s.left - a.left}px, ${s.top - a.top}px)`, offset: .45 },
+      { opacity: 0, transform: `translate(${s.left - a.left}px, ${s.top - a.top}px)` },
+    ], timing);
+    card.style.visibility = "hidden";
+    let over = false;
+    const done = () => {
+      if (over) return;
+      over = true;
+      g.remove();
+      card.style.visibility = "";
+      /* 膨らみきる前に閉じたときは、閉じる側が transition を握っている。 */
+      if (el.classList.contains("is-open")) el.style.transition = "";
+    };
+    run.onfinish = done;
+    run.oncancel = done;
+    /* カードが隠れたまま残ると、ノートが消えたように見える。終わりの知らせが
+       来なくても必ず戻す。 */
+    setTimeout(done, timing.duration + 200);
+    return true;
+  }
+
+  /** 帰り。紙を片づけてよくなるまでの ms（帰らないなら 0）。from は閉じる前の
+      transform（下へ払っていたら、その場所）。 */
+  function shrinkCard(grow, el, z, from) {
+    const find = grow && grow.back;
+    let card = find && find();
+    const a = card && card.getBoundingClientRect();
+    if (!card || !seenBox(a)) {
+      /* 戻るカードが無い・画面の外：紙がふつうに帰るのと同じ形で。 */
+      const to = getComputedStyle(el);
+      const run = el.animate([
+        { transform: from.transform, opacity: from.opacity, borderRadius: from.radius },
+        { transform: to.transform, opacity: to.opacity, borderRadius: to.borderRadius },
+      ], { duration: KN.motion.ms("--m-sheet-close"), easing: KN.motion.ease("--ease-in"), fill: "forwards" });
+      return run.effect.getComputedTiming().endTime;
+    }
+    /* ＋から育った紙も、帰りはカードへ（畳んだ姿＝透明には戻らない）。 */
+    el.classList.remove("is-from-origin");
+    const s = restBox(el);
+    let b = a;
+    const rad = radiusOf(card);
+    const rest = `translate(-50%, 0px)`;
+    const frames = (r) => [
+      { transform: from.transform, clipPath: fullClip(el) },
+      { transform: rest, clipPath: cardClip(s, r, rad) },
+    ];
+    const timing = { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" };
+    const run = el.animate(frames(b), timing);
+    kids(el).forEach((k) => k.animate([{ opacity: 1 }, { opacity: 0, offset: .5 }, { opacity: 0 }], timing));
+    const g = cardGhost(card, b, z + 1);
+    const fade = g.animate([{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1 }], timing);
+    card.style.visibility = "hidden";
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      el.style.visibility = "hidden";
+      if (card) card.style.visibility = "";
+      g.remove();
+    };
+    const follow = () => {
+      if (done) return;
+      const now = find();
+      if (!now) {
+        /* 見失ったら、その場で薄れて消えます。 */
+        if (card) card.style.visibility = "";
+        card = null;
+        fade.cancel();
+        g.remove();
+        el.animate([{ opacity: 1 }, { opacity: 0 }],
+          { duration: KN.motion.ms("--m-state"), easing: KN.motion.ease("--ease-in"), fill: "forwards" })
+          .onfinish = () => { run.cancel(); finish(); };
+        return;
+      }
+      if (now !== card) {
+        if (card) card.style.visibility = "";
+        card = now;
+        card.style.visibility = "hidden";
+      }
+      const r = card.getBoundingClientRect();
+      if (Math.abs(r.left - b.left) + Math.abs(r.top - b.top)
+          + Math.abs(r.width - b.width) + Math.abs(r.height - b.height) > 0.5) {
+        b = r;
+        run.effect.setKeyframes(frames(b));
+        Object.assign(g.style, { left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
+      }
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
+    run.onfinish = finish;
+    /* 見失って薄れるぶん（--m-state）まで待つ。知らせが来なくても、カードは必ず戻す。 */
+    const ms = timing.duration + KN.motion.ms("--m-state");
+    setTimeout(finish, ms + 40);
+    return ms;
   }
 
   /* ---------------- bottom sheet ---------------- */
@@ -204,8 +609,13 @@
       return pageHost.open(opts);
     }
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
+    /* cls … 紙に足す class（開く前の形を決めるもの。growCard が測るので）。
+       clear … 電話の幅では後ろを暗くしない（ノートの書く紙。段4.3）。
+       grow … { from: 押したカード, back: () => 戻るカード }（上の growCard）。 */
+    const grow = opts && opts.grow;
+    if (opts && opts.clear) backdrop.classList.add("is-clear");
     const el = node(html`
-      <div class="sheet ${hero ? "has-hero" : ""}" role="dialog" aria-modal="true"
+      <div class="sheet ${hero ? "has-hero" : ""} ${(opts && opts.cls) || ""}" role="dialog" aria-modal="true"
            aria-label="${title || ""}">
         <div class="sheet-handle"></div>
         <header class="sheet-head">
@@ -227,10 +637,9 @@
     if (menuBtn) {
       menuBtn.addEventListener("click", () => {
         haptic();
-        actionSheet(menu.map((m) => ({
-          label: typeof m.label === "function" ? m.label() : m.label,
-          sub: m.sub, icon: m.icon, danger: m.danger, onPick: m.onPick,
-        })));
+        /* 紙の「⋯」も、押した ⋯ のすぐ下に出る小窓（2026年10月2日・利用者の声
+           「シートではなくポッと表示されて欲しい」）。前は下から出る紙だった。 */
+        popMenu(menuBtn, menu);
       });
     }
     el.querySelector(".sheet-body").append(content);
@@ -267,7 +676,7 @@
 
     /* 押されたところから育てます（育てないなら null で、これまでどおり
        下からせり上がります）。 */
-    const seed = seedFrom(el);
+    const seed = grow && grow.from ? null : seedFrom(el);
     if (seed) {
       /* 押した丸から、いちど光がにじみ出ます。紙が育ちきるまでの一拍を、
          ＋のあった場所が受け持つためのものです——紙が小さいあいだ、画面に
@@ -285,7 +694,13 @@
     }
 
     // Next frame so the transition runs.
+    let unmorph = null;
+    /* カードから膨らむときは、紙はもう開いた場所にいます（窓だけが広がる）。 */
+    if (grow) growCard(grow, el, floor + 1 + depth * 2);
     requestAnimationFrame(() => {
+      /* 行の丸薬から伸びるのは、押した点から育つときだけ（行き先の箱の
+         出し方が、下から出る紙の形に寄りかかっているので）。 */
+      if (seed && opts && opts.morph && !closed) unmorph = morphPill(opts.morph, el, floor + 1 + depth * 2);
       backdrop.classList.add("is-open");
       el.classList.add("is-open");
     });
@@ -294,9 +709,36 @@
     function close() {
       if (closed) return;
       closed = true;
+      /* 頭の丸薬は、行の丸薬へ帰ります（行きの影武者がまだ飛んでいる
+         あいだに閉じたときは帰しません——出どころの箱が決まらないので）。 */
+      const flying = unmorph && unmorph.flying();
+      if (unmorph) unmorph();
+      if (seed && opts && opts.morph && opts.morph.back && !flying && !still()) {
+        morphBack(opts.morph, floor + 1 + depth * 2);
+      }
+      /* カードへ縮んで帰る紙は、CSS の帰り道を走らせません（帰り道は
+         onClose のあと、一覧を組み直してから決める。下の shrinkCard）。 */
+      const shrinks = grow && grow.back && !still() && phone();
+      let from = null;
+      if (shrinks) {
+        const cs = getComputedStyle(el);
+        from = { transform: cs.transform, opacity: cs.opacity, radius: cs.borderRadius };
+        el.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+        el.style.transition = "none";
+      }
+      /* カードへ縮む紙（ノート）は、＋ではなくカードへ帰る。 */
+      const home = seed && seed.fab && !shrinks && !still() && el.classList.contains("is-from-origin")
+        ? aimHome(el) : null;
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
       KN.motion.fire("sheetClose");
+      /* 着いたところで＋が一度だけ受け止める。 */
+      if (home) {
+        setTimeout(() => home.isConnected && home.animate(
+          [{ transform: "none" }, { transform: "scale(1.1)" }, { transform: "none" }],
+          { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out"), composite: "add" },
+        ), KN.motion.ms("--m-sheet-close"));
+      }
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
       /* Nor does the caret. A field removed while still focused is never
@@ -316,8 +758,10 @@
          ほうです。二か所に持つと、片方だけ直した日に「まだ動いているのに
          消える」か「もう止まっているのに残る」のどちらかが起きます。 */
       const closeMs = KN.motion.ms("--m-sheet-close");
-      setTimeout(() => { backdrop.remove(); el.remove(); }, closeMs + 60);
+      const tidy = (ms) => setTimeout(() => { backdrop.remove(); el.remove(); }, ms + 60);
+      if (!shrinks) tidy(closeMs);
       onClose && onClose();
+      if (shrinks) tidy(shrinkCard(grow, el, floor + 1 + depth * 2, from));
     }
 
     /* ---- 書きかけのまま閉じようとしたとき ----
@@ -363,6 +807,9 @@
     el.addEventListener("focusin", (e) => {
       const field = e.target.closest("input, textarea, select");
       if (!field) return;
+      /* 自分で送る欄（ノートの本文：中身ぶん伸びるので、真ん中へ寄せると
+         題ごと飛ぶ。screen-notes.js の reveal）は任せてもらう。 */
+      if (field.hasAttribute("data-own-scroll")) return;
       [140, 340, 620].forEach((ms) => setTimeout(() => {
         if (document.activeElement === field) scrollFieldIntoView(field);
       }, ms));
@@ -411,6 +858,43 @@
       return g.ms;
     };
 
+    const follow = (y) => {
+      const now = performance.now();
+      if (now > lastT) { vy = (y - lastY) / (now - lastT); lastT = now; lastY = y; }
+      const raw = y - startY;
+      dy = raw >= 0 ? raw : KN.motion.rubber(raw, 50);   // ③ 上はゴム
+      dragTo(dy);
+    };
+
+    const release = (dismissable) => {
+      if (startY == null) return;
+      startY = null;
+      const h = el.getBoundingClientRect().height || 1;
+      const far = Math.min(DISMISS_MAX, Math.max(DISMISS_MIN, h * DISMISS));
+      const fling = vy > FLING_V && dy >= FLING_MIN;     // ②
+      if (!dismissable || !(dy > far || fling)) {
+        const ms = slideTo(0);
+        setTimeout(() => { if (!closed) el.style.transition = ""; }, ms + 20);
+        return;
+      }
+      /* 下へ払って閉じるときは、**下へ帰します**。指が下へ送ったものが
+         ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
+         そのまま下まで滑らせながら閉じにいきます。 */
+      el.classList.remove("is-from-origin");
+      /* カードへ縮んで帰る紙は、払った場所から縮みます（shrinkCard）。 */
+      const ms = grow && grow.back && !still() ? 0 : slideTo(h);
+      tryClose();
+      /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
+         そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
+         居ることになります。 */
+      setTimeout(() => {
+        if (closed || !el.isConnected) return;
+        dy = h; vy = 0;
+        const back = slideTo(0);
+        setTimeout(() => { if (!closed) el.style.transition = ""; }, back + 20);
+      }, ms + 20);
+    };
+
     [head, handleBar].forEach((zone) => {
       if (!zone) return;
       zone.addEventListener("touchstart", (e) => {
@@ -422,44 +906,46 @@
 
       zone.addEventListener("touchmove", (e) => {
         if (startY == null) return;
-        const y = e.touches[0].clientY;
-        const now = performance.now();
-        if (now > lastT) { vy = (y - lastY) / (now - lastT); lastT = now; lastY = y; }
-        const raw = y - startY;
-        dy = raw >= 0 ? raw : KN.motion.rubber(raw, 50);   // ③ 上はゴム
-        dragTo(dy);
+        follow(e.touches[0].clientY);
       }, { passive: true });
 
-      const release = (dismissable) => {
-        if (startY == null) return;
-        startY = null;
-        const h = el.getBoundingClientRect().height || 1;
-        const far = Math.min(DISMISS_MAX, Math.max(DISMISS_MIN, h * DISMISS));
-        const fling = vy > FLING_V && dy >= FLING_MIN;     // ②
-        if (!dismissable || !(dy > far || fling)) {
-          const ms = slideTo(0);
-          setTimeout(() => { if (!closed) el.style.transition = ""; }, ms + 20);
-          return;
-        }
-        /* 下へ払って閉じるときは、**下へ帰します**。指が下へ送ったものが
-           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
-           そのまま下まで滑らせながら閉じにいきます。 */
-        el.classList.remove("is-from-origin");
-        const ms = slideTo(h);
-        tryClose();
-        /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
-           そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
-           居ることになります。 */
-        setTimeout(() => {
-          if (closed || !el.isConnected) return;
-          dy = h; vy = 0;
-          const back = slideTo(0);
-          setTimeout(() => { if (!closed) el.style.transition = ""; }, back + 20);
-        }, ms + 20);
-      };
       zone.addEventListener("touchend", () => release(true));
       zone.addEventListener("touchcancel", () => release(false));
     });
+
+    /* pull … () => true のあいだ、中身が一番上まで送ってあれば、中身を下へ
+       引いても閉じる（ノートの書く紙・2.0 の V19）。一番上に居ない・上へ
+       送る指は、ふつうの送りのまま。取ると決めたら紙の払いと同じ扱い
+       （指につく・勢い・保存してから閉じる）。引いて更新ではない。 */
+    const body = el.querySelector(".sheet-body");
+    if (opts && typeof opts.pull === "function" && body) {
+      let p0 = null, px0 = 0;
+      body.addEventListener("touchstart", (e) => {
+        p0 = null;
+        if (e.touches.length !== 1 || !isBottomSheet() || !opts.pull()) return;
+        if (body.scrollTop > 0) return;
+        p0 = e.touches[0].clientY; px0 = e.touches[0].clientX;
+      }, { passive: true });
+      body.addEventListener("touchmove", (e) => {
+        if (p0 == null) return;
+        const y = e.touches[0].clientY;
+        if (startY == null) {
+          const my = y - p0, mx = e.touches[0].clientX - px0;
+          if (Math.abs(my) < 2 && Math.abs(mx) < 2) return;
+          /* 下向きの縦で、まだ一番上に居るときだけ取る。早く決める——iOS は
+             送りが始まってからの preventDefault を聞かない。 */
+          if (!(my > 0 && my > Math.abs(mx) && body.scrollTop <= 0)) { p0 = null; return; }
+          startY = y;
+          dy = 0; lastT = performance.now(); lastY = y; vy = 0;
+          el.style.transition = "none";
+        }
+        /* 取ったあとは、中身の送り（と、一番上での跳ね返り）を止める。 */
+        if (e.cancelable) e.preventDefault();
+        follow(y);
+      }, { passive: false });
+      body.addEventListener("touchend", () => { p0 = null; release(true); });
+      body.addEventListener("touchcancel", () => { p0 = null; release(false); });
+    }
 
     /* tryClose も渡します。Escape で閉じる道（下の keydown）が close() を
        直接呼んでいて、そこだけ**書きかけを黙って捨てていました**。閉じ方が
@@ -468,7 +954,9 @@
     openSheets.push(handle);
 
     // Focus the first meaningful control.
+    /* もう紙の中に居るカーソル（＋から本文へ入れたもの）は奪いません。 */
     setTimeout(() => {
+      if (el.contains(document.activeElement)) return;
       const target = el.querySelector("input, textarea, select, button:not(.js-close)");
       if (target && !("ontouchstart" in window)) target.focus();
     }, 320);
@@ -504,6 +992,82 @@
       } else if (!inside || active === last) { e.preventDefault(); first.focus(); }
     }
   });
+
+  /* ---------------- 別の日へ運ぶ（docs/roadmap-2.0.md の V15） ----------------
+
+     やることを別の日へ移すと、その日の画面から行が消えます。どこへ行ったのかを
+     言うものが無いので、行（か紙の頭の丸薬）の写しが、上の帯の暦のその日へ縮み
+     ながら飛んでいき、着いた日の丸が一度ふくらみます。暦が出ていない・その日が
+     いま出ている週や月に無いときは、頭の日付へ。動きを減らす設定では飛ばさない。
+
+       KN.ui.sendToDay(el, "2026-10-05")   // el は消える前の行（測ってから写す）
+
+     **写しを飛ばす**のは、元の行が組み直しで消えるからです（行き先で同じ行が
+     待っているわけではない＝FLIP にはならない）。 */
+  function dayTarget(day) {
+    const head = document.getElementById("head");
+    if (!head) return null;
+    const vw = window.innerWidth;
+    const cellOk = (e) => {
+      const r = e.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      return r.width > 0 && r.height > 0 && x > 0 && x < vw && r.bottom > 0;
+    };
+    const cell = [...head.querySelectorAll(`.cal-day[data-day="${CSS.escape(day)}"]`)].find(cellOk);
+    if (cell) return cell;
+    const title = head.querySelector(".js-day-title");
+    return title && cellOk(title) ? title : null;
+  }
+
+  function sendToDay(el, day) {
+    if (!el || !day || still()) return false;
+    const a = el.getBoundingClientRect();
+    if (!a.width || !a.height) return false;
+    const target = dayTarget(day);
+    if (!target) return false;
+    const b = target.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const g = el.cloneNode(true);
+    g.setAttribute("aria-hidden", "true");
+    g.inert = true;
+    g.classList.add("day-send");
+    /* 紙の外へ出すので、紙から継いでいた色・字・角を写します（pillGhost と同じ）。
+       地が透けている行（紙の上の一行）は、紙の地を持たせて浮かせる。 */
+    const clear = /rgba\(.*,\s*0\)|transparent/.test(cs.backgroundColor);
+    Object.assign(g.style, {
+      background: clear ? "var(--c-surface)" : cs.backgroundColor,
+      color: cs.color, font: cs.font, borderRadius: clear ? "var(--r-md)" : cs.borderRadius,
+      boxShadow: clear ? "var(--shadow-2)" : cs.boxShadow,
+    });
+    Object.assign(g.style, {
+      position: "fixed", margin: "0", boxSizing: "border-box", pointerEvents: "none",
+      left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`,
+      zIndex: "var(--z-toast)", visibility: "visible", transformOrigin: "50% 50%",
+    });
+    document.body.append(g);
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    const k = Math.max(.08, Math.min(1, b.height / a.height) * .6);
+    const timing = { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" };
+    const run = g.animate([
+      { transform: "none", opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${k.toFixed(3)})`, opacity: .9, offset: .8 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${(k * .6).toFixed(3)})`, opacity: 0 },
+    ], timing);
+    let over = false;
+    const done = () => {
+      if (over) return;
+      over = true;
+      g.remove();
+      const t = dayTarget(day);
+      if (t) t.animate([{ transform: "none" }, { transform: "scale(1.18)" }, { transform: "none" }],
+        { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out") });
+    };
+    run.onfinish = done;
+    run.oncancel = done;
+    setTimeout(done, timing.duration + 200);
+    return true;
+  }
 
   /* ---------------- 行が動くところを見せる（FLIP） ----------------
 
@@ -632,9 +1196,9 @@
 
      ふつうの紙（sheet）を借ります——専用の作りを増やすより、開き方・閉じ方・
      背景の作法が同じであるほうが、覚え直しがありません。 */
-  function actionSheet(items) {
+  function actionSheet(items, title) {
     const box = node(html`<div class="act-list"></div>`);
-    const handle = sheet({ title: "ほかの操作", content: box, as: "dialog" });
+    const handle = sheet({ title: title || "ほかの操作", content: box, as: "dialog" });
     (items || []).forEach((it) => {
       const row = node(html`
         <button type="button" class="act-row ${it.danger ? "is-danger" : ""}">
@@ -656,31 +1220,177 @@
     return handle;
   }
 
+  /* ---------------- 押したところに出る小窓 ----------------
+
+     押したもののすぐ下に出る小さな一枚（ノートの「⋯」・タグ・ノートブック・作った日、
+     やることの詳細の紙の「⋯」・日付・時刻・くりかえし・期限の暦）。下から出る紙では
+     なく、そこにポッと出る（2026年10月1日、ノートで利用者の声「シートでなく、そこに
+     ポンと出てほしい」。10月2日に、やることの詳細の紙でも同じ声）。
+     side は揃える側（左の口なら left、右の口なら right）。外を押す・Escape で閉じ、
+     閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
+     出す（place() は中身を足したあとに呼ぶ）。 */
+  const pops = [];   // 開いている小窓の close（上が後ろ）
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", onClose } = {}) {
+    const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
+    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
+    const r = anchor.getBoundingClientRect();
+    const cover = node(html`<div class="note-pop-cover"></div>`);
+    const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);
+    cover.style.zIndex = String(z + 1);
+    pop.style.zIndex = String(z + 2);
+    let gone = false;
+    const close = () => {
+      if (gone) return;
+      gone = true;
+      pops.splice(pops.indexOf(close), 1);
+      pop.classList.remove("is-open");
+      document.removeEventListener("keydown", onKey, true);
+      cover.remove();
+      setTimeout(() => pop.remove(), KN.motion.ms("--m-state") + 40);
+      if (onClose) onClose();
+    };
+    /* Escape は一番上の小窓だけが受ける（小窓の中から開いた暦で、下の小窓まで閉じていた）。 */
+    const onKey = (e) => {
+      if (e.key !== "Escape" || pops[pops.length - 1] !== close) return;
+      e.stopImmediatePropagation();
+      close();
+    };
+    pops.push(close);
+    cover.addEventListener("click", close);
+    document.addEventListener("keydown", onKey, true);
+    document.body.append(cover, pop);
+    /* 横は left で決め、画面の中へ収めます。right で置くと、口が左寄りで
+       小窓が幅広いとき（タグの「＋」）、左の外へはみ出していた（2026年10月1日、
+       iPhone）。縦は口の下、入りきらず上のほうが広ければ口の上（is-up）。 */
+    const place = () => {
+      const vw = document.documentElement.clientWidth || window.innerWidth;
+      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      const w = Math.min(pop.offsetWidth, vw - 16);
+      const want = side === "left" ? r.left : r.right - w;
+      pop.style.left = `${Math.round(Math.max(8, Math.min(want, vw - 8 - w)))}px`;
+      /* 口の上にも下にも入りきらない背の高いもの（時刻の小窓）は、口に重なってもいいので
+         画面の中に全部出す（中で送らせると、下の行が隠れた）。 */
+      const below = vh - r.bottom - 12, above = r.top - 12;
+      pop.style.maxHeight = `${Math.round(vh - 16)}px`;
+      const h = pop.offsetHeight;
+      const up = h > below && above > below;
+      let top = up ? Math.round(r.top - 4 - h) : Math.round(r.bottom + 4);
+      top = Math.max(8, Math.min(top, Math.round(vh - 8 - h)));
+      pop.classList.toggle("is-up", up);
+      pop.style.top = `${top}px`;
+      pop.style.setProperty("--pop-top", `${top}px`);
+    };
+    place();
+    requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
+    return { el: pop, close, place };
+  }
+
+  /** 「⋯」の中身を、押した ⋯ のすぐ下に縦に並べる。選ぶか外を押すと閉じる。 */
+  function popMenu(anchor, items) {
+    const p = popOver(anchor, { role: "menu", side: "right" });
+    (items || []).forEach((it) => {
+      const label = typeof it.label === "function" ? it.label() : it.label;
+      const b = node(html`
+        <button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${it.icon ? icon(it.icon) : ""}<span class="note-pop-main"><span>${label}</span>${it.sub ? html`<small class="note-pop-sub">${it.sub}</small>` : ""}</span></button>`);
+      b.addEventListener("click", () => {
+        KN.motion.fire("select");
+        p.close();
+        it.onPick();
+      });
+      p.el.append(b);
+    });
+    p.place();
+    return p;
+  }
+
+  /* ---------------- 日を選ぶ暦（小窓） ----------------
+
+     押したところに出る、一か月の暦。端末の日付欄（type="date"）は iPhone で
+     `showPicker()` に応えず、手で開くと画面が上へずれた（2026年10月2日・利用者の声
+     「期限をオンにしてもカレンダーは自動で開かない。手動で開くと画面が上にズレる」）。
+     欄に focus しないので、キーボードの扱いも画面のずれも起きない。週は月曜はじまり
+     （`WEEKDAY_COLS`）。日を押すと onPick(日付キー) で閉じる。 */
+  function popCalendar(anchor, { value, month, label = "日付", onPick, onClose } = {}) {
+    const U = KN.util;
+    const today = U.todayKey();
+    const sel = value || "";
+    let ym = (sel || month || today).slice(0, 7);
+    const p = popOver(anchor, { side: "left", label, cls: "is-cal", onClose });
+    const box = node(html`
+      <div class="pop-cal">
+        <div class="pop-cal-head">
+          <button type="button" class="icon-btn js-prev" aria-label="前の月">${icon("chevron-left")}</button>
+          <b class="js-ym" aria-live="polite"></b>
+          <button type="button" class="icon-btn js-next" aria-label="次の月">${icon("chevron")}</button>
+        </div>
+        <div class="pop-cal-grid js-grid" role="grid"></div>
+      </div>`);
+    const grid = box.querySelector(".js-grid");
+    const paint = () => {
+      const [y, m] = ym.split("-").map(Number);
+      box.querySelector(".js-ym").textContent = `${y}年${m}月`;
+      grid.innerHTML = "";
+      U.WEEKDAY_COLS.forEach((wd) => grid.append(node(html`<span class="pop-cal-wd">${U.WEEKDAYS[wd]}</span>`)));
+      const first = new Date(y, m - 1, 1);
+      const lead = (first.getDay() + 6) % 7;
+      for (let i = 0; i < lead; i++) grid.append(node(html`<span></span>`));
+      const n = new Date(y, m, 0).getDate();
+      for (let d = 1; d <= n; d++) {
+        const key = `${ym}-${String(d).padStart(2, "0")}`;
+        const b = node(html`
+          <button type="button" class="pop-cal-day ${key === today ? "is-today" : ""}"
+                  aria-pressed="${String(key === sel)}" data-day="${key}">${String(d)}</button>`);
+        b.addEventListener("click", () => { haptic(); p.close(); if (onPick) onPick(key); });
+        grid.append(b);
+      }
+    };
+    const step = (k) => {
+      const [y, m] = ym.split("-").map(Number);
+      const d = new Date(y, m - 1 + k, 1);
+      ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      paint();
+      p.place();
+    };
+    box.querySelector(".js-prev").addEventListener("click", () => step(-1));
+    box.querySelector(".js-next").addEventListener("click", () => step(1));
+    paint();
+    p.el.append(box);
+    p.place();
+    return p;
+  }
+
   /* ---------------- toast ---------------- */
 
   let toastTimer = null;
 
-  function toast(message, { action, duration = 3600 } = {}) {
+  /* 押せるもの（「元に戻す」ほか）が付くトーストは、既定で長めに出す——押しに
+     行くあいだに消えないように（roadmap-2.0 の V18。言葉は「元に戻す」に揃える）。 */
+  const TOAST_MS = 3600, TOAST_ACT_MS = 5000;
+
+  function toast(message, { action, actions, duration } = {}) {
     const root = toastRoot();
     root.innerHTML = "";
     clearTimeout(toastTimer);
+    /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
+    const acts = actions || (action ? [action] : []);
+    if (duration == null) duration = acts.length ? TOAST_ACT_MS : TOAST_MS;
 
     const el = node(html`
       <div class="toast">
         <span class="toast-msg">${message}</span>
-        ${action ? html`<button class="toast-action">${action.label}</button>` : ""}
+        ${acts.map((a) => html`<button class="toast-action">${a.label}</button>`)}
       </div>
     `);
 
-    if (action) {
-      el.querySelector(".toast-action").addEventListener("click", (e) => {
+    el.querySelectorAll(".toast-action").forEach((b, i) => {
+      b.addEventListener("click", (e) => {
         // Stop it reaching the tap-to-dismiss below: the action closes the
         // toast itself, and running both would be doing the same work twice.
         e.stopPropagation();
-        action.onClick();
+        acts[i].onClick(b);
         dismiss();
       });
-    }
+    });
 
     /* Tapped anywhere else: gone. It is an aside, not a question, and sitting
        out its 3.6 seconds to see the row underneath is a poor deal. */
@@ -729,14 +1439,17 @@
 
   /* ---------------- prompt ---------------- */
 
-  function prompt({ title, label, value = "", placeholder = "", okLabel = "保存", inputMode }) {
+  /* secret … 合言葉のように、伏せて打つもの。前後の空白も**そのまま**返します
+     （合言葉の空白を黙って削ると、合っているのに開かなくなります）。 */
+  function prompt({ title, label, value = "", placeholder = "", okLabel = "保存", inputMode, secret = false }) {
     return new Promise((resolve) => {
       let settled = false;
       const body = node(html`
         <label class="field">
           ${label ? html`<span class="field-label">${label}</span>` : ""}
           <input class="input js-input" value="${value}" placeholder="${placeholder}"
-                 ${inputMode ? KN.util.raw(`inputmode="${inputMode}"`) : ""}>
+                 ${inputMode ? KN.util.raw(`inputmode="${inputMode}"`) : ""}
+                 ${secret ? KN.util.raw(`type="password" autocomplete="off" autocapitalize="none" spellcheck="false"`) : ""}>
         </label>
       `);
       const foot = node(html`
@@ -754,7 +1467,7 @@
       const input = body.querySelector(".js-input");
       function submit() {
         settled = true;
-        resolve(input.value.trim());
+        resolve(secret ? input.value : input.value.trim());
         h.close();
       }
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
@@ -832,7 +1545,7 @@
    * @param {{activeId:string, onPick:Function}} opts
    */
   function chipRow(host, chips, { activeId, onPick }) {
-    const sig = chips.map((c) => `${c.id} ${c.label} ${c.count == null ? "" : c.count}`).join("|");
+    const sig = chips.map((c) => `${c.id}\u0000${c.label}\u0000${c.count == null ? "" : c.count}`).join("|");
     let row = host.querySelector(".chip-row");
 
     if (row && row.dataset.sig === sig) {
@@ -1075,7 +1788,8 @@
      出したままになります。探すものが無いくらい短い一覧なので、それで
      困りません。
 
-     @param els  { screen, searchBtn, searchWrap, search, searchClear }
+     @param els  { screen, searchBtn, searchWrap, search, searchClear, mine? }
+                 mine … 虫めがねを他の画面と分け合うとき、押されたのが自分の番か
      @param onChange  called after the query changes; repaint the list
      @param setQuery  hands the folded query back to the screen
   */
@@ -1156,6 +1870,7 @@
       setQuery("");
       onChange();
       paint();
+      if (KN.searchAll) KN.searchAll.hint(els);
     };
 
     /* 窓を置きっぱなしにしない設定のときは、ふだんは畳んでおきます。
@@ -1165,6 +1880,7 @@
       if (els.search.value || document.activeElement === els.search) return;
       els.searchWrap.hidden = true;
       els.searchWrap.style.opacity = "";
+      if (els.searchClear) els.searchClear.hidden = true;
       const stack = els.searchWrap.parentElement;
       if (stack) { stack.style.flexShrink = ""; stack.style.minHeight = ""; }
     };
@@ -1172,19 +1888,40 @@
       if (!els.searchWrap || !els.searchWrap.hidden) return;
       els.searchWrap.hidden = false;
       els.searchWrap.style.opacity = "";
+      paintClear();
     };
     tuck();
 
+    /* 出ているか。置きっぱなしの設定では、窓はいつも在るので「使っている
+       最中か」で見ます（裏へ送ったものは閉じている）。 */
+    const isOpen = () => {
+      if (!els.searchWrap) return false;
+      if (searchBarAlways()) return !!els.search.value || document.activeElement === els.search;
+      return !els.searchWrap.hidden;
+    };
+    /* 閉じる：字を消し、キーボードを下ろし、畳む（置きっぱなしなら裏へ送る）。 */
+    const close = () => {
+      if (els.search.value) clear();
+      els.search.blur();
+      if (searchBarAlways()) parkSearch(scroller, true);
+      else tuck();
+    };
+    /* ×は、字があれば消す・空なら閉じる。だから開いているあいだは出しておく。 */
+    const paintClear = () => {
+      const open = !els.searchWrap || !els.searchWrap.hidden;
+      els.searchClear.hidden = !(els.search.value || (open && !searchBarAlways()));
+      els.searchClear.setAttribute("aria-label", els.search.value ? "検索をクリア" : "探す窓を閉じる");
+    };
+
     els.searchBtn.addEventListener("click", () => {
-      const tucked = els.searchWrap && els.searchWrap.hidden;
-      const showing = !tucked && scroller && scroller.scrollTop < 2;
-      if (showing && (els.search.value || document.activeElement === els.search)) {
-        // 出ていて、使っている最中に押したら「やめる」。
-        clear();
-        els.search.blur();
-        if (searchBarAlways()) parkSearch(scroller, true);
-        else tuck();
-      } else {
+      /* 虫めがねが全タブで一つの帯に居る画面（やること・daily・ダイエット、
+         js/head.js）は、同じボタンに三つが結んでいます。応えるのは持ち主だけ。 */
+      if (els.mine && !els.mine()) return;
+      /* 出ているなら、押すと閉じる（2026年9月29日、実機で「消す方法がない」）。
+         前は「使っている最中（字が入っている・指が入っている）」だけ閉じて、
+         キーボードを下ろしたあとの空の窓は、押しても開き直すだけでした。 */
+      if (isOpen()) close();
+      else {
         untuck();
         revealSearch(scroller, els.search);
       }
@@ -1193,22 +1930,25 @@
 
     els.search.addEventListener("input", () => {
       // Folded, so 「え」 finds 「エマール」 — the same rule the suggestions use.
-      els.searchClear.hidden = !els.search.value;
+      paintClear();
       setQuery(KN.util.foldKana(els.search.value));
       onChange();
       paint();
+      /* ほかの場所にもあれば、窓の下に一行（R8・js/search-all.js）。
+         タブの中の絞り込みは、上の三行のまま。 */
+      if (KN.searchAll) KN.searchAll.hint(els);
     });
 
-    els.searchClear.addEventListener("click", () => { clear(); els.search.focus(); });
+    els.searchClear.addEventListener("click", () => {
+      if (els.search.value) { clear(); paintClear(); els.search.focus(); }
+      else close();
+    });
 
     /* 打ち終えて改行を押したら、キーボードだけ下ろします（絞り込みは
        残したまま——見に行くのはこれからなので）。 */
     els.search.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); els.search.blur(); }
-      if (e.key === "Escape") {
-        clear(); els.search.blur();
-        if (searchBarAlways()) parkSearch(scroller, true); else tuck();
-      }
+      if (e.key === "Escape") close();
     });
 
     /* 送られていくあいだ、薄くなっていきます。
@@ -1260,9 +2000,9 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    sheet, actionSheet, popOver, popMenu, popCalendar, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
-    burst, flipRows, parkSearch, revealSearch,
+    burst, flipRows, sendToDay, parkSearch, revealSearch,
   };
 })();

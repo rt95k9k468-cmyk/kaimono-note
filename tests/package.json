@@ -1,0 +1,12 @@
+{
+  "name": "kurashi-tests",
+  "private": true,
+  "description": "くらしノートの試験（tests/README.md）。サイトには載らない。",
+  "scripts": {
+    "test": "node run-all.js",
+    "gate": "node run-all.js --gate"
+  },
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

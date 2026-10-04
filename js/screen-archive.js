@@ -29,6 +29,35 @@
   const { html, node, icon } = U;
   const store = KN.store;
 
+  /* 日記の本文を、いま読める・書けるか（js/diary-idb.js の body()）。
+     "loading" は開いた直後の一瞬（写しとの突き合わせの途中）で、本文を
+     書かせない・書き出させない。"off" は大きな保存場所を読めなかった日で、
+     本文だけ「読めません」と出して書かせない（docs/storage.md）。 */
+  const diaryBody = () => (KN.diaryIdb ? KN.diaryIdb.body() : "ok");
+  const UNREAD = "読めません";
+  const MISSING = "本文が見つかりません";
+  /** 本文を元から外した行（store.memoOut。docs/storage.md の「段2の案」）の、
+      本文の欄に出す字。印の行でなければ null。印の行は本文のある日です
+      ——写しから戻る前は「読み込み中」、写しにも無ければ「本文が見つかりません」。 */
+  function outText(d) {
+    if (!store.memoOut(d)) return null;
+    const b = diaryBody();
+    return b === "loading" ? "読み込み中" : b === "off" ? UNREAD : MISSING;
+  }
+  /** 本文に触る操作の前に。できないときは理由を言って true を返します。 */
+  function bodyBlocked() {
+    const b = diaryBody();
+    if (b === "ok") return false;
+    if (b === "loading") {
+      KN.ui.toast("日記を読み込んでいるところです");
+    } else {
+      const again = KN.diaryIdb.retry();
+      KN.ui.toast(again ? "日記の保存場所を、もう一度読みにいっています"
+        : "日記の本文を読めません");
+    }
+    return true;
+  }
+
   let root = null;
   /* 暦の厚みを測り直す。mount が中身を入れます（render から呼びます）。 */
   let fitCalH = () => {};
@@ -60,6 +89,22 @@
   const focusDay = () => viewDay || (isThisMonth() ? U.todayKey() : `${curYm()}-01`);
   /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
   const oneDayLog = () => S().dailyScope !== "month";
+
+  /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
+  const writeDay = () => (viewDay && viewDay <= U.todayKey() ? viewDay : U.todayKey());
+
+  /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
+     席を移るとき app.js の show() が置いていきます）。月もその日へ。 */
+  let dayVer = 0;
+  function takeSharedDay() {
+    const t = U.dayShare.take(dayVer);
+    dayVer = t.ver;
+    if (!t.day || t.day === focusDay()) return;
+    const today = U.todayKey();
+    viewDay = t.day === today ? null : t.day;
+    const ym = t.day.slice(0, 7);
+    viewMonth = ym === ymOf(new Date()) ? null : ym;
+  }
 
   /** クリップボードへ。断られたら false を返します（例外は投げません）。 */
   function copyText(text) {
@@ -181,7 +226,7 @@
     /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
        右の「›」の傾きも、隣の週の濃さも、これを見て決まります。指で
        引いているあいだは、この数が指について動きます（やることと同じ）。 */
-    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    if (root) KN.util.setVar(root, "--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません——開いているかどうかは、題の右の「›」が
        回ることで言います（paintDayTitle）。 */
@@ -216,7 +261,8 @@
       題だけ月を言うと**紙と題が違うことを言います**。日を選んでいない
       ときに紙が出しているのは focusDay()——そこを、そのまま題にします。 */
   function paintDayTitle() {
-    if (!els.dayRow || !els.dayRow.isConnected) return;
+    // 帯は全タブで一つ。持ち主でないときに塗ると、よそのタブの題を上書きします。
+    if (!els.dayRow || !mine()) return;
     KN.util.paintDayTitleInto(els.dayRow, focusDay(), "押すと月を選ぶ");
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
   }
@@ -281,7 +327,7 @@
       画面なので）。行けないなら null——払っても重くなるだけです。 */
   function stepWeek(delta) {
     const next = U.shiftDay(focusDay(), delta * 7);
-    return next > U.todayKey() ? null : next;
+    return next > U.todayKey() && delta > 0 ? null : next;
   }
 
   /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
@@ -302,7 +348,7 @@
   function goMonth(delta, quiet) {
     const m = shownMonth();
     const d = new Date(m.year, m.month + delta, 1);
-    if (ymOf(d) > ymOf(new Date())) return false;   // 先の月には行きません
+    if (delta > 0 && ymOf(d) > ymOf(new Date())) return false;   // 先の月には行きません（戻るのはよい）
     if (!quiet) KN.motion.fire("select");
     viewMonth = ymOf(d) === ymOf(new Date()) ? null : ymOf(d);
     viewDay = null;
@@ -403,7 +449,9 @@
     const d = U.dayDate(key);
     if (!d) return null;
     const next = U.dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + dir));
-    return next > U.todayKey() ? null : next;
+    /* 先へは進めません。ただし、やることから未来の日を持ち込まれたときに
+       今日へ戻る道は要るので、戻る向きは通します（docs/shared-header.md）。 */
+    return next > U.todayKey() && dir > 0 ? null : next;
   }
 
   /** その日へ移ります（暦の月も、その日を含む月へ連れていきます）。
@@ -411,6 +459,7 @@
       `opts.keep` は「紙はもうそこに居るので、組み直さなくてよい」の合図です
       （横に払って着いたとき）。そのときは紙の**外**だけを塗ります。 */
   function goDayTo(key, opts) {
+    const was = focusDay();
     const ym = key.slice(0, 7);
     viewMonth = ym === ymOf(new Date()) ? null : ym;
     viewDay = key === U.todayKey() ? null : key;
@@ -427,14 +476,19 @@
       els.cal.querySelectorAll(".cal-day.is-here")
         .forEach((c) => c.classList.remove("is-here"));
       if (cell) cell.classList.add("is-here");
-      if (grid) moveRing(grid, cell);
+      /* 週をまたいだら、週の帯を送った向きから滑り込ませ、輪は滑らせずに
+         置き直します（やることの commit と同じ）。 */
+      const crossed = U.otherWeek(was, here);
+      if (crossed) U.slideWeek(els.cal, here > was ? 1 : -1);
+      if (grid) moveRing(grid, cell, crossed);
     }
   }
 
-  function wireDaySwipe(viewport, track) {
+  function wireDaySwipe(viewport, track, surface) {
     KN.daySwipe.wire({
       viewport,
       track,
+      surface,
       day: focusDay,
       step: stepDay,
       slide: daySlide,
@@ -581,7 +635,9 @@
       isOpen: calOpen,
       isShown: calShown,
       // 暦をしまっていても引けます（そこから週へ戻す道がここなので）。
-      enabled: () => true,
+      /* ただし、紙がノートへ下がって留まっているあいだは引きません——その
+         ときの掴み手は daily へ戻る道（app.js の wireFaceGrip）なので。 */
+      enabled: () => !KN.app.faceAt("archive"),
       /* 暦を横に払っている最中は、この指は向こうのものです（cal-swipe が
          生きている盤を運んでいるので、ここで高さまで書くと二つが同じ
          ものを取り合います）。 */
@@ -614,7 +670,47 @@
      出すのは一日ぶん、一枚だけ。並べると流れになり、流れは読み飛ばすもの
      になります。選び方は store.archiveThen にあります。 */
 
+  /* 同じ日の年々（R9）。同じ月日の記録が二年以上あるときだけ、紙の10年日記
+     のように年ごとに一行ずつ（遠い年から）。記録の無い年は行ごと出しません
+     ——空いた年を置くと、書かなかった年の一覧になります。年の数も言いません。
+     一行ずつ押せて、その日へ行きます（だから枠はボタンではなく、行がボタン）。 */
+  function yearsCard(years) {
+    const dt = U.dayDate(years[0].date);
+    const md = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日` : "";
+    const rowText = (y) => {
+      if (y.memo) return diaryBody() === "off" ? null : y.memo;
+      const shown = y.entries.slice(0, 2).map((e) => e.title || store.archiveType(e.type).label);
+      return shown.join("・") + (y.entries.length > shown.length ? "　ほかにも" : "");
+    };
+    const sec = node(html`
+      <div class="card arc-then is-years">
+        <span class="arc-then-head">
+          <span class="arc-then-ico">${icon("clock", "is-sub")}</span>
+          <b>あの日</b>
+          <i class="arc-then-when">${md}の年々</i>
+        </span>
+        ${U.raw(years.map((y) => {
+          const t = rowText(y);
+          const yr = String(y.date).slice(0, 4);
+          return `<button type="button" class="arc-year" data-day="${U.escapeHtml(y.date)}">`
+            + `<span class="arc-year-y">${yr}年<small>${U.escapeHtml(U.weekdayJa(y.date))}</small></span>`
+            + (t == null
+              ? `<span class="arc-year-text is-blank">${UNREAD}</span>`
+              : `<span class="arc-year-text">${U.escapeHtml(t)}</span>`)
+            + `</button>`;
+        }).join(""))}
+      </div>
+    `);
+    sec.querySelectorAll(".arc-year").forEach((b) => b.addEventListener("click", () => {
+      KN.motion.fire("select");
+      goToDay(b.dataset.day);
+    }));
+    return sec;
+  }
+
   function thenCard() {
+    const years = store.archiveYears();
+    if (years) return yearsCard(years);
     const then = store.archiveThen();
     if (!then) return null;             // 無ければ、何も置かない
 
@@ -635,7 +731,9 @@
           ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
         </span>
         <span class="arc-then-date">${when}</span>
-        ${then.memo ? html`<span class="arc-then-memo">${then.memo}</span>` : ""}
+        ${!then.memo ? "" : diaryBody() === "off"
+          ? html`<span class="arc-then-memo is-blank">${UNREAD}</span>`
+          : html`<span class="arc-then-memo">${then.memo}</span>`}
         ${shown.length ? html`
           <span class="arc-then-rows">
             ${U.raw(shown.map((e) => {
@@ -694,7 +792,8 @@
        四つ並びました——「20 日　—　起床 - ・ 就寝 -　作成 -」。
        決めごとは「書いていない日は、起床・就寝も帳簿も出さない」なので、
        **有無ではなく中身で見分けること。** */
-    const blank = (d) => !String(d.memo || "").trim() && !d.wake && !d.sleep;
+    // 本文を外した行（印）は、本文のある日です。
+    const blank = (d) => !String(d.memo || "").trim() && !d.wake && !d.sleep && !store.memoOut(d);
     const days = (only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine)
       .map((d) => (d.isBlank || blank(d)) ? Object.assign({}, d, { isBlank: true }) : d);
     const sec = node(html`
@@ -715,12 +814,19 @@
               ${icon("copy")}
             </button>` : ""}
         </header>
+        ${/* 季節のひとこと（R2）。その日の二十四節気と七十二候を、日付の行の
+              すぐ上に小さく一行。一日ぶんのときだけ——月ぜんぶでは「どの日の」が
+              一つに決まらないので。色は変えず、字を一行足すだけ。数えも比べも
+              しない、ただの暦の言葉です（daily は評価しない）。 */
+            only && S().showSeason !== false && KN.season ? html`
+          <p class="arc-season">${KN.season.rows(only).map(([k, v, span]) => html`<span class="arc-season-row"><span class="arc-season-k">${k}</span>${v}<span class="arc-season-span">${span}</span></span>`)}</p>` : ""}
         <div class="arc-log-body"></div>
       </section>
     `);
     const body = sec.querySelector(".arc-log-body");
     const copyBtn = sec.querySelector(".js-log-copy");
     if (copyBtn) copyBtn.addEventListener("click", () => {
+      if (bodyBlocked()) return;   // 写しから戻るはずの本文が、まだ入っていないことがある
       copyText(dailyCopyText(only)).then((ok) => {
         KN.motion.fire("select");
         KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
@@ -730,9 +836,14 @@
     if (!days.length) {
       body.append(node(html`<p class="arc-log-empty">-</p>`));
     }
+    /* 大きな保存場所を読めなかった日は、本文の欄だけ「読めません」。書いて
+       いない日も同じ字にします——元から本文を外したあと（次の段）は、どの日に
+       書いてあったかも分からないので、いまからその形に揃えておきます。 */
+    const unread = diaryBody() === "off";
     days.forEach((d) => {
       const dt = U.dayDate(d.date);
       const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+      const out = unread ? null : outText(d);
       /* **button ではなく div です。** iOS も含め、button の中の字は選べません
          （長押しは「押しっぱなし」として扱われ、選択もコピーの吹き出しも
          出ません）。ここに出ているのはその日に書いた文そのものなので、
@@ -746,8 +857,15 @@
             <i>${dt ? U.weekdayJa(d.date) : ""}</i>
           </span>
           <span class="arc-log-text">
-            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank ? "is-blank" : ""}"
-                  >${d.isBlank ? "—" : orDash(d.memo)}</span>
+            ${/* 何も書いていない日の一行は、**押せば書けることを言います**。
+                  「—」だけでは押せる行だと伝わらず、日記のいちばん大事な入口が
+                  横棒一本になっていました（docs/improvements.md の B8）。
+                  言うのは一日ぶんを出しているときだけ——月ぜんぶを並べると、
+                  書いていない日ごとに同じ字が並んで「書かなかった日」の一覧に
+                  見えるので、そちらは「—」のまま。色は薄い字（`.is-blank`）の
+                  まま、責める色は当てません（daily は評価しない）。 */""}
+            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
+                  >${unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
@@ -895,7 +1013,6 @@
     return node(html`
       <section class="card arc-counts">
         <h3 class="arc-counts-head">${month + 1}月のまとめ</h3>
-        <p class="arc-counts-days">記録のある日 <b>${d.daysWith.length}</b> 日</p>
         ${bits.length ? html`
           <ul class="arc-counts-list">
             ${bits.map((b) => html`
@@ -927,20 +1044,38 @@
   }
 
   function openLogSheet(day) {
+    /* 開いた直後（写しとの突き合わせの途中）は開きません。大きな保存場所を
+       読めなかった日は、本文の欄を出さずに開きます——起きた・寝たは本文では
+       ないので、書けます（本文だけ「読めません」）。 */
+    const can = diaryBody();
+    if (can === "loading") { bodyBlocked(); return; }
+    if (can !== "ok") KN.diaryIdb.retry();
     const cur = store.dayLog(day) || {};
+    /* 本文を元から外した行（印）で、写しにも本文が無い日も、本文の欄を出し
+       ません。書かせると、どこかに残っているかもしれない本文の上に書くことに
+       なるので（印の行は上書きしない。store.setDayLog も本文を受け取りません）。 */
+    const missing = can === "ok" && store.memoOut(cur);
+    const readable = can === "ok" && !missing;
     const dt = U.dayDate(day);
-    const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日（${U.weekdayJa(day)}）` : day;
-    const memoInit = (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
+    const label = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日(${U.weekdayJa(day)})` : day;
+    const memoInit = !readable ? "" : (cur.memo || "").trim() ? cur.memo : dailyStamp(day);
 
     /* 文字数の上限は置きません。前は200字で止めて残りを数えていましたが、
        書ける量をこちらが決める理由がありません——短く書きたい人は短く書きます。
        数えるのをやめると、書いている最中に「あと何字」が目に入らなくなります。 */
     const body = node(html`
       <div class="stack" style="gap:16px">
+        ${readable ? html`
         <label class="field">
           <span class="field-label">その日あったこと・したこと</span>
           <textarea class="textarea js-memo" rows="5">${memoInit}</textarea>
-        </label>
+        </label>` : html`
+        <div class="field">
+          <span class="field-label">その日あったこと・したこと</span>
+          <p class="field-hint js-memo-unread">${missing
+            ? `${MISSING}（バックアップから戻せることがあります）`
+            : UNREAD}</p>
+        </div>`}
         <div class="arc-times">
           <label class="field">
             <span class="field-label">起きた</span>
@@ -951,8 +1086,27 @@
             <input type="time" class="input js-sleep" value="${cur.sleep || ""}">
           </label>
         </div>
+        <div class="arc-quiet">
+          <button type="button" class="btn btn-ghost btn-sm js-quiet"></button>
+        </div>
       </div>
     `);
+
+    /* 出さない日（R9）。この日を「あの日」「同じ日の年々」に出さない印。
+       記録は消えません——暦から来れば、いつでも読めます。押したらすぐ効きます。 */
+    const quietBtn = body.querySelector(".js-quiet");
+    const paintQuiet = () => {
+      const q = store.isQuietDay(day);
+      quietBtn.textContent = q ? "「あの日」にまた出す" : "この日を「あの日」に出さない";
+      quietBtn.setAttribute("aria-pressed", String(q));
+    };
+    paintQuiet();
+    quietBtn.addEventListener("click", () => {
+      store.setQuietDay(day, !store.isQuietDay(day));
+      KN.motion.fire("select");
+      paintQuiet();
+      render();
+    });
 
     const memo = body.querySelector(".js-memo");
     const wakeEl = body.querySelector(".js-wake");
@@ -967,18 +1121,26 @@
        しておけば、何も打たずに閉じたときは「変わっていない」扱いになり
        ます——空の日を覗いただけで記録ができてしまうのを防ぎます。 */
     let last = JSON.stringify([memoInit, cur.wake || "", cur.sleep || ""]);
+    /* 下書き（日付とカウントダウン）は、**本文に触れたときだけ**残します。
+       保存は本文・起床・就寝をまとめて比べて走るので、前は起きた・寝た
+       時刻だけを入れても、下書きの日付だけの本文が残り、自分で書いた
+       本文と見分けがつきませんでした。触れていなければ、本文は元のまま。 */
+    const drafted = memoInit !== (cur.memo || "");
+    let touched = false;
+    if (memo) memo.addEventListener("input", () => { touched = true; });
+    const memoOut = () => (drafted && !touched ? (cur.memo || "") : memo.value);
     const save = () => {
       clearTimeout(timer); timer = 0;
-      const now = JSON.stringify([memo.value, wakeEl.value, sleepEl.value]);
+      const now = JSON.stringify([memo ? memo.value : "", wakeEl.value, sleepEl.value]);
       if (now === last) return;
       last = now;
-      store.setDayLog(day, {
-        memo: memo.value, wake: wakeEl.value || null, sleep: sleepEl.value || null,
-      });
+      const times = { wake: wakeEl.value || null, sleep: sleepEl.value || null };
+      // 本文の欄が無い（読めない日）ときは、本文を渡しません——元の本文はそのまま。
+      store.setDayLog(day, memo ? Object.assign({ memo: memoOut() }, times) : times);
       render();
     };
     const queue = () => { clearTimeout(timer); timer = setTimeout(save, 500); };
-    [memo, wakeEl, sleepEl].forEach((el) => {
+    [memo, wakeEl, sleepEl].filter(Boolean).forEach((el) => {
       el.addEventListener("input", queue);
       el.addEventListener("change", save);
       el.addEventListener("blur", save);
@@ -1003,6 +1165,7 @@
        置くと、続きを書こうとした人が毎回いちばん下まで指で送ることに
        なります（日記は足していくものなので、書き足す場所はいつも末尾
        です）。 */
+    if (!memo) return;
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* time 欄などでは投げます */ }
     memo.scrollTop = memo.scrollHeight;
@@ -1012,12 +1175,20 @@
      ④積み上げ項目 — 読書・学習・種・達成・変化
      ================================================================ */
 
+  /* **月ぜんぶを常に出します**（その日だけに絞りません）。日を送っている
+     最中の一枚（`daySlide`）は、ここが読む `ym` だけを頼りに組みます——
+     外側の `viewDay` を読むと、前の日から今日へ払って戻ったときに
+     ちょうど今日の紙を組んでいる瞬間はまだ「前の日」のままで、前の日に
+     積み上げが無ければ、そのまま「まだ記録はありません」が今日の紙に
+     焼き付いて残っていました（払いきった紙は組み直さないので、次に
+     全体を組み直すまでそのままでした）。月で読めば `ym` は毎回その紙の
+     ものなので、この揺れが起きません。未来の日を持ち込まれたときも、
+     同じ月ぶんが出ます——その日だけを見せると、月に入っている積み上げが
+     急に消えて見えるので。 */
   function visibleEntries(ym) {
     let list;
     if (query.trim()) {
       list = store.searchEntries(query);
-    } else if (viewDay) {
-      list = store.entriesOfDay(viewDay);
     } else {
       list = store.entriesOfMonth(ym);
     }
@@ -1072,7 +1243,9 @@
           <span class="arc-main">
             <span class="arc-title">${e.title || t.label}</span>
             <span class="arc-sub">${U.raw(subBits.map((b) => `<span>${U.escapeHtml ? U.escapeHtml(b) : b}</span>`).join(""))}</span>
-            <span class="arc-memo">${e.memo ? e.memo : "-"}</span>
+            ${/* メモの無い積み上げには、段ごと出しません（R27）。前は「-」が一つ
+                  置かれていて、書かなかったことを指さす印に見えました。 */""}
+            ${e.memo ? html`<span class="arc-memo ${S().entryFull === false ? "is-clamped" : ""}">${e.memo}</span>` : ""}
           </span>
         </button>
       </div>
@@ -1188,11 +1361,11 @@
     let titleAuto = false, authorAuto = false;
 
     const body = node(html`
-      <div class="stack" style="gap:16px">
+      <div class="stack" style="gap:10px">
         <div class="arc-pick js-pick"></div>
 
         <div class="js-reading-fields" hidden>
-          <div class="stack" style="gap:16px">
+          <div class="stack" style="gap:10px">
             <div class="arc-kind js-kind"></div>
             <label class="field">
               <span class="field-label">名前</span>
@@ -1212,7 +1385,7 @@
               </div>
               <div class="js-author-ac"></div>
             </label>
-            <div class="arc-times">
+            <div class="arc-pages">
               <label class="field">
                 <span class="field-label">開始ページ</span>
                 <input type="number" inputmode="numeric" class="input js-pagefrom"
@@ -1223,13 +1396,13 @@
                 <input type="number" inputmode="numeric" class="input js-pageto"
                        value="${e && e.pageTo != null ? e.pageTo : ""}">
               </label>
+              <p class="arc-pages-hint js-pages-calc">-</p>
             </div>
-            <p class="arc-pages-hint js-pages-calc">-</p>
           </div>
         </div>
 
         <div class="js-generic-fields">
-          <div class="stack" style="gap:16px">
+          <div class="stack" style="gap:10px">
             ${/* 種だけは、タイトル・数・単位を持ちません。種はメモそのものが
                   記録で、日付とメモの二つだけで足ります。数を測るものでは
                   ないので、単位も要りません。 */""}
@@ -1260,7 +1433,7 @@
 
         <label class="field">
           <span class="field-label">メモ</span>
-          <textarea class="textarea js-memo" rows="4">${e ? e.memo : ""}</textarea>
+          <textarea class="textarea js-memo" rows="2">${e ? e.memo : ""}</textarea>
         </label>
       </div>
     `);
@@ -1372,11 +1545,35 @@
     };
     paintKind();
 
-    /* 種類の札。読書だけ専用の欄に切り替わります。 */
+    /* 種類の札。読書だけ専用の欄に切り替わります。
+
+       新しく書くときだけ、並びの先頭に**日記**の札を置きます（＋が記録の紙を
+       先に開くので、日記への入口はここ）。種類とは別の行き先なので、同じ
+       大きさで並べると埋もれる——一回り大きく、主色の字で、区切りの余白を
+       あけて先頭に。押すと紙を閉じて（書きかけがあれば、ほかの閉じ方と
+       同じく保存を試みて）、その日の日記を開きます。 */
     const pick = body.querySelector(".js-pick");
+    let toDiary = false;
     const paintPick = () => {
       pick.innerHTML = "";
-      store.ARCHIVE_TYPES.forEach((t) => {
+      if (!e) {
+        const d = node(html`
+          <button type="button" class="arc-pick-diary js-to-diary">
+            ${icon("edit", "is-sub")}<span>日記</span>
+          </button>
+        `);
+        d.addEventListener("click", () => {
+          KN.motion.fire("select");
+          toDiary = true;
+          h.tryClose();
+          setTimeout(() => { toDiary = false; }, 400);
+        });
+        pick.append(d);
+      }
+      /* 「変化」は書く札から外した（2026年10月2日・利用者の希望。札が一段減る）。種類そのもの
+         と書いた記録は残す——store の ARCHIVE_TYPES から消すと、読み直しで「達成」に化ける。
+         変化の記録を直すときだけ札を出す。 */
+      store.ARCHIVE_TYPES.filter((t) => t.id !== "change" || (e && e.type === "change")).forEach((t) => {
         const b = node(html`
           <button type="button" class="arc-pick-b ${t.id === type ? "is-on" : ""}"
                   style="--arc-c:${t.color}" data-t="${t.id}">
@@ -1408,7 +1605,8 @@
       </div>
     `);
 
-    const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true });
+    const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
+      onClose: () => { if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); } } });
 
     footer.querySelector(".js-ok").addEventListener("click", () => {
       const isReading = type === "reading";
@@ -1462,9 +1660,10 @@
         title: "この記録を消しますか", message: e.title, okLabel: "消す", danger: true,
       });
       if (!ok) return;
-      store.removeEntry(e.id);
+      const undo = store.removeEntry(e.id);
       h.close();
       render();
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -1472,33 +1671,19 @@
      画面
      ================================================================ */
 
+  /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
+  function mine() { return KN.head.mine("archive"); }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
+    /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+       一つの帯（js/head.js）に居ます（docs/shared-header.md）。題は、いま
+       見ている**日**（やること・ダイエットと同じひと組を KN.util から）。
+       押すと月を選ぶ紙が開く——応えだけが、この画面のもの。ここに残るのは
+       帯より下：探す窓（暦の下に開く）と紙。 */
     root.append(node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 題は、いま見ている**日**。やること・ダイエットと同じひと組を
-                  KN.util から借ります——年は差し色、日にちの数は今日のときだけ
-                  差し色、右に「›」。押すと月を選ぶ紙が開きます。
-                  月と年を別に出す見出しの行（「8月 2026」）と「週」の札は、
-                  この題に吸収されて消えました。
-
-                  「日を選んでいなければ 8月 まで」という書き方をしていました
-                  ——月ぜんぶを縦に並べていたころの名残です。Daily Log が
-                  一日ぶんになったいま、紙に出ているのはその**日**なので、
-                  題も日まで言います（言わないと、紙と題が別のことを言う）。 */""}
-            ${KN.util.dayTitleBar()}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）・
-                  暦の出し入れ・月の書き出しは、たまにしか使いません。たまに
-                  使うものは設定の中へ。右上に居るのは「どの画面でも同じ
-                  二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="文字でさがす">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
         <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
@@ -1513,50 +1698,40 @@
       </div>
     `));
 
+    const head = KN.head.els;
     els = {
       body: root.querySelector(".js-body"),
       screen: root,
-      topbar: root.querySelector(".topbar"),
-      dayRow: root.querySelector(".topbar-dayrow"),
-      dayTitle: root.querySelector(".js-day-title"),
-      searchBtn: root.querySelector(".js-search-btn"),
+      dayRow: head.dayRow,
+      dayTitle: head.dayTitle,
+      searchBtn: head.searchBtn,
       searchWrap: root.querySelector(".js-search-wrap"),
       search: root.querySelector(".js-search"),
       searchClear: root.querySelector(".js-search-clear"),
+      mine,
     };
 
     /* ほかの三画面とまったく同じ配線です。バーは題の裏に隠してあって、
        少し下へ引くと出てきます（ui.js の parkSearch）。 */
     KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
-    root.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
 
     /* 題を押すと、暦が月ぜんぶに開きます（やることの「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
        ——暦は描き直されますが、バーは残るので。 */
     els.dayTitle.addEventListener("click", () => {
+      if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
       openMonthPicker();
     });
 
     /* 題の右の「今日へ戻る」。今日を見ているあいだは `paintDayTitleInto` が
        押せなくしているので、ここで日を見る必要はありません。 */
-    root.querySelector(".js-go-today").addEventListener("click", () => {
+    head.today.addEventListener("click", () => {
+      if (!mine()) return;
       KN.motion.fire("select");
       goDayTo(U.todayKey());
     });
 
-
-    /* ずっと見えている暦は、上のバーのすぐ下に貼りつきます。バーの高さは
-       ノッチの深さで変わるので、実測して渡します——CSSに数字を焼き込むと、
-       機種が変わった日にずれます（やることと同じ）。 */
-    const fitCal = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitCal();
-    window.addEventListener("resize", fitCal);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
 
     /* 暦の厚み。**掴み手はこのぶんだけ下に貼りつきます**——暦もバーも
        sticky で上に居るので、数えないと掴み手がその裏へ潜ります
@@ -1567,7 +1742,8 @@
        ResizeObserver が鳴ると、輪になります。 */
     let calRO = null, calSeen = null, calH = -1;
     fitCalH = () => {
-      const c = root.querySelector(".cal");
+      /* 暦は帯（画面の外）に居るので、根っこから探さずに持っている一枚を。 */
+      const c = els.cal;
       /* **引いているあいだは測りません。** 紙を引くと暦は月ぜんぶの姿で
          留められる（cal-peek の begin）ので、そのまま測ると床が月の高さに
          なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
@@ -1585,12 +1761,9 @@
     fitCalH();
     window.addEventListener("resize", () => fitCalH());
 
-    const sc0 = KN.app.scrollerOf(root);
-    sc0.addEventListener("scroll", () => {
-      const stuck = sc0.scrollTop > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
-    }, { passive: true });
+    /* 帯と暦の「貼りついた」印（is-stuck・境目の線）は、もう付けません。
+       帯は画面の外に居て送られないので——付けると、全タブで一つの帯が
+       タブごとに違う顔をします（screen-todo.js と同じ）。 */
 
     /* 題の右にあった暦ボタンは外しました。紙の掴み手を上へ押せば暦は
        消え、下へ引けば戻ります（js/cal-peek.js の三段）。設定の daily にも
@@ -1647,6 +1820,10 @@
     if (digest && S().digestPos !== "top") logBlock.append(digest);
     if (S().dailyOrder === "entries") el.append(entries, logBlock);
     else el.append(logBlock, entries);
+    /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
+       日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
+       その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
+    if (day > U.todayKey()) { el.inert = true; el.classList.add("is-ahead"); }
     return el;
   }
 
@@ -1656,6 +1833,7 @@
        します）。指の下で紙が組み直されると、掴んでいたものが別の絵に
        なります。 */
     if (swiping) return;
+    takeSharedDay();
     const ym = curYm();
 
     /* 組み直すと、画面はいちばん上に戻ります。絞り込みや並び替えを押した人は
@@ -1674,7 +1852,9 @@
     els.searchClear.hidden = !els.search.value;
     els.body.innerHTML = "";
 
-    els.body.append(els.cal);
+    /* 暦は帯（画面の外、全タブで一つ）に置きます。印（粒）はこの画面のもの
+       ——daily に他のタブの印を出さないこと（tests/daily-rules.js）。 */
+    KN.head.putCal("archive", els.cal);
     fillCalendar(els.cal);
 
     /* 暦から下は、**白い紙**の上に乗ります（やることと同じ組み）。角の丸い
@@ -1693,6 +1873,10 @@
        そのまま譲ります。 */
     const grip = sheet.querySelector(".tl-grip");
     if (grip) grip.setAttribute("data-pull-own", "cal");
+    /* 掴み手は二役です（買うものと同じ）。紙が上に居るあいだは暦を開くもの、
+       ノートへ下がって留まっているあいだは daily へ戻る道（app.js）。紙は
+       組み直すたびに作り直すので、そのたびに結びます。 */
+    if (grip) KN.app.wireFaceGrip(grip);
 
     /* 中身は、横に払える一枚（.day-slide）にまとめて入れます。払っている
        あいだ、隣の日の紙が指のぶんだけ入ってきます。 */
@@ -1700,7 +1884,8 @@
     const track = car.querySelector(".day-track");
     track.append(daySlide(focusDay()));
     sheet.append(car);
-    wireDaySwipe(car, track);
+    /* 指を受けるのは紙ぜんぶ（中身の下の空白からも払えるように）。 */
+    wireDaySwipe(car, track, sheet);
 
     if (keepTop) keepScroller.scrollTop = keepTop;
     rendering = false;
@@ -1717,6 +1902,7 @@
    * 言葉にしてもらうときに、そのまま渡せる形にしてあります。
    */
   function exportThisMonth() {
+    if (bodyBlocked()) return;   // 月の書き出しには日記の本文が入るので
     const ym = curYm();
     const data = store.exportMonth(ym);
     const text = JSON.stringify(data, null, 2);
@@ -1732,22 +1918,19 @@
     KN.ui.toast(`${ym} を書き出しました`);
   }
 
-  /* ＋ は二つのことを始められます（その日のことを書く／積み上げを一つ足す）。
-     どちらかに決め打ちすると、もう片方は画面のどこかを探すことになるので、
-     押したその場に二つ並べます。 */
+  /* ＋ は、まず**記録の紙**を開きます（2026年9月28日）。前は押すと「Daily Log／
+     記録」の二択が出て、どちらかを選ぶ一手が毎回はさまっていた。＋で書きたく
+     なるのはたいてい記録のほうなので、そちらを先に開き、日記は紙の頭の札
+     （種類の札の並びの先頭、ほかより一回り大きい一枚）から一押しで移れます。 */
   function dockButton() {
     const fab = node(html`
       <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="書く" aria-haspopup="menu">${icon("plus")}</button>
+        <button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button>
       </div>
     `);
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
-      KN.app.fabMenu(e.currentTarget, [
-        { label: "Daily Log", icon: "edit",
-          onPick: () => openLogSheet(viewDay || U.todayKey()) },
-        { label: "記録", icon: "book", onPick: () => openEntrySheet(null) },
-      ]);
+      openEntrySheet(null);
     });
     return fab;
   }
@@ -1773,5 +1956,6 @@
     if (KN.healthRelay) KN.healthRelay.pullNow();
   }
 
-  KN.screens.archive = { mount, render, dockButton, onEnter };
+  /* `cal` はノート（daily の裏）が帯に同じ暦を置くため（js/screen-notes.js）。 */
+  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay(), cal: () => els.cal };
 })();

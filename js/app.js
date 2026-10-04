@@ -35,10 +35,16 @@
      ——毎日そこへ「行く」ものではなく、何かを直したいときに開くもの。
      各タブの右上の歯車へ戻して、席は daily に譲ります。 */
   const TABS = [
-    { id: "archive", label: "daily", icon: "book" },
+    /* **ノートも daily の裏です**（docs/notes.md）。価格と同じく、daily に居て
+       この席を押すと紙が下がって後ろのノートが出ます。`names` は「出ている
+       あいだ、席がその面の名前と絵を名乗る画面」——ノートの面には札も題の
+       入れ替わりも無いので、帯が言わないと、いまどこに居るかを言うものが
+       ありません（価格は札の帯が言うので、席は shopping のまま）。 */
+    { id: "archive", holds: ["notes"], names: ["notes"], label: "daily", icon: "book" },
     { id: "todo", label: "tasks", icon: "checklist" },
     /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
-       そこへは掴み手を下げて行きます。だから帯には席を持たず、価格を見て
+       そこへは、買うものに居るところでこの席を押して、紙を下げて行きます
+       （2026年9月28日まで掴み手を引いていた。いまの掴み手は暦のもの）。だから帯には席を持たず、価格を見て
        いるあいだも帯が言うのは「買うもの」——いま居るのは買うもののタブで、
        その紙を下げているだけなので。`holds` は「この席が受け持つ画面」。 */
     { id: "list", holds: ["prices"], label: "shopping", icon: "cart" },
@@ -54,6 +60,7 @@
     archive:  { label: "daily",    icon: "book" },
     list:     { label: "shopping", icon: "cart" },
     prices:   { label: "prices",   icon: "tag" },
+    notes:    { label: "notes",    icon: "notes" },
     diet:     { label: "health",   icon: "heart" },
     /* 席の名前は英語で通します。ここだけ「設定」で、設定の画面では
        「shopping」の下に「一般」が並ぶ——**同じ系列の中で、そこだけ
@@ -76,12 +83,10 @@
   let goingBack = false;
   const HOME_OF_DRAWER = "list";
 
-  /* 立ち上げたときは daily を出します。やること・買うものは「用がある
-     ときに開く」画面ですが、daily は開いてはじめて書くもので、開かなければ
-     書かれないままになるので。
-
-     daily は帯の一つめになったので、ここはそのまま帯の左端です。 */
-  const HOME = "archive";
+  /* 立ち上げたときは tasks を出します。daily は鍵（js/lock.js）がかかるので、
+     daily から始めると、開くたびに Face ID が出てしまうため（2026年10月3日）。
+     daily は帯の一つめのまま、左端の席を押せば開きます。 */
+  const HOME = "todo";
 
   let active = HOME;
   const mounted = new Set();
@@ -106,8 +111,54 @@
     const ok = known.some((a) => a.id === accent);
     if (ok && accent !== "orange") root.setAttribute("data-accent", accent);
     else root.removeAttribute("data-accent");
+
+    /* アイコンの地も基調色に合わせます（icons/accent/）。タブの絵はすぐ変わり、
+       ホーム画面の絵は「ホーム画面に追加」した時点の色で焼きつきます——
+       追加済みの絵を後から塗り替える手段は、ウェブアプリには無いからです。 */
+    const id = ok ? accent : "orange";
+    const fav = document.querySelector('link[rel="icon"]');
+    const touch = document.querySelector('link[rel="apple-touch-icon"]');
+    /* 一枚にまとめた版（build-standalone.js）は絵を data: で抱えていて、
+       icons/ が隣に無いので触りません。 */
+    if (fav && fav.getAttribute("href").startsWith("data:")) return;
+    if (fav) fav.href = id === "orange" ? "icons/icon.svg" : `icons/accent/${id}.svg`;
+    if (touch) touch.href = id === "orange" ? "icons/apple-touch-icon.png" : `icons/accent/${id}-180.png`;
   }
   KN.app.applyAccent = applyAccent;
+
+  /* 文字の大きさ（B11）。字の大きさはどれも --fs-k を掛けて書いてあるので
+     （base.css）、倍率を一つ書けば画面ぜんぶの字がそろって変わります。
+     「端末に合わせる」は iPhone の「文字サイズ」を読みます——Safari は
+     -apple-system-body に端末の文字サイズを載せるので、その大きさを素の
+     17px で割る。ほかのブラウザはこの書体名を知らず、17px のままなので 1。
+
+     上下に枠を付けます（0.9〜1.3）。iPhone の文字サイズは「さらに大きな
+     文字」で3倍まで行くので、そのまま掛けると一行に字が入りきりません。 */
+  const TEXT_K = { std: 1, l: 1.12, xl: 1.25 };
+  function deviceTextK() {
+    const probe = document.createElement("span");
+    probe.style.cssText = "position:absolute;visibility:hidden;font-size:17px;font:-apple-system-body";
+    probe.textContent = "あ";
+    document.body.append(probe);
+    const px = parseFloat(getComputedStyle(probe).fontSize) || 17;
+    probe.remove();
+    return Math.min(1.3, Math.max(0.9, px / 17));
+  }
+  function applyTextSize(size) {
+    const k = size === "auto" ? deviceTextK() : (TEXT_K[size] || 1);
+    const root = document.documentElement;
+    if (k === 1) root.style.removeProperty("--fs-k");
+    else root.style.setProperty("--fs-k", String(Math.round(k * 100) / 100));
+  }
+  KN.app.applyTextSize = applyTextSize;
+
+  /* 2.0 の見た目（docs/roadmap-2.0.md の V1）。2.0 の CSS は .is-v2 の下にだけ
+     書くので、外せば一押しで前の見た目へ戻る。付け外しは起動時と切り替えた
+     ときだけ（毎フレーム書かない）。 */
+  function applyV2(on) {
+    document.documentElement.classList.toggle("is-v2", on === true);
+  }
+  KN.app.applyV2 = applyV2;
 
   /* ---------------- tabs ---------------- */
 
@@ -131,10 +182,21 @@
       `);
       /* 価格を見ているところで「買うもの」を押したら、**紙を戻します**
          ——差し替えるのではなく。あの二つは重なった二枚なので、行き来は
-         紙の動きで見えていないと、どちらが前に居るのか分からなくなります。 */
+         紙の動きで見えていないと、どちらが前に居るのか分からなくなります。
+
+         **買うものを見ているところで押したら、紙を下げて価格へ**
+         （2026年9月28日から）。前は掴み手を下へ引くのが価格への道でしたが、
+         掴み手はほかのタブと同じく暦を開くものになったので、価格への入口は
+         この席が受け持ちます。動きは引いたときと同じ——紙が下がって後ろの
+         地が出ます。戻るのは、もう一度押すか、留まった頭を上へ引くか。 */
       btn.addEventListener("click", () => {
-        if (t.holds && t.holds.indexOf(active) >= 0) { faceTo(0); return; }
-        show(t.id);
+        if (t.holds && t.holds.indexOf(active) >= 0) faceTo(0, t.id);
+        else if (t.holds && active === t.id) faceTo(1, t.id);
+        else show(t.id);
+        /* 押した席の絵が、一度だけその絵らしく応える（base.css の「押した席の
+           絵が応える」）。いま居る席をもう一度押しても応えます——押したことへの
+           返事なので、行き先が変わったかどうかとは別。 */
+        KN.motion.fire("poke", btn.querySelector(".tab-ico-face"));
       });
       bar.append(btn);
     });
@@ -146,7 +208,8 @@
 
     /* いま居る席の印。**席ごとの丸ではなく、席から席へ滑る一枚のレンズ**
        です（`js/tab-lens.js`）。ここでは置くだけ——どこへ滑るかは
-       `paintTabs` が言います。 */
+       `paintTabs` が言います。縁の屈折の**あと**に入ります（屈折に
+       ぼかされないように。tab-lens.js の mount）。 */
     if (KN.tabLens) KN.tabLens.mount(bar);
 
     /* ---- 押しているあいだ、その席がふくらむ ----
@@ -257,9 +320,19 @@
     [.22, .5, .78].forEach((f) => {
       const x = r.left + r.width * f;
       /* 帯とドックは**自分自身**なので飛ばします。地を持っていない要素
-         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。 */
+         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。
+
+         **数えるのは、帯より下に重なっているものだけ。** `elementsFromPoint` は
+         上に重なっているものから返します。紙（`.sheet`）が開いていると、帯の
+         真上に紙の足もと——「保存」の主色のボタン——が来て、それを「後ろが
+         暗い」と読んでいました（主色は明るさ .17〜.27 で、境目 .42 の下）。
+         紙が閉じても、次に送るまで帯は夜のまま残ります（2026年9月27日、
+         買うもの・やることの帯が暗い丸薬で出ていた正体）。帯の席（`.tab`）に
+         当たるまでに出てきたものは、帯の**手前**にあるので飛ばします。
+         席に一度も当たらない点（席のあいだの隙間など）は、従来どおり上から。 */
       const els = document.elementsFromPoint(x, y) || [];
-      for (let i = 0; i < els.length; i++) {
+      const behind = els.findIndex((el) => el.closest && el.closest("#tabbar"));
+      for (let i = behind >= 0 ? behind : 0; i < els.length; i++) {
         const el = els[i];
         if (el.closest && el.closest("#tabbar, #dock")) continue;
         const m = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/
@@ -352,7 +425,7 @@
       /* 帯が言うのは**その席の名前**です。価格を見ているあいだも「買うもの」
          のまま——いま居るのは買うもののタブで、その紙を下げているだけ
          なので。帯はいる場所を言うもので、紙の位置を言うものではありません。 */
-      const face = FACES[t.id];
+      const face = FACES[t.names && t.names.indexOf(active) >= 0 ? active : t.id];
       btn.setAttribute("aria-selected", String(here));
       btn.querySelector(".tab-ico-face").classList.add("is-on");
       const ico = btn.querySelector(".tab-ico-face");
@@ -393,12 +466,25 @@
        写しを取るのはこの**あと**でないといけません——`to()` が滑り出す
        瞬間に `snap()` するので、絵と名前が新しくなる前に呼ぶと、
        レンズの中だけ前の行が残ります。 */
-    if (KN.tabLens && hereBtn) KN.tabLens.to(hereBtn);
+    if (KN.tabLens) {
+      if (hereBtn) KN.tabLens.to(hereBtn);
+      // 設定のように席を持たない画面では、印を伏せます（tab-lens.js の clear）。
+      else KN.tabLens.clear();
+    }
 
     /* 席が変われば、帯の裏に来るものも変わります。送りの合図は来ないので、
        ここで一度見直すこと（ガラスは、まわりを見ている）。 */
     paintGlass();
   }
+
+  /* 画面の中で起きたことに、下の帯の席の絵が応える（docs/tabbar.md の「押した席の
+     絵が応える」）。買った・★を付けた → カートが押し出される、やることを済ませた →
+     チェックリストが跳ねる。**行き先の席が受け止めた**、を言うためのもので、帯を
+     押したときと同じ動き（絵の名前ごと）を使う。 */
+  KN.app.pokeTab = (tabId) => {
+    const face = document.querySelector(`.tab[data-tab="${tabId}"] .tab-ico-face`);
+    if (face) KN.motion.fire("poke", face);
+  };
 
   function paintTabBadge(tabId, count) {
     const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
@@ -542,7 +628,7 @@
      並びは**下の帯の並び**です。買うもの と 価格 は同じ一つのタブの表と裏
      なので、同じ番号を持たせます——ふた面をめくるのは横へ動くことでは
      ないので、そこは流しません（これまでどおりの入りかた）。 */
-  const SLIDE = { archive: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
+  const SLIDE = { archive: 0, notes: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
   /* 流れ終わった面を片づけるまでの待ち時間。**CSS から読みます**
      ——動かしているのは base.css の `--m-nav`（席を移る）と `--m-push`
      （引き出しが押しのける）で、ここに数字を持つと二重帳簿になります。
@@ -590,7 +676,16 @@
      （day-swipe / edge-back と同じ決めごと）。 */
   const FACE_FLING_V   = 0.35;  // px/ms
   const FACE_FLING_MIN = 8;     // ただし、まったく動いていないものは払いではない
-  const FRONT = "list", BACK = "prices";
+  /* 紙と、その後ろの地の組（2026年10月1日から二組。docs/notes.md）。前は
+     `FRONT = "list", BACK = "prices"` の決め打ちでした。いま動かしている組は
+     `pair` で、帯を押したとき・掴み手を引いたときに、その席・その紙の組へ
+     切り替えます。`home` は留まった掴み手の名札。 */
+  const PAIRS = [
+    { front: "list", back: "prices", home: "買うものへ戻る（上へ引いても戻ります）" },
+    { front: "archive", back: "notes", home: "daily へ戻る（上へ引いても戻ります）" },
+  ];
+  const pairOf = (id) => PAIRS.find((x) => x.front === id || x.back === id) || null;
+  let pair = PAIRS[0];
   /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
      画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
      地なので、掴み手を持てない——base.css の「紙一枚と、その後ろの地」）。
@@ -600,8 +695,8 @@
   const screensEl = () => document.getElementById("screens");
 
   function faceEls() {
-    return { front: document.getElementById("screen-" + FRONT),
-             back: document.getElementById("screen-" + BACK) };
+    return { front: document.getElementById("screen-" + pair.front),
+             back: document.getElementById("screen-" + pair.back) };
   }
 
   /* **`--face-p` は `#screens` に書きます**（前の面ではなく）。
@@ -632,8 +727,11 @@
        留まっているところ（p=1）から掴み直しても同じ道のりになるように。 */
     const p = faceVar("--face-p") || 0;
     const d0 = faceVar("--face-d") || 0;
+    /* ノートの組では、暦が `--face-p` に合わせて上へしまわれ、そのぶん面ごと
+       上がります（`--face-lift`）。測るのは**しまいきった姿の**頭の位置。 */
+    const lift = (faceVar("--face-lift") || 0) * (1 - p);
     const hb = head.getBoundingClientRect();
-    const rest = hb.top - p * d0;
+    const rest = hb.top - p * d0 - lift;
     /* のぞかせる量は**掴み手そのものの高さ**。CSS の余白を変えたら、ここも
        黙って付いてきます（数字を二か所に書くと、片方だけ直した日にずれる）。
        留まった紙を頭の高さで切るのにも同じ数を使うので、書き出しておきます。 */
@@ -645,23 +743,36 @@
        （実測：マスクあり 240,239,243 ／ なし 218,217,221。影が消えた）。
        面の箱を基準にした数はここでしか分からないので、ここで出します。 */
     box.style.setProperty("--face-cut",
-      (floor - front.getBoundingClientRect().top).toFixed(1) + "px");
+      (floor - front.getBoundingClientRect().top + lift).toFixed(1) + "px");
     return Math.max(1, floor - peek - rest);
   }
 
-  /** 二枚とも見えるようにして、動かせる形にします。 */
-  function faceOpen() {
+  /** 二枚とも見えるようにして、動かせる形にします。
+
+      `keepFront` は指で掴み手を引いているとき。前の紙は組み直しません
+      ——daily の紙は組み直すたびに掴み手ごと作り直すので、指の下の掴み手が
+      消えます（着いたら `show()` が組み直します）。 */
+  function faceOpen(keepFront) {
     const { front, back } = faceEls();
     const box = screensEl();
     if (!front || !back || !box) return null;
-    [FRONT, BACK].forEach((id) => {
+    [pair.front, pair.back].forEach((id) => {
       ensureMounted(id);
+      if (keepFront && id === pair.front) return;
       try { KN.screens[id].render(); } catch (_) { /* 組めなくても手つきは続けます */ }
     });
     back.hidden = false; front.hidden = false;
     back.classList.add("is-face-back");
     front.classList.add("is-face-front");
     front.classList.remove("is-face-settle");
+    /* **ノートでは暦を上へしまいます**（docs/notes.md「ノートでは暦をしまう」）。
+       しまう丈は、暦が出ているうちに一度だけ測ります（留まっているあいだは
+       測り直さない——もうしまってあるので 0 になる）。 */
+    if (pair.back === "notes" && !box.classList.contains("is-notes-lift")) {
+      const cal = document.querySelector("#head .head-cal");
+      box.style.setProperty("--face-lift", (cal ? cal.getBoundingClientRect().height : 0).toFixed(1) + "px");
+      box.classList.add("is-notes-lift");
+    }
     /* 道のりは、**取ると決めた時に一度だけ**測ります。途中で測り直すと、
        指の下で速さが変わります（暦の `span` と同じ決めごと）。
        留まっている印は、測ったあとで外すこと——先に外すと紙が跳んで、
@@ -682,9 +793,12 @@
 
   /** いま紙はどちらに居るか（0＝買うものが全面、1＝価格が全面）。
       掴み手が「どちらへ引けるか」を、ここから決めます。 */
-  function faceAt() {
-    const { front } = faceEls();
+  function faceAt(id) {
+    /* 訊く組は、名指しされた画面の組（無ければ、いま居る画面の組）。 */
+    const pr = pairOf(id || active) || pair;
+    const front = document.getElementById("screen-" + pr.front);
     if (front && front.classList.contains("is-face-parked")) return 1;
+    if (pr !== pair) return 0;
     const p = faceVar("--face-p");
     return isFinite(p) && p > 0.5 ? 1 : 0;
   }
@@ -697,7 +811,12 @@
     if (box) {
       box.style.removeProperty("--face-p");
       box.style.removeProperty("--face-d");
+      box.style.removeProperty("--face-lift");
+      box.classList.remove("is-notes-lift");
     }
+    /* 掴み手の名札も言い直します（価格からよそのタブへ移ったとき、ここを
+       通るだけで faceSettle を通らないので）。 */
+    syncFaceGrips();
   }
 
   /** 行き先まで滑らせて、着いたら片づけます。
@@ -715,10 +834,14 @@
        CSS は `--face-ms` / `--face-ease` を読むので、材の置き場所は
        これまでどおり CSS のまま、数だけが指から来ます。 */
     const box = screensEl();
+    const pr = pair;       // 滑っているあいだに組が替わっても、着く先はこの組
     const d0 = faceVar("--face-d") || 1;
     const p0 = faceVar("--face-p");
     const now = isFinite(p0) ? p0 : (to > 0.5 ? 0 : 1);
-    const g = KN.motion.glide((to - now) * d0, vy || 0, { span: d0 });
+    /* 基準は `--m-face`（払いの `--m-swipe` より長い）。動くのは画面の丈ほどの
+       紙一枚で、払いと同じ .28s では戻りが「速すぎる」と言われました。 */
+    const g = KN.motion.glide((to - now) * d0, vy || 0,
+      { span: d0, base: KN.motion.ms("--m-face") });
     if (box) {
       box.style.setProperty("--face-ms", g.ms + "ms");
       box.style.setProperty("--face-ease", g.ease);
@@ -735,7 +858,7 @@
       } else {
         faceUnpark();
       }
-      show(to > 0.5 ? BACK : FRONT, "settled");
+      show(to > 0.5 ? pr.back : pr.front, "settled");
       syncFaceGrips();
       if (box) {
         box.style.removeProperty("--face-ms");
@@ -746,7 +869,9 @@
 
   /** 指を使わずに、紙をその位置まで滑らせます（帯を押したときの道）。
       0＝買うものの紙が全面、1＝価格の紙が全面。 */
-  function faceTo(p) {
+  function faceTo(p, id) {
+    const pr = pairOf(id || active);
+    if (pr) pair = pr;
     const o = faceOpen();
     if (!o) return;
     facePaint(o, p > 0.5 ? 0 : 1);      // いまの姿から始めます
@@ -756,16 +881,40 @@
     faceSettle(o, p);
   }
   KN.app.faceTo = faceTo;
+  KN.app.faceAt = faceAt;
 
   /* 面をめくる掴み手たち。名札を state に合わせて言い直すために控えます
      ——同じ一つの棒が、下ろす前は「価格をひらく」、留まっているあいだは
      「買うものへ戻る」なので。 */
   const faceGrips = [];
+  const gripPair = (g) => {
+    const scr = g.closest(".screen");
+    return scr ? pairOf(scr.dataset.screen) : null;
+  };
   function syncFaceGrips() {
-    const at = faceAt();
-    faceGrips.forEach((g) => g.setAttribute("aria-label", at
-      ? "買うものへ戻る（上へ引いても戻ります）"
-      : "価格をひらく（下へ引いてもひらきます）"));
+    /* daily の紙は組み直すたびに掴み手ごと作り直されるので、外れたものは
+       ここで捨てます。 */
+    for (let i = faceGrips.length - 1; i >= 0; i--) {
+      if (!faceGrips[i].isConnected) faceGrips.splice(i, 1);
+    }
+    faceGrips.forEach((g) => {
+      const pr = gripPair(g);
+      const at = pr ? faceAt(pr.front) : 0;
+      /* 紙が上に居るあいだ、この掴み手は暦のもの（cal-peek）で、押しても
+         何も起きません——ほかのタブの掴み手と同じく、読み上げにもキーにも
+         出しません。価格への道は帯の「shopping」です。 */
+      if (!at) {
+        g.removeAttribute("role");
+        g.removeAttribute("tabindex");
+        g.removeAttribute("aria-label");
+        g.setAttribute("aria-hidden", "true");
+        return;
+      }
+      g.setAttribute("role", "button");
+      g.setAttribute("tabindex", "0");
+      g.removeAttribute("aria-hidden");
+      g.setAttribute("aria-label", pr.home);
+    });
   }
 
   /** 紙の掴み手に、面をめくる手つきを結びます。
@@ -774,19 +923,16 @@
       掴み手を持ちません——持つと丸角と掴み手が二組出ます（base.css の
       「紙一枚と、その後ろの地」）。
 
-      同じ一つの棒が**往復を受け持ちます**。向きは `opts.role` ではなく
-      **いま紙がどこに居るか**（`faceAt()`）で決まります：上に居れば下へ、
-      下に留まっていれば上へ。役目を固定していたころは、下ろしたあとの
-      掴み手が「下へしか行けない」ままで、戻り道が塞がっていました。 */
-  KN.app.wireFaceGrip = function wireFaceGrip(grip, opts) {
+      **受け持つのは戻る道だけです**（2026年9月28日から）。紙が上に居る
+      あいだ、同じ掴み手は暦を開くもの（cal-peek、ほかのタブと同じ）で、
+      ここは何もしません。価格へ下げるのは帯の「shopping」（faceTo(1)）。
+      下に留まっているときだけ、上へ引く・押すで買うものへ戻します
+      ——価格の画面に暦は関係ないので、戻る手つきはこれまでどおり。 */
+  KN.app.wireFaceGrip = function wireFaceGrip(grip) {
     if (!grip) return;
-    /* **押しても、めくれます。** 引くのが本筋ですが、そこにしか道が無いと
-       価格へは指で引ける人しか行けません（暦の段と違って、あちらには
-       この画面でしか見られない中身——商品と値段と店——があります）。
-       押す道があれば、キーボードにも読み上げにも通ります。 */
-    grip.setAttribute("role", "button");
-    grip.setAttribute("tabindex", "0");
-    grip.removeAttribute("aria-hidden");
+    /* **押しても戻れます。** 引くのが本筋ですが、そこにしか道が無いと
+       指で引ける人しか戻れません。押す道があれば、キーボードにも読み上げ
+       にも通ります（名札と role は syncFaceGrips が state に合わせます）。 */
     /* **「引いて更新」に、この指を渡しません。**
 
        これが無いと、掴み手を下へ引いた指を pull-refresh も一緒に取ります。
@@ -796,9 +942,11 @@
        やること・daily・ダイエットの掴み手には前から付いていて、ここだけ
        抜けていました。 */
     grip.setAttribute("data-pull-own", "face");
-    faceGrips.push(grip);
+    if (faceGrips.indexOf(grip) < 0) faceGrips.push(grip);
     syncFaceGrips();
-    const flip = () => faceTo(faceAt() ? 0 : 1);
+    /* この掴み手の組は、乗っている紙の画面から（買うもの・daily）。 */
+    const mine = () => gripPair(grip);
+    const flip = () => { const pr = mine(); if (pr && faceAt(pr.front)) faceTo(0, pr.front); };
     grip.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
@@ -809,11 +957,15 @@
     let lastT = 0, lastY = 0, vy = 0;
     grip.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      // 紙が上に居るあいだは、暦の番です（cal-peek が紙の上で聞いています）。
+      const pr = mine();
+      if (!pr || !faceAt(pr.front)) return;
+      pair = pr;
       pid = e.pointerId; y0 = e.clientY; on = true; o = null; moved = false;
       lastT = performance.now(); lastY = e.clientY; vy = 0;
       /* 始まりは**いまの姿**。留まっているところから掴んだら 1 から始まって、
          指を上げるぶんだけ 0 へ向かいます。 */
-      from = faceAt(); p = from;
+      from = faceAt(pr.front); p = from;
       try { grip.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
     });
     grip.addEventListener("pointermove", (e) => {
@@ -825,7 +977,7 @@
          逆向きはスクロールに渡します（暦の段と同じ決めごと）。 */
       if (!o) {
         if (from === 0 ? dy <= 2 : dy >= -2) return;
-        o = faceOpen();
+        o = faceOpen(true);
         if (!o) { on = false; return; }
         /* 道のりは、**取ると決めた時に一度だけ**（faceOpen が測って
            --face-d に書いたものを、そのまま指の換算にも使います。二か所で
@@ -897,15 +1049,25 @@
       s.classList.remove("is-under");
       s.style.transform = "";
     });
+    /* 設定の下から指で引いたときに動かしたのは deck（帯ごと）です。 */
+    const deck = document.getElementById("deck");
+    if (deck) deck.style.transform = "";
     const from = active;
     active = id;
     /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
        のぞかせた頭は「この後ろに買うものがある」という札なので、daily や
        ダイエットの上に残っていては嘘になります。 */
-    if (id !== FRONT && id !== BACK) faceUnpark();
+    const inPair = pairOf(id);
+    /* ただし**引き出し（設定）は別**。開けたところへ帰る画面なので、紙は
+       留めたまま潜ります——片づけると、ノートへ帰ったとき暦と日付が出て、
+       戻り道の頭も消えていました。よそのタブへ移れば、そこで片づきます。 */
+    if ((!inPair || inPair !== pair) && !OFF_BAR.includes(id)) faceUnpark();
+    if (inPair) pair = inPair;
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */
+    /* 帯は全タブで一つ（買うもの・価格も、段3から）。どのタブのあいだも
+       帯の下の画面だけが流れます（docs/shared-header.md）。 */
     const dir = face ? 0 : slideDir(from, id);
     const ALL = ["is-leaving", "is-in-l", "is-in-r", "is-out-l", "is-out-r",
                  "is-push-in", "is-push-under", "is-pop-in", "is-pop-out"];
@@ -933,12 +1095,25 @@
        だけ付けて、**動かす class（`inCls`）は下の輪の中で付けます**。
        この二つのあいだに描画は挟まらないので（同じ一拍のうち）、前の席が
        消えて見えることはありません。 */
+    /* **いま見ている日は、全タブで一つ**（util の dayShare）。出ていく画面の
+       日を置いてから、入ってくる画面を組みます——組む側は `render()` の頭で
+       それを引き取ります。日を持たない画面（買うもの・価格・設定）からは
+       何も置かないので、その前に見ていた日がそのまま残ります。 */
+    const fromScr = from && KN.screens[from];
+    if (fromScr && fromScr.day && from !== id) {
+      try { KN.util.dayShare.set(fromScr.day()); } catch (err) { /* 移ることを妨げない */ }
+    }
     const inEl = document.querySelector(`.screen[data-screen="${id}"]`);
     if (inEl) {
       inEl.hidden = false;
       inEl.classList.remove(...ALL);
       inEl.classList.add("is-active");
     }
+    /* 上の帯の持ち主を、組む**前**に入ってくるタブへ（js/head.js）。組む側は
+       `render()` の中で自分の暦と題を帯に置きます。 */
+    KN.head.enter(id);
+    /* daily・ノートの鍵（js/lock.js）。組む前に覆うので、中身は一瞬も出ません。 */
+    if (KN.lock) KN.lock.enter(id);
     ensureMounted(id);
     KN.screens[id].render();
 
@@ -963,6 +1138,12 @@
         s.hidden = true;
       }
     });
+    /* 押しのけは deck（帯と、その下の画面）ごと。下の画面の class は
+       出入りの目印として残し、動きそのものは deck が持ちます（base.css）。 */
+    if (deck) {
+      deck.classList.remove("is-push-under", "is-pop-in");
+      if (push) deck.classList.add(dir > 0 ? "is-push-under" : "is-pop-in");
+    }
     clearTimeout(slideT);
     if (dir) {
       slideT = setTimeout(() => {
@@ -970,6 +1151,7 @@
           s.classList.remove(...ALL);
           s.hidden = true;
         });
+        if (deck) deck.classList.remove("is-push-under", "is-pop-in");
       }, slideMs(push));
     }
 
@@ -978,6 +1160,9 @@
     if (KN.screens[id].onEnter) {
       try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
     }
+    /* 開いたとき、満ちるもの（health の輪・体重の線）。何が動くかは CSS が
+       決めます（motion.js の arrive）。 */
+    KN.motion.arrive(inEl);
 
     /* 「文字でさがす」のバーは、題のすぐ下に置いてあって、開いた時点では
        その一段ぶんだけ先へ送ってあります（ui.js の parkSearch）。少し下へ
@@ -1014,6 +1199,20 @@
     }
   }
 
+  /* 通知から来た用事の紙。画面が組み上がってから開きます。先に、閉じている
+     あいだに鳴った回を受け取っておく——受け取る前に紙から時刻を直すと、
+     古い回が「まだ鳴っていない」ままになり、開いた拍に鳴り直すので。 */
+  /* 同じ押しが二つの道（`#due=` と控え）で届いても、紙は一度だけ。 */
+  let lastDue = { key: "", at: 0 };
+  function openDue(ids) {
+    const key = (ids || []).slice().sort().join(",");
+    if (key === lastDue.key && Date.now() - lastDue.at < 5000) return;
+    lastDue = { key, at: Date.now() };
+    const go = () => setTimeout(() => KN.dueSheet.open(ids), 60);
+    if (KN.bell && KN.bell.absorb) KN.bell.absorb().then(go, go);
+    else go();
+  }
+
   function ensureMounted(id) {
     if (mounted.has(id)) return;
     KN.screens[id].mount(document.getElementById("screen-" + id));
@@ -1025,14 +1224,71 @@
   function boot() {
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
+    applyTextSize(store.get().settings.textSize || "std");
+    applyV2(store.get().settings.v2);
+    /* 「端末に合わせる」なら、戻ってくるたびに読み直す（アプリを離れて
+       iPhone の文字サイズを変えてきた、に追いつくため）。 */
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && store.get().settings.textSize === "auto") applyTextSize("auto");
+    });
     buildTabs();
     watchGlass();
+    /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
+       同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
+       ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
+    const arriveHere = () => KN.motion.arrive(document.querySelector(`.screen[data-screen="${active}"]`));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") arriveHere();
+    });
+    window.addEventListener("pageshow", (e) => { if (e.persisted) arriveHere(); });
 
     // 閉じているあいだに日をまたいでいたら、終わらなかった用事を今日へ運ぶ。
     store.rescheduleOverdue();
 
-    const fromHash = location.hash.slice(1);
+    /* `#cal-back` は、ショートカットでカレンダーに入れたあとの戻り道
+       （js/ics.js の BACK）。入れたのはやることの紙からなので、やることへ。 */
+    const calBack = !!KN.ics && location.hash.slice(1) === KN.ics.BACK;
+    /* `#due=id,id` は、時刻の通知を押して来た道（sw.js の notificationclick）。
+       やることを出して、その用事の紙を開く（js/due-sheet.js・R3）。 */
+    const dueIds = KN.dueSheet ? KN.dueSheet.idsFromHash(location.hash) : null;
+    let fromHash = calBack || dueIds ? "todo" : location.hash.slice(1);
+    /* ノートは daily の紙の裏。留まった紙の無いところへ直に降ろすと戻り道が
+       無いので、daily から（docs/notes.md）。 */
+    if (fromHash === "notes") fromHash = "archive";
     show(KN.screens[fromHash] ? fromHash : HOME);
+    if (calBack) KN.ics.cameBack();
+    if (dueIds) {
+      openDue(dueIds);
+      if (KN.dueSheet.trail) KN.dueSheet.trail(`印（#due=）から開いた（id ${dueIds.length}件）`);
+    }
+
+    /* 押したことの控え（sw.js・js/due-sheet.js の take）。`#due=` が届かなかった
+       iPhone の道の受け皿：開いたとき・戻ってきたとき・sw.js からの一言で読む。 */
+    const pullDue = () => {
+      if (!KN.dueSheet || !KN.dueSheet.take) return;
+      KN.dueSheet.take().then((ids) => {
+        if (!ids) return;
+        if (active !== "todo") show("todo");
+        if (ids.length) openDue(ids);
+        else KN.ui.toast("その時刻の用事は、もう片づいています");
+      });
+    };
+    /* 起動の直後は、sw.js が控えを置くより先に見に行くことがある（閉じていた
+       アプリを通知が起こすと、アプリの起動と notificationclick が同時に走る）。
+       だから少し間を置いて二度見直す。前に出たとき（focus・pageshow）も。 */
+    pullDue();
+    setTimeout(pullDue, 1500);
+    setTimeout(pullDue, 4000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") pullDue();
+    });
+    window.addEventListener("focus", pullDue);
+    window.addEventListener("pageshow", pullDue);
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener("message", (e) => {
+        if (e.data && e.data.type === "due-click") pullDue();
+      });
+    }
 
     /* The hash is how the back button knows where it is, but it is also what
        iOS hands back when it restores a standalone app it had killed — and a
@@ -1060,6 +1316,21 @@
 
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
+      /* 開いたままのところへショートカットが戻してきた。画面も紙もそのまま、
+         印だけ戻す（読み直しにはならない——`#` の後ろだけが違う URL なので）。 */
+      if (KN.ics && id === KN.ics.BACK) {
+        history.replaceState(null, "", "#" + active);
+        return;
+      }
+      /* 開いたままのところへ、通知が用事を持って来た（R3）。 */
+      const dueIds = KN.dueSheet ? KN.dueSheet.idsFromHash(id) : null;
+      if (dueIds) {
+        if (active !== "todo") show("todo");
+        else history.replaceState(null, "", "#todo");
+        openDue(dueIds);
+        if (KN.dueSheet.trail) KN.dueSheet.trail(`印（#due=）が開いたところへ届いた（id ${dueIds.length}件）`);
+        return;
+      }
       if (KN.screens[id] && id !== active) show(id);
     });
 
@@ -1093,13 +1364,40 @@
       paintAppBadge(true);
     };
     setInterval(KN.app.onMinute, 30000);
+    /* 戻ってきたときにも、すぐ一度。止まっていたあいだに日をまたいでいたら、
+       30秒待たずに運びます——待つあいだ、運ぶ前の「期限切れ」が見えるので。 */
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") KN.app.onMinute();
+    });
 
     requestPersistentStorage();
     watchTopTap();
     trackKeyboard();
     watchAppBadge();
     KN.pullRefresh.init();
+    /* 日記の写しの突き合わせ（js/diary-idb.js）を先に。控えはそれが済むのを
+       待ってから取ります（済む前の控えは、写しから戻る本文を取りこぼしうる）。 */
+    if (KN.diaryIdb) {
+      KN.diaryIdb.start();
+      /* 突き合わせが済んだら（読めた・読めなかった、どちらでも）daily を
+         描き直します——「読めません」を出す・引っ込める。写しから戻した
+         本文は store の subscribe が描くので、ここは中身が同じだったときの分。 */
+      KN.diaryIdb.onChange(() => {
+        if (active === "archive" && KN.screens.archive) KN.screens.archive.render();
+      });
+      /* 読めなかった日は、前に出てきたときにもう一度読みにいきます
+         （ホーム画面のアプリは、何日も裏で生きたままなので）。 */
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") KN.diaryIdb.retry();
+      });
+    }
     KN.backup.init();
+    /* 大きな保存場所の中身（控えの数・日記の写しの様子）が動いたら、設定が
+       出ているときだけ描き直します。控えは離れるたびに取るので、ほかの
+       画面まで描き直す理由はありません。 */
+    if (KN.idb) KN.idb.onChange(() => {
+      if (active === "settings" && KN.screens.settings) KN.screens.settings.render();
+    });
     KN.notify.init();
     /* 中継所の見張り。**画面ではなくここから立てます**——前はダイエットと
        daily がそれぞれ持っていて、その二つが出ているときしか覗きませんでした
@@ -1107,6 +1405,8 @@
        入った記録は store に乗り、いま出ている画面は上の subscribe が
        描き直すので、覗く側が画面を知っている必要はありません。 */
     KN.healthRelay.watch();
+    /* 閉じていても鳴る通知（js/bell.js）。中継所の見張りとは別の拍です。 */
+    if (KN.bell) KN.bell.init();
     registerServiceWorker();
   }
 
@@ -1148,19 +1448,22 @@
      打ち消して上へ飛びます。 */
   let gliding = 0;
 
-  function glideTo(el, to) {
+  function glideTo(el, to, { ms = 260, pow = 3 } = {}) {
     if (!el) return;
     const max = Math.max(0, el.scrollHeight - el.clientHeight);
     const want = Math.max(0, Math.min(max, to));
     const from = el.scrollTop;
     if (Math.abs(want - from) < 1) return;
     const start = performance.now();
-    gliding = start + 420;
+    gliding = start + ms + 160;
     const step = (now) => {
-      const t = Math.min(1, (now - start) / 260);
-      const e = 1 - Math.pow(1 - t, 3);
+      /* rAF の時刻は start より前のことがある。負のまま曲線に入れると逆へ跳ねる。 */
+      const t = Math.min(1, Math.max(0, (now - start) / ms));
+      const e = 1 - Math.pow(1 - t, pow);
       el.scrollTop = from + (want - from) * e;
-      if (t < 1) requestAnimationFrame(step);
+      /* 残りが半px を切ったら着いた（目に見えない尾で、次の一押しを待たせない）。 */
+      if (t < 1 && Math.abs(want - from) * (1 - e) >= 0.5) requestAnimationFrame(step);
+      else if (t < 1) { el.scrollTop = want; gliding = performance.now() + 120; }
       else gliding = performance.now() + 120;   // 着地の直後もひと呼吸
     };
     requestAnimationFrame(step);
@@ -1168,7 +1471,18 @@
 
   const isGliding = () => performance.now() < gliding;
   KN.app.isGliding = isGliding;
-  const glideToTop = (el) => glideTo(el, 0);
+  /* 上のきわ・題を押して上へ（2026年10月4日、利用者「スピードダウンしたりふわっと
+     しないとダサい」「最後の最後をもう少し遅く」。跳ね返りは試して外した）。遠いほど
+     少し長く（道のりの対数）、出だしは速く、着く前に大きく緩めて、ふわっと止まる
+     （6乗の ease-out）。長さのつまみは `--m-to-top`。 */
+  const glideToTop = (el) => {
+    if (!el || el.scrollTop < 1) return;
+    if (KN.motion && KN.motion.still()) { el.scrollTop = 0; return; }
+    const screens = el.scrollTop / Math.max(1, el.clientHeight || window.innerHeight);
+    const k = Math.min(1.6, Math.max(0.7, 0.7 + 0.35 * Math.log2(1 + screens)));
+    const base = KN.motion ? KN.motion.ms("--m-to-top") : 750;
+    glideTo(el, 0, { ms: base * k, pow: 6 });
+  };
   KN.app.glideTo = glideTo;
   KN.app.glideToTop = glideToTop;
 
@@ -1178,7 +1492,11 @@
       const bar = e.target.closest && e.target.closest(".topbar");
       if (!bar) return;
       if (e.target.closest("button, a, input, textarea, select, label")) return;
-      glideToTop(activeScreen());
+      /* 戻すのは**送る器**です（紙が器になった画面では、画面そのものは
+         送れない）。`activeScreen()` のままだった二つ（ここと、下のノッチ）は、
+         押しても何も起きていませんでした（実測：やること・daily・買うもの・
+         ダイエットで、600px 送った紙が 600px のまま）。 */
+      glideToTop(scrollerOf(activeScreen()));
     });
 
     /* And the status bar — only on a touch screen, which is the only place
@@ -1220,7 +1538,10 @@
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
       const quiet = !touching && !isGliding() && !(KN.reorder && KN.reorder.isActive());
-      const el = quiet ? activeScreen() : null;
+      /* 紙が開いていれば、いちばん上の紙の本体を送る（長いノートなど。2026年10月4日）。 */
+      const sheets = document.querySelectorAll(".sheet.is-open");
+      const top = sheets.length ? sheets[sheets.length - 1].querySelector(".sheet-body") : null;
+      const el = quiet ? (sheets.length ? top : scrollerOf(activeScreen())) : null;
       // The pixel goes back either way, so the next tap has something to take.
       window.scrollTo(0, TOP_TAP_PARK);
       if (el && el.scrollTop > 0) { glideToTop(el); haptic(); }
@@ -1267,6 +1588,27 @@
     const app = document.getElementById("app");
     if (!app) return;
 
+    /* 下に貼るもの（紙・電卓）の**床がどこにあるか**を測る、見えない一点。
+
+       `--kb` は「innerHeight − 可視の高さ」で出していて、iPhone のホーム画面
+       アプリでは 0 でした——あそこでは innerHeight も可視と一緒に縮むので。
+       それで足りていたのは、**`position: fixed` の床も一緒に上がっていた**
+       からです。iOS 26 ではそこが変わり、innerHeight と可視は縮むのに、
+       fixed の床は画面の底に残ります。紙は `bottom: var(--kb)` ＝ 0 の
+       ままキーボードの裏に沈み、見えるのは頭（「食事を書く」）だけで、
+       欄はキーボードと道具棚（∧ ∨ ✓）の下でした（2026年9月27日の画面）。
+
+       だから数で推さず、**床そのものを測ります**。fixed で bottom:0 に置いた
+       高さ0の点の上端が床、可視の下端（offsetTop + height）がキーボードの
+       上端。その差が、紙を持ち上げる量です。床も一緒に上がる端末では差が
+       0 になるので、前と同じ答えに落ちます。`.app` の中には置かないこと
+       （transform を持つ祖先があると、fixed の基準がそちらへ移ります）。 */
+    const floor = document.createElement("i");
+    floor.setAttribute("aria-hidden", "true");
+    floor.style.cssText = "position:fixed;left:0;bottom:0;width:0;height:0;"
+      + "visibility:hidden;pointer-events:none";
+    document.body.append(floor);
+
     const fit = () => {
       /* 他のアプリから戻ったとき、タブ欄の下にキーボードひとつぶんの
          空白が残ることがありました。iOS はページを眠らせているあいだの
@@ -1288,6 +1630,13 @@
       const typing = isTyping();
       const stale = !typing && (full - visible) > KB_MIN;
       const shell = stale ? full : visible;
+      /* 床とキーボードの上端の差（上の `floor`）。**打っているあいだだけ**
+         使います——キーボードが出ていないときの差は、指で拡大しているときの
+         ような別の話で、そこで紙を浮かせる理由はありません。
+         書くより先に測ること（書いたあとに測ると、そこでレイアウトが一回増える）。 */
+      const sunk = typing
+        ? Math.round(floor.getBoundingClientRect().top - (vv.offsetTop + vv.height))
+        : 0;
       app.style.height = shell + "px";
 
       /* Publish the same two numbers to CSS, for the things that are not the
@@ -1305,7 +1654,8 @@
       root.style.setProperty("--vvh", shell + "px");
       // --kb も同じ値から。古い値を弾いたなら、空けるべき隙間もありません
       // （空けたままだと、下に貼る棒がその高さだけ浮きます）。
-      root.style.setProperty("--kb", stale ? "0px" : Math.max(0, full - visible) + "px");
+      // 床が画面の底に残る端末（iOS 26 のホーム画面アプリ）では、その差のぶん。
+      root.style.setProperty("--kb", stale ? "0px" : Math.max(0, full - visible, sunk) + "px");
 
       /* Then put the document back. iOS scrolls it to reveal the focused
          field while the shell is still full height; once it is not, that
@@ -1517,7 +1867,8 @@
         // An installed app can stay open for days, so look for a new build
         // every time it comes back to the foreground rather than only at boot.
         document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") reg.update().catch(() => {});
+          /* 登録が空で返る場（試験の、Service Worker を止めたブラウザ）では何もしない。 */
+          if (reg && document.visibilityState === "visible") reg.update().catch(() => {});
         });
       }).catch((err) => {
         console.warn("service worker registration failed", err);
@@ -1559,6 +1910,10 @@
     try { KN.screens[to].render(); } catch (err) { /* 出すことを妨げない */ }
     el.hidden = false;
     el.classList.add("is-under");
+    /* 指が動かすのは、その画面ではなく **deck**（上の帯ごと）。設定は帯ごと
+       押しのけて重なった一枚なので、戻るときも帯ごと戻ってきます。 */
+    const deck = document.getElementById("deck");
+    if (deck) { deck.classList.remove("is-push-under", "is-pop-in"); return deck; }
     return el;
   };
 
@@ -1569,6 +1924,8 @@
       s.style.transform = "";
       if (s.dataset.screen !== active) s.hidden = true;
     });
+    const deck = document.getElementById("deck");
+    if (deck) { deck.style.transform = ""; deck.style.transition = ""; }
   };
 
   /** どの**タブ**から潜ってきたか。設定の画面が、出すものを選ぶのに使います

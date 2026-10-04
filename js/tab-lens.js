@@ -45,6 +45,7 @@
   let at = null;            // いま乗っている席の DOM
   let held = false;
   let timer = 0;
+  let ro = null;            // 帯の幅を見張る（＋の出入りで伸び縮みする）
 
   /* 席の箱を、帯の中の座標で。
 
@@ -137,14 +138,42 @@
     lens.className = "tab-lens";
     lens.setAttribute("aria-hidden", "true");
     lens.hidden = true;
-    /* いちばん先に置きます。レンズは z-index 0 なので、順番がそのまま
-       重なりの順——丸薬・縁の屈折・押した光・そして席の絵と字
-       （z-index 1）。**席の絵と字より前に出してはいけません。** */
-    bar.prepend(lens);
+    /* **縁の屈折（`.tab-edge`）のすぐあと**に置きます。レンズは z-index 0
+       なので、順番がそのまま重なりの順——縁の屈折・丸薬・押した光・そして
+       席の絵と字（z-index 1）。**席の絵と字より前に出してはいけません。**
+
+       前は「いちばん先」でした。すると縁の屈折（幅 14px の輪に blur(5px)）が
+       **丸薬の上下 6px を後ろの景色としてぼかし**、印の上下がにじんで帯の
+       ふちへ溶け出していました（丸薬 48px ／ カプセル 64px なので、上下の
+       余白は 8px しかない）。明るい面の薄い印では目立たず、帯が夜になった
+       とき（暗い丸薬）に、にじんだ影として見えました（2026年9月27日）。
+       屈折が曲げるのは**帯の後ろの景色**で、帯に載っている印ではありません。 */
+    const edge = bar.querySelector(".tab-edge");
+    if (edge) edge.after(lens);
+    else bar.prepend(lens);
     at = null;
     held = false;
     if (timer) { clearTimeout(timer); timer = 0; }
+    /* 帯の幅が変わったら置きなおします。回転・キーボードは window の
+       resize が知らせますが、**＋が出入りして帯が伸び縮みする**ときは
+       何も鳴りません——設定を開くと＋が消えて席が広がるのに、印だけが
+       もとの座標に取り残され、席と席のあいだに浮いていました。 */
+    if (!ro && typeof ResizeObserver === "function") ro = new ResizeObserver(() => sync());
+    if (ro) { ro.disconnect(); ro.observe(bar); }
   }
 
-  KN.tabLens = { mount, to, sync, hold, REST_H };
+  /** いま居る席が無い（設定のような、席を持たない画面）ときは印を伏せる。
+      印が言うのは「いまここ」なので、どの席も選ばれていないのに一枚だけ
+      残っていると、選ばれていない席の下に色が敷かれた絵になります。
+      戻ってきたら `to()` が滑らずに置きなおします（前の席を忘れるので）。 */
+  function clear() {
+    if (!lens) return;
+    if (timer) { clearTimeout(timer); timer = 0; }
+    at = null;
+    held = false;
+    lens.classList.remove("is-held");
+    lens.hidden = true;
+  }
+
+  KN.tabLens = { mount, to, sync, hold, clear, REST_H };
 })();

@@ -133,8 +133,7 @@
       wrap.querySelector(".js-mark").innerHTML = store.productMark(p);
       wrap.querySelector(".js-lbl").textContent =
         own ? (KN.productIcons.LABELS[p.icon] || p.icon) : "おまかせ";
-      wrap.querySelector(".js-sub").textContent =
-        own ? "自分で選んだ絵です" : "名前とカテゴリから選んでいます";
+      wrap.querySelector(".js-sub").textContent = "";
     }
     paint();
 
@@ -316,7 +315,7 @@
              飛ばして、いま打った言葉を直接記録する一本道）。 */
           const empty = node(html`
             <div class="stack" style="gap:10px">
-              <p style="color:var(--c-text-3);font-size:13px;padding:8px 0 0">
+              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
                 「${query}」に合う絵はありません
               </p>
               <button type="button" class="icon-report-toggle js-report-empty">
@@ -346,7 +345,6 @@
           <span class="icon-pick-mark">${store.autoMark(rec)}</span>
           <span class="icon-pick-text">
             <span class="icon-pick-name">おまかせにする</span>
-            <span class="icon-pick-sub">名前とカテゴリから選びます</span>
           </span>
         </button>
       `);
@@ -378,7 +376,7 @@
           <span class="field-label">数量</span>
           <div style="display:flex;align-items:center;gap:12px">
             <button class="icon-btn js-minus" aria-label="減らす" style="background:var(--c-surface-2)">${icon("minus")}</button>
-            <span class="js-qty mono-num" style="font-size:22px;font-weight:800;min-width:44px;text-align:center">${item.qty}</span>
+            <span class="js-qty mono-num" style="font-size:calc(22px * var(--fs-k));font-weight:var(--fw-bold);min-width:44px;text-align:center">${item.qty}</span>
             <button class="icon-btn js-plus" aria-label="増やす" style="background:var(--c-surface-2)">${icon("plus")}</button>
             <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
           </div>
@@ -538,8 +536,8 @@
        見分けがつくというだけで、値段は 1本ぶんの値段のまま。 */
     function paintHint() {
       hintEl.textContent = isCounted(unitEl.value)
-        ? `この数で割って、1${unitEl.value}あたりの値段も出します`
-        : "値段は 1つぶんとして比べます。ここは目印として書いておくだけです";
+        ? `1${unitEl.value}あたりの値段も出します`
+        : "";
     }
 
     function save() {
@@ -579,8 +577,8 @@
 
     if (!prices.length) {
       section.append(node(html`
-        <p style="color:var(--c-text-3);font-size:13px;line-height:1.6">
-          まだ登録がありません。下のフォームからお店と値段を追加すると、いちばん安いお店が分かります。
+        <p style="color:var(--c-text-2);font-size:var(--fs-md);line-height:1.6">
+          まだ登録がありません。
         </p>
       `));
     } else {
@@ -619,7 +617,7 @@
             if (rec) rec.prices = rec.prices.filter((x) => x.id !== pr.id);
           });
           renderPrices(container, productId);
-          KN.ui.toast("価格を削除しました", {
+          KN.ui.toast("価格を消しました", {
             action: {
               label: "元に戻す",
               onClick: () => {
@@ -726,13 +724,27 @@
         danger: true,
       });
       if (!ok) return;
+      /* 元に戻すときは、同じ価格を同じ場所へ（roadmap-2.0 の V18）。 */
+      let at = -1, snap = null;
       store.update((s) => {
         const prod = s.products.find((x) => x.id === productId);
-        if (prod) prod.prices = prod.prices.filter((x) => x.id !== priceId);
+        if (!prod) return;
+        at = prod.prices.findIndex((x) => x.id === priceId);
+        if (at >= 0) snap = JSON.parse(JSON.stringify(prod.prices[at]));
+        prod.prices = prod.prices.filter((x) => x.id !== priceId);
       });
       handle.close();
       onChanged && onChanged();
-      KN.ui.toast("削除しました");
+      KN.ui.toast("消しました", snap ? { action: { label: "元に戻す", onClick: () => {
+        store.update((s) => {
+          const prod = s.products.find((x) => x.id === productId);
+          if (!prod || prod.prices.some((x) => x.id === priceId)) return;
+          const next = prod.prices.slice();
+          next.splice(Math.min(at, next.length), 0, snap);
+          prod.prices = next;
+        });
+        onChanged && onChanged();
+      } } } : {});
     });
 
     return handle;
@@ -892,13 +904,13 @@
                  placeholder="値段" style="flex:1.2" required>
           <button class="btn btn-primary js-add" type="submit" style="flex:0 0 auto">追加</button>
         </div>
-        <p class="js-store-note" style="font-size:11px;color:var(--c-warn);margin:0;line-height:1.5" hidden></p>
+        <p class="js-store-note" style="font-size:var(--fs-md);color:var(--c-warn);margin:0;line-height:1.5" hidden></p>
         <div class="calc-row js-calc" hidden>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
         ${perItemPrice(1, p.amount, p.unit)
-          ? html`<p class="js-hint" style="font-size:11px;color:var(--c-text-3);margin:0">
-                   ${formatSize(p.amount, p.unit)}入りとして、1${p.unit}あたりの値段も出します
+          ? html`<p class="js-hint" style="font-size:var(--fs-md);color:var(--c-text-2);margin:0">
+                   1${p.unit}あたりの値段も出します
                  </p>`
           : ""}
       </form>
@@ -934,8 +946,7 @@
       note.hidden = !has;
       if (has) {
         const st = store.getStore(selectedStore);
-        note.textContent = `${st ? st.name : "この店"}にはすでに ${yen(has.price)} が入っています。`
-          + "上書きではなく、新しい記録として今の値段になります";
+        note.textContent = `${st ? st.name : "この店"}は ${yen(has.price)}。新しい記録として足します`;
       }
     }
     paintStore();
@@ -1034,8 +1045,8 @@
             <path class="spark-line" d="${line}"></path>
           </svg>
           <div class="spread" style="margin-top:6px">
-            <span style="font-size:11px;color:var(--c-text-3)">いちばん安いとき ${yen(min)}</span>
-            <span style="font-size:11px;color:var(--c-text-3)">高いとき ${yen(max)}</span>
+            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3)">いちばん安いとき ${yen(min)}</span>
+            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3)">高いとき ${yen(max)}</span>
           </div>
         </div>
       </div>
@@ -1057,11 +1068,28 @@
         danger: true,
       });
       if (!ok) return;
+      /* 元に戻すときは、商品と、一緒に外したリストの項目を同じ場所へ（V18）。 */
+      const gone = { at: -1, prod: null, items: [] };
       store.update((s) => {
+        gone.at = s.products.findIndex((x) => x.id === productId);
+        if (gone.at >= 0) gone.prod = JSON.parse(JSON.stringify(s.products[gone.at]));
+        s.items.forEach((it, i) => { if (it.productId === productId) gone.items.push([i, JSON.parse(JSON.stringify(it))]); });
         s.products = s.products.filter((x) => x.id !== productId);
         s.items = s.items.filter((i) => i.productId !== productId);
       });
-      KN.ui.toast("削除しました");
+      KN.ui.toast("消しました", gone.prod ? { action: { label: "元に戻す", onClick: () => {
+        store.update((s) => {
+          if (s.products.some((x) => x.id === productId)) return;
+          const prods = s.products.slice();
+          prods.splice(Math.min(gone.at, prods.length), 0, gone.prod);
+          s.products = prods;
+          const items = s.items.slice();
+          gone.items.forEach(([i, it]) => {
+            if (!items.some((x) => x.id === it.id)) items.splice(Math.min(i, items.length), 0, it);
+          });
+          s.items = items;
+        });
+      } } } : {});
       closeSheet();
     });
     return btn;

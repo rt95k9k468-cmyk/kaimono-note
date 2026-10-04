@@ -48,9 +48,12 @@
   /** 後ろの一枚が、上の一枚の位置（dx）に対して居るところ。 */
   const underAt = (dx, w) => -(w - dx) * PARALLAX;
 
+  /* `data-edge-base` … もとから着ている transform（真ん中に置く紙の
+     translate(-50%, 0) など）。その上に重ねて動かします。 */
   const put = (el, px) => {
     if (!el) return;
-    el.style.transform = px ? `translate3d(${px}px,0,0)` : "";
+    const base = el.dataset.edgeBase ? el.dataset.edgeBase + " " : "";
+    el.style.transform = px ? `${base}translate3d(${px}px,0,0)` : "";
   };
 
   /* 止まっているときの後ろの一枚は、**百分率**で置きます——器の幅が変わって
@@ -66,7 +69,7 @@
   /**
    * @param {object} o
    * @param {Element}  o.el      指を見る器（その画面そのもの）
-   * @param {Function} o.begin   () => {top, under, commit, cancel} または null。
+   * @param {Function} o.begin   () => {top, under, commit, cancel, here?} または null。
    *                             横だと決まった瞬間に一度だけ呼ばれます。
    *                             **後ろの一枚を出すのも、ここの仕事**です。
    * @param {Function} [o.busy]  () => true なら、この指は取りません
@@ -104,7 +107,9 @@
     const finish = async (go) => {
       const cur = live;
       if (!cur) return;
-      await settle(go ? w : 0);
+      /* here … 戻ると決めたら、滑りきらずにその場で commit（呼んだ側が
+         そこから動かす。ノートの紙はカードへ縮む）。 */
+      if (!(go && cur.here)) await settle(go ? w : 0);
       live = null;
       host.classList.remove("is-edge");
       /* 消すのは**滑らせるための仕掛けだけ**。置き場所（transform）の

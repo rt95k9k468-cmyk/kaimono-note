@@ -515,26 +515,11 @@
      16個がぶつかっていました。接頭辞を付ければ、これから品物の絵が増えても
      二度とぶつかりません。読みやすさのために、書くときは素の名前のままにして、
      ここで機械的に付けます。 */
-  /* ---------------- 一族の入れ替え ----------------
-
-     既定は Phosphor Fill。手で描いた108枚は `icons-todo-hand.js` に消さずに
-     置いてあり、`KN.iconsTodo.use("hand")` の一行で入れ替わります。
-     **画面はどの一族かを知りません**——見るのは `ICONS` だけです。 */
-  const FAMILIES = { phosphor: RAW };
+  /* 絵は一揃いだけです。かつては手で描いた108枚（icons-todo-hand.js）と
+     入れ替える口（`use("hand")`）がありましたが、使われなくなったので
+     2026年9月28日にファイルごと消しました。 */
   const ICONS = {};
-  function paint(name) {
-    Object.keys(ICONS).forEach((k) => { delete ICONS[k]; });
-    Object.keys(FAMILIES[name]).forEach((k) => { ICONS["do-" + k] = FAMILIES[name][k]; });
-  }
-  /** 別の一族を足す（絵の名前は接頭辞なしの素の名前で）。 */
-  const register = (name, raw) => { FAMILIES[name] = raw; };
-  /** 一族を選ぶ。知らない名前なら何もしないで false。 */
-  function use(name) {
-    if (!FAMILIES[name]) return false;
-    paint(name);
-    return true;
-  }
-  paint("phosphor");
+  Object.keys(RAW).forEach((k) => { ICONS["do-" + k] = RAW[k]; });
 
   const KEYS = RAW_KEYS.map(([k, words]) => ["do-" + k, words]);
 
@@ -636,6 +621,5 @@
      文法を二か所に書かない**ため——角丸の作り方が二通りあると、片方だけ
      直した日に一族が割れます。 */
   KN.iconsTodo = { ICONS, find, findKey, byKey, list, search, suggest, LABELS,
-                   register, use,
                    geom: { rr, cir, ell, svg: S, F, P } };
 })();

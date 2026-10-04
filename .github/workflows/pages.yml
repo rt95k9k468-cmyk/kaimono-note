@@ -16,7 +16,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 門（docs/roadmap.md の R22）。main に入ったものは、ここを通ってから配る——
+  # 落ちたら deploy は走らず、iPhone に届くのは試験を通った版だけ。
+  # 入れるのは速くて揺れないものだけ（tests/run-all.js の GATE）。残りは手元で
+  # `node tests/run-all.js`。門で一度でも揺れた試験は GATE から外して手元へ戻し、
+  # 直してから戻す（飛ばす・消すのではない）。
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # playwright は tests/ だけの package.json で入れる（サイトの中には入らない）。
+      - name: Install Playwright
+        working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run the gate tests
+        run: node tests/run-all.js --gate
+
   deploy:
+    needs: test
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -40,6 +67,10 @@ jobs:
       # freeze installed apps on an old build again.
       - name: Stamp the build into the service worker and asset URLs
         run: node stamp-build.js
+
+      # The test scripts (tests/) are for local runs only; keep them off the site.
+      - name: Leave the test scripts out of the site
+        run: rm -rf tests
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

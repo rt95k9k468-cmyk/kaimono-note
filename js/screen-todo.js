@@ -46,7 +46,11 @@
     { id: "daily",   label: "毎日" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
+    /* 暦ではなく、済ませた日から数える（R6）。「14日ごと（済ませた日から）」。 */
+    { id: "after",   label: "済ませてから" },
   ];
+  /* 「済ませてから◯日」の◯の早見。これ以外は −／＋ で。 */
+  const EVERY_PICKS = [3, 7, 10, 14, 30, 60, 90];
   const WD = KN.util.WEEKDAYS;
 
   /* 今日 is one shelf, not four.
@@ -79,6 +83,7 @@
     if (!t.repeat) return "";
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "after") return `${t.repeatEvery || 7}日ごと`;
     if (t.repeat === "weekly") {
       const d = t.repeatDays || [];
       return d.length ? d.map((n) => WD[n]).join("・") : "毎週";
@@ -95,6 +100,7 @@
     // 「毎朝」 already says both how often and when; 「毎日 毎朝」 says it twice.
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
+    if (t.repeat === "after") return `済ませてから${t.repeatEvery || 7}日ごと`;
     if (t.repeat === "weekly") {
       // 表示だけ月曜はじまりに揃えます（保存している repeatDays の並びは
       // 変えません——曜日チップの並びと同じ理由です）。
@@ -109,35 +115,22 @@
 
   /* ---------------- mount ---------------- */
 
+  /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
+  function mine() { return KN.head.mine("todo"); }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
 
+    /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+       一つの帯（js/head.js）に居ます。タブを移っても帯が 1px も動かないのは、
+       帯がタブの流れの外に居るからです（docs/shared-header.md）。ここに残るのは
+       帯より下：探す窓（暦の下に開く）、期限切れの札、紙。
+
+       題の形と書式は KN.util が持ちます（daily・ダイエットと同じひと組）。
+       右上は**二つだけ**——さがす と 設定。並べ方と暦の出し入れは設定の中。 */
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 題は「やること」ではなく、**いま見ている日**です。タブの名前は
-                  下の帯がすでに言っているので、上で二度言う必要がありません。
-
-                  一度は一段下げて暦の見出しに置きました。幅が足りなかった
-                  からです——四つのボタンと同居できなかった。設定が帯へ移って
-                  一つ減ったので、ここへ戻せます。戻したぶん、暦の見出しの
-                  行がまるごと消えました。
-
-                  形も書式も KN.util が持ちます（daily・ダイエットと同じ
-                  ひと組）——三か所に書き写すと、片方だけ直した日に三つの
-                  題が違う顔をするので。 */""}
-            ${KN.util.dayTitleBar()}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
-                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
-                  たまにしか使いません。たまに使うものは設定の中へ。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="やることを探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
         <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
@@ -148,25 +141,26 @@
           </div>
         </div>
 
+        <div class="js-late"></div>
         <div class="js-body"></div>
       </div>
     `);
 
     root.append(chrome);
 
+    const head = KN.head.els;
     els = {
-      searchBtn: chrome.querySelector(".js-search-btn"),
+      searchBtn: head.searchBtn,
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:    chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       body:      chrome.querySelector(".js-body"),
-      topbar:    chrome.querySelector(".topbar"),
+      late:      chrome.querySelector(".js-late"),
+      mine,
     };
 
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
 
     /* 暦を出すか、しまうか。**題の右**に置きます——暦そのものの中に
        ボタンを置くと、しまった先にボタンごと消えて戻れなくなります。
@@ -177,16 +171,18 @@
     /* 題を押すと、暦が月ぜんぶに開きます（参考画面の「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
        ——暦は描き直されますが、バーは残るので。 */
-    els.dayRow = chrome.querySelector(".topbar-dayrow");
-    els.dayTitle = chrome.querySelector(".js-day-title");
+    els.dayRow = head.dayRow;
+    els.dayTitle = head.dayTitle;
     els.dayTitle.addEventListener("click", () => {
+      if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       haptic();
       store.setCalPref("todo", { open: !calOpen() });
     });
     /* 題の右の「今日へ戻る」。一日ずつの紙なら日を入れ替え、一覧で見て
        いるときは今日の棚まで運びます（暦の送りと同じ二通り）。今日を見て
        いるあいだは `paintDayTitleInto` が押せなくしています。 */
-    chrome.querySelector(".js-go-today").addEventListener("click", () => {
+    head.today.addEventListener("click", () => {
+      if (!mine()) return;
       haptic();
       const today = todayKey();
       const d = KN.util.dayDate(today);
@@ -195,17 +191,6 @@
       markDay(today, true);
       jumpToDay(today);
     });
-    /* ずっと見えているカレンダーは、上のバーのすぐ下に貼りつきます。バーの
-       高さはノッチの深さで変わるので、実測して渡します——CSSに数字を
-       焼き込むと、機種が変わった日にずれます。 */
-    const fitCal = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitCal();
-    window.addEventListener("resize", fitCal);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCal);
-
     /* 暦の厚み。**掴み手はこのぶんだけ下に貼りつきます**——暦もバーも
        sticky で上に居るので、数えないと掴み手がその裏へ潜ります
        （実際そうなっていて、暦を出しているあいだだけ掴み手が消えていた）。
@@ -215,7 +200,8 @@
        ResizeObserver が鳴ると、輪になります。 */
     let calRO = null, calSeen = null, calH = -1;
     fitCalH = () => {
-      const c = root.querySelector(".cal");
+      /* 暦は帯（画面の外）に居るので、根っこから探さずに持っている一枚を。 */
+      const c = els.cal;
       /* **引いているあいだは測りません。** 紙を引くと暦は月ぜんぶの姿で
          留められる（cal-peek の begin）ので、そのまま測ると床が月の高さに
          なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
@@ -237,16 +223,14 @@
     root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
     root.addEventListener("wheel", unpinOnTouch, { passive: true, capture: true });
 
+    /* 帯と暦の「貼りついた」印（is-stuck・境目の線）は、もう付けません。
+       帯は画面の外に居て、送られることがないので——付けると、送った画面と
+       送っていない画面のあいだで線が出たり消えたりして、全タブで一つの帯が
+       タブごとに違う顔をします。 */
     let lastTop = 0;
     const sc0 = KN.app.scrollerOf(root);
     sc0.addEventListener("scroll", () => {
       const top = sc0.scrollTop;
-      const stuck = top > 4;
-      els.topbar.classList.toggle("is-stuck", stuck);
-      /* 印を付けるのは境目の線のためと、chromeInset が「いま貼りついて
-         いるか」を知るため。**高さは変えません**——指を動かしている最中に
-         足場の背が変わると、読んでいる行がずれます。 */
-      if (els.cal) els.cal.classList.toggle("is-stuck", stuck);
 
       /* 月を追いかけるのは、**位置が変わったとき** だけ。scroll は、行が
          増えて高さが変わっただけでも飛んできます。 */
@@ -376,7 +360,7 @@
     /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
        右の「›」の傾きも、隣の月の日の濃さも、これを見て決まります。指で
        引いているあいだは、この数が指について動きます。 */
-    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    if (root) KN.util.setVar(root, "--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません——開いているかどうかは、題の右の「›」が
        回ることで言います（paintDayTitle）。 */
@@ -416,8 +400,9 @@
 
   /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
-    if (!els.dayRow || !els.dayRow.isConnected) return;
-    const key = oneDay() ? shownDay() : (hereDay || todayKey());
+    // 帯は全タブで一つ。持ち主でないときに塗ると、よそのタブの題を上書きします。
+    if (!els.dayRow || !mine()) return;
+    const key = titleDay();
     KN.util.paintDayTitleInto(els.dayRow, key,
       `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
@@ -514,7 +499,9 @@
   /* One sheet for both, because a todo written in a hurry is the same object
      as a todo corrected later, and two forms that differ by a title bar is two
      places for a field to go missing from. */
-  function openSheet(todoId) {
+  /* from … 押した行の丸薬（`.tl-node`）。渡すと、それが紙の頭の丸薬へ
+     伸びていきます（ui.js の morphPill）。 */
+  function openSheet(todoId, from) {
     const editing = !!todoId;
     const t = editing ? store.getTodo(todoId) : null;
     if (editing && !t) return;
@@ -526,13 +513,21 @@
        一日ずつになってからは、今日を焼き付けるほうが不自然です——9月1日を
        開いて＋を押した人が足したいのは、9月1日のことなので。 */
     let due = editing ? t.due : (oneDay() ? shownDay() : todayKey());
+    const dueAtOpen = due;
     let part = editing ? t.part : null;
     let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
     let repeatDays = editing ? (t.repeatDays || []).slice() : [];
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
+    // 「済ませてから◯日」の◯。ほかの種類のあいだも覚えておく（選び直したとき用）。
+    let repeatEvery = editing && t.repeatEvery ? t.repeatEvery : 7;
     let flagged = editing ? !!t.flagged : false;
     let minutes = editing ? (t.minutes || null) : null;
+    // 出る時刻の「前に◯分」（段7）。時刻を決めたときだけ欄が出る。
+    let lead = editing ? (t.lead || null) : null;
+    /* くり返しの用事の、いつもの長さ（段4。済ませた記録から引く。言えなければ null）。
+       黙って minutes に入れはしません——決めるのは本人なので、札を一つ足すだけ。 */
+    const usual = editing ? store.usualMinutes(t) : null;
     let iconKey = editing ? (t.icon || null) : null;
     let deadline = editing ? (t.deadline || null) : null;
     /* この紙で題に手が入ったか。**打った字から日付や時刻を読むのは、
@@ -577,28 +572,16 @@
             <span class="d-value js-time-value"></span>
             <span class="d-go">${icon("chevron")}</span>
           </button>
-          ${/* 期限。**日付（いつやるか）とは別のこと**です——長期タスクは
-                やる日を決めていないだけで、締め切りはあることがあります。
-                時刻と長さのすぐ下に置くのは、どちらも「いつ」の話だから。 */""}
-          <button type="button" class="d-row js-row-limit">
-            <span class="d-ico">${icon("flag")}</span>
-            <span class="d-label js-limit-label"></span>
-            <span class="d-value js-limit-value"></span>
-            <span class="d-go">${icon("chevron")}</span>
-          </button>
           <button type="button" class="d-row js-row-repeat">
             <span class="d-ico">${icon("repeat")}</span>
             <span class="d-label js-repeat-label"></span>
             <span class="d-value js-repeat-value"></span>
             <span class="d-go">${icon("chevron")}</span>
           </button>
-          <button type="button" class="d-row js-row-notify">
-            <span class="d-ico">${icon("bell")}</span>
-            <span class="d-label js-notify-label"></span>
-            <span class="d-value js-notify-value"></span>
-            <span class="d-go">${icon("chevron")}</span>
-          </button>
         </div>
+
+        ${/* 通知とカレンダーは頭の「⋯」の中（2026年10月2日・利用者の希望。知らせるは
+              オンが標準、カレンダーは普段使わない）。 */""}
 
         ${/* ---- 中身：手順とメモ ---- */""}
         <div class="d-card">
@@ -633,64 +616,34 @@
       </div>
     `);
 
-    /* 期限の紙。日付の紙と同じ組みですが、**呼び名の札は置きません**
-       ——「今日」「明日」に締め切るものはたいてい日付のほうで決まっていて、
-       ここで選ぶのは「今月末まで」のような、もう少し先の日なので。
-       外すための口だけは要ります（一度書いた期限は、消せなければ嘘のまま
-       残ります）。 */
-    const pickLimit = node(html`
-      <div class="stack" style="gap:14px">
-        <div class="field">
-          <span class="field-label">いつまでに</span>
-          <div class="date-row">
-            <span class="date-cell">
-              <input class="input js-limit" type="date" value="${deadline || ""}"
-                     aria-label="期限を選ぶ">
-              <span class="date-empty js-limit-empty" aria-hidden="true">--/--/--</span>
-            </span>
-            <button type="button" class="icon-btn js-limit-clear" aria-label="期限をはずす" hidden>
-              ${icon("close")}
-            </button>
-          </div>
-          <span class="field-hint">やる日とは別です。長期タスクは、やる日を
-            決めていなくても期限だけ持てます。</span>
-        </div>
-      </div>
-    `);
-
+    /* 時刻の紙（2026年10月2日）。時刻・時間・期限を、詳細の紙と同じ一行ずつの枠に。
+         時刻 … 自前の車輪（時と5分きざみの分。選んだ時刻がまん中、上下に前後）。
+                 端末の時刻欄は iPhone で5分きざみに従わなかったのでやめた。空なら「なし」、×で外す。
+         時間 … 札（なし・15分…12時間）。−／＋ は8時間まで何度も押すことになり使いづらかった。
+         期限 … スイッチを入れたその場で日付を選ぶ。 */
     const pickTime = node(html`
-      <div class="stack" style="gap:14px">
-        <div class="field">
-          <span class="field-label">時刻</span>
-          <div class="date-row">
-            <span class="date-cell is-time">
-              <input class="input js-time" type="time" aria-label="時刻を選ぶ">
-              <span class="date-empty js-time-empty" aria-hidden="true">--:--</span>
-            </span>
-            <button type="button" class="icon-btn js-time-clear" aria-label="時刻をはずす" hidden>
-              ${icon("close")}
-            </button>
-          </div>
-          <span class="field-hint js-span-note" hidden></span>
-          ${/* 毎朝・毎晩のときだけ出します。そう言っておかないと「毎朝なのに
-                19:30 と書いていいのか」で迷います。 */""}
-          <span class="field-hint js-time-note" hidden>時刻は、お知らせを出す
-            タイミングです。並ぶ場所は毎朝・毎晩のままです。</span>
+      <div class="d-card tw-card">
+        <div class="d-row tw-row">
+          <span class="d-ico">${icon("clock")}</span>
+          <span class="d-label">時刻</span>
+          <span class="tw-val js-time-v"></span>
+          <button type="button" class="tw-x js-time-clear" aria-label="時刻をはずす" hidden>${icon("close")}</button>
         </div>
-
-        ${/* どれくらいかかるか。締め切りでも目標でもありません——**今日の
-              時間割を組むための長さ**です。決めなくても構いません。 */""}
-        <div class="field">
-          <span class="field-label">どれくらい かかる</span>
-          <div class="js-mins"></div>
+        <div class="note-wheels tw js-time-wheels"></div>
+        <div class="d-row tw-row">
+          <span class="d-ico">${icon("hourglass")}</span>
+          <span class="d-label">時間</span>
         </div>
-
-        ${/* **その長さが入る空き**を、そのまま押せる形で。時刻を決めるのに
-              「何時なら空いていたか」を思い出させるのは、この画面がもう
-              知っていることを人にやらせています。 */""}
-        <div class="field js-slot-field" hidden>
-          <span class="field-label">空いているところ</span>
-          <div class="js-slots"></div>
+        <div class="chip-row tw-mins js-mins"></div>
+        <div class="d-row tw-row">
+          <span class="d-ico">${icon("flag")}</span>
+          <span class="d-label">期限</span>
+          <span class="tw-field js-limit-cell" hidden>
+            <button type="button" class="tw-input js-limit" aria-label="期限を選ぶ"></button>
+          </span>
+          <button type="button" class="tw-sw js-limit-sw" role="switch" aria-checked="false" aria-label="期限">
+            <span class="toggle" aria-hidden="true"><span class="toggle-mark"></span><span class="toggle-knob"></span></span>
+          </button>
         </div>
       </div>
     `);
@@ -727,18 +680,24 @@
     const hero = node(html`
       <div class="sheet-hero" style="--cat:${editing ? tlColorOf(t) : "var(--c-primary-fill)"}">
         <span class="hero-mark">
-          <span class="hero-node js-hero-node"></span>
-          <button type="button" class="hero-paint js-icon-pick" aria-label="絵を選ぶ">
-            ${icon("palette")}
-          </button>
+          ${/* 粒そのものが「絵を選ぶ」ボタンです。前は左下にパレットの丸を
+                掛けていましたが、紙が開き終えてから上に乗ってくるように見えて
+                いました（C2 の手直し）。 */""}
+          <button type="button" class="hero-node js-hero-node js-icon-pick"
+                  aria-label="絵を選ぶ"></button>
         </span>
         <span class="hero-text">
           <span class="hero-cap js-hero-when"></span>
-          <input class="hero-title js-title" placeholder="例：ゴミ出し・電球を替える"
-                 value="${editing ? t.title : ""}"
+          ${/* 一行の textarea です（R1）。input は貼りつけた改行を黙って消すので、
+                「牛乳を買う⏎銀行」が「牛乳を買う銀行」という一件になります。
+                Enter は下で止めてあるので、打って改行はできません——改行が
+                入るのは貼りつけたときだけ。wrap="off" で、一行のあいだは
+                input と同じく横へ流れます。 */""}
+          <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="例：ゴミ出し・電球を替える"
                  autocomplete="off" autocapitalize="off" spellcheck="false"
-                 aria-label="やること">
+                 aria-label="やること">${editing ? t.title : ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
+          <button type="button" class="dest-chip js-dest" hidden></button>
         </span>
       </div>
     `);
@@ -783,10 +742,17 @@
       {
         id: "flag",
         label: () => (flagged ? "★をはずす" : "★をつける"),
-        sub: "同じ日のなかで先に出てきます",
         icon: "star",
         onPick: () => { flagged = !flagged; paintHeroFacts(); },
       },
+      {
+        id: "notify",
+        label: () => (KN.notify && KN.notify.supported() && KN.notify.enabled() && !KN.notify.blocked()
+          ? "時刻に知らせる：オン" : "時刻に知らせる：オフ"),
+        icon: "bell",
+        onPick: () => toggleNotify(),
+      },
+      { id: "cal", label: () => "カレンダーに入れる", icon: "upload", onPick: () => sendToCalendar() },
     ];
     if (editing) {
       /* 写しを作ります。似たものを続けて足すとき——同じ手順を持つ用事を
@@ -802,7 +768,6 @@
          元がもう済んでいるかどうかとは関わりがないので。 */
       heroMenu.push({
         id: "copy", label: () => "このやることをコピー", icon: "copy",
-        sub: "同じ中身で、もう一件つくります",
         onPick: () => {
           const src = store.getTodo(todoId);
           if (!src) return;
@@ -810,8 +775,8 @@
             title: `${src.title}(コピー)`,
             due: src.due, deadline: src.deadline, part: src.part, time: src.time,
             repeat: src.repeat, repeatDays: src.repeatDays, repeatNth: src.repeatNth,
-            memo: src.memo, flagged: src.flagged, minutes: src.minutes,
-            shop: src.shop, icon: src.icon,
+            repeatEvery: src.repeatEvery, memo: src.memo, flagged: src.flagged, minutes: src.minutes,
+            lead: src.lead, shop: src.shop, icon: src.icon,
             // 手順は形だけ写して、済ませた印は落とします。
             subs: (src.subs || []).map((x) => ({ title: x.title })),
           });
@@ -822,13 +787,34 @@
           setTimeout(() => openSheet(made.id), 260);
         },
       });
+      /* 削除ではなく、しまう。書いてやらなかったものも「やらないと決めた」
+         記録で、しまった日もその一部です。前は一覧の行を左へ払う手でした
+         （V13 で外し、ここへ。時間割からもしまえるようになりました）。 */
+      heroMenu.push({
+        id: "archive",
+        label: () => (store.getTodo(todoId) && store.getTodo(todoId).archived
+          ? "アーカイブから戻す" : "アーカイブする"),
+        icon: "download",
+        onPick: () => {
+          const cur = store.getTodo(todoId);
+          if (!cur) return;
+          const back = !!cur.archived;
+          const undo = store.archiveTodo(todoId, !back);
+          if (back && cur.done) store.toggleTodo(todoId);
+          haptic(14);
+          handle.close();
+          KN.ui.toast(`「${cur.title}」を${back ? "戻しました" : "アーカイブしました"}`, {
+            action: { label: "元に戻す", onClick: undo },
+          });
+        },
+      });
       heroMenu.push({
         id: "delete", label: () => "このやることを削除", icon: "trash", danger: true,
         onPick: () => {
           const undo = store.removeTodo(todoId);
           haptic(14);
           handle.close();
-          KN.ui.toast("削除しました", { action: { label: "元に戻す", onClick: undo } });
+          KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: undo } });
         },
       });
     }
@@ -836,11 +822,28 @@
     const handle = KN.ui.sheet({
       title: editing ? "やることを直す" : "やることを追加",
       hero,
+      /* back … 閉じるときの帰り先。保存で時間割が組み直されると行は別の
+         要素になるので、要素ではなく**引き方**を渡します（出ている画面に
+         絞って、id から）。 */
+      morph: editing && from ? {
+        from, to: hero.querySelector(".js-hero-node"),
+        back: () => document.querySelector(
+          `.screen.is-active .tl-row[data-todo-id="${CSS.escape(todoId)}"] .tl-node`),
+      } : null,
       menu: heroMenu,
       content: body,
       footer: foot,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
+      /* 別の日へ移したら、行はこの日から消えます。頭の丸薬が暦のその日へ
+         飛んでいく（V15、ui.js の sendToDay）。 */
+      onClose: () => {
+        if (!editing || !oneDay()) return;
+        const now = store.getTodo(todoId);
+        if (now && now.due && now.due !== dueAtOpen && now.due !== shownDay()) {
+          KN.ui.sendToDay(hero.querySelector(".js-hero-node"), now.due);
+        }
+      },
     });
 
     /* メモは打った量ぶん伸びます（screen-diet.js の食事メモと同じ仕組み）。
@@ -906,9 +909,24 @@
 
        押すと、その一つだけの紙が開きます。中身は上で組んだ pickDue /
        pickTime / pickRepeat をそのまま差し込むので、選び方は前と同じです。 */
-    function openPick(title, el) {
+    /* 2026年10月2日から、紙ではなく**押した札のすぐ下（入らなければ上）に出る小窓**
+       （利用者の声「日時・時刻・くりかえしは、シートではなくポッと表示されて欲しい」）。 */
+    let pickHandle = null;
+    function openPick(title, el, anchor) {
       el.hidden = false;
-      KN.ui.sheet({ title, content: el });
+      pickHandle = KN.ui.popOver(anchor, { side: "left", label: title, cls: "is-form",
+        onClose: () => { pickHandle = null; } });
+      pickHandle.el.append(el);
+      pickHandle.place();
+    }
+    /* 札（今日・明日・18:00・空き）を押して決めたら、その紙は閉じます。
+       決めたあとにもう一度「閉じる」を押させるのは、一回ぶん余計です。
+       札が点くのを一拍見せてから閉じます（押したものが効いたと分かるように）。
+       車輪・±15分では閉じません——そちらは何度か触って合わせるものなので。 */
+    function closePick() {
+      const h = pickHandle;
+      pickHandle = null;
+      if (h) setTimeout(() => h.close(), KN.motion.ms("--m-state"));
     }
     function paintRows() {
       const row = (sel, label, value) => {
@@ -922,53 +940,72 @@
         const n = daysUntil(due);
         const near = n === 0 ? "今日" : n === 1 ? "明日" : n === 2 ? "明後日"
           : n === -1 ? "昨日" : (n < 0 ? `${-n}日前` : `${n}日後`);
-        const full = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）`;
+        const full = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})`;
         row(".js-row-due", full, near);
       } else {
         row(".js-row-due", "日付なし", "");
       }
-      row(".js-row-time", time ? `${tlClock(time)}${minutes ? " 〜 " + tlClock(KN.plan.toTime(KN.plan.toMin(time) + minutes)) : ""}` : "時刻なし",
-          minutes ? KN.plan.humanSpan(minutes) : "");
-      /* 期限。過ぎていたら、その旨をそのまま書きます（色だけで言うと、
-         色の意味を知っている人にしか伝わらないので）。 */
-      if (deadline) {
-        const d = KN.util.dayDate(deadline);
-        const n = daysUntil(deadline);
-        const near = n === 0 ? "今日まで" : n === 1 ? "明日まで"
-          : n < 0 ? `${-n}日すぎています` : `あと${n}日`;
-        row(".js-row-limit",
-            `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）まで`, near);
-      } else {
-        row(".js-row-limit", "期限なし", "");
-      }
-      const rid = isBookend(part) ? part : (repeat || "");
+      /* 時刻と時間と期限は一つの札（2026年10月2日）。左が時刻（長さが決まっていれば
+         「9:00 〜 9:30」）、右が長さと期限。長さが「なし」なら長さは言わない。 */
+      const len = minutes || usual || null;
+      const dl = deadline ? (() => { const d = KN.util.dayDate(deadline); return `${d.getMonth() + 1}/${d.getDate()}まで`; })() : "";
+      row(".js-row-time",
+          time ? (len ? `${tlClock(time)} 〜 ${tlClock(KN.plan.toTime(KN.plan.toMin(time) + len))}` : tlClock(time)) : "時刻なし",
+          [minutes ? KN.plan.humanSpan(minutes) : usual ? `いつもの${KN.plan.humanSpan(usual)}` : "", dl].filter(Boolean).join("　"));
+      /* 毎朝・毎晩（part が端）は毎日として言います。前は札に無い "dawn" を引いて空になり、
+         朝のルーティンが「くりかえし」だけで何も出ていなかった（2026年10月2日）。 */
+      const rid = repeatChipId();
       const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
       // 表示だけ月曜はじまりに揃えます（曜日チップ・repeatText と同じ並び。
       // 保存している repeatDays の並びそのものは変えません）。
       const orderedRepeatDays = repeatDays.slice()
         .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
-      row(".js-row-repeat", rid ? rw : "くりかえさない",
-          repeat === "weekly" && repeatDays.length
-            ? orderedRepeatDays.map((d) => WD[d]).join("・") : "");
-      const nt = KN.notify;
-      const on = !!(nt && nt.supported() && nt.enabled() && !nt.blocked());
-      row(".js-row-notify", time ? "時刻に知らせる" : "時刻を決めると知らせます",
-          time ? (on ? "オン" : "オフ") : "");
-      body.querySelector(".js-row-notify").disabled = !time;
+      /* 左は「くりかえし」、右に決まり（無ければ「なし」）。前は「くりかえさない」で右が
+         空いていて、決めていないのか読み取れなかった（2026年10月2日）。 */
+      row(".js-row-repeat", "くりかえし",
+          [rid ? rw : "なし", repeat === "weekly" && repeatDays.length
+            ? orderedRepeatDays.map((d) => WD[d]).join("・")
+            : repeat === "after" ? `${repeatEvery}日ごと` : ""].filter(Boolean).join(" "));
       paintHeroFacts();
     }
-    body.querySelector(".js-row-due").addEventListener("click", () => openPick("いつまでに", pickDue));
-    body.querySelector(".js-row-time").addEventListener("click", () => openPick("時刻と長さ", pickTime));
-    body.querySelector(".js-row-limit").addEventListener("click", () => openPick("期限", pickLimit));
-    body.querySelector(".js-row-repeat").addEventListener("click", () => openPick("くりかえし", pickRepeat));
-    body.querySelector(".js-row-notify").addEventListener("click", () => {
+    body.querySelector(".js-row-due").addEventListener("click", (e) => openPick("日付", pickDue, e.currentTarget));
+    body.querySelector(".js-row-time").addEventListener("click", (e) => {
+      openPick("時刻", pickTime, e.currentTarget);
+      /* 車輪は紙が組まれてから合わせる（組む前は高さが無い）。 */
+      syncWheels(); requestAnimationFrame(syncWheels);
+    });
+    body.querySelector(".js-row-repeat").addEventListener("click", (e) => openPick("くりかえし", pickRepeat, e.currentTarget));
+    /* 時刻に知らせる（「⋯」の中）。入り切りは端末ぜんたいの設定。 */
+    function toggleNotify() {
       const nt = KN.notify;
       if (!nt || !nt.supported()) { KN.ui.toast("この端末では知らせられません"); return; }
       if (nt.blocked()) { KN.ui.toast("端末の設定で、通知が止められています"); return; }
       haptic();
-      if (nt.enabled()) { nt.disable(); paintRows(); KN.ui.toast("お知らせを止めました"); return; }
-      nt.enable().then(() => { paintRows(); }).catch(() => {});
-    });
+      if (nt.enabled()) { nt.disable(); paintHint(); KN.ui.toast("お知らせを止めました"); return; }
+      nt.enable().then(() => { paintHint(); }).catch(() => {});
+    }
+    /* 端末のカレンダーへ（D3。js/ics.js。「⋯」の中）。日付が無ければ期限の日に、終日で。
+       渡すのは**この紙にいま出ている中身**——保存する前に直した日付や題も、
+       見えているとおりに入ります。くり返しは次の一回ぶんだけ（くり返しの
+       決まりまで写すと、アプリの「第2火曜」「平日」などと端末の読み方が
+       ずれた日に、二か所で違う日に立ちます）。 */
+    function sendToCalendar() {
+      const day = due || deadline;
+      if (!day) { KN.ui.toast("日付を決めると、カレンダーに入れられます"); return; }
+      if (!KN.ics || !KN.util.dayDate(day)) return;
+      const name = titleEl.value.trim() || (t && t.title) || "";
+      if (!name) { KN.ui.toast("題を書くと、カレンダーに入れられます"); return; }
+      haptic();
+      const memoBox = body.querySelector(".js-memo");
+      KN.ics.send({
+        uid: `${todoId || "new-" + Date.now()}-${day}@kurashi-note`,
+        title: due ? name : `${name}（期限）`,
+        memo: memoBox ? memoBox.value : (t && t.memo) || "",
+        day,
+        time: due ? time : null,
+        minutes,
+      });
+    }
 
     /* The days a todo is nearly always for, in one press each. Typing a date
        into a date field is four taps that 「明後日」 does in one, and the
@@ -1003,6 +1040,7 @@
           paintHint();
           paintRepeatDetail();
           haptic();
+          closePick();
         },
       });
     }
@@ -1018,9 +1056,11 @@
       const P = KN.plan;
       const at = P.toMin(time);
       if (at == null) { el.hidden = true; el.textContent = ""; return; }
-      const len = minutes || P.DEFAULT_MINUTES;
+      const len = minutes || usual || P.DEFAULT_MINUTES;
       const until = P.toTime(at + len);
-      const guess = minutes ? "" : "（長さを決めていないので、30分として）";
+      const guess = minutes ? ""
+        : usual ? "（いつもの長さ）"
+        : "（仮に30分）";
       /* 時刻の書き方は、時間割の左の列と揃えます（頭の0を落とす）。
          同じ時刻が画面によって「07:00」と「7:00」に見えると、同じもの
          だと気づくのに一拍かかります。 */
@@ -1046,14 +1086,12 @@
       if (time) {
         const nt = KN.notify;
         if (nt && nt.supported() && nt.enabled() && !nt.blocked()) {
-          hintEl.textContent =
-            `${time}になったらお知らせします（閉じているあいだは、次に開いたときに）`;
+          hintEl.textContent = `${time}にお知らせします`;
           return;
         }
-        hintEl.textContent = `${formatDay(due)} ${time}まではアイコンの数に入りません`;
         if (nt && nt.supported() && !nt.enabled()) {
           const b = node(html`
-            <span>　その時刻に知らせるには
+            <span>知らせるには
               <button type="button" class="link-btn js-notify-on">オンにする</button></span>
           `);
           b.querySelector(".js-notify-on").addEventListener("click", async () => {
@@ -1067,8 +1105,8 @@
       }
       if (isBookend(part)) {
         hintEl.textContent = part === "dawn"
-          ? "毎日くり返して、その日のいちばん上に出ます"
-          : "毎日くり返して、その日のいちばん下に出ます";
+          ? "毎日、いちばん上に出ます"
+          : "毎日、いちばん下に出ます";
         return;
       }
       /* 日付を選んだだけのときは、何も言いません。「その日が来ると
@@ -1082,8 +1120,6 @@
        when, and whichever was touched last is the answer. A time lights up the
        part it falls in, so 19:30 visibly *is* 夜 rather than something else
        sitting beside it. */
-    const timeCell = body.pick(".date-cell.is-time");
-    const timeEl = body.pick(".js-time");
     const timeClear = body.pick(".js-time-clear");
 
     /* かかる時間。よく使う長さだけを札で出します——分を打たせると
@@ -1095,74 +1131,40 @@
        （買い物へ行く、通院、旅行の移動など）。上限は cleanMinutes と
        同じ12時間——それ以上は一日の別の使い方（複数の用事に割る）の話
        なので、ここでは扱いません。 */
+    /* かかる時間は札（2026年10月2日・利用者の希望で −／＋ から戻した。8時間まで何度も
+       押すことになるので）。先頭は「なし」（決めない＝minutes は null。組み立ては30分として
+       扱う）。いつもの長さが言える用事は、「なし」のかわりに「いつもの25分」（null のまま、
+       いつもの長さで組む）。札に無い長さを持っているものは、その長さも札に足す。 */
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
-    const minsHost = body.pick(".js-mins");
     function paintMins() {
-      KN.ui.chipRow(minsHost, [{ id: "", label: "決めない" }].concat(
-        MINS.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))
-      ), {
-        activeId: minutes ? String(minutes) : "",
-        onPick: (id) => {
-          minutes = id ? Number(id) : null;
-          KN.motion.fire("select");
-          paintMins();
-          paintSpanNote();   // 終わりの時刻は、長さでも変わります
-          paintRows();
-          paintSlots();
-        },
-      });
+      const list = MINS.filter((m) => m !== usual);
+      if (minutes && !list.includes(minutes)) list.push(minutes), list.sort((a, b) => a - b);
+      KN.ui.chipRow(body.pick(".js-mins"),
+        [{ id: "", label: usual ? `いつもの${KN.plan.humanSpan(usual)}` : "なし" }]
+          .concat(list.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))), {
+          activeId: minutes ? String(minutes) : "",
+          onPick: (id) => {
+            minutes = id ? Number(id) : null;
+            haptic();
+            paintMins();
+            paintRows();
+          },
+        });
     }
 
-    /* その日の組み立てを引いて、いま決めている長さが入る空きを出します。
-
-       いま直している一件は、組み立てから**外して**数えます。入れたまま
-       だと、自分がすでに占めている場所を「空いていません」と自分に言い
-       返すことになります。 */
-    const slotField = body.pick(".js-slot-field");
-    const slotHost = body.pick(".js-slots");
-    function paintSlots() {
-      const day = due;
-      if (!day) { slotField.hidden = true; return; }
-      /* その日のものを、そのまま拾います。**todosDue は使えません**
-         ——あれは日を取らず、「いま来ているもの」を返します（お知らせ用）。
-         渡した日は黙って捨てられ、時刻がまだ来ていない用事が居ないことに
-         なって、一日じゅう空いているという答えが返っていました。
-
-         済ませたものも渡します。組み立て側が、済んだものは「これからの
-         時間」を食べないように扱います（時間割と同じ）。 */
-      const rows = store.get().todos.filter((x) => x.due === day && !x.archived && !x.trace
-        && (!editing || x.id !== todoId));
-      const isToday = day === todayKey();
-      const cfg = store.get().settings;
-      const plan = KN.plan.buildDay(day, rows, {
-        start: cfg.dayStart, end: cfg.dayEnd,
-        now: isToday ? KN.util.nowTime() : null,
-      });
-      const slots = KN.plan.slotsFor(plan, minutes || KN.plan.DEFAULT_MINUTES,
-        isToday ? KN.util.nowTime() : "00:00");
-      slotField.hidden = !slots.length;
-      if (!slots.length) return;
-      KN.ui.chipRow(slotHost, slots.map((s) => ({ id: s.at, label: s.at })), {
-        activeId: time || "",
-        onPick: (id) => {
-          /* もう一度押したら外れます。決めたものを外す道が無いのは不便です。 */
-          time = time === id ? null : id;
-          KN.motion.fire("select");
-          paintPart();
-          paintHint();
-          paintSlots();
-        },
-      });
-    }
     paintMins();
 
     /* ---- 中の段取りを書くところ ----
 
-       欄をそのまま並べます。ここで印を付けさせないのは、**書く**のと
-       **やる**が別のことだからです。印は時間割の行のほうで付けます
-       ——手順を直しに来て、ついでに済ませたことにしてしまう、という
-       取り違えが起きないように。 */
+       欄をそのまま並べます。2026年10月2日から、ここでも印を付けられます
+       （利用者の希望。前は「書く」と「やる」を分けて、時間割の行でだけ付けていた）。 */
     let subs = editing ? (t.subs || []).map((x) => ({ ...x })) : [];
+    /* 印を付ける日（くり返しの手順は日ごと）。時間割が出している日と同じ。 */
+    const subDay = oneDay() ? shownDay() : todayKey();
+    const subOn = (x) => {
+      const cur = editing && store.getTodo(todoId);
+      return cur && cur.repeat ? store.subStatus(cur, x, subDay).done : !!x.done;
+    };
     const subHost = body.pick(".js-subs");
     function paintSubs(focusAt) {
       subHost.textContent = "";
@@ -1175,6 +1177,8 @@
                   です。掴むための場所を別に置いたぶん、待たせる理由も
                   無くなりました。 */""}
             <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
+            <button type="button" class="sub-check js-sub-check ${subOn(s) ? "is-on" : ""}" role="checkbox"
+                    aria-checked="${String(subOn(s))}" aria-label="${i + 1}つめの手順を済ませる">${icon("check")}</button>
             <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
                    aria-label="${i + 1}つめの手順" autocomplete="off">
             <button type="button" class="icon-btn js-sub-del"
@@ -1197,6 +1201,22 @@
           subs.splice(i + 1, 0, { id: "s" + Date.now() + i, title: "", done: false });
           paintSubs(i + 1);
         });
+        line.querySelector(".js-sub-check").addEventListener("click", () => {
+          /* 詳細の紙の中でも済ませられる（2026年10月2日・利用者の希望）。保存してある
+             手順は時間割の行と同じ道（toggleSub。くり返しはその日だけ）ですぐに。まだ
+             保存していない手順は、紙の中の控えに印を付けて、保存で一緒に入る。 */
+          const saved = editing && store.getTodo(todoId);
+          if (saved && (saved.subs || []).some((x) => x.id === s.id)) {
+            store.toggleSub(todoId, s.id, subDay);
+            const now = store.getTodo(todoId);
+            const cur = (now.subs || []).find((x) => x.id === s.id);
+            if (!now.repeat && cur) { s.done = cur.done; s.skipped = cur.skipped; }
+          } else {
+            s.done = !s.done;
+          }
+          haptic();
+          paintSubs();
+        });
         line.querySelector(".js-sub-del").addEventListener("click", () => {
           subs.splice(i, 1);
           KN.motion.fire("delete");
@@ -1209,6 +1229,7 @@
         if (el) KN.ui.focusNow(el);
       }
       paintHeroFacts();   // 頭の「☑ 2/5」も、増減についていきます
+      paintSplit();       // 手順が入った紙は分けない（R1）。ボタンの字もそれに合わせる
     }
     /* 手順の並べ替え。掴み手からだけ、押した瞬間に持ち上がります。
        運び終わったら控えの配列を並べ替えて、そのまま描き直します
@@ -1237,28 +1258,96 @@
        問いへの二つの答えだから、と。ですが**並び順と、報せる時刻は別のこと**
        です。毎朝は一日のいちばん上に居てほしい、でもバッジは7時に出てほしい。
        前者は毎朝・毎晩が、後者は時刻が決めます。 */
-    function paintPart() {
-      timeCell.hidden = false;
-      timeEl.value = time || "";
-      timeClear.hidden = !time;
-      const ph = body.pick(".js-time-empty");
-      if (ph) ph.hidden = !!time;
-      const note = body.pick(".js-time-note");
-      if (note) note.hidden = !isBookend(part);
-    }
-
-    timeEl.addEventListener("change", () => {
-      time = KN.util.isTime(timeEl.value) ? timeEl.value : null;
-      // 毎朝・毎晩はそのまま。時刻は「いつ報せるか」なので、並ぶ場所とは別。
-      paintPart();
+    /* 時刻の車輪：時（0〜23）と、5分きざみの分。選んでいる時刻がまん中の帯に乗り、
+       上下に前後の時刻が並ぶ。すでに5分の目に乗っていない分（21:22 など）は、その分だけ
+       列に足して、開いただけでは時刻を書き換えない。決めていないあいだは薄く出し、
+       回すか、行を押すと決まる。 */
+    const WHEEL_ROW = 40;
+    const wheelBox = body.pick(".js-time-wheels");
+    const wheels = { quiet: false };
+    const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    function takeWheels() {
+      const next = hhmm(wheels.h.value(), wheels.m.value());
+      if (next === time) return;
+      time = next;
+      haptic();
+      paintPart(true);
       paintHint();
-      paintSlots();      // 自分で打った時刻も、札のほうに映します
-    });
+    }
+    function wheelCol(vals, label, fmt) {
+      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
+      let t = 0;
+      const col = {
+        el, vals,
+        index: () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / WHEEL_ROW))),
+        value: () => vals[col.index()],
+        go(v) {
+          const i = Math.max(0, vals.indexOf(v));
+          const to = i * WHEEL_ROW;
+          if (Math.abs(el.scrollTop - to) > 1) {
+            wheels.quiet = true;
+            clearTimeout(wheels.qt);
+            wheels.qt = setTimeout(() => { wheels.quiet = false; }, 300);
+            el.scrollTop = to;
+          }
+          col.mark(i);
+        },
+        mark(i) {
+          [...el.children].forEach((r, k) => r.setAttribute("aria-selected", String(k === i)));
+        },
+      };
+      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
+      el.addEventListener("scroll", () => {
+        col.mark(col.index());
+        if (wheels.quiet) return;
+        clearTimeout(t);
+        t = setTimeout(takeWheels, 120);
+      }, { passive: true });
+      /* 行を押すとそこへ回る。まん中の行（決めていないときの薄い時刻）を押せば、それで決まる。 */
+      el.addEventListener("click", (e) => {
+        const r = e.target.closest(".note-wheel-row");
+        if (!r) return;
+        const i = [...el.children].indexOf(r);
+        if (i === col.index()) { takeWheels(); return; }
+        el.scrollTo({ top: i * WHEEL_ROW, behavior: "smooth" });
+      });
+      return col;
+    }
+    function buildWheels(at) {
+      const base = at || time || (() => {
+        const n = KN.plan.toMin(KN.util.nowTime());
+        return KN.plan.toTime(Math.min(23 * 60 + 55, Math.round(n / 5) * 5));
+      })();
+      const bm = Number(base.slice(3, 5));
+      const mins = Array.from({ length: 12 }, (_, i) => i * 5);
+      if (!mins.includes(bm)) mins.push(bm);
+      mins.sort((a, b) => a - b);
+      wheelBox.textContent = "";
+      wheels.h = wheelCol(Array.from({ length: 24 }, (_, i) => i), "時", (v) => `${v}時`);
+      wheels.m = wheelCol(mins, "分", (v) => `${String(v).padStart(2, "0")}分`);
+      wheels.base = base;
+      wheelBox.append(wheels.h.el, wheels.m.el);
+    }
+    /** 車輪を、いま決めている時刻（無ければ出している値）へ合わせる。紙に置かれる前は
+        scrollTop が効かないので、開いたあとにもう一度呼ぶ（openPick）。 */
+    function syncWheels() {
+      if (!wheels.h) buildWheels();
+      const v = time || wheels.base;
+      const m = Number(v.slice(3, 5));
+      if (!wheels.m.vals.includes(m)) buildWheels(v);
+      wheels.h.go(Number(v.slice(0, 2)));
+      wheels.m.go(m);
+    }
+    function paintPart(fromWheel) {
+      body.pick(".js-time-v").textContent = time ? tlClock(time) : "なし";
+      timeClear.hidden = !time;
+      wheelBox.classList.toggle("is-off", !time);
+      if (!fromWheel) syncWheels();
+    }
     timeClear.addEventListener("click", () => {
       time = null;
       paintPart();
       paintHint();
-      paintSlots();
       haptic();
     });
 
@@ -1266,33 +1355,36 @@
     paintDueEmpty();
     paintPart();
     paintHint();
-    paintSlots();
 
-    /* 期限の欄。日付の欄と同じ作りですが、こちらは外れても何も連れて
+    /* 期限。スイッチで「ある」にしたときだけ、同じ行に日付。外れても何も連れて
        いきません（時刻もくりかえしも、やる日の話なので）。 */
     const limitEl = body.pick(".js-limit");
-    const limitClear = body.pick(".js-limit-clear");
+    const limitCell = body.pick(".js-limit-cell");
+    const limitSw = body.pick(".js-limit-sw");
+    let limitAsked = !!deadline;
     function paintLimit() {
-      const ph = body.pick(".js-limit-empty");
-      if (ph) ph.hidden = !!deadline;
-      if (limitClear) limitClear.hidden = !deadline;
+      limitCell.hidden = !limitAsked;
+      limitEl.textContent = deadline ? formatDay(deadline) : "日付";
+      limitSw.setAttribute("aria-checked", String(limitAsked));
       paintRows();
     }
-    if (limitEl) {
-      limitEl.addEventListener("change", () => {
-        deadline = limitEl.value || null;
-        paintLimit();
-        haptic();
+    /* 入れたその場で日付の暦を出す（2026年10月2日・利用者の希望）。端末の日付欄の
+       `showPicker()` は iPhone で開かず、手で開くと画面が上へずれたので、アプリの暦
+       （`KN.ui.popCalendar`）を押した行のそばに出す。 */
+    function openLimitPicker() {
+      KN.ui.popCalendar(limitEl, {
+        value: deadline, month: deadline || due || todayKey(), label: "期限",
+        onPick: (day) => { deadline = day; paintLimit(); },
       });
     }
-    if (limitClear) {
-      limitClear.addEventListener("click", () => {
-        deadline = null;
-        if (limitEl) limitEl.value = "";
-        paintLimit();
-        haptic();
-      });
-    }
+    limitEl.addEventListener("click", openLimitPicker);
+    limitSw.addEventListener("click", () => {
+      limitAsked = !limitAsked;
+      if (!limitAsked) deadline = null;
+      haptic();
+      paintLimit();
+      if (limitAsked) openLimitPicker();
+    });
     paintLimit();
 
     dueEl.addEventListener("change", () => {
@@ -1305,7 +1397,6 @@
       paintDueChips();
       paintPart();
       paintHint();
-      paintSlots();      // 日が変われば、空いているところも変わります
       if (dropped) paintRepeat(); else paintRepeatDetail();
     });
 
@@ -1315,7 +1406,9 @@
     /* 毎朝・毎晩は、記録の上では「毎日 ＋ 日の端」です。選択肢としては
        毎日の隣に一つずつ並びますが、しまうときは repeat と part に分かれます。
        だから光らせる印も、その二つから逆に組み立てます。 */
-    const repeatChipId = () => (isBookend(part) ? part : (repeat || ""));
+    /* 毎朝・毎晩は毎日の札を点けます（選べる先から外したので、端の札はもう無い）。
+       上の paintRows から先に呼ばれるので function 宣言で。 */
+    function repeatChipId() { return repeat || (isBookend(part) ? "daily" : ""); }
 
     function paintRepeat() {
       KN.ui.chipRow(body.pick(".js-repeat"),
@@ -1329,7 +1422,8 @@
               repeat = "daily";
               // 時刻は残します（バッジをいつ出すかの指定なので）。
             } else {
-              part = null;
+              // 毎朝・毎晩のものが毎日を押し直しても、端の置き場は残します。
+              if (!(id === "daily" && isBookend(part))) part = null;
               repeat = id || null;
             }
             if (repeat !== "weekly") repeatDays = [];
@@ -1350,9 +1444,41 @@
     function paintRepeatDetail() {
       paintRows();
       detailEl.innerHTML = "";
-      detailEl.hidden = repeat !== "weekly" && repeat !== "monthly";
+      detailEl.hidden = repeat !== "weekly" && repeat !== "monthly" && repeat !== "after";
       repeatHint.hidden = detailEl.hidden;
       if (detailEl.hidden) return;
+
+      /* 「済ませてから◯日」（R6）。早見の数と、−／＋。打ちこむ欄は置かない
+         ——数を選ぶだけのことに、キーボードを出すほどの手間はかけない。 */
+      if (repeat === "after") {
+        const row = node(html`<div class="chip-row js-every"></div>`);
+        const setEvery = (n) => {
+          repeatEvery = Math.max(1, Math.min(365, n));
+          paintRepeatDetail();
+          haptic();
+        };
+        const minus = node(html`<button type="button" class="chip js-every-minus" aria-label="1日へらす">−</button>`);
+        minus.disabled = repeatEvery <= 1;
+        minus.addEventListener("click", () => setEvery(repeatEvery - 1));
+        row.append(minus);
+        const shown = EVERY_PICKS.includes(repeatEvery) ? EVERY_PICKS : EVERY_PICKS.concat(repeatEvery).sort((a, b) => a - b);
+        shown.forEach((n) => {
+          const on = n === repeatEvery;
+          const chip = node(html`
+            <button type="button" class="chip ${on ? "is-on" : ""}" aria-pressed="${String(on)}"
+                    data-every="${String(n)}">${n}日</button>
+          `);
+          chip.addEventListener("click", () => setEvery(n));
+          row.append(chip);
+        });
+        const plus = node(html`<button type="button" class="chip js-every-plus" aria-label="1日ふやす">＋</button>`);
+        plus.disabled = repeatEvery >= 365;
+        plus.addEventListener("click", () => setEvery(repeatEvery + 1));
+        row.append(plus);
+        detailEl.append(row);
+        repeatHint.textContent = `済ませた日から${repeatEvery}日後に次が立ちます`;
+        return;
+      }
 
       if (repeat === "weekly") {
         const row = node(html`<div class="chip-row js-days"></div>`);
@@ -1380,7 +1506,7 @@
           .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
         repeatHint.textContent = repeatDays.length
           ? `毎週 ${orderedDays.map((n) => KN.util.WEEKDAYS[n]).join("・")} にくり返します`
-          : "曜日を選ばないと、いまの日付と同じ曜日で1週間ごとにくり返します";
+          : "選ばなければ、いまの日付と同じ曜日で";
         return;
       }
 
@@ -1408,9 +1534,7 @@
         row.append(chip);
       });
       detailEl.append(row);
-      repeatHint.textContent = repeatNth
-        ? "月によって日付は変わります（31日のない月も飛ばしません）"
-        : "その月に無い日は、その月の最後の日になります";
+      repeatHint.textContent = repeatNth ? "" : "無い月は月末になります";
     }
 
     paintRepeat();
@@ -1444,19 +1568,65 @@
        入っています。 */
     titleEl.addEventListener("input", () => { titleTouched = true; });
 
+    /* ---- 一行に並べたものを、分けて入れる（docs/roadmap.md の R1） ----
+
+       やることは**改行だけ**で分けます。「銀行、郵便局に寄る」は一件の用事
+       なので、読点では分けません。改行が入るのは貼りつけたときだけです
+       （Enter は止めてあります）。分けるのは新しく足す紙だけで、行ごとに
+       「いつ」を読みます（when-parse）。**手順を書いた紙は分けません**
+       ——手順がどの行のものか分からないので。 */
+    function splitLines() {
+      if (editing || !KN.splitItems) return null;
+      if (subs.some((s) => String(s.title || "").trim())) return null;
+      const lines = KN.splitItems.todo(titleEl.value);
+      return lines.length >= 2 ? lines : null;
+    }
+    /* **function で書くこと。** whenPeek は組み立ての途中（paintRows →
+       paintHeroFacts）から読まれるので、const だと TDZ で落ちます。 */
+    function hasBreak() { return /[\r\n]/.test(titleEl.value.trim()); }
+    /* 分けないときの一件の題。改行は「、」にして一行へ。 */
+    function flatTitle(v) {
+      return String(v).trim().split(/\s*(?:\r?\n|\r)+\s*/).filter(Boolean).join("、");
+    }
+
+    /* ボタンが先に言います（「3件に分けて追加」）。欄も行の数だけ伸ばします。 */
+    function paintSplit() {
+      const rows = Math.min(6, Math.max(1, titleEl.value.split(/\r?\n|\r/).length));
+      if (titleEl.rows !== rows) titleEl.rows = rows;
+      if (editing) return;
+      const lines = splitLines();
+      const label = lines ? `${lines.length}件に分けて追加` : "追加";
+      if (foot.textContent.trim() !== label) foot.textContent = label;
+    }
+    titleEl.addEventListener("input", paintSplit);
+    subHost.addEventListener("input", paintSplit);
+    /* 直しに来た紙では、貼りつけた改行は空きにします（input だったころと同じ）。 */
+    titleEl.addEventListener("paste", (e) => {
+      if (!editing) return;
+      const txt = e.clipboardData && e.clipboardData.getData("text");
+      if (!txt || !/[\r\n]/.test(txt)) return;
+      e.preventDefault();
+      const a = titleEl.selectionStart ?? titleEl.value.length;
+      const b = titleEl.selectionEnd ?? a;
+      titleEl.setRangeText(txt.trim().replace(/\s*(?:\r?\n|\r)+\s*/g, " "), a, b, "end");
+      titleEl.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
     function whenPeek() {
       const W = KN.whenParse;
-      if (!W || !titleTouched) return null;
+      if (!W || !titleTouched || hasBreak()) return null;
       const res = W.parse(titleEl.value);
       return W.found(res) ? res : null;
     }
 
-    /* 題を差し替えます。**value 属性にも書く**こと——運んでいるあいだの
-       控え（cloneNode）は属性を読むので、書かないと打つ前の字が出ます。 */
+    /* 題を差し替えます。**中身（textContent）にも書く**こと——運んでいる
+       あいだの控え（cloneNode）が打つ前の字を出さないように（input だった
+       ころは value 属性に書いていました。textarea の既定の字は中身です）。 */
     function setTitle(v) {
       titleEl.value = v;
-      titleEl.setAttribute("value", v);
+      titleEl.textContent = v;
       foot.disabled = !v.trim();
+      paintSplit();
       if (!iconKey) paintIcon();
     }
 
@@ -1470,21 +1640,19 @@
       paintRepeat();
       paintRepeatDetail();   // 中で paintRows も通ります
       paintHint();
-      paintSlots();
       /* 期限（deadline）は due とは別欄です（CLAUDE.md「長期タスクと、
-         期限」）。limitEl の値を書き直さないと、欄の中の日付ピッカーは
-         打ち替える前の姿のまま残ります。 */
-      if (limitEl) limitEl.value = deadline || "";
+         期限」）。札の日付も打ち替えた値で塗り直します。 */
+      limitAsked = limitAsked || !!deadline;
       paintLimit();
     }
 
     function whenApply(opts) {
       const W = KN.whenParse;
-      if (!W || !titleTouched) return;
+      if (!W || !titleTouched || hasBreak()) return;
       const res = W.parse(titleEl.value);
       if (!W.found(res)) return;
       const back = { title: titleEl.value, due, time, minutes, part, deadline,
-        repeat, repeatDays: repeatDays.slice(), repeatNth };
+        repeat, repeatDays: repeatDays.slice(), repeatNth, repeatEvery };
       setTitle(res.title);
       if (res.due) due = res.due;
       if (res.time) time = res.time;
@@ -1494,6 +1662,7 @@
         repeat = res.repeat;
         repeatDays = res.repeatDays || [];
         repeatNth = res.repeatNth || null;
+        if (res.repeatEvery) repeatEvery = res.repeatEvery;
         /* 毎朝・毎晩は記録の上では「毎日＋日の端」です。くり返しを言い直された
            のだから、古い端は外します。 */
         if (isBookend(part)) part = null;
@@ -1509,12 +1678,13 @@
       haptic(10);
       KN.ui.toast(`${W.describe(res, { due, time, minutes, deadline })}にしました`, {
         action: {
-          label: "戻す",
+          label: "元に戻す",
           onClick: () => {
             setTitle(back.title);
             due = back.due; time = back.time; minutes = back.minutes; part = back.part;
             deadline = back.deadline;
             repeat = back.repeat; repeatDays = back.repeatDays; repeatNth = back.repeatNth;
+            repeatEvery = back.repeatEvery;
             repaintWhen();
           },
         },
@@ -1522,6 +1692,25 @@
     }
 
     titleEl.addEventListener("input", paintHeroFacts);
+    /* 行き先の札（R4）。新しく足す紙で、打った字が買うものらしいときだけ
+       （「牛乳」「電池を買う」）。押せば買うものへ入り、紙は閉じる。 */
+    if (!editing && KN.capture) {
+      const paintDest = KN.capture.bindChip(hero.querySelector(".js-dest"), {
+        from: "todo",
+        text: () => titleEl.value,
+        go: (g) => {
+          const got = KN.capture.toList(g.title);
+          handle.close();
+          if (!got) return;
+          haptic(12);
+          if (!got.item) { KN.ui.toast(`「${got.product.name}」はもうリストにあります`); return; }
+          KN.ui.toast(`買うものに「${got.product.name}」を入れました`, {
+            action: { label: "元に戻す", onClick: got.undo },
+          });
+        },
+      });
+      titleEl.addEventListener("input", paintDest);
+    }
     titleEl.addEventListener("change", () => whenApply());
     titleEl.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter") return;
@@ -1534,9 +1723,11 @@
       /* 打ちっぱなしで押されたぶんも、ここで読みます（欄から離れる前に
          押されたら、change はまだ来ていません）。 */
       whenApply({ quiet: true });
-      const title = titleEl.value.trim();
-      if (!title) return;
       const memo = body.pick(".js-memo").value;
+      const lines = splitLines();
+      if (lines) { addMany(lines, memo); return; }
+      const title = flatTitle(titleEl.value);
+      if (!title) return;
       /* 「毎週 火・金」 with a Monday on it is a rule and a date that disagree.
          The rule is the one that was just chosen on purpose, so the date moves
          to the first day the rule actually falls on. */
@@ -1555,16 +1746,37 @@
          todoPart）も、とうにそう直してありました。しまうところだけが
          古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, deadline,
+        const patch = { title, due: fixed, deadline,
           part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes, icon: iconKey });
-        /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
-           知らない欄を混ぜると黙って落ちます。 */
-        store.setSubs(todoId, subs);
-        KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
+          lead: at ? lead : null, icon: iconKey };
+        const cur = store.getTodo(todoId);
+        const finish = (scope, onDay) => {
+          /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
+             知らない欄を混ぜると黙って落ちます。 */
+          const p2 = scope === "this" && fixed === cur.due ? { ...patch, due: onDay } : patch;
+          const undo = store.editRepeating(todoId, p2, subs, scope, onDay);
+          KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました",
+            scope === "future" ? undefined : { action: { label: "元に戻す", onClick: undo } });
+          haptic(12);
+          handle.close();
+        };
+        if (cur && cur.repeat && !cur.trace && cur.due) {
+          /* くり返しは、どこまで効かせるかを訊く（この回だけ／以後すべて／これまでも含めて）。 */
+          const onDay = store.fallsOn(cur, subDay) ? subDay : cur.due;
+          KN.ui.actionSheet([
+            { label: "この回だけ", sub: formatDay(onDay), onPick: () => finish("this", onDay) },
+            { label: "以後すべて", onPick: () => finish("future", onDay) },
+            { label: "これまでも含めて全部", onPick: () => finish("all", onDay) },
+          ], "どこまで直す");
+          return;
+        }
+        finish("future", null);
+        return;
       } else {
         store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, memo, flagged, minutes, subs, icon: iconKey });
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
+          lead: at ? lead : null, subs, icon: iconKey });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`);
@@ -1572,6 +1784,59 @@
       haptic(12);
       handle.close();
     });
+
+    /* 分けて入れる（R1）。紙で決めたこと（日・時刻・長さ・くり返し・期限・
+       メモ・旗）は、どの行にも同じく。そのうえで行ごとに「いつ」を読み、
+       読めた欄だけ差し替えます（whenApply と同じ移し方）。絵は行ごとに
+       おまかせ——一つの絵を三件に配る理由はないので。 */
+    function addMany(lines, memo) {
+      const W = KN.whenParse;
+      const made = [];
+      lines.forEach((line) => {
+        let v = { title: line, due, time, minutes, part, deadline, repeat, repeatDays, repeatNth, repeatEvery };
+        const res = W ? W.parse(line) : null;
+        if (res && W.found(res)) {
+          v.title = res.title;
+          if (res.due) v.due = res.due;
+          if (res.time) v.time = res.time;
+          if (res.minutes) v.minutes = res.minutes;
+          if (res.deadline) v.deadline = res.deadline;
+          if (res.repeat) {
+            v.repeat = res.repeat;
+            v.repeatDays = res.repeatDays || [];
+            v.repeatNth = res.repeatNth || null;
+            if (res.repeatEvery) v.repeatEvery = res.repeatEvery;
+            if (isBookend(v.part)) v.part = null;
+          }
+          if (v.time && !v.due) v.due = (oneDay() ? shownDay() : todayKey()) || todayKey();
+        }
+        const fx = v.due ? store.snapToRule(v, v.due) : v.due;
+        const rec = store.addTodo({ title: v.title, due: fx, deadline: v.deadline,
+          part: fx ? v.part : null, time: fx ? v.time : null,
+          repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth,
+          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes });
+        if (rec) made.push(rec.id);
+      });
+      haptic(12);
+      handle.close();
+      if (!made.length) return;
+      KN.ui.toast(`${made.length}件に分けて入れました`, {
+        action: {
+          label: "ひとつにする",
+          /* 分けて足した行を片づけ、打ったとおりの一件に（行は「、」でつなぐ）。
+             行ごとに読んだ「いつ」は使わず、紙で決めたことだけで入れ直します。 */
+          onClick: () => {
+            made.forEach((id) => store.removeTodo(id));
+            const title = lines.join("、");
+            const fixed = due ? store.snapToRule({ repeat, repeatDays, repeatNth }, due) : due;
+            store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null,
+              time: fixed ? time : null, repeat, repeatDays, repeatNth, repeatEvery,
+              memo, flagged, minutes, icon: iconKey });
+            KN.ui.toast(`「${title}」ひとつにしました`);
+          },
+        },
+      });
+    }
 
     /* 削除は ⋯ の中へ移りました（上の heroMenu）。紙のいちばん下に置くと、
        毎回そこを通ることになります——たまに、一度だけ使うものなので。 */
@@ -1749,9 +2014,7 @@
      が同じなら、答えも必ず同じです。
 
      **`iconOverrides` が動くなら、ここを捨てること。** いまは書く側に
-     呼び出し元がありません（CLAUDE.md「自分だけの言い換えと、絵の報告」）。
-     `KN.iconsTodo.use()` / `KN.icons.use()` で一族を差し替えるときも同じ
-     ——あれは調べもののための口なので、覚えは持ち越しません。 */
+     呼び出し元がありません（CLAUDE.md「自分だけの言い換えと、絵の報告」）。 */
   const artCache = new Map();
   function cachedArt(kind, key, title, resolve) {
     const ck = kind + "\u0001" + (key || "") + "\u0001" + (title || "");
@@ -1806,17 +2069,22 @@
     return u;
   }
 
-  /** 時間割の丸薬の中に置く絵。シルエットなら二色に割れる形で、
-   *  色つきの絵ならそのまま。 */
-  function tlMark(t) {
+  /** 単色シルエットの絵（無ければ ""）。丸薬の中と、一日の道の連れの丸が使う。 */
+  function silOf(t) {
     const key = t.icon;
     /* 引きかたが `iconMarkHtml` と違う（色つきへ落ちる前に、シルエットだけを
        三つ聞く）ので、覚えも別の棚に置きます。 */
-    const sil = cachedArt("sil", key, t.title, () =>
+    return cachedArt("sil", key, t.title, () =>
       (key && (KN.iconsTodo.byKey(key) || KN.iconsGoods.byKey(key)
         || KN.iconsFood.byKey(key)))
       || KN.iconsTodo.find(t.title || "")
       || productArt(KN.productIcons.findKey(t.title || "")));
+  }
+
+  /** 時間割の丸薬の中に置く絵。シルエットなら二色に割れる形で、
+   *  色つきの絵ならそのまま。 */
+  function tlMark(t) {
+    const sil = silOf(t);
     if (!sil) return todoMark(t);
     return html`<span class="todo-mark is-split"
                       style="--icon:${KN.util.raw(maskUrl(sil))}"></span>`;
@@ -1948,7 +2216,7 @@
              記録できるようにします。 */
           const empty = node(html`
             <div class="stack" style="gap:10px">
-              <p style="color:var(--c-text-3);font-size:13px;padding:8px 0 0">
+              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
                 「${query}」に合う絵はありません
               </p>
               <button type="button" class="icon-report-toggle js-report-empty">
@@ -2061,14 +2329,7 @@
 
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
-               data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}">
-        <div class="swipe-yes">
-          ${icon("calendar")}<span>今日にする</span>
-        </div>
-        <div class="swipe-arch">
-          <span>アーカイブ</span>${icon("download")}
-        </div>
-      </article>
+               data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}"></article>
     `);
 
     /* Tiles put the same three facts in a square: what it is, when it is, and
@@ -2135,32 +2396,10 @@
       });
     });
 
-    KN.ui.swipeActions(wrap, row, {
-      tiles,
-      onRight: () => {
-        if (closed) {
-          const undo = store.archiveTodo(t.id, false);
-          if (t.done) store.toggleTodo(t.id);
-          haptic(12);
-          KN.ui.toast(`「${t.title}」を戻しました`, { action: { label: "元に戻す", onClick: undo } });
-          return;
-        }
-        store.updateTodo(t.id, { due: todayKey() });
-        haptic(12);
-        KN.ui.toast(`「${t.title}」を今日にしました`);
-      },
-      /* Not 削除. Something written down and then not done is still a record
-         of having decided not to do it, and the date it went away is part of
-         that. Deleting outright is in the row's own sheet, for the ones that
-         were typed by mistake. */
-      onLeft: () => {
-        const undo = store.archiveTodo(t.id, true);
-        haptic(14);
-        KN.ui.toast(`「${t.title}」をアーカイブしました`, {
-          action: { label: "元に戻す", onClick: undo },
-        });
-      },
-    });
+    /* 行の横払い（右で今日に・左でアーカイブ）は外しました（V13、2026年
+       10月4日）。紙の横払いは、どの画面でも「日を移る」です——一覧で見て
+       いるときも同じ（下の wireShelfSwipe）。アーカイブは用事の紙の ⋯ に、
+       今日にするのは今日の棚へ運ぶ・紙の日付で。 */
     return wrap;
   }
 
@@ -2207,6 +2446,8 @@
         wait = Math.round(Math.min(620, Math.max(220, (w / SPEED) * 1000)));
         item.style.setProperty("--strike-ms", wait + "ms");
         KN.motion.fire("check");
+        /* 下の帯のチェックリストも跳ねる（片づいたことを、席が受け止める）。 */
+        KN.app.pokeTab("todo");
         item.classList.add("is-striking");
         node0.classList.add("is-pop");
         tl.classList.add("is-flash");
@@ -2219,7 +2460,8 @@
         finishing.delete(id);
         tl.classList.remove("is-flash");
         item.style.removeProperty("--strike-ms");
-        store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
+        const res = store.toggleTodo(id);      // ここで組み直され、本物の線に変わります
+        if (!wasDone) sayDone(t, res);
       }, wait);
       return;
     }
@@ -2229,7 +2471,7 @@
       const res = store.toggleTodo(id);
       haptic(wasDone ? 12 : [16, 40, 16]);
       if (!wasDone && checkEl) KN.ui.burst(checkEl);
-      if (res.repeated) sayMoved(t, res);
+      if (!wasDone) sayDone(t, res);
       return;
     }
 
@@ -2240,6 +2482,7 @@
     finishing.add(id);
     haptic([16, 40, 16]);
     checkEl.setAttribute("aria-checked", "true");   // 指にはすぐ応える
+    KN.app.pokeTab("todo");
     KN.ui.burst(checkEl);
 
     /* 繰り返しは消えません。次の設定日へ移るので、そちらへ**滑って**いきます
@@ -2255,7 +2498,7 @@
       setTimeout(() => {
         finishing.delete(id);
         const res = store.toggleTodo(id);      // ここで初めて組み直されます
-        if (res.repeated) sayMoved(t, res);
+        sayDone(t, res);
       }, repeating ? 300 : 240);
     }, 260);
   }
@@ -2270,10 +2513,56 @@
     });
   }
 
-  function sayMoved(t, res) {
-    KN.ui.toast(`「${t.title}」は次は ${formatDay(res.due)}`, {
-      action: { label: "元に戻す", onClick: res.undo },
-    });
+  /* 済ませたら、**押した時刻**を言って、その場で直せるようにします（2026年10月3日、
+     利用者の声「完了を押し忘れていたことがよくある」）。くり返しは次の日も言います。 */
+  function sayDone(t, res) {
+    const d = res.doneId && store.getTodo(res.doneId);
+    const at = d ? doneClock(d.doneAt) : "";
+    const msg = res.repeated
+      ? `「${t.title}」は次は ${formatDay(res.due)}`
+      : `「${t.title}」${at ? ` ${at}` : ""}`;
+    const acts = [];
+    if (at) acts.push({ label: "時刻", onClick: (b) => editDoneAt(res.doneId, b) });
+    acts.push({ label: "元に戻す", onClick: res.undo });
+    KN.ui.toast(msg, { actions: acts, duration: 5000 });
+  }
+
+  /** 済ませた時刻を、押したところに出る車輪で直す。閉じたときに一度だけ書きます
+      （回しているあいだ毎回書くと、そのたびに組み直しと保存が走るので）。 */
+  function editDoneAt(id, anchor) {
+    const t0 = store.getTodo(id);
+    if (!t0 || !doneClock(t0.doneAt)) return;
+    const was = new Date(t0.doneAt);
+    const ROW = 40;
+    const col = (vals, label, fmt) => {
+      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
+      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
+      const idx = () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / ROW)));
+      const mark = () => [...el.children].forEach((r, k) => r.setAttribute("aria-selected", String(k === idx())));
+      el.addEventListener("scroll", mark, { passive: true });
+      el.addEventListener("click", (e) => {
+        const r = e.target.closest(".note-wheel-row");
+        if (r) el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
+      });
+      return { el, value: () => vals[idx()], go: (v) => { el.scrollTop = vals.indexOf(v) * ROW; mark(); } };
+    };
+    const h = col(Array.from({ length: 24 }, (_, i) => i), "時", (v) => `${v}時`);
+    const m = col(Array.from({ length: 60 }, (_, i) => i), "分", (v) => `${String(v).padStart(2, "0")}分`);
+    const p = KN.ui.popOver(anchor, { side: "left", label: "済ませた時刻", cls: "is-wheel done-at-pop",
+      onClose: () => {
+        const undo = store.setDoneTime(id, h.value(), m.value());
+        if (!undo) return;
+        haptic();
+        KN.ui.toast(`「${t0.title}」 ${h.value()}:${String(m.value()).padStart(2, "0")}`, {
+          action: { label: "元に戻す", onClick: undo },
+        });
+      } });
+    const box = node(html`<div class="note-wheels tw"></div>`);
+    box.append(h.el, m.el);
+    p.el.append(box);
+    p.place();
+    h.go(was.getHours());
+    m.go(was.getMinutes());
   }
 
 
@@ -2287,6 +2576,7 @@
        します）。指の下で紙が組み直されると、掴んでいたものが別の絵に
        なります。 */
     if (swiping) return;
+    takeSharedDay();
     renderBody();
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
@@ -2332,6 +2622,7 @@
       day, todayKey(),
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
+      (store.dayLog(day) || {}).wake || "",
       [...openSubs].sort(),
       st.todos,
     ]);
@@ -2380,7 +2671,11 @@
        （実測：外して付け直すと、盤を組み直さなくても強制レイアウトが
        37.8ms。外さなければ **28.7ms**）。だから中身を空にするのは
        「残す一枚」を決めたあと、その一枚だけ残して消す形にします。 */
-    els.cal = query ? null : monthCalendar(store.openTodos());
+    /* 暦は帯（画面の外、全タブで一つ）に置きます。**探しているあいだも
+       出したまま**——前は外していましたが、帯の暦が消えると帯の厚みが変わり、
+       帯は全タブで一つなので「探しているタブだけ帯が縮む」ことになります。 */
+    els.cal = monthCalendar(store.openTodos());
+    KN.head.putCal("todo", els.cal);
 
     /* **日の紙も、変わっていなければ組み直しません。** 暦と同じ話で、
        同じ理由で**外しません**（外して付け直すだけで、その木ぶんの
@@ -2401,24 +2696,8 @@
       && sheetSig === sheetDigest(shownDay())) ? sheetNode : null;
 
     [...els.body.childNodes].forEach((n) => {
-      if (n !== els.cal && n !== keepSheet) n.remove();
+      if (n !== keepSheet) n.remove();
     });
-    if (els.cal) {
-      if (els.cal.parentNode !== els.body) els.body.append(els.cal);
-      /* **送りは `keepTop` を使い回します。ここで測り直さないこと。**
-         二つ理由があります。
-         ① ここは `els.body.innerHTML = ""` の**あと**なので、測ると
-            組み立ての途中でレイアウトが強制されます（実測：render 1回に
-            レイアウト 3.1回。その1回ぶんがこれ）。
-         ② 前は `root.scrollTop` を読んでいました。**送る器は紙のほう**
-            なので（`scrollerOf`）、根っこはいつも 0——送った先で組み直すと
-            `is-stuck` が付かず、次に指が動くまで境目の線が出ませんでした
-            （「送る器を変えたら教えること」の、拾い残しの一つ）。 */
-      /* **`toggle` であること。** 盤は使い回すことがあるので（`monthCalendar`）、
-         `add` だけだと、いちど貼りついた盤がいちばん上へ戻っても線を
-         持ったままになります。 */
-      els.cal.classList.toggle("is-stuck", keepTop > 4);
-    }
 
     /* 紙がそのままなら、ここでおしまい。中の配線（払う・引く・運ぶ・
        30秒の拍）は紙に付いたままなので、何も起こしません。 */
@@ -2444,10 +2723,7 @@
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
           <h2 class="empty-title">やることはありません</h2>
-          <p class="empty-text">
-            下の＋から追加できます。日付を決めておくと、その日が来たときに
-            アプリのアイコンに数が出ます。
-          </p>
+          <p class="empty-text">下の＋から追加できます。</p>
         </div>
       `));
       restoreTop(keepTop);
@@ -2492,7 +2768,9 @@
       const track = car.querySelector(".day-track");
       track.append(daySlide(shownDay(), open));
       sheet.append(car);
-      wireDaySwipe(car, track, open);
+      /* 指を受けるのは紙ぜんぶ——長期タスクの下の空白からも払えるように
+         （day-swipe.js の「受け口は紙ぜんぶ」）。 */
+      wireDaySwipe(car, track, open, sheet);
       wireCalPull(sheet);
       /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました
          ——紙のどこを持っても下へ引けば暦が出た時期の名残です。段を
@@ -2511,21 +2789,29 @@
 
     const rowsOf = (id) => open.filter((t) => groupIdOf(t, groups) === id);
 
+    /* 棚は紙の中の一枚（.tl-shelves）に入れます。紙は送る器なので、横払いで
+       指につかせる相手（transform）は紙そのものではなく中身——縦の端の
+       give（pull-refresh）が紙に transform を書くので、取り合わないように。
+       探しているあいだは紙が無いので、これまでどおり直に並べます。 */
+    const shelves = sheet === els.body ? sheet : node(html`<div class="tl-shelves"></div>`);
+    if (shelves !== sheet) sheet.append(shelves);
+
     /* 期限切れ and 「もっと先」 are the two that only appear when they have
        something in them: one is a problem rather than a place, and the other is
        an overflow rather than a shelf. */
     const late = groups.find((g) => g.late);
-    if (rowsOf("late").length) sheet.append(groupSection(late, rowsOf("late"), tiles));
+    if (rowsOf("late").length) shelves.append(groupSection(late, rowsOf("late"), tiles));
 
-    sheet.append(todayPanel(rowsOf, tiles));
+    shelves.append(todayPanel(rowsOf, tiles));
 
     groups.filter((g) => !g.late && !g.today).forEach((g) => {
       const rows = rowsOf(g.id);
       if (!rows.length && g.onlyWhenFull) return;
-      sheet.append(groupSection(g, rows, tiles));
+      shelves.append(groupSection(g, rows, tiles));
     });
 
-    if (closed.length) sheet.append(archiveSection(closed, tiles));
+    if (closed.length) shelves.append(archiveSection(closed, tiles));
+    if (shelves !== sheet) wireShelfSwipe(sheet, shelves);
     restoreTop(keepTop);
     settle();
   }
@@ -2540,6 +2826,25 @@
      ように、todayKey() を焼き付けません）。 */
   let viewDay = null;
   const shownDay = () => viewDay || todayKey();
+  /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
+  const titleDay = () => (oneDay() ? shownDay() : (hereDay || todayKey()));
+
+  /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
+     席を移るとき app.js の show() が置いていきます）。`goDay` と同じ三つ
+     ——出す日・印・暦の月——を、組み直す前に書き換えるだけ。 */
+  let dayVer = 0;
+  function takeSharedDay() {
+    const t = KN.util.dayShare.take(dayVer);
+    dayVer = t.ver;
+    if (!t.day || t.day === titleDay()) return;
+    viewDay = t.day === todayKey() ? null : t.day;
+    hereDay = t.day;
+    dayPinned = true;
+    const d = KN.util.dayDate(t.day);
+    const now = KN.util.dayDate(todayKey());
+    calMonth = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+      ? null : { year: d.getFullYear(), month: d.getMonth() };
+  }
 
   /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
   /** その日ぶんの紙まるごと（時間割＋長期タスク）。横に払うと、この一枚が
@@ -2564,6 +2869,9 @@
     const ahead = day >= todayKey();
     const rows = open.filter((t) => (ahead ? store.fallsOn(t, day) : t.due === day));
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
+    /* 一日の道は、何も無い日にも出します。空いた一日が、道の長さそのままで
+       見えることにも意味があるので（今日なら、そこに人が立っています）。 */
+    if (roadOn()) sec.append(dayRoad(day, rows.concat(done), open));
     if (!rows.length && !done.length) {
       sec.append(node(html`
         <p class="todo-today-empty">${day === todayKey()
@@ -2573,6 +2881,80 @@
     }
     sec.append(timeline(rows, { id: "day", day }));
     return sec;
+  }
+
+  /* ---------------- 一日の道（js/day-road.js） ----------------
+
+     時間割の上に、その日を一本の道にした地図を置きます（利用者の手描きがもと。
+     2026年9月29日）。組み立ては時間割と同じ `buildDay`——二つが別々に数えると、
+     地図と時間割が食い違うので。設定の「一日の道を出す」で外せます。 */
+  const roadOn = () => store.get().settings.todoRoad !== false;
+
+  function dayRoad(day, todos, open) {
+    const s = store.get().settings;
+    const isToday = day === todayKey();
+    const plan = KN.plan.buildDay(day, todos, {
+      start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
+    });
+    /* 長期タスク（段8・段B）。道の外周のくぼみに浮かべ、道へ運べば日と時刻が付く。
+       過ぎた日には出さない（置ける道が無いので）。並びは**期限の近い順**——くぼみの
+       位置が時刻を言っているように読めないように。同じ期限・期限なしは手で決めた順。 */
+    const someday = day < todayKey() ? [] : (open || [])
+      .filter((t) => !t.due && !t.done && !t.archived && !t.trace)
+      .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999")
+        || (a.order || 0) - (b.order || 0));
+    /* 起きた時刻（daily の記録・ヘルスケアの写し）があれば、道はそこから（写さず引く）。 */
+    const log = store.dayLog(day);
+    return KN.dayRoad.build({
+      plan, today: isToday, wake: log && log.wake ? KN.plan.toMin(log.wake) : null, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
+      someday,
+      open: (id) => openSheet(id),
+      markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
+      decide: (id, at) => decideOnRoad(id, at, day),
+      unplan: (id) => unplanOnRoad(id),
+    });
+  }
+
+  /** その日の最初の停留所（時刻を決めた、まだの用事）。{ at: 分, title } か null。
+      道の次の一行が、今日の決まった予定が済んだあとに「明日は 9:00 病院から」と
+      添えるため（段6）。くり返しは fallsOn で開く（時間割と同じ読み方）。 */
+  function firstStopOn(day) {
+    let best = null;
+    store.openTodos().forEach((t) => {
+      if (t.trace || !KN.util.isTime(t.time) || !store.fallsOn(t, day)) return;
+      const at = KN.plan.toMin(t.time);
+      if (!best || at < best.at) best = { at, title: t.title };
+    });
+    return best;
+  }
+
+  /* 道の上で時刻を決めた（段2）。時間割で時刻の列へ運んだときと同じ書き換えと
+     報せ。くり返しの用事は**やる日を動かしません**——動かすと、今日より前の
+     回が消えるので（時刻だけが、毎回の時刻として付きます）。 */
+  function decideOnRoad(id, at, day) {
+    const t = store.get().todos.find((x) => x.id === id);
+    if (!t) return;
+    const was = { time: t.time, due: t.due };
+    const patch = { time: at };
+    if (!t.repeat || !t.due) patch.due = day;
+    store.updateTodo(id, patch);
+    KN.motion.fire("save");
+    KN.ui.toast(`「${t.title}」を ${at} に`, {
+      action: { label: "元に戻す", onClick: () => store.updateTodo(id, was) },
+    });
+  }
+
+  /* 連れを道の外で離した（段8）。時間割で長期タスクの欄へ運んだときと同じく、
+     日付も時刻も手放す。くり返しは道のほうで運ばせない（回が消えるので）。 */
+  function unplanOnRoad(id) {
+    const t = store.get().todos.find((x) => x.id === id);
+    if (!t || t.repeat) return;
+    const was = { due: t.due, time: t.time };
+    store.updateTodo(id, { due: null, time: null });
+    KN.motion.fire("save");
+    KN.ui.toast(`「${t.title}」を長期タスクへ`, {
+      action: { label: "元に戻す", onClick: () => store.updateTodo(id, was) },
+    });
   }
 
   /* ---------------- 長期タスク ----------------
@@ -2726,15 +3108,9 @@
    * to find, short enough not to be a state anyone has to dismiss.
    */
   /** 上に貼りついているもの（バーと、いまはカレンダー）の厚み。 */
-  function chromeInset() {
-    const bar = root.querySelector(".topbar");
-    let h = bar ? bar.getBoundingClientRect().height : 0;
-    // 貼りついている（＝すでに上にいる）カレンダーのぶんだけ、さらに下げます。
-    if (els.cal && els.cal.classList.contains("is-stuck")) {
-      h += els.cal.getBoundingClientRect().height;
-    }
-    return h;
-  }
+  /* 上の帯と暦は画面の外（全タブで一つの帯）に移ったので、画面の中で
+     上に貼りついて行を隠すものは、もうありません。 */
+  function chromeInset() { return 0; }
 
   function scrollToSection(target, willStick) {
     /* Scrolled by hand rather than with scrollIntoView. That asks *every*
@@ -2745,10 +3121,7 @@
     /* 送ったあとに暦が貼りつくと、着いた先の見出しがその裏に隠れます
        ——いま貼りついていないぶんは、chromeInset が数えていないので。
        これから貼りつくと分かっているときは、その高さも先に引きます。 */
-    let inset = chromeInset();
-    if (willStick && els.cal && !els.cal.classList.contains("is-stuck")) {
-      inset += els.cal.getBoundingClientRect().height;
-    }
+    const inset = chromeInset();
     const top = root.scrollTop
       + target.getBoundingClientRect().top - root.getBoundingClientRect().top - inset;
     KN.app.glideTo(root, Math.max(0, top));
@@ -2830,7 +3203,7 @@
       parts.push(t.id, t.due, t.repeat ? 1 : 0, t.icon || "", t.title);
     });
     store.get().todos.forEach((t) => {
-      if (!t.due || t.due >= today || !(t.done || t.archived)) return;
+      if (!t.due || t.due >= today || t.repeat || t.trace || !(t.done || t.archived)) return;
       parts.push("d", t.id, t.due, t.icon || "", t.title);
     });
     return parts.join("\u0001");
@@ -3018,9 +3391,13 @@
        消えていました。過去のマスは記録なので、片づけたことでその日に
        何があったか読めなくなるのは本末転倒です。今日から先はこれまで
        どおり `open` だけ（まだ起きていないことを「済んだ」と出すと
-       嘘になるので）。 */
+       嘘になるので）。
+
+       ただし**繰り返しのぶんは、済んだ記録としては出しません**（2026年9月28日。済ませると残る控え＝`trace` も同じ）。
+       毎週のものは、済ませるたびに過去の日へ絵が並び、暦が「済んだ印」だらけ
+       になるので。まだこれからの繰り返しは、上のとおり出ます。 */
     const doneForMarks = store.get().todos
-      .filter((t) => (t.done || t.archived) && t.due && t.due < today);
+      .filter((t) => (t.done || t.archived) && !t.repeat && !t.trace && t.due && t.due < today);
     const marks = new Map();
     (open || []).concat(doneForMarks).forEach((t) => {
       if (!t.due) return;
@@ -3093,9 +3470,14 @@
 
        今日を見ているときだけ。過ぎた日を見ているときに「期限切れ」と
        言われても、することがありません。 */
-    const oldBar = sec.querySelector(".tl-late");
+    /* 札の置き場は、暦の中ではなく**帯のすぐ下（この画面の頭）**です。
+       暦は全タブで一つの帯に居るので、中に置くと、やることの暦だけが
+       札のぶん背が高くなり、タブを移るたびに紙が上下します。画面の頭も
+       紙の外で送られないので、「どこまで送っても居る」はそのまま。 */
+    const host = els.late;
+    const oldBar = host && host.querySelector(".tl-late");
     if (oldBar) oldBar.remove();
-    const late = oneDay() && shownDay() === today
+    const late = host && oneDay() && shownDay() === today
       ? (open || []).filter((t) => t.due && t.due < today) : [];
     if (late.length) {
       const bar = node(html`
@@ -3110,14 +3492,157 @@
         store.update((st) => { st.settings.todoTimeline = false; });
         KN.ui.toast("一覧で出します。設定から戻せます");
       });
-      sec.append(bar);
+      host.append(bar);
     }
+    /* 段3：前の日から運んできたもの。**あることと、置き直す口だけ**言います。
+       押さなければ今日に居続ける（9月27日の「期限切れは作らない」のまま）。
+       数は件数だけ——「できなかった」「◯日持ち越し」は言いません。 */
+    const oldCarry = host && host.querySelector(".tl-carry");
+    if (oldCarry) oldCarry.remove();
+    const carried = host && oneDay() && shownDay() === today ? store.carriedToday() : [];
+    if (carried.length) {
+      const bar = node(html`
+        <button type="button" class="tl-late tl-carry">
+          <span class="tl-late-n">${carried.length}</span>
+          <span>前の日から運んだもの</span>
+          <span class="tl-late-go">置き直す${icon("chevron")}</span>
+        </button>
+      `);
+      bar.addEventListener("click", () => { haptic(); carrySheet(); });
+      host.append(bar);
+    }
+    paintPassed(true);
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);
     // 描き直したぶん、いま見ている日の印は消えています。付け直します
     // （枠ごと入れ替わったので、輪は滑らせずに置きます）。
     paintHere(true);
+  }
+
+  /* 段3：運んできたものを、一件ずつ選び直す紙（docs/todo-timeline.md
+     「崩れたときの置き直し」）。選ぶと行が消え、報せに「元に戻す」。
+     片づけ終えたら紙は閉じる（通知から来た紙 due-sheet.js と同じ拍）。 */
+  function carrySheet() {
+    const rows = store.carriedToday();
+    if (!rows.length) return;
+    const week = store.carryWeek();
+    const picks = [
+      { key: "today", label: "今日のどこか", done: "今日のどこかに" },
+      { key: "tomorrow", label: "明日", done: "明日へ" },
+      { key: "week", label: week.next ? "来週" : "今週", done: week.next ? "来週中に" : "今週中に" },
+      { key: "someday", label: "長期タスクへ", done: "長期タスクへ" },
+      { key: "stop", label: "やめる", done: "アーカイブしました" },
+    ];
+    const box = node(html`<div class="carry-list"></div>`);
+    let handle = null;
+    let left = rows.length;
+    rows.forEach((t) => {
+      const was = t.carried && t.carried.time;
+      const row = node(html`
+        <div class="carry-row" data-id="${t.id}">
+          <div class="carry-head">
+            <span class="carry-title">${t.title}</span>
+            ${was ? html`<span class="carry-was">前は ${was}</span>` : ""}
+          </div>
+          <div class="carry-acts">
+            ${picks.map((p) => html`<button type="button" class="btn btn-soft btn-sm js-carry" data-key="${p.key}">${p.label}</button>`)}
+          </div>
+        </div>
+      `);
+      row.querySelectorAll(".js-carry").forEach((b) => b.addEventListener("click", () => {
+        const p = picks.find((x) => x.key === b.dataset.key);
+        const undo = store.settleCarried(t.id, p.key);
+        /* 明日へ：行が暦の明日へ飛んでいく（V15）。消す前に測るので、ここで。 */
+        if (p.key === "tomorrow") KN.ui.sendToDay(row, (store.getTodo(t.id) || {}).due);
+        haptic();
+        KN.motion.fire("save");
+        row.remove();
+        if (!--left && handle) { handle.close(); handle = null; }
+        KN.ui.toast(`「${t.title}」を${p.done}`, {
+          action: { label: "元に戻す", onClick: undo },
+        });
+      }));
+      box.append(row);
+    });
+    handle = KN.ui.sheet({ title: "前の日から運んだもの", content: box, onClose: () => { handle = null; } });
+  }
+
+  /* 段5：その日のうちの置き直し（docs/todo-timeline.md「その日のうちの置き直し」）。
+     時刻を過ぎたのにまだのものが**あることと、置き直す口だけ**を、段3の札の隣に
+     言います。件数だけで、赤くしません——「遅れ」「できなかった」は言いません。
+     組み直しを待たず、30秒の見回りでも数え直します（見ているあいだに時刻が過ぎる
+     ことのほうが多いので）。数が変わらなければ触りません。 */
+  function paintPassed(force) {
+    const host = els.late;
+    if (!host) return;
+    const old = host.querySelector(".tl-passed");
+    const list = oneDay() && shownDay() === todayKey() ? store.passedToday() : [];
+    if (!force && (old ? Number(old.dataset.n) : 0) === list.length) return;
+    if (old) old.remove();
+    if (!list.length) return;
+    const bar = node(html`
+      <button type="button" class="tl-late tl-passed" data-n="${String(list.length)}">
+        <span class="tl-late-n">${list.length}</span>
+        <span>時刻を過ぎたもの</span>
+        <span class="tl-late-go">置き直す${icon("chevron")}</span>
+      </button>
+    `);
+    bar.addEventListener("click", () => { haptic(); passedSheet(); });
+    host.append(bar);
+  }
+
+  /* 段5の紙。段3の紙（carrySheet）と同じ形で、一件ずつ選び直します。
+     「いまから」はいまの次の15分きざみ。「時刻を外す」と連れに戻り、道の空いた
+     ところを押せば、また時刻を付けられます（段2）。 */
+  function passedSheet() {
+    const rows = store.passedToday();
+    if (!rows.length) return;
+    const now = KN.plan.toMin(KN.util.nowTime());
+    const soon = Math.ceil((now + 1) / 15) * 15;
+    const soonAt = soon < 24 * 60 ? KN.plan.toTime(soon) : null;
+    const picks = [
+      soonAt && { key: "now", label: `いまから（${soonAt.replace(/^0/, "")}）`, done: `${soonAt.replace(/^0/, "")} に` },
+      { key: "loose", label: "時刻を外す", done: "連れに戻しました" },
+      { key: "tomorrow", label: "明日", done: "明日へ" },
+      { key: "someday", label: "長期タスクへ", done: "長期タスクへ" },
+      { key: "stop", label: "やめる", done: "アーカイブしました" },
+    ].filter(Boolean);
+    const box = node(html`
+      <div class="carry-list">
+        <p class="passed-note">時刻を外すと「連れ」に戻ります。</p>
+      </div>
+    `);
+    let handle = null;
+    let left = rows.length;
+    rows.forEach((t) => {
+      const row = node(html`
+        <div class="carry-row" data-id="${t.id}">
+          <div class="carry-head">
+            <span class="carry-title">${t.title}</span>
+            <span class="carry-was">${t.time.replace(/^0/, "")} の予定</span>
+          </div>
+          <div class="carry-acts">
+            ${picks.map((p) => html`<button type="button" class="btn btn-soft btn-sm js-passed" data-key="${p.key}">${p.label}</button>`)}
+          </div>
+        </div>
+      `);
+      row.querySelectorAll(".js-passed").forEach((b) => b.addEventListener("click", () => {
+        const p = picks.find((x) => x.key === b.dataset.key);
+        const undo = store.settlePassed(t.id, p.key, soonAt);
+        /* 明日へ：行が暦の明日へ飛んでいく（V15）。消す前に測るので、ここで。 */
+        if (p.key === "tomorrow") KN.ui.sendToDay(row, (store.getTodo(t.id) || {}).due);
+        haptic();
+        KN.motion.fire("save");
+        row.remove();
+        if (!--left && handle) { handle.close(); handle = null; }
+        KN.ui.toast(`「${t.title}」を${p.done}`, {
+          action: { label: "元に戻す", onClick: undo },
+        });
+      }));
+      box.append(row);
+    });
+    handle = KN.ui.sheet({ title: "時刻を過ぎたもの", content: box, onClose: () => { handle = null; } });
   }
 
   function groupSection(g, rows, tiles) {
@@ -3190,10 +3715,11 @@
      日送りに取られては困ります。 */
   let swiping = false;
 
-  function wireDaySwipe(viewport, track, open) {
+  function wireDaySwipe(viewport, track, open, surface) {
     KN.daySwipe.wire({
       viewport,
       track,
+      surface,
       day: shownDay,
       /* 先の日へも行けます。ここは「これから何をするか」を組む画面なので、
          明日・あさっての時間割にも用があります。 */
@@ -3214,6 +3740,7 @@
          月をまたいだときだけ、暦の盤を差し替えます（`setCalMonth`）。
          あれは暦だけを描き直すもので、画面ぜんぶではありません。 */
       commit: (next, kept) => {
+        const was = shownDay();
         viewDay = next === todayKey() ? null : next;
         /* **控えを捨てます。** 滑りきった一枚を据える（adopt）のは
            組み直しを通らない道なので、紙の中身は `sheetSig` が言っている
@@ -3228,11 +3755,41 @@
           fitCalH();
         }
         markDay(next, true);
+        /* 週をまたいだら、週の帯を送った向きから滑り込ませ、輪は滑らせずに
+           置き直します（帯ごと入れ替わるので、前の週の端から輪が横切って
+           くると、動きが二つ重なって見えます）。 */
+        if (KN.util.otherWeek(was, next)) {
+          KN.util.slideWeek(els.cal, next > was ? 1 : -1);
+          paintHere(true);
+        }
         // 控えが渡らなかったとき（掴み直しなど）だけ、これまでどおり。
         if (!kept) render();
       },
-      busy: () => !!tlDrag || KN.reorder.isActive(),
+      /* 道で連れを運んでいる指も向こうのもの（day-road.js の段8）。 */
+      busy: () => !!tlDrag || KN.reorder.isActive() || KN.dayRoad.carrying(),
       lock: (on) => { swiping = on; },
+    });
+  }
+
+  /* 一覧で見ているときの横払い。棚は日で中身が変わらないので、隣の紙は
+     組みません（買うものと同じ・day-swipe.js の「隣の紙を持たない画面」）
+     ——紙の中身が指に少しついて戻り、動くのは題と暦の日。着いた日の棚へ
+     運ぶのは、暦でその日を押したときと同じです（`openDay`）。 */
+  function wireShelfSwipe(sheet, shelves) {
+    KN.daySwipe.wire({
+      viewport: sheet,
+      surface: sheet,
+      track: shelves,
+      ignore: ".tl-grip",
+      day: titleDay,
+      step: (d, dir) => shiftDay(d, dir),
+      commit: (key) => {
+        const d = KN.util.dayDate(key);
+        setCalMonth(d.getFullYear(), d.getMonth(), true);
+        markDay(key, true);
+        jumpToDay(key);
+      },
+      busy: () => !!tlDrag || KN.reorder.isActive(),
     });
   }
 
@@ -3322,6 +3879,7 @@
 
      組み立てそのものは js/plan.js が持ちます。ここは描くだけです。 */
 
+  let tlDoneOpen = false;
   const timelineOn = () => store.get().settings.todoTimeline !== false;
 
   function timeline(rows, shelf) {
@@ -3341,8 +3899,11 @@
     const plan = P.buildDay(day, rows.concat(done), {
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
+    /* 済んだものは畳める（2026年10月2日）。道が上に来て、済んだ行が残ると
+       スクロールが長いので。畳み方は次に開いたときも覚えています。 */
+    const doneN = plan.items.filter((it) => it.todo.done || it.todo.archived).length;
     const sec = node(html`
-      <div class="tl">
+      <div class="tl ${tlDoneOpen ? "" : "is-done-shut"}">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
               並びと帯の隙間で同じことを言っています。文で重ねて言うのは
               説明のしすぎです。
@@ -3350,14 +3911,24 @@
               超過（はみ出し）だけは残します——これは「読めば分かる」では
               なく、**詰め込みすぎている**という注意なので、他の事実とは
               性格が違います。 */""}
-        ${plan.over
+        ${plan.over || doneN
           ? html`<div class="tl-sum">
-              <span class="tl-over">${P.humanSpan(plan.over)} はみ出しています</span>
+              ${plan.over ? html`<span class="tl-over">寝る時刻を ${P.humanSpan(plan.over)} すぎます</span>` : ""}
+              ${doneN ? html`<button type="button" class="tl-done-toggle" aria-expanded="${String(tlDoneOpen)}">
+                済み ${doneN}件<span class="tl-subs-arrow">${icon("chevron")}</span></button>` : ""}
             </div>` : ""}
         <ol class="tl-list js-tl"></ol>
       </div>
     `);
     const list = sec.querySelector(".js-tl");
+    const dt = sec.querySelector(".tl-done-toggle");
+    if (dt) dt.addEventListener("click", () => {
+      tlDoneOpen = !tlDoneOpen;
+      dt.setAttribute("aria-expanded", String(tlDoneOpen));
+      sec.classList.toggle("is-done-shut", !tlDoneOpen);
+      const ax = sec.querySelector(".tl-axis");
+      if (ax && ax.__paint) ax.__paint();
+    });
 
     /* 用事と空きを、時刻の順に一本へ混ぜます。 */
     const parts = []
@@ -3371,12 +3942,22 @@
         return;
       }
       const next = parts[i + 1];
-      list.append(itemRow(part.it, !!next && next.kind === "item", day));
+      const prev = parts[i - 1];
+      const touch = !!prev && prev.kind === "item" && landsInside(prev.it, part.it);
+      list.append(itemRow(part.it, !!next && next.kind === "item", day, touch));
     });
 
     /* 重なっている二つは、**丸薬どうしがぶつかって**見えます（下の CSS）。
        ぶつかるには相手が要るので、重なった行の一つ上にも印を付けます。
        組み立ては時刻の順に並べているので、重なった相手はすぐ上の行です。 */
+    /* 済んだ行を畳んだとき、その前後の空き（点線）だけが長く残っていた（2026年10月2日）。
+       済んだ行に接している空きも一緒に畳む。 */
+    [...list.children].forEach((li) => {
+      if (!li.classList.contains("tl-free-row")) return;
+      const p = li.previousElementSibling, n = li.nextElementSibling;
+      const doneRow = (x) => !!x && x.classList.contains("tl-row") && x.classList.contains("is-done");
+      if (doneRow(p) || (!p && doneRow(n))) li.classList.add("is-by-done");
+    });
     [...list.children].forEach((li) => {
       if (!li.classList.contains("is-clash")) return;
       const prev = li.previousElementSibling;
@@ -3431,6 +4012,31 @@
     }
   }
 
+  /** 線の上で、その行が受け持つ時間 { a, u }（分）と、その用事の本当の終わり end。
+
+      ふつうは用事の始まり〜終わりそのものです。**下の行とぶつかっている行
+      （`is-clash-above`）だけ、受け持ちは下の行が始まるまで**です。
+
+      20:00〜22:00 のルーティンの途中、20:55 に「テスト」があるとき、二つは
+      一本の線の上に上下に並びます。上の丸薬をルーティン自身の進み具合で塗ると、
+      20:57 には上の丸薬のまん中に「いま」が来て、その下の、もう始まっている
+      テストが灰色——上から下へ読むと時間が戻ります（2026年9月29日の画面）。
+      線の上の順に読めば、上の丸薬の見えているところは「テストが始まるまで」
+      なので、そこまでで塗り切ります。運ぶときの目盛り（`axisOf`）も、もとから
+      そう読んでいます。
+
+      end はうすい地（`is-live`）のため——ルーティン自体はまだ続いているので。 */
+  function shownSpan(li) {
+    const a = Number(li.dataset.at), end = Number(li.dataset.until);
+    let u = end;
+    if (li.classList.contains("is-clash-above")) {
+      const nx = li.nextElementSibling;
+      const na = nx ? Number(nx.dataset.at) : NaN;
+      if (isFinite(na) && na < u) u = Math.max(a, na);
+    }
+    return { a, u, end };
+  }
+
   /** いまの時刻が、リストのどの高さに当たるか。無ければ null。
 
       **行の中にも入ります。** ここには「行と行のあいだにしか置けない」と
@@ -3448,7 +4054,7 @@
     for (const li of list.children) {
       const rail = li.querySelector(".tl-rail");
       if (!rail) continue;
-      const a = Number(li.dataset.at), u = Number(li.dataset.until);
+      const { a, u } = shownSpan(li);
       if (!isFinite(a) || !isFinite(u) || u <= a) continue;
       const r = rail.getBoundingClientRect();
       if (r.height <= 0) continue;
@@ -3546,36 +4152,60 @@
 
      30秒ごとに置き直します（軸と同じ拍）。組み直しはしません。 */
   function markPass(list, nowMin) {
+    /* 線の上で「いま」が居る行に、もう着いたか。着くまでの行の線は全部
+       過ぎたぶん（色）、着いたあとの行の線は全部これから（灰色）。 */
+    let reached = false;
     for (const li of list.children) {
       if (!li.classList) continue;
       const row = li.classList.contains("tl-row");
       if (!row && !li.classList.contains("tl-free-row")) continue;
-      const a = Number(li.dataset.at), u = Number(li.dataset.until);
-      const known = isFinite(a) && isFinite(u) && u > a;
+      const { a, u, end } = shownSpan(li);
+      const known = isFinite(a) && isFinite(end) && end > a;
       let pass;
       if (nowMin == null || !known || li.classList.contains("is-done")) pass = 1;
       else if (nowMin >= u) pass = 1;
       else if (nowMin <= a) pass = 0;
       else pass = (nowMin - a) / (u - a);
       li.style.setProperty("--pass", pass.toFixed(3));
-      if (!row) continue;
       /* 丸薬の**外**の線の色。丸薬の中の境目は CSS が丸薬の寸法から出す
          ので（--rail-p）、ここが渡すのは外の二本だけです。
 
          外の線は時間を持ちません——丸薬と丸薬をつなぐ、ただの繋ぎです。
-         だから途中で色が変わってはならず、二値で決まります：上は
-         **始まったか**、下は**終わったか**。
+         だから途中で色が変わってはならず、二値で決まります。
+
+         **決めるのは、一本の線の上の「いま」の位置です。行ごとの
+         pass ではありません。** 前は行ごとに「上は始まったか・下は
+         終わったか」で塗っていて、二つの場面で**色の付いた短い線**が
+         丸薬の上下から灰色の線の中へ突き出ました（「丸薬に線が刺さって
+         いる」。2026年9月27日の画面）：
+           - 済ませたもの（pass は時計に関わらず 1）… 夕方の用事を朝に
+             済ませると、夕方の丸薬の上下 5〜10px だけが色になる。
+           - 重なり … 4時間のルーティンの途中で済ませた用事は、始まって
+             いて終わってもいるので上下とも色、上のルーティンはまだ
+             終わっていないので下は灰色——灰色 → 色 → 丸薬 → 色 → 灰色。
+         「いま」の行は `nowY` と同じ引き方（時刻の順に見て、まだ終わって
+         いない最初の行）で決めるので、線の色の境目は、いまの時刻の札と
+         同じところに一つだけ落ちます。丸薬の塗り（pass）は、そのまま
+         その用事の進み具合・済んだかを言います——線は時間、丸薬は用事。
 
          下（--rail-bot-c）は、手順の段（.tl-sub-wrap）の背骨も継ぎます。
          あそこの高さは手順の件数で決まっていて時間ではないので、割合を
          渡してはいけません（渡していた時期があり、それが「線が丸薬を
          追い越す」の正体でした）。 */
-      li.style.setProperty("--rail-top-c", pass > 0 ? "var(--tl-fill)" : "var(--tl-wait)");
-      li.style.setProperty("--rail-bot-c", pass >= 1 ? "var(--tl-fill)" : "var(--tl-wait)");
+      let top = true, bot = true;
+      if (nowMin != null && reached) top = bot = false;
+      else if (nowMin != null && known && nowMin < u) {
+        reached = true;
+        top = nowMin > a;
+        bot = false;
+      }
+      if (!row) continue;
+      li.style.setProperty("--rail-top-c", top ? "var(--tl-fill)" : "var(--tl-wait)");
+      li.style.setProperty("--rail-bot-c", bot ? "var(--tl-fill)" : "var(--tl-wait)");
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
-      const live = nowMin != null && known && pass > 0 && pass < 1
+      const live = nowMin != null && known && nowMin > a && nowMin < end
         && !li.classList.contains("is-done");
       li.classList.toggle("is-live", live);
       if (live) li.setAttribute("aria-current", "time");
@@ -3593,17 +4223,49 @@
      組み直しはしません。線だけ置き直せば足ります（行の高さは変わらない
      ので、置き場所は同じ折れ線から読めます）。組み直すと、読んでいる
      途中で行が動いたり、つまんでいるものが落ちたりします。 */
-  const NOW_TICK = 30000;
-  setInterval(() => {
+  /* 拍は**分の変わり目**にそろえます（2026年9月30日）。前は30秒ごとで、
+     時計が 7:34 になってから最大30秒、道の人と「いま」が 7:33 のまま残り、
+     分が変わると歩く人（day-road.js の paint）も遅れて歩いていました。 */
+  const nowTick = () => setTimeout(() => {
+    nowTick();
     if (!root || document.hidden) return;
     /* 別のタブを見ているときは、測っても 0 しか返りません（消えている
        ので）。戻ってきたときは ResizeObserver が呼んでくれます。 */
     if (!root.offsetParent && root.offsetHeight === 0) return;
-    if (tlDrag) return;                       // 運んでいる最中は触りません
+    if (tlDrag || KN.dayRoad.carrying()) return;   // 運んでいる最中は触りません
+    paintNowAll();
+  }, 60000 - (Date.now() % 60000) + 250);
+  nowTick();
+
+  function paintNowAll() {
     root.querySelectorAll(".tl-axis").forEach((el) => {
       if (typeof el.__paint === "function") el.__paint();
     });
-  }, NOW_TICK);
+    if (KN.dayRoad) KN.dayRoad.paintAll(root);
+    paintPassed(false);
+  }
+
+  /* **戻ってきたら、すぐ一度。** 30秒の見回りだけでは、アプリへ戻ってから
+     最初の拍までのあいだ「いま」が閉じた時刻のまま残ります（7:43 に開いて
+     「7:34」と出ていた。2026年9月29日の画面）。いまを指す字が古いのは、
+     無いより悪い——見た人はそれを信じるので。
+     組み直しも頼みます。紙の見分け字は今日なら分まで持つので、分が変わって
+     いれば、時刻を決めていないものが**いまから先へ**置き直されます（頼まないと、
+     朝に組んだ「7:00ごろ」が、昼に開いても過ぎた場所に残ったままになり得た）。
+     開いて見ているあいだは組み直しません（読んでいる途中で行が動くので）。
+     アプリへ戻ってきたのも「開いた」うちなので、道の人も歩きます。読み込みの
+     pageshow（persisted でない）は数えません——そちらは onEnter が歩かせて
+     いて、組み直しが挟まると、歩きの途中から頭へ跳ぶので。 */
+  function wakeNow(e) {
+    if (!root || document.visibilityState !== "visible") return;
+    if (!root.offsetParent && root.offsetHeight === 0) return;
+    if (tlDrag) return;
+    render();
+    paintNowAll();
+    if (KN.dayRoad && e && (e.type === "visibilitychange" || e.persisted)) KN.dayRoad.walk(root);
+  }
+  document.addEventListener("visibilitychange", wakeNow);
+  window.addEventListener("pageshow", wakeNow);
 
   /* ---------------- つまんで、置きなおす ----------------
 
@@ -3713,10 +4375,10 @@
      おきます——手順を一つ押すたびに畳まれては、続けて押せません。 */
   const openSubs = new Set();
 
-  /* 手順のボタンを押した拍を、要素ではなく id で覚えておきます。
-     pointerup で store を書き換えると、その一拍で画面ぜんぶが描き直され
-     （app.js の store.subscribe）、押したボタン自身も新しい要素に
-     差し替わります。タッチでは pointerup のあとに「代替の」click が続けて
+  /* 手順のボタンを押した拍を、要素ではなく id で覚えておきます（値は時刻。
+     指を置き直すと消える）。長押しで store を書き換えると、その一拍で
+     画面ぜんぶが描き直され（app.js の store.subscribe）、押したボタン自身も
+     新しい要素に差し替わります。タッチでは指を離したあとに「代替の」click が続けて
      発行され、その click は差し替わった**新しい**要素をあらためて叩く
      ——preventDefault では止まりません（touchstart 側で止める必要が
      あり、pointer イベントだけでは間に合わない）。要素ではなく id を
@@ -3731,7 +4393,7 @@
          したが、行の本文（題や事実の乗っているところ）自体が button なので、
          行を掴む道がどこにも無くなっていました。掴んで欲しくないのは、
          押したら別のことが起きる小さな丸——それだけ。 */
-      if (e.target.closest(".check, .fav, .tl-subs-chip")) return;
+      if (e.target.closest(".check, .fav, .tl-subs-chip, .tl-doneat")) return;
       const row = e.target.closest(".tl-row");
       /* 済ませたあとでも持てます——開始時刻がわかってから、事後的に
          リスケすることがあるので。止めていたのはここ一行だけでした。 */
@@ -3768,7 +4430,7 @@
   function lift(row, id, list, day, y0) {
     const t = store.getTodo(id);
     if (!t) return;
-    const len = t.minutes || KN.plan.DEFAULT_MINUTES;
+    const len = KN.plan.minutesOf(t);
 
     /* 持ち上げた指の位置を控えます。**動かさずに離したら、何もしません**
        ——下の drop() を見ること。 */
@@ -4156,7 +4818,7 @@
       const undo = store.removeTodo(d.id);
       KN.motion.fire("save");
       haptic(14);
-      KN.ui.toast(`「${t.title}」を削除しました`, {
+      KN.ui.toast(`「${t.title}」を消しました`, {
         action: { label: "元に戻す", onClick: undo },
       });
       return;
@@ -4363,7 +5025,30 @@
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  function itemRow(it, joined, day) {
+  /** 下の行が、すぐ上の行の**時間の中で**起きたか（丸薬どうしをぶつけるか）。
+
+      組み立ての `clash` は「時刻を決めたものどうし」しか見ません。済ませた
+      ものは押した時刻に置かれる（plan.js の doneSpan）ので、4時間の朝の
+      ルーティンの途中で済ませた用事は、ルーティンの**下の行**に、線で
+      つながれて並びます。すると絵は「ルーティンが終わってから、次の用事」
+      と読めて、ルーティンの丸薬がまだ途中まで（`--pass` 0.27）なのに、
+      その下の丸薬だけ色が付いている——時間が逆に流れて見えました
+      （2026年9月27日の画面）。重なりは重なりとして、ぶつけて見せます。
+
+      **決めた長さどうしのときだけ。** 長さを書いていない用事の 30分は、
+      置き場所を決めるための仮の数です（nodeH の但し書き）。仮の数で
+      重なりを言うと、続けて二つ済ませただけで丸薬がぶつかります。
+      だから上の行は長さを持っていること、下の行は**本当の時刻**
+      （決めた時刻・長さから出した始まり・済ませた時刻）がその中にあること。 */
+  function landsInside(above, it) {
+    if (!above || !above.todo || !Number(above.todo.minutes)) return false;
+    const real = it.fixed || Number(it.todo && it.todo.minutes)
+      ? it.atMin
+      : (it.doneAtMin != null ? it.doneAtMin : null);
+    return real != null && real >= above.atMin && real < above.untilMin;
+  }
+
+  function itemRow(it, joined, day, touch) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
@@ -4377,7 +5062,8 @@
        後者のほうです。 */
     if ((t.done || t.archived) && t.doneAt) {
       const c = doneClock(t.doneAt);
-      if (c) facts.push(html`<span class="tl-doneat">${icon("check")}<i>${c}</i></span>`);
+      if (c) facts.push(html`<button type="button" class="tl-doneat"
+        aria-label="${t.title} の済ませた時刻 ${c} を直す">${icon("check")}<i>${c}</i></button>`);
     }
     /* 買い物の一件だけは、**いま何個ぶんか**をその場で数えます。置いた
        ときの数を写しておくと、★をひとつ足した瞬間に古くなるので。 */
@@ -4410,13 +5096,19 @@
     if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const closed = t.done || t.archived;
     const li = node(html`
-      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash ? "is-clash" : ""}
+      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash || touch ? "is-clash" : ""}
                  ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
           style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
-        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}</span>
-        <span class="tl-rail"><span class="tl-node">${tlMark(t)}</span></span>
+        ${/* 時刻を決めていない用事の時刻は、その場で詰めた**目安**なので「ごろ」を
+              添えます（B6）。前は字の太さだけが違い、「17:03」を決めた時刻と
+              読み違えました（詳細を開くと「時刻なし」）。「ごろ」は時刻の**下**に
+              浮かせます——列は 44px で横に並べる幅が無く、行の中に積むと時刻の
+              字が丸の中心からずれるので。済ませたもの（押した時刻）には付けない。 */""}
+        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}${
+          !it.fixed && !closed && it.at ? html`<span class="tl-about">ごろ</span>` : ""}</span>
+        <span class="tl-rail" data-grow><span class="tl-node">${tlMark(t)}</span></span>
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
 
               前置き（メモ）が上にあるのは、それが**題を読むための文脈**
@@ -4460,7 +5152,8 @@
         </div>
       </li>
     `);
-    li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id));
+    li.querySelector(".tl-open").addEventListener("click",
+      () => openSheet(t.id, li.querySelector(".tl-node")));
     /* 絵（レールの丸）も、押せば詳細が開きます。行の中で絵だけが「押しても
        何も起きないところ」でした——見た目には題と同じ一つの行なので、
        どちらを押しても同じ場所へ行くのが素直です。
@@ -4468,7 +5161,13 @@
        運んだ指が離れぎわに起こす click は、lift() の eatClick が食べるので、
        ここには来ません（置きなおすたびに詳細が開くことはありません）。 */
     const rail = li.querySelector(".tl-rail");
-    if (rail) rail.addEventListener("click", () => openSheet(t.id));
+    if (rail) rail.addEventListener("click",
+      () => openSheet(t.id, li.querySelector(".tl-node")));
+    const at = li.querySelector(".tl-doneat");
+    if (at) at.addEventListener("click", (e) => {
+      e.stopPropagation();
+      editDoneAt(t.id, at);
+    });
     const box = li.querySelector("button.check");
     if (box) {
       box.addEventListener("click", (e) => {
@@ -4547,7 +5246,7 @@
            走る」の正体でした）。だから「扱った」の印はボタン要素にもこの
            描画のクロージャにも持たせず、手順の id で見張ります
            （subGestureAt、モジュール直下＝描き直しをまたいで生きています）。 */
-        let holdTimer = 0, holdFired = false, heldPointerId = null;
+        let holdTimer = 0, holdFired = false;
         const clearHold = () => { clearTimeout(holdTimer); holdTimer = 0; };
         /* 長押し確定。指を離すのを待たず、ここで「できなかった」を立てます
            ——離したときにしか反応しないと、0.5秒経っても何も起きていないように
@@ -4555,7 +5254,7 @@
         function commitHold() {
           holdFired = true;
           holdTimer = 0;
-          subGestureAt.set(gestureKey, { t: Date.now(), pid: heldPointerId });
+          subGestureAt.set(gestureKey, Date.now());
           KN.motion.fire("warn", btn);
           store.toggleSubSkip(t.id, s.id, day);
           paint();
@@ -4575,16 +5274,18 @@
              ここで防がないと長押しの直後に完了/選択なしがもう一度走り、
              せっかく立てた「できなかった」が一拍でまた消えます。
 
-             **見分けるのは pointerId。** 0.8秒という時間の物差しだけだと、
-             すぐあとに同じ手順を本当にもう一度押した（できなかった→選択
-             なし、を続けてやりたいときは普通にあります）のまで弾いて
-             しまいます。同じ指（同じ pointerId）から続けて来たものだけを
-             「さっきの続き」として弾き、違う指（＝新しいタップ）は時間が
-             近くても通します。 */
-          const rec = subGestureAt.get(gestureKey);
-          const pid = e && e.pointerId != null ? e.pointerId : null;
-          if (rec && pid != null && rec.pid === pid && Date.now() - rec.t < 2000) return;
-          subGestureAt.set(gestureKey, { t: Date.now(), pid });
+             **見分けるのは「指を置き直したか」。** 新しいタップは必ず
+             pointerdown（キーボードなら keydown）から始まり、そこで印を
+             消します（下）。印が残っているうちに来たものは、同じ指の
+             続きです。時間の物差しだけだと、すぐあとに同じ手順を本当に
+             もう一度押した（できなかった→選択なし、を続けてやりたいときは
+             普通にあります）のまで弾いてしまいます。
+             前は pointerId で見分けていましたが、iPhone の震えるつまみ
+             （motion.js の FEEL）が出す click は pointerId を持たないことが
+             あり、それだと長押しの直後の click を通してしまいます。 */
+          const at = subGestureAt.get(gestureKey);
+          if (at && Date.now() - at < 2000) return;
+          subGestureAt.set(gestureKey, Date.now());
           const fresh = store.getTodo(t.id);
           const raw = (fresh && (fresh.subs || []).find((x) => x.id === s.id)) || s;
           const cur = fresh ? store.subStatus(fresh, raw, day) : { done: s.done, skipped: s.skipped };
@@ -4603,17 +5304,25 @@
         }
         btn.addEventListener("pointerdown", (e) => {
           if (e.pointerType === "mouse" && e.button !== 0) return;
+          subGestureAt.delete(gestureKey);   // 新しい指。前の指の印を消す
           holdFired = false;
-          heldPointerId = e.pointerId;
           holdTimer = setTimeout(commitHold, HOLD_MS);
         });
-        btn.addEventListener("pointerup", (e) => release(true, e));
+        btn.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") subGestureAt.delete(gestureKey);
+        });
+        /* 短いタップを決めるのは click だけ。pointerup では決めません。
+           pointerup で store を書き換えると、その場で行ごと描き直され、
+           iPhone の震えるつまみ（motion.js の FEEL）が、震える前に DOM から
+           外れていました——手順の丸だけ震えなかったのはこれ。click まで
+           待てば、つまみは震えてから click を出し、それがここへ上がって
+           きます。送った指の click は、つまみが button へ渡しません。 */
+        btn.addEventListener("pointerup", (e) => release(false, e));
         btn.addEventListener("pointercancel", (e) => release(false, e));
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
-          // タッチの代替clickです（キーボードからの押下は pointerdown が
-          // 起きないので、ここには来ません）。直前に同じ指で扱っていたら
-          // release の中の見張りが黙って弾きます。
+          // 長押しを決めたあとの同じ指の click は、release の中の見張りが
+          // 黙って弾きます。
           release(true, e);
         });
         list.append(line);
@@ -4814,6 +5523,17 @@
 
   function toNow() {
     if (!root) return;
+    /* 一日の道が出ていれば、「いま」は紙のいちばん上（道の上の人）にいます。
+       時間割の「いま」まで送ると、道が画面の外へ出ていくので、頭へ戻すだけ。 */
+    if (root.querySelector(".day-road")) {
+      const sc = KN.app.scrollerOf(root);
+      if (sc.scrollTop > 0) {
+        restoring = true;
+        sc.scrollTop = 0;
+        setTimeout(() => { restoring = false; }, 60);
+      }
+      return;
+    }
     const mark = root.querySelector(".tl-now")
       || root.querySelector(".tl-row:not(.is-done)");
     if (!mark) return;
@@ -4834,9 +5554,25 @@
     setTimeout(() => { restoring = false; }, 60);
   }
 
-  /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。 */
-  function onEnter() { requestAnimationFrame(toNow); }
+  /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。
+     道の人は、開いた瞬間に四歩あるいて止まります（day-road.js の「歩く」）。 */
+  function onEnter() {
+    requestAnimationFrame(toNow);
+    if (KN.dayRoad) KN.dayRoad.walk(root);
+  }
 
   KN.screens = KN.screens || {};
-  KN.screens.todo = { mount, render, dockButton, onEnter };
+  /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
+  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
+    /* ほかから「その日を見せて」（これからの二週間・js/upcoming.js）。暦の月も
+       その日へ合わせます——一日ずつの紙でなければ、その日の棚まで運びます
+       （「今日へ戻る」と同じ二通り）。 */
+    goDay: (day) => {
+      const d = KN.util.dayDate(day);
+      if (!d) return;
+      setCalMonth(d.getFullYear(), d.getMonth(), true);
+      if (oneDay()) { goDay(day, day > shownDay() ? 1 : -1); return; }
+      markDay(day, true);
+      jumpToDay(day);
+    } };
 })();
