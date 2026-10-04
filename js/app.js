@@ -1468,7 +1468,7 @@
     if (KN.motion && KN.motion.still()) { el.scrollTop = 0; return; }
     const screens = el.scrollTop / Math.max(1, el.clientHeight || window.innerHeight);
     const k = Math.min(1.6, Math.max(0.7, 0.7 + 0.35 * Math.log2(1 + screens)));
-    const base = KN.motion ? KN.motion.ms("--m-to-top") : 500;
+    const base = KN.motion ? KN.motion.ms("--m-to-top") : 750;
     glideTo(el, 0, { ms: base * k, pow: 5 });
   };
   KN.app.glideTo = glideTo;
