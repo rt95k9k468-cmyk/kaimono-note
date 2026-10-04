@@ -6632,6 +6632,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 人。塗りの歩く人（day-road.js の ME_PARTS）で、まわりに紙の色の縁（道や札の
    上でも読めるように）。線の太さは day-road.js が元の絵の単位で書きます。 */
 .road-me path { stroke-linecap: round; stroke-linejoin: round; }
+/* 5方向の人（2.0 の V7）。右・右下・下の三つを置いて、出すのは人の data-face の一つだけ。 */
+.road-me [data-face] { display: none; }
+.road-me[data-face="r"] [data-face="r"], .road-me[data-face="rd"] [data-face="rd"],
+.road-me[data-face="d"] [data-face="d"] { display: inline; }
 .road-me-halo > g > * { fill: var(--c-sheet); stroke: var(--c-sheet); }
 .road-me-ink .me-line { fill: none; }
 .road-me-ink .me-fill { stroke: none; }
