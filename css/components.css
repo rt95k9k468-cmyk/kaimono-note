@@ -528,7 +528,7 @@ button, [role="tab"] {
    edge and put 1か月後 and 「なし」 past it entirely, so clearing a date meant
    knowing there was something over there to scroll to. Wrapping costs a line
    and shows the whole question. */
-.sheet .chip-row, .note-pop.is-form .chip-row {
+.sheet .chip-row, .note-pop.is-form .chip-row, .note-pop.is-pick .chip-row {
   flex-wrap: wrap;
   overflow-x: visible;
   row-gap: var(--sp-2);

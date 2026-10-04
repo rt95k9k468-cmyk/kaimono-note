@@ -64,8 +64,12 @@ const { open, checker } = require("./lib");
   const cardNb = await page.$eval(`#screen-notes .note-row[data-id="${id}"] .note-nb .nb-ico`,
     (e) => ({ cat: e.style.getPropertyValue("--cat"), color: getComputedStyle(e).color }));
   t.check("カードの本の絵に名前の色", /^#/.test(cardNb.cat) && cardNb.color !== "", JSON.stringify(cardNb));
-  const chipNb = await page.$eval("#screen-notes .notes-chips .js-pick[data-k=nb] .nb-ico",
+  await page.click("#screen-notes .notes-chips .js-pick[data-k=nb]");
+  await page.waitForSelector(".note-pop.is-pick .js-filter-pick .nb-ico");
+  const chipNb = await page.$eval(".note-pop.is-pick .js-filter-pick .nb-ico",
     (e) => e.style.getPropertyValue("--cat"));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".note-pop-cover"), null, { timeout: 3000 });
   t.check("チップの本の絵も同じ色", chipNb === cardNb.cat, chipNb);
 
   await openCard(id);
