@@ -1515,7 +1515,10 @@
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
       const quiet = !touching && !isGliding() && !(KN.reorder && KN.reorder.isActive());
-      const el = quiet ? scrollerOf(activeScreen()) : null;
+      /* 紙が開いていれば、いちばん上の紙の本体を送る（長いノートなど。2026年10月4日）。 */
+      const sheets = document.querySelectorAll(".sheet.is-open");
+      const top = sheets.length ? sheets[sheets.length - 1].querySelector(".sheet-body") : null;
+      const el = quiet ? (sheets.length ? top : scrollerOf(activeScreen())) : null;
       // The pixel goes back either way, so the next tap has something to take.
       window.scrollTo(0, TOP_TAP_PARK);
       if (el && el.scrollTop > 0) { glideToTop(el); haptic(); }
