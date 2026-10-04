@@ -340,15 +340,21 @@
   function restBox(el) {
     const r = el.getBoundingClientRect();
     const t = getComputedStyle(el).transform;
-    const dy = t && t !== "none" ? new DOMMatrixReadOnly(t).m42 : 0;
-    return { left: r.left, right: r.right, top: r.top - dy, bottom: r.bottom - dy };
+    const m = t && t !== "none" ? new DOMMatrixReadOnly(t) : null;
+    const dy = m ? m.m42 : 0;
+    /* 横は、真ん中に置く translate(-50%) から外れたぶん（左端から払っていた紙。V19）。 */
+    const dx = m ? m.m41 + r.width / 2 : 0;
+    return { left: r.left - dx, right: r.right - dx, top: r.top - dy, bottom: r.bottom - dy };
   }
   const radiusOf = (x) => parseFloat(getComputedStyle(x).borderTopLeftRadius) || 0;
   const cardClip = (s, b, rad) =>
     `inset(${b.top - s.top}px ${s.right - b.right}px ${s.bottom - b.bottom}px ${b.left - s.left}px round ${rad}px)`;
+  /* 紙の角は紙から読む（上だけ丸い紙も、四隅の丸いカード＝2.0 の V19 も）。 */
   const fullClip = (el) => {
-    const R = radiusOf(el);
-    return `inset(0px round ${R}px ${R}px 0px 0px)`;
+    const cs = getComputedStyle(el);
+    const R = ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"]
+      .map((k) => `${parseFloat(cs[k]) || 0}px`).join(" ");
+    return `inset(0px round ${R})`;
   };
   const seenBox = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
     && r.right > 0 && r.left < window.innerWidth;
@@ -852,6 +858,43 @@
       return g.ms;
     };
 
+    const follow = (y) => {
+      const now = performance.now();
+      if (now > lastT) { vy = (y - lastY) / (now - lastT); lastT = now; lastY = y; }
+      const raw = y - startY;
+      dy = raw >= 0 ? raw : KN.motion.rubber(raw, 50);   // ③ 上はゴム
+      dragTo(dy);
+    };
+
+    const release = (dismissable) => {
+      if (startY == null) return;
+      startY = null;
+      const h = el.getBoundingClientRect().height || 1;
+      const far = Math.min(DISMISS_MAX, Math.max(DISMISS_MIN, h * DISMISS));
+      const fling = vy > FLING_V && dy >= FLING_MIN;     // ②
+      if (!dismissable || !(dy > far || fling)) {
+        const ms = slideTo(0);
+        setTimeout(() => { if (!closed) el.style.transition = ""; }, ms + 20);
+        return;
+      }
+      /* 下へ払って閉じるときは、**下へ帰します**。指が下へ送ったものが
+         ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
+         そのまま下まで滑らせながら閉じにいきます。 */
+      el.classList.remove("is-from-origin");
+      /* カードへ縮んで帰る紙は、払った場所から縮みます（shrinkCard）。 */
+      const ms = grow && grow.back && !still() ? 0 : slideTo(h);
+      tryClose();
+      /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
+         そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
+         居ることになります。 */
+      setTimeout(() => {
+        if (closed || !el.isConnected) return;
+        dy = h; vy = 0;
+        const back = slideTo(0);
+        setTimeout(() => { if (!closed) el.style.transition = ""; }, back + 20);
+      }, ms + 20);
+    };
+
     [head, handleBar].forEach((zone) => {
       if (!zone) return;
       zone.addEventListener("touchstart", (e) => {
@@ -863,45 +906,46 @@
 
       zone.addEventListener("touchmove", (e) => {
         if (startY == null) return;
-        const y = e.touches[0].clientY;
-        const now = performance.now();
-        if (now > lastT) { vy = (y - lastY) / (now - lastT); lastT = now; lastY = y; }
-        const raw = y - startY;
-        dy = raw >= 0 ? raw : KN.motion.rubber(raw, 50);   // ③ 上はゴム
-        dragTo(dy);
+        follow(e.touches[0].clientY);
       }, { passive: true });
 
-      const release = (dismissable) => {
-        if (startY == null) return;
-        startY = null;
-        const h = el.getBoundingClientRect().height || 1;
-        const far = Math.min(DISMISS_MAX, Math.max(DISMISS_MIN, h * DISMISS));
-        const fling = vy > FLING_V && dy >= FLING_MIN;     // ②
-        if (!dismissable || !(dy > far || fling)) {
-          const ms = slideTo(0);
-          setTimeout(() => { if (!closed) el.style.transition = ""; }, ms + 20);
-          return;
-        }
-        /* 下へ払って閉じるときは、**下へ帰します**。指が下へ送ったものが
-           ＋のほうへ飛んで戻るのは、いま自分がした動きと逆なので。
-           そのまま下まで滑らせながら閉じにいきます。 */
-        el.classList.remove("is-from-origin");
-        /* カードへ縮んで帰る紙は、払った場所から縮みます（shrinkCard）。 */
-        const ms = grow && grow.back && !still() ? 0 : slideTo(h);
-        tryClose();
-        /* 保存が通らなかった紙は**閉じません**（`tryClose` の但し書き）。
-           そのときは、下げたぶんを戻してやらないと、開いたまま画面の外に
-           居ることになります。 */
-        setTimeout(() => {
-          if (closed || !el.isConnected) return;
-          dy = h; vy = 0;
-          const back = slideTo(0);
-          setTimeout(() => { if (!closed) el.style.transition = ""; }, back + 20);
-        }, ms + 20);
-      };
       zone.addEventListener("touchend", () => release(true));
       zone.addEventListener("touchcancel", () => release(false));
     });
+
+    /* pull … () => true のあいだ、中身が一番上まで送ってあれば、中身を下へ
+       引いても閉じる（ノートの書く紙・2.0 の V19）。一番上に居ない・上へ
+       送る指は、ふつうの送りのまま。取ると決めたら紙の払いと同じ扱い
+       （指につく・勢い・保存してから閉じる）。引いて更新ではない。 */
+    const body = el.querySelector(".sheet-body");
+    if (opts && typeof opts.pull === "function" && body) {
+      let p0 = null, px0 = 0;
+      body.addEventListener("touchstart", (e) => {
+        p0 = null;
+        if (e.touches.length !== 1 || !isBottomSheet() || !opts.pull()) return;
+        if (body.scrollTop > 0) return;
+        p0 = e.touches[0].clientY; px0 = e.touches[0].clientX;
+      }, { passive: true });
+      body.addEventListener("touchmove", (e) => {
+        if (p0 == null) return;
+        const y = e.touches[0].clientY;
+        if (startY == null) {
+          const my = y - p0, mx = e.touches[0].clientX - px0;
+          if (Math.abs(my) < 2 && Math.abs(mx) < 2) return;
+          /* 下向きの縦で、まだ一番上に居るときだけ取る。早く決める——iOS は
+             送りが始まってからの preventDefault を聞かない。 */
+          if (!(my > 0 && my > Math.abs(mx) && body.scrollTop <= 0)) { p0 = null; return; }
+          startY = y;
+          dy = 0; lastT = performance.now(); lastY = y; vy = 0;
+          el.style.transition = "none";
+        }
+        /* 取ったあとは、中身の送り（と、一番上での跳ね返り）を止める。 */
+        if (e.cancelable) e.preventDefault();
+        follow(y);
+      }, { passive: false });
+      body.addEventListener("touchend", () => { p0 = null; release(true); });
+      body.addEventListener("touchcancel", () => { p0 = null; release(false); });
+    }
 
     /* tryClose も渡します。Escape で閉じる道（下の keydown）が close() を
        直接呼んでいて、そこだけ**書きかけを黙って捨てていました**。閉じ方が
