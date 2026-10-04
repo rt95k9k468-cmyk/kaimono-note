@@ -151,10 +151,6 @@
   .ac-item:hover { background: var(--c-primary-soft); }
 }
 .ac-emoji { font-size: calc(20px * var(--fs-k)); flex: none; display: flex; align-items: center; }
-.ac-new-mark { width: 25px; color: var(--c-primary); }
-/* 丸い印（32px）の中身。入れものが大きさを決めます（二段階の外）。 */
-.ac-new-mark svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9;
-                   fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ac-name { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ac-sub {
@@ -163,22 +159,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.ac-new { color: var(--c-primary); font-weight: var(--fw-bold); }
-
-/* progress */
-.progress-wrap { padding: 0 var(--sp-4) var(--sp-3); }
-.progress {
-  height: 6px;
-  background: var(--c-surface-3);
-  border-radius: var(--r-full);
-  overflow: hidden;
-}
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--c-primary), var(--c-primary-2));
-  border-radius: var(--r-full);
-  transition: width var(--m-grow) var(--ease-out);
 }
 
 /* category group — no heading any more, just a run of rows wearing the same
@@ -469,17 +449,8 @@
 }
 .topbar-today:active { opacity: .5; }
 
-.cal-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 var(--sp-1);
-  padding: 0 2px;
-}
-
 /* ‹ › at the far end, and — only once you have wandered — the way back. The
    arrows are the same chevron the app uses everywhere, turned. */
-.cal-nav { margin-left: auto; display: flex; gap: 2px; }
 .cal-arrow {
   width: 34px; height: 30px;
   display: grid;
@@ -893,7 +864,7 @@
    sits well back. No ↻ of its own any more — the circle carries that now, and
    two arrows on one row is one arrow too many; what is left here is the part
    an icon cannot say, which is *which* days. */
-.todo-repeat, .tile-repeat {
+.tile-repeat {
   display: inline-flex;
   align-items: center;
   flex: none;
@@ -1082,17 +1053,6 @@
 .time-row .chip { flex: none; height: 34px; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
-/* 朝 / 午後 / 夜, on the row itself. Quiet: the shelf it sits on says it too,
-   and this is for when the row is read somewhere else — the archive, a search. */
-.todo-part {
-  flex: none;
-  font-size: calc(11px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  color: var(--cat, var(--c-text-2));
-  border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
-  border-radius: var(--r-full);
-  padding: 0 6px;
-}
 
 .todo-tag {
   flex: none;
@@ -1708,11 +1668,6 @@
 .trip .trip-head { padding: var(--sp-1) var(--sp-2) var(--sp-3); }
 .trip .cat-group:last-of-type { margin-bottom: var(--sp-1); }
 
-/* Still used by the compare screen's own totals, which are totals of a basket
-   whose prices are all known — that is what makes them safe to add up. */
-.summary-label { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
-.summary-total { font-size: var(--fs-2xl); font-weight: var(--fw-bold); color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-
 /* ================= PRICES SCREEN ================= */
 
 .search-wrap { padding: 0 var(--sp-4) var(--sp-3); }
@@ -1931,7 +1886,6 @@
 .spark { display: block; width: 100%; height: 48px; }
 .spark-line { fill: none; stroke: var(--c-primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .spark-area { fill: color-mix(in srgb, var(--c-primary) 14%, transparent); stroke: none; }
-.spark-dot { fill: var(--c-primary); }
 
 /* ここには「お店くらべ」の画面の見た目がありました（105行）。画面ごと
    外したので、使う人がいなくなりました——行き先を決めるときに何度か
@@ -2322,7 +2276,6 @@
 }
 #screen-settings .row { padding: var(--sp-3) var(--set-gut); min-height: 52px; border-bottom-color: var(--set-line); }
 #screen-settings .section-title { font-size: var(--set-fs-head); color: var(--c-text-3); padding: 0 var(--sp-5); }
-#screen-settings .section-hint { padding: 0 var(--sp-5); }
 
 /* 並べ替えられる行（お店・カテゴリ）も、同じ一枚のカードの中へ。
    **地は持たせること**——持ち上げたときの影だけが宙に浮きます
@@ -2377,10 +2330,6 @@
   font-size: var(--fs-sm);
   line-height: var(--lh-body);
 }
-/* アプリの顔。一枚だけ大きく出す絵なので、二段階の外です（空の画面の
-   絵と同じ扱い——添えものではなく、それ自体が見せるもの）。 */
-.about-mark { margin-bottom: var(--sp-1); line-height: 0; }
-.about-mark .empty-svg { width: 46px; height: 46px; display: inline-block; }
 
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
@@ -2408,7 +2357,6 @@
   .swatch:hover { transform: scale(1.1); }
 }
 .swatch[aria-pressed="true"] { border-color: var(--c-text); transform: scale(1.1); }
-
 
 /* ---------------- calculator strip ---------------- */
 
@@ -2612,7 +2560,7 @@
   max-width: 46px; overflow: hidden; text-overflow: ellipsis;
 }
 
-.diet-hero-note, .diet-note {
+.diet-note {
   font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); margin: 0;
 }
 .diet-note b { color: var(--c-text); }
@@ -2731,7 +2679,6 @@
 .diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }
 .diet-legend-item i.dot-ma7 { background: var(--c-primary); }
 .diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
-.diet-legend-item i.dot-goal { background: repeating-linear-gradient(90deg, var(--c-accent) 0 4px, transparent 4px 7px); }
 
 /* 枠の中に置く「消す」。次を貼るのに、まず選んで消す必要がないように。
    親指が届く大きさは要りますが、字にかぶらないよう右上の角へ。 */
@@ -3270,7 +3217,6 @@ button.section-note:active { opacity: .55; }
 /* 押すだけで完結する二つのボタン。①コピー ②貼り付け、同じ重さで並べます。 */
 .diet-ai-btns { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
 .diet-ai-btns .btn { flex: 1; }
-.diet-old-meals { margin-top: var(--sp-2); }
 
 .diet-total {
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
@@ -3356,11 +3302,6 @@ button.section-note:active { opacity: .55; }
    二種類あるように見えます。 */
 a.btn { text-decoration: none; }
 
-/* やることの名前と★を一段に。★は正方形のまま、名前が残りを取ります。 */
-.todo-name-row { display: flex; align-items: center; gap: var(--sp-2); }
-.todo-name-row .input { flex: 1 1 auto; min-width: 0; }
-.todo-name-row .fav { flex: none; width: 40px; height: 40px; }
-
 /* 空の日付欄。
 
    iOS は空のとき **何も描きません** ——枠だけが並んで、何の欄なのか
@@ -3435,9 +3376,6 @@ a.btn { text-decoration: none; }
 }
 .diet-hand svg { width: 11px; height: 11px; stroke-width: 2.6; }
 
-.diet-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.diet-foot .diet-note { margin-left: auto; text-align: right; }
-
 .diet-daynav { display: flex; align-items: center; gap: var(--sp-2); }
 .diet-daynav b { font-size: var(--fs-lg); }
 .diet-daynav .js-today { margin-left: auto; }
@@ -3473,7 +3411,6 @@ a.btn { text-decoration: none; }
 }
 .diet-why[open] summary { color: var(--c-text); font-weight: var(--fw-bold); }
 
-
 /* =========================================================
    daily — 積み上がりと、その日の地の文
    =========================================================
@@ -3483,12 +3420,7 @@ a.btn { text-decoration: none; }
    種類の色（--arc-c）は行ごとに差し込まれ、左の細い帯と絵にだけ乗ります。
 
    カレンダーは他のタブ（やること・ダイエット）と同じ .cal 系のクラスを
-   そのまま使います。ここに足すのは、その日にどの色の粒を乗せるかだけです。 */
-
-.arc-cal { margin: 0 var(--sp-4) var(--sp-3); }
-.arc-cal .cal-dots { display: flex; gap: 2px; justify-content: center; align-items: center; height: 5px; }
-.arc-cal .cal-dots i { width: 4px; height: 4px; border-radius: var(--r-full); display: block; }
-.arc-cal .cal-dots i.is-log { background: var(--c-text-3); opacity: .5; width: 8px; border-radius: var(--r-full); }
+   そのまま使います。 */
 
 /* ---- ② あの日 ----
 
@@ -3996,7 +3928,6 @@ a.btn { text-decoration: none; }
   font-size: var(--fs-sm);
 }
 .tl-sum.is-back { padding-top: var(--sp-3); justify-content: flex-end; }
-.tl-free { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* はみ出しは、注意ではなく**事実**として言います。赤くしません——
    「予定どおりに入らなかった＝失敗」ではないので。 */
 .tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
@@ -4007,16 +3938,6 @@ a.btn { text-decoration: none; }
 }
 .tl-done-toggle[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
 .tl.is-done-shut .tl-row.is-done, .tl.is-done-shut .tl-free-row.is-by-done { display: none; }
-.tl-switch {
-  margin-left: auto;
-  padding: 6px 14px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-2);
-  font-size: var(--fs-sm); font-weight: var(--fw-bold);
-  transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease);
-}
-.tl-switch:active { transform: scale(.96); background: var(--c-surface-3); }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
 
@@ -4515,11 +4436,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--cat, var(--c-primary-fill));
   border-color: var(--cat, var(--c-primary-fill));
 }
-.tl-pin, .tl-rep {
-  padding: 1px 8px;
-  border-radius: var(--r-sm);
-  background: var(--c-surface-2);
-}
 /* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
    実際には「二つ入れた」だけなので。 */
 .tl-clash { color: var(--c-text-2); font-weight: var(--fw-bold); }
@@ -4576,12 +4492,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* つまんで運んでいるあいだは、開いた帯が自分で時刻を出します。いまの線と
    二重になるので、そのあいだだけ層を伏せます。 */
 .tl:has(.tl-list.is-dragging) .tl-axis { display: none; }
-.tl-free-text {
-  align-self: center;
-  padding: 16px var(--sp-4) 16px 8px;
-  font-size: var(--fs-sm);
-  color: var(--c-text-3);
-}
 
 /* いま何時か。時刻・点・線の三つで、**軸のいちばん前**に置きます。
 
@@ -4817,14 +4727,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    **(236,169,165)**。同じ色を指定しているのに、点線だけ4割ほど白く
    混ざって見えていました。**「丸薬の間の線の色が周囲と合わない」の
    正体はこれです。** 色は `--pass` に任せ、ここは字だけにします。 */
-.tl-free-row.is-past .tl-free-text,
 .tl-free-row.is-past .tl-time { opacity: .6; }
-
-/* 過ぎた日の時間割。暦でその日を押すと、今日の上に出ます。今日と同じ
-   部品で描くので、見出しの右に「今日へ」の戻り口だけ足します。 */
-.todo-past > .todo-head { justify-content: space-between; }
-.todo-past > .todo-head > span:nth-of-type(2) { margin-right: auto; }
-.todo-past .js-past-close { flex: none; }
 
 /* ---------------- 済ませたときの動き（時間割） ----------------
 
@@ -4915,10 +4818,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   from { background-size: 100% 2.5px; }
   to   { background-size: 0% 2.5px; }
 }
-
-/* 済ませた行の、済ませた時刻。押した時刻をそのまま出します
-   （組み立てもこの時刻でその用事を置きます）。 */
-.tl-done-at { color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 
 /* 翌日以降の棚も、時間割のときは枠から出します（今日と同じ顔に）。
    棚の色の帯も外します——時間軸のほうが「いつ」を言っているので、
@@ -6260,7 +6159,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   background: var(--c-sheet);
   border-radius: 10px;
 }
-.tl-subs { font-variant-numeric: tabular-nums; }
 
 /* 済ませたものも、**同じ大きさのまま**です。
 
@@ -6481,16 +6379,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-variant-numeric: tabular-nums;
 }
 .tl-due.is-over { color: var(--c-danger); font-weight: var(--fw-bold); }
-
-/* 価格の「12商品・3店舗」。上の帯から下ろしたものです——題の下に一行
-   足すと、この画面の帯だけが他のタブより高くなります。帯の高さは四つの
-   タブで揃っていること。 */
-.prices-count {
-  margin: 0;
-  padding: 0 var(--sp-4) var(--sp-2);
-  font-size: var(--fs-sm);
-  color: var(--c-text-2);
-}
 
 /* ---------- これからの二週間（R7・js/upcoming.js） ----------
    日ごとの一枚（カード）と、その日に立つ用事。見出しも行も、押せば
@@ -6735,7 +6623,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    下の透明な線に指が届きません）。 */
 .road-marks { position: absolute; inset: 0; pointer-events: none; }
 .road-marks button { pointer-events: auto; }
-.road-label, .road-now, .road-edge, .road-turn {
+.road-label, .road-now, .road-edge {
   position: absolute; white-space: nowrap; line-height: var(--lh-tight);
 }
 /* 停留所の札。幅は day-road.js が決めて（まわりの札とぶつからない幅）、入り
@@ -6770,10 +6658,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .road-edge.is-before { transform: translate(-100%, -50%); }
 .road-edge.is-under { transform: translate(-50%, -50%); }
-.road-turn {
-  transform: translate(-50%, -50%); pointer-events: none;
-  font-size: calc(9.5px * var(--fs-k)); color: var(--c-text-3);
-}
 /* 連れ（時刻を決めていないもの）。人のすぐ後ろ、道の上の小さな丸。中の絵は
    時間割の丸薬と同じシルエット（マスク）。 */
 .road-bead {

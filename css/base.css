@@ -1340,12 +1340,6 @@ a { color: var(--c-primary); }
   white-space: nowrap;
 }
 
-.topbar-sub {
-  font-size: var(--fs-sm);
-  color: var(--c-text-2);
-  margin-top: 2px;
-}
-
 /* ---------------- tab bar ---------------- */
 
 /* 下の帯は、画面いっぱいの板ではなく、**浮いた一つのカプセル**です。

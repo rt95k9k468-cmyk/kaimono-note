@@ -24,8 +24,8 @@
 
    Thumbs need about 44px; several controls here are deliberately
    smaller than that because the design wants a small dot or a compact
-   pill. Rather than inflate the artwork, `.hit-44` centres an invisible
-   44px box over the control. Every place it is used was checked against
+   pill. Rather than inflate the artwork, an invisible 44px box is
+   centred over the control (`::after`, below). Every place it is used was checked against
    the surrounding gap so the enlarged area lands in padding and never
    steals a tap from the neighbouring control.
    ========================================================= */
@@ -37,12 +37,10 @@
    - 「AI推計」の帯（22px）… 下のボタンまで 12px、上は枠の余白
    やることの行の題と、食事の四枠は、中心から 44px ではなく空きに合わせて
    広げます（screens.css の `.tl-open` と `.diet-slot-view`）。 */
-.hit-44,
 .topbar-day,
 .js-filter .chip,
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji,
 .diet-memo-open { position: relative; }
-.hit-44::after,
 .topbar-day::after,
 .js-filter .chip::after,
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji::after,
@@ -546,38 +544,6 @@ button, [role="tab"] {
 }
 .sheet .chip-row.js-days .chip, .note-pop.is-form .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
 
-/* よく使う時刻（やることの時刻の紙）。8つを4列×2段の格子に——時刻は
-   横に流すと桁がずれて探しにくく、格子なら「夕方は下の段」と指が覚えます。
-   指の的は44px（chip の40pxから、ここだけ上げる）。 */
-.sheet .time-grid .chip-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-2);
-}
-.sheet .time-grid .chip {
-  height: 44px; padding: 0; min-width: 0;
-  justify-content: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ±15分。時刻の欄の両わきに置く、字の札（絵より「15分」と読めるほうが早い）。 */
-.time-nudge {
-  flex: 0 1 auto;
-  min-width: 0; height: 44px;
-  padding: 0 var(--sp-3);
-  border-radius: var(--r-full);
-  background: var(--c-surface);
-  border: 1.5px solid var(--c-border);
-  color: var(--c-text);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-bold);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  transition: transform var(--m-press);
-}
-.time-nudge:active { transform: scale(.95); }
-.time-nudge:disabled { color: var(--c-text-3); }
-
 .chip-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
 .chip {
@@ -677,15 +643,6 @@ button, [role="tab"] {
 }
 .section-title.is-block-head svg { width: 18px; height: 18px; }
 
-/* One line under a section title, for a gesture that has nothing on screen to
-   advertise it. */
-.section-hint {
-  margin: -2px 0 2px;
-  font-size: var(--fs-md);
-  line-height: var(--lh-ui);
-  color: var(--c-text-2);
-}
-
 /* ---------------- badges ---------------- */
 
 .badge {
@@ -700,10 +657,8 @@ button, [role="tab"] {
   white-space: nowrap;
 }
 
-.badge-best { background: var(--c-accent-soft); color: var(--c-accent-ink); }
 .badge-cat  { background: var(--c-surface-2);   color: var(--c-text-2); }
 .badge-muted{ background: var(--c-surface-2);   color: var(--c-text-3); }
-.badge-store{ color: #fff; }
 
 .dot {
   display: inline-block;
@@ -1645,7 +1600,6 @@ button.hero-node:active { scale: .94; }
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 
-
 /* ---------------- number pad ---------------- */
 
 /* Stands in for the system keyboard on the number fields — see keypad.js for
@@ -1839,7 +1793,6 @@ button.hero-node:active { scale: .94; }
 .row-times { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
 .row-times .input { height: 40px; width: auto; flex: 1; min-width: 0; text-align: center; }
 .row-dash { color: var(--c-text-3); flex: none; }
-.row.js-day-span { align-items: flex-start; }
 
 /* 行き先の札（R4・js/capture.js）。打った字が、いまのタブと違う行き先らしい
    ときだけ、入力欄の下に一つ。押せばそちらへ入る。 */
