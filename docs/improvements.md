@@ -550,3 +550,6 @@ relay/README.md を読んでから。変えてよい）
 
 それでも `not found` なら、同じ名前の Worker が二つ無いか（URL の頭が
 `kurashi-ai.` か）、Deploy が済んだかを疑う。**19 はまだ ◯ にしない。**
+
+→ **2026年10月4日、利用者が「要らない」。19 は見送りで閉じる**（`docs/roadmap-2026-10.md` の R30）。
+Cloudflare の `kurashi-ai` と、アプリの窓口の紙は消さずに置いてある。
