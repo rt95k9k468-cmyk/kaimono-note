@@ -49,7 +49,7 @@ const { open, checker } = require("./lib");
   const at = (ms) => (trace.pts.find((p) => p[0] >= ms) || trace.pts[trace.pts.length - 1])[1];
   const firstQuarter = trace.from - at(total * 0.25);
   const lastQuarter = at(total * 0.75);
-  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", total >= 400 && total <= 1000, `${Math.round(total)}ms`);
+  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", total >= 600 && total <= 1400, `${Math.round(total)}ms`);
   t.check("上へ：出だしは速く、終わりは大きく緩める", firstQuarter > trace.from * 0.6 && lastQuarter < trace.from * 0.02,
     `始めの1/4で ${Math.round(firstQuarter)}px、最後の1/4に ${Math.round(lastQuarter)}px（全 ${trace.from}px）`);
   const mono = trace.pts.every((p, i) => !i || p[1] <= trace.pts[i - 1][1]);
