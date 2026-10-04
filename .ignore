@@ -3,3 +3,10 @@
 # ありふれた言葉で一度引っかかるだけで、その1行（最大137万字）が丸ごと結果に出て、
 # 制限を大きく使う。自分たちのコードではないので、探す必要も無い。
 tools/vendor/
+# relay/worker.js の写し（`node relay/embed.js` が作り直す）。2.7万字が実質1行で、
+# 同じ理由で当たると重い。探すのは元の relay/worker.js で足りる（2026年10月4日）。
+js/relay-code.js
+# 絵の作業の生データ（測った結果・候補の点数。約27万字）。どこからも読まれない。
+# 名前は docs/icons-*.md と ICON-*.md に出てくるので、要るときは直に開く。
+icon-fold-audit.json
+icon-silhouette-candidates.json

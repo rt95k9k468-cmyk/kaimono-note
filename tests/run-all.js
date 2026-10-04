@@ -79,6 +79,7 @@ function summarize(r) {
 
 async function main() {
   const o = parseArgs(process.argv.slice(2));
+  if (o.verbose) process.env.KN_VERBOSE = "1";  // 台本の ok の行も出す（lib.js の checker）
   const names = listScripts(o);
   await ensureServer();
   const t0 = Date.now();

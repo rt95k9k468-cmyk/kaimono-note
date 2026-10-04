@@ -55,14 +55,17 @@ async function open({ viewport = { width: 390, height: 844 }, before } = {}) {
   return { browser, ctx, page, errors };
 }
 
-/** 数えるだけの小さな見張り。最後に done() で結果を出し、落ちたら終了コード 1。 */
+/** 数えるだけの小さな見張り。最後に done() で結果を出し、落ちたら終了コード 1。
+    通った行は KN_VERBOSE=1 のときだけ出す（2026年10月4日。出力は毎回の会話に載るので、
+    ふだんは NG の行と「題: 通った/数えた」だけ）。 */
 function checker(title) {
   const fails = [];
+  const verbose = !!process.env.KN_VERBOSE;
   let n = 0;
   return {
     check(name, ok, detail) {
       n++;
-      if (ok) console.log(`  ok  ${name}`);
+      if (ok) { if (verbose) console.log(`  ok  ${name}`); }
       else { fails.push(name); console.log(`  NG  ${name}${detail ? `\n      ${detail}` : ""}`); }
     },
     done() {
