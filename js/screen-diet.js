@@ -40,6 +40,10 @@
   let range = store.dietRange();   // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
   let series = "";             // 体重と並べて見るもの。空なら体重だけ。
+  /* 2.0 の切り替えの中だけ（roadmap-2.0 の V24）：一枚を「今日・記録・推移」に分けた、
+     いま出している区画。画面のあいだだけ覚えます（記録には持たない）。 */
+  const PANES = [{ id: "today", label: "今日" }, { id: "log", label: "記録" }, { id: "trend", label: "推移" }];
+  let pane = "today";
 
   /* いま見ている日。null は「今日」——日付を焼き込まないのは、日付が
      変わったあともアプリを開きっぱなしにしていることがあるからです。 */
@@ -477,8 +481,15 @@
     const grip = sheet.querySelector(".tl-grip");
     if (grip) grip.setAttribute("data-pull-own", "cal");
 
+    /* 2.0 の切り替えの中（V24）：頭に「今日・記録・推移」。今日＝からだの輪と体重、
+       記録＝食事、推移＝グラフと気づいたこと。隠すのは CSS（`.diet.is-pane-*`）で、
+       付けるのは紙ではなく `.diet`——日を払って入ってくる隣の紙も同じ区画で見えるように。 */
+    const v2 = document.documentElement.classList.contains("is-v2");
     sheet.append(node(html`
-      <div class="diet">
+      <div class="diet ${v2 ? `is-pane-${pane}` : ""}">
+        ${v2 ? html`<div class="seg diet-panes">${PANES.map((p) => html`
+          <button type="button" class="seg-btn js-pane" data-pane="${p.id}" aria-pressed="${String(p.id === pane)}">${p.label}</button>`)}
+        </div>` : ""}
         ${/* 並べておくのは、いま見ている日の一枚だけ。隣の二枚は、横に
               払うと決まった瞬間に day-swipe.js がその場で組みます——
               要約ではなく、その日の紙そのものが、指のぶんだけ連続して
@@ -506,6 +517,17 @@
     const lookCard = els.body.querySelector(".diet-look");
     if (showInsight) renderInsight(els.body.querySelector(".js-insight"));
     else if (lookCard) lookCard.remove();
+
+    /* 区画を替えるのは印の付け替えだけ（組み直さない）。紙は頭へ戻す。 */
+    els.body.querySelectorAll(".js-pane").forEach((b) => b.addEventListener("click", () => {
+      if (b.dataset.pane === pane) return;
+      pane = b.dataset.pane;
+      KN.motion.fire("select");
+      const box = els.body.querySelector(".diet");
+      PANES.forEach((p) => box.classList.toggle(`is-pane-${p.id}`, p.id === pane));
+      els.body.querySelectorAll(".js-pane").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      KN.app.scrollerOf(root).scrollTop = 0;
+    }));
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
        伸ばさずに、昨日・一昨日と辿れるように。仕掛けは day-swipe.js が
