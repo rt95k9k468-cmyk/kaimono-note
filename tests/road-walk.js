@@ -6,10 +6,12 @@
    - 腕は最初から最後まで脚と同じ拍・同じ大きさで振り、半ばでは脚と逆
    - 止まった形は元の絵と同じ位置（前に出ている脚が奥の脚になるだけ）
    - 腕はちゃんと振れる（奥の手が前へ 150 以上）
-   - 長さは --m-walk から（四歩と速さの台形で 2.0s）
+   - 長さは --m-walk から（四歩と速さの台形で 1.5s）
    - 腕と脚は同じ拍・腕ははじめ・おわりで急がない（形を τ で引いて見る）
    - 歩いている途中にもう一度タブを押しても、頭からやり直さない（止まった形へ跳ばない）
    - 戻ってきたら（visibilitychange）歩く
+   - 前に見た点から「いま」まで道に沿って追いつき、「いま」で止まる。離れすぎなら終わりのほうだけ
+     （2.0 の V6）。前に見た点は store の外で、日が変われば読まない
    - 動きを減らす設定では歩かない */
 const { open, checker } = require("./lib");
 
@@ -61,6 +63,7 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
           KEYS.forEach((k) => { r[k] = g("ink", k, "d"); r["h" + k] = g("halo", k, "d"); });
           r.body = g("ink", "body", "transform"); r.hbody = g("halo", "body", "transform");
           r.head = g("ink", "head", "transform"); r.hhead = g("halo", "head", "transform");
+          r.at = m.getAttribute("transform");
           log.frames.push(r);
         }
         if (!log.stop) requestAnimationFrame(f);
@@ -177,7 +180,7 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
     legs && arms && legs.last - arms.last < 150, JSON.stringify({ legs, arms }));
   /* 半ばでは脚と逆：手前の足が前（x が大きい）のとき、奥の手が前。 */
   let with_ = 0, against = 0;
-  F.filter((r) => r.t > legs.from + 800 && r.t < legs.last - 800).forEach((r) => {
+  F.filter((r) => r.t > legs.from + 500 && r.t < legs.last - 500).forEach((r) => {
     const dFoot = pts(r.legF)[2].x - pts(r.legB)[2].x, dHand = pts(r.armB)[2].x - pts(r.armF)[2].x;
     if (Math.abs(dFoot) < 60 || Math.abs(dHand) < 60) return;
     if (dFoot * dHand > 0) against++; else with_++;
@@ -191,8 +194,8 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
   c.check("腕は一フレームで跳ばない（奥の手の動きが 1 フレーム 80 以内）", jump < 80, String(jump));
   const k = await page.evaluate(() => KN.motion.ms("--m-walk"));
   const took = sp && sp.back != null ? sp.back - click : null;
-  c.check("長さは --m-walk から：四歩と速さの台形で 2.0s（1.8〜2.4s で止まった形へ）",
-    k === 400 && took != null && took >= 1800 && took <= 2400, JSON.stringify({ k, took }));
+  c.check("長さは --m-walk から：四歩と速さの台形で 1.5s（1.3〜1.9s で止まった形へ）",
+    k === 300 && took != null && took >= 1300 && took <= 1900, JSON.stringify({ k, took }));
   c.check("止まった形とぴったり同じで止まる", isStill(F[F.length - 1]), JSON.stringify(F[F.length - 1]));
 
   /* 腕は終わりで急がない（9月29日・利用者の声「人のアイコンも最後だけ動きが速く
@@ -258,15 +261,15 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
   await page.waitForTimeout(500);
   log = await sample(2900, async () => {
     await page.click('.tab[data-tab="todo"]');
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(500);
     await page.click('.tab[data-tab="todo"]');
   });
   F = log.frames;
   const first = log.clicks[log.clicks.length - 2];
   sp = span(F);
   const tookAgain = sp && sp.back != null ? sp.back - first : null;
-  c.check("途中でもう一度押しても、止まった形へ跳ばずに、はじめの押しから 2.0s で止まる",
-    sp != null && tookAgain != null && tookAgain >= 1800 && tookAgain <= 2400 && isStill(F[F.length - 1]),
+  c.check("途中でもう一度押しても、止まった形へ跳ばずに、はじめの押しから 1.5s で止まる",
+    sp != null && tookAgain != null && tookAgain >= 1300 && tookAgain <= 1900 && isStill(F[F.length - 1]),
     JSON.stringify({ sp, first, tookAgain }));
 
   /* ---- 戻ってきたら歩く ---- */
@@ -275,6 +278,54 @@ const isStill = (r) => KEYS.every((k) => r[k] === STILL[k]) && r.body == null &&
   sp = span(F);
   c.check("戻ってきたら（visibilitychange）歩いて、止まった形で止まる",
     sp != null && isStill(F[F.length - 1]), JSON.stringify(sp));
+
+  /* ---- 前に見た点から「いま」まで追いつく（2.0 の V6） ----
+     前に見た点（store の外の鍵）を置いてから入ると、人は道に沿ってそこから歩き出し、
+     「いま」（7:43）の足もとで止まる。 */
+  const at = (tr) => { const v = String(tr).match(/-?\d+(?:\.\d+)?/g).map(Number); return { x: v[0], y: v[1] }; };
+  const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1.5;
+  async function catchUp(seen) {
+    await page.click('.tab[data-tab="archive"]');
+    await page.waitForTimeout(400);
+    await page.evaluate((v) => localStorage.setItem("kn-road-seen", v), seen);
+    const L = await sample(1900, () => page.click('.tab[data-tab="todo"]'));
+    const want = await page.evaluate(() => {
+      const m = document.querySelector('.screen[data-screen="todo"] .day-road .road-me');
+      const p = (a) => ({ x: a.x, y: a.y });
+      return { now: p(m.__at), from30: p(m.__stand(m.__dist(7 * 60 + 13), m.__at.h)),
+               far: p(m.__stand(m.__at.d - 120, m.__at.h)), stored: localStorage.getItem("kn-road-seen") };
+    });
+    const moving = L.frames.filter((r) => !isStill(r));
+    return { F: L.frames, moving, want, click: L.clicks[L.clicks.length - 1] };
+  }
+  let cu = await catchUp("2026-09-29 433");   // 30分前（7:13）
+  c.check("前に見た点（30分前）から歩き出す：最初の歩くフレームはその点の近く",
+    cu.moving.length > 10 && Math.hypot(at(cu.moving[0].at).x - cu.want.from30.x, at(cu.moving[0].at).y - cu.want.from30.y) < 12,
+    JSON.stringify({ first: cu.moving[0] && cu.moving[0].at, want: cu.want.from30 }));
+  c.check("道の上を進んで、終わりは「いま」の点に立つ（止まった形で）",
+    near(at(cu.F[cu.F.length - 1].at), cu.want.now) && isStill(cu.F[cu.F.length - 1]) &&
+    new Set(cu.moving.map((r) => r.at)).size > 10,
+    JSON.stringify({ last: cu.F[cu.F.length - 1].at, now: cu.want.now }));
+  c.check("見たあとは、前に見た点が「いま」に置き直る", cu.want.stored === "2026-09-29 463", cu.want.stored);
+  const timeTxt = await page.evaluate(() => {
+    const el = document.querySelector('.screen[data-screen="todo"] .day-road .road-marks');
+    return el ? el.textContent : "";
+  });
+  c.check("時刻の字は初めから「いま」（7:43）", /7:43/.test(timeTxt), timeTxt.slice(0, 80));
+
+  cu = await catchUp("2026-09-29 300");   // 朝 5:00 に見た（離れすぎ）
+  const tookFar = cu.moving.length ? cu.moving[cu.moving.length - 1].t - cu.click : null;
+  c.check("離れすぎなら終わりのほうだけ歩く：歩き出しは「いま」の道120ぶん手前",
+    cu.moving.length > 10 && Math.hypot(at(cu.moving[0].at).x - cu.want.far.x, at(cu.moving[0].at).y - cu.want.far.y) < 12,
+    JSON.stringify({ first: cu.moving[0] && cu.moving[0].at, want: cu.want.far }));
+  c.check("離れすぎでも長さは約1.5秒（2.0s 未満で止まる）", tookFar != null && tookFar < 2000 &&
+    near(at(cu.F[cu.F.length - 1].at), cu.want.now), String(tookFar));
+
+  cu = await catchUp("2026-09-28 433");   // きのう見た点は持ち越さない
+  c.check("日が変われば持ち越さない：その場で歩くだけ（足もとは動かない）",
+    cu.moving.length > 10 && cu.moving.every((r) => near(at(r.at), cu.want.now)), JSON.stringify(cu.moving[0] && cu.moving[0].at));
+  const inStore = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").includes("road-seen"));
+  c.check("前に見た点は store（バックアップの元）に入らない", !inStore);
 
   /* ---- 動きを減らす設定では歩かない ---- */
   await page.emulateMedia({ reducedMotion: "reduce" });

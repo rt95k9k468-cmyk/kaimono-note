@@ -297,9 +297,12 @@ const DAY = "2026-09-29";
   await page.clock.setFixedTime(new Date(2026, 8, 29, 14, 20));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(400);
+  /* 人は前に見た点（7:43）から追いついて歩く（2.0 の V6、約1.5s）。歩き終わりを待つ。 */
+  await page.waitForFunction(() => { const m = document.querySelector("#screen-todo .day-road .road-me"); return !m || !m.__walk; },
+    null, { polling: 50, timeout: 4000 });
   r = await read();
   const p1420 = await pointOf(14 * 60 + 20);
-  c.check("戻ってきたら、道の人がすぐ 14:20 へ", r.me && Math.abs(r.me.x - p1420.x) < 0.3, JSON.stringify([r.me, p1420]));
+  c.check("戻ってきたら、道の人は 14:20 へ追いついて止まる", r.me && Math.abs(r.me.x - p1420.x) < 0.3, JSON.stringify([r.me, p1420]));
   c.check("戻ってきたら、時間割の「いま」もすぐ 14:20", r.nowTl === "14:20", String(r.nowTl));
   c.check("病院の途中：停留所は is-live、次の一行は「いまは 病院（14:30まで）」",
     r.live[2] === true && /いまは\s*病院（14:30まで）/.test(r.next), JSON.stringify([r.live, r.next]));
