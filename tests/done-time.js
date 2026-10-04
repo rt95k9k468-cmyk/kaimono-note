@@ -2,7 +2,8 @@
    - 時間割で済ませると、トーストに押した時刻と「時刻」「元に戻す」
    - 「時刻」で車輪の小窓が出て、閉じると doneAt の時と分だけが変わる（日はそのまま）
    - 行の ✓ 時刻を押しても同じ小窓が出る
-   - 食事の枠を押すと紙ではなく小窓。前に書いた言葉が候補に出て、押すと入る。閉じると保存 */
+   - 食事の枠を押すと、紙でも浮いた小窓でもなく、その枠がその場で書く欄になる。前に書いた
+     言葉が候補に出て、押すと入る。打っても枠の高さは揺れない。ほかのタブを押すと閉じて保存 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -60,29 +61,73 @@ const { open, checker } = require("./lib");
   await page.click('#screen-diet .diet-slot-view[data-slot="breakfast"]');
   await page.waitForTimeout(400);
   const pop = await page.evaluate(() => ({
-    sheet: !!document.querySelector(".sheet"),
-    ta: !!document.querySelector(".diet-slot-pop textarea"),
-    focus: document.activeElement && document.activeElement.matches(".diet-slot-pop textarea"),
+    sheet: !!document.querySelector(".sheet, .note-pop"),
+    inPlace: !!document.querySelector('#screen-diet .diet-slots > .diet-slot-edit[data-slot="breakfast"]'),
+    h: document.querySelector(".diet-slot-edit").offsetHeight,
+    ta: !!document.querySelector(".diet-slot-edit textarea"),
+    focus: document.activeElement && document.activeElement.matches(".diet-slot-edit textarea"),
     cands: [...document.querySelectorAll(".diet-slot-cands .chip")].map((b) => b.textContent),
   }));
-  c.check("紙ではなく小窓", !pop.sheet && pop.ta, JSON.stringify(pop));
+  c.check("紙も小窓も出さず、その枠がその場で欄になる", !pop.sheet && pop.ta && pop.inPlace, JSON.stringify(pop));
   c.check("欄に focus", pop.focus);
   c.check("前に書いた言葉が候補に（多い順に納豆が先）", pop.cands[0] === "納豆" && pop.cands.includes("トースト"), pop.cands.join(","));
   await page.keyboard.type("と");
   await page.waitForTimeout(100);
   const narrowed = await page.evaluate(() => [...document.querySelectorAll(".diet-slot-cands .chip")].map((b) => b.textContent));
   c.check("打ちかけで絞る（と → トースト）", narrowed.join() === "トースト", narrowed.join());
+  const h2 = await page.evaluate(() => document.querySelector(".diet-slot-edit").offsetHeight);
+  c.check("候補の数が変わっても枠の高さは同じ", h2 === pop.h, `${pop.h} → ${h2}`);
   await page.click(".diet-slot-cands .chip");
-  const val = await page.evaluate(() => document.querySelector(".diet-slot-pop textarea").value);
+  const val = await page.evaluate(() => document.querySelector(".diet-slot-edit textarea").value);
   c.check("押すと打ちかけが置き換わる", val === "トースト ", JSON.stringify(val));
   const after = await page.evaluate(() => [...document.querySelectorAll(".diet-slot-cands .chip")].map((b) => b.textContent));
   c.check("入れた言葉は候補から外れる", !after.includes("トースト") && after.includes("納豆"), after.join());
-  await page.click(".note-pop-cover");
-  await page.waitForTimeout(400);
-  const saved = await page.evaluate(() => KN.store.slotMemo(KN.util.todayKey(), "breakfast"));
-  c.check("閉じると保存", saved === "トースト", saved);
-  const row = await page.evaluate(() => document.querySelector('#screen-diet .diet-slot-view[data-slot="breakfast"] .diet-slot-text').textContent);
-  c.check("枠に書いたものが出る", row.includes("トースト"), row);
+  await page.click('#screen-diet .diet-slot-view[data-slot="lunch"]');
+  await page.waitForTimeout(300);
+  const sw = await page.evaluate(() => ({
+    saved: KN.store.slotMemo(KN.util.todayKey(), "breakfast"),
+    row: (document.querySelector('#screen-diet .diet-slot-view[data-slot="breakfast"] .diet-slot-text') || {}).textContent || "",
+    lunch: !!document.querySelector('#screen-diet .diet-slot-edit[data-slot="lunch"]'),
+    n: document.querySelectorAll(".diet-slot-edit").length,
+  }));
+  c.check("別の枠を押すと、前の枠は保存して一行に戻り、押した枠が開く",
+    sw.saved === "トースト" && sw.row.includes("トースト") && sw.lunch && sw.n === 1, JSON.stringify(sw));
+  await page.keyboard.type("そば");
+  /* 打っているあいだはタブの帯が隠れるので、キーボードを閉じて（blur）から。 */
+  await page.evaluate(() => document.activeElement.blur());
+  await page.waitForTimeout(300);
+  const blurred = await page.evaluate(() => document.querySelectorAll(".diet-slot-edit").length);
+  c.check("キーボードを閉じると枠は一行に戻る", blurred === 0, String(blurred));
+  await page.click('.tab[data-tab="todo"]');
+  await page.waitForTimeout(500);
+  const gone = await page.evaluate(() => ({
+    edit: document.querySelectorAll(".diet-slot-edit").length,
+    pop: document.querySelectorAll(".note-pop").length,
+    lunch: KN.store.slotMemo(KN.util.todayKey(), "lunch"),
+  }));
+  c.check("タブを移ると閉じて保存し、何も残らない", !gone.edit && !gone.pop && gone.lunch === "そば", JSON.stringify(gone));
+
+  /* キーボードの代わりに、見える高さを縮める（app.js の fit が殻を縮める）。 */
+  await page.click('.tab[data-tab="diet"]');
+  await page.waitForTimeout(600);
+  await page.click('#screen-diet .diet-slot-view[data-slot="snack"]');
+  await page.waitForTimeout(300);
+  const sc0 = await page.evaluate(() => KN.app.scrollerOf(document.querySelector("#screen-diet")).scrollTop);
+  await page.setViewportSize({ width: 390, height: 520 });
+  await page.waitForTimeout(1200);
+  const up = await page.evaluate(() => {
+    const sc = KN.app.scrollerOf(document.querySelector("#screen-diet"));
+    const box = document.querySelector(".diet-slot-edit").getBoundingClientRect();
+    const room = document.querySelector("#screen-diet .diet-kb-room");
+    return { top: sc.scrollTop, room: room ? room.offsetHeight : 0, bottom: box.bottom, vh: document.getElementById("app").getBoundingClientRect().bottom };
+  });
+  c.check("縮んだら候補の列まで見えるところへ上へ送り、余白を残す",
+    up.top > sc0 && up.room > 0 && up.bottom <= up.vh, JSON.stringify({ sc0, ...up }));
+  await page.evaluate(() => document.activeElement.blur());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  const back = await page.evaluate(() => KN.app.scrollerOf(document.querySelector("#screen-diet")).scrollTop);
+  c.check("キーボードをしまっても紙は下がらない", back === up.top, `${up.top} → ${back}`);
 
   c.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
