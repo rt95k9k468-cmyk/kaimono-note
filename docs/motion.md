@@ -79,6 +79,7 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | 連れ→停留所（`day-road.js` の `arrive`・V8） | 変わる | 時刻を決める・外す・運んで離す | 飛ぶ丸・停留所の道筋 | `--m-swipe`（`--ease-glide`）・`--m-grow` | 塗（`stroke-dasharray`） | その場で入れ替わる |
 | `fillRings`（`screen-diet.js`） | 状態 | arrive | 輪・数 | `--m-fill`・`--m-stagger` | 塗 | 付けない |
 | `pokeTab` | 押す | 席の絵を押す | 絵 | `--m-poke` | — | class を付けない |
+| 買った行をしまう（`screen-list.js` の `tuck`・V17） | 変わる | 買うものを✓ | 束が開いていれば行（`flipRows`）、閉じていれば行が束の頭へ縮む | `--m-settle` | — | その場で組み直す |
 
 - **JS と CSS に同じ数は二つ無い**（確かめた）。JS はどれも `KN.motion.ms()` / `ease()` / `curve()` で
   CSS から読む。べた書きは読めなかったときの控え二つだけ：`edge-back.js` の `--push-e` の曲線、
