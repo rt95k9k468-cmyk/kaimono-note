@@ -1439,17 +1439,18 @@
      打ち消して上へ飛びます。 */
   let gliding = 0;
 
-  function glideTo(el, to) {
+  function glideTo(el, to, { ms = 260, pow = 3 } = {}) {
     if (!el) return;
     const max = Math.max(0, el.scrollHeight - el.clientHeight);
     const want = Math.max(0, Math.min(max, to));
     const from = el.scrollTop;
     if (Math.abs(want - from) < 1) return;
     const start = performance.now();
-    gliding = start + 420;
+    gliding = start + ms + 160;
     const step = (now) => {
-      const t = Math.min(1, (now - start) / 260);
-      const e = 1 - Math.pow(1 - t, 3);
+      /* rAF の時刻は start より前のことがある。負のまま曲線に入れると逆へ跳ねる。 */
+      const t = Math.min(1, Math.max(0, (now - start) / ms));
+      const e = 1 - Math.pow(1 - t, pow);
       el.scrollTop = from + (want - from) * e;
       if (t < 1) requestAnimationFrame(step);
       else gliding = performance.now() + 120;   // 着地の直後もひと呼吸
@@ -1459,7 +1460,17 @@
 
   const isGliding = () => performance.now() < gliding;
   KN.app.isGliding = isGliding;
-  const glideToTop = (el) => glideTo(el, 0);
+  /* 上のきわ・題を押して上へ（2026年10月4日、利用者「スピードダウンしたりふわっと
+     しないとダサい」）。遠いほど少し長く（道のりの対数）、出だしは速く、着く前に
+     大きく緩めて、ふわっと止まる（5乗の ease-out）。長さのつまみは `--m-to-top`。 */
+  const glideToTop = (el) => {
+    if (!el || el.scrollTop < 1) return;
+    if (KN.motion && KN.motion.still()) { el.scrollTop = 0; return; }
+    const screens = el.scrollTop / Math.max(1, el.clientHeight || window.innerHeight);
+    const k = Math.min(1.6, Math.max(0.7, 0.7 + 0.35 * Math.log2(1 + screens)));
+    const base = KN.motion ? KN.motion.ms("--m-to-top") : 500;
+    glideTo(el, 0, { ms: base * k, pow: 5 });
+  };
   KN.app.glideTo = glideTo;
   KN.app.glideToTop = glideToTop;
 
