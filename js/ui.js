@@ -1044,9 +1044,9 @@
 
      ふつうの紙（sheet）を借ります——専用の作りを増やすより、開き方・閉じ方・
      背景の作法が同じであるほうが、覚え直しがありません。 */
-  function actionSheet(items) {
+  function actionSheet(items, title) {
     const box = node(html`<div class="act-list"></div>`);
-    const handle = sheet({ title: "ほかの操作", content: box, as: "dialog" });
+    const handle = sheet({ title: title || "ほかの操作", content: box, as: "dialog" });
     (items || []).forEach((it) => {
       const row = node(html`
         <button type="button" class="act-row ${it.danger ? "is-danger" : ""}">
