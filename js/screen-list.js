@@ -132,7 +132,10 @@
        The ★ took its place, because *that* is a decision made while writing
        the list — this trip or sometime — and going back to set it afterwards
        is the trip through the list the button was meant to save. */
-    const body = node(html`
+    /* 2.0 の切り替えの中では、直す紙と同じ形（product-sheet.js の frame、roadmap-2.0 の
+       V23）。下の配線は同じ口（名前・★・メモ・候補・最安・行き先・カテゴリ）を使います。 */
+    const f = KN.productSheet.isV2() ? KN.productSheet.frame({ fav: false, add: true }) : null;
+    const body = f ? f.body : node(html`
       <div class="stack" style="gap:18px">
         <div class="field">
           <span class="field-label">商品名</span>
@@ -165,26 +168,43 @@
       </div>
     `);
 
-    const nameEl = body.querySelector(".js-name");
-    const memoEl = body.querySelector(".js-memo");
-    const acHost = body.querySelector(".js-ac");
-    const known  = body.querySelector(".js-known");
-    const favBtn = body.querySelector(".js-fav");
+    const nameEl = f ? f.name : body.querySelector(".js-name");
+    const memoEl = f ? f.memo : body.querySelector(".js-memo");
+    const acHost = f ? f.ac : body.querySelector(".js-ac");
+    const known  = f ? f.known : body.querySelector(".js-known");
+    const favBtn = f ? f.fav : body.querySelector(".js-fav");
+    const destEl = f ? f.dest : body.querySelector(".js-dest");
 
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
 
-    const handle = KN.ui.sheet({ title: "買うものを追加", content: body, footer: foot, guard: true });
+    const handle = KN.ui.sheet({ title: "買うものを追加", hero: f ? f.hero : null, content: body, footer: foot, guard: true });
 
-    const cat = KN.ui.categoryPicker(body.querySelector(".js-cat"), {
-      selectedId: store.OTHER_CATEGORY,
-      onSelect: () => { catTouched = true; },
-    });
+    let cat;
+    if (f) {
+      cat = f.cat;
+      cat.onSelect(() => { catTouched = true; paintMark(); });
+    } else {
+      cat = KN.ui.categoryPicker(body.querySelector(".js-cat"), {
+        selectedId: store.OTHER_CATEGORY,
+        onSelect: () => { catTouched = true; },
+      });
+    }
+    /* 2.0 の頭の絵は、打った名前から推す絵（足す前なので、選び直すのは足してから）。 */
+    function paintMark() {
+      if (!f) return;
+      f.mark.innerHTML = picked ? store.productMark(picked)
+        : store.productMark({ name: nameEl.value.trim(), categoryId: cat.current });
+    }
+    paintMark();
 
     favBtn.addEventListener("click", () => {
-      fav = !fav;
-      favBtn.classList.toggle("is-on", fav);
-      favBtn.setAttribute("aria-pressed", String(fav));
+      /* 2.0 の★は frame が先に印を付け替えている。 */
+      fav = f ? favBtn.classList.contains("is-on") : !fav;
+      if (!f) {
+        favBtn.classList.toggle("is-on", fav);
+        favBtn.setAttribute("aria-pressed", String(fav));
+      }
       KN.motion.fire("save");
     });
 
@@ -204,12 +224,13 @@
       addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
       renderSuggestions(nameEl, acHost, typed, choose);
       paintDest();
+      paintMark();
     }
 
     /* 行き先の札（R4）。「明日 19:00 歯医者」は、やることらしい——押せばそちらへ。
        押さなければ今までどおり買うものに入る。 */
     const paintDest = KN.capture
-      ? KN.capture.bindChip(body.querySelector(".js-dest"), {
+      ? KN.capture.bindChip(destEl, {
         from: "list",
         text: () => (picked ? "" : nameEl.value),
         go: (g) => {
@@ -263,6 +284,7 @@
       known.textContent = best && st ? `最安 ${st.name} ${yen(best.price)}` : "";
       acHost.innerHTML = "";
       paintDest();
+      paintMark();
       nameEl.focus();
     }
 

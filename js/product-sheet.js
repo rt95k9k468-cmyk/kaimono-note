@@ -17,6 +17,7 @@
   function open(productId, { itemId } = {}) {
     const product = store.getProduct(productId);
     if (!product) return;
+    if (isV2()) return openV2(productId, { itemId });
 
     const body = node(html`<div class="stack" style="gap:20px"></div>`);
 
@@ -68,41 +69,45 @@
     const save = debounce(() => {
       const v = input.value.trim();
       if (!v) return;
-
-      /* A rename is very often a correction. 「コンソメ」 came out as その他,
-         so it gets renamed 「コンソメ(調味料)」 — and the new name now says
-         plainly where it goes. Re-reading it costs nothing and saves a second
-         trip to the picker.
-
-         Two limits. A category picked by hand is never overruled: that was a
-         decision, and this is a guess. And a guess that lands on その他 is
-         thrown away rather than applied — a name we cannot place must not
-         demote a category that is already right. */
-      let moved = null;
-      store.update((s) => {
-        const rec = s.products.find((x) => x.id === productId);
-        if (!rec) return;
-        rec.name = v;
-        if (rec.catManual) return;
-        const guess = store.guessCategory(v);
-        if (guess !== store.OTHER_CATEGORY && guess !== rec.categoryId) {
-          rec.categoryId = guess;
-          moved = guess;
-        }
-      });
-
-      // The picture follows the name too, whether or not the category moved.
-      onRenamed && onRenamed();
-
-      if (moved) {
-        onRecategorised && onRecategorised();
-        KN.ui.toast(`「${store.getCategory(moved).name}」に移しました`);
-        haptic();
-      }
+      renameProduct(productId, v, onRecategorised, onRenamed);
     }, 350);
 
     input.addEventListener("input", save);
     return wrap;
+  }
+
+  /* 名前を付け替える（前の欄と 2.0 の頭の欄で同じもの）。 */
+  function renameProduct(productId, v, onRecategorised, onRenamed) {
+    /* A rename is very often a correction. 「コンソメ」 came out as その他,
+       so it gets renamed 「コンソメ(調味料)」 — and the new name now says
+       plainly where it goes. Re-reading it costs nothing and saves a second
+       trip to the picker.
+
+       Two limits. A category picked by hand is never overruled: that was a
+       decision, and this is a guess. And a guess that lands on その他 is
+       thrown away rather than applied — a name we cannot place must not
+       demote a category that is already right. */
+    let moved = null;
+    store.update((s) => {
+      const rec = s.products.find((x) => x.id === productId);
+      if (!rec) return;
+      rec.name = v;
+      if (rec.catManual) return;
+      const guess = store.guessCategory(v);
+      if (guess !== store.OTHER_CATEGORY && guess !== rec.categoryId) {
+        rec.categoryId = guess;
+        moved = guess;
+      }
+    });
+
+    // The picture follows the name too, whether or not the category moved.
+    onRenamed && onRenamed();
+
+    if (moved) {
+      onRecategorised && onRecategorised();
+      KN.ui.toast(`「${store.getCategory(moved).name}」に移しました`);
+      haptic();
+    }
   }
 
   /* ---------------- the picture ---------------- */
@@ -483,31 +488,34 @@
 
     const picker = KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
       selectedId: p.categoryId,
-      onSelect: (categoryId) => {
-        store.update((s) => {
-          const rec = s.products.find((x) => x.id === productId);
-          if (!rec) return;
-          rec.categoryId = categoryId;
-          // Chosen by hand. Nothing guessed from the name may move it again.
-          rec.catManual = true;
-        });
-
-        /* And remember it. Being told 「コンソメ is 調味料」 once should be
-           enough — the next 「コンソメ」 typed into the list goes straight
-           there, and so does 「味の素 コンソメ」. Shown in 設定 so it is not a
-           machine quietly making decisions nobody can see or undo. */
-        const rec = store.getProduct(productId);
-        const known = store.learnedList().some((l) => l.key === KN.util.foldKana(rec.name) && l.categoryId === categoryId);
-        store.learnCategory(rec.name, categoryId);
-        if (!known) {
-          KN.ui.toast(`「${rec.name}」は${store.getCategory(categoryId).name}、と覚えました`);
-        }
-      },
+      onSelect: (categoryId) => chooseCategory(productId, categoryId),
     });
 
     // Called after a rename moved the category out from under the picker.
     const recheck = () => picker.set(store.getProduct(productId).categoryId);
     return { el: wrap, recheck };
+  }
+
+  /* 手でカテゴリを選んだ（前の欄と 2.0 の小窓で同じもの）。 */
+  function chooseCategory(productId, categoryId) {
+    store.update((s) => {
+      const rec = s.products.find((x) => x.id === productId);
+      if (!rec) return;
+      rec.categoryId = categoryId;
+      // Chosen by hand. Nothing guessed from the name may move it again.
+      rec.catManual = true;
+    });
+
+    /* And remember it. Being told 「コンソメ is 調味料」 once should be
+       enough — the next 「コンソメ」 typed into the list goes straight
+       there, and so does 「味の素 コンソメ」. Shown in 設定 so it is not a
+       machine quietly making decisions nobody can see or undo. */
+    const rec = store.getProduct(productId);
+    const known = store.learnedList().some((l) => l.key === KN.util.foldKana(rec.name) && l.categoryId === categoryId);
+    store.learnCategory(rec.name, categoryId);
+    if (!known) {
+      KN.ui.toast(`「${rec.name}」は${store.getCategory(categoryId).name}、と覚えました`);
+    }
   }
 
   function sizeField(productId, onChanged) {
@@ -1098,5 +1106,185 @@
   /* openIconPicker も外へ出します——買うものの一覧の丸を直接タップして
      絵を選べるように（screen-list.js）。品目の紙を経由せず、その場で
      アイコンを選ぶ紙だけを開きます。 */
-  KN.productSheet = { open, openIconPicker };
+  /* ---------------- 2.0：やることの紙と同じ形（roadmap-2.0 の V23） ----------------
+
+     足す紙と直す紙を、同じ一つの形から作ります（10月4日、利用者「追加する時と編集する
+     時がほぼ同じであってほしい」「タスクと同じような詳細シートのレイアウトに」）。
+
+       頭   … カテゴリの色の帯。左に大きな絵（直すときは押して替える）、右に名前と
+              小さな★（今回買う。前は一段まるごと使っていた）。名前の上は最安の値段
+       札   … カテゴリ（押すと小窓）。直すときは下に内容量
+       中身 … メモ。直すときは、その下に値段・履歴・削除
+
+     数量は出しません（使わない、と利用者。記録の qty はそのまま残す）。
+     2.0 の切り替えの中だけ。オフなら前の紙のまま。 */
+  const isV2 = () => document.documentElement.classList.contains("is-v2");
+
+  function frame({ name = "", categoryId, fav = null, memo = "", add = false } = {}) {
+    const hero = node(html`
+      <div class="sheet-hero pd-hero">
+        <span class="hero-mark">
+          ${/* 足す紙では、まだ品物が無いので絵は推すだけ（ボタンにしない＝最初の欄は名前）。 */""}
+          ${add ? html`<span class="hero-node js-icon-pick" aria-hidden="true"></span>`
+            : html`<button type="button" class="hero-node js-icon-pick" aria-label="絵を選ぶ"></button>`}
+        </span>
+        <span class="hero-text">
+          <span class="hero-cap js-cap" hidden></span>
+          <span class="pd-name">
+            <input class="hero-title js-name" value="${name}" placeholder="例：食器用洗剤"
+                   autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="商品名">
+            ${fav == null ? "" : html`<button type="button" class="pd-fav js-fav ${fav ? "is-on" : ""}"
+                    aria-pressed="${String(!!fav)}" aria-label="今回買う">${icon("star")}</button>`}
+          </span>
+          <button type="button" class="dest-chip js-dest" hidden></button>
+        </span>
+      </div>
+    `);
+    const body = node(html`
+      <div class="sheet-detail">
+        <div class="js-ac"></div>
+        <div class="d-card">
+          <button type="button" class="d-row js-row-cat">
+            <span class="d-ico">${icon("tag")}</span>
+            <span class="d-label">カテゴリ</span>
+            <span class="d-value js-cat-v"></span>
+            <span class="d-go">${icon("chevron")}</span>
+          </button>
+          <div class="js-more"></div>
+          <textarea class="d-memo js-memo" rows="1" placeholder="メモ（例：詰め替え用）">${memo}</textarea>
+        </div>
+      </div>
+    `);
+
+    let current = categoryId || store.OTHER_CATEGORY;
+    let onSelect = null;
+    const catRow = body.querySelector(".js-row-cat");
+    const paintCat = () => {
+      const c = store.getCategory(current);
+      body.querySelector(".js-cat-v").textContent = c ? c.name : "";
+      hero.style.setProperty("--cat", (c && c.color) || "var(--c-primary-fill)");
+    };
+    paintCat();
+    /* カテゴリは押したそばの小窓で（やることの紙の日付・時刻と同じ）。選んだら一拍で閉じる。 */
+    catRow.addEventListener("click", () => {
+      const box = node(html`<div></div>`);
+      const p = KN.ui.popOver(catRow, { side: "left", label: "カテゴリ", cls: "is-form" });
+      KN.ui.categoryPicker(box, {
+        selectedId: current,
+        onSelect: (id) => {
+          current = id;
+          paintCat();
+          if (onSelect) onSelect(id);
+          setTimeout(() => p.close(), KN.motion.ms("--m-state"));
+        },
+      });
+      p.el.append(box);
+      p.place();
+    });
+
+    const fav0 = hero.querySelector(".js-fav");
+    if (fav0) fav0.addEventListener("click", () => {
+      const on = !fav0.classList.contains("is-on");
+      fav0.classList.toggle("is-on", on);
+      fav0.setAttribute("aria-pressed", String(on));
+      haptic();
+    });
+
+    return {
+      hero,
+      body,
+      name: hero.querySelector(".js-name"),
+      fav: fav0,
+      memo: body.querySelector(".js-memo"),
+      ac: body.querySelector(".js-ac"),
+      known: hero.querySelector(".js-cap"),
+      dest: hero.querySelector(".js-dest"),
+      more: body.querySelector(".js-more"),
+      mark: hero.querySelector(".js-icon-pick"),
+      /* 前の categoryPicker と同じ口（current・set）。set は onSelect を呼ばない。 */
+      cat: {
+        get current() { return current; },
+        set(id) { if (id && id !== current) { current = id; paintCat(); } },
+        onSelect(fn) { onSelect = fn; },
+      },
+    };
+  }
+
+  /* 直す紙（2.0）。中身の配線は前の欄と同じもの（renameProduct・chooseCategory・
+     sizeField・renderPrices ほか）を使います。 */
+  function openV2(productId, { itemId } = {}) {
+    const product = store.getProduct(productId);
+    const itemOf = () => (itemId ? store.get().items.find((i) => i.id === itemId) : null);
+    const item = itemOf();
+    const f = frame({
+      name: product.name, categoryId: product.categoryId,
+      fav: item ? !!item.fav : null, memo: item ? item.memo || "" : "",
+    });
+    const pricesWrap = node(html`<div class="stack" style="gap:12px"></div>`);
+    const rerenderPrices = () => { renderPrices(pricesWrap, productId); paintCap(); };
+
+    const paintMark = () => { f.mark.innerHTML = store.productMark(store.getProduct(productId)); };
+    function paintCap() {
+      const p = store.getProduct(productId);
+      const best = p ? store.bestPrice(p) : null;
+      const st = best ? store.getStore(best.storeId) : null;
+      f.known.hidden = !(best && st);
+      f.known.textContent = best && st ? `最安 ${st.name} ${yen(best.price)}` : "";
+    }
+    paintMark();
+
+    f.mark.addEventListener("click", () => openIconPicker(productId, paintMark));
+    f.name.addEventListener("input", debounce(() => {
+      const v = f.name.value.trim();
+      if (!v) return;
+      renameProduct(productId, v, () => f.cat.set(store.getProduct(productId).categoryId), paintMark);
+    }, 350));
+    f.cat.onSelect((id) => { chooseCategory(productId, id); paintMark(); });
+
+    /* ★とメモは、買うものの行（item）のもの。価格から開いたとき（行が無い）は★を出さず、
+       メモも書けない（前の紙と同じ）。 */
+    if (f.fav) f.fav.addEventListener("click", () => {
+      const on = f.fav.classList.contains("is-on");
+      store.update((s) => { const rec = s.items.find((i) => i.id === itemId); if (rec) rec.fav = on; });
+    });
+    if (item) {
+      f.memo.addEventListener("input", debounce(() => {
+        store.update((s) => { const rec = s.items.find((i) => i.id === itemId); if (rec) rec.memo = f.memo.value; });
+      }, 350));
+    } else {
+      f.memo.remove();
+    }
+
+    const size = node(html`<div class="pd-size"></div>`);
+    size.append(sizeField(productId, rerenderPrices));
+    f.more.append(size);
+
+    f.body.append(pricesWrap);
+    rerenderPrices();
+    f.body.append(historySection(productId));
+    f.body.append(dangerSection(productId, () => handle.close()));
+
+    /* 「リストから外す」は ⋯ の中（前は数量の隣。数量は出さなくなった）。 */
+    const menu = item ? [{
+      id: "unlist",
+      label: () => "リストから外す",
+      icon: "close",
+      onPick: () => {
+        const snapshot = itemOf();
+        if (!snapshot) return;
+        store.update((s) => { s.items = s.items.filter((i) => i.id !== itemId); });
+        KN.ui.toast("リストから外しました", {
+          action: { label: "元に戻す", onClick: () => store.update((s) => { s.items.unshift(snapshot); }) },
+        });
+        handle.close();
+      },
+    }] : null;
+
+    const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
+    const handle = KN.ui.sheet({ title: product.name, hero: f.hero, menu, content: f.body, footer: foot });
+    foot.addEventListener("click", () => handle.close());
+    return handle;
+  }
+
+  KN.productSheet = { open, openIconPicker, frame, isV2 };
 })();
