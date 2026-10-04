@@ -487,7 +487,17 @@
        settle() を呼ぶと、動いた行が「もといた場所」から滑ってきます
        （ui.js の flipRows）。丸ごと入れ替わるとき（検索）
        は、向こうが自分で見送ります。 */
-    const settle = KN.ui.flipRows(els.body, ".item-wrap");
+    const flip = KN.ui.flipRows(els.body, ".item-wrap");
+    /* 前の絵に居た行は、入ってくる動き（item-in）を見送ります。組み直すたびに
+       全部の行が薄い所から現れ直して一覧ごと瞬き、しかも動き中は FLIP の
+       transform に勝つので、行が動いたことが見えませんでした（V17）。 */
+    const seen = new Set([...els.body.querySelectorAll(".item-wrap[data-flip]")].map((e) => e.dataset.flip));
+    const settle = () => {
+      els.body.querySelectorAll(".item-wrap[data-flip]").forEach((e) => {
+        if (seen.has(e.dataset.flip)) e.style.animation = "none";
+      });
+      flip();
+    };
     els.body.innerHTML = "";
 
     /* 暦で今日でない日に合わせていたら、紙は**その日に買ったもの**だけ
@@ -851,7 +861,7 @@
          落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
          行ったかを探さずに済みます。 */
       /* やることと同じ返し方にします——線が引かれ、絵の丸がひと回りし、
-         行を光が通る。そのあとで下の「買ったもの」へ落ちます。
+         行を光が通る。そのあとで「今日買ったもの」の束へしまわれます（tuck）。
          同じ「済ませた」が、タブごとに違う返り方をしないように。 */
       if (finishing.has(item.id)) return;      // 二度押しても一度だけ
       finishing.add(item.id);
@@ -872,10 +882,9 @@
       if (mark) mark.classList.add("is-pop");
 
       setTimeout(() => {
-        row.classList.add("is-dropping");
-        /* 落ちていく行を、下の帯のカートが受け止める。 */
+        /* 下の帯のカートが受け止める。 */
         KN.app.pokeTab("list");
-        setTimeout(() => {
+        tuck(wrap, () => {
           finishing.delete(item.id);
           commit();
           /* 押し間違いは、その場で戻せること。行は「買ったもの」へ落ちて
@@ -891,7 +900,7 @@
               }),
             },
           });
-        }, 280);
+        });
       }, draw);
     });
 
@@ -990,6 +999,46 @@
       list.append(row);
     });
     return section;
+  }
+
+  /* 買った行を「今日買ったもの」の束へしまう（docs/roadmap-2.0.md の V17）。
+     束が開いていれば、何もせずに組み直す——行は束の中の新しい席へ、前の場所から
+     滑っていく（flipRows。data-flip が同じなので同じ行として運ばれる）。前は
+     ここで一度薄れてから滑ってきたので、消えて別の所に湧いたように見えた。
+     閉じていれば、行が束の頭（＞）へ縮んで入り、数が一つ跳ねる。頭がまだ
+     無い（今日はじめて買って、閉じてある）ときだけ、前のとおり下へ落ちる。
+     動きを減らす設定では、その場で組み直す。 */
+  function tuck(wrap, done) {
+    if (KN.motion.still() || store.get().settings.showChecked !== false) { done(); return; }
+    const head = els.body.querySelector(".day-bought.is-today .day-bought-toggle");
+    const row = wrap.querySelector(".item");
+    if (!head) {
+      if (row) row.classList.add("is-dropping");
+      setTimeout(done, KN.motion.ms("--m-delete") + 40);
+      return;
+    }
+    const a = wrap.getBoundingClientRect();
+    const b = head.getBoundingClientRect();
+    const dx = b.left + b.height / 2 - (a.left + a.width / 2);
+    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    const run = wrap.animate([
+      { transform: "none", opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.2)`, opacity: 0 },
+    ], { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" });
+    let over = false;
+    const finish = () => {
+      if (over) return;
+      over = true;
+      done();
+      const count = els.body.querySelector(".day-bought.is-today .day-bought-toggle .cat-head-count");
+      if (count) {
+        count.animate([{ transform: "none" }, { transform: "scale(1.35)" }, { transform: "none" }],
+          { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out") });
+      }
+    };
+    run.onfinish = finish;
+    run.oncancel = finish;
+    setTimeout(finish, KN.motion.ms("--m-settle") + 200);
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing
