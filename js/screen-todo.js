@@ -513,6 +513,7 @@
        一日ずつになってからは、今日を焼き付けるほうが不自然です——9月1日を
        開いて＋を押した人が足したいのは、9月1日のことなので。 */
     let due = editing ? t.due : (oneDay() ? shownDay() : todayKey());
+    const dueAtOpen = due;
     let part = editing ? t.part : null;
     let time = editing ? t.time : null;
     let repeat = editing ? t.repeat : null;
@@ -834,6 +835,15 @@
       footer: foot,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
+      /* 別の日へ移したら、行はこの日から消えます。頭の丸薬が暦のその日へ
+         飛んでいく（V15、ui.js の sendToDay）。 */
+      onClose: () => {
+        if (!editing || !oneDay()) return;
+        const now = store.getTodo(todoId);
+        if (now && now.due && now.due !== dueAtOpen && now.due !== shownDay()) {
+          KN.ui.sendToDay(hero.querySelector(".js-hero-node"), now.due);
+        }
+      },
     });
 
     /* メモは打った量ぶん伸びます（screen-diet.js の食事メモと同じ仕組み）。
@@ -3543,6 +3553,8 @@
       row.querySelectorAll(".js-carry").forEach((b) => b.addEventListener("click", () => {
         const p = picks.find((x) => x.key === b.dataset.key);
         const undo = store.settleCarried(t.id, p.key);
+        /* 明日へ：行が暦の明日へ飛んでいく（V15）。消す前に測るので、ここで。 */
+        if (p.key === "tomorrow") KN.ui.sendToDay(row, (store.getTodo(t.id) || {}).due);
         haptic();
         KN.motion.fire("save");
         row.remove();
@@ -3618,6 +3630,8 @@
       row.querySelectorAll(".js-passed").forEach((b) => b.addEventListener("click", () => {
         const p = picks.find((x) => x.key === b.dataset.key);
         const undo = store.settlePassed(t.id, p.key, soonAt);
+        /* 明日へ：行が暦の明日へ飛んでいく（V15）。消す前に測るので、ここで。 */
+        if (p.key === "tomorrow") KN.ui.sendToDay(row, (store.getTodo(t.id) || {}).due);
         haptic();
         KN.motion.fire("save");
         row.remove();
