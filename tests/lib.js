@@ -49,10 +49,32 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
     if (m.type() === "error" && /Content Security Policy/i.test(m.text())) errors.push(`CSP: ${m.text().slice(0, 200)}`);
   });
   if (before) await before(ctx, page);
+  if (process.env.KN_CSS_COVER) await coverCSS(browser, page, process.env.KN_CSS_COVER);
   await page.goto(URL);
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
   await page.waitForTimeout(300);
   return { browser, ctx, page, errors };
+}
+
+/** CSS の当たりを集める（docs/roadmap-2.0.md の V3。tools/css-unused.js が KN_CSS_COVER に
+    置き場を渡したときだけ）。読み直しをまたいで足し、browser.close() の前に一つの JSON に書く。
+    見るのは open() の開いた頁だけ（台本があとで開く頁は数えない）。 */
+let coverN = 0;
+async function coverCSS(browser, page, dir) {
+  const fs = require("fs");
+  await page.coverage.startCSSCoverage({ resetOnNavigation: false });
+  const close = browser.close.bind(browser);
+  browser.close = async (...a) => {
+    try {
+      const out = (await page.coverage.stopCSSCoverage())
+        .filter((e) => /\/css\/[^/]+\.css/.test(e.url))
+        .map((e) => ({ url: e.url, ranges: e.ranges }));
+      fs.mkdirSync(dir, { recursive: true });
+      const name = path.basename(process.argv[1] || "x", ".js");
+      fs.writeFileSync(path.join(dir, `${name}-${process.pid}-${coverN++}.json`), JSON.stringify(out));
+    } catch (e) { /* 頁がもう閉じている——その回は数えない */ }
+    return close(...a);
+  };
 }
 
 /** 数えるだけの小さな見張り。最後に done() で結果を出し、落ちたら終了コード 1。
