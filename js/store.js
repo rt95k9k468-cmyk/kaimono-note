@@ -4060,10 +4060,13 @@
   }
 
   /** 期間ぶん（roadmap-2.0 の V22）。始まりと終わりの日を含みます。中身の形は
-      月ぶんと同じで、ym の代わりに from・to。逆に渡されたら入れ替えます。 */
+      月ぶんと同じで、ym の代わりに from・to。逆に渡されたら入れ替えます。
+      読む用なので、機械の時刻（createdAt・updatedAt）は外します（利用者が見本に
+      印を付けた・10月4日）。記録そのものからは消しません——写しから外すだけ。 */
   function exportRange(from, to) {
     const [a, b] = String(from) <= String(to) ? [from, to] : [to, from];
     const inside = (d) => { const k = String(d).slice(0, 10); return k >= a && k <= b; };
+    const bare = (x) => { const { createdAt, updatedAt, ...rest } = x; return rest; };
     const entries = archive().entries.filter((e) => inside(e.date)).slice().sort(byRecent);
     const counts = {};
     entries.forEach((e) => { counts[e.type] = (counts[e.type] || 0) + 1; });
@@ -4074,8 +4077,8 @@
       to: b,
       exportedAt: stamp(),
       days: archive().days.filter((d) => inside(d.date))
-        .slice().sort((x, y) => String(y.date).localeCompare(String(x.date))),
-      entries,
+        .slice().sort((x, y) => String(y.date).localeCompare(String(x.date))).map(bare),
+      entries: entries.map(bare),
       counts,
     };
   }

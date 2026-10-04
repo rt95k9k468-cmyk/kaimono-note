@@ -206,4 +206,5 @@ daily の画面ではなく**設定（daily の歯車）→ 書き出し → 年
 - 中身は `store.exportRange(from, to)`：両端の日を含む、月ぶんと同じ形（`kind: "daily-range"`・`from`・`to`）。
   **読む用だけ**。`kind` を持つのでバックアップとしては読まない（`readBackup`）。月ぶんは前のまま。
 - 本文が入るので、月ぶんと同じ門（`monthExportBlocked`）。紙に出す数は月ぶんの行と同じ（Daily Log ◯日・積み上げ ◯件）。
-- 要らない情報を減らすのは、作り物の記録の見本に利用者が印を付けてから（V22 の後半）。試験は `tests/daily-range.js`。
+- 機械の時刻（`createdAt`・`updatedAt`）は外す（10月4日、利用者が見本に印を付けた）。記録からは消さない——
+  写しから外すだけ。ほかの欄（`id`・起床の印・空の欄）は残す。試験は `tests/daily-range.js`。

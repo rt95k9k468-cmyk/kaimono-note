@@ -48,6 +48,9 @@ const { open, checker } = require("./lib");
   t.check("形：kind・from・to", st.r.app === "kaimono-note" && st.r.kind === "daily-range" && st.r.from === st.from && st.r.to === st.to);
   t.check("逆に渡しても同じ期間", st.rev.from === st.from && st.rev.to === st.to && st.rev.days.length === 2);
   t.check("書き出しで記録は変わらない", st.same);
+  t.check("機械の時刻は外す（V22 の後半）", [...st.r.days, ...st.r.entries].every((x) => !("createdAt" in x) && !("updatedAt" in x))
+    && st.r.days.every((x) => x.date && "memo" in x) && st.r.entries.every((x) => x.id && x.title),
+    JSON.stringify(st.r.days[0]));
   t.check("月ぶんは前のまま", st.mKind === "daily-month" && /^\d{4}-\d{2}$/.test(st.mYm));
   t.check("期間の書き出しはバックアップとして読まない", st.bad.ok === false && /バックアップではありません/.test(st.bad.reason),
     JSON.stringify(st.bad));
