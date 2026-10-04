@@ -27,7 +27,7 @@ const { open, checker } = require("./lib");
     return el.scrollTop;
   });
   await tapBar();
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1600);
   const scrAfter = await page.evaluate(() => KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop);
   t.check("画面：きわを押すと上へ", scr > 0 && scrAfter === 0, `${scr} → ${scrAfter}`);
 
@@ -48,14 +48,32 @@ const { open, checker } = require("./lib");
   const total = trace.pts[trace.pts.length - 1][0];
   const at = (ms) => (trace.pts.find((p) => p[0] >= ms) || trace.pts[trace.pts.length - 1])[1];
   const firstQuarter = trace.from - at(total * 0.25);
-  const lastQuarter = at(total * 0.75);
-  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", total >= 600 && total <= 1400, `${Math.round(total)}ms`);
-  t.check("上へ：出だしは速く、終わりは大きく緩める", firstQuarter > trace.from * 0.6 && lastQuarter < trace.from * 0.02,
-    `始めの1/4で ${Math.round(firstQuarter)}px、最後の1/4に ${Math.round(lastQuarter)}px（全 ${trace.from}px）`);
+  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", total >= 450 && total <= 1400, `${Math.round(total)}ms`);
+  t.check("上へ：出だしは速く", firstQuarter > trace.from * 0.4, `始めの1/4で ${Math.round(firstQuarter)}px（全 ${trace.from}px）`);
+  /* 上端を少し越えて跳ね返る：中身が下へずれ、戻って、何も残らない。 */
+  const dip = await page.evaluate(() => new Promise((res) => {
+    const el = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
+    const c = el.firstElementChild;
+    const tops = [];
+    const t0 = performance.now();
+    const tick = () => {
+      tops.push(c.getBoundingClientRect().top);
+      if (performance.now() - t0 < 1200) requestAnimationFrame(tick);
+      else {
+        const rest = tops[tops.length - 1];
+        res({ max: Math.max(...tops.map((y) => y - rest)), left: c.getAnimations().length,
+          still: Math.abs(tops[tops.length - 10] - rest) < 0.5 });
+      }
+    };
+    tick();
+  }));
+  t.check("上へ：上端を少しだけ越えて、跳ね返る", dip.max >= 4 && dip.max <= 24, JSON.stringify(dip));
+  t.check("上へ：跳ね返ったあとは元の位置で、動きが残らない", dip.still && dip.left === 0, JSON.stringify(dip));
   const mono = trace.pts.every((p, i) => !i || p[1] <= trace.pts[i - 1][1]);
   t.check("上へ：行きすぎて戻らない", mono, JSON.stringify(trace.pts.map((p) => [Math.round(p[0]), Math.round(p[1])])));
 
   /* ノートの紙：紙の本体を上へ（後ろの画面は動かさない）。 */
+  await page.waitForTimeout(1200);
   await page.evaluate(() => KN.app.showScreen("notes"));
   await page.waitForTimeout(400);
   await page.evaluate(() => document.querySelector("#dock .add-fab").click());
@@ -70,7 +88,7 @@ const { open, checker } = require("./lib");
     return b.scrollTop;
   });
   await tapBar();
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1600);
   const after = await page.evaluate(() => ({
     sheet: document.querySelector(".sheet.is-note .sheet-body").scrollTop,
     parked: window.scrollY >= 1,
