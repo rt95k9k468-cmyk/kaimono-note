@@ -1660,9 +1660,10 @@
         title: "この記録を消しますか", message: e.title, okLabel: "消す", danger: true,
       });
       if (!ok) return;
-      store.removeEntry(e.id);
+      const undo = store.removeEntry(e.id);
       h.close();
       render();
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 

@@ -220,7 +220,7 @@
           const w = g.when && W ? W.describe(g.when) : "";
           KN.motion.fire("save");
           KN.ui.toast(`やることに「${rec.title}」を入れました${w ? `（${w}）` : ""}`, {
-            action: { label: "戻す", onClick: () => store.removeTodo(rec.id) },
+            action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) },
           });
         },
       })
