@@ -213,7 +213,9 @@
     if (!root || document.activeElement !== field) return;
     const appEl = document.getElementById("app");
     const visibleBottom = (appEl ? appEl.getBoundingClientRect().bottom : window.innerHeight) - KB_MARGIN;
-    const over = field.getBoundingClientRect().bottom - visibleBottom;
+    /* 食事の枠をその場で書いているときは、欄の下の候補の列まで見せます。 */
+    const shown = field.closest(".diet-slot-edit") || field;
+    const over = shown.getBoundingClientRect().bottom - visibleBottom;
 
     /* 足りないぶんだけ持ち上げる——だけでなく、**行きすぎたぶんは戻します**。
 
@@ -303,7 +305,11 @@
 
            誰が動かしたかは、その人には関係のない話です。触れる前に見て
            いた場所へ、静かに戻します。 */
-        if (Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
+        /* 食事の枠をその場で書いたときだけは戻しません（2026年10月4日、利用者の声
+           「キーボードで押し上げたら、しまっても動かないほうがいい」）。下がらない
+           ように、縮んだぶんは紙の底に余白として残してあります（kbRoom）。 */
+        const slotEdit = kbField && kbField.closest && kbField.closest(".diet-slot-edit");
+        if (!slotEdit && Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
         kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
@@ -509,6 +515,8 @@
       track,
       /* 指を受けるのは紙ぜんぶ（「気づいたこと」や下の空白からも払える）。 */
       surface: sheet,
+      /* 書いている枠の候補の列は横に流すので、そこでは日をめくりません。 */
+      ignore: ".diet-slot-cands",
       /* 着いたら画面ごと組み直すので、控えの回し直しも先組みも要りません。 */
       recycle: false,
       day: curDay,
@@ -544,6 +552,7 @@
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
     placeRing(true);
+    putKbRoom();
 
     if (root && keepTop) {
       const sc = KN.app.scrollerOf(root);
@@ -2909,8 +2918,8 @@
   let saving = false;
 
   /** 見るだけの一行。Daily Log と同じで、書いてあることをそのまま紙に
-      置きます——タップすると、その枠だけを書く小窓がその場に出ます
-      （openSlotPop）。カルーセルの前日・翌日（peek）は押せません。 */
+      置きます——タップすると、その枠がその場で書く欄になります
+      （editSlotInline）。カルーセルの前日・翌日（peek）は押せません。 */
   function slotViewRow(day, sl, text, kcal, tappable) {
     /* まだ書いていない枠は、**その枠の名前を薄い字で**出します（朝食・昼食…）。
        「—」を四つ並べていましたが、絵だけでは何の枠か読めず、空の日の
@@ -2925,7 +2934,7 @@
       </div>
     `);
     if (tappable) {
-      const open = () => openSlotPop(row, day, sl);
+      const open = () => editSlotInline(row, day, sl);
       row.addEventListener("click", () => {
         // 選んでいる最中に開くと、選んだそばから選択が消えるので開きません。
         const sel = window.getSelection && window.getSelection();
@@ -2941,21 +2950,40 @@
     return row;
   }
 
-  /* 枠を押したら、紙ではなく**その場に小窓**で書きます（2026年10月3日、利用者の声
+  /* 枠を押したら、**その枠がその場で書く欄になります**（2026年10月3日、利用者の声
      「シートが開くのではなく、その場にポンと出て欲しい」「前に打った文字列は候補に
-     出て欲しい」）。候補は打ちかけの言葉で絞り、押すとその言葉に置き換わります。
-     保存は閉じたとき（外を押す・Escape・画面を離れる）。 */
-  function openSlotPop(anchor, day, sl) {
+     出て欲しい」）。一度は浮かせた小窓にしましたが、打つたび・キーボードが上がる
+     たびに置き直すのでグラグラし、外を押しても別のタブへ移っても残りました
+     （10月4日）。いまは紙の中の枠のまま——浮かせないので、何も追いかけません。
+     候補は欄の下に横一列（数が変わっても高さは変わらない）。打ちかけの言葉で絞り、
+     押すとその言葉に置き換わります。保存は欄を離れたとき（キーボードを閉じる・
+     ほかを押す・タブを移る・画面を離れる）。 */
+  let editing = null;   // いま書いている枠（{ done }）
+  /* キーボードで紙を押し上げたぶんの余白。キーボードをしまっても紙が下がって
+     こないように、書き終えたあとも残します（このタブを開き直すまで）。 */
+  let kbRoom = 0;
+  function putKbRoom() {
+    const sheetEl = els.body && els.body.querySelector(".tl-sheet");
+    if (!sheetEl) return;
+    let el = sheetEl.querySelector(":scope > .diet-kb-room");
+    if (!kbRoom) { if (el) el.remove(); return; }
+    if (!el) el = node(html`<div class="diet-kb-room" aria-hidden="true"></div>`);
+    sheetEl.append(el);   // いつもいちばん下に
+    el.style.height = `${kbRoom}px`;
+  }
+
+  function editSlotInline(row, day, sl) {
+    if (editing) editing.done(true);
     const saved = store.slotMemo(day, sl.id);
     const words = store.mealWords(sl.id);
     const fold = U.foldKana;
-    const p = KN.ui.popOver(anchor, { side: "left", label: sl.label, cls: "is-form diet-slot-pop",
-      onClose: () => { done(); } });
+    const kcalText = (row.querySelector(".diet-slot-kcal") || {}).textContent || "";
     const box = node(html`
-      <div class="diet-slot diet-slot-pop-in" data-slot="${sl.id}">
+      <div class="diet-slot diet-slot-edit" data-slot="${sl.id}">
         <div class="diet-slot-head">
           <span class="diet-slot-ico">${icon(sl.ico)}</span>
           <b class="diet-slot-name">${sl.label}</b>
+          <span class="diet-slot-kcal mono-num">${kcalText}</span>
         </div>
         <textarea class="textarea diet-slot-memo" rows="1" spellcheck="false"
                   autocapitalize="sentences" aria-label="${sl.label}に食べたもの"
@@ -2963,8 +2991,11 @@
         <div class="chip-row diet-slot-cands" role="list" aria-label="前に書いたもの"></div>
       </div>
     `);
+    row.replaceWith(box);
     const ta = box.querySelector("textarea");
     const cands = box.querySelector(".diet-slot-cands");
+    const sc = KN.app.scrollerOf(root);
+    const h0 = sc.clientHeight;
     const SEP = /[\s、,，。;；]/;
     /** カーソルの手前の、打ちかけの言葉（区切りのあと）。 */
     const typing = () => {
@@ -2974,8 +3005,7 @@
       return { from: i, to: upTo.length, word: upTo.slice(i) };
     };
     const paint = () => {
-      const cur = typing();
-      const q = fold(cur.word);
+      const q = fold(typing().word);
       const have = new Set(ta.value.split(/[\s、,，。;；]+/).map(fold).filter(Boolean));
       const hits = words.filter((w) => {
         const k = fold(w);
@@ -2983,12 +3013,13 @@
         return !q || (k !== q && k.includes(q));
       });
       /* 頭が合うものを先に（「な」で「納豆」が「バナナ」より前）。 */
-      if (q) hits.sort((a, b) => Number(!fold(a).startsWith(q)) - Number(!fold(b).startsWith(q)));
+      if (q) hits.sort((x, y) => Number(!fold(x).startsWith(q)) - Number(!fold(y).startsWith(q)));
       cands.textContent = "";
-      hits.slice(0, 8).forEach((w) => {
+      hits.slice(0, 12).forEach((w) => {
         const b = node(html`<button type="button" class="chip" role="listitem">${w}</button>`);
-        /* 押しても欄から focus を外しません（iPhone でキーボードが一度閉じて開くので）。 */
+        /* 押しても欄から focus を外しません（キーボードが一度閉じて開くので）。 */
         b.addEventListener("pointerdown", (e) => e.preventDefault());
+        b.addEventListener("mousedown", (e) => e.preventDefault());
         b.addEventListener("click", () => {
           const c = typing();
           ta.value = ta.value.slice(0, c.from) + w + " " + ta.value.slice(c.to);
@@ -3001,33 +3032,67 @@
         });
         cands.append(b);
       });
-      cands.hidden = !cands.childElementCount;
-      p.place();
+      cands.scrollLeft = 0;
     };
-    let gone = false;
-    const done = () => {
-      if (gone) return;
-      gone = true;
+    /* 欄を見えるところへ上げるのは、前からある nudgeIntoView（打つ欄なら何でも）。
+       ここでは、キーボードで紙が縮んだぶんを底の余白に残すだけ——しまったときに
+       紙の送り幅が縮んで、上げた位置から下へ引き戻されないように。 */
+    const lift = () => {
+      const lost = h0 - sc.clientHeight;
+      if (lost > kbRoom) { kbRoom = lost; putKbRoom(); }
+    };
+    const save = () => {
+      const val = ta.value.trim();
+      if (val === store.slotMemo(day, sl.id).trim()) return false;
+      saving = true;
+      try { store.setSlotMemo(day, sl.id, val); } finally { saving = false; }
+      return true;
+    };
+    const onHide = () => { if (document.visibilityState === "hidden") save(); };
+    /* iPhone では、押せないところを押しても欄から focus が外れないことがあるので、
+       枠の外を押したら自分で閉じます（帯のタブも、ここで閉じる）。閉じるのは**指を
+       離したあと**——押した拍に閉じると枠が縮んで下の行が上へずれ、押したはずの
+       別の枠が指の下から逃げていました。払って送っただけ（pointercancel）では閉じない。 */
+    let pressing = false;
+    const onDown = (e) => { pressing = !box.contains(e.target); };
+    const onUp = (e) => {
+      if (!pressing) return;
+      pressing = false;
+      if (!box.contains(e.target)) setTimeout(() => done(), 0);
+    };
+    const onCancel = () => { pressing = false; };
+    const onBlur = () => setTimeout(() => {
+      if (!pressing && editing === me && document.activeElement !== ta) done();
+    }, 0);
+    let me = null;
+    /** 閉じる。swap … 見るだけの一行へ、その場で戻す（組み直しの前なら要らない）。 */
+    function done(swap = true) {
+      if (editing !== me) return;
+      editing = null;
+      flushSlots = () => {};
       document.removeEventListener("visibilitychange", onHide);
-      if (window.visualViewport) window.visualViewport.removeEventListener("resize", p.place);
-      const val = ta.value.trim();
-      if (val === saved.trim()) return;
-      store.setSlotMemo(day, sl.id, val);
-      KN.motion.fire("save");
-      render();
-    };
-    /* 画面を離れたら、閉じるのを待たずに書いておきます（押し忘れで消えないように）。 */
-    const onHide = () => {
-      if (document.visibilityState !== "hidden") return;
-      const val = ta.value.trim();
-      if (val !== store.slotMemo(day, sl.id).trim()) store.setSlotMemo(day, sl.id, val);
-    };
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("pointerup", onUp, true);
+      document.removeEventListener("pointercancel", onCancel, true);
+      if (window.visualViewport) window.visualViewport.removeEventListener("resize", lift);
+      const changed = save();
+      if (changed) KN.motion.fire("save");
+      if (swap && box.isConnected) {
+        const st = D.slotTotals(day);
+        box.replaceWith(slotViewRow(day, sl, store.slotMemo(day, sl.id), st ? st[sl.id] : 0, true));
+      }
+    }
+    me = { done };
+    editing = me;
+    flushSlots = () => done(false);
     document.addEventListener("visibilitychange", onHide);
-    /* キーボードが上がったら、小窓を見えるところへ寄せ直します。 */
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", p.place);
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("pointerup", onUp, true);
+    document.addEventListener("pointercancel", onCancel, true);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", lift);
     ta.addEventListener("input", () => { grow(ta); paint(); });
     ta.addEventListener("click", paint);
-    p.el.append(box);
+    ta.addEventListener("blur", onBlur);
     grow(ta);
     paint();
     KN.ui.focusNow(ta);
@@ -5003,6 +5068,8 @@ distance=6.0km</pre>
 
   /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
   function onEnter() {
+    kbRoom = 0;
+    putKbRoom();
     const st = store.get().settings;
     if (st.dietAutoSync === false) return;
     /* 中継所は「操作のうち」に縛られないので、先に走らせて構いません。

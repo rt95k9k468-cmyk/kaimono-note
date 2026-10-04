@@ -3217,10 +3217,13 @@ button.section-note:active { opacity: .55; }
   background: var(--c-surface); border: 1px solid var(--c-border);
   font-size: var(--fs-lg); line-height: var(--lh-body); resize: none; overflow: hidden;
 }
-/* 枠を押すと出る小窓（screen-diet.js の openSlotPop）。下に、前に書いた言葉の札。 */
-.diet-slot-pop-in { gap: var(--sp-2); }
-.diet-slot-cands { flex-wrap: wrap; gap: 6px; }
-.diet-slot-cands .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 枠を押すと、その場で書く欄になる（screen-diet.js の editSlotInline）。下に、前に
+   書いた言葉の札を横一列——数が変わっても高さを変えない（打つたびに紙が揺れないように）。 */
+.diet-slot-edit { gap: var(--sp-2); }
+.diet-slot-cands { flex-wrap: nowrap; gap: 6px; min-height: 40px; }
+.diet-slot-cands .chip { flex: none; white-space: nowrap; }
+/* キーボードで押し上げたぶんの余白（kbRoom）。しまっても紙が下がらない。 */
+.diet-kb-room { flex: none; pointer-events: none; }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
