@@ -2160,6 +2160,8 @@
 }
 /* 紙の中（シート）で使うぶんは、外側の余白を紙が持っているので詰める。 */
 .set-foot.is-flush { padding: 0; margin: 0 0 var(--sp-2); }
+/* 行の束のすぐ下に添える一行（daily の期間の書き出しの数）。字は行の題に揃える。 */
+.rows + .set-foot.is-flush { margin-top: var(--sp-3); padding: 0 var(--sp-5); }
 
 /* 保存したバックアップを確かめた結果。このファイルといまを、数で並べるだけ。 */
 .verify-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }

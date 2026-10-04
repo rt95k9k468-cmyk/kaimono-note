@@ -172,6 +172,7 @@
           ico: "download", tint: TINT.sub, title: "月ぶんを書き出す",
           onTap: openMonthExport,
         }),
+        navRow({ ico: "download", tint: TINT.sub, title: "期間を選んで書き出す", onTap: openRangeExport }),
         navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook })
       ),
     ];
@@ -233,6 +234,57 @@
     });
 
     handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
+  }
+
+  /* 期間を選んで書き出す（roadmap-2.0 の V22）。始まりと終わりの日を暦の小窓で
+     選び、その間（両端を含む）を月ぶんと同じ形で。既定は今月の一日から今日。
+     本文が入るので、月ぶんと同じ門。読む用だけで、バックアップの形には触れない。 */
+  function openRangeExport() {
+    if (monthExportBlocked("期間ぶん")) return;
+    const U = KN.util;
+    let to = U.todayKey();
+    let from = `${to.slice(0, 7)}-01`;
+    const body = node(html`
+      <div class="stack">
+        <div class="rows">
+          <button type="button" class="row js-from">
+            <span class="row-main"><span class="row-title">始まり</span></span>
+            <span class="row-value js-v"></span>
+          </button>
+          <button type="button" class="row js-to">
+            <span class="row-main"><span class="row-title">終わり</span></span>
+            <span class="row-value js-v"></span>
+          </button>
+        </div>
+        <p class="set-foot is-flush js-n"></p>
+      </div>
+    `);
+    const fromEl = body.querySelector(".js-from");
+    const toEl = body.querySelector(".js-to");
+    const foot = node(html`<button class="btn btn-primary btn-block js-go">${icon("download")}書き出す</button>`);
+    const paint = () => {
+      fromEl.querySelector(".js-v").textContent = U.formatDay(from);
+      toEl.querySelector(".js-v").textContent = U.formatDay(to);
+      const n = store.exportRange(from, to);
+      body.querySelector(".js-n").textContent = `Daily Log ${n.days.length}日 ・ 積み上げ ${n.entries.length}件`;
+      foot.disabled = !n.days.length && !n.entries.length;
+    };
+    fromEl.addEventListener("click", () => KN.ui.popCalendar(fromEl, {
+      value: from, label: "始まり",
+      onPick: (day) => { from = day; if (to < from) to = from; paint(); },
+    }));
+    toEl.addEventListener("click", () => KN.ui.popCalendar(toEl, {
+      value: to, label: "終わり",
+      onPick: (day) => { to = day; if (from > to) from = to; paint(); },
+    }));
+    paint();
+    const handle = KN.ui.sheet({ title: "期間を選んで書き出す", content: body, footer: foot });
+    foot.addEventListener("click", () => {
+      if (monthExportBlocked("期間ぶん")) return;
+      downloadJSON(`daily-${from}_${to}.json`, store.exportRange(from, to));
+      KN.ui.toast(`${from}〜${to} を書き出しました`);
+      handle.close();
+    });
   }
 
   /* ---------------- 年の本（R10、js/yearbook.js） ----------------
