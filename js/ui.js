@@ -40,7 +40,8 @@
   document.addEventListener("pointerdown", (e) => {
     const b = e.target && e.target.closest
       && e.target.closest("button, [role='button'], a[href], [data-grow]");
-    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now(),
+      fab: !!b.closest(".add-fab, .fab-menu-b") } : null;
   }, true);
 
   const still = () => !!(window.matchMedia
@@ -79,7 +80,28 @@
     el.classList.add("is-from-origin");
     void getComputedStyle(el).transform;
     el.style.transition = "";
-    return { x: pressed.x, y: pressed.y };
+    return { x: pressed.x, y: pressed.y, fab: pressed.fab };
+  }
+
+  /* ---- ＋から出た紙は、＋へ縮んで帰る（docs/roadmap-2.0.md の V16） ----
+
+     ＋の上に立ち上がる札から開いた紙は、閉じるころには札がもう無いので、
+     押した点（札のあった所）へ帰ると何も無い所へ消えていきます。帰り先を、
+     閉じる瞬間の＋の真ん中に置き直します。＋が見えなければ（キーボードの
+     下など）押した点のまま。返すのは＋（着いたときに受け止めさせる）。 */
+  function aimHome(el) {
+    const fab = document.querySelector("#dock .add-fab");
+    const f = fab && fab.getBoundingClientRect();
+    if (!f || !f.width || f.top >= window.innerHeight || f.bottom <= 0) return null;
+    const r = el.getBoundingClientRect();
+    /* いまの姿は translate(-50%, 0)（開いた姿）。ずれていればそのぶんを引いて、
+       --sx/--sy が測る相手（開いた箱の真ん中）を出します。 */
+    const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+    const cx = r.left + r.width / 2 - (m.e + el.offsetWidth / 2);
+    const cy = r.top + r.height / 2 - m.f;
+    el.style.setProperty("--sx", `${(f.left + f.width / 2 - cx).toFixed(1)}px`);
+    el.style.setProperty("--sy", `${(f.top + f.height / 2 - cy).toFixed(1)}px`);
+    return fab;
   }
 
   /* ---- 押した行の丸薬が、紙の頭の丸薬へ伸びていく（C2） ----
@@ -698,9 +720,19 @@
         el.getAnimations({ subtree: true }).forEach((a) => a.cancel());
         el.style.transition = "none";
       }
+      /* カードへ縮む紙（ノート）は、＋ではなくカードへ帰る。 */
+      const home = seed && seed.fab && !shrinks && !still() && el.classList.contains("is-from-origin")
+        ? aimHome(el) : null;
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
       KN.motion.fire("sheetClose");
+      /* 着いたところで＋が一度だけ受け止める。 */
+      if (home) {
+        setTimeout(() => home.isConnected && home.animate(
+          [{ transform: "none" }, { transform: "scale(1.1)" }, { transform: "none" }],
+          { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out"), composite: "add" },
+        ), KN.motion.ms("--m-sheet-close"));
+      }
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
       /* Nor does the caret. A field removed while still focused is never
