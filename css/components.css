@@ -871,10 +871,12 @@ button, [role="tab"] {
    長さも名前に移しました（`--m-sheet-grow`）。育つのはゆっくりですが、
    **帰りは他の紙と同じ速さ**です（素の `.sheet` の --m-sheet-close）
    ——見せ場は「出てくる」ほうで、やめるときに待たせる理由はありません。 */
+/* 帰りの薄れは後ろ半分だけ（V16）。前は --m-state で先に消えきって、縮んで
+   ＋へ帰るところが見えなかった。 */
 .sheet.is-from-origin {
   transition:
     transform var(--m-sheet-close) var(--ease-in),
-    opacity var(--m-state) var(--ease),
+    opacity calc(var(--m-sheet-close) / 2) var(--ease-in) calc(var(--m-sheet-close) / 2),
     border-radius var(--m-sheet-close) var(--ease-in);
 }
 .sheet.is-from-origin.is-open {

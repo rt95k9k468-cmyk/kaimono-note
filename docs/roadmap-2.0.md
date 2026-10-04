@@ -122,7 +122,7 @@
 | C | V13 | 身ぶりと紙の表 | 中 | なし | — | screens-nav・sheet-scroll・calendar-swipe | 済（10/4） |
 | D 変形 | V14 | View Transitions を試す | 小 | なし | — | motion・notes（段4.3）・todo-timeline（C2） | 済（採らない・10/4） |
 | D | V15 | やること→別の日 | 中 | なし | — | todo-items・calendar-swipe | 済（10/4） |
-| D | V16 | ＋→入力の紙 | 中 | なし | — | tabbar・sheet-scroll | 未 |
+| D | V16 | ＋→入力の紙 | 中 | なし | — | tabbar・sheet-scroll | 済（10/4） |
 | D | V17 | 買うもの→今日買った | 小 | なし | — | shopping | 済（10/4） |
 | D | V18 | 「戻す」を揃える | 中 | なし | — | （点検してから） | 未 |
 | E 各画面 | V19 | ノートの開き閉じ・戻り方 | 中 | なし | ◯ | notes・settings（edge-back）・sheet-scroll | 未 |
@@ -331,6 +331,8 @@
 
 **V16 ＋→入力の紙**
 - 何を：＋（と、そこから立ち上がる札）の位置から入力の紙が広がる。閉じれば＋へ縮む。
+- 済（10/4）：広がるのは前から（`seedFrom`）。足したのは帰り——札から開いても＋へ縮み、薄れは後ろ半分、
+  着いて＋が受け止める（`ui.js` の `aimHome`）。sheet-scroll.md の末の節、試験は `tests/fab-home.js`。
 
 **V17 買うもの→今日買った**
 - 何を：✓した行が「今日買った」の束へしまわれる（束が閉じていれば、束の頭へ）。
