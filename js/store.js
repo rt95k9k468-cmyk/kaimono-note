@@ -3038,26 +3038,40 @@
   }
 
   /** これまでに書いた食事の言葉（打つときの候補。2026年10月3日）。写さず引く——
-      記録から開くたびに数えます。同じ区分で書いた回の多い順、次に全体の回数、
-      新しい順。区切りは空白・読点・改行。 */
+      記録から開くたびに数えます。区切りは空白・読点・改行。
+      { word, score, often } を score の高い順に返します（2026年10月4日）。
+      score … 書いた日ごとに、古いほど軽く（21日で半分）。ほかの区分の日は 1/4。
+      often … 何も打っていなくても出す言葉。**この区分で**くり返し、いまも書いている
+              もの（この区分だけの score が 1.5 以上——一度きりの機内食や旅先の
+              食事は出ず、朝の卵は朝にだけ出る）。打ちかけで絞るときは全部から。 */
   function mealWords(slot) {
     const fold = KN.util.foldKana;
+    const today = KN.util.dayDate(KN.util.todayKey());
     const seen = new Map();
     diet().meals.forEach((m) => {
+      const d = KN.util.dayDate(m.day);
+      const age = d && today ? Math.max(0, Math.round((today - d) / 864e5)) : 365;
+      const w8 = Math.pow(0.5, age / 21);
+      const days = new Set();   // 一つの記録に同じ言葉が二度あっても一回
       String(m.memo || "").split(/[\s、,，。;；]+/).forEach((w) => {
         if (!w || w.length > 24) return;
         const k = fold(w);
-        if (!k) return;
-        const e = seen.get(k) || { word: w, n: 0, same: 0, day: "" };
-        e.n += 1;
-        if (m.slot === slot) e.same += 1;
+        if (!k || days.has(k)) return;
+        days.add(k);
+        const e = seen.get(k) || { word: w, same: 0, other: 0, day: "", dayKeys: new Set() };
+        const dk = `${m.slot}|${m.day}`;
+        if (!e.dayKeys.has(dk)) {
+          e.dayKeys.add(dk);
+          if (m.slot === slot) e.same += w8; else e.other += w8;
+        }
         if (String(m.day) >= e.day) { e.day = String(m.day); e.word = w; }
         seen.set(k, e);
       });
     });
     return [...seen.values()]
-      .sort((a, b) => (b.same - a.same) || (b.n - a.n) || b.day.localeCompare(a.day))
-      .map((e) => e.word);
+      .map((e) => ({ word: e.word, score: e.same + e.other / 4, often: e.same >= 1.5, day: e.day }))
+      .sort((a, b) => (b.score - a.score) || b.day.localeCompare(a.day))
+      .map(({ word, score, often }) => ({ word, score, often }));
   }
 
   /** その区分の文を書き換えます。空にすると、数を持たない記録は消えます。 */
