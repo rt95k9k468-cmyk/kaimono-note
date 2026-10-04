@@ -4,6 +4,7 @@
    - 押すと .is-v2 が付く・押しても奥は畳まれない・読み直しても残る
    - オンでもオフでも、四つのタブが開いてエラーが出ない
    - もう一度押すと外れる。知らない値（"yes" など）はオフへ（reconcile）
+   - daily の紙の下の角：オンなら丸い（V21）、オフなら角のまま
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/v2-switch.js */
 const { open, checker } = require("./lib");
 
@@ -13,6 +14,10 @@ const { open, checker } = require("./lib");
 
   const mark = () => page.evaluate(() => document.documentElement.classList.contains("is-v2"));
   const saved = () => page.evaluate(() => KN.store.get().settings.v2);
+  const dailyCorner = () => page.evaluate(() => {
+    const e = document.querySelector("#screen-archive .tl-sheet.is-daily");
+    return e ? getComputedStyle(e).borderBottomLeftRadius : "";
+  });
   const tabs = ["archive", "todo", "list", "diet"];
   const tabsOpen = async (label) => {
     for (const id of tabs) {
@@ -57,6 +62,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   t.check("読み直しても印が付いている", await mark());
   await tabsOpen("オン");
+  t.check("オン：daily の紙は下の角も丸い", (await dailyCorner()) === "22px", await dailyCorner());
 
   await openLook();
   const more3 = page.locator(".set-layer:last-child details.set-more", { hasText: "試す" });
@@ -65,6 +71,7 @@ const { open, checker } = require("./lib");
   await more3.locator(".set-row.is-sw").click();
   await page.waitForTimeout(300);
   t.check("もう一度押すと外れる", !(await mark()) && (await saved()) === false);
+  t.check("オフ：daily の紙の下は角のまま", (await dailyCorner()) === "0px", await dailyCorner());
 
   /* 知らない値はオフへ。直に書いた値が読み直しで届くことを、true で先に確かめる
      （届かなければ「オフ」が素通りで通ってしまう）。 */

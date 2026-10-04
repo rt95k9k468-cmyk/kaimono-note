@@ -5730,6 +5730,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 掴み手のすぐ下に「あの日」や Daily Log の枠線が来ると、掴み手が線に
    刺さって見えます。ひと呼吸ぶん空けます。 */
 .tl-sheet.is-daily > .tl-grip { margin-bottom: calc(var(--sp-4) * -1 + 2px); }
+/* 2.0（V21、V5 の画像で選んだ形）：紙の下の端は帯の下に 16px 残るので、
+   下の角も丸くして、途中で切れた紙ではなく一枚として終わらせます。
+   角は `#screen-archive .tl-sheet`（送る器にした段）も持つので、ID を付けて勝たせます。 */
+.is-v2 #screen-archive .tl-sheet.is-daily { border-radius: var(--r-xl); }
 
 /* 行ぜんぶが、ひと呼吸だけ光る。
 
