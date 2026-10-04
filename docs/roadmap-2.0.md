@@ -112,7 +112,7 @@
 | A | V3 | 使われていない CSS の候補表 | 小 | なし | — | dev・tests/README | 済（10/4） |
 | A | V4 | 動きの辞書 | 中 | なし | — | motion・traps | 済（10/4） |
 | A | V5 | 見比べの画像 | 中 | なし | — | glass・look・daily・health・notes の該当節 | 画像済（10/4）・選ぶ待ち |
-| B 道と人 | V6 | 追いつく歩き | 中 | なし（前に見た点は store の外） | — | todo-timeline（歩く・描き直し） | 未 |
+| B 道と人 | V6 | 追いつく歩き | 中 | なし（前に見た点は store の外） | — | todo-timeline（歩く・描き直し） | 済（10/4） |
 | B | V7 | 5方向の人 | 大 | なし | — | todo-timeline（歩く人と寝床・歩く・曲がり角）・icons-drawing | 未 |
 | B | V8 | 連れ→停留所 | 中 | なし | — | todo-timeline（札の置き方・道へ運ぶ） | 未 |
 | B | V9 | 足あとの試作 | 小 | なし | — | todo-timeline | 未 |

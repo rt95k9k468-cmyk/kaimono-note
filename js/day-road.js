@@ -336,8 +336,9 @@
   /* ---------------- 歩く（やることを開いたとき） ----------------
 
      タブを開いた瞬間に、道の人が四歩あるいて、いつもの形で止まります
-     （2026年9月29日・利用者の声）。**その場で足踏み**です——人の立つ点は
-     「いま」なので、道の上を進ませると、そのあいだ時刻が嘘になる。
+     （2026年9月29日・利用者の声）。2.0 の V6（10月4日）から、**前に見た点から
+     「いま」まで道に沿って追いつく**（下の walk）。止まるのはいつも「いま」で、
+     時刻の字は初めから「いま」——追いつくのは人だけ。
 
      止まった形は利用者が選んだ絵と同じ位置で、**前に出ている脚を奥の脚**として
      描いたもの（REST。下の「止まった形」）。そこから出て、そこへ戻る二周（一周で
@@ -487,17 +488,41 @@
     return { x: p.x, y: p.y - h / 2 * Math.abs(p.ny), sx: p.tx >= 0 ? ME_K : -ME_K, row: p.row, d, h };
   }
 
-  /** その根の中の、今日の道の人を歩かせる。歩いている途中なら、そのまま。
-      from（前の置き場所）があれば、歩くあいだにそこから今の足もとへ進む
-      （分が変わったとき。paint）。進み方は脚と同じ速さの台形。 */
-  function walk(root, from) {
-    if (!root || KN.motion.still()) return;
+  /* 前に見た点（2.0 の V6「追いつく歩き」）。人が最後に「いま」に立った分を、今日の日付と
+     一緒に端末に置く。**store の外の鍵**なのでバックアップに入らず、日が変われば読まない。
+     どこにも残せない端末では、追いつかずにその場で歩くだけ。 */
+  const SEEN_KEY = "kn-road-seen";
+  function seenGet() {
+    try {
+      const [day, min] = (localStorage.getItem(SEEN_KEY) || "").split(" ");
+      return day === U.todayKey() && min !== "" && Number.isFinite(Number(min)) ? Number(min) : null;
+    } catch (_) { return null; }
+  }
+  function seenPut(min) {
+    try { localStorage.setItem(SEEN_KEY, `${U.todayKey()} ${min}`); } catch (_) {}
+  }
+  /* 追いつくのは、この道の長さまで（約1時間ぶん）。離れすぎていれば（朝に見て夜に開くなど）
+     終わりのほうだけ歩く——1.5s で一日を横切ると、歩きでなく滑りに見える。 */
+  const CATCH = 120;
+
+  /** その根の中の、今日の道の人を歩かせる（開いたとき・戻ってきたとき・分が変わったとき）。
+      **前に見た点から「いま」の点まで、道に沿って追いつく**。止まるのはいつも「いま」で、
+      時刻の字は初めから「いま」（追いつくのは人だけ）。前に見た点が無いか同じなら、その場で
+      四歩。進み方は脚と同じ速さの台形。歩いている途中なら、そのまま。 */
+  function walk(root) {
+    if (!root) return;
     const me = root.querySelector(".day-road .road-me");
-    if (!me || me.style.display === "none") return;
-    if (me.__walk) return;
+    if (!me || me.style.display === "none" || !me.__at) return;
+    const seen = seenGet();
+    seenPut(me.__min);
+    if (KN.motion.still() || me.__walk) return;
     const step = KN.motion.ms("--m-walk");
     if (!(step > 0)) return;
-    const glide = from && me.__at ? from : null;
+    let glide = null;
+    if (seen != null && seen < me.__min && me.__dist) {
+      const to = me.__at, d = Math.max(to.d - CATCH, me.__dist(seen));
+      if (to.d - d > 0.5) glide = { d, h: d > to.d - CATCH ? me.__hAt(seen) : to.h };
+    }
     const els = {};
     me.querySelectorAll("[data-w]").forEach((el) => {
       (els[el.dataset.w] = els[el.dataset.w] || []).push(el);
@@ -523,9 +548,7 @@
       if (glide) {
         /* 道の長さで進める（角の上でも道に沿って）。 */
         const k = walkPhase(tau) / (WALK.steps / 2), to = me.__at;
-        me.setAttribute("transform", meAt(me.__stand && glide.d != null && to.d != null
-          ? me.__stand(glide.d + (to.d - glide.d) * k, glide.h + (to.h - glide.h) * k)
-          : { x: glide.x + (to.x - glide.x) * k, y: glide.y + (to.y - glide.y) * k, sx: to.sx }));
+        me.setAttribute("transform", meAt(me.__stand(glide.d + (to.d - glide.d) * k, glide.h + (to.h - glide.h) * k)));
       }
       const q = walkPose(tau);
       ["legB", "legF", "armB", "sleeveB", "armF", "sleeveF"].forEach((key) => set(key, "d", dOf(q[key])));
@@ -973,18 +996,20 @@
     if (dNow == null || st.sleep != null) { me.style.display = "none"; me.__at = null; }
     else {
       /* 延びた区間（is-late）は足もとで終わるので、そのふちの上に。 */
-      const onStop = st.stops.some((s) => s.len && nowMin >= s.ga && (nowMin < s.until || s.late));
-      const was = me.__at;
+      const onStop = (m) => st.stops.some((s) => s.len && m >= s.ga && (m < s.until || s.late));
       me.__stand = (d, h) => standAt(g, d, h);
-      const to = me.__stand(dNow, onStop ? STOP : ROAD);
+      me.__dist = g.dist;
+      me.__hAt = (m) => (onStop(m) ? STOP : ROAD);
+      const to = me.__stand(dNow, me.__hAt(nowMin));
       me.__at = to;
+      me.__min = nowMin;
       me.style.display = "";
       if (!me.__walk) me.setAttribute("transform", meAt(to));
       /* 分が変わったら、歩いて次の足もとへ（2026年9月30日・利用者の声「時刻が
          1分進むなど変わると、人が動くように」）。一分は道の上で 1〜3 単位しか
          ないので、動いたと分かるのは歩く形のほう。角も時間を持つので（10月2日）、
-         道に沿って角を回る（まっすぐ横切らない）。一段より遠ければ、その場で歩くだけ。 */
-      if (moved) walk(el, was && Math.abs(was.d - to.d) <= SEG ? was : null);
+         道に沿って角を回る（まっすぐ横切らない）。前の分は「前に見た点」（walk）。 */
+      if (moved) walk(el);
     }
 
     // ④ 札・連れ・いまの時刻
