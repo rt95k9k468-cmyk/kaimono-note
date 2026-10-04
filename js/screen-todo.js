@@ -1736,14 +1736,33 @@
          todoPart）も、とうにそう直してありました。しまうところだけが
          古いままで、直したつもりの札が、保存の瞬間に外れていました。 */
       if (editing) {
-        store.updateTodo(todoId, { title, due: fixed, deadline,
+        const patch = { title, due: fixed, deadline,
           part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
-          lead: at ? lead : null, icon: iconKey });
-        /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
-           知らない欄を混ぜると黙って落ちます。 */
-        store.setSubs(todoId, subs);
-        KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました");
+          lead: at ? lead : null, icon: iconKey };
+        const cur = store.getTodo(todoId);
+        const finish = (scope, onDay) => {
+          /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
+             知らない欄を混ぜると黙って落ちます。 */
+          const p2 = scope === "this" && fixed === cur.due ? { ...patch, due: onDay } : patch;
+          const undo = store.editRepeating(todoId, p2, subs, scope, onDay);
+          KN.ui.toast(fixed !== due ? `${when}にしました` : "直しました",
+            scope === "future" ? undefined : { action: { label: "元に戻す", onClick: undo } });
+          haptic(12);
+          handle.close();
+        };
+        if (cur && cur.repeat && !cur.trace && cur.due) {
+          /* くり返しは、どこまで効かせるかを訊く（この回だけ／以後すべて／これまでも含めて）。 */
+          const onDay = store.fallsOn(cur, subDay) ? subDay : cur.due;
+          KN.ui.actionSheet([
+            { label: "この回だけ", sub: formatDay(onDay), onPick: () => finish("this", onDay) },
+            { label: "以後すべて", onPick: () => finish("future", onDay) },
+            { label: "これまでも含めて全部", onPick: () => finish("all", onDay) },
+          ], "どこまで直す");
+          return;
+        }
+        finish("future", null);
+        return;
       } else {
         store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
