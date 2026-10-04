@@ -113,8 +113,23 @@
   /* 「日記の突き合わせ前」は、日記の写し（js/diary-idb.js）が元と写しの
      食い違いを直す前に、置き換わる側の本文を残したもの。これも戻せない
      書き換えの直前なので、同じく間引きません。 */
-  const PINNED = new Set(["削除前", "復元前", "サンプル読込前", "日記の突き合わせ前"]);
+  /* 「日記を外す前」は、日記の本文を元（localStorage）から外す直前（段2の2b）。 */
+  const PINNED = new Set(["削除前", "復元前", "サンプル読込前", "日記の突き合わせ前", "日記を外す前"]);
   const pinned = (s) => !!s && PINNED.has(s.reason);
+
+  /* 本文の入った最後の控え（docs/storage.md の案B の6）。日記の本文を元から
+     外したあと、日記の保存場所を読めない日の控えには、外した日の本文が
+     入りません（`out` はその行の数。前の控えは持たない＝0）。読めない日が
+     続くと、本文の入った控えが段と14日の決まりで押し出されるので、**本文の
+     欠けがいちばん少ない控えのうち、いちばん新しい一つ**は、14日を過ぎても・
+     容量で間引くときも残します。ふだんは、いちばん新しい控えがそれです。 */
+  function fullest(list) {
+    let best = null;
+    list.forEach((s) => {
+      if (s && (!best || (s.out || 0) <= (best.out || 0))) best = s;
+    });
+    return best;
+  }
 
   /* 容量が足りないときに、次に手放す一つ。**細かいほう（直近の一時間おき）
      の古いものから**、それが無くなったら古い日から。戻せない操作の直前の
@@ -125,12 +140,17 @@
     if (list.length <= 1) return [];
     const fineFrom = Date.now() - FINE_DAYS * 86400000;
     const last = list.length - 1;
+    const full = fullest(list);
+    const held = (s) => pinned(s) || s === full;
     let cut = -1;
     for (let i = 0; i < last && cut < 0; i++) {
-      if (!pinned(list[i]) && new Date(list[i].at).getTime() >= fineFrom) cut = i;
+      if (!held(list[i]) && new Date(list[i].at).getTime() >= fineFrom) cut = i;
     }
     for (let i = 0; i < last && cut < 0; i++) {
-      if (!pinned(list[i])) cut = i;
+      if (!held(list[i])) cut = i;
+    }
+    for (let i = 0; i < last && cut < 0; i++) {
+      if (list[i] !== full) cut = i;
     }
     if (cut < 0) cut = 0;
     return list.slice(0, cut).concat(list.slice(cut + 1));
@@ -145,6 +165,7 @@
     const oldest = now - KEEP_DAYS * 86400000;
 
     const newest = list[list.length - 1];
+    const full = fullest(list);
     const keep = [];
     const dailyTaken = new Set();
 
@@ -152,7 +173,11 @@
     for (let i = list.length - 1; i >= 0; i--) {
       const s = list[i];
       const t = new Date(s.at).getTime();
-      if (!isFinite(t) || t < oldest) continue;
+      if (!isFinite(t) || t < oldest) {
+        // 本文の入った最後の控えは、古くても残す（上の fullest）。
+        if (s === full) keep.push(s);
+        continue;
+      }
       // 戻せない操作の直前の控えは、間引かない（上の PINNED）。
       if (pinned(s)) { keep.push(s); continue; }
       /* 細かい窓の中は、一時間に一つだけ（新しいほうから見ているので、
@@ -160,14 +185,14 @@
          一つは無条件で残します——「たった今の状態」は必ず要るので。 */
       if (t >= fineFrom) {
         const h = hourOf(s.at);
-        if (s === newest || !dailyTaken.has("h:" + h)) {
+        if (s === newest || s === full || !dailyTaken.has("h:" + h)) {
           dailyTaken.add("h:" + h);
           keep.push(s);
         }
         continue;
       }
       const d = dayOf(s.at);
-      if (dailyTaken.has(d)) continue;
+      if (dailyTaken.has(d) && s !== full) continue;
       dailyTaken.add(d);
       keep.push(s);
     }
@@ -189,7 +214,7 @@
   /* 大きな保存場所の見出しの大きさ。中身の字数に、見出しのぶんを少し。 */
   const headSize = (h) => (h.size || 0) + 300;
   const byAt = (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : (a.id || 0) - (b.id || 0));
-  const headOf = (s) => ({ at: s.at, reason: s.reason, summary: s.summary, size: String(s.payload || "").length });
+  const headOf = (s) => ({ at: s.at, reason: s.reason, summary: s.summary, size: String(s.payload || "").length, out: s.out || 0 });
 
   function readHeads() {
     return KN.idb.run(["snaps"], "readonly", (t) => {
@@ -355,18 +380,23 @@
    * ——済む前に取ると、写しから戻るはずの本文が抜けた控えになりうるので。
    * `opts.now` はその突き合わせ自身が使うもので、待ちません（待つと互いを
    * 待ちあって止まる）。`opts.state` を渡すと、いまの state の代わりにそれを。
+   * `opts.force` は、いちばん新しい控えと同じ中身でも取ります（間引かない
+   * 控えを、確かにその名前で残したいとき）。
    */
   function take(reason, opts) {
     const o = opts || {};
     const gate = !o.now && KN.diaryIdb ? KN.diaryIdb.ready() : Promise.resolve();
     return gate.then(() => {
-      const p = chain.then(() => takeNow(reason, o.state));
+      const p = chain.then(() => takeNow(reason, o.state, o.force));
       chain = p.catch(() => {});
       return p;
     });
   }
 
-  async function takeNow(reason, given) {
+  /* 本文を外した行（memoOut）の数。読めない日の控えには、外した日の本文が入らない。 */
+  const outCount = (state) => ((state.archive && state.archive.days) || []).filter(store.memoOut).length;
+
+  async function takeNow(reason, given, force) {
     try {
       await ensure();
       const state = given || store.get();
@@ -380,9 +410,9 @@
         const last = cur[cur.length - 1];
         lastPayload = last ? last.payload : null;
       }
-      if (payload === lastPayload) return "same";
+      if (payload === lastPayload && !force) return "same";
 
-      const snap = { at: today(), reason: reason || "自動", summary: summarize(state), size: payload.length };
+      const snap = { at: today(), reason: reason || "自動", summary: summarize(state), size: payload.length, out: outCount(state) };
       if (where === "idb") {
         try {
           await addIdb(snap, payload);
@@ -397,7 +427,7 @@
         }
       }
       const list = read();
-      list.push({ at: snap.at, reason: snap.reason, payload, summary: snap.summary });
+      list.push({ at: snap.at, reason: snap.reason, payload, summary: snap.summary, out: snap.out });
       if (!write(list)) return "failed";
       if (where === "idb") heads = heads.concat([{ ...snap, ls: true }]).sort(byAt);
       else heads = read();
@@ -464,7 +494,8 @@
     const idb = where === "idb";
     const list = idb ? heads : read();
     const live = store.get();
-    const liveChars = JSON.stringify(live).length;
+    // 元（localStorage）に書いている形の字数。日記の本文を外したあとは、外した形で。
+    const liveChars = store.liveChars ? store.liveChars() : JSON.stringify(live).length;
     const last = list[list.length - 1];
     const per = last
       ? (idb ? headSize(last) : JSON.stringify(last).length)
@@ -527,7 +558,7 @@
       err.code = "keep-failed";
       throw err;
     }
-    store.importJSON(payload);
+    await store.importBackup(payload);
   }
 
   /** 控えを全部捨てます（どこからも呼んでいません。戻せません）。 */

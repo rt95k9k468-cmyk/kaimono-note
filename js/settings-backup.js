@@ -102,9 +102,11 @@
     const rows = body.querySelector(".js-snaps");
     snaps.forEach((s) => {
       // 2026年9月26日より前に取った控えは、買うものの数しか持っていません。
-      const sub = s.summary.todos == null
+      /* out：日記の保存場所を読めない日の控えで、外した日の本文が入っていない
+         （docs/storage.md の案B の4）。件数は言いません。 */
+      const sub = (s.summary.todos == null
         ? `${s.summary.products}商品・${s.summary.stores}店舗・リスト${s.summary.items}件`
-        : countText(s.summary);
+        : countText(s.summary)) + (s.out ? "・本文の無い日あり" : "");
       const row = node(html`
         <button class="row">
           <span class="row-main">
@@ -183,7 +185,10 @@
      確かめてから記録できます。それ以外は、ダウンロードのあとに一度だけ
      「保存できましたか？」と訊きます。**share はタップの流れの中で呼ぶこと**
      （手前で await すると、端末が「人が押した」と見なさなくなります）。 */
-  async function saveBackup() {
+  /* `opts.bare`：本文の無い書き出しと分かって押した（下の confirmBare）。
+     `opts.onSaved(at)`：保存できたと分かったあとに（日記を外す。下の exportAndOut）。 */
+  async function saveBackup(opts) {
+    const o = (opts && typeof opts === "object" && !(opts instanceof Event)) ? opts : {};
     /* 日記の写し（js/diary-idb.js）の突き合わせが済む前は、写しから戻る
        はずの本文が、まだ記録に入っていないことがあります。開いた直後の
        一瞬だけのことなので、待たずに断ります（ここで await すると、下の
@@ -198,22 +203,27 @@
       KN.ui.toast("ノートを読み込んでいるところです。少し待ってから、もう一度押してください");
       return;
     }
+    /* 日記を元から外したあと、日記の保存場所を読めない日は、外した日の本文が
+       記録に無い（docs/storage.md の案B の4）。先に紙で言い、その「書き出す」の
+       **押した流れのまま**共有します。ファイル名に「本文なし」、前回の書き出しには数えません。 */
+    if (!o.bare && KN.diaryIdb && KN.diaryIdb.body() === "off" && bareNow()) {
+      confirmBare();
+      return;
+    }
     const at = new Date().toISOString();
     const d = new Date(at);
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-    const name = `kaimono-note-${stamp}.json`;
+    const name = `kaimono-note-${stamp}${o.bare ? "-本文なし" : ""}.json`;
     const text = store.exportJSON(at, KN.notes ? KN.notes.forExport() : null);
 
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     let file = null;
     try { file = new File([text], name, { type: "application/json" }); } catch (err) { file = null; }
     if (coarse && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      let shared = false;
       try {
         await navigator.share({ files: [file], title: name });
-        KN.backup.markExported(at);
-        KN.ui.toast("バックアップを書き出しました");
-        render();
-        return;
+        shared = true;
       } catch (err) {
         if (err && err.name === "AbortError") {
           KN.ui.toast("書き出しをやめました（記録していません）");
@@ -221,11 +231,37 @@
         }
         // 共有そのものが使えなかったときだけ、ダウンロードの道へ。
       }
+      // 渡し終えたあとの処理（日記を外す、など）は try の外で——そこで落ちて、ダウンロードへ回らないように。
+      if (shared) { await saved(at, o); return; }
     }
-    await downloadBackup(name, text, at);
+    await downloadBackup(name, text, at, o);
   }
 
-  async function downloadBackup(name, text, at) {
+  /* 保存できたと分かったあと。本文の無い書き出しは、前回の書き出しに数えません。 */
+  async function saved(at, o) {
+    if (!o.bare) KN.backup.markExported(at);
+    if (o.onSaved) await o.onSaved(at);
+    else KN.ui.toast(o.bare ? "書き出しました（日記の本文なし）" : "バックアップを書き出しました");
+    render();
+  }
+
+  /* 記録に、本文を外した行（memoOut）があるか。 */
+  const bareNow = () => ((store.get().archive || {}).days || []).some(store.memoOut);
+
+  function confirmBare() {
+    const body = node(html`<div class="stack" style="gap:8px"><p style="color:var(--c-text-2);line-height:1.6">日記の保存場所を読めない日なので、外した日記の本文は入りません。</p></div>`);
+    const foot = node(html`
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="btn btn-soft js-cancel" style="flex:1">やめる</button>
+        <button class="btn btn-primary js-ok" style="flex:1">書き出す</button>
+      </div>`);
+    const h = KN.ui.sheet({ title: "日記の本文は入りません", content: body, footer: foot, guard: false, as: "dialog" });
+    foot.querySelector(".js-cancel").addEventListener("click", () => h.close());
+    // 押した流れのまま共有する（手前で await しない）。
+    foot.querySelector(".js-ok").addEventListener("click", () => { saveBackup({ bare: true }); h.close(); });
+  }
+
+  async function downloadBackup(name, text, at, o) {
     const blob = new Blob([text], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -242,6 +278,7 @@
       message: `「${name}」がファイルやダウンロードにあれば、保存できています。`,
       okLabel: "保存できた", cancelLabel: "できなかった",
     });
+    if (ok && (o.bare || o.onSaved)) { await saved(at, o); return; }
     if (ok) {
       KN.backup.markExported(at);
       KN.ui.toast("前回の書き出しとして記録しました");
@@ -271,20 +308,35 @@
         KN.ui.toast(`復元できません：${r.reason}（何も変えていません）`, { duration: 6000 });
         return;
       }
+      /* 記録の置き場（localStorage）に入りきらない大きさなら、戻す前に断ります。
+         日記の本文を外してあれば、本文は大きな保存場所へ先に届けるので入ります
+         （store.importBackup）。 */
+      const D = KN.diaryIdb;
+      const outOk = !!(D && D.isOut && D.isOut() && D.body() === "ok");
+      if (r.size > IPHONE_CHARS && !outOk) {
+        await KN.ui.confirm({
+          title: "入りきりません",
+          message: D && D.isOut && D.isOut()
+            ? "日記の保存場所を読めない日なので、この大きさのファイルは戻せません（何も変えていません）。"
+            : `このファイルは${charText(r.size)}あり、この端末の記録の置き場に入りきりません（何も変えていません）。先に「日記を記録から外す」を。`,
+          okLabel: "わかった", cancelLabel: "閉じる",
+        });
+        return;
+      }
       const when = r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出し` : "書き出し日時の無いファイル";
       /* ノート（記録の外。docs/notes.md の段2）は置き換えずに合わせます。 */
       let book = null;
       try { book = JSON.parse(text).noteBook || null; } catch (err) { book = null; }
       const ok = await KN.ui.confirm({
         title: "復元しますか？",
-        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
+        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}${r.bare ? "日記の本文が無い日があります（いま持っている本文を当てます）。" : ""}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
         okLabel: "復元する",
         danger: true,
       });
       if (!ok) return;
       if (!(await keepBefore("復元前"))) return;
       try {
-        store.importJSON(text);
+        await store.importBackup(text);
       } catch (err) {
         console.error(err);
         KN.ui.toast(`読み込めませんでした：${String((err && err.message) || err)}`);
@@ -331,7 +383,9 @@
       verdict = kinds.every(([, k]) => r.counts[k] === now[k])
         ? "数は、いまの記録と同じです。"
         : "このあと増減した記録があります。新しく書き出しておくと安心です。";
-      if (r.exportedAt) KN.backup.markExported(r.exportedAt);
+      // 本文の無い書き出しは、前回の書き出しに数えません（docs/storage.md の案B の4）。
+      if (r.bare) verdict += "日記の本文が無い日があります。";
+      else if (r.exportedAt) KN.backup.markExported(r.exportedAt);
     }
     const body = node(html`
       <div class="stack" style="gap:12px">
@@ -473,11 +527,16 @@
       KN.ui.toast("入れるものがありませんでした（何も変えていません）");
       return;
     }
-    const after = JSON.stringify(store.get()).length + plan.chars;
+    /* 日記の本文を外してあれば（段2の2b）、入れる本文は大きな保存場所へ先に
+       届けて（罠b）、元には外した行だけが増えます。大きさはその形で測ります。 */
+    const out = !!(KN.diaryIdb && KN.diaryIdb.isOut && KN.diaryIdb.isOut());
+    const after = out
+      ? store.liveChars() + plan.add * 160
+      : JSON.stringify(store.get()).length + plan.chars;
     if (after > DIARY_LIVE_LIMIT) {
       await KN.ui.confirm({
         title: "入りきりません",
-        message: `取り込むと、記録が${charText(after)}になり、この端末の記録の置き場（iPhone でおよそ5MB）に入りきりません。あふれると、日記だけでなく、ほかの記録も保存できなくなるので、取り込みませんでした（何も変えていません）。`,
+        message: `取り込むと、記録が${charText(after)}になり、この端末の記録の置き場（iPhone でおよそ5MB）に入りきりません。あふれると、日記だけでなく、ほかの記録も保存できなくなるので、取り込みませんでした（何も変えていません）。${out ? "" : "先に「日記を記録から外す」を。"}`,
         okLabel: "わかった", cancelLabel: "閉じる",
       });
       return;
@@ -498,6 +557,7 @@
     if (!go) return;
     if (!(await keepBefore("日記の取り込み前"))) return;
     try {
+      if (out) await KN.diaryIdb.deliver(plan.bodies);
       store.importDiary(list, { replace });
       KN.motion.fire("success");
       KN.ui.toast(plan.kept ? "取り込みました（そのままにした日もあります）" : "取り込みました", { duration: 5000 });
@@ -548,15 +608,18 @@
 
   function usageText(u) {
     const ai = aiChars();
-    const inner = [u.diaryChars ? `日記 ${charText(u.diaryChars)}` : "", ai ? `AI の原文 ${charText(ai)}` : ""]
+    /* 日記の本文を記録から外してあれば（段2の2b）、日記は記録の外（大きな保存場所）。 */
+    const out = !!(u.diary && u.diary.out);
+    const inner = [!out && u.diaryChars ? `日記 ${charText(u.diaryChars)}` : "", ai ? `AI の原文 ${charText(ai)}` : ""]
       .filter(Boolean).join("・");
     const diary = inner ? `（うち${inner}）` : "";
+    const apart = out && u.diaryChars ? `日記 ${charText(u.diaryChars)}と` : "";
     /* 控えが大きな保存場所（IndexedDB）にあれば、もう記録と枠を分け合って
        いません。そう言わないと、前の「分け合っています」を読んだ人が、
        控えを減らさなければと思い続けます。 */
     let t = u.where === "idb"
-      ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。自動バックアップ ${u.count}件は別の保存場所。`
-      : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。`;
+      ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。${apart}自動バックアップ ${u.count}件は別の保存場所。`
+      : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。${apart ? `${apart.slice(0, -1)}は別の保存場所。` : ""}`;
     t += roomText(u);
     t += diaryCopyText(u.diary);
     if (u.tight) {
@@ -595,7 +658,114 @@
       d.unverified ? "写しの確認記録が無いまま突き合わせています。" : "",
       d.missing ? "写しにも本文が無い日があります（バックアップから戻せることがあります）。" : "",
     ].join("");
-    return `日記の写し：${how}。${stuck}${notes}`;
+    return `日記の写し：${how}。${d.out ? "本文は記録から外しています。" : ""}${stuck}${notes}`;
+  }
+
+  /* ---------------- 日記を記録から外す（段2の2b。docs/storage.md） ----------------
+
+     記録（localStorage の一本）から日記の本文を外し、大きな保存場所（写しと
+     控え）だけに置きます。大きな日記を取り込みたいとき・記録が大きくなって
+     きたときに、利用者が押す。二回に分けます：
+       1回目「準備する」：写しと記憶の本文を全日読み比べ → 控え「日記を外す前」
+       2回目「書き出して外す」：共有シートで書き出し（押した流れのまま）→
+         保存できたときだけ外す（diaryIdb.markOut）
+     外したあとは「日記を記録に戻す」（本文を書き戻しても枠に入るときだけ出す）。 */
+  const READY_MS = 10 * 60 * 1000;   // 準備してから、書き出して外せるあいだ
+  let outReady = 0;
+  const outReadyNow = () => !!outReady && Date.now() - outReady < READY_MS
+    && !!KN.diaryIdb && !KN.diaryIdb.isOut() && KN.diaryIdb.body() === "ok";
+
+  function diaryOutRows() {
+    const D = KN.diaryIdb;
+    if (!D || !D.isOut) return [];
+    const st = D.status();
+    if (st.out) {
+      if (st.phase !== "on" || JSON.stringify(store.get()).length > DIARY_LIVE_LIMIT) return [];
+      return [navRow({ ico: "undo", tint: TINT.sub, title: "日記を記録に戻す", onTap: putBackDiary })];
+    }
+    if (st.phase !== "on") return [];
+    if (outReadyNow()) return [navRow({ ico: "download", tint: TINT.data, title: "書き出して外す", onTap: exportAndOut })];
+    return [navRow({ ico: "book", tint: TINT.sub, title: "日記を記録から外す", onTap: prepareOut })];
+  }
+
+  async function prepareOut() {
+    const D = KN.diaryIdb;
+    if (D.body() !== "ok") { D.retry(); KN.ui.toast("日記を読めないので、外せません（何も変えていません）"); return; }
+    /* 外したあと、本文は大きな保存場所（写しと控え）とファイルにしかありません
+       （罠g）。消さない約束（永続）を、押した流れのまま頼みなおします。 */
+    let persisted = null;
+    try {
+      if (navigator.storage && navigator.storage.persist) persisted = await navigator.storage.persist();
+    } catch (err) { persisted = null; }
+    const ok = await KN.ui.confirm({
+      title: "日記を記録から外しますか？",
+      message: `日記の本文を記録から外し、大きな保存場所だけに置きます。写しと読み比べて控えを取り、バックアップを書き出せたら外します。${persisted === false ? "この端末は保存場所を消さない約束をしていないので、書き出しはこまめに。" : ""}`,
+      okLabel: "準備する",
+    });
+    if (!ok) return;
+    let same = false;
+    try {
+      same = await D.prepare();
+    } catch (err) {
+      KN.ui.toast(`準備できませんでした（${String((err && err.message) || err)}）`, { duration: 6000 });
+      return;
+    }
+    if (!same) {
+      KN.ui.toast("写しと食い違う日があったので、外しません（何も変えていません）", { duration: 6000 });
+      return;
+    }
+    if ((await KN.backup.take("日記を外す前", { force: true })) === "failed") {
+      KN.ui.toast("控えを取れなかったので、外しません（何も変えていません）", { duration: 6000 });
+      return;
+    }
+    outReady = Date.now();
+    KN.ui.toast("準備できました");
+    render();
+  }
+
+  /* 押した流れのまま共有シートへ（saveBackup の手前で await しない）。 */
+  function exportAndOut() {
+    if (!outReadyNow()) {
+      outReady = 0;
+      KN.ui.toast("もう一度「日記を記録から外す」から");
+      render();
+      return;
+    }
+    saveBackup({
+      onSaved: async (at) => {
+        outReady = 0;
+        try {
+          await KN.diaryIdb.markOut(at);
+          KN.motion.fire("success");
+          KN.ui.toast("日記を記録から外しました");
+        } catch (err) {
+          console.error(err);
+          KN.ui.toast("書き出しましたが、外せませんでした（何も変えていません）", { duration: 6000 });
+        }
+      },
+    });
+  }
+
+  async function putBackDiary() {
+    const ok = await KN.ui.confirm({
+      title: "日記を記録に戻しますか？",
+      message: "日記の本文を、記録にも書き戻します。",
+      okLabel: "戻す",
+    });
+    if (!ok) return;
+    if (JSON.stringify(store.get()).length > DIARY_LIVE_LIMIT) {
+      KN.ui.toast("記録の置き場に入りきらないので、戻せません（何も変えていません）", { duration: 6000 });
+      return;
+    }
+    try {
+      KN.ui.toast(await KN.diaryIdb.putBack()
+        ? "日記を記録に戻しました"
+        : "記録の置き場に入りきらないので、戻せませんでした（外したままです）", { duration: 6000 });
+    } catch (err) {
+      console.error(err);
+      KN.ui.toast("戻しきれませんでした（外したままです）", { duration: 6000 });
+    }
+    render();
   }
 
   function dataRows() {
@@ -629,9 +799,10 @@
       /* 日記の取り込み（D7）。取り込み道具の README が「設定 → 日記を取り込む」
          と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
       card(
-        navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() })
+        navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() }),
+        diaryOutRows()
       ),
-      foot("本文の無い日と、書き足した日に入れます。"),
+      foot(`本文の無い日と、書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
       /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
          「戻す」の隣に「消す」が並ぶことになります。 */
       card(

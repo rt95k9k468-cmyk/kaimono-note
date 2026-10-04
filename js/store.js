@@ -1155,7 +1155,7 @@
        本物を上書きできました。ここで塞げば、どの道から来ても同じです。 */
     if (loadError) return;
     const seq = lsSeq + 1;
-    const json = JSON.stringify(Object.assign({}, state, { lsSeq: seq }));
+    const json = JSON.stringify(Object.assign({}, liveShape(), { lsSeq: seq }));
     try {
       try {
         localStorage.setItem(KEY, json);
@@ -1171,37 +1171,62 @@
     }
   }
 
+  /* 元（localStorage）へ書く形。日記の本文を元から外したあと（段2の2b）は、
+     写しに届いた本文を外した複製（js/diary-idb.js の forLive）。記憶の中の
+     state は本文つきのまま。作れなければ、本文つきのまま書きます（あふれれば
+     保存が落ちて知らせるだけで、何も失いません）。 */
+  function liveShape() {
+    try {
+      return KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
+    } catch (err) {
+      console.error("live shape", err);
+      return state;
+    }
+  }
+
   let saveTimer = null;
   function persist() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      /* 走り終えたら手を離します。ここを忘れていたので、saveTimer は
-         一度でも保存すればずっと真のままでした。reload() は「書きかけが
-         あるなら先に書き出す」ためにこの値を見るので、**いつでも
-         書き出してから読み直す**ことになり、外から書き換えられた控えを
-         毎回踏み潰していました（読み直す意味がありませんでした）。 */
-      saveTimer = null;
-      /* 読めなかった日は、書きません。空の state で上書きしてしまうので。
-         直った版で開き直せば、そのまま元のデータが読めます。 */
-      if (loadError) return;
-      try {
-        writeLive();
-        if (saveError) {
-          saveError = null;
-          KN.ui && KN.ui.toast("保存を再開しました");
-          emit();   // 設定画面が出したままの警告行を、直った時点で引っ込めるため
-        }
-      } catch (err) {
-        console.error("save failed", err);
-        /* 困ったときの記録（R23、js/errlog.js）。store の外の鍵に控える。 */
-        if (KN.errlog) KN.errlog.note("save", err, { file: "store.js" });
-        if (!saveError) {
-          saveError = String((err && err.message) || err);
-          KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
-          emit();   // 開いている画面があれば、その場で警告行を出すため
-        }
+    saveTimer = setTimeout(saveOnce, 120);
+  }
+
+  /* 一度書きます。書けたら true。 */
+  function saveOnce() {
+    /* 走り終えたら手を離します。ここを忘れていたので、saveTimer は
+       一度でも保存すればずっと真のままでした。reload() は「書きかけが
+       あるなら先に書き出す」ためにこの値を見るので、**いつでも
+       書き出してから読み直す**ことになり、外から書き換えられた控えを
+       毎回踏み潰していました（読み直す意味がありませんでした）。 */
+    saveTimer = null;
+    /* 読めなかった日は、書きません。空の state で上書きしてしまうので。
+       直った版で開き直せば、そのまま元のデータが読めます。 */
+    if (loadError) return false;
+    try {
+      writeLive();
+      if (saveError) {
+        saveError = null;
+        KN.ui && KN.ui.toast("保存を再開しました");
+        emit();   // 設定画面が出したままの警告行を、直った時点で引っ込めるため
       }
-    }, 120);
+      return true;
+    } catch (err) {
+      console.error("save failed", err);
+      /* 困ったときの記録（R23、js/errlog.js）。store の外の鍵に控える。 */
+      if (KN.errlog) KN.errlog.note("save", err, { file: "store.js" });
+      if (!saveError) {
+        saveError = String((err && err.message) || err);
+        KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+        emit();   // 開いている画面があれば、その場で警告行を出すため
+      }
+      return false;
+    }
+  }
+
+  /* いま書きます（待っている保存も、まとめて）。日記を外す・戻すときに、
+     書けたかどうかをその場で知るため。 */
+  function saveNow() {
+    clearTimeout(saveTimer);
+    return saveOnce();
   }
 
   function emit() {
@@ -3712,10 +3737,12 @@
    *   kept は、本文があって、そのままにする日（置き換えない書き足し・変わった日も含む）。
    *   chars は、書けば記録に増える字数のおおよそ（容量の見積もり用）。
    *   from / to は、読めた日の最初と最後（暦に無い日は含まない）。
+   *   bodies は、入れる本文 { date, memo, at }（日記を元から外したあと、写しへ
+   *   先に届けるため。docs/storage.md の罠b）。
    */
   function importDiary(list, opts) {
     const replace = (opts && opts.replace) || "";
-    const r = { add: 0, fill: 0, same: 0, kept: 0, grow: 0, differ: 0, differDays: [], replaced: 0, chars: 0, from: "", to: "" };
+    const r = { add: 0, fill: 0, same: 0, kept: 0, grow: 0, differ: 0, differDays: [], replaced: 0, chars: 0, from: "", to: "", bodies: [] };
     /* 比べるときだけの形。PDF から読んだ字は、改行や空白の位置、全角半角が
        くらしノートの本文と違ってくるので、そこは見ません。 */
     const flat = (t) => String(t).normalize("NFKC").replace(/\s+/g, "");
@@ -3759,7 +3786,14 @@
       r.differDays.sort();
       return act;
     };
-    if (opts && opts.dry) { plan(archive().days); return r; }
+    if (opts && opts.dry) {
+      const days = archive().days;
+      r.bodies = plan(days).map(({ date, body, cur }) => {
+        const row = cur ? days.find((d) => d.date === date) : null;
+        return { date, memo: body, at: (row && row.updatedAt) || null };
+      });
+      return r;
+    }
     update((s) => {
       plan(s.archive.days).forEach(({ date, body, cur }) => {
         if (cur) {
@@ -3981,7 +4015,10 @@
   function inspectBackup(text) {
     try {
       const { parsed, next } = readBackup(text);
-      return { ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next) };
+      /* bare：本文を外した行（memoOut）がある——日記の保存場所を読めない日に
+         書き出したもの。件数は言いません。size：戻したときの記録の大きさ。 */
+      const bare = ((next.archive && next.archive.days) || []).some(memoOut);
+      return { ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next), bare, size: JSON.stringify(next).length };
     } catch (err) {
       return { ok: false, reason: String((err && err.message) || err) };
     }
@@ -4007,7 +4044,38 @@
   }
 
   function importJSON(text) {
+    applyBackup(readBackup(text).next);
+  }
+
+  /* 本文のある行（同じ日付は先の一つ）を、写しへ届ける形で。 */
+  function bodiesOf(s) {
+    const seen = new Set();
+    const out = [];
+    ((s.archive && s.archive.days) || []).forEach((d) => {
+      if (!d || !d.date || seen.has(d.date)) return;
+      seen.add(d.date);
+      if (typeof d.memo === "string" && d.memo) out.push({ date: d.date, memo: d.memo, at: d.updatedAt || null });
+    });
+    return out;
+  }
+
+  /**
+   * 復元の口（ファイル・自動の控え。約束で返ります）。日記の本文を元から外した
+   * あと（段2の2b）は、戻す本文を**写しへ先に届けてから**置き換えます——
+   * 届いた本文は外した形で元へ書かれるので、大きな日記の入ったファイルでも
+   * 元の枠からあふれません。外していなければ・写しを読めない日は importJSON と同じ。
+   */
+  async function importBackup(text) {
     const { next } = readBackup(text);
+    const D = KN.diaryIdb;
+    if (D && D.isOut && D.isOut() && D.body() === "ok") {
+      fillMemoOut(next, state);
+      await D.deliver(bodiesOf(next));
+    }
+    applyBackup(next);
+  }
+
+  function applyBackup(next) {
     update((s) => {
       fillMemoOut(next, s);
       /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
@@ -4096,7 +4164,9 @@
        にも、次の番号が写しの番号の続きになるように——でないと、元の番号が
        1 から振り直され、次に元が読めた日に古い元が「新しい」と見なされます。 */
     seqAtLeast: (n) => { if (Number(n) > lsSeq) lsSeq = Number(n); },
-    get, update, subscribe, reload, flush,
+    get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
+    // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
+    liveChars: () => JSON.stringify(liveShape()).length,
     saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
@@ -4129,6 +4199,6 @@
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen, archiveYears, isQuietDay, setQuietDay,
-    exportJSON, importJSON, inspectBackup, countsOf, reset, loadSample,
+    exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };
 })();

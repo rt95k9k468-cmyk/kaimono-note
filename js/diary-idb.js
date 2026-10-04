@@ -44,6 +44,16 @@
        数えない（向きごとに数える：写し→元／元→写し／外してあったので戻した）。
      ・元に印の行があるのに写しが確かめ済みでないときは、migrate しない（罠e）。
      ・写しに届いたと確かめた本文を committed に覚える（delivered()）。
+
+   外す（段2の2b）
+     利用者が設定で「準備する」（prepare：写しと記憶を全日読み比べ）→
+     「書き出して外す」（書き出しを保存できたら markOut）を押したときだけ。
+     外したことは**この大きな保存場所の meta（diaryOut）**に記録します
+     （state に置くと、バックアップを別の端末へ戻したとき儀式を飛ばして外すので）。
+     外すのは元に書く瞬間だけ（forLive）。記憶の中の state は本文つきのまま。
+     外すのは committed にある本文だけで、まだ届いていない本文は元にも書きます。
+     書き足しが済んだら、外した形で書き直します。大きな取り込み・復元は、
+     写しへ先に届けてから元へ（deliver。罠b）。戻すのは putBack。
    ========================================================= */
 (function () {
   "use strict";
@@ -53,13 +63,18 @@
 
   const META = "diary";      // 写し替えの記録（設定に出す回数も）
   const SEQ = "diarySeq";    // 写しが、元の何番目の書き込みに合わせてあるか
+  const OUT = "diaryOut";    // 元から本文を外した（段2の2b）。{ at, exportedAt }
 
   let phase = "idle";        // idle → starting → on | off
+  let outInfo = null;        // 外した記録（meta の diaryOut）。null＝外していない・まだ読んでいない
   let known = null;          // Map 日付 → 本文：写しに入っているはずのもの（null＝分からない）
   /* Map 日付 → 本文：写しに**届いたと確かめた**もの（null＝分からない）。
      読んだ行・取引が済んだ（strict）書き足しだけを入れ、失敗では変えません
      （失敗した取引は丸ごと戻るので）。known は「送ったもの」なので別に持ちます。
-     元から本文を外す（段2の2b）ときに、外してよい本文かをこれで見ます。 */
+     元から本文を外す（段2の2b）ときに、外してよい本文かをこれで見ます。
+     読めなかった日・読み直すときも捨てません——読んだ行も済んだ取引も写しに
+     あり、捨てると外していたはずの本文を元へ全部書いて枠からあふれます（罠a）。
+     置き換えるのは、写しを読み直したとき（reconcile・resync・prepare・migrate）。 */
   let committed = null;
   let pendingSeq = 0;        // 突き合わせが済む前に来た書き込みの番号
   let batch = null;          // 書き足し待ち { seq, puts: Map, dels: Set }
@@ -70,6 +85,7 @@
   let readyP = new Promise((r) => { settle = r; });
   let retryable = false;     // 読めなかったのが、読み直せば直りうる理由か
   let lastTry = 0;
+  let idleWaiters = [];      // 書き足しが済むのを待つ人（idle()）
   const listeners = new Set();
 
   /* 本文のある日。**一字でもあれば**持ちます（空白だけでも、元にあるなら
@@ -116,10 +132,12 @@
       const rows = t.objectStore("diary").getAll();
       const meta = t.objectStore("meta").get(META);
       const seq = t.objectStore("meta").get(SEQ);
+      const out = t.objectStore("meta").get(OUT);
       return () => ({
         rows: rows.result || [],
         meta: meta.result ? meta.result.v : null,
         seq: seq.result ? Number(seq.result.v) || 0 : 0,
+        out: out.result ? out.result.v || {} : null,
       });
     });
   }
@@ -159,6 +177,8 @@
       if (!KN.idb || !KN.idb.available()) throw new Error("この端末では、大きな保存場所が使えません");
       retryable = true;
       const got = await readAll();
+      // 外したか（段2の2b）。突き合わせで本文を戻したあとの保存から、外した形で書きます。
+      outInfo = got.out;
       if (got.meta && got.meta.phase === "verified") await reconcile(got, seqNow);
       /* 元に本文を外した日（印の行）があるのに、写しの記録が確かめ済みでない
          （写しを丸ごと失った・別の端末で戻した）。migrate は写しを空にして元から
@@ -173,8 +193,7 @@
     } catch (err) {
       console.warn("diary copy is off:", err);
       phase = "off";
-      known = null;
-      committed = null;
+      known = null;   // committed は残す（上の説明。罠a）
       info = { ...info, reason: say(err) };
     }
   }
@@ -187,6 +206,7 @@
     const days = daysOf(store.get());
     const seq = store.lsSeq();
     const at = new Date().toISOString();
+    committed = null;   // 写しを空にするので、届いていたものは分からなくなる
     await KN.idb.run(["diary", "meta"], "readwrite", (t) => {
       const box = t.objectStore("diary");
       box.clear();
@@ -225,6 +245,9 @@
      戻ってくることはありえます（消えるよりマシ、のほう）。 */
   async function reconcile(got, seqNow, opts) {
     const inBox = new Map(got.rows.map((r) => [r.date, r]));
+    /* 読んだ行は写しにあります。元へ戻す（bring）より先に覚えておかないと、
+       戻した直後の保存が、外していた本文を元へ全部書きます（罠a）。 */
+    committed = new Map(got.rows.map((r) => [r.date, r.memo]));
     const days = daysOf(store.get());
     const outs = outOf(store.get());   // 本文を元から外した日
     /* 元のほうが新しいと言えるのは、元の番号が写しの番号より大きいときだけ
@@ -380,7 +403,8 @@
   }
 
   function drain() {
-    if (busy || !batch) return;
+    if (busy) return;
+    if (!batch) { wakeIdle(); return; }
     busy = true;
     const b = batch;
     batch = null;
@@ -396,6 +420,9 @@
         b.puts.forEach((r) => committed.set(r.date, r.memo));
         b.dels.forEach((date) => committed.delete(date));
       }
+      /* 外したあと（段2の2b）は、届いた本文を元に残しません——書いた瞬間は
+         まだ届いていなかったので、元にも本文を書いています。 */
+      if (outInfo && b.puts.size) store.saveSoon();
     }, (err) => {
       /* 写しの中身が分からなくなりました。次に書くときに読み直して合わせます。
          元（localStorage）は無事なので、失われるものはありません。 */
@@ -427,8 +454,7 @@
   function reloaded() {
     if (phase !== "on") return;
     phase = "starting";
-    known = null;
-    committed = null;
+    known = null;   // committed は残す（罠a）
     readyP = new Promise((r) => { settle = r; });
     run();
   }
@@ -443,8 +469,7 @@
   function retry() {
     if (phase !== "off" || !retryable || Date.now() - lastTry < 5000) return false;
     phase = "starting";
-    known = null;
-    committed = null;
+    known = null;   // committed は残す（罠a）
     readyP = new Promise((r) => { settle = r; });
     run();
     return true;
@@ -479,7 +504,7 @@
 
   /** 設定に出すもの。 */
   function status() {
-    return { ...info, phase, days: known ? known.size : null };
+    return { ...info, phase, days: known ? known.size : null, out: !!outInfo, outAt: outInfo ? outInfo.at || null : null };
   }
 
   /**
@@ -492,5 +517,142 @@
       && committed.get(date) === memo;
   }
 
-  KN.diaryIdb = { start, ready, settled, body, retry, onChange, status, delivered, afterWrite, reloaded };
+  /* ---------------- 外す（段2の2b） ---------------- */
+
+  /** 外してあるか（大きな保存場所の meta に記録がある）。読めていない日は false。 */
+  const isOut = () => !!outInfo;
+
+  /**
+   * 元（localStorage）へ書く形（store の writeLive が呼ぶ）。外したあとは、
+   * 写しに届いたと確かめた本文（committed）の行だけを `memo: "" + memoOut: true`
+   * にした浅い複製を返します。同じ日付の二つ目以降は外しません（写しは先の
+   * 一つしか持たない）。まだ届いていない本文は、そのまま元にも書きます。
+   * 突き合わせの途中・読めない日も、committed にある本文は外します（罠a）。
+   */
+  function forLive(s) {
+    if (!outInfo || !committed) return s;
+    const days = s && s.archive && s.archive.days;
+    if (!Array.isArray(days) || !days.length) return s;
+    const seen = new Set();
+    let changed = false;
+    const next = days.map((d) => {
+      if (!d || !d.date || seen.has(d.date)) return d;
+      seen.add(d.date);
+      if (typeof d.memo !== "string" || !d.memo || committed.get(d.date) !== d.memo) return d;
+      changed = true;
+      return { ...d, memo: "", memoOut: true };
+    });
+    return changed ? { ...s, archive: { ...s.archive, days: next } } : s;
+  }
+
+  /* 写しへの書き足しが済むまで待ちます（済んでいれば、すぐ）。 */
+  function idle() {
+    if (!busy && !batch) return Promise.resolve();
+    return new Promise((r) => idleWaiters.push(r));
+  }
+  function wakeIdle() {
+    if (busy || batch || !idleWaiters.length) return;
+    const w = idleWaiters;
+    idleWaiters = [];
+    w.forEach((r) => r());
+  }
+
+  const notReady = () => new Error(phase === "off"
+    ? "日記の保存場所を読めない日です" : "日記を読み込んでいるところです");
+
+  /**
+   * 1回目「準備する」。書きかけを出し、写しへの書き足しが済むのを待ってから、
+   * 写しを読み直して、記憶の本文と**全日 `===`** で読み比べます。一日でも
+   * 違えば false（何も変えません）。合えば、読み直した行を committed に。
+   */
+  async function prepare() {
+    if (phase !== "on") throw notReady();
+    store.flush();
+    do { await idle(); } while (busy || batch);
+    if (phase !== "on" || !known) throw new Error("写しへの書き足しが止まっています");
+    const got = await readAll();
+    const inBox = new Map(got.rows.map((r) => [r.date, r.memo]));
+    const days = daysOf(store.get());
+    let same = inBox.size === days.size;
+    days.forEach((d, date) => { if (inBox.get(date) !== d.memo) same = false; });
+    if (!same) return false;
+    committed = inBox;
+    return true;
+  }
+
+  /**
+   * 2回目「書き出して外す」の、書き出しを保存できたあと。大きな保存場所の
+   * meta に外したと記録してから、その場で外した形で元を書き直します。
+   * 元が書けたら true。
+   */
+  async function markOut(exportedAt) {
+    if (phase !== "on" || !committed) throw notReady();
+    const v = { at: new Date().toISOString(), exportedAt: exportedAt || null };
+    await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").put({ k: OUT, v }); });
+    outInfo = v;
+    return store.saveNow();
+  }
+
+  /**
+   * 戻す。**元に本文ごと書けたときだけ**、外した記録を消します。書けなければ
+   * （枠に入らない）外したまま書き直して false。記録を消せなかったときも、
+   * 外したまま書き直して例外（次に開いたとき、また外すことになるので）。
+   */
+  async function putBack() {
+    if (!outInfo) return true;
+    if (phase !== "on") throw notReady();
+    const was = outInfo;
+    outInfo = null;
+    if (!store.saveNow()) {
+      outInfo = was;
+      store.saveNow();
+      return false;
+    }
+    try {
+      await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").delete(OUT); });
+    } catch (err) {
+      outInfo = was;
+      store.saveNow();
+      throw err;
+    }
+    return true;
+  }
+
+  /**
+   * 写しへ先に届けます（外したあとの日記の取り込み・復元。罠b）。
+   * `rows` は { date, memo, at }。取引が済んだら known と committed に入れるので、
+   * そのあと元へ書くと、届けた本文は外した形で書かれます——枠からあふれる
+   * 大きさの本文を、一度も元へ書かずに済みます。写しの番号は動かしません
+   * （元はまだ書いていないので）。届けた日の数を返します。
+   */
+  async function deliver(rows) {
+    if (phase !== "on") throw notReady();
+    do { await idle(); } while (busy || batch);
+    if (phase !== "on" || !known || !committed) throw new Error("写しへの書き足しが止まっています");
+    const list = [];
+    const seen = new Set();
+    (Array.isArray(rows) ? rows : []).forEach((r) => {
+      if (!r || !r.date || seen.has(r.date) || typeof r.memo !== "string" || !r.memo) return;
+      seen.add(r.date);
+      if (known.get(r.date) !== r.memo) list.push({ date: r.date, memo: r.memo, at: r.at || null });
+    });
+    if (!list.length) return 0;
+    busy = true;
+    try {
+      await KN.idb.run(["diary"], "readwrite", (t) => {
+        const box = t.objectStore("diary");
+        list.forEach((r) => box.put(r));
+      });
+      list.forEach((r) => { known.set(r.date, r.memo); committed.set(r.date, r.memo); });
+    } finally {
+      busy = false;
+      drain();
+    }
+    return list.length;
+  }
+
+  KN.diaryIdb = {
+    start, ready, settled, body, retry, onChange, status, delivered, afterWrite, reloaded,
+    isOut, forLive, prepare, markOut, putBack, deliver,
+  };
 })();
