@@ -33,13 +33,13 @@ async function ensureServer() {
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
-async function open({ viewport = { width: 390, height: 844 }, before } = {}) {
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
   const { chromium } = require("playwright");
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ serviceWorkers: "block", viewport });
+  const ctx = await browser.newContext({ serviceWorkers: "block", viewport, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
