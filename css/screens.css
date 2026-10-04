@@ -6785,6 +6785,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   animation: road-ghost-in var(--m-state) var(--ease-out) both;
 }
 @keyframes road-ghost-in { from { scale: 1; box-shadow: none; } }
+/* 連れ→停留所（V8・day-road.js の arrive）。着く先は着くまで隠し、飛ぶ丸が道の上を動く。 */
+.road-stop.is-coming, .road-bead.is-coming { opacity: 0; }
+.road-bead.road-fly { pointer-events: none; transition: none; }
+.road-leave { pointer-events: none; }
 /* 狙いの点：置く時刻（15分きざみ）の道の上。長さを決めていない停留所と同じ形
    （ふちは塗りの色、中は白）に、狙っている印のうすい輪。 */
 .road-aim {

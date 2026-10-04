@@ -76,6 +76,7 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | `tab-lens` | 移る | 席を移る | 帯のレンズ | `--m-nav`（glide） | — | 跳ぶ |
 | `glideToTop` | 移る | 上のきわ | 送る器 | `--m-to-top` | — | 跳ぶ |
 | 道の人の歩き（`day-road.js`） | 歩く | タブを開く・戻る | 人の手足 | `--m-walk` | 塗（SVG） | 歩かない |
+| 連れ→停留所（`day-road.js` の `arrive`・V8） | 変わる | 時刻を決める・外す・運んで離す | 飛ぶ丸・停留所の道筋 | `--m-swipe`（`--ease-glide`）・`--m-grow` | 塗（`stroke-dasharray`） | その場で入れ替わる |
 | `fillRings`（`screen-diet.js`） | 状態 | arrive | 輪・数 | `--m-fill`・`--m-stagger` | 塗 | 付けない |
 | `pokeTab` | 押す | 席の絵を押す | 絵 | `--m-poke` | — | class を付けない |
 

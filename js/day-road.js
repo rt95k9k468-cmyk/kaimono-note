@@ -930,7 +930,7 @@
     `);
     /* 長期タスク（段8の段B）。過ぎた日には出さない（置ける道が無い）。 */
     const someday = past ? [] : (o.someday || []).filter((t) => !closed(t) && !t.trace).map((t) => ({ t }));
-    el.__road = { g, today, past, stops, steps, loose, later, someday, beds,
+    el.__road = { day: plan.day, g, today, past, stops, steps, loose, later, someday, beds,
                   tomorrow: today && o.tomorrow ? o.tomorrow : null,
                   markOf: o.markOf, last: undefined, drawn: false };
 
@@ -959,7 +959,9 @@
     });
     wireCarry(el, o);
 
+    const prev = seen.get(plan.day);   // paint が書き換える前に（V8）
     paint(el);
+    arrive(el, prev);
     return el;
   }
 
@@ -990,7 +992,7 @@
     const st = el && el.__road;
     if (!st) return;
     const nowMin = st.today ? KN.plan.toMin(U.nowTime()) : null;
-    if (st.drawn && st.last === nowMin) return;
+    if (st.drawn && st.last === nowMin) { remember(el); return; }
     const moved = st.drawn && st.last != null && nowMin != null;
     st.last = nowMin;
     st.drawn = true;
@@ -1141,6 +1143,7 @@
     // ⑤ 次の一行
     const next = el.querySelector(".road-next");
     if (next) next.innerHTML = String(caption(st, nowMin));
+    remember(el);
   }
 
   /* ---------------- 札を置く ----------------
@@ -1159,6 +1162,7 @@
   function marks(st, nowMin, dNow) {
     const g = st.g;
     const FS = 11 * fsK();
+    st.beadAt = {};   // 丸の位置（用事の id → 道の単位。V8 の remember）
     /* 通りは段ごとに上（u）と下（d）。**曲がり角の側は、角の手前まで**
        ——上の段から降りてくる角・下の段へ降りる角が、通りの端を横切るので
        （特大の字で、札の尻が角の道に触れた）。 */
@@ -1263,6 +1267,7 @@
         lane(pr, "u").push([Math.min(...xs) - 9, Math.max(...xs) + 9]);
         shown.forEach((c, b) => {
           const m = st.markOf ? st.markOf(c.t) : "";
+          st.beadAt[c.t.id] = { x: xs[b], y, sel: `.road-bead[data-b="${b}"]` };
           out.push(html`
             <button type="button" class="road-bead ${m ? "" : "is-plain"}" data-b="${String(b)}"
                     style="${at(xs[b], y)}${m ? U.raw(";--icon:" + m) : ""}"
@@ -1510,6 +1515,7 @@
               style="${at(x0 - pr, y0 - pr)};width:${pct(x1 - x0 + 2 * pr, W)};height:${pct(y1 - y0 + 2 * pr, g.H)}"></span>`));
       shown.forEach((c, h) => {
         const m = st.markOf ? st.markOf(c.t) : "";
+        st.beadAt[c.t.id] = { x: free[h].x, y: free[h].y, sel: `.road-bead[data-h="${h}"]` };
         out.push(html`
           <button type="button" class="road-bead is-someday ${m ? "" : "is-plain"}" data-h="${String(h)}"
                   style="${at(free[h].x, free[h].y)}${m ? U.raw(";--icon:" + m) : ""}"
@@ -1849,6 +1855,7 @@
     /* 位置は translate で（transform で書くと、CSS の scale: 1.3 が移動量まで
        1.3 倍して、写しが指から右下へずれた）。 */
     d.ghost.style.translate = `${x.toFixed(1)}px ${gy.toFixed(1)}px`;
+    d.gx = x; d.gy = gy;
     const g = d.st.g;
     const kk = d.box.width / W;
     let at = null, out = false;
@@ -1898,7 +1905,150 @@
     setTimeout(() => d.el.removeEventListener("click", d.eat, true), 0);
     if (commit && d.moved && d.out) { d.o.unplan(d.id); return; }
     if (!commit || !d.moved || d.at == null) { paint(d.el); return; }
+    /* 停留所へは、離した写しの位置から（V8 の arrive。写しは 1.3 倍）。 */
+    const kk = d.box.width / W;
+    if (kk > 0 && d.gx != null) {
+      landing = { id: d.id, x: (d.gx - d.box.left) / kk, y: (d.gy - d.box.top) / kk, k: 1.3, t: Date.now() };
+    }
     d.o.decide(d.id, KN.plan.toTime(d.at));
+  }
+
+  /* ---------------- 連れ→停留所（V8） ----------------
+
+     時刻を決めた瞬間、人の後ろの連れ（くぼみの長期タスクも）が道の上の停留所の位置へ
+     飛び、停留所の丸い頭になって、そこから終わりまで伸びる。時刻を外せば逆（停留所が頭へ
+     縮み、丸になって連れの位置へ）。運んで離したときは、離した写しの位置から。
+     組み直しは道ごと作り直すので（screen-todo の render）、前の道の丸と停留所の位置を
+     日ごとに覚えておき（remember）、新しい道で**連れ⇄停留所が入れ替わった用事だけ**動かす
+     （arrive）。覚えは描くたびと分の見回り（30秒）で新しくし、SEEN_MS より古ければ使わない
+     （道が見えていないあいだに変わったものは、黙って入れ替わる）。描くだけで記録は触らない。
+     動きを減らす設定では、何もしない（その場で入れ替わる）。 */
+  const SEEN_MS = 45000;
+  const seen = new Map();   // 日 → { t, begin, beads: { id → 位置 }, stops: { id → 頭の位置・道筋 } }
+  let landing = null;       // 運んで離した写しの位置（道の単位）。dropCarry → 次の arrive
+
+  function remember(el) {
+    const st = el.__road;
+    if (!st || !st.day) return;
+    const g = st.g, stops = {};
+    st.stops.forEach((s) => {
+      if (closed(s.t)) return;
+      const [a, b] = capIn(s);
+      const p = g.point(a, s.off);
+      stops[s.t.id] = { x: p.x, y: p.y, d: g.path(a, b, s.off), late: s.late };
+    });
+    seen.set(st.day, { t: Date.now(), begin: g.begin, beads: st.beadAt || {}, stops });
+  }
+
+  function arrive(el, prev) {
+    const land = landing && Date.now() - landing.t < 2000 ? landing : null;
+    landing = null;
+    const st = el.__road;
+    if (!st || KN.motion.still()) return;
+    const ok = !!prev && Date.now() - prev.t < SEEN_MS && prev.begin === st.g.begin;
+    const jobs = [];
+    st.stops.forEach((s, k) => {
+      if (closed(s.t)) return;
+      const id = s.t.id;
+      const from = land && land.id === id ? land
+        : ok && prev.beads[id] && !prev.stops[id] ? prev.beads[id] : null;
+      if (from) jobs.push({ id, k, s, from });
+    });
+    if (ok) {
+      Object.keys(st.beadAt || {}).forEach((id) => {
+        if (prev.stops[id] && !prev.beads[id]) jobs.push({ id, to: st.beadAt[id], from: prev.stops[id] });
+      });
+    }
+    if (!jobs.length) return;
+    /* 着く先は、着くまで隠す（その場に先に出ていると、二つに見える）。 */
+    const svg = el.querySelector(".road-svg");
+    const hide = (j) => (j.to ? el.querySelector(j.to.sel)
+      : svg.querySelector(`.road-stop[data-s="${j.k}"]`));
+    jobs.forEach((j) => { const x = hide(j); if (x) x.classList.add("is-coming"); });
+    /* 道は組み立ててから紙に差しこまれるので、つながってから測る。 */
+    let tries = 0;
+    const go = () => {
+      if (!el.isConnected) {
+        if (++tries < 4) { requestAnimationFrame(go); return; }
+        jobs.forEach((j) => { const x = hide(j); if (x) x.classList.remove("is-coming"); });
+        return;
+      }
+      jobs.forEach((j) => (j.to ? toBead(el, j, hide(j)) : toStop(el, j, hide(j))));
+    };
+    requestAnimationFrame(go);
+  }
+
+  /* 丸を道の単位の from から to へ飛ばす（大きさは丸 18px の何倍か）。終われば done。 */
+  function fly(el, t, from, to, k0, k1, done) {
+    const st = el.__road, g = st.g;
+    const map = el.querySelector(".road-map");
+    const kk = map.getBoundingClientRect().width / W;
+    const m = st.markOf ? st.markOf(t) : "";
+    const ball = node(html`<span class="road-bead road-fly ${m ? "" : "is-plain"}" aria-hidden="true"></span>`);
+    if (m) ball.style.setProperty("--icon", m);
+    ball.style.left = (from.x / W * 100).toFixed(3) + "%";
+    ball.style.top = (from.y / g.H * 100).toFixed(3) + "%";
+    map.append(ball);
+    const dx = ((to.x - from.x) * kk).toFixed(1), dy = ((to.y - from.y) * kk).toFixed(1);
+    const a = ball.animate([{ translate: "0 0", scale: k0 }, { translate: `${dx}px ${dy}px`, scale: k1 }],
+      { duration: KN.motion.ms("--m-swipe"), easing: KN.motion.ease("--ease-glide"), fill: "forwards" });
+    a.onfinish = () => done(ball);
+  }
+
+  /* 停留所の道筋を、頭の丸から伸ばす（dir 1）・頭へ縮める（dir -1）。 */
+  function stretch(grp, dir, done) {
+    const ps = [...grp.querySelectorAll("path[d]")];
+    let left = 0;
+    ps.forEach((p) => {
+      let L = 0;
+      try { L = p.getTotalLength(); } catch (_) { /* 測れなければ動かさない */ }
+      if (!(L > 0.5)) return;
+      const on = `${L.toFixed(1)} ${(L + 1).toFixed(1)}`, off = `0 ${(L + 1).toFixed(1)}`;
+      left++;
+      p.animate([{ strokeDasharray: dir > 0 ? off : on }, { strokeDasharray: dir > 0 ? on : off }],
+        { duration: KN.motion.ms("--m-grow"), easing: KN.motion.ease("--ease-out"), fill: dir > 0 ? "none" : "forwards" })
+        .onfinish = () => { if (--left === 0 && done) done(); };
+    });
+    if (!left && done) done();
+  }
+
+  function toStop(el, j, grp) {
+    const g = el.__road.g;
+    const p = g.point(capIn(j.s)[0], j.s.off);
+    const kk = el.querySelector(".road-map").getBoundingClientRect().width / W;
+    fly(el, j.s.t, j.from, p, j.from.k || 1, STOP * kk / 18, (ball) => {
+      ball.remove();
+      if (!grp) return;
+      grp.classList.remove("is-coming");
+      stretch(grp, 1);
+    });
+  }
+
+  function toBead(el, j, bead) {
+    const st = el.__road;
+    const t = (st.loose.concat(st.someday).find((c) => c.t.id === j.id) || {}).t;
+    if (!t) { if (bead) bead.classList.remove("is-coming"); return; }
+    const kk = el.querySelector(".road-map").getBoundingClientRect().width / W;
+    const go = () => fly(el, t, j.from, j.to, STOP * kk / 18, 1, (ball) => {
+      if (bead && bead.isConnected) bead.classList.remove("is-coming");
+      ball.animate([{ opacity: 1 }, { opacity: 0 }], { duration: KN.motion.ms("--m-state"), fill: "forwards" })
+        .onfinish = () => ball.remove();
+    });
+    /* 消えた停留所は、前の道筋を一度だけ描いて頭へ縮める。 */
+    const svg = el.querySelector(".road-svg");
+    const ref = svg.querySelector(".road-hours.is-over");
+    if (!j.from.d || !ref) { go(); return; }
+    const ns = "http://www.w3.org/2000/svg";
+    const grp = document.createElementNS(ns, "g");
+    grp.setAttribute("class", `road-stop road-leave${j.from.late ? " is-late" : ""}`);
+    ["road-stop-edge", "road-stop-in"].forEach((c) => {
+      const p = document.createElementNS(ns, "path");
+      p.setAttribute("class", c);
+      p.setAttribute("d", j.from.d);
+      grp.append(p);
+    });
+    svg.insertBefore(grp, ref);
+    stretch(grp, -1, () => { grp.remove(); go(); });
   }
 
   /** その根の中の道を、ぜんぶ描き直す（分が変わっていなければ何もしない）。 */
