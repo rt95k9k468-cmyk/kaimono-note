@@ -1452,7 +1452,9 @@
       const t = Math.min(1, Math.max(0, (now - start) / ms));
       const e = 1 - Math.pow(1 - t, pow);
       el.scrollTop = from + (want - from) * e;
-      if (t < 1) requestAnimationFrame(step);
+      /* 残りが半px を切ったら着いた（目に見えない尾で、次の一押しを待たせない）。 */
+      if (t < 1 && Math.abs(want - from) * (1 - e) >= 0.5) requestAnimationFrame(step);
+      else if (t < 1) { el.scrollTop = want; gliding = performance.now() + 120; }
       else gliding = performance.now() + 120;   // 着地の直後もひと呼吸
     };
     requestAnimationFrame(step);
@@ -1461,46 +1463,16 @@
   const isGliding = () => performance.now() < gliding;
   KN.app.isGliding = isGliding;
   /* 上のきわ・題を押して上へ（2026年10月4日、利用者「スピードダウンしたりふわっと
-     しないとダサい」「若干上で跳ね返るように」）。遠いほど少し長く（道のりの対数）、
-     出だしは速く緩めながら、上端を少しだけ越えて跳ね返る。送る量は 0 より上へ行けない
-     ので、越えた分は中身を下へずらして見せる（`translate` を composite: "add" で重ねる
-     ——中身が自分で持つ translate は奪わない）。長さのつまみは `--m-to-top`。 */
+     しないとダサい」「最後の最後をもう少し遅く」。跳ね返りは試して外した）。遠いほど
+     少し長く（道のりの対数）、出だしは速く、着く前に大きく緩めて、ふわっと止まる
+     （6乗の ease-out）。長さのつまみは `--m-to-top`。 */
   const glideToTop = (el) => {
     if (!el || el.scrollTop < 1) return;
     if (KN.motion && KN.motion.still()) { el.scrollTop = 0; return; }
-    const d = el.scrollTop;
-    const screens = d / Math.max(1, el.clientHeight || window.innerHeight);
+    const screens = el.scrollTop / Math.max(1, el.clientHeight || window.innerHeight);
     const k = Math.min(1.6, Math.max(0.7, 0.7 + 0.35 * Math.log2(1 + screens)));
     const base = KN.motion ? KN.motion.ms("--m-to-top") : 750;
-    const T = base * k;                        // 行き（越えた先まで）
-    const over = Math.min(8, 3 + d * 0.004);   // 越える量（ほんの僅か）
-    const back = base * 0.3;                   // 戻り
-    const curve = (t) => 1 - Math.pow(1 - t, 3);
-    const yAt = (t) => d - (d + over) * curve(t);
-    const start = performance.now();
-    gliding = start + T + back + 160;
-    const bounce = (t0) => {
-      const out = (1 - t0) * T;
-      const total = out + back;
-      const frames = [];
-      for (let i = 0; i <= 8; i++) {
-        const t = t0 + (1 - t0) * (i / 8);
-        frames.push({ translate: `0 ${(-yAt(t)).toFixed(2)}px`, offset: (out * i / 8) / total });
-      }
-      frames[frames.length - 1].easing = "cubic-bezier(.45, 0, .3, 1)";
-      frames.push({ translate: "0 0px", offset: 1 });
-      [...el.children].forEach((c) => {
-        try { c.animate(frames, { duration: total, composite: "add" }); } catch (_) { /* 古い Safari：跳ねずに止まる */ }
-      });
-    };
-    const step = (now) => {
-      const t = Math.min(1, Math.max(0, (now - start) / T));
-      const y = yAt(t);
-      if (y > 0) { el.scrollTop = y; requestAnimationFrame(step); return; }
-      el.scrollTop = 0;
-      bounce(t);
-    };
-    requestAnimationFrame(step);
+    glideTo(el, 0, { ms: base * k, pow: 6 });
   };
   KN.app.glideTo = glideTo;
   KN.app.glideToTop = glideToTop;
