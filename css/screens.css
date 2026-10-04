@@ -5538,6 +5538,13 @@ textarea.note-title-in {
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-3);
 }
+/* 2.0（V10）：ガラスを外した無地の浮いた面。ぼかしを読まない＝glass.md の数から抜ける。 */
+.is-v2 .note-tools {
+  background: var(--c-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--shadow-2);
+}
 .sheet.is-note.is-writing .note-tools { display: flex; }
 .note-tool {
   flex: 1 1 0;
@@ -5734,6 +5741,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    下の角も丸くして、途中で切れた紙ではなく一枚として終わらせます。
    角は `#screen-archive .tl-sheet`（送る器にした段）も持つので、ID を付けて勝たせます。 */
 .is-v2 #screen-archive .tl-sheet.is-daily { border-radius: var(--r-xl); }
+/* 2.0（V21）：日記の抜き出しは五行。三行だと頭の決まった行で埋まり、地の文まで届かない。 */
+.is-v2 .arc-then-memo,
+.is-v2 .arc-log-memo.is-clamped { -webkit-line-clamp: 5; }
 
 /* 行ぜんぶが、ひと呼吸だけ光る。
 
