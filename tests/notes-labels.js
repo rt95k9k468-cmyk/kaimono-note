@@ -41,12 +41,27 @@ const { open, checker } = require("./lib");
     return n;
   });
   const titles = () => page.$$eval("#screen-notes .notes-list .note-row .note-t", (rs) => rs.map((r) => r.textContent));
-  const pickChip = (text) => page.evaluate((x) => {
-    const b = [...document.querySelectorAll("#screen-notes .notes-chips .chip")]
-      .find((c) => (c.getAttribute("aria-label") || c.textContent.trim()) === x);
-    if (b) b.click();
-    return !!b;
-  }, text);
+  /* すべて・★は列から、ノートブック・タグの名前は札を押して出る小窓から（V20）。 */
+  const pickChip = async (text, kind) => {
+    if (kind) {
+      await page.click(`#screen-notes .notes-chips .js-pick[data-k="${kind}"]`);
+      await page.waitForSelector(".note-pop.is-pick.is-open .js-filter-pick");
+      const ok = await page.evaluate((x) => {
+        const b = [...document.querySelectorAll(".note-pop.is-pick.is-open .js-filter-pick")].find((c) => c.textContent.trim() === x);
+        if (b) b.click();
+        return !!b;
+      }, text);
+      // 閉じかけの小窓を次の一押しで掴まないよう、閉じきるのを待つ
+      await page.waitForFunction(() => !document.querySelector(".note-pop-cover, .note-pop"), null, { timeout: 3000 });
+      return ok;
+    }
+    return page.evaluate((x) => {
+      const b = [...document.querySelectorAll("#screen-notes .notes-chips .chip")]
+        .find((c) => (c.getAttribute("aria-label") || c.textContent.trim()) === x);
+      if (b) b.click();
+      return !!b;
+    }, text);
+  };
   const topSheet = () => page.evaluate(() => {
     const s = [...document.querySelectorAll(".sheet.is-open")].pop();
     return s ? (s.querySelector(".sheet-title") || {}).textContent || s.getAttribute("aria-label") || "" : null;
@@ -112,29 +127,39 @@ const { open, checker } = require("./lib");
   const dotSame = await page.evaluate(() => {
     const c = (x) => getComputedStyle(x).backgroundColor;
     const all = [...document.querySelectorAll("#screen-notes .note-tag")].filter((x) => x.textContent.trim() === "京都");
-    const chip = [...document.querySelectorAll("#screen-notes .notes-chips .chip")].find((x) => x.textContent.trim() === "京都");
-    return all.length && chip ? c(all[0].querySelector(".chip-dot")) === c(chip.querySelector(".chip-dot")) : false;
+    return all.length ? c(all[0].querySelector(".chip-dot")) : "";
   });
-  t.check("同じタグはどこでも同じ色", dotSame);
+  await page.click('#screen-notes .notes-chips .js-pick[data-k="tag"]');
+  await page.waitForSelector(".note-pop.is-pick .js-filter-pick");
+  const popDot = await page.evaluate(() => {
+    const chip = [...document.querySelectorAll(".note-pop.is-pick .js-filter-pick")].find((x) => x.textContent.trim() === "京都");
+    const tags = [...document.querySelectorAll(".note-pop.is-pick .js-filter-pick")].map((x) => x.textContent.trim());
+    const wrap = getComputedStyle(document.querySelector(".note-pop.is-pick .chip-row")).flexWrap;
+    return { dot: chip ? getComputedStyle(chip.querySelector(".chip-dot")).backgroundColor : "", tags, wrap };
+  });
+  await popEsc();
+  t.check("同じタグはどこでも同じ色", !!dotSame && dotSame === popDot.dot, JSON.stringify([dotSame, popDot.dot]));
+  t.check("絞り込みの小窓にタグが折り返して並ぶ（V20）", popDot.wrap === "wrap"
+    && popDot.tags.slice().sort().join("|") === ["京都", "予定", "本"].sort().join("|"), JSON.stringify(popDot));
 
   /* ---- 絞り込みのチップ ---- */
   const chips = await page.$$eval("#screen-notes .notes-chips .chip", (cs) => cs.map((c) => c.getAttribute("aria-label") || c.textContent.trim()));
   /* 名前の並びは端末の照合順（漢字は読みの順ではない）なので、順番は問いません。 */
-  t.check("チップは すべて・★・ノートブック・タグ",
-    chips.slice(0, 3).join("|") === "すべて|★|旅" && chips.slice(3).sort().join("|") === ["京都", "予定", "本"].sort().join("|"), chips.join("|"));
+  t.check("チップは すべて・★・ノートブック・タグ の四つだけ（名前は小窓へ・V20）",
+    chips.join("|") === "すべて|★|ノートブック|タグ", chips.join("|"));
   t.check("チップに数を出さない", !chips.some((c) => /\d/.test(c)));
-  await pickChip("本");
+  await pickChip("本", "tag");
   await page.waitForTimeout(100);
   t.check("タグで絞る", (await titles()).join(",") === "読書メモ", (await titles()).join(","));
   t.check("選んだチップが押されている", await page.evaluate(() =>
     [...document.querySelectorAll("#screen-notes .notes-chips .chip[aria-pressed=true]")].map((c) => c.textContent.trim()).join() === "本"));
-  await pickChip("本");
+  await pickChip("本", "tag");
   await page.waitForTimeout(100);
   t.check("もう一度押すとすべて", (await titles()).length === 3);
   await pickChip("★");
   await page.waitForTimeout(100);
   t.check("★で絞る", (await titles()).join(",") === "買い置き");
-  await pickChip("旅");
+  await pickChip("旅", "nb");
   await page.waitForTimeout(100);
   t.check("ノートブックで絞る（一度に一つ）", (await titles()).join(",") === "旅の計画");
   await pickChip("すべて");

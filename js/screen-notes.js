@@ -173,10 +173,12 @@
     }
   }
 
-  /* ---------------- 絞り込みのチップ（段3） ----------------
+  /* ---------------- 絞り込みのチップ（段3・roadmap-2.0 の V20） ----------------
 
-     すべて・★・ノートブック・タグ（色の丸）。並べるのは使われているもの
-     だけで、件数は出しません（daily の席なので）。「すべて」のほかに選べる
+     すべて・★・ノートブック ⌄・タグ ⌄。ノートブックとタグは名前を列に並べず、
+     押すとそのすぐ下の小窓に（折り返して）並べます——前は全部を一列に並べて横へ
+     流していて、タグが増えると探せなかった（10月4日、利用者）。選んだら、その札に
+     名前が出ます。件数は出しません（daily の席なので）。「すべて」のほかに選べる
      ものが無ければ、列ごと出しません。 */
   function chipRow(all) {
     const hasFav = all.some((n) => n.fav);
@@ -186,29 +188,60 @@
     if (pick && !(pick.k === "fav" ? hasFav : pick.k === "nb" ? books.includes(pick.v) : tags.includes(pick.v))) pick = null;
     if (!hasFav && !books.length && !tags.length) return null;
 
-    const on = (k, v) => !!pick && pick.k === k && (k === "fav" || pick.v === v);
-    const chip = (k, v, inner, label) => html`
-      <button class="chip js-pick" data-k="${k}" data-v="${v || ""}" aria-pressed="${String(k === "all" ? !pick : on(k, v))}"
+    const chip = (k, inner, on, label) => html`
+      <button class="chip js-pick" data-k="${k}" aria-pressed="${String(on)}"
               ${label ? html`aria-label="${label}"` : ""}>${inner}</button>`;
+    /* ノートブック・タグの札：選んでいればその名前、いなければ種類の名前と ⌄。 */
+    const menu = (k, word, mark) => {
+      const mine = !!pick && pick.k === k;
+      return chip(k, mine ? html`${mark(pick.v)}<span>${pick.v}</span>`
+        : html`<span>${word}</span>${icon("chevron-down")}`, mine);
+    };
     const el = node(html`
       <div class="chip-row notes-chips" role="group" aria-label="絞り込み">
-        ${chip("all", "", "すべて")}
-        ${hasFav ? chip("fav", "", icon("star"), "★") : ""}
-        ${books.map((b) => chip("nb", b, html`${book(b)}<span>${b}</span>`))}
-        ${tags.map((t) => chip("tag", t, html`${dot(t)}<span>${t}</span>`))}
+        ${chip("all", "すべて", !pick)}
+        ${hasFav ? chip("fav", icon("star"), !!pick && pick.k === "fav", "★") : ""}
+        ${books.length ? menu("nb", "ノートブック", book) : ""}
+        ${tags.length ? menu("tag", "タグ", dot) : ""}
       </div>
     `);
     el.addEventListener("click", (e) => {
       const b = e.target.closest(".js-pick");
       if (!b) return;
       const k = b.dataset.k;
-      const v = b.dataset.v;
-      /* 選んでいるものをもう一度押したら、すべてへ戻ります。 */
-      pick = k === "all" || on(k, v) ? null : { k, v };
       KN.motion.fire("select");
+      if (k === "nb" || k === "tag") { pickFilter(b, k, k === "nb" ? books : tags); return; }
+      /* ★をもう一度押したら、すべてへ戻ります。 */
+      pick = k === "fav" && !(pick && pick.k === "fav") ? { k } : null;
       renderBody();
     });
     return el;
+  }
+
+  /* 絞り込みの小窓：名前を折り返して並べ、押すとその名前で絞って閉じる。選んでいる
+     名前をもう一度押したら、すべてへ。 */
+  function pickFilter(anchor, k, names) {
+    const box = node(html`<div class="note-pick"><div class="chip-row js-chips"></div></div>`);
+    const chipsEl = box.querySelector(".js-chips");
+    let p = null;
+    names.forEach((v) => {
+      const on = !!pick && pick.k === k && pick.v === v;
+      const b = node(html`
+        <button class="chip js-filter-pick" aria-pressed="${String(on)}">
+          ${k === "nb" ? book(v) : dot(v)}<span>${v}</span>
+        </button>`);
+      b.addEventListener("click", () => {
+        U.haptic();
+        pick = on ? null : { k, v };
+        if (p) p.close();
+        renderBody();
+      });
+      chipsEl.append(b);
+    });
+    p = popOver(anchor, { side: "left", label: k === "nb" ? "ノートブック" : "タグ" });
+    p.el.classList.add("is-pick");
+    p.el.append(box);
+    p.place();
   }
 
   function row(n) {
