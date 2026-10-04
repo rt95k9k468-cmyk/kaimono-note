@@ -5,6 +5,8 @@
    - オンでもオフでも、四つのタブが開いてエラーが出ない
    - もう一度押すと外れる。知らない値（"yes" など）はオフへ（reconcile）
    - daily の紙の下の角：オンなら丸い（V21）、オフなら角のまま
+   - 日記の抜き出し：オンなら五行、オフなら三行（V21）
+   - ノートの道具の帯：オンならぼかし無しの無地（V10）、オフならガラス
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/v2-switch.js */
 const { open, checker } = require("./lib");
 
@@ -17,6 +19,24 @@ const { open, checker } = require("./lib");
   const dailyCorner = () => page.evaluate(() => {
     const e = document.querySelector("#screen-archive .tl-sheet.is-daily");
     return e ? getComputedStyle(e).borderBottomLeftRadius : "";
+  });
+  /* 道具の帯は書く紙の中にしか無いので、同じ名前の器を一つ置いて測る。 */
+  const toolsBlur = () => page.evaluate(() => {
+    const e = document.createElement("div");
+    e.className = "note-tools";
+    document.body.appendChild(e);
+    const s = getComputedStyle(e);
+    const v = s.backdropFilter || s.webkitBackdropFilter || "";
+    e.remove();
+    return v;
+  });
+  const clamp = () => page.evaluate(() => {
+    const e = document.createElement("span");
+    e.className = "arc-then-memo";
+    document.body.appendChild(e);
+    const v = getComputedStyle(e).webkitLineClamp;
+    e.remove();
+    return v;
   });
   const tabs = ["archive", "todo", "list", "diet"];
   const tabsOpen = async (label) => {
@@ -63,6 +83,8 @@ const { open, checker } = require("./lib");
   t.check("読み直しても印が付いている", await mark());
   await tabsOpen("オン");
   t.check("オン：daily の紙は下の角も丸い", (await dailyCorner()) === "22px", await dailyCorner());
+  t.check("オン：日記の抜き出しは五行", (await clamp()) === "5", await clamp());
+  t.check("オン：ノートの道具の帯はぼかさない", (await toolsBlur()) === "none", await toolsBlur());
 
   await openLook();
   const more3 = page.locator(".set-layer:last-child details.set-more", { hasText: "試す" });
@@ -72,6 +94,8 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   t.check("もう一度押すと外れる", !(await mark()) && (await saved()) === false);
   t.check("オフ：daily の紙の下は角のまま", (await dailyCorner()) === "0px", await dailyCorner());
+  t.check("オフ：日記の抜き出しは三行", (await clamp()) === "3", await clamp());
+  t.check("オフ：ノートの道具の帯はガラス", /blur/.test(await toolsBlur()), await toolsBlur());
 
   /* 知らない値はオフへ。直に書いた値が読み直しで届くことを、true で先に確かめる
      （届かなければ「オフ」が素通りで通ってしまう）。 */
