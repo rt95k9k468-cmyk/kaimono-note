@@ -50,6 +50,12 @@
       stores: [],
       products: [],
       items: [],
+      /* いつもの組（R11）。「カレー」と、その品物（products の id）の並び。
+         記録ではなく「型」——いつ買ったかは持たず、押せばリストに無いものだけを
+         入れます。品物のメモでは足りない：メモは一つの品物に付く字で、ほかの
+         品物を指せないので。既定は空（鍵が無い保存も空）。
+         **2026年9月29日に機能は外した**が、保存済みの組は消さずに持つ（描かないだけ）。 */
+      sets: [],
       // やること。買い物とは別の暮らしの用事で、値段も店も持たない代わりに
       // 日付と繰り返しを持つ。
       todos: [],
@@ -105,8 +111,16 @@
          daily ログの下に出ていたので、いまお使いの方の画面が変わりません。
          要らない方は設定で消せます。 */
       settings: {
-        theme: "auto", accent: "orange", showChecked: true, layout: "rows",
+        theme: "auto", accent: "orange", textSize: "std", showChecked: true, layout: "rows",
         showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
+        /* 季節のひとこと（二十四節気・七十二候、R2）。既定は出す。設定で消せる。 */
+        showSeason: true,
+        /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
+           → "todo" | "list"。既定は空（js/capture.js の learn）。 */
+        captureDest: {},
+        /* 2.0 の見た目を試す切り替え（docs/roadmap-2.0.md の V1）。既定はオフ。
+           オンなら html に .is-v2。比べ終えたら V26 で外す。 */
+        v2: false,
       },
     };
   }
@@ -128,7 +142,7 @@
      残す場所で、達成度を測る場所ではないので、**そもそも型として持ちません**。
      後から足せてしまう形にしておくと、いつか足します。 */
   function emptyArchive() {
-    return { entries: [], days: [] };
+    return { entries: [], days: [], quiet: [] };
   }
 
   /* ---------------- 基調色 ----------------
@@ -260,13 +274,20 @@
   function num(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
   function posNum(v) { const n = num(v); return n != null && n > 0 ? n : null; }
   function dayStr(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
+  /* 記録の日。**欠けた・読めない日を today() で埋めない**——あれは時刻つきの
+     UTC の文字列で、どの日のかぎ（YYYY-MM-DD）とも一致しないので、記録が
+     どの日にも出なくなります（しかも読み込むたびに新しい時刻へ書き換わる）。
+     時刻を持つ値はローカルの日に直し（toDayKey）、何の手がかりも無いときだけ
+     今日に置きます。load の途中（reconcileDiet）から呼ばれるので、巻き上がる
+     function 宣言で。 */
+  function recDay(v) { return toDayKey(v) || todayKey(); }
 
   function cleanWeight(w, i) {
     const kg = posNum(w.kg);
     if (!kg || kg > 400) return null;
     return {
       id: w.id || uid("w"),
-      day: dayStr(w.day) || today(),
+      day: recDay(w.day),
       time: KN.util.isTime(w.time) ? w.time : null,
       kg: Math.round(kg * 100) / 100,
       // 体脂肪率。0 は「測れなかった」であって 0% ではないので、null に倒します。
@@ -336,6 +357,9 @@
      古い記録も読み直せます。 */
   function cleanDrink(d) {
     if (!d || typeof d !== "object") return null;
+    /* drinks.js は store.js より前に読む（index.html / sw.js / build-standalone.js）。
+       `let state = load()` の時点で KN.drinks が無いと、kinds が空になって
+       保存済みの kind がぜんぶ "other" に書き換わる。 */
     const kinds = (KN.drinks && KN.drinks.KINDS) || [];
     const kind = kinds.some((k) => k.id === d.kind) ? d.kind : "other";
     const label = String(d.kindLabel || "").trim()
@@ -344,7 +368,7 @@
     if (!volumeMl) return null;
     return {
       id: d.id || uid("dr"),
-      day: dayStr(d.day) || today(),
+      day: recDay(d.day),
       time: KN.util.isTime(d.time) ? d.time : null,
       kind,
       kindLabel: label,
@@ -416,7 +440,7 @@
       /* ローカルの日（todayKey）。`today()` は UTC なので、ここで混ぜると
          JST の夜9時の記録が翌日に付きます——飲みたくなるのはたいてい夜
          なので、この機能ではそのずれが毎日出ます。 */
-      day: dayStr(u.day) || todayKey(),
+      day: recDay(u.day),
       time: KN.util.isTime(u.time) ? u.time : null,
       before,
       /* どんなときか（外側）。持っていない古い記録は空で足すだけなので、
@@ -459,6 +483,16 @@
       if (v != null) hasSlot = true;
     });
     if (hasSlot) out.slots = slots;
+    /* 窓口に推計を頼んだときの、その一回の料金の目安。貼り付けた推計と
+       前からある記録は持ちません（欄ごと無し）。 */
+    if (a.cost && typeof a.cost === "object") {
+      const c = a.cost;
+      const n = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+      const cost = { usd: n(c.usd), searches: n(c.searches) || 0,
+        inputTokens: n(c.inputTokens), outputTokens: n(c.outputTokens),
+        model: typeof c.model === "string" ? c.model.slice(0, 60) : "" };
+      if (cost.usd != null || cost.inputTokens != null) out.cost = cost;
+    }
     const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
     return anyNum || hasSlot || raw || analysis ? out : null;
   }
@@ -469,7 +503,7 @@
     if (!items.length && !ai && !String(m.memo || "").trim()) return null;
     return {
       id: m.id || uid("m"),
-      day: dayStr(m.day) || today(),
+      day: recDay(m.day),
       time: KN.util.isTime(m.time) ? m.time : null,
       slot: MEAL_SLOTS.includes(m.slot) ? m.slot : "snack",
       items,
@@ -518,7 +552,7 @@
     return {
       id: h.id || uid("h"),
       type: h.type,
-      day: dayStr(h.day) || today(),
+      day: recDay(h.day),
       time: KN.util.isTime(h.time) ? h.time : null,
       value,
       unit: typeof h.unit === "string" ? h.unit : "",
@@ -585,6 +619,14 @@
   const RESCUE_KEY = KEY + "-rescue";
   let loadError = null;
 
+  /* 書いた回数。writeLive のたびに一つ進め、localStorage の一本に一緒に
+     書きます（`lsSeq`）。日記の写し（js/diary-idb.js）が、元と写しの
+     どちらが新しいかを比べるための番号で、**state の欄ではありません**
+     （読むときに外すので、画面にも書き出しにも控えにも乗りません）。
+     loadInfo は、読んだときの番号と、元に何か入っていたか。 */
+  let lsSeq = 0;
+  let loadInfo = { seq: 0, hadData: false };
+
   let migratedOnLoad = false;
   let state = load();
   const listeners = new Set();
@@ -617,8 +659,15 @@
   function load() {
     let rawV2 = null;
     try { rawV2 = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+    lsSeq = 0;
+    loadInfo = { seq: 0, hadData: !!rawV2 };
     if (rawV2) {
-      try { return reconcile(JSON.parse(rawV2)); }
+      try {
+        const parsed = JSON.parse(rawV2);
+        const seq = parsed && typeof parsed === "object" ? Number(parsed.lsSeq) : 0;
+        if (seq > 0 && isFinite(seq)) { lsSeq = seq; loadInfo.seq = seq; }
+        return reconcile(parsed);
+      }
       catch (err) { rescue(rawV2, err); return emptyState(); }
     }
     try {
@@ -633,19 +682,53 @@
     return emptyState();
   }
 
+  /* 日のかぎ（YYYY-MM-DD）に揃えます。**時刻を持つ値はローカルの日に直す**
+     ——先頭10文字で切ると UTC の日付になり、日本時間の0〜9時のものが前の日に
+     付きます（today() と dayKey() の取り違え）。読めない値は ""。
+     load の途中（reconcile）から呼ばれるので、巻き上がる function 宣言で。 */
+  function toDayKey(v) {
+    const str = String(v == null ? "" : v).trim();
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? "" : KN.util.dayKey(d);
+  }
+
   /** Fill in anything a older/partial save is missing so the app never crashes. */
   function reconcile(s) {
     const base = emptyState();
     const out = { ...base, ...s };
+    delete out.lsSeq;   // 書いた回数（上の lsSeq）。state の欄ではありません
     out.settings = { ...base.settings, ...(s.settings || {}) };
     /* 知らない基調色は、既定へ戻します。色を減らした・名前を変えたときに、
        選んだ覚えのない色で画面が出てこないように。 */
     out.settings.accent = cleanAccent(out.settings.accent);
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
+    out.settings.showSeason = out.settings.showSeason !== false;
+    out.settings.v2 = out.settings.v2 === true;
+    { const cd = out.settings.captureDest;
+      out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
+    /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */
+    if (!["std", "l", "xl", "auto"].includes(out.settings.textSize)) out.settings.textSize = "std";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];
     out.items    = Array.isArray(s.items)    ? s.items    : [];
+    /* いつもの組（R11）。鍵が無い保存（この機能より前）は空。名前の無いもの・
+       形の崩れたものは落とし、品物の id は重ねない。消えた品物を指す id は
+       ここでは消しません（使うときに見ないだけ）——復元で品物が戻れば、また
+       つながるように。 */
+    out.sets = Array.isArray(s.sets)
+      ? s.sets.filter((g) => g && typeof g === "object" && g.id && typeof g.name === "string" && g.name.trim())
+        .map((g) => ({
+          id: String(g.id),
+          name: g.name.trim(),
+          productIds: Array.isArray(g.productIds)
+            ? [...new Set(g.productIds.filter((x) => typeof x === "string" && x))]
+            : [],
+          createdAt: typeof g.createdAt === "string" ? g.createdAt : null,
+        }))
+      : [];
     out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
     out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
     out.iconOverrides = (s.iconOverrides && typeof s.iconOverrides === "object" && !Array.isArray(s.iconOverrides)) ? s.iconOverrides : {};
@@ -658,13 +741,26 @@
     out.archive = {
       entries: Array.isArray(arc.entries) ? arc.entries : [],
       days:    Array.isArray(arc.days)    ? arc.days    : [],
+      /* 出さない日（R9）。「あの日」「同じ日の年々」に出さない日付の並び。
+         鍵が無い保存（この機能より前）は空——どの日も今までどおり出ます。
+         印は日の行（days）に持たせません：空にした行は行ごと消えるので、
+         一緒に印まで消えます。 */
+      quiet: Array.isArray(arc.quiet)
+        ? [...new Set(arc.quiet.map((d) => toDayKey(d)).filter(Boolean))].sort()
+        : [],
     };
     /* 書いた時刻・直した時刻。並び順がこれで決まるので、持っていないものが
        混ざると先頭に来たり最後に沈んだりします。日付しか無いものには、その日を
-       充てておきます（嘘の時刻を作るより、粗いほうがまだ読めます）。 */
+       充てておきます（嘘の時刻を作るより、粗いほうがまだ読めます）。
+
+       **日付そのものが無い・読めないとき**は、まず記録自身の作成時刻の日から
+       取ります。前はいきなり今日で埋めていたので、読み込んだ日へ黙って
+       引っ越し、次の保存でそのまま固まっていました。今日で埋めるのは、何の
+       手がかりも無いときだけ——どの日にも出ない記録になるよりは、まだ
+       見つけて直せるので。 */
     out.archive.entries = out.archive.entries.filter((e) => e && e.id && e.type);
     out.archive.entries.forEach((e) => {
-      e.date = String(e.date || "").slice(0, 10) || todayKey();
+      e.date = toDayKey(e.date) || toDayKey(e.createdAt) || todayKey();
       if (!e.createdAt) e.createdAt = e.date;
       if (!e.updatedAt) e.updatedAt = e.createdAt;
       if (!Array.isArray(e.tags)) e.tags = [];
@@ -682,7 +778,10 @@
          「日が変わったので用意しただけ」の今日なので、null のまま——
          画面では「-」と出ます。ここで埋めると、書いてもいない日に
          作成時刻が付きます。 */
-      const written = !!(String(d.memo || "").trim() || d.wake || d.sleep);
+      /* 本文を外した印（memoOut）は、本文が空のときだけ意味を持ちます。
+         本文があれば、ふつうの行です（docs/storage.md の「段2の案」）。 */
+      if (d.memoOut !== true || d.memo) delete d.memoOut;
+      const written = !!(String(d.memo || "").trim() || d.wake || d.sleep || memoOut(d));
       if (written) {
         if (!d.updatedAt) d.updatedAt = d.date;
         if (!d.createdAt) d.createdAt = d.updatedAt;
@@ -742,10 +841,13 @@
 
          持っていない記録は null に落ちるので、古い保存もそのまま読めます。 */
       deadline: /^\d{4}-\d{2}-\d{2}$/.test(t.deadline) ? t.deadline : null,
-      repeat: ["daily", "weekly", "monthly"].includes(t.repeat) ? t.repeat : null,
+      repeat: cleanRepeat(t.repeat),
       // 毎週 on named days, and 毎月 on a 「第2火曜」 rather than a date.
       repeatDays: cleanDays(t.repeatDays),
       repeatNth: cleanNth(t.repeatNth),
+      /* 「済ませてから◯日」の◯（R6）。repeat が "after" のときだけ持ちます。
+         持っていない古い記録は null に落ちるだけで、読み方は変わりません。 */
+      repeatEvery: t.repeat === "after" ? cleanEvery(t.repeatEvery) : null,
       // 毎朝 / 毎晩、または時刻そのもの。どちらか一方だけを持ちます——両方ある
       // と食い違えるので。日のなかの並びは todoPart() が時刻から読みます。
       part: cleanPart(t.part),
@@ -755,6 +857,13 @@
          「まだ決めていない」がほとんどなので。時間軸はこれを読んで
          その用事の帯の長さを決め、持たないものには既定の長さを当てます。 */
       minutes: cleanMinutes(t.minutes),
+      /* 出る時刻（段7・2026年9月29日）。時刻の何分前に出るか（15・30・60）。
+         持っていない古い記録は null——「前の時間なし」。移し替えは要りません。 */
+      lead: cleanLead(t.lead),
+      /* 前の日から運んだ印（段3。docs/todo-timeline.md「崩れたときの置き直し」）。
+         ここに無かったので、同じ日に二回目に開くと印が落ち、「前の日から運んだ
+         もの」が黙って消えていました。持っていない記録には欄を足しません。 */
+      ...carriedField(t.carried),
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
@@ -790,6 +899,8 @@
          reconcile の既定値フォールバックで足りています——データの
          移り替えは要りません）。 */
       subState: cleanSubState(t.subState),
+      /* 「この回だけ」直したとき、くり返しの側が立たなくなる日。持っていない古い記録は []。 */
+      skipDays: cleanSkipDays(t.skipDays),
       /* 自分で選んだ絵。決めていなければ null——その場合は題から絵を
          推す（KN.productIcons.find）のを、時間割の側がやります。買うもの
          の商品アイコンと同じ選び方で、「迷ったときは丸のまま」ではなく、
@@ -840,6 +951,21 @@
      私はその注意書きのすぐ下に const を置いて、**実際に人のデータを
      消しました。** 長さを決めていないもの（minutes が null）は最初の
      行で返るので落ちず、長さを決めた人だけが全部を失う、という形でした。 */
+  /* 出る時刻の「前に◯分」。5分きざみ・3時間まで。**function 宣言**（load の
+     途中の reconcile から呼ばれるので。const だと TDZ で落ちる）。 */
+  function cleanLead(v) {
+    const n = Number(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return Math.min(180, Math.max(5, Math.round(n / 5) * 5));
+  }
+
+  /* 運んだ印 `carried: { on: 日, time: 時刻|null }`。日の読めないものは印ごと
+     落とし（無ければ「運んでいない」）、時刻だけ崩れていれば null に。 */
+  function carriedField(c) {
+    if (!c || typeof c !== "object" || !/^\d{4}-\d{2}-\d{2}$/.test(c.on)) return {};
+    return { carried: { on: c.on, time: KN.util.isTime(c.time) ? c.time : null } };
+  }
+
   function cleanMinutes(v) {
     const MIN = 5, MAX = 720;
     const n = Number(v);
@@ -868,6 +994,11 @@
       古いものは黙って落とします（直近60日ぶんだけ持てば十分——それより
       前の分は、済ませたときの「やった記録」（trace）のほうにもう写しが
       残っています）。 */
+  function cleanSkipDays(v) {
+    if (!Array.isArray(v)) return [];
+    return v.filter((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().slice(-60);
+  }
+
   function cleanSubState(v) {
     if (!v || typeof v !== "object") return {};
     const out = {};
@@ -919,6 +1050,23 @@
     t.repeatNth = null;
     if (!t.due) t.due = KN.util.todayKey();
     return t;
+  }
+
+  /**
+   * くり返しの種類。暦どおりの三つ（毎日・毎週・毎月）と、R6 の
+   * 「済ませてから◯日」（"after"）。知らない字は「くり返さない」に落とします。
+   *
+   * **function 宣言にしてあること。** reconcile() が load() の道から呼ぶので、
+   * 種類の表を const で下に置くと TDZ で落ちます（CLAUDE.md の約束事）。
+   */
+  function cleanRepeat(v) {
+    return v === "daily" || v === "weekly" || v === "monthly" || v === "after" ? v : null;
+  }
+
+  /** 「済ませてから◯日」の◯。1〜365 の整数、それ以外は既定の 7。 */
+  function cleanEvery(v) {
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 1 && n <= 365 ? n : 7;
   }
 
   /** 0..6, no repeats, in week order — anything else is not a set of days. */
@@ -1008,35 +1156,88 @@
      ずっと出る行を表示できます（一度きりのトーストは読み飛ばされるので）。 */
   let saveError = null;
 
+  /* live を書きます。**容量で落ちたら、自動の控えに退いてもらってから**
+     もう一度書きます（backup.js の makeRoom）。控えは本体を守るための
+     ものなので、控えのせいで本体が書けないのは逆さまです——前はこの順番を
+     控えの側（backup.js の write）しか守っていませんでした。 */
+  function writeLive() {
+    /* 読めなかった日は、書きません（persist と同じ理由）。flushPending は
+       前これを見ずに書いていたので、隠れる直前の一拍だけは、空の state で
+       本物を上書きできました。ここで塞げば、どの道から来ても同じです。 */
+    if (loadError) return;
+    const seq = lsSeq + 1;
+    const json = JSON.stringify(Object.assign({}, liveShape(), { lsSeq: seq }));
+    try {
+      try {
+        localStorage.setItem(KEY, json);
+      } catch (err) {
+        const makeRoom = KN.backup && KN.backup.makeRoom;
+        if (!makeRoom || !makeRoom(() => localStorage.setItem(KEY, json))) throw err;
+      }
+      lsSeq = seq;
+    } finally {
+      /* 日記の写しへ（js/diary-idb.js）。**元が書けなかったときも**写しには
+         書きます——容量で落ちているあいだに書いた日記を、写しの側に残すため。 */
+      if (KN.diaryIdb) KN.diaryIdb.afterWrite(seq, lsSeq === seq);
+    }
+  }
+
+  /* 元（localStorage）へ書く形。日記の本文を元から外したあと（段2の2b）は、
+     写しに届いた本文を外した複製（js/diary-idb.js の forLive）。記憶の中の
+     state は本文つきのまま。作れなければ、本文つきのまま書きます（あふれれば
+     保存が落ちて知らせるだけで、何も失いません）。 */
+  function liveShape() {
+    try {
+      return KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
+    } catch (err) {
+      console.error("live shape", err);
+      return state;
+    }
+  }
+
   let saveTimer = null;
   function persist() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      /* 走り終えたら手を離します。ここを忘れていたので、saveTimer は
-         一度でも保存すればずっと真のままでした。reload() は「書きかけが
-         あるなら先に書き出す」ためにこの値を見るので、**いつでも
-         書き出してから読み直す**ことになり、外から書き換えられた控えを
-         毎回踏み潰していました（読み直す意味がありませんでした）。 */
-      saveTimer = null;
-      /* 読めなかった日は、書きません。空の state で上書きしてしまうので。
-         直った版で開き直せば、そのまま元のデータが読めます。 */
-      if (loadError) return;
-      try {
-        localStorage.setItem(KEY, JSON.stringify(state));
-        if (saveError) {
-          saveError = null;
-          KN.ui && KN.ui.toast("保存を再開しました");
-          emit();   // 設定画面が出したままの警告行を、直った時点で引っ込めるため
-        }
-      } catch (err) {
-        console.error("save failed", err);
-        if (!saveError) {
-          saveError = String((err && err.message) || err);
-          KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
-          emit();   // 開いている画面があれば、その場で警告行を出すため
-        }
+    saveTimer = setTimeout(saveOnce, 120);
+  }
+
+  /* 一度書きます。書けたら true。 */
+  function saveOnce() {
+    /* 走り終えたら手を離します。ここを忘れていたので、saveTimer は
+       一度でも保存すればずっと真のままでした。reload() は「書きかけが
+       あるなら先に書き出す」ためにこの値を見るので、**いつでも
+       書き出してから読み直す**ことになり、外から書き換えられた控えを
+       毎回踏み潰していました（読み直す意味がありませんでした）。 */
+    saveTimer = null;
+    /* 読めなかった日は、書きません。空の state で上書きしてしまうので。
+       直った版で開き直せば、そのまま元のデータが読めます。 */
+    if (loadError) return false;
+    try {
+      writeLive();
+      if (saveError) {
+        saveError = null;
+        KN.ui && KN.ui.toast("保存を再開しました");
+        emit();   // 設定画面が出したままの警告行を、直った時点で引っ込めるため
       }
-    }, 120);
+      return true;
+    } catch (err) {
+      console.error("save failed", err);
+      /* 困ったときの記録（R23、js/errlog.js）。store の外の鍵に控える。 */
+      if (KN.errlog) KN.errlog.note("save", err, { file: "store.js" });
+      if (!saveError) {
+        saveError = String((err && err.message) || err);
+        KN.ui && KN.ui.toast("保存できませんでした（空き容量を確認してください）");
+        emit();   // 開いている画面があれば、その場で警告行を出すため
+      }
+      return false;
+    }
+  }
+
+  /* いま書きます（待っている保存も、まとめて）。日記を外す・戻すときに、
+     書けたかどうかをその場で知るため。 */
+  function saveNow() {
+    clearTimeout(saveTimer);
+    return saveOnce();
   }
 
   function emit() {
@@ -1061,7 +1262,7 @@
     if (!saveTimer) return;
     clearTimeout(saveTimer);
     saveTimer = null;
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (err) { /* the next save reports it */ }
+    try { writeLive(); } catch (err) { /* the next save reports it */ }
   }
 
   /* Re-read what is actually on disk. Each tab — or the same installed app
@@ -1073,6 +1274,7 @@
     flushPending();
     state = load();
     version++;
+    if (KN.diaryIdb) KN.diaryIdb.reloaded();
     emit();
   }
 
@@ -1248,10 +1450,10 @@
    * 道具など（`iconsGoods`）→ 食材（`iconsFood`）の順。**キーは一文字も
    * 変えていない**ので、利用者が手で選んだ絵も、キーワードの表も動きません。
    *
-   * 色つき（`icons-v2.js`）へはもう戻りません——`KN.productIcons.byKey()`
-   * 自体が、いまはこの二つと同じところを見に行くだけの窓口になっています
-   * （`product-icons.js` 側の決めごと）。だからここで三つ目として呼んでも
-   * 同じ答えの二度引きにしかならず、書きません。
+   * 色つきの絵（`icons-v2.js`）は 2026年9月28日に消しました。
+   * `KN.productIcons.byKey()` も、いまはこの二つと同じところを見に行くだけの
+   * 窓口です（`product-icons.js` 側の決めごと）。だからここで三つ目として
+   * 呼んでも同じ答えの二度引きにしかならず、書きません。
    */
   function markOf(key) {
     if (!key) return "";
@@ -1357,8 +1559,8 @@
 
   function addTodo({ title, due = null, deadline = null, part = null, time = null,
                      repeat = null, repeatDays = [],
-                     repeatNth = null, memo = "", flagged = false, minutes = null,
-                     shop = false, subs = [], icon = null } = {}) {
+                     repeatNth = null, repeatEvery = null, memo = "", flagged = false, minutes = null,
+                     lead = null, shop = false, subs = [], icon = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1368,9 +1570,10 @@
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
       // いつまでに。やる日（due）とは別（上の reconcile の但し書きを見ること）。
       deadline: /^\d{4}-\d{2}-\d{2}$/.test(deadline) ? deadline : null,
-      repeat: ["daily", "weekly", "monthly"].includes(repeat) ? repeat : null,
+      repeat: cleanRepeat(repeat),
       repeatDays: cleanDays(repeatDays),
       repeatNth: cleanNth(repeatNth),
+      repeatEvery: repeat === "after" ? cleanEvery(repeatEvery) : null,
       /* 時刻があっても part は落としません。毎朝・毎晩は「一日の端に置く」
          という並び順の指定で、時刻は「いつ報せるか」——別のことなので。
          （毎朝・毎晩でない part は、そもそも cleanPart が落とします。） */
@@ -1378,6 +1581,8 @@
       time: at,
       // かかる時間（分）。決めていなければ null。時間軸が読みます。
       minutes: cleanMinutes(minutes),
+      // 出る時刻の「前に◯分」（段7）。時刻が無ければ持たない。
+      lead: at ? cleanLead(lead) : null,
       notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
@@ -1389,6 +1594,7 @@
       shop: shop === true,
       subs: cleanSubs(subs),
       subState: {},
+      skipDays: [],
       icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
@@ -1411,11 +1617,17 @@
      出す・しまうも同じで、画面ごとに持ちます。暦が無いほうが広く使える
      画面があるので。 */
 
-  const CAL_TABS = ["todo", "diet", "archive"];
 
-  function calPrefs(tab) {
-    const s = get().settings;
-    const key = CAL_TABS.includes(tab) ? tab : "todo";
+  /* **→ 2026年9月27日から、全タブで一つに戻しました**（docs/shared-header.md）。
+     上の帯と暦を全タブで同じ一つにする作りでは、席を移っても暦が動いては
+     いけません——タブごとに段が違えば、移ったとたんに暦が伸び縮みします。
+
+     札は新しく `settings.calAll` に一つ。**タブごとの `calBy` は消さずに
+     残し、読まなくなるだけ**です（戻したくなったら、ここを戻せば元どおり）。
+     `calAll` をまだ持っていない保存は、これまでのやることの見かたから
+     始めます——いちばん開く画面の見かたが、いきなり変わらないように。
+     引数の `tab` は、呼ぶ側を書き換えずに済むよう受けたまま使いません。 */
+  function calPrefsOf(s, key) {
     const by = (s.calBy && typeof s.calBy === "object") ? s.calBy : {};
     const one = (by[key] && typeof by[key] === "object") ? by[key] : {};
     return {
@@ -1428,11 +1640,21 @@
     };
   }
 
+  function calPrefs(tab) {
+    const s = get().settings;
+    const base = calPrefsOf(s, "todo");
+    const all = (s.calAll && typeof s.calAll === "object") ? s.calAll : null;
+    if (!all) return base;
+    return {
+      open: typeof all.open === "boolean" ? all.open : base.open,
+      shown: typeof all.shown === "boolean" ? all.shown : base.shown,
+    };
+  }
+
   function setCalPref(tab, patch) {
-    const key = CAL_TABS.includes(tab) ? tab : "todo";
+    const cur = calPrefs(tab);
     update((s) => {
-      if (!s.settings.calBy || typeof s.settings.calBy !== "object") s.settings.calBy = {};
-      s.settings.calBy[key] = { ...(s.settings.calBy[key] || {}), ...patch };
+      s.settings.calAll = { open: cur.open, shown: cur.shown, ...patch };
     });
   }
 
@@ -1687,7 +1909,7 @@
     /* 地の文（日記）だけ書いた日も「記録のあった日」です。 */
     (get().archive.days || []).forEach((row) => {
       if (String(row.date || "").slice(0, 7) !== key) return;
-      if (!String(row.memo || "").trim()) return;
+      if (!String(row.memo || "").trim() && !memoOut(row)) return;
       if (!daysWith.includes(row.date)) daysWith.push(row.date);
     });
     daysWith.sort();
@@ -1736,7 +1958,11 @@
       if ("title" in patch) t.title = String(patch.title || "").trim() || t.title;
       if ("due" in patch) t.due = /^\d{4}-\d{2}-\d{2}$/.test(patch.due) ? patch.due : null;
       if ("repeat" in patch) {
-        t.repeat = ["daily", "weekly", "monthly"].includes(patch.repeat) ? patch.repeat : null;
+        t.repeat = cleanRepeat(patch.repeat);
+      }
+      if ("repeat" in patch || "repeatEvery" in patch) {
+        t.repeatEvery = t.repeat === "after"
+          ? cleanEvery("repeatEvery" in patch ? patch.repeatEvery : t.repeatEvery) : null;
       }
       /* 時刻と、毎朝・毎晩は**両立します**。
          かつては排他でした（「19:30」と「朝」のどちらが本当か決めなおす
@@ -1748,6 +1974,8 @@
       if ("time" in patch) {
         t.time = KN.util.isTime(patch.time) ? patch.time : null;
       }
+      // 日か時刻を自分で決め直したら、もう「運んできたもの」ではない（段3）。
+      if (("due" in patch || "time" in patch) && t.carried) delete t.carried;
       if ("part" in patch) t.part = cleanPart(patch.part);
       if (!t.due) { t.part = null; t.time = null; }
       fixBookend(t);
@@ -1759,7 +1987,85 @@
       if ("memo" in patch) t.memo = String(patch.memo || "");
       if ("flagged" in patch) t.flagged = !!patch.flagged;
       if ("minutes" in patch) t.minutes = cleanMinutes(patch.minutes);
+      if ("lead" in patch) t.lead = cleanLead(patch.lead);
+      /* 出る時刻は時刻に付くもの（段7）。時刻が外れたら一緒に外す
+         ——あとで別の時刻を付けたとき、前の「前に30分」が黙って蘇らないように。 */
+      if (!t.time) t.lead = null;
       if ("icon" in patch) t.icon = cleanIcon(patch.icon);
+    });
+  }
+
+  /**
+   * くり返しの用事を直すとき、どこまで効かせるか。
+   *   "this"   … この回だけ。この日の一件を単発の写しに分け、くり返しのほうはその日を飛ばす
+   *   "future" … 以後すべて（これまでの updateTodo + setSubs と同じ。過ぎた日の跡は触らない）
+   *   "all"    … これまでも含めて全部。過ぎた日の跡（同じ題・区分の trace）にも題・メモ・時刻・
+   *              長さ・絵・旗・手順の字を写す（済みの印・日・済ませた時刻は触らない）
+   * @returns {() => void} 直す前に戻す手（作った写しは消し、書き換えた記録は元へ）。
+   */
+  function editRepeating(id, patch, subs, scope, day) {
+    const live = getTodo(id);
+    if (!live) return () => {};
+    const before = JSON.parse(JSON.stringify(live));   // 生きた記録は直すと変わるので控えを取る
+    const snap = new Map();
+    const keep = (t) => { if (t && !snap.has(t.id)) snap.set(t.id, JSON.parse(JSON.stringify(t))); };
+    keep(before);
+    let made = null;
+    if (scope === "this" && before.repeat && day) {
+      made = uid("t");
+      const src = JSON.parse(JSON.stringify(before));
+      const sub0 = (before.subs || []);
+      const copy = {
+        ...src, id: made, repeat: null, repeatDays: [], repeatNth: null, repeatEvery: null,
+        skipDays: [], subState: {}, notifiedFor: null, trace: false, done: false, doneAt: null,
+        archived: false, archivedAt: null,
+        due: day,
+        subs: sub0.map((x) => { const st = subStatus(before, x, day); return { ...x, done: st.done, skipped: st.skipped }; }),
+      };
+      delete copy.carried;
+      update((s) => {
+        const t = s.todos.find((x) => x.id === id);
+        if (!t) return;
+        s.todos.push(copy);
+        t.skipDays = cleanSkipDays((t.skipDays || []).concat(day));
+        if (t.due && t.skipDays.includes(t.due)) {
+          let d = t.due;
+          for (let i = 0; i < 400; i++) {
+            d = nextDue({ ...t, due: d });
+            if (!t.skipDays.includes(d)) break;
+          }
+          t.due = d;
+        }
+      });
+      const p = { ...patch };
+      ["repeat", "repeatDays", "repeatNth", "repeatEvery"].forEach((k) => delete p[k]);
+      updateTodo(made, { ...p, repeat: null });
+      if (subs) setSubs(made, subs);
+    } else {
+      updateTodo(id, patch);
+      if (subs) setSubs(id, subs);
+      if (scope === "all") {
+        const after = getTodo(id);
+        const keepIds = new Set((after.subs || []).map((x) => x.id));
+        const names = new Map((after.subs || []).map((x) => [x.id, x.title]));
+        const traces = get().todos.filter((t) => t.trace && !t.repeat
+          && t.title === before.title && t.part === before.part);
+        traces.forEach(keep);
+        update((s) => {
+          s.todos.forEach((t) => {
+            if (!snap.has(t.id) || t.id === id) return;
+            t.title = after.title; t.memo = after.memo; t.flagged = after.flagged;
+            t.minutes = after.minutes; t.icon = after.icon; t.part = after.part;
+            t.time = t.due ? after.time : null; t.lead = t.time ? after.lead : null;
+            t.subs = (t.subs || []).filter((x) => keepIds.has(x.id))
+              .map((x) => ({ ...x, title: names.get(x.id) }));
+          });
+        });
+      }
+    }
+    return () => update((s) => {
+      if (made) s.todos = s.todos.filter((t) => t.id !== made);
+      s.todos = s.todos.map((t) => snap.get(t.id) || t);
     });
   }
 
@@ -1784,6 +2090,11 @@
     /* Counted from the due date, then walked forward past any dates already
        gone: ticking off a bin day three weeks late should set the next one to
        the coming week, not to a date still in the past. */
+    /* 「済ませてから◯日」は、暦ではなく**済ませた日**から数えます。
+       次の日は済ませたその日（今日）＋◯日——予定より早く済ませても、
+       遅れて済ませても、そこから数え直すのがこの種類の意味です。 */
+    if (todo.repeat === "after") return U.shiftDay(U.todayKey(), cleanEvery(todo.repeatEvery));
+
     let next = from;
     const step = () => {
       if (todo.repeat === "daily") { next = U.shiftDay(next, 1); return; }
@@ -1843,9 +2154,15 @@
     const U = KN.util;
     if (!todo || !day) return false;
     if (!todo.repeat) return todo.due === day;
+    if (todo.skipDays && todo.skipDays.includes(day)) return false;
     // くり返しは「その日から」。始まる前の日には立ちません。
     if (!todo.due || day < todo.due) return todo.due === day;
     if (todo.due === day) return true;
+
+    /* 「済ませてから◯日」の次は、済ませるまで決まりません。先の日に
+       「たぶんこの日」と立てると、済ませた日しだいで嘘になるので、
+       立つのは次にやる日（due）だけです。 */
+    if (todo.repeat === "after") return false;
 
     if (todo.repeat === "daily") return true;
 
@@ -1918,6 +2235,11 @@
        ほうは今までどおり次の日へ移ります。写しはアーカイブには入れません
        ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
     const traceId = repeating ? uid("t") : null;
+    /* 「済ませてから◯日」を先の日で早めに済ませたら、やった跡は**済ませた
+       今日**に残します（次もそこから数えるので、跡と数え始めを揃える）。 */
+    const todayK = KN.util.todayKey();
+    const traceDay = before.repeat === "after" && before.due && before.due > todayK
+      ? todayK : before.due;
 
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
@@ -1927,8 +2249,8 @@
           s.todos.push({
             ...t,
             id: traceId,
-            due: t.due,          // 済ませた、その日のぶん
-            repeat: null, repeatDays: [], repeatNth: null,
+            due: traceDay,       // 済ませた、その日のぶん
+            repeat: null, repeatDays: [], repeatNth: null, repeatEvery: null,
             notifiedFor: null,
             done: true,
             doneAt: today(),
@@ -1967,6 +2289,8 @@
     return {
       repeated: repeating,
       due: repeating ? due : null,
+      /* 済ませた時刻を直すときの宛先（くり返しなら、その日に残した写し）。 */
+      doneId: was.done ? null : repeating ? (before.due ? traceId : null) : id,
       undo: () => update((s) => {
         const t = s.todos.find((x) => x.id === id);
         if (!t) return;
@@ -1977,6 +2301,79 @@
         if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
       }),
     };
+  }
+
+  /**
+   * 済ませた時刻を直します（押し忘れて、あとで押したとき）。日はそのまま、
+   * 時と分だけ。doneAt は UTC の ISO なので、地元の時刻で組んでから直します。
+   *
+   * @returns {(() => void)|null} 元に戻す
+   */
+  function setDoneTime(id, h, m) {
+    const t0 = getTodo(id);
+    if (!t0 || !t0.doneAt) return null;
+    const d = new Date(t0.doneAt);
+    if (isNaN(d.getTime())) return null;
+    const prev = t0.doneAt;
+    d.setHours(h, m, 0, 0);
+    const next = d.toISOString();
+    if (next === prev) return null;
+    const put = (v) => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t && t.doneAt) t.doneAt = v;
+    });
+    put(next);
+    return () => put(prev);
+  }
+
+  /* 自分の速さ（段4。docs/todo-timeline.md の「自分の速さ」）。
+
+     くり返しの用事の「いつもは25分くらい」を、済ませた記録（写し）から
+     そのつど引きます。**記録は増やしません**——始めた時刻は持っていないので、
+     時刻を決めてあった回だけ「済ませた時刻 − 決めていた時刻」を長さの代わりに
+     使います。遅れて始めた日・あとでまとめて済ませた日は長く出るので、
+     1〜240分の回だけ、新しいほうから8回の**中央値**にして、5分に丸めます。
+     3回に満たなければ言いません（言えるほど記録が無い）。
+
+     写しと元は、undoTrace と同じく題と区分でつながっています。題を変えると
+     それまでの記録から切れます（新しい欄で結ぶのはやめた——記録を増やさない）。
+
+     出すのは長さだけで、速い・遅い・前より、は言いません。 */
+  const USUAL_MIN = 1, USUAL_MAX = 240, USUAL_LAST = 8, USUAL_ENOUGH = 3;
+  let usualIx = null, usualVer = -1;
+  const usualKey = (t) => `${t.title}\u0001${t.part || ""}`;
+  function usualIndex() {
+    if (usualIx && usualVer === version) return usualIx;
+    const runs = new Map();
+    get().todos.forEach((t) => {
+      if (!t.trace || !t.doneAt || !t.due || !KN.util.isTime(t.time)) return;
+      const at = new Date(t.doneAt);
+      /* 済ませたのが別の日なら、その日の長さとは言えません。 */
+      if (isNaN(at.getTime()) || KN.util.dayKey(at) !== t.due) return;
+      const [h, m] = t.time.split(":").map(Number);
+      const took = at.getHours() * 60 + at.getMinutes() - (h * 60 + m);
+      if (took < USUAL_MIN || took > USUAL_MAX) return;
+      const k = usualKey(t);
+      if (!runs.has(k)) runs.set(k, []);
+      runs.get(k).push({ due: t.due, took });
+    });
+    const ix = new Map();
+    runs.forEach((list, k) => {
+      const last = list.sort((a, b) => (a.due < b.due ? 1 : a.due > b.due ? -1 : 0))
+        .slice(0, USUAL_LAST).map((x) => x.took).sort((a, b) => a - b);
+      if (last.length < USUAL_ENOUGH) return;
+      const n = last.length;
+      const mid = n % 2 ? last[(n - 1) / 2] : (last[n / 2 - 1] + last[n / 2]) / 2;
+      ix.set(k, Math.max(5, Math.round(mid / 5) * 5));
+    });
+    usualIx = ix; usualVer = version;
+    return ix;
+  }
+
+  /** くり返しの用事の、いつもの長さ（分）。言えなければ null。 */
+  function usualMinutes(t) {
+    if (!t || t.trace || !t.repeat || !t.title) return null;
+    return usualIndex().get(usualKey(t)) || null;
   }
 
   /**
@@ -2110,24 +2507,179 @@
   }
 
   /**
-   * その日のうちに終わらなかった用事を、今日へ運びます。
+   * 日が変わったら、**期限切れを作らない**ように運びます（利用者の希望。
+   * docs/todo-items.md の「期限切れは作らない」）。
    *
-   * くり返しの用事は対象外です——`due` は「次にやる日」という別の意味を
-   * 持っていて、`fallsOn()` がすでに先の日にも出す仕組みを持っているので、
-   * ここでまで動かすと二重になります。
+   * ① くり返しでない用事で、やる日（due）が過ぎたもの → 今日へ。時刻は
+   *    **外して**印（carried）に控えます（2026年9月29日・段3。前は持ったまま
+   *    だった——昨日の「10:00 病院」が、今日の約束として道に立っていた）。
+   * ② 長期タスク（due なし）で、期限（deadline）が過ぎたもの → 今日へ。
+   *    やる日を決めないまま締め切りを越えたので、今日の時間割に出します。
+   * ③ くり返しの用事（ルーティン）で、次にやる日を逃したもの → **今日から
+   *    先で、決まりに当たる最初の日**へ。毎日なら今日、毎週火曜なら次の火曜。
+   *    逃した日は「やった」にも「やらなかった」にもしません（何も残さない）。
    *
-   * 呼ぶ側（app.js）が日の変わり目を見つけて呼びます。ここは「今日より
-   * 前に居る、くり返しでない未完了」を今日へ動かすだけです。
+   * ③が無かったころは、逃したルーティンが「期限切れ」に並び続け、今日
+   * 済ませると、その「やった」が逃した日のほうに付いて、今日のぶんは
+   * 済んでいないまま残りました（`toggleTodo` は due の日に写しを残すので）。
+   *
+   * 呼ぶ側（app.js）が、起動したとき・日の変わり目・戻ってきたときに呼びます。
+   * 何も動かさないときは、何も書きません。
    */
   function rescheduleOverdue() {
     const today = KN.util.todayKey();
-    const staleIds = openTodos()
-      .filter((t) => !t.repeat && t.due && t.due < today)
-      .map((t) => t.id);
-    if (!staleIds.length) return;
-    update((s) => {
-      s.todos.forEach((t) => { if (staleIds.includes(t.id)) t.due = today; });
+    const moves = new Map();          // id → 新しい due
+    /* 買い物の一件（`shop`）は、その日に一つ。今日にもうあるなら、昨日の
+       ぶんを運ぶと二つ並ぶので、運びません。 */
+    const shopToday = get().todos.some((t) => t.shop && t.due === today && !t.archived && !t.trace);
+    const carry = new Set();          // ①② のぶん（朝に置き直せるもの）
+    openTodos().forEach((t) => {
+      if (t.repeat) {
+        if (!t.due || t.due >= today) return;
+        // 「済ませてから◯日」は、決まりに当たる日が今日から先に無い
+        // （fallsOn は due の日だけ）。逃したら、今日へ。
+        const next = t.repeat === "after" ? today : firstFallOn(t, today);
+        if (next && next !== t.due) moves.set(t.id, next);
+        return;
+      }
+      const late = (t.due && t.due < today) || (!t.due && t.deadline && t.deadline < today);
+      if (!late) return;
+      if (t.shop && shopToday) return;
+      moves.set(t.id, today);
+      carry.add(t.id);
     });
+    if (!moves.size) return;
+    update((s) => {
+      s.todos.forEach((t) => {
+        if (!moves.has(t.id)) return;
+        t.due = moves.get(t.id);
+        if (!carry.has(t.id)) return;
+        /* 段3（2026年9月29日・利用者が選んだ）。**時刻は外して「連れ」に**
+           します——昨日の「13:00」は、今日の約束ではないので（一日の道では
+           停留所＝本人が決めた約束）。外した時刻は印に控えて、置き直しの紙で
+           「前は 13:00」と言うのにだけ使います。二日続けて運んだら、最初の
+           時刻を持ち続けます。 */
+        const was = t.carried && t.carried.time;
+        t.carried = { on: today, time: t.time || was || null };
+        t.time = null;
+      });
+    });
+  }
+
+  /* ---- 段3：運んだものの置き直し（docs/todo-timeline.md「崩れたときの置き直し」） ----
+
+     運ぶのは上の rescheduleOverdue が黙ってやります（9月27日の決めごとのまま）。
+     ここは、運んできたものを朝に一度「今日のどこか・明日・今週・長期タスクへ・
+     やめる」から選び直せるようにするだけ。選ばなければ今日に居続けます。
+     印（`carried`）は今日のものだけ数えます——日が変われば、印ごと古くなる。 */
+
+  /** 今日、前の日から運んできたもので、まだ選び直していないもの。 */
+  function carriedToday() {
+    const today = KN.util.todayKey();
+    return openTodos().filter((t) =>
+      !t.repeat && !t.trace && t.carried && t.carried.on === today && t.due === today);
+  }
+
+  /** 「今週」の行き先。週の終わりまで二日を切っていたら、来週の終わり。 */
+  function carryWeek() {
+    const U = KN.util;
+    const today = U.todayKey();
+    const end = U.weekOf(today).to;
+    if (end > U.shiftDay(today, 1)) return { day: end, next: false };
+    return { day: U.weekOf(U.shiftDay(end, 1)).to, next: true };
+  }
+
+  /**
+   * 運んだものを選び直す。where は "today" | "tomorrow" | "week" | "someday" | "stop"。
+   * @returns {() => void} 元に戻す
+   */
+  function settleCarried(id, where) {
+    const U = KN.util;
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt"];
+    const was = {};
+    keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
+    const today = U.todayKey();
+    /* 過ぎた期限を持ったまま長期タスクへ戻すと、見回りがすぐ今日へ運び返すので
+       外します（元に戻せば戻る）。 */
+    const lapsed = t0.deadline && t0.deadline < today;
+    if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1) });
+    else if (where === "week") {
+      const end = carryWeek().day;
+      const keep = t0.deadline && t0.deadline >= today && t0.deadline < end;
+      updateTodo(id, { due: null, deadline: keep ? t0.deadline : end });
+    } else if (where === "someday") updateTodo(id, lapsed ? { due: null, deadline: null } : { due: null });
+    else if (where === "stop") archiveTodo(id, true);
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t) delete t.carried;
+    });
+    return () => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      keys.forEach((k) => { if (was[k] === undefined) delete t[k]; else t[k] = was[k]; });
+    });
+  }
+
+  /* ---- 段5：その日のうちの置き直し（docs/todo-timeline.md「その日のうちの置き直し」） ----
+
+     段3は日をまたいだ崩れを拾います。ここは**その日のうちに**崩れたもの——10:00 に
+     やるつもりの用事が、11時を過ぎてもまだ、という場面。道では時計が通った停留所は
+     塗られ、「10:00」という過ぎた約束のまま後ろに残ります。黙って時刻を外すことは
+     しません（決めるのは本人）。あることと、置き直す口だけを出します。 */
+
+  /** 今日、時刻を決めてあって、その時刻（長さがあれば終わり、無ければ30分後）を
+      過ぎたのにまだのもの。くり返しの用事は入れません——時刻を外すと毎回の時刻が
+      消えるので（段3と同じく、ルーティンは前のまま）。 */
+  function passedToday() {
+    const U = KN.util;
+    const today = U.todayKey();
+    const toMin = (hm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(hm); return m ? +m[1] * 60 + +m[2] : null; };
+    const now = toMin(U.nowTime());
+    return openTodos().filter((t) => {
+      if (t.repeat || t.trace || t.due !== today || !U.isTime(t.time)) return false;
+      const end = toMin(t.time) + (Number(t.minutes) > 0 ? Number(t.minutes) : 30);
+      return end <= now;
+    }).sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  }
+
+  /**
+   * 時刻を過ぎたものを選び直す。where は
+   * "now"（いまから：at に付け直す）| "loose"（時刻を外して連れに）| "tomorrow" |
+   * "someday"（長期タスクへ）| "stop"（やめる＝アーカイブ）。
+   * 明日と長期タスクへは時刻も外します——過ぎた「10:00」を明日の約束にしないので。
+   * @returns {() => void} 元に戻す
+   */
+  function settlePassed(id, where, at) {
+    const U = KN.util;
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt"];
+    const was = {};
+    keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
+    const today = U.todayKey();
+    const lapsed = t0.deadline && t0.deadline < today;
+    if (where === "now") updateTodo(id, { time: at });
+    else if (where === "loose") updateTodo(id, { time: null });
+    else if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1), time: null });
+    else if (where === "someday") updateTodo(id, lapsed ? { due: null, deadline: null } : { due: null });
+    else if (where === "stop") archiveTodo(id, true);
+    return () => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      keys.forEach((k) => { if (was[k] === undefined) delete t[k]; else t[k] = was[k]; });
+    });
+  }
+
+  /** くり返しの用事が、`from` の日から先で最初に立つ日（`fallsOn` の読み方で）。
+      見つからなければ null（決まりが壊れているなど。そのときは動かしません）。 */
+  function firstFallOn(t, from) {
+    const U = KN.util;
+    for (let i = 0, day = from; i <= 400; i++, day = U.shiftDay(from, i)) {
+      if (fallsOn(t, day)) return day;
+    }
+    return null;
   }
 
   /** Today's timed todos whose time has not come round yet — waiting, not due. */
@@ -2229,6 +2781,10 @@
       s.items = next;
     });
   }
+
+  /* いつもの組（R11）は 2026年9月29日に外した（利用者が「要らない」と）。
+     保存済みの `sets` は消さずに持ち続ける——読み込み・書き出し・控えには
+     今までどおり乗る。描かないだけ（CLAUDE.md の「保存済みの欄は消さない」）。 */
 
   function addPrice(productId, { storeId, price, amount, date }) {
     const rec = {
@@ -2422,7 +2978,7 @@
   }
 
   function removeWeight(id) {
-    update((s) => { s.diet.weights = s.diet.weights.filter((w) => w.id !== id); });
+    return takeOut((s) => s.diet, "weights", id);
   }
 
   /** 新しい順。同じ日に何度も乗ることがあるので、日だけでなく時刻まで見ます。 */
@@ -2479,7 +3035,7 @@
   }
 
   function removeMeal(id) {
-    update((s) => { s.diet.meals = s.diet.meals.filter((m) => m.id !== id); });
+    return takeOut((s) => s.diet, "meals", id);
   }
 
   function mealsOfDay(day) {
@@ -2593,6 +3149,43 @@
       .join("\n");
   }
 
+  /** これまでに書いた食事の言葉（打つときの候補。2026年10月3日）。写さず引く——
+      記録から開くたびに数えます。区切りは空白・読点・改行。
+      { word, score, often } を score の高い順に返します（2026年10月4日）。
+      score … 書いた日ごとに、古いほど軽く（21日で半分）。ほかの区分の日は 1/4。
+      often … 何も打っていなくても出す言葉。**この区分で**くり返し、いまも書いている
+              もの（この区分だけの score が 1.5 以上——一度きりの機内食や旅先の
+              食事は出ず、朝の卵は朝にだけ出る）。打ちかけで絞るときは全部から。 */
+  function mealWords(slot) {
+    const fold = KN.util.foldKana;
+    const today = KN.util.dayDate(KN.util.todayKey());
+    const seen = new Map();
+    diet().meals.forEach((m) => {
+      const d = KN.util.dayDate(m.day);
+      const age = d && today ? Math.max(0, Math.round((today - d) / 864e5)) : 365;
+      const w8 = Math.pow(0.5, age / 21);
+      const days = new Set();   // 一つの記録に同じ言葉が二度あっても一回
+      String(m.memo || "").split(/[\s、,，。;；]+/).forEach((w) => {
+        if (!w || w.length > 24) return;
+        const k = fold(w);
+        if (!k || days.has(k)) return;
+        days.add(k);
+        const e = seen.get(k) || { word: w, same: 0, other: 0, day: "", dayKeys: new Set() };
+        const dk = `${m.slot}|${m.day}`;
+        if (!e.dayKeys.has(dk)) {
+          e.dayKeys.add(dk);
+          if (m.slot === slot) e.same += w8; else e.other += w8;
+        }
+        if (String(m.day) >= e.day) { e.day = String(m.day); e.word = w; }
+        seen.set(k, e);
+      });
+    });
+    return [...seen.values()]
+      .map((e) => ({ word: e.word, score: e.same + e.other / 4, often: e.same >= 1.5, day: e.day }))
+      .sort((a, b) => (b.score - a.score) || b.day.localeCompare(a.day))
+      .map(({ word, score, often }) => ({ word, score, often }));
+  }
+
   /** その区分の文を書き換えます。空にすると、数を持たない記録は消えます。 */
   function setSlotMemo(day, slot, text) {
     if (!MEAL_SLOTS.includes(slot) || slot === "memo") return null;
@@ -2685,7 +3278,7 @@
   }
 
   function removeDrink(id) {
-    update((st) => { st.diet.drinks = st.diet.drinks.filter((x) => x.id !== id); });
+    return takeOut((s) => s.diet, "drinks", id);
   }
 
   function drinksOfDay(day) {
@@ -2732,7 +3325,7 @@
   }
 
   function removeUrge(id) {
-    update((st) => { st.diet.urges = st.diet.urges.filter((x) => x.id !== id); });
+    return takeOut((s) => s.diet, "urges", id);
   }
 
   function urgesOfDay(day) {
@@ -2835,7 +3428,7 @@
   }
 
   function removeHealth(id) {
-    update((s) => { s.diet.health = s.diet.health.filter((h) => h.id !== id); });
+    return takeOut((s) => s.diet, "health", id);
   }
 
   /** その日のその種目。日ごとに一つのものは一件、ワークアウトは全部。 */
@@ -2907,8 +3500,17 @@
   /* 日付は「日のかぎ」（YYYY-MM-DD）で持ちます。today() は時刻まで持つので、
      そのまま入れると こよみの粒も「その日だけ」の絞り込みも当たりません
      （月の絞り込みだけは先頭7文字で偶然当たるので、気づきにくい種類の食い違い
-     です）。入口で一度だけ削ります。 */
-  const dayKeyOf = (v) => String(v || todayKey()).slice(0, 10);
+     です）。入口で一度だけ削ります。
+
+     **削る前に、時刻を持つ値はローカルの日に直します**（toDayKey）。先頭
+     10文字で切るだけだと、today() の値は UTC の日になり、日本時間の0〜9時の
+     ものが前の日に付きます。いまの呼び出し元はみな日のかぎを渡しているので
+     実際には起きていませんが、切るだけの形は、渡し間違えた日にだけ静かに
+     ずれる罠なので。読めない値だけは、これまでどおり先頭10文字。 */
+  const dayKeyOf = (v) => {
+    const s = String(v || todayKey());
+    return toDayKey(s) || s.slice(0, 10);
+  };
 
   const archive = () => state.archive || (state.archive = emptyArchive());
   const stamp = () => new Date().toISOString();
@@ -2994,7 +3596,23 @@
   }
 
   function removeEntry(id) {
-    update((s) => { s.archive.entries = s.archive.entries.filter((x) => x.id !== id); });
+    return takeOut((s) => s.archive, "entries", id);
+  }
+
+  /* 一件を外し、**同じものを同じ場所へ戻す関数**を返す（消したときの「元に戻す」。
+     roadmap-2.0 の V18）。removeTodo と同じ形で、記録の形は変えない。戻すときに
+     もう同じ id があれば何もしない（二度押し）。 */
+  function takeOut(host, key, id) {
+    const at = host(get())[key].findIndex((x) => x.id === id);
+    if (at < 0) return () => {};
+    const snapshot = JSON.parse(JSON.stringify(host(get())[key][at]));
+    update((s) => { host(s)[key] = host(s)[key].filter((x) => x.id !== id); });
+    return () => update((s) => {
+      if (host(s)[key].some((x) => x.id === id)) return;
+      const next = host(s)[key].slice();
+      next.splice(Math.min(at, next.length), 0, snapshot);
+      host(s)[key] = next;
+    });
   }
 
   /** 種を達成に変えます。書いた時刻は残し、種だった記憶だけ畳みます。 */
@@ -3081,6 +3699,19 @@
   const dayLog = (day) => archive().days.find((d) => d.date === day) || null;
 
   /**
+   * 本文を元（localStorage）から外した行か（docs/storage.md の「段2の案」）。
+   * 外した行は `memo: ""` と印 `memoOut: true` を持ち、本文は日記の写し
+   * （js/diary-idb.js）にだけあります。**印の行は「本文がある行」**——消さない・
+   * 空と見なさない・上書きしない・印を落とさない。印を外すのは、写しから
+   * 本文を戻したとき（突き合わせ・復元で当てたとき）だけ。印があっても本文が
+   * 空でなければ、ふつうの行です（段1の版が本文を書き戻した場合）。
+   * `let state = load()` より先に呼ばれるので、巻き上げられる function で。
+   */
+  function memoOut(d) {
+    return !!(d && d.memoOut === true && !d.memo);
+  }
+
+  /**
    * その日の行を、無ければ用意します。
    *
    * 日が変わったら、その日の欄が**最初からそこにある**ようにするためです。
@@ -3120,6 +3751,10 @@
     const from = (opts && opts.source) || "manual";
     update((s) => {
       const cur = s.archive.days.find((d) => d.date === day);
+      /* 本文を外した行（memoOut）は、本文に触れません——空にも、上書きにも
+         しません。本文は写しにだけあるので、ここで空と見なすと、行ごと消えて
+         写しからも消えます。時刻だけは書けます（読めない日の紙と同じ）。 */
+      const out = memoOut(cur);
       /* 印は**起床と就寝で別々に**持ちます。一つで兼ねると、取り込みが
          起床を書いた時点で印が health に変わり、その同じ便の次の一手で
          就寝の手入力保護が外れます（実データで踏みました）。 */
@@ -3137,7 +3772,7 @@
       const w = keepTime("wake"), sl = keepTime("sleep");
       const next = {
         date: day,
-        memo: patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
+        memo: out ? "" : patch.memo === undefined ? (cur ? cur.memo : "") : String(patch.memo || ""),
         wake: w.v,
         sleep: sl.v,
         /* 空の一件（`ensureDayLog` が置いたもの）は `createdAt` を持ちません
@@ -3157,8 +3792,9 @@
         ? (cur ? cur.sleepStages : null)
         : (patch.sleepStages || null);
       if (stages) next.sleepStages = stages;
+      if (out) next.memoOut = true;
 
-      const empty = !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
+      const empty = !out && !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
         /* 「更新」は**人が書き直したこと**を言う印です。毎朝の取り込みで
@@ -3169,6 +3805,112 @@
       }
     });
     return dayLog(day);
+  }
+
+  /**
+   * 日記の取り込み（D7。設定 → 日記を取り込む）。取り込み道具
+   * （tools/diary-import.html）の控えを開いた、`[{date, body}]` を入れます。
+   *
+   * **すでに本文のある日には、一字も触れません**（上書きしない・書き足さない）。
+   * 入れるのは、その日の行が無い日と、行はあっても本文が空の日だけ。同じ本文
+   * なら何もしません（取り込みを二度押しても、同じものが二つにならない）。
+   * 同じ日付の行が二つあるときは、先の一つだけを見ます（日記の写しと同じ。
+   * docs/storage.md）。
+   *
+   * 取り込んだ行の「作成」「更新」は空のまま（「-」で出ます）——いま作った
+   * わけでも、いま書き直したわけでもないので。
+   *
+   * **上掛け（`replace`。2026年9月30日、利用者が決めた）**：くらしノートで
+   * 書いてからジャーナルに写し、そこで書き足す使い方があるので、本文のある日を
+   * 控えの本文で置き換えることもできます。本文のある日は三つに分けて見ます
+   * （空白・改行と全角半角の違いは、PDF の読み取りで変わるので見ません）。
+   *   - 同じ（`same`）…… 何もしない。
+   *   - 書き足し（`grow`）…… くらしノートの文が、控えの本文の中にそのまま
+   *     ある。`replace` が "grow" か "all" なら置き換える。
+   *   - 変わった（`differ`）…… それ以外。`replace` が "all" のときだけ置き換える。
+   *     どの日かは `differDays` に（画面が日付を見せて、利用者が決める）。
+   *   本文を外した行（memoOut）は、どのときも触れません。
+   *   置き換えても「作成」「更新」は動かしません（取り込みは更新日時に触れない）。
+   *
+   * @param {Array<{date:string, body:string}>} list
+   * @param {{dry?: boolean, replace?: ""|"grow"|"all"}} [opts] dry なら数えるだけで書きません
+   * @returns {{add:number, fill:number, same:number, kept:number, grow:number,
+   *   differ:number, differDays:string[], replaced:number, chars:number,
+   *   from:string, to:string}}
+   *   kept は、本文があって、そのままにする日（置き換えない書き足し・変わった日も含む）。
+   *   chars は、書けば記録に増える字数のおおよそ（容量の見積もり用）。
+   *   from / to は、読めた日の最初と最後（暦に無い日は含まない）。
+   *   bodies は、入れる本文 { date, memo, at }（日記を元から外したあと、写しへ
+   *   先に届けるため。docs/storage.md の罠b）。
+   */
+  function importDiary(list, opts) {
+    const replace = (opts && opts.replace) || "";
+    const r = { add: 0, fill: 0, same: 0, kept: 0, grow: 0, differ: 0, differDays: [], replaced: 0, chars: 0, from: "", to: "", bodies: [] };
+    /* 比べるときだけの形。PDF から読んだ字は、改行や空白の位置、全角半角が
+       くらしノートの本文と違ってくるので、そこは見ません。 */
+    const flat = (t) => String(t).normalize("NFKC").replace(/\s+/g, "");
+    const want = new Map();
+    (Array.isArray(list) ? list : []).forEach((x) => {
+      const d = x && toDayKey(x.date);
+      const body = x && typeof x.body === "string" ? x.body : "";
+      // 同じ日が二度来たら、先のものを。空の本文は入れる意味が無いので飛ばします。
+      // 暦に無い日（2月30日など）は、どの日にも出ない行になるので入れません。
+      const real = d && KN.util.dayKey(KN.util.dayDate(d)) === d;
+      if (real && d === x.date && body.trim() && !want.has(d)) want.set(d, body);
+    });
+    const keys = [...want.keys()].sort();
+    r.from = keys[0] || "";
+    r.to = keys[keys.length - 1] || "";
+    const plan = (days) => {
+      const act = [];
+      want.forEach((body, date) => {
+        const cur = days.find((d) => d.date === date);
+        const mine = cur ? String(cur.memo || "") : "";
+        if (cur && mine === body) { r.same++; return; }
+        // 本文を外した行（memoOut）も、本文のある日です。上掛けでも触れません。
+        if (cur && memoOut(cur)) { r.kept++; return; }
+        if (cur && mine.trim()) {
+          const a = flat(mine), b = flat(body);
+          if (a === b) { r.same++; return; }
+          const grow = b.includes(a);
+          if (grow) r.grow++;
+          else { r.differ++; r.differDays.push(date); }
+          if (!(replace === "all" || (grow && replace === "grow"))) { r.kept++; return; }
+          r.replaced++;
+          r.chars += Math.max(0, JSON.stringify(body).length - JSON.stringify(mine).length);
+          act.push({ date, body, cur: true });
+          return;
+        }
+        if (cur) r.fill++; else r.add++;
+        /* JSON にしたときの長さ。行を足すなら、欄の名前ぶんも。 */
+        r.chars += JSON.stringify(body).length + (cur ? 0 : 160);
+        act.push({ date, body, cur: !!cur });
+      });
+      r.differDays.sort();
+      return act;
+    };
+    if (opts && opts.dry) {
+      const days = archive().days;
+      r.bodies = plan(days).map(({ date, body, cur }) => {
+        const row = cur ? days.find((d) => d.date === date) : null;
+        return { date, memo: body, at: (row && row.updatedAt) || null };
+      });
+      return r;
+    }
+    update((s) => {
+      plan(s.archive.days).forEach(({ date, body, cur }) => {
+        if (cur) {
+          s.archive.days.find((d) => d.date === date).memo = body;
+          return;
+        }
+        s.archive.days.push({
+          date, memo: body, wake: null, sleep: null,
+          wakeSource: "manual", sleepSource: "manual",
+          createdAt: null, updatedAt: null,
+        });
+      });
+    });
+    return r;
   }
 
   /* 月ぶんの地の文。**日付の新しい順**です。
@@ -3229,8 +3971,25 @@
     return out;
   }
 
-  /** その日に何か書いてあるか（記録か、地の文か）。 */
+  /* 出さない日（R9）。つらい日を思い出させないための印で、既定は出す。
+     消すのではなく**出さないだけ**——その日の記録も本文もそのまま残り、
+     暦から行けばいつでも読めます。 */
+  function isQuietDay(date) {
+    return (archive().quiet || []).includes(date);
+  }
+  function setQuietDay(date, on) {
+    const day = toDayKey(date);
+    if (!day) return;
+    update((s) => {
+      const list = (s.archive.quiet || []).filter((d) => d !== day);
+      if (on) list.push(day);
+      s.archive.quiet = list.sort();
+    });
+  }
+
+  /** その日に何か書いてあるか（記録か、地の文か）。出さない日は null。 */
   function thenOfDay(date, label) {
+    if (isQuietDay(date)) return null;
     const rows = entriesOfDay(date);
     const log = dayLog(date);
     const memo = log && String(log.memo || "").trim();
@@ -3256,11 +4015,29 @@
     const past = [...new Set([
       ...archive().entries.map((e) => e.date),
       ...archive().days.filter((d) => String(d.memo || "").trim()).map((d) => d.date),
-    ])].filter((d) => d && d < today).sort();
+    ])].filter((d) => d && d < today && !isQuietDay(d)).sort();
     if (!past.length) return null;
     const seed = Number(String(today).replace(/-/g, "")) % past.length;
     const pick = past[seed];
     return thenOfDay(pick, null);
+  }
+
+  /**
+   * 同じ日の年々（R9）。紙の10年日記の見かた——同じ月日の、過ぎた年の記録を
+   * 年ごとに一つずつ、遠い年から。**二年以上あるときだけ**返し、そうでなければ
+   * null（いつもの「あの日」の一枚になります）。記録の無い年は並びに入れません
+   * ——空いた年を行として置くと、書かなかった年の一覧になるので。出さない日も
+   * 入りません。何年ぶんあるかは数えません。
+   *
+   * @param {string} [day] 今日として扱う日。試験のために外から渡せます。
+   */
+  function archiveYears(day) {
+    const today = dayKeyOf(day || todayKey());
+    const years = thenCandidates(today)
+      .filter((c) => /年前/.test(c.label))
+      .map((c) => thenOfDay(c.date, c.label))
+      .filter(Boolean);
+    return years.length >= 2 ? years : null;
   }
 
   /**
@@ -3284,29 +4061,134 @@
 
   /* ---------------- import / export ---------------- */
 
-  function exportJSON() {
-    return JSON.stringify({ ...state, exportedAt: today(), app: "kaimono-note" }, null, 2);
+  /** `at` を渡すと、その時刻を書き出し日時にします（保存できたと分かった
+      ときに、同じ時刻を「前回の書き出し」として記録するため）。 */
+  /** `extra` は記録の外のもの（ノートの `noteBook`。docs/notes.md）を、呼ぶ側から
+      一番上の鍵として足すための口。記録の鍵とぶつかったら記録が勝ちます。 */
+  function exportJSON(at, extra) {
+    return JSON.stringify({ ...(extra || {}), ...state, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
+  }
+
+  /** 記録の数。復元の前後・自動の控え・書き出しの確かめで、同じ物差しを
+      使うためのものです。daily の日は、中身のある日だけを数えます。 */
+  function countsOf(s) {
+    const st = s || state;
+    const len = (a) => (Array.isArray(a) ? a.length : 0);
+    const d = (st && st.diet) || {};
+    const arc = (st && st.archive) || {};
+    const days = (Array.isArray(arc.days) ? arc.days : []).filter((x) => x
+      && (String(x.memo || "").trim() || x.wake || x.sleep || x.sleepStages || memoOut(x))).length;
+    return {
+      products: len(st && st.products),
+      stores: len(st && st.stores),
+      items: len(st && st.items),
+      todos: len(st && st.todos),
+      days,
+      entries: len(arc.entries),
+      diet: len(d.weights) + len(d.meals) + len(d.health) + len(d.drinks)
+        + len(d.foods) + len(d.urges),
+    };
+  }
+
+  /* 丸ごとのバックアップではないもの。どれも同じ .json なので、ファイルを
+     選ぶ画面では見分けがつきません。前はこれも古い形（v1）として読み、
+     買うものしか拾わない migrateV1 が**空の state** を返して、全部を
+     置き換えていました（しかも「復元しました」と出ました）。 */
+  const NOT_BACKUP = {
+    "daily-month": "daily の月の書き出しです",
+    "diary-sealed": "日記の取り込み道具で作ったファイルです",
+  };
+
+  /** 読んで、確かめて、戻せる形にします。**何も書き換えません。**
+      バックアップでなければ、理由を言う Error を投げます。 */
+  function readBackup(text) {
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (err) { throw new Error("JSON として読めないファイルです"); }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("形式が正しくありません");
+    // 丸ごとのバックアップ（書き出し・自動の控え）は kind を持ちません。
+    if (parsed.kind) throw new Error(`${NOT_BACKUP[parsed.kind] || "丸ごとのバックアップではないファイルです"}。バックアップではありません`);
+    if (parsed.app && parsed.app !== "kaimono-note") throw new Error("くらしノートのファイルではありません");
+    if (parsed.schema >= 2) return { parsed, next: reconcile(parsed) };
+    // 古い形（v1）は、買うものを必ず持っていました。
+    if (Array.isArray(parsed.products)) return { parsed, next: migrateV1(parsed) };
+    throw new Error("バックアップの形をしていません");
+  }
+
+  /** 戻す前・確かめるときに、中身を見るだけ。`{ ok, reason, exportedAt, counts }` */
+  function inspectBackup(text) {
+    try {
+      const { parsed, next } = readBackup(text);
+      /* bare：本文を外した行（memoOut）がある——日記の保存場所を読めない日に
+         書き出したもの。件数は言いません。size：戻したときの記録の大きさ。 */
+      const bare = ((next.archive && next.archive.days) || []).some(memoOut);
+      return { ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next), bare, size: JSON.stringify(next).length };
+    } catch (err) {
+      return { ok: false, reason: String((err && err.message) || err) };
+    }
+  }
+
+  /* 戻すファイルの、本文を外した行（memoOut）へ、**いま持っている本文**を
+     当てます。当てるものが無ければ印のまま（写しの行は、書くたびの diffInto が
+     印の日を消さないので残ります）。当てるのはファイルの時点の本文ではなく、
+     いまの本文です——ファイルに無い本文は、ファイルからは戻せません
+     （docs/storage.md の「段2の案」）。 */
+  function fillMemoOut(next, s) {
+    const have = new Map();
+    ((s.archive && s.archive.days) || []).forEach((d) => {
+      if (d && d.date && !have.has(d.date)) have.set(d.date, d);
+    });
+    ((next.archive && next.archive.days) || []).forEach((d) => {
+      if (!memoOut(d)) return;
+      const mine = have.get(d.date);
+      if (!mine || memoOut(mine) || typeof mine.memo !== "string" || !mine.memo) return;
+      d.memo = mine.memo;
+      delete d.memoOut;
+    });
   }
 
   function importJSON(text) {
-    const parsed = JSON.parse(text);
-    if (!parsed || typeof parsed !== "object") throw new Error("形式が正しくありません");
-    const next = parsed.schema >= 2 ? reconcile(parsed) : migrateV1(parsed);
+    applyBackup(readBackup(text).next);
+  }
+
+  /* 本文のある行（同じ日付は先の一つ）を、写しへ届ける形で。 */
+  function bodiesOf(s) {
+    const seen = new Set();
+    const out = [];
+    ((s.archive && s.archive.days) || []).forEach((d) => {
+      if (!d || !d.date || seen.has(d.date)) return;
+      seen.add(d.date);
+      if (typeof d.memo === "string" && d.memo) out.push({ date: d.date, memo: d.memo, at: d.updatedAt || null });
+    });
+    return out;
+  }
+
+  /**
+   * 復元の口（ファイル・自動の控え。約束で返ります）。日記の本文を元から外した
+   * あと（段2の2b）は、戻す本文を**写しへ先に届けてから**置き換えます——
+   * 届いた本文は外した形で元へ書かれるので、大きな日記の入ったファイルでも
+   * 元の枠からあふれません。外していなければ・写しを読めない日は importJSON と同じ。
+   */
+  async function importBackup(text) {
+    const { next } = readBackup(text);
+    const D = KN.diaryIdb;
+    if (D && D.isOut && D.isOut() && D.body() === "ok") {
+      fillMemoOut(next, state);
+      await D.deliver(bodiesOf(next));
+    }
+    applyBackup(next);
+  }
+
+  function applyBackup(next) {
     update((s) => {
+      fillMemoOut(next, s);
+      /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
+         おぼえた振り分け（learned）と daily を足し忘れて直したあとも、
+         `iconOverrides`（食事メモの絵の言い換え）と `iconReports` が
+         漏れていました——書き出しと自動の控えには入っているのに、戻すと
+         入らない。足し忘れる形そのものをやめます。書き出しの付けたし
+         （exportedAt・app）は state の欄ではないので、戻しません。 */
+      Object.keys(emptyState()).forEach((k) => { s[k] = next[k]; });
       s.schema = SCHEMA;
-      s.categories = next.categories;
-      s.stores = next.stores;
-      s.products = next.products;
-      s.items = next.items;
-      s.todos = next.todos;
-      s.diet = next.diet;
-      s.settings = next.settings;
-      // おぼえた振り分け（商品名→カテゴリ）。書き出しには入っているのに
-      // ここで戻し忘れていたので、復元すると学習だけが消えていました。
-      s.learned = next.learned;
-      // daily。上と同じ理由で、ここに書きます——この列挙は足し忘れると
-      // 「書き出しには入っているのに、戻すと消える」を静かに起こします。
-      s.archive = next.archive;
     });
   }
 
@@ -3379,7 +4261,15 @@
     /* 読めなかったかどうか。画面はこれを見て「保存を止めています」と
        言えます（黙って動かないのが、いちばん困るので）。 */
     loadError: () => loadError,
-    get, update, subscribe, reload, flush,
+    // 書いた回数と、読んだときの様子。日記の写し（js/diary-idb.js）が使います。
+    lsSeq: () => lsSeq, loadInfo: () => loadInfo,
+    /* 番号を、写しの番号より下にしない。元が読めなかった日（空で始まった日）
+       にも、次の番号が写しの番号の続きになるように——でないと、元の番号が
+       1 から振り直され、次に元が読めた日に古い元が「新しい」と見なされます。 */
+    seqAtLeast: (n) => { if (Number(n) > lsSeq) lsSeq = Number(n); },
+    get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
+    // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
+    liveChars: () => JSON.stringify(liveShape()).length,
     saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
@@ -3389,7 +4279,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, undoTrace, sortedTodos, todosDue, rescheduleOverdue, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
@@ -3399,7 +4289,7 @@
     HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
     lastWeightCondition,
-    addMeal, updateMeal, removeMeal, mealsOfDay, dayMemo, setDayMemo, searchDietDays,
+    addMeal, updateMeal, removeMeal, mealsOfDay, mealWords, dayMemo, setDayMemo, searchDietDays,
     slotMemo, setSlotMemo,
     getIconOverride, setIconOverride, addIconReport, removeIconReport,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
@@ -3411,7 +4301,7 @@
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
-    dayLog, setDayLog, ensureDayLog, daysOfMonth, exportMonth, archiveThen,
-    exportJSON, importJSON, reset, loadSample,
+    dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, archiveThen, archiveYears, isQuietDay, setQuietDay,
+    exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };
 })();

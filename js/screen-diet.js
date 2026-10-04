@@ -49,6 +49,8 @@
   let query = "";
   const curDay = () => viewDay || U.todayKey();
   const isViewToday = () => curDay() === U.todayKey();
+  /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
+  const writeDay = () => (curDay() > U.todayKey() ? U.todayKey() : curDay());
   /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。
       引数を渡せばその日、渡さなければ**いま見ている日**（既定の使い方）。
       カルーセルの前日・翌日の紙は、いま見ている日とは別の日を描くので、
@@ -94,29 +96,19 @@
 
   /* ---------------- 組み立て ---------------- */
 
+  /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
+  function mine() { return KN.head.mine("diet"); }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
 
+    /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+       一つの帯（js/head.js）に居ます（docs/shared-header.md）。題を押すと
+       暦が月ぜんぶに開く——応えだけが、この画面のもの。ここに残るのは帯より
+       下：探す窓（暦の下に開く）と紙。 */
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            ${/* 題は、いま見ている日。やること・daily と同じひと組を KN.util
-                  から借ります——年は差し色、日にちの数は今日のときだけ差し色、
-                  右に「›」。押すと暦が月ぜんぶに開きます。
-                  月と年を別に出す見出しの行（「8月 2026」）と「週」の札、
-                  ‹ › は、この題に吸収して消えました。 */""}
-            ${U.dayTitleBar()}
-            ${/* 右上は**二つだけ**です——さがす と 設定。暦の出し入れと
-                  ヘルスケアからの取り込みは、たまにしか使いません。たまに
-                  使うものは設定の中へ（取り込みの札は前からそこにあります）。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="食べたものを探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
         ${/* ほかの三画面と同じバーです。題の裏に隠してあって、少し下へ
               引くと出てきます（ui.js の parkSearch）。探す先だけが違って、
               ここは**食べたもの**——「あの日、何食べたっけ」に答えます。 */""}
@@ -135,24 +127,23 @@
     `);
     root.append(chrome);
 
+    const head = KN.head.els;
     els = {
-      dayRow: chrome.querySelector(".topbar-dayrow"),
-      dayTitle: chrome.querySelector(".js-day-title"),
+      dayRow: head.dayRow,
+      dayTitle: head.dayTitle,
       body: chrome.querySelector(".js-body"),
-      topbar: chrome.querySelector(".topbar"),
       screen: root,
-      searchBtn: chrome.querySelector(".js-search-btn"),
+      mine,
+      searchBtn: head.searchBtn,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search: chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
     };
 
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
-
     /* 題を押すと、暦が月ぜんぶに開きます（やること・daily の「›」と同じ）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです。 */
     els.dayTitle.addEventListener("click", () => {
+      if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
       store.setCalPref("diet", { open: !calOpen() });
     });
@@ -160,7 +151,8 @@
     /* 題の右の「今日へ戻る」。`viewDay` も `calMonth` も落とすと、どちらも
        今日を指しなおします（curDay / shownMonth の既定がそれ）。今日を見て
        いるあいだは `paintDayTitleInto` が押せなくしています。 */
-    chrome.querySelector(".js-go-today").addEventListener("click", () => {
+    head.today.addEventListener("click", () => {
+      if (!mine()) return;
       KN.motion.fire("select");
       viewDay = null;
       calMonth = null;
@@ -221,7 +213,9 @@
     if (!root || document.activeElement !== field) return;
     const appEl = document.getElementById("app");
     const visibleBottom = (appEl ? appEl.getBoundingClientRect().bottom : window.innerHeight) - KB_MARGIN;
-    const over = field.getBoundingClientRect().bottom - visibleBottom;
+    /* 食事の枠をその場で書いているときは、欄の下の候補の列まで見せます。 */
+    const shown = field.closest(".diet-slot-edit") || field;
+    const over = shown.getBoundingClientRect().bottom - visibleBottom;
 
     /* 足りないぶんだけ持ち上げる——だけでなく、**行きすぎたぶんは戻します**。
 
@@ -311,7 +305,11 @@
 
            誰が動かしたかは、その人には関係のない話です。触れる前に見て
            いた場所へ、静かに戻します。 */
-        if (Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
+        /* 食事の枠をその場で書いたときだけは戻しません（2026年10月4日、利用者の声
+           「キーボードで押し上げたら、しまっても動かないほうがいい」）。下がらない
+           ように、縮んだぶんは紙の底に余白として残してあります（kbRoom）。 */
+        const slotEdit = kbField && kbField.closest && kbField.closest(".diet-slot-edit");
+        if (!slotEdit && Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
         kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
       }, 80);
     });
@@ -431,14 +429,20 @@
     if (saving) return;
     // 指でカルーセルを払っているあいだも、組み直しません（上の dragging を参照）。
     if (dragging) return;
+    takeSharedDay();
     /* 食事の四枠は打った先から保存しますが、最後の一拍が残っている
        ことがあります。組み直す前に落とします（消える書きかけを
        作らないため）。 */
     flushSlots();
     flushSlots = () => {};
     const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
+    /* 暦は帯（画面の外、全タブで一つ）に置きます。**探しているあいだも
+       出したまま**——前は紙ごと外していましたが、帯の暦が消えると帯の厚みが
+       変わり、「探しているタブだけ帯が縮む」ことになります。 */
+    els.cal = monthCalendar();
+    KN.head.putCal("diet", els.cal);
     // 探しているあいだは、その日の紙のかわりに、見つかった日を並べます。
-    if (query.trim()) { renderFound(); return; }
+    if (query.trim()) { renderFound(); placeRing(true); return; }
     const day = curDay();
     const card = D.dayCard(day);
     // range === 0 は「全部」。365で丸めると、グラフ本体（chart()）は
@@ -453,8 +457,6 @@
     /* 日付は暦と、その日の紙の見出しが持っています。題の下でもう一度
        言う必要はありません（「さがす」の結果だけは、ここに出します）。 */
     els.body.innerHTML = "";
-    els.cal = monthCalendar();
-    els.body.append(els.cal);
     /* その日の話は、一枚の紙にまとめます。からだ・食事・体重は
        別々の話ではなく、同じ一日の三つの面なので——横に払って日を
        めくるときも、三つが**一緒に**流れたほうが「日が変わった」と読めます。
@@ -493,7 +495,10 @@
     /* 並べておくのは、いま見ている日の一枚だけです。隣の二枚は、横に
        払うと決まった瞬間に day-swipe.js が組みます（下の slide）。 */
     const track = els.body.querySelector(".js-track");
-    track.append(buildDaySlide(day, { peek: false, card, sum, chartEl: chart() }));
+    /* まだ来ていない日は、見るだけ（隣の日を覗くときと同じ、押せない紙）。
+       見ている日は全タブで一つなので、やることで来週を見たまま移って
+       くると、ここにその日が来ます（docs/shared-header.md）。 */
+    track.append(buildDaySlide(day, { peek: day > U.todayKey(), card, sum, chartEl: chart() }));
 
     /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
        出さないなら、この紙自体を置きません（中身が無い枠が浮くので）。 */
@@ -508,12 +513,20 @@
     KN.daySwipe.wire({
       viewport: els.body.querySelector(".js-carousel"),
       track,
+      /* 指を受けるのは紙ぜんぶ（「気づいたこと」や下の空白からも払える）。 */
+      surface: sheet,
+      /* 書いている枠の候補の列は横に流すので、そこでは日をめくりません。 */
+      ignore: ".diet-slot-cands",
+      /* 着いたら画面ごと組み直すので、控えの回し直しも先組みも要りません。 */
+      recycle: false,
       day: curDay,
       /* 先の日へは行けません。ここは記録を見るところで、まだ来ていない
          日には記録がありません。 */
       step: (d, dir) => {
         const next = U.shiftDay(d, dir);
-        return next > U.todayKey() ? null : next;
+        /* 戻る向きは通します——やることから未来の日を持ち込まれたとき、
+           今日へ戻る道が要るので（docs/shared-header.md）。 */
+        return next > U.todayKey() && dir > 0 ? null : next;
       },
       slide: (d) => buildDaySlide(d, { peek: true, chartEl: chart() }),
       /* **ここだけは、着いてから組み直します**（`kept` を受け取りません）。
@@ -525,10 +538,13 @@
          払いはじめのカクつきのほうは、隣の二枚を先に組んでおく仕掛け
          （day-swipe.js の控え）が受け持つので、ここは素直に組み直します。 */
       commit: (next) => {
+        const was = curDay();
         viewDay = next === U.todayKey() ? null : next;
         const dd = U.dayDate(next);
         calMonth = { year: dd.getFullYear(), month: dd.getMonth() };
         render();
+        // 週をまたいだら、週の帯を送った向きから（やること・daily と同じ）。
+        if (U.otherWeek(was, next)) U.slideWeek(els.cal, next > was ? 1 : -1);
       },
       lock: (on) => { dragging = on; },
     });
@@ -536,6 +552,7 @@
     /* 輪は、並んでから置きます。組み立て中はまだ幅が無く、どこにも
        置けません（測れないので）。ここは組み直しなので、滑らせません。 */
     placeRing(true);
+    putKbRoom();
 
     if (root && keepTop) {
       const sc = KN.app.scrollerOf(root);
@@ -574,7 +591,7 @@
     /* 「どれだけ開いているか」を一つの数（0＝週、1＝月）で持ちます。題の
        右の「›」の傾きも、隣の週の濃さも、これを見て決まります（やること・
        daily と同じ）。 */
-    if (root) root.style.setProperty("--cal-p", open ? "1" : "0");
+    if (root) KN.util.setVar(root, "--cal-p", open ? "1" : "0");
     /* 「週／月」の札はここにありました。題（日付）を押す形に移したので、
        塗るものはもうありません。 */
     paintDayTitle();
@@ -606,7 +623,8 @@
 
   /** 画面の題に、いま見ている日を書きます（書式は KN.util が持ちます）。 */
   function paintDayTitle() {
-    if (!els.dayRow || !els.dayRow.isConnected) return;
+    // 帯は全タブで一つ。持ち主でないときに塗ると、よそのタブの題を上書きします。
+    if (!els.dayRow || !mine()) return;
     U.paintDayTitleInto(els.dayRow, curDay(),
       `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
@@ -721,7 +739,7 @@
       行けないなら null——払っても重くなるだけです。 */
   function stepWeek(delta) {
     const next = U.shiftDay(curDay(), delta * 7);
-    return next > U.todayKey() ? null : next;
+    return next > U.todayKey() && delta > 0 ? null : next;
   }
 
   /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
@@ -941,8 +959,7 @@
           <span class="field-label">${isAvg ? "平均" : "傾き"}を出す日数</span>
           <input class="input js-days" inputmode="numeric" placeholder="7" value="${cur}">
         </label>
-        <p class="diet-note">空なら7日で数えます。長くするほど揺れが減り、短くするほど
-          直近の変化に敏感になります。</p>
+        <p class="diet-note">空なら7日。</p>
       </div>
     `);
     const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
@@ -1084,8 +1101,7 @@
     if (pts.length < 2) {
       return node(html`
         <div class="empty diet-empty">
-          <div class="empty-text">${pts.length ? "まだ1日ぶんです。" : "この期間の記録がありません。"}
-            線が引けるのは2日ぶんからです。</div>
+          <div class="empty-text">${pts.length ? "線は2日ぶんから引けます。" : "この期間の記録がありません。"}</div>
         </div>
       `);
     }
@@ -1350,15 +1366,20 @@
               いつもの面を敷いたので、こんどは**線そのものを光らせます**。
               太い薄緑を線の下に一本、同じ道筋で。線の色は変えません。 */""}
         ${towardGoal && ma7.length > 1
-          ? KN.util.raw(`<path class="diet-goal-glow" d="${path(ma7, (m) => m.value)}"/>`) : ""}
-        ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" d="${path(ma7, (m) => m.value)}"/>`) : ""}
+          ? KN.util.raw(`<path class="diet-goal-glow" pathLength="1" d="${path(ma7, (m) => m.value)}"/>`) : ""}
+        ${/* pathLength="1"：開いたとき、線が左から引かれます（screens.css の「開いたとき、
+              満ちる」）。長さを 1 と言っておけば、線の実の長さを測らずに済みます。 */""}
+        ${ma7.length > 1 ? KN.util.raw(`<path class="diet-ma7" pathLength="1" d="${path(ma7, (m) => m.value)}"/>`) : ""}
         ${/* 量った点。線と同じ色にします——前は灰色で、線とは別のものを
               指しているように見えていました。今日の点だけは大きく、地の色で
               縁取って、線の先端がどこかを言います。 */""}
         ${KN.util.raw(pts.map((p, i) => {
           const now = i === pts.length - 1;
           return `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""} ${now ? "is-now" : ""}"`
-            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 1.8}"/>`;
+            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 1.8}"`
+            /* 左からどれだけ来たところか（0〜1）。開いたとき、線がそこまで引かれた
+               ころに点が出ます（screens.css の「開いたとき、満ちる」）。 */
+            + ` style="--f:${Math.max(0, Math.min(1, (x(p.day) - padL) / Math.max(1, W - padL - padR))).toFixed(2)}"/>`;
         }).join(""))}
         ${KN.util.raw(marks.map((m) => {
           /* 濃さは純アルコール量で。「飲酒あり」とだけ出すと、350mlを一本と
@@ -1405,13 +1426,13 @@
               <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
               ${moodOf(d) ? `<span class="diet-mood">${KN.util.escapeHtml(moodOf(d))}</span>` : ""}
             </div>`).join(""))}
-          ${rows.length > 1 ? `
+          ${rows.length > 1 ? KN.util.raw(`
             <div class="diet-drink-row is-sum">
               <b>合計</b>
               <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
               <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
               <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
-            </div>` : ""}
+            </div>`) : ""}
         </div>
       </div>
     `);
@@ -1748,7 +1769,6 @@
            ——条件は採点だからです。飲みたさは山を越えて引いていくもので、
            その山がどれくらい続くかを知っていること自体が、待つときの支えに
            なります（Marlatt のいう urge surfing の考え方）。 */
-        note: "飲みたさは、たいてい15〜30分で山を越えるとされています（個人差があります）。",
       });
     body.querySelector(".js-now").append(nowSec);
     /* **押し直せば外れます**（`clearable`）。強さが必須なことは保存ボタンの
@@ -1884,10 +1904,10 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", () => {
-      store.removeUrge(editing.id);
+      const undo = store.removeUrge(editing.id);
       h.close();
       render();
-      KN.ui.toast("消しました");
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -2039,6 +2059,70 @@
     return { cls: `is-${kind}`, deg: pct * 3.6, pct: Math.round(pct) };
   }
 
+  /* 輪がどこまで満ちているかを「周」で（0〜2）。1 までが一周目（--fill）、1 を
+     超えたぶんが二周目（--lit）。超えた日も**一本の数**で持つので、開いたときの
+     満ち方が 100% で止まらない（fillRings）。 */
+  const ringTurns = (ring) => ((/is-over/.test(ring.cls) ? 1 : 0) + ring.deg / 360).toFixed(4);
+
+  /* ---- 開いたとき、輪と数を一つの時計で満たす（2026年9月29日） ----
+
+     輪（`--ring-p`）と真ん中の数（`data-show`）を、**同じ進み具合**で毎フレーム
+     書きます。輪は `--ease-out` で「グン」と満ち、数はいつも輪の位置どおり。
+
+     - はじめは輪を CSS のアニメーション、数を CSS の counter で動かしていた。
+       **超えた日は一周ぶんと超えたぶんを別の区切りにしていたので、曲線が
+       区切りごとに掛かり、100% で一度止まった。** 数は iPhone で途中を描かず、
+       最後に「パン」と出た（実機を見た利用者の声）。いまは超えた日も 0→1.35 周の
+       一本の道で、数はその道の上の位置から出す——ずれようがない。
+     - 超えた日は長く（`--m-fill` の 1.4 倍）。道が長いぶん、同じ速さに見えるように。
+     - 四つは左から `--m-stagger` ずつ遅れて始まる。
+     - 毎フレーム**画面の中から輪を引き直す**。途中で組み直されても、新しい輪が
+       いまの進み具合から続く（頭から満ち直さない）。
+     - 書く相手は輪そのもの（`:root` ではない。横断の罠）。終われば `--ring-p` を
+       輪の本当の値へ戻し、`data-show` を外す。 */
+  const ringRun = new WeakMap();
+  function fillRings(root) {
+    if (!root.querySelector(".diet-ring")) return;
+    const M = KN.motion, ease = M.curve("--ease-out");
+    const base = M.ms("--m-fill"), step = M.ms("--m-stagger");
+    const t0 = performance.now();
+    const token = {};
+    ringRun.set(root, token);
+    const frame = (now) => {
+      if (ringRun.get(root) !== token) return;           // 次の arrive が引き継いだ
+      let live = false;
+      root.querySelectorAll(".diet-ring:not(.is-none)").forEach((ring, i) => {
+        const cell = ring.closest(".diet-cell");
+        const idx = cell && cell.parentNode ? [...cell.parentNode.children].indexOf(cell) : i;
+        const over = ring.classList.contains("is-over");
+        /* 飲みすぎた日の一周目は灰（`--fill` が `--rest`＝下地と同じ色）。0 から
+           満たすと一周目のあいだ**見た目が何も変わらず**、数だけ先に動いて赤が
+           最後に出た（2026年9月29日・利用者の声）。だから一周目は満ちた姿（＝灰の
+           輪。下地と同じ絵なので跳ばない）から始め、動くのは赤の超えたぶんだけ。 */
+        const from = over && ring.classList.contains("is-drink") ? 1 : 0;
+        const dur = base * (over && !from ? 1.4 : 1);
+        const x = Math.max(0, Math.min(1, (now - t0 - step * idx) / dur));
+        const k = ease(x);
+        const target = ring.dataset.p || (ring.dataset.p = ring.style.getPropertyValue("--ring-p").trim());
+        const mid = ring.querySelector(".diet-ring-mid[data-n]");
+        if (x < 1) {
+          live = true;
+          U.setVar(ring, "--ring-p", (from + (parseFloat(target) - from) * k).toFixed(4));
+          if (mid) {
+            const show = Math.round(Number(mid.dataset.n) * k) + mid.dataset.u;
+            if (mid.dataset.show !== show) mid.dataset.show = show;
+          }
+        } else {
+          U.setVar(ring, "--ring-p", target);
+          if (mid && mid.dataset.show != null) delete mid.dataset.show;
+        }
+      });
+      if (live && root.isConnected) requestAnimationFrame(frame);
+    };
+    frame(t0);   // 描かれる前に 0 の姿へ（満ちた輪が一瞬見えないように）
+  }
+  KN.motion.onArrive((root) => { if (root.id === "screen-diet") fillRings(root); });
+
   function renderBodyStats(host, card) {
     const dt = card.drinkTotals;
 
@@ -2073,8 +2157,22 @@
     const sg = stepsGoal(), bg = burnGoal(), slg = sleepGoal();
     /* 輪の真ん中に出す字。ふつうの三つは目標に対する％（超えたら100を
        超えた数がそのまま出ます——超えたことが読めるように）。飲酒だけは
-       量そのもの（g）です。％は下の行が言うので、同じ数を二度書きません。 */
-    const ringPct = (r) => (r.pct == null ? "—" : r.pct + "%");
+       量そのもの（g）です。％は下の行が言うので、同じ数を二度書きません。
+
+       **まだ無いときは、輪の中は空けます。** 「—」は下の数の欄が言います。
+       輪の中にも書いていたので、空の日は一つの枠に「—」が二つずつ、
+       画面ぜんたいで十七個並んでいました（docs/improvements.md の B9）。
+       空の輪そのものが「まだ無い」を言っています。 */
+    const ringPct = (r) => (r.pct == null ? "" : r.pct + "%");
+    /* 開いたとき、真ん中の数も輪と一緒に 0 から数え上がります（fillRings）。
+       **字そのものは書き換えません**——数えているあいだは `data-show` の字が
+       上に重なって見えるだけで、textContent はいつも本当の数のまま（読み上げも、
+       字を読む試験も、途中の数を拾わない）。数え上げられるのは整数と単位一つの
+       形だけ（小数の g などは、そのまま出します）。 */
+    const countUp = (mid) => {
+      const m = /^(\d+)(%|g)$/.exec(mid);
+      return m ? ` data-n="${m[1]}" data-u="${m[2]}"` : "";
+    };
     const rSteps = ringOf("steps", card.steps, sg);
     const rBurn  = ringOf("burned", card.burned, bg);
     const rSleep = ringOf("sleep", card.sleep, slg);
@@ -2100,7 +2198,7 @@
         value: drinkPending ? "—" : pct + "%",
         unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
         over: !drinkPending && pct > 100,
-        ring: rDrink, mid: drinkPending ? "—" : `${dt ? dt.alcoholG : 0}g` },
+        ring: rDrink, mid: drinkPending ? "" : `${dt ? dt.alcoholG : 0}g` },
     ];
 
     const sec = node(html`
@@ -2117,8 +2215,8 @@
               r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
               <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
                 r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
-              <span class="diet-ring ${r.ring.cls}" style="--deg:${r.ring.deg.toFixed(1)}deg" aria-hidden="true">
-                <i class="diet-ring-mid mono-num">${r.mid}</i>
+              <span class="diet-ring ${r.ring.cls}" style="--ring-p:${ringTurns(r.ring)}" aria-hidden="true">
+                <i class="diet-ring-mid mono-num"${countUp(r.mid)}>${r.mid}</i>
               </span>
               <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
               ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
@@ -2209,10 +2307,10 @@
         return;
       }
       if (res && res.locked) { KN.ui.toast(res.error); return; }
+      // Siri から買うものが届いたときは、そちらの知らせを上書きしない。
+      if (res && res.inbox) return;
       if (res && res.empty) {
-        KN.ui.toast(name
-          ? "中継所に新しいデータはありません"
-          : "中継所に新しいデータはありません（設定でショートカットの名前を入れると、ここから走らせられます）");
+        KN.ui.toast("中継所に新しいデータはありません");
         return;
       }
       KN.ui.toast((res && res.error) || "取りに行けませんでした");
@@ -2229,7 +2327,10 @@
      入る中身を見てから押してもらいます。確認の画面を別に挟むのではなく、
      同じ画面に出す——押す回数は増やさずに、見えるようにするだけ。 */
 
-  const EXAMPLES = ["ビール350ml 2本", "ワイン半分", "日本酒1合", "ハイボール2杯", "焼酎100ml"];
+  /* 2026年9月30日から、書く前に「よく飲むもの」の札を置きました（drinks.js の
+     favorites）。押せば一本、同じ札をもう一度押すか ＋ で二本。毎晩同じものを
+     飲むなら、キーボードは一度も出ません。書く欄は、札に無いもののために残します。
+     直すときは一件の話なので、札は出さず書く欄だけにします。 */
 
   /** 札と自由入力をひと続きに。同じ言葉が二度出ないようにします。 */
   function moodOf(d) {
@@ -2248,13 +2349,18 @@
         <div class="diet-daynav">
           <b>${U.formatDay(day)}</b>
         </div>
+        ${editing ? "" : html`
+          <div class="field">
+            <span class="field-label">よく飲むもの</span>
+            <div class="drink-fav js-fav"></div>
+          </div>
+          <div class="drink-picks js-picks"></div>`}
         <label class="field">
-          <span class="field-label">飲んだもの</span>
+          <span class="field-label">${editing ? "飲んだもの" : "札に無いものは書いて"}</span>
           <input class="input js-q" placeholder="ビール350ml 2本"
                  autocomplete="off" autocapitalize="off" spellcheck="false"
                  value="${editing ? editing.raw || DR.describeItem(editing) : ""}">
         </label>
-        <div class="diet-chips js-ex"></div>
         <div class="js-read"></div>
 
         ${/* 飲むたびに書き足すものなので、時刻を持たせます。あとで
@@ -2290,31 +2396,65 @@
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
     let items = [];
+    let typed = [];
     let tags = editing ? (editing.moodTags || []).slice() : [];
 
-    /* よくある書き方を、押せる形で。何をどう書けばいいかは、
-       説明文より例のほうが早く伝わります。 */
-    EXAMPLES.forEach((ex) => {
-      const chip = node(html`<button type="button" class="chip">${ex}</button>`);
-      chip.addEventListener("click", () => {
-        q.value = q.value.trim() ? q.value.trim() + "、" + ex : ex;
-        paint();
-        KN.motion.fire("select");
+    /* ---- よく飲むもの ----
+       並びは紙を開いたときに一度だけ決めます（押す先が逃げないように）。
+       picks は札の key → 本数。0 になったら行ごと消えます。 */
+    const favs = editing ? [] : DR.favorites(store.get().diet.drinks);
+    const picks = new Map();
+    function bump(key, by) {
+      const n = Math.max(0, (picks.get(key) || 0) + by);
+      if (n) picks.set(key, n); else picks.delete(key);
+      KN.motion.fire("select");
+      paintFav();
+      paint();
+    }
+    function paintFav() {
+      const host = body.querySelector(".js-fav");
+      if (!host) return;
+      host.innerHTML = "";
+      favs.forEach((t) => {
+        const on = picks.has(t.key);
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}" aria-label="${t.detail}">
+          <span class="drink-fav-ico">${KN.util.raw(KN.productIcons.byKey(t.icon) || "")}</span>
+          <span class="drink-fav-name">${t.label}</span></button>`);
+        chip.addEventListener("click", () => bump(t.key, 1));
+        host.append(chip);
       });
-      body.querySelector(".js-ex").append(chip);
-    });
+      const list = body.querySelector(".js-picks");
+      list.innerHTML = "";
+      favs.filter((t) => picks.has(t.key)).forEach((t) => {
+        const n = picks.get(t.key);
+        const row = node(html`
+          <div class="drink-pick">
+            <span class="drink-pick-name">${t.detail}</span>
+            <div class="stepper">
+              <button type="button" class="stepper-btn js-minus" aria-label="${t.detail}を一つ減らす">${icon("minus")}</button>
+              <span class="stepper-value mono-num">${String(n)}<small>${t.unit}</small></span>
+              <button type="button" class="stepper-btn js-plus" aria-label="${t.detail}を一つ増やす">${icon("plus")}</button>
+            </div>
+          </div>`);
+        row.querySelector(".js-minus").addEventListener("click", () => bump(t.key, -1));
+        row.querySelector(".js-plus").addEventListener("click", () => bump(t.key, 1));
+        list.append(row);
+      });
+    }
 
     function paint() {
       const res = DR.parse(q.value);
-      items = res.items;
+      typed = res.items;
+      const picked = favs.filter((t) => picks.has(t.key)).map((t) => DR.fromFavorite(t, picks.get(t.key)));
+      items = picked.concat(typed);
       readBox.innerHTML = "";
-      if (!q.value.trim()) return;
+      if (!q.value.trim() && !picked.length) return;
 
-      if (!items.length) {
+      if (q.value.trim() && !typed.length) {
         readBox.append(node(html`
-          <p class="diet-note is-warn">読めませんでした。
-            「ビール350ml 2本」のように、<b>お酒の種類</b>と量を書いてみてください。</p>`));
-        return;
+          <p class="diet-note is-warn">読めませんでした（例：ビール350ml 2本）</p>`));
+        if (!picked.length) return;
       }
       const t = DR.totals(items);
       readBox.append(node(html`
@@ -2326,24 +2466,19 @@
               <span class="mono-num">純アルコール ${it.estimated ? "約" : ""}${it.alcoholG}g</span>
               <span class="mono-num">${it.estimated ? "約" : ""}${it.kcal.toLocaleString()}kcal</span>
             </div>`).join(""))}
-          ${items.length > 1 ? `
+          ${items.length > 1 ? KN.util.raw(`
             <div class="diet-drink-row is-sum">
               <b>合計 ${items.length}種類</b>
               <span class="mono-num">${t.volumeMl.toLocaleString()}ml</span>
               <span class="mono-num">純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g</span>
               <span class="mono-num">${t.estimated ? "約" : ""}${t.kcal.toLocaleString()}kcal</span>
-            </div>` : ""}
+            </div>`) : ""}
         </div>
       `));
-      readBox.append(node(html`
-        <p class="diet-note">
-          純アルコール量は <b>ml × 度数% ÷ 100 × 0.8</b> で数えます。
-          ${t.estimated ? "度数や量を書かなかったぶんは、種類ごとの目安から推しました（「約」と付けています）。" : ""}
-          ${t.alcoholG >= DR.GUIDE_G ? `なお「節度ある適度な飲酒」は一日 純アルコール${DR.GUIDE_G}g程度とされています（個人差があります）。` : ""}
-        </p>`));
     }
 
     q.addEventListener("input", paint);
+    paintFav();
     paint();
 
     /* ---- 気分の札 ----
@@ -2359,11 +2494,11 @@
       const words = [...new Set(seen.map((x) => x.word).concat(tags))];
       host.innerHTML = "";
       if (!words.length) {
-        note.textContent = "書いた言葉は、次から押せる札になります"
-          + "（よくある言葉をこちらで並べることはしません——自分の言葉のほうが、あとで読み返したときに当たります）。";
+        note.hidden = false;
+        note.textContent = "書いた言葉は、次から押せる札になります。";
         return;
       }
-      note.textContent = "札は、これまでに自分が書いた言葉から作られます。";
+      note.hidden = true;
       words.forEach((w) => {
         const on = tags.includes(w);
         const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
@@ -2415,7 +2550,8 @@
         store.updateDrink(editing.id, { ...items[0], ...extra });
         items.slice(1).forEach((it) => store.addDrink({ ...it, ...extra }));
       } else {
-        items.forEach((it) => store.addDrink({ ...it, ...extra }));
+        // 札から入れたものは、それぞれ自分の raw（読み直せる文）を持ちます。
+        items.forEach((it) => store.addDrink({ ...it, ...extra, raw: typed.includes(it) ? extra.raw : it.raw }));
       }
       h.close();
       render();
@@ -2426,10 +2562,10 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", () => {
-      store.removeDrink(editing.id);
+      const undo = store.removeDrink(editing.id);
       h.close();
       render();
-      KN.ui.toast("消しました");
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -2478,11 +2614,7 @@
                 </label>`;
             }).join(""))}
           </div>
-          <p class="diet-note">
-            欄を<b>空にして保存すると、その値は消えます</b>。消せば、次の取り込みで
-            またヘルスケアの値が入ります。<br>
-            手で書いた値には「手入力」と付き、<b>取り込みでは上書きされません</b>。
-          </p>
+          <p class="diet-note">空で保存すると消えます。手入力の値は取り込みで上書きされません。</p>
 
           <div class="section-title">ワークアウト</div>
           ${workouts.length ? html`
@@ -2510,9 +2642,10 @@
       if (todayBtn) todayBtn.addEventListener("click", () => { day = U.todayKey(); paint(); });
 
       el.querySelectorAll(".js-wdel").forEach((b) => b.addEventListener("click", () => {
-        store.removeHealth(b.dataset.id);
+        const undo = store.removeHealth(b.dataset.id);
         paint();
         render();
+        KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); paint(); render(); } } });
       }));
       el.querySelector(".js-wadd").addEventListener("click", () => addWorkout(day, paint));
 
@@ -2598,15 +2731,22 @@
   function energyBar(day) {
     const sp = D.energySplit(day);
     if (!sp) return null;
+    /* 区分は一つの入れもの（`.diet-stack-fill`、幅は摂取の割合）に入れて、中の幅は
+       入れものに対する割合で持つ。開いたとき、**入れものごと**左から伸びる
+       （screens.css の「帯は左から伸びる」）——朝・昼・夜は、いつも最後の比率の
+       まま一緒に伸びる。残りは帯の地（入れものの外）なので、描くものは無い。 */
+    const sum = sp.parts.reduce((a, x) => a + x.pct, 0) || 1;
     const el = node(html`
       <div class="diet-stack-wrap">
         <div class="diet-stack ${sp.over ? "is-over" : ""}" role="img"
              aria-label="${sp.known
                ? `総消費${Math.round(sp.burned).toLocaleString()}kcalのうち、摂取${sp.intake.toLocaleString()}kcal`
                : `摂取${sp.intake.toLocaleString()}kcalの内わけ`}">
-          ${KN.util.raw(sp.parts.map((x) =>
-            `<i class="is-${x.id}" style="width:${x.pct}%" title="${x.label} ${x.kcal.toLocaleString()}kcal"></i>`).join(""))}
-          ${sp.restPct > 0 ? KN.util.raw(`<i class="is-rest" style="width:${sp.restPct}%"></i>`) : ""}
+          <span class="diet-stack-fill" style="width:${Math.min(100, sum).toFixed(2)}%">
+            ${KN.util.raw(sp.parts.map((x) =>
+              `<i class="is-${x.id}" style="width:${(x.pct / sum * 100).toFixed(3)}%"`
+              + ` title="${x.label} ${x.kcal.toLocaleString()}kcal"></i>`).join(""))}
+          </span>
         </div>
         <div class="diet-stack-legend">
           ${KN.util.raw(sp.parts.map((x) =>
@@ -2623,10 +2763,7 @@
             （<b>${sp.intakePct}%</b>）。${sp.over
               ? html`<b class="is-warn">${sp.overKcal.toLocaleString()}kcal 超えています。</b>`
               : ""}
-          ` : html`
-            総消費がまだ分からない日なので、割合ではなく<b>内わけ</b>として出しています
-            （歩数や消費が入ると、総消費に対する割合になります）。
-          `}
+          ` : ""}
         </p>
       </div>
     `);
@@ -2687,7 +2824,7 @@
               <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
             </span>
             ${ai && ai.ai ? html`
-              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}</span>` : ""}
+              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${KN.dietAI.costLabel(ai.ai.cost)}` : ""}</span>` : ""}
           </button>
           <div class="diet-ai-btns">
             <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
@@ -2708,10 +2845,8 @@
               残しています。 */""}
         ${card.drinkTotals ? html`
           <p class="diet-note">
-            上の ${t ? t.kcal.toLocaleString() : "0"}kcal は<b>食べたもの</b>だけの数です。
-            お酒のぶんを足すと
+            お酒を足すと
             <b class="mono-num">${((t ? t.kcal : 0) + card.drinkTotals.kcal).toLocaleString()}kcal</b>
-            になります（お酒は栄養の内わけを持たないので、PFCには入れていません）。
           </p>` : ""}
         ${/* PFCは数だけ置きます。棒にすると、目標を決めていない人には
               「内わけ」、決めた人には「進み具合」と、同じ絵が二つの
@@ -2784,20 +2919,23 @@
   let saving = false;
 
   /** 見るだけの一行。Daily Log と同じで、書いてあることをそのまま紙に
-      置きます——タップすると「食事を書く」の紙が開き、そこがほんとうの
-      書く場所です。カルーセルの前日・翌日（peek）は押せません。 */
+      置きます——タップすると、その枠がその場で書く欄になります
+      （editSlotInline）。カルーセルの前日・翌日（peek）は押せません。 */
   function slotViewRow(day, sl, text, kcal, tappable) {
+    /* まだ書いていない枠は、**その枠の名前を薄い字で**出します（朝食・昼食…）。
+       「—」を四つ並べていましたが、絵だけでは何の枠か読めず、空の日の
+       「—」の列を長くしていただけでした（B9）。薄い字は `.is-blank` のまま。 */
     const row = node(html`
       <div class="diet-slot diet-slot-view" data-slot="${sl.id}"
            ${tappable ? U.raw('role="button" tabindex="0"') : ""}
            aria-label="${sl.label}${text ? "に食べたもの" : "を書く"}">
         <span class="diet-slot-ico">${icon(sl.ico)}</span>
-        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || "—"}</span>
+        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || sl.label}</span>
         <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
       </div>
     `);
     if (tappable) {
-      const open = () => openMealMemoSheet(day, null, sl.id);
+      const open = () => editSlotInline(row, day, sl);
       row.addEventListener("click", () => {
         // 選んでいる最中に開くと、選んだそばから選択が消えるので開きません。
         const sel = window.getSelection && window.getSelection();
@@ -2811,6 +2949,158 @@
       });
     }
     return row;
+  }
+
+  /* 枠を押したら、**その枠がその場で書く欄になります**（2026年10月3日、利用者の声
+     「シートが開くのではなく、その場にポンと出て欲しい」「前に打った文字列は候補に
+     出て欲しい」）。一度は浮かせた小窓にしましたが、打つたび・キーボードが上がる
+     たびに置き直すのでグラグラし、外を押しても別のタブへ移っても残りました
+     （10月4日）。いまは紙の中の枠のまま——浮かせないので、何も追いかけません。
+     候補は欄の下に横一列（数が変わっても高さは変わらない）。打ちかけの言葉で絞り、
+     押すとその言葉に置き換わります。保存は欄を離れたとき（キーボードを閉じる・
+     ほかを押す・タブを移る・画面を離れる）。 */
+  let editing = null;   // いま書いている枠（{ done }）
+  /* キーボードで紙を押し上げたぶんの余白。キーボードをしまっても紙が下がって
+     こないように、書き終えたあとも残します（このタブを開き直すまで）。 */
+  let kbRoom = 0;
+  function putKbRoom() {
+    const sheetEl = els.body && els.body.querySelector(".tl-sheet");
+    if (!sheetEl) return;
+    let el = sheetEl.querySelector(":scope > .diet-kb-room");
+    if (!kbRoom) { if (el) el.remove(); return; }
+    if (!el) el = node(html`<div class="diet-kb-room" aria-hidden="true"></div>`);
+    sheetEl.append(el);   // いつもいちばん下に
+    el.style.height = `${kbRoom}px`;
+  }
+
+  function editSlotInline(row, day, sl) {
+    if (editing) editing.done(true);
+    const saved = store.slotMemo(day, sl.id);
+    const words = store.mealWords(sl.id);
+    const fold = U.foldKana;
+    const kcalText = (row.querySelector(".diet-slot-kcal") || {}).textContent || "";
+    const box = node(html`
+      <div class="diet-slot diet-slot-edit" data-slot="${sl.id}">
+        <div class="diet-slot-head">
+          <span class="diet-slot-ico">${icon(sl.ico)}</span>
+          <b class="diet-slot-name">${sl.label}</b>
+          <span class="diet-slot-kcal mono-num">${kcalText}</span>
+        </div>
+        <textarea class="textarea diet-slot-memo" rows="1" spellcheck="false"
+                  autocapitalize="sentences" aria-label="${sl.label}に食べたもの"
+                  placeholder="${SLOT_PLACEHOLDER}">${saved}</textarea>
+        <div class="chip-row diet-slot-cands" role="list" aria-label="前に書いたもの"></div>
+      </div>
+    `);
+    row.replaceWith(box);
+    const ta = box.querySelector("textarea");
+    const cands = box.querySelector(".diet-slot-cands");
+    const sc = KN.app.scrollerOf(root);
+    const h0 = sc.clientHeight;
+    const SEP = /[\s、,，。;；]/;
+    /** カーソルの手前の、打ちかけの言葉（区切りのあと）。 */
+    const typing = () => {
+      const upTo = ta.value.slice(0, ta.selectionEnd == null ? ta.value.length : ta.selectionEnd);
+      let i = upTo.length;
+      while (i > 0 && !SEP.test(upTo[i - 1])) i--;
+      return { from: i, to: upTo.length, word: upTo.slice(i) };
+    };
+    const paint = () => {
+      const q = fold(typing().word);
+      const have = new Set(ta.value.split(/[\s、,，。;；]+/).map(fold).filter(Boolean));
+      /* 何も打っていなければ、この枠でくり返し書いているものだけ（often）。
+         打ちかけなら全部から——めったに書かない言葉も、探せば出る。 */
+      const hits = words.filter((e) => {
+        const k = fold(e.word);
+        if (have.has(k)) return false;
+        return q ? (k !== q && k.includes(q)) : e.often;
+      }).map((e) => e.word);
+      /* 頭が合うものを先に（「な」で「納豆」が「バナナ」より前）。 */
+      if (q) hits.sort((x, y) => Number(!fold(x).startsWith(q)) - Number(!fold(y).startsWith(q)));
+      cands.textContent = "";
+      hits.slice(0, 16).forEach((w) => {
+        const b = node(html`<button type="button" class="chip" role="listitem">${w}</button>`);
+        /* 押しても欄から focus を外しません（キーボードが一度閉じて開くので）。 */
+        b.addEventListener("pointerdown", (e) => e.preventDefault());
+        b.addEventListener("mousedown", (e) => e.preventDefault());
+        b.addEventListener("click", () => {
+          const c = typing();
+          ta.value = ta.value.slice(0, c.from) + w + " " + ta.value.slice(c.to);
+          const at = c.from + w.length + 1;
+          ta.setSelectionRange(at, at);
+          U.haptic();
+          grow(ta);
+          paint();
+          ta.focus();
+        });
+        cands.append(b);
+      });
+      cands.scrollLeft = 0;
+    };
+    /* 欄を見えるところへ上げるのは、前からある nudgeIntoView（打つ欄なら何でも）。
+       ここでは、キーボードで紙が縮んだぶんを底の余白に残すだけ——しまったときに
+       紙の送り幅が縮んで、上げた位置から下へ引き戻されないように。 */
+    const lift = () => {
+      const lost = h0 - sc.clientHeight;
+      if (lost > kbRoom) { kbRoom = lost; putKbRoom(); }
+    };
+    const save = () => {
+      const val = ta.value.trim();
+      if (val === store.slotMemo(day, sl.id).trim()) return false;
+      saving = true;
+      try { store.setSlotMemo(day, sl.id, val); } finally { saving = false; }
+      return true;
+    };
+    const onHide = () => { if (document.visibilityState === "hidden") save(); };
+    /* iPhone では、押せないところを押しても欄から focus が外れないことがあるので、
+       枠の外を押したら自分で閉じます（帯のタブも、ここで閉じる）。閉じるのは**指を
+       離したあと**——押した拍に閉じると枠が縮んで下の行が上へずれ、押したはずの
+       別の枠が指の下から逃げていました。払って送っただけ（pointercancel）では閉じない。 */
+    let pressing = false;
+    const onDown = (e) => { pressing = !box.contains(e.target); };
+    const onUp = (e) => {
+      if (!pressing) return;
+      pressing = false;
+      if (!box.contains(e.target)) setTimeout(() => done(), 0);
+    };
+    const onCancel = () => { pressing = false; };
+    const onBlur = () => setTimeout(() => {
+      if (!pressing && editing === me && document.activeElement !== ta) done();
+    }, 0);
+    let me = null;
+    /** 閉じる。swap … 見るだけの一行へ、その場で戻す（組み直しの前なら要らない）。 */
+    function done(swap = true) {
+      if (editing !== me) return;
+      editing = null;
+      flushSlots = () => {};
+      document.removeEventListener("visibilitychange", onHide);
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("pointerup", onUp, true);
+      document.removeEventListener("pointercancel", onCancel, true);
+      if (window.visualViewport) window.visualViewport.removeEventListener("resize", lift);
+      const changed = save();
+      if (changed) KN.motion.fire("save");
+      if (swap && box.isConnected) {
+        const st = D.slotTotals(day);
+        box.replaceWith(slotViewRow(day, sl, store.slotMemo(day, sl.id), st ? st[sl.id] : 0, true));
+      }
+    }
+    me = { done };
+    editing = me;
+    flushSlots = () => done(false);
+    document.addEventListener("visibilitychange", onHide);
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("pointerup", onUp, true);
+    document.addEventListener("pointercancel", onCancel, true);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", lift);
+    ta.addEventListener("input", () => { grow(ta); paint(); });
+    ta.addEventListener("click", paint);
+    ta.addEventListener("blur", onBlur);
+    grow(ta);
+    paint();
+    KN.ui.focusNow(ta);
+    const end = ta.value.length;
+    try { ta.setSelectionRange(end, end); } catch (_) { /* 置けなくても打てます */ }
   }
 
   function buildSlotBoxes(host, day, st, opts) {
@@ -3236,11 +3526,6 @@
       <div class="stack">
         <div class="diet-daynav"><b>${U.formatDay(day)}</b></div>
         <div class="diet-slots js-slots"></div>
-        <p class="diet-note">
-          量は書いても書かなくてもかまいません（書いていないものは、AIが
-          一般的な一人前として推します）。時刻は要りません——あとで使うのは
-          「どの食事だったか」だけです。
-        </p>
         ${legacyText ? html`
           <div class="field">
             <span class="field-label">前に一日ぶんで書いたもの</span>
@@ -3466,18 +3751,9 @@
         ${memoText ? html`
           <div class="diet-read"><div class="diet-drink-row"><b>${memoText}</b></div></div>
         ` : html`
-          <p class="diet-note is-warn">この日の食事がまだ書かれていません。
-            先に「食事を書く」で、食べたものを入れてください。</p>`}
+          <p class="diet-note is-warn">先に「食事を書く」で食べたものを入れてください。</p>`}
         <button class="btn btn-soft btn-block js-prompt">${icon("copy")}AI用プロンプトを作成</button>
-        <p class="diet-note">
-          決まった聞き方と、食事メモ・<b>今日の体重や歩数・総消費・睡眠・飲酒</b>・
-          直近の記録をひとつの文にしてコピーします。ChatGPTなどに貼ってください
-          （<b>Web検索や情報源の確認、栄養推定、傾向の分析</b>は、貼った先のAIが行います
-          ——くらしノート自身は検索しません）。
-          返ってきた行をそのまま下の欄に貼り戻せば、<b>食品ごとの内わけ（根拠・情報源つき）</b>、
-          <b>朝・昼・夜・間食それぞれの合計</b>、<b>一日の合計</b>、<b>その日の評価</b>が保存されます。
-          <b>お酒は入れません</b>——お酒は別に記録していて、カロリーもそちらで数えます。
-        </p>
+        <p class="diet-note">コピーして AI に貼り、返ってきた文を下の欄に貼り戻します。</p>
 
         <div class="divider"></div>
         <div class="section-title">AI推計結果</div>
@@ -3538,7 +3814,7 @@
       const host = body.querySelector(".js-items");
       host.innerHTML = "";
       if (!ai) {
-        host.append(node(html`<p class="diet-note">まだ推計はありません。食事メモだけでも保存されています。</p>`));
+        host.append(node(html`<p class="diet-note">まだ推計はありません。</p>`));
         return;
       }
       /* 食品ごとの数は、保存はしますが並べません（読み合わせても
@@ -3581,11 +3857,8 @@
             <div class="diet-read"><div class="diet-drink-row"><b>${ai.analysis}</b></div></div>
           </div>`));
       }
-      host.append(node(html`
-        <p class="diet-note">${ai.summed
-          ? "合計は書かれていなかったので、食品ごとの数を足しました。"
-          : "この内容で保存します。"}
-          数が違っていれば、AIの返事の欄を直してもう一度「AI結果を読み取る」を押してください。</p>`));
+      if (ai.summed) host.append(node(html`
+        <p class="diet-note">合計が無かったので、食品ごとの数を足しました。</p>`));
     }
 
     /* 貼った（打った）そばから読みます。読めた・読めないは下に出るので、
@@ -3700,7 +3973,7 @@
         ` : html`
           <div class="empty diet-empty">
             <div class="empty-text">まだ言えることがありません。<br>
-              直近${cov.days}日のうち、体重 ${cov.weight}日・食事 ${cov.meals}日・歩数 ${cov.steps}日ぶんの記録です。</div>
+              直近${cov.days}日：体重 ${cov.weight}日・食事 ${cov.meals}日・歩数 ${cov.steps}日</div>
           </div>`}
         ${/* 「これは関連であって因果ではありません」の但し書きは外しました。
               毎回同じ文が下に付くと、読み飛ばす癖のほうが先に付きます。
@@ -3716,32 +3989,51 @@
       { activeId: analysisWindow, onPick: (id) => { analysisWindow = Number(id); render(); } });
 
     const ai = sec.querySelector(".js-ai");
-    if (ai) ai.addEventListener("click", askAI);
+    if (ai) ai.addEventListener("click", () => askAI());
     host.append(sec);
   }
 
+  /* 相談の紙。「今日の食事の中身も」を選ぶと、合計だけでは見えない
+     「何を食べたか」（書いた文・品名・量）も送ります。送るのはダイエットの
+     記録だけです。 */
   function askAI() {
+    const day = U.todayKey();
+    let withMeals = false;
+    const name = dayName(day);
     const body = node(html`
       <div class="stack">
         <label class="field">
           <span class="field-label">聞きたいこと</span>
           <input class="input js-q" value="ここ2週間の傾向と、来週やるといいことを教えて">
         </label>
-        <p class="diet-note">直近30日ぶんの体重・食事・歩数・睡眠を窓口へ送ります。
-          買い物リストとやることは送りません。</p>
+        <div class="js-meals-pick"></div>
+        <p class="diet-note js-what"></p>
         <div class="js-out"></div>
       </div>
     `);
+    const what = body.querySelector(".js-what");
+    const sayWhat = () => {
+      what.textContent = "直近30日の体重・食事の合計・歩数・睡眠"
+        + (withMeals ? `・${name}の食事の中身` : "")
+        + "を送ります。買い物リスト・やること・日記は送りません。";
+    };
+    KN.ui.chipRow(body.querySelector(".js-meals-pick"),
+      [{ id: "sum", label: "合計だけ" }, { id: "meals", label: `${name}の食事の中身も` }],
+      { activeId: withMeals ? "meals" : "sum",
+        onPick: (id) => { withMeals = id === "meals"; sayWhat(); } });
+    sayWhat();
     const foot = node(html`<button class="btn btn-primary btn-block js-go">相談する</button>`);
-    const h = KN.ui.sheet({ title: "AIに相談", content: body, footer: foot });
-    foot.querySelector(".js-go").addEventListener("click", () => {
+    KN.ui.sheet({ title: "AIに相談", content: body, footer: foot });
+    // foot はボタンそのもの（querySelector は自分を探さないので、前は null で落ちていた）
+    foot.addEventListener("click", () => {
       const out = body.querySelector(".js-out");
       out.innerHTML = "";
       out.append(node(html`<p class="diet-note">考えています…</p>`));
-      KN.dietAI.coach(body.querySelector(".js-q").value, 30)
-        .then((text) => {
+      KN.dietAI.coach(body.querySelector(".js-q").value, 30, withMeals ? { mealDay: day } : null)
+        .then((r) => {
           out.innerHTML = "";
-          out.append(node(html`<div class="diet-ai-out">${text}</div>`));
+          out.append(node(html`<div class="diet-ai-out">${r.text}</div>`));
+          if (r.cost) out.append(node(html`<p class="diet-note js-cost">この相談：${KN.dietAI.costLabel(r.cost)}</p>`));
         })
         .catch((err) => {
           out.innerHTML = "";
@@ -3791,6 +4083,9 @@
     let hadDot = input.value.includes(".");
     const advance = () => {
       if (!next) return;
+      /* 最後の欄（体脂肪）は移る先が無いので、キーボードを閉じます。
+         打ち終えたのに鍵盤が残ると、下の保存ボタンが隠れたままになります。 */
+      if (next === "close") { setTimeout(() => input.blur(), 60); return; }
       /* 一拍おきます。iOS はこの入力の直後にまだ自分の仕事（変換の確定や
          キーボードの差し替え）をしていて、その最中に focus を移すと
          移った先の枠にキャレットが乗りません。 */
@@ -3858,19 +4153,13 @@
           <span class="field-label">服装</span>
           <div class="js-wear"></div>
         </div>
-        <p class="diet-note">
-          食前か食後かで1kg近く、着ているかどうかで0.5kg以上動きます。
-          書いておくと、その差を分けて読めます（<b>次からは前回と同じものが
-          選ばれます</b>）。
-        </p>
 
         <label class="field">
           <span class="field-label">メモ</span>
           <input class="input js-memo" placeholder="例：飲んだ翌日" value="${w ? w.memo : ""}">
         </label>
         ${w && w.source === "health" ? html`
-          <p class="diet-note">これはヘルスケアから入った記録です。ここで直すと、
-            手で書いた値として扱われます（次の取り込みで上書きされません）。</p>` : ""}
+          <p class="diet-note">ヘルスケアから入った記録です。直すと手入力になります。</p>` : ""}
       </div>
     `);
 
@@ -3886,7 +4175,7 @@
     const fatEl = body.querySelector(".js-fat");
     // 体重を打ち終えたら、そのまま体脂肪へ。
     autoDecimal(kgEl, fatEl);
-    autoDecimal(fatEl);
+    autoDecimal(fatEl, "close");   // 打ち終えたら鍵盤を閉じる
 
     const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
       activeId: meal || "",
@@ -3924,11 +4213,12 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この記録を消す", message: "元に戻せません。", okLabel: "消す", danger: true });
+      const ok = await KN.ui.confirm({ title: "この記録を消す", okLabel: "消す", danger: true });
       if (!ok) return;
-      store.removeWeight(w.id);
+      const undo = store.removeWeight(w.id);
       h.close();
       render();
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -3962,8 +4252,7 @@
           </div>
         </label>
         <div class="js-suggest"></div>
-        <p class="diet-note">量を書かないと、一食ぶんの目安で入ります。あとから数字は直せます。
-          値の出どころは${KN.foodData.SOURCE}です。</p>
+        <p class="diet-note">出典：${KN.foodData.SOURCE}</p>
 
         <div class="js-items"></div>
         <div class="js-total"></div>
@@ -4054,7 +4343,7 @@
             <label class="field" style="flex:1"><span class="field-label">C (g)</span>
               <input class="input js-c" inputmode="decimal" value="${it.c}"></label>
           </div>
-          ${it.estimated ? html`<p class="diet-note">この数は推定です。直すと推定の印は外れます。</p>` : ""}
+          ${it.estimated ? html`<p class="diet-note">推定の数です。</p>` : ""}
         </div>
       `);
       const f = node(html`<button class="btn btn-primary btn-block">直す</button>`);
@@ -4183,11 +4472,12 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この食事を消す", message: "元に戻せません。", okLabel: "消す", danger: true });
+      const ok = await KN.ui.confirm({ title: "この食事を消す", okLabel: "消す", danger: true });
       if (!ok) return;
-      store.removeMeal(meal.id);
+      const undo = store.removeMeal(meal.id);
       h.close();
       render();
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
 
     paint();
@@ -4244,7 +4534,6 @@
               ${icon("close")}
             </button>
           </div>
-          <span class="field-hint">決めていなくてもかまいません。</span>
         </div>
 
         <div class="divider"></div>
@@ -4289,10 +4578,7 @@
           </label>
         </div>
         <p class="diet-note">
-          空なら <b>${n0(STEPS_DEFAULT)}歩 / ${n0(BURN_DEFAULT)}kcal / ${SLEEP_DEFAULT / 60}時間</b> で数えます。
-          ここは <b>届く高さ</b>に置いてください——超えたぶんは、輪の二周目として
-          明るい色で乗ります。直近の平均に合わせると、頑張るほど目盛りが遠のいて、
-          いつまでも埋まらない輪になります。
+          空なら <b>${n0(STEPS_DEFAULT)}歩 / ${n0(BURN_DEFAULT)}kcal / ${SLEEP_DEFAULT / 60}時間</b>。届く高さがおすすめです。
         </p>
 
         <label class="field">
@@ -4301,10 +4587,7 @@
                  value="${g.alcoholG == null ? "" : String(g.alcoholG)}">
         </label>
         <p class="diet-note">
-          空なら <b>${DR.GUIDE_G}g</b> で数えます。厚生労働省は「節度ある適度な飲酒」を
-          一日 純アルコール<b>20g程度</b>（ビール中瓶1本ほど）としていて、
-          男性で<b>40g以上</b>が生活習慣病のリスクを高める量とされています。
-          今日のからだの「飲酒」は、この目安を100%とした割合で出します。
+          空なら <b>${DR.GUIDE_G}g</b>（厚生労働省の「節度ある適度な飲酒」の目安）。
         </p>
       </div>
     `);
@@ -4384,11 +4667,8 @@
 
     const el = node(html`
       <div class="diet-suggest-box">
-        <p class="diet-note">直近${burn.length}日の消費は、1日あたり平均 <b>${avg.toLocaleString()}kcal</b> でした
-          （ヘルスケアのアクティブ＋安静時）。
-          ${suggest != null ? html`目標日までのペースから逆算すると、摂取の目安は
-            <b>${Math.round(suggest).toLocaleString()}kcal</b> あたりです。` : ""}
-          あくまで目安で、体調や測り方で動きます。</p>
+        <p class="diet-note">直近${burn.length}日の消費は平均 <b>${avg.toLocaleString()}kcal</b>。
+          ${suggest != null ? html`摂取の目安は <b>${Math.round(suggest).toLocaleString()}kcal</b>。` : ""}</p>
         ${suggest != null ? html`<button class="btn btn-soft btn-sm js-use">この目安を入れる</button>` : ""}
       </div>
     `);
@@ -4454,102 +4734,27 @@
 
   function openSyncSheet() {
     const sync = store.get().diet.sync;
+    /* 取り込む口を先に。手順は一度組めば読まないので、その下へ。 */
     const body = node(html`
       <div class="stack">
-        <p class="diet-note">
-          iPhoneのヘルスケアは、Webアプリから直接は読めません（Safariにその窓口が
-          無いためで、設定の問題ではありません）。かわりに<b>ショートカット</b>に
-          読み出させて、その結果をここへ渡します。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">① まず、手で試す</div>
-        <p class="diet-note">
-          ショートカットを作る前に、<b>入る形</b>を先に見ておくのがいちばん近道です。
-          下の欄に打つと、読めたものがその場に出ます。
-        </p>
-        <textarea class="textarea js-t" rows="4" spellcheck="false"
-                  autocapitalize="off" autocorrect="off">${SAMPLE_MIN}</textarea>
-        <div class="js-preview"></div>
-        <button class="btn btn-primary btn-block js-take">これを取り込む</button>
-
-        <div class="divider"></div>
-        <div class="section-title">② 毎日を楽にする（ショートカット）</div>
-        <p class="diet-note">
-          ①と同じ文字を、ショートカットに書かせます。<b>まず「歩数」だけで作って、
-          動いたら残りを足す</b>——先に全部並べると、動かないときにどこが悪いのか
-          分からなくなります。
-        </p>
-        <ol class="diet-steps">
-          <li>「ショートカット」アプリ →「＋」で新規作成</li>
-          <li><b>「ヘルスサンプルを検索」</b>を追加。
-            <b>種類</b>を「歩数」、<b>フィルタ</b>を「開始日」が「今日」に</li>
-          <li><b>「統計を計算」</b>を追加。<b>合計</b>を選び、対象は上の結果</li>
-          <li><b>「テキスト」</b>を追加して、こう打つ：<br>
-            <code>steps=</code> と打ち、その右に一つ前の結果の変数を差し込む</li>
-          <li><b>「クリップボードにコピー」</b>を追加</li>
-          <li>実行 → このアプリに戻って、下の<b>「コピーしたものを取り込む」</b></li>
-        </ol>
-        <p class="diet-note">
-          動いたら、2〜4をもう一度ずつ足していけば種類が増えます。「テキスト」は
-          <b>一つにまとめて</b>、行ごとに <code>distance=</code> <code>sleep=</code> …と
-          並べてください。全部そろうとこうなります。
-        </p>
-        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
-        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
-        <p class="diet-note">
-          最後に<b>オートメーション</b>（毎朝7時など）に登録しておけば、あとは
-          このアプリで一度押すだけになります。<br>
-          ひとつだけ気をつけることがあります。<b>iPhoneがロックされているあいだ、
-          ヘルスケアは読めません</b>（<code>Protected health data is inaccessible</code>）。
-          走る時刻は<b>ふだん端末を触っている時間</b>に寄せるか、ショートカットの先頭に
-          「待機」を挟んで読み直すようにしてください。読めなかった便は、このアプリでは
-          <b>取り込まずに待ちます</b>——0で塗り替えないためです。
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">③ コピーもやめる（中継所）</div>
-        <p class="diet-note">
-          ②まで来ると、残る手間は「アプリに戻って一度押す」だけです。それも
-          消したいときは、<b>中継所</b>を一つ立てます。ショートカットの最後を
-          「クリップボードにコピー」から<b>「URLの内容を取得」（POST）</b>に変えると、
-          データはいったん自分の中継所に置かれ、次にこのタブを開いた時に
-          くらしノートが自分で受け取ります。受け取ったら中継所からは消えます。
-        </p>
-        <p class="diet-note">
-          ${KN.healthRelay.configured()
-            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>（設定 → ダイエット → 中継所で変えられます）`
-            : html`まだ設定していません。<b>iPhoneだけで建てられます</b>——パソコンは
-                   要りません。手順はぜんぶ<b>設定 → ダイエット → 中継所</b>の中に
-                   書いてあります（コードのコピーも、合言葉づくりも、動くかの確認も、
-                   その画面のボタンで済みます）。`}
-        </p>
-
-        <div class="divider"></div>
-        <div class="section-title">取り込む</div>
         <div class="rows">
           <button class="row js-relay">
             <span class="row-main">
               <span class="row-title">中継所から取り込む</span>
-              <span class="row-sub">${KN.healthRelay.configured()
-                ? "ショートカットが置いたデータを受け取ります"
-                : "未設定（設定 → ダイエット → 中継所）"}</span>
+              ${KN.healthRelay.configured() ? "" : html`<span class="row-sub">未設定</span>`}
             </span>
             <span class="row-chevron">${icon("download")}</span>
           </button>
           <button class="row js-paste">
             <span class="row-main">
               <span class="row-title">コピーしたものを取り込む</span>
-              <span class="row-sub">${store.get().settings.clipboardBlocked
-                ? "この端末では自動で読めないので、貼り付けの欄を開きます"
-                : "ショートカットがコピーした中身を読みます"}</span>
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
           <button class="row js-file">
             <span class="row-main">
               <span class="row-title">ファイルから取り込む</span>
-              <span class="row-sub">「ファイルに保存」したテキストやJSON</span>
+              <span class="row-sub">テキストや JSON</span>
             </span>
             <span class="row-chevron">${icon("chevron")}</span>
           </button>
@@ -4558,28 +4763,54 @@
         ${sync.lastAt ? html`<p class="diet-note">最後の取り込み：${U.formatStamp(sync.lastAt)}</p>` : ""}
         ${sync.lockedAt ? html`
           <p class="diet-note is-warn">
-            ${U.formatStamp(sync.lockedAt)} に届いた便は、<b>ヘルスケアが読めない状態</b>でした
-            （iPhoneがロックされているあいだ、ショートカットはヘルスケアを読めません）。
-            <b>取り込んでいないので、それまでの記録はそのまま</b>です。少し待って何度か
-            取りにいき、それでも駄目なら、次にこのタブを開いたときにまた取りにいきます。
+            ${U.formatStamp(sync.lockedAt)} の便は、iPhone のロック中で読めなかったので取り込んでいません。
           </p>
-          <div class="divider"></div>
-          <div class="section-title">ロック中でも取れるようにする</div>
-          <p class="diet-note">
-            大もとはショートカット側です。オートメーションが走ったとき画面がロックされて
-            いると、ヘルスケアは暗号化されたままで読めません
-            （<code>Protected health data is inaccessible</code>）。次のどれかで直ります。
-          </p>
-          <ol class="diet-steps">
-            <li>オートメーションの<b>「実行前に尋ねる」を切り</b>、時刻を
-              <b>ふだん端末を使っている時間</b>に寄せる（起床直後より、通勤中や昼など）</li>
-            <li>ショートカットの先頭に<b>「待機 30秒」→ もう一度ヘルスサンプルを検索</b>を足して、
-              一度目で空だったときの取り直しを作る（<b>「If」で結果が0件なら</b>のかたちにすると、
-              うまくいった日は待ちません）</li>
-            <li><b>0 を送らない</b>——「統計を計算」は読めなかったとき 0 を返します。
-              <b>「If 歩数 が 0 でない」</b>で囲んでおくと、読めなかった日は何も送りません
-              （このアプリも 0 だけの便は取り込みませんが、送らないほうが確かです）</li>
-          </ol>` : ""}
+          <details class="set-more">
+            <summary>ロック中でも取れるようにする</summary>
+            <ol class="diet-steps">
+              <li>オートメーションの<b>「実行前に尋ねる」を切り</b>、時刻を<b>ふだん端末を使う時間</b>に寄せる</li>
+              <li>先頭に<b>「待機 30秒」→ もう一度ヘルスサンプルを検索</b>を足す</li>
+              <li><b>「If 歩数 が 0 でない」</b>で囲み、読めなかった日は送らない</li>
+            </ol>
+          </details>` : ""}
+
+        <div class="divider"></div>
+        <div class="section-title">① 手で試す</div>
+        <p class="diet-note">打つと、読めたものがその場に出ます。</p>
+        <textarea class="textarea js-t" rows="4" spellcheck="false"
+                  autocapitalize="off" autocorrect="off">${SAMPLE_MIN}</textarea>
+        <div class="js-preview"></div>
+        <button class="btn btn-primary btn-block js-take">これを取り込む</button>
+
+        <div class="divider"></div>
+        <div class="section-title">② ショートカットに書かせる</div>
+        <p class="diet-note">まず「歩数」だけで作り、動いたら足していきます。</p>
+        <ol class="diet-steps">
+          <li>「ショートカット」アプリ →「＋」で新規作成</li>
+          <li><b>「ヘルスサンプルを検索」</b>を追加。
+            <b>種類</b>を「歩数」、<b>フィルタ</b>を「開始日」が「今日」に</li>
+          <li><b>「統計を計算」</b>を追加。<b>合計</b>を選び、対象は上の結果</li>
+          <li><b>「テキスト」</b>を追加して、こう打つ：<br>
+            <code>steps=</code> と打ち、その右に一つ前の結果の変数を差し込む</li>
+          <li><b>「クリップボードにコピー」</b>を追加</li>
+          <li>実行 → このアプリに戻って、上の<b>「コピーしたものを取り込む」</b></li>
+        </ol>
+        <p class="diet-note">「テキスト」は一つにまとめ、行ごとに並べます。全部そろうとこうなります。</p>
+        <pre class="diet-code">${SHORTCUT_SAMPLE}</pre>
+        <button class="btn btn-soft btn-sm js-copy">この形をコピー</button>
+        <p class="diet-note">
+          オートメーション（毎朝7時など）に登録すると楽です。
+          <b>ロック中はヘルスケアを読めない</b>ので、ふだん端末を触っている時間に。
+        </p>
+
+        <div class="divider"></div>
+        <div class="section-title">③ 中継所でコピーも省く</div>
+        <p class="diet-note">
+          最後を<b>「URLの内容を取得」（POST）</b>に変えると、開いたときに自動で入ります。
+          ${KN.healthRelay.configured()
+            ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>`
+            : html`建て方は<b>設定 → ダイエット → 取り込み → 中継所</b>。`}
+        </p>
 
         <div class="divider"></div>
         <div class="section-title">書ける言葉</div>
@@ -4591,23 +4822,15 @@
               <span class="diet-key-ex">${KN.util.escapeHtml(ex)}</span>
             </div>`).join(""))}
         </div>
-        <p class="diet-note">
-          値が取れなかった行は<b>空のままで大丈夫</b>です（空は「無かった」として扱い、
-          0にはしません）。同じ日の同じ種類を何行も書いた場合は、歩数のように
-          足せるものは<b>合計</b>されます。JSON形式でも読めます。
-        </p>
-        <p class="diet-note">
-          <b>歩行距離だけは、足すと二重になります。</b>Apple Watch と iPhone が
-          どちらも一日ぶんを持っているので、両方を合計すると倍近くになります
-          （実測で 7.8km と 6.0km を足して 13.9km になりました）。
-          <code>source=</code> を書いて機械ごとに分けて送れば、
-          <b>Apple Watch のほうを採ります</b>（ヘルスケアの値と一致します）。
-          分けずに一つだけ送るぶんには、これまでと何も変わりません。
-        </p>
-        <pre class="diet-code">source=Apple Watch
+        <p class="diet-note">取れなかった行は空のままで大丈夫です。同じ種類が何行もあれば合計します。JSON も読めます。</p>
+        <details class="set-more">
+          <summary>歩行距離が二重になるとき</summary>
+          <p>Apple Watch と iPhone の両方を足すと倍近くになります。<code>source=</code> で分けて送れば、Apple Watch のほうを採ります。</p>
+          <pre class="diet-code">source=Apple Watch
 distance=7.8km
 source=iPhone
 distance=6.0km</pre>
+        </details>
       </div>
     `);
 
@@ -4654,7 +4877,7 @@ distance=6.0km</pre>
        押したのに何も言われないのが、いちばん困ります。 */
     body.querySelector(".js-relay").addEventListener("click", () => {
       if (!KN.healthRelay.configured()) {
-        KN.ui.toast("設定 → ダイエット → 中継所 でURLを入れてください");
+        KN.ui.toast("設定 → ダイエット → 取り込み → 中継所 でURLを入れてください");
         return;
       }
       const btn = body.querySelector(".js-relay");
@@ -4747,11 +4970,7 @@ distance=6.0km</pre>
   function openPasteSheet(diag, done) {
     const b = node(html`
       <div class="stack">
-        <p class="diet-note">
-          この端末では、アプリからクリップボードを読み取れませんでした。
-          かわりに<b>下の欄を長押しして「ペースト」</b>を押してください。
-          貼り付けた時点で読み取ります。
-        </p>
+        <p class="diet-note">自動で読めませんでした。<b>下の欄を長押しして「ペースト」</b>してください。</p>
         <textarea class="textarea js-p" rows="4" spellcheck="false"
                   autocapitalize="off" autocorrect="off"
                   placeholder="ここに長押し →「ペースト」"></textarea>
@@ -4854,6 +5073,8 @@ distance=6.0km</pre>
 
   /** タブを押した一拍のうちに呼ばれます（app.js の show から）。 */
   function onEnter() {
+    kbRoom = 0;
+    putKbRoom();
     const st = store.get().settings;
     if (st.dietAutoSync === false) return;
     /* 中継所は「操作のうち」に縛られないので、先に走らせて構いません。
@@ -4916,9 +5137,9 @@ distance=6.0km</pre>
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
       KN.app.fabMenu(e.currentTarget, [
-        { label: "今日の食事", icon: "meal", onPick: () => openMealMemoSheet(curDay()) },
-        { label: "今日のからだ", icon: "steps", onPick: () => openBodySheet(curDay()) },
-        { label: "体重", icon: "scale", onPick: () => openWeightSheet(null, curDay()) },
+        { label: "今日の食事", icon: "meal", onPick: () => openMealMemoSheet(writeDay()) },
+        { label: "今日のからだ", icon: "steps", onPick: () => openBodySheet(writeDay()) },
+        { label: "体重", icon: "scale", onPick: () => openWeightSheet(null, writeDay()) },
       ]);
     });
     return fab;
@@ -4929,9 +5150,23 @@ distance=6.0km</pre>
      外しました。引く手つきは全タブから無くなっていて、掛け直しは中継所の
      見張り（health-relay.js）が持っています。押して取りに行く道は、
      からだの枠の「◯:◯◯ 時点」と、取り込みシートの中にあります。 */
-  KN.screens.diet = { mount, render, dockButton, onEnter,
+  /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
+     席を移るとき app.js の show() が置いていきます）。暦の月もその日へ。 */
+  let dayVer = 0;
+  function takeSharedDay() {
+    const t = U.dayShare.take(dayVer);
+    dayVer = t.ver;
+    if (!t.day || t.day === curDay()) return;
+    viewDay = t.day === U.todayKey() ? null : t.day;
+    const d = U.dayDate(t.day);
+    const now = U.dayDate(U.todayKey());
+    calMonth = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+      ? null : { year: d.getFullYear(), month: d.getMonth() };
+  }
+
+  KN.screens.diet = { mount, render, dockButton, onEnter, day: curDay,
     // 設定やテストから開けるように
-    openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet,
+    openWeightSheet, openMealSheet, openMealMemoSheet, openAiSheet, openGoalSheet, openSyncSheet, openDrinkSheet,
     // 前の名前でも開けるように（設定や、外から呼んでいるところのため）
     openMemoSheet: openMealMemoSheet,
     // 聞き方と読み取りは、画面を通さずに確かめられるように出しておきます。

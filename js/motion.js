@@ -27,10 +27,10 @@
    速さは css/base.css の --m-* を読みます。JS 側に数字を二重に持つと、
    いつか必ず片方だけ直されるので、**CSS を唯一の出どころ**にします。
 
-   震えについて：iOS の Safari は navigator.vibrate を持ちません。つまり
-   ホーム画面のこのアプリでは、いまのところ震えません。それでも呼ぶ形だけ
-   残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator へ
-   差し替える一点になるからです。呼び出し側を書き換えずに済みます。
+   震えについて：iOS の Safari は navigator.vibrate を持ちません。それでも
+   呼ぶ形を残すのは、ここが将来ネイティブへ移ったときに UIFeedbackGenerator
+   へ差し替える一点になるからです。呼び出し側を書き換えずに済みます。
+   iPhone では、主な押すものだけ別の手で震わせます（下の FEEL。C1）。
    ========================================================= */
 (function () {
   "use strict";
@@ -55,6 +55,9 @@
     sheetClose: { ms: 0,  cls: null,          tok: "--m-sheet-close" },
     nav:        { ms: 4,  cls: null,          tok: "--m-nav" },
     number:     { ms: 0,  cls: "is-m-number", tok: "--m-number" },
+    /* 押された絵が、一度だけその絵らしく応える（席の絵・歯車）。震えは
+       席を移る nav が受け持つので、ここでは鳴らしません（二度鳴ると重い）。 */
+    poke:       { ms: 0,  cls: "is-poke",     tok: "--m-poke" },
     /* うまくいった・気をつけて。ここだけ二拍にします——一拍だと
        「何か起きた」しか言えず、良し悪しが伝わらないので。 */
     success:    { ms: 0,  cls: "is-m-success", tok: "--m-success", pattern: [10, 40, 18] },
@@ -85,7 +88,7 @@
   if (window.matchMedia) {
     try {
       window.matchMedia("(prefers-reduced-motion: reduce)")
-        .addEventListener("change", () => { cache.clear(); easeCache.clear(); });
+        .addEventListener("change", () => { cache.clear(); easeCache.clear(); curveCache.clear(); });
     } catch (_) { /* 古い Safari。無くても困りません */ }
   }
 
@@ -202,6 +205,164 @@
     } catch (_) { /* 震えないことは失敗ではありません */ }
   }
 
+  /* ---------------------------------------------------------------
+     iPhone で、主な押すものを震わせる（docs/motion.md の C1）
+
+     iOS 18 から、Safari の `<input type="checkbox" switch>`（切り替えの
+     つまみ）は、**指で押されて**切り替わるときに端末を軽く震わせます。
+
+     **押したことにする（`label.click()`）では震えません。** 最初の版は
+     そうしていて、実機で震えませんでした。WebKit は click が本物か
+     （isTrusted）を見ていて、本物でない切り替えでは震わせない
+     （CheckboxInputType.cpp の willDispatchClick → `state.trusted` のときだけ
+     performSwitchVisuallyOnAnimation。2026年9月に WebKit のソースで確認）。
+
+     だから、**指が本当にそのつまみを押す**ようにします。押すもの（button）の
+     中に、見えないつまみを同じ大きさで重ねる。指はつまみを押し（震える）、
+     その click は button へ上がって、いつもの動きが走ります。
+
+     **どれに重ねるかは、下の FEEL の一覧だけが決めます。** 画面に出てきた
+     ものへ、見張り（MutationObserver）が付けて回ります——画面ごとに呼ぶと、
+     組み直しのたびに付け忘れが生まれるので。
+
+     一覧に入れないもの（入れると壊れるもの）：
+     ・**送る面の上の広いもの**（行・カード・札の並び）。iPhone は、つまみの
+       上で始まった指を「つまみを動かす」と受け取り、画面を送りません
+       （WebKit は touchstart を自分で受け取る＝defaultHandled）。小さな丸や
+       ★のように、送る指がめったに乗らないものだけ。
+     ・**押したまま滑らせるもの**（下の帯の席・掴み手・並べ替え）。つまみは
+       指を離した場所に関係なく「押した」と受け取るので、「席の外で離せば
+       変わらない」が崩れる。
+     ・**a 要素**（リンク）。中のつまみが押されると、リンクのほうは開かない
+       （一度の click で動くのは、いちばん内側の一つだけ）。
+     ・**form の送信ボタン**（type="submit" で form を持つもの）。同じ理由で、
+       送信が起きなくなる（商品の紙の値段の「追加」がこれ）。一覧の書き方に
+       かかわらず、付けるときに外します。
+
+     ・重ねるのは Apple の指で触る端末で、navigator.vibrate が無いときだけ。
+       ほかの端末の DOM は変えません（そちらは上の buzz が震わせる）。
+     ・つまみは読み上げにも Tab にも出しません（button がそれを持つ）。
+     ・見えない（opacity 0）が**描かれている**こと——WebKit は描かれていない
+       つまみの指を受け取らないので、display:none や head の中では震えない。
+     ・押せない button（disabled）は `pointer-events: none` を子へ継ぐので、
+       つまみも押されない（震えない）。
+     ・一度の指で click が二度来ても、button へは一度だけ渡します（指を
+       置いた回数で数えるので、数字キーの速い連打は落としません）。
+     ・持ち上げて「置いた」、払って「閉じた」は震わせられません。そこには
+       指で押すつまみが無いので。
+     --------------------------------------------------------------- */
+  const FEEL = [
+    "button.check",        // 済ませる（やること・手順・買うもの）
+    "button.fav",          // ★ 今回買う
+    "button.btn-primary",  // 保存・追加・記録する（紙の足もと・確かめの紙）
+    "button.btn-danger",   // 消す・置き換える（確かめの紙）
+    "button.add-fab",      // ＋
+    "button.fab-menu-b",   // ＋ から出る行き先
+    "button.key",          // 数字キー
+    "button.low-add",      // そろそろ切れそう → 入れる
+  ].join(",");
+
+  const appleTouch = (() => {
+    try {
+      const ua = navigator.userAgent || "";
+      return /iP(hone|ad|od)/.test(ua)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    } catch (_) { return false; }
+  })();
+  const feels = () => appleTouch && !navigator.vibrate;
+
+  function makeSwitch() {
+    const sw = document.createElement("input");
+    sw.type = "checkbox";
+    sw.setAttribute("switch", "");
+    sw.className = "feel-switch";
+    sw.tabIndex = -1;
+    sw.setAttribute("aria-hidden", "true");
+    /* 一度の指に、button へ渡す click は一つ。数えるのは指を置いた回数
+       （pointerdown）——時間で切ると、数字キーの速い連打を落とします。 */
+    let downs = 0, used = -1;
+    /* 送った指は、押したことにしない。iPhone のつまみは、指が上下に動いて
+       画面が送られても、離したところで click を出す（実機で踏んだ：★や丸の
+       上から送ると、離した瞬間に押されていた）。ふつうの button なら
+       ブラウザが「送ったから押していない」と決めるところを、ここで決める。
+       見るのは三つ——指が SLOP より動いた・何かが送られた（紙の scroll は
+       泡立たないので window の capture で聞く）・pointercancel。どれか一つ
+       でも立てば、その指の click は button へ渡さない。 */
+    let x0 = 0, y0 = 0, moved = false;
+    const onScroll = () => { moved = true; };
+    const stopWatch = () => window.removeEventListener("scroll", onScroll, true);
+    const begin = (x, y) => {
+      x0 = x; y0 = y; moved = false;
+      window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    };
+    sw.addEventListener("pointerdown", (e) => { downs++; begin(e.clientX, e.clientY); });
+    sw.addEventListener("pointercancel", () => { moved = true; });
+    sw.addEventListener("touchstart", (e) => {
+      const p = e.touches[0];
+      if (p) begin(p.clientX, p.clientY);
+    }, { passive: true });
+    sw.addEventListener("touchmove", (e) => {
+      const p = e.touches[0];
+      if (p && Math.hypot(p.clientX - x0, p.clientY - y0) > SLOP) moved = true;
+    }, { passive: true });
+    sw.addEventListener("touchend", stopWatch, { passive: true });
+    sw.addEventListener("touchcancel", () => { moved = true; stopWatch(); }, { passive: true });
+    sw.addEventListener("click", (e) => {
+      stopWatch();
+      if (moved || used === downs) {
+        e.stopPropagation();
+        e.preventDefault();   // つまみの入/切も戻す（見えないが、次の指のため）
+        return;
+      }
+      used = downs;
+    });
+    return sw;
+  }
+  /* 「押した」と「送った」の境目。指先の震えは押したうち、それを越えたら送った。 */
+  const SLOP = 10;
+
+  /* 付けて回る。まず全部の要否と位置を**読んでから**、まとめて書く
+     （一つずつ読み書きすると、そのたびに組み直しの計算が走るので）。 */
+  function attach(buttons) {
+    const need = buttons.filter((b) => b.isConnected
+      && !(b.type === "submit" && b.form)
+      && !b.querySelector(":scope > .feel-switch"));
+    if (!need.length) return;
+    const statics = need.filter((b) => getComputedStyle(b).position === "static");
+    statics.forEach((b) => { b.style.position = "relative"; });
+    need.forEach((b) => b.append(makeSwitch()));
+  }
+
+  function collect(node, into) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.matches(FEEL)) into.push(node);
+    node.querySelectorAll(FEEL).forEach((b) => into.push(b));
+  }
+
+  function watchFeel() {
+    if (!feels() || !window.MutationObserver) return;
+    const first = [];
+    collect(document.body, first);
+    attach(first);
+    new MutationObserver((records) => {
+      const found = [];
+      records.forEach((r) => {
+        r.addedNodes.forEach((n) => collect(n, found));
+        /* 中身を書き直された button（textContent など）は、つまみを失う。 */
+        if (r.target.nodeType === 1 && r.target.matches(FEEL)) found.push(r.target);
+      });
+      if (found.length) attach(found);
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.body) watchFeel();
+  else document.addEventListener("DOMContentLoaded", watchFeel, { once: true });
+
+  /** 一覧の外のものに、そのつど付けたいとき（いまは使っていない）。 */
+  function feel(btn) {
+    if (!btn || !feels()) return;
+    attach([btn]);
+  }
+
   /**
    * 出来事を返します。
    *
@@ -230,6 +391,87 @@
     }, dur));
   }
 
+  /* ---------------------------------------------------------------
+     開いたとき、満ちる（docs/motion.md の「開いたとき、満ちる」）
+
+     画面を開いた一拍（と、アプリへ戻ってきたとき）に、その画面へ
+     `is-m-arrive` をしばらく付けます。**何が動くかは CSS が決めます**
+     （`.is-m-arrive .diet-ma7` など）——ここが持つのは時計だけ。画面ごとに
+     「開いたら輪を満たす」を書くと、組み直しのたびに誰が何を動かしたかが
+     散らばるので、入口を一つにしました。
+
+     ・付けているあいだに組み直された中身も、同じく頭から動きます（新しい
+       要素は、そのとき始まるので）。外したあとの組み直しは動きません
+       ——保存のたびに輪が満ち直すと、動きが「開いた」ではなく「何か
+       起きた」を言ってしまうので。
+     ・**CSS だけでは揃わないものは、ここへ手を出す**（`onArrive`）。health の
+       輪と真ん中の数がそれ（screen-diet.js の fillRings）——二つを同じ一つの
+       時計で進めないと、輪と数がずれる。はじめは輪を `@property` の
+       アニメーションで、数を CSS の counter で動かしていたが、iPhone の Safari は
+       counter を途中で描き直さず、数だけ最後に「パン」と出た（2026年9月29日、
+       実機を見た利用者の声）。
+     ・動きを減らす設定では付けません。
+     --------------------------------------------------------------- */
+  const ARRIVE = "is-m-arrive";
+  const arriveT = new WeakMap();
+  const arriveHooks = [];
+  function arrive(root) {
+    if (!root || still()) return;
+    clearTimeout(arriveT.get(root));
+    /* もう付いていたら、外して読んでから付け直す（頭からやり直す）。 */
+    if (root.classList.contains(ARRIVE)) {
+      root.classList.remove(ARRIVE);
+      void root.offsetWidth;
+    }
+    root.classList.add(ARRIVE);
+    arriveHooks.forEach((fn) => { try { fn(root); } catch (_) { /* 開くことを妨げない */ } });
+    /* いちばん遅く始まる輪（四つめ）と、いちばん長い線が終わるまで。 */
+    const dur = Math.max(ms("--m-fill") * 1.4, ms("--m-draw")) + ms("--m-stagger") * 4 + 60;
+    arriveT.set(root, setTimeout(() => root.classList.remove(ARRIVE), dur));
+  }
+  /** 開いたときに、JS で動かすものがある画面が名乗る。fn(root) は arrive のたびに呼ばれる。 */
+  function onArrive(fn) { arriveHooks.push(fn); }
+
+  /* ---------------------------------------------------------------
+     曲線を JS で引く（`--ease-out` などの cubic-bezier を、進み具合の関数に）
+
+     CSS に任せられない動き（輪と数を一つの時計で進める、など）でも、曲線は
+     CSS と同じ名前から読みます——JS に数字を二重に持たないため（上の ms /
+     ease と同じ決めごと）。読めない曲線（`ease` などの名前）は ease-out 相当。
+     --------------------------------------------------------------- */
+  const curveCache = new Map();
+  function curve(token) {
+    if (curveCache.has(token)) return curveCache.get(token);
+    const m = /cubic-bezier\(([^)]+)\)/.exec(ease(token, ""));
+    const [x1, y1, x2, y2] = m ? m[1].split(",").map(Number) : [0.16, 1, 0.3, 1];
+    const bx = (t) => 3 * x1 * t * (1 - t) * (1 - t) + 3 * x2 * t * t * (1 - t) + t * t * t;
+    const by = (t) => 3 * y1 * t * (1 - t) * (1 - t) + 3 * y2 * t * t * (1 - t) + t * t * t;
+    const dx = (t) => 3 * x1 * (1 - t) * (1 - t) + 6 * (x2 - x1) * t * (1 - t) + 3 * (1 - x2) * t * t;
+    const fn = (x) => {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      /* x から t を引く：ニュートン法、だめなら二分法。 */
+      let t = x;
+      for (let i = 0; i < 6; i++) {
+        const d = dx(t), e = bx(t) - x;
+        if (Math.abs(e) < 1e-5) return by(t);
+        if (Math.abs(d) < 1e-6) break;
+        t -= e / d;
+      }
+      let lo = 0, hi = 1;
+      t = x;
+      for (let i = 0; i < 30; i++) {
+        const e = bx(t) - x;
+        if (Math.abs(e) < 1e-5) break;
+        if (e > 0) hi = t; else lo = t;
+        t = (lo + hi) / 2;
+      }
+      return by(t);
+    };
+    curveCache.set(token, fn);
+    return fn;
+  }
+
   /* 押している間だけ縮むもの。CSS の :active で足りる場所には要りません
      ——これは「指を離しても少しだけ効いていてほしい」ところ用です。 */
   function press(el) {
@@ -246,5 +488,5 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, glide, rubber, still, EVENTS };
+  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, EVENTS };
 })();

@@ -10,7 +10,6 @@
 
   let root = null;
   let els = {};
-  let categoryFilter = null;   // categoryId or null = all
   let query = "";              // folded, from the search bar
   /* 「買った」の三段（光る → 落ちる → 組み直す）を走っている最中の id。
      途中でもう一度押されても、二度目は無視します——押した回数ぶん
@@ -25,47 +24,11 @@
 
     const chrome = node(html`
       <div class="stack">
-        <header class="topbar">
-          <div class="topbar-row">
-            <div style="flex:1;min-width:0">
-              ${/* 題は出します。ただし帯の高さは他のタブと同じまま——題の
-                   ぶんだけ帯が太ると、この画面だけ一段深いところにいるように
-                   見えるので。色は「2026年」と同じコーラル（--c-primary）で、
-                   どのタブでも「いまどこか」を言う字は同じ色にします。 */""}
-              ${/* 題は二枚重ねて、`--face-p` で入れ替えます。紙を下げていくと
-                    「買うもの」が薄れ、「価格」が出てくる——動いているのは紙
-                    ですが、いま前に居るのはどちらか、を題も一緒に言います。
-                    下げきったところで app.js が本物の価格の画面に差し替える
-                    ので、そのとき題はもう「価格」になっていて、継ぎ目が
-                    見えません。 */""}
-              <h1 class="topbar-title tab-title face-title">
-                <span class="face-t face-t-front">shopping</span>
-                <span class="face-t face-t-back" aria-hidden="true">prices</span>
-              </h1>
-              <div class="topbar-sub js-sub"></div>
-            </div>
-            ${/* No 「まとめて削除」 on this bar any more. Having bought
-                 something is not a reason to throw the record of it away, and
-                 there is no moment in a shop where that is the thing you
-                 reach for. What is bought drops into the archive below,
-                 dated, and stays there.
-
-                 The three that are here are the same three, in the same
-                 order, on this screen and on 価格: くらべる・並べ方・さがす. */""}
-            ${/* 価格の画面へ。ここにあったのは「お店をくらべる」でした——
-                  行き先を決めるときに何度か使うもので、買い物の途中で押す
-                  ものではなかったので、外しました。かわりに、値段を仕込む
-                  ところ（商品と価格）への戸を置きます。値札の絵にしたのは、
-                  行った先の画面が値札を並べているからです。 */""}
-            ${/* 右上は**二つだけ**です——さがす と 設定。並べ方（タイル／行）と
-                  暦の出し入れは、押すたびに画面が組み変わるほど強いのに、
-                  たまにしか使いません。たまに使うものは設定の中へ。
-                  右上に居るのは「どの画面でも同じ二つ」だけにします。 */""}
-            <button class="icon-btn js-search-btn" aria-label="商品名で探す">${icon("search")}</button>
-            <button class="icon-btn js-settings" aria-label="設定">${icon("gear")}</button>
-          </div>
-        </header>
-
+        ${/* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
+              一つの帯（js/head.js）に居ます（docs/shared-header.md の段3）。
+              前はここに自前の帯があり、題が「shopping」⇄「prices」と入れ替わって
+              いました。いまは題も日付で、紙を下げて価格へ移っても変わりません。
+              暦は印を描かない一枚（`KN.head.shopCal()`）で、価格と分け合います。 */""}
         <div class="search-wrap js-search-wrap">
           <div class="search-bar">
             ${icon("search")}
@@ -80,10 +43,15 @@
              言っていて、帯はそれを絵にし直しているだけ——しかも買い物の
              途中で見るのは「あと何を買うか」であって、達成率ではないので。 */""}
 
-        <div class="js-filter"></div>
-        ${/* 紙と掴み手。やること・daily と同じ器です。**掴み手を下へ引くと
-              価格の面が出ます**——この二つは横に並んだ二つのタブではなく、
-              買うものの後ろに価格がいる、という重なりなので。 */""}
+        ${/* カテゴリで絞る札の帯は、2026年9月28日に外しました（利用者：
+              「shopping ではタグは要らない。使わないから」）。札があると、
+              暦と掴み手のあいだに一段はさまって、ほかのタブと同じ「引くと
+              暦が開く」の形になりません。価格の札は残っています。
+
+              紙と掴み手。やること・daily と同じ器です。**掴み手を下へ引くと
+              暦が開きます**（ほかのタブと同じ cal-peek）。価格は買うものの
+              紙の後ろにいて、そこへは帯の「shopping」を押して行きます
+              （紙が下がる。app.js の faceTo）。 */""}
         <div class="tl-sheet js-sheet">
           <span class="tl-grip js-grip" aria-hidden="true"><i></i></span>
           <div class="js-body"></div>
@@ -94,37 +62,50 @@
     root.append(chrome);
 
     els = {
-      sub:        chrome.querySelector(".js-sub"),
-      searchBtn:  chrome.querySelector(".js-search-btn"),
+      searchBtn:  KN.head.els.searchBtn,
+      mine:       () => KN.head.mine("list"),
       screen:     root,
       searchWrap: chrome.querySelector(".js-search-wrap"),
       search:     chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
-      filter:     chrome.querySelector(".js-filter"),
       body:       chrome.querySelector(".js-body"),
-      topbar:     chrome.querySelector(".topbar"),
     };
 
-    /* 掴み手は上のバーのすぐ下に貼りつきます。バーの高さはノッチの深さで
-       変わるので、実測して渡します（CSSに焼き込むと機種でずれる）。 */
-    const fitBar = () => {
-      const h = els.topbar.getBoundingClientRect().height;
-      root.style.setProperty("--topbar-h", Math.round(h) + "px");
-    };
-    fitBar();
-    window.addEventListener("resize", fitBar);
-    KN.app.wireFaceGrip(chrome.querySelector(".js-grip"), { role: "front" });
-
-    chrome.querySelector(".js-settings").addEventListener("click",
-      () => KN.app.showScreen("settings"));
-    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
-
-    /* 送っているのは画面ではなく紙です（css の「外枠と、その中を流れる
-       中身」）。見張る相手を間違えると、上のバーの影が一生出ません。 */
-    const sc = KN.app.scrollerOf(root);
-    sc.addEventListener("scroll", () => {
-      els.topbar.classList.toggle("is-stuck", sc.scrollTop > 4);
+    /* 掴み手は二役です。紙が上に居るあいだは暦を開くもの（ほかのタブと
+       同じ cal-peek。head.js が暦を持っているので、結ぶのもあちら）、
+       紙が価格へ下がって留まっているあいだは買うものへ戻る道（app.js）。 */
+    const grip = chrome.querySelector(".js-grip");
+    KN.app.wireFaceGrip(grip);
+    KN.head.shopPeek({
+      sheet: chrome.querySelector(".js-sheet"),
+      root,
+      // 探している最中だけ引きません（ほかのタブと同じ）。
+      enabled: () => !query.trim(),
     });
+
+    /* 紙を横に払うと、日が動きます（ほかのタブと同じ手つき・同じ一つの
+       仕掛け js/day-swipe.js）。買うものの紙は日で中身が変わらないので、
+       隣の紙は組みません——紙は指に少しついて戻り、動くのは題と暦の日
+       だけです（docs/shared-header.md の「決めたこと」の2を、2026年9月28日に
+       利用者と改めた）。掴み手は暦を引くものなので、そこから始まった指は
+       取りません。行の上からも払えます——行ごとの払い（右で★・左で
+       アーカイブ）は、日を払うのと取り合うので外しました（同じ日、利用者）。 */
+    const sheet = chrome.querySelector(".js-sheet");
+    KN.daySwipe.wire({
+      viewport: sheet,
+      surface: sheet,
+      track: els.body,
+      ignore: ".tl-grip",
+      day: () => KN.head.shopDay(),
+      step: (d, dir) => KN.util.shiftDay(d, dir),
+      commit: (key) => KN.head.shopGo(key),
+      busy: () => !KN.head.mine("list") || KN.reorder.isActive(),
+    });
+
+    /* 歯車は帯（head.js）が結びます。虫めがねは共通の一つで、応えるのは
+       持ち主のときだけ（`els.mine`）。境目の線（is-stuck）は、ほかのタブと
+       同じく出しません——帯は送られないので「貼りついた」がありません。 */
+    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
   }
 
   /* ---------------- the add sheet ---------------- */
@@ -160,6 +141,7 @@
                  aria-autocomplete="list">
           <div class="js-ac"></div>
           <span class="field-hint js-known" hidden></span>
+          <button type="button" class="dest-chip js-dest" hidden></button>
         </div>
 
         <div class="field">
@@ -167,7 +149,6 @@
             <span class="icon-pick-mark js-fav-mark">${icon("star")}</span>
             <span class="icon-pick-text">
               <span class="icon-pick-name">今回買う</span>
-              <span class="icon-pick-sub js-fav-sub">★を付けると、今回の買い物としてまとまります</span>
             </span>
           </button>
         </div>
@@ -189,7 +170,6 @@
     const acHost = body.querySelector(".js-ac");
     const known  = body.querySelector(".js-known");
     const favBtn = body.querySelector(".js-fav");
-    const favSub = body.querySelector(".js-fav-sub");
 
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
@@ -205,9 +185,6 @@
       fav = !fav;
       favBtn.classList.toggle("is-on", fav);
       favBtn.setAttribute("aria-pressed", String(fav));
-      favSub.textContent = fav
-        ? "今回の買い物としてまとまります"
-        : "★を付けると、今回の買い物としてまとまります";
       KN.motion.fire("save");
     });
 
@@ -222,8 +199,55 @@
         known.hidden = true;
       }
       if (!picked && !catTouched) cat.set(typed ? store.guessCategory(typed) : store.OTHER_CATEGORY);
+      /* 分けて入れるときは、押す前にボタンがそう言います（R1）。 */
+      const n = pieces().length;
+      addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
       renderSuggestions(nameEl, acHost, typed, choose);
+      paintDest();
     }
+
+    /* 行き先の札（R4）。「明日 19:00 歯医者」は、やることらしい——押せばそちらへ。
+       押さなければ今までどおり買うものに入る。 */
+    const paintDest = KN.capture
+      ? KN.capture.bindChip(body.querySelector(".js-dest"), {
+        from: "list",
+        text: () => (picked ? "" : nameEl.value),
+        go: (g) => {
+          const rec = KN.capture.toTodo(nameEl.value.trim(), g.when);
+          handle.close();
+          if (!rec) return;
+          const W = KN.whenParse;
+          const w = g.when && W ? W.describe(g.when) : "";
+          KN.motion.fire("save");
+          KN.ui.toast(`やることに「${rec.title}」を入れました${w ? `（${w}）` : ""}`, {
+            action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) },
+          });
+        },
+      })
+      : () => {};
+
+    /* 「牛乳、卵、パン」は三つ（docs/roadmap.md の R1）。候補から選んだ品物は、
+       名前に読点があっても一つ。登録済みの名前に入っている読点でも分けない。 */
+    function pieces() {
+      if (picked) return [picked.name];
+      const S = KN.splitItems;
+      const typed = nameEl.value.trim();
+      if (!S || !typed) return typed ? [typed] : [];
+      return S.shop(typed, store.get().products.map((p) => p.name));
+    }
+
+    /* 一行の欄は改行を持てないので、貼りつけた改行は読点にして見せます
+       ——黙って消すと「牛乳卵パン」という一つの名前になります。 */
+    nameEl.addEventListener("paste", (e) => {
+      const txt = e.clipboardData && e.clipboardData.getData("text");
+      if (!txt || !/[\r\n]/.test(txt.trim())) return;
+      e.preventDefault();
+      const flat = txt.trim().split(/\s*(?:\r?\n|\r)+\s*/).filter(Boolean).join("、");
+      const a = nameEl.selectionStart ?? nameEl.value.length;
+      const b = nameEl.selectionEnd ?? a;
+      nameEl.setRangeText(flat, a, b, "end");
+      onName();
+    });
 
     /* A suggestion tapped: from here the form is about that product, so its
        category comes along and the sheet says which one it landed on. */
@@ -235,11 +259,10 @@
       cat.set(product.categoryId);
       const best = store.bestPrice(product);
       const st = best ? store.getStore(best.storeId) : null;
-      known.hidden = false;
-      known.textContent = best && st
-        ? `登録済みの商品です・${st.name} ${yen(best.price)} が最安`
-        : "登録済みの商品です";
+      known.hidden = !(best && st);
+      known.textContent = best && st ? `最安 ${st.name} ${yen(best.price)}` : "";
       acHost.innerHTML = "";
+      paintDest();
       nameEl.focus();
     }
 
@@ -257,6 +280,9 @@
     function submit() {
       const name = nameEl.value.trim();
       if (!name) { nameEl.focus(); return; }
+
+      const many = pieces();
+      if (many.length >= 2) { submitMany(name, many); return; }
 
       const product = picked || store.findProductByName(name)
         || store.addProduct({ name, categoryId: cat.current });
@@ -302,6 +328,67 @@
          instead of at the line that appeared. One add, one close, and the ＋
          is right there under the thumb for the next one. */
       handle.close();
+    }
+
+    /* 分けて入れる（R1）。棚は一つずつ推し直します——「牛乳、洗剤」を同じ棚に
+       入れる理由はないので。手で選んだ棚だけは、新しく作る品物みんなへ。
+       ★とメモは、打った人が一度に言ったことなので、どの行にも付けます
+       （消すより、余ったものを直すほうが安い）。 */
+    function submitMany(whole, names) {
+      const memo = memoEl.value.trim();
+      const made = [];      // この一押しで作った品物（ひとつにするとき片づける）
+      const added = [];     // この一押しで足した行
+      let dup = 0;
+      names.forEach((name) => {
+        let product = store.findProductByName(name);
+        if (!product) {
+          product = store.addProduct({ name,
+            categoryId: catTouched ? cat.current : store.guessCategory(name) });
+          if (!product) return;
+          made.push(product.id);
+        }
+        if (store.get().items.some((i) => i.productId === product.id && !i.checked)) { dup++; return; }
+        const rec = store.addItem(product.id, { memo });
+        if (fav) store.update((s) => {
+          const it = s.items.find((i) => i.id === rec.id);
+          if (it) it.fav = true;
+        });
+        added.push(rec.id);
+      });
+      KN.motion.fire("save");
+      handle.close();
+
+      if (!added.length) {
+        KN.ui.toast("どれも、もうリストにあります");
+        return;
+      }
+      KN.ui.toast(`${added.length}つに分けて入れました${dup ? `（${dup}つはもうリストに）` : ""}`, {
+        action: { label: "ひとつにする", onClick: () => joinBack(whole, added, made, memo) },
+      });
+    }
+
+    /* 「ひとつにする」：分けて足した行と、そのとき作った品物を片づけて、打った
+       とおりの一つの名前で入れ直します。作った品物は、そのあと値段が付いて
+       いたら残します（もう別の用で使われているので）。 */
+    function joinBack(whole, added, made, memo) {
+      const drop = new Set(added);
+      store.update((s) => {
+        s.items = s.items.filter((i) => !drop.has(i.id));
+        const used = new Set(s.items.map((i) => i.productId));
+        s.products = s.products.filter((p) =>
+          !made.includes(p.id) || used.has(p.id) || (p.prices && p.prices.length));
+      });
+      const product = store.findProductByName(whole)
+        || store.addProduct({ name: whole,
+          categoryId: catTouched ? cat.current : store.guessCategory(whole) });
+      if (!product) return;
+      if (store.get().items.some((i) => i.productId === product.id && !i.checked)) return;
+      const rec = store.addItem(product.id, { memo });
+      if (fav) store.update((s) => {
+        const it = s.items.find((i) => i.id === rec.id);
+        if (it) it.fav = true;
+      });
+      KN.ui.toast(`「${product.name}」ひとつにしました`);
     }
 
     return handle;
@@ -363,30 +450,26 @@
 
   /* ---------------- render ---------------- */
 
+  /* 描けるものだけ（R18）。`products` に無い `productId` の品物が一つでもあると、
+     リストは「空ではない」のに描ける行が無く、空の案内も出ずに真っ白でした。
+     読み込みでは reconcile() が外しますが、動いている最中の食い違い（品物を消す
+     途中で落ちた・戻した控えが崩れていた）はここまで来ます。**消さない**——
+     飛ばして描くだけ。 */
+  const drawable = () => store.get().items.filter((i) => store.getProduct(i.productId));
+
   function render() {
-    const st = store.get();
-    const items = st.items;
+    const items = drawable();
 
-    // Once anything is starred the header tracks that trip rather than the whole
-    // list, so it agrees with the tab badge instead of quoting a second number.
-    const scope = items.some((i) => i.fav) ? items.filter((i) => i.fav) : items;
-    const done = scope.filter((i) => i.checked).length;
-    const label = scope === items ? "" : "今回買うもの ";
+    /* 暦は帯（全タブで一つ）に置きます。印の無い一枚で、価格と分け合う
+       ——紙を下げて価格へ移っても、暦は差し替わりません（head.js）。
+       題に「いま見ている日」を塗るのも、あちらが持ちます。 */
+    KN.head.putCal("list", KN.head.shopCal());
 
-    /* 表題の下には、何も出しません。
-
-       「8件中8件購入済み」と書いていましたが、すぐ下の見出しが件数を持ち、
-       その下に進み具合の帯もあります。同じことを三度言っていました。
-       題のすぐ下は目がいちばん先に行く場所なので、そこは空けます。 */
-    els.sub.textContent = "";
-
-
-
-    renderFilter(items);
     /* Searching narrows the rows, not the header: the counts above still
        describe the whole trip, because a search is a way of looking at the
        list rather than a change to it. */
     renderBody(query ? items.filter(matchesQuery) : items);
+    awake.recheck();
   }
 
   /** Name, memo, or category — whichever the query happens to be. */
@@ -399,39 +482,35 @@
       || (!!cat && KN.util.foldKana(cat.name).includes(query));
   }
 
-  function renderFilter(items) {
-    const counts = new Map();
-    items.filter((i) => !i.checked).forEach((i) => {
-      const p = store.getProduct(i.productId);
-      if (!p) return;
-      counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1);
-    });
-
-    if (counts.size < 2) { categoryFilter = null; els.filter.innerHTML = ""; return; }
-    if (categoryFilter && !counts.has(categoryFilter)) categoryFilter = null;
-
-    const chips = [{ id: "", label: "すべて" }].concat(
-      store.sortedCategories().filter((c) => counts.has(c.id)).map((c) => ({
-        id: c.id, label: c.name, color: c.color, count: counts.get(c.id),
-      })));
-
-    KN.ui.chipRow(els.filter, chips, {
-      activeId: categoryFilter || "",
-      onPick: (id) => {
-        categoryFilter = id && id !== categoryFilter ? id : null;
-        KN.motion.fire("select");
-        render();
-      },
-    });
-  }
-
   function renderBody(items) {
     /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
        settle() を呼ぶと、動いた行が「もといた場所」から滑ってきます
-       （ui.js の flipRows）。丸ごと入れ替わるとき（検索・カテゴリの切り替え）
+       （ui.js の flipRows）。丸ごと入れ替わるとき（検索）
        は、向こうが自分で見送ります。 */
-    const settle = KN.ui.flipRows(els.body, ".item-wrap");
+    const flip = KN.ui.flipRows(els.body, ".item-wrap");
+    /* 前の絵に居た行は、入ってくる動き（item-in）を見送ります。組み直すたびに
+       全部の行が薄い所から現れ直して一覧ごと瞬き、しかも動き中は FLIP の
+       transform に勝つので、行が動いたことが見えませんでした（V17）。 */
+    const seen = new Set([...els.body.querySelectorAll(".item-wrap[data-flip]")].map((e) => e.dataset.flip));
+    const settle = () => {
+      els.body.querySelectorAll(".item-wrap[data-flip]").forEach((e) => {
+        if (seen.has(e.dataset.flip)) e.style.animation = "none";
+      });
+      flip();
+    };
     els.body.innerHTML = "";
+
+    /* 暦で今日でない日に合わせていたら、紙は**その日に買ったもの**だけ
+       （2026年9月28日夜、利用者：「その下に、まだ買ってないものやリストを
+       送るやアーカイブがあるのがおかしい。要らないでしょ」）。何も買って
+       いない日は「◯月◯日に買ったもの 0」だけ。探しているあいだは、日に
+       関係なくリストを探します（探した結果によその日を混ぜないので）。 */
+    const day = KN.head.shopDay();
+    if (!query && day && day !== KN.util.todayKey()) {
+      els.body.append(dayBought(items.filter((i) => i.checked), day));
+      settle();
+      return;
+    }
 
     if (!items.length) {
       // An empty search is not an empty list, and offering 「サンプルを入れて
@@ -456,9 +535,9 @@
          is a standing note of things to buy sometime, not a shopping trip, and
          adding up a year of sometime gives a number with no occasion. Both come
          back the moment something is starred, where they mean this trip. */
-      const shown = appendGroups(active);
-      if (!shown && categoryFilter) els.body.append(noneInCategory());
-      if (checked.length) els.body.append(checkedSection(checked));
+      appendGroups(active);
+      els.body.append(lowSection());
+      if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
       settle();
       return;
     }
@@ -479,8 +558,7 @@
     const box = node(html`<section class="trip"></section>`);
     box.append(sectionHead("今回買うもの", trip.length, "trip"));
     const inner = node(html`<div class="trip-body"></div>`);
-    const tripShown = appendGroups(trip, inner);
-    if (!tripShown && categoryFilter) inner.append(noneInCategory());
+    appendGroups(trip, inner);
     box.append(inner);
     box.append(tripPlanRow());
     els.body.append(box);
@@ -490,9 +568,63 @@
       els.body.append(sectionHead("そのほか", rest.length, "rest"));
       appendGroups(rest);
     }
-
-    if (checked.length) els.body.append(checkedSection(checked));
+    els.body.append(lowSection());
+    if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
     settle();
+  }
+
+  /* 「このリストを送る」は、2026年9月29日に外しました（利用者：「リストを
+     送るの機能も要らない」）。docs/shopping.md の D4。 */
+
+  /* ---------------- そろそろ切れそう（D6） ----------------
+
+     いつもの間隔で、そろそろ買うころのもの（js/insights.js の runningLow）。
+     置き場所は買うものの終わり、アーカイブの手前——数えている相手が
+     アーカイブの「買った」なので、その上に。押せば買うものへ入って、
+     ここからは消えます（入ったものは数えない）。
+
+     「要らない」を押す欄は置きません。覚えておく入れ物が要るので。
+     かわりに、いつもの 2.5 倍を過ぎたら黙ります（insights.js）。
+     探しているあいだは出しません——探した結果は「リストの見方」で、
+     そこに外のものを混ぜると見方が崩れるので。 */
+  function lowSection() {
+    if (query) return document.createDocumentFragment();
+    const low = KN.insights.runningLow();
+    if (!low.length) return document.createDocumentFragment();
+    const section = node(html`
+      <section class="low" aria-label="そろそろ切れそう">
+        <h2 class="trip-head trip-head-rest">${icon("clock")}<span>そろそろ切れそう</span></h2>
+        <div class="low-list"></div>
+      </section>
+    `);
+    const listEl = section.querySelector(".low-list");
+    low.forEach(({ product, every, since }) => {
+      const cat = store.getCategory(product.categoryId);
+      const row = node(html`
+        <div class="low-row" style="--cat:${(cat && cat.color) || ""}">
+          <span class="low-mark" aria-hidden="true">${store.productMark(product)}</span>
+          <span class="low-main">
+            <span class="low-name">${product.name}</span>
+            <span class="low-meta">だいたい${every}日ごと・前は${since}日前</span>
+          </span>
+          <button type="button" class="low-add" aria-label="${product.name} を買うものに入れる">
+            ${icon("plus")}<span>入れる</span>
+          </button>
+        </div>
+      `);
+      row.querySelector(".low-add").addEventListener("click", (e) => {
+        KN.motion.fire("add", e.currentTarget);
+        const rec = store.addItem(product.id);
+        KN.ui.toast(`「${product.name}」を買うものに入れました`, {
+          action: {
+            label: "元に戻す",
+            onClick: () => store.update((s) => { s.items = s.items.filter((i) => i.id !== rec.id); }),
+          },
+        });
+      });
+      listEl.append(row);
+    });
+    return section;
   }
 
   /* ---------------- 「いつ行くか」を、予定のほうへ ----------------
@@ -534,16 +666,22 @@
   }
 
   /** Renders category groups for the given items. Returns whether anything showed. */
-  function appendGroups(list, host) {
-    const into = host || els.body;
+  /** 画面に出る組：カテゴリごと。並べるのは
+      `store.sortedCategories()` の順（appendGroups と、送る文の両方が使う）。 */
+  function groupsOf(list) {
     const groups = new Map();
     list.forEach((item) => {
       const p = store.getProduct(item.productId);
       if (!p) return;
-      if (categoryFilter && p.categoryId !== categoryFilter) return;
       if (!groups.has(p.categoryId)) groups.set(p.categoryId, []);
       groups.get(p.categoryId).push({ item, product: p });
     });
+    return groups;
+  }
+
+  function appendGroups(list, host) {
+    const into = host || els.body;
+    const groups = groupsOf(list);
 
     /* Tiles are one grid for the lot. A separate grid per category would give
        a category of one item a row of its own and two empty cells beside it —
@@ -575,7 +713,7 @@
          same thing without taking a line. The grouping stays: it is what
          makes the colours run in blocks, and what a drag reorders within. */
       const group = node(html`
-        <section class="cat-group" style="--cat:${cat.color || ""}">
+        <section class="cat-group is-run" style="--cat:${cat.color || ""}">
           <div class="item-list"></div>
         </section>
       `);
@@ -625,23 +763,15 @@
     `);
   }
 
-  function noneInCategory() {
-    return node(html`
-      <p style="text-align:center;color:var(--c-text-3);padding:32px 16px">
-        このカテゴリに未購入の商品はありません
-      </p>
-    `);
-  }
-
   function itemRow(item, product) {
     const best = store.bestPrice(product);
     const bestStore = best ? store.getStore(best.storeId) : null;
     const tiles = KN.ui.isTiles();
 
-    /* Both ways spring back and land as they go, the same as the price
-       screen: right is ★, left is the archive. Tiles swipe too, on a shorter
-       throw and with the icons alone — a third of a screen has no room for
-       the wording. */
+    /* 行を横に払う手つき（右で★・左でアーカイブ）は、2026年9月28日に
+       外しました。紙を横に払うと日が動くようになり、行の上で指が二つの
+       意味を取り合うので（利用者：「左右フリックで日付を変えたいので」）。
+       ★は行の★を押す。アーカイブは価格の画面で（そちらの払いは残す）。 */
     const wrap = node(html`
       ${/* data-flip は「組み直しの前後で、同じ行かどうか」の目印です
             （ui.js の flipRows）。data-item-id とは役目が別なので、
@@ -650,12 +780,6 @@
       <article class="item-wrap ${tiles ? "is-tile-wrap" : ""}"
                data-item-id="${item.id}" data-flip="${item.id}"
                style="--cat:${store.productColor(product)}">
-        <div class="swipe-yes">
-          ${icon("star")}<span>${item.fav ? "★をはずす" : "今回買う"}</span>
-        </div>
-        <div class="swipe-arch">
-          <span>アーカイブ</span>${icon("download")}
-        </div>
       </article>
     `);
 
@@ -713,9 +837,9 @@
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
         <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
       `));
-    } else if (priceBox) {
-      priceBox.append(node(html`<span class="item-price-none">値段は未登録</span>`));
     }
+    /* 値段が無い行は、空のまま（「値段は未登録」は出さない——利用者が選んだ、
+       2026年9月29日・R27）。器は残るので、列は他の行と揃う。 */
 
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
@@ -737,11 +861,14 @@
          落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
          行ったかを探さずに済みます。 */
       /* やることと同じ返し方にします——線が引かれ、絵の丸がひと回りし、
-         行を光が通る。そのあとで下の「買ったもの」へ落ちます。
+         行を光が通る。そのあとで「今日買ったもの」の束へしまわれます（tuck）。
          同じ「済ませた」が、タブごとに違う返り方をしないように。 */
       if (finishing.has(item.id)) return;      // 二度押しても一度だけ
       finishing.add(item.id);
       KN.motion.fire("check");
+      /* 丸はすぐ満ち、✓が左から描かれる（やることと同じ「指にはすぐ応える」。
+         screens.css の「✓は描かれる」）。組み直しで本物の買った姿に引き継ぐ。 */
+      e.currentTarget.setAttribute("aria-checked", "true");
       KN.ui.burst(e.currentTarget);
       const mark = row.querySelector(".item-emoji");
       if (mark) KN.ui.burst(mark);
@@ -755,8 +882,9 @@
       if (mark) mark.classList.add("is-pop");
 
       setTimeout(() => {
-        row.classList.add("is-dropping");
-        setTimeout(() => {
+        /* 下の帯のカートが受け止める。 */
+        KN.app.pokeTab("list");
+        tuck(wrap, () => {
           finishing.delete(item.id);
           commit();
           /* 押し間違いは、その場で戻せること。行は「買ったもの」へ落ちて
@@ -772,7 +900,7 @@
               }),
             },
           });
-        }, 280);
+        });
       }, draw);
     });
 
@@ -788,72 +916,129 @@
       KN.productSheet.openIconPicker(product.id, () => {});
     });
 
-    KN.ui.swipeActions(wrap, row, {
-      tiles,
-      onRight: () => toggleFav(item.id),
-      onLeft: () => archive(product),
-    });
     return wrap;
-  }
-
-  /* The same one archive as the price screen's, not a second one: the product
-     goes into the drawer at the bottom of 価格, and this row leaves the list —
-     which is also what puts out the painted edge over there.
-
-     It is also how a row leaves the list without being bought. There used to
-     be a 「削除」 next to it, which only cleared the row and left the product
-     sitting in the price list as though nothing had been decided about it;
-     saying 「しばらく買わない」 once, in one place, is the honest version. */
-  function archive(product) {
-    KN.motion.fire("save");
-    const undo = store.setArchived(product.id, true);
-    KN.ui.toast(`「${product.name}」をアーカイブしました`, {
-      action: { label: "元に戻す", onClick: undo },
-    });
   }
 
   /* ---------------- ★ ---------------- */
 
   /** ★ marks an item as part of the trip being shopped right now. */
   function toggleFav(itemId) {
+    let on = false;
     store.update((s) => {
       const rec = s.items.find((i) => i.id === itemId);
-      if (rec) rec.fav = !rec.fav;
+      if (rec) { rec.fav = !rec.fav; on = rec.fav; }
     });
     KN.motion.fire("save");
+    /* ★を付けた＝今回のかごに入れた。下の帯のカートが応える（外したときは黙る
+       ——取り消しに見せ場は作らない、済ませる丸と同じ約束）。 */
+    if (on) KN.app.pokeTab("list");
   }
 
-  /* 「購入済み」 became 「アーカイブ」, the same word the price screen's drawer
-     uses. They are the same idea — done with, kept, dated, out of the way of
-     what is still to do — and calling one of them something else made them
-     look like two different mechanisms. Newest first: an archive is read from
-     the most recent end. */
-  function checkedSection(checked) {
-    const st = store.get();
-    const open = st.settings.showChecked !== false;
+  /* ---------------- その日に買ったもの（2026年9月28日） ----------------
 
+     暦で合わせた日に買ったもの（利用者：「shopping で買った日に日付を合わせ
+     たら、その日に買ったものが出るように。過去と分かるように薄字かな」）。
+
+     - 数えるのは暦の丸と同じ相手——買った印（`checkedAt` をローカルの日で）。
+       **写さず引く**：記録の入れ物は増やしません。
+     - 行は買ったものの姿（`itemRow` の is-checked：線が引かれて薄い）。丸を
+       押せば買うものへ戻せます。
+     - **今日でない日は、紙はこれだけ**（同じ日の夜、利用者：「まだ買ってない
+       ものやリストを送るやアーカイブがあるのがおかしい」）。何も買っていない
+       日も「◯月◯日に買ったもの 0」を出します（「それ以外は何も要らない」）。
+     - **アーカイブの段は外しました**（同じ夜、「アーカイブ自体要らなくない？」）。
+       前の日に買ったものは、暦でその日へ行けば見えます。今日買ったものは、
+       リストの終わりに「今日買ったもの」として出ます（0 なら出さない——
+       今日の紙の主役はリストのほう）。買った印（checked / checkedAt）は
+       一つも消していません。描かないだけです。 */
+  function dayBought(checked, day) {
+    const isToday = day === KN.util.todayKey();
+    const bought = checked
+      .filter((i) => i.checkedAt && KN.util.dayKey(new Date(i.checkedAt)) === day)
+      .sort((a, b) => String(a.checkedAt).localeCompare(String(b.checkedAt)));
+    if (isToday && !bought.length) return document.createDocumentFragment();
+
+    const d = KN.util.dayDate(day);
+    const label = isToday ? "今日買ったもの"
+      : d ? `${d.getMonth() + 1}月${d.getDate()}日に買ったもの` : "この日に買ったもの";
+    /* 今日の「今日買ったもの」は、見出しの ＞ で閉じられます（2026年9月29日、
+       利用者）。開け閉めは使っていなかった `settings.showChecked`（既定 true）
+       に覚えさせます——新しい入れ物は増やしません。今日でない日は紙がこれ
+       だけなので、閉じる口は置きません。 */
+    const open = !isToday || store.get().settings.showChecked !== false;
     const section = node(html`
-      <section class="cat-group">
-        <button class="done-head" aria-expanded="${String(open)}">
-          ${icon("chevron")} アーカイブ <span class="cat-head-count">${checked.length}</span>
-        </button>
-        <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
+      <section class="day-bought ${isToday ? "is-today" : ""}" aria-label="${label}">
+        ${isToday
+          ? html`<h2 class="day-bought-head"><button type="button" class="day-bought-toggle" aria-expanded="${String(open)}">${icon("chevron")}<span>${label}</span> <span class="cat-head-count">${bought.length}</span></button></h2>`
+          : html`<h2 class="day-bought-head">${label} <span class="cat-head-count">${bought.length}</span></h2>`}
+        <div class="item-list" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
     `);
-
-    const list = section.querySelector(".js-done");
-    const newestFirst = checked.slice().sort((a, b) =>
-      String(b.checkedAt || "").localeCompare(String(a.checkedAt || "")));
-    newestFirst.forEach((item) => {
+    const list = section.querySelector(".item-list");
+    if (isToday) {
+      section.querySelector(".day-bought-toggle").addEventListener("click", () => {
+        store.update((s) => { s.settings.showChecked = !open; });
+      });
+    }
+    if (!open) return section;
+    /* 買ったものの行に★は要りません（今回買うかどうかは、もう済んだ話）。
+       丸も要らない——ただし今日の行だけは残します。押しまちがえたとき、
+       その場で買うものへ戻せるように（同じ夜、利用者）。
+       **消さずに、場所だけ残します**（`.is-void`：見えない・押せない・
+       読み上げない）。抜くと絵と名前が左へ、値段が右の端へ寄って、リストの
+       行とも、日を払った隣の日とも列がずれた（利用者：「わざわざ両端に寄せる
+       必要はない」、同じ夜・五度目）。 */
+    bought.forEach((item) => {
       const p = store.getProduct(item.productId);
-      if (p) list.append(itemRow(item, p));
+      if (!p) return;
+      const row = itemRow(item, p);
+      row.querySelectorAll(isToday ? ".fav" : ".fav, .check").forEach((b) => {
+        b.classList.add("is-void");
+        b.tabIndex = -1;
+      });
+      list.append(row);
     });
-
-    section.querySelector(".done-head").addEventListener("click", () => {
-      store.update((s) => { s.settings.showChecked = !open; });
-    });
-
     return section;
+  }
+
+  /* 買った行を「今日買ったもの」の束へしまう（docs/roadmap-2.0.md の V17）。
+     束が開いていれば、何もせずに組み直す——行は束の中の新しい席へ、前の場所から
+     滑っていく（flipRows。data-flip が同じなので同じ行として運ばれる）。前は
+     ここで一度薄れてから滑ってきたので、消えて別の所に湧いたように見えた。
+     閉じていれば、行が束の頭（＞）へ縮んで入り、数が一つ跳ねる。頭がまだ
+     無い（今日はじめて買って、閉じてある）ときだけ、前のとおり下へ落ちる。
+     動きを減らす設定では、その場で組み直す。 */
+  function tuck(wrap, done) {
+    if (KN.motion.still() || store.get().settings.showChecked !== false) { done(); return; }
+    const head = els.body.querySelector(".day-bought.is-today .day-bought-toggle");
+    const row = wrap.querySelector(".item");
+    if (!head) {
+      if (row) row.classList.add("is-dropping");
+      setTimeout(done, KN.motion.ms("--m-delete") + 40);
+      return;
+    }
+    const a = wrap.getBoundingClientRect();
+    const b = head.getBoundingClientRect();
+    const dx = b.left + b.height / 2 - (a.left + a.width / 2);
+    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    const run = wrap.animate([
+      { transform: "none", opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.2)`, opacity: 0 },
+    ], { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" });
+    let over = false;
+    const finish = () => {
+      if (over) return;
+      over = true;
+      done();
+      const count = els.body.querySelector(".day-bought.is-today .day-bought-toggle .cat-head-count");
+      if (count) {
+        count.animate([{ transform: "none" }, { transform: "scale(1.35)" }, { transform: "none" }],
+          { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out") });
+      }
+    };
+    run.onfinish = finish;
+    run.oncancel = finish;
+    setTimeout(finish, KN.motion.ms("--m-settle") + 200);
   }
 
   /* Whatever the numbers happen to be worth saying out loud. Renders nothing
@@ -888,17 +1073,14 @@
       <div class="empty">
         <div class="empty-art">${KN.util.raw(KN.emptyArt.basket)}</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
-        <p class="empty-text">
-          下の欄に商品名を入れるだけ。カテゴリは自動で振り分けられ、
-          お店ごとの値段を登録すると「どこが一番安いか」が分かります。
-        </p>
+        <p class="empty-text">下の欄に商品名を入れるだけ。</p>
         <button class="btn btn-soft js-sample" style="margin-top:8px">サンプルを入れて試す</button>
       </div>
     `);
     wrap.querySelector(".js-sample").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
         title: "サンプルを入れますか？",
-        message: "3つのお店と7つの商品・価格が入ったサンプルデータを読み込みます。あとから設定画面で全部消せます。",
+        message: "お試し用のお店と商品を入れます。",
         okLabel: "入れる",
       });
       if (ok) { store.loadSample(); KN.ui.toast("サンプルを読み込みました"); }
@@ -925,6 +1107,68 @@
     return fab;
   }
 
+  /* ---------------- 買い物中は、画面を消さない ----------------
+
+     買うものの画面が出ていて、まだ買うものが残っているあいだは、画面を
+     暗くしません（Screen Wake Lock。docs/improvements.md の D5）。カゴを
+     持った手で、消えた画面をもう一度起こすのは手間なので。設定は置きません
+     ——効くのはこの画面を見ているあいだだけで、放っておけば消えるので。
+
+     - **最後に触ってから5分で手放します。** 机に置いたままの画面を、電池が
+       尽きるまで点けておかないために。触れば、また持ちます。
+     - 持つのは触ったとき・画面に入ったとき・戻ってきたとき。組み直し
+       （買った・消した）では**延ばさず**、要らなくなっていたら手放すだけ
+       ——延ばすのは人の手だけにしないと、5分が数えられません。
+     - 隠れるとブラウザが自分で手放すので、戻ってきたら持ち直します。
+     - 使えない端末では何もしません（iOS のホーム画面アプリで効くのは
+       18.4 からとされます。実機では未確認）。 */
+  const awake = (() => {
+    const IDLE_MS = 5 * 60 * 1000;
+    let lock = null, asking = false, idleT = 0, pend = 0;
+    const wanted = () => document.visibilityState === "visible"
+      && ["list", "prices"].indexOf(KN.app.activeScreen && KN.app.activeScreen()) >= 0
+      && store.get().items.some((i) => !i.checked);
+    function release() {
+      clearTimeout(idleT);
+      const l = lock;
+      lock = null;
+      if (l) l.release().catch(() => {});
+    }
+    function hold() {
+      if (!wanted()) { release(); return; }
+      clearTimeout(idleT);
+      idleT = setTimeout(release, IDLE_MS);
+      if (lock || asking || !navigator.wakeLock) return;
+      asking = true;
+      navigator.wakeLock.request("screen").then((l) => {
+        asking = false;
+        if (!wanted()) { l.release().catch(() => {}); return; }
+        lock = l;
+        l.addEventListener("release", () => { if (lock === l) lock = null; });
+      }, () => { asking = false; });
+    }
+    /** 人の手（触った・入った・戻った）。一拍おくのは、タブを押した手なら
+        画面が切り替わってから確かめるため。 */
+    function touched() {
+      if (!pend) pend = setTimeout(() => { pend = 0; hold(); }, 0);
+    }
+    /** 組み直し。要らなくなっていたら手放すだけ。 */
+    function recheck() { if (lock && !wanted()) release(); }
+    return { touched, recheck };
+  })();
+  ["pointerup", "click", "keydown"].forEach((t) => document.addEventListener(t, awake.touched, true));
+  document.addEventListener("visibilitychange", awake.touched);
+
   KN.screens = KN.screens || {};
-  KN.screens.list = { mount, render, dockButton };
+  /* `day()` は共通の日を答えます（席を移るとき、app.js の show() が置いて
+     いく——買うものの暦で押した日を、ほかのタブへ持っていくため）。 */
+  /* 暦で日が動いた（head.js の dayMoved）。組み直すのは紙の中身だけ——
+     `render()` だと暦まで組み直して、いま動いている輪が跳ぶので。 */
+  function dayMoved() {
+    if (!root) return;
+    const items = drawable();
+    renderBody(query ? items.filter(matchesQuery) : items);
+  }
+
+  KN.screens.list = { mount, render, dockButton, dayMoved, onEnter: awake.touched, day: () => KN.head.shopDay() };
 })();

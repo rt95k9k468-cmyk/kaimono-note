@@ -2,14 +2,18 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- 二つ目の鍵（R29、docs/settings.md）。字の無害化（html）が一か所漏れても、よそのスクリプトは動かない。
+     直書きのスクリプトは無い。style 属性を使うので style は unsafe-inline。中継所・AI の窓口・Dropbox は
+     利用者が決める URL なので connect は https 全般。写真は data:、.ics などは blob:。 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' https:">
 <!-- No maximum-scale: every text field is 16px or larger, so iOS has no
      reason to zoom on focus, and capping the scale would only take
      pinch-zoom away from people who need to enlarge the text. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>くらしノート</title>
-<meta name="description" content="やることと買うものとからだを一冊に。日付つきのTodo、買い物リスト、店ごとの値段くらべ、体重と食事の記録。">
-<meta name="theme-color" content="#2f8f5b" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#12171400" media="(prefers-color-scheme: dark)">
+<meta name="description" content="daily・やること・買うもの・からだを一冊に。日記、時間割のTodo、買い物リストと店ごとの値段くらべ、体重と食事の記録。">
+<meta name="theme-color" content="#f0eff3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121216" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="くらしノート">
@@ -24,12 +28,21 @@
 
 <div class="app" id="app">
   <main class="screens" id="screens">
-    <section class="screen"           id="screen-archive"  data-screen="archive"  role="tabpanel" aria-label="daily" hidden></section>
-    <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="tasks" hidden></section>
-    <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="shopping"></section>
-    <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="prices" hidden></section>
-    <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="health" hidden></section>
-    <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="設定" hidden></section>
+    <!-- 上の帯と暦は、全タブで一つ（docs/shared-header.md）。帯（#head）は
+         タブの流れ（#panes の中の画面）の外に居るので、席を移っても動かない。
+         設定は deck の外——共通の帯ごと押しのけて上に重なる一枚なので。 -->
+    <div class="deck" id="deck">
+      <div class="head" id="head" hidden></div>
+      <div class="panes" id="panes">
+        <section class="screen"           id="screen-archive"  data-screen="archive"  role="tabpanel" aria-label="daily" hidden></section>
+        <section class="screen"           id="screen-notes"    data-screen="notes"    role="tabpanel" aria-label="notes" hidden></section>
+        <section class="screen"           id="screen-todo"     data-screen="todo"     role="tabpanel" aria-label="tasks" hidden></section>
+        <section class="screen is-active" id="screen-list"     data-screen="list"     role="tabpanel" aria-label="shopping"></section>
+        <section class="screen"           id="screen-prices"   data-screen="prices"   role="tabpanel" aria-label="prices" hidden></section>
+        <section class="screen"           id="screen-diet"     data-screen="diet"     role="tabpanel" aria-label="health" hidden></section>
+      </div>
+    </div>
+    <section class="screen"           id="screen-settings" data-screen="settings" role="tabpanel" aria-label="Settings" hidden></section>
   </main>
 
   <!-- The add bar lives here, outside the scrolling screens. It used to be a
@@ -51,56 +64,81 @@
     <path d="M10.4 18.8h3.2"/>
   </svg>
   <b>縦向きでお使いください</b>
-  <span>画面を縦に戻すと続きから使えます</span>
 </div>
 
 <div id="sheet-root"></div>
 <div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
 
+<script src="js/errlog.js"></script>
 <script src="js/util.js"></script>
 <script src="js/icons.js"></script>
-<script src="js/icons-legacy.js"></script>
 <script src="js/icons-phosphor.js"></script>
 <script src="js/motion.js"></script>
 <script src="js/plan.js"></script>
+<script src="js/day-road.js"></script>
 <script src="js/when-parse.js"></script>
+<script src="js/split-items.js"></script>
+<script src="js/capture.js"></script>
+<script src="js/season.js"></script>
 <script src="js/icon-system.js"></script>
-<script src="js/icons-v2.js"></script>
+<script src="js/icons-v2-keys.js"></script>
 <script src="js/product-icons.js"></script>
 <script src="js/icons-todo.js"></script>
-<script src="js/icons-todo-hand.js"></script>
 <script src="js/icons-food.js"></script>
 <script src="js/icons-goods.js"></script>
 <script src="js/empty-art.js"></script>
 <script src="js/diary-crypto.js"></script>
 <script src="js/diary.js"></script>
+<script src="js/idb.js"></script>
+<script src="js/drinks.js"></script>
 <script src="js/store.js"></script>
+<script src="js/diary-idb.js"></script>
+<script src="js/note-format.js"></script>
+<script src="js/notes-idb.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/reorder.js"></script>
 <script src="js/keypad.js"></script>
 <script src="js/backup.js"></script>
+<script src="js/dropbox.js"></script>
+<script src="js/audit.js"></script>
 <script src="js/insights.js"></script>
 <script src="js/pull-refresh.js"></script>
 <script src="js/cal-peek.js"></script>
 <script src="js/edge-back.js"></script>
 <script src="js/day-swipe.js"></script>
 <script src="js/cal-swipe.js"></script>
+<script src="js/head.js"></script>
+<script src="js/upcoming.js"></script>
+<script src="js/search-all.js"></script>
 <script src="js/notify.js"></script>
+<script src="js/ics.js"></script>
 <script src="js/food-data.js"></script>
 <script src="js/diet.js"></script>
-<script src="js/drinks.js"></script>
 <script src="js/diet-ai.js"></script>
 <script src="js/sleep-stages.js"></script>
 <script src="js/health-sync.js"></script>
 <script src="js/relay-code.js"></script>
 <script src="js/health-relay.js"></script>
+<script src="js/bell.js"></script>
+<script src="js/due-sheet.js"></script>
 <script src="js/product-sheet.js"></script>
 <script src="js/screen-archive.js"></script>
 <script src="js/screen-todo.js"></script>
 <script src="js/screen-diet.js"></script>
 <script src="js/screen-list.js"></script>
 <script src="js/screen-prices.js"></script>
+<script src="js/screen-notes.js"></script>
+<script src="js/yearbook.js"></script>
 <script src="js/screen-settings.js"></script>
+<script src="js/settings-look.js"></script>
+<script src="js/settings-todo.js"></script>
+<script src="js/settings-list.js"></script>
+<script src="js/settings-daily.js"></script>
+<script src="js/settings-notes.js"></script>
+<script src="js/settings-diet.js"></script>
+<script src="js/settings-relay.js"></script>
+<script src="js/settings-backup.js"></script>
+<script src="js/lock.js"></script>
 <script src="js/tab-lens.js"></script>
 <script src="js/app.js"></script>
 </body>

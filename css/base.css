@@ -82,8 +82,15 @@
 
      数値は参考にした画面（Structured）の実測 #f2938e に合わせました。
      設定の札の id は "orange" のまま置いてあります——保存してある値を
-     変えずに済み、`reconcile()` も触らずに色だけが入れ替わるので。 */
-  --c-primary:     #bf4f49;
+     変えずに済み、`reconcile()` も触らずに色だけが入れ替わるので。
+
+     **字の色なので、アプリの地（--c-bg #f0eff3）の上で 4.50 に揃えて
+     あります。** もとの #bf4f49 は白の上で 4.74 でしたが、地の上では
+     4.14 で、小さい字の 4.5 に届いていませんでした。OKLCH で色相と彩度を
+     保ったまま、明るさだけを届くところまで下げた値です（紙 #f5f5f5 で
+     4.73）。灰の札（#e8e8e8）の上では 4.21 なので、そこに乗る字は
+     --c-primary-ink を使います（.low-add）。暗い面は別の値で、変えていません。 */
+  --c-primary:     #b84944;
   --c-primary-2:   #a84240;
   --c-primary-soft:#fdeceb;
   --c-primary-ink: #8f3833;
@@ -93,7 +100,7 @@
      実測の #f2938e は白の上で 2.25:1 しかありません——参考画面がこの色を
      **字に使っていない**のはそのためで、あちらも塗りだけに使っています。
      一方 --c-primary は39か所で字の色として使われている（リンク・タブ・
-     電卓の記号…）ので、そちらは読める濃さ（4.7:1）に留めます。
+     電卓の記号…）ので、そちらは読める濃さ（地の上で 4.5:1）に留めます。
      同じ色の濃淡ではなく、**役目が二つある**ということです。
 
      **参考画面（Structured）と同じ #f49e98 に揃えました。** 濃さは
@@ -112,8 +119,14 @@
      もとはオレンジでした（#d8722f）。基調色そのものがオレンジになった
      ので、そのままだと「いちばん安い」の札が普通のボタンと同じ色に
      埋もれます。ここだけ寒色（青）へ振って、基調と競わないようにします
-     ——割引（cool-soft/-ink）に寒色を当てたのと同じ考え方です。 */
-  --c-accent:      #2f7fb8;
+     ——割引（cool-soft/-ink）に寒色を当てたのと同じ考え方です。
+
+     値札の ¥ は字なので、--c-primary と同じく地の上で 4.5 に届く濃さに
+     しています（#2f7fb8 → #2072ab、地で 4.52・紙で 4.75）。これも OKLCH で
+     色相と彩度を保ち、明るさだけ下げた値です。ほかの基調（ローズ・
+     マスタード・アプリコット）の規則には #2f7fb8 が残っていますが、
+     あちらは今回は触っていません。 */
+  --c-accent:      #2072ab;
   --c-accent-soft: #e4f1fa;
   --c-accent-ink:  #1c5678;
 
@@ -356,6 +369,7 @@
        --z-lift   指が運んでいるもの。どの面よりも上、紙よりは下
        --z-sheet  紙と、その覆い（js/ui.js が重なった深さぶん足します）
        --z-toast  お知らせ。紙の上にも出る
+       --z-lock   daily・ノートの鍵の覆い（js/lock.js）。紙もトーストも隠す
        --z-pad    字を打つための道具（電卓）。紙の**上**でないと使えない
        --z-top    いちばん上。一度だけ出る光
 
@@ -367,6 +381,7 @@
   --z-lift:   60;
   --z-sheet: 100;
   --z-toast: 200;
+  --z-lock:  300;
   --z-pad:   400;
   --z-top:   600;
 
@@ -405,8 +420,12 @@
      広さに（--lh-body）。 */
   --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
           "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
-  --fs-xs: 11px; --fs-sm: 12.5px; --fs-md: 14px;
-  --fs-lg: 16px; --fs-xl: 19px;  --fs-2xl: 24px;
+  /* --fs-k は文字の大きさの倍率（設定 → 外観 → 文字の大きさ。app.js の
+     applyTextSize が :root に一度だけ書く）。字の大きさは**どれもこれを掛けて**
+     書くこと——掛け忘れた字だけが、大きくしても取り残される（docs/look.md）。 */
+  --fs-k: 1;
+  --fs-xs: calc(11px * var(--fs-k)); --fs-sm: calc(12.5px * var(--fs-k)); --fs-md: calc(14px * var(--fs-k));
+  --fs-lg: calc(16px * var(--fs-k)); --fs-xl: calc(19px * var(--fs-k));  --fs-2xl: calc(24px * var(--fs-k));
 
   --fw-regular: 400;
   --fw-bold:    700;
@@ -481,6 +500,9 @@
   --m-sheet-close: .2s;
   /* 画面が変わる。 */
   --m-nav: .26s;
+  /* 席を移るとき、暦の印を替える。出ていく印が半ばまで薄れたところで、
+     入ってくる印が出はじめる（半分ずつ重ねて、ゆっくり）。全体で一回半。 */
+  --m-marks: .4s;
   /* うまくいった／気をつけて。 */
   --m-success: .42s;
   --m-warn: .36s;
@@ -503,19 +525,54 @@
      いまは CSS 側だけがこの名前を読み、JS 側はまだ自分の数を持っています
      （day-swipe.js / cal-swipe.js / edge-back.js の SETTLE）。 */
   --m-swipe: .28s;
+  /* 買うものの紙が、価格との間を行き来する（app.js の faceSettle が glide の
+     `base` に渡す）。`--m-swipe` の払いと違って、動くのは画面の丈ほどの
+     紙一枚——同じ .28s では、価格から戻るときに「速すぎる」と言われた
+     （2026年9月28日、実機）。 */
+  --m-face: .46s;
   /* 押した瞬間に、一度だけ出る光。帯のガラスが拾う光と、済ませた火花。 */
   --m-spark: .46s;
   /* 器そのものが伸び縮みする（暦が開く、帯が出入りする、欄が育つ）。
      中身が動くのではなく、入れものの高さが変わる、という出来事です。 */
   --m-grow: .3s;
+  /* 上のきわ・題を押して上へ戻る。道のりで 0.7〜1.6倍（app.js の glideToTop）。 */
+  --m-to-top: .75s;
   /* 組み直したあと、行が**もといた場所から**滑ってきて収まる（FLIP）。
      `--m-reorder`（よける）より倍ちかく長いのは、あちらが指の下でいま
      起きている移動なのに対して、こちらは「並びが変わった」という**結果**
      を読ませるものだからです。速いと、行が入れ替わったことに気づけません。 */
   --m-settle: .52s;
+  /* 題の日付が入れ替わる。変わった字だけが、古い字は抜けていき新しい字は
+     浮かんでくる（util.js の rollText）。`--m-number`（数が変わる手ごたえ）
+     より長いのは、押した手ごたえではなく「見ている日が移った」という
+     出来事で、目で追える速さにするためです。年・月・日・曜日の順に
+     `--m-roll-step` ずつ遅らせます。 */
+  --m-roll: .44s;
+  --m-roll-step: .035s;
   /* 一度だけ、そこを見てほしい（足した行がどこへ入ったかを示す光）。
      他のどれよりも長いのは、**目が探しに行く時間**だからです。 */
   --m-flash: 1.4s;
+  /* 道の人の一歩（やることを開いたとき、前に見た点から「いま」まで四歩で
+     追いつく。day-road.js の「歩く」）。上がり下がりの台形を足して、全体で
+     1.5s（2.0s から。2.0 の roadmap の V6「長くても約1.5秒」）。 */
+  --m-walk: .3s;
+  /* 寝床の z Z がのぼる一回（道を外れた時間に開いているあいだ、くり返す。
+     day-road.js の「寝床」）。寝息の一息くらい、ゆっくり。 */
+  --m-snore: 2.6s;
+  /* 開いたとき、満ちる（health の輪が 0 から満ち、真ん中の数も一緒に数え上がる。
+     motion.js の arrive、docs/motion.md の「開いたとき、満ちる」）。「グン」と
+     言えるよう、出だしが速く終わりが長い `--ease-out` で使います。
+     .9s で入れたら「もう少しゆっくり」（2026年9月29日・利用者の声）で 1.3s へ。
+     超えた日はこの 1.4 倍（screen-diet.js の fillRings）。 */
+  --m-fill: 1.3s;
+  /* 線が引かれる（体重の線が左から右へ）。輪より少し長いのは、目が線を
+     なぞって追いつく時間です。輪と一緒に 1.1s → 1.5s。 */
+  --m-draw: 1.5s;
+  /* 並んだものを、一つずつずらして始める間（四つの輪が左から順に満ちる）。 */
+  --m-stagger: .07s;
+  /* 席の絵が、押されて一度だけ応える（席ごとに違う動き。docs/tabbar.md の
+     「押した席の絵が応える」）。 */
+  --m-poke: .56s;
 
   /* --- layout --- */
 
@@ -787,6 +844,11 @@ body {
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  /* 禁則は厳しいほうで。既定（normal）だと、長音・小さい仮名の前でも
+     折り返すので、「トイレットペーパ／ー」のように**「ー」一字だけが
+     次の行へ落ちます**（品名の欄は値段と店名に押されて狭いので、よく
+     起きていました）。継承するので、ここ一か所で全画面に効きます。 */
+  line-break: strict;
 }
 
 /* 動きを減らす設定の端末では、揺れ・拡大縮小・弾みをすべて瞬時にします。
@@ -853,15 +915,106 @@ a { color: var(--c-primary); }
   overflow: hidden;
 }
 
+/* ---- 上の帯と暦は、全タブで一つ（docs/shared-header.md の段2） ----
+
+   `.deck` は帯（`.head`）と紙の画面たち（`.panes`）のひと組。タブの流れは
+   `.panes` の中の画面だけを動かすので、帯は 1px も動きません。設定は deck
+   の外に居て、押しのけるときは **deck ごと**動かします（共通の帯ごと）。
+
+   **`z-index: 0` で積み重ねを閉じます。** 帯の `.topbar`（`--z-head`）と
+   暦（`--z-stick`）は数を持っているので、閉じないと上に重なる設定の一枚
+   より手前に出ます。前は各画面の中に居て、出ていく画面の `is-leaving`
+   （z-index: 0）が同じ役をしていました。画面の中に帯より手前へ出るべき
+   ものは無く（持ち上げた行 `.tl-ghost` は body の直下）、下の帯
+   （`--z-bar`）は deck の外なので、閉じて困るものはありません。 */
+.deck {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+}
+.head { flex: none; position: relative; background: var(--c-bg); }
+/* 席を移るとき、暦の印だけを替えます（head.js の crossMarks）。
+   出ていく暦の印の写し（`.head-ghost`）を同じ位置に置いて薄れさせ、
+   半ばまで薄れたところで、入ってきた暦の印を浮かび上がらせます（`--m-marks`
+   の半分だけ遅らせて重ねる）。まったく同時だと同じマスに二タブぶんの印が
+   重なって見え（実機）、消えきってから順にすると間が空いて急に見えたので、
+   その間を取りました。
+   写しは暦（`--z-stick`、地が塗ってある）より手前に要るので同じ段に置き、
+   あとに書かれたぶん上に来ます。 */
+.head-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-stick);
+  pointer-events: none;
+  animation: head-marks-out var(--m-marks) var(--ease-in) forwards;
+}
+.head-ghost .cal-dots { position: absolute; }
+.cal.is-marks-in .cal-dots { animation: head-marks-in var(--m-marks) var(--ease-out) calc(var(--m-marks) / 2) both; }
+@keyframes head-marks-out { to { opacity: 0; } }
+@keyframes head-marks-in { from { opacity: 0; } }
+
+/* ---- ノートでは暦をしまう（docs/notes.md「ノートでは暦をしまう」） ----
+
+   daily の紙を下げてノートへ移るあいだ、暦は帯の裏へ上がって薄れ、
+   その丈（`--face-lift`、app.js の faceOpen が測る）だけ下の面が上がります。
+   数は紙と同じ `--face-p` 一つ——指で引いても、離して滑っても、紙・暦・題が
+   ずれません。留まった紙の位置は app.js の faceDist が、上がるぶんを足して
+   測ります。題は日付から「Notes」へ、右の暦の絵と今日へ戻るは消えます。 */
+.screens.is-notes-lift .head-cal {
+  margin-bottom: calc(-1 * var(--face-p, 0) * var(--face-lift, 0px));
+  translate: 0 calc(-1 * var(--face-p, 0) * var(--face-lift, 0px));
+  opacity: calc(1 - var(--face-p, 0));
+}
+.topbar-dayrow { position: relative; }
+.head-name {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
+  font-weight: var(--fw-bold);
+  letter-spacing: -.02em;
+  color: var(--c-primary);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+.screens.is-notes-lift .head-name { opacity: var(--face-p, 0); }
+.screens.is-notes-lift .topbar-day,
+.screens.is-notes-lift .js-go-today,
+.screens.is-notes-lift .js-upcoming { opacity: calc(1 - var(--face-p, 0)); }
+.screens.is-notes-lift:has(.is-face-settle) :is(.head-cal, .head-name, .topbar-day, .js-go-today, .js-upcoming) {
+  transition: margin var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
+              translate var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
+              opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
+}
+/* 見えなくなったものは押せません。暦の絵が場所ごと消えるのはノートに
+   着いてから——戻り始めたら（`.is-face-front`）場所だけ先に返します。 */
+.head.is-notes :is(.head-cal, .topbar-day, .js-go-today, .js-upcoming) { pointer-events: none; }
+.screens:not(:has(.is-face-front)) .head.is-notes .js-upcoming { display: none; }
+.panes {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+/* 設定へ押しのけるときは、帯ごと動かします——下の画面だけを動かすと、
+   帯が置き去りになって「帯の下の画面だけが押しのけられた」絵になります。 */
+.deck.is-push-under { animation: scr-push-under var(--m-push) var(--push-e) forwards; }
+.deck.is-pop-in     { animation: scr-pop-in var(--m-push) var(--push-e); }
+.panes > .screen.is-leaving.is-push-under,
+.panes > .screen.is-active.is-pop-in { animation: none; }
+
 .screen {
   position: absolute;
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* The browser's own bounce is off at both ends: at the top it fought the
-     pull-to-refresh chip and the list wobbled under it. pull-refresh.js hands
-     both edges their give back — the chip at the top, a plain band at the
-     bottom — so nothing here stops dead against nothing. */
+  /* The browser's own bounce is off at both ends: at the top it once fought
+     the pull-to-refresh chip and the list wobbled under it. The chip is gone;
+     pull-refresh.js hands both edges the same plain band instead, so nothing
+     here stops dead against nothing. */
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   display: none;
@@ -871,8 +1024,8 @@ a { color: var(--c-primary); }
      最後の一件の下にあったのと同じ余白です。 */
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
   scrollbar-width: thin;
-  /* Opaque, so the refresh chip parked above the screen stays hidden until a
-     pull slides the screen off it. */
+  /* Opaque, so nothing behind a screen shows through while the band at
+     either end slides it. */
   background: var(--c-bg);
 }
 
@@ -965,10 +1118,9 @@ a { color: var(--c-primary); }
   background: none;
   pointer-events: auto;
 }
-/* 探す欄とカテゴリの札は、自分の地を持っていません（画面の地の上に置く
-   前提だったので）。前の面を透かすあいだだけ、ここにも地を敷きます。 */
-.screen.is-face-front .search-wrap,
-.screen.is-face-front .js-filter { background: var(--c-bg); }
+/* 探す欄は、自分の地を持っていません（画面の地の上に置く前提だったので）。
+   前の面を透かすあいだだけ、ここにも地を敷きます。 */
+.screen.is-face-front .search-wrap { background: var(--c-bg); }
 
 /* **動くのは紙だけです。題の帯も札の帯も、動きません。**
 
@@ -980,47 +1132,55 @@ a { color: var(--c-primary); }
    です：位置はいつも同じところで、変わるのは**中身だけ**（「買うもの」→
    「価格」、買うものの札 → 価格の札）。動かない枠の中で名前が入れ替わる
    ほうが、「後ろの面が出てきた」と素直に読めます。 */
-.screen.is-face-front .stack > .tl-sheet {
+/* daily の紙（ノートの前の一枚）は `.arc-body` の中に居ます（docs/notes.md）。
+   紙の規則は、どれも二つの場所に効かせること。 */
+.screen.is-face-front .stack > .tl-sheet,
+.screen.is-face-front .arc-body > .tl-sheet {
   transform: translateY(calc(var(--face-p, 0) * var(--face-d, 0px)));
   will-change: transform;
 }
 /* 滑る長さと曲線は、**指が決めます**（app.js の faceSettle が
    `--face-ms` / `--face-ease` を書きます）。材の置き場所はここのまま、
    数だけが指から来る——書いていないときは `--m-swipe` に落ちます。 */
-.screen.is-face-front.is-face-settle .stack > .tl-sheet {
-  transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
+.screen.is-face-front.is-face-settle .stack > .tl-sheet,
+.screen.is-face-front.is-face-settle .arc-body > .tl-sheet {
+  transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
+              box-shadow var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
 /* 下がった紙は「紙」に見えなければいけません。上の角はもともと丸いので、
-   足すのは影だけ——後ろとのあいだに厚みが出ます。 */
-.screen.is-face-front .stack > .tl-sheet {
-  box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
+   足すのは影だけ——後ろとのあいだに厚みが出ます。
+
+   **影は、紙が家へ近づくほど薄れます**（`--face-p` の 0〜.3 で 0 → .14）。
+   濃さを一定にしていたころ、価格から戻りきる直前に、紙の上の帯が影で
+   暗くなって、着いた瞬間にぱっと明るく戻っていました（2026年9月28日、
+   実機「一瞬、後ろが暗くなる」。家に居る紙は影を持たないので）。 */
+.screen.is-face-front .stack > .tl-sheet,
+.screen.is-face-front .arc-body > .tl-sheet {
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, calc(.14 * clamp(0, var(--face-p, 0) / .3, 1)));
 }
 
-/* ---- 帯の中身が、じわっと入れ替わる ----
+/* ---- 価格の札は、紙の下から出てくる ----
 
-   紙が下がるにつれて、前の面の札が薄れ、後ろの面の札が出てきます。
-   **重なりません**：先に前が消えきって（p .04→.30）、それから後ろが
-   出てくる（p .30→.62）。下の題の但し書きと同じ理由で、二つが同時に
-   見えると、日本語は字が詰まっているので一塊に読めてしまいます。
+   前は、同じ位置で買うものの札が薄れてから価格の札が出てくる（重ねない）
+   作りでした（`--face-p` の .04→.30 と .30→.62）。**2026年9月28日に買うもの
+   の札を外した**ので、入れ替える相手がいません。買うものの紙は暦のすぐ下
+   から始まり、価格の札はその紙の下に居て、紙が下がると露出します——
+   暦を引いたときに紙が下がるのと同じ、重なりの素直な見え方です。
+   地は後ろの札が持ったまま（紙の隙間から価格の行が透けないように）。
 
-   **地は後ろの札が持ちます**（`background`、薄めない）。前の札を薄めた
-   だけだと、消えきった一瞬に地も無くなって、札の帯のところに価格の行が
-   透けます。後ろにいつも一枚あれば、その隙間ができません。 */
-.screen.is-face-front .js-filter {
-  opacity: clamp(0, calc((.30 - var(--face-p, 0)) / .26), 1);
+   **札の帯は、紙が家へ近づくほど薄れます**（影と同じ `--face-p` の 0〜.3）。
+   価格の札の帯は、買うものの紙の頭より**上**から始まるので、紙が戻りきっても
+   覆われません。薄れさせないと、戻りきる直前まで札（と、その地）が紙の上に
+   居残り、着いた瞬間に消えていました——これが「一瞬暗くなる」のもう半分。
+   帯ごと（地も）薄めてよいのは、そのとき後ろの一覧は紙に隠れているからです。 */
+.screen.is-face-back .js-filter {
+  background: var(--c-bg);
+  opacity: clamp(0, var(--face-p, 0) / .3, 1);
 }
-.screen.is-face-back .js-filter { background: var(--c-bg); }
-.screen.is-face-back .js-filter > * {
-  opacity: clamp(0, calc((var(--face-p, 0) - .30) / .32), 1);
-}
-/* 離した先へ滑るあいだは、濃さにも時間をかけます。指で引いているあいだは
-   `--face-p` が毎フレーム動くので何も要りませんが、離すと数が一度に跳んで、
-   **紙だけが滑って題と札はぱっと切り替わり**ました。 */
-.screen.is-face-front.is-face-settle .js-filter,
-.screen.is-face-front.is-face-settle .face-t,
-.screen.is-face-back.is-face-settle .js-filter > * {
+.screen.is-face-back.is-face-settle .js-filter {
   transition: opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
+
 /* 後ろの面は**動きません**（動かないから後ろに見えます）。出すのは一覧
    だけで、**自分の上の一組——バー・探す欄・カテゴリの札——はまとめて
    伏せます。** そこには前の面の同じ三つが居るので、二枚重ねると字が
@@ -1036,8 +1196,6 @@ a { color: var(--c-primary); }
   z-index: 0;
   pointer-events: none;
 }
-.screen.is-face-back > .stack > .topbar,
-.screen.is-face-back .stack > .topbar,
 .screen.is-face-back .search-wrap { visibility: hidden; }
 
 /* ---- 価格に着いたあと、買うものの紙は頭だけ残る ----
@@ -1086,11 +1244,9 @@ a { color: var(--c-primary); }
   -webkit-mask-image: var(--face-fade);
           mask-image: var(--face-fade);
 }
-.screen.is-face-parked > .stack > .topbar,
-.screen.is-face-parked .stack > .topbar,
-.screen.is-face-parked .search-wrap,
-.screen.is-face-parked .js-filter { visibility: hidden; }
-.screen.is-face-parked .stack > .tl-sheet {
+.screen.is-face-parked .search-wrap { visibility: hidden; }
+.screen.is-face-parked .stack > .tl-sheet,
+.screen.is-face-parked .arc-body > .tl-sheet {
   transform: translateY(calc(var(--face-p, 1) * var(--face-d, 0px)));
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
 }
@@ -1101,24 +1257,9 @@ a { color: var(--c-primary); }
    切るのをやめたので、その手当ても要りません。 */
 .screen.is-face-parked .tl-grip { pointer-events: auto; }
 
-/* 題も、同じ数（--face-p）から出します。**帯そのものは動きません**
-   ——動くのは中身（名前）だけ。
-
-   **重ねません。** 薄めて重ねるのも縦に送るのも試して外しました：どちらも
-   途中で二語が同時に見え、日本語は字が詰まっているので別の字に読めます
-   （実測：「買うもの」と「価格」が一塊になった）。
-   かわりに**順に**やります——先に「買うもの」が消えきってから（p .04→.30）、
-   「価格」が出てくる（p .30→.62）。決まり目で切り替える階段
-   （1000倍の clamp）ではなくなったので、じわっと変わりますが、二つが同時に
-   読めることはありません。上の札の帯と、**同じ拍・同じ区間**にすること。 */
-.face-title { position: relative; }
-.face-t { display: block; }
-.face-t-front { opacity: clamp(0, calc((.30 - var(--face-p, 0)) / .26), 1); }
-.face-t-back {
-  position: absolute;
-  inset: 0;
-  opacity: clamp(0, calc((var(--face-p, 0) - .30) / .32), 1);
-}
+/* 題（「shopping」⇄「prices」）の入れ替わりは、段3で外しました
+   （docs/shared-header.md）。題は全タブで一つの帯（js/head.js）の日付で、
+   紙を下げて価格へ移っても変わりません。入れ替わるのは札の帯だけです。 */
 
 @keyframes scr-in-r  { from { transform: translateX(100%); }  to { transform: none; } }
 @keyframes scr-in-l  { from { transform: translateX(-100%); } to { transform: none; } }
@@ -1131,7 +1272,7 @@ a { color: var(--c-primary); }
 @keyframes scr-pop-out    { from { transform: none; }                        to { transform: translateX(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen.is-active, .screen.is-leaving { animation: none; }
+  .screen.is-active, .screen.is-leaving, .deck { animation: none; }
 }
 
 .screen::-webkit-scrollbar { width: 8px; }
@@ -1190,7 +1331,7 @@ a { color: var(--c-primary); }
 
 .topbar-title {
   font-size: var(--fs-2xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.02em;
   flex: 1;
   min-width: 0;
@@ -1568,7 +1709,7 @@ a { color: var(--c-primary); }
 .tab-face:not(.is-on) {
   color: var(--c-text-3);
   opacity: .8;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 .tab[aria-selected="true"] .tab-face.is-on { color: var(--c-primary); }
 
@@ -1605,8 +1746,7 @@ a { color: var(--c-primary); }
   /* 画面いっぱいのお知らせに一枚だけ出る絵。文章の脇の印ではないので、
      二段階の外です。 */
   .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
-  .rotate-note b { font-size: var(--fs-xl); font-weight: 700; }
-  .rotate-note span { font-size: var(--fs-sm); color: var(--c-text-2); }
+  .rotate-note b { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
 }
 
 .tab {
@@ -1624,7 +1764,7 @@ a { color: var(--c-primary); }
      読めなくならないための一段です。 */
   color: var(--c-text-2);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: .01em;
   /* `scale` の帰り道（離したときに戻る速さ）はここ。行き道は
      `.tab.is-held` が持ちます——開く速さと閉じる速さを class の付け外しで
@@ -1708,6 +1848,69 @@ a { color: var(--c-primary); }
 .tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-line { display: none; }
 .tab[aria-selected="true"] .tab-ico-face.is-on .ui-ico .ico-solid { display: block; }
 
+/* ---- 押した席の絵が、一度だけ応える（docs/tabbar.md の「押した席の絵が応える」）----
+
+   押しているあいだの膨らみ（`.tab.is-held`）は**指が時計を持つ状態**で、これは
+   **離して席が決まった**という出来事への返事です。だから click で一度だけ
+   （`KN.motion.fire("poke")`）。絵ごとに違う動きをします——同じ跳ねが四つ
+   並ぶより、押した席が「その席らしく」返るほうが、どこを押したかが残るので。
+
+   - やること（checklist）… しゃがんで跳ねる
+   - 買うもの（cart）…… 押し出されて前輪が浮く（価格を見ているあいだも席の絵は
+     カートのまま——帯が言うのは席の名前なので。app.js の paintTabs）
+   - health（heart）…… 二拍打つ
+   - daily（book）……… 持ち上げられて傾く
+
+   **`translate` / `rotate` / `scale` の独立プロパティで書くこと。** 外側の
+   `.tab-ico` は `transform`（選ばれた席の持ち上げ）と `scale:`（押しているあいだの
+   膨らみ）を使っていて、ここはその内側の一枚なので取り合いは起きないが、
+   いつか `transform` を足す日のために。見分けは絵の名前（`data-sig`）——席の
+   絵が差し替わる日が来ても、動きは絵についていくように。 */
+.tab-ico-face.is-poke {
+  animation: poke-hop var(--m-poke) var(--ease);
+  transform-origin: 50% 85%;
+}
+.tab-ico-face.is-poke[data-sig="cart"]  { animation-name: poke-roll; }
+.tab-ico-face.is-poke[data-sig="heart"] { animation-name: poke-beat; transform-origin: 50% 55%; }
+.tab-ico-face.is-poke[data-sig="book"]  { animation-name: poke-rock; transform-origin: 50% 100%; }
+
+@keyframes poke-hop {
+  0%   { translate: 0 0;    scale: 1; }
+  18%  { translate: 0 0;    scale: 1.12 .86; }
+  45%  { translate: 0 -5px; scale: .94 1.08; }
+  72%  { translate: 0 0;    scale: 1.06 .94; }
+  100% { translate: 0 0;    scale: 1; }
+}
+@keyframes poke-roll {
+  0%   { translate: 0 0;    rotate: 0deg; }
+  30%  { translate: 5px 0;  rotate: -9deg; }
+  62%  { translate: -2px 0; rotate: 4deg; }
+  100% { translate: 0 0;    rotate: 0deg; }
+}
+@keyframes poke-beat {
+  0%   { scale: 1; }
+  16%  { scale: 1.24; }
+  32%  { scale: .96; }
+  50%  { scale: 1.14; }
+  72%  { scale: .99; }
+  100% { scale: 1; }
+}
+@keyframes poke-rock {
+  0%   { translate: 0 0;    rotate: 0deg; }
+  28%  { translate: 0 -3px; rotate: -11deg; }
+  58%  { translate: 0 0;    rotate: 7deg; }
+  80%  { rotate: -2deg; }
+  100% { translate: 0 0;    rotate: 0deg; }
+}
+
+/* 設定の歯車は、押すと半周まわる（head.js）。歯は8つ（45度ごと）なので、半周で
+   元と同じ形に戻る——止まったところで絵が跳ねない。 */
+.head-gear.is-poke svg { animation: poke-spin var(--m-poke) var(--ease-out); }
+@keyframes poke-spin {
+  from { rotate: 0deg; }
+  to   { rotate: 180deg; }
+}
+
 /* 数のバッジ。絵の右上に、少しはみ出して乗ります。
 
    上端をカプセルから 3px 下げるのは、縁に食い込ませないためです——
@@ -1723,11 +1926,23 @@ a { color: var(--c-primary); }
   border-radius: var(--r-full);
   background: var(--c-accent);
   color: #fff;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: calc(10px * var(--fs-k));
+  font-weight: var(--fw-bold);
   display: grid;
   place-items: center;
   line-height: 1;
+  /* 出てきたとき（0 → 1 件）は、ぽんと膨らんで現れる。数が変わったときの
+     持ち上げ（`is-m-number`、app.js）は `transform`、これは `scale:` なので
+     取り合わない。付くのは要素ができたときだけ（数が変わっても作り直さない）。 */
+  animation: badge-in var(--m-poke) var(--spring) both;
+}
+@keyframes badge-in { from { scale: 0; opacity: 0; } }
+/* 数が変わったときの持ち上げは、**badge-in を並べたまま**足すこと。
+   `.is-m-number` の `animation: m-number` だけにすると、外した瞬間に
+   animation の名前が badge-in へ戻り、そこで頭から始まり直す——数が
+   変わるたびに、札が 0 から膨らみ直す。名前が残っていれば続きのまま。 */
+.tab-badge.is-m-number {
+  animation: badge-in var(--m-poke) var(--spring) both, m-number var(--m-number) var(--ease-out);
 }
 
 /* ---------------- いま居る席の印は、滑る一枚 ----------------

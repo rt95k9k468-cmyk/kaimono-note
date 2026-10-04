@@ -136,6 +136,147 @@
     while (seen.length > SEEN_MAX) seen.shift();
   }
 
+  /* ---------------- 受け箱（Siri から買うものへ） ----------------
+
+     「URLを開く」で渡すと Safari のほうのくらしノートに入ってしまうのは、
+     健康データと同じです。だから同じ道を通します：Siri のショートカットが
+     中継所の受け箱（`?slot=add`）へ品物の名前を置き、ここが取りにいく。
+
+     健康データとちがうのは、**一通ずつが別の頼み**だというところです。
+     同じ一通を二度通すと「牛乳」が二度足されます。そして中継所は渡した
+     便を消しません。だから中継所が一通ごとに添える数（必ず前より大きい）
+     を、どこまで足したかとして**保存して**覚えます（`relayInboxAt`）。
+     セッションだけで覚える `seen` では、読み直すたびに一週間ぶんを足し直す
+     ことになります。
+
+     もうリストに載っている（済ませていない）品物は足しません——手で足す
+     ときと同じです。消した・済ませたあとでもう一度頼まれたら、足します。 */
+
+  const INBOX_HEAD = "kn-inbox\n";
+  const inboxAt = () => Number(store.get().settings.relayInboxAt) || 0;
+
+  /** Siri 用の置き先。いまのURLに ?slot=add を足したもの。 */
+  function inboxUrl() {
+    if (!configured()) return "";
+    try { const u = new URL(url()); u.searchParams.set("slot", "add"); return u.toString(); }
+    catch (err) { return ""; }
+  }
+
+  /** 受け箱の一通と、それ以外（健康データ）とを分けます。 */
+  function splitInbox(text) {
+    const inbox = [];
+    const rest = [];
+    String(text).split(SEP).forEach((p) => (p.indexOf(INBOX_HEAD) === 0 ? inbox : rest).push(p));
+    return { inbox, rest: rest.join(SEP) };
+  }
+
+  /* 言われたままの字から、品物の名前を取り出します。「牛乳を追加」と
+     言い切る人もいるので、終わりの頼みの言葉は落とします。区切りは読点・
+     中黒・改行だけで、「と」では切りません——「とうもろこし」「さといも」が
+     割れるので。 */
+  const ASK_TAIL = /\s*(を|も)?\s*(追加|ついか|足して|たして|入れて|いれて|買って|かって|買う|かう)(して)?(ください|下さい|おいて|お願い|おねがい)?(します)?$/;
+
+  function itemNames(text) {
+    return String(text || "")
+      .split(/[\r\n、，,・。．！!？?]+/)
+      .map((s) => s.trim().replace(ASK_TAIL, "").trim())
+      .filter((s) => s && s.length <= 40);
+  }
+
+  /** @returns {string|null} 足したらその名前、もう載っていれば null */
+  function addToList(name) {
+    const product = store.findProductByName(name)
+      || store.addProduct({ name, categoryId: store.guessCategory(name) });
+    if (!product) return null;
+    if (store.get().items.some((i) => i.productId === product.id && !i.checked)) return null;
+    store.addItem(product.id);
+    return product.name;
+  }
+
+  /* 「くらしノートに入れる」（R5）。頭に @ を付けて送った一通は、行き先を
+     アプリの側で推します（js/capture.js）。中継所は中身を読まないまま——印も
+     本文の一部として運ばれるだけなので、worker の置き直しは要りません。
+     印の無い一通は、今までどおり買うもの。 */
+  const ANY_MARK = /^\s*[@＠]\s*/;
+
+  /* 声は「牛乳と卵」とつなぐ。どの片も品物に当たるときだけ「と」で切ります
+     （capture.voiceSplit。「とうもろこし」「さといも」は切らない）。 */
+  function voiceNames(text) {
+    const C = KN.capture;
+    const names = itemNames(text);
+    if (!C) return names;
+    const c = C.ctx();
+    const isItem = (n) => c.isProduct(n) || !!c.iconKey(n) || c.learnedCat(n);
+    const out = [];
+    names.forEach((n) => C.voiceSplit(n, isItem).forEach((x) => out.push(x)));
+    return out;
+  }
+
+  /** 受け箱のまだ足していない一通を、買うもの（印があれば推した行き先）に
+      足します。@returns 読んだ名前の数 */
+  function takeInbox(parts) {
+    const since = inboxAt();
+    let top = since;
+    const names = [];
+    const todos = [];
+    (parts || []).forEach((p) => {
+      String(p).split("\n").slice(1).forEach((line) => {
+        let row = null;
+        try { row = JSON.parse(line); } catch (err) { return; }
+        const at = Number(row && row.at) || 0;
+        if (at <= since) return;
+        if (at > top) top = at;
+        const text = String(row.text || "");
+        if (ANY_MARK.test(text) && KN.capture) {
+          const body = text.replace(ANY_MARK, "").trim();
+          if (!body) return;
+          const g = KN.capture.guess(body, KN.capture.ctx());
+          if (!g) {
+            /* 「牛乳と卵」のように、切ればどれも品物になる字は買うもの。 */
+            const c = KN.capture.ctx();
+            const vs = voiceNames(body);
+            if (vs.length >= 2 && vs.every((n) => c.isProduct(n) || !!c.iconKey(n) || c.learnedCat(n))) {
+              vs.forEach((n) => names.push(n));
+              return;
+            }
+          }
+          /* 推せなかったものは、やることへ（今日）。品物なら絵の辞書か
+             登録済みの名前がたいてい知っていて、知らない字は用事のほうが多い。 */
+          if (!g || g.dest === "todo") { todos.push({ text: body, when: g && g.when }); return; }
+          voiceNames(g.title).forEach((n) => names.push(n));
+          return;
+        }
+        voiceNames(text).forEach((n) => names.push(n));
+      });
+    });
+    if (top === since) return 0;
+    /* 先に「ここまで足した」を置きます。途中で落ちても、二度足すより
+       一つ足りないほうが直しやすいので。 */
+    store.update((s) => { s.settings.relayInboxAt = top; });
+
+    const added = [];
+    const had = [];
+    names.forEach((n) => {
+      const got = addToList(n);
+      if (got) { if (added.indexOf(got) < 0) added.push(got); }
+      else if (had.indexOf(n) < 0) had.push(n);
+    });
+    const made = [];
+    todos.forEach((x) => {
+      const rec = KN.capture.toTodo(x.text, x.when);
+      if (rec) made.push(rec.title);
+    });
+    const q = (list) => list.map((n) => "「" + n + "」").join("");
+    if (KN.ui && KN.ui.toast) {
+      const bits = [];
+      if (added.length) bits.push("買うものに" + q(added));
+      if (made.length) bits.push("やることに" + q(made));
+      if (bits.length) KN.ui.toast("Siri から" + bits.join("、") + "を入れました");
+      else if (had.length) KN.ui.toast(q(had) + "はもうリストにあります");
+    }
+    return names.length + todos.length;
+  }
+
   /* ---------------- iPhoneだけで建てるための道具 ----------------
 
      パソコンがあれば、道（合言葉）は `openssl rand -hex 8` で作れます。
@@ -246,21 +387,34 @@
     return pull().then((res) => {
       if (!res.ok) return { ok: false, error: res.error, added: 0, updated: 0, skipped: 0 };
 
+      /* 受け箱の一通は、健康データの読み方に渡す前に抜きます。あちらは
+         「どこまで足したか」の数で二度足しを防ぐので、下の `seen` には
+         かけません。 */
+      let text = res.text;
+      let inbox = 0;
+      if (text != null) {
+        const split = splitInbox(text);
+        if (split.inbox.length) {
+          try { inbox = takeInbox(split.inbox); } catch (err) { inbox = 0; }
+        }
+        text = split.rest;
+      }
+
       const nothing = { ok: false, empty: true, error: "中継所に新しいデータはありません",
-                        added: 0, updated: 0, skipped: 0, modern: res.modern };
-      if (res.text == null || !res.text.trim()) { rememberVer(res.ver); return nothing; }
+                        added: 0, updated: 0, skipped: 0, modern: res.modern, inbox };
+      if (text == null || !text.trim()) { rememberVer(res.ver); return nothing; }
 
       /* さっき通した一通（＝中継所が添えてくる「ひとつ前」）は落とします。
          落とした結果、通すものが無くなることもあります——それは
          「新しい便は無い」と同じです。 */
-      const fresh = dropSeen(res.text);
-      rememberParts(res.text);
+      const fresh = dropSeen(text);
+      rememberParts(text);
       if (!fresh.trim()) { rememberVer(res.ver); return nothing; }
 
       let out;
       try {
         out = { ...KN.healthSync.importText(fresh, { auto: true }),
-                text: res.text, parts: res.parts, modern: res.modern };
+                text, parts: res.parts, modern: res.modern, inbox };
       } catch (err) {
         out = { ok: false, error: "取り込みの途中で落ちました", added: 0, updated: 0, skipped: 0 };
       }
@@ -333,7 +487,7 @@
     timer = 0;
     if (!awake()) return;
     once().then((res) => {
-      if (res && res.ok && (res.added || res.updated)) step = 0;
+      if (res && (res.inbox || (res.ok && (res.added || res.updated)))) step = 0;
       else step = Math.min(step + 1, WAITS.length - 1);
       plan();
     });
@@ -455,6 +609,7 @@
 
     const probe = "kn-selftest=" + Math.random().toString(36).slice(2, 10);
     let modern = false;
+    let inbox = false;
     let ver0 = "";
     let imported = null;
 
@@ -464,14 +619,20 @@
       .then((res) => {
         modern = res.headers.get("X-Kn-Ver") != null;
         ver0 = res.headers.get("X-Kn-Ver") || "";
+        inbox = res.headers.get("X-Kn-Inbox") === "1";
         note("中継所が新しい形（渡しても消えない）", modern,
           modern ? "" : "古い形です。設定の「中継所のコードをコピー」から置き直してください");
         return res.status === 204 ? null : res.text();
       })
       .then((waiting) => {
         if (waiting && waiting.trim()) {
-          const look = KN.healthSync.preview(waiting);
-          if (look.ok) imported = KN.healthSync.importText(waiting, { auto: true });
+          // 受け箱の一通は買うものへ。健康データの読み方には渡しません。
+          const split = splitInbox(waiting);
+          if (split.inbox.length) takeInbox(split.inbox);
+          if (split.rest.trim()) {
+            const look = KN.healthSync.preview(split.rest);
+            if (look.ok) imported = KN.healthSync.importText(split.rest, { auto: true });
+          }
         }
         // ② 置く（専用の棚へ）
         return ask(slot(target), { method: "POST", body: probe });
@@ -518,6 +679,9 @@
             ? "中継所は正しく動いています" + (imported && imported.ok
                 ? "（待っていたデータも取り込みました：" + KN.healthSync.describe(imported) + "）"
                 : "")
+              /* 健康データは古いコードでも届くので、止まったことにはしません。
+                 Siri から足したい人にだけ要る置き直しです。 */
+              + (inbox ? "" : "。ただし Siri から買うものへ足す受け箱がまだありません——「建てかた」の「中継所のコードをコピー」から置き直すと使えます")
             : bad[0].name + "…で止まりました" + (bad[0].detail ? "（" + bad[0].detail + "）" : ""));
       })
       .catch((err) => done(false,
@@ -528,6 +692,7 @@
 
   KN.healthRelay = { configured, url, setUrl, host, pull, pullAndImport,
                      makePath, joinUrl, selfTest,
+                     inboxUrl, itemNames, voiceNames, takeInbox,
                      watch, pullNow, seenVer,
                      shortcutName, setShortcutName, runShortcut,
                      BOOST_SHORTCUT };

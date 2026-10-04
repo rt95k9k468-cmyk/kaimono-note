@@ -13,7 +13,7 @@
   padding: 0 var(--sp-5);
   border-radius: var(--r-md);
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   transition: background var(--m-state) var(--ease), transform var(--m-press) var(--ease), opacity var(--m-state);
   user-select: none;
@@ -29,8 +29,24 @@
    the surrounding gap so the enlarged area lands in padding and never
    steals a tap from the neighbouring control.
    ========================================================= */
-.hit-44 { position: relative; }
-.hit-44::after {
+/* 同じ手当てを、クラスを足さずに名指しで通しているもの（docs/improvements.md
+   の B2、2026年9月26日。390×844 で実測）。広げたぶんが隣に届かないこと：
+   - 題の日付（高さ26px）… 上の帯（43px）の中に収まる
+   - カテゴリの札（40px）… 札の帯の上下 4px の余白に 2px ずつ
+   - 品物の絵の丸（40×40）… 左の★・右の名前とは 12px ずつ空いている
+   - 「AI推計」の帯（22px）… 下のボタンまで 12px、上は枠の余白
+   やることの行の題と、食事の四枠は、中心から 44px ではなく空きに合わせて
+   広げます（screens.css の `.tl-open` と `.diet-slot-view`）。 */
+.hit-44,
+.topbar-day,
+.js-filter .chip,
+.item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji,
+.diet-memo-open { position: relative; }
+.hit-44::after,
+.topbar-day::after,
+.js-filter .chip::after,
+.item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji::after,
+.diet-memo-open::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -193,6 +209,17 @@ button, [role="tab"] {
   .icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
 }
 .icon-btn:active { transform: scale(.92); }
+/* 端末の外の控えが古いときの、歯車の小さな点（R25）。赤は使わない。
+   ::after は指の的が持っているので、こちらは ::before。 */
+.icon-btn.has-dot::before {
+  content: "";
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 7px; height: 7px;
+  border-radius: var(--r-full);
+  background: var(--c-primary-fill);
+  pointer-events: none;
+}
 .icon-btn svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 @media (hover: hover) {
   .icon-btn.is-danger:hover { background: var(--c-danger-soft); color: var(--c-danger); }
@@ -204,7 +231,7 @@ button, [role="tab"] {
 
 .field-label {
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   letter-spacing: .01em;
 }
@@ -319,8 +346,9 @@ button, [role="tab"] {
 .icon-pick-mark .p-icon { width: 26px; height: 26px; vertical-align: 0; }
 
 .icon-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.icon-pick-name { font-weight: 700; }
+.icon-pick-name { font-weight: var(--fw-bold); }
 .icon-pick-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
+.icon-pick-sub:empty { display: none; }
 
 /* 「この絵はちがう、と記録する」。探す欄のすぐ下に置く小さな腕組みボタン
    ——押すと「次に選ぶ絵と一緒に記録する」腕組み状態になり、そのまま
@@ -372,7 +400,7 @@ button, [role="tab"] {
 .icon-cell-mark { display: grid; place-items: center; height: 30px; }
 .icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }
 .icon-cell-label {
-  font-size: 10px;
+  font-size: calc(10px * var(--fs-k));
   line-height: 1.15;
   color: var(--c-text-2);
   text-align: center;
@@ -414,7 +442,7 @@ button, [role="tab"] {
   min-width: 48px;
   text-align: center;
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
 
@@ -439,7 +467,7 @@ button, [role="tab"] {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding-right: 40px;
+  padding-right: var(--sp-10);
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 18px 18px;
@@ -502,7 +530,7 @@ button, [role="tab"] {
    edge and put 1か月後 and 「なし」 past it entirely, so clearing a date meant
    knowing there was something over there to scroll to. Wrapping costs a line
    and shows the whole question. */
-.sheet .chip-row {
+.sheet .chip-row, .note-pop.is-form .chip-row {
   flex-wrap: wrap;
   overflow-x: visible;
   row-gap: var(--sp-2);
@@ -511,12 +539,44 @@ button, [role="tab"] {
 
 /* The seven weekdays are one row whatever the screen: single characters that
    would look broken split 6 + 1. Equal columns fit them down to 320px. */
-.sheet .chip-row.js-days {
+.sheet .chip-row.js-days, .note-pop.is-form .chip-row.js-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
-.sheet .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
+.sheet .chip-row.js-days .chip, .note-pop.is-form .chip-row.js-days .chip { padding: 0; justify-content: center; min-width: 0; }
+
+/* よく使う時刻（やることの時刻の紙）。8つを4列×2段の格子に——時刻は
+   横に流すと桁がずれて探しにくく、格子なら「夕方は下の段」と指が覚えます。
+   指の的は44px（chip の40pxから、ここだけ上げる）。 */
+.sheet .time-grid .chip-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+.sheet .time-grid .chip {
+  height: 44px; padding: 0; min-width: 0;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ±15分。時刻の欄の両わきに置く、字の札（絵より「15分」と読めるほうが早い）。 */
+.time-nudge {
+  flex: 0 1 auto;
+  min-width: 0; height: 44px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  color: var(--c-text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--m-press);
+}
+.time-nudge:active { transform: scale(.95); }
+.time-nudge:disabled { color: var(--c-text-3); }
 
 .chip-wrap { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
@@ -533,7 +593,7 @@ button, [role="tab"] {
   border: 1.5px solid var(--c-border);
   color: var(--c-text-2);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   flex: none;
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
@@ -557,7 +617,7 @@ button, [role="tab"] {
 .chip-count {
   font-size: var(--fs-xs);
   opacity: .75;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 /* 棚を言う丸。**絵文字の跡地です**——「アプリ内UIに絵文字を使わない」の
@@ -592,7 +652,7 @@ button, [role="tab"] {
 
 .section-title {
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   letter-spacing: .04em;
   display: flex;
@@ -611,7 +671,7 @@ button, [role="tab"] {
    ここを直接変えると小見出しまで巻き込みます。 */
 .section-title.is-block-head {
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-primary);
   letter-spacing: -.01em;
 }
@@ -621,9 +681,9 @@ button, [role="tab"] {
    advertise it. */
 .section-hint {
   margin: -2px 0 2px;
-  font-size: var(--fs-xs);
-  line-height: var(--lh-body);
-  color: var(--c-text-3);
+  font-size: var(--fs-md);
+  line-height: var(--lh-ui);
+  color: var(--c-text-2);
 }
 
 /* ---------------- badges ---------------- */
@@ -631,11 +691,11 @@ button, [role="tab"] {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 2px 8px;
   border-radius: var(--r-sm);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: var(--lh-body);
   white-space: nowrap;
 }
@@ -680,9 +740,19 @@ button, [role="tab"] {
   display: block;
   width: 68px; height: 68px;
 }
+/* 開いたとき（motion.js の arrive）、空の絵はふわりと咲いて、中の絵が一度だけ
+   小さく跳ねる。空の画面は「何も無い」ではなく「ここから始まる」の場所なので、
+   迎える側が少しだけ動く。組み直しでは動かない（is-m-arrive のあいだだけ）。 */
+.is-m-arrive .empty-art { animation: empty-bloom var(--m-fill) var(--spring) both; }
+.is-m-arrive .empty-art .empty-svg {
+  animation: poke-hop var(--m-poke) var(--ease) both;
+  animation-delay: calc(var(--m-fill) * .4);
+  transform-origin: 50% 90%;
+}
+@keyframes empty-bloom { from { opacity: 0; scale: .72; } }
 
-.empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
-.empty-text  { font-size: var(--fs-md); max-width: 30ch; line-height: var(--lh-body); }
+.empty-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
+.empty-text  { font-size: var(--fs-lg); max-width: 30ch; line-height: var(--lh-ui); }
 
 /* 画面の主役ではない空きのとき（daily の積み上げのように、上にもう中身が
    ある一段）。**同じ大きさで出すと、無いもののほうが大きく見えます。**
@@ -801,10 +871,12 @@ button, [role="tab"] {
    長さも名前に移しました（`--m-sheet-grow`）。育つのはゆっくりですが、
    **帰りは他の紙と同じ速さ**です（素の `.sheet` の --m-sheet-close）
    ——見せ場は「出てくる」ほうで、やめるときに待たせる理由はありません。 */
+/* 帰りの薄れは後ろ半分だけ（V16）。前は --m-state で先に消えきって、縮んで
+   ＋へ帰るところが見えなかった。 */
 .sheet.is-from-origin {
   transition:
     transform var(--m-sheet-close) var(--ease-in),
-    opacity var(--m-state) var(--ease),
+    opacity calc(var(--m-sheet-close) / 2) var(--ease-in) calc(var(--m-sheet-close) / 2),
     border-radius var(--m-sheet-close) var(--ease-in);
 }
 .sheet.is-from-origin.is-open {
@@ -909,7 +981,7 @@ button, [role="tab"] {
   flex: 1;
   min-width: 0;
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.01em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -948,25 +1020,22 @@ button, [role="tab"] {
 }
 .hero-node .todo-mark,
 .hero-node .todo-mark svg { width: 38px; height: 38px; }
+/* 行の丸薬から頭の丸薬へ伸びていく影武者（ui.js の morphPill）。箱の
+   位置・大きさ・丸み・輪は、JS が測った数で動かします。 */
+.sheet-morph {
+  position: fixed;
+  margin: 0;
+  pointer-events: none;
+}
 .hero-node .todo-dot {
   width: 14px; height: 14px; border-radius: var(--r-full);
   background: #fff; opacity: .92;
 }
-/* 絵を選ぶ丸。粒の左下に、はみ出して掛かります——参考画面と同じ置き方で、
-   「この粒の見た目を変えるもの」だと、位置が言っています。 */
-.hero-paint {
-  position: absolute;
-  left: -10px; bottom: -6px;
-  display: grid; place-items: center;
-  width: 34px; height: 34px;
-  border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 88%, #000);
-  box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
-  color: #fff;
-  transition: transform var(--m-press) var(--ease);
-}
-.hero-paint:active { transform: scale(.9); }
-.hero-paint svg { width: 17px; height: 17px; }
+/* 粒そのものが「絵を選ぶ」ボタン。左下に掛けていたパレットの丸は外しました
+   ——紙が開き終えてから、伸びてきた粒の上に後から乗ってくるように見えたので。
+   押したときに少し沈むのが、押せるものだという合図です。 */
+button.hero-node { transition: scale var(--m-press) var(--ease); }
+button.hero-node:active { scale: .94; }
 
 .hero-text { min-width: 0; display: block; flex: 1; }
 .hero-cap {
@@ -1000,11 +1069,18 @@ button, [role="tab"] {
   border-radius: 0;
   color: #fff;
   font-family: inherit;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: calc(20px * var(--fs-k));
+  font-weight: var(--fw-bold);
   line-height: 1.35;
   letter-spacing: -.01em;
   transition: border-color var(--m-state) var(--ease);
+  /* 一行の textarea（R1。貼りつけた改行を持てるように）。input と同じ顔に。 */
+  -webkit-appearance: none;
+  appearance: none;
+  resize: none;
+  overflow: hidden;
+  min-height: 0;
+  vertical-align: top;
 }
 .hero-title::placeholder { color: color-mix(in srgb, #fff 55%, transparent); }
 .hero-title:focus { outline: none; border-bottom-color: #fff; }
@@ -1162,6 +1238,65 @@ button, [role="tab"] {
 .act-row.is-danger .act-ico,
 .act-row.is-danger .act-label { color: var(--c-danger); }
 
+/* ---------------- 通知から来た用事（js/due-sheet.js・R3） ----------------
+   大きな二つ（済ませた／あとで）。指一本で、見ずに押せる大きさに。 */
+.due-list { display: flex; flex-direction: column; }
+.due-row { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) 0; }
+.due-row + .due-row { border-top: 1px solid var(--c-border); }
+.due-head { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.due-time { flex: none; font-size: var(--fs-md); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+.due-title { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-text); overflow-wrap: anywhere; }
+.due-acts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.due-acts > .btn:only-child { grid-column: 1 / -1; }
+.due-acts > .btn { min-height: 52px; font-size: var(--fs-lg); }
+.due-later { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
+.due-later[hidden] { display: none; }
+.due-later > .btn { min-height: 44px; padding-left: 0; padding-right: 0; }
+.due-note { font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); }
+.due-open { align-self: flex-start; }
+
+/* ---------------- 前の日から運んだもの（段3・screen-todo.js の carrySheet） ----------------
+   一件ずつ、五つから選ぶ。どれも同じ重さ（「やめる」も赤くしない——やめるのは
+   失敗ではなく、選んだこと）。 */
+.carry-list { display: flex; flex-direction: column; }
+.carry-row { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) 0; }
+.carry-row + .carry-row { border-top: 1px solid var(--c-border); }
+.carry-head { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.carry-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); overflow-wrap: anywhere; }
+.carry-was { flex: none; margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.carry-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.carry-acts > .btn { flex: 1 1 auto; }
+/* 段5の紙の頭の一言（時刻を外すとどうなるか）。 */
+.passed-note { margin: 0 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-text-2); }
+
+/* めったに要らない説明（つまずいたとき・込み入った組み方）は畳む
+   （`KN.settingsParts.more()` と、ヘルスケアの紙）。閉じているあいだは
+   見出しの一行だけ。 */
+.set-more {
+  margin: var(--sp-3) calc(var(--set-gut) + var(--sp-5)) 0;
+  font-size: var(--set-fs-foot);
+  line-height: var(--lh-ui);
+  color: var(--c-text-2);
+}
+.stack > .set-more { margin: 0; }
+.set-more > summary {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+  color: var(--c-primary);
+  cursor: pointer;
+  list-style: none;
+}
+.set-more > summary::-webkit-details-marker { display: none; }
+.set-more > summary::after {
+  content: ""; width: 7px; height: 7px;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  rotate: -45deg;
+}
+.set-more[open] > summary::after { rotate: 45deg; }
+.set-more > p, .set-more > ol, .set-more > pre { margin: var(--sp-2) 0 0; }
+/* 畳んだ奥に行を置くとき（外観の「試す」）。ほかのカードと同じ幅に戻す。 */
+.set-more > .set-card { margin: var(--sp-2) calc(-1 * var(--sp-5)) 0; }
+
 .sheet-body {
   overflow-y: auto;
   padding: 0 var(--sp-5) var(--sp-5);
@@ -1217,7 +1352,7 @@ button, [role="tab"] {
    Icon Design System の上で描かれている」ことを示す印として要ります。 */
 
 .sheet-mark {
-  font-size: 21px;
+  font-size: calc(21px * var(--fs-k));
   line-height: 1;
   margin-right: var(--sp-2);
   display: inline-flex;
@@ -1354,7 +1489,7 @@ button, [role="tab"] {
   color: #f2f2f4;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   pointer-events: auto;
   /* Anywhere on it dismisses it, so it is never in the way longer than it
      takes to read. */
@@ -1377,7 +1512,7 @@ button, [role="tab"] {
      `--c-primary` 自身に混ぜると自分を参照する循環になるので、
      混ぜるのは `color:` の側で）。 */
   color: color-mix(in srgb, #fff 42%, var(--c-primary));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   padding: 6px 10px;
   border-radius: var(--r-sm);
   flex: none;
@@ -1429,9 +1564,9 @@ button, [role="tab"] {
 /* Title over subtitle. As a plain inline span the two ran together on one
    line, and the title's ellipsis never had a box to overflow. */
 .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.row-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-title { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
-.row-value { color: var(--c-text-2); font-weight: 700; flex: none; }
+.row-value { color: var(--c-text-2); font-weight: var(--fw-bold); flex: none; }
 .row-chevron { color: var(--c-text-3); flex: none; display: grid; place-items: center; }
 .row-chevron svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 
@@ -1568,8 +1703,8 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   color: var(--c-text);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: calc(22px * var(--fs-k));
+  font-weight: var(--fw-bold);
   display: grid;
   place-items: center;
   line-height: 1;
@@ -1587,7 +1722,7 @@ button, [role="tab"] {
 }
 .key:active { background: var(--c-surface-3); transform: scale(.95); }
 
-.key-op { color: var(--c-primary); font-weight: 700; }
+.key-op { color: var(--c-primary); font-weight: var(--fw-bold); }
 
 /* Each 税 key carries its own rate. A button that silently multiplies by
    something is a button you have to remember the meaning of, and with two of
@@ -1598,8 +1733,8 @@ button, [role="tab"] {
   gap: 0;
   line-height: 1.05;
 }
-.key-tax-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
-.key-tax-rate { font-size: var(--fs-lg); font-weight: 700; }
+.key-tax-cap  { font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); opacity: .75; }
+.key-tax-rate { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 
 /* 割引: the shelf tag's 「−20%」. Built like the 税 keys because it does the
    same kind of job — a rate applied to what is already typed — but cool
@@ -1610,8 +1745,8 @@ button, [role="tab"] {
   gap: 0;
   line-height: 1.05;
 }
-.key-off-cap  { font-size: 10px; font-weight: 700; opacity: .75; }
-.key-off-main { font-size: var(--fs-lg); font-weight: 700; }
+.key-off-cap  { font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); opacity: .75; }
+.key-off-main { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same
    colour and same place, because it is the same "big green key" throughout —
@@ -1620,9 +1755,9 @@ button, [role="tab"] {
   background: var(--c-primary);
   color: #fff;
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
-.key-ok.is-equals { font-size: 25px; font-weight: 700; }
+.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); font-weight: var(--fw-bold); }
 .key-ok:active { background: var(--c-primary-2); }
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */
@@ -1705,3 +1840,117 @@ button, [role="tab"] {
 .row-times .input { height: 40px; width: auto; flex: 1; min-width: 0; text-align: center; }
 .row-dash { color: var(--c-text-3); flex: none; }
 .row.js-day-span { align-items: flex-start; }
+
+/* 行き先の札（R4・js/capture.js）。打った字が、いまのタブと違う行き先らしい
+   ときだけ、入力欄の下に一つ。押せばそちらへ入る。 */
+.dest-chip {
+  display: inline-flex; align-items: center;
+  margin-top: var(--sp-2);
+  min-height: 36px; padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1.5px solid color-mix(in srgb, var(--c-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--c-primary-fill) 10%, var(--c-surface));
+  color: var(--c-primary);
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  transition: scale var(--m-press) var(--ease);
+}
+.dest-chip[hidden] { display: none; }
+.dest-chip:active { scale: .96; }
+.sheet-hero .dest-chip {
+  border-color: color-mix(in srgb, #fff 45%, transparent);
+  background: color-mix(in srgb, #fff 16%, transparent);
+  color: #fff;
+}
+
+/* ---------------- 年の本（R10、js/yearbook.js） ----------------
+   印刷のあいだだけ、body の直下の本の一枚を出し、ほかを隠します。
+   画面には出ません。紙は白地に黒い字（暗い見た目のままでも紙は白いので、
+   ここだけは色の名前ではなく紙の色を書きます）。 */
+#yearbook-print { display: none; }
+@media print {
+  html.is-printing-book, html.is-printing-book body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  html.is-printing-book body > *:not(#yearbook-print) { display: none !important; }
+  html.is-printing-book #yearbook-print {
+    display: block;
+    color: #000;
+    font-size: 11pt;
+    line-height: 1.8;
+    font-weight: var(--fw-regular);
+  }
+  #yearbook-print h1 { font-size: 20pt; font-weight: var(--fw-bold); margin: 0 0 4pt; }
+  #yearbook-print h2 { font-size: 14pt; font-weight: var(--fw-bold); margin: 20pt 0 6pt; break-after: avoid; }
+  #yearbook-print h2.yb-diary { break-before: page; }
+  #yearbook-print h3 { font-size: 11pt; font-weight: var(--fw-bold); margin: 12pt 0 2pt; break-after: avoid; }
+  #yearbook-print ul { margin: 0; padding-left: 1.2em; }
+  #yearbook-print li { break-inside: avoid; }
+  #yearbook-print .yb-made { color: #555; margin: 0; }
+  #yearbook-print .yb-day { display: inline-block; min-width: 5.5em; }
+  #yearbook-print .yb-text { white-space: pre-wrap; text-align: justify; }
+  #yearbook-print li .yb-text { color: #333; }
+}
+
+/* ---------------- daily・ノートの鍵（js/lock.js） ----------------
+   紙もトーストも隠すので、画面ぜんぶを覆います。ほかのタブへは左上の絵から。 */
+.lock-veil {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-lock);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+.lock-veil[hidden] { display: none; }
+.lock-away {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 16px;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-text-2);
+}
+.lock-away svg { width: 22px; height: 22px; }
+.lock-ico svg { width: 44px; height: 44px; color: var(--c-primary); }
+.lock-dots { display: flex; gap: 14px; min-height: 14px; }
+.lock-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-text-2);
+}
+.lock-dot.is-on { background: var(--c-text); border-color: var(--c-text); }
+.lock-dots.is-wrong { animation: lock-shake var(--m-delete) var(--ease-out); }
+@keyframes lock-shake {
+  25% { translate: -10px 0; }
+  50% { translate: 8px 0; }
+  75% { translate: -4px 0; }
+}
+.lock-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 16px 24px;
+}
+.lock-key {
+  width: 72px; height: 72px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 28px;
+  font-weight: var(--fw-regular);
+}
+.lock-key:active { background: var(--c-surface-3); }
+.lock-key.is-back, .lock-key.is-bio { background: transparent; }
+.lock-key.is-bio[hidden] { display: grid; visibility: hidden; }
+.lock-key svg { width: 28px; height: 28px; }
