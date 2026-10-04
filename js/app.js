@@ -1473,8 +1473,8 @@
     const k = Math.min(1.6, Math.max(0.7, 0.7 + 0.35 * Math.log2(1 + screens)));
     const base = KN.motion ? KN.motion.ms("--m-to-top") : 750;
     const T = base * k;                        // 行き（越えた先まで）
-    const over = Math.min(22, 6 + d * 0.015);  // 越える量
-    const back = base * 0.55;                  // 戻り
+    const over = Math.min(8, 3 + d * 0.004);   // 越える量（ほんの僅か）
+    const back = base * 0.3;                   // 戻り
     const curve = (t) => 1 - Math.pow(1 - t, 3);
     const yAt = (t) => d - (d + over) * curve(t);
     const start = performance.now();

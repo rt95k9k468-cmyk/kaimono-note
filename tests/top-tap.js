@@ -67,7 +67,7 @@ const { open, checker } = require("./lib");
     };
     tick();
   }));
-  t.check("上へ：上端を少しだけ越えて、跳ね返る", dip.max >= 4 && dip.max <= 24, JSON.stringify(dip));
+  t.check("上へ：上端を少しだけ越えて、跳ね返る", dip.max >= 1.5 && dip.max <= 9, JSON.stringify(dip));
   t.check("上へ：跳ね返ったあとは元の位置で、動きが残らない", dip.still && dip.left === 0, JSON.stringify(dip));
   const mono = trace.pts.every((p, i) => !i || p[1] <= trace.pts[i - 1][1]);
   t.check("上へ：行きすぎて戻らない", mono, JSON.stringify(trace.pts.map((p) => [Math.round(p[0]), Math.round(p[1])])));
