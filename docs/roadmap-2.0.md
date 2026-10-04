@@ -118,7 +118,7 @@
 | B | V9 | 足あとの試作 | 小 | なし | — | todo-timeline | やらない |
 | C 見た目 | V10 | ガラスを一つずつ外す | 小×器の数 | なし | ◯ | glass | 未 |
 | C | V11 | カード | 中 | なし | ◯ | look・notes（一覧）・daily | 未 |
-| C | V12 | 見た目の札の点検 | 中 | なし | — | look・traps | 未 |
+| C | V12 | 見た目の札の点検 | 中 | なし | — | look・traps | 済（10/4） |
 | C | V13 | 身ぶりと紙の表 | 中 | なし | — | screens-nav・sheet-scroll・calendar-swipe | 未 |
 | D 変形 | V14 | View Transitions を試す | 小 | なし | — | motion・notes（段4.3）・todo-timeline（C2） | 未 |
 | D | V15 | やること→別の日 | 中 | なし | — | todo-items・calendar-swipe | 未 |
@@ -294,6 +294,8 @@
 **V12 見た目の札の点検**
 - 色・字・余白・角・影の札を look.md に表で揃え、同じ値の直書きを札へ寄せる。新しい札は増やさない
   （揃えるだけ）。`--c-primary` と `-fill`・`var()` の解決先は traps.md のとおり。
+- 済（10/4）：表は look.md の「見た目の札の表」、見張りは `tests/look-tokens.js`。太さ・余白・角・
+  行の高さ・字を寄せた（見た目は変えない）。色と影、ダイエットが上書きする字は寄せない（理由もそこ）。
 
 **V13 身ぶりと紙の表**
 - 何を：画面ごと（やること・daily・買うもの・価格・からだ・ノート・設定）に、押す・長押し・横払い・
