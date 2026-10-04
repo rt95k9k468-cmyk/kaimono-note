@@ -13,7 +13,7 @@
   padding: 0 var(--sp-5);
   border-radius: var(--r-md);
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   transition: background var(--m-state) var(--ease), transform var(--m-press) var(--ease), opacity var(--m-state);
   user-select: none;
@@ -231,7 +231,7 @@ button, [role="tab"] {
 
 .field-label {
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   letter-spacing: .01em;
 }
@@ -346,7 +346,7 @@ button, [role="tab"] {
 .icon-pick-mark .p-icon { width: 26px; height: 26px; vertical-align: 0; }
 
 .icon-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.icon-pick-name { font-weight: 700; }
+.icon-pick-name { font-weight: var(--fw-bold); }
 .icon-pick-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
 .icon-pick-sub:empty { display: none; }
 
@@ -442,7 +442,7 @@ button, [role="tab"] {
   min-width: 48px;
   text-align: center;
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
 
@@ -467,7 +467,7 @@ button, [role="tab"] {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding-right: 40px;
+  padding-right: var(--sp-10);
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 18px 18px;
@@ -570,7 +570,7 @@ button, [role="tab"] {
   border: 1.5px solid var(--c-border);
   color: var(--c-text);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   transition: transform var(--m-press);
@@ -593,7 +593,7 @@ button, [role="tab"] {
   border: 1.5px solid var(--c-border);
   color: var(--c-text-2);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   white-space: nowrap;
   flex: none;
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
@@ -617,7 +617,7 @@ button, [role="tab"] {
 .chip-count {
   font-size: var(--fs-xs);
   opacity: .75;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 /* 棚を言う丸。**絵文字の跡地です**——「アプリ内UIに絵文字を使わない」の
@@ -652,7 +652,7 @@ button, [role="tab"] {
 
 .section-title {
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   letter-spacing: .04em;
   display: flex;
@@ -671,7 +671,7 @@ button, [role="tab"] {
    ここを直接変えると小見出しまで巻き込みます。 */
 .section-title.is-block-head {
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-primary);
   letter-spacing: -.01em;
 }
@@ -691,11 +691,11 @@ button, [role="tab"] {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 2px 8px;
   border-radius: var(--r-sm);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: var(--lh-body);
   white-space: nowrap;
 }
@@ -751,7 +751,7 @@ button, [role="tab"] {
 }
 @keyframes empty-bloom { from { opacity: 0; scale: .72; } }
 
-.empty-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); }
+.empty-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
 .empty-text  { font-size: var(--fs-lg); max-width: 30ch; line-height: var(--lh-ui); }
 
 /* 画面の主役ではない空きのとき（daily の積み上げのように、上にもう中身が
@@ -979,7 +979,7 @@ button, [role="tab"] {
   flex: 1;
   min-width: 0;
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.01em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1068,7 +1068,7 @@ button.hero-node:active { scale: .94; }
   color: #fff;
   font-family: inherit;
   font-size: calc(20px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.35;
   letter-spacing: -.01em;
   transition: border-color var(--m-state) var(--ease);
@@ -1243,7 +1243,7 @@ button.hero-node:active { scale: .94; }
 .due-row + .due-row { border-top: 1px solid var(--c-border); }
 .due-head { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .due-time { flex: none; font-size: var(--fs-md); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
-.due-title { font-size: var(--fs-xl); font-weight: 700; color: var(--c-text); overflow-wrap: anywhere; }
+.due-title { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-text); overflow-wrap: anywhere; }
 .due-acts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
 .due-acts > .btn:only-child { grid-column: 1 / -1; }
 .due-acts > .btn { min-height: 52px; font-size: var(--fs-lg); }
@@ -1260,7 +1260,7 @@ button.hero-node:active { scale: .94; }
 .carry-row { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) 0; }
 .carry-row + .carry-row { border-top: 1px solid var(--c-border); }
 .carry-head { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
-.carry-title { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); overflow-wrap: anywhere; }
+.carry-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); overflow-wrap: anywhere; }
 .carry-was { flex: none; margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .carry-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .carry-acts > .btn { flex: 1 1 auto; }
@@ -1278,7 +1278,7 @@ button.hero-node:active { scale: .94; }
 }
 .stack > .set-more { margin: 0; }
 .set-more > summary {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--sp-2);
   padding: var(--sp-1) 0;
   color: var(--c-primary);
   cursor: pointer;
@@ -1487,7 +1487,7 @@ button.hero-node:active { scale: .94; }
   color: #f2f2f4;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   pointer-events: auto;
   /* Anywhere on it dismisses it, so it is never in the way longer than it
      takes to read. */
@@ -1510,7 +1510,7 @@ button.hero-node:active { scale: .94; }
      `--c-primary` 自身に混ぜると自分を参照する循環になるので、
      混ぜるのは `color:` の側で）。 */
   color: color-mix(in srgb, #fff 42%, var(--c-primary));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   padding: 6px 10px;
   border-radius: var(--r-sm);
   flex: none;
@@ -1562,9 +1562,9 @@ button.hero-node:active { scale: .94; }
 /* Title over subtitle. As a plain inline span the two ran together on one
    line, and the title's ellipsis never had a box to overflow. */
 .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.row-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-title { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-sub { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 1px; }
-.row-value { color: var(--c-text-2); font-weight: 700; flex: none; }
+.row-value { color: var(--c-text-2); font-weight: var(--fw-bold); flex: none; }
 .row-chevron { color: var(--c-text-3); flex: none; display: grid; place-items: center; }
 .row-chevron svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
 
@@ -1702,7 +1702,7 @@ button.hero-node:active { scale: .94; }
   background: var(--c-surface-2);
   color: var(--c-text);
   font-size: calc(22px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   display: grid;
   place-items: center;
   line-height: 1;
@@ -1720,7 +1720,7 @@ button.hero-node:active { scale: .94; }
 }
 .key:active { background: var(--c-surface-3); transform: scale(.95); }
 
-.key-op { color: var(--c-primary); font-weight: 700; }
+.key-op { color: var(--c-primary); font-weight: var(--fw-bold); }
 
 /* Each 税 key carries its own rate. A button that silently multiplies by
    something is a button you have to remember the meaning of, and with two of
@@ -1731,8 +1731,8 @@ button.hero-node:active { scale: .94; }
   gap: 0;
   line-height: 1.05;
 }
-.key-tax-cap  { font-size: calc(10px * var(--fs-k)); font-weight: 700; opacity: .75; }
-.key-tax-rate { font-size: var(--fs-lg); font-weight: 700; }
+.key-tax-cap  { font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); opacity: .75; }
+.key-tax-rate { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 
 /* 割引: the shelf tag's 「−20%」. Built like the 税 keys because it does the
    same kind of job — a rate applied to what is already typed — but cool
@@ -1743,8 +1743,8 @@ button.hero-node:active { scale: .94; }
   gap: 0;
   line-height: 1.05;
 }
-.key-off-cap  { font-size: calc(10px * var(--fs-k)); font-weight: 700; opacity: .75; }
-.key-off-main { font-size: var(--fs-lg); font-weight: 700; }
+.key-off-cap  { font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); opacity: .75; }
+.key-off-main { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same
    colour and same place, because it is the same "big green key" throughout —
@@ -1753,9 +1753,9 @@ button.hero-node:active { scale: .94; }
   background: var(--c-primary);
   color: #fff;
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
-.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); font-weight: 700; }
+.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); font-weight: var(--fw-bold); }
 .key-ok:active { background: var(--c-primary-2); }
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */
@@ -1849,7 +1849,7 @@ button.hero-node:active { scale: .94; }
   border: 1.5px solid color-mix(in srgb, var(--c-primary) 40%, transparent);
   background: color-mix(in srgb, var(--c-primary-fill) 10%, var(--c-surface));
   color: var(--c-primary);
-  font-size: var(--fs-sm); font-weight: 700;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   transition: scale var(--m-press) var(--ease);
 }
@@ -1878,12 +1878,12 @@ button.hero-node:active { scale: .94; }
     color: #000;
     font-size: 11pt;
     line-height: 1.8;
-    font-weight: 400;
+    font-weight: var(--fw-regular);
   }
-  #yearbook-print h1 { font-size: 20pt; font-weight: 700; margin: 0 0 4pt; }
-  #yearbook-print h2 { font-size: 14pt; font-weight: 700; margin: 20pt 0 6pt; break-after: avoid; }
+  #yearbook-print h1 { font-size: 20pt; font-weight: var(--fw-bold); margin: 0 0 4pt; }
+  #yearbook-print h2 { font-size: 14pt; font-weight: var(--fw-bold); margin: 20pt 0 6pt; break-after: avoid; }
   #yearbook-print h2.yb-diary { break-before: page; }
-  #yearbook-print h3 { font-size: 11pt; font-weight: 700; margin: 12pt 0 2pt; break-after: avoid; }
+  #yearbook-print h3 { font-size: 11pt; font-weight: var(--fw-bold); margin: 12pt 0 2pt; break-after: avoid; }
   #yearbook-print ul { margin: 0; padding-left: 1.2em; }
   #yearbook-print li { break-inside: avoid; }
   #yearbook-print .yb-made { color: #555; margin: 0; }
@@ -1946,7 +1946,7 @@ button.hero-node:active { scale: .94; }
   color: var(--c-text);
   font: inherit;
   font-size: 28px;
-  font-weight: 400;
+  font-weight: var(--fw-regular);
 }
 .lock-key:active { background: var(--c-surface-3); }
 .lock-key.is-back, .lock-key.is-bio { background: transparent; }

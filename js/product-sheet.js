@@ -376,7 +376,7 @@
           <span class="field-label">数量</span>
           <div style="display:flex;align-items:center;gap:12px">
             <button class="icon-btn js-minus" aria-label="減らす" style="background:var(--c-surface-2)">${icon("minus")}</button>
-            <span class="js-qty mono-num" style="font-size:calc(22px * var(--fs-k));font-weight:800;min-width:44px;text-align:center">${item.qty}</span>
+            <span class="js-qty mono-num" style="font-size:calc(22px * var(--fs-k));font-weight:var(--fw-bold);min-width:44px;text-align:center">${item.qty}</span>
             <button class="icon-btn js-plus" aria-label="増やす" style="background:var(--c-surface-2)">${icon("plus")}</button>
             <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
           </div>

@@ -899,6 +899,8 @@
          reconcile の既定値フォールバックで足りています——データの
          移り替えは要りません）。 */
       subState: cleanSubState(t.subState),
+      /* 「この回だけ」直したとき、くり返しの側が立たなくなる日。持っていない古い記録は []。 */
+      skipDays: cleanSkipDays(t.skipDays),
       /* 自分で選んだ絵。決めていなければ null——その場合は題から絵を
          推す（KN.productIcons.find）のを、時間割の側がやります。買うもの
          の商品アイコンと同じ選び方で、「迷ったときは丸のまま」ではなく、
@@ -992,6 +994,11 @@
       古いものは黙って落とします（直近60日ぶんだけ持てば十分——それより
       前の分は、済ませたときの「やった記録」（trace）のほうにもう写しが
       残っています）。 */
+  function cleanSkipDays(v) {
+    if (!Array.isArray(v)) return [];
+    return v.filter((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().slice(-60);
+  }
+
   function cleanSubState(v) {
     if (!v || typeof v !== "object") return {};
     const out = {};
@@ -1587,6 +1594,7 @@
       shop: shop === true,
       subs: cleanSubs(subs),
       subState: {},
+      skipDays: [],
       icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
@@ -1987,6 +1995,80 @@
     });
   }
 
+  /**
+   * くり返しの用事を直すとき、どこまで効かせるか。
+   *   "this"   … この回だけ。この日の一件を単発の写しに分け、くり返しのほうはその日を飛ばす
+   *   "future" … 以後すべて（これまでの updateTodo + setSubs と同じ。過ぎた日の跡は触らない）
+   *   "all"    … これまでも含めて全部。過ぎた日の跡（同じ題・区分の trace）にも題・メモ・時刻・
+   *              長さ・絵・旗・手順の字を写す（済みの印・日・済ませた時刻は触らない）
+   * @returns {() => void} 直す前に戻す手（作った写しは消し、書き換えた記録は元へ）。
+   */
+  function editRepeating(id, patch, subs, scope, day) {
+    const live = getTodo(id);
+    if (!live) return () => {};
+    const before = JSON.parse(JSON.stringify(live));   // 生きた記録は直すと変わるので控えを取る
+    const snap = new Map();
+    const keep = (t) => { if (t && !snap.has(t.id)) snap.set(t.id, JSON.parse(JSON.stringify(t))); };
+    keep(before);
+    let made = null;
+    if (scope === "this" && before.repeat && day) {
+      made = uid("t");
+      const src = JSON.parse(JSON.stringify(before));
+      const sub0 = (before.subs || []);
+      const copy = {
+        ...src, id: made, repeat: null, repeatDays: [], repeatNth: null, repeatEvery: null,
+        skipDays: [], subState: {}, notifiedFor: null, trace: false, done: false, doneAt: null,
+        archived: false, archivedAt: null,
+        due: day,
+        subs: sub0.map((x) => { const st = subStatus(before, x, day); return { ...x, done: st.done, skipped: st.skipped }; }),
+      };
+      delete copy.carried;
+      update((s) => {
+        const t = s.todos.find((x) => x.id === id);
+        if (!t) return;
+        s.todos.push(copy);
+        t.skipDays = cleanSkipDays((t.skipDays || []).concat(day));
+        if (t.due && t.skipDays.includes(t.due)) {
+          let d = t.due;
+          for (let i = 0; i < 400; i++) {
+            d = nextDue({ ...t, due: d });
+            if (!t.skipDays.includes(d)) break;
+          }
+          t.due = d;
+        }
+      });
+      const p = { ...patch };
+      ["repeat", "repeatDays", "repeatNth", "repeatEvery"].forEach((k) => delete p[k]);
+      updateTodo(made, { ...p, repeat: null });
+      if (subs) setSubs(made, subs);
+    } else {
+      updateTodo(id, patch);
+      if (subs) setSubs(id, subs);
+      if (scope === "all") {
+        const after = getTodo(id);
+        const keepIds = new Set((after.subs || []).map((x) => x.id));
+        const names = new Map((after.subs || []).map((x) => [x.id, x.title]));
+        const traces = get().todos.filter((t) => t.trace && !t.repeat
+          && t.title === before.title && t.part === before.part);
+        traces.forEach(keep);
+        update((s) => {
+          s.todos.forEach((t) => {
+            if (!snap.has(t.id) || t.id === id) return;
+            t.title = after.title; t.memo = after.memo; t.flagged = after.flagged;
+            t.minutes = after.minutes; t.icon = after.icon; t.part = after.part;
+            t.time = t.due ? after.time : null; t.lead = t.time ? after.lead : null;
+            t.subs = (t.subs || []).filter((x) => keepIds.has(x.id))
+              .map((x) => ({ ...x, title: names.get(x.id) }));
+          });
+        });
+      }
+    }
+    return () => update((s) => {
+      if (made) s.todos = s.todos.filter((t) => t.id !== made);
+      s.todos = s.todos.map((t) => snap.get(t.id) || t);
+    });
+  }
+
   /** @returns {() => void} puts it back, in its place. */
   function removeTodo(id) {
     const at = get().todos.findIndex((t) => t.id === id);
@@ -2072,6 +2154,7 @@
     const U = KN.util;
     if (!todo || !day) return false;
     if (!todo.repeat) return todo.due === day;
+    if (todo.skipDays && todo.skipDays.includes(day)) return false;
     // くり返しは「その日から」。始まる前の日には立ちません。
     if (!todo.due || day < todo.due) return todo.due === day;
     if (todo.due === day) return true;
@@ -4180,7 +4263,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
