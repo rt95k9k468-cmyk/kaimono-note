@@ -5457,6 +5457,29 @@ textarea.note-title-in {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+  /* 2.0（V19）：四隅の丸いカード。左右・上下に同じだけ空けて浮かせる（真ん中は
+     left:50% と translate(-50%) なので、左右の空きは揃う）。キーボードが出ている
+     あいだは底を空けない（道具の帯がキーボードにつくように）。閉じた姿は空けたぶん
+     も下へ（でないと底に縁が残る）。左端から払う・一番上で下へ引くのは js
+     （screen-notes.js）。 */
+  .is-v2 .sheet.is-note {
+    --note-gap: var(--sp-2);
+    --note-gap-b: clamp(0px, var(--note-gap) - var(--kb, 0px) * 100, var(--note-gap));
+    width: calc(100% - var(--note-gap) * 2);
+    bottom: calc(var(--kb, 0px) + var(--pad, 0px) + var(--note-gap-b));
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--note-gap) - var(--note-gap-b));
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-2);
+  }
+  /* 横はブラウザに渡さない（左端からの払いを pointercancel で切られないように）。
+     touch-action は送る器で途切れるので、器と書く欄にも。 */
+  .is-v2 .sheet.is-note,
+  .is-v2 .sheet.is-note :is(.sheet-body, textarea) { touch-action: pan-y; }
+  .is-v2 .sheet.is-note:not(.is-open):not(.is-from-origin) {
+    transform: translate(-50%, calc(100% + var(--note-gap) * 2));
+  }
+  /* 左端から払っているあいだは指につく（紙の transition を着たままだと遅れて追う）。 */
+  .sheet.is-note.is-edge { transition: none; }
 }
 .sheet.is-note .sheet-head { padding: var(--sp-1) var(--sp-2); }
 /* 底の安全域（ホームの棒のぶん）は、キーボードが出ているあいだは要らない
