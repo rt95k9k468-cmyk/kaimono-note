@@ -109,7 +109,7 @@
 |---|---|---|---|---|---|---|---|
 | A 土台 | V1 | 2.0 の切り替え | 小 | 足す（設定に一つ） | — | settings・traps | 済（10/4） |
 | A | V2 | 速さの台本 | 小 | なし | — | dev・calendar-swipe（実測の節） | 済（10/4） |
-| A | V3 | 使われていない CSS の候補表 | 小 | なし | — | dev・tests/README | 未 |
+| A | V3 | 使われていない CSS の候補表 | 小 | なし | — | dev・tests/README | 済（10/4） |
 | A | V4 | 動きの辞書 | 中 | なし | — | motion・traps | 未 |
 | A | V5 | 見比べの画像 | 中 | なし | — | glass・look・daily・health・notes の該当節 | 画像済（10/4）・選ぶ待ち |
 | B 道と人 | V6 | 追いつく歩き | 中 | なし（前に見た点は store の外） | — | todo-timeline（歩く・描き直し） | 未 |
@@ -176,6 +176,11 @@
 - **当たらない＝要らない、ではない**（試験が通らない状態・iOS だけの `@supports`・ぼかしの効かない
   受け皿など）。だから候補表。消すのは V25 で、一つずつ試験つき。
 - 今の大きさ：base.css 2,240行・components.css 1,952行・screens.css 6,829行（2026年10月4日）。
+- **済（10/4）**：`node tools/css-unused.js`（全試験＋集計で約5分。`--from <dir>` で表だけ）→
+  `docs/css-unused.md`。当たりは `tests/lib.js` の `open()` が `KN_CSS_COVER` のときだけ集める
+  （`open()` の頁だけ。bell・offline は自前で開くので数えない）。初回：規則 1,902 のうち当たらない
+  609（base 44・components 114・screens 451）。暗い色の規則は試験が明るいので当たらない——V25 で
+  `colorScheme: "dark"` の回を足すか、手で除く。
 
 **V4 動きの辞書**
 - 何を：motion.md に表を一つ。今ある動き（`--m-*` 31個と、JS の `glide`・`FEEL`・`arrive`・
