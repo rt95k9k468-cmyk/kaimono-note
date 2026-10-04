@@ -53,6 +53,10 @@
   毎回落ちます（`tests/notes.js` の3件が、これで長く落ちていた。2026年10月1日）。
   アプリの不具合ではありません。読み直す前に入れ物を一度読めば、読みは先の
   書き込みのあとに並ぶので収まります（`tests/notes.js` の `reload()`）。
+- **別の日へ移す行は、紙の中で数えること。** `KN.ui.sendToDay`（V15）は行を
+  `cloneNode` した写し（元のクラスのまま、`.day-send` 付き）を body に出して
+  飛ばすので、`document.querySelectorAll(".carry-row")` は飛んでいるあいだ写しも
+  数えます（`tests/carry.js` が V15 からこれで落ちていた。2026年10月4日）。
 - **指の手つきは、本物のタッチで試すこと。** `new PointerEvent(...)` を
   自分で投げるやり方では、`touchstart` / `touchmove` を見ているものが
   **まるごと動きません**——`pull-refresh.js` がそれです。買うものの掴み手に

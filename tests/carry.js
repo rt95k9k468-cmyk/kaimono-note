@@ -150,11 +150,12 @@ const { open, checker } = require("./lib");
   t.check("評価の言葉を出さない", !/できなかった|遅れ|失敗|未達|持ち越し|期限切れ/.test(sheet.text + bar.text));
   t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(sheet.text + bar.text));
 
-  // 一件目「明日」、二件目「今日のどこか」
+  // 一件目「明日」、二件目「今日のどこか」。
+  // 「明日」は行の写し（.carry-row のまま body に出る）が暦へ飛ぶので、紙の中だけを数える。
   await page.evaluate(() => document.querySelectorAll(".carry-row")[0].querySelector('.js-carry[data-key="tomorrow"]').click());
   await page.waitForTimeout(300);
   const mid = await page.evaluate(() => ({
-    rows: document.querySelectorAll(".carry-row").length,
+    rows: document.querySelectorAll(".sheet.is-open .carry-row").length,
     toast: [...document.querySelectorAll(".toast")].map((x) => x.textContent).join(" "),
   }));
   t.check("選んだ行は消える", mid.rows === 1, JSON.stringify(mid));
