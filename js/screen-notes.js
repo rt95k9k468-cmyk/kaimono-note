@@ -621,6 +621,24 @@
         } },
     ];
 
+    /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
+       姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
+    const headingItems = () => {
+      const hs = F.headings(textIn.value);
+      if (hs.length < 3) return [];
+      return hs.map((x) => ({
+        label: "\u3000".repeat(x.level - 1) + x.text,
+        onPick: () => {
+          if (writing) { textIn.blur(); if (writing) toView(); }
+          else paintView();
+          const el = viewEl.querySelector(`[data-line="${x.line}"]`);
+          const sc = h.el.querySelector(".sheet-body");
+          if (!el || !sc) return;
+          sc.scrollTop += el.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+        },
+      }));
+    };
+
     /* 電話の幅では、帯のすぐ下から始まるカード（段4.3）。一覧のカードから
        膨らみ、閉じると一覧のカードへ縮んで戻る（直したノートは先頭へ移る
        ので、戻り先は毎フレーム探し直す）。＋からは＋から育ち、閉じたら
@@ -645,7 +663,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.concat(headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);

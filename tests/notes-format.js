@@ -262,6 +262,35 @@ const { open, checker } = require("./lib");
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
   await closeSheet();
 
+  /* ---- 長いノートの見出しへ飛ぶ（R32）：三つ以上で出る・二つで出ない・押すと紙の上に来る ---- */
+  const filler = Array.from({ length: 30 }, (_, i) => `本文${i}`).join("\n");
+  const headItems = async (body) => {
+    await page.click("#dock .add-fab");
+    await page.waitForSelector(".sheet.is-note.is-open");
+    await page.fill(".sheet.is-note .js-text", body);
+    await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-note .note-view").hidden);
+    await page.click(".sheet.is-note .js-note-more");
+    await page.waitForSelector(".note-pop.is-open");
+    return page.$$eval(".note-pop-item", (xs) => xs.map((x) => x.textContent.trim()));
+  };
+  const two = await headItems(`# 一\n${filler}\n## 二\n${filler}`);
+  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,削除", two.join(","));
+  await page.keyboard.press("Escape");
+  await closeSheet();
+  const three = await headItems(`# 一\n${filler}\n## 二\n${filler}\n### 三\n${filler}`);
+  t.check("見出しが三つなら、小窓に見出しが並ぶ", three.slice(3).join(",") === "一,二,三", three.join(","));
+  await page.click(".note-pop-item:last-child");
+  await page.waitForTimeout(300);
+  const jumped = await page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note");
+    const sb = s.querySelector(".sheet-body").getBoundingClientRect();
+    const h = s.querySelector(".note-view .nv-h3").getBoundingClientRect();
+    return { gap: Math.round(h.top - sb.top), saved: s.querySelector(".js-text").value.includes("### 三") };
+  });
+  t.check("押すと、その見出しが紙の上に来る", Math.abs(jumped.gap) <= 4 && jumped.saved, JSON.stringify(jumped));
+  await closeSheet();
+
   /* ---- 短いノート：キーボードで見える高さが縮んでも、題は飛ばない（段4.2のあと） ----
      本文の欄は短くても 38vh ある。欄の底を「最後の行」と読んで見せようとすると、
      空いたところを押しただけで題ごと上へ送っていた（2026年10月1日、iPhone）。 */

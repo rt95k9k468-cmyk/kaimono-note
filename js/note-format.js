@@ -57,6 +57,16 @@
     return p.kind === "rule" || p.kind === "blank" ? "" : p.text.trim();
   }
 
+  /** 見出し（`# ` `## ` `### `）の並び。line は render の data-line と同じ数え方。保存の形は読むだけ。 */
+  function headings(body) {
+    const out = [];
+    String(body || "").split("\n").forEach((l, line) => {
+      const p = parse(l);
+      if (p.kind === "head" && p.text.trim()) out.push({ line, level: p.level, text: p.text.trim() });
+    });
+    return out;
+  }
+
   /* ---------------- 読むときに整える ---------------- */
 
   /**
@@ -293,5 +303,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, render, toggleTask, setKind, rule, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, headings, render, toggleTask, setKind, rule, shift, onEnter, kindAt, history };
 })();
