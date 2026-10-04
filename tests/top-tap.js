@@ -19,7 +19,10 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(400);
   const scr = await page.evaluate(() => {
     const el = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
-    el.style.paddingBottom = "3000px";
+    const pad = document.createElement("div");
+    pad.className = "js-test-pad";
+    pad.style.height = "6000px";
+    el.append(pad);
     el.scrollTop = 600;
     return el.scrollTop;
   });
@@ -27,6 +30,30 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(900);
   const scrAfter = await page.evaluate(() => KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop);
   t.check("画面：きわを押すと上へ", scr > 0 && scrAfter === 0, `${scr} → ${scrAfter}`);
+
+  /* 着き方：出だしは速く、終わりはゆっくり（ふわっと止まる）。 */
+  await page.evaluate(() => { const el = KN.app.scrollerOf(document.querySelector(".screen.is-active")); el.scrollTop = 2400; });
+  await page.waitForTimeout(300);
+  const trace = await page.evaluate(() => new Promise((res) => {
+    const el = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
+    const from = el.scrollTop, t0 = performance.now(), pts = [];
+    window.scrollTo(0, 0);
+    const tick = () => {
+      pts.push([performance.now() - t0, el.scrollTop]);
+      if (el.scrollTop > 0 && pts.length < 300) requestAnimationFrame(tick);
+      else res({ from, pts });
+    };
+    requestAnimationFrame(tick);
+  }));
+  const total = trace.pts[trace.pts.length - 1][0];
+  const at = (ms) => (trace.pts.find((p) => p[0] >= ms) || trace.pts[trace.pts.length - 1])[1];
+  const firstQuarter = trace.from - at(total * 0.25);
+  const lastQuarter = at(total * 0.75);
+  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", total >= 400 && total <= 1000, `${Math.round(total)}ms`);
+  t.check("上へ：出だしは速く、終わりは大きく緩める", firstQuarter > trace.from * 0.6 && lastQuarter < trace.from * 0.02,
+    `始めの1/4で ${Math.round(firstQuarter)}px、最後の1/4に ${Math.round(lastQuarter)}px（全 ${trace.from}px）`);
+  const mono = trace.pts.every((p, i) => !i || p[1] <= trace.pts[i - 1][1]);
+  t.check("上へ：行きすぎて戻らない", mono, JSON.stringify(trace.pts.map((p) => [Math.round(p[0]), Math.round(p[1])])));
 
   /* ノートの紙：紙の本体を上へ（後ろの画面は動かさない）。 */
   await page.evaluate(() => KN.app.showScreen("notes"));
