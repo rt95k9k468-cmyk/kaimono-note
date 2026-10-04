@@ -974,7 +974,7 @@ a { color: var(--c-primary); }
   top: 50%;
   translate: 0 -50%;
   font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.02em;
   color: var(--c-primary);
   white-space: nowrap;
@@ -1331,7 +1331,7 @@ a { color: var(--c-primary); }
 
 .topbar-title {
   font-size: var(--fs-2xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.02em;
   flex: 1;
   min-width: 0;
@@ -1709,7 +1709,7 @@ a { color: var(--c-primary); }
 .tab-face:not(.is-on) {
   color: var(--c-text-3);
   opacity: .8;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 .tab[aria-selected="true"] .tab-face.is-on { color: var(--c-primary); }
 
@@ -1746,7 +1746,7 @@ a { color: var(--c-primary); }
   /* 画面いっぱいのお知らせに一枚だけ出る絵。文章の脇の印ではないので、
      二段階の外です。 */
   .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
-  .rotate-note b { font-size: var(--fs-xl); font-weight: 700; }
+  .rotate-note b { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
 }
 
 .tab {
@@ -1764,7 +1764,7 @@ a { color: var(--c-primary); }
      読めなくならないための一段です。 */
   color: var(--c-text-2);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: .01em;
   /* `scale` の帰り道（離したときに戻る速さ）はここ。行き道は
      `.tab.is-held` が持ちます——開く速さと閉じる速さを class の付け外しで
@@ -1927,7 +1927,7 @@ a { color: var(--c-primary); }
   background: var(--c-accent);
   color: #fff;
   font-size: calc(10px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   display: grid;
   place-items: center;
   line-height: 1;

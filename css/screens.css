@@ -156,7 +156,7 @@
 .ac-new-mark svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.9;
                    fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.ac-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-name { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ac-sub {
   font-size: var(--fs-sm);
   color: var(--c-text-2);
@@ -164,7 +164,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ac-new { color: var(--c-primary); font-weight: 700; }
+.ac-new { color: var(--c-primary); font-weight: var(--fw-bold); }
 
 /* progress */
 .progress-wrap { padding: 0 var(--sp-4) var(--sp-3); }
@@ -190,7 +190,7 @@
 /* B7 のカテゴリの切れ目の線は、2026年9月29日に外しました（利用者：「品目の
    間の線も要らない」）。組と組のあいだは 12px の空きだけ（docs/shopping.md）。 */
 
-.cat-head-count { color: var(--c-text-3); font-weight: 700; }
+.cat-head-count { color: var(--c-text-3); font-weight: var(--fw-bold); }
 
 .item-list { padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 
@@ -239,7 +239,7 @@
 .item-emoji {
   flex: none;
   width: 24px;
-  font-size: calc(19px * var(--fs-k));
+  font-size: var(--fs-xl);
   line-height: 1;
   text-align: center;
 }
@@ -327,7 +327,7 @@
 .topbar-day {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   min-width: 0;
   background: none;
   border: none;
@@ -350,7 +350,7 @@
      320px 級で19px・375px級で1px、文字が欠けます（実測）。係数を
      6.4vw/26px → 5.4vw/23px に下げて収めています。 */
   font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.02em;
   white-space: nowrap;
   line-height: 1.25;
@@ -364,7 +364,7 @@
    を言う大きな字で、隣に並べたときに同じ色に見えることのほうが要ります。 */
 .tab-title {
   font-size: calc(clamp(18px, 6.4vw, 26px) * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.02em;
   line-height: 1.25;
   color: var(--c-primary);
@@ -500,7 +500,7 @@
 /* 月ぜんぶ／今週だけ の切り替え。矢印と同じ列に置きます。 */
 .cal-more {
   min-width: 30px; height: 30px; padding: 0 9px;
-  font-size: var(--fs-xs); font-weight: 700;
+  font-size: var(--fs-xs); font-weight: var(--fw-bold);
   color: var(--c-text-2);
   border-radius: var(--r-full);
   background: var(--c-surface-2);
@@ -613,7 +613,7 @@
 .cal-wd {
   text-align: center;
   font-size: calc(11px * var(--fs-k));
-  font-weight: 400;
+  font-weight: var(--fw-regular);
   color: var(--c-text-3);
   padding-bottom: 3px;
 }
@@ -628,7 +628,7 @@
   justify-content: flex-start;
   /* 数字の丸と、下の点のあいだ。1pxしかなく、見ている日の輪が点に
      くっついて見えていました。輪のぶんを空けます。 */
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 2px 0 3px;
   background: none;
   border: 0;
@@ -644,7 +644,7 @@
   width: 27px; height: 27px;
   border-radius: var(--r-full);
   font-size: calc(17px * var(--fs-k));
-  font-weight: 400;
+  font-weight: var(--fw-regular);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--c-text-2);
@@ -661,7 +661,7 @@
    見ているときは、字の色と太さだけで「今日はここ」と言えば足ります。 */
 .cal-day.is-today .cal-n {
   color: var(--c-primary);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 /* いま下で見ている日。今日の赤丸とは別の印にします——今日は「どこか」で、
@@ -806,7 +806,7 @@
   gap: 7px;
   padding: var(--sp-4) var(--sp-4) var(--sp-2);
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text);
 }
 /* The group's colour, as a dot beside its name. The rows below wear the same
@@ -827,7 +827,7 @@
 .todo-head.is-empty {
   padding: var(--sp-2) var(--sp-4);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 .todo-head.is-empty .todo-head-dot { opacity: .5; width: 7px; height: 7px; }
@@ -898,7 +898,7 @@
   align-items: center;
   flex: none;
   font-size: calc(11px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
 }
 
@@ -992,7 +992,7 @@
 /* 「しまった」の丸みも、ここでは一回り小さく。文字はそのまま——読める語を
    削るより、まわりの余白を詰めるほうが失うものが少ない。 */
 .item.todo:not(.is-tile).is-checked .todo-tag { padding: 0 4px; }
-.item.todo:not(.is-tile).is-checked .item-meta { gap: 4px; }
+.item.todo:not(.is-tile).is-checked .item-meta { gap: var(--sp-1); }
 
 /* Across, not down: the name and whatever is left of the meta share one line
    (the base row stacks them, which is what made the box three storeys tall). */
@@ -1049,13 +1049,13 @@
 .todo-at {
   flex: none;
   font-size: calc(10px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
   color: var(--cat, var(--c-text-2));
   border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
   background: color-mix(in srgb, var(--cat, var(--c-border)) 10%, transparent);
-  border-radius: 999px;
+  border-radius: var(--r-full);
   padding: 0 5px;
 }
 
@@ -1063,7 +1063,7 @@
 .todo-every {
   flex: none;
   font-size: calc(9.5px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.3;
   letter-spacing: -.02em;
   color: color-mix(in srgb, var(--c-text-3) 80%, transparent);
@@ -1077,7 +1077,7 @@
    under the chips — a block the size of the date field reads as something you
    are expected to fill in, and most todos do not happen at a time. */
 .time-row { display: flex; align-items: center; gap: var(--sp-2); }
-.time-label { flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.time-label { flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }
 .time-row .chip { flex: none; height: 34px; }
 
@@ -1087,26 +1087,26 @@
 .todo-part {
   flex: none;
   font-size: calc(11px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--cat, var(--c-text-2));
   border: 1px solid color-mix(in srgb, var(--cat, var(--c-border)) 55%, transparent);
-  border-radius: 999px;
+  border-radius: var(--r-full);
   padding: 0 6px;
 }
 
 .todo-tag {
   flex: none;
   font-size: calc(11px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
   border: 1px solid var(--c-border);
-  border-radius: 999px;
+  border-radius: var(--r-full);
   padding: 0 6px;
 }
 
 .tile-when {
   font-size: calc(11px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
 }
@@ -1115,7 +1115,7 @@
    is where the reason for pressing it is. */
 .link-btn {
   color: var(--c-primary);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -1138,7 +1138,7 @@
   align-items: center;
   gap: var(--sp-2);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   visibility: hidden;
 }
 .swipe-yes {
@@ -1230,7 +1230,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: var(--sp-2) 6px 6px;
   text-align: center;
 }
@@ -1257,7 +1257,7 @@
      name runs out over the neighbour. */
   max-width: 100%;
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.25;
   white-space: normal;
   overflow: hidden;
@@ -1269,7 +1269,7 @@
 
 .tile-price {
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-accent);
   font-variant-numeric: tabular-nums;
 }
@@ -1280,9 +1280,9 @@
 .tile-store {
   max-width: 100%;
   font-size: calc(10px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
-  line-height: 1.2;
+  line-height: var(--lh-tight);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1293,7 +1293,7 @@
 .product.is-tile .product-name { -webkit-line-clamp: 2; }
 .item.is-tile .item-qty {
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
 }
 
@@ -1492,7 +1492,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   margin-bottom: var(--sp-2);
 }
@@ -1510,7 +1510,7 @@
 .insight-ico.is-note { color: var(--c-accent); }
 .insight-ico.is-mute { color: var(--c-text-3); }
 .insight-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.insight-title { font-weight: 700; font-size: var(--fs-md); }
+.insight-title { font-weight: var(--fw-bold); font-size: var(--fs-md); }
 .insight-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-body); }
 
 /* Section divider between the trip and everything else. */
@@ -1520,11 +1520,11 @@
   gap: 6px;
   padding: var(--sp-4) var(--sp-4) var(--sp-2);
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text);
 }
 .trip-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); fill: currentColor; color: var(--c-warn); flex: none; }
-.trip-head-rest { color: var(--c-text-3); font-weight: 700; }
+.trip-head-rest { color: var(--c-text-3); font-weight: var(--fw-bold); }
 
 .item-body {
   flex: 1;
@@ -1539,7 +1539,7 @@
 
 .item-name {
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1552,7 +1552,7 @@
 .item-qty {
   flex: none;
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   background: var(--c-surface-2);
   padding: 1px 7px;
@@ -1596,17 +1596,17 @@
 .item-when {
   flex: none;
   font-size: calc(11px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
   background: var(--c-surface-2);
-  border-radius: 999px;
+  border-radius: var(--r-full);
   padding: 1px 7px;
 }
 
 .tile-when {
   font-size: calc(10px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -1623,7 +1623,7 @@
 
 .item-price-amount {
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-accent);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.01em;
@@ -1632,14 +1632,14 @@
 .item-price-store {
   font-size: var(--fs-xs);
   color: var(--c-text-2);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.item-price-none { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 700; }
+.item-price-none { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: var(--fw-bold); }
 
 /* checked section toggle */
 .done-head {
@@ -1649,7 +1649,7 @@
   width: 100%;
   padding: var(--sp-2) var(--sp-4);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
 }
 .done-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform var(--m-state) var(--ease); }
@@ -1671,7 +1671,7 @@
   gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-4) var(--sp-1);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
@@ -1710,8 +1710,8 @@
 
 /* Still used by the compare screen's own totals, which are totals of a basket
    whose prices are all known — that is what makes them safe to add up. */
-.summary-label { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
-.summary-total { font-size: var(--fs-2xl); font-weight: 700; color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.summary-label { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.summary-total { font-size: var(--fs-2xl); font-weight: var(--fw-bold); color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 
 /* ================= PRICES SCREEN ================= */
 
@@ -1757,7 +1757,7 @@
   width: 100%;
   padding: var(--sp-2) 0;
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 /* The chevron points right when the drawer is shut and down when it is
@@ -1848,7 +1848,7 @@
   text-align: left;
   border: none; background: none; padding: 0;
 }
-.product-name { font-size: var(--fs-lg); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
 
 /* price rows inside sheet */
@@ -1886,12 +1886,12 @@
 .price-chevron svg { width: var(--ico); height: var(--ico); stroke: currentColor; stroke-width: var(--ico-w); fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
 .price-store-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
-.price-store { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.price-store { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .price-figures { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-.price-amount { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.price-amount { font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .is-best .price-amount { color: var(--c-accent-ink); }
-.price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: 700; }
+.price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: var(--fw-bold); }
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 /* いちばん安いお店の印。🏆 の絵文字でした（端末が描くもので、iOS と
@@ -1910,7 +1910,7 @@
 
 .cmp { font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-body); }
 .cmp b { color: var(--c-text); }
-.cmp .cmp-good { color: var(--c-primary); font-weight: 700; }
+.cmp .cmp-good { color: var(--c-primary); font-weight: var(--fw-bold); }
 .cmp .cmp-bad  { color: var(--c-accent-ink); }
 
 .log-row {
@@ -1923,9 +1923,9 @@
 }
 .log-row.is-current { background: var(--c-primary-soft); }
 .log-date  { flex: none; width: 56px; font-size: var(--fs-sm); color: var(--c-text-2); }
-.log-price { flex: none; width: 74px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.log-price { flex: none; width: 74px; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .log-unit  { flex: 1; min-width: 0; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.log-tag   { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink); }
+.log-tag   { flex: none; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary-ink); }
 
 /* history sparkline */
 .spark { display: block; width: 100%; height: 48px; }
@@ -2111,7 +2111,7 @@
   min-width: 0;
   text-align: center;
   font-size: var(--set-fs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2127,9 +2127,9 @@
   margin: var(--sp-2) 0 var(--sp-4);
   padding: 0 calc(var(--set-gut) + 2px);
   font-size: calc(34px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   letter-spacing: -.02em;
-  line-height: 1.2;
+  line-height: var(--lh-tight);
 }
 
 /* ---- 節の見出しと、カードの下の説明 ---- */
@@ -2138,7 +2138,7 @@
   margin: var(--sp-6) 0 var(--sp-2);
   padding: 0 calc(var(--set-gut) + var(--sp-5));
   font-size: var(--set-fs-head);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 .js-body > .set-head:first-child { margin-top: var(--sp-2); }
@@ -2165,7 +2165,7 @@
 .verify-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .verify-table th, .verify-table td { padding: var(--sp-1) 0; text-align: right; }
 .verify-table th:first-child, .verify-table td:first-child { text-align: left; color: var(--c-text-2); }
-.verify-table th { font-size: var(--set-fs-foot); font-weight: 400; color: var(--c-text-3); }
+.verify-table th { font-size: var(--set-fs-foot); font-weight: var(--fw-regular); color: var(--c-text-3); }
 
 /* ---- カードと行 ---- */
 
@@ -2226,7 +2226,7 @@
   min-width: 0;
   /* **太字にしません。** 参考画面の題は標準の太さです——設定は一行ずつ
      読んで選ぶ画面なので、全部が太いと、どれが見出しかが言えなくなります。 */
-  font-weight: 400;
+  font-weight: var(--fw-regular);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2334,7 +2334,7 @@
   font-size: var(--set-fs);
 }
 #screen-settings .manage-row + .manage-row { box-shadow: inset 0 1px 0 var(--set-line); }
-#screen-settings .manage-name { font-weight: 400; }
+#screen-settings .manage-name { font-weight: var(--fw-regular); }
 #screen-settings .set-row.is-add { color: var(--c-primary); }
 #screen-settings .set-row.is-add .set-glyph { color: var(--c-primary); }
 /* 行き先でも切り替えでもない絵（コピー等）。四角も色も着せない。 */
@@ -2358,11 +2358,11 @@
 }
 
 .seg-btn {
-  padding: 8px;
+  padding: var(--sp-2);
   min-height: 40px;
   border-radius: 9px;
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-2);
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
@@ -2392,7 +2392,7 @@
   border-radius: var(--r-full);
   margin-right: -2px;
 }
-.manage-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manage-name { flex: 1; min-width: 0; font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* store color swatches */
 .swatches { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
@@ -2424,7 +2424,7 @@
   min-width: 0;
   text-align: right;
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2432,7 +2432,7 @@
 }
 .calc-out.is-idle {
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 
@@ -2564,13 +2564,13 @@
   text-align: left; flex: 1 1 auto; min-width: 0;
   padding: 0; background: none; border: 0;
 }
-.diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: 700; letter-spacing: -.01em; }
+.diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: var(--fw-bold); letter-spacing: -.01em; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
-  font-size: calc(40px * var(--fs-k)); line-height: 1.05; font-weight: 700; color: var(--c-text);
+  font-size: calc(40px * var(--fs-k)); line-height: 1.05; font-weight: var(--fw-bold); color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
-.diet-hero-value small { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text-2); }
+.diet-hero-value small { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text-2); }
 /* 体脂肪は体重の下。同じ「いまの体」の話なので、横に離さず縦に続けます。 */
 .diet-hero-sub {
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
@@ -2587,12 +2587,12 @@
   border-left: 1px solid var(--c-border); padding-left: var(--sp-3);
 }
 .diet-stat {
-  display: flex; align-items: baseline; gap: 4px; min-width: 0;
+  display: flex; align-items: baseline; gap: var(--sp-1); min-width: 0;
   width: 100%; padding: 0; background: none; border: 0; font: inherit;
   color: inherit; text-align: left; cursor: pointer;
 }
 .diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
-.diet-stat-value { font-size: var(--fs-md); font-weight: 700; margin-left: auto; }
+.diet-stat-value { font-size: var(--fs-md); font-weight: var(--fw-bold); margin-left: auto; }
 .diet-stat-value.is-good { color: var(--c-primary); }
 .diet-stat-value.is-warn { color: var(--c-accent); }
 .diet-stat-unit {
@@ -2743,7 +2743,7 @@
 /* 見出しに添える小さい絵。文字の高さに揃えて、行の背は変えません。 */
 .diet-hero-ico, .diet-stat-ico {
   display: inline-block; vertical-align: -2px; line-height: 0;
-  color: var(--c-primary); opacity: .8; margin-right: 4px;
+  color: var(--c-primary); opacity: .8; margin-right: var(--sp-1);
 }
 .diet-hero-ico svg { width: 18px; height: 18px; stroke-width: var(--ico-sm-w); }
 .diet-stat-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
@@ -2751,7 +2751,7 @@
 /* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
    「その日どうだったか」のひと組で、二段に割れると一組に見えなくなります。
    そのぶん中身は詰めました（睡眠は 6h40m、飲酒は目安に対する％）。 */
-.diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-1); }
 .diet-cell {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   padding: var(--sp-2) 2px; background: var(--c-surface-2);
@@ -2763,7 +2763,7 @@
 /* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
 .diet-cell-label { font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap; }
-.diet-cell-value { font-size: var(--fs-md); font-weight: 700; white-space: nowrap; }
+.diet-cell-value { font-size: var(--fs-md); font-weight: var(--fw-bold); white-space: nowrap; }
 /* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
 .diet-cell-value.is-over { color: var(--c-danger); }
 /* 目標の一行。10px では小さすぎて読めなかったので、字の段のいちばん小さい
@@ -2816,7 +2816,7 @@
 }
 .diet-ring-mid {
   position: relative; z-index: 1;
-  font-size: calc(12.5px * var(--fs-k)); font-weight: 700; font-style: normal;
+  font-size: calc(12.5px * var(--fs-k)); font-weight: var(--fw-bold); font-style: normal;
   color: var(--fill); white-space: nowrap;
 }
 .diet-ring.is-none .diet-ring-mid { color: var(--c-text-3); }
@@ -2886,7 +2886,7 @@
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
 
 /* 見出しの右に添える一言（この数字は何時時点か、など）。 */
-.section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-3); letter-spacing: 0; }
+.section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-3); letter-spacing: 0; }
 
 /* 押せるほうの一言（からだの「◯:◯◯ 時点」）。字の大きさは変えません
    ——押せることを大きさで言うと、見出しの右が騒がしくなるので。的だけを
@@ -2912,7 +2912,7 @@ button.section-note:active { opacity: .55; }
   font-size: var(--fs-xs); color: var(--c-text-2); padding: 3px 0;
 }
 .diet-drink-row b { font-size: var(--fs-sm); color: var(--c-text); flex: 1 1 100%; }
-.diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 6px; }
+.diet-drink-row.is-sum { border-top: 1px solid var(--c-border); margin-top: var(--sp-1); padding-top: 6px; }
 .diet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* よく飲むもの（お酒の紙）。3列×2段の格子で、縦に同じ種類（ビール／糖質ゼロ、
@@ -2928,7 +2928,7 @@ button.section-note:active { opacity: .55; }
 .sheet .drink-fav .chip {
   flex-direction: column; justify-content: center; gap: 2px;
   height: 68px; min-width: 0; padding: 0 var(--sp-1);
-  border-radius: var(--r-lg, 18px);
+  border-radius: var(--r-lg);
   overflow: hidden;
 }
 .sheet .drink-fav .chip.is-on { /* 赤い警告色にしない。選んだ札は基調色 */
@@ -2940,10 +2940,10 @@ button.section-note:active { opacity: .55; }
 .drink-picks { display: flex; flex-direction: column; gap: var(--sp-2); }
 .drink-picks:empty { display: none; }
 .drink-pick { display: flex; align-items: center; gap: var(--sp-2); }
-.drink-pick-name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drink-pick-name { flex: 1 1 auto; min-width: 0; font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drink-pick .stepper { flex: 0 0 auto; align-self: center; }
 .drink-pick .stepper-value { min-width: 56px; font-size: var(--fs-lg); }
-.drink-pick .stepper-value small { font-size: var(--fs-sm); font-weight: 400; margin-left: 2px; }
+.drink-pick .stepper-value small { font-size: var(--fs-sm); font-weight: var(--fw-regular); margin-left: 2px; }
 /* 気分の言葉。数字と並ぶので、字は小さく色は控えめに。 */
 .diet-mood { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--c-text-3); }
 
@@ -2970,8 +2970,8 @@ button.section-note:active { opacity: .55; }
 .urge-top-day { font-size: var(--fs-lg); color: var(--c-text); }
 /* 経過した分数。事実として置くだけなので、色も強調も付けません。 */
 .urge-since {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 400;
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--fs-sm); color: var(--c-text-3); font-weight: var(--fw-regular);
 }
 .urge-since svg { width: 13px; height: 13px; }
 
@@ -2981,11 +2981,11 @@ button.section-note:active { opacity: .55; }
 .urge-sec-head { display: flex; align-items: center; gap: 7px; }
 .urge-sec-ico { line-height: 0; color: var(--c-primary); flex: none; }
 .urge-sec-ico svg { width: 17px; height: 17px; }
-.urge-sec-title { font-size: calc(15.5px * var(--fs-k)); font-weight: 700; color: var(--c-text); }
+.urge-sec-title { font-size: calc(15.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text); }
 /* 「任意」は、書かなくてよいことを一目で言うため。薄い地の小さな札で、
    題より前に出ないようにします。 */
 .urge-sec-opt {
-  font-size: calc(10.5px * var(--fs-k)); font-weight: 700; color: var(--c-text-3);
+  font-size: calc(10.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-3);
   background: var(--c-surface-2); border-radius: var(--r-full);
   padding: 2px 7px; line-height: 1.5;
 }
@@ -2995,7 +2995,7 @@ button.section-note:active { opacity: .55; }
 }
 .urge-sec-body { display: flex; flex-direction: column; gap: 10px; }
 /* 札は段の中では少しゆったり（既定の 6px だと、40pxの札が詰まって見える）。 */
-.urge-sec .diet-chips { gap: 8px; }
+.urge-sec .diet-chips { gap: var(--sp-2); }
 .urge-words { display: flex; flex-direction: column; gap: 10px; }
 
 /* ---- 1〜5 ---- */
@@ -3008,8 +3008,8 @@ button.section-note:active { opacity: .55; }
   background: var(--c-surface-2);
   border: 1.5px solid transparent;
   color: var(--c-text-2);
-  font-size: calc(19px * var(--fs-k));
-  font-weight: 700;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
               border-color var(--m-state) var(--ease), transform var(--m-press);
@@ -3043,7 +3043,7 @@ button.section-note:active { opacity: .55; }
   border: 1.5px dashed var(--c-border-2);
   border-radius: var(--r-md);
   color: var(--c-primary);
-  font-size: var(--fs-md); font-weight: 700;
+  font-size: var(--fs-md); font-weight: var(--fw-bold);
   transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-press);
 }
 .urge-more:active { transform: scale(.98); }
@@ -3069,10 +3069,10 @@ button.section-note:active { opacity: .55; }
 .urge-row-time { font-size: var(--fs-sm); color: var(--c-text-3); flex: none; }
 /* 「4 → 2」。矢は書かれたことの記録で、良し悪しではないので色を変えません。 */
 .urge-row-lv {
-  font-size: var(--fs-lg); font-weight: 700; color: var(--c-primary);
+  font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary);
   flex: none; display: inline-flex; align-items: center; gap: 3px;
 }
-.urge-row-lv i { font-style: normal; color: var(--c-text-3); font-weight: 400; font-size: var(--fs-md); }
+.urge-row-lv i { font-style: normal; color: var(--c-text-3); font-weight: var(--fw-regular); font-size: var(--fs-md); }
 .urge-row-text {
   font-size: var(--fs-sm); color: var(--c-text-2);
   flex: 1 1 auto; min-width: 0;
@@ -3092,8 +3092,8 @@ button.section-note:active { opacity: .55; }
 
 .diet-kcal { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
 .diet-kcal-main { display: flex; align-items: baseline; gap: 6px; }
-.diet-kcal-main b { font-size: calc(30px * var(--fs-k)); font-weight: 700; line-height: 1; }
-.diet-kcal-main small { font-size: var(--fs-md); color: var(--c-text-2); font-weight: 700; }
+.diet-kcal-main b { font-size: calc(30px * var(--fs-k)); font-weight: var(--fw-bold); line-height: 1; }
+.diet-kcal-main small { font-size: var(--fs-md); color: var(--c-text-2); font-weight: var(--fw-bold); }
 .diet-kcal-rem { font-size: var(--fs-sm); color: var(--c-text-2); text-align: right; }
 .diet-kcal-rem b { font-size: var(--fs-lg); color: var(--c-primary); }
 .diet-kcal-rem.is-over b { color: var(--c-danger); }
@@ -3107,7 +3107,7 @@ button.section-note:active { opacity: .55; }
 }
 .diet-pfc-num { display: inline-flex; align-items: baseline; gap: 3px; }
 .diet-pfc-num i { font-style: normal; font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-pfc-num b { font-size: var(--fs-md); font-weight: 700; color: var(--c-text); }
+.diet-pfc-num b { font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text); }
 .diet-pfc-num small { font-size: var(--fs-xs); color: var(--c-text-3); }
 .diet-pfc-num.is-over b { color: var(--c-accent); }
 .diet-pfc-ratio { font-size: var(--fs-xs); color: var(--c-text-3); }
@@ -3193,7 +3193,7 @@ button.section-note:active { opacity: .55; }
 .diet-slot-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
 
-.diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text); }
+.diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text); }
 
 /* 見るだけの一行（buildSlotBoxes の非シート側）。Daily Log と同じ
    「紙に書いてある」見た目にするため、見出しと書き込む枠の二段組みを
@@ -3232,7 +3232,7 @@ button.section-note:active { opacity: .55; }
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
 .diet-memo {
-  display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1);
   width: 100%; text-align: left;
   padding: var(--sp-3); background: var(--c-surface-2);
   border: 0; border-radius: var(--r-md);
@@ -3240,7 +3240,7 @@ button.section-note:active { opacity: .55; }
 /* 詳しい紙を開く帯。押せる範囲だけボタンに戻し、見た目は前の
    .diet-memo とまったく同じにします（ボタンの既定を消すだけ）。 */
 .diet-memo-open {
-  display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1);
   width: 100%; text-align: left; padding: 0; margin: 0;
   background: none; border: 0; font: inherit; color: inherit;
 }
@@ -3264,7 +3264,7 @@ button.section-note:active { opacity: .55; }
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
   padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
 }
-.diet-total b { font-size: var(--fs-2xl); font-weight: 700; }
+.diet-total b { font-size: var(--fs-2xl); font-weight: var(--fw-bold); }
 .diet-total small { font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-total span { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-items .row-title { display: flex; align-items: center; gap: 6px; }
@@ -3303,8 +3303,8 @@ button.section-note:active { opacity: .55; }
   margin: 0; padding-left: 1.6em; list-style: decimal;
   font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui);
 }
-.diet-steps li { margin-bottom: 4px; }
-.diet-steps li::marker { color: var(--c-text-3); font-weight: 700; }
+.diet-steps li { margin-bottom: var(--sp-1); }
+.diet-steps li::marker { color: var(--c-text-3); font-weight: var(--fw-bold); }
 .diet-steps b { color: var(--c-text); }
 .diet-code {
   margin: 0; padding: var(--sp-3); background: var(--c-surface-2);
@@ -3444,7 +3444,7 @@ a.btn { text-decoration: none; }
 
 /* 加工しないで見せる欄。折り返しはするが、中身は変えない。 */
 .diet-got {
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: var(--sp-1);
   padding: var(--sp-3); border-radius: var(--r-md);
   background: var(--c-surface-2); border: 1px dashed var(--c-border-2);
 }
@@ -3459,7 +3459,7 @@ a.btn { text-decoration: none; }
   font-size: var(--fs-sm); color: var(--c-text-2);
   cursor: pointer; padding: 4px 0;
 }
-.diet-why[open] summary { color: var(--c-text); font-weight: 700; }
+.diet-why[open] summary { color: var(--c-text); font-weight: var(--fw-bold); }
 
 
 /* =========================================================
@@ -3499,13 +3499,13 @@ a.btn { text-decoration: none; }
 .arc-then:active { transform: scale(.985); background: var(--c-surface-3); }
 
 .arc-then-head { display: flex; align-items: center; gap: 6px; }
-.arc-then-head b { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); }
+.arc-then-head b { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .arc-then-ico { display: block; line-height: 0; color: var(--c-primary); opacity: .8; }
 .arc-then-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 /* 「1年前の今日」。行の右端へ寄せます——見出しの一部ではなく、日付の説明なので。 */
 .arc-then-when {
   margin-left: auto; font-style: normal;
-  font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary-ink);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary-ink);
   background: var(--c-primary-soft);
   padding: 2px 8px; border-radius: var(--r-full);
 }
@@ -3521,7 +3521,7 @@ a.btn { text-decoration: none; }
   overflow: hidden; word-break: break-word;
 }
 
-.arc-then-rows { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.arc-then-rows { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sp-1); }
 .arc-then-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .arc-then-row-ico { display: block; line-height: 0; color: var(--arc-c); flex: none; }
 .arc-then-row-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
@@ -3536,17 +3536,17 @@ a.btn { text-decoration: none; }
 .arc-then.is-years:active { transform: none; background: var(--c-surface-2); }
 .arc-year {
   display: flex; align-items: baseline; gap: var(--sp-3);
-  width: 100%; margin-top: 4px; padding: 4px 0;
+  width: 100%; margin-top: var(--sp-1); padding: 4px 0;
   text-align: left; background: none; border: 0; color: inherit; font: inherit;
   border-radius: var(--r-sm);
   transition: background var(--m-state) var(--ease);
 }
 .arc-year:active { background: var(--c-surface-3); }
 .arc-year-y {
-  flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2);
+  flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
 }
-.arc-year-y small { margin-left: 4px; font-size: var(--fs-xs); font-weight: 400; color: var(--c-text-3); }
+.arc-year-y small { margin-left: var(--sp-1); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--c-text-3); }
 .arc-year-text {
   min-width: 0; font-size: var(--fs-md); color: var(--c-text); line-height: var(--lh-body);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
@@ -3569,13 +3569,13 @@ a.btn { text-decoration: none; }
    最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.arc-log-head h2 { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
-.btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: 4px; }
+.arc-log-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
+.btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: var(--sp-1); }
 /* 季節のひとこと（R2）。小ささと空きで引っこめる（薄さではなく。docs/look.md）。
    長い読み（「かみなりすなわちこえをおさむ」）は折り返してよい——切ると言葉が欠ける。 */
 .arc-season {
   margin: calc(-1 * var(--sp-2)) 0 var(--sp-4);
-  font-size: var(--fs-sm); font-weight: 400; line-height: 1.5;
+  font-size: var(--fs-sm); font-weight: var(--fw-regular); line-height: 1.5;
   color: var(--c-text-2); letter-spacing: .02em;
 }
 /* 何を指すかの名前（「二十四節気」「七十二候」）を前に。行ごとに改める。 */
@@ -3598,7 +3598,7 @@ a.btn { text-decoration: none; }
 }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 30px; flex: none; padding-top: 1px; }
-.arc-log-day b { font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.arc-log-day b { font-size: var(--fs-xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.15; }
 .arc-log-day i { font-size: var(--fs-xs); font-style: normal; color: var(--c-text-3); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -3636,7 +3636,7 @@ a.btn { text-decoration: none; }
 .arc-log-times { font-size: var(--fs-sm); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 書いた記録の時刻（帳簿）。薄い地に沈めて、上の時刻と見分けます——
    数字が同じ顔で四つ並ぶと、どれがその日の話なのか読み取れません。 */
-.arc-log-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+.arc-log-meta { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .arc-stamp {
   font-size: calc(10px * var(--fs-k)); color: var(--c-text-3);
   background: var(--c-surface-2);
@@ -3648,16 +3648,16 @@ a.btn { text-decoration: none; }
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
 
 /* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
    札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
    押す前にいまどれなのかが読めます。囲いは付けません。見出しの隣で
    枠を持つと、二つ目の見出しに見えます。 */
 .arc-sort {
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: var(--sp-1);
   flex: none; padding: 4px 2px;
-  font-size: var(--fs-xs); font-weight: 700; color: var(--c-text-2);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
 .arc-sort svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); color: var(--c-text-3); }
 .arc-sort:active { color: var(--c-primary); }
@@ -3677,10 +3677,10 @@ a.btn { text-decoration: none; }
 .arc-row-body { display: flex; gap: var(--sp-3); flex: 1; min-width: 0; text-align: left; align-items: flex-start; }
 .arc-ico { flex: none; color: var(--arc-c); display: flex; padding-top: 3px; }
 .arc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
-.arc-title { font-size: var(--fs-md); font-weight: 700; line-height: 1.45; word-break: break-word; }
+.arc-title { font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.45; word-break: break-word; }
 .arc-sub { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.arc-sub span:first-child { color: var(--arc-c); font-weight: 700; }
-.arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.6; white-space: pre-wrap; }
+.arc-sub span:first-child { color: var(--arc-c); font-weight: var(--fw-bold); }
+.arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-ui); white-space: pre-wrap; }
 /* 積み上げのメモも、設定で「数行」を選んだら三行で切ります（Daily Log の
    .arc-log-memo.is-clamped と同じ決め方）。続きは押して開く紙で読めます。 */
 .arc-memo.is-clamped {
@@ -3700,7 +3700,7 @@ a.btn { text-decoration: none; }
 .arc-pick-b {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 11px; border-radius: var(--r-full);
-  font-size: var(--fs-sm); font-weight: 700;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
   background: var(--c-surface-2); color: var(--c-text-2);
   border: 1.5px solid transparent;
 }
@@ -3716,7 +3716,7 @@ a.btn { text-decoration: none; }
   display: inline-flex; align-items: center; gap: 6px;
   padding: 9px 16px; border-radius: var(--r-full);
   margin-inline-end: var(--sp-3);
-  font-size: var(--fs-md); font-weight: 700;
+  font-size: var(--fs-md); font-weight: var(--fw-bold);
   color: var(--c-primary);
   background: color-mix(in srgb, var(--c-primary-fill) 12%, var(--c-surface));
   border: 1.5px solid color-mix(in srgb, var(--c-primary) 45%, transparent);
@@ -3732,7 +3732,7 @@ a.btn { text-decoration: none; }
 .arc-kind-b {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 8px 14px; border-radius: var(--r-full);
-  font-size: var(--fs-sm); font-weight: 700;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
   background: var(--c-surface-2); color: var(--c-text-2);
   border: 1.5px solid transparent;
 }
@@ -3743,7 +3743,7 @@ a.btn { text-decoration: none; }
 /* 読書の名前・著者は長くなりがちなので、一段大きく組みます。 */
 .input-lg { padding: 13px 14px; font-size: var(--fs-lg); }
 
-.arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: 700; margin: 0; white-space: nowrap; }
+.arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: var(--fw-bold); margin: 0; white-space: nowrap; }
 /* 開始・終了・ページ数を一行に。幅は数字が入るぶんだけ。 */
 .arc-pages { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--sp-3); align-items: end; }
 .arc-pages .field { min-width: 0; }
@@ -3751,7 +3751,7 @@ a.btn { text-decoration: none; }
 
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 /* 出さない日（R9）。紙の終わりに小さく——書く手の邪魔にならないところ。 */
-.arc-quiet { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.arc-quiet { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
 .arc-quiet .field-hint[hidden] { display: none; }
 
 /* 中身は紙（.tl-sheet.is-daily）の中へ移りました。ここに残っているのは
@@ -3791,7 +3791,7 @@ a.btn { text-decoration: none; }
   border: none;
   box-shadow: var(--shadow-3);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text);
   /* **立ち上がる前は、＋ の中に畳まれています。**
 
@@ -3989,9 +3989,9 @@ a.btn { text-decoration: none; }
    「予定どおりに入らなかった＝失敗」ではないので。 */
 .tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 .tl-done-toggle {
-  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1);
   min-height: 32px; padding: 0 var(--sp-2);
-  color: var(--c-text-2); font-weight: 700; font-size: var(--fs-sm);
+  color: var(--c-text-2); font-weight: var(--fw-bold); font-size: var(--fs-sm);
 }
 .tl-done-toggle[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
 .tl.is-done-shut .tl-row.is-done, .tl.is-done-shut .tl-free-row.is-by-done { display: none; }
@@ -4001,7 +4001,7 @@ a.btn { text-decoration: none; }
   border-radius: var(--r-full);
   background: var(--c-surface-2);
   color: var(--c-text-2);
-  font-size: var(--fs-sm); font-weight: 700;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold);
   transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease);
 }
 .tl-switch:active { transform: scale(.96); background: var(--c-surface-3); }
@@ -4040,8 +4040,8 @@ a.btn { text-decoration: none; }
   text-align: right;
 }
 /* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
-.tl-time.is-fixed { color: var(--c-text-2); font-weight: 700; }
-.tl-time.is-now { color: var(--c-primary); font-weight: 700; }
+.tl-time.is-fixed { color: var(--c-text-2); font-weight: var(--fw-bold); }
+.tl-time.is-now { color: var(--c-primary); font-weight: var(--fw-bold); }
 /* 決めていない時刻の「ごろ」（B6）。時刻の字の真下に浮かせます——入れものの
    高さは変えないので、時刻は丸の中心に残り、clearOfClocks の測る箱も同じ。 */
 .tl-time { position: relative; }
@@ -4427,7 +4427,7 @@ a.btn { text-decoration: none; }
   /* 実測 16px。17px から一段落としました——参考画面の題は、副題との差で
      大きく見えているので、絶対値はここまでで足ります。 */
   font-size: calc(16px * var(--fs-k));
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.4;
   letter-spacing: -.01em;
 }
@@ -4510,7 +4510,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 /* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
    実際には「二つ入れた」だけなので。 */
-.tl-clash { color: var(--c-text-2); font-weight: 700; }
+.tl-clash { color: var(--c-text-2); font-weight: var(--fw-bold); }
 .tl-row .check { flex: none; }
 
 /* 済んだもの。**色は残します。**
@@ -4528,7 +4528,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .tl-row .tl-item.is-checked .tl-cap,
 .tl-row .tl-item.is-checked .tl-facts { color: var(--c-text-3); }
-.tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: 400; }
+.tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: var(--fw-regular); }
 
 /* 空きの行。**長さによらず一定**です（screen-todo.js の TL_FREE_H に
    同じ数）。用事の行より低くして、間が空いていることは高さではなく
@@ -4652,7 +4652,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   /* 純白ではなく 253。ふちの純白の一本（掴み手の inset）が見えるための
      一段です——両方が純白だと、線は引いてあっても見えません。 */
   background: var(--c-sheet);
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
      ——途中で切れると、その下の地が「まだ何かある」に見えます。
      暦の高さは日によって変わる（週／月）ので、そのぶんは引きません
@@ -4683,7 +4683,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   /* 掴み手の地は、紙の地と**同じ**でなければなりません（貼りついたまま
      行がその下を通るので、少しでも違うと帯に見えます）。 */
   background: var(--c-sheet);
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   /* 紙のふちを、純白で一本なぞります。単色・1px・inset だけ——
      border-radius は box-shadow にも掛かるので、この丸角の形どおりに
      出ます。地を 253 に下げたので、この一本がようやく見えます。 */
@@ -4709,7 +4709,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-grip[role="button"]:focus-visible {
   outline: 2px solid var(--c-primary);
   outline-offset: -4px;
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
 }
 .tl-grip > i {
   display: block;
@@ -4755,14 +4755,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--c-surface-2);
   color: var(--c-text-2);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
 .tl-late-go {
   display: inline-flex; align-items: center; gap: 1px;
   margin-left: auto;
   color: var(--c-primary);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 .tl-late-go svg { width: 14px; height: 14px; }
 .tl-late:active { opacity: .6; }
@@ -5199,7 +5199,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   overflow-x: hidden;
   /* 丸角の内側で中身を切ります。これが「内容が角丸の下を通る」を止める
      ところ——切らないと、角の隙間を行が通ります。 */
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   -webkit-overflow-scrolling: touch;
   /* 縦の送りはブラウザに、横はこちらに（紙を払って日を送る・行を払う）。
      紙ぜんぶが払いの受け口になったので（day-swipe.js の `surface`）、
@@ -5318,7 +5318,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   display: none;
   max-width: 100%;
   font-size: var(--fs-md);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: var(--lh-tight);
   color: var(--c-text);
   overflow: hidden;
@@ -5375,7 +5375,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-t {
   max-width: 100%;
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5417,7 +5417,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   color: var(--c-text);
   outline: none;
 }
-.note-title-in { font-size: var(--fs-xl); font-weight: 700; }
+.note-title-in { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
 /* 書く紙の題は折り返す textarea（screen-notes.js の growTitle）。 */
 textarea.note-title-in {
   display: block;
@@ -5480,7 +5480,7 @@ textarea.note-title-in {
 .note-view,
 .note-body-in { text-align: justify; text-justify: inter-character; }
 .note-view > * { white-space: pre-wrap; }
-.nv-h { font-weight: 700; line-height: var(--lh-tight); margin: .5em 0 .2em; }
+.nv-h { font-weight: var(--fw-bold); line-height: var(--lh-tight); margin: .5em 0 .2em; }
 .nv-h1 { font-size: 1.45em; }
 .nv-h2 { font-size: 1.25em; }
 .nv-h3 { font-size: 1.1em; }
@@ -5597,11 +5597,11 @@ textarea.note-title-in {
 .pop-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
 .pop-cal-wd { font-size: var(--fs-xs); color: var(--c-text-2); padding: var(--sp-1) 0; }
 .pop-cal-day {
-  min-height: 40px; border-radius: 999px; font-size: var(--fs-md); color: var(--c-text);
+  min-height: 40px; border-radius: var(--r-full); font-size: var(--fs-md); color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
-.pop-cal-day.is-today { color: var(--c-primary); font-weight: 700; }
-.pop-cal-day[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); font-weight: 700; }
+.pop-cal-day.is-today { color: var(--c-primary); font-weight: var(--fw-bold); }
+.pop-cal-day[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); font-weight: var(--fw-bold); }
 /* 作った日の回る列（年・月・日）。真ん中の一行が選ばれる。 */
 .note-pop.is-wheel { width: min(300px, calc(100vw - 16px)); padding: var(--sp-2); overflow: hidden; }
 .note-wheels {
@@ -5640,7 +5640,7 @@ textarea.note-title-in {
   color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
 }
-.note-wheel-row[aria-selected="true"] { color: var(--c-text); font-weight: 700; }
+.note-wheel-row[aria-selected="true"] { color: var(--c-text); font-weight: var(--fw-bold); }
 /* 時刻の紙（2026年10月2日）。詳細の紙と同じ一行ずつの枠。右に、押せる値。 */
 .sub-check {
   display: grid; place-items: center; flex: none;
@@ -5649,20 +5649,20 @@ textarea.note-title-in {
 }
 .sub-check svg { width: 14px; height: 14px; stroke-width: 3; }
 .sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: #fff; }
-.tw-row { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
+.tw-row { min-height: 56px; padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 .tw-row:active { background: none; }
 .tw-field { position: relative; flex: none; }
 .tw-input {
   min-width: 96px; height: 38px; padding: 0 var(--sp-3);
   border: 0; border-radius: var(--r-md);
   background: var(--c-surface-2); color: var(--c-text);
-  font: inherit; font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums;
+  font: inherit; font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
   text-align: center;
 }
 .tw-input::-webkit-date-and-time-value { text-align: center; }
 .tw-x { display: grid; place-items: center; flex: none; width: 32px; height: 32px; color: var(--c-text-3); }
 .tw-x svg { width: 16px; height: 16px; }
-.tw-val { flex: none; font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tw-val { flex: none; font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 /* 時刻の車輪。選んだ時刻がまん中の帯、上下に前後。決めていないあいだは薄く。 */
 .note-wheels.tw { grid-template-columns: 1fr 1fr; margin: 0 var(--sp-4) var(--sp-2); }
 .tw::before { inset: 60px 0 auto; }
@@ -5711,7 +5711,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .diet-found-n {
   margin: 0 var(--sp-4) var(--sp-2);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 
@@ -5901,10 +5901,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   mask: var(--icon) center / contain no-repeat;
 }
 .tl-ghost-body { min-width: 0; display: flex; flex-direction: column; }
-.tl-ghost-when { font-size: var(--fs-xs); color: var(--c-text-3); line-height: 1.2; }
+.tl-ghost-when { font-size: var(--fs-xs); color: var(--c-text-3); line-height: var(--lh-tight); }
 .tl-ghost-title {
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   line-height: 1.25;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -5973,7 +5973,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   background: var(--c-primary);
   color: #fff;
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -5985,14 +5985,14 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    置きます。箱の中の締めくくりなので、囲みは持たせず地の色で沈めます。 */
 .trip-plan { padding: 4px var(--sp-4) 12px; }
 .trip-plan-btn {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--sp-2);
   width: 100%;
   padding: 11px var(--sp-3);
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   color: var(--c-text-2);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   transition: background var(--m-press) var(--ease), color var(--m-press) var(--ease);
 }
 .trip-plan-btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
@@ -6022,7 +6022,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .low-mark .p-icon { width: 24px; height: 24px; }
 .low-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.low-name { font-weight: 700; overflow-wrap: anywhere; }
+.low-name { font-weight: var(--fw-bold); overflow-wrap: anywhere; }
 .low-meta { font-size: var(--fs-sm); color: var(--c-text-2); }
 /* 地が灰の札（--c-surface-2 #e8e8e8）なので、--c-primary では 4.21 で
    小さい字の 4.5 に届かない。字だけ --c-primary-ink（6.16）にする。
@@ -6030,14 +6030,14 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    変わってしまうので、そちらは --c-primary のまま（地 #26262d で足りている）。 */
 .low-add {
   flex: none;
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: var(--sp-1);
   min-height: 44px;
   padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   background: var(--c-surface-2);
   color: var(--c-primary-ink);
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   transition: background var(--m-press) var(--ease);
 }
 .low-add svg { width: 16px; height: 16px; }
@@ -6178,7 +6178,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .tl-sub.is-done .tl-sub-name::after { width: 100%; }
 
 /* シートの中、手順を書き並べるところ。 */
-.sub-edit { display: flex; flex-direction: column; gap: 8px; }
+.sub-edit { display: flex; flex-direction: column; gap: var(--sp-2); }
 .sub-edit:empty { display: none; }
 .sub-line { display: flex; align-items: center; gap: 6px; }
 .sub-line .input { flex: 1 1 auto; min-width: 0; }
@@ -6257,7 +6257,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .arc-feed-box-head {
   margin: 0 0 4px;
   font-size: var(--fs-sm);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-text-3);
 }
 
@@ -6309,12 +6309,12 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .arc-counts-head {
   margin: 0 0 var(--sp-3);
   font-size: var(--fs-xl);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--c-primary);
   letter-spacing: -.01em;
 }
 .arc-counts-list {
-  display: flex; flex-wrap: wrap; gap: 8px;
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
   margin: 0; padding: 0; list-style: none;
 }
 .arc-counts-item {
@@ -6323,9 +6323,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   border-radius: var(--r-full);
   background: var(--c-surface-2);
 }
-.arc-counts-label { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: 700; }
+.arc-counts-label { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: var(--fw-bold); }
 .arc-counts-n {
-  font-size: var(--fs-lg); font-weight: 700;
+  font-size: var(--fs-lg); font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   color: var(--c-text);
 }
@@ -6337,11 +6337,11 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    なく色なので。選んでいるものは、輪で囲って示します。 */
 .accent-row {
   display: flex; flex-wrap: wrap; gap: 10px;
-  margin-top: 12px;
+  margin-top: var(--sp-3);
 }
 .accent-dot {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
+  padding: var(--sp-1);
   border-radius: var(--r-md);
 }
 .accent-swatch {
@@ -6361,7 +6361,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-size: var(--fs-xs);
   color: var(--c-text-3);
 }
-.accent-dot.is-on .accent-name { color: var(--c-text); font-weight: 700; }
+.accent-dot.is-on .accent-name { color: var(--c-text); font-weight: var(--fw-bold); }
 
 /* ノートブック・タグの色（設定の notes。docs/notes.md の「設定」）。名前を
    添えない8色なので、折り返さずに一列で端から端まで。 */
@@ -6378,7 +6378,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .mp-head {
   display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
 }
-.mp-year { font-size: var(--fs-lg); font-weight: 700; min-width: 5.5em; text-align: center; }
+.mp-year { font-size: var(--fs-lg); font-weight: var(--fw-bold); min-width: 5.5em; text-align: center; }
 .mp-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2);
 }
@@ -6388,7 +6388,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   border: 1px solid var(--c-border);
   background: var(--c-surface);
   color: var(--c-text);
-  font-size: var(--fs-base); font-weight: 700;
+  font-size: var(--fs-base); font-weight: var(--fw-bold);
   cursor: pointer;
 }
 /* まだ来ていない月は選べません（書かれていないので）。 */
@@ -6431,7 +6431,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
 }
-.tl-due.is-over { color: var(--c-danger); font-weight: 700; }
+.tl-due.is-over { color: var(--c-danger); font-weight: var(--fw-bold); }
 
 /* 価格の「12商品・3店舗」。上の帯から下ろしたものです——題の下に一行
    足すと、この画面の帯だけが他のタブより高くなります。帯の高さは四つの
@@ -6479,7 +6479,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   width: 100%; padding: 0; border: none; background: none; text-align: left;
   color: var(--c-text);
 }
-.up-name { font-size: var(--fs-lg); font-weight: 700; }
+.up-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 .up-date { font-size: var(--fs-sm); color: var(--c-text-2); }
 .up-go { margin-left: auto; color: var(--c-text-3); align-self: center; }
 .up-go svg { width: 14px; height: 14px; }
@@ -6494,7 +6494,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   flex: none; min-width: 3.4em; text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-sm); color: var(--c-text);
-  border-radius: 999px; padding: 1px 6px;
+  border-radius: var(--r-full); padding: 1px 6px;
   background: color-mix(in srgb, var(--up-c) 20%, var(--c-surface));
 }
 .up-time:empty { background: none; }
@@ -6504,7 +6504,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .up-rep svg { width: 14px; height: 14px; }
 .up-dl {
   flex: none; font-size: var(--fs-xs); color: var(--c-primary);
-  border: 1px solid currentColor; border-radius: 999px; padding: 0 .5em;
+  border: 1px solid currentColor; border-radius: var(--r-full); padding: 0 .5em;
 }
 .up-empty { color: var(--c-text-2); margin: var(--sp-4) 0; }
 .up-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-2) 0 0; line-height: var(--lh-ui); }
@@ -6524,13 +6524,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .sa-link {
   display: inline-flex; align-items: center; gap: 2px;
   min-height: 32px; padding: 0 var(--sp-3);
-  border: 1px solid var(--c-border); border-radius: 999px;
+  border: 1px solid var(--c-border); border-radius: var(--r-full);
   background: var(--c-surface); color: var(--c-primary);
   font-size: var(--fs-sm);
 }
 .sa-link svg { width: 12px; height: 12px; }
 .sa { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
-.sa-head { font-size: var(--fs-sm); font-weight: 700; color: var(--c-text-2); margin: 0 0 var(--sp-1); }
+.sa-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); margin: 0 0 var(--sp-1); }
 .sa-rows { display: flex; flex-direction: column; }
 .sa-row {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
@@ -6540,7 +6540,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .sa-title { overflow-wrap: anywhere; }
 .sa-sub { font-size: var(--fs-xs); color: var(--c-text-2); }
-.sa-jump { border: 1px solid var(--c-border); border-radius: 12px; padding: var(--sp-2) var(--sp-3); }
+.sa-jump { border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); }
 .sa-more-note, .sa-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-1) 0 0; }
 
 /* ---------------- 一日の道（js/day-road.js・docs/todo-timeline.md の「一日の道」） ----------------
@@ -6587,7 +6587,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 時の数字（目盛りの代わり。2026年10月2日）。道の上に、立てたまま。これからの薄い道の上は
    塗りの色、歩いたぶん（.is-went）と停留所の塗りの上（.is-over）は白。 */
 .road-hours text {
-  fill: var(--c-primary); font-weight: 700; text-anchor: middle; dominant-baseline: central;
+  fill: var(--c-primary); font-weight: var(--fw-bold); text-anchor: middle; dominant-baseline: central;
   font-variant-numeric: tabular-nums;
 }
 .road-hours text.is-under { display: none; }
@@ -6687,13 +6687,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-marks { position: absolute; inset: 0; pointer-events: none; }
 .road-marks button { pointer-events: auto; }
 .road-label, .road-now, .road-edge, .road-turn {
-  position: absolute; white-space: nowrap; line-height: 1.2;
+  position: absolute; white-space: nowrap; line-height: var(--lh-tight);
 }
 /* 停留所の札。幅は day-road.js が決めて（まわりの札とぶつからない幅）、入り
    きらない題は「…」。時刻は、始まりの点の側に来るように（左へ進む段では
    並びを返す）。上下の余白は指の的で、見た目は字の一行ぶん。 */
 .road-label {
-  display: flex; align-items: baseline; gap: 4px;
+  display: flex; align-items: baseline; gap: var(--sp-1);
   transform: translateY(-50%);
   margin: 0; padding: 6px 0; border: 0; background: none;
   font: inherit; font-size: var(--fs-xs); color: var(--c-text);
@@ -6701,23 +6701,23 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   -webkit-tap-highlight-color: transparent;
 }
 .road-label.is-rev { flex-direction: row-reverse; }
-.road-label b { flex: none; font-weight: 700; }
+.road-label b { flex: none; font-weight: var(--fw-bold); }
 .road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .road-label.is-done span { text-decoration: line-through; color: var(--c-text-3); }
 /* 済ませたものは、時刻も細い灰色で（2026年9月30日・利用者の声「終わった用事の
    時刻が太字の黒なのはおかしい」）。 */
-.road-label.is-done b { font-weight: 400; color: var(--c-text-3); }
+.road-label.is-done b { font-weight: var(--fw-regular); color: var(--c-text-3); }
 /* 時刻の重なった群で、入りきらなかった札の数（「ほか1」）。 */
 .road-label em { flex: none; font-style: normal; color: var(--c-text-2); }
 .road-label.is-later { color: var(--c-text-2); }
-.road-label.is-later b { font-weight: 400; }
+.road-label.is-later b { font-weight: var(--fw-regular); }
 .road-now {
   transform: translate(-50%, -50%); pointer-events: none;
-  font-size: var(--fs-xs); font-weight: 700; color: var(--c-primary);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary);
 }
 .road-edge {
   transform: translateY(-50%); pointer-events: none;
-  font-size: calc(10px * var(--fs-k)); font-weight: 700; color: var(--c-text-2);
+  font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
 .road-edge.is-before { transform: translate(-100%, -50%); }
 .road-edge.is-under { transform: translate(-50%, -50%); }
@@ -6747,7 +6747,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .road-bead::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 .road-more {
-  font: inherit; font-size: calc(9px * var(--fs-k)); font-weight: 700;
+  font: inherit; font-size: calc(9px * var(--fs-k)); font-weight: var(--fw-bold);
   line-height: 15px; text-align: center; color: var(--c-primary);
 }
 .road-more::before { content: none; }
@@ -6803,7 +6803,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   position: fixed; left: 0; top: 0; z-index: var(--z-lift);
   padding: 3px 8px; border-radius: var(--r-full);
   background: var(--c-primary); color: #fff;
-  font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
   white-space: nowrap; pointer-events: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
   opacity: 0;
@@ -6814,7 +6814,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   margin: 2px 0 0; padding: 0 var(--sp-1);
   font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); text-align: center;
 }
-.road-next b { font-weight: 700; color: var(--c-text); }
+.road-next b { font-weight: var(--fw-bold); color: var(--c-text); }
 .road-sep { margin: 0 .45em; color: var(--c-text-3); }
 
 /* 道の上で決める紙（段2）。いちばん上に、押した時刻の前後の空き。 */
@@ -6823,7 +6823,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .6em;
   margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--c-text-2);
 }
-.road-gap b { font-weight: 700; color: var(--c-text); }
+.road-gap b { font-weight: var(--fw-bold); color: var(--c-text); }
 .road-decide-head { margin: 0 0 var(--sp-1); font-size: var(--fs-xs); color: var(--c-text-3); }
 .road-decide-none { margin: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
 .road-pick-mark {
