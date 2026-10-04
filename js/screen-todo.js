@@ -786,6 +786,27 @@
           setTimeout(() => openSheet(made.id), 260);
         },
       });
+      /* 削除ではなく、しまう。書いてやらなかったものも「やらないと決めた」
+         記録で、しまった日もその一部です。前は一覧の行を左へ払う手でした
+         （V13 で外し、ここへ。時間割からもしまえるようになりました）。 */
+      heroMenu.push({
+        id: "archive",
+        label: () => (store.getTodo(todoId) && store.getTodo(todoId).archived
+          ? "アーカイブから戻す" : "アーカイブする"),
+        icon: "download",
+        onPick: () => {
+          const cur = store.getTodo(todoId);
+          if (!cur) return;
+          const back = !!cur.archived;
+          const undo = store.archiveTodo(todoId, !back);
+          if (back && cur.done) store.toggleTodo(todoId);
+          haptic(14);
+          handle.close();
+          KN.ui.toast(`「${cur.title}」を${back ? "戻しました" : "アーカイブしました"}`, {
+            action: { label: "元に戻す", onClick: undo },
+          });
+        },
+      });
       heroMenu.push({
         id: "delete", label: () => "このやることを削除", icon: "trash", danger: true,
         onPick: () => {
@@ -2279,14 +2300,7 @@
 
     const wrap = node(html`
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
-               data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}">
-        <div class="swipe-yes">
-          ${icon("calendar")}<span>今日にする</span>
-        </div>
-        <div class="swipe-arch">
-          <span>アーカイブ</span>${icon("download")}
-        </div>
-      </article>
+               data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}"></article>
     `);
 
     /* Tiles put the same three facts in a square: what it is, when it is, and
@@ -2353,32 +2367,10 @@
       });
     });
 
-    KN.ui.swipeActions(wrap, row, {
-      tiles,
-      onRight: () => {
-        if (closed) {
-          const undo = store.archiveTodo(t.id, false);
-          if (t.done) store.toggleTodo(t.id);
-          haptic(12);
-          KN.ui.toast(`「${t.title}」を戻しました`, { action: { label: "元に戻す", onClick: undo } });
-          return;
-        }
-        store.updateTodo(t.id, { due: todayKey() });
-        haptic(12);
-        KN.ui.toast(`「${t.title}」を今日にしました`);
-      },
-      /* Not 削除. Something written down and then not done is still a record
-         of having decided not to do it, and the date it went away is part of
-         that. Deleting outright is in the row's own sheet, for the ones that
-         were typed by mistake. */
-      onLeft: () => {
-        const undo = store.archiveTodo(t.id, true);
-        haptic(14);
-        KN.ui.toast(`「${t.title}」をアーカイブしました`, {
-          action: { label: "元に戻す", onClick: undo },
-        });
-      },
-    });
+    /* 行の横払い（右で今日に・左でアーカイブ）は外しました（V13、2026年
+       10月4日）。紙の横払いは、どの画面でも「日を移る」です——一覧で見て
+       いるときも同じ（下の wireShelfSwipe）。アーカイブは用事の紙の ⋯ に、
+       今日にするのは今日の棚へ運ぶ・紙の日付で。 */
     return wrap;
   }
 
@@ -2768,21 +2760,29 @@
 
     const rowsOf = (id) => open.filter((t) => groupIdOf(t, groups) === id);
 
+    /* 棚は紙の中の一枚（.tl-shelves）に入れます。紙は送る器なので、横払いで
+       指につかせる相手（transform）は紙そのものではなく中身——縦の端の
+       give（pull-refresh）が紙に transform を書くので、取り合わないように。
+       探しているあいだは紙が無いので、これまでどおり直に並べます。 */
+    const shelves = sheet === els.body ? sheet : node(html`<div class="tl-shelves"></div>`);
+    if (shelves !== sheet) sheet.append(shelves);
+
     /* 期限切れ and 「もっと先」 are the two that only appear when they have
        something in them: one is a problem rather than a place, and the other is
        an overflow rather than a shelf. */
     const late = groups.find((g) => g.late);
-    if (rowsOf("late").length) sheet.append(groupSection(late, rowsOf("late"), tiles));
+    if (rowsOf("late").length) shelves.append(groupSection(late, rowsOf("late"), tiles));
 
-    sheet.append(todayPanel(rowsOf, tiles));
+    shelves.append(todayPanel(rowsOf, tiles));
 
     groups.filter((g) => !g.late && !g.today).forEach((g) => {
       const rows = rowsOf(g.id);
       if (!rows.length && g.onlyWhenFull) return;
-      sheet.append(groupSection(g, rows, tiles));
+      shelves.append(groupSection(g, rows, tiles));
     });
 
-    if (closed.length) sheet.append(archiveSection(closed, tiles));
+    if (closed.length) shelves.append(archiveSection(closed, tiles));
+    if (shelves !== sheet) wireShelfSwipe(sheet, shelves);
     restoreTop(keepTop);
     settle();
   }
@@ -3735,6 +3735,28 @@
       /* 道で連れを運んでいる指も向こうのもの（day-road.js の段8）。 */
       busy: () => !!tlDrag || KN.reorder.isActive() || KN.dayRoad.carrying(),
       lock: (on) => { swiping = on; },
+    });
+  }
+
+  /* 一覧で見ているときの横払い。棚は日で中身が変わらないので、隣の紙は
+     組みません（買うものと同じ・day-swipe.js の「隣の紙を持たない画面」）
+     ——紙の中身が指に少しついて戻り、動くのは題と暦の日。着いた日の棚へ
+     運ぶのは、暦でその日を押したときと同じです（`openDay`）。 */
+  function wireShelfSwipe(sheet, shelves) {
+    KN.daySwipe.wire({
+      viewport: sheet,
+      surface: sheet,
+      track: shelves,
+      ignore: ".tl-grip",
+      day: titleDay,
+      step: (d, dir) => shiftDay(d, dir),
+      commit: (key) => {
+        const d = KN.util.dayDate(key);
+        setCalMonth(d.getFullYear(), d.getMonth(), true);
+        markDay(key, true);
+        jumpToDay(key);
+      },
+      busy: () => !!tlDrag || KN.reorder.isActive(),
     });
   }
 

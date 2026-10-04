@@ -119,7 +119,7 @@
 | C 見た目 | V10 | ガラスを一つずつ外す | 小×器の数 | なし | ◯ | glass | 未 |
 | C | V11 | カード | 中 | なし | ◯ | look・notes（一覧）・daily | 未 |
 | C | V12 | 見た目の札の点検 | 中 | なし | — | look・traps | 済（10/4） |
-| C | V13 | 身ぶりと紙の表 | 中 | なし | — | screens-nav・sheet-scroll・calendar-swipe | 未 |
+| C | V13 | 身ぶりと紙の表 | 中 | なし | — | screens-nav・sheet-scroll・calendar-swipe | 済（10/4） |
 | D 変形 | V14 | View Transitions を試す | 小 | なし | — | motion・notes（段4.3）・todo-timeline（C2） | 未 |
 | D | V15 | やること→別の日 | 中 | なし | — | todo-items・calendar-swipe | 未 |
 | D | V16 | ＋→入力の紙 | 中 | なし | — | tabbar・sheet-scroll | 未 |
@@ -303,6 +303,9 @@
   物から生まれる紙）も表にする。置き場は screens-nav.md の節（新しい docs は作らない）。
 - 直すのは、同じ身ぶりで意味が違うところだけ。紙の横払い＝日を移る、は全画面で守る。
 - ノートの「左の端から右へ戻る」「一番上なら下へ引いて閉じる」はこの表に載せ、作るのは V19。
+- 済（10/4）：表は screens-nav.md の「身ぶりと紙の表」、見張りは `tests/gesture-map.js`。揃えたのは
+  やることの一覧の行の横払い（→紙の横払い＝日。アーカイブは用事の紙の ⋯ へ）。価格の行の払い・手順の丸の
+  長押し・daily の題は例外として理由ごと表に。
 
 ### 段D 変形と「戻す」
 

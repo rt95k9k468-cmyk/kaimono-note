@@ -842,16 +842,16 @@
    its heading, and the heading itself washed in that shelf's own colour. The
    wash is faint (7%), but fifteen faint washes in a row from red to blue is
    the ramp made visible rather than fifteen identical grey lines. */
-.tl-sheet > .todo-group { border-top: 1px solid var(--c-border); }
-.tl-sheet > .todo-group > .todo-head {
+.tl-shelves > .todo-group { border-top: 1px solid var(--c-border); }
+.tl-shelves > .todo-group > .todo-head {
   background: color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent);
   padding-top: var(--sp-3);
   padding-bottom: var(--sp-3);
 }
-.tl-sheet > .todo-group:not(.is-empty) > .todo-head { padding-bottom: var(--sp-2); }
+.tl-shelves > .todo-group:not(.is-empty) > .todo-head { padding-bottom: var(--sp-2); }
 /* The band is the heading's, so a shelf holding rows keeps them below it on
    the page's own ground rather than inside a tinted block. */
-.tl-sheet > .todo-group > .item-list { padding-top: var(--sp-2); }
+.tl-shelves > .todo-group > .item-list { padding-top: var(--sp-2); }
 
 /* 今日 gets the panel 今回買うもの has: the rows sit inside something rather
    than under a heading that scrolls away. The wash is 今日's own colour rather
@@ -4781,12 +4781,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   outline-offset: -2px;
 }
 
-.tl-sheet > .todo-group { position: relative; z-index: 0; }
+.tl-shelves > .todo-group { position: relative; z-index: 0; }
 /* 紙の中では、いちばん上の見出しの上の線は要りません（紙のふちが
    すでに切れ目です）。 */
-.tl-sheet > .todo-group:first-of-type,
-.tl-sheet > .trip.todo-today:first-of-type { border-top: 0; }
-.tl-sheet > .todo-group > .todo-head {
+.tl-shelves > .todo-group:first-of-type,
+.tl-shelves > .trip.todo-today:first-of-type { border-top: 0; }
+.tl-shelves > .todo-group > .todo-head {
   position: relative;
   z-index: 1;
   /* 棚の色の薄い染めは、そのまま。その下に地の色を一枚敷いて、透けなく
