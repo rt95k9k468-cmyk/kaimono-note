@@ -7,8 +7,12 @@
    項目の前後で手で回し、数字をその項目の節に書く。落とすのはエラーが出たときだけ。
    試験のブラウザ（Chromium）の数字で、iPhone の Safari とは描き方が違う（特にぼかし）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/frame-pace.js
-   V2=1 を付けると 2.0 の見た目（.is-v2）で測る。RUNS=<n> で n 回測って中央値（既定 3）。 */
+   V2=1 を付けると 2.0 の見た目（.is-v2）で測る。RUNS=<n> で n 回測って中央値（既定 3）。
+   CSS=<ファイル> を付けると、その CSS を差し込んで測る（V5 の見比べ。コードは変えずに案を測る）。 */
+const fs = require("fs");
 const { open, checker } = require("./lib");
+
+const EXTRA = process.env.CSS ? fs.readFileSync(process.env.CSS, "utf8") : "";
 
 const RUNS = Math.max(1, Number(process.env.RUNS) || 3);
 const LONG = 20;
@@ -33,6 +37,15 @@ async function once() {
           stop() { on = false; return gaps; },
         };
       });
+      if (EXTRA) {
+        await pg.addInitScript((css) => {
+          addEventListener("DOMContentLoaded", () => {
+            const st = document.createElement("style");
+            st.textContent = css;
+            document.head.append(st);
+          });
+        }, EXTRA);
+      }
     },
   });
   await page.evaluate((v2) => {
@@ -136,7 +149,7 @@ const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.
   const runs = [];
   for (let i = 0; i < RUNS; i++) runs.push(await once());
   const names = Object.keys(runs[0].out);
-  console.log(`CPU 4倍・${RUNS}回の中央値${process.env.V2 ? "・2.0 の見た目" : ""}（長い＝${LONG}ms 超）`);
+  console.log(`CPU 4倍・${RUNS}回の中央値${process.env.V2 ? "・2.0 の見た目" : ""}${process.env.CSS ? `・${require("path").basename(process.env.CSS)}` : ""}（長い＝${LONG}ms 超）`);
   console.log("手つき        フレーム  長い  95%点");
   for (const name of names) {
     const r = runs.map((x) => sum(x.out[name]));
