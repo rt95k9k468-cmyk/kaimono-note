@@ -964,7 +964,7 @@
           if (!(await keepBefore("削除前"))) return;
           store.reset();
           if (KN.errlog) KN.errlog.clear();
-          KN.ui.toast("すべて削除しました");
+          KN.ui.toast("すべて消しました");
         },
       })),
     ];

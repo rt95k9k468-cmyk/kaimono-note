@@ -1904,10 +1904,10 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", () => {
-      store.removeUrge(editing.id);
+      const undo = store.removeUrge(editing.id);
       h.close();
       render();
-      KN.ui.toast("消しました");
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -2562,10 +2562,10 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", () => {
-      store.removeDrink(editing.id);
+      const undo = store.removeDrink(editing.id);
       h.close();
       render();
-      KN.ui.toast("消しました");
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -2642,9 +2642,10 @@
       if (todayBtn) todayBtn.addEventListener("click", () => { day = U.todayKey(); paint(); });
 
       el.querySelectorAll(".js-wdel").forEach((b) => b.addEventListener("click", () => {
-        store.removeHealth(b.dataset.id);
+        const undo = store.removeHealth(b.dataset.id);
         paint();
         render();
+        KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); paint(); render(); } } });
       }));
       el.querySelector(".js-wadd").addEventListener("click", () => addWorkout(day, paint));
 
@@ -4212,11 +4213,12 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この記録を消す", message: "元に戻せません。", okLabel: "消す", danger: true });
+      const ok = await KN.ui.confirm({ title: "この記録を消す", okLabel: "消す", danger: true });
       if (!ok) return;
-      store.removeWeight(w.id);
+      const undo = store.removeWeight(w.id);
       h.close();
       render();
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -4470,11 +4472,12 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この食事を消す", message: "元に戻せません。", okLabel: "消す", danger: true });
+      const ok = await KN.ui.confirm({ title: "この食事を消す", okLabel: "消す", danger: true });
       if (!ok) return;
-      store.removeMeal(meal.id);
+      const undo = store.removeMeal(meal.id);
       h.close();
       render();
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
 
     paint();

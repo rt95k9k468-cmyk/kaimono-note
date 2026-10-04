@@ -616,7 +616,7 @@
             sync();
             N().remove(note.id);
             KN.ui.toast("最近削除した項目へ移しました", {
-              action: { label: "戻す", onClick: () => N().restore(note.id) },
+              action: { label: "元に戻す", onClick: () => N().restore(note.id) },
             });
           }
           h.close();

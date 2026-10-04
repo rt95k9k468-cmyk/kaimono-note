@@ -89,7 +89,7 @@
           s.stores = s.stores.filter((x) => x.id !== st.id);
           s.products.forEach((p) => { p.prices = p.prices.filter((pr) => pr.storeId !== st.id); });
         });
-        KN.ui.toast("削除しました");
+        KN.ui.toast("消しました");
       });
 
       rows.append(row);
@@ -211,7 +211,7 @@
               if (p.categoryId === c.id) p.categoryId = store.OTHER_CATEGORY;
             });
           });
-          KN.ui.toast("削除しました");
+          KN.ui.toast("消しました");
         });
       }
 

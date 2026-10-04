@@ -617,7 +617,7 @@
             if (rec) rec.prices = rec.prices.filter((x) => x.id !== pr.id);
           });
           renderPrices(container, productId);
-          KN.ui.toast("価格を削除しました", {
+          KN.ui.toast("価格を消しました", {
             action: {
               label: "元に戻す",
               onClick: () => {
@@ -724,13 +724,27 @@
         danger: true,
       });
       if (!ok) return;
+      /* 元に戻すときは、同じ価格を同じ場所へ（roadmap-2.0 の V18）。 */
+      let at = -1, snap = null;
       store.update((s) => {
         const prod = s.products.find((x) => x.id === productId);
-        if (prod) prod.prices = prod.prices.filter((x) => x.id !== priceId);
+        if (!prod) return;
+        at = prod.prices.findIndex((x) => x.id === priceId);
+        if (at >= 0) snap = JSON.parse(JSON.stringify(prod.prices[at]));
+        prod.prices = prod.prices.filter((x) => x.id !== priceId);
       });
       handle.close();
       onChanged && onChanged();
-      KN.ui.toast("削除しました");
+      KN.ui.toast("消しました", snap ? { action: { label: "元に戻す", onClick: () => {
+        store.update((s) => {
+          const prod = s.products.find((x) => x.id === productId);
+          if (!prod || prod.prices.some((x) => x.id === priceId)) return;
+          const next = prod.prices.slice();
+          next.splice(Math.min(at, next.length), 0, snap);
+          prod.prices = next;
+        });
+        onChanged && onChanged();
+      } } } : {});
     });
 
     return handle;
@@ -1054,11 +1068,28 @@
         danger: true,
       });
       if (!ok) return;
+      /* 元に戻すときは、商品と、一緒に外したリストの項目を同じ場所へ（V18）。 */
+      const gone = { at: -1, prod: null, items: [] };
       store.update((s) => {
+        gone.at = s.products.findIndex((x) => x.id === productId);
+        if (gone.at >= 0) gone.prod = JSON.parse(JSON.stringify(s.products[gone.at]));
+        s.items.forEach((it, i) => { if (it.productId === productId) gone.items.push([i, JSON.parse(JSON.stringify(it))]); });
         s.products = s.products.filter((x) => x.id !== productId);
         s.items = s.items.filter((i) => i.productId !== productId);
       });
-      KN.ui.toast("削除しました");
+      KN.ui.toast("消しました", gone.prod ? { action: { label: "元に戻す", onClick: () => {
+        store.update((s) => {
+          if (s.products.some((x) => x.id === productId)) return;
+          const prods = s.products.slice();
+          prods.splice(Math.min(gone.at, prods.length), 0, gone.prod);
+          s.products = prods;
+          const items = s.items.slice();
+          gone.items.forEach(([i, it]) => {
+            if (!items.some((x) => x.id === it.id)) items.splice(Math.min(i, items.length), 0, it);
+          });
+          s.items = items;
+        });
+      } } } : {});
       closeSheet();
     });
     return btn;

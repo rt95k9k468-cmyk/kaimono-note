@@ -2978,7 +2978,7 @@
   }
 
   function removeWeight(id) {
-    update((s) => { s.diet.weights = s.diet.weights.filter((w) => w.id !== id); });
+    return takeOut((s) => s.diet, "weights", id);
   }
 
   /** 新しい順。同じ日に何度も乗ることがあるので、日だけでなく時刻まで見ます。 */
@@ -3035,7 +3035,7 @@
   }
 
   function removeMeal(id) {
-    update((s) => { s.diet.meals = s.diet.meals.filter((m) => m.id !== id); });
+    return takeOut((s) => s.diet, "meals", id);
   }
 
   function mealsOfDay(day) {
@@ -3278,7 +3278,7 @@
   }
 
   function removeDrink(id) {
-    update((st) => { st.diet.drinks = st.diet.drinks.filter((x) => x.id !== id); });
+    return takeOut((s) => s.diet, "drinks", id);
   }
 
   function drinksOfDay(day) {
@@ -3325,7 +3325,7 @@
   }
 
   function removeUrge(id) {
-    update((st) => { st.diet.urges = st.diet.urges.filter((x) => x.id !== id); });
+    return takeOut((s) => s.diet, "urges", id);
   }
 
   function urgesOfDay(day) {
@@ -3428,7 +3428,7 @@
   }
 
   function removeHealth(id) {
-    update((s) => { s.diet.health = s.diet.health.filter((h) => h.id !== id); });
+    return takeOut((s) => s.diet, "health", id);
   }
 
   /** その日のその種目。日ごとに一つのものは一件、ワークアウトは全部。 */
@@ -3596,7 +3596,23 @@
   }
 
   function removeEntry(id) {
-    update((s) => { s.archive.entries = s.archive.entries.filter((x) => x.id !== id); });
+    return takeOut((s) => s.archive, "entries", id);
+  }
+
+  /* 一件を外し、**同じものを同じ場所へ戻す関数**を返す（消したときの「元に戻す」。
+     roadmap-2.0 の V18）。removeTodo と同じ形で、記録の形は変えない。戻すときに
+     もう同じ id があれば何もしない（二度押し）。 */
+  function takeOut(host, key, id) {
+    const at = host(get())[key].findIndex((x) => x.id === id);
+    if (at < 0) return () => {};
+    const snapshot = JSON.parse(JSON.stringify(host(get())[key][at]));
+    update((s) => { host(s)[key] = host(s)[key].filter((x) => x.id !== id); });
+    return () => update((s) => {
+      if (host(s)[key].some((x) => x.id === id)) return;
+      const next = host(s)[key].slice();
+      next.splice(Math.min(at, next.length), 0, snapshot);
+      host(s)[key] = next;
+    });
   }
 
   /** 種を達成に変えます。書いた時刻は残し、種だった記憶だけ畳みます。 */

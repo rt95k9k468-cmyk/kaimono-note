@@ -814,7 +814,7 @@
           const undo = store.removeTodo(todoId);
           haptic(14);
           handle.close();
-          KN.ui.toast("削除しました", { action: { label: "元に戻す", onClick: undo } });
+          KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: undo } });
         },
       });
     }
@@ -1678,7 +1678,7 @@
       haptic(10);
       KN.ui.toast(`${W.describe(res, { due, time, minutes, deadline })}にしました`, {
         action: {
-          label: "戻す",
+          label: "元に戻す",
           onClick: () => {
             setTitle(back.title);
             due = back.due; time = back.time; minutes = back.minutes; part = back.part;
@@ -1705,7 +1705,7 @@
           haptic(12);
           if (!got.item) { KN.ui.toast(`「${got.product.name}」はもうリストにあります`); return; }
           KN.ui.toast(`買うものに「${got.product.name}」を入れました`, {
-            action: { label: "戻す", onClick: got.undo },
+            action: { label: "元に戻す", onClick: got.undo },
           });
         },
       });
@@ -4818,7 +4818,7 @@
       const undo = store.removeTodo(d.id);
       KN.motion.fire("save");
       haptic(14);
-      KN.ui.toast(`「${t.title}」を削除しました`, {
+      KN.ui.toast(`「${t.title}」を消しました`, {
         action: { label: "元に戻す", onClick: undo },
       });
       return;

@@ -1363,12 +1363,17 @@
 
   let toastTimer = null;
 
-  function toast(message, { action, actions, duration = 3600 } = {}) {
+  /* 押せるもの（「元に戻す」ほか）が付くトーストは、既定で長めに出す——押しに
+     行くあいだに消えないように（roadmap-2.0 の V18。言葉は「元に戻す」に揃える）。 */
+  const TOAST_MS = 3600, TOAST_ACT_MS = 5000;
+
+  function toast(message, { action, actions, duration } = {}) {
     const root = toastRoot();
     root.innerHTML = "";
     clearTimeout(toastTimer);
     /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
     const acts = actions || (action ? [action] : []);
+    if (duration == null) duration = acts.length ? TOAST_ACT_MS : TOAST_MS;
 
     const el = node(html`
       <div class="toast">
