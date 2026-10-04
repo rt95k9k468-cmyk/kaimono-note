@@ -5564,6 +5564,9 @@ textarea.note-title-in {
   background: var(--c-surface);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-3);
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   transform-origin: top right;
   transform: scale(.92);
   opacity: 0;
