@@ -152,6 +152,14 @@
   }
   KN.app.applyTextSize = applyTextSize;
 
+  /* 2.0 の見た目（docs/roadmap-2.0.md の V1）。2.0 の CSS は .is-v2 の下にだけ
+     書くので、外せば一押しで前の見た目へ戻る。付け外しは起動時と切り替えた
+     ときだけ（毎フレーム書かない）。 */
+  function applyV2(on) {
+    document.documentElement.classList.toggle("is-v2", on === true);
+  }
+  KN.app.applyV2 = applyV2;
+
   /* ---------------- tabs ---------------- */
 
   function buildTabs() {
@@ -1217,6 +1225,7 @@
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
     applyTextSize(store.get().settings.textSize || "std");
+    applyV2(store.get().settings.v2);
     /* 「端末に合わせる」なら、戻ってくるたびに読み直す（アプリを離れて
        iPhone の文字サイズを変えてきた、に追いつくため）。 */
     document.addEventListener("visibilitychange", () => {

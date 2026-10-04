@@ -17,7 +17,8 @@ const { spawn } = require("child_process");
 const { ensureServer } = require("./lib");
 
 const DIR = __dirname;
-const NOT_SCRIPTS = new Set(["lib.js", "run-all.js"]);
+/* frame-pace は測るだけで、手で回す（docs/roadmap-2.0.md の V2。機械の揺れで止めないため）。 */
+const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js"]);
 
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */

@@ -118,6 +118,9 @@
         /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
            → "todo" | "list"。既定は空（js/capture.js の learn）。 */
         captureDest: {},
+        /* 2.0 の見た目を試す切り替え（docs/roadmap-2.0.md の V1）。既定はオフ。
+           オンなら html に .is-v2。比べ終えたら V26 で外す。 */
+        v2: false,
       },
     };
   }
@@ -702,6 +705,7 @@
     out.settings.accent = cleanAccent(out.settings.accent);
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
     out.settings.showSeason = out.settings.showSeason !== false;
+    out.settings.v2 = out.settings.v2 === true;
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
     /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */

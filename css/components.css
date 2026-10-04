@@ -1292,6 +1292,8 @@ button.hero-node:active { scale: .94; }
 }
 .set-more[open] > summary::after { rotate: 45deg; }
 .set-more > p, .set-more > ol, .set-more > pre { margin: var(--sp-2) 0 0; }
+/* 畳んだ奥に行を置くとき（外観の「試す」）。ほかのカードと同じ幅に戻す。 */
+.set-more > .set-card { margin: var(--sp-2) calc(-1 * var(--sp-5)) 0; }
 
 .sheet-body {
   overflow-y: auto;
