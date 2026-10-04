@@ -917,6 +917,82 @@
     }
   });
 
+  /* ---------------- 別の日へ運ぶ（docs/roadmap-2.0.md の V15） ----------------
+
+     やることを別の日へ移すと、その日の画面から行が消えます。どこへ行ったのかを
+     言うものが無いので、行（か紙の頭の丸薬）の写しが、上の帯の暦のその日へ縮み
+     ながら飛んでいき、着いた日の丸が一度ふくらみます。暦が出ていない・その日が
+     いま出ている週や月に無いときは、頭の日付へ。動きを減らす設定では飛ばさない。
+
+       KN.ui.sendToDay(el, "2026-10-05")   // el は消える前の行（測ってから写す）
+
+     **写しを飛ばす**のは、元の行が組み直しで消えるからです（行き先で同じ行が
+     待っているわけではない＝FLIP にはならない）。 */
+  function dayTarget(day) {
+    const head = document.getElementById("head");
+    if (!head) return null;
+    const vw = window.innerWidth;
+    const cellOk = (e) => {
+      const r = e.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      return r.width > 0 && r.height > 0 && x > 0 && x < vw && r.bottom > 0;
+    };
+    const cell = [...head.querySelectorAll(`.cal-day[data-day="${CSS.escape(day)}"]`)].find(cellOk);
+    if (cell) return cell;
+    const title = head.querySelector(".js-day-title");
+    return title && cellOk(title) ? title : null;
+  }
+
+  function sendToDay(el, day) {
+    if (!el || !day || still()) return false;
+    const a = el.getBoundingClientRect();
+    if (!a.width || !a.height) return false;
+    const target = dayTarget(day);
+    if (!target) return false;
+    const b = target.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const g = el.cloneNode(true);
+    g.setAttribute("aria-hidden", "true");
+    g.inert = true;
+    g.classList.add("day-send");
+    /* 紙の外へ出すので、紙から継いでいた色・字・角を写します（pillGhost と同じ）。
+       地が透けている行（紙の上の一行）は、紙の地を持たせて浮かせる。 */
+    const clear = /rgba\(.*,\s*0\)|transparent/.test(cs.backgroundColor);
+    Object.assign(g.style, {
+      background: clear ? "var(--c-surface)" : cs.backgroundColor,
+      color: cs.color, font: cs.font, borderRadius: clear ? "var(--r-md)" : cs.borderRadius,
+      boxShadow: clear ? "var(--shadow-2)" : cs.boxShadow,
+    });
+    Object.assign(g.style, {
+      position: "fixed", margin: "0", boxSizing: "border-box", pointerEvents: "none",
+      left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`,
+      zIndex: "var(--z-toast)", visibility: "visible", transformOrigin: "50% 50%",
+    });
+    document.body.append(g);
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    const k = Math.max(.08, Math.min(1, b.height / a.height) * .6);
+    const timing = { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" };
+    const run = g.animate([
+      { transform: "none", opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${k.toFixed(3)})`, opacity: .9, offset: .8 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${(k * .6).toFixed(3)})`, opacity: 0 },
+    ], timing);
+    let over = false;
+    const done = () => {
+      if (over) return;
+      over = true;
+      g.remove();
+      const t = dayTarget(day);
+      if (t) t.animate([{ transform: "none" }, { transform: "scale(1.18)" }, { transform: "none" }],
+        { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out") });
+    };
+    run.onfinish = done;
+    run.oncancel = done;
+    setTimeout(done, timing.duration + 200);
+    return true;
+  }
+
   /* ---------------- 行が動くところを見せる（FLIP） ----------------
 
      この app の画面は、何かが変わるたびに**丸ごと組み直します**。作りとしては
@@ -1846,6 +1922,6 @@
     sheet, actionSheet, popOver, popMenu, popCalendar, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
-    burst, flipRows, parkSearch, revealSearch,
+    burst, flipRows, sendToDay, parkSearch, revealSearch,
   };
 })();
