@@ -1486,7 +1486,7 @@
       const time = clock(s.at);
       const extra = more[k] || 0;
       const done = closed(s.t);
-      if (done) { doneLabel(b, s.t.title, extra, `data-k="${k}"`); return; }
+      if (done) { doneLabel(b, s.t.title, extra, `data-k="${k}"`, extra > 0 || crowded(s)); return; }
       const title = b.only ? "" : cut(s.t.title, b.hi - b.lo - textW(time, FS) - 1 - 4 - 1 - extra);
       out.push(html`
         <button type="button" class="road-label ${b.rev ? "is-rev" : ""} ${done ? "is-done" : ""}"
@@ -1497,8 +1497,23 @@
         </button>`);
     });
 
-    /* 済んだものの札（名前だけ）と、丸薬のまん中からの引き出し線。 */
-    function doneLabel(b, name, extra, attr) {
+    /* 済んだものの札（名前だけ）と、丸薬のまん中からの引き出し線。線は、その時間帯に
+       丸薬がほかにもあるとき（busy）か、札が丸薬から離れたときだけ（2026年10月5日・利用者の声
+       「その時間帯にひとつしかないなら、自明なので線はいらない」）。 */
+    // 足あとが停留所に触れる（paint の斜線と同じ見方）
+    function stepOver(d, s) {
+      const [a, b] = capIn(s);
+      return d - STOP < b + STOP / 2 && d + STOP > a - STOP / 2;
+    }
+    function crowded(s) {
+      const [a, b] = capIn(s);
+      return st.stops.some((q) => {
+        if (q === s) return false;
+        const [c, e] = capIn(q);
+        return s.len && q.len ? a < e && c < b : a < e + STOP && c < b + STOP;
+      }) || st.steps.some((x) => stepOver(x.d, s));
+    }
+    function doneLabel(b, name, extra, attr, busy) {
       const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
       out.push(html`
         <button type="button" class="road-label is-done" ${U.raw(attr)}
@@ -1509,7 +1524,7 @@
       const h = FS * 0.6;
       const qx = Math.max(b.lo, Math.min(b.hi, b.px)), qy = Math.max(b.y - h, Math.min(b.y + h, b.py));
       const len = Math.hypot(qx - b.px, qy - b.py);
-      if (len < STOP / 2 + 3) return;
+      if (len < STOP / 2 + 3 || !busy && len <= LANE + FS) return;
       const ux = (qx - b.px) / len, uy = (qy - b.py) / len;
       ties.push([b.px + ux * (STOP / 2 + 1), b.py + uy * (STOP / 2 + 1), qx - ux, qy - uy]);
     }
@@ -1558,7 +1573,7 @@
       const extra = pr.length - 1;
       const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
       const b = placeMid(pr.reduce((m, x) => m + x.s.d, 0) / pr.length, s.t.title, room);
-      if (b) doneLabel(b, s.t.title, extra, `data-f="${k}"`);
+      if (b) doneLabel(b, s.t.title, extra, `data-f="${k}"`, extra > 0 || pr.some((x) => st.stops.some((q) => stepOver(x.s.d, q))));
     });
     if (ties.length) {
       out.push(html`<svg class="road-ties" viewBox="0 0 ${W} ${g.H}" preserveAspectRatio="none" aria-hidden="true">${

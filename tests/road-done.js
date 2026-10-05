@@ -43,6 +43,15 @@ const DAY = "2026-10-01";
       dNow: st.g.dist(st.last),
       d2000: st.g.dist(20 * 60),
       labels, text: road.textContent,
+      /* 引き出し線の根もとが、どの停留所のまん中のそばか */
+      ties: [...road.querySelectorAll(".road-ties line")].map((l) => {
+        const x = +l.getAttribute("x1"), y = +l.getAttribute("y1");
+        const near = st.stops.find((s) => {
+          const p = st.g.point((s.d0 + s.d1) / 2);
+          return Math.hypot(p.x - x, p.y - y) < 16;
+        });
+        return near ? near.t.title : `?${x},${y}`;
+      }),
     };
   });
   const S = r.stops;
@@ -60,6 +69,11 @@ const DAY = "2026-10-01";
   c.check("済んだものの札は名前だけ（時刻を出さない）",
     r.labels.includes("夜のルーティン") && !r.labels.some((t) => /\d:\d\d/.test(t)),
     JSON.stringify(r.labels));
+  /* 引き出し線は、その時間帯に丸薬がほかにもあるときだけ（2026年10月5日）。 */
+  c.check("ひとりの丸薬（朝のルーティン・朝のBaby・晴菜）には引き出し線を引かない",
+    !r.ties.some((t) => ["朝のルーティン", "朝のBaby", "晴菜"].includes(t)), JSON.stringify(r.ties));
+  c.check("触れ合う分別ごみと夜のルーティンには引き出し線",
+    r.ties.length >= 1 && r.ties.every((t) => t === "分別ごみ" || t === "夜のルーティン"), JSON.stringify(r.ties));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/road-done.png`,
     clip: await page.evaluate(() => { const b = document.querySelector("#screen-todo .day-road").getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }) });
   c.check("評価の言葉を出さない", !/遅れ|超過|予定通り|達成|早い|前倒し/.test(r.text), r.text);
