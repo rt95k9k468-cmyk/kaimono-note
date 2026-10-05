@@ -180,7 +180,7 @@ const DAY = "2026-09-30";
     JSON.stringify([night.night, night.labels]));
 
   /* 過ぎた日（2026年9月29日・A＋C）：次の日の時計にして、この日を開く。
-     道は薄いまま停留所だけ塗る。区間は押した時刻まで延ばさず、押した時刻に白い粒。 */
+     道は薄いまま停留所だけ塗る。区間は押した時刻まで延ばさず、押した時刻に淡い丸薬（停留所と重なれば斜線）。 */
   await page.clock.setFixedTime(new Date(2026, 9, 1, 9, 0));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(400);
@@ -193,26 +193,34 @@ const DAY = "2026-09-30";
     const s = st.stops[k];
     const grp = road.querySelector(`.road-stop[data-s="${k}"]`);
     const want = g.point(g.dist(7 * 60 + 40));
-    const dots = [...road.querySelectorAll(".road-steps.is-stops circle")]
-      .map((c) => ({ x: Number(c.getAttribute("cx")), y: Number(c.getAttribute("cy")) }));
+    const dots = [...road.querySelectorAll(".road-steps.is-stops .road-step")]
+      .map((c) => ({ x: Number(c.dataset.cx), y: Number(c.dataset.cy) }));
+    const pill = road.querySelector(".road-steps.is-stops .road-step");
     return {
       cls: road.className, went: road.querySelector(".road-went").getAttribute("d"),
       eu: s.eu, d1: s.d1, d1Want: g.dist(7 * 60 + 20, true),
       stopWent: !!grp.querySelector(".road-stop-went").getAttribute("d"),
       late: grp.classList.contains("is-late"),
-      fill: getComputedStyle(road.querySelector(".road-steps.is-stops circle") || road).fill,
+      stopPale: getComputedStyle(grp.querySelector(".road-stop-went")).stroke
+        === getComputedStyle(road.querySelector(".road-went")).stroke,
+      hatch: !!pill && pill.classList.contains("is-over"),
+      fill: pill ? getComputedStyle(pill.querySelector(".road-stop-in")).stroke : null,
+      edge: pill ? getComputedStyle(pill.querySelector(".road-stop-edge")).stroke : null,
+      pale: pill ? getComputedStyle(pill.querySelector(".road-stop-edge")).stroke
+        === getComputedStyle(road.querySelector(".road-went") || road).stroke : false,
       dots, want: { x: want.x, y: want.y },
     };
   });
   c.check("過ぎた日：道は塗らない（これからの薄い色のまま）", /is-past/.test(past.cls) && !past.went,
     JSON.stringify([past.cls, past.went]));
-  c.check("過ぎた日：停留所は塗る", past.stopWent && !past.late, JSON.stringify([past.stopWent, past.late]));
+  c.check("過ぎた日：停留所は過去の薄さで塗る", past.stopWent && !past.late && past.stopPale,
+    JSON.stringify([past.stopWent, past.late, past.stopPale]));
   c.check("過ぎた日：区間は押した時刻（7:40）まで延ばさず、決めた 7:20 のまま",
     past.eu === 7 * 60 + 20 && Math.abs(past.d1 - past.d1Want) < 0.01, JSON.stringify([past.eu, past.d1, past.d1Want]));
-  c.check("過ぎた日：押した時刻（7:40）の道の上に白い粒",
+  c.check("過ぎた日：押した時刻（7:40）の道の上に淡い丸薬。停留所（7:20 まで）と離れているので斜線でなく塗り",
     past.dots.some((d) => Math.abs(d.x - past.want.x) < 0.2 && Math.abs(d.y - past.want.y) < 0.2)
-      && /rgb\(255, 255, 255\)/.test(past.fill),
-    JSON.stringify([past.dots, past.want, past.fill]));
+      && !past.hatch && past.pale && past.fill === past.edge,
+    JSON.stringify([past.dots, past.want, past.hatch, past.pale, past.fill, past.edge]));
 
   c.check("評価の言葉を出さない", !/遅れ|予定通り|達成|未達|できなかった|超過/.test(r.text), r.text);
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));

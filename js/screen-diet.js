@@ -39,11 +39,6 @@
      screen-diet.js からなら安全です。 */
   let range = store.dietRange();   // グラフの期間（日）。0 は全期間。
   let analysisWindow = 30;
-  let series = "";             // 体重と並べて見るもの。空なら体重だけ。
-  /* 2.0 の切り替えの中だけ（roadmap-2.0 の V24）：一枚を「今日・記録・推移」に分けた、
-     いま出している区画。画面のあいだだけ覚えます（記録には持たない）。 */
-  const PANES = [{ id: "today", label: "今日" }, { id: "log", label: "記録" }, { id: "trend", label: "推移" }];
-  let pane = "today";
 
   /* いま見ている日。null は「今日」——日付を焼き込まないのは、日付が
      変わったあともアプリを開きっぱなしにしていることがあるからです。 */
@@ -353,16 +348,22 @@
     // （chart() 側の daysBetween と同じ上限=4000日）。
     const win = range === 0 ? 4000 : Math.max(range, 30);
     const sum = (opts && opts.sum) || D.weightSummary(win, day);
+    /* 一枚に、今日（からだ）・記録（食事）・推移（体重の数とグラフ）を、ノートと同じ
+       丸角のカードで並べます（10月5日、三つの区画に分けるのをやめた）。 */
     const slide = node(html`
       <section class="card day-slide diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
-        <div class="diet-block is-body js-body-stats"></div>
-        <div class="diet-block is-meal js-meals"></div>
-        <div class="diet-block is-weight js-today"></div>
+        <div class="diet-card diet-block is-body js-body-stats"></div>
+        <div class="diet-card diet-block is-meal js-meals"></div>
+        <div class="diet-card is-trend">
+          <div class="diet-block is-weight js-today"></div>
+          <div class="diet-block js-trend-card"></div>
+        </div>
       </section>
     `);
     renderBodyStats(slide.querySelector(".js-body-stats"), card);
+    renderToday(slide.querySelector(".js-today"), card, sum);
     renderMeals(slide.querySelector(".js-meals"), card, { peek });
-    renderToday(slide.querySelector(".js-today"), card, sum, opts && opts.chartEl);
+    renderGraph(slide.querySelector(".js-trend-card"), opts && opts.chartEl);
     if (peek) slide.inert = true;
     return slide;
   }
@@ -481,14 +482,8 @@
     const grip = sheet.querySelector(".tl-grip");
     if (grip) grip.setAttribute("data-pull-own", "cal");
 
-    /* V24：頭に「今日・記録・推移」。今日＝からだの輪と体重、記録＝食事、推移＝グラフと
-       気づいたこと。隠すのは CSS（`.diet.is-pane-*`）で、付けるのは紙ではなく `.diet`
-       ——日を払って入ってくる隣の紙も同じ区画で見えるように。 */
     sheet.append(node(html`
-      <div class="diet is-pane-${pane}">
-        <div class="seg diet-panes">${PANES.map((p) => html`
-          <button type="button" class="seg-btn js-pane" data-pane="${p.id}" aria-pressed="${String(p.id === pane)}">${p.label}</button>`)}
-        </div>
+      <div class="diet">
         ${/* 並べておくのは、いま見ている日の一枚だけ。隣の二枚は、横に
               払うと決まった瞬間に day-swipe.js がその場で組みます——
               要約ではなく、その日の紙そのものが、指のぶんだけ連続して
@@ -516,17 +511,6 @@
     const lookCard = els.body.querySelector(".diet-look");
     if (showInsight) renderInsight(els.body.querySelector(".js-insight"));
     else if (lookCard) lookCard.remove();
-
-    /* 区画を替えるのは印の付け替えだけ（組み直さない）。紙は頭へ戻す。 */
-    els.body.querySelectorAll(".js-pane").forEach((b) => b.addEventListener("click", () => {
-      if (b.dataset.pane === pane) return;
-      pane = b.dataset.pane;
-      KN.motion.fire("select");
-      const box = els.body.querySelector(".diet");
-      PANES.forEach((p) => box.classList.toggle(`is-pane-${p.id}`, p.id === pane));
-      els.body.querySelectorAll(".js-pane").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      KN.app.scrollerOf(root).scrollTop = 0;
-    }));
 
     /* その日の紙は、横に払えば日をめくれます。カレンダーまで手を
        伸ばさずに、昨日・一昨日と辿れるように。仕掛けは day-swipe.js が
@@ -916,11 +900,9 @@
      ・体脂肪は体重の下に。同じ「いまの体」の話なので、縦に続けます。
      ・傾き・平均・目標までは**右側**に。下に置くと枠が縦に伸びて、
        グラフを見るのにいちいちスクロールすることになります。
-     ・そのグラフも、同じ枠の中に入れます。「いまの体重」と「その動き」は
-       別々の話ではありません。
      ・この三つは、文字のところを押すと出す日数・目標体重を直せます
        （平均・傾きは何日ぶんで均すか、目標まではいくつを狙うか）。 */
-  function renderToday(host, card, sum, chartEl) {
+  function renderToday(host, card, sum) {
     const w = card.weight;
     const when = dayName(card.day);
 
@@ -957,14 +939,12 @@
             </button>
           </div>
         </div>
-        <div class="js-graph"></div>
       </div>
     `);
     sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
     sec.querySelector(".js-trend").addEventListener("click", () => openWindowSheet("trend"));
     sec.querySelector(".js-avg").addEventListener("click", () => openWindowSheet("avg"));
     sec.querySelector(".js-goal-stat").addEventListener("click", openGoalSheet);
-    renderGraph(sec.querySelector(".js-graph"), chartEl);
     host.append(sec);
   }
 
@@ -1001,43 +981,9 @@
     { id: 365, label: "1年" }, { id: 0, label: "全部" },
   ];
 
-  /* ---------------- 体重と並べて見るもの ----------------
 
-     単位が違うものを同じ縦軸に重ねると、どちらも読めなくなります。
-     体重は 68〜70 の狭い幅で動き、歩数は 0〜12000 です。同じ軸に置けば
-     体重は一本の水平線に潰れます。
-
-     だから **主役は体重の線のまま**、関連データは背後の棒にします。
-     棒は自分の最大値を天井とする別のものさしで、数字の目盛りは出さず、
-     いちばん大きい日の値だけを右上に書きます。棒の高さどうしを見比べる
-     ことはできて、体重と絶対値で比べることはできない——それが正しい
-     読み方なので、そう見えるようにします。
-
-     一度に一つだけ選べます。二つ重ねると、どちらの棒がどちらか分からなく
-     なるうえ、体重の線が埋もれます。 */
-  const SERIES = [
-    { id: "",       label: "なし" },
-    { id: "kcal",   label: "摂取",   unit: "kcal", ico: "meal",
-      get: (d) => { const t = D.dayTotals(d); return t ? t.kcal : null; } },
-    { id: "steps",  label: "歩数",   unit: "歩",   ico: "steps",
-      get: (d) => store.healthValue(d, "steps") },
-    /* 札の名前は二文字でそろえます。「総消費」だけ三文字だと、
-       六つ並んだ列の中でそこだけ幅が違って、目が引っかかります。 */
-    { id: "burned", label: "消費", unit: "kcal", ico: "flame",
-      get: (d) => D.burnedOf(d) },
-    { id: "sleep",  label: "睡眠",   unit: "時間", ico: "moon",
-      get: (d) => { const v = store.healthValue(d, "sleep"); return v == null ? null : Math.round(v / 6) / 10; } },
-    { id: "drink",  label: "飲酒",   unit: "g",    ico: "drink",
-      get: (d) => { const t = store.drinkTotals(d); return t ? t.alcoholG : null; } },
-  ];
-  const seriesOf = (id) => SERIES.find((s) => s.id === id) || SERIES[0];
-
-  /* グラフは、体重の枠の中に続けて描きます（別の枠に切ると、同じ体重の
-     話が二つの箱に分かれて、あいだの余白のぶんだけ遠くなります）。
-
-     「並べて見る」の札はグラフの**右**に縦に並べます。下に置くと、選ぶ
-     たびに目が下まで降りて戻ることになり、六つ並べると横にもあふれます。
-     縦に置けば、グラフの高さがそのまま札の置き場になります。 */
+  /* グラフは「推移」のカード（10月5日）。体重と並べて見る札（歩数・摂取…）は、
+     並べて見ることが無かったのでやめた。 */
   /* chartEl を渡されたら、それを使います（作り直しません）。三枚の
      カルーセルはどれも同じグラフ（選んだ日には依存しません）なので、
      render() 側で一度だけ作って、他の二枚には複製を渡します——履歴が
@@ -1047,13 +993,7 @@
       <div class="diet-graph">
         <div class="section-title">${icon("chart")}体重の推移</div>
         <div class="js-range"></div>
-        <div class="diet-plot">
-          <div class="diet-plot-chart js-chart"></div>
-          <div class="diet-with">
-            <span class="diet-with-label">並べて</span>
-            <div class="js-series"></div>
-          </div>
-        </div>
+        <div class="diet-plot-chart js-chart"></div>
         <div class="diet-legend">
           <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
           <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
@@ -1063,7 +1003,6 @@
                 読む人は二か所を見比べることになります。 */""}
           ${/* 数はグラフの右の目盛りに出るので、ここでは名前だけ。
                 同じ数を二か所に書くと、どちらが本物か確かめる手間が増えます。 */""}
-          ${series ? html`<span class="diet-legend-item"><i class="dot-bar"></i>${seriesOf(series).label}（${seriesOf(series).unit}）</span>` : ""}
           <span class="diet-legend-item"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
         </div>
       </div>
@@ -1073,38 +1012,10 @@
       activeId: range,
       onPick: (id) => { range = Number(id); store.setDietRange(range); render(); },
     });
-    KN.ui.chipRow(sec.querySelector(".js-series"), SERIES.map((x) => ({ id: x.id, label: x.label })), {
-      activeId: series,
-      onPick: (id) => { series = String(id || ""); render(); },
-    });
 
     const drawn = chartEl || chart();
     sec.querySelector(".js-chart").append(drawn);
-
-    /* 線が引けない日（記録が1日ぶん以下）は、「並べて」の札を出しません。
-
-       .diet-plot は横並びで、右のこの列は札を六つ縦に積みます——173px ほど
-       あります。左が二行のお知らせだけのとき、その差がまるごと空白として
-       残っていました（「体重の下に変な隙間」の正体）。
-
-       高さのためだけではありません。重ねる相手の線が無いのに「並べて」を
-       選ばせるのは、押しても何も起きない札を置くということです。 */
-    const isEmpty = !!(drawn.classList && drawn.classList.contains("diet-empty"));
-    const withCol = sec.querySelector(".diet-with");
-    if (withCol) withCol.hidden = isEmpty;
-
     host.append(sec);
-  }
-
-  /** 目盛りの天井。半端な数で切らないよう、上の丸い数まで伸ばします。 */
-  function niceTop(v, ticks) {
-    if (!(v > 0)) return 1;
-    const step = Math.pow(10, Math.floor(Math.log10(v / ticks)));
-    for (const m of [1, 2, 2.5, 5, 10, 20, 25, 50]) {
-      const s = step * m;
-      if (s * ticks >= v) return s * ticks;
-    }
-    return Math.ceil(v / ticks) * ticks;
   }
 
   /**
@@ -1131,14 +1042,7 @@
        体重が高い日の点と印が同じ高さで並んで、どちらか読めません。 */
     const hasMarks = D.daysBetween(all.length ? all[0].day : today, today)
       .some((d) => store.drinkTotals(d));
-    const sel = seriesOf(series);
-    /* 右の余白は、並べて見るものを選んだときだけ空けます——そこに
-       その棒の目盛りを書くので。選んでいなければ空けません（空けたままだと、
-       グラフだけが狭くなります）。 */
-    /* 縦を高くしました。札を右に立てたぶん横が狭くなり、同じ比のままだと
-       グラフの背まで低くなって、日々の上下が潰れます。高さは右の札の列と
-       だいたい同じところに来ます。 */
-    const W = 320, H = 180, padL = 34, padR = sel.id ? 30 : 8, padB = 18;
+    const W = 320, H = 180, padL = 34, padR = 8, padB = 18;
     const padT = hasMarks ? 22 : 10;
     const ma7 = D.movingAverage(pts, 7).filter((m) => m.value != null);
     const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
@@ -1281,47 +1185,16 @@
     };
     const path = (rows, get) => curve(rows.map((r) => ({ x: x(r.day), y: y(get(r)) })));
 
-    /* ---- 並べて見るもの ----
-
-       日ごとの棒。ものさしは体重とは別で、いちばん大きい日を天井に
-       します。目盛りは書きません——書けば「体重と同じ軸だ」と読まれます。
-       いちばん大きい日の値だけを右上に置いて、天井が何かを言います。 */
-    /* 棒と印も、左端から。右の端より先には置きません（期間より長い
-       ぶんは、そもそもこの窓に入っていないので出てきませんが、
-       枠の外に描いてしまうと切れた棒が見えます）。 */
+    /* 印も、左端から。右の端より先には置きません（枠の外に描くと切れた印が見えます）。 */
     const lastX = W - padR;
     const days = D.daysBetween(base, today).filter((d) => x(d) <= lastX + 0.01);
-    const bars = [];
-    let barMax = 0;
-    if (sel.id) {
-      days.forEach((d) => {
-        const v = sel.get(d);
-        if (v == null) return;
-        bars.push({ day: d, value: v });
-        if (v > barMax) barMax = v;
-      });
-    }
-    const barW = Math.max(2, Math.min(11, (W - padL - padR) / Math.max(1, days.length) - 1.4));
 
     /* ---- 補助線 ----
 
        五本、等間隔。上で決めた刻みの倍数の上に一本ずつ立っているので、
-       線と目盛りの数は同じものです（上の「縦のものさし」を参照）。
-
-       いちばん下の線は棒の足もとでもあります。そうすると、線の間隔がその
-       まま棒の目盛りの刻みになり、**同じ線の左右に体重と棒の数**を書け
-       ます。二つのものさしを一つの枠で読ませるには、線を共有させるのが
-       いちばん誤解が少ない。 */
+       線と目盛りの数は同じものです（上の「縦のものさし」を参照）。 */
     const gridVals = [];
     for (let i = 0; i < GRID_N; i++) gridVals.push(lo + step * i);
-
-    const barTop = niceTop(barMax, GRID_N - 1);    // 棒の目盛りの天井
-    const barH = (v) => (barTop > 0 ? (v / barTop) * (gBot - gTop) : 0);
-    /* 書き方は天井で決めます。値ごとに変えると「10k」と「5000」が
-       縦に並んで、同じものさしに見えなくなります。 */
-    const barText = sel.unit === "時間" ? (v) => v.toFixed(1)
-      : barTop >= 10000 ? (v) => (v ? Math.round(v / 100) / 10 + "k" : "0")
-      : (v) => String(Math.round(v * 10) / 10);
 
     /* ---- 飲んだ日の印 ----
 
@@ -1341,7 +1214,7 @@
 
     const svg = node(html`
       <svg class="diet-chart" viewBox="0 0 ${W} ${H}" role="img"
-           aria-label="体重の推移のグラフ${sel.id ? `（${sel.label}を並べています）` : ""}${towardGoal ? "。目標に近づいています" : ""}">
+           aria-label="体重の推移のグラフ${towardGoal ? "。目標に近づいています" : ""}">
         ${/* 線の下の面。**いつも敷きます**——線一本だけだと、グラフというより
               針金の絵に見えます。上を濃く、下へ消えていく一枚を敷くと、
               「この高さにある」ことが面積として伝わります。 */""}
@@ -1359,19 +1232,10 @@
           + `<stop offset="100%" stop-color="#fff" stop-opacity="1"/></linearGradient>`
           + `<mask id="areaEdge"><rect x="0" y="0" width="${W}" height="${H}" fill="url(#areaFade)"/></mask>`
           + `</defs>`)}
-        ${KN.util.raw(bars.map((b) => {
-          const h = barH(b.value);
-          return `<rect class="diet-bar" x="${(x(b.day) - barW / 2).toFixed(1)}" y="${(gBot - h).toFixed(1)}"
-                        width="${barW.toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="1.6"/>`;
-        }).join(""))}
         ${KN.util.raw(gridVals.map((v, i) => {
           const yy = y(v);
           return `<line class="diet-gridline ${i ? "" : "is-base"}" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}"/>`
-            + `<text class="diet-axis" x="${padL - 6}" y="${(yy + 3.2).toFixed(1)}" text-anchor="end">${kgText(v)}</text>`
-            + (sel.id
-              ? `<text class="diet-axis is-right" x="${W - padR + 4}" y="${(yy + 3.2).toFixed(1)}">${
-                  barText(barTop * i / (GRID_N - 1))}</text>`
-              : "");
+            + `<text class="diet-axis" x="${padL - 6}" y="${(yy + 3.2).toFixed(1)}" text-anchor="end">${kgText(v)}</text>`;
         }).join(""))}
         ${goal == null ? "" : goalIn
           ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`
@@ -2795,7 +2659,6 @@
     const peek = !!(opts && opts.peek);
     const t = card.totals;
     const rem = card.remaining;
-    const pfc = card.pfc;
     const ai = store.dayMemo(card.day);          // AIの推計を入れておく一件
     const st = D.slotTotals(card.day);
     const foods = store.mealsOfDay(card.day)
@@ -2847,45 +2710,15 @@
             ${ai && ai.ai ? html`
               <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${KN.dietAI.costLabel(ai.ai.cost)}` : ""}</span>` : ""}
           </button>
+          ${/* AIの評価の文も、この枠の中に（10月5日）。お酒を足した合計・PFC の数は出さない
+                （細かい数と根拠はAIの返事の原文に残っている）。 */""}
+          ${ai && ai.ai && ai.ai.analysis ? html`
+            <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
           <div class="diet-ai-btns">
             <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
             <button type="button" class="btn btn-soft btn-sm js-ai-paste">${icon("download")}貼り付け</button>
           </div>
         </div>
-
-        ${/* エネルギー収支の評価は、AIが返してくれたときだけ短く出します。
-              その日を開くたびに読めるように、ここに置きます（詳しくは
-              「AI推計」を開けば同じ文が出ます）。 */""}
-        ${ai && ai.ai && ai.ai.analysis ? html`
-          <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
-
-        ${/* 食品ごとの内わけは、持ってはいますが並べません。
-              「納豆 90kcal P7 F5 C5」の行が十件並んでも、次の一手は
-              変わらないからです。使うのは、区分ごとの合計（上の帯）と
-              一日の合計だけ。細かい数と根拠・情報源はAIの返事の原文に
-              残しています。 */""}
-        ${card.drinkTotals ? html`
-          <p class="diet-note">
-            お酒を足すと
-            <b class="mono-num">${((t ? t.kcal : 0) + card.drinkTotals.kcal).toLocaleString()}kcal</b>
-          </p>` : ""}
-        ${/* PFCは数だけ置きます。棒にすると、目標を決めていない人には
-              「内わけ」、決めた人には「進み具合」と、同じ絵が二つの
-              意味を持ちます。数なら、どちらの読み方でも間違いません。 */""}
-        ${t ? html`
-          <div class="diet-pfc-nums">
-            ${KN.util.raw(["p", "f", "c"].map((k) => {
-              const name = { p: "P", f: "F", c: "C" }[k];
-              const goalV = store.get().diet.goal[k + "Target"];
-              return `
-                <span class="diet-pfc-num ${goalV && t[k] > goalV ? "is-over" : ""}">
-                  <i>${name}</i><b class="mono-num">${t[k]}</b>g${goalV ? `<small>/${goalV}</small>` : ""}
-                </span>`;
-            }).join(""))}
-            ${t.fiber != null ? html`
-              <span class="diet-pfc-num"><i>繊維</i><b class="mono-num">${t.fiber}</b>g</span>` : ""}
-            ${pfc ? html`<span class="diet-pfc-ratio">熱量比 P${pfc.p}% F${pfc.f}% C${pfc.c}%</span>` : ""}
-          </div>` : ""}
       </div>
     `);
 

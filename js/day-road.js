@@ -22,7 +22,7 @@
      そのつど数えます。
    - **歩いたぶんの道は濃く、これからは薄く。** 人が立つのは今日だけ。過ぎた日は
      道を薄いままにして停留所だけ塗り、区間は決めたとおりに描いて、押した時刻に
-     白い粒。先の日はぜんぶがこれから。
+     斜線の丸薬（足あとも同じ）。先の日はぜんぶがこれから。
 
    評価はしません。遅れも達成も言いません。言うのは「いま何時で、次に何が
    あって、そこまでどれだけ空いているか」だけです。
@@ -739,6 +739,17 @@
      流れ、札は予定。記録も `at`/`until` も書き換えない（描くたびに引き直すだけ）。
      車線はもう割らないので `off` は 0・`lanes` は 1（下の描き手はそのまま読む）。 */
   let hatchN = 0;   // 斜線の mask の id（build ごと）
+  /* 押した時刻の印（2026年10月5日・利用者の声「白い点を斜線の丸薬に」「過去だから過去の
+     丸薬と同じ淡さに」）。足あとも、過ぎた日の押した時刻も、押した時刻を真ん中にした
+     停留所と同じ太さの短い丸薬で、色は過ぎた日の淡さ（長さは決めていないので一定）。
+     停留所と重なれば中は斜線、離れていれば塗り（paint の is-over）。 */
+  function stepPill(g, dist, off, hid, cls) {
+    const p = g.point(dist, off);
+    const d = g.path(Math.max(g.d0, dist - STOP / 2), Math.min(g.total, dist + STOP / 2), off);
+    return `<g class="road-step${cls}" data-d="${dist}" data-cx="${n1(p.x)}" data-cy="${n1(p.y)}">`
+      + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
+      + `<path class="road-stop-hatch" mask="url(#${hid})" d="${d}"/></g>`;
+  }
   /* 自分の区間の終わり。まだの延び（橙）は次の用事の上に重ねるだけなので数えない。 */
   const own = (q) => (q.late ? Math.max(q.ga + 1, q.until) : q.eu);
   function shape(st, nowMin) {
@@ -765,7 +776,7 @@
         }
       }
       /* 過ぎた日は、押した時刻まで延ばさない（決めた区間のまま。押した時刻は
-         paint が小さな白い粒で置く）。2026年9月29日。 */
+         paint が斜線の丸薬で置く）。2026年9月29日。 */
       /* 今日、決めた終わりより前に済ませたら、押した時刻で**縮める**（2026年9月30日・
          利用者の声「12:00-12:30 のタスクを 12:02 で終えたのに、丸薬はそのままの長さ」）。
          始まりより前に済ませても、最低1分ぶん（丸い端どうしで、ほぼ丸）は残す。 */
@@ -799,8 +810,12 @@
     st.stops.forEach((s) => { if (s.cl != null && cls[s.cl] < 2) s.cl = null; });
     /* 前の丸薬の途中から重なって描くものは、中を斜線に（2026年10月3日・利用者の声「重なって
        いる丸薬の見た目同士が全く同じ」。色・点々・細く・縁と見比べて斜線だけに）。 */
-    st.stops.forEach((s) => {
-      s.over = !!s.len && st.stops.some((q) => q !== s && q.len && q.ga < s.ga && s.ga < own(q));
+    /* 同じ時刻に始まるもの（前の用事のあいだに済ませて押さずに置いた）は、短いほうを斜線に
+       （長さも同じなら一覧で後のほう。2026年10月5日・利用者の声「朝のルーティンと朝のBaby の
+       ようになったときは片方を斜線に」）。 */
+    st.stops.forEach((s, k) => {
+      s.over = !!s.len && st.stops.some((q, j) => q !== s && q.len && s.ga < own(q) && (q.ga < s.ga
+        || q.ga === s.ga && (own(s) < own(q) || own(s) === own(q) && j < k)));
     });
     return st.stops.map((s) => `${n1(s.d0)}/${n1(s.d1)}/${s.late ? 1 : 0}${s.over ? "/o" : ""}`).join(",");
   }
@@ -839,7 +854,7 @@
            利用者の声「夜のルーティンは 19:39 にすでに終わってるのに、道ではまだきていない
            20時に終わってることになってる」）。前は決めた始まりに1分ぶんの丸で残り、
            人より先の道に「済んだ」停留所が立っていた。札の時刻も済ませた時刻（道の物差しと
-           同じ）。記録は書き換えない。過ぎた日は決めた形のまま（押した時刻は白い粒）。 */
+           同じ）。記録は書き換えない。過ぎた日は決めた形のまま（押した時刻は斜線の丸薬）。 */
         if (today && doneMin != null && doneMin < it.atMin) {
           const d = g.dist(doneMin);
           stops.push({ t, at: doneMin, until: doneMin + (len ? 1 : 0), len, d0: d, lead: 0, dl: d, doneMin });
@@ -887,10 +902,7 @@
       return `<g class="road-stop is-later"><path class="road-stop-edge" d="${d}"/>`
         + `<path class="road-stop-in" d="${d}"/></g>`;
     }).join("");
-    const stepSvg = steps.map((s) => {
-      const p = g.point(s.d);
-      return `<circle class="road-step" cx="${n1(p.x)}" cy="${n1(p.y)}" r="2.8"/>`;
-    }).join("");
+    const stepSvg = steps.map((s) => stepPill(g, s.d, 0, hid, "")).join("");
     /* 押せるのは、見えている区間より太い透明な線。停留所の丸は 16 単位で、
        指には細いので。 */
     const hitSvg = stops.map((s, k) => `<path class="road-hit" data-k="${k}" data-grow/>`).join("")
@@ -907,7 +919,7 @@
          塗りの色で。 */
       + `<g class="road-hours is-over"></g><g class="road-hours is-ink"></g>`
       + `<g class="road-steps">${stepSvg}</g><g class="road-steps is-stops"></g>`
-      /* 道の上の時の数字は、足あとの白丸よりも上に（2026年10月2日）。停留所の上のぶんは
+      /* 道の上の時の数字は、足あとの丸薬よりも上に（2026年10月2日）。停留所の上のぶんは
          is-under で隠し、上の層（is-over / is-ink / is-rim）が同じ位置に置き直す。 */
       + `<g class="road-hours" font-size="${n1(hourFs())}">${g.hourSvg(g.tickTimes(), 0, hourFs())}</g>`
       + `<g class="road-hours is-rim"></g>`
@@ -940,7 +952,7 @@
         decideAt(el, o, e);
         return;
       }
-      const hit = e.target.closest("[data-k], [data-l], [data-b], [data-h], .road-more");
+      const hit = e.target.closest("[data-k], [data-l], [data-f], [data-b], [data-h], .road-more");
       if (!hit || !el.contains(hit)) return;
       if (hit.classList.contains("road-more")) {
         /* 連れが多すぎて丸に入りきらないときの「+3」。全部は時間割にあるので、
@@ -954,6 +966,7 @@
       const pick = hit.hasAttribute("data-k") ? stops[Number(hit.getAttribute("data-k"))]
         : hit.hasAttribute("data-l") ? later[Number(hit.getAttribute("data-l"))]
         : hit.hasAttribute("data-h") ? someday[Number(hit.getAttribute("data-h"))]
+        : hit.hasAttribute("data-f") ? steps[Number(hit.getAttribute("data-f"))]
         : loose[Number(hit.getAttribute("data-b"))];
       if (pick && o.open) o.open(pick.t.id, hit);
     });
@@ -1025,7 +1038,8 @@
       });
       /* 重なった丸薬は、あとに始まるほうを上に。まだの延び（橙）はいちばん上（描く順も押せる順も）。shape の「道は一本」。 */
       const ord = st.stops.map((s, k) => k).sort((a, b) =>
-        (st.stops[a].late ? 1 : 0) - (st.stops[b].late ? 1 : 0) || st.stops[a].d0 - st.stops[b].d0 || a - b);
+        (st.stops[a].late ? 1 : 0) - (st.stops[b].late ? 1 : 0) || st.stops[a].d0 - st.stops[b].d0
+        || (st.stops[a].over ? 1 : 0) - (st.stops[b].over ? 1 : 0) || a - b);
       [grpOf, hitOf].forEach((of) => {
         const els = ord.map(of).filter(Boolean);
         const last = els.reduce((m, x) => (m && m.compareDocumentPosition(x) & 4 ? x : m || x), null);
@@ -1033,13 +1047,20 @@
         els.forEach((x) => x.parentNode.insertBefore(x, ref));
       });
       /* 過ぎた日の、時刻を決めたものを押した時刻（2026年9月29日）。区間は決めた
-         まま描くので、押した時刻は足あとと同じ白い粒で。区間の中なら、その車線に。 */
+         まま描くので、押した時刻は足あとと同じ斜線の丸薬で。区間の中なら、その車線に。 */
       const dots = svg.querySelector(".road-steps.is-stops");
       if (dots) dots.innerHTML = !st.past ? "" : st.stops.filter((s) => s.doneMin != null).map((s) => {
         const inside = s.doneMin >= s.at && s.doneMin <= s.eu;
-        const p = g.point(g.dist(s.doneMin), inside ? s.off : 0);
-        return `<circle class="road-step is-stop" cx="${n1(p.x)}" cy="${n1(p.y)}" r="2.8"/>`;
+        return stepPill(g, g.dist(s.doneMin), inside ? s.off : 0, svg.querySelector("mask").id, " is-stop");
       }).join("");
+      /* 斜線は「停留所の丸薬と重なっている」しるし（2026年10月5日・利用者の声「重ならない
+         ものは斜線じゃなくて塗りつぶしに」）。丸い端も含めて、見た目が停留所に触れて
+         いれば斜線、離れていれば塗り。延びた区間（is-late）も停留所に数える。 */
+      const spans = st.stops.map(capIn);
+      svg.querySelectorAll(".road-step").forEach((x) => {
+        const d = Number(x.dataset.d);
+        x.classList.toggle("is-over", spans.some(([a, b]) => d - STOP < b + STOP / 2 && d + STOP > a - STOP / 2));
+      });
     }
 
     // ① 歩いたぶんの道
@@ -1055,10 +1076,10 @@
       const t = Number(x.getAttribute("data-t"));
       x.classList.toggle("is-went", wentTo != null && g.dist(t) <= wentTo + 1e-6);
       x.classList.toggle("is-under", st.stops.some((s) => s.len && t >= s.ga && t <= s.eu));
-      /* 足あとの白丸に重なる数字も縁取る（白丸の上で白い字が消えていた）。 */
+      /* 足あとの丸薬に重なる数字も縁取る（白い中身の上で白い字が消えていた）。 */
       const p = g.point(g.dist(t), 0);
       x.classList.toggle("is-rimmed", [...svg.querySelectorAll(".road-step")].some((c) =>
-        Math.hypot(Number(c.getAttribute("cx")) - p.x, Number(c.getAttribute("cy")) - p.y) < 7));
+        Math.hypot(Number(c.dataset.cx) - p.x, Number(c.dataset.cy) - p.y) < 18));
     });
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
@@ -1088,8 +1109,9 @@
       const live = !done && s.len && nowMin != null && nowMin >= s.ga && nowMin < s.until;
       grp.classList.toggle("is-live", live);
       /* 時計が通った・済ませた停留所は薄く（いまの丸だけ濃く。2026年10月3日・CSS の --road-past）。
-         過ぎた日は塗ったまま（道が薄いので、停留所の形で読む）。 */
-      grp.classList.toggle("is-past", to != null && !live && !st.past);
+         過ぎた日の停留所も同じ薄さ（2026年10月5日・利用者の声「過去は過去なので過去の薄さに
+         統一して」。前は濃いまま塗っていた）。 */
+      grp.classList.toggle("is-past", to != null && !live);
       /* 停留所の上の時の数字。塗ったところは白、まだの白い中は塗りの色。
          **位置は道の上の数字と同じところから動かさない**（2026年10月2日・利用者の声「線上の
          時刻の数値は絶対に動かさないで。そこしか時刻を表すところがない」）。
@@ -1343,7 +1365,7 @@
        いたので、内の車線の丸薬に字が乗っていた。いまは、角の内側のふちを**その時刻に
        居るいちばん内の車線**で測り、上下の通りも外へはみ出した車線（bump）ぶん空け、
        同じ時刻の札は**次の段の車線と同じ上下の順**に詰めて積む（`stackY`）。 */
-    function placeArc(d0, off, time, title, extra = 0, prefer = null) {
+    function placeArc(d0, off, time, title, extra = 0, prefer = null, near = Infinity) {
       const p = g.point(d0, off);
       if (!p.arc) return null;
       const i = p.row, right = i % 2 === 0;
@@ -1356,7 +1378,9 @@
       const bot = g.rowY(i + 1) - STOP / 2 - (bump[(i + 1) + "u"] || 0) - h - 1;
       const ys = [];
       [0, 14, -14, 28, -28].map((dy) => Math.max(top, Math.min(bot, p.y + dy)))
-        .concat(top, bot).forEach((y) => { if (!ys.some((v) => Math.abs(v - y) < 1)) ys.push(y); });
+        .concat(top, bot).forEach((y) => {
+          if (Math.abs(y - p.y) <= near + 1e-6 && !ys.some((v) => Math.abs(v - y) < 1)) ys.push(y);
+        });
       if (prefer != null && prefer >= top - 1e-6 && prefer <= bot + 1e-6) ys.unshift(prefer);
       const tw = textW(time, FS) + 1;
       const full = tw + 4 + textW(title, FS) + 1 + extra;
@@ -1405,9 +1429,53 @@
       });
       return ys;
     })();
+    /* 済んだものの札（2026年10月5日・利用者の声「終わったものは打ち消し線と時刻表示も要らない。
+       丸薬の中心揃えに文字を置いて、中心から線を引いて」）。名前だけを、丸薬のまん中の真上か
+       真下に。入らなければ、まん中から進む向きへ（place と同じ試し方で、時刻だけは無し）。
+       札と丸薬は引き出し線（ties）で結ぶ。
+       まん中が曲がり角なら線は引かず、札を角の内側の同じ高さ（上下に一行ぶんまで）に、
+       角へ寄せて置く（同日・利用者の声「曲線の部分から線を引くのはおかしい。文字の置き方で
+       分かるように」）。 */
+    const ties = [];
+    function placeMid(dm, title, room, span) {
+      const p = g.point(dm);
+      if (p.arc) {
+        const b = placeArc(dm, 0, "", title, room, null, 14);
+        if (b && !b.only) return Object.assign(b, { px: p.x, py: p.y, arc: true });
+        /* 角の内側に入らなければ、丸薬のまっすぐな部分（いちばん長いところ）のまん中へ。
+           それも無ければ角の内側のどこか（角の縁に寄せて、線は引かない）。 */
+        const far = () => {
+          const f = placeArc(dm, 0, "", title, room);
+          return f && !f.only ? Object.assign(f, { px: p.x, py: p.y, arc: true }) : null;
+        };
+        if (!span) return far();
+        const runs = [];
+        for (let d = span[0]; d <= span[1] + 1e-6; d += 1) {
+          if (g.point(d).arc) { runs.push(null); continue; }
+          const r = runs[runs.length - 1];
+          if (r) r[1] = d; else runs.push([d, d]);
+        }
+        const run = runs.filter(Boolean).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
+        return (run && placeMid((run[0] + run[1]) / 2, title, room)) || far();
+      }
+      const full = textW(title, FS) + 1 + room;
+      for (const side of ["u", "d"]) {
+        const occ = lane(p.row, side);
+        const box = fitMid(occ, p.x, full);
+        if (!box) continue;
+        occ.push(box);
+        return { lo: box[0], hi: box[1], y: p.y + (side === "u" ? -1 : 1) * (LANE + occ.dy),
+                 rev: false, only: false, px: p.x, py: p.y };
+      }
+      const b = place(Object.assign({}, p, { x: p.x + (p.ltr ? 3 : -3) }), "", title, TRIES.slice(0, 6), room);
+      return b && Object.assign(b, { px: p.x, py: p.y });
+    }
+    const midOf = (s) => { const [a, b] = capIn(s); return (a + b) / 2; };
     const placeAll = (room) => {
       arcBoxes = [];
-      return st.stops.map((s, k) => g.point(s.d0).arc
+      return st.stops.map((s, k) => closed(s.t)
+        ? placeMid(midOf(s), s.t.title, room[k] || 0, capIn(s))
+        : g.point(s.d0).arc
         ? placeArc(s.d0, s.off, clock(s.at), s.t.title, room[k] || 0, stackY[k])
         : place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
     };
@@ -1443,6 +1511,7 @@
       const time = clock(s.at);
       const extra = more[k] || 0;
       const done = closed(s.t);
+      if (done) { doneLabel(b, s.t.title, extra, `data-k="${k}"`, extra > 0 || crowded(s)); return; }
       const title = b.only ? "" : cut(s.t.title, b.hi - b.lo - textW(time, FS) - 1 - 4 - 1 - extra);
       out.push(html`
         <button type="button" class="road-label ${b.rev ? "is-rev" : ""} ${done ? "is-done" : ""}"
@@ -1452,6 +1521,39 @@
             ? html`<em>ほか${extra}</em>` : ""}
         </button>`);
     });
+
+    /* 済んだものの札（名前だけ）と、丸薬のまん中からの引き出し線。線は、その時間帯に
+       丸薬がほかにもあるとき（busy）か、札が丸薬から離れたときだけ（2026年10月5日・利用者の声
+       「その時間帯にひとつしかないなら、自明なので線はいらない」）。 */
+    // 足あとが停留所に触れる（paint の斜線と同じ見方）
+    function stepOver(d, s) {
+      const [a, b] = capIn(s);
+      return d - STOP < b + STOP / 2 && d + STOP > a - STOP / 2;
+    }
+    function crowded(s) {
+      const [a, b] = capIn(s);
+      return st.stops.some((q) => {
+        if (q === s) return false;
+        const [c, e] = capIn(q);
+        return s.len && q.len ? a < e && c < b : a < e + STOP && c < b + STOP;
+      }) || st.steps.some((x) => stepOver(x.d, s));
+    }
+    function doneLabel(b, name, extra, attr, busy) {
+      const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
+      out.push(html`
+        <button type="button" class="road-label is-done" ${U.raw(attr)}
+                style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
+                aria-label="${name}（済み）${extra ? `、ほか${extra}件` : ""}">
+          <span>${cut(name, b.hi - b.lo - 1 - room)}</span>${extra ? html`<em>ほか${extra}</em>` : ""}
+        </button>`);
+      if (b.arc) return;
+      const h = FS * 0.6;
+      const qx = Math.max(b.lo, Math.min(b.hi, b.px)), qy = Math.max(b.y - h, Math.min(b.y + h, b.py));
+      const len = Math.hypot(qx - b.px, qy - b.py);
+      if (len < STOP / 2 + 3 || !busy && len <= LANE + FS) return;
+      const ux = (qx - b.px) / len, uy = (qy - b.py) / len;
+      ties.push([b.px + ux * (STOP / 2 + 1), b.py + uy * (STOP / 2 + 1), qx - ux, qy - uy]);
+    }
 
     /* 入りきらない題は、ここで字を落として「…」を付けます（2026年9月30日・利用者の声
        「ジモティー受け渡し…   12:00 と、時刻と字の間が空き過ぎて同じ札だと思わなかった」）。
@@ -1481,6 +1583,28 @@
           <b>${time}</b><span>${s.t.title}</span>
         </button>`);
     });
+
+    /* 3b. 足あとの札（2026年10月5日・利用者の声「小さいタスクでも道に何のタスクか名前を」）。
+       済んだ停留所と同じ、名前だけの札（placeMid）。時刻は丸薬の位置で読めるし、書けば決めた
+       約束に見える。置くのは停留所と夜のごろの札のあと（そちらが先。入らなければ出さない）。
+       丸薬が触れ合う足あとは一つの札にまとめて（まん中はその平均）「ほか n」を添え、押せば先の足あとが開く。 */
+    const prints = [];
+    st.steps.map((s, k) => ({ s, k })).sort((a, b) => a.s.d - b.s.d).forEach((x) => {
+      const last = prints[prints.length - 1];
+      if (last && x.s.d - last[last.length - 1].s.d < 2 * STOP) last.push(x);
+      else prints.push([x]);
+    });
+    prints.forEach((pr) => {
+      const { s, k } = pr[0];
+      const extra = pr.length - 1;
+      const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
+      const b = placeMid(pr.reduce((m, x) => m + x.s.d, 0) / pr.length, s.t.title, room);
+      if (b) doneLabel(b, s.t.title, extra, `data-f="${k}"`, extra > 0 || pr.some((x) => st.stops.some((q) => stepOver(x.s.d, q))));
+    });
+    if (ties.length) {
+      out.push(html`<svg class="road-ties" viewBox="0 0 ${W} ${g.H}" preserveAspectRatio="none" aria-hidden="true">${
+        ties.map(([x1, y1, x2, y2]) => html`<line x1="${n1(x1)}" y1="${n1(y1)}" x2="${n1(x2)}" y2="${n1(y2)}"/>`)}</svg>`);
+    }
 
     /* 4. 長期タスク（段8の段B）。道の外周のくぼみに丸で浮かべる。札・人・道と
        重なる場所は使わない（札のほうが先。くぼみは空いたところだけ）。入りきら
