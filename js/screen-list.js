@@ -134,7 +134,7 @@
        is the trip through the list the button was meant to save. */
     /* 直す紙と同じ形（product-sheet.js の frame、roadmap-2.0 の V23）。下の配線は
        その口（名前・★・メモ・候補・最安・行き先・カテゴリ）を使います。 */
-    const f = KN.productSheet.frame({ fav: false, add: true });
+    const f = KN.productSheet.frame({ fav: false, add: true, chips: true });
     const body = f.body;
     const nameEl = f.name;
     const memoEl = f.memo;
@@ -147,6 +147,9 @@
     const addBtn = foot;
 
     const handle = KN.ui.sheet({ title: "買うものを追加", hero: f.hero, content: body, footer: foot, guard: true });
+    /* ＋を押した一拍のうちに名前の欄へ（iOS は操作のうちの focus でしかキーボードを出さない。
+       ui.js の focusNow。V27、利用者が選んだ）。 */
+    KN.ui.focusNow(nameEl);
 
     const cat = f.cat;
     cat.onSelect(() => { catTouched = true; paintMark(); });
@@ -177,7 +180,7 @@
       /* 分けて入れるときは、押す前にボタンがそう言います（R1）。 */
       const n = pieces().length;
       addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
-      renderSuggestions(nameEl, acHost, typed, choose);
+      renderSuggestions(nameEl, acHost, typed, choose, addOften);
       paintDest();
       paintMark();
     }
@@ -244,22 +247,51 @@
     }
 
     nameEl.addEventListener("input", onName);
+    /* 改行キーは、足して紙を開いたまま空にし、続けて次を打てる（V27、利用者が選んだ）。
+       「リストに追加」を押したら、足して閉じ、紙の頭が一覧のその行へ飛んで入る。 */
     nameEl.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
+      if (e.key !== "Enter" || e.isComposing) return;
       e.preventDefault();
-      submit();
+      submit({ keep: true });
     });
     memoEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); submit(); }
+      if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); submit({ keep: true }); }
     });
-    addBtn.addEventListener("click", submit);
+    addBtn.addEventListener("click", () => submit());
 
-    function submit() {
+    /* 続けて打つために、紙を開いたときの姿へ戻す（キーボードは出したまま）。 */
+    function again() {
+      picked = null;
+      catTouched = false;
+      fav = false;
+      nameEl.value = "";
+      f.resetMemo();
+      known.hidden = true;
+      favBtn.classList.remove("is-on");
+      favBtn.setAttribute("aria-pressed", "false");
+      cat.set(store.OTHER_CATEGORY);
+      onName();
+      nameEl.focus();
+    }
+
+    /* 打つ前は、よく買う物（いまリストに無いもの）の札。押せばそのまま足し、紙は開いたまま。 */
+    function addOften(product) {
+      if (store.get().items.some((i) => i.productId === product.id && !i.checked)) return;
+      const rec = store.addItem(product.id);
+      KN.motion.fire("save");
+      flashRow(rec.id);
+      KN.ui.toast(`「${product.name}」を追加しました`, {
+        action: { label: "元に戻す", onClick: () => store.update((s) => { s.items = s.items.filter((i) => i.id !== rec.id); }) },
+      });
+      onName();
+    }
+
+    function submit({ keep = false } = {}) {
       const name = nameEl.value.trim();
       if (!name) { nameEl.focus(); return; }
 
       const many = pieces();
-      if (many.length >= 2) { submitMany(name, many); return; }
+      if (many.length >= 2) { submitMany(name, many, keep); return; }
 
       const product = picked || store.findProductByName(name)
         || store.addProduct({ name, categoryId: cat.current });
@@ -278,6 +310,7 @@
 
       const memo = memoEl.value.trim();
       const already = store.get().items.find((i) => i.productId === product.id && !i.checked);
+      let itemId, said;
       if (already) {
         // Already on the list: nothing to add, but the ★ and the memo are
         // still what was just said about it.
@@ -287,7 +320,8 @@
           if (memo) rec.memo = memo;
           if (fav) rec.fav = true;
         });
-        KN.ui.toast(`「${product.name}」はもうリストにあります`);
+        itemId = already.id;
+        said = `「${product.name}」はもうリストにあります`;
       } else {
         const rec = store.addItem(product.id, { memo });
         if (fav) store.update((s) => {
@@ -295,23 +329,69 @@
           if (it) it.fav = true;
         });
         const c = store.getCategory(product.categoryId);
+        itemId = rec.id;
         // 絵文字は出しません（最優先の約束事）。棚の名前だけで足ります。
-        KN.ui.toast(`${c.name} に「${product.name}」を追加しました`);
+        said = `${c.name} に「${product.name}」を追加しました`;
       }
       KN.motion.fire("save");
-      /* Closed, not cleared. Staying open was meant to save a tap on a long
-         list written in one sitting, but it left the sheet covering the very
-         list it had just changed — so every add ended with a look at a form
-         instead of at the line that appeared. One add, one close, and the ＋
-         is right there under the thumb for the next one. */
+      /* 改行キー：紙は開いたまま空にして、次を打つ（後ろの一覧で行が光る）。 */
+      if (keep) {
+        KN.ui.toast(said);
+        flashRow(itemId);
+        again();
+        return;
+      }
+      /* 「リストに追加」：閉じて、紙の頭がその行へ飛んで入る（トーストは出さない——
+         行そのものが、どこに入ったかを言う）。行が見つからなければ、前のとおりトースト。 */
+      const from = f.hero.getBoundingClientRect();
+      const ghost = { mark: store.productMark(product), name: product.name,
+        cat: store.productColor(product), z: Number(handle.el.style.zIndex) + 1 };
+      handle.el.classList.remove("is-from-origin");   // ＋へは帰らない（行へ行く）
+      f.hero.style.visibility = "hidden";
       handle.close();
+      landOnRow(itemId, from, ghost, said);
+    }
+
+    /* 紙の頭（絵と名前）が、一覧のその行の場所・大きさへ飛んで入り、着いたら行が光る。 */
+    function landOnRow(itemId, from, g, said) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const wrap = els.body.querySelector(`.item-wrap[data-item-id="${itemId}"]`);
+        const target = wrap && (wrap.querySelector(".item") || wrap);
+        if (!target) { KN.ui.toast(said); return; }
+        const scroller = KN.app.scrollerOf(document.querySelector('.screen[data-screen="list"]'));
+        let to = target.getBoundingClientRect();
+        const vh = window.innerHeight;
+        if (scroller && (to.top < 80 || to.bottom > vh - 120)) {
+          scroller.scrollTop += to.top - vh / 3;
+          to = target.getBoundingClientRect();
+        }
+        if (KN.motion.still() || !from.width) { flashRow(itemId); return; }
+        const el = node(html`
+          <div class="land-ghost" aria-hidden="true" style="--cat:${g.cat}">
+            <span class="land-mark">${g.mark}</span><span class="land-name">${g.name}</span>
+          </div>`);
+        el.style.zIndex = String(g.z);
+        document.body.append(el);
+        target.style.visibility = "hidden";
+        const box = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+        const a = el.animate([
+          { ...box(from), borderRadius: "28px" },
+          { ...box(to), borderRadius: getComputedStyle(target).borderRadius || "16px" },
+        ], { duration: KN.motion.ms("--m-land"), easing: KN.motion.ease("--push-e"), fill: "forwards" });
+        const done = () => {
+          el.remove();
+          target.style.visibility = "";
+          flashRow(itemId);
+        };
+        a.finished.then(done, done);
+      }));
     }
 
     /* 分けて入れる（R1）。棚は一つずつ推し直します——「牛乳、洗剤」を同じ棚に
        入れる理由はないので。手で選んだ棚だけは、新しく作る品物みんなへ。
        ★とメモは、打った人が一度に言ったことなので、どの行にも付けます
        （消すより、余ったものを直すほうが安い）。 */
-    function submitMany(whole, names) {
+    function submitMany(whole, names, keep) {
       const memo = memoEl.value.trim();
       const made = [];      // この一押しで作った品物（ひとつにするとき片づける）
       const added = [];     // この一押しで足した行
@@ -333,7 +413,7 @@
         added.push(rec.id);
       });
       KN.motion.fire("save");
-      handle.close();
+      if (keep) again(); else handle.close();
 
       if (!added.length) {
         KN.ui.toast("どれも、もうリストにあります");
@@ -368,19 +448,32 @@
       KN.ui.toast(`「${product.name}」ひとつにしました`);
     }
 
+    renderSuggestions(nameEl, acHost, "", choose, addOften);
     return handle;
+  }
+
+  /* 行が一度だけ光る（足した行の居場所。--m-flash）。 */
+  function flashRow(itemId) {
+    requestAnimationFrame(() => {
+      const w = els.body && els.body.querySelector(`.item-wrap[data-item-id="${itemId}"]`);
+      if (!w) return;
+      w.classList.remove("is-flash");
+      void w.offsetWidth;
+      w.classList.add("is-flash");
+      setTimeout(() => w.classList.remove("is-flash"), KN.motion.ms("--m-flash") + 100);
+    });
   }
 
   /* ---------------- suggestions ---------------- */
 
   /* Matched on the folded name, so a single 「え」 already surfaces
      「エマール」 — nobody switches to katakana to search their own list. */
-  function renderSuggestions(input, host, typed, onPick) {
+  function renderSuggestions(input, host, typed, onPick, onOften) {
     const q = KN.util.foldKana(typed);
-    if (!q) { host.innerHTML = ""; return; }
-
     const onList = new Set(store.get().items.filter((i) => !i.checked).map((i) => i.productId));
-    const found = store.get().products
+    /* 打つ前は、よく買う物（V27）。押せばそのまま足す（onOften）。 */
+    const often = !q && onOften && KN.insights && KN.insights.oftenBought ? KN.insights.oftenBought() : [];
+    const found = q ? store.get().products
       .map((p) => ({ p, key: KN.util.foldKana(p.name) }))
       .filter((r) => r.key.includes(q))
       .sort((a, b) => {
@@ -388,40 +481,36 @@
         const bStarts = b.key.startsWith(q) ? 0 : 1;
         return aStarts - bStarts || a.p.name.localeCompare(b.p.name, "ja");
       })
-      .slice(0, 6)
-      .map((r) => r.p);
+      .slice(0, 8)
+      .map((r) => r.p) : often;
 
     if (!found.length) { host.innerHTML = ""; return; }
 
-    /* Reuse the panel across keystrokes. Rebuilding it restarted the open
-       animation on every character, which read as the list flickering. */
-    let box = host.querySelector(".ac");
+    /* 候補は、名前の下に横一列の札（V27、利用者が選んだ。前は三段の行で場所を取った）。
+       リストにあるものは薄く。入れものは打つたびに使い回す（組み直すと開く動きが毎字
+       走って、瞬いて見えた）。 */
+    let box = host.querySelector(".ac-chips");
     if (!box) {
-      box = node(html`<div class="ac" role="listbox"></div>`);
+      box = node(html`<div class="ac-chips" role="listbox"></div>`);
+      host.innerHTML = "";
       host.append(box);
     } else {
       box.innerHTML = "";
     }
+    box.classList.toggle("is-often", !q);
+    box.scrollLeft = 0;
 
     found.forEach((p) => {
-      const best = store.bestPrice(p);
-      const bestStore = best ? store.getStore(best.storeId) : null;
-      const row = node(html`
-        <button type="button" class="ac-item" role="option">
-          <span class="ac-emoji">${store.productMark(p)}</span>
-          <span class="ac-main">
-            <span class="ac-name">${p.name}</span>
-            <span class="ac-sub">
-              ${best && bestStore ? html`${bestStore.name} ${yen(best.price)} が最安` : "価格の記録なし"}
-              ${onList.has(p.id) ? html` ・<b>リストにあります</b>` : ""}
-            </span>
-          </span>
+      const chip = node(html`
+        <button type="button" class="chip ac-chip ${onList.has(p.id) ? "is-listed" : ""}" role="option"
+                style="--cat:${store.productColor(p)}">
+          <span class="ac-mark" aria-hidden="true">${store.productMark(p)}</span><span>${p.name}</span>
         </button>
       `);
       // Keep the caret where it is; a suggestion is not somewhere to move to.
-      row.addEventListener("mousedown", (e) => e.preventDefault());
-      row.addEventListener("click", () => onPick(p));
-      box.append(row);
+      chip.addEventListener("mousedown", (e) => e.preventDefault());
+      chip.addEventListener("click", () => (q ? onPick(p) : onOften(p)));
+      box.append(chip);
     });
   }
 

@@ -5,8 +5,9 @@
      （kind だけ "daily-range"、ym の代わりに from・to）。記録は一字も変えない。
    - 期間の書き出しはバックアップとして読まない（kind を持つので readBackup が弾く）。
    - 月ぶんの書き出しは前のまま（kind "daily-month"）。
-   - 画面：設定（daily の歯車）→ 書き出し →「期間を選んで書き出す」。始まり・終わりを暦の
-     小窓で選び、書き出すとファイルが落ちる。始まりを終わりより後にすると終わりが追う。
+   - 画面：設定（daily の歯車）→ 書き出し →「期間を選んで書き出す」。始まり・終わりを年・月・日の
+     ドラムの小窓で選び（V27）、書き出すとファイルが落ちる。始まりを終わりより後にすると終わりが追う。
+   - ドラムは目（scroll-snap）を持たず、止まった所から近い行へ寄せる（ui.js の drum）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/daily-range.js */
 const fs = require("fs");
@@ -77,19 +78,39 @@ const { open, checker } = require("./lib");
   t.check("説明文を置かない・評価しない・絵文字なし", s0 && !/できなかった|目標|達成|連続|比べ/.test(s0)
     && !/\p{Extended_Pictographic}/u.test(s0), s0);
 
-  // 始まりを五日前に（暦の小窓。前の月にまたがるなら送る）
+  // 始まりを五日前に（年・月・日のドラム。回して、外を押して閉じると決まる）
   const pick = async (sel, day) => {
     await page.locator(sel).last().click();
-    await page.waitForTimeout(300);
-    for (let i = 0; i < 3; i++) {
-      if (await page.locator(`.pop-cal-day[data-day="${day}"]`).count()) break;
-      const shown = await page.locator(".pop-cal-day").first().getAttribute("data-day");
-      await page.locator(`.pop-cal ${day < shown ? ".js-prev" : ".js-next"}`).click();
-      await page.waitForTimeout(150);
+    await page.waitForTimeout(400);
+    const [y, m, d] = day.split("-").map(Number);
+    for (const [i, v] of [[0, y], [1, m], [2, d]]) {
+      await page.evaluate(([i, v]) => {
+        const col = document.querySelectorAll(".note-pop.is-wheel .note-wheel")[i];
+        const k = [...col.children].findIndex((r) => Number(r.dataset.v) === v);
+        col.scrollTop = k * 40;
+        col.dispatchEvent(new Event("scroll"));
+      }, [i, v]);
+      await page.waitForTimeout(250);   // 月を回すと日の列が組み直る
     }
-    await page.locator(`.pop-cal-day[data-day="${day}"]`).click();
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
   };
+  await page.locator(".js-from").last().click();
+  await page.waitForTimeout(400);
+  t.check("始まりは年・月・日のドラム", await page.evaluate(() =>
+    document.querySelectorAll(".note-pop.is-wheel .note-wheel").length === 3));
+  const snapped = await page.evaluate(async () => {
+    const col = document.querySelectorAll(".note-pop.is-wheel .note-wheel")[2];
+    const css = getComputedStyle(col).scrollSnapType;
+    col.scrollTop = 4 * 40 + 13;   // 行の途中で止まった
+    col.dispatchEvent(new Event("scroll"));
+    await new Promise((r) => setTimeout(r, 900));
+    return { css, top: col.scrollTop };
+  });
+  t.check("目で止めず、止まってから近い行へ寄せる", (snapped.css === "none" || !snapped.css) && Math.abs(snapped.top - 160) < 1,
+    JSON.stringify(snapped));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
   await pick(".js-from", st.from);
   await pick(".js-to", st.to);
   const s1 = await sheetText();

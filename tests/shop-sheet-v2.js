@@ -63,6 +63,7 @@ const { open, checker } = require("./lib");
   });
   t.check("名前からカテゴリと絵を推す", guess.cat === "掃除・洗剤" && guess.mark, JSON.stringify(guess));
   await page.click(".sheet.is-open .pd-fav");
+  await page.click(".sheet.is-open .js-memo-chip");   // V27：足す紙のメモは札を押すと欄が出る
   await page.fill(".sheet.is-open .js-memo", "大きいほう");
   await page.click(".sheet.is-open .js-add");
   await page.waitForTimeout(600);
