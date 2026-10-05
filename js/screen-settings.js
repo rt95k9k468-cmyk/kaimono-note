@@ -531,7 +531,6 @@
     dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
     lock:      { title: "ロック",   build: () => S.lockRows() },
     intake:    { title: "取り込み", build: () => S.intakeRows() },
-    danger: { title: "データを消す",          build: () => S.dangerRows() },
     errors: { title: "困ったときの記録",      build: () => S.errorRows() },
     dropbox: { title: "Dropbox へ送る",       build: () => S.dropboxRows() },
     stores: { title: "お店",                 build: () => [S.storesGroup()] },
