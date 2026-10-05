@@ -741,11 +741,12 @@
   let hatchN = 0;   // 斜線の mask の id（build ごと）
   /* 押した時刻の印（2026年10月5日・利用者の声「白い点を斜線の丸薬に」「過去だから過去の
      丸薬と同じ淡さに」）。足あとも、過ぎた日の押した時刻も、押した時刻を真ん中にした
-     停留所と同じ太さの短い丸薬で、中は斜線、色は過ぎた日の淡さ（長さは決めていないので一定）。 */
+     停留所と同じ太さの短い丸薬で、色は過ぎた日の淡さ（長さは決めていないので一定）。
+     停留所と重なれば中は斜線、離れていれば塗り（paint の is-over）。 */
   function stepPill(g, dist, off, hid, cls) {
     const p = g.point(dist, off);
     const d = g.path(Math.max(g.d0, dist - STOP / 2), Math.min(g.total, dist + STOP / 2), off);
-    return `<g class="road-step${cls}" data-cx="${n1(p.x)}" data-cy="${n1(p.y)}">`
+    return `<g class="road-step${cls}" data-d="${dist}" data-cx="${n1(p.x)}" data-cy="${n1(p.y)}">`
       + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
       + `<path class="road-stop-hatch" mask="url(#${hid})" d="${d}"/></g>`;
   }
@@ -1046,6 +1047,14 @@
         const inside = s.doneMin >= s.at && s.doneMin <= s.eu;
         return stepPill(g, g.dist(s.doneMin), inside ? s.off : 0, svg.querySelector("mask").id, " is-stop");
       }).join("");
+      /* 斜線は「停留所の丸薬と重なっている」しるし（2026年10月5日・利用者の声「重ならない
+         ものは斜線じゃなくて塗りつぶしに」）。丸い端も含めて、見た目が停留所に触れて
+         いれば斜線、離れていれば塗り。延びた区間（is-late）も停留所に数える。 */
+      const spans = st.stops.map(capIn);
+      svg.querySelectorAll(".road-step").forEach((x) => {
+        const d = Number(x.dataset.d);
+        x.classList.toggle("is-over", spans.some(([a, b]) => d - STOP < b + STOP / 2 && d + STOP > a - STOP / 2));
+      });
     }
 
     // ① 歩いたぶんの道

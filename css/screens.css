@@ -6601,9 +6601,11 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-svg .road-lead { stroke: var(--road-go); stroke-width: 13; stroke-dasharray: 2 3; stroke-linecap: butt; }
 .day-road.is-past .road-lead { stroke: var(--road-past); }
 /* 押した時刻の印（足あと・過ぎた日の押した時刻 .is-stop）は斜線の丸薬（day-road.js の
-   stepPill）。済んだ＝過ぎたことなので、過ぎた日の丸薬と同じ淡さ。 */
+   stepPill）。済んだ＝過ぎたことなので、過ぎた日の丸薬と同じ淡さ。斜線は停留所との
+   重なりのしるしなので、重なるとき（.is-over）だけ斜線、ほかは塗り。 */
 .road-step { --road-go: var(--road-past); }
-.road-step .road-stop-hatch { display: inline; }
+.road-step:not(.is-over) .road-stop-in { stroke: var(--road-go); }
+.road-step.is-over .road-stop-hatch { display: inline; }
 /* 押せる透明な線。停留所（.road-hit）と、これからの空いた道（.road-free、段2：
    押すとその時刻に決める紙）。停留所のほうが後ろに書いてあるので、重なれば
    停留所が勝ちます。 */

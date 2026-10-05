@@ -113,7 +113,7 @@ const DAY = "2026-09-29";
       meShown: me.style.display !== "none",
       me: tf ? { x: Number(tf[1]), y: Number(tf[2]) } : null,
       beads,
-      steps: [...road.querySelectorAll(".road-steps:not(.is-stops) .road-step")].map((s) => ({ x: +s.dataset.cx, y: +s.dataset.cy, hatch: !!s.querySelector(".road-stop-hatch[mask]") })),
+      steps: [...road.querySelectorAll(".road-steps:not(.is-stops) .road-step")].map((s) => ({ x: +s.dataset.cx, y: +s.dataset.cy, hatch: s.classList.contains("is-over") && getComputedStyle(s.querySelector(".road-stop-hatch")).display !== "none" })),
       next: (road.querySelector(".road-next") || { textContent: null }).textContent,
       text: road.textContent,
       nowTl: ((document.querySelector("#screen-todo .tl-now") || {}).textContent || "").trim(),
