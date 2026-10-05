@@ -22,7 +22,7 @@
      そのつど数えます。
    - **歩いたぶんの道は濃く、これからは薄く。** 人が立つのは今日だけ。過ぎた日は
      道を薄いままにして停留所だけ塗り、区間は決めたとおりに描いて、押した時刻に
-     白い粒。先の日はぜんぶがこれから。
+     白い粒（足あとは斜線の丸薬）。先の日はぜんぶがこれから。
 
    評価はしません。遅れも達成も言いません。言うのは「いま何時で、次に何が
    あって、そこまでどれだけ空いているか」だけです。
@@ -887,9 +887,14 @@
       return `<g class="road-stop is-later"><path class="road-stop-edge" d="${d}"/>`
         + `<path class="road-stop-in" d="${d}"/></g>`;
     }).join("");
+    /* 足あと（2026年10月5日・利用者の声「白い点を斜線の丸薬に」）。押した時刻を
+       真ん中にした、停留所と同じ太さの短い丸薬で、中は斜線（長さは決めていないので一定）。 */
     const stepSvg = steps.map((s) => {
       const p = g.point(s.d);
-      return `<circle class="road-step" cx="${n1(p.x)}" cy="${n1(p.y)}" r="2.8"/>`;
+      const d = g.path(Math.max(g.d0, s.d - STOP / 2), Math.min(g.total, s.d + STOP / 2));
+      return `<g class="road-step" data-cx="${n1(p.x)}" data-cy="${n1(p.y)}">`
+        + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
+        + `<path class="road-stop-hatch" mask="url(#${hid})" d="${d}"/></g>`;
     }).join("");
     /* 押せるのは、見えている区間より太い透明な線。停留所の丸は 16 単位で、
        指には細いので。 */
@@ -1058,7 +1063,8 @@
       /* 足あとの白丸に重なる数字も縁取る（白丸の上で白い字が消えていた）。 */
       const p = g.point(g.dist(t), 0);
       x.classList.toggle("is-rimmed", [...svg.querySelectorAll(".road-step")].some((c) =>
-        Math.hypot(Number(c.getAttribute("cx")) - p.x, Number(c.getAttribute("cy")) - p.y) < 7));
+        Math.hypot(Number(c.getAttribute("cx") || c.dataset.cx) - p.x,
+                   Number(c.getAttribute("cy") || c.dataset.cy) - p.y) < (c.dataset.cx ? 18 : 7)));
     });
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
