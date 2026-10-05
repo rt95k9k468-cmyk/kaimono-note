@@ -180,7 +180,7 @@ const DAY = "2026-09-30";
     JSON.stringify([night.night, night.labels]));
 
   /* 過ぎた日（2026年9月29日・A＋C）：次の日の時計にして、この日を開く。
-     道は薄いまま停留所だけ塗る。区間は押した時刻まで延ばさず、押した時刻に淡い斜線の丸薬。 */
+     道は薄いまま停留所だけ塗る。区間は押した時刻まで延ばさず、押した時刻に淡い丸薬（停留所と重なれば斜線）。 */
   await page.clock.setFixedTime(new Date(2026, 9, 1, 9, 0));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(400);
@@ -203,7 +203,9 @@ const DAY = "2026-09-30";
       late: grp.classList.contains("is-late"),
       stopPale: getComputedStyle(grp.querySelector(".road-stop-went")).stroke
         === getComputedStyle(road.querySelector(".road-went")).stroke,
-      hatch: !!(pill && pill.querySelector(".road-stop-hatch[mask]")),
+      hatch: !!pill && pill.classList.contains("is-over"),
+      fill: pill ? getComputedStyle(pill.querySelector(".road-stop-in")).stroke : null,
+      edge: pill ? getComputedStyle(pill.querySelector(".road-stop-edge")).stroke : null,
       pale: pill ? getComputedStyle(pill.querySelector(".road-stop-edge")).stroke
         === getComputedStyle(road.querySelector(".road-went") || road).stroke : false,
       dots, want: { x: want.x, y: want.y },
@@ -215,10 +217,10 @@ const DAY = "2026-09-30";
     JSON.stringify([past.stopWent, past.late, past.stopPale]));
   c.check("過ぎた日：区間は押した時刻（7:40）まで延ばさず、決めた 7:20 のまま",
     past.eu === 7 * 60 + 20 && Math.abs(past.d1 - past.d1Want) < 0.01, JSON.stringify([past.eu, past.d1, past.d1Want]));
-  c.check("過ぎた日：押した時刻（7:40）の道の上に、淡い斜線の丸薬",
+  c.check("過ぎた日：押した時刻（7:40）の道の上に淡い丸薬。停留所（7:20 まで）と離れているので斜線でなく塗り",
     past.dots.some((d) => Math.abs(d.x - past.want.x) < 0.2 && Math.abs(d.y - past.want.y) < 0.2)
-      && past.hatch && past.pale,
-    JSON.stringify([past.dots, past.want, past.hatch, past.pale]));
+      && !past.hatch && past.pale && past.fill === past.edge,
+    JSON.stringify([past.dots, past.want, past.hatch, past.pale, past.fill, past.edge]));
 
   c.check("評価の言葉を出さない", !/遅れ|予定通り|達成|未達|できなかった|超過/.test(r.text), r.text);
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
