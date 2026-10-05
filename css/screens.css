@@ -2518,7 +2518,7 @@
 /* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
    持たないので、ここで与えます）。 */
 .diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
-/* 今日（からだ＋体重の数）・記録（食事）・推移（グラフ）は、ノートの一覧と同じ白い丸角の
+/* 今日（からだ）・記録（食事）・推移（体重の数＋グラフ）は、ノートの一覧と同じ白い丸角の
    カードに（10月5日。三つの区画に分けるのをやめ、一枚に戻して境目をカードで言う）。
    中の帯は地を持たない（カードの白のまま）。 */
 .diet-day > .diet-card {
@@ -2528,7 +2528,7 @@
   box-shadow: var(--shadow-1);
 }
 .diet-card .diet-block { background: none; }
-.diet-card.is-today > .diet-block.is-weight { padding-top: 0; }
+.diet-card.is-trend > .diet-block + .diet-block { padding-top: 0; }
 
 /* ---- 今日 ---- */
 
@@ -2699,9 +2699,14 @@
 .diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-1); }
 .diet-cell {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: var(--sp-2) 2px; background: var(--c-surface-2);
+  padding: var(--sp-2) 2px; background: var(--cell, var(--c-surface-2));
   border-radius: var(--r-md); min-width: 0;
 }
+/* 地は灰ではなく、その指標の色をごく薄く（10月5日、灰が暗いと言われた）。輪のくり抜きも同じ `--cell`。 */
+.diet-cell[data-type="steps"]  { --cell: color-mix(in srgb, var(--c-m-steps) 9%, var(--c-surface)); }
+.diet-cell[data-type="burned"] { --cell: color-mix(in srgb, var(--c-m-burn) 9%, var(--c-surface)); }
+.diet-cell[data-type="sleep"]  { --cell: color-mix(in srgb, var(--c-m-sleep) 9%, var(--c-surface)); }
+.diet-cell[data-type="drink"]  { --cell: color-mix(in srgb, var(--c-m-drink) 9%, var(--c-surface)); }
 /* 絵は控えめに。数字より目立つと、読む順が逆になります。 */
 .diet-cell-ico { display: block; color: var(--c-primary); opacity: .82; line-height: 0; }
 .diet-cell-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
@@ -2757,7 +2762,7 @@
 /* 輪の内側をくり抜きます。地は、輪が乗っている枠と同じ色。 */
 .diet-ring::after {
   content: ""; position: absolute; inset: 6px; border-radius: 50%;
-  background: var(--c-surface-2);
+  background: var(--cell, var(--c-surface-2));
 }
 .diet-ring-mid {
   position: relative; z-index: 1;
@@ -3002,6 +3007,8 @@ button.section-note:active { opacity: .55; }
    ここは帯の地の上なので、面を持たせません——白い札を敷くと、からだの段の
    中にもう一枚の紙が現れます（価格の行と同じ考え）。分かれ目は細い線だけ。 */
 .urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* 「飲みたくなった」は灰ではなく、ごく淡いクリーム（10月5日）。 */
+.urge-bar .js-urge { background: color-mix(in srgb, #f3dc9c 30%, var(--c-surface)); }
 .urge-rows { display: flex; flex-direction: column; }
 .urge-row {
   display: flex; align-items: center; gap: var(--sp-2);
@@ -3336,7 +3343,7 @@ a.btn { text-decoration: none; }
 /* 数の枠は押せます。押せることが見た目でも分かるように、行と同じ
    「押したら沈む」を持たせます。 */
 .diet-cell { border: 0; text-align: center; transition: background var(--m-state) var(--ease); }
-.diet-cell:active { background: var(--c-surface-3); }
+.diet-cell:active { background: color-mix(in srgb, var(--c-text) 6%, var(--cell, var(--c-surface-2))); }
 /* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
    持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
    代わりの書体の字で、端末ごとに別の絵になります。描いた鉛筆にしました。
