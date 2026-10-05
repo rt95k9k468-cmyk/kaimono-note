@@ -49,9 +49,10 @@ const { open, checker } = require("./lib");
       weightInTrend: !!day.querySelector(".diet-card.is-trend .diet-hero-top"),
       cells: [...day.querySelectorAll(".diet-cell")].map((c) => {
         const ring = c.querySelector(".diet-ring");
-        return { bg: getComputedStyle(c).backgroundColor, lum: lum(getComputedStyle(c).backgroundColor),
+        return { type: c.dataset.type, bg: getComputedStyle(c).backgroundColor, lum: lum(getComputedStyle(c).backgroundColor),
                  hole: ring ? getComputedStyle(ring, "::after").backgroundColor : "" };
       }),
+      urgeBg: (day.querySelector(".js-urge") && getComputedStyle(day.querySelector(".js-urge")).backgroundColor) || "",
       urge: (() => { const b = day.querySelector(".js-urge"); if (!b) return null;
         const x = document.createElement("canvas").getContext("2d");
         x.fillStyle = getComputedStyle(b).backgroundColor; x.fillRect(0, 0, 1, 1);
@@ -72,7 +73,9 @@ const { open, checker } = require("./lib");
   t.check("今日のカードに輪、推移のカードに体重の数とグラフ", r.inToday && r.weightInTrend && r.inTrend);
   t.check("輪の枠は四つとも別の色で明るい", r.cells.length === 4 && new Set(r.cells.map((c) => c.bg)).size === 4 && r.cells.every((c) => c.lum > 225), JSON.stringify(r.cells));
   t.check("輪のくり抜きは枠と同じ色", r.cells.every((c) => c.hole === c.bg), JSON.stringify(r.cells));
-  t.check("「飲みたくなった」は淡いクリーム（明るく、赤・緑が青より強い）", r.urge && r.urge.b > 220 && r.urge.r > r.urge.b && r.urge.g > r.urge.b, JSON.stringify(r.urge));
+  t.check("「飲みたくなった」は淡いクリーム（明るく、赤・緑が青より強い）", r.urge && r.urge.b > 230 && r.urge.r > r.urge.b && r.urge.g > r.urge.b, JSON.stringify(r.urge));
+  const drinkBg = (r.cells.find((c) => c.type === "drink") || {}).bg;
+  t.check("飲酒の枠も同じクリーム", drinkBg === r.urgeBg, `${drinkBg} / ${r.urgeBg}`);
   t.check("「並べて」の札なし・グラフは幅いっぱい", !r.withCol && r.chartW > r.trendInner - 40, `${r.chartW} / ${r.trendInner}`);
   t.check("AI推計の地は明るい", r.memoLum > 235, String(r.memoLum));
   t.check("分析の文はAI推計の枠の中", r.noteIn);
