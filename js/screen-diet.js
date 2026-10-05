@@ -348,16 +348,16 @@
     // （chart() 側の daysBetween と同じ上限=4000日）。
     const win = range === 0 ? 4000 : Math.max(range, 30);
     const sum = (opts && opts.sum) || D.weightSummary(win, day);
-    /* 一枚に、今日（からだと体重の数）・記録（食事）・推移（グラフ）を、ノートと同じ
+    /* 一枚に、今日（からだ）・記録（食事）・推移（体重の数とグラフ）を、ノートと同じ
        丸角のカードで並べます（10月5日、三つの区画に分けるのをやめた）。 */
     const slide = node(html`
       <section class="card day-slide diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
-        <div class="diet-card is-today">
-          <div class="diet-block is-body js-body-stats"></div>
-          <div class="diet-block is-weight js-today"></div>
-        </div>
+        <div class="diet-card diet-block is-body js-body-stats"></div>
         <div class="diet-card diet-block is-meal js-meals"></div>
-        <div class="diet-card diet-block is-trend js-trend-card"></div>
+        <div class="diet-card is-trend">
+          <div class="diet-block is-weight js-today"></div>
+          <div class="diet-block js-trend-card"></div>
+        </div>
       </section>
     `);
     renderBodyStats(slide.querySelector(".js-body-stats"), card);
