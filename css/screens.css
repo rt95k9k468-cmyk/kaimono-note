@@ -6570,7 +6570,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-variant-numeric: tabular-nums;
 }
 .road-hours text.is-under { display: none; }
-/* 停留所の端ちょうどの数字。ふち・丸い端・道・白丸のどれに重なっても読めるよう、
+/* 停留所の端ちょうどの数字。ふち・丸い端・道・足あとのどれに重なっても読めるよう、
    紙の色で縁取る（位置は動かさない）。 */
 .road-svg .road-hours.is-rim text, .road-svg .road-hours text.is-rimmed { fill: var(--c-primary); stroke: var(--c-sheet); stroke-width: 2.4px; paint-order: stroke; stroke-linejoin: round; }
 .road-hours text.is-went, .road-hours.is-over text { fill: var(--road-in); }
@@ -6599,9 +6599,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    （day-road.js の leadSvg）。停留所の手前の「向かう時間」。
    端は角に（`.road-svg path` の丸い端に勝つよう、詳細度を一つ上げて）。 */
 .road-svg .road-lead { stroke: var(--road-go); stroke-width: 13; stroke-dasharray: 2 3; stroke-linecap: butt; }
-/* 足あと（済ませた、時刻の無いもの）は斜線の丸薬（day-road.js の stepSvg）。
-   過ぎた日の、押した時刻の白い粒（.is-stop）はそのまま。 */
-.road-step { fill: var(--road-in); }
+/* 押した時刻の印（足あと・過ぎた日の押した時刻 .is-stop）は斜線の丸薬（day-road.js の
+   stepPill）。済んだ＝過ぎたことなので、過ぎた日の丸薬と同じ淡さ。 */
+.road-step { --road-go: var(--road-past); }
 .road-step .road-stop-hatch { display: inline; }
 /* 押せる透明な線。停留所（.road-hit）と、これからの空いた道（.road-free、段2：
    押すとその時刻に決める紙）。停留所のほうが後ろに書いてあるので、重なれば
