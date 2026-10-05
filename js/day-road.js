@@ -22,7 +22,7 @@
      そのつど数えます。
    - **歩いたぶんの道は濃く、これからは薄く。** 人が立つのは今日だけ。過ぎた日は
      道を薄いままにして停留所だけ塗り、区間は決めたとおりに描いて、押した時刻に
-     白い粒（足あとは斜線の丸薬）。先の日はぜんぶがこれから。
+     斜線の丸薬（足あとも同じ）。先の日はぜんぶがこれから。
 
    評価はしません。遅れも達成も言いません。言うのは「いま何時で、次に何が
    あって、そこまでどれだけ空いているか」だけです。
@@ -739,6 +739,16 @@
      流れ、札は予定。記録も `at`/`until` も書き換えない（描くたびに引き直すだけ）。
      車線はもう割らないので `off` は 0・`lanes` は 1（下の描き手はそのまま読む）。 */
   let hatchN = 0;   // 斜線の mask の id（build ごと）
+  /* 押した時刻の印（2026年10月5日・利用者の声「白い点を斜線の丸薬に」「過去だから過去の
+     丸薬と同じ淡さに」）。足あとも、過ぎた日の押した時刻も、押した時刻を真ん中にした
+     停留所と同じ太さの短い丸薬で、中は斜線、色は過ぎた日の淡さ（長さは決めていないので一定）。 */
+  function stepPill(g, dist, off, hid, cls) {
+    const p = g.point(dist, off);
+    const d = g.path(Math.max(g.d0, dist - STOP / 2), Math.min(g.total, dist + STOP / 2), off);
+    return `<g class="road-step${cls}" data-cx="${n1(p.x)}" data-cy="${n1(p.y)}">`
+      + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
+      + `<path class="road-stop-hatch" mask="url(#${hid})" d="${d}"/></g>`;
+  }
   /* 自分の区間の終わり。まだの延び（橙）は次の用事の上に重ねるだけなので数えない。 */
   const own = (q) => (q.late ? Math.max(q.ga + 1, q.until) : q.eu);
   function shape(st, nowMin) {
@@ -765,7 +775,7 @@
         }
       }
       /* 過ぎた日は、押した時刻まで延ばさない（決めた区間のまま。押した時刻は
-         paint が小さな白い粒で置く）。2026年9月29日。 */
+         paint が斜線の丸薬で置く）。2026年9月29日。 */
       /* 今日、決めた終わりより前に済ませたら、押した時刻で**縮める**（2026年9月30日・
          利用者の声「12:00-12:30 のタスクを 12:02 で終えたのに、丸薬はそのままの長さ」）。
          始まりより前に済ませても、最低1分ぶん（丸い端どうしで、ほぼ丸）は残す。 */
@@ -839,7 +849,7 @@
            利用者の声「夜のルーティンは 19:39 にすでに終わってるのに、道ではまだきていない
            20時に終わってることになってる」）。前は決めた始まりに1分ぶんの丸で残り、
            人より先の道に「済んだ」停留所が立っていた。札の時刻も済ませた時刻（道の物差しと
-           同じ）。記録は書き換えない。過ぎた日は決めた形のまま（押した時刻は白い粒）。 */
+           同じ）。記録は書き換えない。過ぎた日は決めた形のまま（押した時刻は斜線の丸薬）。 */
         if (today && doneMin != null && doneMin < it.atMin) {
           const d = g.dist(doneMin);
           stops.push({ t, at: doneMin, until: doneMin + (len ? 1 : 0), len, d0: d, lead: 0, dl: d, doneMin });
@@ -887,15 +897,7 @@
       return `<g class="road-stop is-later"><path class="road-stop-edge" d="${d}"/>`
         + `<path class="road-stop-in" d="${d}"/></g>`;
     }).join("");
-    /* 足あと（2026年10月5日・利用者の声「白い点を斜線の丸薬に」）。押した時刻を
-       真ん中にした、停留所と同じ太さの短い丸薬で、中は斜線（長さは決めていないので一定）。 */
-    const stepSvg = steps.map((s) => {
-      const p = g.point(s.d);
-      const d = g.path(Math.max(g.d0, s.d - STOP / 2), Math.min(g.total, s.d + STOP / 2));
-      return `<g class="road-step" data-cx="${n1(p.x)}" data-cy="${n1(p.y)}">`
-        + `<path class="road-stop-edge" d="${d}"/><path class="road-stop-in" d="${d}"/>`
-        + `<path class="road-stop-hatch" mask="url(#${hid})" d="${d}"/></g>`;
-    }).join("");
+    const stepSvg = steps.map((s) => stepPill(g, s.d, 0, hid, "")).join("");
     /* 押せるのは、見えている区間より太い透明な線。停留所の丸は 16 単位で、
        指には細いので。 */
     const hitSvg = stops.map((s, k) => `<path class="road-hit" data-k="${k}" data-grow/>`).join("")
@@ -912,7 +914,7 @@
          塗りの色で。 */
       + `<g class="road-hours is-over"></g><g class="road-hours is-ink"></g>`
       + `<g class="road-steps">${stepSvg}</g><g class="road-steps is-stops"></g>`
-      /* 道の上の時の数字は、足あとの白丸よりも上に（2026年10月2日）。停留所の上のぶんは
+      /* 道の上の時の数字は、足あとの丸薬よりも上に（2026年10月2日）。停留所の上のぶんは
          is-under で隠し、上の層（is-over / is-ink / is-rim）が同じ位置に置き直す。 */
       + `<g class="road-hours" font-size="${n1(hourFs())}">${g.hourSvg(g.tickTimes(), 0, hourFs())}</g>`
       + `<g class="road-hours is-rim"></g>`
@@ -1038,12 +1040,11 @@
         els.forEach((x) => x.parentNode.insertBefore(x, ref));
       });
       /* 過ぎた日の、時刻を決めたものを押した時刻（2026年9月29日）。区間は決めた
-         まま描くので、押した時刻は足あとと同じ白い粒で。区間の中なら、その車線に。 */
+         まま描くので、押した時刻は足あとと同じ斜線の丸薬で。区間の中なら、その車線に。 */
       const dots = svg.querySelector(".road-steps.is-stops");
       if (dots) dots.innerHTML = !st.past ? "" : st.stops.filter((s) => s.doneMin != null).map((s) => {
         const inside = s.doneMin >= s.at && s.doneMin <= s.eu;
-        const p = g.point(g.dist(s.doneMin), inside ? s.off : 0);
-        return `<circle class="road-step is-stop" cx="${n1(p.x)}" cy="${n1(p.y)}" r="2.8"/>`;
+        return stepPill(g, g.dist(s.doneMin), inside ? s.off : 0, svg.querySelector("mask").id, " is-stop");
       }).join("");
     }
 
@@ -1060,11 +1061,10 @@
       const t = Number(x.getAttribute("data-t"));
       x.classList.toggle("is-went", wentTo != null && g.dist(t) <= wentTo + 1e-6);
       x.classList.toggle("is-under", st.stops.some((s) => s.len && t >= s.ga && t <= s.eu));
-      /* 足あとの白丸に重なる数字も縁取る（白丸の上で白い字が消えていた）。 */
+      /* 足あとの丸薬に重なる数字も縁取る（白い中身の上で白い字が消えていた）。 */
       const p = g.point(g.dist(t), 0);
       x.classList.toggle("is-rimmed", [...svg.querySelectorAll(".road-step")].some((c) =>
-        Math.hypot(Number(c.getAttribute("cx") || c.dataset.cx) - p.x,
-                   Number(c.getAttribute("cy") || c.dataset.cy) - p.y) < (c.dataset.cx ? 18 : 7)));
+        Math.hypot(Number(c.dataset.cx) - p.x, Number(c.dataset.cy) - p.y) < 18));
     });
 
     /* 押して決められる道（段2）。**これからの道だけ**——歩いたぶんに時刻を
