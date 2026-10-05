@@ -174,6 +174,25 @@ const FORBIDDEN = [
   t.check("ノートの面に件数・割合が出ない", !/\d\s*件|\d\s*[%％]/.test(nf.text), nf.text.slice(0, 120));
   t.check("daily の席に数の札が出ない", !nf.badge, String(nf.badge));
 
+  /* ---- コピー：先の予定・長期タスク（まだ済んでいないもの）は写さない ---- */
+  const copied = await page.evaluate(async () => {
+    const S = KN.store, U = KN.util;
+    S.addTodo({ title: "試験の先の予定", due: U.shiftDay(U.todayKey(), 2) });
+    S.addTodo({ title: "試験の長期タスク" });
+    KN.app.showScreen("archive");
+    await new Promise((r) => setTimeout(r, 400));
+    let got = null;
+    Object.defineProperty(navigator, "clipboard", { configurable: true,
+      value: { writeText: (s) => { got = s; return Promise.resolve(); } } });
+    const btn = document.querySelector("#screen-archive .js-log-copy");
+    if (!btn) return null;
+    btn.click();
+    await new Promise((r) => setTimeout(r, 200));
+    return got;
+  });
+  t.check("コピーに先の予定・長期タスクが入らない", copied != null
+    && !copied.includes("試験の先の予定") && !copied.includes("試験の長期タスク") && !copied.includes("参考"), String(copied));
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();
