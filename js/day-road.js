@@ -810,8 +810,12 @@
     st.stops.forEach((s) => { if (s.cl != null && cls[s.cl] < 2) s.cl = null; });
     /* 前の丸薬の途中から重なって描くものは、中を斜線に（2026年10月3日・利用者の声「重なって
        いる丸薬の見た目同士が全く同じ」。色・点々・細く・縁と見比べて斜線だけに）。 */
-    st.stops.forEach((s) => {
-      s.over = !!s.len && st.stops.some((q) => q !== s && q.len && q.ga < s.ga && s.ga < own(q));
+    /* 同じ時刻に始まるもの（前の用事のあいだに済ませて押さずに置いた）は、短いほうを斜線に
+       （長さも同じなら一覧で後のほう。2026年10月5日・利用者の声「朝のルーティンと朝のBaby の
+       ようになったときは片方を斜線に」）。 */
+    st.stops.forEach((s, k) => {
+      s.over = !!s.len && st.stops.some((q, j) => q !== s && q.len && s.ga < own(q) && (q.ga < s.ga
+        || q.ga === s.ga && (own(s) < own(q) || own(s) === own(q) && j < k)));
     });
     return st.stops.map((s) => `${n1(s.d0)}/${n1(s.d1)}/${s.late ? 1 : 0}${s.over ? "/o" : ""}`).join(",");
   }
@@ -1034,7 +1038,8 @@
       });
       /* 重なった丸薬は、あとに始まるほうを上に。まだの延び（橙）はいちばん上（描く順も押せる順も）。shape の「道は一本」。 */
       const ord = st.stops.map((s, k) => k).sort((a, b) =>
-        (st.stops[a].late ? 1 : 0) - (st.stops[b].late ? 1 : 0) || st.stops[a].d0 - st.stops[b].d0 || a - b);
+        (st.stops[a].late ? 1 : 0) - (st.stops[b].late ? 1 : 0) || st.stops[a].d0 - st.stops[b].d0
+        || (st.stops[a].over ? 1 : 0) - (st.stops[b].over ? 1 : 0) || a - b);
       [grpOf, hitOf].forEach((of) => {
         const els = ord.map(of).filter(Boolean);
         const last = els.reduce((m, x) => (m && m.compareDocumentPosition(x) & 4 ? x : m || x), null);
@@ -1360,7 +1365,7 @@
        いたので、内の車線の丸薬に字が乗っていた。いまは、角の内側のふちを**その時刻に
        居るいちばん内の車線**で測り、上下の通りも外へはみ出した車線（bump）ぶん空け、
        同じ時刻の札は**次の段の車線と同じ上下の順**に詰めて積む（`stackY`）。 */
-    function placeArc(d0, off, time, title, extra = 0, prefer = null) {
+    function placeArc(d0, off, time, title, extra = 0, prefer = null, near = Infinity) {
       const p = g.point(d0, off);
       if (!p.arc) return null;
       const i = p.row, right = i % 2 === 0;
@@ -1373,7 +1378,9 @@
       const bot = g.rowY(i + 1) - STOP / 2 - (bump[(i + 1) + "u"] || 0) - h - 1;
       const ys = [];
       [0, 14, -14, 28, -28].map((dy) => Math.max(top, Math.min(bot, p.y + dy)))
-        .concat(top, bot).forEach((y) => { if (!ys.some((v) => Math.abs(v - y) < 1)) ys.push(y); });
+        .concat(top, bot).forEach((y) => {
+          if (Math.abs(y - p.y) <= near + 1e-6 && !ys.some((v) => Math.abs(v - y) < 1)) ys.push(y);
+        });
       if (prefer != null && prefer >= top - 1e-6 && prefer <= bot + 1e-6) ys.unshift(prefer);
       const tw = textW(time, FS) + 1;
       const full = tw + 4 + textW(title, FS) + 1 + extra;
@@ -1425,13 +1432,31 @@
     /* 済んだものの札（2026年10月5日・利用者の声「終わったものは打ち消し線と時刻表示も要らない。
        丸薬の中心揃えに文字を置いて、中心から線を引いて」）。名前だけを、丸薬のまん中の真上か
        真下に。入らなければ、まん中から進む向きへ（place と同じ試し方で、時刻だけは無し）。
-       札と丸薬は引き出し線（ties）で結ぶ。 */
+       札と丸薬は引き出し線（ties）で結ぶ。
+       まん中が曲がり角なら線は引かず、札を角の内側の同じ高さ（上下に一行ぶんまで）に、
+       角へ寄せて置く（同日・利用者の声「曲線の部分から線を引くのはおかしい。文字の置き方で
+       分かるように」）。 */
     const ties = [];
-    function placeMid(dm, title, room) {
+    function placeMid(dm, title, room, span) {
       const p = g.point(dm);
       if (p.arc) {
-        const b = placeArc(dm, 0, "", title, room);
-        return b && !b.only ? Object.assign(b, { px: p.x, py: p.y }) : null;
+        const b = placeArc(dm, 0, "", title, room, null, 14);
+        if (b && !b.only) return Object.assign(b, { px: p.x, py: p.y, arc: true });
+        /* 角の内側に入らなければ、丸薬のまっすぐな部分（いちばん長いところ）のまん中へ。
+           それも無ければ角の内側のどこか（角の縁に寄せて、線は引かない）。 */
+        const far = () => {
+          const f = placeArc(dm, 0, "", title, room);
+          return f && !f.only ? Object.assign(f, { px: p.x, py: p.y, arc: true }) : null;
+        };
+        if (!span) return far();
+        const runs = [];
+        for (let d = span[0]; d <= span[1] + 1e-6; d += 1) {
+          if (g.point(d).arc) { runs.push(null); continue; }
+          const r = runs[runs.length - 1];
+          if (r) r[1] = d; else runs.push([d, d]);
+        }
+        const run = runs.filter(Boolean).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
+        return (run && placeMid((run[0] + run[1]) / 2, title, room)) || far();
       }
       const full = textW(title, FS) + 1 + room;
       for (const side of ["u", "d"]) {
@@ -1449,7 +1474,7 @@
     const placeAll = (room) => {
       arcBoxes = [];
       return st.stops.map((s, k) => closed(s.t)
-        ? placeMid(midOf(s), s.t.title, room[k] || 0)
+        ? placeMid(midOf(s), s.t.title, room[k] || 0, capIn(s))
         : g.point(s.d0).arc
         ? placeArc(s.d0, s.off, clock(s.at), s.t.title, room[k] || 0, stackY[k])
         : place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
@@ -1521,6 +1546,7 @@
                 aria-label="${name}（済み）${extra ? `、ほか${extra}件` : ""}">
           <span>${cut(name, b.hi - b.lo - 1 - room)}</span>${extra ? html`<em>ほか${extra}</em>` : ""}
         </button>`);
+      if (b.arc) return;
       const h = FS * 0.6;
       const qx = Math.max(b.lo, Math.min(b.hi, b.px)), qy = Math.max(b.y - h, Math.min(b.y + h, b.py));
       const len = Math.hypot(qx - b.px, qy - b.py);
