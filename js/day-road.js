@@ -1422,9 +1422,35 @@
       });
       return ys;
     })();
+    /* 済んだものの札（2026年10月5日・利用者の声「終わったものは打ち消し線と時刻表示も要らない。
+       丸薬の中心揃えに文字を置いて、中心から線を引いて」）。名前だけを、丸薬のまん中の真上か
+       真下に。入らなければ、まん中から進む向きへ（place と同じ試し方で、時刻だけは無し）。
+       札と丸薬は引き出し線（ties）で結ぶ。 */
+    const ties = [];
+    function placeMid(dm, title, room) {
+      const p = g.point(dm);
+      if (p.arc) {
+        const b = placeArc(dm, 0, "", title, room);
+        return b && !b.only ? Object.assign(b, { px: p.x, py: p.y }) : null;
+      }
+      const full = textW(title, FS) + 1 + room;
+      for (const side of ["u", "d"]) {
+        const occ = lane(p.row, side);
+        const box = fitMid(occ, p.x, full);
+        if (!box) continue;
+        occ.push(box);
+        return { lo: box[0], hi: box[1], y: p.y + (side === "u" ? -1 : 1) * (LANE + occ.dy),
+                 rev: false, only: false, px: p.x, py: p.y };
+      }
+      const b = place(Object.assign({}, p, { x: p.x + (p.ltr ? 3 : -3) }), "", title, TRIES.slice(0, 6), room);
+      return b && Object.assign(b, { px: p.x, py: p.y });
+    }
+    const midOf = (s) => { const [a, b] = capIn(s); return (a + b) / 2; };
     const placeAll = (room) => {
       arcBoxes = [];
-      return st.stops.map((s, k) => g.point(s.d0).arc
+      return st.stops.map((s, k) => closed(s.t)
+        ? placeMid(midOf(s), s.t.title, room[k] || 0)
+        : g.point(s.d0).arc
         ? placeArc(s.d0, s.off, clock(s.at), s.t.title, room[k] || 0, stackY[k])
         : place(g.point(s.d0), clock(s.at), s.t.title, TRIES, room[k] || 0));
     };
@@ -1460,6 +1486,7 @@
       const time = clock(s.at);
       const extra = more[k] || 0;
       const done = closed(s.t);
+      if (done) { doneLabel(b, s.t.title, extra, `data-k="${k}"`); return; }
       const title = b.only ? "" : cut(s.t.title, b.hi - b.lo - textW(time, FS) - 1 - 4 - 1 - extra);
       out.push(html`
         <button type="button" class="road-label ${b.rev ? "is-rev" : ""} ${done ? "is-done" : ""}"
@@ -1469,6 +1496,23 @@
             ? html`<em>ほか${extra}</em>` : ""}
         </button>`);
     });
+
+    /* 済んだものの札（名前だけ）と、丸薬のまん中からの引き出し線。 */
+    function doneLabel(b, name, extra, attr) {
+      const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
+      out.push(html`
+        <button type="button" class="road-label is-done" ${U.raw(attr)}
+                style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
+                aria-label="${name}（済み）${extra ? `、ほか${extra}件` : ""}">
+          <span>${cut(name, b.hi - b.lo - 1 - room)}</span>${extra ? html`<em>ほか${extra}</em>` : ""}
+        </button>`);
+      const h = FS * 0.6;
+      const qx = Math.max(b.lo, Math.min(b.hi, b.px)), qy = Math.max(b.y - h, Math.min(b.y + h, b.py));
+      const len = Math.hypot(qx - b.px, qy - b.py);
+      if (len < STOP / 2 + 3) return;
+      const ux = (qx - b.px) / len, uy = (qy - b.py) / len;
+      ties.push([b.px + ux * (STOP / 2 + 1), b.py + uy * (STOP / 2 + 1), qx - ux, qy - uy]);
+    }
 
     /* 入りきらない題は、ここで字を落として「…」を付けます（2026年9月30日・利用者の声
        「ジモティー受け渡し…   12:00 と、時刻と字の間が空き過ぎて同じ札だと思わなかった」）。
@@ -1500,9 +1544,9 @@
     });
 
     /* 3b. 足あとの札（2026年10月5日・利用者の声「小さいタスクでも道に何のタスクか名前を」）。
-       **名前だけ**を、済んだ札と同じ細い灰色で。時刻は丸薬の位置で読めるし、書けば決めた
+       済んだ停留所と同じ、名前だけの札（placeMid）。時刻は丸薬の位置で読めるし、書けば決めた
        約束に見える。置くのは停留所と夜のごろの札のあと（そちらが先。入らなければ出さない）。
-       丸薬が触れ合う足あとは一つの札にまとめて「ほか n」を添え、押せば先の足あとが開く。 */
+       丸薬が触れ合う足あとは一つの札にまとめて（まん中はその平均）「ほか n」を添え、押せば先の足あとが開く。 */
     const prints = [];
     st.steps.map((s, k) => ({ s, k })).sort((a, b) => a.s.d - b.s.d).forEach((x) => {
       const last = prints[prints.length - 1];
@@ -1513,18 +1557,13 @@
       const { s, k } = pr[0];
       const extra = pr.length - 1;
       const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
-      const d0 = Math.max(g.d0, s.d - STOP / 2);
-      const b = g.point(d0).arc ? placeArc(d0, 0, "", s.t.title, room)
-        : place(g.point(d0), "", s.t.title, TRIES.slice(0, 6), room);
-      if (!b) return;
-      const title = cut(s.t.title, b.hi - b.lo - 1 - 4 - room);
-      out.push(html`
-        <button type="button" class="road-label is-step ${b.rev ? "is-rev" : ""}"
-                data-f="${String(k)}" style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
-                aria-label="${s.t.title}（済み）${extra ? `、ほか${extra}件` : ""}">
-          <span>${title}</span>${extra ? html`<em>ほか${extra}</em>` : ""}
-        </button>`);
+      const b = placeMid(pr.reduce((m, x) => m + x.s.d, 0) / pr.length, s.t.title, room);
+      if (b) doneLabel(b, s.t.title, extra, `data-f="${k}"`);
     });
+    if (ties.length) {
+      out.push(html`<svg class="road-ties" viewBox="0 0 ${W} ${g.H}" preserveAspectRatio="none" aria-hidden="true">${
+        ties.map(([x1, y1, x2, y2]) => html`<line x1="${n1(x1)}" y1="${n1(y1)}" x2="${n1(x2)}" y2="${n1(y2)}"/>`)}</svg>`);
+    }
 
     /* 4. 長期タスク（段8の段B）。道の外周のくぼみに丸で浮かべる。札・人・道と
        重なる場所は使わない（札のほうが先。くぼみは空いたところだけ）。入りきら

@@ -6687,16 +6687,16 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-label.is-rev { flex-direction: row-reverse; }
 .road-label b { flex: none; font-weight: var(--fw-bold); }
 .road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.road-label.is-done span { text-decoration: line-through; color: var(--c-text-3); }
-/* 済ませたものは、時刻も細い灰色で（2026年9月30日・利用者の声「終わった用事の
-   時刻が太字の黒なのはおかしい」）。 */
-.road-label.is-done b { font-weight: var(--fw-regular); color: var(--c-text-3); }
+/* 済ませたもの（停留所も足あとも）は、名前だけを灰色で。時刻も打ち消し線も無し
+   （2026年10月5日・利用者の声。丸薬の淡さで済んだと読める）。丸薬のまん中から
+   引き出し線（.road-ties）で結ぶ。 */
+.road-label.is-done { color: var(--c-text-3); }
+.road-ties { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.road-ties line { stroke: var(--c-text-3); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-linecap: round; }
 /* 時刻の重なった群で、入りきらなかった札の数（「ほか1」）。 */
 .road-label em { flex: none; font-style: normal; color: var(--c-text-2); }
 .road-label.is-later { color: var(--c-text-2); }
 .road-label.is-later b { font-weight: var(--fw-regular); }
-/* 足あとの札（名前だけ）。済んだ札と同じ灰色で、取り消し線は引かない（丸薬の淡さで済んだと読める）。 */
-.road-label.is-step { color: var(--c-text-3); }
 .road-now {
   transform: translate(-50%, -50%); pointer-events: none;
   font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary);

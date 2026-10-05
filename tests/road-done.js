@@ -56,9 +56,12 @@ const DAY = "2026-10-01";
     JSON.stringify([S["夜のルーティン"], r.dNow, r.d2000]));
   c.check("19:30 に済ませた分別ごみ（長さなし）は 19:30 に置く", S["分別ごみ"].at === 19 * 60 + 30,
     JSON.stringify(S["分別ごみ"]));
-  c.check("札の時刻は済ませた時刻（「20:00 夜の…」を出さない）",
-    r.labels.some((t) => /19:39/.test(t)) && !r.labels.some((t) => /20:00/.test(t) && /夜/.test(t)),
+  /* 済んだものの札は名前だけ（2026年10月5日。時刻は丸薬の位置で読む）。 */
+  c.check("済んだものの札は名前だけ（時刻を出さない）",
+    r.labels.includes("夜のルーティン") && !r.labels.some((t) => /\d:\d\d/.test(t)),
     JSON.stringify(r.labels));
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/road-done.png`,
+    clip: await page.evaluate(() => { const b = document.querySelector("#screen-todo .day-road").getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }) });
   c.check("評価の言葉を出さない", !/遅れ|超過|予定通り|達成|早い|前倒し/.test(r.text), r.text);
   c.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
