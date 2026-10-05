@@ -4,7 +4,7 @@
    記録に入り読み直しても残る・外観で「ダーク」が効いて残る・「›」で潜って戻る。
    困ったときの記録：投げたエラー・約束の断り・保存の失敗が控えに入る（store の外の鍵）・
    続けて同じものは一件にまとめて数える・日記の道のものは種類だけ・50件まで・
-   設定の一覧に出てコピーできる・書き出しに乗らない・「すべて削除」で消える。
+   設定の一覧に出てコピーできる・書き出しに乗らない。「データを消す」の口は無い。
    使用量：日記と並べて AI の原文の字数・iPhone の枠の何割か・6割を越えたら一行（色は変えない）。 */
 const { open, checker } = require("./lib");
 
@@ -109,7 +109,7 @@ const { open, checker } = require("./lib");
   await back();
   const B0 = await into("バックアップ");
   t.check("「バックアップ」の一枚から、移した三つが消えている",
-    B0.includes("バックアップを保存") && B0.includes("データを消す")
+    B0.includes("バックアップを保存") && !B0.includes("データを消す")
       && !B0.includes("記録を書き出す") && !B0.includes("年の本") && !B0.includes("おぼえた振り分け"), B0.slice(0, 200));
   t.check("帯の題は「バックアップ」",
     (await page.locator(`${top} .js-nav-title`).innerText()).trim() === "バックアップ");
@@ -213,18 +213,6 @@ const { open, checker } = require("./lib");
     (U2.match(/iPhone[^\n。]*。[^\n。]*。?/) || [""])[0]);
   t.check("その一行で色を変えない", warnColor === true, String(warnColor));
   await back();
-
-  /* ---------------- すべて削除で、困ったときの記録も消える ---------------- */
-  await rowOf("バックアップ").click();
-  await page.waitForTimeout(300);
-  await rowOf("データを消す").click();
-  await page.waitForTimeout(300);
-  await page.locator(`${top} .set-row`, { hasText: "すべて削除" }).last().click();
-  await page.waitForSelector(".js-ok");
-  await page.locator(".js-ok").last().click();
-  await page.waitForFunction(() => KN.store.get().todos.length === 0);
-  await page.waitForTimeout(300);
-  t.check("「すべて削除」で困ったときの記録も消える", await page.evaluate(() => KN.errlog.list().length === 0));
 
   const bad = errors.filter((e) => !/試験のエラー|試験の断り/.test(e));
   t.check("（わざと投げたもののほか）ページのエラーなし", !bad.length, bad.join(" / "));

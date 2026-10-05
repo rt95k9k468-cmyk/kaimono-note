@@ -1,5 +1,5 @@
 /* =========================================================
-   くらしノート — settings screen：バックアップ（保存・確かめる・復元・Dropbox・使用量・日記の取り込み・データを消す）
+   くらしノート — settings screen：バックアップ（保存・確かめる・復元・Dropbox・使用量・日記の取り込み）
    土台（紙の重なり・行の部品・PAGES）は screen-settings.js。分け方は
    docs/settings.md の「ファイルの分け方」。
    ========================================================= */
@@ -803,11 +803,6 @@
         diaryOutRows()
       ),
       foot(`本文の無い日と、書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
-      /* 戻せない操作は、ここからもう一段奥。同じ一枚に置いておくと、
-         「戻す」の隣に「消す」が並ぶことになります。 */
-      card(
-        navRow({ ico: "trash", tint: TINT.danger, title: "データを消す", onTap: () => go("danger") })
-      ),
       file,
       verify,
       diaryFile,
@@ -904,71 +899,8 @@
     ];
   }
 
-  /* ---------------- データを消す（三段奥） ----------------
+  /* 「データを消す」の一段（ダイエットの記録を消す・サンプルを入れる・すべて削除）は
+     外しました（2026年10月5日）。消したい時は無い——戻せない操作の入口を持たない。 */
 
-     どれも**戻せない**操作です。参考画面（Structured）が「アプリを初期化」を
-     詳細設定のいちばん下に置いているのと同じ考えで、ここだけ一段深くして
-     あります。「サンプルデータを入れる」も、見た目は足す操作ですが、中身は
-     いまの記録を**全部置き換える**ものなので、同じ棚に置きます。
-
-     四角の絵は着せません——あれは「押すと続きがある」の印なので、戻れない
-     操作に着せると、普通の行き先と同じ顔になります。 */
-
-  function dangerRows() {
-    const d = store.get().diet;
-    return [
-      foot("押すと戻せません。"),
-      card(dangerRow({
-        ico: "trash", title: "ダイエットの記録を消す",
-        onTap: async () => {
-          const ok = await KN.ui.confirm({
-            title: "ダイエットの記録を消す",
-            message: "体重・食事・ヘルスケアの記録が消えます。直前の状態は自動バックアップに残ります。",
-            okLabel: "消す", danger: true,
-          });
-          if (!ok) return;
-          /* 前はここで控えを取っていませんでした。確認の文は「直前の状態は
-             自動バックアップに残ります」と言うのに、残っていたのは最後に
-             アプリを離れたときの状態でした。 */
-          if (!(await keepBefore("削除前"))) return;
-          store.clearDiet();
-          render();
-          KN.ui.toast("消しました");
-        },
-      })),
-      foot(`体重 ${d.weights.length}件・食事 ${d.meals.length}件・ヘルスケア ${d.health.length}件。`),
-      card(dangerRow({
-        ico: "sparkles", title: "サンプルデータを入れる",
-        onTap: async () => {
-          const ok = await KN.ui.confirm({
-            title: "サンプルを入れますか？",
-            message: "いまのデータはすべて置き換わります。",
-            okLabel: "入れる", danger: true,
-          });
-          if (!ok) return;
-          if (!(await keepBefore("サンプル読込前"))) return;
-          store.loadSample();
-          KN.ui.toast("サンプルを読み込みました");
-        },
-      })),
-      foot("いまの記録は消えます。"),
-      card(dangerRow({
-        ico: "trash", title: "すべて削除",
-        onTap: async () => {
-          const ok = await KN.ui.confirm({
-            title: "すべて削除しますか？",
-            message: "すべての記録と設定が消えます。直前の状態は自動バックアップに残ります。",
-            okLabel: "削除する", danger: true,
-          });
-          if (!ok) return;
-          if (!(await keepBefore("削除前"))) return;
-          store.reset();
-          if (KN.errlog) KN.errlog.clear();
-          KN.ui.toast("すべて消しました");
-        },
-      })),
-    ];
-  }
-
-  Object.assign(S, { dataRows, dropboxRows, dangerRows });
+  Object.assign(S, { dataRows, dropboxRows });
 })();
