@@ -113,7 +113,7 @@ const DAY = "2026-09-29";
       meShown: me.style.display !== "none",
       me: tf ? { x: Number(tf[1]), y: Number(tf[2]) } : null,
       beads,
-      steps: [...road.querySelectorAll(".road-step")].map((s) => ({ x: +s.getAttribute("cx"), y: +s.getAttribute("cy") })),
+      steps: [...road.querySelectorAll(".road-steps:not(.is-stops) .road-step")].map((s) => ({ x: +s.dataset.cx, y: +s.dataset.cy, hatch: s.classList.contains("is-over") && getComputedStyle(s.querySelector(".road-stop-hatch")).display !== "none" })),
       next: (road.querySelector(".road-next") || { textContent: null }).textContent,
       text: road.textContent,
       nowTl: ((document.querySelector("#screen-todo .tl-now") || {}).textContent || "").trim(),
@@ -146,9 +146,10 @@ const DAY = "2026-09-29";
   c.check("連れは人の後ろ（一段目は右へ進むので、左）", r.beads.every((b) => b.x < p743.x - 8),
     JSON.stringify(r.beads.map((b) => b.x)) + " / " + p743.x);
   const p650 = await pointOf(6 * 60 + 50);
-  c.check("済ませた洗濯は 6:50 の道の上に足あと",
-    r.steps.length === 1 && Math.abs(r.steps[0].x - p650.x) < 0.3 && Math.abs(r.steps[0].y - p650.y) < 0.3,
+  c.check("済ませた洗濯は 6:50 の道の上に足あと（斜線の丸薬）",
+    r.steps.length === 1 && r.steps[0].hatch && Math.abs(r.steps[0].x - p650.x) < 0.3 && Math.abs(r.steps[0].y - p650.y) < 0.3,
     JSON.stringify([r.steps, p650]));
+  c.check("足あとには名前だけの札（時刻なし）", r.labels.includes("洗濯"), JSON.stringify(r.labels));
   /* 7:43 は一つ目の角の上（角も時間を持つ）なので、道筋の尻は L でも A でもよい。 */
   c.check("歩いたぶんの道は、人の足もとまで", /([-\d.]+) ([-\d.]+)$/.test(r.went)
     && Math.abs(Number(r.went.match(/([-\d.]+) [-\d.]+$/)[1]) - p743.x) < 0.3, r.went);

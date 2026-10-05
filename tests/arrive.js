@@ -31,14 +31,12 @@ const seed = async (page) => {
   }, DAY);
 };
 
-/* からだは「今日・記録・推移」に分かれた（V24、V26 で既定）。グラフは推移、食事の帯は記録に
-   ある。区画を選んでから、ほかのタブへ出て、もう一度入る（選んだ区画は残る）。rec は入る直前に。 */
-const enterWith = async (page, paneId, rec) => {
+/* ほかのタブへ出て、もう一度からだに入る。rec は入る直前に。 */
+const enterWith = async (page, rec) => {
   if (await page.evaluate(() => KN.app.activeScreen() !== "diet")) {
     await page.click('.tab[data-tab="diet"]');
     await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
   }
-  await page.click(`#screen-diet .js-pane[data-pane="${paneId}"]`);
   await page.click('.tab[data-tab="todo"]');
   await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
   if (rec) await page.evaluate(rec);
@@ -220,7 +218,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("歯車で設定が開く", true);
 
     t.check("エラーなし", errors.length === 0, errors.join("\n"));
-    await enterWith(page, "trend");
+    await enterWith(page);
     /* 体重の線（途中）。 */
     await page.waitForTimeout(150);
     const line = await page.evaluate(() => {
@@ -237,7 +235,6 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
 
     await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
       null, { timeout: 5000 });
-    await page.click('#screen-diet .js-pane[data-pane="today"]');
 
     await browser.close();
   }
@@ -296,7 +293,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("赤の超えたぶんと数は一緒に動く（どのフレームでも揃う）", off === 0, `${off}フレーム ${worst}`);
     t.check("終われば本当の値", Math.abs(end.p - end.target) < 1e-3 && end.show == null, JSON.stringify(end));
 
-    await enterWith(page, "log", () => {
+    await enterWith(page, () => {
       window.__bar = [];
       const t0 = performance.now();
       const tick = () => {

@@ -2518,28 +2518,17 @@
 /* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
    持たないので、ここで与えます）。 */
 .diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
-/* 2.0（V24、V5 の画像で選んだ形）：一枚を「今日・記録・推移」に分ける。帯は `.seg`
-   （字は区画それぞれの中央）。今日＝からだの輪と体重の数、記録＝食事、推移＝グラフと
-   気づいたこと。印は `.diet` に付く（日を払って入る隣の紙も同じ区画で見える）。 */
-.diet.is-pane-today :is(.diet-block.is-meal, .diet-graph, .diet-look),
-.diet.is-pane-log :is(.diet-block.is-body, .diet-block.is-weight, .diet-look),
-.diet.is-pane-trend :is(.diet-block.is-body, .diet-block.is-meal, .diet-hero-top) { display: none; }
-/* 帯は紙の端から端ではなく、中の面の字と同じ左右の余白（`.diet-block`）に。 */
-.diet-panes { margin: var(--sp-2) var(--sp-4) var(--sp-3); }
-/* 三つの区画に色（V27、利用者の声「今日・記録・推移に色を」）。今日＝からだの輪の緑青、
-   記録＝食事の橙、推移＝グラフの青。良し悪しの色ではなく、区画の名札の色。選んだ区画は
-   その色で塗り、白い字（色に黒を混ぜて 4.5:1 以上）。選んでいない区画は字だけその色。
-   三つとも見た目の札で変わらない指標の色から取る（`--c-accent` は札によって橙になる）。 */
-.diet-panes .seg-btn[data-pane="today"] { --pc: var(--c-m-steps); }
-.diet-panes .seg-btn[data-pane="log"]   { --pc: var(--c-m-burn); }
-.diet-panes .seg-btn[data-pane="trend"] { --pc: var(--c-m-drink); }
-.diet-panes .seg-btn { color: color-mix(in srgb, var(--pc) 72%, var(--c-text)); }
-.diet-panes .seg-btn[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--pc) 78%, #000);
-  color: #fff;
+/* 今日（からだ）・記録（食事）・推移（体重の数＋グラフ）は、ノートの一覧と同じ白い丸角の
+   カードに（10月5日。三つの区画に分けるのをやめ、一枚に戻して境目をカードで言う）。
+   中の帯は地を持たない（カードの白のまま）。 */
+.diet-day > .diet-card {
+  margin: 0 var(--sp-4);
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
 }
-/* 推移ではグラフが頭なので、体重の数との仕切りの線は要らない。 */
-.diet.is-pane-trend .diet-graph { border-top: none; padding-top: 0; }
+.diet-card .diet-block { background: none; }
+.diet-card.is-trend > .diet-block + .diet-block { padding-top: 0; }
 
 /* ---- 今日 ---- */
 
@@ -2594,13 +2583,8 @@
 }
 .diet-note b { color: var(--c-text); }
 .diet-note.is-warn { color: var(--c-danger); }
-/* AIが返してきた、その日の評価。読みものなので、ほかの注意書きより
-   少し目立たせます（枠の色でひと目でAI由来と分かるように）。 */
-.diet-ai-note {
-  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--c-accent) 8%, var(--c-surface));
-  color: var(--c-text-2);
-}
+/* AIが返してきた、その日の評価。AI推計の枠の中、コピー・貼り付けの上に（枠がAI由来と言う）。 */
+.diet-ai-note { color: var(--c-text); margin-top: var(--sp-1); }
 
 /* ---- グラフ ---- */
 
@@ -2652,8 +2636,6 @@
 
 /* 並べて見るものの棒。**主役は体重の線**なので、棒は背後に薄く敷きます
    （濃くすると、線より先に目に入って主客が入れ替わります）。 */
-.diet-bar { fill: var(--c-primary); opacity: .17; }
-.diet-axis.is-right { fill: var(--c-text-3); }
 
 /* 飲んだ日の印。濃さは純アルコール量で変えます（SVG側で opacity を付ける）。 */
 .diet-beer-mug { fill: none; stroke: var(--c-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -2667,42 +2649,17 @@
    親の親まで同じことが起き、結局どこかで突っ張ります。
    **札を下の段に置けば、その綱引きは起きません** ——上の期間の列と
    同じ形になって、読み方もそろいます。 */
-/* グラフは体重の枠の中。上の数字とのあいだに線を一本だけ入れます。 */
-.diet-graph {
-  display: flex; flex-direction: column; gap: var(--sp-2);
-  border-top: 1px solid var(--c-border); padding-top: var(--sp-3);
-}
-
-/* グラフと、その右の札。札は縦に積みます——横に並べると六つで
-   はみ出し、下に置くと選ぶたびに目が往復します。 */
-.diet-plot { display: flex; align-items: stretch; gap: var(--sp-2); }
-.diet-plot-chart { flex: 1 1 auto; min-width: 0; }
-.diet-with { flex: none; width: 52px; display: flex; flex-direction: column; gap: 3px; }
-.diet-with-label {
-  display: block; font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); text-align: center;
-}
-.diet-with .chip-row {
-  flex: 1 1 auto;
-  flex-direction: column; justify-content: space-between;
-  gap: 2px; overflow: visible; padding: 0; margin: 0;
-}
-/* 縦に積むので、札の背は指の幅ではなくグラフの高さで決めます
-   （40pxのままだと六つで240pxになり、グラフより札のほうが高くなります）。 */
-.diet-with .chip {
-  flex: 0 0 auto; width: 100%; justify-content: center;
-  height: auto; min-height: 24px; padding: 3px 4px;
-  font-size: var(--fs-xs); line-height: 1.25;
-}
+/* グラフは「推移」のカード。 */
+.diet-graph { display: flex; flex-direction: column; gap: var(--sp-2); }
+.diet-plot-chart { min-width: 0; }
 /* 期間の札も、グラフと同じ枠に入ったぶん詰めます（見出し・数字・
    グラフ・凡例が一枚に載るので、ここだけ大きいと段が目立ちます）。 */
 .diet-graph .chip-row > .chip { padding: 5px 12px; font-size: var(--fs-sm); }
-.diet-with .chip-row > .chip { padding: 3px 4px; font-size: var(--fs-xs); }
 
 .diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .diet-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
-.diet-legend-item i.dot-bar { background: var(--c-primary); opacity: .3; width: 8px; height: 10px; border-radius: 2px; }
 .diet-legend-item i.dot-beer { width: 12px; height: 12px; border-radius: 0; background: none; color: var(--c-accent); line-height: 0; }
 /* 凡例の粒。これは絵ではなく色見本の大きさに合わせます。 */
 .diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }
@@ -2742,9 +2699,16 @@
 .diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-1); }
 .diet-cell {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: var(--sp-2) 2px; background: var(--c-surface-2);
+  padding: var(--sp-2) 2px; background: var(--cell, var(--c-surface-2));
   border-radius: var(--r-md); min-width: 0;
 }
+/* 地は灰ではなく、その指標の色をごく薄く（10月5日、灰が暗いと言われた）。輪のくり抜きも同じ `--cell`。 */
+.diet-cell[data-type="steps"]  { --cell: color-mix(in srgb, var(--c-m-steps) 9%, var(--c-surface)); }
+.diet-cell[data-type="burned"] { --cell: color-mix(in srgb, var(--c-m-burn) 9%, var(--c-surface)); }
+.diet-cell[data-type="sleep"]  { --cell: color-mix(in srgb, var(--c-m-sleep) 9%, var(--c-surface)); }
+/* 飲酒の枠は「飲みたくなった」と同じ淡いクリーム（10月6日。お酒の話を同じ色で）。 */
+.diet-day { --c-urge-bg: color-mix(in srgb, #f3dc9c 18%, var(--c-surface)); }
+.diet-cell[data-type="drink"]  { --cell: var(--c-urge-bg); }
 /* 絵は控えめに。数字より目立つと、読む順が逆になります。 */
 .diet-cell-ico { display: block; color: var(--c-primary); opacity: .82; line-height: 0; }
 .diet-cell-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
@@ -2800,7 +2764,7 @@
 /* 輪の内側をくり抜きます。地は、輪が乗っている枠と同じ色。 */
 .diet-ring::after {
   content: ""; position: absolute; inset: 6px; border-radius: 50%;
-  background: var(--c-surface-2);
+  background: var(--cell, var(--c-surface-2));
 }
 .diet-ring-mid {
   position: relative; z-index: 1;
@@ -3045,6 +3009,8 @@ button.section-note:active { opacity: .55; }
    ここは帯の地の上なので、面を持たせません——白い札を敷くと、からだの段の
    中にもう一枚の紙が現れます（価格の行と同じ考え）。分かれ目は細い線だけ。 */
 .urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* 「飲みたくなった」は灰ではなく、ごく淡いクリーム（10月5日。6日にもう一段淡く、飲酒の枠も同じ色）。 */
+.urge-bar .js-urge { background: var(--c-urge-bg, color-mix(in srgb, #f3dc9c 18%, var(--c-surface))); }
 .urge-rows { display: flex; flex-direction: column; }
 .urge-row {
   display: flex; align-items: center; gap: var(--sp-2);
@@ -3086,19 +3052,6 @@ button.section-note:active { opacity: .55; }
 .diet-kcal-rem b { font-size: var(--fs-lg); color: var(--c-primary); }
 .diet-kcal-rem.is-over b { color: var(--c-danger); }
 .diet-kcal-target { display: block; font-size: var(--fs-xs); color: var(--c-text-3); }
-
-/* PFCは数だけ。棒はやめました——目標のあるなしで意味が変わる絵は、
-   読むたびに「これはどっちの棒だったか」を思い出す手間がかかります。 */
-.diet-pfc-nums {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--sp-3);
-  font-size: var(--fs-sm); color: var(--c-text-2);
-}
-.diet-pfc-num { display: inline-flex; align-items: baseline; gap: 3px; }
-.diet-pfc-num i { font-style: normal; font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-pfc-num b { font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text); }
-.diet-pfc-num small { font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-pfc-num.is-over b { color: var(--c-accent); }
-.diet-pfc-ratio { font-size: var(--fs-xs); color: var(--c-text-3); }
 
 /* ---- カロリーの出どころ（積み上げの帯） ----
 
@@ -3219,10 +3172,13 @@ button.section-note:active { opacity: .55; }
 
 /* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
    「これはどれか」を決めることになります。 */
+/* 地は暗くしない（10月5日、灰の `--c-surface-2` が暗いと言われた）。白いカードの上で、
+   主色をごく薄く混ぜた明るい面にする。 */
 .diet-memo {
   display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1);
   width: 100%; text-align: left;
-  padding: var(--sp-3); background: var(--c-surface-2);
+  padding: var(--sp-3);
+  background: color-mix(in srgb, var(--c-primary-fill) 6%, var(--c-surface));
   border: 0; border-radius: var(--r-md);
 }
 /* 詳しい紙を開く帯。押せる範囲だけボタンに戻し、見た目は前の
@@ -3245,7 +3201,7 @@ button.section-note:active { opacity: .55; }
 .diet-memo.is-blank .diet-memo-body { color: var(--c-text-3); }
 /* 押すだけで完結する二つのボタン。①コピー ②貼り付け、同じ重さで並べます。 */
 .diet-ai-btns { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
-.diet-ai-btns .btn { flex: 1; }
+.diet-ai-btns .btn { flex: 1; background: var(--c-surface); }
 
 .diet-total {
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
@@ -3389,7 +3345,7 @@ a.btn { text-decoration: none; }
 /* 数の枠は押せます。押せることが見た目でも分かるように、行と同じ
    「押したら沈む」を持たせます。 */
 .diet-cell { border: 0; text-align: center; transition: background var(--m-state) var(--ease); }
-.diet-cell:active { background: var(--c-surface-3); }
+.diet-cell:active { background: color-mix(in srgb, var(--c-text) 6%, var(--cell, var(--c-surface-2))); }
 /* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
    持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
    代わりの書体の字で、端末ごとに別の絵になります。描いた鉛筆にしました。
@@ -4999,8 +4955,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    地を覗かせるので、上書きしないと帯（245）の隙間に純白が挟まって
    そこだけ浮いて見えます——帯と同じ `--c-sheet` にします。 */
 .diet { padding: 0 0 var(--sp-6); gap: 0; }
+/* 紙は地だけ（中の三枚のカードが面を持つ）。下の余白はカードの影のぶん。 */
 .diet-day.card {
   background: var(--c-sheet);
+  padding: var(--sp-1) 0 var(--sp-1);
   border-radius: 0;
   border-left: none;
   border-right: none;
@@ -5012,11 +4970,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
 /* 目標や「気づいたこと」の紙も、同じ幅に。 */
 .diet .diet-look.card {
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  box-shadow: none;
-  margin-top: var(--sp-3);
+  margin: var(--sp-2) var(--sp-4) 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
 }
 
 /* 食事の四枠。色のついた板の中に、白い入力欄が入っていました——箱の中の箱
@@ -6570,7 +6527,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-variant-numeric: tabular-nums;
 }
 .road-hours text.is-under { display: none; }
-/* 停留所の端ちょうどの数字。ふち・丸い端・道・白丸のどれに重なっても読めるよう、
+/* 停留所の端ちょうどの数字。ふち・丸い端・道・足あとのどれに重なっても読めるよう、
    紙の色で縁取る（位置は動かさない）。 */
 .road-svg .road-hours.is-rim text, .road-svg .road-hours text.is-rimmed { fill: var(--c-primary); stroke: var(--c-sheet); stroke-width: 2.4px; paint-order: stroke; stroke-linejoin: round; }
 .road-hours text.is-went, .road-hours.is-over text { fill: var(--road-in); }
@@ -6599,8 +6556,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    （day-road.js の leadSvg）。停留所の手前の「向かう時間」。
    端は角に（`.road-svg path` の丸い端に勝つよう、詳細度を一つ上げて）。 */
 .road-svg .road-lead { stroke: var(--road-go); stroke-width: 13; stroke-dasharray: 2 3; stroke-linecap: butt; }
-/* 足あと（済ませた、時刻の無いもの）。歩いたぶんの道の上の、白い粒。 */
-.road-step { fill: var(--road-in); }
+.day-road.is-past .road-lead { stroke: var(--road-past); }
+/* 押した時刻の印（足あと・過ぎた日の押した時刻 .is-stop）は斜線の丸薬（day-road.js の
+   stepPill）。済んだ＝過ぎたことなので、過ぎた日の丸薬と同じ淡さ。斜線は停留所との
+   重なりのしるしなので、重なるとき（.is-over）だけ斜線、ほかは塗り。 */
+.road-step { --road-go: var(--road-past); }
+.road-step:not(.is-over) .road-stop-in { stroke: var(--road-go); }
+.road-step.is-over .road-stop-hatch { display: inline; }
 /* 押せる透明な線。停留所（.road-hit）と、これからの空いた道（.road-free、段2：
    押すとその時刻に決める紙）。停留所のほうが後ろに書いてあるので、重なれば
    停留所が勝ちます。 */
@@ -6682,10 +6644,12 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-label.is-rev { flex-direction: row-reverse; }
 .road-label b { flex: none; font-weight: var(--fw-bold); }
 .road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.road-label.is-done span { text-decoration: line-through; color: var(--c-text-3); }
-/* 済ませたものは、時刻も細い灰色で（2026年9月30日・利用者の声「終わった用事の
-   時刻が太字の黒なのはおかしい」）。 */
-.road-label.is-done b { font-weight: var(--fw-regular); color: var(--c-text-3); }
+/* 済ませたもの（停留所も足あとも）は、名前だけを灰色で。時刻も打ち消し線も無し
+   （2026年10月5日・利用者の声。丸薬の淡さで済んだと読める）。丸薬のまん中から
+   引き出し線（.road-ties）で結ぶ。 */
+.road-label.is-done { color: var(--c-text-3); }
+.road-ties { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.road-ties line { stroke: var(--c-text-3); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-linecap: round; }
 /* 時刻の重なった群で、入りきらなかった札の数（「ほか1」）。 */
 .road-label em { flex: none; font-style: normal; color: var(--c-text-2); }
 .road-label.is-later { color: var(--c-text-2); }
