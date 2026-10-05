@@ -236,7 +236,7 @@
       });
       chipsEl.append(b);
     });
-    p = popOver(anchor, { side: "left", label: k === "nb" ? "ノートブック" : "タグ" });
+    p = popOver(anchor, { side: "left", label: k === "nb" ? "ノートブック" : "タグ", grow: true });
     p.el.classList.add("is-pick");
     p.el.append(box);
     p.place();
@@ -802,7 +802,7 @@
     };
     onEnter(input, () => { U.haptic(); addTyped(); });
     paint();
-    const p = popOver(anchor, { side: "right", label: "タグ", onClose: addTyped });
+    const p = popOver(anchor, { side: "right", label: "タグ", grow: true, onClose: addTyped });
     p.el.classList.add("is-pick");
     p.el.append(box);
     p.place();
@@ -834,6 +834,7 @@
     p = popOver(anchor, {
       side: "left",
       label: "ノートブック",
+      grow: true,
       onClose: () => { if (!settled && input.value.trim()) done(input.value.trim()); },
     });
     p.el.classList.add("is-pick");
@@ -845,92 +846,24 @@
 
      年・月・日の三列。指で回して、止まった真ん中の行が選ばれます。決めるのは
      小窓を閉じたとき（外を押す・Escape）。時・分は元のまま持ち越します。 */
-  const ROW_H = 40;
   function pickDate(anchor, iso, done) {
     const was = new Date(iso);
     const base = isNaN(was.getTime()) ? new Date() : was;
-    const thisYear = new Date().getFullYear();
-    const y0 = Math.min(1990, base.getFullYear());
-    const years = [];
-    for (let y = y0; y <= Math.max(thisYear, base.getFullYear()); y++) years.push(y);
-    const at = { y: base.getFullYear(), m: base.getMonth() + 1, d: base.getDate() };
-    const daysIn = () => new Date(at.y, at.m, 0).getDate();
-
-    const box = node(html`<div class="note-wheels" role="group" aria-label="作った日"></div>`);
-    const col = (k, values, fmt, label) => {
-      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
-      let idx = -1;
-      let t = 0;
-      const fill = (vals) => {
-        el.innerHTML = "";
-        vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option" data-v="${v}">${fmt(v)}</div>`)));
-      };
-      const mark = (i) => {
-        if (i === idx) return;
-        const rows = el.children;
-        if (rows[idx]) rows[idx].removeAttribute("aria-selected");
-        idx = i;
-        if (rows[idx]) rows[idx].setAttribute("aria-selected", "true");
-      };
-      const read = () => Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / ROW_H)));
-      const settle = () => {
-        const i = read();
-        mark(i);
-        const v = Number(el.children[i].dataset.v);
-        if (at[k] !== v) { at[k] = v; if (k !== "d") fitDays(); }
-      };
-      el.addEventListener("scroll", () => {
-        mark(read());
-        clearTimeout(t);
-        t = setTimeout(settle, 120);
-      }, { passive: true });
-      /* 押した行へ回す（指で回さなくても選べる）。 */
-      el.addEventListener("click", (e) => {
-        const r = e.target.closest(".note-wheel-row");
-        if (!r) return;
-        el.scrollTo({ top: [...el.children].indexOf(r) * ROW_H, behavior: "smooth" });
-      });
-      const go = (v) => {
-        const i = Math.max(0, [...el.children].findIndex((r) => Number(r.dataset.v) === v));
-        el.scrollTop = i * ROW_H;
-        mark(i);
-      };
-      return { el, fill, go, settle: () => { clearTimeout(t); settle(); } };
-    };
-    const yc = col("y", years, (v) => `${v}年`, "年");
-    const mc = col("m", null, (v) => `${v}月`, "月");
-    const dc = col("d", null, (v) => `${v}日`, "日");
-    yc.fill(years);
-    mc.fill([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-    let dn = 0;
-    function fitDays() {
-      const n = daysIn();
-      if (n === dn) return;
-      dn = n;
-      at.d = Math.min(at.d, n);
-      dc.fill(Array.from({ length: n }, (_, i) => i + 1));
-      dc.go(at.d);
-    }
-    fitDays();
-    box.append(yc.el, mc.el, dc.el);
-
+    const dd = KN.ui.dateDrums(base, { label: "作った日" });
     const p = popOver(anchor, {
       side: "left",
       label: "作った日",
       onClose: () => {
-        /* 回し終わりを待たずに閉じても、止まっている行で決める。 */
-        yc.settle(); mc.settle(); dc.settle();
+        const at = dd.value();
         const next = new Date(at.y, at.m - 1, at.d, base.getHours(), base.getMinutes(), base.getSeconds());
         if (U.dayKey(next) !== U.dayKey(base)) done(next.toISOString());
       },
     });
     p.el.classList.add("is-pick", "is-wheel");
-    p.el.append(box);
+    p.el.append(dd.el);
     p.place();
     /* 中身が入って高さが決まってから、いまの日へ回しておく。 */
-    yc.go(at.y);
-    mc.go(at.m);
-    dc.go(at.d);
+    dd.go();
   }
 
   /* ---------------- 前の版（段2） ----------------

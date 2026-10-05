@@ -5,6 +5,8 @@
    違う数字では開かない・正しい数字で開く・tasks へ移れば覆いは消える・裏へ回ると
    閉じる・ノートにも覆いが出る・Face ID（仮の認証器）で開く・外すときはパスコード・
    記録は一つも変わらない・絵文字なし。
+   V27：新しい番号は4桁か6桁だけ・Face ID があれば「開ける」が主で鍵盤は「番号」で
+   開く・下の帯は覆いの上で押せる・窓が手を離れたら（blur）覆いだけ被せて戻れば外す。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/lock.js */
 const { open, checker } = require("./lib");
@@ -67,6 +69,10 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await lockRow.click();
   await page.waitForTimeout(400);
   await page.locator(`${top} .set-row.is-sw`, { hasText: "ロック" }).click();
+  await answer("12345");
+  t.check("新しい番号は4桁か6桁だけ（5桁は断る）", !(await page.evaluate(() => KN.lock.enabled())));
+  await page.waitForTimeout(300);
+  await page.locator(`${top} .set-row.is-sw`, { hasText: "ロック" }).click();
   await answer("1234");
   await answer("1234");
   t.check("決めると鍵がかかる設定になる", await page.evaluate(() => KN.lock.enabled()));
@@ -98,6 +104,21 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   const groups = await page.evaluate(() => KN.searchAll.find("しおかぜ", "todo").groups.map((g) => g.id));
   t.check("閉じているあいだ検索は daily を探さない", !groups.includes("daily") && !groups.includes("notes"), groups.join(","));
 
+  const vis = (sel) => page.evaluate((s) => {
+    const e = document.querySelector(s);
+    return !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden";
+  }, sel);
+  t.check("Face ID があれば「開ける」が主", await vis(".lock-open"));
+  t.check("番号の鍵盤は畳んである", !(await vis(".lock-pad")));
+  t.check("下の帯は覆いの上に見える", await page.evaluate(() => {
+    const b = document.querySelector("#tabbar .tab-todo") || document.querySelector("#tabbar .tab");
+    const r = b.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!hit && !!hit.closest("#tabbar");
+  }));
+  await page.click(".lock-num");
+  t.check("「番号」で鍵盤が出る", await vis(".lock-pad"));
+
   await type("0000");
   t.check("違う数字では開かない", await veilOn());
   await type("1234");
@@ -108,16 +129,16 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   /* ---- 裏へ回ると閉じる ---- */
   await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
   t.check("裏へ回ると閉じる", await veilOn());
-  await page.click(".lock-away");
-  await page.waitForTimeout(400);
-  t.check("左上の絵で tasks へ・覆いは消える",
+  await page.click("#tabbar .tab-todo");
+  await page.waitForTimeout(500);
+  t.check("下の帯で tasks へ・覆いは消える",
     (await page.evaluate(() => KN.app.activeScreen())) === "todo" && !(await veilOn()));
   await show("notes");
   t.check("ノートにも覆いが出る", await veilOn());
 
   /* ---- Face ID で開く ---- */
   await cdp.send("WebAuthn.setUserVerified", { authenticatorId: authId, isUserVerified: true });
-  await page.click(".lock-key.is-bio");
+  await page.click(".lock-open");
   await page.waitForFunction(() => !KN.lock.isLocked(), null, { timeout: 5000 }).catch(() => {});
   t.check("Face ID で開く", !(await veilOn()));
   await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
@@ -125,6 +146,19 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForFunction(() => !KN.lock.isLocked(), null, { timeout: 5000 }).catch(() => {});
   t.check("表へ戻ると、押さなくても Face ID が出て開く", !(await veilOn()));
+
+  /* ---- アプリ切り替えの絵（blur）では覆いだけ被せる ---- */
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  t.check("手を離れたら覆いが被さる", await veilOn());
+  t.check("被せただけ・鍵は閉じない", await page.evaluate(() =>
+    !KN.lock.isLocked() && document.querySelector(".lock-veil").classList.contains("is-shield")));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  t.check("戻れば外れる", !(await veilOn()));
+  await show("todo");
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  t.check("ほかのタブでは被せない", !(await veilOn()));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await show("notes");
 
   t.check("覆いに絵文字なし", !EMOJI.test(await page.evaluate(() => document.querySelector(".lock-veil").textContent)));
 

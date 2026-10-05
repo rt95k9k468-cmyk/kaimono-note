@@ -1231,7 +1231,7 @@
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
-  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", onClose } = {}) {
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", grow = false, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
     const r = anchor.getBoundingClientRect();
@@ -1247,7 +1247,7 @@
       pop.classList.remove("is-open");
       document.removeEventListener("keydown", onKey, true);
       cover.remove();
-      setTimeout(() => pop.remove(), KN.motion.ms("--m-state") + 40);
+      setTimeout(() => pop.remove(), KN.motion.ms(grow ? "--m-pop-grow" : "--m-state") + 40);
       if (onClose) onClose();
     };
     /* Escape は一番上の小窓だけが受ける（小窓の中から開いた暦で、下の小窓まで閉じていた）。 */
@@ -1280,7 +1280,17 @@
       pop.classList.toggle("is-up", up);
       pop.style.top = `${top}px`;
       pop.style.setProperty("--pop-top", `${top}px`);
+      /* grow：押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは
+         同じ点へ縮んで帰る（V27、ノートのタグ・ノートブック。利用者の声）。 */
+      if (grow) {
+        const marks = anchor.querySelectorAll("svg");
+        const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
+        const ox = g.left + g.width / 2 - parseFloat(pop.style.left);
+        const oy = g.top + g.height / 2 - top;
+        pop.style.transformOrigin = `${Math.round(ox)}px ${Math.round(oy)}px`;
+      }
     };
+    if (grow) pop.classList.add("is-grow");
     place();
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
     return { el: pop, close, place };
@@ -1357,6 +1367,127 @@
     paint();
     p.el.append(box);
     p.place();
+    return p;
+  }
+
+  /* ---------------- 回すドラム（年・月・日、時・分） ----------------
+
+     手作りのドラムは、どれもこれで止める。前は CSS の `scroll-snap-type: y mandatory`
+     で一行ずつ止めていたが、iPhone では一払いの勢いが次の目で止まり、送りが少なかった
+     （2026年10月5日・利用者の声「一払いの送りが少ない」）。目を外して指の勢いのまま
+     滑らせ、指が離れて止まってから、いちばん近い行へなめらかに寄せる。 */
+  function drum(el, rowH) {
+    let touching = false;
+    let t = 0;
+    const settle = () => {
+      if (touching) return;
+      const to = Math.round(el.scrollTop / rowH) * rowH;
+      if (Math.abs(el.scrollTop - to) > 0.5) el.scrollTo({ top: to, behavior: "smooth" });
+    };
+    const later = () => { clearTimeout(t); t = setTimeout(settle, 90); };
+    el.addEventListener("touchstart", () => { touching = true; clearTimeout(t); }, { passive: true });
+    const up = () => { touching = false; later(); };
+    el.addEventListener("touchend", up, { passive: true });
+    el.addEventListener("touchcancel", up, { passive: true });
+    el.addEventListener("scroll", later, { passive: true });
+    return el;
+  }
+
+  /** 年・月・日の三列。`base` は Date。`years` は [最初, 最後]。値は `value()`（{y, m, d}）。
+      ノートの「作った日」と、daily の期間の書き出しが使う。 */
+  function dateDrums(base, { years: span, label = "日付" } = {}) {
+    const ROW = 40;
+    const y0 = span ? span[0] : Math.min(1990, base.getFullYear());
+    const y1 = span ? span[1] : Math.max(new Date().getFullYear(), base.getFullYear());
+    const years = [];
+    for (let y = y0; y <= y1; y++) years.push(y);
+    const at = { y: base.getFullYear(), m: base.getMonth() + 1, d: base.getDate() };
+    const daysIn = () => new Date(at.y, at.m, 0).getDate();
+    const box = node(html`<div class="note-wheels" role="group" aria-label="${label}"></div>`);
+    const col = (k, fmt, colLabel) => {
+      const el = drum(node(html`<div class="note-wheel" role="listbox" aria-label="${colLabel}" tabindex="0"></div>`), ROW);
+      let idx = -1;
+      let t = 0;
+      const fill = (vals) => {
+        el.innerHTML = "";
+        idx = -1;
+        vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option" data-v="${v}">${fmt(v)}</div>`)));
+      };
+      const mark = (i) => {
+        if (i === idx) return;
+        const rows = el.children;
+        if (rows[idx]) rows[idx].removeAttribute("aria-selected");
+        idx = i;
+        if (rows[idx]) rows[idx].setAttribute("aria-selected", "true");
+      };
+      const read = () => Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / ROW)));
+      const settle = () => {
+        const i = read();
+        mark(i);
+        const v = Number(el.children[i].dataset.v);
+        if (at[k] !== v) { at[k] = v; if (k !== "d") fitDays(); }
+      };
+      el.addEventListener("scroll", () => {
+        mark(read());
+        clearTimeout(t);
+        t = setTimeout(settle, 120);
+      }, { passive: true });
+      /* 押した行へ回す（指で回さなくても選べる）。 */
+      el.addEventListener("click", (e) => {
+        const r = e.target.closest(".note-wheel-row");
+        if (!r) return;
+        el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
+      });
+      const go = (v) => {
+        const i = Math.max(0, [...el.children].findIndex((r) => Number(r.dataset.v) === v));
+        el.scrollTop = i * ROW;
+        mark(i);
+      };
+      return { el, fill, go, settle: () => { clearTimeout(t); settle(); } };
+    };
+    const yc = col("y", (v) => `${v}年`, "年");
+    const mc = col("m", (v) => `${v}月`, "月");
+    const dc = col("d", (v) => `${v}日`, "日");
+    yc.fill(years);
+    mc.fill([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    let dn = 0;
+    function fitDays() {
+      const n = daysIn();
+      if (n === dn) return;
+      dn = n;
+      at.d = Math.min(at.d, n);
+      dc.fill(Array.from({ length: n }, (_, i) => i + 1));
+      dc.go(at.d);
+    }
+    fitDays();
+    box.append(yc.el, mc.el, dc.el);
+    return {
+      el: box,
+      /** 中身が置かれて高さが決まってから、いまの日へ回す。 */
+      go() { yc.go(at.y); mc.go(at.m); dc.go(at.d); },
+      /** 回し終わりを待たずに閉じても、止まっている行で決める。 */
+      value() { yc.settle(); mc.settle(); dc.settle(); return { ...at }; },
+    };
+  }
+
+  /** 日を選ぶドラムの小窓（日付キー）。決めるのは閉じたとき（外を押す・Escape）。
+      期間の書き出し（V22）で、利用者の声「年月日のドラムにしたい」（2026年10月5日）。 */
+  function popDate(anchor, { value, label = "日付", years, onPick } = {}) {
+    const U = KN.util;
+    const key = value || U.todayKey();
+    const [y, m, d] = key.split("-").map(Number);
+    const dd = dateDrums(new Date(y, m - 1, d), { years, label });
+    const p = popOver(anchor, {
+      side: "left", label, cls: "is-pick is-wheel",
+      onClose: () => {
+        const v = dd.value();
+        const next = `${v.y}-${String(v.m).padStart(2, "0")}-${String(v.d).padStart(2, "0")}`;
+        if (next !== key && onPick) onPick(next);
+      },
+    });
+    p.el.append(dd.el);
+    p.place();
+    dd.go();
     return p;
   }
 
@@ -2001,7 +2132,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, popMenu, popCalendar, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    sheet, actionSheet, popOver, popMenu, popCalendar, popDate, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

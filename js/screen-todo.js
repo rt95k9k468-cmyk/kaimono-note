@@ -1275,7 +1275,7 @@
       paintHint();
     }
     function wheelCol(vals, label, fmt) {
-      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
+      const el = KN.ui.drum(node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`), WHEEL_ROW);
       let t = 0;
       const col = {
         el, vals,

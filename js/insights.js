@@ -193,6 +193,35 @@
     return out.sort((a, b) => (b.since / b.every) - (a.since / a.every)).slice(0, LOW_LIMIT);
   }
 
+  /**
+   * よく買う物（買うものの足す紙で、打つ前に札で出す。V27）。買った日の数が多い順、
+   * 並べば最後に買ったのが新しい順。いまリストにあるもの・アーカイブしたものは出さない。
+   * 読むだけで、記録には何も足さない。
+   * @returns {Array<object>} 品物
+   */
+  function oftenBought(limit = 10) {
+    const st = store.get();
+    const onList = new Set();
+    const days = new Map();              // productId → Set(dayKey)
+    const last = new Map();
+    st.items.forEach((i) => {
+      if (!i.checked) { onList.add(i.productId); return; }
+      const t = i.checkedAt ? new Date(i.checkedAt) : null;
+      if (!t || isNaN(t)) return;
+      if (!days.has(i.productId)) days.set(i.productId, new Set());
+      days.get(i.productId).add(KN.util.dayKey(t));
+      last.set(i.productId, Math.max(last.get(i.productId) || 0, t.getTime()));
+    });
+    const out = [];
+    days.forEach((set, pid) => {
+      if (onList.has(pid)) return;
+      const p = store.getProduct(pid);
+      if (!p || p.archived) return;
+      out.push({ p, n: set.size, at: last.get(pid) || 0 });
+    });
+    return out.sort((a, b) => b.n - a.n || b.at - a.at).slice(0, limit).map((r) => r.p);
+  }
+
   /* ---------------- public ---------------- */
 
   /**
@@ -226,5 +255,5 @@
     return [...bestOfKind.values()].sort((a, b) => b.weight - a.weight).slice(0, limit);
   }
 
-  KN.insights = { forItems, runningLow, STALE_DAYS };
+  KN.insights = { forItems, runningLow, oftenBought, STALE_DAYS };
 })();

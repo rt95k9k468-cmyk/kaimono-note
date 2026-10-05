@@ -4,7 +4,7 @@
    - 頭に「今日・記録・推移」（.seg）。字は区画それぞれの中央
    - 今日＝からだの輪と体重の数／記録＝食事／推移＝グラフ（と気づいたこと）
    - 区画を替えても組み直さない。ほかのタブへ行って戻っても、選んだ区画のまま
-   - 評価の言葉・色を足さない
+   - 評価の言葉を足さない。V27：三つの区画に名札の色（選んだ区画はその色で塗り、白い字が読める）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diet-panes.js */
 const { open, checker } = require("./lib");
@@ -73,6 +73,25 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(500);
   const back = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-panes .seg-btn")].map((b) => b.getAttribute("aria-pressed")));
   t.check("ほかのタブから戻っても「推移」のまま", JSON.stringify(back) === JSON.stringify(["false", "false", "true"]), JSON.stringify(back));
+
+  /* V27：区画の色。三つとも違う色で塗られ、白い字が 4.5:1 以上 */
+  const tones = [];
+  for (const id of ["today", "log", "trend"]) {
+    await page.click(`#screen-diet .diet-panes .js-pane[data-pane="${id}"]`);
+    await page.waitForTimeout(350);
+    tones.push(await page.evaluate((id) => {
+      const b = document.querySelector(`#screen-diet .diet-panes .js-pane[data-pane="${id}"]`);
+      const c = document.createElement("canvas").getContext("2d");
+      c.fillStyle = getComputedStyle(b).backgroundColor;
+      c.fillRect(0, 0, 1, 1);
+      const [r, g, bl] = c.getImageData(0, 0, 1, 1).data;
+      const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(bl);
+      return { rgb: `${r},${g},${bl}`, ratio: 1.05 / (L + 0.05) };
+    }, id));
+  }
+  t.check("三つの区画はそれぞれ別の色", new Set(tones.map((x) => x.rgb)).size === 3, JSON.stringify(tones));
+  t.check("選んだ区画の白い字が読める（4.5:1 以上）", tones.every((x) => x.ratio >= 4.5), JSON.stringify(tones));
 
   const text = await page.evaluate(() => document.querySelector("#screen-diet .diet-panes").textContent);
   t.check("帯に評価の言葉・絵文字なし", !/達成|連続|目標|\p{Extended_Pictographic}/u.test(text), text);

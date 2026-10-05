@@ -898,7 +898,7 @@
 
      数量は出しません（使わない、と利用者。記録の qty はそのまま残す）。 */
 
-  function frame({ name = "", categoryId, fav = null, memo = "", add = false } = {}) {
+  function frame({ name = "", categoryId, fav = null, memo = "", add = false, chips = false } = {}) {
     const hero = node(html`
       <div class="sheet-hero pd-hero">
         <span class="hero-mark">
@@ -918,7 +918,19 @@
         </span>
       </div>
     `);
-    const body = node(html`
+    /* chips：カテゴリとメモを、名前の下の札一列に（足す紙。V27、利用者が選んだ）。
+       メモは札を押すと欄が出る。配線（js-row-cat・js-cat-v・js-memo）は枠の形と同じ。 */
+    const body = chips ? node(html`
+      <div class="sheet-detail">
+        <div class="js-ac"></div>
+        <div class="pd-chips">
+          <button type="button" class="chip pd-chip js-row-cat"><span class="chip-dot"></span><span class="js-cat-v"></span>${icon("chevron-down")}</button>
+          <button type="button" class="chip pd-chip js-memo-chip" ${memo ? "hidden" : ""}>${icon("edit")}<span>メモ</span></button>
+        </div>
+        <div class="js-more"></div>
+        <textarea class="d-memo pd-memo js-memo" rows="1" placeholder="メモ（例：詰め替え用）" ${memo ? "" : "hidden"}>${memo}</textarea>
+      </div>
+    `) : node(html`
       <div class="sheet-detail">
         <div class="js-ac"></div>
         <div class="d-card">
@@ -933,6 +945,14 @@
         </div>
       </div>
     `);
+    const memoChip = body.querySelector(".js-memo-chip");
+    if (memoChip) memoChip.addEventListener("click", () => {
+      const ta = body.querySelector(".js-memo");
+      memoChip.hidden = true;
+      ta.hidden = false;
+      haptic();
+      KN.ui.focusNow(ta);
+    });
 
     let current = categoryId || store.OTHER_CATEGORY;
     let onSelect = null;
@@ -941,6 +961,7 @@
       const c = store.getCategory(current);
       body.querySelector(".js-cat-v").textContent = c ? c.name : "";
       hero.style.setProperty("--cat", (c && c.color) || "var(--c-primary-fill)");
+      catRow.style.setProperty("--cat", (c && c.color) || "var(--c-primary-fill)");
     };
     paintCat();
     /* カテゴリは押したそばの小窓で（やることの紙の日付・時刻と同じ）。選んだら一拍で閉じる。 */
@@ -979,6 +1000,12 @@
       dest: hero.querySelector(".js-dest"),
       more: body.querySelector(".js-more"),
       mark: hero.querySelector(".js-icon-pick"),
+      /** メモの札を閉じた姿へ（足す紙で、続けて打つとき）。 */
+      resetMemo() {
+        const ta = body.querySelector(".js-memo");
+        ta.value = "";
+        if (memoChip) { memoChip.hidden = false; ta.hidden = true; }
+      },
       /* 前の categoryPicker と同じ口（current・set）。set は onSelect を呼ばない。 */
       cat: {
         get current() { return current; },

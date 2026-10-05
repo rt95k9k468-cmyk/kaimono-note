@@ -1205,6 +1205,19 @@ button.hero-node:active { scale: .94; }
 .pd-fav.is-on { background: #fff; color: var(--c-warn); }
 .pd-hero .hero-node svg { width: 44px; height: 44px; }
 .pd-size { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--c-border); }
+/* 足す紙の、カテゴリとメモの札一列（V27、product-sheet.js の frame の chips）。 */
+.sheet-detail:has(> .pd-chips) { gap: var(--sp-3); }
+.sheet-detail:has(> .pd-chips) > div:empty { display: none; }
+.pd-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.pd-chip { color: var(--c-text); }
+.pd-chip svg { width: 16px; height: 16px; }
+.pd-chip[hidden] { display: none; }
+.pd-memo {
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+}
+.pd-memo[hidden] { display: none; }
 /* 頭の地は、黒を混ぜた濃い色ではなく行と同じ淡い色（--cat-fill）。字・★・閉じる丸は地の字の
    色に（V26、利用者「開いたときの色が暗い・濃い」10月5日）。 */
 .sheet-hero.pd-hero {
@@ -1912,7 +1925,8 @@ button.hero-node:active { scale: .94; }
 }
 
 /* ---------------- daily・ノートの鍵（js/lock.js） ----------------
-   紙もトーストも隠すので、画面ぜんぶを覆います。ほかのタブへは左上の絵から。 */
+   紙もトーストも隠すので、画面ぜんぶを覆います。下の帯だけは覆いの上に残し、
+   ほかのタブへはそこから（帯の無い設定の上では、左上の絵から）。 */
 .lock-veil {
   position: fixed;
   inset: 0;
@@ -1922,11 +1936,42 @@ button.hero-node:active { scale: .94; }
   align-items: center;
   justify-content: center;
   gap: 28px;
-  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  padding: env(safe-area-inset-top) 24px var(--tabbar-space);
   background: var(--c-bg);
   color: var(--c-text);
 }
 .lock-veil[hidden] { display: none; }
+.lock-veil.on-settings { padding-bottom: env(safe-area-inset-bottom); }
+.is-locked .tabbar { z-index: calc(var(--z-lock) + 1); }
+.lock-veil:not(.on-settings) .lock-away { display: none; }
+/* 被せただけのとき（アプリ切り替えの絵）は、錠の絵だけ。 */
+.lock-veil.is-shield > :not(.lock-ico) { visibility: hidden; }
+/* Face ID が主のときは、大きな「開ける」一つ。番号の鍵盤は「番号」で開きます。 */
+.lock-veil.is-bio-first .lock-dots,
+.lock-veil.is-bio-first .lock-pad { display: none; }
+.lock-open {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 56px;
+  padding: 0 28px;
+  border: 0; border-radius: 28px;
+  background: var(--c-primary);   /* 白い字を載せるので濃いほう（.btn-primary と同じ） */
+  color: #fff;
+  font: inherit;
+  font-size: 20px;
+  font-weight: var(--fw-bold);
+}
+.lock-open svg { width: 26px; height: 26px; }
+.lock-num {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  background: none;
+  color: var(--c-primary);
+  font: inherit;
+  font-size: 17px;
+}
+.lock-open[hidden], .lock-num[hidden] { display: none; }
+@media print { .lock-veil { display: none !important; } }
 .lock-away {
   position: absolute;
   top: calc(env(safe-area-inset-top) + 12px);

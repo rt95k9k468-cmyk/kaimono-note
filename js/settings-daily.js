@@ -64,7 +64,7 @@
     L.bioAvailable().then((ok) => { bio.hidden = !ok && !L.hasBio(); });
     rows.push(card(
       bio,
-      navRow({ ico: "lock", tint: TINT.sub, title: "パスコードを変える", onTap: () => L.changeCode().then(done) })
+      navRow({ ico: "lock", tint: TINT.sub, title: "番号を変える", onTap: () => L.changeCode().then(done) })
     ));
     rows.push(foot("中身は暗号化されません。"));
     return rows;
@@ -236,8 +236,8 @@
     handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
   }
 
-  /* 期間を選んで書き出す（roadmap-2.0 の V22）。始まりと終わりの日を暦の小窓で
-     選び、その間（両端を含む）を月ぶんと同じ形で。既定は今月の一日から今日。
+  /* 期間を選んで書き出す（roadmap-2.0 の V22）。始まりと終わりの日を年・月・日の
+     ドラムの小窓で（V27、利用者の声）選び、その間（両端を含む）を月ぶんと同じ形で。既定は今月の一日から今日。
      本文が入るので、月ぶんと同じ門。読む用だけで、バックアップの形には触れない。 */
   function openRangeExport() {
     if (monthExportBlocked("期間ぶん")) return;
@@ -269,12 +269,13 @@
       body.querySelector(".js-n").textContent = `Daily Log ${n.days.length}日 ・ 積み上げ ${n.entries.length}件`;
       foot.disabled = !n.days.length && !n.entries.length;
     };
-    fromEl.addEventListener("click", () => KN.ui.popCalendar(fromEl, {
-      value: from, label: "始まり",
+    const span = [Math.min(1990, Number(from.slice(0, 4))), Number(to.slice(0, 4))];
+    fromEl.addEventListener("click", () => KN.ui.popDate(fromEl, {
+      value: from, label: "始まり", years: span,
       onPick: (day) => { from = day; if (to < from) to = from; paint(); },
     }));
-    toEl.addEventListener("click", () => KN.ui.popCalendar(toEl, {
-      value: to, label: "終わり",
+    toEl.addEventListener("click", () => KN.ui.popDate(toEl, {
+      value: to, label: "終わり", years: span,
       onPick: (day) => { to = day; if (from > to) from = to; paint(); },
     }));
     paint();

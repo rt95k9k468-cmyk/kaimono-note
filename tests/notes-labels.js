@@ -67,7 +67,8 @@ const { open, checker } = require("./lib");
     return s ? (s.querySelector(".sheet-title") || {}).textContent || s.getAttribute("aria-label") || "" : null;
   });
   /* ノートブック・タグは押した口のすぐ下の小窓（段4.1）。 */
-  const popOpen = () => page.waitForSelector(".note-pop.is-pick");
+  /* 小窓は札の ＞ からふくらむ（V27、--m-pop-grow）ので、ふくらみ終わってから測る。 */
+  const popOpen = async () => { await page.waitForSelector(".note-pop.is-pick.is-open"); await page.waitForTimeout(420); };
   const popEsc = async () => {
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => !document.querySelector(".note-pop-cover"), null, { timeout: 3000 });
@@ -195,6 +196,25 @@ const { open, checker } = require("./lib");
       right: (Math.abs(p.right - a.right) < 2 || p.left >= 8 - 0.5) && p.left >= 0 && p.right <= document.documentElement.clientWidth, label: document.querySelector(".note-pop.is-pick").getAttribute("aria-label") };
   });
   t.check("タグは紙でなく、口のすぐ下の小窓（右そろえ・画面の中）", tp.sheets === 1 && tp.below && tp.right && tp.label === "タグ", JSON.stringify(tp));
+  /* V27：タグの小窓は ＋ の絵からふくらんで出て、同じ点へ縮んで帰る */
+  const grow = await page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-pick");
+    const g = document.querySelector(".sheet.is-note .note-tag-add svg").getBoundingClientRect();
+    const r = p.getBoundingClientRect();
+    const [ox, oy] = getComputedStyle(p).transformOrigin.split(" ").map(parseFloat);
+    return { grow: p.classList.contains("is-grow"), dx: Math.abs(r.left + ox - (g.left + g.width / 2)), dy: Math.abs(r.top + oy - (g.top + g.height / 2)) };
+  });
+  t.check("タグの小窓は ＋ の絵からふくらむ", grow.grow && grow.dx < 2 && grow.dy < 2, JSON.stringify(grow));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(120);
+  const home = await page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-pick");
+    return p ? { there: true, open: p.classList.contains("is-open"), w: p.getBoundingClientRect().width, full: p.offsetWidth } : { there: false };
+  });
+  t.check("閉じると同じ点へ縮んで帰る（すぐには消えない）", home.there && !home.open && home.w < home.full, JSON.stringify(home));
+  await page.waitForFunction(() => !document.querySelector(".note-pop.is-pick"), null, { timeout: 3000 });
+  await page.click(".sheet.is-note .note-tag-add");
+  await popOpen();
   t.check("使われているタグが並ぶ", (await page.evaluate(() =>
     [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).sort().join(","))) === ["京都", "予定", "本"].sort().join(","));
   await page.fill(".note-pick .js-new", "家");

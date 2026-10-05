@@ -6,16 +6,21 @@
    バックアップ・日記の写し）には一切触れません。だから鍵をなくしても、
    消えるものはありません。
 
-   - 開けかたは二つ。**パスコード**（数字。必ずある）と、この端末の
-     **Face ID / Touch ID / Windows Hello**（WebAuthn。あれば）。
-   - パスコードは PBKDF2 で崩した形だけを `settings.lock` に置きます。
+   - 開けかたは二つ。この端末の **Face ID / Touch ID / Windows Hello**
+     （WebAuthn。顔が合わなければ iPhone 純正のパスコードの画面が出る）が主で、
+     アプリの**番号**（4桁か6桁。必ずある）は予備。Face ID を登録していれば、
+     番号の鍵盤は「番号」を押すまで畳んでおきます。
+   - 番号は PBKDF2 で崩した形だけを `settings.lock` に置きます。
      設定なので、バックアップに乗って別の端末へも行きます。
    - Face ID の鍵は**端末ごと**なので state に置かず、この端末の
      localStorage（`DEV_KEY`）にだけ置きます。バックアップには乗りません。
    - 裏へ回ったらすぐ閉じます（`visibilitychange` / `pagehide`）。
      立ち上げたときも閉じたところから。
    - 覆いは daily・ノートと、そこから潜った設定の上にだけ出します。
-     ほかのタブへは覆いの上の絵（tasks）から移れます。
+     下の帯は覆いの上に残すので、ほかのタブへはそこから（設定の上では
+     帯が無いので左上の絵から）。
+   - アプリ切り替えの絵に中身が写らないよう、窓が手を離れた瞬間（`blur`）にも
+     覆いだけ被せます（閉じはしない。戻れば外す）。
    - 全体の検索は、閉じているあいだ daily とノートを探しません
      （search-all.js の `hides`）。
    ========================================================= */
@@ -36,6 +41,8 @@
   let typed = "";
   let busy = false;
   let here = null;
+  let shield = false;
+  let padOpen = false;
 
   /* ---------------- 鍵の形 ---------------- */
 
@@ -130,6 +137,7 @@
       <div class="lock-veil" role="dialog" aria-modal="true" aria-label="ロック" hidden>
         <button type="button" class="lock-away" aria-label="tasks へ">${icon("checklist")}</button>
         <div class="lock-ico">${icon("lock")}</div>
+        <button type="button" class="lock-open">${icon("face-id")}<span>開ける</span></button>
         <div class="lock-dots" aria-hidden="true"></div>
         <div class="lock-pad">
           ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => html`<button type="button" class="lock-key" data-k="${n}">${n}</button>`)}
@@ -137,15 +145,18 @@
           <button type="button" class="lock-key" data-k="0">0</button>
           <button type="button" class="lock-key is-back" aria-label="1文字消す">${icon("backspace")}</button>
         </div>
+        <button type="button" class="lock-num">番号</button>
       </div>
     `);
     veil.querySelectorAll("[data-k]").forEach((b) =>
       b.addEventListener("click", () => press(b.dataset.k)));
     veil.querySelector(".is-back").addEventListener("click", () => { typed = typed.slice(0, -1); dots(); });
     veil.querySelector(".is-bio").addEventListener("click", tryBio);
+    veil.querySelector(".lock-open").addEventListener("click", tryBio);
+    veil.querySelector(".lock-num").addEventListener("click", () => { padOpen = true; dots(); });
     veil.querySelector(".lock-away").addEventListener("click", () => KN.app.showScreen("todo"));
     document.addEventListener("keydown", (e) => {
-      if (!veil || veil.hidden) return;
+      if (!veil || veil.hidden || veil.classList.contains("is-shield")) return;
       if (/^[0-9]$/.test(e.key)) { press(e.key); e.preventDefault(); }
       else if (e.key === "Backspace") { typed = typed.slice(0, -1); dots(); e.preventDefault(); }
     });
@@ -158,6 +169,11 @@
     const n = Math.max(c && c.len ? c.len : 4, typed.length);
     veil.querySelector(".lock-dots").innerHTML =
       Array.from({ length: n }, (_, i) => `<span class="lock-dot${i < typed.length ? " is-on" : ""}"></span>`).join("");
+    /* Face ID があれば、それを主に。番号の鍵盤は「番号」を押すまで畳みます。 */
+    const bioFirst = !!devId() && !padOpen;
+    veil.classList.toggle("is-bio-first", bioFirst);
+    veil.querySelector(".lock-open").hidden = !bioFirst;
+    veil.querySelector(".lock-num").hidden = !bioFirst;
     veil.querySelector(".is-bio").hidden = !devId();
   }
 
@@ -191,6 +207,7 @@
   function unlock() {
     locked = false;
     typed = "";
+    padOpen = false;
     paint();
   }
 
@@ -202,11 +219,15 @@
   /** 覆いを出す・しまう。`id` はいま出ている画面（省けば app に聞く）。 */
   function paint(id) {
     here = id || (KN.app.activeScreen ? KN.app.activeScreen() : here);
-    const on = enabled() && locked && guards(here);
+    const shut = enabled() && locked && guards(here);
+    const on = shut || (enabled() && shield && guards(here));
     if (on && !veil) build();
     if (!veil) return;
     if (on && veil.hidden) { typed = ""; dots(); }
     veil.hidden = !on;
+    /* 被せただけ（閉じてはいない）ときは、鍵盤も出しません。 */
+    veil.classList.toggle("is-shield", on && !shut);
+    veil.classList.toggle("on-settings", here === "settings");
     document.documentElement.classList.toggle("is-locked", on);
   }
 
@@ -221,6 +242,7 @@
     if (!enabled()) return;
     locked = true;
     tried = false;
+    padOpen = false;
     paint();
   }
 
@@ -238,21 +260,36 @@
   });
   window.addEventListener("pagehide", close);
   window.addEventListener("pageshow", autoBio);
-  window.addEventListener("focus", autoBio);
+  /* アプリ切り替えの絵は、裏へ回る（hidden）より前の「手を離れた」瞬間に撮られる
+     ことがあるので、そこで覆いだけ被せます。共有の紙・ファイルを選ぶ画面でも
+     被さりますが、戻れば外れ、鍵は閉じません。 */
+  window.addEventListener("blur", () => {
+    if (!enabled() || shield) return;
+    shield = true;
+    paint();
+  });
+  window.addEventListener("focus", () => {
+    if (shield) { shield = false; paint(); }
+    autoBio();
+  });
 
   /* ---------------- 設定から ---------------- */
 
-  async function askCode(title) {
-    const v = await KN.ui.prompt({ title, label: "パスコード", inputMode: "numeric", secret: true, okLabel: "OK" });
+  /* 新しく決める番号は 4桁か6桁。前に決めた番号（4〜12桁）は、そのまま通します。 */
+  async function askCode(title, fresh) {
+    const v = await KN.ui.prompt({ title, label: fresh ? "4桁か6桁" : "番号", inputMode: "numeric", secret: true, okLabel: "OK" });
     if (v == null) return null;
     const code = String(v).replace(/\D/g, "");
-    if (code.length < 4 || code.length > 12) { KN.ui.toast("4〜12桁の数字で"); return null; }
+    if (fresh ? !(code.length === 4 || code.length === 6) : (code.length < 4 || code.length > 12)) {
+      KN.ui.toast(fresh ? "4桁か6桁の数字で" : "数字で");
+      return null;
+    }
     return code;
   }
 
   async function turnOn() {
     if (!supported()) return false;
-    const a = await askCode("パスコード");
+    const a = await askCode("番号", true);
     if (!a) return false;
     const b = await askCode("もう一度");
     if (b == null) return false;
@@ -263,7 +300,7 @@
   }
 
   async function verify() {
-    const v = await askCode("いまのパスコード");
+    const v = await askCode("いまの番号");
     if (v == null) return false;
     if (await check(v)) return true;
     KN.ui.toast("違います");
@@ -279,7 +316,7 @@
 
   async function changeCode() {
     if (!(await verify())) return false;
-    const a = await askCode("新しいパスコード");
+    const a = await askCode("新しい番号", true);
     if (!a) return false;
     const b = await askCode("もう一度");
     if (a !== b) { if (b != null) KN.ui.toast("合いませんでした"); return false; }

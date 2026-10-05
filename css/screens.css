@@ -161,6 +161,47 @@
   white-space: nowrap;
 }
 
+/* 買うものの足す紙の候補（V27）。名前の下に横一列の札、横へ送る。打つ前はよく買う物。
+   リストにあるものは薄く（押せば選べる）。 */
+.ac-chips {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--sp-4));
+  padding: var(--sp-1) var(--sp-4);
+}
+.ac-chips::-webkit-scrollbar { display: none; }
+.ac-chip {
+  border-color: color-mix(in srgb, var(--cat) var(--cat-line), var(--c-border));
+  background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-surface));
+  color: var(--c-text);
+}
+.ac-chip.is-listed { opacity: .45; }
+.ac-mark { display: flex; align-items: center; color: var(--cat); }
+.ac-mark svg { width: 20px; height: 20px; }
+
+/* 「リストに追加」で閉じたとき、紙の頭（絵と名前）が一覧のその行へ飛んで入る（V27、
+   screen-list.js の landOnRow。--m-land）。 */
+.land-ghost {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-surface));
+  color: var(--c-text);
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.land-mark { display: flex; color: var(--cat); flex: none; }
+.land-mark svg { width: 28px; height: 28px; }
+.land-name { overflow: hidden; text-overflow: ellipsis; }
+
 /* category group — no heading any more, just a run of rows wearing the same
    colour down their left edge. The gap is what still separates one run from
    the next. */
@@ -2508,6 +2549,17 @@
 .diet.is-pane-trend :is(.diet-block.is-body, .diet-block.is-meal, .diet-hero-top) { display: none; }
 /* 帯は紙の端から端ではなく、中の面の字と同じ左右の余白（`.diet-block`）に。 */
 .diet-panes { margin: var(--sp-2) var(--sp-4) var(--sp-3); }
+/* 三つの区画に色（V27、利用者の声「今日・記録・推移に色を」）。今日＝からだの輪の緑青、
+   記録＝食事の橙、推移＝グラフの青。良し悪しの色ではなく、区画の名札の色。選んだ区画は
+   その色で塗り、白い字（色に黒を混ぜて 4.5:1 以上）。選んでいない区画は字だけその色。 */
+.diet-panes .seg-btn[data-pane="today"] { --pc: var(--c-m-steps); }
+.diet-panes .seg-btn[data-pane="log"]   { --pc: var(--c-m-burn); }
+.diet-panes .seg-btn[data-pane="trend"] { --pc: var(--c-accent); }
+.diet-panes .seg-btn { color: color-mix(in srgb, var(--pc) 72%, var(--c-text)); }
+.diet-panes .seg-btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--pc) 78%, #000);
+  color: #fff;
+}
 /* 推移ではグラフが頭なので、体重の数との仕切りの線は要らない。 */
 .diet.is-pane-trend .diet-graph { border-top: none; padding-top: 0; }
 
@@ -5518,6 +5570,18 @@ textarea.note-title-in {
 .note-pop.is-up { transform-origin: bottom right; }
 .note-pop.is-left.is-up { transform-origin: bottom left; }
 .note-pop.is-open { transform: none; opacity: 1; }
+/* ノートのタグ・ノートブックの小窓は、押した札の ＞ から（transform-origin は ui.js の
+   popOver が札の絵の位置に置く）ふくらんで出て、同じ点へ縮んで帰る（V27）。薄れるのは、
+   出るときは初めの半分、帰るときは終わりの4割だけ——縮んでいく姿を見せるため。 */
+.note-pop.is-grow {
+  transform: scale(.06);
+  transition: transform var(--m-pop-grow) var(--push-e),
+              opacity calc(var(--m-pop-grow) * .4) var(--ease) calc(var(--m-pop-grow) * .6);
+}
+.note-pop.is-grow.is-open {
+  transform: none;
+  transition: transform var(--m-pop-grow) var(--push-e), opacity calc(var(--m-pop-grow) * .5) var(--ease);
+}
 /* ノートブック・タグを選ぶ小窓。キーボードが出ても見えている高さに収める。 */
 .note-pop.is-pick {
   width: min(320px, calc(100vw - 16px));
@@ -5565,7 +5629,8 @@ textarea.note-title-in {
   height: 200px;
   padding: 80px 0;
   overflow-y: auto;
-  scroll-snap-type: y mandatory;
+  /* 目（scroll-snap）は置かない。iPhone で一払いの勢いが次の目で止まっていた。
+     止まってから近い行へ寄せるのは js（ui.js の drum）。 */
   scrollbar-width: none;
   overscroll-behavior: contain;
   -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent);
@@ -5577,7 +5642,6 @@ textarea.note-title-in {
   display: flex;
   align-items: center;
   justify-content: center;
-  scroll-snap-align: center;
   font-size: var(--fs-lg);
   color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
