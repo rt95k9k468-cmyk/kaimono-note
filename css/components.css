@@ -100,8 +100,6 @@ button, [role="tab"] {
 /* 塗りの面は、頼まれたときだけ出します。線と塗りは同じ座標に重なって
    いるので、切り替えても絵は動きません。 */
 .ui-ico .ico-solid { display: none; }
-.ui-ico.is-solid .ico-line { display: none; }
-.ui-ico.is-solid .ico-solid { display: block; }
 
 /* 「ここは面で言う」ところ。★の付いた印と、右へ払ったときに出る札です。
 
@@ -114,12 +112,10 @@ button, [role="tab"] {
    の指定は、手描きの一族へ戻したときのために残してあります。 */
 .fav.is-on .ui-ico .ico-line,
 .pd-fav.is-on .ui-ico .ico-line,
-.fav-toggle.is-on .icon-pick-mark .ui-ico .ico-line,
 .trip-head .ui-ico .ico-line,
 .swipe-yes .ui-ico .ico-line { display: none; }
 .fav.is-on .ui-ico .ico-solid,
 .pd-fav.is-on .ui-ico .ico-solid,
-.fav-toggle.is-on .icon-pick-mark .ui-ico .ico-solid,
 .trip-head .ui-ico .ico-solid,
 .swipe-yes .ui-ico .ico-solid { display: block; }
 /* もう置いてあるものを外すほうの札は、線に戻します（付ける／外すは別の
@@ -268,27 +264,10 @@ button, [role="tab"] {
   min-height: 46px;
 }
 
-.memo-text {
-  flex: 1;
-  margin: 0;
-  font-size: var(--fs-lg);
-  line-height: var(--lh-body);
-  color: var(--c-text);
-  white-space: pre-wrap;      /* the line breaks were typed on purpose */
-  overflow-wrap: anywhere;
-  cursor: text;
-}
 
-.memo-text.is-empty { color: var(--c-text-3); }
 
 .memo .icon-btn { flex: none; width: 34px; height: 34px; margin-top: -2px; }
 
-.memo-input {
-  height: auto;
-  padding: var(--sp-3) var(--sp-4);
-  resize: vertical;
-  line-height: var(--lh-body);
-}
 
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
@@ -325,15 +304,6 @@ button, [role="tab"] {
   transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease);
 }
 .icon-auto.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
-
-/* 「今回買う」in the add sheet. Wears the star's own colour rather than the
-   app's green, so it is plainly the same ★ that appears on the row. */
-.fav-toggle .icon-pick-mark svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); color: var(--c-text-3); }
-.fav-toggle.is-on {
-  border-color: var(--c-warn);
-  background: color-mix(in srgb, var(--c-warn) 13%, var(--c-surface));
-}
-.fav-toggle.is-on .icon-pick-mark svg { color: var(--c-warn); fill: currentColor; }
 
 .icon-pick-mark {
   flex: none;
