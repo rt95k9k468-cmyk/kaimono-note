@@ -1,8 +1,7 @@
 /* V23 買うものの紙：足す紙と直す紙を、やることの紙と同じ形に（docs/roadmap-2.0.md の V23・
-   docs/shopping.md の末の節）。2026年10月4日。2.0 の切り替えの中だけ。
+   docs/shopping.md の末の節）。2026年10月4日。V26（10月5日）で既定に。
 
-   - オフ：前の紙のまま（足す紙に「今回買う」の段、直す紙に数量）
-   - オン：足す紙も直す紙も、頭（絵・名前・名前の右に小さな★）＋カテゴリの札＋メモ
+   - 足す紙も直す紙も、頭（絵・名前・名前の右に小さな★）＋カテゴリの札＋メモ
    - 足す紙：名前からカテゴリと絵を推す・★とメモを付けて足せる
    - 直す紙：★は行の★・カテゴリは小窓で選ぶ（手で選んだ印が付く）・名前を直せる・
      メモが残る・数量を出さない・⋯ の「リストから外す」（元に戻せる）・値段の欄は下に
@@ -15,10 +14,6 @@ const { open, checker } = require("./lib");
   const t = checker("shop-sheet-v2");
   const { browser, page, errors } = await open();
 
-  const setV2 = (on) => page.evaluate((v) => {
-    KN.store.update((s) => { s.settings.v2 = v; });
-    KN.app.applyV2(v);
-  }, on);
   const toList = async () => {
     await page.evaluate(() => KN.app.showScreen("todo"));
     await page.waitForTimeout(200);
@@ -36,7 +31,7 @@ const { open, checker } = require("./lib");
       memo: !!s.querySelector(".d-memo"),
       qty: !!s.querySelector(".js-minus"),
       oldFav: !!s.querySelector(".fav-toggle"),
-      price: /値段を追加/.test(s.textContent),
+      price: !!s.querySelector(".price-add .js-price"),
     };
   });
   const closeTop = async () => {
@@ -47,25 +42,11 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.store.loadSample());
   await toList();
 
-  /* ---- オフ：前のまま ---- */
-  await page.mouse.click(350, 805);
-  await page.waitForTimeout(800);
-  const a0 = await top();
-  t.check("オフ：足す紙は前のまま（今回買うの段・頭なし）", a0 && a0.oldFav && !a0.hero, JSON.stringify(a0));
-  await closeTop();
-  await page.locator("#screen-list .item").first().click();
-  await page.waitForTimeout(800);
-  const e0 = await top();
-  t.check("オフ：直す紙は前のまま（数量あり・頭なし）", e0 && e0.qty && !e0.hero, JSON.stringify(e0));
-  await closeTop();
-
-  /* ---- オン：足す紙 ---- */
-  await setV2(true);
-  await toList();
+  /* ---- 足す紙 ---- */
   await page.mouse.click(350, 805);
   await page.waitForTimeout(800);
   const a1 = await top();
-  t.check("オン：足す紙は頭・名前・★・カテゴリ・メモ", a1 && a1.hero && a1.name && a1.fav && a1.cat && a1.memo && !a1.oldFav && !a1.qty, JSON.stringify(a1));
+  t.check("足す紙は頭・名前・★・カテゴリ・メモ", a1 && a1.hero && a1.name && a1.fav && a1.cat && a1.memo && !a1.oldFav && !a1.qty, JSON.stringify(a1));
   const lay = await page.evaluate(() => {
     const s = [...document.querySelectorAll(".sheet.is-open")].pop();
     const n = s.querySelector(".pd-hero .js-name").getBoundingClientRect();
@@ -93,15 +74,28 @@ const { open, checker } = require("./lib");
   });
   t.check("★とメモを付けて足せる", added && added.fav && added.memo === "大きいほう" && added.cat === "掃除・洗剤", JSON.stringify(added));
 
-  /* ---- オン：直す紙 ---- */
+  /* ---- 直す紙 ---- */
   await page.evaluate((id) => {
     const it = KN.store.get().items.find((i) => i.id === id);
     KN.productSheet.open(it.productId, { itemId: id });
   }, added.id);
   await page.waitForTimeout(800);
   const e1 = await top();
-  t.check("オン：直す紙も同じ形（頭・名前・★・カテゴリ・メモ）", e1 && e1.hero && e1.name && e1.fav && e1.cat && e1.memo, JSON.stringify(e1));
+  t.check("直す紙も同じ形（頭・名前・★・カテゴリ・メモ）", e1 && e1.hero && e1.name && e1.fav && e1.cat && e1.memo, JSON.stringify(e1));
   t.check("数量を出さない・値段の欄は下にある", !e1.qty && e1.price, JSON.stringify(e1));
+  /* V26：頭は行と同じ淡い地・字は地の字の色。値段を足す欄は枠の箱なし、お店の札は一列。 */
+  const look = await page.evaluate(() => {
+    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
+    /* color-mix は color(srgb 0〜1) で、ふつうの色は rgb(0〜255) で返る。 */
+    const lum = (c) => { const k = c.startsWith("color(") ? 1 : 255; const m = c.replace(/^color\(srgb/, "").match(/[\d.]+/g).map(Number); return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / k; };
+    const hero = getComputedStyle(s.querySelector(".pd-hero"));
+    const form = s.querySelector(".price-add");
+    const chips = [...form.querySelectorAll(".chip")].map((c) => c.getBoundingClientRect().top);
+    return { bg: lum(hero.backgroundColor), fg: lum(getComputedStyle(s.querySelector(".pd-hero .js-name")).color),
+      dashed: getComputedStyle(form).borderStyle.includes("dashed"), oneRow: chips.every((t) => Math.abs(t - chips[0]) < 1), n: chips.length };
+  });
+  t.check("頭は淡い地に濃い字", look.bg > 0.7 && look.fg < 0.3, JSON.stringify(look));
+  t.check("値段を足す欄は枠の箱なし・お店の札は一列", !look.dashed && look.oneRow && look.n >= 2, JSON.stringify(look));
   const favOn = await page.evaluate(() => document.querySelector(".sheet.is-open .pd-fav").getAttribute("aria-pressed"));
   t.check("★は行の★", favOn === "true");
   await page.click(".sheet.is-open .pd-fav");

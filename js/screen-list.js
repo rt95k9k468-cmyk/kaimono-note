@@ -132,79 +132,34 @@
        The ★ took its place, because *that* is a decision made while writing
        the list — this trip or sometime — and going back to set it afterwards
        is the trip through the list the button was meant to save. */
-    /* 2.0 の切り替えの中では、直す紙と同じ形（product-sheet.js の frame、roadmap-2.0 の
-       V23）。下の配線は同じ口（名前・★・メモ・候補・最安・行き先・カテゴリ）を使います。 */
-    const f = KN.productSheet.isV2() ? KN.productSheet.frame({ fav: false, add: true }) : null;
-    const body = f ? f.body : node(html`
-      <div class="stack" style="gap:18px">
-        <div class="field">
-          <span class="field-label">商品名</span>
-          <input class="input js-name" placeholder="例：食器用洗剤"
-                 autocomplete="off" autocapitalize="off" spellcheck="false"
-                 aria-autocomplete="list">
-          <div class="js-ac"></div>
-          <span class="field-hint js-known" hidden></span>
-          <button type="button" class="dest-chip js-dest" hidden></button>
-        </div>
-
-        <div class="field">
-          <button type="button" class="icon-auto fav-toggle js-fav" aria-pressed="false">
-            <span class="icon-pick-mark js-fav-mark">${icon("star")}</span>
-            <span class="icon-pick-text">
-              <span class="icon-pick-name">今回買う</span>
-            </span>
-          </button>
-        </div>
-
-        <div class="field">
-          <span class="field-label">カテゴリ</span>
-          <div class="js-cat"></div>
-        </div>
-
-        <label class="field">
-          <span class="field-label">メモ（任意）</span>
-          <input class="input js-memo" placeholder="例：詰め替え用" autocomplete="off">
-        </label>
-      </div>
-    `);
-
-    const nameEl = f ? f.name : body.querySelector(".js-name");
-    const memoEl = f ? f.memo : body.querySelector(".js-memo");
-    const acHost = f ? f.ac : body.querySelector(".js-ac");
-    const known  = f ? f.known : body.querySelector(".js-known");
-    const favBtn = f ? f.fav : body.querySelector(".js-fav");
-    const destEl = f ? f.dest : body.querySelector(".js-dest");
+    /* 直す紙と同じ形（product-sheet.js の frame、roadmap-2.0 の V23）。下の配線は
+       その口（名前・★・メモ・候補・最安・行き先・カテゴリ）を使います。 */
+    const f = KN.productSheet.frame({ fav: false, add: true });
+    const body = f.body;
+    const nameEl = f.name;
+    const memoEl = f.memo;
+    const acHost = f.ac;
+    const known  = f.known;
+    const favBtn = f.fav;
+    const destEl = f.dest;
 
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
 
-    const handle = KN.ui.sheet({ title: "買うものを追加", hero: f ? f.hero : null, content: body, footer: foot, guard: true });
+    const handle = KN.ui.sheet({ title: "買うものを追加", hero: f.hero, content: body, footer: foot, guard: true });
 
-    let cat;
-    if (f) {
-      cat = f.cat;
-      cat.onSelect(() => { catTouched = true; paintMark(); });
-    } else {
-      cat = KN.ui.categoryPicker(body.querySelector(".js-cat"), {
-        selectedId: store.OTHER_CATEGORY,
-        onSelect: () => { catTouched = true; },
-      });
-    }
-    /* 2.0 の頭の絵は、打った名前から推す絵（足す前なので、選び直すのは足してから）。 */
+    const cat = f.cat;
+    cat.onSelect(() => { catTouched = true; paintMark(); });
+    /* 頭の絵は、打った名前から推す絵（足す前なので、選び直すのは足してから）。 */
     function paintMark() {
-      if (!f) return;
       f.mark.innerHTML = picked ? store.productMark(picked)
         : store.productMark({ name: nameEl.value.trim(), categoryId: cat.current });
     }
     paintMark();
 
     favBtn.addEventListener("click", () => {
-      /* 2.0 の★は frame が先に印を付け替えている。 */
-      fav = f ? favBtn.classList.contains("is-on") : !fav;
-      if (!f) {
-        favBtn.classList.toggle("is-on", fav);
-        favBtn.setAttribute("aria-pressed", String(fav));
-      }
+      /* ★の印は frame が先に付け替えている。 */
+      fav = favBtn.classList.contains("is-on");
       KN.motion.fire("save");
     });
 

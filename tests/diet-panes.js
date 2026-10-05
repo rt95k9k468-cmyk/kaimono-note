@@ -1,8 +1,7 @@
 /* V24 からだ：一枚を「今日・記録・推移」に分ける（docs/roadmap-2.0.md の V24・docs/health.md の末の節）。
-   2026年10月4日。2.0 の切り替えの中だけ。
+   2026年10月4日。V26（10月5日）で既定に。
 
-   - オフ：帯は無く、からだ・食事・体重とグラフが一枚に並ぶ（前のまま）
-   - オン：頭に「今日・記録・推移」（.seg）。字は区画それぞれの中央
+   - 頭に「今日・記録・推移」（.seg）。字は区画それぞれの中央
    - 今日＝からだの輪と体重の数／記録＝食事／推移＝グラフ（と気づいたこと）
    - 区画を替えても組み直さない。ほかのタブへ行って戻っても、選んだ区画のまま
    - 評価の言葉・色を足さない
@@ -38,19 +37,6 @@ const { open, checker } = require("./lib");
       graph: vis(".diet-graph"),
     };
   });
-
-  const off = await seen();
-  t.check("オフ：帯は無い", !off.seg, JSON.stringify(off));
-  t.check("オフ：一枚に全部（前のまま）", off.body && off.meal && off.weight && off.graph, JSON.stringify(off));
-
-  await page.evaluate(() => {
-    KN.store.update((s) => { s.settings.v2 = true; });
-    KN.app.applyV2(true);
-    KN.app.showScreen("todo");
-  });
-  await page.waitForTimeout(300);
-  await page.evaluate(() => KN.app.showScreen("diet"));
-  await page.waitForTimeout(500);
 
   const seg = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-panes .seg-btn")].map((b) => {
     const r = b.getBoundingClientRect();
@@ -90,18 +76,6 @@ const { open, checker } = require("./lib");
 
   const text = await page.evaluate(() => document.querySelector("#screen-diet .diet-panes").textContent);
   t.check("帯に評価の言葉・絵文字なし", !/達成|連続|目標|\p{Extended_Pictographic}/u.test(text), text);
-
-  // オフへ戻すと前のまま
-  await page.evaluate(() => {
-    KN.store.update((s) => { s.settings.v2 = false; });
-    KN.app.applyV2(false);
-    KN.app.showScreen("todo");
-  });
-  await page.waitForTimeout(300);
-  await page.evaluate(() => KN.app.showScreen("diet"));
-  await page.waitForTimeout(500);
-  const off2 = await seen();
-  t.check("オフに戻すと一枚に全部", !off2.seg && off2.body && off2.meal && off2.weight && off2.graph, JSON.stringify(off2));
 
   t.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();

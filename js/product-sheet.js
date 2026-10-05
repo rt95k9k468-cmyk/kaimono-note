@@ -12,71 +12,17 @@
    * Open the detail sheet for a product.
    * @param {string} productId
    * @param {object} [opts]
-   * @param {string} [opts.itemId] when opened from the shopping list, shows qty/memo controls
+   * @param {string} [opts.itemId] when opened from the shopping list, shows the ★ and the memo
    */
   function open(productId, { itemId } = {}) {
     const product = store.getProduct(productId);
     if (!product) return;
-    if (isV2()) return openV2(productId, { itemId });
-
-    const body = node(html`<div class="stack" style="gap:20px"></div>`);
-
-    const pricesWrap = node(html`<div class="stack" style="gap:12px"></div>`);
-    const rerenderPrices = () => renderPrices(pricesWrap, productId);
-
-    const category = categoryField(productId);
-    const mark = iconField(productId, () => {
-      // The picture is on the sheet's own title too; keep the two agreeing.
-      const head = sheetHandle && sheetHandle.el.querySelector(".sheet-mark");
-      if (head) head.innerHTML = store.productMark(store.getProduct(productId));
-    });
-    body.append(nameField(productId, category.recheck, mark.recheck));
-    if (itemId) body.append(itemSection(itemId));
-    body.append(mark.el);
-    body.append(category.el);
-    body.append(sizeField(productId, rerenderPrices));
-    body.append(pricesWrap);
-    rerenderPrices();
-
-    body.append(historySection(productId));
-    body.append(dangerSection(productId, () => sheetHandle.close()));
-
-    const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
-
-    const sheetHandle = KN.ui.sheet({
-      title: product.name,
-      titleMark: store.productMark(product),
-      content: body,
-      footer: foot,
-    });
-
-    foot.addEventListener("click", () => sheetHandle.close());
-    return sheetHandle;
+    return openV2(productId, { itemId });
   }
 
   /* ---------------- fields ---------------- */
 
-  function nameField(productId, onRecategorised, onRenamed) {
-    const p = store.getProduct(productId);
-    const wrap = node(html`
-      <label class="field">
-        <span class="field-label">商品名</span>
-        <input class="input js-name" value="${p.name}" placeholder="商品名">
-      </label>
-    `);
-    const input = wrap.querySelector(".js-name");
-
-    const save = debounce(() => {
-      const v = input.value.trim();
-      if (!v) return;
-      renameProduct(productId, v, onRecategorised, onRenamed);
-    }, 350);
-
-    input.addEventListener("input", save);
-    return wrap;
-  }
-
-  /* 名前を付け替える（前の欄と 2.0 の頭の欄で同じもの）。 */
+  /* 名前を付け替える（紙の頭の欄から）。 */
   function renameProduct(productId, v, onRecategorised, onRenamed) {
     /* A rename is very often a correction. 「コンソメ」 came out as その他,
        so it gets renamed 「コンソメ(調味料)」 — and the new name now says
@@ -111,43 +57,6 @@
   }
 
   /* ---------------- the picture ---------------- */
-
-  /* The guess reads the name and is usually right. Where it is wrong it is
-     wrong in a way only the person who buys the thing can see — 「コンソメ」
-     is a box to the app and a stock cube in the cupboard — so the picture can
-     be set by hand, and once set nothing overrules it. */
-  function iconField(productId, onChanged) {
-    const wrap = node(html`
-      <div class="field">
-        <span class="field-label">アイコン</span>
-        <button type="button" class="icon-pick js-pick">
-          <span class="icon-pick-mark js-mark"></span>
-          <span class="icon-pick-text">
-            <span class="icon-pick-name js-lbl"></span>
-            <span class="icon-pick-sub js-sub"></span>
-          </span>
-          <span class="price-chevron">${icon("chevron")}</span>
-        </button>
-      </div>
-    `);
-
-    function paint() {
-      const p = store.getProduct(productId);
-      if (!p) return;
-      const own = KN.productIcons.byKey(p.icon);
-      wrap.querySelector(".js-mark").innerHTML = store.productMark(p);
-      wrap.querySelector(".js-lbl").textContent =
-        own ? (KN.productIcons.LABELS[p.icon] || p.icon) : "おまかせ";
-      wrap.querySelector(".js-sub").textContent = "";
-    }
-    paint();
-
-    wrap.querySelector(".js-pick").addEventListener("click", () => {
-      openIconPicker(productId, () => { paint(); onChanged && onChanged(); });
-    });
-
-    return { el: wrap, recheck: paint };
-  }
 
   /* 「もしかして」 first, then everything. The guess already had its go at the
      name; what is useful here is the *near* misses — the pictures the name
@@ -371,132 +280,7 @@
     return handle;
   }
 
-  function itemSection(itemId) {
-    const item = store.get().items.find((i) => i.id === itemId);
-    if (!item) return document.createDocumentFragment();
-
-    const wrap = node(html`
-      <div class="stack" style="gap:12px">
-        <div class="field">
-          <span class="field-label">数量</span>
-          <div style="display:flex;align-items:center;gap:12px">
-            <button class="icon-btn js-minus" aria-label="減らす" style="background:var(--c-surface-2)">${icon("minus")}</button>
-            <span class="js-qty mono-num" style="font-size:calc(22px * var(--fs-k));font-weight:var(--fw-bold);min-width:44px;text-align:center">${item.qty}</span>
-            <button class="icon-btn js-plus" aria-label="増やす" style="background:var(--c-surface-2)">${icon("plus")}</button>
-            <button class="btn btn-soft btn-sm js-remove" style="margin-left:auto">リストから外す</button>
-          </div>
-        </div>
-        ${/* A memo is read far more often than it is written, and a text
-              input can only ever show one line of it — a memo two lines long
-              was a memo you had to scroll a field sideways to read. So the
-              resting state is the note itself, wrapped and whole, and the
-              pencil is what turns it back into something you can type in. */""}
-        <div class="field">
-          <span class="field-label">メモ</span>
-          <div class="memo js-memo-view">
-            <p class="memo-text js-memo-text"></p>
-            <button type="button" class="icon-btn js-memo-edit" aria-label="メモを書く">${icon("edit")}</button>
-          </div>
-          <textarea class="input memo-input js-memo" rows="3"
-                    placeholder="例：詰め替え用・特売のとき" hidden></textarea>
-        </div>
-      </div>
-    `);
-
-    const qtyEl = wrap.querySelector(".js-qty");
-    function setQty(delta) {
-      store.update((s) => {
-        const rec = s.items.find((i) => i.id === itemId);
-        if (rec) rec.qty = Math.max(1, rec.qty + delta);
-      });
-      const rec = store.get().items.find((i) => i.id === itemId);
-      qtyEl.textContent = rec ? rec.qty : 1;
-      haptic();
-    }
-    wrap.querySelector(".js-minus").addEventListener("click", () => setQty(-1));
-    wrap.querySelector(".js-plus").addEventListener("click", () => setQty(1));
-
-    const memo = wrap.querySelector(".js-memo");
-    const memoView = wrap.querySelector(".js-memo-view");
-    const memoText = wrap.querySelector(".js-memo-text");
-
-    function paintMemo() {
-      const now = store.get().items.find((i) => i.id === itemId);
-      const text = (now && now.memo) || "";
-      memo.value = text;
-      memoText.textContent = text || "メモはまだありません";
-      memoText.classList.toggle("is-empty", !text);
-    }
-    paintMemo();
-
-    function editMemo() {
-      memoView.hidden = true;
-      memo.hidden = false;
-      memo.focus();
-      // The caret at the end, so the pencil means 「書き足す」 rather than
-      // 「頭から打ち直す」 — which is what a memo is usually opened for.
-      const end = memo.value.length;
-      try { memo.setSelectionRange(end, end); } catch (err) { /* not every browser */ }
-    }
-
-    wrap.querySelector(".js-memo-edit").addEventListener("click", editMemo);
-    // Tapping the note itself is the other obvious way in.
-    memoText.addEventListener("click", editMemo);
-
-    const save = debounce(() => {
-      store.update((s) => {
-        const rec = s.items.find((i) => i.id === itemId);
-        if (rec) rec.memo = memo.value;
-      });
-    }, 350);
-    memo.addEventListener("input", save);
-
-    memo.addEventListener("blur", () => {
-      store.update((s) => {
-        const rec = s.items.find((i) => i.id === itemId);
-        if (rec) rec.memo = memo.value;
-      });
-      memo.hidden = true;
-      memoView.hidden = false;
-      paintMemo();
-    });
-
-    wrap.querySelector(".js-remove").addEventListener("click", () => {
-      const snapshot = store.get().items.find((i) => i.id === itemId);
-      store.update((s) => { s.items = s.items.filter((i) => i.id !== itemId); });
-      KN.ui.toast("リストから外しました", {
-        action: {
-          label: "元に戻す",
-          onClick: () => store.update((s) => { s.items.unshift(snapshot); }),
-        },
-      });
-      const sheetEl = wrap.closest(".sheet");
-      if (sheetEl) sheetEl.querySelector(".js-close").click();
-    });
-
-    return wrap;
-  }
-
-  function categoryField(productId) {
-    const p = store.getProduct(productId);
-    const wrap = node(html`
-      <div class="field">
-        <span class="field-label">カテゴリ</span>
-        <div class="js-picker"></div>
-      </div>
-    `);
-
-    const picker = KN.ui.categoryPicker(wrap.querySelector(".js-picker"), {
-      selectedId: p.categoryId,
-      onSelect: (categoryId) => chooseCategory(productId, categoryId),
-    });
-
-    // Called after a rename moved the category out from under the picker.
-    const recheck = () => picker.set(store.getProduct(productId).categoryId);
-    return { el: wrap, recheck };
-  }
-
-  /* 手でカテゴリを選んだ（前の欄と 2.0 の小窓で同じもの）。 */
+  /* 手でカテゴリを選んだ（小窓から）。 */
   function chooseCategory(productId, categoryId) {
     store.update((s) => {
       const rec = s.products.find((x) => x.id === productId);
@@ -895,13 +679,14 @@
     paint();
   }
 
+  /* 枠の箱と「値段を追加」の見出し・説明の一行は外した。お店の札は一列で横に送る
+     （V26、利用者「値段を追加の枠が場所を取りすぎ」10月5日）。 */
   function addPriceForm(productId, onAdded) {
     const p = store.getProduct(productId);
     const hasStores = store.get().stores.length > 0;
 
     const form = node(html`
-      <form class="stack" style="gap:10px;padding:12px;border:1.5px dashed var(--c-border-2);border-radius:12px">
-        <span class="field-label">値段を追加</span>
+      <form class="price-add" aria-label="値段を追加">
         <div class="js-stores"></div>
         <div class="input-group">
           <!-- Text, not number: a number field throws away「198+250」 the moment
@@ -916,11 +701,6 @@
         <div class="calc-row js-calc" hidden>
           <span class="calc-out js-calc-out" aria-live="polite"></span>
         </div>
-        ${perItemPrice(1, p.amount, p.unit)
-          ? html`<p class="js-hint" style="font-size:var(--fs-md);color:var(--c-text-2);margin:0">
-                   1${p.unit}あたりの値段も出します
-                 </p>`
-          : ""}
       </form>
     `);
 
@@ -1116,9 +896,7 @@
        札   … カテゴリ（押すと小窓）。直すときは下に内容量
        中身 … メモ。直すときは、その下に値段・履歴・削除
 
-     数量は出しません（使わない、と利用者。記録の qty はそのまま残す）。
-     2.0 の切り替えの中だけ。オフなら前の紙のまま。 */
-  const isV2 = () => document.documentElement.classList.contains("is-v2");
+     数量は出しません（使わない、と利用者。記録の qty はそのまま残す）。 */
 
   function frame({ name = "", categoryId, fav = null, memo = "", add = false } = {}) {
     const hero = node(html`
@@ -1210,7 +988,7 @@
     };
   }
 
-  /* 直す紙（2.0）。中身の配線は前の欄と同じもの（renameProduct・chooseCategory・
+  /* 直す紙。中身の配線は前の欄と同じもの（renameProduct・chooseCategory・
      sizeField・renderPrices ほか）を使います。 */
   function openV2(productId, { itemId } = {}) {
     const product = store.getProduct(productId);
@@ -1286,5 +1064,5 @@
     return handle;
   }
 
-  KN.productSheet = { open, openIconPicker, frame, isV2 };
+  KN.productSheet = { open, openIconPicker, frame };
 })();

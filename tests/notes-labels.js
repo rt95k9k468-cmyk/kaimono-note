@@ -222,13 +222,16 @@ const { open, checker } = require("./lib");
   })());
   await page.click(".sheet.is-note .js-nb");
   await popOpen();
+  await page.waitForTimeout(400);
   const np = await page.evaluate(() => {
     const p = document.querySelector(".note-pop.is-pick").getBoundingClientRect();
     const a = document.querySelector(".sheet.is-note .js-nb").getBoundingClientRect();
     return { sheets: document.querySelectorAll(".sheet.is-open").length, below: p.top >= a.bottom && p.top - a.bottom < 12,
-      left: Math.abs(p.left - a.left) < 2, label: document.querySelector(".note-pop.is-pick").getAttribute("aria-label") };
+      /* 左そろえ。ただし画面の右からはみ出すなら、右端を画面の 8px 内に（ノートの紙は左右に 8px
+         空けたカードなので、口が右へ寄った。V26）。 */
+      left: Math.abs(p.left - Math.min(a.left, innerWidth - 8 - p.width)) < 2, pl: p.left, al: a.left, pw: p.width, label: document.querySelector(".note-pop.is-pick").getAttribute("aria-label") };
   });
-  t.check("ノートブックも口のすぐ下の小窓（左そろえ）", np.sheets === 1 && np.below && np.left && np.label === "ノートブック", JSON.stringify(np));
+  t.check("ノートブックも口のすぐ下の小窓（左そろえ・画面の内）", np.sheets === 1 && np.below && np.left && np.label === "ノートブック", JSON.stringify(np));
   t.check("ノートブックの紙に、なし・使われている名前", (await page.evaluate(() =>
     [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).join(","))) === "なし,旅");
   await page.fill(".note-pick .js-new", "家のこと");

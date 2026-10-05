@@ -2,6 +2,7 @@
    - やること：＋で開いた紙を閉じると、縮みながら＋の真ん中へ向かう。前半は薄れきらない
    - ダイエット：＋の上に立ち上がる札から開いた紙も、閉じると札のあった所ではなく＋へ向かう
    - 閉じ終えたら紙は片づく・＋は残る
+   - V26：帰りは --m-sheet-close より長く（一瞬で閉じない）、＋の大きさ近くまで縮む
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fab-home.js */
 const { open, checker } = require("./lib");
 
@@ -40,6 +41,10 @@ const { open, checker } = require("./lib");
     t.check(`${label}：＋へ向かう`, !!last && Math.hypot(last.x - fab.x, last.y - fab.y) < 140,
       JSON.stringify({ last, fab }));
     t.check(`${label}：前半は薄れきらない`, !!mid && mid.o > 0.5, JSON.stringify(mid));
+    const long = rec.filter((f) => f.o > 0.05).pop();
+    t.check(`${label}：帰りは一瞬で終わらない（見えているのが 0.25 秒より長い）`, !!long && long.t > 250, JSON.stringify(long));
+    const small = rec.filter((f) => f.o > 0.05).reduce((m, f) => Math.min(m, f.w), Infinity);
+    t.check(`${label}：見えたまま＋の近くの大きさまで縮む`, small < w0 * 0.35, String(small));
   };
 
   /* ---- やること：＋から ---- */

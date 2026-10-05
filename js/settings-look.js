@@ -169,28 +169,7 @@
         })
       ) : null,
       badgeBlocked ? foot("端末の設定で通知を許可してください。") : null,
-      v2More(s),
     ];
-  }
-
-  /* ---------------- 2.0 の見た目を試す（docs/roadmap-2.0.md の V1） ----------------
-
-     畳んだ奥に一つ。オンなら html に .is-v2（KN.app.applyV2）。開いたかどうかは
-     覚えておく——押すたびに一枚を組み直すので、覚えないと押した途端に畳まれる。 */
-  let v2Open = false;
-  function v2More(s) {
-    const box = node(html`<details class="set-more"><summary>試す</summary></details>`);
-    box.open = v2Open;
-    box.addEventListener("toggle", () => { v2Open = box.open; });
-    box.append(card(switchRow({
-      title: "2.0 の見た目", on: s.v2 === true,
-      onTap: (v) => {
-        store.update((x) => { x.settings.v2 = v; });
-        KN.app.applyV2(v);
-        render();
-      },
-    })));
-    return box;
   }
 
   /* ---------------- 暦を出すか、しまうか ----------------

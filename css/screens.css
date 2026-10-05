@@ -2503,13 +2503,13 @@
 /* 2.0（V24、V5 の画像で選んだ形）：一枚を「今日・記録・推移」に分ける。帯は `.seg`
    （字は区画それぞれの中央）。今日＝からだの輪と体重の数、記録＝食事、推移＝グラフと
    気づいたこと。印は `.diet` に付く（日を払って入る隣の紙も同じ区画で見える）。 */
-.is-v2 .diet.is-pane-today :is(.diet-block.is-meal, .diet-graph, .diet-look),
-.is-v2 .diet.is-pane-log :is(.diet-block.is-body, .diet-block.is-weight, .diet-look),
-.is-v2 .diet.is-pane-trend :is(.diet-block.is-body, .diet-block.is-meal, .diet-hero-top) { display: none; }
+.diet.is-pane-today :is(.diet-block.is-meal, .diet-graph, .diet-look),
+.diet.is-pane-log :is(.diet-block.is-body, .diet-block.is-weight, .diet-look),
+.diet.is-pane-trend :is(.diet-block.is-body, .diet-block.is-meal, .diet-hero-top) { display: none; }
 /* 帯は紙の端から端ではなく、中の面の字と同じ左右の余白（`.diet-block`）に。 */
-.is-v2 .diet-panes { margin: var(--sp-2) var(--sp-4) var(--sp-3); }
+.diet-panes { margin: var(--sp-2) var(--sp-4) var(--sp-3); }
 /* 推移ではグラフが頭なので、体重の数との仕切りの線は要らない。 */
-.is-v2 .diet.is-pane-trend .diet-graph { border-top: none; padding-top: 0; }
+.diet.is-pane-trend .diet-graph { border-top: none; padding-top: 0; }
 
 /* ---- 今日 ---- */
 
@@ -5348,6 +5348,9 @@ textarea.note-title-in {
 /* 書く紙は白い一枚で、はじめから背いっぱい（2026年10月1日、iPhone で
    「書くときが暗い」と言われたので）。ほかの紙の、透ける灰の地は書く面には
    沈んで見え、半分の高さでは書く場所が狭い。 */
+/* 底の安全域を中身の側で持つぶん（キーボードが出ていれば 0）。電話のカードは紙ごと安全域の
+   上に浮くので 0（下の @media）。 */
+.sheet.is-note { --note-safe: max(0px, var(--safe-b) - var(--kb, 0px)); }
 .sheet.is-note {
   height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   background: var(--c-surface);
@@ -5371,23 +5374,26 @@ textarea.note-title-in {
   /* 2.0（V19）：四隅の丸いカード。左右・上下に同じだけ空けて浮かせる（真ん中は
      left:50% と translate(-50%) なので、左右の空きは揃う）。キーボードが出ている
      あいだは底を空けない（道具の帯がキーボードにつくように）。閉じた姿は空けたぶん
-     も下へ（でないと底に縁が残る）。左端から払う・一番上で下へ引くのは js
-     （screen-notes.js）。 */
-  .is-v2 .sheet.is-note {
+     も下へ（でないと底に縁が残る）。払う・一番上で下へ引くのは js
+     （screen-notes.js）。底はホームの棒のぶん（--safe-b）も空ける——8px では
+     iPhone の画面の丸い角に下の角が切られた（V26、利用者 10月5日）。 */
+  .sheet.is-note {
     --note-gap: var(--sp-2);
-    --note-gap-b: clamp(0px, var(--note-gap) - var(--kb, 0px) * 100, var(--note-gap));
+    --note-safe: 0px;
+    --note-gap-b0: max(var(--note-gap), var(--safe-b));
+    --note-gap-b: clamp(0px, var(--note-gap-b0) - var(--kb, 0px) * 100, var(--note-gap-b0));
     width: calc(100% - var(--note-gap) * 2);
     bottom: calc(var(--kb, 0px) + var(--pad, 0px) + var(--note-gap-b));
     height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--note-gap) - var(--note-gap-b));
     border-radius: var(--r-xl);
     box-shadow: var(--shadow-2);
   }
-  /* 横はブラウザに渡さない（左端からの払いを pointercancel で切られないように）。
+  /* 横はブラウザに渡さない（払いを pointercancel で切られないように）。
      touch-action は送る器で途切れるので、器と書く欄にも。 */
-  .is-v2 .sheet.is-note,
-  .is-v2 .sheet.is-note :is(.sheet-body, textarea) { touch-action: pan-y; }
-  .is-v2 .sheet.is-note:not(.is-open):not(.is-from-origin) {
-    transform: translate(-50%, calc(100% + var(--note-gap) * 2));
+  .sheet.is-note,
+  .sheet.is-note :is(.sheet-body, textarea) { touch-action: pan-y; }
+  .sheet.is-note:not(.is-open):not(.is-from-origin) {
+    transform: translate(-50%, calc(100% + var(--note-gap) + var(--note-gap-b0)));
   }
   /* 左端から払っているあいだは指につく（紙の transition を着たままだと遅れて追う）。 */
   .sheet.is-note.is-edge { transition: none; }
@@ -5400,12 +5406,12 @@ textarea.note-title-in {
 .sheet.is-note { padding-bottom: 0; }
 /* 中身が短くても帯は底へ（中身の側が残りの高さを取る）。 */
 .sheet.is-note .sheet-body { flex: 1 1 auto; }
-.sheet.is-note .sheet-body { padding-bottom: calc(var(--sp-5) + max(0px, var(--safe-b) - var(--kb, 0px))); }
+.sheet.is-note .sheet-body { padding-bottom: calc(var(--sp-5) + var(--note-safe)); }
 /* 書いているあいだは、浮いている道具の帯のぶんも下に空ける（最後の行を
    帯の上まで送れるように）。 */
 .sheet.is-note { --note-tools-h: 48px; }
 .sheet.is-note.is-writing .sheet-body {
-  padding-bottom: calc(var(--note-tools-h) + var(--sp-2) + var(--sp-5) + max(0px, var(--safe-b) - var(--kb, 0px)));
+  padding-bottom: calc(var(--note-tools-h) + var(--sp-2) + var(--sp-5) + var(--note-safe));
 }
 /* 整えた姿（読むとき。js/note-format.js の render）。字の大きさと行の高さは
    書く欄と同じ——押して入れ替わっても、字が跳ねないように。 */
@@ -5461,22 +5467,17 @@ textarea.note-title-in {
   position: absolute;
   left: var(--sp-2);
   right: var(--sp-2);
-  bottom: calc(var(--sp-2) + max(0px, var(--safe-b) - var(--kb, 0px)));
+  bottom: calc(var(--sp-2) + var(--note-safe));
   height: var(--note-tools-h);
   align-items: center;
   justify-content: space-around;
   padding: 0 var(--sp-2);
   border-radius: var(--r-full);
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--shadow-3);
-}
-/* 2.0（V10）：ガラスを外した無地の浮いた面。ぼかしを読まない＝glass.md の数から抜ける。 */
-.is-v2 .note-tools {
-  background: var(--c-surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  /* ガラスを外した白い面（V10）。真っ白だと紙が狭く感じるので、少しだけ透かして軽くぼかす
+     （V26、利用者 10月5日）。--glass-* は読まない＝glass.md の数には入らない。 */
+  background: color-mix(in srgb, var(--c-surface) 84%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-2);
 }
 .sheet.is-note.is-writing .note-tools { display: flex; }
@@ -5674,10 +5675,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 2.0（V21、V5 の画像で選んだ形）：紙の下の端は帯の下に 16px 残るので、
    下の角も丸くして、途中で切れた紙ではなく一枚として終わらせます。
    角は `#screen-archive .tl-sheet`（送る器にした段）も持つので、ID を付けて勝たせます。 */
-.is-v2 #screen-archive .tl-sheet.is-daily { border-radius: var(--r-xl); }
-/* 2.0（V21）：日記の抜き出しは五行。三行だと頭の決まった行で埋まり、地の文まで届かない。 */
-.is-v2 .arc-then-memo,
-.is-v2 .arc-log-memo.is-clamped { -webkit-line-clamp: 5; }
+#screen-archive .tl-sheet.is-daily { border-radius: var(--r-xl); }
+/* 2.0（V21）：日記の抜き出しは五行。三行だと頭の決まった行で埋まり、地の文まで届かない。
+   切った行は両端揃えにしない——iPhone では最後の行が引き伸ばされ、「…」が字に重なった
+   （V26、利用者 10月5日）。全文のときは両端揃えのまま。 */
+.arc-then-memo,
+.arc-log-memo.is-clamped { -webkit-line-clamp: 5; }
+.arc-log-memo.is-clamped { text-align: start; }
 
 /* 行ぜんぶが、ひと呼吸だけ光る。
 

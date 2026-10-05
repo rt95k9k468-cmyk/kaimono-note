@@ -481,15 +481,14 @@
     const grip = sheet.querySelector(".tl-grip");
     if (grip) grip.setAttribute("data-pull-own", "cal");
 
-    /* 2.0 の切り替えの中（V24）：頭に「今日・記録・推移」。今日＝からだの輪と体重、
-       記録＝食事、推移＝グラフと気づいたこと。隠すのは CSS（`.diet.is-pane-*`）で、
-       付けるのは紙ではなく `.diet`——日を払って入ってくる隣の紙も同じ区画で見えるように。 */
-    const v2 = document.documentElement.classList.contains("is-v2");
+    /* V24：頭に「今日・記録・推移」。今日＝からだの輪と体重、記録＝食事、推移＝グラフと
+       気づいたこと。隠すのは CSS（`.diet.is-pane-*`）で、付けるのは紙ではなく `.diet`
+       ——日を払って入ってくる隣の紙も同じ区画で見えるように。 */
     sheet.append(node(html`
-      <div class="diet ${v2 ? `is-pane-${pane}` : ""}">
-        ${v2 ? html`<div class="seg diet-panes">${PANES.map((p) => html`
+      <div class="diet is-pane-${pane}">
+        <div class="seg diet-panes">${PANES.map((p) => html`
           <button type="button" class="seg-btn js-pane" data-pane="${p.id}" aria-pressed="${String(p.id === pane)}">${p.label}</button>`)}
-        </div>` : ""}
+        </div>
         ${/* 並べておくのは、いま見ている日の一枚だけ。隣の二枚は、横に
               払うと決まった瞬間に day-swipe.js がその場で組みます——
               要約ではなく、その日の紙そのものが、指のぶんだけ連続して
