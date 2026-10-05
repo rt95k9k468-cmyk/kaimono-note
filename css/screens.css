@@ -2551,10 +2551,11 @@
 .diet-panes { margin: var(--sp-2) var(--sp-4) var(--sp-3); }
 /* 三つの区画に色（V27、利用者の声「今日・記録・推移に色を」）。今日＝からだの輪の緑青、
    記録＝食事の橙、推移＝グラフの青。良し悪しの色ではなく、区画の名札の色。選んだ区画は
-   その色で塗り、白い字（色に黒を混ぜて 4.5:1 以上）。選んでいない区画は字だけその色。 */
+   その色で塗り、白い字（色に黒を混ぜて 4.5:1 以上）。選んでいない区画は字だけその色。
+   三つとも見た目の札で変わらない指標の色から取る（`--c-accent` は札によって橙になる）。 */
 .diet-panes .seg-btn[data-pane="today"] { --pc: var(--c-m-steps); }
 .diet-panes .seg-btn[data-pane="log"]   { --pc: var(--c-m-burn); }
-.diet-panes .seg-btn[data-pane="trend"] { --pc: var(--c-accent); }
+.diet-panes .seg-btn[data-pane="trend"] { --pc: var(--c-m-drink); }
 .diet-panes .seg-btn { color: color-mix(in srgb, var(--pc) 72%, var(--c-text)); }
 .diet-panes .seg-btn[aria-pressed="true"] {
   background: color-mix(in srgb, var(--pc) 78%, #000);

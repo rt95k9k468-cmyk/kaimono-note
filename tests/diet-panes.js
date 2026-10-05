@@ -92,6 +92,24 @@ const { open, checker } = require("./lib");
   }
   t.check("三つの区画はそれぞれ別の色", new Set(tones.map((x) => x.rgb)).size === 3, JSON.stringify(tones));
   t.check("選んだ区画の白い字が読める（4.5:1 以上）", tones.every((x) => x.ratio >= 4.5), JSON.stringify(tones));
+  /* 推移の青は見た目の札に引きずられない（V27 の確かめで、橙のアクセントの札だと推移も橙だった） */
+  const wasAccent = await page.evaluate(() => {
+    const was = document.documentElement.dataset.accent ?? null;
+    document.documentElement.dataset.accent = "green";
+    return was;
+  });
+  await page.waitForTimeout(600); /* 塗りは移ろうので、落ち着いてから読む */
+  const trendTone = await page.evaluate((was) => {
+    const root = document.documentElement;
+    const b = document.querySelector('#screen-diet .diet-panes .js-pane[data-pane="trend"]');
+    const c = document.createElement("canvas").getContext("2d");
+    c.fillStyle = getComputedStyle(b).backgroundColor;
+    c.fillRect(0, 0, 1, 1);
+    const [r, g, bl] = c.getImageData(0, 0, 1, 1).data;
+    if (was == null) delete root.dataset.accent; else root.dataset.accent = was;
+    return { r, g, b: bl };
+  }, wasAccent);
+  t.check("橙のアクセントの札でも推移は青", trendTone.b > trendTone.r && trendTone.b > trendTone.g, JSON.stringify(trendTone));
 
   const text = await page.evaluate(() => document.querySelector("#screen-diet .diet-panes").textContent);
   t.check("帯に評価の言葉・絵文字なし", !/達成|連続|目標|\p{Extended_Pictographic}/u.test(text), text);
