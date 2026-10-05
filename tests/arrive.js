@@ -31,6 +31,20 @@ const seed = async (page) => {
   }, DAY);
 };
 
+/* からだは「今日・記録・推移」に分かれた（V24、V26 で既定）。グラフは推移、食事の帯は記録に
+   ある。区画を選んでから、ほかのタブへ出て、もう一度入る（選んだ区画は残る）。rec は入る直前に。 */
+const enterWith = async (page, paneId, rec) => {
+  if (await page.evaluate(() => KN.app.activeScreen() !== "diet")) {
+    await page.click('.tab[data-tab="diet"]');
+    await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
+  }
+  await page.click(`#screen-diet .js-pane[data-pane="${paneId}"]`);
+  await page.click('.tab[data-tab="todo"]');
+  await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
+  if (rec) await page.evaluate(rec);
+  await page.click('.tab[data-tab="diet"]');
+};
+
 /* 輪のいま（周）と、本当の値（周）。 */
 const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-ring")].map((r) => {
   const mid = r.querySelector(".diet-ring-mid");
@@ -85,20 +99,6 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("health を押すと画面に is-m-arrive", early.arrive);
     t.check("health の絵（heart）は二拍打つ（poke-beat）", early.poke && early.pokeName === "poke-beat",
       JSON.stringify(early));
-
-    /* 体重の線（途中）。 */
-    await page.waitForTimeout(150);
-    const line = await page.evaluate(() => {
-      const p = document.querySelector("#screen-diet .diet-ma7");
-      const now = document.querySelector("#screen-diet .diet-dot.is-now");
-      if (!p) return null;
-      const cs = getComputedStyle(p);
-      return { len: p.getAttribute("pathLength"), off: parseFloat(cs.strokeDashoffset),
-               nowAnim: now ? getComputedStyle(now).animationName : "" };
-    });
-    t.check("体重の線は引かれている途中（dashoffset が 0 と 1 のあいだ）",
-      line && line.len === "1" && line.off > 0 && line.off < 1, JSON.stringify(line));
-    t.check("今日の点は弾んで出る（arrive-pop）", line && line.nowAnim === "arrive-pop", JSON.stringify(line));
 
     await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
       null, { timeout: 5000 });
@@ -220,6 +220,25 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("歯車で設定が開く", true);
 
     t.check("エラーなし", errors.length === 0, errors.join("\n"));
+    await enterWith(page, "trend");
+    /* 体重の線（途中）。 */
+    await page.waitForTimeout(150);
+    const line = await page.evaluate(() => {
+      const p = document.querySelector("#screen-diet .diet-ma7");
+      const now = document.querySelector("#screen-diet .diet-dot.is-now");
+      if (!p) return null;
+      const cs = getComputedStyle(p);
+      return { len: p.getAttribute("pathLength"), off: parseFloat(cs.strokeDashoffset),
+               nowAnim: now ? getComputedStyle(now).animationName : "" };
+    });
+    t.check("体重の線は引かれている途中（dashoffset が 0 と 1 のあいだ）",
+      line && line.len === "1" && line.off > 0 && line.off < 1, JSON.stringify(line));
+    t.check("今日の点は弾んで出る（arrive-pop）", line && line.nowAnim === "arrive-pop", JSON.stringify(line));
+
+    await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
+      null, { timeout: 5000 });
+    await page.click('#screen-diet .js-pane[data-pane="today"]');
+
     await browser.close();
   }
 
@@ -276,6 +295,24 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     });
     t.check("赤の超えたぶんと数は一緒に動く（どのフレームでも揃う）", off === 0, `${off}フレーム ${worst}`);
     t.check("終われば本当の値", Math.abs(end.p - end.target) < 1e-3 && end.show == null, JSON.stringify(end));
+
+    await enterWith(page, "log", () => {
+      window.__bar = [];
+      const t0 = performance.now();
+      const tick = () => {
+        const segs = [...document.querySelectorAll("#screen-diet .diet-stack-fill > i")];
+        const stack = document.querySelector("#screen-diet .diet-stack");
+        if (segs.length) window.__bar.push({ at: performance.now() - t0,
+          w: segs.map((e) => e.getBoundingClientRect().width), full: segs.map((e) => e.offsetWidth),
+          ids: segs.map((e) => e.className), over: stack.classList.contains("is-over"),
+          rim: getComputedStyle(stack).boxShadow });
+        if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
+      null, { timeout: 6000 });
+    await page.waitForTimeout(300);
 
     /* 今日の食事の帯：入れものごと左から伸び、朝・昼・夜はいつも最後の比率のまま一緒に伸びる。
        超えた日の赤い縁は、帯が端に着いてから。 */

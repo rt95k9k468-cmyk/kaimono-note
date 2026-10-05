@@ -44,11 +44,13 @@ const COST = { model: "claude-opus-5", inputTokens: 4000, outputTokens: 1500, se
     S.setDayMemo(KN.util.todayKey(), "【朝】卵、納豆");
     S.addTodo({ title: "歯医者を予約する試験用" });
   });
-  const show = async () => {
+  const show = async (pane = "log") => {
     await page.evaluate(() => KN.app.showScreen("todo"));
     await page.waitForTimeout(250);
     await page.evaluate(() => KN.app.showScreen("diet"));
     await page.waitForFunction(() => KN.app.activeScreen() === "diet" && document.querySelector("#screen-diet .js-meals .diet-memo"));
+    /* 食事は「記録」、気づいたことは「推移」の区画（V24、V26 で既定）。 */
+    await page.click(`#screen-diet .js-pane[data-pane="${pane}"]`);
     await page.waitForTimeout(300);
   };
 
@@ -84,7 +86,7 @@ const COST = { model: "claude-opus-5", inputTokens: 4000, outputTokens: 1500, se
 
   // 6. 相談の紙（「気づいたこと」は設定で出すときだけの欄）
   await page.evaluate(() => KN.store.update((st) => { st.settings.showInsight = true; }));
-  await show();
+  await show("trend");
   const hasAsk = (await page.locator("#screen-diet .js-ai").count()) > 0;
   if (hasAsk) {
     await page.locator("#screen-diet .js-ai").first().click();

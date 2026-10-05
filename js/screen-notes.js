@@ -25,8 +25,6 @@
   let pick = null;
 
   const N = () => KN.notes;
-  /* 2.0 の切り替え（V1）。ノートの開き閉じ・戻り方（V19）はこの中で。 */
-  const v2 = () => document.documentElement.classList.contains("is-v2");
 
   /* タグの色。名前から決まった一色を引きます（色を選ばせない＝どこにも
      しまわない）。色は買うもののカテゴリと同じ並び（灰の「その他」は外す
@@ -688,17 +686,18 @@
         from: from || null,
         back: () => (root && root.querySelector(`.notes-list .note-row[data-id="${CSS.escape(note.id)}"]`)) || null,
       },
-      /* 2.0（V19）：一番上まで送ってあれば、中身を下へ引いても閉じる。 */
-      pull: v2,
+      /* V19：一番上まで送ってあれば、中身を下へ引いても閉じる。 */
+      pull: () => true,
       onClose: finish,
     });
-    /* 2.0（V19）：左の端から右へ払って戻る（edge-back.js）。紙は払った場所から
-       カードへ縮む（here）。字を選んでいる指は取らない。 */
+    /* V19：右へ払って戻る（edge-back.js）。左端でなくても、紙のどこからでも（V26）。
+       紙は払った場所からカードへ縮む（here）。字を選んでいる指は取らない。 */
     if (KN.edgeBack) {
       h.el.dataset.edgeBase = "translate(-50%, 0)";
       KN.edgeBack.wire({
         el: h.el,
-        busy: () => closed || !v2() || !window.matchMedia("(max-width: 639px)").matches
+        edge: Infinity,
+        busy: () => closed || !window.matchMedia("(max-width: 639px)").matches
           || (document.activeElement === textIn && textIn.selectionStart !== textIn.selectionEnd),
         begin: () => ({
           top: h.el, under: null, here: true,

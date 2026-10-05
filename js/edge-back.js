@@ -64,6 +64,14 @@
     el.style.transform = `translate3d(${-PARALLAX * 100}%,0,0)`;
   };
 
+  /** 指の下から器までに、横に送れる中身があるか（表・長い一行など）。 */
+  const sidesOf = (t, host) => {
+    for (let n = t; n && n !== host && n.nodeType === 1; n = n.parentElement) {
+      if (n.scrollWidth > n.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(n).overflowX)) return true;
+    }
+    return false;
+  };
+
   const clear = (el) => { if (el) { el.style.transition = ""; el.style.transform = ""; } };
 
   /**
@@ -73,6 +81,9 @@
    *                             横だと決まった瞬間に一度だけ呼ばれます。
    *                             **後ろの一枚を出すのも、ここの仕事**です。
    * @param {Function} [o.busy]  () => true なら、この指は取りません
+   * @param {number}   [o.edge]  指を取る端の幅（既定 EDGE）。Infinity ならどこからでも
+   *                             （ノートの紙。V26、利用者「左端でなくても払って閉じたい」）。
+   *                             そのときは、横に送れる中身の上で始まった指は取りません。
    */
   function wire(o) {
     const host = o.el;
@@ -125,7 +136,9 @@
       if (live) return;
       if (o.busy && o.busy()) return;
       const box = host.getBoundingClientRect();
-      if (e.clientX - box.left > EDGE) return;
+      const edge = o.edge == null ? EDGE : o.edge;
+      if (e.clientX - box.left > edge) return;
+      if (edge > EDGE && sidesOf(e.target, host)) return;
       w = box.width;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       lastT = performance.now(); lastX = e.clientX; vx = 0;

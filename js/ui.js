@@ -729,6 +729,7 @@
       /* カードへ縮む紙（ノート）は、＋ではなくカードへ帰る。 */
       const home = seed && seed.fab && !shrinks && !still() && el.classList.contains("is-from-origin")
         ? aimHome(el) : null;
+      if (home) el.classList.add("is-homing");
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
       KN.motion.fire("sheetClose");
@@ -737,7 +738,7 @@
         setTimeout(() => home.isConnected && home.animate(
           [{ transform: "none" }, { transform: "scale(1.1)" }, { transform: "none" }],
           { duration: KN.motion.ms("--m-number"), easing: KN.motion.ease("--ease-out"), composite: "add" },
-        ), KN.motion.ms("--m-sheet-close"));
+        ), KN.motion.ms("--m-sheet-home"));
       }
       // The pad belongs to a field in this sheet; it has no business outliving it.
       KN.keypad && KN.keypad.close();
@@ -757,7 +758,7 @@
          ありましたが、紙の速さを決めているのは CSS の `--m-sheet-*` の
          ほうです。二か所に持つと、片方だけ直した日に「まだ動いているのに
          消える」か「もう止まっているのに残る」のどちらかが起きます。 */
-      const closeMs = KN.motion.ms("--m-sheet-close");
+      const closeMs = KN.motion.ms(home ? "--m-sheet-home" : "--m-sheet-close");
       const tidy = (ms) => setTimeout(() => { backdrop.remove(); el.remove(); }, ms + 60);
       if (!shrinks) tidy(closeMs);
       onClose && onClose();

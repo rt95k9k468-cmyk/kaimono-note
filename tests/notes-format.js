@@ -101,7 +101,8 @@ const { open, checker } = require("./lib");
     const r = e.getBoundingClientRect();
     return { top: r.top, h: r.height / innerHeight, w: r.width / innerWidth };
   });
-  t.check("書く紙は帯のすぐ下から、幅いっぱい", box.top <= 1 && box.h >= 0.98 && box.w >= 0.99, JSON.stringify(box));
+  /* V19・V26：四隅の丸いカード。上と左右に 8px 空けて浮かせる。 */
+  t.check("書く紙は帯のすぐ下から、左右に少し空けたカード", box.top <= 9 && box.h >= 0.95 && box.w >= 0.95 && box.w < 1, JSON.stringify(box));
   const look = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
     const cs = getComputedStyle(s);
@@ -113,7 +114,7 @@ const { open, checker } = require("./lib");
       clear: bd.classList.contains("sheet-backdrop") && getComputedStyle(bd).backgroundColor === "rgba(0, 0, 0, 0)"
         && getComputedStyle(bd).backdropFilter === "none" };
   });
-  t.check("上が丸角のカード（下は角）・持ち手がある", look.tl > 0 && look.tr > 0 && look.bl === 0 && look.handle, JSON.stringify(look));
+  t.check("四隅が丸いカード・持ち手がある", look.tl > 0 && look.tr > 0 && look.bl > 0 && look.handle, JSON.stringify(look));
   t.check("後ろは暗くしない", look.clear, JSON.stringify(look));
   const head = await page.$eval(".sheet.is-note .sheet-head", (h) => {
     const b = h.querySelector(".js-close");
@@ -395,7 +396,9 @@ const { open, checker } = require("./lib");
     a.pause();
     a.currentTime = w === "start" ? 0 : a.effect.getComputedTiming().duration;
     const cs = getComputedStyle(s);
-    const n = (cs.clipPath.match(/-?[\d.]+px/g) || []).map(parseFloat);
+    /* inset() は同じ数を畳んで書き、後ろに round の丸みが続くので、round の前だけを四つに広げる。 */
+    const v = (cs.clipPath.split("round")[0].match(/-?[\d.]+px/g) || []).map(parseFloat);
+    const n = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
     const r = s.getBoundingClientRect();
     const dy = new DOMMatrixReadOnly(cs.transform).m42;
     const box = { top: r.top - dy + n[0], right: r.right - n[1], bottom: r.bottom - dy - n[2], left: r.left + n[3] };
@@ -469,7 +472,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(500);
   t.check("持ち手を少しだけ下げて離すと、戻る", await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note.is-open");
-    return !!s && Math.abs(s.getBoundingClientRect().top) < 1;
+    return !!s && Math.abs(s.getBoundingClientRect().top - 8) < 1;
   }));
   await drag(260, 10, 16);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));

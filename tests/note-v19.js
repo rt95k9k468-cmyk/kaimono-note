@@ -1,12 +1,11 @@
 /* ノートの開き閉じ・戻り方（docs/roadmap-2.0.md の V19・docs/notes.md の「2.0：四隅の丸いカード」）。
-   2.0 の切り替え（.is-v2）の中だけ：
+   V26（10月5日）で既定に：
    - 書く紙は四隅の丸いカード・左右の空きが同じ・上下も空く
    - カードから膨らみきった窓も四隅が丸い
-   - 左の端から右へ少し払って離すと戻る／大きく払うと、その場所からカードへ縮んで閉じる
-   - 端でない所からの払いは取らない
+   - 右へ少し払って離すと戻る／大きく払うと、その場所からカードへ縮んで閉じる
+   - 払うのは左端でなくてもよい（V26）。横に送れる中身の上で始まった指は取らない
    - 一番上まで送ってあれば、中身を下へ引いて閉じる（カードへ縮む）
    - 途中まで送ってあれば、下へ引いても中身が送られるだけ
-   オフ（前の見た目）では、形は上だけ丸い幅いっぱい・左端の払いも中身の引きも閉じない。
    localStorage は変わらない。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-v19.js */
 const { open, checker } = require("./lib");
@@ -97,22 +96,6 @@ const { open, checker } = require("./lib");
   const near = (b, r) => !!b && !!r && ["top", "right", "bottom", "left"].every((k) => Math.abs(b[k] - r[k]) < 1.5);
   const frames = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-  /* ---- オフ：前のまま ---- */
-  await openCard(first);
-  const off = await box();
-  t.check("オフ：上だけ丸い・幅いっぱい", off.tl > 0 && off.bl === 0 && off.left === 0 && off.right === 0, JSON.stringify(off));
-  await fromEdge(260, 10, 16);
-  await page.waitForTimeout(500);
-  t.check("オフ：左端から払っても閉じない", await isOpen());
-  await page.$eval(".sheet.is-note .sheet-body", (e) => { e.scrollTop = 0; });
-  await pullBody(300, 10, 16);
-  await page.waitForTimeout(500);
-  t.check("オフ：中身を下へ引いても閉じない", await isOpen());
-  await page.keyboard.press("Escape");
-  await gone();
-
-  /* ---- オン ---- */
-  await page.evaluate(() => KN.app.applyV2(true));
   const c2 = await cardBox(second);
   await page.evaluate((s) => document.querySelector(`${s} .js-open`).click(), second);
   await page.waitForSelector(".sheet.is-note.is-open");
@@ -121,27 +104,39 @@ const { open, checker } = require("./lib");
     const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.clipPath));
     return a ? a.effect.getKeyframes().slice(-1)[0].clipPath : "";
   });
-  t.check("オン：膨らみきった窓は四隅が丸い", /round 22px( 22px)*\)$/.test(grownTo), grownTo);
+  t.check("膨らみきった窓は四隅が丸い", /round 22px( 22px)*\)$/.test(grownTo), grownTo);
   await page.waitForTimeout(700);
   const on = await box();
-  t.check("オン：四隅の丸いカード", on.tl > 0 && on.br > 0 && on.bl > 0, JSON.stringify(on));
-  t.check("オン：左右の空きが同じ（0 より大きい）", on.left > 0 && Math.abs(on.left - on.right) < 0.5, JSON.stringify(on));
-  t.check("オン：上下も空く", on.top >= on.left - 0.5 && Math.abs(on.bottom - on.left) < 0.5, JSON.stringify(on));
+  t.check("四隅の丸いカード", on.tl > 0 && on.br > 0 && on.bl > 0, JSON.stringify(on));
+  t.check("左右の空きが同じ（0 より大きい）", on.left > 0 && Math.abs(on.left - on.right) < 0.5, JSON.stringify(on));
+  t.check("上下も空く", on.top >= on.left - 0.5 && Math.abs(on.bottom - on.left) < 0.5, JSON.stringify(on));
 
   await fromEdge(40, 5, 30);
   await page.waitForTimeout(600);
   const back = await box();
   t.check("左端から少し払って離すと戻る", (await isOpen()) && Math.abs(back.left - on.left) < 0.5, JSON.stringify(back));
   const mid = await box();
-  await swipe(mid.left + 120, 420, 220, 0, 10, 16);
+  await swipe(mid.left + 120, 420, 40, 0, 5, 30);
+  await page.waitForTimeout(600);
+  t.check("真ん中から少し払って離しても戻る", (await isOpen()) && Math.abs((await box()).left - on.left) < 0.5);
+  /* 横に送れる中身の上で始まった指は取らない。 */
+  await page.$eval(".sheet.is-note .sheet-body", (b) => {
+    const w = document.createElement("div");
+    w.className = "js-wide";
+    w.style.cssText = "overflow-x:auto;position:absolute;left:0;right:0;top:300px;height:200px;z-index:5";
+    w.innerHTML = '<div style="width:2000px;height:200px"></div>';
+    b.append(w);
+  });
+  await swipe(mid.left + 120, 400, 220, 0, 10, 16);
   await page.waitForTimeout(500);
-  t.check("端でない所からの払いは取らない", (await isOpen()) && Math.abs((await box()).left - on.left) < 0.5);
+  t.check("横に送れる中身の上の払いは取らない", await isOpen());
+  await page.$eval(".sheet.is-note .js-wide", (w) => w.remove());
 
-  await fromEdge(200, 10, 16);
+  await swipe(mid.left + 120, 420, 220, 0, 10, 16);
   await frames();
   const edgeEnd = await clipEnd();
   const c2now = await cardBox(second);
-  t.check("左端から払うと、その場所からカードへ縮んで閉じる", near(edgeEnd, c2now) && near(c2now, c2), JSON.stringify({ edgeEnd, c2now }));
+  t.check("真ん中から払っても、その場所からカードへ縮んで閉じる", near(edgeEnd, c2now) && near(c2now, c2), JSON.stringify({ edgeEnd, c2now }));
   await gone();
 
   /* 一番上で中身を下へ引く。 */
@@ -162,7 +157,6 @@ const { open, checker } = require("./lib");
   t.check("一番上で下へ引くと、カードへ縮んで閉じる", near(pullEnd, await cardBox(second)) && near(c1, await cardBox(second)), JSON.stringify({ pullEnd, c1 }));
   await gone();
 
-  await page.evaluate(() => KN.app.applyV2(false));
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();

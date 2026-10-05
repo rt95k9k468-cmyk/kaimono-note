@@ -1,12 +1,9 @@
-/* 2.0 の見た目を試す切り替え（docs/roadmap-2.0.md の V1）。設定 → 外観 → 「試す」の奥。
-   - 既定はオフで、html に .is-v2 が無い
-   - 「試す」は畳まれていて、開くとスイッチが一つ
-   - 押すと .is-v2 が付く・押しても奥は畳まれない・読み直しても残る
-   - オンでもオフでも、四つのタブが開いてエラーが出ない
-   - もう一度押すと外れる。知らない値（"yes" など）はオフへ（reconcile）
-   - daily の紙の下の角：オンなら丸い（V21）、オフなら角のまま
-   - 日記の抜き出し：オンなら五行、オフなら三行（V21）
-   - ノートの道具の帯：オンならぼかし無しの無地（V10）、オフならガラス
+/* 2.0 の見た目を既定にした（docs/roadmap-2.0.md の V26。前は V1 の切り替えの試験）。
+   - 設定 → 外観に「試す」も「2.0 の見た目」も無い。html に .is-v2 は付かない
+   - 記録に v2: true が残っていても読み込めて、鍵は消えない（後方互換）
+   - 四つのタブが開いてエラーが出ない
+   - daily の紙の下の角は丸い（V21）・日記の抜き出しは五行（V21）
+   - ノートの道具の帯は白を少し透かした面（V10・V26。--glass-* は読まない）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/v2-switch.js */
 const { open, checker } = require("./lib");
 
@@ -15,105 +12,62 @@ const { open, checker } = require("./lib");
   const { browser, page, errors } = await open();
 
   const mark = () => page.evaluate(() => document.documentElement.classList.contains("is-v2"));
-  const saved = () => page.evaluate(() => KN.store.get().settings.v2);
-  const dailyCorner = () => page.evaluate(() => {
-    const e = document.querySelector("#screen-archive .tl-sheet.is-daily");
-    return e ? getComputedStyle(e).borderBottomLeftRadius : "";
-  });
-  /* 道具の帯は書く紙の中にしか無いので、同じ名前の器を一つ置いて測る。 */
-  const toolsBlur = () => page.evaluate(() => {
-    const e = document.createElement("div");
-    e.className = "note-tools";
+  /* 道具の帯・抜き出しは開かないと無いので、同じ名前の器を一つ置いて測る。 */
+  const probe = (cls, tag) => page.evaluate(([c, g]) => {
+    const e = document.createElement(g);
+    e.className = c;
     document.body.appendChild(e);
     const s = getComputedStyle(e);
-    const v = s.backdropFilter || s.webkitBackdropFilter || "";
+    const v = { blur: s.backdropFilter || s.webkitBackdropFilter || "", bg: s.backgroundColor, img: s.backgroundImage, clamp: s.webkitLineClamp };
     e.remove();
     return v;
+  }, [cls, tag]);
+
+  t.check("印は付かない", !(await mark()));
+
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForTimeout(500);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
+  await page.waitForTimeout(600);
+  const look = await page.evaluate(() => document.querySelector(".set-layer:last-child").textContent);
+  t.check("外観に「試す」も「2.0 の見た目」も無い", !/2\.0 の見た目/.test(look) && !/試す/.test(look));
+
+  /* 前の版で切り替えをオンにしていた記録 */
+  await page.evaluate(() => {
+    KN.store.flush && KN.store.flush();
+    const raw = JSON.parse(localStorage.getItem("kaimono-note-v2")) || JSON.parse(JSON.stringify(KN.store.get()));
+    raw.settings.v2 = true;
+    localStorage.setItem("kaimono-note-v2", JSON.stringify(raw));
   });
-  const clamp = () => page.evaluate(() => {
-    const e = document.createElement("span");
-    e.className = "arc-then-memo";
-    document.body.appendChild(e);
-    const v = getComputedStyle(e).webkitLineClamp;
-    e.remove();
-    return v;
-  });
-  const tabs = ["archive", "todo", "list", "diet"];
-  const tabsOpen = async (label) => {
-    for (const id of tabs) {
-      await page.locator(`.tab[data-tab="${id}"]`).click();
-      await page.waitForTimeout(400);
-      const ok = await page.evaluate((i) => {
-        const s = document.getElementById(`screen-${i}`);
-        return !!s && s.classList.contains("is-active") && s.getBoundingClientRect().height > 0;
-      }, id);
-      t.check(`${label}：${id} が開く`, ok);
-    }
-  };
-
-  t.check("既定はオフ", (await saved()) === false);
-  t.check("既定では印が無い", !(await mark()));
-  await tabsOpen("オフ");
-
-  const openLook = async () => {
-    await page.evaluate(() => KN.app.showScreen("settings"));
-    await page.waitForTimeout(500);
-    await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
-    await page.waitForTimeout(600);
-  };
-  await openLook();
-  const more = page.locator(".set-layer:last-child details.set-more", { hasText: "試す" });
-  t.check("「試す」は畳まれている", (await more.count()) === 1 && !(await more.evaluate((d) => d.open)));
-  await more.locator("summary").click();
-  await page.waitForTimeout(200);
-  const sw = more.locator(".set-row.is-sw", { hasText: "2.0 の見た目" });
-  t.check("開くとスイッチが一つ", (await sw.count()) === 1);
-  await sw.click();
-  await page.waitForTimeout(300);
-  t.check("押すと印が付く", await mark());
-  t.check("記録にも残る", (await saved()) === true);
-  const more2 = page.locator(".set-layer:last-child details.set-more", { hasText: "試す" });
-  t.check("押しても奥は畳まれない", await more2.evaluate((d) => d.open));
-  t.check("スイッチはオン", (await more2.locator(".set-row.is-sw").getAttribute("aria-checked")) === "true");
-
-  await page.waitForTimeout(300);
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
   await page.waitForTimeout(300);
-  t.check("読み直しても印が付いている", await mark());
-  await tabsOpen("オン");
-  t.check("オン：daily の紙は下の角も丸い", (await dailyCorner()) === "22px", await dailyCorner());
-  t.check("オン：日記の抜き出しは五行", (await clamp()) === "5", await clamp());
-  t.check("オン：ノートの道具の帯はぼかさない", (await toolsBlur()) === "none", await toolsBlur());
+  t.check("v2: true の記録も読み込め、鍵は残る", (await page.evaluate(() => KN.store.get().settings.v2)) === true);
+  t.check("それでも印は付かない", !(await mark()));
 
-  await openLook();
-  const more3 = page.locator(".set-layer:last-child details.set-more", { hasText: "試す" });
-  await more3.locator("summary").click();
-  await page.waitForTimeout(200);
-  await more3.locator(".set-row.is-sw").click();
-  await page.waitForTimeout(300);
-  t.check("もう一度押すと外れる", !(await mark()) && (await saved()) === false);
-  t.check("オフ：daily の紙の下は角のまま", (await dailyCorner()) === "0px", await dailyCorner());
-  t.check("オフ：日記の抜き出しは三行", (await clamp()) === "3", await clamp());
-  t.check("オフ：ノートの道具の帯はガラス", /blur/.test(await toolsBlur()), await toolsBlur());
+  for (const id of ["archive", "todo", "list", "diet"]) {
+    await page.locator(`.tab[data-tab="${id}"]`).click();
+    await page.waitForTimeout(400);
+    const ok = await page.evaluate((i) => {
+      const s = document.getElementById(`screen-${i}`);
+      return !!s && s.classList.contains("is-active") && s.getBoundingClientRect().height > 0;
+    }, id);
+    t.check(`${id} が開く`, ok);
+  }
 
-  /* 知らない値はオフへ。直に書いた値が読み直しで届くことを、true で先に確かめる
-     （届かなければ「オフ」が素通りで通ってしまう）。 */
-  const inject = async (v) => {
-    await page.evaluate((val) => {
-      KN.store.flush && KN.store.flush();
-      const raw = JSON.parse(localStorage.getItem("kaimono-note-v2"));
-      raw.settings.v2 = val;
-      localStorage.setItem("kaimono-note-v2", JSON.stringify(raw));
-    }, v);
-    await page.reload();
-    await page.waitForFunction(() => window.KN && KN.store && KN.app);
-    await page.waitForTimeout(300);
-  };
-  await inject(true);
-  t.check("直に書いた true は届く", (await saved()) === true && (await mark()));
-  await inject("yes");
-  t.check("知らない値はオフ", (await saved()) === false && !(await mark()));
+  await page.locator('.tab[data-tab="archive"]').click();
+  await page.waitForTimeout(400);
+  const corner = await page.evaluate(() => {
+    const e = document.querySelector("#screen-archive .tl-sheet.is-daily");
+    return e ? parseFloat(getComputedStyle(e).borderBottomLeftRadius) : -1;
+  });
+  t.check("daily の紙の下の角は丸い", corner > 0, String(corner));
+  t.check("日記の抜き出しは五行", (await probe("arc-then-memo", "span")).clamp === "5");
+  const clamped = await probe("arc-log-memo is-clamped", "span");
+  t.check("切った Daily Log も五行", clamped.clamp === "5", JSON.stringify(clamped));
+  const tools = await probe("note-tools", "div");
+  t.check("道具の帯は白を少し透かした面（ガラスの重ねは読まない）",
+    /blur/.test(tools.blur) && tools.img === "none" && /(rgba\(.*, 0\.\d+\)|\/ 0\.\d+\))$/.test(tools.bg), JSON.stringify(tools));
 
   t.check("エラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

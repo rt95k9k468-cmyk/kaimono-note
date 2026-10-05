@@ -63,6 +63,8 @@ const { open, checker } = require("./lib");
     KN.app.showScreen("diet");
   });
   await page.waitForTimeout(700);
+  /* 食事は「記録」の区画（V24、V26 で既定）。 */
+  await page.click('#screen-diet .js-pane[data-pane="log"]');
   await page.click('#screen-diet .diet-slot-view[data-slot="breakfast"]');
   await page.waitForTimeout(400);
   const pop = await page.evaluate(() => ({
