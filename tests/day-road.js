@@ -149,6 +149,7 @@ const DAY = "2026-09-29";
   c.check("済ませた洗濯は 6:50 の道の上に足あと（斜線の丸薬）",
     r.steps.length === 1 && r.steps[0].hatch && Math.abs(r.steps[0].x - p650.x) < 0.3 && Math.abs(r.steps[0].y - p650.y) < 0.3,
     JSON.stringify([r.steps, p650]));
+  c.check("足あとには名前だけの札（時刻なし）", r.labels.includes("洗濯"), JSON.stringify(r.labels));
   /* 7:43 は一つ目の角の上（角も時間を持つ）なので、道筋の尻は L でも A でもよい。 */
   c.check("歩いたぶんの道は、人の足もとまで", /([-\d.]+) ([-\d.]+)$/.test(r.went)
     && Math.abs(Number(r.went.match(/([-\d.]+) [-\d.]+$/)[1]) - p743.x) < 0.3, r.went);

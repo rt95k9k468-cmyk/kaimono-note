@@ -6695,6 +6695,8 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-label em { flex: none; font-style: normal; color: var(--c-text-2); }
 .road-label.is-later { color: var(--c-text-2); }
 .road-label.is-later b { font-weight: var(--fw-regular); }
+/* 足あとの札（名前だけ）。済んだ札と同じ灰色で、取り消し線は引かない（丸薬の淡さで済んだと読める）。 */
+.road-label.is-step { color: var(--c-text-3); }
 .road-now {
   transform: translate(-50%, -50%); pointer-events: none;
   font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary);
