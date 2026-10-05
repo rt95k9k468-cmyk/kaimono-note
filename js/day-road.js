@@ -1094,8 +1094,9 @@
       const live = !done && s.len && nowMin != null && nowMin >= s.ga && nowMin < s.until;
       grp.classList.toggle("is-live", live);
       /* 時計が通った・済ませた停留所は薄く（いまの丸だけ濃く。2026年10月3日・CSS の --road-past）。
-         過ぎた日は塗ったまま（道が薄いので、停留所の形で読む）。 */
-      grp.classList.toggle("is-past", to != null && !live && !st.past);
+         過ぎた日の停留所も同じ薄さ（2026年10月5日・利用者の声「過去は過去なので過去の薄さに
+         統一して」。前は濃いまま塗っていた）。 */
+      grp.classList.toggle("is-past", to != null && !live);
       /* 停留所の上の時の数字。塗ったところは白、まだの白い中は塗りの色。
          **位置は道の上の数字と同じところから動かさない**（2026年10月2日・利用者の声「線上の
          時刻の数値は絶対に動かさないで。そこしか時刻を表すところがない」）。
