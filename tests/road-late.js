@@ -201,6 +201,8 @@ const DAY = "2026-09-30";
       eu: s.eu, d1: s.d1, d1Want: g.dist(7 * 60 + 20, true),
       stopWent: !!grp.querySelector(".road-stop-went").getAttribute("d"),
       late: grp.classList.contains("is-late"),
+      stopPale: getComputedStyle(grp.querySelector(".road-stop-went")).stroke
+        === getComputedStyle(road.querySelector(".road-went")).stroke,
       hatch: !!(pill && pill.querySelector(".road-stop-hatch[mask]")),
       pale: pill ? getComputedStyle(pill.querySelector(".road-stop-edge")).stroke
         === getComputedStyle(road.querySelector(".road-went") || road).stroke : false,
@@ -209,7 +211,8 @@ const DAY = "2026-09-30";
   });
   c.check("過ぎた日：道は塗らない（これからの薄い色のまま）", /is-past/.test(past.cls) && !past.went,
     JSON.stringify([past.cls, past.went]));
-  c.check("過ぎた日：停留所は塗る", past.stopWent && !past.late, JSON.stringify([past.stopWent, past.late]));
+  c.check("過ぎた日：停留所は過去の薄さで塗る", past.stopWent && !past.late && past.stopPale,
+    JSON.stringify([past.stopWent, past.late, past.stopPale]));
   c.check("過ぎた日：区間は押した時刻（7:40）まで延ばさず、決めた 7:20 のまま",
     past.eu === 7 * 60 + 20 && Math.abs(past.d1 - past.d1Want) < 0.01, JSON.stringify([past.eu, past.d1, past.d1Want]));
   c.check("過ぎた日：押した時刻（7:40）の道の上に、淡い斜線の丸薬",
