@@ -150,7 +150,6 @@
 @media (hover: hover) {
   .ac-item:hover { background: var(--c-primary-soft); }
 }
-.ac-emoji { font-size: calc(20px * var(--fs-k)); flex: none; display: flex; align-items: center; }
 .ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ac-name { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ac-sub {
@@ -375,21 +374,6 @@
   letter-spacing: -.02em;
   white-space: nowrap;
   line-height: 1.25;
-}
-/* 買うもの・価格の題。**帯の高さを変えないこと**が条件なので、やること／
-   daily の日付の題とまったく同じ寸法にしてあります（clamp・行の高さ・字の
-   詰め）。ここが違うと、この二つのタブだけ帯が一段深く見えます。
-
-   色は「2026年」と同じ差し色。`--c-primary-fill` は白の上で 2.25:1 しか
-   なく、ふつうの本文には使えませんが、ここは `.day-y` と同じ「いまどこか」
-   を言う大きな字で、隣に並べたときに同じ色に見えることのほうが要ります。 */
-.tab-title {
-  font-size: calc(clamp(18px, 6.4vw, 26px) * var(--fs-k));
-  font-weight: var(--fw-bold);
-  letter-spacing: -.02em;
-  line-height: 1.25;
-  color: var(--c-primary);
-  margin: 0;
 }
 
 /* 色を当てる相手は二つです。**年はいつも差し色**（いま何年のどこを見て
@@ -2364,13 +2348,6 @@
 }
 .seg-btn[aria-pressed="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
 
-.about {
-  padding: var(--sp-6) var(--sp-4) var(--sp-4);
-  text-align: center;
-  color: var(--c-text-3);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-body);
-}
 
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
@@ -2606,7 +2583,6 @@
 }
 .diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-stat-value { font-size: var(--fs-md); font-weight: var(--fw-bold); margin-left: auto; }
-.diet-stat-value.is-good { color: var(--c-primary); }
 .diet-stat-value.is-warn { color: var(--c-accent); }
 .diet-stat-unit {
   font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap;
@@ -3364,11 +3340,9 @@ a.btn { text-decoration: none; }
    「mm/dd/yyyy」を自分で描くので、そこへ重ねると二重に見えます。
    下地ごと敷いて覆います——右端のカレンダーの絵だけは残して、
    そこを押せば日付を選べるように。 */
-/* 日付と時刻は横に並べます（二つで「いつ」の一つの答えなので）。
-   時刻のほうは幅を決め打ちします——中身は必ず5文字で、日付ほど要りません。 */
+/* 日付と時刻は横に並べます（二つで「いつ」の一つの答えなので）。 */
 .date-row { display: flex; align-items: center; gap: var(--sp-2); }
 .date-cell { position: relative; flex: 1 1 auto; min-width: 0; display: block; }
-.date-cell.is-time { flex: 0 0 116px; }
 .date-cell .input { width: 100%; }
 /* 空の日付・時刻に、自分でかぶせる字。ブラウザが出す薄い
    「mm/dd/yyyy」を覆うので、地の色で塗ります（右の絵は覆いません）。 */
@@ -3382,7 +3356,6 @@ a.btn { text-decoration: none; }
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-.date-cell.is-time .date-empty { right: 34px; }
 
 /* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
    字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に
@@ -6725,7 +6698,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   transform: translateY(-50%); pointer-events: none;
   font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
-.road-edge.is-before { transform: translate(-100%, -50%); }
 .road-edge.is-under { transform: translate(-50%, -50%); }
 /* 連れ（時刻を決めていないもの）。人のすぐ後ろ、道の上の小さな丸。中の絵は
    時間割の丸薬と同じシルエット（マスク）。 */
