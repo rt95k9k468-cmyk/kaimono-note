@@ -46,11 +46,14 @@ const DAY = "2026-10-01";
       /* 引き出し線の根もとが、どの停留所のまん中のそばか */
       ties: [...road.querySelectorAll(".road-ties line")].map((l) => {
         const x = +l.getAttribute("x1"), y = +l.getAttribute("y1");
-        const near = st.stops.find((s) => {
-          const p = st.g.point((s.d0 + s.d1) / 2);
-          return Math.hypot(p.x - x, p.y - y) < 16;
+        let best = null;
+        st.stops.forEach((s) => {
+          for (let d = s.d0; d <= s.d1; d += 0.5) {
+            const p = st.g.point(d), e = Math.hypot(p.x - x, p.y - y);
+            if (!best || e < best.e) best = { e, t: s.t.title, arc: !!p.arc };
+          }
         });
-        return near ? near.t.title : `?${x},${y}`;
+        return best && best.e < 12 ? (best.arc ? "角:" : "") + best.t : `?${x},${y}`;
       }),
     };
   });
@@ -72,12 +75,73 @@ const DAY = "2026-10-01";
   /* 引き出し線は、その時間帯に丸薬がほかにもあるときだけ（2026年10月5日）。 */
   c.check("ひとりの丸薬（朝のルーティン・朝のBaby・晴菜）には引き出し線を引かない",
     !r.ties.some((t) => ["朝のルーティン", "朝のBaby", "晴菜"].includes(t)), JSON.stringify(r.ties));
-  c.check("触れ合う分別ごみと夜のルーティンには引き出し線",
-    r.ties.length >= 1 && r.ties.every((t) => t === "分別ごみ" || t === "夜のルーティン"), JSON.stringify(r.ties));
+  c.check("曲がり角の上の丸薬からは引き出し線を引かない（7:39 の夜のルーティンも札は出る）",
+    !r.ties.some((t) => /^角:|^\?/.test(t)) && r.labels.includes("夜のルーティン"), JSON.stringify([r.ties, r.labels]));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/road-done.png`,
     clip: await page.evaluate(() => { const b = document.querySelector("#screen-todo .day-road").getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }) });
   c.check("評価の言葉を出さない", !/遅れ|超過|予定通り|達成|早い|前倒し/.test(r.text), r.text);
   c.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
+
+  /* 同じ時刻に始まる二つは短いほうを斜線・曲がり角の札は線なし（2026年10月5日）。
+     7:30〜9:30 の朝のルーティンを 8:00 に、7:30〜8:30 の朝のBaby を 8:20 に済ませた（前の用事の
+     あいだに済ませたので押さずに 7:30 から二つ）。11:50〜12:10 の杏へ電話（12:10）はまん中が 12:00 の角。
+     13:15〜14:15 の保育園（14:15）の途中に 13:30〜13:45 の電話（13:45）。 */
+  const b2 = await open({
+    before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 1, 19, 39)); },
+  });
+  await b2.page.evaluate((day) => {
+    const s = KN.store;
+    s.update((x) => { x.settings.dayStart = "05:30"; x.settings.dayEnd = "22:30"; });
+    const mk = (title, time, minutes, h, m) => {
+      const t = s.addTodo({ title, due: day, time, minutes });
+      s.toggleTodo(t.id);
+      s.update((x) => { x.todos.find((y) => y.id === t.id).doneAt = new Date(2026, 9, 1, h, m).toISOString(); });
+    };
+    mk("朝のルーティン", "07:30", 120, 8, 0);
+    mk("朝のBaby", "07:30", 60, 8, 20);
+    mk("杏へ電話", "11:50", 20, 12, 10);
+    mk("保育園", "13:15", 60, 14, 15);
+    mk("電話", "13:30", 15, 13, 45);
+  }, DAY);
+  await b2.page.click('.tab[data-tab="todo"]');
+  await b2.page.waitForTimeout(800);
+  const q = await b2.page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const st = road.__road;
+    const k = (t) => st.stops.findIndex((s) => s.t.title === t);
+    const grp = (t) => road.querySelector(`.road-stop[data-s="${k(t)}"]`);
+    const s = st.stops[k("杏へ電話")];
+    const m = (s.d0 + s.d1) / 2, a = Math.max(s.d0, m - 8);   // capIn（短い丸薬は前寄り）のまん中
+    const p = st.g.point(s.d1 - s.d0 <= 16 ? (a + m) / 2 : m);
+    const rt = st.stops[k("保育園")];
+    const lab = road.querySelector(`.road-label[data-k="${k("杏へ電話")}"]`);
+    return {
+      over: Object.fromEntries(st.stops.map((x) => [x.t.title, { ga: x.ga, eu: x.eu, over: x.over, isOver: grp(x.t.title).classList.contains("is-over") }])),
+      onTop: !!(grp("朝のBaby").compareDocumentPosition(grp("朝のルーティン")) & 4),
+      arc: p.arc, lab: lab && lab.textContent.trim(),
+      dy: lab && Math.abs(parseFloat(lab.style.top) / 100 * st.g.H - p.y),
+      ties: [...road.querySelectorAll(".road-ties line")].map((l) => Math.hypot(+l.getAttribute("x1") - p.x, +l.getAttribute("y1") - p.y)),
+      // 電話と重なる保育園（まっすぐの上）からは線が出る
+      rtTie: [...road.querySelectorAll(".road-ties line")].some((l) => {
+        for (let d = rt.d0; d <= rt.d1; d += 0.5) {
+          const q2 = st.g.point(d);
+          if (!q2.arc && Math.hypot(+l.getAttribute("x1") - q2.x, +l.getAttribute("y1") - q2.y) < 12) return true;
+        }
+        return false;
+      }),
+    };
+  });
+  const O = q.over;
+  c.check("同じ 7:30 に始まる二つ：短いほう（朝のルーティン、8:00 まで）が斜線、長いほうは塗り",
+    O["朝のルーティン"].ga === O["朝のBaby"].ga && O["朝のルーティン"].isOver && !O["朝のBaby"].isOver, JSON.stringify(O));
+  c.check("斜線のほうが上に描かれる", q.onTop, String(q.onTop));
+  c.check("まっすぐの上で重なる保育園には引き出し線", q.rtTie, JSON.stringify(q));
+  c.check("まん中が角の済んだ札：角の内側の同じ高さ（一行ぶんまで）に置き、線は引かない",
+    q.arc && q.lab === "杏へ電話" && q.dy <= 14 + 2 && !q.ties.some((d) => d < 16), JSON.stringify(q));
+  if (process.env.SHOTS) await b2.page.screenshot({ path: `${process.env.SHOTS}/road-done-2.png`,
+    clip: await b2.page.evaluate(() => { const b = document.querySelector("#screen-todo .day-road").getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }) });
+  c.check("ページのエラーなし（二つめ）", !b2.errors.length, b2.errors.join("\n"));
+  await b2.browser.close();
   c.done();
 })();
