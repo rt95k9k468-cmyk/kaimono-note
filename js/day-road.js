@@ -948,7 +948,7 @@
         decideAt(el, o, e);
         return;
       }
-      const hit = e.target.closest("[data-k], [data-l], [data-b], [data-h], .road-more");
+      const hit = e.target.closest("[data-k], [data-l], [data-f], [data-b], [data-h], .road-more");
       if (!hit || !el.contains(hit)) return;
       if (hit.classList.contains("road-more")) {
         /* 連れが多すぎて丸に入りきらないときの「+3」。全部は時間割にあるので、
@@ -962,6 +962,7 @@
       const pick = hit.hasAttribute("data-k") ? stops[Number(hit.getAttribute("data-k"))]
         : hit.hasAttribute("data-l") ? later[Number(hit.getAttribute("data-l"))]
         : hit.hasAttribute("data-h") ? someday[Number(hit.getAttribute("data-h"))]
+        : hit.hasAttribute("data-f") ? steps[Number(hit.getAttribute("data-f"))]
         : loose[Number(hit.getAttribute("data-b"))];
       if (pick && o.open) o.open(pick.t.id, hit);
     });
@@ -1495,6 +1496,33 @@
                 data-l="${String(k)}" style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
                 aria-label="${time} ${s.t.title}">
           <b>${time}</b><span>${s.t.title}</span>
+        </button>`);
+    });
+
+    /* 3b. 足あとの札（2026年10月5日・利用者の声「小さいタスクでも道に何のタスクか名前を」）。
+       **名前だけ**を、済んだ札と同じ細い灰色で。時刻は丸薬の位置で読めるし、書けば決めた
+       約束に見える。置くのは停留所と夜のごろの札のあと（そちらが先。入らなければ出さない）。
+       丸薬が触れ合う足あとは一つの札にまとめて「ほか n」を添え、押せば先の足あとが開く。 */
+    const prints = [];
+    st.steps.map((s, k) => ({ s, k })).sort((a, b) => a.s.d - b.s.d).forEach((x) => {
+      const last = prints[prints.length - 1];
+      if (last && x.s.d - last[last.length - 1].s.d < 2 * STOP) last.push(x);
+      else prints.push([x]);
+    });
+    prints.forEach((pr) => {
+      const { s, k } = pr[0];
+      const extra = pr.length - 1;
+      const room = extra ? textW(`ほか${extra}`, FS) + 4 : 0;
+      const d0 = Math.max(g.d0, s.d - STOP / 2);
+      const b = g.point(d0).arc ? placeArc(d0, 0, "", s.t.title, room)
+        : place(g.point(d0), "", s.t.title, TRIES.slice(0, 6), room);
+      if (!b) return;
+      const title = cut(s.t.title, b.hi - b.lo - 1 - 4 - room);
+      out.push(html`
+        <button type="button" class="road-label is-step ${b.rev ? "is-rev" : ""}"
+                data-f="${String(k)}" style="${at(b.lo, b.y)};width:${pct(b.hi - b.lo, W)}"
+                aria-label="${s.t.title}（済み）${extra ? `、ほか${extra}件` : ""}">
+          <span>${title}</span>${extra ? html`<em>ほか${extra}</em>` : ""}
         </button>`);
     });
 
