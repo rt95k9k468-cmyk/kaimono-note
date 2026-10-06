@@ -581,6 +581,19 @@
       ico: "download", tint: TINT.data, title: staleText(stale),
       onTap: () => go("data"),
     })));
+    /* 開いたときの点検（B4、backup.js の doubt）：記録が写しや控えより大きく少ない。
+       記録は「自動バックアップから戻す」へ。ノートは、その控えから消さずに合わせる。 */
+    const doubt = KN.backup.doubt && KN.backup.doubt();
+    if (doubt) L.body.append(card(
+      doubt.record ? navRow({
+        ico: "undo", tint: TINT.data, title: "記録が控えより少なくなっています",
+        value: stampOf(doubt.record.at), onTap: () => go("data"),
+      }) : null,
+      doubt.notes ? navRow({
+        ico: "undo", tint: TINT.data, title: "ノートが控えより少なくなっています",
+        value: stampOf(doubt.notes.at), onTap: () => mergeNotesFrom(doubt.notes.at),
+      }) : null
+    ));
     const tab = TAB[fromTab] || TAB.archive;
     L.body.append(head(tab.label));
     put(tab.rows());
@@ -592,6 +605,24 @@
        ここも同じ系列の言葉にします。 */
     L.body.append(head("General"));
     put(generalRows());
+  }
+
+  function stampOf(iso) {
+    const d = new Date(iso);
+    if (!isFinite(d)) return "";
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  async function mergeNotesFrom(at) {
+    const ok = await KN.ui.confirm({
+      title: "ノートを合わせますか？",
+      message: `${stampOf(at)} の控えのノートを、いまのノートに足します。いまのノートは消しません。`,
+      okLabel: "合わせる",
+    });
+    if (!ok) return;
+    const r = await KN.backup.mergeNotes(at);
+    KN.ui.toast(r === "merged" ? "ノートを合わせました" : "合わせられませんでした", { duration: r === "merged" ? undefined : 6000 });
+    render();
   }
 
   function staleText(x) {

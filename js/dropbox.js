@@ -208,14 +208,15 @@
     return cfg.access;
   }
 
-  /** 一度呼んで、鍵が古いと言われたら取り直してもう一度。 */
-  async function call(host, path, { arg, body, json } = {}) {
+  /** 一度呼んで、鍵が古いと言われたら取り直してもう一度。`raw` は中身を読む呼び出し
+      （download）：通れば res をそのまま返す（中身は呼ぶ側が text() で）。 */
+  async function call(host, path, { arg, body, json, raw } = {}) {
     for (let tries = 0; tries < 2; tries++) {
       const token = await accessToken(tries > 0);
       const headers = { Authorization: `Bearer ${token}` };
       if (arg) {
         headers["Dropbox-API-Arg"] = JSON.stringify(arg);
-        headers["Content-Type"] = "application/octet-stream";
+        if (!raw) headers["Content-Type"] = "application/octet-stream";
       } else if (json) {
         headers["Content-Type"] = "application/json";
       }
@@ -224,6 +225,7 @@
         body: arg ? body : json ? JSON.stringify(json) : undefined,
       });
       if (res.status === 401 && tries === 0) continue;
+      if (raw && res.ok) return { res, body: null };
       let out = null;
       try { out = await res.json(); } catch (err) { out = null; }
       return { res, body: out };
@@ -245,18 +247,27 @@
     throw new Error(summary(r));
   }
 
-  /** 日付の控えを、新しいほうから KEEP 個だけ残す。 */
-  async function prune() {
-    const names = [];
+  /** 日付の控え（この名前の形のものだけ）。フォルダがまだ無ければ空。 */
+  async function dailyFiles() {
+    const out = [];
     let r = await call(API, "/2/files/list_folder", { json: { path: DAILY_DIR, limit: 2000 } });
     for (let guard = 0; guard < 20; guard++) {
-      if (!r.res.ok) throw new Error(summary(r));
+      if (!r.res.ok) {
+        if (r.res.status === 409 && /not_found/.test(summary(r))) break;
+        throw new Error(summary(r));
+      }
       (r.body.entries || []).forEach((e) => {
-        if (e[".tag"] === "file" && DAILY_RE.test(e.name)) names.push(e.name);
+        if (e[".tag"] === "file" && DAILY_RE.test(e.name)) out.push(e);
       });
       if (!r.body.has_more) break;
       r = await call(API, "/2/files/list_folder/continue", { json: { cursor: r.body.cursor } });
     }
+    return out;
+  }
+
+  /** 日付の控えを、新しいほうから KEEP 個だけ残す。 */
+  async function prune() {
+    const names = (await dailyFiles()).map((e) => e.name);
     names.sort();
     const old = names.slice(0, Math.max(0, names.length - KEEP));
     for (const name of old) {
@@ -326,6 +337,10 @@
       try { await KN.notes.ready(); } catch (err) { /* 読めない日は noteBook を付けずに */ }
     }
     const extra = KN.notes ? KN.notes.forExport() : {};
+    /* 記録もノートも空なら送らない（B2）。新しい端末でつないだ直後に、空の中身で
+       kurashi-latest.json と今日の日付の控えを埋めないため——その端末へは、
+       Dropbox の控えから戻す（下の backups / download）。 */
+    if (store.isBlank(store.get()) && !(extra.noteBook && extra.noteBook.notes.length)) return "empty";
     dirty = false;
     const hash = await sha(JSON.stringify(store.get())
       + (extra.noteBook ? JSON.stringify(extra.noteBook) : ""));
@@ -356,6 +371,41 @@
       save();
       return "failed";
     }
+  }
+
+  /* ---- Dropbox の控えから戻す（B2、2026年10月6日） ----
+
+     端末ごと失った日のために。前はファイル App で Dropbox から落としてきて
+     「バックアップから復元」でした。読むのは送るときと同じ二つの名前の形だけ。 */
+
+  /** 戻せる控え。最新（`latest: true`）が先、あとは日付の新しい順に
+      `{ path, day, at, size }`。 */
+  async function backups() {
+    await recovered;
+    if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
+    const out = (await dailyFiles())
+      .map((e) => ({ path: `${DAILY_DIR}/${e.name}`, day: DAILY_RE.exec(e.name)[1], at: e.server_modified || "", size: e.size || 0 }))
+      .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    const m = await call(API, "/2/files/get_metadata", { json: { path: LATEST } });
+    if (m.res.ok && m.body && m.body[".tag"] === "file") {
+      out.unshift({ path: LATEST, latest: true, at: m.body.server_modified || "", size: m.body.size || 0 });
+    } else if (!m.res.ok && !/not_found/.test(summary(m))) {
+      throw new Error(summary(m));
+    }
+    return out;
+  }
+
+  /** 控えの中身（字）。上の二つの形の名前だけ読む。 */
+  async function download(path) {
+    const p = String(path || "");
+    if (p !== LATEST && !(p.startsWith(`${DAILY_DIR}/`) && DAILY_RE.test(p.slice(DAILY_DIR.length + 1)))) {
+      throw new Error("戻せる控えの名前ではありません");
+    }
+    await recovered;
+    if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
+    const r = await call(CONTENT, "/2/files/download", { arg: { path: p }, raw: true });
+    if (!r.res.ok) throw new Error(summary(r));
+    return r.res.text();
   }
 
   /** 書き換えがあった。SOON のあとに一度だけ送る（その間の書き換えはまとめる）。 */
@@ -390,5 +440,5 @@
   setTimeout(() => { prepare(); sync(); }, FIRST);
 
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
-  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, onChange, KEEP };
+  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, onChange, backups, download, KEEP };
 })();

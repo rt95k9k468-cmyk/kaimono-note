@@ -117,16 +117,18 @@
         </button>
       `);
       row.addEventListener("click", async () => {
+        /* ノートの入った控え（B3。docs/storage.md）は、ノートを置き換えずに合わせる。 */
         const ok = await KN.ui.confirm({
           title: "この時点に戻しますか？",
-          message: "いまのデータは置き換わります。戻す直前の状態も控えに残すので、やり直せます。",
+          message: `いまのデータは置き換わります${s.nb != null ? "（ノートは消さずに合わせます）" : ""}。戻す直前の状態も控えに残すので、やり直せます。`,
           okLabel: "戻す",
           danger: true,
         });
         if (!ok) return;
         try {
+          let res = null;
           try {
-            await KN.backup.restore(s.at);
+            res = await KN.backup.restore(s.at);
           } catch (err) {
             if (err.code !== "keep-failed") throw err;
             // 戻す前の控えが取れなかった。黙って戻すと、いまの状態へは戻れない。
@@ -136,9 +138,9 @@
               okLabel: "それでも戻す", cancelLabel: "やめる", danger: true,
             });
             if (!go) return;
-            await KN.backup.restore(s.at, { force: true });
+            res = await KN.backup.restore(s.at, { force: true });
           }
-          KN.ui.toast(`${snapStamp(s.at)} の状態に戻しました`);
+          KN.ui.toast(`${snapStamp(s.at)} の状態に戻しました${res && res.notes === "failed" ? "（ノートは合わせられませんでした）" : ""}`);
           if (sheetHandle) sheetHandle.close();
         } catch (err) {
           console.error(err);
@@ -303,55 +305,62 @@
       let text = "";
       try { text = await f.text(); } catch (err) { text = ""; }
       file.value = "";
-      const r = store.inspectBackup(text);
-      if (!r.ok) {
-        KN.ui.toast(`復元できません：${r.reason}（何も変えていません）`, { duration: 6000 });
-        return;
-      }
-      /* 記録の置き場（localStorage）に入りきらない大きさなら、戻す前に断ります。
-         日記の本文を外してあれば、本文は大きな保存場所へ先に届けるので入ります
-         （store.importBackup）。 */
-      const D = KN.diaryIdb;
-      const outOk = !!(D && D.isOut && D.isOut() && D.body() === "ok");
-      if (r.size > IPHONE_CHARS && !outOk) {
-        await KN.ui.confirm({
-          title: "入りきりません",
-          message: D && D.isOut && D.isOut()
-            ? "日記の保存場所を読めない日なので、この大きさのファイルは戻せません（何も変えていません）。"
-            : `このファイルは${charText(r.size)}あり、この端末の記録の置き場に入りきりません（何も変えていません）。先に「日記を記録から外す」を。`,
-          okLabel: "わかった", cancelLabel: "閉じる",
-        });
-        return;
-      }
-      const when = r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出し` : "書き出し日時の無いファイル";
-      /* ノート（記録の外。docs/notes.md の段2）は置き換えずに合わせます。 */
-      let book = null;
-      try { book = JSON.parse(text).noteBook || null; } catch (err) { book = null; }
-      const ok = await KN.ui.confirm({
-        title: "復元しますか？",
-        message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}${r.bare ? "日記の本文が無い日があります（いま持っている本文を当てます）。" : ""}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
-        okLabel: "復元する",
-        danger: true,
-      });
-      if (!ok) return;
-      if (!(await keepBefore("復元前"))) return;
-      try {
-        await store.importBackup(text);
-        await KN.backup.settleLost();   // 記録が見当たらない日（backup.js）は、これで戻ったことに
-      } catch (err) {
-        console.error(err);
-        KN.ui.toast(`読み込めませんでした：${String((err && err.message) || err)}`);
-        return;
-      }
-      if (!book || !KN.notes) { KN.ui.toast("復元しました"); return; }
-      try {
-        if (await KN.notes.merge(book)) { KN.ui.toast("復元しました"); return; }
-      } catch (err) {
-        console.error(err);
-      }
-      KN.ui.toast("復元しました（ノートは合わせられませんでした）", { duration: 6000 });
+      await restoreText(text);
     });
     return file;
+  }
+
+  /** 読んだバックアップの字を、確かめて見せてから戻します（ファイルと、Dropbox の
+      控え）。戻したら true。 */
+  async function restoreText(text) {
+    const r = store.inspectBackup(text);
+    if (!r.ok) {
+      KN.ui.toast(`復元できません：${r.reason}（何も変えていません）`, { duration: 6000 });
+      return false;
+    }
+    /* 記録の置き場（localStorage）に入りきらない大きさなら、戻す前に断ります。
+       日記の本文を外してあれば、本文は大きな保存場所へ先に届けるので入ります
+       （store.importBackup）。 */
+    const D = KN.diaryIdb;
+    const outOk = !!(D && D.isOut && D.isOut() && D.body() === "ok");
+    if (r.size > IPHONE_CHARS && !outOk) {
+      await KN.ui.confirm({
+        title: "入りきりません",
+        message: D && D.isOut && D.isOut()
+          ? "日記の保存場所を読めない日なので、この大きさのファイルは戻せません（何も変えていません）。"
+          : `このファイルは${charText(r.size)}あり、この端末の記録の置き場に入りきりません（何も変えていません）。先に「日記を記録から外す」を。`,
+        okLabel: "わかった", cancelLabel: "閉じる",
+      });
+      return false;
+    }
+    const when = r.exportedAt ? `${snapStamp(r.exportedAt)} の書き出し` : "書き出し日時の無いファイル";
+    /* ノート（記録の外。docs/notes.md の段2）は置き換えずに合わせます。 */
+    let book = null;
+    try { book = JSON.parse(text).noteBook || null; } catch (err) { book = null; }
+    const ok = await KN.ui.confirm({
+      title: "復元しますか？",
+      message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}${r.bare ? "日記の本文が無い日があります（いま持っている本文を当てます）。" : ""}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
+      okLabel: "復元する",
+      danger: true,
+    });
+    if (!ok) return false;
+    if (!(await keepBefore("復元前"))) return false;
+    try {
+      await store.importBackup(text);
+      await KN.backup.settleLost();   // 記録が見当たらない日（backup.js）は、これで戻ったことに
+    } catch (err) {
+      console.error(err);
+      KN.ui.toast(`読み込めませんでした：${String((err && err.message) || err)}`);
+      return false;
+    }
+    if (!book || !KN.notes) { KN.ui.toast("復元しました"); return true; }
+    try {
+      if (await KN.notes.merge(book)) { KN.ui.toast("復元しました"); return true; }
+    } catch (err) {
+      console.error(err);
+    }
+    KN.ui.toast("復元しました（ノートは合わせられませんでした）", { duration: 6000 });
+    return true;
   }
 
   /* 保存したファイルを、**戻さずに**読んで確かめます。書き出した日時と
@@ -621,12 +630,24 @@
     let t = u.where === "idb"
       ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。${apart}自動バックアップ ${u.count}件は別の保存場所。`
       : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。${apart ? `${apart.slice(0, -1)}は別の保存場所。` : ""}`;
+    t += liveCopyText();
     t += roomText(u);
     t += diaryCopyText(u.diary);
     if (u.tight) {
       t += `自動バックアップは${u.fits}件まで。こまめに「バックアップを保存」を。`;
     }
     return t;
+  }
+
+  /* 記録の写し（js/live-idb.js。B1）：いつの状態か。書くたびに追うので、ふだんは
+     いま。止まっている・書けていないときだけ、そう言う。 */
+  function liveCopyText() {
+    if (!KN.liveIdb) return "";
+    const s = KN.liveIdb.status();
+    if (s.phase === "off") return "記録の写しは止まっています。";
+    if (s.phase !== "on") return "";
+    if (s.failed) return "記録の写しへ書けていません。";
+    return s.last ? `記録の写し：${whenText(s.last.at)}の状態。` : "";
   }
 
   /* 日記の写し（js/diary-idb.js）の様子。**元（記録の中）を消していない**
@@ -875,14 +896,18 @@
     const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
     const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。` : "";
     return [
-      card(navRow({
-        ico: "upload", tint: TINT.data, title: "いま送る",
-        onTap: async () => {
-          const r = await db.sync();
-          KN.ui.toast(r === "sent" ? "送りました" : r === "same" ? "前に送ったものと同じです" : "送れませんでした");
-          render();
-        },
-      })),
+      card(
+        navRow({
+          ico: "upload", tint: TINT.data, title: "いま送る",
+          onTap: async () => {
+            const r = await db.sync();
+            KN.ui.toast(r === "sent" ? "送りました" : r === "same" ? "前に送ったものと同じです"
+              : r === "empty" ? "記録が空なので送りません" : "送れませんでした");
+            render();
+          },
+        }),
+        navRow({ ico: "undo", tint: TINT.sub, title: "Dropbox の控えから戻す", onTap: openDropboxBackups })
+      ),
       foot(last + err),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",
@@ -898,6 +923,46 @@
         },
       })),
     ];
+  }
+
+  /* Dropbox の控えから戻す（B2。js/dropbox.js の backups / download）。端末ごと
+     失った日に、ファイル App を通らずに。並びを見せ、押したものを読んで、ファイルの
+     復元と同じ確かめ（restoreText）へ。 */
+  async function openDropboxBackups() {
+    let list = null;
+    try {
+      list = await KN.dropbox.backups();
+    } catch (err) {
+      KN.ui.toast(`Dropbox を読めませんでした（${String((err && err.message) || err)}）`, { duration: 6000 });
+      return;
+    }
+    if (!list.length) { KN.ui.toast("Dropbox に控えがありません"); return; }
+    const body = node(html`<div class="stack"><div class="rows js-dbx"></div></div>`);
+    const rows = body.querySelector(".js-dbx");
+    let h = null;
+    list.forEach((f) => {
+      const when = f.at ? snapStamp(f.at) : formatDate(f.day);
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${when}${f.latest ? "（最新）" : ""}</span>
+          </span>
+          <span class="row-chevron">${icon("chevron")}</span>
+        </button>
+      `);
+      row.addEventListener("click", async () => {
+        let text = "";
+        try {
+          text = await KN.dropbox.download(f.path);
+        } catch (err) {
+          KN.ui.toast(`読み込めませんでした（${String((err && err.message) || err)}）`, { duration: 6000 });
+          return;
+        }
+        if ((await restoreText(text)) && h) h.close();
+      });
+      rows.append(row);
+    });
+    h = KN.ui.sheet({ title: "Dropbox の控え", content: body });
   }
 
   /* 「データを消す」の一段（ダイエットの記録を消す・サンプルを入れる・すべて削除）は

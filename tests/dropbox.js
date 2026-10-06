@@ -48,8 +48,18 @@ const { open, checker } = require("./lib");
     }
     if (u.pathname === "/2/files/list_folder") {
       const entries = [...files.keys()].filter((p) => p.startsWith("/daily/"))
-        .map((p) => ({ ".tag": "file", name: p.slice(7) }));
+        .map((p) => ({ ".tag": "file", name: p.slice(7), server_modified: "2026-10-05T03:00:00Z", size: files.get(p).length }));
       return json(route, 200, { entries, has_more: false, cursor: "c" });
+    }
+    if (u.pathname === "/2/files/get_metadata") {
+      const { path } = JSON.parse(req.postData());
+      if (!files.has(path)) return json(route, 409, { error_summary: "path/not_found/.." });
+      return json(route, 200, { ".tag": "file", name: path.slice(1), server_modified: "2026-10-06T03:00:00Z", size: files.get(path).length });
+    }
+    if (u.pathname === "/2/files/download") {
+      const arg = JSON.parse(h["dropbox-api-arg"]);
+      if (!files.has(arg.path)) return json(route, 409, { error_summary: "path/not_found/.." });
+      return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: files.get(arg.path) });
     }
     if (u.pathname === "/2/files/delete_v2") {
       const { path } = JSON.parse(req.postData());
@@ -84,8 +94,12 @@ const { open, checker } = require("./lib");
       && auth.searchParams.get("token_access_type") === "offline"
       && !auth.searchParams.has("redirect_uri"), auth.toString());
 
-  // 3. コードを貼る → 鍵を受け取り、そのまま最初の控えを送る
-  const r1 = await page.evaluate(() => KN.dropbox.finish("  the-code  "));
+  // 3. コードを貼る → 鍵を受け取る。記録が空なら送らない（B2：新しい端末で空の中身を送らない）
+  const r0 = await page.evaluate(() => KN.dropbox.finish("  the-code  "));
+  t.check("記録が空ならつないでも送らない", r0 === "empty" && uploads().length === 0, r0);
+  // 中身ができたら、最初の控えを送る
+  await page.evaluate(() => KN.store.addTodo({ title: "Dropbox の試験のやること" }));
+  const r1 = await page.evaluate(() => KN.dropbox.sync());
   const tb = tokenBodies[0] || {};
   const want = crypto.createHash("sha256").update(tb.code_verifier || "").digest("base64url");
   t.check("コードの交換：合言葉の指紋が URL の challenge と合う",
@@ -181,6 +195,43 @@ const { open, checker } = require("./lib");
 
   // 11. 「すべて削除」相当の reset でも、つながりの覚え（App key）は store の外
   t.check("App key は store の外に残る", (await page.evaluate(() => KN.dropbox.status().appKey)) === "testkey123");
+
+  // 12. Dropbox の控えから戻す（B2）：並び（最新が先・日付は新しい順・ほかの名前は出ない）→ 読む → 確かめて戻す
+  await page.waitForFunction(() => !!KN.dropbox.authUrl());
+  await page.evaluate(() => KN.dropbox.finish("code-3"));
+  const list = await page.evaluate(() => KN.dropbox.backups());
+  t.check("控えの並び：最新が先、日付の控えは新しい順、ほかの名前は出ない",
+    list.length === 31 && list[0].latest && list[0].path === "/kurashi-latest.json"
+      && list.slice(1).every((f, i, a) => !i || a[i - 1].day > f.day) && !list.some((f) => /my-notes/.test(f.path)),
+    JSON.stringify(list.slice(0, 3)));
+  const dl = await page.evaluate(() => KN.dropbox.download("/kurashi-latest.json"));
+  t.check("控えを読める（送った中身のまま）", dl === files.get("/kurashi-latest.json"));
+  const bad = await page.evaluate(() => KN.dropbox.download("/daily/my-notes.json").then(() => "ok", (e) => e.message));
+  t.check("二つの形の名前のほかは読まない", bad !== "ok", bad);
+  const before12 = await page.evaluate(() => KN.store.get().todos.length);
+  await page.evaluate(() => KN.store.addTodo({ title: "戻すと消えるやること" }));
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox へ自動で送る" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox の控えから戻す" }).first().click();
+  await page.waitForTimeout(500);
+  const sheetRows = await page.locator(".set-layer:last-child .row-title").allTextContents();
+  t.check("紙に控えが並び、最新に（最新）", sheetRows.length === 31 && /（最新）/.test(sheetRows[0]), sheetRows.slice(0, 2).join(" / "));
+  await page.locator(".set-layer:last-child button.row").first().click();
+  await page.waitForSelector(".js-ok", { timeout: 4000 });
+  const ask = await page.evaluate(() => document.body.innerText);
+  t.check("戻す前に中身を見せて訊く", /復元しますか/.test(ask) && /いまの記録/.test(ask), "");
+  await page.locator(".js-ok").last().click();
+  await page.waitForTimeout(800);
+  const after12 = await page.evaluate(() => ({
+    n: KN.store.get().todos.length,
+    gone: !KN.store.get().todos.some((x) => x.title === "戻すと消えるやること"),
+    kept: KN.backup.list().some((s) => s.reason === "復元前"),
+  }));
+  t.check("戻すと Dropbox の中身になり、戻す前は控えに", after12.n === before12 && after12.gone && after12.kept, JSON.stringify(after12));
 
   t.check("ページのエラーが無い", errors.length === 0, errors.join("\n"));
   await browser.close();
