@@ -160,7 +160,9 @@
       if (!loaded.has(a.file)) { el.removeAttribute("data-season-img"); el.style.removeProperty("--season-img"); }
       preload(k, (url) => {
         if (el.getAttribute("data-season") !== String(k)) return;   // 読んでいるあいだに日が移った
-        el.style.setProperty("--season-img", `url("${url}")`);
+        /* 絶対の URL で書く。カスタムプロパティの相対 URL は、var() を使う css/screens.css から解決され
+           css/img/season/… を探して 404 になる（10/6 まで絵は一度も出ていなかった）。 */
+        el.style.setProperty("--season-img", `url("${new URL(url, document.baseURI).href}")`);
         el.setAttribute("data-season-img", "");
       });
     }

@@ -70,7 +70,14 @@ const ROOT = path.resolve(__dirname, "..");
   await page.waitForFunction(() => document.querySelector("#screen-archive").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
   r = await read();
   c.check("今日の候の絵が読めて重なる", r.img && r.bg.includes(`k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
+  /* 相対 URL は var() を使う css/screens.css から解決され css/img/season/… の 404 になる（10/6 まで絵が出ていなかった） */
+  const imgUrl = (/url\("([^"]+)"\)/.exec(r.bg) || [])[1] || "";
+  c.check("絵の URL は配信元の img/season/（css/ の下ではない）・読める", !/\/css\/img\//.test(imgUrl)
+    && await page.evaluate((u) => fetch(u).then((x) => x.ok, () => false), imgUrl), imgUrl);
   c.check("紙の地に敷く（中身の後ろ。押す的は増えない）", (r.bg.match(/linear-gradient/g) || []).length === 2, r.bg.slice(0, 120));
+  c.check("月のまとめ・Daily Log の段は白く抜けない（地を透かす）", await page.evaluate(() =>
+    [".card.arc-log", ".card.arc-counts", ".card.arc-list"].every((q) => { const e = document.querySelector(`#screen-archive ${q}`);
+      return !e || getComputedStyle(e).backgroundColor === "rgba(0, 0, 0, 0)"; })));
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
     ["todo", "list", "diet"].every((s) => !document.querySelector(`#screen-${s}`).hasAttribute("data-season"))));
 
