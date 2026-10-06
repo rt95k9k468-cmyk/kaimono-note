@@ -3777,6 +3777,84 @@
     });
   }
 
+  /* ---------------- 組み直し（3.0 の B3。docs/todo-timeline.md の「組み直し」） ----------------
+
+     今日の残りに入るもの・入らないものを分けて見せ、入らないものに一件ずつ行き先の札。既定は明日、
+     3回以上置き直したものは「これから」。「この形にする」で全部を一度に書き、元に戻す一回で全部戻る。
+     紙を閉じれば何も変わらない。時刻の決まったもの・くり返しは動かさない（plan.refit）。 */
+  function refitSheet() {
+    const day = todayKey();
+    const s = store.get().settings;
+    const rows = store.openTodos().filter((t) => store.fallsOn(t, day));
+    const r = KN.plan.refit(day, rows, { start: s.dayStart, end: s.dayEnd, now: KN.util.nowTime() });
+    const span = (m) => KN.plan.humanSpan(m);
+    const choice = new Map();   // id → { to, day }
+    r.out.forEach((f) => choice.set(f.todo.id, { to: (f.todo.slips || []).length >= 3 ? "next" : "tomorrow" }));
+    const box = node(html`
+      <div class="refit">
+        <p class="refit-left">残り <b>${span(r.avail) || "0分"}</b></p>
+        <h3 class="refit-h">入るもの <span class="cat-head-count">${r.fit.length}</span></h3>
+        <ul class="refit-fit">
+          ${r.fit.map((f) => html`<li><span class="refit-t">${f.todo.title}</span><span class="refit-m">${span(f.minutes)}</span></li>`)}
+        </ul>
+        ${r.out.length ? html`<h3 class="refit-h">入らないもの <span class="cat-head-count">${r.out.length}</span></h3>
+          <div class="refit-out"></div>` : html`<p class="refit-ok">今日の残りに入ります</p>`}
+      </div>
+    `);
+    const outHost = box.querySelector(".refit-out");
+    let handle = null;
+    r.out.forEach((f) => {
+      const t = f.todo;
+      const row = node(html`
+        <div class="carry-row refit-row" data-id="${t.id}">
+          <div class="carry-head">
+            <span class="carry-title">${t.title}</span>
+            <span class="carry-was">${span(f.minutes)}</span>
+          </div>
+          <div class="js-to"></div>
+        </div>
+      `);
+      const paint = () => {
+        const c = choice.get(t.id);
+        const opts = [
+          { id: "tomorrow", label: "明日" },
+          { id: "day", label: c.to === "day" && c.day ? formatDay(c.day) : "後日" },
+          { id: "next", label: "これから" },
+          { id: "someday", label: "いつか" },
+          !t.repeat && f.minutes >= 45 ? { id: "half", label: "今日は半分" } : null,
+          KN.unfold ? { id: "split", label: "分ける" } : null,
+        ].filter(Boolean);
+        KN.ui.chipRow(row.querySelector(".js-to"), opts, {
+          activeId: c.to,
+          onPick: (id) => {
+            if (id === "split") { if (handle) handle.close(); setTimeout(() => KN.unfold.open(t.id), 40); return; }
+            if (id === "day") {
+              const b = row.querySelector('.chip[data-id="day"]');
+              KN.ui.popCalendar(b || row, { value: c.day || null, label: "後日", onPick: (d) => {
+                if (d <= day) return;
+                choice.set(t.id, { to: "day", day: d }); KN.motion.fire("select"); paint();
+              } });
+              return;
+            }
+            choice.set(t.id, { to: id }); KN.motion.fire("select"); paint();
+          },
+        });
+      };
+      paint();
+      outHost.append(row);
+    });
+    const foot = r.out.length ? node(html`<button type="button" class="btn btn-primary btn-block js-apply">この形にする</button>`) : null;
+    handle = KN.ui.sheet({ title: "組み直す", content: box, footer: foot, onClose: () => { handle = null; } });
+    if (foot) foot.addEventListener("click", () => {
+      const moves = [...choice.entries()].map(([id, c]) => ({ id, to: c.to, day: c.day }));
+      const undo = store.applyRefit(moves);
+      haptic([16, 40, 16]);
+      KN.motion.fire("save");
+      if (handle) handle.close();
+      KN.ui.toast(`${moves.length}件を組み直しました`, { action: { label: "元に戻す", onClick: undo } });
+    });
+  }
+
   /* 段3：運んできたものを、一件ずつ選び直す紙（docs/todo-timeline.md
      「崩れたときの置き直し」）。選ぶと行が消え、報せに「元に戻す」。
      片づけ終えたら紙は閉じる（通知から来た紙 due-sheet.js と同じ拍）。 */
@@ -4180,6 +4258,8 @@
     /* 済んだものは畳める（2026年10月2日）。道が上に来て、済んだ行が残ると
        スクロールが長いので。畳み方は次に開いたときも覚えています。 */
     const doneN = plan.items.filter((it) => it.todo.done || it.todo.archived).length;
+    /* 組み直しの口（3.0 の B3）。入りきらない（over）か、時刻を過ぎたものが2件以上のときだけ。 */
+    const refitWhy = isToday && !plan.over && store.passedToday().length >= 2;
     const sec = node(html`
       <div class="tl ${tlDoneOpen ? "" : "is-done-shut"}">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
@@ -4189,9 +4269,13 @@
               超過（はみ出し）だけは残します——これは「読めば分かる」では
               なく、**詰め込みすぎている**という注意なので、他の事実とは
               性格が違います。 */""}
-        ${plan.over || doneN
+        ${plan.over || doneN || refitWhy
           ? html`<div class="tl-sum">
-              ${plan.over ? html`<span class="tl-over">寝る時刻を ${P.humanSpan(plan.over)} すぎます</span>` : ""}
+              ${/* 押せば組み直しの紙（3.0 の B3）。今日だけ。 */""}
+              ${plan.over ? (isToday
+                ? html`<button type="button" class="tl-over js-refit">寝る時刻を ${P.humanSpan(plan.over)} すぎます${icon("chevron")}</button>`
+                : html`<span class="tl-over">寝る時刻を ${P.humanSpan(plan.over)} すぎます</span>`)
+                : refitWhy ? html`<button type="button" class="tl-over js-refit">組み直す${icon("chevron")}</button>` : ""}
               ${doneN ? html`<button type="button" class="tl-done-toggle" aria-expanded="${String(tlDoneOpen)}">
                 済み ${doneN}件<span class="tl-subs-arrow">${icon("chevron")}</span></button>` : ""}
             </div>` : ""}
@@ -4199,6 +4283,8 @@
       </div>
     `);
     const list = sec.querySelector(".js-tl");
+    const rf = sec.querySelector(".js-refit");
+    if (rf) rf.addEventListener("click", () => { haptic(); refitSheet(); });
     const dt = sec.querySelector(".tl-done-toggle");
     if (dt) dt.addEventListener("click", () => {
       tlDoneOpen = !tlDoneOpen;
