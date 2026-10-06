@@ -1993,3 +1993,29 @@ button.hero-node:active { scale: .94; }
 .lock-key.is-back, .lock-key.is-bio { background: transparent; }
 .lock-key.is-bio[hidden] { display: grid; visibility: hidden; }
 .lock-key svg { width: 28px; height: 28px; }
+
+/* ---------------- AI とほどく（3.0 の C1・js/unfold.js） ----------------
+   渡す中身（札で外せる）・困っていること一行・畳んだ文・AI の札・コピーして開く。
+   下に答えを貼る欄と、読んだ候補（チェックで選ぶ）。説明の文は置かない。 */
+.unf-sec { display: flex; flex-direction: column; gap: var(--sp-2); }
+.unf-sec + .unf-sec { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--c-border); }
+.unf-h { margin: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
+.unf-title { margin: 0; font-size: var(--fs-lg); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
+.chip-row.unf-picks { flex-wrap: wrap; }
+.unf-prompt {
+  margin: var(--sp-2) 0 0; padding: var(--sp-3); max-height: 40vh; overflow: auto;
+  white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: var(--fs-xs);
+  color: var(--c-text-2); background: var(--c-surface-2); border-radius: var(--r-md);
+}
+.unf-cands { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-2); }
+.unf-pick { display: grid; grid-template-columns: 22px 1fr; column-gap: var(--sp-2); align-items: start; padding: 6px 0; }
+.unf-pick input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--c-primary-fill); }
+.unf-pt { font-size: var(--fs-md); overflow-wrap: anywhere; }
+.unf-ps { grid-column: 2; font-size: var(--fs-xs); color: var(--c-text-3); overflow-wrap: anywhere; }
+.unf-pick.is-sub { margin-left: 30px; }
+.unf-none { margin: var(--sp-2) 0 0; color: var(--c-text-2); }
+.unf-cands .chip-row { flex-wrap: wrap; }
+/* 詳細の紙の静かなすすめ（一つだけ）。 */
+.unf-hint { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.unf-hint-x { display: grid; place-items: center; width: 28px; height: 28px; color: inherit; opacity: .8; }
+.unf-hint-x svg { width: 14px; height: 14px; }

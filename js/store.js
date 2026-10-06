@@ -2830,6 +2830,37 @@
     });
     return () => undos.slice().reverse().forEach((u) => u());
   }
+  /**
+   * AI とほどいた答えを取り込む（3.0 の C1）。選んだものだけ。o は
+   *   subs  … この用事の手順に足す題の並び
+   *   todos … 別の用事としてこれからへ（[{ title, minutes }]）
+   *   memo  … メモの尻に足す字（完了条件・前提）
+   *   today … 次の一歩を今日に（{ title, minutes }。時刻は付けない＝連れ）
+   * **元に戻す一回で全部戻る**（足した用事は消し、元の用事は控えに戻す）。
+   */
+  function importUnfold(id, o) {
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const snap = JSON.parse(JSON.stringify(t0));
+    const made = [];
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      const subs = (o.subs || []).map((x) => String(x || "").trim()).filter(Boolean);
+      if (subs.length) t.subs = cleanSubs((t.subs || []).concat(subs.map((title) => ({ title }))));
+      const memo = String(o.memo || "").trim();
+      if (memo) t.memo = t.memo && t.memo.trim() ? `${t.memo.replace(/\s+$/, "")}\n\n${memo}` : memo;
+      t.editedAt = stamp();
+    });
+    (o.todos || []).forEach((x) => { const r = addTodo({ title: x.title, minutes: x.minutes || null }); if (r) made.push(r.id); });
+    if (o.today && o.today.title) {
+      const r = addTodo({ title: o.today.title, minutes: o.today.minutes || null, due: KN.util.todayKey() });
+      if (r) made.push(r.id);
+    }
+    return () => update((s) => {
+      s.todos = s.todos.filter((x) => !made.includes(x.id)).map((x) => (x.id === id ? snap : x));
+    });
+  }
   /** 置き直しの紙の「今日は15分だけ」「時間を変える」（3.0 の B2）。控えは書かない（日を後ろへ動かさないので）。 */
   function replan(id, patch) {
     const undo = keepFields(id);
@@ -4718,7 +4749,7 @@
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit,
+    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,

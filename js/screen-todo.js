@@ -700,6 +700,10 @@
           <button type="button" class="dest-chip js-dest" hidden></button>
           <button type="button" class="dest-chip js-act-src" hidden></button>
           <button type="button" class="dest-chip js-act-note" hidden></button>
+          <span class="unf-hint js-unfold-hint" hidden>
+            <button type="button" class="dest-chip js-unfold-go">AIとほどく</button>
+            <button type="button" class="unf-hint-x js-unfold-hush" aria-label="出さない">${icon("close")}</button>
+          </span>
         </span>
       </div>
     `);
@@ -792,6 +796,14 @@
       /* 削除ではなく、しまう。書いてやらなかったものも「やらないと決めた」
          記録で、しまった日もその一部です。前は一覧の行を左へ払う手でした
          （V13 で外し、ここへ。時間割からもしまえるようになりました）。 */
+      /* AI とほどく（3.0 の C1）。外の AI と往復して、選んだものだけ取り込む（js/unfold.js）。 */
+      if (KN.unfold) heroMenu.push({
+        id: "unfold", label: () => "AIとほどく", icon: "sparkles",
+        onPick: () => {
+          handle.tryClose();
+          setTimeout(() => { if (store.getTodo(todoId)) KN.unfold.open(todoId); }, 120);
+        },
+      });
       /* 棚を移す（3.0 の B1）：これから・待つ・いつか。いまの棚のほかの二つ（日のあるものは三つ）。
          くり返しは移さない（日を外すと回が消える）。直しかけがあれば先に保存してから。 */
       if (!t.repeat) {
@@ -1747,6 +1759,20 @@
       chip.addEventListener("click", () => {
         handle.close();
         setTimeout(() => KN.activity.openNote(srcNote.id), 40);
+      });
+    }
+    /* AI とほどく（3.0 の C1）。当てはまる用事だけ、頭に札を一つ（割り込まない）。×で二度と出さない。 */
+    if (editing && KN.unfold && KN.unfold.suggest(t)) {
+      const hint = hero.querySelector(".js-unfold-hint");
+      hint.hidden = false;
+      hint.querySelector(".js-unfold-go").addEventListener("click", () => {
+        handle.tryClose();
+        setTimeout(() => { if (store.getTodo(todoId)) KN.unfold.open(todoId); }, 120);
+      });
+      hint.querySelector(".js-unfold-hush").addEventListener("click", () => {
+        KN.unfold.hush(todoId);
+        hint.hidden = true;
+        haptic(10);
       });
     }
     titleEl.addEventListener("change", () => whenApply());
