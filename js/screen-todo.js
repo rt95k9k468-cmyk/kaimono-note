@@ -2695,7 +2695,6 @@
       day, todayKey(),
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
-      (store.dayLog(day) || {}).wake || "",
       [...openSubs].sort(),
       [...shelfOpen].sort(),   // 待つ・いつかの畳み（B1）
       st.todos,
@@ -2983,10 +2982,8 @@
       .filter((t) => !t.due && !t.done && !t.archived && !t.trace && !t.shelf)   // これからだけ（B1。待つ・いつかは浮かべない）
       .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999")
         || (a.order || 0) - (b.order || 0));
-    /* 起きた時刻（daily の記録・ヘルスケアの写し）があれば、道はそこから（写さず引く）。 */
-    const log = store.dayLog(day);
     return KN.dayRoad.build({
-      plan, today: isToday, wake: log && log.wake ? KN.plan.toMin(log.wake) : null, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
+      plan, today: isToday, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
       someday,
       /* 記録（`arc:`）は記録の紙へ。 */
       open: (id) => {

@@ -14,7 +14,7 @@
      元に戻せる・入力欄なし・歩いたぶんと過ぎた日は押せない
    - 時刻と長さを変えると、停留所が動き、長さが倍になる
    - 過ぎた日：人・連れ・次の一行なし、道ぜんぶが歩いたあと。先の日：歩いたぶんなし
-   - 停留所の上にも目盛り。道の端はちょうどの時・はみ出す停留所まで伸びる（利用者の 6:30）
+   - 停留所の上にも目盛り。道の端は設定の一日のまま（10月6日。はみ出す停留所でも伸ばさない）
    - 時刻の重なった停留所は一本道（途中から重なるものはそのまま上に・中は斜線・始まりが同じものだけ前の終わりから）・入りきらない札は「ほか n」
    - 設定で外せる。紙の上で本物の指で横に払えば、日が動く
    - 評価の言葉・割合・絵文字を出さない
@@ -483,9 +483,9 @@ const DAY = "2026-09-29";
 
   /* 道の端（9月29日・利用者の声「5:30 スタートなのに最初に 6:30 とあって、しかも
      二つ」）。起きる時刻を 6:30 にした人の 5:30 の用事が、道の頭（6:30）に点で押し
-     つぶされていた。道ははみ出す停留所まで伸び、段の割りはちょうどの時へ切り下げる
-     （角と目盛りが同じ「ちょうどの時」にそろう）。道そのものは 5:30 から（9月30日・
-     利用者の声「5:00 じゃなく 5:30 スタートに。1行目の道が短くなってもいい」）。 */
+     つぶされていた。段の割りはちょうどの時へ切り下げる（角と目盛りが同じ「ちょうどの時」
+     にそろう）。10月6日からは道は設定の一日のまま（利用者の声「日によって動くのが分かり
+     にくい」）：はみ出す用事は道の端へ寄せ、道は伸ばさない。 */
   const EDGE = "2026-10-03";
   await page.evaluate(() => KN.store.update((s) => { s.settings.dayStart = "06:30"; s.settings.dayEnd = "22:30"; }));
   await goDay(EDGE);
@@ -499,11 +499,11 @@ const DAY = "2026-09-29";
              said: [...road.querySelectorAll(".road-edge, .road-turn, .road-until")].map((e) => e.textContent.trim()) };
   });
   let edge = await edgeRead();
-  c.check("起きる時刻 6:30 でも、毎日 5:30 のルーティンがあれば道は 5:30 から：点に押しつぶされず 5:30〜6:30 の区間",
-    edge.begin === 330 && edge.first === "5:30" && edge.road0 > 30
+  c.check("起きる時刻 6:30 なら、5:30 のルーティンがあっても道は 6:30 から：ルーティンは 6:30 に始まったものとして長さはそのまま",
+    edge.begin === 390 && edge.first === "6:30" && edge.road0 > 30
       && Math.abs(edge.d0 - edge.road0) < 0.01 && edge.d1 - edge.d0 > 40, JSON.stringify(edge));
-  c.check("時の数字はちょうどの時だけ（「〜:30」が混ざらない。5:30 の道は 6 から）",
-    edge.turns.length > 0 && edge.turns[0] === "6" && edge.turns.every((t) => /^\d{1,2}$/.test(t)), JSON.stringify(edge.turns));
+  c.check("時の数字はちょうどの時だけ（「〜:30」が混ざらない。6:30 の道は 7 から）",
+    edge.turns.length > 0 && edge.turns[0] === "7" && edge.turns.every((t) => /^\d{1,2}$/.test(t)), JSON.stringify(edge.turns));
   c.check("「6:30」を二度言わない", edge.said.filter((t) => t === "6:30").length <= 1, JSON.stringify(edge.said));
   /* 早い用事の無い一日は、組み立てに直に渡して見る（この試験の日には毎日のルーティンがある）。 */
   const bare = await page.evaluate(() => {
@@ -517,7 +517,7 @@ const DAY = "2026-09-29";
   await page.evaluate((d) => KN.store.addTodo({ title: "夜ふけの用事", due: d, time: "23:00", minutes: 30 }), EDGE);
   await page.waitForTimeout(500);
   edge = await edgeRead();
-  c.check("23:00〜23:30 の用事があれば、道は 23:30 まで伸びる", edge.end === 1410, JSON.stringify(edge));
+  c.check("23:00〜23:30 の用事があっても、道は 22:30 で止まる（設定の一日のまま）", edge.end === 1350, JSON.stringify(edge));
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.dayStart; delete s.settings.dayEnd; }));
 
   /* 時刻の重なった停留所は一本道に（10月3日・利用者の声「時間を超過した方が超過した

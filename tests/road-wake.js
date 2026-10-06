@@ -4,8 +4,7 @@
    - まだのまま延びた区間は、尻の丸のまん中が延びた終わり（丸い端でくるむ）。次の停留所（朝のBaby 8:00）が
      始まっていても止めず、その上に重ねていま（9:40）まで。朝のBaby はずらさない（10月3日）
    - 同じ角で同じ時刻に始まる二つの札は、次の段の車線と同じ上下の順で、丸薬に重ならない
-   - 起きた時刻（daily の起床）があれば、道はそこから。寝床の下の時刻も起きた時刻
-   - 起きる前に決めた用事も、起きた時刻に始まったものとして描く */
+   - 起きた時刻（daily の起床）があっても、道は設定の一日のまま（10月6日） */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-10-03";
@@ -17,6 +16,7 @@ const DAY = "2026-10-03";
   });
   await page.evaluate((day) => {
     const s = KN.store;
+    s.update((x) => { x.settings.dayStart = "05:30"; x.settings.dayEnd = "22:30"; });
     s.addTodo({ title: "朝のルーティン", due: day, time: "06:00", minutes: 60 });
     s.addTodo({ title: "朝のBaby", due: day, time: "08:00", minutes: 180 });
     s.addTodo({ title: "テスト", due: day, time: "08:00", minutes: 180 });
@@ -73,31 +73,22 @@ const DAY = "2026-10-03";
     c.check("札の字が車線の丸薬に重ならない", Math.max(lab("朝のBaby").bot, lab("テスト").bot) <= topLane - 8 + 0.5,
       JSON.stringify({ l: r.labels, topLane }));
   }
-  c.check("起きた時刻が無ければ、道は設定の起きる時刻から", r.begin === 5 * 60 + 30 || r.begin <= 6 * 60, String(r.begin));
+  c.check("道は設定の起きる時刻 5:30 から", r.begin === 5 * 60 + 30, String(r.begin));
 
-  /* 起きた時刻（daily の起床）を入れると、道はそこから */
+  /* 起きた時刻（daily の起床）を入れても、道は設定の一日のまま（10月6日・利用者の声
+     「日によって動くのが分かりにくい」）。 */
   await page.evaluate((day) => KN.store.setDayLog(day, { wake: "07:12" }), DAY);
   await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
   await page.waitForTimeout(600);
   r = await read();
-  c.check("起きた時刻 7:12 から道が始まる（前に決めた用事があっても）", r.begin === 7 * 60 + 12, String(r.begin));
+  c.check("起きた時刻 7:12 があっても、道は 5:30 から", r.begin === 5 * 60 + 30, String(r.begin));
+  c.check("寝床の下の時刻は 5:30", r.edge.includes("5:30") && !r.edge.includes("7:12"), JSON.stringify(r.edge));
   const early = await page.evaluate(() => {
     const st = document.querySelector("#screen-todo .day-road").__road;
     const s = st.stops.find((x) => x.t.title === "朝のルーティン");
     return s && { at: s.at, until: s.until };
   });
-  c.check("起きる前の用事は起きた時刻に始まったものとして、長さはそのまま",
-    !!early && early.at === 7 * 60 + 12 && early.until === 8 * 60 + 12, JSON.stringify(early));
-  await page.evaluate((day) => {
-    const s = KN.store;
-    const t = s.get().todos.find((x) => x.title === "朝のルーティン");
-    s.removeTodo ? s.removeTodo(t.id) : s.updateTodo(t.id, { due: null });
-  }, DAY);
-  await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
-  await page.waitForTimeout(600);
-  r = await read();
-  c.check("前の用事が無ければ、道は 7:12 から", r.begin === 7 * 60 + 12, String(r.begin));
-  c.check("寝床の下の時刻も 7:12", r.edge.includes("7:12"), JSON.stringify(r.edge));
+  c.check("6:00 の用事はずらさない", !!early && early.at === 6 * 60 && early.until === 7 * 60, JSON.stringify(early));
   const wakeRec = await page.evaluate((day) => KN.store.dayLog(day).wake, DAY);
   c.check("記録は書き換えない", wakeRec === "07:12", wakeRec);
 

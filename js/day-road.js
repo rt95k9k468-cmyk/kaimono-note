@@ -688,37 +688,17 @@
    *   tomorrow … { at: 分, title } 明日の最初の停留所（段6。今日だけ。無ければ null）
    *   someday … 長期タスク（期限の近い順。段8の段B：道の外周のくぼみに浮かべる）
    */
-  /* 道の端（2026年9月29日・利用者の声「5:30 スタートなのに最初に 6:30」）。
-     設定の一日（dayStart〜dayEnd）を、**はみ出す停留所まで伸ばし**、始まりは
-     **ちょうどの時へ切り下げ**ます。
-     - 前は設定の端で切っていたので、起きる時刻を 6:30 にした人の 5:30 の用事が
-       道の頭（6:30）に点で押しつぶされ、「5:30」の札が 6:30 の場所に立っていた。
-     - 始まりが「〜:30」だと、角は「〜:30」・目盛りは「〜:00」で物差しが二つに
-       なっていた。一段は1時間単位なので、始まりをちょうどの時にすれば角も
-       ちょうどの時になる。
-     終わりは切り上げません（手描きの道も「22:30」で止まっていた）。
-     **切り下げるのは段の割りだけ**（9月30日から。geom の頭）：道そのものは 5:30 から
-     描き、角と目盛りは「ちょうどの時」のまま。角も時間を持つようになってから（10月2日）は、
-     角のまん中がちょうどの時になるように geom が段の割りを選ぶ。
+  /* 道の端は**設定の一日（dayStart〜dayEnd）そのまま**（2026年10月6日・利用者の声
+     「日によって動くのがとても分かりにくい。設定の一日の始まりと終わりの通り、固定で」）。
+     前は、はみ出す停留所まで伸ばし（9月29日）、起きた時刻（daily の起床）から始めていた
+     （10月2日）が、日ごとに道の長さと段の割りが変わって読めなくなった。
+     - 始まりより前に決めた用事は、始まりに始まったものとして、長さはそのままで後ろへずらす
+       （build の sh）。終わりより後は終わりに寄せる（geom の dist）。
+     - **切り下げるのは段の割りだけ**（geom の頭）：道そのものは 5:30 から描き、角と目盛りは
+       「ちょうどの時」のまま。角のまん中がちょうどの時になるように geom が段の割りを選ぶ。
      描くだけで、設定も記録も書き換えません。 */
-  /* 起きた時刻が分かる日は、道の始まりを設定の「起きる時刻」ではなく**起きた時刻**に
-     （2026年10月2日・利用者の声「寝ていた時刻まで道を短くして、起きた時刻のところに
-     その時刻と寝る人を」）。寝床と端の時刻は道の始まりに付いてくるので、そのまま起きた
-     時刻に立つ。記録は daily の起床（ヘルスケアの写しも）から引くだけで、設定も記録も
-     書き換えない。終わりの1時間より後の値（昼寝の記録など）は使わない。
-     **起きた時刻より前に決めた用事があっても、道は起きた時刻から**（10月2日・利用者の声
-     「起床より早く始めたタスクも、結局起きて以降しかでき始めていない」）。その用事は
-     起きた時刻に始まったものとして、長さはそのままで後ろへずらして描く（shiftOf）。 */
-  function reach(plan, wake) {
-    const w = Number.isFinite(wake) && wake >= 0 && wake < plan.endMin - 60 ? wake : null;
-    let a = w != null ? w : plan.startMin, b = plan.endMin;
-    plan.items.forEach((it) => {
-      if (!it.fixed) return;
-      if (w == null) a = Math.min(a, it.atMin);
-      const sh = w != null ? Math.max(0, w - it.atMin) : 0;
-      b = Math.max(b, (Number(it.todo.minutes) > 0 ? it.untilMin : it.atMin) + sh);
-    });
-    return [Math.max(0, a), Math.min(24 * 60, b)];
+  function reach(plan) {
+    return [Math.max(0, plan.startMin), Math.min(24 * 60, plan.endMin)];
   }
 
   /* 時刻を過ぎても済んでいない区間は、**人の足もとまで引っぱる**（2026年9月30日・
@@ -830,7 +810,7 @@
 
   function build(o) {
     const plan = o.plan;
-    const g = geom(...reach(plan, o.wake));
+    const g = geom(...reach(plan));
     const today = !!o.today;
     const past = !today && plan.day < U.todayKey();
 
@@ -842,7 +822,7 @@
       const t = it.todo;
       if (it.fixed) {
         const len = Number(t.minutes) > 0;
-        /* 起きた時刻より前の用事は、起きた時刻に始まったものとして（reach の注）。 */
+        /* 道の始まりより前の用事は、始まりに始まったものとして（reach の注）。 */
         const sh = Math.max(0, g.begin - it.atMin);
         if (sh) it = { ...it, atMin: it.atMin + sh, untilMin: it.untilMin + sh };
         const d0 = g.dist(it.atMin);
