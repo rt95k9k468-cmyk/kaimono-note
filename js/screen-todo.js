@@ -5554,6 +5554,23 @@
     setTimeout(() => { restoring = false; }, 60);
   }
 
+  /* tasks の席をもう一度押したら、時間割へ。また押したら一日の道へ（2026年10月6日・
+     利用者の声）。道が画面に残っていれば時間割へ、もう上へ出ていれば道へ。道を
+     出していないときは断ります（帯は今までどおり組み直す）。 */
+  function again() {
+    const road = root && root.querySelector(".day-road");
+    const tl = road && road.nextElementSibling;
+    if (!tl) return false;
+    const sc = KN.app.scrollerOf(root);
+    const box = sc.getBoundingClientRect();
+    const r = road.getBoundingClientRect();
+    const onRoad = r.bottom - box.top > r.height / 2;
+    const to = onRoad ? sc.scrollTop + (tl.getBoundingClientRect().top - box.top) : 0;
+    const max = Math.max(0, sc.scrollHeight - sc.clientHeight);
+    sc.scrollTo({ top: Math.round(Math.min(max, Math.max(0, to))), behavior: "smooth" });
+    return true;
+  }
+
   /* 開いた一拍のうちに。組み終わってから測るので、一枚あとの絵で。
      道の人は、開いた瞬間に四歩あるいて止まります（day-road.js の「歩く」）。 */
   function onEnter() {
@@ -5563,7 +5580,7 @@
 
   KN.screens = KN.screens || {};
   /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
-  KN.screens.todo = { mount, render, dockButton, onEnter, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
+  KN.screens.todo = { mount, render, dockButton, onEnter, again, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
     /* ほかから「その日を見せて」（これからの二週間・js/upcoming.js）。暦の月も
        その日へ合わせます——一日ずつの紙でなければ、その日の棚まで運びます
        （「今日へ戻る」と同じ二通り）。 */
