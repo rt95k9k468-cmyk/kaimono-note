@@ -1346,7 +1346,7 @@
           <div class="stack" style="gap:10px">
             <div class="arc-kind js-kind"></div>
             <label class="field">
-              <span class="field-label">名前</span>
+              <span class="field-label">タイトル</span>
               <div class="ta-wrap">
                 <input type="text" class="input input-lg js-title" value="${e ? e.title : ""}"
                        enterkeyhint="next" autocomplete="off">
@@ -1363,7 +1363,7 @@
               </div>
               <div class="js-author-ac"></div>
             </label>
-            <div class="arc-pages">
+            <div class="arc-pages js-pages-row">
               <label class="field">
                 <span class="field-label">開始ページ</span>
                 <input type="number" inputmode="numeric" class="input js-pagefrom"
@@ -1436,20 +1436,31 @@
     pageTo.addEventListener("input", paintPages);
     paintPages();
 
-    /* 新規の読書だけ、前回の名前・著者を下敷きにします。直したら ×は消えます。 */
-    if (!e) {
-      const last = store.lastReading();
-      if (last) {
-        titleReading.value = last.title;
-        authorInput.value = last.author || "";
-        kind = last.kind || "book";
-        titleAuto = true; authorAuto = !!last.author;
-      }
-    }
     const paintClears = () => {
       titleClear.hidden = !titleAuto;
       authorClear.hidden = !authorAuto;
     };
+    /* 新規の読書だけ、前回の名前・著者を下敷きにします。直したら ×は消えます。
+       書籍と論文は別々に覚えます（2026年10月6日・利用者）——札を切り替えると、その種類の
+       前回（書きかけならそれ）に入れ替わる。直すときは入れ替えない（種類の付け直しなので）。 */
+    const drafts = {};
+    const keepDraft = (k) => { drafts[k] = { title: titleReading.value, author: authorInput.value, titleAuto, authorAuto }; };
+    const takeDraft = (k) => {
+      const d = drafts[k];
+      titleReading.value = d.title; authorInput.value = d.author;
+      titleAuto = d.titleAuto; authorAuto = d.authorAuto;
+      paintClears();
+    };
+    if (!e) {
+      const last = store.lastReading();
+      if (last) kind = last.kind || "book";
+      ["book", "paper"].forEach((k) => {
+        const l = store.lastReading(k);
+        drafts[k] = l ? { title: l.title, author: l.author || "", titleAuto: true, authorAuto: !!l.author }
+          : { title: "", author: "", titleAuto: false, authorAuto: false };
+      });
+      takeDraft(kind);
+    }
     paintClears();
     titleReading.addEventListener("input", () => { titleAuto = false; paintClears(); renderTitleAc(); });
     authorInput.addEventListener("input", () => { authorAuto = false; paintClears(); renderAuthorAc(); });
@@ -1467,7 +1478,7 @@
     function renderTitleAc() {
       const q = U.foldKana(titleReading.value.trim());
       if (!q) { titleAcHost.innerHTML = ""; return; }
-      const hits = store.readingCandidates()
+      const hits = store.readingCandidates(kind)
         .filter((c) => U.foldKana(c.title).includes(q)).slice(0, 5);
       paintAc(titleAcHost, hits, (c) => `${c.title}`, (c) => c.author || "著者なし", (c) => {
         titleReading.value = c.title;
@@ -1480,7 +1491,7 @@
       const q = U.foldKana(authorInput.value.trim());
       if (!q) { authorAcHost.innerHTML = ""; return; }
       const seen = new Set();
-      const hits = store.readingCandidates()
+      const hits = store.readingCandidates(kind)
         .filter((c) => c.author && U.foldKana(c.author).includes(q))
         .filter((c) => { const k = U.foldKana(c.author); if (seen.has(k)) return false; seen.add(k); return true; })
         .slice(0, 5);
@@ -1507,17 +1518,25 @@
       host.append(box);
     }
 
-    /* 本／論文の切り替え。 */
+    /* 書籍／論文の切り替え。論文は開始・終了ページを持たない（2026年10月6日・利用者）。 */
     const kindHost = body.querySelector(".js-kind");
+    const pagesRow = body.querySelector(".js-pages-row");
     const paintKind = () => {
       kindHost.innerHTML = "";
-      [{ id: "book", label: "本", icon: "book" }, { id: "paper", label: "論文", icon: "paper" }].forEach((k) => {
+      pagesRow.hidden = kind === "paper";
+      [{ id: "book", label: "書籍", icon: "book" }, { id: "paper", label: "論文", icon: "paper" }].forEach((k) => {
         const b = node(html`
           <button type="button" class="arc-kind-b ${k.id === kind ? "is-on" : ""}" data-k="${k.id}">
             ${icon(k.icon, "is-sub")}<span>${k.label}</span>
           </button>
         `);
-        b.addEventListener("click", () => { kind = k.id; KN.motion.fire("select"); paintKind(); });
+        b.addEventListener("click", () => {
+          if (!e && k.id !== kind) {
+            keepDraft(kind); takeDraft(k.id);
+            titleAcHost.innerHTML = ""; authorAcHost.innerHTML = "";
+          }
+          kind = k.id; KN.motion.fire("select"); paintKind();
+        });
         kindHost.append(b);
       });
     };
@@ -1596,7 +1615,7 @@
       if (isSeed) {
         if (!memoVal.trim()) { KN.ui.toast("メモを書いてください"); return; }
       } else if (!title) {
-        KN.ui.toast("名前・タイトルを入れてください"); return;
+        KN.ui.toast("タイトルを入れてください"); return;
       }
       const patch = {
         type,
@@ -1607,8 +1626,10 @@
       if (isReading) {
         patch.kind = kind;
         patch.author = authorInput.value.trim() || null;
-        patch.pageFrom = pageFrom.value;
-        patch.pageTo = pageTo.value;
+        /* 論文はページを持たない。前から持っている論文のページは消さずに残す。 */
+        const paper = kind === "paper";
+        patch.pageFrom = paper ? (e && e.kind === "paper" ? e.pageFrom : null) : pageFrom.value;
+        patch.pageTo = paper ? (e && e.kind === "paper" ? e.pageTo : null) : pageTo.value;
         patch.amount = null;   // applyReadingPages が計算し直します
         patch.unit = null;
       } else if (isSeed) {

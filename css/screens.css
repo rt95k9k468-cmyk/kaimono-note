@@ -3631,6 +3631,11 @@ a.btn { text-decoration: none; }
   border: 1.5px solid transparent;
 }
 .arc-pick-b svg { color: var(--c-text-3); }
+/* 札は一列に収める（2026年10月6日・利用者「新規で達成が下へ行く」）。折り返さず、
+   余白を詰めて、余った幅は札どうしで分ける（375px の電話でも日記＋四つが入る）。 */
+.arc-pick { flex-wrap: nowrap; gap: var(--sp-1); }
+.arc-pick-b { flex: 1 1 auto; min-width: 0; justify-content: center; gap: 3px; padding: 7px 6px; white-space: nowrap; }
+.arc-pick-diary { flex: none; gap: 4px; padding: 9px 10px; margin-inline-end: var(--sp-1); }
 .arc-pick-b.is-on {
   border-color: var(--arc-c); color: var(--arc-c);
   background: color-mix(in srgb, var(--arc-c) 10%, var(--c-surface));
