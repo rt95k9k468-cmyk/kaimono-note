@@ -43,11 +43,12 @@
 
   /**
    * 時刻と長さを聞く紙（時刻の紙と同じ一行ずつの枠）。決めたら `onPick("HH:MM", 分)`。
-   * @param {{title:string, at?:string, minutes?:number, ok:string, onPick:Function}} o
+   * @param {{title:string, at?:string, minutes?:number, ok:string, lens?:number[], onPick:Function}} o
    */
   function askSpan(o) {
     const base = U.isTime(o.at) ? o.at
       : toTime(Math.min(23 * 60 + 55, Math.round(toMin(U.nowTime()) / 5) * 5));
+    const lens = o.lens || LENS;
     let minutes = Number(o.minutes) > 0 ? Number(o.minutes) : 30;
     const bm = Number(base.slice(3, 5));
     const mins = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -70,7 +71,7 @@
     `);
     body.querySelector(".js-wheels").append(h.el, m.el);
     const paintLens = () => {
-      const list = LENS.includes(minutes) ? LENS : LENS.concat(minutes).sort((a, b) => a - b);
+      const list = lens.includes(minutes) ? lens : lens.concat(minutes).sort((a, b) => a - b);
       KN.ui.chipRow(body.querySelector(".js-lens"), list.map((v) => ({ id: String(v), label: span(v) })), {
         activeId: String(minutes),
         onPick: (id) => { minutes = Number(id); KN.motion.fire("select"); paintLens(); },
@@ -102,6 +103,39 @@
       action: { label: "元に戻す", onClick: KN.store.removeTodo.bind(null, t.id) },
     });
     return t;
+  }
+
+  /* ノートから道へ（3.0 の A2）。長さの札は 15・20・25・45、既定は25分。題は「『ノートの題』について考える」、
+     種類は種（考えたこと）。結ぶのはノートの id（`act.note`）。済ませた積み上げも同じノートを持つ。 */
+  const NOTE_LENS = [15, 20, 25, 45];
+  function noteToRoad({ id, title, day }) {
+    const name = String(title || "").trim() || "ノート";
+    askSpan({
+      title: "道に置く", ok: "道に置く", lens: NOTE_LENS, minutes: 25,
+      onPick: (at, minutes) => {
+        const t = KN.store.addTodo({
+          title: `『${name}』について考える`, due: day || U.todayKey(), time: at, minutes,
+          act: { type: "seed", note: id },
+        });
+        if (!t) return;
+        KN.motion.fire("save");
+        KN.ui.toast(`「${t.title}」を ${at} に`, {
+          action: { label: "元に戻す", onClick: KN.store.removeTodo.bind(null, t.id) },
+        });
+      },
+    });
+  }
+
+  /** 結んだノート（まだあるものだけ。ノートは IndexedDB で、別に消えうる）。{ id, title } か null。 */
+  function noteOf(id) {
+    if (!id || !KN.notes || KN.notes.state() !== "on") return null;
+    const n = KN.notes.get(id);
+    /* 最近削除した項目へ移したノートも「無い」とみなす（戻せば札も戻る）。 */
+    return n && !n.deletedAt ? { id, title: KN.notes.headOf(n) || "ノート" } : null;
+  }
+  /** ノートを開く（ノートの書く紙。閉じれば元の画面へ戻る）。 */
+  function openNote(id) {
+    if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(id);
   }
 
   /** 記録の紙の「道に置く」。題と種類は記録の紙から、時刻と長さはここで聞く。 */
@@ -245,5 +279,6 @@
   /** 道から押したものが記録（`arc:`）なら、その id。 */
   const entryIdOf = (id) => (typeof id === "string" && id.startsWith("arc:") ? id.slice(4) : null);
 
-  KN.activity = { askSpan, plant, placeOnRoad, recordOnRoad, recent, fixLength, forRoad, colorOf, entryIdOf, LENS, PLANNED };
+  KN.activity = { askSpan, plant, placeOnRoad, recordOnRoad, recent, fixLength, forRoad, colorOf, entryIdOf,
+                  noteToRoad, noteOf, openNote, LENS, PLANNED, NOTE_LENS };
 })();

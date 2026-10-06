@@ -3629,6 +3629,8 @@ a.btn { text-decoration: none; }
 /* ---- 書くシート ---- */
 
 .arc-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+/* 記録の紙の頭の「ノート『…』」（3.0 の A2）。押せば同じノート。 */
+.dest-chip.arc-note-src { align-self: flex-start; margin-top: 0; }
 .arc-pick-b {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 11px; border-radius: var(--r-full);

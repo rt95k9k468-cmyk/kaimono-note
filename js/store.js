@@ -2513,6 +2513,7 @@
       kind: t.act.type === "reading" ? (book ? book.kind : "book") : null,
       author: book ? book.author : null,
       minutes, at: startMin != null ? hm(startMin) : null, todo: t.id,
+      note: t.act.note || null,
     });
     update((s) => {
       const x = s.todos.find((y) => y.id === t.id);
@@ -3764,6 +3765,7 @@
       ...(e.minutes != null ? { minutes: cleanMinutes(e.minutes) } : {}),
       ...(e.at != null ? { at: KN.util.isTime(e.at) ? e.at : null } : {}),
       ...(e.todo ? { todo: String(e.todo) } : {}),
+      ...(e.note ? { note: String(e.note) } : {}),
     };
     if (!isFinite(row.amount)) row.amount = null;
     if (!isFinite(row.pageFrom)) row.pageFrom = null;
