@@ -1308,10 +1308,53 @@
          食いこむときだけ、そこを空けさせる。 */
       const txt = clock(nowMin);
       const w = textW(txt, FS) + 2;
-      const hx = Math.max(2 + w / 2, Math.min(W - 2 - w / 2, bed ? bed.cx : p.x));
+      const clampX = (x) => Math.max(2 + w / 2, Math.min(W - 2 - w / 2, x));
+      let hx = clampX(bed ? bed.cx : p.x);
       // 足もとは停留所のふちの上（STOP / 2）まで上がることがあるので、高いほうに合わせる。
       // 寝ているあいだは、寝床の z Z の上
-      const hy = bed ? bed.y + ROAD / 2 - BED_TOP - 2 - FS * 0.6 : p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
+      let hy = bed ? bed.y + ROAD / 2 - BED_TOP - 2 - FS * 0.6 : p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
+      /* 道に重なるときは、角の内側へ横に、要れば少し下（人の頭の横）へずらす
+         （2026年10月6日・利用者の声「道と被ってしまう時はずらして」）。角のまん中に
+         居ると頭の真上が上の段の道なので、横だけでは逃げ場が無い。人にいちばん近い所を選ぶ。 */
+      if (!bed) {
+        const hy0 = hy;
+        const extOf = (a0, a1) => st.stops.reduce((m, s) => (s.len && s.d0 <= a1 && a0 <= s.d1
+          ? Math.max(m, Math.abs(s.off || 0)) : m), 0);
+        const parts = [];
+        [pr - 1, pr].forEach((i) => {
+          if (i < 0 || i >= g.rows) return;
+          const a0 = i * SEG, a1 = a0 + RUN;
+          if (a1 >= g.d0 && a0 <= g.total) parts.push({ y: g.rowY(i), h: STOP / 2 + extOf(a0, a1) + 1 });
+          if (i >= g.rows - 1 || a1 + ARC < g.d0 || a1 > g.total) return;
+          const ext = extOf(a1, a1 + ARC), right = i % 2 === 0;
+          parts.push({ right, cx: right ? XR : XL, cy: g.rowY(i) + R,
+                       ri: R - ext - STOP / 2 - 1, ro: R + ext + STOP / 2 + 1 });
+        });
+        const hits = (x, y) => {
+          const y0 = y - FS * 0.6, y1 = y + FS * 0.6;
+          return parts.some((q) => {
+            if (q.cx == null) return x + w / 2 >= XL && x - w / 2 <= XR && y1 >= q.y - q.h && y0 <= q.y + q.h;
+            const x0 = q.right ? Math.max(x - w / 2, q.cx) : x - w / 2;
+            const x1 = q.right ? x + w / 2 : Math.min(x + w / 2, q.cx);
+            if (x0 > x1) return false;
+            const nx = Math.max(x0, Math.min(q.cx, x1)) - q.cx, ny = Math.max(y0, Math.min(q.cy, y1)) - q.cy;
+            const fx = Math.max(Math.abs(x0 - q.cx), Math.abs(x1 - q.cx));
+            const fy = Math.max(Math.abs(y0 - q.cy), Math.abs(y1 - q.cy));
+            return Math.hypot(nx, ny) <= q.ro && Math.hypot(fx, fy) >= q.ri;
+          }) || (y > hy0 + 4 && Math.abs(x - p.x) < w / 2 + ME_W + 2);   // 下げたら頭にかぶらない
+        };
+        if (hits(hx, hy)) {
+          const inward = p.x < W / 2 ? 1 : -1, x00 = hx;
+          let best = Infinity;
+          for (let dy = 0; dy <= ME_HEAD + 6 && dy < best; dy += 2) {
+            for (let s = 1; s <= w + ME_W * 2; s++) {
+              const x = clampX(x00 + inward * s), cost = Math.hypot(x - p.x, dy);
+              if (cost >= best) break;
+              if (!hits(x, hy0 + dy)) { best = cost; hx = x; hy = hy0 + dy; break; }
+            }
+          }
+        }
+      }
       if (pr > 0) {
         const above = lane(pr - 1, "d");
         if (g.rowY(pr - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
