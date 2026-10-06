@@ -2793,14 +2793,15 @@
     });
     return undo;
   }
-  /** 見直した：まだこれから（棚はそのまま、次の見直しをその棚の日数ぶん先へ）。 */
-  function keepShelf(id) {
+  /** 見直した：後日計画する（棚はそのまま、次の見直しを先へ）。days を渡せばその日数、無ければ棚の日数。 */
+  function keepShelf(id, days) {
     const t0 = getTodo(id);
     if (!t0) return () => {};
     const undo = keepFields(id);
+    const n = Number.isInteger(days) && days >= 1 && days <= 365 ? days : null;
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
-      if (t) t.review = reviewFrom(t.shelf);
+      if (t) t.review = n ? KN.util.shiftDay(KN.util.todayKey(), n) : reviewFrom(t.shelf);
     });
     return undo;
   }
@@ -2899,10 +2900,10 @@
     update((s) => { const t = s.todos.find((x) => x.id === id); if (t) delete t.carried; });
     return undo;
   }
-  /** 見直しの紙・置き直しの紙の「今日やる」「日を決める」「やめる」（元に戻すつき）。 */
-  function planOn(id, day) {
+  /** 見直しの紙・置き直しの紙の「今日」「明日」「別の日」（元に戻すつき）。time は今日の空きの時刻（無ければ時刻なし）。 */
+  function planOn(id, day, time) {
     const undo = keepFields(id);
-    updateTodo(id, { due: day });
+    updateTodo(id, KN.util.isTime(time) ? { due: day, time } : { due: day });
     update((s) => { const t = s.todos.find((x) => x.id === id); if (t) delete t.carried; });
     return undo;
   }

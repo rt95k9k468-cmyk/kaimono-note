@@ -6484,8 +6484,40 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .tl-shelf-chev svg { width: 16px; height: 16px; }
 .tl-shelf-head[aria-expanded="true"] .tl-shelf-chev { rotate: 90deg; }
 .tl-wait { color: var(--c-text-2); }
-/* 見直しの紙（一件ずつ）。 */
-.review-count { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+/* 見直しの紙（一件ずつ）。上に日を決める三つ（今日・明日・明後日）を大きく、その下に一枚の束
+   （別の日へ・後日計画する・小さく分ける。右に押したらどうなるかの一言）、いちばん下に静かに「やめる」。 */
+.review-count { margin: 0; font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.rv-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-1); }
+.rv-day {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 84px; padding: var(--sp-3) 4px; border-radius: var(--r-lg);
+  background: var(--c-primary-soft); color: var(--c-text);
+  transition: scale var(--m-press) var(--ease);
+}
+.rv-day:active { scale: 0.96; }
+.rv-day svg { width: 24px; height: 24px; color: var(--c-primary); }
+.rv-day b { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.rv-day span { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rv-list { display: flex; flex-direction: column; border-radius: var(--r-lg); background: var(--c-surface-2); overflow: hidden; }
+.rv-go {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+  min-height: 52px; padding: 0 var(--sp-3); text-align: left; color: var(--c-text);
+}
+.rv-list > * + .rv-go { border-top: 1px solid var(--c-border); }
+.rv-go:active { background: var(--c-surface-3); }
+.rv-go > svg { flex: none; width: 22px; height: 22px; color: var(--c-primary); }
+.rv-go-t { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.rv-go-n { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; }
+.rv-go-chev { display: grid; flex: none; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
+.rv-go-chev svg { width: 14px; height: 14px; }
+.rv-go[aria-expanded="true"] .rv-go-chev { rotate: 90deg; }
+.rv-more { display: flex; flex-direction: column; gap: var(--sp-2); padding: 0 var(--sp-3) var(--sp-3); }
+.rv-more[hidden] { display: none; }
+.rv-more-h { font-size: var(--fs-xs); color: var(--c-text-3); }
+.rv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.rv-chips .chip svg { width: 16px; height: 16px; color: var(--c-primary); }
+.rv-foot { display: flex; align-items: center; justify-content: space-between; }
+.rv-stop { min-height: 44px; padding: 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-text-2); }
 .chip-row.wait-for { flex-wrap: wrap; }
 
 /* ---------- これからの二週間（R7・js/upcoming.js） ----------
