@@ -4529,15 +4529,15 @@
       if (!isFinite(a) || !isFinite(u) || u <= a) continue;
       const r = rail.getBoundingClientRect();
       if (r.height <= 0) continue;
-      if (nowMin <= a) return r.top - top0;
+      const t0 = top0 + slideOf(sec, li);
+      if (nowMin <= a) return r.top - t0;
       if (nowMin < u) {
         /* 用事なら丸薬の中で、空きなら帯の中で。丸薬は行のまん中にあって
            行より低いので、行の高さで割ると塗りの境目とずれます。 */
-        const nd = li.querySelector(".tl-node");
-        const box = nd ? nd.getBoundingClientRect() : r;
-        if (box.height > 0) return box.top - top0 + box.height * ((nowMin - a) / (u - a));
+        const box = nodeBox(li) || r;
+        if (box.height > 0) return box.top - t0 + box.height * ((nowMin - a) / (u - a));
       }
-      last = r.bottom - top0;
+      last = r.bottom - t0;
     }
     /* 一日の残りが全部始まっているなら、線はいちばん下です。 */
     return last;
@@ -4558,16 +4558,69 @@
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
 
     // ① 測る（まだ何も書かない）
-    let at = null;
+    let at = null, y = null;
     if (nowMin != null) {
-      const y = nowY(sec, list, nowMin);
+      y = nowY(sec, list, nowMin);
       if (y != null) at = clearOfClocks(sec, list, y);
     }
+    const grow = growOf(sec, list, nowMin, y);
 
     // ② 書く
     axis.textContent = "";
     markPass(list, nowMin);
+    grow.forEach(([li, late, g]) => {
+      li.classList.toggle("is-late", late);
+      li.classList.toggle("is-grown", g > 0);
+      if (li.__grow !== g) { li.__grow = g; li.style.setProperty("--tl-grow", `${g}px`); }
+    });
     if (at != null) axis.append(nowMark(nowMin, at));
+  }
+
+  /** 行が組み直しの滑り（`flipRows` の translateY）の途中なら、そのずれ（px）。
+      滑っている最中に測ると、着いた先とずれた「いま」・伸びが残るので、着いた先で読む。 */
+  function slideOf(sec, li) {
+    let y = 0, e = li;
+    while (e && e !== sec) { y += e.offsetTop; e = e.offsetParent; }
+    if (e !== sec) return 0;
+    return li.getBoundingClientRect().top - sec.getBoundingClientRect().top - y;
+  }
+
+  /** 丸薬の、伸ばす前の箱（上端・下端・高さ）。時刻の目盛りはこれで読みます——
+      伸ばしたぶん（`--tl-grow`）は時間ではないので。 */
+  function nodeBox(li) {
+    const nd = li.querySelector(".tl-node");
+    if (!nd) return null;
+    const r = nd.getBoundingClientRect();
+    const g = li.__grow || 0;
+    if (r.height - g <= 0) return null;
+    return { top: r.top, bottom: r.bottom - g, height: r.height - g };
+  }
+
+  /** 丸薬を下へ伸ばす量（2026年10月6日）。二つの場合だけ：
+      - **過ぎてもまだの区間は、橙で「いま」まで**（道の `is-late` と同じ言い分。
+        長さを決めた・まだ・決めた終わりを過ぎた、今日だけ）。次の行の上に重ねて、
+        次の行はずらさない。
+      - **手順をひらいたら、手順の段の下まで**（前は線だけ伸ばしていた）。
+        伸ばしたぶんは時間ではないので、塗りは丸薬の下端の色（`--rail-bot-c`）一色。 */
+  function growOf(sec, list, nowMin, y) {
+    const top0 = sec.getBoundingClientRect().top;
+    const out = [];
+    for (const li of list.children) {
+      if (!li.classList.contains("tl-row")) continue;
+      const b = nodeBox(li);
+      if (!b) continue;
+      const late = nowMin != null && y != null && li.dataset.len === "1"
+        && !li.classList.contains("is-done") && nowMin > Number(li.dataset.until);
+      let to = b.bottom;
+      if (late) to = Math.max(to, top0 + slideOf(sec, li) + y);
+      const subs = li.querySelector(".tl-sub-wrap.is-open .tl-sub-list");
+      if (subs && !subs.hidden) {
+        const r = subs.getBoundingClientRect();
+        if (r.height > 0) to = Math.max(to, r.bottom);
+      }
+      out.push([li, late, Math.max(0, Math.round(to - b.bottom))]);
+    }
+    return out;
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
@@ -4810,10 +4863,8 @@
     const raw = [{ y: 0, min: from }];
     rows.forEach((li) => {
       const at = Number(li.dataset.at), un = Number(li.dataset.until);
-      const node0 = li.querySelector(".tl-node");
-      if (!node0 || !isFinite(at) || !isFinite(un) || un < at) return;
-      const b = node0.getBoundingClientRect();
-      if (b.height <= 0) return;
+      const b = nodeBox(li);
+      if (!b || !isFinite(at) || !isFinite(un) || un < at) return;
       raw.push({ y: b.top - box.top, min: at });
       raw.push({ y: b.bottom - box.top, min: un });
     });
@@ -5571,6 +5622,7 @@
                  ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
+          ${t.minutes ? KN.util.raw('data-len="1"') : ""}
           style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
         ${/* 時刻を決めていない用事の時刻は、その場で詰めた**目安**なので「ごろ」を
               添えます（B6）。前は字の太さだけが違い、「17:03」を決めた時刻と
