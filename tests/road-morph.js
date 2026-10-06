@@ -19,6 +19,9 @@ const DAY = "2026-09-30";
   }, DAY);
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(800);
+  /* 開いたときは時間割の「いま」へ送られる（toNow）ので、道が見えるところまで戻す（road-carry と同じ）。 */
+  await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 0; });
+  await page.waitForTimeout(300);
   const wait = (ms) => page.waitForTimeout(ms);
 
   /* 飛ぶ丸・隠れたもの・縮む停留所。位置は道の単位（.road-map の幅を 360 として）。 */
