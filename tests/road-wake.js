@@ -142,6 +142,32 @@ const DAY = "2026-10-03";
         && (label === "4:40" ? a.begin === 4 * 60 + 40 : a.begin > 3 * 60 + 30 && a.bedLo < -6), JSON.stringify(a));
   }
 
+  /* 遅寝も同じ（10月7日・利用者の声「道は絶対に変えずに、遅くなったら最後の道だけ右に長く。右の限界まで
+     来ていたら下の時刻だけ本当の時刻で」）。 */
+  const night = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road"), st = road.__road, g = st.g;
+    const p = g.point(g.dist(22 * 60)), e = g.point(g.total), b = st.beds[1];
+    return { end: g.end, rows: g.rows, x22: p.x, y22: p.y, endX: e.x, endY: e.y, bedLo: b.lo, bedHi: b.hi, W: KN.dayRoad.W,
+             slept: road.querySelectorAll(".road-slept").length, d: road.querySelector(".road-base").getAttribute("d"),
+             edge: [...road.querySelectorAll(".road-edge")].map((e) => e.textContent.trim()) };
+  });
+  await page.evaluate((day) => KN.store.setDayLog(day, { wake: "05:30", sleep: "22:30" }), DAY);
+  await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
+  await page.waitForTimeout(400);
+  const n0 = await night();
+  for (const [w, label] of [["23:00", "23:00"], ["00:30", "0:30"]]) {
+    await page.evaluate(([day, w]) => KN.store.setDayLog(day, { wake: "05:30", sleep: w }), [DAY, w]);
+    await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
+    await page.waitForTimeout(400);
+    const n = await night();
+    c.check(`${label} 寝：寝床の下は ${label}・22:00 の場所と段の数はそのまま・紫は無い`,
+      n.edge[1] === label && Math.abs(n.x22 - n0.x22) < 0.01 && n.y22 === n0.y22 && n.rows === n0.rows && n.slept === 0, JSON.stringify([n, n0]));
+    c.check(`${label} 寝：最後の段だけ右へ伸び（角を描かない）、寝床は道の右で余白の中`,
+      n.endX > n0.endX + 1 && n.endY === n0.endY && n.d.split("A").length === n0.d.split("A").length
+        && n.bedLo > n.endX && n.bedHi <= n.W + 8 + 1e-6
+        && (label === "23:00" ? n.end === 23 * 60 : n.end < 24 * 60 + 30 && n.bedHi > n.W + 6), JSON.stringify(n));
+  }
+
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();
