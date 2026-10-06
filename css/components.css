@@ -1266,6 +1266,13 @@ button.hero-node:active { scale: .94; }
 .carry-head { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .carry-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); overflow-wrap: anywhere; }
 .carry-was { flex: none; margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+/* 置き直しの回数（3.0 の B2）。事実を一つ、同じ淡さで（赤・!にしない）。 */
+.carry-n { flex: none; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.carry-was + .carry-n { margin-left: 0; }
+.carry-head > .carry-n:first-of-type:not(.carry-was + .carry-n) { margin-left: auto; }
+/* 見直しの紙（B1）の事実は長いので、題の下に折り返す。 */
+.review-row .carry-head { flex-wrap: wrap; }
+.review-row .carry-was { flex: 1 1 100%; margin-left: 0; }
 .carry-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .carry-acts > .btn { flex: 1 1 auto; }
 /* 段5の紙の頭の一言（時刻を外すとどうなるか）。 */
