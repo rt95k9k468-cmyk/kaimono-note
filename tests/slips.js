@@ -185,9 +185,9 @@ const YEST = "2026-10-05";
     await wait(600);
   }
   const head = await page.evaluate(() => {
-    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const s = document.querySelector(".note-pop.is-review.is-open");
     const row = s && [...s.querySelectorAll(".review-row")].find((r) => /D1 の材料/.test(r.textContent));
-    return row ? row.querySelector(".carry-was").textContent : null;
+    return row ? row.querySelector(".rv-facts").textContent : null;
   });
   c.check("見直しの紙の頭：最初に置いた日・回数・前に置いていた時刻",
     head === "8月1日から · 4回置き直し · 前は 21:00", String(head));

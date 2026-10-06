@@ -5584,7 +5584,21 @@ textarea.note-title-in {
   min-height: 40px; border-radius: var(--r-full); font-size: var(--fs-md); color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
-.pop-cal-day.is-today { color: var(--c-primary); font-weight: var(--fw-bold); }
+/* 今日は色だけで言わない：頭の一行と、升の輪と「今日」の字。 */
+.pop-cal-now {
+  display: block; margin: 0 auto var(--sp-1); padding: 2px var(--sp-3); min-height: 28px;
+  border-radius: var(--r-full); background: var(--c-primary-soft);
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
+}
+.pop-cal-day.is-today {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;
+  color: var(--c-primary); font-weight: var(--fw-bold); box-shadow: inset 0 0 0 2px var(--c-primary);
+  border-radius: var(--r-md);
+}
+.pop-cal-day.is-today small { font-size: 9px; font-weight: var(--fw-bold); }
+.pop-cal-day:disabled { color: var(--c-text-3); cursor: default; }
+.pop-cal-day:disabled:not(.is-today) { opacity: .45; }
+.pop-cal-day.is-today:disabled { color: var(--c-primary); }
 .pop-cal-day[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); font-weight: var(--fw-bold); }
 /* 作った日の回る列（年・月・日）。真ん中の一行が選ばれる。 */
 .note-pop.is-wheel { width: min(300px, calc(100vw - 16px)); padding: var(--sp-2); overflow: hidden; }
@@ -6484,40 +6498,62 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .tl-shelf-chev svg { width: 16px; height: 16px; }
 .tl-shelf-head[aria-expanded="true"] .tl-shelf-chev { rotate: 90deg; }
 .tl-wait { color: var(--c-text-2); }
-/* 見直しの紙（一件ずつ）。上に日を決める三つ（今日・明日・明後日）を大きく、その下に一枚の束
-   （別の日へ・後日計画する・小さく分ける。右に押したらどうなるかの一言）、いちばん下に静かに「やめる」。 */
-.review-count { margin: 0; font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.rv-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-1); }
+/* 見直しの小窓（一件ずつ。screen-todo.js の reviewSheet）。頭の一行からふくらむ白い小窓。灰色の面は使わない
+   （利用者の声「グレーは見づらい」）。上に日を決める三つを大きく、その下に白い束（右に押したらどうなるかの一言）。
+   絵は行き先ごとに色の札：今日は朝の黄、明日・明後日は空色、別の日は青、後日は紺、分けるは緑、やめるは淡く。 */
+.note-pop.is-review { width: min(380px, calc(100vw - 16px)); padding: var(--sp-4); background: var(--c-surface); }
+.review-one { display: flex; flex-direction: column; }
+.review-row { display: flex; flex-direction: column; gap: var(--sp-3); }
+.rv-head { display: flex; align-items: baseline; gap: var(--sp-2); }
+.rv-title { flex: 1; min-width: 0; font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); overflow-wrap: anywhere; }
+.review-count { flex: none; margin: 0; font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.rv-facts { margin: calc(-1 * var(--sp-2)) 0 0; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.rv-facts:empty { display: none; }
+.rv-ic {
+  --ic: var(--c-accent);
+  display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--ic) 14%, transparent); color: var(--ic);
+}
+.rv-ic svg { width: 20px; height: 20px; }
+.rv-ic.is-two { display: flex; justify-content: center; gap: 0; width: auto; padding: 0 6px; }
+.rv-ic.is-two svg { width: 17px; height: 17px; }
+.rv-ic.is-two svg + svg { margin-left: -3px; }
+.rv-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
 .rv-day {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  min-height: 84px; padding: var(--sp-3) 4px; border-radius: var(--r-lg);
-  background: var(--c-primary-soft); color: var(--c-text);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-height: 96px; padding: var(--sp-3) 4px; border-radius: var(--r-lg);
+  background: var(--c-surface); border: 1.5px solid var(--c-border); color: var(--c-text);
   transition: scale var(--m-press) var(--ease);
 }
 .rv-day:active { scale: 0.96; }
-.rv-day svg { width: 24px; height: 24px; color: var(--c-primary); }
+.rv-day .rv-ic { --ic: var(--c-slot-l); }
+.rv-day.is-today .rv-ic { --ic: var(--c-slot-b); }
 .rv-day b { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
-.rv-day span { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rv-list { display: flex; flex-direction: column; border-radius: var(--r-lg); background: var(--c-surface-2); overflow: hidden; }
+.rv-sub { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rv-list { display: flex; flex-direction: column; border-radius: var(--r-lg); border: 1.5px solid var(--c-border); overflow: hidden; }
 .rv-go {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%;
-  min-height: 52px; padding: 0 var(--sp-3); text-align: left; color: var(--c-text);
+  min-height: 54px; padding: 0 var(--sp-3); text-align: left; color: var(--c-text); background: var(--c-surface);
 }
 .rv-list > * + .rv-go { border-top: 1px solid var(--c-border); }
-.rv-go:active { background: var(--c-surface-3); }
-.rv-go > svg { flex: none; width: 22px; height: 22px; color: var(--c-primary); }
+.rv-go:active { background: color-mix(in srgb, var(--c-text) 5%, var(--c-surface)); }
+.rv-go.is-later .rv-ic { --ic: var(--c-m-sleep); }
+.rv-go.is-small .rv-ic { --ic: var(--c-m-steps); }
+.rv-go.is-stop .rv-ic { --ic: var(--c-text-2); }
 .rv-go-t { font-size: var(--fs-md); font-weight: var(--fw-bold); }
-.rv-go-n { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; }
+.rv-go-n { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); white-space: nowrap; }
 .rv-go-chev { display: grid; flex: none; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
 .rv-go-chev svg { width: 14px; height: 14px; }
 .rv-go[aria-expanded="true"] .rv-go-chev { rotate: 90deg; }
-.rv-more { display: flex; flex-direction: column; gap: var(--sp-2); padding: 0 var(--sp-3) var(--sp-3); }
+.rv-more { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); padding: 0 var(--sp-3) var(--sp-3); }
 .rv-more[hidden] { display: none; }
-.rv-more-h { font-size: var(--fs-xs); color: var(--c-text-3); }
-.rv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.rv-chips .chip svg { width: 16px; height: 16px; color: var(--c-primary); }
-.rv-foot { display: flex; align-items: center; justify-content: space-between; }
-.rv-stop { min-height: 44px; padding: 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-text-2); }
+.rv-pick {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--sp-2);
+  border-radius: var(--r-md); border: 1.5px solid var(--c-border); color: var(--c-text);
+}
+.rv-pick svg { width: 20px; height: 20px; color: var(--c-m-steps); }
+.rv-pick span { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.rv-pick small { font-size: var(--fs-xs); color: var(--c-text-2); }
 .chip-row.wait-for { flex-wrap: wrap; }
 
 /* ---------- これからの二週間（R7・js/upcoming.js） ----------

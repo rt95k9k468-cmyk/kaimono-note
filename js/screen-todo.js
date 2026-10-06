@@ -3655,7 +3655,7 @@
           <span class="tl-late-go">一件ずつ${icon("chevron")}</span>
         </button>
       `);
-      bar.addEventListener("click", () => { haptic(); reviewSheet(); });
+      bar.addEventListener("click", () => { haptic(); reviewSheet(bar); });
       host.append(bar);
     }
 
@@ -3737,31 +3737,31 @@
   }
   /* 「7日（水）」 */
   const dWeek = (key) => { const d = KN.util.dayDate(key); return d ? `${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）` : ""; };
-  /* 後日計画する：次に見直すまでの日数。 */
-  const LATER = [[7, "1週間後"], [14, "2週間後"], [30, "1か月後"], [90, "3か月後"]];
 
   /* 見直す日が来たもの（これから・待つ・いつか）を一件ずつ。選ばなければ何も変わらない。
      日をまたいでも数が増えるだけで、色は変えない。
      状態名は出さない——「このあとどうするか」を動詞で選ぶ（docs/todo-items.md の「見直す」）。
-     いちばん多い「日を決める」を上に大きく三つ（今日・明日・明後日）、その下に別の日・後日計画する・
-     小さく分ける。押したあとどうなるかは右の一言と、知らせの文で言う。 */
-  function reviewSheet() {
+     いちばん多い「日を決める」を上に大きく三つ（今日・明日・明後日）、その下に別の日へ・後日計画する・
+     小さく分ける・やめる。押したらどうなるかは右の一言と、知らせの文で言う。
+     下から出る紙ではなく、頭の一行（anchor）からふくらむ小窓（利用者の声。灰色の紙は見づらい）。 */
+  function reviewSheet(anchor) {
     const ids = store.reviewDue().map((t) => t.id);
-    if (!ids.length) return;
+    if (!ids.length || !anchor) return;
     let i = 0;
     const box = node(html`<div class="review-one"></div>`);
-    let handle = null;
+    let pop = null;
     const next = () => {
       i++;
-      if (i >= ids.length || !handle) { if (handle) handle.close(); return; }
+      if (i >= ids.length || !pop) { if (pop) pop.close(); return; }
       paint();
+      pop.place();
     };
     const say = (msg, undo) => {
       haptic();
       KN.motion.fire("save");
       KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
     };
-    const leave = (fn) => { if (handle) handle.close(); setTimeout(fn, 40); };
+    const leave = (fn) => { if (pop) pop.close(); setTimeout(fn, 40); };
     function paint() {
       const t = store.getTodo(ids[i]);
       if (!t) { next(); return; }
@@ -3772,62 +3772,48 @@
       const slotJa = slot ? slot.replace(/^0/, "") : "";
       box.innerHTML = "";
       box.append(node(html`
-        <div class="carry-row review-row" data-id="${t.id}">
-          <div class="carry-head">
-            <span class="carry-title">${t.title}</span>
-            <span class="carry-was">${factsOf(t)}</span>
+        <div class="review-row" data-id="${t.id}">
+          <div class="rv-head">
+            <b class="rv-title">${t.title}</b>
+            ${ids.length > 1 ? html`<span class="review-count">${i + 1} / ${ids.length}</span>` : ""}
           </div>
+          <p class="rv-facts">${factsOf(t)}</p>
           <div class="rv-days">
-            <button type="button" class="rv-day" data-k="today"
+            <button type="button" class="rv-day is-today" data-k="today"
                     aria-label="${slot ? `今日 ${slotJa} の空きへ` : "今日の道へ（時刻なし）"}">
-              ${icon("sun")}<b>今日</b><span>${slot ? `${slotJa}から` : "時刻なし"}</span>
+              <span class="rv-ic">${icon("sun")}</span><b>今日</b><span class="rv-sub">${slot ? `${slotJa}から` : "時刻なし"}</span>
             </button>
             <button type="button" class="rv-day" data-k="d1" aria-label="明日の道へ">
-              ${icon("sunrise")}<b>明日</b><span>${dWeek(d1)}</span>
+              <span class="rv-ic">${icon("sunrise")}</span><b>明日</b><span class="rv-sub">${dWeek(d1)}</span>
             </button>
             <button type="button" class="rv-day" data-k="d2" aria-label="明後日の道へ">
-              ${icon("route")}<b>明後日</b><span>${dWeek(d2)}</span>
+              <span class="rv-ic is-two">${icon("sunrise")}${icon("sunrise")}</span><b>明後日</b><span class="rv-sub">${dWeek(d2)}</span>
             </button>
           </div>
           <div class="rv-list">
-            <button type="button" class="rv-go" data-k="day">
-              ${icon("calendar")}<span class="rv-go-t">別の日へ</span><span class="rv-go-n">暦から選ぶ</span>
+            <button type="button" class="rv-go is-day" data-k="day">
+              <span class="rv-ic">${icon("calendar")}</span><span class="rv-go-t">別の日へ</span><span class="rv-go-n">暦から選ぶ</span>
               <span class="rv-go-chev">${icon("chevron")}</span>
             </button>
-            <button type="button" class="rv-go" data-k="later" aria-expanded="false">
-              ${icon("hourglass")}<span class="rv-go-t">後日計画する</span><span class="rv-go-n">日は決めない</span>
+            <button type="button" class="rv-go is-later" data-k="later">
+              <span class="rv-ic">${icon("hourglass")}</span><span class="rv-go-t">後日計画する</span><span class="rv-go-n">見直す日を選ぶ</span>
               <span class="rv-go-chev">${icon("chevron")}</span>
             </button>
-            <div class="rv-more" data-for="later" hidden>
-              <span class="rv-more-h">次に見直す</span>
-              <div class="rv-chips">
-                ${LATER.map(([n, label]) => html`<button type="button" class="chip" data-later="${n}">${label}</button>`)}
-              </div>
-            </div>
-            <button type="button" class="rv-go" data-k="small" ${KN.unfold ? html`aria-expanded="false"` : ""}>
-              ${icon("checklist")}<span class="rv-go-t">小さく分ける</span><span class="rv-go-n">${KN.unfold ? "AIか手で" : "手順を書く"}</span>
+            <button type="button" class="rv-go is-small" data-k="small" ${KN.unfold ? html`aria-expanded="false"` : ""}>
+              <span class="rv-ic">${icon("checklist")}</span><span class="rv-go-t">小さく分ける</span><span class="rv-go-n">${KN.unfold ? "AIか手で" : "手順を書く"}</span>
               <span class="rv-go-chev">${icon("chevron")}</span>
             </button>
             ${KN.unfold ? html`<div class="rv-more" data-for="small" hidden>
-              <div class="rv-chips">
-                <button type="button" class="chip" data-small="ai">${icon("sparkles")}AIと分ける</button>
-                <button type="button" class="chip" data-small="hand">${icon("edit")}自分で分ける</button>
-              </div>
+              <button type="button" class="rv-pick" data-small="ai">${icon("sparkles")}<span>AIと分ける</span><small>手順にして取り込む</small></button>
+              <button type="button" class="rv-pick" data-small="hand">${icon("edit")}<span>自分で分ける</span><small>手順を書く</small></button>
             </div>` : ""}
-          </div>
-          <div class="rv-foot">
-            <button type="button" class="rv-stop" data-k="stop">やめる</button>
-            ${ids.length > 1 ? html`<span class="review-count">${i + 1} / ${ids.length}</span>` : ""}
+            <button type="button" class="rv-go is-stop" data-k="stop">
+              <span class="rv-ic">${icon("download")}</span><span class="rv-go-t">やめる</span><span class="rv-go-n">アーカイブへ（消さない）</span>
+            </button>
           </div>
         </div>
       `));
       const row = box.querySelector(".review-row");
-      /* 畳んだ選択肢（後日計画する・小さく分ける）は、押した一つだけ開く。 */
-      const unfold = (k) => row.querySelectorAll(".rv-go[aria-expanded]").forEach((g) => {
-        const on = g.dataset.k === k && g.getAttribute("aria-expanded") !== "true";
-        g.setAttribute("aria-expanded", String(on));
-        row.querySelector(`.rv-more[data-for="${g.dataset.k}"]`).hidden = !on;
-      });
       row.querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => {
         const k = b.dataset.k;
         if (k === "today") {
@@ -3837,19 +3823,22 @@
           say(`「${t.title}」を${k === "d1" ? "明日" : "明後日"}の道へ`, store.planOn(t.id, k === "d1" ? d1 : d2));
           next();
         } else if (k === "day") {
-          KN.ui.popCalendar(b, { value: null, label: "別の日へ", onPick: (day) => {
+          KN.ui.popCalendar(b, { value: null, min: today, label: "別の日へ", onPick: (day) => {
             say(`「${t.title}」を${formatDay(day)}の道へ`, store.planOn(t.id, day)); next();
           } });
-        } else if (k === "later") { haptic(); unfold("later"); }
-        else if (k === "small") {
-          if (KN.unfold) { haptic(); unfold("small"); }
-          else leave(() => openSheet(t.id, null, { addSub: true }));
+        } else if (k === "later") {
+          /* 日は決めず、次に見直す日だけ暦から（棚はそのまま）。 */
+          KN.ui.popCalendar(b, { value: null, min: d1, label: "次に見直す日", onPick: (day) => {
+            say(`「${t.title}」は${mdJa(day)}にまた見直します`, store.keepShelf(t.id, KN.util.daysUntil(day))); next();
+          } });
+        } else if (k === "small") {
+          if (!KN.unfold) { leave(() => openSheet(t.id, null, { addSub: true })); return; }
+          haptic();
+          const on = b.getAttribute("aria-expanded") !== "true";
+          b.setAttribute("aria-expanded", String(on));
+          row.querySelector('.rv-more[data-for="small"]').hidden = !on;
+          pop.place();
         } else if (k === "stop") { say(`「${t.title}」をアーカイブしました`, store.stopTodo(t.id)); next(); }
-      }));
-      row.querySelectorAll("[data-later]").forEach((b) => b.addEventListener("click", () => {
-        const n = Number(b.dataset.later);
-        say(`「${t.title}」は${mdJa(KN.util.shiftDay(today, n))}にまた見直します`, store.keepShelf(t.id, n));
-        next();
       }));
       row.querySelectorAll("[data-small]").forEach((b) => b.addEventListener("click", () => {
         if (b.dataset.small === "ai") leave(() => KN.unfold.open(t.id));
@@ -3857,7 +3846,9 @@
       }));
     }
     paint();
-    handle = KN.ui.sheet({ title: "見直す", content: box, onClose: () => { handle = null; } });
+    pop = KN.ui.popOver(anchor, { side: "left", label: "見直す", cls: "is-review", grow: true, lift: true, onClose: () => { pop = null; } });
+    pop.el.append(box);
+    pop.place();
   }
 
   /* 置き直しの回数（3.0 の B2。docs/todo-timeline.md の「置き直しの回数」）。3回目から、行に「n回目」と
