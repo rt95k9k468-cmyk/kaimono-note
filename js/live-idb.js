@@ -46,6 +46,7 @@
   let did = "";                   // 開いたときに決めたこと
   let reason = "";                // off の理由
   let failed = false;             // 書けなかったことを errlog へ一度だけ
+  let copyAtOpen = null;          // 開いたとき元と違っていた写しの { at, total }（元が勝ったとき）
   let journal = [];
   let jChain = Promise.resolve();
 
@@ -107,7 +108,7 @@
     } else {
       /* 元を写しへ。元に番号の無いもの（直に書いた・古い版）も、ここ（元が勝つ）。
          写しのほうが中身がずっと多いなら、置き換える前に控えへ。 */
-      if (v && v.json !== store.rawLive()) await keepIfFuller(v.json);
+      if (v && v.json !== store.rawLive()) await keepIfFuller(v);
       entry.did = !v ? "first" : Number(v.seq) === info.seq ? "same" : "copied";
       if (!pending) {
         const raw = store.rawLive();
@@ -137,13 +138,15 @@
   }
 
   /* 写しのほうが中身がずっと多いのに元が勝つとき（古い版が空に近い元を書いた、
-     など）は、写しの中身を控えへ（「写しを置き換える前」）。 */
-  async function keepIfFuller(json) {
+     など）は、写しの中身を控えへ（「写しを置き換える前」）。写しの数は、開いたときの
+     点検（backup.js の inspectOpen）に渡す。 */
+  async function keepIfFuller(v) {
     try {
-      const was = JSON.parse(json);
+      const was = JSON.parse(v.json);
       if (!was || typeof was !== "object") return;
       delete was.lsSeq;
-      if (!store.shrinks(store.totalOf(was), store.totalOf(store.get()))) return;
+      copyAtOpen = { at: v.at, total: store.totalOf(was) };
+      if (!store.shrinks(copyAtOpen.total, store.totalOf(store.get()))) return;
       if (KN.backup) await KN.backup.take("写しを置き換える前", { state: was, now: true });
     } catch (err) {
       console.warn("keep live copy", err);
@@ -195,7 +198,8 @@
 
   /** 開いた記録に一件。`entry.kind` は "open"（開いた）・"vanished"（使っている
       うちに元が消えていた）・"other"（ほかの画面が書いた）・"shrink"（一度に大きく
-      減った）。数と番号だけを渡すこと。 */
+      減った）・"doubt"（開いたときの点検で、写しか控えより大きく少なかった。backup.js）。
+      数と番号だけを渡すこと。 */
   function note(entry, quiet) {
     const e = Object.assign({ at: now(), ver: version() }, entry);
     journal = journal.concat([e]).slice(-JOURNAL_MAX);
@@ -239,7 +243,7 @@
 
   /** 設定・試験に出すもの。 */
   function status() {
-    return { phase, did, reason, last, waiting: !!pending };
+    return { phase, did, reason, last, waiting: !!pending, failed, copy: copyAtOpen };
   }
 
   /** 待っている書き込みを、いま写しへ（約束で、書き終えたら）。試験と、隠れる直前に。 */

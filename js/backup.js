@@ -37,6 +37,7 @@
   let where = "ls";          // "idb"（大きな保存場所）か "ls"（前のまま）
   let heads = read();        // 控えの一覧（古い順）。"idb" では見出しだけ
   let lastPayload = heads.length ? heads[heads.length - 1].payload : null;
+  let lastNotes = null;      // いちばん新しい控えのノート（JSON の字。下の「ノートも控えへ」）
   let moved = { phase: "idle" };
   let loading = null;
   let chain = Promise.resolve();   // 控えの読み書きは、一つずつ
@@ -239,6 +240,31 @@
     });
   }
 
+  /* ---- ノートも控えへ（B3、2026年10月6日） ----
+
+     ノートは別の入れ物（kaimono-note-notes）にあり、その入れ物だけが消えた日の
+     退路が、Dropbox とファイルしかありませんでした。大きな保存場所に置く控えの
+     中身の隣（snapBodies の `notes`）に、書き出しと同じ noteBook を JSON で置きます。
+     - 記録の控えの形（payload）は変えない。棚も足さない（版を上げない）。
+     - 大きな保存場所に置くときだけ（localStorage へ退いた控えには入れない。枠が小さい）。
+     - ノートを読み終えていない日・開けない日は入れない（空のノートを「0件」と残さない）。
+     - 見出しの `size` にノートの字数も足す（上限 BUDGET_IDB で間引く物差し）。`nb` は
+       消していないノートの数（開いたときの点検に使うだけ。画面には出さない）。最近削除は
+       中身には入るが数えない——30日たって開いたときに本当に消えるのを、減ったと見ないため。
+     - 戻すときは記録を置き換え、ノートは消さずに合わせる（notes.merge。ファイルの復元と同じ）。 */
+  function notesNow() {
+    if (!KN.notes || KN.notes.state() !== "on") return null;
+    const book = KN.notes.forExport().noteBook;
+    return book ? { json: JSON.stringify(book), n: book.notes.filter((x) => !x.deletedAt).length } : null;
+  }
+
+  function readNotes(id) {
+    return KN.idb.run(["snapBodies"], "readonly", (t) => {
+      const r = t.objectStore("snapBodies").get(id);
+      return () => (r.result && typeof r.result.notes === "string" ? r.result.notes : null);
+    });
+  }
+
   /** 一つの控えの中身（字列）。前の置き場のものは、そこから。 */
   async function bodyOf(h) {
     if (!h) return null;
@@ -295,6 +321,7 @@
     const list = await readHeads();
     const last = list[list.length - 1];
     lastPayload = last ? (await readBodies([last.id]))[0] : null;
+    lastNotes = last && last.nb != null ? await readNotes(last.id) : null;
     heads = list;
     where = "idb";
     moved = { phase: "on", copied: legacy.length };
@@ -313,7 +340,7 @@
   }
 
   /* 一つ足して、上限と段に合わせて古いものを手放す——一つの取引で。 */
-  async function addIdb(snap, payload) {
+  async function addIdb(snap, payload, notes) {
     const inBox = heads.filter((h) => !h.ls);
     const next = prune(inBox.concat([snap]), BUDGET_IDB, headSize);
     const drop = inBox.filter((h) => next.indexOf(h) < 0);
@@ -321,7 +348,7 @@
       const S = t.objectStore("snaps");
       const B = t.objectStore("snapBodies");
       const r = S.add(snap);
-      r.onsuccess = () => B.put({ id: r.result, payload });
+      r.onsuccess = () => B.put(notes == null ? { id: r.result, payload } : { id: r.result, payload, notes });
       drop.forEach((h) => { S.delete(h.id); B.delete(h.id); });
       return () => r.result;
     });
@@ -425,13 +452,17 @@
         const last = cur[cur.length - 1];
         lastPayload = last ? last.payload : null;
       }
-      if (payload === lastPayload && !force) return "same";
+      /* ノート（上の「ノートも控えへ」）。記録を渡された控え（減る前・戻す前）は記録だけ。 */
+      const nb = where === "idb" && !given ? notesNow() : null;
+      if (payload === lastPayload && (!nb || nb.json === lastNotes) && !force) return "same";
 
       const snap = { at: today(), reason: reason || "自動", summary: summarize(state), size: payload.length, out: outCount(state) };
       if (where === "idb") {
+        const box = nb ? { ...snap, size: payload.length + nb.json.length, nb: nb.n } : snap;
         try {
-          await addIdb(snap, payload);
+          await addIdb(box, payload, nb ? nb.json : null);
           lastPayload = payload;
+          if (nb) lastNotes = nb.json;
           KN.idb.changed();
           return "taken";
         } catch (err) {
@@ -575,6 +606,25 @@
     }
     await store.importBackup(payload);
     await settleLost();
+    return found.nb != null ? { notes: await mergeNotes(at) } : {};
+  }
+
+  /**
+   * 控えのノートを、いまのノートに合わせます（消さずに。notes.merge）。記録には
+   * 触れません。約束で "merged"・"none"（その控えにノートが無い）・"failed"。
+   */
+  async function mergeNotes(at) {
+    await ensure();
+    const found = heads.find((s) => s.at === at && !s.ls);
+    if (!found || found.nb == null || where !== "idb" || !KN.notes) return "none";
+    try {
+      const text = await readNotes(found.id);
+      if (typeof text !== "string") return "none";
+      return (await KN.notes.merge(JSON.parse(text))) ? "merged" : "failed";
+    } catch (err) {
+      console.error("merge notes from snapshot", err);
+      return "failed";
+    }
   }
 
   /* ---------------- 記録が見当たらない日（2026年10月6日） ----------------
@@ -670,6 +720,62 @@
     }
   }
 
+  /* ---------------- 開いたときの点検（B4、2026年10月6日） ----------------
+
+     読むだけ。開いたときの記録の数（countsOf の合計）が、写し（開いたときに元と
+     違っていたもの）か、開く前のいちばん新しい控えより大きく少なければ、設定の
+     頭に一行。ノートも、開く前のいちばん新しい控えより大きく少なければ。
+     - いちばん新しい控えが PINNED（削除前・大きく減る前など、決めて変える直前）
+       なら、控えとは比べない——そのあとの減りは本人が選んだもの。
+     - 戻したり書き足したりして食い違いが消えたら、行も消える（doubt がそのたび見る）。
+     - 記録が見当たらない日（lost）は、そちらが訊くので見ない。 */
+  let doubts = null;
+  const sumOf = (c) => ["products", "stores", "items", "todos", "days", "entries", "diet"]
+    .reduce((n, k) => n + (Number(c[k]) || 0), 0);
+  const fewer = (was, now) => was > 0 && (now === 0 || store.shrinks(was, now));
+  const notesCount = () => { const nb = notesNow(); return nb ? nb.n : null; };
+
+  async function inspectOpen() {
+    try {
+      if (lost || store.loadError()) return;
+      /* 日記の写しから戻る本文（daily の日の数）が入りきってから数える。 */
+      if (KN.diaryIdb) await KN.diaryIdb.ready().catch(() => {});
+      const before = heads.filter((h) => h.at < bootAt);
+      const snap = before[before.length - 1];
+      const now = store.totalOf(store.get());
+      const cands = [];
+      if (snap && !pinned(snap) && snap.summary && snap.summary.todos != null) cands.push({ at: snap.at, total: sumOf(snap.summary) });
+      const copy = KN.liveIdb && KN.liveIdb.status().copy;
+      if (copy) cands.push({ at: copy.at, total: copy.total });
+      const out = {};
+      out.record = cands.filter((x) => fewer(x.total, now)).sort((a, b) => b.total - a.total)[0] || null;
+      const nsnap = before.filter((h) => h.nb != null).pop();
+      if (nsnap && KN.notes) {
+        await KN.notes.ready();
+        const n = notesCount();
+        if (n != null && fewer(nsnap.nb, n)) out.notes = { at: nsnap.at, total: nsnap.nb };
+      }
+      if (!out.record && !out.notes) return;
+      doubts = out;
+      if (KN.liveIdb) {
+        KN.liveIdb.note({ kind: "doubt", now, rec: out.record && out.record.total, notes: out.notes && out.notes.total }, true);
+      }
+      if (KN.idb) KN.idb.changed();
+    } catch (err) {
+      console.warn("open check failed", err);
+    }
+  }
+
+  /** 開いたときの点検で見つけた食い違いのうち、まだ残っているもの（その場で返る）。
+      `{ record: { at, total } | null, notes: { at, total } | null }` か null。 */
+  function doubt() {
+    if (!doubts) return null;
+    const record = doubts.record && fewer(doubts.record.total, store.totalOf(store.get())) ? doubts.record : null;
+    const n = doubts.notes ? notesCount() : null;
+    const notes = doubts.notes && n != null && fewer(doubts.notes.total, n) ? doubts.notes : null;
+    return record || notes ? { record, notes } : null;
+  }
+
   /** 控えを全部捨てます（どこからも呼んでいません。戻せません）。 */
   async function clear() {
     try { localStorage.removeItem(SNAP_KEY); } catch (err) { /* already gone */ }
@@ -752,6 +858,7 @@
       .then(() => (KN.liveIdb ? KN.liveIdb.ready() : null))
       .then(checkLost);
     checking.then(() => (lost ? ask() : null));
+    checking.then(inspectOpen);
     checking.then(() => maybeHourly());
 
     /* **アプリを離れるとき**は、いちばん取りたい瞬間です。書き終えて
@@ -784,5 +891,7 @@
     ready: ensure, where: () => where, moved: () => moved,
     // 記録が見当たらない日か（見比べ終わるまで待つなら checked()）。ファイルから戻したら settleLost。
     lost: () => lost, checked: () => checking || Promise.resolve(), settleLost,
+    // ノートの控え（B3）と、開いたときの点検（B4）。
+    mergeNotes, doubt,
   };
 })();
