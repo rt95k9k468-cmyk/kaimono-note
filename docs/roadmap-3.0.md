@@ -109,7 +109,7 @@
 
 | 段 | ID | 名前 | 大きさ | データ | 先に読む docs | 状態 |
 |---|---|---|---|---|---|---|
-| 土台 | T0 | 受け皿（新しい欄を `reconcile()` に通すだけ。画面は変えない） | 小 | 足す | storage・todo-items（長期）・traps | 未 |
+| 土台 | T0 | 受け皿（新しい欄を `reconcile()` に通すだけ。画面は変えない） | 小 | 足す | storage・todo-items（長期）・traps | 済み（2026年10月6日。iPhone で一度開いて新しい版になってから A1・B1） |
 | A 時間 | A1 | 積み上げを道へ置く・済ませたら記録・遡って道へ | 大 | 足す（T0 の欄） | todo-timeline（札の置き方・道の上で決める・道へ運ぶ）・daily（記録の紙） | 未 |
 | A | A2 | ノートから道へ・道から元へ | 中 | なし | notes（「⋯」の小窓）・todo-timeline | 未 |
 | B 状態 | B1 | 今日・これから・予定あり・待つ・いつか と「見直す」 | 大 | 足す（T0 の欄） | todo-items（長期・期限切れは作らない）・todo-timeline（段B） | 未 |
@@ -157,6 +157,8 @@ E は他に寄らないので、画像の取り込み口（E0）が開けばい�
 - どれも **function 宣言**の掃除役で（CLAUDE.md の TDZ）。
 - 試験：`tests/shelf-base.js`（新）——欄の無い古い保存がそのまま読める・欄が読み直しても残る・崩れた値は
   既定に落ちる・`restore-practice.js` が通る。
+- **済み（2026年10月6日）**：`store.js` の `reconcile()` と `actField`・`cleanShelf`・`cleanWaitFor`・
+  `cleanIso`・`cleanSlips`。積み上げの欄は、無ければ足さず（読むときは null）、崩れた値だけ null に。
 
 ### A1 積み上げを道へ置く
 
