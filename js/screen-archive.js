@@ -1040,47 +1040,30 @@
     const body = node(html`
       <div class="stack" style="gap:16px">
         ${readable ? html`
+        ${/* 見出しは置かない（2026年10月6日・利用者「見出しがおかしい」）。紙の題が「◯月◯日 の log」。 */""}
         <label class="field arc-memo-field">
-          <span class="field-label">その日あったこと・したこと</span>
-          <textarea class="textarea js-memo" rows="5">${memoInit}</textarea>
+          <textarea class="textarea js-memo" rows="5" aria-label="日記">${memoInit}</textarea>
         </label>` : html`
         <div class="field">
-          <span class="field-label">その日あったこと・したこと</span>
           <p class="field-hint js-memo-unread">${missing
             ? `${MISSING}（バックアップから戻せることがあります）`
             : UNREAD}</p>
         </div>`}
         <div class="arc-times">
           <label class="field">
-            <span class="field-label">起きた</span>
+            <span class="field-label">起床</span>
             <input type="time" class="input js-wake" value="${cur.wake || ""}">
           </label>
           <label class="field">
-            <span class="field-label">寝た</span>
+            <span class="field-label">就寝</span>
             <input type="time" class="input js-sleep" value="${cur.sleep || ""}">
           </label>
-        </div>
-        <div class="arc-quiet">
-          <button type="button" class="btn btn-ghost btn-sm js-quiet"></button>
         </div>
       </div>
     `);
 
-    /* 出さない日（R9）。この日を「あの日」「同じ日の年々」に出さない印。
-       記録は消えません——暦から来れば、いつでも読めます。押したらすぐ効きます。 */
-    const quietBtn = body.querySelector(".js-quiet");
-    const paintQuiet = () => {
-      const q = store.isQuietDay(day);
-      quietBtn.textContent = q ? "「あの日」にまた出す" : "この日を「あの日」に出さない";
-      quietBtn.setAttribute("aria-pressed", String(q));
-    };
-    paintQuiet();
-    quietBtn.addEventListener("click", () => {
-      store.setQuietDay(day, !store.isQuietDay(day));
-      KN.motion.fire("select");
-      paintQuiet();
-      render();
-    });
+    /* 「この日を『あの日』に出さない」の札は外した（2026年10月6日・利用者「要らない」）。
+       付いている印（store の quiet）と、その効き目はそのまま残す。 */
 
     const memo = body.querySelector(".js-memo");
     const wakeEl = body.querySelector(".js-wake");
