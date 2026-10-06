@@ -1,8 +1,10 @@
 /* 季節の絵（3.0 の E1、docs/roadmap-3.0.md・docs/season-art.md。2026年10月6日）。
-   絵はまだ無い（E0 が開いていない）ので、いまは候ごとの色だけ。見るのは：
-   - 72候のどれも色（か絵）を持つ。隣の候と同じ色ではない（候ごとに変わる）
-   - daily の画面に、選んでいる日の候の色が敷かれる。過去の日を開けばその日の候
-   - 絵の無い候・読めない絵では色だけ（data-season-img なし）
+   絵は72候すべてに一枚ずつ（広重『名所江戸百景』、NDL）。見るのは：
+   - 72候のどれも絵と出どころ（題・作者・所蔵・URL・理由）を持ち、絵のファイルが揃っている
+   - 72候のどれも色を持つ。隣の候と同じ色ではない（候ごとに変わる）
+   - daily の画面に、選んでいる日の候の色と絵が敷かれる。過去の日を開けばその日の候
+   - 読めない絵（オフラインでまだ持っていない）では色だけ（data-season-img なし）
+   - 出典の頭に NDL の求める一行
    - 敷くのは daily の画面だけ（ほかのタブには無い）・紙の後ろ（z-index -1、押す邪魔をしない）
    - 設定で外せる（既定は入）
    - 字の濃さの比：本文の字と、背景のいちばん濃い所で 4.5:1 以上（明るい面・暗い面）
@@ -39,8 +41,14 @@ const ROOT = path.resolve(__dirname, "..");
     const A = KN.seasonArt;
     const cs = Array.from({ length: 72 }, (_, k) => A.colorOf(k));
     return { cs, ok: cs.every((x) => /^#[0-9a-f]{6}$/.test(x)), same: cs.filter((x, k) => x === cs[(k + 1) % 72]).length,
-             art: Object.keys(A.ART).length };
+             art: Object.keys(A.ART).length,
+             bad: Object.entries(A.ART).filter(([k, a]) => !(a.file === A.fileOf(Number(k)) && a.title && a.author && a.holder
+               && /^https:\/\/dl\.ndl\.go\.jp\/pid\/\d+$/.test(a.url) && a.why)).map(([k]) => k),
+             src: A.SOURCE };
   });
+  c.check("72候すべてに絵と出どころ（題・作者・所蔵・URL・理由）", pal.art === 72 && pal.bad.length === 0, JSON.stringify(pal.bad));
+  c.check("絵のファイルが72枚そろう", files.length === 72, String(files.length));
+  c.check("出典の頭に NDL の求める一行", /^出典：国立国会図書館「NDLイメージバンク」\(https:\/\/www\.ndl\.go\.jp\/imagebank\)$/.test(pal.src || ""), pal.src);
   c.check("72候のどれも色を持つ", pal.ok && pal.cs.length === 72, JSON.stringify(pal.cs.slice(0, 4)));
   c.check("候ごとに色が変わる（隣と同じ色が無い）", pal.same === 0, String(pal.same));
 
@@ -59,7 +67,9 @@ const ROOT = path.resolve(__dirname, "..");
   });
   let r = await read();
   c.check("daily に今日の候の色（10/6 は秋分の末候）", r.k === String(r.want) && r.c === r.color && /gradient/.test(r.bg), JSON.stringify(r));
-  c.check("絵の無い候は色だけ", !r.img);
+  await page.waitForFunction(() => document.querySelector("#screen-archive").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
+  r = await read();
+  c.check("今日の候の絵が読めて重なる", r.img && r.bg.includes(`k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
   c.check("紙の地に敷く（中身の後ろ。押す的は増えない）", (r.bg.match(/linear-gradient/g) || []).length === 2, r.bg.slice(0, 120));
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
     ["todo", "list", "diet"].every((s) => !document.querySelector(`#screen-${s}`).hasAttribute("data-season"))));
@@ -80,12 +90,14 @@ const ROOT = path.resolve(__dirname, "..");
   /* 絵があれば重ねる（試験のあいだだけ表に一つ足す。無い絵は読めず、色だけのまま） */
   const withImg = await page.evaluate(async () => {
     const A = KN.seasonArt;
-    const k = Number(document.querySelector("#screen-archive").getAttribute("data-season"));
+    const el = document.querySelector("#screen-archive");
+    const k = Number(el.getAttribute("data-season"));
+    const keep = A.ART[k];
     A.ART[k] = { file: "img/season/__no_such__.webp", title: "t", author: "a", holder: "h", url: "u" };
-    A.apply(document.querySelector("#screen-archive"), KN.screens.archive.day());
+    A.apply(el, KN.screens.archive.day());
     await new Promise((res) => setTimeout(res, 600));
-    const img = document.querySelector("#screen-archive").hasAttribute("data-season-img");
-    delete A.ART[k];
+    const img = el.hasAttribute("data-season-img");
+    A.ART[k] = keep;
     return img;
   });
   c.check("読めない絵（オフライン・まだ無い）は重ねず、色だけ", withImg === false);

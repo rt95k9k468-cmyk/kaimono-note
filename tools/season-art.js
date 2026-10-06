@@ -7,8 +7,8 @@
          （.gitignore 済み）。出どころ（所蔵・作者・題・URL）を docs/season-art.md に書いた絵だけを置くこと。
    書く：img/season/kNN.webp —— 短い辺 720px（大きくはしない）・彩度を落とす・少しぼかす・WebP で
          **1枚25KBまで**（質を下げて収める）。72枚で2MBを超えたら止めて言う。
-   出す：候ごとの平均の色。js/season-art.js の ART の `color` と docs/season-art.md の表へ写す
-         （絵が読めない日・オフラインでも、その色が候の下地になる）。
+   出す：候ごとの平均の色（参考。下地には使わない——浮世絵の平均はどれも紙のくすんだ灰色で季節の色に
+         ならない。docs/season-art.md）。
 
    画像の処理は Playwright の Chromium の canvas で行う（sharp などを足さない）。 */
 const fs = require("fs");
@@ -75,5 +75,4 @@ const SHORT = 720;
   rows.forEach((x) => console.log(`k${String(x.k).padStart(2, "0")}  ${x.w}×${x.h}  ${(x.size / 1024).toFixed(1)}KB  質${x.q}  平均 ${x.color}`));
   console.log(`合計 ${(total / 1024).toFixed(0)}KB（${rows.length}枚）`);
   if (total > MAX_ALL) { console.log("2MB を超えました。質を下げるか、枚数を減らしてください（同じ節気の隣の候と分け合ってよい）"); process.exitCode = 1; }
-  console.log("平均の色は js/season-art.js の ART と docs/season-art.md の表へ写してください。");
 })();
