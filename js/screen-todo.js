@@ -501,7 +501,7 @@
      places for a field to go missing from. */
   /* from … 押した行の丸薬（`.tl-node`）。渡すと、それが紙の頭の丸薬へ
      伸びていきます（ui.js の morphPill）。 */
-  function openSheet(todoId, from) {
+  function openSheet(todoId, from, opts) {
     const editing = !!todoId;
     const t = editing ? store.getTodo(todoId) : null;
     if (editing && !t) return;
@@ -872,6 +872,8 @@
         }
       },
     });
+    /* 見直しの紙の「小さく分ける」から：手順を一つ足した形で開く。 */
+    if (editing && opts && opts.addSub) requestAnimationFrame(() => body.querySelector(".js-sub-add").click());
 
     /* メモは打った量ぶん伸びます（screen-diet.js の食事メモと同じ仕組み）。
        固定の高さに収めず全文を出し、はみ出た先は紙そのもの（.sheet-body）が
@@ -2695,6 +2697,7 @@
       day, todayKey(),
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
+      (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
       [...openSubs].sort(),
       [...shelfOpen].sort(),   // 待つ・いつかの畳み（B1）
       st.todos,
@@ -2982,8 +2985,11 @@
       .filter((t) => !t.due && !t.done && !t.archived && !t.trace && !t.shelf)   // これからだけ（B1。待つ・いつかは浮かべない）
       .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999")
         || (a.order || 0) - (b.order || 0));
+    /* 起きた・寝た時刻（daily の記録・ヘルスケアの写し）を道の中身に（写さず引く）。 */
+    const log = store.dayLog(day);
     return KN.dayRoad.build({
-      plan, today: isToday, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
+      plan, today: isToday, wake: log && log.wake ? KN.plan.toMin(log.wake) : null,
+      sleep: log && log.sleep ? KN.plan.toMin(log.sleep) : null, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
       someday,
       /* 記録（`arc:`）は記録の紙へ。 */
       open: (id) => {
@@ -3712,8 +3718,33 @@
     return bits.join(" · ");
   }
 
+  /* 今日の空き（いまの次の15分きざみから、この用事の長さが入る最初の空き）。道と同じ組み立て
+     （活動・時刻の決まった予定・時刻なしの「ごろ」）を見る。入らなければ null（時刻なしで今日へ）。 */
+  function todaySlot(t) {
+    const P = KN.plan;
+    const s = store.get().settings;
+    const day = todayKey();
+    const rows = store.openTodos().filter((x) => x.id !== t.id && store.fallsOn(x, day));
+    const act = KN.activity;
+    const plan = P.buildDay(day, act ? act.forRoad(day, rows) : rows, {
+      start: s.dayStart, end: s.dayEnd, now: KN.util.nowTime(),
+    });
+    const len = P.minutesOf(t);
+    const from = Math.ceil(P.toMin(KN.util.nowTime()) / 15) * 15;
+    const f = plan.free.find((g) => g.untilMin - Math.max(g.atMin, from) >= len);
+    const at = f ? Math.max(f.atMin, from) : null;
+    return at != null && at < 24 * 60 ? P.toTime(at) : null;
+  }
+  /* 「7日（水）」 */
+  const dWeek = (key) => { const d = KN.util.dayDate(key); return d ? `${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）` : ""; };
+  /* 後日計画する：次に見直すまでの日数。 */
+  const LATER = [[7, "1週間後"], [14, "2週間後"], [30, "1か月後"], [90, "3か月後"]];
+
   /* 見直す日が来たもの（これから・待つ・いつか）を一件ずつ。選ばなければ何も変わらない。
-     日をまたいでも数が増えるだけで、色は変えない。 */
+     日をまたいでも数が増えるだけで、色は変えない。
+     状態名は出さない——「このあとどうするか」を動詞で選ぶ（docs/todo-items.md の「見直す」）。
+     いちばん多い「日を決める」を上に大きく三つ（今日・明日・明後日）、その下に別の日・後日計画する・
+     小さく分ける。押したあとどうなるかは右の一言と、知らせの文で言う。 */
   function reviewSheet() {
     const ids = store.reviewDue().map((t) => t.id);
     if (!ids.length) return;
@@ -3730,12 +3761,15 @@
       KN.motion.fire("save");
       KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
     };
+    const leave = (fn) => { if (handle) handle.close(); setTimeout(fn, 40); };
     function paint() {
       const t = store.getTodo(ids[i]);
       if (!t) { next(); return; }
-      const st = store.stateOf(t);
-      const keep = { next: "まだこれから", wait: "まだ待つ", someday: "まだいつか" }[st] || "まだこれから";
-      const moves = ["next", "wait", "someday"].filter((k) => k !== st);
+      const today = todayKey();
+      const d1 = KN.util.shiftDay(today, 1);
+      const d2 = KN.util.shiftDay(today, 2);
+      const slot = todaySlot(t);
+      const slotJa = slot ? slot.replace(/^0/, "") : "";
       box.innerHTML = "";
       box.append(node(html`
         <div class="carry-row review-row" data-id="${t.id}">
@@ -3743,28 +3777,83 @@
             <span class="carry-title">${t.title}</span>
             <span class="carry-was">${factsOf(t)}</span>
           </div>
-          <div class="carry-acts">
-            <button type="button" class="btn btn-soft btn-sm" data-k="today">今日やる</button>
-            <button type="button" class="btn btn-soft btn-sm" data-k="day">日を決める</button>
-            <button type="button" class="btn btn-soft btn-sm" data-k="keep">${keep}</button>
-            ${moves.map((k) => html`<button type="button" class="btn btn-soft btn-sm" data-k="${k}">${SHELF_TO[k]}</button>`)}
-            ${KN.unfold ? html`<button type="button" class="btn btn-soft btn-sm" data-k="small">小さくする</button>` : ""}
-            <button type="button" class="btn btn-soft btn-sm" data-k="stop">やめる</button>
+          <div class="rv-days">
+            <button type="button" class="rv-day" data-k="today"
+                    aria-label="${slot ? `今日 ${slotJa} の空きへ` : "今日の道へ（時刻なし）"}">
+              ${icon("sun")}<b>今日</b><span>${slot ? `${slotJa}から` : "時刻なし"}</span>
+            </button>
+            <button type="button" class="rv-day" data-k="d1" aria-label="明日の道へ">
+              ${icon("sunrise")}<b>明日</b><span>${dWeek(d1)}</span>
+            </button>
+            <button type="button" class="rv-day" data-k="d2" aria-label="明後日の道へ">
+              ${icon("route")}<b>明後日</b><span>${dWeek(d2)}</span>
+            </button>
           </div>
-          ${ids.length > 1 ? html`<p class="review-count">${i + 1} / ${ids.length}</p>` : ""}
+          <div class="rv-list">
+            <button type="button" class="rv-go" data-k="day">
+              ${icon("calendar")}<span class="rv-go-t">別の日へ</span><span class="rv-go-n">暦から選ぶ</span>
+              <span class="rv-go-chev">${icon("chevron")}</span>
+            </button>
+            <button type="button" class="rv-go" data-k="later" aria-expanded="false">
+              ${icon("hourglass")}<span class="rv-go-t">後日計画する</span><span class="rv-go-n">日は決めない</span>
+              <span class="rv-go-chev">${icon("chevron")}</span>
+            </button>
+            <div class="rv-more" data-for="later" hidden>
+              <span class="rv-more-h">次に見直す</span>
+              <div class="rv-chips">
+                ${LATER.map(([n, label]) => html`<button type="button" class="chip" data-later="${n}">${label}</button>`)}
+              </div>
+            </div>
+            <button type="button" class="rv-go" data-k="small" ${KN.unfold ? html`aria-expanded="false"` : ""}>
+              ${icon("checklist")}<span class="rv-go-t">小さく分ける</span><span class="rv-go-n">${KN.unfold ? "AIか手で" : "手順を書く"}</span>
+              <span class="rv-go-chev">${icon("chevron")}</span>
+            </button>
+            ${KN.unfold ? html`<div class="rv-more" data-for="small" hidden>
+              <div class="rv-chips">
+                <button type="button" class="chip" data-small="ai">${icon("sparkles")}AIと分ける</button>
+                <button type="button" class="chip" data-small="hand">${icon("edit")}自分で分ける</button>
+              </div>
+            </div>` : ""}
+          </div>
+          <div class="rv-foot">
+            <button type="button" class="rv-stop" data-k="stop">やめる</button>
+            ${ids.length > 1 ? html`<span class="review-count">${i + 1} / ${ids.length}</span>` : ""}
+          </div>
         </div>
       `));
-      box.querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => {
+      const row = box.querySelector(".review-row");
+      /* 畳んだ選択肢（後日計画する・小さく分ける）は、押した一つだけ開く。 */
+      const unfold = (k) => row.querySelectorAll(".rv-go[aria-expanded]").forEach((g) => {
+        const on = g.dataset.k === k && g.getAttribute("aria-expanded") !== "true";
+        g.setAttribute("aria-expanded", String(on));
+        row.querySelector(`.rv-more[data-for="${g.dataset.k}"]`).hidden = !on;
+      });
+      row.querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => {
         const k = b.dataset.k;
-        if (k === "today") { say(`「${t.title}」を今日に`, store.planOn(t.id, todayKey())); next(); }
-        else if (k === "day") {
-          KN.ui.popCalendar(b, { value: null, label: "日を決める", onPick: (day) => {
-            say(`「${t.title}」を${formatDay(day)}に`, store.planOn(t.id, day)); next();
+        if (k === "today") {
+          say(slot ? `「${t.title}」を今日 ${slotJa} に` : `「${t.title}」を今日の道へ`, store.planOn(t.id, today, slot));
+          next();
+        } else if (k === "d1" || k === "d2") {
+          say(`「${t.title}」を${k === "d1" ? "明日" : "明後日"}の道へ`, store.planOn(t.id, k === "d1" ? d1 : d2));
+          next();
+        } else if (k === "day") {
+          KN.ui.popCalendar(b, { value: null, label: "別の日へ", onPick: (day) => {
+            say(`「${t.title}」を${formatDay(day)}の道へ`, store.planOn(t.id, day)); next();
           } });
-        } else if (k === "keep") { say(`「${t.title}」は${keep}`, store.keepShelf(t.id)); next(); }
-        else if (k === "stop") { say(`「${t.title}」をアーカイブしました`, store.stopTodo(t.id)); next(); }
-        else if (k === "small") { handle.close(); setTimeout(() => KN.unfold.open(t.id), 40); }
-        else moveShelf(t.id, k, next);
+        } else if (k === "later") { haptic(); unfold("later"); }
+        else if (k === "small") {
+          if (KN.unfold) { haptic(); unfold("small"); }
+          else leave(() => openSheet(t.id, null, { addSub: true }));
+        } else if (k === "stop") { say(`「${t.title}」をアーカイブしました`, store.stopTodo(t.id)); next(); }
+      }));
+      row.querySelectorAll("[data-later]").forEach((b) => b.addEventListener("click", () => {
+        const n = Number(b.dataset.later);
+        say(`「${t.title}」は${mdJa(KN.util.shiftDay(today, n))}にまた見直します`, store.keepShelf(t.id, n));
+        next();
+      }));
+      row.querySelectorAll("[data-small]").forEach((b) => b.addEventListener("click", () => {
+        if (b.dataset.small === "ai") leave(() => KN.unfold.open(t.id));
+        else leave(() => openSheet(t.id, null, { addSub: true }));
       }));
     }
     paint();
