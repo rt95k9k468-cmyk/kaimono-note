@@ -116,8 +116,7 @@ const BROKEN = [
   const snap = () => page.evaluate(() => JSON.stringify(KN.store.get().todos));
   const before = await snap();
   await page.locator(".sheet.is-open .js-answer").fill(CHATGPT);
-  await page.locator(".sheet.is-open .js-read").click();
-  await wait(300);
+  await wait(500);   // 貼ったら読む（読むボタンは無い）
   c.check("読んだだけでは何も変わらない", (await snap()) === before);
   const cands = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .unf-pick .unf-pt")].map((x) => x.textContent.trim()));
   c.check("候補：メモに残す・次の一歩・今日の道に置く・手順3つ",
@@ -145,8 +144,7 @@ const BROKEN = [
   await page.evaluate((i) => KN.unfold.open(i), id);
   await wait(600);
   await page.locator(".sheet.is-open .js-answer").fill(CLAUDE);
-  await page.locator(".sheet.is-open .js-read").click();
-  await wait(300);
+  await wait(500);   // 貼ったら読む（読むボタンは無い）
   await page.locator(".sheet.is-open .js-again").click();
   await wait(300);
   got = await page.evaluate(() => window.__copied.slice(-1)[0]);

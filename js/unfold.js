@@ -190,7 +190,6 @@
         <div class="unf-sec">
           <h3 class="unf-h">答えを貼る</h3>
           <textarea class="textarea js-answer" rows="4" placeholder="AI の答え"></textarea>
-          <button type="button" class="btn btn-soft btn-block js-read">読む</button>
           <div class="js-cands"></div>
         </div>
       </div>
@@ -237,13 +236,17 @@
 
     const answerIn = body.querySelector(".js-answer");
     const candHost = body.querySelector(".js-cands");
-    body.querySelector(".js-read").addEventListener("click", () => {
-      parsed = parse(answerIn.value);
-      const m = /<<\s*くらしノート\s*>>[\s\S]*?<<\s*\/\s*くらしノート\s*>>/.exec(String(answerIn.value || ""));
+    /* 貼ったら読む（往復の手数は「貼る1回」。3.0 の F1）。打ち直しても、少し待ってから読み直す。 */
+    let readT = 0;
+    const readNow = () => {
+      const v = String(answerIn.value || "");
+      if (!v.trim()) { parsed = null; pastedBlock = ""; paintCands(); return; }
+      parsed = parse(v);
+      const m = /<<\s*くらしノート\s*>>[\s\S]*?<<\s*\/\s*くらしノート\s*>>/.exec(v);
       pastedBlock = m ? m[0] : "";
-      KN.motion.fire("select");
       paintCands();
-    });
+    };
+    answerIn.addEventListener("input", () => { clearTimeout(readT); readT = setTimeout(readNow, 250); });
 
     function paintCands() {
       candHost.innerHTML = "";
