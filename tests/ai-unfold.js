@@ -200,9 +200,9 @@ const BROKEN = [
   if (hasReview) {
     await page.locator("#screen-todo .tl-review").click();
     await wait(600);
-    await page.locator(".sheet.is-open .rv-go", { hasText: "小さく分ける" }).first().click();
+    await page.locator(".note-pop.is-review .rv-go", { hasText: "小さく分ける" }).first().click();
     await page.waitForTimeout(300);
-    await page.locator(".sheet.is-open .rv-chips .chip", { hasText: "AIと分ける" }).first().click();
+    await page.locator(".note-pop.is-review .rv-pick", { hasText: "AIと分ける" }).first().click();
     await wait(700);
   }
   const title = await page.evaluate(() => {
@@ -218,9 +218,9 @@ const BROKEN = [
   if (await page.evaluate(() => !!document.querySelector("#screen-todo .tl-review"))) {
     await page.locator("#screen-todo .tl-review").click();
     await wait(600);
-    await page.locator(".sheet.is-open .rv-go", { hasText: "小さく分ける" }).first().click();
+    await page.locator(".note-pop.is-review .rv-go", { hasText: "小さく分ける" }).first().click();
     await wait(300);
-    await page.locator(".sheet.is-open .rv-chips .chip", { hasText: "自分で分ける" }).first().click();
+    await page.locator(".note-pop.is-review .rv-pick", { hasText: "自分で分ける" }).first().click();
     await wait(900);
     hand = await page.evaluate(() => {
       const s = [...document.querySelectorAll(".sheet.is-open")].pop();

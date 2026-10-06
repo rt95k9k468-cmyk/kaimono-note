@@ -1231,9 +1231,11 @@
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
-  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", grow = false, onClose } = {}) {
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", grow = false, lift = false, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
-    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || 0;
+    /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
+    const zSheet = lift ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 0 : 0;
+    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || zSheet;
     const r = anchor.getBoundingClientRect();
     const cover = node(html`<div class="note-pop-cover"></div>`);
     const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);
@@ -1321,9 +1323,12 @@
      「期限をオンにしてもカレンダーは自動で開かない。手動で開くと画面が上にズレる」）。
      欄に focus しないので、キーボードの扱いも画面のずれも起きない。週は月曜はじまり
      （`WEEKDAY_COLS`）。日を押すと onPick(日付キー) で閉じる。 */
-  function popCalendar(anchor, { value, month, label = "日付", onPick, onClose } = {}) {
+  /* 今日は色だけで言わない（2026年10月6日・利用者の声「色を変えるだけでは分かりにくい」）：頭に「今日は
+     10月6日（火）」、その日の升は輪と「今日」の字。min より前の日は押せない（見直しの紙が渡す）。 */
+  function popCalendar(anchor, { value, month, label = "日付", min, onPick, onClose } = {}) {
     const U = KN.util;
     const today = U.todayKey();
+    const td = U.dayDate(today);
     const sel = value || "";
     let ym = (sel || month || today).slice(0, 7);
     const p = popOver(anchor, { side: "left", label, cls: "is-cal", onClose });
@@ -1334,6 +1339,7 @@
           <b class="js-ym" aria-live="polite"></b>
           <button type="button" class="icon-btn js-next" aria-label="次の月">${icon("chevron")}</button>
         </div>
+        <button type="button" class="pop-cal-now js-now">今日は ${`${td.getMonth() + 1}月${td.getDate()}日（${U.WEEKDAYS[td.getDay()]}）`}</button>
         <div class="pop-cal-grid js-grid" role="grid"></div>
       </div>`);
     const grid = box.querySelector(".js-grid");
@@ -1348,9 +1354,11 @@
       const n = new Date(y, m, 0).getDate();
       for (let d = 1; d <= n; d++) {
         const key = `${ym}-${String(d).padStart(2, "0")}`;
+        const isToday = key === today;
         const b = node(html`
-          <button type="button" class="pop-cal-day ${key === today ? "is-today" : ""}"
-                  aria-pressed="${String(key === sel)}" data-day="${key}">${String(d)}</button>`);
+          <button type="button" class="pop-cal-day ${isToday ? "is-today" : ""}" ${min && key < min ? "disabled" : ""}
+                  aria-pressed="${String(key === sel)}" data-day="${key}"
+                  ${isToday ? html`aria-label="今日 ${String(d)}日"` : ""}>${String(d)}${isToday ? html`<small>今日</small>` : ""}</button>`);
         b.addEventListener("click", () => { haptic(); p.close(); if (onPick) onPick(key); });
         grid.append(b);
       }
@@ -1364,6 +1372,8 @@
     };
     box.querySelector(".js-prev").addEventListener("click", () => step(-1));
     box.querySelector(".js-next").addEventListener("click", () => step(1));
+    /* 「今日は…」を押せば今日の月へ戻る。 */
+    box.querySelector(".js-now").addEventListener("click", () => { ym = today.slice(0, 7); paint(); p.place(); });
     paint();
     p.el.append(box);
     p.place();

@@ -132,33 +132,51 @@ const TODAY = "2026-10-06";
     return b ? { text: b.textContent.replace(/\s+/g, ""), color: getComputedStyle(b).color } : null;
   });
   c.check("頭に「見直す 1」", !!bar && /^1見直す/.test(bar.text), JSON.stringify(bar));
+  const rv = () => page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-review.is-open");
+    return p ? { text: p.textContent } : null;
+  });
   await page.locator("#screen-todo .tl-review").click();
-  await wait(600);
-  let sh = await topSheet();
-  c.check("一件ずつの紙に事実（9月12日から · 期限 10月31日）",
-    !!sh && sh.title === "見直す" && /押し入れの整理/.test(sh.text) && /9月12日から · 期限 10月31日/.test(sh.text), sh && sh.text);
-  const labels = await page.evaluate(() => [...[...document.querySelectorAll(".sheet.is-open")].pop()
-    .querySelectorAll(".rv-day b, .rv-go-t, .rv-stop")].map((b) => b.textContent.trim()));
+  await wait(700);
+  let sh = await rv();
+  c.check("頭の一行からふくらむ小窓（下から出る紙ではない）に事実（9月12日から · 期限 10月31日）",
+    !!sh && /押し入れの整理/.test(sh.text) && /9月12日から · 期限 10月31日/.test(sh.text)
+    && await page.evaluate(() => !document.querySelector(".sheet.is-open")), sh && sh.text);
+  c.check("小窓は下の帯より上（紙の高さ）", await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector(".note-pop.is-review")).zIndex) > 30));
+  const labels = await page.evaluate(() => [...document.querySelectorAll(".note-pop.is-review .rv-day b, .note-pop.is-review .rv-go-t")]
+    .map((b) => b.textContent.trim()));
   c.check("選択肢は行動で：今日・明日・明後日・別の日へ・後日計画する・小さく分ける・やめる",
     JSON.stringify(labels) === JSON.stringify(["今日", "明日", "明後日", "別の日へ", "後日計画する", "小さく分ける", "やめる"]), JSON.stringify(labels));
   c.check("状態名・抽象語を出さない（これから・待つへ・いつかへ）", !!sh && !/まだこれから|待つへ|いつかへ|これからへ/.test(sh.text), sh && sh.text);
-  const notes = await page.evaluate(() => [...[...document.querySelectorAll(".sheet.is-open")].pop()
-    .querySelectorAll(".rv-day span, .rv-go-n")].map((b) => b.textContent.trim()));
-  c.check("押したらどうなるかを添える（9:00から・7日（水）・8日（木）・暦から選ぶ・日は決めない）",
-    notes[0] === "9:00から" && notes[1] === "7日（水）" && notes[2] === "8日（木）" && notes[3] === "暦から選ぶ" && notes[4] === "日は決めない", JSON.stringify(notes));
-  c.check("見直しの紙に評価の言葉・!を出さない", !!sh && !/遅れ|期限切れ|先送り|放置|できなかった|!|！/.test(sh.text), sh && sh.text);
-  /* 後日計画する：開くと次に見直す日の札。押すまで何も変わらない */
-  await page.locator(".sheet.is-open .rv-go", { hasText: "後日計画する" }).click();
-  await wait(300);
+  const notes = await page.evaluate(() => [...document.querySelectorAll(".note-pop.is-review .rv-sub, .note-pop.is-review .rv-go-n")]
+    .map((b) => b.textContent.trim()));
+  c.check("押したらどうなるかを添える（9:00から・7日（水）・8日（木）・暦から選ぶ・見直す日を選ぶ・やめるはアーカイブへ）",
+    notes[0] === "9:00から" && notes[1] === "7日（水）" && notes[2] === "8日（木）" && notes[3] === "暦から選ぶ"
+    && notes[4] === "見直す日を選ぶ" && /アーカイブへ/.test(notes[6]), JSON.stringify(notes));
+  c.check("明後日の絵は明日の絵が二つ", await page.evaluate(() =>
+    document.querySelectorAll('.note-pop.is-review [data-k="d2"] .rv-ic svg').length === 2));
+  c.check("見直しの小窓に評価の言葉・!を出さない", !!sh && !/遅れ|期限切れ|先送り|放置|できなかった|!|！/.test(sh.text), sh && sh.text);
+  /* 後日計画する：暦で次に見直す日を選ぶ。今日は字でも言う。今日より前（今日を含む）は選べない */
+  await page.locator(".note-pop.is-review .rv-go", { hasText: "後日計画する" }).click();
+  await wait(500);
   let t = await get("t-old");
-  const chips = await page.evaluate(() => [...[...document.querySelectorAll(".sheet.is-open")].pop()
-    .querySelectorAll('.rv-more[data-for="later"]:not([hidden]) .chip')].map((b) => b.textContent.trim()));
-  c.check("後日計画する：次に見直す日の札（1週間後〜3か月後）が開くだけ",
-    JSON.stringify(chips) === '["1週間後","2週間後","1か月後","3か月後"]' && t.review == null && !t.due, JSON.stringify([chips, t.review]));
-  await page.locator(".sheet.is-open .rv-chips .chip", { hasText: "1か月後" }).click();
+  const cal = await page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-cal.is-open");
+    const td = p && p.querySelector(".pop-cal-day.is-today");
+    return p ? { now: p.querySelector(".pop-cal-now").textContent.trim(), today: td && td.textContent.trim(), todayOff: td && td.disabled,
+                 d5: p.querySelector('[data-day="2026-10-05"]').disabled, d7: p.querySelector('[data-day="2026-10-07"]').disabled } : null;
+  });
+  c.check("後日計画する：暦が開くだけ（まだ何も変わらない）", !!cal && t.review == null && !t.due, JSON.stringify([cal, t.review]));
+  c.check("暦は今日を字で言う（頭に「今日は 10月6日（火）」・升に「今日」）",
+    !!cal && cal.now === "今日は 10月6日（火）" && /今日/.test(cal.today), JSON.stringify(cal));
+  c.check("次に見直す日は明日から（今日まで押せない）", !!cal && cal.d5 && cal.todayOff && !cal.d7, JSON.stringify(cal));
+  await page.locator(".note-pop.is-cal .js-next").click();
+  await wait(200);
+  await page.locator('.note-pop.is-cal [data-day="2026-11-05"]').click();
   await wait(600);
   t = await get("t-old");
-  c.check("1か月後：日は決めず、次の見直しを今日＋30（棚はそのまま）", t.review === "2026-11-05" && !t.due && !t.shelf, JSON.stringify(t));
+  c.check("11月5日：日は決めず、次の見直しを11月5日に（棚はそのまま）", t.review === "2026-11-05" && !t.due && !t.shelf, JSON.stringify(t));
   const toast = await page.evaluate(() => (document.querySelector(".toast") || {}).textContent || "");
   c.check("知らせに次に見直す日と「元に戻す」", /11月5日にまた見直します/.test(toast) && /元に戻す/.test(toast), toast);
   await page.locator(".toast-action", { hasText: "元に戻す" }).click();
@@ -175,13 +193,16 @@ const TODAY = "2026-10-06";
   });
   c.check("明日：やる日だけ書き、時刻は持たない（道の「ごろ」に並ぶ）", r.due === "2026-10-07" && !r.time, JSON.stringify(r));
   /* 今日：空きの時刻へ */
+  await page.keyboard.press("Escape");
+  await wait(400);
   await page.locator("#screen-todo .tl-review").click();
-  await wait(600);
-  await page.locator(".sheet.is-open .rv-day", { hasText: "今日" }).click();
+  await wait(700);
+  await page.locator(".note-pop.is-review .rv-day", { hasText: "今日" }).click();
   await wait(600);
   t = await get("t-old");
   c.check("今日：今日の空いた時刻（9:00）に置く", t.due === TODAY && t.time === "09:00", JSON.stringify([t.due, t.time]));
-  c.check("見直すものが無くなれば頭の一行も消える", await page.evaluate(() => !document.querySelector("#screen-todo .tl-review")));
+  c.check("見直すものが無くなれば頭の一行も消え、小窓も閉じる", await page.evaluate(() =>
+    !document.querySelector("#screen-todo .tl-review") && !document.querySelector(".note-pop.is-review.is-open")));
 
   /* 詳細の紙の「⋯」から待つへ */
   const yid = "t-young";
