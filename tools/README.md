@@ -51,6 +51,11 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 `#` の後ろ（サーバーへは送られない）。ここで作ったファイルを Safari に開かせるだけで、
 どこにも送りません。詳しくは `docs/todo-items.md` の「カレンダーに入れる」。
 
+## season-art.js — 季節の絵を加工する（3.0 の E1）
+
+`tools/season-src/kNN.jpg`（コミットしない）を、`img/season/kNN.webp`（短い辺 720px・彩度を落とす・少しぼかす・
+1枚25KBまで）にし、平均の色を出す。Playwright の Chromium の canvas で処理する。手順と対応表は `docs/season-art.md`。
+
 ## vendor/
 
 - `pdf.min.mjs` / `pdf.worker.min.mjs` — Mozilla の pdf.js v4.10.38。
