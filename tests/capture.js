@@ -246,6 +246,7 @@ const SEP = "\u001E";
       first: first ? first.className : "",
       bigger: first && other ? first.getBoundingClientRect().height > other.getBoundingClientRect().height : false,
       on: on ? on.dataset.t : "",
+      card: !!sheet && sheet.classList.contains("is-card"),
     };
   });
   t.check("＋で二択は出ない", !d.menu);
@@ -253,15 +254,23 @@ const SEP = "\u001E";
   t.check("日記の札が先頭", /arc-pick-diary/.test(d.first), d.first);
   t.check("日記の札はほかより大きい", d.bigger);
   t.check("種類は読書から", d.on === "reading", d.on);
+  t.check("記録の紙は四隅の丸いカード", d.card);
   await page.click(".sheet .js-to-diary");
   await page.waitForTimeout(700);
   const log = await page.evaluate(() => {
     const s = [...document.querySelectorAll(".sheet")].pop();
+    const r = s && s.getBoundingClientRect(), m = s && s.querySelector(".js-memo");
     return { n: document.querySelectorAll(".sheet").length, text: s ? s.textContent : "",
+      // 透ける灰の地（rgba）ではなく、塗りきった地
+      card: !!s && s.classList.contains("is-card") && /^rgb\(/.test(getComputedStyle(s).backgroundColor),
+      bottomGap: r ? Math.round(innerHeight - r.bottom) : -1,
+      memoTall: !!m && m.getBoundingClientRect().height > innerHeight / 2,
       entries: KN.store.get().archive.entries.length };
   });
   t.check("日記の札で日記の紙へ（記録の紙は閉じる）", log.n === 1 && !/記録を書く/.test(log.text), JSON.stringify({ n: log.n }));
   t.check("記録は勝手に増えない", log.entries === 0, String(log.entries));
+  t.check("日記の紙は塗りきった四隅の丸いカード（底が浮く）", log.card && log.bottomGap > 0, JSON.stringify({ card: log.card, gap: log.bottomGap }));
+  t.check("日記の本文の欄は紙の半分より高い", log.memoTall);
 
   t.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
