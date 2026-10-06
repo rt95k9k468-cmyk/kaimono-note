@@ -699,6 +699,7 @@
           <span class="hero-facts js-hero-facts"></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
           <button type="button" class="dest-chip js-act-src" hidden></button>
+          <button type="button" class="dest-chip js-act-note" hidden></button>
         </span>
       </div>
     `);
@@ -1721,6 +1722,18 @@
       chip.addEventListener("click", () => {
         handle.close();
         setTimeout(() => KN.screens.archive.openEntry(srcEntry.id), 40);
+      });
+    }
+    /* ノートから置いた活動（3.0 の A2）は「ノート『…』」。押せばノートが開き、閉じればこの画面へ戻る。
+       ノートが消えていれば出さない。 */
+    const srcNote = editing && t.act && KN.activity ? KN.activity.noteOf(t.act.note) : null;
+    if (srcNote) {
+      const chip = hero.querySelector(".js-act-note");
+      chip.hidden = false;
+      chip.textContent = `ノート『${srcNote.title}』`;
+      chip.addEventListener("click", () => {
+        handle.close();
+        setTimeout(() => KN.activity.openNote(srcNote.id), 40);
       });
     }
     titleEl.addEventListener("change", () => whenApply());

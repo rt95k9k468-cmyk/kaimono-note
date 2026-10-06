@@ -111,7 +111,7 @@
 |---|---|---|---|---|---|---|
 | 土台 | T0 | 受け皿（新しい欄を `reconcile()` に通すだけ。画面は変えない） | 小 | 足す | storage・todo-items（長期）・traps | 済み（2026年10月6日。iPhone で一度開いて新しい版になってから A1・B1） |
 | A 時間 | A1 | 積み上げを道へ置く・済ませたら記録・遡って道へ | 大 | 足す（T0 の欄） | todo-timeline（札の置き方・道の上で決める・道へ運ぶ）・daily（記録の紙） | 済み（2026年10月6日。`js/activity.js`・`tests/activity.js`。丸薬の形は見比べ A〜C の A（縁取り）を既定に。選び直すなら CSS の `.road-stop.is-act` だけ） |
-| A | A2 | ノートから道へ・道から元へ | 中 | なし | notes（「⋯」の小窓）・todo-timeline | 未 |
+| A | A2 | ノートから道へ・道から元へ | 中 | なし | notes（「⋯」の小窓）・todo-timeline | 済み（2026年10月6日。`tests/activity.js` に足した） |
 | B 状態 | B1 | 今日・これから・予定あり・待つ・いつか と「見直す」 | 大 | 足す（T0 の欄） | todo-items（長期・期限切れは作らない）・todo-timeline（段B） | 未 |
 | B | B2 | 置き直しの回数と、選択肢 | 中 | 足す（`slips`） | todo-timeline（段3・段5） | 未 |
 | B | B3 | 組み直し（今日の残りに入りきらないとき） | 中 | なし | todo-timeline（段3・段5・自分の速さ）・`plan.js` | 未 |

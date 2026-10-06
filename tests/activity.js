@@ -296,6 +296,83 @@ const NEXT = "2026-10-07";
   c.check("予定を消しても積み上げは残り、ふつうの記録として道に描く", cut.kept && cut.lone, JSON.stringify(cut));
   c.check("記録を消しても予定は残り、予定の時刻で描く", cut.t2 && !cut.linked && cut.drawnTime === "09:00", JSON.stringify(cut));
 
+  /* ---------------- ノートから道へ・道から元へ（A2） ---------------- */
+  await page.evaluate(() => KN.notes.ready());
+  const nid = await page.evaluate(() => {
+    const n = KN.notes.draft();
+    n.title = "引っ越しの段取り"; n.body = "箱の数を決める";
+    KN.notes.put(n);
+    return n.id;
+  });
+  await page.click('.tab[data-tab="archive"]');
+  await wait(500);
+  await page.evaluate((i) => KN.screens.notes.open(i), nid);
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await wait(400);
+  await page.click(".sheet.is-note .js-note-more");
+  await wait(300);
+  const items = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.textContent.trim()));
+  c.check("ノートの「⋯」に「道に置く」", items.includes("道に置く"), JSON.stringify(items));
+  await page.locator(".note-pop-item", { hasText: "道に置く" }).click();
+  await wait(600);
+  const nlens = await page.evaluate(() => {
+    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return { title: s.querySelector(".sheet-title").textContent.trim(),
+             chips: [...s.querySelectorAll(".tw-mins .chip")].map((x) => x.textContent.trim()),
+             on: (s.querySelector(".tw-mins .chip[aria-pressed=true]") || {}).textContent };
+  });
+  c.check("長さの札は 15・20・25・45（既定25分）",
+    nlens.title === "道に置く" && nlens.chips.join() === "15分,20分,25分,45分" && String(nlens.on).trim() === "25分", JSON.stringify(nlens));
+  await page.locator(".sheet.is-open .js-ok").last().click();
+  await wait(600);
+  const nt = await page.evaluate((i) => KN.store.get().todos.find((x) => x.act && x.act.note === i), nid);
+  c.check("「『引っ越しの段取り』について考える」が種の活動として今日に",
+    !!nt && nt.title === "『引っ越しの段取り』について考える" && nt.act.type === "seed" && nt.minutes === 25
+    && nt.due === TODAY && nt.time === "10:00", JSON.stringify(nt));
+  await page.keyboard.press("Escape");
+  await wait(600);
+  await page.click('.tab[data-tab="todo"]');
+  await wait(500);
+  await page.evaluate((i) => KN.screens.todo.open(i), nt.id);
+  await wait(600);
+  const nchip = await page.evaluate(() => {
+    const b = [...document.querySelectorAll(".sheet.is-open .js-act-note")].pop();
+    return b && !b.hidden ? b.textContent.trim() : null;
+  });
+  c.check("詳細の紙の頭に「ノート『引っ越しの段取り』」", nchip === "ノート『引っ越しの段取り』", String(nchip));
+  await page.locator(".sheet.is-open .js-act-note").last().click();
+  await wait(900);
+  c.check("札を押すとノートが開く", await page.evaluate((i) => !!document.querySelector(".sheet.is-note.is-open")
+    && [...document.querySelectorAll(".sheet.is-note.is-open .js-title, .sheet.is-note.is-open textarea, .sheet.is-note.is-open input")]
+      .some((x) => x.value === "引っ越しの段取り"), nid));
+  await page.keyboard.press("Escape");
+  await wait(700);
+  c.check("ノートを閉じれば、やることの画面のまま", await page.evaluate(() =>
+    !document.querySelector(".sheet.is-note.is-open") && !document.querySelector("#screen-todo").hidden));
+  const ne = await page.evaluate((i) => {
+    const r = KN.store.toggleTodo(i);
+    return KN.store.get().archive.entries.find((x) => x.id === r.entry);
+  }, nt.id);
+  c.check("済ませた積み上げも同じノートを持つ（種・25分）",
+    !!ne && ne.note === nid && ne.type === "seed" && ne.minutes === 25, JSON.stringify(ne));
+  await page.evaluate((x) => KN.screens.archive.openEntry(x), ne.id);
+  await wait(600);
+  await page.locator(".sheet.is-open .js-note-src").last().click();
+  await wait(900);
+  c.check("記録の紙の「ノート『…』」から同じノートへ", await page.evaluate(() => !!document.querySelector(".sheet.is-note.is-open")));
+  await page.keyboard.press("Escape");
+  await wait(700);
+  await page.evaluate((i) => KN.notes.remove(i), nid);
+  await wait(200);
+  await page.evaluate((i) => KN.screens.todo.open(i), nt.id);
+  await wait(600);
+  c.check("ノートが消えていれば札を出さない", await page.evaluate(() => {
+    const b = [...document.querySelectorAll(".sheet.is-open .js-act-note")].pop();
+    return !b || b.hidden;
+  }));
+  await page.keyboard.press("Escape");
+  await wait(500);
+
   /* ---------------- 読み直しても残る ---------------- */
   await wait(400);
   await page.reload();

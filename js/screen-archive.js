@@ -1343,8 +1343,11 @@
     /* 自動で埋めた欄には ×。人が打ち直したら消えます。 */
     let titleAuto = false, authorAuto = false;
 
+    /* 同じノートへ（3.0 の A2。ノートから置いた活動を済ませた記録）。ノートが消えていれば出さない。 */
+    const srcNote = e && e.note && KN.activity ? KN.activity.noteOf(e.note) : null;
     const body = node(html`
       <div class="stack" style="gap:10px">
+        ${srcNote ? html`<button type="button" class="dest-chip arc-note-src js-note-src">ノート『${srcNote.title}』</button>` : ""}
         <div class="arc-pick js-pick"></div>
 
         <div class="js-reading-fields" hidden>
@@ -1610,6 +1613,12 @@
       </div>
     `);
     const roadBtn = footer.querySelector(".js-road");
+    const noteBtn = body.querySelector(".js-note-src");
+    if (noteBtn) noteBtn.addEventListener("click", () => {
+      KN.motion.fire("select");
+      h.tryClose();
+      setTimeout(() => KN.activity.openNote(srcNote.id), 120);
+    });
     paintPick();
     paintMode();
 
