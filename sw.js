@@ -4,6 +4,8 @@
 
 const VERSION = "v1.0.0";
 const CACHE = `kaimono-note-${VERSION}`;
+/* 季節の絵の置き場（版をまたいで残す。下の fetch）。 */
+const SEASON_CACHE = "kurashi-season-v1";
 
 const ASSETS = [
   "./",
@@ -24,6 +26,7 @@ const ASSETS = [
   "js/split-items.js",
   "js/capture.js",
   "js/season.js",
+  "js/season-art.js",
   "js/icon-system.js",
   "js/icons-v2-keys.js",
   "js/product-icons.js",
@@ -140,6 +143,19 @@ self.addEventListener("fetch", (event) => {
         .catch(() => (shell
           ? caches.match("index.html").then((r) => r || caches.match("./"))
           : caches.match(req)))
+    );
+    return;
+  }
+
+  /* 季節の絵（3.0 の E1・js/season-art.js）。**別の名前のキャッシュ**に覚える（`kaimono-note-` で始めない）
+     ——版のキャッシュに入れると、activate が古い版ごと消し、出すたびに見た絵が消えてオフラインで色だけに戻る。
+     絵は変わらないので、先にキャッシュ、無ければ取りに行って覚える（裏で取り直さない）。 */
+  if (url.pathname.includes("/img/season/")) {
+    event.respondWith(
+      caches.open(SEASON_CACHE).then((c) => c.match(req).then((hit) => hit || fetch(req).then((res) => {
+        if (res && res.status === 200) c.put(req, res.clone());
+        return res;
+      })))
     );
     return;
   }

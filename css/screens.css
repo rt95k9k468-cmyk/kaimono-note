@@ -5097,6 +5097,30 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 #screen-archive,
 #screen-list,
 #screen-diet { overflow: hidden; }
+
+/* ---- 季節の絵（3.0 の E1・js/season-art.js） ----
+   daily の紙の**中身の後ろ**（紙の地）に一枚。上（日付・Daily Log の頭のあたり）でいちばん見え、下へ向かって
+   紙の色に溶ける。層は上から：候の色のぼかし（いつも）・紙の色の幕・絵（読めたら）・紙の色。絵の濃さは幕の
+   濃さで決める（幕 92% ＝ 絵 8%）。紙は送る器なので、地は送っても上に留まる（background-attachment は既定）。
+   値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。色の入れ替わりは --m-season で
+   ゆっくり（@property で色として登録。動きを減らす設定では切り替えるだけ）。濃さは iPhone で決める。 */
+@property --season-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
+#screen-archive { transition: --season-c var(--m-season) var(--ease); }
+#screen-archive[data-season] .tl-sheet.is-daily {
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--season-c) var(--season-tint, 38%), transparent), transparent 55%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--c-sheet) calc(100% - var(--season-alpha, 8%)), transparent), var(--c-sheet) 70%),
+    var(--season-img, none) center top / cover no-repeat,
+    var(--c-sheet);
+}
+/* 掴み手と Daily Log の段は紙と同じ地を持つ。季節の色の上では地を透かす（同じ色なので、色が無いときと見た目は同じ）。 */
+#screen-archive[data-season] .tl-sheet.is-daily > .tl-grip,
+#screen-archive[data-season] .tl-sheet.is-daily .card.arc-log { background: transparent; }
+/* 暗い色のときは、さらに薄く。 */
+:root[data-theme="dark"] #screen-archive { --season-tint: 14%; --season-alpha: 5%; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #screen-archive { --season-tint: 14%; --season-alpha: 5%; }
+}
 /* 紙まで、高さの割り当てを通します。途中の箱が `flex:1; min-height:0` を
    持っていないと、紙は中身ぶんに伸びて器になりません。 */
 #screen-todo > .stack,

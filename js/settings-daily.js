@@ -149,6 +149,15 @@
         })
       ),
       foot("二十四節気と七十二候を一行。"),
+      /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と浮世絵。既定は入。出典は畳んで。 */
+      card(
+        switchRow({
+          title: "季節の絵", on: s.seasonArt !== false,
+          onTap: (v) => dailySet("seasonArt", v),
+        })
+      ),
+      KN.seasonArt && KN.seasonArt.credits().length ? S.more("絵の出典", KN.seasonArt.credits()
+        .map((c) => `${c.kou}：${c.author}『${c.title}』（${c.holder}）`).join(" ／ ")) : null,
       card(
         switchRow({
           title: "月のまとめを出す", on: s.showDigest !== false,

@@ -117,7 +117,8 @@
     const prev = Math.floor(longitude(end - 86400000) / 5) % 72;
     const s = SEKKI[Math.floor(k / 3)];
     const c = KOU[k];
-    return { sekki: s[0], sekkiYomi: s[1], kou: c[0], kouYomi: c[1], part: k % 3, first: prev !== k };
+    /* k は春分の初候から数えた候の番号（0〜71）。季節の絵の引き当てに使う（js/season-art.js）。 */
+    return { sekki: s[0], sekkiYomi: s[1], kou: c[0], kouYomi: c[1], part: k % 3, first: prev !== k, k };
   }
 
   /** 画面に出す一行。「秋分　蟄虫坏戸（むしかくれてとをふさぐ）」 */

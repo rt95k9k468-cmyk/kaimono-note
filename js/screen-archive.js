@@ -1894,6 +1894,8 @@
        動くだけの出来事なのに、いままでは別の絵に置き換わっていました。
        月をめくったときのように丸ごと入れ替わる場合は、向こうが見送ります。 */
     const settle = KN.ui.flipRows(els.body, ".arc-row");
+    /* 季節の絵（3.0 の E1）。選んでいる日の候の色と、あれば絵を紙の後ろに。 */
+    if (KN.seasonArt) KN.seasonArt.apply(root, focusDay());
 
     rendering = true;
     els.searchClear.hidden = !els.search.value;
@@ -2005,6 +2007,7 @@
 
   /* `cal` はノート（daily の裏）が帯に同じ暦を置くため（js/screen-notes.js）。 */
   KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay(), cal: () => els.cal,
+    goDay: (d) => goDayTo(d),
     /* 記録の紙を、ほかの画面から（道の活動の札・道の上の記録。3.0 の A1）。 */
     openEntry: (id) => { const e = store.get().archive.entries.find((x) => x.id === id); if (e) openEntrySheet(e); } };
 })();
