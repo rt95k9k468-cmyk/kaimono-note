@@ -74,6 +74,7 @@
   function dailyViewRows() {
     const s = store.get().settings;
     const full = s.logFull !== false;
+    const lines = s.logLines === 3 ? 3 : 5;
     const entryFull = s.entryFull !== false;
     return [
       card(
@@ -90,14 +91,22 @@
           }),
         }),
         pickRow({
-          title: "見せ方", value: full ? "全文" : "数行",
+          /* 数行は終わりから。行数は logLines（3／5、無ければ5）。logFull はそのまま使う。 */
+          title: "見せ方", value: full ? "全文" : `${lines}行`,
           onTap: () => choose({
-            title: "Daily Log の見せ方", value: full ? "full" : "short",
+            title: "Daily Log の見せ方", value: full ? "full" : String(lines),
             options: [
-              { id: "full",  label: "全文" },
-              { id: "short", label: "数行" },
+              { id: "full", label: "全文" },
+              { id: "3",    label: "3行" },
+              { id: "5",    label: "5行" },
             ],
-            onPick: (v) => dailySet("logFull", v === "full"),
+            onPick: (v) => {
+              store.update((st) => {
+                st.settings.logFull = v === "full";
+                if (v !== "full") st.settings.logLines = Number(v);
+              });
+              render();
+            },
           }),
         }),
         pickRow({

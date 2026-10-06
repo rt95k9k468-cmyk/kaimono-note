@@ -838,8 +838,11 @@
                   書いていない日ごとに同じ字が並んで「書かなかった日」の一覧に
                   見えるので、そちらは「—」のまま。色は薄い字（`.is-blank`）の
                   まま、責める色は当てません（daily は評価しない）。 */""}
-            <span class="arc-log-memo ${S().logFull === false ? "is-clamped" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
-                  >${unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span>
+            ${/* 「数行」は**終わりの数行**（2026年10月6日、利用者）。日記は頭に決まった行が
+                  並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
+            <span class="arc-log-memo ${S().logFull === false ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
+                  style="--tail-n: ${S().logLines === 3 ? 3 : 5}"
+                  ><span>${unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
@@ -869,6 +872,9 @@
         openLogSheet(d.date);
       });
       body.append(row);
+      /* 上を切ったときだけ、頭を薄くして「続きは上に」を見せます。 */
+      const tail = row.querySelector(".arc-log-memo.is-tail");
+      if (tail) tailSeen().observe(tail);
       /* 手で書いた文の下に、その日ほかで起きたことを続けます。行の外に
          置くのは、押したときの行き先が違うからです——上の文は「その日の
          日記」を開き、下の一つ一つは**それぞれの元**を開きます。 */
@@ -877,6 +883,17 @@
     });
 
     return sec;
+  }
+
+  /* 終わりの数行で頭が切れたか。行はまだ紙に付いていないので、付いて背が決まったとき
+     （と字の大きさが変わったとき）に測ります。 */
+  let tailRO = null;
+  function tailSeen() {
+    if (!tailRO) tailRO = new ResizeObserver((list) => list.forEach(({ target: m }) => {
+      if (!m.isConnected) { tailRO.unobserve(m); return; }
+      m.classList.toggle("is-cut", m.firstElementChild.offsetHeight > m.clientHeight + 1);
+    }));
+    return tailRO;
   }
 
   /* その日、ほかのタブで起きたこと。

@@ -3550,13 +3550,20 @@ a.btn { text-decoration: none; }
 }
 /* まだ何も書いていない日の一行。押せば書ける、という誘いなので、薄い字で。 */
 .arc-log-memo.is-blank { color: var(--c-text-3); }
-/* 「数文ずつ」を選んだとき。長い日の文で一覧が埋まらないように、三行で
-   切ります（続きは押して開けば読めます）。既定は全文のままです。 */
-.arc-log-memo.is-clamped {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+/* 「3行」「5行」を選んだとき。**終わりの数行**を出します（2026年10月6日、利用者）。
+   下に寄せた器の背を行数ぶんにして、あふれた頭を上へ逃がして切ります
+   （flex-end のあふれは上へ出て、overflow で隠れる）。切ったときだけ頭を薄く。
+   切った行は両端揃えにしない（V26、iPhone で最後の行が引き伸ばされた）。 */
+.arc-log-memo.is-tail {
+  display: flex; flex-direction: column; justify-content: flex-end;
+  max-height: calc(1.85em * var(--tail-n, 5));
   overflow: hidden;
+  text-align: start;
+}
+.arc-log-memo > span { display: block; flex-shrink: 0; }
+.arc-log-memo.is-tail.is-cut {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.85em);
+  mask-image: linear-gradient(to bottom, transparent, #000 1.85em);
 }
 /* その日のことを言う時刻。中身なので、本文に次ぐ濃さで。 */
 .arc-log-times { font-size: var(--fs-sm); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
@@ -3607,8 +3614,7 @@ a.btn { text-decoration: none; }
 .arc-sub { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .arc-sub span:first-child { color: var(--arc-c); font-weight: var(--fw-bold); }
 .arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-ui); white-space: pre-wrap; }
-/* 積み上げのメモも、設定で「数行」を選んだら三行で切ります（Daily Log の
-   .arc-log-memo.is-clamped と同じ決め方）。続きは押して開く紙で読めます。 */
+/* 積み上げのメモは、設定で「数行」を選んだら頭から三行で切ります。続きは押して開く紙で読めます。 */
 .arc-memo.is-clamped {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -5676,9 +5682,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 2.0（V21）：日記の抜き出しは五行。三行だと頭の決まった行で埋まり、地の文まで届かない。
    切った行は両端揃えにしない——iPhone では最後の行が引き伸ばされ、「…」が字に重なった
    （V26、利用者 10月5日）。全文のときは両端揃えのまま。 */
-.arc-then-memo,
-.arc-log-memo.is-clamped { -webkit-line-clamp: 5; }
-.arc-log-memo.is-clamped { text-align: start; }
+.arc-then-memo { -webkit-line-clamp: 5; }
 /* 日記・積み上げの書く紙（.sheet.is-card）は、ノートの書く紙と同じ四隅の丸い白いカード
    （2026年10月6日、利用者「メモ欄が狭いし色合いも暗い」）。透ける灰の地をやめて白に、
    背いっぱいに伸ばし、余った高さはメモ欄が取る。形の数はノート（.sheet.is-note）と同じ。 */
