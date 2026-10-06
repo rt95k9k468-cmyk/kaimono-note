@@ -792,6 +792,19 @@
       /* 削除ではなく、しまう。書いてやらなかったものも「やらないと決めた」
          記録で、しまった日もその一部です。前は一覧の行を左へ払う手でした
          （V13 で外し、ここへ。時間割からもしまえるようになりました）。 */
+      /* 棚を移す（3.0 の B1）：これから・待つ・いつか。いまの棚のほかの二つ（日のあるものは三つ）。
+         くり返しは移さない（日を外すと回が消える）。直しかけがあれば先に保存してから。 */
+      if (!t.repeat) {
+        const st = store.stateOf(t);
+        [["next", "これからへ", "list"], ["wait", "待つへ", "hourglass"], ["someday", "いつかへ", "sprout"]]
+          .filter(([k]) => k !== st).forEach(([k, label, ic]) => heroMenu.push({
+            id: `shelf-${k}`, label: () => label, icon: ic,
+            onPick: () => {
+              handle.tryClose();
+              setTimeout(() => { if (store.getTodo(todoId)) moveShelf(todoId, k); }, 120);
+            },
+          }));
+      }
       heroMenu.push({
         id: "archive",
         label: () => (store.getTodo(todoId) && store.getTodo(todoId).archived
@@ -2658,6 +2671,7 @@
       st.settings,
       (store.dayLog(day) || {}).wake || "",
       [...openSubs].sort(),
+      [...shelfOpen].sort(),   // 待つ・いつかの畳み（B1）
       st.todos,
       /* 道は活動の実績（積み上げの時刻と長さ）も引くので（3.0 の A1・js/activity.js の forRoad）。 */
       st.archive.entries.filter((e) => e.at || e.todo)
@@ -2940,7 +2954,7 @@
        過ぎた日には出さない（置ける道が無いので）。並びは**期限の近い順**——くぼみの
        位置が時刻を言っているように読めないように。同じ期限・期限なしは手で決めた順。 */
     const someday = day < todayKey() ? [] : (open || [])
-      .filter((t) => !t.due && !t.done && !t.archived && !t.trace)
+      .filter((t) => !t.due && !t.done && !t.archived && !t.trace && !t.shelf)   // これからだけ（B1。待つ・いつかは浮かべない）
       .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999")
         || (a.order || 0) - (b.order || 0));
     /* 起きた時刻（daily の記録・ヘルスケアの写し）があれば、道はそこから（写さず引く）。 */
@@ -3000,7 +3014,7 @@
     const was = { due: t.due, time: t.time };
     store.updateTodo(id, { due: null, time: null });
     KN.motion.fire("save");
-    KN.ui.toast(`「${t.title}」を長期タスクへ`, {
+    KN.ui.toast(`「${t.title}」をこれからへ`, {
       action: { label: "元に戻す", onClick: () => store.updateTodo(id, was) },
     });
   }
@@ -3018,17 +3032,25 @@
      ここから時間割へ運べます（wireDrag は同じものを使います）。空いている
      ところへ落とせば、その日・その時刻に決まる——それがこの欄の使い道です。
      詳細の紙も、時間割の行とまったく同じものが開きます。 */
+  /* 待つ・いつかの畳みを開いているか（3.0 の B1。保存しない——開くたびに畳んだまま）。 */
+  const shelfOpen = new Set();
+
+  /* 「これから」（3.0 の B1。前の「長期タスク」）。日の無い用事の欄で、下に「待つ n」「いつか n」を
+     畳んで置く（docs/todo-items.md の「五つの状態」）。状態は due と shelf から読むだけ。 */
   function somedaySection(open) {
-    const rows = open.filter((t) => !t.due && !t.done && !t.archived && !t.trace);
+    const all = open.filter((t) => !t.due && !t.done && !t.archived && !t.trace);
+    const rows = all.filter((t) => !t.shelf);
+    const waits = all.filter((t) => t.shelf === "wait");
+    const somes = all.filter((t) => t.shelf === "someday");
     const sec = node(html`
       <section class="todo-group tl-someday-sec" data-group="someday">
         <h2 class="todo-head tl-someday-head">
-          <span>長期タスク</span>
+          <span>これから</span>
           ${rows.length ? html`<span class="cat-head-count">${rows.length}</span>` : ""}
         </h2>
       </section>
     `);
-    if (!rows.length) {
+    if (!all.length) {
       sec.append(node(html`
         <p class="todo-today-empty">いつかやることを、ここに置いておけます</p>
       `));
@@ -3038,13 +3060,38 @@
        並び順まで期限に決めさせると、二つのやり方で同じことを言うことに
        なります——並べ替えられるようにした以上、並びの持ち主は order の
        ほうにします。急ぐものを上に置きたければ、運べば済みます。 */
-    const sorted = rows.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
     const list = node(html`<ul class="tl tl-someday"></ul>`);
-    sorted.forEach((t) => list.append(somedayRow(t)));
-    sec.append(list);
+    rows.slice().sort(byOrder).forEach((t) => list.append(somedayRow(t)));
+    if (rows.length) sec.append(list);
     /* 運ぶ手つきは時間割と同じもの。day は渡しません——この欄の行は
        まだどの日のものでもないので、落とした先が日を決めます。 */
     wireDrag(list, null);
+    /* 待つ・いつかは畳んで「待つ n」「いつか n」。押せば開く。 */
+    [["wait", "待つ", waits], ["someday", "いつか", somes]].forEach(([key, label, items]) => {
+      if (!items.length) return;
+      const on = shelfOpen.has(key);
+      const fold = node(html`
+        <div class="tl-shelf" data-shelf="${key}">
+          <button type="button" class="tl-shelf-head" aria-expanded="${String(on)}">
+            <span>${label}</span><span class="cat-head-count">${items.length}</span>
+            <span class="tl-shelf-chev">${icon("chevron")}</span>
+          </button>
+        </div>
+      `);
+      fold.querySelector(".tl-shelf-head").addEventListener("click", () => {
+        haptic(10);
+        if (shelfOpen.has(key)) shelfOpen.delete(key); else shelfOpen.add(key);
+        render();
+      });
+      if (on) {
+        const ul = node(html`<ul class="tl tl-someday is-shelf"></ul>`);
+        items.slice().sort(byOrder).forEach((t) => ul.append(somedayRow(t)));
+        fold.append(ul);
+        wireDrag(ul, null);
+      }
+      sec.append(fold);
+    });
     return sec;
   }
 
@@ -3071,6 +3118,13 @@
       facts.prepend(node(html`
         <span class="tl-due ${over ? "is-over" : ""}">${formatDay(t.deadline)}まで</span>
       `));
+    }
+    /* 待つものは、何を待つかを小さく（B1）。 */
+    if (t.shelf === "wait" && t.waitFor) {
+      const body = li.querySelector(".tl-body");
+      let facts = li.querySelector(".tl-facts");
+      if (!facts) { facts = node(html`<span class="tl-facts"></span>`); if (body) body.append(facts); }
+      facts.prepend(node(html`<span class="tl-wait">${t.waitFor}</span>`));
     }
     return li;
   }
@@ -3560,12 +3614,134 @@
       host.append(bar);
     }
     paintPassed(true);
+    /* 見直す（3.0 の B1）。見直す日が来たものの数と、一件ずつの紙への口。色は変えない。 */
+    const oldReview = host && host.querySelector(".tl-review");
+    if (oldReview) oldReview.remove();
+    const due = host && oneDay() && shownDay() === today ? store.reviewDue() : [];
+    if (due.length) {
+      const bar = node(html`
+        <button type="button" class="tl-late tl-review">
+          <span class="tl-late-n">${due.length}</span>
+          <span>見直す</span>
+          <span class="tl-late-go">一件ずつ${icon("chevron")}</span>
+        </button>
+      `);
+      bar.addEventListener("click", () => { haptic(); reviewSheet(); });
+      host.append(bar);
+    }
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);
     // 描き直したぶん、いま見ている日の印は消えています。付け直します
     // （枠ごと入れ替わったので、輪は滑らせずに置きます）。
     paintHere(true);
+  }
+
+  /* ---------------- 五つの状態・見直す（3.0 の B1。docs/todo-items.md の「五つの状態」） ---------------- */
+  const SHELF_TO = { next: "これからへ", wait: "待つへ", someday: "いつかへ" };
+  /* 何を待つか。打たせず札から（決めなくてもよい）。 */
+  const WAIT_FOR = ["返事", "届く", "連絡", "順番"];
+  function askWaitFor(go) {
+    const box = node(html`<div class="chip-row wait-for"></div>`);
+    WAIT_FOR.forEach((w) => {
+      const b = node(html`<button type="button" class="chip">${w}</button>`);
+      b.addEventListener("click", () => { h.close(); setTimeout(() => go(w), 40); });
+      box.append(b);
+    });
+    const foot = node(html`<button type="button" class="btn btn-soft btn-block js-none">決めない</button>`);
+    foot.addEventListener("click", () => { h.close(); setTimeout(() => go(null), 40); });
+    const h = KN.ui.sheet({ title: "何を待つ", content: box, footer: foot, as: "dialog" });
+  }
+  /** 棚を移す（これから・待つ・いつか）。元に戻すつき。 */
+  function moveShelf(id, shelf, then) {
+    const t = store.getTodo(id);
+    if (!t || t.repeat) return;
+    const go = (waitFor) => {
+      const undo = store.setShelf(id, shelf === "next" ? null : shelf, waitFor);
+      haptic();
+      KN.motion.fire("save");
+      KN.ui.toast(`「${t.title}」を${SHELF_TO[shelf]}`, { action: { label: "元に戻す", onClick: undo } });
+      if (then) then();
+    };
+    if (shelf === "wait") askWaitFor(go); else go(null);
+  }
+  /* 「9月12日」 */
+  const mdJa = (key) => { const d = KN.util.dayDate(key); return d ? `${d.getMonth() + 1}月${d.getDate()}日` : ""; };
+  const dayOfStamp = (v) => {
+    const s = String(v || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? "" : KN.util.dayKey(d);
+  };
+  /** 見直しの紙・置き直しの紙の頭の事実（「9月12日から · 3回置き直し · 期限 10月31日」）。評価の言葉は使わない。 */
+  function factsOf(t) {
+    const bits = [];
+    const since = dayOfStamp(t.createdAt);
+    if (since) bits.push(`${mdJa(since)}から`);
+    const n = (t.slips || []).length;
+    if (n) bits.push(`${n}回置き直し`);
+    if (t.deadline) bits.push(`期限 ${mdJa(t.deadline)}`);
+    if (t.shelf === "wait" && t.waitFor) bits.push(`待つ：${t.waitFor}`);
+    return bits.join(" · ");
+  }
+
+  /* 見直す日が来たもの（これから・待つ・いつか）を一件ずつ。選ばなければ何も変わらない。
+     日をまたいでも数が増えるだけで、色は変えない。 */
+  function reviewSheet() {
+    const ids = store.reviewDue().map((t) => t.id);
+    if (!ids.length) return;
+    let i = 0;
+    const box = node(html`<div class="review-one"></div>`);
+    let handle = null;
+    const next = () => {
+      i++;
+      if (i >= ids.length || !handle) { if (handle) handle.close(); return; }
+      paint();
+    };
+    const say = (msg, undo) => {
+      haptic();
+      KN.motion.fire("save");
+      KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
+    };
+    function paint() {
+      const t = store.getTodo(ids[i]);
+      if (!t) { next(); return; }
+      const st = store.stateOf(t);
+      const keep = { next: "まだこれから", wait: "まだ待つ", someday: "まだいつか" }[st] || "まだこれから";
+      const moves = ["next", "wait", "someday"].filter((k) => k !== st);
+      box.innerHTML = "";
+      box.append(node(html`
+        <div class="carry-row review-row" data-id="${t.id}">
+          <div class="carry-head">
+            <span class="carry-title">${t.title}</span>
+            <span class="carry-was">${factsOf(t)}</span>
+          </div>
+          <div class="carry-acts">
+            <button type="button" class="btn btn-soft btn-sm" data-k="today">今日やる</button>
+            <button type="button" class="btn btn-soft btn-sm" data-k="day">日を決める</button>
+            <button type="button" class="btn btn-soft btn-sm" data-k="keep">${keep}</button>
+            ${moves.map((k) => html`<button type="button" class="btn btn-soft btn-sm" data-k="${k}">${SHELF_TO[k]}</button>`)}
+            ${KN.unfold ? html`<button type="button" class="btn btn-soft btn-sm" data-k="small">小さくする</button>` : ""}
+            <button type="button" class="btn btn-soft btn-sm" data-k="stop">やめる</button>
+          </div>
+          ${ids.length > 1 ? html`<p class="review-count">${i + 1} / ${ids.length}</p>` : ""}
+        </div>
+      `));
+      box.querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => {
+        const k = b.dataset.k;
+        if (k === "today") { say(`「${t.title}」を今日に`, store.planOn(t.id, todayKey())); next(); }
+        else if (k === "day") {
+          KN.ui.popCalendar(b, { value: null, label: "日を決める", onPick: (day) => {
+            say(`「${t.title}」を${formatDay(day)}に`, store.planOn(t.id, day)); next();
+          } });
+        } else if (k === "keep") { say(`「${t.title}」は${keep}`, store.keepShelf(t.id)); next(); }
+        else if (k === "stop") { say(`「${t.title}」をアーカイブしました`, store.stopTodo(t.id)); next(); }
+        else if (k === "small") { handle.close(); setTimeout(() => KN.unfold.open(t.id), 40); }
+        else moveShelf(t.id, k, next);
+      }));
+    }
+    paint();
+    handle = KN.ui.sheet({ title: "見直す", content: box, onClose: () => { handle = null; } });
   }
 
   /* 段3：運んできたものを、一件ずつ選び直す紙（docs/todo-timeline.md
@@ -3579,7 +3755,7 @@
       { key: "today", label: "今日のどこか", done: "今日のどこかに" },
       { key: "tomorrow", label: "明日", done: "明日へ" },
       { key: "week", label: week.next ? "来週" : "今週", done: week.next ? "来週中に" : "今週中に" },
-      { key: "someday", label: "長期タスクへ", done: "長期タスクへ" },
+      { key: "someday", label: "これからへ", done: "これからへ" },
       { key: "stop", label: "やめる", done: "アーカイブしました" },
     ];
     const box = node(html`<div class="carry-list"></div>`);
@@ -3653,7 +3829,7 @@
       soonAt && { key: "now", label: `いまから（${soonAt.replace(/^0/, "")}）`, done: `${soonAt.replace(/^0/, "")} に` },
       { key: "loose", label: "時刻を外す", done: "連れに戻しました" },
       { key: "tomorrow", label: "明日", done: "明日へ" },
-      { key: "someday", label: "長期タスクへ", done: "長期タスクへ" },
+      { key: "someday", label: "これからへ", done: "これからへ" },
       { key: "stop", label: "やめる", done: "アーカイブしました" },
     ].filter(Boolean);
     const box = node(html`
@@ -4895,7 +5071,7 @@
       const was = { due: t.due, time: t.time };
       store.updateTodo(d.id, { due: null, time: null });
       KN.motion.fire("save");
-      KN.ui.toast(`「${t.title}」を長期タスクへ`, {
+      KN.ui.toast(`「${t.title}」をこれからへ`, {
         action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
       });
       return;

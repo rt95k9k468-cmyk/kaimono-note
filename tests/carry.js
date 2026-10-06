@@ -145,7 +145,7 @@ const { open, checker } = require("./lib");
   });
   t.check("紙に二件", sheet.n === 2, JSON.stringify(sheet));
   t.check("五つの選択肢", sheet.labels.length === 5 && sheet.labels[0] === "今日のどこか" && sheet.labels[1] === "明日"
-    && /^(今週|来週)$/.test(sheet.labels[2]) && sheet.labels[3] === "長期タスクへ" && sheet.labels[4] === "やめる", JSON.stringify(sheet.labels));
+    && /^(今週|来週)$/.test(sheet.labels[2]) && sheet.labels[3] === "これからへ" && sheet.labels[4] === "やめる", JSON.stringify(sheet.labels));
   t.check("外した時刻を「前は」で言う", JSON.stringify(sheet.was) === JSON.stringify(["前は 13:00"]), JSON.stringify(sheet.was));
   t.check("評価の言葉を出さない", !/できなかった|遅れ|失敗|未達|持ち越し|期限切れ/.test(sheet.text + bar.text));
   t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(sheet.text + bar.text));

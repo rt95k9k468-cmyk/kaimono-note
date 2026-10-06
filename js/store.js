@@ -1744,6 +1744,8 @@
       order: 0,
     };
     fixBookend(rec);
+    /* 日の無いものは「これから」へ入った（3.0 の B1）。見直す日を書く。 */
+    if (!rec.due && !rec.repeat) rec.review = reviewFrom(null);
     update((s) => {
       s.todos.forEach((t) => { t.order = (t.order || 0) + 1; });
       s.todos.unshift(rec);
@@ -2101,8 +2103,15 @@
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       if (!t) return;
+      const dueWas = t.due || null;
       if ("title" in patch) t.title = String(patch.title || "").trim() || t.title;
       if ("due" in patch) t.due = /^\d{4}-\d{2}-\d{2}$/.test(patch.due) ? patch.due : null;
+      /* 五つの状態（3.0 の B1）。日を決めたら待つ・いつかから外れ、日を外して「これから」へ
+         入れたら見直す日を書く（どちらも状態は保存しない。due と shelf から読む）。 */
+      if ("due" in patch && t.due && t.shelf) { t.shelf = null; t.waitFor = null; }
+      if ("due" in patch && !t.due && dueWas && !t.repeat) t.review = reviewFrom(null);
+      /* 手が入った時刻（見直す日の読み替え・C1 のすすめに使う）。 */
+      t.editedAt = stamp();
       if ("repeat" in patch) {
         t.repeat = cleanRepeat(patch.repeat);
       }
@@ -2698,6 +2707,104 @@
   /** Still on the list: neither done nor put away. */
   const openTodos = () => get().todos.filter((t) => !t.done && !t.archived);
 
+  /* ---------------- 五つの状態と見直す（3.0 の B1。docs/todo-items.md の「五つの状態」） ----------------
+
+     状態は**保存しない**——`due`・`shelf` から毎回読む（一つの事実を二か所に持たない）。
+       今日 … due が今日（過ぎた日は見回りが今日へ運ぶ）／予定あり … due が明日以降
+       これから … due なし・shelf なし／待つ … shelf "wait"／いつか … shelf "someday"
+     見直す日（`review`）は、これから・待つ・いつかへ入れたときに書く。持っていない古い長期
+     タスクは書き換えず、**読むときに**手が入った日（`editedAt`、無ければ `createdAt`）＋これからの日数。
+     見直す日は期限ではない——過ぎても運ばず、数を言うだけ。 */
+  const REVIEW_DEFAULT = { next: 14, wait: 7, someday: 30 };
+  function reviewDays() {
+    const r = (get().settings && get().settings.reviewDays) || {};
+    const ok = (v, d) => (Number.isInteger(v) && v >= 1 && v <= 365 ? v : d);
+    return { next: ok(r.next, REVIEW_DEFAULT.next), wait: ok(r.wait, REVIEW_DEFAULT.wait),
+             someday: ok(r.someday, REVIEW_DEFAULT.someday) };
+  }
+  /* その棚の見直す日（今日から）。function 宣言（addTodo・updateTodo が呼ぶ）。 */
+  function reviewFrom(shelf) {
+    const d = reviewDays();
+    return KN.util.shiftDay(KN.util.todayKey(), shelf === "wait" ? d.wait : shelf === "someday" ? d.someday : d.next);
+  }
+  /** "today" | "planned" | "next" | "wait" | "someday"（過ぎた日も "today"＝運ばれるので）。 */
+  function stateOf(t) {
+    if (t.due) return t.due > KN.util.todayKey() ? "planned" : "today";
+    return t.shelf === "wait" ? "wait" : t.shelf === "someday" ? "someday" : "next";
+  }
+  /** 見直す日（読むとき）。日のあるもの・くり返しは null。 */
+  function reviewOn(t) {
+    if (!t || t.due || t.repeat) return null;
+    if (t.review) return t.review;
+    const base = toDayKey(t.editedAt) || toDayKey(t.createdAt) || KN.util.todayKey();
+    return KN.util.shiftDay(base, reviewDays().next);
+  }
+  /** 見直す日が来た用事（これから・待つ・いつか）。古い順。 */
+  function reviewDue() {
+    const today = KN.util.todayKey();
+    return openTodos().filter((t) => !t.trace && !t.due && !t.repeat && reviewOn(t) <= today)
+      .sort((a, b) => reviewOn(a).localeCompare(reviewOn(b)) || (a.order || 0) - (b.order || 0));
+  }
+  /* 書き換える前の控え（元に戻すが全部を戻すように）。 */
+  const SHELF_KEYS = ["due", "time", "lead", "part", "deadline", "carried", "shelf", "waitFor", "review",
+                      "editedAt", "archived", "archivedAt", "minutes", "slips"];
+  function keepFields(id) {
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const was = {};
+    SHELF_KEYS.forEach((k) => { was[k] = k in t0 ? JSON.parse(JSON.stringify(t0[k])) : undefined; });
+    return () => update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      SHELF_KEYS.forEach((k) => { if (was[k] === undefined) delete t[k]; else t[k] = was[k]; });
+    });
+  }
+  /**
+   * 棚を移す。shelf は null（これから）| "wait" | "someday"。日と時刻は外し、見直す日を書く。
+   * 待つは何を待つか（`waitFor`、30字まで。無くてよい）。くり返しは移さない。
+   * @returns {() => void} 元に戻す
+   */
+  function setShelf(id, shelf, waitFor) {
+    const t0 = getTodo(id);
+    if (!t0 || t0.repeat) return () => {};
+    const undo = keepFields(id);
+    const today = KN.util.todayKey();
+    const lapsed = t0.deadline && t0.deadline < today;   // 過ぎた期限は見回りがすぐ今日へ運び返すので外す
+    updateTodo(id, lapsed ? { due: null, time: null, deadline: null } : { due: null, time: null });
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      t.shelf = shelf === "wait" || shelf === "someday" ? shelf : null;
+      t.waitFor = t.shelf === "wait" ? cleanWaitFor(waitFor) : null;
+      t.review = reviewFrom(t.shelf);
+      delete t.carried;
+    });
+    return undo;
+  }
+  /** 見直した：まだこれから（棚はそのまま、次の見直しをその棚の日数ぶん先へ）。 */
+  function keepShelf(id) {
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const undo = keepFields(id);
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (t) t.review = reviewFrom(t.shelf);
+    });
+    return undo;
+  }
+  /** 見直しの紙・置き直しの紙の「今日やる」「日を決める」「やめる」（元に戻すつき）。 */
+  function planOn(id, day) {
+    const undo = keepFields(id);
+    updateTodo(id, { due: day });
+    update((s) => { const t = s.todos.find((x) => x.id === id); if (t) delete t.carried; });
+    return undo;
+  }
+  function stopTodo(id) {
+    const undo = keepFields(id);
+    archiveTodo(id, true);
+    return undo;
+  }
+
   /** Done or put away — the drawer at the bottom. */
   const closedTodos = () => get().todos.filter((t) => t.done || t.archived);
 
@@ -2773,6 +2880,8 @@
         if (!moves.has(t.id)) return;
         t.due = moves.get(t.id);
         if (!carry.has(t.id)) return;
+        /* 日が付いたので、待つ・いつかから外れる（B1。期限の過ぎた待つ・いつかも今日へ）。 */
+        if (t.shelf) { t.shelf = null; t.waitFor = null; }
         /* 段3（2026年9月29日・利用者が選んだ）。**時刻は外して「連れ」に**
            します——昨日の「13:00」は、今日の約束ではないので（一日の道では
            停留所＝本人が決めた約束）。外した時刻は印に控えて、置き直しの紙で
@@ -2816,7 +2925,8 @@
     const U = KN.util;
     const t0 = getTodo(id);
     if (!t0) return () => {};
-    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt"];
+    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt",
+                  "shelf", "waitFor", "review", "editedAt", "slips"];
     const was = {};
     keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
     const today = U.todayKey();
@@ -2874,7 +2984,8 @@
     const U = KN.util;
     const t0 = getTodo(id);
     if (!t0) return () => {};
-    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt"];
+    const keys = ["due", "time", "lead", "part", "deadline", "carried", "archived", "archivedAt",
+                  "shelf", "waitFor", "review", "editedAt", "slips"];
     const was = {};
     keys.forEach((k) => { was[k] = k in t0 ? t0[k] : undefined; });
     const today = U.todayKey();
@@ -4559,6 +4670,7 @@
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
+    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,

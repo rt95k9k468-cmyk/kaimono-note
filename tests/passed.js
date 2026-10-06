@@ -100,8 +100,8 @@ const { open, checker } = require("./lib");
   t.check("紙の題は「時刻を過ぎたもの」、一件「書類整理 10:00 の予定」",
     !!sheet && sheet.title === "時刻を過ぎたもの" && sheet.rows.length === 1
     && /書類整理/.test(sheet.rows[0]) && /10:00 の予定/.test(sheet.rows[0]), JSON.stringify(sheet));
-  t.check("五択（いまから（11:15）・時刻を外す・明日・長期タスクへ・やめる）",
-    !!sheet && JSON.stringify(sheet.picks) === JSON.stringify(["いまから（11:15）", "時刻を外す", "明日", "長期タスクへ", "やめる"]),
+  t.check("五択（いまから（11:15）・時刻を外す・明日・これからへ・やめる）",
+    !!sheet && JSON.stringify(sheet.picks) === JSON.stringify(["いまから（11:15）", "時刻を外す", "明日", "これからへ", "やめる"]),
     sheet && JSON.stringify(sheet.picks));
   t.check("紙に入力欄は無い", !!sheet && sheet.inputs === 0);
   t.check("紙も評価しない・絵文字なし",

@@ -6435,6 +6435,22 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .tl-due.is-over { color: var(--c-danger); font-weight: var(--fw-bold); }
 
+/* 待つ・いつか（3.0 の B1）。「これから」の下に畳んだ二つ。見出しは押せば開く一行で、
+   色は変えない（見直す日が来ても）。待つものは何を待つかを小さく。 */
+.tl-shelf { margin-top: var(--sp-2); }
+.tl-shelf-head {
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%;
+  min-height: 44px; padding: 0 var(--sp-4);   /* 「これから」の見出し（.todo-head）と頭をそろえる */
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
+}
+.tl-shelf-chev { display: grid; margin-left: auto; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
+.tl-shelf-chev svg { width: 16px; height: 16px; }
+.tl-shelf-head[aria-expanded="true"] .tl-shelf-chev { rotate: 90deg; }
+.tl-wait { color: var(--c-text-2); }
+/* 見直しの紙（一件ずつ）。 */
+.review-count { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.chip-row.wait-for { flex-wrap: wrap; }
+
 /* ---------- これからの二週間（R7・js/upcoming.js） ----------
    日ごとの一枚（カード）と、その日に立つ用事。見出しも行も、押せば
    やることのその日へ（section ごと一つの的）。

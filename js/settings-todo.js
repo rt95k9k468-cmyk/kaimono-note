@@ -52,6 +52,37 @@
     });
   }
 
+  /* 見直す日（3.0 の B1）。これから・待つ・いつかへ入れたとき、何日あとに見直すか。
+     札から選ぶだけ（打たせない）。既定は 2週・1週・1か月（store.reviewDays）。 */
+  const REVIEW_PICKS = {
+    next: [[7, "1週"], [14, "2週"], [28, "4週"]],
+    wait: [[3, "3日"], [7, "1週"], [14, "2週"]],
+    someday: [[14, "2週"], [30, "1か月"], [90, "3か月"]],
+  };
+  const daysLabel = (key, n) => ((REVIEW_PICKS[key].find((p) => p[0] === n) || [n, `${n}日`])[1]);
+  function openReviewDays() {
+    const box = node(html`<div class="stack review-days"></div>`);
+    const paint = () => {
+      const d = store.reviewDays();
+      box.innerHTML = "";
+      [["next", "これから"], ["wait", "待つ"], ["someday", "いつか"]].forEach(([key, label]) => {
+        const row = node(html`<div class="field"><span class="field-label">${label}</span><div class="js-c"></div></div>`);
+        KN.ui.chipRow(row.querySelector(".js-c"), REVIEW_PICKS[key].map(([n, l]) => ({ id: String(n), label: l })), {
+          activeId: String(d[key]),
+          onPick: (id) => {
+            store.update((s) => { s.settings.reviewDays = { ...store.reviewDays(), [key]: Number(id) }; });
+            KN.motion.fire("select");
+            paint();
+            render();
+          },
+        });
+        box.append(row);
+      });
+    };
+    paint();
+    KN.ui.sheet({ title: "見直す日", content: box });
+  }
+
   function todoRows() {
     const s = store.get().settings;
     const P = KN.plan;
@@ -86,6 +117,12 @@
       ),
       card(
         pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
+      ),
+      card(
+        pickRow({ title: "見直す日", onTap: openReviewDays, value: (() => {
+          const d = store.reviewDays();
+          return `${daysLabel("next", d.next)}・${daysLabel("wait", d.wait)}・${daysLabel("someday", d.someday)}`;
+        })() })
       ),
       /* 通知とカレンダーは、どちらもスイッチ二つ（か、スイッチと手順）に
          それぞれの説明が付いて、一画面ぶんあります。根っこに並べると tasks の

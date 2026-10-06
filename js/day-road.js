@@ -1699,14 +1699,14 @@
         out.push(html`
           <button type="button" class="road-bead is-someday ${m ? "" : "is-plain"}" data-h="${String(h)}"
                   style="${at(free[h].x, free[h].y)}${m ? U.raw(";--icon:" + m) : ""}"
-                  aria-label="${c.t.title}（長期タスク）"></button>`);
+                  aria-label="${c.t.title}（これから）"></button>`);
       });
       if (many && free.length) {
         const rest = st.someday.length - shown.length;
         const s = free[free.length - 1];
         out.push(html`
           <button type="button" class="road-bead road-more is-someday" data-more="someday"
-                  style="${at(s.x, s.y)}" aria-label="長期タスク、ほかに${rest}件">+${rest}</button>`);
+                  style="${at(s.x, s.y)}" aria-label="これから、ほかに${rest}件">+${rest}</button>`);
       }
     }
 
@@ -2076,7 +2076,7 @@
     d.el.classList.toggle("is-carry-out", out);
     d.aim.classList.toggle("is-on", at != null);
     d.tag.classList.toggle("is-on", at != null || out);
-    if (out) { d.tag.textContent = "長期タスク"; d.tag.style.transform = tagAt(x, y); return; }
+    if (out) { d.tag.textContent = "これから"; d.tag.style.transform = tagAt(x, y); return; }
     if (at == null) return;
     const p = g.point(g.dist(at));
     d.aim.style.left = (p.x / W * 100).toFixed(3) + "%";

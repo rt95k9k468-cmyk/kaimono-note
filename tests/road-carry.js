@@ -29,6 +29,9 @@ const DAY = "2026-09-30";
   }, DAY);
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(800);
+  /* 開いたときは時間割の「いま」へ送られる（toNow）ので、道が見えるところまで戻す。 */
+  await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 0; });
+  await page.waitForTimeout(300);
 
   const cdp = await ctx.newCDPSession(page);
   const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
@@ -240,13 +243,13 @@ const DAY = "2026-09-30";
   const outAt = await outPoint();
   await glide(from, outAt, 8);
   s = await state();
-  c.check("道の外では狙いの点は出ず、札「長期タスク」", s.carrying && !s.aim && s.tag === "長期タスク", JSON.stringify(s));
+  c.check("道の外では狙いの点は出ず、札「これから」", s.carrying && !s.aim && s.tag === "これから", JSON.stringify(s));
   await touch("touchEnd");
   await wait(700);
   c.check("道の外で離すと日も時刻も外れる", JSON.stringify(await todo(ids.b)) === JSON.stringify({ time: null, due: null }),
     JSON.stringify(await todo(ids.b)));
   const toastOut = await page.evaluate(() => (document.querySelector(".toast") || {}).textContent || "");
-  c.check("報せ「長期タスクへ」と元に戻す", /長期タスクへ/.test(toastOut) && /元に戻す/.test(toastOut), toastOut);
+  c.check("報せ「これからへ」と元に戻す", /これからへ/.test(toastOut) && /元に戻す/.test(toastOut), toastOut);
   c.check("道の外で離しても紙は開かない", !(await sheetOpen()));
   await page.locator(".toast button", { hasText: "元に戻す" }).click();
   await wait(500);
@@ -287,7 +290,7 @@ const DAY = "2026-09-30";
   }, DAY);
   await wait(600);
   const hollows = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .road-bead[data-h]")]
-    .map((b) => b.getAttribute("aria-label").replace(/（長期タスク）$/, "")));
+    .map((b) => b.getAttribute("aria-label").replace(/（これから）$/, "")));
   c.check("長期タスクはくぼみに、期限の近い順（済み・アーカイブは出ない）",
     JSON.stringify(await hollows()) === JSON.stringify(["年賀状", "税の書類", "本棚を組む"]),
     JSON.stringify(await hollows()));
