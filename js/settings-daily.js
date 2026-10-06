@@ -156,7 +156,7 @@
           onTap: (v) => dailySet("seasonArt", v),
         })
       ),
-      KN.seasonArt && KN.seasonArt.credits().length ? S.more("絵の出典", KN.seasonArt.credits()
+      KN.seasonArt && KN.seasonArt.credits().length ? S.more("絵の出典", `${KN.seasonArt.SOURCE} ／ ` + KN.seasonArt.credits()
         .map((c) => `${c.kou}：${c.author}『${c.title}』（${c.holder}）`).join(" ／ ")) : null,
       card(
         switchRow({

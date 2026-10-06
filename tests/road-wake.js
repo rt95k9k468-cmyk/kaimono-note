@@ -89,7 +89,11 @@ const DAY = "2026-10-03";
   await page.waitForTimeout(600);
   r = await read();
   c.check("起きた時刻 7:12 があっても、道は 5:30 から 22:30 まで", r.begin === 5 * 60 + 30 && r.end === 22 * 60 + 30, JSON.stringify([r.begin, r.end]));
-  c.check("5:30〜7:12 と 22:05〜22:30 は紫（寝ていたぶん）", r.slept === 2 && r.sleptStroke === r.bedInk, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
+  /* 紫は薄くなった寝床と同じ薄さ（濃い寝床の色そのものではない）。 */
+  const rgb = (v) => { const n = (v || "").match(/[\d.]+/g).map(Number); return v.startsWith("rgb") ? n.map((x) => x / 255) : n; };
+  const [sr, sg, sb] = rgb(r.sleptStroke);
+  c.check("5:30〜7:12 と 22:05〜22:30 は薄い紫（寝ていたぶん）",
+    r.slept === 2 && r.sleptStroke !== r.bedInk && sb > sr && sb > sg && Math.min(sr, sg, sb) > 0.8, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
   c.check("寝床の下の時刻は実際の 7:12 と 22:05", JSON.stringify(r.edge) === JSON.stringify(["7:12", "22:05"]), JSON.stringify(r.edge));
   const early = await page.evaluate(() => {
     const st = document.querySelector("#screen-todo .day-road").__road;
@@ -115,6 +119,54 @@ const DAY = "2026-10-03";
   c.check("済ませた 8:40 まで丸薬が延びる", !!done && done.ga === 7 * 60 + 12 && done.eu === 8 * 60 + 40, JSON.stringify(done));
   const wakeRec = await page.evaluate((day) => KN.store.dayLog(day).wake, DAY);
   c.check("記録は書き換えない", wakeRec === "07:12", wakeRec);
+
+  /* 早起き（10月7日・利用者の声「5:30 より前に起きたら、道の場所はそのままで、寝る人を左へずらし
+     道を左に長く」）。紙に入らないほど早ければ、道は寝床が紙の端に来るところまで・寝床の下は本当の時刻。 */
+  const at = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road"), st = road.__road, g = st.g;
+    const p = g.point(g.dist(5 * 60 + 30)), b = st.beds[0];
+    return { begin: g.begin, x530: p.x, y530: p.y, bedLo: b.lo, bedHi: b.hi, headX: g.point(g.d0).x,
+             slept: road.querySelectorAll(".road-slept").length,
+             edge: [...road.querySelectorAll(".road-edge")].map((e) => e.textContent.trim()) };
+  });
+  const a0 = await at();
+  for (const [w, label] of [["04:40", "4:40"], ["03:30", "3:30"]]) {
+    await page.evaluate(([day, w]) => KN.store.setDayLog(day, { wake: w, sleep: "22:05" }), [DAY, w]);
+    await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
+    await page.waitForTimeout(400);
+    const a = await at();
+    c.check(`${label} 起き：寝床の下は ${label}・5:30 の場所はそのまま・紫は夜だけ`,
+      a.edge[0] === label && Math.abs(a.x530 - a0.x530) < 0.01 && a.y530 === a0.y530 && a.slept === 1, JSON.stringify([a, a0]));
+    c.check(`${label} 起き：道は左へ伸び、寝床は道の左で余白の中`,
+      a.headX < a0.headX - 1 && a.bedHi < a.headX && a.bedLo >= -8 - 1e-6
+        && (label === "4:40" ? a.begin === 4 * 60 + 40 : a.begin > 3 * 60 + 30 && a.bedLo < -6), JSON.stringify(a));
+  }
+
+  /* 遅寝も同じ（10月7日・利用者の声「道は絶対に変えずに、遅くなったら最後の道だけ右に長く。右の限界まで
+     来ていたら下の時刻だけ本当の時刻で」）。 */
+  const night = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road"), st = road.__road, g = st.g;
+    const p = g.point(g.dist(22 * 60)), e = g.point(g.total), b = st.beds[1];
+    return { end: g.end, rows: g.rows, x22: p.x, y22: p.y, endX: e.x, endY: e.y, bedLo: b.lo, bedHi: b.hi, W: KN.dayRoad.W,
+             slept: road.querySelectorAll(".road-slept").length, d: road.querySelector(".road-base").getAttribute("d"),
+             edge: [...road.querySelectorAll(".road-edge")].map((e) => e.textContent.trim()) };
+  });
+  await page.evaluate((day) => KN.store.setDayLog(day, { wake: "05:30", sleep: "22:30" }), DAY);
+  await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
+  await page.waitForTimeout(400);
+  const n0 = await night();
+  for (const [w, label] of [["23:00", "23:00"], ["00:30", "0:30"]]) {
+    await page.evaluate(([day, w]) => KN.store.setDayLog(day, { wake: "05:30", sleep: w }), [DAY, w]);
+    await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
+    await page.waitForTimeout(400);
+    const n = await night();
+    c.check(`${label} 寝：寝床の下は ${label}・22:00 の場所と段の数はそのまま・紫は無い`,
+      n.edge[1] === label && Math.abs(n.x22 - n0.x22) < 0.01 && n.y22 === n0.y22 && n.rows === n0.rows && n.slept === 0, JSON.stringify([n, n0]));
+    c.check(`${label} 寝：最後の段だけ右へ伸び（角を描かない）、寝床は道の右で余白の中`,
+      n.endX > n0.endX + 1 && n.endY === n0.endY && n.d.split("A").length === n0.d.split("A").length
+        && n.bedLo > n.endX && n.bedHi <= n.W + 8 + 1e-6
+        && (label === "23:00" ? n.end === 23 * 60 : n.end < 24 * 60 + 30 && n.bedHi > n.W + 6), JSON.stringify(n));
+  }
 
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
