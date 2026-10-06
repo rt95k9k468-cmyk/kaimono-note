@@ -36,6 +36,7 @@ const JS = [
   "js/motion.js",
   "js/plan.js",
   "js/day-road.js",
+  "js/activity.js",
   "js/when-parse.js",
   "js/split-items.js",
   "js/capture.js",

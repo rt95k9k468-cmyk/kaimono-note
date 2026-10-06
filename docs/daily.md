@@ -258,3 +258,10 @@ Daily Log のコピー（`dailyCopyText`）から「明日以降の予定」「�
 - `.arc-log-memo.is-tail`：中身を `<span>` に包み、器を flex-end・`max-height: 1.85em × --tail-n`・overflow hidden。あふれた頭は上へ出て隠れる。
   切れたときだけ `is-cut`（頭を mask で薄く）。行は紙に付く前に作るので、測るのは ResizeObserver（`tailSeen`）。
 - 両端揃えにしない（V26 のまま）。積み上げのメモ・「あの日」は頭から切るまま。試験は `tests/daily-tail.js`。
+
+## 活動の長さ・道へ（3.0 の A1・2026年10月6日）
+
+記録の紙に「道に置く」（新しく書くとき。読書・学習）と「道に記録する」（前の記録）。積み上げの行に長さ（「30分」）、
+その日の積み上げの枠の頭に合計（事実だけ）。結んだやることは、やることの枠に二度並べない。くわしくは
+`docs/todo-timeline.md` の「活動」。
+

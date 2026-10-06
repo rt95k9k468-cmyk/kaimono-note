@@ -698,6 +698,7 @@
                  aria-label="やること">${editing ? t.title : ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
+          <button type="button" class="dest-chip js-act-src" hidden></button>
         </span>
       </div>
     `);
@@ -1711,6 +1712,17 @@
       });
       titleEl.addEventListener("input", paintDest);
     }
+    /* 活動（3.0 の A1）。結んだ積み上げがあれば、頭に「積み上げ『…』」の札（押せば元の記録へ）。 */
+    const srcEntry = editing ? store.actEntry(t) : null;
+    if (srcEntry && KN.screens.archive) {
+      const chip = hero.querySelector(".js-act-src");
+      chip.hidden = false;
+      chip.textContent = `積み上げ『${srcEntry.title || store.archiveType(srcEntry.type).label}』`;
+      chip.addEventListener("click", () => {
+        handle.close();
+        setTimeout(() => KN.screens.archive.openEntry(srcEntry.id), 40);
+      });
+    }
     titleEl.addEventListener("change", () => whenApply());
     titleEl.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter") return;
@@ -2516,6 +2528,15 @@
   /* 済ませたら、**押した時刻**を言って、その場で直せるようにします（2026年10月3日、
      利用者の声「完了を押し忘れていたことがよくある」）。くり返しは次の日も言います。 */
   function sayDone(t, res) {
+    /* 活動は、予定の長さで積み上げを一件残した（store の toggleTodo）。違えば「直す」から長さだけ。 */
+    const born = res.entry && store.get().archive.entries.find((x) => x.id === res.entry);
+    if (born && KN.activity) {
+      KN.ui.toast(`${KN.plan.humanSpan(born.minutes || 30)}で残しました`, { actions: [
+        { label: "直す", onClick: () => KN.activity.fixLength(born.id) },
+        { label: "元に戻す", onClick: res.undo },
+      ], duration: 5000 });
+      return;
+    }
     const d = res.doneId && store.getTodo(res.doneId);
     const at = d ? doneClock(d.doneAt) : "";
     const msg = res.repeated
@@ -2625,6 +2646,9 @@
       (store.dayLog(day) || {}).wake || "",
       [...openSubs].sort(),
       st.todos,
+      /* 道は活動の実績（積み上げの時刻と長さ）も引くので（3.0 の A1・js/activity.js の forRoad）。 */
+      st.archive.entries.filter((e) => e.at || e.todo)
+        .map((e) => [e.id, e.date, e.at, e.minutes, e.todo, e.title, e.type]),
     ]);
   }
 
@@ -2893,7 +2917,10 @@
   function dayRoad(day, todos, open) {
     const s = store.get().settings;
     const isToday = day === todayKey();
-    const plan = KN.plan.buildDay(day, todos, {
+    /* 活動（3.0 の A1）は、結んだ積み上げの時刻と長さで描く。用事に結ばれていない積み上げも
+       その日の道へ（写さず引く。js/activity.js の forRoad）。 */
+    const act = KN.activity;
+    const plan = KN.plan.buildDay(day, act ? act.forRoad(day, todos) : todos, {
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
     /* 長期タスク（段8・段B）。道の外周のくぼみに浮かべ、道へ運べば日と時刻が付く。
@@ -2908,10 +2935,18 @@
     return KN.dayRoad.build({
       plan, today: isToday, wake: log && log.wake ? KN.plan.toMin(log.wake) : null, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
       someday,
-      open: (id) => openSheet(id),
+      /* 記録（`arc:`）は記録の紙へ。 */
+      open: (id) => {
+        const eid = act && act.entryIdOf(id);
+        if (eid) { if (KN.screens.archive) KN.screens.archive.openEntry(eid); return; }
+        openSheet(id);
+      },
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },
       decide: (id, at) => decideOnRoad(id, at, day),
       unplan: (id) => unplanOnRoad(id),
+      actOf: act ? act.colorOf : null,
+      acts: act ? () => act.recent() : null,
+      plant: act ? (a, at) => act.plant({ type: a.type, title: a.title, day, at, minutes: a.minutes }) : null,
     });
   }
 

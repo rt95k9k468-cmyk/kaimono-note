@@ -1702,11 +1702,13 @@
   function addTodo({ title, due = null, deadline = null, part = null, time = null,
                      repeat = null, repeatDays = [],
                      repeatNth = null, repeatEvery = null, memo = "", flagged = false, minutes = null,
-                     lead = null, shop = false, subs = [], icon = null } = {}) {
+                     lead = null, shop = false, subs = [], icon = null, act = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
     const rec = {
+      // 活動（3.0 の A1）。積み上げの種類を持つ予定。結ぶ記録は済ませたときに生まれる。
+      ...actField(act),
       id: uid("t"),
       title: name,
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
@@ -1986,6 +1988,8 @@
     s.todos.forEach((t) => {
       if (!t.done && !t.archived) return;
       if (t.repeat || t.trace) return;
+      /* 活動を済ませたもの（3.0 の A1）は、結んだ積み上げのほうが言う（同じことを二度並べない）。 */
+      if (actEntry(t)) return;
       const at = todoClosedAt(t);
       if (!at || dayOfStamp(at) !== key) return;
       out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
@@ -2003,7 +2007,7 @@
       const title = e.title || memo.split("\n")[0].trim();
       out.push({ src: "entry", id: e.id, at: e.createdAt || e.date,
                  title, type: e.type, memo,
-                 amount: e.amount, unit: e.unit });
+                 amount: e.amount, unit: e.unit, minutes: e.minutes || null });
     });
 
     /* ③ その日に買ったもの。 */
@@ -2134,6 +2138,10 @@
          ——あとで別の時刻を付けたとき、前の「前に30分」が黙って蘇らないように。 */
       if (!t.time) t.lead = null;
       if ("icon" in patch) t.icon = cleanIcon(patch.icon);
+      if ("act" in patch) {
+        const a = actField(patch.act).act;
+        if (a) t.act = a; else delete t.act;
+      }
     });
   }
 
@@ -2428,11 +2436,15 @@
       }
     });
 
+    const doneId = was.done ? null : repeating ? (before.due ? traceId : null) : id;
+    const entry = actDone(doneId);
     return {
       repeated: repeating,
       due: repeating ? due : null,
       /* 済ませた時刻を直すときの宛先（くり返しなら、その日に残した写し）。 */
-      doneId: was.done ? null : repeating ? (before.due ? traceId : null) : id,
+      doneId,
+      /* 活動を済ませて生まれた積み上げ（3.0 の A1）。無ければ null。 */
+      entry: entry ? entry.id : null,
       undo: () => update((s) => {
         const t = s.todos.find((x) => x.id === id);
         if (!t) return;
@@ -2441,8 +2453,72 @@
         t.due = was.due;
         // 戻すなら、やった記録も一緒に取り消します。
         if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
+        /* 生まれた積み上げも（済ませた直後の「元に戻す」なので、まだ誰も書き足していない）。 */
+        if (entry) {
+          s.archive.entries = s.archive.entries.filter((x) => x.id !== entry.id);
+          if (t.act && t.act.entry === entry.id) t.act.entry = null;
+        }
       }),
     };
+  }
+
+  /* ---------------- 活動（3.0 の A1。docs/roadmap-3.0.md） ----------------
+
+     一つの活動を、予定（`act` 付きのやること）と実績（`minutes`・`at` 付きの積み上げ）で
+     持ちます。二つは互いの id で結ばれ（`act.entry` と `entry.todo`）、**両方が指し合って
+     いるときだけ**結びとして読みます。片方が消えたら、ふつうの用事・ふつうの記録に戻るだけ
+     （相手を一緒に消さない）。題は「読書『…』」の形で、中の題が積み上げの題。 */
+  const actLabel = (type) => archiveType(type).label;
+  function actTitle(type, name) { return `${actLabel(type)}『${String(name || "").trim()}』`; }
+  /** 予定の題から、積み上げの題を引きます（「読書『坊っちゃん』」→「坊っちゃん」）。 */
+  function actName(t) {
+    const m = /^(.+?)『(.+)』$/.exec(String((t && t.title) || ""));
+    return m && t.act && m[1] === actLabel(t.act.type) ? m[2] : String((t && t.title) || "");
+  }
+  /** やることに結ばれた積み上げ（指し合っているときだけ）。 */
+  function actEntry(t) {
+    if (!t || !t.act || !t.act.entry) return null;
+    const e = get().archive.entries.find((x) => x.id === t.act.entry);
+    return e && e.todo === t.id ? e : null;
+  }
+  /** 積み上げに結ばれたやること（指し合っているときだけ）。 */
+  function entryTodo(e) {
+    if (!e || !e.todo) return null;
+    const t = getTodo(e.todo);
+    return t && t.act && t.act.entry === e.id ? t : null;
+  }
+
+  /* 済ませた活動から、積み上げを一件。長さは予定の長さ（決めていなければ30分）、始まりは
+     決めた時刻（済ませた時刻より後なら、済ませた時刻から長さぶん前）。**タイマーは持たない**
+     ——違えば知らせの「直す」から長さだけ直す。メモは空のまま。もう結んであれば作らない
+     （外して、また済ませたとき）。 */
+  function actDone(id) {
+    const t = id && getTodo(id);
+    if (!t || !t.act || !t.done || actEntry(t)) return null;
+    const minutes = cleanMinutes(t.minutes) || 30;
+    const end = t.doneAt ? new Date(t.doneAt) : null;
+    const endOk = end && !isNaN(end.getTime());
+    const date = t.due || (endOk ? KN.util.dayKey(end) : todayKey());
+    const same = endOk && KN.util.dayKey(end) === date;
+    const endMin = same ? end.getHours() * 60 + end.getMinutes() : null;
+    const planned = KN.util.isTime(t.time) ? Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3, 5)) : null;
+    const startMin = planned != null && (endMin == null || planned <= endMin) ? planned
+      : endMin != null ? Math.max(0, endMin - minutes) : null;
+    const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const name = actName(t);
+    const book = t.act.type === "reading"
+      ? readingCandidates().find((c) => foldKana(c.title.trim()) === foldKana(name.trim())) : null;
+    const row = addEntry({
+      type: t.act.type, title: name, date,
+      kind: t.act.type === "reading" ? (book ? book.kind : "book") : null,
+      author: book ? book.author : null,
+      minutes, at: startMin != null ? hm(startMin) : null, todo: t.id,
+    });
+    update((s) => {
+      const x = s.todos.find((y) => y.id === t.id);
+      if (x && x.act) x.act.entry = row.id;
+    });
+    return row;
   }
 
   /**
@@ -3684,6 +3760,10 @@
       pageTo: (e.pageTo === "" || e.pageTo == null) ? null : Number(e.pageTo),
       createdAt: at,
       updatedAt: at,
+      /* 道の上の長さと始まり・結んだやること（3.0 の A1）。持たない記録には欄を足さない（T0）。 */
+      ...(e.minutes != null ? { minutes: cleanMinutes(e.minutes) } : {}),
+      ...(e.at != null ? { at: KN.util.isTime(e.at) ? e.at : null } : {}),
+      ...(e.todo ? { todo: String(e.todo) } : {}),
     };
     if (!isFinite(row.amount)) row.amount = null;
     if (!isFinite(row.pageFrom)) row.pageFrom = null;
@@ -3714,6 +3794,9 @@
       if (!row) return;
       Object.assign(row, patch);
       if (patch.date !== undefined) row.date = dayKeyOf(patch.date);
+      if ("minutes" in patch) row.minutes = cleanMinutes(patch.minutes);
+      if ("at" in patch && !KN.util.isTime(row.at)) row.at = null;
+      if ("todo" in patch && !(typeof row.todo === "string" && row.todo)) row.todo = null;
       if (patch.pageFrom !== undefined) {
         row.pageFrom = (patch.pageFrom === "" || patch.pageFrom == null) ? null : Number(patch.pageFrom);
         if (!isFinite(row.pageFrom)) row.pageFrom = null;
@@ -4473,6 +4556,7 @@
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
+    actTitle, actName, actEntry, entryTodo,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,

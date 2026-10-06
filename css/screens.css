@@ -6290,6 +6290,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 @media (hover: hover) {
   .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
 }
+/* 道の上の長さ（3.0 の A1）。積み上げの行の尻に小さく、枠の頭にその日の合計。 */
+.arc-feed-row.has-len { grid-template-columns: 42px 1fr auto; }
+.arc-feed-len, .arc-feed-sum {
+  font-size: var(--fs-xs); color: var(--c-text-3); font-weight: var(--fw-regular, 400);
+  font-variant-numeric: tabular-nums;
+}
+.arc-feed-sum { margin-left: .6em; }
 
 /* ---------------- ◯月のまとめ ----------------
 
@@ -6596,6 +6603,11 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-stop-hatch { stroke: var(--road-go); stroke-width: 11; display: none; }
 .road-stop-went-hatch { stroke: var(--road-in); stroke-width: 11; display: none; }
 .road-stop.is-over .road-stop-hatch, .road-stop.is-over .road-stop-went-hatch { display: inline; }
+/* 活動（3.0 の A1・day-road.js の is-act）。道の上で一段控えめに：積み上げの種類の色の縁取りで、
+   中は紙の色に寄せる。塗らない（paint が went を引かない）。過ぎても延びても色は種類のまま、
+   時計が通ったら少し薄く。 */
+.road-stop.is-act { --road-go: var(--act-c); --road-in: color-mix(in srgb, var(--act-c) 10%, var(--c-sheet)); }
+.road-stop.is-act.is-past { opacity: .6; }
 /* 停留所の上の時の数字（paint が置く）。まだの白い中は塗りの色（.road-hours のまま）。 */
 /* 毎晩の、時刻を決めていないもの。決めた時刻ではないので、ふちを点線に。
    端も角にします（丸い端だと、中の白がふちの外へはみ出す）。 */
@@ -6822,3 +6834,6 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   width: 9px; height: 9px; border-radius: 50%; background: var(--c-primary-fill);
   -webkit-mask: none; mask: none;
 }
+/* 活動の行（3.0 の A1）。絵は積み上げの種類の色。一覧のあとに少し空けて。 */
+.road-pick.is-act .act-ico { color: var(--act-c); }
+.road-decide .act-list + .road-decide-head, .road-decide-none + .road-decide-head { margin-top: var(--sp-3); }

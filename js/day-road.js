@@ -850,6 +850,8 @@
            済ませたものには描きません（もう出ることはないので）。 */
         const lead = !closed(t) && Number(t.lead) > 0 ? Number(t.lead) : 0;
         const doneMin = doneMinOf(t, plan.day);
+        /* 活動（3.0 の A1）は、積み上げの種類の色の縁取りで一段控えめに（塗らない）。 */
+        const act = o.actOf ? o.actOf(t) : null;
         /* 今日、始まりより前に済ませたものは、**済ませた時刻**に置く（2026年10月1日・
            利用者の声「夜のルーティンは 19:39 にすでに終わってるのに、道ではまだきていない
            20時に終わってることになってる」）。前は決めた始まりに1分ぶんの丸で残り、
@@ -857,12 +859,12 @@
            同じ）。記録は書き換えない。過ぎた日は決めた形のまま（押した時刻は斜線の丸薬）。 */
         if (today && doneMin != null && doneMin < it.atMin) {
           const d = g.dist(doneMin);
-          stops.push({ t, at: doneMin, until: doneMin + (len ? 1 : 0), len, d0: d, lead: 0, dl: d, doneMin });
+          stops.push({ t, at: doneMin, until: doneMin + (len ? 1 : 0), len, d0: d, lead: 0, dl: d, doneMin, act });
           return;
         }
         stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
                      dl: lead ? g.dist(Math.max(g.begin, it.atMin - lead)) : d0,
-                     doneMin });
+                     doneMin, act });
         return;
       }
       if (closed(t)) {
@@ -889,7 +891,8 @@
       + `<mask id="${hid}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${g.H}">`
       + `<rect width="${W}" height="${g.H}" fill="url(#${hid}-p)"/></mask></defs>`;
     const stopSvg = stops.map((s, k) =>
-      `<g class="road-stop${closed(s.t) ? " is-done" : ""}" data-s="${k}">`
+      `<g class="road-stop${closed(s.t) ? " is-done" : ""}${s.act ? " is-act" : ""}" data-s="${k}"`
+        + `${s.act ? ` style="--act-c:${s.act}"` : ""}>`
         + `<path class="road-stop-edge"/><path class="road-stop-in"/><path class="road-stop-hatch" mask="url(#${hid})"/>`
         + `<path class="road-stop-went"/><path class="road-stop-went-hatch" mask="url(#${hid})"/></g>`).join("");
     /* 出る時刻からの区間は、道の下に敷く点線の帯（道の上下に点がのぞく）。
@@ -1093,6 +1096,7 @@
        塗る。済ませたものは時計に関わらず塗りきる（手が先に進むことはある）。 */
     /* 番号で引く（並びは重なりの上下で入れ替わる。⓪の並べ替え）。 */
     const over = [], ink = [], rim = [], rimT = new Set();
+    const live0 = (s) => !closed(s.t) && s.len && nowMin != null && nowMin >= s.ga && nowMin < s.until;
     st.stops.forEach((s, k) => {
       const grp = svg.querySelector(`.road-stop[data-s="${k}"]`);
       if (!grp) return;
@@ -1107,17 +1111,20 @@
       /* 重なった丸薬は、塗ったぶんにも斜線（白）を残す（2026年10月6日・利用者の声「片方は
          斜線になるんじゃなかったっけ」。塗りが上に来て、過ぎると重なりが見えなくなっていた）。 */
       const wh = grp.querySelector(".road-stop-went-hatch");
+      /* 活動は塗らない（縁取りだけ。時の数字も中の色のまま）。薄くなるのは同じ。 */
+      const past = to != null && !live0(s);
+      if (s.act) to = null;
       if (to == null) { w.removeAttribute("d"); wh.removeAttribute("d"); }
       else {
         const d = g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off);
         w.setAttribute("d", d); wh.setAttribute("d", d);
       }
-      const live = !done && s.len && nowMin != null && nowMin >= s.ga && nowMin < s.until;
+      const live = live0(s);
       grp.classList.toggle("is-live", live);
       /* 時計が通った・済ませた停留所は薄く（いまの丸だけ濃く。2026年10月3日・CSS の --road-past）。
          過ぎた日の停留所も同じ薄さ（2026年10月5日・利用者の声「過去は過去なので過去の薄さに
          統一して」。前は濃いまま塗っていた）。 */
-      grp.classList.toggle("is-past", to != null && !live);
+      grp.classList.toggle("is-past", past);
       /* 停留所の上の時の数字。塗ったところは白、まだの白い中は塗りの色。
          **位置は道の上の数字と同じところから動かさない**（2026年10月2日・利用者の声「線上の
          時刻の数値は絶対に動かさないで。そこしか時刻を表すところがない」）。
@@ -1884,6 +1891,28 @@
         setTimeout(() => { if (o.decide) o.decide(id, KN.plan.toTime(at)); }, 40);
       });
       list.append(row);
+    });
+    /* 活動（3.0 の A1）：覚えている本・最近の積み上げの題から。選べばこの時刻に、
+       いつもの長さ（無ければ30分）の活動の予定が一つ立つ。 */
+    const acts = o.acts ? o.acts() : [];
+    if (!acts.length || !o.plant) return;
+    box.append(node(html`<p class="road-decide-head">活動</p>`));
+    const actList = box.appendChild(node(html`<div class="act-list js-acts"></div>`));
+    acts.forEach((a) => {
+      const row = node(html`
+        <button type="button" class="act-row road-pick is-act" style="--act-c:${a.color}">
+          <span class="act-ico">${U.icon(KN.store.archiveType(a.type).icon, "is-sub")}</span>
+          <span class="act-main">
+            <span class="act-label">${a.label}</span>
+            <span class="act-sub">${KN.plan.humanSpan(a.minutes)}</span>
+          </span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        handle.close();
+        setTimeout(() => o.plant(a, KN.plan.toTime(at)), 40);
+      });
+      actList.append(row);
     });
   }
 
