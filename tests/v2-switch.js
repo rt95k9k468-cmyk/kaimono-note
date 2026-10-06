@@ -2,7 +2,7 @@
    - 設定 → 外観に「試す」も「2.0 の見た目」も無い。html に .is-v2 は付かない
    - 記録に v2: true が残っていても読み込めて、鍵は消えない（後方互換）
    - 四つのタブが開いてエラーが出ない
-   - daily の紙の下の角は丸い（V21）・日記の抜き出しは五行（V21）
+   - daily の紙の下の角は丸い（V21）・日記の抜き出しは五行（V21）・切った Daily Log は終わりの五行（10/6）
    - ノートの道具の帯は白を少し透かした面（V10・V26。--glass-* は読まない）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/v2-switch.js */
 const { open, checker } = require("./lib");
@@ -18,7 +18,7 @@ const { open, checker } = require("./lib");
     e.className = c;
     document.body.appendChild(e);
     const s = getComputedStyle(e);
-    const v = { blur: s.backdropFilter || s.webkitBackdropFilter || "", bg: s.backgroundColor, img: s.backgroundImage, clamp: s.webkitLineClamp };
+    const v = { blur: s.backdropFilter || s.webkitBackdropFilter || "", bg: s.backgroundColor, img: s.backgroundImage, clamp: s.webkitLineClamp, mh: s.maxHeight, lh: s.lineHeight, align: s.textAlign };
     e.remove();
     return v;
   }, [cls, tag]);
@@ -63,8 +63,9 @@ const { open, checker } = require("./lib");
   });
   t.check("daily の紙の下の角は丸い", corner > 0, String(corner));
   t.check("日記の抜き出しは五行", (await probe("arc-then-memo", "span")).clamp === "5");
-  const clamped = await probe("arc-log-memo is-clamped", "span");
-  t.check("切った Daily Log も五行", clamped.clamp === "5", JSON.stringify(clamped));
+  const clamped = await probe("arc-log-memo is-tail", "span");
+  t.check("切った Daily Log は既定で終わりの五行・両端揃えにしない",
+    Math.abs(parseFloat(clamped.mh) - 5 * parseFloat(clamped.lh)) < 1 && clamped.align === "start", JSON.stringify(clamped));
   const tools = await probe("note-tools", "div");
   t.check("道具の帯は白を少し透かした面（ガラスの重ねは読まない）",
     /blur/.test(tools.blur) && tools.img === "none" && /(rgba\(.*, 0\.\d+\)|\/ 0\.\d+\))$/.test(tools.bg), JSON.stringify(tools));
