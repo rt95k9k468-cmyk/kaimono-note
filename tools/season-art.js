@@ -1,6 +1,7 @@
 /* 季節の絵を加工する（3.0 の E1。docs/roadmap-3.0.md・docs/season-art.md）。**ローカルで一度だけ**回す道具。
 
-   走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js
+   走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js        （浮世絵）
+             NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js photo  （写真：tools/season-photo-src → img/season-photo）
 
    読む：tools/season-src/kNN.{jpg,jpeg,png,webp,tif}
          NN は春分の初候から数えた候の番号 00〜71（js/season.js の `k`）。元の絵は大きいのでコミットしない
@@ -16,8 +17,9 @@ const path = require("path");
 const { chromium } = require("playwright");
 
 const ROOT = path.resolve(__dirname, "..");
-const SRC = path.join(ROOT, "tools", "season-src");
-const OUT = path.join(ROOT, "img", "season");
+const PHOTO = process.argv[2] === "photo";
+const SRC = path.join(ROOT, "tools", PHOTO ? "season-photo-src" : "season-src");
+const OUT = path.join(ROOT, "img", PHOTO ? "season-photo" : "season");
 const MAX_ONE = 25 * 1024;
 const MAX_ALL = 2 * 1024 * 1024;
 const SHORT = 720;
