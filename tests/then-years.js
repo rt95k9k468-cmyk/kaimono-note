@@ -88,23 +88,16 @@ const FORBIDDEN = [
   t.check("年の行を押すと、その日の Daily Log へ", rowText.includes("試験の一行（その一）"), `${went} / ${rowText.slice(0, 40)}`);
   await page.click("#screen-archive .arc-log-row");
   await page.waitForTimeout(500);
-  const before = await page.evaluate(() => {
-    const b = document.querySelector(".js-quiet");
-    const h = document.querySelector(".js-quiet-hint");
-    return { btn: b ? b.textContent : null, hint: h ? !h.hidden : null };
-  });
-  t.check("log の紙に「この日を『あの日』に出さない」", before.btn === "この日を「あの日」に出さない", String(before.btn));
-  t.check("ことわり書きは置かない", before.hint === null);
-  await page.click(".js-quiet");
+  /* 札は外した（2026年10月6日）。印は store から付ける——効き目と記録は前のまま。 */
+  const noBtn = await page.evaluate(() => !document.querySelector(".js-quiet"));
+  t.check("log の紙に「あの日」に出さない札は無い", noBtn);
+  await page.evaluate(() => KN.store.setQuietDay("2024-09-29", true));
   await page.waitForTimeout(300);
   const after = await page.evaluate(() => ({
     quiet: KN.store.isQuietDay("2024-09-29"),
-    btn: document.querySelector(".js-quiet").textContent,
-    hint: !!document.querySelector(".js-quiet-hint"),
     memo: (KN.store.dayLog("2024-09-29") || {}).memo,
   }));
-  t.check("押すと出さない日になる", after.quiet === true);
-  t.check("ボタンは「また出す」に（ことわり書きは出さない）", after.btn === "「あの日」にまた出す" && !after.hint);
+  t.check("印を付けると出さない日になる", after.quiet === true);
   t.check("記録そのものは残る", after.memo === "試験の一行（その一）");
   await page.click(".sheet .js-ok").catch(() => {});
   await page.waitForTimeout(500);
