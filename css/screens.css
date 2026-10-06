@@ -4201,14 +4201,11 @@ button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
     var(--tl-wait) calc(var(--node-p) + 8px) var(--tl-node-h, var(--tl-h, 50px)),
     var(--rail-bot-c, var(--tl-wait)) var(--tl-node-h, var(--tl-h, 50px)) 100%);
 }
-/* 伸びた丸薬は、下の行の線・丸薬の上に。橙（過ぎてもまだ）はいちばん上
-   （道と同じ。押せば橙の用事が開く）。いまの時刻（.tl-axis、z-index 2）よりは下。 */
+/* 伸びた丸薬は、下の行の線・丸薬の上に。過ぎてもまだのもの（is-late）はいちばん上
+   （押せばその用事が開く）。いまの時刻（.tl-axis、z-index 2）よりは下。
+   **色は変えない**（橙は道だけ。時間割まで橙にしたら、利用者の声「ダサかった」で 10月6日に外した）。 */
 .tl-row.is-grown .tl-node { z-index: 1; }
-.tl-row.is-late .tl-node {
-  z-index: 2;
-  --tl-fill: var(--road-late);
-  --rail-bot-c: var(--road-late);
-}
+.tl-row.is-late .tl-node { z-index: 2; }
 /* ---- 重なった二つ ----
 
    時刻が重なっている二件は、丸薬どうしが**ぶつかります**。線でつなぐ
@@ -6688,12 +6685,11 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    色は時間割と同じ言い分です：**歩いたぶん（時計が通ったところ）は塗り、
    これからは薄く**。道の「これから」だけは灰色ではなく塗りのうすい色にしました
    ——道は面が広いので、灰色だと紙の地に沈んで道に見えませんでした。 */
-/* 過ぎてもまだの区間の橙。道（.road-stop.is-late）と時間割（.tl-row.is-late）で一色。 */
-.day-road, .tl-list { --road-late: #f0a35e; }
 .day-road {
   --road-go: var(--c-primary-fill);
   --road-wait: color-mix(in srgb, var(--c-primary-fill) 24%, var(--c-sheet));
   --road-in: var(--c-sheet-edge);
+  --road-late: #f0a35e;
   /* 歩いたぶんの道と、通った・済ませた停留所（.is-past）の色。いまの丸だけを濃く残す
      （2026年10月3日・利用者が三つ並べた中から 65% を選んだ。上の時刻は白のまま）。 */
   --road-past: color-mix(in srgb, var(--c-primary-fill) 65%, var(--c-sheet));
