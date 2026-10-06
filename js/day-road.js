@@ -102,7 +102,7 @@
        五段。15分は 24 単位で、前の六段の 21 より細かい）。
      - 始まり（begin）と終わり（end）は、どちらもまっすぐの上に来るように選ぶ
        （寝床が道の端の延長に置かれるので）。 */
-  function geom(begin, end) {
+  function geom(begin, end, early, late) {
     end = Math.max(end, begin + 60);
     const HALF = ARC / 2;
     /* 一段 rowSpan、始まりの角の一つ前のちょうどの時 start を、小さい rowSpan から探す。
@@ -124,6 +124,15 @@
     }
     const H = TOP + (rows - 1) * PITCH + BOT;
     const rowY = (i) => TOP + i * PITCH;
+    /* 早起き（early が始まりより前）は、段の割りはそのまま、道を一段目の頭から左へ伸ばす
+       （reach の注）。寝床が紙からはみ出さないところ（EARLY_X）まで。 */
+    if (Number.isFinite(early) && early < begin) {
+      begin = Math.max(early, Math.ceil(start + (EARLY_X - XL + HALF) / k));
+    }
+    /* 遅寝（late が終わりより後）も同じ：最後の段のまっすぐだけを、進む向きへ紙の端まで伸ばす。 */
+    if (Number.isFinite(late) && late > end) {
+      end = Math.min(late, Math.floor(start + ((rows - 1) * SEG + W - XL - EARLY_X + HALF) / k));
+    }
 
     /** 時刻 → 道の長さ。角 j（0から）のまん中が start + (j+1)·rowSpan。道の始まり（begin）
         より前は始まりに、終わりより後は終わりに寄せる。 */
@@ -132,6 +141,7 @@
     }
     const total = dist(end);
     const d0 = dist(begin);                     // 道の始まり（一段目の途中のこともある）
+    const head = d0;                            // path の引数の d0 と名前が重なるので
 
     /* 並走（off）。時刻の重なった停留所は、道を横に割った車線に描きます（
        2026年9月29日）。off は**進む向きの左へ**のずらし：右へ進む段では上、左へ
@@ -142,12 +152,12 @@
     /** 長さ → 点。段と向き、進む向き（tx, ty）と、それに直交する向き（nx, ny。
         まっすぐなら真下、角なら外向き）も。角の上なら arc と、角に入ってからの角度 a。 */
     function point(d, off = 0) {
-      const dd = Math.max(0, Math.min(total, d));
+      const dd = Math.max(Math.min(0, d0), Math.min(total, d));   // 早起きは一段目の左端より前も
       const i = Math.max(0, Math.min(rows - 1, Math.floor(dd / SEG + 1e-9)));
       const rem = dd - i * SEG;
       const y = rowY(i);
       const ltr = i % 2 === 0;
-      if (rem <= RUN + 1e-9) {
+      if (rem <= RUN + 1e-9 || i === rows - 1) {   // 最後の段は、遅寝で端より先も（まっすぐの延長）
         return { x: ltr ? XL + rem : XR - rem, y: y + (ltr ? -off : off), row: i, ltr,
                  tx: ltr ? 1 : -1, ty: 0, nx: 0, ny: 1 };
       }
@@ -168,7 +178,7 @@
 
     /** 長さ d0〜d1 の道筋（SVG の d）。長さが無ければ点——丸い端が丸を描きます。 */
     function path(d0, d1, off = 0) {
-      let a = Math.max(0, Math.min(total, d0));
+      let a = Math.max(Math.min(0, head), Math.min(total, d0));
       const b = Math.max(a, Math.min(total, d1));
       const p = point(a, off);
       let s = `M${n1(p.x)} ${n1(p.y)}`;
@@ -177,8 +187,8 @@
         const i = Math.max(0, Math.min(rows - 1, Math.floor(a / SEG + 1e-9)));
         const base = i * SEG;
         let to;
-        if (a - base < RUN - 1e-6) {
-          to = Math.min(b, base + RUN);
+        if (a - base < RUN - 1e-6 || i === rows - 1) {
+          to = i === rows - 1 ? b : Math.min(b, base + RUN);
           const q = point(to, off);
           s += `L${n1(q.x)} ${n1(q.y)}`;
         } else {
@@ -328,6 +338,7 @@
      （2026年10月1日・利用者の声「道にぴったりくっつかないで」）。XL（54）で終わる道でも
      54 − 12 − 38 = 4 で紙の中に収まる。 */
   const BED_GAP = 12;
+  const EARLY_X = BED_GAP + BED_W - 8;   // 早起き・遅寝で道を伸ばす限り：道の端から紙の端まで（寝床は .day-road の余白 16px に半分まで）
   const BED_K = BED_W / (1205 - 118);
   const BED_PARTS = [
     ["bed-frame", "M118 700V231a36 36 0 0 1 72 0V700Z"],             // 頭板
@@ -692,14 +703,25 @@
      「日によって動くのがとても分かりにくい。設定の一日の始まりと終わりの通り、固定で」）。
      前は、はみ出す停留所まで伸ばし（9月29日）、起きた時刻（daily の起床）から始めていた
      （10月2日）が、日ごとに道の長さと段の割りが変わって読めなくなった。
-     - 始まりより前に決めた用事は、始まりに始まったものとして、長さはそのままで後ろへずらす
-       （build の sh）。終わりより後は終わりに寄せる（geom の dist）。
+     - **中身は実際に合わせる**（同日・利用者の声「長さは固定でも、中身は実態を反映して」）。
+       起きた時刻（daily の起床・ヘルスケアの写し）が始まりより後なら、始まり〜起きた時刻を
+       寝床と同じ紫（`.road-slept`）に塗り、それより前に決めた用事は起きた時刻に始まったもの
+       として長さはそのままで後ろへずらす（build の sh）。寝た時刻が終わりより前なら、そこから
+       終わりも紫。寝床の下の時刻は、実際の起きた・寝た時刻（無ければ設定の端）。
+       終わりの1時間より後の起床（昼寝の記録など）は使わない。
+     - 終わりより後の用事は終わりに寄せる（geom の dist）。
      - **切り下げるのは段の割りだけ**（geom の頭）：道そのものは 5:30 から描き、角と目盛りは
        「ちょうどの時」のまま。角のまん中がちょうどの時になるように geom が段の割りを選ぶ。
      描くだけで、設定も記録も書き換えません。 */
   function reach(plan) {
     return [Math.max(0, plan.startMin), Math.min(24 * 60, plan.endMin)];
   }
+  /** 起きた時刻（分）。終わりの1時間より前のときだけ（昼寝の記録などは使わない）。 */
+  const wokeAt = (end, w) => (Number.isFinite(w) && w >= 0 && w < end - 60 ? w : null);
+  /** 起きた時刻（分）。道の始まりより後のときだけ（始まり〜起床を紫に）。 */
+  const wakeIn = (g, w) => (w != null && w > g.begin ? w : null);
+  /** 寝た時刻（分）。真夜中を過ぎた値（昼より前）は翌日として 24時間足す。 */
+  const bedIn = (w) => (Number.isFinite(w) && w >= 0 ? (w < 12 * 60 ? w + 24 * 60 : w) : null);
 
   /* 時刻を過ぎても済んでいない区間は、**人の足もとまで引っぱる**（2026年9月30日・
      利用者の声「朝のルーティンは7時までなのに過ぎている。でも表示は何も変わらない」）。
@@ -810,7 +832,11 @@
 
   function build(o) {
     const plan = o.plan;
-    const g = geom(...reach(plan));
+    const [b0, e0] = reach(plan);
+    const woke = wokeAt(e0, o.wake), bed = bedIn(o.sleep);
+    const g = geom(b0, e0, woke, bed);
+    const wake = wakeIn(g, woke);
+    const up = wake != null ? wake : g.begin;   // 用事を始められる最初の時刻
     const today = !!o.today;
     const past = !today && plan.day < U.todayKey();
 
@@ -822,8 +848,8 @@
       const t = it.todo;
       if (it.fixed) {
         const len = Number(t.minutes) > 0;
-        /* 道の始まりより前の用事は、始まりに始まったものとして（reach の注）。 */
-        const sh = Math.max(0, g.begin - it.atMin);
+        /* 起きた時刻（無ければ道の始まり）より前の用事は、そこに始まったものとして（reach の注）。 */
+        const sh = Math.max(0, up - it.atMin);
         if (sh) it = { ...it, atMin: it.atMin + sh, untilMin: it.untilMin + sh };
         const d0 = g.dist(it.atMin);
         /* 出る時刻（段7）。「前に30分」なら、停留所の手前30分に点線の区間。
@@ -843,7 +869,7 @@
           return;
         }
         stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
-                     dl: lead ? g.dist(Math.max(g.begin, it.atMin - lead)) : d0,
+                     dl: lead ? g.dist(Math.max(up, it.atMin - lead)) : d0,
                      doneMin, act });
         return;
       }
@@ -896,6 +922,9 @@
       + hatchDefs + leadSvg
       + `<path class="road-base" d="${g.path(g.d0, g.total)}"/>`
       + `<path class="road-went"/>`
+      /* 寝ていたぶん（起きる前・寝たあと）は寝床と同じ紫（reach の注）。 */
+      + (wake != null ? `<path class="road-slept" d="${g.path(g.d0, g.dist(wake))}"/>` : "")
+      + (bed != null && bed > up && bed < g.end ? `<path class="road-slept" d="${g.path(g.dist(bed), g.total)}"/>` : "")
       + stopSvg + laterSvg
       /* 停留所の上の目盛り（paint が引く）。道の目盛りは停留所の太い線の下に
          隠れて、一日の半分ほどで物差しが消えていた。塗った上は白、まだの白い中は
@@ -925,7 +954,7 @@
     `);
     /* 長期タスク（段8の段B）。過ぎた日には出さない（置ける道が無い）。 */
     const someday = past ? [] : (o.someday || []).filter((t) => !closed(t) && !t.trace).map((t) => ({ t }));
-    el.__road = { day: plan.day, g, today, past, stops, steps, loose, later, someday, beds,
+    el.__road = { day: plan.day, g, today, past, stops, steps, loose, later, someday, beds, wake, woke, bed,
                   tomorrow: today && o.tomorrow ? o.tomorrow : null,
                   markOf: o.markOf, last: undefined, drawn: false };
 
@@ -997,7 +1026,10 @@
     const svg = el.querySelector(".road-svg");
     /* 道を外れた時間（起きる前・寝たあと）は、人は道に立たず寝床にいる。
        0 なら朝の寝床、1 なら夜の寝床、道の上なら null。 */
-    st.sleep = nowMin == null ? null : nowMin < g.begin ? 0 : nowMin > g.end ? 1 : null;
+    /* 道に入らないほど早く起きた日（寝床が紙の端）は、起きた時刻から起きている。 */
+    const up = st.woke != null ? Math.min(g.begin, st.woke) : g.begin;
+    const down = st.bed != null ? Math.max(g.end, st.bed) : g.end;   // 道に入らないほど遅く寝た日も同じ
+    st.sleep = nowMin == null ? null : nowMin < up ? 0 : nowMin > down ? 1 : null;
     svg.querySelectorAll(".road-bed").forEach((b, k) => b.classList.toggle("is-snore", st.sleep === k));
 
     /* ⓪ 停留所の道筋（一本道。shape）。延びる区間（過ぎてまだのもの）があると、分ごとに
@@ -1241,7 +1273,7 @@
        寝床と z Z のぶんは、上と下の通りを空けさせる。 */
     const sleep = dNow == null ? null : st.sleep;
     st.beds.forEach((b, k) => {
-      const s = clock(k === 0 ? g.begin : g.end);
+      const s = clock((k === 0 ? (st.woke != null ? st.woke : g.begin) : (st.bed != null ? st.bed : g.end)) % (24 * 60));
       const w = textW(s, EFS) + 2;
       const ey = b.y + ROAD / 2 + 2 + EFS * 0.6;
       out.push(html`<span class="road-edge is-under" style="${at(b.cx, ey)}">${s}</span>`);
