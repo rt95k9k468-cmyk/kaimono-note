@@ -88,57 +88,26 @@ const FORBIDDEN = [
   t.check("年の行を押すと、その日の Daily Log へ", rowText.includes("試験の一行（その一）"), `${went} / ${rowText.slice(0, 40)}`);
   await page.click("#screen-archive .arc-log-row");
   await page.waitForTimeout(500);
-  /* 札は外した（2026年10月6日）。印は store から付ける——効き目と記録は前のまま。 */
+  /* 札は外し、印も読まない（2026年10月6日）。印を付けても、どの日も出る。データは残る。 */
   const noBtn = await page.evaluate(() => !document.querySelector(".js-quiet"));
   t.check("log の紙に「あの日」に出さない札は無い", noBtn);
-  await page.evaluate(() => KN.store.setQuietDay("2024-09-29", true));
-  await page.waitForTimeout(300);
-  const after = await page.evaluate(() => ({
-    quiet: KN.store.isQuietDay("2024-09-29"),
-    memo: (KN.store.dayLog("2024-09-29") || {}).memo,
-  }));
-  t.check("印を付けると出さない日になる", after.quiet === true);
-  t.check("記録そのものは残る", after.memo === "試験の一行（その一）");
   await page.click(".sheet .js-ok").catch(() => {});
   await page.waitForTimeout(500);
-
-  c = await card();
-  t.check("年々から 2024年が消え、2023年・2025年が残る",
-    c.years && JSON.stringify(c.rows) === JSON.stringify(["2023年", "2025年"]), c.rows.join(","));
-
-  /* 2023 も出さない → 一年ぶんだけになり、いつもの一枚（1年前の今日）。 */
-  await page.evaluate(() => KN.store.setQuietDay("2023-09-29", true));
+  await page.evaluate(() => { KN.store.setQuietDay("2023-09-29", true); KN.store.setQuietDay("2024-09-29", true); });
+  await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(400);
   c = await card();
-  t.check("一年ぶんしか残らなければ、いつもの一枚（2025年）", !c.years && c.single && c.singleDate === "2025-09-29",
-    `${c.years} ${c.single} ${c.singleDate}`);
-  const pickNot = await page.evaluate(() => {
-    const out = new Set();
-    // 記念日の無い日でも、出さない日は選ばれない（過ぎた日のどれか一つ）。
-    for (let d = 1; d <= 28; d++) {
-      const k = `2027-02-${String(d).padStart(2, "0")}`;
-      const r = KN.store.archiveThen(k);
-      if (r) out.add(r.date);
-    }
-    return [...out];
-  });
-  t.check("記念日の無い日の「どれか一つ」にも、出さない日は選ばれない",
-    !pickNot.includes("2024-09-29") && !pickNot.includes("2023-09-29"), pickNot.join(","));
-
-  /* 読み直しても印は残る。 */
-  await page.waitForTimeout(300);
+  t.check("前に付いた印は効かない（三年ぶんのまま）", c.years && c.rows.length === 3, c.rows.join(","));
+  const pickAny = await page.evaluate(() => KN.store.isQuietDay("2024-09-29"));
+  t.check("isQuietDay はいつも出す", pickAny === false);
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
   await page.waitForTimeout(300);
   const kept = await page.evaluate(() => KN.store.get().archive.quiet);
-  t.check("読み直しても印は残る", JSON.stringify(kept) === JSON.stringify(["2023-09-29", "2024-09-29"]), JSON.stringify(kept));
-
-  /* 戻す。 */
+  t.check("印のデータは消さずに残る", JSON.stringify(kept) === JSON.stringify(["2023-09-29", "2024-09-29"]), JSON.stringify(kept));
   await page.evaluate(() => { KN.store.setQuietDay("2023-09-29", false); KN.store.setQuietDay("2024-09-29", false); });
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(400);
-  c = await card();
-  t.check("戻すと、また三年ぶん", c.years && c.rows.length === 3, c.rows.join(","));
 
   /* 設定で「あの日」を切ると、年々も出ない。 */
   await page.evaluate(() => { KN.store.update((s) => { s.settings.showThen = false; }); });

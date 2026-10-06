@@ -3975,8 +3975,10 @@
   /* 出さない日（R9）。つらい日を思い出させないための印で、既定は出す。
      消すのではなく**出さないだけ**——その日の記録も本文もそのまま残り、
      暦から行けばいつでも読めます。 */
-  function isQuietDay(date) {
-    return (archive().quiet || []).includes(date);
+  /* 印は読まない（2026年10月6日・利用者）。付け外しの札を外したので、付いている印も
+     効かせない——どの日も「あの日」に出る。印のデータ（archive.quiet）は消さずに残す。 */
+  function isQuietDay() {
+    return false;
   }
   function setQuietDay(date, on) {
     const day = toDayKey(date);
