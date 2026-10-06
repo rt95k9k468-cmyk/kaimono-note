@@ -1404,7 +1404,7 @@
           </div>
         </div>
 
-        <label class="field">
+        <label class="field arc-date-field">
           <span class="field-label">日付</span>
           <input type="date" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
         </label>

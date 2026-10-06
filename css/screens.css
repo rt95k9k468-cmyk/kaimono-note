@@ -5694,6 +5694,19 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .sheet.is-card .sheet-body > .stack,
 .sheet.is-card .arc-memo-field { flex: 1 0 auto; }
 .sheet.is-card .arc-memo-field > .textarea { flex: 1 0 auto; min-height: 5lh; resize: none; }
+/* 日付は一行（字と欄を横に並べる）。縦に積むと、メモより先に場所を取っていた
+   （2026年10月6日・利用者「日付で場所をとりすぎ」）。 */
+.arc-date-field { flex-direction: row; align-items: center; gap: var(--sp-3); }
+.arc-date-field > .input { flex: 1 1 auto; min-width: 0; }
+.arc-date-field > .field-label { flex: none; white-space: nowrap; }
+/* キーボードを出してメモ（日記）を打っているあいだは、メモ欄だけにする。札・日付・起床就寝・
+   「メモ」の字を畳み、余った高さはぜんぶメモ欄へ（2026年10月6日・利用者「メモ欄が狭すぎる。
+   中心に大きく」）。キーボードを下げれば元に戻る。電話の幅だけ（`.kb-open` は欄に触れただけで付く）。 */
+@media (max-width: 639.98px) {
+  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .sheet-body > .stack > :not(.arc-memo-field),
+  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .arc-memo-field > .field-label { display: none; }
+  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .arc-memo-field > .textarea { min-height: 3lh; }
+}
 @media (max-width: 639.98px) {
   .sheet.is-card {
     --card-gap: var(--sp-2);
