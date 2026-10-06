@@ -4167,17 +4167,24 @@ button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
 .tl-row { --tl-node-h: var(--tl-h, 50px); --node-dy: 0px; }
 .tl-row.is-clash, .tl-row.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 14px); }
 .tl-row.is-clash.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 28px); }
+/* 伸ばしたぶん（`--tl-grow`、js の growOf：遅れの橙・ひらいた手順）は下へだけ。
+   上端は動かさず（top を半分下げる）、絵も上の丸に残す。塗りの境目は伸ばす前の
+   高さで測り（`--node-p`）、伸ばしたぶんは丸薬の下端の色（`--rail-bot-c`）一色。 */
 .tl-node {
+  --node-p: calc(var(--pass, 1) * var(--tl-node-h, var(--tl-h, 50px)));
   position: absolute;
-  left: 50%; top: 50%;
+  left: 50%; top: calc(50% + var(--tl-grow, 0px) / 2);
   transform: translate(-50%, calc(-50% + var(--node-dy, 0px)));
   display: grid; place-items: center;
+  grid-template-rows: var(--tl-node-h, var(--tl-h, 50px));
+  align-content: start;
   width: 50px;
-  height: var(--tl-node-h, var(--tl-h, 50px));
+  height: calc(var(--tl-node-h, var(--tl-h, 50px)) + var(--tl-grow, 0px));
   border-radius: 25px;
   background: linear-gradient(to bottom,
-    var(--tl-fill) 0 var(--p),
-    var(--tl-wait) var(--p) 100%);
+    var(--tl-fill) 0 var(--node-p),
+    var(--tl-wait) var(--node-p) var(--tl-node-h, var(--tl-h, 50px)),
+    var(--rail-bot-c, var(--tl-wait)) var(--tl-node-h, var(--tl-h, 50px)) 100%);
   /* **白い輪を持ちません。** 丸のまわりを地の色で囲うと、線が丸の手前で
      切れて、続いているところまで破線に見えます（実際そうなりました）。
      線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
@@ -4190,8 +4197,17 @@ button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
    境目そのものが無いので、ぼかすと端が濁ります。 */
 .tl-row.is-live .tl-node {
   background: linear-gradient(to bottom,
-    var(--tl-fill) 0 calc(var(--p) - 4px),
-    var(--tl-wait) calc(var(--p) + 8px) 100%);
+    var(--tl-fill) 0 calc(var(--node-p) - 4px),
+    var(--tl-wait) calc(var(--node-p) + 8px) var(--tl-node-h, var(--tl-h, 50px)),
+    var(--rail-bot-c, var(--tl-wait)) var(--tl-node-h, var(--tl-h, 50px)) 100%);
+}
+/* 伸びた丸薬は、下の行の線・丸薬の上に。橙（過ぎてもまだ）はいちばん上
+   （道と同じ。押せば橙の用事が開く）。いまの時刻（.tl-axis、z-index 2）よりは下。 */
+.tl-row.is-grown .tl-node { z-index: 1; }
+.tl-row.is-late .tl-node {
+  z-index: 2;
+  --tl-fill: var(--road-late);
+  --rail-bot-c: var(--road-late);
 }
 /* ---- 重なった二つ ----
 
@@ -6123,6 +6139,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   position: relative;
   padding: 0 var(--sp-4) 10px 8px;
 }
+/* ひらいているあいだは、丸薬がこの段の下まで伸びて背骨を覆う（js の growOf）。 */
 .tl-sub-wrap::before {
   content: "";
   position: absolute;
@@ -6671,11 +6688,12 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    色は時間割と同じ言い分です：**歩いたぶん（時計が通ったところ）は塗り、
    これからは薄く**。道の「これから」だけは灰色ではなく塗りのうすい色にしました
    ——道は面が広いので、灰色だと紙の地に沈んで道に見えませんでした。 */
+/* 過ぎてもまだの区間の橙。道（.road-stop.is-late）と時間割（.tl-row.is-late）で一色。 */
+.day-road, .tl-list { --road-late: #f0a35e; }
 .day-road {
   --road-go: var(--c-primary-fill);
   --road-wait: color-mix(in srgb, var(--c-primary-fill) 24%, var(--c-sheet));
   --road-in: var(--c-sheet-edge);
-  --road-late: #f0a35e;
   /* 歩いたぶんの道と、通った・済ませた停留所（.is-past）の色。いまの丸だけを濃く残す
      （2026年10月3日・利用者が三つ並べた中から 65% を選んだ。上の時刻は白のまま）。 */
   --road-past: color-mix(in srgb, var(--c-primary-fill) 65%, var(--c-sheet));
