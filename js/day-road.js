@@ -102,7 +102,7 @@
        五段。15分は 24 単位で、前の六段の 21 より細かい）。
      - 始まり（begin）と終わり（end）は、どちらもまっすぐの上に来るように選ぶ
        （寝床が道の端の延長に置かれるので）。 */
-  function geom(begin, end, early) {
+  function geom(begin, end, early, late) {
     end = Math.max(end, begin + 60);
     const HALF = ARC / 2;
     /* 一段 rowSpan、始まりの角の一つ前のちょうどの時 start を、小さい rowSpan から探す。
@@ -129,6 +129,10 @@
     if (Number.isFinite(early) && early < begin) {
       begin = Math.max(early, Math.ceil(start + (EARLY_X - XL + HALF) / k));
     }
+    /* 遅寝（late が終わりより後）も同じ：最後の段のまっすぐだけを、進む向きへ紙の端まで伸ばす。 */
+    if (Number.isFinite(late) && late > end) {
+      end = Math.min(late, Math.floor(start + ((rows - 1) * SEG + W - XL - EARLY_X + HALF) / k));
+    }
 
     /** 時刻 → 道の長さ。角 j（0から）のまん中が start + (j+1)·rowSpan。道の始まり（begin）
         より前は始まりに、終わりより後は終わりに寄せる。 */
@@ -153,7 +157,7 @@
       const rem = dd - i * SEG;
       const y = rowY(i);
       const ltr = i % 2 === 0;
-      if (rem <= RUN + 1e-9) {
+      if (rem <= RUN + 1e-9 || i === rows - 1) {   // 最後の段は、遅寝で端より先も（まっすぐの延長）
         return { x: ltr ? XL + rem : XR - rem, y: y + (ltr ? -off : off), row: i, ltr,
                  tx: ltr ? 1 : -1, ty: 0, nx: 0, ny: 1 };
       }
@@ -183,8 +187,8 @@
         const i = Math.max(0, Math.min(rows - 1, Math.floor(a / SEG + 1e-9)));
         const base = i * SEG;
         let to;
-        if (a - base < RUN - 1e-6) {
-          to = Math.min(b, base + RUN);
+        if (a - base < RUN - 1e-6 || i === rows - 1) {
+          to = i === rows - 1 ? b : Math.min(b, base + RUN);
           const q = point(to, off);
           s += `L${n1(q.x)} ${n1(q.y)}`;
         } else {
@@ -334,7 +338,7 @@
      （2026年10月1日・利用者の声「道にぴったりくっつかないで」）。XL（54）で終わる道でも
      54 − 12 − 38 = 4 で紙の中に収まる。 */
   const BED_GAP = 12;
-  const EARLY_X = BED_GAP + BED_W - 8;   // 早起きで道を左へ伸ばすとき、道の頭の x の下限（寝床は .day-road の左の余白 16px に半分まで）
+  const EARLY_X = BED_GAP + BED_W - 8;   // 早起き・遅寝で道を伸ばす限り：道の端から紙の端まで（寝床は .day-road の余白 16px に半分まで）
   const BED_K = BED_W / (1205 - 118);
   const BED_PARTS = [
     ["bed-frame", "M118 700V231a36 36 0 0 1 72 0V700Z"],             // 頭板
@@ -829,9 +833,9 @@
   function build(o) {
     const plan = o.plan;
     const [b0, e0] = reach(plan);
-    const woke = wokeAt(e0, o.wake);
-    const g = geom(b0, e0, woke);
-    const wake = wakeIn(g, woke), bed = bedIn(o.sleep);
+    const woke = wokeAt(e0, o.wake), bed = bedIn(o.sleep);
+    const g = geom(b0, e0, woke, bed);
+    const wake = wakeIn(g, woke);
     const up = wake != null ? wake : g.begin;   // 用事を始められる最初の時刻
     const today = !!o.today;
     const past = !today && plan.day < U.todayKey();
@@ -1024,7 +1028,8 @@
        0 なら朝の寝床、1 なら夜の寝床、道の上なら null。 */
     /* 道に入らないほど早く起きた日（寝床が紙の端）は、起きた時刻から起きている。 */
     const up = st.woke != null ? Math.min(g.begin, st.woke) : g.begin;
-    st.sleep = nowMin == null ? null : nowMin < up ? 0 : nowMin > g.end ? 1 : null;
+    const down = st.bed != null ? Math.max(g.end, st.bed) : g.end;   // 道に入らないほど遅く寝た日も同じ
+    st.sleep = nowMin == null ? null : nowMin < up ? 0 : nowMin > down ? 1 : null;
     svg.querySelectorAll(".road-bed").forEach((b, k) => b.classList.toggle("is-snore", st.sleep === k));
 
     /* ⓪ 停留所の道筋（一本道。shape）。延びる区間（過ぎてまだのもの）があると、分ごとに
