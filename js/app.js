@@ -184,6 +184,9 @@
       btn.addEventListener("click", () => {
         if (t.holds && t.holds.indexOf(active) >= 0) faceTo(0, t.id);
         else if (t.holds && active === t.id) faceTo(1, t.id);
+        /* いま居る席をもう一度押したら、その画面に言います（やること：
+           時間割 ⇄ 一日の道。docs/todo-timeline.md）。断られたら今までどおり。 */
+        else if (active === t.id && KN.screens[t.id].again && KN.screens[t.id].again()) { /* 画面が受けた */ }
         else show(t.id);
         /* 押した席の絵が、一度だけその絵らしく応える（base.css の「押した席の
            絵が応える」）。いま居る席をもう一度押しても応えます——押したことへの
