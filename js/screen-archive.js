@@ -1040,7 +1040,7 @@
     const body = node(html`
       <div class="stack" style="gap:16px">
         ${readable ? html`
-        <label class="field">
+        <label class="field arc-memo-field">
           <span class="field-label">その日あったこと・したこと</span>
           <textarea class="textarea js-memo" rows="5">${memoInit}</textarea>
         </label>` : html`
@@ -1123,6 +1123,10 @@
     const h = KN.ui.sheet({
       title: `${label} の log`,
       content: body,
+      /* 日記・積み上げの書く紙は、ノートと同じ四隅の丸い白いカード（2026年10月6日、
+         利用者「メモ欄が狭いし色が暗い」）。後ろは暗くしない。 */
+      cls: "is-card",
+      clear: true,
       // 自動で保存しているので、閉じるときに引き止めません。
       guard: false,
       footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
@@ -1405,7 +1409,7 @@
           <input type="date" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
         </label>
 
-        <label class="field">
+        <label class="field arc-memo-field">
           <span class="field-label">メモ</span>
           <textarea class="textarea js-memo" rows="2">${e ? e.memo : ""}</textarea>
         </label>
@@ -1580,6 +1584,7 @@
     `);
 
     const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
+      cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
       onClose: () => { if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); } } });
 
     footer.querySelector(".js-ok").addEventListener("click", () => {

@@ -5677,6 +5677,34 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .arc-then-memo,
 .arc-log-memo.is-clamped { -webkit-line-clamp: 5; }
 .arc-log-memo.is-clamped { text-align: start; }
+/* 日記・積み上げの書く紙（.sheet.is-card）は、ノートの書く紙と同じ四隅の丸い白いカード
+   （2026年10月6日、利用者「メモ欄が狭いし色合いも暗い」）。透ける灰の地をやめて白に、
+   背いっぱいに伸ばし、余った高さはメモ欄が取る。形の数はノート（.sheet.is-note）と同じ。 */
+.sheet.is-card {
+  height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
+  background: var(--c-surface);
+}
+.sheet.is-card .sheet-body { flex: 1 1 auto; }
+.sheet.is-card .sheet-body > .stack,
+.sheet.is-card .arc-memo-field { flex: 1 0 auto; }
+.sheet.is-card .arc-memo-field > .textarea { flex: 1 0 auto; min-height: 5lh; resize: none; }
+@media (max-width: 639.98px) {
+  .sheet.is-card {
+    --card-gap: var(--sp-2);
+    --card-gap-b0: max(var(--card-gap), var(--safe-b));
+    --card-gap-b: clamp(0px, var(--card-gap-b0) - var(--kb, 0px) * 100, var(--card-gap-b0));
+    width: calc(100% - var(--card-gap) * 2);
+    bottom: calc(var(--kb, 0px) + var(--pad, 0px) + var(--card-gap-b));
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--card-gap) - var(--card-gap-b));
+    max-height: none;
+    padding-bottom: 0;
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-2);
+  }
+  .sheet.is-card:not(.is-open):not(.is-from-origin) {
+    transform: translate(-50%, calc(100% + var(--card-gap) + var(--card-gap-b0)));
+  }
+}
 
 /* 行ぜんぶが、ひと呼吸だけ光る。
 
