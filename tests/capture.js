@@ -247,6 +247,8 @@ const SEP = "\u001E";
       bigger: first && other ? first.getBoundingClientRect().height > other.getBoundingClientRect().height : false,
       on: on ? on.dataset.t : "",
       card: !!sheet && sheet.classList.contains("is-card"),
+      oneRow: !!pick && new Set([...pick.children].map((b) => Math.round(b.getBoundingClientRect().bottom))).size <= 2
+        && [...pick.children].every((b) => b.getBoundingClientRect().top < pick.firstElementChild.getBoundingClientRect().bottom),
     };
   });
   t.check("＋で二択は出ない", !d.menu);
@@ -255,6 +257,7 @@ const SEP = "\u001E";
   t.check("日記の札はほかより大きい", d.bigger);
   t.check("種類は読書から", d.on === "reading", d.on);
   t.check("記録の紙は四隅の丸いカード", d.card);
+  t.check("日記と種類の札は一列", d.oneRow);
   await page.click(".sheet .js-to-diary");
   await page.waitForTimeout(700);
   const log = await page.evaluate(() => {
@@ -271,6 +274,34 @@ const SEP = "\u001E";
   t.check("記録は勝手に増えない", log.entries === 0, String(log.entries));
   t.check("日記の紙は塗りきった四隅の丸いカード（底が浮く）", log.card && log.bottomGap > 0, JSON.stringify({ card: log.card, gap: log.bottomGap }));
   t.check("日記の本文の欄は紙の半分より高い", log.memoTall);
+
+  /* ---- 書籍と論文は、タイトル・著者を別々に覚える。論文はページを持たない（2026年10月6日） ---- */
+  await page.evaluate(() => {
+    document.querySelectorAll(".sheet .js-close").forEach((b) => b.click());
+    const day = KN.util.todayKey();
+    KN.store.addEntry({ type: "reading", kind: "book", title: "書籍のA", author: "著者A", date: day, memo: "" });
+    KN.store.addEntry({ type: "reading", kind: "paper", title: "論文のB", author: "著者B", date: day, memo: "" });
+  });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
+  await page.waitForTimeout(700);
+  const kd = () => page.evaluate(() => {
+    const s = document.querySelector(".sheet");
+    return { kind: s.querySelector(".arc-kind-b.is-on").textContent.trim(), title: s.querySelector(".js-title").value,
+      author: s.querySelector(".js-author").value, pages: !s.querySelector(".js-pages-row").hidden,
+      ac: s.querySelector(".js-title-ac").textContent.replace(/\s+/g, " ").trim() };
+  });
+  const k1 = await kd();
+  t.check("新規は前回の種類（論文）の下敷き・ページの欄なし", k1.kind === "論文" && k1.title === "論文のB" && !k1.pages, JSON.stringify(k1));
+  await page.click('.sheet .arc-kind-b[data-k="book"]');
+  await page.waitForTimeout(200);
+  const k2 = await kd();
+  t.check("書籍へ切り替えると書籍の前回・ページの欄あり", k2.kind === "書籍" && k2.title === "書籍のA" && k2.author === "著者A" && k2.pages, JSON.stringify(k2));
+  await page.click('.sheet .arc-kind-b[data-k="paper"]');
+  await page.fill(".sheet .js-title", "の");
+  await page.waitForTimeout(200);
+  const k3 = await kd();
+  t.check("論文の候補に書籍は出ない", /論文のB/.test(k3.ac) && !/書籍のA/.test(k3.ac), k3.ac);
 
   t.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

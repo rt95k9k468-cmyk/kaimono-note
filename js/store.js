@@ -3663,10 +3663,11 @@
    * 十分です。名前が同じもの（かなの揺れは吸います）は一つにまとめ、
    * いちばん新しく使ったものを残します。
    */
-  function readingCandidates() {
+  /* kind（"book"／"paper"）を渡すと、その種類だけ。書籍と論文は別々に覚えます（2026年10月6日）。 */
+  function readingCandidates(kind) {
     const seen = new Map();
     archive().entries
-      .filter((e) => e.type === "reading" && e.title)
+      .filter((e) => e.type === "reading" && e.title && (!kind || (e.kind || "book") === kind))
       .sort(byRecent)
       .forEach((e) => {
         const key = foldKana(e.title.trim());
@@ -3678,8 +3679,8 @@
   }
 
   /** いちばん最近書いた読書記録の名前・著者。新規シートの下敷きにします。 */
-  function lastReading() {
-    const list = readingCandidates();
+  function lastReading(kind) {
+    const list = readingCandidates(kind);
     return list.length ? list[0] : null;
   }
 
