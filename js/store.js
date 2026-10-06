@@ -789,6 +789,11 @@
       if (e.author != null && typeof e.author !== "string") e.author = null;
       if (typeof e.pageFrom !== "number" || !isFinite(e.pageFrom)) e.pageFrom = null;
       if (typeof e.pageTo !== "number" || !isFinite(e.pageTo)) e.pageTo = null;
+      /* 3.0 の受け皿（T0）。無い欄は足さず（読むときは null）、崩れた値だけ null に。 */
+      if ("minutes" in e) e.minutes = cleanMinutes(e.minutes);
+      if ("at" in e && !KN.util.isTime(e.at)) e.at = null;
+      if ("todo" in e && !(typeof e.todo === "string" && e.todo)) e.todo = null;
+      if ("note" in e && !(typeof e.note === "string" && e.note)) e.note = null;
     });
     out.archive.days = out.archive.days.filter((d) => d && d.date);
     out.archive.days.forEach((d) => {
@@ -882,6 +887,14 @@
          ここに無かったので、同じ日に二回目に開くと印が落ち、「前の日から運んだ
          もの」が黙って消えていました。持っていない記録には欄を足しません。 */
       ...carriedField(t.carried),
+      /* 3.0 の受け皿（docs/roadmap-3.0.md の T0）。書く画面より先に、読んで残すだけ。
+         ここに無い欄は保存のたびに消えるので。どれも持っていない記録は既定に落ちます。 */
+      ...actField(t.act),
+      shelf: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? null : cleanShelf(t.shelf),   // 日のあるものは待つ・いつかに居ない
+      waitFor: cleanWaitFor(t.waitFor),
+      review: /^\d{4}-\d{2}-\d{2}$/.test(t.review) ? t.review : null,
+      slips: cleanSlips(t.slips),
+      editedAt: cleanIso(t.editedAt),
       // 「YYYY-MM-DD HH:MM」 of the occurrence already announced, if any.
       notifiedFor: typeof t.notifiedFor === "string" ? t.notifiedFor : null,
       memo: typeof t.memo === "string" ? t.memo : "",
@@ -982,6 +995,33 @@
   function carriedField(c) {
     if (!c || typeof c !== "object" || !/^\d{4}-\d{2}-\d{2}$/.test(c.on)) return {};
     return { carried: { on: c.on, time: KN.util.isTime(c.time) ? c.time : null } };
+  }
+
+  /* 3.0 の受け皿（T0）。**function 宣言**で、数も中に置きます（上の TDZ）。 */
+  /* 活動 `act: { type, entry, note }`。種類の読めないものは欄ごと落とします。 */
+  function actField(a) {
+    const TYPES = ["reading", "study", "seed", "done", "change"];
+    if (!a || typeof a !== "object" || !TYPES.includes(a.type)) return {};
+    const id = (v) => (typeof v === "string" && v ? v : null);
+    return { act: { type: a.type, entry: id(a.entry), note: id(a.note) } };
+  }
+  function cleanShelf(v) { return v === "wait" || v === "someday" ? v : null; }
+  function cleanWaitFor(v) {
+    if (typeof v !== "string") return null;
+    const s = Array.from(v.trim()).slice(0, 30).join("");
+    return s || null;
+  }
+  function cleanIso(v) {
+    return typeof v === "string" && v && isFinite(Date.parse(v)) ? v : null;
+  }
+  /* 置き直しの控え。新しい20件まで（後ろほど新しい）。日の読めないものは捨てます。 */
+  function cleanSlips(v) {
+    const MAX = 20, HOW = ["carry", "passed", "hand"];
+    const day = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null);
+    if (!Array.isArray(v)) return [];
+    return v.filter((x) => x && typeof x === "object" && day(x.on) && HOW.includes(x.how))
+      .map((x) => ({ on: x.on, from: day(x.from), time: KN.util.isTime(x.time) ? x.time : null, how: x.how }))
+      .slice(-MAX);
   }
 
   function cleanMinutes(v) {
