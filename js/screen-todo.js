@@ -3744,6 +3744,39 @@
     handle = KN.ui.sheet({ title: "見直す", content: box, onClose: () => { handle = null; } });
   }
 
+  /* 置き直しの回数（3.0 の B2。docs/todo-timeline.md の「置き直しの回数」）。3回目から、行に「n回目」と
+     事実を一つ、選択肢を足す。「先送り」「また」「失敗」「この時間帯が原因」は言わない。!も赤も出さない。
+     n は控え（slips）の数。段3 は運んだときにもう書いてあるので数そのまま、段5 はこれから書くので＋1。 */
+  const SLIP_FROM = 3;
+  function slipPicks(row, t, n, o) {
+    if (n < SLIP_FROM) return;
+    row.querySelector(".carry-head").append(node(html`<span class="carry-n">${n}回目</span>`));
+    const acts = row.querySelector(".carry-acts");
+    [
+      { k: "short", label: "今日は15分だけ" },
+      KN.activity ? { k: "time", label: "時間を変える" } : null,
+      KN.unfold ? { k: "small", label: "小さくする" } : null,
+      { k: "wait", label: "待つへ" },
+      { k: "someday", label: "いつかへ" },
+    ].filter(Boolean).forEach((m) => {
+      const b = node(html`<button type="button" class="btn btn-soft btn-sm js-slip" data-k="${m.k}">${m.label}</button>`);
+      b.addEventListener("click", () => {
+        if (m.k === "short") {
+          o.finish(`「${t.title}」を今日は15分に`, store.replan(t.id, { due: todayKey(), minutes: 15, ...(o.short || {}) }));
+        } else if (m.k === "time") {
+          KN.activity.askSpan({
+            title: "時間を変える", ok: "決める", at: t.time || (t.carried && t.carried.time) || null, minutes: t.minutes || 30,
+            onPick: (at, minutes) => o.finish(`「${t.title}」を ${at} に`, store.replan(t.id, { due: todayKey(), time: at, minutes })),
+          });
+        } else if (m.k === "small") {
+          o.close();
+          setTimeout(() => KN.unfold.open(t.id), 40);
+        } else moveShelf(t.id, m.k, () => o.finish(null, null));
+      });
+      acts.append(b);
+    });
+  }
+
   /* 段3：運んできたものを、一件ずつ選び直す紙（docs/todo-timeline.md
      「崩れたときの置き直し」）。選ぶと行が消え、報せに「元に戻す」。
      片づけ終えたら紙は閉じる（通知から来た紙 due-sheet.js と同じ拍）。 */
@@ -3774,6 +3807,16 @@
           </div>
         </div>
       `);
+      slipPicks(row, t, (t.slips || []).length, {
+        close: () => { if (handle) handle.close(); },
+        finish: (msg, undo) => {
+          haptic();
+          KN.motion.fire("save");
+          row.remove();
+          if (!--left && handle) { handle.close(); handle = null; }
+          if (msg) KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
+        },
+      });
       row.querySelectorAll(".js-carry").forEach((b) => b.addEventListener("click", () => {
         const p = picks.find((x) => x.key === b.dataset.key);
         const undo = store.settleCarried(t.id, p.key);
@@ -3851,6 +3894,17 @@
           </div>
         </div>
       `);
+      slipPicks(row, t, (t.slips || []).length + 1, {
+        short: soonAt ? { time: soonAt } : { time: null },
+        close: () => { if (handle) handle.close(); },
+        finish: (msg, undo) => {
+          haptic();
+          KN.motion.fire("save");
+          row.remove();
+          if (!--left && handle) { handle.close(); handle = null; }
+          if (msg) KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
+        },
+      });
       row.querySelectorAll(".js-passed").forEach((b) => b.addEventListener("click", () => {
         const p = picks.find((x) => x.key === b.dataset.key);
         const undo = store.settlePassed(t.id, p.key, soonAt);

@@ -1014,6 +1014,11 @@
   function cleanIso(v) {
     return typeof v === "string" && v && isFinite(Date.parse(v)) ? v : null;
   }
+  /* 置き直しの控えを一つ書く（3.0 の B2。記録の中で書き換える。function 宣言）。くり返しには書かない。 */
+  function pushSlip(t, how, from, time) {
+    const on = KN.util.todayKey();
+    t.slips = cleanSlips((Array.isArray(t.slips) ? t.slips : []).concat({ on, from: from || null, time: time || null, how }));
+  }
   /* 置き直しの控え。新しい20件まで（後ろほど新しい）。日の読めないものは捨てます。 */
   function cleanSlips(v) {
     const MAX = 20, HOW = ["carry", "passed", "hand"];
@@ -2099,11 +2104,15 @@
 
   function getTodo(id) { return get().todos.find((t) => t.id === id) || null; }
 
-  function updateTodo(id, patch) {
+  function updateTodo(id, patch, opts) {
+    /* 置き直しの控え（3.0 の B2）。opts.slip は "carry"／"passed"／"hand"、false で書かない。
+       渡さなければ、やる日を後ろへ動かしたときだけ "hand"。 */
+    const slipHow = opts && "slip" in opts ? opts.slip : undefined;
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       if (!t) return;
       const dueWas = t.due || null;
+      const timeWas = t.time || null;
       if ("title" in patch) t.title = String(patch.title || "").trim() || t.title;
       if ("due" in patch) t.due = /^\d{4}-\d{2}-\d{2}$/.test(patch.due) ? patch.due : null;
       /* 五つの状態（3.0 の B1）。日を決めたら待つ・いつかから外れ、日を外して「これから」へ
@@ -2112,6 +2121,9 @@
       if ("due" in patch && !t.due && dueWas && !t.repeat) t.review = reviewFrom(null);
       /* 手が入った時刻（見直す日の読み替え・C1 のすすめに使う）。 */
       t.editedAt = stamp();
+      const later = "due" in patch && dueWas && t.due && t.due > dueWas;
+      const how = slipHow === undefined ? (later ? "hand" : null) : slipHow;
+      if (how && !t.repeat && !t.trace) pushSlip(t, how, dueWas, timeWas);
       if ("repeat" in patch) {
         t.repeat = cleanRepeat(patch.repeat);
       }
@@ -2792,6 +2804,13 @@
     });
     return undo;
   }
+  /** 置き直しの紙の「今日は15分だけ」「時間を変える」（3.0 の B2）。控えは書かない（日を後ろへ動かさないので）。 */
+  function replan(id, patch) {
+    const undo = keepFields(id);
+    updateTodo(id, patch, { slip: false });
+    update((s) => { const t = s.todos.find((x) => x.id === id); if (t) delete t.carried; });
+    return undo;
+  }
   /** 見直しの紙・置き直しの紙の「今日やる」「日を決める」「やめる」（元に戻すつき）。 */
   function planOn(id, day) {
     const undo = keepFields(id);
@@ -2878,10 +2897,13 @@
     update((s) => {
       s.todos.forEach((t) => {
         if (!moves.has(t.id)) return;
+        const fromDue = t.due || null, fromTime = t.time || null;
         t.due = moves.get(t.id);
         if (!carry.has(t.id)) return;
         /* 日が付いたので、待つ・いつかから外れる（B1。期限の過ぎた待つ・いつかも今日へ）。 */
         if (t.shelf) { t.shelf = null; t.waitFor = null; }
+        /* 置き直しの控え（B2）。前の日・前の時刻と「運んだ」。 */
+        pushSlip(t, "carry", fromDue, fromTime);
         /* 段3（2026年9月29日・利用者が選んだ）。**時刻は外して「連れ」に**
            します——昨日の「13:00」は、今日の約束ではないので（一日の道では
            停留所＝本人が決めた約束）。外した時刻は印に控えて、置き直しの紙で
@@ -2933,11 +2955,11 @@
     /* 過ぎた期限を持ったまま長期タスクへ戻すと、見回りがすぐ今日へ運び返すので
        外します（元に戻せば戻る）。 */
     const lapsed = t0.deadline && t0.deadline < today;
-    if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1) });
+    if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1) }, { slip: "carry" });
     else if (where === "week") {
       const end = carryWeek().day;
       const keep = t0.deadline && t0.deadline >= today && t0.deadline < end;
-      updateTodo(id, { due: null, deadline: keep ? t0.deadline : end });
+      updateTodo(id, { due: null, deadline: keep ? t0.deadline : end }, { slip: "carry" });
     } else if (where === "someday") updateTodo(id, lapsed ? { due: null, deadline: null } : { due: null });
     else if (where === "stop") archiveTodo(id, true);
     update((s) => {
@@ -2991,8 +3013,8 @@
     const today = U.todayKey();
     const lapsed = t0.deadline && t0.deadline < today;
     if (where === "now") updateTodo(id, { time: at });
-    else if (where === "loose") updateTodo(id, { time: null });
-    else if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1), time: null });
+    else if (where === "loose") updateTodo(id, { time: null }, { slip: "passed" });
+    else if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1), time: null }, { slip: "passed" });
     else if (where === "someday") updateTodo(id, lapsed ? { due: null, deadline: null } : { due: null });
     else if (where === "stop") archiveTodo(id, true);
     return () => update((s) => {
@@ -4670,7 +4692,7 @@
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo,
+    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
