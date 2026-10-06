@@ -120,6 +120,28 @@ const DAY = "2026-10-03";
   const wakeRec = await page.evaluate((day) => KN.store.dayLog(day).wake, DAY);
   c.check("記録は書き換えない", wakeRec === "07:12", wakeRec);
 
+  /* 早起き（10月7日・利用者の声「5:30 より前に起きたら、道の場所はそのままで、寝る人を左へずらし
+     道を左に長く」）。紙に入らないほど早ければ、道は寝床が紙の端に来るところまで・寝床の下は本当の時刻。 */
+  const at = () => page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road"), st = road.__road, g = st.g;
+    const p = g.point(g.dist(5 * 60 + 30)), b = st.beds[0];
+    return { begin: g.begin, x530: p.x, y530: p.y, bedLo: b.lo, bedHi: b.hi, headX: g.point(g.d0).x,
+             slept: road.querySelectorAll(".road-slept").length,
+             edge: [...road.querySelectorAll(".road-edge")].map((e) => e.textContent.trim()) };
+  });
+  const a0 = await at();
+  for (const [w, label] of [["04:40", "4:40"], ["03:30", "3:30"]]) {
+    await page.evaluate(([day, w]) => KN.store.setDayLog(day, { wake: w, sleep: "22:05" }), [DAY, w]);
+    await page.evaluate(() => KN.screens.todo.render && KN.screens.todo.render());
+    await page.waitForTimeout(400);
+    const a = await at();
+    c.check(`${label} 起き：寝床の下は ${label}・5:30 の場所はそのまま・紫は夜だけ`,
+      a.edge[0] === label && Math.abs(a.x530 - a0.x530) < 0.01 && a.y530 === a0.y530 && a.slept === 1, JSON.stringify([a, a0]));
+    c.check(`${label} 起き：道は左へ伸び、寝床は道の左で余白の中`,
+      a.headX < a0.headX - 1 && a.bedHi < a.headX && a.bedLo >= -8 - 1e-6
+        && (label === "4:40" ? a.begin === 4 * 60 + 40 : a.begin > 3 * 60 + 30 && a.bedLo < -6), JSON.stringify(a));
+  }
+
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();
