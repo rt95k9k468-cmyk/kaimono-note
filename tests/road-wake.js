@@ -89,7 +89,11 @@ const DAY = "2026-10-03";
   await page.waitForTimeout(600);
   r = await read();
   c.check("起きた時刻 7:12 があっても、道は 5:30 から 22:30 まで", r.begin === 5 * 60 + 30 && r.end === 22 * 60 + 30, JSON.stringify([r.begin, r.end]));
-  c.check("5:30〜7:12 と 22:05〜22:30 は紫（寝ていたぶん）", r.slept === 2 && r.sleptStroke === r.bedInk, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
+  /* 紫は薄くなった寝床と同じ薄さ（濃い寝床の色そのものではない）。 */
+  const rgb = (v) => { const n = (v || "").match(/[\d.]+/g).map(Number); return v.startsWith("rgb") ? n.map((x) => x / 255) : n; };
+  const [sr, sg, sb] = rgb(r.sleptStroke);
+  c.check("5:30〜7:12 と 22:05〜22:30 は薄い紫（寝ていたぶん）",
+    r.slept === 2 && r.sleptStroke !== r.bedInk && sb > sr && sb > sg && Math.min(sr, sg, sb) > 0.8, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
   c.check("寝床の下の時刻は実際の 7:12 と 22:05", JSON.stringify(r.edge) === JSON.stringify(["7:12", "22:05"]), JSON.stringify(r.edge));
   const early = await page.evaluate(() => {
     const st = document.querySelector("#screen-todo .day-road").__road;
