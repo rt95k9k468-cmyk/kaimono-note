@@ -6629,6 +6629,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-base, .road-went { stroke-width: 9; }
 .road-base { stroke: var(--road-wait); }
 .road-went { stroke: var(--road-past); }
+.road-slept { stroke: var(--bed-frame); stroke-width: 9; }
 /* 時の数字（目盛りの代わり。2026年10月2日）。道の上に、立てたまま。これからの薄い道の上は
    塗りの色、歩いたぶん（.is-went）と停留所の塗りの上（.is-over）は白。 */
 .road-hours text {
