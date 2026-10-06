@@ -347,8 +347,56 @@
       .map(({ at, until, minutes: m, atMin }) => ({ at, until, minutes: m, atMin }));
   }
 
+  /* ---------------- 組み直し（3.0 の B3。docs/todo-timeline.md の「組み直し」） ----------------
+
+     今日の残り（いま〜一日の終わり）に、まだの用事が入るかを見積もります。**何も書きません**
+     （書くのは本人が「この形にする」を押したとき。store.applyRefit）。
+     - 動かさないもの：時刻の決まったこれからの用事・くり返し。残りの時間から、重なるぶんを引くだけ。
+     - 入れるもの：時刻なし・時刻を過ぎたもの。期限が近いもの（7日以内、近い順）→ いまの並び順で、
+       **入るところまで**（入らないものが出たら、そこから後ろは全部「入らない」。並びの意味を崩さない）。
+     - 長さは minutesOf（決めた長さ → いつもの長さ → 30分）。 */
+  function refit(day, todos, opts) {
+    const o = opts || {};
+    const now = toMin(o.now) != null ? toMin(o.now) : 0;
+    const end = toMin(o.end) != null ? toMin(o.end) : toMin(DEFAULT_END);
+    const plan = buildDay(day, todos, { start: o.start, end: o.end, now: o.now });
+    let busy = 0;
+    const flex = [];
+    plan.items.forEach((it, k) => {
+      const t = it.todo;
+      if (t.done || t.archived || t.trace) return;
+      const len = minutesOf(t);
+      const timed = U.isTime(t.time);
+      const passed = timed && toMin(t.time) + len <= now;
+      if (t.repeat || (timed && !passed)) {
+        /* 時刻のあるものは、残りの時間と重なるぶん。時刻の無いくり返し（毎晩の…）は、組み立てでは
+           ほかの用事に押されて一日の外へ出ることがあるので、まだなら長さをそのまま引く。 */
+        if (!timed) { if (!passed) busy += len; return; }
+        const a = toMin(t.time);
+        busy += Math.max(0, Math.min(end, a + len) - Math.max(now, a));
+        return;
+      }
+      flex.push({ todo: t, minutes: len, k });
+    });
+    const soon = U.shiftDay(day, 7);
+    const near = (t) => (t.deadline && t.deadline <= soon ? t.deadline : null);
+    flex.sort((a, b) => {
+      const da = near(a.todo), db = near(b.todo);
+      if (da && db) return da.localeCompare(db) || a.k - b.k;
+      if (da || db) return da ? -1 : 1;
+      return a.k - b.k;
+    });
+    const avail = Math.max(0, end - now - busy);
+    let left = avail, full = false;
+    const fit = [], out = [];
+    flex.forEach((f) => {
+      if (!full && f.minutes <= left) { fit.push(f); left -= f.minutes; } else { full = true; out.push(f); }
+    });
+    return { avail, busy, left, fit, out };
+  }
+
   KN.plan = {
-    buildDay, slotsFor, humanSpan, toMin, toTime,
+    buildDay, slotsFor, humanSpan, toMin, toTime, refit,
     DEFAULT_MINUTES, minutesOf, DEFAULT_START, DEFAULT_END, MIN_GAP,
   };
 })();

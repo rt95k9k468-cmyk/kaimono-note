@@ -3923,6 +3923,19 @@ a.btn { text-decoration: none; }
 /* はみ出しは、注意ではなく**事実**として言います。赤くしません——
    「予定どおりに入らなかった＝失敗」ではないので。 */
 .tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+/* 押せる一行（3.0 の B3）。押せば組み直しの紙。色は変えない（注意の字のまま）。 */
+button.tl-over { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; text-align: left; }
+button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
+/* 組み直しの紙 */
+.refit-left { margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--c-text-2); }
+.refit-left b { font-size: var(--fs-lg); color: var(--c-text); font-variant-numeric: tabular-nums; }
+.refit-h { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-sm); color: var(--c-text-2); }
+.refit-fit { list-style: none; margin: 0; padding: 0; }
+.refit-fit li { display: flex; gap: var(--sp-2); padding: 6px 0; font-size: var(--fs-md); }
+.refit-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.refit-m { flex: none; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.refit-ok { margin: var(--sp-3) 0 0; color: var(--c-text-2); }
+.refit-row .chip-row { flex-wrap: wrap; }
 .tl-done-toggle {
   margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1);
   min-height: 32px; padding: 0 var(--sp-2);

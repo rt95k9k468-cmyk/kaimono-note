@@ -2804,6 +2804,32 @@
     });
     return undo;
   }
+  /**
+   * 組み直しを一度に書く（3.0 の B3）。moves は [{ id, to, day }]。to は
+   * "tomorrow" | "day"（day の日へ）| "next"（これから）| "someday"（いつか）| "half"（今日は長さを半分）。
+   * 明日・後日は日を後ろへ動かすので控え（hand）を書く。**元に戻す一回で全部戻る。**
+   * @returns {() => void}
+   */
+  function applyRefit(moves) {
+    const U = KN.util;
+    const today = U.todayKey();
+    const undos = [];
+    (moves || []).forEach((m) => {
+      const t = getTodo(m.id);
+      if (!t || t.repeat || t.done) return;
+      if (m.to === "next" || m.to === "someday") { undos.push(setShelf(m.id, m.to === "next" ? null : "someday")); return; }
+      const undo = keepFields(m.id);
+      if (m.to === "tomorrow") updateTodo(m.id, { due: U.shiftDay(today, 1), time: null });
+      else if (m.to === "day" && /^\d{4}-\d{2}-\d{2}$/.test(m.day)) updateTodo(m.id, { due: m.day, time: null });
+      else if (m.to === "half") {
+        const len = Number(t.minutes) > 0 ? Number(t.minutes) : (usualMinutes(t) || 30);
+        updateTodo(m.id, { minutes: Math.max(5, Math.round(len / 2 / 5) * 5) }, { slip: false });
+      }
+      update((s) => { const x = s.todos.find((y) => y.id === m.id); if (x) delete x.carried; });
+      undos.push(undo);
+    });
+    return () => undos.slice().reverse().forEach((u) => u());
+  }
   /** 置き直しの紙の「今日は15分だけ」「時間を変える」（3.0 の B2）。控えは書かない（日を後ろへ動かさないので）。 */
   function replan(id, patch) {
     const undo = keepFields(id);
@@ -4692,7 +4718,7 @@
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan,
+    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
