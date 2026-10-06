@@ -3702,10 +3702,14 @@
   /** 見直しの紙・置き直しの紙の頭の事実（「9月12日から · 3回置き直し · 期限 10月31日」）。評価の言葉は使わない。 */
   function factsOf(t) {
     const bits = [];
-    const since = dayOfStamp(t.createdAt);
+    /* 最初に置いた日（控えの最初の「前の日」、無ければ作った日）・置き直しの回数・前に置いていた時刻（D1）。 */
+    const slips = t.slips || [];
+    const since = (slips[0] && slips[0].from) || dayOfStamp(t.createdAt);
     if (since) bits.push(`${mdJa(since)}から`);
-    const n = (t.slips || []).length;
+    const n = slips.length;
     if (n) bits.push(`${n}回置き直し`);
+    const lastAt = slips.slice().reverse().find((x) => x.time);
+    if (lastAt) bits.push(`前は ${lastAt.time.replace(/^0/, "")}`);
     if (t.deadline) bits.push(`期限 ${mdJa(t.deadline)}`);
     if (t.shelf === "wait" && t.waitFor) bits.push(`待つ：${t.waitFor}`);
     return bits.join(" · ");
