@@ -166,34 +166,8 @@
       .map((sl) => `・${sl.label}: ${sl.text}`);
     if (mealLines.length) blocks.push(["食べたもの（この日に食べ終えたもの）", ...mealLines].join("\n"));
 
-    /* ここから先は**この日の記録ではありません**——参考として添える、
-       まだ済んでいない先の予定と、いつやるか決めていない長期タスクです。
-       見出しに「（参考）」と「まだ済んでいない」を必ず書きます。上のブロック
-       と地続きに読むと「この日にあったこと」に混ざって見えるためです。 */
-    /* くり返しの用事（毎日・毎週月曜…）は、先の日にもずっと立ち続けます
-       （`store.fallsOn`）。7日ぶん先まで並べると、同じ「夜のルーティン」が
-       何度も出てくるだけで、参考として読む値がありません。ここに書くのは
-       **その日限りの**予定だけにします。 */
-    const upcoming = [];
-    for (let i = 1; i <= 7; i++) {
-      const d = U.shiftDay(day, i);
-      store.get().todos.forEach((t) => {
-        if (t.done || t.archived || t.trace || t.repeat) return;
-        if (!store.fallsOn(t, d)) return;
-        upcoming.push(`・${U.formatDay(d)} ${t.title}`);
-      });
-    }
-    if (upcoming.length) {
-      blocks.push(["（参考・この日の記録ではありません）明日以降の予定（まだ済んでいません）", ...upcoming].join("\n"));
-    }
-
-    const someday = store.get().todos
-      .filter((t) => !t.done && !t.archived && !t.trace && !t.due)
-      .map((t) => t.deadline ? `・${t.title}（${t.deadline}まで）` : `・${t.title}`);
-    if (someday.length) {
-      blocks.push(["（参考・この日の記録ではありません）長期タスク（いつやるか未定・まだ済んでいません）", ...someday].join("\n"));
-    }
-
+    /* 先の予定・長期タスク（まだ済んでいないもの）は写しません（2026年10月5日、
+       利用者）。日が変わってもほとんど同じで、この日の記録ではないため。 */
     return blocks.join("\n\n");
   }
 
