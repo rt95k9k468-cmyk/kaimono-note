@@ -937,9 +937,11 @@
          （5件なら 1,2,3 が左、4,5 が右）。一件のときは分けません
          ——一列に一件だけ置いて右を空けても、幅が余るだけなので。 */
       const twoCol = rows.length >= 2;
+      /* その日の活動の合計（3.0 の A1。事実だけ。月比べ・平均は出さない）。 */
+      const sum = src === "entry" ? rows.reduce((n, f) => n + (Number(f.minutes) > 0 ? Number(f.minutes) : 0), 0) : 0;
       const box = node(html`
         <section class="arc-feed-box ${twoCol ? "is-split" : ""}" data-src="${src}">
-          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}</h4>
+          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}${sum ? html`<span class="arc-feed-sum">${KN.plan.humanSpan(sum)}</span>` : ""}</h4>
           <div class="arc-feed-list"></div>
         </section>
       `);
@@ -956,9 +958,10 @@
                 名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
                 行のほうが先に当たることがあります（そこから .arc-row を
                 辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
-          <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
+          <button type="button" class="arc-feed-row ${f.src === "entry" && f.minutes ? "has-len" : ""}" data-src="${f.src}" data-feed-id="${f.id}">
             <span class="arc-feed-when">${at}</span>
             <span class="arc-feed-title">${f.title}</span>
+            ${f.src === "entry" && f.minutes ? html`<span class="arc-feed-len">${KN.plan.humanSpan(f.minutes)}</span>` : ""}
           </button>
         `);
         row.addEventListener("click", () => {
@@ -1203,6 +1206,8 @@
     } else if (e.amount != null) {
       subBits.push(`${e.amount}${e.unit || t.unit || ""}`);
     }
+    /* 道の上の長さ（3.0 の A1）。 */
+    if (e.minutes > 0) subBits.push(KN.plan.humanSpan(e.minutes));
     if (edited) subBits.push(`直: ${U.formatStamp(e.updatedAt)}`);
 
     const typeIcon = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
@@ -1586,25 +1591,39 @@
     const paintMode = () => {
       const isReading = type === "reading";
       const isSeed = type === "seed";
+      /* 道に置くのは読書・学習だけ。道に記録するのは種・変化のほか。 */
+      if (roadBtn) roadBtn.hidden = e ? (isSeed || type === "change") : !KN.activity.PLANNED.includes(type);
       readingFields.hidden = !isReading;
       genericFields.hidden = isReading;
       /* 種だけ、タイトルと数・単位を隠します。書くのは日付とメモだけ。 */
       titleGenericField.hidden = isSeed;
       amountFields.hidden = isSeed;
     };
-    paintPick();
-    paintMode();
-
+    /* 道へ（3.0 の A1）。新しく書くときは「道に置く」（その日に活動の予定を一つ。記録はまだ
+       書かない——済ませたときに生まれる）、前の記録は「道に記録する」（始めた時刻と長さだけ）。 */
+    const roadLabel = e ? "道に記録する" : "道に置く";
     const footer = node(html`
       <div style="display:flex;gap:8px">
         ${e ? html`<button class="btn btn-soft js-del">${icon("trash", "is-sub")}</button>` : ""}
+        ${KN.activity ? html`<button type="button" class="btn btn-soft js-road">${icon("clock", "is-sub")}<span>${roadLabel}</span></button>` : ""}
         <button class="btn btn-primary js-ok" style="flex:1">${e ? "保存" : "書く"}</button>
       </div>
     `);
+    const roadBtn = footer.querySelector(".js-road");
+    paintPick();
+    paintMode();
 
     const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
       cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
-      onClose: () => { if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); } } });
+      onClose: () => {
+        if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); }
+        if (toRoad) {
+          toRoad = false;
+          const now = store.get().archive.entries.find((x) => x.id === e.id);
+          if (now) setTimeout(() => KN.activity.recordOnRoad(now, render), 0);
+        }
+      } });
+    let toRoad = false;
 
     footer.querySelector(".js-ok").addEventListener("click", () => {
       const isReading = type === "reading";
@@ -1652,6 +1671,25 @@
       KN.motion.fire("select");
       h.close();
       render();
+    });
+
+    if (roadBtn) roadBtn.addEventListener("click", () => {
+      KN.motion.fire("select");
+      if (e) {
+        /* 道に記録する：その記録に始めた時刻と長さを書く。用事は作らない。直しかけがあれば、
+           ほかの閉じ方と同じく先に保存する（閉じたら聞く。onClose）。 */
+        toRoad = true;
+        h.tryClose();
+        setTimeout(() => { toRoad = false; }, 400);
+        return;
+      }
+      const title = (type === "reading" ? titleReading.value : titleGeneric.value).trim();
+      if (!title) { KN.ui.toast("タイトルを入れてください"); return; }
+      const day = body.querySelector(".js-date").value || U.todayKey();
+      /* 記録はまだ書かない（済ませたときに生まれる）。打ったメモは予定のメモへ渡す。 */
+      const memo = body.querySelector(".js-memo").value;
+      h.close();
+      setTimeout(() => KN.activity.placeOnRoad({ type, title, day, memo }), 40);
     });
 
     const del = footer.querySelector(".js-del");
@@ -1957,5 +1995,7 @@
   }
 
   /* `cal` はノート（daily の裏）が帯に同じ暦を置くため（js/screen-notes.js）。 */
-  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay(), cal: () => els.cal };
+  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay(), cal: () => els.cal,
+    /* 記録の紙を、ほかの画面から（道の活動の札・道の上の記録。3.0 の A1）。 */
+    openEntry: (id) => { const e = store.get().archive.entries.find((x) => x.id === id); if (e) openEntrySheet(e); } };
 })();
