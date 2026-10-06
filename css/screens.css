@@ -3681,9 +3681,6 @@ a.btn { text-decoration: none; }
 .arc-pages-hint { padding-bottom: 14px; min-width: 3.5em; }
 
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-/* 出さない日（R9）。紙の終わりに小さく——書く手の邪魔にならないところ。 */
-.arc-quiet { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
-.arc-quiet .field-hint[hidden] { display: none; }
 
 /* 中身は紙（.tl-sheet.is-daily）の中へ移りました。ここに残っているのは
    暦と紙の二つだけで、そのあいだは空けません——空けると、暦の下に地の
