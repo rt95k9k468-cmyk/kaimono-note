@@ -337,6 +337,7 @@
       if (!(await keepBefore("復元前"))) return;
       try {
         await store.importBackup(text);
+        await KN.backup.settleLost();   // 記録が見当たらない日（backup.js）は、これで戻ったことに
       } catch (err) {
         console.error(err);
         KN.ui.toast(`読み込めませんでした：${String((err && err.message) || err)}`);

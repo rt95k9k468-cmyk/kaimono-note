@@ -40,6 +40,10 @@
   let moved = { phase: "idle" };
   let loading = null;
   let chain = Promise.resolve();   // 控えの読み書きは、一つずつ
+  /* 開いた時点で記録の一本が無かった印（下の「記録が見当たらない日」）。 */
+  const bootAt = new Date().toISOString();
+  let lost = null;           // { at: 戻せる控えの時刻, found } か null
+  let checking = null;       // 見比べ終わったら果たされる約束
 
   /* ---- どれくらいの頻度で、どれだけ残すか ----
 
@@ -373,6 +377,7 @@
    *   "same"   いまと同じ中身が、もういちばん新しい控えにある
    *   "empty"  守るものが無い
    *   "failed" 容量が足りず、書けなかった（それまでの控えはそのまま）
+   *   "held"   記録が見当たらない日なので、時刻で取る控えを見合わせた
    * 戻せない操作の前は、これを見て「failed なら進む前に知らせる」こと。
    *
    * **約束（Promise）で返ります**（大きな保存場所は「あとで返事が来る」ので）。
@@ -399,6 +404,12 @@
   async function takeNow(reason, given, force) {
     try {
       await ensure();
+      /* 記録が見当たらない日は、時刻で取る控え（自動・離れる前）を止めます。
+         空に近い控えが一時間ごとに積もって、戻したい控えを押し出すので。 */
+      if (!PINNED.has(reason)) {
+        if (checking) await checking;
+        if (lost) return "held";
+      }
       const state = given || store.get();
       if (isEmpty(state)) return "empty";
       const payload = JSON.stringify(state);
@@ -559,6 +570,100 @@
       throw err;
     }
     await store.importBackup(payload);
+    await settleLost();
+  }
+
+  /* ---------------- 記録が見当たらない日（2026年10月6日） ----------------
+
+     iPhone が localStorage だけを丸ごと落とした日がありました（記録の一本も
+     Dropbox の設定も消え、大きな保存場所の控えと日記の写しは無事）。アプリは
+     それに気づかず空で立ち上がり、「離れる前」の控えを空に近い中身で取りつづけ、
+     気づいた本人が控えから戻しました。
+
+     開いた時点で記録の一本が無く（読めなかったのではなく、無い）、それより前の
+     控えが大きな保存場所にあるなら、それは「初めて開いた」ではなく「消えた」です。
+     そのときは
+       - 印を meta（"lost"）に書く。戻すか「このまま始める」まで残す——閉じても
+         次に開いたとき、また訊けるように（記録は日記の書き戻しなどで、もう
+         「有る」ことになっているので、二度目は loadInfo では分からない）
+       - 時刻で取る控え（自動・離れる前）を止める（takeNow）
+       - Dropbox の上書きを止める（dropbox.js の run）
+       - いちばん新しい控えへ戻すかを訊く（ask） */
+  async function checkLost() {
+    if (where !== "idb") return;
+    try {
+      const got = await KN.idb.run(["meta"], "readonly", (t) => {
+        const r = t.objectStore("meta").get("lost");
+        return () => r.result;
+      });
+      let mark = got && got.v;
+      const info = store.loadInfo();
+      if (!mark && !info.hadData && !store.loadError()) {
+        const before = heads.filter((h) => h.at < bootAt);
+        const last = before[before.length - 1];
+        if (last) {
+          mark = { at: last.at, found: bootAt };
+          await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").put({ k: "lost", v: mark }); });
+        }
+      }
+      lost = mark && heads.some((h) => h.at === mark.at) ? mark : null;
+      if (lost) KN.idb.changed();
+    } catch (err) {
+      console.warn("lost check failed", err);
+    }
+  }
+
+  async function settleLost() {
+    if (checking) await checking;
+    if (!lost) return;
+    lost = null;
+    try {
+      await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").delete("lost"); });
+    } catch (err) { /* 次に開いたとき、もう一度訊くだけ */ }
+    KN.idb.changed();
+  }
+
+  function stampOf(iso) {
+    const d = new Date(iso);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  async function ask() {
+    if (!lost || !KN.ui || !KN.ui.confirm) return;
+    const at = lost.at;
+    const go = await KN.ui.confirm({
+      title: "記録が見当たりません",
+      message: `${stampOf(at)} の控えに戻せます。`,
+      okLabel: "戻す", cancelLabel: "あとで",
+    });
+    if (!go) {
+      const fresh = await KN.ui.confirm({
+        title: "このまま始めますか？",
+        message: "控えはそのまま残ります。",
+        okLabel: "このまま始める", cancelLabel: "あとで",
+      });
+      if (fresh) await settleLost();
+      return;
+    }
+    try {
+      try {
+        await restore(at);
+      } catch (err) {
+        if (err.code !== "keep-failed") throw err;
+        const anyway = await KN.ui.confirm({
+          title: "控えを取れませんでした",
+          message: "空き容量が足りず、戻す前の状態を控えに残せませんでした。このまま戻すと、いまの状態へはやり直せません。",
+          okLabel: "それでも戻す", cancelLabel: "やめる", danger: true,
+        });
+        if (!anyway) return;
+        await restore(at, { force: true });
+      }
+      KN.ui.toast(`${stampOf(at)} の状態に戻しました`);
+    } catch (err) {
+      console.error(err);
+      KN.ui.toast("戻せませんでした");
+    }
   }
 
   /** 控えを全部捨てます（どこからも呼んでいません。戻せません）。 */
@@ -637,7 +742,9 @@
      （トースト・通知・赤は使わない）。いちばん痛いのは「控えがあると思って
      いたのに、無かった」なので。 */
   function init() {
-    ensure().then(() => maybeHourly());
+    checking = ensure().then(checkLost);
+    checking.then(() => (lost ? ask() : null));
+    checking.then(() => maybeHourly());
 
     /* **アプリを離れるとき**は、いちばん取りたい瞬間です。書き終えて
        閉じた直後に消えるのが、いちばん痛い失い方なので、ここは時間を
@@ -667,5 +774,7 @@
     init,
     // 置き場が決まったら果たされる約束と、いまの置き場（"idb" / "ls"）。
     ready: ensure, where: () => where, moved: () => moved,
+    // 記録が見当たらない日か（見比べ終わるまで待つなら checked()）。ファイルから戻したら settleLost。
+    lost: () => lost, checked: () => checking || Promise.resolve(), settleLost,
   };
 })();
