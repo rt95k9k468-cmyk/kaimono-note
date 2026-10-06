@@ -891,7 +891,7 @@
     const stopSvg = stops.map((s, k) =>
       `<g class="road-stop${closed(s.t) ? " is-done" : ""}" data-s="${k}">`
         + `<path class="road-stop-edge"/><path class="road-stop-in"/><path class="road-stop-hatch" mask="url(#${hid})"/>`
-        + `<path class="road-stop-went"/></g>`).join("");
+        + `<path class="road-stop-went"/><path class="road-stop-went-hatch" mask="url(#${hid})"/></g>`).join("");
     /* 出る時刻からの区間は、道の下に敷く点線の帯（道の上下に点がのぞく）。
        停留所のふちの点線（夜のごろ）と同じ言い分で、決めた約束そのものでは
        ない「そこへ向かう時間」だと読めるように。 */
@@ -1104,8 +1104,14 @@
       /* 塗りの丸い端（半径 WENT_R）も、塗った時刻で止まるように内へ。 */
       const [a, b] = capIn(s);
       if (to != null && s.late) to = s.d1 + WENT_R;   // 延びた尻は足もとをくるむ丸まで塗る（capIn）
-      if (to == null) w.removeAttribute("d");
-      else w.setAttribute("d", g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off));
+      /* 重なった丸薬は、塗ったぶんにも斜線（白）を残す（2026年10月6日・利用者の声「片方は
+         斜線になるんじゃなかったっけ」。塗りが上に来て、過ぎると重なりが見えなくなっていた）。 */
+      const wh = grp.querySelector(".road-stop-went-hatch");
+      if (to == null) { w.removeAttribute("d"); wh.removeAttribute("d"); }
+      else {
+        const d = g.path(a, Math.max(a, Math.min(b, to - WENT_R)), s.off);
+        w.setAttribute("d", d); wh.setAttribute("d", d);
+      }
       const live = !done && s.len && nowMin != null && nowMin >= s.ga && nowMin < s.until;
       grp.classList.toggle("is-live", live);
       /* 時計が通った・済ませた停留所は薄く（いまの丸だけ濃く。2026年10月3日・CSS の --road-past）。

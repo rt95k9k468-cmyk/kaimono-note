@@ -119,6 +119,11 @@ const DAY = "2026-10-01";
     return {
       over: Object.fromEntries(st.stops.map((x) => [x.t.title, { ga: x.ga, eu: x.eu, over: x.over, isOver: grp(x.t.title).classList.contains("is-over") }])),
       onTop: !!(grp("朝のBaby").compareDocumentPosition(grp("朝のルーティン")) & 4),
+      // 済ませた（塗った）斜線の丸薬にも、塗りの上に斜線が見える
+      wentHatch: ["朝のルーティン", "朝のBaby"].map((t) => {
+        const w = grp(t).querySelector(".road-stop-went"), h = grp(t).querySelector(".road-stop-went-hatch");
+        return !!w.getAttribute("d") && h.getAttribute("d") === w.getAttribute("d") && getComputedStyle(h).display !== "none";
+      }),
       arc: p.arc, lab: lab && lab.textContent.trim(),
       dy: lab && Math.abs(parseFloat(lab.style.top) / 100 * st.g.H - p.y),
       ties: [...road.querySelectorAll(".road-ties line")].map((l) => Math.hypot(+l.getAttribute("x1") - p.x, +l.getAttribute("y1") - p.y)),
@@ -136,6 +141,8 @@ const DAY = "2026-10-01";
   c.check("同じ 7:30 に始まる二つ：短いほう（朝のルーティン、8:00 まで）が斜線、長いほうは塗り",
     O["朝のルーティン"].ga === O["朝のBaby"].ga && O["朝のルーティン"].isOver && !O["朝のBaby"].isOver, JSON.stringify(O));
   c.check("斜線のほうが上に描かれる", q.onTop, String(q.onTop));
+  c.check("済ませて塗ったあとも斜線が見える（塗りの上に白の斜線）、塗りのほうは無地",
+    q.wentHatch[0] && !q.wentHatch[1], JSON.stringify(q.wentHatch));
   c.check("まっすぐの上で重なる保育園には引き出し線", q.rtTie, JSON.stringify(q));
   c.check("まん中が角の済んだ札：角の内側の同じ高さ（一行ぶんまで）に置き、線は引かない",
     q.arc && q.lab === "杏へ電話" && q.dy <= 14 + 2 && !q.ties.some((d) => d < 16), JSON.stringify(q));
