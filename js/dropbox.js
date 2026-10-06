@@ -51,8 +51,29 @@
   let cfg = read();
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (err) { /* 次に送ったときにまた書く */ }
+    mirror();
     listeners.forEach((fn) => { try { fn(); } catch (err) { /* 見せる側の都合 */ } });
   }
+
+  /* 設定の写しを大きな保存場所（meta の "dropbox"）にも置きます。iPhone が
+     localStorage だけを落とした日に、ここも一緒に消えてつなぎ直しになったので
+     （2026年10月6日）。localStorage が空で写しがあれば、写しから戻します。 */
+  const MIRROR = "dropbox";
+  function mirror() {
+    if (!KN.idb || !KN.idb.available()) return;
+    const v = JSON.parse(JSON.stringify(cfg));
+    KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").put({ k: MIRROR, v }); })
+      .catch(() => { /* 次に書いたときにまた写す */ });
+  }
+  const recovered = (!KN.idb || !KN.idb.available()) ? Promise.resolve()
+    : KN.idb.run(["meta"], "readonly", (t) => {
+      const r = t.objectStore("meta").get(MIRROR);
+      return () => r.result;
+    }).then((got) => {
+      const v = got && got.v;
+      if (!Object.keys(cfg).length && v && typeof v === "object" && Object.keys(v).length) { cfg = v; save(); }
+      else if (Object.keys(cfg).length) mirror();   // 前からの設定も、まず一度写す
+    }).catch(() => { /* 写しが読めない日は、localStorage のまま */ });
   const listeners = new Set();
   function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
@@ -269,9 +290,22 @@
   }
 
   async function run() {
+    await recovered;
     if (!connected() || !cfg.appKey) return "off";
     clearTimeout(timer);
     timer = null;
+    /* 記録が見当たらない日（backup.js）は、空に近い中身で kurashi-latest.json を
+       上書きしてしまうので、戻すか「このまま始める」まで送りません。 */
+    if (KN.backup && KN.backup.lost) {
+      await KN.backup.checked();
+      if (KN.backup.lost()) {
+        dirty = true;
+        cfg.error = "記録が見当たらないので、上書きを見合わせています";
+        cfg.errorAt = new Date().toISOString();
+        save();
+        return "held";
+      }
+    }
     /* 日記の写しの突き合わせが済む前は、写しから戻るはずの本文がまだ記録に
        入っていないことがあります（「バックアップを保存」が断るのと同じ門）。 */
     if (KN.diaryIdb && KN.diaryIdb.ready) {
