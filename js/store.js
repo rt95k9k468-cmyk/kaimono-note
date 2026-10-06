@@ -2804,6 +2804,37 @@
     });
     return undo;
   }
+  /* ---------------- 崩れ方の事実（3.0 の D1。控え slips を読むだけ） ----------------
+
+     **並べるだけ**で、多い・少ない・原因は言わない。daily には出さない（daily は評価しない）。
+     時刻は控えの「前に置いていた時刻」、長さは用事の「決めていた長さ」（控えは長さを持たないので、いまの長さ）。 */
+  const PARTS = [["朝", 5 * 60, 11 * 60], ["昼", 11 * 60, 15 * 60], ["夕", 15 * 60, 18 * 60], ["夜", 18 * 60, 29 * 60]];
+  const LENS_D1 = [["15分まで", 0, 15], ["30分まで", 16, 30], ["1時間まで", 31, 60], ["1時間より長い", 61, 1e9]];
+  function slipFacts(days = 28) {
+    const from = KN.util.shiftDay(KN.util.todayKey(), -(days - 1));
+    const out = { todos: 0, slips: 0, parts: {}, lens: {} };
+    PARTS.forEach(([k]) => { out.parts[k] = 0; });
+    out.parts["時刻なし"] = 0;
+    LENS_D1.forEach(([k]) => { out.lens[k] = 0; });
+    out.lens["決めていない"] = 0;
+    get().todos.forEach((t) => {
+      if (t.trace) return;
+      const recent = (t.slips || []).filter((x) => x.on >= from);
+      if (!recent.length) return;
+      out.todos++;
+      out.slips += recent.length;
+      recent.forEach((x) => {
+        const m = KN.util.isTime(x.time) ? Number(x.time.slice(0, 2)) * 60 + Number(x.time.slice(3, 5)) : null;
+        const hit = m == null ? null : PARTS.find(([, a, b]) => (m >= a && m < b) || (m + 24 * 60 >= a && m + 24 * 60 < b));
+        out.parts[hit ? hit[0] : "時刻なし"]++;
+      });
+      const len = Number(t.minutes) > 0 ? Number(t.minutes) : 0;
+      const lh = len ? LENS_D1.find(([, a, b]) => len >= a && len <= b) : null;
+      out.lens[lh ? lh[0] : "決めていない"]++;
+    });
+    return out;
+  }
+
   /**
    * 組み直しを一度に書く（3.0 の B3）。moves は [{ id, to, day }]。to は
    * "tomorrow" | "day"（day の日へ）| "next"（これから）| "someday"（いつか）| "half"（今日は長さを半分）。
@@ -4749,7 +4780,7 @@
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold,
+    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,

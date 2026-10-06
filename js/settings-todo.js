@@ -118,6 +118,12 @@
       card(
         pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
       ),
+      /* 崩れ方の事実（3.0 の D1）。並べるだけ。 */
+      card(
+        navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの控え",
+                 value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
+                 onTap: () => go("slips") })
+      ),
       card(
         pickRow({ title: "見直す日", onTap: openReviewDays, value: (() => {
           const d = store.reviewDays();
@@ -278,5 +284,21 @@
     ];
   }
 
-  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows });
+  /* 置き直しの控え（3.0 の D1。docs/todo-timeline.md の「崩れ方の事実」）。この4週間の数を並べるだけ。
+     多い・少ない・原因は言わない。値の行は押せない（字だけ）。 */
+  function slipRows() {
+    const f = store.slipFacts(28);
+    const row = (title, value) => node(html`
+      <div class="set-row is-fact"><span class="set-title">${title}</span><span class="set-val">${value}</span></div>`);
+    if (!f.todos) return [card(row("この4週間に置き直したもの", "0件"))];
+    return [
+      card(row("この4週間に置き直したもの", `${f.todos}件（${f.slips}回）`)),
+      head("置いていた時刻"),
+      card(Object.entries(f.parts).map(([k, n]) => row(k, `${n}回`))),
+      head("決めていた長さ"),
+      card(Object.entries(f.lens).map(([k, n]) => row(k, `${n}件`))),
+    ];
+  }
+
+  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows, slipRows });
 })();

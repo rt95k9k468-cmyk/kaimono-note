@@ -143,6 +143,55 @@ const YEST = "2026-10-05";
   const kept = await page.evaluate(() => (KN.store.get().todos.find((x) => x.title === "確定申告の準備").slips || []).length);
   c.check("読み直しても控えが残る", kept === 3, String(kept));
 
+  /* ---------------- 崩れ方の事実（D1） ---------------- */
+  const f = await page.evaluate(() => {
+    const S = KN.store;
+    const z = S.addTodo({ title: "D1 の材料", minutes: 90 });
+    S.update((s) => { s.todos.find((t) => t.id === z.id).slips = [
+      { on: "2026-08-01", from: "2026-08-01", time: "07:00", how: "hand" },   // 4週間より前：数えない
+      { on: "2026-10-01", from: "2026-09-30", time: "07:30", how: "carry" },
+      { on: "2026-10-02", from: "2026-10-01", time: "21:00", how: "carry" },
+      { on: "2026-10-03", from: "2026-10-02", time: null, how: "hand" }]; });
+    const all = S.slipFacts(28);
+    const one = S.get().todos.find((t) => t.id === z.id);
+    return { all, z: z.id };
+  });
+  c.check("この4週間の控えだけ数える（朝・夜・時刻なし・1時間より長い）",
+    f.all.parts["朝"] >= 1 && f.all.parts["夜"] >= 1 && f.all.parts["時刻なし"] >= 1 && f.all.lens["1時間より長い"] === 1
+    && f.all.todos >= 4, JSON.stringify(f.all));
+  await page.evaluate(() => KN.app.showScreen("todo"));
+  await wait(300);
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
+  await wait(300);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "置き直しの控え" }).first().click();
+  await wait(600);
+  const facts = await page.locator(".set-layer:last-child").innerText();
+  c.check("設定の奥に「置き直しの控え」：件数・置いていた時刻・決めていた長さ",
+    /この4週間に置き直したもの/.test(facts) && /置いていた時刻/.test(facts) && /決めていた長さ/.test(facts) && /朝/.test(facts), facts.slice(0, 200));
+  c.check("並べるだけ（多い・少ない・原因・平均を言わない）", !/多い|少ない|原因|平均|傾向|改善|!|！/.test(facts), facts);
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await wait(500);
+  c.check("daily には出さない", await page.evaluate(() => !/置き直/.test(document.querySelector("#screen-archive").textContent)));
+  const rv = await page.evaluate((id) => {
+    const S = KN.store;
+    S.update((s) => { const t = s.todos.find((x) => x.id === id); delete t.review; t.createdAt = "2026-08-01"; t.editedAt = "2026-08-01"; });
+    return S.reviewDue().some((t) => t.id === id);
+  }, f.z);
+  await page.evaluate(() => KN.app.showScreen("todo"));
+  await wait(600);
+  if (rv) {
+    await page.locator("#screen-todo .tl-review").click();
+    await wait(600);
+  }
+  const head = await page.evaluate(() => {
+    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const row = s && [...s.querySelectorAll(".review-row")].find((r) => /D1 の材料/.test(r.textContent));
+    return row ? row.querySelector(".carry-was").textContent : null;
+  });
+  c.check("見直しの紙の頭：最初に置いた日・回数・前に置いていた時刻",
+    head === "8月1日から · 4回置き直し · 前は 21:00", String(head));
+
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();

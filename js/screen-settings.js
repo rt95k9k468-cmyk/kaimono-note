@@ -527,6 +527,7 @@
     data:   { title: "バックアップ",          build: () => S.dataRows() },
     notify:    { title: "通知",     build: () => S.notifyRows() },
     cal:       { title: "カレンダー", build: () => S.calRows() },
+    slips:     { title: "置き直しの控え", build: () => S.slipRows() },
     dailyView: { title: "表示",     build: () => S.dailyViewRows() },
     dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
     lock:      { title: "ロック",   build: () => S.lockRows() },
