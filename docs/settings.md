@@ -400,3 +400,9 @@ iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in
 - 新しい一枚を足すとき：中身は該当するファイルに書いて `Object.assign(S, …)` に名前を足し、
   `PAGES` に `build: () => S.名前()` を一行。新しいファイルを作るなら三か所に登録する
   （同じ順かは `tests/registry.js` が見る）。
+
+## AI とほどく は窓口を使わない（3.0 の C1・2026年10月6日）
+
+やることの「AIとほどく」（`js/unfold.js`）は、中継所の AI の窓口も API キーも使わない。文をコピーして ChatGPT／Claude を開くだけ。
+どちらを開くかは `settings.aiChat`（設定の画面には出さない。紙の札で選べば覚える）。くわしくは `docs/todo-items.md` の「AI とほどく」。
+
