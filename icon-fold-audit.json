@@ -173,7 +173,8 @@
      "label": "哺乳瓶",
      "sec": "ベビー・こども",
      "words": "哺乳瓶・ほにゅうびん・赤ちゃん",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（乳首と、目盛り。6px太らせた：core 0.261／既存の最小 0.163 oil）"
     },
     {
      "key": "pipeCleaner",
@@ -230,7 +231,8 @@
      "label": "水筒",
      "sec": "キッチン道具",
      "words": "水筒・すいとう・まほうびん",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（コップのふたと、肩ひも。2px太らせた：core 0.506／既存の最小 0.179 dragonFruit）"
     }
    ],
    "n": 19,
@@ -306,7 +308,8 @@
      "label": "玄関まっと",
      "sec": "家具・寝具",
      "words": "玄関まっと・どあまっと・足ふきまっと",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（縁と、点の毛足。2px細らせた：core 0.398／既存の最小 0.180 goods:ticket）"
     },
     {
      "key": "stole",
@@ -373,7 +376,8 @@
      "label": "筆箱",
      "sec": "文具・書類",
      "words": "筆箱・ふでばこ・ぺんけーす",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（ファスナーの筒。4px細らせた：core 0.477／既存の最小 0.177 hotdog）"
     },
     {
      "key": "lunchBox",
@@ -387,7 +391,8 @@
      "label": "製氷皿",
      "sec": "キッチン道具",
      "words": "製氷皿・せいひょうざら・製氷器",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（升の並んだ皿。2px太らせた：core 0.537／既存の最小 0.161 goods:cuttingBoard）"
     }
    ],
    "n": 8,
@@ -451,7 +456,8 @@
      "label": "抱っこ紐",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（肩ひもと、胴の袋。単純抽出：core 0.539／既存の最小 0.216 goods:mouse）"
     },
     {
      "key": "suitcase",
@@ -504,7 +510,8 @@
      "label": "ファンデーション",
      "sec": "衛生・美容",
      "words": "ふぁんでーしょん・ふぁんで・びーびーくりーむ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（開いたコンパクト（ふたの鏡と、皿）。12px太らせた：core 0.564／既存の最小 0.219 avocado）"
     },
     {
      "key": "hairWax",
@@ -603,21 +610,24 @@
      "label": "すぽんじ",
      "sec": "掃除・洗濯",
      "words": "すぽんじ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（二層の板と、白い穴。2px細らせた：core 0.462／既存の最小 0.164 croquette）"
     },
     {
      "key": "razor",
      "label": "かみそり",
      "sec": "掃除・洗濯",
      "words": "かみそり・剃刀・髭剃り",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（T字の頭と、柄。2px太らせた：core 0.377／既存の最小 0.155 wasabi）"
     },
     {
      "key": "cottonSwab",
      "label": "綿棒",
      "sec": "掃除・洗濯",
      "words": "綿棒・めんぼう",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（両端に綿のついた二本。6px太らせた：core 0.213／既存の最小 0.183 driedNoodle）"
     },
     {
      "key": "scrubBrush",
@@ -631,21 +641,24 @@
      "label": "爪切り",
      "sec": "衛生・美容",
      "words": "爪切り・つめきり・毛抜き",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（重なった二枚のてこ。6px細らせた：core 0.451／既存の最小 0.190 springOnion）"
     },
     {
      "key": "comb",
      "label": "くし",
      "sec": "衛生・美容",
      "words": "くし・櫛",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（歯の並び。2px細らせた：core 0.286／既存の最小 0.209 driedNoodle）"
     },
     {
      "key": "hairTie",
      "label": "へあごむ",
      "sec": "衛生・美容",
      "words": "へあごむ・髪ごむ・しゅしゅ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（波打つ輪（シュシュ）。単純抽出：core 0.569／既存の最小 0.161 goods:screw）"
     },
     {
      "key": "paintBrush",
@@ -667,7 +680,8 @@
      "label": "爪やすり",
      "sec": "衛生・美容",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（細い板。単純抽出：core 0.474／既存の最小 0.210 cucumber）"
     }
    ],
    "n": 10,
@@ -869,7 +883,8 @@
      "label": "おむつ",
      "sec": "掃除・洗濯",
      "words": "おむつ・生理用品・なぷきん",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（テープの耳と、ひだ。2px太らせた：core 0.512／既存の最小 0.246 goods:dog。型の名前は paperDiaper——diaper は絆創膏の絵の型）"
     },
     {
      "key": "plaster",
@@ -904,7 +919,8 @@
      "label": "ペットシーツ",
      "sec": "衣類",
      "words": "ぺっとしーつ・といれしーつ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（キルトの格子のシート。9px太らせた：core 0.613／既存の最小 0.177 goods:ticket）"
     },
     {
      "key": "handWarmerBox",
@@ -1190,7 +1206,8 @@
      "label": "花瓶",
      "sec": "家具・寝具",
      "words": "花瓶・かびん・べーす",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（首のすぼまった壺。単純抽出：core 0.686／既存の最小 0.104 amazake）"
     },
     {
      "key": "gardenTrowel",
@@ -1266,7 +1283,8 @@
      "label": "ごむ手袋",
      "sec": "掃除・洗濯",
      "words": "ごむ手袋・炊事手袋",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（指を開いた片手。単純抽出：core 0.508／既存の最小 0.160 goods:shaver）"
     },
     {
      "key": "gloves",
@@ -1348,7 +1366,8 @@
      "label": "レターパック",
      "sec": "文具・書類",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（窓と帯のある封筒。12px太らせた：core 0.492／既存の最小 0.244 goods:bus）"
     },
     {
      "key": "deskPad",
@@ -1369,7 +1388,8 @@
      "label": "折り紙",
      "sec": "文具・書類",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（折り鶴。4px太らせた：core 0.549／既存の最小 0.251 miso）"
     },
     {
      "key": "contract",
@@ -1775,7 +1795,8 @@
      "label": "ほちきす",
      "sec": "文具・書類",
      "words": "ほちきす・すてーぷらー",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（上あごと、台。単純抽出：core 0.467／既存の最小 0.170 slicedCheese）"
     },
     {
      "key": "paperClip",
@@ -1790,7 +1811,8 @@
      "label": "だぶるくりっぷ",
      "sec": "文具・書類",
      "words": "だぶるくりっぷ・ばいんだーくりっぷ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（黒い口と、二本の取っ手。4px太らせた：core 0.545／既存の最小 0.202 goods:nameStamp）"
     },
     {
      "key": "pushPin",
@@ -1804,21 +1826,24 @@
      "label": "輪ごむ",
      "sec": "文具・書類",
      "words": "輪ごむ・わごむ・ごむばんど",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（重なった輪。4px太らせた：core 0.288／既存の最小 0.158 goods:mask）"
     },
     {
      "key": "staples",
      "label": "ほちきす針",
      "sec": "文具・書類",
      "words": "ほちきす針・ほちきすの針・すてーぷらー針",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（連なったコの字。単純抽出：core 0.381／既存の最小 0.119 hotdog）"
     },
     {
      "key": "holePunch",
      "label": "ぱんち",
      "sec": "文具・書類",
      "words": "ぱんち・穴あけぱんち",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（押し板と、台。単純抽出：core 0.439／既存の最小 0.187 friedFood）"
     },
     {
      "key": "magnetPin",
@@ -1841,7 +1866,8 @@
      "label": "ふっく",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（S字。9px太らせた：core 0.471／既存の最小 0.233 lactic）"
     }
    ],
    "n": 10,
@@ -1864,23 +1890,25 @@
      "label": "割り箸",
      "sec": "掃除・洗濯",
      "words": "割り箸・わりばし",
-     "verdict": "split",
+     "verdict": "traced:2026-10-06",
      "pair": "chopstickPair",
-     "note": "段15の段0：`chopstickPair` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
+     "note": "traced:2026-10-06（並べた二本。2px太らせた：core 0.233／既存の最小 0.204 springOnion。chopstickPair と一枚を分け合う）"
     },
     {
      "key": "straw",
      "label": "ストロー",
      "sec": "掃除・洗濯",
      "words": "すとろー",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（曲がる口。12px太らせた：core 0.379／既存の最小 0.241 driedNoodle）"
     },
     {
      "key": "toothpick",
      "label": "つまようじ",
      "sec": "掃除・洗濯",
      "words": "つまようじ・爪楊枝・ようじ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（入れ物から出た数本。単純抽出：core 0.462／既存の最小 0.137 smoothie）"
     },
     {
      "key": "cutlery",
@@ -1929,9 +1957,9 @@
      "label": "箸",
      "sec": "キッチン道具",
      "words": "箸・お箸・はし",
-     "verdict": "split",
+     "verdict": "traced:2026-10-06",
      "pair": "chopsticks",
-     "note": "段15の段0：`chopsticks` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
+     "note": "traced:2026-10-06（並べた二本。2px太らせた：core 0.233／既存の最小 0.204 springOnion）"
     }
    ],
    "n": 10,
@@ -1982,7 +2010,8 @@
      "label": "ジェルボール",
      "sec": "掃除・洗濯",
      "words": "じぇるぼーる・洗剤ぼーる",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（ふくらんだ小袋と、中の仕切り。4px細らせた：core 0.492／既存の最小 0.187 seaUrchin）"
     },
     {
      "key": "refillPouch",
@@ -2112,7 +2141,8 @@
      "label": "下着",
      "sec": "衣類",
      "words": "下着・したぎ・ぱんつ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（パンツ。単純抽出：core 0.506／既存の最小 0.184 slicedCheese）"
     },
     {
      "key": "pyjamas",
@@ -2239,7 +2269,8 @@
      "label": "やかん",
      "sec": "キッチン道具",
      "words": "やかん",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（つると、注ぎ口。単純抽出：core 0.590／既存の最小 0.203 goods:airFreshener）"
     },
     {
      "key": "saucepan",
@@ -2267,7 +2298,8 @@
      "label": "鍋ぶた",
      "sec": "キッチン道具",
      "words": "鍋ぶた・なべぶた・鍋蓋",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（つまみのある円盤。12px太らせた：core 0.737／既存の最小 0.186 bread）"
     },
     {
      "key": "electricKettle",
@@ -2306,7 +2338,8 @@
      "label": "保育園",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（時計塔と、窓の並ぶ園舎。4px太らせた：core 0.544／既存の最小 0.232 gratin）"
     },
     {
      "key": "babyGate",
@@ -2321,7 +2354,8 @@
      "label": "ベビーバス",
      "sec": "ベビー・こども",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（楕円の浴槽。4px細らせた：core 0.380／既存の最小 0.189 omelette）"
     },
     {
      "key": "babyCrib",
@@ -2360,14 +2394,16 @@
      "label": "計量かっぷ",
      "sec": "キッチン道具",
      "words": "計量かっぷ・けいりょう",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（目盛りと、注ぎ口と、取っ手。12px太らせた：core 0.516／既存の最小 0.243 scallop）"
     },
     {
      "key": "tumbler",
      "label": "タンブラー",
      "sec": "キッチン道具",
      "words": "たんぶらー・すてんれすかっぷ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（口の広い筒。12px太らせた：core 0.733／既存の最小 0.164 lactic）"
     },
     {
      "key": "mug",
@@ -2515,21 +2551,24 @@
      "label": "分度器",
      "sec": "文具・書類",
      "words": "分度器・ぶんどき",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（目盛りと、半円の抜き。6px太らせた：core 0.482／既存の最小 0.198 fishCake）"
     },
     {
      "key": "compass",
      "label": "こんぱす",
      "sec": "文具・書類",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（二本脚と、頭のつまみ。9px太らせた：core 0.453／既存の最小 0.253 goods:humidifier）"
     },
     {
      "key": "setSquare",
      "label": "三角定規",
      "sec": "文具・書類",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（目盛りと、三角の抜き。2px太らせた：core 0.496／既存の最小 0.304 saladChicken）"
     },
     {
      "key": "tapeMeasure",
@@ -2667,14 +2706,16 @@
      "label": "すりっぱ",
      "sec": "衣類",
      "words": "すりっぱ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（甲を覆った一足。単純抽出：core 0.587／既存の最小 0.209 goods:rug）"
     },
     {
      "key": "sandals",
      "label": "さんだる",
      "sec": "衣類",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（帯の渡った一足。単純抽出：core 0.462／既存の最小 0.250 goods:riceCooker）"
     },
     {
      "key": "boots",
@@ -2712,7 +2753,8 @@
      "label": "ドアストッパー",
      "sec": "工具・DIY",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（くさび。2px細らせた：core 0.389／既存の最小 0.178 hotdog）"
     },
     {
      "key": "screwdriver",
@@ -2751,7 +2793,8 @@
      "label": "ふろす",
      "sec": "衛生・美容",
      "words": "ふろす・糸ようじ・でんたるふろす",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（糸を張った輪と、柄。12px太らせた：core 0.482／既存の最小 0.218 driedNoodle）"
     },
     {
      "key": "interdental",
@@ -3324,7 +3367,8 @@
      "label": "ピーラー",
      "sec": "キッチン道具",
      "words": "ぴーらー・皮むき",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（Y字の頭と、柄。4px太らせた：core 0.472／既存の最小 0.219 goods:shaver）"
     },
     {
      "key": "ladle",
@@ -3346,56 +3390,64 @@
      "label": "泡立て器",
      "sec": "キッチン道具",
      "words": "泡立て器・あわだて器・ほいっぱー",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（輪の束と、柄。単純抽出：core 0.177／既存の最小 0.170 springOnion）"
     },
     {
      "key": "tongs",
      "label": "とんぐ",
      "sec": "キッチン道具",
      "words": "とんぐ・菜箸とんぐ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（開いた二本の腕。4px太らせた：core 0.470／既存の最小 0.166 driedNoodle）"
     },
     {
      "key": "grater",
      "label": "おろし金",
      "sec": "キッチン道具",
      "words": "おろし金・おろしがね・すりおろし器",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（目の並んだ箱。2px細らせた：core 0.121／既存の最小 0.159 honey）"
     },
     {
      "key": "rollingPin",
      "label": "麺棒",
      "sec": "キッチン道具",
      "words": "麺棒・のし棒",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（両端に握りのある棒。6px細らせた：core 0.535／既存の最小 0.172 cucumber）"
     },
     {
      "key": "canOpener",
      "label": "缶切り",
      "sec": "キッチン道具",
      "words": "缶切り・かんきり",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（二本の柄と、刃の頭。2px太らせた：core 0.461／既存の最小 0.206 squid）"
     },
     {
      "key": "bottleOpener",
      "label": "栓抜き",
      "sec": "キッチン道具",
      "words": "栓抜き・せんぬき",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（穴のあいた柄と、口の爪。4px細らせた：core 0.254／既存の最小 0.178 wasabi）"
     },
     {
      "key": "corkscrew",
      "label": "ワインオープナー",
      "sec": "キッチン道具",
      "words": "わいんおーぷなー・こるく抜き・そむりえないふ",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（T字の柄と、らせん。6px太らせた：core 0.394／既存の最小 0.250 wasabi）"
     },
     {
      "key": "ricePaddle",
      "label": "しゃもじ",
      "sec": "キッチン道具",
      "words": "しゃもじ・杓文字",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（丸い頭と、柄。単純抽出：core 0.633／既存の最小 0.208 goods:microphone）"
     }
    ],
    "n": 11,
@@ -3438,7 +3490,8 @@
      "label": "しゃー芯",
      "sec": "文具・書類",
      "words": "しゃー芯・替え芯・かえしん",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（細い筒のケース。2px太らせた：core 0.537／既存の最小 0.125 wine）"
     },
     {
      "key": "marker",
@@ -3481,7 +3534,8 @@
      "label": "いんく",
      "sec": "文具・書類",
      "words": "いんく・ぷりんたーいんく・となー",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（箱と、口。単純抽出：core 0.612／既存の最小 0.179 friedFood）"
     }
    ],
    "n": 10,
@@ -4091,7 +4145,8 @@
      "label": "目薬",
      "sec": "薬・健康",
      "words": "目薬・めぐすり",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（小瓶と、ノズル。4px細らせた：core 0.216／既存の最小 0.167 wine）"
     },
     {
      "key": "supplement",
@@ -5354,9 +5409,9 @@
      "label": "枕",
      "sec": "家具・寝具",
      "words": "枕・まくら・まくらかばー",
-     "verdict": "split",
+     "verdict": "traced:2026-10-06",
      "pair": "cushion",
-     "note": "段15の段0：`cushion` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
+     "note": "traced:2026-10-06（四隅のふくらんだ枕（線画）。12px太らせた：core 0.224／既存の最小 0.253 goods:dog）"
     }
    ],
    "n": 4,
@@ -5378,14 +5433,16 @@
      "label": "ざる",
      "sec": "キッチン道具",
      "words": "ざる・水切り",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（網目の鉢。4px太らせた：core 0.585／既存の最小 0.168 matcha）"
     },
     {
      "key": "teacup",
      "label": "湯のみ",
      "sec": "キッチン道具",
      "words": "湯のみ・ゆのみ・湯呑",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（取っ手のない器と、口の縁。6px細らせた：core 0.627／既存の最小 0.171 strawberry）"
     },
     {
      "key": "riceBowl",
@@ -5488,7 +5545,8 @@
      "label": "ちりとり",
      "sec": "掃除・洗濯",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（受けと、柄。単純抽出：core 0.588／既存の最小 0.212 apple）"
     }
    ],
    "n": 4,
@@ -5510,7 +5568,8 @@
      "label": "クリーニング",
      "sec": "お店",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（カバーをかけたハンガーの服。2px細らせた：core 0.427／既存の最小 0.169 corn）"
     },
     {
      "key": "gasStation",
@@ -5600,7 +5659,8 @@
      "label": "切手",
      "sec": "文具・書類",
      "words": "切手・きって・収入印紙",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（ぎざぎざの縁。単純抽出：core 0.492／既存の最小 0.186 jelly）"
     },
     {
      "key": "nameStamp",
@@ -5614,7 +5674,8 @@
      "label": "朱肉",
      "sec": "文具・書類",
      "words": "朱肉・しゅにく・すたんぷ台",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（開いたふたと、丸い皿。2px太らせた：core 0.711／既存の最小 0.173 pickles）"
     },
     {
      "key": "rubberStamp",
@@ -5998,9 +6059,9 @@
      "label": "くっしょん",
      "sec": "家具・寝具",
      "words": "くっしょん・座布団・ざぶとん",
-     "verdict": "split",
+     "verdict": "traced:2026-10-06",
      "pair": "pillow",
-     "note": "段15の段0：`pillow` と実物として同じ形。新しい型は一つ立てて、二鍵で分け合う。"
+     "note": "traced:2026-10-06（四隅のふくらんだ枕（線画）。12px太らせた：core 0.224／既存の最小 0.253 goods:dog。pillow と一枚を分け合う）"
     }
    ],
    "n": 3,
@@ -6110,7 +6171,8 @@
      "label": "マスカラ",
      "sec": "衛生・美容",
      "words": "ますから・あいらいなー・あいしゃどう",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（ブラシと、キャップ。12px太らせた：core 0.474／既存の最小 0.214 aojiru）"
     }
    ],
    "n": 3,
@@ -6746,7 +6808,8 @@
      "label": "洗濯ばさみ",
      "sec": "掃除・洗濯",
      "words": "洗濯ばさみ・せんたくばさみ・ぴんち",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（噛み合う二枚と、ばね。2px太らせた：core 0.505／既存の最小 0.147 driedNoodle）"
     }
    ],
    "n": 2,
@@ -6888,7 +6951,8 @@
      "label": "サポーター",
      "sec": "薬・健康",
      "words": "",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（膝の筒。単純抽出：core 0.635／既存の最小 0.224 driedNoodle）"
     },
     {
      "key": "crutch",
@@ -6924,7 +6988,8 @@
      "label": "修正てーぷ",
      "sec": "文具・書類",
      "words": "修正てーぷ・しゅうせいてーぷ・修正液",
-     "verdict": "split"
+     "verdict": "traced:2026-10-06",
+     "note": "traced:2026-10-06（巻きの見える本体と、先。2px細らせた：core 0.344／既存の最小 0.178 wafer）"
     }
    ],
    "n": 2,
@@ -7859,6 +7924,15 @@
    "gh": "G＋H の15枚のうち12枚。春巻（シリアルバーと 0.138）・ホットドッグ（束内の焼きそばと 0.114）・ワカメスープ（ここあのカップと 0.089）は保留。",
    "lesson4": "**細らせて数字が通っても、絵が壊れていたら採らない（ワカメスープ・ホットドッグ）。** 2px細らせるとワカメスープは ここあ から 0.178 まで離れるが、スープの白がカップの外とつながって、縁の無い碗になる。ホットドッグもパンの縁が切れる。毎回、細らせた版を48pxで見てから決める。",
    "held": "保留の6枚（ヤクルト・らむね・ウエハース・春巻・ホットドッグ・ワカメスープ）は、利用者の判断で、なぞった絵のまま採った（同じ日）。畳む案・絵なしで待つ案も示したうえで。既存との距離 0.087〜0.138 は段15でいちばん近い——**この6枚のどれかや相手（甘酒・ワイン・焼きそば・シリアルバー・ここあ）を触るときは、まず並べて撮ること。**これで〈品目〉の食べものは全部絵を持った。"
+  },
+  "stage15_bundle16": {
+   "done": "2026-10-06",
+   "picks": "日用品の残り69鍵（67枚。箸と割り箸、枕とくっしょんは段0の対で一枚）を、利用者が三枚の表（台所・身の回り・文具）に並べてくれた参考画像からなぞる。これで split は0になり、段15は終わった。",
+   "ruler": "**12×12 への縮めかたで目盛りが1割ずれる。** 25px の canvas を drawImage（imageSmoothingQuality high）で 12px に縮めると いちご↔マンゴー 0.122・ドラゴンフルーツ↔洋梨 0.142・いちご↔ドラゴンフルーツ 0.127・パパイヤ↔いちじく 0.179 で束12・13と一致。面積平均を自分で書くと 0.110・0.125 に出る。core は ヤクルト 0.514・春巻 0.543 で一致。",
+   "lesson": "**細らせると、線の束は別のものになる（泡立て器）。** 輪が消えて柄だけの棒になり、距離は 0.17→0.26 と「離れた」ように見える。箸は逆に 6px 太らせると二本が一本のくさびになった。数字が上がった版は、毎回 48px で形を見てから採る。",
+   "lesson2": "**斜めの棒どうしは束の中で寄る（麺棒・爪やすり・箸・泡立て器・ストロー・くし、0.11〜0.14）。** 束15の菓子と同じで、参考画像の向きがそろっていると 12×12 では同じ斜めの帯になる。32px では握り・歯・輪で見分けられる。",
+   "gate": "core の門 0.45 を通ったのは 67枚中 47枚（中央値 0.482）。いちばん低いのは おろし金 0.121——目の穴が絵なので、太らせると穴が埋まって ただの箱になる。",
+   "near": "既存と 0.14 を割ったのは四枚——花瓶（甘酒 0.104）・ほちきす針（ホットドッグ 0.119）・しゃー芯（ワイン 0.125）・つまようじ（スムージー 0.137）。太らせ・細らせでは離れない（花瓶は塗りの壺そのもの）。束15の保留6枚と同じく、32px では実物の細部で見分けられるので、なぞった絵のまま入れて利用者に訊く。"
   }
  },
  "applied": {
