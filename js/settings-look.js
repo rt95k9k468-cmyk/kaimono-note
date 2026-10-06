@@ -20,6 +20,8 @@
   const errCount = () => (KN.errlog ? KN.errlog.list().length : 0);
   function errorRows() {
     const list = KN.errlog.list();
+    // 開いた記録（js/live-idb.js）。数と番号だけ。localStorage と一緒に消えない側。
+    const journal = KN.liveIdb ? KN.liveIdb.journalText() : "";
     const when = (iso) => {
       const d = new Date(iso);
       return isFinite(d) ? `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}` : "";
@@ -33,8 +35,8 @@
       list.length
         ? card(...rows)
         : foot("ありません。"),
-      list.length ? card(navRow({ ico: "copy", tint: TINT.data, title: "コピー",
-        onTap: () => copyText(KN.errlog.text(), "困ったときの記録") })) : null,
+      list.length || journal ? card(navRow({ ico: "copy", tint: TINT.data, title: "コピー",
+        onTap: () => copyText([KN.errlog.text(), journal].filter(Boolean).join("\n\n"), "困ったときの記録") })) : null,
       foot("新しい50件まで。日記の中身は残しません。"),
     ];
   }

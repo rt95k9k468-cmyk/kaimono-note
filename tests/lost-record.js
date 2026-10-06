@@ -1,7 +1,9 @@
 /* 記録が見当たらない日（2026年10月6日、docs/storage.md）。
 
    iPhone が localStorage だけを丸ごと落とした日の再現。大きな保存場所（控え・
-   Dropbox の設定の写し）は残っている。
+   Dropbox の設定の写し）は残っている。**記録の写し（meta "live"、js/live-idb.js）
+   も一緒に消す**——写しがあれば黙って戻る（tests/live-idb.js）ので、ここは写しの
+   無い日の退路（控えから戻すかを訊く）を見る。
    - 初めて開いた日（控えなし）は訊かない・印なし。
    - localStorage を消して開くと「記録が見当たりません」と訊く。印が立ち、
      時刻で取る控え（離れる前）は増えず、Dropbox は "held"（上書きしない）。
@@ -38,10 +40,21 @@ const { open, checker, URL } = require("./lib");
   };
   const dialog = () => page.locator(".sheet-title, [class*=title]").filter({ hasText: "記録が見当たりません" });
   const press = (name) => page.getByRole("button", { name, exact: true }).last().click();
-  /* 消す：アプリから離れて（離れる拍の書き出しを済ませて）から、同じ出どころの別の頁で消す。 */
+  /* 消す：アプリから離れて（離れる拍の書き出しを済ませて）から、同じ出どころの別の頁で消す。
+     記録の写しも消す（写しの無い日の退路を見るため）。 */
   const wipe = async () => {
     await page.goto(URL + "manifest.webmanifest");
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => new Promise((done) => {
+      localStorage.clear();
+      const r = indexedDB.open("kaimono-note");
+      r.onsuccess = () => {
+        const db = r.result;
+        const t = db.transaction("meta", "readwrite");
+        t.objectStore("meta").delete("live");
+        t.oncomplete = t.onerror = t.onabort = () => { db.close(); done(); };
+      };
+      r.onerror = () => done();
+    }));
     await page.goto(URL);
     await ready();
   };

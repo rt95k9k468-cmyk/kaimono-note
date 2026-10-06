@@ -118,7 +118,11 @@
      食い違いを直す前に、置き換わる側の本文を残したもの。これも戻せない
      書き換えの直前なので、同じく間引きません。 */
   /* 「日記を外す前」は、日記の本文を元（localStorage）から外す直前（段2の2b）。 */
-  const PINNED = new Set(["削除前", "復元前", "サンプル読込前", "日記の突き合わせ前", "日記を外す前"]);
+  /* 「写しから戻す前」「写しを置き換える前」「大きく減る前」は、記録の写し
+     （js/live-idb.js）と store の writeLive が、置き換わる側・減る前の中身を
+     残したもの（docs/storage.md の「記録の写し」）。 */
+  const PINNED = new Set(["削除前", "復元前", "サンプル読込前", "日記の突き合わせ前", "日記を外す前",
+    "写しから戻す前", "写しを置き換える前", "大きく減る前"]);
   const pinned = (s) => !!s && PINNED.has(s.reason);
 
   /* 本文の入った最後の控え（docs/storage.md の案B の6）。日記の本文を元から
@@ -742,7 +746,11 @@
      （トースト・通知・赤は使わない）。いちばん痛いのは「控えがあると思って
      いたのに、無かった」なので。 */
   function init() {
-    checking = ensure().then(checkLost);
+    /* 記録の写し（js/live-idb.js）が元を戻したなら、記録は「有る」——比べ終わって
+       から見ます。写しが無い・使えない日だけ、ここで訊くことになります。 */
+    checking = ensure()
+      .then(() => (KN.liveIdb ? KN.liveIdb.ready() : null))
+      .then(checkLost);
     checking.then(() => (lost ? ask() : null));
     checking.then(() => maybeHourly());
 

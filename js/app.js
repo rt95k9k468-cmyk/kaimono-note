@@ -1366,6 +1366,9 @@
     trackKeyboard();
     watchAppBadge();
     KN.pullRefresh.init();
+    /* 記録の写し（js/live-idb.js）を、何よりも先に。元（localStorage）が消えて
+       いたら、ここで写しから戻ります。日記の写しはこれが済んでから比べます。 */
+    if (KN.liveIdb) KN.liveIdb.start();
     /* 日記の写しの突き合わせ（js/diary-idb.js）を先に。控えはそれが済むのを
        待ってから取ります（済む前の控えは、写しから戻る本文を取りこぼしうる）。 */
     if (KN.diaryIdb) {

@@ -52,6 +52,7 @@ const JS = [
   "js/idb.js",
   "js/drinks.js",
   "js/store.js",
+  "js/live-idb.js",
   "js/diary-idb.js",
   "js/note-format.js",
   "js/notes-idb.js",

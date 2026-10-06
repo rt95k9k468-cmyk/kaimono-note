@@ -627,8 +627,21 @@
   let lsSeq = 0;
   let loadInfo = { seq: 0, hadData: false };
 
+  /* 一度の保存で大きく減ったら、減る前の元を控えへ（writeLive の「大きく減る前」）。
+     減った数が SHRINK_MIN 以上、かつ残りが前の SHRINK_KEEP 未満のとき。
+     `bulk` は、利用者が選んだ置き換え（すべて削除・復元・サンプル・写しから戻す）の
+     印——それぞれ自分の控えを取っているので、ここでは取らない。
+     `lastTotal` は最後に書いた（読んだ）記録の数。`wroteLive` は元へ一度でも
+     書けたか（「使っているうちに元が消えた」を見分けるため）。 */
+  const SHRINK_MIN = 10;
+  const SHRINK_KEEP = 0.7;
+  let bulk = false;
+  let lastTotal = null;
+  let wroteLive = false;
+
   let migratedOnLoad = false;
   let state = load();
+  try { lastTotal = totalOf(state); } catch (_) { lastTotal = null; }
   const listeners = new Set();
   // update()/reload() のたびに上がる版数。ダイエットの日付索引（下の
   // dietIndex_）を、state が本当に動いたときだけ作り直すために使います。
@@ -659,6 +672,11 @@
   function load() {
     let rawV2 = null;
     try { rawV2 = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+    return loadFrom(rawV2);
+  }
+
+  /* 元の文字列から state を作ります（load と、写しから戻す adoptRaw）。 */
+  function loadFrom(rawV2) {
     lsSeq = 0;
     loadInfo = { seq: 0, hadData: !!rawV2 };
     if (rawV2) {
@@ -1167,6 +1185,7 @@
     if (loadError) return;
     const seq = lsSeq + 1;
     const json = JSON.stringify(Object.assign({}, liveShape(), { lsSeq: seq }));
+    watchBefore();
     try {
       try {
         localStorage.setItem(KEY, json);
@@ -1175,11 +1194,86 @@
         if (!makeRoom || !makeRoom(() => localStorage.setItem(KEY, json))) throw err;
       }
       lsSeq = seq;
+      wroteLive = true;
     } finally {
       /* 日記の写しへ（js/diary-idb.js）。**元が書けなかったときも**写しには
          書きます——容量で落ちているあいだに書いた日記を、写しの側に残すため。 */
       if (KN.diaryIdb) KN.diaryIdb.afterWrite(seq, lsSeq === seq);
+      /* 記録の写しへ（js/live-idb.js）。同じ理由で、書けなかったときも。 */
+      if (KN.liveIdb) KN.liveIdb.afterWrite(json, seq);
     }
+  }
+
+  /* 元を書き換える直前に、いまの元を見ます（docs/storage.md の「記録の写し」）。
+     - 使っているうちに元が消えていた（読めた・書けたのに元が無い）→ 開いた記録へ。
+       記憶の中の記録はそのままなので、この保存で元は戻ります。
+     - ほかの画面が先に書いていた（元の番号のほうが大きい）→ 開いた記録へ。
+     - この保存で記録が一度に大きく減る → 減る前の元を控えへ（「大きく減る前」）。
+       利用者の選んだ置き換え（bulk）は、それぞれ自分の控えを取っているので除く。
+     ここで何が起きても、保存は止めない。 */
+  function watchBefore() {
+    try {
+      let prev = null;
+      try { prev = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+      if (prev === null && (loadInfo.hadData || wroteLive)) {
+        if (KN.liveIdb) KN.liveIdb.note({ kind: "vanished", seq: lsSeq });
+      } else if (prev) {
+        const m = /"lsSeq":(\d+)\}$/.exec(prev.slice(-40));
+        const disk = m ? Number(m[1]) : 0;
+        if (disk > lsSeq && KN.liveIdb) KN.liveIdb.note({ kind: "other", seq: lsSeq, disk });
+      }
+      const total = totalOf(state);
+      if (!bulk && lastTotal != null && prev && shrinks(lastTotal, total) && KN.backup) {
+        const was = JSON.parse(prev);
+        delete was.lsSeq;
+        KN.backup.take("大きく減る前", { state: was, now: true }).catch(() => {});
+        if (KN.liveIdb) KN.liveIdb.note({ kind: "shrink", seq: lsSeq, from: lastTotal, to: total });
+      }
+      lastTotal = total;
+    } catch (err) {
+      console.warn("watch before write", err);
+    } finally {
+      bulk = false;
+    }
+  }
+
+  /* 記録の数（countsOf の合計）。 */
+  function totalOf(s) {
+    const c = countsOf(s);
+    return c.products + c.stores + c.items + c.todos + c.days + c.entries + c.diet;
+  }
+  const isBlank = (s) => totalOf(s) === 0;
+  function shrinks(before, after) {
+    return before - after >= SHRINK_MIN && after < before * SHRINK_KEEP;
+  }
+
+  /** 元にいまある文字列（無ければ null）。 */
+  function rawLive() {
+    try { return localStorage.getItem(KEY); } catch (_) { return null; }
+  }
+
+  /**
+   * 記録の写し（js/live-idb.js）の文字列を元へ戻して、記憶の中の記録もそれに
+   * します。開いたときに元が無かった・元が写しより古かったときだけ呼ばれます。
+   * 読めない文字列なら何もせず false。元に書けなくても（容量）記憶はそれにして、
+   * 保存の失敗として知らせます。
+   */
+  function adoptRaw(raw) {
+    try {
+      const p = JSON.parse(raw);
+      if (!p || typeof p !== "object" || Array.isArray(p)) return false;
+    } catch (_) { return false; }
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    let wrote = true;
+    try { localStorage.setItem(KEY, raw); } catch (_) { wrote = false; }
+    state = loadFrom(raw);
+    try { lastTotal = totalOf(state); } catch (_) { lastTotal = null; }
+    version++;
+    if (!wrote) { bulk = true; persist(); }
+    if (KN.diaryIdb) KN.diaryIdb.reloaded();
+    emit();
+    return true;
   }
 
   /* 元（localStorage）へ書く形。日記の本文を元から外したあと（段2の2b）は、
@@ -1272,7 +1366,15 @@
      first, so a refresh can never discard an edit that had not landed yet. */
   function reload() {
     flushPending();
+    /* 読み直そうとしたら元が無い（使っているうちに消えた）。空を読み込まず、
+       記憶の中の記録を書き戻します。 */
+    if ((loadInfo.hadData || wroteLive) && rawLive() === null && !isBlank(state)) {
+      if (KN.liveIdb) KN.liveIdb.note({ kind: "vanished", seq: lsSeq, on: "reload" });
+      persist();
+      return;
+    }
     state = load();
+    try { lastTotal = totalOf(state); } catch (_) { lastTotal = null; }
     version++;
     if (KN.diaryIdb) KN.diaryIdb.reloaded();
     emit();
@@ -4206,6 +4308,7 @@
   }
 
   function applyBackup(next) {
+    bulk = true;
     update((s) => {
       fillMemoOut(next, s);
       /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
@@ -4220,6 +4323,7 @@
   }
 
   function reset() {
+    bulk = true;
     update((s) => {
       const fresh = emptyState();
       Object.keys(s).forEach((k) => delete s[k]);
@@ -4277,6 +4381,7 @@
     T("電球を買いに行く", KN.util.shiftDay(KN.util.todayKey(), -1), null);
     T("写真を整理する", null, null);
 
+    bulk = true;
     update((s) => {
       Object.keys(s).forEach((k) => delete s[k]);
       Object.assign(s, fresh);
@@ -4294,6 +4399,8 @@
        にも、次の番号が写しの番号の続きになるように——でないと、元の番号が
        1 から振り直され、次に元が読めた日に古い元が「新しい」と見なされます。 */
     seqAtLeast: (n) => { if (Number(n) > lsSeq) lsSeq = Number(n); },
+    // 記録の写し（js/live-idb.js）が使います。
+    rawLive, adoptRaw, totalOf, isBlank, shrinks,
     get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
     // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
     liveChars: () => JSON.stringify(liveShape()).length,
