@@ -7,7 +7,7 @@
    - 別の用事としてこれからへ
    - ほかの AI にも相談する：同じ文に「ここまでの結果」を足してコピー
    - すすめの札は当てはまる用事だけ（置き直し3回以上・60分以上で手順なし・これからで21日）。×で二度と出さない
-   - 見直す・置き直しの紙の「小さくする」から開く
+   - 見直しの紙の「小さく分ける」・置き直しの紙の「小さくする」から開く
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/ai-unfold.js */
 const { open, checker } = require("./lib");
@@ -191,7 +191,7 @@ const BROKEN = [
   await page.keyboard.press("Escape");
   await wait(500);
 
-  /* 見直しの紙の「小さくする」から */
+  /* 見直しの紙の「小さく分ける」から */
   await page.click('.tab[data-tab="archive"]');
   await wait(300);
   await page.click('.tab[data-tab="todo"]');
@@ -200,14 +200,34 @@ const BROKEN = [
   if (hasReview) {
     await page.locator("#screen-todo .tl-review").click();
     await wait(600);
-    await page.locator(".sheet.is-open .carry-acts button", { hasText: "小さくする" }).first().click();
+    await page.locator(".sheet.is-open .rv-go", { hasText: "小さく分ける" }).first().click();
+    await page.waitForTimeout(300);
+    await page.locator(".sheet.is-open .rv-chips .chip", { hasText: "AIと分ける" }).first().click();
     await wait(700);
   }
   const title = await page.evaluate(() => {
     const s = [...document.querySelectorAll(".sheet.is-open")].pop();
     return s ? s.querySelector(".sheet-title").textContent.trim() : null;
   });
-  c.check("見直しの紙の「小さくする」で AIとほどく が開く", hasReview && title === "AIとほどく", JSON.stringify([hasReview, title]));
+  c.check("見直しの紙の「小さく分ける」→「AIと分ける」で AIとほどく が開く", hasReview && title === "AIとほどく", JSON.stringify([hasReview, title]));
+
+  /* 「自分で分ける」：詳細の紙が、手順を一つ足した形で開く */
+  await page.keyboard.press("Escape");
+  await wait(600);
+  let hand = null;
+  if (await page.evaluate(() => !!document.querySelector("#screen-todo .tl-review"))) {
+    await page.locator("#screen-todo .tl-review").click();
+    await wait(600);
+    await page.locator(".sheet.is-open .rv-go", { hasText: "小さく分ける" }).first().click();
+    await wait(300);
+    await page.locator(".sheet.is-open .rv-chips .chip", { hasText: "自分で分ける" }).first().click();
+    await wait(900);
+    hand = await page.evaluate(() => {
+      const s = [...document.querySelectorAll(".sheet.is-open")].pop();
+      return s ? { title: s.querySelector(".sheet-title").textContent.trim(), subs: s.querySelectorAll(".sub-line").length } : null;
+    });
+  }
+  c.check("「自分で分ける」で詳細の紙が手順を一つ足して開く", !!hand && hand.title === "やることを直す" && hand.subs >= 1, JSON.stringify(hand));
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
