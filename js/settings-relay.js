@@ -166,9 +166,9 @@
         <div class="diet-relaykey">
           <code class="js-path">${relayPath || "（まだ作っていません）"}</code>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button type="button" class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
-          <button type="button" class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
+        <div class="btn-row mt-2">
+          <button type="button" class="btn btn-soft js-newpath grow">道をつくる</button>
+          <button type="button" class="btn btn-soft js-copypath grow">道をコピー</button>
         </div>
       </div>
     `);
@@ -187,7 +187,7 @@
       <div class="set-card is-pad">
         <a class="btn btn-primary btn-block js-deploy"
            href="${DEPLOY_URL}" target="_blank" rel="noopener">Cloudflareに置く</a>
-        <ol class="diet-steps" style="margin-top:12px">
+        <ol class="diet-steps mt-3">
           <li>Cloudflareに登録（カード不要）</li>
           <li>GitHubとつなぐ画面が出たら許可する</li>
           <li><b>RELAY_PATH</b> を聞かれたら、①でコピーした道を<b>ペースト</b></li>
@@ -203,7 +203,7 @@
           <input class="input js-base" inputmode="url" autocapitalize="off" spellcheck="false"
                  placeholder="https://kurashi-relay.あなた.workers.dev">
         </label>
-        <button type="button" class="btn btn-primary btn-block js-join" style="margin-top:12px">
+        <button type="button" class="btn btn-primary btn-block js-join mt-3">
           道をつなげて保存
         </button>
       </div>
@@ -276,19 +276,19 @@
         <p class="set-foot is-flush" style="margin-top:var(--sp-3)"><b>建て方</b></p>
         <div class="set-card is-pad" style="margin:0 0 var(--sp-3)">
           <p class="set-foot is-flush">① 道（合言葉）をつくる</p>
-          <div class="diet-relaykey" style="margin-top:8px">
+          <div class="diet-relaykey mt-2">
             <code class="js-path">${aiPath || "（まだ作っていません）"}</code>
           </div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button type="button" class="btn btn-soft js-newpath" style="flex:1">道をつくる</button>
-            <button type="button" class="btn btn-soft js-copypath" style="flex:1">道をコピー</button>
+          <div class="btn-row mt-2">
+            <button type="button" class="btn btn-soft js-newpath grow">道をつくる</button>
+            <button type="button" class="btn btn-soft js-copypath grow">道をコピー</button>
           </div>
         </div>
         <div class="set-card is-pad" style="margin:0 0 var(--sp-3)">
           <p class="set-foot is-flush">② 窓口を置く</p>
-          <a class="btn btn-primary btn-block" style="margin-top:8px"
+          <a class="btn btn-primary btn-block mt-2"
              href="${AI_DEPLOY_URL}" target="_blank" rel="noopener">Cloudflareに置く</a>
-          <ol class="diet-steps" style="margin-top:12px">
+          <ol class="diet-steps mt-3">
             <li>Cloudflareに登録して、GitHubとつなぐ画面が出たら許可する</li>
             <li><b>AI_PATH</b> を聞かれたら、①でコピーした道を<b>ペースト</b></li>
             <li><b>ANTHROPIC_API_KEY</b> には、Anthropic の Console（console.anthropic.com）の API Keys で作った鍵を<b>ペースト</b></li>
@@ -300,9 +300,9 @@
       </div>
     `);
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-clear" style="flex:1">外す</button>
-        <button class="btn btn-primary js-save" style="flex:1">保存</button>
+      <div class="btn-row">
+        <button class="btn btn-soft js-clear grow">外す</button>
+        <button class="btn btn-primary js-save grow">保存</button>
       </div>
     `);
     const h = KN.ui.sheet({ title: "AIの窓口", content: body, footer: foot });

@@ -34,8 +34,7 @@
             ${icon("search")}
             <input class="search-input js-search" placeholder="リストの中を探す" aria-label="リストの中を探す"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
-                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+            <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
 
@@ -584,7 +583,7 @@
       // question entirely.
       els.body.append(query
         ? node(html`
-            <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
+            <p class="empty is-quiet">
               見つかりませんでした
             </p>`)
         : emptyState());
@@ -1140,7 +1139,7 @@
         <div class="empty-art">${KN.util.raw(KN.emptyArt.basket)}</div>
         <h2 class="empty-title">買うものを追加しましょう</h2>
         <p class="empty-text">下の欄に商品名を入れるだけ。</p>
-        <button class="btn btn-soft js-sample" style="margin-top:8px">サンプルを入れて試す</button>
+        <button class="btn btn-soft js-sample mt-2">サンプルを入れて試す</button>
       </div>
     `);
     wrap.querySelector(".js-sample").addEventListener("click", async () => {

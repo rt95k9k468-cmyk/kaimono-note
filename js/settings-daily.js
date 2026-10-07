@@ -333,9 +333,9 @@
     paint();
 
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-md" style="flex:1">${icon("download")}Markdown</button>
-        <button class="btn btn-primary js-print" style="flex:1">${icon("book")}印刷・PDF</button>
+      <div class="btn-row">
+        <button class="btn btn-soft js-md grow">${icon("download")}Markdown</button>
+        <button class="btn btn-primary js-print grow">${icon("book")}印刷・PDF</button>
       </div>
     `);
     KN.ui.sheet({ title: "年の本", content: body, footer: foot });

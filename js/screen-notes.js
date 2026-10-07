@@ -62,8 +62,7 @@
             ${icon("search")}
             <input class="search-input js-search" placeholder="ノートをさがす" aria-label="ノートをさがす"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
-                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+            <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
         <div class="notes-ground js-body"></div>

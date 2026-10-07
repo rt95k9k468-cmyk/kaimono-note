@@ -333,7 +333,7 @@
         <h2 class="set-head is-flush">ことばを確かめる</h2>
         <div class="set-card is-pad">
           <div style="display:flex;gap:8px">
-            <input class="input js-rep-text" placeholder="例：一本満足バー" style="flex:1"
+            <input class="input js-rep-text grow" placeholder="例：一本満足バー"
                    autocomplete="off" autocapitalize="off" spellcheck="false">
             <button type="button" class="btn btn-soft js-rep-add">報告する</button>
           </div>

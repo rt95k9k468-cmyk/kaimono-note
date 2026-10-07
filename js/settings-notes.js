@@ -269,9 +269,9 @@
     paintScope();
 
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-one" style="flex:1">${icon("book")}1つにまとめる</button>
-        <button class="btn btn-primary js-zip" style="flex:1">${icon("download")}1件ずつ（zip）</button>
+      <div class="btn-row">
+        <button class="btn btn-soft js-one grow">${icon("book")}1つにまとめる</button>
+        <button class="btn btn-primary js-zip grow">${icon("download")}1件ずつ（zip）</button>
       </div>
     `);
     KN.ui.sheet({ title: "ノートを書き出す", content: body, footer: foot });

@@ -68,9 +68,9 @@
       </div>
     `);
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-file" style="flex:1">${icon("download")}ファイルに保存</button>
-        <button class="btn btn-primary js-copy" style="flex:1">${icon("copy")}コピー</button>
+      <div class="btn-row">
+        <button class="btn btn-soft js-file grow">${icon("download")}ファイルに保存</button>
+        <button class="btn btn-primary js-copy grow">${icon("copy")}コピー</button>
       </div>
     `);
     const h = KN.ui.sheet({ title: "記録を書き出す", content: body, footer: foot });
@@ -245,9 +245,9 @@
       </div>
     `);
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-file" style="flex:1">${icon("download")}ファイルに保存</button>
-        <button class="btn btn-primary js-copy" style="flex:1">${icon("copy")}コピー</button>
+      <div class="btn-row">
+        <button class="btn btn-soft js-file grow">${icon("download")}ファイルに保存</button>
+        <button class="btn btn-primary js-copy grow">${icon("copy")}コピー</button>
       </div>
     `);
     const h = KN.ui.sheet({ title: "AIに分析してもらう", content: body, footer: foot });
