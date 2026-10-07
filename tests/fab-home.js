@@ -3,6 +3,7 @@
    - ダイエット：＋の上に立ち上がる札から開いた紙も、閉じると札のあった所ではなく＋へ向かう
    - 閉じ終えたら紙は片づく・＋は残る
    - V26：帰りは --m-sheet-close より長く（一瞬で閉じない）、＋の大きさ近くまで縮む
+   - U17：打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ縮んで帰る
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fab-home.js */
 const { open, checker } = require("./lib");
 
@@ -60,6 +61,31 @@ const { open, checker } = require("./lib");
   judge("やること", await rec, fab, w0);
   await page.waitForTimeout(400);
   t.check("やること：紙は片づく", await page.evaluate(() => !document.querySelector(".sheet")));
+
+  /* ---- 打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ帰る（U17） ---- */
+  await page.mouse.click(fab.x, fab.y);
+  await page.waitForTimeout(900);
+  /* 欄に焦点があれば打っている（app.js の fit）。 */
+  await page.evaluate(() => {
+    document.querySelector(".sheet.is-open input:not([type=hidden]), .sheet.is-open textarea").focus();
+    visualViewport.dispatchEvent(new Event("resize"));
+  });
+  await page.waitForTimeout(500);
+  t.check("打っているあいだ：kb-open", await page.evaluate(() =>
+    document.documentElement.classList.contains("kb-open")));
+  t.check("打っているあいだ：＋は引っ込む", await page.evaluate(() =>
+    getComputedStyle(document.querySelector("#dock")).opacity === "0"));
+  const w2 = await page.evaluate(() => document.querySelector(".sheet.is-open").getBoundingClientRect().width);
+  const rec3 = recordClose();
+  await page.keyboard.press("Escape");
+  const r3 = await rec3;
+  judge("打っているあいだ", r3, fab, w2);
+  /* 引っ込んだ＋の箱へ向かうと、真ん中が画面の下の外（iPhone ではキーボードの裏）へ消える。 */
+  const end3 = r3[r3.length - 1];
+  t.check("打っているあいだ：画面の下の外へ縮まない", !!end3 && end3.y <= fab.y + 12,
+    JSON.stringify({ end3, fab }));
+  await page.waitForTimeout(500);
+  t.check("打っているあいだ：紙は片づく", await page.evaluate(() => !document.querySelector(".sheet")));
 
   /* ---- ダイエット：＋の札から ---- */
   await page.evaluate(() => KN.app.showScreen("diet"));

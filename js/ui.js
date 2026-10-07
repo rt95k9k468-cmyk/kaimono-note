@@ -80,28 +80,45 @@
     el.classList.add("is-from-origin");
     void getComputedStyle(el).transform;
     el.style.transition = "";
-    return { x: pressed.x, y: pressed.y, fab: pressed.fab };
+    return { x: pressed.x, y: pressed.y, fab: pressed.fab, home: pressed.fab ? fabAt() : null };
   }
 
   /* ---- ＋から出た紙は、＋へ縮んで帰る（docs/roadmap-2.0.md の V16） ----
 
      ＋の上に立ち上がる札から開いた紙は、閉じるころには札がもう無いので、
      押した点（札のあった所）へ帰ると何も無い所へ消えていきます。帰り先を、
-     閉じる瞬間の＋の真ん中に置き直します。＋が見えなければ（キーボードの
-     下など）押した点のまま。返すのは＋（着いたときに受け止めさせる）。 */
-  function aimHome(el) {
+     閉じる瞬間の＋の真ん中に置き直します。返すのは＋（着いたときに受け止めさせる）。
+
+     打っているあいだは＋が下へ引っ込んでいて（base.css の `.has-fab.kb-open .dock`）、
+     閉じる瞬間には測れません。保存で閉じるのはたいていこのときで、帰り先が無いと
+     縮まずに速い閉じ方へ落ち、「ぱっと消える」に見えていました（U17、10月7日）。
+     そこで開いたときの＋の真ん中を覚えておき、見えなければそこへ帰します
+     ——キーボードが下りれば＋はそこへ戻ってきます。iOS はキーボードのぶん
+     innerHeight ごと縮めるので（app.js の fit）、縦は**下の端から**の距離で覚えます。
+     紙も下の端に付いているので、キーボードが下りても両方が同じだけずれます。 */
+  function fabAt() {
+    /* 引っ込んだ＋は透けたまま上の端だけ画面に残るので、箱では見分けられない
+       （真ん中は画面の下の外＝キーボードの裏へ縮んでいた）。 */
+    if (document.documentElement.classList.contains("kb-open")) return null;
     const fab = document.querySelector("#dock .add-fab");
     const f = fab && fab.getBoundingClientRect();
-    if (!f || !f.width || f.top >= window.innerHeight || f.bottom <= 0) return null;
+    const y = f && f.top + f.height / 2;
+    if (!f || !f.width || y >= window.innerHeight || y <= 0) return null;
+    return { fab, x: f.left + f.width / 2, up: window.innerHeight - y };
+  }
+  function aimHome(el, seen) {
+    const at = fabAt() || (seen && seen.fab.isConnected ? seen : null);
+    if (!at) return null;
+    const ay = window.innerHeight - at.up;
     const r = el.getBoundingClientRect();
     /* いまの姿は translate(-50%, 0)（開いた姿）。ずれていればそのぶんを引いて、
        --sx/--sy が測る相手（開いた箱の真ん中）を出します。 */
     const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
     const cx = r.left + r.width / 2 - (m.e + el.offsetWidth / 2);
     const cy = r.top + r.height / 2 - m.f;
-    el.style.setProperty("--sx", `${(f.left + f.width / 2 - cx).toFixed(1)}px`);
-    el.style.setProperty("--sy", `${(f.top + f.height / 2 - cy).toFixed(1)}px`);
-    return fab;
+    el.style.setProperty("--sx", `${(at.x - cx).toFixed(1)}px`);
+    el.style.setProperty("--sy", `${(ay - cy).toFixed(1)}px`);
+    return at.fab;
   }
 
   /* ---- 押した行の丸薬が、紙の頭の丸薬へ伸びていく（C2） ----
@@ -728,7 +745,7 @@
       }
       /* カードへ縮む紙（ノート）は、＋ではなくカードへ帰る。 */
       const home = seed && seed.fab && !shrinks && !still() && el.classList.contains("is-from-origin")
-        ? aimHome(el) : null;
+        ? aimHome(el, seed.home) : null;
       if (home) el.classList.add("is-homing");
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
