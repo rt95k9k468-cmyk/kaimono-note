@@ -1097,19 +1097,19 @@ a { color: var(--c-primary); }
    写真の真ん中（地平・山・日）、月に開くとほぼ全部。写真の上には幕を重ね、混ぜ方で字の濃さを守ります
    ——**写真がどんな画素でも**：
    - 明るい面は screen。どの画素も幕より暗くならない。幕は時間帯の色（--sky-v1/v2）で、題の段は
-     輝度 0.41（25% 濃くした主色・ボタンの絵に 3:1）、暦の段は 0.475（45% 濃くした字に 4.5:1）
-   - 暗い面は multiply。どの画素も幕より明るくならない。題の段の #5e5e5e は 25% 明るくした主色・ボタンの絵に
-     3:1、暦の段の #4b4b4d は 45% 明るくした字に 4.5:1
+     輝度 0.30（40% 濃くした主色・ボタンの絵に 3:1）、暦の段は 0.425（50% 濃くした字に 4.5:1）
+   - 暗い面は multiply。どの画素も幕より明るくならない。題の段の #686868 は 40% 明るくした主色・ボタンの絵に
+     3:1、暦の段の #505052 は 50% 明るくした字に 4.5:1
    色が替わるのは題の字（上から 34px まで）と曜日（56px から）のあいだ。
-   字は、写真のあいだだけ濃く（暗い面は明るく）します——題の段の主色とボタンの絵は 25%、暦の字は 45%。
-   幕を薄くして写真を見せるぶんを、字が持つ（「もう少し濃く」と言われて 0%・35% から上げた）。
+   字は、写真のあいだだけ濃く（暗い面は明るく）します——題の段の主色とボタンの絵は 40%、暦の字は 50%。
+   幕を薄くして写真を見せるぶんを、字が持つ（「もっと濃く」と言われて 0%・35% から二度上げた）。
    もとの色を .head で控えて .topbar・.cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。
    写真の下に続く色は --sky-g（写真の下端 12 行の平均）。月に開いて紙を引くと写真の下端より下まで見えるので、
    描いた空の淡い色ではなく写真の地面の色で続ける（写真を足したら、これも測って足す）。 */
-.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp"); --sky-v1: #b8a8aa; --sky-v2: #c5b3b7; --sky-g: #301f21; }
-.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp");     --sky-v1: #9eadbd; --sky-v2: #a6bacd; --sky-g: #4b4a2f; }
-.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp"); --sky-v1: #bca89a; --sky-v2: #cbb3a2; --sky-g: #414a5f; }
-.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp");   --sky-v1: #a8abba; --sky-v2: #b3b6cb; --sky-g: #3b3943; }
+.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp?v=2"); --sky-v1: #9f9294; --sky-v2: #bcaaae; --sky-g: #311f21; }
+.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp?v=2");     --sky-v1: #8997a4; --sky-v2: #9eb1c3; --sky-g: #4c4a2c; }
+.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp?v=2"); --sky-v1: #a39285; --sky-v2: #c1aa9a; --sky-g: #404b63; }
+.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp?v=2");   --sky-v1: #9294a1; --sky-v2: #aaaec1; --sky-g: #3b3945; }
 .head[data-sky-img] {
   --sky-veil: linear-gradient(to bottom, var(--sky-v1) calc(var(--safe-t) + 34px), var(--sky-v2) calc(var(--safe-t) + 56px));
   --sky-blend: screen;
@@ -1118,26 +1118,26 @@ a { color: var(--c-primary); }
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .head[data-sky-img] {
-    --sky-veil: linear-gradient(to bottom, #5e5e5e calc(var(--safe-t) + 34px), #4b4b4d calc(var(--safe-t) + 56px));
+    --sky-veil: linear-gradient(to bottom, #686868 calc(var(--safe-t) + 34px), #505052 calc(var(--safe-t) + 56px));
     --sky-blend: multiply;
     --sky-ink: #fff;
   }
 }
 :root[data-theme="dark"] .head[data-sky-img] {
-  --sky-veil: linear-gradient(to bottom, #5e5e5e calc(var(--safe-t) + 34px), #4b4b4d calc(var(--safe-t) + 56px));
+  --sky-veil: linear-gradient(to bottom, #686868 calc(var(--safe-t) + 34px), #505052 calc(var(--safe-t) + 56px));
   --sky-blend: multiply;
   --sky-ink: #fff;
 }
 .head[data-sky-img] > .topbar {
-  --c-text-2: color-mix(in srgb, var(--sky-ink) 25%, var(--sky-was-2));
-  --c-primary: color-mix(in srgb, var(--sky-ink) 25%, var(--sky-was-p));
+  --c-text-2: color-mix(in srgb, var(--sky-ink) 40%, var(--sky-was-2));
+  --c-primary: color-mix(in srgb, var(--sky-ink) 40%, var(--sky-was-p));
 }
 .head[data-sky-img] .cal {
-  --c-text-2: color-mix(in srgb, var(--sky-ink) 45%, var(--sky-was-2));
-  --c-text-3: color-mix(in srgb, var(--sky-ink) 45%, var(--sky-was-3));
-  --c-danger: color-mix(in srgb, var(--sky-ink) 45%, var(--sky-was-d));
-  --c-primary: color-mix(in srgb, var(--sky-ink) 45%, var(--sky-was-p));
-  --cal-blue: color-mix(in srgb, var(--sky-ink) 45%, #4a8fd9);
+  --c-text-2: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-2));
+  --c-text-3: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-3));
+  --c-danger: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-d));
+  --c-primary: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-p));
+  --cal-blue: color-mix(in srgb, var(--sky-ink) 50%, #4a8fd9);
 }
 /* 今日の丸の塗りは字ではないので、もとの基調色のまま。 */
 .head[data-sky-img] .cal-day.is-here.is-today .cal-n { background: var(--sky-was-p); }

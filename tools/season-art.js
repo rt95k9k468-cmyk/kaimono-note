@@ -14,8 +14,8 @@
 
    空（sky）：tools/sky-src/<札>.jpg（季節ごとにするときは <季節>-<札>.jpg）→ img/sky/ に同じ名前の .webp。
          帯の幅いっぱいに上から敷くので**正方形**に切る（幅 390 の iPhone で、月に開いた暦の高さまで届く。
-         週では上の空だけ、月では下の景色まで）。左右のどこを残すかは `CROP`（中心の位置、0〜1）。彩度は落とさない
-         （上に幕を重ねて淡くなるので）。
+         週では上の空だけ、月では下の景色まで）。左右のどこを残すかは `CROP`（中心の位置、0〜1）。彩度は少し上げる
+         （上に幕を重ねて淡くなるので）。短い辺 853px・ぼかし 1px・1枚40KBまで（下の定数）。
 
    画像の処理は Playwright の Chromium の canvas で行う（sharp などを足さない）。 */
 const fs = require("fs");
@@ -27,12 +27,14 @@ const SKY = process.argv[2] === "sky";
 const PHOTO = process.argv[2] === "photo" || SKY;
 const SRC = path.join(ROOT, "tools", SKY ? "sky-src" : PHOTO ? "season-photo-src" : "season-src");
 const OUT = path.join(ROOT, "img", SKY ? "sky" : PHOTO ? "season-photo" : "season");
-const MAX_ONE = 25 * 1024;
+/* 空は 40KB・短い辺 853px（Commons の 1280px 版の短い辺そのまま）・ぼかし 1px・彩度 115%。帯の写真は幅いっぱいに
+   大きく見えるので、ぼかしが目立った（「ぼかしを減らし、少し濃く」。docs/sky.md） */
+const MAX_ONE = (SKY ? 40 : 25) * 1024;
 const MAX_ALL = 2 * 1024 * 1024;
-const SHORT = 720;
+const SHORT = SKY ? 853 : 720;
 /* 写真は細かいので少し強くぼかす（25KB に収めるため。背景に薄く敷くので形が分かれば足りる） */
-const BLUR = PHOTO ? 2 : 1.2;
-const SATURATE = SKY ? 100 : 55;
+const BLUR = SKY ? 1 : PHOTO ? 2 : 1.2;
+const SATURATE = SKY ? 115 : 55;
 /* 空：正方形に切るとき、左右のどこを中心に残すか（札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
 const CROP = { morning: 0.55, evening: 0.4, night: 0.55 };
 const NAME = SKY ? /^((?:[a-z]+-)?(morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2}))\.(jpe?g|png|webp|tiff?)$/i;
@@ -87,7 +89,7 @@ const NAME = SKY ? /^((?:[a-z]+-)?(morning|day|evening|night))\.(jpe?g|png|webp|
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
       return { w, h, q: Math.round(q * 100) / 100, size: blob.size, color, b64: btoa(bin) };
     }, [data, SHORT, MAX_ONE, BLUR, SATURATE, crop]);
-    if (r.size > MAX_ONE) { console.log(`${name}：25KB に収まりません（${r.size}B）。切り抜いてから置いてください`); continue; }
+    if (r.size > MAX_ONE) { console.log(`${name}：${MAX_ONE / 1024}KB に収まりません（${r.size}B）。切り抜いてから置いてください`); continue; }
     const out = path.join(OUT, `${name}.webp`);
     fs.writeFileSync(out, Buffer.from(r.b64, "base64"));
     total += r.size;

@@ -15,7 +15,7 @@
    - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
    - いちばん上で引いて紙が下がっても、すき間は空（週・月）。空を下へ伸ばしても帯の中の写真は動かない
    - 中身が跳ね返って下がっても（勢いよく上端に着いたとき）、紙のふちの一本は紙の上の縁に残る
-   - 写真（段2）：4枚が img/sky/ にあり1枚25KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は別の名前の
+   - 写真（段2）：4枚が img/sky/ にあり1枚40KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は別の名前の
      キャッシュへ（ASSETS に入れない）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、
      描いた空のまま。設定で外せば両方の札が外れる。字の濃さの比は、写真を敷いた状態でも同じ決まり
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sky.js */
@@ -43,7 +43,7 @@ function rgbOf(s) {
   c.check("js は札だけ書く（カスタムプロパティを書かない）", !/setProperty|setVar|\.style\b/.test(js));
   const SLOTS4 = ["morning", "day", "evening", "night"];
   const sizes = SLOTS4.map((s) => { const f = path.join(ROOT, "img/sky", `${s}.webp`); return fs.existsSync(f) ? fs.statSync(f).size : 0; });
-  c.check("写真：img/sky/ に4枚、1枚25KBまで", sizes.every((n) => n > 0 && n <= 25 * 1024), sizes.join(" / "));
+  c.check("写真：img/sky/ に4枚、1枚40KBまで", sizes.every((n) => n > 0 && n <= 40 * 1024), sizes.join(" / "));
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   const assets = (sw.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || "";
   c.check("写真：sw.js は別の名前のキャッシュへ（ASSETS に入れない）", /\/img\/sky\//.test(sw) && !/img\/sky/.test(assets));
@@ -98,7 +98,10 @@ function rgbOf(s) {
   const cr = await page.evaluate(() => KN.sky.credits());
   c.check("写真の出典：4枚とも作者・ライセンス・Commons の URL・ファイルが札どおり", cr.length === 4 && cr.every((x) =>
     x.author && /^(CC0|Public domain|CC BY(-SA)? [\d.]+)$/.test(x.license) && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(x.url)
-    && x.file === `img/sky/${x.slot}.webp`), JSON.stringify(cr.map((x) => [x.slot, x.license])));
+    && new RegExp(`^img/sky/${x.slot}\\.webp(\\?v=\\d+)?$`).test(x.file)), JSON.stringify(cr.map((x) => [x.slot, x.license])));
+  /* sw.js は写真を一度覚えたら取り直さない。描き直したら ?v= を上げる——js の先読みと CSS が同じ URL でないと、二度取りに行く */
+  const css = fs.readFileSync(path.join(ROOT, "css/base.css"), "utf8");
+  c.check("写真の URL（?v= 込み）が js と CSS でそろう", cr.every((x) => css.includes(`url("../${x.file}")`)), cr.map((x) => x.file).join(" "));
   const imgAttr = () => page.evaluate(() => document.getElementById("head").getAttribute("data-sky-img"));
   await page.waitForFunction(() => document.getElementById("head").getAttribute("data-sky-img") === "day", null, { timeout: 5000 }).catch(() => {});
   c.check("写真が読めたら data-sky-img に同じ札、写真が敷かれる", await imgAttr() === "day"
@@ -112,9 +115,9 @@ function rgbOf(s) {
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   c.check("戻ってきたら測り直す（17時は夕方）", await attr() === "evening", String(await attr()));
   const bar = () => page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content).join());
-  c.check("時計の帯（theme-color）は空のいちばん上の色（明るい面・暗い面）", await bar() === "#fef2db,#5d503c", await bar());
+  c.check("時計の帯（theme-color）は空のいちばん上の色（明るい面・暗い面）", await bar() === "#ffefcf,#67583f", await bar());
   await page.evaluate(() => KN.store.update((s) => { s.settings.theme = "dark"; }));
-  c.check("暗い面を選んでいれば、どちらの帯も暗い面の色", await bar() === "#5d503c,#5d503c", await bar());
+  c.check("暗い面を選んでいれば、どちらの帯も暗い面の色", await bar() === "#67583f,#67583f", await bar());
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.theme; }));
 
   await page.evaluate(() => KN.store.update((s) => { s.settings.sky = false; }));
@@ -128,14 +131,14 @@ function rgbOf(s) {
   c.check("既定は入", await attr() === "evening", String(await attr()));
 
   /* 朝の写真は読めないことにする（オフラインで持っていない。昼・夕方のあとに先読みされるのは次の時間帯だけ） */
-  await page.route("**/img/sky/morning.webp", (r) => r.abort());
+  await page.route("**/img/sky/morning.webp*", (r) => r.abort());
   await page.clock.setFixedTime(JST("2026-10-08T06:00:00"));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await wait(400);
   b = await bgs();
   c.check("読めない写真は札が付かず、描いた空のまま（6時は朝）", await attr() === "morning" && await imgAttr() !== "morning"
     && !/url\(/.test(b.head) && /linear-gradient/.test(b.head), JSON.stringify(b));
-  await page.unroute("**/img/sky/morning.webp");
+  await page.unroute("**/img/sky/morning.webp*");
 
   /* ---- 画素 ---- */
   async function pixels(buf, pts) {
@@ -368,8 +371,11 @@ function rgbOf(s) {
   const pgrid = [];
   for (let y = 1; y < hbs; y += 4) for (let x = 2; x < 390; x += 8) pgrid.push([x, y]);
   const q1 = await pixels(shot1, pgrid), q0 = await pixels(shot0, pgrid);
-  const pdiff = Math.max(...q1.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - q0[i][k])))));
-  c.check("空を下へ伸ばしても、帯の中の写真は動かない", pdiff <= 4, `最大の差 ${pdiff}`);
+  /* 写真のぼかしを 2px→1px にしてから（10月7日）、描き直しの丸めで数点が 8 ほど違う。1px ずれると
+     2.5% ほどの点が最大 18 違うので、「4 を超える点が 1% まで・最大 12 まで」で見分ける。 */
+  const pd = q1.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - q0[i][k]))));
+  const pdiff = Math.max(...pd), pover = pd.filter((v) => v > 4).length;
+  c.check("空を下へ伸ばしても、帯の中の写真は動かない", pdiff <= 12 && pover <= pd.length / 100, `最大の差 ${pdiff}・4 を超える点 ${pover}/${pd.length}`);
 
   /* ---- 勢いよく上端に着いても、紙のふち（純白の一本）だけが下りてこない。iPhone の跳ね返りは紙の中身だけを
      下げるので、ふちは中身（掴み手）ではなく紙そのもの（border-top）が持つ。跳ね返りは中身を手で下げてまねる ---- */
