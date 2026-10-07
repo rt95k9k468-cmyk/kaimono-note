@@ -30,6 +30,7 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
   "keyframes-one",                 // roadmap-unify の U5：同じ中身の @keyframes が二つ無い・共通の動きは scale:/translate:（画面を開かない）
   "pop-grow",                      // roadmap-unify の U7：小窓はみな押したものから出る（画面を開かない）
   "when-dict",                     // roadmap-unify の U8：端末の日付欄・時刻欄が JS に無い（画面を開かない）
+  "words",                         // roadmap-unify の U10：表に無い言い方（削除・〜の編集・AIと など）が無い（画面を開かない）
   "num-fields"];                   // roadmap-unify の U9：type="number" の欄が無い（画面を開かない）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。

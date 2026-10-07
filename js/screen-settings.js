@@ -462,7 +462,7 @@
      します。 */
   function copyText(text, what) {
     KN.util.copy(text, { show: true }).then((ok) => KN.ui.toast(ok
-      ? what + "をコピーしました" : "長押しして「すべてを選択」→「コピー」してください"));
+      ? "コピーしました" : "コピーできませんでした"));
   }
 
   /** 字を書く欄を一つだけ置くカード。 */

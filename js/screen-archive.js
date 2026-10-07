@@ -1664,7 +1664,7 @@
     const del = footer.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
-        title: "この記録を消しますか", message: e.title, okLabel: "消す", danger: true,
+        title: "この記録を消しますか？", message: e.title, okLabel: "消す", danger: true,
       });
       if (!ok) return;
       const undo = store.removeEntry(e.id);

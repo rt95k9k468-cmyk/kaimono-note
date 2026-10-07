@@ -293,12 +293,12 @@
         const sum = pastedBlock || [p.done && `完了条件：${p.done}`, p.next && `次の一歩：${p.next.title}`]
           .concat(p.steps.map((x) => `${x.n}. ${x.title}`)).filter(Boolean).join("\n");
         const text = `${prompt(t, picks, trouble)}\n\n## ここまでの結果（別の AI と話して出たもの。見直して、足りないところを質問してください）\n${sum}`;
-        copy(text).then((ok) => KN.ui.toast(ok ? "ここまでの結果を足してコピーしました" : "コピーできませんでした"));
+        copy(text).then((ok) => KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした"));
       });
       candHost.append(box);
     }
 
-    const h = KN.ui.sheet({ title: "AIとほどく", content: body, cls: "is-unfold" });
+    const h = KN.ui.sheet({ title: "AIにほどいてもらう", content: body, cls: "is-unfold" });
     return h;
   }
 

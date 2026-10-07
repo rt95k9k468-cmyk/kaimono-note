@@ -91,7 +91,7 @@ const { open, checker } = require("./lib");
   await page.locator(`${sheet} .js-del`).click();
   await page.waitForSelector(".js-ok");
   const confirmText = await page.evaluate(() => document.body.innerText);
-  t.check("消す前に確かめる（「この記録を消す」）", confirmText.includes("この記録を消す"));
+  t.check("消す前に確かめる（「この記録を消しますか？」）", confirmText.includes("この記録を消しますか？"));
   await page.locator(".js-ok").last().click();
   await page.waitForTimeout(500);
   W = await page.evaluate(() => KN.store.get().diet.weights.length);

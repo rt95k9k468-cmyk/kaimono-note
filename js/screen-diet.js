@@ -387,7 +387,7 @@
     if (!found.length) {
       els.body.append(node(html`
         <section class="card section">
-          <p class="arc-log-empty">見つかりませんでした。</p>
+          <p class="arc-log-empty">見つかりませんでした</p>
         </section>
       `));
       return;
@@ -1578,7 +1578,7 @@
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
         ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
-        <button class="btn btn-primary js-save" style="flex:2">${editing ? "書く" : "記録する"}</button>
+        <button class="btn btn-primary js-save" style="flex:2">${editing ? "保存" : "記録する"}</button>
       </div>
     `);
     const h = KN.ui.sheet({
@@ -2215,11 +2215,11 @@
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
         ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
-        <button class="btn btn-primary js-save" style="flex:2">${editing ? "直す" : "記録する"}</button>
+        <button class="btn btn-primary js-save" style="flex:2">${editing ? "保存" : "記録する"}</button>
       </div>
     `);
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot, guard: true });
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", content: body, footer: foot, guard: true });
 
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
@@ -2456,7 +2456,7 @@
                   <button class="icon-btn js-wdel" data-id="${w.id}" aria-label="消す">${icon("trash")}</button>
                 </div>`).join(""))}
             </div>` : html`<p class="diet-note">この日のワークアウトはありません。</p>`}
-          <button class="btn btn-soft btn-sm js-wadd">${icon("plus")}ワークアウトを足す</button>
+          <button class="btn btn-soft btn-sm js-wadd">${icon("plus")}ワークアウトを記録</button>
 
           <button class="btn btn-primary btn-block js-save">保存</button>
         </div>
@@ -2525,9 +2525,9 @@
         </div>
       </div>
     `);
-    const f = node(html`<button class="btn btn-primary btn-block">足す</button>`);
+    const f = node(html`<button class="btn btn-primary btn-block">記録する</button>`);
     KN.ui.whenFields(b);
-    const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f, guard: true });
+    const hh = KN.ui.sheet({ title: "ワークアウトを記録", content: b, footer: f, guard: true });
     f.addEventListener("click", () => {
       const min = parseFloat(String(b.querySelector(".js-m").value).replace(/[^\d.]/g, ""));
       if (!(min > 0)) { KN.ui.toast("時間を入れてください"); return; }
@@ -3363,7 +3363,7 @@
 
     const leg = body.querySelector(".js-legacy");
     if (leg) leg.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この文を消す", message: "AIの推計は残ります。",
+      const ok = await KN.ui.confirm({ title: "この文を消しますか？", message: "AIの推計は残ります。",
                                        okLabel: "消す", danger: true });
       if (!ok) return;
       store.setDayMemo(day, "");
@@ -3478,7 +3478,7 @@
     const text = aiPrompt(memoText, { body: dayBodyText(day), recent: recentText(day, 7) });
     copyText(text).then((ok) => {
       KN.motion.fire("select");
-      if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
+      if (ok) { KN.ui.toast("コピーしました"); return; }
       // 断られる端末があります。そのときは長押しで拾えるように出します。
       openAiCopyFallback(text);
     });
@@ -3489,10 +3489,10 @@
     const b = node(html`
       <div class="stack">
         <p class="diet-note">自動でコピーできませんでした。下の文を長押しでコピーしてください。</p>
-        <textarea class="textarea js-out" rows="10" readonly aria-label="AIに貼る文">${text}</textarea>
+        <textarea class="textarea js-out" rows="10" readonly aria-label="AIに渡す文">${text}</textarea>
       </div>
     `);
-    KN.ui.sheet({ title: "AI用プロンプト", content: b });
+    KN.ui.sheet({ title: "AIに渡す文", content: b });
     const out = b.querySelector(".js-out");
     KN.ui.focusNow(out);
     try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 選べなくても読めます */ }
@@ -3550,7 +3550,7 @@
           <div class="diet-read"><div class="diet-drink-row"><b>${memoText}</b></div></div>
         ` : html`
           <p class="diet-note is-warn">先に「食事を書く」で食べたものを入れてください。</p>`}
-        <button class="btn btn-soft btn-block js-prompt">${icon("copy")}AI用プロンプトを作成</button>
+        <button class="btn btn-soft btn-block js-prompt">${icon("copy")}AIに渡す文を作る</button>
         <p class="diet-note">コピーして AI に貼り、返ってきた文を下の欄に貼り戻します。</p>
 
         <div class="divider"></div>
@@ -3586,10 +3586,10 @@
       const text = aiPrompt(memoText, { body: bodyText, recent });
       copyText(text).then((ok) => {
         KN.motion.fire("select");
-        if (ok) { KN.ui.toast("コピーしました。AIに貼ってください"); return; }
+        if (ok) { KN.ui.toast("コピーしました"); return; }
         // 断られる端末があります。その時は、長押しで拾えるように出します。
         showPrompt(text);
-        KN.ui.toast("自動でコピーできませんでした。下の文を長押しでコピーしてください");
+        KN.ui.toast("コピーできませんでした");
       });
     });
 
@@ -3598,7 +3598,7 @@
       host.innerHTML = "";
       const box = node(html`
         <div class="stack">
-          <textarea class="textarea js-out" rows="8" readonly aria-label="AIに貼る文">${text}</textarea>
+          <textarea class="textarea js-out" rows="8" readonly aria-label="AIに渡す文">${text}</textarea>
         </div>
       `);
       host.append(box);
@@ -3960,7 +3960,7 @@
 
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
-        ${w ? html`<button class="btn btn-soft js-del" aria-label="削除">${icon("trash")}</button>` : ""}
+        ${w ? html`<button class="btn btn-soft js-del" aria-label="消す">${icon("trash")}</button>` : ""}
         <button class="btn btn-primary js-save" style="flex:1">${w ? "保存" : "記録する"}</button>
       </div>
     `);
@@ -4009,7 +4009,7 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この記録を消す", okLabel: "消す", danger: true });
+      const ok = await KN.ui.confirm({ title: "この記録を消しますか？", okLabel: "消す", danger: true });
       if (!ok) return;
       const undo = store.removeWeight(w.id);
       h.close();
@@ -4066,7 +4066,7 @@
 
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
-        ${meal ? html`<button class="btn btn-soft js-del" aria-label="削除">${icon("trash")}</button>` : ""}
+        ${meal ? html`<button class="btn btn-soft js-del" aria-label="消す">${icon("trash")}</button>` : ""}
         <button class="btn btn-primary js-save" style="flex:1">${meal ? "保存" : "記録する"}</button>
       </div>
     `);
@@ -4269,7 +4269,7 @@
 
     const del = foot.querySelector(".js-del");
     if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この食事を消す", okLabel: "消す", danger: true });
+      const ok = await KN.ui.confirm({ title: "この食事を消しますか？", okLabel: "消す", danger: true });
       if (!ok) return;
       const undo = store.removeMeal(meal.id);
       h.close();

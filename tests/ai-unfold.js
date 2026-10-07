@@ -165,7 +165,7 @@ const BROKEN = [
     const h = [...document.querySelectorAll(".sheet.is-open .js-unfold-hint")].pop();
     return !!h && !h.hidden;
   }, tid);
-  c.check("置き直し3回以上の用事に「AIとほどく」の札", await hint(id));
+  c.check("置き直し3回以上の用事に「AIにほどいてもらう」の札", await hint(id));
   await page.locator(".sheet.is-open .js-unfold-hush").last().click();
   await wait(200);
   await page.keyboard.press("Escape");
@@ -209,7 +209,7 @@ const BROKEN = [
     const s = [...document.querySelectorAll(".sheet.is-open")].pop();
     return s ? s.querySelector(".sheet-title").textContent.trim() : null;
   });
-  c.check("見直しの紙の「小さく分ける」→「AIと分ける」で AIとほどく が開く", hasReview && title === "AIとほどく", JSON.stringify([hasReview, title]));
+  c.check("見直しの紙の「小さく分ける」→「AIに分けてもらう」で AIにほどいてもらう が開く", hasReview && title === "AIにほどいてもらう", JSON.stringify([hasReview, title]));
 
   /* 「自分で分ける」：詳細の紙が、手順を一つ足した形で開く */
   await page.keyboard.press("Escape");

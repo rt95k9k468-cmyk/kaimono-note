@@ -126,3 +126,4 @@
 | `when-dict.js` | 日付と時刻の入れ方は一つ（roadmap-unify の U8、docs/todo-items.md の「日付と時刻の欄」）。JS に `type="date"`・`type="time"`・`datetime-local` が無い・`data-when` の欄はみな `type="hidden"`・それを書いたファイルは `KN.ui.whenFields` を呼ぶ・ui.js が `popTime`・`whenFields` を出す。門に入る。画面は開かない |
 | `num-fields.js` | 数の欄は `type="text"`（roadmap-unify の U9）。JS・index.html に `type="number"` が無い・`inputmode="decimal|numeric"` の欄が四つより多い・daily の記録の紙は `U.parseNum` で読む。門に入る。画面は開かない |
 | `when-fields.js` | 日付と時刻の欄を画面で、欄ごとに（U8）。体重・食事は「日だけ変えて閉じる → 保存」「時刻だけ変えて閉じる → 保存」「何も変えずに閉じる → 聞かれない」・お酒の時刻・目標日は年月日のドラムで保存／× で外す・daily の記録の日・用事の「日付」は暦で選ぶと日付の紙が閉じて保存でその日・見える字（今日 10/7(水)・7:05・空は --:--）・「なし」で空へ戻す |
+| `words.js` | 言葉の札（roadmap-unify の U10、docs/look.md の「言葉の札」）。JS に「削除」（最近削除・控えの名前は別）・「〜の編集」・「〜を消す」で終わる確かめの題・「足す」の題と主ボタン・「見つかりません」で止まる文・二つ以外のコピーの知らせ・「AIと／AI用」が無い。画面は開かない |

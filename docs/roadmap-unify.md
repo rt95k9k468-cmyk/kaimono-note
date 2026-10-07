@@ -171,7 +171,7 @@
 | B | U7 | 小窓はみな、押したものから出て同じ点へ帰る | 小 | 変わる | notes（小窓）・motion | Opus 5.5・中 | 済（10/7） |
 | C 入れる | U8 | 日付と時刻の入れ方を一つに（端末の欄を 0 に） | 大 | 変わる | todo-items・health・daily・shopping・sheet-scroll（tryClose） | Opus 5.5・高 || 済（10/7・分かれ道2は A） |
 | C | U9 | 数の欄を揃える（`type="number"` をやめる） | 小 | 同じ | health・daily | Sonnet 5.5・中 | 済（10/7） |
-| D 言葉 | U10 | 言葉の表（消す・足す・保存・見つからない・AI・写す） | 中 | 字が変わる | look（元に戻す） | Sonnet 5.5・中 | 未 |
+| D 言葉 | U10 | 言葉の表（消す・足す・保存・見つからない・AI・写す） | 中 | 字が変わる | look（元に戻す） | Sonnet 5.5・中 | 済（10/7・分かれ道4・5は推し） |
 | D | U11 | 消すときの決まり（一件は ⋯ から・確かめずに戻すだけ） | 小 | 変わる | look（元に戻す）・health・daily・shopping | Opus 5.5・中 | 未 |
 | E 形 | U12 | 行の背丈を三つに | 中 | 変わる | look・sheet-scroll | Opus 5.5・高 | 未 |
 | E | U13 | 小見出し・空の画面・インラインの style を一つずつに | 中 | 少し | look・各画面 | Sonnet 5.5・中 | 未 |
