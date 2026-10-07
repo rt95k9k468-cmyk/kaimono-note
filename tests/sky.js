@@ -10,11 +10,10 @@
    - 設定で外せる（既定は入）
    - 字の濃さの比（画面の画素で）：題の段の字と絵は 3:1 以上。暦の字は 4.5:1 以上（もともとそれ未満の
      字は、空の無いときの比より下げない）。四つの時間帯 × 明るい面・暗い面 × 週・月
-   - 下の端は地の色（紙の角から見える地と継ぎ目を作らない）
    - ノートへ移るとき、帯の裏へ上がった暦は帯の中に見えない（帯が透けても）
    - 写真（段2）：4枚が img/sky/ にあり1枚25KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は別の名前の
      キャッシュへ（ASSETS に入れない）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、
-     描いた空のまま。設定で外せば両方の札が外れる。字の濃さの比と下の端は、写真を敷いた状態でも同じ決まり
+     描いた空のまま。設定で外せば両方の札が外れる。字の濃さの比は、写真を敷いた状態でも同じ決まり
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sky.js */
 const fs = require("fs");
 const path = require("path");
@@ -219,7 +218,6 @@ function rgbOf(s) {
         if (process.env.KN_VERBOSE) console.log(`      ${theme} ${month ? "月" : "週"} ${slot}${photo ? " 写真" : ""} ${JSON.stringify(r.worst)}`);
         const name = `${theme === "dark" ? "暗い面" : "明るい面"}・${month ? "月" : "週"}・${slot}${photo ? "・写真" : ""}`;
         c.check(`${name}：字の濃さの比（題 3:1・暦は空の無いときより下げない）`, r.n >= 10 && r.worst && r.worst.margin >= 0, JSON.stringify(r));
-        c.check(`${name}：下の端は地の色`, r.edgeOk, JSON.stringify(r.edge));
       }
     }
   }

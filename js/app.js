@@ -1610,6 +1610,33 @@
       + "visibility:hidden;pointer-events:none";
     document.body.append(floor);
 
+    /* 時計の帯の高さ（CSS の --safe-t ＝ env(safe-area-inset-top)。試験はそこを差し替える）。 */
+    const notch = document.createElement("i");
+    notch.setAttribute("aria-hidden", "true");
+    notch.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;padding-top:var(--safe-t);"
+      + "visibility:hidden;pointer-events:none";
+    document.body.append(notch);
+    const homeApp = navigator.standalone === true;   // iPhone のホーム画面のアプリだけが持つ
+
+    /* 時計の帯の下まで描く版（black-translucent）では、iOS 26 が可視も innerHeight も
+       **時計の帯ぶん短く**返し、タブ欄と紙の底が画面の底から帯の高さだけ浮いていました
+       （2026年10月7日の iPhone の画面。docs/sky.md）。打っていないときだけ、本当の底まで
+       伸ばします。本当の底は fixed の床か、画面そのもの（横幅が画面いっぱいのとき。
+       screen は回っても縦横が入れ替わらない）。直すのは**帯の高さぶんまで**——それより
+       大きい差は別の話です。「default」で入れた古いアプリは帯が 0 なので、何もしません。 */
+    const bottomOf = (shell) => {
+      if (!homeApp) return shell;
+      const band = notch.getBoundingClientRect().height;
+      if (!(band > 0)) return shell;
+      const s = window.screen || {};
+      const short = Math.min(s.width || 0, s.height || 0);
+      const long = Math.max(s.width || 0, s.height || 0);
+      const port = window.innerHeight >= window.innerWidth;
+      const whole = Math.abs(window.innerWidth - (port ? short : long)) <= 1 ? (port ? long : short) : 0;
+      const bottom = Math.max(Math.round(floor.getBoundingClientRect().top), whole);
+      return bottom > shell && bottom - shell <= band + 2 ? bottom : shell;
+    };
+
     const fit = () => {
       /* 他のアプリから戻ったとき、タブ欄の下にキーボードひとつぶんの
          空白が残ることがありました。iOS はページを眠らせているあいだの
@@ -1630,7 +1657,7 @@
       const full = Math.round(window.innerHeight);
       const typing = isTyping();
       const stale = !typing && (full - visible) > KB_MIN;
-      const shell = stale ? full : visible;
+      const shell = typing ? visible : bottomOf(stale ? full : visible);
       /* 床とキーボードの上端の差（上の `floor`）。**打っているあいだだけ**
          使います——キーボードが出ていないときの差は、指で拡大しているときの
          ような別の話で、そこで紙を浮かせる理由はありません。
@@ -1638,6 +1665,8 @@
       const sunk = typing
         ? Math.round(floor.getBoundingClientRect().top - (vv.offsetTop + vv.height))
         : 0;
+      /* innerHeight より高く描くなら、シェルを画面に貼りつける（base.css の is-pinned）。 */
+      root.classList.toggle("is-pinned", shell > full);
       app.style.height = shell + "px";
 
       /* Publish the same two numbers to CSS, for the things that are not the
