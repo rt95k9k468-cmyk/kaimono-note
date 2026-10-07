@@ -22,7 +22,7 @@ const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js"]);
 
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */
-const GATE = ["registry", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break",
+const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break",
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
   "motion-dict", "look-tokens",    // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
   "one-part",                      // roadmap-unify の U2：暦の盤・アイコンを選ぶ紙・写すが一本のまま（画面を開かない）
