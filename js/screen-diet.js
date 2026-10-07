@@ -1575,18 +1575,14 @@
       </div>
     `);
 
-    const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
-        <button class="btn btn-primary js-save" style="flex:2">${editing ? "保存" : "記録する"}</button>
-      </div>
-    `);
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">${editing ? "保存" : "記録する"}</button>`);
     const h = KN.ui.sheet({
       title: editing ? "飲みたくなったとき" : "飲みたくなった",
       content: body, footer: foot, guard: true,
+      menu: editing ? KN.ui.delMenu(() => store.removeUrge(editing.id), { sheet: () => h, after: render }) : null,
     });
 
-    const saveBtn = foot.querySelector(".js-save");
+    const saveBtn = foot;
     const syncSave = () => { saveBtn.disabled = before == null; };
 
     /* ---- いまの強さ（これだけが必須） ---- */
@@ -1728,14 +1724,6 @@
     }
 
     saveBtn.addEventListener("click", () => save());
-
-    const del = foot.querySelector(".js-del");
-    if (del) del.addEventListener("click", () => {
-      const undo = store.removeUrge(editing.id);
-      h.close();
-      render();
-      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
-    });
   }
 
   /** 行の下に出す一行。書かれたことだけを、書かれた順に並べます。 */
@@ -2214,12 +2202,12 @@
 
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
-        ${editing ? html`<button class="btn btn-soft js-del" style="flex:1">消す</button>` : ""}
-        <button class="btn btn-primary js-save" style="flex:2">${editing ? "保存" : "記録する"}</button>
+        <button class="btn btn-primary js-save" style="flex:1">${editing ? "保存" : "記録する"}</button>
       </div>
     `);
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", content: body, footer: foot, guard: true });
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", content: body, footer: foot, guard: true,
+      menu: editing ? KN.ui.delMenu(() => store.removeDrink(editing.id), { sheet: () => h, after: render }) : null });
 
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
@@ -2386,14 +2374,6 @@
       const t = DR.totals(items);
       KN.ui.toast(`お酒：${items.map((i) => DR.describeItem(i)).join("・")}（純アルコール ${t.estimated ? "約" : ""}${t.alcoholG}g）`);
       KN.motion.fire("save");
-    });
-
-    const del = foot.querySelector(".js-del");
-    if (del) del.addEventListener("click", () => {
-      const undo = store.removeDrink(editing.id);
-      h.close();
-      render();
-      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -3960,13 +3940,13 @@
 
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
-        ${w ? html`<button class="btn btn-soft js-del" aria-label="消す">${icon("trash")}</button>` : ""}
         <button class="btn btn-primary js-save" style="flex:1">${w ? "保存" : "記録する"}</button>
       </div>
     `);
 
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true });
+    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true,
+      menu: w ? KN.ui.delMenu(() => store.removeWeight(w.id), { sheet: () => h, after: render }) : null });
     const kgEl = body.querySelector(".js-kg");
     const fatEl = body.querySelector(".js-fat");
     // 体重を打ち終えたら、そのまま体脂肪へ。
@@ -4005,16 +3985,6 @@
       h.close();
       render();
       KN.ui.toast(w ? "直しました" : "記録しました");
-    });
-
-    const del = foot.querySelector(".js-del");
-    if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この記録を消しますか？", okLabel: "消す", danger: true });
-      if (!ok) return;
-      const undo = store.removeWeight(w.id);
-      h.close();
-      render();
-      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
@@ -4066,13 +4036,13 @@
 
     const foot = node(html`
       <div style="display:flex;gap:8px;width:100%">
-        ${meal ? html`<button class="btn btn-soft js-del" aria-label="消す">${icon("trash")}</button>` : ""}
         <button class="btn btn-primary js-save" style="flex:1">${meal ? "保存" : "記録する"}</button>
       </div>
     `);
 
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot, guard: true });
+    const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot, guard: true,
+      menu: meal ? KN.ui.delMenu(() => store.removeMeal(meal.id), { sheet: () => h, after: render }) : null });
 
     KN.ui.chipRow(body.querySelector(".js-slots"), SLOTS, {
       activeId: slot,
@@ -4265,16 +4235,6 @@
       h.close();
       render();
       KN.ui.toast(meal ? "直しました" : "記録しました");
-    });
-
-    const del = foot.querySelector(".js-del");
-    if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({ title: "この食事を消しますか？", okLabel: "消す", danger: true });
-      if (!ok) return;
-      const undo = store.removeMeal(meal.id);
-      h.close();
-      render();
-      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
 
     paint();
