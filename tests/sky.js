@@ -256,6 +256,33 @@ function rgbOf(s) {
     ["--face-lift", "--face-p"].forEach((k) => s.style.removeProperty(k));
   });
 
+  /* ---- 時計の帯（black-translucent。iOS は時計の字をいつも白で描く）：帯の高さを 59px と見なし、
+     字の高さ（上から 14〜40px）で白に 3:1 以上。空（写真）の上と、設定（淡い地）の上 ---- */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  c.check("時計の帯は black-translucent", /apple-mobile-web-app-status-bar-style" content="black-translucent"/.test(html));
+  await hide(":root { --safe-t: 59px !important; }");
+  const sbPts = [];
+  for (let y = 14; y <= 40; y += 6) for (let x = 10; x < 390; x += 40) sbPts.push([x, y]);
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((t) => { if (t === "dark") document.documentElement.setAttribute("data-theme", "dark"); else document.documentElement.removeAttribute("data-theme"); }, theme);
+    for (const where of ["evening", "settings"]) {
+      await page.evaluate(async (w) => {
+        if (w === "settings") { KN.app.showScreen("settings"); return; }
+        const h = document.getElementById("head");
+        h.setAttribute("data-sky", w);
+        const img = new Image(); img.src = `img/sky/${w}.webp`; await img.decode();
+        h.setAttribute("data-sky-img", w);
+      }, where);
+      await wait(where === "settings" ? 700 : 150);
+      const px = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: 60 } }), sbPts);
+      const worst = Math.min(...px.map((p) => ratio([255, 255, 255], p)));
+      c.check(`${theme === "dark" ? "暗い面" : "明るい面"}・${where === "settings" ? "設定" : "空"}：時計の帯で白い字が 3:1 以上`, worst >= 3, worst.toFixed(2));
+      if (where === "settings") { await page.evaluate(() => KN.app.showScreen("todo")); await wait(700); }
+    }
+  }
+  await hide("");
+  await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
 
