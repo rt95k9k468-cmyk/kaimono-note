@@ -1036,16 +1036,18 @@ a { color: var(--c-primary); }
    だから上ほど空らしく、暦の段は淡く（暗い面では深く）なります。
 
    止まる場所は px で書きます（% だと、暦を月に開いたとき空ごと伸びる）。下の端は溶かしません
-   （紙の角の後ろにも空が続くので継ぎ目は出ない。白いぼかしは要らないと言われた）。札が替わると色は --m-season で
+   （画面の角の後ろにも空が続くので継ぎ目は出ない。白いぼかしは要らないと言われた）。札が替わると色は --m-season で
    ゆっくり移ります（@property で色として登録）。 */
 @property --sky-a { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --sky-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --sky-d { syntax: "<color>"; inherits: true; initial-value: transparent; }
 /* 空は帯の後ろの一枚（::before）が描きます。帯の下の端から紙の角の半径（--r-xl）だけ下へはみ出し、
-   はみ出したぶんは**紙の丸角の外側**だけ見せる（地の色の白い角を作らない。2026年10月7日）。だから帯は
-   下の画面より前に重ねる（--z-stick）。色は継ぐ（@property の inherits: true）。 */
+   **下の画面の後ろ**に敷く（帯は z-index を持たない＝積み重ねを閉じないので、-1 は deck の奥へ行く）。
+   画面（.screen）は上の角を丸めて成形しておき、角の外から後ろの空が覗く。前は帯の前に角の形の
+   当て布を置いていたが、当て布は動かないので、タブを流すあいだ角が画面の真ん中で地の色になり、
+   着いてから丸角になった（2026年10月7日、実機）。色は継ぐ（@property の inherits: true）。 */
 .head[data-sky] {
-  z-index: var(--z-stick);
+  background: none;
   transition: --sky-a var(--m-season) var(--ease), --sky-c var(--m-season) var(--ease), --sky-d var(--m-season) var(--ease);
 }
 .head[data-sky]::before {
@@ -1058,15 +1060,8 @@ a { color: var(--c-primary); }
   background:
     linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-d) calc(var(--safe-t) + 300px)),
     var(--c-bg);
-  -webkit-mask:
-    linear-gradient(#000 0 0) top / 100% calc(100% - var(--r-xl)) no-repeat,
-    radial-gradient(circle at 100% 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) left bottom / var(--r-xl) var(--r-xl) no-repeat,
-    radial-gradient(circle at 0 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) right bottom / var(--r-xl) var(--r-xl) no-repeat;
-  mask:
-    linear-gradient(#000 0 0) top / 100% calc(100% - var(--r-xl)) no-repeat,
-    radial-gradient(circle at 100% 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) left bottom / var(--r-xl) var(--r-xl) no-repeat,
-    radial-gradient(circle at 0 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) right bottom / var(--r-xl) var(--r-xl) no-repeat;
 }
+.head[data-sky] ~ .panes > .screen { border-radius: var(--r-xl) var(--r-xl) 0 0; }
 .head[data-sky] > .topbar,
 .head[data-sky] .cal { background: transparent; }
 /* ノートへ移るとき、暦は帯の裏へ上がります。帯が透けるので、上がった所（帯の下の線より上）を切る。 */
@@ -1228,14 +1223,14 @@ a { color: var(--c-primary); }
 }
 .screen.is-over { z-index: 2; }
 
-/* 入る面と出る面で、**曲線が違います**。入ってくるものは速く出て静かに
-   着き（--ease-out）、去るものは静かに離れて速く消える（--ease-in）
-   ——motion の節に書いてある決めごとそのままです。四行とも --ease-out に
-   なっていたので、去る面が「出てくる動き」で出ていっていました。 */
+/* 入る面と出る面は、**同じ曲線**で流します（motion の「去るものは --ease-in」の例外）。
+   二枚は並んだ席なので、あいだを空けず重ねずに一続きで動く。曲線が違うと（前は出る面が
+   --ease-in）入る面が先に着いて大きく重なり、上に来た紙の角の下に同じ色の紙が覗いて、
+   丸角が流れるあいだ見えませんでした（2026年10月7日、実機。docs/sky.md）。 */
 .screen.is-active.is-in-r { animation: scr-in-r var(--m-nav) var(--ease-out); }
 .screen.is-active.is-in-l { animation: scr-in-l var(--m-nav) var(--ease-out); }
-.screen.is-leaving.is-out-l { animation: scr-out-l var(--m-nav) var(--ease-in) forwards; }
-.screen.is-leaving.is-out-r { animation: scr-out-r var(--m-nav) var(--ease-in) forwards; }
+.screen.is-leaving.is-out-l { animation: scr-out-l var(--m-nav) var(--ease-out) forwards; }
+.screen.is-leaving.is-out-r { animation: scr-out-r var(--m-nav) var(--ease-out) forwards; }
 
 /* ---- 買うもの ⇄ 価格：紙一枚と、その後ろの地 ----
 

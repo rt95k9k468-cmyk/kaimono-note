@@ -825,6 +825,28 @@ button, [role="tab"] {
   border-radius: var(--r-full);
 }
 
+/* ＋から開いた紙は、四隅の丸いカード（U17・2026年10月7日、利用者が見比べで A「中身ぶんの高さ」）。
+   左右と下を空けて浮かせ、高さは中身ぶん。空け方とキーボードの扱いは日記の書く紙
+   （screens.css の .sheet.is-card）と同じ。付けるのは ui.js の sheet()。 */
+@media (max-width: 639.98px) {
+  .sheet.is-fab-card {
+    --card-gap: var(--sp-2);
+    --card-gap-b0: max(var(--card-gap), var(--safe-b));
+    --card-gap-b: clamp(0px, var(--card-gap-b0) - var(--kb, 0px) * 100, var(--card-gap-b0));
+    width: calc(100% - var(--card-gap) * 2);
+    bottom: calc(var(--kb, 0px) + var(--pad, 0px) + var(--card-gap-b));
+    max-height: min(90dvh, 780px,
+      calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--card-gap) - var(--card-gap-b)));
+    padding-bottom: 0;
+    border-radius: var(--r-xl);
+    background: var(--c-surface);
+    box-shadow: var(--shadow-2), inset 0 1px 0 var(--c-sheet-edge);
+  }
+  .sheet.is-fab-card:not(.is-open):not(.is-from-origin) {
+    transform: translate(-50%, calc(100% + var(--card-gap) + var(--card-gap-b0)));
+  }
+}
+
 /* 押した丸からにじむ光。紙が小さいあいだ、「どこから来たのか」を言うのは
    これだけです。位置は ui.js が実測して inline で書きます（画面の座標）。 */
 .sheet-bloom {

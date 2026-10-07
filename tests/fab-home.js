@@ -3,6 +3,7 @@
    - ダイエット：＋の上に立ち上がる札から開いた紙も、閉じると札のあった所ではなく＋へ向かう
    - 閉じ終えたら紙は片づく・＋は残る
    - V26：帰りは --m-sheet-close より長く（一瞬で閉じない）、＋の大きさ近くまで縮む
+   - U17：＋の紙は四隅の丸いカード（is-fab-card）
    - U17：打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ縮んで帰る
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fab-home.js */
 const { open, checker } = require("./lib");
@@ -48,6 +49,12 @@ const { open, checker } = require("./lib");
     t.check(`${label}：見えたまま＋の近くの大きさまで縮む`, small < w0 * 0.35, String(small));
   };
 
+  const isCard = () => page.evaluate(() => {
+    const el = document.querySelector(".sheet.is-open"), r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    return el.classList.contains("is-fab-card") && r.left >= 6 && innerHeight - r.bottom >= 6
+      && parseFloat(cs.borderBottomLeftRadius) > 10;
+  });
+
   /* ---- やること：＋から ---- */
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(700);
@@ -55,6 +62,7 @@ const { open, checker } = require("./lib");
   await page.mouse.click(fab.x, fab.y);
   await page.waitForTimeout(900);
   t.check("やること：＋で紙が開く", await page.evaluate(() => !!document.querySelector(".sheet.is-open.is-from-origin")));
+  t.check("やること：四隅の丸いカード（U17）", await isCard());
   const w0 = await page.evaluate(() => document.querySelector(".sheet.is-open").getBoundingClientRect().width);
   const rec = recordClose();
   await page.keyboard.press("Escape");
@@ -100,6 +108,7 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(900);
     const opened = await page.evaluate(() => !!document.querySelector(".sheet.is-open.is-from-origin"));
     t.check("ダイエット：札から紙が育つ", opened);
+    t.check("ダイエット：四隅の丸いカード（U17）", opened && await isCard());
     if (opened) {
       const w1 = await page.evaluate(() => document.querySelector(".sheet.is-open").getBoundingClientRect().width);
       const rec2 = recordClose();
