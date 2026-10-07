@@ -238,7 +238,7 @@
       });
       chipsEl.append(b);
     });
-    p = popOver(anchor, { side: "left", label: k === "nb" ? "ノートブック" : "タグ", grow: true });
+    p = popOver(anchor, { side: "left", label: k === "nb" ? "ノートブック" : "タグ" });
     p.el.classList.add("is-pick");
     p.el.append(box);
     p.place();
@@ -812,7 +812,7 @@
     };
     onEnter(input, () => { U.haptic(); addTyped(); });
     paint();
-    const p = popOver(anchor, { side: "right", label: "タグ", grow: true, onClose: addTyped });
+    const p = popOver(anchor, { side: "right", label: "タグ", onClose: addTyped });
     p.el.classList.add("is-pick");
     p.el.append(box);
     p.place();
@@ -844,7 +844,6 @@
     p = popOver(anchor, {
       side: "left",
       label: "ノートブック",
-      grow: true,
       onClose: () => { if (!settled && input.value.trim()) done(input.value.trim()); },
     });
     p.el.classList.add("is-pick");

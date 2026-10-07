@@ -5538,25 +5538,17 @@ textarea.note-title-in {
   max-height: 60vh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  transform-origin: top right;
-  transform: scale(.92);
-  opacity: 0;
-  transition: transform var(--m-state) var(--ease-out), opacity var(--m-state) var(--ease);
-}
-.note-pop.is-left { transform-origin: top left; }
-.note-pop.is-up { transform-origin: bottom right; }
-.note-pop.is-left.is-up { transform-origin: bottom left; }
-.note-pop.is-open { transform: none; opacity: 1; }
-/* ノートのタグ・ノートブックの小窓は、押した札の ＞ から（transform-origin は ui.js の
-   popOver が札の絵の位置に置く）ふくらんで出て、同じ点へ縮んで帰る（V27）。薄れるのは、
-   出るときは初めの半分、帰るときは終わりの4割だけ——縮んでいく姿を見せるため。 */
-.note-pop.is-grow {
   transform: scale(.06);
+  opacity: 0;
   transition: transform var(--m-pop-grow) var(--push-e),
               opacity calc(var(--m-pop-grow) * .4) var(--ease) calc(var(--m-pop-grow) * .6);
 }
-.note-pop.is-grow.is-open {
+/* どの小窓も押したものの中の最後の絵から（transform-origin は ui.js の popOver が置く）ふくらんで
+   出て、同じ点へ縮んで帰る（V27・roadmap-unify の U7）。薄れるのは、出るときは初めの半分、帰るときは
+   終わりの4割だけ——縮んでいく姿を見せるため。 */
+.note-pop.is-open {
   transform: none;
+  opacity: 1;
   transition: transform var(--m-pop-grow) var(--push-e), opacity calc(var(--m-pop-grow) * .5) var(--ease);
 }
 /* ノートブック・タグを選ぶ小窓。キーボードが出ても見えている高さに収める。 */
