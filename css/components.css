@@ -588,7 +588,6 @@ button, [role="tab"] {
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   color: var(--c-text-2);
-  letter-spacing: .04em;
   display: flex;
   align-items: center;
   gap: var(--sp-2);

@@ -70,7 +70,7 @@
         <div class="manage-row">
           <span class="dot" style="background:${st.color};width:14px;height:14px"></span>
           <span class="manage-name">${st.name}</span>
-          <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">${usage}件の価格</span>
+          <span class="fine-note">${usage}件の価格</span>
           <button class="icon-btn js-edit" aria-label="直す">${icon("edit")}</button>
           <button class="icon-btn is-danger js-del" aria-label="消す">${icon("trash")}</button>
         </div>
@@ -110,7 +110,7 @@
       なりますし、足すと編集で出てくるものの形が違います。 */
   function editStore(st) {
     const body = node(html`
-      <div class="stack" style="gap:18px">
+      <div class="stack gap-4">
         <label class="field">
           <span class="field-label">お店の名前</span>
           <input class="input js-name" value="${st ? st.name : ""}" placeholder="例：イオン 〇〇店">
@@ -183,7 +183,7 @@
                 同じことを——どの棚か——もう言っています。 */""}
           <span class="manage-swatch" style="background:${c.color || "transparent"}"></span>
           <span class="manage-name">${c.name}</span>
-          <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">${used}商品</span>
+          <span class="fine-note">${used}商品</span>
           <button class="icon-btn js-edit" aria-label="直す">${icon("edit")}</button>
           ${c.id === store.OTHER_CATEGORY
             ? ""
@@ -229,7 +229,7 @@
 
   function editCategory(cat) {
     const body = node(html`
-      <div class="stack" style="gap:18px">
+      <div class="stack gap-4">
         <label class="field">
           <span class="field-label">名前</span>
           <input class="input js-name" value="${cat ? cat.name : ""}" placeholder="例：おやつ">
@@ -299,8 +299,8 @@
 
     const body = node(html`
       <div class="stack">
-        <div class="stack js-rules" style="gap:8px"></div>
-        <button class="btn btn-soft btn-sm js-forget-all" style="margin-top:4px">すべて忘れる</button>
+        <div class="stack js-rules gap-2"></div>
+        <button class="btn btn-soft btn-sm js-forget-all mt-1">すべて忘れる</button>
       </div>
     `);
 
@@ -316,7 +316,7 @@
           <div class="manage-row" style="--cat:${(r.category && r.category.color) || ""}">
             <span class="manage-swatch" style="background:${(r.category && r.category.color) || "transparent"}"></span>
             <span class="manage-name">${r.label}</span>
-            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">
+            <span class="fine-note">
               → ${r.category ? r.category.name : "（消えたカテゴリ）"}
             </span>
             <button class="icon-btn is-danger js-forget" aria-label="この振り分けを忘れる">${icon("close")}</button>

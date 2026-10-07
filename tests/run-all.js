@@ -34,7 +34,8 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
   "words",                         // roadmap-unify の U10：表に無い言い方（削除・〜の編集・AIと など）が無い（画面を開かない）
   "del-rule",                      // roadmap-unify の U11：一件の記録は ⋯ から確かめずに消す（画面を開かない）
   "num-fields",                    // roadmap-unify の U9：type="number" の欄が無い（画面を開かない）
-  "row-heights"];                  // roadmap-unify の U12：行の背丈は三つの札（画面を開かない）
+  "row-heights",                   // roadmap-unify の U12：行の背丈は三つの札（画面を開かない）
+  "inline-style"];                 // roadmap-unify の U13：値の決まった style= が増えない・小見出しの字（画面を開かない）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */

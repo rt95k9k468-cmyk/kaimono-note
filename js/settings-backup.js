@@ -160,14 +160,14 @@
   function openAudit() {
     const a = KN.audit.check(store.get());
     const body = node(html`
-      <div class="stack" style="gap:12px">
-        <p style="color:var(--c-text-2);line-height:1.6">${a.total
+      <div class="stack gap-3">
+        <p class="sheet-text">${a.total
           ? `食い違いが${a.total}件ありました。`
           : "食い違いは見つかりませんでした"}</p>
         <table class="verify-table js-audit">
           ${KN.audit.LABELS.map(([k, label]) => html`<tr><td>${label}</td><td>${String(a[k])}</td></tr>`)}
         </table>
-        <p style="color:var(--c-text-2);line-height:1.6">記録は変えていません。</p>
+        <p class="sheet-text">記録は変えていません。</p>
       </div>
     `);
     const foot = node(html`<button class="btn btn-soft btn-block">閉じる</button>`);
@@ -251,11 +251,11 @@
   const bareNow = () => ((store.get().archive || {}).days || []).some(store.memoOut);
 
   function confirmBare() {
-    const body = node(html`<div class="stack" style="gap:8px"><p style="color:var(--c-text-2);line-height:1.6">日記の保存場所を読めない日なので、外した日記の本文は入りません。</p></div>`);
+    const body = node(html`<div class="stack gap-2"><p class="sheet-text">日記の保存場所を読めない日なので、外した日記の本文は入りません。</p></div>`);
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-soft js-cancel" style="flex:1">やめる</button>
-        <button class="btn btn-primary js-ok" style="flex:1">書き出す</button>
+      <div class="btn-row">
+        <button class="btn btn-soft js-cancel grow">やめる</button>
+        <button class="btn btn-primary js-ok grow">書き出す</button>
       </div>`);
     const h = KN.ui.sheet({ title: "日記の本文は入りません", content: body, footer: foot, guard: false, as: "dialog" });
     foot.querySelector(".js-cancel").addEventListener("click", () => h.close());
@@ -398,15 +398,15 @@
       else if (r.exportedAt) KN.backup.markExported(r.exportedAt);
     }
     const body = node(html`
-      <div class="stack" style="gap:12px">
-        <p style="color:var(--c-text-2);line-height:1.6">${lead}</p>
+      <div class="stack gap-3">
+        <p class="sheet-text">${lead}</p>
         ${r.ok ? html`
           <table class="verify-table">
             <tr><th></th><th>このファイル</th><th>いま</th></tr>
             ${kinds.map(([label, k]) => html`<tr><td>${label}</td><td>${r.counts[k]}</td><td>${now[k]}</td></tr>`)}
           </table>
-          <p style="color:var(--c-text-2);line-height:1.6">${verdict}</p>
-          ${auditText(audit) ? html`<p class="js-audit-line" style="color:var(--c-text-2);line-height:1.6">${auditText(audit)}</p>` : ""}` : ""}
+          <p class="sheet-text">${verdict}</p>
+          ${auditText(audit) ? html`<p class="js-audit-line sheet-text">${auditText(audit)}</p>` : ""}` : ""}
       </div>
     `);
     const foot = node(html`<button class="btn btn-soft btn-block">閉じる</button>`);
