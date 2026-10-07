@@ -96,7 +96,7 @@
 
 /* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
    縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
-.add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; position: relative; z-index: 1; }
+.add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; position: relative; z-index: 1; }  /* 入れもの：丸ボタン */
 /* 押すと、**縮まずに膨らんで明るくなります**。動画（Structured）の実測が
    これでした——押した瞬間に丸が一回り大きくなり、色が一段明るいほうへ振れる。
    縮む動きは「引っ込む」ことなので、これから何かが出てくるボタンの合図と
@@ -178,7 +178,7 @@
 }
 .ac-chip.is-listed { opacity: .45; }
 .ac-mark { display: flex; align-items: center; color: var(--cat); }
-.ac-mark svg { width: 20px; height: 20px; }
+.ac-mark svg { width: var(--ico); height: var(--ico); }
 
 /* 「リストに追加」で閉じたとき、紙の頭（絵と名前）が一覧のその行へ飛んで入る（V27、
    screen-list.js の landOnRow。--m-land）。 */
@@ -197,7 +197,7 @@
   white-space: nowrap;
 }
 .land-mark { display: flex; color: var(--cat); flex: none; }
-.land-mark svg { width: 28px; height: 28px; }
+.land-mark svg { width: 28px; height: 28px; }  /* 入れもの：はじめの画面の目印 */
 .land-name { overflow: hidden; text-overflow: ellipsis; }
 
 /* category group — no heading any more, just a run of rows wearing the same
@@ -465,7 +465,7 @@
   background: none;
   color: var(--c-primary);
 }
-.topbar-today svg { width: 17px; height: 17px; }
+.topbar-today svg { width: 17px; height: 17px; }  /* 入れもの：26の丸 */
 /* 未来の日からは左向き（時間を遡る）、過去の日からは右向き（時間を進める）。
    絵そのものは左向き一つだけ持ち、右向きは鏡に映すだけ——`arrow-u-up-right`
    はこの絵のちょうど鏡像なので、絵を二つ持つ必要がありません。 */
@@ -742,7 +742,7 @@
 }
 .cal-mark:first-child { margin-left: 0; }
 .cal-mark .todo-mark,
-.cal-mark .todo-mark svg { width: 11px; height: 11px; }
+.cal-mark .todo-mark svg { width: 11px; height: 11px; }  /* 入れもの：日の丸 */
 /* 丸がすでに棚の色に染まっているので、中のシルエットは**白抜き**。
    丸薬の中と同じ決めごとです（染まったところは白、染まっていないところは
    棚の色）。ここは進み具合を持たないので、いつも染まっている側。
@@ -752,7 +752,7 @@
    `.todo-mark` の入れ物を持ちません。同じ丸に合わせてここでも縮めて
    白抜きにします——既定の `--ico`（20px）のままだと丸(15px)からはみ出し、
    色も currentColor が地の字色のままで白抜きになりません。 */
-.cal-mark .ui-ico { width: 11px; height: 11px; color: var(--c-surface); }
+.cal-mark .ui-ico { width: 11px; height: 11px; color: var(--c-surface); }  /* 入れもの：日の丸 */
 .cal-mark .todo-dot {
   width: 5px; height: 5px; border-radius: var(--r-full);
   background: var(--c-bg);
@@ -935,7 +935,7 @@
   align-items: center;
   justify-content: center;
 }
-.item.todo .todo-mark .p-icon { width: 25px; height: 25px; }
+.item.todo .todo-mark .p-icon { width: 25px; height: 25px; }  /* 入れもの：行の丸 */
 
 /* 名前から絵が引けなかったとき。期限の色の丸——「まだ絵が無い」であって
    「間違い」ではないので、控えめに、でも列は空けずに。 */
@@ -958,7 +958,7 @@
   display: grid;
   place-items: center;
 }
-.item.todo.is-tile .todo-mark .p-icon { width: 34px; height: 34px; }
+.item.todo.is-tile .todo-mark .p-icon { width: 34px; height: 34px; }  /* 入れもの：タイルの丸 */
 .item.todo.is-tile .todo-dot { width: 12px; height: 12px; }
 
 .todo-lead {
@@ -982,7 +982,7 @@
    閉じた時刻の両方を抱える行で、名前の折り返しが起きるのもここだけです。 */
 .item.todo:not(.is-tile).is-checked { gap: 6px; }
 .item.todo:not(.is-tile).is-checked .todo-mark { width: 20px; height: 20px; }
-.item.todo:not(.is-tile).is-checked .todo-mark .p-icon { width: 20px; height: 20px; }
+.item.todo:not(.is-tile).is-checked .todo-mark .p-icon { width: var(--ico); height: var(--ico); }
 /* 「しまった」の丸みも、ここでは一回り小さく。文字はそのまま——読める語を
    削るより、まわりの余白を詰めるほうが失うものが少ない。 */
 .item.todo:not(.is-tile).is-checked .todo-tag { padding: 0 4px; }
@@ -1073,7 +1073,7 @@
 .time-row { display: flex; align-items: center; gap: var(--sp-2); }
 .time-label { flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }
-.time-row .chip { flex: none; height: 34px; }
+.time-row .chip { flex: none; height: 32px; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
 
@@ -1316,7 +1316,7 @@
 .item.is-tile .check { left: 4px; }
 .item.is-tile .fav { right: 4px; }
 .item.is-tile .check { width: 22px; height: 22px; }
-.item.is-tile .check svg { width: 13px; height: 13px; }   /* タイルの輪は小さい */
+.item.is-tile .check svg { width: 13px; height: 13px; }   /* 入れもの：タイルの輪。タイルの輪は小さい */
 .item.is-tile .fav svg { width: var(--ico-sm); height: var(--ico-sm); }
 
 /* Bought: the tile steps back rather than striking a line through a name that
@@ -1423,7 +1423,7 @@
   transition: opacity var(--m-state) var(--ease), transform var(--m-state) var(--ease-out);
 }
 .check-repeat svg {
-  width: 13px; height: 13px;
+  width: 13px; height: 13px;  /* 入れもの：輪に添える印 */
   stroke-width: 2.4;
   /* Darker than the wording in the meta line: this is now the mark that says
      「これはくり返し」 at a glance, and the words underneath are the detail. */
@@ -1741,7 +1741,7 @@
 /* The chevron points right when the drawer is shut and down when it is
    open — the icon is drawn pointing right, so shut is its resting angle. */
 .archive-head svg {
-  width: 16px; height: 16px;
+  width: var(--ico-sm); height: var(--ico-sm);
   stroke-width: 2.6;
   flex: none;
   transition: transform var(--m-state) var(--ease);
@@ -2076,7 +2076,7 @@
   box-shadow: var(--shadow-1);
   position: relative;
 }
-.set-back svg { width: 19px; height: 19px; transform: rotate(180deg); }
+.set-back svg { width: var(--ico); height: var(--ico); transform: rotate(180deg); }
 /* 絵は34pxでも、**指の的は44px**（.icon-btn と同じ手）。 */
 .set-back::after {
   content: "";
@@ -2234,7 +2234,7 @@
   place-items: center;
   margin-left: -2px;
 }
-.set-chev svg { width: 15px; height: 15px; }
+.set-chev svg { width: var(--ico-sm); height: var(--ico-sm); }
 
 .set-tile {
   flex: none;
@@ -2247,7 +2247,7 @@
      （CLAUDE.md）。こちらの色は「どの設定か」の目印なので、抜けます。 */
   color: #fff;
 }
-.set-tile svg { width: 18px; height: 18px; stroke-width: 2.1; }
+.set-tile svg { width: 18px; height: 18px; stroke-width: 2.1; }  /* 入れもの：設定の色の升 */
 
 /* 外観の行は、字ではなく**いまの色そのもの**を出します（参考画面と同じ）。 */
 .set-dot {
@@ -2267,7 +2267,7 @@
   width: var(--set-tile); height: var(--set-tile);
   color: var(--c-danger);
 }
-.set-glyph svg { width: 20px; height: 20px; }
+.set-glyph svg { width: var(--ico); height: var(--ico); }
 
 /* ---- 選ぶ紙（二択だが「オン/オフ」ではないもの） ---- */
 .set-choose {
@@ -2278,7 +2278,7 @@
 .set-choose .set-row { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 .set-choose .set-row + .set-row::before { left: var(--sp-4); }
 .set-check { flex: none; width: 20px; color: var(--c-primary); display: grid; place-items: center; }
-.set-check svg { width: 18px; height: 18px; }
+.set-check svg { width: var(--ico); height: var(--ico); }
 
 /* ---- 「›」の先の、古い組みの面倒を見る ----
 
@@ -2340,7 +2340,7 @@
 .seg-btn {
   padding: var(--sp-2);
   min-height: 40px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   color: var(--c-text-2);
@@ -2662,7 +2662,7 @@
 .diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
 .diet-legend-item i.dot-beer { width: 12px; height: 12px; border-radius: 0; background: none; color: var(--c-accent); line-height: 0; }
 /* 凡例の粒。これは絵ではなく色見本の大きさに合わせます。 */
-.diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }
+.diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }  /* 入れもの：凡例の粒 */
 .diet-legend-item i.dot-ma7 { background: var(--c-primary); }
 .diet-legend-item i.dot-ma14 { background: var(--c-text-3); opacity: .6; height: 2px; }
 
@@ -2691,7 +2691,7 @@
   display: inline-block; vertical-align: -2px; line-height: 0;
   color: var(--c-primary); opacity: .8; margin-right: var(--sp-1);
 }
-.diet-hero-ico svg { width: 18px; height: 18px; stroke-width: var(--ico-sm-w); }
+.diet-hero-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 .diet-stat-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
 
 /* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
@@ -2887,7 +2887,7 @@ button.section-note:active { opacity: var(--press-fade); }
   background: var(--c-primary-fill); border-color: var(--c-primary-fill);
 }
 .drink-fav-ico { line-height: 0; flex: none; }
-.drink-fav-ico svg { width: 26px; height: 26px; }
+.drink-fav-ico svg { width: var(--ico); height: var(--ico); }
 .drink-fav-name { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .drink-picks { display: flex; flex-direction: column; gap: var(--sp-2); }
 .drink-picks:empty { display: none; }
@@ -2925,14 +2925,14 @@ button.section-note:active { opacity: var(--press-fade); }
   display: inline-flex; align-items: center; gap: var(--sp-1);
   font-size: var(--fs-sm); color: var(--c-text-3); font-weight: var(--fw-regular);
 }
-.urge-since svg { width: 13px; height: 13px; }
+.urge-since svg { width: var(--ico-sm); height: var(--ico-sm); }
 
 /* ---- 段 ---- */
 
 .urge-sec { display: flex; flex-direction: column; gap: 10px; }
 .urge-sec-head { display: flex; align-items: center; gap: 7px; }
 .urge-sec-ico { line-height: 0; color: var(--c-primary); flex: none; }
-.urge-sec-ico svg { width: 17px; height: 17px; }
+.urge-sec-ico svg { width: var(--ico-sm); height: var(--ico-sm); }
 .urge-sec-title { font-size: calc(15.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text); }
 /* 「任意」は、書かなくてよいことを一目で言うため。薄い地の小さな札で、
    題より前に出ないようにします。 */
@@ -3001,7 +3001,7 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-more:active { scale: var(--press-wide); }
 .urge-more.is-open { border-style: solid; border-color: var(--c-border); color: var(--c-text-3); }
 .urge-more-c { line-height: 0; transition: transform var(--m-state) var(--ease); }
-.urge-more-c svg { width: 15px; height: 15px; }
+.urge-more-c svg { width: var(--ico-sm); height: var(--ico-sm); }
 .urge-more.is-open .urge-more-c { transform: rotate(90deg); }
 
 /* ---- 日の紙に並ぶ行 ----
@@ -3038,7 +3038,7 @@ button.section-note:active { opacity: var(--press-fade); }
    大きさで置きます。 */
 .urge-row-open { flex: none; font-size: var(--fs-xs); color: var(--c-primary); }
 .urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
-.urge-row-go svg { width: 14px; height: 14px; }
+.urge-row-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 
 .diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
@@ -3341,7 +3341,7 @@ a.btn { text-decoration: none; }
   margin-left: 3px; vertical-align: -1px;
   color: var(--c-text-3);
 }
-.diet-hand svg { width: 11px; height: 11px; stroke-width: 2.6; }
+.diet-hand svg { width: 11px; height: 11px; stroke-width: 2.6; }  /* 入れもの：ラベルの背 */
 
 .diet-daynav { display: flex; align-items: center; gap: var(--sp-2); }
 .diet-daynav b { font-size: var(--fs-lg); }
@@ -3765,7 +3765,7 @@ a.btn { text-decoration: none; }
   color: var(--c-primary-ink);
 }
 /* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
-.fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }
+.fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }  /* 入れもの：30の丸 */
 
 /* 夜の光の上書きも、丸ごと要らなくなりました——`--glass-*` が夜の値に
    なるだけで、帯・＋ と同じだけ光が落ちます。 */
@@ -3898,7 +3898,7 @@ a.btn { text-decoration: none; }
 .tl-over { color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 /* 押せる一行（3.0 の B3）。押せば組み直しの紙。色は変えない（注意の字のまま）。 */
 button.tl-over { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; text-align: left; }
-button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
+button.tl-over svg { width: var(--ico-sm); height: var(--ico-sm); color: var(--c-text-3); }
 /* 組み直しの紙 */
 .refit-left { margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--c-text-2); }
 .refit-left b { font-size: var(--fs-lg); color: var(--c-text); font-variant-numeric: tabular-nums; }
@@ -4230,7 +4230,7 @@ button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
 }
 
 .tl-node .todo-mark { width: 32px; height: 32px; }
-.tl-node .todo-mark svg { width: 32px; height: 32px; }
+.tl-node .todo-mark svg { width: 32px; height: 32px; }  /* 入れもの：道の丸 */
 /* ---- 丸薬の中の絵は、丸薬と同じところで色が変わる ----
 
    過ぎたぶん（テーマ色に染まったところ）では**白抜き**、まだのぶん（灰色）
@@ -4379,7 +4379,7 @@ button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
 /* 押すと済ませた時刻を直せる（editDoneAt）。字の並びは事実の行のまま。 */
 button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; background: none; border: 0; cursor: pointer; }
 .tl-doneat i { font-style: normal; }
-.tl-doneat svg { width: 12px; height: 12px; stroke-width: 3; flex: none; }
+.tl-doneat svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3; flex: none; }
 
 /* 手順の丸薬（☑ 2/5 ⌄）。
 
@@ -4406,13 +4406,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--c-text-2);
   color: #fff;
 }
-.tl-subs-box svg { width: 11px; height: 11px; stroke-width: 3.4; }
+.tl-subs-box svg { width: 11px; height: 11px; stroke-width: 3.4; }  /* 入れもの：16の□ */
 .tl-subs-arrow {
   display: grid; place-items: center;
   color: var(--c-text-3);
   transition: transform var(--dur) var(--ease);
 }
-.tl-subs-arrow svg { width: 13px; height: 13px; }
+.tl-subs-arrow svg { width: var(--ico-sm); height: var(--ico-sm); }
 /* たたんでいるときは右向き、ひらくと下向き。回る先が「そこが開く」と
    言うので、閉じているときの向きは進む方向（右）にします。 */
 .tl-subs-chip[aria-expanded="false"] .tl-subs-arrow { transform: rotate(0deg); }
@@ -4677,7 +4677,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   color: var(--c-primary);
   font-weight: var(--fw-bold);
 }
-.tl-late-go svg { width: 14px; height: 14px; }
+.tl-late-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 .tl-late:active { opacity: var(--press-fade); }
 /* 札の置き場は、暦の中から**やることの頭（帯のすぐ下）**へ移りました
    （docs/shared-header.md の段2）。暦は全タブで一つの帯に居るので、中に
@@ -4853,7 +4853,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
   font-size: calc(20px * var(--fs-k));
 }
-.item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }
+.item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }  /* 入れもの：40の丸 */
 .item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
 
 /* ---- 品物の名前は、二行まで折り返す ----
@@ -4924,7 +4924,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   border-radius: var(--r-full);
   background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
 }
-.product-wrap:not(.is-tile-wrap) .product-emoji .p-icon { width: 24px; height: 24px; }
+.product-wrap:not(.is-tile-wrap) .product-emoji .p-icon { width: 24px; height: 24px; }  /* 入れもの：40の丸 */
 
 /* 「買うものリストに入っている」は、左の帯で言っていました。帯をやめたので、
    丸に輪を掛けて言い直します。**これは色の飾りではなく情報**です——同じ
@@ -5223,7 +5223,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   font-size: var(--fs-sm);
   color: var(--c-text-2);
 }
-.note-nb svg { width: 14px; height: 14px; flex: none; }
+.note-nb svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 .note-nb > span, .note-tag > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5233,7 +5233,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-chips { margin-top: var(--sp-2); }
 .notes-chips .chip svg,
 .note-labels .chip svg,
-.note-pick .chip svg { width: 16px; height: 16px; flex: none; }
+.note-pick .chip svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 /* 書く紙の頭の行（段4.2）：‹ の隣にノートブック。下へ送って大きな題が
    隠れたら（.is-folded）、その上に題を小さく（Notion の形）。 */
 .sheet.is-note .sheet-title { display: none; }
@@ -5270,7 +5270,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   font-size: var(--fs-md);
   color: var(--c-text-2);
 }
-.note-nb-btn svg { width: 16px; height: 16px; flex: none; }
+.note-nb-btn svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 /* ノートブックの本の絵は、名前から決まった一色（screen-notes.js の book）。 */
 .nb-ico { display: inline-flex; flex: none; color: var(--cat, currentColor); }
 .note-nb-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5513,7 +5513,7 @@ textarea.note-title-in {
   color: var(--c-text);
   touch-action: manipulation;
 }
-.note-tool svg { width: 22px; height: 22px; }
+.note-tool svg { width: var(--ico); height: var(--ico); }
 .note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary); }
 .note-tool[aria-disabled="true"] { opacity: var(--press-off); }
 
@@ -5627,7 +5627,7 @@ textarea.note-title-in {
   width: 24px; height: 24px; border-radius: 7px;
   border: 2px solid var(--c-border-2); color: transparent;
 }
-.sub-check svg { width: 14px; height: 14px; stroke-width: 3; }
+.sub-check svg { width: 14px; height: 14px; stroke-width: 3; }  /* 入れもの：24の□ */
 .sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: #fff; }
 .tw-row { min-height: var(--row-h); padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 .tw-row:active { background: none; }
@@ -5641,7 +5641,7 @@ textarea.note-title-in {
 }
 .tw-input::-webkit-date-and-time-value { text-align: center; }
 .tw-x { display: grid; place-items: center; flex: none; width: 32px; height: 32px; color: var(--c-text-3); }
-.tw-x svg { width: 16px; height: 16px; }
+.tw-x svg { width: var(--ico-sm); height: var(--ico-sm); }
 .tw-val { flex: none; font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 /* 時刻の車輪。選んだ時刻がまん中の帯、上下に前後。決めていないあいだは薄く。 */
 .note-wheels.tw { grid-template-columns: 1fr 1fr; margin: 0 var(--sp-4) var(--sp-2); }
@@ -5662,7 +5662,7 @@ textarea.note-title-in {
   color: var(--c-text);
   text-align: left;
 }
-.note-pop-item svg { width: 20px; height: 20px; flex: none; }
+.note-pop-item svg { width: var(--ico); height: var(--ico); flex: none; }
 .note-pop-item.is-danger { color: var(--c-danger); }
 .note-pop-main { display: flex; flex-direction: column; min-width: 0; }
 .note-pop-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
@@ -5962,7 +5962,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   animation: tl-ghost-in var(--m-state) var(--ease-out) both;
   transition: transform var(--m-press) var(--ease-out);
 }
-.tl-trash svg { width: 26px; height: 26px; }
+.tl-trash svg { width: 26px; height: 26px; }  /* 入れもの：56の丸 */
 /* 狙いが当たったら、ひとまわり大きく。 */
 .tl-trash.is-armed { transform: scale(1.14); }
 @media (prefers-reduced-motion: reduce) {
@@ -6031,7 +6031,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-weight: var(--fw-bold);
   transition: background var(--m-press) var(--ease), color var(--m-press) var(--ease);
 }
-.trip-plan-btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.trip-plan-btn svg { width: var(--ico); height: var(--ico); flex: 0 0 auto; }
 .trip-plan-btn.is-on {
   background: color-mix(in srgb, var(--c-primary) 12%, transparent);
   color: var(--c-primary);
@@ -6056,7 +6056,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
   line-height: 1;
 }
-.low-mark .p-icon { width: 24px; height: 24px; }
+.low-mark .p-icon { width: 24px; height: 24px; }  /* 入れもの：40の丸 */
 .low-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .low-name { font-weight: var(--fw-bold); overflow-wrap: anywhere; }
 .low-meta { font-size: var(--fs-sm); color: var(--c-text-2); }
@@ -6076,7 +6076,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-weight: var(--fw-bold);
   transition: background var(--m-press) var(--ease);
 }
-.low-add svg { width: 16px; height: 16px; }
+.low-add svg { width: var(--ico-sm); height: var(--ico-sm); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .low-add { color: var(--c-primary); }
 }
@@ -6159,7 +6159,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   border-radius: 7px;
   border-width: 2px;
 }
-.tl-sub .check.is-sub svg { width: 15px; height: 15px; }
+.tl-sub .check.is-sub svg { width: 15px; height: 15px; }  /* 入れもの：手順の輪 */
 .tl-sub .check.is-sub[aria-checked="true"] {
   background: var(--cat, var(--c-primary-fill));
   border-color: var(--cat, var(--c-primary-fill));
@@ -6239,7 +6239,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   -webkit-user-select: none;
   user-select: none;
 }
-.sub-grip svg { width: 16px; height: 16px; }
+.sub-grip svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sub-line.reorder-lift .sub-grip { cursor: grabbing; }
 /* 持ち上がった行には、影が付きます（reorder.js の決めごと）。この段の行は
    地を持っていないので、そのままだと影だけが宙に浮きます——紙と同じ地を
@@ -6485,7 +6485,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
 .tl-shelf-chev { display: grid; margin-left: auto; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
-.tl-shelf-chev svg { width: 16px; height: 16px; }
+.tl-shelf-chev svg { width: var(--ico-sm); height: var(--ico-sm); }
 .tl-shelf-head[aria-expanded="true"] .tl-shelf-chev { rotate: 90deg; }
 .tl-wait { color: var(--c-text-2); }
 /* 見直しの小窓（一件ずつ。screen-todo.js の reviewSheet）。頭の一行からふくらむ白い小窓。灰色の面は使わない
@@ -6504,9 +6504,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: var(--r-md);
   background: color-mix(in srgb, var(--ic) 14%, transparent); color: var(--ic);
 }
-.rv-ic svg { width: 20px; height: 20px; }
+.rv-ic svg { width: var(--ico); height: var(--ico); }
 .rv-ic.is-two { display: flex; justify-content: center; gap: 0; width: auto; padding: 0 6px; }
-.rv-ic.is-two svg { width: 17px; height: 17px; }
+.rv-ic.is-two svg { width: 17px; height: 17px; }  /* 入れもの：32の升に二つ */
 .rv-ic.is-two svg + svg { margin-left: -3px; }
 .rv-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
 .rv-day {
@@ -6533,7 +6533,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .rv-go-t { font-size: var(--fs-md); font-weight: var(--fw-bold); }
 .rv-go-n { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); white-space: nowrap; }
 .rv-go-chev { display: grid; flex: none; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
-.rv-go-chev svg { width: 14px; height: 14px; }
+.rv-go-chev svg { width: var(--ico-sm); height: var(--ico-sm); }
 .rv-go[aria-expanded="true"] .rv-go-chev { rotate: 90deg; }
 .rv-more { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); padding: 0 var(--sp-3) var(--sp-3); }
 .rv-more[hidden] { display: none; }
@@ -6541,7 +6541,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--sp-2);
   border-radius: var(--r-md); border: 1.5px solid var(--c-border); color: var(--c-text);
 }
-.rv-pick svg { width: 20px; height: 20px; color: var(--c-m-steps); }
+.rv-pick svg { width: var(--ico); height: var(--ico); color: var(--c-m-steps); }
 .rv-pick span { font-size: var(--fs-md); font-weight: var(--fw-bold); }
 .rv-pick small { font-size: var(--fs-xs); color: var(--c-text-2); }
 .chip-row.wait-for { flex-wrap: wrap; }
@@ -6585,7 +6585,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .up-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 .up-date { font-size: var(--fs-sm); color: var(--c-text-2); }
 .up-go { margin-left: auto; color: var(--c-text-3); align-self: center; }
-.up-go svg { width: 14px; height: 14px; }
+.up-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 .up-rows { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
 .up-row {
   display: flex; align-items: center; gap: var(--sp-3);
@@ -6604,7 +6604,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .up-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .up-row.is-dl .up-title { color: var(--c-text-2); }
 .up-rep { flex: none; color: var(--c-text-3); display: grid; }
-.up-rep svg { width: 14px; height: 14px; }
+.up-rep svg { width: var(--ico-sm); height: var(--ico-sm); }
 .up-dl {
   flex: none; font-size: var(--fs-xs); color: var(--c-primary);
   border: 1px solid currentColor; border-radius: var(--r-full); padding: 0 .5em;
@@ -6631,7 +6631,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   background: var(--c-surface); color: var(--c-primary);
   font-size: var(--fs-sm);
 }
-.sa-link svg { width: 12px; height: 12px; }
+.sa-link svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sa { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
 .sa-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); margin: 0 0 var(--sp-1); }
 .sa-rows { display: flex; flex-direction: column; }
