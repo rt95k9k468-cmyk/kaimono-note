@@ -365,26 +365,9 @@
     }).join("");
   }
 
-  /** 日のマス一つ。`.cal-dots` は、買ったものが無い日も空のまま置きます
-      （マスの背丈をほかのタブの暦とそろえるため。そろわないと、タブを
-      移るたびに帯の厚みが変わります）。 */
-  function cell(key, cls, bought) {
-    const d = U.dayDate(key);
-    const wd = d ? d.getDay() : 0;
-    const today = key === U.todayKey();
-    const b = node(html`
-      <button class="cal-day ${cls} ${today ? "is-today" : ""}
-                     ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-              data-day="${key}" ${today ? U.raw('aria-current="date"') : ""}
-              ${cls.includes("is-out") ? U.raw('tabindex="-1"') : ""}
-              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}${today ? "（今日）" : ""}">
-        <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots">${U.raw(marksHtml(bought && bought.get(key)))}</span>
-      </button>
-    `);
-    b.addEventListener("click", () => pick(key, b));
-    return b;
-  }
+  /* 日のマスは KN.calGrid が組みます。`.cal-dots` は、買ったものが無い日も
+     空のまま置きます（マスの背丈をほかのタブの暦とそろえるため。そろわないと、
+     タブを移るたびに帯の厚みが変わります）。 */
 
   /** 日が動いたことを、買うものの紙へ知らせます（2026年9月28日から）。
       紙は、今日でない日に合わせると、その日に買ったものを頭に出すので
@@ -437,42 +420,25 @@
   /** 組みます。`only` を渡すのは、隣の週を先に見せるために離れたところへ
       組むときだけ（そのぶんは画面に出ないので、週の印も輪も置きません）。 */
   function fill(sec, only) {
-    const here = sCur();
-    const { year, month } = only || shownMonth();
-    const total = new Date(year, month + 1, 0).getDate();
-    sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-    const grid = sec.querySelector(".cal-grid");
-    grid.innerHTML = "";
-    const wds = sec.querySelector(".cal-wds");
-    wds.innerHTML = "";
-    U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
-      <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
-    `)));
-    const outer = U.outDays(year, month);
-    /* 隣の月のマスにも出します（やることの outCell と同じ理由——空にすると
+    /* 隣の月のマスにも出します（やることと同じ理由——空にすると
        「翌月1日は何も無い」と嘘をつく）。 */
     const bought = boughtByDay();
-    outer.lead.forEach((k) => grid.append(cell(k, "is-out", bought)));
-    for (let d = 1; d <= total; d++) {
-      const k = U.dayKey(new Date(year, month, d));
-      grid.append(cell(k, k === here ? "is-here" : "", bought));
-    }
-    outer.trail.forEach((k) => grid.append(cell(k, "is-out", bought)));
+    const { year, month } = only || shownMonth();
+    const grid = KN.calGrid.fill(sec, {
+      year, month, here: sCur(), outToday: true,
+      mark: (k) => ({ html: marksHtml(bought.get(k)) }),
+      pick: (k, b) => pick(k, b),
+    });
     if (only) return;
     markWeek(sec);
     paintTitle();
     moveRing(grid, grid.querySelector(".cal-day.is-here"), true);
   }
 
-  /** その月ぶんの盤。いま出している月なら、生きている盤をそのまま。 */
-  function monthGridFor(year, month) {
-    const cur = shownMonth();
-    if (sCal && cur.year === year && cur.month === month) return sCal.querySelector(".cal-grid");
-    const tmp = node(html`<section class="cal"></section>`);
-    KN.calPeek.mount(tmp);
-    fill(tmp, { year, month });
-    return tmp.querySelector(".cal-grid");
-  }
+  /** その月ぶんの盤。いま出している月なら、生きている盤をそのまま（KN.calGrid）。 */
+  const monthGridFor = KN.calGrid.monthGridFor({
+    live: () => sCal, shown: () => shownMonth(), fill: (tmp, only) => fill(tmp, only),
+  });
 
   /**
    * 買うもの・価格が `render()` の中で呼んで、`putCal` に渡す一枚。

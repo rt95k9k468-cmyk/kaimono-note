@@ -163,7 +163,7 @@
 | 段 | ID | 名前 | 大きさ | 見た目 | 先に読む docs | モデル・エフォート | 状態 |
 |---|---|---|---|---|---|---|---|
 | A 作り | U1 | 辞書の外を辞書へ（`flipRows`・`road-float`・`SETTLE`・トーストの長さ） | 小 | 少し | motion | Sonnet 5.5・中 | 済（10/7） |
-| A | U2 | 同じ部品を一本に（暦の組み立て・アイコンを選ぶ紙・写す） | 中 | 同じ | shared-header・calendar-swipe・icons-matching | Opus 5.5・中 | 未 |
+| A | U2 | 同じ部品を一本に（暦の組み立て・アイコンを選ぶ紙・写す） | 中 | 同じ | shared-header・calendar-swipe・icons-matching | Opus 5.5・中 | 済（10/7） |
 | A | U3 | 暗い面の二度書きを見張る | 小 | 同じ | look | Sonnet 5.5・低 | 済（10/7） |
 | B 返事 | U4 | 指の重さを一か所に（`KN.gesture`） | 小 | 少し（手触り） | calendar-swipe・sheet-scroll・settings（edge-back） | Opus 5.5・中 | 未 |
 | B | U5 | 同じ出来事の動きを一本に（@keyframes） | 中 | 少し | motion・traps | Opus 5.5・中 | 未 |
@@ -224,6 +224,12 @@
   見出しで束ねる作りはそのまま。
 - **写す**：`KN.util.copy(text)` を一本（写せなければ欄を選んで「長押しでコピー」の受け皿）。言葉は U10。
 - 見張り：`monthGridFor` と `navigator.clipboard.writeText` が一か所にしか無い。
+- **済（10/7）**：暦は `js/cal-grid.js`（`KN.calGrid.fill`・`monthGridFor`）、紙は `KN.ui.iconPicker`（ui.js）、
+  写すは `KN.util.copy(text, {field|show})`（言葉は呼ぶ側のまま）。前後で暦の DOM（四タブ・隣の月を押したあと）と
+  紙の中身・保存・報告が一致。四本の差は「印」と押したあとのほかに二つあり、**見た目を変えないため札で残した**：
+  隣の月のマスに「今日」を付けるのは買うものだけ（`outToday`）、隣の月のマスが Tab で止まるのはやることだけ
+  （`outFocus`）。揃えるなら前者は「今日が週の端の隣の月に入ると、三タブで今日の色が消える」直しになる（段B 以降で
+  見比べ）。週の印・輪（`markWeek`・`moveRing`）は四本のまま。見張りは `tests/one-part.js`（門）。
 
 ### U3 暗い面の二度書きを見張る（小・Sonnet 5.5・低）
 

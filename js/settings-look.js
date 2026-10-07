@@ -12,6 +12,12 @@
   const S = KN.settingsParts;
   const { TINT, card, head, foot, navRow, switchRow, pickRow, choose, render, copyText } = S;
 
+  /** 写して、言葉を一つ出す（写せなければ欄を出して選んでおく。KN.util.copy）。 */
+  function copyOut(text) {
+    KN.util.copy(text, { show: true }).then((ok) => KN.ui.toast(ok
+      ? "コピーしました" : "長押しして「すべてを選択」→「コピー」してください"));
+  }
+
   /* ---------------- 困ったときの記録（R23、js/errlog.js） ----------------
 
      アプリの中で起きたエラーの控え（新しい50件）。iPhone で「動かない」が出たとき、
@@ -277,25 +283,7 @@
 
       wrap.querySelector(".js-gap-copy").addEventListener("click", () => {
         const text = gaps.map((g) => `${g.name}\t${g.kind}\t${g.count}`).join("\n");
-        const ok = () => KN.ui.toast("コピーしました");
-        const fallback = () => {
-          const ta = document.createElement("textarea");
-          ta.value = text;
-          ta.setAttribute("readonly", "");
-          ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
-          document.body.append(ta);
-          ta.select();
-          let done = false;
-          try { done = document.execCommand("copy"); } catch (err) { done = false; }
-          if (done) { ta.remove(); ok(); return; }
-          KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
-          ta.addEventListener("blur", () => ta.remove());
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(ok, fallback);
-        } else {
-          fallback();
-        }
+        copyOut(text);
       });
     }
 
@@ -349,25 +337,7 @@
       const text = JSON.stringify(reports.map((r) => (
         { kind: r.kind, screen: r.screen, text: r.text, gotIcon: r.gotIcon, chosen: r.chosen, note: r.note }
       )), null, 1);
-      const ok = () => KN.ui.toast("コピーしました");
-      const fallback = () => {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.setAttribute("readonly", "");
-        ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
-        document.body.append(ta);
-        ta.select();
-        let done = false;
-        try { done = document.execCommand("copy"); } catch (err) { done = false; }
-        if (done) { ta.remove(); ok(); return; }
-        KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
-        ta.addEventListener("blur", () => ta.remove());
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(ok, fallback);
-      } else {
-        fallback();
-      }
+      copyOut(text);
     }
 
     /* 一つの種類ぶん（絵がちがう／言葉が無い）を、見出し・一覧・コピー行の

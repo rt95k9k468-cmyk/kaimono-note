@@ -64,44 +64,14 @@
      is. Below that the whole set, because sometimes the right picture has
      nothing to do with the name at all. */
   function openIconPicker(productId, onChanged) {
-    const body = node(html`
-      <div class="stack" style="gap:14px">
-        <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
-               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
-        <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
-          ${icon("flag")}
-          <span class="icon-report-text">この絵はちがう、と記録する</span>
-        </button>
-        <div class="stack js-grids" style="gap:14px"></div>
-      </div>
-    `);
-    const grids = body.querySelector(".js-grids");
-    const q = body.querySelector(".js-q");
+    /* 紙の作り（探す・報告・おまかせ・もしかして・見出しで束ねる・流し込み）は
+       やることと一つ（KN.ui.iconPicker）。ここが渡すのは品物の絵の出どころと、
+       選んだあとの保存だけ。
 
-    const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
-
-    /* 報告は「選ぶ」のついでに残します。押した瞬間には何が正しいかまだ
-       分からない（分かっていれば選んでいる）ので、ここでは腕を組むだけ
-       （armed）——次に choose() が呼ばれたとき（グリッドの絵、または
-       「おまかせにする」）、その結果を chosen として一緒に書きます。
-       「おまかせ」のまま報告すれば、chosen は空——「正しい絵はまだ無い」
-       という記録そのものです。
-
-       いま出す絵は自動の推測（findKey、カテゴリの当たりも含む）で、
+       報告に出す絵は自動の推測（findKey、カテゴリの当たりも含む）で、
        いま product.icon に入っている値ではありません——手で選んだ絵を
        挟んだあとに報告しても、辞書がどちらの困りごとを起こしているかは
        変わらないので。 */
-    let armed = false;
-    const reportBtn = body.querySelector(".js-report-toggle");
-    reportBtn.addEventListener("click", () => {
-      armed = !armed;
-      reportBtn.classList.toggle("is-on", armed);
-      reportBtn.setAttribute("aria-pressed", String(armed));
-      reportBtn.querySelector(".icon-report-text").textContent = armed
-        ? "次に選ぶ絵を「ちがう」として記録します"
-        : "この絵はちがう、と記録する";
-    });
-
     function autoGuess() {
       const p = store.getProduct(productId);
       if (!p) return "";
@@ -113,171 +83,36 @@
       return KN.productIcons.findKey(name) || (cat && KN.productIcons.findKey(cat.name)) || "";
     }
 
-    function choose(key) {
-      if (armed) {
+    return KN.ui.iconPicker({
+      screen: "shop",
+      current: () => (store.getProduct(productId) || {}).icon || "",
+      reportOf: () => {
         const p = store.getProduct(productId);
-        const gotIcon = autoGuess();
-        store.addIconReport({
-          text: (p && p.name) || "", screen: "shop", gotIcon,
-          kind: gotIcon ? "wrong" : "missing", chosen: key || "",
+        return { text: (p && p.name) || "", gotIcon: autoGuess() };
+      },
+      guess: (text) => KN.productIcons.findKey(text) || "",
+      autoMark: () => {
+        const rec = store.getProduct(productId);
+        return rec ? store.autoMark(rec) : null;
+      },
+      search: (query) => KN.productIcons.search(query),
+      maybe: () => {
+        const rec = store.getProduct(productId);
+        const maybe = KN.productIcons.suggest(rec.name, 8);
+        return KN.productIcons.list().filter((x) => maybe.includes(x.key))
+          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key));
+      },
+      /* 「ぜんぶ」は見出しで束ねて出します（`KN.productIcons.groups()`）。 */
+      groups: () => KN.productIcons.groups(),
+      onChoose: (key) => {
+        store.update((s) => {
+          const rec = s.products.find((x) => x.id === productId);
+          if (rec) rec.icon = key || null;
         });
-        KN.ui.toast("記録しました");
-      }
-      store.update((s) => {
-        const rec = s.products.find((x) => x.id === productId);
-        if (rec) rec.icon = key || null;
-      });
-      haptic(12);
-      onChanged && onChanged();
-      handle.close();
-    }
-
-    /* 一画面に入るぶんより、少し多め。最初の一手で見えるところが埋まっていれば、
-       残りが何フレームか遅れて届いても、めくるより先に間に合います。 */
-    const CHUNK = 120;
-    /* 開いているシートが閉じたら、まだ流し込んでいるぶんは止めます。 */
-    let painting = 0;
-
-    function cellOf({ key, label, svg }) {
-      const current = store.getProduct(productId).icon || "";
-      const cell = node(html`
-        <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
-                data-key="${key}" aria-pressed="${String(key === current)}">
-          <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
-          <span class="icon-cell-label">${label}</span>
-        </button>
-      `);
-      cell.addEventListener("click", () => choose(key));
-      return cell;
-    }
-
-    function grid(items) {
-      const g = node(html`<div class="icon-grid"></div>`);
-
-      /* 絵が557個だったころは、全部いちどに組んで差し込んでも 70ms でした。
-         857個になると DOM が 8,000 節点・HTML が 700KB を超えて、実機では
-         シートが開く手が止まります。
-
-         そこで最初の一掴みだけを同期で入れ、残りはフレームごとに継ぎ足します。
-         総量は同じでも、一フレームに載る仕事が減るので、開く動作は止まりません。
-         中身は変わらないので、探すことにも選ぶことにも影響しません。 */
-      const head = items.slice(0, CHUNK);
-      head.forEach((it) => g.append(cellOf(it)));
-
-      if (items.length > CHUNK) {
-        const mine = ++painting;
-        let at = CHUNK;
-        const more = () => {
-          // 描き直しが始まっていたら、古い流し込みはここで降ります。
-          if (mine !== painting || !g.isConnected) return;
-          const stop = Math.min(at + CHUNK, items.length);
-          const frag = document.createDocumentFragment();
-          for (; at < stop; at++) frag.append(cellOf(items[at]));
-          g.append(frag);
-          if (at < items.length) requestAnimationFrame(more);
-        };
-        requestAnimationFrame(more);
-      }
-      return g;
-    }
-
-    /* 「ぜんぶ」は見出しで束ねて出します（`KN.productIcons.groups()`）。
-       707枚が見出しの無い一本の格子で流れていたので、探す欄で当たらなかった
-       人には、そこから先の手がかりがありませんでした。
-
-       **刻むのは見出し単位で、`grid()` は使いません。** `grid()` の流し込みは
-       `painting` の札で「最後の一本だけを生かす」作りなので、見出しごとに
-       呼ぶと、二つ目が始まった時点で一つ目の流し込みが死にます。しかも
-       どの見出しも120枚（CHUNK）未満なので、そもそも刻まれず 707枚が
-       まるごと同期で入ります——**実機でシートが開く手が止まる**、あの形に
-       戻ってしまう。だから流し込みは一本のまま、切り口を見出しへ移します。 */
-    function paintGroups(gs, into) {
-      const mine = ++painting;
-      const put = (g) => {
-        into.append(heading(g.label));
-        const box = node(html`<div class="icon-grid"></div>`);
-        g.items.forEach((it) => box.append(cellOf(it)));
-        into.append(box);
-      };
-      /* 最初の一手で見えるぶんだけ同期で。残りはフレームごとに一見出しずつ
-         ——いちばん大きい見出しでも76枚なので、一フレームの仕事は前より軽い。 */
-      const HEAD = 2;
-      gs.slice(0, HEAD).forEach(put);
-      let at = HEAD;
-      const more = () => {
-        if (mine !== painting || !into.isConnected) return;
-        put(gs[at++]);
-        if (at < gs.length) requestAnimationFrame(more);
-      };
-      if (at < gs.length) requestAnimationFrame(more);
-    }
-
-    const heading = (text) => node(html`<span class="field-label">${text}</span>`);
-
-    function paint() {
-      const rec = store.getProduct(productId);
-      if (!rec) return;
-      grids.innerHTML = "";
-      const query = q.value.trim();
-
-      if (query) {
-        const hits = KN.productIcons.search(query);
-        if (!hits.length) {
-          /* 「合う絵はありません」で行き止まりにしません。ここで探した
-             言葉そのものに絵が無い、という発見そのものが**報告の材料**
-             なので、その場で残せるようにします（腕組みボタンを押す手間を
-             飛ばして、いま打った言葉を直接記録する一本道）。 */
-          const empty = node(html`
-            <div class="stack" style="gap:10px">
-              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
-                「${query}」に合う絵はありません
-              </p>
-              <button type="button" class="icon-report-toggle js-report-empty">
-                ${icon("flag")}
-                <span class="icon-report-text">「${query}」の絵が無い、と記録する</span>
-              </button>
-            </div>
-          `);
-          empty.querySelector(".js-report-empty").addEventListener("click", () => {
-            const gotIcon = KN.productIcons.findKey(query) || "";
-            store.addIconReport({ text: query, screen: "shop", gotIcon, kind: gotIcon ? "wrong" : "missing" });
-            KN.ui.toast("記録しました");
-          });
-          grids.append(empty);
-          return;
-        }
-        grids.append(grid(hits));
-        return;
-      }
-
-      /* Back to the guess. Shown with the picture it would land on, so it is
-         a choice between two pictures rather than a choice with the lights
-         off. */
-      const auto = node(html`
-        <button type="button" class="icon-auto js-auto ${rec.icon ? "" : "is-on"}"
-                aria-pressed="${String(!rec.icon)}">
-          <span class="icon-pick-mark">${store.autoMark(rec)}</span>
-          <span class="icon-pick-text">
-            <span class="icon-pick-name">おまかせにする</span>
-          </span>
-        </button>
-      `);
-      auto.addEventListener("click", () => choose(null));
-      grids.append(auto);
-
-      const maybe = KN.productIcons.suggest(rec.name, 8);
-      if (maybe.length) {
-        grids.append(heading("もしかして"));
-        grids.append(grid(KN.productIcons.list().filter((x) => maybe.includes(x.key))
-          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
-      }
-
-      paintGroups(KN.productIcons.groups(), grids);
-    }
-
-    q.addEventListener("input", debounce(paint, 160));
-    paint();
-    return handle;
+        haptic(12);
+        onChanged && onChanged();
+      },
+    });
   }
 
   /* 手でカテゴリを選んだ（小窓から）。 */

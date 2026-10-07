@@ -106,11 +106,8 @@
     viewMonth = ym === ymOf(new Date()) ? null : ym;
   }
 
-  /** クリップボードへ。断られたら false を返します（例外は投げません）。 */
-  function copyText(text) {
-    if (!navigator.clipboard || !navigator.clipboard.writeText) return Promise.resolve(false);
-    return navigator.clipboard.writeText(text).then(() => true, () => false);
-  }
+  /** クリップボードへ。断られたら false を返します（写すのは KN.util.copy 一か所）。 */
+  function copyText(text) { return U.copy(text); }
 
   /** その日の日記・起床就寝・やること・買うもの・からだ（ダイエット）を、
       ひとつの文にまとめます。日付は書きません——地の文（本文）の頭に
@@ -304,19 +301,11 @@
     return next > U.todayKey() && delta > 0 ? null : next;
   }
 
-  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
-      いま出している月なら、生きている盤をそのまま渡します——組み直すと、
-      選んでいる日の輪まで作り直すことになるので。 */
-  function monthGridFor(year, month) {
-    const cur = shownMonth();
-    if (els.cal && cur.year === year && cur.month === month) {
-      return els.cal.querySelector(".cal-grid");
-    }
-    const tmp = node(html`<section class="cal"></section>`);
-    KN.calPeek.mount(tmp);
-    fillCalendar(tmp, { year, month });
-    return tmp.querySelector(".cal-grid");
-  }
+  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます
+      （作りは四つの暦で一つ——KN.calGrid）。 */
+  const monthGridFor = KN.calGrid.monthGridFor({
+    live: () => els.cal, shown: () => shownMonth(), fill: (tmp, only) => fillCalendar(tmp, only),
+  });
 
   /** 月を送ります。暦を払っても、紙を払っても、ここへ来ます。 */
   function goMonth(delta, quiet) {
@@ -493,32 +482,6 @@
       }).join("");
   }
 
-  /* 隣の月のマス。週で見るときだけ姿を見せます（月で見るあいだは CSS が
-     伏せるので、月の見た目はこれまでどおり）。押せば、その日へ移ります。
-     絵も出します——空のままだと「よその月の頭は何も無い」と嘘をつく
-     ことになるので（やることの outCell と同じ理由）。 */
-  function outCell(key, byDay) {
-    const d = U.dayDate(key);
-    const wd = d ? d.getDay() : 0;
-    const dotsHtml = markIconsHtml(byDay && byDay[key]);
-    const cell = node(html`
-      <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-              data-day="${key}" tabindex="-1"
-              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
-        <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots">${U.raw(dotsHtml)}</span>
-      </button>
-    `);
-    cell.addEventListener("click", () => {
-      KN.motion.fire("select");
-      viewDay = key === U.todayKey() ? null : key;
-      const ym = String(key).slice(0, 7);
-      viewMonth = ym === ymOf(new Date()) ? null : ym;
-      render();
-    });
-    return cell;
-  }
-
   /**
    * @param {Element} sec  組む先の `.cal`
    * @param {{year:number,month:number}} [only]  その月で組みます。渡すのは
@@ -529,11 +492,6 @@
   function fillCalendar(sec, only) {
     const today = U.todayKey();
     const { year, month } = only || shownMonth();
-    const total = new Date(year, month + 1, 0).getDate();
-    const lead = new Date(year, month, 1).getDay();
-
-    sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-
     const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
     /* 隣の月へはみ出すマス（lead/trail）の絵も出すため、前後の月ぶんも
        一緒に集めます。 */
@@ -546,49 +504,29 @@
     const logged = {};
     store.daysOfMonth(ym).forEach((d) => { logged[d.date] = true; });
 
-    const grid = sec.querySelector(".cal-grid");
-    grid.innerHTML = "";
-    /* 曜日の行は、日のマスとは別の入れ物です——暦を引いて伸ばすとき、
-       動くのは日のマスだけで、曜日はここに留まります。 */
-    const wds = sec.querySelector(".cal-wds");
-    wds.innerHTML = "";
-    U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
-      <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
-    `)));
-    /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
-       して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
-       これまでどおり）。押せば、その日へ行けます。 */
-    const outer = U.outDays(year, month);
-    outer.lead.forEach((key) => grid.append(outCell(key, byDay)));
-
-    for (let d = 1; d <= total; d++) {
-      const key = U.dayKey(new Date(year, month, d));
-      const wd = (lead + d - 1) % 7;
-      const isToday = key === today;
-      const kinds = [...new Set(byDay[key] || [])].slice(0, 3);
-      const dotsHtml = kinds.length
-        ? markIconsHtml(kinds)
-        : (logged[key] ? '<i class="is-log"></i>' : "");
-      const cell = node(html`
-        <button class="cal-day ${isToday ? "is-today" : ""} ${key === (viewDay || today) ? "is-here" : ""}
-                       ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-                data-day="${key}" ${isToday ? U.raw('aria-current="date"') : ""}
-                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
-                  kinds.length ? ` 記録${kinds.length}種` : ""}${logged[key] ? " log あり" : ""}">
-          <span class="cal-n">${String(d)}</span>
-          <span class="cal-dots">${U.raw(dotsHtml)}</span>
-        </button>
-      `);
-      cell.addEventListener("click", () => {
+    /* 日の印は、その日に書いた記録の種類の絵（三つまで）。無ければ log の点。
+       隣の月のマス（週で見るときだけ姿を見せる）にも絵を出します——空のままだと
+       「よその月の頭は何も無い」と嘘をつくことになるので（やることと同じ理由）。 */
+    const grid = KN.calGrid.fill(sec, {
+      year, month, here: viewDay || today,
+      mark: (key, out) => {
+        if (out) return { html: markIconsHtml(byDay[key]) };
+        const kinds = [...new Set(byDay[key] || [])].slice(0, 3);
+        return {
+          html: kinds.length ? markIconsHtml(kinds) : (logged[key] ? '<i class="is-log"></i>' : ""),
+          label: `${kinds.length ? ` 記録${kinds.length}種` : ""}${logged[key] ? " log あり" : ""}`,
+        };
+      },
+      /* 押せば、その日へ移ります。その月のマスは先に輪だけ動かします。 */
+      pick: (key, cell, out) => {
         KN.motion.fire("select");
-        viewDay = key === today ? null : key;
-        viewMonth = ymOf(new Date(year, month, 1)) === ymOf(new Date()) ? null : ymOf(new Date(year, month, 1));
-        moveRing(grid, cell);
+        viewDay = key === U.todayKey() ? null : key;
+        const at = String(key).slice(0, 7);
+        viewMonth = at === ymOf(new Date()) ? null : at;
+        if (!out) moveRing(grid, cell);
         render();
-      });
-      grid.append(cell);
-    }
-    outer.trail.forEach((key) => grid.append(outCell(key, byDay)));
+      },
+    });
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
     markWeek(sec, viewDay || today);
     moveRing(grid, grid.querySelector(`.cal-day[data-day="${viewDay || today}"]`), true);
