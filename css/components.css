@@ -313,7 +313,7 @@ button, [role="tab"] {
   display: grid;
   place-items: center;
 }
-.icon-pick-mark .p-icon { width: 26px; height: 26px; vertical-align: 0; }
+.icon-pick-mark .p-icon { width: 26px; height: 26px; vertical-align: 0; }  /* 入れもの：44の丸 */
 
 .icon-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .icon-pick-name { font-weight: var(--fw-bold); }
@@ -338,7 +338,7 @@ button, [role="tab"] {
   font-size: var(--fs-sm);
   transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
-.icon-report-toggle svg { width: 16px; height: 16px; flex: none; }
+.icon-report-toggle svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 .icon-report-toggle.is-on {
   border-color: var(--c-primary);
   background: var(--c-primary-soft);
@@ -368,7 +368,7 @@ button, [role="tab"] {
 .icon-cell:active { scale: var(--press-dot); }
 .icon-cell.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
 .icon-cell-mark { display: grid; place-items: center; height: 30px; }
-.icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }
+.icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }  /* 入れもの：絵選びの升 */
 .icon-cell-label {
   font-size: calc(10px * var(--fs-k));
   line-height: 1.15;
@@ -588,7 +588,6 @@ button, [role="tab"] {
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   color: var(--c-text-2);
-  letter-spacing: .04em;
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -609,7 +608,7 @@ button, [role="tab"] {
   color: var(--c-primary);
   letter-spacing: -.01em;
 }
-.section-title.is-block-head svg { width: 18px; height: 18px; }
+.section-title.is-block-head svg { width: var(--ico); height: var(--ico); }
 
 /* ---------------- badges ---------------- */
 
@@ -661,7 +660,7 @@ button, [role="tab"] {
 }
 .empty-art .empty-svg {
   display: block;
-  width: 68px; height: 68px;
+  width: 68px; height: 68px;  /* 入れもの：空の画面の絵 */
 }
 /* 開いたとき（motion.js の arrive）、空の絵はふわりと咲いて、中の絵が一度だけ
    小さく跳ねる。空の画面は「何も無い」ではなく「ここから始まる」の場所なので、
@@ -682,7 +681,7 @@ button, [role="tab"] {
    絵は残しますが、面積はその一段ぶんに収めます。 */
 .empty.is-quiet { padding: var(--sp-6) var(--sp-6); gap: var(--sp-2); }
 .empty.is-quiet .empty-art { width: 64px; height: 64px; }
-.empty.is-quiet .empty-art .empty-svg { width: 40px; height: 40px; }
+.empty.is-quiet .empty-art .empty-svg { width: 40px; height: 40px; }  /* 入れもの：空の画面の絵 */
 .empty.is-quiet .empty-title { font-size: var(--fs-md); }
 .empty.is-quiet .empty-text { font-size: var(--fs-sm); }
 
@@ -954,7 +953,7 @@ button, [role="tab"] {
   box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
 }
 .hero-node .todo-mark,
-.hero-node .todo-mark svg { width: 38px; height: 38px; }
+.hero-node .todo-mark svg { width: 38px; height: 38px; }  /* 入れもの：紙の頭の丸 */
 /* 行の丸薬から頭の丸薬へ伸びていく影武者（ui.js の morphPill）。箱の
    位置・大きさ・丸み・輪は、JS が測った数で動かします。 */
 .sheet-morph {
@@ -1029,7 +1028,7 @@ button.hero-node:active { scale: var(--press-dot); }
 }
 .hero-facts:empty { display: none; }
 .hero-fact { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-sm); }
-.hero-fact svg { width: 14px; height: 14px; }
+.hero-fact svg { width: var(--ico-sm); height: var(--ico-sm); }
 .hero-fact.is-fav { color: #fff; }
 .hero-fact.is-subs i { font-style: normal; font-variant-numeric: tabular-nums; }
 /* 頭を敷いたときは、題の行は要りません。閉じる丸が**左**、⋯ が右——参考に
@@ -1085,7 +1084,8 @@ button.hero-node:active { scale: var(--press-dot); }
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  padding: 13px var(--sp-4) 13px 14px;
+  min-height: var(--row-h);
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) 14px;
   text-align: left;
   transition: background var(--m-press) var(--ease);
 }
@@ -1099,7 +1099,7 @@ button.hero-node:active { scale: var(--press-dot); }
   width: 26px; height: 26px;
   color: var(--c-primary);
 }
-.d-ico svg { width: 21px; height: 21px; stroke-width: 2; }
+.d-ico svg { width: 21px; height: 21px; stroke-width: 2; }  /* 入れもの：26の丸 */
 .d-label {
   flex: 1; min-width: 0;
   font-size: var(--fs-lg);
@@ -1113,7 +1113,7 @@ button.hero-node:active { scale: var(--press-dot); }
   font-variant-numeric: tabular-nums;
 }
 .d-go { display: grid; place-items: center; flex: none; color: var(--c-border-2); }
-.d-go svg { width: 17px; height: 17px; stroke-width: 2.4; }
+.d-go svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 2.4; }
 
 /* 手順を足す行。参考画面の「サブタスクを追加」と同じで、空のチェック□が
    置いてあります——押せば一つ増える、が形で分かるように。 */
@@ -1134,7 +1134,7 @@ button.hero-node:active { scale: var(--press-dot); }
   border: 2px solid var(--c-border-2);
   color: var(--c-text-3);
 }
-.d-add-box svg { width: 14px; height: 14px; stroke-width: 2.6; }
+.d-add-box svg { width: 14px; height: 14px; stroke-width: 2.6; }  /* 入れもの：24の□ */
 .d-card .sub-edit { padding: var(--sp-2) var(--sp-4) 0; }
 .d-card .sub-edit:empty { padding: 0; }
 
@@ -1167,16 +1167,16 @@ button.hero-node:active { scale: var(--press-dot); }
   color: color-mix(in srgb, #fff 78%, transparent);
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
 }
-.pd-fav svg { width: 22px; height: 22px; }
+.pd-fav svg { width: var(--ico); height: var(--ico); }
 .pd-fav.is-on { background: #fff; color: var(--c-warn); }
-.pd-hero .hero-node svg { width: 44px; height: 44px; }
+.pd-hero .hero-node svg { width: 44px; height: 44px; }  /* 入れもの：紙の頭の丸 */
 .pd-size { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--c-border); }
 /* 足す紙の、カテゴリとメモの札一列（V27、product-sheet.js の frame の chips）。 */
 .sheet-detail:has(> .pd-chips) { gap: var(--sp-3); }
 .sheet-detail:has(> .pd-chips) > div:empty { display: none; }
 .pd-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .pd-chip { color: var(--c-text); }
-.pd-chip svg { width: 16px; height: 16px; }
+.pd-chip svg { width: var(--ico-sm); height: var(--ico-sm); }
 .pd-chip[hidden] { display: none; }
 .pd-memo {
   border: 1.5px solid var(--c-border);
@@ -1223,13 +1223,13 @@ button.hero-node:active { scale: var(--press-dot); }
 .act-list { display: flex; flex-direction: column; }
 .act-row {
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: 13px 2px;
+  min-height: var(--row-h); padding: var(--sp-3) 2px;
   text-align: left;
 }
 .act-row + .act-row { border-top: 1px solid var(--c-border); }
 .act-row:active { opacity: var(--press-fade); }
 .act-ico { display: grid; place-items: center; flex: none; width: 24px; color: var(--c-text-2); }
-.act-ico svg { width: 20px; height: 20px; }
+.act-ico svg { width: var(--ico); height: var(--ico); }
 .act-main { display: block; min-width: 0; }
 .act-label { display: block; font-size: var(--fs-lg); color: var(--c-text); }
 .act-sub { display: block; font-size: var(--fs-sm); color: var(--c-text-3); }
@@ -1559,7 +1559,7 @@ button.hero-node:active { scale: var(--press-dot); }
   text-align: left;
   border-bottom: 1px solid var(--c-border);
   transition: background var(--m-state) var(--ease);
-  min-height: 52px;
+  min-height: var(--row-h);
 }
 
 .row:last-child { border-bottom: none; }
@@ -1765,7 +1765,7 @@ button.hero-node:active { scale: var(--press-dot); }
 .key-ok:active { background: var(--c-primary-2); }
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */
-.key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+.key-back svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }  /* 入れもの：キー */
 
 /* =========================================================
    出来事の返し方（js/motion.js が付け外しする class）
@@ -1873,7 +1873,7 @@ button.hero-node:active { scale: var(--press-dot); }
 .dest-chip {
   display: inline-flex; align-items: center;
   margin-top: var(--sp-2);
-  min-height: 36px; padding: 0 var(--sp-3);
+  min-height: 40px; padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   border: 1.5px solid color-mix(in srgb, var(--c-primary) 40%, transparent);
   background: color-mix(in srgb, var(--c-primary-fill) 10%, var(--c-surface));
@@ -1957,7 +1957,7 @@ button.hero-node:active { scale: var(--press-dot); }
   font-size: 20px;
   font-weight: var(--fw-bold);
 }
-.lock-open svg { width: 26px; height: 26px; }
+.lock-open svg { width: 26px; height: 26px; }  /* 入れもの：鍵を開けるボタン */
 .lock-num {
   min-height: 44px;
   padding: 0 20px;
@@ -1979,8 +1979,8 @@ button.hero-node:active { scale: var(--press-dot); }
   background: var(--c-surface);
   color: var(--c-text-2);
 }
-.lock-away svg { width: 22px; height: 22px; }
-.lock-ico svg { width: 44px; height: 44px; color: var(--c-primary); }
+.lock-away svg { width: 22px; height: 22px; }  /* 入れもの：44の丸 */
+.lock-ico svg { width: 44px; height: 44px; color: var(--c-primary); }  /* 入れもの：鍵の画面の目印 */
 .lock-dots { display: flex; gap: 14px; min-height: 14px; }
 .lock-dot {
   width: 14px; height: 14px;
@@ -2007,7 +2007,7 @@ button.hero-node:active { scale: var(--press-dot); }
 .lock-key:active { background: var(--c-surface-3); }
 .lock-key.is-back, .lock-key.is-bio { background: transparent; }
 .lock-key.is-bio[hidden] { display: grid; visibility: hidden; }
-.lock-key svg { width: 28px; height: 28px; }
+.lock-key svg { width: 28px; height: 28px; }  /* 入れもの：キー */
 
 /* ---------------- AI とほどく（3.0 の C1・js/unfold.js） ----------------
    渡す中身（札で外せる）・困っていること一行・畳んだ文・AI の札・コピーして開く。
@@ -2033,4 +2033,4 @@ button.hero-node:active { scale: var(--press-dot); }
 /* 詳細の紙の静かなすすめ（一つだけ）。 */
 .unf-hint { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .unf-hint-x { display: grid; place-items: center; width: 28px; height: 28px; color: inherit; opacity: .8; }
-.unf-hint-x svg { width: 14px; height: 14px; }
+.unf-hint-x svg { width: var(--ico-sm); height: var(--ico-sm); }

@@ -346,7 +346,7 @@
     let year = here.year;
 
     const body = node(html`
-      <div class="stack" style="gap:14px">
+      <div class="stack gap-3">
         <div class="mp-head">
           <button type="button" class="icon-btn js-py flip-x" aria-label="前の年">${icon("chevron")}</button>
           <span class="mp-year js-y"></span>
@@ -996,7 +996,7 @@
        書ける量をこちらが決める理由がありません——短く書きたい人は短く書きます。
        数えるのをやめると、書いている最中に「あと何字」が目に入らなくなります。 */
     const body = node(html`
-      <div class="stack" style="gap:16px">
+      <div class="stack gap-4">
         ${readable ? html`
         ${/* 見出しは置かない（2026年10月6日・利用者「見出しがおかしい」）。紙の題が「◯月◯日 の log」。 */""}
         <label class="field arc-memo-field">
@@ -1226,7 +1226,7 @@
                   aria-pressed="${String(favOnly)}" aria-label="お気に入りだけ見る">${icon("star")}</button>
         </header>
         <div class="js-typechips"></div>
-        <div class="js-rows stack" style="gap:0"></div>
+        <div class="js-rows stack"></div>
       </section>
     `);
 
@@ -1303,12 +1303,12 @@
     /* 同じノートへ（3.0 の A2。ノートから置いた活動を済ませた記録）。ノートが消えていれば出さない。 */
     const srcNote = e && e.note && KN.activity ? KN.activity.noteOf(e.note) : null;
     const body = node(html`
-      <div class="stack" style="gap:10px">
+      <div class="stack gap-2">
         ${srcNote ? html`<button type="button" class="dest-chip arc-note-src js-note-src">ノート『${srcNote.title}』</button>` : ""}
         <div class="arc-pick js-pick"></div>
 
         <div class="js-reading-fields" hidden>
-          <div class="stack" style="gap:10px">
+          <div class="stack gap-2">
             <div class="arc-kind js-kind"></div>
             <label class="field">
               <span class="field-label">タイトル</span>
@@ -1345,7 +1345,7 @@
         </div>
 
         <div class="js-generic-fields">
-          <div class="stack" style="gap:10px">
+          <div class="stack gap-2">
             ${/* 種だけは、タイトル・数・単位を持ちません。種はメモそのものが
                   記録で、日付とメモの二つだけで足ります。数を測るものでは
                   ないので、単位も要りません。 */""}
@@ -1567,7 +1567,7 @@
     const footer = node(html`
       <div style="display:flex;gap:8px">
         ${KN.activity ? html`<button type="button" class="btn btn-soft js-road">${icon("clock", "is-sub")}<span>${roadLabel}</span></button>` : ""}
-        <button class="btn btn-primary js-ok" style="flex:1">${e ? "保存" : "書く"}</button>
+        <button class="btn btn-primary js-ok grow">${e ? "保存" : "書く"}</button>
       </div>
     `);
     const roadBtn = footer.querySelector(".js-road");
@@ -1684,8 +1684,7 @@
             ${icon("search")}
             <input class="search-input js-search" placeholder="文字でさがす" aria-label="文字でさがす"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
-                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+            <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
 

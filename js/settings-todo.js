@@ -235,11 +235,11 @@
     const nameCard = node(html`
       <div class="set-card is-pad">
         <div class="diet-relaykey"><code>${one}</code></div>
-        <button type="button" class="btn btn-soft btn-block js-copy1" style="margin-top:8px">
+        <button type="button" class="btn btn-soft btn-block js-copy1 mt-2">
           一つ目の名前をコピー
         </button>
-        <div class="diet-relaykey" style="margin-top:14px"><code>${day}</code></div>
-        <button type="button" class="btn btn-soft btn-block js-copy2" style="margin-top:8px">
+        <div class="diet-relaykey mt-3"><code>${day}</code></div>
+        <button type="button" class="btn btn-soft btn-block js-copy2 mt-2">
           二つ目の名前をコピー
         </button>
       </div>

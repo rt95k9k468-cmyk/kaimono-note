@@ -143,7 +143,7 @@
       <div class="field">
         <span class="field-label">内容量・入数</span>
         <div class="input-group">
-          <input class="input js-amount" style="flex:1" type="text" inputmode="none"
+          <input class="input js-amount grow" type="text" inputmode="none"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  value="${p.amount != null ? p.amount : ""}" placeholder="500">
           <select class="select js-unit" style="flex:0 0 110px">
@@ -197,14 +197,14 @@
     const best = prices[0] || null;
 
     const section = node(html`
-      <div class="stack js-prices" style="gap:10px">
+      <div class="stack js-prices gap-2">
         <span class="field-label">お店ごとの値段</span>
       </div>
     `);
 
     if (!prices.length) {
       section.append(node(html`
-        <p style="color:var(--c-text-2);font-size:var(--fs-md);line-height:1.6">
+        <p class="field-hint">
           まだ登録がありません。
         </p>
       `));
@@ -283,7 +283,7 @@
     if (!st) return;
 
     const body = node(html`
-      <div class="stack" style="gap:18px">
+      <div class="stack gap-4">
         <label class="field">
           <span class="field-label">値段</span>
           <input class="input js-price" type="text" autocomplete="off" value="${String(pr.price)}">
@@ -398,7 +398,7 @@
 
     host.innerHTML = "";
     host.append(node(html`
-      <div class="stack cmp" style="gap:6px">${rows.length ? rows : html`<span style="color:var(--c-text-3)">ほかのお店の値段がまだありません</span>`}</div>
+      <div class="stack cmp gap-2">${rows.length ? rows : html`<span style="color:var(--c-text-3)">ほかのお店の値段がまだありません</span>`}</div>
     `));
   }
 
@@ -413,7 +413,7 @@
     if (log.length < 2) return;
 
     host.append(node(html`<span class="field-label">このお店での記録（${String(log.length)}件）</span>`));
-    const list = node(html`<div class="stack" style="gap:6px"></div>`);
+    const list = node(html`<div class="stack gap-2"></div>`);
     log.forEach((x) => {
       const up = perItemPrice(x.price, p.amount, p.unit);
       const row = node(html`
@@ -658,9 +658,9 @@
             <path class="spark-area" d="${area}"></path>
             <path class="spark-line" d="${line}"></path>
           </svg>
-          <div class="spread" style="margin-top:6px">
-            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3)">いちばん安いとき ${yen(min)}</span>
-            <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3)">高いとき ${yen(max)}</span>
+          <div class="spread mt-2">
+            <span class="fine-note">いちばん安いとき ${yen(min)}</span>
+            <span class="fine-note">高いとき ${yen(max)}</span>
           </div>
         </div>
       </div>
@@ -851,7 +851,7 @@
       name: product.name, categoryId: product.categoryId,
       fav: item ? !!item.fav : null, memo: item ? item.memo || "" : "",
     });
-    const pricesWrap = node(html`<div class="stack" style="gap:12px"></div>`);
+    const pricesWrap = node(html`<div class="stack gap-3"></div>`);
     const rerenderPrices = () => { renderPrices(pricesWrap, productId); paintCap(); };
 
     const paintMark = () => { f.mark.innerHTML = store.productMark(store.getProduct(productId)); };

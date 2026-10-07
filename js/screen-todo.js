@@ -136,8 +136,7 @@
             ${icon("search")}
             <input class="search-input js-search" placeholder="やることを探す" aria-label="やることを探す"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
-                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+            <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
 
@@ -601,7 +600,7 @@
        中身は前と同じ部品です。body の中には置かず、ここで組んで持って
        おきます（開くときに紙へ差し込み、閉じたら戻します）。 */
     const pickDue = node(html`
-      <div class="stack" style="gap:14px">
+      <div class="stack gap-3">
         <div class="field">
           <div class="js-due-chips"></div>
           <div class="date-row">
@@ -648,7 +647,7 @@
     `);
 
     const pickRepeat = node(html`
-      <div class="stack" style="gap:14px">
+      <div class="stack gap-3">
         <div class="field">
           <div class="js-repeat"></div>
           <div class="js-repeat-detail" hidden></div>
@@ -2662,7 +2661,7 @@
 
     if (!shown.length) {
       els.body.append(node(html`
-        <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
+        <p class="empty is-quiet">
           見つかりませんでした
         </p>
       `));

@@ -32,8 +32,7 @@
             ${icon("search")}
             <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
-                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+            <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
 
@@ -181,8 +180,8 @@
 
     if (!matched.length && !archived.length) {
       els.body.append(node(html`
-        <p style="text-align:center;color:var(--c-text-3);padding:40px 16px">
-          「${query}」に一致する商品はありません
+        <p class="empty is-quiet">
+          見つかりませんでした
         </p>
       `));
       return;
