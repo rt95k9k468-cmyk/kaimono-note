@@ -202,7 +202,7 @@ const BROKEN = [
     await wait(600);
     await page.locator(".note-pop.is-review .rv-go", { hasText: "小さく分ける" }).first().click();
     await page.waitForTimeout(300);
-    await page.locator(".note-pop.is-review .rv-pick", { hasText: "AIと分ける" }).first().click();
+    await page.locator(".note-pop.is-review .rv-pick", { hasText: "AIに分けてもらう" }).first().click();
     await wait(700);
   }
   const title = await page.evaluate(() => {
