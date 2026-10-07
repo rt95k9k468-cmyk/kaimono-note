@@ -235,6 +235,7 @@ Daily Log のコピー（`dailyCopyText`）から「明日以降の予定」「�
 - 書籍と論文は、タイトル・著者の下敷きと候補を別々に覚える（`store.readingCandidates(kind)`・`lastReading(kind)`。
   引数なしは前のまま）。新規で札を切り替えると、その種類の前回（書きかけならそれ）に入れ替わる。直すときは入れ替えない。
 - 論文は開始・終了ページの欄を出さず、保存も `null`。前から持っている論文のページは消さない。
+- 数の欄（ページ・数）は `type="text" inputmode="numeric"` で、`U.parseNum` で読む（全角も可・読めなければ `null`）。`type="number"` は使わない（roadmap-unify の U9・`tests/num-fields.js`）。
 
 ### 日記の紙：見出し・「あの日」の札を外した（2026年10月6日）
 
