@@ -21,7 +21,7 @@
   const PLANNED = ["reading", "study"];
   /* 長さの札（roadmap-3.0 の A1）。 */
   const LENS = [15, 25, 30, 45, 60];
-  const ROW = 40;   // 車輪の一行（screen-todo の WHEEL_ROW と同じ）
+  const ROW = KN.gesture.WHEEL_ROW;   // 車輪の一行
 
   const span = (m) => KN.plan.humanSpan(m);
   const toMin = (t) => KN.plan.toMin(t);

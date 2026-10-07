@@ -1291,7 +1291,7 @@
        上下に前後の時刻が並ぶ。すでに5分の目に乗っていない分（21:22 など）は、その分だけ
        列に足して、開いただけでは時刻を書き換えない。決めていないあいだは薄く出し、
        回すか、行を押すと決まる。 */
-    const WHEEL_ROW = 40;
+    const { WHEEL_ROW } = KN.gesture;
     const wheelBox = body.pick(".js-time-wheels");
     const wheels = { quiet: false };
     const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
@@ -2163,168 +2163,28 @@
      「追加」「保存」を押したときに他の欄と一緒に書き込みます。書きかけの
      ままシートを閉じても、その場では何も変わっていないように。 */
   function openTodoIconPicker(current, titleText, onChoose) {
-    const body = node(html`
-      <div class="stack" style="gap:14px">
-        <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
-               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
-        <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
-          ${icon("flag")}
-          <span class="icon-report-text">この絵はちがう、と記録する</span>
-        </button>
-        <div class="stack js-grids" style="gap:14px"></div>
-      </div>
-    `);
-    const grids = body.querySelector(".js-grids");
-    const q = body.querySelector(".js-q");
-    const handle = KN.ui.sheet({ title: "アイコンを選ぶ", content: body });
-
-    /* product-sheet.js の openIconPicker と同じ仕掛け（腕を組んで、次の
-       choose() の結果を一緒に書く）。ここでの自動の推測は、行の絵と同じ
-       引き方（こと辞書 → 品物辞書、iconMarkHtml と同じ順）です。 */
-    let armed = false;
-    const reportBtn = body.querySelector(".js-report-toggle");
-    reportBtn.addEventListener("click", () => {
-      armed = !armed;
-      reportBtn.classList.toggle("is-on", armed);
-      reportBtn.setAttribute("aria-pressed", String(armed));
-      reportBtn.querySelector(".icon-report-text").textContent = armed
-        ? "次に選ぶ絵を「ちがう」として記録します"
-        : "この絵はちがう、と記録する";
-    });
-
-    function choose(key) {
-      if (armed) {
-        const gotIcon = KN.iconsTodo.findKey(titleText || "") || KN.productIcons.findKey(titleText || "") || "";
-        store.addIconReport({
-          text: titleText || "", screen: "todo", gotIcon,
-          kind: gotIcon ? "wrong" : "missing", chosen: key || "",
-        });
-        KN.ui.toast("記録しました");
-      }
-      KN.motion.fire("select");
-      onChoose(key || null);
-      handle.close();
-    }
-
-    /* 絵が800を超えるので、開いた瞬間に全部を組むと手が止まります
-       （product-sheet.js の同じ仕掛けと同じ理由）。最初の一掴みだけ
-       同期で入れ、残りはフレームごとに継ぎ足します。 */
-    const CHUNK = 120;
-    let painting = 0;
-    function cellOf({ key, label, svg }) {
-      const cell = node(html`
-        <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
-                data-key="${key}" aria-pressed="${String(key === current)}">
-          <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
-          <span class="icon-cell-label">${label}</span>
-        </button>
-      `);
-      cell.addEventListener("click", () => choose(key));
-      return cell;
-    }
-    function grid(items) {
-      const g = node(html`<div class="icon-grid"></div>`);
-      const head = items.slice(0, CHUNK);
-      head.forEach((it) => g.append(cellOf(it)));
-      if (items.length > CHUNK) {
-        const mine = ++painting;
-        let at = CHUNK;
-        const more = () => {
-          if (mine !== painting || !g.isConnected) return;
-          const stop = Math.min(at + CHUNK, items.length);
-          const frag = document.createDocumentFragment();
-          for (; at < stop; at++) frag.append(cellOf(items[at]));
-          g.append(frag);
-          if (at < items.length) requestAnimationFrame(more);
-        };
-        requestAnimationFrame(more);
-      }
-      return g;
-    }
-
-    /* 品物の側は見出しで束ねて出します（product-sheet.js の paintGroups と
-       同じ作り・同じ理由——`grid()` を見出しごとに呼ぶと `painting` の札が
-       前の流し込みを殺し、しかもどの見出しも CHUNK 未満なので刻まれずに
-       707枚が同期で入ってしまう）。 */
-    function paintGroups(gs, into) {
-      const mine = ++painting;
-      const put = (g) => {
-        into.append(heading(g.label));
-        const box = node(html`<div class="icon-grid"></div>`);
-        g.items.forEach((it) => box.append(cellOf(it)));
-        into.append(box);
-      };
-      const HEAD = 2;
-      gs.slice(0, HEAD).forEach(put);
-      let at = HEAD;
-      const more = () => {
-        if (mine !== painting || !into.isConnected) return;
-        put(gs[at++]);
-        if (at < gs.length) requestAnimationFrame(more);
-      };
-      if (at < gs.length) requestAnimationFrame(more);
-    }
-
-    const heading = (text) => node(html`<span class="field-label">${text}</span>`);
-
+    /* 紙の作りは買うものと一つ（KN.ui.iconPicker）。ここでの自動の推測は、
+       行の絵と同じ引き方（こと辞書 → 品物辞書、iconMarkHtml と同じ順）です。 */
+    const guess = (text) => KN.iconsTodo.findKey(text || "") || KN.productIcons.findKey(text || "") || "";
     /* 一覧に出す品物の絵も、行と同じもの（食材はシルエット）に差し替えます
        ——選ぶ紙と行で違う絵が出ると、選んだものが出ていないように見えます。 */
     const art = (it) => ({ ...it, svg: productArt(it.key) || it.svg });
-
-    function paint() {
-      grids.innerHTML = "";
-      const query = q.value.trim();
-      if (query) {
-        const hits = KN.iconsTodo.search(query).concat(KN.productIcons.search(query).map(art));
-        if (!hits.length) {
-          /* product-sheet.js の openIconPicker と同じ仕掛け。「合う絵は
-             ありません」を行き止まりにせず、いま打った言葉をその場で
-             記録できるようにします。 */
-          const empty = node(html`
-            <div class="stack" style="gap:10px">
-              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
-                「${query}」に合う絵はありません
-              </p>
-              <button type="button" class="icon-report-toggle js-report-empty">
-                ${icon("flag")}
-                <span class="icon-report-text">「${query}」の絵が無い、と記録する</span>
-              </button>
-            </div>
-          `);
-          empty.querySelector(".js-report-empty").addEventListener("click", () => {
-            const gotIcon = KN.iconsTodo.findKey(query) || KN.productIcons.findKey(query) || "";
-            store.addIconReport({ text: query, screen: "todo", gotIcon, kind: gotIcon ? "wrong" : "missing" });
-            KN.ui.toast("記録しました");
-          });
-          grids.append(empty);
-          return;
-        }
-        grids.append(grid(hits));
-        return;
-      }
-      const auto = node(html`
-        <button type="button" class="icon-auto js-auto ${current ? "" : "is-on"}"
-                aria-pressed="${String(!current)}">
-          <span class="icon-pick-mark">${iconMarkHtml(titleText, null)}</span>
-          <span class="icon-pick-text">
-            <span class="icon-pick-name">おまかせにする</span>
-            <span class="icon-pick-sub">題から選びます</span>
-          </span>
-        </button>
-      `);
-      auto.addEventListener("click", () => choose(null));
-      grids.append(auto);
-
+    return KN.ui.iconPicker({
+      screen: "todo",
+      current: () => current || "",
+      reportOf: () => ({ text: titleText || "", gotIcon: guess(titleText) }),
+      guess,
+      autoMark: () => iconMarkHtml(titleText, null),
+      autoSub: "題から選びます",
+      search: (query) => KN.iconsTodo.search(query).concat(KN.productIcons.search(query).map(art)),
       /* 「もしかして」は こと を先に。用事の題を書いているところなので。 */
-      const mineT = KN.iconsTodo.suggest(titleText, 4);
-      const mineP = KN.productIcons.suggest(titleText, 4);
-      const maybe = mineT.concat(mineP);
-      if (maybe.length) {
+      maybe: () => {
+        const maybe = KN.iconsTodo.suggest(titleText, 4).concat(KN.productIcons.suggest(titleText, 4));
+        if (!maybe.length) return [];
         const pool = KN.iconsTodo.list().concat(KN.productIcons.list().map(art));
-        grids.append(heading("もしかして"));
-        grids.append(grid(pool.filter((x) => maybe.includes(x.key))
-          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key))));
-      }
+        return pool.filter((x) => maybe.includes(x.key))
+          .sort((a, b) => maybe.indexOf(a.key) - maybe.indexOf(b.key));
+      },
       /* 二つに分けて出します。数がまるで違う（こと108・品物707）ので、
          混ぜると こと が品物の海に沈みます。
 
@@ -2332,18 +2192,17 @@
          の長さではなく、切ると「こと」という括り自体がぼやけます。品物の
          ほうだけ、見出しで束ねます。
 
-         **ただし、流し込みは「こと」も込みで一本にします。** ここで
-         `grid()` を呼んでから `paintGroups()` に移ると、あちらの
-         `++painting` が「こと」の流し込みを降ろします。いまは こと が
-         108枚（CHUNK=120 未満）なので刻まれず、たまたま無事なだけ
-         ——**増えた日に黙って壊れる形**なので、はじめから一本にします。 */
-      paintGroups([{ label: "こと", items: KN.iconsTodo.list() }].concat(
-        KN.productIcons.groups().map((g) => ({ label: g.label, items: g.items.map(art) }))
-      ), grids);
-    }
-    q.addEventListener("input", KN.util.debounce(paint, 160));
-    paint();
-    return handle;
+         **ただし、流し込みは「こと」も込みで一本にします。** 「こと」だけ
+         別の格子で流し込むと、見出しの流し込みがそれを降ろします（いまは
+         こと が CHUNK 未満なので、たまたま無事なだけ——**増えた日に黙って
+         壊れる形**）。だから「こと」は先頭の見出しとして同じ一本に乗せます。 */
+      groups: () => [{ label: "こと", items: KN.iconsTodo.list() }].concat(
+        KN.productIcons.groups().map((g) => ({ label: g.label, items: g.items.map(art) }))),
+      onChoose: (key) => {
+        KN.motion.fire("select");
+        onChoose(key || null);
+      },
+    });
   }
 
   /* ---------------- rows ---------------- */
@@ -2588,7 +2447,7 @@
       KN.ui.toast(`${KN.plan.humanSpan(born.minutes || 30)}で残しました`, { actions: [
         { label: "直す", onClick: () => KN.activity.fixLength(born.id) },
         { label: "元に戻す", onClick: res.undo },
-      ], duration: 5000 });
+      ] });
       return;
     }
     const d = res.doneId && store.getTodo(res.doneId);
@@ -2599,7 +2458,7 @@
     const acts = [];
     if (at) acts.push({ label: "時刻", onClick: (b) => editDoneAt(res.doneId, b) });
     acts.push({ label: "元に戻す", onClick: res.undo });
-    KN.ui.toast(msg, { actions: acts, duration: 5000 });
+    KN.ui.toast(msg, { actions: acts });
   }
 
   /** 済ませた時刻を、押したところに出る車輪で直す。閉じたときに一度だけ書きます
@@ -2608,7 +2467,7 @@
     const t0 = store.getTodo(id);
     if (!t0 || !doneClock(t0.doneAt)) return;
     const was = new Date(t0.doneAt);
-    const ROW = 40;
+    const ROW = KN.gesture.WHEEL_ROW;
     const col = (vals, label, fmt) => {
       const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
       vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
@@ -3431,47 +3290,30 @@
     return KN.util.shiftDay(here, delta * 7);
   }
 
-  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
-      いま出している月なら、生きている盤をそのまま渡します——組み直すと、
-      選んでいる日の輪まで作り直すことになるので。 */
-  function monthGridFor(year, month) {
-    const cur = shownMonth();
-    if (els.cal && cur.year === year && cur.month === month) {
-      return els.cal.querySelector(".cal-grid");
-    }
-    const tmp = node(html`<section class="cal"></section>`);
-    KN.calPeek.mount(tmp);
-    fillCalendar(tmp, store.openTodos(), { year, month });
-    return tmp.querySelector(".cal-grid");
-  }
+  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます
+      （作りは四つの暦で一つ——KN.calGrid）。 */
+  const monthGridFor = KN.calGrid.monthGridFor({
+    live: () => els.cal, shown: () => shownMonth(),
+    fill: (tmp, only) => fillCalendar(tmp, store.openTodos(), only),
+  });
 
-  /** その月の顔を描く。節と grid の要素はそのまま使い回します。 */
-  /* 隣の月のマス。週が月をまたぐときだけ表に出ます（月で見ているあいだは
-     CSS が伏せます）。押せばその日へ行けるので、月末の週から翌月の頭へ
-     そのまま進めます。中身は日付だけ——粒（件数）はその月のぶんしか
-     数えていないので、出すと嘘になります。 */
-  function outCell(key, marks) {
-    const U = KN.util;
-    const d = U.dayDate(key);
-    const wd = d ? d.getDay() : 0;
-    const cell = node(html`
-      <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-              data-day="${key}"
-              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
-        <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots" style="--cat:${dayColor(key)}"></span>
-      </button>
-    `);
-    /* 絵も出します。ここを空にしていたのは「件数はその月ぶんしか数えて
-       いない」からでしたが、marks は `t.due` で引いているだけなので、
-       隣の月の日もそのまま引けます。空のままにすると「翌月1日は何も
-       ない」と嘘をつくことになります。 */
-    const dots = cell.querySelector(".cal-dots");
-    ((marks && marks.get(key)) || []).forEach((t) => dots.append(node(html`
-      <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
-    `)));
-    cell.addEventListener("click", () => openDay(key));
-    return cell;
+  /* 日の印。隣の月のマス（週が月をまたぐときだけ表に出る）にも絵を出します。
+     ここを空にしていたのは「件数はその月ぶんしか数えていない」からでしたが、
+     marks は `t.due` で引いているだけなので、隣の月の日もそのまま引けます。
+     空のままにすると「翌月1日は何もない」と嘘をつくことになります。
+     件数（読み上げ）はその月のぶんだけ。押せばその日へ行けるので、月末の週から
+     翌月の頭へそのまま進めます。 */
+  function calMarkOf(load, marks) {
+    return (key, out) => {
+      const n = out ? 0 : (load.get(key) || 0);
+      return {
+        cat: dayColor(key),
+        label: n ? ` やること${n}件` : "",
+        nodes: (marks.get(key) || []).map((t) => node(html`
+          <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
+        `)),
+      };
+    };
   }
 
   /**
@@ -3484,12 +3326,8 @@
    */
   function fillCalendar(sec, open, only) {
     if (!sec) return;
-    const U = KN.util;
     const today = todayKey();
-    const now = U.dayDate(today);
     const { year, month } = only || shownMonth();
-    const total = new Date(year, month + 1, 0).getDate();
-    const lead = new Date(year, month, 1).getDay();
 
     /* How many are wanted on each day. Dots rather than numerals: at a glance
        it is 「その週は詰まっている」 that reads, not 「3件」.
@@ -3536,50 +3374,18 @@
       if (list.length < 3) { list.push(t); marks.set(t.due, list); }
     });
 
-    sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-
-    const grid = sec.querySelector(".cal-grid");
-    grid.innerHTML = "";
-
-    const wds = sec.querySelector(".cal-wds");
-    wds.innerHTML = "";
-    U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
-      <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
-    `)));
-    /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
-       して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
-       これまでどおり）。押せば、その日へ行けます。 */
-    const outer = U.outDays(year, month);
-    outer.lead.forEach((key) => grid.append(outCell(key, marks)));
-
-    for (let d = 1; d <= total; d++) {
-      const key = U.dayKey(new Date(year, month, d));
-      const wd = (lead + d - 1) % 7;
-      const n = load.get(key) || 0;
-      const isToday = key === today;
-      const cell = node(html`
-        <button class="cal-day ${isToday ? "is-today" : ""} ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-                data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
-                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${n ? ` やること${n}件` : ""}">
-          <span class="cal-n">${String(d)}</span>
-          <span class="cal-dots" style="--cat:${dayColor(key)}"></span>
-        </button>
-      `);
-      const dots = cell.querySelector(".cal-dots");
-      (marks.get(key) || []).forEach((t) => dots.append(node(html`
-        <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
-      `)));
-      /* Tapping a date goes to that date's shelf. Otherwise the month is a
-         picture of somewhere you cannot get to — 8月17日 is visible up here
-         and four screens down there, with nothing joining them. */
-      /* 押した日には、その場で輪を移します。棚まで運んでから followScroll に
-         数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
-         輪はどこにも移らず、押しても何も起きないように見えます。
-         押した日を見ている——それがいちばん確かなことなので、先に言います。 */
-      cell.addEventListener("click", () => openDay(key));
-      grid.append(cell);
-    }
-    outer.trail.forEach((key) => grid.append(outCell(key, marks)));
+    /* Tapping a date goes to that date's shelf. Otherwise the month is a
+       picture of somewhere you cannot get to — 8月17日 is visible up here
+       and four screens down there, with nothing joining them. */
+    /* 押した日には、その場で輪を移します。棚まで運んでから followScroll に
+       数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
+       輪はどこにも移らず、押しても何も起きないように見えます。
+       押した日を見ている——それがいちばん確かなことなので、先に言います。 */
+    KN.calGrid.fill(sec, {
+      year, month, outFocus: true,
+      mark: calMarkOf(load, marks),
+      pick: (key) => openDay(key),
+    });
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
     /* 生きている盤へ直に描いたので、控えの見分け字はもう当てになりません
        （`setCalMonth` はここを通ります）。次の組み直しで組み直させます。 */
@@ -4529,15 +4335,15 @@
       if (!isFinite(a) || !isFinite(u) || u <= a) continue;
       const r = rail.getBoundingClientRect();
       if (r.height <= 0) continue;
-      if (nowMin <= a) return r.top - top0;
+      const t0 = top0 + slideOf(sec, li);
+      if (nowMin <= a) return r.top - t0;
       if (nowMin < u) {
         /* 用事なら丸薬の中で、空きなら帯の中で。丸薬は行のまん中にあって
            行より低いので、行の高さで割ると塗りの境目とずれます。 */
-        const nd = li.querySelector(".tl-node");
-        const box = nd ? nd.getBoundingClientRect() : r;
-        if (box.height > 0) return box.top - top0 + box.height * ((nowMin - a) / (u - a));
+        const box = nodeBox(li) || r;
+        if (box.height > 0) return box.top - t0 + box.height * ((nowMin - a) / (u - a));
       }
-      last = r.bottom - top0;
+      last = r.bottom - t0;
     }
     /* 一日の残りが全部始まっているなら、線はいちばん下です。 */
     return last;
@@ -4558,16 +4364,69 @@
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
 
     // ① 測る（まだ何も書かない）
-    let at = null;
+    let at = null, y = null;
     if (nowMin != null) {
-      const y = nowY(sec, list, nowMin);
+      y = nowY(sec, list, nowMin);
       if (y != null) at = clearOfClocks(sec, list, y);
     }
+    const grow = growOf(sec, list, nowMin, y);
 
     // ② 書く
     axis.textContent = "";
     markPass(list, nowMin);
+    grow.forEach(([li, late, g]) => {
+      li.classList.toggle("is-late", late);
+      li.classList.toggle("is-grown", g > 0);
+      if (li.__grow !== g) { li.__grow = g; li.style.setProperty("--tl-grow", `${g}px`); }
+    });
     if (at != null) axis.append(nowMark(nowMin, at));
+  }
+
+  /** 行が組み直しの滑り（`flipRows` の translateY）の途中なら、そのずれ（px）。
+      滑っている最中に測ると、着いた先とずれた「いま」・伸びが残るので、着いた先で読む。 */
+  function slideOf(sec, li) {
+    let y = 0, e = li;
+    while (e && e !== sec) { y += e.offsetTop; e = e.offsetParent; }
+    if (e !== sec) return 0;
+    return li.getBoundingClientRect().top - sec.getBoundingClientRect().top - y;
+  }
+
+  /** 丸薬の、伸ばす前の箱（上端・下端・高さ）。時刻の目盛りはこれで読みます——
+      伸ばしたぶん（`--tl-grow`）は時間ではないので。 */
+  function nodeBox(li) {
+    const nd = li.querySelector(".tl-node");
+    if (!nd) return null;
+    const r = nd.getBoundingClientRect();
+    const g = li.__grow || 0;
+    if (r.height - g <= 0) return null;
+    return { top: r.top, bottom: r.bottom - g, height: r.height - g };
+  }
+
+  /** 丸薬を下へ伸ばす量（2026年10月6日）。二つの場合だけ：
+      - **過ぎてもまだの区間は「いま」まで**（道の `is-late` と同じ条件。長さを決めた・
+        まだ・決めた終わりを過ぎた、今日だけ）。次の行の上に重ねて、次の行はずらさない。
+        色は変えない（橙は道だけ）。
+      - **手順をひらいたら、手順の段の下まで**（前は線だけ伸ばしていた）。
+        伸ばしたぶんは時間ではないので、塗りは丸薬の下端の色（`--rail-bot-c`）一色。 */
+  function growOf(sec, list, nowMin, y) {
+    const top0 = sec.getBoundingClientRect().top;
+    const out = [];
+    for (const li of list.children) {
+      if (!li.classList.contains("tl-row")) continue;
+      const b = nodeBox(li);
+      if (!b) continue;
+      const late = nowMin != null && y != null && li.dataset.len === "1"
+        && !li.classList.contains("is-done") && nowMin > Number(li.dataset.until);
+      let to = b.bottom;
+      if (late) to = Math.max(to, top0 + slideOf(sec, li) + y);
+      const subs = li.querySelector(".tl-sub-wrap.is-open .tl-sub-list");
+      if (subs && !subs.hidden) {
+        const r = subs.getBoundingClientRect();
+        if (r.height > 0) to = Math.max(to, r.bottom);
+      }
+      out.push([li, late, Math.max(0, Math.round(to - b.bottom))]);
+    }
+    return out;
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
@@ -4754,8 +4613,8 @@
      置きなおす先が「順番」と「時刻」の二つある、というのがこの画面の
      肝です。片方だけだと、決めたいことの半分しか言えません。 */
 
-  const DRAG_HOLD = 380;   // これだけ押さえたら持ち上がる
-  const DRAG_SLOP = 8;     // その前にこれ以上動いたら、ただのスクロール
+  /* これだけ押さえたら持ち上がる・その前にこれ以上動いたら、ただのスクロール（KN.gesture）。 */
+  const { HOLD: DRAG_HOLD, HOLD_SLOP: DRAG_SLOP } = KN.gesture;
   const SLOT_MIN = 15;     // 帯の中は15分きざみで止まります
   /* 運んでいる最中に、画面の端で自動的に送る帯の厚みと、ひと呼吸あたりの
      送り幅。**端に近いほど速く**——深く入るほど急いでいる、と読みます。
@@ -4810,10 +4669,8 @@
     const raw = [{ y: 0, min: from }];
     rows.forEach((li) => {
       const at = Number(li.dataset.at), un = Number(li.dataset.until);
-      const node0 = li.querySelector(".tl-node");
-      if (!node0 || !isFinite(at) || !isFinite(un) || un < at) return;
-      const b = node0.getBoundingClientRect();
-      if (b.height <= 0) return;
+      const b = nodeBox(li);
+      if (!b || !isFinite(at) || !isFinite(un) || un < at) return;
       raw.push({ y: b.top - box.top, min: at });
       raw.push({ y: b.bottom - box.top, min: un });
     });
@@ -5571,6 +5428,7 @@
                  ${closed ? "is-done" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
+          ${t.minutes ? KN.util.raw('data-len="1"') : ""}
           style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
         ${/* 時刻を決めていない用事の時刻は、その場で詰めた**目安**なので「ごろ」を
               添えます（B6）。前は字の太さだけが違い、「17:03」を決めた時刻と

@@ -1952,8 +1952,7 @@
        持ち上げたら touchmove を止め（送りを始めさせない）、離したあとの click を
        一度だけ食べる（でないと離したところで紙が開く）。day-swipe・pull-refresh は
        `carrying()` を見て、この指を取らない。 */
-  const CARRY_HOLD = 380;       // screen-todo.js の DRAG_HOLD と同じ
-  const CARRY_SLOP = 8;         //                   DRAG_SLOP と同じ
+  const { HOLD: CARRY_HOLD, HOLD_SLOP: CARRY_SLOP } = KN.gesture;   // 時間割の持ち上げと同じ重さ
   const AIM_NEAR = 24;          // 道の中心から、狙える近さ（viewBox の単位 ≒ px）
   const OUT_FAR = 34;           // これより道から離れたら「道の外」（長期タスクへ戻す）
   /* 持ち上げた丸と時刻の札は、指の腹（触れた点からおよそ 24px 外へ広がる）に

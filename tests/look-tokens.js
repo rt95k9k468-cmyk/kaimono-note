@@ -3,6 +3,9 @@
    base.css の `:root` にある色・影・角・余白・字・太さ・行の高さの札が、どれも表に
    載っているか（逆に、表にあって :root に無い名前も落とす）。そして、札と同じ値の
    直書き（太さ・角・行の高さ・19/24px の字）が CSS と JS に戻っていないか。
+   暗い面は二度書いてある（システムに従う `@media (prefers-color-scheme: dark)` の
+   `:root:not([data-theme="light"])…` と、自分で選んだ `:root[data-theme="dark"]…`）。その組が
+   一行も違わないか（roadmap-unify の U3。片方だけ直すと、片方の暗い面だけ色がずれる）。
    画面は開かない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/look-tokens.js */
@@ -53,5 +56,45 @@ for (const [name, re] of RULES) {
   }
   t.check(name, !hits.length, hits.slice(0, 5).join(" "));
 }
+
+/* 暗い面の二度書き。CSS を規則の木にして、@media の中の `:root:not([data-theme="light"])X` を
+   `:root[data-theme="dark"]X` に読み替え、@media の外の同じ選択子と宣言を一つずつ照らす。 */
+function rules(src, media = null, out = []) {
+  let i = 0;
+  while (i < src.length) {
+    const open = src.indexOf("{", i);
+    if (open < 0) break;
+    const head = src.slice(i, open).trim();
+    let depth = 1, j = open + 1;
+    for (; j < src.length && depth; j++) depth += src[j] === "{" ? 1 : src[j] === "}" ? -1 : 0;
+    const body = src.slice(open + 1, j - 1);
+    if (head.startsWith("@media")) rules(body, head, out);
+    else if (!head.startsWith("@")) out.push({ media, sels: head.split(",").map((x) => x.trim().replace(/\s+/g, " ")), body });
+    i = j;
+  }
+  return out;
+}
+const decls = (body) => body.split(";").map((d) => d.trim().replace(/\s+/g, " ")).filter(Boolean);
+const LIGHT = ':root:not([data-theme="light"])', DARK = ':root[data-theme="dark"]';
+const sys = new Map(), own = new Map();
+const put = (m, k, list) => { if (!m.has(k)) m.set(k, new Set()); list.forEach((d) => m.get(k).add(d)); };
+for (const f of ["css/base.css", "css/components.css", "css/screens.css"]) {
+  for (const r of rules(read(f))) {
+    const dark = r.media && /prefers-color-scheme:\s*dark/.test(r.media);
+    for (const sel of r.sels) {
+      if (dark && sel.startsWith(LIGHT)) put(sys, `${f} ${DARK}${sel.slice(LIGHT.length)}`, decls(r.body));
+      else if (!r.media && sel.startsWith(DARK)) put(own, `${f} ${sel}`, decls(r.body));
+    }
+  }
+}
+t.check("暗い面の二度書きが十組より多い", sys.size > 10, `${sys.size} 組`);
+const diff = [];
+for (const k of new Set([...sys.keys(), ...own.keys()])) {
+  const a = sys.get(k) || new Set(), b = own.get(k) || new Set();
+  const onlyA = [...a].filter((d) => !b.has(d)), onlyB = [...b].filter((d) => !a.has(d));
+  if (onlyA.length) diff.push(`${k} — @media にだけ: ${onlyA.join("; ")}`);
+  if (onlyB.length) diff.push(`${k} — [data-theme="dark"] にだけ: ${onlyB.join("; ")}`);
+}
+t.check("暗い面の @media と [data-theme=\"dark\"] が一行も違わない", !diff.length, diff.slice(0, 5).join("\n      "));
 
 t.done();

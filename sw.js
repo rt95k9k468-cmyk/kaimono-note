@@ -55,6 +55,7 @@ const ASSETS = [
   "js/edge-back.js",
   "js/day-swipe.js",
   "js/cal-swipe.js",
+  "js/cal-grid.js",
   "js/head.js",
   "js/upcoming.js",
   "js/search-all.js",

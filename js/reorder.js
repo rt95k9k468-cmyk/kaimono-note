@@ -18,8 +18,9 @@
   const KN = window.KN;
   const { haptic } = KN.util;
 
-  const HOLD   = 400;   // press this long before the row lifts
-  const CANCEL = 8;     // travel further than this first and it was a scroll
+  /* press HOLD before the row lifts; travel further than CANCEL first and it was a scroll
+     (KN.gesture, the same weight as the timeline and the road) */
+  const { HOLD, HOLD_SLOP: CANCEL } = KN.gesture;
   const EDGE   = 64;    // how near the end of the list auto-scroll starts
   const SPEED  = 14;    // auto-scroll, px per frame at the very edge
   const DROP   = 190;   // how long the row takes to settle into its gap
