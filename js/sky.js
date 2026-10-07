@@ -84,12 +84,13 @@
   }
 
   /* 札 → 写真（docs/sky.md の「写真の表」と同じ中身。Wikimedia Commons）。CC BY／BY-SA は
-     作者・ライセンス・URL の表示が要る（設定 → 外観 →「空の写真の出典」）。 */
+     作者・ライセンス・URL の表示が要る（設定 → 外観 →「空の写真の出典」）。sw.js は写真を一度覚えたら
+     取り直さないので、**描き直したら `?v=` を上げる**（base.css の --sky-photo も同じ値に）。 */
   const PHOTO = {
-    morning: { file: "img/sky/morning.webp", name: "朝", title: "Mount Fuji early morning from Lake Motosu - Nov 2, 2008", author: "[puamelia]", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg", why: "本栖湖から見た明け方の富士" },
-    day: { file: "img/sky/day.webp", name: "昼", title: "Shirane 3 mountains from Mount Shiomi", author: "Alpsdake", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shirane_3_mountains_from_Mount_Shiomi.JPG", why: "塩見岳から見た白根三山と青空" },
-    evening: { file: "img/sky/evening.webp", name: "夕方", title: "Shiroyone-Senmaida sunset", author: "MaedaAkihiko", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shiroyone-Senmaida_sunset.jpg", why: "白米千枚田と海に沈む夕日" },
-    night: { file: "img/sky/night.webp", name: "夜", title: "Niigata-Snowy mountain and spring Milky Way - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Snowy_mountain_and_spring_Milky_Way_-_Flickr_-_Japanese_beauty.jpg", why: "雪の山と春の天の川（新潟）" },
+    morning: { file: "img/sky/morning.webp?v=2", name: "朝", title: "Mount Fuji early morning from Lake Motosu - Nov 2, 2008", author: "[puamelia]", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg", why: "本栖湖から見た明け方の富士" },
+    day: { file: "img/sky/day.webp?v=2", name: "昼", title: "Shirane 3 mountains from Mount Shiomi", author: "Alpsdake", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shirane_3_mountains_from_Mount_Shiomi.JPG", why: "塩見岳から見た白根三山と青空" },
+    evening: { file: "img/sky/evening.webp?v=2", name: "夕方", title: "Shiroyone-Senmaida sunset", author: "MaedaAkihiko", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shiroyone-Senmaida_sunset.jpg", why: "白米千枚田と海に沈む夕日" },
+    night: { file: "img/sky/night.webp?v=2", name: "夜", title: "Niigata-Snowy mountain and spring Milky Way - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Snowy_mountain_and_spring_Milky_Way_-_Flickr_-_Japanese_beauty.jpg", why: "雪の山と春の天の川（新潟）" },
   };
 
   /* 読めた写真・読めなかった写真（同じものを何度も読みに行かない） */
@@ -109,8 +110,8 @@
      差し替えは iPhone に映らなかった（docs/notes.md）ので、読み込みの時点で空のいちばん上の色にしておく。
      色は、写真を敷いた帯のいちばん上（字の無い3行）の平均。空を切ればもとの色へ。 */
   const BAR = {
-    light: { morning: "#e4ced3", day: "#aac4e0", evening: "#fef2db", night: "#c9cbd9" },
-    dark: { morning: "#3b292d", day: "#0c1b32", evening: "#5d503c", night: "#232429" },
+    light: { morning: "#ddc1c8", day: "#95b5d7", evening: "#ffefcf", night: "#bbbdcb" },
+    dark: { morning: "#432d32", day: "#0b1e3b", evening: "#67583f", night: "#27282f" },
   };
   const metas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
   const plain = metas.map((m) => m.content);
