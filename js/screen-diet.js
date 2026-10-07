@@ -2558,6 +2558,7 @@
       hh.close();
       after();
       render();
+      KN.ui.toast("記録しました");
     });
   }
 
