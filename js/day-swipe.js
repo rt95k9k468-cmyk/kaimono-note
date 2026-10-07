@@ -101,12 +101,12 @@
 
   const KN = (window.KN = window.KN || {});
 
-  const AXIS_X    = 6;    // 横にこれだけ動いて、横が勝っていれば横
+  const AXIS_X    = KN.gesture.AXIS;   // 横にこれだけ動いて、横が勝っていれば横
   const AXIS_Y    = 10;   // 縦にこれだけ動いて、縦が勝っていれば縦（手放す）
   const SLANT     = 0.7;  // 横が縦のこの倍あれば横（水平から55°まで）
   const COMMIT    = 26;   // これだけ動けば、指を離したときに隣へ
-  const FLING_V   = 0.3;  // 短い距離でも、これだけ速ければ隣へ（px/ms）
-  const FLING_MIN = 8;    // ただし、まったく動いていないものは払いではない
+  /* 短い距離でも、これだけ速ければ隣へ（KN.gesture の行き先へ送る払い）。 */
+  const { FLING_V, FLING_MIN } = KN.gesture;
   const VEL_MS    = 90;   // 速さは、離す前のこの長さの動きから測る
   const NUDGE     = 44;   // 隣の紙を持たない画面で、紙が指につく上限（px）
   /* 離したあとの滑りは、**残りの道のりと指の勢いから**出します

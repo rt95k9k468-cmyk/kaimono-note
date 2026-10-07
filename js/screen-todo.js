@@ -1291,7 +1291,7 @@
        上下に前後の時刻が並ぶ。すでに5分の目に乗っていない分（21:22 など）は、その分だけ
        列に足して、開いただけでは時刻を書き換えない。決めていないあいだは薄く出し、
        回すか、行を押すと決まる。 */
-    const WHEEL_ROW = 40;
+    const { WHEEL_ROW } = KN.gesture;
     const wheelBox = body.pick(".js-time-wheels");
     const wheels = { quiet: false };
     const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
@@ -2467,7 +2467,7 @@
     const t0 = store.getTodo(id);
     if (!t0 || !doneClock(t0.doneAt)) return;
     const was = new Date(t0.doneAt);
-    const ROW = 40;
+    const ROW = KN.gesture.WHEEL_ROW;
     const col = (vals, label, fmt) => {
       const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
       vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
@@ -4613,8 +4613,8 @@
      置きなおす先が「順番」と「時刻」の二つある、というのがこの画面の
      肝です。片方だけだと、決めたいことの半分しか言えません。 */
 
-  const DRAG_HOLD = 380;   // これだけ押さえたら持ち上がる
-  const DRAG_SLOP = 8;     // その前にこれ以上動いたら、ただのスクロール
+  /* これだけ押さえたら持ち上がる・その前にこれ以上動いたら、ただのスクロール（KN.gesture）。 */
+  const { HOLD: DRAG_HOLD, HOLD_SLOP: DRAG_SLOP } = KN.gesture;
   const SLOT_MIN = 15;     // 帯の中は15分きざみで止まります
   /* 運んでいる最中に、画面の端で自動的に送る帯の厚みと、ひと呼吸あたりの
      送り幅。**端に近いほど速く**——深く入るほど急いでいる、と読みます。

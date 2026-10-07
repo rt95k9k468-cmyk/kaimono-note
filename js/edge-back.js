@@ -37,10 +37,9 @@
   const KN = (window.KN = window.KN || {});
 
   const EDGE     = 24;    // ここより内側から始まった指は、戻る手つきではない
-  const AXIS     = 5;     // これだけ動けば、向きを決める
   const COMMIT   = 0.33;  // 画面の幅の、これだけ引けば戻る
-  const FLING_V  = 0.4;   // 短くても、これだけ速ければ戻る（px/ms）
-  const FLING_MIN = 12;   // ただし、まったく動いていないものは払いではない
+  /* 向きを決める動き・短くても戻る払いは KN.gesture から（紙を閉じる払いと同じ重さ）。 */
+  const { AXIS, BACK_FLING_V: FLING_V, BACK_FLING_MIN: FLING_MIN } = KN.gesture;
   /* 離したあとの滑りは、**残りの道のりと指の勢いから**（`KN.motion.glide`）。
      ここには 260ms と直に書いてありました。 */
   const PARALLAX = 0.28;  // 後ろの一枚が控えている深さ

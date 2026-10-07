@@ -193,6 +193,26 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 ついてはくるが進まない——止めてしまうと、そこで指と絵が切れる。実測：
 -20→-14.3、-100→-33.3、-400→-44.4（limit 50 を越えない）。
 
+### 指の重さは一か所（`KN.gesture`・roadmap-unify の U4・2026年10月7日）
+
+同じ身ぶりの閾値が場所ごとに違っていた（並べ替えの長押し 400／時間割と道 380、日送りの払い
+0.3／暦と面 0.35、向きを決める 5〜8px）。いまは `motion.js` の `KN.gesture` に一つずつ置き、
+各ファイルは頭で読む（motion.js は読む側より先に読み込む）。
+
+| 名前 | 値 | 使う所 |
+|---|---|---|
+| `HOLD`・`HOLD_SLOP` | 380ms・8px | 持ち上げ：並べ替え（`reorder.js`）・時間割（`DRAG_HOLD`）・道（`CARRY_HOLD`） |
+| `FLING_V`・`FLING_MIN` | 0.35px/ms・8px | **行き先へ送る払い**：日（day-swipe）・暦の段（cal-peek）・面（app.js の `FACE_*`） |
+| `BACK_FLING_V`・`BACK_FLING_MIN` | 0.4px/ms・10px | **閉じる・戻る払い**：紙（ui.js）・左端から（edge-back） |
+| `AXIS` | 6px | 向きを決める：day-swipe の横・cal-swipe・edge-back・cal-peek |
+| `WHEEL_ROW` | 40px | 車輪の一行（`.note-wheel-row` の高さと同じ） |
+
+- 払いが二つなのは身ぶりの意味が違うから（送るは軽く、閉じる・戻るは少し重く）。それ以上は分けない。
+- 同じ名前でも別の意味のものは残す：手順の丸の長押し 500（screen-todo の `HOLD_MS`）・キーボードを
+  下げる払いと文字選びの見分け 260（app.js）・day-swipe の縦と決める 10（`AXIS_Y`）・端の帯の勢い
+  （pull-refresh の `FLING_*`）。`tests/gesture-dict.js` の EXEMPT に理由つきで並ぶ。
+- 見張りは `tests/gesture-dict.js`（門）、手触りは `tests/gesture-weight.js`（並べ替え・左端から）。
+
 ### iPhone で、主な押すものを震わせる（`motion.js` の FEEL・C1）
 
 2026年9月27日。iOS の Safari は `navigator.vibrate` を持たない。iOS 18 から、
