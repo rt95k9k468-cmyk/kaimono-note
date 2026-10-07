@@ -162,7 +162,15 @@
             render();
           },
         }),
-        calSwitch()
+        calSwitch(),
+        /* 帯と暦の後ろの空（js/sky.js・docs/sky.md）。既定は出す。 */
+        switchRow({
+          title: "空を出す", on: s.sky !== false,
+          onTap: (v) => {
+            store.update((x) => { x.settings.sky = v; });
+            render();
+          },
+        })
       ),
       canBadge ? card(
         switchRow({
