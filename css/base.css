@@ -569,6 +569,8 @@
   /* 寝床の z Z がのぼる一回（道を外れた時間に開いているあいだ、くり返す。
      day-road.js の「寝床」）。寝息の一息くらい、ゆっくり。 */
   --m-snore: 2.6s;
+  /* いつかの丸がゆっくり浮き沈みする一回（道の外に置いた丸を見落とさないように。くり返す）。 */
+  --m-float: 3.2s;
   /* 開いたとき、満ちる（health の輪が 0 から満ち、真ん中の数も一緒に数え上がる。
      motion.js の arrive、docs/motion.md の「開いたとき、満ちる」）。「グン」と
      言えるよう、出だしが速く終わりが長い `--ease-out` で使います。
@@ -961,9 +963,10 @@ a { color: var(--c-primary); }
   animation: head-marks-out var(--m-marks) var(--ease-in) forwards;
 }
 .head-ghost .cal-dots { position: absolute; }
-.cal.is-marks-in .cal-dots { animation: head-marks-in var(--m-marks) var(--ease-out) calc(var(--m-marks) / 2) both; }
+.cal.is-marks-in .cal-dots { animation: fade-in var(--m-marks) var(--ease-out) calc(var(--m-marks) / 2) both; }
 @keyframes head-marks-out { to { opacity: 0; } }
-@keyframes head-marks-in { from { opacity: 0; } }
+/* 薄いところから出るだけ。暦の印・ダイエットの線ほか、同じ中身は名前を一つに（U5）。 */
+@keyframes fade-in { from { opacity: 0; } }
 
 /* ---- ノートでは暦をしまう（docs/notes.md「ノートでは暦をしまう」） ----
 
@@ -1073,10 +1076,10 @@ a { color: var(--c-primary); }
    **指で引いて戻るときも、同じ数から出します**（js/edge-back.js の
    PARALLAX）——押して戻るのと指で戻るのとで深さが違うと、同じ一段が
    二通りの遠さに見えます。 */
-.screen.is-active.is-push-in   { animation: scr-push-in var(--m-push) var(--push-e); }
+.screen.is-active.is-push-in   { animation: scr-in-r var(--m-push) var(--push-e); }
 .screen.is-leaving.is-push-under { animation: scr-push-under var(--m-push) var(--push-e) forwards; }
 .screen.is-active.is-pop-in    { animation: scr-pop-in var(--m-push) var(--push-e); }
-.screen.is-leaving.is-pop-out  { animation: scr-pop-out var(--m-push) var(--push-e) forwards; }
+.screen.is-leaving.is-pop-out  { animation: scr-out-r var(--m-push) var(--push-e) forwards; }
 /* 影は動いている一枚にだけ。止まっているあいだ画面の左端に影があると、
    そこに何かが重なっているという嘘になります。 */
 .screen.is-push-in, .screen.is-pop-out, .screen.is-over { box-shadow: var(--push-shadow); }
@@ -1276,10 +1279,10 @@ a { color: var(--c-primary); }
 @keyframes scr-out-l { from { transform: none; } to { transform: translateX(-100%); } }
 @keyframes scr-out-r { from { transform: none; } to { transform: translateX(100%); } }
 
-@keyframes scr-push-in    { from { transform: translateX(100%); }            to { transform: none; } }
+/* 設定へ押し入る・戻って出ていく紙は、右から入る／右へ出る（scr-in-r / scr-out-r）と同じ形。
+   速さと曲線だけが別（--m-push・--push-e）。 */
 @keyframes scr-push-under { from { transform: none; }                        to { transform: translateX(calc(var(--push-p) * -100%)); } }
 @keyframes scr-pop-in     { from { transform: translateX(calc(var(--push-p) * -100%)); } to { transform: none; } }
-@keyframes scr-pop-out    { from { transform: none; }                        to { transform: translateX(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
   .screen.is-active, .screen.is-leaving, .deck { animation: none; }

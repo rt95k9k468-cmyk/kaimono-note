@@ -842,8 +842,8 @@
        「下へ払う」が紙によって別の手つきになってしまうので。 */
     const DISMISS   = 0.22;   // 紙の丈の、これだけ引けば閉じる
     const DISMISS_MIN = 56, DISMISS_MAX = 140;
-    const FLING_V   = 0.4;    // 短くても、これだけ速ければ閉じる（px/ms）
-    const FLING_MIN = 10;     // ただし、まったく動いていないものは払いではない
+    /* 短くても、これだけ速ければ閉じる（KN.gesture の閉じる・戻る払い。左端から戻るのと同じ）。 */
+    const { BACK_FLING_V: FLING_V, BACK_FLING_MIN: FLING_MIN } = KN.gesture;
     let startY = null, dy = 0, lastT = 0, lastY = 0, vy = 0;
     const head = el.querySelector(".sheet-head");
     const handleBar = el.querySelector(".sheet-handle");
@@ -1091,8 +1091,8 @@
      **行き先が変わるときは動かしません。** 月をめくる・日を選ぶ・タブを移る
      ときは一覧が丸ごと入れ替わるので、全部の行がいっせいに現れることに
      なります。それは「編集の手ごたえ」ではなく、ただのちらつきです。
-     新しい行が半分を超えたら、動かさずに黙って置き換えます。 */
-  const FLIP_MS = 320;
+     新しい行が半分を超えたら、動かさずに黙って置き換えます。
+     長さと曲線は辞書の `--m-settle`・`--ease-settle`（docs/motion.md）。 */
 
   function flipRows(host, selector) {
     if (!host) return () => {};
@@ -1120,9 +1120,9 @@
         if (was == null) {
           // 新しく来た行だけが、名乗りを上げます。
           el.classList.add("is-arriving");
-          /* **名乗り終わったら、札は外します。** `row-arrive` は
+          /* **名乗り終わったら、札は外します。** `is-arriving`（`m-add`）は
              `animation-fill-mode: both` なので、終わったあとも
-             `transform: none` を押さえ続けます——アニメーションは
+             `translate`・`scale` を押さえ続けます（U5 の前は `transform`）——アニメーションは
              インラインの style より強いので、**札を持ったままの行は
              二度と FLIP で滑れません**。
              行が毎回新しく組まれているあいだは、札も一緒に消えていたので
@@ -1142,15 +1142,16 @@
 
       /* 一拍おいてから戻します。同じフレームで書いて消すと、ブラウザは
          二つをまとめて「何も変わっていない」と見なし、動きが出ません。 */
+      const ms = KN.motion.ms("--m-settle");
       requestAnimationFrame(() => {
         rows.forEach((el) => {
           if (!el.style.transform) return;
-          el.style.transition = `transform ${FLIP_MS}ms var(--ease-out)`;
+          el.style.transition = "transform var(--m-settle) var(--ease-settle)";
           el.style.transform = "";
         });
         setTimeout(() => {
           rows.forEach((el) => { el.style.transition = ""; el.style.transform = ""; });
-        }, FLIP_MS + 30);
+        }, ms + 30);
       });
     };
   }
@@ -1406,7 +1407,7 @@
   /** 年・月・日の三列。`base` は Date。`years` は [最初, 最後]。値は `value()`（{y, m, d}）。
       ノートの「作った日」と、daily の期間の書き出しが使う。 */
   function dateDrums(base, { years: span, label = "日付" } = {}) {
-    const ROW = 40;
+    const ROW = KN.gesture.WHEEL_ROW;
     const y0 = span ? span[0] : Math.min(1990, base.getFullYear());
     const y1 = span ? span[1] : Math.max(new Date().getFullYear(), base.getFullYear());
     const years = [];
@@ -1508,14 +1509,18 @@
   /* 押せるもの（「元に戻す」ほか）が付くトーストは、既定で長めに出す——押しに
      行くあいだに消えないように（roadmap-2.0 の V18。言葉は「元に戻す」に揃える）。 */
   const TOAST_MS = 3600, TOAST_ACT_MS = 5000;
+  /* `long`＝読むのに時間がかかる文（何も変えていない理由など）。`until`＝答えを待つあいだの
+     「…しています」——答えが来たら呼ぶ側が `dismiss()` する。来なかったときのための上限だけ持つ。
+     長さを数で渡す口は持たない（場所ごとに違う長さが生えるので）。 */
+  const TOAST_LONG_MS = 8000, TOAST_UNTIL_MS = 60000;
 
-  function toast(message, { action, actions, duration } = {}) {
+  function toast(message, { action, actions, long, until } = {}) {
     const root = toastRoot();
     root.innerHTML = "";
     clearTimeout(toastTimer);
     /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
     const acts = actions || (action ? [action] : []);
-    if (duration == null) duration = acts.length ? TOAST_ACT_MS : TOAST_MS;
+    const duration = until ? TOAST_UNTIL_MS : long ? TOAST_LONG_MS : acts.length ? TOAST_ACT_MS : TOAST_MS;
 
     const el = node(html`
       <div class="toast">
@@ -1727,6 +1732,224 @@
     host.append(row);
     row.scrollLeft = left;
     return row;
+  }
+
+  /* ---------------- アイコンを選ぶ紙 ----------------
+
+     買うもの（product-sheet.js）とやること（screen-todo.js）が分け合う一つ
+     （roadmap-unify の U2）。並べるのは「探す欄」「この絵はちがう、と記録する」
+     「おまかせにする」「もしかして」「ぜんぶ（見出しで束ねる）」。違うのは
+     絵の出どころと、選んだあとに何をするかだけなので、そこを受け取ります。
+
+     報告は「選ぶ」のついでに残します。押した瞬間には何が正しいかまだ
+     分からない（分かっていれば選んでいる）ので、ここでは腕を組むだけ
+     （armed）——次に choose() が呼ばれたとき（グリッドの絵、または
+     「おまかせにする」）、その結果を chosen として一緒に書きます。
+     「おまかせ」のまま報告すれば、chosen は空——「正しい絵はまだ無い」
+     という記録そのものです。 */
+  /**
+   * @param {{
+   *   screen: string,                       // 報告に書く画面（"shop" / "todo"）
+   *   current: () => string,                // いま選んである鍵（無ければ ""）
+   *   reportOf: () => {text: string, gotIcon: string},  // 腕を組んで選んだときの報告の中身
+   *   guess: (text: string) => string,      // 探して当たらなかった言葉の、自動の推測
+   *   autoMark: () => string|null,          // 「おまかせにする」に添える絵（null なら何も描かない）
+   *   autoSub?: string,                     // 「おまかせにする」の下の一言
+   *   search: (q: string) => Array,         // 探す欄の当たり（{key,label,svg}）
+   *   maybe: () => Array,                   // 「もしかして」
+   *   groups: () => Array<{label: string, items: Array}>,  // ぜんぶ（見出しで束ねる）
+   *   onChoose: (key: string|null) => void, // 選んだ（null＝おまかせ）。このあと紙を閉じます
+   * }} o
+   */
+  function iconPicker(o) {
+    const store = KN.store;
+    const body = node(html`
+      <div class="stack" style="gap:14px">
+        <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
+               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
+        <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
+          ${icon("flag")}
+          <span class="icon-report-text">この絵はちがう、と記録する</span>
+        </button>
+        <div class="stack js-grids" style="gap:14px"></div>
+      </div>
+    `);
+    const grids = body.querySelector(".js-grids");
+    const q = body.querySelector(".js-q");
+    const handle = sheet({ title: "アイコンを選ぶ", content: body });
+
+    let armed = false;
+    const reportBtn = body.querySelector(".js-report-toggle");
+    reportBtn.addEventListener("click", () => {
+      armed = !armed;
+      reportBtn.classList.toggle("is-on", armed);
+      reportBtn.setAttribute("aria-pressed", String(armed));
+      reportBtn.querySelector(".icon-report-text").textContent = armed
+        ? "次に選ぶ絵を「ちがう」として記録します"
+        : "この絵はちがう、と記録する";
+    });
+
+    function choose(key) {
+      if (armed) {
+        const { text, gotIcon } = o.reportOf();
+        store.addIconReport({
+          text: text || "", screen: o.screen, gotIcon: gotIcon || "",
+          kind: gotIcon ? "wrong" : "missing", chosen: key || "",
+        });
+        toast("記録しました");
+      }
+      o.onChoose(key || null);
+      handle.close();
+    }
+
+    /* 一画面に入るぶんより、少し多め。最初の一手で見えるところが埋まっていれば、
+       残りが何フレームか遅れて届いても、めくるより先に間に合います。 */
+    const CHUNK = 120;
+    /* 開いているシートが閉じたら、まだ流し込んでいるぶんは止めます。 */
+    let painting = 0;
+
+    function cellOf({ key, label, svg }) {
+      const current = o.current() || "";
+      const cell = node(html`
+        <button type="button" class="icon-cell ${key === current ? "is-on" : ""}"
+                data-key="${key}" aria-pressed="${String(key === current)}">
+          <span class="icon-cell-mark">${KN.util.raw(svg)}</span>
+          <span class="icon-cell-label">${label}</span>
+        </button>
+      `);
+      cell.addEventListener("click", () => choose(key));
+      return cell;
+    }
+
+    function grid(items) {
+      const g = node(html`<div class="icon-grid"></div>`);
+
+      /* 絵が557個だったころは、全部いちどに組んで差し込んでも 70ms でした。
+         857個になると DOM が 8,000 節点・HTML が 700KB を超えて、実機では
+         シートが開く手が止まります。
+
+         そこで最初の一掴みだけを同期で入れ、残りはフレームごとに継ぎ足します。
+         総量は同じでも、一フレームに載る仕事が減るので、開く動作は止まりません。
+         中身は変わらないので、探すことにも選ぶことにも影響しません。 */
+      const head = items.slice(0, CHUNK);
+      head.forEach((it) => g.append(cellOf(it)));
+
+      if (items.length > CHUNK) {
+        const mine = ++painting;
+        let at = CHUNK;
+        const more = () => {
+          // 描き直しが始まっていたら、古い流し込みはここで降ります。
+          if (mine !== painting || !g.isConnected) return;
+          const stop = Math.min(at + CHUNK, items.length);
+          const frag = document.createDocumentFragment();
+          for (; at < stop; at++) frag.append(cellOf(items[at]));
+          g.append(frag);
+          if (at < items.length) requestAnimationFrame(more);
+        };
+        requestAnimationFrame(more);
+      }
+      return g;
+    }
+
+    /* 「ぜんぶ」は見出しで束ねて出します。見出しの無い一本の格子で流れて
+       いたので、探す欄で当たらなかった人には、そこから先の手がかりが
+       ありませんでした。
+
+       **刻むのは見出し単位で、`grid()` は使いません。** `grid()` の流し込みは
+       `painting` の札で「最後の一本だけを生かす」作りなので、見出しごとに
+       呼ぶと、二つ目が始まった時点で一つ目の流し込みが死にます。しかも
+       どの見出しも120枚（CHUNK）未満なので、そもそも刻まれず 707枚が
+       まるごと同期で入ります——**実機でシートが開く手が止まる**、あの形に
+       戻ってしまう。だから流し込みは一本のまま、切り口を見出しへ移します
+       （やることの「こと」も、この一本に先頭の見出しとして乗せます）。 */
+    function paintGroups(gs, into) {
+      const mine = ++painting;
+      const put = (g) => {
+        into.append(heading(g.label));
+        const box = node(html`<div class="icon-grid"></div>`);
+        g.items.forEach((it) => box.append(cellOf(it)));
+        into.append(box);
+      };
+      /* 最初の一手で見えるぶんだけ同期で。残りはフレームごとに一見出しずつ
+         ——いちばん大きい見出しでも76枚なので、一フレームの仕事は前より軽い。 */
+      const HEAD = 2;
+      gs.slice(0, HEAD).forEach(put);
+      let at = HEAD;
+      const more = () => {
+        if (mine !== painting || !into.isConnected) return;
+        put(gs[at++]);
+        if (at < gs.length) requestAnimationFrame(more);
+      };
+      if (at < gs.length) requestAnimationFrame(more);
+    }
+
+    const heading = (text) => node(html`<span class="field-label">${text}</span>`);
+
+    function paint() {
+      const mark = o.autoMark();
+      if (mark == null) return;
+      grids.innerHTML = "";
+      const query = q.value.trim();
+
+      if (query) {
+        const hits = o.search(query);
+        if (!hits.length) {
+          /* 「合う絵はありません」で行き止まりにしません。ここで探した
+             言葉そのものに絵が無い、という発見そのものが**報告の材料**
+             なので、その場で残せるようにします（腕組みボタンを押す手間を
+             飛ばして、いま打った言葉を直接記録する一本道）。 */
+          const empty = node(html`
+            <div class="stack" style="gap:10px">
+              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
+                「${query}」に合う絵はありません
+              </p>
+              <button type="button" class="icon-report-toggle js-report-empty">
+                ${icon("flag")}
+                <span class="icon-report-text">「${query}」の絵が無い、と記録する</span>
+              </button>
+            </div>
+          `);
+          empty.querySelector(".js-report-empty").addEventListener("click", () => {
+            const gotIcon = o.guess(query) || "";
+            store.addIconReport({ text: query, screen: o.screen, gotIcon, kind: gotIcon ? "wrong" : "missing" });
+            toast("記録しました");
+          });
+          grids.append(empty);
+          return;
+        }
+        grids.append(grid(hits));
+        return;
+      }
+
+      /* Back to the guess. Shown with the picture it would land on, so it is
+         a choice between two pictures rather than a choice with the lights
+         off. */
+      const cur = o.current();
+      const auto = node(html`
+        <button type="button" class="icon-auto js-auto ${cur ? "" : "is-on"}"
+                aria-pressed="${String(!cur)}">
+          <span class="icon-pick-mark">${mark}</span>
+          <span class="icon-pick-text">
+            <span class="icon-pick-name">おまかせにする</span>
+            ${o.autoSub ? html`<span class="icon-pick-sub">${o.autoSub}</span>` : ""}
+          </span>
+        </button>
+      `);
+      auto.addEventListener("click", () => choose(null));
+      grids.append(auto);
+
+      const maybe = o.maybe();
+      if (maybe.length) {
+        grids.append(heading("もしかして"));
+        grids.append(grid(maybe));
+      }
+
+      paintGroups(o.groups(), grids);
+    }
+
+    q.addEventListener("input", KN.util.debounce(paint, 160));
+    paint();
+    return handle;
   }
 
   /* ---------------- category picker ---------------- */
@@ -2142,7 +2365,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, popMenu, popCalendar, popDate, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, chipRow,
+    sheet, actionSheet, popOver, popMenu, popCalendar, popDate, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

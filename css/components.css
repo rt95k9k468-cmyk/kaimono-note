@@ -1784,11 +1784,15 @@ button.hero-node:active { scale: .94; }
 /* 押している間。CSS の :active で足りるところには要りません。 */
 .is-m-press { transform: scale(.97); transition: transform var(--m-press) var(--ease); }
 
-/* 印が付いた。ほんの少し行き過ぎて戻ります——指で押した手ごたえ。 */
+/* 印が付いた。ほんの少し行き過ぎて戻ります——指で押した手ごたえ。
+   **共通の動きは `scale:` / `translate:` で書きます**（`transform` に書かない）。位置を
+   `transform` に持つもの（時間割の丸）や、FLIP の `transform` が乗った行にも、そのまま
+   重ねられるように（traps「`transform` の取り合い」、roadmap-unify の U5）。
+   時間割の丸（元の `tl-pop`）も買うものの丸（元の `mark-pop`）も、これ一本です。 */
 @keyframes m-check {
-  0%   { transform: scale(1); }
-  38%  { transform: scale(1.16); }
-  100% { transform: scale(1); }
+  0%   { scale: 1; }
+  38%  { scale: 1.16; }
+  100% { scale: 1; }
 }
 /* **向きを、実際に印を描いているものへ揃えました**（.9 → 1.16）。
    時間割の丸（`tl-pop`）も買うものの丸（`mark-pop`）も 1.16 まで**膨らむ**
@@ -1799,18 +1803,29 @@ button.hero-node:active { scale: .94; }
    これは**次に渡した人**のための直しです。） */
 .is-m-check { animation: m-check var(--m-check) var(--spring); }
 
-/* 増えた。下から入ってきて、静かに着きます。 */
+/* 印が外れた。逆に一度だけ引っ込んで戻ります（元の `tl-unpop`）。 */
+@keyframes m-uncheck {
+  0%   { scale: 1; }
+  40%  { scale: .86; }
+  100% { scale: 1; }
+}
+
+/* 増えた。**その場で、下から少し（10px）浮かんで**静かに着きます。行・候補・
+   ノートの折った題も、増えるものはみなこれ一本（元の `row-arrive`・`item-in`・
+   `ac-in`・`note-fold-in`）。向きを場所ごとに変えません。 */
 @keyframes m-add {
-  from { opacity: 0; transform: translateY(10px) scale(.98); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; translate: 0 10px; scale: .98; }
+  to   { opacity: 1; translate: none; scale: none; }
 }
 .is-m-add { animation: m-add var(--m-add) var(--ease-out); }
 
-/* 減った。静かに離れて、速く消えます（--ease-in）。高さも一緒に
-   畳むので、周りが滑らかに詰まります。 */
+/* 減った。行き先の無い「消えた」は、**その場で縮んで薄れます**（--ease-in で速く）。
+   向きを付けるのは行き先があるときだけ——次の日へ送る `todo-slide`（右）と、
+   買ったものの山へ沈む `item-drop`（下）。一度きりのやることの「済んだ」（元の
+   `todo-finish`）もこれ。 */
 @keyframes m-delete {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: translateX(-14px) scale(.97); }
+  from { opacity: 1; }
+  to   { opacity: 0; scale: .94; }
 }
 .is-m-delete {
   animation: m-delete var(--m-delete) var(--ease-in) forwards;
@@ -1833,13 +1848,22 @@ button.hero-node:active { scale: .94; }
 }
 .is-m-success { animation: m-success var(--m-success) var(--ease-out); }
 
+/* ここを見て。行が棚の色（--cat）の輪で一度光ります（元の `row-flash`・`todo-glow`）。
+   暦から着いた行は二度往復して消え（`--m-flash` を二つに割って alternate）、済ませた
+   やることは光ったまま畳まれます（forwards）。 */
+@keyframes m-glow {
+  to { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat, var(--c-primary)) 55%, transparent),
+                   var(--shadow-2); }
+}
+
 /* 気をつけて。左右にごく短く振ります。「間違い」ではなく「いまのは
-   通っていない」を言うだけなので、振り幅は小さく。 */
+   通っていない」を言うだけなので、振り幅は小さく。鍵の番号違いだけは
+   `--warn-x` で大きく振ります（元の `lock-shake`）。 */
 @keyframes m-warn {
-  0%, 100% { transform: translateX(0); }
-  20%      { transform: translateX(-4px); }
-  55%      { transform: translateX(3px); }
-  80%      { transform: translateX(-2px); }
+  0%, 100% { translate: none; }
+  20%      { translate: calc(var(--warn-x, 4px) * -1) 0; }
+  55%      { translate: calc(var(--warn-x, 4px) * .75) 0; }
+  80%      { translate: calc(var(--warn-x, 4px) * -.5) 0; }
 }
 .is-m-warn { animation: m-warn var(--m-warn) var(--ease); }
 
@@ -1968,12 +1992,7 @@ button.hero-node:active { scale: .94; }
   border: 1.5px solid var(--c-text-2);
 }
 .lock-dot.is-on { background: var(--c-text); border-color: var(--c-text); }
-.lock-dots.is-wrong { animation: lock-shake var(--m-delete) var(--ease-out); }
-@keyframes lock-shake {
-  25% { translate: -10px 0; }
-  50% { translate: 8px 0; }
-  75% { translate: -4px 0; }
-}
+.lock-dots.is-wrong { --warn-x: 10px; animation: m-warn var(--m-warn) var(--ease); }
 .lock-pad {
   display: grid;
   grid-template-columns: repeat(3, 72px);

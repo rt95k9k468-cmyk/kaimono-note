@@ -461,25 +461,8 @@
      黙って失敗させないように、通らなかったら欄に出して手で選べるように
      します。 */
   function copyText(text, what) {
-    const ok = () => KN.ui.toast(what + "をコピーしました");
-    const fallback = () => {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.setAttribute("readonly", "");
-      ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
-      document.body.append(ta);
-      ta.select();
-      let done = false;
-      try { done = document.execCommand("copy"); } catch (err) { done = false; }
-      if (done) { ta.remove(); ok(); return; }
-      KN.ui.toast("長押しして「すべてを選択」→「コピー」してください");
-      ta.addEventListener("blur", () => ta.remove());
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(ok, fallback);
-    } else {
-      fallback();
-    }
+    KN.util.copy(text, { show: true }).then((ok) => KN.ui.toast(ok
+      ? what + "をコピーしました" : "長押しして「すべてを選択」→「コピー」してください"));
   }
 
   /** 字を書く欄を一つだけ置くカード。 */
@@ -622,7 +605,7 @@
     });
     if (!ok) return;
     const r = await KN.backup.mergeNotes(at);
-    KN.ui.toast(r === "merged" ? "ノートを合わせました" : "合わせられませんでした", { duration: r === "merged" ? undefined : 6000 });
+    KN.ui.toast(r === "merged" ? "ノートを合わせました" : "合わせられませんでした", { long: r !== "merged" });
     render();
   }
 

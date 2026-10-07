@@ -59,6 +59,7 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | `--m-poke` | .56s | 押す | 席の絵・歯車を押す | 絵の跳ね・回り・バッジ | — | class を付けない |
 | `--m-walk` | .3s | 歩く | タブを開く・戻る | 道の人の四歩（前に見た点から追いつく） | 塗（SVG の `d` を毎フレーム） | 歩かない |
 | `--m-snore` | 2.6s | 歩く | 道を外れた時間 | 寝床の z Z | — | 瞬時（くり返し1回） |
+| `--m-float` | 3.2s | 状態 | いつかの丸が道の外に置かれている | 丸の浮き沈み（`--ease`・くり返す） | — | 止まる |
 | `--m-fill` / `--m-stagger` | 1.3s / .07s | 状態 | タブを開く・戻る（arrive） | 輪・数・食事の帯・空の絵 | 塗（輪の `conic-gradient`） | 付けない（`arrive`） |
 | `--m-draw` | 1.5s | 状態 | 同上 | 体重の線 | 塗（`stroke-dashoffset`） | 付けない |
 
@@ -90,9 +91,34 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 - **JS と CSS に同じ数は二つ無い**（確かめた）。JS はどれも `KN.motion.ms()` / `ease()` / `curve()` で
   CSS から読む。べた書きは読めなかったときの控え二つだけ：`edge-back.js` の `--push-e` の曲線、
   `app.js` の `glideToTop` の 750。
+- **長さの直書きは `tests/motion-dict.js` が見張る**（U1）：CSS の transition / animation の秒、JS の
+  `${FLIP_MS}ms` の形と `duration:` の数。トーストの長さは名前で（`long`＝8秒・`until`＝答えを待つあいだ）。
 - `KN.motion.ms()` は減らす設定でも本当の長さを返す（待ち時間に使う所があるため）。止めるのは呼ぶ側の `still()`。
 - **名前は変えない**（`--m-press-*` のような種類の頭は付けない）。種類はこの表の列で持つ。名前は
   すでに出来事を言っていて、頭を付けても表と同じことを二度書くだけ。変えると CSS 二百三十か所と試験が追う。
+
+### 同じ出来事の動きは一本（@keyframes・roadmap-unify の U5・2026年10月7日）
+
+**同じ出来事に別名の @keyframes を作らない。** 共通の動き（components.css）を呼び、長さと曲線だけを
+その場で選ぶ。`tests/keyframes-one.js` が見張る（中身が同じ @keyframes が二つ無い・寄せた別名が戻らない・
+共通の動きは `transform` に書かない）。
+
+| 動き | 何を言う | 寄せたもの |
+|---|---|---|
+| `m-check` | 印が付いた（`scale:` 1→1.16→1） | `tl-pop`・`mark-pop` |
+| `m-uncheck` | 印が外れた（`scale:` 1→.86→1） | `tl-unpop` |
+| `m-add` | 増えた。**その場で下から少し（10px）浮かぶ**（`translate:`・`scale:`） | `row-arrive`（長さも `--m-add` へ）・`item-in`・`ac-in`・`note-fold-in`（候補とノートの題は `--m-state` のまま） |
+| `m-delete` | 行き先の無い「消えた」。その場で縮んで薄れる | `todo-finish` |
+| `todo-slide` | 消えずに**次の日へ送られた**（右へ） | 行き先を言うので残す |
+| `item-drop` | 買ったものの山へ**沈んだ**（下へ） | 行き先を言うので残す |
+| `m-glow` | ここを見て。棚の色（`--cat` 55%）の 3px の輪 | `row-flash`（`--m-flash` を二つに割って alternate）・`todo-glow`（forwards。地の色は `.item` の transition） |
+| `m-warn` | 通っていない。振れ幅は `--warn-x`（既定 4px・鍵だけ 10px） | `lock-shake`（長さも `--m-warn` へ） |
+| `fade-in` | 薄いところから出るだけ | `head-marks-in`・`arrive-fade` |
+| `scr-in-r` / `scr-out-r` | 右から入る／右へ出る（設定へ押し入るのも同じ形、長さと曲線だけ `--m-push`・`--push-e`） | `scr-push-in`・`scr-pop-out` |
+
+- `screen-in`（「移る」）と `tl-flash`（取り消し線の光。形が別）は別のまま。
+- **共通の動きは `scale:` / `translate:` で書く。** `transform` に位置を持つ物へ `transform` の動きを当てると
+  位置が飛ぶ。時間割の丸（`.tl-node`）の位置は、そのため `translate:` に移した（`transform` は空き）。
 
 ### 動きは、名前で持つ（`--m-*` / 曲線）
 
@@ -189,6 +215,26 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 **端の向こうは `KN.motion.rubber(over, limit)`。** 行けない向きに引いた指も、
 ついてはくるが進まない——止めてしまうと、そこで指と絵が切れる。実測：
 -20→-14.3、-100→-33.3、-400→-44.4（limit 50 を越えない）。
+
+### 指の重さは一か所（`KN.gesture`・roadmap-unify の U4・2026年10月7日）
+
+同じ身ぶりの閾値が場所ごとに違っていた（並べ替えの長押し 400／時間割と道 380、日送りの払い
+0.3／暦と面 0.35、向きを決める 5〜8px）。いまは `motion.js` の `KN.gesture` に一つずつ置き、
+各ファイルは頭で読む（motion.js は読む側より先に読み込む）。
+
+| 名前 | 値 | 使う所 |
+|---|---|---|
+| `HOLD`・`HOLD_SLOP` | 380ms・8px | 持ち上げ：並べ替え（`reorder.js`）・時間割（`DRAG_HOLD`）・道（`CARRY_HOLD`） |
+| `FLING_V`・`FLING_MIN` | 0.35px/ms・8px | **行き先へ送る払い**：日（day-swipe）・暦の段（cal-peek）・面（app.js の `FACE_*`） |
+| `BACK_FLING_V`・`BACK_FLING_MIN` | 0.4px/ms・10px | **閉じる・戻る払い**：紙（ui.js）・左端から（edge-back） |
+| `AXIS` | 6px | 向きを決める：day-swipe の横・cal-swipe・edge-back・cal-peek |
+| `WHEEL_ROW` | 40px | 車輪の一行（`.note-wheel-row` の高さと同じ） |
+
+- 払いが二つなのは身ぶりの意味が違うから（送るは軽く、閉じる・戻るは少し重く）。それ以上は分けない。
+- 同じ名前でも別の意味のものは残す：手順の丸の長押し 500（screen-todo の `HOLD_MS`）・キーボードを
+  下げる払いと文字選びの見分け 260（app.js）・day-swipe の縦と決める 10（`AXIS_Y`）・端の帯の勢い
+  （pull-refresh の `FLING_*`）。`tests/gesture-dict.js` の EXEMPT に理由つきで並ぶ。
+- 見張りは `tests/gesture-dict.js`（門）、手触りは `tests/gesture-weight.js`（並べ替え・左端から）。
 
 ### iPhone で、主な押すものを震わせる（`motion.js` の FEEL・C1）
 

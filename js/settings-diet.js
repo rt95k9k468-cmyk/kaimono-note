@@ -98,16 +98,9 @@
 
     foot.querySelector(".js-copy").addEventListener("click", () => {
       const text = body.querySelector(".js-out").value;
-      const done = (ok) => {
-        if (ok) { KN.ui.toast("コピーしました"); return; }
-        // 断られる端末があります。選んでおいて、長押しから拾えるように。
-        const out = body.querySelector(".js-out");
-        out.focus();
-        try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 読めれば足ります */ }
-        KN.ui.toast("自動でコピーできませんでした。欄を長押しでコピーしてください");
-      };
-      if (!navigator.clipboard || !navigator.clipboard.writeText) { done(false); return; }
-      navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+      // 断られる端末があります。欄を選んでおいて、長押しから拾えるように（KN.util.copy）。
+      KN.util.copy(text, { field: body.querySelector(".js-out") }).then((ok) => KN.ui.toast(ok
+        ? "コピーしました" : "自動でコピーできませんでした。欄を長押しでコピーしてください"));
     });
 
     foot.querySelector(".js-file").addEventListener("click", () => {
@@ -292,15 +285,8 @@
 
     foot.querySelector(".js-copy").addEventListener("click", () => {
       const text = build();
-      const done = (ok) => {
-        if (ok) { KN.ui.toast("コピーしました"); return; }
-        const out = body.querySelector(".js-out");
-        out.focus();
-        try { out.setSelectionRange(0, out.value.length); } catch (err) { /* 読めれば足ります */ }
-        KN.ui.toast("自動でコピーできませんでした。欄を長押しでコピーしてください");
-      };
-      if (!navigator.clipboard || !navigator.clipboard.writeText) { done(false); return; }
-      navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+      KN.util.copy(text, { field: body.querySelector(".js-out") }).then((ok) => KN.ui.toast(ok
+        ? "コピーしました" : "自動でコピーできませんでした。欄を長押しでコピーしてください"));
     });
 
     foot.querySelector(".js-file").addEventListener("click", () => {

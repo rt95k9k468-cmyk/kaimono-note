@@ -149,21 +149,7 @@
 
   /* ---------------- 紙 ---------------- */
 
-  function copy(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).then(() => true, () => fallback());
-    }
-    return Promise.resolve(fallback());
-    function fallback() {
-      const ta = document.createElement("textarea");
-      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.append(ta); ta.select();
-      let ok = false;
-      try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
-      ta.remove();
-      return ok;
-    }
-  }
+  function copy(text) { return KN.util.copy(text); }
 
   function open(id) {
     const store = KN.store;
