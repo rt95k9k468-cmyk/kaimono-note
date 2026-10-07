@@ -1010,11 +1010,11 @@
         <div class="arc-times">
           <label class="field">
             <span class="field-label">起床</span>
-            <input type="time" class="input js-wake" value="${cur.wake || ""}">
+            <input type="hidden" data-when="time" data-clear class="input js-wake" aria-label="起床" value="${cur.wake || ""}">
           </label>
           <label class="field">
             <span class="field-label">就寝</span>
-            <input type="time" class="input js-sleep" value="${cur.sleep || ""}">
+            <input type="hidden" data-when="time" data-clear class="input js-sleep" aria-label="就寝" value="${cur.sleep || ""}">
           </label>
         </div>
       </div>
@@ -1023,6 +1023,7 @@
     /* 「この日を『あの日』に出さない」の札は外した（2026年10月6日・利用者「要らない」）。
        付いている印（store の quiet）と、その効き目はそのまま残す。 */
 
+    KN.ui.whenFields(body);
     const memo = body.querySelector(".js-memo");
     const wakeEl = body.querySelector(".js-wake");
     const sleepEl = body.querySelector(".js-sleep");
@@ -1370,7 +1371,7 @@
 
         <label class="field arc-date-field">
           <span class="field-label">日付</span>
-          <input type="date" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
+          <input type="hidden" data-when="day" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
         </label>
 
         <label class="field arc-memo-field">
@@ -1578,6 +1579,7 @@
     paintPick();
     paintMode();
 
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
       cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
       onClose: () => {

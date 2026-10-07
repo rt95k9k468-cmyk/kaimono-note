@@ -291,7 +291,7 @@
 
         <label class="field">
           <span class="field-label">記録した日</span>
-          <input class="input js-date" type="date" value="${isoToDay(pr.date)}">
+          <input class="input js-date" type="hidden" data-when="day" aria-label="記録した日" value="${isoToDay(pr.date)}">
         </label>
 
         <div class="field">
@@ -306,6 +306,7 @@
     `);
 
     const priceEl = body.querySelector(".js-price");
+    KN.ui.whenFields(body);
     const dateEl  = body.querySelector(".js-date");
     KN.keypad.bind(priceEl);
 
@@ -450,7 +451,7 @@
     host.append(list);
   }
 
-  /** ISO timestamp → the YYYY-MM-DD an <input type="date"> wants. */
+  /** ISO timestamp → the YYYY-MM-DD the day field (whenFields) wants. */
   function isoToDay(iso) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";

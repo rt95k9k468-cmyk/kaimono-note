@@ -169,7 +169,7 @@
 | B | U5 | 同じ出来事の動きを一本に（@keyframes） | 中 | 少し | motion・traps | Opus 5.5・中 | 済（10/7） |
 | B | U6 | 押したときの返事を三種に（主な行にも） | 中 | 変わる | motion・look・traps | Opus 5.5・高 | 済（10/7） |
 | B | U7 | 小窓はみな、押したものから出て同じ点へ帰る | 小 | 変わる | notes（小窓）・motion | Opus 5.5・中 | 済（10/7） |
-| C 入れる | U8 | 日付と時刻の入れ方を一つに（端末の欄を 0 に） | 大 | 変わる | todo-items・health・daily・shopping・sheet-scroll（tryClose） | Opus 5.5・高 | 未 |
+| C 入れる | U8 | 日付と時刻の入れ方を一つに（端末の欄を 0 に） | 大 | 変わる | todo-items・health・daily・shopping・sheet-scroll（tryClose） | Opus 5.5・高 || 済（10/7・分かれ道2は A） |
 | C | U9 | 数の欄を揃える（`type="number"` をやめる） | 小 | 同じ | health・daily | Sonnet 5.5・中 | 未 |
 | D 言葉 | U10 | 言葉の表（消す・足す・保存・見つからない・AI・写す） | 中 | 字が変わる | look（元に戻す） | Sonnet 5.5・中 | 未 |
 | D | U11 | 消すときの決まり（一件は ⋯ から・確かめずに戻すだけ） | 小 | 変わる | look（元に戻す）・health・daily・shopping | Opus 5.5・中 | 未 |
@@ -281,6 +281,10 @@
 - 試験：`notes-labels.js`（今の grow）・`done-time.js`・`due-sheet.js`・`cal-shortcut.js`。
 
 ### U8 日付と時刻の入れ方を一つに（大・Opus 5.5・高）
+
+**済（2026年10月7日）**：利用者は分かれ道 2 で **A**、欄の字は「今日 10/7(水)」を選んだ。`KN.ui.whenFields`・`popTime` を足し、
+日付 6・時刻 8 の欄を差し替えた（表の 5＋6 に、食事の日付と体重の時刻が漏れていた）。見張りは `tests/when-dict.js`（門）、
+欄ごとの試験は `tests/when-fields.js`。決めごとは todo-items の「日付と時刻の欄」。
 
 - 分かれ道 2 の A なら：日付は**暦の小窓**（`popCalendar`）、遠い日だけ**年月日のドラム**（`popDate`）、時刻は**車輪**
   （`drum` を時と分の二列にした `KN.ui.popTime` を `popDate` と同じ作りで足す）。
