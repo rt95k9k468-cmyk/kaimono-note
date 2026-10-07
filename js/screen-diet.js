@@ -116,8 +116,7 @@
             ${icon("search")}
             <input class="search-input js-search" placeholder="食べたものを探す" aria-label="食べたものを探す"
                    autocomplete="off" spellcheck="false">
-            <button class="icon-btn js-search-clear" aria-label="検索をクリア"
-                    style="width:28px;height:28px" hidden>${icon("close")}</button>
+            <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
 
@@ -2201,8 +2200,8 @@
     `);
 
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-primary js-save" style="flex:1">${editing ? "保存" : "記録する"}</button>
+      <div class="btn-row">
+        <button class="btn btn-primary js-save grow">${editing ? "保存" : "記録する"}</button>
       </div>
     `);
     KN.ui.whenFields(body);
@@ -2496,11 +2495,11 @@
         <label class="field"><span class="field-label">種目</span>
           <input class="input js-n" placeholder="例：ウォーキング"></label>
         <div class="field-row">
-          <label class="field" style="flex:1"><span class="field-label">時間（分）</span>
+          <label class="field grow"><span class="field-label">時間（分）</span>
             <input class="input js-m" inputmode="numeric" placeholder="42"></label>
-          <label class="field" style="flex:1"><span class="field-label">kcal</span>
+          <label class="field grow"><span class="field-label">kcal</span>
             <input class="input js-k" inputmode="numeric" placeholder="任意"></label>
-          <label class="field" style="flex:1"><span class="field-label">時刻</span>
+          <label class="field grow"><span class="field-label">時刻</span>
             <input type="hidden" data-when="time" data-clear class="input js-t2" value="${U.nowTime()}"></label>
         </div>
       </div>
@@ -3553,8 +3552,8 @@
     `);
 
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-primary js-save" style="flex:1">保存</button>
+      <div class="btn-row">
+        <button class="btn btn-primary js-save grow">保存</button>
       </div>
     `);
     const h = KN.ui.sheet({ title: "AIに推してもらう", content: body, footer: foot, guard: true });
@@ -3899,22 +3898,22 @@
     const body = node(html`
       <div class="stack">
         <div class="field-row">
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">日付</span>
             <input type="hidden" data-when="day" class="input js-day" value="${w ? w.day : (dayHint || U.todayKey())}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">時刻</span>
             <input type="hidden" data-when="time" data-clear class="input js-time" value="${w && w.time ? w.time : U.nowTime()}">
           </label>
         </div>
         <div class="field-row">
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">体重 (kg)</span>
             <input class="input js-kg" inputmode="decimal" placeholder="例：68.4"
                    value="${w ? String(w.kg) : ""}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">体脂肪率 (%)</span>
             <input class="input js-fat" inputmode="decimal" placeholder="任意"
                    value="${w && w.fat != null ? String(w.fat) : ""}">
@@ -3939,8 +3938,8 @@
     `);
 
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-primary js-save" style="flex:1">${w ? "保存" : "記録する"}</button>
+      <div class="btn-row">
+        <button class="btn btn-primary js-save grow">${w ? "保存" : "記録する"}</button>
       </div>
     `);
 
@@ -3999,11 +3998,11 @@
       <div class="stack">
         <div class="js-slots"></div>
         <div class="field-row">
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">日付</span>
             <input type="hidden" data-when="day" class="input js-day" value="${meal ? meal.day : U.todayKey()}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">時刻</span>
             <input type="hidden" data-when="time" data-clear class="input js-time" value="${meal && meal.time ? meal.time : U.nowTime()}">
           </label>
@@ -4035,8 +4034,8 @@
     `);
 
     const foot = node(html`
-      <div style="display:flex;gap:8px;width:100%">
-        <button class="btn btn-primary js-save" style="flex:1">${meal ? "保存" : "記録する"}</button>
+      <div class="btn-row">
+        <button class="btn btn-primary js-save grow">${meal ? "保存" : "記録する"}</button>
       </div>
     `);
 
@@ -4097,17 +4096,17 @@
           <label class="field"><span class="field-label">名前</span>
             <input class="input js-n" value="${it.name}"></label>
           <div class="field-row">
-            <label class="field" style="flex:1"><span class="field-label">量 (g)</span>
+            <label class="field grow"><span class="field-label">量 (g)</span>
               <input class="input js-g" inputmode="decimal" value="${it.grams == null ? "" : it.grams}"></label>
-            <label class="field" style="flex:1"><span class="field-label">kcal</span>
+            <label class="field grow"><span class="field-label">kcal</span>
               <input class="input js-k" inputmode="numeric" value="${it.kcal}"></label>
           </div>
           <div class="field-row">
-            <label class="field" style="flex:1"><span class="field-label">P (g)</span>
+            <label class="field grow"><span class="field-label">P (g)</span>
               <input class="input js-p" inputmode="decimal" value="${it.p}"></label>
-            <label class="field" style="flex:1"><span class="field-label">F (g)</span>
+            <label class="field grow"><span class="field-label">F (g)</span>
               <input class="input js-f" inputmode="decimal" value="${it.f}"></label>
-            <label class="field" style="flex:1"><span class="field-label">C (g)</span>
+            <label class="field grow"><span class="field-label">C (g)</span>
               <input class="input js-c" inputmode="decimal" value="${it.c}"></label>
           </div>
           ${it.estimated ? html`<p class="diet-note">推定の数です。</p>` : ""}
@@ -4268,12 +4267,12 @@
     const body = node(html`
       <div class="stack">
         <div class="field-row">
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">身長 (cm)</span>
             <input class="input js-h" inputmode="decimal" placeholder="例：170"
                    value="${g.heightCm == null ? "" : String(g.heightCm)}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">目標体重 (kg)</span>
             <input class="input js-tw" inputmode="decimal" placeholder="例：65"
                    value="${g.targetKg == null ? "" : String(g.targetKg)}">
@@ -4295,19 +4294,19 @@
         <div class="divider"></div>
         <div class="section-title">一日の目安</div>
         <div class="field-row">
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">kcal</span>
             <input class="input js-kcal" inputmode="numeric" value="${g.kcalTarget == null ? "" : String(g.kcalTarget)}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">P (g)</span>
             <input class="input js-p" inputmode="numeric" value="${g.pTarget == null ? "" : String(g.pTarget)}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">F (g)</span>
             <input class="input js-f" inputmode="numeric" value="${g.fTarget == null ? "" : String(g.fTarget)}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">C (g)</span>
             <input class="input js-c" inputmode="numeric" value="${g.cTarget == null ? "" : String(g.cTarget)}">
           </label>
@@ -4317,17 +4316,17 @@
         <div class="divider"></div>
         <div class="section-title">からだの目標（今日のからだの輪）</div>
         <div class="field-row">
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">歩数</span>
             <input class="input js-steps" inputmode="numeric" placeholder="${STEPS_DEFAULT}"
                    value="${g.stepsTarget == null ? "" : String(g.stepsTarget)}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">総消費 (kcal)</span>
             <input class="input js-burn" inputmode="numeric" placeholder="${BURN_DEFAULT}"
                    value="${g.burnTarget == null ? "" : String(g.burnTarget)}">
           </label>
-          <label class="field" style="flex:1">
+          <label class="field grow">
             <span class="field-label">睡眠 (時間)</span>
             <input class="input js-sleep" inputmode="decimal" placeholder="${SLEEP_DEFAULT / 60}"
                    value="${g.sleepTarget == null ? "" : String(Math.round(g.sleepTarget / 6) / 10)}">

@@ -1670,11 +1670,11 @@
   function confirm({ title, message, okLabel = "OK", cancelLabel = "キャンセル", danger = false }) {
     return new Promise((resolve) => {
       let settled = false;
-      const body = node(html`<div class="stack" style="gap:8px"><p style="color:var(--c-text-2);line-height:1.6">${message || ""}</p></div>`);
+      const body = node(html`<div class="stack gap-2"><p class="sheet-text">${message || ""}</p></div>`);
       const foot = node(html`
-        <div style="display:flex;gap:8px;width:100%">
-          <button class="btn btn-soft js-cancel" style="flex:1">${cancelLabel}</button>
-          <button class="btn ${danger ? "btn-danger" : "btn-primary"} js-ok" style="flex:1">${okLabel}</button>
+        <div class="btn-row">
+          <button class="btn btn-soft js-cancel grow">${cancelLabel}</button>
+          <button class="btn ${danger ? "btn-danger" : "btn-primary"} js-ok grow">${okLabel}</button>
         </div>
       `);
 
@@ -1708,9 +1708,9 @@
         </label>
       `);
       const foot = node(html`
-        <div style="display:flex;gap:8px;width:100%">
-          <button class="btn btn-soft js-cancel" style="flex:1">キャンセル</button>
-          <button class="btn btn-primary js-ok" style="flex:1">${okLabel}</button>
+        <div class="btn-row">
+          <button class="btn btn-soft js-cancel grow">キャンセル</button>
+          <button class="btn btn-primary js-ok grow">${okLabel}</button>
         </div>
       `);
 
@@ -1872,14 +1872,14 @@
   function iconPicker(o) {
     const store = KN.store;
     const body = node(html`
-      <div class="stack" style="gap:14px">
+      <div class="stack gap-3">
         <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
                autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
         <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
           ${icon("flag")}
           <span class="icon-report-text">この絵はちがう、と記録する</span>
         </button>
-        <div class="stack js-grids" style="gap:14px"></div>
+        <div class="stack js-grids gap-3"></div>
       </div>
     `);
     const grids = body.querySelector(".js-grids");
@@ -2007,7 +2007,7 @@
              なので、その場で残せるようにします（腕組みボタンを押す手間を
              飛ばして、いま打った言葉を直接記録する一本道）。 */
           const empty = node(html`
-            <div class="stack" style="gap:10px">
+            <div class="stack gap-2">
               <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
                 「${query}」に合う絵はありません
               </p>
