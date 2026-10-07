@@ -1085,7 +1085,8 @@ button.hero-node:active { scale: var(--press-dot); }
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  padding: 13px var(--sp-4) 13px 14px;
+  min-height: var(--row-h);
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) 14px;
   text-align: left;
   transition: background var(--m-press) var(--ease);
 }
@@ -1223,7 +1224,7 @@ button.hero-node:active { scale: var(--press-dot); }
 .act-list { display: flex; flex-direction: column; }
 .act-row {
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: 13px 2px;
+  min-height: var(--row-h); padding: var(--sp-3) 2px;
   text-align: left;
 }
 .act-row + .act-row { border-top: 1px solid var(--c-border); }
@@ -1559,7 +1560,7 @@ button.hero-node:active { scale: var(--press-dot); }
   text-align: left;
   border-bottom: 1px solid var(--c-border);
   transition: background var(--m-state) var(--ease);
-  min-height: 52px;
+  min-height: var(--row-h);
 }
 
 .row:last-child { border-bottom: none; }

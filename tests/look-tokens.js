@@ -19,7 +19,7 @@ const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\/\*[\s
 
 const base = read("css/base.css");
 const root = base.slice(base.indexOf(":root {"), base.indexOf("@media (prefers-color-scheme: dark)"));
-const FAM = /(--(?:c|shadow|r|sp|fs|fw|lh)-[a-z0-9-]+)\s*:/g;
+const FAM = /(--(?:c|shadow|r|sp|fs|fw|lh|row)-[a-z0-9-]+)\s*:/g;
 const defined = new Set([...root.matchAll(FAM)].map((m) => m[1]));
 
 const doc = fs.readFileSync(path.join(ROOT, "docs/look.md"), "utf8");

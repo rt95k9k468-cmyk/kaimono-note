@@ -137,6 +137,7 @@
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
+  min-height: var(--row-h);
   padding: var(--sp-3) var(--sp-4);
   text-align: left;
   border-bottom: 1px solid var(--c-border);
@@ -1552,7 +1553,7 @@
 }
 
 /* メモも買った時刻も無い行（R27、2026年9月29日）。上の min-height は、メモを
-   足しても行の高さが跳ねないための取り置き（メモあり 73px・なし 71px）。
+   足しても行の高さが跳ねないための取り置き（行は U12 で 64px。下の .item-wrap の節）。
    ただ空の段が品名の下に残ると、品名だけ約11px上に寄って、値段と丸（行の
    真ん中）からずれていた。**取り置きの高さはそのまま**、段を消して同じ高さ
    （18px＋上の gap 3px）を品名の上下に半分ずつ置く。 */
@@ -1835,7 +1836,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-3);
+  min-height: var(--row-h-two);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   border: 1.5px solid transparent;
@@ -1894,7 +1896,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
+  min-height: var(--row-h);
+  padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-sm);
   background: var(--c-surface-2);
 }
@@ -2169,7 +2172,7 @@
   align-items: center;
   gap: var(--set-gap);
   width: 100%;
-  min-height: 52px;
+  min-height: var(--row-h);
   padding: var(--sp-2) var(--set-gut);
   text-align: left;
   font-size: var(--set-fs);
@@ -2177,7 +2180,6 @@
   position: relative;
   transition: background var(--m-state) var(--ease);
 }
-.set-row.is-sw { min-height: 56px; }
 /* 絵の付く行だけ、左を少し詰める（絵の左端がカードから18px）。 */
 .set-row.is-nav { padding-left: var(--set-pad); }
 .set-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
@@ -2297,7 +2299,7 @@
   border: none;
   border-radius: 18px;
 }
-#screen-settings .row { padding: var(--sp-3) var(--set-gut); min-height: 52px; border-bottom-color: var(--set-line); }
+#screen-settings .row { padding: var(--sp-3) var(--set-gut); min-height: var(--row-h); border-bottom-color: var(--set-line); }
 #screen-settings .section-title { font-size: var(--set-fs-head); color: var(--c-text-3); padding: 0 var(--sp-5); }
 
 /* 並べ替えられる行（お店・カテゴリ）も、同じ一枚のカードの中へ。
@@ -2308,7 +2310,7 @@
   border-radius: 0;
   background: var(--c-surface);
   padding: var(--sp-2) var(--set-gut);
-  min-height: 52px;
+  min-height: var(--row-h);
   font-size: var(--set-fs);
 }
 #screen-settings .manage-row + .manage-row { box-shadow: inset 0 1px 0 var(--set-line); }
@@ -2348,7 +2350,7 @@
 
 
 /* sortable manage rows */
-.manage-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
+.manage-row { display: flex; align-items: center; gap: var(--sp-3); min-height: var(--row-h); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
 
 /* The colour the category paints its rows with, shown where it is chosen. */
 .manage-swatch {
@@ -3012,7 +3014,7 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-rows { display: flex; flex-direction: column; }
 .urge-row {
   display: flex; align-items: center; gap: var(--sp-2);
-  width: 100%; min-height: 42px; padding: 9px 2px;
+  width: 100%; min-height: var(--row-h-compact); padding: 9px 2px;
   background: none; border: 0; border-top: 1px solid var(--c-border);
   text-align: left; color: var(--c-text);
 }
@@ -3498,7 +3500,7 @@ a.btn { text-decoration: none; }
 .arc-log-row {
   display: flex; gap: var(--sp-4); width: 100%; text-align: left;
   padding: 0 0 var(--sp-5); border-top: none;
-  align-items: flex-start; min-height: 64px;
+  align-items: flex-start; min-height: var(--row-h-two);
   cursor: pointer;
   /* 行そのものは押すもの。長押しでこの帯が選ばれてしまわないように。 */
   -webkit-touch-callout: none;
@@ -3581,7 +3583,7 @@ a.btn { text-decoration: none; }
 .arc-list { overflow: hidden; }
 .arc-row {
   display: flex; gap: var(--sp-2); width: 100%; align-items: flex-start;
-  padding: var(--sp-3) var(--sp-4);
+  min-height: var(--row-h-two); padding: var(--sp-2) var(--sp-4);
   position: relative;
 }
 /* 種類の色は、左の細い帯だけが持ちます。行ぜんぶを染めると、五種類が
@@ -4836,6 +4838,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   padding: 12px var(--sp-4);
   gap: var(--sp-3);
 }
+/* 買うものの行は二行の段（U12、--row-h-two）。品名＋取り置きの段（47）に上下 --sp-2 で 63、
+   min-height で 64——メモがあっても無くても同じ高さ。 */
+.item-wrap:not(.is-tile-wrap) .item:not(.todo) { min-height: var(--row-h-two); padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 /* 左端の色の帯。丸のほうが色を持つので、要りません。 */
 .item-wrap:not(.is-tile-wrap) .item::before { display: none; }
 
@@ -5321,6 +5326,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-trash-row {
   display: block;
   width: 100%;
+  min-height: var(--row-h);
   margin-top: var(--sp-4);
   padding: var(--sp-3) var(--sp-4);
   text-align: left;
@@ -5623,7 +5629,7 @@ textarea.note-title-in {
 }
 .sub-check svg { width: 14px; height: 14px; stroke-width: 3; }
 .sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: #fff; }
-.tw-row { min-height: 56px; padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+.tw-row { min-height: var(--row-h); padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 .tw-row:active { background: none; }
 .tw-field { position: relative; flex: none; }
 .tw-input {
@@ -5650,7 +5656,7 @@ textarea.note-title-in {
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  min-height: 48px;
+  min-height: var(--row-h-compact);
   padding: 0 var(--sp-4);
   font-size: var(--fs-lg);
   color: var(--c-text);
@@ -6040,7 +6046,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .low-list { display: flex; flex-direction: column; }
 .low-row {
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: 8px var(--sp-4);
+  min-height: var(--row-h-compact); padding: 8px var(--sp-4);
 }
 .low-mark {
   flex: none;
@@ -6583,7 +6589,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .up-rows { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
 .up-row {
   display: flex; align-items: center; gap: var(--sp-3);
-  min-height: 44px; padding: 6px 0;
+  min-height: var(--row-h-compact); padding: 6px 0;
   line-height: 1.5;
   border-top: 1px solid color-mix(in srgb, var(--up-c) 22%, transparent);
 }
@@ -6631,7 +6637,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .sa-rows { display: flex; flex-direction: column; }
 .sa-row {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  width: 100%; min-height: 44px; padding: var(--sp-2) 0;
+  width: 100%; min-height: var(--row-h-compact); padding: var(--sp-2) 0;
   border: none; border-top: 1px solid var(--c-border); background: none;
   text-align: left; color: var(--c-text); line-height: 1.5;
 }

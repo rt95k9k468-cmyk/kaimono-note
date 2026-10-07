@@ -403,6 +403,12 @@
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
 
+  /* --- 行の背丈（roadmap-unify の U12）---
+     一覧の行は三つのどれか（docs/look.md の「行の背丈は三つ」に当て表）。どれも
+     min-height——字を大きくした行は、そのぶん伸びる。上下の余白は段に収まる量
+     （二行の行は --sp-2。二行＋12×2 では 64 を越える）。tests/row-heights.js が見張る。 */
+  --row-h-compact: 44px; --row-h: 52px; --row-h-two: 64px;
+
   /* --- type ---
 
      端末の書体を使います（上の「書体」の節に経緯）。-apple-system が
