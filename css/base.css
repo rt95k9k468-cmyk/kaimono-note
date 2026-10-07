@@ -1883,7 +1883,7 @@ body::before {
   }
   /* 画面いっぱいのお知らせに一枚だけ出る絵。文章の脇の印ではないので、
      二段階の外です。 */
-  .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }
+  .rotate-note svg { width: 34px; height: 34px; color: var(--c-text-3); }  /* 入れもの：向きの案内 */
   .rotate-note b { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
 }
 
@@ -1913,7 +1913,7 @@ body::before {
 
 /* タブの絵は、丸い下地（40×26px）の中身です。入れものが大きさを決めるので
    二段階の外——そのかわり、選ばれた一つは塗りになります（下）。 */
-.tab svg { width: 23px; height: 23px; stroke-width: 1.9; }
+.tab svg { width: 23px; height: 23px; stroke-width: 1.9; }  /* 入れもの：下の帯のタブ */
 
 .tab .tab-ico {
   display: grid;
@@ -1926,7 +1926,7 @@ body::before {
 
 /* 一枚しか無いボタンは、いままでどおり真ん中に一つ。 */
 .tab-ico-face { grid-area: 1 / 1; display: grid; place-items: center; }
-.tab-ico-face svg { width: 22px; height: 22px; }
+.tab-ico-face svg { width: 22px; height: 22px; }  /* 入れもの：下の帯のタブ */
 
 /* ふた面のボタン。表は真ん中で大きく、裏は脇で小さく灰色。押すと
    二つが中心を通ってすれ違います——同じ持ち場を分け合っていることが、
