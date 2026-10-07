@@ -28,7 +28,8 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
   "one-part",                      // roadmap-unify の U2：暦の盤・アイコンを選ぶ紙・写すが一本のまま（画面を開かない）
   "gesture-dict",                  // roadmap-unify の U4：指の重さの直書きが KN.gesture の外に無い（画面を開かない）
   "keyframes-one",                 // roadmap-unify の U5：同じ中身の @keyframes が二つ無い・共通の動きは scale:/translate:（画面を開かない）
-  "pop-grow"];                     // roadmap-unify の U7：小窓はみな押したものから出る（画面を開かない）
+  "pop-grow",                      // roadmap-unify の U7：小窓はみな押したものから出る（画面を開かない）
+  "when-dict"];                    // roadmap-unify の U8：端末の日付欄・時刻欄が JS に無い（画面を開かない）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */

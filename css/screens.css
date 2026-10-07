@@ -3285,31 +3285,16 @@ button.section-note:active { opacity: var(--press-fade); }
    二種類あるように見えます。 */
 a.btn { text-decoration: none; }
 
-/* 空の日付欄。
-
-   iOS は空のとき **何も描きません** ——枠だけが並んで、何の欄なのか
-   分からなくなります。だからこちらで「--/--/--」と書きます。
-
-   ただ字を重ねるだけでは足りません。ブラウザによっては空のときに
-   「mm/dd/yyyy」を自分で描くので、そこへ重ねると二重に見えます。
-   下地ごと敷いて覆います——右端のカレンダーの絵だけは残して、
-   そこを押せば日付を選べるように。 */
 /* 日付と時刻は横に並べます（二つで「いつ」の一つの答えなので）。 */
 .date-row { display: flex; align-items: center; gap: var(--sp-2); }
 .date-cell { position: relative; flex: 1 1 auto; min-width: 0; display: block; }
 .date-cell .input { width: 100%; }
-/* 空の日付・時刻に、自分でかぶせる字。ブラウザが出す薄い
-   「mm/dd/yyyy」を覆うので、地の色で塗ります（右の絵は覆いません）。 */
-.date-empty {
-  position: absolute;
-  left: 1.5px; top: 1.5px; bottom: 1.5px; right: 46px;
-  display: flex; align-items: center; padding-left: calc(var(--sp-4) - 1.5px);
-  background: var(--c-surface);
-  border-radius: calc(var(--r-md) - 1.5px);
-  font-size: var(--fs-lg); color: var(--c-text-3);
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-}
+/* 日付・時刻の欄（U8・ui.js の whenFields）。欄の形をしたボタンで、押すと暦・ドラム・車輪の小窓。
+   空は「--/--/--」「--:--」を薄く（端末の欄は iOS で空のとき何も描かなかった）。 */
+.when-btn { display: block; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.when-btn.is-empty { color: var(--c-text-3); }
+.note-wheels.is-time { grid-template-columns: 1fr 1fr; }
+.when-none { margin-top: var(--sp-2); }
 
 /* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
    字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に

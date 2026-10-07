@@ -2195,7 +2195,7 @@
               既定はいま——たいてい、飲んだそのときに書くので。 */""}
         <div class="time-row">
           <span class="time-label">時刻</span>
-          <input class="input js-time" type="time" aria-label="時刻"
+          <input class="input js-time" type="hidden" data-when="time" data-clear aria-label="時刻"
                  value="${editing ? (editing.time || "") : U.nowTime()}">
         </div>
 
@@ -2218,6 +2218,7 @@
         <button class="btn btn-primary js-save" style="flex:2">${editing ? "直す" : "記録する"}</button>
       </div>
     `);
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒", content: body, footer: foot, guard: true });
 
     const q = body.querySelector(".js-q");
@@ -2520,11 +2521,12 @@
           <label class="field" style="flex:1"><span class="field-label">kcal</span>
             <input class="input js-k" inputmode="numeric" placeholder="任意"></label>
           <label class="field" style="flex:1"><span class="field-label">時刻</span>
-            <input type="time" class="input js-t2" value="${U.nowTime()}"></label>
+            <input type="hidden" data-when="time" data-clear class="input js-t2" value="${U.nowTime()}"></label>
         </div>
       </div>
     `);
     const f = node(html`<button class="btn btn-primary btn-block">足す</button>`);
+    KN.ui.whenFields(b);
     const hh = KN.ui.sheet({ title: "ワークアウトを足す", content: b, footer: f, guard: true });
     f.addEventListener("click", () => {
       const min = parseFloat(String(b.querySelector(".js-m").value).replace(/[^\d.]/g, ""));
@@ -3919,11 +3921,11 @@
         <div class="field-row">
           <label class="field" style="flex:1">
             <span class="field-label">日付</span>
-            <input type="date" class="input js-day" value="${w ? w.day : (dayHint || U.todayKey())}">
+            <input type="hidden" data-when="day" class="input js-day" value="${w ? w.day : (dayHint || U.todayKey())}">
           </label>
           <label class="field" style="flex:1">
             <span class="field-label">時刻</span>
-            <input type="time" class="input js-time" value="${w && w.time ? w.time : U.nowTime()}">
+            <input type="hidden" data-when="time" data-clear class="input js-time" value="${w && w.time ? w.time : U.nowTime()}">
           </label>
         </div>
         <div class="field-row">
@@ -3963,6 +3965,7 @@
       </div>
     `);
 
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true });
     const kgEl = body.querySelector(".js-kg");
     const fatEl = body.querySelector(".js-fat");
@@ -4028,11 +4031,11 @@
         <div class="field-row">
           <label class="field" style="flex:1">
             <span class="field-label">日付</span>
-            <input type="date" class="input js-day" value="${meal ? meal.day : U.todayKey()}">
+            <input type="hidden" data-when="day" class="input js-day" value="${meal ? meal.day : U.todayKey()}">
           </label>
           <label class="field" style="flex:1">
             <span class="field-label">時刻</span>
-            <input type="time" class="input js-time" value="${meal && meal.time ? meal.time : U.nowTime()}">
+            <input type="hidden" data-when="time" data-clear class="input js-time" value="${meal && meal.time ? meal.time : U.nowTime()}">
           </label>
         </div>
 
@@ -4068,6 +4071,7 @@
       </div>
     `);
 
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: meal ? "食事を直す" : "食事を記録", content: body, footer: foot, guard: true });
 
     KN.ui.chipRow(body.querySelector(".js-slots"), SLOTS, {
@@ -4319,9 +4323,8 @@
           <span class="field-label">目標日</span>
           <div class="date-row">
             <span class="date-cell">
-              <input class="input js-td" type="date" value="${g.targetDay || ""}"
-                     aria-label="目標日を選ぶ">
-              <span class="date-empty js-td-empty" aria-hidden="true">--/--/--</span>
+              <input class="input js-td" type="hidden" data-when="far" value="${g.targetDay || ""}"
+                     aria-label="目標日">
             </span>
             <button type="button" class="icon-btn js-td-clear" aria-label="目標日をはずす" hidden>
               ${icon("close")}
@@ -4386,19 +4389,16 @@
     `);
 
     const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: "目標", content: body, footer: foot, guard: true });
 
     renderKcalSuggestion(body.querySelector(".js-suggest-box"), body);
 
-    /* 目標日は決めなくてもかまいません。ネイティブの日付欄には、いちど
-       選んだ日を空へ戻す手つきが（特に iOS で）無いので、外すための
-       口を別に置きます——「いつまでに」の期限欄（screen-todo.js）と
-       同じ作りです。 */
+    /* 目標日は決めなくてもかまいません。年月日のドラム（遠い日・U8）には空へ戻す
+       手つきが無いので、外すための口を横に置きます。 */
     const tdEl = body.querySelector(".js-td");
     const tdClear = body.querySelector(".js-td-clear");
-    const tdEmpty = body.querySelector(".js-td-empty");
     function paintTargetDay() {
-      if (tdEmpty) tdEmpty.hidden = !!tdEl.value;
       if (tdClear) tdClear.hidden = !tdEl.value;
     }
     tdEl.addEventListener("change", paintTargetDay);
