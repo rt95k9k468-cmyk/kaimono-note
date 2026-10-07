@@ -208,8 +208,8 @@
   const on = (where) => KN.store.get().settings[placeOf(where).key] !== false;
   const kOf = (day) => { const s = KN.season && KN.season.of(day); return s ? s.k : null; };
 
-  /* 読めた絵（URL）。同じ絵を何度も読みに行かない。 */
-  const loaded = new Set();
+  /* 読めた絵（URL → 縦横の比 高さ/幅）。同じ絵を何度も読みに行かない。比は幕の閉じる高さに使う（css の --season-ar）。 */
+  const loaded = new Map();
   const failed = new Set();
   function preload(a, done) {
     if (!a || !a.file) return;
@@ -217,7 +217,7 @@
     if (loaded.has(url)) { if (done) done(url); return; }
     if (failed.has(url)) return;
     const img = new Image();
-    img.onload = () => { loaded.add(url); if (done) done(url); };
+    img.onload = () => { loaded.set(url, img.naturalWidth ? img.naturalHeight / img.naturalWidth : 0.67); if (done) done(url); };
     img.onerror = () => { failed.add(url); };
     img.src = url;
   }
@@ -249,6 +249,7 @@
         /* 絶対の URL で書く。カスタムプロパティの相対 URL は、var() を使う css/screens.css から解決され
            css/img/season/… を探して 404 になる（10/6 まで絵は一度も出ていなかった）。 */
         el.style.setProperty("--season-img", `url("${new URL(url, document.baseURI).href}")`);
+        KN.util.setVar(el, "--season-ar", loaded.get(url).toFixed(3));
         el.setAttribute("data-season-img", "");
       });
     }
