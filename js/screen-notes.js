@@ -287,6 +287,9 @@
     const note = fresh ? N().draft() : N().get(id);
     if (!note) return;
     let stored = !fresh;
+    /* 閉じたときの「更新しました」は、開いたときと比べて決めます。 */
+    const look = (n) => JSON.stringify(n ? [n.title, n.body, n.notebook, n.tags, !!n.fav, n.createdAt, !!n.noTime] : null);
+    const opened = fresh ? null : look(note);
     let h = null;
     let closed = false;
     let fold = null;
@@ -684,6 +687,9 @@
       if (fresh && stored && blank()) N().drop(note.id);
       N().flush();
       renderBody();
+      /* 消したとき（最近削除へ移した）は、そちらの知らせ（元に戻す）を残します。 */
+      const now = stored ? N().get(note.id) : null;
+      if (now && !now.deletedAt && look(now) !== opened) KN.ui.toast(fresh ? "保存しました" : "更新しました");
     };
 
     /* 「⋯」はその場の小窓（段4。紙をもう一枚重ねると、目が画面の下まで
