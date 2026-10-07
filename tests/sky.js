@@ -256,8 +256,9 @@ function rgbOf(s) {
     ["--face-lift", "--face-p"].forEach((k) => s.style.removeProperty(k));
   });
 
-  /* ---- 時計の帯（black-translucent。iOS は時計の字をいつも白で描く）：帯の高さを 59px と見なし、
-     字の高さ（上から 14〜40px）で白に 3:1 以上。空（写真）の上と、設定（淡い地）の上 ---- */
+  /* ---- 時計の帯（black-translucent）：帯の高さを 59px と見なし、字の高さ（上から 14〜40px）で
+     時計の字に 3:1 以上。iOS 26 は明るい面で黒、暗い面で白に描く（iPhone で見た。docs/sky.md）。
+     空（写真）の上と、設定（地）の上。時計の下だけ暗くする影（黒い帯になった）を戻さない ---- */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   c.check("時計の帯は black-translucent", /apple-mobile-web-app-status-bar-style" content="black-translucent"/.test(html));
   await hide(":root { --safe-t: 59px !important; }");
@@ -275,8 +276,9 @@ function rgbOf(s) {
       }, where);
       await wait(where === "settings" ? 700 : 150);
       const px = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: 60 } }), sbPts);
-      const worst = Math.min(...px.map((p) => ratio([255, 255, 255], p)));
-      c.check(`${theme === "dark" ? "暗い面" : "明るい面"}・${where === "settings" ? "設定" : "空"}：時計の帯で白い字が 3:1 以上`, worst >= 3, worst.toFixed(2));
+      const ink = theme === "dark" ? [255, 255, 255] : [0, 0, 0];
+      const worst = Math.min(...px.map((p) => ratio(ink, p)));
+      c.check(`${theme === "dark" ? "暗い面" : "明るい面"}・${where === "settings" ? "設定" : "空"}：時計の字（${theme === "dark" ? "白" : "黒"}）が 3:1 以上`, worst >= 3, worst.toFixed(2));
       if (where === "settings") { await page.evaluate(() => KN.app.showScreen("todo")); await wait(700); }
     }
   }
