@@ -1747,6 +1747,13 @@
       icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
+      /* reconcile() が開くたびに足す欄も、はじめから同じ形で持つ。欠けていると
+         次に開いたとき中身が変わり、Dropbox が同じ記録をもう一度送る。 */
+      shelf: null,
+      waitFor: null,
+      review: null,
+      slips: [],
+      editedAt: null,
     };
     fixBookend(rec);
     /* 日の無いものは「これから」へ入った（3.0 の B1）。見直す日を書く。 */
