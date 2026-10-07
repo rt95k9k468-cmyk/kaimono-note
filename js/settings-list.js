@@ -71,17 +71,17 @@
           <span class="dot" style="background:${st.color};width:14px;height:14px"></span>
           <span class="manage-name">${st.name}</span>
           <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">${usage}件の価格</span>
-          <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
-          <button class="icon-btn is-danger js-del" aria-label="削除">${icon("trash")}</button>
+          <button class="icon-btn js-edit" aria-label="直す">${icon("edit")}</button>
+          <button class="icon-btn is-danger js-del" aria-label="消す">${icon("trash")}</button>
         </div>
       `);
 
       row.querySelector(".js-edit").addEventListener("click", () => editStore(st));
       row.querySelector(".js-del").addEventListener("click", async () => {
         const ok = await KN.ui.confirm({
-          title: "お店を削除しますか？",
-          message: `「${st.name}」と、この店で登録した${usage}件の価格が削除されます。`,
-          okLabel: "削除する",
+          title: "お店を消しますか？",
+          message: `「${st.name}」と、この店で登録した${usage}件の価格が消えます。`,
+          okLabel: "消す",
           danger: true,
         });
         if (!ok) return;
@@ -136,7 +136,7 @@
 
     const foot = node(html`<button class="btn btn-primary btn-block js-save">${st ? "保存" : "追加"}</button>`);
     const h = KN.ui.sheet({
-      title: st ? "お店の編集" : "お店を追加", content: body, footer: foot, guard: true,
+      title: st ? "お店を直す" : "お店を追加", content: body, footer: foot, guard: true,
     });
 
     foot.addEventListener("click", () => {
@@ -184,10 +184,10 @@
           <span class="manage-swatch" style="background:${c.color || "transparent"}"></span>
           <span class="manage-name">${c.name}</span>
           <span style="font-size:calc(11px * var(--fs-k));color:var(--c-text-3);flex:none">${used}商品</span>
-          <button class="icon-btn js-edit" aria-label="編集">${icon("edit")}</button>
+          <button class="icon-btn js-edit" aria-label="直す">${icon("edit")}</button>
           ${c.id === store.OTHER_CATEGORY
             ? ""
-            : html`<button class="icon-btn is-danger js-del" aria-label="削除">${icon("trash")}</button>`}
+            : html`<button class="icon-btn is-danger js-del" aria-label="消す">${icon("trash")}</button>`}
         </div>
       `);
 
@@ -197,11 +197,11 @@
       if (del) {
         del.addEventListener("click", async () => {
           const ok = await KN.ui.confirm({
-            title: "カテゴリを削除しますか？",
+            title: "カテゴリを消しますか？",
             message: used > 0
               ? `${used}件の商品は「その他」に移動します。`
-              : "このカテゴリを削除します。",
-            okLabel: "削除する",
+              : "このカテゴリを消します。",
+            okLabel: "消す",
             danger: true,
           });
           if (!ok) return;
@@ -260,7 +260,7 @@
     paintSwatches();
 
     const foot = node(html`<button class="btn btn-primary btn-block">${cat ? "保存" : "追加"}</button>`);
-    const h = KN.ui.sheet({ title: cat ? "カテゴリの編集" : "カテゴリを追加", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: cat ? "カテゴリを直す" : "カテゴリを追加", content: body, footer: foot });
 
     foot.addEventListener("click", () => {
       const name = body.querySelector(".js-name").value.trim();

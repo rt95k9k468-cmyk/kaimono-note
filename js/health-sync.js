@@ -518,7 +518,7 @@
       });
     });
     sum.days.sort();
-    if (!sum.ok && !sum.locked) sum.error = "取り込めるデータが見つかりません";
+    if (!sum.ok && !sum.locked) sum.error = "取り込めるデータが見つかりませんでした";
     return sum;
   }
 
@@ -566,7 +566,7 @@
     }
 
     if (!parsed.samples.length) {
-      return { ok: false, error: "取り込めるデータが見つかりません", added: 0, updated: 0, skipped: parsed.unknown || 0 };
+      return { ok: false, error: "取り込めるデータが見つかりませんでした", added: 0, updated: 0, skipped: parsed.unknown || 0 };
     }
     parsed = { ...parsed, samples: foldSamples(parsed.samples) };
 

@@ -163,7 +163,7 @@
       <div class="stack" style="gap:12px">
         <p style="color:var(--c-text-2);line-height:1.6">${a.total
           ? `食い違いが${a.total}件ありました。`
-          : "食い違いは見つかりませんでした。"}</p>
+          : "食い違いは見つかりませんでした"}</p>
         <table class="verify-table js-audit">
           ${KN.audit.LABELS.map(([k, label]) => html`<tr><td>${label}</td><td>${String(a[k])}</td></tr>`)}
         </table>

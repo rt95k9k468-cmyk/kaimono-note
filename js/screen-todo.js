@@ -700,7 +700,7 @@
           <button type="button" class="dest-chip js-act-src" hidden></button>
           <button type="button" class="dest-chip js-act-note" hidden></button>
           <span class="unf-hint js-unfold-hint" hidden>
-            <button type="button" class="dest-chip js-unfold-go">AIとほどく</button>
+            <button type="button" class="dest-chip js-unfold-go">AIにほどいてもらう</button>
             <button type="button" class="unf-hint-x js-unfold-hush" aria-label="出さない">${icon("close")}</button>
           </span>
         </span>
@@ -798,7 +798,7 @@
          （V13 で外し、ここへ。時間割からもしまえるようになりました）。 */
       /* AI とほどく（3.0 の C1）。外の AI と往復して、選んだものだけ取り込む（js/unfold.js）。 */
       if (KN.unfold) heroMenu.push({
-        id: "unfold", label: () => "AIとほどく", icon: "sparkles",
+        id: "unfold", label: () => "AIにほどいてもらう", icon: "sparkles",
         onPick: () => {
           handle.tryClose();
           setTimeout(() => { if (store.getTodo(todoId)) KN.unfold.open(todoId); }, 120);
@@ -836,7 +836,7 @@
         },
       });
       heroMenu.push({
-        id: "delete", label: () => "このやることを削除", icon: "trash", danger: true,
+        id: "delete", label: () => "このやることを消す", icon: "trash", danger: true,
         onPick: () => {
           const undo = store.removeTodo(todoId);
           haptic(14);
@@ -3601,7 +3601,7 @@
               <span class="rv-go-chev">${icon("chevron")}</span>
             </button>
             ${KN.unfold ? html`<div class="rv-more" data-for="small" hidden>
-              <button type="button" class="rv-pick" data-small="ai">${icon("sparkles")}<span>AIと分ける</span><small>手順にして取り込む</small></button>
+              <button type="button" class="rv-pick" data-small="ai">${icon("sparkles")}<span>AIに分けてもらう</span><small>手順にして取り込む</small></button>
               <button type="button" class="rv-pick" data-small="hand">${icon("edit")}<span>自分で分ける</span><small>手順を書く</small></button>
             </div>` : ""}
             <button type="button" class="rv-go is-stop" data-k="stop">
