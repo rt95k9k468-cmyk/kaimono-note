@@ -1054,12 +1054,30 @@
       store.setDayLog(day, memo ? Object.assign({ memo: memoOut() }, times) : times);
       render();
     };
-    const queue = () => { clearTimeout(timer); timer = setTimeout(save, 500); };
+    /* 音声入力で話し続けると、手が止まる 500ms が来ないまま字が増えていきます。
+       待ちは最初の一字から数えて 3 秒まで——話し続けていても 3 秒おきには残ります。 */
+    let since = 0;
+    const queue = () => {
+      clearTimeout(timer);
+      if (!timer) since = Date.now();
+      timer = setTimeout(save, Math.max(0, Math.min(500, since + 3000 - Date.now())));
+    };
     [memo, wakeEl, sleepEl].filter(Boolean).forEach((el) => {
       el.addEventListener("input", queue);
       el.addEventListener("change", save);
       el.addEventListener("blur", save);
     });
+    /* 裏へ回る・閉じられる瞬間は、待っている分をその場で書きます。app.js の
+       store.flush() はこれより先に走るので、ここでもう一度 flush します。 */
+    const hide = () => { if (timer) { save(); store.flush(); } };
+    const onVis = () => { if (document.visibilityState === "hidden") hide(); };
+    window.addEventListener("pagehide", hide);
+    document.addEventListener("visibilitychange", onVis);
+    const close = () => {
+      window.removeEventListener("pagehide", hide);
+      document.removeEventListener("visibilitychange", onVis);
+      save();
+    };
 
     const h = KN.ui.sheet({
       title: `${label} の log`,
@@ -1071,7 +1089,7 @@
       // 自動で保存しているので、閉じるときに引き止めません。
       guard: false,
       footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
-      onClose: save,
+      onClose: close,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => {
       save();
