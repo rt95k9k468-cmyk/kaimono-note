@@ -54,7 +54,7 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 ## season-art.js — 季節の絵を加工する（3.0 の E1）
 
 `tools/season-src/kNN.jpg`（コミットしない）を、`img/season/kNN.webp`（短い辺 720px・彩度を落とす・少しぼかす・
-1枚25KBまで）にし、平均の色を出す。Playwright の Chromium の canvas で処理する。手順と対応表は `docs/season-art.md`。
+1枚25KBまで）にし、平均の色を出す。`photo` を付けると写真（`tools/season-photo-src/` → `img/season-photo/`）。Playwright の Chromium の canvas で処理する。手順と対応表は `docs/season-art.md`。
 
 ## vendor/
 

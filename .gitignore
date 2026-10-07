@@ -8,3 +8,4 @@ node_modules/
 
 # 季節の絵の元（3.0 の E1。tools/season-art.js が読む）。大きいのでコミットしない。
 tools/season-src/
+tools/season-photo-src/
