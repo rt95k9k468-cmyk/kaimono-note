@@ -93,9 +93,12 @@
      閉じる瞬間には測れません。保存で閉じるのはたいていこのときで、帰り先が無いと
      縮まずに速い閉じ方へ落ち、「ぱっと消える」に見えていました（U17、10月7日）。
      そこで開いたときの＋の真ん中を覚えておき、見えなければそこへ帰します
-     ——キーボードが下りれば＋はそこへ戻ってきます。iOS はキーボードのぶん
-     innerHeight ごと縮めるので（app.js の fit）、縦は**下の端から**の距離で覚えます。
-     紙も下の端に付いているので、キーボードが下りても両方が同じだけずれます。 */
+     ——キーボードが下りれば＋はそこへ戻ってきます。
+     ただし iOS はキーボードのぶん innerHeight ごと縮め（app.js の fit）、下りると
+     一気に伸びます。下の端に付いた紙は縮む途中で 380px ほど下へ跳んでいました
+     （利用者「ショッピングの戻り方がダメ」）。なので帰る前に紙を**いまの上端と高さで
+     留め**、行き先は開いたとき（キーボードの無い姿）の＋の座標にします。上から
+     測った座標は、下の端が伸びても動きません。 */
   function fabAt() {
     /* 引っ込んだ＋は透けたまま上の端だけ画面に残るので、箱では見分けられない
        （真ん中は画面の下の外＝キーボードの裏へ縮んでいた）。 */
@@ -104,20 +107,28 @@
     const f = fab && fab.getBoundingClientRect();
     const y = f && f.top + f.height / 2;
     if (!f || !f.width || y >= window.innerHeight || y <= 0) return null;
-    return { fab, x: f.left + f.width / 2, up: window.innerHeight - y };
+    return { fab, x: f.left + f.width / 2, y };
   }
   function aimHome(el, seen) {
-    const at = fabAt() || (seen && seen.fab.isConnected ? seen : null);
+    const live = fabAt();
+    const at = live || (seen && seen.fab.isConnected ? seen : null);
     if (!at) return null;
-    const ay = window.innerHeight - at.up;
-    const r = el.getBoundingClientRect();
+    let r = el.getBoundingClientRect();
     /* いまの姿は translate(-50%, 0)（開いた姿）。ずれていればそのぶんを引いて、
        --sx/--sy が測る相手（開いた箱の真ん中）を出します。 */
     const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+    if (!live) {
+      const h = el.offsetHeight;
+      el.style.top = `${(r.top - m.f).toFixed(1)}px`;
+      el.style.bottom = "auto";
+      el.style.height = `${h}px`;
+      el.style.maxHeight = "none";
+      r = el.getBoundingClientRect();
+    }
     const cx = r.left + r.width / 2 - (m.e + el.offsetWidth / 2);
     const cy = r.top + r.height / 2 - m.f;
     el.style.setProperty("--sx", `${(at.x - cx).toFixed(1)}px`);
-    el.style.setProperty("--sy", `${(ay - cy).toFixed(1)}px`);
+    el.style.setProperty("--sy", `${(at.y - cy).toFixed(1)}px`);
     return at.fab;
   }
 
