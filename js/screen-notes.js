@@ -326,24 +326,74 @@
     textIn.value = note.body;
     const paintHeadT = () => { headT.textContent = titleIn.value.trim(); };
     paintHeadT();
+    /* 送る器（紙の本体）。欄の高さを測り直すあいだ、送った位置を持っておく
+       ——測るために欄を一瞬 0 にすると、器の中身が縮んで送りが頭へ戻されて
+       いた（打つたび・道具を押すたびに一番上へ飛び、iOS がカーソルを
+       見えるぎりぎり＝キーボードの際へ送り直していた。2026年10月7日、iPhone）。 */
+    const scroller = () => (h ? h.el.querySelector(".sheet-body") : null);
+    const keepScroll = (fn) => {
+      const sc = scroller();
+      const top = sc ? sc.scrollTop : 0;
+      fn();
+      if (sc && sc.scrollTop !== top) sc.scrollTop = top;
+    };
     /* 題は折り返して全部見せます（長い本の題が右で切れて読めなかった。
        2026年10月1日、iPhone）。改行は持たない一行なので、貼った改行は空白に。 */
-    const growTitle = () => {
+    const growTitle = () => keepScroll(() => {
       titleIn.style.height = "0";
       titleIn.style.height = `${titleIn.scrollHeight}px`;
-    };
+    });
 
-    /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。字のある高さ
-       （textH）も測っておく——欄は短くても 38vh あるので、欄の底は最後の
-       行ではない（下の followEnd）。 */
-    let textH = 0;
-    const grow = () => {
+    /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。 */
+    const grow = () => keepScroll(() => {
       const s = textIn.style;
       s.minHeight = "0";
       s.height = "0";
-      textH = textIn.scrollHeight;
+      const textH = textIn.scrollHeight;
       s.minHeight = "";
       s.height = `${textH}px`;
+    });
+
+    /* カーソルの行の上下（欄の上端から）。欄は中で送らないので、同じ字と
+       幅の写しを画面の外に流して測ります。 */
+    let mirror = null;
+    let mirrorW = -1;
+    let lineBox = { lh: 28, pad: 0 };
+    const COPY = ["boxSizing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "borderStyle",
+      "fontFamily", "fontSize", "fontStyle", "fontWeight", "fontStretch", "fontVariant", "fontFeatureSettings",
+      "lineHeight", "letterSpacing", "wordSpacing", "textAlign", "textIndent", "textTransform",
+      "tabSize", "wordBreak", "overflowWrap", "lineBreak"];
+    const caretBox = (at) => {
+      if (!mirror) {
+        mirror = document.createElement("div");
+        mirror.setAttribute("aria-hidden", "true");
+        mirror.append(document.createTextNode(""), document.createElement("span"));
+        document.body.append(mirror);
+      }
+      /* 字の形を写すのは、幅が変わったときだけ（打つたびに写すと重い）。 */
+      const w = textIn.getBoundingClientRect().width;
+      if (w !== mirrorW) {
+        mirrorW = w;
+        const cs = getComputedStyle(textIn);
+        const ms = mirror.style;
+        ms.cssText = "position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;"
+          + "white-space:pre-wrap;height:auto;overflow:hidden;contain:layout style";
+        COPY.forEach((k) => { ms[k] = cs[k]; });
+        ms.width = `${w}px`;
+        lineBox = { lh: parseFloat(cs.lineHeight) || 28, pad: parseFloat(cs.paddingTop) || 0 };
+      }
+      const v = textIn.value;
+      const end = v.indexOf("\n", at);
+      const mark = mirror.lastChild;
+      mirror.firstChild.nodeValue = v.slice(0, at);
+      /* 行の残りも流す（折り返しは、カーソルのあとの字でも変わる）。 */
+      mark.textContent = v.slice(at, end < 0 ? v.length : end) || "\u200b";
+      /* 行の高さはどの行も同じ。印の箱の上端は字の上端（行の上端より行間の半分
+         下）なので、行の上端へそろえる。 */
+      const { lh, pad } = lineBox;
+      const top = pad + Math.floor((mark.offsetTop - pad) / lh) * lh;
+      return { top, bottom: top + lh, lh };
     };
 
     const blank = () => !titleIn.value.trim() && !textIn.value.trim();
@@ -364,12 +414,21 @@
        欄から出たら（キーボードを閉じた・題へ移った）、また整えた姿へ。 */
     let writing = false;
     const paintView = () => { F.render(textIn.value, viewEl); };
+    /* 整えた姿と書く欄は、見出しの大きさや印のぶん行の高さが違う。入れ替わる
+       ときは、カーソルの行が画面の同じ高さに留まるよう送り直す（でないと、
+       キーボードを閉じたとたんに読んでいたところがずれる）。 */
+    const lineOfView = (at) => [...viewEl.children].find((el) => at <= Number(el.dataset.end)) || null;
     const toView = () => {
+      const sc = scroller();
+      const at = textIn.selectionEnd;
+      const was = writing && sc && !textIn.hidden ? textIn.getBoundingClientRect().top + caretBox(at).top : null;
       writing = false;
       paintView();
       viewEl.hidden = false;
       textIn.hidden = true;
       if (h) h.el.classList.remove("is-writing");
+      const ln = was != null ? lineOfView(at) : null;
+      if (ln) sc.scrollTop += ln.getBoundingClientRect().top - was;
     };
     const toWrite = (caret) => {
       writing = true;
@@ -394,43 +453,39 @@
         return;
       }
       const ln = e.target.closest("[data-at]");
-      /* 押した行の高さを、入れ替わる前に測っておく（整えた姿と書く欄は
-         字の大きさと行の高さが同じなので、書く欄でもほぼ同じところ）。 */
-      const v = viewEl.getBoundingClientRect();
-      const r = ln ? ln.getBoundingClientRect() : null;
-      toWrite(ln ? Number(ln.dataset.end) : textIn.value.length);
-      if (r) afterKeyboard(() => reveal(r.top - v.top, r.bottom - v.top));
-      else afterKeyboard(followEnd);
+      /* 押した行の高さを、入れ替わる前に測っておき、書く欄でも同じ高さに
+         その行が来るよう送る（見出しは整えた姿のほうが大きいので、そのまま
+         だと行がずれる）。 */
+      const was = ln ? ln.getBoundingClientRect().top : null;
+      const at = ln ? Number(ln.dataset.end) : textIn.value.length;
+      toWrite(at);
+      const sc = scroller();
+      if (was != null && sc) sc.scrollTop += textIn.getBoundingClientRect().top + caretBox(at).top - was;
+      afterKeyboard(showCaret);
     });
 
-    /* ---- カーソルの行を見せる（段4.2） ----
+    /* ---- カーソルの行を見せる（段4.2・10月7日） ----
 
        紙の送りを ui.js の「欄を真ん中へ」に任せない（data-own-scroll）。
        本文の欄は中身ぶん伸びるので、いつも「見えきっていない」と読まれ、
        欄の真ん中が画面の真ん中へ来る——打ち始めると題ごと上へ飛んでいた
        （2026年10月1日、iPhone）。動かすのは、隠れたぶんだけ。底は道具の帯の
-       上端（帯は中身の上に浮いている）。 */
-    const reveal = (y0, y1) => {
-      const sc = h && h.el.querySelector(".sheet-body");
-      if (!sc || !writing) return;
+       上端（帯は中身の上に浮いている）。どの行で打っていても、カーソルの
+       行の下に一行ぶんの余白を残す——iOS に任せると、帯を知らないので
+       行はキーボードの際（帯の裏）に寄り、読めなかった（10月7日）。
+       カーソルは欄の中で測る（caretBox）ので、欄の底を見せようとして題ごと
+       送ることはない（段4.2のあと）。 */
+    const showCaret = () => {
+      const sc = scroller();
+      if (!sc || !writing || document.activeElement !== textIn) return;
+      const c = caretBox(textIn.selectionEnd);
       const s = sc.getBoundingClientRect();
       const t = textIn.getBoundingClientRect();
       const bar = tools.getBoundingClientRect();
-      const floor = bar.height ? Math.min(s.bottom, bar.top) : s.bottom;
-      const room = 12;
-      if (t.top + y1 > floor - room) sc.scrollTop += t.top + y1 - (floor - room);
-      else if (t.top + y0 < s.top + room) sc.scrollTop -= s.top + room - (t.top + y0);
-    };
-    /* 最後の行で打っているあいだは、その行を帯の上に。途中の行は iOS が
-       自分で見せる。最後の行は字のある高さの底（textH）で、欄の底では
-       ない——欄の底を見せようとすると、本文が短いときに題ごと上へ送って
-       いた（段4.2のあと、空の本文を押すと題が隠れた。2026年10月1日、iPhone）。 */
-    let lineH = 0;
-    const followEnd = () => {
-      if (!writing || document.activeElement !== textIn) return;
-      if (textIn.value.indexOf("\n", textIn.selectionEnd) !== -1) return;
-      lineH = lineH || parseFloat(getComputedStyle(textIn).lineHeight) || 28;
-      reveal(textH - lineH, textH);
+      const floor = (bar.height ? Math.min(s.bottom, bar.top) : s.bottom) - c.lh - 8;
+      const ceil = s.top + 12;
+      if (t.top + c.bottom > floor) sc.scrollTop += t.top + c.bottom - floor;
+      else if (t.top + c.top < ceil) sc.scrollTop -= ceil - (t.top + c.top);
     };
     /* キーボードが出きるまで紙は縮み続けるので、何度か見直す（ui.js と同じ拍）。 */
     const afterKeyboard = (fn) => {
@@ -441,6 +496,11 @@
     textIn.addEventListener("focus", () => {
       if (!writing) toWrite(null);
     });
+    /* キーボードの高さが変わったら（出きる・絵文字や予測の棚が出入りする）、
+       カーソルの行をもう一度帯の上へ。--vvh を書く app.js のあとで測る。 */
+    const vv = window.visualViewport;
+    const onViewport = () => requestAnimationFrame(() => { if (!closed) showCaret(); });
+    if (vv) vv.addEventListener("resize", onViewport);
     textIn.addEventListener("blur", () => {
       /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */
       setTimeout(() => {
@@ -459,7 +519,7 @@
     );
     /* 中身が変わったあとに、いつも通る道。 */
     const changed = () => {
-      if (writing) { grow(); followEnd(); } else paintView();
+      if (writing) { grow(); showCaret(); } else paintView();
       sync();
       paintTools();
     };
@@ -494,7 +554,7 @@
       paintHeadT();
       sync();
     });
-    textIn.addEventListener("input", () => { grow(); followEnd(); sync(); paintTools(); });
+    textIn.addEventListener("input", () => { grow(); showCaret(); sync(); paintTools(); });
     /* 題で改行を押したら、本文へ。 */
     titleIn.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.isComposing) return;
@@ -511,6 +571,8 @@
     const TOOLS = [
       { k: "undo", ico: "undo", label: "取り消す", run: () => hist.undo() },
       { k: "redo", ico: "redo", label: "やり直す", run: () => hist.redo() },
+      { k: "bold", ico: "bold", label: "太字",
+        run: () => apply(F.bold(textIn.value, textIn.selectionStart, textIn.selectionEnd), "tool") },
       { k: "head", ico: "heading", label: "見出し" },
       { k: "bullet", ico: "list", label: "箇条書き" },
       { k: "num", ico: "numbers", label: "番号" },
@@ -540,9 +602,9 @@
       /* 押した拍にカーソルが外れていたら（端末によっては帯を押すと欄から
          出る）、最後に居た場所へ戻してから当てます。 */
       if (document.activeElement !== textIn) {
-        const [a, b] = lastSel;
+        const [s0, s1] = lastSel;
         toWrite(null);
-        textIn.setSelectionRange(a, b);
+        textIn.setSelectionRange(s0, s1);
       }
       const t = TOOLS.find((x) => x.k === k);
       if (t.run) t.run();
@@ -556,6 +618,7 @@
       tools.querySelectorAll(".js-tool").forEach((b) => {
         const k = b.dataset.k;
         if (k === "undo" || k === "redo") b.setAttribute("aria-disabled", String(!can[k]));
+        else if (k === "bold") b.setAttribute("aria-pressed", String(F.boldAt(textIn.value, textIn.selectionStart)));
         else if (["head", "bullet", "num", "task", "quote"].includes(k)) b.setAttribute("aria-pressed", String(kind === k));
       });
     };
@@ -613,6 +676,8 @@
     const finish = () => {
       closed = true;
       if (fold) fold.disconnect();
+      if (mirror) mirror.remove();
+      if (vv) vv.removeEventListener("resize", onViewport);
       document.removeEventListener("selectionchange", onSel);
       sync();
       /* 何も書かずに閉じた新しいノートは残しません。 */
@@ -695,8 +760,10 @@
         from: from || null,
         back: () => (root && root.querySelector(`.notes-list .note-row[data-id="${CSS.escape(note.id)}"]`)) || null,
       },
-      /* V19：一番上まで送ってあれば、中身を下へ引いても閉じる。 */
-      pull: () => true,
+      /* V19：一番上まで送ってあれば、中身を下へ引いても閉じる。書いているあいだは
+         取らない（キーボードを出して打っている途中に、上へ戻そうと引いた指で
+         紙ごと閉じていた。10月7日）。 */
+      pull: () => !writing,
       onClose: finish,
     });
     /* V19：右へ払って戻る（edge-back.js）。左端でなくても、紙のどこからでも（V26）。

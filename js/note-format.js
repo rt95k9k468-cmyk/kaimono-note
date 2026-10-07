@@ -2,7 +2,8 @@
    くらしノート — ノートの装飾（段4）
 
    本文は素の文字のまま持ちます（docs/notes.md の「本文は素の文字」）。
-   装飾は行頭の印だけ：「# 」「- 」「1. 」「- [ ] 」「- [x] 」「> 」「---」。
+   装飾は行頭の印「# 」「- 」「1. 」「- [ ] 」「- [x] 」「> 」「---」と、行の中の
+   太字「**…**」（2026年10月7日、利用者「太字がないのも困る」）。
    ここにあるのは、その印を**読むときに整える**ことと、**書くときに印を
    打つ**手伝い（道具の帯・改行の続き・やり直し）だけで、保存の形には
    何も足しません。
@@ -24,6 +25,19 @@
   const BULLET = /^(\s*)([-*]) (.*)$/;
   const NUM = /^(\s*)(\d{1,9})\. (.*)$/;
   const QUOTE = /^> ?(.*)$/;
+  /* 太字。「**」のすぐ内側は空白でない（「2 ** 3 ** 4」を拾わない）。行をまたがない。 */
+  const BOLD = /\*\*(\S(?:[^\n]*?\S)?)\*\*/g;
+
+  /** 行の中の太字の場所（a〜b は「**」込み）。 */
+  function boldSpans(line) {
+    const out = [];
+    let m;
+    BOLD.lastIndex = 0;
+    while ((m = BOLD.exec(line))) out.push({ a: m.index, b: m.index + m[0].length });
+    return out;
+  }
+  /** 太字の印を外した字。 */
+  const unbold = (t) => String(t).replace(BOLD, "$1");
 
   /** 字下げの段（空白2つ、またはタブ1つで一段）。 */
   const levelOf = (sp) => Math.min(6, Math.floor(sp.replace(/\t/g, "  ").length / 2));
@@ -54,7 +68,7 @@
   /** 印を除いた一行（一覧の冒頭・題の代わり）。区切りと空の行は "" 。 */
   function plain(line) {
     const p = parse(String(line || ""));
-    return p.kind === "rule" || p.kind === "blank" ? "" : p.text.trim();
+    return p.kind === "rule" || p.kind === "blank" ? "" : unbold(p.text).trim();
   }
 
   /** 見出し（`# ` `## ` `### `）の並び。line は render の data-line と同じ数え方。保存の形は読むだけ。 */
@@ -62,7 +76,7 @@
     const out = [];
     String(body || "").split("\n").forEach((l, line) => {
       const p = parse(l);
-      if (p.kind === "head" && p.text.trim()) out.push({ line, level: p.level, text: p.text.trim() });
+      if (p.kind === "head" && p.text.trim()) out.push({ line, level: p.level, text: unbold(p.text).trim() });
     });
     return out;
   }
@@ -94,7 +108,7 @@
         const t = document.createElement("span");
         t.className = "nv-t";
         /* 中身の無い項目も、高さを持たせます（押せる行のまま）。 */
-        t.textContent = p.text || " ";
+        fill(t, p.text || " ");
         if (p.kind === "head") el.className = `nv-h nv-h${p.level}`;
         else if (p.kind === "quote") el.className = "nv-q";
         else if (p.kind === "para") el.className = "nv-p";
@@ -108,7 +122,7 @@
             mark.className = "nv-box js-tick";
             mark.setAttribute("role", "checkbox");
             mark.setAttribute("aria-checked", String(!!p.done));
-            mark.setAttribute("aria-label", p.text || "チェック");
+            mark.setAttribute("aria-label", unbold(p.text) || "チェック");
             if (p.done) mark.innerHTML = KN.icons ? KN.icons.svg("check") : "";
           } else {
             mark = document.createElement("span");
@@ -126,6 +140,20 @@
       at += line.length + 1;
     });
     return box;
+  }
+
+  /** 一行の中身を入れる。太字は <strong>、字はどれも textContent。 */
+  function fill(el, text) {
+    let at = 0;
+    boldSpans(text).forEach(({ a, b }) => {
+      if (a > at) el.append(text.slice(at, a));
+      const st = document.createElement("strong");
+      st.className = "nv-b";
+      st.textContent = text.slice(a + 2, b - 2);
+      el.append(st);
+      at = b;
+    });
+    if (at < text.length) el.append(text.slice(at));
   }
 
   /** at で始まる行のチェックを付け外しした本文。チェックの行でなければ同じもの。 */
@@ -223,6 +251,72 @@
   }
 
   /**
+   * 太字（道具の帯の B）。選んでいる字を「**」で挟みます。もう太字なら外す。
+   * 何も選んでいなければ、カーソルの居る太字を外すか、「****」を置いて
+   * その間にカーソル。行をまたいで選んでいたら、行ごとに挟みます（太字は
+   * 行をまたがない）。行頭の印と、端の空白は挟みません。
+   */
+  function bold(v, s, e) {
+    const from = lineStart(v, s);
+    if (s === e) {
+      const line = v.slice(from, lineEnd(v, s));
+      const at = s - from;
+      const m = boldSpans(line).find((x) => at > x.a && at < x.b);
+      if (!m) return { from: s, to: s, text: "****", s: s + 2, e: s + 2 };
+      const text = line.slice(0, m.a) + line.slice(m.a + 2, m.b - 2) + line.slice(m.b);
+      const c = from + Math.min(Math.max(at - 2, m.a), m.b - 4);
+      return { from, to: from + line.length, text, s: c, e: c };
+    }
+    const to = lineEnd(v, Math.max(s, e - (v[e - 1] === "\n" ? 1 : 0)));
+    let ls = from;
+    const segs = v.slice(from, to).split("\n").map((line) => {
+      const p = parse(line);
+      const lead = p.kind === "para" || p.kind === "blank" ? 0 : p.lead;
+      let a = Math.max(s, ls + lead) - ls;
+      let b = Math.min(e, ls + line.length) - ls;
+      while (a < b && /\s/.test(line[a])) a++;
+      while (b > a && /\s/.test(line[b - 1])) b--;
+      ls += line.length + 1;
+      return { line, a, b, live: b > a && p.kind !== "rule" };
+    });
+    if (!segs.some((g) => g.live)) return null;
+    const wrapped = (g) => { const t = g.line.slice(g.a, g.b); return t.length >= 4 && /^\*\*[\s\S]*\*\*$/.test(t); };
+    const hugged = (g) => g.a >= 2 && g.line.slice(g.a - 2, g.a) === "**" && g.line.slice(g.b, g.b + 2) === "**";
+    const off = segs.filter((g) => g.live).every((g) => wrapped(g) || hugged(g));
+    let pos = from;
+    let s2 = null;
+    let e2 = null;
+    const out = segs.map((g) => {
+      let line = g.line;
+      if (g.live) {
+        const t = line.slice(g.a, g.b);
+        let a2;
+        let b2;
+        if (off && wrapped(g)) { line = line.slice(0, g.a) + t.slice(2, -2) + line.slice(g.b); a2 = g.a; b2 = g.b - 4; }
+        else if (off) { line = line.slice(0, g.a - 2) + t + line.slice(g.b + 2); a2 = g.a - 2; b2 = g.b - 2; }
+        else if (hugged(g) || wrapped(g)) { a2 = g.a; b2 = g.b; }
+        else {
+          const inner = unbold(t);
+          line = `${line.slice(0, g.a)}**${inner}**${line.slice(g.b)}`;
+          a2 = g.a + 2; b2 = g.a + 2 + inner.length;
+        }
+        if (s2 == null) s2 = pos + a2;
+        e2 = pos + b2;
+      }
+      pos += line.length + 1;
+      return line;
+    });
+    return { from, to, text: out.join("\n"), s: s2, e: e2 };
+  }
+
+  /** カーソルが太字の中に居るか（道具の帯の B を光らせるため）。 */
+  function boldAt(v, s) {
+    const from = lineStart(v, s);
+    const at = s - from;
+    return boldSpans(v.slice(from, lineEnd(v, s))).some((x) => at > x.a && at < x.b);
+  }
+
+  /**
    * 改行の続き。箇条書き・番号・チェック・引用の行で改行したら、次の行にも
    * 同じ印を付けます（番号は一つ進める）。中身の無い項目で改行したら、
    * 印を外して終わります（Apple のメモと同じ）。何もしないときは null
@@ -303,5 +397,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, headings, render, toggleTask, setKind, rule, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, unbold, headings, render, toggleTask, setKind, bold, boldAt, rule, shift, onEnter, kindAt, history };
 })();
