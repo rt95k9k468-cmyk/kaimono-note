@@ -5485,6 +5485,36 @@ textarea.note-title-in {
 .nv-li.is-done .nv-box { background: var(--c-primary); border-color: var(--c-primary); }
 .nv-li.is-done .nv-t { color: var(--c-text-2); text-decoration: line-through; }
 .nv-q { padding-left: .8em; border-left: 3px solid var(--c-border-2); color: var(--c-text-2); }
+/* 書いているあいだの色付け（screen-notes.js の ink・note-format.js の ink）。欄の字は
+   透かし、同じ字を同じ位置に並べた写しを重ねる。写しは欄のあとに置く（字が
+   カーソルと選んだ色の上に乗る）。字の幅を変えないこと——太字は font-weight で
+   なく縁取り（-webkit-text-stroke）で太らせる。見た目は 700 に寄せる。 */
+.note-ink { position: relative; }
+.note-ink > .note-body-in {
+  display: block;
+  position: relative;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--c-text);
+}
+.note-hl {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--c-text);
+  pointer-events: none;
+}
+.note-body-in[hidden] + .note-hl,
+.note-ink.is-plain > .note-hl { display: none; }
+.note-ink.is-plain > .note-body-in { color: var(--c-text); -webkit-text-fill-color: currentColor; }
+.nh-mark { color: var(--c-text-3); }
+.nh-b,
+.nh-head { -webkit-text-stroke: .045em currentColor; }
+.nh-quote,
+.nh-done { color: var(--c-text-2); }
+.nh-done { text-decoration: line-through; }
 /* 行の中の太字（**…**）。 */
 .nv-b { font-weight: var(--fw-bold); }
 .nv-hr { padding: .55em 0; }

@@ -271,6 +271,8 @@ const { open, checker } = require("./lib");
   const headItems = async (body) => {
     await page.click("#dock .add-fab");
     await page.waitForSelector(".sheet.is-note.is-open");
+    /* 開いて 0.32 秒の、カーソルを入れ直す拍（ui.js の focusNow）を越えてから。 */
+    await page.waitForTimeout(400);
     await page.fill(".sheet.is-note .js-text", body);
     await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
     await page.waitForFunction(() => !document.querySelector(".sheet.is-note .note-view").hidden);
