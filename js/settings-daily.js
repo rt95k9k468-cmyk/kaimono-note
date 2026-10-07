@@ -207,7 +207,7 @@
       KN.ui.toast("日記を読み込んでいるところです。少し待ってから、もう一度押してください");
     } else {
       KN.diaryIdb.retry();
-      KN.ui.toast(`日記の保存場所を読めない日なので、${what}は書き出せません（何も書き出していません）`, { duration: 6000 });
+      KN.ui.toast(`日記の保存場所を読めない日なので、${what}は書き出せません（何も書き出していません）`, { long: true });
     }
     return true;
   }

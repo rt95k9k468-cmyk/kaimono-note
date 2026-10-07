@@ -4345,7 +4345,7 @@
       const file = input.files && input.files[0];
       input.remove();
       if (!file) return;
-      const t = KN.ui.toast("写真を見ています…", { duration: 60000 });
+      const t = KN.ui.toast("写真を見ています…", { until: true });
       KN.dietAI.shrink(file)
         .then((dataUrl) => KN.dietAI.analyzePhoto(dataUrl))
         .then((res) => {

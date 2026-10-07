@@ -23,7 +23,8 @@ const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js"]);
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */
 const GATE = ["registry", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break",
-  "season-art"];   // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
+  "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
+  "motion-dict", "look-tokens"];   // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */

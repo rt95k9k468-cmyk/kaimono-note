@@ -2588,7 +2588,7 @@
       KN.ui.toast(`${KN.plan.humanSpan(born.minutes || 30)}で残しました`, { actions: [
         { label: "直す", onClick: () => KN.activity.fixLength(born.id) },
         { label: "元に戻す", onClick: res.undo },
-      ], duration: 5000 });
+      ] });
       return;
     }
     const d = res.doneId && store.getTodo(res.doneId);
@@ -2599,7 +2599,7 @@
     const acts = [];
     if (at) acts.push({ label: "時刻", onClick: (b) => editDoneAt(res.doneId, b) });
     acts.push({ label: "元に戻す", onClick: res.undo });
-    KN.ui.toast(msg, { actions: acts, duration: 5000 });
+    KN.ui.toast(msg, { actions: acts });
   }
 
   /** 済ませた時刻を、押したところに出る車輪で直す。閉じたときに一度だけ書きます

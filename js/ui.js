@@ -1091,8 +1091,8 @@
      **行き先が変わるときは動かしません。** 月をめくる・日を選ぶ・タブを移る
      ときは一覧が丸ごと入れ替わるので、全部の行がいっせいに現れることに
      なります。それは「編集の手ごたえ」ではなく、ただのちらつきです。
-     新しい行が半分を超えたら、動かさずに黙って置き換えます。 */
-  const FLIP_MS = 320;
+     新しい行が半分を超えたら、動かさずに黙って置き換えます。
+     長さと曲線は辞書の `--m-settle`・`--ease-settle`（docs/motion.md）。 */
 
   function flipRows(host, selector) {
     if (!host) return () => {};
@@ -1142,15 +1142,16 @@
 
       /* 一拍おいてから戻します。同じフレームで書いて消すと、ブラウザは
          二つをまとめて「何も変わっていない」と見なし、動きが出ません。 */
+      const ms = KN.motion.ms("--m-settle");
       requestAnimationFrame(() => {
         rows.forEach((el) => {
           if (!el.style.transform) return;
-          el.style.transition = `transform ${FLIP_MS}ms var(--ease-out)`;
+          el.style.transition = "transform var(--m-settle) var(--ease-settle)";
           el.style.transform = "";
         });
         setTimeout(() => {
           rows.forEach((el) => { el.style.transition = ""; el.style.transform = ""; });
-        }, FLIP_MS + 30);
+        }, ms + 30);
       });
     };
   }
@@ -1508,14 +1509,18 @@
   /* 押せるもの（「元に戻す」ほか）が付くトーストは、既定で長めに出す——押しに
      行くあいだに消えないように（roadmap-2.0 の V18。言葉は「元に戻す」に揃える）。 */
   const TOAST_MS = 3600, TOAST_ACT_MS = 5000;
+  /* `long`＝読むのに時間がかかる文（何も変えていない理由など）。`until`＝答えを待つあいだの
+     「…しています」——答えが来たら呼ぶ側が `dismiss()` する。来なかったときのための上限だけ持つ。
+     長さを数で渡す口は持たない（場所ごとに違う長さが生えるので）。 */
+  const TOAST_LONG_MS = 8000, TOAST_UNTIL_MS = 60000;
 
-  function toast(message, { action, actions, duration } = {}) {
+  function toast(message, { action, actions, long, until } = {}) {
     const root = toastRoot();
     root.innerHTML = "";
     clearTimeout(toastTimer);
     /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
     const acts = actions || (action ? [action] : []);
-    if (duration == null) duration = acts.length ? TOAST_ACT_MS : TOAST_MS;
+    const duration = until ? TOAST_UNTIL_MS : long ? TOAST_LONG_MS : acts.length ? TOAST_ACT_MS : TOAST_MS;
 
     const el = node(html`
       <div class="toast">

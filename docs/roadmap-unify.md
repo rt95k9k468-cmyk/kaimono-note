@@ -162,9 +162,9 @@
 
 | 段 | ID | 名前 | 大きさ | 見た目 | 先に読む docs | モデル・エフォート | 状態 |
 |---|---|---|---|---|---|---|---|
-| A 作り | U1 | 辞書の外を辞書へ（`flipRows`・`road-float`・`SETTLE`・トーストの長さ） | 小 | 少し | motion | Sonnet 5.5・中 | 未 |
+| A 作り | U1 | 辞書の外を辞書へ（`flipRows`・`road-float`・`SETTLE`・トーストの長さ） | 小 | 少し | motion | Sonnet 5.5・中 | 済（10/7） |
 | A | U2 | 同じ部品を一本に（暦の組み立て・アイコンを選ぶ紙・写す） | 中 | 同じ | shared-header・calendar-swipe・icons-matching | Opus 5.5・中 | 未 |
-| A | U3 | 暗い面の二度書きを見張る | 小 | 同じ | look | Sonnet 5.5・低 | 未 |
+| A | U3 | 暗い面の二度書きを見張る | 小 | 同じ | look | Sonnet 5.5・低 | 済（10/7） |
 | B 返事 | U4 | 指の重さを一か所に（`KN.gesture`） | 小 | 少し（手触り） | calendar-swipe・sheet-scroll・settings（edge-back） | Opus 5.5・中 | 未 |
 | B | U5 | 同じ出来事の動きを一本に（@keyframes） | 中 | 少し | motion・traps | Opus 5.5・中 | 未 |
 | B | U6 | 押したときの返事を三種に（主な行にも） | 中 | 変わる | motion・look・traps | Opus 5.5・高 | 未 |

@@ -622,7 +622,7 @@
     });
     if (!ok) return;
     const r = await KN.backup.mergeNotes(at);
-    KN.ui.toast(r === "merged" ? "ノートを合わせました" : "合わせられませんでした", { duration: r === "merged" ? undefined : 6000 });
+    KN.ui.toast(r === "merged" ? "ノートを合わせました" : "合わせられませんでした", { long: r !== "merged" });
     render();
   }
 
