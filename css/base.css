@@ -1092,8 +1092,8 @@ a { color: var(--c-primary); }
 :root[data-theme="dark"] .head[data-sky="evening"] { --sky-a: #4b2d5e; --sky-c: #211424; --sky-d: #2a1812; }
 :root[data-theme="dark"] .head[data-sky="night"]   { --sky-a: #16284f; --sky-c: #0b1229; --sky-d: #141a38; }
 
-/* 写真（段2・段3）。js が読めた写真の札を data-sky-img に付け、二つの札がそろったときだけ敷きます
-   （読めないあいだは上の描いた空）。帯の幅いっぱいに（正方形）、縦は 55% の所で合わせる——週（帯が低い）では
+/* 写真（段2・段3）。季節×時間帯の16枚。js が読めた写真の札（`autumn-day` など）を data-sky-img に付け、
+   時間帯の札とそろったとき（`-day` で終わる）だけ敷きます（読めないあいだは上の描いた空）。帯の幅いっぱいに（正方形）、縦は 55% の所で合わせる——週（帯が低い）では
    写真の真ん中（地平・山・日）、月に開くとほぼ全部。写真の上には幕を重ね、混ぜ方で字の濃さを守ります
    ——**写真がどんな画素でも**：
    - 明るい面は screen。どの画素も幕より暗くならない。幕は時間帯の色（--sky-v1/v2）で、題の段は
@@ -1105,11 +1105,27 @@ a { color: var(--c-primary); }
    幕を薄くして写真を見せるぶんを、字が持つ（「もっと濃く」と言われて 0%・35% から二度上げた）。
    もとの色を .head で控えて .topbar・.cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。
    写真の下に続く色は --sky-g（写真の下端 12 行の平均）。月に開いて紙を引くと写真の下端より下まで見えるので、
-   描いた空の淡い色ではなく写真の地面の色で続ける（写真を足したら、これも測って足す）。 */
-.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp?v=2"); --sky-v1: #9f9294; --sky-v2: #bcaaae; --sky-g: #311f21; }
-.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp?v=2");     --sky-v1: #8997a4; --sky-v2: #9eb1c3; --sky-g: #4c4a2c; }
-.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp?v=2"); --sky-v1: #a39285; --sky-v2: #c1aa9a; --sky-g: #404b63; }
-.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp?v=2");   --sky-v1: #9294a1; --sky-v2: #aaaec1; --sky-g: #3b3945; }
+   描いた空の淡い色ではなく写真の地面の色で続ける（写真を足したら、これも測って足す）。幕の色は時間帯ごと。 */
+.head[data-sky="morning"][data-sky-img$="-morning"] { --sky-v1: #9f9294; --sky-v2: #bcaaae; }
+.head[data-sky="day"][data-sky-img$="-day"]         { --sky-v1: #8997a4; --sky-v2: #9eb1c3; }
+.head[data-sky="evening"][data-sky-img$="-evening"] { --sky-v1: #a39285; --sky-v2: #c1aa9a; }
+.head[data-sky="night"][data-sky-img$="-night"]     { --sky-v1: #9294a1; --sky-v2: #aaaec1; }
+.head[data-sky-img="spring-morning"] { --sky-photo: url("../img/sky/spring-morning.webp"); --sky-g: #0f0e0a; }
+.head[data-sky-img="spring-day"]     { --sky-photo: url("../img/sky/spring-day.webp");     --sky-g: #676079; }
+.head[data-sky-img="spring-evening"] { --sky-photo: url("../img/sky/spring-evening.webp"); --sky-g: #404a63; }
+.head[data-sky-img="spring-night"]   { --sky-photo: url("../img/sky/spring-night.webp");   --sky-g: #3a3844; }
+.head[data-sky-img="summer-morning"] { --sky-photo: url("../img/sky/summer-morning.webp"); --sky-g: #0d170a; }
+.head[data-sky-img="summer-day"]     { --sky-photo: url("../img/sky/summer-day.webp");     --sky-g: #61510a; }
+.head[data-sky-img="summer-evening"] { --sky-photo: url("../img/sky/summer-evening.webp"); --sky-g: #0c0502; }
+.head[data-sky-img="summer-night"]   { --sky-photo: url("../img/sky/summer-night.webp");   --sky-g: #0a0b0c; }
+.head[data-sky-img="autumn-morning"] { --sky-photo: url("../img/sky/autumn-morning.webp"); --sky-g: #311f21; }
+.head[data-sky-img="autumn-day"]     { --sky-photo: url("../img/sky/autumn-day.webp");     --sky-g: #2886af; }
+.head[data-sky-img="autumn-evening"] { --sky-photo: url("../img/sky/autumn-evening.webp"); --sky-g: #020201; }
+.head[data-sky-img="autumn-night"]   { --sky-photo: url("../img/sky/autumn-night.webp");   --sky-g: #24221b; }
+.head[data-sky-img="winter-morning"] { --sky-photo: url("../img/sky/winter-morning.webp"); --sky-g: #97aad5; }
+.head[data-sky-img="winter-day"]     { --sky-photo: url("../img/sky/winter-day.webp");     --sky-g: #a6aeba; }
+.head[data-sky-img="winter-evening"] { --sky-photo: url("../img/sky/winter-evening.webp"); --sky-g: #405883; }
+.head[data-sky-img="winter-night"]   { --sky-photo: url("../img/sky/winter-night.webp");   --sky-g: #242e3c; }
 .head[data-sky-img] {
   --sky-veil: linear-gradient(to bottom, var(--sky-v1) calc(var(--safe-t) + 34px), var(--sky-v2) calc(var(--safe-t) + 56px));
   --sky-blend: screen;
@@ -1141,10 +1157,10 @@ a { color: var(--c-primary); }
 }
 /* 今日の丸の塗りは字ではないので、もとの基調色のまま。 */
 .head[data-sky-img] .cal-day.is-here.is-today .cal-n { background: var(--sky-was-p); }
-.head[data-sky="morning"][data-sky-img="morning"]::before,
-.head[data-sky="day"][data-sky-img="day"]::before,
-.head[data-sky="evening"][data-sky-img="evening"]::before,
-.head[data-sky="night"][data-sky-img="night"]::before {
+.head[data-sky="morning"][data-sky-img$="-morning"]::before,
+.head[data-sky="day"][data-sky-img$="-day"]::before,
+.head[data-sky="evening"][data-sky-img$="-evening"]::before,
+.head[data-sky="night"][data-sky-img$="-night"]::before {
   background:
     var(--sky-veil),
     var(--sky-photo) 50% calc(55% - .55 * var(--sky-more)) / 100% auto no-repeat,
