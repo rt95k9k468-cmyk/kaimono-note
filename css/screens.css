@@ -443,7 +443,7 @@
 /* ---- 題の右の「今日へ戻る」 ----
 
    ここは「›」が居た場所です。あれは `--cal-p` で回って暦の開き具合を
-   言っていましたが、daily では題を押すと**月を選ぶ紙**が開くので、あそこ
+   言っていましたが、daily では題を押すと**月を選ぶ小窓**が開くので、あそこ
    では回る意味がありませんでした。やること・health では効いていたものの、
    開いているかどうかは暦そのものの高さがもう言っています。
 
@@ -6414,10 +6414,11 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .note-colors .accent-dot { padding: 6px 0; }
 
-/* ---- 月を選ぶ紙（daily の題を押すと出ます） ----
+/* ---- 月を選ぶ小窓（daily の題を押すと題からふくらむ。U15） ----
 
    daily は月ぶんを出す画面なので、題（「2026年9月」）を押したときの
    行き先は日ではなく**月**です。年を送る頭と、12個の升目だけ。 */
+.note-pop.is-month { width: min(320px, calc(100vw - 16px)); padding: var(--sp-2) var(--sp-3) var(--sp-3); }
 .mp-head {
   display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
 }

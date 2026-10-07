@@ -394,7 +394,11 @@
     `);
     wrap.append(card);
 
-    card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id));
+    card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id, {
+      from: card.querySelector(".product-emoji"),
+      back: () => document.querySelector(
+        `.screen.is-active .product-wrap[data-product-id="${CSS.escape(product.id)}"] .product-emoji`),
+    }));
     KN.ui.swipeActions(wrap, card, {
       tiles,
       onRight: () => toggleListed(product),

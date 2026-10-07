@@ -13,11 +13,13 @@
    * @param {string} productId
    * @param {object} [opts]
    * @param {string} [opts.itemId] when opened from the shopping list, shows the ★ and the memo
+   * @param {Element} [opts.from] 押した行の絵。紙の頭の絵へ伸び、閉じると帰る（ui.js の morphPill）
+   * @param {Function} [opts.back] 帰り先の行の絵を引く（保存で組み直されるので要素ではなく引き方）
    */
-  function open(productId, { itemId } = {}) {
+  function open(productId, { itemId, from, back } = {}) {
     const product = store.getProduct(productId);
     if (!product) return;
-    return openV2(productId, { itemId });
+    return openV2(productId, { itemId, from, back });
   }
 
   /* ---------------- fields ---------------- */
@@ -843,7 +845,7 @@
 
   /* 直す紙。中身の配線は前の欄と同じもの（renameProduct・chooseCategory・
      sizeField・renderPrices ほか）を使います。 */
-  function openV2(productId, { itemId } = {}) {
+  function openV2(productId, { itemId, from, back } = {}) {
     const product = store.getProduct(productId);
     const itemOf = () => (itemId ? store.get().items.find((i) => i.id === itemId) : null);
     const item = itemOf();
@@ -912,7 +914,9 @@
     }] : null;
 
     const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
-    const handle = KN.ui.sheet({ title: product.name, hero: f.hero, menu, content: f.body, footer: foot });
+    /* 物から生まれる紙（roadmap-unify の U15）：押した行の絵が頭の絵へ伸び、閉じると行へ帰る。 */
+    const handle = KN.ui.sheet({ title: product.name, hero: f.hero, menu, content: f.body, footer: foot,
+      morph: from ? { from, to: f.mark, back } : null });
     foot.addEventListener("click", () => handle.close());
     return handle;
   }

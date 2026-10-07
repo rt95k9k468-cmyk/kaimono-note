@@ -176,7 +176,7 @@
 | E 形 | U12 | 行の背丈を三つに | 中 | 変わる | look・sheet-scroll | Opus 5.5・高 | 済（10/7・分かれ道6は「揃える」） |
 | E | U13 | 小見出し・空の画面・インラインの style を一つずつに | 中 | 少し | look・各画面 | Sonnet 5.5・中 || 済（10/7・style= は 143 → 23） |
 | E | U14 | 札の高さを二つに・絵の直書きを二段へ | 小 | 少し | look・icons | Sonnet 5.5・中 | 済（10/7） |
-| F 良くする | U15 | 物から生まれる紙の残り（品物の紙・月を選ぶ・アイコンを選ぶ） | 中 | 変わる | screens-nav（紙の種類）・shopping・motion | Opus 5.5・高 | 未 |
+| F 良くする | U15 | 物から生まれる紙の残り（品物の紙・月を選ぶ・アイコンを選ぶ） | 中 | 変わる | screens-nav（紙の種類）・shopping・motion | Opus 5.5・高 | 済（10/7） |
 | F | U16 | 開いたときの一拍を四つのタブへ | 中 | 変わる | motion（ほかに動かせるところ）・todo-timeline・daily | Opus 5.5・中 | 未 |
 | F | U17 | iPhone で確かめる（U ぶん） | 小 | — | iphone-check | Sonnet 5.5・低 | 未 |
 

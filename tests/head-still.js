@@ -14,7 +14,7 @@
      入ってきた印が浮かぶ。写しは `.cal` の外・押せない）。買うものの暦には
      その日に買ったものの丸（三つまで・同じ品物は一つ）（段4）。
    - 虫めがねは共通・窓はタブ側（暦の下）に開き、開いても帯は動かない。
-   - 題を押したときの応えはタブごと（やること：週⇄月、daily：月を選ぶ紙）。
+   - 題を押したときの応えはタブごと（やること：週⇄月、daily：月を選ぶ小窓）。
    - 設定は帯ごと押しのける（deck が動き、設定の一枚が帯の上に重なる）。
    - 買うもの・価格でも帯は動かない（段3）：掴み手を本物のタッチで引いて価格へ・
      帯の「買うもの」で戻る・価格からよそのタブへ、のどれも 0px。暦は一枚のまま
@@ -335,8 +335,8 @@ const { open, checker } = require("./lib");
   await go("archive");
   await tapSel("#head .js-day-title");
   await page.waitForTimeout(600);
-  c.check("daily の題：月を選ぶ紙が開き、暦の段は変えない",
-    await page.evaluate(() => !!document.querySelector(".sheet") && KN.store.calPrefs(null).open === false));
+  c.check("daily の題：月を選ぶ小窓が開き、暦の段は変えない",
+    await page.evaluate(() => !!document.querySelector(".note-pop.is-month") && KN.store.calPrefs(null).open === false));
   await page.keyboard.press("Escape");
   await page.waitForTimeout(600);
 

@@ -132,3 +132,4 @@
 | `row-heights.js` | 行の背丈は三つ（roadmap-unify の U12、docs/look.md の「行の背丈は三つ」）。`:root` に `--row-h-compact` 44・`--row-h` 52・`--row-h-two` 64・当て表の二十の行が札で `min-height` を持つ・行の規則（`-row`・`.row`・`-item`）に 36〜72px の直書きが無い（時間割の行は外す）。門に入る。画面は開かない |
 | `inline-style.js` | インラインの style= を増やさない（roadmap-unify の U13、docs/look.md の「小見出し・空の画面・style」）。値の決まった `style="…"` が上限（23）以下・`flex:1`／足もとの並び／見つからないは `.grow`・`.btn-row`・`.empty.is-quiet`・小見出しは `.section-title` の字（字間なし・text-2）。門に入る。画面は開かない |
 | `chip-icon-size.js` | 札の高さは二つ・絵は二段（roadmap-unify の U14、docs/look.md の「札の高さと絵の大きさ」）。札の背丈が 40 か 32・`.seg-btn` の角が `--r-sm`・絵（svg・`.p-icon`・`.ui-ico`・`.empty-svg`）の px の直書きはその行に「入れもの：理由」があるものだけ。門に入る。画面は開かない |
+| `thing-sheets.js` | 物から生まれる紙の残り（roadmap-unify の U15）。買うもの・価格の行の絵が品物の紙の頭の絵へ伸び、閉じると行へ帰る・daily の月を選ぶは小窓（題のまん中からふくらむ・帯の暦より上・月を押すと閉じてその月へ）・アイコンを選ぶは大きな紙のまま押した点から育つ |

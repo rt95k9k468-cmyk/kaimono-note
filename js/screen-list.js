@@ -972,7 +972,11 @@
     row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));
 
     row.querySelector(".item-body").addEventListener("click", () => {
-      KN.productSheet.open(product.id, { itemId: item.id });
+      KN.productSheet.open(product.id, {
+        itemId: item.id, from: row.querySelector(".item-emoji"),
+        back: () => document.querySelector(
+          `.screen.is-active .item-wrap[data-item-id="${CSS.escape(item.id)}"] .item-emoji`),
+      });
     });
 
     // 一覧だけ：丸そのものを押すと、品目の紙を経由せずアイコン選びへ直行します。
