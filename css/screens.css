@@ -5087,18 +5087,21 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* ---- 季節の絵（3.0 の E1・js/season-art.js） ----
    daily の紙の**中身の後ろ**（紙の地）に一枚（写真。ノートの広重は下）。上（日付・Daily Log の頭のあたり）でいちばん見え、下へ向かって
    紙の色に溶ける。層は上から：候の色のぼかし（いつも）・紙の色の幕・絵（読めたら）・紙の色。絵の濃さは幕の
-   濃さで決める（幕 76% ＝ 絵 24%。8% では iPhone で絵があるかさえ見えなかった——
-   絵の上のほうは空で淡く、幕も 70% の高さで閉じていたので。いまは 40% まで同じ濃さで、85% で閉じる・2026年10月6日）。紙は送る器なので、地は送っても上に留まる（background-attachment は既定）。
+   濃さで決める（幕 66% ＝ 絵 34%。8% では iPhone で絵があるかさえ見えなかった）。紙は送る器なので、地は送っても上に留まる（background-attachment は既定）。
+   絵は**横幅いっぱいに一枚まるごと**（100vw auto）。幕は絵の高さ（--season-h ＝ 幅×縦横の比。比は js が --season-ar に）の
+   半ばまで同じ濃さで、絵の下の端で閉じる。10/7 までは cover で縦長の紙に敷いていて、横長の写真は真ん中の三分の一だけが
+   約3倍に引き伸ばされ（雁は両端へ切れて空だけ）、主役のいる中ほどは幕で消えていた——「ぼかしがきつくて何かわからない」の正体。
    値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。色の入れ替わりは --m-season で
    ゆっくり（@property で色として登録。動きを減らす設定では切り替えるだけ）。濃さは iPhone で決める。 */
 @property --season-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
 #screen-archive, #screen-notes { transition: --season-c var(--m-season) var(--ease); }
 #screen-archive[data-season] .tl-sheet.is-daily {
-  --season-veil: color-mix(in srgb, var(--c-sheet) calc(100% - var(--season-alpha, 24%)), transparent);
+  --season-veil: color-mix(in srgb, var(--c-sheet) calc(100% - var(--season-alpha, 34%)), transparent);
+  --season-h: calc(100vw * var(--season-ar, 0.67));
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--season-c) var(--season-tint, 38%), transparent), transparent 55%),
-    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) 40%, var(--c-sheet) 85%),
-    var(--season-img, none) center top / cover no-repeat,
+    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-h) * 0.55), var(--c-sheet) var(--season-h)),
+    var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-sheet);
 }
 /* 掴み手と Daily Log・月のまとめ・積み上げの段は紙と同じ地を持つ。季節の色の上では地を透かす（同じ色なので、
@@ -5110,11 +5113,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* ノートの地にも同じ層（daily は写真、ノートは広重。2026年10月7日、利用者が見比べて選んだ・docs/season-art.md）。
    ノートは紙を持たない地で、画面そのものが送る器なので、地の色（--c-bg）の上に画面へ敷く（送っても上に留まる）。 */
 #screen-notes[data-season] {
-  --season-veil: color-mix(in srgb, var(--c-bg) calc(100% - var(--season-alpha, 24%)), transparent);
+  --season-veil: color-mix(in srgb, var(--c-bg) calc(100% - var(--season-alpha, 34%)), transparent);
+  --season-h: calc(100vw * var(--season-ar, 0.67));
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--season-c) var(--season-tint, 38%), transparent), transparent 55%),
-    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) 40%, var(--c-bg) 85%),
-    var(--season-img, none) center top / cover no-repeat,
+    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-h) * 0.55), var(--c-bg) var(--season-h)),
+    var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-bg);
 }
 /* 暗い色のときは、さらに薄く。 */
