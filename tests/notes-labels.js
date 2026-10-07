@@ -14,6 +14,11 @@ const { open, checker } = require("./lib");
 (async () => {
   const t = checker("notes-labels");
   const { browser, page, errors } = await open();
+  /* 上の帯の色（theme-color）は空の時間帯で決まる（js/sky.js の BAR）。ノートはそれを変えない。 */
+  const barNow = () => page.evaluate(() => {
+    const s = document.getElementById("head").getAttribute("data-sky");
+    return s ? [KN.sky.BAR.light[s], KN.sky.BAR.dark[s]].join() : "#f0eff3,#121216";
+  });
 
   const active = () => page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen);
   const settled = (id) => page.waitForFunction((i) =>
@@ -284,7 +289,7 @@ const { open, checker } = require("./lib");
   await popEsc();
   await escTop();
   t.check("タグだけ付けて何も書かずに閉じたノートは残らない", (await page.evaluate(() => KN.notes.list().length)) === 4);
-  t.check("閉じたら上の帯（theme-color）は元の灰へ", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).join() === "#f0eff3,#121216");
+  t.check("閉じたら上の帯（theme-color）は元の色のまま", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).join() === await barNow());
 
   /* ---- 残る・書き出し・localStorage ---- */
   await page.evaluate(() => KN.notes.flush());

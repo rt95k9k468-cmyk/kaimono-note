@@ -17,6 +17,11 @@ const { open, checker } = require("./lib");
 (async () => {
   const t = checker("notes-format");
   const { browser, ctx, page, errors } = await open();
+  /* 上の帯の色（theme-color）は空の時間帯で決まる（js/sky.js の BAR）。ノートはそれを変えない。 */
+  const barNow = () => page.evaluate(() => {
+    const s = document.getElementById("head").getAttribute("data-sky");
+    return s ? [KN.sky.BAR.light[s], KN.sky.BAR.dark[s]].join() : "#f0eff3,#121216";
+  });
 
   const active = () => page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen);
   const settled = (id) => page.waitForFunction((i) =>
@@ -189,9 +194,9 @@ const { open, checker } = require("./lib");
   /* 11 個：取り消す・やり直す・太字（10月7日）・見出し・点・番号・チェック・引用・区切り・上げる・下げる。 */
   t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 11 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
   t.check("道具の帯は底から少し浮く、丸いガラスの一本", bar.gap === 8 && bar.side === 8 && bar.round && bar.glass && bar.over, JSON.stringify(bar));
-  t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
+  t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate((b0) =>
     !document.documentElement.classList.contains("is-note-full")
-    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f0eff3,#121216"));
+    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === b0, await barNow()));
 
   /* ---- 欄から出る（キーボードを閉じる）→ 整えた姿 ---- */
   await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
