@@ -1041,6 +1041,7 @@
        しておけば、何も打たずに閉じたときは「変わっていない」扱いになり
        ます——空の日を覗いただけで記録ができてしまうのを防ぎます。 */
     let last = JSON.stringify([memoInit, cur.wake || "", cur.sleep || ""]);
+    const first = last;
     /* 下書き（日付とカウントダウン）は、**本文に触れたときだけ**残します。
        保存は本文・起床・就寝をまとめて比べて走るので、前は起きた・寝た
        時刻だけを入れても、下書きの日付だけの本文が残り、自分で書いた
@@ -1082,6 +1083,8 @@
       window.removeEventListener("pagehide", hide);
       document.removeEventListener("visibilitychange", onVis);
       save();
+      /* 自動で残す紙は、閉じたときに一言（開いたときと変わっていれば）。 */
+      if (last !== first) KN.ui.toast("更新しました");
     };
 
     const h = KN.ui.sheet({
@@ -1644,6 +1647,7 @@
       KN.motion.fire("select");
       h.close();
       render();
+      KN.ui.toast(e ? "保存しました" : "書きました");
     });
 
     if (roadBtn) roadBtn.addEventListener("click", () => {
