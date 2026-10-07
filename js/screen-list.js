@@ -554,7 +554,7 @@
        （ui.js の flipRows）。丸ごと入れ替わるとき（検索）
        は、向こうが自分で見送ります。 */
     const flip = KN.ui.flipRows(els.body, ".item-wrap");
-    /* 前の絵に居た行は、入ってくる動き（item-in）を見送ります。組み直すたびに
+    /* 前の絵に居た行は、入ってくる動き（m-add）を見送ります。組み直すたびに
        全部の行が薄い所から現れ直して一覧ごと瞬き、しかも動き中は FLIP の
        transform に勝つので、行が動いたことが見えませんでした（V17）。 */
     const seen = new Set([...els.body.querySelectorAll(".item-wrap[data-flip]")].map((e) => e.dataset.flip));

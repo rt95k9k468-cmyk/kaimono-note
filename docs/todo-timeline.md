@@ -1055,8 +1055,8 @@ bfcache からの `pageshow`）に、人が四歩あるいて、いつもの形�
   `kept`）。捨てないと、今日→明日と払ってから「今日へ戻る」を押したときに
   **題と暦だけ今日になって、紙は明日のまま居座ります**（実測で踏みました）。
 - **`is-arriving` は、名乗り終わったら外します**（`ui.js` の `flipRows`）。
-  `row-arrive` は `animation-fill-mode: both` なので、終わったあとも
-  `transform: none` を押さえ続けます——アニメーションはインラインの style
+  `is-arriving`（元の `row-arrive`、いまは `m-add`）は `animation-fill-mode: both` なので、終わったあとも
+  `transform: none` を押さえ続けていました（U5 で `translate:` に書き直してからは押さえませんが、外すのはそのまま）——アニメーションはインラインの style
   より強いので、**札を持ったままの行は二度と FLIP で滑れません**。行が毎回
   新しく組まれているあいだは札も一緒に消えていたので、出ませんでした。
 - **絵の引き当ては覚えます**（`cachedArt`）。`findKey` は品物2131語・こと

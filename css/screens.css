@@ -129,10 +129,8 @@
   overflow: hidden;
   max-height: 260px;
   overflow-y: auto;
-  animation: ac-in var(--m-state) var(--ease-out);
+  animation: m-add var(--m-state) var(--ease-out);
 }
-
-@keyframes ac-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .ac-item {
   display: flex;
@@ -221,7 +219,7 @@
   position: relative;
   border-radius: var(--r-md);
   overflow: hidden;
-  animation: item-in var(--m-add) var(--ease-out);
+  animation: m-add var(--m-add) var(--ease-out);
 }
 
 .item {
@@ -282,8 +280,6 @@
 /* Hand the row its own compositor layer for the duration of the gesture, so
    each frame is a transform rather than a repaint of the whole row. */
 .item-wrap.is-swiping .item { will-change: transform; }
-
-@keyframes item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ================= TODO SCREEN =================
 
@@ -783,14 +779,7 @@
    so without this you arrive at a list and have to work out which line you
    asked for. Twice, quickly, then gone: a highlight that stayed would be a
    state to dismiss, and there is nothing here to dismiss. */
-@keyframes row-flash {
-  0%, 100% { box-shadow: var(--shadow-1); }
-  18%, 62% {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat, var(--c-primary)) 55%, transparent),
-                var(--shadow-2);
-  }
-}
-.item-wrap.is-flash .item { animation: row-flash var(--m-flash) var(--ease) 1; }
+.item-wrap.is-flash .item { animation: m-glow calc(var(--m-flash) / 2) var(--ease) 2 alternate; }
 
 @media (prefers-reduced-motion: reduce) {
   .item-wrap.is-flash .item { animation-duration: .01ms; }
@@ -2806,7 +2795,7 @@
   animation: line-draw var(--m-draw) var(--ease-out) both;
 }
 .is-m-arrive .diet-dot {
-  animation: arrive-fade calc(var(--m-draw) * .3) var(--ease-out) both;
+  animation: fade-in calc(var(--m-draw) * .3) var(--ease-out) both;
   animation-delay: calc(var(--m-draw) * .4 * var(--f, 0));
 }
 .is-m-arrive .diet-dot.is-now {
@@ -2815,13 +2804,12 @@
   animation-delay: calc(var(--m-draw) * .45);
 }
 .is-m-arrive .diet-area,
-.is-m-arrive .diet-ma14 { animation: arrive-fade var(--m-draw) var(--ease) both; }
+.is-m-arrive .diet-ma14 { animation: fade-in var(--m-draw) var(--ease) both; }
 .is-m-arrive .diet-bar {
   transform-box: fill-box; transform-origin: 50% 100%;
   animation: bar-grow var(--m-fill) var(--ease-out) both;
 }
 @keyframes line-draw   { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes arrive-fade { from { opacity: 0; } }
 @keyframes arrive-pop  { from { opacity: 0; scale: 0; } }
 @keyframes bar-grow    { from { scale: 1 0; } }
 
@@ -3806,27 +3794,17 @@ a.btn { text-decoration: none; }
    三段にします。光る → 消える（または次の日へ滑る）→ 組み直す。
    組み直しは JS 側で待たせてあるので、ここは見た目だけを受け持ちます。 */
 
-/* ① 光る。棚の色（--cat）を借りて、行そのものが一度明るくなります。 */
+/* ① 光る。棚の色（--cat）を借りて、行そのものが一度明るくなります。輪は暦から
+   着いた行と同じ `m-glow`、地の色は .item の transition で移ります。 */
 .item.is-glow {
-  animation: todo-glow var(--m-check) var(--ease-out) forwards;
-}
-@keyframes todo-glow {
-  0%   { box-shadow: var(--shadow-1); }
-  60%  { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cat, var(--c-primary)) 55%, transparent),
-                     0 0 16px 2px color-mix(in srgb, var(--cat, var(--c-primary)) 35%, transparent);
-         background: color-mix(in srgb, var(--cat, var(--c-primary)) 14%, var(--c-surface)); }
-  100% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--cat, var(--c-primary)) 35%, transparent),
-                     0 0 10px 1px color-mix(in srgb, var(--cat, var(--c-primary)) 20%, transparent);
-         background: color-mix(in srgb, var(--cat, var(--c-primary)) 9%, var(--c-surface)); }
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 9%, var(--c-surface));
+  animation: m-glow var(--m-check) var(--ease-out) forwards;
 }
 
-/* ②-a 一度きりのものは、その場で畳まれて消えます。 */
+/* ②-a 一度きりのものは、その場で畳まれて消えます（行き先が無いので m-delete）。 */
 .item.is-finishing {
-  animation: todo-finish var(--m-delete) var(--ease-in) forwards;
+  animation: m-delete var(--m-delete) var(--ease-in) forwards;
   pointer-events: none;
-}
-@keyframes todo-finish {
-  to { opacity: 0; transform: scale(.94); }
 }
 
 /* ②-b 繰り返すものは消えません。次の設定日へ**滑って**いきます——その場で
@@ -3856,14 +3834,10 @@ a.btn { text-decoration: none; }
    FLIP（ui.js の flipRows）で「もといた場所」から滑ってくるので、二つ合わせて
    「一件ぶんの席が開いて、そこに入った」に見えます。
 
-   上から降りてくるのは、足したものが一覧の頭に付くからです（daily は更新順、
-   買うものは足した順）。下から生えると、来た方向と置かれた場所が食い違います。 */
+   増えるものはみな、その場で下から少し浮かびます（m-add・roadmap-unify の U5）。
+   前は上から降りていましたが、増える動きの向きが場所ごとに違っていました。 */
 .is-arriving {
-  animation: row-arrive var(--m-sheet-open) var(--ease-out) both;
-}
-@keyframes row-arrive {
-  from { opacity: 0; transform: translateY(-10px) scale(.98); }
-  to   { opacity: 1; transform: none; }
+  animation: m-add var(--m-add) var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -4174,7 +4148,7 @@ button.tl-over svg { width: 14px; height: 14px; color: var(--c-text-3); }
   --node-p: calc(var(--pass, 1) * var(--tl-node-h, var(--tl-h, 50px)));
   position: absolute;
   left: 50%; top: calc(50% + var(--tl-grow, 0px) / 2);
-  transform: translate(-50%, calc(-50% + var(--node-dy, 0px)));
+  translate: -50% calc(-50% + var(--node-dy, 0px));
   display: grid; place-items: center;
   grid-template-rows: var(--tl-node-h, var(--tl-h, 50px));
   align-content: start;
@@ -4802,29 +4776,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
 /* 丸のピコン。行き過ぎて戻る曲線（--spring）で、ひと回りだけ。
    済ませた瞬間に**指の下ではないところ**が動くので、押した先とは別に
-   「その用事が片づいた」ことが見えます。 */
-.tl-node.is-pop { animation: tl-pop var(--m-check) var(--spring); }
-/* 買うものの絵の丸も、同じピコン。あちらは translate を持たないので、
-   その場で大きさだけ変えます。 */
-.item-emoji.is-pop { animation: mark-pop var(--m-check) var(--spring); }
-@keyframes mark-pop {
-  0%   { transform: scale(1); }
-  38%  { transform: scale(1.16); }
-  100% { transform: scale(1); }
-}
-@keyframes tl-pop {
-  0%   { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
-  38%  { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1.16); }
-  100% { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
-}
+   「その用事が片づいた」ことが見えます。時間割の丸も買うものの絵の丸も、
+   共通の m-check 一本（丸の位置は `translate:` にあるので、倍率の `scale:` と取り合わない）。 */
+.tl-node.is-pop,
+.item-emoji.is-pop { animation: m-check var(--m-check) var(--spring); }
 
 /* 外すときは、逆に引っ込みます。線は消え、丸は一度縮んで戻ります。 */
-.tl-node.is-unpop { animation: tl-unpop var(--m-check) var(--ease-out); }
-@keyframes tl-unpop {
-  0%   { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
-  40%  { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(.86); }
-  100% { transform: translate(-50%, calc(-50% + var(--node-dy, 0px))) scale(1); }
-}
+.tl-node.is-unpop { animation: m-uncheck var(--m-check) var(--ease-out); }
 .tl-item.is-unstriking .item-name,
 .item.is-unstriking .item-name {
   background-image: linear-gradient(var(--c-primary), var(--c-primary));
@@ -5286,9 +5244,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .sheet.is-note.is-folded .note-head-t:not(:empty) {
   display: block;
-  animation: note-fold-in var(--m-state) var(--ease-out);
+  animation: m-add var(--m-state) var(--ease-out);
 }
-@keyframes note-fold-in { from { opacity: 0; transform: translateY(4px); } }
 .note-nb-btn {
   display: inline-flex;
   align-items: center;
