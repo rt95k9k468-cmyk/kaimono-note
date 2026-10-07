@@ -4576,6 +4576,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
      一段です——両方が純白だと、線は引いてあっても見えません。 */
   background: var(--c-sheet);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
+  /* 紙のふちの純白の一本は、紙そのものの上の縁に引きます（border は送る中身より外なので、
+     中身に隠れず、送っても跳ね返っても動かない）。前は掴み手の inset で引いていて、勢いよく
+     上端に着いたとき（iPhone の跳ね返りは中身だけを下げる）ふちだけが下りてきた（2026年10月7日、実機）。
+     丸角にもそのまま沿います。 */
+  border-top: 1px solid var(--c-sheet-edge);
   /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
      ——途中で切れると、その下の地が「まだ何かある」に見えます。
      暦の高さは日によって変わる（週／月）ので、そのぶんは引きません
@@ -4607,10 +4612,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
      行がその下を通るので、少しでも違うと帯に見えます）。 */
   background: var(--c-sheet);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
-  /* 紙のふちを、純白で一本なぞります。単色・1px・inset だけ——
-     border-radius は box-shadow にも掛かるので、この丸角の形どおりに
-     出ます。地を 253 に下げたので、この一本がようやく見えます。 */
-  box-shadow: inset 0 1px 0 var(--c-sheet-edge);
+  /* 紙のふちの一本は、ここではなく紙（.tl-sheet の border-top）が持ちます——掴み手は
+     中身と一緒に跳ね返るので。 */
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
