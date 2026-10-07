@@ -4,7 +4,7 @@
    - ＋ →「体重」→ 紙「体重を記録」→ 打って「記録する」：その日の体重になり、頭の枠に出る
    - 読み直しても残る
    - 頭の数を押すと「体重を直す」：直すと一件のまま値が変わる（増えない）
-   - 紙の屑かご → 確かめ →「消す」：記録が無くなり、頭は「—」
+   - 紙の ⋯ →「消す」（確かめずに消え、「元に戻す」が付く・U11）：記録が無くなり、頭は「—」
    - 日をまたぐ（時計を進めて、戻ってきた＝visibilitychange）：画面は新しい今日を向き、
      前の日の記録は前の日のまま（動かない・今日の枠に「今日」として出ない）。暦で
      前の日へ戻ると、その記録が出る
@@ -86,14 +86,14 @@ const { open, checker } = require("./lib");
 
   /* ---- 消す ---- */
   await page.locator("#screen-diet .js-weight").click();
-  await page.waitForSelector(`${sheet} .js-del`);
+  await page.waitForSelector(`${sheet} .js-menu`);
   await page.waitForTimeout(250);
-  await page.locator(`${sheet} .js-del`).click();
-  await page.waitForSelector(".js-ok");
-  const confirmText = await page.evaluate(() => document.body.innerText);
-  t.check("消す前に確かめる（「この記録を消しますか？」）", confirmText.includes("この記録を消しますか？"));
-  await page.locator(".js-ok").last().click();
+  await page.locator(`${sheet} .js-menu`).click();
+  await page.locator(".note-pop-item.is-danger").click();
   await page.waitForTimeout(500);
+  const undoText = await page.evaluate(() => (document.querySelector(".toast") || {}).textContent || "");
+  t.check("⋯ の「消す」は確かめずに消え、「元に戻す」が付く（U11）",
+    !(await page.locator('[aria-label="この記録を消しますか？"]').count()) && /消しました/.test(undoText) && /元に戻す/.test(undoText), undoText);
   W = await page.evaluate(() => KN.store.get().diet.weights.length);
   h = await heroKg();
   t.check("消すと記録が無くなり、頭は「—」", W === 0 && h.kg === "—", JSON.stringify({ W, h }));
