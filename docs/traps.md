@@ -23,3 +23,6 @@
 - **払う・引くの隣の紙は DOM に居ない**（控えは `document` の外）。`.cal-day` /
   `.tl-sheet` / `.js-now` のように複数の画面にあるものは、出ている画面に絞って
   掴む。（calendar-swipe・todo-timeline）
+- **伸びる欄を測るために縮めない**（`height = 0`/`auto` → `scrollHeight`）。送る器の中身が
+  一瞬縮み、送りが頭へ戻される（打つたびに頭へ飛ぶ）。縮めるなら器の `scrollTop` を
+  持っておいて戻す。（notes の「打つあいだ」）
