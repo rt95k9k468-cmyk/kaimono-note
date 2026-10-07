@@ -846,6 +846,10 @@
   function renderToday(host, card, sum) {
     const w = card.weight;
     const when = dayName(card.day);
+    /* 開いたとき、大きな数は**前の記録から**数えて変わる（U16・countWeight）。0 からでは大げさ。 */
+    const pts = sum.points, last = pts[pts.length - 1];
+    const from = w && last && last.day === card.day && pts.length > 1
+      && Math.abs(pts[pts.length - 2].kg - w.kg) >= 0.05 ? pts[pts.length - 2].kg : null;
 
     const sec = node(html`
       <div class="diet-hero">
@@ -882,6 +886,7 @@
         </div>
       </div>
     `);
+    if (from != null) sec.querySelector(".diet-hero-value b").dataset.from = from;
     sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
     sec.querySelector(".js-trend").addEventListener("click", () => openWindowSheet("trend"));
     sec.querySelector(".js-avg").addEventListener("click", () => openWindowSheet("avg"));
@@ -1935,7 +1940,38 @@
     };
     frame(t0);   // 描かれる前に 0 の姿へ（満ちた輪が一瞬見えないように）
   }
-  KN.motion.onArrive((root) => { if (root.id === "screen-diet") fillRings(root); });
+
+  /* ---- 開いたとき、体重の大きな数が前の記録から数えて変わる（roadmap-unify の U16） ----
+
+     輪の数と同じ手：字は書き換えず、`data-show` に途中の数を書いて上に重ねる
+     （textContent はいつも本当の数）。輪とは別の一本の時計で、長さと曲線は輪と同じ
+     （`--m-fill`・`--ease-out`）。前の記録が無い・同じ数なら動かない（data-from が無い）。 */
+  const weightRun = new WeakMap();
+  function countWeight(root) {
+    if (!root.querySelector(".diet-hero-value b[data-from]")) return;
+    const M = KN.motion, ease = M.curve("--ease-out"), dur = M.ms("--m-fill");
+    const t0 = performance.now();
+    const token = {};
+    weightRun.set(root, token);
+    const frame = (now) => {
+      if (weightRun.get(root) !== token) return;
+      const x = Math.max(0, Math.min(1, (now - t0) / dur));
+      root.querySelectorAll(".diet-hero-value b[data-from]").forEach((b) => {
+        if (x >= 1) { delete b.dataset.show; return; }
+        const to = parseFloat(b.textContent), a = parseFloat(b.dataset.from);
+        if (!isFinite(to) || !isFinite(a)) return;
+        const show = kg(a + (to - a) * ease(x));
+        if (b.dataset.show !== show) b.dataset.show = show;
+      });
+      if (x < 1 && root.isConnected) requestAnimationFrame(frame);
+    };
+    frame(t0);   // 描かれる前に前の数へ
+  }
+  KN.motion.onArrive((root) => {
+    if (root.id !== "screen-diet") return;
+    fillRings(root);
+    countWeight(root);
+  });
 
   function renderBodyStats(host, card) {
     const dt = card.drinkTotals;

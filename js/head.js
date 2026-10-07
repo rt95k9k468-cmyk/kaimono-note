@@ -522,6 +522,25 @@
     requestAnimationFrame(paintDot);
   }
 
+  /* 今日の丸は、**その日はじめて開いたときだけ**一度脈打つ（roadmap-unify の U16・
+     docs/motion.md の「開いたとき、満ちる」）。帯も `arrive` の相手で（app.js の show）、
+     打つかどうかだけここが決める。席を移るたびに打つと多すぎる。見た日は store の外の鍵に
+     （day-road.js の SEEN_KEY と同じ作り）。帯が隠れている・今日のマスが見えていない
+     （ノート・ほかの月）ときは、見たことにしない。 */
+  const BEAT_KEY = "kn-cal-beat";
+  if (KN.motion) KN.motion.onArrive((el) => {
+    if (el !== root) return;
+    let first = false;
+    const n = root.hidden ? null : root.querySelector(".cal-day.is-today .cal-n");
+    if (n && n.offsetWidth) {
+      try {
+        first = localStorage.getItem(BEAT_KEY) !== U.todayKey();
+        if (first) localStorage.setItem(BEAT_KEY, U.todayKey());
+      } catch (_) { /* 残せない端末では打たない */ }
+    }
+    root.classList.toggle("is-day-first", first);
+  });
+
   mount();
   paintDot();
   if (KN.store) KN.store.subscribe(queueDot);

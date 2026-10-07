@@ -28,7 +28,8 @@ const DAY = "2026-09-29";
     s.addTodo({ title: "テスト", due: day, time: "20:55" });
   }, DAY);
   await page.click('.tab[data-tab="todo"]');
-  await page.waitForTimeout(600);
+  /* 開いた拍は過ぎたぶんの色が上から流れる（U16）。着いてから読む。 */
+  await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
 
   const rows = await page.evaluate(() => {
     const list = document.querySelector("#screen-todo .tl-list");
