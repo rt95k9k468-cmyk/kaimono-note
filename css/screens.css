@@ -619,7 +619,7 @@
   padding-bottom: 3px;
 }
 .cal-wd.is-sun { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-3)); }
-.cal-wd.is-sat { color: color-mix(in srgb, #4a8fd9 70%, var(--c-text-3)); }
+.cal-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 70%, var(--c-text-3)); }
 
 .cal-day {
   position: relative;
@@ -651,7 +651,7 @@
   color: var(--c-text-2);
 }
 .cal-day.is-sun .cal-n { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
-.cal-day.is-sat .cal-n { color: color-mix(in srgb, #4a8fd9 62%, var(--c-text-2)); }
+.cal-day.is-sat .cal-n { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
 
 /* Today, circled. Filled rather than outlined: an outline is one more ring
    among 30 numbers, and the one thing this calendar has to answer without
