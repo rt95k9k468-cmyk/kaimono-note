@@ -23,15 +23,16 @@
     const body = node(html`
       <div class="stack">
         <div class="row-times">
-          <input class="input js-a" type="time" aria-label="一日の始まり"
+          <input class="input js-a" type="hidden" data-when="time" aria-label="一日の始まり"
                  value="${st.dayStart || P.DEFAULT_START}">
           <span class="row-dash">〜</span>
-          <input class="input js-b" type="time" aria-label="一日の終わり"
+          <input class="input js-b" type="hidden" data-when="time" aria-label="一日の終わり"
                  value="${st.dayEnd || P.DEFAULT_END}">
         </div>
       </div>
     `);
     const save = node(html`<button class="btn btn-primary btn-block">保存</button>`);
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: "一日の始まりと終わり", content: body, footer: save });
 
     save.addEventListener("click", () => {
