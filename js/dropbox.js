@@ -283,6 +283,17 @@
     return b64url(new Uint8Array(d));
   }
 
+  /* 指紋用の書き出し。キーを並べてから——reconcile() は開くたびに欄を決まった順に
+     並べ直すので、そのままだと同じ中身でも「変わった」と数えて送り直してしまう。 */
+  function canon(v) {
+    if (Array.isArray(v)) return `[${v.map((x) => (x === undefined ? "null" : canon(x))).join(",")}]`;
+    if (v && typeof v === "object") {
+      return `{${Object.keys(v).sort().filter((k) => v[k] !== undefined)
+        .map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(",")}}`;
+    }
+    return JSON.stringify(v);
+  }
+
   /* ---- 送る ---- */
 
   let running = null;
@@ -342,8 +353,8 @@
        Dropbox の控えから戻す（下の backups / download）。 */
     if (store.isBlank(store.get()) && !(extra.noteBook && extra.noteBook.notes.length)) return "empty";
     dirty = false;
-    const hash = await sha(JSON.stringify(store.get())
-      + (extra.noteBook ? JSON.stringify(extra.noteBook) : ""));
+    const hash = await sha(canon(store.get())
+      + (extra.noteBook ? canon(extra.noteBook) : ""));
     const day = dayKey(new Date());
     const same = hash && hash === cfg.lastHash;
     if (same && cfg.lastDay === day) return "same";
