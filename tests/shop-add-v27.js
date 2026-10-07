@@ -5,7 +5,7 @@
    - 打つと候補は名前の下に横一列の札。リストにあるものは薄い。押すと選ぶ
    - カテゴリとメモは札一列。メモは札を押すと欄が出る
    - 改行キー：足して紙は開いたまま空になる（次を打てる）
-   - 「リストに追加」：閉じて、紙の頭がその行へ飛んで入り、行が光る。トーストは出さない
+   - 「リストに追加」：閉じて、紙の頭がその行へ飛んで入り、行が光る。トーストは出さない。紙は＋へ帰る（U17）
    - 記録の形は変えない（足した行は前と同じ欄）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/shop-add-v27.js */
@@ -65,6 +65,11 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(150);
   t.check("＋の一拍で名前の欄に入る（キーボード）", (await sheet()).focus);
   t.check("紙は＋から育つ", await page.evaluate(() => document.querySelector(".sheet.is-open").classList.contains("is-from-origin")));
+  t.check("＋の紙は四隅の丸いカード（U17）", await page.evaluate(() => {
+    const el = document.querySelector(".sheet.is-open"), r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    return el.classList.contains("is-fab-card") && r.left >= 6 && innerHeight - r.bottom >= 6
+      && parseFloat(cs.borderBottomLeftRadius) > 10;
+  }));
   await page.waitForTimeout(600);
   const s0 = await sheet();
   t.check("打つ前は、よく買う物の札（多い順・リストにあるものは出さない）",
@@ -119,7 +124,7 @@ const { open, checker } = require("./lib");
     const g = document.querySelector(".land-ghost");
     return { ghost: !!g, text: g ? g.textContent.trim() : "", homing: !!document.querySelector(".sheet.is-homing") };
   });
-  t.check("閉じると紙の頭が飛ぶ（＋へは帰らない）", fly.ghost && fly.text === "みりん" && !fly.homing, JSON.stringify(fly));
+  t.check("閉じると紙の頭が飛び、紙は＋へ縮んで帰る（U17）", fly.ghost && fly.text === "みりん" && fly.homing, JSON.stringify(fly));
   await page.waitForTimeout(700);
   const landed = await page.evaluate(() => {
     const S = KN.store;

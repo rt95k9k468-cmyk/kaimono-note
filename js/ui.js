@@ -649,6 +649,14 @@
       </div>
     `);
 
+    /* ＋（とその上に立つ札）から開いた紙は、下に付いた紙ではなく四隅の丸いカード
+       （U17・2026年10月7日、利用者が見比べで A「中身ぶんの高さ」を選んだ）。
+       背いっぱいのカード（.is-card・.is-note）と確かめの紙はそのまま。形は CSS の
+       .sheet.is-fab-card（電話の幅だけ）。seedFrom が開いた箱を測る前に付ける。 */
+    if (pressed && pressed.fab && Date.now() - pressed.t <= 800
+      && !(opts && opts.as === "dialog") && !el.matches(".is-card, .is-note")) {
+      el.classList.add("is-fab-card");
+    }
     if (hero) el.querySelector(".sheet-head").before(hero);
     const menuBtn = el.querySelector(".js-menu");
     if (menuBtn) {
