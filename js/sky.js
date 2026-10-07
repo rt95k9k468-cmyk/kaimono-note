@@ -22,6 +22,13 @@
    位置情報は訊きません。端末の時間帯が日本（+9時間）なら東京、それ以外は
    その時間帯の真ん中の経度で測ります（旅先で、昼に夜空が出ないように）。
    緯度は東京のまま。
+
+   ■ 写真（段2）
+
+   時間帯ごとに一枚（`img/sky/<札>.webp`。出どころは `PHOTO` と docs/sky.md の表）。
+   読めてから `data-sky-img` に同じ札を付けます。CSS は二つの札がそろったときだけ
+   写真を敷くので、読めないあいだ・オフラインで持っていないあいだは描いた空のまま。
+   次の時間帯の一枚も、手の空いたときに読んでおきます。
    ========================================================= */
 (function () {
   "use strict";
@@ -76,6 +83,28 @@
     return at(tomorrow, edgesOf(tomorrow)[0]);
   }
 
+  /* 札 → 写真（docs/sky.md の「写真の表」と同じ中身。Wikimedia Commons）。CC BY／BY-SA は
+     作者・ライセンス・URL の表示が要る（設定 → 外観 →「空の写真の出典」）。 */
+  const PHOTO = {
+    morning: { file: "img/sky/morning.webp", name: "朝", title: "Mount Fuji early morning from Lake Motosu - Nov 2, 2008", author: "[puamelia]", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg", why: "本栖湖から見た明け方の富士" },
+    day: { file: "img/sky/day.webp", name: "昼", title: "Shirane 3 mountains from Mount Shiomi", author: "Alpsdake", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shirane_3_mountains_from_Mount_Shiomi.JPG", why: "塩見岳から見た白根三山と青空" },
+    evening: { file: "img/sky/evening.webp", name: "夕方", title: "Shiroyone-Senmaida sunset", author: "MaedaAkihiko", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shiroyone-Senmaida_sunset.jpg", why: "白米千枚田と海に沈む夕日" },
+    night: { file: "img/sky/night.webp", name: "夜", title: "Niigata-Snowy mountain and spring Milky Way - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Snowy_mountain_and_spring_Milky_Way_-_Flickr_-_Japanese_beauty.jpg", why: "雪の山と春の天の川（新潟）" },
+  };
+
+  /* 読めた写真・読めなかった写真（同じものを何度も読みに行かない） */
+  const loaded = new Set();
+  const failed = new Set();
+  function preload(slot, done) {
+    const p = PHOTO[slot];
+    if (!p || failed.has(p.file)) return;
+    if (loaded.has(p.file)) { if (done) done(); return; }
+    const img = new Image();
+    img.onload = () => { loaded.add(p.file); if (done) done(); };
+    img.onerror = () => { failed.add(p.file); };
+    img.src = p.file;
+  }
+
   const on = () => KN.store.get().settings.sky !== false;
   let timer = 0;
   let wasOn = null;
@@ -86,8 +115,13 @@
     if (!head) return;
     wasOn = on();
     const want = wasOn ? slotOf(new Date()) : null;
-    if (!want) head.removeAttribute("data-sky");
+    if (!want) { head.removeAttribute("data-sky"); head.removeAttribute("data-sky-img"); }
     else if (head.getAttribute("data-sky") !== want) head.setAttribute("data-sky", want);
+    if (want && head.getAttribute("data-sky-img") !== want) {
+      preload(want, () => { if (head.getAttribute("data-sky") === want) head.setAttribute("data-sky-img", want); });
+      const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
+      idle(() => preload(SLOTS[(SLOTS.indexOf(want) + 1) % 4]));
+    }
     clearTimeout(timer);
     /* 隠れているあいだの時計は止まることがある（iPhone）。戻ってきたときにも測り直す（下）。 */
     if (want) timer = setTimeout(apply, Math.max(1000, nextChange(new Date()) - Date.now() + 1000));
@@ -100,5 +134,8 @@
   });
   window.addEventListener("pageshow", (e) => { if (e.persisted) apply(); });
 
-  KN.sky = { apply, slotOf, sunOf, nextChange, SLOTS };
+  /** 出典の一覧（設定の奥）。朝・昼・夕方・夜の順。 */
+  const credits = () => SLOTS.map((slot) => ({ slot, ...PHOTO[slot] }));
+
+  KN.sky = { apply, slotOf, sunOf, nextChange, credits, SLOTS, PHOTO };
 })();
