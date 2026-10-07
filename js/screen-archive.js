@@ -1566,7 +1566,6 @@
     const roadLabel = e ? "道に記録する" : "道に置く";
     const footer = node(html`
       <div style="display:flex;gap:8px">
-        ${e ? html`<button class="btn btn-soft js-del">${icon("trash", "is-sub")}</button>` : ""}
         ${KN.activity ? html`<button type="button" class="btn btn-soft js-road">${icon("clock", "is-sub")}<span>${roadLabel}</span></button>` : ""}
         <button class="btn btn-primary js-ok" style="flex:1">${e ? "保存" : "書く"}</button>
       </div>
@@ -1583,6 +1582,7 @@
 
     KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
+      menu: e ? KN.ui.delMenu(() => store.removeEntry(e.id), { sheet: () => h, after: render }) : null,
       cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
       onClose: () => {
         if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); }
@@ -1659,18 +1659,6 @@
       const memo = body.querySelector(".js-memo").value;
       h.close();
       setTimeout(() => KN.activity.placeOnRoad({ type, title, day, memo }), 40);
-    });
-
-    const del = footer.querySelector(".js-del");
-    if (del) del.addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({
-        title: "この記録を消しますか？", message: e.title, okLabel: "消す", danger: true,
-      });
-      if (!ok) return;
-      const undo = store.removeEntry(e.id);
-      h.close();
-      render();
-      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); render(); } } });
     });
   }
 
