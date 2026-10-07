@@ -345,7 +345,8 @@
       const from = f.hero.getBoundingClientRect();
       const ghost = { mark: store.productMark(product), name: product.name,
         cat: store.productColor(product), z: Number(handle.el.style.zIndex) + 1 };
-      handle.el.classList.remove("is-from-origin");   // ＋へは帰らない（行へ行く）
+      /* 紙そのものは、やめたときと同じく＋へ縮んで帰る（U17・利用者「保存したら下に閉じてしまう」）。
+         行へ入るのは頭の絵と名前（landOnRow）。 */
       f.hero.style.visibility = "hidden";
       handle.close();
       landOnRow(itemId, from, ghost, said);

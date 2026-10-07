@@ -186,7 +186,8 @@ const { open, checker } = require("./lib");
       glass: getComputedStyle(s.querySelector(".note-tools")).backdropFilter.includes("blur"),
       over: getComputedStyle(s.querySelector(".note-tools")).position === "absolute" };
   });
-  t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 10 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
+  /* 11 個：取り消す・やり直す・太字（10月7日）・見出し・点・番号・チェック・引用・区切り・上げる・下げる。 */
+  t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 11 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
   t.check("道具の帯は底から少し浮く、丸いガラスの一本", bar.gap === 8 && bar.side === 8 && bar.round && bar.glass && bar.over, JSON.stringify(bar));
   t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
     !document.documentElement.classList.contains("is-note-full")
