@@ -610,6 +610,7 @@ theme-color とページの地は変えない・押したカードの箱から�
   層で、紙の色ではなく地の色（`--c-bg`）の上に。画面そのものが送る器なので、送っても上に留まる。
 - `render()` のたびに `KN.seasonArt.apply(root, todayKey(), "notes")`。設定：ノート →「季節の絵」（`notesSeasonArt`、既定は入）と
   「絵の出典」（頭に NDL の一行）。詳しくは `docs/season-art.md`。試験は `tests/season-art.js`。
+- 絵が敷かれているあいだ、一覧のカードは白 80% で少し透かす（2026年10月7日、利用者の頼み）。開いた紙（`.sheet.is-note`）は透かさない。
 
 ## 打つあいだの送り・太字（2026年10月7日、iPhone）
 
