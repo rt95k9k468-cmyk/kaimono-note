@@ -7,6 +7,7 @@
    - #head に札（data-sky）だけ。:root にも #head にもカスタムプロパティを書かない
    - 帯と暦は地を透かす。札の無いとき（設定で外した）は塗る（いままでどおり）
    - 戻ってきたとき（visibilitychange）に測り直す
+   - 時計の帯（theme-color）は空のいちばん上の色。暗い面を選べば両方暗い面の色、空を切ればもとの色
    - 設定で外せる（既定は入）
    - 字の濃さの比（画面の画素で）：題の段の字と絵は 3:1 以上。暦の字は 4.5:1 以上（もともとそれ未満の
      字は、空の無いときの比より下げない）。四つの時間帯 × 明るい面・暗い面 × 週・月
@@ -110,12 +111,18 @@ function rgbOf(s) {
   await page.clock.setFixedTime(JST("2026-10-07T17:00:00"));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   c.check("戻ってきたら測り直す（17時は夕方）", await attr() === "evening", String(await attr()));
+  const bar = () => page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content).join());
+  c.check("時計の帯（theme-color）は空のいちばん上の色（明るい面・暗い面）", await bar() === "#fef2db,#5d503c", await bar());
+  await page.evaluate(() => KN.store.update((s) => { s.settings.theme = "dark"; }));
+  c.check("暗い面を選んでいれば、どちらの帯も暗い面の色", await bar() === "#5d503c,#5d503c", await bar());
+  await page.evaluate(() => KN.store.update((s) => { delete s.settings.theme; }));
 
   await page.evaluate(() => KN.store.update((s) => { s.settings.sky = false; }));
   await wait(150);
   b = await bgs();
   c.check("設定で外せば札が無く、帯と暦は地を塗る（いままでどおり）", await attr() === null && await imgAttr() === null && b.top !== "rgba(0, 0, 0, 0)"
     && b.cal !== "rgba(0, 0, 0, 0)" && !/gradient/.test(b.head), JSON.stringify(b));
+  c.check("設定で外せば時計の帯ももとの色", await bar() === "#f0eff3,#121216", await bar());
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.sky; }));
   await wait(150);
   c.check("既定は入", await attr() === "evening", String(await attr()));

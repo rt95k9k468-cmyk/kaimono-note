@@ -105,6 +105,24 @@
     img.src = p.file;
   }
 
+  /* 時計の帯（docs/sky.md「時計の帯」）。帯は default なので、iOS が theme-color で塗る。開いたあとの
+     差し替えは iPhone に映らなかった（docs/notes.md）ので、読み込みの時点で空のいちばん上の色にしておく。
+     色は、写真を敷いた帯のいちばん上（字の無い3行）の平均。空を切ればもとの色へ。 */
+  const BAR = {
+    light: { morning: "#e4ced3", day: "#aac4e0", evening: "#fef2db", night: "#c9cbd9" },
+    dark: { morning: "#3b292d", day: "#0c1b32", evening: "#5d503c", night: "#232429" },
+  };
+  const metas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
+  const plain = metas.map((m) => m.content);
+  function tintBar(slot) {
+    const theme = KN.store.get().settings.theme;
+    metas.forEach((m, i) => {
+      const face = theme === "light" || theme === "dark" ? theme : /dark/.test(m.media) ? "dark" : "light";
+      const want = slot ? BAR[face][slot] : plain[i];
+      if (m.content !== want) m.content = want;
+    });
+  }
+
   const on = () => KN.store.get().settings.sky !== false;
   let timer = 0;
   let wasOn = null;
@@ -117,6 +135,7 @@
     const want = wasOn ? slotOf(new Date()) : null;
     if (!want) { head.removeAttribute("data-sky"); head.removeAttribute("data-sky-img"); }
     else if (head.getAttribute("data-sky") !== want) head.setAttribute("data-sky", want);
+    tintBar(want);
     if (want && head.getAttribute("data-sky-img") !== want) {
       preload(want, () => { if (head.getAttribute("data-sky") === want) head.setAttribute("data-sky-img", want); });
       const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
@@ -128,7 +147,10 @@
   }
 
   apply();
-  KN.store.subscribe(() => { if (on() !== wasOn) apply(); });
+  KN.store.subscribe(() => {
+    if (on() !== wasOn) apply();
+    else { const head = document.getElementById("head"); tintBar(head && head.getAttribute("data-sky")); }
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") apply();
   });
@@ -137,5 +159,5 @@
   /** 出典の一覧（設定の奥）。朝・昼・夕方・夜の順。 */
   const credits = () => SLOTS.map((slot) => ({ slot, ...PHOTO[slot] }));
 
-  KN.sky = { apply, slotOf, sunOf, nextChange, credits, SLOTS, PHOTO };
+  KN.sky = { apply, slotOf, sunOf, nextChange, credits, SLOTS, PHOTO, BAR };
 })();
