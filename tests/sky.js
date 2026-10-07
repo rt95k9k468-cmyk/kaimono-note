@@ -12,6 +12,7 @@
      字は、空の無いときの比より下げない）。四つの時間帯 × 明るい面・暗い面 × 週・月
    - ノートへ移るとき、帯の裏へ上がった暦は帯の中に見えない（帯が透けても）
    - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
+   - いちばん上で引いて紙が下がっても、すき間は空（週・月）。空を下へ伸ばしても帯の中の写真は動かない
    - 写真（段2）：4枚が img/sky/ にあり1枚25KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は別の名前の
      キャッシュへ（ASSETS に入れない）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、
      描いた空のまま。設定で外せば両方の札が外れる。字の濃さの比は、写真を敷いた状態でも同じ決まり
@@ -319,6 +320,48 @@ function rgbOf(s) {
   c.check("タブを流す途中、あいだの角は空（紙の色でない・すぐ上の空に近い）",
     sfar(spx[0], rgbOf(sl.sheet)) > 6 && sfar(spx[2], rgbOf(sl.sheet)) > 6 && sfar(spx[0], spx[1]) < 40 && sfar(spx[2], spx[1]) < 40, JSON.stringify(spx));
   await page.emulateMedia({ reducedMotion: "reduce" });
+
+  /* ---- いちばん上でさらに引いて紙が下がっても（pull-refresh の give、最大 76px）、すき間は空（地の白を出さない）。
+     月に開いていても（写真の下端より下は写真の地面の色 --sky-g で続く）。空を下へ伸ばしても写真の位置は据え置き ---- */
+  const bgc = await page.evaluate(() => {
+    const probe = document.createElement("i");
+    document.body.append(probe);
+    probe.style.color = getComputedStyle(document.documentElement).getPropertyValue("--c-bg").trim();
+    const v = getComputedStyle(probe).color;
+    probe.remove();
+    return v;
+  });
+  for (const month of [false, true]) {
+    await page.evaluate((o) => KN.store.setCalPref(null, { open: o }), month);
+    for (const id of month ? ["todo"] : ["archive", "todo", "list"]) {
+      await page.evaluate((i) => KN.app.showScreen(i), id);
+      await wait(300);
+      const hb = await page.evaluate((i) => {
+        KN.app.scrollerOf(document.getElementById("screen-" + i)).style.transform = "translate3d(0, 76px, 0)";
+        return document.getElementById("head").getBoundingClientRect().bottom;
+      }, id);
+      await wait(80);
+      const gp = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: Math.ceil(hb) + 90 } }),
+        [[195, hb + 40], [20, hb + 72], [370, hb + 72]]);
+      await page.evaluate((i) => { KN.app.scrollerOf(document.getElementById("screen-" + i)).style.transform = ""; }, id);
+      const far = (a, b) => Math.max(...a.map((v, k) => Math.abs(v - b[k])));
+      c.check(`${month ? "月" : "週"}・${id}：上で引いて紙が下がっても、すき間は空（地の色でない）`,
+        gp.every((p) => far(p, rgbOf(bgc)) > 12 && far(p, rgbOf(sl.sheet)) > 12), JSON.stringify(gp));
+    }
+  }
+  await page.evaluate(() => KN.store.setCalPref(null, { open: false }));
+  await wait(300);
+  const hbs = await page.evaluate(() => Math.floor(document.getElementById("head").getBoundingClientRect().bottom) - 2);
+  const shot1 = await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: hbs } });
+  await page.evaluate(() => document.getElementById("deck").style.setProperty("--sky-more", "0px"));
+  await wait(80);
+  const shot0 = await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: hbs } });
+  await page.evaluate(() => document.getElementById("deck").style.removeProperty("--sky-more"));
+  const pgrid = [];
+  for (let y = 1; y < hbs; y += 4) for (let x = 2; x < 390; x += 8) pgrid.push([x, y]);
+  const q1 = await pixels(shot1, pgrid), q0 = await pixels(shot0, pgrid);
+  const pdiff = Math.max(...q1.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - q0[i][k])))));
+  c.check("空を下へ伸ばしても、帯の中の写真は動かない", pdiff <= 4, `最大の差 ${pdiff}`);
 
   /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
