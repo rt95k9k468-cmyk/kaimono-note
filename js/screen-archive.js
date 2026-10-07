@@ -1331,12 +1331,12 @@
             <div class="arc-pages js-pages-row">
               <label class="field">
                 <span class="field-label">開始ページ</span>
-                <input type="number" inputmode="numeric" class="input js-pagefrom"
+                <input type="text" inputmode="numeric" class="input js-pagefrom"
                        value="${e && e.pageFrom != null ? e.pageFrom : ""}">
               </label>
               <label class="field">
                 <span class="field-label">終了ページ</span>
-                <input type="number" inputmode="numeric" class="input js-pageto"
+                <input type="text" inputmode="numeric" class="input js-pageto"
                        value="${e && e.pageTo != null ? e.pageTo : ""}">
               </label>
               <p class="arc-pages-hint js-pages-calc">-</p>
@@ -1357,7 +1357,7 @@
             <div class="arc-times js-amount-fields">
               <label class="field">
                 <span class="field-label">数</span>
-                <input type="number" inputmode="numeric" class="input js-amount"
+                <input type="text" inputmode="numeric" class="input js-amount"
                        value="${e && e.type !== "reading" && e.amount != null ? e.amount : ""}">
               </label>
               <label class="field">
@@ -1392,9 +1392,11 @@
     const titleClear = body.querySelector(".js-title-clear");
     const authorClear = body.querySelector(".js-author-clear");
 
+    /* 数の欄は type="text"（roadmap-unify の U9）。全角も読み、読めなければ空と同じ。 */
+    const numOf = (el) => { const n = U.parseNum(el.value.normalize("NFKC")); return isFinite(n) ? n : null; };
     const paintPages = () => {
-      const a = pageFrom.value === "" ? null : Number(pageFrom.value);
-      const b = pageTo.value === "" ? null : Number(pageTo.value);
+      const a = numOf(pageFrom);
+      const b = numOf(pageTo);
       pagesCalc.textContent = (a != null && b != null && b >= a) ? `${b - a + 1}ページ` : "-";
     };
     pageFrom.addEventListener("input", paintPages);
@@ -1614,8 +1616,8 @@
         patch.author = authorInput.value.trim() || null;
         /* 論文はページを持たない。前から持っている論文のページは消さずに残す。 */
         const paper = kind === "paper";
-        patch.pageFrom = paper ? (e && e.kind === "paper" ? e.pageFrom : null) : pageFrom.value;
-        patch.pageTo = paper ? (e && e.kind === "paper" ? e.pageTo : null) : pageTo.value;
+        patch.pageFrom = paper ? (e && e.kind === "paper" ? e.pageFrom : null) : numOf(pageFrom);
+        patch.pageTo = paper ? (e && e.kind === "paper" ? e.pageTo : null) : numOf(pageTo);
         patch.amount = null;   // applyReadingPages が計算し直します
         patch.unit = null;
       } else if (isSeed) {
@@ -1630,7 +1632,7 @@
         patch.author = null;
         patch.pageFrom = null;
         patch.pageTo = null;
-        patch.amount = body.querySelector(".js-amount").value;
+        patch.amount = numOf(body.querySelector(".js-amount"));
         patch.unit = body.querySelector(".js-unit").value.trim() || null;
       }
       if (e) store.updateEntry(e.id, patch);
