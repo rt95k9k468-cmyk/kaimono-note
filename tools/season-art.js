@@ -23,6 +23,8 @@ const OUT = path.join(ROOT, "img", PHOTO ? "season-photo" : "season");
 const MAX_ONE = 25 * 1024;
 const MAX_ALL = 2 * 1024 * 1024;
 const SHORT = 720;
+/* 写真は細かいので少し強くぼかす（25KB に収めるため。背景に薄く敷くので形が分かれば足りる） */
+const BLUR = PHOTO ? 2 : 1.2;
 
 (async () => {
   if (!fs.existsSync(SRC)) { console.log(`絵がありません：${path.relative(ROOT, SRC)}/kNN.jpg を置いてください`); return; }
@@ -38,7 +40,7 @@ const SHORT = 720;
     if (k > 71) continue;
     const mime = /png$/i.test(f) ? "image/png" : /webp$/i.test(f) ? "image/webp" : /tiff?$/i.test(f) ? "image/tiff" : "image/jpeg";
     const data = `data:${mime};base64,${fs.readFileSync(path.join(SRC, f)).toString("base64")}`;
-    const r = await page.evaluate(async ([src, SHORT, MAX_ONE]) => {
+    const r = await page.evaluate(async ([src, SHORT, MAX_ONE, BLUR]) => {
       const img = new Image();
       img.src = src;
       await img.decode();
@@ -47,7 +49,7 @@ const SHORT = 720;
       const cv = document.createElement("canvas");
       cv.width = w; cv.height = h;
       const ctx = cv.getContext("2d");
-      ctx.filter = "saturate(55%) blur(1.2px)";
+      ctx.filter = `saturate(55%) blur(${BLUR}px)`;
       ctx.drawImage(img, 0, 0, w, h);
       /* 平均の色（縮めた写しで） */
       const sm = document.createElement("canvas");
@@ -66,7 +68,7 @@ const SHORT = 720;
       let bin = "";
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
       return { w, h, q: Math.round(q * 100) / 100, size: blob.size, color, b64: btoa(bin) };
-    }, [data, SHORT, MAX_ONE]);
+    }, [data, SHORT, MAX_ONE, BLUR]);
     if (r.size > MAX_ONE) { console.log(`k${String(k).padStart(2, "0")}：25KB に収まりません（${r.size}B）。切り抜いてから置いてください`); continue; }
     const out = path.join(OUT, `k${String(k).padStart(2, "0")}.webp`);
     fs.writeFileSync(out, Buffer.from(r.b64, "base64"));
