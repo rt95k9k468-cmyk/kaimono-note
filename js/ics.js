@@ -267,7 +267,7 @@
    */
   function cameBack() {
     if (standalone() || !appleTouch()) return;
-    KN.ui.toast("ここは Safari です。ホーム画面のくらしノートを開いてください", { duration: 8000 });
+    KN.ui.toast("ここは Safari です。ホーム画面のくらしノートを開いてください", { long: true });
   }
 
   function shortcutURL(ev) {

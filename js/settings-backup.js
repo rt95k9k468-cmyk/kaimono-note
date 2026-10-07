@@ -315,7 +315,7 @@
   async function restoreText(text) {
     const r = store.inspectBackup(text);
     if (!r.ok) {
-      KN.ui.toast(`復元できません：${r.reason}（何も変えていません）`, { duration: 6000 });
+      KN.ui.toast(`復元できません：${r.reason}（何も変えていません）`, { long: true });
       return false;
     }
     /* 記録の置き場（localStorage）に入りきらない大きさなら、戻す前に断ります。
@@ -359,7 +359,7 @@
     } catch (err) {
       console.error(err);
     }
-    KN.ui.toast("復元しました（ノートは合わせられませんでした）", { duration: 6000 });
+    KN.ui.toast("復元しました（ノートは合わせられませんでした）", { long: true });
     return true;
   }
 
@@ -460,7 +460,7 @@
     const ok = sealed && sealed.app === "kaimono-note" && sealed.kind === "diary-sealed"
       && sealed.lock && Array.isArray(sealed.days);
     if (!ok) {
-      KN.ui.toast("日記の取り込み道具で作ったファイルではありません（何も変えていません）", { duration: 6000 });
+      KN.ui.toast("日記の取り込み道具で作ったファイルではありません（何も変えていません）", { long: true });
       return;
     }
     const X = KN.diaryCrypto;
@@ -478,7 +478,7 @@
     }
     if (diaryNow === "off") {
       KN.diaryIdb.retry();
-      KN.ui.toast("日記の保存場所を読めない日なので、取り込めません（何も変えていません）", { duration: 6000 });
+      KN.ui.toast("日記の保存場所を読めない日なので、取り込めません（何も変えていません）", { long: true });
       return;
     }
 
@@ -570,7 +570,7 @@
       if (out) await KN.diaryIdb.deliver(plan.bodies);
       store.importDiary(list, { replace });
       KN.motion.fire("success");
-      KN.ui.toast(plan.kept ? "取り込みました（そのままにした日もあります）" : "取り込みました", { duration: 5000 });
+      KN.ui.toast(plan.kept ? "取り込みました（そのままにした日もあります）" : "取り込みました");
     } catch (err) {
       console.error(err);
       KN.ui.toast(`取り込めませんでした：${String((err && err.message) || err)}`);
@@ -729,15 +729,15 @@
     try {
       same = await D.prepare();
     } catch (err) {
-      KN.ui.toast(`準備できませんでした（${String((err && err.message) || err)}）`, { duration: 6000 });
+      KN.ui.toast(`準備できませんでした（${String((err && err.message) || err)}）`, { long: true });
       return;
     }
     if (!same) {
-      KN.ui.toast("写しと食い違う日があったので、外しません（何も変えていません）", { duration: 6000 });
+      KN.ui.toast("写しと食い違う日があったので、外しません（何も変えていません）", { long: true });
       return;
     }
     if ((await KN.backup.take("日記を外す前", { force: true })) === "failed") {
-      KN.ui.toast("控えを取れなかったので、外しません（何も変えていません）", { duration: 6000 });
+      KN.ui.toast("控えを取れなかったので、外しません（何も変えていません）", { long: true });
       return;
     }
     outReady = Date.now();
@@ -762,7 +762,7 @@
           KN.ui.toast("日記を記録から外しました");
         } catch (err) {
           console.error(err);
-          KN.ui.toast("書き出しましたが、外せませんでした（何も変えていません）", { duration: 6000 });
+          KN.ui.toast("書き出しましたが、外せませんでした（何も変えていません）", { long: true });
         }
       },
     });
@@ -776,16 +776,16 @@
     });
     if (!ok) return;
     if (JSON.stringify(store.get()).length > DIARY_LIVE_LIMIT) {
-      KN.ui.toast("記録の置き場に入りきらないので、戻せません（何も変えていません）", { duration: 6000 });
+      KN.ui.toast("記録の置き場に入りきらないので、戻せません（何も変えていません）", { long: true });
       return;
     }
     try {
       KN.ui.toast(await KN.diaryIdb.putBack()
         ? "日記を記録に戻しました"
-        : "記録の置き場に入りきらないので、戻せませんでした（外したままです）", { duration: 6000 });
+        : "記録の置き場に入りきらないので、戻せませんでした（外したままです）", { long: true });
     } catch (err) {
       console.error(err);
-      KN.ui.toast("戻しきれませんでした（外したままです）", { duration: 6000 });
+      KN.ui.toast("戻しきれませんでした（外したままです）", { long: true });
     }
     render();
   }
@@ -933,7 +933,7 @@
     try {
       list = await KN.dropbox.backups();
     } catch (err) {
-      KN.ui.toast(`Dropbox を読めませんでした（${String((err && err.message) || err)}）`, { duration: 6000 });
+      KN.ui.toast(`Dropbox を読めませんでした（${String((err && err.message) || err)}）`, { long: true });
       return;
     }
     if (!list.length) { KN.ui.toast("Dropbox に控えがありません"); return; }
@@ -955,7 +955,7 @@
         try {
           text = await KN.dropbox.download(f.path);
         } catch (err) {
-          KN.ui.toast(`読み込めませんでした（${String((err && err.message) || err)}）`, { duration: 6000 });
+          KN.ui.toast(`読み込めませんでした（${String((err && err.message) || err)}）`, { long: true });
           return;
         }
         if ((await restoreText(text)) && h) h.close();
