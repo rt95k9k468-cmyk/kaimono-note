@@ -11,6 +11,7 @@
    - 字の濃さの比（画面の画素で）：題の段の字と絵は 3:1 以上。暦の字は 4.5:1 以上（もともとそれ未満の
      字は、空の無いときの比より下げない）。四つの時間帯 × 明るい面・暗い面 × 週・月
    - ノートへ移るとき、帯の裏へ上がった暦は帯の中に見えない（帯が透けても）
+   - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
    - 写真（段2）：4枚が img/sky/ にあり1枚25KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は別の名前の
      キャッシュへ（ASSETS に入れない）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、
      描いた空のまま。設定で外せば両方の札が外れる。字の濃さの比は、写真を敷いた状態でも同じ決まり
@@ -280,6 +281,44 @@ function rgbOf(s) {
       far(px[0], bgc) > 6 && far(px[1], bgc) > 6 && far(px[0], px[2]) < 40 && far(px[1], px[3]) < 40, JSON.stringify({ px, bg: bgc }));
   }
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+
+  /* ---- タブを流す途中も丸角（角は画面が持ち、空は画面の後ろ。二枚は同じ曲線で並んで流れる） ---- */
+  await page.emulateMedia({ reducedMotion: "no-preference" });   // ここだけは流す
+  await page.evaluate(() => { KN.app.showScreen("todo"); document.getAnimations().forEach((a) => a.finish()); });
+  await wait(400);
+  const sl = await page.evaluate(() => {
+    KN.app.showScreen("list");
+    document.getAnimations().forEach((a) => { a.pause(); a.currentTime = 70; });
+    const r = (id) => document.getElementById(id).getBoundingClientRect();
+    const probe = document.createElement("i");
+    document.body.append(probe);
+    probe.style.color = getComputedStyle(document.documentElement).getPropertyValue("--c-sheet").trim();
+    const sheet = getComputedStyle(probe).color;
+    probe.remove();
+    return { out: r("screen-todo").right, in: r("screen-list").left, sheet };
+  });
+  c.check("タブを流す途中、二枚は並んで流れる（重ならない）", sl.in > 20 && sl.in < 370 && Math.abs(sl.out - sl.in) < 1, JSON.stringify(sl));
+  await page.evaluate(() => document.getAnimations().forEach((a) => a.finish()));
+  await wait(400);
+  /* 角の画素は、二枚を手で並べて止めて測る（合成側で走る動きは、止めた時刻と撮った画がずれることがある）。
+     二つの角（左の紙の右上・右の紙の左上）の外、紙の上端から 3px。 */
+  const sj = await page.evaluate(() => {
+    const [a, b] = ["screen-todo", "screen-list"].map((id) => document.getElementById(id));
+    a.hidden = false; a.style.display = "flex"; a.style.transform = "translateX(-200px)"; b.style.transform = "translateX(190px)";
+    const top = (el) => el.querySelector(".tl-sheet").getBoundingClientRect().top;
+    return { hb: document.getElementById("head").getBoundingClientRect().bottom, ta: top(a), tb: top(b) };
+  });
+  await wait(80);
+  const spx = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: Math.ceil(sj.hb) + 30 } }),
+    [[192, sj.tb + 3], [190, sj.hb - 3], [188, sj.ta + 3]]);
+  await page.evaluate(() => {
+    const [a, b] = ["screen-todo", "screen-list"].map((id) => document.getElementById(id));
+    a.style.display = ""; a.style.transform = ""; a.hidden = true; b.style.transform = "";
+  });
+  const sfar = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+  c.check("タブを流す途中、あいだの角は空（紙の色でない・すぐ上の空に近い）",
+    sfar(spx[0], rgbOf(sl.sheet)) > 6 && sfar(spx[2], rgbOf(sl.sheet)) > 6 && sfar(spx[0], spx[1]) < 40 && sfar(spx[2], spx[1]) < 40, JSON.stringify(spx));
+  await page.emulateMedia({ reducedMotion: "reduce" });
 
   /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
