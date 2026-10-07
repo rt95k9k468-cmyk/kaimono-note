@@ -88,7 +88,7 @@ function rgbOf(s) {
     const cal = document.querySelector("#head .cal");
     return { top: getComputedStyle(document.querySelector("#head > .topbar")).backgroundColor,
              cal: cal ? getComputedStyle(cal).backgroundColor : "",
-             head: getComputedStyle(document.getElementById("head")).backgroundImage };
+             head: getComputedStyle(document.getElementById("head"), "::before").backgroundImage };
   });
   c.check("#head に札（12時は昼）", await attr() === "day", String(await attr()));
   const cr = await page.evaluate(() => KN.sky.credits());
@@ -211,7 +211,7 @@ function rgbOf(s) {
         }, [slot, photo]);
         await wait(photo ? 150 : 80);
         if (photo) {
-          const bg = await page.evaluate(() => getComputedStyle(document.getElementById("head")).backgroundImage);
+          const bg = await page.evaluate(() => getComputedStyle(document.getElementById("head"), "::before").backgroundImage);
           c.check(`${theme}・${month ? "月" : "週"}・${slot}：写真が敷かれている`, bg.includes(`img/sky/${slot}.webp`), bg.slice(0, 120));
         }
         const r = await measure();
@@ -254,34 +254,36 @@ function rgbOf(s) {
     ["--face-lift", "--face-p"].forEach((k) => s.style.removeProperty(k));
   });
 
-  /* ---- 時計の帯（black-translucent）：帯の高さを 59px と見なし、字の高さ（上から 14〜40px）で
-     時計の字に 3:1 以上。iOS 26 は明るい面で黒、暗い面で白に描く（iPhone で見た。docs/sky.md）。
-     空（写真）の上と、設定（地）の上。時計の下だけ暗くする影（黒い帯になった）を戻さない ---- */
-  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-  c.check("時計の帯は black-translucent", /apple-mobile-web-app-status-bar-style" content="black-translucent"/.test(html));
-  await hide(":root { --safe-t: 59px !important; }");
-  const sbPts = [];
-  for (let y = 14; y <= 40; y += 6) for (let x = 10; x < 390; x += 40) sbPts.push([x, y]);
+  /* ---- 紙の丸角の外にも空（帯の後ろの一枚が紙の角の半径だけ下へはみ出す。地の色の白い角を作らない） ---- */
   for (const theme of ["light", "dark"]) {
     await page.evaluate((t) => { if (t === "dark") document.documentElement.setAttribute("data-theme", "dark"); else document.documentElement.removeAttribute("data-theme"); }, theme);
-    for (const where of ["evening", "settings"]) {
-      await page.evaluate(async (w) => {
-        if (w === "settings") { KN.app.showScreen("settings"); return; }
-        const h = document.getElementById("head");
-        h.setAttribute("data-sky", w);
-        const img = new Image(); img.src = `img/sky/${w}.webp`; await img.decode();
-        h.setAttribute("data-sky-img", w);
-      }, where);
-      await wait(where === "settings" ? 700 : 150);
-      const px = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: 60 } }), sbPts);
-      const ink = theme === "dark" ? [255, 255, 255] : [0, 0, 0];
-      const worst = Math.min(...px.map((p) => ratio(ink, p)));
-      c.check(`${theme === "dark" ? "暗い面" : "明るい面"}・${where === "settings" ? "設定" : "空"}：時計の字（${theme === "dark" ? "白" : "黒"}）が 3:1 以上`, worst >= 3, worst.toFixed(2));
-      if (where === "settings") { await page.evaluate(() => KN.app.showScreen("todo")); await wait(700); }
-    }
+    await page.evaluate(async () => {
+      const h = document.getElementById("head");
+      h.setAttribute("data-sky", "evening");
+      const img = new Image(); img.src = "img/sky/evening.webp"; await img.decode();
+      h.setAttribute("data-sky-img", "evening");
+    });
+    await wait(150);
+    const k = await page.evaluate(() => {
+      const probe = document.createElement("i");
+      document.body.append(probe);
+      probe.style.color = getComputedStyle(document.documentElement).getPropertyValue("--c-bg").trim();
+      const bg = getComputedStyle(probe).color;
+      probe.remove();
+      return { hb: document.getElementById("head").getBoundingClientRect().bottom, bg };
+    });
+    const px = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: Math.ceil(k.hb) + 30 } }),
+      [[1, k.hb + 1.5], [388, k.hb + 1.5], [1, k.hb - 3], [388, k.hb - 3]]);
+    const bgc = rgbOf(k.bg);
+    const far = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+    c.check(`${theme === "dark" ? "暗い面" : "明るい面"}：紙の丸角の外は空（地の色でない・すぐ上の空に近い）`,
+      far(px[0], bgc) > 6 && far(px[1], bgc) > 6 && far(px[0], px[2]) < 40 && far(px[1], px[3]) < 40, JSON.stringify({ px, bg: bgc }));
   }
-  await hide("");
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+
+  /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  c.check("時計の帯は default（black-translucent に戻さない）", /apple-mobile-web-app-status-bar-style" content="default"/.test(html));
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();

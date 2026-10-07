@@ -926,10 +926,6 @@ a { color: var(--c-primary); }
   background: var(--c-bg);
   position: relative;
 }
-/* ホーム画面のアプリで、iOS が画面の高さを時計の帯ぶん短く返すとき（app.js の trackKeyboard が
-   付ける）。シェルを画面に貼りつけ、測った本当の高さで描きます。文書の流れのまま伸ばすと、
-   body（高さ 100%＝短いほう）がはみ出しを切るか、文書がそのぶん動いてしまう。 */
-html.is-pinned .app { position: fixed; top: 0; left: 0; right: 0; }
 
 @media (min-width: 640px) {
   body { background: var(--c-surface-2); }
@@ -1042,14 +1038,34 @@ html.is-pinned .app { position: fixed; top: 0; left: 0; right: 0; }
    止まる場所は px で書きます（% だと、暦を月に開いたとき空ごと伸びる）。下の端は溶かしません
    （紙の角の後ろにも空が続くので継ぎ目は出ない。白いぼかしは要らないと言われた）。札が替わると色は --m-season で
    ゆっくり移ります（@property で色として登録）。 */
-@property --sky-a { syntax: "<color>"; inherits: false; initial-value: transparent; }
-@property --sky-c { syntax: "<color>"; inherits: false; initial-value: transparent; }
-@property --sky-d { syntax: "<color>"; inherits: false; initial-value: transparent; }
+@property --sky-a { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --sky-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --sky-d { syntax: "<color>"; inherits: true; initial-value: transparent; }
+/* 空は帯の後ろの一枚（::before）が描きます。帯の下の端から紙の角の半径（--r-xl）だけ下へはみ出し、
+   はみ出したぶんは**紙の丸角の外側**だけ見せる（地の色の白い角を作らない。2026年10月7日）。だから帯は
+   下の画面より前に重ねる（--z-stick）。色は継ぐ（@property の inherits: true）。 */
 .head[data-sky] {
+  z-index: var(--z-stick);
   transition: --sky-a var(--m-season) var(--ease), --sky-c var(--m-season) var(--ease), --sky-d var(--m-season) var(--ease);
+}
+.head[data-sky]::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  bottom: calc(-1 * var(--r-xl));
+  z-index: -1;
+  pointer-events: none;
   background:
     linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-d) calc(var(--safe-t) + 300px)),
     var(--c-bg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--r-xl)) no-repeat,
+    radial-gradient(circle at 100% 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) left bottom / var(--r-xl) var(--r-xl) no-repeat,
+    radial-gradient(circle at 0 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) right bottom / var(--r-xl) var(--r-xl) no-repeat;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--r-xl)) no-repeat,
+    radial-gradient(circle at 100% 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) left bottom / var(--r-xl) var(--r-xl) no-repeat,
+    radial-gradient(circle at 0 100%, transparent var(--r-xl), #000 calc(var(--r-xl) + .5px)) right bottom / var(--r-xl) var(--r-xl) no-repeat;
 }
 .head[data-sky] > .topbar,
 .head[data-sky] .cal { background: transparent; }
@@ -1081,8 +1097,6 @@ html.is-pinned .app { position: fixed; top: 0; left: 0; right: 0; }
    - 暗い面は multiply。どの画素も幕より明るくならない。題の段の #505050 はどの基調色の主色・ボタンの絵に
      3:1、暦の段の #444446 は下の明るくした字に 4.5:1
    色が替わるのは題の字（上から 34px まで）と曜日（56px から）のあいだ。
-   時計の帯（black-translucent。--safe-t から上）の下も題の段と同じ幕——iOS 26 は時計の字を明るい面で黒、
-   暗い面で白に描くので、明るい面は淡く・暗い面は暗いままにしておく（docs/sky.md）。
    暦の字は、写真のあいだだけ 35% 濃く（暗い面は明るく）します——幕を薄くして写真を見せるぶんを、字が持つ。
    もとの色を .head で控えて .cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。 */
 .head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp"); --sky-v1: #e2cfd2; --sky-v2: #d9c5c9; }
@@ -1116,10 +1130,10 @@ html.is-pinned .app { position: fixed; top: 0; left: 0; right: 0; }
 }
 /* 今日の丸の塗りは字ではないので、もとの基調色のまま。 */
 .head[data-sky-img] .cal-day.is-here.is-today .cal-n { background: var(--sky-was-p); }
-.head[data-sky="morning"][data-sky-img="morning"],
-.head[data-sky="day"][data-sky-img="day"],
-.head[data-sky="evening"][data-sky-img="evening"],
-.head[data-sky="night"][data-sky-img="night"] {
+.head[data-sky="morning"][data-sky-img="morning"]::before,
+.head[data-sky="day"][data-sky-img="day"]::before,
+.head[data-sky="evening"][data-sky-img="evening"]::before,
+.head[data-sky="night"][data-sky-img="night"]::before {
   background:
     var(--sky-veil),
     var(--sky-photo) 50% 55% / 100% auto no-repeat,
