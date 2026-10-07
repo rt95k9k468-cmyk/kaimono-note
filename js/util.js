@@ -792,6 +792,52 @@
     if (navigator.vibrate) { try { navigator.vibrate(ms || 8); } catch (_) {} }
   }
 
+  /* ---------- 写す ---------- */
+
+  /**
+   * 字をクリップボードへ写す、ただ一つの口（roadmap-unify の U2）。iOS でも書き込みは
+   * 権限を通らずに通りますが、断られたら見えない欄で `execCommand("copy")` をもう一度。
+   * それも駄目なら受け皿を出します——`field` を渡せばその欄を選び、`show` なら字を
+   * 入れた欄を画面に出して選んでおく（長押しから「コピー」を拾えるように）。
+   * 言葉（トースト）は呼ぶ側が出します。
+   * @param {string} text
+   * @param {{field?: HTMLInputElement|HTMLTextAreaElement, show?: boolean}} [opts]
+   * @returns {Promise<boolean>} 写せたら true（例外は投げません）
+   */
+  function copy(text, opts) {
+    const o = opts || {};
+    const byCommand = () => {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.append(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
+      ta.remove();
+      return ok;
+    };
+    const fallback = () => {
+      if (byCommand()) return true;
+      if (o.field) {
+        o.field.focus();
+        try { o.field.setSelectionRange(0, o.field.value.length); } catch (_) { /* 読めれば足ります */ }
+      } else if (o.show) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.cssText = "position:fixed;top:50%;left:4%;width:92%;height:40%;z-index:9999";
+        document.body.append(ta);
+        ta.select();
+        ta.addEventListener("blur", () => ta.remove());
+      }
+      return false;
+    };
+    const cb = navigator.clipboard;
+    if (!cb || !cb.writeText) return Promise.resolve(fallback());
+    let p;
+    try { p = cb.writeText(text); } catch (_) { return Promise.resolve(fallback()); }
+    return Promise.resolve(p).then(() => true, fallback);
+  }
+
   KN.util = {
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
@@ -804,6 +850,6 @@
     slideWeek, otherWeek,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
-    icon, haptic,
+    icon, haptic, copy,
   };
 })();

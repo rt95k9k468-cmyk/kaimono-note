@@ -747,19 +747,11 @@
     return next > U.todayKey() && delta > 0 ? null : next;
   }
 
-  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます。
-      いま出している月なら、生きている盤をそのまま渡します——組み直すと、
-      選んでいる日の輪まで作り直すことになるので。 */
-  function monthGridFor(year, month) {
-    const cur = shownMonth();
-    if (els.cal && cur.year === year && cur.month === month) {
-      return els.cal.querySelector(".cal-grid");
-    }
-    const tmp = node(html`<section class="cal"></section>`);
-    KN.calPeek.mount(tmp);
-    fillCalendar(tmp, { year, month });
-    return tmp.querySelector(".cal-grid");
-  }
+  /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます
+      （作りは四つの暦で一つ——KN.calGrid）。 */
+  const monthGridFor = KN.calGrid.monthGridFor({
+    live: () => els.cal, shown: () => shownMonth(), fill: (tmp, only) => fillCalendar(tmp, only),
+  });
 
   /* ---------------- 選んでいる日の輪 ----------------
 
@@ -797,29 +789,6 @@
       els.cal.querySelector(".cal-day.is-here"), jump);
   }
 
-  /* 隣の月のマス。週で見るときだけ姿を見せます（月で見るあいだは CSS が
-     伏せるので、月の見た目はこれまでどおり）。押せば、その日へ移ります。 */
-  function outCell(key) {
-    const d = U.dayDate(key);
-    const wd = d ? d.getDay() : 0;
-    const cell = node(html`
-      <button class="cal-day is-out ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-              data-day="${key}" tabindex="-1"
-              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}">
-        <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
-        <span class="cal-dots"></span>
-      </button>
-    `);
-    cell.addEventListener("click", () => {
-      viewDay = key === U.todayKey() ? null : key;
-      const on = U.dayDate(key);
-      if (on) calMonth = { year: on.getFullYear(), month: on.getMonth() };
-      KN.motion.fire("select");
-      render();
-    });
-    return cell;
-  }
-
   /**
    * @param {Element} sec  組む先の `.cal`
    * @param {{year:number,month:number}} [only]  その月で組みます。渡すのは
@@ -831,56 +800,29 @@
     const today = U.todayKey();
     const here = curDay();
     const { year, month } = only || shownMonth();
-    const total = new Date(year, month + 1, 0).getDate();
-    const lead = new Date(year, month, 1).getDay();
-
-    sec.setAttribute("aria-label", `${year}年${month + 1}月`);
-
-    const grid = sec.querySelector(".cal-grid");
-    grid.innerHTML = "";
-    /* 曜日の行は、日のマスとは別の入れ物です——暦を引いて伸ばすとき、
-       動くのは日のマスだけで、曜日はここに留まります。 */
-    const wds = sec.querySelector(".cal-wds");
-    wds.innerHTML = "";
-    U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
-      <span class="cal-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>
-    `)));
-    /* 週は月をまたぎます。7日そろいにするため、隣の月の日も本物のマスと
-       して置きます（月で見ているあいだは CSS が伏せるので、月の見た目は
-       これまでどおり）。押せば、その日へ行けます。 */
-    const outer = U.outDays(year, month);
-    outer.lead.forEach((key) => grid.append(outCell(key)));
-
-    for (let d = 1; d <= total; d++) {
-      const key = U.dayKey(new Date(year, month, d));
-      const wd = (lead + d - 1) % 7;
-      const isToday = key === today;
-      /* 先の日には帯を出しません（記録は過去にしか無いので）。 */
-      const bar = key > today ? null : drinkBar(key);
-      const cell = node(html`
-        <button class="cal-day ${isToday ? "is-today" : ""} ${key === here ? "is-here" : ""}
-                       ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
-                data-day="${key}" ${isToday ? KN.util.raw('aria-current="date"') : ""}
-                aria-label="${month + 1}月${d}日${isToday ? "（今日）" : ""}${
-                  bar ? (bar.kind === "dry" ? " 飲酒なし" : ` 純アルコール${bar.g}g`) : ""}">
-          <span class="cal-n">${String(d)}</span>
-          <span class="cal-dots">${bar
-            ? KN.util.raw(`<span class="cal-bar"><i class="is-${bar.kind}" style="width:${bar.pct}%"></i></span>`)
-            : ""}</span>
-        </button>
-      `);
-      cell.addEventListener("click", () => {
-        viewDay = key === today ? null : key;
-        calMonth = { year, month };
+    /* 日の印は、その日に飲んだ量の帯。先の日には出しません（記録は過去に
+       しか無いので）。隣の月のマス（週で見るときだけ姿を見せる）は空のまま。 */
+    const grid = KN.calGrid.fill(sec, {
+      year, month, here,
+      mark: (key, out) => {
+        const bar = out || key > today ? null : drinkBar(key);
+        return bar && {
+          html: `<span class="cal-bar"><i class="is-${bar.kind}" style="width:${bar.pct}%"></i></span>`,
+          label: bar.kind === "dry" ? " 飲酒なし" : ` 純アルコール${bar.g}g`,
+        };
+      },
+      /* 押せば、その日へ移ります。その月のマスは先に輪だけ動かします——
+         組み直しのあとに置き直すと、そのときにはもう新しい枠なので、
+         輪は滑らずに現れることになります。 */
+      pick: (key, cell, out) => {
+        viewDay = key === U.todayKey() ? null : key;
+        const on = U.dayDate(key);
+        if (on) calMonth = { year: on.getFullYear(), month: on.getMonth() };
         KN.motion.fire("select");
-        /* 先に輪だけ動かします。組み直しのあとに置き直すと、そのときには
-           もう新しい枠なので、輪は滑らずに現れることになります。 */
-        moveRing(grid, cell);
+        if (!out) moveRing(grid, cell);
         render();
-      });
-      grid.append(cell);
-    }
-    outer.trail.forEach((key) => grid.append(outCell(key)));
+      },
+    });
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, here);
@@ -3779,11 +3721,8 @@
     });
   }
 
-  /** クリップボードへ。断られたら false を返します（例外は投げません）。 */
-  function copyText(text) {
-    if (!navigator.clipboard || !navigator.clipboard.writeText) return Promise.resolve(false);
-    return navigator.clipboard.writeText(text).then(() => true, () => false);
-  }
+  /** クリップボードへ。断られたら false を返します（写すのは KN.util.copy 一か所）。 */
+  function copyText(text) { return U.copy(text); }
 
   /* 気づいたことの絵。何の話かを、読む前に見せます。 */
   const FINDING_ICON = {
@@ -4813,7 +4752,7 @@ distance=6.0km</pre>
       input.click();
     });
     body.querySelector(".js-copy").addEventListener("click", () => {
-      if (navigator.clipboard) navigator.clipboard.writeText(SHORTCUT_SAMPLE);
+      U.copy(SHORTCUT_SAMPLE);
       KN.ui.toast("コピーしました");
     });
   }
