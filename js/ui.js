@@ -1228,11 +1228,13 @@
      やることの詳細の紙の「⋯」・日付・時刻・くりかえし・期限の暦）。下から出る紙では
      なく、そこにポッと出る（2026年10月1日、ノートで利用者の声「シートでなく、そこに
      ポンと出てほしい」。10月2日に、やることの詳細の紙でも同じ声）。
+     どれも押したものの中の最後の絵（無ければ真ん中）からふくらんで出て、同じ点へ縮んで帰る
+     （V27 でノートの札に入れ、roadmap-unify の U7 で全部に）。
      side は揃える側（左の口なら left、右の口なら right）。外を押す・Escape で閉じ、
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
-  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", grow = false, lift = false, onClose } = {}) {
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
     const zSheet = lift ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 0 : 0;
@@ -1250,7 +1252,7 @@
       pop.classList.remove("is-open");
       document.removeEventListener("keydown", onKey, true);
       cover.remove();
-      setTimeout(() => pop.remove(), KN.motion.ms(grow ? "--m-pop-grow" : "--m-state") + 40);
+      setTimeout(() => pop.remove(), KN.motion.ms("--m-pop-grow") + 40);
       if (onClose) onClose();
     };
     /* Escape は一番上の小窓だけが受ける（小窓の中から開いた暦で、下の小窓まで閉じていた）。 */
@@ -1283,17 +1285,14 @@
       pop.classList.toggle("is-up", up);
       pop.style.top = `${top}px`;
       pop.style.setProperty("--pop-top", `${top}px`);
-      /* grow：押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは
-         同じ点へ縮んで帰る（V27、ノートのタグ・ノートブック。利用者の声）。 */
-      if (grow) {
-        const marks = anchor.querySelectorAll("svg");
-        const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
-        const ox = g.left + g.width / 2 - parseFloat(pop.style.left);
-        const oy = g.top + g.height / 2 - top;
-        pop.style.transformOrigin = `${Math.round(ox)}px ${Math.round(oy)}px`;
-      }
+      /* 押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは同じ点へ
+         縮んで帰る。 */
+      const marks = anchor.querySelectorAll("svg");
+      const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
+      const ox = g.left + g.width / 2 - parseFloat(pop.style.left);
+      const oy = g.top + g.height / 2 - top;
+      pop.style.transformOrigin = `${Math.round(ox)}px ${Math.round(oy)}px`;
     };
-    if (grow) pop.classList.add("is-grow");
     place();
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
     return { el: pop, close, place };
@@ -1319,7 +1318,7 @@
 
   /* ---------------- 日を選ぶ暦（小窓） ----------------
 
-     押したところに出る、一か月の暦。端末の日付欄（type="date"）は iPhone で
+     押したところに出る、一か月の暦。端末の日付欄は iPhone で
      `showPicker()` に応えず、手で開くと画面が上へずれた（2026年10月2日・利用者の声
      「期限をオンにしてもカレンダーは自動で開かない。手動で開くと画面が上にズレる」）。
      欄に focus しないので、キーボードの扱いも画面のずれも起きない。週は月曜はじまり
@@ -1404,10 +1403,52 @@
     return el;
   }
 
-  /** 年・月・日の三列。`base` は Date。`years` は [最初, 最後]。値は `value()`（{y, m, d}）。
-      ノートの「作った日」と、daily の期間の書き出しが使う。 */
-  function dateDrums(base, { years: span, label = "日付" } = {}) {
+  /** ドラムの一列（年・月・日、時・分）。止まった行の値（数）を onSettle(v) へ渡す。 */
+  function wheelCol(fmt, colLabel, onSettle) {
     const ROW = KN.gesture.WHEEL_ROW;
+    const el = drum(node(html`<div class="note-wheel" role="listbox" aria-label="${colLabel}" tabindex="0"></div>`), ROW);
+    let idx = -1;
+    let t = 0;
+    const fill = (vals) => {
+      el.innerHTML = "";
+      idx = -1;
+      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option" data-v="${v}">${fmt(v)}</div>`)));
+    };
+    const mark = (i) => {
+      if (i === idx) return;
+      const rows = el.children;
+      if (rows[idx]) rows[idx].removeAttribute("aria-selected");
+      idx = i;
+      if (rows[idx]) rows[idx].setAttribute("aria-selected", "true");
+    };
+    const read = () => Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / ROW)));
+    const settle = () => {
+      const i = read();
+      mark(i);
+      onSettle(Number(el.children[i].dataset.v));
+    };
+    el.addEventListener("scroll", () => {
+      mark(read());
+      clearTimeout(t);
+      t = setTimeout(settle, 120);
+    }, { passive: true });
+    /* 押した行へ回す（指で回さなくても選べる）。 */
+    el.addEventListener("click", (e) => {
+      const r = e.target.closest(".note-wheel-row");
+      if (!r) return;
+      el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
+    });
+    const go = (v) => {
+      const i = Math.max(0, [...el.children].findIndex((r) => Number(r.dataset.v) === v));
+      el.scrollTop = i * ROW;
+      mark(i);
+    };
+    return { el, fill, go, settle: () => { clearTimeout(t); settle(); } };
+  }
+
+  /** 年・月・日の三列。`base` は Date。`years` は [最初, 最後]。値は `value()`（{y, m, d}）。
+      ノートの「作った日」・daily の期間の書き出し・目標日が使う。 */
+  function dateDrums(base, { years: span, label = "日付" } = {}) {
     const y0 = span ? span[0] : Math.min(1990, base.getFullYear());
     const y1 = span ? span[1] : Math.max(new Date().getFullYear(), base.getFullYear());
     const years = [];
@@ -1415,50 +1456,10 @@
     const at = { y: base.getFullYear(), m: base.getMonth() + 1, d: base.getDate() };
     const daysIn = () => new Date(at.y, at.m, 0).getDate();
     const box = node(html`<div class="note-wheels" role="group" aria-label="${label}"></div>`);
-    const col = (k, fmt, colLabel) => {
-      const el = drum(node(html`<div class="note-wheel" role="listbox" aria-label="${colLabel}" tabindex="0"></div>`), ROW);
-      let idx = -1;
-      let t = 0;
-      const fill = (vals) => {
-        el.innerHTML = "";
-        idx = -1;
-        vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option" data-v="${v}">${fmt(v)}</div>`)));
-      };
-      const mark = (i) => {
-        if (i === idx) return;
-        const rows = el.children;
-        if (rows[idx]) rows[idx].removeAttribute("aria-selected");
-        idx = i;
-        if (rows[idx]) rows[idx].setAttribute("aria-selected", "true");
-      };
-      const read = () => Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / ROW)));
-      const settle = () => {
-        const i = read();
-        mark(i);
-        const v = Number(el.children[i].dataset.v);
-        if (at[k] !== v) { at[k] = v; if (k !== "d") fitDays(); }
-      };
-      el.addEventListener("scroll", () => {
-        mark(read());
-        clearTimeout(t);
-        t = setTimeout(settle, 120);
-      }, { passive: true });
-      /* 押した行へ回す（指で回さなくても選べる）。 */
-      el.addEventListener("click", (e) => {
-        const r = e.target.closest(".note-wheel-row");
-        if (!r) return;
-        el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
-      });
-      const go = (v) => {
-        const i = Math.max(0, [...el.children].findIndex((r) => Number(r.dataset.v) === v));
-        el.scrollTop = i * ROW;
-        mark(i);
-      };
-      return { el, fill, go, settle: () => { clearTimeout(t); settle(); } };
-    };
-    const yc = col("y", (v) => `${v}年`, "年");
-    const mc = col("m", (v) => `${v}月`, "月");
-    const dc = col("d", (v) => `${v}日`, "日");
+    const set = (k) => (v) => { if (at[k] !== v) { at[k] = v; if (k !== "d") fitDays(); } };
+    const yc = wheelCol((v) => `${v}年`, "年", set("y"));
+    const mc = wheelCol((v) => `${v}月`, "月", set("m"));
+    const dc = wheelCol((v) => `${v}日`, "日", set("d"));
     yc.fill(years);
     mc.fill([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     let dn = 0;
@@ -1482,7 +1483,8 @@
   }
 
   /** 日を選ぶドラムの小窓（日付キー）。決めるのは閉じたとき（外を押す・Escape）。
-      期間の書き出し（V22）で、利用者の声「年月日のドラムにしたい」（2026年10月5日）。 */
+      期間の書き出し（V22）で、利用者の声「年月日のドラムにしたい」（2026年10月5日）。
+      空の欄（value なし）は今日から回し、回さずに閉じても今日に決まる。 */
   function popDate(anchor, { value, label = "日付", years, onPick } = {}) {
     const U = KN.util;
     const key = value || U.todayKey();
@@ -1493,13 +1495,107 @@
       onClose: () => {
         const v = dd.value();
         const next = `${v.y}-${String(v.m).padStart(2, "0")}-${String(v.d).padStart(2, "0")}`;
-        if (next !== key && onPick) onPick(next);
+        if (next !== (value || "") && onPick) onPick(next);
       },
     });
     p.el.append(dd.el);
     p.place();
     dd.go();
     return p;
+  }
+
+  /** 時刻を選ぶ車輪の小窓（"HH:MM"・時と1分きざみの分）。作りは popDate と同じで、決めるのは閉じたとき。
+      空の欄はいまの時刻から回す（U8・端末の時刻欄をやめた）。 */
+  function popTime(anchor, { value, label = "時刻", onPick } = {}) {
+    const U = KN.util;
+    const key = U.isTime(value) ? value : U.nowTime();
+    const at = { h: Number(key.slice(0, 2)), m: Number(key.slice(3, 5)) };
+    const box = node(html`<div class="note-wheels is-time" role="group" aria-label="${label}"></div>`);
+    const hc = wheelCol((v) => `${v}時`, "時", (v) => { at.h = v; });
+    const mc = wheelCol((v) => `${String(v).padStart(2, "0")}分`, "分", (v) => { at.m = v; });
+    hc.fill(Array.from({ length: 24 }, (_, i) => i));
+    mc.fill(Array.from({ length: 60 }, (_, i) => i));
+    box.append(hc.el, mc.el);
+    const p = popOver(anchor, {
+      side: "left", label, cls: "is-pick is-wheel",
+      onClose: () => {
+        hc.settle(); mc.settle();
+        const next = `${String(at.h).padStart(2, "0")}:${String(at.m).padStart(2, "0")}`;
+        if (next !== (value || "") && onPick) onPick(next);
+      },
+    });
+    p.el.append(box);
+    p.place();
+    hc.go(at.h);
+    mc.go(at.m);
+    return p;
+  }
+
+  /* ---------------- 日付と時刻の欄（U8） ----------------
+
+     端末の日付欄・時刻欄はやめた（iPhone で `showPicker()` に応えず、手で開くと画面が上へずれた）。
+     書き方は `<input type="hidden" class="input js-…" data-when="day|far|time" value="…">` のまま置いて、
+     組んだあとに `whenFields(root)` を呼ぶ。見えるのは `.input` の形のボタンで、押すと
+       day … 暦の小窓（popCalendar）／far … 年月日のドラム（popDate。目標日のような遠い日）／time … 車輪（popTime）。
+     **値は隠した <input> に持つ**：紙を閉じたときの書きかけの保存（makeGuard）は欄の value しか見ないので、
+     JS の変数に持つと日や時刻だけ変えて閉じた分が黙って落ちる（roadmap-unify の 3節）。選んだら value を書いて
+     `input`・`change` を投げる——今までの `addEventListener("change")` も `.value` もそのまま動く。
+     `data-clear` があれば小窓に「なし」（空へ戻す口。端末の欄にはあった）。 */
+  const WHEN_EMPTY = { day: "--/--/--", far: "--/--/--", time: "--:--" };
+  function whenText(kind, v) {
+    const U = KN.util;
+    if (!v) return WHEN_EMPTY[kind];
+    if (kind === "time") return U.isTime(v) ? `${Number(v.slice(0, 2))}:${v.slice(3, 5)}` : v;
+    const d = U.dayDate(v);
+    if (!d) return v;
+    /* 「今日」「昨日」だけでは何日か分からないので、言葉のあとに日付も添える（今日 10/7(水)）。 */
+    const say = U.formatDay(v);
+    return say.includes("/") ? say : `${say} ${d.getMonth() + 1}/${d.getDate()}(${U.WEEKDAYS[d.getDay()]})`;
+  }
+  function whenFields(root) {
+    const own = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    root.querySelectorAll("input[data-when]").forEach((inp) => {
+      if (inp.nextElementSibling && inp.nextElementSibling.classList.contains("when-btn")) return;
+      const kind = inp.dataset.when;
+      const label = inp.getAttribute("aria-label") || (kind === "time" ? "時刻" : "日付");
+      const btn = node(html`<button type="button" class="input when-btn" aria-label="${label}"></button>`);
+      const paint = () => {
+        const v = own.get.call(inp);
+        btn.textContent = whenText(kind, v);
+        btn.classList.toggle("is-empty", !v);
+      };
+      /* 呼ぶ側が `.value = …` と書いても（札で「明日」を選んだ、×で外した）、見える字が追う。 */
+      Object.defineProperty(inp, "value", {
+        configurable: true,
+        get() { return own.get.call(this); },
+        set(v) { own.set.call(this, v); paint(); },
+      });
+      const put = (v) => {
+        if (v === inp.value) return;
+        inp.value = v;
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+        inp.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      btn.addEventListener("click", () => {
+        let cleared = false;
+        const onPick = (v) => { if (!cleared) put(v); };
+        const opts = { value: inp.value || null, label, onPick };
+        const y = new Date().getFullYear();
+        const vy = inp.value ? Number(inp.value.slice(0, 4)) : y;
+        const p = kind === "time" ? popTime(btn, opts)
+          : kind === "far" ? popDate(btn, { ...opts, years: [Math.min(y - 1, vy), Math.max(y + 10, vy)] })
+          : popCalendar(btn, opts);
+        if (inp.hasAttribute("data-clear") && inp.value) {
+          const none = node(html`<button type="button" class="btn btn-soft btn-block when-none">なし</button>`);
+          none.addEventListener("click", () => { cleared = true; put(""); p.close(); });
+          p.el.append(none);
+          p.place();
+        }
+      });
+      inp.after(btn);
+      paint();
+    });
+    return root;
   }
 
   /* ---------------- toast ---------------- */
@@ -2365,7 +2461,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, popMenu, popCalendar, popDate, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
+    sheet, actionSheet, popOver, popMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

@@ -606,9 +606,8 @@
           <div class="js-due-chips"></div>
           <div class="date-row">
             <span class="date-cell">
-              <input class="input js-due" type="date" value="${due || ""}"
-                     aria-label="日付を選ぶ">
-              <span class="date-empty js-due-empty" aria-hidden="true">--/--/--</span>
+              <input class="input js-due" type="hidden" data-when="day" value="${due || ""}"
+                     aria-label="日付">
             </span>
           </div>
           <span class="field-hint js-due-hint"></span>
@@ -709,6 +708,7 @@
     `);
 
     const titleEl = hero.querySelector(".js-title");
+    KN.ui.whenFields(pickDue);
     const dueEl = body.pick(".js-due");
     const hintEl = body.pick(".js-due-hint");
 
@@ -1050,12 +1050,6 @@
       { id: "", label: "なし" },
     ];
 
-    /* 空かどうかで、かぶせる「--/--/--」を出し入れします。 */
-    function paintDueEmpty() {
-      const ph = body.pick(".js-due-empty");
-      if (ph) ph.hidden = !!due;
-    }
-
     function paintDueChips() {
       KN.ui.chipRow(body.pick(".js-due-chips"), DUE_CHIPS(), {
         activeId: due || "",
@@ -1063,7 +1057,6 @@
           due = id || null;
           if (!due) { part = null; time = null; }
           dueEl.value = due || "";
-          paintDueEmpty();
           paintDueChips();
           paintPart();
           paintHint();
@@ -1381,7 +1374,6 @@
     });
 
     paintDueChips();
-    paintDueEmpty();
     paintPart();
     paintHint();
 
@@ -1422,11 +1414,11 @@
       // 列にもそれが見えていないといけないので、そちらも塗り直します。
       const dropped = !due && isBookend(part);
       if (!due) { part = null; time = null; }
-      paintDueEmpty();
       paintDueChips();
       paintPart();
       paintHint();
       if (dropped) paintRepeat(); else paintRepeatDetail();
+      closePick();   // 暦で選んだら、札と同じく日付の紙も閉じる
     });
 
     const detailEl = body.pick(".js-repeat-detail");
@@ -1662,7 +1654,6 @@
     /** 日付・時刻まわりの欄と札を、まとめて描き直します。 */
     function repaintWhen() {
       dueEl.value = due || "";
-      paintDueEmpty();
       paintDueChips();
       paintPart();
       paintMins();
@@ -3652,7 +3643,7 @@
       }));
     }
     paint();
-    pop = KN.ui.popOver(anchor, { side: "left", label: "見直す", cls: "is-review", grow: true, lift: true, onClose: () => { pop = null; } });
+    pop = KN.ui.popOver(anchor, { side: "left", label: "見直す", cls: "is-review", lift: true, onClose: () => { pop = null; } });
     pop.el.append(box);
     pop.place();
   }

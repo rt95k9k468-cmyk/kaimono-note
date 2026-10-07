@@ -1010,11 +1010,11 @@
         <div class="arc-times">
           <label class="field">
             <span class="field-label">起床</span>
-            <input type="time" class="input js-wake" value="${cur.wake || ""}">
+            <input type="hidden" data-when="time" data-clear class="input js-wake" aria-label="起床" value="${cur.wake || ""}">
           </label>
           <label class="field">
             <span class="field-label">就寝</span>
-            <input type="time" class="input js-sleep" value="${cur.sleep || ""}">
+            <input type="hidden" data-when="time" data-clear class="input js-sleep" aria-label="就寝" value="${cur.sleep || ""}">
           </label>
         </div>
       </div>
@@ -1023,6 +1023,7 @@
     /* 「この日を『あの日』に出さない」の札は外した（2026年10月6日・利用者「要らない」）。
        付いている印（store の quiet）と、その効き目はそのまま残す。 */
 
+    KN.ui.whenFields(body);
     const memo = body.querySelector(".js-memo");
     const wakeEl = body.querySelector(".js-wake");
     const sleepEl = body.querySelector(".js-sleep");
@@ -1330,12 +1331,12 @@
             <div class="arc-pages js-pages-row">
               <label class="field">
                 <span class="field-label">開始ページ</span>
-                <input type="number" inputmode="numeric" class="input js-pagefrom"
+                <input type="text" inputmode="numeric" class="input js-pagefrom"
                        value="${e && e.pageFrom != null ? e.pageFrom : ""}">
               </label>
               <label class="field">
                 <span class="field-label">終了ページ</span>
-                <input type="number" inputmode="numeric" class="input js-pageto"
+                <input type="text" inputmode="numeric" class="input js-pageto"
                        value="${e && e.pageTo != null ? e.pageTo : ""}">
               </label>
               <p class="arc-pages-hint js-pages-calc">-</p>
@@ -1356,7 +1357,7 @@
             <div class="arc-times js-amount-fields">
               <label class="field">
                 <span class="field-label">数</span>
-                <input type="number" inputmode="numeric" class="input js-amount"
+                <input type="text" inputmode="numeric" class="input js-amount"
                        value="${e && e.type !== "reading" && e.amount != null ? e.amount : ""}">
               </label>
               <label class="field">
@@ -1370,7 +1371,7 @@
 
         <label class="field arc-date-field">
           <span class="field-label">日付</span>
-          <input type="date" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
+          <input type="hidden" data-when="day" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
         </label>
 
         <label class="field arc-memo-field">
@@ -1391,9 +1392,11 @@
     const titleClear = body.querySelector(".js-title-clear");
     const authorClear = body.querySelector(".js-author-clear");
 
+    /* 数の欄は type="text"（roadmap-unify の U9）。全角も読み、読めなければ空と同じ。 */
+    const numOf = (el) => { const n = U.parseNum(el.value.normalize("NFKC")); return isFinite(n) ? n : null; };
     const paintPages = () => {
-      const a = pageFrom.value === "" ? null : Number(pageFrom.value);
-      const b = pageTo.value === "" ? null : Number(pageTo.value);
+      const a = numOf(pageFrom);
+      const b = numOf(pageTo);
       pagesCalc.textContent = (a != null && b != null && b >= a) ? `${b - a + 1}ページ` : "-";
     };
     pageFrom.addEventListener("input", paintPages);
@@ -1578,6 +1581,7 @@
     paintPick();
     paintMode();
 
+    KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
       cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
       onClose: () => {
@@ -1612,8 +1616,8 @@
         patch.author = authorInput.value.trim() || null;
         /* 論文はページを持たない。前から持っている論文のページは消さずに残す。 */
         const paper = kind === "paper";
-        patch.pageFrom = paper ? (e && e.kind === "paper" ? e.pageFrom : null) : pageFrom.value;
-        patch.pageTo = paper ? (e && e.kind === "paper" ? e.pageTo : null) : pageTo.value;
+        patch.pageFrom = paper ? (e && e.kind === "paper" ? e.pageFrom : null) : numOf(pageFrom);
+        patch.pageTo = paper ? (e && e.kind === "paper" ? e.pageTo : null) : numOf(pageTo);
         patch.amount = null;   // applyReadingPages が計算し直します
         patch.unit = null;
       } else if (isSeed) {
@@ -1628,7 +1632,7 @@
         patch.author = null;
         patch.pageFrom = null;
         patch.pageTo = null;
-        patch.amount = body.querySelector(".js-amount").value;
+        patch.amount = numOf(body.querySelector(".js-amount"));
         patch.unit = body.querySelector(".js-unit").value.trim() || null;
       }
       if (e) store.updateEntry(e.id, patch);
@@ -1851,7 +1855,7 @@
        月をめくったときのように丸ごと入れ替わる場合は、向こうが見送ります。 */
     const settle = KN.ui.flipRows(els.body, ".arc-row");
     /* 季節の絵（3.0 の E1）。選んでいる日の候の色と、あれば絵を紙の後ろに。 */
-    if (KN.seasonArt) KN.seasonArt.apply(root, focusDay());
+    if (KN.seasonArt) KN.seasonArt.apply(root, focusDay(), "daily");
 
     rendering = true;
     els.searchClear.hidden = !els.search.value;

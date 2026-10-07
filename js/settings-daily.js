@@ -149,15 +149,16 @@
         })
       ),
       foot("二十四節気と七十二候を一行。"),
-      /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と浮世絵。既定は入。出典は畳んで。 */
+      /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
+         出典は畳んで——CC BY／BY-SA は作者・ライセンス・URL の表示が要る（docs/season-art.md）。広重はノートの設定へ。 */
       card(
         switchRow({
           title: "季節の絵", on: s.seasonArt !== false,
           onTap: (v) => dailySet("seasonArt", v),
         })
       ),
-      KN.seasonArt && KN.seasonArt.credits().length ? S.more("絵の出典", `${KN.seasonArt.SOURCE} ／ ` + KN.seasonArt.credits()
-        .map((c) => `${c.kou}：${c.author}『${c.title}』（${c.holder}）`).join(" ／ ")) : null,
+      KN.seasonArt && KN.seasonArt.credits("daily").length ? S.more("写真の出典", "Wikimedia Commons ／ " + KN.seasonArt.credits("daily")
+        .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
       card(
         switchRow({
           title: "月のまとめを出す", on: s.showDigest !== false,

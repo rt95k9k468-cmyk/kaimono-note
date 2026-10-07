@@ -1,14 +1,16 @@
 /* 季節の絵（3.0 の E1、docs/roadmap-3.0.md・docs/season-art.md。2026年10月6日）。
-   絵は72候すべてに一枚ずつ（広重『名所江戸百景』、NDL）。見るのは：
+   daily は写真（Wikimedia Commons・img/season-photo/）、ノートは広重『名所江戸百景』（NDL・img/season/）。
+   どちらも72候すべてに一枚ずつ（2026年10月7日、利用者が見比べて選んだ）。見るのは：
    - 72候のどれも絵と出どころ（題・作者・所蔵・URL・理由）を持ち、絵のファイルが揃っている
    - 72候のどれも色を持つ。隣の候と同じ色ではない（候ごとに変わる）
-   - daily の画面に、選んでいる日の候の色と絵が敷かれる。過去の日を開けばその日の候
+   - daily の画面に、選んでいる日の候の色と写真が敷かれる。過去の日を開けばその日の候
+   - ノートの地に、今日の候の色と広重が敷かれる。ノートの設定で外せる
    - 読めない絵（オフラインでまだ持っていない）では色だけ（data-season-img なし）
    - 出典の頭に NDL の求める一行
    - 敷くのは daily の画面だけ（ほかのタブには無い）・紙の後ろ（z-index -1、押す邪魔をしない）
    - 設定で外せる（既定は入）
    - 字の濃さの比：本文の字と、背景のいちばん濃い所で 4.5:1 以上（明るい面・暗い面）
-   - 大きさ：img/season/*.webp は1枚25KB・合計2MBまで（門で見張る）
+   - 大きさ：img/season/・img/season-photo/ の *.webp は1枚25KB・それぞれ合計2MBまで（門で見張る）
    - sw.js は絵を別の名前のキャッシュ（kaimono-note- で始めない）に覚える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/season-art.js */
 const fs = require("fs");
@@ -21,15 +23,21 @@ const ROOT = path.resolve(__dirname, "..");
   const c = checker("season-art");
 
   /* ---- 大きさ（ファイルだけ。門） ---- */
-  const dir = path.join(ROOT, "img", "season");
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.webp$/.test(f)) : [];
-  const sizes = files.map((f) => fs.statSync(path.join(dir, f)).size);
-  c.check("絵は1枚25KBまで", sizes.every((n) => n <= 25 * 1024), JSON.stringify(files.filter((f, i) => sizes[i] > 25 * 1024)));
-  c.check("絵は合計2MBまで", sizes.reduce((a, b) => a + b, 0) <= 2 * 1024 * 1024);
-  c.check("絵の名前は k00〜k71", files.every((f) => /^k([0-6]\d|7[01])\.webp$/.test(f)), JSON.stringify(files));
+  const filesOf = (name) => {
+    const dir = path.join(ROOT, "img", name);
+    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.webp$/.test(f)) : [];
+    const sizes = files.map((f) => fs.statSync(path.join(dir, f)).size);
+    c.check(`${name}：1枚25KBまで`, sizes.every((n) => n <= 25 * 1024), JSON.stringify(files.filter((f, i) => sizes[i] > 25 * 1024)));
+    c.check(`${name}：合計2MBまで`, sizes.reduce((a, b) => a + b, 0) <= 2 * 1024 * 1024);
+    c.check(`${name}：名前は k00〜k71`, files.every((f) => /^k([0-6]\d|7[01])\.webp$/.test(f)), JSON.stringify(files));
+    return files;
+  };
+  const files = filesOf("season");
+  const photos = filesOf("season-photo");
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   const m = /const SEASON_CACHE = "([^"]+)"/.exec(sw);
-  c.check("sw.js：絵は別の名前のキャッシュ（kaimono-note- で始めない）", !!m && !m[1].startsWith("kaimono-note-") && /\/img\/season\//.test(sw));
+  c.check("sw.js：絵と写真は別の名前のキャッシュ（kaimono-note- で始めない）", !!m && !m[1].startsWith("kaimono-note-")
+    && /\/img\/season\//.test(sw) && /\/img\/season-photo\//.test(sw));
   c.check("sw.js：絵は ASSETS に入れない", !/"img\/season/.test(sw.split("];")[0]));
 
   const { browser, page, errors } = await open({
@@ -44,10 +52,16 @@ const ROOT = path.resolve(__dirname, "..");
              art: Object.keys(A.ART).length,
              bad: Object.entries(A.ART).filter(([k, a]) => !(a.file === A.fileOf(Number(k)) && a.title && a.author && a.holder
                && /^https:\/\/dl\.ndl\.go\.jp\/pid\/\d+$/.test(a.url) && a.why)).map(([k]) => k),
+             photo: Object.keys(A.PHOTO).length,
+             badPhoto: Object.entries(A.PHOTO).filter(([k, a]) => !(a.file === `img/season-photo/k${String(k).padStart(2, "0")}.webp`
+               && a.title && a.author && a.why && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(a.url)
+               && /^(CC0|Public domain|CC BY(-SA)? [\d.]+)$/.test(a.license))).map(([k]) => k),
              src: A.SOURCE };
   });
   c.check("72候すべてに絵と出どころ（題・作者・所蔵・URL・理由）", pal.art === 72 && pal.bad.length === 0, JSON.stringify(pal.bad));
   c.check("絵のファイルが72枚そろう", files.length === 72, String(files.length));
+  c.check("72候すべてに写真と出どころ（題・作者・ライセンス・Commons の URL・理由）", pal.photo === 72 && pal.badPhoto.length === 0, JSON.stringify(pal.badPhoto));
+  c.check("写真のファイルが72枚そろう", photos.length === 72, String(photos.length));
   c.check("出典の頭に NDL の求める一行", /^出典：国立国会図書館「NDLイメージバンク」\(https:\/\/www\.ndl\.go\.jp\/imagebank\)$/.test(pal.src || ""), pal.src);
   c.check("72候のどれも色を持つ", pal.ok && pal.cs.length === 72, JSON.stringify(pal.cs.slice(0, 4)));
   c.check("候ごとに色が変わる（隣と同じ色が無い）", pal.same === 0, String(pal.same));
@@ -69,10 +83,10 @@ const ROOT = path.resolve(__dirname, "..");
   c.check("daily に今日の候の色（10/6 は秋分の末候）", r.k === String(r.want) && r.c === r.color && /gradient/.test(r.bg), JSON.stringify(r));
   await page.waitForFunction(() => document.querySelector("#screen-archive").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
   r = await read();
-  c.check("今日の候の絵が読めて重なる", r.img && r.bg.includes(`k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
+  c.check("今日の候の写真が読めて重なる（daily は写真）", r.img && r.bg.includes(`season-photo/k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
   /* 相対 URL は var() を使う css/screens.css から解決され css/img/season/… の 404 になる（10/6 まで絵が出ていなかった） */
   const imgUrl = (/url\("([^"]+)"\)/.exec(r.bg) || [])[1] || "";
-  c.check("絵の URL は配信元の img/season/（css/ の下ではない）・読める", !/\/css\/img\//.test(imgUrl)
+  c.check("写真の URL は配信元の img/season-photo/（css/ の下ではない）・読める", !/\/css\/img\//.test(imgUrl)
     && await page.evaluate((u) => fetch(u).then((x) => x.ok, () => false), imgUrl), imgUrl);
   c.check("紙の地に敷く（中身の後ろ。押す的は増えない）", (r.bg.match(/linear-gradient/g) || []).length === 2, r.bg.slice(0, 120));
   c.check("月のまとめ・Daily Log の段は白く抜けない（地を透かす）", await page.evaluate(() =>
@@ -80,6 +94,25 @@ const ROOT = path.resolve(__dirname, "..");
       return !e || getComputedStyle(e).backgroundColor === "rgba(0, 0, 0, 0)"; })));
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
     ["todo", "list", "diet"].every((s) => !document.querySelector(`#screen-${s}`).hasAttribute("data-season"))));
+
+  /* ノート（daily の席をもう一度押す）には、今日の候の色と広重 */
+  await page.click('.tab[data-tab="archive"]');
+  await page.waitForFunction(() => document.querySelector("#screen-notes").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
+  const readNotes = () => page.evaluate(() => {
+    const el = document.querySelector("#screen-notes");
+    return { k: el.getAttribute("data-season"), img: el.hasAttribute("data-season-img"), bg: getComputedStyle(el).backgroundImage,
+             want: KN.season.of(KN.util.todayKey()).k, c: el.style.getPropertyValue("--season-c") };
+  });
+  let rn = await readNotes();
+  c.check("ノートの地に今日の候の色と広重", rn.k === String(rn.want) && rn.img && rn.c === await page.evaluate((k) => KN.seasonArt.colorOf(k), rn.want)
+    && rn.bg.includes(`/img/season/k${String(rn.want).padStart(2, "0")}.webp`) && (rn.bg.match(/linear-gradient/g) || []).length === 2, JSON.stringify(rn).slice(0, 240));
+  await page.evaluate(() => { KN.store.update((s) => { s.settings.notesSeasonArt = false; }); KN.screens.notes.render(); });
+  c.check("ノートの設定で外せば敷かない（daily はそのまま）", await page.evaluate(() => !document.querySelector("#screen-notes").hasAttribute("data-season")
+    && document.querySelector("#screen-archive").hasAttribute("data-season")));
+  await page.evaluate(() => { KN.store.update((s) => { delete s.settings.notesSeasonArt; }); KN.screens.notes.render(); });
+  c.check("ノートも既定は入", await page.evaluate(() => document.querySelector("#screen-notes").hasAttribute("data-season")));
+  await page.click('.tab[data-tab="archive"]');
+  await wait(900);
 
   /* 過去の日（夏至のころ）を開けばその日の候 */
   await page.evaluate(() => KN.app.showScreen("archive"));
@@ -99,12 +132,12 @@ const ROOT = path.resolve(__dirname, "..");
     const A = KN.seasonArt;
     const el = document.querySelector("#screen-archive");
     const k = Number(el.getAttribute("data-season"));
-    const keep = A.ART[k];
-    A.ART[k] = { file: "img/season/__no_such__.webp", title: "t", author: "a", holder: "h", url: "u" };
-    A.apply(el, KN.screens.archive.day());
+    const keep = A.PHOTO[k];
+    A.PHOTO[k] = { file: "img/season-photo/__no_such__.webp", title: "t", author: "a", license: "CC0", url: "u" };
+    A.apply(el, KN.screens.archive.day(), "daily");
     await new Promise((res) => setTimeout(res, 600));
     const img = el.hasAttribute("data-season-img");
-    A.ART[k] = keep;
+    A.PHOTO[k] = keep;
     return img;
   });
   c.check("読めない絵（オフライン・まだ無い）は重ねず、色だけ", withImg === false);
@@ -124,13 +157,13 @@ const ROOT = path.resolve(__dirname, "..");
   c.check("既定は入", await page.evaluate(() => document.querySelector("#screen-archive").hasAttribute("data-season")));
 
   /* 字の濃さの比（背景のいちばん濃い所＝上の端。72候すべて） */
-  const contrast = async () => page.evaluate(() => {
-    const el = document.querySelector("#screen-archive");
+  const contrast = async (sel = "#screen-archive", ground = "--c-sheet") => page.evaluate(([sel, ground]) => {
+    const el = document.querySelector(sel);
     const css = getComputedStyle(el);
     const probe = document.createElement("div");
     document.body.append(probe);
     const rgbOf = (v) => { probe.style.color = ""; probe.style.color = v; const m = getComputedStyle(probe).color.match(/[\d.]+/g).map(Number); return m.slice(0, 3); };
-    const bg = rgbOf(getComputedStyle(document.documentElement).getPropertyValue("--c-sheet").trim());
+    const bg = rgbOf(getComputedStyle(document.documentElement).getPropertyValue(ground).trim());
     const text = rgbOf(getComputedStyle(document.documentElement).getPropertyValue("--c-text").trim());
     const prim = rgbOf(getComputedStyle(document.documentElement).getPropertyValue("--c-primary").trim());
     const tint = parseFloat(css.getPropertyValue("--season-tint")) || 38;
@@ -147,14 +180,18 @@ const ROOT = path.resolve(__dirname, "..");
       head = Math.min(head, ratio(mix, prim));     // 見出しの主色の字（大きな太字なので 3:1）
     }
     return { worst: Math.round(worst * 100) / 100, at, tint, head: Math.round(head * 100) / 100 };
-  });
+  }, [sel, ground]);
   let ct = await contrast();
   c.check("明るい面：本文の字と背景のいちばん濃い所で 4.5:1 以上", ct.worst >= 4.5, JSON.stringify(ct));
   c.check("明るい面：見出し（主色の大きな太字）は 3:1 以上", ct.head >= 3, JSON.stringify(ct));
+  const cn = await contrast("#screen-notes", "--c-bg");
+  c.check("ノートの地（明るい面）：本文の字 4.5:1・主色 3:1 以上", cn.worst >= 4.5 && cn.head >= 3, JSON.stringify(cn));
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   await wait(200);
   ct = await contrast();
   c.check("暗い面：本文の字と背景のいちばん濃い所で 4.5:1 以上（さらに薄く）", ct.worst >= 4.5 && ct.tint < 38 && ct.head >= 3, JSON.stringify(ct));
+  const cnd = await contrast("#screen-notes", "--c-bg");
+  c.check("ノートの地（暗い面）：4.5:1 以上（さらに薄く）", cnd.worst >= 4.5 && cnd.tint < 38 && cnd.head >= 3, JSON.stringify(cnd));
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
 
   c.check("daily に評価の言葉を出さない", await page.evaluate(() => !/目標|連続|平均|先月/.test(document.querySelector("#screen-archive").textContent)));

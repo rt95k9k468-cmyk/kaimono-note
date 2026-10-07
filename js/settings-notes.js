@@ -15,7 +15,7 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, back, card, navRow, dangerRow, pickRow, choose, render, TINT } = S;
+  const { go, back, card, navRow, dangerRow, pickRow, switchRow, choose, render, TINT } = S;
 
   const N = () => KN.notes;
   const NS = () => KN.screens.notes;
@@ -59,6 +59,16 @@
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport })
       ),
+      /* 季節の絵（3.0 の E1）。ノートの地の後ろの、今日の候の色と広重『名所江戸百景』。既定は入。
+         出典は NDL の求める一行を頭に、畳んで（daily は写真。docs/season-art.md）。 */
+      card(
+        switchRow({
+          title: "季節の絵", on: store.get().settings.notesSeasonArt !== false,
+          onTap: (v) => { store.update((s) => { s.settings.notesSeasonArt = v; }); render(); repaintNotes(); },
+        })
+      ),
+      KN.seasonArt && KN.seasonArt.credits("notes").length ? S.more("絵の出典", `${KN.seasonArt.SOURCE} ／ ` + KN.seasonArt.credits("notes")
+        .map((c) => `${c.kou}：${c.author}『${c.title}』（${c.holder}）`).join(" ／ ")) : null,
     ];
   }
 

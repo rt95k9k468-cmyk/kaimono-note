@@ -15,7 +15,7 @@
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   white-space: nowrap;
-  transition: background var(--m-state) var(--ease), transform var(--m-press) var(--ease), opacity var(--m-state);
+  transition: background var(--m-state) var(--ease), transform var(--m-press) var(--ease), scale var(--m-press) var(--ease), opacity var(--m-state);
   user-select: none;
 }
 
@@ -69,8 +69,8 @@ button, [role="tab"] {
   -webkit-user-select: none;
 }
 
-.btn:active { transform: scale(.97); }
-.btn:disabled { opacity: .45; pointer-events: none; }
+.btn:active { scale: var(--press-wide); }
+.btn:disabled { opacity: var(--press-off); pointer-events: none; }
 
 /* ---------------- 画面の絵（util.js の icon()） ----------------
 
@@ -187,7 +187,7 @@ button, [role="tab"] {
   width: 38px; height: 38px;
   border-radius: var(--r-full);
   color: var(--c-text-2);
-  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), transform var(--m-press);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), transform var(--m-press), scale var(--m-press);
   flex: none;
 }
 /* 38px of artwork, 44px of reach. Rows that stack these use a 12px gap,
@@ -204,7 +204,7 @@ button, [role="tab"] {
 @media (hover: hover) {
   .icon-btn:hover { background: var(--c-surface-2); color: var(--c-text); }
 }
-.icon-btn:active { transform: scale(.92); }
+.icon-btn:active { scale: var(--press-dot); }
 /* 端末の外の控えが古いときの、歯車の小さな点（R25）。赤は使わない。
    ::after は指の的が持っているので、こちらは ::before。 */
 .icon-btn.has-dot::before {
@@ -363,9 +363,9 @@ button, [role="tab"] {
   border-radius: var(--r-md);
   border: 1.5px solid transparent;
   background: var(--c-surface-2);
-  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-press);
+  transition: background var(--m-state) var(--ease), border-color var(--m-state) var(--ease), transform var(--m-press), scale var(--m-press);
 }
-.icon-cell:active { transform: scale(.94); }
+.icon-cell:active { scale: var(--press-dot); }
 .icon-cell.is-on { border-color: var(--c-primary); background: var(--c-primary-soft); }
 .icon-cell-mark { display: grid; place-items: center; height: 30px; }
 .icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }
@@ -402,12 +402,12 @@ button, [role="tab"] {
   display: grid;
   place-items: center;
   box-shadow: var(--shadow-1);
-  transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease);
+  transition: transform var(--m-press) var(--ease), scale var(--m-press) var(--ease), background var(--m-state) var(--ease);
 }
 /* 数を増減する丸ボタン。太さだけは主より強く——ここは＋と−の二本の線
    しか無いので、同じ太さだと丸のなかで痩せて見えます。 */
 .stepper-btn svg { width: var(--ico); height: var(--ico); stroke-width: 2.6; }
-.stepper-btn:active { transform: scale(.9); }
+.stepper-btn:active { scale: var(--press-dot); }
 .stepper-value {
   min-width: 48px;
   text-align: center;
@@ -471,10 +471,6 @@ button, [role="tab"] {
 }
 .input[type="date"], .input[type="time"] { position: relative; }
 
-.input[type="number"] { -moz-appearance: textfield; }
-.input[type="number"]::-webkit-outer-spin-button,
-.input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
 /* ---------------- chips ---------------- */
 
 .chip-row {
@@ -535,10 +531,10 @@ button, [role="tab"] {
   white-space: nowrap;
   flex: none;
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease),
-              border-color var(--m-state) var(--ease), transform var(--m-press);
+              border-color var(--m-state) var(--ease), transform var(--m-press), scale var(--m-press);
 }
 
-.chip:active { transform: scale(.95); }
+.chip:active { scale: var(--press-wide); }
 @media (hover: hover) {
   .chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
 }
@@ -974,7 +970,7 @@ button, [role="tab"] {
    ——紙が開き終えてから、伸びてきた粒の上に後から乗ってくるように見えたので。
    押したときに少し沈むのが、押せるものだという合図です。 */
 button.hero-node { transition: scale var(--m-press) var(--ease); }
-button.hero-node:active { scale: .94; }
+button.hero-node:active { scale: var(--press-dot); }
 
 .hero-text { min-width: 0; display: block; flex: 1; }
 .hero-cap {
@@ -1095,8 +1091,8 @@ button.hero-node:active { scale: .94; }
 }
 .d-row + .d-row,
 .d-add { border-top: 1px solid var(--c-border); }
-.d-row:active { background: var(--c-surface-2); }
-.d-row:disabled { opacity: .5; }
+.d-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
+.d-row:disabled { opacity: var(--press-off); }
 .d-ico {
   display: grid; place-items: center;
   flex: none;
@@ -1129,7 +1125,7 @@ button.hero-node:active { scale: .94; }
   font-size: var(--fs-md);
   text-align: left;
 }
-.d-add:active { background: var(--c-surface-2); }
+.d-add:active { background: var(--press-sink); transition-delay: var(--m-press); }
 .d-add-box {
   display: grid; place-items: center;
   width: 24px; height: 24px;
@@ -1231,7 +1227,7 @@ button.hero-node:active { scale: .94; }
   text-align: left;
 }
 .act-row + .act-row { border-top: 1px solid var(--c-border); }
-.act-row:active { opacity: .6; }
+.act-row:active { opacity: var(--press-fade); }
 .act-ico { display: grid; place-items: center; flex: none; width: 24px; color: var(--c-text-2); }
 .act-ico svg { width: 20px; height: 20px; }
 .act-main { display: block; min-width: 0; }
@@ -1716,7 +1712,7 @@ button.hero-node:active { scale: .94; }
   display: grid;
   place-items: center;
   line-height: 1;
-  transition: background var(--m-press) var(--ease), transform var(--m-press);
+  transition: background var(--m-press) var(--ease), transform var(--m-press), scale var(--m-press);
 }
 
 /* The gaps between the keys were dead pixels: a fast thumb landing in one
@@ -1728,7 +1724,7 @@ button.hero-node:active { scale: .94; }
   position: absolute;
   inset: calc(var(--sp-2) / -2);
 }
-.key:active { background: var(--c-surface-3); transform: scale(.95); }
+.key:active { background: var(--c-surface-3); scale: var(--press-wide); }
 
 .key-op { color: var(--c-primary); font-weight: var(--fw-bold); }
 
@@ -1782,7 +1778,7 @@ button.hero-node:active { scale: .94; }
    ========================================================= */
 
 /* 押している間。CSS の :active で足りるところには要りません。 */
-.is-m-press { transform: scale(.97); transition: transform var(--m-press) var(--ease); }
+.is-m-press { scale: var(--press-wide); transition: scale var(--m-press) var(--ease); }
 
 /* 印が付いた。ほんの少し行き過ぎて戻ります——指で押した手ごたえ。
    **共通の動きは `scale:` / `translate:` で書きます**（`transform` に書かない）。位置を
@@ -1887,7 +1883,7 @@ button.hero-node:active { scale: .94; }
   transition: scale var(--m-press) var(--ease);
 }
 .dest-chip[hidden] { display: none; }
-.dest-chip:active { scale: .96; }
+.dest-chip:active { scale: var(--press-wide); }
 .sheet-hero .dest-chip {
   border-color: color-mix(in srgb, #fff 45%, transparent);
   background: color-mix(in srgb, #fff 16%, transparent);
