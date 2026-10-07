@@ -85,7 +85,7 @@ const { open, checker } = require("./lib");
     await page.waitForSelector(".sheet.is-open .js-del", { timeout: 3000 });
     await page.click(".sheet.is-open .js-del");
     await page.waitForTimeout(400);
-    await page.click(`[aria-label="この記録を消しますか"] .js-ok`);
+    await page.click(`[aria-label="この記録を消しますか？"] .js-ok`);
     await page.waitForSelector(".toast .toast-action");
     const msg = await page.$eval(".toast", (e) => e.textContent.replace(/\s+/g, ""));
     const goneUi = await page.evaluate((i) => !KN.store.get().archive.entries.some((x) => x.id === i), id);

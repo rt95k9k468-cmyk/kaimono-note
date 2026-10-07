@@ -6,7 +6,7 @@
    右上にタグ／＋から来たら書く欄と帯、開いたノートは整えた姿（キーボードを出さない）／
    取り消す・やり直す／キーボードを閉じると整えた姿／四角を押してチェック（書く欄へ
    入らない）／押した行の終わりにカーソル／本文は印のまま入れ物へ／一覧の冒頭と題は印を
-   外す／「⋯」はその場の小窓（★・前の版・削除。紙を重ねない）／カードの★は縦の真ん中／
+   外す／「⋯」はその場の小窓（★・前の版・消す。紙を重ねない）／カードの★は縦の真ん中／
    localStorage は変わらない。
    段4.3：書く紙は帯のすぐ下からのカード（上が丸角・持ち手・暗幕なし）／一覧のカードから
    膨らみ、閉じると（‹・本物のタッチで払う）先頭へ移ったカードへ縮む／動きを減らす設定。
@@ -259,7 +259,7 @@ const { open, checker } = require("./lib");
       sheets: document.querySelectorAll(".sheet.is-open").length,
       items: [...document.querySelectorAll(".note-pop-item")].map((x) => x.textContent.trim()).join(",") };
   });
-  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,道に置く,削除", JSON.stringify(pop));   // 道に置くは 3.0 の A2（書いたノートだけ）
+  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,道に置く,消す", JSON.stringify(pop));   // 道に置くは 3.0 の A2（書いたノートだけ）
   await page.click(".note-pop-item:first-child");
   await page.waitForFunction(() => !document.querySelector(".note-pop"), null, { timeout: 3000 }).catch(() => {});   // 縮んで帰ってから消える
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
@@ -278,7 +278,7 @@ const { open, checker } = require("./lib");
     return page.$$eval(".note-pop-item", (xs) => xs.map((x) => x.textContent.trim()));
   };
   const two = await headItems(`# 一\n${filler}\n## 二\n${filler}`);
-  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,道に置く,削除", two.join(","));
+  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,道に置く,消す", two.join(","));
   await page.keyboard.press("Escape");
   await closeSheet();
   const three = await headItems(`# 一\n${filler}\n## 二\n${filler}\n### 三\n${filler}`);
