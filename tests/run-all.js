@@ -26,7 +26,8 @@ const GATE = ["registry", "split-items", "capture", "daily-rules", "restore-prac
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
   "motion-dict", "look-tokens",    // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
   "one-part",                      // roadmap-unify の U2：暦の盤・アイコンを選ぶ紙・写すが一本のまま（画面を開かない）
-  "gesture-dict"];                 // roadmap-unify の U4：指の重さの直書きが KN.gesture の外に無い（画面を開かない）
+  "gesture-dict",                  // roadmap-unify の U4：指の重さの直書きが KN.gesture の外に無い（画面を開かない）
+  "keyframes-one"];                // roadmap-unify の U5：同じ中身の @keyframes が二つ無い・共通の動きは scale:/translate:（画面を開かない）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */

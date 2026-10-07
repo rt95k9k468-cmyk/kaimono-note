@@ -1120,9 +1120,9 @@
         if (was == null) {
           // 新しく来た行だけが、名乗りを上げます。
           el.classList.add("is-arriving");
-          /* **名乗り終わったら、札は外します。** `row-arrive` は
+          /* **名乗り終わったら、札は外します。** `is-arriving`（`m-add`）は
              `animation-fill-mode: both` なので、終わったあとも
-             `transform: none` を押さえ続けます——アニメーションは
+             `translate`・`scale` を押さえ続けます（U5 の前は `transform`）——アニメーションは
              インラインの style より強いので、**札を持ったままの行は
              二度と FLIP で滑れません**。
              行が毎回新しく組まれているあいだは、札も一緒に消えていたので

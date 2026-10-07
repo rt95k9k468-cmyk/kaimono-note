@@ -97,6 +97,29 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 - **名前は変えない**（`--m-press-*` のような種類の頭は付けない）。種類はこの表の列で持つ。名前は
   すでに出来事を言っていて、頭を付けても表と同じことを二度書くだけ。変えると CSS 二百三十か所と試験が追う。
 
+### 同じ出来事の動きは一本（@keyframes・roadmap-unify の U5・2026年10月7日）
+
+**同じ出来事に別名の @keyframes を作らない。** 共通の動き（components.css）を呼び、長さと曲線だけを
+その場で選ぶ。`tests/keyframes-one.js` が見張る（中身が同じ @keyframes が二つ無い・寄せた別名が戻らない・
+共通の動きは `transform` に書かない）。
+
+| 動き | 何を言う | 寄せたもの |
+|---|---|---|
+| `m-check` | 印が付いた（`scale:` 1→1.16→1） | `tl-pop`・`mark-pop` |
+| `m-uncheck` | 印が外れた（`scale:` 1→.86→1） | `tl-unpop` |
+| `m-add` | 増えた。**その場で下から少し（10px）浮かぶ**（`translate:`・`scale:`） | `row-arrive`（長さも `--m-add` へ）・`item-in`・`ac-in`・`note-fold-in`（候補とノートの題は `--m-state` のまま） |
+| `m-delete` | 行き先の無い「消えた」。その場で縮んで薄れる | `todo-finish` |
+| `todo-slide` | 消えずに**次の日へ送られた**（右へ） | 行き先を言うので残す |
+| `item-drop` | 買ったものの山へ**沈んだ**（下へ） | 行き先を言うので残す |
+| `m-glow` | ここを見て。棚の色（`--cat` 55%）の 3px の輪 | `row-flash`（`--m-flash` を二つに割って alternate）・`todo-glow`（forwards。地の色は `.item` の transition） |
+| `m-warn` | 通っていない。振れ幅は `--warn-x`（既定 4px・鍵だけ 10px） | `lock-shake`（長さも `--m-warn` へ） |
+| `fade-in` | 薄いところから出るだけ | `head-marks-in`・`arrive-fade` |
+| `scr-in-r` / `scr-out-r` | 右から入る／右へ出る（設定へ押し入るのも同じ形、長さと曲線だけ `--m-push`・`--push-e`） | `scr-push-in`・`scr-pop-out` |
+
+- `screen-in`（「移る」）と `tl-flash`（取り消し線の光。形が別）は別のまま。
+- **共通の動きは `scale:` / `translate:` で書く。** `transform` に位置を持つ物へ `transform` の動きを当てると
+  位置が飛ぶ。時間割の丸（`.tl-node`）の位置は、そのため `translate:` に移した（`transform` は空き）。
+
 ### 動きは、名前で持つ（`--m-*` / 曲線）
 
 **速さを数字で書かない。** CSS の `transition` / `animation` に生の秒数を
