@@ -5121,6 +5121,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-bg);
 }
+/* 一覧のカードは少しだけ透かし、後ろの絵をほんのり見せる（2026年10月7日、利用者の頼み）。開いた紙は透かさない。 */
+#screen-notes[data-season] .note-row.is-card { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
 /* 暗い色のときは、さらに薄く。 */
 :root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
 @media (prefers-color-scheme: dark) {
