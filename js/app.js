@@ -669,8 +669,7 @@
   const FACE_DONE = 0.26;      // これだけ下げたら、行った先へ
   /* 少ししか引いていなくても、ぱっと払った指は「めくる」と言っています
      （day-swipe / edge-back と同じ決めごと）。 */
-  const FACE_FLING_V   = 0.35;  // px/ms
-  const FACE_FLING_MIN = 8;     // ただし、まったく動いていないものは払いではない
+  const { FLING_V: FACE_FLING_V, FLING_MIN: FACE_FLING_MIN } = KN.gesture;
   /* 紙と、その後ろの地の組（2026年10月1日から二組。docs/notes.md）。前は
      `FRONT = "list", BACK = "prices"` の決め打ちでした。いま動かしている組は
      `pair` で、帯を押したとき・掴み手を引いたときに、その席・その紙の組へ

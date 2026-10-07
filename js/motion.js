@@ -489,4 +489,18 @@
   }
 
   KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, EVENTS };
+
+  /* 指の重さ（roadmap-unify の U4・docs/motion.md の「指の重さは一か所」）。同じ身ぶりは
+     どこでも同じ重さ。払いだけ二つ——行き先へ送る（日・面・暦の段）と、閉じる・戻る（紙・
+     左端から）。各ファイルはここから読む（tests/gesture-dict.js が見張る）。 */
+  KN.gesture = Object.freeze({
+    HOLD: 380,             // これだけ押さえたら持ち上がる（並べ替え・時間割・道）
+    HOLD_SLOP: 8,          // その前にこれ以上動いたら、ただの送り
+    FLING_V: 0.35,         // 行き先へ送る払い：短くても、これだけ速ければ行く（px/ms）
+    FLING_MIN: 8,          // ただし、まったく動いていないものは払いではない（px）
+    BACK_FLING_V: 0.4,     // 閉じる・戻る払い（px/ms）
+    BACK_FLING_MIN: 10,    // （px）
+    AXIS: 6,               // これだけ動いたら、向きを決める（px）
+    WHEEL_ROW: 40,         // 車輪の一行（.note-wheel-row の高さと同じ）
+  });
 })();

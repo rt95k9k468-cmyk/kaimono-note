@@ -42,7 +42,7 @@
 
   const KN = (window.KN = window.KN || {});
 
-  const AXIS_LOCK = 8;    // これだけ動けば、向きを決めます
+  const AXIS_LOCK = KN.gesture.AXIS;   // これだけ動けば、向きを決めます
   const COMMIT    = 52;   // これだけ動けば、指を離したときに隣へ
   /* 月をめくるほうの「重くなる」境目。ここから先は、めくることがもう
      決まっていて、残りは指が進んでいるだけです。 */

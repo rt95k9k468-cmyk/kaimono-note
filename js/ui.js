@@ -842,8 +842,8 @@
        「下へ払う」が紙によって別の手つきになってしまうので。 */
     const DISMISS   = 0.22;   // 紙の丈の、これだけ引けば閉じる
     const DISMISS_MIN = 56, DISMISS_MAX = 140;
-    const FLING_V   = 0.4;    // 短くても、これだけ速ければ閉じる（px/ms）
-    const FLING_MIN = 10;     // ただし、まったく動いていないものは払いではない
+    /* 短くても、これだけ速ければ閉じる（KN.gesture の閉じる・戻る払い。左端から戻るのと同じ）。 */
+    const { BACK_FLING_V: FLING_V, BACK_FLING_MIN: FLING_MIN } = KN.gesture;
     let startY = null, dy = 0, lastT = 0, lastY = 0, vy = 0;
     const head = el.querySelector(".sheet-head");
     const handleBar = el.querySelector(".sheet-handle");
@@ -1407,7 +1407,7 @@
   /** 年・月・日の三列。`base` は Date。`years` は [最初, 最後]。値は `value()`（{y, m, d}）。
       ノートの「作った日」と、daily の期間の書き出しが使う。 */
   function dateDrums(base, { years: span, label = "日付" } = {}) {
-    const ROW = 40;
+    const ROW = KN.gesture.WHEEL_ROW;
     const y0 = span ? span[0] : Math.min(1990, base.getFullYear());
     const y1 = span ? span[1] : Math.max(new Date().getFullYear(), base.getFullYear());
     const years = [];
