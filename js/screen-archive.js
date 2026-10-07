@@ -1851,7 +1851,7 @@
        月をめくったときのように丸ごと入れ替わる場合は、向こうが見送ります。 */
     const settle = KN.ui.flipRows(els.body, ".arc-row");
     /* 季節の絵（3.0 の E1）。選んでいる日の候の色と、あれば絵を紙の後ろに。 */
-    if (KN.seasonArt) KN.seasonArt.apply(root, focusDay());
+    if (KN.seasonArt) KN.seasonArt.apply(root, focusDay(), "daily");
 
     rendering = true;
     els.searchClear.hidden = !els.search.value;

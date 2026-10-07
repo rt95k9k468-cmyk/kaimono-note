@@ -91,6 +91,8 @@
     if (!root) return;
     const arc = KN.screens.archive;
     KN.head.putCal("notes", arc && arc.cal ? arc.cal() : null);
+    /* 季節の絵（3.0 の E1）。今日の候の色と広重を地の後ろに（daily は写真。docs/season-art.md）。 */
+    if (KN.seasonArt) KN.seasonArt.apply(root, U.todayKey(), "notes");
     renderBody();
   }
 
