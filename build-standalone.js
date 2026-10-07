@@ -73,6 +73,7 @@ const JS = [
   "js/cal-swipe.js",
   "js/cal-grid.js",
   "js/head.js",
+  "js/sky.js",
   "js/upcoming.js",
   "js/search-all.js",
   "js/notify.js",

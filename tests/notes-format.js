@@ -250,6 +250,8 @@ const { open, checker } = require("./lib");
   t.check("開いたノートは整えた姿（キーボードを出さない）", opened.view && !opened.focus, JSON.stringify(opened));
   await page.click(".sheet.is-note .js-note-more");
   await page.waitForSelector(".note-pop.is-open");
+  /* U7 から小窓は押した絵から膨らむ。測るのは膨らみ終えてから（決め打ちで待たない）。 */
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".note-pop.is-open")).transform === "none", null, { timeout: 3000 });
   const pop = await page.evaluate(() => {
     const b = document.querySelector(".sheet.is-note .js-note-more").getBoundingClientRect();
     const p = document.querySelector(".note-pop").getBoundingClientRect();
@@ -259,7 +261,7 @@ const { open, checker } = require("./lib");
   });
   t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,道に置く,消す", JSON.stringify(pop));   // 道に置くは 3.0 の A2（書いたノートだけ）
   await page.click(".note-pop-item:first-child");
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => !document.querySelector(".note-pop"), null, { timeout: 3000 }).catch(() => {});   // 縮んで帰ってから消える
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
   await closeSheet();
 
