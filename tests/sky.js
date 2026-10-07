@@ -13,6 +13,7 @@
    - ノートへ移るとき、帯の裏へ上がった暦は帯の中に見えない（帯が透けても）
    - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
    - いちばん上で引いて紙が下がっても、すき間は空（週・月）。空を下へ伸ばしても帯の中の写真は動かない
+   - 中身が跳ね返って下がっても（勢いよく上端に着いたとき）、紙のふちの一本は紙の上の縁に残る
    - 写真（段2）：4枚が img/sky/ にあり1枚25KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は別の名前の
      キャッシュへ（ASSETS に入れない）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、
      描いた空のまま。設定で外せば両方の札が外れる。字の濃さの比は、写真を敷いた状態でも同じ決まり
@@ -362,6 +363,26 @@ function rgbOf(s) {
   const q1 = await pixels(shot1, pgrid), q0 = await pixels(shot0, pgrid);
   const pdiff = Math.max(...q1.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - q0[i][k])))));
   c.check("空を下へ伸ばしても、帯の中の写真は動かない", pdiff <= 4, `最大の差 ${pdiff}`);
+
+  /* ---- 勢いよく上端に着いても、紙のふち（純白の一本）だけが下りてこない。iPhone の跳ね返りは紙の中身だけを
+     下げるので、ふちは中身（掴み手）ではなく紙そのもの（border-top）が持つ。跳ね返りは中身を手で下げてまねる ---- */
+  for (const id of ["todo", "archive"]) {
+    await page.evaluate((i) => KN.app.showScreen(i), id);
+    await wait(300);
+    const st = await page.evaluate((i) => {
+      const sh = KN.app.scrollerOf(document.getElementById("screen-" + i));
+      [...sh.children].forEach((k) => { k.style.transform = "translateY(40px)"; });
+      return Math.round(sh.getBoundingClientRect().top);
+    }, id);
+    await wait(80);
+    const ep = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: st + 60 } }),
+      [[195, st - 1], [195, st], [195, st + 1]]);
+    await page.evaluate((i) => {
+      [...KN.app.scrollerOf(document.getElementById("screen-" + i)).children].forEach((k) => { k.style.transform = ""; });
+    }, id);
+    c.check(`${id}：中身が跳ね返って下がっても、紙のふちの一本は紙の上の縁に残る`,
+      ep.some((p) => Math.min(...p) >= 252), JSON.stringify(ep));
+  }
 
   /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
