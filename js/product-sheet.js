@@ -913,10 +913,24 @@
       },
     }] : null;
 
+    /* 書いた先から残す紙なので、閉じたときに一言（開いたときと変わっていれば）。
+       名前とメモは打ち終わりを待って書くので、まだ書いていない字も比べる。 */
+    const seen = () => JSON.stringify([store.getProduct(productId), itemOf()]);
+    const opened = seen();
+    const updated = () => {
+      const p = store.getProduct(productId);
+      const it = itemOf();
+      // 消した・リストから外したときは、そちらの知らせ（元に戻す）を残す。
+      if (!p || (item && !it)) return;
+      const name = f.name.value.trim();
+      const typed = (name && name !== p.name) || (it && f.memo.value !== (it.memo || ""));
+      if (typed || seen() !== opened) KN.ui.toast("更新しました");
+    };
+
     const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
     /* 物から生まれる紙（roadmap-unify の U15）：押した行の絵が頭の絵へ伸び、閉じると行へ帰る。 */
     const handle = KN.ui.sheet({ title: product.name, hero: f.hero, menu, content: f.body, footer: foot,
-      morph: from ? { from, to: f.mark, back } : null });
+      morph: from ? { from, to: f.mark, back } : null, onClose: updated });
     foot.addEventListener("click", () => handle.close());
     return handle;
   }
