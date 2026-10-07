@@ -230,7 +230,7 @@
               </span>
               <span class="price-chevron">${icon("chevron")}</span>
             </button>
-            <button class="icon-btn is-danger js-del" aria-label="この価格を削除">${icon("trash")}</button>
+            <button class="icon-btn is-danger js-del" aria-label="この価格を消す">${icon("trash")}</button>
           </div>
         `);
 
@@ -301,7 +301,7 @@
 
         <div class="field js-log-wrap"></div>
 
-        <button class="btn btn-danger btn-block js-del">${icon("trash")} この記録を削除</button>
+        <button class="btn btn-danger btn-block js-del">${icon("trash")} この記録を消す</button>
       </div>
     `);
 
@@ -346,9 +346,9 @@
 
     body.querySelector(".js-del").addEventListener("click", async () => {
       const ok = await KN.ui.confirm({
-        title: "この記録を削除しますか？",
+        title: "この記録を消しますか？",
         message: `${st.name} の ${yen(pr.price)} を消します。`,
-        okLabel: "削除する",
+        okLabel: "消す",
         danger: true,
       });
       if (!ok) return;
@@ -433,7 +433,7 @@
           <span class="log-unit">${up ? up.text : ""}</span>
           ${x.id === currentId
             ? html`<span class="log-tag">いま見ている</span>`
-            : html`<button class="icon-btn is-danger js-drop" aria-label="この記録を削除">${icon("close")}</button>`}
+            : html`<button class="icon-btn is-danger js-drop" aria-label="この記録を消す">${icon("close")}</button>`}
         </div>
       `);
       const drop = row.querySelector(".js-drop");
@@ -681,14 +681,14 @@
 
   function dangerSection(productId, closeSheet) {
     const btn = node(html`
-      <button class="btn btn-danger btn-block">${icon("trash")} この商品を削除</button>
+      <button class="btn btn-danger btn-block">${icon("trash")} この商品を消す</button>
     `);
     btn.addEventListener("click", async () => {
       const p = store.getProduct(productId);
       const ok = await KN.ui.confirm({
-        title: "商品を削除しますか？",
-        message: `「${p.name}」の価格記録と、買い物リストの項目もまとめて削除されます。`,
-        okLabel: "削除する",
+        title: "この商品を消しますか？",
+        message: `「${p.name}」の価格記録と、買い物リストの項目もまとめて消えます。`,
+        okLabel: "消す",
         danger: true,
       });
       if (!ok) return;

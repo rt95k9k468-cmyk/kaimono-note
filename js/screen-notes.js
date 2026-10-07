@@ -643,7 +643,7 @@
             changed();
           });
         } },
-      { icon: "trash", label: "削除", danger: true,
+      { icon: "trash", label: "消す", danger: true,
         onPick: () => {
           if (stored && !blank()) {
             sync();

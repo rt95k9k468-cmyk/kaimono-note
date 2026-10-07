@@ -100,7 +100,7 @@
       const text = body.querySelector(".js-out").value;
       // 断られる端末があります。欄を選んでおいて、長押しから拾えるように（KN.util.copy）。
       KN.util.copy(text, { field: body.querySelector(".js-out") }).then((ok) => KN.ui.toast(ok
-        ? "コピーしました" : "自動でコピーできませんでした。欄を長押しでコピーしてください"));
+        ? "コピーしました" : "コピーできませんでした"));
     });
 
     foot.querySelector(".js-file").addEventListener("click", () => {
@@ -286,7 +286,7 @@
     foot.querySelector(".js-copy").addEventListener("click", () => {
       const text = build();
       KN.util.copy(text, { field: body.querySelector(".js-out") }).then((ok) => KN.ui.toast(ok
-        ? "コピーしました" : "自動でコピーできませんでした。欄を長押しでコピーしてください"));
+        ? "コピーしました" : "コピーできませんでした"));
     });
 
     foot.querySelector(".js-file").addEventListener("click", () => {
