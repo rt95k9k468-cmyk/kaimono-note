@@ -45,8 +45,8 @@
 
      紙（.tl-sheet・下から出る .sheet）の地だけ、純白から下げます（250）。
      ふちには前から純白の一本が引いてありました（.tl-grip の
-     `inset 0 1px 0`）が、地も純白だったので**一度も見えていません**でした
-     ——白の上に白を引いていたわけです。
+     `inset 0 1px 0`。いまは .tl-sheet の border-top）が、地も純白だったので
+     **一度も見えていません**でした——白の上に白を引いていたわけです。
 
      地を下げると、その一本が「紙のいちばん上で光が当たっている」ふちとして
      立ちます。落ち影ではなく **inset（内側の一本）** なので、紙が浮いて
@@ -1045,7 +1045,13 @@ a { color: var(--c-primary); }
    **下の画面の後ろ**に敷く（帯は z-index を持たない＝積み重ねを閉じないので、-1 は deck の奥へ行く）。
    画面（.screen）は上の角を丸めて成形しておき、角の外から後ろの空が覗く。前は帯の前に角の形の
    当て布を置いていたが、当て布は動かないので、タブを流すあいだ角が画面の真ん中で地の色になり、
-   着いてから丸角になった（2026年10月7日、実機）。色は継ぐ（@property の inherits: true）。 */
+   着いてから丸角になった（2026年10月7日、実機）。色は継ぐ（@property の inherits: true）。
+
+   空は角の下へさらに --sky-more だけ続けます。紙の画面（やること・daily・買うもの）は、そのぶん
+   上の帯を透かす——いちばん上でさらに引くと紙が下がる（pull-refresh の give、最大 76px）ので、
+   そこに地の白が出ず、紙が空からはがれて見える。探す欄（約 58px）が紙の上に開いていても届く長さ。
+   写真の縦の位置は、伸ばしたぶん戻して据え置き（下の「写真」）。 */
+.deck { --sky-more: 140px; }
 .head[data-sky] {
   background: none;
   transition: --sky-a var(--m-season) var(--ease), --sky-c var(--m-season) var(--ease), --sky-d var(--m-season) var(--ease);
@@ -1054,7 +1060,7 @@ a { color: var(--c-primary); }
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0;
-  bottom: calc(-1 * var(--r-xl));
+  bottom: calc(-1 * (var(--r-xl) + var(--sky-more)));
   z-index: -1;
   pointer-events: none;
   background:
@@ -1062,6 +1068,9 @@ a { color: var(--c-primary); }
     var(--c-bg);
 }
 .head[data-sky] ~ .panes > .screen { border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.head[data-sky] ~ .panes > .screen:is([data-screen="todo"], [data-screen="archive"], [data-screen="list"]):not(.is-face-front, .is-face-parked) {
+  background: linear-gradient(var(--c-bg) 0 0) 0 calc(var(--r-xl) + var(--sky-more)) / 100% 100% no-repeat;
+}
 .head[data-sky] > .topbar,
 .head[data-sky] .cal { background: transparent; }
 /* ノートへ移るとき、暦は帯の裏へ上がります。帯が透けるので、上がった所（帯の下の線より上）を切る。 */
@@ -1093,11 +1102,13 @@ a { color: var(--c-primary); }
      3:1、暦の段の #444446 は下の明るくした字に 4.5:1
    色が替わるのは題の字（上から 34px まで）と曜日（56px から）のあいだ。
    暦の字は、写真のあいだだけ 35% 濃く（暗い面は明るく）します——幕を薄くして写真を見せるぶんを、字が持つ。
-   もとの色を .head で控えて .cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。 */
-.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp"); --sky-v1: #e2cfd2; --sky-v2: #d9c5c9; }
-.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp");     --sky-v1: #c3d6e9; --sky-v2: #b7cde2; }
-.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp"); --sky-v1: #e7cfbe; --sky-v2: #dfc5b2; }
-.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp");   --sky-v1: #cfd3e5; --sky-v2: #c5c9df; }
+   もとの色を .head で控えて .cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。
+   写真の下に続く色は --sky-g（写真の下端 12 行の平均）。月に開いて紙を引くと写真の下端より下まで見えるので、
+   描いた空の淡い色ではなく写真の地面の色で続ける（写真を足したら、これも測って足す）。 */
+.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp"); --sky-v1: #e2cfd2; --sky-v2: #d9c5c9; --sky-g: #301f21; }
+.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp");     --sky-v1: #c3d6e9; --sky-v2: #b7cde2; --sky-g: #4b4a2f; }
+.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp"); --sky-v1: #e7cfbe; --sky-v2: #dfc5b2; --sky-g: #414a5f; }
+.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp");   --sky-v1: #cfd3e5; --sky-v2: #c5c9df; --sky-g: #3b3943; }
 .head[data-sky-img] {
   --sky-veil: linear-gradient(to bottom, var(--sky-v1) calc(var(--safe-t) + 34px), var(--sky-v2) calc(var(--safe-t) + 56px));
   --sky-blend: screen;
@@ -1131,8 +1142,8 @@ a { color: var(--c-primary); }
 .head[data-sky="night"][data-sky-img="night"]::before {
   background:
     var(--sky-veil),
-    var(--sky-photo) 50% 55% / 100% auto no-repeat,
-    linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-d) calc(var(--safe-t) + 300px)),
+    var(--sky-photo) 50% calc(55% - .55 * var(--sky-more)) / 100% auto no-repeat,
+    linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-g) calc(var(--safe-t) + 300px)),
     var(--c-bg);
   background-blend-mode: var(--sky-blend), normal, normal;
 }

@@ -4576,6 +4576,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
      一段です——両方が純白だと、線は引いてあっても見えません。 */
   background: var(--c-sheet);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
+  /* 紙のふちの純白の一本は、紙そのものの上の縁に引きます（border は送る中身より外なので、
+     中身に隠れず、送っても跳ね返っても動かない）。前は掴み手の inset で引いていて、勢いよく
+     上端に着いたとき（iPhone の跳ね返りは中身だけを下げる）ふちだけが下りてきた（2026年10月7日、実機）。
+     丸角にもそのまま沿います。 */
+  border-top: 1px solid var(--c-sheet-edge);
   /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
      ——途中で切れると、その下の地が「まだ何かある」に見えます。
      暦の高さは日によって変わる（週／月）ので、そのぶんは引きません
@@ -4607,10 +4612,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
      行がその下を通るので、少しでも違うと帯に見えます）。 */
   background: var(--c-sheet);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
-  /* 紙のふちを、純白で一本なぞります。単色・1px・inset だけ——
-     border-radius は box-shadow にも掛かるので、この丸角の形どおりに
-     出ます。地を 253 に下げたので、この一本がようやく見えます。 */
-  box-shadow: inset 0 1px 0 var(--c-sheet-edge);
+  /* 紙のふちの一本は、ここではなく紙（.tl-sheet の border-top）が持ちます——掴み手は
+     中身と一緒に跳ね返るので。 */
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
@@ -5485,6 +5488,36 @@ textarea.note-title-in {
 .nv-li.is-done .nv-box { background: var(--c-primary); border-color: var(--c-primary); }
 .nv-li.is-done .nv-t { color: var(--c-text-2); text-decoration: line-through; }
 .nv-q { padding-left: .8em; border-left: 3px solid var(--c-border-2); color: var(--c-text-2); }
+/* 書いているあいだの色付け（screen-notes.js の ink・note-format.js の ink）。欄の字は
+   透かし、同じ字を同じ位置に並べた写しを重ねる。写しは欄のあとに置く（字が
+   カーソルと選んだ色の上に乗る）。字の幅を変えないこと——太字は font-weight で
+   なく縁取り（-webkit-text-stroke）で太らせる。見た目は 700 に寄せる。 */
+.note-ink { position: relative; }
+.note-ink > .note-body-in {
+  display: block;
+  position: relative;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--c-text);
+}
+.note-hl {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--c-text);
+  pointer-events: none;
+}
+.note-body-in[hidden] + .note-hl,
+.note-ink.is-plain > .note-hl { display: none; }
+.note-ink.is-plain > .note-body-in { color: var(--c-text); -webkit-text-fill-color: currentColor; }
+.nh-mark { color: var(--c-text-3); }
+.nh-b,
+.nh-head { -webkit-text-stroke: .045em currentColor; }
+.nh-quote,
+.nh-done { color: var(--c-text-2); }
+.nh-done { text-decoration: line-through; }
 /* 行の中の太字（**…**）。 */
 .nv-b { font-weight: var(--fw-bold); }
 .nv-hr { padding: .55em 0; }
