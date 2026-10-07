@@ -4,7 +4,8 @@
    見える（途中の行でも）／見えている行で打っても送りは動かない／キーボードを閉じても、
    書く欄に入っても、カーソルの行は同じ高さ／太字（B で挟む・外す・何も選ばずに押すと
    「****」の間・整えた姿は太く・一覧と題は印を外す・B が光る）／書いているあいだは
-   一番上で引いても閉じない（キーボードが下りるだけ）。
+   一番上で引いても閉じない（キーボードが下りるだけ）／書いているあいだも色付け（写しが
+   欄と同じ字・同じ高さ・欄の字は透ける・太字は太く・折り返しても揃う）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-typing.js */
 const { open, checker } = require("./lib");
@@ -115,6 +116,31 @@ const { open, checker } = require("./lib");
   await page.keyboard.insertText("太い");
   const b3 = await page.$eval(".sheet.is-note .js-text", (ta) => ta.value.split("\n")[60]);
   t.check("何も選ばずに B を押すと「****」の間に打てる", b3 === "行61**太い**", b3);
+
+  /* ---- 書いているあいだも色付け（写しを重ねる。10月7日） ---- */
+  const inkOf = () => page.$eval(".sheet.is-note", (s) => {
+    const ta = s.querySelector(".js-text");
+    const hl = s.querySelector(".note-hl");
+    return {
+      plain: s.querySelector(".note-ink").classList.contains("is-plain"),
+      shown: getComputedStyle(hl).display !== "none",
+      same: hl.textContent.replace(/\u200b$/, "") === ta.value,
+      tall: Math.abs(hl.offsetHeight - ta.offsetHeight),
+      clear: getComputedStyle(ta).webkitTextFillColor,
+      bold: [...hl.querySelectorAll(".nh-b")].map((e) => e.textContent).join(","),
+      marks: hl.querySelectorAll(".nh-mark").length,
+      left: Math.abs(hl.getBoundingClientRect().left - ta.getBoundingClientRect().left),
+    };
+  });
+  const k1 = await inkOf();
+  t.check("書いているあいだも太字は太く（字は欄と同じ・同じ高さ・欄の字は透ける）",
+    !k1.plain && k1.shown && k1.same && k1.tall < 1 && k1.left < 1 && k1.clear === "rgba(0, 0, 0, 0)"
+    && k1.bold === "太い" && k1.marks >= 2, JSON.stringify(k1));
+  /* 折り返す長い行・英字・見出し・チェック済みが混ざっても、写しの高さは欄と同じ。 */
+  await page.keyboard.press("End");
+  await page.keyboard.insertText("\n# 見出し**強い**\nEnglish words **bold mixed** in a long line that wraps around the edge of the box and again.\n- [x] 済んだ\n長い日本語の段落で、折り返しがずれないかを確かめるための文です。**ここは太字**で、ここは普通の字。");
+  const k2 = await inkOf();
+  t.check("折り返す行・英字・見出しが混ざっても、写しは欄とずれない", !k2.plain && k2.same && k2.tall < 1, JSON.stringify(k2));
 
   /* ---- キーボードを閉じても、カーソルの行は同じ高さ ---- */
   await page.$eval(".sheet.is-note .js-text", (ta) => {

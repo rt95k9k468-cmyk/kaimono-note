@@ -308,7 +308,10 @@
           <div class="note-labels js-labels"></div>
         </div>
         <div class="note-view js-view" hidden></div>
-        <textarea class="note-body-in js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
+        <div class="note-ink js-ink">
+          <textarea class="note-body-in js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
+          <div class="note-hl js-hl" aria-hidden="true"></div>
+        </div>
       </div>
     `);
     /* 頭の行のまん中：ノートブック。下へ送って大きな題が隠れたら、その
@@ -323,6 +326,8 @@
     const titleIn = body.querySelector(".js-title");
     const textIn = body.querySelector(".js-text");
     const viewEl = body.querySelector(".js-view");
+    const ink = body.querySelector(".js-ink");
+    const hl = body.querySelector(".js-hl");
     /* 値は欄へ直に入れます（テンプレートに書くと、textarea は頭の改行を
        一つ落とします——本文は打ったままの形で持つので。docs/notes.md）。 */
     titleIn.value = note.title;
@@ -347,14 +352,93 @@
       titleIn.style.height = `${titleIn.scrollHeight}px`;
     });
 
+    /* ---- 書いているあいだの色付け（10月7日、利用者「編集中も太字が反映されないと
+       分からない」） ----
+
+       欄（textarea）は字に色も太さも付けられない。欄の字は透かし、同じ字を同じ位置に
+       並べた写し（.note-hl、KN.noteFormat.ink）を重ねる。打つ・変換・選ぶ・取り消すは
+       欄のまま。写しの字の位置が欄とずれるとカーソルが字から外れるので、
+       ・字の形は欄から写す（COPY）。
+       ・欄の中の左右の空き（iOS の textarea は消せない空きを左右に持つ）は実測する
+         （inkInset）。
+       ・写しの高さが欄の字の高さと違ったら（折り返しがずれた）、その紙では色付けを
+         やめて素の字に戻す（.is-plain）。 */
+    const COPY = ["boxSizing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "borderStyle",
+      "fontFamily", "fontSize", "fontStyle", "fontWeight", "fontStretch", "fontVariant", "fontFeatureSettings",
+      "lineHeight", "letterSpacing", "wordSpacing", "textAlign", "textIndent", "textTransform",
+      "tabSize", "wordBreak", "overflowWrap", "lineBreak"];
+    /* 写しに欄の字の形と幅を着せる。gap は欄の中の左右の空き。 */
+    const dress = (el, w, gap) => {
+      const cs = getComputedStyle(textIn);
+      COPY.forEach((k) => { el.style[k] = cs[k]; });
+      el.style.width = `${w}px`;
+      el.style.textJustify = cs.textJustify || "";
+      if (gap) {
+        el.style.paddingLeft = `${(parseFloat(cs.paddingLeft) || 0) + gap}px`;
+        el.style.paddingRight = `${(parseFloat(cs.paddingRight) || 0) + gap}px`;
+      }
+    };
+    /* 欄の中の左右の空き。折り返す境目のまわりの長さの点の行を並べ、欄と写しで折り返しの
+       数が揃う空きを探す（点は字の間で折れないので、幅の違いがそのまま折り返しの数に出る）。
+       揃わなければ null。 */
+    const inkInset = (w) => {
+      const base = "position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;overflow:hidden;";
+      const pd = document.createElement("div");
+      pd.style.cssText = `${base}white-space:pre`;
+      dress(pd, w, 0);
+      pd.style.width = "auto";
+      pd.textContent = ".".repeat(200);
+      ink.append(pd);
+      const dotW = pd.getBoundingClientRect().width / 200 || 5;
+      const n0 = Math.max(1, Math.floor((w - 14) / dotW) - 2);
+      const dots = Array.from({ length: Math.ceil(14 / dotW) + 6 }, (_, i) => ".".repeat(n0 + i)).join("\n");
+      const pt = document.createElement("textarea");
+      pt.className = "note-body-in";
+      pt.style.cssText = `${base}width:${w}px;height:0;min-height:0`;
+      pt.value = dots;
+      ink.append(pt);
+      const want = pt.scrollHeight;
+      pt.remove();
+      pd.style.whiteSpace = "pre-wrap";
+      pd.textContent = dots;
+      let found = null;
+      for (const gap of [0, 3, 2, 4, 1, 5, 6]) {
+        dress(pd, w, gap);
+        pd.style.height = "0";
+        pd.style.minHeight = "0";
+        if (Math.abs(pd.scrollHeight - want) < 1) { found = gap; break; }
+      }
+      pd.remove();
+      return found;
+    };
+    let inkW = -1;
+    let inkGap = 0;
+    const inkOn = () => !ink.classList.contains("is-plain") && !textIn.hidden;
+    const paintInk = () => {
+      if (!inkOn()) return;
+      const w = textIn.getBoundingClientRect().width;
+      if (!w) return;
+      if (w !== inkW) {
+        inkW = w;
+        const gap = inkInset(w);
+        if (gap == null) { ink.classList.add("is-plain"); return; }
+        inkGap = gap;
+        dress(hl, w, gap);
+      }
+      F.ink(textIn.value, hl);
+    };
+
     /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。 */
     const grow = () => keepScroll(() => {
+      paintInk();
       const s = textIn.style;
       s.minHeight = "0";
       s.height = "0";
       const textH = textIn.scrollHeight;
       s.minHeight = "";
       s.height = `${textH}px`;
+      if (inkOn() && Math.abs(hl.offsetHeight - textH) > 1) ink.classList.add("is-plain");
     });
 
     /* カーソルの行の上下（欄の上端から）。欄は中で送らないので、同じ字と
@@ -362,11 +446,6 @@
     let mirror = null;
     let mirrorW = -1;
     let lineBox = { lh: 28, pad: 0 };
-    const COPY = ["boxSizing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "borderStyle",
-      "fontFamily", "fontSize", "fontStyle", "fontWeight", "fontStretch", "fontVariant", "fontFeatureSettings",
-      "lineHeight", "letterSpacing", "wordSpacing", "textAlign", "textIndent", "textTransform",
-      "tabSize", "wordBreak", "overflowWrap", "lineBreak"];
     const caretBox = (at) => {
       if (!mirror) {
         mirror = document.createElement("div");
@@ -379,11 +458,9 @@
       if (w !== mirrorW) {
         mirrorW = w;
         const cs = getComputedStyle(textIn);
-        const ms = mirror.style;
-        ms.cssText = "position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;"
+        mirror.style.cssText = "position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;"
           + "white-space:pre-wrap;height:auto;overflow:hidden;contain:layout style";
-        COPY.forEach((k) => { ms[k] = cs[k]; });
-        ms.width = `${w}px`;
+        dress(mirror, w, inkGap);
         lineBox = { lh: parseFloat(cs.lineHeight) || 28, pad: parseFloat(cs.paddingTop) || 0 };
       }
       const v = textIn.value;
@@ -502,7 +579,11 @@
     /* キーボードの高さが変わったら（出きる・絵文字や予測の棚が出入りする）、
        カーソルの行をもう一度帯の上へ。--vvh を書く app.js のあとで測る。 */
     const vv = window.visualViewport;
-    const onViewport = () => requestAnimationFrame(() => { if (!closed) showCaret(); });
+    const onViewport = () => requestAnimationFrame(() => {
+      if (closed || !writing) return;
+      grow();
+      showCaret();
+    });
     if (vv) vv.addEventListener("resize", onViewport);
     textIn.addEventListener("blur", () => {
       /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */

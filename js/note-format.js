@@ -142,6 +142,49 @@
     return box;
   }
 
+  /* ---------------- 書くときの色付け ----------------
+
+     書く欄（textarea）は字に色も太さも付けられないので、欄の字は透かして、
+     同じ字を同じ位置に並べた写しを重ねて見せます（screen-notes.js の ink）。
+     写しは字を一つも足し引きしない——印も残して薄くするだけ。字の幅を変え
+     ないことが決まり（変えると折り返しがずれ、カーソルが字から外れる）：
+     太字は font-weight でなく字の縁取りで太らせる（CSS の .nh-b）。 */
+  function ink(body, box) {
+    box.textContent = "";
+    const v = String(body || "");
+    const put = (cls, t) => {
+      if (!t) return;
+      if (!cls) { box.append(t); return; }
+      const s = document.createElement("span");
+      s.className = cls;
+      s.textContent = t;
+      box.append(s);
+    };
+    const inline = (t, cls) => {
+      let at = 0;
+      boldSpans(t).forEach(({ a, b }) => {
+        put(cls, t.slice(at, a));
+        put("nh-mark", "**");
+        put(`nh-b${cls ? ` ${cls}` : ""}`, t.slice(a + 2, b - 2));
+        put("nh-mark", "**");
+        at = b;
+      });
+      put(cls, t.slice(at));
+    };
+    v.split("\n").forEach((line, i) => {
+      if (i) box.append("\n");
+      const p = parse(line);
+      if (p.kind === "rule") { put("nh-mark", line); return; }
+      if (p.kind === "blank" || p.kind === "para") { inline(line, ""); return; }
+      put("nh-mark", line.slice(0, p.lead));
+      inline(line.slice(p.lead), p.kind === "head" ? "nh-head"
+        : p.kind === "quote" ? "nh-quote" : p.kind === "task" && p.done ? "nh-done" : "");
+    });
+    /* 欄は終わりの改行のあとにも一行持つ（そこにカーソルが立つ）。写しも。 */
+    if (!v || v.endsWith("\n")) box.append("\u200b");
+    return box;
+  }
+
   /** 一行の中身を入れる。太字は <strong>、字はどれも textContent。 */
   function fill(el, text) {
     let at = 0;
@@ -397,5 +440,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, unbold, headings, render, toggleTask, setKind, bold, boldAt, rule, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, unbold, headings, render, ink, toggleTask, setKind, bold, boldAt, rule, shift, onEnter, kindAt, history };
 })();
