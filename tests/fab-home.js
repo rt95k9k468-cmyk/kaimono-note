@@ -73,11 +73,13 @@ const { open, checker } = require("./lib");
   /* ---- 打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ帰る（U17） ---- */
   await page.mouse.click(fab.x, fab.y);
   await page.waitForTimeout(900);
-  /* 欄に焦点があれば打っている（app.js の fit）。 */
+  /* 欄に焦点があれば打っている（app.js の fit）。iOS はキーボードのぶん画面の高さごと
+     縮めるので、465 に縮めて真似る（閉じたら 844 へ戻す）。 */
   await page.evaluate(() => {
     document.querySelector(".sheet.is-open input:not([type=hidden]), .sheet.is-open textarea").focus();
-    visualViewport.dispatchEvent(new Event("resize"));
   });
+  await page.setViewportSize({ width: 390, height: 465 });
+  await page.evaluate(() => visualViewport.dispatchEvent(new Event("resize")));
   await page.waitForTimeout(500);
   t.check("打っているあいだ：kb-open", await page.evaluate(() =>
     document.documentElement.classList.contains("kb-open")));
@@ -86,8 +88,16 @@ const { open, checker } = require("./lib");
   const w2 = await page.evaluate(() => document.querySelector(".sheet.is-open").getBoundingClientRect().width);
   const rec3 = recordClose();
   await page.keyboard.press("Escape");
+  await page.waitForTimeout(60);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => visualViewport.dispatchEvent(new Event("resize")));
   const r3 = await rec3;
   judge("打っているあいだ", r3, fab, w2);
+  /* キーボードが下りて画面が伸びても、縮む途中で下へ跳ばない（利用者「ショッピングの戻り方がダメ」）。 */
+  const jump = r3.slice(1).reduce((m, f, i) => Math.max(m, Math.abs(f.y - r3[i].y)), 0);
+  t.check("打っているあいだ：画面が伸びても跳ばない（一コマ 150px 未満）", jump < 150, String(jump));
+  t.check("打っているあいだ：＋の真ん中に着く", Math.hypot(r3[r3.length - 1].x - fab.x, r3[r3.length - 1].y - fab.y) < 20,
+    JSON.stringify(r3[r3.length - 1]));
   /* 引っ込んだ＋の箱へ向かうと、真ん中が画面の下の外（iPhone ではキーボードの裏）へ消える。 */
   const end3 = r3[r3.length - 1];
   t.check("打っているあいだ：画面の下の外へ縮まない", !!end3 && end3.y <= fab.y + 12,
