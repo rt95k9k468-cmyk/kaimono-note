@@ -3007,6 +3007,10 @@
     return li;
   }
 
+  /* 見直しの番号。わざと送るところ（goDay・toNow・again）が一つ進めて、
+     前の組み直しの見直しを取り消します（頭へ送ったのを、元の場所へ戻さないように）。 */
+  let keepAim = 0;
+
   /** 組み直したあとに、読んでいた場所へ戻します。 */
   function restoreTop(top) {
     /* 描き直したら、いま見ている日を数え直します。位置を戻さないとき
@@ -3016,9 +3020,25 @@
     if (!root || !top) return;
     const sc = KN.app.scrollerOf(root);
     restoring = true;
-    sc.scrollTop = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
+    const to = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
+    sc.scrollTop = to;
     // 戻したことが「その人が動いた」と読まれないよう、ひと呼吸だけ伏せます。
     setTimeout(() => { restoring = false; }, 60);
+    /* **一拍あとに、効いたか見直します**（2026年10月7日・利用者の声「時刻が変わる
+       タイミングで、一日の道へパッと上がる」）。紙（.tl-sheet）は送る器そのもので、
+       分が変わったあとの組み直しでは新しい要素に替わります。iPhone（WebKit）は
+       差しこんだばかりの器への scrollTop を落とすことがあり、紙が頭（道）へ戻って
+       いました。頭に落ちたままのときだけ置き直します——その一拍で指が動かして
+       いれば、そちらが勝ちます。 */
+    const mine = ++keepAim;
+    requestAnimationFrame(() => {
+      if (mine !== keepAim || !sc.isConnected || sc.scrollTop > 1) return;
+      const again = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
+      if (again <= 1) return;
+      restoring = true;
+      sc.scrollTop = again;
+      setTimeout(() => { restoring = false; }, 60);
+    });
   }
 
   function head(g, count) {
@@ -4092,6 +4112,7 @@
     render();
     /* 入れ替えたら、読む場所は先頭から。今日だけは「いま」のところへ
        ——一日の途中で開くのはたいてい今日なので。 */
+    keepAim++;
     if (root) KN.app.scrollerOf(root).scrollTop = 0;
     if (day === todayKey()) requestAnimationFrame(toNow);
     const sheet = els.body && els.body.querySelector(".tl-sheet");
@@ -5883,6 +5904,7 @@
 
   function toNow() {
     if (!root) return;
+    keepAim++;
     /* 一日の道が出ていれば、「いま」は紙のいちばん上（道の上の人）にいます。
        時間割の「いま」まで送ると、道が画面の外へ出ていくので、頭へ戻すだけ。 */
     if (root.querySelector(".day-road")) {
@@ -5921,6 +5943,7 @@
     const road = root && root.querySelector(".day-road");
     const tl = road && road.nextElementSibling;
     if (!tl) return false;
+    keepAim++;
     const sc = KN.app.scrollerOf(root);
     const box = sc.getBoundingClientRect();
     const r = road.getBoundingClientRect();
