@@ -202,9 +202,9 @@ const { open, checker } = require("./lib");
     const g = document.querySelector(".sheet.is-note .note-tag-add svg").getBoundingClientRect();
     const r = p.getBoundingClientRect();
     const [ox, oy] = getComputedStyle(p).transformOrigin.split(" ").map(parseFloat);
-    return { grow: p.classList.contains("is-grow"), dx: Math.abs(r.left + ox - (g.left + g.width / 2)), dy: Math.abs(r.top + oy - (g.top + g.height / 2)) };
+    return { dx: Math.abs(r.left + ox - (g.left + g.width / 2)), dy: Math.abs(r.top + oy - (g.top + g.height / 2)) };
   });
-  t.check("タグの小窓は ＋ の絵からふくらむ", grow.grow && grow.dx < 2 && grow.dy < 2, JSON.stringify(grow));
+  t.check("タグの小窓は ＋ の絵からふくらむ", grow.dx < 2 && grow.dy < 2, JSON.stringify(grow));
   await page.keyboard.press("Escape");
   await page.waitForTimeout(120);
   const home = await page.evaluate(() => {

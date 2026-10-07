@@ -1228,11 +1228,13 @@
      やることの詳細の紙の「⋯」・日付・時刻・くりかえし・期限の暦）。下から出る紙では
      なく、そこにポッと出る（2026年10月1日、ノートで利用者の声「シートでなく、そこに
      ポンと出てほしい」。10月2日に、やることの詳細の紙でも同じ声）。
+     どれも押したものの中の最後の絵（無ければ真ん中）からふくらんで出て、同じ点へ縮んで帰る
+     （V27 でノートの札に入れ、roadmap-unify の U7 で全部に）。
      side は揃える側（左の口なら left、右の口なら right）。外を押す・Escape で閉じ、
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
-  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", grow = false, lift = false, onClose } = {}) {
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
     const zSheet = lift ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 0 : 0;
@@ -1250,7 +1252,7 @@
       pop.classList.remove("is-open");
       document.removeEventListener("keydown", onKey, true);
       cover.remove();
-      setTimeout(() => pop.remove(), KN.motion.ms(grow ? "--m-pop-grow" : "--m-state") + 40);
+      setTimeout(() => pop.remove(), KN.motion.ms("--m-pop-grow") + 40);
       if (onClose) onClose();
     };
     /* Escape は一番上の小窓だけが受ける（小窓の中から開いた暦で、下の小窓まで閉じていた）。 */
@@ -1283,17 +1285,14 @@
       pop.classList.toggle("is-up", up);
       pop.style.top = `${top}px`;
       pop.style.setProperty("--pop-top", `${top}px`);
-      /* grow：押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは
-         同じ点へ縮んで帰る（V27、ノートのタグ・ノートブック。利用者の声）。 */
-      if (grow) {
-        const marks = anchor.querySelectorAll("svg");
-        const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
-        const ox = g.left + g.width / 2 - parseFloat(pop.style.left);
-        const oy = g.top + g.height / 2 - top;
-        pop.style.transformOrigin = `${Math.round(ox)}px ${Math.round(oy)}px`;
-      }
+      /* 押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは同じ点へ
+         縮んで帰る。 */
+      const marks = anchor.querySelectorAll("svg");
+      const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
+      const ox = g.left + g.width / 2 - parseFloat(pop.style.left);
+      const oy = g.top + g.height / 2 - top;
+      pop.style.transformOrigin = `${Math.round(ox)}px ${Math.round(oy)}px`;
     };
-    if (grow) pop.classList.add("is-grow");
     place();
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
     return { el: pop, close, place };

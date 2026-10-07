@@ -3652,7 +3652,7 @@
       }));
     }
     paint();
-    pop = KN.ui.popOver(anchor, { side: "left", label: "見直す", cls: "is-review", grow: true, lift: true, onClose: () => { pop = null; } });
+    pop = KN.ui.popOver(anchor, { side: "left", label: "見直す", cls: "is-review", lift: true, onClose: () => { pop = null; } });
     pop.el.append(box);
     pop.place();
   }
