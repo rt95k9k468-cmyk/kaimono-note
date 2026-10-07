@@ -1155,8 +1155,10 @@
       try { KN.screens[id].onEnter(); } catch (err) { /* 開くことを妨げない */ }
     }
     /* 開いたとき、満ちるもの（health の輪・体重の線）。何が動くかは CSS が
-       決めます（motion.js の arrive）。 */
+       決めます（motion.js の arrive）。上の帯（暦）は画面の外なので、別に
+       （設定は帯の上に重なる一枚なので、帯は迎えない）。 */
     KN.motion.arrive(inEl);
+    if (id !== "settings") KN.motion.arrive(document.getElementById("head"));
 
     /* 「文字でさがす」のバーは、題のすぐ下に置いてあって、開いた時点では
        その一段ぶんだけ先へ送ってあります（ui.js の parkSearch）。少し下へ
@@ -1229,7 +1231,10 @@
     /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
        同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
        ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
-    const arriveHere = () => KN.motion.arrive(document.querySelector(`.screen[data-screen="${active}"]`));
+    const arriveHere = () => {
+      KN.motion.arrive(document.querySelector(`.screen[data-screen="${active}"]`));
+      if (active !== "settings") KN.motion.arrive(document.getElementById("head"));
+    };
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") arriveHere();
     });

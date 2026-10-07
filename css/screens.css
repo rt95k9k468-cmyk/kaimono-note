@@ -664,6 +664,8 @@
   color: var(--c-primary);
   font-weight: var(--fw-bold);
 }
+/* その日はじめて開いたときだけ、今日の丸が一度脈打つ（U16。打つかは head.js の BEAT_KEY）。 */
+.head.is-m-arrive.is-day-first .cal-day.is-today .cal-n { animation: poke-beat var(--m-poke) var(--ease); }
 
 /* いま下で見ている日。今日の赤丸とは別の印にします——今日は「どこか」で、
    こちらは「いまどこを見ているか」。二つが同じ塗りだと、今日の位置を
@@ -2548,6 +2550,14 @@
 .diet-hero-value b {
   font-size: calc(40px * var(--fs-k)); line-height: 1.05; font-weight: var(--fw-bold); color: var(--c-text);
   font-variant-numeric: tabular-nums;
+  position: relative;
+}
+/* 開いたとき、前の記録から数えて変わる（U16・screen-diet.js の countWeight）。輪の数と同じ手。 */
+.diet-hero-value b[data-show] { -webkit-text-fill-color: transparent; }
+.diet-hero-value b[data-show]::after {
+  content: attr(data-show);
+  position: absolute; left: 0; top: 0;
+  -webkit-text-fill-color: currentColor;
 }
 .diet-hero-value small { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text-2); }
 /* 体脂肪は体重の下。同じ「いまの体」の話なので、横に離さず縦に続けます。 */

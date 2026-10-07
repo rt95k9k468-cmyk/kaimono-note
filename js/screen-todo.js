@@ -4269,6 +4269,11 @@
     if (!list || !axis) return;
     const paint = () => paintNow(sec, list, axis, isToday);
     axis.__paint = paint;
+    /* 色だけ置き直す（開いたときの流れ。測らない）。 */
+    axis.__pass = () => {
+      const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
+      markPass(list, passAt(list, nowMin), nowMin);
+    };
     /* 返した時点では、まだ親に付いていません（高さが0です）。付いた瞬間
        にも、手順をひらいて伸びたときにも呼ばれるので、測り直す口はこれ
        一つで足ります。 */
@@ -4363,7 +4368,7 @@
 
     // ② 書く
     axis.textContent = "";
-    markPass(list, nowMin);
+    markPass(list, passAt(list, nowMin), nowMin);
     grow.forEach(([li, late, g]) => {
       li.classList.toggle("is-late", late);
       li.classList.toggle("is-grown", g > 0);
@@ -4449,6 +4454,41 @@
     return out;
   }
 
+  /* ---- 開いたとき、過ぎたぶんが上から流れて「いま」に着く（roadmap-unify の U16） ----
+
+     時計を一日の頭（いちばん上の行の始まり）から本当のいままで、`--m-fill`・
+     `--ease-out` で早回しするだけ。塗りの式（markPass）は同じなので、丸薬・背骨・
+     破線が一つの数のまま上から染まる。「いま」の札と `is-live` は本当の時刻のまま
+     （色が札へ着く）。流れているあいだに組み直されても、同じ時計から続く（paintNow も
+     passAt を通る）。動きを減らす設定では arrive が来ない。 */
+  let sweep = null;
+  function passAt(list, nowMin) {
+    if (!sweep || nowMin == null) return nowMin;
+    const x = (performance.now() - sweep.t0) / sweep.dur;
+    if (x >= 1) { sweep = null; return nowMin; }
+    let from = null;
+    for (const li of list.children) {
+      if (!li.classList || !li.classList.contains("tl-row") && !li.classList.contains("tl-free-row")) continue;
+      const { a } = shownSpan(li);
+      if (isFinite(a)) { from = a; break; }
+    }
+    if (from == null || from >= nowMin) return nowMin;
+    return from + (nowMin - from) * sweep.ease(Math.max(0, x));
+  }
+  KN.motion.onArrive((el) => {
+    if (el.id !== "screen-todo" || !root) return;
+    const M = KN.motion;
+    sweep = { t0: performance.now(), dur: M.ms("--m-fill"), ease: M.curve("--ease-out") };
+    const run = sweep;
+    const frame = () => {
+      if (sweep !== run) return;                    // 次の arrive が引き継いだ
+      if (performance.now() - run.t0 >= run.dur) sweep = null;   // 最後の拍は本当のいまで塗る
+      root.querySelectorAll(".tl-axis").forEach((ax) => { if (ax.__pass) ax.__pass(); });
+      if (sweep === run) requestAnimationFrame(frame);
+    };
+    frame();   // 描かれる前に頭の色へ
+  });
+
   /* ---------------- 過ぎたぶんは、色。まだのぶんは、灰色 ----------------
 
      ここには「丸のまわりの輪」がありました（始まりからの割合を、円グラフの
@@ -4471,7 +4511,8 @@
      手が先に進むことはあるので。
 
      30秒ごとに置き直します（軸と同じ拍）。組み直しはしません。 */
-  function markPass(list, nowMin) {
+  /** liveMin は「いま進んでいる一件」を決める本当の時刻（流れているあいだも動かさない）。 */
+  function markPass(list, nowMin, liveMin = nowMin) {
     /* 線の上で「いま」が居る行に、もう着いたか。着くまでの行の線は全部
        過ぎたぶん（色）、着いたあとの行の線は全部これから（灰色）。 */
     let reached = false;
@@ -4525,7 +4566,7 @@
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
-      const live = nowMin != null && known && nowMin > a && nowMin < end
+      const live = liveMin != null && known && liveMin > a && liveMin < end
         && !li.classList.contains("is-done");
       li.classList.toggle("is-live", live);
       if (live) li.setAttribute("aria-current", "time");
