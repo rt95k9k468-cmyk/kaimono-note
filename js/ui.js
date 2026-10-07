@@ -958,7 +958,7 @@
     /* もう紙の中に居るカーソル（＋から本文へ入れたもの）は奪いません。 */
     setTimeout(() => {
       if (el.contains(document.activeElement)) return;
-      const target = el.querySelector("input, textarea, select, button:not(.js-close)");
+      const target = el.querySelector("input, textarea, select, button:not(.js-close):not(.js-menu)");
       if (target && !("ontouchstart" in window)) target.focus();
     }, 320);
 
@@ -1314,6 +1314,18 @@
     });
     p.place();
     return p;
+  }
+
+  /** 一件の記録を消す「⋯」の一行（roadmap-unify の U11）。確かめずに消し、「元に戻す」だけ付ける。
+      remove() は store の remove* と同じく、戻す関数を返す。sheet() はその紙、after() は描き直し。
+      確かめの紙を出すのは、まとめて消す・戻せない・設定の奥だけ（docs/look.md の「消すとき」）。 */
+  function delMenu(remove, { sheet, after } = {}) {
+    return [{ id: "delete", label: "消す", icon: "trash", danger: true, onPick: () => {
+      const undo = remove();
+      if (sheet) sheet().close();
+      if (after) after();
+      toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); if (after) after(); } } });
+    } }];
   }
 
   /* ---------------- 日を選ぶ暦（小窓） ----------------
@@ -2461,7 +2473,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, popMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
+    sheet, actionSheet, popOver, popMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

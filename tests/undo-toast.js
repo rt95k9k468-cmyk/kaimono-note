@@ -4,7 +4,7 @@
    - 消す言葉は「消しました」（「削除しました」のトーストが無い）
    - daily の記録・体重・食事・お酒・衝動・運動を消すと、同じものが同じ場所へ戻る関数が返る
      （二度押しても増えない）
-   - daily の記録を画面から消す → 「消しました」と「元に戻す」→ 押すと戻る
+   - daily の記録を画面から（紙の ⋯ の「消す」で、確かめずに）消す → 「消しました」と「元に戻す」→ 押すと戻る
    - 記録はもとどおり（試しに足して消したものだけ）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/undo-toast.js */
 const fs = require("fs");
@@ -82,10 +82,9 @@ const { open, checker } = require("./lib");
   const row = page.locator(`[data-id="${id}"]`).first();
   if (await row.count()) {
     await row.click();
-    await page.waitForSelector(".sheet.is-open .js-del", { timeout: 3000 });
-    await page.click(".sheet.is-open .js-del");
-    await page.waitForTimeout(400);
-    await page.click(`[aria-label="この記録を消しますか？"] .js-ok`);
+    await page.waitForSelector(".sheet.is-open .js-menu", { timeout: 3000 });
+    await page.click(".sheet.is-open .js-menu");
+    await page.click(".note-pop-item.is-danger");   // ⋯ の「消す」。確かめずに消える（U11）
     await page.waitForSelector(".toast .toast-action");
     const msg = await page.$eval(".toast", (e) => e.textContent.replace(/\s+/g, ""));
     const goneUi = await page.evaluate((i) => !KN.store.get().archive.entries.some((x) => x.id === i), id);

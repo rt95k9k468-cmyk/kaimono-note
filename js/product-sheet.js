@@ -300,8 +300,6 @@
         </div>
 
         <div class="field js-log-wrap"></div>
-
-        <button class="btn btn-danger btn-block js-del">${icon("trash")} この記録を消す</button>
       </div>
     `);
 
@@ -315,6 +313,7 @@
       titleMark: KN.util.raw(`<span class="dot" style="background:${st.color};width:14px;height:14px"></span>`),
       content: body,
       footer: node(html`<button class="btn btn-primary btn-block js-done">完了</button>`),
+      menu: KN.ui.delMenu(removePrice, { sheet: () => handle, after: () => onChanged && onChanged() }),
     });
     handle.el.querySelector(".js-done").addEventListener("click", () => handle.close());
 
@@ -344,15 +343,8 @@
     }
     paint();
 
-    body.querySelector(".js-del").addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({
-        title: "この記録を消しますか？",
-        message: `${st.name} の ${yen(pr.price)} を消します。`,
-        okLabel: "消す",
-        danger: true,
-      });
-      if (!ok) return;
-      /* 元に戻すときは、同じ価格を同じ場所へ（roadmap-2.0 の V18）。 */
+    /* 元に戻すときは、同じ価格を同じ場所へ（roadmap-2.0 の V18）。消すのは ⋯ から（U11）。 */
+    function removePrice() {
       let at = -1, snap = null;
       store.update((s) => {
         const prod = s.products.find((x) => x.id === productId);
@@ -361,9 +353,8 @@
         if (at >= 0) snap = JSON.parse(JSON.stringify(prod.prices[at]));
         prod.prices = prod.prices.filter((x) => x.id !== priceId);
       });
-      handle.close();
-      onChanged && onChanged();
-      KN.ui.toast("消しました", snap ? { action: { label: "元に戻す", onClick: () => {
+      return () => {
+        if (!snap) return;
         store.update((s) => {
           const prod = s.products.find((x) => x.id === productId);
           if (!prod || prod.prices.some((x) => x.id === priceId)) return;
@@ -371,9 +362,8 @@
           next.splice(Math.min(at, next.length), 0, snap);
           prod.prices = next;
         });
-        onChanged && onChanged();
-      } } } : {});
-    });
+      };
+    }
 
     return handle;
   }
