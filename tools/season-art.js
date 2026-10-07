@@ -35,8 +35,8 @@ const SHORT = SKY ? 853 : 720;
 /* 写真は細かいので少し強くぼかす（25KB に収めるため。背景に薄く敷くので形が分かれば足りる） */
 const BLUR = SKY ? 1 : PHOTO ? 2 : 1.2;
 const SATURATE = SKY ? 115 : 55;
-/* 空：正方形に切るとき、左右のどこを中心に残すか（札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
-const CROP = { morning: 0.55, evening: 0.4, night: 0.55 };
+/* 空：正方形に切るとき、左右のどこを中心に残すか（写真の札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
+const CROP = { "spring-day": 0.45, "spring-evening": 0.4, "spring-night": 0.55, "summer-morning": 0.45, "summer-evening": 0.6, "autumn-morning": 0.55 };
 const NAME = SKY ? /^((?:[a-z]+-)?(morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2}))\.(jpe?g|png|webp|tiff?)$/i;
 
 (async () => {
@@ -52,7 +52,7 @@ const NAME = SKY ? /^((?:[a-z]+-)?(morning|day|evening|night))\.(jpe?g|png|webp|
   for (const f of files) {
     const [, name, part] = f.match(NAME);
     if (!SKY && Number(part) > 71) continue;
-    const crop = SKY ? (CROP[part.toLowerCase()] ?? 0.5) : null;
+    const crop = SKY ? (CROP[name.toLowerCase()] ?? 0.5) : null;
     const mime = /png$/i.test(f) ? "image/png" : /webp$/i.test(f) ? "image/webp" : /tiff?$/i.test(f) ? "image/tiff" : "image/jpeg";
     const data = `data:${mime};base64,${fs.readFileSync(path.join(SRC, f)).toString("base64")}`;
     const r = await page.evaluate(async ([src, SHORT, MAX_ONE, BLUR, SATURATE, crop]) => {
