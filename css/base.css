@@ -1063,32 +1063,48 @@ a { color: var(--c-primary); }
 :root[data-theme="dark"] .head[data-sky="evening"] { --sky-a: #4b2d5e; --sky-c: #211424; --sky-d: #2a1812; }
 :root[data-theme="dark"] .head[data-sky="night"]   { --sky-a: #16284f; --sky-c: #0b1229; --sky-d: #141a38; }
 
-/* 写真（段2）。js が読めた写真の札を data-sky-img に付け、二つの札がそろったときだけ敷きます
-   （読めないあいだは上の描いた空）。帯の幅いっぱいに上から（正方形なので、週では上の空、月に開くと
-   下の景色）。写真の上には幕を重ね、混ぜ方で字の濃さを守ります——**写真がどんな画素でも**：
-   - 明るい面は screen で、幕は上の描いた空そのもの。どの画素も描いた空より暗くならないので、
-     描いた空で確かめた字の比がそのまま守られ、時間帯の色も残る（写真は明るい所だけ浮かぶ）
-   - 暗い面は multiply で、幕は灰色。どの画素も幕の色より明るくならない。題の段の #505050 は
-     どの基調色の主色・ボタンの絵にも 3:1、暦の段の #242426 は曜日・数字に 4.5:1。色が替わるのは
-     題の字（上から 34px まで）と曜日（56px から）のあいだ */
-.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp"); }
-.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp"); }
-.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp"); }
-.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp"); }
+/* 写真（段2・段3）。js が読めた写真の札を data-sky-img に付け、二つの札がそろったときだけ敷きます
+   （読めないあいだは上の描いた空）。帯の幅いっぱいに（正方形）、縦は 55% の所で合わせる——週（帯が低い）では
+   写真の真ん中（地平・山・日）、月に開くとほぼ全部。写真の上には幕を重ね、混ぜ方で字の濃さを守ります
+   ——**写真がどんな画素でも**：
+   - 明るい面は screen。どの画素も幕より暗くならない。幕は時間帯の淡い色（--sky-v1/v2）で、題の段は
+     輝度 0.65（どの基調色の主色にも 3:1）、暦の段は 0.59（下の濃くした字に 4.5:1）
+   - 暗い面は multiply。どの画素も幕より明るくならない。題の段の #505050 はどの基調色の主色・ボタンの絵に
+     3:1、暦の段の #444446 は下の明るくした字に 4.5:1
+   色が替わるのは題の字（上から 34px まで）と曜日（56px から）のあいだ。
+   暦の字は、写真のあいだだけ 35% 濃く（暗い面は明るく）します——幕を薄くして写真を見せるぶんを、字が持つ。
+   もとの色を .head で控えて .cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。 */
+.head[data-sky="morning"][data-sky-img="morning"] { --sky-photo: url("../img/sky/morning.webp"); --sky-v1: #e2cfd2; --sky-v2: #d9c5c9; }
+.head[data-sky="day"][data-sky-img="day"]         { --sky-photo: url("../img/sky/day.webp");     --sky-v1: #c3d6e9; --sky-v2: #b7cde2; }
+.head[data-sky="evening"][data-sky-img="evening"] { --sky-photo: url("../img/sky/evening.webp"); --sky-v1: #e7cfbe; --sky-v2: #dfc5b2; }
+.head[data-sky="night"][data-sky-img="night"]     { --sky-photo: url("../img/sky/night.webp");   --sky-v1: #cfd3e5; --sky-v2: #c5c9df; }
 .head[data-sky-img] {
-  --sky-veil: linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-d) calc(var(--safe-t) + 300px));
+  --sky-veil: linear-gradient(to bottom, var(--sky-v1) calc(var(--safe-t) + 34px), var(--sky-v2) calc(var(--safe-t) + 56px));
   --sky-blend: screen;
+  --sky-ink: #000;
+  --sky-was-2: var(--c-text-2); --sky-was-3: var(--c-text-3); --sky-was-d: var(--c-danger); --sky-was-p: var(--c-primary);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .head[data-sky-img] {
-    --sky-veil: linear-gradient(to bottom, #505050 calc(var(--safe-t) + 30px), #242426 calc(var(--safe-t) + 56px));
+    --sky-veil: linear-gradient(to bottom, #505050 calc(var(--safe-t) + 34px), #444446 calc(var(--safe-t) + 56px));
     --sky-blend: multiply;
+    --sky-ink: #fff;
   }
 }
 :root[data-theme="dark"] .head[data-sky-img] {
-  --sky-veil: linear-gradient(to bottom, #505050 calc(var(--safe-t) + 30px), #242426 calc(var(--safe-t) + 56px));
+  --sky-veil: linear-gradient(to bottom, #505050 calc(var(--safe-t) + 34px), #444446 calc(var(--safe-t) + 56px));
   --sky-blend: multiply;
+  --sky-ink: #fff;
 }
+.head[data-sky-img] .cal {
+  --c-text-2: color-mix(in srgb, var(--sky-ink) 35%, var(--sky-was-2));
+  --c-text-3: color-mix(in srgb, var(--sky-ink) 35%, var(--sky-was-3));
+  --c-danger: color-mix(in srgb, var(--sky-ink) 35%, var(--sky-was-d));
+  --c-primary: color-mix(in srgb, var(--sky-ink) 35%, var(--sky-was-p));
+  --cal-blue: color-mix(in srgb, var(--sky-ink) 35%, #4a8fd9);
+}
+/* 今日の丸の塗りは字ではないので、もとの基調色のまま。 */
+.head[data-sky-img] .cal-day.is-here.is-today .cal-n { background: var(--sky-was-p); }
 .head[data-sky="morning"][data-sky-img="morning"],
 .head[data-sky="day"][data-sky-img="day"],
 .head[data-sky="evening"][data-sky-img="evening"],
@@ -1096,7 +1112,7 @@ a { color: var(--c-primary); }
   background:
     linear-gradient(to bottom, transparent, var(--c-bg) 75%) 0 100% / 100% 16px no-repeat,
     var(--sky-veil),
-    var(--sky-photo) 50% 0 / 100% auto no-repeat,
+    var(--sky-photo) 50% 55% / 100% auto no-repeat,
     linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-d) calc(var(--safe-t) + 300px)),
     var(--c-bg);
   background-blend-mode: normal, var(--sky-blend), normal, normal;
