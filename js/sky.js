@@ -25,10 +25,11 @@
 
    ■ 写真（段2）
 
-   時間帯ごとに一枚（`img/sky/<札>.webp`。出どころは `PHOTO` と docs/sky.md の表）。
-   読めてから `data-sky-img` に同じ札を付けます。CSS は二つの札がそろったときだけ
-   写真を敷くので、読めないあいだ・オフラインで持っていないあいだは描いた空のまま。
-   次の時間帯の一枚も、手の空いたときに読んでおきます。
+   季節×時間帯の16枚（`img/sky/<季節>-<札>.webp`。出どころは `PHOTO` と docs/sky.md の表）。
+   季節は立春・立夏・立秋・立冬で区切ります（js/season.js）。読めてから `data-sky-img` に
+   写真の札（`autumn-day` など）を付けます。CSS は時間帯の札とそろったときだけ写真を敷くので、
+   読めないあいだ・オフラインで持っていないあいだは描いた空のまま。次の時間帯の一枚も、
+   手の空いたときに読んでおきます。
    ========================================================= */
 (function () {
   "use strict";
@@ -83,21 +84,44 @@
     return at(tomorrow, edgesOf(tomorrow)[0]);
   }
 
-  /* 札 → 写真（docs/sky.md の「写真の表」と同じ中身。Wikimedia Commons）。CC BY／BY-SA は
+  /* 季節（立春・立夏・立秋・立冬で区切る）。js/season.js の候の番号 k は春分の初候から数えるので、
+     節気の番号（k / 3）で 立夏 3・立秋 9・立冬 15・立春 21。季節は日で替わる（その日の節気）。 */
+  const SEASONS = ["spring", "summer", "autumn", "winter"];
+  function seasonOf(now) {
+    const r = KN.season.of(KN.util.dayKey(now));
+    const s = r ? Math.floor(r.k / 3) : 12;
+    return s >= 21 || s < 3 ? "spring" : s < 9 ? "summer" : s < 15 ? "autumn" : "winter";
+  }
+  /** その時刻の写真の札（"autumn-day" など）。 */
+  const photoOf = (now) => `${seasonOf(now)}-${slotOf(now)}`;
+
+  /* 写真の札 → 写真（docs/sky.md の「写真の表」と同じ中身。Wikimedia Commons）。CC BY／BY-SA は
      作者・ライセンス・URL の表示が要る（設定 → 外観 →「空の写真の出典」）。sw.js は写真を一度覚えたら
      取り直さないので、**描き直したら `?v=` を上げる**（base.css の --sky-photo も同じ値に）。 */
   const PHOTO = {
-    morning: { file: "img/sky/morning.webp?v=2", name: "朝", title: "Mount Fuji early morning from Lake Motosu - Nov 2, 2008", author: "[puamelia]", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg", why: "本栖湖から見た明け方の富士" },
-    day: { file: "img/sky/day.webp?v=2", name: "昼", title: "Shirane 3 mountains from Mount Shiomi", author: "Alpsdake", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shirane_3_mountains_from_Mount_Shiomi.JPG", why: "塩見岳から見た白根三山と青空" },
-    evening: { file: "img/sky/evening.webp?v=2", name: "夕方", title: "Shiroyone-Senmaida sunset", author: "MaedaAkihiko", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shiroyone-Senmaida_sunset.jpg", why: "白米千枚田と海に沈む夕日" },
-    night: { file: "img/sky/night.webp?v=2", name: "夜", title: "Niigata-Snowy mountain and spring Milky Way - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Snowy_mountain_and_spring_Milky_Way_-_Flickr_-_Japanese_beauty.jpg", why: "雪の山と春の天の川（新潟）" },
+    "spring-morning": { file: "img/sky/spring-morning.webp", name: "春の朝", title: "2010-4-18 日の出(The sunrise) - panoramio", author: "ys1979", license: "CC BY 3.0", url: "https://commons.wikimedia.org/wiki/File:2010-4-18_日の出(The_sunrise)_-_panoramio.jpg", why: "霞む山並みに昇る春の日" },
+    "spring-day": { file: "img/sky/spring-day.webp", name: "春の昼", title: "Aomori-Hirosaki Cherry Blossom Festival and Mt. Iwaki-xl", author: "mko294", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Aomori-Hirosaki_Cherry_Blossom_Festival_and_Mt._Iwaki-xl.jpg", why: "弘前城の堀の桜と岩木山" },
+    "spring-evening": { file: "img/sky/spring-evening.webp", name: "春の夕方", title: "Shiroyone-Senmaida sunset", author: "MaedaAkihiko", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Shiroyone-Senmaida_sunset.jpg", why: "白米千枚田と海に沈む夕日" },
+    "spring-night": { file: "img/sky/spring-night.webp", name: "春の夜", title: "Niigata-Snowy mountain and spring Milky Way - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Snowy_mountain_and_spring_Milky_Way_-_Flickr_-_Japanese_beauty.jpg", why: "雪の山と春の天の川（新潟）" },
+    "summer-morning": { file: "img/sky/summer-morning.webp", name: "夏の朝", title: "Find47 Niigata-Early summer awakening (Yamakoshi's rice terraces and ponds)-m", author: "Koichi Hayakawa", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Find47_Niigata-Early_summer_awakening_(Yamakoshi's_rice_terraces_and_ponds)-m.jpg", why: "山古志の棚田に昇る初夏の朝日" },
+    "summer-day": { file: "img/sky/summer-day.webp", name: "夏の昼", title: "Find47 Niigata-Vitamin color (Yamamotoyama Kogen sunflower field, Ojiya City)-m", author: "Koichi Hayakawa", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Find47_Niigata-Vitamin_color_(Yamamotoyama_Kogen_sunflower_field,_Ojiya_City)-m.jpg", why: "山本山高原のひまわり畑と夏の雲" },
+    "summer-evening": { file: "img/sky/summer-evening.webp", name: "夏の夕方", title: "Niigata-Sunset on the Echigo Plain-m - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Sunset_on_the_Echigo_Plain-m_-_Flickr_-_Japanese_beauty.jpg", why: "水を張った越後平野に沈む夕日" },
+    "summer-night": { file: "img/sky/summer-night.webp", name: "夏の夜", title: "Find47 Niigata-Dance of firefly (Takigashira marshland・Aga-town)-m", author: "Koichi Hayakawa", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Find47_Niigata-Dance_of_firefly_(Takigashira_marshland繝ｻAga-town)-m.jpg", why: "滝頭湿原の蛍（阿賀町）" },
+    "autumn-morning": { file: "img/sky/autumn-morning.webp", name: "秋の朝", title: "Mount Fuji early morning from Lake Motosu - Nov 2, 2008", author: "[puamelia]", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg", why: "本栖湖から見た明け方の富士" },
+    "autumn-day": { file: "img/sky/autumn-day.webp", name: "秋の昼", title: "Nagano-Togakushi Kagamiike Autumn leaves-xl", author: "Koichi Hayakawa", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Nagano-Togakushi_Kagamiike_Autumn_leaves-xl.jpg", why: "戸隠・鏡池に映る紅葉と戸隠連峰" },
+    "autumn-evening": { file: "img/sky/autumn-evening.webp", name: "秋の夕方", title: "Landscape of Hazaki (Niigata City, a row of Hazaki trees in Manganji) (51556156427)", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Landscape_of_Hazaki_(Niigata_City,_a_row_of_Hazaki_trees_in_Manganji)_(51556156427).jpg", why: "満願寺のはさ木並木に沈む夕日" },
+    "autumn-night": { file: "img/sky/autumn-night.webp", name: "秋の夜", title: "Niigata-Echigo Plain is illuminated by the moonlight.-m - Flickr - Japanese beauty", author: "Koichi Hayakawa", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Niigata-Echigo_Plain_is_illuminated_by_the_moonlight.-m_-_Flickr_-_Japanese_beauty.jpg", why: "月明かりの雲と越後平野の灯" },
+    "winter-morning": { file: "img/sky/winter-morning.webp", name: "冬の朝", title: "Find47 Niigata-River (Shinano River, Ojiya City)-m", author: "Koichi Hayakawa", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Find47_Niigata-River_(Shinano_River,_Ojiya_City)-m.jpg", why: "雪の信濃川の夜明け（小千谷市）" },
+    "winter-day": { file: "img/sky/winter-day.webp", name: "冬の昼", title: "Mount Yoko from Tsuboniwa", author: "Naganojmmmm", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Yoko_from_Tsuboniwa.jpg", why: "霧氷の坪庭と青空（八ヶ岳）" },
+    "winter-evening": { file: "img/sky/winter-evening.webp", name: "冬の夕方", title: "Sunset, Hokkaido", author: "Kaibak", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Sunset,_Hokkaido.jpg", why: "雪の林に沈む夕日（北海道）" },
+    "winter-night": { file: "img/sky/winter-night.webp", name: "冬の夜", title: "Shirakawa-go 001", author: "tsuda", license: "CC BY-SA 2.0", url: "https://commons.wikimedia.org/wiki/File:Shirakawa-go_001.jpg", why: "雪の白川郷の灯" },
   };
 
   /* 読めた写真・読めなかった写真（同じものを何度も読みに行かない） */
   const loaded = new Set();
   const failed = new Set();
-  function preload(slot, done) {
-    const p = PHOTO[slot];
+  function preload(key, done) {
+    const p = PHOTO[key];
     if (!p || failed.has(p.file)) return;
     if (loaded.has(p.file)) { if (done) done(); return; }
     const img = new Image();
@@ -108,18 +132,28 @@
 
   /* 時計の帯（docs/sky.md「時計の帯」）。帯は default なので、iOS が theme-color で塗る。開いたあとの
      差し替えは iPhone に映らなかった（docs/notes.md）ので、読み込みの時点で空のいちばん上の色にしておく。
-     色は、写真を敷いた帯のいちばん上（字の無い3行）の平均。空を切ればもとの色へ。 */
+     色は、写真を敷いた帯のいちばん上（字の無い3行）の平均（写真の札ごと）。空を切ればもとの色へ。 */
   const BAR = {
-    light: { morning: "#ddc1c8", day: "#95b5d7", evening: "#ffefcf", night: "#bbbdcb" },
-    dark: { morning: "#432d32", day: "#0b1e3b", evening: "#67583f", night: "#27282f" },
+    light: {
+      "spring-morning": "#fbd2b3", "spring-day": "#d2dbe6", "spring-evening": "#ffefcf", "spring-night": "#bbbdcb",
+      "summer-morning": "#aeadb6", "summer-day": "#c0d4e6", "summer-evening": "#f9c28f", "summer-night": "#9395a2",
+      "autumn-morning": "#ddc1c8", "autumn-day": "#e3d4a8", "autumn-evening": "#b39886", "autumn-night": "#bbb8c0",
+      "winter-morning": "#c0b8bd", "winter-day": "#8db7de", "winter-evening": "#fcf3e2", "winter-night": "#acacb6",
+    },
+    dark: {
+      "spring-morning": "#643d1e", "spring-day": "#40434b", "spring-evening": "#67583f", "spring-night": "#27282f",
+      "summer-morning": "#111a21", "summer-day": "#303d4c", "summer-evening": "#612e08", "summer-night": "#010101",
+      "autumn-morning": "#432d32", "autumn-day": "#4f3d04", "autumn-evening": "#120601", "autumn-night": "#272322",
+      "winter-morning": "#242428", "winter-day": "#031f42", "winter-evening": "#655c4f", "winter-night": "#191818",
+    },
   };
   const metas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
   const plain = metas.map((m) => m.content);
-  function tintBar(slot) {
+  function tintBar(key) {
     const theme = KN.store.get().settings.theme;
     metas.forEach((m, i) => {
       const face = theme === "light" || theme === "dark" ? theme : /dark/.test(m.media) ? "dark" : "light";
-      const want = slot ? BAR[face][slot] : plain[i];
+      const want = key ? BAR[face][key] : plain[i];
       if (m.content !== want) m.content = want;
     });
   }
@@ -127,38 +161,44 @@
   const on = () => KN.store.get().settings.sky !== false;
   let timer = 0;
   let wasOn = null;
+  let pic = null;
 
   /** `#head` に、いまの時間帯の札を付ける（設定で切ってあれば外す）。同じ札なら触らない。 */
   function apply() {
     const head = document.getElementById("head");
     if (!head) return;
     wasOn = on();
-    const want = wasOn ? slotOf(new Date()) : null;
+    const now = new Date();
+    const want = wasOn ? slotOf(now) : null;
+    pic = want ? photoOf(now) : null;
+    const key = pic;
     if (!want) { head.removeAttribute("data-sky"); head.removeAttribute("data-sky-img"); }
     else if (head.getAttribute("data-sky") !== want) head.setAttribute("data-sky", want);
-    tintBar(want);
-    if (want && head.getAttribute("data-sky-img") !== want) {
-      preload(want, () => { if (head.getAttribute("data-sky") === want) head.setAttribute("data-sky-img", want); });
+    tintBar(key);
+    if (want && head.getAttribute("data-sky-img") !== key) {
+      preload(key, () => { if (pic === key && head.getAttribute("data-sky") === want) head.setAttribute("data-sky-img", key); });
       const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
-      idle(() => preload(SLOTS[(SLOTS.indexOf(want) + 1) % 4]));
+      idle(() => preload(photoOf(new Date(+nextChange(now) + 1000))));
     }
     clearTimeout(timer);
-    /* 隠れているあいだの時計は止まることがある（iPhone）。戻ってきたときにも測り直す（下）。 */
-    if (want) timer = setTimeout(apply, Math.max(1000, nextChange(new Date()) - Date.now() + 1000));
+    /* 隠れているあいだの時計は止まることがある（iPhone）。戻ってきたときにも測り直す（下）。
+       季節は日で替わるので、夜中の0時にも測り直す。 */
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    if (want) timer = setTimeout(apply, Math.max(1000, Math.min(nextChange(now), midnight) - Date.now() + 1000));
   }
 
   apply();
   KN.store.subscribe(() => {
     if (on() !== wasOn) apply();
-    else { const head = document.getElementById("head"); tintBar(head && head.getAttribute("data-sky")); }
+    else tintBar(pic);
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") apply();
   });
   window.addEventListener("pageshow", (e) => { if (e.persisted) apply(); });
 
-  /** 出典の一覧（設定の奥）。朝・昼・夕方・夜の順。 */
-  const credits = () => SLOTS.map((slot) => ({ slot, ...PHOTO[slot] }));
+  /** 出典の一覧（設定の奥）。春・夏・秋・冬、それぞれ朝・昼・夕方・夜の順。 */
+  const credits = () => SEASONS.flatMap((season) => SLOTS.map((slot) => ({ key: `${season}-${slot}`, season, slot, ...PHOTO[`${season}-${slot}`] })));
 
-  KN.sky = { apply, slotOf, sunOf, nextChange, credits, SLOTS, PHOTO, BAR };
+  KN.sky = { apply, slotOf, sunOf, nextChange, seasonOf, photoOf, credits, SLOTS, SEASONS, PHOTO, BAR };
 })();
