@@ -1007,6 +1007,53 @@ a { color: var(--c-primary); }
    着いてから——戻り始めたら（`.is-face-front`）場所だけ先に返します。 */
 .head.is-notes :is(.head-cal, .topbar-day, .js-go-today, .js-upcoming) { pointer-events: none; }
 .screens:not(:has(.is-face-front)) .head.is-notes .js-upcoming { display: none; }
+
+/* ---- 帯の空（docs/sky.md・js/sky.js） ----
+
+   上の帯と暦の後ろに、いまの時間帯（朝・昼・夕方・夜）の空を一枚。js は `#head` に
+   `data-sky` の札を付けるだけで、色はここが明るい面・暗い面ごとに持ちます。帯（.topbar）と
+   暦（.cal）は地を塗るのをやめて、空を透かします。
+
+   色の決まり（字の濃さの比。tests/sky.js が画面の画素で見張る）：
+   - 題の段（いちばん上〜帯の下）：題の字・年の主色・ボタンの絵が 3:1 以上
+   - 暦の段（曜日から下）：どの字も、空の無いときより読みにくくしない（4.5:1、もともと
+     それ未満の字は元の比まで）。明るい面では**地より暗くしない**
+   だから上ほど空らしく、暦の段は淡く（暗い面では深く）なります。
+
+   止まる場所は px で書きます（% だと、暦を月に開いたとき空ごと伸びる）。下の端は地の色へ
+   溶かします（紙の角から見える地と、継ぎ目を作らない）。札が替わると色は --m-season で
+   ゆっくり移ります（@property で色として登録）。 */
+@property --sky-a { syntax: "<color>"; inherits: false; initial-value: transparent; }
+@property --sky-c { syntax: "<color>"; inherits: false; initial-value: transparent; }
+@property --sky-d { syntax: "<color>"; inherits: false; initial-value: transparent; }
+.head[data-sky] {
+  transition: --sky-a var(--m-season) var(--ease), --sky-c var(--m-season) var(--ease), --sky-d var(--m-season) var(--ease);
+  background:
+    linear-gradient(to bottom, transparent, var(--c-bg) 75%) 0 100% / 100% 16px no-repeat,
+    linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-d) calc(var(--safe-t) + 300px)),
+    var(--c-bg);
+}
+.head[data-sky] > .topbar,
+.head[data-sky] .cal { background: transparent; }
+/* ノートへ移るとき、暦は帯の裏へ上がります。帯が透けるので、上がった所（帯の下の線より上）を切る。 */
+.screens.is-notes-lift .head[data-sky] > .head-cal {
+  clip-path: inset(calc(var(--face-p, 0) * var(--face-lift, 0px)) -50vw -50vh -50vw);
+}
+.head[data-sky="morning"] { --sky-a: #b9d5f0; --sky-c: #eff6fc; --sky-d: #fdf4ec; }
+.head[data-sky="day"]     { --sky-a: #abd0f4; --sky-c: #eaf4fd; --sky-d: #f1f8fe; }
+.head[data-sky="evening"] { --sky-a: #d4c8ec; --sky-c: #fdf1f0; --sky-d: #fef2e6; }
+.head[data-sky="night"]   { --sky-a: #c3cbe8; --sky-c: #f2f3fb; --sky-d: #f4f3f9; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .head[data-sky="morning"] { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
+  :root:not([data-theme="light"]) .head[data-sky="day"]     { --sky-a: #1f4f84; --sky-c: #0f1f33; --sky-d: #112133; }
+  :root:not([data-theme="light"]) .head[data-sky="evening"] { --sky-a: #4b2d5e; --sky-c: #211424; --sky-d: #2a1812; }
+  :root:not([data-theme="light"]) .head[data-sky="night"]   { --sky-a: #16284f; --sky-c: #0b1229; --sky-d: #141a38; }
+}
+:root[data-theme="dark"] .head[data-sky="morning"] { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
+:root[data-theme="dark"] .head[data-sky="day"]     { --sky-a: #1f4f84; --sky-c: #0f1f33; --sky-d: #112133; }
+:root[data-theme="dark"] .head[data-sky="evening"] { --sky-a: #4b2d5e; --sky-c: #211424; --sky-d: #2a1812; }
+:root[data-theme="dark"] .head[data-sky="night"]   { --sky-a: #16284f; --sky-c: #0b1229; --sky-d: #141a38; }
+
 .panes {
   flex: 1;
   min-height: 0;
