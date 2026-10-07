@@ -120,6 +120,29 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 - **共通の動きは `scale:` / `translate:` で書く。** `transform` に位置を持つ物へ `transform` の動きを当てると
   位置が飛ぶ。時間割の丸（`.tl-node`）の位置は、そのため `translate:` に移した（`transform` は空き）。
 
+### 押したときの返事は三種（`--press-*`・roadmap-unify の U6・2026年10月7日）
+
+**押すものは、縮む・沈む・薄まるのどれか。** 数は `:active` に書かず、base.css の `:root` の名前で
+（`tests/press-dict.js` が見張る。門に入る）。見比べの画像で利用者が選んだ値。
+
+| 種類 | 何に | 名前 | 値 |
+|---|---|---|---|
+| 縮む | 幅のあるもの（ボタン・札・カード・鍵盤・`.is-m-press`） | `scale: var(--press-wide)` | .97 |
+| 縮む | 小さい丸（✓・★・±・絵ボタン・暦の矢印・設定の戻る・欄の ✕） | `scale: var(--press-dot)` | .9 |
+| 沈む | 行・升（買うもの・用事・ノート・アーカイブ・設定・daily の行・暦の升） | `background: var(--press-sink)` | 文字色 8% を `--c-surface` へ |
+| 薄まる | 字だけの押すもの（題・「今日」・小見出し・並べ替え・⋯の行・飲みたくなった） | `opacity: var(--press-fade)` | .55 |
+| 押せない | `:disabled`・`[disabled]`・`[aria-disabled]` | `opacity: var(--press-off)` | .4 |
+
+- **縮むのは `scale:`**（`transform` に書かない。位置を `transform` に持つ物で位置が飛ぶ）。transition にも
+  `scale` を足す。
+- **沈むのは一拍（`--m-press`）おいてから**（`transition-delay`）。iPhone は送り始めの指でも `:active` が立つので、
+  すぐ沈むと送るたびに行が瞬く。戻るのはすぐ（遅れは `:active` の側にだけ書く）。
+- 主な行は**題のボタンを押したときだけ**沈む（`.item:has(> .item-body:active)` など）。★や✓は自分が縮む。
+  用事の行は持ち上がったら（`.is-lifted`）・運んでいるあいだ、買うものは並べ替えのあいだ沈まない。
+- `--press-sink` を `--c-surface-2` にしないのは、時間割の丸の地（`--tl-wait`）と同じ色で丸が溶けるから。
+- 外したもの：＋（`.add-fab`）は膨らむ（tabbar）。鍵盤・鍵・`.arc-then`・`.arc-year`・体の数の枠は、地が
+  もう灰なので、それぞれの一段濃い色に沈む。
+
 ### 動きは、名前で持つ（`--m-*` / 曲線）
 
 **速さを数字で書かない。** CSS の `transition` / `animation` に生の秒数を
