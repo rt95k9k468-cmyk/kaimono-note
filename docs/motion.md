@@ -73,7 +73,7 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | `fire` / `.is-m-*` | 状態 | 出来事 | 上の名前の class | 出来事ごと | — | class を付けない |
 | `arrive` / `onArrive` | 状態 | タブを開く・戻る | `.is-m-arrive` の中・輪と数 | `--m-fill`・`--m-draw` | 塗 | 付けない |
 | `flipRows` | 変わる | 組み直し | 行 | `--m-settle` | — | 見送る |
-| `morphPill` / `morphBack` | 変わる | 行→紙の頭／帰り | 丸薬の影 | `--m-sheet-grow`・`--m-settle` | — | 育てない |
+| `morphPill` / `morphBack` | 変わる | 行→紙の頭／帰り（やること・品物＝U15） | 丸薬の影 | `--m-sheet-grow`・`--m-settle` | — | 育てない |
 | `growCard` / `shrinkCard` | 変わる | カード→紙／帰り | 紙（`clip-path`） | `--m-sheet-grow`・`--m-sheet-close` | 塗 | 育てない |
 | `rollText` | 移る | 題の日付 | 字 | `--m-roll` | 塗（ぼかし） | 転がさない |
 | `crossMarks` | 移る | 席を移る | 暦の印 | `--m-marks` | — | 重ねない |

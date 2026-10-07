@@ -356,7 +356,10 @@
       </div>
     `);
 
-    const handle = KN.ui.sheet({ title: "月を選ぶ", content: body });
+    /* 一つを選ぶだけなので小窓（roadmap-unify の U15）。題からふくらみ、閉じれば題へ帰る。
+       帯の暦より上に出す（lift）。 */
+    const handle = KN.ui.popOver(els.dayTitle, { side: "left", label: "月を選ぶ", cls: "is-month", lift: true });
+    handle.el.append(body);
 
     const grid = body.querySelector(".js-grid");
     const yEl = body.querySelector(".js-y");
@@ -390,6 +393,7 @@
       if (year < now.getFullYear()) { year++; paint(); }
     });
     paint();
+    handle.place();
   }
 
   /* ---------------- 左右に払って、日を送る ----------------
@@ -1675,7 +1679,7 @@
     /* 上の帯（題・今日へ戻る・さがす・設定）と暦は、この画面の外——全タブで
        一つの帯（js/head.js）に居ます（docs/shared-header.md）。題は、いま
        見ている**日**（やること・ダイエットと同じひと組を KN.util から）。
-       押すと月を選ぶ紙が開く——応えだけが、この画面のもの。ここに残るのは
+       押すと月を選ぶ小窓が開く——応えだけが、この画面のもの。ここに残るのは
        帯より下：探す窓（暦の下に開く）と紙。 */
     root.append(node(html`
       <div class="stack">
