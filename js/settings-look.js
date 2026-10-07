@@ -172,6 +172,8 @@
           },
         })
       ),
+      KN.sky ? S.more("空の写真の出典", "Wikimedia Commons ／ " + KN.sky.credits()
+        .map((c) => `${c.name}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
       canBadge ? card(
         switchRow({
           title: "アイコンにも数を出す", on: badgeOn,
