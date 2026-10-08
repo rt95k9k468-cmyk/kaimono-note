@@ -4645,6 +4645,32 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--c-border-2);
   opacity: .8;
 }
+/* 送ると、紙の頭がやわらかく（docs/motion.md の「反応を足す」）。下へ送ると、行は掴み手の
+   下へ**溶けて**入る——掴み手の下のきわで、ぷつりと切れない（iOS 26 の送りの端と同じ）。
+   いちばん上に居るあいだは何も出さない（最初の行を薄めない）。濃さは送った量で決まり、
+   時計を持たない（`scroll()`）。読めない端末では出さない。
+   地が紙と同じ色の紙だけ（面を持たない health の紙と、季節の地を透かす daily には置かない）。 */
+.tl-grip::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  height: var(--sp-4);
+  background: linear-gradient(var(--c-sheet), transparent);
+  pointer-events: none;
+  opacity: 0;
+}
+@supports (animation-timeline: scroll()) {
+  .tl-sheet:not(.is-bare) > .tl-grip::after {
+    animation: edge-in linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: 0 var(--sp-6);
+  }
+}
+/* `fade-in` を使わないのは、あれが着く先を地の値に任せる（from だけ）から。送るほど中身の無い紙では
+   scroll() が働かず、動きが外れて地の値が出る——地を 1 にすると、縁が最初の行に掛かったまま残る
+   （実測）。だから地は 0 のまま、着く先をここで言う。 */
+@keyframes edge-in { to { opacity: 1; } }
+#screen-archive[data-season] .tl-sheet.is-daily > .tl-grip::after { display: none; }
 
 /* 日を入れ替えたときの、ひと動き。払った向きから入ってきます——どちらへ
    進んだかが、動きだけで分かるように。位置は動かさず、少しの横ずれと
