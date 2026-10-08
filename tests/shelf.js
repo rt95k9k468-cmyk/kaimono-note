@@ -240,6 +240,23 @@ const TODAY = "2026-10-06";
   t = await get(yid);
   c.check("読み直しても shelf・waitFor・review が残る", t.shelf === "wait" && t.waitFor === "連絡" && t.review === "2026-10-13", JSON.stringify(t));
 
+  /* ---------------- 「これから」を押したら、日の無い用事をすぐ書ける ---------------- */
+  await page.click('.tab[data-tab="todo"]');
+  await wait(500);
+  await page.click("#screen-todo .tl-someday-add");
+  await wait(450);
+  r = await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const a = document.activeElement;
+    return { open: !!sh, focused: !!(sh && a && sh.contains(a) && a.classList.contains("js-title")) };
+  });
+  c.check("「これから」を押すと紙が開き、題にカーソルが居る", r.open && r.focused, JSON.stringify(r));
+  await page.keyboard.type("棚の修理");
+  await page.click(".sheet.is-open .js-save");
+  await wait(500);
+  r = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "棚の修理"));
+  c.check("足したものは日を持たず「これから」に入る", r && !r.due && !r.shelf, JSON.stringify(r));
+
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();
