@@ -648,7 +648,7 @@ node trace.js <画像> [しきい値] [RDPのε]
 ／ ますく `ph:face-mask-fill` ／ かばん `ph:suitcase-fill` ／ おむつ・しーと
 `tabler:bandage-filled` ／ べびーかー `tabler:baby-carriage-filled` ／
 赤ちゃんの家具 `material-symbols:crib-rounded` ／ ぺっと `mingcute:paw-fill`
-／ 体温計 `ph:thermometer-fill` ／ 検査きっと `material-symbols:syringe-rounded`
+／ 体温計 `ph:thermometer-fill` ／ 検査きっと `ph:test-tube-fill`
 ／ 支えるもの `mingcute:crutch-fill` ／ 歯のもの `ph:tooth-fill` ／ お店
 `ri:store-fill` ／ 建物 `bxs:bank` ／ 食べるお店 `ri:restaurant-2-fill`
 
@@ -672,7 +672,7 @@ node trace.js <画像> [しきい値] [RDPのε]
 core 0.29〜0.60。乗りものと場所は、家電・家具と同じで**セットが厚い**ところです。
 
 預ける・洗う店 `ri:gas-station-fill` ／ 出かける先 `ph:mountains-fill` ／
-車 `bxs:car` ／ 電車・ばす `mingcute:bus-fill` ／ 飛行機 `bxs:plane` ／
+車 `bxs:car` ／ 電車・ばす `ph:train-simple-fill` ／ 飛行機 `bxs:plane` ／
 自転車 `mingcute:bike-fill` ／ 地図 `material-symbols:map-rounded` ／
 贈りもの `ph:gift-fill` ／ おもちゃ `mingcute:toy-horse-fill` ／
 楽器 `fluent:guitar-24-filled` ／ 工具 `mingcute:tool-fill` ／

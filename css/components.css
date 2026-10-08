@@ -1469,6 +1469,29 @@ button.hero-node:active { scale: var(--press-dot); }
   40%  { transform: rotate(var(--a)) translateY(calc(-1 * var(--d))) scale(1); opacity: 1; }
   100% { transform: rotate(var(--a)) translateY(calc(-1 * var(--d) - 5px)) scale(.5); opacity: 0; }
 }
+/* ---------------- 待っているあいだ、字の上を光が渡る ----------------
+
+   AI が考えているあいだの「考えています…」（docs/motion.md の「反応を足す」）。止まった字は
+   「固まった」とも読めるので、主色の光を左から右へくり返し渡して「いま考えている」を言う。
+   字の色はそのまま（光の外は currentColor）。動きを減らす設定では渡らず、ふつうの字。 */
+.is-thinking {
+  background: linear-gradient(100deg, currentColor 40%, var(--c-primary) 50%, currentColor 60%) 100% 0 / 300% 100% no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: think-sweep var(--m-think) var(--ease) infinite;
+}
+@keyframes think-sweep { to { background-position: 0 0; } }
+
+/* 波（ui.js の burst）。押した丸のふちから輪が広がって消える。動きは「うまくいった」の
+   輪（m-success）と同じ一本で、長さだけ火花にそろえる。 */
+.kn-burst b {
+  position: absolute;
+  width: var(--s); height: var(--s);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  border-radius: 50%;
+  animation: m-success var(--m-spark) var(--ease-out) forwards;
+}
 
 /* ---------------- toast ---------------- */
 
@@ -1625,7 +1648,10 @@ button.hero-node:active { scale: var(--press-dot); }
   border-radius: 12.5px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
-  transition: transform var(--m-state) var(--ease);
+  /* つまみは、わずかに行き過ぎてから収まる（2026年10月8日。docs/motion.md の「反応を足す」）。
+     地の色が変わるだけの --m-state では、切り替わったのが一瞬で読めない。「印が付いた」と
+     同じ長さと弾み（--m-check・--spring）。 */
+  transition: transform var(--m-check) var(--spring);
 }
 /* オンの目印。**丸のほうには何も無い**（実測で、オフの地は無地の灰でした
    ——iOS の「オン/オフラベル」なら丸も出るはずなので、あちらの自前の絵

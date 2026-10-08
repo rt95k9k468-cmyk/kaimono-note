@@ -17,12 +17,12 @@ const { spawn } = require("child_process");
 const { ensureServer } = require("./lib");
 
 const DIR = __dirname;
-/* frame-pace は測るだけで、手で回す（docs/roadmap-2.0.md の V2。機械の揺れで止めないため）。 */
-const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js"]);
+/* frame-pace・heavy-pace は測るだけで、手で回す（docs/roadmap-2.0.md の V2・docs/log/inspection.md。機械の揺れで止めないため）。 */
+const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js", "heavy-pace.js"]);
 
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */
-const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break",
+const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break", "backup-budget",
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
   "sky",           // 帯の空：時間帯の区切りと、空の上の字の濃さの比（画素で）を門で見張る
   "motion-dict", "look-tokens",    // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
@@ -66,15 +66,25 @@ function listScripts(o) {
   return pick.slice().sort((a, b) => (SLOW[b] || 0) - (SLOW[a] || 0));
 }
 
+/* 一本の上限（2026年10月8日）。台本が途中で投げると、多くは catch で exitCode を立てるだけで
+   ブラウザを開いたまま終わらない——一本が固まると、全体も門も止まる。上限で切って NG にする。
+   いちばん長い台本でも並べて80秒ほど（9月29日・10月8日に測った）。 */
+const LIMIT_SEC = Number(process.env.KN_LIMIT) || 240;  // KN_LIMIT=秒 で変えられる
+
 function runOne(name) {
   return new Promise((done) => {
     const t0 = Date.now();
     const child = spawn(process.execPath, [path.join(DIR, `${name}.js`)],
       { cwd: path.resolve(DIR, ".."), env: process.env });
     let out = "";
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, LIMIT_SEC * 1000);
     child.stdout.on("data", (d) => { out += d; });
     child.stderr.on("data", (d) => { out += d; });
-    child.on("close", (code) => done({ name, code, out, sec: (Date.now() - t0) / 1000 }));
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      done({ name, code, out, timedOut, sec: (Date.now() - t0) / 1000 });
+    });
   });
 }
 
@@ -109,7 +119,8 @@ async function main() {
       const tallies = s.tally.map((l) => l.replace(/^.*: /, "")).join(" ");
       console.log(`${ok ? "ok" : "NG"}  ${name.padEnd(18)} ${r.sec.toFixed(1).padStart(5)}s  ${tallies}`);
       if (!ok) {
-        if (s.ng.length) console.log(s.ng.map((l) => `      ${l.trim()}`).join("\n"));
+        if (r.timedOut) console.log(`      時間切れ（${LIMIT_SEC}秒）で止めた。終わりの出力：`);
+        if (s.ng.length && !r.timedOut) console.log(s.ng.map((l) => `      ${l.trim()}`).join("\n"));
         else console.log(r.out.trim().split("\n").slice(-15).map((l) => `      ${l}`).join("\n"));
       } else if (o.verbose) console.log(r.out);
       results.push({ ...r, ok });
