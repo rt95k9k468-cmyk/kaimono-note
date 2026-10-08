@@ -246,16 +246,92 @@ const TODAY = "2026-10-06";
   await page.click("#screen-todo .tl-someday-add");
   await wait(450);
   r = await page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
-    const a = document.activeElement;
-    return { open: !!sh, focused: !!(sh && a && sh.contains(a) && a.classList.contains("js-title")) };
+    const pop = document.querySelector(".note-pop.is-quick.is-open");
+    return { pop: !!pop, sheet: !!document.querySelector(".sheet.is-open"),
+             focused: !!(pop && pop.contains(document.activeElement)) };
   });
-  c.check("「これから」を押すと紙が開き、題にカーソルが居る", r.open && r.focused, JSON.stringify(r));
+  c.check("「これから」を押すと角丸の小窓（下からの紙ではない）。キーボードは勝手に出さない",
+    r.pop && !r.sheet && !r.focused, JSON.stringify(r));
+  await page.click(".note-pop.is-quick .js-qa-title");
   await page.keyboard.type("棚の修理");
-  await page.click(".sheet.is-open .js-save");
+  await page.keyboard.press("Enter");
   await wait(500);
   r = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "棚の修理"));
   c.check("足したものは日を持たず「これから」に入る", r && !r.due && !r.shelf, JSON.stringify(r));
+  /* トーストに「元に戻す」。押せば消え、もう一度足して先へ */
+  r = await page.evaluate(() => [...document.querySelectorAll(".toast-action")].map((b) => b.textContent.trim()));
+  c.check("足したトーストに「元に戻す」", r.includes("元に戻す"), JSON.stringify(r));
+  await page.evaluate(() => [...document.querySelectorAll(".toast-action")].find((b) => b.textContent.trim() === "元に戻す").click());
+  await wait(300);
+  r = await page.evaluate(() => KN.store.get().todos.some((x) => x.title === "棚の修理"));
+  c.check("「元に戻す」で足したものが消える", r === false);
+  await page.evaluate(() => KN.store.addTodo({ title: "棚の修理" }));
+  await wait(300);
+
+  /* 欄の中のどこでも（下の余白）。行を押せば行の紙、動いた指（スクロール）では開かない */
+  const openTitle = () => page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return sh ? (sh.querySelector(".sheet-title") || { textContent: "" }).textContent.trim() : null;
+  });
+  const closeAll = async () => { for (let i = 0; i < 3 && await openTitle(); i++) { await page.keyboard.press("Escape"); await wait(400); } };
+  await wait(300);
+  await page.$eval("#screen-todo .tl-someday-sec", (s) => s.scrollIntoView({ block: "center" }));
+  await wait(300);
+  const box = await page.$eval("#screen-todo .tl-someday-sec", (s) => { const b = s.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.bottom - 8 }; });
+  await page.mouse.click(box.x, box.y);
+  await wait(450);
+  c.check("欄の下の余白を押しても、足す小窓が開く", await page.$(".note-pop.is-quick.is-open") !== null);
+  await page.click(".note-pop.is-quick .js-qa-title");
+  await page.keyboard.type("窓ふき");
+  await page.click(".note-pop.is-quick .js-qa-more");
+  await wait(500);
+  r = await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return sh ? { v: sh.querySelector(".js-title").value, save: !sh.querySelector(".js-save").disabled,
+                  card: sh.classList.contains("is-fab-card") } : null;
+  });
+  c.check("「詳しく」で、打った題ごと詳細の紙へ（紙もカード）", r && r.v === "窓ふき" && r.save && r.card, JSON.stringify(r));
+  await closeAll();
+  await page.keyboard.press("Escape"); await wait(300);
+
+  /* 何も書かずにやめたら、「これから」の＋へ帰る（小窓も、詳しくの紙も） */
+  const plusAt = () => page.$eval("#screen-todo .tl-someday-plus", (e) => { const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  await page.click("#screen-todo .tl-someday-add");
+  await wait(450);
+  await page.mouse.click(5, 5);   // 外を押す
+  r = await page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-quick");
+    if (!p) return null;
+    const [ox, oy] = p.style.transformOrigin.split(" ").map(parseFloat);
+    return { x: parseFloat(p.style.left) + ox, y: parseFloat(p.style.top) + oy, open: p.classList.contains("is-open") };
+  });
+  let pa = await plusAt();
+  c.check("小窓を外で閉じると、＋へ縮んで帰る", r && !r.open && Math.abs(r.x - pa.x) < 2 && Math.abs(r.y - pa.y) < 2, JSON.stringify({ r, pa }));
+  await wait(500);
+  await page.click("#screen-todo .tl-someday-add");
+  await wait(450);
+  await page.click(".note-pop.is-quick .js-qa-more");
+  await wait(600);
+  await page.click(".sheet.is-open .js-close");
+  await wait(60);
+  r = await page.evaluate(() => {
+    const sh = document.querySelector(".sheet.is-homing");
+    if (!sh) return null;
+    const cs = getComputedStyle(sh);
+    return { sx: parseFloat(cs.getPropertyValue("--sx")), sy: parseFloat(cs.getPropertyValue("--sy")) };
+  });
+  c.check("詳しくの紙を何も書かずに閉じると、＋へ帰る", !!r, JSON.stringify(r));
+  await wait(700);
+  await page.click("#screen-todo .tl-someday-sec > .tl-someday .tl-row .item-name");
+  await wait(450);
+  c.check("行を押せば、その行の紙（足す紙ではない）", (await openTitle()) === "やることを直す", await openTitle());
+  await closeAll();
+  await page.mouse.move(box.x, box.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x, box.y - 40, { steps: 5 });
+  await page.mouse.up();
+  await wait(450);
+  c.check("指が動いた（スクロール）ときは開かない", (await openTitle()) === null && !(await page.$(".note-pop.is-quick.is-open")), await openTitle());
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
