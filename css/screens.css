@@ -200,14 +200,37 @@
 .land-mark svg { width: 28px; height: 28px; }  /* 入れもの：はじめの画面の目印 */
 .land-name { overflow: hidden; text-overflow: ellipsis; }
 
-/* category group — no heading any more, just a run of rows wearing the same
-   colour down their left edge. The gap is what still separates one run from
-   the next. */
+/* category group — 買うものでは 2026年10月8日から棚のカード（下の #screen-list .cat-group.is-run）。
+   ほかの画面では見出しの無い行の塊で、組と組のあいだは空きだけ。 */
 .cat-group { margin-bottom: var(--sp-3); }
 .cat-group:last-child { margin-bottom: 0; }
 
 /* B7 のカテゴリの切れ目の線は、2026年9月29日に外しました（利用者：「品目の
    間の線も要らない」）。組と組のあいだは 12px の空きだけ（docs/shopping.md）。 */
+
+/* 棚ごとのカード（Apple リマインダーの組。2026年10月8日、利用者が見比べの画像で選んだ）。面は .card と
+   同じ材。頭に棚の名前、行と行のあいだは品名の頭から右の端までの細い線（docs/shopping.md）。 */
+#screen-list .cat-group.is-run,
+#screen-list .day-bought > .item-list {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+#screen-list .cat-group.is-run { margin: 0 var(--sp-3) var(--sp-4); padding-bottom: var(--sp-1); }
+/* 買ったもの（今日・過ぎた日）も同じカードに入れ、行の列を棚と揃える（tests/shop-day.js の「同じ列」）。
+   見出しはカードの外、棚の名前と同じ左に。 */
+#screen-list .day-bought > .item-list { margin: 0 var(--sp-3); }
+#screen-list .day-bought-head { padding-left: calc(var(--sp-3) + var(--sp-4)); }
+.shelf-head {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin: 0; padding: var(--sp-3) var(--sp-4) 0;
+  font-size: var(--fs-md); font-weight: var(--fw-bold);
+  color: color-mix(in srgb, var(--cat, var(--c-text-2)) 72%, var(--c-text));
+}
+#screen-list :is(.cat-group.is-run, .day-bought) .item-wrap + .item-wrap {
+  background: linear-gradient(var(--c-border), var(--c-border)) var(--shelf-inset, 104px) 0 / 100% 1px no-repeat;
+}
 
 .cat-head-count { color: var(--c-text-3); font-weight: var(--fw-bold); }
 
@@ -3403,21 +3426,28 @@ a.btn { text-decoration: none; }
 
    過ぎた日の紙です。今日の紙（Daily Log・積み上げ）と**同じ顔にしません**
    ——並べたときに、どちらが今でどちらが前か、読まなくても分かるように。
-   白い面ではなく一段沈んだ地に置き、左に主色の細い柱を立てます。柱は
-   「引用」の印で、この一枚が自分の書いたものの引き写しだと言っています。
+   季節の写真の上に、透けたガラスとして置きます（10/8 まで沈んだ地と主色の柱）。
+   後ろの写真が透けていることが、この一枚が「いま」ではないことを言います。
 
    押せますが、ボタンの顔はしていません。読みものとして置いて、触れれば
    その日へ行く、という順です。 */
 .arc-then {
-  margin: 0 var(--sp-4);
+  margin: var(--sp-3) var(--sp-4) 0;
   padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: 3px;
   width: auto; text-align: left;
-  background: var(--c-surface-2);
-  border-left: 3px solid var(--c-primary);
-  transition: transform var(--m-state) var(--ease), scale var(--m-press) var(--ease), background var(--m-state) var(--ease);
+  /* 2026年10月8日から、季節の写真の上に置くガラス（利用者が見比べの画像で選んだ・docs/daily.md）。
+     沈んだ地と主色の柱はやめた——写真の上では、透けていることが「いまではない」を言う。地の濃さは
+     --glass-a（ぼかしの効かない環境では @supports が上げる）、ぼかしは --glass-blur（docs/glass.md）。 */
+  background: color-mix(in srgb, var(--c-surface) var(--glass-a), transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid color-mix(in srgb, var(--c-sheet-edge) 60%, transparent);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-2);
+  transition: transform var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
-.arc-then:active { scale: var(--press-wide); background: var(--c-surface-3); }
+.arc-then:active { scale: var(--press-wide); }
 
 .arc-then-head { display: flex; align-items: center; gap: 6px; }
 .arc-then-head b { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
@@ -3427,7 +3457,7 @@ a.btn { text-decoration: none; }
 .arc-then-when {
   margin-left: auto; font-style: normal;
   font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary-ink);
-  background: var(--c-primary-soft);
+  background: color-mix(in srgb, var(--c-surface) 62%, transparent);
   padding: 2px 8px; border-radius: var(--r-full);
 }
 .arc-then-date { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
@@ -3454,7 +3484,7 @@ a.btn { text-decoration: none; }
 .arc-then-more { font-size: var(--fs-xs); color: var(--c-text-3); padding-left: 21px; }
 
 /* 同じ日の年々（R9）。枠そのものは押せず、年の一行ずつが押せます。 */
-.arc-then.is-years:active { scale: none; background: var(--c-surface-2); }
+.arc-then.is-years:active { scale: none; }
 .arc-year {
   display: flex; align-items: baseline; gap: var(--sp-3);
   width: 100%; margin-top: var(--sp-1); padding: 4px 0;
@@ -5055,15 +5085,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .arc-stack-head { padding: 0 var(--sp-4); }
 .arc-stack > .chip-row { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 
-.card.arc-then {
-  margin-left: 0;
-  margin-right: 0;
-  border-radius: 0;
-  border-top: 1px solid var(--c-border);
-  border-bottom: 1px solid var(--c-border);
-  border-right: none;
-  box-shadow: none;
-}
+/* 「あの日」は端から端の帯をやめ、写真の上のガラスの札になった（2026年10月8日。上の .arc-then）。 */
 
 /* 買うもの・価格の紙。ここは暦を持たないので、上のバーと札の下から
    画面の下まで、まるごと一枚です。中身が少ない日でも下まで届くように、
@@ -5135,6 +5157,16 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-sheet);
 }
+/* 「あの日」が出ている日は、写真を幕なしで上の帯（--season-band）いっぱいに敷き、その上にガラスの札を置く
+   （2026年10月8日、利用者が見比べの画像で選んだ・docs/daily.md）。絵は帯の高さに届くまで広げ、左右は切る。
+   帯の六割から下で紙の色へ溶かす。暗い色のときだけ薄い幕（--season-glass-veil）。 */
+#screen-archive[data-season][data-season-img] .tl-sheet.is-daily:has(.arc-then) {
+  --season-band: 430px;
+  background:
+    linear-gradient(to bottom, var(--season-glass-veil, transparent) 0, var(--season-glass-veil, transparent) calc(var(--season-band) * .6), var(--c-sheet) var(--season-band)),
+    var(--season-img, none) center top / max(100vw, calc(var(--season-band) / var(--season-ar, 0.67))) auto no-repeat,
+    var(--c-sheet);
+}
 /* 掴み手と Daily Log・月のまとめ・積み上げの段は紙と同じ地を持つ。季節の色の上では地を透かす（同じ色なので、
    色が無いときと見た目は同じ）。まとめは上に置かれる前提で、白く抜けないこと。 */
 #screen-archive[data-season] .tl-sheet.is-daily > .tl-grip,
@@ -5155,9 +5187,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 一覧のカードは少しだけ透かし、後ろの絵をほんのり見せる（2026年10月7日、利用者の頼み）。開いた紙は透かさない。 */
 #screen-notes[data-season] .note-row.is-card { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
 /* 暗い色のときは、さらに薄く。 */
-:root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
+:root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; --season-glass-veil: color-mix(in srgb, var(--c-sheet) 45%, transparent); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
+  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; --season-glass-veil: color-mix(in srgb, var(--c-sheet) 45%, transparent); }
 }
 /* 紙まで、高さの割り当てを通します。途中の箱が `flex:1; min-height:0` を
    持っていないと、紙は中身ぶんに伸びて器になりません。 */
