@@ -958,6 +958,7 @@
                   tomorrow: today && o.tomorrow ? o.tomorrow : null,
                   markOf: o.markOf, last: undefined, drawn: false };
 
+    el.addEventListener("pointerdown", () => snoreAgain(el));
     /* 押したものを一か所で受けます（札・透明な線・連れ・くぼみ・空いた道）。 */
     el.addEventListener("click", (e) => {
       if (e.target.classList && e.target.classList.contains("road-free")) {
@@ -2263,6 +2264,18 @@
     svg.insertBefore(grp, ref);
     stretch(grp, -1, () => { grp.remove(); go(); });
   }
+
+  /** いびき（z Z）を、また三回（CSS で三回のぼって止まる。inspection.md の 2）。道に触る・アプリへ戻るとき。 */
+  function snoreAgain(root) {
+    const zs = root.querySelectorAll(".road-bed.is-snore .road-z");
+    if (!zs.length) return;
+    zs.forEach((z) => { z.style.animation = "none"; });
+    void zs[0].getBoundingClientRect();
+    zs.forEach((z) => { z.style.animation = ""; });
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") snoreAgain(document);
+  });
 
   /** その根の中の道を、ぜんぶ描き直す（分が変わっていなければ何もしない）。 */
   function paintAll(root) {

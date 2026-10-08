@@ -7,7 +7,7 @@
    - 寝ている時間でなければ薄く（10月1日）
    - 道の端の時刻は寝床の下。寝床と札・時刻・連れは DOM の箱で重ならない
    - 4:50 と 23:10：人は出ず、その側の寝床だけ z Z がのぼる（is-snore・animation）、
-     いまの時刻は寝床の上。12:00：人が立ち、どちらも止まっている
+     いまの時刻は寝床の上。いびきは三回で止まり置いたまま、触る・戻るとまた三回。12:00：人が立ち、どちらも止まっている
    - 評価の言葉と絵文字なし */
 const { open, checker } = require("./lib");
 
@@ -121,6 +121,25 @@ const cx = (b) => (b.l + b.r) / 2;
   }));
 
   errs.push(...await at(23, 10, async (page) => {
+    /* いびきは三回で止まり、置いたまま。道に触る・アプリへ戻ると、また三回（docs/log/inspection.md の 2） */
+    const z = await page.evaluate(async () => {
+      const road = document.querySelector("#screen-todo .day-road");
+      const snore = () => document.getAnimations().filter((a) => a.animationName === "road-snore" && a.playState === "running");
+      const first = snore();
+      const times = first.map((a) => a.effect.getComputedTiming().iterations);
+      first.forEach((a) => a.finish());
+      const still = snore().length;
+      const op = [...road.querySelectorAll(".road-bed.is-snore .road-z")].map((e) => getComputedStyle(e).opacity);
+      road.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      const touched = snore().length;
+      snore().forEach((a) => a.finish());
+      document.dispatchEvent(new Event("visibilitychange"));
+      return { times, still, op, touched, back: snore().length };
+    });
+    c.check("23:10：いびきは三回で止まる", z.times.length === 2 && z.times.every((n) => n === 3), JSON.stringify(z.times));
+    c.check("23:10：止まった z Z は置いたまま（消えない）", z.still === 0 && z.op.length === 2 && z.op.every((o) => o === "1"),
+      JSON.stringify([z.still, z.op]));
+    c.check("23:10：道に触る・アプリへ戻ると、また動く", z.touched === 2 && z.back === 2, JSON.stringify([z.touched, z.back]));
     const r = await read(page);
     c.check("23:10：人は道に居ない", !r.meShown);
     c.check("23:10：夜の寝床は濃く、朝の寝床は薄い", r.beds[1].op === 1 && r.beds[0].op < 0.5,
