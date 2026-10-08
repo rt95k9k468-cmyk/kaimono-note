@@ -109,9 +109,18 @@
     if (!f || !f.width || y >= window.innerHeight || y <= 0) return null;
     return { fab, x: f.left + f.width / 2, y };
   }
-  function aimHome(el, seen) {
-    const live = fabAt();
-    const at = live || (seen && seen.fab.isConnected ? seen : null);
+  function aimHome(el, seen, homeOf) {
+    let live = fabAt();
+    let at = live || (seen && seen.fab && seen.fab.isConnected ? seen : null);
+    /* ＋ではない帰り先（sheet の opts.home）。閉じる瞬間に測る。打っているあいだは
+       下の留め方を使う（キーボードが下りても紙が跳ばない）。 */
+    if (homeOf) {
+      const t = homeOf();
+      const b = t && t.isConnected && t.getBoundingClientRect();
+      const y = b && b.top + b.height / 2;
+      at = b && b.width && y > 0 && y < window.innerHeight ? { fab: t, x: b.left + b.width / 2, y } : null;
+      live = at && !document.documentElement.classList.contains("kb-open") ? at : null;
+    }
     if (!at) return null;
     let r = el.getBoundingClientRect();
     /* いまの姿は translate(-50%, 0)（開いた姿）。ずれていればそのぶんを引いて、
@@ -664,7 +673,9 @@
        （U17・2026年10月7日、利用者が見比べで A「中身ぶんの高さ」を選んだ）。
        背いっぱいのカード（.is-card・.is-note）と確かめの紙はそのまま。形は CSS の
        .sheet.is-fab-card（電話の幅だけ）。seedFrom が開いた箱を測る前に付ける。 */
-    if (pressed && pressed.fab && Date.now() - pressed.t <= 800
+    /* home … ＋ではない帰り先（() => 要素。やることの「これから」の＋）。そこから開いた紙も同じカードに。 */
+    const homeOf = opts && typeof opts.home === "function" ? opts.home : null;
+    if (((pressed && pressed.fab && Date.now() - pressed.t <= 800) || homeOf)
       && !(opts && opts.as === "dialog") && !el.matches(".is-card, .is-note")) {
       el.classList.add("is-fab-card");
     }
@@ -763,8 +774,8 @@
         el.style.transition = "none";
       }
       /* カードへ縮む紙（ノート）は、＋ではなくカードへ帰る。 */
-      const home = seed && seed.fab && !shrinks && !still() && el.classList.contains("is-from-origin")
-        ? aimHome(el, seed.home) : null;
+      const home = seed && (seed.fab || homeOf) && !shrinks && !still() && el.classList.contains("is-from-origin")
+        ? aimHome(el, seed.home, homeOf) : null;
       if (home) el.classList.add("is-homing");
       backdrop.classList.remove("is-open");
       el.classList.remove("is-open");
@@ -1291,6 +1302,10 @@
       if (gone) return;
       gone = true;
       pops.splice(pops.indexOf(close), 1);
+      /* 帰り先は閉じる瞬間に測り直す（開いてからキーボードが出て画面が動くと、
+         開いたときの点は押したものから外れている）。 */
+      const o = originOf();
+      if (o) pop.style.transformOrigin = o;
       pop.classList.remove("is-open");
       document.removeEventListener("keydown", onKey, true);
       cover.remove();
@@ -1327,14 +1342,19 @@
       pop.classList.toggle("is-up", up);
       pop.style.top = `${top}px`;
       pop.style.setProperty("--pop-top", `${top}px`);
-      /* 押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは同じ点へ
-         縮んで帰る。 */
+      pop.style.transformOrigin = originOf() || pop.style.transformOrigin;
+    };
+    /* 押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは同じ点へ
+       縮んで帰る。 */
+    function originOf() {
+      if (!anchor.isConnected) return "";
       const marks = anchor.querySelectorAll("svg");
       const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
+      if (!g.width && !g.height) return "";
       const ox = g.left + g.width / 2 - parseFloat(pop.style.left);
-      const oy = g.top + g.height / 2 - top;
-      pop.style.transformOrigin = `${Math.round(ox)}px ${Math.round(oy)}px`;
-    };
+      const oy = g.top + g.height / 2 - parseFloat(pop.style.top);
+      return `${Math.round(ox)}px ${Math.round(oy)}px`;
+    }
     place();
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
     return { el: pop, close, place };

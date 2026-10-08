@@ -278,11 +278,41 @@ const TODAY = "2026-10-06";
   await wait(500);
   r = await page.evaluate(() => {
     const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
-    return sh ? { v: sh.querySelector(".js-title").value, save: !sh.querySelector(".js-save").disabled } : null;
+    return sh ? { v: sh.querySelector(".js-title").value, save: !sh.querySelector(".js-save").disabled,
+                  card: sh.classList.contains("is-fab-card") } : null;
   });
-  c.check("「詳しく」で、打った題ごと詳細の紙へ", r && r.v === "窓ふき" && r.save, JSON.stringify(r));
+  c.check("「詳しく」で、打った題ごと詳細の紙へ（紙もカード）", r && r.v === "窓ふき" && r.save && r.card, JSON.stringify(r));
   await closeAll();
   await page.keyboard.press("Escape"); await wait(300);
+
+  /* 何も書かずにやめたら、「これから」の＋へ帰る（小窓も、詳しくの紙も） */
+  const plusAt = () => page.$eval("#screen-todo .tl-someday-plus", (e) => { const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  await page.click("#screen-todo .tl-someday-add");
+  await wait(450);
+  await page.mouse.click(5, 5);   // 外を押す
+  r = await page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-quick");
+    if (!p) return null;
+    const [ox, oy] = p.style.transformOrigin.split(" ").map(parseFloat);
+    return { x: parseFloat(p.style.left) + ox, y: parseFloat(p.style.top) + oy, open: p.classList.contains("is-open") };
+  });
+  let pa = await plusAt();
+  c.check("小窓を外で閉じると、＋へ縮んで帰る", r && !r.open && Math.abs(r.x - pa.x) < 2 && Math.abs(r.y - pa.y) < 2, JSON.stringify({ r, pa }));
+  await wait(500);
+  await page.click("#screen-todo .tl-someday-add");
+  await wait(450);
+  await page.click(".note-pop.is-quick .js-qa-more");
+  await wait(600);
+  await page.click(".sheet.is-open .js-close");
+  await wait(60);
+  r = await page.evaluate(() => {
+    const sh = document.querySelector(".sheet.is-homing");
+    if (!sh) return null;
+    const cs = getComputedStyle(sh);
+    return { sx: parseFloat(cs.getPropertyValue("--sx")), sy: parseFloat(cs.getPropertyValue("--sy")) };
+  });
+  c.check("詳しくの紙を何も書かずに閉じると、＋へ帰る", !!r, JSON.stringify(r));
+  await wait(700);
   await page.click("#screen-todo .tl-someday-sec > .tl-someday .tl-row .item-name");
   await wait(450);
   c.check("行を押せば、その行の紙（足す紙ではない）", (await openTitle()) === "やることを直す", await openTitle());

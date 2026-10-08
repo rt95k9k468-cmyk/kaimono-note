@@ -860,6 +860,8 @@
       menu: heroMenu,
       content: body,
       footer: foot,
+      /* 「これから」の小窓の「詳しく」から：紙もカードで、何も書かずに閉じたらその＋へ帰る。 */
+      home: (opts && opts.home) || null,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
       /* 別の日へ移したら、行はこの日から消えます。頭の丸薬が暦のその日へ
@@ -3008,7 +3010,10 @@
     const vv = window.visualViewport;
     const replace = () => p.place();
     const p = KN.ui.popOver(anchor, { side: "left", label: "これからに足す", cls: "is-quick", lift: true,
-      onClose: () => { if (vv) vv.removeEventListener("resize", replace); } });
+      onClose: () => {
+        if (vv) vv.removeEventListener("resize", replace);
+        if (p.el.contains(document.activeElement)) document.activeElement.blur();
+      } });
     p.el.append(box);
     p.place();
     /* キーボードが出たら、その上に収まるよう置き直す。 */
@@ -3025,10 +3030,14 @@
       KN.ui.toast(`「${title}」をこれからへ`);
       p.close();
     });
+    /* 詳しく：小窓は縮ませずに消し（紙が押した点から育つので、二つ動くとぶれる）、
+       紙は同じカードの形で。何も書かずに閉じれば「これから」の＋へ帰る。 */
     box.querySelector(".js-qa-more").addEventListener("click", () => {
       const title = input.value.trim();
+      p.el.classList.add("is-handoff");
       p.close();
-      openSheet(null, null, { noDue: true, title });
+      openSheet(null, null, { noDue: true, title,
+        home: () => document.querySelector("#screen-todo .tl-someday-plus") });
     });
   }
 
