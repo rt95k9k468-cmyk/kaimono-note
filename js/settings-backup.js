@@ -999,13 +999,17 @@
     });
   }
 
-  /* 開いたときは、先に待ってから日記の写しを待つ——ここで ready() を呼ぶと、
-     記録の写し（live-idb.js）より先に日記の突き合わせが始まってしまう（app.js の順）。 */
-  setTimeout(() => {
-    (KN.diaryIdb ? KN.diaryIdb.ready() : Promise.resolve()).then(nudge, nudge);
-  }, NUDGE_WAIT);
+  /* 日記の写しの突き合わせが済むまで、何度か待ち直す。ready() は呼ばない——まだ
+     始まっていなければ始めてしまい、記録の写し（live-idb.js）が先という app.js の順を崩す。 */
+  function soon(tries) {
+    setTimeout(() => {
+      if (tries > 0 && KN.diaryIdb && !KN.diaryIdb.settled()) soon(tries - 1);
+      else nudge();
+    }, NUDGE_WAIT);
+  }
+  soon(5);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") setTimeout(nudge, NUDGE_WAIT);
+    if (document.visibilityState === "visible") soon(2);
   });
 
   Object.assign(S, { dataRows, dropboxRows, nudge });
