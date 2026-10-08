@@ -52,6 +52,8 @@
    * 後ろ向き移動平均。窓は「日数」であって「点の数」ではありません——
    * 三日に一度しか乗らない人の「7日平均」が、実際には三週間ぶんを
    * 均したものになってしまうので。
+   * 体重の線と「平均」の数は trendLine です。これは気づいたこと（analyze）の
+   * 「その週の平均からのずれ」と、記録から逆算した消費の基準として残しています。
    * @param minPoints 窓の中にこれだけ点が無ければ null（薄い平均は嘘に近い）
    */
   function movingAverage(points, windowDays, minPoints) {
@@ -90,6 +92,46 @@
   }
 
   /**
+   * 傾向の線。movingAverage と同じ形（{day, value, full}）を返しますが、
+   * 窓の端で点を切り落とす代わりに、**古い日ほど重みを減らして**均します
+   * （N日なら、一日たつごとに重みが 1 − 2/(N+1) 倍）。
+   *
+   * 重みは「日数」で減ります——三日ぶりに乗った日は、その前の値が三日ぶん
+   * 軽くなります。測らなかった日を埋めることはしません（重みの和で割る
+   * ので、空いた日に値を作らない）。重い日が窓から抜けた朝に線が跳ねる
+   * こともありません。平均の遅れは N日の平均と同じ（(N−1)/2 日）で、
+   * 先の値を当てる仕掛けは入れていません。
+   *
+   * 値を出す・出さない（窓の中の点の数）と full の決め方は movingAverage と同じです。
+   */
+  function trendLine(points, windowDays, minPoints) {
+    const need = minPoints || Math.max(2, Math.ceil(windowDays / 3));
+    const keep = 1 - 2 / (windowDays + 1);
+    const firstFull = points.length ? U.shiftDay(points[0].day, windowDays - 1) : null;
+    const out = [];
+    let start = 0, count = 0, wsum = 0, ksum = 0, prev = null;
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i];
+      const from = U.shiftDay(pt.day, -(windowDays - 1));
+      while (start < i && points[start].day < from) { count--; start++; }
+      count++;
+      if (prev != null) {
+        const gap = Math.max(1, Math.round((U.dayDate(pt.day) - U.dayDate(prev)) / 86400000));
+        const k = keep ** gap;
+        wsum *= k;
+        ksum *= k;
+      }
+      wsum += 1;
+      ksum += pt.kg;
+      prev = pt.day;
+      out.push(count < need
+        ? { day: pt.day, value: null, full: false }
+        : { day: pt.day, value: round(ksum / wsum, 2), full: firstFull != null && pt.day >= firstFull });
+    }
+    return out;
+  }
+
+  /**
    * 最小二乗の傾き。返すのは kg/週。
    * 点が3つ未満、または期間が短すぎるときは null。
    */
@@ -115,15 +157,21 @@
   function weightSummary(windowDays, endDay) {
     const today = endDay || U.todayKey();
     const win = windowDays || 90;
-    const pts = weightPoints(U.shiftDay(today, -(win - 1)), today);
+    const from = U.shiftDay(today, -(win - 1));
+    /* 線は記録の頭から均し、窓の中だけを使います。trendLine は古い日を
+       少しずつ覚えているので、窓の端から均しなおすと、窓の頭の数日が
+       助走（full でない点）になって、傾きの材料から落ちます。 */
+    const hist = weightPoints(null, today);
+    const pts = hist.filter((p) => p.day >= from);
+    const inWin = (line) => line.filter((m) => m.day >= from);
     const goal = store.get().diet.goal;
     // 「平均」「傾き」は、それぞれ別の日数で均せます（既定はどちらも7日）。
     const avgWin = goal.avgWindowDays || 7;
     const trendWin = goal.trendWindowDays || 7;
-    const maAvg = movingAverage(pts, avgWin);
-    const maTrend = avgWin === trendWin ? maAvg : movingAverage(pts, trendWin);
-    const ma7 = avgWin === 7 ? maAvg : movingAverage(pts, 7);
-    const ma14 = movingAverage(pts, 14);
+    const maAvg = inWin(trendLine(hist, avgWin));
+    const maTrend = avgWin === trendWin ? maAvg : inWin(trendLine(hist, trendWin));
+    const ma7 = avgWin === 7 ? maAvg : inWin(trendLine(hist, 7));
+    const ma14 = inWin(trendLine(hist, 14));
     const last = pts.length ? pts[pts.length - 1] : null;
     const prev = pts.length > 1 ? pts[pts.length - 2] : null;
     const lastMa = [...maAvg].reverse().find((m) => m.value != null) || null;
@@ -1354,7 +1402,7 @@
 
     const sumBits = [
       sum.latest ? `最新 ${sum.latest.kg}kg` : "",
-      sum.ma7Now != null ? `7日平均 ${round(sum.ma7Now, 1)}kg` : "",
+      sum.ma7Now != null ? `${sum.avgWindowDays}日平均 ${round(sum.ma7Now, 1)}kg` : "",
       sum.trendPerWeek != null ? `週あたり ${sum.trendPerWeek > 0 ? "+" : ""}${round(sum.trendPerWeek, 2)}kg` : "",
       sum.bmi != null ? `BMI ${round(sum.bmi, 1)}` : "",
       toGoalText,
@@ -1388,7 +1436,7 @@
 
   KN.diet = {
     burnedOf,
-    daysBetween, weightPoints, movingAverage, slopePerWeek,
+    daysBetween, weightPoints, movingAverage, trendLine, slopePerWeek,
     weightSummary, projection, neededPace,
     dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit, countedIntake,
     analyze, coverage,
