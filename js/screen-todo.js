@@ -2852,6 +2852,8 @@
       actOf: act ? act.colorOf : null,
       acts: act ? () => act.recent() : null,
       plant: act ? (a, at) => act.plant({ type: a.type, title: a.title, day, at, minutes: a.minutes }) : null,
+      /* 道具箱（3.0 の A3）：思考・ノート・読書を道へ運ぶ。 */
+      tools: act ? act.toolsFor(day) : null,
     });
   }
 

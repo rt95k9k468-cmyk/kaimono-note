@@ -7014,11 +7014,34 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 @media (prefers-reduced-motion: reduce) {
   .road-bead.is-someday:not(.road-ghost) { animation: none; }
 }
+/* 道具箱（3.0 の A3・day-road.js の toolSlot）。道の右下の空きに思考・ノート・読書の丸。
+   形は活動の丸薬と同じ縁取り（縁と絵は種類の色、中は紙の色に寄せる）、下にくぼみと同じ薄い台。 */
+.road-tools { position: absolute; inset: 0; pointer-events: none; }
+.road-tools-pad {
+  position: absolute; border-radius: var(--r-full); pointer-events: none;
+  background: color-mix(in srgb, var(--road-go) 12%, transparent);
+}
+.road-tool {
+  position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 50%; border: 1.5px solid var(--act-c);
+  background: color-mix(in srgb, var(--act-c) 10%, var(--c-sheet));
+  color: var(--act-c); pointer-events: auto;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.road-tool svg { width: 14px; height: 14px; }
+.road-tool::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; }
+/* 運んでいるあいだの、置かれる丸薬の下書き（種類の色を薄く、長さぶん）。 */
+.road-draft {
+  fill: none; stroke: color-mix(in srgb, var(--act-c) 35%, transparent);
+  stroke-width: 16; stroke-linecap: round; pointer-events: none;
+}
 /* 道へ運ぶ（段8、day-road.js の lift）。持ち上げた連れは元の場所で薄く残り
    （どこから来たか）、写しが指の上に浮く。写しは紙の外（body）に置くので、
    道の色の名前をここで持たせる。 */
 .road-bead.is-lifted { opacity: .3; }
-.road-bead.road-ghost {
+.road-bead.road-ghost, .road-tool.road-ghost {
   --road-go: var(--c-primary-fill);
   --road-in: var(--c-sheet-edge);
   position: fixed; left: 0; top: 0; z-index: var(--z-lift);

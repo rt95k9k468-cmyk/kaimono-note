@@ -1605,10 +1605,13 @@
       const isReading = type === "reading";
       const isSeed = type === "seed";
       const memoVal = body.querySelector(".js-memo").value;
-      /* 種は、タイトルではなく**メモ**が中身です。求めるのはメモのほう。 */
-      const title = isSeed ? "" : (isReading ? titleReading.value : titleGeneric.value).trim();
+      /* 種は、タイトルではなく**メモ**が中身です。求めるのはメモのほう。
+         前からある種の題（道具箱の「思考」・ノートの題・「…について考える」。3.0 の A2・A3）は
+         残す——書く欄は無いので、空にすると道の上の名前が消える。題のある種はメモが無くてよい。 */
+      const title = isSeed ? (e && e.type === "seed" ? String(e.title || "").trim() : "")
+        : (isReading ? titleReading.value : titleGeneric.value).trim();
       if (isSeed) {
-        if (!memoVal.trim()) { KN.ui.toast("メモを書いてください"); return; }
+        if (!memoVal.trim() && !title) { KN.ui.toast("メモを書いてください"); return; }
       } else if (!title) {
         KN.ui.toast("タイトルを入れてください"); return;
       }
