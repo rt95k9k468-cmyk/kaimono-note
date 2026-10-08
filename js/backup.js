@@ -822,14 +822,7 @@
       Dropbox が送れないまま止まっている）、そうでなければ null。
       数える記録に日記・積み上げも入れます——いちばん失いたくないものなので。 */
   function offDeviceStale(now) {
-    const st = store.get();
-    const arc = st.archive || {};
-    const worth = (st.products || []).length >= REMIND_MIN_PRODUCTS
-      || (st.todos || []).length >= REMIND_MIN_TODOS
-      || dietRecordCount(st) >= REMIND_MIN_DIET_RECORDS
-      || (arc.days || []).length >= REMIND_MIN_DAILY
-      || (arc.entries || []).length >= REMIND_MIN_DAILY;
-    if (!worth) return null;
+    if (!worthKeeping()) return null;
     const at = now || Date.now();
     const last = offDeviceAt();
     const days = last ? Math.floor((at - new Date(last).getTime()) / 86400000) : null;
@@ -837,6 +830,18 @@
     const stuck = !!(db && db.connected && db.error && days !== null && days >= REMIND_STUCK_DAYS);
     if (stuck || days === null || days >= REMIND_AFTER_DAYS) return { days, stuck };
     return null;
+  }
+
+  /** 守るほどの記録があるか（どれか5件から）。見張り（R25）と週に一度の控え
+      （settings-backup.js）が同じ決まりで数えます。読むだけ。 */
+  function worthKeeping() {
+    const st = store.get();
+    const arc = st.archive || {};
+    return (st.products || []).length >= REMIND_MIN_PRODUCTS
+      || (st.todos || []).length >= REMIND_MIN_TODOS
+      || dietRecordCount(st) >= REMIND_MIN_DIET_RECORDS
+      || (arc.days || []).length >= REMIND_MIN_DAILY
+      || (arc.entries || []).length >= REMIND_MIN_DAILY;
   }
 
   /** 昔の呼び名（真偽だけ）。 */
@@ -885,7 +890,7 @@
     SNAP_KEY, KEEP, EVERY_MS, FINE_DAYS, KEEP_DAYS, BUDGET, BUDGET_IDB,
     snapshot, take, makeRoom, usage,
     maybeDaily, maybeHourly, maybeEvery, prune, list, restore, clear,
-    lastExportAt, markExported, exportDue, offDeviceAt, offDeviceStale,
+    lastExportAt, markExported, exportDue, offDeviceAt, offDeviceStale, worthKeeping,
     init,
     // 置き場が決まったら果たされる約束と、いまの置き場（"idb" / "ls"）。
     ready: ensure, where: () => where, moved: () => moved,
