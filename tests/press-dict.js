@@ -6,6 +6,7 @@
    三、押せないときの薄さは --press-off 一つ。
    四、行と升の地は --press-sink へ沈む。主な行（買うもの・用事・ノート・アーカイブ）は一拍おいてから、
       用事の行は持ち上がったら・運んでいるあいだは沈まない。
+   五、押しても見た目が何も変わらなかったもの（2026年10月9日の実測の33種）も、名前で返事をする。
    画面は開かない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/press-dict.js */
@@ -57,5 +58,35 @@ for (const [name, re] of ROWS) {
   t.check(`${name}の行は沈む（--press-sink）`, !!r && /var\(--press-sink\)/.test(r.body), r ? r.sel : "規則が無い");
   t.check(`${name}の行は一拍おいて沈む`, !!r && /transition(-delay)?\s*:[^;]*var\(--m-press\)/.test(r.body));
 }
+
+/* 五、押しても見た目が何も変わらなかったもの（2026年10月9日の実測）も、名前で返事をする。
+   字だけの行は一拍おいて薄まる。道の空いたところは、透明な線の下の道が沈む。 */
+const QUIET = [
+  ["買うものの絵の丸", /\.item-emoji:active/], ["今日買ったものの開け閉め", /\.day-bought-toggle:active/],
+  ["品物の紙の★", /\.pd-fav:active/], ["行く日を決める帯", /\.trip-plan-btn:active/],
+  ["価格の行", /\.product:has\(> \.product-main:active\)/], ["価格のタイル", /\.product\.is-tile:has\(> \.product-main:active\)/],
+  ["道の札", /\.road-label:active/], ["道具箱の丸", /\.road-tool:active/], ["連れの丸", /\.road-bead:active/],
+  ["「これから」の行", /\.tl-someday \.tl-row.*:active/], ["「これから」の見出し", /\.tl-someday-add:active/],
+  ["はみ出しの一行", /\.tl-over:active/], ["済んだものの開け閉め", /\.tl-done-toggle:active/],
+  ["食事の枠", /\.diet-slot-view.*:active/], ["体重", /\.diet-hero-main:active/], ["体の数の三つ", /\.diet-stat:active/],
+  ["AI推計の帯", /\.diet-memo-open:active/], ["日記の行", /\.arc-log-row:active/], ["積み上げの行", /\.arc-feed-row:active/],
+  ["記録の種類の札", /\.arc-pick-b:active/], ["本／論文", /\.arc-kind-b:active/], ["ノートの道具", /\.note-tool.*:active/],
+  ["ノートブック", /\.note-nb-btn:active/], ["書いた日時", /\.note-when:active/], ["月の升", /\.mp-cell:active/],
+  ["これからの二週間の一枚", /\.up-day:active/], ["日付・時刻の欄", /\.when-btn:active/], ["ドラムの行", /\.note-wheel-row:active/],
+  ["切り替え", /\.seg-btn:active/], ["色の丸", /\.accent-dot:active/], ["畳んだ説明の見出し", /\.set-more > summary:active/],
+  ["トーストの「元に戻す」", /\.toast-action:active/],
+];
+for (const [name, re] of QUIET) {
+  const r = rules.find((x) => re.test(x.sel));
+  t.check(`${name}は押したら返事をする（--press-*）`, !!r && /var\(--press-(wide|dot|sink|fade)\)/.test(r.body), r ? r.sel : "規則が無い");
+}
+for (const [name, re] of [["日記の行", /\.arc-log-row:active/], ["積み上げの行", /\.arc-feed-row:active/],
+  ["食事の枠", /\.diet-slot-view.*:active/], ["ドラムの行", /\.note-wheel-row:active/], ["「これから」の行", /\.tl-someday \.tl-row.*:active/]]) {
+  const r = rules.find((x) => re.test(x.sel));
+  t.check(`${name}は一拍おいて返事をする`, !!r && /transition(-delay)?\s*:[^;]*var\(--m-press\)/.test(r.body));
+}
+const road = rules.find((x) => /\.day-road:has\(\.road-free:active\) \.road-base/.test(x.sel));
+t.check("道の空いたところを押したら、道が一拍おいて沈む", !!road && /stroke\s*:/.test(road.body)
+  && /var\(--m-press\)/.test(road.body), road ? road.sel : "規則が無い");
 
 t.done();
