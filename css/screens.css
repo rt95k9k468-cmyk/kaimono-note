@@ -1698,6 +1698,7 @@
 }
 .day-bought-toggle svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform var(--m-state) var(--ease); }
 .day-bought-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.day-bought-toggle:active { opacity: var(--press-fade); }
 
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
    them: at three rows down a heading has scrolled away and the two halves of
@@ -1805,7 +1806,7 @@
   padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
   box-shadow: var(--shadow-1);
   transition: background var(--m-state) var(--ease),
-              transform var(--m-settle) var(--ease-settle);
+              transform var(--m-settle) var(--ease-settle), scale var(--m-press) var(--ease);
   /* Vertical stays with the screen so it can still scroll; horizontal comes
      to the swipe handler — the buttons inside included. */
   touch-action: pan-y;
@@ -1853,6 +1854,12 @@
   text-align: left;
   border: none; background: none; padding: 0;
 }
+/* 押したら、行は買うものの行と同じく一拍おいて沈み、タイルは縮む（docs/motion.md の「押したときの返事は三種」）。 */
+.product-wrap:not(.is-tile-wrap) .product:has(> .product-main:active) {
+  background: var(--press-sink);
+  transition: background var(--m-state) var(--ease) var(--m-press), transform var(--m-settle) var(--ease-settle);
+}
+.product.is-tile:has(> .product-main:active) { scale: var(--press-wide); }
 .product-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
 
@@ -2371,9 +2378,10 @@
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   color: var(--c-text-2);
-  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
 .seg-btn[aria-pressed="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
+.seg-btn:active { scale: var(--press-wide); }
 
 
 /* sortable manage rows */
@@ -2570,6 +2578,7 @@
   text-align: left; flex: 1 1 auto; min-width: 0;
   padding: 0; background: none; border: 0;
 }
+.diet-hero-main:active { opacity: var(--press-fade); }
 .diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: var(--fw-bold); letter-spacing: -.01em; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
@@ -2605,6 +2614,7 @@
   width: 100%; padding: 0; background: none; border: 0; font: inherit;
   color: inherit; text-align: left; cursor: pointer;
 }
+.diet-stat:active { opacity: var(--press-fade); }
 .diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-stat-value { font-size: var(--fs-md); font-weight: var(--fw-bold); margin-left: auto; }
 .diet-stat-value.is-warn { color: var(--c-accent); }
@@ -3184,6 +3194,9 @@ button.section-note:active { opacity: var(--press-fade); }
   position: absolute;
   inset: calc(var(--sp-2) / -2) 0;
 }
+/* 押したら薄まる。紙に書いた字の行なので、沈む行と同じく一拍おいてから（送り始めの指で瞬かない）。 */
+.diet-slot-view { transition: opacity var(--m-state) var(--ease); }
+.diet-slot-view[role="button"]:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .diet-slot-text { flex: 1; min-width: 0; font-size: var(--fs-lg); line-height: var(--lh-body); }
 .diet-slot-text.is-blank { color: var(--c-text-3); }
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
@@ -3223,6 +3236,7 @@ button.section-note:active { opacity: var(--press-fade); }
   width: 100%; text-align: left; padding: 0; margin: 0;
   background: none; border: 0; font: inherit; color: inherit;
 }
+.diet-memo-open:active { opacity: var(--press-fade); }
 .diet-memo-head { display: flex; align-items: center; gap: 6px; }
 .diet-memo-head b { font-size: var(--fs-sm); }
 .diet-memo-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
@@ -3328,8 +3342,12 @@ a.btn { text-decoration: none; }
 .date-cell .input { width: 100%; }
 /* 日付・時刻の欄（U8・ui.js の whenFields）。欄の形をしたボタンで、押すと暦・ドラム・車輪の小窓。
    空は「--/--/--」「--:--」を薄く（端末の欄は iOS で空のとき何も描かなかった）。 */
-.when-btn { display: block; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.when-btn {
+  display: block; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color var(--m-state) var(--ease), box-shadow var(--m-state) var(--ease), scale var(--m-press) var(--ease);
+}
 .when-btn.is-empty { color: var(--c-text-3); }
+.when-btn:active { scale: var(--press-wide); }
 .note-wheels.is-time { grid-template-columns: 1fr 1fr; }
 .when-none { margin-top: var(--sp-2); }
 /* ドラムの小窓の下：［なし］［OK］を同じ幅で一列に。 */
@@ -3551,7 +3569,10 @@ a.btn { text-decoration: none; }
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
+  transition: opacity var(--m-state) var(--ease);
 }
+/* 地を持たない字の行なので、押したら薄まる。一拍おいてから（送り始めの指で瞬かない）。 */
+.arc-log-row:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 30px; flex: none; padding-top: 1px; }
 .arc-log-day b { font-size: var(--fs-xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -3669,8 +3690,10 @@ a.btn { text-decoration: none; }
   font-size: var(--fs-sm); font-weight: var(--fw-bold);
   background: var(--c-surface-2); color: var(--c-text-2);
   border: 1.5px solid transparent;
+  transition: scale var(--m-press) var(--ease);
 }
 .arc-pick-b svg { color: var(--c-text-3); }
+.arc-pick-b:active { scale: var(--press-wide); }
 /* 札は一列に収める（2026年10月6日・利用者「新規で達成が下へ行く」）。折り返さず、
    余白を詰めて、余った幅は札どうしで分ける（375px の電話でも日記＋四つが入る）。 */
 .arc-pick { flex-wrap: nowrap; gap: var(--sp-1); }
@@ -3706,8 +3729,10 @@ a.btn { text-decoration: none; }
   font-size: var(--fs-sm); font-weight: var(--fw-bold);
   background: var(--c-surface-2); color: var(--c-text-2);
   border: 1.5px solid transparent;
+  transition: scale var(--m-press) var(--ease);
 }
 .arc-kind-b svg { color: var(--c-text-3); }
+.arc-kind-b:active { scale: var(--press-wide); }
 .arc-kind-b.is-on { border-color: var(--c-primary); color: var(--c-primary-ink); background: var(--c-primary-soft); }
 .arc-kind-b.is-on svg { color: var(--c-primary); }
 
@@ -3944,6 +3969,7 @@ a.btn { text-decoration: none; }
 /* 押せる一行（3.0 の B3）。押せば組み直しの紙。色は変えない（注意の字のまま）。 */
 button.tl-over { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; text-align: left; }
 button.tl-over svg { width: var(--ico-sm); height: var(--ico-sm); color: var(--c-text-3); }
+button.tl-over:active { opacity: var(--press-fade); }
 /* 組み直しの紙 */
 .refit-left { margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--c-text-2); }
 .refit-left b { font-size: var(--fs-lg); color: var(--c-text); font-variant-numeric: tabular-nums; }
@@ -3960,6 +3986,7 @@ button.tl-over svg { width: var(--ico-sm); height: var(--ico-sm); color: var(--c
   color: var(--c-text-2); font-weight: var(--fw-bold); font-size: var(--fs-sm);
 }
 .tl-done-toggle[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
+.tl-done-toggle:active { opacity: var(--press-fade); }
 .tl.is-done-shut .tl-row.is-done, .tl.is-done-shut .tl-free-row.is-by-done { display: none; }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
@@ -4926,7 +4953,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   border-radius: var(--r-full);
   background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
   font-size: calc(20px * var(--fs-k));
+  transition: scale var(--m-press) var(--ease);
 }
+.item-wrap:not(.is-tile-wrap) .item-emoji:active { scale: var(--press-dot); }
 .item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }  /* 入れもの：40の丸 */
 .item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
 
@@ -5360,6 +5389,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   color: var(--c-text-2);
 }
 .note-nb-btn svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.note-nb-btn:active { opacity: var(--press-fade); }
 /* ノートブックの本の絵は、名前から決まった一色（screen-notes.js の book）。 */
 .nb-ico { display: inline-flex; flex: none; color: var(--cat, currentColor); }
 .note-nb-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -5634,10 +5664,12 @@ textarea.note-title-in {
   border-radius: var(--r-md);
   color: var(--c-text);
   touch-action: manipulation;
+  transition: scale var(--m-press) var(--ease);
 }
 .note-tool svg { width: var(--ico); height: var(--ico); }
 .note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary); }
 .note-tool[aria-disabled="true"] { opacity: var(--press-off); }
+.note-tool:not([aria-disabled="true"]):active { scale: var(--press-dot); }
 
 /* 「⋯」の小窓（押した ⋯ のすぐ下。js/screen-notes.js の popMenu）。 */
 .note-pop-cover { position: fixed; inset: 0; }
@@ -5741,8 +5773,11 @@ textarea.note-title-in {
   font-size: var(--fs-lg);
   color: var(--c-text-2);
   font-variant-numeric: tabular-nums;
+  transition: opacity var(--m-state) var(--ease);
 }
 .note-wheel-row[aria-selected="true"] { color: var(--c-text); font-weight: var(--fw-bold); }
+/* 押せばその行へ回る。回す指はたいてい行から始まるので、一拍おいてから薄まる。 */
+.note-wheel-row:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 /* 時刻の紙（2026年10月2日）。詳細の紙と同じ一行ずつの枠。右に、押せる値。 */
 .sub-check {
   display: grid; place-items: center; flex: none;
@@ -5790,6 +5825,7 @@ textarea.note-title-in {
 .note-pop-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
 /* いつ書いたか（作った日時）。題のすぐ下に小さく。 */
 button.note-when { min-height: 32px; padding: 0; text-align: left; }
+button.note-when:active { opacity: var(--press-fade); }
 .note-when {
   margin-top: calc(-1 * var(--sp-2));
   font-size: var(--fs-sm);
@@ -6151,9 +6187,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   color: var(--c-text-2);
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
-  transition: background var(--m-press) var(--ease), color var(--m-press) var(--ease);
+  transition: background var(--m-press) var(--ease), color var(--m-press) var(--ease), scale var(--m-press) var(--ease);
 }
 .trip-plan-btn svg { width: var(--ico); height: var(--ico); flex: 0 0 auto; }
+.trip-plan-btn:active { scale: var(--press-wide); }
 .trip-plan-btn.is-on {
   background: color-mix(in srgb, var(--c-primary) 12%, transparent);
   color: var(--c-primary);
@@ -6441,7 +6478,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   font-size: var(--fs-md);
   line-height: 1.45;
   color: var(--c-text-2);
+  transition: opacity var(--m-state) var(--ease);
 }
+/* 地を持たない字の行なので、押したら薄まる。一拍おいてから（送り始めの指で瞬かない）。 */
+.arc-feed-row:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-feed-when {
   color: var(--c-text-3);
   font-variant-numeric: tabular-nums;
@@ -6515,8 +6555,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   /* 選んでいないときも、地から浮くように細い縁を持たせます
      （白に近い地の上で、薄い色の丸が消えないように）。 */
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
-  transition: box-shadow var(--m-state) var(--ease), transform var(--m-press) var(--ease);
+  transition: box-shadow var(--m-state) var(--ease), transform var(--m-press) var(--ease), scale var(--m-press) var(--ease);
 }
+.accent-dot:active .accent-swatch { scale: var(--press-dot); }
 .accent-dot.is-on .accent-swatch {
   /* 地の色の輪を挟んでから、その外に色の輪。丸と輪がくっつかないように。 */
   box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
@@ -6556,7 +6597,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   color: var(--c-text);
   font-size: var(--fs-base); font-weight: var(--fw-bold);
   cursor: pointer;
+  transition: scale var(--m-press) var(--ease);
 }
+.mp-cell:active { scale: var(--press-wide); }
 /* まだ来ていない月は選べません（書かれていないので）。 */
 .mp-cell[disabled] { opacity: var(--press-off); cursor: default; }
 /* 今日のいる月には輪だけ。いま見ている月は塗ります——「どこにいるか」と
@@ -6587,6 +6630,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   flex: 1; min-height: 44px; padding: 0;
   background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
+.tl-someday-add:active { opacity: var(--press-fade); }
 /* 「これから」に足す小窓（quickAdd） */
 .note-pop.is-quick { width: min(360px, calc(100vw - 16px)); padding: var(--sp-4); }
 .note-pop.is-quick.is-handoff { visibility: hidden; }   /* 「詳しく」で紙へ渡すとき */
@@ -6606,6 +6650,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
    丸だけが残ります。 */
 .tl-someday .tl-row .tl-rail::before,
 .tl-someday .tl-row .tl-rail::after { display: none; }
+
+/* この欄の行は、題でなくても行のどこを押しても沈む（丸を押せば紙が開き、長押しで運べる）。
+   ✓・手順は自分が返事をするので除く。一拍おくのと、持ち上がったら沈まないのは時間割の行と同じ。 */
+.tl-someday .tl-row:not(.is-lifted):not(.is-dragging *):active:not(:has(.check:active, .tl-subs-chip:active, .tl-doneat:active, .tl-sub-wrap:active)) {
+  background: var(--press-sink);
+  transition-delay: var(--m-press);
+}
 
 /* 期限。題のすぐ下、長さと同じ列に。過ぎたものは字で言います
    （色だけだと、色の意味を知っている人にしか伝わらないので）。 */
@@ -6704,7 +6755,10 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   border-radius: 14px;
   background: color-mix(in srgb, var(--up-c) 9%, var(--c-surface));
   overflow: hidden;
+  transition: scale var(--m-press) var(--ease);
 }
+/* 見出しも行も同じ的なので、どこを押しても一枚ごと縮む。 */
+.up-day:active, .up-day:has(:active) { scale: var(--press-wide); }
 .up-day::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
   background: var(--up-c);
@@ -6824,7 +6878,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 .road-svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .road-base, .road-went { stroke-width: 9; }
-.road-base { stroke: var(--road-wait); }
+.road-base { stroke: var(--road-wait); transition: stroke var(--m-state) var(--ease); }
+/* これからの道（透明な .road-free）を押したら、道そのものが一段濃く沈む（--press-sink と同じ 8%）。
+   一拍おいてから（紙を送る指で瞬かない）。 */
+.day-road:has(.road-free:active) .road-base {
+  stroke: color-mix(in srgb, var(--c-text) 8%, var(--road-wait));
+  transition-delay: var(--m-press);
+}
 .road-went { stroke: var(--road-past); }
 /* 寝ていたぶんは、薄くなった寝床（.road-bed の .16）と同じ薄さの紫。 */
 .road-slept { stroke: color-mix(in srgb, var(--bed-frame) 16%, var(--c-sheet)); stroke-width: 9; }
@@ -6964,6 +7024,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   -webkit-tap-highlight-color: transparent;
 }
 .road-label.is-rev { flex-direction: row-reverse; }
+.road-label:active { opacity: var(--press-fade); }
 .road-label b { flex: none; font-weight: var(--fw-bold); }
 .road-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* 済ませたもの（停留所も足あとも）は、名前だけを灰色で。時刻も打ち消し線も無し
@@ -6993,8 +7054,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   /* 長押しで持ち上げる（段8）ので、端末の選択や吹き出しを出さない。 */
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-  transition: opacity var(--m-state) var(--ease-out);
+  transition: opacity var(--m-state) var(--ease-out), scale var(--m-press) var(--ease);
 }
+.road-bead:active, .road-tool:active { scale: var(--press-dot); }
 .road-bead::before {
   content: ""; position: absolute; inset: 2.5px;
   background: var(--c-primary);
@@ -7048,6 +7110,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   color: var(--c-text-2); pointer-events: auto;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  transition: scale var(--m-press) var(--ease);
 }
 .road-tool svg { width: var(--ico-sm); height: var(--ico-sm); }
 .road-tool::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; }
