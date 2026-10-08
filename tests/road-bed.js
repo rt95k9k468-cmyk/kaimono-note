@@ -157,8 +157,10 @@ const cx = (b) => (b.l + b.r) / 2;
       JSON.stringify(r.beds.map((b) => b.op)));
     c.check("23:10：夜の寝床だけ z Z がのぼる", r.beds[1].snore && r.beds[1].anim === SNORE && !r.beds[0].snore,
       JSON.stringify(r.beds.map((b) => [b.snore, b.anim])));
-    c.check("23:10：いまの時刻は夜の寝床の上", r.now === "23:10" && r.nowBox.b <= r.beds[1].z.t - 4,
-      JSON.stringify([r.nowBox, r.beds[1]]));
+    const edge = r.edges[1];
+    c.check("23:10：いまの時刻は夜の寝床の下（寝床の時刻のさらに下）", r.now === "23:10" && r.nowBox.t >= edge.b - 1
+      && r.nowBox.t >= r.beds[1].ink.b && Math.abs(cx(r.nowBox) - cx(r.beds[1].ink)) < 3,
+      JSON.stringify([r.nowBox, edge, r.beds[1].ink]));
   }));
 
   c.check("エラーなし", !errs.length, errs.join("\n"));

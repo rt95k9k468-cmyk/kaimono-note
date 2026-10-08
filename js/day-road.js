@@ -1351,8 +1351,12 @@
       const clampX = (x) => Math.max(2 + w / 2, Math.min(W - 2 - w / 2, x));
       let hx = clampX(bed ? bed.cx : p.x);
       // 足もとは停留所のふちの上（STOP / 2）まで上がることがあるので、高いほうに合わせる。
-      // 寝ているあいだは、寝床の z Z の上
-      let hy = bed ? bed.y + ROAD / 2 - BED_TOP - 2 - FS * 0.6 : p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6;
+      // 寝ているあいだは、朝の寝床なら z Z の上。夜の寝床（寝る時刻を過ぎた）なら寝床の時刻のさらに下
+      // （10月8日・利用者の声「就寝時刻以降の時刻は寝てる人の下に」。z Z の上だと右下の道具箱に重なった）。
+      const under = bed && sleep > 0;
+      let hy = !bed ? p.y - STOP / 2 - ME_HEAD - 4 - FS * 0.6
+        : under ? bed.y + ROAD / 2 + 2 + EFS * 1.2 + 1 + FS * 0.6
+        : bed.y + ROAD / 2 - BED_TOP - 2 - FS * 0.6;
       /* 道に重なるときは、角の内側へ横に、要れば少し下（人の頭の横）へずらす
          （2026年10月6日・利用者の声「道と被ってしまう時はずらして」）。角のまん中に
          居ると頭の真上が上の段の道なので、横だけでは逃げ場が無い。人にいちばん近い所を選ぶ。 */
@@ -1395,7 +1399,8 @@
           }
         }
       }
-      if (pr > 0) {
+      if (under) lane(bed.row, "d").push([hx - w / 2 - 2, hx + w / 2 + 2]);
+      else if (pr > 0) {
         const above = lane(pr - 1, "d");
         if (g.rowY(pr - 1) + LANE + above.dy + FS * 0.6 > hy - FS * 0.6 - 1) above.push([hx - w / 2, hx + w / 2]);
       }

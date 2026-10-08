@@ -217,5 +217,22 @@ const PREV = "2026-09-29";
 
   c.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
+
+  /* ---- 10. 寝る時刻を過ぎたら、いまの時刻は寝床の下（道具箱に重ならない。10月8日・利用者の声） ---- */
+  const night = await open({ before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 30, 23, 5)); } });
+  await night.page.evaluate((day) => KN.store.addTodo({ title: "病院", due: day, time: "15:00", minutes: 60 }), DAY);
+  await night.page.click('.tab[data-tab="todo"]');
+  await night.page.waitForTimeout(800);
+  const n = await night.page.evaluate(() => {
+    const road = document.querySelector("#screen-todo .day-road");
+    const R = (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
+    const now = road.querySelector(".road-now"), pad = road.querySelector(".road-tools-pad");
+    const bed = road.querySelectorAll(".road-bed-ink")[1], edge = road.querySelectorAll(".road-edge")[1];
+    return { txt: now && now.textContent.trim(), now: now && R(now), pad: pad && R(pad), bed: bed && R(bed), edge: edge && R(edge) };
+  });
+  const over = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+  c.check("23:05：いまの時刻は夜の寝床の下で、道具箱に重ならない",
+    n.txt === "23:05" && n.now.t >= n.edge.b - 1 && n.now.t >= n.bed.b && !over(n.now, n.pad), JSON.stringify(n));
+  await night.browser.close();
   c.done();
 })().catch((err) => { console.error(err); process.exit(1); });
