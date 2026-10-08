@@ -694,7 +694,7 @@
                 input と同じく横へ流れます。 */""}
           <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="例：ゴミ出し・電球を替える"
                  autocomplete="off" autocapitalize="off" spellcheck="false"
-                 aria-label="やること">${editing ? t.title : ""}</textarea>
+                 aria-label="やること">${editing ? t.title : (opts && opts.title) || ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
           <button type="button" class="dest-chip js-act-src" hidden></button>
@@ -874,8 +874,6 @@
     });
     /* 見直しの紙の「小さく分ける」から：手順を一つ足した形で開く。 */
     if (editing && opts && opts.addSub) requestAnimationFrame(() => body.querySelector(".js-sub-add").click());
-    /* 「これから」の欄から：すぐ打てるように。押した指からたどれる focus なので iOS もキーボードを出す。 */
-    if (!editing && opts && opts.write) KN.ui.focusNow(titleEl);
 
     /* メモは打った量ぶん伸びます（screen-diet.js の食事メモと同じ仕組み）。
        固定の高さに収めず全文を出し、はみ出た先は紙そのもの（.sheet-body）が
@@ -1567,6 +1565,7 @@
        頭の題の下に小さな星として出ます。 */
 
     titleEl.addEventListener("input", () => { foot.disabled = !titleEl.value.trim(); });
+    if (!editing && titleEl.value.trim()) foot.disabled = false;   // 足す小窓の「詳しく」から、打った題ごと
 
     /* ---------------- 打った字から「いつ」を読む ----------------
 
@@ -2936,7 +2935,7 @@
         </h2>
       </section>
     `);
-    /* 欄のどこを押しても、日の無い用事をすぐ書ける紙を開く（行・畳みの頭・ほかの釦は除く）。
+    /* 欄のどこを押しても、日の無い用事を足す小窓を開く（行・畳みの頭・ほかの釦は除く）。
        スクロールや運ぶ指では開かない：10px より動いた指は押したことにしない
        （運んだ後の click は wireDrag の eatClick が先に食べる）。 */
     let downAt = null;
@@ -2945,7 +2944,7 @@
       const d = downAt; downAt = null;
       if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) return;
       if (e.target.closest("li, .tl-shelf-head, a, input, textarea, select, button:not(.tl-someday-add)")) return;
-      openSheet(null, null, { noDue: true, write: true });
+      quickAdd(sec.querySelector(".tl-someday-add"));
     });
     if (!all.length) {
       sec.append(node(html`
@@ -2990,6 +2989,47 @@
       sec.append(fold);
     });
     return sec;
+  }
+
+  /* 「これから」に足す小窓（下から出る紙ではなく、見出しからふくらむ角丸のカード）。
+     キーボードは勝手に出さない——出すと画面が大きく動くので、欄を押したときだけ。
+     日は持たせない。打った字から日付も読まない（日を決めないための入口なので）。 */
+  function quickAdd(anchor) {
+    const box = node(html`
+      <form class="qa-card">
+        <input class="input qa-title js-qa-title" type="text" enterkeyhint="done" placeholder="やること"
+               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="やること">
+        <div class="qa-foot">
+          <button type="button" class="btn btn-soft js-qa-more">詳しく</button>
+          <button type="submit" class="btn btn-primary js-qa-add" disabled>追加</button>
+        </div>
+      </form>
+    `);
+    const vv = window.visualViewport;
+    const replace = () => p.place();
+    const p = KN.ui.popOver(anchor, { side: "left", label: "これからに足す", cls: "is-quick", lift: true,
+      onClose: () => { if (vv) vv.removeEventListener("resize", replace); } });
+    p.el.append(box);
+    p.place();
+    /* キーボードが出たら、その上に収まるよう置き直す。 */
+    if (vv) vv.addEventListener("resize", replace);
+    const input = box.querySelector(".js-qa-title");
+    const add = box.querySelector(".js-qa-add");
+    input.addEventListener("input", () => { add.disabled = !input.value.trim(); });
+    box.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = input.value.trim();
+      if (!title) return;
+      store.addTodo({ title });
+      haptic(12);
+      KN.ui.toast(`「${title}」をこれからへ`);
+      p.close();
+    });
+    box.querySelector(".js-qa-more").addEventListener("click", () => {
+      const title = input.value.trim();
+      p.close();
+      openSheet(null, null, { noDue: true, title });
+    });
   }
 
   /** 長期タスクの一行。時間割の行と同じ組みで、時刻の列だけが空。 */
