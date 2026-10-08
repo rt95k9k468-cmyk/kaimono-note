@@ -773,13 +773,11 @@
       const entries = groups.get(cat.id);
       if (!entries || !entries.length) return;
 
-      /* No heading. The category is written down the left edge of every row
-         instead (see .item::before) — a word above each handful of rows was
-         more furniture than the list could carry, and the colour says the
-         same thing without taking a line. The grouping stays: it is what
-         makes the colours run in blocks, and what a drag reorders within. */
+      /* 棚ごとに一枚のカード、頭に棚の名前（Apple リマインダーの組。2026年10月8日、利用者が
+         見比べの画像で選んだ・docs/shopping.md）。組は色の続く塊であり、掴んで並べ替える範囲でもある。 */
       const group = node(html`
         <section class="cat-group is-run" style="--cat:${cat.color || ""}">
+          <h3 class="shelf-head"><span class="chip-dot"></span>${cat.name}</h3>
           <div class="item-list"></div>
         </section>
       `);
