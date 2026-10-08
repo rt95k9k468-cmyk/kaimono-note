@@ -13,6 +13,7 @@
  * - **その日のうちに境目を越えたら、その日が初日。** だから日の終わり（翌日の
  *   0時、端末の時刻）の黄経で決める。
  * - 候の名前と読みは、今の日本の暦（略本暦）のもの。
+ * - 雑節・五節句（docs/roadmap-3.1.md の K2）も、同じ黄経と日付から出す（表は持たない）。
  * - 色は変えない。字を一行足すだけ（廃止した「夜の色」とは別物）。
  */
 (function () {
@@ -152,17 +153,66 @@
     return `${md(sp.from)}-${md(sp.to)}`;
   }
 
-  /** 画面に出す二行。[名前, 中身, 期間]。
+  /** その日のうちに、太陽の黄経が deg 度を越えるか（越えた日が、その節目の日）。
+      境目の決め方は of() と同じ——日の始まりと終わり（端末の時刻）の黄経で見る。
+      js/holiday.js の春分の日・秋分の日もこれで決める。 */
+  function crosses(day, deg) {
+    const end = endOf(day);
+    if (end == null) return false;
+    return wrap(longitude(end - 86400000) - deg) > wrap(longitude(end) - deg);
+  }
+
+  /* その日から n 日ずらした日（"YYYY-MM-DD"、端末の暦）。 */
+  function shift(day, n) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3] + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  /* 五節句は新暦の日付どおり。 */
+  const SEKKU = { "01-07": "人日（七草）", "03-03": "上巳（桃の節句）", "05-05": "端午", "07-07": "七夕", "09-09": "重陽（菊の節句）" };
+  /* 土用の入りは、立春・立夏・立秋・立冬の18度手前。 */
+  const DOYO = [297, 27, 117, 207];
+
+  /**
+   * その日の雑節か五節句（docs/roadmap-3.1.md の K2）。当たらない日は null。
+   * 数えて決まるものは、立春・春分・秋分の日（of() と同じ境目）から数える。
+   * 同じ日に二つ重なることは無い（日付の幅が離れている）。
+   * @returns {[string, string]|null} [名前, 中身]。「雑節」「八十八夜」
+   */
+  function zassetsu(day) {
+    if (endOf(day) == null) return null;
+    if (crosses(shift(day, 1), 315)) return ["雑節", "節分"];                       // 立春の前の日
+    if (crosses(shift(day, 3), 0) || crosses(shift(day, 3), 180)) return ["雑節", "彼岸の入り"];
+    if (crosses(shift(day, -3), 0) || crosses(shift(day, -3), 180)) return ["雑節", "彼岸明け"];
+    if (crosses(shift(day, -87), 315)) return ["雑節", "八十八夜"];                 // 立春を1日目に数えて88日目
+    if (crosses(day, 80)) return ["雑節", "入梅"];
+    if (crosses(day, 100)) return ["雑節", "半夏生"];
+    if (DOYO.some((g) => crosses(day, g))) return ["雑節", "土用の入り"];
+    if (crosses(shift(day, -209), 315)) return ["雑節", "二百十日"];                // 立春を1日目に数えて210日目
+    const s = SEKKU[String(day).slice(5)];
+    return s ? ["五節句", s] : null;
+  }
+
+  /** 画面に出す行。[名前, 中身, 期間]。いつもは二行：
       「二十四節気」「秋分」「9/23-10/7」
-      「七十二候」「蟄虫坏戸（むしかくれてとをふさぐ）」「9/28-10/2」 */
+      「七十二候」「蟄虫坏戸（むしかくれてとをふさぐ）」「9/28-10/2」
+      その日に当たるときだけ、雑節か五節句（K2）と祝日（K1・js/holiday.js）を一行ずつ足す。
+      足す行に期間は無い（その一日だけのもの）。 */
   function rows(day) {
     const r = of(day);
     if (!r) return [];
-    return [
+    const out = [
       ["二十四節気", r.sekki, spanText(span(day, 3))],
       ["七十二候", `${r.kou}（${r.kouYomi}）`, spanText(span(day, 1))],
     ];
+    const z = zassetsu(day);
+    if (z) out.push([z[0], z[1], ""]);
+    const h = KN.holiday && KN.holiday.of(day);
+    if (h) out.push(["祝日", h, ""]);
+    return out;
   }
 
-  KN.season = { of, line, rows, span, longitude, SEKKI, KOU };
+  KN.season = { of, line, rows, span, longitude, crosses, zassetsu, SEKKI, KOU };
 })();
