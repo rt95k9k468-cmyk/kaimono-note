@@ -36,8 +36,8 @@ const SHORT = SKY ? 853 : 720;
 const BLUR = SKY ? 1 : PHOTO ? 2 : 1.2;
 const SATURATE = SKY ? 115 : 55;
 /* 空：正方形に切るとき、左右のどこを中心に残すか（写真の札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
-const CROP = { "spring-day": 0.45, "spring-evening": 0.4, "spring-night": 0.55, "summer-morning": 0.45, "summer-evening": 0.6, "autumn-morning": 0.55 };
-const NAME = SKY ? /^((?:[a-z]+-)?(morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2}))\.(jpe?g|png|webp|tiff?)$/i;
+const CROP = { "spring-day": 0.45, "spring-evening": 0.4, "spring-night": 0.55, "summer-dawn": 0.45, "summer-evening": 0.6, "autumn-dawn": 0.55 };
+const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2}))\.(jpe?g|png|webp|tiff?)$/i;
 
 (async () => {
   const want = SKY ? "<札>.jpg" : "kNN.jpg";
