@@ -511,7 +511,8 @@
 
        一日ずつになってからは、今日を焼き付けるほうが不自然です——9月1日を
        開いて＋を押した人が足したいのは、9月1日のことなので。 */
-    let due = editing ? t.due : (oneDay() ? shownDay() : todayKey());
+    /* 「これから」の欄から開いたもの（opts.noDue）は日を持たない。 */
+    let due = editing ? t.due : (opts && opts.noDue) ? null : (oneDay() ? shownDay() : todayKey());
     const dueAtOpen = due;
     let part = editing ? t.part : null;
     let time = editing ? t.time : null;
@@ -873,6 +874,8 @@
     });
     /* 見直しの紙の「小さく分ける」から：手順を一つ足した形で開く。 */
     if (editing && opts && opts.addSub) requestAnimationFrame(() => body.querySelector(".js-sub-add").click());
+    /* 「これから」の欄から：すぐ打てるように。押した指からたどれる focus なので iOS もキーボードを出す。 */
+    if (!editing && opts && opts.write) KN.ui.focusNow(titleEl);
 
     /* メモは打った量ぶん伸びます（screen-diet.js の食事メモと同じ仕組み）。
        固定の高さに収めず全文を出し、はみ出た先は紙そのもの（.sheet-body）が
@@ -2925,15 +2928,23 @@
     const sec = node(html`
       <section class="todo-group tl-someday-sec" data-group="someday">
         <h2 class="todo-head tl-someday-head">
-          <span>これから</span>
-          ${rows.length ? html`<span class="cat-head-count">${rows.length}</span>` : ""}
+          <button type="button" class="tl-someday-add" aria-label="これからに足す">
+            <span>これから</span>
+            ${rows.length ? html`<span class="cat-head-count">${rows.length}</span>` : ""}
+            <span class="tl-someday-plus">${icon("plus")}</span>
+          </button>
         </h2>
       </section>
     `);
+    /* 欄を押したら、日の無い用事をすぐ書ける紙を開く。 */
+    const write = () => openSheet(null, null, { noDue: true, write: true });
+    sec.querySelector(".tl-someday-add").addEventListener("click", write);
     if (!all.length) {
-      sec.append(node(html`
+      const empty = node(html`
         <p class="todo-today-empty">いつかやることを、ここに置いておけます</p>
-      `));
+      `);
+      empty.addEventListener("click", write);
+      sec.append(empty);
       return sec;
     }
     /* 並びは**手で決めたもの**（order）です。期限は文字で見えているので、
