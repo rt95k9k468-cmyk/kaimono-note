@@ -1439,21 +1439,35 @@
      手作りのドラムは、どれもこれで止める。前は CSS の `scroll-snap-type: y mandatory`
      で一行ずつ止めていたが、iPhone では一払いの勢いが次の目で止まり、送りが少なかった
      （2026年10月5日・利用者の声「一払いの送りが少ない」）。目を外して指の勢いのまま
-     滑らせ、指が離れて止まってから、いちばん近い行へなめらかに寄せる。 */
+     滑らせ、指が離れて止まってから、いちばん近い行へなめらかに寄せる。
+
+     iPhone では、勢いの尾の動きと寄せ（smooth）がかち合うと、寄せが scroll を一つも出さずに
+     消え、行の途中で止まったままになった（2026年10月8日・利用者の声）。寄せたあと
+     動きが絶えたら確かめ、まだ途中ならその場で行へ置く。 */
   function drum(el, rowH) {
     let touching = false;
     let t = 0;
-    const settle = () => {
+    let row = -1;
+    let live = false;   // 指で回しているあいだ（開いたときの位置合わせでは鳴らさない）
+    const settle = (force) => {
       if (touching) return;
       const to = Math.round(el.scrollTop / rowH) * rowH;
-      if (Math.abs(el.scrollTop - to) > 0.5) el.scrollTo({ top: to, behavior: "smooth" });
+      if (Math.abs(el.scrollTop - to) <= 0.5) { live = false; return; }
+      if (force) { el.scrollTop = to; live = false; return; }
+      el.scrollTo({ top: to, behavior: "smooth" });
+      t = setTimeout(() => settle(true), 400);
     };
     const later = () => { clearTimeout(t); t = setTimeout(settle, 90); };
-    el.addEventListener("touchstart", () => { touching = true; clearTimeout(t); }, { passive: true });
+    el.addEventListener("touchstart", () => { touching = true; live = true; clearTimeout(t); }, { passive: true });
     const up = () => { touching = false; later(); };
     el.addEventListener("touchend", up, { passive: true });
     el.addEventListener("touchcancel", up, { passive: true });
-    el.addEventListener("scroll", later, { passive: true });
+    el.addEventListener("scroll", () => {
+      /* 行をまたぐたびに、かちっと（震えの出せる端末だけ。iPhone の Safari は出せない）。 */
+      const i = Math.round(el.scrollTop / rowH);
+      if (i !== row) { if (live && row >= 0) haptic(4); row = i; }
+      later();
+    }, { passive: true });
     return el;
   }
 
@@ -1536,6 +1550,13 @@
     };
   }
 
+  /** ドラムの小窓の下の「OK」。閉じれば決まる（外を押すのと同じ）。「なし」は whenFields がこの左に足す。 */
+  function okFoot(p) {
+    const foot = node(html`<div class="when-foot"><button type="button" class="btn btn-primary when-ok">OK</button></div>`);
+    foot.firstElementChild.addEventListener("click", () => { haptic(); p.close(); });
+    return foot;
+  }
+
   /** 日を選ぶドラムの小窓（日付キー）。決めるのは閉じたとき（外を押す・Escape）。
       期間の書き出し（V22）で、利用者の声「年月日のドラムにしたい」（2026年10月5日）。
       空の欄（value なし）は今日から回し、回さずに閉じても今日に決まる。 */
@@ -1552,7 +1573,7 @@
         if (next !== (value || "") && onPick) onPick(next);
       },
     });
-    p.el.append(dd.el);
+    p.el.append(dd.el, okFoot(p));
     p.place();
     dd.go();
     return p;
@@ -1578,7 +1599,7 @@
         if (next !== (value || "") && onPick) onPick(next);
       },
     });
-    p.el.append(box);
+    p.el.append(box, okFoot(p));
     p.place();
     hc.go(at.h);
     mc.go(at.m);
@@ -1640,9 +1661,10 @@
           : kind === "far" ? popDate(btn, { ...opts, years: [Math.min(y - 1, vy), Math.max(y + 10, vy)] })
           : popCalendar(btn, opts);
         if (inp.hasAttribute("data-clear") && inp.value) {
-          const none = node(html`<button type="button" class="btn btn-soft btn-block when-none">なし</button>`);
+          const foot = p.el.querySelector(".when-foot");
+          const none = node(html`<button type="button" class="btn ${foot ? "" : "btn-block "}btn-soft when-none">なし</button>`);
           none.addEventListener("click", () => { cleared = true; put(""); p.close(); });
-          p.el.append(none);
+          if (foot) foot.prepend(none); else p.el.append(none);
           p.place();
         }
       });
