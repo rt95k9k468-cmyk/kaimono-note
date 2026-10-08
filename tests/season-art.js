@@ -10,8 +10,9 @@
    - 敷くのは daily の画面だけ（ほかのタブには無い）・紙の後ろ（z-index -1、押す邪魔をしない）
    - 設定で外せる（既定は入）
    - 字の濃さの比：本文の字と、背景のいちばん濃い所で 4.5:1 以上（明るい面・暗い面）
-   - 大きさ：img/season/・img/season-photo/ の *.webp は1枚25KB・それぞれ合計2MBまで（門で見張る）
-   - sw.js は絵を別の名前のキャッシュ（kaimono-note- で始めない）に覚える
+   - 大きさ：img/season/ は1枚25KB・合計2MB、img/season-photo/ は1枚120KB・合計9MBまで。img/ 全体は .webp だけ・
+     1枚180KB・合計12MBまで（門で見張る）
+   - sw.js は絵を別の名前のキャッシュ（kaimono-note- で始めない）に覚え、activate で前の名前の置き場を消す
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/season-art.js */
 const fs = require("fs");
 const path = require("path");
@@ -23,21 +24,31 @@ const ROOT = path.resolve(__dirname, "..");
   const c = checker("season-art");
 
   /* ---- 大きさ（ファイルだけ。門） ---- */
-  const filesOf = (name) => {
+  const filesOf = (name, oneKB, allMB) => {
     const dir = path.join(ROOT, "img", name);
     const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.webp$/.test(f)) : [];
     const sizes = files.map((f) => fs.statSync(path.join(dir, f)).size);
-    c.check(`${name}：1枚25KBまで`, sizes.every((n) => n <= 25 * 1024), JSON.stringify(files.filter((f, i) => sizes[i] > 25 * 1024)));
-    c.check(`${name}：合計2MBまで`, sizes.reduce((a, b) => a + b, 0) <= 2 * 1024 * 1024);
+    c.check(`${name}：1枚${oneKB}KBまで`, sizes.every((n) => n <= oneKB * 1024), JSON.stringify(files.filter((f, i) => sizes[i] > oneKB * 1024)));
+    c.check(`${name}：合計${allMB}MBまで`, sizes.reduce((a, b) => a + b, 0) <= allMB * 1024 * 1024);
     c.check(`${name}：名前は k00〜k71`, files.every((f) => /^k([0-6]\d|7[01])\.webp$/.test(f)), JSON.stringify(files));
     return files;
   };
-  const files = filesOf("season");
-  const photos = filesOf("season-photo");
+  const files = filesOf("season", 25, 2);
+  const photos = filesOf("season-photo", 120, 9);
+  /* img/ 全体：新しい置き場を足しても、うっかり大きな PNG/JPG を置いても門で止まる（空は tests/sky.js も見る） */
+  const all = [];
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => e.isDirectory() ? walk(path.join(d, e.name)) : all.push(path.join(d, e.name)));
+  walk(path.join(ROOT, "img"));
+  c.check("img/：置くのは .webp だけ", all.every((f) => /\.webp$/.test(f)), JSON.stringify(all.filter((f) => !/\.webp$/.test(f)).map((f) => path.relative(ROOT, f))));
+  c.check("img/：1枚180KBまで・合計12MBまで", all.every((f) => fs.statSync(f).size <= 180 * 1024)
+    && all.reduce((a, f) => a + fs.statSync(f).size, 0) <= 12 * 1024 * 1024, `${(all.reduce((a, f) => a + fs.statSync(f).size, 0) / 1048576).toFixed(2)}MB`);
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   const m = /const SEASON_CACHE = "([^"]+)"/.exec(sw);
   c.check("sw.js：絵と写真は別の名前のキャッシュ（kaimono-note- で始めない）", !!m && !m[1].startsWith("kaimono-note-")
     && /\/img\/season\//.test(sw) && /\/img\/season-photo\//.test(sw));
+  /* 絵を同じ名前で描き直したら SEASON_CACHE の数を上げる。activate が前の置き場を消さないと、端末は古い絵を出し続ける */
+  c.check("sw.js：activate が前の絵の置き場（kurashi-season- の別の名前）を消す", !!m && m[1].startsWith("kurashi-season-")
+    && /k\.startsWith\("kurashi-season-"\) && k !== SEASON_CACHE/.test(sw));
   c.check("sw.js：絵は ASSETS に入れない", !/"img\/season/.test(sw.split("];")[0]));
 
   const { browser, page, errors } = await open({
