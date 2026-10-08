@@ -100,6 +100,7 @@
       screenEl.style.transform = "";
       screenEl.style.willChange = "";
     }
+    sky(0);
   }
 
   /** Nothing should be pulled out from under a keyboard, a sheet or a swipe. */
@@ -290,6 +291,19 @@
 
   function paint() {
     if (screenEl) screenEl.style.transform = `translate3d(0, ${shown.toFixed(2)}px, 0)`;
+    sky(shown);
+  }
+
+  /* 引くと、空が近づく（base.css の「引くと、空が近づく」）。上の端の give の
+     ぶんだけ、帯の空がふくらむ。書く先は空を描く帯そのもの（:root ではない）。
+     下の端の give では動かしません——空は上にあるので。 */
+  let head = null;
+  function sky(px) {
+    head = head || document.getElementById("head");
+    if (!head) return;
+    const p = px > 0 ? Math.min(1, px / GIVE) : 0;
+    head.classList.toggle("is-sky-pull", p > 0);
+    KN.util.setVar(head, "--sky-pull", p > 0 ? p.toFixed(3) : "");
   }
 
   KN.pullRefresh = { init };

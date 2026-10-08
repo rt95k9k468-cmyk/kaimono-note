@@ -330,7 +330,10 @@ function rgbOf(s) {
   await wait(400);
   const sl = await page.evaluate(() => {
     KN.app.showScreen("list");
-    document.getAnimations().forEach((a) => { a.pause(); a.currentTime = 70; });
+    /* 止めるのは時計で走る動きだけ。送りに連れる動き（紙の頭の縁・`scroll()`）は時刻を
+       持たず、ms の currentTime を置くと投げる（docs/motion.md の「反応を足す」）。 */
+    document.getAnimations().filter((a) => a.timeline === document.timeline)
+      .forEach((a) => { a.pause(); a.currentTime = 70; });
     const r = (id) => document.getElementById(id).getBoundingClientRect();
     const probe = document.createElement("i");
     document.body.append(probe);
