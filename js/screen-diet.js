@@ -3751,10 +3751,12 @@
     weekend:       "sun",
     pfc:           "meal",
     balance:       "flame",
+    expenditure:   "flame",
     slot:          "meal",
     dinner:        "moon",
     fiber:         "heart",
     drink:         "drink",
+    "drink-sleep": "bed",
     meal:          "meal",
     clothed:       "scale",
   };
