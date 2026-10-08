@@ -2503,12 +2503,17 @@
    *
    * The second call, after the sheet has finished sliding, is for the browsers
    * that have no such rule and would otherwise focus a moving element.
+   * Once the field has had the caret and let it go (the user moved to another
+   * field or closed the keyboard), the second call stands down — it used to
+   * pull the caret back.
    */
   function focusNow(el) {
     if (!el) return;
+    let left = false;
+    el.addEventListener("blur", () => { left = true; }, { once: true });
     try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
     setTimeout(() => {
-      if (document.activeElement !== el && el.isConnected) el.focus();
+      if (!left && document.activeElement !== el && el.isConnected) el.focus();
     }, 320);
   }
 
