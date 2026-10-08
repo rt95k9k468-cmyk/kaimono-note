@@ -33,7 +33,7 @@ async function ensureServer() {
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId } = {}) {
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
@@ -49,6 +49,9 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   page.on("console", (m) => {
     if (m.type() === "error" && /Content Security Policy/i.test(m.text())) errors.push(`CSP: ${m.text().slice(0, 200)}`);
   });
+  /* 週に一度の控えのトースト（settings-backup.js）は、ほかの台本の邪魔をしないよう
+     止めておく。確かめる台本だけ `nudge: true`。 */
+  if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   if (before) await before(ctx, page);
   if (process.env.KN_CSS_COVER) await coverCSS(browser, page, process.env.KN_CSS_COVER);
   await page.goto(URL);

@@ -1,7 +1,7 @@
 /* 大きな記録での重さ（2026年10月8日の総点検。docs/log/inspection.md）。
    1年ぶんの記録（約183万字。いまの約3.5倍）を作って、保存一回・開く（CPU 4倍遅）・タブを替える・
    daily に初めて入るときの様式の計算・じっと5秒（昼の各タブと、夜の tasks。夜は寝ている人の z Z が
-   出る）を測る。
+   出る。三回で止んだあとも）を測る。
    **門にも run-all にも入れない**（frame-pace.js と同じ。数字は機械で揺れる目安）。直す前と後で手で
    回し、数を inspection.md に書く。落とすのはエラーが出たときだけ。試験のブラウザ（Chromium）の
    数字で、iPhone の Safari とは違う。
@@ -138,6 +138,9 @@ function fill() {
   const snore = await page.evaluate(() => document.getAnimations()
     .filter((x) => x.animationName === "road-snore" && x.playState === "running").length);
   console.log(`  じっと5秒 夜の todo：${await still()}（いびきの動き ${snore} 本）`);
+  /* いびきは三回で止まる（10月8日・inspection.md の 2）。止んだあとのじっと5秒も。 */
+  await page.waitForFunction(() => !document.getAnimations().some((x) => /^road-snore/.test(x.animationName)), null, { timeout: 15000 });
+  console.log(`  じっと5秒 夜の todo（いびきが止んだあと）：${await still()}`);
 
   c.check("エラー0", errors.length === 0, errors.join(" / "));
   await browser.close();
