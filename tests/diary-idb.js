@@ -30,6 +30,15 @@ const { open, checker } = require("./lib");
 const KEY = "kaimono-note-v2";
 const A = "2026-01-05", B = "2026-01-06", C = "2026-01-07";
 
+/* 時刻の欄は U8 から隠した入れ物（`KN.ui.whenFields`）で、page.fill は書けない。小窓で選んだときと
+   同じく、値を置いて input・change を投げる。 */
+const putWhen = (page, sel, v) => page.evaluate(([sel, v]) => {
+  const el = document.querySelector(sel);
+  el.value = v;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+}, [sel, v]);
+
 /* 写しの中身。{ rows: {日付: 本文}, seq } */
 const box = (page) => page.evaluate(() => KN.idb.run(["diary", "meta"], "readonly", (t) => {
   const rows = t.objectStore("diary").getAll();
@@ -304,7 +313,7 @@ async function tapMonthExport(page) {
     });
     t.check("紙は本文の欄なしで開き、「本文が見つかりません」と言う（時刻は書ける）",
       !sheet.memo && sheet.note.includes("本文が見つかりません") && sheet.wake, JSON.stringify(sheet));
-    await page.fill(".sheet .js-wake", "06:10");
+    await putWhen(page, ".sheet .js-wake", "06:10");
     await page.evaluate(() => document.querySelector(".sheet .js-ok").click());
     await page.waitForTimeout(600);
     const rowT = await liveRow(page, today);
@@ -518,7 +527,7 @@ async function tapMonthExport(page) {
       wake: !!document.querySelector(".sheet .js-wake"),
     }));
     t.check("紙は本文の欄なしで開く（時刻は書ける）", !sheet.memo && sheet.note && sheet.wake, JSON.stringify(sheet));
-    await page.fill(".sheet .js-wake", "07:10");
+    await putWhen(page, ".sheet .js-wake", "07:10");
     await page.evaluate(() => document.querySelector(".sheet .js-ok").click());
     await page.waitForTimeout(600);
     const after = await page.evaluate(({ K, today }) => {

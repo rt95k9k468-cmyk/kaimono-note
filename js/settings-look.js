@@ -137,11 +137,34 @@
       });
     });
 
+    /* 書体。どれも字が欠けない三つ（base.css の「書体」の規則）。ボタンは
+       自分の書体で名前を出し、押せば文字の大きさと同じく画面ぜんぶが変わる。 */
+    const font = s.font || "gothic";
+    const fonts = node(html`
+      <div class="set-card is-pad">
+        <div class="seg">
+          <button class="seg-btn" data-font="gothic" aria-pressed="${String(font === "gothic")}">ゴシック</button>
+          <button class="seg-btn" data-font="maru"   aria-pressed="${String(font === "maru")}">丸ゴシック</button>
+          <button class="seg-btn" data-font="mincho" aria-pressed="${String(font === "mincho")}">明朝</button>
+        </div>
+      </div>
+    `);
+    fonts.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.font;
+        store.update((x) => { x.settings.font = v; });
+        KN.app.applyFont(v);
+        haptic();
+        render();
+      });
+    });
+
     return [
       head("明るさ"), seg,
       head("基調色"), accents,
       head("文字の大きさ"), sizes,
       foot("「端末」は iPhone の文字サイズに合わせます。"),
+      head("書体"), fonts,
       head("表示"),
       card(
         pickRow({
