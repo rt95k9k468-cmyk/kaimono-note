@@ -1277,7 +1277,7 @@ bfcache からの `pageshow`）に、人が四歩あるいて、いつもの形�
   短く押せば `askSpan`（題は道具の名、下敷きは「いま − 長さ」）。
 - **記録か予定か**（`toolAt`）：寝ていた紫・道の外は null。今日のいまより前・過ぎた日は記録、いま以降・先の日は予定。
   15分きざみ。長さはその道具で前に残した長さ（`toolMinutes`、無ければ30分）を、次の停留所の頭と（記録なら）「いま」で止める。最短5分。
-- **書くもの**（`activity.js` の `toolsFor(day).put`）：記録は `addEntry({ type, date, at, minutes, title, note })`、**用事は作らない**
+- **書くもの**（`activity.js` の `toolsFor(day).put`）：記録は `addEntryUndoable({ type, date, at, minutes, title, note })`（store が置いた直後の undo を返す）、**用事は作らない**
   （`forRoad` が `arc:` で描く）。知らせ「思考 7:00から30分」「直す」（`recordOnRoad`）「元に戻す」（記録を消す）。予定は `plant` に
   `bare`（題をそのまま）・`note` を足して `act` 付きの用事。種類：思考＝種（題「思考」）、ノート＝種（その日に作った・直したノートが
   一つなら結ぶ＝`noteOfDay`、題はノートの題、無ければ「ノート」）、読書＝読書（記録の題は空、予定の題は「読書」）。

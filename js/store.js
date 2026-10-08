@@ -4007,6 +4007,13 @@
     return row;
   }
 
+  /** 記録を一件足し、置いた直後の「元に戻す」を添えて返す（道具箱・3.0 の A3。済ませた直後の actDone と
+      同じ考え：まだ誰も書き足していないので、足したものだけを外す）。一件を消すのは delMenu から。 */
+  function addEntryUndoable(e) {
+    const row = addEntry(e);
+    return { entry: row, undo: () => update((s) => { s.archive.entries = s.archive.entries.filter((x) => x.id !== row.id); }) };
+  }
+
   /* 開始・終了ページから、読んだページ数を出します。120→150 なら 31ページ。
      終了が開始より小さい・どちらか欠けている、のときは何も計算しません
      ——当てずっぽうの数を出すより、空のほうがまだ正直です。 */
@@ -4789,7 +4796,7 @@
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue, healthSeenAt,
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType, ACCENTS,
-    addEntry, updateEntry, removeEntry, promoteSeed, toggleFavorite,
+    addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
     stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
