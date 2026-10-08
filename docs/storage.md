@@ -2,6 +2,7 @@
 
 `store.js` の書き込み（`writeLive`）・`backup.js`・`js/idb.js`・`js/diary-idb.js` を
 触るときに読む。経緯は `docs/improvements.md` の A1・A2・A4（2026年9月26日）。
+置き場の全部の一覧・枠・弱いところの点検は `docs/log/data-check.md`（2026年10月8日）。
 
 ## 置き場は三つ
 
