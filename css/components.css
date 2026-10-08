@@ -1187,10 +1187,11 @@ button.hero-node:active { scale: var(--press-dot); }
   width: 36px; height: 36px;
   border-radius: var(--r-full);
   color: color-mix(in srgb, #fff 78%, transparent);
-  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease);
+  transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
 .pd-fav svg { width: var(--ico); height: var(--ico); }
 .pd-fav.is-on { background: #fff; color: var(--c-warn); }
+.pd-fav:active { scale: var(--press-dot); }
 .pd-hero .hero-node svg { width: 44px; height: 44px; }  /* 入れもの：紙の頭の丸 */
 .pd-size { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--c-border); }
 /* 足す紙の、カテゴリとメモの札一列（V27、product-sheet.js の frame の chips）。 */
@@ -1314,6 +1315,7 @@ button.hero-node:active { scale: var(--press-dot); }
   list-style: none;
 }
 .set-more > summary::-webkit-details-marker { display: none; }
+.set-more > summary:active { opacity: var(--press-fade); }
 .set-more > summary::after {
   content: ""; width: 7px; height: 7px;
   border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
@@ -1567,6 +1569,7 @@ button.hero-node:active { scale: var(--press-dot); }
   border-radius: var(--r-sm);
   flex: none;
 }
+.toast-action:active { opacity: var(--press-fade); }
 @media (hover: hover) {
   .toast-action:hover { background: rgba(255,255,255,.1); }
 }
