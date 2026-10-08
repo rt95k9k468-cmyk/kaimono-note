@@ -3330,6 +3330,9 @@ a.btn { text-decoration: none; }
 .when-btn.is-empty { color: var(--c-text-3); }
 .note-wheels.is-time { grid-template-columns: 1fr 1fr; }
 .when-none { margin-top: var(--sp-2); }
+/* ドラムの小窓の下：［なし］［OK］を同じ幅で一列に。 */
+.when-foot { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+.when-foot > .btn { flex: 1; margin-top: 0; }
 
 /* 手順のなかのリンク。字は地の文の大きさのままでいいが、**指で押す的**は
    字の高さでは足りない（12pxしかなかった）。見た目を変えずに、上下に
