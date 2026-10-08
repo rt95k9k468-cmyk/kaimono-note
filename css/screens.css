@@ -6862,9 +6862,11 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 道を外れた時間（起きる前・寝たあと）に開いていれば、z Z がいびきのように
    ふくらみながら上へのぼって消え、また出る（2026年9月30日・利用者の声）。
    のぼる高さ（4）は day-road.js の BED_TOP に入れてある（札がよける）。
-   小さい z と大きい Z は半拍ずらす。 */
+   小さい z と大きい Z は半拍ずらす。三回で止めて、置いたまま（動きを減らす設定と同じ姿。
+   SVG の中の動きは合成に乗らず、ずっと動かすと電池を食う——docs/log/inspection.md の 2）。
+   開き直す・道に触る・アプリへ戻ると、また三回（day-road.js の snoreAgain）。 */
 .road-bed.is-snore .road-z {
-  animation: road-snore var(--m-snore) var(--ease-glide) infinite both;
+  animation: road-snore var(--m-snore) var(--ease-glide) 3 backwards;
 }
 .road-bed.is-snore .road-z.is-big { animation-delay: calc(var(--m-snore) / -2); }
 @keyframes road-snore {
