@@ -1071,7 +1071,7 @@
     "ion:medical",
     "material-symbols:syringe-rounded"
    ],
-   "done": "material-symbols:syringe-rounded"
+   "done": "ph:test-tube-fill"
   },
   "support": {
    "ja": "支えるもの",
@@ -1248,7 +1248,7 @@
     "ion:bus",
     "mingcute:bus-2-fill"
    ],
-   "done": "mingcute:bus-fill"
+   "done": "ph:train-simple-fill"
   },
   "airplane": {
    "ja": "飛行機",

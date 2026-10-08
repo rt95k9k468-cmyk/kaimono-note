@@ -968,5 +968,49 @@
   /* 「データを消す」の一段（ダイエットの記録を消す・サンプルを入れる・すべて削除）は
      外しました（2026年10月5日）。消したい時は無い——戻せない操作の入口を持たない。 */
 
-  Object.assign(S, { dataRows, dropboxRows });
+  /* ---------------- 週に一度の控え（2026年10月8日） ---------------- */
+
+  /* 手で書き出してから7日たったら、押すまで残るトーストを一日に一度。「保存」は
+     「バックアップを保存」と同じ共有シート（押した流れのまま）——iCloud Drive など、
+     Dropbox と別の場所に置いてもらうためなので、Dropbox に届いた時刻は数えません。
+     歯車の点（R25）の「トーストは出さない」の、利用者が決めた例外（docs/storage.md）。
+     出した日は store の外の鍵に（その日を過ぎるまで出さない）。 */
+  const NUDGE_DAYS = 7, NUDGE_WAIT = 4000, NUDGE_KEY = "kn-export-nudge";
+
+  function nudgeDue(now) {
+    if (!KN.backup.worthKeeping()) return false;
+    const last = KN.backup.lastExportAt();
+    const t = last ? new Date(last).getTime() : NaN;
+    return !isFinite(t) || Math.floor((now - t) / 86400000) >= NUDGE_DAYS;
+  }
+
+  function nudge() {
+    if (document.visibilityState !== "visible") return;
+    /* 読み終える前は saveBackup が断るので、出さない（次に前へ出たとき）。 */
+    if ((KN.diaryIdb && !KN.diaryIdb.settled()) || (KN.notes && !KN.notes.settled())) return;
+    const day = KN.util.todayKey();
+    try {
+      if ((localStorage.getItem(NUDGE_KEY) || "") >= day || !nudgeDue(Date.now())) return;
+      localStorage.setItem(NUDGE_KEY, day);
+    } catch (_) { return; /* 覚えられない端末では出さない（開くたびに出てしまうので） */ }
+    KN.ui.toast("週に一度の控え", {
+      stay: true,
+      actions: [{ label: "あとで", onClick: () => {} }, { label: "保存", onClick: () => saveBackup() }],
+    });
+  }
+
+  /* 日記の写しの突き合わせが済むまで、何度か待ち直す。ready() は呼ばない——まだ
+     始まっていなければ始めてしまい、記録の写し（live-idb.js）が先という app.js の順を崩す。 */
+  function soon(tries) {
+    setTimeout(() => {
+      if (tries > 0 && KN.diaryIdb && !KN.diaryIdb.settled()) soon(tries - 1);
+      else nudge();
+    }, NUDGE_WAIT);
+  }
+  soon(5);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") soon(2);
+  });
+
+  Object.assign(S, { dataRows, dropboxRows, nudge });
 })();

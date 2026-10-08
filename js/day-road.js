@@ -983,6 +983,7 @@
       if (pick && o.open) o.open(pick.t.id, hit);
     });
     wireCarry(el, o);
+    el.addEventListener("pointerdown", () => snoreAgain(el), { passive: true });
 
     const prev = seen.get(plan.day);   // paint が書き換える前に（V8）
     paint(el);
@@ -2263,6 +2264,21 @@
     svg.insertBefore(grp, ref);
     stretch(grp, -1, () => { grp.remove(); go(); });
   }
+
+  /* いびきは三回で止めて置いたまま（css の .road-bed.is-snore .road-z）。道に触る・アプリへ戻ると、また三回。
+     止んだあとだけ頭から（のぼっている最中は続ける）。開き直すのは、画面が出直すと css の動きが頭から始まる。 */
+  function snoreAgain(scope) {
+    if (KN.motion.still()) return;
+    scope.querySelectorAll(".road-bed.is-snore").forEach((b) => {
+      /* 終わった動き（fill なし）は getAnimations に残らない。残っていれば、まだのぼっている。 */
+      if (!b.getAnimations || b.getAnimations({ subtree: true }).some((a) => a.animationName)) return;
+      const zs = b.querySelectorAll(".road-z");
+      zs.forEach((z) => { z.style.animation = "none"; });
+      void b.getBoundingClientRect();   // 一度 none を通すと、css の動きが頭から始まる
+      zs.forEach((z) => { z.style.animation = ""; });
+    });
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) snoreAgain(document); });
 
   /** その根の中の道を、ぜんぶ描き直す（分が変わっていなければ何もしない）。 */
   function paintAll(root) {

@@ -222,6 +222,50 @@
     img.src = url;
   }
 
+  /* 色の移り（--m-season）。画面の --season-c（受け継ぐ）はすぐ替え、移すのは背景を塗る要素の --season-k
+     （受け継がない）だけ——毎フレーム当てはめ直すのがその一つで済む（docs/log/inspection.md の 1）。CSS の
+     transition にしないのは、.tl-sheet の紙を滑らせる transition を上書きするから。daily の紙は描き直すたびに
+     作り直されるので、移っているあいだに描き直されたら、新しい紙にも同じ時刻から付け直す（途切れない）。 */
+  const fades = new WeakMap();   // 画面 → { from, to, t0, dur, on: [[塗る要素, 動き]] }
+  const paintersOf = (el, where) => where === "notes" ? [el] : [...el.querySelectorAll(".tl-sheet.is-daily")];
+  const clock = () => (document.timeline && document.timeline.currentTime) || null;
+  function fadeTo(el, where, c) {
+    const was = el.style.getPropertyValue("--season-c");
+    KN.util.setVar(el, "--season-c", c);
+    if (was === c) { carry(el, where); return; }
+    let from = was || "transparent";
+    const old = fades.get(el);
+    fades.delete(el);
+    if (old) old.on.forEach(([t, a]) => {
+      if (t.isConnected && a.playState === "running") from = getComputedStyle(t).getPropertyValue("--season-k").trim() || from;
+      a.cancel();
+    });
+    const t0 = clock();
+    const dur = KN.motion ? KN.motion.ms("--m-season") : 0;
+    if (t0 == null || !dur || !Element.prototype.animate || (KN.motion && KN.motion.still())) return;
+    fades.set(el, { from, to: c, t0, dur, ease: KN.motion.ease("--ease", "ease"), on: [] });
+    carry(el, where);
+  }
+  /* 描き終えてから（daily は apply のあとで紙を組む）、移っている色を塗る要素に付ける。 */
+  function carry(el, where) {
+    const f = fades.get(el);
+    if (!f) return;
+    queueMicrotask(() => {
+      if (fades.get(el) !== f) return;
+      const t = clock() - f.t0;
+      f.on = f.on.filter(([p]) => p.isConnected);
+      if (t >= f.dur) { fades.delete(el); return; }
+      paintersOf(el, where).forEach((p) => {
+        if (f.on.some(([q]) => q === p)) return;
+        try {
+          const a = p.animate({ "--season-k": [f.from, f.to] }, { duration: f.dur, easing: f.ease });
+          a.currentTime = t;
+          f.on.push([p, a]);
+        } catch (_) { /* 色を移せない端末では、すぐ替わるだけ */ }
+      });
+    });
+  }
+
   /**
    * 画面（daily の `#screen-archive`・ノートの `#screen-notes`）に、その日の候の色と絵を敷く。
    * カスタムプロパティは :root ではなくこの画面に書く（docs/traps.md）。設定で切ってあれば外す。
@@ -238,7 +282,7 @@
     if (k == null) return;
     const set = placeOf(where).set();
     el.setAttribute("data-season", String(k));
-    KN.util.setVar(el, "--season-c", colorOf(k));
+    fadeTo(el, where, colorOf(k));
     const a = set[k];
     if (!a || !a.file) { el.removeAttribute("data-season-img"); el.style.removeProperty("--season-img"); }
     else {
