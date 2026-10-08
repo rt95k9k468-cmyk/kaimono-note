@@ -7030,7 +7030,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
-.road-tool svg { width: 14px; height: 14px; }
+.road-tool svg { width: var(--ico-sm); height: var(--ico-sm); }
 .road-tool::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; }
 /* 運んでいるあいだの、置かれる丸薬の下書き（種類の色を薄く、長さぶん）。 */
 .road-draft {

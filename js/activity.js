@@ -333,7 +333,7 @@
         const t = plant({ type: x.type, title: name, day, at, minutes, bare: true, note: n && n.id, say });
         return t ? t.id : null;
       }
-      const e = KN.store.addEntry({
+      const { entry: e, undo } = KN.store.addEntryUndoable({
         type: x.type, date: day, at, minutes, title: kind === "read" ? "" : name, note: n ? n.id : null,
       });
       KN.motion.fire("save");
@@ -343,7 +343,7 @@
             const cur = KN.store.get().archive.entries.find((y) => y.id === e.id);
             if (cur) recordOnRoad(cur);
           } },
-          { label: "元に戻す", onClick: () => KN.store.removeEntry(e.id) },
+          { label: "元に戻す", onClick: undo },
         ],
       });
       return `arc:${e.id}`;
