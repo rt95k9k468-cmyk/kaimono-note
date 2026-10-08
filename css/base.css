@@ -663,6 +663,16 @@
 }
 .seg-btn[data-font] { font-family: var(--font); }
 
+/* 数字は丸い字（SF Pro Rounded＝ui-rounded。2026年10月8日、利用者が見比べの画像で選んだ・docs/look.md）。
+   日付・時刻・体重など、数字を読ませるところだけ。漢字・かなは後ろの --font へ落ちる。ui-rounded を
+   読めない環境（Safari のほか）は --font のまま。明朝を選んだ人には効かせない。 */
+:root { --font-num: ui-rounded, var(--font); }
+:root[data-font="mincho"] { --font-num: var(--font); }
+.mono-num, .topbar-title, .cal-n, .day-d, .diet-hero-value b, .hero-fact.is-subs i,
+.due-time, .carry-was, .carry-n, .row-times, .when-btn, .price-amount, .log-price,
+.tl-time, .tl-band-time, .time-label, .up-time, .road-carry-time, .urge-row-time,
+.arc-then-date, .arc-year-y, .arc-log-day b, .arc-log-times, .arc-times { font-family: var(--font-num); }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
