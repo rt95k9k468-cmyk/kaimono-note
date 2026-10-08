@@ -15,7 +15,7 @@
    - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
    - いちばん上で引いて紙が下がっても、すき間は空（週・月）。空を下へ伸ばしても帯の中の写真は動かない
    - 中身が跳ね返って下がっても（勢いよく上端に着いたとき）、紙のふちの一本は紙の上の縁に残る
-   - 写真（段2）：季節×時間帯の20枚が img/sky/ にあり1枚40KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は
+   - 写真（段2）：季節×時間帯の20枚が img/sky/ にあり1枚180KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は
      別の名前のキャッシュへ（ASSETS に入れない）。季節は立春・立夏・立秋・立冬で替わる（夜中の0時に替われば、夜の
      写真も替わる）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、描いた空のまま。
      設定で外せば両方の札が外れる。字の濃さの比は、20枚どれを敷いた状態でも同じ決まり。朝の写真の URL は ?v= 付き
@@ -47,7 +47,7 @@ function rgbOf(s) {
   const SEASONS = ["spring", "summer", "autumn", "winter"];
   const KEYS = SEASONS.flatMap((s) => SLOTS5.map((t) => `${s}-${t}`));
   const sizes = KEYS.map((k) => { const f = path.join(ROOT, "img/sky", `${k}.webp`); return fs.existsSync(f) ? fs.statSync(f).size : 0; });
-  c.check("写真：img/sky/ に20枚（季節×時間帯）、1枚40KBまで", sizes.every((n) => n > 0 && n <= 40 * 1024), sizes.join(" / "));
+  c.check("写真：img/sky/ に20枚（季節×時間帯）、1枚180KBまで", sizes.every((n) => n > 0 && n <= 180 * 1024), sizes.join(" / "));
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   const assets = (sw.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || "";
   c.check("写真：sw.js は別の名前のキャッシュへ（ASSETS に入れない）", /\/img\/sky\//.test(sw) && !/img\/sky/.test(assets));
@@ -404,11 +404,12 @@ function rgbOf(s) {
   const pgrid = [];
   for (let y = 1; y < hbs; y += 4) for (let x = 2; x < 390; x += 8) pgrid.push([x, y]);
   const q1 = await pixels(shot1, pgrid), q0 = await pixels(shot0, pgrid);
-  /* 写真のぼかしを 2px→1px にしてから（10月7日）、描き直しの丸めで数点が 8 ほど違う。1px ずれると
-     2.5% ほどの点が最大 18 違うので、「4 を超える点が 1% まで・最大 12 まで」で見分ける。 */
+  /* 描き直しの丸め（位置の端数）で、くっきりした写真ほど細かい差が出る。10月8日に画質を上げてから（1080px・ぼかし 0.9px）
+     伸ばしただけで最大 12・4 を超える点 2.2%・12 を超える点 0。本当に 1px ずれると最大 205・12 を超える点 7%。
+     だから「12 を超える点が 1% まで」で見分ける（前の「4 を超える点が 1% まで・最大 12」は、くっきりした写真では丸めで落ちた）。 */
   const pd = q1.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - q0[i][k]))));
-  const pdiff = Math.max(...pd), pover = pd.filter((v) => v > 4).length;
-  c.check("空を下へ伸ばしても、帯の中の写真は動かない", pdiff <= 12 && pover <= pd.length / 100, `最大の差 ${pdiff}・4 を超える点 ${pover}/${pd.length}`);
+  const pdiff = Math.max(...pd), pover = pd.filter((v) => v > 12).length;
+  c.check("空を下へ伸ばしても、帯の中の写真は動かない", pover <= pd.length / 100, `最大の差 ${pdiff}・12 を超える点 ${pover}/${pd.length}`);
 
   /* ---- 勢いよく上端に着いても、紙のふち（純白の一本）だけが下りてこない。iPhone の跳ね返りは紙の中身だけを
      下げるので、ふちは中身（掴み手）ではなく紙そのもの（border-top）が持つ。跳ね返りは中身を手で下げてまねる ---- */

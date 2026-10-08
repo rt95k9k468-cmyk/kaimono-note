@@ -66,15 +66,25 @@ function listScripts(o) {
   return pick.slice().sort((a, b) => (SLOW[b] || 0) - (SLOW[a] || 0));
 }
 
+/* 一本の上限（2026年10月8日）。台本が途中で投げると、多くは catch で exitCode を立てるだけで
+   ブラウザを開いたまま終わらない——一本が固まると、全体も門も止まる。上限で切って NG にする。
+   いちばん長い台本でも並べて80秒ほど（9月29日・10月8日に測った）。 */
+const LIMIT_SEC = Number(process.env.KN_LIMIT) || 240;  // KN_LIMIT=秒 で変えられる
+
 function runOne(name) {
   return new Promise((done) => {
     const t0 = Date.now();
     const child = spawn(process.execPath, [path.join(DIR, `${name}.js`)],
       { cwd: path.resolve(DIR, ".."), env: process.env });
     let out = "";
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, LIMIT_SEC * 1000);
     child.stdout.on("data", (d) => { out += d; });
     child.stderr.on("data", (d) => { out += d; });
-    child.on("close", (code) => done({ name, code, out, sec: (Date.now() - t0) / 1000 }));
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      done({ name, code, out, timedOut, sec: (Date.now() - t0) / 1000 });
+    });
   });
 }
 
@@ -109,7 +119,8 @@ async function main() {
       const tallies = s.tally.map((l) => l.replace(/^.*: /, "")).join(" ");
       console.log(`${ok ? "ok" : "NG"}  ${name.padEnd(18)} ${r.sec.toFixed(1).padStart(5)}s  ${tallies}`);
       if (!ok) {
-        if (s.ng.length) console.log(s.ng.map((l) => `      ${l.trim()}`).join("\n"));
+        if (r.timedOut) console.log(`      時間切れ（${LIMIT_SEC}秒）で止めた。終わりの出力：`);
+        if (s.ng.length && !r.timedOut) console.log(s.ng.map((l) => `      ${l.trim()}`).join("\n"));
         else console.log(r.out.trim().split("\n").slice(-15).map((l) => `      ${l}`).join("\n"));
       } else if (o.verbose) console.log(r.out);
       results.push({ ...r, ok });
