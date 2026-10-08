@@ -41,13 +41,14 @@ const H = 844;
   await page.click('.sheet.is-card .arc-pick-b[data-t="seed"]');
   await page.waitForTimeout(200);
 
+  /* 日付の見える欄は `.when-btn`（U8 から。`.js-date` は値を持つだけの hidden）。 */
   const look = () => page.evaluate(() => {
     const s = document.querySelector(".sheet.is-card");
     const r = (q) => { const el = s.querySelector(q); return el ? el.getBoundingClientRect() : null; };
     const shown = (q) => { const el = s.querySelector(q); return !!el && el.getClientRects().length > 0; };
     return {
-      label: r(".arc-date-field > .field-label"), date: r(".js-date"),
-      pick: shown(".js-pick"), dateShown: shown(".js-date"),
+      label: r(".arc-date-field > .field-label"), date: r(".arc-date-field > .when-btn"),
+      pick: shown(".js-pick"), dateShown: shown(".arc-date-field > .when-btn"),
       memoLabel: shown(".arc-memo-field > .field-label"),
       ta: r(".js-memo"), sheet: s.getBoundingClientRect(),
     };
