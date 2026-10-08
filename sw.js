@@ -4,8 +4,9 @@
 
 const VERSION = "v1.0.0";
 const CACHE = `kaimono-note-${VERSION}`;
-/* 季節の絵の置き場（版をまたいで残す。下の fetch）。 */
-const SEASON_CACHE = "kurashi-season-v1";
+/* 季節の絵の置き場（版をまたいで残す。下の fetch）。絵を同じ名前のまま描き直したら名前の数を上げる——
+   activate が前の置き場を丸ごと消し、端末は見たときに新しい絵を取り直す（v2：空と写真の画質を上げた 2026-10-08）。 */
+const SEASON_CACHE = "kurashi-season-v2";
 
 const ASSETS = [
   "./",
@@ -110,7 +111,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.filter((k) => k.startsWith("kaimono-note-") && k !== CACHE)
+        keys.filter((k) => (k.startsWith("kaimono-note-") && k !== CACHE) || (k.startsWith("kurashi-season-") && k !== SEASON_CACHE))
             .map((k) => caches.delete(k))
       ))
       .then(() => self.clients.claim())

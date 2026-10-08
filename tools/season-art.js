@@ -15,7 +15,7 @@
    空（sky）：tools/sky-src/<札>.jpg（季節ごとにするときは <季節>-<札>.jpg）→ img/sky/ に同じ名前の .webp。
          帯の幅いっぱいに上から敷くので**正方形**に切る（幅 390 の iPhone で、月に開いた暦の高さまで届く。
          週では上の空だけ、月では下の景色まで）。左右のどこを残すかは `CROP`（中心の位置、0〜1）。彩度は少し上げる
-         （上に幕を重ねて淡くなるので）。短い辺 853px・ぼかし 1px・1枚40KBまで（下の定数）。
+         （上に幕を重ねて淡くなるので）。短い辺・ぼかし・1枚の上限は下の定数（写真も）。
 
    画像の処理は Playwright の Chromium の canvas で行う（sharp などを足さない）。 */
 const fs = require("fs");
@@ -27,14 +27,19 @@ const SKY = process.argv[2] === "sky";
 const PHOTO = process.argv[2] === "photo" || SKY;
 const SRC = path.join(ROOT, "tools", SKY ? "sky-src" : PHOTO ? "season-photo-src" : "season-src");
 const OUT = path.join(ROOT, "img", SKY ? "sky" : PHOTO ? "season-photo" : "season");
-/* 空は 40KB・短い辺 853px（Commons の 1280px 版の短い辺そのまま）・ぼかし 1px・彩度 115%。帯の写真は幅いっぱいに
-   大きく見えるので、ぼかしが目立った（「ぼかしを減らし、少し濃く」。docs/sky.md） */
-const MAX_ONE = (SKY ? 40 : 25) * 1024;
-const MAX_ALL = 2 * 1024 * 1024;
-const SHORT = SKY ? 853 : 720;
-/* 写真は細かいので少し強くぼかす（25KB に収めるため。背景に薄く敷くので形が分かれば足りる） */
-const BLUR = SKY ? 1 : PHOTO ? 2 : 1.2;
+/* 2026年10月8日、空と写真の画質を上げた（利用者「上限がまだ先なら画質を上げたい」）。元は Commons の 1920px 版。
+   空は短い辺 1170px（iPhone の幅 390 の3倍）・ぼかし 0.4px・彩度 115%・1枚 180KB まで。
+   写真は短い辺 860px（横長で幅 1290px）・ぼかし 0.5px・1枚 120KB まで。前の 25KB は強くぼかして質を下げて収めていた。
+   質は 0.5 より下げず、収まらない細かい絵だけぼかしを足す（10/8：空 3枚が 0.9px、写真 29枚が 1px）。
+   浮世絵（広重）は前のまま（透けたカードの後ろなので上げても見えない）。上限は tests/season-art.js・tests/sky.js と同じ値に */
+const MAX_ONE = (SKY ? 180 : PHOTO ? 120 : 25) * 1024;
+const MAX_ALL = (SKY ? 4 : PHOTO ? 9 : 2) * 1024 * 1024;
+const SHORT = SKY ? 1170 : PHOTO ? 860 : 720;
+const BLUR = SKY ? 0.4 : PHOTO ? 0.5 : 1.2;
 const SATURATE = SKY ? 115 : 55;
+const Q = PHOTO ? 0.76 : 0.72;   // 質の始まり（上限に入るまで 0.06 ずつ下げる）
+const QMIN = PHOTO ? 0.5 : 0.2;  // 質の下限（空と写真。浮世絵は前のまま）
+const BLUR_MAX = PHOTO ? 2 : BLUR;
 /* 空：正方形に切るとき、左右のどこを中心に残すか（写真の札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
 const CROP = { "spring-day": 0.45, "spring-evening": 0.4, "spring-night": 0.55, "summer-dawn": 0.45, "summer-evening": 0.6, "autumn-dawn": 0.55 };
 const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2}))\.(jpe?g|png|webp|tiff?)$/i;
@@ -55,7 +60,7 @@ const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|
     const crop = SKY ? (CROP[name.toLowerCase()] ?? 0.5) : null;
     const mime = /png$/i.test(f) ? "image/png" : /webp$/i.test(f) ? "image/webp" : /tiff?$/i.test(f) ? "image/tiff" : "image/jpeg";
     const data = `data:${mime};base64,${fs.readFileSync(path.join(SRC, f)).toString("base64")}`;
-    const r = await page.evaluate(async ([src, SHORT, MAX_ONE, BLUR, SATURATE, crop]) => {
+    const r = await page.evaluate(async ([src, SHORT, MAX_ONE, BLUR, BLUR_MAX, SATURATE, Q, QMIN, crop]) => {
       const img = new Image();
       img.src = src;
       await img.decode();
@@ -69,8 +74,22 @@ const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|
       const cv = document.createElement("canvas");
       cv.width = w; cv.height = h;
       const ctx = cv.getContext("2d");
-      ctx.filter = `saturate(${SATURATE}%) blur(${BLUR}px)`;
-      ctx.drawImage(img, cx, cy, sw, sh, 0, 0, w, h);
+      ctx.imageSmoothingQuality = "high";   // 大きく縮めるので（既定の low は細部がざらつく）
+      const draw = (blur) => {
+        ctx.clearRect(0, 0, w, h);
+        ctx.filter = `saturate(${SATURATE}%) blur(${blur}px)`;
+        ctx.drawImage(img, cx, cy, sw, sh, 0, 0, w, h);
+      };
+      /* 質は QMIN より下げない。それでも上限を超える細かい絵（桜・紅葉の葉）だけ、ぼかしを 0.5px ずつ足す（BLUR_MAX まで） */
+      const blobOf = (q) => new Promise((res) => cv.toBlob(res, "image/webp", q));
+      let blur = BLUR, q, blob;
+      for (;;) {
+        draw(blur);
+        q = Q; blob = await blobOf(q);
+        while (blob.size > MAX_ONE && q - 0.06 >= QMIN - 1e-9) { q -= 0.06; blob = await blobOf(q); }
+        if (blob.size <= MAX_ONE || blur + 0.5 > BLUR_MAX + 1e-9) break;
+        blur += 0.5;
+      }
       /* 平均の色（縮めた写しで） */
       const sm = document.createElement("canvas");
       sm.width = 32; sm.height = 32;
@@ -81,22 +100,19 @@ const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|
       for (let i = 0; i < px.length; i += 4) { sum[0] += px[i]; sum[1] += px[i + 1]; sum[2] += px[i + 2]; }
       const n = px.length / 4;
       const color = "#" + sum.map((v) => Math.round(v / n).toString(16).padStart(2, "0")).join("");
-      const blobOf = (q) => new Promise((res) => cv.toBlob(res, "image/webp", q));
-      let q = 0.72, blob = await blobOf(q);
-      while (blob.size > MAX_ONE && q > 0.2) { q -= 0.06; blob = await blobOf(q); }
       const buf = new Uint8Array(await blob.arrayBuffer());
       let bin = "";
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      return { w, h, q: Math.round(q * 100) / 100, size: blob.size, color, b64: btoa(bin) };
-    }, [data, SHORT, MAX_ONE, BLUR, SATURATE, crop]);
+      return { w, h, q: Math.round(q * 100) / 100, blur, size: blob.size, color, b64: btoa(bin) };
+    }, [data, SHORT, MAX_ONE, BLUR, BLUR_MAX, SATURATE, Q, QMIN, crop]);
     if (r.size > MAX_ONE) { console.log(`${name}：${MAX_ONE / 1024}KB に収まりません（${r.size}B）。切り抜いてから置いてください`); continue; }
     const out = path.join(OUT, `${name}.webp`);
     fs.writeFileSync(out, Buffer.from(r.b64, "base64"));
     total += r.size;
-    rows.push({ name, file: path.relative(ROOT, out), size: r.size, q: r.q, w: r.w, h: r.h, color: r.color });
+    rows.push({ name, file: path.relative(ROOT, out), size: r.size, q: r.q, blur: r.blur, w: r.w, h: r.h, color: r.color });
   }
   await browser.close();
-  rows.forEach((x) => console.log(`${x.name}  ${x.w}×${x.h}  ${(x.size / 1024).toFixed(1)}KB  質${x.q}  平均 ${x.color}`));
+  rows.forEach((x) => console.log(`${x.name}  ${x.w}×${x.h}  ${(x.size / 1024).toFixed(1)}KB  質${x.q}  ぼかし${x.blur}  平均 ${x.color}`));
   console.log(`合計 ${(total / 1024).toFixed(0)}KB（${rows.length}枚）`);
-  if (total > MAX_ALL) { console.log("2MB を超えました。質を下げるか、枚数を減らしてください（同じ節気の隣の候と分け合ってよい）"); process.exitCode = 1; }
+  if (total > MAX_ALL) { console.log(`${MAX_ALL / 1048576}MB を超えました。質を下げるか、枚数を減らしてください（同じ節気の隣の候と分け合ってよい）`); process.exitCode = 1; }
 })();

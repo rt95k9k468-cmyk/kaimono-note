@@ -98,7 +98,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   いるか確認し、必要なら上のコマンドで再起動する。
 - 実行：`NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`
   （`lib.js` はサーバーが落ちていれば自分で立ち上げる）。全部は `tests/run-all.js`
-  （3本ずつ並べて約3分、要約だけ）。
+  （3本ずつ並べて約8分、要約だけ）。
 - **main へ push すると GitHub が門（`run-all.js --gate`）を回し、落ちたら配られない。**
   流したあとは `actions_list` で結論を一度見る（門の決めごとは `tests/README.md`）。
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
@@ -138,6 +138,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 | 設定（`screen-settings.js`・`settings-*.js`・`edge-back.js`・`KN.ui.setPageHost`・中継所の紙） | `docs/settings.md` |
 | 画面の移り変わり（`app.js` の `show`）・帯の構成・上の題（`dayTitleBar`） | `docs/screens-nav.md` |
 | 上の帯と暦を全タブで一つに（計画の段1〜4・共通の日 `dayShare`・暦の段 `calAll`） | `docs/shared-header.md` |
+| 帯の後ろの空（時間帯・季節の写真・幕の濃さ・`sky.js`） | `docs/sky.md` |
+| 季節の絵（七十二候・daily の写真・ノートの広重・`season-art.js`） | `docs/season-art.md` |
 | 下の帯（押してふくらむ・席の印 `tab-lens.js`） | `docs/tabbar.md` |
 | 買うもの・価格（`screen-list.js` / `screen-prices.js`・紙の面 `--face-p`） | `docs/shopping.md` |
 | ダイエット（中継所 `health-relay.js` / `relay/`・飲みたくなった `diet.urges`）・閉じていても鳴る通知（`bell.js`・`sw.js` の push） | `docs/health.md` |
