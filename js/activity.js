@@ -90,16 +90,18 @@
     return handle;
   }
 
-  /** 活動の予定を一つ置く（その日に `act` 付きの用事）。知らせに「元に戻す」。 */
-  function plant({ type, title, day, at, minutes, memo = "" }) {
+  /** 活動の予定を一つ置く（その日に `act` 付きの用事）。知らせに「元に戻す」。
+      `bare` は題をそのまま（道具箱の「思考」など。3.0 の A3）、`note` は結ぶノート、`say` は知らせの字。 */
+  function plant({ type, title, day, at, minutes, memo = "", bare = false, note = null, say = null }) {
     const name = String(title || "").trim();
     if (!name) return null;
     const t = KN.store.addTodo({
-      title: KN.store.actTitle(type, name), due: day, time: at, minutes, memo, act: { type },
+      title: bare ? name : KN.store.actTitle(type, name), due: day, time: at, minutes, memo,
+      act: note ? { type, note } : { type },
     });
     if (!t) return null;
     KN.motion.fire("save");
-    KN.ui.toast(`「${t.title}」を ${at} に`, {
+    KN.ui.toast(say || `「${t.title}」を ${at} に`, {
       action: { label: "元に戻す", onClick: KN.store.removeTodo.bind(null, t.id) },
     });
     return t;
@@ -279,6 +281,90 @@
   /** 道から押したものが記録（`arc:`）なら、その id。 */
   const entryIdOf = (id) => (typeof id === "string" && id.startsWith("arc:") ? id.slice(4) : null);
 
+  /* ---------------- 道具箱（3.0 の A3。docs/roadmap-3.0.md） ----------------
+
+     道の右下の思考・ノート・読書。運んで道に置けば、**歩いたぶん・過ぎた日は記録**
+     （積み上げの `at`・`minutes`。用事は作らない＝forRoad が `arc:` で描く）、**これからの道・
+     先の日は予定**（`act` 付きの用事。済ませれば A1 と同じく記録が生まれる）。
+     種類は今のものに寄せる（①の (a)）：思考＝種（題「思考」）、ノート＝種（その日に書いた
+     ノートが一つなら結ぶ。題はノートの題、無ければ「ノート」）、読書＝読書（記録の題は空）。 */
+  const TOOLS = [
+    { kind: "think", type: "seed", label: "思考", icon: "lightbulb" },
+    { kind: "note", type: "seed", label: "ノート", icon: "notes" },
+    { kind: "read", type: "reading", label: "読書", icon: "book" },
+  ];
+  const toolOf = (kind) => TOOLS.find((x) => x.kind === kind) || null;
+  /* 記録がどの道具のものか（長さの覚えを道具ごとに引くため）。種で題が「思考」なら思考、ほかの種はノート。 */
+  const kindOf = (e) => (e.type === "reading" ? "read" : e.type !== "seed" ? null
+    : String(e.title || "").trim() === "思考" ? "think" : "note");
+
+  /** その道具で前に残した長さ（無ければ30分）。 */
+  function toolMinutes(kind) {
+    const hit = KN.store.get().archive.entries
+      .filter((e) => e.minutes > 0 && kindOf(e) === kind)
+      .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))[0];
+    return hit ? hit.minutes : 30;
+  }
+
+  /** その日に書いた（作った・直した）ノートが一つだけなら { id, title }。 */
+  function noteOfDay(day) {
+    if (!KN.notes || KN.notes.state() !== "on") return null;
+    const hits = KN.notes.list().filter((n) => KN.notes.headOf(n)
+      && [n.createdAt, n.updatedAt].some((x) => x && U.dayKey(x) === day));
+    return hits.length === 1 ? { id: hits[0].id, title: KN.notes.headOf(hits[0]) } : null;
+  }
+
+  /**
+   * 道に渡す道具箱（screen-todo の dayRoad → day-road の `o.tools`）。
+   * - `list`：並び（思考・ノート・読書）と絵・色。
+   * - `minutes(kind)`：運ぶときの長さ（前に残した長さ。道のほうが次の停留所と「いま」で止める）。
+   * - `put(kind, { at, minutes, record })`：置く。描く id（記録は `arc:`）を返す。
+   * - `ask(kind)`：短く押したとき。時刻と長さの紙（下敷きは「いま − 長さ」）。
+   */
+  function toolsFor(day) {
+    const list = TOOLS.map((x) => ({ ...x, color: KN.store.archiveType(x.type).color }));
+    function put(kind, { at, minutes, record }) {
+      const x = toolOf(kind);
+      if (!x || !U.isTime(at) || !(minutes > 0)) return null;
+      const n = kind === "note" ? noteOfDay(day) : null;
+      const name = n ? n.title : x.label;
+      const say = `${name} ${at.replace(/^0(\d:)/, "$1")}から${span(minutes)}`;
+      if (!record) {
+        const t = plant({ type: x.type, title: name, day, at, minutes, bare: true, note: n && n.id, say });
+        return t ? t.id : null;
+      }
+      const e = KN.store.addEntry({
+        type: x.type, date: day, at, minutes, title: kind === "read" ? "" : name, note: n ? n.id : null,
+      });
+      KN.motion.fire("save");
+      KN.ui.toast(say, {
+        actions: [
+          { label: "直す", onClick: () => {
+            const cur = KN.store.get().archive.entries.find((y) => y.id === e.id);
+            if (cur) recordOnRoad(cur);
+          } },
+          { label: "元に戻す", onClick: () => KN.store.removeEntry(e.id) },
+        ],
+      });
+      return `arc:${e.id}`;
+    }
+    function ask(kind) {
+      const x = toolOf(kind);
+      if (!x) return;
+      const want = toolMinutes(kind);
+      const base = toTime(Math.max(0, Math.floor((toMin(U.nowTime()) - want) / 5) * 5));
+      askSpan({
+        title: x.label, ok: "道に置く", at: base, minutes: want,
+        onPick: (at, minutes) => {
+          const today = U.todayKey();
+          const record = day < today || (day === today && toMin(at) < toMin(U.nowTime()));
+          put(kind, { at, minutes, record });
+        },
+      });
+    }
+    return { list, minutes: toolMinutes, put, ask };
+  }
+
   KN.activity = { askSpan, plant, placeOnRoad, recordOnRoad, recent, fixLength, forRoad, colorOf, entryIdOf,
-                  noteToRoad, noteOf, openNote, LENS, PLANNED, NOTE_LENS };
+                  noteToRoad, noteOf, openNote, toolsFor, noteOfDay, LENS, PLANNED, NOTE_LENS };
 })();
