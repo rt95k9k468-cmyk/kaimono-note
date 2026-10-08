@@ -77,11 +77,21 @@ const { open, checker } = require("./lib");
     /blur/.test(glass.bf) && glass.r > 0 && glass.left && glass.mx > 0, JSON.stringify(glass));
   const photo = await page.waitForSelector("#screen-archive[data-season-img]", { timeout: 8000 }).then(() => true).catch(() => false);
   if (photo) {
+    // 候の色は --m-season でゆっくり入る。入り終えてから読む
+    const settled = () => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
+    await settled();
     const bg = await page.$eval("#screen-archive .tl-sheet.is-daily", (s) => getComputedStyle(s).backgroundImage);
-    t.check("写真が読めた日は、あの日の後ろに写真の帯（候の色のぼかしは重ねない）",
-      /url\(/.test(bg) && (bg.match(/gradient/g) || []).length === 1, bg.slice(0, 160));
-    t.check("あの日の写真にも、ほかの日と同じ薄い幕（明るい色）",
-      /^linear-gradient\((rgba|color)\([^)]*[,/] 0\.66\) 0px/.test(bg), bg.slice(0, 160));
+    t.check("写真が読めた日は、あの日の後ろに写真の帯（候の色のぼかしと幕はほかの日と同じ二枚）",
+      /url\(/.test(bg) && (bg.match(/gradient/g) || []).length === 2, bg.slice(0, 160));
+    // 幕の色は「あの日」の有無で変わらない（2026年10月8日、利用者「膜の色が違う」）
+    const layers = (s) => s.split(/,\s*(?=linear-gradient|url)/).slice(0, 2).map((l) => l.replace(/\s[\d.]+px/g, "").replace(/\s[\d.]+%/g, ""));
+    const withThen = layers(bg);
+    await page.evaluate(() => document.querySelector("#screen-archive .arc-then").remove());
+    await page.waitForTimeout(100);
+    await settled();
+    const without = layers(await page.$eval("#screen-archive .tl-sheet.is-daily", (s) => getComputedStyle(s).backgroundImage));
+    t.check("候の色と幕の色は、あの日の有無で同じ", JSON.stringify(withThen) === JSON.stringify(without),
+      JSON.stringify({ withThen, without }).slice(0, 400));
   } else t.check("写真が読めた（img/season-photo）", false);
 
   t.check("エラーが無い", errors.length === 0, errors.join("\n"));
