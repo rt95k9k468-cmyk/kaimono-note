@@ -257,6 +257,31 @@ const TODAY = "2026-10-06";
   r = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "棚の修理"));
   c.check("足したものは日を持たず「これから」に入る", r && !r.due && !r.shelf, JSON.stringify(r));
 
+  /* 欄の中のどこでも（下の余白）。行を押せば行の紙、動いた指（スクロール）では開かない */
+  const openTitle = () => page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return sh ? (sh.querySelector(".sheet-title") || { textContent: "" }).textContent.trim() : null;
+  });
+  const closeAll = async () => { for (let i = 0; i < 3 && await openTitle(); i++) { await page.keyboard.press("Escape"); await wait(400); } };
+  await wait(300);
+  await page.$eval("#screen-todo .tl-someday-sec", (s) => s.scrollIntoView({ block: "center" }));
+  await wait(300);
+  const box = await page.$eval("#screen-todo .tl-someday-sec", (s) => { const b = s.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.bottom - 8 }; });
+  await page.mouse.click(box.x, box.y);
+  await wait(450);
+  c.check("欄の下の余白を押しても、足す紙が開く", (await openTitle()) === "やることを追加", await openTitle());
+  await closeAll();
+  await page.click("#screen-todo .tl-someday-sec > .tl-someday .tl-row .item-name");
+  await wait(450);
+  c.check("行を押せば、その行の紙（足す紙ではない）", (await openTitle()) === "やることを直す", await openTitle());
+  await closeAll();
+  await page.mouse.move(box.x, box.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x, box.y - 40, { steps: 5 });
+  await page.mouse.up();
+  await wait(450);
+  c.check("指が動いた（スクロール）ときは開かない", (await openTitle()) === null, await openTitle());
+
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();

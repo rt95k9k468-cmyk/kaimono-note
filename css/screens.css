@@ -6576,6 +6576,8 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   margin-top: var(--sp-5);
   border-top: 1px solid var(--c-border);
   padding-top: var(--sp-3);
+  padding-bottom: var(--sp-5);   /* 欄のどこでも押せば書ける。下にも押す余白を */
+  cursor: pointer;
 }
 .tl-someday-head { display: flex; align-items: center; gap: var(--sp-2); }
 .tl-someday-add {
