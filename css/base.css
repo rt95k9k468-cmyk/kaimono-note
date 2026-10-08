@@ -1025,7 +1025,7 @@ a { color: var(--c-primary); }
 
 /* ---- 帯の空（docs/sky.md・js/sky.js） ----
 
-   上の帯と暦の後ろに、いまの時間帯（朝・昼・夕方・夜）の空を一枚。js は `#head` に
+   上の帯と暦の後ろに、いまの時間帯（早朝・朝・昼・夕方・夜）の空を一枚。js は `#head` に
    `data-sky` の札を付けるだけで、色はここが明るい面・暗い面ごとに持ちます。帯（.topbar）と
    暦（.cal）は地を塗るのをやめて、空を透かします。
 
@@ -1077,22 +1077,25 @@ a { color: var(--c-primary); }
 .screens.is-notes-lift .head[data-sky] > .head-cal {
   clip-path: inset(calc(var(--face-p, 0) * var(--face-lift, 0px)) -50vw -50vh -50vw);
 }
-.head[data-sky="morning"] { --sky-a: #b9d5f0; --sky-c: #eff6fc; --sky-d: #fdf4ec; }
+.head[data-sky="dawn"]    { --sky-a: #b9d5f0; --sky-c: #eff6fc; --sky-d: #fdf4ec; }
+.head[data-sky="morning"] { --sky-a: #b3dbee; --sky-c: #ecf7f8; --sky-d: #f4faf3; }
 .head[data-sky="day"]     { --sky-a: #abd0f4; --sky-c: #eaf4fd; --sky-d: #f1f8fe; }
 .head[data-sky="evening"] { --sky-a: #d4c8ec; --sky-c: #fdf1f0; --sky-d: #fef2e6; }
 .head[data-sky="night"]   { --sky-a: #c3cbe8; --sky-c: #f2f3fb; --sky-d: #f4f3f9; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .head[data-sky="morning"] { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
+  :root:not([data-theme="light"]) .head[data-sky="dawn"]    { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
+  :root:not([data-theme="light"]) .head[data-sky="morning"] { --sky-a: #1f5470; --sky-c: #0e1e28; --sky-d: #11201f; }
   :root:not([data-theme="light"]) .head[data-sky="day"]     { --sky-a: #1f4f84; --sky-c: #0f1f33; --sky-d: #112133; }
   :root:not([data-theme="light"]) .head[data-sky="evening"] { --sky-a: #4b2d5e; --sky-c: #211424; --sky-d: #2a1812; }
   :root:not([data-theme="light"]) .head[data-sky="night"]   { --sky-a: #16284f; --sky-c: #0b1229; --sky-d: #141a38; }
 }
-:root[data-theme="dark"] .head[data-sky="morning"] { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
+:root[data-theme="dark"] .head[data-sky="dawn"]    { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
+:root[data-theme="dark"] .head[data-sky="morning"] { --sky-a: #1f5470; --sky-c: #0e1e28; --sky-d: #11201f; }
 :root[data-theme="dark"] .head[data-sky="day"]     { --sky-a: #1f4f84; --sky-c: #0f1f33; --sky-d: #112133; }
 :root[data-theme="dark"] .head[data-sky="evening"] { --sky-a: #4b2d5e; --sky-c: #211424; --sky-d: #2a1812; }
 :root[data-theme="dark"] .head[data-sky="night"]   { --sky-a: #16284f; --sky-c: #0b1229; --sky-d: #141a38; }
 
-/* 写真（段2・段3）。季節×時間帯の16枚。js が読めた写真の札（`autumn-day` など）を data-sky-img に付け、
+/* 写真（段2・段3）。季節×時間帯の20枚。js が読めた写真の札（`autumn-day` など）を data-sky-img に付け、
    時間帯の札とそろったとき（`-day` で終わる）だけ敷きます（読めないあいだは上の描いた空）。帯の幅いっぱいに（正方形）、縦は 55% の所で合わせる——週（帯が低い）では
    写真の真ん中（地平・山・日）、月に開くとほぼ全部。写真の上には幕を重ね、混ぜ方で字の濃さを守ります
    ——**写真がどんな画素でも**：
@@ -1106,23 +1109,28 @@ a { color: var(--c-primary); }
    もとの色を .head で控えて .topbar・.cal で混ぜ直す（同じ要素で自分を参照すると無効になる）。
    写真の下に続く色は --sky-g（写真の下端 12 行の平均）。月に開いて紙を引くと写真の下端より下まで見えるので、
    描いた空の淡い色ではなく写真の地面の色で続ける（写真を足したら、これも測って足す）。幕の色は時間帯ごと。 */
-.head[data-sky="morning"][data-sky-img$="-morning"] { --sky-v1: #9f9294; --sky-v2: #bcaaae; }
+.head[data-sky="dawn"][data-sky-img$="-dawn"]       { --sky-v1: #9f9294; --sky-v2: #bcaaae; }
+.head[data-sky="morning"][data-sky-img$="-morning"] { --sky-v1: #869999; --sky-v2: #9ab4b4; }
 .head[data-sky="day"][data-sky-img$="-day"]         { --sky-v1: #8997a4; --sky-v2: #9eb1c3; }
 .head[data-sky="evening"][data-sky-img$="-evening"] { --sky-v1: #a39285; --sky-v2: #c1aa9a; }
 .head[data-sky="night"][data-sky-img$="-night"]     { --sky-v1: #9294a1; --sky-v2: #aaaec1; }
-.head[data-sky-img="spring-morning"] { --sky-photo: url("../img/sky/spring-morning.webp"); --sky-g: #0f0e0a; }
+.head[data-sky-img="spring-dawn"]    { --sky-photo: url("../img/sky/spring-dawn.webp");    --sky-g: #0f0e0a; }
+.head[data-sky-img="spring-morning"] { --sky-photo: url("../img/sky/spring-morning.webp?v=2"); --sky-g: #806482; }
 .head[data-sky-img="spring-day"]     { --sky-photo: url("../img/sky/spring-day.webp");     --sky-g: #676079; }
 .head[data-sky-img="spring-evening"] { --sky-photo: url("../img/sky/spring-evening.webp"); --sky-g: #404a63; }
 .head[data-sky-img="spring-night"]   { --sky-photo: url("../img/sky/spring-night.webp");   --sky-g: #3a3844; }
-.head[data-sky-img="summer-morning"] { --sky-photo: url("../img/sky/summer-morning.webp"); --sky-g: #0d170a; }
+.head[data-sky-img="summer-dawn"]    { --sky-photo: url("../img/sky/summer-dawn.webp");    --sky-g: #0d170a; }
+.head[data-sky-img="summer-morning"] { --sky-photo: url("../img/sky/summer-morning.webp?v=2"); --sky-g: #394b24; }
 .head[data-sky-img="summer-day"]     { --sky-photo: url("../img/sky/summer-day.webp");     --sky-g: #61510a; }
 .head[data-sky-img="summer-evening"] { --sky-photo: url("../img/sky/summer-evening.webp"); --sky-g: #0c0502; }
 .head[data-sky-img="summer-night"]   { --sky-photo: url("../img/sky/summer-night.webp");   --sky-g: #0a0b0c; }
-.head[data-sky-img="autumn-morning"] { --sky-photo: url("../img/sky/autumn-morning.webp"); --sky-g: #311f21; }
+.head[data-sky-img="autumn-dawn"]    { --sky-photo: url("../img/sky/autumn-dawn.webp");    --sky-g: #311f21; }
+.head[data-sky-img="autumn-morning"] { --sky-photo: url("../img/sky/autumn-morning.webp?v=2"); --sky-g: #9aacb9; }
 .head[data-sky-img="autumn-day"]     { --sky-photo: url("../img/sky/autumn-day.webp");     --sky-g: #2886af; }
 .head[data-sky-img="autumn-evening"] { --sky-photo: url("../img/sky/autumn-evening.webp"); --sky-g: #020201; }
 .head[data-sky-img="autumn-night"]   { --sky-photo: url("../img/sky/autumn-night.webp");   --sky-g: #24221b; }
-.head[data-sky-img="winter-morning"] { --sky-photo: url("../img/sky/winter-morning.webp"); --sky-g: #97aad5; }
+.head[data-sky-img="winter-dawn"]    { --sky-photo: url("../img/sky/winter-dawn.webp");    --sky-g: #97aad5; }
+.head[data-sky-img="winter-morning"] { --sky-photo: url("../img/sky/winter-morning.webp?v=2"); --sky-g: #42434b; }
 .head[data-sky-img="winter-day"]     { --sky-photo: url("../img/sky/winter-day.webp");     --sky-g: #a6aeba; }
 .head[data-sky-img="winter-evening"] { --sky-photo: url("../img/sky/winter-evening.webp"); --sky-g: #405883; }
 .head[data-sky-img="winter-night"]   { --sky-photo: url("../img/sky/winter-night.webp");   --sky-g: #242e3c; }
@@ -1157,6 +1165,7 @@ a { color: var(--c-primary); }
 }
 /* 今日の丸の塗りは字ではないので、もとの基調色のまま。 */
 .head[data-sky-img] .cal-day.is-here.is-today .cal-n { background: var(--sky-was-p); }
+.head[data-sky="dawn"][data-sky-img$="-dawn"]::before,
 .head[data-sky="morning"][data-sky-img$="-morning"]::before,
 .head[data-sky="day"][data-sky-img$="-day"]::before,
 .head[data-sky="evening"][data-sky-img$="-evening"]::before,

@@ -1,4 +1,4 @@
-# 帯の空（朝・昼・夕方・夜）
+# 帯の空（早朝・朝・昼・夕方・夜）
 
 上の帯と暦（`#head`、全タブで一つ。`shared-header.md`）の後ろに、いまの時間帯の空を敷く。
 2026年10月7日に計画し、同じ日に段1（描いた空）と段2の写真（4枚、続けて季節×時間帯の16枚）まで入れた。利用者の言葉では「カレンダーの部分に空の画像を
@@ -13,6 +13,9 @@
    季節×時間帯は16なので、利用者に訊いて「まず16枚、のちに増やす」に）
 4. **daily は、紙の後ろの季節の写真と両方出して見る**（同じ日に、広重はノートの地へ移った。`season-art.md`）。
    気になれば daily だけ空を止める。
+5. **時間帯を五つに**（2026年10月8日、おすすめどおり）。朝（日の出の30分前〜10時）に日の出の写真が出て、9時台に
+   見ると朝らしくなかった。日の出の写真は「早朝」（日の出の30分前〜1時間後）だけに出し、「朝」（〜10時）には
+   日が高くなった明るい朝の写真を新しく4枚。
 
 決めなくても起きること：空はいつも**いまの時刻**のもの。過去・未来の日を見ていても替えない（日を払うたびに
 空が替わると「帯は微動だにしない」に反する）。帯は全タブ共通なので、空も全タブに出る（ノートでは帯だけ）。
@@ -22,17 +25,20 @@
 | 段 | 中身 | 状態 |
 |---|---|---|
 | 1 | 仕組みと見た目を、描いた空（色の重なり、4つ）で | 入れた（2026年10月7日） |
-| 2 | 写真を集める（まず4枚、よければ16枚） | 4枚を入れ、同じ日に16枚（季節×時間帯）へ（2026年10月7日）。64枚（16×4枚を回す）は16枚を実機で見てから |
+| 2 | 写真を集める（まず4枚、よければ16枚） | 4枚を入れ、同じ日に16枚（季節×時間帯）へ（2026年10月7日）。10月8日に早朝を分けて20枚。回す（同じ季節・時間帯の数枚）は実機で見てから |
 | 3 | iPhone で濃さ・区切り・daily との重なりを詰める | 写真の濃さと縦の位置・紙の丸角の外まで空・流れる途中も丸角・上で引いたすき間も空（2026年10月7日）。時計の帯までは iOS 26 の都合で戻した。同じ日に写真を二段濃く・ぼかしを軽く・時計の帯の色を theme-color で試したが映らず外した。ほかは見てから |
 
 ## 区切り（`js/sky.js`）
 
-| 時間帯 | 札 | 始まり | 今日（10/7・東京）なら |
-|---|---|---|---|
-| 朝 | `morning` | 日の出の30分前 | 5:09 |
-| 昼 | `day` | 10時 | 10:00 |
-| 夕方 | `evening` | 日の入りの1時間前 | 16:17 |
-| 夜 | `night` | 日の入りの30分後 | 17:47 |
+| 時間帯 | 札 | 始まり | 夏至（6/21） | 10/8 | 冬至（12/22） |
+|---|---|---|---|---|---|
+| 早朝 | `dawn` | 日の出の30分前 | 3:55 | 5:10 | 6:17 |
+| 朝 | `morning` | 日の出の1時間後（10時を越えない） | 5:25 | 6:40 | 7:47 |
+| 昼 | `day` | 10時 | 10:00 | 10:00 | 10:00 |
+| 夕方 | `evening` | 日の入りの1時間前 | 18:00 | 16:16 | 15:31 |
+| 夜 | `night` | 日の入りの30分後 | 19:30 | 17:46 | 17:01 |
+
+（東京。2026年10月8日に早朝を分けた。前は「朝＝日の出の30分前〜10時」の四つ）
 
 - 日の出・日の入りは NOAA の近似式（数分の誤差）。**位置情報は訊かない。** 端末の時間帯が日本（+9時間）なら
   東京、それ以外はその時間帯の真ん中の経度（旅先で昼に夜空が出ない）。緯度は東京のまま。
@@ -98,6 +104,8 @@
    出すたびに消える）。読めないあいだは描いた空のまま。
    一度覚えた写真は取り直さないので、**描き直したら URL の `?v=` を上げる**（`KN.sky.PHOTO` の `file` と base.css の
    `--sky-photo` を同じ値に。試験が見張る）。16枚は名前が新しいので `?v=` なし（4枚のころの `?v=2` は役目を終えた）。
+   **朝の4枚は `?v=2`**（2026年10月8日）：`<季節>-morning.webp` の名前で前は日の出の写真を出していた。それは
+   `<季節>-dawn.webp` へ名前を替え、朝の名前に新しい写真を置いたので、`?v=` が無いと覚えた日の出の写真が出る。
    古い版は覚え場所に残るが小さい。
 4. 写真の上には幕を重ねる（混ぜ方で上限・下限を決める。下の「幕」）。濃さは `tests/sky.js` の画素の試験が、
    写真を敷いた状態でも見張る。
@@ -105,40 +113,48 @@
 
 ## 写真の表（Wikimedia Commons・2026年10月7日）
 
-`img/sky/<季節>-<札>.webp`・`KN.sky.PHOTO`。16枚・合計 476KB（1枚 40KB まで）。全部日本で撮ったもの。4枚のころの写真のうち、
+`img/sky/<季節>-<札>.webp`・`KN.sky.PHOTO`。20枚・合計 603KB（1枚 40KB まで）。全部日本で撮ったもの。4枚のころの写真のうち、
 撮った日が季節に合う3枚（朝・夕方・夜）は残し、昼（塩見岳、9月）は秋の昼に紅葉の写真があったので外した。
 新しい12枚は、検索で約200枚を縮小一覧に並べて目で選んだ（人の顔・ロゴ・透かし・文字の無いもの、上が空で下に景色の
 あるもの、**その季節の手がかり**——桜・ひまわり・蛍・紅葉・雪——のあるもの）。時間帯は題か撮影時刻で確かめた
 （Find47 の説明には撮影時刻がある）。撮った日は、なるべく立春・立夏・立秋・立冬の区切りどおりの季節から。
 半分は Koichi Hayakawa さんの新潟の写真（Find47・Flickr「Japanese beauty」。季節と時間の分かる風景がそろっていた）。
+朝の4枚（2026年10月8日）は、日が高くなった明るい光で朝焼け色でないもの。分類「Morning in Japan」（都道府県ごとの
+「Morning in …」）と「Spring/Winter in Niigata prefecture」などを季節の語で探し、撮影時刻（7〜10時台）で絞って約300枚から
+季節ごとに3枚を見せ、利用者が選んだ。キーワード検索は古書の表紙ばかり返し、Find47 の撮影日時を正規表現で探す手は
+ほとんど当たらなかった。前の朝の4枚（日の出）は早朝へ移した。
 
 | 季節と時間帯 | 写真の題 | 作者 | ライセンス | URL | 選んだ理由 |
 |---|---|---|---|---|---|
-| 春の朝 `spring-morning` | 2010-4-18 日の出(The sunrise) - panoramio | ys1979 | CC BY 3.0 | https://commons.wikimedia.org/wiki/File:2010-4-18_日の出(The_sunrise)_-_panoramio.jpg | 霞む山並みに昇る日。撮影 4/18 |
+| 春の早朝 `spring-dawn` | 2010-4-18 日の出(The sunrise) - panoramio | ys1979 | CC BY 3.0 | https://commons.wikimedia.org/wiki/File:2010-4-18_日の出(The_sunrise)_-_panoramio.jpg | 霞む山並みに昇る日。撮影 4/18 |
+| 春の朝 `spring-morning` | 荒川から太平山 - panoramio | suzune konoo | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:荒川から太平山_-_panoramio.jpg | クロッカスの畑と雪の山並み（村上市。撮影 3/25）。撮影時刻が無く、光で朝とみた（10月8日、利用者が選んだ） |
 | 春の昼 `spring-day` | Aomori-Hirosaki Cherry Blossom Festival and Mt. Iwaki-xl | mko294 | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Aomori-Hirosaki_Cherry_Blossom_Festival_and_Mt._Iwaki-xl.jpg | 弘前城の堀の桜と岩木山、青空。撮影 4/24 |
 | 春の夕方 `spring-evening` | Shiroyone-Senmaida sunset | MaedaAkihiko | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Shiroyone-Senmaida_sunset.jpg | 白米千枚田と海に沈む夕日。撮影 5/1（4枚のころの夕方） |
 | 春の夜 `spring-night` | Niigata-Snowy mountain and spring Milky Way - Flickr - Japanese beauty | Koichi Hayakawa | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Niigata-Snowy_mountain_and_spring_Milky_Way_-_Flickr_-_Japanese_beauty.jpg | 雪の山と春の天の川、麓の町の灯（新潟。4枚のころの夜） |
-| 夏の朝 `summer-morning` | Find47 Niigata-Early summer awakening (Yamakoshi's rice terraces and ponds)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-Early_summer_awakening_(Yamakoshi's_rice_terraces_and_ponds)-m.jpg | 山古志の棚田に昇る初夏の朝日。撮影 6/4 |
+| 夏の早朝 `summer-dawn` | Find47 Niigata-Early summer awakening (Yamakoshi's rice terraces and ponds)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-Early_summer_awakening_(Yamakoshi's_rice_terraces_and_ponds)-m.jpg | 山古志の棚田に昇る初夏の朝日。撮影 6/4 |
+| 夏の朝 `summer-morning` | 弥彦山 | Koda6029 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:弥彦山.jpg | 植えたばかりの青い田と弥彦山、澄んだ青空。撮影 6/7 9:12 |
 | 夏の昼 `summer-day` | Find47 Niigata-Vitamin color (Yamamotoyama Kogen sunflower field, Ojiya City)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-Vitamin_color_(Yamamotoyama_Kogen_sunflower_field,_Ojiya_City)-m.jpg | 山本山高原のひまわり畑と夏の雲。撮影 8/19（暦では立秋の後だが、絵は夏） |
 | 夏の夕方 `summer-evening` | Niigata-Sunset on the Echigo Plain-m - Flickr - Japanese beauty | Koichi Hayakawa | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Niigata-Sunset_on_the_Echigo_Plain-m_-_Flickr_-_Japanese_beauty.jpg | 水を張った越後平野に沈む夕日。撮影 5/23 18:48 |
 | 夏の夜 `summer-night` | Find47 Niigata-Dance of firefly (Takigashira marshland・Aga-town)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-Dance_of_firefly_(Takigashira_marshland繝ｻAga-town)-m.jpg | 滝頭湿原（阿賀町）の蛍の光と木道。撮影 7/8。Commons のファイル名は「・」が文字化けしたまま（URL はそのとおりに） |
-| 秋の朝 `autumn-morning` | Mount Fuji early morning from Lake Motosu - Nov 2, 2008 | [puamelia] | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg | 本栖湖から見た明け方の富士。撮影 11/2（4枚のころの朝） |
+| 秋の早朝 `autumn-dawn` | Mount Fuji early morning from Lake Motosu - Nov 2, 2008 | [puamelia] | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Mount_Fuji_early_morning_from_Lake_Motosu_-_Nov_2,_2008.jpg | 本栖湖から見た明け方の富士。撮影 11/2（4枚のころの朝） |
+| 秋の朝 `autumn-morning` | Find47 Niigata-Snowy mountains and autumn leaves (Ginzandaira, Uonuma City)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-Snowy_mountains_and_autumn_leaves_(Ginzandaira,_Uonuma_City)-m.jpg | 銀山平の名残の紅葉と初雪の山、川。撮影 11/6 7:32 |
 | 秋の昼 `autumn-day` | Nagano-Togakushi Kagamiike Autumn leaves-xl | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Nagano-Togakushi_Kagamiike_Autumn_leaves-xl.jpg | 戸隠・鏡池に映る紅葉と戸隠連峰、青空。撮影 10/28 |
 | 秋の夕方 `autumn-evening` | Landscape of Hazaki (Niigata City, a row of Hazaki trees in Manganji) (51556156427) | Koichi Hayakawa | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Landscape_of_Hazaki_(Niigata_City,_a_row_of_Hazaki_trees_in_Manganji)_(51556156427).jpg | 満願寺のはさ木並木に沈む夕日。撮影 9/24。左下の署名は正方形に切ると外れる |
 | 秋の夜 `autumn-night` | Niigata-Echigo Plain is illuminated by the moonlight.-m - Flickr - Japanese beauty | Koichi Hayakawa | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Niigata-Echigo_Plain_is_illuminated_by_the_moonlight.-m_-_Flickr_-_Japanese_beauty.jpg | 月明かりの雲と越後平野の灯。撮影は 4/16 だが、夜で季節の手がかりが無く、月を秋に |
-| 冬の朝 `winter-morning` | Find47 Niigata-River (Shinano River, Ojiya City)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-River_(Shinano_River,_Ojiya_City)-m.jpg | 雪の信濃川の夜明け（小千谷市）。撮影 2/20 6:13 |
+| 冬の早朝 `winter-dawn` | Find47 Niigata-River (Shinano River, Ojiya City)-m | Koichi Hayakawa | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Find47_Niigata-River_(Shinano_River,_Ojiya_City)-m.jpg | 雪の信濃川の夜明け（小千谷市）。撮影 2/20 6:13 |
+| 冬の朝 `winter-morning` | 浅間山麓の霧氷 02 | Komoro no kaze | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:浅間山麓の霧氷_02.jpg | 浅間山麓の霧氷の林と青空・白い雲。撮影 2/7 9:17 |
 | 冬の昼 `winter-day` | Mount Yoko from Tsuboniwa | Naganojmmmm | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Mount_Yoko_from_Tsuboniwa.jpg | 八ヶ岳・坪庭の霧氷と濃い青空。撮影 1/19 |
 | 冬の夕方 `winter-evening` | Sunset, Hokkaido | Kaibak | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Sunset,_Hokkaido.jpg | 雪の林に沈む夕日（北海道）。撮影 1/2 |
 | 冬の夜 `winter-night` | Shirakawa-go 001 | tsuda | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Shirakawa-go_001.jpg | 雪の白川郷の灯（荻町城跡展望台から）。撮影 1/9 |
 
 - 加工：`node tools/season-art.js sky`（`tools/sky-src/<季節>-<札>.jpg` → 正方形に切って 853px・彩度 115%・ぼかし 1px・WebP・1枚 40KB まで）。
   元は Commons の 1280px 版（853px はその短い辺そのまま）。16:9 の2枚（夏の夕方・秋の昼）は 1280px 版の短い辺が 720px なので
-  1920px 版から。冬の夕方は 1280px 版が 848px で、そのまま 848px。細かい花や葉の写真は 40KB に収めるため質が下がる
+  1920px 版から。冬の夕方は 1280px 版が 848px で、そのまま 848px。朝の4枚は 1280px 版（秋は 3:2 で 853px、ほかは 4:3 で 960px を 853px へ）。細かい花や葉の写真は 40KB に収めるため質が下がる
   （春の昼 0.24・夏の昼 0.3。実寸で見て粗さは目立たない）。前は 720px・ぼかし 2px・25KB で、幅 390 の iPhone（3倍）では
   ぼけて見えた（「ぼかしを減らし、少し濃く」・10月7日）。左右のどこを残すかは道具の `CROP`（写真の札ごと。春の昼 0.45・
-  春の夕方 0.4・春の夜 0.55・夏の朝 0.45・夏の夕方 0.6〔日が右寄り〕・秋の朝 0.55・ほかは真ん中）。
-- `--sky-g`（写真の下端 12 行の平均）は16枚ぶん測った（時計の帯の `BAR` は外した。下の「時計の帯」）。
-  測り方は 4 枚のころの値と同じ（残した3枚で一致を確かめた）。下端が暗い写真（夏の夕方・秋の夕方・夏の夜）は地面の色も黒に近い。
+  春の夕方 0.4・春の夜 0.55・夏の早朝 0.45・夏の夕方 0.6〔日が右寄り〕・秋の早朝 0.55・ほかは真ん中）。秋の朝も細かく、質 0.24。
+- `--sky-g`（写真の下端 12 行の平均）は20枚ぶん測った（時計の帯の `BAR` は外した。下の「時計の帯」）。
+  測り方は 4 枚のころの値と同じ（残した3枚で一致を確かめた。10月8日に朝を足したときも、残した16枚が全部一致）。下端が暗い写真（夏の夕方・秋の夕方・夏の夜）は地面の色も黒に近い。
 - 正方形なのは、幅 390 の iPhone で月に開いた暦（安全域込みで約 400px）まで届くように。幅いっぱいに敷き、縦は
   `50% 55%` で合わせる（段3）：週（帯が約 135px）では写真の真ん中——富士・山並み・日・町の灯——が出て、月に開くと
   ほぼ全部。暦の高さにつれて写真も少し動く（伸びるぶんの 55%）。上から合わせていたころは、週では空しか見えなかった。
@@ -151,7 +167,7 @@
 決めて、どんな画素でも比が守られる**ようにした（base.css の「写真（段2・段3）」）。
 
 - 明るい面：`screen`。screen は幕より暗くならない（灰の幕なら「写真を白に重ねて薄めた」のと同じ）。幕は時間帯の
-  色（朝 薄紅・昼 青・夕方 橙・夜 藍。`--sky-v1/v2`）で、題の段は輝度 0.30（40% 濃くした主色に 3:1。いちばん
+  色（早朝 薄紅・朝 青緑・昼 青・夕方 橙・夜 藍。`--sky-v1/v2`）で、題の段は輝度 0.30（40% 濃くした主色に 3:1。いちばん
   厳しいのは青緑 `#2b7f8f` で 0.283）、暦の段は 0.425（50% 濃くした字に 4.5:1。いちばん厳しいのは土曜の曜日で 0.405）。
   幕の色は前の淡い色を、色味を変えずに（線形の光で割合をそろえて）暗くしたもの。
 - 暗い面：`multiply`、幕は灰色。multiply は幕より明るくならない。題の段 `#686868` は 40% 明るくした主色
@@ -198,8 +214,10 @@
     使ってから消す（保存場所ごと消える。`improvements.md` の B5）。
 - daily：上に空、紙に季節の写真（ノートは帯に空、紙に広重）。二枚がうるさければ daily だけ空を止める。
 - 明るい面の夜は淡い藍色まで。夜らしさが足りないなら、夜だけの扱いを相談する。
-- 写真の見え方（段3で濃くした）・縦の位置（`50% 55%`）・左右の位置（`CROP`）。16枚（季節×時間帯）にした。いまの季節（秋）の
-  4枚から見る。ほかの季節は区切りの日に替わる。64枚（同じ季節・時間帯の4枚を回す）は、16枚を見てから。
+- 写真の見え方（段3で濃くした）・縦の位置（`50% 55%`）・左右の位置（`CROP`）。20枚（季節×時間帯）にした。いまの季節（秋）の
+  5枚から見る。ほかの季節は区切りの日に替わる。回す（同じ季節・時間帯の数枚）は、20枚を見てから。
+- 早朝と朝の替わり目（日の出の1時間後）。朝の写真（秋は銀山平の紅葉）が9時台に朝らしいか。週の帯では秋の朝は林と川が
+  主で、雪の山は月に開くと見える。
 - タブを流すあいだの丸角（画面が角を持ち、二枚が並んで流れる）。流れの手ざわりが変わっていないか（出る面の曲線を
   入る面にそろえた）。
 - いちばん上で引いたすき間（空が出る。月に開いたときは写真の下端の先が地面の色で続く）。

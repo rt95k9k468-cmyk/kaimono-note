@@ -1,6 +1,6 @@
 /* 帯の空（docs/sky.md・js/sky.js。2026年10月7日）。見るのは：
    - 日の出・日の入り（東京）が暦の表と数分で合う（夏至・10/7・冬至）
-   - 時間帯の区切り：朝＝日の出30分前〜10時・昼＝〜日の入り1時間前・夕方＝〜日の入り30分後・ほかは夜。
+   - 時間帯の区切り：早朝＝日の出30分前〜日の出1時間後・朝＝〜10時・昼＝〜日の入り1時間前・夕方＝〜日の入り30分後・ほかは夜。
      夏の18時半は夕方（まだ明るい）・冬の17時半は夜（もう暗い）——決まった時刻では言えないもの
    - 次に替わる時刻は、その区切りちょうど（夜なら翌朝）
    - 端末の時間帯が日本でなければ、その時間帯の経度で測る（UTC の昼は昼・夜中は夜）
@@ -10,15 +10,16 @@
    - 時計の帯（theme-color）は空に合わせて変えない
    - 設定で外せる（既定は入）
    - 字の濃さの比（画面の画素で）：題の段の字と絵は 3:1 以上。暦の字は 4.5:1 以上（もともとそれ未満の
-     字は、空の無いときの比より下げない）。四つの時間帯 × 明るい面・暗い面 × 週・月
+     字は、空の無いときの比より下げない）。五つの時間帯 × 明るい面・暗い面 × 週・月
    - ノートへ移るとき、帯の裏へ上がった暦は帯の中に見えない（帯が透けても）
    - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
    - いちばん上で引いて紙が下がっても、すき間は空（週・月）。空を下へ伸ばしても帯の中の写真は動かない
    - 中身が跳ね返って下がっても（勢いよく上端に着いたとき）、紙のふちの一本は紙の上の縁に残る
-   - 写真（段2）：季節×時間帯の16枚が img/sky/ にあり1枚40KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は
+   - 写真（段2）：季節×時間帯の20枚が img/sky/ にあり1枚40KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は
      別の名前のキャッシュへ（ASSETS に入れない）。季節は立春・立夏・立秋・立冬で替わる（夜中の0時に替われば、夜の
      写真も替わる）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、描いた空のまま。
-     設定で外せば両方の札が外れる。字の濃さの比は、16枚どれを敷いた状態でも同じ決まり
+     設定で外せば両方の札が外れる。字の濃さの比は、20枚どれを敷いた状態でも同じ決まり。朝の写真の URL は ?v= 付き
+     （同じ名前で日の出の写真を出していた）。どの写真にも地面の色 --sky-g
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sky.js */
 const fs = require("fs");
 const path = require("path");
@@ -42,11 +43,11 @@ function rgbOf(s) {
   /* ---- 読むだけ ---- */
   const js = fs.readFileSync(path.join(ROOT, "js/sky.js"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   c.check("js は札だけ書く（カスタムプロパティを書かない）", !/setProperty|setVar|\.style\b/.test(js));
-  const SLOTS4 = ["morning", "day", "evening", "night"];
+  const SLOTS5 = ["dawn", "morning", "day", "evening", "night"];
   const SEASONS = ["spring", "summer", "autumn", "winter"];
-  const KEYS = SEASONS.flatMap((s) => SLOTS4.map((t) => `${s}-${t}`));
+  const KEYS = SEASONS.flatMap((s) => SLOTS5.map((t) => `${s}-${t}`));
   const sizes = KEYS.map((k) => { const f = path.join(ROOT, "img/sky", `${k}.webp`); return fs.existsSync(f) ? fs.statSync(f).size : 0; });
-  c.check("写真：img/sky/ に16枚（季節×時間帯）、1枚40KBまで", sizes.every((n) => n > 0 && n <= 40 * 1024), sizes.join(" / "));
+  c.check("写真：img/sky/ に20枚（季節×時間帯）、1枚40KBまで", sizes.every((n) => n > 0 && n <= 40 * 1024), sizes.join(" / "));
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   const assets = (sw.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || "";
   c.check("写真：sw.js は別の名前のキャッシュへ（ASSETS に入れない）", /\/img\/sky\//.test(sw) && !/img\/sky/.test(assets));
@@ -69,11 +70,14 @@ function rgbOf(s) {
 
   /* ---- 区切り ---- */
   const SLOT = [
-    ["2026-10-07T00:00", "night"], ["2026-10-07T05:05", "night"], ["2026-10-07T05:15", "morning"], ["2026-10-07T09:59", "morning"],
+    ["2026-10-07T00:00", "night"], ["2026-10-07T05:05", "night"], ["2026-10-07T05:15", "dawn"], ["2026-10-07T06:35", "dawn"],
+    ["2026-10-07T06:45", "morning"], ["2026-10-07T09:59", "morning"],
     ["2026-10-07T10:00", "day"], ["2026-10-07T16:10", "day"], ["2026-10-07T16:25", "evening"], ["2026-10-07T17:40", "evening"],
     ["2026-10-07T17:55", "night"], ["2026-10-07T23:59", "night"],
-    ["2026-06-21T04:00", "morning"], ["2026-06-21T18:30", "evening"], ["2026-06-21T19:20", "evening"],
-    ["2026-12-22T06:30", "morning"], ["2026-12-22T16:00", "evening"], ["2026-12-22T17:30", "night"],
+    ["2026-06-21T04:00", "dawn"], ["2026-06-21T05:20", "dawn"], ["2026-06-21T05:30", "morning"],
+    ["2026-06-21T18:30", "evening"], ["2026-06-21T19:20", "evening"],
+    ["2026-12-22T06:30", "dawn"], ["2026-12-22T07:40", "dawn"], ["2026-12-22T07:55", "morning"],
+    ["2026-12-22T16:00", "evening"], ["2026-12-22T17:30", "night"],
   ];
   const got = await page.evaluate((xs) => xs.map(([t]) => KN.sky.slotOf(new Date(`${t}:00+09:00`))), SLOT);
   SLOT.forEach(([t, want], i) => c.check(`${t.replace("T", " ")} は ${want}`, got[i] === want, got[i]));
@@ -81,17 +85,20 @@ function rgbOf(s) {
   const nx = await page.evaluate(() => {
     const S = KN.sky, noon = S.nextChange(new Date("2026-10-07T12:00:00+09:00"));
     return { before: S.slotOf(new Date(noon - 1000)), after: S.slotOf(new Date(+noon + 1000)),
-             night: S.nextChange(new Date("2026-10-07T20:00:00+09:00")).toISOString() };
+             night: S.nextChange(new Date("2026-10-07T20:00:00+09:00")).toISOString(),
+             dawn: S.nextChange(new Date("2026-10-07T06:00:00+09:00")).toISOString() };
   });
   c.check("昼の次は、夕方の始まりちょうど", nx.before === "day" && nx.after === "evening", JSON.stringify(nx));
   const nightNext = new Date(nx.night);
-  c.check("夜の次は翌朝（日の出の30分前）", nightNext > JST("2026-10-08T04:50:00") && nightNext < JST("2026-10-08T05:30:00"), nx.night);
+  c.check("夜の次は翌日の早朝（日の出の30分前）", nightNext > JST("2026-10-08T04:50:00") && nightNext < JST("2026-10-08T05:30:00"), nx.night);
+  const dawnNext = new Date(nx.dawn);
+  c.check("早朝の次は朝（日の出の1時間後）", dawnNext > JST("2026-10-07T06:30:00") && dawnNext < JST("2026-10-07T06:50:00"), nx.dawn);
 
   /* ---- 季節（立春 2/4・立夏 5/5・立秋 8/7・立冬 11/7。2026年） ---- */
   const SEASON = [
     ["2026-02-03T12:00", "winter-day"], ["2026-02-04T12:00", "spring-day"], ["2026-05-04T12:00", "spring-day"], ["2026-05-05T12:00", "summer-day"],
     ["2026-08-06T12:00", "summer-day"], ["2026-08-07T12:00", "autumn-day"], ["2026-11-06T23:30", "autumn-night"], ["2026-11-07T00:30", "winter-night"],
-    ["2026-10-07T06:00", "autumn-morning"], ["2026-10-07T17:00", "autumn-evening"],
+    ["2026-10-07T06:00", "autumn-dawn"], ["2026-10-07T08:00", "autumn-morning"], ["2026-10-07T17:00", "autumn-evening"],
   ];
   const gotS = await page.evaluate((xs) => xs.map(([t]) => KN.sky.photoOf(new Date(`${t}:00+09:00`))), SEASON);
   SEASON.forEach(([t, want], i) => c.check(`${t.replace("T", " ")} の写真は ${want}`, gotS[i] === want, gotS[i]));
@@ -108,12 +115,15 @@ function rgbOf(s) {
   });
   c.check("#head に札（12時は昼）", await attr() === "day", String(await attr()));
   const cr = await page.evaluate(() => KN.sky.credits());
-  c.check("写真の出典：16枚とも作者・ライセンス・Commons の URL・ファイルが札どおり", cr.length === 16 && cr.every((x, i) =>
+  c.check("写真の出典：20枚とも作者・ライセンス・Commons の URL・ファイルが札どおり", cr.length === 20 && cr.every((x, i) =>
     x.key === KEYS[i] && x.name && x.author && /^(CC0|Public domain|CC BY(-SA)? [\d.]+)$/.test(x.license) && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(x.url)
-    && new RegExp(`^img/sky/${x.key}\\.webp(\\?v=\\d+)?$`).test(x.file)) && new Set(cr.map((x) => x.url)).size === 16, JSON.stringify(cr.map((x) => [x.key, x.license])));
+    && new RegExp(`^img/sky/${x.key}\\.webp(\\?v=\\d+)?$`).test(x.file)) && new Set(cr.map((x) => x.url)).size === 20, JSON.stringify(cr.map((x) => [x.key, x.license])));
   /* sw.js は写真を一度覚えたら取り直さない。描き直したら ?v= を上げる——js の先読みと CSS が同じ URL でないと、二度取りに行く */
   const css = fs.readFileSync(path.join(ROOT, "css/base.css"), "utf8");
   c.check("写真の URL（?v= 込み）が js と CSS でそろう", cr.every((x) => css.includes(`url("../${x.file}")`)), cr.map((x) => x.file).join(" "));
+  /* 朝の名前（<季節>-morning.webp）では前に日の出の写真を出していた。?v= が無いと、覚えた古い写真が出る */
+  c.check("朝の写真は ?v= 付き（同じ名前で日の出の写真を覚えている）", cr.filter((x) => x.slot === "morning").every((x) => /\?v=\d+$/.test(x.file)), cr.filter((x) => x.slot === "morning").map((x) => x.file).join(" "));
+  c.check("どの写真にも地面の色 --sky-g（写真の下端より下に続く）", KEYS.every((k) => new RegExp(`data-sky-img="${k}"\\][^}]*--sky-g: #[0-9a-f]{6}`).test(css)));
   const imgAttr = () => page.evaluate(() => document.getElementById("head").getAttribute("data-sky-img"));
   await page.waitForFunction(() => document.getElementById("head").getAttribute("data-sky-img") === "autumn-day", null, { timeout: 5000 }).catch(() => {});
   c.check("写真が読めたら data-sky-img に写真の札（10/7 の昼は秋の昼）、写真が敷かれる", await imgAttr() === "autumn-day"
@@ -140,11 +150,11 @@ function rgbOf(s) {
 
   /* 朝の写真は読めないことにする（オフラインで持っていない。昼・夕方のあとに先読みされるのは次の時間帯だけ） */
   await page.route("**/img/sky/autumn-morning.webp*", (r) => r.abort());
-  await page.clock.setFixedTime(JST("2026-10-08T06:00:00"));
+  await page.clock.setFixedTime(JST("2026-10-08T08:00:00"));
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await wait(400);
   b = await bgs();
-  c.check("読めない写真は札が付かず、描いた空のまま（6時は朝）", await attr() === "morning" && await imgAttr() !== "autumn-morning"
+  c.check("読めない写真は札が付かず、描いた空のまま（8時は朝）", await attr() === "morning" && await imgAttr() !== "autumn-morning"
     && !/url\(/.test(b.head) && /linear-gradient/.test(b.head), JSON.stringify(b));
   await page.unroute("**/img/sky/autumn-morning.webp*");
 
@@ -232,13 +242,13 @@ function rgbOf(s) {
       await wait(250);
       await page.evaluate(() => KN.app.showScreen("todo"));
       await wait(500);
-      for (const slot of SLOTS4) for (const photo of [null, ...SEASONS.map((s) => `${s}-${slot}`)]) {
+      for (const slot of SLOTS5) for (const photo of [null, ...SEASONS.map((s) => `${s}-${slot}`)]) {
         await page.evaluate(async ([s, photo]) => {
           const h = document.getElementById("head");
           h.setAttribute("data-sky", s);
           if (!photo) { h.removeAttribute("data-sky-img"); return; }
           const img = new Image();
-          img.src = `img/sky/${photo}.webp`;
+          img.src = KN.sky.PHOTO[photo].file;
           await img.decode();
           h.setAttribute("data-sky-img", photo);
         }, [slot, photo]);
