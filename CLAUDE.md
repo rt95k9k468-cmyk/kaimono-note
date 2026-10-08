@@ -38,7 +38,7 @@
 ## テスト
 
 - Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`（`open()` を使う）、一覧は `tests/INDEX.md`（3万字。grep で引く）。
-- `NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`。全部は `tests/run-all.js`（約3分）。
+- `NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`。全部は `tests/run-all.js`（約8分）。
 - 触った画面の主要テストと `tests/daily-rules.js` は毎回走らせる。
 
 ## docs（触る前に、該当するものだけ。丸ごと読まず `grep -n '^#'` で見出しを見て、触る節を読む。数千行の .js も grep で引いて前後だけ）
