@@ -5117,15 +5117,20 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    絵は**横幅いっぱいに一枚まるごと**（100vw auto）。幕は絵の高さ（--season-h ＝ 幅×縦横の比。比は js が --season-ar に）の
    半ばまで同じ濃さで、絵の下の端で閉じる。10/7 までは cover で縦長の紙に敷いていて、横長の写真は真ん中の三分の一だけが
    約3倍に引き伸ばされ（雁は両端へ切れて空だけ）、主役のいる中ほどは幕で消えていた——「ぼかしがきつくて何かわからない」の正体。
-   値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。色の入れ替わりは --m-season で
-   ゆっくり（@property で色として登録。動きを減らす設定では切り替えるだけ）。濃さは iPhone で決める。 */
+   値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。濃さは iPhone で決める。
+   色の入れ替わりは --m-season でゆっくり。移すのは背景を塗る要素の --season-k だけ（受け継がない。js/season-art.js が
+   Web Animations で）。前は画面の --season-c（受け継ぐ）を transition していて、移るあいだ毎フレーム画面の子の全部
+   （daily で約1,700）が当てはめ直しになっていた（docs/log/inspection.md の 1）。.tl-sheet には紙を滑らせる transition が
+   あるので、ここに transition を足さない（詳細度で上書きして壊す）。 */
 @property --season-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
-#screen-archive, #screen-notes { transition: --season-c var(--m-season) var(--ease); }
+@property --season-k { syntax: "<color>"; inherits: false; initial-value: transparent; }
+#screen-archive[data-season] .tl-sheet.is-daily,
+#screen-notes[data-season] { --season-k: var(--season-c); }
 #screen-archive[data-season] .tl-sheet.is-daily {
   --season-veil: color-mix(in srgb, var(--c-sheet) calc(100% - var(--season-alpha, 34%)), transparent);
   --season-h: calc(100vw * var(--season-ar, 0.67));
   background:
-    linear-gradient(to bottom, color-mix(in srgb, var(--season-c) var(--season-tint, 38%), transparent), transparent 55%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent 55%),
     linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-h) * 0.55), var(--c-sheet) var(--season-h)),
     var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-sheet);
@@ -5142,7 +5147,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   --season-veil: color-mix(in srgb, var(--c-bg) calc(100% - var(--season-alpha, 34%)), transparent);
   --season-h: calc(100vw * var(--season-ar, 0.67));
   background:
-    linear-gradient(to bottom, color-mix(in srgb, var(--season-c) var(--season-tint, 38%), transparent), transparent 55%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent 55%),
     linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-h) * 0.55), var(--c-bg) var(--season-h)),
     var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-bg);
@@ -6862,16 +6867,23 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 /* 道を外れた時間（起きる前・寝たあと）に開いていれば、z Z がいびきのように
    ふくらみながら上へのぼって消え、また出る（2026年9月30日・利用者の声）。
    のぼる高さ（4）は day-road.js の BED_TOP に入れてある（札がよける）。
-   小さい z と大きい Z は半拍ずらす。 */
+   小さい z と大きい Z は半拍ずらす。
+   三回のぼったら、最後にもう一度出てきて置いたまま止まる（動きを減らす設定と同じ姿）。SVG の中の動きは合成に乗らず、
+   のぼるあいだ毎フレーム様式と配置をやり直すので、夜じゅう続けない（docs/log/inspection.md の 2・利用者が決めた）。
+   開き直す（画面が出直すと動きは頭から）・道に触る・アプリへ戻る（day-road.js の snoreAgain）と、また三回。 */
 .road-bed.is-snore .road-z {
-  animation: road-snore var(--m-snore) var(--ease-glide) infinite both;
+  animation: road-snore var(--m-snore) var(--ease-glide) 3,
+             road-snore-rest calc(var(--m-snore) * .3) var(--ease-glide) calc(var(--m-snore) * 3);
 }
-.road-bed.is-snore .road-z.is-big { animation-delay: calc(var(--m-snore) / -2); }
+.road-bed.is-snore .road-z.is-big { animation-delay: calc(var(--m-snore) / -2), calc(var(--m-snore) * 2.5); }
 @keyframes road-snore {
   0% { opacity: 0; translate: calc(var(--zx, 1) * -1px) 3px; scale: .6; }
   25% { opacity: 1; }
   70% { opacity: 1; }
   100% { opacity: 0; translate: calc(var(--zx, 1) * 2px) -4px; scale: 1.1; }
+}
+@keyframes road-snore-rest {
+  from { opacity: 0; translate: calc(var(--zx, 1) * -1px) 3px; scale: .6; }
 }
 /* 動きを減らす設定では、のぼらせずに置いたまま（一回で終わらせると消えたままになる）。 */
 @media (prefers-reduced-motion: reduce) {

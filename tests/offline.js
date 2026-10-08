@@ -60,6 +60,8 @@ const TABS = ["archive", "todo", "list", "diet"];
   const t = checker("offline");
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  // 週に一度の控えのトーストは止める（lib.js の open() と同じ）
+  await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
