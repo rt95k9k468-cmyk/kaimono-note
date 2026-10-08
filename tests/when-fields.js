@@ -175,11 +175,31 @@ const { open, checker } = require("./lib");
   await openW();
   await btnOf(".js-time").click(); await wait(250);
   t.check("「なし」の口がある", await page.locator(".note-pop .when-none").count() === 1);
+  t.check("「なし」と「OK」が一列", await page.locator(".note-pop .when-foot > .when-none + .when-ok").count() === 1);
   await page.locator(".note-pop .when-none").click(); await wait(250);
   t.check("「なし」で空は「--:--」", (await btnOf(".js-time").textContent()) === "--:--");
   await closeSheet();
   w = JSON.parse(await weight());
   t.check("体重：時刻を外して閉じる → 保存（時刻なし）", w.time == null, JSON.stringify(w));
+
+  /* ---- OK で決まる・寄せが消えても行の途中で止まらない（2026年10月8日） ---- */
+  await openW();
+  await btnOf(".js-time").click(); await wait(250);
+  /* iPhone で寄せ（smooth）が scroll を出さずに消えたのと同じ形：scrollTo を効かなくして、行の途中へ。 */
+  const stuck = await page.evaluate(async () => {
+    const el = [...document.querySelectorAll(".note-pop")].pop().querySelectorAll(".note-wheel")[1];
+    el.scrollTo = () => {};
+    el.scrollTop = KN.gesture.WHEEL_ROW * 20.4;
+    await new Promise((r) => setTimeout(r, 800));
+    return el.scrollTop / KN.gesture.WHEEL_ROW;
+  });
+  t.check("寄せが消えても行に戻る", stuck === 20, String(stuck));
+  await spin([8, 45]);
+  await page.locator(".note-pop .when-ok").click(); await wait(250);
+  t.check("OK で小窓が閉じ、時刻が決まる", (await page.locator(".note-pop.is-open").count()) === 0 && (await btnOf(".js-time").textContent()) === "8:45");
+  await closeSheet();
+  w = JSON.parse(await weight());
+  t.check("体重：OK で決めた時刻が保存", w.time === "08:45", JSON.stringify(w));
 
   t.check("エラーが出ない", !errors.length, errors.join("\n"));
   await browser.close();
