@@ -119,16 +119,19 @@
 
 ## 写真の表（Wikimedia Commons・2026年10月7日）
 
-daily の紙の後ろの一揃い（`img/season-photo/kNN.webp`・`KN.seasonArt.PHOTO`。72枚・合計 1513KB）。2026年10月7日に
+daily の紙の後ろの一揃い（`img/season-photo/kNN.webp`・`KN.seasonArt.PHOTO`。72枚・合計 5.6MB。10/8 までは 1513KB）。2026年10月7日に
 daily へつないだ（広重はノートへ）。出典は設定 → daily →「写真の出典」（作者・題・ライセンス・URL を候ごとに）。
 
 - 出どころは Wikimedia Commons だけ。ライセンスは CC0／パブリックドメイン／CC BY／CC BY-SA のみ。人の顔が大きく写るもの・
   ロゴ・透かし・大きな文字の看板は除いた（72枚の縮小一覧を目で見て、柚子湯の人・山肌の文字・看板の3枚を差し替えた）。
 - CC BY／BY-SA は**画面に出すとき作者・ライセンス・URL の表示が要る**（設定 → daily →「写真の出典」）。
-- 加工：`node tools/season-art.js photo`（`tools/season-photo-src/kNN.jpg` → 同じ加工。写真は細かく 25KB に収まらないので
-  ぼかしだけ 2px に強めた）。元は Commons の 1280px 版。
+- 加工：`node tools/season-art.js photo`（`tools/season-photo-src/kNN.jpg` → 短い辺 860px・ぼかし 0.5px・WebP・1枚 120KB まで。
+  質は 0.5 より下げず、細かい29枚はぼかしを 1px に足して収めた）。
+  元は Commons の 1920px 版。2026年10月8日に画質を上げた（それまでは 1280px 版から 720px・ぼかし 2px・25KB）。
 - Commons の API は User-Agent を付けないと 429。付けても共有の出口では 429 が多い——`retry-after` を守って間を空ける。
-  `thumb.wikimedia.org` は通らないので `upload.wikimedia.org/.../thumb/...` を使う。
+  `thumb.wikimedia.org` は通らないので `upload.wikimedia.org/.../thumb/...` を使う（`Special:FilePath` もそこへ飛ぶので通らない）。
+  住所は API なしで組める：名前（空白は `_`）の md5 を h として `upload.wikimedia.org/wikipedia/commons/thumb/{h[0]}/{h[0:2]}/{名前}/1920px-{名前}`。
+  幅は決まった段（1280・1920 など）だけ。ほかの幅は 429。1枚ずつ2秒おきなら止められなかった。
 - 合いの弱いもの：30（綿）・53（サケの川）・68（モミジの芽）は日本で撮った候補が無く、撮影地が日本の外らしい。
   54（ユズ）は幹が主で実が小さい。56（雪下出麦）は青い麦だが後ろに桜が咲く。見比べで気になれば差し替える。
 
