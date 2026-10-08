@@ -131,7 +131,27 @@ const ROOT = path.resolve(__dirname, "..");
   await page.evaluate((d) => { const S = KN.screens.archive; if (S.goDay) S.goDay(d); }, past);
   const goDayOk = await page.evaluate(() => !!KN.screens.archive.goDay);
   if (goDayOk) {
-    await wait(800);
+    /* 候の色は --m-season でゆっくり移る。移すのは紙の --season-k（受け継がない）だけで、画面（受け継ぐ）は移さない
+       （画面ごと毎フレーム当てはめ直さない。inspection.md の 1）。移る途中で紙を組み直しても、続きから移る。 */
+    const fade = await page.evaluate(async () => {
+      const el = document.querySelector("#screen-archive");
+      await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 200)));
+      const on = (x) => x.getAnimations().filter((a) => a.effect && a.effect.getKeyframes().some((f) => "--season-k" in f));
+      const sheet = el.querySelector(".tl-sheet.is-daily");
+      const a = on(sheet)[0];
+      const mid = getComputedStyle(sheet).getPropertyValue("--season-k").trim();
+      const t1 = a ? a.currentTime : -1;
+      KN.screens.archive.render();
+      await Promise.resolve();
+      const sheet2 = el.querySelector(".tl-sheet.is-daily");
+      const b = on(sheet2)[0];
+      return { sheet: !!a, mid, end: el.style.getPropertyValue("--season-c"), screen: getComputedStyle(el).transitionProperty,
+               screenAnims: el.getAnimations().map((x) => x.animationName || x.transitionProperty).filter((n) => /season/.test(n)), fresh: sheet2 !== sheet, t1, t2: b ? b.currentTime : -1 };
+    });
+    c.check("候が変わると、紙の色だけゆっくり移る（画面は移さない）", fade.sheet && fade.t1 > 0 && fade.mid
+      && !/season/.test(fade.screen) && fade.screenAnims.length === 0, JSON.stringify(fade));
+    c.check("移る途中で紙を組み直しても、続きから移る", fade.fresh && fade.t2 >= fade.t1, JSON.stringify(fade));
+    await wait(1400);
     r = await read();
     c.check("過去の日を開けば、その日の候の色", r.k === String(r.want) && r.want === (await page.evaluate((d) => KN.season.of(d).k, past)), JSON.stringify(r));
   } else {

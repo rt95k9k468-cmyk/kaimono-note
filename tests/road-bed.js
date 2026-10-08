@@ -8,10 +8,12 @@
    - 道の端の時刻は寝床の下。寝床と札・時刻・連れは DOM の箱で重ならない
    - 4:50 と 23:10：人は出ず、その側の寝床だけ z Z がのぼる（is-snore・animation）、
      いまの時刻は寝床の上。12:00：人が立ち、どちらも止まっている
+   - いびきは三回で止まり、置いたまま（z Z は見えている）。道に触ると、また三回（10月8日・inspection.md の 2）
    - 評価の言葉と絵文字なし */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-10-06";
+const SNORE = "road-snore, road-snore-rest";   // 三回のぼって、最後に出てきて止まる
 
 async function at(h, m, run) {
   const { browser, page, errors } = await open({
@@ -111,7 +113,7 @@ const cx = (b) => (b.l + b.r) / 2;
     c.check("4:50：人は道に居ない", !r.meShown);
     c.check("4:50：朝の寝床は濃く、夜の寝床は薄い", r.beds[0].op === 1 && r.beds[1].op < 0.5,
       JSON.stringify(r.beds.map((b) => b.op)));
-    c.check("4:50：朝の寝床だけ z Z がのぼる", r.beds[0].snore && r.beds[0].anim === "road-snore"
+    c.check("4:50：朝の寝床だけ z Z がのぼる", r.beds[0].snore && r.beds[0].anim === SNORE
       && !r.beds[1].snore, JSON.stringify(r.beds.map((b) => [b.snore, b.anim])));
     c.check("4:50：いまの時刻は朝の寝床の上", r.now === "4:50" && r.nowBox.b <= r.beds[0].z.t - 4
       && Math.abs(cx(r.nowBox) - cx(r.beds[0].ink)) < 3, JSON.stringify([r.nowBox, r.beds[0]]));
@@ -121,11 +123,39 @@ const cx = (b) => (b.l + b.r) / 2;
   }));
 
   errs.push(...await at(23, 10, async (page) => {
+    /* 三回で止める（待たずに終わりまで送る）。止んだら z Z は置いたまま見えている。触ると、また三回。 */
+    const snore = () => page.evaluate(() => {
+      const b = document.querySelector("#screen-todo .day-road .road-bed.is-snore");
+      const an = b.getAnimations({ subtree: true }).filter((a) => a.animationName);
+      const z = getComputedStyle(b.querySelector(".road-z.is-big"));
+      return { n: an.length, its: an.filter((a) => a.animationName === "road-snore").map((a) => a.effect.getComputedTiming().iterations),
+               op: Number(z.opacity), tr: z.translate, sc: z.scale };
+    });
+    const finish = () => page.evaluate(() => document.querySelector("#screen-todo .day-road .road-bed.is-snore")
+      .getAnimations({ subtree: true }).forEach((a) => a.finish()));
+    const s0 = await snore();
+    c.check("23:10：いびきは三回（z と Z）", s0.n === 4 && s0.its.join() === "3,3", JSON.stringify(s0));
+    await finish();
+    const s1 = await snore();
+    c.check("23:10：三回で止まり、z Z は置いたまま見えている", s1.n === 0 && s1.op === 1 && s1.tr === "none" && s1.sc === "none",
+      JSON.stringify(s1));
+    await page.evaluate(() => document.querySelector("#screen-todo .day-road")
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    const s2 = await snore();
+    c.check("23:10：道に触ると、またのぼる", s2.n === 4, JSON.stringify(s2));
+    const t3 = await page.evaluate(() => {
+      const road = document.querySelector("#screen-todo .day-road");
+      const an = road.querySelector(".road-bed.is-snore").getAnimations({ subtree: true }).filter((a) => a.animationName);
+      an.forEach((a) => { a.currentTime = 3000; });
+      road.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      return an.map((a) => a.currentTime);
+    });
+    c.check("23:10：のぼっている最中に触っても、頭からにしない", t3.length === 4 && t3.every((t) => t >= 3000), JSON.stringify(t3));
     const r = await read(page);
     c.check("23:10：人は道に居ない", !r.meShown);
     c.check("23:10：夜の寝床は濃く、朝の寝床は薄い", r.beds[1].op === 1 && r.beds[0].op < 0.5,
       JSON.stringify(r.beds.map((b) => b.op)));
-    c.check("23:10：夜の寝床だけ z Z がのぼる", r.beds[1].snore && r.beds[1].anim === "road-snore" && !r.beds[0].snore,
+    c.check("23:10：夜の寝床だけ z Z がのぼる", r.beds[1].snore && r.beds[1].anim === SNORE && !r.beds[0].snore,
       JSON.stringify(r.beds.map((b) => [b.snore, b.anim])));
     c.check("23:10：いまの時刻は夜の寝床の上", r.now === "23:10" && r.nowBox.b <= r.beds[1].z.t - 4,
       JSON.stringify([r.nowBox, r.beds[1]]));
