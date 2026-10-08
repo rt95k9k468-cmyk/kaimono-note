@@ -37,11 +37,11 @@
 
 ## テスト
 
-- Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`、一覧は `tests/INDEX.md`（`open()` を使う）。
+- Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`（`open()` を使う）、一覧は `tests/INDEX.md`（3万字。grep で引く）。
 - `NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`。全部は `tests/run-all.js`（約3分）。
 - 触った画面の主要テストと `tests/daily-rules.js` は毎回走らせる。
 
-## docs（触る前に、該当するものだけ。丸ごと読まず `grep -n '^#'` で見出しを見て、触る節を読む）
+## docs（触る前に、該当するものだけ。丸ごと読まず `grep -n '^#'` で見出しを見て、触る節を読む。数千行の .js も grep で引いて前後だけ）
 
 時間割・`plan.js`・`day-road.js` → todo-timeline ／ 手順・長期・期限・くり返し・`when-parse.js` → todo-items ／
 紙・`scrollerOf`・`pull-refresh.js`・`--kb` → sheet-scroll ／ `day-swipe`・`cal-swipe`・`cal-peek`・暦 → calendar-swipe ／
