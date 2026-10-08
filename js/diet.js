@@ -319,6 +319,40 @@
     return { p: Math.round(kp / all * 100), f: Math.round(kf / all * 100), c: Math.round(kc / all * 100) };
   }
 
+  /* 「なし」「抜き」だけの枠は、書いていない枠として読みます（食べなかったと
+     書いてあるのだから、数が無くて当たり前）。 */
+  const NONE_MEMO = /^(なし|無し|抜き|ぬき|食べてない|食べなかった|[-ー－―—]+)$/;
+
+  /**
+   * 一日ぶんを数えきった日の摂取（食事＋お酒、kcal）。言えない日は null。
+   *
+   * 食べた記録が欠けた日を平均に混ぜると、摂取が低く出ます。ふだんより
+   * 「少なすぎる日」を外すやり方は取りません——本当に少なかった日まで
+   * 落として、今度は高く出るので。そのかわり、**書いたものに数が付いて
+   * いるか** だけを見ます。
+   *   1. 今日は数えない（一日がまだ終わっていない）
+   *   2. 数の付いた食事がある（dayTotals）
+   *   3. 書いた枠（朝・昼・夜・間食）に、どれも数が付いている
+   *      ——推計のあとに書き足して、推し直していない日を外します
+   *   4. 夜に数がある（夜に「なし」と書いた日はよい）——夜の書き忘れが、
+   *      摂取をいちばん大きく欠くので
+   * 枠に何も書いておらず区分も分からない日（前の作りの「一日ぶんのメモ」）は、
+   * 3・4 を確かめようがないので、2 だけで数えます。
+   */
+  function countedIntake(day) {
+    if (!day || day >= U.todayKey()) return null;
+    const t = dayTotals(day);
+    if (!t || t.kcal <= 0) return null;
+    const st = slotTotals(day);
+    const memo = (k) => store.slotMemo(day, k).trim();
+    const written = MEAL_SLOTS.filter((k) => memo(k) && !NONE_MEMO.test(memo(k)));
+    if (written.some((k) => st[k] <= 0)) return null;
+    const sorted = written.length > 0 || MEAL_SLOTS.some((k) => st[k] > 0);
+    if (sorted && st.dinner <= 0 && !NONE_MEMO.test(memo("dinner"))) return null;
+    const dt = store.drinkTotals(day);
+    return t.kcal + (dt ? dt.kcal : 0);
+  }
+
   /* ---------------- 一日ぶんのまとめ ---------------- */
 
   /** ホームが一目で読むもの。取れていないものは null のまま。 */
@@ -377,6 +411,15 @@
      必ず何件ぶんの話かを添えます。 */
 
   const MIN_GROUP = 3;   // 片側にこれだけ無ければ、比べません
+
+  /* 記録から逆算した消費（H2）の線。MIN_GROUP より太くしてあります——二組を
+     比べるのではなく、一つの平均と一本の傾きから数を一つ出すので、数日の
+     偏りがそのまま答えに乗ります。 */
+  const BACK_MIN_DAYS = 14;          // 食事の数がそろった日。二週間ぶん無ければ言わない
+  const BACK_MIN_SPAN = 21;          // 体重の傾きを引く長さ（日）。二週間だと、塩辛い週末
+                                     // ひとつ（0.8kg の水）で1日200kcal以上動く
+  const BACK_BURNED_DAYS = 7;        // 端末の総消費を隣に置くのに要る日数
+  const BACK_RANGE = [1000, 5000];   // 体の幅を外れた計算は、記録の欠けを疑って出さない
 
   function weeksOf(days) {
     // 直近から7日ずつ区切る。週の切れ目は曜日ではなく「今日から数えて」。
@@ -639,6 +682,68 @@
       });
     }
 
+    /* --- 記録から逆算した消費（H2） ---
+
+       上の「収支」とは向きが逆です。あちらは総消費（端末の推計）から体重の
+       動きを見込み、こちらは **食べた記録と体重の動きから、使ったぶんを
+       逆算** します。体重が横ばいなら、使ったぶんは食べたぶんとほぼ同じ。
+       減っていれば、そのぶん多く使っている——体脂肪1kg をおよそ 7,200kcal
+       として。端末を着けていない人にも出せる、もう一つの「総消費」です。
+
+       言い切りません。摂取はAIの推計、体重は水でも動きます。だから
+       「計算になります」で終え、何日ぶんの話かを添えます。端末の総消費が
+       分かる日は隣に並べますが、どちらが正しいかは言いません——二つが
+       ずれている、という事実のほうが、どちらかの数より役に立ちます。
+
+       数えるのは **食事の数がそろった日**（countedIntake）だけ。体重の傾きは、
+       その日々が並ぶ期間（最初の日〜最後の日の翌朝）に引きます——摂取は
+       後ろの二週間、傾きは三十日、のように別々の期間の話を一つの式に
+       入れないために。 */
+    const backDays = daysBetween(from, U.shiftDay(today, -1))
+      .map((d) => ({ day: d, v: countedIntake(d) })).filter((r) => r.v != null);
+    const back = (() => {
+      if (backDays.length < BACK_MIN_DAYS) return null;
+      const a = backDays[0].day;
+      const z = backDays[backDays.length - 1].day;
+      const gap = (x, y) => Math.round((U.dayDate(y) - U.dayDate(x)) / 86400000);
+      // そろった日が期間の半分に満たなければ言いません（端に寄った記録で、間を言わない）。
+      if (backDays.length * 2 < gap(a, z) + 1) return null;
+      const b = U.shiftDay(z, 1);   // 最後の日に食べたぶんは、翌朝の体重に出る
+      // 7日平均は期間の6日前から均しはじめ、満ちた点だけで傾きを引きます。
+      const ma = movingAverage(weightPoints(U.shiftDay(a, -6), b), 7)
+        .filter((m) => m.value != null && m.full && m.day >= a);
+      if (ma.length < 3 || gap(ma[0].day, ma[ma.length - 1].day) < BACK_MIN_SPAN) return null;
+      const perWeek = slopePerWeek(ma);   // kg/週
+      if (perWeek == null) return null;
+      const intake = mean(vals(backDays));
+      const spent = intake - (perWeek / 7) * 7200;
+      if (spent < BACK_RANGE[0] || spent > BACK_RANGE[1]) return null;
+      const burns = daysBetween(a, z).map((d) => burnedOf(d)).filter((v) => v != null && v > 0);
+      return {
+        intake: Math.round(intake),
+        perWeek: round(perWeek, 2),
+        spent: Math.round(spent / 50) * 50,   // 傾きの揺れを思えば、十の位は飾りです
+        weighed: weightPoints(a, b).length,
+        burned: burns.length >= BACK_BURNED_DAYS ? Math.round(mean(burns)) : null,
+        burnedDays: burns.length,
+      };
+    })();
+    if (back) {
+      out.push({
+        id: "expenditure",
+        title: "記録から逆算した消費",
+        text: `食事の数がそろった ${backDays.length}日の摂取は平均 1日 ${back.intake.toLocaleString()}kcal、`
+          + `体重は7日平均で週 ${back.perWeek > 0 ? "+" : ""}${back.perWeek}kg でした（体重 ${back.weighed}日ぶん）。`
+          + `体脂肪1kgをおよそ7,200kcalとして逆算すると、`
+          + `1日およそ ${back.spent.toLocaleString()}kcal 使っている計算になります。`
+          + (back.burned != null
+            ? `端末の総消費は、同じ期間の ${back.burnedDays}日の平均で ${back.burned.toLocaleString()}kcal です。`
+            : ""),
+        value: back.spent, tone: "info", n: backDays.length,
+        intake: back.intake, perWeek: back.perWeek, burned: back.burned,
+      });
+    }
+
     /* --- どこで食べているか ---
 
        一日の合計が同じでも、朝に寄っているのか夜に寄っているのかで、
@@ -765,6 +870,84 @@
                 + `——飲む日は外食の日でもあり、塩分も水分も一緒に動きます。`
               : UNSTEADY[st.why]),
         value: diff, tone: "info", n: dr.length + so.length, steady: st ? st.ok : null,
+      });
+    }
+
+    /* --- 飲んだ晩と、その晩の睡眠 ---
+
+       上の「飲んだ翌日の体重」と同じ組み分けで、こんどは睡眠を見ます。
+       睡眠は**起きた日**に付いています（health の sleep も dayLog の
+       sleepStages も起きた日）。だから d の日に飲んだ晩は、d+1 の日の睡眠です。
+       前半・後半も起きた日で分けます。
+
+       ここも因果に読まれやすいところです。飲む日は寝る時刻が遅く、次の日が
+       休みのことも多い。だから **並びの差** としてだけ言います。
+
+       型（深い・レム）は、ヘルスケアの区間から取り込んだ晩にだけあります。
+       読むのは dayLog の sleepStages だけで、日記の本文には触れません。
+       日の紙には型を出していません（store の setDayLog）——ここで出すのも
+       期間の平均の差だけです。まだ寝ている途中に取った晩（provisional）は、
+       長さも型も途中の数なので入れません。
+
+       言い切るのは、差として言ったもの（長さ・深い・レム）が**ぜんぶ**
+       前半と後半で同じ向きだったときだけ。一つでもそろわなければ、数は
+       残して UNSTEADY の一文にします。 */
+    const SLEEP_FLAT_MIN = 15;   // 分。これより小さい長さの差は「目立った差はありません」
+    const STAGE_FLAT_MIN = 5;    // 分。深い・レムそれぞれ
+    const signedMin = (v) => `${v > 0 ? "+" : ""}${v}`;
+    const slD = [], slS = [], deepD = [], deepS = [], remD = [], remS = [];
+    let gNights = 0;
+    daysBetween(from, today).forEach((w) => {
+      const log = store.dayLog(w);
+      const stg = log && log.sleepStages;
+      if (stg && stg.provisional) return;
+      const t = store.drinkTotals(U.shiftDay(w, -1));
+      const min = store.healthValue(w, "sleep");
+      if (min != null && min > 0) {
+        (t ? slD : slS).push({ day: w, v: min });
+        if (t) gNights += t.alcoholG;
+      }
+      if (stg && stg.deep != null && stg.rem != null) {
+        (t ? deepD : deepS).push({ day: w, v: stg.deep });
+        (t ? remD : remS).push({ day: w, v: stg.rem });
+      }
+    });
+    if (slD.length >= MIN_GROUP && slS.length >= MIN_GROUP) {
+      const diff = Math.round(mean(vals(slD)) - mean(vals(slS)));
+      const checks = [];
+      let text;
+      if (Math.abs(diff) < SLEEP_FLAT_MIN) {
+        text = `飲んだ晩（${slD.length}回）と、そうでない晩（${slS.length}回）で、`
+          + `睡眠の長さに目立った差はありません。`;
+      } else {
+        checks.push(steadyOf(slD, slS));
+        text = `飲んだ晩は、そうでない晩より睡眠が平均 ${signedMin(diff)}分でした`
+          + `（飲んだ晩 ${slD.length}回 / そうでない晩 ${slS.length}回、`
+          + `純アルコール 平均${round(gNights / slD.length, 1)}g）。`;
+      }
+      if (deepD.length >= MIN_GROUP && deepS.length >= MIN_GROUP) {
+        const dDeep = Math.round(mean(vals(deepD)) - mean(vals(deepS)));
+        const dRem = Math.round(mean(vals(remD)) - mean(vals(remS)));
+        const cnt = `（飲んだ晩 ${deepD.length}回 / そうでない晩 ${deepS.length}回）`;
+        if (Math.abs(dDeep) < STAGE_FLAT_MIN && Math.abs(dRem) < STAGE_FLAT_MIN) {
+          text += `型の分かる晩${cnt}では、深い睡眠とレムに目立った差はありません。`;
+        } else {
+          if (Math.abs(dDeep) >= STAGE_FLAT_MIN) checks.push(steadyOf(deepD, deepS));
+          if (Math.abs(dRem) >= STAGE_FLAT_MIN) checks.push(steadyOf(remD, remS));
+          text += `型の分かる晩では、深い睡眠 ${signedMin(dDeep)}分・レム ${signedMin(dRem)}分でした${cnt}。`;
+        }
+      }
+      const bad = checks.find((c) => !c.ok);
+      if (checks.length) {
+        text += bad ? UNSTEADY[bad.why]
+          : `並びに差があるということで、飲酒が原因だとは言えません`
+            + `——飲む日は、寝る時刻も次の日の予定も一緒に動きます。`;
+      }
+      out.push({
+        id: "drink-sleep",
+        title: "飲んだ晩の睡眠",
+        text, value: diff, tone: "info", n: slD.length + slS.length,
+        steady: checks.length ? !bad : null,
       });
     }
 
@@ -1207,7 +1390,7 @@
     burnedOf,
     daysBetween, weightPoints, movingAverage, slopePerWeek,
     weightSummary, projection, neededPace,
-    dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit,
+    dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit, countedIntake,
     analyze, coverage,
     EXPORT_COLS, exportRows, exportCsv, exportText,
     AI_DETAIL, AI_ASKS, aiRows, aiText,
