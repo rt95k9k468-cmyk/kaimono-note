@@ -258,6 +258,15 @@ const TODAY = "2026-10-06";
   await wait(500);
   r = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "棚の修理"));
   c.check("足したものは日を持たず「これから」に入る", r && !r.due && !r.shelf, JSON.stringify(r));
+  /* トーストに「元に戻す」。押せば消え、もう一度足して先へ */
+  r = await page.evaluate(() => [...document.querySelectorAll(".toast-action")].map((b) => b.textContent.trim()));
+  c.check("足したトーストに「元に戻す」", r.includes("元に戻す"), JSON.stringify(r));
+  await page.evaluate(() => [...document.querySelectorAll(".toast-action")].find((b) => b.textContent.trim() === "元に戻す").click());
+  await wait(300);
+  r = await page.evaluate(() => KN.store.get().todos.some((x) => x.title === "棚の修理"));
+  c.check("「元に戻す」で足したものが消える", r === false);
+  await page.evaluate(() => KN.store.addTodo({ title: "棚の修理" }));
+  await wait(300);
 
   /* 欄の中のどこでも（下の余白）。行を押せば行の紙、動いた指（スクロール）では開かない */
   const openTitle = () => page.evaluate(() => {

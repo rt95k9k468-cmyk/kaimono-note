@@ -1834,12 +1834,13 @@
         finish("future", null);
         return;
       } else {
-        store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
+        const rec = store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
           lead: at ? lead : null, subs, icon: iconKey });
         KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
-          : `「${title}」を追加しました`);
+          : `「${title}」を追加しました`,
+          rec ? { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } } : undefined);
       }
       haptic(12);
       handle.close();
@@ -3025,9 +3026,10 @@
       e.preventDefault();
       const title = input.value.trim();
       if (!title) return;
-      store.addTodo({ title });
+      const rec = store.addTodo({ title });
       haptic(12);
-      KN.ui.toast(`「${title}」をこれからへ`);
+      KN.ui.toast(`「${title}」をこれからへ`,
+        rec ? { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } } : undefined);
       p.close();
     });
     /* 詳しく：小窓は縮ませずに消し（紙が押した点から育つので、二つ動くとぶれる）、
