@@ -24,7 +24,10 @@
    自動で組み合わせます。どちらも Apple が自分の UI に使っている面で、
    足りない字がありません。「揃っていること」は、書体の質より先に来ます。
 
-   ついでに 458KB（配布物では base64 で 611KB）が要らなくなりました。 */
+   ついでに 458KB（配布物では base64 で 611KB）が要らなくなりました。
+
+   同じ約束のまま、ヒラギノの丸ゴ・明朝にも切り替えられます（設定 → 外観
+   → 書体。:root を閉じたすぐ下の規則・docs/look.md の「書体は三つ」）。 */
 
 :root {
   color-scheme: light;
@@ -424,8 +427,7 @@
      （--lh-tight）、ボタンや行の文字は少し余裕を持たせ（--lh-ui）、
      気づいたこと・説明文のような読みものは、長く読んでも疲れない
      広さに（--lh-body）。 */
-  --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-          "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+  /* --font は、この :root を閉じたすぐ下（書体を選べるので、別の規則に）。 */
   /* --fs-k は文字の大きさの倍率（設定 → 外観 → 文字の大きさ。app.js の
      applyTextSize が :root に一度だけ書く）。字の大きさは**どれもこれを掛けて**
      書くこと——掛け忘れた字だけが、大きくしても取り残される（docs/look.md）。 */
@@ -637,6 +639,26 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
+
+/* ---- 書体（設定 → 外観 → 書体）----
+   三つとも iPhone に最初から入っている面です（Apple の書体表で「iOS system
+   font」。ダウンロードが要りません）。丸ゴ・明朝はヒラギノの ProN で、JIS X 0213
+   の字まで持っています——人の名前や地名の字も欠けない、を守ったまま選べるのは
+   この三つでした（上の「書体」の節）。
+
+   既定のゴシックは <html> に札を付けません（基調色と同じ）。設定の選ぶボタンも
+   同じ札（data-font）を持っていて、自分の書体で名前を出します。丸ゴは W4 一つ
+   なので、太字（700）はブラウザが太らせた字です。iPhone・Mac のほかには丸ゴが
+   無く、ゴシックの顔で出ます。 */
+:root, .seg-btn[data-font="gothic"] {
+  --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+          "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+}
+:root[data-font="maru"], .seg-btn[data-font="maru"] { --font: "Hiragino Maru Gothic ProN", sans-serif; }
+:root[data-font="mincho"], .seg-btn[data-font="mincho"] {
+  --font: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", serif;
+}
+.seg-btn[data-font] { font-family: var(--font); }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {

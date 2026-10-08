@@ -152,6 +152,15 @@
   }
   KN.app.applyTextSize = applyTextSize;
 
+  /* 書体（ゴシック・丸ゴ・明朝。base.css の「書体」の規則）。札は data-font。
+     既定のゴシックには札を付けません（基調色と同じ）。 */
+  function applyFont(font) {
+    const root = document.documentElement;
+    if (font === "maru" || font === "mincho") root.setAttribute("data-font", font);
+    else root.removeAttribute("data-font");
+  }
+  KN.app.applyFont = applyFont;
+
   /* ---------------- tabs ---------------- */
 
   function buildTabs() {
@@ -1221,6 +1230,7 @@
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
     applyTextSize(store.get().settings.textSize || "std");
+    applyFont(store.get().settings.font);
     /* 「端末に合わせる」なら、戻ってくるたびに読み直す（アプリを離れて
        iPhone の文字サイズを変えてきた、に追いつくため）。 */
     document.addEventListener("visibilitychange", () => {
