@@ -1444,6 +1444,43 @@
      iPhone では、勢いの尾の動きと寄せ（smooth）がかち合うと、寄せが scroll を一つも出さずに
      消え、行の途中で止まったままになった（2026年10月8日・利用者の声）。寄せたあと
      動きが絶えたら確かめ、まだ途中ならその場で行へ置く。 */
+  /* 行をまたぐ音（「カチッ」）。iPhone の Safari は震えを出せないので、純正のドラムの手ざわりを音で
+     （2026年10月8日・利用者の声）。音の場は ambient——消音スイッチで黙り、流れている音楽も止めない。
+     音の口は指で触れたときに開ける（iPhone は触れる前の音を出さない）。 */
+  let tickCtx = null, tickBuf = null, tickAt = 0;
+  function tickWake() {
+    try {
+      if (!tickCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (navigator.audioSession) navigator.audioSession.type = "ambient";
+        tickCtx = new AC();
+        const n = Math.round(tickCtx.sampleRate * 0.012);
+        tickBuf = tickCtx.createBuffer(1, n, tickCtx.sampleRate);
+        const d = tickBuf.getChannelData(0);
+        for (let i = 0; i < n; i++) {
+          const s = i / tickCtx.sampleRate;
+          d[i] = (Math.sin(2 * Math.PI * 3200 * s) * 0.6 + (Math.random() * 2 - 1) * 0.4) * Math.exp(-s / 0.0015);
+        }
+      }
+      if (tickCtx.state !== "running") tickCtx.resume();
+    } catch (_) {}
+  }
+  function tick() {
+    if (!tickCtx || tickCtx.state !== "running") return;
+    const now = performance.now();
+    if (now - tickAt < 30) return;   // 速い払いで重ならない
+    tickAt = now;
+    try {
+      const src = tickCtx.createBufferSource();
+      const g = tickCtx.createGain();
+      g.gain.value = 0.25;
+      src.buffer = tickBuf;
+      src.connect(g).connect(tickCtx.destination);
+      src.start();
+    } catch (_) {}
+  }
+
   function drum(el, rowH) {
     let touching = false;
     let t = 0;
@@ -1458,14 +1495,14 @@
       t = setTimeout(() => settle(true), 400);
     };
     const later = () => { clearTimeout(t); t = setTimeout(settle, 90); };
-    el.addEventListener("touchstart", () => { touching = true; live = true; clearTimeout(t); }, { passive: true });
-    const up = () => { touching = false; later(); };
+    el.addEventListener("touchstart", () => { touching = true; live = true; clearTimeout(t); tickWake(); }, { passive: true });
+    const up = () => { touching = false; tickWake(); later(); };
     el.addEventListener("touchend", up, { passive: true });
     el.addEventListener("touchcancel", up, { passive: true });
     el.addEventListener("scroll", () => {
-      /* 行をまたぐたびに、かちっと（震えの出せる端末だけ。iPhone の Safari は出せない）。 */
+      /* 行をまたぐたびに、かちっと（音と、震えの出せる端末では震え）。 */
       const i = Math.round(el.scrollTop / rowH);
-      if (i !== row) { if (live && row >= 0) haptic(4); row = i; }
+      if (i !== row) { if (live && row >= 0) { tick(); haptic(4); } row = i; }
       later();
     }, { passive: true });
     return el;
