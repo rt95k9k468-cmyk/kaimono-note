@@ -102,14 +102,17 @@ const PREV = "2026-09-29";
     const pad = road.querySelector(".road-tools-pad").getBoundingClientRect();
     return { rows: st.g.rows, row: st.tools && st.tools.row, right: st.tools && st.tools.right,
              y3: st.g.rowY(3), y4: st.g.rowY(4), tools,
-             pad: [pad.left, pad.right, pad.top, pad.bottom], text: road.querySelector(".road-tools").textContent.trim() };
+             pad: [pad.left, pad.right, pad.top, pad.bottom], text: road.querySelector(".road-tools").textContent.replace(/\s/g, ""),
+             colors: [...new Set([...road.querySelectorAll(".road-tool")].map((b) => getComputedStyle(b).borderTopColor))] };
   });
   c.check("道具箱は思考・ノート・読書の三つ", box.tools.map((t) => t.label).join() === "思考,ノート,読書", JSON.stringify(box.tools));
   c.check("五段の道で、3・4段のあいだの右", box.rows === 5 && box.row === 3 && box.right, JSON.stringify(box));
-  c.check("丸は24px、段と段のまん中の高さで、右詰め（右の丸の中心が 338）",
-    box.tools.every((t) => Math.abs(t.w - 24) < 1.5 && Math.abs(t.y - (box.y3 + box.y4) / 2) < 3)
-      && Math.abs(box.tools[2].x - 338) < 1.5 && Math.abs(box.tools[1].x - box.tools[0].x - 30) < 1.5, JSON.stringify(box));
-  c.check("説明の字を出さない", box.text === "", box.text);
+  /* 名前のぶん台が下へ伸びたので、既定の日は寝床の z Z をよけてまん中より少し上に来る。 */
+  c.check("丸は24px、段と段のあいだ（まん中か、寝床をよけてそれより上）で、右詰め（右の丸の中心が 338）",
+    box.tools.every((t) => Math.abs(t.w - 24) < 1.5 && t.y > box.y3 + 20 && t.y < (box.y3 + box.y4) / 2 + 3)
+      && Math.abs(box.tools[2].x - 338) < 1.5 && Math.abs(box.tools[1].x - box.tools[0].x - 36) < 1.5, JSON.stringify(box));
+  c.check("丸の下に名前だけ（説明の字は出さない）", box.text === "思考ノート読書", box.text);
+  c.check("丸は種類の色にしない（思考とノートが同じ紫で並ばない）", box.colors.length === 1, JSON.stringify(box.colors));
 
   /* ---- 2. 札・くぼみがよける ---- */
   const clash = await page.evaluate((pad) => {

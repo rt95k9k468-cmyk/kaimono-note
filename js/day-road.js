@@ -1760,8 +1760,9 @@
      段のあいだ」（奇数の i で i + 1 < rows の最大。右に折り返しが無い側）の、段と段のまん中の高さに、
      右詰めで横に三つ（丸 24・間 30・右の丸の中心が W − PAD − 12）。下に薄い台（くぼみと同じ塗り）。
      五段・六段・三段は右下、二段は左のくぼみ (0,1)、一段の日は置かない。夜の寝床の z Z とぶつかれば
-     少し上へ。札・くぼみの長期タスクのほうがよける（marks の keep と通り、hollowSlots を外す）。 */
-  const TOOL = 24, TOOL_STEP = 30, TOOL_PAD = 5;
+     少し上へ。札・くぼみの長期タスクのほうがよける（marks の keep と通り、hollowSlots を外す）。
+     10月8日、iPhone で見た利用者の声「アイコンだけでは何かわからない」で、丸の下に名前（TOOL_NAME の高さ）。 */
+  const TOOL = 24, TOOL_STEP = 36, TOOL_PAD = 5, TOOL_NAME = 14;
   function toolSlot(g, beds) {
     let i = -1;
     for (let k = 1; k + 1 < g.rows; k += 2) i = k;
@@ -1774,10 +1775,10 @@
     beds.forEach((b) => {
       const top = b.y + ROAD / 2 - BED_TOP;
       if (b.hi + 2 < xs[0] - r || b.lo - 2 > xs[2] + r || b.y < y) return;
-      if (y + r > top - 2) y = top - 2 - r;
+      if (y + r + TOOL_NAME > top - 2) y = top - 2 - r - TOOL_NAME;
     });
     y = Math.max(y, g.rowY(i) + STOP / 2 + 2 + r);
-    return { row: i, right, xs, y, box: [xs[0] - r, xs[2] + r, y - r, y + r] };
+    return { row: i, right, xs, y, box: [xs[0] - r, xs[2] + r, y - r, y + r + TOOL_NAME] };
   }
   function toolsHtml(g, t, list) {
     const pct = (v, of) => (v / of * 100).toFixed(3) + "%";
@@ -1788,7 +1789,8 @@
               style="left:${pct(x0, W)};top:${pct(y0, g.H)};width:${pct(x1 - x0, W)};height:${pct(y1 - y0, g.H)}"></span>
         ${list.map((x, k) => html`
           <button type="button" class="road-tool" data-tool="${x.kind}" aria-label="${x.label}"
-                  style="left:${pct(t.xs[k], W)};top:${pct(t.y, g.H)};--act-c:${x.color}">${U.icon(x.icon)}</button>`)}
+                  style="left:${pct(t.xs[k], W)};top:${pct(t.y, g.H)};--act-c:${x.color}">${U.icon(x.icon)}<span
+                  class="road-tool-name" aria-hidden="true">${x.label}</span></button>`)}
       </div>`;
   }
   /** (x, y) が道と停留所（車線も）から r 以上離れているか。 */
