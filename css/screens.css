@@ -5159,12 +5159,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 /* 「あの日」が出ている日は、写真を上の帯（--season-band）いっぱいに敷き、その上にガラスの札を置く
    （2026年10月8日、利用者が見比べの画像で選んだ・docs/daily.md）。絵は帯の高さに届くまで広げ、左右は切る。
-   帯の六割から下で紙の色へ溶かす。薄い幕はほかの日と同じ（--season-veil。同じ日、利用者「あの日でも要る」）。
-   暗い色のときは --season-glass-veil。 */
+   帯の六割から下で紙の色へ溶かす。候の色と薄い幕はほかの日と同じ（同じ日、利用者「あの日でも要る」
+   「あの日を出すかどうかで膜の色が違う」）。 */
 #screen-archive[data-season][data-season-img] .tl-sheet.is-daily:has(.arc-then) {
   --season-band: 430px;
   background:
-    linear-gradient(to bottom, var(--season-glass-veil, var(--season-veil)) 0, var(--season-glass-veil, var(--season-veil)) calc(var(--season-band) * .6), var(--c-sheet) var(--season-band)),
+    linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent 55%),
+    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-band) * .6), var(--c-sheet) var(--season-band)),
     var(--season-img, none) center top / max(100vw, calc(var(--season-band) / var(--season-ar, 0.67))) auto no-repeat,
     var(--c-sheet);
 }
@@ -5188,9 +5189,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 一覧のカードは少しだけ透かし、後ろの絵をほんのり見せる（2026年10月7日、利用者の頼み）。開いた紙は透かさない。 */
 #screen-notes[data-season] .note-row.is-card { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
 /* 暗い色のときは、さらに薄く。 */
-:root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; --season-glass-veil: color-mix(in srgb, var(--c-sheet) 45%, transparent); }
+:root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; --season-glass-veil: color-mix(in srgb, var(--c-sheet) 45%, transparent); }
+  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
 }
 /* 紙まで、高さの割り当てを通します。途中の箱が `flex:1; min-height:0` を
    持っていないと、紙は中身ぶんに伸びて器になりません。 */
