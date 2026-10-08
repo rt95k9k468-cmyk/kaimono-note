@@ -934,8 +934,10 @@
        型（深い・レム）は、ヘルスケアの区間から取り込んだ晩にだけあります。
        読むのは dayLog の sleepStages だけで、日記の本文には触れません。
        日の紙には型を出していません（store の setDayLog）——ここで出すのも
-       期間の平均の差だけです。まだ寝ている途中に取った晩（provisional）は、
-       長さも型も途中の数なので入れません。
+       期間の平均の差だけです。今日起きた晩が寝ている途中に取ったもの
+       （provisional）なら、長さも型も途中の数なので入れません。前の日の
+       印は見ません——取り込みは終わりが同じ読みを書き直さないので、
+       朝すぐ取った晩には、終わったあとも印が残ったままになります。
 
        言い切るのは、差として言ったもの（長さ・深い・レム）が**ぜんぶ**
        前半と後半で同じ向きだったときだけ。一つでもそろわなければ、数は
@@ -948,7 +950,7 @@
     daysBetween(from, today).forEach((w) => {
       const log = store.dayLog(w);
       const stg = log && log.sleepStages;
-      if (stg && stg.provisional) return;
+      if (stg && stg.provisional && w === today) return;
       const t = store.drinkTotals(U.shiftDay(w, -1));
       const min = store.healthValue(w, "sleep");
       if (min != null && min > 0) {
