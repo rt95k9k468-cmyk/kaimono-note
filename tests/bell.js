@@ -23,6 +23,8 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   await ensureServer();
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  // 週に一度の控えのトーストは止める（lib.js の open() と同じ）
+  await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   const origin = new URL(APP).origin;
   await ctx.grantPermissions(["notifications"], { origin });
 

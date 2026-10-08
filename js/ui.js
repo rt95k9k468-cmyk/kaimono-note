@@ -1655,10 +1655,11 @@
   const TOAST_MS = 3600, TOAST_ACT_MS = 5000;
   /* `long`＝読むのに時間がかかる文（何も変えていない理由など）。`until`＝答えを待つあいだの
      「…しています」——答えが来たら呼ぶ側が `dismiss()` する。来なかったときのための上限だけ持つ。
-     長さを数で渡す口は持たない（場所ごとに違う長さが生えるので）。 */
+     長さを数で渡す口は持たない（場所ごとに違う長さが生えるので）。`stay`＝押すまで残る
+     （週に一度の控え。docs/storage.md）。 */
   const TOAST_LONG_MS = 8000, TOAST_UNTIL_MS = 60000;
 
-  function toast(message, { action, actions, long, until } = {}) {
+  function toast(message, { action, actions, long, until, stay } = {}) {
     const root = toastRoot();
     root.innerHTML = "";
     clearTimeout(toastTimer);
@@ -1697,7 +1698,7 @@
     }
 
     root.append(el);
-    toastTimer = setTimeout(dismiss, duration);
+    if (!stay) toastTimer = setTimeout(dismiss, duration);
     return { dismiss };
   }
 
