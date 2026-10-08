@@ -3839,7 +3839,7 @@
     foot.addEventListener("click", () => {
       const out = body.querySelector(".js-out");
       out.innerHTML = "";
-      out.append(node(html`<p class="diet-note">考えています…</p>`));
+      out.append(node(html`<p class="diet-note is-thinking">考えています…</p>`));
       KN.dietAI.coach(body.querySelector(".js-q").value, 30, withMeals ? { mealDay: day } : null)
         .then((r) => {
           out.innerHTML = "";
