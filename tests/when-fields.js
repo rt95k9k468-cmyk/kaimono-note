@@ -194,6 +194,33 @@ const { open, checker } = require("./lib");
     return el.scrollTop / KN.gesture.WHEEL_ROW;
   });
   t.check("寄せが消えても行に戻る", stuck === 20, String(stuck));
+  /* 指で回すと行をまたぐたびに音（音の口は偽物に差しかえて数える）。消音スイッチに従う ambient。 */
+  const ticks = await page.evaluate(async () => {
+    let n = 0;
+    class FakeCtx {
+      constructor() { this.state = "running"; this.sampleRate = 44100; this.destination = {}; }
+      resume() {}
+      createBuffer(c, len) { const d = new Float32Array(len); return { getChannelData: () => d }; }
+      createGain() { return { gain: {}, connect: (x) => x }; }
+      createBufferSource() { n++; return { connect: (g) => g, start() {} }; }
+    }
+    window.AudioContext = FakeCtx;
+    const el = [...document.querySelectorAll(".note-pop")].pop().querySelectorAll(".note-wheel")[0];
+    const touch = (type) => {
+      const r = el.getBoundingClientRect();
+      const p = new Touch({ identifier: 1, target: el, clientX: r.left + 10, clientY: r.top + 100 });
+      el.dispatchEvent(new TouchEvent(type, { bubbles: true, touches: type === "touchend" ? [] : [p], changedTouches: [p] }));
+    };
+    touch("touchstart");
+    for (let k = 1; k <= 3; k++) {
+      el.scrollTop = el.scrollTop + KN.gesture.WHEEL_ROW;
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    touch("touchend");
+    await new Promise((r) => setTimeout(r, 300));
+    return n;
+  });
+  t.check("指で三行回すと音が三つ", ticks === 3, String(ticks));
   await spin([8, 45]);
   await page.locator(".note-pop .when-ok").click(); await wait(250);
   t.check("OK で小窓が閉じ、時刻が決まる", (await page.locator(".note-pop.is-open").count()) === 0 && (await btnOf(".js-time").textContent()) === "8:45");
