@@ -7014,8 +7014,9 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 @media (prefers-reduced-motion: reduce) {
   .road-bead.is-someday:not(.road-ghost) { animation: none; }
 }
-/* 道具箱（3.0 の A3・day-road.js の toolSlot）。道の右下の空きに思考・ノート・読書の丸。
-   形は活動の丸薬と同じ縁取り（縁と絵は種類の色、中は紙の色に寄せる）、下にくぼみと同じ薄い台。 */
+/* 道具箱（3.0 の A3・day-road.js の toolSlot）。道の右下の空きに思考・ノート・読書の丸と、その下に名前。
+   下にくぼみと同じ薄い台。丸は種類の色にしない（思考もノートも「種」で同じ紫になり、見分けの
+   つかない色が二つ並んだ。10月8日・利用者の声）。種類の色は運んだときの下書きで出る。 */
 .road-tools { position: absolute; inset: 0; pointer-events: none; }
 .road-tools-pad {
   position: absolute; border-radius: var(--r-full); pointer-events: none;
@@ -7024,13 +7025,17 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 .road-tool {
   position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; padding: 0;
   display: grid; place-items: center;
-  border-radius: 50%; border: 1.5px solid var(--act-c);
-  background: color-mix(in srgb, var(--act-c) 10%, var(--c-sheet));
-  color: var(--act-c); pointer-events: auto;
+  border-radius: 50%; border: 1.5px solid currentColor;
+  background: var(--c-sheet);
+  color: var(--c-text-2); pointer-events: auto;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 .road-tool svg { width: var(--ico-sm); height: var(--ico-sm); }
+.road-tool-name {
+  position: absolute; top: calc(100% + 1px); left: 50%; translate: -50% 0;
+  font-size: var(--fs-xs); line-height: 1; white-space: nowrap; color: var(--c-text-2);
+}
 .road-tool::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; }
 /* 運んでいるあいだの、置かれる丸薬の下書き（種類の色を薄く、長さぶん）。 */
 .road-draft {
