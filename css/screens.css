@@ -673,7 +673,9 @@
   line-height: 1;
   color: var(--c-text-2);
 }
-.cal-day.is-sun .cal-n { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
+/* 祝日（is-hol。js/holiday.js）は日曜と同じ色。土曜の祝日には is-sat を付けない（cal-grid.js）。 */
+.cal-day.is-sun .cal-n,
+.cal-day.is-hol .cal-n { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
 .cal-day.is-sat .cal-n { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
 
 /* Today, circled. Filled rather than outlined: an outline is one more ring
