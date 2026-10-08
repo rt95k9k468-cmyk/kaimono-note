@@ -1222,6 +1222,12 @@
       spark.style.setProperty("--d", dist + "px");
       wrap.appendChild(spark);
     }
+    /* 波を一つ（2026年10月8日）。押した丸のふちから、やわらかな光の輪が一度だけ広がって
+       消える——「一周した」を点の輪に加えて面でも言う。大きさは押した丸に合わせる（行ごと
+       渡されても輪が行の幅にならないよう、丸の大きさの範囲に収める）。 */
+    const wave = document.createElement("b");
+    wave.style.setProperty("--s", Math.max(20, Math.min(36, r.width, r.height)).toFixed(1) + "px");
+    wrap.appendChild(wave);
     document.body.appendChild(wrap);
     setTimeout(() => wrap.remove(), 700);
   }
