@@ -130,10 +130,18 @@ const { open, checker } = require("./lib");
   t.check("書き換えたら最新だけ送る", r3 === "sent" && uploads().length === 3 && uploads()[2].arg.path === "/kurashi-latest.json", r3);
   t.check("日付の控えはその日はじめての中身のまま", files.get(uploads()[1].arg.path) === dayBody);
 
-  // 6. 日が変わる：日付の控えを足し、新しいほうから30個だけ残す（ほかの名前は消さない）
+  // 6. 日が変わる：日付の控えを足し、新しい30個と月の背骨（各月で最初の一つを12か月）を残す（ほかの名前は消さない）
   for (let i = 0; i < 34; i++) {
     const d = new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10);
     files.set(`/daily/kurashi-${d}.json`, "{}");
+  }
+  // 背骨の試し：2023年12月〜2024年12月の13か月に、5日と20日の二つずつ
+  const months = [];
+  for (let i = 0; i < 13; i++) {
+    const m = new Date(Date.UTC(2023, 11 + i, 1)).toISOString().slice(0, 7);
+    months.push(m);
+    files.set(`/daily/kurashi-${m}-05.json`, "{}");
+    files.set(`/daily/kurashi-${m}-20.json`, "{}");
   }
   files.set("/daily/my-notes.json", "{}");
   await page.evaluate(() => {
@@ -150,9 +158,21 @@ const { open, checker } = require("./lib");
   const dailyNames = [...files.keys()].filter((p) => /^\/daily\/kurashi-/.test(p)).sort();
   t.check("日が変わると日付の控えを足す（最新は同じなので送らない）",
     r4 === "sent" && uploads().length === before + 1 && uploads()[before].arg.mode === "add", `${r4} ${uploads().length - before}`);
-  t.check(`日付の控えは30個・古いほうから消える・ほかの名前は残る`,
-    dailyNames.length === 30 && !files.has("/daily/kurashi-2025-01-01.json") && files.has("/daily/my-notes.json")
-      && dailyNames[dailyNames.length - 1].includes(await page.evaluate(() => KN.util.todayKey())), dailyNames.length + " " + dailyNames[0]);
+  const has = (d) => files.has(`/daily/kurashi-${d}.json`);
+  const recent = [];
+  for (let i = 5; i < 34; i++) recent.push(new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10));
+  t.check("新しい30個は残る（今日の控えがいちばん新しい）", recent.every(has)
+    && dailyNames[dailyNames.length - 1].includes(await page.evaluate(() => KN.util.todayKey())), dailyNames.slice(-2).join(" "));
+  // 控えのある月は 2023年12月〜2024年12月・2025年1〜2月・今日の月の16か月。新しい12か月は2024年4月から
+  const spine = months.slice(4).map((m) => `${m}-05`).concat("2025-01-01");
+  t.check("月の背骨：各月で最初の一つが、新しい12か月ぶん残る（30個の外でも）", spine.every(has),
+    spine.filter((d) => !has(d)).join(" "));
+  const gone = months.slice(4).map((m) => `${m}-20`)
+    .concat(...months.slice(0, 4).map((m) => [`${m}-05`, `${m}-20`]))
+    .concat(["2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]);
+  t.check("ほかは消える：月の二つ目・12か月より前の月・30個の外", !gone.some(has), gone.filter(has).join(" "));
+  t.check("日付の控えは30個＋背骨10個・ほかの名前は残る", dailyNames.length === 40 && files.has("/daily/my-notes.json"),
+    dailyNames.length + " " + dailyNames[0]);
 
   // 7. 鍵が古い（401）→ 取り直してもう一度
   expireNext = true;
@@ -200,8 +220,9 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => !!KN.dropbox.authUrl());
   await page.evaluate(() => KN.dropbox.finish("code-3"));
   const list = await page.evaluate(() => KN.dropbox.backups());
+  const nList = 1 + [...files.keys()].filter((p) => /^\/daily\/kurashi-/.test(p)).length;   // 最新＋日付の控え（背骨も）
   t.check("控えの並び：最新が先、日付の控えは新しい順、ほかの名前は出ない",
-    list.length === 31 && list[0].latest && list[0].path === "/kurashi-latest.json"
+    list.length === nList && nList === 41 && list[0].latest && list[0].path === "/kurashi-latest.json"
       && list.slice(1).every((f, i, a) => !i || a[i - 1].day > f.day) && !list.some((f) => /my-notes/.test(f.path)),
     JSON.stringify(list.slice(0, 3)));
   const dl = await page.evaluate(() => KN.dropbox.download("/kurashi-latest.json"));
@@ -219,7 +240,7 @@ const { open, checker } = require("./lib");
   await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox の控えから戻す" }).first().click();
   await page.waitForTimeout(500);
   const sheetRows = await page.locator(".set-layer:last-child .row-title").allTextContents();
-  t.check("紙に控えが並び、最新に（最新）", sheetRows.length === 31 && /（最新）/.test(sheetRows[0]), sheetRows.slice(0, 2).join(" / "));
+  t.check("紙に控えが並び、最新に（最新）", sheetRows.length === nList && /（最新）/.test(sheetRows[0]), sheetRows.slice(0, 2).join(" / "));
   await page.locator(".set-layer:last-child button.row").first().click();
   await page.waitForSelector(".js-ok", { timeout: 4000 });
   const ask = await page.evaluate(() => document.body.innerText);

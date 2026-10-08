@@ -11,8 +11,9 @@
    - `kurashi-latest.json` … 送るたびに**上書き**。いつも一つ。
    - `daily/kurashi-YYYY-MM-DD.json` … その日**はじめて**送った中身。
      あとから上書きしません（mode "add"）——その日に何かを消しても、日付の
-     控えまで道連れにしないため。新しいほうから KEEP 個だけ残して、古いものは
-     消します。消すのはこの名前の形のものだけ。
+     控えまで道連れにしないため。新しいほうから KEEP 個と、月の背骨（各月で
+     最初の一つを MONTHS か月ぶん）を残して、ほかの古いものは消します。消すのは
+     この名前の形のものだけ。
    - いつ送るか：開いたとき・前に出てきたとき・書き換えてから SOON のあと・
      隠れるとき。中身が前回送ったものと同じなら送りません。閉じているあいだは
      動けません（iPhone のホーム画面アプリに、その仕組みが無い）——が、記録が
@@ -33,6 +34,7 @@
   const DAILY_DIR = "/daily";
   const DAILY_RE = /^kurashi-(\d{4}-\d{2}-\d{2})\.json$/;
   const KEEP = 30;
+  const MONTHS = 12;                 // 月の背骨（2026年10月8日、docs/log/data-check.md の案A）
   const SOON = 2 * 60 * 1000;        // 書き換えてから送るまで（その間の書き換えはまとめて一度）
   const FIRST = 8 * 1000;            // 開いてすぐは起動の邪魔をしない
 
@@ -265,11 +267,27 @@
     return out;
   }
 
-  /** 日付の控えを、新しいほうから KEEP 個だけ残す。 */
+  /** 残す日付の控え（`names` は名前の順＝日付の順）。新しいほうから KEEP 個と、
+      月の背骨：各月で最初の一つを、控えのある月の新しいほうから MONTHS か月ぶん。
+      気づくのが KEEP 日より遅れた消失も戻せるように。月は時計ではなく控えで
+      数える（時計が狂っても、開かない月があっても、背骨は減らない）。 */
+  function keepers(names) {
+    const keep = new Set(names.slice(Math.max(0, names.length - KEEP)));
+    const firsts = new Map();        // "YYYY-MM" → その月で最初の名前
+    names.forEach((n) => {
+      const month = DAILY_RE.exec(n)[1].slice(0, 7);
+      if (!firsts.has(month)) firsts.set(month, n);
+    });
+    [...firsts.values()].slice(-MONTHS).forEach((n) => keep.add(n));
+    return keep;
+  }
+
+  /** 日付の控えを、keepers のほかは消す。 */
   async function prune() {
     const names = (await dailyFiles()).map((e) => e.name);
     names.sort();
-    const old = names.slice(0, Math.max(0, names.length - KEEP));
+    const keep = keepers(names);
+    const old = names.filter((n) => !keep.has(n));
     for (const name of old) {
       const d = await call(API, "/2/files/delete_v2", { json: { path: `${DAILY_DIR}/${name}` } });
       if (!d.res.ok && d.res.status !== 409) throw new Error(summary(d));
