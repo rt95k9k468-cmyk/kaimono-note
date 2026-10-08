@@ -600,6 +600,9 @@
   /* 席の絵が、押されて一度だけ応える（席ごとに違う動き。docs/tabbar.md の
      「押した席の絵が応える」）。 */
   --m-poke: .56s;
+  /* 待っているあいだ、字の上を光が一度渡る（AI が考えている。くり返す）。
+     「考えています…」の一息ぶん、ゆっくり。 */
+  --m-think: 1.6s;
 
   /* --- layout --- */
 
@@ -1177,6 +1180,15 @@ a { color: var(--c-primary); }
     var(--c-bg);
   background-blend-mode: var(--sky-blend), normal, normal;
 }
+/* 引くと、空が近づく（docs/motion.md の「反応を足す」）。いちばん上で紙を下へ引くと
+   （pull-refresh の give）、引いたぶんだけ空が上の端を軸に少しふくらむ——紙を引く指に、
+   後ろの景色もついてくる。`--sky-pull`（0〜1）は pull-refresh.js が帯（#head）へ書く。
+   引いているあいだだけ一枚にしておく（写真と幕を毎フレーム描き直さないため）。 */
+.head[data-sky]::before {
+  transform-origin: 50% 0;
+  scale: calc(1 + var(--sky-pull, 0) * .1);
+}
+.head.is-sky-pull[data-sky]::before { will-change: scale; }
 
 .panes {
   flex: 1;
