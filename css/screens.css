@@ -6578,6 +6578,13 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
   padding-top: var(--sp-3);
 }
 .tl-someday-head { display: flex; align-items: center; gap: var(--sp-2); }
+.tl-someday-add {
+  display: flex; align-items: center; gap: var(--sp-2);
+  flex: 1; min-height: 44px; padding: 0;
+  background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.tl-someday-plus { margin-left: auto; display: inline-flex; color: var(--c-primary); }
+.tl-someday-plus svg { width: 20px; height: 20px; }
 
 /* 時刻の列は空けたまま置きます。**詰めません**——詰めると丸の位置が
    時間割とずれて、上下で別の並びに見えます。運べる先は上の時間割なので、
