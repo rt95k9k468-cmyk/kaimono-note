@@ -6587,6 +6587,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 }
 /* 「これから」に足す小窓（quickAdd） */
 .note-pop.is-quick { width: min(360px, calc(100vw - 16px)); padding: var(--sp-4); }
+.note-pop.is-quick.is-handoff { visibility: hidden; }   /* 「詳しく」で紙へ渡すとき */
 .qa-card { display: flex; flex-direction: column; gap: var(--sp-3); }
 .qa-title { font-size: var(--fs-lg); }
 .qa-foot { display: flex; gap: var(--sp-2); }
