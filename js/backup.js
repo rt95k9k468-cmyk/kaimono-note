@@ -80,6 +80,18 @@
      ふつうの大きさなら上の段（直近2日は一時間おき・14日）がそのまま全部入り
      ます。日記が数年ぶん（数MB）になっても、数十世代は残ります。 */
   const BUDGET_IDB = 20_000_000;
+  /* 記録が育つと、2,000万字では段（KEEP 件）が全部は入りません（1件が約32万字を
+     越えると、一時間おきから黙って間引かれる）。上限を、控えのいちばん大きいもの ×
+     KEEP まで広げます。2,000万字より下げない（いまより減らさない）。頭打ちは、
+     写し（live）と同じ枠を控えが食いつぶさないため。物差しを「いちばん新しい」で
+     なく「いちばん大きい」にするのは、記録がごっそり消えた直後の小さな控えで上限が
+     縮み、消える前の控えが押し出されないように（大きいものが14日で外れるまで広いまま）。
+     docs/log/data-check.md の案B。 */
+  const BUDGET_IDB_MAX = 60_000_000;
+  function budgetIdb(heads) {
+    const big = heads.reduce((n, h) => Math.max(n, headSize(h)), 0);
+    return Math.min(BUDGET_IDB_MAX, Math.max(BUDGET_IDB, big * KEEP));
+  }
   // 昔の呼び名。設定画面などが見ているので残します。
   const KEEP = 24 * FINE_DAYS + KEEP_DAYS;
   /* 端末の外の控えの見張り（R25）。いちばん新しい外の控えがこれより古いか、
@@ -342,7 +354,8 @@
   /* 一つ足して、上限と段に合わせて古いものを手放す——一つの取引で。 */
   async function addIdb(snap, payload, notes) {
     const inBox = heads.filter((h) => !h.ls);
-    const next = prune(inBox.concat([snap]), BUDGET_IDB, headSize);
+    const all = inBox.concat([snap]);
+    const next = prune(all, budgetIdb(all), headSize);
     const drop = inBox.filter((h) => next.indexOf(h) < 0);
     const id = await KN.idb.run(["snaps", "snapBodies"], "readwrite", (t) => {
       const S = t.objectStore("snaps");
@@ -551,7 +564,7 @@
     const fineFrom = Date.now() - FINE_DAYS * 86400000;
     let legacyChars = 0;
     try { legacyChars = (localStorage.getItem(SNAP_KEY) || "").length; } catch (err) { /* 読めない端末 */ }
-    const budget = idb ? BUDGET_IDB : BUDGET;
+    const budget = idb ? budgetIdb(list.filter((h) => !h.ls)) : BUDGET;
     return {
       where, liveChars, diaryChars,
       snapChars: idb ? list.reduce((n, h) => n + (h.size || 0), 0) : legacyChars,
@@ -882,7 +895,7 @@
   }
 
   KN.backup = {
-    SNAP_KEY, KEEP, EVERY_MS, FINE_DAYS, KEEP_DAYS, BUDGET, BUDGET_IDB,
+    SNAP_KEY, KEEP, EVERY_MS, FINE_DAYS, KEEP_DAYS, BUDGET, BUDGET_IDB, BUDGET_IDB_MAX, budgetIdb,
     snapshot, take, makeRoom, usage,
     maybeDaily, maybeHourly, maybeEvery, prune, list, restore, clear,
     lastExportAt, markExported, exportDue, offDeviceAt, offDeviceStale,
