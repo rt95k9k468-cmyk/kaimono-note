@@ -7014,7 +7014,7 @@ button.note-when { min-height: 32px; padding: 0; text-align: left; }
 @media (prefers-reduced-motion: reduce) {
   .road-bead.is-someday:not(.road-ghost) { animation: none; }
 }
-/* 道具箱（3.0 の A3・day-road.js の toolSlot）。道の右下の空きに思考・ノート・読書の丸（字は出さない）。
+/* 道具箱（3.0 の A3・day-road.js の toolSlot）。道の右下の空きに読書・思考・ノートの丸（字は出さない）。
    下にくぼみと同じ薄い台。丸は種類の色にしない（思考もノートも「種」で同じ紫になり、見分けの
    つかない色が二つ並んだ。10月8日・利用者の声）。種類の色は運んだときの下書きで出る。 */
 .road-tools { position: absolute; inset: 0; pointer-events: none; }

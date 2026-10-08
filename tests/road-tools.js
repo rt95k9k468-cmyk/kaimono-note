@@ -1,6 +1,6 @@
 /* 一日の道：右下の道具箱（3.0 の A3・docs/roadmap-3.0.md）。時計を 9:10 に止め、今日に 15:00 の停留所と、
    長期タスクを八つ置く。指はどれも本物のタッチ（CDP の Input.dispatchTouchEvent）。
-   1. 道具箱：思考・ノート・読書の丸が、19時台と21時台の段のあいだの右（右下）に、薄い台と並ぶ
+   1. 道具箱：読書・思考・ノートの丸が、19時台と21時台の段のあいだの右（右下）に、薄い台と並ぶ
    2. 札・くぼみの長期タスクが道具箱をよける（重ならない・道具箱のくぼみに長期タスクが居ない）
    3. 思考を長押し → 歩いたぶん（7:00）へ：狙い・札「7:00から30分」・下書き → 離す：種の記録（題「思考」・
       7:00・30分）、用事は作らない、道に済んだ活動、知らせ「思考 7:00から30分」、元に戻すで消える
@@ -105,7 +105,7 @@ const PREV = "2026-09-29";
              pad: [pad.left, pad.right, pad.top, pad.bottom], text: road.querySelector(".road-tools").textContent.replace(/\s/g, ""),
              colors: [...new Set([...road.querySelectorAll(".road-tool")].map((b) => getComputedStyle(b).borderTopColor))] };
   });
-  c.check("道具箱は思考・ノート・読書の三つ", box.tools.map((t) => t.label).join() === "思考,ノート,読書", JSON.stringify(box.tools));
+  c.check("道具箱は左から読書・思考・ノートの三つ", box.tools.map((t) => t.label).join() === "読書,思考,ノート", JSON.stringify(box.tools));
   c.check("五段の道で、3・4段のあいだの右", box.rows === 5 && box.row === 3 && box.right, JSON.stringify(box));
   c.check("丸は24px、段と段のまん中の高さで、右詰め（右の丸の中心が 338）",
     box.tools.every((t) => Math.abs(t.w - 24) < 1.5 && Math.abs(t.y - (box.y3 + box.y4) / 2) < 3)
