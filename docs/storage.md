@@ -521,4 +521,24 @@ WebKit は localStorage と IndexedDB を別のファイルに持つので、片
 - `backup.offDeviceStale()` は読むだけ。外の控え＝手の書き出し（`lastExportAt`）と Dropbox の `lastAt` の新しいほう。
   14日を越えたか、Dropbox をつないでいて送れないまま3日で、歯車（`head.js` の `.js-settings.has-dot`）に点、
   設定の頭に一行。トースト・通知・赤は使わない（「催促はしない」の唯一の例外、利用者が X4 で決めた）。
-- 数える記録に daily の日・積み上げも入れる（どれか5件から）。試験は `tests/offdevice-watch.js`。
+  例外の例外が下の「週に一度の控え」。
+- 数える記録に daily の日・積み上げも入れる（どれか5件から。`backup.worthKeeping()`）。試験は `tests/offdevice-watch.js`。
+
+## 週に一度の控え（`settings-backup.js` の `nudge`、2026年10月8日）
+
+iCloud Drive に自動で置きたい、への答え。Web のアプリは iCloud へ黙って書けない（CloudKit JS は
+年会費と大工事なので選ばなかった）ので、**押すだけで共有シートが出るトースト**にした（利用者が決めた。
+X4 の「トーストは出さない」を、この件だけ変えた）。
+
+- **手の書き出し（`lastExportAt`）から7日**で出す。Dropbox に届いた時刻は数えない——Dropbox と
+  別の場所へ置いてもらうためなので（Dropbox が動いていても出る）。記録が少ないうちは出さない（R25 と同じ数え方）。
+- 「週に一度の控え」＋「あとで」「保存」。**押すまで残る**（`ui.toast` の `stay`）。「保存」は
+  「バックアップを保存」と同じ `saveBackup`（押した流れのまま共有シート）。渡し終えたら前回の書き出しが今に。
+  行き先（iCloud か LINE か）は分からない。
+- **一日に一度**：出した日を store の外の鍵 `kn-export-nudge` に。取り消した・ほかのトーストに押し出された日も、
+  また出るのは翌日。開いて4秒後と、前に出てきて4秒後に見る。日記の写しの突き合わせが済む前は出さず
+  （`saveBackup` が断るので）、4秒おきに数回待ち直す。**`ready()` は呼ばない**——始まっていなければ始めてしまい、
+  記録の写しが先という順を崩す。
+- 試験は `tests/export-nudge.js`。ほかの台本では `open()` が鍵を先の日付にして止めている（`nudge: true` で外す）。
+- iCloud Drive へ黙って置きたいなら、ショートカット App のオートメーションで Dropbox の `kurashi-latest.json` を
+  写す道もある（コードの変更なし。「名前を変更」ではなく「名前を設定」を使う——前者は Dropbox 側の名前を変える）。
