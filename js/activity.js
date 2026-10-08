@@ -288,10 +288,10 @@
      先の日は予定**（`act` 付きの用事。済ませれば A1 と同じく記録が生まれる）。
      種類は今のものに寄せる（①の (a)）：思考＝種（題「思考」）、ノート＝種（その日に書いた
      ノートが一つなら結ぶ。題はノートの題、無ければ「ノート」）、読書＝読書（記録の題は空）。 */
-  const TOOLS = [
-    { kind: "think", type: "seed", label: "思考", icon: "lightbulb" },
-    { kind: "note", type: "seed", label: "ノート", icon: "notes" },
+  const TOOLS = [   // 左から読書・思考・ノート（10月8日・利用者の声）
     { kind: "read", type: "reading", label: "読書", icon: "book" },
+    { kind: "think", type: "seed", label: "思考", icon: "thought" },
+    { kind: "note", type: "seed", label: "ノート", icon: "notes" },
   ];
   const toolOf = (kind) => TOOLS.find((x) => x.kind === kind) || null;
   /* 記録がどの道具のものか（長さの覚えを道具ごとに引くため）。種で題が「思考」なら思考、ほかの種はノート。 */
@@ -316,7 +316,7 @@
 
   /**
    * 道に渡す道具箱（screen-todo の dayRoad → day-road の `o.tools`）。
-   * - `list`：並び（思考・ノート・読書）と絵・色。
+   * - `list`：並び（左から読書・思考・ノート）と絵・色。
    * - `minutes(kind)`：運ぶときの長さ（前に残した長さ。道のほうが次の停留所と「いま」で止める）。
    * - `put(kind, { at, minutes, record })`：置く。描く id（記録は `arc:`）を返す。
    * - `ask(kind)`：短く押したとき。時刻と長さの紙（下敷きは「いま − 長さ」）。
