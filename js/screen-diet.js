@@ -949,7 +949,7 @@
                 読む人は二か所を見比べることになります。 */""}
           ${/* 数はグラフの右の目盛りに出るので、ここでは名前だけ。
                 同じ数を二か所に書くと、どちらが本物か確かめる手間が増えます。 */""}
-          <span class="diet-legend-item"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
+          <span class="diet-legend-item js-leg-beer"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
         </div>
       </div>
     `);
@@ -961,6 +961,9 @@
 
     const drawn = chartEl || chart();
     sec.querySelector(".js-chart").append(drawn);
+    /* 線の無いグラフに凡例は要りません。印の無い期間に「飲んだ日」も。 */
+    if (drawn.classList.contains("diet-empty")) sec.querySelector(".diet-legend").remove();
+    else if (!drawn.dataset.marks) sec.querySelector(".js-leg-beer").remove();
     host.append(sec);
   }
 
@@ -990,8 +993,9 @@
       .some((d) => store.drinkTotals(d));
     const W = 320, H = 180, padL = 34, padR = 8, padB = 18;
     const padT = hasMarks ? 22 : 10;
-    const ma7 = D.movingAverage(pts, 7).filter((m) => m.value != null);
-    const ma14 = (range === 0 || range >= 30) ? D.movingAverage(pts, 14).filter((m) => m.value != null) : [];
+    // 線は記録の頭から均し、期間の中だけを描きます（weightSummary の「平均」と同じ数）。
+    const ma7 = D.trendLine(all, 7).filter((m) => m.day >= from && m.value != null);
+    const ma14 = (range === 0 || range >= 30) ? D.trendLine(all, 14).filter((m) => m.day >= from && m.value != null) : [];
     const goal = store.get().diet.goal.targetKg;
 
     /* 目標へ向かう帯。**新しい計算はしません**——傾き（trendPerWeek）は
@@ -1238,6 +1242,8 @@
     svg.querySelectorAll(".diet-beer").forEach((g) => {
       g.addEventListener("click", () => { KN.motion.fire("select"); showDrinkDay(g.getAttribute("data-day")); });
     });
+    // 凡例の「飲んだ日」は、この期間に印を描いたときだけ（renderGraph）。
+    svg.dataset.marks = marks.length ? "1" : "";
     return svg;
   }
 
@@ -2457,7 +2463,7 @@
                 </label>`;
             }).join(""))}
           </div>
-          <p class="diet-note">空で保存すると消えます。手入力の値は取り込みで上書きされません。</p>
+          <p class="diet-note">空で保存すると消えます。</p>
 
           <div class="section-title">ワークアウト</div>
           ${workouts.length ? html`
@@ -2636,7 +2642,7 @@
               <span class="badge badge-muted mono-num">${t.low.toLocaleString()}〜${t.high.toLocaleString()}</span>
             ` : (t && t.estimated ? html`<span class="badge badge-muted">推定を含む</span>` : "")}
           </div>
-          ${card.drinkTotals ? html`
+          ${card.drinkTotals && card.drinkTotals.kcal > 0 ? html`
             <span class="badge badge-muted">＋ お酒 ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal.toLocaleString()}kcal</span>
           ` : ""}
           ${rem ? html`
@@ -4613,7 +4619,7 @@
               <span class="diet-key-ex">${KN.util.escapeHtml(ex)}</span>
             </div>`).join(""))}
         </div>
-        <p class="diet-note">取れなかった行は空のままで大丈夫です。同じ種類が何行もあれば合計します。JSON も読めます。</p>
+        <p class="diet-note">同じ種類が何行もあれば合計します。JSON も読めます。</p>
         <details class="set-more">
           <summary>歩行距離が二重になるとき</summary>
           <p>Apple Watch と iPhone の両方を足すと倍近くになります。<code>source=</code> で分けて送れば、Apple Watch のほうを採ります。</p>
