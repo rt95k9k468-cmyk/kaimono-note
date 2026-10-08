@@ -2936,15 +2936,21 @@
         </h2>
       </section>
     `);
-    /* 欄を押したら、日の無い用事をすぐ書ける紙を開く。 */
-    const write = () => openSheet(null, null, { noDue: true, write: true });
-    sec.querySelector(".tl-someday-add").addEventListener("click", write);
+    /* 欄のどこを押しても、日の無い用事をすぐ書ける紙を開く（行・畳みの頭・ほかの釦は除く）。
+       スクロールや運ぶ指では開かない：10px より動いた指は押したことにしない
+       （運んだ後の click は wireDrag の eatClick が先に食べる）。 */
+    let downAt = null;
+    sec.addEventListener("pointerdown", (e) => { downAt = { x: e.clientX, y: e.clientY }; });
+    sec.addEventListener("click", (e) => {
+      const d = downAt; downAt = null;
+      if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) return;
+      if (e.target.closest("li, .tl-shelf-head, a, input, textarea, select, button:not(.tl-someday-add)")) return;
+      openSheet(null, null, { noDue: true, write: true });
+    });
     if (!all.length) {
-      const empty = node(html`
+      sec.append(node(html`
         <p class="todo-today-empty">いつかやることを、ここに置いておけます</p>
-      `);
-      empty.addEventListener("click", write);
-      sec.append(empty);
+      `));
       return sec;
     }
     /* 並びは**手で決めたもの**（order）です。期限は文字で見えているので、
