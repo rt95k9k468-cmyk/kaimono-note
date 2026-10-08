@@ -1001,6 +1001,76 @@
       });
     }
 
+    /* --- 飲みたくなったとき（図鑑・傾向、D9） ---
+
+       数えるだけです。採点はしません（docs/health.md）。だから「どうしたか」
+       （outcome）は数えません——「飲まなかった◯回」を並べた瞬間に、分子と
+       分母の顔をして達成率になります。色も付けません（tone は info だけ）。
+
+       言えるのは「あなたの記録では、こうでした」まで。飲みたさは何もしなく
+       ても時間とともに引いていくので、試したことのあとで下がっていても、
+       それが効いたのかは分かりません。並べる順も回数で、下がり幅ではありません
+       ——下がり幅で並べると、一位が「正解」に見えます。
+
+       欄を書いた記録が URGE_MIN 件に満たないうちは、何も出しません。 */
+    const URGE_MIN = 5;
+    const urges = (store.get().diet.urges || []).filter((u) => u.day >= from && u.day <= today);
+    const lv1 = (v) => v.toFixed(1);
+    const tally = (field) => {
+      const rows = urges.filter((u) => (u[field] || []).length);
+      if (rows.length < URGE_MIN) return null;
+      const n = new Map();
+      rows.forEach((u) => u[field].forEach((w) => n.set(w, (n.get(w) || 0) + 1)));
+      const top = [...n].sort((a, b) => b[1] - a[1]).filter(([, c]) => c >= 2).slice(0, 3);
+      return top.length ? { rows: rows.length, top } : null;
+    };
+    const words = (top) => top.map(([w, c]) => `「${w}」${c}回`).join("・");
+    const sc = tally("scene"), tg = tally("trigger");
+    if (sc || tg) {
+      out.push({
+        id: "urge-cause",
+        title: "飲みたくなったとき",
+        text: (sc ? `場面を書いた ${sc.rows}件で多かったのは ${words(sc.top)}。` : "")
+          + (tg ? `気持ちを書いた ${tg.rows}件では ${words(tg.top)}でした。` : ""),
+        tone: "info", n: Math.max(sc ? sc.rows : 0, tg ? tg.rows : 0),
+      });
+    }
+
+    const settled = urges.filter((u) => u.after != null);
+    if (settled.length >= URGE_MIN) {
+      const mb = mean(settled.map((u) => u.before)), ma = mean(settled.map((u) => u.after));
+      const moved = [
+        ["下がった", settled.filter((u) => u.after < u.before).length],
+        ["変わらない", settled.filter((u) => u.after === u.before).length],
+        ["上がった", settled.filter((u) => u.after > u.before).length],
+      ].filter(([, c]) => c > 0);
+      out.push({
+        id: "urge-shift",
+        title: "飲みたさの強さ、そのあと",
+        text: `あとの強さまで書いた ${settled.length}件の平均は ${lv1(mb)} → ${lv1(ma)}`
+          + `（${moved.map(([k, c]) => `${k} ${c}件`).join("・")}）。`,
+        value: round(ma - mb, 1), tone: "info", n: settled.length,
+      });
+    }
+
+    const byTried = new Map();
+    settled.forEach((u) => (u.tried || []).forEach((w) => {
+      if (!byTried.has(w)) byTried.set(w, []);
+      byTried.get(w).push(u);
+    }));
+    const tried = [...byTried].filter(([, xs]) => xs.length >= MIN_GROUP)
+      .sort((a, b) => b[1].length - a[1].length).slice(0, 4);
+    if (settled.length >= URGE_MIN && tried.length) {
+      out.push({
+        id: "urge-tried",
+        title: "試したことと、そのあと",
+        text: tried.map(([w, xs]) => `「${w}」${xs.length}回 平均 `
+            + `${lv1(mean(xs.map((u) => u.before)))} → ${lv1(mean(xs.map((u) => u.after)))}`).join("・")
+          + `。飲みたさは時間とともに引いていくので、どれが効いたかまでは言えません。`,
+        tone: "info", n: tried.reduce((a, [, xs]) => a + xs.length, 0),
+      });
+    }
+
     /* --- 平日と休日 --- */
     const wd = [], we = [];
     pts.forEach((p) => {

@@ -3763,7 +3763,10 @@
     fiber:         "heart",
     drink:         "drink",
     "drink-sleep": "bed",
-    meal:          "meal",
+    "urge-cause":  "clock",
+    "urge-shift":  "trend",
+    "urge-tried":  "sprout",
+    meal:         "meal",
     clothed:       "scale",
   };
 
