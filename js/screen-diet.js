@@ -2643,7 +2643,7 @@
             ` : (t && t.estimated ? html`<span class="badge badge-muted">推定を含む</span>` : "")}
           </div>
           ${card.drinkTotals && card.drinkTotals.kcal > 0 ? html`
-            <span class="badge badge-muted">＋ お酒${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal.toLocaleString()}kcal</span>
+            <span class="badge badge-muted">＋ お酒 ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal.toLocaleString()}kcal</span>
           ` : ""}
           ${rem ? html`
             <div class="diet-kcal-rem ${rem.kcal < 0 ? "is-over" : ""}">

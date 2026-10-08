@@ -103,11 +103,15 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   const few = await run({ drink: "return a === '2026-09-10' || a === '2026-09-20';", sleep: SLEEP_A });
   t.check("片側3晩未満は出さない", few.f === null, JSON.stringify(few.f));
 
-  /* ---- G：寝ている途中に取った晩 ---- */
+  /* ---- G：寝ている途中に取った晩（今日だけ見る） ---- */
   const g = await run({ sleep: SLEEP_A,
-    stage: "return { deep: 50, rem: b ? 60 : 85, provisional: a === '2026-09-28' };" });
-  t.check("寝ている途中に取った晩は数えない", g.f && /飲んだ晩 9回/.test(g.f.text) && g.f.n === 29,
+    stage: "return { deep: 50, rem: b ? 60 : 85, provisional: a === '2026-09-29' };" });
+  t.check("今日起きた晩を寝ている途中に取ったなら数えない", g.f && /そうでない晩 19回/.test(g.f.text) && g.f.n === 29,
     g.f && `${g.f.n} ${g.f.text}`);
+  const g2 = await run({ sleep: SLEEP_A,
+    stage: "return { deep: 50, rem: b ? 60 : 85, provisional: a === '2026-09-28' };" });
+  t.check("前の日に残った印では落とさない（取り込みは同じ晩を書き直さない）",
+    g2.f && /飲んだ晩 10回/.test(g2.f.text) && g2.f.n === 30, g2.f && `${g2.f.n} ${g2.f.text}`);
 
   /* ---- H：型だけの差も前半後半で確かめる ---- */
   const h = await run({ sleep: "return 420;", stage: "return { deep: 50, rem: b ? (c ? 95 : 35) : 80 };" });
