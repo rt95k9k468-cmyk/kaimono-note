@@ -3,7 +3,7 @@
    - 数字は丸い字：体重の大きな数・帯の日付は --font-num（ui-rounded が先頭）。明朝を選ぶと外れる。
    - 買うものは棚ごとのカード：組は丸い角と面を持ち、頭に棚の名前（chip-dot つき）。
    - daily の「あの日」は写真の上のガラス：ぼかしが効き、角が丸く、主色の柱は無い。写真が読めた日は
-     紙の地が幕なしの帯になる。
+     紙の地が写真の帯になる（薄い幕はほかの日と同じ）。
    日記の本文は試験用の無難な字だけ。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/look-1008.js */
@@ -80,6 +80,8 @@ const { open, checker } = require("./lib");
     const bg = await page.$eval("#screen-archive .tl-sheet.is-daily", (s) => getComputedStyle(s).backgroundImage);
     t.check("写真が読めた日は、あの日の後ろに写真の帯（候の色のぼかしは重ねない）",
       /url\(/.test(bg) && (bg.match(/gradient/g) || []).length === 1, bg.slice(0, 160));
+    t.check("あの日の写真にも、ほかの日と同じ薄い幕（明るい色）",
+      /^linear-gradient\((rgba|color)\([^)]*[,/] 0\.66\) 0px/.test(bg), bg.slice(0, 160));
   } else t.check("写真が読めた（img/season-photo）", false);
 
   t.check("エラーが無い", errors.length === 0, errors.join("\n"));

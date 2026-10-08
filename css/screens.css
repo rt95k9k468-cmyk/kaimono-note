@@ -5157,13 +5157,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-sheet);
 }
-/* 「あの日」が出ている日は、写真を幕なしで上の帯（--season-band）いっぱいに敷き、その上にガラスの札を置く
+/* 「あの日」が出ている日は、写真を上の帯（--season-band）いっぱいに敷き、その上にガラスの札を置く
    （2026年10月8日、利用者が見比べの画像で選んだ・docs/daily.md）。絵は帯の高さに届くまで広げ、左右は切る。
-   帯の六割から下で紙の色へ溶かす。暗い色のときだけ薄い幕（--season-glass-veil）。 */
+   帯の六割から下で紙の色へ溶かす。薄い幕はほかの日と同じ（--season-veil。同じ日、利用者「あの日でも要る」）。
+   暗い色のときは --season-glass-veil。 */
 #screen-archive[data-season][data-season-img] .tl-sheet.is-daily:has(.arc-then) {
   --season-band: 430px;
   background:
-    linear-gradient(to bottom, var(--season-glass-veil, transparent) 0, var(--season-glass-veil, transparent) calc(var(--season-band) * .6), var(--c-sheet) var(--season-band)),
+    linear-gradient(to bottom, var(--season-glass-veil, var(--season-veil)) 0, var(--season-glass-veil, var(--season-veil)) calc(var(--season-band) * .6), var(--c-sheet) var(--season-band)),
     var(--season-img, none) center top / max(100vw, calc(var(--season-band) / var(--season-ar, 0.67))) auto no-repeat,
     var(--c-sheet);
 }
