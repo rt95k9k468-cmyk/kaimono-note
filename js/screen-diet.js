@@ -3755,6 +3755,7 @@
     "kcal-weeks":  "flame",
     sleep:         "moon",
     weekend:       "sun",
+    weekday:       "calendar",
     pfc:           "meal",
     balance:       "flame",
     expenditure:   "flame",

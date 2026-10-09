@@ -469,6 +469,11 @@
   const BACK_BURNED_DAYS = 7;        // 端末の総消費を隣に置くのに要る日数
   const BACK_RANGE = [1000, 5000];   // 体の幅を外れた計算は、記録の欠けを疑って出さない
 
+  /* 曜日の揺れ（J1）。窓の長さ（14/30/90日）に関わらず直近12週で見ます——
+     曜日ごとに数件ずつ要るので、14日では足りません。 */
+  const DOW_SPAN = 84;       // 直近12週
+  const DOW_MIN = 0.2;       // これ未満は量りの刻みに近いので言わない（kg）
+
   function weeksOf(days) {
     // 直近から7日ずつ区切る。週の切れ目は曜日ではなく「今日から数えて」。
     const out = [];
@@ -496,10 +501,10 @@
        無ければ確かめられないので、やはり言いません。数そのものは消さず、
        言い切りの一文だけを差し替えます。a・b は { day, v } の並び。 */
     const mid = U.shiftDay(from, Math.floor(win / 2));   // 後半の初日
-    const steadyOf = (a, b) => {
+    const steadyOf = (a, b, at = mid) => {
       const d = [false, true].map((late) => {
-        const pa = a.filter((x) => (x.day >= mid) === late).map((x) => x.v);
-        const pb = b.filter((x) => (x.day >= mid) === late).map((x) => x.v);
+        const pa = a.filter((x) => (x.day >= at) === late).map((x) => x.v);
+        const pb = b.filter((x) => (x.day >= at) === late).map((x) => x.v);
         return pa.length && pb.length ? mean(pa) - mean(pb) : null;
       });
       if (d[0] == null || d[1] == null) return { ok: false, why: "short" };
@@ -1092,6 +1097,42 @@
             + (st.ok ? "" : UNSTEADY[st.why]),
         tone: "info", n: wd.length + we.length, steady: st ? st.ok : null,
       });
+    }
+
+    /* --- 曜日の揺れ（J1） ---
+       体重は週末に増えて平日に減るのが、ふつうの揺れです（Turicchi ほか 2020）。
+       直近12週の朝の体重で、曜日ごとに7日平均からのずれを均し、いちばん重い
+       曜日と軽い曜日を比べます。素の体重だと、減っている時期は前の日ほど重い
+       ので「週の初めが重い」が自然に出てしまう——だから、ずれで見ます。
+       言うのは、どの曜日も3件以上・差が DOW_MIN 以上・前半6週と後半6週で
+       同じ向きのときだけ。そうでなければ何も出しません。原因は言いません。 */
+    {
+      const dFrom = U.shiftDay(today, -(DOW_SPAN - 1));
+      const dPts = weightPoints(U.shiftDay(dFrom, -6), today);   // 窓の頭から7日平均を満たす
+      const byDow = [0, 1, 2, 3, 4, 5, 6].map(() => []);
+      movingAverage(dPts, 7).forEach((m, i) => {
+        if (m.value == null || m.day < dFrom) return;
+        byDow[U.dayOfWeek(m.day)].push({ day: m.day, v: dPts[i].kg - m.value });
+      });
+      if (byDow.every((xs) => xs.length >= MIN_GROUP)) {
+        const avg = byDow.map((xs) => mean(vals(xs)));
+        const heavy = avg.indexOf(Math.max(...avg));
+        const light = avg.indexOf(Math.min(...avg));
+        const diff = avg[heavy] - avg[light];
+        const st = diff < DOW_MIN ? null
+          : steadyOf(byDow[heavy], byDow[light], U.shiftDay(dFrom, DOW_SPAN / 2));
+        if (st && st.ok) {
+          const n = byDow.reduce((a, xs) => a + xs.length, 0);
+          const W = U.WEEKDAYS;
+          out.push({
+            id: "weekday",
+            title: "曜日の揺れ",
+            text: `${W[heavy]}曜の朝は、${W[light]}曜より ${round(diff, 1).toFixed(1)}kg ほど重く出ます`
+              + `（直近12週の ${n}日）。`,
+            value: round(diff, 2), tone: "info", n, steady: true,
+          });
+        }
+      }
     }
 
     /* --- 直近7日のPFC --- */
