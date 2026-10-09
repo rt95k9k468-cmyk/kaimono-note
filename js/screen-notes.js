@@ -301,7 +301,7 @@
        出ると、書く場所が狭い）。 */
     const body = node(html`
       <div class="note-edit">
-        <textarea class="note-title-in js-title" placeholder="タイトル" aria-label="タイトル"
+        <textarea class="note-title-in grow-field js-title" placeholder="タイトル" aria-label="タイトル"
                   rows="1" autocomplete="off"></textarea>
         <div class="note-sub">
           <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt, note.noTime)}</button>
@@ -309,7 +309,7 @@
         </div>
         <div class="note-view js-view" hidden></div>
         <div class="note-ink js-ink">
-          <textarea class="note-body-in js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
+          <textarea class="note-body-in grow-field js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
           <div class="note-hl js-hl" aria-hidden="true"></div>
         </div>
       </div>
@@ -347,7 +347,7 @@
     };
     /* 題は折り返して全部見せます（長い本の題が右で切れて読めなかった。
        2026年10月1日、iPhone）。改行は持たない一行なので、貼った改行は空白に。 */
-    const growTitle = () => keepScroll(() => {
+    const growTitle = () => U.fitFields || keepScroll(() => {
       titleIn.style.height = "0";
       titleIn.style.height = `${titleIn.scrollHeight}px`;
     });
@@ -429,8 +429,18 @@
       F.ink(textIn.value, hl);
     };
 
-    /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。 */
-    const grow = () => keepScroll(() => {
+    /* 本文の欄は高さが伸びます（中で送らない。送るのは紙）。
+       CSS が伸ばす端末では測らず、写しと高さが揃うかだけ見る。欄が下の限り（38vh）に
+       居るあいだは中身の高さが見えないので、写しがはみ出さないかだけ。 */
+    const fitGrow = () => {
+      paintInk();
+      if (!inkOn()) return;
+      const th = textIn.offsetHeight;
+      const hh = hl.offsetHeight;
+      const atMin = th <= (parseFloat(getComputedStyle(textIn).minHeight) || 0) + 1;
+      if (atMin ? hh > th + 1 : Math.abs(hh - th) > 1) ink.classList.add("is-plain");
+    };
+    const grow = () => (U.fitFields ? fitGrow() : keepScroll(() => {
       paintInk();
       const s = textIn.style;
       s.minHeight = "0";
@@ -439,7 +449,7 @@
       s.minHeight = "";
       s.height = `${textH}px`;
       if (inkOn() && Math.abs(hl.offsetHeight - textH) > 1) ink.classList.add("is-plain");
-    });
+    }));
 
     /* カーソルの行の上下（欄の上端から）。欄は中で送らないので、同じ字と
        幅の写しを画面の外に流して測ります。 */

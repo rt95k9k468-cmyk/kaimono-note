@@ -27,7 +27,8 @@
   掴む。（calendar-swipe・todo-timeline）
 - **伸びる欄を測るために縮めない**（`height = 0`/`auto` → `scrollHeight`）。送る器の中身が
   一瞬縮み、送りが頭へ戻される（打つたびに頭へ飛ぶ）。縮めるなら器の `scrollTop` を
-  持っておいて戻す。（notes の「打つあいだ」）
+  持っておいて戻す。（notes の「打つあいだ」）新しい伸びる欄は `.grow-field` を付け、`KN.util.fitFields` が
+  真なら測らない（CSS の `field-sizing: content` が伸ばす。roadmap-3.1 の S2）。
 - **store を書いたあとに自分で `render()` を呼ばない。** 出ている画面は app.js の subscribe が組み直すので、
   呼ぶと二度組む（daily で 約100ms）。出ていない画面だけ自分で。（motion の「押した一拍を軽く」）
 - **測るのは書く前に、まとめて。** class や style を書いたあとに `getBoundingClientRect`・`offsetWidth`・
