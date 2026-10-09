@@ -1929,6 +1929,25 @@
       .catch(() => { /* not fatal — the app works either way */ });
   }
 
+  /** 動いている版：配るとき stamp-build.js が付ける自分の URL の `?v=`（errlog.js と同じ）。手元では ""。 */
+  function runningVersion() {
+    const s = document.querySelector('script[src*="js/app.js"]');
+    const v = s && /[?&]v=([^&]+)/.exec(s.src);
+    return v ? decodeURIComponent(v[1]) : "";
+  }
+
+  /** いまの Service Worker の版（sw.js の message に訊く）。答えが無ければ ""。 */
+  function workerVersion() {
+    return new Promise((resolve) => {
+      const sw = navigator.serviceWorker.controller;
+      if (!sw || typeof MessageChannel === "undefined") return resolve("");
+      const ch = new MessageChannel();
+      const timer = setTimeout(() => resolve(""), 1500);
+      ch.port1.onmessage = (e) => { clearTimeout(timer); resolve((e.data && e.data.version) || ""); };
+      try { sw.postMessage({ type: "kn-version" }, [ch.port2]); } catch (_) { clearTimeout(timer); resolve(""); }
+    });
+  }
+
   function registerServiceWorker() {
     // The single-file build has no sw.js alongside it to register.
     if (window.KN_STANDALONE) return;
@@ -1940,10 +1959,20 @@
     // actually the code in use — otherwise the app sits a version behind until
     // it happens to be launched again, which on a home-screen app resumed from
     // the switcher may not be for days.
+    /* ただし動いている版と新しい Service Worker の版が同じなら読み直さない（roadmap-seamless の N1）——
+       ネットから新しい版で開いたところへ、その版の Service Worker が入ってきただけ。分からなければ今までどおり読み直す。 */
     let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (reloading) return;
       reloading = true;
+      const mine = runningVersion();
+      workerVersion().then((theirs) => {
+        if (mine && theirs === mine) { reloading = false; return; }
+        reloadForNewVersion();
+      });
+    });
+
+    function reloadForNewVersion() {
       if (isBusy()) {
         // Don't pull the page out from under someone mid-entry; wait until
         // they put the app away.
@@ -1953,7 +1982,7 @@
         return;
       }
       location.reload();
-    });
+    }
 
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("sw.js").then((reg) => {
