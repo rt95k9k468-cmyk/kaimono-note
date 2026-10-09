@@ -93,6 +93,54 @@ const TODAY = "2026-10-06";
   });
   c.check("設定の日数で書く（いつか 90日）・消せば既定", r.v === "2027-01-04" && r.d.next === 14 && r.d.someday === 30, JSON.stringify(r));
 
+  /* 節気に揃える（roadmap-3.1 の K3）。既定はオフ。オンなら新しく書く見直す日だけ、日数を過ぎた最初の節気の初日。 */
+  r = await page.evaluate(() => {
+    const S = KN.store, E = KN.season, U = KN.util;
+    const first = (k) => { const o = E.of(k); return o.first && o.part === 0; };
+    /* base から result まで、result のほかに節気の初日が無いか */
+    const isFirstAfter = (base, res) => {
+      if (!first(res) || res < base) return false;
+      for (let k = base; k < res; k = U.shiftDay(k, 1)) if (first(k)) return false;
+      return true;
+    };
+    const def = S.get().settings.reviewSekki;
+    const keptBefore = S.get().todos.filter((t) => t.review).map((t) => [t.id, t.review]);
+    const oldOn = S.reviewOn(S.getTodo("t-old"));
+    S.update((s) => { s.settings.reviewSekki = true; });
+    const a = S.addTodo({ title: "節気の試験" });
+    const ra = S.getTodo(a.id).review;
+    const undo = S.setShelf(a.id, "wait");
+    const rw = S.getTodo(a.id).review;
+    S.setShelf(a.id, "someday");
+    const rs = S.getTodo(a.id).review;
+    S.keepShelf(a.id, 10);                      // 暦で選んだ日（日数を渡す）は揃えない
+    const rk = S.getTodo(a.id).review;
+    S.keepShelf(a.id);                          // 棚の日数なら揃える
+    const rk2 = S.getTodo(a.id).review;
+    /* 日数を過ぎた日がちょうど節気の初日なら、その日（10/6＋2＝10/8 寒露） */
+    S.update((s) => { s.settings.reviewDays = { next: 2, wait: 7, someday: 30 }; });
+    const edge = S.reviewFrom(null);
+    S.update((s) => { delete s.settings.reviewDays; });
+    const keptAfter = S.get().todos.filter((t) => t.review && t.id !== a.id).map((t) => [t.id, t.review]);
+    const oldOn2 = S.reviewOn(S.getTodo("t-old"));
+    S.removeTodo(a.id);
+    S.update((s) => { s.settings.reviewSekki = false; });
+    const off = S.reviewFrom(null);
+    return { def, ra, rw, rs, rk, rk2, edge, edgeName: E.of(edge).sekki, off, oldOn, oldOn2,
+             kept: JSON.stringify(keptBefore) === JSON.stringify(keptAfter),
+             ok: [isFirstAfter("2026-10-20", ra), isFirstAfter("2026-10-13", rw), isFirstAfter("2026-11-05", rs),
+                  isFirstAfter("2026-11-05", rk2)],
+             names: [E.of(ra).sekki, E.of(rw).sekki, E.of(rs).sekki] };
+  });
+  c.check("K3：設定の無い保存は既定オフ（今のまま 今日＋14）", r.def === false && r.off === "2026-10-20", JSON.stringify([r.def, r.off]));
+  c.check("K3：オンなら これから・待つ・いつか とも、日数を過ぎた最初の節気の初日",
+    r.ok.slice(0, 3).every(Boolean) && r.ra === "2026-10-23" && r.rw === "2026-10-23" && r.rs === "2026-11-07"
+    && JSON.stringify(r.names) === '["霜降","霜降","立冬"]', JSON.stringify(r));
+  c.check("K3：ちょうど節気の初日ならその日（寒露）", r.edge === "2026-10-08" && r.edgeName === "寒露", JSON.stringify([r.edge, r.edgeName]));
+  c.check("K3：暦で選んだ日（日数を渡す）は揃えない・棚の日数なら揃える",
+    r.rk === "2026-10-16" && r.ok[3] && r.rk2 === "2026-11-07", JSON.stringify([r.rk, r.rk2]));
+  c.check("K3：付いている見直す日・読むときの日は動かさない", r.kept && r.oldOn === r.oldOn2, JSON.stringify([r.kept, r.oldOn, r.oldOn2]));
+
   /* ---------------- 画面 ---------------- */
   await page.evaluate(() => {
     const S = KN.store;
@@ -332,6 +380,24 @@ const TODAY = "2026-10-06";
   await page.mouse.up();
   await wait(450);
   c.check("指が動いた（スクロール）ときは開かない", (await openTitle()) === null && !(await page.$(".note-pop.is-quick.is-open")), await openTitle());
+
+  /* K3 の設定：tasks の「見直す日」の下にスイッチ。オンで、いま入れたら付く日を一行。 */
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await wait(500);
+  const swRow = page.locator(".set-layer:last-child .set-row.is-sw", { hasText: "節気の初日に揃える" });
+  const layerText = () => page.locator(".set-layer:last-child").innerText();
+  c.check("K3：設定に「節気の初日に揃える」（オフ・日付の行なし）", (await swRow.count()) === 1
+    && (await swRow.getAttribute("aria-checked")) === "false" && !/これから \d/.test(await layerText()));
+  await swRow.click();
+  await wait(400);
+  const t2 = await layerText();
+  c.check("K3：押すとオン・保存・いま入れたら付く日（これから 10/23・待つ 10/23・いつか 11/7）",
+    (await page.evaluate(() => KN.store.get().settings.reviewSekki)) === true
+    && (await swRow.getAttribute("aria-checked")) === "true" && t2.includes("これから 10/23・待つ 10/23・いつか 11/7"), t2.slice(0, 400));
+  await swRow.click();
+  await wait(400);
+  c.check("K3：もう一度押すとオフに戻る", (await page.evaluate(() => KN.store.get().settings.reviewSekki)) === false
+    && !/これから \d/.test(await layerText()));
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();

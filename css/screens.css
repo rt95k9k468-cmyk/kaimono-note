@@ -2179,6 +2179,8 @@
 }
 /* 紙の中（シート）で使うぶんは、外側の余白を紙が持っているので詰める。 */
 .set-foot.is-flush { padding: 0; margin: 0 0 var(--sp-2); }
+/* 一つの項目の途中では折らない（見直す日の「いつか 11/22」が「いつか／11/22」に割れないように。roadmap-3.1 の K3）。 */
+.set-foot .set-nw { white-space: nowrap; }
 /* 行の束のすぐ下に添える一行（daily の期間の書き出しの数）。字は行の題に揃える。 */
 .rows + .set-foot.is-flush { margin-top: var(--sp-3); padding: 0 var(--sp-5); }
 

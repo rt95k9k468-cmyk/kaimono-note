@@ -38,6 +38,13 @@ function noFit() {
   CSS.supports = (...a) => !/field-sizing/.test(a.join(" ")) && s(...a);
 }
 
+/** 頁の中で走る：どの器でもスクロールの錨を働かせない（iOS 26 までの Safari と同じ。roadmap-3.1 の S1）。 */
+function noAnchor() {
+  const sh = new CSSStyleSheet();
+  sh.replaceSync("*, *::before, *::after { overflow-anchor: none !important; }");
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh];
+}
+
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
 async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false } = {}) {
@@ -61,6 +68,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   /* KN_NO_FIT=1：伸びる欄を、field-sizing の効かない端末の道（JS が測る）で回す（roadmap-3.1 の S2）。 */
   if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);
+  /* KN_NO_ANCHOR=1：スクロールの錨の無い端末（iOS 26 まで）の道で回す（roadmap-3.1 の S1）。 */
+  if (process.env.KN_NO_ANCHOR) await ctx.addInitScript(noAnchor);
   if (before) await before(ctx, page);
   if (process.env.KN_CSS_COVER) await coverCSS(browser, page, process.env.KN_CSS_COVER);
   await page.goto(URL);
@@ -110,4 +119,4 @@ function checker(title) {
   };
 }
 
-module.exports = { open, checker, ensureServer, noFit, URL, ROOT };
+module.exports = { open, checker, ensureServer, noFit, noAnchor, URL, ROOT };

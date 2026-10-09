@@ -129,8 +129,22 @@
         pickRow({ title: "見直す日", onTap: openReviewDays, value: (() => {
           const d = store.reviewDays();
           return `${daysLabel("next", d.next)}・${daysLabel("wait", d.wait)}・${daysLabel("someday", d.someday)}`;
-        })() })
+        })() }),
+        /* 節気に揃える（roadmap-3.1 の K3）。オンのときだけ、いま入れたら付く日を下に（説明の代わりの事実）。 */
+        switchRow({
+          title: "節気の初日に揃える", on: s.reviewSekki === true,
+          onTap: (v) => {
+            store.update((x) => { x.settings.reviewSekki = v; });
+            render();
+            KN.motion.fire("select");
+          },
+        })
       ),
+      s.reviewSekki === true ? foot((() => {
+        const md = (k) => k.slice(5).split("-").map(Number).join("/");
+        const one = ([l, k]) => html`<span class="set-nw">${l} ${md(store.reviewFrom(k))}</span>`;
+        return html`${one(["これから", null])}・${one(["待つ", "wait"])}・${one(["いつか", "someday"])}`;
+      })()) : null,
       /* 通知とカレンダーは、どちらもスイッチ二つ（か、スイッチと手順）に
          それぞれの説明が付いて、一画面ぶんあります。根っこに並べると tasks の
          列が説明で埋まるので「›」の先へ（docs/settings.md の「二段の一覧」）。 */
