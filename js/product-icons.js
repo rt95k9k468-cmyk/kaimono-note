@@ -19,6 +19,10 @@
   "use strict";
 
   const KN = (window.KN = window.KN || {});
+  /* 名前 → 辞書の絵の答え（下の findKey）。辞書は読み込んだときに決まって動かないので、
+     同じ名前の答えは同じ。一覧を組むたびに 2131語を走らせていた（docs/motion.md の
+     「押した一拍を軽く」）。自分で選んだ絵（iconOverrides）は覚えずに毎回先に見る。 */
+  const keyMemo = new Map();
 
   const S = (body) =>
     `<svg class="p-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">${body}</svg>`;
@@ -804,6 +808,16 @@
        修飾語かどうか（レトルト｜カレー）。**候補を全部集めてから順位で
        選びます。** 早く返せなくなるぶんの代償は、辞書 2131語の走査が
        最後まで走ること一回ぶんだけです。 */
+    const memo = keyMemo.get(name);
+    if (memo !== undefined) return memo;
+    const found = scanKey(name);
+    if (keyMemo.size > 5000) keyMemo.clear();
+    keyMemo.set(name, found);
+    return found;
+  }
+
+  /** 辞書だけで引く（上の findKey が覚える）。 */
+  function scanKey(name) {
     const f = KN.util.foldRuns(name);
     if (!f.text) return "";
     const depths = depthsOf(f.text);

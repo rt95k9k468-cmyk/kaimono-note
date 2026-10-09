@@ -121,7 +121,21 @@
    * 合わせます。暦と題は、このあとの `render()` が自分で置きます——同じ
    * 一拍のうちなので、前のタブの暦が一瞬でも描かれることはありません。
    */
+  /* show() の頭で撮った写し。席を移る show() は、ここへ来る前に入ってくる画面を出したり
+     （hidden を外す）札を替えたりするので、enter で撮ると、その書き換えぶんをその場で
+     並べ直させてから測ることになります（やることへ移るたびに 約19ms）。まだ何も
+     書き換えていない頭で撮れば、前の一拍の配置のまま安く測れます。 */
+  let pre = null;
+  /** 席を移る直前（app.js の show の頭）に、出ていく暦の印を写しておく。 */
+  function snapFor(id) {
+    pre = null;
+    if (!root || id === "settings" || !TABS.includes(id) || id === owner) return;
+    pre = { id, marks: snapMarks() };
+  }
+
   function enter(id) {
+    const early = pre && pre.id === id ? pre : null;
+    pre = null;
     if (!root) return;
     if (id === "settings") return;            // 持ち主はそのまま（上を参照）
     if (!TABS.includes(id)) {
@@ -131,8 +145,9 @@
     }
     /* 持ち主が替わるなら、出ていく暦の印を写しておきます（putCal が、
        差し替えたあとの重ねに使います）。ここで撮るのは、組み直しの**前**
-       ——配置がまだ前の一拍のままで、測るのが安いので。 */
-    snap = id !== owner ? snapMarks() : null;
+       ——配置がまだ前の一拍のままで、測るのが安いので。show() からなら、その頭で
+       撮ってあります（上の snapFor）。 */
+    snap = id !== owner ? (early ? early.marks : snapMarks()) : null;
     owner = id;
     root.hidden = false;
     const notes = id === "notes";
@@ -531,11 +546,16 @@
   if (KN.motion) KN.motion.onArrive((el) => {
     if (el !== root) return;
     let first = false;
-    const n = root.hidden ? null : root.querySelector(".cal-day.is-today .cal-n");
+    /* 今日もう打ったかを**先に**見ます。見えているかを測る（offsetWidth）のは、まだ打って
+       いない日だけ——席を移るたびに測ると、組み直した直後の画面をその場で並べ直させます
+       （docs/motion.md の「押した一拍を軽く」）。 */
+    let seen = true;
+    try { seen = localStorage.getItem(BEAT_KEY) === U.todayKey(); } catch (_) { /* 残せない端末では打たない */ }
+    const n = seen || root.hidden ? null : root.querySelector(".cal-day.is-today .cal-n");
     if (n && n.offsetWidth) {
       try {
-        first = localStorage.getItem(BEAT_KEY) !== U.todayKey();
-        if (first) localStorage.setItem(BEAT_KEY, U.todayKey());
+        localStorage.setItem(BEAT_KEY, U.todayKey());
+        first = true;
       } catch (_) { /* 残せない端末では打たない */ }
     }
     root.classList.toggle("is-day-first", first);
@@ -548,5 +568,5 @@
     if (document.visibilityState === "visible") queueDot();
   });
 
-  KN.head = { els, mine, enter, putCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
+  KN.head = { els, mine, enter, snapFor, putCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
 })();

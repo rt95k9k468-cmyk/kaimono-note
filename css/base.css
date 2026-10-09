@@ -1645,11 +1645,19 @@ a { color: var(--c-primary); }
 
    ＋（.add-fab）と ＋の札（.fab-menu-b）は screens.css に居ますが、材の
    話なのでここに書きます——**材は一か所**、というのがこの節の言い分です。 */
+/* **鏡面光の数は、受け継がない名前**（2026年10月9日。docs/motion.md の「押した一拍を軽く」）。
+   app.js が送るたびに器へ書く数で、使うのは器の `::after` だけ。受け継ぐ名前のままだと、書くたびに
+   器の中ぜんぶ（帯なら席・絵・字の 48 個）が様式を計算し直していた——送るあいだ毎フレーム 約2ms
+   （1年ぶんの記録・CPU 1倍）。受け継がない名前にして、`::after` だけが器から取りにいく（下の
+   `inherit`）。`@property` を読めない端末では受け継ぐ名前のままで、見た目は同じ。
+   docs/traps.md の「受け継ぐ値を毎フレーム書かない」と同じ手（`--season-k`）。 */
+@property --glass-sweep { syntax: "<number>"; inherits: false; initial-value: .5; }
 .tabbar::after,
 .add-fab::after,
 .fab-menu-b::after,
 .toast::after,
 .search-bar::after {
+  --glass-sweep: inherit;
   content: "";
   position: absolute;
   inset: 0;

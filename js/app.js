@@ -91,6 +91,25 @@
   let active = HOME;
   const mounted = new Set();
 
+  /* ---------------- 紙の中で打っているあいだ、後ろは組み直さない ----------------
+
+     日記の紙は打つあいだ 3 秒おきに残し（store を書く）、品物の紙は数を打つと残します。
+     そのたびに store の subscribe が**後ろの画面**を組み直していて、打った字が一拍
+     止まっていました（daily で 約80ms。1年ぶんの記録・CPU 1倍）。後ろは紙に隠れて
+     いるので、打ち終えた——欄を出た・紙を閉じた——ところで一度だけ組み直します
+     （docs/motion.md の「押した一拍を軽く」）。席を移れば show() が組むので、そこで忘れます。 */
+  let behindStale = false;
+  let preparing = false;   // show() が組む前の支度をしているあいだ（下の show）
+  function typingInSheet() {
+    const a = document.activeElement;
+    return !!(a && a.closest && isTyping() && a.closest("#sheet-root .sheet"));
+  }
+  function catchUpBehind() {
+    if (!behindStale || typingInSheet()) return;
+    behindStale = false;
+    if (KN.screens[active]) KN.screens[active].render();
+  }
+
   /* ---------------- theme ---------------- */
 
   function applyTheme(theme) {
@@ -371,7 +390,17 @@
      組み直すと、ここで書いた数は焼きついた既定値に負けて動かなくなります。 */
   const GLASS = ".tabbar, .add-fab, .fab-menu-b, .toast, .search-bar";
 
-  function paintGlass() {
+  /* 帯の裏の明るさを読む間合い（docs/motion.md の「押した一拍を軽く」）。読むのは指の
+     下の三点を当てる仕事（`elementsFromPoint`）で、送っているあいだ毎フレーム読むと、
+     一回の送りで 90ms ほどがこれだけに消えていた（1年ぶんの記録・CPU 1倍）。送るあいだは
+     この間合いに一度、止まったら必ず一度。暗いものが帯の裏へ来てから夜へ返るまでが、
+     多くてこのぶん遅れるだけ。 */
+  const LUM_GAP = 120;
+  let lumAt = -Infinity, lumT = 0;
+
+  /** lazy … 送り・大きさの合図から来たとき（帯の裏の明るさは間合いに一度）。ほかの呼び手
+      （席を移った・外から呼ばれた）はその場で読む——帯の裏が変わったと分かっているので。 */
+  function paintGlass(lazy) {
     /* 鏡面光の居場所。送っている器の位置を、縁の長さに畳んで回します
        ——「何px 送ったか」ではなく「まわりがどれだけ動いたか」なので、
        端まで行ったら向こうから戻ってくる形（往復）にします。 */
@@ -381,6 +410,22 @@
        光が当たっているのではなく「左が明るい絵」に見えるので。
        行って戻る形（sin）にするのは、折り返しで速さが跳ねないため。 */
     const sweep = (.5 + .38 * Math.sin(top / 115)).toFixed(3);
+
+    /* **読むのは、書く前に。** 下で鏡面光の数を書くと、その器の様式が汚れます。そのあとに
+       帯の箱を測る（backdropLum）と、ブラウザはその場で様式を計算し直してから答えます——
+       毎フレーム一回ぶん余計に。先に読めば、前のフレームのままの安い答えで済みます。 */
+    const now = performance.now();
+    let L = null, read = false;
+    clearTimeout(lumT);
+    if (lazy !== true || now - lumAt >= LUM_GAP) {
+      L = backdropLum();
+      lumAt = now;
+      read = true;
+    } else {
+      /* 間合いのうちに来た送りは、止まったところでもう一度だけ読む。 */
+      lumT = setTimeout(() => requestAnimationFrame(() => paintGlass()), LUM_GAP);
+    }
+
     /* 同じ数なら書きません。書き換えはその器の中を巻き込むので、止まって
        いるあいだ（sin の折り返しなど）に同じ数を置き直す意味はありません。 */
     document.querySelectorAll(GLASS).forEach((el) => {
@@ -389,7 +434,7 @@
       el.style.setProperty("--glass-sweep", sweep);
     });
 
-    const L = backdropLum();
+    if (!read) return;
     if (L != null) {
       if (!onDark && L < .42) onDark = true;
       else if (onDark && L > .52) onDark = false;
@@ -405,7 +450,7 @@
     const soon = () => {
       if (queued) return;
       queued = true;
-      requestAnimationFrame(() => { queued = false; paintGlass(); });
+      requestAnimationFrame(() => { queued = false; paintGlass(true); });
     };
     /* scroll は泡立たないので、**捕まえる側**で聞きます——送っているのは
        画面ごとの紙で、window ではありません（「送る器を変えたら〜」）。 */
@@ -1023,6 +1068,12 @@
       ダイエット（紙が `is-bare` で丸角を持たない）・価格・設定は、これまで
       どおり画面そのものが送ります。**どちらかを決め打ちにしないこと**
       ——`overflow` を見て、実際に送っているほうを返します。 */
+  /* 紙が送る器かどうかは、紙ごとに一度だけ読みます。決めているのは紙の居る画面
+     （screens.css の `#screen-todo .tl-sheet` ほか）で、紙は組み直しのたびに作り直され、
+     ほかの画面へ移ることはありません。毎回 `getComputedStyle` で読むと、組み直した直後
+     （席を移った・済ませた）にそこで様式を計算させます（1回 9〜17ms。送るたびの帯の
+     ガラスもここを通る）。 */
+  const sheetScrolls = new WeakMap();
   KN.app.scrollerOf = function scrollerOf(el) {
     if (!el) return null;
     /* 設定は紙の重なり（.set-layer）で、送るのはいちばん上の一枚です。
@@ -1032,8 +1083,13 @@
     if (layer) return layer;
     const sheet = el.querySelector(".tl-sheet");
     if (sheet) {
-      const ov = getComputedStyle(sheet).overflowY;
-      if (ov === "auto" || ov === "scroll") return sheet;
+      let scrolls = sheetScrolls.get(sheet);
+      if (scrolls === undefined && sheet.isConnected) {
+        const ov = getComputedStyle(sheet).overflowY;
+        scrolls = ov === "auto" || ov === "scroll";
+        sheetScrolls.set(sheet, scrolls);
+      }
+      if (scrolls) return sheet;
     }
     return el;
   };
@@ -1041,6 +1097,8 @@
 
   function show(id, face) {
     if (!KN.screens[id]) return;
+    /* 出ていく暦の印の写しは、何も書き換えないうちに（js/head.js の snapFor）。 */
+    if (KN.head.snapFor) KN.head.snapFor(id);
     if (!goingBack) {
       if (OFF_BAR.includes(id)) { if (active !== id) drawerFrom.push(active); }
       else drawerFrom.length = 0;
@@ -1117,7 +1175,20 @@
     KN.head.enter(id);
     /* daily・ノートの鍵（js/lock.js）。組む前に覆うので、中身は一瞬も出ません。 */
     if (KN.lock) KN.lock.enter(id);
-    ensureMounted(id);
+    /* 据えつけ（はじめて開くとき）と、組む前の支度（daily：その日の行を用意する）。ここで
+       store を書いても、subscribe は組みません——すぐ下で組むので。前は支度が組んだあと
+       （onEnter）にあり、据えつけも今日の行を用意していて、その日はじめて daily を開く
+       たびに画面を二度・三度組んでいました（docs/motion.md の「押した一拍を軽く」）。 */
+    preparing = true;
+    try {
+      ensureMounted(id);
+      if (KN.screens[id].prepare) {
+        try { KN.screens[id].prepare(); } catch (err) { /* 開くことを妨げない */ }
+      }
+    } finally {
+      preparing = false;
+    }
+    behindStale = false;   // ここで組むので、預かっていた組み直しは要らない
     KN.screens[id].render();
 
     document.querySelectorAll(".screen").forEach((s) => {
@@ -1139,6 +1210,7 @@
         s.hidden = false;
       } else {
         s.hidden = true;
+        KN.motion.depart(s);
       }
     });
     /* 押しのけは deck（帯と、その下の画面）ごと。下の画面の class は
@@ -1153,6 +1225,8 @@
         document.querySelectorAll(".screen.is-leaving").forEach((s) => {
           s.classList.remove(...ALL);
           s.hidden = true;
+          /* 開いたときの札も、隠れたここで外します（戻ってきた一拍に並べ直させない。motion.js の depart）。 */
+          KN.motion.depart(s);
         });
         if (deck) deck.classList.remove("is-push-under", "is-pop-in");
       }, slideMs(push));
@@ -1167,7 +1241,7 @@
        決めます（motion.js の arrive）。上の帯（暦）は画面の外なので、別に
        （設定は帯の上に重なる一枚なので、帯は迎えない）。 */
     KN.motion.arrive(inEl);
-    if (id !== "settings") KN.motion.arrive(document.getElementById("head"));
+    if (id !== "settings") KN.motion.arrive(document.getElementById("head"), { restart: false });
 
     /* 「文字でさがす」のバーは、題のすぐ下に置いてあって、開いた時点では
        その一段ぶんだけ先へ送ってあります（ui.js の parkSearch）。少し下へ
@@ -1243,7 +1317,7 @@
        ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
     const arriveHere = () => {
       KN.motion.arrive(document.querySelector(`.screen[data-screen="${active}"]`));
-      if (active !== "settings") KN.motion.arrive(document.getElementById("head"));
+      if (active !== "settings") KN.motion.arrive(document.getElementById("head"), { restart: false });
     };
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") arriveHere();
@@ -1318,9 +1392,17 @@
 
     // Re-render whichever screen is visible whenever state changes.
     store.subscribe(() => {
-      if (KN.screens[active]) KN.screens[active].render();
+      /* 組む前の支度のあいだは、何もしません——show() がこのあと組んで、席も塗ります。 */
+      if (preparing) return;
+      if (KN.screens[active]) {
+        /* 紙の中で打っているあいだは、組み直しを預かります（上の behindStale）。 */
+        if (typingInSheet()) behindStale = true;
+        else { behindStale = false; KN.screens[active].render(); }
+      }
       paintTabs();
     });
+    /* 欄を出たら（紙を閉じるときも、紙が欄から指を外す）、預かっていた組み直しを。 */
+    document.addEventListener("focusout", () => requestAnimationFrame(catchUpBehind));
 
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
@@ -1727,7 +1809,7 @@
        stops existing — so 「入力中」 stayed true with nothing left to type
        into, and the tab bar that hides behind it stayed hidden even after the
        sheet was closed. Anything that takes a field away can say so here. */
-    KN.app.remeasure = () => { fit(); settle(); };
+    KN.app.remeasure = () => { fit(); settle(); requestAnimationFrame(catchUpBehind); };
 
     /* And a net under that: every tap re-reads it. If whatever had focus is
        gone, this is where it gets noticed — one cheap measurement, on a

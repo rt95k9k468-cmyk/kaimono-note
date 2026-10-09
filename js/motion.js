@@ -88,7 +88,7 @@
   if (window.matchMedia) {
     try {
       window.matchMedia("(prefers-reduced-motion: reduce)")
-        .addEventListener("change", () => { cache.clear(); easeCache.clear(); curveCache.clear(); });
+        .addEventListener("change", () => { cache.clear(); easeCache.clear(); curveCache.clear(); setTimeout(warm, 0); });
     } catch (_) { /* 古い Safari。無くても困りません */ }
   }
 
@@ -107,6 +107,34 @@
     } catch (_) { /* 既定のまま */ }
     easeCache.set(token, out);
     return out;
+  }
+
+  /* 長さと曲線は、開いて落ち着いたところで一度に読んでおきます（docs/motion.md の
+     「押した一拍を軽く」）。はじめて呼ばれたときに読むと、そこはたいてい組み直しの
+     直後（席を押した・紙を開いた）で、ブラウザに様式の計算を前倒しさせます——実測で、
+     はじめての席移りに 29ms。落ち着いたところなら、読むだけで済みます。
+     読むのは base.css の `:root` にある名前（`--m-*` と曲線）。見つからなければ何もせず、
+     これまでどおり呼ばれたときに読みます。 */
+  const CURVE = /^--(ease(-[a-z]+)*|spring|push-e)$/;
+  function warm() {
+    try {
+      const names = new Set();
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch (_) { continue; }
+        for (const r of rules || []) {
+          if (r.selectorText !== ":root" || !r.style) continue;
+          for (let i = 0; i < r.style.length; i++) {
+            const p = r.style[i];
+            if (p.startsWith("--m-") || CURVE.test(p)) names.add(p);
+          }
+        }
+      }
+      names.forEach((p) => (p.startsWith("--m-") ? ms(p) : ease(p)));
+    } catch (_) { /* 読めなければ、呼ばれたときに読む */ }
+  }
+  if (typeof window !== "undefined" && window.addEventListener) {
+    window.addEventListener("load", () => requestAnimationFrame(() => setTimeout(warm, 0)), { once: true });
   }
 
   /* ---------------------------------------------------------------
@@ -415,11 +443,14 @@
   const ARRIVE = "is-m-arrive";
   const arriveT = new WeakMap();
   const arriveHooks = [];
-  function arrive(root) {
+  function arrive(root, { restart = true } = {}) {
     if (!root || still()) return;
     clearTimeout(arriveT.get(root));
-    /* もう付いていたら、外して読んでから付け直す（頭からやり直す）。 */
-    if (root.classList.contains(ARRIVE)) {
+    /* もう付いていたら、外して読んでから付け直す（頭からやり直す）。
+       restart: false … やり直さなくてよい相手（上の帯。帯で動くのは「今日はじめて」の脈だけで、
+       それは `is-day-first` が付いた瞬間に始まる——札を付け直さなくても）。読むのは、組み直した
+       直後の画面ぜんぶを並べ直させることなので、要らないときは読まない。 */
+    if (restart && root.classList.contains(ARRIVE)) {
       root.classList.remove(ARRIVE);
       void root.offsetWidth;
     }
@@ -431,6 +462,15 @@
   }
   /** 開いたときに、JS で動かすものがある画面が名乗る。fn(root) は arrive のたびに呼ばれる。 */
   function onArrive(fn) { arriveHooks.push(fn); }
+  /** 隠れた画面から札を外しておく（app.js の show）。札が残ったまま戻ってくると、
+      頭からやり直すために arrive がその場で並べ直させる（offsetWidth）——組み直した
+      直後の画面ぜんぶを、もう一度。隠れているあいだに外せば、戻ったときは付けるだけ。 */
+  function depart(root) {
+    if (!root) return;
+    clearTimeout(arriveT.get(root));
+    arriveT.delete(root);
+    root.classList.remove(ARRIVE);
+  }
 
   /* ---------------------------------------------------------------
      曲線を JS で引く（`--ease-out` などの cubic-bezier を、進み具合の関数に）
@@ -488,7 +528,7 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, EVENTS };
+  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, depart, warm, EVENTS };
 
   /* 指の重さ（roadmap-unify の U4・docs/motion.md の「指の重さは一か所」）。同じ身ぶりは
      どこでも同じ重さ。払いだけ二つ——行き先へ送る（日・面・暦の段）と、閉じる・戻る（紙・

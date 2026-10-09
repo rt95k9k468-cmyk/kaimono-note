@@ -431,6 +431,8 @@
     viewMonth = ym === ymOf(new Date()) ? null : ym;
     viewDay = key === U.todayKey() ? null : key;
     if (!(opts && opts.keep)) { render(); return; }
+    /* 払って着いた紙は、もうこの日の紙です（次に組み直すとき、読んでいた位置へ返す相手）。 */
+    laidDay = focusDay();
     const here = viewDay || U.todayKey();
     if (els.cal) {
       markWeek(els.cal, here);
@@ -1058,7 +1060,10 @@
       const times = { wake: wakeEl.value || null, sleep: sleepEl.value || null };
       // 本文の欄が無い（読めない日）ときは、本文を渡しません——元の本文はそのまま。
       store.setDayLog(day, memo ? Object.assign({ memo: memoOut() }, times) : times);
-      render();
+      /* daily が出ていれば、いまの setDayLog で store の subscribe がもう組み直しています
+         （app.js）。ここでも組むと、打っているあいだ 3 秒おきに画面を二度組んでいました
+         （docs/motion.md の「押した一拍を軽く」）。出ていないときだけ、ここで。 */
+      if (!root || !root.classList.contains("is-active")) render();
     };
     /* 音声入力で話し続けると、手が止まる 500ms が来ないまま字が増えていきます。
        待ちは最初の一字から数えて 3 秒まで——話し続けていても 3 秒おきには残ります。 */
@@ -1201,7 +1206,8 @@
     row.querySelector(".js-favbtn").addEventListener("click", () => {
       KN.motion.fire("select");
       store.toggleFavorite(e.id);
-      render();
+      // 出ている daily は store の subscribe がもう組み直した（上の日記の紙の save と同じ）。
+      if (!root || !root.classList.contains("is-active")) render();
     });
     return row;
   }
@@ -1795,6 +1801,24 @@
      もう一度**積みます——同じ行が二つ並びます（今日の行を用意する処理を
      描画の中に置いたとき、実際にそうなりました）。 */
   let rendering = false;
+  /* 前に組んだときの日（下の render が、同じ日なら読んでいた位置へ返すため）。 */
+  let laidDay = null;
+
+  /** 組み直した紙を、読んでいた位置へ返します（docs/motion.md の「押した一拍を軽く」）。
+      返す先は**新しい紙**——紙は組み直しのたびに作り直されるので、組む前に掴んだ器へ
+      返しても、もう外された紙が動くだけでした（中継所から歩数が届く・記録を足すたびに、
+      daily だけ頭へ飛んでいた）。iPhone は差しこんだばかりの器への scrollTop を落とすことが
+      あるので、一拍あとに効いたかを見直します（screen-todo.js の restoreTop と同じ）。 */
+  function holdTop(top) {
+    const sc = KN.app.scrollerOf(root);
+    if (!sc || !top) return;
+    sc.scrollTop = top;
+    requestAnimationFrame(() => {
+      if (!sc.isConnected || sc.scrollTop > 1) return;
+      const again = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
+      if (again > 1) sc.scrollTop = again;
+    });
+  }
 
   /** その日ぶんの紙まるごと。横に払うと、この一枚が隣の日のものと
       入れ替わります。 */
@@ -1846,6 +1870,9 @@
        同じところまで指で戻ることになります。位置を覚えて、組んだあとに返します。 */
     const keepScroller = KN.app.scrollerOf(root);
     const keepTop = keepScroller.scrollTop;
+    /* 返すのは**同じ日を組み直したとき**だけ。別の日へ移ったなら、その日の頭から。 */
+    const day = focusDay();
+    const sameDay = day === laidDay;
 
     /* 組み直す前に、いまどの行がどこに居るかを測ります（ui.js の flipRows）。
        並べ替えを押す・お気に入りを付ける・一件足す——どれも一覧の中で行が
@@ -1894,7 +1921,8 @@
     /* 指を受けるのは紙ぜんぶ（中身の下の空白からも払えるように）。 */
     wireDaySwipe(car, track, sheet);
 
-    if (keepTop) keepScroller.scrollTop = keepTop;
+    if (keepTop && sameDay) holdTop(keepTop);
+    laidDay = day;
     rendering = false;
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
        （掴み手はそのぶん下に貼りつくので）。 */
@@ -1954,17 +1982,23 @@
      書き写していたのをやめて、開いたその瞬間の一度ぶんだけ残しました。
      入ったことは store の変化が伝えるので、ここで render を呼ぶ必要も
      ありません（app.js の subscribe）。 */
-  function onEnter() {
-    /* 日が変わっていれば、その日の行を用意します。開いたときに今日の欄が
-       待っているように——描画の中ではなくここで呼ぶのは、store を触ると
-       描き直しが走るためです（上の rendering を参照）。 */
+  /* 日が変わっていれば、その日の行を用意します。開いたときに今日の欄が
+     待っているように——描画の中ではなくここで呼ぶのは、store を触ると
+     描き直しが走るためです（上の rendering を参照）。
+     **組む前に**（app.js の show が、組む直前に呼びます。そのあいだ subscribe は
+     組みません）。前は組んだあとの onEnter にあって、その日はじめて daily を開くと
+     用意した行のぶんもう一度組み、さらに onEnter 自身も `render()` を呼んでいました
+     （1年ぶんの記録で 約100ms ずつ。docs/motion.md の「押した一拍を軽く」）。 */
+  function prepare() {
     store.ensureDayLog(U.todayKey());
-    render();
+  }
+
+  function onEnter() {
     if (KN.healthRelay) KN.healthRelay.pullNow();
   }
 
   /* `cal` はノート（daily の裏）が帯に同じ暦を置くため（js/screen-notes.js）。 */
-  KN.screens.archive = { mount, render, dockButton, onEnter, day: () => focusDay(), cal: () => els.cal,
+  KN.screens.archive = { mount, render, dockButton, prepare, onEnter, day: () => focusDay(), cal: () => els.cal,
     goDay: (d) => goDayTo(d),
     /* 記録の紙を、ほかの画面から（道の活動の札・道の上の記録。3.0 の A1）。 */
     openEntry: (id) => { const e = store.get().archive.entries.find((x) => x.id === id); if (e) openEntrySheet(e); } };

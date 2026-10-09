@@ -28,3 +28,8 @@
 - **伸びる欄を測るために縮めない**（`height = 0`/`auto` → `scrollHeight`）。送る器の中身が
   一瞬縮み、送りが頭へ戻される（打つたびに頭へ飛ぶ）。縮めるなら器の `scrollTop` を
   持っておいて戻す。（notes の「打つあいだ」）
+- **store を書いたあとに自分で `render()` を呼ばない。** 出ている画面は app.js の subscribe が組み直すので、
+  呼ぶと二度組む（daily で 約100ms）。出ていない画面だけ自分で。（motion の「押した一拍を軽く」）
+- **測るのは書く前に、まとめて。** class や style を書いたあとに `getBoundingClientRect`・`offsetWidth`・
+  `getComputedStyle`・`scrollTop` を読むと、その場で並べ直してから答える。行ごとに測って書くと行の数だけ
+  並べ直す。（motion の「押した一拍を軽く」）
