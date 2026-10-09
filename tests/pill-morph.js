@@ -6,6 +6,8 @@
    - 動きを減らす設定・広い画面（紙がダイアログ）・新しく足す紙では出さない
    - 飛んでいるあいだ絵は頭と同じ色（紙の外の黒を継がない）。出だしは行の
      丸薬の見た目の写しを重ね、薄めて消す（パッと色が変わらない）
+   - 影武者は丸薬の写し（.hero-node.sheet-morph）だけを数える。紙は行から広がるので
+     （growCard）、行の写し（.tl-row.sheet-morph）も同じ印で出る
    - 絵は 32〜38px のまま（膨らまない）
    - パレットの丸は無い。頭の粒を押すと絵選びが開く
    - 閉じると、頭の丸薬が行の丸薬へ帰る。保存で行が動いても（FLIP の最中でも）
@@ -41,7 +43,7 @@ const { open, checker } = require("./lib");
     const out = { frames: [], hidden: [], colors: [], under: [], marks: [] };
     const t0 = performance.now();
     const tick = () => {
-      const g = document.querySelector(".sheet-morph");
+      const g = document.querySelector(".hero-node.sheet-morph");
       if (g) {
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
@@ -94,7 +96,7 @@ const { open, checker } = require("./lib");
       t.check(`${label}：写しは薄まっていく`, under[under.length - 1] < 0.1,
         `under=${under[under.length - 1]}`);
     }
-    t.check(`${label}：着いたら影武者は消える`, (await page.locator(".sheet-morph").count()) === 0);
+    t.check(`${label}：着いたら影武者は消える`, (await page.locator(".hero-node.sheet-morph").count()) === 0);
     t.check(`${label}：頭の丸薬が見えている`,
       await page.locator(".sheet.is-open .js-hero-node").evaluate((el) => el.style.visibility === "" && getComputedStyle(el).visibility === "visible"));
     t.check(`${label}：行の丸薬が見えている`,
@@ -111,7 +113,7 @@ const { open, checker } = require("./lib");
     const out = { frames: [], under: [], rowHidden: [] };
     const t0 = performance.now();
     const tick = () => {
-      const g = document.querySelector(".sheet-morph");
+      const g = document.querySelector(".hero-node.sheet-morph");
       if (g) {
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
@@ -133,7 +135,10 @@ const { open, checker } = require("./lib");
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     /* 開き終わるまで：紙が開き、開く影武者が消えている。決め打ちの 700ms では、混むと
        開く影武者がまだ飛んでいるうちに閉じる記録が始まり、その一コマ目を「頭から出た」
-       と測って落ちた（R19）。 */
+       と測って落ちた（R19）。
+       待つのは写しぜんぶ（行の写しも）。紙は行から広がるとき押したその場で .is-open になり、
+       丸薬の影武者は次のコマで出る——丸薬だけ見ていると出る前に「消えた」と読み、飛んで
+       いるうちに閉じて帰りが出なかった。 */
     await page.waitForFunction(() => document.querySelector(".sheet.is-open .js-hero-node")
       && !document.querySelector(".sheet-morph"), null, { timeout: 4000 });
     await page.waitForTimeout(100);
@@ -157,7 +162,7 @@ const { open, checker } = require("./lib");
         `${under[0]} → ${under[under.length - 1]}`);
       t.check(`${label}：飛んでいるあいだ行の丸薬は隠れる`, rowHidden.every(Boolean));
     }
-    t.check(`${label}：着いたら影武者は消える`, (await page.locator(".sheet-morph").count()) === 0);
+    t.check(`${label}：着いたら影武者は消える`, (await page.locator(".hero-node.sheet-morph").count()) === 0);
     t.check(`${label}：行の丸薬が見えている`,
       await nodeOf().evaluate((el) => el.style.visibility === ""));
     return home;
@@ -180,7 +185,7 @@ const { open, checker } = require("./lib");
     }, idOf);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(40);
-    t.check("行が無くなったら帰らない", (await page.locator(".sheet-morph").count()) === 0);
+    t.check("行が無くなったら帰らない", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     await page.waitForTimeout(400);
     await page.evaluate((id) => KN.store.updateTodo(id, { due: KN.util.todayKey() }), idOf);
     await page.waitForTimeout(700);
@@ -208,11 +213,11 @@ const { open, checker } = require("./lib");
     const box = await row.locator(".tl-open").boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(60);
-    const flying = await page.locator(".sheet-morph").count();
+    const flying = await page.locator(".hero-node.sheet-morph").count();
     await page.keyboard.press("Escape");
     await page.waitForTimeout(80);
     t.check("途中で閉じる：飛んでいた", flying === 1);
-    t.check("途中で閉じる：影武者は消える", (await page.locator(".sheet-morph").count()) === 0);
+    t.check("途中で閉じる：影武者は消える", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     t.check("途中で閉じる：行の丸薬は戻る",
       await row.locator(".tl-node").evaluate((el) => el.style.visibility === ""));
     await page.waitForTimeout(500);
@@ -222,7 +227,7 @@ const { open, checker } = require("./lib");
   {
     await page.locator(".screen.is-active .js-open-add, .js-open-add").first().click();
     await page.waitForTimeout(80);
-    t.check("＋から足す紙では出ない", (await page.locator(".sheet-morph").count()) === 0);
+    t.check("＋から足す紙では出ない", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(500);
   }
@@ -233,7 +238,7 @@ const { open, checker } = require("./lib");
     const box = await row.locator(".tl-open").boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(60);
-    t.check("動きを減らす設定では出ない", (await page.locator(".sheet-morph").count()) === 0);
+    t.check("動きを減らす設定では出ない", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(500);
     await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -246,7 +251,7 @@ const { open, checker } = require("./lib");
     const box = await row.locator(".tl-open").boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(60);
-    t.check("広い画面では出ない", (await page.locator(".sheet-morph").count()) === 0);
+    t.check("広い画面では出ない", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     await page.keyboard.press("Escape");
     await page.waitForTimeout(400);
   }
