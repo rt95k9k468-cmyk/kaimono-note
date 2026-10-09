@@ -308,6 +308,10 @@
   transition: opacity var(--m-state) var(--ease), background var(--m-state) var(--ease) var(--m-press),
               transform var(--m-settle) var(--ease-settle);
 }
+/* タイルは価格のタイルと同じく、一枚ごと縮む。 */
+.item.is-tile { transition: opacity var(--m-state) var(--ease), background var(--m-state) var(--ease),
+                            transform var(--m-settle) var(--ease-settle), scale var(--m-press) var(--ease); }
+.item.is-tile:not(.is-reordering *):has(> .item-body:active) { scale: var(--press-wide); }
 
 /* Hand the row its own compositor layer for the duration of the gesture, so
    each frame is a transform rather than a repaint of the whole row. */
@@ -1685,6 +1689,7 @@
   color: var(--c-text-2);
 }
 .done-head[aria-expanded="true"] svg { transform: rotate(90deg); }
+.done-head:active { opacity: var(--press-fade); }
 /* 今日買ったもの の開け閉め（screen-list.js の dayBought）。見出しの字の
    並びはそのまま、左に ＞ を足すだけ。指の的は高さ 44px。 */
 .day-bought.is-today .day-bought-head { padding-top: var(--sp-2); padding-bottom: 0; }
@@ -5736,6 +5741,10 @@ textarea.note-title-in {
 .pop-cal-day:disabled:not(.is-today) { opacity: var(--press-off); }
 .pop-cal-day.is-today:disabled { color: var(--c-primary); }
 .pop-cal-day[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); font-weight: var(--fw-bold); }
+/* 押したら、暦の升と同じく沈む。選んである日は塗りを残して縮む。 */
+.pop-cal-day { transition: background var(--m-state) var(--ease), scale var(--m-press) var(--ease); }
+.pop-cal-day:not(:disabled):not([aria-pressed="true"]):active { background: var(--press-sink); }
+.pop-cal-day[aria-pressed="true"]:active { scale: var(--press-dot); }
 /* 作った日の回る列（年・月・日）。真ん中の一行が選ばれる。 */
 .note-pop.is-wheel { width: min(300px, calc(100vw - 16px)); padding: var(--sp-2); overflow: hidden; }
 .note-wheels {
@@ -5981,7 +5990,9 @@ button.note-when:active { opacity: var(--press-fade); }
 /* 押したら行の地が沈む（U6）。持ち上がったら（.is-lifted）・運んでいるあいだは沈まない。
    地を --c-surface-2 にしないのは、丸の地（--tl-wait）と同じ色で丸が溶けるから。 */
 .tl-row { transition: background var(--m-state) var(--ease); }
-.tl-row:not(.is-lifted):not(.is-dragging *):has(.tl-open:active) {
+/* 行のどこを押しても沈む（2026年10月9日。丸を押せば紙が開き、長押しで行のどこからでも運べる）。
+   ✓・手順・済ませた時刻は自分が返事をするので除く。「これから」の行も同じこの規則。 */
+.tl-row:not(.is-lifted):not(.is-dragging *):active:not(:has(.check:active, .tl-subs-chip:active, .tl-doneat:active, .tl-sub-wrap:active)) {
   background: var(--press-sink);
   transition-delay: var(--m-press);
 }
@@ -6651,13 +6662,6 @@ button.note-when:active { opacity: var(--press-fade); }
 .tl-someday .tl-row .tl-rail::before,
 .tl-someday .tl-row .tl-rail::after { display: none; }
 
-/* この欄の行は、題でなくても行のどこを押しても沈む（丸を押せば紙が開き、長押しで運べる）。
-   ✓・手順は自分が返事をするので除く。一拍おくのと、持ち上がったら沈まないのは時間割の行と同じ。 */
-.tl-someday .tl-row:not(.is-lifted):not(.is-dragging *):active:not(:has(.check:active, .tl-subs-chip:active, .tl-doneat:active, .tl-sub-wrap:active)) {
-  background: var(--press-sink);
-  transition-delay: var(--m-press);
-}
-
 /* 期限。題のすぐ下、長さと同じ列に。過ぎたものは字で言います
    （色だけだと、色の意味を知っている人にしか伝わらないので）。 */
 .tl-due {
@@ -6677,6 +6681,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .tl-shelf-chev { display: grid; margin-left: auto; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
 .tl-shelf-chev svg { width: var(--ico-sm); height: var(--ico-sm); }
 .tl-shelf-head[aria-expanded="true"] .tl-shelf-chev { rotate: 90deg; }
+.tl-shelf-head:active { opacity: var(--press-fade); }
 .tl-wait { color: var(--c-text-2); }
 /* 見直しの小窓（一件ずつ。screen-todo.js の reviewSheet）。頭の一行からふくらむ白い小窓。灰色の面は使わない
    （利用者の声「グレーは見づらい」）。上に日を決める三つを大きく、その下に白い束（右に押したらどうなるかの一言）。
@@ -6945,6 +6950,9 @@ button.note-when:active { opacity: var(--press-fade); }
   stroke: transparent; stroke-width: 30; pointer-events: stroke; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* 停留所を押したら、その太い透明な線が文字色 8% に沈む（空いた道の .road-free と同じ濃さ）。一拍おいてから。 */
+.road-hit { transition: stroke var(--m-state) var(--ease); }
+.road-hit:active { stroke: color-mix(in srgb, var(--c-text) 8%, transparent); transition-delay: var(--m-press); }
 /* 人。塗りの歩く人（day-road.js の ME_PARTS）で、まわりに紙の色の縁（道や札の
    上でも読めるように）。線の太さは day-road.js が元の絵の単位で書きます。 */
 .road-me path { stroke-linecap: round; stroke-linejoin: round; }
