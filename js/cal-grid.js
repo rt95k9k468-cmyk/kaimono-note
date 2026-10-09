@@ -29,12 +29,15 @@
     const isToday = key === o.today && (!out || !!o.outToday);
     const isHere = !out && !!o.here && key === o.here;
     const m = o.mark(key, out) || {};
+    /* 祝日（js/holiday.js・roadmap-3.1 の K1）は日曜と同じ色。土曜の祝日に is-sat を
+       付けない——二つの色の規則に同じマスを取り合わせない（docs/traps.md）。 */
+    const hol = KN.holiday ? KN.holiday.of(key) : null;
     const cell = node(html`
       <button class="cal-day ${out ? "is-out" : ""} ${isToday ? "is-today" : ""} ${isHere ? "is-here" : ""}
-                     ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}"
+                     ${hol ? "is-hol" : (wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : ""))}"
               data-day="${key}" ${isToday ? raw('aria-current="date"') : ""}
               ${out && !o.outFocus ? raw('tabindex="-1"') : ""}
-              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}${isToday ? "（今日）" : ""}${m.label || ""}">
+              aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}${hol ? ` ${hol}` : ""}${isToday ? "（今日）" : ""}${m.label || ""}">
         <span class="cal-n">${d ? String(d.getDate()) : ""}</span>
         <span class="cal-dots">${raw(m.html || "")}</span>
       </button>
