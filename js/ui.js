@@ -1645,7 +1645,7 @@
 
   /** 時刻を選ぶ車輪の小窓（"HH:MM"・時と1分きざみの分）。作りは popDate と同じで、決めるのは閉じたとき。
       空の欄はいまの時刻から回す（U8・端末の時刻欄をやめた）。 */
-  function popTime(anchor, { value, label = "時刻", onPick } = {}) {
+  function popTime(anchor, { value, label = "時刻", cls = "", onPick } = {}) {
     const U = KN.util;
     const key = U.isTime(value) ? value : U.nowTime();
     const at = { h: Number(key.slice(0, 2)), m: Number(key.slice(3, 5)) };
@@ -1656,7 +1656,7 @@
     mc.fill(Array.from({ length: 60 }, (_, i) => i));
     box.append(hc.el, mc.el);
     const p = popOver(anchor, {
-      side: "left", label, cls: "is-pick is-wheel",
+      side: "left", label, cls: `is-pick is-wheel ${cls}`,
       onClose: () => {
         hc.settle(); mc.settle();
         const next = `${String(at.h).padStart(2, "0")}:${String(at.m).padStart(2, "0")}`;
