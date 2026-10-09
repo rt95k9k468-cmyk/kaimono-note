@@ -498,8 +498,8 @@
   /* One sheet for both, because a todo written in a hurry is the same object
      as a todo corrected later, and two forms that differ by a title bar is two
      places for a field to go missing from. */
-  /* from … 押した行の丸薬（`.tl-node`）。渡すと、それが紙の頭の丸薬へ
-     伸びていきます（ui.js の morphPill）。 */
+  /* from … 押した行の丸薬（`.tl-node`）か、一覧の行（`.item-wrap`）。紙はその行から広がり、
+     丸薬なら紙の頭の丸薬へ伸びていきます（ui.js の growCard・morphPill）。 */
   function openSheet(todoId, from, opts) {
     const editing = !!todoId;
     const t = editing ? store.getTodo(todoId) : null;
@@ -846,14 +846,25 @@
       });
     }
 
+    /* 押した行（時間割・これから・一覧）。紙はその行から広がって出て、閉じるとその行へ縮んで
+       戻る（ui.js の growCard。2026年10月9日、利用者の希望）。 */
+    const rowEl = editing && from ? from.closest(".tl-row, .item-wrap") : null;
+    const pill = from && from.classList.contains("tl-node") ? from : null;
     const handle = KN.ui.sheet({
       title: editing ? "やることを直す" : "やることを追加",
       hero,
+      /* どこから開いても、四隅の丸いカード（＋から開いたのと同じ形）。 */
+      card: true,
+      grow: rowEl ? {
+        from: rowEl, hide: ".tl-node",
+        back: () => document.querySelector(`.screen.is-active ${rowEl.matches(".tl-row") ? ".tl-row" : ".item-wrap"}`
+          + `[data-todo-id="${CSS.escape(todoId)}"]`),
+      } : null,
       /* back … 閉じるときの帰り先。保存で時間割が組み直されると行は別の
          要素になるので、要素ではなく**引き方**を渡します（出ている画面に
          絞って、id から）。 */
-      morph: editing && from ? {
-        from, to: hero.querySelector(".js-hero-node"),
+      morph: editing && pill ? {
+        from: pill, to: hero.querySelector(".js-hero-node"),
         back: () => document.querySelector(
           `.screen.is-active .tl-row[data-todo-id="${CSS.escape(todoId)}"] .tl-node`),
       } : null,
@@ -2308,7 +2319,7 @@
       store.updateTodo(t.id, { flagged: !t.flagged });
       haptic(12);
     });
-    row.querySelector(".item-body").addEventListener("click", () => openSheet(t.id));
+    row.querySelector(".item-body").addEventListener("click", () => openSheet(t.id, wrap));
 
     const iconBtn = row.querySelector(".js-icon-pick");
     if (iconBtn) iconBtn.addEventListener("click", () => {

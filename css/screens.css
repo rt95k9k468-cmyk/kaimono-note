@@ -6655,12 +6655,14 @@ button.note-when:active { opacity: var(--press-fade); }
 /* 時刻の列は空けたまま置きます。**詰めません**——詰めると丸の位置が
    時間割とずれて、上下で別の並びに見えます。運べる先は上の時間割なので、
    同じ縦位置に丸があることのほうが要ります。 */
-.tl-someday .tl-row .tl-time { visibility: hidden; }
+/* 入れもの（.tl-someday）ではなく行の印で見ます。紙が行から広がるとき、行の写しは入れものの
+   外に出るので（ui.js の growCard）、入れもので見ると写しにだけ背骨が引かれていた。 */
+.tl-row.is-someday .tl-time { visibility: hidden; }
 
 /* 背骨（縦の線）は引きません。時刻が無いので、つなぐ時間がありません。
    丸だけが残ります。 */
-.tl-someday .tl-row .tl-rail::before,
-.tl-someday .tl-row .tl-rail::after { display: none; }
+.tl-row.is-someday .tl-rail::before,
+.tl-row.is-someday .tl-rail::after { display: none; }
 
 /* 期限。題のすぐ下、長さと同じ列に。過ぎたものは字で言います
    （色だけだと、色の意味を知っている人にしか伝わらないので）。 */
