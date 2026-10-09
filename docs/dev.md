@@ -102,7 +102,9 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - **main へ push すると GitHub が門（`run-all.js --gate`）を回し、落ちたら配られない。**
   流したあとは `actions_list` で結論を一度見る（門の決めごとは `tests/README.md`）。
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
-  （`app.js` の `controllerchange`）。`newContext({ serviceWorkers: "block" })` で作る。
+  （`app.js` の `controllerchange`。刻印の無い手元の版だけ——配った版は動いている版と同じなら読み直さない、
+  roadmap-seamless の N1）。`newContext({ serviceWorkers: "block" })` で作る。版の入れ替えそのものは
+  `tests/update-path.js`（`sw.js` を触ったら `offline`・`startup`・`csp` と一緒に回す）。
   日記の本文と控えは IndexedDB にもあり、reload をまたいで残る（docs/storage.md の
   「試験の罠」）。
 - `tests/` に無い試験（daily2-smoke.js / aimeal.js など、9月26日より前の

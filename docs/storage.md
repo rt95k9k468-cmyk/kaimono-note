@@ -499,7 +499,7 @@ WebKit は localStorage と IndexedDB を別のファイルに持つので、片
 ## 試験の罠
 
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって一度読み直す（app.js の
-  `controllerchange`）。`browser.newContext({ serviceWorkers: "block" })` で。
+  `controllerchange`。刻印の無い手元の版だけ——roadmap-seamless の N1）。`browser.newContext({ serviceWorkers: "block" })` で。
 - IndexedDB は reload をまたいで残る。localStorage だけを書き換えて試すと、写しとの
   突き合わせが走る——**`lsSeq` を持たせずに書けば写しが勝つ**（2026年9月28日から。
   それまでは元が勝った）。元を勝たせたいなら、`lsSeq` を写しの番号（`meta.diarySeq`）

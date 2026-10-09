@@ -99,11 +99,16 @@ const ASSETS = [
   "icons/icon-512.png",
 ];
 
+/* 入口をネットで待つのはここまで。来なければ控えの入口で開く（roadmap-seamless の N2。
+   店の中の、つながっているのに返事の来ない電波）。 */
+const SHELL_WAIT = 1500;
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE)
       // Individual failures (e.g. a missing icon) must not abort the install.
-      .then((cache) => Promise.allSettled(ASSETS.map((a) => cache.add(a))))
+      /* `no-cache`：HTTP の10分の控え（GitHub Pages）から古い index.html を拾わない（N2）。 */
+      .then((cache) => Promise.allSettled(ASSETS.map((a) => cache.add(new Request(a, { cache: "no-cache" })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -135,19 +140,22 @@ self.addEventListener("fetch", (event) => {
   if (req.mode === "navigate") {
     const last = url.pathname.split("/").pop();
     const shell = last === "" || last === "index.html" || !last.includes(".");
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (shell && res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put("index.html", copy));
-          }
-          return res;
-        })
-        .catch(() => (shell
-          ? caches.match("index.html").then((r) => r || caches.match("./"))
-          : caches.match(req)))
-    );
+    if (!shell) {
+      event.respondWith(fetch(req).catch(() => caches.match(req)));
+      return;
+    }
+    /* 入口（N2）：ネットは `no-cache`（HTTP の10分の控えを越えて確かめ直す。変わっていなければ小さな返事）。
+       SHELL_WAIT 待って来なければ控えの入口で開き、ネットの返事は後から控えに入れる（次に開くとき新しい版）。 */
+    const net = fetch(new Request(req, { cache: "no-cache" }));
+    const kept = () => caches.match("index.html").then((r) => r || caches.match("./"));
+    event.waitUntil(net.then((res) => (res && res.ok ? keepShell(res.clone()) : null)).catch(() => {}));
+    event.respondWith(new Promise((resolve) => {
+      let done = false;
+      const give = (r) => { if (r && !done) { done = true; resolve(r); } };
+      const timer = setTimeout(() => kept().then(give), SHELL_WAIT);
+      net.then((res) => { clearTimeout(timer); give(res); },
+        () => { clearTimeout(timer); kept().then((r) => give(r || Response.error())); });
+    }));
     return;
   }
 
@@ -180,6 +188,23 @@ self.addEventListener("fetch", (event) => {
       return cached || network;
     })
   );
+});
+
+/* 控えの入口を差し替えるのは、その入口が読む css・js が全部この控えに揃ってから（roadmap-seamless の3節の2）。
+   揃わないうちは前の入口のまま——電波の無いときに、半分しか無い版で開かないように。足りないものはここで取る。 */
+async function keepShell(res) {
+  const html = await res.clone().text();
+  const cache = await caches.open(CACHE);
+  const refs = [...html.matchAll(/(?:src|href)="((?:css|js)\/[^"]+)"/g)].map((m) => new URL(m[1], self.location.href).href);
+  await Promise.all(refs.map((u) => cache.match(u).then((hit) => hit || cache.add(u))));
+  await cache.put("index.html", res);
+}
+
+/* いま控えを持っている版を訊かれたら答える（N1。app.js の controllerchange が、動いている版と比べる）。 */
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "kn-version" && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ version: VERSION });
+  }
 });
 
 /* ---------------- 閉じていても鳴る通知（D1。js/bell.js） ----------------
