@@ -2456,42 +2456,24 @@
     KN.ui.toast(msg, { actions: acts });
   }
 
-  /** 済ませた時刻を、押したところに出る車輪で直す。閉じたときに一度だけ書きます
-      （回しているあいだ毎回書くと、そのたびに組み直しと保存が走るので）。 */
+  /** 済ませた時刻を、押したところに出る車輪で直す（`KN.ui.popTime`——止めると行へ寄り、下に OK）。
+      閉じたときに一度だけ書きます（回しているあいだ毎回書くと、そのたびに組み直しと保存が走るので）。
+      前は自前の車輪で、寄せも OK も無く行の途中で止まった（2026年10月9日・利用者の声）。 */
   function editDoneAt(id, anchor) {
     const t0 = store.getTodo(id);
     if (!t0 || !doneClock(t0.doneAt)) return;
     const was = new Date(t0.doneAt);
-    const ROW = KN.gesture.WHEEL_ROW;
-    const col = (vals, label, fmt) => {
-      const el = node(html`<div class="note-wheel" role="listbox" aria-label="${label}" tabindex="0"></div>`);
-      vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
-      const idx = () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / ROW)));
-      const mark = () => [...el.children].forEach((r, k) => r.setAttribute("aria-selected", String(k === idx())));
-      el.addEventListener("scroll", mark, { passive: true });
-      el.addEventListener("click", (e) => {
-        const r = e.target.closest(".note-wheel-row");
-        if (r) el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
-      });
-      return { el, value: () => vals[idx()], go: (v) => { el.scrollTop = vals.indexOf(v) * ROW; mark(); } };
-    };
-    const h = col(Array.from({ length: 24 }, (_, i) => i), "時", (v) => `${v}時`);
-    const m = col(Array.from({ length: 60 }, (_, i) => i), "分", (v) => `${String(v).padStart(2, "0")}分`);
-    const p = KN.ui.popOver(anchor, { side: "left", label: "済ませた時刻", cls: "is-wheel done-at-pop",
-      onClose: () => {
-        const undo = store.setDoneTime(id, h.value(), m.value());
+    const hm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    KN.ui.popTime(anchor, { value: hm(was.getHours(), was.getMinutes()), label: "済ませた時刻", cls: "done-at-pop",
+      onPick: (v) => {
+        const h = Number(v.slice(0, 2)), m = Number(v.slice(3, 5));
+        const undo = store.setDoneTime(id, h, m);
         if (!undo) return;
         haptic();
-        KN.ui.toast(`「${t0.title}」 ${h.value()}:${String(m.value()).padStart(2, "0")}`, {
+        KN.ui.toast(`「${t0.title}」 ${h}:${String(m).padStart(2, "0")}`, {
           action: { label: "元に戻す", onClick: undo },
         });
       } });
-    const box = node(html`<div class="note-wheels tw"></div>`);
-    box.append(h.el, m.el);
-    p.el.append(box);
-    p.place();
-    h.go(was.getHours());
-    m.go(was.getMinutes());
   }
 
 

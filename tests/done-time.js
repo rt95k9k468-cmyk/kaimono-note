@@ -26,9 +26,12 @@ const { open, checker } = require("./lib");
   c.check("車輪の小窓が出る", await page.evaluate(() => document.querySelectorAll(".note-pop.done-at-pop .note-wheel").length === 2));
   await page.evaluate(() => {
     const [h, m] = document.querySelectorAll(".done-at-pop .note-wheel");
-    h.scrollTop = 11 * 40; m.scrollTop = 30 * 40;
+    h.scrollTop = 11 * 40; m.scrollTop = 30 * 40 + 17;   // 行の途中で止める
   });
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(900);
+  const off = await page.evaluate(() => document.querySelectorAll(".done-at-pop .note-wheel")[1].scrollTop % 40);
+  c.check("途中で止めても行へ寄る", off === 0, off);
+  c.check("小窓に OK", await page.evaluate(() => !!document.querySelector(".done-at-pop .when-ok")));
   await page.click(".note-pop-cover");
   await page.waitForTimeout(400);
   const d = await page.evaluate((i) => { const x = new Date(KN.store.getTodo(i).doneAt); return [x.getDate(), x.getHours(), x.getMinutes()]; }, id);
@@ -45,7 +48,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(400);
   const hm = await page.evaluate(() => [...document.querySelectorAll(".done-at-pop [aria-selected=true]")].map((r) => r.textContent));
   c.check("行から開いた小窓は今の時刻に合っている", hm.join() === "11時,30分", hm.join());
-  await page.click(".note-pop-cover");
+  await page.click(".done-at-pop .when-ok");
   await page.waitForTimeout(300);
   c.check("回さずに閉じれば変わらない", await page.evaluate((i) => new Date(KN.store.getTodo(i).doneAt).getMinutes() === 30, id));
   c.check("詳細の紙は開かない", !(await page.$(".sheet")));
