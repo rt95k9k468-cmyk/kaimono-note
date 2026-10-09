@@ -5,8 +5,8 @@
       ＋だけは膨らむ（css/screens.css の .add-fab）ので外す。
    三、押せないときの薄さは --press-off 一つ。
    四、行と升の地は --press-sink へ沈む。主な行（買うもの・用事・ノート・アーカイブ）は一拍おいてから、
-      用事の行は持ち上がったら・運んでいるあいだは沈まない。
-   五、押しても見た目が何も変わらなかったもの（2026年10月9日の実測の33種）も、名前で返事をする。
+      用事の行は持ち上がったら・運んでいるあいだは沈まない。時間割も「これから」も、行のどこを押しても沈む。
+   五、押しても見た目が何も変わらなかったもの（2026年10月9日の実測の33種と、その残りの6種）も、名前で返事をする。
    画面は開かない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/press-dict.js */
@@ -47,7 +47,7 @@ t.check(":active の地は --c-surface-2 でなく --press-sink", !surf.length, 
 
 const ROWS = [
   ["買うもの", /\.item\b.*:has\(> \.item-body:active\)/],
-  ["用事", /\.tl-row:not\(\.is-lifted\):not\(\.is-dragging \*\):has\(\.tl-open:active\)/],
+  ["用事", /^\.tl-row:not\(\.is-lifted\):not\(\.is-dragging \*\):active:not\(:has\(\.check:active/],
   ["ノート", /\.note-row\.is-card:has\(> \.note-open:active\)/],
   ["アーカイブ", /\.arc-row:has\(> \.arc-row-body:active\)/],
   ["設定", /^\.set-row:active$/],
@@ -66,7 +66,7 @@ const QUIET = [
   ["品物の紙の★", /\.pd-fav:active/], ["行く日を決める帯", /\.trip-plan-btn:active/],
   ["価格の行", /\.product:has\(> \.product-main:active\)/], ["価格のタイル", /\.product\.is-tile:has\(> \.product-main:active\)/],
   ["道の札", /\.road-label:active/], ["道具箱の丸", /\.road-tool:active/], ["連れの丸", /\.road-bead:active/],
-  ["「これから」の行", /\.tl-someday \.tl-row.*:active/], ["「これから」の見出し", /\.tl-someday-add:active/],
+  ["「これから」の行", /^\.tl-row:not\(\.is-lifted\).*:active/], ["「これから」の見出し", /\.tl-someday-add:active/],
   ["はみ出しの一行", /\.tl-over:active/], ["済んだものの開け閉め", /\.tl-done-toggle:active/],
   ["食事の枠", /\.diet-slot-view.*:active/], ["体重", /\.diet-hero-main:active/], ["体の数の三つ", /\.diet-stat:active/],
   ["AI推計の帯", /\.diet-memo-open:active/], ["日記の行", /\.arc-log-row:active/], ["積み上げの行", /\.arc-feed-row:active/],
@@ -75,18 +75,26 @@ const QUIET = [
   ["これからの二週間の一枚", /\.up-day:active/], ["日付・時刻の欄", /\.when-btn:active/], ["ドラムの行", /\.note-wheel-row:active/],
   ["切り替え", /\.seg-btn:active/], ["色の丸", /\.accent-dot:active/], ["畳んだ説明の見出し", /\.set-more > summary:active/],
   ["トーストの「元に戻す」", /\.toast-action:active/],
+  /* 残りの6種（同じ日の二度目の実測）。時間割の丸（.tl-rail）は行ごと沈む（上の「用事」）。 */
+  ["待つ・いつかの見出し", /\.tl-shelf-head:active/], ["アーカイブの見出し", /\.done-head:active/],
+  ["小窓の暦の日", /\.pop-cal-day:not\(:disabled\):not\(\[aria-pressed="true"\]\):active/],
+  ["小窓の暦の選んである日", /\.pop-cal-day\[aria-pressed="true"\]:active/],
+  ["タイルの買うもの", /\.item\.is-tile.*:has\(> \.item-body:active\)/],
 ];
 for (const [name, re] of QUIET) {
   const r = rules.find((x) => re.test(x.sel));
   t.check(`${name}は押したら返事をする（--press-*）`, !!r && /var\(--press-(wide|dot|sink|fade)\)/.test(r.body), r ? r.sel : "規則が無い");
 }
 for (const [name, re] of [["日記の行", /\.arc-log-row:active/], ["積み上げの行", /\.arc-feed-row:active/],
-  ["食事の枠", /\.diet-slot-view.*:active/], ["ドラムの行", /\.note-wheel-row:active/], ["「これから」の行", /\.tl-someday \.tl-row.*:active/]]) {
+  ["食事の枠", /\.diet-slot-view.*:active/], ["ドラムの行", /\.note-wheel-row:active/], ["「これから」の行", /^\.tl-row:not\(\.is-lifted\).*:active/]]) {
   const r = rules.find((x) => re.test(x.sel));
   t.check(`${name}は一拍おいて返事をする`, !!r && /transition(-delay)?\s*:[^;]*var\(--m-press\)/.test(r.body));
 }
 const road = rules.find((x) => /\.day-road:has\(\.road-free:active\) \.road-base/.test(x.sel));
 t.check("道の空いたところを押したら、道が一拍おいて沈む", !!road && /stroke\s*:/.test(road.body)
   && /var\(--m-press\)/.test(road.body), road ? road.sel : "規則が無い");
+const stop = rules.find((x) => /^\.road-hit:active$/.test(x.sel));
+t.check("停留所を押したら、透明な線が一拍おいて沈む（8%）", !!stop && /stroke\s*:\s*color-mix\(in srgb, var\(--c-text\) 8%/.test(stop.body)
+  && /var\(--m-press\)/.test(stop.body), stop ? stop.sel : "規則が無い");
 
 t.done();
