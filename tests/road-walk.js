@@ -315,6 +315,27 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
   });
   c.check("時刻の字は初めから「いま」（9:43）", /9:43/.test(timeTxt), timeTxt.slice(0, 80));
 
+  /* 連れ（時刻の無い「メール」）は人と一緒に歩く：歩いている途中も人との間は止まったときと同じ
+     （2026年10月9日・利用者「先に今の時刻に着いていて、人が追いつく形になっている」）。 */
+  await page.click('.tab[data-tab="archive"]');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => localStorage.setItem("kn-road-seen", "2026-09-29 553"));
+  await page.click('.tab[data-tab="todo"]');
+  const gapAt = () => page.evaluate(() => {
+    const r = document.querySelector('.screen[data-screen="todo"] .day-road');
+    const m = r.querySelector(".road-me"), b = r.querySelector(".road-bead[data-b]");
+    const v = m.getAttribute("transform").match(/-?\d+(?:\.\d+)?/g).map(Number);
+    const [W, H] = m.__box;
+    return { dx: parseFloat(b.style.left) * W / 100 - v[0], dy: parseFloat(b.style.top) * H / 100 - v[1], x: v[0] };
+  });
+  await page.waitForTimeout(600);
+  const mid = await gapAt();
+  await page.waitForTimeout(1500);
+  const end = await gapAt();
+  c.check("連れは人と一緒に歩く：途中も人との間は止まったときと同じ",
+    Math.abs(mid.x - end.x) > 3 && Math.abs(mid.dx - end.dx) < 1 && Math.abs(mid.dy - end.dy) < 1,
+    JSON.stringify({ mid, end }));
+
   cu = await catchUp("2026-09-29 300");   // 朝 5:00 に見た（離れすぎ）
   const tookFar = cu.moving.length ? cu.moving[cu.moving.length - 1].t - cu.click : null;
   c.check("離れすぎなら終わりのほうだけ歩く：歩き出しは「いま」の道120ぶん手前",

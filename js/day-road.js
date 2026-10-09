@@ -657,10 +657,20 @@
     };
     /* 上がりきったときに、一歩がちょうど step。 */
     const dur = WALK.steps * step / (1 - WALK.rampIn / 2 - WALK.rampOut / 2);
+    /* 連れ（時刻の無いもの）は人と一緒に歩く（2026年10月9日・利用者「先に今の時刻に着いていて、
+       人が追いつく形になっている」）。丸は HTML なので、人との差を道の割合で left/top に足す。 */
+    const beads = glide && me.__box ? [...root.querySelectorAll(".day-road .road-bead[data-b]")]
+      .map((el) => ({ el, l: parseFloat(el.style.left), t: parseFloat(el.style.top) }))
+      .filter((b) => Number.isFinite(b.l) && Number.isFinite(b.t)) : [];
+    const follow = (dx, dy) => beads.forEach((b) => {
+      b.el.style.left = (b.l + dx / me.__box[0] * 100).toFixed(3) + "%";
+      b.el.style.top = (b.t + dy / me.__box[1] * 100).toFixed(3) + "%";
+    });
     const t0 = performance.now();
     me.__walk = true;
     const rest = () => {
       me.__walk = false;
+      if (beads.length) follow(0, 0);
       still(me.dataset.face);
       if (me.__at) { turn(me.__at.face); me.setAttribute("transform", meAt(me.__at)); }
     };
@@ -673,6 +683,7 @@
         const k = walkPhase(tau) / (WALK.steps / 2), to = me.__at;
         const at = me.__stand(glide.d + (to.d - glide.d) * k, glide.h + (to.h - glide.h) * k);
         me.setAttribute("transform", meAt(at));
+        if (beads.length) follow(at.x - to.x, at.y - to.y);
         face = at.face;
       }
       turn(face);
@@ -1170,6 +1181,7 @@
       me.__stand = (d, h) => standAt(g, d, h);
       me.__dist = g.dist;
       me.__hAt = (m) => (onStop(m) ? STOP : ROAD);
+      me.__box = [W, g.H];   // 連れ（HTML の丸）を割合で動かすため（walk）
       const to = me.__stand(dNow, me.__hAt(nowMin));
       me.__at = to;
       me.__min = nowMin;
