@@ -76,6 +76,25 @@ const H = 844;
   const d = await look();
   c.check("キーボードを下げれば札と日付が戻る", d.pick && d.dateShown && d.memoLabel);
 
+  /* 長い本文の一番下を押す → キーボードで欄が縮んでも、押した行（終わり）が見えている
+     （2026年10月9日・利用者「一番下を押したのに真ん中にずれる」）。 */
+  await page.evaluate(() => {
+    const ta = document.querySelector(".sheet.is-card .js-memo");
+    ta.value = Array.from({ length: 60 }, (_, i) => `${i + 1}行目のことを書いた。`).join("\n");
+    ta.scrollTop = ta.scrollHeight;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  });
+  await page.evaluate(() => window.__kb({ h: 460, inner: 460 }));
+  await page.waitForTimeout(700);
+  const e = await page.evaluate(() => {
+    const ta = document.querySelector(".sheet.is-card .js-memo");
+    return { gap: ta.scrollHeight - ta.scrollTop - ta.clientHeight };
+  });
+  c.check("一番下を押した行は、欄が縮んでも見えている", e.gap < 12, `下に隠れた ${Math.round(e.gap)}px`);
+  await page.evaluate(() => document.activeElement.blur());
+  await page.evaluate(() => window.__kb(null));
+
   c.check("エラー0", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();
