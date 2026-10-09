@@ -37,12 +37,14 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
   "row-heights",                   // roadmap-unify の U12：行の背丈は三つの札（画面を開かない）
   "inline-style",                  // roadmap-unify の U13：値の決まった style= が増えない・小見出しの字（画面を開かない）
   "chip-icon-size",                // roadmap-unify の U14：札の高さは二つ・絵の直書きは入れものだけ（画面を開かない）
-  "smooth"];                       // なめらかさ（2026年10月9日）：二度組み・毎フレームの当て・動きの最中の保存が戻らない（数で見る）
+  "smooth",                        // なめらかさ（2026年10月9日）：二度組み・毎フレームの当て・動きの最中の保存が戻らない（数で見る）
+  "update-path"];                  // roadmap-seamless の N1・N2：版の入れ替えで読み直すのは要るときだけ・入口は1.5秒で控えへ・控えは揃ってから
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */
 const SLOW = { passed: 60, "head-still": 55, "road-walk": 50, "diary-idb": 45, "day-road": 40,
-  "scroll-anchor": 85, "pill-morph": 35, "shop-day": 30, "day-swipe": 30, "road-lead": 30, sets: 25, "due-sheet": 25 };
+  "scroll-anchor": 85, "pill-morph": 35, "shop-day": 30, "day-swipe": 30, "road-lead": 30, sets: 25, "due-sheet": 25,
+  "update-path": 60 };
 
 function parseArgs(argv) {
   const o = { jobs: 3, gate: false, verbose: false, names: [] };
