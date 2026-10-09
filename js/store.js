@@ -1338,9 +1338,74 @@
   }
 
   let saveTimer = null;
+  let saveDue = 0;      // まとめる待ちが明けた時刻（動きを待ち始めた時刻）
+  let saveByHand = false;
   function persist() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveOnce, 120);
+    saveDue = 0;
+    saveByHand = Date.now() - handAt < HAND_MS;
+    saveTimer = setTimeout(saveWhenStill, 120);
+  }
+
+  /* **書くのは、動きの外で**（docs/motion.md の「押した一拍を軽く」・2026年10月9日）。
+     一度書くのは、記録ぜんぶを字にして元と写しへ置く仕事で、記録が大きいと 30〜100ms
+     かかります（1年ぶん・CPU 1倍）。120ms の待ちは、ちょうど✓が描かれ・取り消し線が
+     引かれているさなかに明けるので、その動きがそこで止まって見えました。
+     待ちが明けたとき、**主の糸が描いている動き**（✓の幕・取り消し線・色の移りなど）が
+     走っていれば、それが終わるまでもう少し待ちます——**ただし STILL_MAX まで**。
+     - 待たない動き：`transform` と `opacity` だけの動き（行が滑る・紙・席の流れ。描くのは
+       合成の糸で、主の糸が詰まっても止まらない）と、くり返す動き。
+     - 待つのは**指やキーで何かした直後の書き換え**だけ（HAND_MS のうち）。起動の片づけ・
+       届いた歩数・ほかの道から来た書き換えは、これまでどおり 120ms で書きます。
+     - 隠れる・閉じる瞬間の書き出し（flush）と、今すぐ書く saveNow はこれまでどおり
+       待ちません（saveTimer は待っているあいだ立ったまま）。 */
+  const STILL_MAX = 450;
+  const HAND_MS = 1000;
+  let handAt = -Infinity;
+  if (typeof window !== "undefined" && window.addEventListener) {
+    ["pointerdown", "keydown", "input"].forEach((t) =>
+      window.addEventListener(t, () => { handAt = Date.now(); }, { capture: true, passive: true }));
+  }
+  function saveWhenStill() {
+    const now = Date.now();
+    if (!saveDue) saveDue = now;
+    const left = STILL_MAX - (now - saveDue);
+    const busy = saveByHand && left > 0 ? paintingFor() : 0;
+    if (busy > 0) {
+      saveTimer = setTimeout(saveWhenStill, Math.min(busy + 20, left));
+      return;
+    }
+    saveOnce();
+  }
+
+  /** 主の糸が描いている動きが、あと何 ms で止まるか（合成に乗る動き・くり返すもの・
+      止まっているものは数えない）。 */
+  const ON_COMPOSITOR = new Set(["transform", "translate", "scale", "rotate", "opacity"]);
+  const META_KEYS = new Set(["offset", "computedOffset", "easing", "composite"]);
+  function paintsOnMain(a) {
+    if (a.transitionProperty) return !ON_COMPOSITOR.has(a.transitionProperty);
+    const props = new Set();
+    (a.effect.getKeyframes ? a.effect.getKeyframes() : []).forEach((k) =>
+      Object.keys(k).forEach((p) => { if (!META_KEYS.has(p)) props.add(p); }));
+    if (!props.size) return false;
+    return [...props].some((p) => !ON_COMPOSITOR.has(p));
+  }
+  function paintingFor() {
+    try {
+      if (typeof document === "undefined" || !document.getAnimations
+        || document.visibilityState === "hidden") return 0;
+      let most = 0;
+      document.getAnimations().forEach((a) => {
+        if (a.playState !== "running" || !a.effect || !a.effect.getComputedTiming) return;
+        const t = a.effect.getComputedTiming();
+        const end = Number(t.endTime), at = Number(t.localTime);
+        if (!isFinite(end) || !isFinite(at) || end - at <= 0) return;
+        if (!paintsOnMain(a)) return;
+        const rate = Math.abs(a.playbackRate || 1);
+        most = Math.max(most, (end - at) / rate);
+      });
+      return most;
+    } catch (_) { return 0; }
   }
 
   /* 一度書きます。書けたら true。 */
@@ -1983,8 +2048,30 @@
   function dayOfStamp(v) {
     const str = String(v || "");
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    const key = KN.util.dayKey(new Date(str));
-    return key || dayKeyOf(str);
+    /* 直した答えは覚えておきます（docs/motion.md の「押した一拍を軽く」）。ひと月の
+       まとめは、その月の日ごとに記録ぜんぶを日に直すので、同じ字を何万回も直していました
+       （daily へ移るたびに 約30ms。1年ぶんの記録・CPU 1倍）。 */
+    const memo = stampMemo();
+    let key = memo.get(str);
+    if (key === undefined) {
+      key = KN.util.dayKey(new Date(str)) || dayKeyOf(str);
+      memo.set(str, key);
+    }
+    return key;
+  }
+  /* 覚えた答えは、端末の時刻帯で決まります（同じ時刻でも、日本とよそでは日が違う）。
+     時刻帯が変わったら（旅先）、忘れてから数え直します。見るのは一秒に一度。
+     `let state = load()` より先に呼ばれても落ちないよう、置き場は関数そのものに
+     （下に const で置くと TDZ。CLAUDE.md の「コードの罠」）。 */
+  function stampMemo() {
+    const m = stampMemo;
+    const now = Date.now();
+    if (!m.map || now - m.at > 1000) {
+      const tz = new Date().getTimezoneOffset();
+      if (!m.map || m.tz !== tz || m.map.size > 50000) { m.map = new Map(); m.tz = tz; }
+      m.at = now;
+    }
+    return m.map;
   }
 
   function dayFeed(day) {

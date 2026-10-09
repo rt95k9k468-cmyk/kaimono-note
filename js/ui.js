@@ -1161,6 +1161,13 @@
       // 半分より多くが新顔なら、これは編集ではなく行き先の変更です。
       if (fresh.length > rows.length / 2) return;
 
+      /* **測るのを先に、まとめて。** 一行ずつ「測って→ずらして」と交互にすると、ずらした
+         行のせいで次の行を測るたびに並べ直しが入ります（四十行で四十回。docs/motion.md の
+         「押した一拍を軽く」）。先に全部を測れば、並べ直しは最初の一回だけ。 */
+      const now = new Map();
+      rows.forEach((el) => {
+        if (first.has(el.dataset.flip)) now.set(el, el.getBoundingClientRect().top);
+      });
       let moved = false;
       rows.forEach((el) => {
         const was = first.get(el.dataset.flip);
@@ -1179,7 +1186,7 @@
             { once: true });
           return;
         }
-        const dy = was - el.getBoundingClientRect().top;
+        const dy = was - now.get(el);
         if (Math.abs(dy) < 1) return;          // 動いていない行は触りません
         el.style.transition = "none";
         el.style.transform = `translateY(${dy}px)`;

@@ -80,10 +80,20 @@
 
   /* ---------- numbers & money ---------- */
 
+  /* 数の書式は、一度作って使い回します（docs/motion.md の「押した一拍を軽く」）。
+     `toLocaleString("ja-JP")` は呼ぶたびに書式の道具を作り直すので、品物の多い一覧を
+     組むたびにそれだけで 約13ms かかっていました（1年ぶんの記録・CPU 1倍）。出る字は同じ。
+     作れない端末では、これまでどおり toLocaleString で。 */
+  let yenFmt = null, yenFineFmt = null;
+  function fmtOf(opts) {
+    try { return new Intl.NumberFormat("ja-JP", opts); } catch (_) { return null; }
+  }
+
   /** ¥1,280 — rounded to whole yen. */
   function yen(n) {
     if (!isFinite(n)) return "—";
-    return "¥" + Math.round(n).toLocaleString("ja-JP");
+    if (!yenFmt) yenFmt = fmtOf() || { format: (v) => v.toLocaleString("ja-JP") };
+    return "¥" + yenFmt.format(Math.round(n));
   }
 
   /** Keeps one decimal for small values (unit prices like ¥0.6). */
@@ -91,7 +101,9 @@
     if (!isFinite(n)) return "—";
     if (Math.abs(n) >= 100) return yen(n);
     const r = Math.round(n * 10) / 10;
-    return "¥" + r.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
+    if (!yenFineFmt) yenFineFmt = fmtOf({ maximumFractionDigits: 1 })
+      || { format: (v) => v.toLocaleString("ja-JP", { maximumFractionDigits: 1 }) };
+    return "¥" + yenFineFmt.format(r);
   }
 
   function parseNum(v) {

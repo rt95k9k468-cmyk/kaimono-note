@@ -36,7 +36,8 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
   "num-fields",                    // roadmap-unify の U9：type="number" の欄が無い（画面を開かない）
   "row-heights",                   // roadmap-unify の U12：行の背丈は三つの札（画面を開かない）
   "inline-style",                  // roadmap-unify の U13：値の決まった style= が増えない・小見出しの字（画面を開かない）
-  "chip-icon-size"];               // roadmap-unify の U14：札の高さは二つ・絵の直書きは入れものだけ（画面を開かない）
+  "chip-icon-size",                // roadmap-unify の U14：札の高さは二つ・絵の直書きは入れものだけ（画面を開かない）
+  "smooth"];                       // なめらかさ（2026年10月9日）：二度組み・毎フレームの当て・動きの最中の保存が戻らない（数で見る）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */
