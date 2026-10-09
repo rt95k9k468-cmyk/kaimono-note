@@ -42,7 +42,7 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */
 const SLOW = { passed: 60, "head-still": 55, "road-walk": 50, "diary-idb": 45, "day-road": 40,
-  "pill-morph": 35, "shop-day": 30, "day-swipe": 30, "road-lead": 30, sets: 25, "due-sheet": 25 };
+  "scroll-anchor": 85, "pill-morph": 35, "shop-day": 30, "day-swipe": 30, "road-lead": 30, sets: 25, "due-sheet": 25 };
 
 function parseArgs(argv) {
   const o = { jobs: 3, gate: false, verbose: false, names: [] };

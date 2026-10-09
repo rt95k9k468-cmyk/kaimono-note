@@ -117,6 +117,8 @@
         font: "gothic",
         /* 季節のひとこと（二十四節気・七十二候、R2）。既定は出す。設定で消せる。 */
         showSeason: true,
+        /* 新しく付ける見直す日を、日数を過ぎた最初の節気の初日に揃える（roadmap-3.1 の K3）。既定は今のまま。 */
+        reviewSekki: false,
         /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
            → "todo" | "list"。既定は空（js/capture.js の learn）。 */
         captureDest: {},
@@ -725,6 +727,7 @@
     out.settings.accent = cleanAccent(out.settings.accent);
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
     out.settings.showSeason = out.settings.showSeason !== false;
+    out.settings.reviewSekki = out.settings.reviewSekki === true;
     out.settings.v2 = out.settings.v2 === true;
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
@@ -2831,10 +2834,13 @@
     return { next: ok(r.next, REVIEW_DEFAULT.next), wait: ok(r.wait, REVIEW_DEFAULT.wait),
              someday: ok(r.someday, REVIEW_DEFAULT.someday) };
   }
-  /* その棚の見直す日（今日から）。function 宣言（addTodo・updateTodo が呼ぶ）。 */
+  /* その棚の見直す日（今日から）。function 宣言（addTodo・updateTodo が呼ぶ）。
+     設定 `reviewSekki`（K3）なら、日数を過ぎた最初の節気の初日へ——見直しが同じ日にまとまる。
+     書くときだけ揃える：付いている見直す日・読むときの reviewOn・暦で選んだ日は動かさない。 */
   function reviewFrom(shelf) {
     const d = reviewDays();
-    return KN.util.shiftDay(KN.util.todayKey(), shelf === "wait" ? d.wait : shelf === "someday" ? d.someday : d.next);
+    const day = KN.util.shiftDay(KN.util.todayKey(), shelf === "wait" ? d.wait : shelf === "someday" ? d.someday : d.next);
+    return ((get().settings || {}).reviewSekki === true && KN.season && KN.season.sekkiFrom(day)) || day;
   }
   /** "today" | "planned" | "next" | "wait" | "someday"（過ぎた日も "today"＝運ばれるので）。 */
   function stateOf(t) {
@@ -4885,7 +4891,7 @@
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
+    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
