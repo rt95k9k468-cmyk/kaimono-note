@@ -42,6 +42,7 @@ const JS = [
   "js/split-items.js",
   "js/capture.js",
   "js/season.js",
+  "js/holiday.js",
   "js/season-art.js",
   "js/icon-system.js",
   "js/icons-v2-keys.js",
