@@ -170,6 +170,14 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
+  /** その日か、それより後で最初の節気の初日（"YYYY-MM-DD"）。境目は span() と同じ。
+      見直す日を節気に揃える（docs/roadmap-3.1.md の K3、store の reviewFrom）。 */
+  function sekkiFrom(day) {
+    const sp = span(day, 3);
+    if (!sp) return null;
+    return sp.from === day ? day : shift(sp.to, 1);
+  }
+
   /* 五節句は新暦の日付どおり。 */
   const SEKKU = { "01-07": "人日（七草）", "03-03": "上巳（桃の節句）", "05-05": "端午", "07-07": "七夕", "09-09": "重陽（菊の節句）" };
   /* 土用の入りは、立春・立夏・立秋・立冬の18度手前。 */
@@ -214,5 +222,5 @@
     return out;
   }
 
-  KN.season = { of, line, rows, span, longitude, crosses, zassetsu, SEKKI, KOU };
+  KN.season = { of, line, rows, span, longitude, crosses, zassetsu, sekkiFrom, SEKKI, KOU };
 })();
