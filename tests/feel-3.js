@@ -51,6 +51,10 @@ const VIEWS = [{ width: 390, height: 844 }, { width: 375, height: 667 }];
     c.check(`${tag}：道の札どうし・いまの時刻と重ならない`, r.hits.length === 0 && r.n > 3, JSON.stringify(r.hits));
     c.check(`${tag}：活動は5件とも縁取りで塗らない`, r.acts === 5 && r.filled === 0, JSON.stringify([r.acts, r.filled]));
     c.check(`${tag}：評価の言葉・絵文字なし`, !/遅れ|達成率|予定通り|%|％/.test(r.text) && !/\p{Extended_Pictographic}/u.test(r.text), r.text);
+    /* J2：和文と数字のあいだは全体で空け、幅の決まった道の札だけ詰める */
+    const sp = await page.evaluate(() => CSS.supports("text-autospace", "normal") &&
+      [getComputedStyle(document.body).textAutospace, getComputedStyle(document.querySelector("#screen-todo .road-label")).textAutospace]);
+    c.check(`${tag}：和文と数字のあいだ（全体は空け、道の札は詰める）`, !sp || (sp[0] === "normal" && sp[1] === "no-autospace"), JSON.stringify(sp));
     if (process.env.SHOTS) await page.locator("#screen-todo .day-road").first().screenshot({ path: `${process.env.SHOTS}/feel3-road-${vp.width}.png` });
 
     /* 活動を済ませるのは一押し */
