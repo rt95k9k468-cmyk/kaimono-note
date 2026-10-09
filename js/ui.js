@@ -48,6 +48,29 @@
     && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   /** 押されたところから育てる支度。育てないなら null。 */
+  /* 欄の中のカーソルの行が見えるよう、欄の送り位置だけを動かす。行の高さは同じ幅・同じ字の
+     写し（見えない div）で測る。 */
+  function keepCaretInView(ta) {
+    if (document.activeElement !== ta || ta.scrollHeight <= ta.clientHeight) return;
+    const cs = getComputedStyle(ta);
+    const m = document.createElement("div");
+    ["fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "textAlign",
+      "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "wordBreak", "lineBreak",
+      "overflowWrap", "textIndent", "fontFeatureSettings"].forEach((k) => { m.style[k] = cs[k]; });
+    Object.assign(m.style, { position: "absolute", visibility: "hidden", top: "0", left: "-9999px",
+      width: `${ta.clientWidth}px`, boxSizing: "border-box", whiteSpace: "pre-wrap", border: "0" });
+    m.textContent = ta.value.slice(0, ta.selectionEnd);
+    const at = document.createElement("span");
+    at.textContent = "​";
+    m.appendChild(at);
+    document.body.appendChild(m);
+    const top = at.offsetTop, bottom = top + at.offsetHeight;
+    m.remove();
+    const pad = parseFloat(cs.paddingBottom) || 0;
+    if (bottom + pad > ta.scrollTop + ta.clientHeight) ta.scrollTop = bottom + pad - ta.clientHeight;
+    else if (top - pad < ta.scrollTop) ta.scrollTop = Math.max(0, top - pad);
+  }
+
   function seedFrom(el) {
     if (!pressed || Date.now() - pressed.t > 800) return null;
     /* 640px 以上では紙は画面の真ん中のダイアログで、別の transform を
@@ -861,6 +884,14 @@
       [140, 340, 620].forEach((ms) => setTimeout(() => {
         if (document.activeElement === field) scrollFieldIntoView(field);
       }, ms));
+      /* 長い本文の下のほうを押すと、カーソルは押した行に入るが、キーボードが上がって欄が
+         縮むあいだ欄の送り位置は据え置き——押した行が欄の下へ隠れ、真ん中あたりが見えていた
+         （2026年10月9日・利用者「一番下を押したのに真ん中にずれる」）。縮むたび、カーソルの行を欄の中へ戻す。 */
+      if (field.tagName === "TEXTAREA" && window.ResizeObserver) {
+        const ro = new ResizeObserver(() => keepCaretInView(field));
+        ro.observe(field);
+        field.addEventListener("blur", () => ro.disconnect(), { once: true });
+      }
     });
 
     /* ---- 下へ払って閉じる ----
