@@ -1178,6 +1178,15 @@ button.hero-node:active { scale: var(--press-dot); }
 .d-memo::placeholder { color: var(--c-text-3); }
 .d-memo:focus { outline: none; }
 
+/* 伸びる欄（やることのメモ・食事の枠・ノートの題と本文。roadmap-3.1 の S2）。効く端末では欄が
+   中身に合わせて自分で伸び、JS は測らない（KN.util.fitFields）。効かない端末はそれぞれの grow が
+   測って高さを書く。上の限りは置かない（伸びた先は紙が送る）。下の限りは今までの JS と同じ。 */
+@supports (field-sizing: content) {
+  .fit-fields .grow-field { field-sizing: content; }
+  /* やることのメモは二行ぶんから（rows="2" は field-sizing では効かない）。上12・下14・上の線1。 */
+  .fit-fields .d-memo.grow-field { min-height: calc(2lh + 27px); }
+}
+
 /* 買うものの紙（2.0、roadmap-2.0 の V23・product-sheet.js の frame）。やることの紙の頭と
    札をそのまま使い、名前の右に小さな★（今回買う）。絵は行の絵と同じ淡い地に。 */
 .pd-name { display: flex; align-items: center; gap: var(--sp-2); }

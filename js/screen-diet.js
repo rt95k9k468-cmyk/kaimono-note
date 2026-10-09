@@ -2724,6 +2724,7 @@
      測れないうちは、一枚あとの絵で測り直します。それでも置かれていない
      なら、その枠は捨てられたということなので、あきらめます。 */
   function grow(ta, retry) {
+    if (U.fitFields) return;   // CSS が伸ばす（KN.util.fitFields）
     if (!ta.isConnected || !ta.scrollHeight) {
       if (retry) return;
       requestAnimationFrame(() => grow(ta, true));
@@ -2806,7 +2807,7 @@
           <b class="diet-slot-name">${sl.label}</b>
           <span class="diet-slot-kcal mono-num">${kcalText}</span>
         </div>
-        <textarea class="textarea diet-slot-memo" rows="1" spellcheck="false"
+        <textarea class="textarea diet-slot-memo grow-field" rows="1" spellcheck="false"
                   autocapitalize="sentences" aria-label="${sl.label}に食べたもの"
                   placeholder="${SLOT_PLACEHOLDER}">${saved}</textarea>
         <div class="chip-row diet-slot-cands" role="list" aria-label="前に書いたもの"></div>
@@ -2950,7 +2951,7 @@
             <b class="diet-slot-name">${sl.short}</b>
             <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
           </div>
-          <textarea class="textarea diet-slot-memo js-slot-memo" data-slot="${sl.id}" rows="1"
+          <textarea class="textarea diet-slot-memo grow-field js-slot-memo" data-slot="${sl.id}" rows="1"
                     spellcheck="false" autocapitalize="sentences"
                     aria-label="${sl.label}に食べたもの"
                     placeholder="${SLOT_PLACEHOLDER}">${text}</textarea>

@@ -116,7 +116,7 @@ ID は 締める＝S、暦＝K、事実＝J。大きさ・データの言い方�
 | 段 | ID | 名前 | 大きさ | データ | 先に読む docs | 状態 |
 |---|---|---|---|---|---|---|
 | 締める | S1 | iOS 27 で送りが跳ねないか（利用者の手・約10分） | 小 | なし | iphone-check・sheet-scroll | 案 |
-| 締める | S2 | 伸びる欄を CSS で（`field-sizing: content`。効かない端末は今の JS） | 中 | なし | traps・notes（打つあいだ）・sheet-scroll | 案（S1 のあと） |
+| 締める | S2 | 伸びる欄を CSS で（`field-sizing: content`。効かない端末は今の JS） | 中 | なし | traps・notes（打つあいだ）・sheet-scroll | 済み（2026年10月9日。S1 の結果は未報告のまま先に作った——`@supports` で守るので S1 に左右されない。`.grow-field`・`KN.util.fitFields`・`tests/fit-fields.js`。iPhone で効いているかは利用者が一度見る） |
 | 締める | S3 | 起動の固まりを iOS 27 で測り直す（利用者の手） | 小 | なし | roadmap（R14） | 案 |
 | 締める | S4 | 使っていない面を畳む（データは消さない） | 小〜中 | なし | settings | 作る（X10：先に一覧を作り、利用者が選ぶ） |
 | 暦 | K1 | 祝日（計算。暦で日曜と同じ色・名前を小さく） | 中 | なし | calendar-swipe・shared-header・screens-nav・daily（季節のひとこと） | 済み（2026年10月9日。`js/holiday.js`・`tests/holiday.js`。名前は daily の季節のひとことの行。上の帯は変えていない） |
@@ -158,6 +158,13 @@ ID は 締める＝S、暦＝K、事実＝J。大きさ・データの言い方�
 - 試験：試験の Chromium は対応しているので、新しい道を通る。今の JS の道は、`@supports` を偽にして一度回す。
 - 厳密に言うと：Safari 26.2 からというのは二次情報（WebKit の 26.2 の記事は開けていない）。作る前に iPhone で
   `CSS.supports("field-sizing", "content")` を一度見る。
+- やったこと（10月9日）：伸びる欄は四つ（やることのメモ `growMemo`・食事の枠 `grow`・ノートの題 `growTitle`・本文
+  `grow`）。残り19か所は送りの計算で触っていない。効くかは `KN.util.fitFields` で一度だけ見て html に `fit-fields`、
+  CSS は `@supports` の中でそれが付いたときだけ（components.css の `.grow-field`）——JS と CSS が食い違わない。
+  上の限りは置かなかった（今も無い。伸びた先は紙が送る）。下の限りは今と同じ（メモは二行ぶん `calc(2lh + 27px)`、
+  枠は38px、本文は38vh）。今までの JS は枠線ぶん（枠は上下1px）短く書いていたので、効く端末では枠がそのぶん高い。
+  試験：`tests/fit-fields.js` が二つの道を並べて比べる（JS の道では長いメモの下で打つと頭へ飛ぶのも出る）。
+  `KN_NO_FIT=1` で note-typing・notes・done-time も JS の道で通した。
 
 ### S3 起動の固まりを iOS 27 で測り直す（利用者の手）
 

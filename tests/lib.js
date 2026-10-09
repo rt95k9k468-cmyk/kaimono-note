@@ -31,6 +31,13 @@ async function ensureServer() {
   throw new Error(`サーバーが立ち上がらない（${PORT}）`);
 }
 
+/** 頁の中で走る：CSS.supports が field-sizing だけ偽を返す（KN.util.fitFields が偽になり、
+    html に fit-fields が付かない＝伸びる欄の CSS も当たらない）。 */
+function noFit() {
+  const s = CSS.supports.bind(CSS);
+  CSS.supports = (...a) => !/field-sizing/.test(a.join(" ")) && s(...a);
+}
+
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
 async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false } = {}) {
@@ -52,6 +59,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   /* 週に一度の控えのトースト（settings-backup.js）は、ほかの台本の邪魔をしないよう
      止めておく。確かめる台本だけ `nudge: true`。 */
   if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
+  /* KN_NO_FIT=1：伸びる欄を、field-sizing の効かない端末の道（JS が測る）で回す（roadmap-3.1 の S2）。 */
+  if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);
   if (before) await before(ctx, page);
   if (process.env.KN_CSS_COVER) await coverCSS(browser, page, process.env.KN_CSS_COVER);
   await page.goto(URL);
@@ -101,4 +110,4 @@ function checker(title) {
   };
 }
 
-module.exports = { open, checker, ensureServer, URL, ROOT };
+module.exports = { open, checker, ensureServer, noFit, URL, ROOT };

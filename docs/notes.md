@@ -651,4 +651,8 @@ theme-color とページの地は変えない・押したカードの箱から�
   その紙では色付けをやめて素の字に戻す（`.note-ink.is-plain`）。試験は `tests/note-typing.js`。
 - 同じ「測るために縮める」は、ダイエットの枠（`screen-diet.js` の `grow`）とやることのメモ（`screen-todo.js` の
   `growMemo`）にもある（`height = "auto"`）。長いメモの下のほうで打つと同じく戻されうる——まだ直していない。
+  → 2026年10月9日（roadmap-3.1 の S2）：`field-sizing: content` の効く端末（Safari 26.2〜・Chromium 123〜）では、
+  この四つの欄（`.grow-field`）は CSS が伸ばし、JS は測らない（`KN.util.fitFields`。html に `fit-fields`）。
+  本文の写しの守りは `fitGrow`：欄が下の限り（38vh）に居るあいだは中身の高さが見えないので、写しがはみ出さない
+  かだけ見る。効かない端末は上のとおり（ダイエットの枠・やることのメモは、まだ戻されうる）。試験は `tests/fit-fields.js`。
 

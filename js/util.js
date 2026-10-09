@@ -662,6 +662,13 @@
     if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
   }
 
+  /* 伸びる欄（.grow-field）を CSS に任せられるか（`field-sizing: content`。roadmap-3.1 の S2）。
+     任せられる端末では html に fit-fields を付け、欄は中身に合わせて自分で伸びる——JS は測らない
+     （測るために縮めると、送りが頭へ戻される。traps の「伸びる欄を測るために縮めない」）。
+     効かない端末は、それぞれの grow が今までどおり測る。 */
+  const fitFields = !!(window.CSS && CSS.supports && CSS.supports("field-sizing", "content"));
+  if (fitFields) document.documentElement.classList.add("fit-fields");
+
   function relativeDate(iso) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";
@@ -858,7 +865,7 @@
     isTime, partOfTime, formatTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, WEEKDAY_COLS, nthWeekdayOf, weekdayNth,
-    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto, dayShare, setVar,
+    dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto, dayShare, setVar, fitFields,
     slideWeek, otherWeek,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,

@@ -590,7 +590,7 @@
             <span class="d-add-box">${icon("plus")}</span>
             <span>手順を足す</span>
           </button>
-          <textarea class="d-memo js-memo" rows="2"
+          <textarea class="d-memo grow-field js-memo" rows="2"
                     placeholder="メモ、持ちもの、電話番号…">${editing ? t.memo || "" : ""}</textarea>
         </div>
       </div>
@@ -882,6 +882,7 @@
        スクロールして受けます。紙に置かれるまでは scrollHeight が 0 のまま
        なので、一度だけ測り直します。 */
     function growMemo(ta, retry) {
+      if (KN.util.fitFields) return;   // CSS が伸ばす
       if (!ta.isConnected || !ta.scrollHeight) {
         if (retry) return;
         requestAnimationFrame(() => growMemo(ta, true));
