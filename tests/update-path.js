@@ -243,6 +243,9 @@ let browser;
     return ms;
   }
 
+  /** 起動の控え（N9。errlog.js）のいちばん新しいもの。 */
+  const lastLaunch = () => page.evaluate(() => KN.errlog.launches().slice(-1)[0] || {});
+
   /* 1. 初めて開く */
   await page.goto(APP);
   await ready(page);
@@ -258,6 +261,7 @@ let browser;
   t.check("2 配ってすぐ開いても新しい版（B）", await running(page) === V.B, await running(page));
   await settled(V.B, "2");
   t.check("2 新しい版で開いたら、その版の Service Worker が入っても読み直さない", loads === 1, `読み込み ${loads}回`);
+  t.check("2 起動の控え（N9）：入口はネット", (await lastLaunch()).from === "net", JSON.stringify(await lastLaunch()));
   await shellIs(V.B, "2");
 
   /* 3. 入口だけ5秒黙る */
@@ -268,6 +272,9 @@ let browser;
   t.check("3 控えの B で開く", await running(page) === V.B);
   await wait(5000);
   t.check("3 読み直さない", loads === 1, `読み込み ${loads}回`);
+  const L3 = await lastLaunch();
+  t.check("3 起動の控え（N9）：入口は控え・入口まで・組み終わりまでの時間がある", L3.from === "kept" && L3.entry > 0
+    && L3.built >= L3.entry && !L3.reload, JSON.stringify(L3));
   await shellIs(V.B, "3");
 
   /* 4. C を配ったが入口は5秒・sw.js は届かない */

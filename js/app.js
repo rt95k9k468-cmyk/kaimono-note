@@ -1501,6 +1501,8 @@
     /* 閉じていても鳴る通知（js/bell.js）。中継所の見張りとは別の拍です。 */
     if (KN.bell) KN.bell.init();
     registerServiceWorker();
+    /* 起動の時間を控える（roadmap-seamless の N9。js/errlog.js）。 */
+    if (KN.errlog && KN.errlog.ready) KN.errlog.ready();
   }
 
   /* ---------------- back to the top ----------------

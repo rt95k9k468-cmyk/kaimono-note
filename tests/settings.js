@@ -188,6 +188,27 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ""));
   t.check("コピーすると、一覧の中身が字になる", clip.includes("一覧に出るエラー") && clip.includes("screen-list.js:12"), clip.slice(0, 120));
+  /* 端末の事実（roadmap-seamless の N9）：版・効く機能と最後の5回の起動。時間だけで、日付は残さない。 */
+  t.check("コピーの頭に端末の事実（版・ホーム画面・persisted・field-sizing・text-autospace）",
+    /^版 \S+ \| ホーム画面 [○×] \| persisted [○×?] \| field-sizing [○×] \| text-autospace [○×]/.test(clip), clip.split("\n")[0]);
+  t.check("最後の起動（入口・組み終わりの時間）がコピーに出る", /起動 (ネット|控え|\?) \| 入口 \d+ms \| 組み終わり \d+ms/.test(clip),
+    clip.split("\n").slice(0, 3).join(" / "));
+  const L = await page.evaluate(() => {
+    const a = KN.errlog.launches();
+    for (let i = 0; i < 7; i++) a.push({ from: "net", entry: 1, built: 2, reload: false });
+    localStorage.setItem(KN.errlog.LAUNCH_KEY, JSON.stringify(a));
+    return { raw: localStorage.getItem(KN.errlog.LAUNCH_KEY) };
+  });
+  t.check("起動の控えは時間だけ（日付・画面を持たない）", !/"at"|"screen"|"day"/.test(L.raw), L.raw.slice(0, 120));
+  await page.reload();
+  await page.waitForFunction(() => KN.errlog && KN.errlog.launches().length === 5 && KN.errlog.launches()[4].entry !== 1, null, { timeout: 5000 }).catch(() => {});
+  const L2 = await page.evaluate(() => ({ n: KN.errlog.launches().length, last: KN.errlog.launches()[4],
+    ex: KN.store.exportJSON().includes("組み終わり") || KN.store.exportJSON().includes("kaimono-note-launches") }));
+  t.check("起動の控えは最後の5回だけ・読み直しを覚える・書き出しに乗らない", L2.n === 5 && L2.last && L2.last.reload === true && !L2.ex,
+    JSON.stringify(L2));
+  await openSettings("list");
+  await rowOf("困ったときの記録").click();
+  await page.waitForSelector(`${top} .js-err-row`);
   t.check("上限（50件）だけを一行で言う", E2.includes("50件まで"));
   await back();
 

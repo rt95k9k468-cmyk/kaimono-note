@@ -185,10 +185,10 @@ self.addEventListener("fetch", (event) => {
     event.waitUntil(net.then((res) => (res && res.ok ? keepShell(res.clone()) : null)).catch(() => {}));
     event.respondWith(new Promise((resolve) => {
       let done = false;
-      const give = (r) => { if (r && !done) { done = true; resolve(r); } };
-      const timer = setTimeout(() => kept().then(give), SHELL_WAIT);
-      net.then((res) => { clearTimeout(timer); give(res); },
-        () => { clearTimeout(timer); kept().then((r) => give(r || Response.error())); });
+      const give = (r, from) => { if (r && !done) { done = true; openedAs(event.resultingClientId, from); resolve(r); } };
+      const timer = setTimeout(() => kept().then((r) => give(r, "kept")), SHELL_WAIT);
+      net.then((res) => { clearTimeout(timer); give(res, "net"); },
+        () => { clearTimeout(timer); kept().then((r) => give(r || Response.error(), r ? "kept" : "net")); });
     }));
     return;
   }
@@ -241,7 +241,22 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "kn-version" && event.ports && event.ports[0]) {
     event.ports[0].postMessage({ version: VERSION });
   }
+  /* 入口をネットと控えのどちらから出したか（N9。errlog.js が起動の控えに書く）。 */
+  if (event.data && event.data.type === "kn-opened" && event.ports && event.ports[0]) {
+    const id = event.source && event.source.id;
+    event.ports[0].postMessage({ from: opened.get(id) || openedLast || "?" });
+  }
 });
+
+/* 窓ごとに、入口の出どころを覚える（新しい3つだけ）。resultingClientId が無い端末は最後の一つで答える。 */
+const opened = new Map();
+let openedLast = "";
+function openedAs(id, from) {
+  openedLast = from;
+  if (!id) return;
+  opened.set(id, from);
+  while (opened.size > 3) opened.delete(opened.keys().next().value);
+}
 
 /* ---------------- 閉じていても鳴る通知（D1。js/bell.js） ----------------
 

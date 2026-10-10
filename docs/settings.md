@@ -194,7 +194,9 @@ SETTINGS SCREEN に表がある。
   新しい50件（時刻・版・画面・200字までの文・ファイルと行）。日記の道（diary の名の
   ファイル）は種類だけ。続けて同じものは一件に数を足す。一覧が先に見え、「コピー」で字に。
   書き出し・控え・Dropbox に乗らず、「すべて削除」で消える。errlog.js はどのスクリプト
-  より先に読む（読み込みの途中で落ちたものも拾う）。
+  より先に読む（読み込みの途中で落ちたものも拾う）。コピーの頭には端末の事実（roadmap-seamless の
+  N9）：版・ホーム画面か・persisted・`field-sizing`／`text-autospace` と、最後の5回の起動（入口がネットか控えか・
+  入口まで・組み終わりまで・読み直したか。鍵 `kaimono-note-launches`、時間だけで日付・回数は持たない）。
 - **二つ目の鍵（CSP）**（R29、2026年9月29日）：`index.html` の meta。`script-src 'self'`
   （直書きのスクリプトは無い）・`object-src 'none'`・`base-uri 'self'`・`img-src 'self' data:
   blob:`・`style-src 'self' 'unsafe-inline'`（style 属性）・`connect-src 'self' https:`（中継所・
