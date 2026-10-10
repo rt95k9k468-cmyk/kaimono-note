@@ -108,6 +108,45 @@ function measure() {
       }
     }
   }
+  /* iPhone の「コントラストを上げる」（N15 (b)）。オフでは既定のまま、オンではガラスが塞がり灰の字が濃くなり、
+     同じ数え方で0。ガラスの地は帯の中に置いた札で読む（`--glass-base` は帯の上で解決される）。 */
+  const probe = () => {
+    const bar = document.querySelector(".tabbar");
+    const p = document.createElement("i");
+    p.style.cssText = "position:absolute;width:1px;height:1px;background:var(--glass-base)";
+    bar.appendChild(p);
+    const glass = getComputedStyle(p).backgroundColor;
+    p.remove();
+    const root = getComputedStyle(document.documentElement);
+    return { glass, t2: root.getPropertyValue("--c-text-2").trim(), t3: root.getPropertyValue("--c-text-3").trim() };
+  };
+  await page.evaluate(() => KN.store.update((st) => { st.settings.textSize = "std"; }));
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((theme) => {
+      if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+      else document.documentElement.removeAttribute("data-theme");
+    }, theme);
+    await page.emulateMedia({ contrast: "no-preference" });
+    await page.waitForTimeout(800);
+    const off = await page.evaluate(probe);
+    await page.emulateMedia({ contrast: "more" });
+    await page.waitForTimeout(1500);
+    const on = await page.evaluate(probe);
+    const opaque = (s) => !/rgba|\/ ?0?\.\d|transparent/.test(s) || /\/ ?1\)/.test(s);
+    t.check(`${theme}：オフの灰の字は既定（${theme === "dark" ? "#a6a6ab・#92929a" : "#636363・#686870"}）`,
+      off.t2 === (theme === "dark" ? "#a6a6ab" : "#636363") && off.t3 === (theme === "dark" ? "#92929a" : "#686870"), JSON.stringify(off));
+    t.check(`${theme}：オフのガラスは透けている`, !opaque(off.glass), off.glass);
+    t.check(`${theme}：オンでガラスが塞がる`, opaque(on.glass), on.glass);
+    t.check(`${theme}：オンで灰の字が変わる`, on.t2 !== off.t2 && on.t3 !== off.t3, JSON.stringify(on));
+    for (const id of SCREENS) {
+      await page.evaluate((id) => KN.app.showScreen(id), id);
+      await page.waitForTimeout(500);
+      const hit = (await page.evaluate(measure)).filter((b) => b.kind === "contrast");
+      t.check(`コントラストを上げる・${theme}・${id}：コントラスト不足が0`, !hit.length,
+        hit.map((b) => `${b.name}「${b.text}」${b.v}`).join(" / "));
+    }
+    await page.emulateMedia({ contrast: "no-preference" });
+  }
   t.check("頁のエラーなし", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();

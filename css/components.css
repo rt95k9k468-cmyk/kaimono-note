@@ -1565,6 +1565,13 @@ button.hero-node:active { scale: var(--press-dot); }
    明るい／暗いの上書きも要りません——材が夜に固定なので、どちらの面でも
    同じ濃さです（そこが帯や＋と違うところで、上の但し書きの理由）。 */
 
+/* 「コントラストを上げる」では塞ぐ（base.css の末尾。ここは自分の濃さを持つので、ここで言い直す）。 */
+@media (prefers-contrast: more) {
+  .toast {
+    background: var(--glass-night-sheen), var(--glass-night-crown), var(--glass-night-cast);
+  }
+}
+
 .toast.is-out { animation: toast-out var(--m-delete) var(--ease-in) forwards; }
 .toast-msg { flex: 1; min-width: 0; }
 .toast-action {
