@@ -658,7 +658,12 @@
        それを「その人が書いた」と数えないよう、一拍おいて取り直します。 */
     setTimeout(() => { if (!isClosed()) baseline = snapshot(); }, 60);
 
-    return function tryClose() {
+    /* 同じ見張りを、隠れる瞬間の書きかけの控え（下の keepDraft）も借ります。 */
+    tryClose.changed = () => !isClosed() && snapshot() !== baseline;
+    tryClose.fields = fields;
+    return tryClose;
+
+    function tryClose() {
       if (isClosed()) return;
       const btn = guard === false ? null : primary();
       if (!btn || snapshot() === baseline) { close(); return; }
@@ -681,7 +686,91 @@
           danger: true,
         }).then((drop) => { if (drop) close(); });
       }, 80);
-    };
+    }
+  }
+
+  /* ---- 書きかけを守る（roadmap-seamless の N8・X15。docs/sheet-scroll.md の「iOS に閉じられても」） ----
+
+     iOS は裏に回ったアプリをよく閉じます。閉じると紙ごと消え、書きかけの用事・品物・食事・体重が無い。
+     隠れる瞬間に、`draft: { kind, id }` を持つ紙が上の見張りで「変わっている」なら、紙の種類・相手・欄の値を
+     一つ控えます。15分以内に開き直したら（席が戻ったときだけ。app.js の boot）、同じ紙を開いて欄を埋め直す。
+     **保存はしません**——決めるのは本人。埋め直したあとは書きかけなので、閉じれば今までどおり保存されます。
+     戻すのは欄の値だけ（押して選ぶ丸・閉じこめた変数は開いたときのまま）。
+     見えるところへ戻ってきたら（閉じられなかった）、控えは捨てます。**記録の外**（`kaimono-note-resume` と同じ置き方）。 */
+  const DRAFT_KEY = "kaimono-note-draft";
+  const DRAFT_MS = 15 * 60 * 1000;
+  const reopeners = {};
+  /** 紙ごとの「開き直し方」。id は控えた draft.id。 */
+  function reopen(kind, fn) { reopeners[kind] = fn; }
+
+  /* 欄の名札：組み直しても同じ欄を指すように、種類・js- の印・見本の字と、同じ名札の何番目か。 */
+  function fieldKeys(list) {
+    const seen = {};
+    return list.map((f) => {
+      const sig = [f.tagName, f.type, [...f.classList].filter((c) => c.startsWith("js-")).join("."),
+        f.getAttribute("placeholder") || ""].join(":");
+      seen[sig] = (seen[sig] || 0) + 1;
+      return sig + "#" + seen[sig];
+    });
+  }
+  const isTick = (f) => f.type === "checkbox" || f.type === "radio";
+
+  function keepDraft(seat) {
+    try {
+      /* 上に知らせや暦が重なっていても、その下の紙を見ます。 */
+      const top = openSheets.slice().reverse().find((h) => h.draft);
+      const g = top && top.tryClose;
+      if (!g || !g.changed() || !reopeners[top.draft.kind]) { localStorage.removeItem(DRAFT_KEY); return; }
+      const list = g.fields();
+      const keys = fieldKeys(list);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        at: Date.now(), seat, kind: top.draft.kind, id: top.draft.id == null ? null : top.draft.id,
+        vals: list.map((f, i) => [keys[i], isTick(f) ? f.checked : String(f.value)]),
+      }));
+    } catch (_) { /* 置けなくても、隠れることは妨げない */ }
+  }
+
+  function dropDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (_) { /* 読めなければ黙って */ }
+  }
+
+  /** 控えを一度だけ読み（読んだら消す）、席が同じで15分以内なら紙を開いて埋め直す。開いたら true。 */
+  function takeDraft(seat) {
+    let d = null;
+    try {
+      d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (_) { return false; }
+    if (!d || typeof d !== "object" || !seat || d.seat !== seat || !Array.isArray(d.vals)) return false;
+    const age = Date.now() - d.at;
+    if (!(age >= 0 && age < DRAFT_MS)) return false;
+    if (!Object.prototype.hasOwnProperty.call(reopeners, d.kind)) return false;
+    const before = openSheets.length;
+    try { reopeners[d.kind](d.id); } catch (_) { return false; }
+    const h = openSheets.length > before ? openSheets[openSheets.length - 1] : null;
+    if (!h || !h.draft || h.draft.kind !== d.kind) return false;
+    /* 開いた紙は、一拍あとに「開いたときの中身」を取り直します（makeGuard の 60ms）。埋めるのはそのあと
+       ——埋めた字を「開いたときの中身」と数えると、閉じたときに保存されない。 */
+    setTimeout(() => {
+      if (!h.el.isConnected) return;
+      d.vals.forEach((kv) => {
+        if (!Array.isArray(kv)) return;
+        const list = h.tryClose.fields();
+        const f = list[fieldKeys(list).indexOf(kv[0])];
+        if (!f) return;
+        if (isTick(f)) {
+          if (f.checked === !!kv[1]) return;
+          f.checked = !!kv[1];
+        } else {
+          if (typeof kv[1] !== "string" || f.value === kv[1]) return;
+          f.value = kv[1];
+        }
+        /* 打ったときと同じ道で、絵・保存のボタン・欄の高さが追う。 */
+        f.dispatchEvent(new Event("input", { bubbles: true }));
+        f.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }, 120);
+    return true;
   }
 
   /* ---- 設定の中では、紙ではなく一枚を押しのける ----
@@ -1071,6 +1160,8 @@
        直接呼んでいて、そこだけ**書きかけを黙って捨てていました**。閉じ方が
        四つあるなら、四つとも同じ扱いにします。 */
     const handle = { close, tryClose, el };
+    /* 隠れる瞬間に書きかけを控える紙（上の keepDraft）。 */
+    if (opts && opts.draft) handle.draft = opts.draft;
     openSheets.push(handle);
 
     // Focus the first meaningful control.
@@ -2671,7 +2762,7 @@
 
   KN.ui = {
     sheet, actionSheet, popOver, popMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
-    setPageHost, makeGuard,
+    setPageHost, makeGuard, reopen, keepDraft, dropDraft, takeDraft,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,
   };

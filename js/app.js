@@ -1352,6 +1352,8 @@
     }
     try { show(KN.screens[fromHash] ? fromHash : HOME); } finally { goingBack = false; }
     if (place) putPlace(place);
+    /* 開いていた紙の書きかけ（N8）は、席が戻ったときだけ（ui.js の takeDraft。15分以内）。 */
+    if (place) KN.ui.takeDraft(place.seat); else KN.ui.dropDraft();
     if (calBack) KN.ics.cameBack();
     if (dueIds) {
       openDue(dueIds);
@@ -1398,6 +1400,8 @@
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") keepPlace(false);
+      /* 閉じられずに戻ってきた——書きかけは紙に残っているので、控えは捨てます（N8）。 */
+      else KN.ui.dropDraft();
     });
 
     /* 保存は120msだけ待ってからまとめて書きます（連打のたびに書かないため）。
@@ -2202,6 +2206,8 @@
         reload: !!reload,
       }));
     } catch (_) { /* 置けなくても、閉じる・読み直すことは妨げない */ }
+    /* 開いている紙の書きかけも（N8。ui.js の keepDraft）。 */
+    KN.ui.keepDraft(active);
   }
 
   /** 控えを一度だけ読む（読んだら消す）。古い・読めない・閉じられたあとの daily とノートは null。 */

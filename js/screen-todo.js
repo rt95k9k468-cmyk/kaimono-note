@@ -500,6 +500,9 @@
      places for a field to go missing from. */
   /* from … 押した行の丸薬（`.tl-node`）か、一覧の行（`.item-wrap`）。紙はその行から広がり、
      丸薬なら紙の頭の丸薬へ伸びていきます（ui.js の growCard・morphPill）。 */
+  KN.ui.reopen("todo", (id) => {
+    if (Array.isArray(id)) openSheet(typeof id[0] === "string" ? id[0] : null, null, id[1] ? { noDue: true } : null);
+  });
   function openSheet(todoId, from, opts) {
     const editing = !!todoId;
     const t = editing ? store.getTodo(todoId) : null;
@@ -875,6 +878,8 @@
       home: (opts && opts.home) || null,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
+      /* iOS に閉じられたら、書きかけを戻す（ui.js の keepDraft・N8）。 */
+      draft: { kind: "todo", id: [todoId || null, !!(opts && opts.noDue)] },
       /* 別の日へ移したら、行はこの日から消えます。頭の丸薬が暦のその日へ
          飛んでいく（V15、ui.js の sendToDay）。 */
       onClose: () => {
