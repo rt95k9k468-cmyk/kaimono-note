@@ -306,9 +306,13 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
   （短い音を一度作って使い回す）。場は `ambient`（消音スイッチで黙り、流れている音楽を止めない）。持ち上げ・置くは
   ドラムより小さく。試験は `tests/feel-sound.js`（音を作るのは motion.js だけ・`snd` の行はこの表にある・
   タブを開いても鳴らない・並べ替えと時間割で「ぽっ」「ことっ」）。
-- **音の口（`KN.motion.wakeSound()`）は指を置いたときに開ける**。iPhone は指で触れる前の音を出さない。持ち上げは
+- **音の口（`KN.motion.wakeSound()`）は指を置いたときに作る**。iPhone は指で触れる前の音を出さない。持ち上げは
   長押しの途中なので、`pointerdown`（`reorder.js` の `arm`・`screen-todo.js` の `wireDrag`・`day-road.js` の
-  `wireCarry`）で開ける。ドラムは `touchstart` と `touchend`。
+  `wireCarry`）で作る。ドラムは `touchstart` と `touchend`。
+- **ただし iPhone が口を開けさせるのは、指を離したとき（`touchend`）だけ**（iOS 9 から。置いたときは閉じたまま）。
+  作った口は `motion.js` が次の `touchend` で開け直す——一度めの持ち上げは黙り、二度めから鳴る。前は開け直さず、
+  その日にドラムを回していなければ「ぽっ」「ことっ」が鳴らなかった（2026年10月10日。試験は偽物の口なので
+  見えなかった。`tests/feel-sound.js` の「iPhone のふり」）。
 - 置くの音は、指を離したときだけ（`pointercancel` で取り上げられた時間割・道は鳴らさない）。動かさずに離しても鳴る
   ——置いたことに変わりはない。
 
