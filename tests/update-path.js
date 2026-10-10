@@ -34,7 +34,8 @@ const APP = `${BASE}index.html`;
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "kn-update-path-"));
 /** 写しの sw.js の頭に足す見張り（アプリの sw.js は変えない）。waitUntil と respondWith を数え、まだ決まらない約束を
     覚えておき、`kn-held` と訊かれたら答える——settle が届かないとき、古い Service Worker が何を抱えて居座るのかを
-    書き出す（#809・#811：新しい版は install を済ませて待ち、古い版が30秒以上動いたまま）。文字にして写しに入れるので、
+    書き出す（#809・#811：新しい版は install を済ませて待ち、古い版が30秒以上動いたまま。抱えていたのは試験の問い合わせ
+    だけだった——settle の注）。文字にして写しに入れるので、
     外の名前は使わない。 */
 function swWatch() {
   const born = Date.now();
@@ -167,13 +168,23 @@ const heldState = (page) => inPage(page, async () => {
     + `・waitUntil ${h.calls.waitUntil}・respondWith ${h.calls.respondWith}`
     + h.seen.map((s) => `・${s.type} ${s.n}（最後 ${sec(s.ago)}前）`).join("");
 });
+/** 入りかけ・待ちの Service Worker があるか（訊くのは登録だけで、Service Worker には話しかけない）。 */
+const swPending = (page) => inPage(page, async () => {
+  const reg = await navigator.serviceWorker.getRegistration();
+  return !!(reg && (reg.installing || reg.waiting));
+});
 /** Service Worker が ver になるまで待ち、読み直しが起きるならそれも済ませる。
     ver になるまでの ms を返す（ならなければ -1 と、そのときの登録の様子と、動いている古い版が抱えている処理。
-    黙って先へ進むと、門で揺れたときに何が遅れたか分からない）。 */
+    黙って先へ進むと、門で揺れたときに何が遅れたか分からない）。
+    新しい版が入りかけ・待ちのあいだは、動いている古い版に版を訊かない——250ms ごとの message が古い版を
+    起こし続け、待ちが activate されない（#809・#811 と手元の重い CPU：「起動から 28.4秒・抱えている 0・message 114」）。 */
 async function settle(page, ver) {
   const t0 = Date.now();
   let got = "";
-  for (let i = 0; i < 120 && (got = await workerVer(page).catch(() => "")) !== ver; i++) await wait(250);
+  for (let i = 0; i < 120; i++) {
+    if (!(await swPending(page).catch(() => false)) && (got = await workerVer(page).catch(() => "")) === ver) break;
+    await wait(250);
+  }
   const ms = got === ver ? Date.now() - t0 : -1;
   const state = ms < 0 ? `30秒待って ${got}。${await swState(page).catch((e) => String(e))}。`
     + `動く方：${await heldState(page).catch((e) => String(e))}` : "";
