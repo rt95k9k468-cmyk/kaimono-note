@@ -295,12 +295,16 @@
      照らす。鳴っていない回があれば、困ったときの記録に件数だけ書き、次に画面を
      押したとき（iPhone は押した流れの中でないと作らせないことがある）押し先を作り
      直して送り直す。一日に一度まで。画面には何も出さない。
-     控えは記録の外（localStorage の kaimono-note-bell-*。書き出しにも乗らない）。 */
+     控えは記録の外（localStorage の kaimono-note-bell-*。書き出しにも乗らない）。
+     **作り直しは古い押し先を捨ててから**なので、作れなかったら押し先が無いまま残る。だから
+     許しの無いときは捨てず、作れなかった日は「作り直した日」にせず（次に戻って鳴らなかった回が
+     あれば、また押したときに）、困ったときの記録に一行残す（2026年10月10日）。 */
   const AWAY = "kaimono-note-bell-away";     // 隠れた時刻（ミリ秒）
-  const RENEW = "kaimono-note-bell-renew";   // 押し先を作り直した日
+  const RENEW = "kaimono-note-bell-renew";   // 押し先を作り直せた日
   const GRACE = 3 * 60000;                   // 押しは分の頭に届く。来たばかりの回は数えない
   let back = true;                           // 戻ってきてから、まだ照らしていない
   let armed = false;
+  let renewing = false;
 
   const lsGet = (k) => { try { return localStorage.getItem(k) || ""; } catch (err) { return ""; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (err) { /* 次に */ } };
@@ -332,7 +336,7 @@
       && !said.has(`${x.id} ${x.occ}`)).length;
     if (!miss) return 0;
     if (KN.errlog) KN.errlog.note("notice", `閉じていても鳴らす：鳴らなかった回 ${miss}件`, { file: "bell.js" });
-    if (lsGet(RENEW) !== KN.util.todayKey() && !armed) {
+    if (lsGet(RENEW) !== KN.util.todayKey() && !armed && !renewing) {
       let key = null;
       try { key = await relayKey(); } catch (err) { /* 次に戻ったとき */ }
       if (key) arm(key);
@@ -340,30 +344,42 @@
     return miss;
   }
 
+  /* 押した流れ：click とキー。iPhone が「押した」と認めるのは指を離したときで、置いたとき（pointerdown・
+     touchstart）ではない。離したときでも送り終わり（touchend）は確かでないので、捨ててから作るここは click で。 */
+  const GESTURE = ["click", "keydown"];
   function arm(key) {
     armed = true;
     const go = () => {
-      document.removeEventListener("pointerup", go, true);
-      document.removeEventListener("keydown", go, true);
+      GESTURE.forEach((t) => document.removeEventListener(t, go, true));
       renew(key);
     };
-    document.addEventListener("pointerup", go, true);
-    document.addEventListener("keydown", go, true);
+    GESTURE.forEach((t) => document.addEventListener(t, go, true));
   }
 
   /** 押し先を捨てて作り直し、中継所へ送り直す（中継所は一つしか持たないので二重には鳴らない）。 */
   async function renew(key) {
     armed = false;
     const day = KN.util.todayKey();
-    if (!active() || lsGet(RENEW) === day) return;
-    lsSet(RENEW, day);
+    if (!active() || renewing || lsGet(RENEW) === day) return;
+    /* 許しが無ければ作れない。作れないのに捨てると、押し先が無くなるだけ。 */
+    if (typeof Notification !== "undefined" && Notification.permission !== "granted") return;
+    renewing = true;
     try {
       const reg = await navigator.serviceWorker.ready;
       const old = await reg.pushManager.getSubscription();
       if (old) { try { await old.unsubscribe(); } catch (err) { /* 作り直すので構わない */ } }
       await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(key) });
       await writeUsedKey(key);
-    } catch (err) { return; }
+    } catch (err) {
+      /* 捨てたのに作れなかった。作り直した日にはしない——開いているあいだの sync も作り直しを試み、
+         次に戻って鳴らなかった回があれば、また押したときに。 */
+      if (KN.errlog) KN.errlog.note("notice", "閉じていても鳴らす：押し先を作り直せなかった", { file: "bell.js" });
+      lastSub = null;
+      return;
+    } finally {
+      renewing = false;
+    }
+    lsSet(RENEW, day);
     lastSig = null;
     lastSub = null;
     await sync({ force: true });

@@ -40,7 +40,12 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       unsubscribe() { window.__unsubs++; sub = null; return Promise.resolve(true); },
     });
     PushManager.prototype.getSubscription = function () { return Promise.resolve(sub); };
-    PushManager.prototype.subscribe = function (o) { sub = make(o.applicationServerKey); return Promise.resolve(sub); };
+    /* __failSub：作らせない（iPhone が押した流れの外で断る、など）。 */
+    PushManager.prototype.subscribe = function (o) {
+      if (window.__failSub) return Promise.reject(new DOMException("作らせない", "NotAllowedError"));
+      sub = make(o.applicationServerKey);
+      return Promise.resolve(sub);
+    };
   });
 
   /* 中継所のふり。old を立てると、鳴らす役を持たない古い中継所になる。 */
@@ -350,10 +355,21 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       tx.oncomplete = () => { db.close(); ok(); };
     };
   }), opts);
+  /* 押した流れは click（iPhone が「押した」と認めるのは指を離したとき・click・キー。置いたときではない）。 */
   const tap = async () => {
-    await page.evaluate(() => document.body.dispatchEvent(new PointerEvent("pointerup", { bubbles: true })));
+    await page.evaluate(() => document.body.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     await page.waitForTimeout(600);
   };
+
+  /* 押し先を作り直せるのは、通知の許しがあるときだけ（アプリは Notification.permission を見る）。
+     ヘッドレスの Chromium は許しを与えても "denied" と答えるので、この節のあいだだけ許しのある端末にする。 */
+  const permAs = (v) => page.evaluate((v) => {
+    if (!("__perm0" in window)) window.__perm0 = Object.getOwnPropertyDescriptor(Notification, "permission") || null;
+    if (v) Object.defineProperty(Notification, "permission", { get: () => v, configurable: true });
+    else if (window.__perm0) Object.defineProperty(Notification, "permission", window.__perm0);
+    else delete Notification.permission;
+  }, v);
+  await permAs("granted");
 
   await setBack({});
   const u1 = await page.evaluate(() => window.__unsubs);
@@ -387,6 +403,39 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   t.check("N14：同じ日の二度目は作り直さない",
     miss3 === 1 && (await page.evaluate(() => window.__unsubs)) === u2 && !sent.some((x) => x.bell === "sub"),
     `${miss3} ${JSON.stringify(sent.map((x) => x.bell))}`);
+
+  /* 作り直しは古い押し先を捨ててからなので、作れないときに捨てない・作れなかった日を「済み」にしない（2026年10月10日）。 */
+  await permAs("denied");
+  await setBack({});
+  const u3 = await page.evaluate(() => window.__unsubs);
+  await page.evaluate(() => KN.bell.lookBack());
+  await tap();
+  t.check("N14：通知の許しが無ければ、古い押し先を捨てない",
+    (await page.evaluate(() => window.__unsubs)) === u3
+      && (await page.evaluate(() => localStorage.getItem("kaimono-note-bell-renew"))) !== (await page.evaluate(() => KN.util.todayKey())));
+  await permAs("granted");
+
+  await setBack({});
+  await page.evaluate(() => { window.__failSub = true; });
+  const u4 = await page.evaluate(() => window.__unsubs);
+  await page.evaluate(() => KN.bell.lookBack());
+  await tap();
+  const failed = await page.evaluate(() => ({
+    renew: localStorage.getItem("kaimono-note-bell-renew"), today: KN.util.todayKey(), log: KN.errlog.text(),
+  }));
+  t.check("N14：作れなかった日は「作り直した日」にせず、困ったときの記録に一行",
+    (await page.evaluate(() => window.__unsubs)) === u4 + 1 && failed.renew !== failed.today
+      && /押し先を作り直せなかった/.test(failed.log), JSON.stringify({ renew: failed.renew, today: failed.today }));
+  await page.evaluate(() => { window.__failSub = false; });
+  await setBack({});
+  sent.length = 0;
+  await page.evaluate(() => KN.bell.lookBack());
+  await tap();
+  t.check("N14：次に戻って押したら、もう一度作り直して送り直す",
+    sent.some((x) => x.bell === "sub") && sent.some((x) => x.bell === "times")
+      && (await page.evaluate(() => localStorage.getItem("kaimono-note-bell-renew"))) === failed.today,
+    JSON.stringify(sent.map((x) => x.bell)));
+  await permAs(null);
 
   t.check("頁の誤りが無い", !errors.length, errors.join("\n"));
   await browser.close();
