@@ -1814,7 +1814,12 @@
 
   /* ---------------- toast ---------------- */
 
-  let toastTimer = null;
+  /* いま出ている一枚（押せるもの付きと、押せないものと、多くて二枚）。roadmap-seamless の N13：
+     「元に戻す」は、ほかの知らせにも、裏へ回っているあいだの時計にも奪わせない。 */
+  const toasts = new Set();
+  document.addEventListener("visibilitychange", () => {
+    toasts.forEach((t) => (document.hidden ? t.pause() : t.resume()));
+  });
 
   /* 押せるもの（「元に戻す」ほか）が付くトーストは、既定で長めに出す——押しに
      行くあいだに消えないように（roadmap-2.0 の V18。言葉は「元に戻す」に揃える）。 */
@@ -1827,10 +1832,11 @@
 
   function toast(message, { action, actions, long, until, stay } = {}) {
     const root = toastRoot();
-    root.innerHTML = "";
-    clearTimeout(toastTimer);
     /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
     const acts = actions || (action ? [action] : []);
+    /* 押せるもの付きは前の全部を、押せない知らせは前の押せない一枚だけを替える——
+       「元に戻す」は残し、押せない知らせはその上に短く出て消える。 */
+    toasts.forEach((t) => { if (acts.length || !t.acts) t.drop(); });
     const duration = until ? TOAST_UNTIL_MS : long ? TOAST_LONG_MS : acts.length ? TOAST_ACT_MS : TOAST_MS;
 
     const el = node(html`
@@ -1854,17 +1860,26 @@
        out its 3.6 seconds to see the row underneath is a poor deal. */
     el.addEventListener("click", () => dismiss());
 
-    let gone = false;
+    let gone = false, timer = null, left = duration, since = 0;
+    const self = {
+      acts: acts.length > 0,
+      /* 見えていないあいだは数えない。戻ったら残りから。 */
+      pause() { if (timer) { clearTimeout(timer); timer = null; left -= Date.now() - since; } },
+      resume() { if (!gone && !stay && !timer) { since = Date.now(); timer = setTimeout(dismiss, Math.max(left, 0)); } },
+      drop() { gone = true; clearTimeout(timer); toasts.delete(self); el.remove(); },
+    };
     function dismiss() {
       if (gone) return;
       gone = true;
-      clearTimeout(toastTimer);
+      clearTimeout(timer);
+      toasts.delete(self);
       el.classList.add("is-out");
       setTimeout(() => el.remove(), 220);
     }
 
-    root.append(el);
-    if (!stay) toastTimer = setTimeout(dismiss, duration);
+    if (self.acts) root.append(el); else root.prepend(el);
+    toasts.add(self);
+    if (!document.hidden) self.resume();
     return { dismiss };
   }
 

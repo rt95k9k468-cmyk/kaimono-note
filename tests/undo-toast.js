@@ -1,5 +1,7 @@
 /* 「戻す」を揃える（docs/roadmap-2.0.md の V18・docs/look.md の「元に戻す」）。
    - 押せるものが付くトーストは既定で 5 秒（無いものは 3.6 秒のまま）
+   - 裏へ回っているあいだは数えない・押せない知らせで「元に戻す」を上書きしない・押せるもの付きが
+     続いたら新しいほう（docs/roadmap-seamless.md の N13）
    - 戻すボタンの言葉は「元に戻す」だけ（js の中に label: "戻す" が無い）
    - 消す言葉は「消しました」（「削除しました」のトーストが無い）
    - daily の記録・体重・食事・お酒・衝動・運動を消すと、同じものが同じ場所へ戻る関数が返る
@@ -35,6 +37,60 @@ const { open, checker } = require("./lib");
   const act = await life(true);
   t.check("押せるものが無いトーストは 3.6 秒", plain[0] && !plain[1], JSON.stringify(plain));
   t.check("「元に戻す」が付くトーストは 5 秒", act[0] && act[1], JSON.stringify(act));
+  await page.waitForTimeout(600);
+
+  /* ---- 時間と割り込みで奪わない（roadmap-seamless の N13） ---- */
+  const hidden = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const live = () => document.querySelector(".toast:not(.is-out) .toast-action");
+    const setHidden = (v) => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => v });
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (v ? "hidden" : "visible") });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    let undone = 0;
+    KN.ui.toast("消しました", { action: { label: "元に戻す", onClick() { undone++; } } });
+    await wait(1000);
+    setHidden(true);
+    await wait(10000);           // 裏へ回って10秒
+    setHidden(false);
+    const back = !!live();
+    await wait(3000);            // 戻ってから3秒（残りは約4秒）
+    const still = !!live();
+    if (still) live().click();
+    await wait(300);
+    return { back, still, undone };
+  });
+  t.check("裏へ回っているあいだは数えない（戻っても押せる・押すと戻る）",
+    hidden.back && hidden.still && hidden.undone === 1, JSON.stringify(hidden));
+
+  const over = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let undone = 0;
+    KN.ui.toast("消しました", { action: { label: "元に戻す", onClick() { undone++; } } });
+    await wait(200);
+    KN.ui.toast("別の知らせ");
+    await wait(200);
+    const both = document.querySelectorAll(".toast:not(.is-out)").length;
+    const btn = document.querySelector(".toast:not(.is-out) .toast-action");
+    if (btn) btn.click();
+    await wait(300);
+    return { both, has: !!btn, undone };
+  });
+  t.check("ほかの知らせが来ても「元に戻す」は押せる", over.has && over.both === 2 && over.undone === 1, JSON.stringify(over));
+
+  const swap = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const a = { label: "元に戻す", onClick() {} };
+    KN.ui.toast("一つ目", { action: a });
+    KN.ui.toast("二つ目", { action: a });
+    await wait(100);
+    const live = [...document.querySelectorAll(".toast:not(.is-out)")].map((e) => e.textContent.replace(/\s+/g, ""));
+    document.querySelectorAll(".toast").forEach((e) => e.click());
+    await wait(300);
+    return live;
+  });
+  t.check("押せるもの付きが続いたら新しいほうだけ", swap.length === 1 && /二つ目/.test(swap[0]), JSON.stringify(swap));
 
   /* ---- 消して戻す（store） ---- */
   const before = await page.evaluate(() => JSON.stringify(KN.store.get()));
