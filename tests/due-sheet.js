@@ -120,6 +120,9 @@ const { open, checker, URL: APP } = require("./lib");
   await page.waitForTimeout(300);
   const rb2 = await page.evaluate((o) => KN.store.getTodo(o.b).due, ids);
   t.check("くり返しを済ませると次の日へ", rb2 === (await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), 1))), rb2);
+  // 「元に戻す」は次に押すまで残る（N13 の (b)）——下の行に重なっていれば、指は先に知らせを下げる
+  await page.click(".toast:not(.is-out) .toast-msg");
+  await page.waitForTimeout(300);
   await page.click(`.due-row[data-id="${ids.c}"] .js-later`);
   await page.click(`.due-row[data-id="${ids.c}"] .js-pick[data-key="tomorrow"]`);
   await page.waitForTimeout(400);
