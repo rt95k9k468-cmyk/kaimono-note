@@ -3335,6 +3335,7 @@
 
      時刻は聞きません。数もここでは聞きません（AIに推してもらう道が
      別にあります）。 */
+  KN.ui.reopen("meal", (day) => { if (typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day)) openMealMemoSheet(day); });
   function openMealMemoSheet(day0, existing, slotHint) {
     const day = day0 || curDay();
     /* 前の作りで書いた「一日ぶんのメモ」（slot:"memo"）が残っている日は、
@@ -3359,7 +3360,8 @@
     const foot = node(html`
       <button class="btn btn-primary btn-block js-save">保存</button>
     `);
-    const h = KN.ui.sheet({ title: "食事を書く", content: body, footer: foot, guard: true });
+    const h = KN.ui.sheet({ title: "食事を書く", content: body, footer: foot, guard: true,
+      draft: existing ? null : { kind: "meal", id: day } });
 
     const built = buildSlotBoxes(body.querySelector(".js-slots"), day, D.slotTotals(day), { sheet: true });
     built.boxes.forEach(grow);
@@ -3936,6 +3938,11 @@
     });
   }
 
+  /* iOS に閉じられたら、書きかけを戻す（ui.js の keepDraft・N8）。日付は欄にあるので、それも戻る。 */
+  KN.ui.reopen("weight", (id) => {
+    const w = id ? store.get().diet.weights.find((x) => x.id === id) : null;
+    if (!id || w) openWeightSheet(w);
+  });
   function openWeightSheet(existing, dayHint) {
     const w = existing || null;
     /* 新しく書くときは、前回と同じ条件を出しておきます。量る条件は
@@ -3995,6 +4002,7 @@
 
     KN.ui.whenFields(body);
     const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true,
+      draft: { kind: "weight", id: w ? w.id : null },
       menu: w ? KN.ui.delMenu(() => store.removeWeight(w.id), { sheet: () => h, after: render }) : null });
     const kgEl = body.querySelector(".js-kg");
     const fatEl = body.querySelector(".js-fat");

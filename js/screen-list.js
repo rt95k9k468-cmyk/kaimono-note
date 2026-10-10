@@ -118,6 +118,8 @@
      It closes after each add. Staying open saved a tap, and cost the sight of
      the row that had just appeared — the sheet sat over the list it had
      changed. One add, one close; the ＋ is under the thumb for the next. */
+  /* iOS に閉じられたら、書きかけを戻す（ui.js の keepDraft・N8）。 */
+  KN.ui.reopen("shop-add", () => openAddSheet());
   function openAddSheet() {
     KN.motion.fire("save");
 
@@ -145,7 +147,8 @@
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
 
-    const handle = KN.ui.sheet({ title: "買うものを追加", hero: f.hero, content: body, footer: foot, guard: true });
+    const handle = KN.ui.sheet({ title: "買うものを追加", hero: f.hero, content: body, footer: foot, guard: true,
+      draft: { kind: "shop-add" } });
     /* ＋を押した一拍のうちに名前の欄へ（iOS は操作のうちの focus でしかキーボードを出さない。
        ui.js の focusNow。V27、利用者が選んだ）。 */
     KN.ui.focusNow(nameEl);
