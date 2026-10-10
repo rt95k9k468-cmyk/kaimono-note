@@ -7034,8 +7034,6 @@ button.note-when:active { opacity: var(--press-fade); }
   font: inherit; font-size: var(--fs-xs); color: var(--c-text);
   text-align: left; cursor: pointer; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  /* 和文と数字のあいだは空けない（J2）。幅が決まっていて、空けると一字早く「…」になる。 */
-  text-autospace: no-autospace;
 }
 .road-label.is-rev { flex-direction: row-reverse; }
 .road-label:active { opacity: var(--press-fade); }
