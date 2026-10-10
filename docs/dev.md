@@ -55,6 +55,19 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   **resource_id: "pages.yml"**, **perPage: 1**）。perPage を省くと30件返って大きい。
   `workflow_runs_filter: {branch: "main"}` で引くと**古い run（9月21日の #403）が
   返った**ことがある（2026年9月29日）——run_number と head_sha を push したものと照らすこと。
+- **main を分け合う**（いくつものセッションが同じ main へ流す。2026年10月10日、利用者が決めた。run #802 が
+  `update-path` の揺れで落ちて配られなかった——同時の push や競合ではなかった）：
+  - 結論が赤なら `mcp__github__get_job_logs`（run_id・failed_only・return_content・tail_lines 40）で落ちた試験を見る。
+    自分の変更が触る所なら直して流す。触らない所なら、一つ前の run も同じ所で赤いかを見たうえで、同じ SHA を
+    **一度だけ**再実行（`actions_run_trigger` の rerun_failed_jobs）。二度目も落ちたら本物。再実行したこと・run 番号・
+    落ちた試験は利用者に伝える（黙って緑にしない）。揺れの確かめ方と揺れた試験の扱いは `tests/README.md` の門。
+  - `run_attempt` が2以上の run は、前の回が落ちている（`list_workflow_jobs` の filter "all" で見える）。
+  - `cancelled` は落ちたのではない（`concurrency: pages` が待ちを一つに畳む）。後の run の head_sha が自分の
+    コミットを含めば（`git merge-base --is-ancestor <自分> <その sha>`）それで足りる。
+  - 赤い main に別件を積まない。自分の push で赤くしたら、次の仕事より先に片づける。
+  - 共通の部品（下の「テストの回し方」の一覧）と門の試験を触る前に
+    `git log origin/main -3 --format='%h %ar %s' -- <file>` を見る。ほかのセッションが数時間内に触っていたら、
+    その差分を読んでから始める。
 - `stamp-build.js` は**絶対にローカルで実行してコミットしない**
   （ビルド時にCI側が使うもの）。
 - PRは明示的に頼まれない限り作らない。
