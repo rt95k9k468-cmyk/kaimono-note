@@ -4845,6 +4845,8 @@
 
       const id = row.dataset.todoId;
       const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+      /* 持ち上がるのは長押しの途中。iPhone は触れる前の音を出さないので、音の口は今開ける。 */
+      KN.motion.wakeSound();
       let timer = setTimeout(() => { timer = null; lift(row, id, list, day, y0); }, DRAG_HOLD);
 
       /* **待っているあいだの見張りは document で。** 一覧に付けていました
@@ -4899,7 +4901,7 @@
 
     tlDrag = { id, row, list, dayList, someday, day: dayKey, len,
                target: null, y0, moved: false, axis: axisOf(dayList) };
-    KN.motion.fire("reorder");
+    KN.motion.fire("lift");
     row.classList.add("is-lifted");
     list.classList.add("is-dragging");
     // 落とし先が別の一覧なら、そちらにも印を付けます（軸を伏せる CSS のため）。
@@ -5208,6 +5210,7 @@
     const d = tlDrag;
     tlDrag = null;
     if (!d) return;
+    if (commit) KN.motion.fire("drop");
     if (d.raf) cancelAnimationFrame(d.raf);
     d.row.classList.remove("is-lifted");
     d.list.classList.remove("is-dragging");

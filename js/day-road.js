@@ -2053,6 +2053,8 @@
         go = () => lift(el, o, key, k, x0, y0, pid);
       }
       const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+      /* 持ち上がるのは長押しの途中。iPhone は触れる前の音を出さないので、音の口は今開ける。 */
+      KN.motion.wakeSound();
       let timer = setTimeout(() => { timer = null; off(); go(); }, CARRY_HOLD);
       const off = () => {
         if (timer) { clearTimeout(timer); timer = null; }
@@ -2078,7 +2080,7 @@
     const c = st && (key === "b" ? st.loose : st.someday)[k];
     const map = el.querySelector(".road-map");
     if (!c || !map || !el.isConnected) return;
-    KN.motion.fire("reorder");
+    KN.motion.fire("lift");
     try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
     const sel = `.road-bead[data-${key}="${k}"]`;
     const bead = el.querySelector(sel);
@@ -2141,7 +2143,7 @@
     const x = o.tools && o.tools.list.find((y) => y.kind === kind);
     const svg = el.querySelector(".road-svg");
     if (!st || !x || !map || !svg || !el.isConnected) return;
-    KN.motion.fire("reorder");
+    KN.motion.fire("lift");
     try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
     el.classList.add("is-carrying");
     const ghost = node(html`<span class="road-tool road-ghost" aria-hidden="true"
@@ -2261,6 +2263,7 @@
     const d = carry;
     carry = null;
     if (!d) return;
+    if (commit) KN.motion.fire("drop");
     d.off();
     d.ghost.remove();
     d.tag.remove();
