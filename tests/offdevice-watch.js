@@ -8,10 +8,12 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("offdevice-watch");
-  const { browser, page, errors } = await open();
+  /* 時計は昼に止め、「昨日」「15日前」もその時計から作る（壁の時計だと 0:00 の前後でずれる。roadmap-seamless の N10）。 */
+  const NOW = new Date(2026, 9, 1, 12, 0).getTime();
+  const { browser, page, errors } = await open({ before: async (cx, p) => { await p.clock.setFixedTime(NOW); } });
   const dot = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() =>
     r(document.querySelector("#head .js-settings").classList.contains("has-dot"))))));
-  const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString();
+  const daysAgo = (n) => new Date(NOW - n * 86400000).toISOString();
   const setExport = (iso) => page.evaluate((x) => KN.store.update((s) => { s.settings.lastExportAt = x; }), iso);
 
   t.check("記録が少ないうちは点を出さない", !(await dot()));

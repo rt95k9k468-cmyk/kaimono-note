@@ -476,8 +476,11 @@ async function tapMonthExport(page) {
 
   /* ================= 読めない日：本文だけ「読めません」 ================= */
   {
+    /* 時計は昼から進める：この節は40秒ほどかかり、0:00 をまたぐと「今日」の行が消える（roadmap-seamless の
+       N10）。止めはしない——「前に試してから5秒は読み直さない」が Date.now で進むので。 */
     const { browser, page, errors } = await open({
-      before: async (ctx) => {
+      before: async (ctx, p) => {
+        await p.clock.install({ time: new Date(2026, 9, 1, 12, 0) });
         await ctx.addInitScript(() => {
           // 印があるあいだ、大きな保存場所を開けない（window.__idbFix で直る）
           const orig = IDBFactory.prototype.open;

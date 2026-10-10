@@ -45,6 +45,14 @@ function noAnchor() {
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh];
 }
 
+/** "HH:MM[:SS]" → 今日のその時刻（手元の時間帯）。 */
+function clockAt(hms) {
+  const [h, m, s] = hms.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m || 0, s || 0, 0);
+  return d;
+}
+
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
 async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false } = {}) {
@@ -70,6 +78,9 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);
   /* KN_NO_ANCHOR=1：スクロールの錨の無い端末（iOS 26 まで）の道で回す（roadmap-3.1 の S1）。 */
   if (process.env.KN_NO_ANCHOR) await ctx.addInitScript(noAnchor);
+  /* KN_CLOCK=23:59:55：今日のその時刻から時計を進めて回す（日付の境目で落ちる台本を洗う。
+     roadmap-seamless の N10）。台本が自分で時計を止めていれば、そちらが勝つ。 */
+  if (process.env.KN_CLOCK) await page.clock.install({ time: clockAt(process.env.KN_CLOCK) });
   if (before) await before(ctx, page);
   if (process.env.KN_CSS_COVER) await coverCSS(browser, page, process.env.KN_CSS_COVER);
   await page.goto(URL);

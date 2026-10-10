@@ -14,7 +14,9 @@
   終了コードが 1。出すのは NG の行と「題: 通った/数えた」だけ（通った行も見るなら
   `KN_VERBOSE=1`。どこまで進んで落ちたかを追うとき）。伸びる欄を field-sizing の効かない端末の道
   （JS が測る）で回すなら `KN_NO_FIT=1`（`lib.js` の `noFit`。roadmap-3.1 の S2）。スクロールの錨の無い端末
-  （iOS 26 までの Safari）の道で回すなら `KN_NO_ANCHOR=1`（`noAnchor`。S1）。
+  （iOS 26 までの Safari）の道で回すなら `KN_NO_ANCHOR=1`（`noAnchor`。S1）。日付の境目で回すなら
+  `KN_CLOCK=23:59:50`（今日のその時刻から頁の時計を進める。台本が自分で止めた時計が勝つ。N10）。`settings` は
+  この差し替えと相性が悪く、昼でも30秒待ちきれない——日付とは無関係。
 - **まとめて回す**（R19、2026年9月29日）：`node tests/run-all.js`。3本ずつ並べて、
   一本一行の要約だけ出す（落ちたものは NG の行も）。全部で約8分（一本ずつだと約23分。2026年10月8日、118本）。
   名前で絞る（`run-all.js carry day-road`）・門だけ（`--gate`）・並べる数（`-j 4`）。
@@ -69,6 +71,11 @@
 - **設定の一枚は、押し出し終わるまで押しを捨てる**（`screen-settings.js` の `moving`）。入った・戻ったあと
   決め打ちの ms で次を押さず、`.set-layer.is-edge-lift` が消えるまで待つ（`tests/settings.js` の `layerStill`。
   300ms の待ちが押し出しの終わりの 20ms と競り、まれに30秒の時間切れになっていた。2026年10月10日）。
+- **「今日」「昨日」「いま」を壁の時計で作らないこと。** `open({ before: (cx, p) => p.clock.setFixedTime(…) })` で
+  昼の半ば（毎時0分台は避ける）に止め、台本の側の日付も同じ時刻から作る。壁の時計のままだと 0:00 の前後で落ち、
+  門は UTC で回るので日本時間の朝9時の push が止まりうる（`backup-budget`・`shop-day`・`due-sheet`・`offdevice-watch`・
+  `diary-idb`。2026年10月10日、N10）。Date.now で進む待ち（「5秒は読み直さない」）があるなら、止めずに
+  `p.clock.install({ time })` で昼から進める（`diary-idb`）。
 - **指の手つきは、本物のタッチで試すこと。** `new PointerEvent(...)` を
   自分で投げるやり方では、`touchstart` / `touchmove` を見ているものが
   **まるごと動きません**——`pull-refresh.js` がそれです。買うものの掴み手に

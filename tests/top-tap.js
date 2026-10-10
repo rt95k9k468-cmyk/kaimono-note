@@ -10,13 +10,18 @@ const { open, checker } = require("./lib");
   const { browser, page, errors } = await open({ touch: true });
   /* 状態バーを押したときの iOS の動き：文書を 0 へ。 */
   const tapBar = () => page.evaluate(() => window.scrollTo(0, 0));
+  /* 画面の移りが終わるまで待つ（決め打ちの ms で次を押さない。tests/note-typing.js と同じ）。
+     移るあいだの押しは捨てられ、＋の紙が出ずに30秒待ちきれないことがあった（並べたとき。N10）。 */
+  const settled = (id) => page.waitForFunction((i) =>
+    document.querySelector(".screen.is-active").dataset.screen === i
+    && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
 
   t.check("タッチの端末では文書が 1px 送られて待つ",
     await page.evaluate(() => document.documentElement.classList.contains("has-top-tap") && window.scrollY >= 1));
 
   /* 画面：送る器を上へ。 */
   await page.evaluate(() => KN.app.showScreen("todo"));
-  await page.waitForTimeout(400);
+  await settled("todo");
   const scr = await page.evaluate(() => {
     const el = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
     const pad = document.createElement("div");
@@ -65,9 +70,9 @@ const { open, checker } = require("./lib");
   /* ノートの紙：紙の本体を上へ（後ろの画面は動かさない）。 */
   await page.waitForTimeout(1200);
   await page.evaluate(() => KN.app.showScreen("notes"));
-  await page.waitForTimeout(400);
+  await settled("notes");
   await page.evaluate(() => document.querySelector("#dock .add-fab").click());
-  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.waitForSelector(".sheet.is-note.is-open", { timeout: 5000 });
   await page.fill(".sheet.is-note .js-text", Array.from({ length: 120 }, (_, i) => `行${i}`).join("\n"));
   await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note .note-view").hidden);
