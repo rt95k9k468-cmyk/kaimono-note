@@ -94,11 +94,75 @@
   function list() { return read().slice().reverse(); }
   function clear() { try { localStorage.removeItem(KEY); } catch (_) { /* 読めない端末 */ } }
 
-  /** コピーする字。いちばん新しいものから。 */
-  function text() {
-    return list().map((r) => [r.at, r.ver, r.screen || "-", r.kind, r.file ? `${r.file}:${r.line || "?"}` : "-",
-      r.n ? `×${r.n}` : "", r.msg].filter(Boolean).join(" | ")).join("\n");
+  /* ---------------- 端末の事実（roadmap-seamless の N9） ----------------
+     コピーの頭に数行：版・ホーム画面か・persisted・効く機能と、**最後の5回の起動**
+     （入口がネットか控えか・入口まで・組み終わりまで・読み直したか）。残すのは時間だけ——
+     回数・日付・どの画面かは残さない。鍵は記録の外（`kaimono-note-launches`、上の控えと同じ置き方）。 */
+  const LAUNCH_KEY = "kaimono-note-launches";
+  const LAUNCH_MAX = 5;
+  let persisted = null;
+  try { navigator.storage.persisted().then((p) => { persisted = p; }, () => {}); } catch (_) { /* 無い端末 */ }
+
+  function launches() {
+    try {
+      const a = JSON.parse(localStorage.getItem(LAUNCH_KEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (_) { return []; }
   }
 
-  KN.errlog = { note, list, clear, text, KEY, version };
+  /* 入口を出したのはネットか控えか：Service Worker が覚えている（sw.js の `kn-opened`）。
+     Service Worker がいなければネット。答えが来なければ「?」。 */
+  function openedFrom() {
+    return new Promise((resolve) => {
+      try {
+        const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+        if (!sw) { resolve("net"); return; }
+        const ch = new MessageChannel();
+        const t = setTimeout(() => resolve("?"), 1000);
+        ch.port1.onmessage = (e) => { clearTimeout(t); resolve((e.data && e.data.from) || "?"); };
+        sw.postMessage({ type: "kn-opened" }, [ch.port2]);
+      } catch (_) { resolve("?"); }
+    });
+  }
+
+  /** app.js の boot() の終わりで一度。 */
+  let launched = false;
+  function ready() {
+    if (launched) return;
+    launched = true;
+    try {
+      const built = Math.round(performance.now());
+      const nav = performance.getEntriesByType("navigation")[0];
+      const entry = nav ? Math.round(nav.responseEnd) : null;
+      const reload = !!(nav && nav.type === "reload");
+      openedFrom().then((from) => {
+        try {
+          const a = launches();
+          a.push({ from, entry, built, reload });
+          localStorage.setItem(LAUNCH_KEY, JSON.stringify(a.slice(-LAUNCH_MAX)));
+        } catch (_) { /* 控えは諦める */ }
+      });
+    } catch (_) { /* 控えで落ちない */ }
+  }
+
+  function facts() {
+    const yes = (b) => (b ? "○" : "×");
+    let home = false, sizing = false, autospace = false;
+    try { home = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch (_) { /* 無い */ }
+    try { sizing = CSS.supports("field-sizing", "content"); autospace = CSS.supports("text-autospace", "normal"); } catch (_) { /* 無い */ }
+    const head = `版 ${version} | ホーム画面 ${yes(home)} | persisted ${persisted == null ? "?" : yes(persisted)}`
+      + ` | field-sizing ${yes(sizing)} | text-autospace ${yes(autospace)}`;
+    const from = { net: "ネット", kept: "控え" };
+    const rows = launches().slice().reverse().map((l) => `起動 ${from[l.from] || "?"} | 入口 ${l.entry == null ? "?" : l.entry + "ms"}`
+      + ` | 組み終わり ${l.built}ms${l.reload ? " | 読み直し" : ""}`);
+    return [head, ...rows].join("\n");
+  }
+
+  /** コピーする字。端末の事実のあとに、いちばん新しいものから。 */
+  function text() {
+    return [facts(), ...list().map((r) => [r.at, r.ver, r.screen || "-", r.kind, r.file ? `${r.file}:${r.line || "?"}` : "-",
+      r.n ? `×${r.n}` : "", r.msg].filter(Boolean).join(" | "))].join("\n");
+  }
+
+  KN.errlog = { note, list, clear, text, ready, launches, KEY, LAUNCH_KEY, version };
 })();
