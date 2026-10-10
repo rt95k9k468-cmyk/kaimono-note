@@ -2611,9 +2611,11 @@
 
 /* 右の三つ。一つ一段で、名前・数・単位を一行に並べます
    （縦三段×三列にすると、それだけで体重の高さを超えます）。 */
+/* 幅は中身に合わせて 41〜60%。決め打ちの 168px では、特大で単位（「kg/週」）が
+   潰れて消えた（roadmap-seamless の N15）。左の体重は大きな字一つなので、譲れる。 */
 .diet-hero-side {
   display: flex; flex-direction: column; gap: 3px;
-  flex: none; width: 41%; max-width: 168px;
+  flex: none; min-width: 41%; max-width: 60%;
   border-left: 1px solid var(--c-border); padding-left: var(--sp-3);
 }
 .diet-stat {
@@ -2625,10 +2627,7 @@
 .diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 .diet-stat-value { font-size: var(--fs-md); font-weight: var(--fw-bold); margin-left: auto; }
 .diet-stat-value.is-warn { color: var(--c-accent); }
-.diet-stat-unit {
-  font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap;
-  max-width: 46px; overflow: hidden; text-overflow: ellipsis;
-}
+.diet-stat-unit { flex: none; font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap; }
 
 .diet-note {
   font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); margin: 0;
@@ -2775,6 +2774,11 @@
    ところ（--fs-xs）へ。この画面は `.diet` が段を一つ上げているので 12.5px
    （実測）。四つ並べても「目標 5h00m」が枠に収まります（はみ出し 0）。 */
 .diet-cell-unit { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+/* 飲酒の枠は地が黄みで明るいので、暗い面の灰（#92929a）では 3.39:1。一段明るく（5.0:1。N15）。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #b4b4ba; }
+}
+:root[data-theme="dark"] .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #b4b4ba; }
 
 /* ---- からだの輪 ----
 
@@ -3027,7 +3031,7 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-lv.is-on {
   background: var(--c-primary);
   border-color: var(--c-primary);
-  color: #fff;
+  color: var(--c-on-fill);
 }
 /* 両端の言葉。数だけだと、1 と 5 のどちらが強いのか決まっていません。 */
 .urge-ends {
@@ -7055,7 +7059,7 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 .road-edge {
   transform: translateY(-50%); pointer-events: none;
-  font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2);
+  font-size: calc(11px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
 .road-edge.is-under { transform: translate(-50%, -50%); }
 /* 連れ（時刻を決めていないもの）。人のすぐ後ろ、道の上の小さな丸。中の絵は
