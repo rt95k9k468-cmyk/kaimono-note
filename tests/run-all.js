@@ -38,7 +38,7 @@ const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules",
   "inline-style",                  // roadmap-unify の U13：値の決まった style= が増えない・小見出しの字（画面を開かない）
   "chip-icon-size",                // roadmap-unify の U14：札の高さは二つ・絵の直書きは入れものだけ（画面を開かない）
   "smooth",                        // なめらかさ（2026年10月9日）：二度組み・毎フレームの当て・動きの最中の保存が戻らない（数で見る）
-  "update-path",                   // roadmap-seamless の N1・N2：版の入れ替えで読み直すのは要るときだけ・入口は1.5秒で控えへ・控えは揃ってから
+  "update-path",                   // roadmap-seamless の N1・N2・N4：版の入れ替えで読み直すのは要るときだけ（見えないとき）・入口は1.5秒で控えへ・控えは揃ってから
   "ime-enter"];                    // roadmap-seamless の N5：改行は KN.util.isEnter だけ・変換を決める改行で手順が増えない
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。

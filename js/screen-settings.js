@@ -546,6 +546,38 @@
     render();
   }
 
+  /* ---- 読み直しのあと、同じ奥へ（app.js の keepPlace・roadmap-seamless の N4） ----
+     置くのは「›」の先の名前と送り位置だけ。押しのけた紙（中身が呼んだ側のもの）と、選んだものに
+     よる一枚（noteLabel）から先は戻せないので、その手前まで。 */
+  function where() {
+    const out = [];
+    for (const L of stack) {
+      if (L !== stack[0] && (!L.id || L.id === "noteLabel")) break;
+      out.push({ id: L.id || "", top: Math.round(L.scroll.scrollTop) });
+    }
+    return out;
+  }
+
+  /** 動かさずに重ねます（onEnter が根っこ一枚にしたあと）。 */
+  function goTo(list) {
+    if (!root || !stack.length || !Array.isArray(list)) return;
+    for (let i = 0; i < list.length; i++) {
+      const w = list[i] || {};
+      let L = stack[0];
+      if (i > 0) {
+        if (!PAGES[w.id] || w.id === "noteLabel") break;
+        const under = top();
+        L = makeLayer(w.id);
+        stack.push(L);
+        root.append(L.el);
+        paintLayer(L);
+        KN.edgeBack.rest(under.el);
+      }
+      if (w.top > 0) L.scroll.scrollTop = w.top;
+      paintNav(L);
+    }
+  }
+
   /** store が動いた。**重なっている紙は、ぜんぶ**組み直します——上の一枚
       だけにすると、戻ったときに古い数字が出ます（お店を消した直後の件数など）。 */
   function render() {
@@ -675,5 +707,5 @@
   Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, choose, render, copyText, fieldCard });
 
   KN.screens = KN.screens || {};
-  KN.screens.settings = { mount, render, onEnter };
+  KN.screens.settings = { mount, render, onEnter, where, goTo };
 })();
