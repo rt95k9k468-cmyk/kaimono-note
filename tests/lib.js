@@ -45,6 +45,19 @@ function noAnchor() {
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh];
 }
 
+/** 頁の中で走る：押しても欄からカーソルが動かない（iOS の Safari。ボタン・行を押しても、打っている欄は
+    フォーカスを持ったまま——キーボードも上がったまま）。Chromium は押したボタンへフォーカスを移すので、
+    「押した瞬間にはもう打っていない」を前提にした書き方が、ここでは通ってしまう。 */
+function iosFocus() {
+  const typing = (el) => el && (el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable
+    || (el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|reset|file|range|color)$/.test(el.type)));
+  document.addEventListener("mousedown", (e) => {
+    const t = e.target && e.target.closest ? e.target : null;
+    if (!t || typing(t) || t.closest("label")) return;
+    if (typing(document.activeElement)) e.preventDefault();
+  }, true);
+}
+
 /** "HH:MM[:SS]" → 今日のその時刻（手元の時間帯）。 */
 function clockAt(hms) {
   const [h, m, s] = hms.split(":").map(Number);
@@ -61,8 +74,12 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
      無いところでも走れるように。 */
   const { chromium } = require("playwright");
   const browser = await chromium.launch();
+  /* KN_TZ=Asia/Tokyo：頁の時間帯（台本が timezoneId を渡していれば、そちらが勝つ）。機械と門は UTC なので、
+     日本の朝（0〜9時。UTC ではまだ前の日）にだけ出る取り違えは、ふだんの回し方では見えない。
+     台本の側の日付も揃えるなら、node にも同じ TZ を渡す（`TZ=Asia/Tokyo KN_TZ=Asia/Tokyo KN_CLOCK=07:30`）。 */
+  const tz = timezoneId || process.env.KN_TZ;
   const ctx = await browser.newContext({ serviceWorkers: "block", viewport, ...(touch ? { hasTouch: true, isMobile: true } : {}),
-    ...(timezoneId ? { timezoneId } : {}) });
+    ...(tz ? { timezoneId: tz } : {}) });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -78,6 +95,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);
   /* KN_NO_ANCHOR=1：スクロールの錨の無い端末（iOS 26 まで）の道で回す（roadmap-3.1 の S1）。 */
   if (process.env.KN_NO_ANCHOR) await ctx.addInitScript(noAnchor);
+  /* KN_IOS_FOCUS=1：押しても欄からカーソルが動かない端末（iOS の Safari）の道で回す（iosFocus）。 */
+  if (process.env.KN_IOS_FOCUS) await ctx.addInitScript(iosFocus);
   /* KN_CLOCK=23:59:55：今日のその時刻から時計を進めて回す（日付の境目で落ちる台本を洗う。
      roadmap-seamless の N10）。台本が自分で時計を止めていれば、そちらが勝つ。 */
   if (process.env.KN_CLOCK) await page.clock.install({ time: clockAt(process.env.KN_CLOCK) });
