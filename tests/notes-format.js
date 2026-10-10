@@ -33,7 +33,9 @@ const { open, checker } = require("./lib");
   };
   const closeSheet = async () => {
     await page.keyboard.press("Escape");
-    await page.waitForFunction(() => !document.querySelector(".sheet.is-note.is-open"), null, { timeout: 3000 });
+    /* 帰り終えて外れるまで待つ。閉じた紙は指を受けないので（ui.js）すぐ次を開けるが、帰る途中の
+       紙が先に並んでいて、下の `.sheet.is-note …` がそちらの欄を掴んでいた。すぐ開き直す道は notes.js。 */
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
   };
   const field = () => page.$eval(".sheet.is-note .js-text", (e) => ({ v: e.value, s: e.selectionStart, e: e.selectionEnd }));
   const tool = (k) => page.click(`.sheet.is-note .note-tool[data-k="${k}"]`);

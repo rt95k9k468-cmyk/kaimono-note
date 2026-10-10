@@ -1074,9 +1074,11 @@
     openSheets.push(handle);
 
     // Focus the first meaningful control.
-    /* もう紙の中に居るカーソル（＋から本文へ入れたもの）は奪いません。 */
+    /* もう紙の中に居るカーソル（＋から本文へ入れたもの）は奪いません。
+       待つあいだに閉じた紙も奪いません——帰る途中の紙はまだ在るので、すぐ開いた次の
+       ノートの本文から、閉じた紙のボタンへカーソルを引き抜いていた（tests/notes.js）。 */
     setTimeout(() => {
-      if (el.contains(document.activeElement)) return;
+      if (closed || el.contains(document.activeElement)) return;
       const target = el.querySelector("input, textarea, select, button:not(.js-close):not(.js-menu)");
       if (target && !("ontouchstart" in window)) target.focus();
     }, 320);
