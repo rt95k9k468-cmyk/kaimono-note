@@ -16,7 +16,8 @@
   （JS が測る）で回すなら `KN_NO_FIT=1`（`lib.js` の `noFit`。roadmap-3.1 の S2）。スクロールの錨の無い端末
   （iOS 26 までの Safari）の道で回すなら `KN_NO_ANCHOR=1`（`noAnchor`。S1）。日付の境目で回すなら
   `KN_CLOCK=23:59:50`（今日のその時刻から頁の時計を進める。台本が自分で止めた時計が勝つ。N10）。`settings` は
-  この差し替えと相性が悪く、昼でも30秒待ちきれない——日付とは無関係。
+  この差し替えと相性が悪く、昼でも30秒待ちきれない——日付とは無関係。`pill-morph` も同じ（何時に差し替えても
+  48/49。差し替えは requestAnimationFrame・performance.now も作り物にするが、Web Animations は本物の時計で進む）。
   iPhone の Safari の押し方（ボタンや行を押しても、打っている欄がカーソルを持ったまま）で回すなら `KN_IOS_FOCUS=1`
   （`iosFocus`）。日本の朝で回すなら `TZ=Asia/Tokyo KN_TZ=Asia/Tokyo KN_CLOCK=07:30`（機械と門は UTC なので、
   0〜9時にだけ出る日付の取り違えはふだん見えない。`KN_TZ` は頁の時間帯、`TZ` は台本の側）。2026年10月10日に
