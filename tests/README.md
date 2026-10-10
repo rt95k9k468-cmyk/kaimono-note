@@ -80,6 +80,9 @@
   門は UTC で回るので日本時間の朝9時の push が止まりうる（`backup-budget`・`shop-day`・`due-sheet`・`offdevice-watch`・
   `diary-idb`。2026年10月10日、N10）。Date.now で進む待ち（「5秒は読み直さない」）があるなら、止めずに
   `p.clock.install({ time })` で昼から進める（`diary-idb`）。
+- **字の描いた幅を物差しにしないこと。** 字の形は機械で違う（GitHub は数字が細い）。アプリが字の数からの見積もりで
+  置くもの（道の札・いまの時刻、`day-road.js` の `textW`）は、試験も同じ見積もりで測る（`road-now-clear` が
+  置き場所は同じなのに GitHub だけで落ちていた。2026年10月10日、毎日の全部回しの #1）。
 - **指の手つきは、本物のタッチで試すこと。** `new PointerEvent(...)` を
   自分で投げるやり方では、`touchstart` / `touchmove` を見ているものが
   **まるごと動きません**——`pull-refresh.js` がそれです。買うものの掴み手に

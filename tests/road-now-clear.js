@@ -45,8 +45,14 @@ const DAY = "2026-10-06";
       }
     }
     const mx = (m.left + m.right) / 2;
+    /* 「そば」の箱の幅は、描いた幅ではなくアプリが置くときの見積もり（day-road.js の textW）で測る。
+       描いた幅は機械の字で変わる——GitHub は数字が細く、置き場所は同じ（曲がり角で 39）なのに
+       「離れすぎ」で落ちた（2026年10月10日、毎日の全部回しの #1）。 */
+    const fsK = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fs-k")) || 1;
+    const est = ([...now.textContent].reduce((w, ch) => w + (/[0-9]/.test(ch) ? 0.6 : /[:.\s]/.test(ch) ? 0.3 : 1), 0)
+      * 11 * fsK + 2) * k;
     return { text: now.textContent, hit, dx: Math.round((r.left + r.right) / 2 - mx),
-             near: Math.abs((r.left + r.right) / 2 - mx) <= r.width + (m.right - m.left) / 2 + 1,
+             near: Math.abs((r.left + r.right) / 2 - mx) <= est + (m.right - m.left) / 2 + 1,
              above: r.bottom <= m.top, arc: !!q.arc, qx: Math.round(q.x), row: q.row };
   });
 
