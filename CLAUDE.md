@@ -22,7 +22,7 @@
   `git push -u origin <branch>` → `git push origin <branch>:main`（`--force` なし）。
   **ローカルの `main` は使わない。** 断られたら `git fetch origin main && git merge origin/main` → テスト → 再push。
 - push すると門（`run-all.js --gate`）が回る。結論は一度だけ見る：`mcp__github__actions_list`
-  （list_workflow_runs・resource_id "pages.yml"・perPage 1）。run_number と head_sha を照らす。
+  （list_workflow_runs・resource_id "pages.yml"・perPage 1）。run_number と head_sha を照らす。赤なら docs/dev.md「main を分け合う」。
 - `stamp-build.js` はローカルで実行・コミットしない。PR は頼まれたときだけ。
 
 ## コードの罠
