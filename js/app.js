@@ -1354,6 +1354,8 @@
     if (place) putPlace(place);
     /* 開いていた紙の書きかけ（N8）は、席が戻ったときだけ（ui.js の takeDraft。15分以内）。 */
     if (place) KN.ui.takeDraft(place.seat); else KN.ui.dropDraft();
+    /* 消した知らせが出たまま閉じられたなら、それも（N13 の X18 (c)。ui.js の takeGone）。 */
+    KN.ui.takeGone(!!place);
     if (calBack) KN.ics.cameBack();
     if (dueIds) {
       openDue(dueIds);
