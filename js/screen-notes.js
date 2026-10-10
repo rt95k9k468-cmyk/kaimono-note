@@ -61,7 +61,7 @@
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="ノートをさがす" aria-label="ノートをさがす"
-                   autocomplete="off" spellcheck="false">
+                   autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
@@ -302,7 +302,7 @@
     const body = node(html`
       <div class="note-edit">
         <textarea class="note-title-in grow-field js-title" placeholder="タイトル" aria-label="タイトル"
-                  rows="1" autocomplete="off"></textarea>
+                  rows="1" autocomplete="off" enterkeyhint="next"></textarea>
         <div class="note-sub">
           <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt, note.noTime)}</button>
           <div class="note-labels js-labels"></div>
@@ -651,7 +651,7 @@
     textIn.addEventListener("input", () => { grow(); showCaret(); sync(); paintTools(); });
     /* 題で改行を押したら、本文へ。 */
     titleIn.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing) return;
+      if (!KN.util.isEnter(e)) return;
       e.preventDefault();
       toWrite(0);
     });
@@ -819,7 +819,9 @@
 
     /* 道に置く（3.0 の A2）。このノートについて考える時間を、今日の道に一つ（js/activity.js）。
        書いたノートだけ（何も書いていないノートは閉じれば消えるので）。 */
-    const roadItem = () => (!KN.activity || !stored || blank() ? [] : [{ icon: "hourglass", label: "道に置く",
+    /* 既定で畳む（roadmap-3.1 の S4。設定のノートから戻せる）。 */
+    const roadItem = () => (!KN.activity || !stored || blank()
+      || KN.store.get().settings.noteRoad !== true ? [] : [{ icon: "hourglass", label: "道に置く",
       onPick: () => {
         sync();
         KN.activity.noteToRoad({ id: note.id, title: N().headOf(N().get(note.id) || note), day: U.todayKey() });
@@ -939,7 +941,7 @@
     `);
   }
   const onEnter = (input, fn) => input.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" || e.isComposing) return;
+    if (!KN.util.isEnter(e)) return;
     e.preventDefault();
     fn();
   });
