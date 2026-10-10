@@ -29,6 +29,25 @@ function fakeAudio() {
   window.AudioContext = FakeCtx;
 }
 
+/* iPhone のふり：作った口は閉じたまま始まり、開けられるのは指を離したとき（touchend）だけ（iOS 9 から。
+   touchstart・pointerdown では開かない）。アプリの見張りより先に、ここで「離した」を覚える。 */
+function iosAudio() {
+  window.__snd = [];
+  let lifting = false;
+  document.addEventListener("touchend", () => { lifting = true; setTimeout(() => { lifting = false; }, 0); }, true);
+  class FakeCtx {
+    constructor() { this.state = "suspended"; this.sampleRate = 1000; this.destination = {}; }
+    resume() { if (lifting) this.state = "running"; return Promise.resolve(); }
+    createBuffer(c, len) { const d = new Float32Array(len); return { len, getChannelData: () => d }; }
+    createGain() { return { gain: {}, connect: (x) => x }; }
+    createBufferSource() {
+      const s = { connect: (g) => g, start() { window.__snd.push({ 12: "tick", 45: "lift", 60: "drop" }[s.buffer.len] || s.buffer.len); } };
+      return s;
+    }
+  }
+  window.AudioContext = FakeCtx;
+}
+
 (async () => {
   const c = checker("feel-sound");
 
@@ -121,5 +140,42 @@ function fakeAudio() {
 
   c.check("エラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
+
+  /* ---------- iPhone のふり：指を離したところで口が開く ---------- */
+  {
+    const { browser: b2, page: p2, errors: e2 } = await open({ before: (ctx) => ctx.addInitScript(iosAudio) });
+    const heard2 = () => p2.evaluate(() => window.__snd.slice());
+    await p2.evaluate(() => {
+      const box = document.createElement("div");
+      box.id = "t-reorder";
+      box.style.cssText = "position:fixed;left:0;top:120px;width:300px;z-index:99999;background:#fff";
+      for (let i = 0; i < 3; i++) {
+        const r = document.createElement("div");
+        r.className = "t-row"; r.textContent = "行" + i;
+        r.style.cssText = "height:50px;user-select:none";
+        box.append(r);
+      }
+      document.body.append(box);
+      KN.reorder.attach(box, { item: ".t-row", onDrop: () => {} });
+    });
+    const liftOnce = async () => {
+      await p2.mouse.move(100, 145);
+      await p2.mouse.down();
+      await p2.waitForTimeout(G.HOLD + 120);
+      const got = await heard2();
+      await p2.mouse.up();
+      await p2.waitForTimeout(450);
+      return got;
+    };
+    const first = await liftOnce();
+    c.check("iPhone：指を置いただけでは口が開かない（一度めの持ち上げは黙る）", first.length === 0, JSON.stringify(first));
+    /* 指を離した（iPhone は click より先に touchend を出す）。 */
+    await p2.evaluate(() => document.dispatchEvent(new Event("touchend", { bubbles: true })));
+    await p2.evaluate(() => { window.__snd.length = 0; });
+    const second = await liftOnce();
+    c.check("iPhone：一度指を離したあとは、持ち上がると「ぽっ」", JSON.stringify(second) === '["lift"]', JSON.stringify(second));
+    c.check("iPhone のふりでもエラーなし", e2.length === 0, e2.join(" | "));
+    await b2.close();
+  }
   c.done();
 })();
