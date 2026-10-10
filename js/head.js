@@ -524,6 +524,9 @@
   let dotQueued = false;
   function paintDot() {
     dotQueued = false;
+    /* 「これからの二週間」は既定で畳む（roadmap-3.1 の S4。設定の「表示」から戻せる）。 */
+    const up = root && root.querySelector(".js-upcoming");
+    if (up) up.hidden = !(KN.store && KN.store.get().settings.showUpcoming === true);
     const btn = root && root.querySelector(".js-settings");
     if (!btn || !KN.backup || !KN.backup.offDeviceStale) return;
     const on = !!KN.backup.offDeviceStale();
