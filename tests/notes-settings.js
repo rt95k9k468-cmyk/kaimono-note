@@ -45,18 +45,24 @@ print(json.dumps(out, ensure_ascii=False))
   const heads = () => page.$$eval(`${top} .set-head`, (hs) => hs.map((h) => h.textContent.trim()));
   const navTitle = () => page.$eval(`${top} .js-nav-title`, (e) => e.textContent);
   const layers = () => page.locator(".set-layer").count();
+  /* 一枚が押し出し終わるまで待つ。動いているあいだの押しは、画面がわざと捨てる（二重に積まない。
+     screen-settings.js の moving）。決め打ちの300msは押し出し（2フレーム＋--m-push＋20ms）と競って、まれに捨てられていた。 */
+  const layerStill = () => page.waitForFunction(() => !document.querySelector(".set-layer.is-edge-lift"));
   /* last … 同じ名前の行が二つあるとき（daily と notes の「書き出し」）は下のほう。 */
   const into = async (text, last) => {
     const n = await layers();
     const rows = page.locator(`${top} .set-row`, { hasText: text });
     await (last ? rows.last() : rows.first()).click();
     await page.waitForFunction((k) => document.querySelectorAll(".set-layer").length > k, n);
+    await layerStill();
     await page.waitForTimeout(300);
   };
   const back = async () => {
     const n = await layers();
+    await layerStill();
     await page.locator(`${top} .set-back`).first().click();
     await page.waitForFunction((k) => document.querySelectorAll(".set-layer").length < k, n);
+    await layerStill();
     await page.waitForTimeout(300);
   };
   const active = () => page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen);
