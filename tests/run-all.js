@@ -8,6 +8,8 @@
 
    落ちた台本は NG の行（と、数えずに落ちたら出力の終わり）を出す。一本でも
    落ちれば終了コード 1。やり直しはしない——揺れた試験は揺れた、と出す。
+   通った台本の一本一行（秒と数）は GitHub（CI）と --verbose だけ。手元では落ちたものと
+   最後の一行だけ（全部で約150行が会話に載らないように。2026年10月10日、制限の節約）。
 
    サーバーは先に一つだけ立ち上げる（三本が同時に立てようとしてぶつからないように）。
    それぞれの台本は自分のブラウザを持つので、並べても互いの記録は混ざらない。 */
@@ -121,7 +123,7 @@ async function main() {
       const s = summarize(r);
       const ok = r.code === 0;
       const tallies = s.tally.map((l) => l.replace(/^.*: /, "")).join(" ");
-      console.log(`${ok ? "ok" : "NG"}  ${name.padEnd(18)} ${r.sec.toFixed(1).padStart(5)}s  ${tallies}`);
+      if (!ok || o.verbose || process.env.CI) console.log(`${ok ? "ok" : "NG"}  ${name.padEnd(18)} ${r.sec.toFixed(1).padStart(5)}s  ${tallies}`);
       if (!ok) {
         if (r.timedOut) console.log(`      時間切れ（${LIMIT_SEC}秒）で止めた。終わりの出力：`);
         if (s.ng.length && !r.timedOut) console.log(s.ng.map((l) => `      ${l.trim()}`).join("\n"));
