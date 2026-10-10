@@ -103,15 +103,48 @@ const ASSETS = [
    店の中の、つながっているのに返事の来ない電波）。 */
 const SHELL_WAIT = 1500;
 
+/* 変わったファイルだけ取りに行く（roadmap-seamless の N3）。css・js の `?v=` は stamp-build.js が付ける中身の印
+   （sha-256 の頭12桁）なので、同じ URL が前の控えにあれば中身も同じ——写すだけで、取りに行かない。
+   **css・js が一つでも取れなければ install を失敗させる**（欠けた版で開かない＝3節の2。前の Service Worker の
+   ままで、次の確かめでやり直す）。絵や manifest は欠けてよい。 */
+const CODE = /^(?:css|js)\//;
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE)
-      // Individual failures (e.g. a missing icon) must not abort the install.
-      /* `no-cache`：HTTP の10分の控え（GitHub Pages）から古い index.html を拾わない（N2）。 */
-      .then((cache) => Promise.allSettled(ASSETS.map((a) => cache.add(new Request(a, { cache: "no-cache" })))))
-      .then(() => self.skipWaiting())
+      .then((cache) => Promise.all(ASSETS.map((a) => keep(cache, a).catch((err) => { if (CODE.test(a)) throw err; }))))
+      .then(() => self.skipWaiting(),
+        (err) => caches.delete(CACHE).then(() => { throw err; }))   // 半分の控えを残さない（kept() が拾わないように）
   );
 });
+
+/** 中身の印（12桁の16進）。無ければ ""（手元の版・入口・絵）。 */
+function markOf(url) {
+  const v = new URL(url, self.location.href).searchParams.get("v") || "";
+  return /^[0-9a-f]{12}$/.test(v) ? v : "";
+}
+
+/* 取ったものの中身が印と合うか（印の無いものは問わない）。配っている途中に前の中身を掴んだら控えない
+   ——印の URL は裏で取り直さないので、控えたら残り続ける。 */
+async function sound(url, res) {
+  const v = markOf(url);
+  if (!v) return true;
+  const sum = new Uint8Array(await crypto.subtle.digest("SHA-256", await res.clone().arrayBuffer()));
+  return [...sum.slice(0, 6)].map((b) => b.toString(16).padStart(2, "0")).join("") === v;
+}
+
+/** 控えに一つ入れる：印のある URL が前の控えにあれば写し、無ければ取りに行く。取れない・印が合わなければ投げる。
+    `no-cache`：HTTP の10分の控え（GitHub Pages）から古い index.html を拾わない（N2）。 */
+async function keep(cache, url) {
+  const href = new URL(url, self.location.href).href;
+  if (markOf(href)) {
+    const hit = await caches.match(href);
+    if (hit) return cache.put(href, hit);
+  }
+  const res = await fetch(new Request(href, { cache: "no-cache" }));
+  if (!res.ok || !(await sound(href, res))) throw new Error(`${url} ${res.status}`);
+  return cache.put(href, res);
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -174,13 +207,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Static assets: cache first, refresh in the background.
+  /* 中身の印のある URL（N3）は中身が変わらないので、裏で取り直さない。控えるのは印の合うものだけ。 */
   event.respondWith(
     caches.match(req).then((cached) => {
+      if (cached && markOf(req.url)) return cached;
       const network = fetch(req)
         .then((res) => {
           if (res && res.status === 200) {
             const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
+            sound(req.url, copy).then((ok) => ok && caches.open(CACHE).then((c) => c.put(req, copy))).catch(() => {});
           }
           return res;
         })
@@ -196,7 +231,7 @@ async function keepShell(res) {
   const html = await res.clone().text();
   const cache = await caches.open(CACHE);
   const refs = [...html.matchAll(/(?:src|href)="((?:css|js)\/[^"]+)"/g)].map((m) => new URL(m[1], self.location.href).href);
-  await Promise.all(refs.map((u) => cache.match(u).then((hit) => hit || cache.add(u))));
+  await Promise.all(refs.map((u) => cache.match(u).then((hit) => hit || keep(cache, u))));
   await cache.put("index.html", res);
 }
 
