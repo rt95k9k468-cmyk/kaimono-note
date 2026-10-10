@@ -65,8 +65,10 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(APP);
-  /* 初めての文脈では Service Worker が入れ替わって一度読み直す。それを待つ。 */
+  /* 初めての文脈では Service Worker が付いたあと一度読み直す——刻印の無い手元の版は版を比べられないので。
+     その読み直しは隠れるまで待つ（roadmap-seamless の N4）。この台本は隠れた瞬間を測るので、先に読み直しておく。 */
   await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null, { timeout: 15000 });
+  await page.reload();
   await page.waitForTimeout(1500);
   await page.waitForFunction(() => window.KN && KN.store && KN.app && KN.bell);
   await page.waitForTimeout(300);
