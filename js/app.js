@@ -996,7 +996,7 @@
     const mine = () => gripPair(grip);
     const flip = () => { const pr = mine(); if (pr && faceAt(pr.front)) faceTo(0, pr.front); };
     grip.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
+      if (!KN.util.isEnter(e) && e.key !== " ") return;
       e.preventDefault();
       flip();
     });

@@ -65,6 +65,11 @@
         switchRow({
           title: "季節の絵", on: store.get().settings.notesSeasonArt !== false,
           onTap: (v) => { store.update((s) => { s.settings.notesSeasonArt = v; }); render(); repaintNotes(); },
+        }),
+        /* 「⋯」の「道に置く」（3.0 の A2）。既定で畳む（roadmap-3.1 の S4）。 */
+        switchRow({
+          title: "道に置く", on: store.get().settings.noteRoad === true,
+          onTap: (v) => { store.update((s) => { s.settings.noteRoad = v; }); render(); },
         })
       ),
       KN.seasonArt && KN.seasonArt.credits("notes").length ? S.more("絵の出典", `${KN.seasonArt.SOURCE} ／ ` + KN.seasonArt.credits("notes")
@@ -103,7 +108,7 @@
     const f = field.querySelector(".js-name");
     /* 改行で決まる（離れれば change が走る）。変換を決める改行は通します。 */
     f.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+      if (!KN.util.isEnter(e)) return;
       e.preventDefault();
       f.blur();
     });

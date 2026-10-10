@@ -34,3 +34,7 @@
 - **測るのは書く前に、まとめて。** class や style を書いたあとに `getBoundingClientRect`・`offsetWidth`・
   `getComputedStyle`・`scrollTop` を読むと、その場で並べ直してから答える。行ごとに測って書くと行の数だけ
   並べ直す。（motion の「押した一拍を軽く」）
+- **改行キーは `KN.util.isEnter(e)` で見る。** `e.key === "Enter"` を直に比べると、日本語の変換を決める改行
+  （`isComposing`、古い WebKit は `keyCode 229` だけ）で手順が増えたり題が閉じたりする。打つ欄には出来事で
+  `enterkeyhint`（続けて書く `next`・決めて閉じる `done`・足して続ける `enter`・さがす `search`）。
+  `tests/ime-enter.js`（門）が見張る。（roadmap-seamless の N5）

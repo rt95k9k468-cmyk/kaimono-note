@@ -812,7 +812,7 @@
         openLogSheet(d.date);
       });
       row.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
+        if (!KN.util.isEnter(e) && e.key !== " ") return;
         e.preventDefault();
         openLogSheet(d.date);
       });
@@ -1701,7 +1701,7 @@
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="文字でさがす" aria-label="文字でさがす"
-                   autocomplete="off" spellcheck="false">
+                   autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>

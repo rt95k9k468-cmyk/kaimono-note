@@ -309,6 +309,8 @@ const NEXT = "2026-10-07";
   await page.evaluate((i) => KN.screens.notes.open(i), nid);
   await page.waitForSelector(".sheet.is-note.is-open");
   await wait(400);
+  /* 「道に置く」は既定で畳んである（3.1 の S4。畳み方は tests/fold.js）。 */
+  await page.evaluate(() => KN.store.update((s) => { s.settings.noteRoad = true; }));
   await page.click(".sheet.is-note .js-note-more");
   await wait(300);
   const items = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.textContent.trim()));

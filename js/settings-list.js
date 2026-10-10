@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow } = S;
+  const { go, TINT, card, foot, navRow, switchRow, render } = S;
 
   /* ---------------- 買うもの ----------------
 
@@ -38,6 +38,13 @@
         })
       ),
       foot(`${s.products.length}商品・${s.stores.length}店舗`),
+      /* 既定で畳む（roadmap-3.1 の S4）。 */
+      card(
+        switchRow({
+          title: "そろそろ切れそう", on: s.settings.showLow === true,
+          onTap: (v) => { store.update((x) => { x.settings.showLow = v; }); render(); },
+        })
+      ),
     ];
   }
 

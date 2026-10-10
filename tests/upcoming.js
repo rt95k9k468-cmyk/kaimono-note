@@ -82,6 +82,8 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     await page.waitForSelector(".sheet .up", { state: "visible" });
     await page.waitForTimeout(350);
   };
+  /* 既定で畳んである（roadmap-3.1 の S4。畳み方は tests/fold.js）。ここでは出して見る。 */
+  await page.evaluate(() => KN.store.update((s) => { s.settings.showUpcoming = true; }));
   await page.evaluate(() => KN.app.showScreen("list"));
   await page.waitForTimeout(400);
   t.check("帯に「これからの二週間」の絵（買うもの）",

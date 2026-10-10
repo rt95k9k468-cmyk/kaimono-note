@@ -115,7 +115,7 @@
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="食べたものを探す" aria-label="食べたものを探す"
-                   autocomplete="off" spellcheck="false">
+                   autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
@@ -1482,7 +1482,7 @@
       <div class="urge-words">
         <div class="diet-chips js-tags"></div>
         <input class="input js-w" placeholder="${F.ph}"
-               autocomplete="off" autocapitalize="off" spellcheck="false">
+               autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="enter">
       </div>
     `));
     const input = host.querySelector(".js-w");
@@ -1515,7 +1515,7 @@
     input.addEventListener("change", take);
     input.addEventListener("blur", take);
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); take(); }
+      if (KN.util.isEnter(e)) { e.preventDefault(); take(); }
     });
     paintTags();
     return { sec, flush: take };
@@ -2764,7 +2764,7 @@
         open();
       });
       row.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
+        if (!KN.util.isEnter(e) && e.key !== " ") return;
         e.preventDefault();
         open();
       });
@@ -4062,7 +4062,7 @@
           <span class="field-label">食べたもの</span>
           <div class="input-group">
             <input class="input js-food" placeholder="例：ご飯150g / 卵2個 / 鶏むね肉100g"
-                   autocomplete="off" spellcheck="false" enterkeyhint="done">
+                   autocomplete="off" spellcheck="false" enterkeyhint="enter">
             <button class="btn btn-primary btn-sm js-add">${icon("plus")}</button>
           </div>
         </label>
@@ -4234,7 +4234,7 @@
 
     body.querySelector(".js-add").addEventListener("click", commitInput);
     foodEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); commitInput(); }
+      if (KN.util.isEnter(e)) { e.preventDefault(); commitInput(); }
     });
 
     /* 打っているそばから候補を出します。名前の部分だけで探すので、
