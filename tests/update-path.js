@@ -11,7 +11,8 @@
       揃えてから控えに入る。電波を切っても C で開く。
    5. D を配ったが D の css・js が取れない：控えの入口は C のまま（揃わないうちは前の版）。D の Service Worker の
       install も失敗し、前の Service Worker のまま（N3）。
-   6. D が届く（入口は5秒）：控えの C で開き、D の Service Worker が来たら一度だけ読み直して D。
+   6. D が届く（入口は5秒）：控えの C で開き、D の Service Worker が来ても見えているあいだ・紙が開いているあいだは
+      読み直さない。紙を閉じて隠れたら一度だけ読み直して D、居た席へ（N4）。
    7. 1本だけ変えた E を配る：サーバーへ行く css・js はその1本だけ（N3。ほかは前の控えから写す）。
 
    A〜D は app.js と base.css の中身が版ごとに違う（`?v=` は中身の印なので、違わないと「新しい css・js」にならない）。
@@ -307,18 +308,37 @@ let browser;
   await shellIs(V.C, "5 揃わない入口は控えに入れない");
   t.check("5 css・js が取れない版の Service Worker は入らない（前の B のまま）", await workerVer(page) === V.B, await workerVer(page));
 
-  /* 6. D が届く：古い版が動いているところへ新しい Service Worker */
+  /* 6. D が届く：古い版が動いているところへ新しい Service Worker。見えているあいだ・紙が開いているあいだは
+        読み直さず、紙を閉じて隠れたら一度だけ読み直して D。居た席へ戻る（N4） */
   Object.assign(srv, { assetsFail: false }); loads = 0;
   ms = await openTimed();
   await ready(page);
   t.check("6 2秒以内に控えの C で開く", ms < 2000 && await running(page) === V.C, `${ms}ms`);
+  await page.evaluate(() => KN.app.showScreen("list"));
   const swMs = await settled(V.D, "6");
+  await wait(3000);
+  t.check("6 見えているあいだは読み直さない", loads === 1 && await running(page) === V.C,
+    `読み込み ${loads}回・${await running(page)}・SW ${swMs}ms`);
+  const hidden = (on) => page.evaluate((h) => {
+    if (h) Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    else delete document.visibilityState;
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, on);
+  await page.evaluate(() => { window.__sheet = KN.ui.sheet({ title: "試し", content: document.createElement("div") }); });
+  await hidden(true);
+  await wait(2000);
+  t.check("6 紙が開いているあいだは、隠れても読み直さない", loads === 1, `読み込み ${loads}回`);
+  await hidden(false);
+  await page.evaluate(() => window.__sheet.close());
+  await page.waitForFunction(() => !document.querySelector(".sheet"));
+  await hidden(true);
   // 読み直しは決め打ちで待たない（門の混んだ CPU で 2.5 秒を越え、7 の goto とぶつかった。run #802）
   for (const t0 = Date.now(); loads < 2 && Date.now() - t0 < 20000;) await wait(250);
   await wait(4000);   // 二度目が来ないことも見る
   await ready(page);
-  t.check("6 新しい版の Service Worker が来たら一度だけ読み直して D", loads === 2 && await running(page) === V.D,
-    `読み込み ${loads}回・${await running(page)}・SW ${swMs}ms`);
+  t.check("6 紙を閉じて隠れたら、一度だけ読み直して D", loads === 2 && await running(page) === V.D,
+    `読み込み ${loads}回・${await running(page)}`);
+  t.check("6 読み直しても居た席（買うもの）", await inPage(page, () => KN.app.activeScreen()) === "list");
   await shellIs(V.D, "6");
 
   /* 7. 1本だけ変えた E を配る */

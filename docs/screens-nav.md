@@ -247,3 +247,20 @@ health では効いていたが、開いているかどうかは暦そのもの�
 空けて浮かせる（電話の幅だけ。背いっぱいの `.is-card`・`.is-note` は別）。閉じるのは、やめても保存しても＋へ縮んで
 帰る（買うものの「リストに追加」も。頭の絵と名前だけが行へ飛ぶ）。下へ払ったときだけ下へ。試験は `tests/fab-home.js`・
 `tests/shop-add-v27.js`。
+
+### 読み直し・閉じられたあとも、居た場所へ（roadmap-seamless の N4・2026年10月10日）
+
+- **新しい版の読み直しは、見えないときだけ。** `controllerchange`（版が違うとき）は、隠れた瞬間に紙が開いていなければ
+  読み直す。紙（`.sheet`・設定の中の `.set-layer.is-sheetish`）や字の入った欄があれば、閉じたあとの隠れまで待つ（`isBusy`）。
+  見えているあいだは古い版のまま動き続ける。
+- **居た場所の控え**：`app.js` の `keepPlace` が、隠れるたびと読み直す直前（`KN.app.reloadHere`）に localStorage
+  `kaimono-note-resume` へ一つ置く——席・見ていた日（今日なら null）・送り位置（`scrollerOf()` の器）・潜ってきたタブ
+  （`drawerFrom`）・設定の奥（`settings.where()`：「›」の名前と送り位置。押しのけた紙と `noteLabel` から先は戻さない）。
+  記録の外（書き出し・自動の控え・Dropbox に乗らない）。`boot` の `takePlace` が一度だけ読んで消す。
+- **戻すもの**：読み直しのあとは全部。閉じられたあと（印の無い起動）は**30分以内**だけ（X14 の (b)）、daily・ノートに
+  居たなら（daily から潜った設定も）やることへ（鍵のため）。`#due=`・`#cal-back` で来たときは使わない。印（`#`）があれば印が勝ち、席の違う控えは捨てる。
+- **戻し方**：日は組む前に `dayShare.set`（各画面の `render()` が引き取る）。送り位置は `onEnter`（やることの `toNow`）・
+  `parkSearch` の**一枚あと**に置き、もう一枚あとに見直す（iPhone が差しこんだばかりの器への scrollTop を落とすため。
+  daily の `holdTop` と同じ）。設定は `onEnter` が根っこ一枚にしたあと `settings.goTo()` が動かさずに重ねる（`edgeBack.rest`）。
+- 試験：`tests/resume.js`（席・日・送り位置・設定の奥・30分・daily）、`tests/update-path.js` の 6（見えているあいだ・
+  紙が開いているあいだは読み直さない）。試験でアプリの頁から離れると、隠れたときの控えが置かれる（次に開くと同じ席）。

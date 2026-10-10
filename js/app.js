@@ -1333,11 +1333,25 @@
     /* `#due=id,id` は、時刻の通知を押して来た道（sw.js の notificationclick）。
        やることを出して、その用事の紙を開く（js/due-sheet.js・R3）。 */
     const dueIds = KN.dueSheet ? KN.dueSheet.idsFromHash(location.hash) : null;
+    /* 居た場所（N4。下の takePlace）。通知・ショートカットから来たときは使いません。 */
+    let place = takePlace();
+    if (calBack || dueIds) place = null;
     let fromHash = calBack || dueIds ? "todo" : location.hash.slice(1);
+    /* 印の無い起動（閉じられたあと）は控えの席へ。印があれば印が勝ち、席の違う控えは捨てます。 */
+    if (place && !fromHash) fromHash = place.seat;
+    if (place && place.seat !== fromHash) place = null;
     /* ノートは daily の紙の裏。留まった紙の無いところへ直に降ろすと戻り道が
        無いので、daily から（docs/notes.md）。 */
     if (fromHash === "notes") fromHash = "archive";
-    show(KN.screens[fromHash] ? fromHash : HOME);
+    /* 見ていた日は、組む前に共通の日へ（各画面が render() の頭で引き取る）。 */
+    if (place && place.day) KN.util.dayShare.set(place.day);
+    /* 設定は、潜ってきたタブも戻します（戻る道と、出す設定の中身が決まる）。 */
+    if (place && fromHash === "settings" && place.from.length) {
+      drawerFrom.push(...place.from);
+      goingBack = true;
+    }
+    try { show(KN.screens[fromHash] ? fromHash : HOME); } finally { goingBack = false; }
+    if (place) putPlace(place);
     if (calBack) KN.ics.cameBack();
     if (dueIds) {
       openDue(dueIds);
@@ -1377,8 +1391,13 @@
        restore is a fresh open, which should land on やること like any other.
        So the hash is wiped on the way out and only ever survives a reload
        inside one sitting. */
+    /* ただし30分以内なら、隠れるたびに置く控え（keepPlace）が同じ席・日・送り位置へ戻します
+       （roadmap-seamless の X14 の (b)）。daily・ノートは鍵のため、やることへ（takePlace）。 */
     window.addEventListener("pagehide", () => {
       if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") keepPlace(false);
     });
 
     /* 保存は120msだけ待ってからまとめて書きます（連打のたびに書かないため）。
@@ -1426,7 +1445,7 @@
 
     // Keep two tabs of the same app in sync.
     window.addEventListener("storage", (e) => {
-      if (e.key === store.KEY) location.reload();
+      if (e.key === store.KEY) KN.app.reloadHere();
     });
 
     /* The clock moving is a thing that changes the screen.
@@ -1973,16 +1992,16 @@
       });
     });
 
+    /* 見えているあいだは読み直しません（roadmap-seamless の N4）。隠れたとき、紙が開いていなければ
+       ——開いていれば、閉じたあとの隠れまで待ちます（隠れた瞬間に紙ごと消さない）。戻ると居た場所に居ます。 */
     function reloadForNewVersion() {
-      if (isBusy()) {
-        // Don't pull the page out from under someone mid-entry; wait until
-        // they put the app away.
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "hidden") location.reload();
-        }, { once: true });
-        return;
-      }
-      location.reload();
+      const now = () => {
+        if (document.visibilityState !== "hidden" || isBusy()) return false;
+        document.removeEventListener("visibilitychange", now);
+        KN.app.reloadHere();
+        return true;
+      };
+      if (!now()) document.addEventListener("visibilitychange", now);
     }
 
     window.addEventListener("load", () => {
@@ -2149,11 +2168,87 @@
   KN.app.closeFabMenu = closeFabMenu;
 
   /** True while the user is part-way through something a reload would lose. */
+  /* 設定の中の紙は、押しのける一枚（`.is-sheetish`）として出ます。 */
   function isBusy() {
-    if (document.querySelector(".sheet")) return true;
+    if (document.querySelector(".sheet, .set-layer.is-sheetish")) return true;
     const el = document.activeElement;
     return !!(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value);
   }
+
+  /* ---------------- 読み直し・閉じられたあとも、居た場所へ（roadmap-seamless の N4） ----------------
+
+     席・見ていた日・送り位置（`scrollerOf()` の器）・設定の奥と潜ってきたタブを、一つの控えに置きます。
+     置くのは隠れるたび（iOS に閉じられたときのため）と、読み直す直前。boot が一度だけ読んで消します。
+     **記録の外**（`kaimono-note-errors` と同じ置き方。書き出し・自動の控え・Dropbox に乗らない）。
+     読み直しのあとは同じものを、閉じられたあとは30分以内だけ戻します（X14 の (b)）。 */
+  const PLACE_KEY = "kaimono-note-resume";
+  const PLACE_MS = 30 * 60 * 1000;
+  /** 読み直すと決めたあとは、隠れたときの控えで上書きしない。 */
+  let leaving = false;
+
+  function keepPlace(reload) {
+    if (leaving) return;
+    if (reload) leaving = true;
+    try {
+      const scr = KN.screens[active];
+      let day = scr && scr.day ? scr.day() : KN.util.dayShare.get();
+      if (day === KN.util.todayKey()) day = null;    // 今日なら焼き込まない（dayShare と同じ）
+      const sc = scrollerOf(activeScreen());
+      localStorage.setItem(PLACE_KEY, JSON.stringify({
+        at: Date.now(), seat: active, day,
+        top: sc ? Math.round(sc.scrollTop) : 0,
+        from: drawerFrom.filter(Boolean),
+        set: active === "settings" && scr.where ? scr.where() : null,
+        reload: !!reload,
+      }));
+    } catch (_) { /* 置けなくても、閉じる・読み直すことは妨げない */ }
+  }
+
+  /** 控えを一度だけ読む（読んだら消す）。古い・読めない・閉じられたあとの daily とノートは null。 */
+  function takePlace() {
+    let p = null;
+    try {
+      p = JSON.parse(localStorage.getItem(PLACE_KEY) || "null");
+      localStorage.removeItem(PLACE_KEY);
+    } catch (_) { return null; }
+    if (!p || typeof p !== "object" || !KN.screens[p.seat]) return null;
+    const age = Date.now() - p.at;
+    if (!(age >= 0 && age < PLACE_MS)) return null;
+    const from = Array.isArray(p.from) ? p.from.filter((id) => KN.screens[id] && !OFF_BAR.includes(id)) : [];
+    /* daily・ノート（とそこから潜った設定）は開くたびに鍵が出るところ。閉じられたあとは新しく開いたのと
+       同じ、やることへ。 */
+    const tab = p.seat === "settings" ? from[from.length - 1] : p.seat;
+    if (!p.reload && (tab === "archive" || tab === "notes")) return null;
+    return {
+      seat: p.seat,
+      day: typeof p.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.day) ? p.day : null,
+      top: Number(p.top) > 0 ? Number(p.top) : 0,
+      from,
+      set: Array.isArray(p.set) ? p.set : null,
+    };
+  }
+
+  /** 組んだあとに、送り位置へ。onEnter・parkSearch の一枚あと（やることは開くと「いま」へ送るので）。
+      差しこんだばかりの器への scrollTop を iPhone が落とすことがあるので、もう一枚あとに見直します
+      （daily の holdTop と同じ）。 */
+  function putPlace(p) {
+    if (active !== p.seat) return;     // ノート → daily に降ろしたときは、送り位置が別の器のもの
+    if (active === "settings") {
+      if (KN.screens.settings.goTo) KN.screens.settings.goTo(p.set);
+      return;
+    }
+    const put = (again) => {
+      const sc = scrollerOf(activeScreen());
+      if (!sc || !sc.isConnected) return;
+      const to = Math.min(p.top, Math.max(0, sc.scrollHeight - sc.clientHeight));
+      if (Math.abs(sc.scrollTop - to) > 1) sc.scrollTop = to;
+      if (again) requestAnimationFrame(() => put(false));
+    };
+    requestAnimationFrame(() => put(true));
+  }
+
+  /** 読み直す。その前に居た場所を置きます（組んだあと boot が戻す）。 */
+  KN.app.reloadHere = () => { keepPlace(true); location.reload(); };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
