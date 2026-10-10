@@ -11,8 +11,13 @@ const { open, checker } = require("./lib");
   /* 時計は昼に止め、「昨日」「15日前」もその時計から作る（壁の時計だと 0:00 の前後でずれる。roadmap-seamless の N10）。 */
   const NOW = new Date(2026, 9, 1, 12, 0).getTime();
   const { browser, page, errors } = await open({ before: async (cx, p) => { await p.clock.setFixedTime(NOW); } });
-  const dot = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() =>
-    r(document.querySelector("#head .js-settings").classList.contains("has-dot"))))));
+  /* 点の塗り直し（head.js の queueDot）が記録に追いつくまで待ってから読む。時計を止めると requestAnimationFrame も
+     作り物になり、重い機械では後で頼んだフレームが先に走る——フレームを数えては待てない（tests/README.md）。 */
+  const dot = async () => {
+    await page.waitForFunction(() => document.querySelector("#head .js-settings").classList.contains("has-dot")
+      === !!KN.backup.offDeviceStale(), null, { timeout: 5000 }).catch(() => {});
+    return page.evaluate(() => document.querySelector("#head .js-settings").classList.contains("has-dot"));
+  };
   const daysAgo = (n) => new Date(NOW - n * 86400000).toISOString();
   const setExport = (iso) => page.evaluate((x) => KN.store.update((s) => { s.settings.lastExportAt = x; }), iso);
 
