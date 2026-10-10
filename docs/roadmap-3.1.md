@@ -124,7 +124,7 @@ ID は 締める＝S、暦＝K、事実＝J。大きさ・データの言い方�
 | 暦 | K3 | 見直す日を、次の節気の初日に揃える（選べる。既定は今のまま） | 小 | 足す（設定一つ） | todo-items（五つの状態） | 済み（2026年10月9日。`settings.reviewSekki`・`KN.season.sekkiFrom`・`tests/shelf.js`。既定はオフのまま——使うなら設定の tasks →「節気の初日に揃える」） |
 | 暦 | K4 | 旬の印（品物の紙に「旬 9〜10月」） | 中 | なし（表はコードに） | shopping・icons-matching | 済み（2026年10月10日。利用者が「付けている」と確かめた——`js/shun.js`（`KN.shun`）・品物の紙の頭の一行（最安と並ぶ）・`tests/shun.js`。月は概数。docs/shopping.md の「旬の印」） |
 | 事実 | J1 | 体重の曜日の揺れを、気づいたことに | 中 | なし | health（気づいたこと・R13） | 済み（2026年10月9日。`analyze` の `weekday`・`tests/insights-weekday.js`。閾値 0.2kg は仮——利用者の記録で見て動かしてよい） |
-| 事実 | J2 | 和文と数字のあいだ（`text-autospace: normal`） | 小 | なし | look | 済み（2026年10月9日。利用者が見比べの画像で「後・道の札だけ除く」を選んだ——`body` に `text-autospace: normal`、幅の決まった `.road-label` は `no-autospace`。試験は `tests/feel-3.js`） |
+| 事実 | J2 | 和文と数字のあいだ（`text-autospace: normal`） | 小 | なし | look | 戻した（10月9日に入れ、10日に戻した。iPhone で中身に合わせた幅の字の最後の一字が次の行へ落ちた——docs/look.md） |
 
 **おすすめの順**（10月9日、K1・K2 のあと。S1・J1・S2・K3・J2・S4・K4 は済み——残りは S3（利用者の手））：**S1**（費用ゼロ。利用者の手）→ **J1** → **S2**（S1 で打つあいだの跳ねが
 見つかれば、ここで一緒に消える）→ **K3** → **J2**（見比べ）→ **S4**（一覧）→ **K4**（確かめてから）。S3 はいつでも。

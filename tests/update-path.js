@@ -101,11 +101,16 @@ const workerVer = (page) => inPage(page, () => new Promise((resolve) => {
   ch.port1.onmessage = (e) => resolve((e.data && e.data.version) || "");
   sw.postMessage({ type: "kn-version" }, [ch.port2]);
 }));
-/** Service Worker が ver になるまで待ち、読み直しが起きるならそれも済ませる。 */
+/** Service Worker が ver になるまで待ち、読み直しが起きるならそれも済ませる。
+    ver になるまでの ms を返す（ならなければ -1。黙って先へ進むと、門で揺れたときに何が遅れたか分からない）。 */
 async function settle(page, ver) {
-  for (let i = 0; i < 120 && await workerVer(page).catch(() => "") !== ver; i++) await wait(250);
+  const t0 = Date.now();
+  let got = "";
+  for (let i = 0; i < 120 && (got = await workerVer(page).catch(() => "")) !== ver; i++) await wait(250);
+  const ms = got === ver ? Date.now() - t0 : -1;
   await wait(2500);
   await ready(page);
+  return ms;
 }
 /** 控え（kaimono-note-…）の入口の版と、その入口が読むのに控えに無いもの。 */
 const shellState = (page) => inPage(page, async () => {
@@ -124,10 +129,11 @@ const shellState = (page) => inPage(page, async () => {
   return out;
 });
 
+let browser;
 (async () => {
   await new Promise((ok, ng) => { server.once("error", ng); server.listen(PORT, "localhost", ok); });
   const t = checker("update-path");
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   const page = await ctx.newPage();
@@ -213,10 +219,14 @@ const shellState = (page) => inPage(page, async () => {
   ms = await openTimed();
   await ready(page);
   t.check("6 2秒以内に控えの C で開く", ms < 2000 && await running(page) === V.C, `${ms}ms`);
-  await settle(page, V.D);
+  const swMs = await settle(page, V.D);
+  t.check("6 D の Service Worker が動く", swMs >= 0, `30秒待って ${await workerVer(page)}`);
+  // 読み直しは決め打ちで待たない（門の混んだ CPU で 2.5 秒を越え、7 の goto とぶつかった。run #802）
+  for (const t0 = Date.now(); loads < 2 && Date.now() - t0 < 20000;) await wait(250);
+  await wait(4000);   // 二度目が来ないことも見る
+  await ready(page);
   t.check("6 新しい版の Service Worker が来たら一度だけ読み直して D", loads === 2 && await running(page) === V.D,
-    `読み込み ${loads}回・${await running(page)}`);
-  await wait(4000);
+    `読み込み ${loads}回・${await running(page)}・SW ${swMs}ms`);
   await shellIs(V.D, "6");
 
   /* 7. 1本だけ変えた E を配る */
@@ -236,7 +246,9 @@ const shellState = (page) => inPage(page, async () => {
   await browser.close();
   t.done();
 })().catch((e) => { console.error(e); process.exitCode = 1; })
-  .finally(() => {
+  .finally(async () => {
+    // 投げてもブラウザを閉じる（開いたままだと 240 秒の時間切れまで門を止める。run #802）
+    if (browser) await browser.close().catch(() => {});
     server.closeAllConnections();
     server.close();
     fs.rmSync(work, { recursive: true, force: true });
