@@ -294,11 +294,9 @@
     return sec;
   }
 
-  /** 週を送った先の日。先の日へは行きません（過去にしか向いていない
-      画面なので）。行けないなら null——払っても重くなるだけです。 */
+  /** 週を送った先の日。先の週へも行けます（2026年10月10日・利用者「未来にも普通にスワイプできるように」）。 */
   function stepWeek(delta) {
-    const next = U.shiftDay(focusDay(), delta * 7);
-    return next > U.todayKey() && delta > 0 ? null : next;
+    return U.shiftDay(focusDay(), delta * 7);
   }
 
   /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます
@@ -311,7 +309,6 @@
   function goMonth(delta, quiet) {
     const m = shownMonth();
     const d = new Date(m.year, m.month + delta, 1);
-    if (delta > 0 && ymOf(d) > ymOf(new Date())) return false;   // 先の月には行きません（戻るのはよい）
     if (!quiet) KN.motion.fire("select");
     viewMonth = ymOf(d) === ymOf(new Date()) ? null : ymOf(d);
     viewDay = null;
@@ -321,11 +318,9 @@
 
   /** 週を送ります。暦が週だけを出しているとき、横に払うとここへ来ます。
       日を送る道と同じ `goDayTo` に乗せます——月をまたいでも暦がついて
-      くる仕事は、もう向こうが持っているので。先の日へは行きません
-      （過去にしか向いていない画面なので）。 */
+      くる仕事は、もう向こうが持っているので。先の週へも行けます（先の紙は見るだけ）。 */
   function goWeek(delta) {
     const next = U.shiftDay(focusDay(), delta * 7);
-    if (next > U.todayKey()) return;
     KN.motion.fire("select");
     goDayTo(next);
   }
@@ -411,14 +406,12 @@
      指がどこまで行けば送られるのかが絵に出ていませんでした。 */
   let swiping = false;
 
-  /** その隣の日。今日より先へは行きません。 */
+  /** その隣の日。先の日へも行けます（2026年10月10日・利用者「未来にも普通にスワイプできるように」）。 */
   function stepDay(key, dir) {
     const d = U.dayDate(key);
     if (!d) return null;
     const next = U.dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + dir));
-    /* 先へは進めません。ただし、やることから未来の日を持ち込まれたときに
-       今日へ戻る道は要るので、戻る向きは通します（docs/shared-header.md）。 */
-    return next > U.todayKey() && dir > 0 ? null : next;
+    return next;
   }
 
   /** その日へ移ります（暦の月も、その日を含む月へ連れていきます）。

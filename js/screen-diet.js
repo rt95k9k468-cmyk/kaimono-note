@@ -524,14 +524,8 @@
       /* 着いたら画面ごと組み直すので、控えの回し直しも先組みも要りません。 */
       recycle: false,
       day: curDay,
-      /* 先の日へは行けません。ここは記録を見るところで、まだ来ていない
-         日には記録がありません。 */
-      step: (d, dir) => {
-        const next = U.shiftDay(d, dir);
-        /* 戻る向きは通します——やることから未来の日を持ち込まれたとき、
-           今日へ戻る道が要るので（docs/shared-header.md）。 */
-        return next > U.todayKey() && dir > 0 ? null : next;
-      },
+      /* 先の日へも行けます（2026年10月10日・利用者「未来にも普通にスワイプできるように」）。先の紙は見るだけ（peek）。 */
+      step: (d, dir) => U.shiftDay(d, dir),
       slide: (d) => buildDaySlide(d, { peek: true, chartEl: chart() }),
       /* **ここだけは、着いてから組み直します**（`kept` を受け取りません）。
          やること・daily は隣の紙も本物なので、滑りきった一枚をそのまま
@@ -739,11 +733,9 @@
     return sec;
   }
 
-  /** 週を送った先の日。先の日は見に行きません（記録は過去にしかないので）。
-      行けないなら null——払っても重くなるだけです。 */
+  /** 週を送った先の日。先の週へも行けます（2026年10月10日・利用者「未来にも普通にスワイプできるように」）。 */
   function stepWeek(delta) {
-    const next = U.shiftDay(curDay(), delta * 7);
-    return next > U.todayKey() && delta > 0 ? null : next;
+    return U.shiftDay(curDay(), delta * 7);
   }
 
   /** その月ぶんの日のマス。隣の週を先に見せるために cal-swipe が呼びます

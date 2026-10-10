@@ -3,7 +3,7 @@
    時計を 2026年9月15日(火) 10:00 に止めて開く（週は 13〜19日）。
    - やることで 18日（未来）を押す → daily・ダイエットの題も 18日。
      daily の紙は見るだけ（inert・.is-ahead）、ダイエットは押せない紙（.is-peek）。
-   - 未来の日から、daily・ダイエットで一日戻れる（先へは行けない）。
+   - 未来の日から、daily・ダイエットで一日戻れる。先へも進める（2026年10月10日から）。
    - ダイエットで 10日を押す → やることの題も 10日。
    - 買うものを挟んでも、日はそのまま。
    - 暦の段はどのタブで変えても全タブで同じ。calAll が無い保存はやることの
@@ -51,7 +51,7 @@ const { open, checker } = require("./lib");
   });
   c.check("daily に「今日へ戻る」が出ている", back);
 
-  /* 紙を右へ払う（本物のタッチ）→ 17日へ戻れる。先（19日）へは行けない。 */
+  /* 紙を右へ払う（本物のタッチ）→ 17日へ戻れる。先（18日）へも進める。 */
   const swipe = async (id, dx) => {
     const box = await page.$eval(`#screen-${id} .day-car`, (e) => {
       const r = e.getBoundingClientRect();
@@ -71,13 +71,16 @@ const { open, checker } = require("./lib");
   await swipe("archive", 220);
   c.check("daily：未来の日から一日戻れる（17日）", (await title("archive")).includes("9月17日"), await title("archive"));
   await swipe("archive", -220);
-  c.check("daily：先へは行けない（17日のまま）", (await title("archive")).includes("9月17日"), await title("archive"));
+  c.check("daily：先へも進める（18日）", (await title("archive")).includes("9月18日"), await title("archive"));
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(700);
   await tap("todo", "2026-09-18");
 
   await go("diet");
   c.check("ダイエットの題も 18日", (await title("diet")).includes("9月18日"), await title("diet"));
+  await swipe("diet", -220);
+  c.check("ダイエット：先へも進める（19日）", (await title("diet")).includes("9月19日"), await title("diet"));
+  await swipe("diet", 220);
   c.check("ダイエットの未来の紙は押せない（is-peek）",
     await page.$eval("#screen-diet", (s) => !!s.querySelector(".day-track .day-slide.is-peek.diet-day[data-day='2026-09-18']")));
 
