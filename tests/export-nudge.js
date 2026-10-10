@@ -79,11 +79,13 @@ const { open, checker } = require("./lib");
   const after = await page.evaluate(() => ({
     shared: window.__shared || "",
     last: KN.backup.lastExportAt() || "",
+    /* 頁の「今」と比べる（KN_CLOCK で頁の時計だけ差し替えたときも、台本の時計とずれない）。 */
+    now: Date.now(),
     today: KN.util.todayKey(),
     toast: (document.querySelector(".toast:not(.is-out)") || {}).innerText || "",
   }));
   t.check("「保存」で共有シートにバックアップを渡す", /^kaimono-note-\d{8}\.json$/.test(after.shared), after.shared);
-  t.check("前回の書き出しが今になる", Date.now() - new Date(after.last).getTime() < 60000, after.last);
+  t.check("前回の書き出しが今になる", Math.abs(after.now - new Date(after.last).getTime()) < 60000, after.last);
   t.check("「バックアップを書き出しました」", after.toast.includes("バックアップを書き出しました"), after.toast);
   await fresh();
   await nudge();
