@@ -19,8 +19,8 @@
 ## 流し方（訊かずに main まで）
 
 - ブランチはセッションの指定どおり（無ければ `claude/<話題>` を切る）。直したら テスト → コミット →
-  `git push -u origin <branch>` → `git push origin <branch>:main`（`--force` なし）。**ローカルの `main` は使わない。**
-  断られたら `git fetch origin main && git merge origin/main` → 門（`--gate`）と自分の変更の台本だけ（全部は取りこむ前の一度）→ 再push。
+  `git push -u origin <branch>` → 一区切りごとに `git push origin <branch>:main`（`--force` なし）。**ローカルの `main` は使わない。**
+  断られたら `git fetch -q origin main && git merge --no-stat origin/main` → 門（`--gate`）と自分の変更の台本だけ（全部は取りこむ前の一度）→ 再push。
 - push すると門（`run-all.js --gate`）が回る。結論は一度だけ見る：`mcp__github__actions_list`
   （list_workflow_runs・resource_id "pages.yml"・perPage 1）。run_number と head_sha を照らす。赤なら docs/dev.md「main を分け合う」。毎日の全部（"tests-daily.yml"）はセッションの頭に同じく一度。
 - `stamp-build.js` はローカルで実行・コミットしない。PR は頼まれたときだけ。
@@ -37,8 +37,8 @@
 
 ## テスト
 
-- Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`（`open()` を使う）、一覧は `tests/INDEX.md`（3万字。grep で引く）。
-- `NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`。全部は `tests/run-all.js`（約11分。前で待てる10分を超えるので Bash の `run_in_background` で）。
+- Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`（`open()` を使う）。一覧 `tests/INDEX.md` は一行600字——名前だけ引く（`grep 言葉 tests/INDEX.md | cut -s -d'|' -f2`）、中身は台本の頭。
+- `NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`。全部は `tests/run-all.js`（約11分。Bash の `run_in_background` で）。
 - 触った画面の主要テストと `tests/daily-rules.js` は毎回走らせる。画面を三つ以上またぐ変更・共通の部品（`ui.js`・`app.js`・`util.js`・`store.js`・`sw.js`・共通の css）を触ったあとは全部。
 
 ## docs（触る前に、該当するものだけ。丸ごと読まず `grep -n '^#'` で見出しを見て、触る節を読む。数千行の .js も grep で引いて前後だけ）
@@ -51,5 +51,5 @@
 保存・`backup.js`・`idb.js`・日記の写し → storage ／ 動き → motion ／ ガラス → glass ／ 色・字・`--z-*`・絵文字 → look ／
 絵：系統 → icons、描く → icons-drawing、引き当て → icons-matching ／ 開発・テスト → dev
 
-- コメントの「CLAUDE.md の『〜』」は `grep -rn '〜' docs/` で出る。新しい決めごとは該当する docs に書く。
-- 一区切りついたら、新しいセッションのほうが安いか判断し、そうならタイミングと貼れるプロンプトを示す。
+- コメントの「CLAUDE.md の『〜』」は `grep -rn '〜' docs/` で出る。新しい決めごとは該当する docs に**短く**（決めごと・罠・理由だけ。経過や数字の羅列は書かない）。commit の本文も数行。
+- 一区切りついたら、新しいセッションのほうが安いか判断し、そうならタイミングと貼れるプロンプトを示す（モデル・effort の目安は docs/dev.md）。
