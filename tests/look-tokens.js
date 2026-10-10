@@ -81,9 +81,12 @@ const put = (m, k, list) => { if (!m.has(k)) m.set(k, new Set()); list.forEach((
 for (const f of ["css/base.css", "css/components.css", "css/screens.css"]) {
   for (const r of rules(read(f))) {
     const dark = r.media && /prefers-color-scheme:\s*dark/.test(r.media);
+    /* ほかの条件（`prefers-contrast: more` など）と並べた暗い面は、同じ条件の中の `[data-theme="dark"]` と組む。 */
+    const rest = dark ? r.media.replace(/\s*and\s*\(prefers-color-scheme:\s*dark\)|\(prefers-color-scheme:\s*dark\)\s*(and\s*)?/, "").replace(/^@media\s*$/, "").trim() : r.media;
+    const at = rest ? `${rest} ` : "";
     for (const sel of r.sels) {
-      if (dark && sel.startsWith(LIGHT)) put(sys, `${f} ${DARK}${sel.slice(LIGHT.length)}`, decls(r.body));
-      else if (!r.media && sel.startsWith(DARK)) put(own, `${f} ${sel}`, decls(r.body));
+      if (dark && sel.startsWith(LIGHT)) put(sys, `${f} ${at}${DARK}${sel.slice(LIGHT.length)}`, decls(r.body));
+      else if (!dark && sel.startsWith(DARK)) put(own, `${f} ${at}${sel}`, decls(r.body));
     }
   }
 }

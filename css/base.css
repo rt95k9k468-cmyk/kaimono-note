@@ -2438,3 +2438,39 @@ a { color: var(--c-primary); }
   --c-primary-soft: #312319; --c-primary-ink: #f2c1a2;
   --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
 }
+
+/* ---- iPhone の「コントラストを上げる」（roadmap-seamless の N15 (b)・X19） ----
+   設定 → アクセシビリティ → 画面表示とテキストサイズ。オフの人には何も変わらない。
+   ガラスは不透明の面に（地の濃さは `--glass-a` / `--glass-night-a` の二つから。@supports の受け皿と同じ手）、
+   灰の字と線は一段濃く。明るい面のガラスの色は、いま透けて見えている明るさに寄せる（#cfcdd9 のまま塞ぐと沈む）。
+   夜のガラスは紙（#1c1c22）と同じ色なので、一段明るくして境目を残す。
+   「透明度を下げる」は Safari では読めない（prefers-reduced-transparency は iOS で未対応）。 */
+@media (prefers-contrast: more) {
+  :root {
+    --c-text-2:   #48484c;
+    --c-text-3:   #4c4c54;
+    --c-border:   #c4c4cc;
+    --c-border-2: #a8a8b2;
+    --glass-a:              100%;
+    --glass-night-a:        100%;
+    --glass-cast:           #e6e5ec;
+    --glass-cast-lit:       #f3f2f7;
+    --glass-night-cast:     #2a2a32;
+    --glass-night-cast-lit: #3a3a44;
+  }
+  :root[data-theme="dark"],
+  .tabbar.is-on-dark,
+  .dock.is-on-dark {
+    --c-text-2: #c6c6ca;
+    --c-text-3: #b4b4ba;
+  }
+  :root[data-theme="dark"] { --c-border: #4a4a54; --c-border-2: #5c5c68; }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-text-2: #c6c6ca;
+    --c-text-3: #b4b4ba;
+    --c-border: #4a4a54;
+    --c-border-2: #5c5c68;
+  }
+}
