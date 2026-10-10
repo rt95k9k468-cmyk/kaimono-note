@@ -819,7 +819,9 @@
 
     /* 道に置く（3.0 の A2）。このノートについて考える時間を、今日の道に一つ（js/activity.js）。
        書いたノートだけ（何も書いていないノートは閉じれば消えるので）。 */
-    const roadItem = () => (!KN.activity || !stored || blank() ? [] : [{ icon: "hourglass", label: "道に置く",
+    /* 既定で畳む（roadmap-3.1 の S4。設定のノートから戻せる）。 */
+    const roadItem = () => (!KN.activity || !stored || blank()
+      || KN.store.get().settings.noteRoad !== true ? [] : [{ icon: "hourglass", label: "道に置く",
       onPick: () => {
         sync();
         KN.activity.noteToRoad({ id: note.id, title: N().headOf(N().get(note.id) || note), day: U.todayKey() });

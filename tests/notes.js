@@ -102,6 +102,8 @@ const { open, checker } = require("./lib");
   t.check("留まった頭は下の帯のすぐ上", Math.abs(gripPos.bottom - gripPos.barTop) <= 2,
     `${gripPos.bottom} / ${gripPos.barTop}`);
   t.check("留まった掴み手の名札は daily へ戻る", /daily へ戻る/.test(gripPos.label || ""), gripPos.label);
+  /* 二週間の絵は既定で畳んである（3.1 の S4）。ノートで消えるのを見るために出す。 */
+  await page.evaluate(() => KN.store.update((s) => { s.settings.showUpcoming = true; }));
   const headLook = () => page.evaluate(() => {
     const vis = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).opacity !== "0";
     const top = document.querySelector(".topbar").getBoundingClientRect().bottom;

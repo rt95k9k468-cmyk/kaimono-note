@@ -119,6 +119,9 @@
         showSeason: true,
         /* 新しく付ける見直す日を、日数を過ぎた最初の節気の初日に揃える（roadmap-3.1 の K3）。既定は今のまま。 */
         reviewSekki: false,
+        /* 使っていない面は既定で畳む（roadmap-3.1 の S4。利用者が選んだ三つ）。設定から戻せる。
+           そろそろ切れそう・これからの二週間・ノートを道に置く。 */
+        showLow: false, showUpcoming: false, noteRoad: false,
         /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
            → "todo" | "list"。既定は空（js/capture.js の learn）。 */
         captureDest: {},
@@ -728,6 +731,7 @@
     out.settings.digestPos = out.settings.digestPos === "top" ? "top" : "bottom";
     out.settings.showSeason = out.settings.showSeason !== false;
     out.settings.reviewSekki = out.settings.reviewSekki === true;
+    for (const k of ["showLow", "showUpcoming", "noteRoad"]) out.settings[k] = out.settings[k] === true;
     out.settings.v2 = out.settings.v2 === true;
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }

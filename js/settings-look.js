@@ -186,6 +186,14 @@
           },
         }),
         calSwitch(),
+        /* 上の帯の「これからの二週間」。既定で畳む（roadmap-3.1 の S4）。 */
+        switchRow({
+          title: "これからの二週間", on: s.showUpcoming === true,
+          onTap: (v) => {
+            store.update((x) => { x.settings.showUpcoming = v; });
+            render();
+          },
+        }),
         /* 帯と暦の後ろの空（js/sky.js・docs/sky.md）。既定は出す。 */
         switchRow({
           title: "空を出す", on: s.sky !== false,

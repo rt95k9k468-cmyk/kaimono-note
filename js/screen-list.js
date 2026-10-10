@@ -654,7 +654,8 @@
      探しているあいだは出しません——探した結果は「リストの見方」で、
      そこに外のものを混ぜると見方が崩れるので。 */
   function lowSection() {
-    if (query) return document.createDocumentFragment();
+    /* 既定で畳む（roadmap-3.1 の S4。設定の買うものから戻せる）。 */
+    if (query || store.get().settings.showLow !== true) return document.createDocumentFragment();
     const low = KN.insights.runningLow();
     if (!low.length) return document.createDocumentFragment();
     const section = node(html`
