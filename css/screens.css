@@ -2779,6 +2779,13 @@
   :root:not([data-theme="light"]) .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #b4b4ba; }
 }
 :root[data-theme="dark"] .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #b4b4ba; }
+/* 「コントラストを上げる」では、もう一段（base.css の末尾）。 */
+@media (prefers-contrast: more) {
+  :root[data-theme="dark"] .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #c6c6ca; }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #c6c6ca; }
+}
 
 /* ---- からだの輪 ----
 
