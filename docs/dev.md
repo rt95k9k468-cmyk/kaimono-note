@@ -48,8 +48,10 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   古い写しから始まるので、ローカルの `main` は写しを取った日のまま。取得も浅い
   （`--depth 50`）ので `origin/main` とのつながりが見えず、`merge --ff-only` は
   必ず失敗する。早送りかどうかは GitHub 側が見る（`--force` は付けない）。
-  断られたら先に誰かが流している：`git fetch origin main && git merge origin/main`
-  → テスト → もう一度。
+  断られたら先に誰かが流している：`git fetch origin main && git merge origin/main` → 門（`run-all.js --gate`、
+  約1.5分）と自分の変更の台本（触った画面の台本・直した台本。競合を手で直したならその所のも）だけ回して → もう一度。
+  全部回しは取りこむ前の一度で足りる（門の外は tests-daily.yml が毎日回す）。取りこむたびに全部（約11分）を回すと、
+  そのあいだに次の誰かが流してまた断られる（10月10日は2時間半に取りこみ8回）。2026年10月10日、利用者が決めた。
 - デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。確かめるのは
   必要なときだけ：`mcp__github__actions_list`（method: list_workflow_runs,
   **resource_id: "pages.yml"**, **perPage: 1**）。perPage を省くと30件返って大きい。
@@ -68,6 +70,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   - 共通の部品（下の「テストの回し方」の一覧）と門の試験を触る前に
     `git log origin/main -3 --format='%h %ar %s' -- <file>` を見る。ほかのセッションが数時間内に触っていたら、
     その差分を読んでから始める。
+  - `tests/INDEX.md` は `.gitattributes` で `merge=union`：2日間の取りこみで手で直した5か所のうち2か所が、ここへの追記どうしだった（10月10日。読む試験は無い）。
 - `stamp-build.js` は**絶対にローカルで実行してコミットしない**
   （ビルド時にCI側が使うもの）。
 - PRは明示的に頼まれない限り作らない。
@@ -111,7 +114,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   いるか確認し、必要なら上のコマンドで再起動する。
 - 実行：`NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`
   （`lib.js` はサーバーが落ちていれば自分で立ち上げる）。全部は `tests/run-all.js`
-  （3本ずつ並べて約8分、要約だけ）。
+  （3本ずつ並べて約11分、要約だけ。2026年10月10日に143本で10分35秒）。**全部は Bash の `run_in_background`
+  で回す**——前で待てる上限（10分）を超える。終われば知らせが来る。
 - **main へ push すると GitHub が門（`run-all.js --gate`）を回し、落ちたら配られない。**
   流したあとは `actions_list` で結論を一度見る（門の決めごとは `tests/README.md`）。
 - **門の外も含めた全部は、GitHub が毎日一度回す**（`.github/workflows/tests-daily.yml`、日本の朝3時。
@@ -130,7 +134,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - 変更のたびに、触った画面の主要テストと `tests/daily-rules.js`（dailyの
   非評価原則）は必ず走らせる。
 - **画面を三つ以上またぐ変更（U8 のような部品の差し替え）と、共通の部品（`ui.js`・`app.js`・`util.js`・`store.js`・
-  `sw.js`・`css/base.css`・`css/components.css`）を触ったあとは、`run-all.js` を全部回す**（約11分・134本。
+  `sw.js`・`css/base.css`・`css/components.css`）を触ったあとは、`run-all.js` を全部回す**（約11分・143本。
   2026年10月8日、利用者が決めた。門の外の試験が古いまま2日残っていた——docs/log/inspection.md）。**共通の部品**は
   10月10日に足した：やることの紙のための `ui.js` の変更（e34179d）がノートの書く紙の試験を落としたまま、一画面の変更として
   2日すり抜けた（docs/log/inspection.md の10月10日の節）。

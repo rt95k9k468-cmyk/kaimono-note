@@ -1,0 +1,2 @@
+# 取りこみの衝突を、両側の行を残して解く（docs/dev.md の「main を分け合う」）
+tests/INDEX.md merge=union
