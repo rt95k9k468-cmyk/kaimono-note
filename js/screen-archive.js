@@ -738,7 +738,7 @@
               一つに決まらないので。色は変えず、字を一行足すだけ。数えも比べも
               しない、ただの暦の言葉です（daily は評価しない）。 */
             only && S().showSeason !== false && KN.season ? html`
-          <p class="arc-season">${KN.season.rows(only).map(([k, v, span]) => html`<span class="arc-season-row"><span class="arc-season-k">${k}</span>${v}<span class="arc-season-span">${span}</span></span>`)}</p>` : ""}
+          <p class="arc-season" data-day="${only}">${KN.season.rows(only).map(([k, v, span], i) => html`<span class="arc-season-row${seasonTurn(only, i) ? " is-turn" : ""}"><span class="arc-season-k">${k}</span>${v}<span class="arc-season-span">${span}</span></span>`)}</p>` : ""}
         <div class="arc-log-body"></div>
       </section>
     `);
@@ -1997,6 +1997,32 @@
   function onEnter() {
     if (KN.healthRelay) KN.healthRelay.pullNow();
   }
+
+  /* 季節の変わり目の一拍（roadmap-seamless の N7・docs/daily.md の「季節のひとこと」）。
+     その日に変わる行——節気の初日の節気・雑節か五節句・祝日（rows の三行目から）——だけ。 */
+  function seasonTurn(day, i) {
+    if (i >= 2) return true;
+    const sp = i === 0 && KN.season.span(day, 3);
+    return !!(sp && sp.from === day);
+  }
+  /* 変わり目の日に、**その日はじめて開いたときだけ**その行が一度満ちる（帯の今日の丸と同じ作り。
+     head.js の BEAT_KEY）。打つかはここ、どう満ちるかは CSS（`.is-season-first`）。今日の行が
+     見えていないとき（ほかの日・月ぜんぶ・ひとことを消した）は、見たことにしない。暦の事実なので評価ではない。 */
+  const SEASON_BEAT_KEY = "kn-season-beat";
+  KN.motion.onArrive((el) => {
+    if (el !== root) return;
+    let first = false;
+    let seen = true;
+    try { seen = localStorage.getItem(SEASON_BEAT_KEY) === U.todayKey(); } catch (_) { /* 残せない端末では満ちない */ }
+    const row = seen ? null : root.querySelector(`.arc-season[data-day="${U.todayKey()}"] .is-turn`);
+    if (row && row.offsetWidth) {
+      try {
+        localStorage.setItem(SEASON_BEAT_KEY, U.todayKey());
+        first = true;
+      } catch (_) { /* 残せない端末では満ちない */ }
+    }
+    root.classList.toggle("is-season-first", first);
+  });
 
   /* `cal` はノート（daily の裏）が帯に同じ暦を置くため（js/screen-notes.js）。 */
   KN.screens.archive = { mount, render, dockButton, prepare, onEnter, day: () => focusDay(), cal: () => els.cal,

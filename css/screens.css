@@ -3568,6 +3568,10 @@ a.btn { text-decoration: none; }
 .arc-season-k { margin-right: var(--sp-2); color: var(--c-text-3); }
 /* 期間は日付の途中で折り返さない（「9月28 / 日〜」を避ける）。入らなければ丸ごと次の行へ。 */
 .arc-season-span { display: inline-block; white-space: nowrap; margin-left: var(--sp-2); color: var(--c-text-3); }
+/* 季節の変わり目の一拍（N7）。変わる日の行だけ、その日はじめて開いたときに左から一度満ちる
+   （打つかは screen-archive.js の SEASON_BEAT_KEY）。字も色も変えない。 */
+.is-m-arrive.is-season-first .arc-season-row.is-turn { animation: season-fill var(--m-fill) var(--ease-out) both; }
+@keyframes season-fill { from { clip-path: inset(0 100% 0 0); } }
 
 .arc-log-empty { font-size: var(--fs-lg); color: var(--c-text-3); line-height: 1.85; }
 
