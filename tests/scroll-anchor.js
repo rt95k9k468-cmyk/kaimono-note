@@ -251,6 +251,17 @@ const SCENES = [
       });
       await page.click('.tab[data-tab="todo"]');
       await page.waitForTimeout(1000);
+      /* 開いたときの動き（「いま」へ送り、過ぎた行が降りてくる。合わせて約1秒）が止まるまで。決め打ちの ms だけでは、
+         混んだ機械で動きの途中を測り、錨のあり・なしで見ていた行の位置（v0）が 25px ずれて落ちた（2026年10月10日）。 */
+      await page.waitForFunction(() => {
+        const root = document.getElementById("screen-todo");
+        const moving = document.getAnimations().some((a) => a.playState === "running" && a.effect && a.effect.target
+          && root.contains(a.effect.target) && isFinite(a.effect.getComputedTiming().endTime));
+        const top = Math.round(KN.app.scrollerOf(root).scrollTop);
+        const still = window.__lastTop === top;
+        window.__lastTop = top;
+        return !moving && still;
+      }, null, { timeout: 10000, polling: 100 });
     },
     body: async (page, step) => {
       const rows = () => page.evaluate(() => document.querySelectorAll("#head .cal .cal-grid .cal-day[data-day]").length / 7);
