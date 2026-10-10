@@ -1,5 +1,5 @@
 /* 「戻す」を揃える（docs/roadmap-2.0.md の V18・docs/look.md の「元に戻す」）。
-   - 押せるものが付くトーストは既定で 5 秒（無いものは 3.6 秒のまま）
+   - 押せるものが付くトーストは次にほかを押すまで残る・上限 30 秒（無いものは 3.6 秒のまま。N13 の X18 (b)）
    - 裏へ回っているあいだは数えない・押せない知らせで「元に戻す」を上書きしない・押せるもの付きが
      続いたら新しいほう（docs/roadmap-seamless.md の N13）
    - 戻すボタンの言葉は「元に戻す」だけ（js の中に label: "戻す" が無い）
@@ -31,12 +31,24 @@ const { open, checker } = require("./lib");
   const life = (withAct) => page.evaluate(async (w) => {
     KN.ui.toast("試し", w ? { action: { label: "元に戻す", onClick() {} } } : {});
     const at = (ms) => new Promise((r) => setTimeout(() => r(!!document.querySelector(".toast:not(.is-out)")), ms));
-    return [await at(3300), await at(1400)];   // 3.3 秒・4.7 秒
+    return [await at(3300), await at(1400), await at(1800)];   // 3.3 秒・4.7 秒・6.5 秒
   }, withAct);
   const plain = await life(false);
   const act = await life(true);
   t.check("押せるものが無いトーストは 3.6 秒", plain[0] && !plain[1], JSON.stringify(plain));
-  t.check("「元に戻す」が付くトーストは 5 秒", act[0] && act[1], JSON.stringify(act));
+  t.check("「元に戻す」が付くトーストは 5 秒を過ぎても残る", act.every(Boolean), JSON.stringify(act));
+  const tapped = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const live = () => !!document.querySelector(".toast:not(.is-out)");
+    document.querySelector(".page-body, main, body").dispatchEvent(new Event("scroll"));
+    const scrolled = live();
+    document.body.click();
+    await wait(50);
+    return { scrolled, gone: !live() };
+  });
+  t.check("「元に戻す」はほかを押すと下がる（送るだけでは下がらない）", tapped.scrolled && tapped.gone, JSON.stringify(tapped));
+  const ui = src.find(([f]) => f === "ui.js")[1];
+  t.check("押せるもの付きの上限は 30 秒", /TOAST_ACT_MS = 30000/.test(ui));
   await page.waitForTimeout(600);
 
   /* ---- 時間と割り込みで奪わない（roadmap-seamless の N13） ---- */
@@ -55,7 +67,7 @@ const { open, checker } = require("./lib");
     await wait(10000);           // 裏へ回って10秒
     setHidden(false);
     const back = !!live();
-    await wait(3000);            // 戻ってから3秒（残りは約4秒）
+    await wait(3000);            // 戻ってから3秒
     const still = !!live();
     if (still) live().click();
     await wait(300);

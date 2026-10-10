@@ -1821,9 +1821,9 @@
     toasts.forEach((t) => (document.hidden ? t.pause() : t.resume()));
   });
 
-  /* 押せるもの（「元に戻す」ほか）が付くトーストは、既定で長めに出す——押しに
-     行くあいだに消えないように（roadmap-2.0 の V18。言葉は「元に戻す」に揃える）。 */
-  const TOAST_MS = 3600, TOAST_ACT_MS = 5000;
+  /* 押せるもの（「元に戻す」ほか）が付くトーストは、次にほかを押すまで残す。上限だけ持つ——
+     読んでから押す時間を本人に返す（roadmap-2.0 の V18・roadmap-seamless の N13 の X18 (b)）。 */
+  const TOAST_MS = 3600, TOAST_ACT_MS = 30000;
   /* `long`＝読むのに時間がかかる文（何も変えていない理由など）。`until`＝答えを待つあいだの
      「…しています」——答えが来たら呼ぶ側が `dismiss()` する。来なかったときのための上限だけ持つ。
      長さを数で渡す口は持たない（場所ごとに違う長さが生えるので）。`stay`＝押すまで残る
@@ -1866,13 +1866,20 @@
       /* 見えていないあいだは数えない。戻ったら残りから。 */
       pause() { if (timer) { clearTimeout(timer); timer = null; left -= Date.now() - since; } },
       resume() { if (!gone && !stay && !timer) { since = Date.now(); timer = setTimeout(dismiss, Math.max(left, 0)); } },
-      drop() { gone = true; clearTimeout(timer); toasts.delete(self); el.remove(); },
+      drop() { gone = true; clearTimeout(timer); toasts.delete(self); off(); el.remove(); },
     };
+    /* 押せるもの付きは、ほかを押したら下がる（送るだけでは下がらない）。出した押し（指を離した所で
+       出す消し方）に続く click は数えない。 */
+    const born = performance.now();
+    const elsewhere = (e) => { if (!el.contains(e.target) && e.timeStamp - born > 80) dismiss(); };
+    const off = () => window.removeEventListener("click", elsewhere, true);
+    if (self.acts) window.addEventListener("click", elsewhere, true);
     function dismiss() {
       if (gone) return;
       gone = true;
       clearTimeout(timer);
       toasts.delete(self);
+      off();
       el.classList.add("is-out");
       setTimeout(() => el.remove(), 220);
     }
