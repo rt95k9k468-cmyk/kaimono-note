@@ -21,10 +21,15 @@ const { open, checker } = require("./lib");
     await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
     await page.waitForTimeout(250);
   };
+  /* 一枚が押し出し終わるまで待つ。動いているあいだの押しは、画面がわざと捨てる（二重に積まない。
+     screen-settings.js の moving）。決め打ちの待ちは押し出し（2フレーム＋--m-push＋20ms）と競って、まれに捨てられていた。 */
+  const layerStill = () => page.waitForFunction(() => !document.querySelector(".set-layer.is-edge-lift"));
   const back = async () => {
     const n = await page.locator(".set-layer").count();
+    await layerStill();
     await page.locator(`${top} .set-back, ${top} [aria-label="戻る"]`).first().click();
     await page.waitForFunction((k) => document.querySelectorAll(".set-layer").length < k, n);
+    await layerStill();
     await page.waitForTimeout(250);
   };
 
@@ -44,6 +49,7 @@ const { open, checker } = require("./lib");
 
   await rowOf("外観").click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
+  await layerStill();
   await page.waitForTimeout(300);
   await page.locator(`${top} .seg-btn[data-theme="dark"]`).click();
   await page.waitForTimeout(200);
@@ -66,6 +72,7 @@ const { open, checker } = require("./lib");
   const into = async (title) => {
     await rowOf(title).click();
     await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
+    await layerStill();
     await page.waitForTimeout(300);
     return page.locator(top).innerText();
   };

@@ -287,6 +287,88 @@
     } catch (err) { /* 押し先が残っても、中継所の列が空なので鳴らない */ }
   }
 
+  /* ---------------- 鳴らなかった回に気づく（roadmap-seamless の N14） ----------------
+
+     iOS は押し先が替わっても知らせず（pushsubscriptionchange が無い）、無効な押し先にも
+     成功を返すことがある。だから中継所も端末も気づかないまま鳴らなくなりうる。
+     戻ってきたら、閉じていたあいだに時刻の来た回（写しの列）と、鳴った控え（rung）を
+     照らす。鳴っていない回があれば、困ったときの記録に件数だけ書き、次に画面を
+     押したとき（iPhone は押した流れの中でないと作らせないことがある）押し先を作り
+     直して送り直す。一日に一度まで。画面には何も出さない。
+     控えは記録の外（localStorage の kaimono-note-bell-*。書き出しにも乗らない）。 */
+  const AWAY = "kaimono-note-bell-away";     // 隠れた時刻（ミリ秒）
+  const RENEW = "kaimono-note-bell-renew";   // 押し先を作り直した日
+  const GRACE = 3 * 60000;                   // 押しは分の頭に届く。来たばかりの回は数えない
+  let back = true;                           // 戻ってきてから、まだ照らしていない
+  let armed = false;
+
+  const lsGet = (k) => { try { return localStorage.getItem(k) || ""; } catch (err) { return ""; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (err) { /* 次に */ } };
+
+  const readList = () => tx(["plan"], "readonly", (t) => {
+    const req = t.objectStore("plan").get("list");
+    return () => (req.result && req.result.list) || [];
+  });
+
+  function markAway() {
+    back = true;
+    if (active()) lsSet(AWAY, String(Date.now()));
+  }
+
+  /** 閉じていたあいだの回を照らす。鳴っていない回の数を返す。 */
+  async function lookBack(rows) {
+    back = false;
+    const away = Number(lsGet(AWAY));
+    const now = Date.now();
+    if (!active() || !(away > 0)) return 0;
+    lsSet(AWAY, String(now));
+    let list;
+    try {
+      list = await readList();
+      if (!rows) rows = await readRung();
+    } catch (err) { return 0; }
+    const said = new Set(rows.map((r) => r.key));
+    const miss = list.filter((x) => x.at > away && x.at <= now - GRACE && x.at > now - 86400 * 1000
+      && !said.has(`${x.id} ${x.occ}`)).length;
+    if (!miss) return 0;
+    if (KN.errlog) KN.errlog.note("notice", `閉じていても鳴らす：鳴らなかった回 ${miss}件`, { file: "bell.js" });
+    if (lsGet(RENEW) !== KN.util.todayKey() && !armed) {
+      let key = null;
+      try { key = await relayKey(); } catch (err) { /* 次に戻ったとき */ }
+      if (key) arm(key);
+    }
+    return miss;
+  }
+
+  function arm(key) {
+    armed = true;
+    const go = () => {
+      document.removeEventListener("pointerup", go, true);
+      document.removeEventListener("keydown", go, true);
+      renew(key);
+    };
+    document.addEventListener("pointerup", go, true);
+    document.addEventListener("keydown", go, true);
+  }
+
+  /** 押し先を捨てて作り直し、中継所へ送り直す（中継所は一つしか持たないので二重には鳴らない）。 */
+  async function renew(key) {
+    armed = false;
+    const day = KN.util.todayKey();
+    if (!active() || lsGet(RENEW) === day) return;
+    lsSet(RENEW, day);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const old = await reg.pushManager.getSubscription();
+      if (old) { try { await old.unsubscribe(); } catch (err) { /* 作り直すので構わない */ } }
+      await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(key) });
+      await writeUsedKey(key);
+    } catch (err) { return; }
+    lastSig = null;
+    lastSub = null;
+    await sync({ force: true });
+  }
+
   /* ---------------- 鳴らした回を、アプリへ ----------------
 
      Service Worker が鳴らした {id, 回} を「もう言った」（`notifiedFor`）へ。
@@ -297,6 +379,8 @@
     if (store.get().settings.todoBell !== true || !supported()) return 0;
     let rows;
     try { rows = await readRung(); } catch (err) { return 0; }
+    /* 古い控えを捨てる前に、鳴らなかった回を照らす（戻ってきて一度だけ）。 */
+    if (back) await lookBack(rows);
     if (!rows.length) return 0;
     const byId = new Map(store.openTodos().map((t) => [t.id, t]));
     const ids = rows.filter((r) => {
@@ -342,9 +426,9 @@
     /* 開くたび。7日の窓がずれて、新しい日の時刻が列に入ります。 */
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && active()) sync();
-      if (document.visibilityState === "hidden") flush();
+      if (document.visibilityState === "hidden") { markAway(); flush(); }
     });
-    window.addEventListener("pagehide", flush);
+    window.addEventListener("pagehide", () => { markAway(); flush(); });
     if (active()) sync({ force: true });
   }
 
@@ -367,5 +451,5 @@
       .then((r) => { if (r.ok) lastSig = sig; }, () => {});
   }
 
-  KN.bell = { supported, available, active, plan, sync, flush, start, stop, absorb, noteRung, init, DB };
+  KN.bell = { supported, available, active, plan, sync, flush, start, stop, absorb, noteRung, lookBack, init, DB };
 })();
