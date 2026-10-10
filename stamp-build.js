@@ -6,22 +6,26 @@
 
    Run against the files being published, never committed back.
 
-   Two jobs:
+   Three jobs:
 
    1. sw.js gets the build id as its cache name. Browsers only reinstall a
       service worker when its bytes change, so a fixed name would freeze the
       cache and installed apps would never see another update.
 
-   2. Every css/js URL gets a ?v=<build> query, in index.html and in the
-      worker's precache list alike. This is what rescues an app already
-      carrying an older worker: that worker serves navigations network-first,
-      so it fetches the new index.html, and the versioned asset URLs then miss
-      its cache-first lookup and fall through to the network. Without it, an
-      installed app keeps running the JS it cached on the day it was added to
-      the home screen.
+   2. Every css/js URL gets a ?v=<その中身の印> query (sha-256 の頭), in
+      index.html and in the worker's precache list alike. A file that did not
+      change keeps its URL, so the worker's install copies it from the previous
+      cache instead of fetching it again (roadmap-seamless の N3). A file that
+      did change gets a new URL, which misses an older worker's cache-first
+      lookup and falls through to the network — that is what still rescues an
+      app carrying an older worker.
+
+   3. index.html gets the build id in <meta name="kn-build">. That is the
+      版の札 (errlog.js・app.js の runningVersion) now that ?v= is per file.
    ========================================================= */
 
 const fs = require("fs");
+const crypto = require("crypto");
 
 const VERSION = process.env.GITHUB_SHA || process.argv[2] || "dev";
 
@@ -39,10 +43,21 @@ const VERSION = process.env.GITHUB_SHA || process.argv[2] || "dev";
 const ASSET_URL = /((?:src|href)=")((?:css|js)\/[A-Za-z0-9._-]+)(?:\?v=[^"]*)?(")/g;
 const PRECACHE_URL = /"((?:css|js)\/[A-Za-z0-9._-]+)(?:\?v=[^"]*)?"/g;
 const VERSION_LINE = /^const VERSION = .*$/m;
+const BUILD_META = /(<meta name="kn-build" content=")[^"]*(">)/g;
 
 function fail(msg) {
   console.error(`::error::${msg}`);
   process.exit(1);
+}
+
+/* 中身の印：sha-256 の頭12桁（sw.js の sound() が同じ求め方で確かめる）。 */
+const marks = new Map();
+function mark(url) {
+  if (!marks.has(url)) {
+    if (!fs.existsSync(url)) fail(`${url}: 参照されているのにファイルが無い`);
+    marks.set(url, crypto.createHash("sha256").update(fs.readFileSync(url)).digest("hex").slice(0, 12));
+  }
+  return marks.get(url);
 }
 
 /* ---- sw.js: cache name + precache URLs ---- */
@@ -52,22 +67,29 @@ if (!VERSION_LINE.test(sw)) fail("sw.js: VERSION 行が見つからない（キ�
 sw = sw.replace(VERSION_LINE, `const VERSION = "${VERSION}";`);
 if (!sw.includes(`const VERSION = "${VERSION}";`)) fail("sw.js: VERSION の置換結果が一致しない");
 
-let swCount = 0;
-sw = sw.replace(PRECACHE_URL, (m, url) => { swCount++; return `"${url}?v=${VERSION}"`; });
-if (!swCount) fail("sw.js: プリキャッシュ対象の css/js が見つからない");
+const swMarks = new Map();
+sw = sw.replace(PRECACHE_URL, (m, url) => { swMarks.set(url, mark(url)); return `"${url}?v=${mark(url)}"`; });
+if (!swMarks.size) fail("sw.js: プリキャッシュ対象の css/js が見つからない");
 fs.writeFileSync("sw.js", sw);
 
-/* ---- index.html: script and stylesheet URLs ---- */
+/* ---- index.html: script and stylesheet URLs + 版の札 ---- */
 let html = fs.readFileSync("index.html", "utf8");
-let htmlCount = 0;
-html = html.replace(ASSET_URL, (m, pre, url, post) => { htmlCount++; return `${pre}${url}?v=${VERSION}${post}`; });
-if (!htmlCount) fail("index.html: バージョンを付ける css/js の参照が見つからない");
+const htmlMarks = new Map();
+html = html.replace(ASSET_URL, (m, pre, url, post) => { htmlMarks.set(url, mark(url)); return `${pre}${url}?v=${mark(url)}${post}`; });
+if (!htmlMarks.size) fail("index.html: 印を付ける css/js の参照が見つからない");
+let metas = 0;
+html = html.replace(BUILD_META, (m, pre, post) => { metas++; return `${pre}${VERSION}${post}`; });
+if (metas !== 1) fail(`index.html: 版の札 <meta name="kn-build"> が ${metas} 個（1個のはず）`);
 fs.writeFileSync("index.html", html);
 
 /* The two lists have to agree, or the worker precaches URLs the page never
    asks for and the page fetches URLs the worker never stored. */
-if (swCount !== htmlCount) {
-  fail(`刻印数が一致しない: sw.js=${swCount} index.html=${htmlCount}`);
+if (swMarks.size !== htmlMarks.size) {
+  fail(`刻印数が一致しない: sw.js=${swMarks.size} index.html=${htmlMarks.size}`);
+}
+/* 印が二つで食い違う（片方にしか無い・違う印）も落とす。 */
+for (const [url, v] of htmlMarks) {
+  if (swMarks.get(url) !== v) fail(`印が一致しない: ${url} index.html=${v} sw.js=${swMarks.get(url) || "なし"}`);
 }
 
-console.log(`stamped ${VERSION}: sw.js ${swCount}件 / index.html ${htmlCount}件`);
+console.log(`stamped ${VERSION}: sw.js ${swMarks.size}件 / index.html ${htmlMarks.size}件（中身の印）`);
