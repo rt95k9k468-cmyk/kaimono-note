@@ -68,6 +68,8 @@
   --c-text:        #111113;
   --c-text-2:      #636363;   /* 実測（副題・時刻） */
   --c-text-3:      #686870;
+  /* 塗った札（下の帯の数の札・選んだ札）の上の字。明るい面は白、暗い面は地の黒
+     （roadmap-seamless の N15。暗い面の塗りは明るいので、白では 2.2:1 しか出ない）。 */
   --c-text-on:     #ffffff;
 
   /* --- lines --- */
@@ -116,9 +118,6 @@
      この一行だけ——`--c-primary` は39か所で**字**の色として使われている
      ので、そちらを塗りに使わないこと（役目が二つある、の意味）。 */
   --c-primary-fill:#f49e98;
-  /* 塗った札（下の帯の数の札・選んだ札）の上の字。明るい面は白、暗い面は地の黒
-     （roadmap-seamless の N15。暗い面の塗りは明るいので、白では 2.2:1 しか出ない）。 */
-  --c-on-fill: #fff;
 
   /* --- accent = "best価格" ---
 
@@ -700,7 +699,7 @@
     --c-primary-soft:#3a201f;
     --c-primary-ink: #f8c5c1;
     --c-primary-fill:#f49e98;
-    --c-on-fill:     #121216;
+    --c-text-on:     #121216;
     /* accent も同じ理由で青へ。暗い地でも基調色と競わないように。 */
     --c-accent:      #6fb6e8;
     --c-accent-soft: #17293a;
@@ -776,7 +775,7 @@
   --c-primary-soft:#3a201f;
   --c-primary-ink: #f8c5c1;
   --c-primary-fill:#f49e98;
-  --c-on-fill:     #121216;
+  --c-text-on:     #121216;
   --c-accent:      #6fb6e8;
   --c-accent-soft: #17293a;
   --c-accent-ink:  #a9d4f1;
@@ -2126,7 +2125,7 @@ a { color: var(--c-primary); }
   padding: 0 5px;
   border-radius: var(--r-full);
   background: var(--c-accent);
-  color: var(--c-on-fill);
+  color: var(--c-text-on);
   font-size: calc(11px * var(--fs-k));
   font-weight: var(--fw-bold);
   display: grid;
