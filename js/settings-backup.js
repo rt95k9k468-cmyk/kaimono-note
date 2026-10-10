@@ -153,6 +153,44 @@
     sheetHandle = KN.ui.sheet({ title: "自動バックアップ", content: body });
   }
 
+  /* ---------------- さっき消したもの（roadmap-seamless の N13 の X18 (c)。store の keepGone） ----------------
+
+     本人が消した一件を、最後の5件・15分。押すと同じ場所へ戻す。daily は中身を出さない（鍵の外なので）。 */
+  const GONE_NAMES = {
+    "todos": "やること", "diet.weights": "体重", "diet.meals": "食事", "diet.drinks": "お酒",
+    "diet.urges": "衝動", "diet.health": "運動", "archive.entries": "daily",
+  };
+  function goneTitle(g) {
+    if (g.path === "todos" && g.item.title) return String(g.item.title);
+    const day = typeof g.item.day === "string" ? KN.util.formatDay(g.item.day) : "";
+    return GONE_NAMES[g.path] + (day ? `・${day}` : "");
+  }
+  function openGone() {
+    const body = node(html`<div class="rows js-gone"></div>`);
+    let h = null;
+    store.goneList().forEach((g) => {
+      const d = new Date(g.t);
+      const row = node(html`
+        <button class="row">
+          <span class="row-main">
+            <span class="row-title">${goneTitle(g)}</span>
+            <span class="row-sub">${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}</span>
+          </span>
+          <span class="row-chevron">${icon("undo")}</span>
+        </button>
+      `);
+      row.addEventListener("click", () => {
+        store.putBackGone(g);
+        row.remove();
+        KN.ui.toast("戻しました");
+        if (!body.childElementCount && h) h.close();
+      });
+      body.append(row);
+    });
+    if (!body.childElementCount) { KN.ui.toast("ありません"); return; }
+    h = KN.ui.sheet({ title: "さっき消したもの", content: body });
+  }
+
   /* ---------------- 記録を点検する（R28、js/audit.js） ----------------
 
      いまの記録の食い違いを数えて見せるだけ。直す手は置きません——直すのは
@@ -795,6 +833,7 @@
     const verify = verifyInput();
     const diaryFile = diaryImportInput();
     const snaps = KN.backup.list();
+    const gone = store.goneList();
     return [
       card(
         navRow({ ico: "download", tint: TINT.data, title: "バックアップを保存", onTap: saveBackup }),
@@ -812,6 +851,7 @@
           ico: "undo", tint: TINT.sub, title: "自動バックアップから戻す",
           value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
         }),
+        gone.length ? navRow({ ico: "undo", tint: TINT.sub, title: "さっき消したもの", value: `${gone.length}件`, onTap: openGone }) : null,
         /* 記録を書き出す（→ health）・年の本（→ daily の書き出し）・おぼえた
            振り分け（→ shopping）は、中身の持ち主のタブへ移しました。ここに
            残すのは、全部の記録にかかわるものだけ。 */

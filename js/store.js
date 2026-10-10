@@ -2346,15 +2346,7 @@
 
   /** @returns {() => void} puts it back, in its place. */
   function removeTodo(id) {
-    const at = get().todos.findIndex((t) => t.id === id);
-    if (at < 0) return () => {};
-    const snapshot = { ...get().todos[at] };
-    update((s) => { s.todos = s.todos.filter((t) => t.id !== id); });
-    return () => update((s) => {
-      const next = s.todos.slice();
-      next.splice(Math.min(at, next.length), 0, snapshot);
-      s.todos = next;
-    });
+    return takeOut("todos", id);
   }
 
   /** The day after this one for a repeating todo, counted from the due date. */
@@ -3526,7 +3518,7 @@
   }
 
   function removeWeight(id) {
-    return takeOut((s) => s.diet, "weights", id);
+    return takeOut("diet.weights", id);
   }
 
   /** 新しい順。同じ日に何度も乗ることがあるので、日だけでなく時刻まで見ます。 */
@@ -3583,7 +3575,7 @@
   }
 
   function removeMeal(id) {
-    return takeOut((s) => s.diet, "meals", id);
+    return takeOut("diet.meals", id);
   }
 
   function mealsOfDay(day) {
@@ -3826,7 +3818,7 @@
   }
 
   function removeDrink(id) {
-    return takeOut((s) => s.diet, "drinks", id);
+    return takeOut("diet.drinks", id);
   }
 
   function drinksOfDay(day) {
@@ -3873,7 +3865,7 @@
   }
 
   function removeUrge(id) {
-    return takeOut((s) => s.diet, "urges", id);
+    return takeOut("diet.urges", id);
   }
 
   function urgesOfDay(day) {
@@ -3976,7 +3968,7 @@
   }
 
   function removeHealth(id) {
-    return takeOut((s) => s.diet, "health", id);
+    return takeOut("diet.health", id);
   }
 
   /** その日のその種目。日ごとに一つのものは一件、ワークアウトは全部。 */
@@ -4159,23 +4151,98 @@
   }
 
   function removeEntry(id) {
-    return takeOut((s) => s.archive, "entries", id);
+    return takeOut("archive.entries", id);
   }
 
   /* 一件を外し、**同じものを同じ場所へ戻す関数**を返す（消したときの「元に戻す」。
-     roadmap-2.0 の V18）。removeTodo と同じ形で、記録の形は変えない。戻すときに
-     もう同じ id があれば何もしない（二度押し）。 */
-  function takeOut(host, key, id) {
+     roadmap-2.0 の V18）。記録の形は変えない。戻すときにもう同じ id があれば何もしない（二度押し）。
+     戻す関数には `gone`（どこの・何番目の・何を）を付ける——本人が消したところだけが keepGone へ渡す
+     （足したのを取り消す removeTodo などは渡さない）。 */
+  const PLACES = {
+    "todos": [(s) => s, "todos"],
+    "diet.weights": [(s) => s.diet, "weights"],
+    "diet.meals": [(s) => s.diet, "meals"],
+    "diet.drinks": [(s) => s.diet, "drinks"],
+    "diet.urges": [(s) => s.diet, "urges"],
+    "diet.health": [(s) => s.diet, "health"],
+    "archive.entries": [(s) => s.archive, "entries"],
+  };
+  function takeOut(path, id) {
+    const [host, key] = PLACES[path];
     const at = host(get())[key].findIndex((x) => x.id === id);
     if (at < 0) return () => {};
     const snapshot = JSON.parse(JSON.stringify(host(get())[key][at]));
     update((s) => { host(s)[key] = host(s)[key].filter((x) => x.id !== id); });
-    return () => update((s) => {
-      if (host(s)[key].some((x) => x.id === id)) return;
+    const undo = () => { putIn(path, at, snapshot); dropGone(path, id); };
+    undo.gone = { path, at, item: snapshot };
+    return undo;
+  }
+  function putIn(path, at, item) {
+    const [host, key] = PLACES[path];
+    if (host(get())[key].some((x) => x.id === item.id)) return;
+    update((s) => {
       const next = host(s)[key].slice();
-      next.splice(Math.min(at, next.length), 0, snapshot);
+      next.splice(Math.min(at, next.length), 0, item);
       host(s)[key] = next;
     });
+  }
+
+  /* さっき消したもの（roadmap-seamless の N13 の X18 (c)）。本人が消した一件を、最後の5件・15分だけ
+     **記録の外**（`kaimono-note-gone`。書き出し・自動の控え・Dropbox に乗せない）に控える。
+     設定 → バックアップの「さっき消したもの」から戻す。消した知らせが出たまま iOS に閉じられたら、
+     戻ったときに知らせを出し直す（`up`。ui.js の takeGone）。読めなければ黙って捨てる。 */
+  const GONE_KEY = "kaimono-note-gone", GONE_MS = 15 * 60 * 1000, GONE_MAX = 5;
+  function readGone() {
+    try {
+      const list = JSON.parse(localStorage.getItem(GONE_KEY) || "[]");
+      const now = Date.now();
+      return Array.isArray(list) ? list.filter((g) => g && typeof g === "object" && PLACES[g.path]
+        && g.item && typeof g.item === "object" && g.item.id != null
+        && now - g.t >= 0 && now - g.t < GONE_MS) : [];
+    } catch (_) { return []; }
+  }
+  function writeGone(list) {
+    try {
+      if (list.length) localStorage.setItem(GONE_KEY, JSON.stringify(list));
+      else localStorage.removeItem(GONE_KEY);
+    } catch (_) { /* 置けなくても、消すことは妨げない */ }
+  }
+  /** takeOut が返した戻す関数を受け取り、控える（新しい順）。 */
+  function keepGone(undo) {
+    const g = undo && undo.gone;
+    if (!g) return;
+    writeGone([{ t: Date.now(), path: g.path, at: g.at, item: g.item }]
+      .concat(readGone().filter((x) => !(x.path === g.path && x.item.id === g.item.id))).slice(0, GONE_MAX));
+  }
+  function dropGone(path, id) {
+    const list = readGone();
+    const rest = list.filter((x) => !(x.path === path && x.item.id === id));
+    if (rest.length !== list.length) writeGone(rest);
+  }
+  /** 控えの一覧（新しい順）。 */
+  function goneList() { return readGone(); }
+  /** 控えた一件を同じ場所へ戻す（もう同じ id があれば戻さない）。 */
+  function putBackGone(g) {
+    if (!g || !PLACES[g.path]) return;
+    putIn(g.path, g.at, g.item);
+    dropGone(g.path, g.item.id);
+  }
+  /** 隠れる瞬間に出ている消した知らせ（出した時刻 ats）に当たる控えへ印。戻ったら [] で外す。 */
+  function markGone(ats) {
+    const list = readGone();
+    let changed = false;
+    list.forEach((g) => {
+      const up = (ats || []).some((at) => at >= g.t && at - g.t < 2000);
+      if (!!g.up !== up) { g.up = up; changed = true; }
+    });
+    if (changed) writeGone(list.map((g) => (g.up ? g : { t: g.t, path: g.path, at: g.at, item: g.item })));
+  }
+  /** 印の付いた一番新しい控えを返し、印は全部外す。 */
+  function takeGoneUp() {
+    const list = readGone();
+    const hit = list.find((g) => g.up) || null;
+    markGone([]);
+    return hit;
   }
 
   /** 種を達成に変えます。書いた時刻は残し、種だった記憶だけ畳みます。 */
@@ -4894,6 +4961,7 @@
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType, ACCENTS,
     addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite,
+    keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
     stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
