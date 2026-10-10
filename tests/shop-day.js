@@ -25,7 +25,10 @@ const touch = (cdp) => async (x, y, dx) => {
 
 (async () => {
   const c = checker("shop-day");
-  const { browser, ctx, page, errors } = await open();
+  /* 時計は昼に止める：「昨日」「3日前」を壁の時計で作ると、0:00 をまたいで落ちる（roadmap-seamless の N10）。 */
+  const NOW = new Date(2026, 9, 1, 12, 0);
+  const daysAgo = (n) => { const d = new Date(NOW); d.setDate(d.getDate() - n); return d; };
+  const { browser, ctx, page, errors } = await open({ before: async (cx, p) => { await p.clock.setFixedTime(NOW); } });
   await page.evaluate(() => {
     KN.store.loadSample();
     const y = new Date(); y.setDate(y.getDate() - 1); y.setHours(15, 0, 0, 0);
@@ -64,7 +67,7 @@ const touch = (cdp) => async (x, y, dx) => {
     rows.length === 2 && rows.every((r) => names.slice(0, 2).includes(r.name)), JSON.stringify(rows));
   c.check("買ったものの姿（線と薄さ）で出る", rows.every((r) => r.checked));
   const head = await page.$eval("#screen-list .day-bought-head", (e) => e.textContent.replace(/\s+/g, ""));
-  const d = new Date(); d.setDate(d.getDate() - 1);
+  const d = daysAgo(1);
   c.check("見出しは「◯月◯日に買ったもの」と数", head === `${d.getMonth() + 1}月${d.getDate()}日に買ったもの2`, head);
   c.check("紙のいちばん上に出る", await page.$eval("#screen-list .js-body", (b) =>
     b.firstElementChild && b.firstElementChild.classList.contains("day-bought")));
@@ -83,7 +86,7 @@ const touch = (cdp) => async (x, y, dx) => {
   const nk = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -2));
   await page.evaluate((k) => KN.head.shopGo(k), nk);
   await page.waitForTimeout(400);
-  const d2 = new Date(); d2.setDate(d2.getDate() - 2);
+  const d2 = daysAgo(2);
   c.check("何も買っていない日は「◯月◯日に買ったもの 0」だけ", await page.$eval("#screen-list .js-body", (b, want) =>
     b.children.length === 1 && b.querySelector(".day-bought-head").textContent.replace(/\s+/g, "") === want
       && !b.querySelector(".item"), `${d2.getMonth() + 1}月${d2.getDate()}日に買ったもの0`));

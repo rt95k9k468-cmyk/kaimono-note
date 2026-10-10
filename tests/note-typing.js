@@ -175,13 +175,29 @@ const { open, checker } = require("./lib");
     }
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   };
+  /* 頭で引くには、カーソルも頭へ置いてから送る。カーソルが45行目のままだと、アプリはその行を見える所へ
+     送り戻す（正しい動き）——前は決め打ちの 150ms で、追いが来る前に引けたときだけ通っていた。混んでいると
+     追いが引くあいだに来て、指は「読み返し」になる（並べると12回中3回。N10）。 */
+  const quiet = () => page.evaluate(() => new Promise((res) => {
+    const b = document.querySelector(".sheet.is-note .sheet-body");
+    let last = b.scrollTop, n = 0;
+    const f = () => {
+      if (b.scrollTop === last) n++; else { n = 0; last = b.scrollTop; }
+      if (n >= 10) res(last); else requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
+  await quiet();
+  await page.$eval(".sheet.is-note .js-text", (ta) => ta.setSelectionRange(0, 0));
+  await quiet();
   await page.$eval(".sheet.is-note .sheet-body", (e) => { e.scrollTop = 0; });
+  const pre = await quiet();
   await pull();
   await page.waitForTimeout(600);
   const still = await page.evaluate(() => ({ open: !!document.querySelector(".sheet.is-note.is-open"),
     writing: document.activeElement === document.querySelector(".sheet.is-note .js-text") }));
   /* 引いた指はキーボードを下ろすだけ（app.js の「下へ払ってキーボードを閉じる」）。 */
-  t.check("書いているあいだは、一番上で引いても閉じない（キーボードが下りるだけ）", still.open && !still.writing, JSON.stringify(still));
+  t.check("書いているあいだは、一番上で引いても閉じない（キーボードが下りるだけ）", still.open && !still.writing, JSON.stringify({ ...still, top: pre }));
 
   await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
   await page.keyboard.press("Escape");

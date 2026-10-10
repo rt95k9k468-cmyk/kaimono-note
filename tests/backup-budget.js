@@ -12,8 +12,12 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("backup-budget");
+  /* 時計は昼の半ばに止める：段は暦の日と時で数えるので、0:00 の前後や毎時0分台に作ると数がずれる（roadmap-seamless の N10）。 */
   const { browser, page, errors } = await open({
-    before: async (c) => { await c.route(/dropbox(api)?\.com/, (r) => r.abort()); },
+    before: async (c, p) => {
+      await c.route(/dropbox(api)?\.com/, (r) => r.abort());
+      await p.clock.setFixedTime(new Date(2026, 9, 1, 12, 30));
+    },
   });
   await page.waitForFunction(() => window.KN && KN.backup && KN.backup.budgetIdb);
 

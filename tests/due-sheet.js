@@ -13,7 +13,9 @@ const { open, checker, URL: APP } = require("./lib");
 
 (async () => {
   const t = checker("due-sheet");
-  const { browser, ctx, page, errors } = await open();
+  /* 時計は昼に止める：「いま」「15分あと」を壁の時計で作ると、0:00 をまたいで落ちる（roadmap-seamless の N10）。 */
+  const NOW = new Date(2026, 9, 1, 12, 0);
+  const { browser, ctx, page, errors } = await open({ before: async (cx, p) => { await p.clock.setFixedTime(NOW); } });
 
   /* 表：あとでの計算。 */
   const calc = await page.evaluate(() => {
@@ -76,7 +78,7 @@ const { open, checker, URL: APP } = require("./lib");
   /* あとで → 15分。 */
   await page.click(".due-row .js-later");
   t.check("あとでで四択が出る", await page.evaluate(() => !document.querySelector(".due-later").hidden));
-  const before = Date.now();
+  const before = NOW.getTime();
   await page.click('.due-row .js-pick[data-key="15m"]');
   await page.waitForTimeout(400);
   const after = await page.evaluate((id) => {
