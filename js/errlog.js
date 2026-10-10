@@ -26,13 +26,12 @@
   const TEXT_MAX = 200;
   const SAME_MS = 2000;
 
-  /* 版：配るときに stamp-build.js が css/js の URL に `?v=<commit>` を付ける。
-     自分の URL から読む（手元・単体版では "dev"）。 */
+  /* 版：配るときに stamp-build.js が index.html の `<meta name="kn-build">` に commit を入れる
+     （css/js の `?v=` は各ファイルの中身の印——roadmap-seamless の N3）。手元・単体版では "dev"。 */
   const version = (() => {
     try {
-      const src = (document.currentScript && document.currentScript.src) || "";
-      const v = /[?&]v=([^&]+)/.exec(src);
-      return v ? decodeURIComponent(v[1]).slice(0, 12) : "dev";
+      const m = document.querySelector('meta[name="kn-build"]');
+      return (m && m.content) ? m.content.slice(0, 12) : "dev";
     } catch (_) { return "dev"; }
   })();
 

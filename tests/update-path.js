@@ -1,6 +1,6 @@
-/* 版の入れ替えの道（roadmap-seamless の N1・N2・3節の2）。
+/* 版の入れ替えの道（roadmap-seamless の N1・N2・N3・3節の2）。
 
-   作業用の写しに版を四つ（A〜D）刻印し、自前のサーバー（8768、ほかの台本と別の origin）で
+   作業用の写しに版を五つ（A〜E）刻印し、自前のサーバー（8768、ほかの台本と別の origin）で
    配る版を入れ替えながら、Service Worker を止めずに開く。サーバーは GitHub Pages と同じく
    どのファイルにも `max-age=600`（HTTP の10分の控え）を付ける。
 
@@ -9,8 +9,12 @@
    3. 入口だけ5秒黙る：2秒以内に控えから開く。
    4. C を配ったが入口は5秒・sw.js は届かない：控えの B で開き、後から来た C の入口は読むものを
       揃えてから控えに入る。電波を切っても C で開く。
-   5. D を配ったが D の css・js が取れない：控えの入口は C のまま（揃わないうちは前の版）。
+   5. D を配ったが D の css・js が取れない：控えの入口は C のまま（揃わないうちは前の版）。D の Service Worker の
+      install も失敗し、前の Service Worker のまま（N3）。
    6. D が届く（入口は5秒）：控えの C で開き、D の Service Worker が来たら一度だけ読み直して D。
+   7. 1本だけ変えた E を配る：サーバーへ行く css・js はその1本だけ（N3。ほかは前の控えから写す）。
+
+   A〜D は app.js と base.css の中身が版ごとに違う（`?v=` は中身の印なので、違わないと「新しい css・js」にならない）。
 
    どの場面のあとも「控えの入口が読む css・js は全部同じ控えにある」を見る。
    刻印（stamp-build.js）は作業用の写しの中だけで走らせる（CLAUDE.md）。 */
@@ -28,22 +32,26 @@ const APP = `${BASE}index.html`;
 
 /* ---- 版の写し ---- */
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "kn-update-path-"));
-function stamped(ver) {
+/** touch：{ ファイル: 札 } の末尾に札の注を足す（中身を変える）。 */
+function stamped(ver, touch) {
   const dir = path.join(work, ver);
   fs.mkdirSync(dir);
   for (const f of ["index.html", "sw.js", "manifest.webmanifest", "stamp-build.js"]) {
     fs.copyFileSync(path.join(ROOT, f), path.join(dir, f));
   }
   for (const d of ["css", "js", "icons"]) fs.cpSync(path.join(ROOT, d), path.join(dir, d), { recursive: true });
+  for (const [f, tag] of Object.entries(touch)) fs.appendFileSync(path.join(dir, f), `\n/* update-path ${tag} */\n`);
   // GITHUB_SHA が引数より先に効くので、CI でも版ごとに付け替える
   execFileSync(process.execPath, ["stamp-build.js"], { cwd: dir, stdio: "ignore", env: { ...process.env, GITHUB_SHA: ver } });
   return dir;
 }
-const V = { A: "aaaa0001", B: "bbbb0002", C: "cccc0003", D: "dddd0004" };
-const DIR = Object.fromEntries(Object.entries(V).map(([k, v]) => [k, stamped(v)]));
+const V = { A: "aaaa0001", B: "bbbb0002", C: "cccc0003", D: "dddd0004", E: "eeee0005" };
+const TOUCH = Object.fromEntries("ABCD".split("").map((k) => [k, { "js/app.js": k, "css/base.css": k }]));
+TOUCH.E = { ...TOUCH.D, "js/util.js": "E" };
+const DIR = Object.fromEntries(Object.entries(V).map(([k, v]) => [k, stamped(v, TOUCH[k])]));
 
 /* ---- 入れ替えのきくサーバー ---- */
-const srv = { dir: DIR.A, shellDelay: 0, down: false, swBlocked: false, assetsFail: false };
+const srv = { dir: DIR.A, shellDelay: 0, down: false, swBlocked: false, assetsFail: false, code: [] };
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".png": "image/png" };
 const server = http.createServer((req, res) => {
@@ -51,6 +59,7 @@ const server = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, BASE).pathname);
   if (p === "/") p = "/index.html";
   const fail = (code) => { res.writeHead(code); res.end(); };
+  if (/^\/(css|js)\//.test(p)) srv.code.push(p.slice(1));
   if (p === "/sw.js" && srv.swBlocked) return fail(503);
   if (/^\/(css|js)\//.test(p) && srv.assetsFail) return fail(503);
   const file = path.join(srv.dir, p);
@@ -79,10 +88,10 @@ const ready = (page) => inPage(page, () => {
   if (!(window.KN && KN.store && KN.app)) throw new Error("まだ");
   return true;
 }, undefined, 80);
+/** 動いている版：index.html の版の札（N3。`?v=` は各ファイルの中身の印）。 */
 const running = (page) => inPage(page, () => {
-  const s = document.querySelector('script[src*="js/app.js"]');
-  const m = s && /[?&]v=([^&]+)/.exec(s.src);
-  return m ? m[1] : "";
+  const m = document.querySelector('meta[name="kn-build"]');
+  return m ? m.content : "";
 });
 const workerVer = (page) => inPage(page, () => new Promise((resolve) => {
   const sw = navigator.serviceWorker.controller;
@@ -108,10 +117,9 @@ const shellState = (page) => inPage(page, async () => {
     if (!r) { out.push({ n, ver: "", missing: ["index.html"] }); continue; }
     const html = await r.text();
     const refs = [...html.matchAll(/(?:src|href)="((?:css|js)\/[^"]+)"/g)].map((m) => m[1]);
-    const app = refs.find((x) => x.startsWith("js/app.js"));
     const missing = [];
     for (const u of refs) if (!(await c.match(new URL(u, location.href).href))) missing.push(u);
-    out.push({ n, ver: (/[?&]v=([^&]+)/.exec(app || "") || [])[1] || "", missing });
+    out.push({ n, ver: (/<meta name="kn-build" content="([^"]*)"/.exec(html) || [])[1] || "", missing });
   }
   return out;
 });
@@ -191,16 +199,17 @@ const shellState = (page) => inPage(page, async () => {
   const bad = [...served].filter(([, v]) => v !== "200").map(([k, v]) => `${k}（${v}）`);
   t.check(`4 電波なしの js・css（${served.size}）がどれも控えから 200`, served.size > 50 && !bad.length, bad.slice(0, 5).join(", "));
 
-  /* 5. D の css・js が取れない */
-  Object.assign(srv, { down: false, dir: DIR.D, assetsFail: true });
+  /* 5. D の css・js が取れない（sw.js は届く） */
+  Object.assign(srv, { down: false, dir: DIR.D, assetsFail: true, swBlocked: false });
   await openTimed();
   await ready(page);
   t.check("5 控えの C で開く", await running(page) === V.C);
   await wait(6000);
   await shellIs(V.C, "5 揃わない入口は控えに入れない");
+  t.check("5 css・js が取れない版の Service Worker は入らない（前の B のまま）", await workerVer(page) === V.B, await workerVer(page));
 
   /* 6. D が届く：古い版が動いているところへ新しい Service Worker */
-  Object.assign(srv, { assetsFail: false, swBlocked: false }); loads = 0;
+  Object.assign(srv, { assetsFail: false }); loads = 0;
   ms = await openTimed();
   await ready(page);
   t.check("6 2秒以内に控えの C で開く", ms < 2000 && await running(page) === V.C, `${ms}ms`);
@@ -209,6 +218,19 @@ const shellState = (page) => inPage(page, async () => {
     `読み込み ${loads}回・${await running(page)}`);
   await wait(4000);
   await shellIs(V.D, "6");
+
+  /* 7. 1本だけ変えた E を配る */
+  Object.assign(srv, { dir: DIR.E, shellDelay: 0, code: [] }); loads = 0;
+  await page.goto(APP);
+  await ready(page);
+  await settle(page, V.E);
+  await wait(2000);
+  t.check("7 E で開き、E の Service Worker が入っても読み直さない", loads === 1 && await running(page) === V.E,
+    `読み込み ${loads}回・${await running(page)}`);
+  const went = [...new Set(srv.code)];
+  t.check("7 1本変えて配ると、サーバーへ行く css・js はその1本", went.length === 1 && went[0] === "js/util.js",
+    `${srv.code.length}回: ${went.slice(0, 5).join(", ")}`);
+  await shellIs(V.E, "7");
 
   t.check("エラー0", !errors.length, errors.join(" / "));
   await browser.close();
