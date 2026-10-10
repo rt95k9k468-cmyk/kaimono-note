@@ -3031,7 +3031,7 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-lv.is-on {
   background: var(--c-primary);
   border-color: var(--c-primary);
-  color: var(--c-on-fill);
+  color: var(--c-text-on);
 }
 /* 両端の言葉。数だけだと、1 と 5 のどちらが強いのか決まっていません。 */
 .urge-ends {
