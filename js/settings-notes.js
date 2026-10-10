@@ -103,7 +103,7 @@
     const f = field.querySelector(".js-name");
     /* 改行で決まる（離れれば change が走る）。変換を決める改行は通します。 */
     f.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+      if (!KN.util.isEnter(e)) return;
       e.preventDefault();
       f.blur();
     });

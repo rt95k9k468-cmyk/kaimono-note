@@ -135,7 +135,7 @@
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="やることを探す" aria-label="やることを探す"
-                   autocomplete="off" spellcheck="false">
+                   autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
@@ -693,7 +693,7 @@
                 入るのは貼りつけたときだけ。wrap="off" で、一行のあいだは
                 input と同じく横へ流れます。 */""}
           <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="例：ゴミ出し・電球を替える"
-                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"
                  aria-label="やること">${editing ? t.title : (opts && opts.title) || ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
@@ -1216,7 +1216,7 @@
             <button type="button" class="sub-check js-sub-check ${subOn(s) ? "is-on" : ""}" role="checkbox"
                     aria-checked="${String(subOn(s))}" aria-label="${i + 1}つめの手順を済ませる">${icon("check")}</button>
             <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
-                   aria-label="${i + 1}つめの手順" autocomplete="off">
+                   aria-label="${i + 1}つめの手順" autocomplete="off" enterkeyhint="enter">
             <button type="button" class="icon-btn js-sub-del"
                     aria-label="この手順を消す">${icon("close")}</button>
           </div>
@@ -1232,7 +1232,7 @@
         /* 改行で次の手順へ。続けて書くときに、いちいち「足す」を押しに
            戻らなくて済みます。 */
         field.addEventListener("keydown", (ev) => {
-          if (ev.key !== "Enter") return;
+          if (!KN.util.isEnter(ev)) return;
           ev.preventDefault();
           subs.splice(i + 1, 0, { id: "s" + Date.now() + i, title: "", done: false });
           paintSubs(i + 1);
@@ -1785,7 +1785,7 @@
     }
     titleEl.addEventListener("change", () => whenApply());
     titleEl.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
+      if (!KN.util.isEnter(ev)) return;
       ev.preventDefault();
       whenApply();
       titleEl.blur();
@@ -5754,7 +5754,7 @@
           holdTimer = setTimeout(commitHold, HOLD_MS);
         });
         btn.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") subGestureAt.delete(gestureKey);
+          if (KN.util.isEnter(e) || e.key === " ") subGestureAt.delete(gestureKey);
         });
         /* 短いタップを決めるのは click だけ。pointerup では決めません。
            pointerup で store を書き換えると、その場で行ごと描き直され、
