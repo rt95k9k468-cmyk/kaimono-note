@@ -1,0 +1,39 @@
+name: Daily full tests
+
+# 門の外の試験も、毎日一度ぜんぶ回す（docs/roadmap-seamless.md の X20）。
+# 配るのは止めない——ここが落ちても pages.yml の門と deploy はそのまま。
+# 結果はセッションの頭に一度だけ見る（docs/dev.md「テストの回し方」）。
+on:
+  schedule:
+    - cron: "0 18 * * *"   # 日本の朝3時
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-daily
+  cancel-in-progress: true
+
+jobs:
+  all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # playwright は tests/ だけの package.json で入れる（pages.yml と同じ）。
+      - name: Install Playwright
+        working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      # frame-pace・heavy-pace は run-all が外す（測るだけで、手で回す）。
+      - name: Run all tests
+        run: node tests/run-all.js
