@@ -816,12 +816,6 @@
       /* 手で書いた文の下に、その日ほかで起きたことを続けます。行の外に
          置くのは、押したときの行き先が違うからです——上の文は「その日の
          日記」を開き、下の一つ一つは**それぞれの元**を開きます。 */
-      /* 「あの日」は今日の文のすぐ下、その日ほかで起きたことの上（2026年10月10日・利用者）。
-         出すのは今日だけ。出すかどうかは設定で決められます（既定は出す）。 */
-      if (d.date === U.todayKey() && S().showThen !== false) {
-        const then = thenCard();
-        if (then) body.append(then);
-      }
       const feed = feedRows(d.date);
       if (feed) body.append(feed);
     });
@@ -1840,8 +1834,12 @@
     if (digest && S().digestPos === "top") logBlock.append(digest);
     logBlock.append(log);
     if (digest && S().digestPos !== "top") logBlock.append(digest);
-    if (S().dailyOrder === "entries") el.append(entries, logBlock);
-    else el.append(logBlock, entries);
+    /* 「あの日」は積み上げのすぐ上（Daily Log の外）。出すのは今日の紙だけ、出すかどうかは設定で
+       （2026年10月10日・利用者。Daily Log の中に入れたら起床・就寝や幅が崩れた）。 */
+    const then = day === U.todayKey() && S().showThen !== false ? thenCard() : null;
+    const tail = then ? [then, entries] : [entries];
+    if (S().dailyOrder === "entries") el.append(...tail, logBlock);
+    else el.append(logBlock, ...tail);
     /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */

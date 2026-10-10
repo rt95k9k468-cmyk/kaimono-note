@@ -3489,8 +3489,6 @@ a.btn { text-decoration: none; }
   transition: transform var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
 .arc-then:active { scale: var(--press-wide); }
-/* Daily Log の中（今日の文の下）に置くので、横の余白はログの内側の余白に任せる。 */
-.arc-log-body > .arc-then { margin: var(--sp-3) 0 0; }
 /* ほかのガラスより一段薄く（2026年10月10日・利用者「少し透過させて」）。ぼかしが効かない・コントラストを上げる環境は元の濃さ。 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .arc-then { --then-a: var(--glass-a); } }
 @media (prefers-contrast: more) { .arc-then { --then-a: var(--glass-a); } }
