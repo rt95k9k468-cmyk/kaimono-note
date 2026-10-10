@@ -242,8 +242,9 @@ print(json.dumps(out, ensure_ascii=False))
     z.names.join(" | "));
   t.check("最近削除のノートは入らない", !z.names.some((n) => n.includes("消したノート")));
   const fa = z.files["仕事/京都の宿.md"] || "";
+  /* created は端末の時間帯で書く（UTC の 5/1 11:20 は、UTC+13 より東では 5/2）。 */
   t.check("頭に作った日・直した日・ノートブック・タグ・★",
-    /^---\ncreated: 2018-05-01T\d\d:20:00[+-]\d\d:\d\d\nupdated: .+\nnotebook: "仕事"\ntags: \["料理"\]\nfavorite: true\n---\n\n# 京都の宿\n\n# 一日目\n- 朝ごはん\n- \[x\] 予約\n$/.test(fa), fa);
+    /^---\ncreated: 2018-05-0[12]T\d\d:20:00[+-]\d\d:\d\d\nupdated: .+\nnotebook: "仕事"\ntags: \["料理"\]\nfavorite: true\n---\n\n# 京都の宿\n\n# 一日目\n- 朝ごはん\n- \[x\] 予約\n$/.test(fa), fa);
   const fb = z.files["仕事/献立の一行目.md"] || "";
   t.check("日だけのノートは created が日付だけ・題の無いノートは見出しを足さない",
     /^---\ncreated: 2019-01-01\n/.test(fb) && /---\n\n献立の一行目\n二行目\n$/.test(fb), fb);
