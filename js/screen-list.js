@@ -33,7 +33,7 @@
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="リストの中を探す" aria-label="リストの中を探す"
-                   autocomplete="off" spellcheck="false">
+                   autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
@@ -246,15 +246,17 @@
     }
 
     nameEl.addEventListener("input", onName);
+    nameEl.setAttribute("enterkeyhint", "enter");
+    memoEl.setAttribute("enterkeyhint", "enter");
     /* 改行キーは、足して紙を開いたまま空にし、続けて次を打てる（V27、利用者が選んだ）。
        「リストに追加」を押したら、足して閉じ、紙の頭が一覧のその行へ飛んで入る。 */
     nameEl.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing) return;
+      if (!KN.util.isEnter(e)) return;
       e.preventDefault();
       submit({ keep: true });
     });
     memoEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); submit({ keep: true }); }
+      if (KN.util.isEnter(e)) { e.preventDefault(); submit({ keep: true }); }
     });
     addBtn.addEventListener("click", () => submit());
 

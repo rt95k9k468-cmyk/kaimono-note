@@ -31,7 +31,7 @@
           <div class="search-bar">
             ${icon("search")}
             <input class="search-input js-search" placeholder="商品名で探す" aria-label="商品名で探す"
-                   autocomplete="off" spellcheck="false">
+                   autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button class="icon-btn js-search-clear is-sm" aria-label="検索をクリア" hidden>${icon("close")}</button>
           </div>
         </div>
