@@ -857,6 +857,10 @@
     return Promise.resolve(p).then(() => true, fallback);
   }
 
+  /* 改行キー。変換を決める改行（isComposing、古い WebKit は keyCode 229 だけ）は数えない。
+     改行を見る所はみなこれを通す（tests/ime-enter.js が見張る）。 */
+  function isEnter(e) { return e.key === "Enter" && !e.isComposing && e.keyCode !== 229; }
+
   KN.util = {
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
@@ -869,6 +873,6 @@
     slideWeek, otherWeek,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
-    icon, haptic, copy,
+    icon, haptic, copy, isEnter,
   };
 })();

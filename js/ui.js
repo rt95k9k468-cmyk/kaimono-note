@@ -1903,7 +1903,7 @@
       const body = node(html`
         <label class="field">
           ${label ? html`<span class="field-label">${label}</span>` : ""}
-          <input class="input js-input" value="${value}" placeholder="${placeholder}"
+          <input class="input js-input" value="${value}" placeholder="${placeholder}" enterkeyhint="done"
                  ${inputMode ? KN.util.raw(`inputmode="${inputMode}"`) : ""}
                  ${secret ? KN.util.raw(`type="password" autocomplete="off" autocapitalize="none" spellcheck="false"`) : ""}>
         </label>
@@ -1926,7 +1926,7 @@
         resolve(secret ? input.value : input.value.trim());
         h.close();
       }
-      input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      input.addEventListener("keydown", (e) => { if (KN.util.isEnter(e)) { e.preventDefault(); submit(); } });
       foot.querySelector(".js-ok").addEventListener("click", submit);
       foot.querySelector(".js-cancel").addEventListener("click", () => h.close());
     });
@@ -2621,7 +2621,7 @@
     /* 打ち終えて改行を押したら、キーボードだけ下ろします（絞り込みは
        残したまま——見に行くのはこれからなので）。 */
     els.search.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); els.search.blur(); }
+      if (KN.util.isEnter(e)) { e.preventDefault(); els.search.blur(); }
       if (e.key === "Escape") close();
     });
 
