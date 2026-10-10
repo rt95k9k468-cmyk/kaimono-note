@@ -32,6 +32,39 @@ const APP = `${BASE}index.html`;
 
 /* ---- 版の写し ---- */
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "kn-update-path-"));
+/** 写しの sw.js の頭に足す見張り（アプリの sw.js は変えない）。waitUntil と respondWith を数え、まだ決まらない約束を
+    覚えておき、`kn-held` と訊かれたら答える——settle が届かないとき、古い Service Worker が何を抱えて居座るのかを
+    書き出す（#809・#811：新しい版は install を済ませて待ち、古い版が30秒以上動いたまま）。文字にして写しに入れるので、
+    外の名前は使わない。 */
+function swWatch() {
+  const born = Date.now();
+  const calls = { waitUntil: 0, respondWith: 0 };
+  const held = new Map();
+  const seen = {};
+  let id = 0;
+  for (const [proto, kind] of [[ExtendableEvent.prototype, "waitUntil"], [FetchEvent.prototype, "respondWith"]]) {
+    const orig = proto[kind];
+    proto[kind] = function (p) {
+      const r = orig.call(this, p);   // 投げたもの（遅すぎる・二度目）は数えない
+      const k = ++id;
+      calls[kind]++;
+      const url = this.request ? this.request.url.replace(self.registration.scope, "").replace(/\?v=\w+/, "") : "";
+      held.set(k, { kind, type: this.type, url, at: Date.now() });
+      const off = () => held.delete(k);
+      Promise.resolve(p).then(off, off);
+      return r;
+    };
+  }
+  for (const type of ["install", "activate", "fetch", "message"]) {
+    self.addEventListener(type, () => { const s = seen[type] || (seen[type] = { n: 0, at: 0 }); s.n++; s.at = Date.now(); });
+  }
+  self.addEventListener("message", (e) => {
+    if (!(e.data && e.data.type === "kn-held" && e.ports && e.ports[0])) return;
+    const now = Date.now();
+    e.ports[0].postMessage({ up: now - born, calls, held: [...held.values()].map((h) => ({ ...h, age: now - h.at })),
+      seen: Object.entries(seen).map(([type, s]) => ({ type, n: s.n, ago: now - s.at })) });
+  });
+}
 /** touch：{ ファイル: 札 } の末尾に札の注を足す（中身を変える）。 */
 function stamped(ver, touch) {
   const dir = path.join(work, ver);
@@ -41,6 +74,8 @@ function stamped(ver, touch) {
   }
   for (const d of ["css", "js", "icons"]) fs.cpSync(path.join(ROOT, d), path.join(dir, d), { recursive: true });
   for (const [f, tag] of Object.entries(touch)) fs.appendFileSync(path.join(dir, f), `\n/* update-path ${tag} */\n`);
+  const sw = path.join(dir, "sw.js");
+  fs.writeFileSync(sw, `(${swWatch})();\n${fs.readFileSync(sw, "utf8")}`);
   // GITHUB_SHA が引数より先に効くので、CI でも版ごとに付け替える
   execFileSync(process.execPath, ["stamp-build.js"], { cwd: dir, stdio: "ignore", env: { ...process.env, GITHUB_SHA: ver } });
   return dir;
@@ -114,15 +149,34 @@ const swState = (page) => inPage(page, async () => {
   });
   return `入りかけ ${await ask(reg.installing)}・待ち ${await ask(reg.waiting)}・動く ${await ask(reg.active)}`;
 });
+/** 動いている Service Worker が抱えている処理と、起動してから数えたもの（写しの見張り swWatch に訊く）。 */
+const heldState = (page) => inPage(page, async () => {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!(reg && reg.active)) return "動くものなし";
+  return new Promise((resolve) => {
+    const ch = new MessageChannel();
+    setTimeout(() => resolve("答えなし"), 1000);
+    ch.port1.onmessage = (e) => resolve(e.data);
+    reg.active.postMessage({ type: "kn-held" }, [ch.port2]);
+  });
+}).then((h) => {
+  if (typeof h === "string") return h;
+  const sec = (ms) => `${(ms / 1000).toFixed(1)}秒`;
+  const list = h.held.map((x) => `${x.kind} ${x.type}${x.url && ` ${x.url}`} ${sec(x.age)}`);
+  return `起動から ${sec(h.up)}・抱えている ${list.length}${list.length ? `（${list.slice(0, 6).join("・")}${list.length > 6 ? "ほか" : ""}）` : ""}`
+    + `・waitUntil ${h.calls.waitUntil}・respondWith ${h.calls.respondWith}`
+    + h.seen.map((s) => `・${s.type} ${s.n}（最後 ${sec(s.ago)}前）`).join("");
+});
 /** Service Worker が ver になるまで待ち、読み直しが起きるならそれも済ませる。
-    ver になるまでの ms を返す（ならなければ -1 と、そのときの登録の様子。黙って先へ進むと、門で揺れたときに
-    何が遅れたか分からない）。 */
+    ver になるまでの ms を返す（ならなければ -1 と、そのときの登録の様子と、動いている古い版が抱えている処理。
+    黙って先へ進むと、門で揺れたときに何が遅れたか分からない）。 */
 async function settle(page, ver) {
   const t0 = Date.now();
   let got = "";
   for (let i = 0; i < 120 && (got = await workerVer(page).catch(() => "")) !== ver; i++) await wait(250);
   const ms = got === ver ? Date.now() - t0 : -1;
-  const state = ms < 0 ? `30秒待って ${got}。${await swState(page).catch((e) => String(e))}` : "";
+  const state = ms < 0 ? `30秒待って ${got}。${await swState(page).catch((e) => String(e))}。`
+    + `動く方：${await heldState(page).catch((e) => String(e))}` : "";
   await wait(2500);
   await ready(page);
   return { ms, state };
