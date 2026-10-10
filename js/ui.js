@@ -1556,6 +1556,8 @@
   function delMenu(remove, { sheet, after } = {}) {
     return [{ id: "delete", label: "消す", icon: "trash", danger: true, onPick: () => {
       const undo = remove();
+      /* さっき消したもの（N13 の X18 (c)。store の keepGone）。 */
+      if (KN.store.keepGone) KN.store.keepGone(undo);
       if (sheet) sheet().close();
       if (after) after();
       toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); if (after) after(); } } });
@@ -1877,7 +1879,19 @@
   const toasts = new Set();
   document.addEventListener("visibilitychange", () => {
     toasts.forEach((t) => (document.hidden ? t.pause() : t.resume()));
+    /* 消した知らせが出たまま隠れたら、その控えに印（閉じられたら戻ったときに出し直す。下の takeGone）。 */
+    if (KN.store && KN.store.markGone) {
+      KN.store.markGone(document.hidden ? [...toasts].filter((t) => t.acts).map((t) => t.at) : []);
+    }
   });
+
+  /** 消した知らせが出たまま iOS に閉じられた——15分以内に席が戻ったら、同じ知らせをもう一度（app.js の boot）。
+      戻らなかったときは印だけ外す。 */
+  function takeGone(back) {
+    const g = KN.store.takeGoneUp();
+    if (!g || !back) return;
+    toast("消しました", { action: { label: "元に戻す", onClick: () => KN.store.putBackGone(g) } });
+  }
 
   /* 押せるもの（「元に戻す」ほか）が付くトーストは、次にほかを押すまで残す。上限だけ持つ——
      読んでから押す時間を本人に返す（roadmap-2.0 の V18・roadmap-seamless の N13 の X18 (b)）。 */
@@ -1920,7 +1934,7 @@
 
     let gone = false, timer = null, left = duration, since = 0;
     const self = {
-      acts: acts.length > 0,
+      acts: acts.length > 0, at: Date.now(),
       /* 見えていないあいだは数えない。戻ったら残りから。 */
       pause() { if (timer) { clearTimeout(timer); timer = null; left -= Date.now() - since; } },
       resume() { if (!gone && !stay && !timer) { since = Date.now(); timer = setTimeout(dismiss, Math.max(left, 0)); } },
@@ -2762,7 +2776,7 @@
 
   KN.ui = {
     sheet, actionSheet, popOver, popMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
-    setPageHost, makeGuard, reopen, keepDraft, dropDraft, takeDraft,
+    setPageHost, makeGuard, reopen, keepDraft, dropDraft, takeDraft, takeGone,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,
   };
