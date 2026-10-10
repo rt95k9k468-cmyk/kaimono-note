@@ -3480,7 +3480,7 @@ a.btn { text-decoration: none; }
   /* 2026年10月8日から、季節の写真の上に置くガラス（利用者が見比べの画像で選んだ・docs/daily.md）。
      沈んだ地と主色の柱はやめた——写真の上では、透けていることが「いまではない」を言う。地の濃さは
      --glass-a（ぼかしの効かない環境では @supports が上げる）、ぼかしは --glass-blur（docs/glass.md）。 */
-  background: color-mix(in srgb, var(--c-surface) var(--glass-a), transparent);
+  background: color-mix(in srgb, var(--c-surface) var(--then-a, calc(var(--glass-a) - 16%)), transparent);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   border: 1px solid color-mix(in srgb, var(--c-sheet-edge) 60%, transparent);
@@ -3489,6 +3489,9 @@ a.btn { text-decoration: none; }
   transition: transform var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
 .arc-then:active { scale: var(--press-wide); }
+/* ほかのガラスより一段薄く（2026年10月10日・利用者「少し透過させて」）。ぼかしが効かない・コントラストを上げる環境は元の濃さ。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .arc-then { --then-a: var(--glass-a); } }
+@media (prefers-contrast: more) { .arc-then { --then-a: var(--glass-a); } }
 
 .arc-then-head { display: flex; align-items: center; gap: 6px; }
 .arc-then-head b { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
@@ -5231,6 +5234,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-log,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-counts,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-list { background: transparent; }
+/* まとめの札も写真を透かす（2026年10月10日・利用者「まとめも透過させて」）。 */
+#screen-archive[data-season] .tl-sheet.is-daily .arc-counts-item { background: color-mix(in srgb, var(--c-surface-2) 55%, transparent); }
 /* ノートの地にも同じ層（daily は写真、ノートは広重。2026年10月7日、利用者が見比べて選んだ・docs/season-art.md）。
    ノートは紙を持たない地で、画面そのものが送る器なので、地の色（--c-bg）の上に画面へ敷く（送っても上に留まる）。 */
 #screen-notes[data-season] {

@@ -86,6 +86,7 @@ const FORBIDDEN = [
     return r ? r.innerText : "";
   });
   t.check("年の行を押すと、その日の Daily Log へ", rowText.includes("試験の一行（その一）"), `${went} / ${rowText.slice(0, 40)}`);
+  t.check("過ぎた日の紙には「あの日」を出さない", await page.evaluate(() => !document.querySelector("#screen-archive .arc-then")));
   await page.click("#screen-archive .arc-log-row");
   await page.waitForTimeout(500);
   /* 札は外し、印も読まない（2026年10月6日）。印を付けても、どの日も出る。データは残る。 */
@@ -94,7 +95,8 @@ const FORBIDDEN = [
   await page.click(".sheet .js-ok").catch(() => {});
   await page.waitForTimeout(500);
   await page.evaluate(() => { KN.store.setQuietDay("2023-09-29", true); KN.store.setQuietDay("2024-09-29", true); });
-  await page.evaluate(() => KN.app.showScreen("archive"));
+  /* 「あの日」は今日の紙だけに出る（2026年10月10日）。2024年の日へ行ったので、今日へ戻してから見る。 */
+  await page.evaluate(() => { KN.util.dayShare.set("2026-09-28"); KN.util.dayShare.set(KN.util.todayKey()); KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
   c = await card();
   t.check("前に付いた印は効かない（三年ぶんのまま）", c.years && c.rows.length === 3, c.rows.join(","));
