@@ -115,7 +115,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - **main へ push すると GitHub が門（`run-all.js --gate`）を回し、落ちたら配られない。**
   流したあとは `actions_list` で結論を一度見る（門の決めごとは `tests/README.md`）。
 - **門の外も含めた全部は、GitHub が毎日一度回す**（`.github/workflows/tests-daily.yml`、日本の朝3時。
-  roadmap-seamless の X20、2026年10月10日）。配るのは止めない。結果はセッションの頭に一度だけ見る
+  roadmap-seamless の X20、2026年10月10日）。**日本の時間帯で**（`TZ`・`KN_TZ`。門は UTC なので、日本の0〜9時に
+  だけ出る日付の取り違えはここでしか見えない）。配るのは止めない。結果はセッションの頭に一度だけ見る
   （`actions_list`・resource_id "tests-daily.yml"・perPage 1）。赤なら、その台本を手元で回して直すのを先に。
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
   （`app.js` の `controllerchange`。刻印の無い手元の版だけ——配った版は動いている版と同じなら読み直さない、
