@@ -101,16 +101,31 @@ const workerVer = (page) => inPage(page, () => new Promise((resolve) => {
   ch.port1.onmessage = (e) => resolve((e.data && e.data.version) || "");
   sw.postMessage({ type: "kn-version" }, [ch.port2]);
 }));
+/** 登録の中の入りかけ・待ち・動いている Service Worker が、それぞれどの版か（門で落ちたとき、install が
+    終わらないのか activate されないのかを分ける。run #809・#811）。 */
+const swState = (page) => inPage(page, async () => {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return "登録なし";
+  const ask = (sw) => !sw ? "-" : new Promise((resolve) => {
+    const ch = new MessageChannel();
+    setTimeout(() => resolve(`?(${sw.state})`), 1000);
+    ch.port1.onmessage = (e) => resolve(`${(e.data && e.data.version) || "?"}(${sw.state})`);
+    sw.postMessage({ type: "kn-version" }, [ch.port2]);
+  });
+  return `入りかけ ${await ask(reg.installing)}・待ち ${await ask(reg.waiting)}・動く ${await ask(reg.active)}`;
+});
 /** Service Worker が ver になるまで待ち、読み直しが起きるならそれも済ませる。
-    ver になるまでの ms を返す（ならなければ -1。黙って先へ進むと、門で揺れたときに何が遅れたか分からない）。 */
+    ver になるまでの ms を返す（ならなければ -1 と、そのときの登録の様子。黙って先へ進むと、門で揺れたときに
+    何が遅れたか分からない）。 */
 async function settle(page, ver) {
   const t0 = Date.now();
   let got = "";
   for (let i = 0; i < 120 && (got = await workerVer(page).catch(() => "")) !== ver; i++) await wait(250);
   const ms = got === ver ? Date.now() - t0 : -1;
+  const state = ms < 0 ? `30秒待って ${got}。${await swState(page).catch((e) => String(e))}` : "";
   await wait(2500);
   await ready(page);
-  return ms;
+  return { ms, state };
 }
 /** 控え（kaimono-note-…）の入口の版と、その入口が読むのに控えに無いもの。 */
 const shellState = (page) => inPage(page, async () => {
@@ -156,11 +171,17 @@ let browser;
     await page.goto(APP, { waitUntil: "commit" });
     return Date.now() - t0;
   }
+  /** settle して、その版の Service Worker が動くことも確かめる。 */
+  async function settled(ver, label) {
+    const { ms, state } = await settle(page, ver);
+    t.check(`${label} ${ver} の Service Worker が動く`, ms >= 0, state);
+    return ms;
+  }
 
   /* 1. 初めて開く */
   await page.goto(APP);
   await ready(page);
-  await settle(page, V.A);
+  await settled(V.A, "1");
   t.check("1 初めて開いて Service Worker が入っても読み直さない（読み込み1回）", loads === 1, `読み込み ${loads}回`);
   t.check("1 動いているのは A", await running(page) === V.A);
   await shellIs(V.A, "1");
@@ -170,7 +191,7 @@ let browser;
   await page.goto(APP);
   await ready(page);
   t.check("2 配ってすぐ開いても新しい版（B）", await running(page) === V.B, await running(page));
-  await settle(page, V.B);
+  await settled(V.B, "2");
   t.check("2 新しい版で開いたら、その版の Service Worker が入っても読み直さない", loads === 1, `読み込み ${loads}回`);
   await shellIs(V.B, "2");
 
@@ -219,8 +240,7 @@ let browser;
   ms = await openTimed();
   await ready(page);
   t.check("6 2秒以内に控えの C で開く", ms < 2000 && await running(page) === V.C, `${ms}ms`);
-  const swMs = await settle(page, V.D);
-  t.check("6 D の Service Worker が動く", swMs >= 0, `30秒待って ${await workerVer(page)}`);
+  const swMs = await settled(V.D, "6");
   // 読み直しは決め打ちで待たない（門の混んだ CPU で 2.5 秒を越え、7 の goto とぶつかった。run #802）
   for (const t0 = Date.now(); loads < 2 && Date.now() - t0 < 20000;) await wait(250);
   await wait(4000);   // 二度目が来ないことも見る
@@ -233,7 +253,7 @@ let browser;
   Object.assign(srv, { dir: DIR.E, shellDelay: 0, code: [] }); loads = 0;
   await page.goto(APP);
   await ready(page);
-  await settle(page, V.E);
+  await settled(V.E, "7");
   await wait(2000);
   t.check("7 E で開き、E の Service Worker が入っても読み直さない", loads === 1 && await running(page) === V.E,
     `読み込み ${loads}回・${await running(page)}`);
