@@ -286,6 +286,19 @@
       }
     } catch (_) {}
   }
+  /* iPhone が音の口を開けさせるのは、指を**離した**とき（touchend）。置いたとき（touchstart・pointerdown）
+     ではない（iOS 9 から）。持ち上げの三か所は置いたときに口を作るので、そのままでは閉じたまま——
+     ドラムを回した日でなければ「ぽっ」「ことっ」が鳴らなかった。作った口は、次に指を離したところで
+     開け直す。作っていなければ何もしない（音を使わない人に口を作らない）。 */
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener("touchend", () => {
+      if (!actx || actx.state === "running") return;
+      try {
+        const p = actx.resume();
+        if (p && p.catch) p.catch(() => {});
+      } catch (_) {}
+    }, { capture: true, passive: true });
+  }
   function sound(name) {
     const b = bufs[name];
     if (!b || !actx || actx.state !== "running") return;
