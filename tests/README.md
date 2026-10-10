@@ -71,6 +71,10 @@
 - **設定の一枚は、押し出し終わるまで押しを捨てる**（`screen-settings.js` の `moving`）。入った・戻ったあと
   決め打ちの ms で次を押さず、`.set-layer.is-edge-lift` が消えるまで待つ（`tests/settings.js` の `layerStill`。
   300ms の待ちが押し出しの終わりの 20ms と競り、まれに30秒の時間切れになっていた。2026年10月10日）。
+- **新しい Service Worker が待っているあいだ、古い版に `postMessage` で訊き続けないこと。** 古い版が暇にならず、
+  Chromium は待ちを activate しない（`update-path` が門で揺れた元。古い版が抱えていたのは試験の問い合わせ
+  だけで、`sw.js` の不具合ではない。2026年10月10日）。待つなら登録の `installing`・`waiting` が空になってから
+  一度訊く（`tests/update-path.js` の `settle`）。
 - **「今日」「昨日」「いま」を壁の時計で作らないこと。** `open({ before: (cx, p) => p.clock.setFixedTime(…) })` で
   昼の半ば（毎時0分台は避ける）に止め、台本の側の日付も同じ時刻から作る。壁の時計のままだと 0:00 の前後で落ち、
   門は UTC で回るので日本時間の朝9時の push が止まりうる（`backup-budget`・`shop-day`・`due-sheet`・`offdevice-watch`・
