@@ -1929,11 +1929,10 @@
       .catch(() => { /* not fatal — the app works either way */ });
   }
 
-  /** 動いている版：配るとき stamp-build.js が付ける自分の URL の `?v=`（errlog.js と同じ）。手元では ""。 */
+  /** 動いている版：配るとき stamp-build.js が入れる `<meta name="kn-build">`（errlog.js と同じ。N3）。手元では ""。 */
   function runningVersion() {
-    const s = document.querySelector('script[src*="js/app.js"]');
-    const v = s && /[?&]v=([^&]+)/.exec(s.src);
-    return v ? decodeURIComponent(v[1]) : "";
+    const m = document.querySelector('meta[name="kn-build"]');
+    return m && m.content !== "dev" ? m.content : "";
   }
 
   /** いまの Service Worker の版（sw.js の message に訊く）。答えが無ければ ""。 */
