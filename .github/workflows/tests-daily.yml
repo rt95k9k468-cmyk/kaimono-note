@@ -35,5 +35,11 @@ jobs:
           npx playwright install --with-deps chromium
 
       # frame-pace・heavy-pace は run-all が外す（測るだけで、手で回す）。
+      # 日本の時間帯で回す（2026年10月10日）。走るのは UTC の18時＝日本の朝3時で、端末の日付が UTC より
+      # 一日先——門（pages.yml）は UTC のままなので、日本の0〜9時にだけ出る日付の取り違えは、ここでしか見えない。
+      # 時計は差し替えない（KN_CLOCK は動きの台本と相性が悪い。tests/README.md）。TZ は台本の側、KN_TZ は頁。
       - name: Run all tests
+        env:
+          TZ: Asia/Tokyo
+          KN_TZ: Asia/Tokyo
         run: node tests/run-all.js

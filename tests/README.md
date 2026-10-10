@@ -19,11 +19,13 @@
   この差し替えと相性が悪く、昼でも30秒待ちきれない——日付とは無関係。`pill-morph` も同じ（何時に差し替えても
   48/49。差し替えは requestAnimationFrame・performance.now も作り物にするが、Web Animations は本物の時計で進む）。
   iPhone の Safari の押し方（ボタンや行を押しても、打っている欄がカーソルを持ったまま）で回すなら `KN_IOS_FOCUS=1`
-  （`iosFocus`）。日本の朝で回すなら `TZ=Asia/Tokyo KN_TZ=Asia/Tokyo KN_CLOCK=07:30`（機械と門は UTC なので、
-  0〜9時にだけ出る日付の取り違えはふだん見えない。`KN_TZ` は頁の時間帯、`TZ` は台本の側）。2026年10月10日に
-  全部を回した結果：`KN_IOS_FOCUS` は `notes-labels` だけ落ちる（タグを押しても本文がカーソルを持ったままなので、
-  「整えた姿」へ移らない——試験の前提で、アプリは正しい）。`KN_NO_ANCHOR` は `scroll-anchor` だけ（錨の
-  あり・なしを比べる台本なので、全部を錨なしにすると比べる相手が無い）。
+  （`iosFocus`）。日本の朝で回すなら、時計は差し替えず、端末の日付が UTC より一日先で0〜9時になる時間帯を選ぶ
+  ——UTC の15〜24時なら `TZ=Asia/Tokyo KN_TZ=Asia/Tokyo`、10〜19時なら `Pacific/Kiritimati`（UTC+14）（機械と門は
+  UTC なので、0〜9時にだけ出る日付の取り違えはふだん見えない。`KN_TZ` は頁の時間帯、`TZ` は台本の側。毎日の全部は
+  日本の時間帯で回る）。2026年10月10日に全部を回した結果：`KN_IOS_FOCUS` は `notes-labels` だけ落ちる（タグを押しても
+  本文がカーソルを持ったままなので「整えた姿」へ移らない——試験の前提で、アプリは正しい）。`KN_NO_ANCHOR` は
+  `scroll-anchor` だけ、`KN_NO_FIT` は `fit-fields` だけ（どちらも二つの道を比べる台本なので、全部を片方にすると比べる
+  相手が無い）。UTC+14 は全部通る（落ちた `notes-settings`・`scroll-anchor` は台本の前提と待ち方を直した）。
 - **まとめて回す**（R19、2026年9月29日）：`node tests/run-all.js`。3本ずつ並べて、
   一本一行の要約だけ出す（落ちたものは NG の行も）。全部で約8分（一本ずつだと約23分。2026年10月8日、118本）。
   名前で絞る（`run-all.js carry day-road`）・門だけ（`--gate`）・並べる数（`-j 4`）。
