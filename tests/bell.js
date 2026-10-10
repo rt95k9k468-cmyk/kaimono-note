@@ -325,6 +325,67 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     (await page.evaluate(() => window.__unsubs)) === u0 && !sent.some((x) => x.bell === "sub"),
     JSON.stringify(sent.map((x) => x.bell)));
 
+  /* 鳴らなかった回に気づく（roadmap-seamless の N14）。隠れたのは60分前、30分前の回に鳴った控えが無い。
+     隠れる前の回（開いていた）と、来たばかりの回（押しがまだ届かないだけかも）は数えない。 */
+  const setBack = (opts) => page.evaluate((o) => new Promise((ok) => {
+    const now = Date.now();
+    const list = [
+      { at: now - 90 * 60000, time: "09:00", title: "開いていた回", id: "n14a", occ: "d 09:00" },
+      { at: now - 30 * 60000, time: "10:00", title: "秘密の回", id: "n14b", occ: "d 10:00" },
+      { at: now - 60000, time: "10:29", title: "来たばかり", id: "n14c", occ: "d 10:29" },
+    ];
+    localStorage.setItem("kaimono-note-bell-away", String(now - 60 * 60000));
+    if (o.renewed) localStorage.setItem("kaimono-note-bell-renew", KN.util.todayKey());
+    else localStorage.removeItem("kaimono-note-bell-renew");
+    const req = indexedDB.open("kaimono-note-bell", 1);
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction(["plan", "rung"], "readwrite");
+      tx.objectStore("plan").put({ k: "list", list, at: now });
+      const r = tx.objectStore("rung");
+      if (o.rung) r.put({ key: "n14b d 10:00", id: "n14b", occ: "d 10:00", at: now - 30 * 60000 });
+      else r.delete("n14b d 10:00");
+      tx.oncomplete = () => { db.close(); ok(); };
+    };
+  }), opts);
+  const tap = async () => {
+    await page.evaluate(() => document.body.dispatchEvent(new PointerEvent("pointerup", { bubbles: true })));
+    await page.waitForTimeout(600);
+  };
+
+  await setBack({});
+  const u1 = await page.evaluate(() => window.__unsubs);
+  sent.length = 0;
+  const miss1 = await page.evaluate(() => KN.bell.lookBack());
+  t.check("N14：閉じていたあいだの、鳴った控えの無い回だけを数える", miss1 === 1, String(miss1));
+  const log1 = await page.evaluate(() => KN.errlog.text());
+  t.check("N14：困ったときの記録に件数だけ（題は書かない）",
+    /鳴らなかった回 1件/.test(log1) && !log1.includes("秘密の回"), log1.slice(-300));
+  t.check("N14：押すまでは作り直さない",
+    (await page.evaluate(() => window.__unsubs)) === u1 && !sent.some((x) => x.bell === "sub"),
+    JSON.stringify(sent.map((x) => x.bell)));
+  sent.length = 0;
+  await tap();
+  t.check("N14：次に押したら、押し先を作り直して送り直す",
+    (await page.evaluate(() => window.__unsubs)) === u1 + 1
+      && sent.some((x) => x.bell === "sub") && sent.some((x) => x.bell === "times"),
+    JSON.stringify(sent.map((x) => x.bell)));
+
+  await setBack({ rung: true });
+  const u2 = await page.evaluate(() => window.__unsubs);
+  const miss2 = await page.evaluate(() => KN.bell.lookBack());
+  await tap();
+  t.check("N14：鳴った控えがあれば何もしない",
+    miss2 === 0 && (await page.evaluate(() => window.__unsubs)) === u2, `${miss2}`);
+
+  await setBack({ renewed: true });
+  sent.length = 0;
+  const miss3 = await page.evaluate(() => KN.bell.lookBack());
+  await tap();
+  t.check("N14：同じ日の二度目は作り直さない",
+    miss3 === 1 && (await page.evaluate(() => window.__unsubs)) === u2 && !sent.some((x) => x.bell === "sub"),
+    `${miss3} ${JSON.stringify(sent.map((x) => x.bell))}`);
+
   t.check("頁の誤りが無い", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();
