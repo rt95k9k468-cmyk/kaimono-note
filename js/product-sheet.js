@@ -856,13 +856,16 @@
     const pricesWrap = node(html`<div class="stack gap-3"></div>`);
     const rerenderPrices = () => { renderPrices(pricesWrap, productId); paintCap(); };
 
-    const paintMark = () => { f.mark.innerHTML = store.productMark(store.getProduct(productId)); };
+    const paintMark = () => { f.mark.innerHTML = store.productMark(store.getProduct(productId)); paintCap(); };
     function paintCap() {
       const p = store.getProduct(productId);
       const best = p ? store.bestPrice(p) : null;
       const st = best ? store.getStore(best.storeId) : null;
-      f.known.hidden = !(best && st);
-      f.known.textContent = best && st ? `最安 ${st.name} ${yen(best.price)}` : "";
+      /* 旬は事実を一行だけ（roadmap-3.1 の K4。js/shun.js）。名前や絵が変わると引き直す。 */
+      const text = [best && st ? `最安 ${st.name} ${yen(best.price)}` : "", KN.shun.label(p)]
+        .filter(Boolean).join("　");
+      f.known.hidden = !text;
+      f.known.textContent = text;
     }
     paintMark();
 

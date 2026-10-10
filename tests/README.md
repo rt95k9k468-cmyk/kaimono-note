@@ -61,6 +61,13 @@
   `cloneNode` した写し（元のクラスのまま、`.day-send` 付き）を body に出して
   飛ばすので、`document.querySelectorAll(".carry-row")` は飛んでいるあいだ写しも
   数えます（`tests/carry.js` が V15 からこれで落ちていた。2026年10月4日）。
+- **閉じた紙は、帰り終えるまで DOM に残る。** 閉じた紙は指を受けない（e34179d）ので、閉じた直後の
+  ＋の押しはもう待たされない。`.sheet.is-note …` のような選び方は、先に並ぶ帰る途中の紙の欄を掴む
+  （`tests/notes-format.js` の2件が、これで2日落ちていた。2026年10月10日）。閉じるのを待つなら
+  紙が外れるまで、すぐ次を開くなら `.is-open` で選ぶ。
+- **設定の一枚は、押し出し終わるまで押しを捨てる**（`screen-settings.js` の `moving`）。入った・戻ったあと
+  決め打ちの ms で次を押さず、`.set-layer.is-edge-lift` が消えるまで待つ（`tests/settings.js` の `layerStill`。
+  300ms の待ちが押し出しの終わりの 20ms と競り、まれに30秒の時間切れになっていた。2026年10月10日）。
 - **指の手つきは、本物のタッチで試すこと。** `new PointerEvent(...)` を
   自分で投げるやり方では、`touchstart` / `touchmove` を見ているものが
   **まるごと動きません**——`pull-refresh.js` がそれです。買うものの掴み手に
