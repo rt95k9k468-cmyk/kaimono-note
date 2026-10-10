@@ -842,6 +842,7 @@
         id: "delete", label: () => "このやることを消す", icon: "trash", danger: true,
         onPick: () => {
           const undo = store.removeTodo(todoId);
+          store.keepGone(undo);
           haptic(14);
           handle.close();
           KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: undo } });
@@ -5268,6 +5269,7 @@
        そのものなので、戻す手を必ず添えること。 */
     if (d.target.kind === "trash") {
       const undo = store.removeTodo(d.id);
+      store.keepGone(undo);
       KN.motion.fire("save");
       haptic(14);
       KN.ui.toast(`「${t.title}」を消しました`, {

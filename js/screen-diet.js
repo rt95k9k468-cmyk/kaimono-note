@@ -2492,6 +2492,7 @@
 
       el.querySelectorAll(".js-wdel").forEach((b) => b.addEventListener("click", () => {
         const undo = store.removeHealth(b.dataset.id);
+        store.keepGone(undo);
         paint();
         render();
         KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => { undo(); paint(); render(); } } });
