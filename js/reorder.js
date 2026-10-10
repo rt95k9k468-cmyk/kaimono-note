@@ -62,6 +62,9 @@
     if (!el || el.parentElement !== container) return;
 
     const startX = e.clientX, startY = e.clientY, pointerId = e.pointerId;
+    // Lifting happens mid-press, and iPhone plays nothing a finger has not
+    // touched yet — open the sound now (docs/motion.md の「手ざわりの表」).
+    KN.motion.wakeSound();
 
     // A press on a handle is already the whole gesture — lift on the spot.
     if (opts.handle && e.target.closest(opts.handle)) {
@@ -147,7 +150,7 @@
     // The list must not scroll under a row being carried across it.
     document.addEventListener("touchmove", swallowTouch, { passive: false });
 
-    haptic(18);
+    KN.motion.fire("lift");
     paint();
     drag.raf = requestAnimationFrame(tick);
   }
@@ -247,7 +250,7 @@
     d.el.classList.remove("reorder-lift");
     d.el.classList.add("reorder-drop");
     d.el.style.transform = `translate3d(0, ${Math.round(landing - a.top + scrolled)}px, 0)`;
-    haptic(12);
+    KN.motion.fire("drop");
 
     // The press that lifted the row would otherwise land as a tap on release
     // and open whatever the row opens.

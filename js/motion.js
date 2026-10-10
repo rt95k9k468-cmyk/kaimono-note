@@ -41,14 +41,18 @@
 
      ms   … 震えの長さ。強さは指定できないので、長さで軽重を表します。
      cls  … その間だけ付ける class（css/components.css の .is-m-* ）。
-     tok  … 長さを読む CSS 変数の名前。 */
+     tok  … 長さを読む CSS 変数の名前。
+     snd  … 鳴らす音（下の SOUNDS）。震えの届かない出来事だけ（docs/motion.md の「手ざわりの表」）。 */
   const EVENTS = {
     press:      { ms: 0,  cls: null,          tok: "--m-press" },
     check:      { ms: 12, cls: "is-m-check",  tok: "--m-check" },
     uncheck:    { ms: 6,  cls: null,          tok: "--m-check" },
     add:        { ms: 10, cls: "is-m-add",    tok: "--m-add" },
     delete:     { ms: 14, cls: "is-m-delete", tok: "--m-delete" },
-    reorder:    { ms: 6,  cls: null,          tok: "--m-reorder" },
+    /* 回すドラムが行をまたぐ・行や丸が持ち上がる・置く。 */
+    turn:       { ms: 4,  cls: null,          tok: "--m-press",   snd: "tick" },
+    lift:       { ms: 6,  cls: null,          tok: "--m-reorder", snd: "lift" },
+    drop:       { ms: 12, cls: null,          tok: "--m-reorder", snd: "drop" },
     select:     { ms: 5,  cls: null,          tok: "--m-press" },
     save:       { ms: 12, cls: null,          tok: "--m-check" },
     sheetOpen:  { ms: 0,  cls: null,          tok: "--m-sheet-open" },
@@ -234,6 +238,71 @@
   }
 
   /* ---------------------------------------------------------------
+     音（docs/motion.md の「手ざわりの表」・N6）
+
+     iPhone の Safari は震えを出せず、下の FEEL のつまみも押すものにしか重ねられません。
+     回す・持ち上げる・置くには、震えの代わりに短い音を返します。鳴らすのは fire() だけ
+     ——EVENTS の snd を持つ行からだけです（tests/feel-sound.js が見張る）。
+
+     音の場は ambient——消音スイッチで黙り、流れている音楽も止めない。音は一度だけ作って
+     使い回します。音の口（wakeSound）は指で触れたときに開けます——iPhone は触れる前の
+     音を出しません。持ち上がるのは長押しの途中なので、指を置いたときに開けておきます。 */
+  const SOUNDS = {
+    /* カチッ（2026年10月8日・利用者の声。純正のドラムの手ざわり）。 */
+    tick: { len: 0.012, gain: 0.25,
+            at: (s) => (Math.sin(2 * Math.PI * 3200 * s) * 0.6 + (Math.random() * 2 - 1) * 0.4) * Math.exp(-s / 0.0015) },
+    /* ぽっ（持ち上がる）。音程が少し上がる、丸い音。ドラムより小さく。 */
+    lift: { len: 0.045, gain: 0.12,
+            at: (s) => Math.sin(2 * Math.PI * (520 * s + 4000 * s * s)) * Math.exp(-s / 0.009) },
+    /* ことっ（置く）。低い木の音に、触れた一瞬のざらつき。ドラムより小さく。 */
+    drop: { len: 0.06, gain: 0.16,
+            at: (s) => (Math.sin(2 * Math.PI * 190 * s) * 0.7
+                        + Math.sin(2 * Math.PI * 470 * s) * 0.3 * Math.exp(-s / 0.004)
+                        + (Math.random() * 2 - 1) * 0.25 * Math.exp(-s / 0.0008)) * Math.exp(-s / 0.012) },
+  };
+  let actx = null;
+  const bufs = {};
+  const playedAt = {};
+  function wakeSound() {
+    try {
+      if (!actx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (navigator.audioSession) navigator.audioSession.type = "ambient";
+        actx = new AC();
+        const rate = actx.sampleRate;
+        Object.keys(SOUNDS).forEach((k) => {
+          const S = SOUNDS[k];
+          const n = Math.round(rate * S.len);
+          const b = actx.createBuffer(1, n, rate);
+          const d = b.getChannelData(0);
+          for (let i = 0; i < n; i++) d[i] = S.at(i / rate);
+          bufs[k] = b;
+        });
+      }
+      if (actx.state !== "running") {
+        const p = actx.resume();
+        if (p && p.catch) p.catch(() => {});
+      }
+    } catch (_) {}
+  }
+  function sound(name) {
+    const b = bufs[name];
+    if (!b || !actx || actx.state !== "running") return;
+    const now = performance.now();
+    if (now - (playedAt[name] || 0) < 30) return;   // 速い払いで重ならない
+    playedAt[name] = now;
+    try {
+      const src = actx.createBufferSource();
+      const g = actx.createGain();
+      g.gain.value = SOUNDS[name].gain;
+      src.buffer = b;
+      src.connect(g).connect(actx.destination);
+      src.start();
+    } catch (_) {}
+  }
+
+  /* ---------------------------------------------------------------
      iPhone で、主な押すものを震わせる（docs/motion.md の C1）
 
      iOS 18 から、Safari の `<input type="checkbox" switch>`（切り替えの
@@ -403,6 +472,7 @@
     const spec = EVENTS[name];
     if (!spec) return Promise.resolve();
     buzz(spec);
+    if (spec.snd) sound(spec.snd);
     const dur = ms(spec.tok);
     if (!el || !spec.cls || still()) {
       return new Promise((done) => setTimeout(done, still() ? 0 : dur));
@@ -528,7 +598,7 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, depart, warm, EVENTS };
+  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, depart, warm, wakeSound, EVENTS };
 
   /* 指の重さ（roadmap-unify の U4・docs/motion.md の「指の重さは一か所」）。同じ身ぶりは
      どこでも同じ重さ。払いだけ二つ——行き先へ送る（日・面・暦の段）と、閉じる・戻る（紙・
