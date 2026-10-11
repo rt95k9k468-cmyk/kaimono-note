@@ -110,9 +110,7 @@ const SCENES = [
   {
     title: "ノートで打つ",
     setup: async (page) => {
-      await page.evaluate(() => KN.app.showScreen("archive"));
-      await page.waitForTimeout(900);
-      await page.click('.tab[data-tab="archive"]');
+      await page.click('.tab[data-tab="notes"]');
       await page.waitForTimeout(900);
       await page.click("#dock .add-fab");
       await page.waitForSelector(".sheet.is-note.is-open");

@@ -87,9 +87,7 @@ async function measure(fit) {
   await wait(400);
 
   /* ---- ノートの題と本文 ---- */
-  await page.evaluate(() => KN.app.showScreen("archive"));
-  await wait(500);
-  await page.click('.tab[data-tab="archive"]');
+  await page.click('.tab[data-tab="notes"]');
   await page.waitForFunction(() => document.querySelector(".screen.is-active").dataset.screen === "notes", null, { timeout: 4000 });
   await wait(300);
   await page.click("#dock .add-fab");

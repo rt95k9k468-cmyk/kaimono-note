@@ -472,7 +472,7 @@
       /* 帯が言うのは**その席の名前**です。価格を見ているあいだも「買うもの」
          のまま——いま居るのは買うもののタブで、その紙を下げているだけ
          なので。帯はいる場所を言うもので、紙の位置を言うものではありません。 */
-      const face = FACES[t.names && t.names.indexOf(active) >= 0 ? active : t.id];
+      const face = FACES[t.id];
       btn.setAttribute("aria-selected", String(here));
       btn.querySelector(".tab-ico-face").classList.add("is-on");
       const ico = btn.querySelector(".tab-ico-face");

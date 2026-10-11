@@ -18,11 +18,7 @@ const { open, checker } = require("./lib");
   const settled = (id) => page.waitForFunction((i) =>
     document.querySelector(".screen.is-active").dataset.screen === i
     && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
-  if ((await active()) !== "archive") {
-    await page.evaluate(() => KN.app.showScreen("archive"));
-    await settled("archive");
-  }
-  await page.click('.tab[data-tab="archive"]');
+  await page.click('.tab[data-tab="notes"]');
   await settled("notes");
   const lsBefore = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length);
   const gone = () => page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });

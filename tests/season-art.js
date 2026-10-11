@@ -106,8 +106,8 @@ const ROOT = path.resolve(__dirname, "..");
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
     ["todo", "list", "diet"].every((s) => !document.querySelector(`#screen-${s}`).hasAttribute("data-season"))));
 
-  /* ノート（daily の席をもう一度押す）には、今日の候の色と広重 */
-  await page.click('.tab[data-tab="archive"]');
+  /* ノート（五つめの席）には、今日の候の色と広重 */
+  await page.click('.tab[data-tab="notes"]');
   await page.waitForFunction(() => document.querySelector("#screen-notes").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
   const readNotes = () => page.evaluate(() => {
     const el = document.querySelector("#screen-notes");
