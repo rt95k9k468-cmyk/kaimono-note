@@ -7,6 +7,7 @@
    記録は一つも変わらない・絵文字なし。
    V27：新しい番号は4桁か6桁だけ・Face ID があれば「開ける」が主で鍵盤は「番号」で
    開く・下の帯は覆いの上で押せる・窓が手を離れたら（blur）覆いだけ被せて戻れば外す。
+   猶予（lockGrace）：設定で選べる・猶予のうちに戻れば開いたまま・過ぎて戻れば閉じる。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/lock.js */
 const { open, checker } = require("./lib");
@@ -146,6 +147,33 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForFunction(() => !KN.lock.isLocked(), null, { timeout: 5000 }).catch(() => {});
   t.check("表へ戻ると、押さなくても Face ID が出て開く", !(await veilOn()));
+
+  /* ---- 猶予 ---- */
+  t.check("猶予は既定ですぐ", await page.evaluate(() => KN.lock.grace() === 0));
+  await show("archive");
+  await show("settings");
+  await page.locator(`${top} .set-row`, { hasText: "ロック" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(`${top} .set-row`, { hasText: "閉じるまで" }).click();
+  await page.waitForTimeout(400);
+  await page.locator(".set-choose").getByRole("button", { name: "5分", exact: true }).click();
+  await page.waitForTimeout(400);
+  t.check("設定で 5分 を選べる", await page.evaluate(() => KN.store.get().settings.lockGrace === 300));
+  await show("notes");
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+  await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
+  t.check("猶予のうちに戻れば開いたまま", !(await veilOn()));
+  /* 戻れば Face ID が自分から出て開くので、閉じたかはその場で見ます。 */
+  t.check("猶予を過ぎて戻れば閉じる", await page.evaluate(() => {
+    window.dispatchEvent(new Event("pagehide"));
+    const now = Date.now;
+    Date.now = () => now() + 301000;
+    window.dispatchEvent(new Event("pageshow"));
+    Date.now = now;
+    return KN.lock.isLocked();
+  }));
+  await page.evaluate(() => KN.store.update((s) => { delete s.settings.lockGrace; }));
+  await page.waitForFunction(() => !KN.lock.isLocked(), null, { timeout: 5000 }).catch(() => {});
 
   /* ---- アプリ切り替えの絵（blur）では覆いだけ被せる ---- */
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));

@@ -66,6 +66,15 @@
       bio,
       navRow({ ico: "lock", tint: TINT.sub, title: "番号を変える", onTap: () => L.changeCode().then(done) })
     ));
+    const label = (g) => (g ? `${g / 60}分` : "すぐ");
+    rows.push(card(pickRow({
+      title: "閉じるまで", value: label(L.grace()),
+      onTap: () => choose({
+        title: "裏へ回ってから閉じるまで", value: String(L.grace()),
+        options: L.GRACES.map((g) => ({ id: String(g), label: label(g) })),
+        onPick: (v) => { store.update((s) => { s.settings.lockGrace = Number(v); }); render(); },
+      }),
+    })));
     rows.push(foot("中身は暗号化されません。"));
     return rows;
   }

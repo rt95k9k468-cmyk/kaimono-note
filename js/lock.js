@@ -14,8 +14,10 @@
      設定なので、バックアップに乗って別の端末へも行きます。
    - Face ID の鍵は**端末ごと**なので state に置かず、この端末の
      localStorage（`DEV_KEY`）にだけ置きます。バックアップには乗りません。
-   - 裏へ回ったらすぐ閉じます（`visibilitychange` / `pagehide`）。
-     立ち上げたときも閉じたところから。
+   - 裏へ回ったら閉じます（`visibilitychange` / `pagehide`）。猶予
+     （`settings.lockGrace`、秒。無ければ 0＝すぐ）を決めていれば、裏へ回った時刻を
+     覚えておき、表へ戻ったときに猶予を過ぎていたら閉じます。
+     立ち上げたときは猶予にかかわらず閉じたところから。
    - 覆いは daily・ノートと、そこから潜った設定の上にだけ出します。
      下の帯は覆いの上に残すので、ほかのタブへはそこから（設定の上では
      帯が無いので左上の絵から）。
@@ -254,12 +256,30 @@
     tryBio();
   }
 
+  /* 猶予。覚えるのはメモリだけなので、開き直せば猶予は残りません。 */
+  const GRACES = [0, 60, 300, 900];
+  function grace() {
+    const g = KN.store.get().settings.lockGrace;
+    return GRACES.includes(g) ? g : 0;
+  }
+  let awayAt = 0;
+  function away() {
+    if (!enabled()) return;
+    if (!grace()) { close(); return; }
+    if (!awayAt) awayAt = Date.now();
+  }
+  /* 戻りの合図（visibilitychange・pageshow・focus）のどれが先でも、覆いを外す前に測ります。 */
+  function expire() {
+    if (awayAt && Date.now() - awayAt >= grace() * 1000) close();
+    awayAt = 0;
+  }
+
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") close();
-    else autoBio();
+    if (document.visibilityState === "hidden") away();
+    else { expire(); autoBio(); }
   });
-  window.addEventListener("pagehide", close);
-  window.addEventListener("pageshow", autoBio);
+  window.addEventListener("pagehide", away);
+  window.addEventListener("pageshow", () => { expire(); autoBio(); });
   /* アプリ切り替えの絵は、裏へ回る（hidden）より前の「手を離れた」瞬間に撮られる
      ことがあるので、そこで覆いだけ被せます。共有の紙・ファイルを選ぶ画面でも
      被さりますが、戻れば外れ、鍵は閉じません。 */
@@ -269,6 +289,7 @@
     paint();
   });
   window.addEventListener("focus", () => {
+    expire();
     if (shield) { shield = false; paint(); }
     autoBio();
   });
@@ -332,7 +353,7 @@
   KN.lock = {
     supported, enabled, bioAvailable, hasBio: () => !!devId(),
     turnOn, turnOff, changeCode, bioOn, bioOff: forget,
-    paint, enter, close,
+    paint, enter, close, GRACES, grace,
     isLocked: () => enabled() && locked,
     /** 全体の検索が、その場所を探してよいか。 */
     hides: (place) => enabled() && locked && SEARCH_PLACES.includes(place),
