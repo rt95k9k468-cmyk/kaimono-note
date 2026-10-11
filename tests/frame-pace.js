@@ -1,13 +1,15 @@
 /* 速さの台本（docs/roadmap-2.0.md の V2）。CPU を4倍遅くして、五つの手つきのあいだの
    requestAnimationFrame の間隔を集め、長いフレーム（20ms 超）の数と 95% 点を出す。
    - 帯を押す（daily → 買うもの）・道を開く（帯で やること へ。一日の道が組まれる）・
+     暦をしまう／出す（やること ⇄ ノート。暦の出入りが横の流れと同じ一拍。head.js の moveCal）・
      日の横払い（やることの紙）・一覧の送り（買うものの紙を縦に）・紙を開く（用事の行を押す）
    - 指は本物のタッチ（CDP の Input.dispatchTouchEvent）
    **門にも run-all にも入れない**（機械の揺れで止めないため。数字は目安）。動きを足す
    項目の前後で手で回し、数字をその項目の節に書く。落とすのはエラーが出たときだけ。
    試験のブラウザ（Chromium）の数字で、iPhone の Safari とは描き方が違う（特にぼかし）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/frame-pace.js
-   RUNS=<n> で n 回測って中央値（既定 3）。
+   RUNS=<n> で n 回測って中央値（既定 3）。「並べ直し」は手つきのあいだのレイアウトの回数（CDP の
+   LayoutCount）。動くあいだ毎フレーム並べ直していれば、フレームの数に近くなる。
    CSS=<ファイル> を付けると、その CSS を差し込んで測る（V5 の見比べ。コードは変えずに案を測る）。 */
 const fs = require("fs");
 const { open, checker } = require("./lib");
@@ -64,6 +66,8 @@ async function once() {
 
   cdp = await ctx.newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await cdp.send("Performance.enable");
+  const layouts = async () => (await cdp.send("Performance.getMetrics")).metrics.find((m) => m.name === "LayoutCount").value;
 
   const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
   const trace = async (x, y, path, gap = 16) => {
@@ -91,24 +95,31 @@ async function once() {
     return { x: b.left + b.width / 2, y: b.top + Math.min(b.height / 2, 300) };
   }, sel);
   /** 手つき一つぶんを測る。settle は指を離してから動きが落ち着くまで。 */
+  const lay = {};
+  let name = "";
   const measure = async (act, settle = 900) => {
+    const l0 = await layouts();
     await page.evaluate(() => window.__pace.start());
     await act();
     await page.waitForTimeout(settle);
-    return page.evaluate(() => window.__pace.stop());
+    const gaps = await page.evaluate(() => window.__pace.stop());
+    lay[name] = (await layouts()) - l0;
+    return gaps;
   };
 
   const out = {};
   const moved = {};
-  out["帯を押す"] = await measure(() => tap('.tab[data-tab="list"]'));
+  out[name = "帯を押す"] = await measure(() => tap('.tab[data-tab="list"]'));
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(800);
-  out["道を開く"] = await measure(() => tap('.tab[data-tab="todo"]'), 1200);
+  out[name = "道を開く"] = await measure(() => tap('.tab[data-tab="todo"]'), 1200);
+  out[name = "暦をしまう"] = await measure(() => tap('.tab[data-tab="notes"]'));
+  out[name = "暦を出す"] = await measure(() => tap('.tab[data-tab="todo"]'), 1200);
   {
     const p = await center("#screen-todo .tl-sheet");
     const title = () => page.evaluate(() => document.querySelector("#head .js-day-title").textContent);
     const before = await title();
-    out["日の横払い"] = await measure(() => trace(p.x + 120, p.y, line(-260, 0)));
+    out[name = "日の横払い"] = await measure(() => trace(p.x + 120, p.y, line(-260, 0)));
     moved.day = (await title()) !== before;
     /* 今日へ戻しておく（紙を開く行が今日にある）。 */
     await trace(p.x - 120, p.y, line(260, 0));
@@ -118,7 +129,7 @@ async function once() {
   await page.waitForTimeout(800);
   {
     const p = await center("#screen-list .tl-sheet");
-    out["一覧の送り"] = await measure(() => trace(p.x, p.y + 150, line(0, -360, 18)), 1200);
+    out[name = "一覧の送り"] = await measure(() => trace(p.x, p.y + 150, line(0, -360, 18)), 1200);
     moved.scroll = await page.evaluate(() => KN.app.scrollerOf(document.getElementById("screen-list")).scrollTop > 100);
   }
   await page.evaluate(() => KN.app.showScreen("todo"));
@@ -128,11 +139,11 @@ async function once() {
     row && row.scrollIntoView({ block: "center" });
   });
   await page.waitForTimeout(400);
-  out["紙を開く"] = await measure(() => tap("#screen-todo .tl-row .tl-title, #screen-todo .tl-row", "病院"));
+  out[name = "紙を開く"] = await measure(() => tap("#screen-todo .tl-row .tl-title, #screen-todo .tl-row", "病院"));
   const opened = await page.evaluate(() => !!document.querySelector(".sheet.is-open"));
 
   await browser.close();
-  return { out, errors, opened, moved };
+  return { out, lay, errors, opened, moved };
 }
 
 const sum = (gaps) => {
@@ -148,11 +159,12 @@ const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.
   for (let i = 0; i < RUNS; i++) runs.push(await once());
   const names = Object.keys(runs[0].out);
   console.log(`CPU 4倍・${RUNS}回の中央値${process.env.CSS ? `・${require("path").basename(process.env.CSS)}` : ""}（長い＝${LONG}ms 超）`);
-  console.log("手つき        フレーム  長い  95%点");
+  console.log("手つき        フレーム  長い  95%点  並べ直し");
   for (const name of names) {
     const r = runs.map((x) => sum(x.out[name]));
     const n = median(r.map((x) => x.n)), long = median(r.map((x) => x.long)), p95 = median(r.map((x) => x.p95));
-    console.log(`${name.padEnd(8, "　")}  ${String(n).padStart(6)}  ${String(long).padStart(4)}  ${p95.toFixed(1).padStart(5)}ms`);
+    const l = median(runs.map((x) => x.lay[name]));
+    console.log(`${name.padEnd(8, "　")}  ${String(n).padStart(6)}  ${String(long).padStart(4)}  ${p95.toFixed(1).padStart(5)}ms  ${String(l).padStart(6)}`);
     t.check(`${name}：フレームが集まった`, n > 10, String(n));
   }
   t.check("日が動いた", runs.every((x) => x.moved.day));

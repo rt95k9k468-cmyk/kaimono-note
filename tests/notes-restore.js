@@ -150,7 +150,8 @@ const { open, checker } = require("./lib");
     ] };
     return JSON.stringify(raw);
   });
-  const ls0 = await page.evaluate(() => localStorage.getItem("kaimono-note-v2").length);
+  /* 記録の器は最初に書くまで空（daily を開かずにノートの席へ来ると、まだ無い）。 */
+  const ls0 = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings");
   await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
