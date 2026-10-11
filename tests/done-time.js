@@ -32,7 +32,8 @@ const { open, checker } = require("./lib");
   const off = await page.evaluate(() => document.querySelectorAll(".done-at-pop .note-wheel")[1].scrollTop % 40);
   c.check("途中で止めても行へ寄る", off === 0, off);
   c.check("小窓に OK", await page.evaluate(() => !!document.querySelector(".done-at-pop .when-ok")));
-  await page.click(".note-pop-cover");
+  /* 覆いの外寄り（真ん中は、トーストから上へ開いた小窓が掛かることがある）。 */
+  await page.click(".note-pop-cover", { position: { x: 12, y: 12 } });
   await page.waitForTimeout(400);
   const d = await page.evaluate((i) => { const x = new Date(KN.store.getTodo(i).doneAt); return [x.getDate(), x.getHours(), x.getMinutes()]; }, id);
   c.check("閉じると 11:30 に直り、日はそのまま", d.join() === "3,11,30", d.join());

@@ -43,7 +43,7 @@ const { open, checker } = require("./lib");
   await toList();
 
   /* ---- 足す紙 ---- */
-  await page.mouse.click(350, 805);
+  await page.click("#dock .add-fab");
   await page.waitForTimeout(800);
   const a1 = await top();
   t.check("足す紙は頭・名前・★・カテゴリ・メモ", a1 && a1.hero && a1.name && a1.fav && a1.cat && a1.memo && !a1.oldFav && !a1.qty, JSON.stringify(a1));

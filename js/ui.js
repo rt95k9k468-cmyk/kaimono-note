@@ -1499,7 +1499,14 @@
        iPhone）。縦は口の下、入りきらず上のほうが広ければ口の上（is-up）。 */
     const place = () => {
       const vw = document.documentElement.clientWidth || window.innerWidth;
-      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      let vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      /* 画面の行から開いた小窓は、下の帯の上で止めます（帯のほうが手前なので、かかると
+         OK が帯の下に隠れた）。紙の中から開いたものは紙が帯を覆っているので、画面の下まで。 */
+      const bar = document.getElementById("tabbar");
+      if (bar && !anchor.closest("#sheet-root") && !document.documentElement.classList.contains("kb-open")) {
+        const t = bar.getBoundingClientRect().top;
+        if (t > 0 && t < vh) vh = t;
+      }
       const w = Math.min(pop.offsetWidth, vw - 16);
       const want = side === "left" ? r.left : r.right - w;
       pop.style.left = `${Math.round(Math.max(8, Math.min(want, vw - 8 - w)))}px`;
