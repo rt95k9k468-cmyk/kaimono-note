@@ -804,6 +804,8 @@
       if ("at" in e && !KN.util.isTime(e.at)) e.at = null;
       if ("todo" in e && !(typeof e.todo === "string" && e.todo)) e.todo = null;
       if ("note" in e && !(typeof e.note === "string" && e.note)) e.note = null;
+      /* 生まれた元のノート（段6の橋。docs/bridge-design.md）。note と同じ形。 */
+      if ("fromNote" in e && !(typeof e.fromNote === "string" && e.fromNote)) e.fromNote = null;
     });
     out.archive.days = out.archive.days.filter((d) => d && d.date);
     out.archive.days.forEach((d) => {
@@ -4087,6 +4089,7 @@
       ...(e.at != null ? { at: KN.util.isTime(e.at) ? e.at : null } : {}),
       ...(e.todo ? { todo: String(e.todo) } : {}),
       ...(e.note ? { note: String(e.note) } : {}),
+      ...(e.fromNote ? { fromNote: String(e.fromNote) } : {}),
     };
     if (!isFinite(row.amount)) row.amount = null;
     if (!isFinite(row.pageFrom)) row.pageFrom = null;
@@ -4264,6 +4267,19 @@
       if (row) row.favorite = !row.favorite;
     });
   }
+
+  /* 記録をノートにつなぐ・外す（段6の橋。docs/bridge-design.md）。★と同じく直した時刻も並びも
+     動かさない。入れるのは空でない文字か null だけ。fromNote には触れない。 */
+  function setEntryNote(id, noteId) {
+    const v = typeof noteId === "string" && noteId ? noteId : null;
+    update((s) => {
+      const row = s.archive.entries.find((x) => x.id === id);
+      if (row) row.note = v;
+    });
+  }
+  /** そのノートにつながる・そのノートで生まれた記録（最後に触った順）。そのつど引く（写さず引く）。 */
+  const entriesOfNote = (id) => (id ? archive().entries
+    .filter((e) => e.note === id || e.fromNote === id).slice().sort(byRecent) : []);
 
   /* 並びは **最後に触った順**。書いた順ではありません——去年の本に一行
      足したなら、いまのあなたはその本のことを考えているので、上に来ます。 */
@@ -4960,12 +4976,12 @@
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue, healthSeenAt,
     setGoal, markSynced, markSyncLocked, clearDiet,
     ARCHIVE_TYPES, archiveType, ACCENTS,
-    addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite,
+    addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite, setEntryNote,
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
     stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
-    entriesOfMonth, entriesOfDay, openSeeds, monthCounts, searchEntries,
+    entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };

@@ -1300,18 +1300,19 @@
 
      「くわしく」は畳みません。任意の欄も最初から出したままにします——
      開かないと見えない欄は、開かれないままのことが多いので。 */
-  function openEntrySheet(existing) {
+  /* opts.under … 下に開いているノートの id（ノートの小窓から来た）。opts.seedOf … そのノートでまく新しい種
+     （段6の橋。docs/bridge-design.md）。 */
+  function openEntrySheet(existing, opts = {}) {
     const e = existing || null;
-    let type = e ? e.type : "reading";
+    const seedOf = !e && opts.seedOf ? opts.seedOf : null;
+    let type = e ? e.type : (seedOf ? "seed" : "reading");
     let kind = e ? (e.kind || "book") : "book";
     /* 自動で埋めた欄には ×。人が打ち直したら消えます。 */
     let titleAuto = false, authorAuto = false;
 
-    /* 同じノートへ（3.0 の A2。ノートから置いた活動を済ませた記録）。ノートが消えていれば出さない。 */
-    const srcNote = e && e.note && KN.activity ? KN.activity.noteOf(e.note) : null;
     const body = node(html`
       <div class="stack gap-2">
-        ${srcNote ? html`<button type="button" class="dest-chip arc-note-src js-note-src">ノート『${srcNote.title}』</button>` : ""}
+        <div class="arc-bridge js-bridge" hidden></div>
         <div class="arc-pick js-pick"></div>
 
         <div class="js-reading-fields" hidden>
@@ -1578,20 +1579,75 @@
       </div>
     `);
     const roadBtn = footer.querySelector(".js-road");
-    const noteBtn = body.querySelector(".js-note-src");
-    if (noteBtn) noteBtn.addEventListener("click", () => {
+    /* つながるノート（段6の橋。前からの A2・A3 の札もここ）。見つかれば札、見つからなければ
+       「つなぎ直す／外す」、入れ物が開いていなければ何も出さない。見つからなくても欄は消さない。 */
+    const NS = () => (KN.screens.notes && KN.screens.notes.find ? KN.screens.notes : null);
+    let draftLink = seedOf;   // 新しい種のつながり（書くまで記録が無い）
+    const rowNow = () => (e ? store.get().archive.entries.find((x) => x.id === e.id) || e : null);
+    const linkOf = () => (e ? rowNow().note || null : draftLink);
+    const fromOf = () => (e ? rowNow().fromNote || null : seedOf);
+    const setLink = (id) => {
+      if (e) store.setEntryNote(e.id, id);
+      else draftLink = id;
+      paintBridge();
+    };
+    const relink = () => { const ns = NS(); if (ns) ns.pick(setLink); };
+    const unlink = () => {
+      const was = linkOf();
+      setLink(null);
+      KN.ui.toast("外しました", { action: { label: "元に戻す", onClick: () => setLink(was) } });
+    };
+    const goNote = (id) => {
       KN.motion.fire("select");
       h.tryClose();
-      setTimeout(() => KN.activity.openNote(srcNote.id), 120);
-    });
+      if (id !== opts.under) setTimeout(() => KN.screens.notes.open(id), 120);
+    };
+    const bridgeEl = body.querySelector(".js-bridge");
+    function paintBridge() {
+      if (!bridgeEl.isConnected && h) return;
+      bridgeEl.innerHTML = "";
+      const ns = NS();
+      const cur = ns ? ns.find(linkOf()) : null;
+      if (cur && cur.state === "found") {
+        const b = node(html`<button type="button" class="dest-chip arc-note-src js-note-src">ノート『${cur.title}』</button>`);
+        b.addEventListener("click", () => goNote(cur.id));
+        bridgeEl.append(b);
+      } else if (cur) {
+        const re = node(html`<button type="button" class="dest-chip js-relink">つなぎ直す</button>`);
+        const un = node(html`<button type="button" class="dest-chip js-unlink">外す</button>`);
+        re.addEventListener("click", relink);
+        un.addEventListener("click", unlink);
+        bridgeEl.append(re, un);
+      }
+      const from = fromOf();
+      const src = ns && from && from !== linkOf() ? ns.find(from) : null;
+      if (src && src.state === "found") {
+        const b = node(html`<button type="button" class="dest-chip arc-note-from js-note-from" aria-label="生まれたノート『${src.title}』">${icon("sprout", "is-sub")}<span>${src.title}</span></button>`);
+        b.addEventListener("click", () => goNote(src.id));
+        bridgeEl.append(b);
+      }
+      bridgeEl.hidden = !bridgeEl.childElementCount;
+    }
+    let h = null;
+    paintBridge();
+    const offNotes = KN.notes && KN.notes.onChange ? KN.notes.onChange(paintBridge) : null;
     paintPick();
     paintMode();
 
+    /* 「⋯」：入れ物が開いているときだけ、消すの前に「ノートにつなぐ」か「つなぎ直す」「外す」。
+       ui.js の紙は開いたときの配列を持つので、押す直前に中身を入れ替える（ui.js は変えない）。 */
+    const del = e ? KN.ui.delMenu(() => store.removeEntry(e.id), { sheet: () => h, after: render }) : null;
+    const menu = del ? del.slice() : null;
+    const bridgeItems = () => (!NS() || !KN.notes || KN.notes.state() !== "on" ? []
+      : !linkOf() ? [{ icon: "notes", label: "ノートにつなぐ", onPick: relink }]
+        : [{ icon: "notes", label: "つなぎ直す", onPick: relink }, { icon: "minus", label: "外す", onPick: unlink }]);
+
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
-      menu: e ? KN.ui.delMenu(() => store.removeEntry(e.id), { sheet: () => h, after: render }) : null,
+    h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
+      menu,
       cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
       onClose: () => {
+        if (offNotes) offNotes();
         if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); }
         if (toRoad) {
           toRoad = false;
@@ -1600,6 +1656,11 @@
         }
       } });
     let toRoad = false;
+    if (menu) h.el.addEventListener("click", (ev) => {
+      if (ev.target.closest(".js-menu")) menu.splice(0, menu.length, ...bridgeItems(), ...del);
+    }, true);
+    /* ノートから種をまくときは、押した流れのままメモへ（iOS はここで同期に focus しないとキーボードを出さない）。 */
+    if (seedOf) KN.ui.focusNow(body.querySelector(".js-memo"));
 
     footer.querySelector(".js-ok").addEventListener("click", () => {
       const isReading = type === "reading";
@@ -1646,7 +1707,7 @@
         patch.unit = body.querySelector(".js-unit").value.trim() || null;
       }
       if (e) store.updateEntry(e.id, patch);
-      else store.addEntry(patch);
+      else store.addEntry(seedOf ? { ...patch, note: draftLink, fromNote: seedOf } : patch);
       KN.motion.fire("select");
       h.close();
       render();
@@ -2018,5 +2079,7 @@
   KN.screens.archive = { mount, render, dockButton, prepare, onEnter, day: () => focusDay(), cal: () => els.cal,
     goDay: (d) => goDayTo(d),
     /* 記録の紙を、ほかの画面から（道の活動の札・道の上の記録。3.0 の A1）。 */
-    openEntry: (id) => { const e = store.get().archive.entries.find((x) => x.id === id); if (e) openEntrySheet(e); } };
+    openEntry: (id, o) => { const e = store.get().archive.entries.find((x) => x.id === id); if (e) return openEntrySheet(e, o); },
+    /* ノートでまく種（段6の橋）。閉じればノートへ戻る。 */
+    seedFromNote: (noteId) => openEntrySheet(null, { seedOf: noteId, under: noteId }) };
 })();

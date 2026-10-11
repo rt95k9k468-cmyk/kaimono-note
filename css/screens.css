@@ -3709,6 +3709,10 @@ a.btn { text-decoration: none; }
 .arc-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 /* 記録の紙の頭の「ノート『…』」（3.0 の A2）。押せば同じノート。 */
 .dest-chip.arc-note-src { align-self: flex-start; margin-top: 0; }
+/* 段6の橋：札・生まれた元（芽）・見つからないときの「つなぎ直す／外す」を一列に。 */
+.arc-bridge { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.arc-bridge .dest-chip { margin-top: 0; }
+.arc-bridge .arc-note-from { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .arc-pick-b {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 11px; border-radius: var(--r-full);
@@ -5422,6 +5426,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-labels { min-width: 0; }
 .note-labels-in { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .note-labels .chip { height: 32px; font-size: var(--fs-sm); }
+/* つながる記録の札（段6の橋）。絵だけ・数なし。 */
+.note-bridge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 32px; min-height: 32px; padding: 0;
+  color: var(--c-primary); background: none; border: 0;
+}
+.note-bridge:active { opacity: var(--press-fade); }
 .note-tag-add { color: var(--c-text-2); }
 /* 選ぶ紙：使われている名前のチップと、新しい名前の欄。 */
 .note-pick { display: flex; flex-direction: column; gap: var(--sp-4); }

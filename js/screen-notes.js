@@ -306,6 +306,7 @@
         <div class="note-sub">
           <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt, note.noTime)}</button>
           <div class="note-labels js-labels"></div>
+          <button type="button" class="note-bridge js-bridge" aria-label="つながる記録" hidden>${icon("sprout")}</button>
         </div>
         <div class="note-view js-view" hidden></div>
         <div class="note-ink js-ink">
@@ -774,8 +775,9 @@
       if (vv) vv.removeEventListener("resize", onViewport);
       document.removeEventListener("selectionchange", onSel);
       sync();
-      /* 何も書かずに閉じた新しいノートは残しません。 */
-      if (fresh && stored && blank()) N().drop(note.id);
+      if (offBridge) offBridge();
+      /* 何も書かずに閉じた新しいノートは残しません。つながった記録があれば残す（段6の橋）。 */
+      if (fresh && stored && blank() && !KN.store.entriesOfNote(note.id).length) N().drop(note.id);
       N().flush();
       renderBody();
       /* 消したとき（最近削除へ移した）は、そちらの知らせ（元に戻す）を残します。 */
@@ -826,6 +828,37 @@
         sync();
         KN.activity.noteToRoad({ id: note.id, title: N().headOf(N().get(note.id) || note), day: U.todayKey() });
       } }]);
+
+    /* 種をまく（段6の橋。docs/bridge-design.md）。書いたノートだけ（道に置くと同じ条件）。種の記録の紙が
+       重なって開き、閉じればノートへ戻る。 */
+    const seedItem = () => (!stored || blank() || !KN.screens.archive || !KN.screens.archive.seedFromNote ? []
+      : [{ icon: "sprout", label: "種をまく", onPick: () => { sync(); KN.screens.archive.seedFromNote(note.id); } }]);
+
+    /* つながる記録の札（日時・タグの行）。あるときだけ、絵だけ・数なし。押すと小窓に記録の行。 */
+    const bridgeBtn = body.querySelector(".js-bridge");
+    const paintBridge = () => { bridgeBtn.hidden = !stored || !KN.store.entriesOfNote(note.id).length; };
+    bridgeBtn.addEventListener("click", () => {
+      KN.motion.fire("select");
+      const p = popOver(bridgeBtn, { role: "menu", side: "right", label: "つながる記録" });
+      const types = KN.store.ARCHIVE_TYPES;
+      KN.store.entriesOfNote(note.id).forEach((x) => {
+        const t = types.find((y) => y.id === x.type) || types[0];
+        const ico = x.type === "reading" ? (x.kind === "paper" ? "paper" : "book") : t.icon;
+        const head = x.type === "seed" ? (String(x.memo || "").split("\n").find((l) => l.trim()) || x.title || t.label)
+          : (x.title || t.label);
+        const r = node(html`
+          <button class="note-pop-item note-bridge-row" role="menuitem" data-id="${x.id}">${icon(ico)}<span class="note-pop-main"><span>${head}</span><small class="note-pop-sub">${U.formatDate(`${x.date}T00:00`)}</small></span></button>`);
+        r.addEventListener("click", () => {
+          KN.motion.fire("select");
+          p.close();
+          KN.screens.archive.openEntry(x.id, { under: note.id });
+        });
+        p.el.append(r);
+      });
+      p.place();
+    });
+    paintBridge();
+    const offBridge = KN.store.subscribe(paintBridge);
 
     /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
        姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
@@ -892,7 +925,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), menu.slice(2), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), seedItem(), menu.slice(2), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
@@ -1116,6 +1149,52 @@
     h = KN.ui.sheet({ title: "最近削除した項目", content: box });
   }
 
+  /* ---------------- 積み上げ⇄ノートの橋（段6。docs/bridge-design.md） ---------------- */
+
+  /** 記録が指すノートを引く。見つかる `{ state: "found", id, title }`・見つからない（無い／最近削除）
+      `{ state: "missing", id }`・入れ物が開いていない日は null（何も出さず、何も書かない）。 */
+  function findNote(id) {
+    if (!id || N().state() !== "on") return null;
+    const n = N().get(id);
+    return n && !n.deletedAt ? { state: "found", id, title: headOf(n) || "ノート" } : { state: "missing", id };
+  }
+
+  /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。 */
+  function pickNote(onPick) {
+    if (N().state() !== "on") return null;
+    const box = node(html`
+      <div class="stack gap-2">
+        <div class="search-bar">
+          ${icon("search")}
+          <input class="search-input js-q" placeholder="ノートをさがす" aria-label="ノートをさがす"
+                 autocomplete="off" spellcheck="false" enterkeyhint="search">
+        </div>
+        <div class="notes-versions js-rows"></div>
+      </div>
+    `);
+    const q = box.querySelector(".js-q");
+    const rows = box.querySelector(".js-rows");
+    let h = null;
+    const paint = () => {
+      const w = U.foldKana(q.value.trim());
+      rows.innerHTML = "";
+      N().list().filter((n) => !w || U.foldKana(`${n.title}\n${n.body}`).includes(w)).forEach((n) => {
+        const r = node(html`
+          <button class="note-open note-ver" data-id="${n.id}">
+            <span class="note-d">${stampOf(n.updatedAt)}</span>
+            <span class="note-t">${headOf(n) || " "}</span>
+          </button>
+        `);
+        r.addEventListener("click", () => { KN.motion.fire("select"); if (h) h.close(); onPick(n.id); });
+        rows.append(r);
+      });
+    };
+    q.addEventListener("input", paint);
+    paint();
+    h = KN.ui.sheet({ title: "ノートにつなぐ", content: box });
+    return h;
+  }
+
   /* ---------------- ＋ ---------------- */
 
   function dockButton() {
@@ -1133,5 +1212,6 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.notes = { mount, render, dockButton, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES };
+  KN.screens.notes = { mount, render, dockButton, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
+    find: findNote, pick: pickNote };
 })();
