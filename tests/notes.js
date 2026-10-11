@@ -379,6 +379,27 @@ const { open, checker } = require("./lib");
   t.check("一覧に件数を出さない", !/\d+\s*件/.test(text));
   t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(text.replace(/★/g, "")));
 
+  /* ---- 読んで戻っても、一覧の送り位置はそのまま ---- */
+  await page.evaluate(() => {
+    for (let i = 0; i < 30; i++) KN.notes.put({ ...KN.notes.draft(), id: `n-sc${i}`, title: `送り${i}`, body: "本文" });
+    KN.screens.notes.render();
+  });
+  await page.waitForTimeout(400);
+  const y0 = await page.evaluate(() => {
+    const sc = KN.app.scrollerOf(document.getElementById("screen-notes"));
+    sc.scrollTop = 900;
+    return sc.scrollTop;
+  });
+  const mid = await page.evaluateHandle(() => [...document.querySelectorAll("#screen-notes .note-row .js-open")]
+    .find((b) => { const r = b.getBoundingClientRect(); return r.top > 150 && r.bottom < innerHeight - 150; }));
+  await mid.click();
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.waitForTimeout(500);
+  await closeSheet();
+  await page.waitForTimeout(600);
+  const y1 = await page.evaluate(() => KN.app.scrollerOf(document.getElementById("screen-notes")).scrollTop);
+  t.check("読んで戻っても、一覧は頭へ飛ばない", y0 > 300 && Math.abs(y1 - y0) <= 2, `${y0} → ${y1}`);
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();

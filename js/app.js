@@ -1541,6 +1541,11 @@
   /* The one pixel the document is given, and where it rests. */
   const TOP_TAP_PARK = 1;
   const topTapOn = () => document.documentElement.classList.contains("has-top-tap");
+  /* 紙を閉じた直後は（閉じる拍にキーボードも下りる）、窓が 0 へ戻るのを上のきわの
+     一押しと読みません（iPhone でノートを読んで戻ると一覧が頭へ送られた。
+     2026年10月11日、利用者）。 */
+  let topTapHushUntil = 0;
+  KN.app.hushTopTap = () => { topTapHushUntil = performance.now() + 1200; };
 
   const activeScreen = () => document.querySelector(".screen.is-active");
 
@@ -1642,7 +1647,7 @@
     window.addEventListener("scroll", () => {
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
-      const quiet = !touching && !isGliding() && !(KN.reorder && KN.reorder.isActive());
+      const quiet = !touching && !isGliding() && performance.now() > topTapHushUntil && !(KN.reorder && KN.reorder.isActive());
       /* 紙が開いていれば、いちばん上の紙の本体を送る（長いノートなど。2026年10月4日）。 */
       const sheets = document.querySelectorAll(".sheet.is-open");
       const top = sheets.length ? sheets[sheets.length - 1].querySelector(".sheet-body") : null;

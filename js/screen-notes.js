@@ -147,6 +147,10 @@
        とたんに、列が頭へ戻らないように）。 */
     const was = box.querySelector(".notes-chips");
     const keepX = was ? was.scrollLeft : 0;
+    /* 縦の送りも保ちます。空にした瞬間に器が縮んで 0 へ詰められ、読んで
+       戻ると一覧の頭へ飛ばされていました（2026年10月11日、利用者）。 */
+    const sc = root ? KN.app.scrollerOf(root) : null;
+    const keepY = sc ? sc.scrollTop : 0;
     box.innerHTML = "";
     const st = N().state();
     if (st === "off") {
@@ -171,6 +175,7 @@
       t.addEventListener("click", () => { KN.motion.fire("select"); openTrash(); });
       box.append(t);
     }
+    if (sc && sc.scrollTop !== keepY) sc.scrollTop = keepY;
   }
 
   /* ---------------- 絞り込みのチップ（段3・roadmap-2.0 の V20） ----------------
