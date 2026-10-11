@@ -5276,7 +5276,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   touch-action: pan-y pinch-zoom;
   /* 下の帯のぶんは、紙の中の余白が持ちます（器が変わったので、画面の
      padding では中身の下に空きができません）。 */
-  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+  padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + var(--sp-8) + var(--sp-6));
 }
 /* 中で送るようになったので、掴み手が避ける相手はもういません（上のバーも
    暦も紙の外）。紙の上端に貼りつけば、それが外枠の頭です。 */
@@ -5313,7 +5313,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    中身の長さまで伸びるので、余白は必ず中身のあとに付いてきます。
    中身が短い日は、これまでどおり `flex: 1` が下まで伸ばします
    （`min-height` の既定は「伸びない」を言わないので）。 */
-.prices-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
+.prices-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + 56px + var(--sp-6)); }
 
 /* ---------------- ノート（daily の紙の裏。docs/notes.md） ----------------
 
@@ -5322,7 +5322,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    答える）。下まで伸ばすのは `flex` だけで、`min-height: 0` は持たせません
    （価格の地と同じ理由——末尾の余白が中身の後ろに付いてくるように）。 */
 #screen-notes > .stack { flex: 1; min-height: 0; }
-.notes-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
+.notes-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + 56px + var(--sp-6)); }
 .notes-list { display: flex; flex-direction: column; }
 /* 行のあいだに線は引きません（余白だけで分かれる。価格の行と同じ）。 */
 .note-row {

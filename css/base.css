@@ -1256,8 +1256,9 @@ a { color: var(--c-primary); }
   flex-direction: column;
   /* 下の帯は浮いていて場所を取らないので、その高さぶんは画面が自分で
      持ちます（--tabbar-space）。足しているのは、帯が板だったころに
-     最後の一件の下にあったのと同じ余白です。 */
-  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+     最後の一件の下にあったのと同じ余白です。＋ が帯の上に立つ画面は、
+     そのぶん（`--fab-room`）も。 */
+  padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + var(--sp-8) + var(--sp-6));
   scrollbar-width: thin;
   /* Opaque, so nothing behind a screen shows through while the band at
      either end slides it. */
@@ -2190,46 +2191,25 @@ a { color: var(--c-primary); }
               scale var(--m-press) var(--ease-out);
 }
 
-/* ---------------- ＋ は帯のとなりに ----------------
+/* ---------------- ＋ は帯の右端の上に ----------------
 
-   ＋ は帯の上に浮いていました。参考にした画面（Structured）では、帯と
-   ＋ が横に並んで一つの列を作ります。そのほうが二つの関係がはっきり
-   します——帯は「どこを見るか」、＋ は「足す」。上下に重なっていると、
-   ＋ が帯の一部なのか別のものなのかが曖昧で、しかも一覧のいちばん下の
-   行に必ずかぶっていました。
+   ＋ は帯の右どなりに並んでいました（帯はそのぶん縮んでいた）。席が五つに
+   なって（docs/screens-nav.md の「帯は五つ」）、縮めた帯では一つの持ち場が
+   狭すぎるので、**帯は画面いっぱいのまま、＋ はその右端の上に**立ちます
+   ——カプセルの上端から `--fab-gap` 上、右端はカプセルの右端にそろえる。
+   帯を縮める規則（`.has-fab .tabbar` の `padding-right` と、カプセルの形を
+   した四つの `right`）は無くなりました。
 
-   帯は ＋ のぶんだけ狭くなります。四つの持ち場はそのぶん詰まりますが、
-   もともと一つ 90px 以上あるので、字が折れることはありません。 */
-:root { --fab-size: 56px; --fab-gap: 8px; }
+   ＋ が帯の上に立つので、一覧の底の余白とトーストは ＋ のぶん（`--fab-room`）
+   上がります。＋ の無い画面では 0。 */
+:root { --fab-size: 56px; --fab-gap: 8px; --fab-room: 0px; }
+.has-fab { --fab-room: calc(var(--fab-size) + var(--fab-gap)); }
 
-.has-fab .tabbar { padding-right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
-/* ＋が居るとき、カプセルはその手前で終わります。**カプセルの形をしている
-   ものは、一つ残らず一緒に縮めること**——地（::before）・縁の光（::after）・
-   縁の屈折（`.tab-edge`）・押しているあいだの光（`.tab-hold`）の四つです。
-   `.tab-edge` をここに書き忘れて、縁の屈折だけが帯の端まで伸びたまま
-   ——**カプセルと＋をまとめて囲む大きな輪**が出ました（内と外で材が違う
-   ので、別々のものを重ねて置いたように見えます）。
-
-   **四つとも、この一か所で縮めること。** `.tab-hold` の前身（`.tab-glow`）は
-   自分の `right` を別の行に持っていて、それが「三つ」と数え違えた元です
-   ——離して書くと、次に一つ足した人が必ずどれかを落とします。 */
-.has-fab .tabbar::before,
-.has-fab .tabbar::after,
-.has-fab .tab-edge,
-.has-fab .tab-hold { right: calc(var(--sp-3) + var(--fab-size) + var(--fab-gap)); }
-
-/* **席の印（`.tab-lens`）は、この四つに入りません。** あれは「カプセルの
-   形をしているもの」——帯いっぱいに広がっていて、＋の手前で終わらせる
-   必要があるものです。印は席一つぶんの大きさで、位置も大きさも JS が
-   席の箱から測って書くので、＋のぶんはすでに入っています（席がそのぶん
-   狭い）。ここへ足すと、`right` と `transform` が取り合って行き先が
-   ずれます。 */
-
-/* ＋ の置き場。帯のカプセルと上下の中心を合わせます。 */
+/* ＋ の置き場。カプセルの上端（`--tab-drop` ＋ `--tab-cap`）から `--fab-gap` 上。 */
 .has-fab .dock {
   left: auto;
   right: var(--sp-3);
-  bottom: calc(var(--tab-drop) + (var(--tab-cap) - var(--fab-size)) / 2);
+  bottom: calc(var(--tab-drop) + var(--tab-cap) + var(--fab-gap));
 }
 .has-fab .quick-add { justify-content: flex-end; }
 /* ＋ から立ち上がる候補も、右端にそろえます（＋ の真上から出るように）。 */
@@ -2237,7 +2217,7 @@ a { color: var(--c-primary); }
 
 /* キーボードが出ているあいだは、＋ も**引っ込みます**。
 
-   帯と横に並ぶようになったので、帯だけが消えて ＋ が残ると、書いている
+   帯だけが消えて ＋ が残ると、書いている
    欄の上に丸だけが浮きます（ダイエットの食事欄で実際にそうなりました）。
    打っている最中に足すものは無いので、一緒に下がってもらいます。 */
 .has-fab.kb-open .dock { opacity: 0; pointer-events: none; transform: translateY(120%); }

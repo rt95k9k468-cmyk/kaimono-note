@@ -1264,9 +1264,9 @@
       const fab = make ? make() : null;
       if (fab) dock.append(fab);
       dock.hidden = !dock.childElementCount;
-      /* ＋ は帯の**右どなり**に立ちます（参考にした画面と同じ並び）。
-         その日は帯のほうが一つぶん狭くなるので、あるかないかを根に
-         書いておいて、CSS がそこから幅を決めます。 */
+      /* ＋ は帯の**右端の上**に立ちます（base.css の「＋ は帯の右端の上に」）。
+         一覧の底とトーストがそのぶん上がるので、あるかないかを根に
+         書いておいて、CSS がそこから余白を決めます。 */
       document.documentElement.classList.toggle("has-fab", !dock.hidden);
     }
 

@@ -5,6 +5,7 @@
    - V26：帰りは --m-sheet-close より長く（一瞬で閉じない）、＋の大きさ近くまで縮む
    - U17：＋の紙は四隅の丸いカード（is-fab-card）
    - U17：打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ縮んで帰る
+   - ＋は帯の右端の上（カプセル上端から 8px 上・右端そろえ）、帯は画面いっぱい。一覧の底とトーストは＋より上
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fab-home.js */
 const { open, checker } = require("./lib");
 
@@ -63,9 +64,28 @@ const { open, checker } = require("./lib");
       && parseFloat(cs.borderBottomLeftRadius) > 10;
   });
 
-  /* ---- やること：＋から ---- */
+  /* ---- 置き場：＋は帯の右端の上。帯は縮まない（docs/tabbar.md） ---- */
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(700);
+  const geo = await page.evaluate(() => {
+    const bar = document.getElementById("tabbar"), b = bar.getBoundingClientRect();
+    const cap = getComputedStyle(bar, "::before");
+    const capR = innerWidth - parseFloat(cap.right), capTop = b.top + parseFloat(cap.top);
+    const f = document.querySelector("#dock .add-fab").getBoundingClientRect();
+    const sc = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
+    KN.ui.toast("試験");
+    const toast = document.querySelector("#toast-root .toast").getBoundingClientRect();
+    return { capR, capTop, padR: getComputedStyle(bar).paddingRight, f: { top: f.top, bottom: f.bottom, right: f.right },
+      floor: innerHeight - parseFloat(getComputedStyle(sc).paddingBottom), toastBottom: toast.bottom, w: innerWidth };
+  });
+  t.check("置き場：帯は画面いっぱい（＋のぶん縮めない）", geo.padR === "12px" && Math.abs(geo.capR - (geo.w - 12)) < 1, JSON.stringify(geo));
+  t.check("置き場：＋の右端はカプセルの右端", Math.abs(geo.f.right - geo.capR) < 1, JSON.stringify(geo));
+  t.check("置き場：＋はカプセル上端から 8px 上", Math.abs(geo.capTop - geo.f.bottom - 8) < 1, JSON.stringify(geo));
+  t.check("置き場：一覧の底は＋より上", geo.floor < geo.f.top, JSON.stringify(geo));
+  t.check("置き場：トーストは＋より上", geo.toastBottom < geo.f.top, JSON.stringify(geo));
+  await page.evaluate(() => document.querySelectorAll("#toast-root .toast").forEach((e) => e.remove()));
+
+  /* ---- やること：＋から ---- */
   const fab = await center("#dock .add-fab");
   await page.mouse.click(fab.x, fab.y);
   await page.waitForTimeout(900);

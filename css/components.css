@@ -1509,7 +1509,8 @@ button.hero-node:active { scale: var(--press-dot); }
 .toast-root {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tabbar-space) + var(--sp-3));
+  /* ＋ が帯の上に立つ画面では、そのぶん（`--fab-room`）上に。 */
+  bottom: calc(var(--tabbar-space) + var(--fab-room) + var(--sp-3));
   translate: -50% 0;
   z-index: var(--z-toast);
   display: flex;
