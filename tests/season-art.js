@@ -111,11 +111,13 @@ const ROOT = path.resolve(__dirname, "..");
   await page.waitForFunction(() => document.querySelector("#screen-notes").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
   const readNotes = () => page.evaluate(() => {
     const el = document.querySelector("#screen-notes");
-    return { k: el.getAttribute("data-season"), img: el.hasAttribute("data-season-img"), bg: getComputedStyle(el).backgroundImage,
+    /* 絵は帯の後ろの一枚（上から一枚の絵）。画面は地を塗らない。 */
+    return { k: el.getAttribute("data-season"), img: el.hasAttribute("data-season-img"),
+             bg: getComputedStyle(document.getElementById("head"), "::after").backgroundImage, own: getComputedStyle(el).backgroundImage,
              want: KN.season.of(KN.util.todayKey()).k, c: el.style.getPropertyValue("--season-c") };
   });
   let rn = await readNotes();
-  c.check("ノートの地に今日の候の色と広重", rn.k === String(rn.want) && rn.img && rn.c === await page.evaluate((k) => KN.seasonArt.colorOf(k), rn.want)
+  c.check("ノートの地に今日の候の色と広重（帯の上端から一枚、画面は透かす）", rn.own === "none" && rn.k === String(rn.want) && rn.img && rn.c === await page.evaluate((k) => KN.seasonArt.colorOf(k), rn.want)
     && rn.bg.includes(`/img/season/k${String(rn.want).padStart(2, "0")}.webp`) && (rn.bg.match(/linear-gradient/g) || []).length === 2, JSON.stringify(rn).slice(0, 240));
   await page.evaluate(() => { KN.store.update((s) => { s.settings.notesSeasonArt = false; }); KN.screens.notes.render(); });
   c.check("ノートの設定で外せば敷かない（daily はそのまま）", await page.evaluate(() => !document.querySelector("#screen-notes").hasAttribute("data-season")
