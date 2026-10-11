@@ -89,6 +89,9 @@
     KN.head.putCal("notes", null);
     /* 季節の絵（3.0 の E1）。今日の候の色と広重を地の後ろに（daily は写真。docs/season-art.md）。 */
     if (KN.seasonArt) KN.seasonArt.apply(root, U.todayKey(), "notes");
+    /* 敷くのは帯の後ろの一枚（帯の上端から画面の下まで。css の「ノートは上から一枚の絵」）。
+       画面の印（data-season）はカードの透かしと試験のために残す。 */
+    if (KN.seasonArt) KN.seasonArt.apply(document.getElementById("head"), U.todayKey(), "notes");
     renderBody();
   }
 

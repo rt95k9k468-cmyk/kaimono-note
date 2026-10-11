@@ -5243,9 +5243,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 一覧のカードは少しだけ透かし、後ろの絵をほんのり見せる（2026年10月7日、利用者の頼み）。開いた紙は透かさない。 */
 #screen-notes[data-season] .note-row.is-card { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
 /* 暗い色のときは、さらに薄く。 */
-:root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
+:root[data-theme="dark"] :is(#screen-archive, #screen-notes, #head) { --season-tint: 14%; --season-alpha: 14%; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
+  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes, #head) { --season-tint: 14%; --season-alpha: 14%; }
 }
 /* 紙まで、高さの割り当てを通します。途中の箱が `flex:1; min-height:0` を
    持っていないと、紙は中身ぶんに伸びて器になりません。 */
