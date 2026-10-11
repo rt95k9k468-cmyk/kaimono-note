@@ -2239,7 +2239,9 @@
       </div>
     `);
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", content: body, footer: foot, guard: true,
+    /* 背いっぱいの丸角カード（日記の書く紙と同じ .is-card。2026年10月11日、利用者）。高さが決まって
+       いるので、札を押して行が増えても札が上へ逃げない（中身ぶんの紙だと上へ伸び、続けて押すと下の札に当たった）。 */
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", cls: "is-card", content: body, footer: foot, guard: true,
       menu: editing ? KN.ui.delMenu(() => store.removeDrink(editing.id), { sheet: () => h, after: render }) : null });
 
     const q = body.querySelector(".js-q");

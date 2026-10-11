@@ -6,7 +6,8 @@
    - 保存は今までと同じ一件の形。純アルコールは ml × 度数 ÷ 100 × 0.8。
    - raw を読み直すと同じ中身になる（「直す」の紙は raw を読み直すので）。
    - 糖質ゼロ・焼酎・ワインの量と純アルコール、raw の読み直し。既存の記録は変わらない。
-   - 札も −/＋ も指の的は44px以上。横にはみ出さない。絵文字なし・例外なし。 */
+   - 札も −/＋ も指の的は44px以上。横にはみ出さない。絵文字なし・例外なし。
+   - 紙は背いっぱいの丸角カード（.is-card）。押して行が増えても札は動かない（10月11日）。 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -68,8 +69,12 @@ const { open, checker } = require("./lib");
   c.check("どの札にも絵がある", f.every((x) => x.ico), JSON.stringify(f));
   c.check("札の的は44px以上・はみ出さない", f.every((x) => x.h >= 44 && !x.out), JSON.stringify(f));
 
+  c.check("背いっぱいの丸角カード", await page.evaluate(() =>
+    [...document.querySelectorAll(".sheet.is-open")].pop().classList.contains("is-card")));
   await tap("ビール");
   await page.waitForTimeout(150);
+  const moved = (await favs()).filter((x, i) => x.y !== f[i].y || x.x !== f[i].x);
+  c.check("押しても札は動かない（続けて押せる）", moved.length === 0, JSON.stringify(moved));
   let p = await picks();
   c.check("押すと一本の行が出る", p.length === 1 && p[0].n === "1本", JSON.stringify(p));
   c.check("−/＋の的は44px以上", p.every((x) => x.h >= 44), JSON.stringify(p));
