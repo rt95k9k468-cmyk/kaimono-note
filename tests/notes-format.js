@@ -217,11 +217,14 @@ const { open, checker } = require("./lib");
   }));
   t.check("四角を押すとチェック（本文は「- [x] 」）", ticked.v.includes("- [x] 牛乳") && ticked.done === 1 && !ticked.writing, JSON.stringify(ticked));
 
-  /* 行を押す → その行の終わりにカーソル */
-  await page.click(".sheet.is-note .nv-li.is-task:nth-of-type(3) .nv-t");
+  /* 行を押す → 押した字のところにカーソル（字の右寄りなら字のあと） */
+  {
+    const bx = await page.$eval(".sheet.is-note .nv-li.is-task:nth-of-type(3) .nv-t", (e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; });
+    await page.click(".sheet.is-note .nv-li.is-task:nth-of-type(3) .nv-t", { position: { x: bx.w - 2, y: bx.h / 2 } });
+  }
   f = await field();
   const egg = f.v.indexOf("卵") + 1;
-  t.check("押した行の終わりにカーソル", f.s === egg && await page.evaluate(() => document.activeElement.classList.contains("note-body-in")), `${f.s} / ${egg}`);
+  t.check("押した字のあとにカーソル", f.s === egg && await page.evaluate(() => document.activeElement.classList.contains("note-body-in")), `${f.s} / ${egg}`);
 
   const id = await page.evaluate(() => KN.notes.list()[0].id);
   await closeSheet();
@@ -264,6 +267,61 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => !document.querySelector(".note-pop"), null, { timeout: 3000 }).catch(() => {});   // 縮んで帰ってから消える
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
   await closeSheet();
+
+  /* ---- 押した字にカーソル：長い段落の途中を押しても、段落の終わりへ飛ばない・字は同じ高さのまま ---- */
+  {
+    const longP = `・${"あ".repeat(60)}**太い**${"い".repeat(40)}目${"う".repeat(120)}`;
+    await page.click("#dock .add-fab");
+    await page.waitForSelector(".sheet.is-note.is-open");
+    await page.waitForTimeout(400);
+    await page.fill(".sheet.is-note .js-text", `${Array.from({ length: 30 }, (_, i) => `本文${i}`).join("\n")}\n${longP}\nおわり`);
+    await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-note .note-view").hidden);
+    /* 目を、紙の真ん中あたりへ送ってから、その字の左寄りを押す（字の前にカーソル）。 */
+    const eye = () => page.evaluate((sel) => {
+      const root = document.querySelector(sel);
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        const i = n.nodeValue.indexOf("目");
+        if (i < 0) continue;
+        const r = document.createRange();
+        r.setStart(n, i);
+        r.setEnd(n, i + 1);
+        const b = r.getBoundingClientRect();
+        return { x: b.left, y: (b.top + b.bottom) / 2, w: b.width };
+      }
+      return null;
+    }, ".sheet.is-note .note-view");
+    await page.evaluate(() => {
+      const b = document.querySelector(".sheet.is-note .sheet-body");
+      b.scrollTop = 0;
+      const p = [...document.querySelectorAll(".sheet.is-note .nv-p")].find((e) => e.textContent.includes("目"));
+      b.scrollTop = p.getBoundingClientRect().top - b.getBoundingClientRect().top - 120;
+    });
+    await page.waitForTimeout(100);
+    const at = await eye();
+    await page.mouse.click(at.x + at.w * 0.25, at.y);
+    await page.waitForTimeout(150);
+    const got = await field();
+    const want = got.v.indexOf("目");
+    t.check("押した字のところにカーソル（段落の終わりへ飛ばない）", got.s === want, `${got.s} / ${want}`);
+    const inkAt = await page.evaluate(() => {
+      const root = document.querySelector(".sheet.is-note .js-ink");
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        const i = n.nodeValue.indexOf("目");
+        if (i < 0) continue;
+        const r = document.createRange();
+        r.setStart(n, i);
+        r.setEnd(n, i + 1);
+        const b = r.getBoundingClientRect();
+        return (b.top + b.bottom) / 2;
+      }
+      return null;
+    });
+    t.check("押した字は、書く欄でも同じ高さ（画面が飛ばない）", inkAt != null && Math.abs(inkAt - at.y) < 12, `${at.y} → ${inkAt}`);
+    await closeSheet();
+  }
 
   /* ---- 長いノートの見出しへ飛ぶ（R32）：三つ以上で出る・二つで出ない・押すと紙の上に来る ---- */
   const filler = Array.from({ length: 30 }, (_, i) => `本文${i}`).join("\n");

@@ -197,6 +197,24 @@
     return box;
   }
 
+  /** 整えた姿の行で k 字め（印・「**」を外した字の数え方）が、本文の行では何字めか。
+      押した字にカーソルを入れるため（2026年10月12日、利用者「全然違うところに飛ぶ」）。 */
+  function sourceAt(line, k) {
+    const p = parse(String(line || ""));
+    const t = p.text || "";
+    let src = 0;
+    let shown = 0;
+    for (const { a, b } of boldSpans(t)) {
+      if (k <= shown + a - src) break;
+      shown += a - src;
+      src = a + 2;
+      if (k <= shown + b - 2 - src) break;
+      shown += b - 2 - src;
+      src = b;
+    }
+    return p.lead + Math.min(t.length, src + Math.max(0, k - shown));
+  }
+
   /** 一行の中身を入れる。太字は <strong>、字はどれも textContent。 */
   function fill(el, text) {
     let at = 0;
@@ -462,5 +480,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, searchable, unbold, headings, render, ink, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, searchable, unbold, headings, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();
