@@ -1,7 +1,7 @@
 /* ノートの設定（docs/notes.md の「設定」）。
 
-   daily の歯車からも、ノートの面の歯車からも、daily の下に notes の見出しで
-   並び・ノートブック・タグ・書き出し／「並び」は daily の表示から移った（鍵は
+   ノートの席の歯車で notes の見出しだけ（daily の歯車には出ない。2026年10月11日から五つめの席）で
+   並び・ノートブック・タグ・書き出し・ロック／「並び」は daily の表示から移った（鍵は
    notesOrder のまま）／ノートブックの名前を付け替える（最近削除のノートも・
    更新日は動かない・題が追いかける）／色を選ぶと一覧のカードもその色／もうある
    名前へ付け替えると訊いてからまとめる（色はまとめ先）／タグを外してもノートは
@@ -48,7 +48,7 @@ print(json.dumps(out, ensure_ascii=False))
   /* 一枚が押し出し終わるまで待つ。動いているあいだの押しは、画面がわざと捨てる（二重に積まない。
      screen-settings.js の moving）。決め打ちの300msは押し出し（2フレーム＋--m-push＋20ms）と競って、まれに捨てられていた。 */
   const layerStill = () => page.waitForFunction(() => !document.querySelector(".set-layer.is-edge-lift"));
-  /* last … 同じ名前の行が二つあるとき（daily と notes の「書き出し」）は下のほう。 */
+  /* last … 同じ名前の行が二つあるときは下のほう。 */
   const into = async (text, last) => {
     const n = await layers();
     const rows = page.locator(`${top} .set-row`, { hasText: text });
@@ -102,21 +102,20 @@ print(json.dumps(out, ensure_ascii=False))
   await page.evaluate(() => KN.app.showScreen("archive"));
   await settled("archive");
   await openSettings();
-  t.check("daily の歯車：daily → notes → General の順", (await heads()).join() === "daily,notes,General", (await heads()).join());
-  const R0 = await topText();
-  t.check("notes に並び・ノートブック・タグ・書き出し",
-    ["並び", "ノートブック", "タグ", "書き出し"].every((x) => R0.includes(x)) && R0.includes("「あの日」を出す"), R0.slice(0, 300));
-  t.check("並びの右に「直した日」", /並び\s*直した日/.test(R0));
+  t.check("daily の歯車：daily → General（notes は出ない）", (await heads()).join() === "daily,General", (await heads()).join());
+  t.check("daily の歯車にノートの並びは出ない", !/並び/.test(await topText()));
   await into("表示");
   t.check("daily の表示に「ノートの並び」はもう無い", !(await topText()).includes("ノートの並び"));
   await back();
 
-  await page.evaluate(() => KN.app.showScreen("archive"));
-  await settled("archive");
-  await page.click('.tab[data-tab="archive"]');
+  await page.click('.tab[data-tab="notes"]');
   await settled("notes");
   await openSettings();
-  t.check("ノートの面の歯車でも daily → notes → General", (await heads()).join() === "daily,notes,General", (await heads()).join());
+  t.check("ノートの席の歯車：notes → General", (await heads()).join() === "notes,General", (await heads()).join());
+  const R0 = await topText();
+  t.check("notes に並び・ノートブック・タグ・書き出し・ロック（daily の行は出ない）",
+    ["並び", "ノートブック", "タグ", "書き出し", "ロック"].every((x) => R0.includes(x)) && !R0.includes("「あの日」を出す"), R0.slice(0, 300));
+  t.check("並びの右に「直した日」", /並び\s*直した日/.test(R0));
 
   /* ---- 並び ---- */
   await into("並び");

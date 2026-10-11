@@ -1,10 +1,8 @@
 /* =========================================================
-   くらしノート — ノート（daily の紙の裏）
+   くらしノート — ノート（下の帯の五つめの席）
 
-   決めごとは docs/notes.md。daily に居て daily の席を押すと、daily の紙が
-   下がって、この面（地）が出ます——買うもの⇄価格と同じ手つき（app.js の
-   PAIRS）。だからここも価格と同じく**紙を持ちません**。丸角と掴み手を
-   持てるのは前に居る一枚（daily）だけです。
+   決めごとは docs/notes.md。2026年10月11日までは daily の紙の裏（地）だったので、
+   いまも**紙を持たない**地のまま——画面そのものが送ります。暦も持ちません。
 
    中身は `KN.notes`（js/notes-idb.js）が記憶に持っています。一覧・検索は
    その上でするだけで、ここからは store にも localStorage にも書きません。
@@ -53,8 +51,7 @@
   function mount(el) {
     root = el;
     root.innerHTML = "";
-    /* 上の帯と暦は画面の外（js/head.js）。暦は daily のものをそのまま置くので、
-       行き来しても帯は変わりません。 */
+    /* 上の帯は画面の外（js/head.js）。 */
     root.append(node(html`
       <div class="stack">
         <div class="search-wrap js-search-wrap">
@@ -88,8 +85,8 @@
 
   function render() {
     if (!root) return;
-    const arc = KN.screens.archive;
-    KN.head.putCal("notes", arc && arc.cal ? arc.cal() : null);
+    /* ノートの席は暦を持ちません（docs/notes.md「五つめの席」）。帯は題「Notes」・さがす・設定だけ。 */
+    KN.head.putCal("notes", null);
     /* 季節の絵（3.0 の E1）。今日の候の色と広重を地の後ろに（daily は写真。docs/season-art.md）。 */
     if (KN.seasonArt) KN.seasonArt.apply(root, U.todayKey(), "notes");
     renderBody();

@@ -1025,18 +1025,44 @@ a { color: var(--c-primary); }
 /* 薄いところから出るだけ。暦の印・ダイエットの線ほか、同じ中身は名前を一つに（U5）。 */
 @keyframes fade-in { from { opacity: 0; } }
 
-/* ---- ノートでは暦をしまう（docs/notes.md「ノートでは暦をしまう」） ----
+/* ---- 暦の出入り（ノートの席は暦を持たない。js/head.js の moveCal） ----
 
-   daily の紙を下げてノートへ移るあいだ、暦は帯の裏へ上がって薄れ、
-   その丈（`--face-lift`、app.js の faceOpen が測る）だけ下の面が上がります。
-   数は紙と同じ `--face-p` 一つ——指で引いても、離して滑っても、紙・暦・題が
-   ずれません。留まった紙の位置は app.js の faceDist が、上がるぶんを足して
-   測ります。題は日付から「Notes」へ、右の暦の絵と今日へ戻るは消えます。 */
-.screens.is-notes-lift .head-cal {
-  margin-bottom: calc(-1 * var(--face-p, 0) * var(--face-lift, 0px));
-  translate: 0 calc(-1 * var(--face-p, 0) * var(--face-lift, 0px));
-  opacity: calc(1 - var(--face-p, 0));
+   暦のある席 ⇄ ノートを横に流すあいだ、暦は帯の裏へ上がって（下りて）薄れ、
+   下の画面（`#panes`）は同じだけ上がり（下がり）ます。速さと曲線は横の流れ
+   （`.is-in-r` ほか）と同じ。並びは最初の一拍で行き着く先にしてあり、ここで
+   動かすのは見かけ（`translate`・`opacity`・`clip-path`）だけです——毎フレーム
+   並べ直さない。丈（`--cal-move`）は head.js が一度だけ測って、両方に書きます。
+
+   出ていく暦は流れの外へ（`position: absolute`）。下の画面がその場で丈ぶん
+   上がるので、`translate` で元の位置から上げていきます。上がった所（帯の下の
+   線より上）は切ります——帯が空を透かしているとき、暦が帯の中に見えないように。 */
+.head-cal.is-cal-out {
+  position: absolute;
+  left: 0; right: 0;
+  pointer-events: none;
+  animation: cal-out var(--m-nav) var(--ease-out) forwards;
 }
+/* 入ってくるほうは、同じ道を逆に。`reverse` にしないこと——曲線まで裏返って
+   `--ease-in` になり、横の流れ（`--ease-out`）とずれます。 */
+.head-cal.is-cal-in { animation: cal-in var(--m-nav) var(--ease-out); }
+.panes.is-cal-out { animation: panes-rise var(--m-nav) var(--ease-out); }
+.panes.is-cal-in  { animation: panes-drop var(--m-nav) var(--ease-out); }
+@keyframes cal-out {
+  from { translate: 0 0; opacity: 1; clip-path: inset(0 -50vw -50vh -50vw); }
+  to   { translate: 0 calc(-1 * var(--cal-move, 0px)); opacity: 0;
+         clip-path: inset(var(--cal-move, 0px) -50vw -50vh -50vw); }
+}
+@keyframes cal-in {
+  from { translate: 0 calc(-1 * var(--cal-move, 0px)); opacity: 0;
+         clip-path: inset(var(--cal-move, 0px) -50vw -50vh -50vw); }
+  to   { translate: 0 0; opacity: 1; clip-path: inset(0 -50vw -50vh -50vw); }
+}
+@keyframes panes-rise { from { translate: 0 var(--cal-move, 0px); } }
+@keyframes panes-drop { from { translate: 0 calc(-1 * var(--cal-move, 0px)); } }
+
+/* ノートの帯は、題「Notes」・さがす・設定だけ。日付と今日へ戻るは薄れ、
+   これからの二週間は場所ごと消えます。薄れるのは暦が動くあいだだけ
+   （`.topbar-day` の押した薄れに、この速さを移さないため）。 */
 .topbar-dayrow { position: relative; }
 .head-name {
   position: absolute;
@@ -1051,20 +1077,12 @@ a { color: var(--c-primary); }
   opacity: 0;
   pointer-events: none;
 }
-.screens.is-notes-lift .head-name { opacity: var(--face-p, 0); }
-.screens.is-notes-lift .topbar-day,
-.screens.is-notes-lift .js-go-today,
-.screens.is-notes-lift .js-upcoming { opacity: calc(1 - var(--face-p, 0)); }
-.screens.is-notes-lift:has(.is-face-settle) :is(.head-cal, .head-name, .topbar-day, .js-go-today, .js-upcoming) {
-  transition: margin var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
-              translate var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
-              opacity var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
+.head.is-notes .head-name { opacity: 1; }
+.head.is-notes :is(.topbar-day, .js-go-today) { opacity: 0; pointer-events: none; }
+.head.is-notes .js-upcoming { display: none; }
+.head:has(> .head-cal:is(.is-cal-out, .is-cal-in)) :is(.head-name, .topbar-day, .js-go-today) {
+  transition: opacity var(--m-nav) var(--ease-out);
 }
-/* 見えなくなったものは押せません。暦の絵が場所ごと消えるのはノートに
-   着いてから——戻り始めたら（`.is-face-front`）場所だけ先に返します。 */
-.head.is-notes :is(.head-cal, .topbar-day, .js-go-today, .js-upcoming) { pointer-events: none; }
-.screens:not(:has(.is-face-front)) .head.is-notes .js-upcoming { display: none; }
-
 /* ---- 帯の空（docs/sky.md・js/sky.js） ----
 
    上の帯と暦の後ろに、いまの時間帯（早朝・朝・昼・夕方・夜）の空を一枚。js は `#head` に
@@ -1115,10 +1133,6 @@ a { color: var(--c-primary); }
 }
 .head[data-sky] > .topbar,
 .head[data-sky] .cal { background: transparent; }
-/* ノートへ移るとき、暦は帯の裏へ上がります。帯が透けるので、上がった所（帯の下の線より上）を切る。 */
-.screens.is-notes-lift .head[data-sky] > .head-cal {
-  clip-path: inset(calc(var(--face-p, 0) * var(--face-lift, 0px)) -50vw -50vh -50vw);
-}
 .head[data-sky="dawn"]    { --sky-a: #b9d5f0; --sky-c: #eff6fc; --sky-d: #fdf4ec; }
 .head[data-sky="morning"] { --sky-a: #b3dbee; --sky-c: #ecf7f8; --sky-d: #f4faf3; }
 .head[data-sky="day"]     { --sky-a: #abd0f4; --sky-c: #eaf4fd; --sky-d: #f1f8fe; }
@@ -1368,18 +1382,14 @@ a { color: var(--c-primary); }
    です：位置はいつも同じところで、変わるのは**中身だけ**（「買うもの」→
    「価格」、買うものの札 → 価格の札）。動かない枠の中で名前が入れ替わる
    ほうが、「後ろの面が出てきた」と素直に読めます。 */
-/* daily の紙（ノートの前の一枚）は `.arc-body` の中に居ます（docs/notes.md）。
-   紙の規則は、どれも二つの場所に効かせること。 */
-.screen.is-face-front .stack > .tl-sheet,
-.screen.is-face-front .arc-body > .tl-sheet {
+.screen.is-face-front .stack > .tl-sheet {
   transform: translateY(calc(var(--face-p, 0) * var(--face-d, 0px)));
   will-change: transform;
 }
 /* 滑る長さと曲線は、**指が決めます**（app.js の faceSettle が
    `--face-ms` / `--face-ease` を書きます）。材の置き場所はここのまま、
    数だけが指から来る——書いていないときは `--m-swipe` に落ちます。 */
-.screen.is-face-front.is-face-settle .stack > .tl-sheet,
-.screen.is-face-front.is-face-settle .arc-body > .tl-sheet {
+.screen.is-face-front.is-face-settle .stack > .tl-sheet {
   transition: transform var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out)),
               box-shadow var(--face-ms, var(--m-swipe)) var(--face-ease, var(--ease-out));
 }
@@ -1390,8 +1400,7 @@ a { color: var(--c-primary); }
    濃さを一定にしていたころ、価格から戻りきる直前に、紙の上の帯が影で
    暗くなって、着いた瞬間にぱっと明るく戻っていました（2026年9月28日、
    実機「一瞬、後ろが暗くなる」。家に居る紙は影を持たないので）。 */
-.screen.is-face-front .stack > .tl-sheet,
-.screen.is-face-front .arc-body > .tl-sheet {
+.screen.is-face-front .stack > .tl-sheet {
   box-shadow: 0 -10px 34px rgba(0, 0, 0, calc(.14 * clamp(0, var(--face-p, 0) / .3, 1)));
 }
 
@@ -1481,8 +1490,7 @@ a { color: var(--c-primary); }
           mask-image: var(--face-fade);
 }
 .screen.is-face-parked .search-wrap { visibility: hidden; }
-.screen.is-face-parked .stack > .tl-sheet,
-.screen.is-face-parked .arc-body > .tl-sheet {
+.screen.is-face-parked .stack > .tl-sheet {
   transform: translateY(calc(var(--face-p, 1) * var(--face-d, 0px)));
   box-shadow: 0 -10px 34px rgba(0, 0, 0, .14);
 }
@@ -1595,10 +1603,10 @@ a { color: var(--c-primary); }
 .tabbar {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  /* 四等分。行き先は daily・やること・買うもの・からだ の四つで、買うものの
+  /* 五等分。行き先は daily・ノート・やること・買うもの・からだ の五つで、買うものの
      ふた面は一つのボタンを分け合います（一つずつ取りません）。 */
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   align-items: stretch;
   height: var(--tabbar-space);
   /* カプセルの内側だけを、押せる場所にします。 */

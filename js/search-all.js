@@ -11,7 +11,7 @@
      指が届かないから（そして、タブの中に一件も無いときほど要る）。
    - ほかの場所：やること（済んだものも）・買うもの（品物と価格）・daily
      （日記の本文・積み上げ）・からだ（食べたもの・メモ・お酒）・ノート
-     （題・本文・ノートブック・タグ。行を押すと daily の裏でそのノートを開く）。いまの
+     （題・本文・ノートブック・タグ。行を押すとノートの席でそのノートを開く）。いまの
      タブの場所は数えません（もう絞り込んで見えているので）。
    - 「2025年9月」「去年の夏」「先月」のような**過去の**日付の言葉は、
      daily のその月へ飛ぶ口として出します。`when-parse` は先の日しか
@@ -192,7 +192,7 @@
     return out.sort(byDayDesc);
   }
 
-  /** ノート（daily の裏。docs/notes.md の段3）。題・本文・ノートブック・タグに
+  /** ノート（docs/notes.md の段3）。題・本文・ノートブック・タグに
       当てます。読み終えていない・開けない日は探しません。 */
   function findNotes(s, q) {
     const N = KN.notes;
@@ -353,13 +353,9 @@
     const scr = to.screen;
     /* 先に移ってから日を置く——移るとき app.js の show() が、出ていく
        画面の日で共通の日を上書きするので。 */
-    /* ノートは daily の裏なので、daily へ移ってから紙を下げ、そのノートを開きます。 */
+    /* ノートの席へ移ってから、そのノートを開きます。 */
     if (to.note) {
-      const at = KN.app.activeScreen();
-      if (at !== "notes") {
-        if (at !== "archive") KN.app.showScreen("archive");
-        KN.app.faceTo(1, "archive");
-      }
+      if (KN.app.activeScreen() !== "notes") KN.app.showScreen("notes");
       if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(to.note);
       return;
     }

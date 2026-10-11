@@ -147,7 +147,7 @@ const FORBIDDEN = [
     JSON.stringify(memo));
   t.check("メモのある積み上げには、メモが出る", memo.b === "ひとこと", String(memo.b));
 
-  /* ---- ノート（daily の裏。docs/notes.md）も daily の席：数えない・比べない ---- */
+  /* ---- ノート（五つめの席。docs/notes.md）も daily と同じ：数えない・比べない ---- */
   await page.evaluate(async () => {
     await KN.notes.ready();
     ["試験のノート一", "試験のノート二", "試験のノート三"].forEach((t) => {
@@ -159,20 +159,23 @@ const FORBIDDEN = [
     KN.app.showScreen("archive");
   });
   await page.waitForTimeout(500);
-  await page.click('.tab[data-tab="archive"]');
+  await page.click('.tab[data-tab="notes"]');
   await page.waitForFunction(() => document.querySelector(".screen.is-active").dataset.screen === "notes"
     && !document.querySelector(".screen.is-face-front"), null, { timeout: 4000 });
   const nf = await page.evaluate(() => {
     const root = document.getElementById("screen-notes");
-    const tab = document.querySelector('.tab[data-tab="archive"]');
-    return { rows: root.querySelectorAll(".note-row").length, text: root.innerText,
-      badge: !!tab.querySelector(".tab-badge:not([hidden])") && tab.querySelector(".tab-badge").textContent.trim() };
+    const badge = (id) => {
+      const b = document.querySelector(`.tab[data-tab="${id}"] .tab-badge`);
+      return !!b && !b.hidden && b.textContent.trim();
+    };
+    return { rows: root.querySelectorAll(".note-row").length, text: root.innerText + "\n" + document.getElementById("head").innerText,
+      badge: badge("archive") || badge("notes") };
   });
   t.check("ノートの面が出ている（3件）", nf.rows === 3, String(nf.rows));
   const hits3 = FORBIDDEN.filter((w) => nf.text.includes(w));
   t.check("ノートの面に評価の言葉が出ない", !hits3.length, hits3.join(","));
   t.check("ノートの面に件数・割合が出ない", !/\d\s*件|\d\s*[%％]/.test(nf.text), nf.text.slice(0, 120));
-  t.check("daily の席に数の札が出ない", !nf.badge, String(nf.badge));
+  t.check("daily・notes の席に数の札が出ない", !nf.badge, String(nf.badge));
 
   /* ---- コピー：先の予定・長期タスク（まだ済んでいないもの）は写さない ---- */
   const copied = await page.evaluate(async () => {

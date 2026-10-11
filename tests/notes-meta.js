@@ -17,9 +17,8 @@ const { open, checker } = require("./lib");
     && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
   const tab = (id) => page.click(`.tab[data-tab="${id}"]`);
   const toNotes = async () => {
-    if ((await active()) === "notes") return;
-    if ((await active()) !== "archive") { await tab("archive"); await settled("archive"); }
-    await tab("archive");
+    if ((await page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen)) === "notes") return;
+    await page.click('.tab[data-tab="notes"]');
     await settled("notes");
   };
   const openCard = async (id) => {

@@ -79,8 +79,8 @@
     els.today = root.querySelector(".js-go-today");
     els.searchBtn = root.querySelector(".js-search-btn");
     els.cal = root.querySelector(".head-cal");
-    /* ノートの題は日付ではなく「Notes」（docs/notes.md「ノートでは暦をしまう」）。
-       日付の題と同じ場所に重ね、紙を下げる `--face-p` で入れ替えます（CSS）。 */
+    /* ノートの題は日付ではなく「Notes」（docs/notes.md「五つめの席」）。
+       日付の題と同じ場所に重ね、`.head.is-notes` で入れ替えます（CSS）。 */
     els.name = node(html`<span class="topbar-title head-name" aria-hidden="true">Notes</span>`);
     els.dayRow.append(els.name);
     /* 歯車と「これからの二週間」（R7・js/upcoming.js）は、どのタブでも同じ
@@ -169,10 +169,68 @@
     if (!root || !mine(id)) return;
     const s = snap;
     snap = null;
-    if (!cal) { if (els.cal.firstChild) els.cal.replaceChildren(); return; }
+    /* 暦を持たない席（ノート）。出ていく暦はすぐには外さず、show() の終わりの
+       moveCal に任せます（流れに乗せて上へしまうか、その場で外すか）。 */
+    if (!cal) {
+      if (els.cal.firstChild && !els.cal.classList.contains("is-cal-out")) want("out");
+      return;
+    }
+    const was = !els.cal.firstChild || els.cal.classList.contains("is-cal-out");
+    if (els.cal.classList.contains("is-cal-out")) endMove();
+    if (was) want("in");
+    else if (calMove === "out") calMove = null;
     if (cal.parentNode === els.cal && els.cal.childNodes.length === 1) return;
     els.cal.replaceChildren(cal);
     if (s) crossMarks(s, cal);
+  }
+
+  /* ---------------- 暦の出入り（ノートの席は暦を持たない） ----------------
+
+     暦のある席 ⇄ ノートでは、暦の丈ぶん下の画面が上下します。その場で
+     切り替えると、流れている二枚が一拍で丈ぶん跳ねる。そこで、**横の流れと
+     同じ一拍**（`--m-nav`・`--ease-out`）で、暦は帯の裏へ上がって（下りて）
+     薄れ、下の画面（`#panes`）は同じだけ上がり（下がり）ます。
+
+     **毎フレームの並べ直しはしません。** 並びは最初の一拍で行き着く先に
+     切り替え（出ていく暦は `position: absolute` で流れの外へ）、そこからの
+     見かけを `translate`・`opacity`・`clip-path` の CSS アニメーションで
+     戻します。丈を測るのは show() の終わりで一度だけ（`--cal-move`）。 */
+  let calMove = null;     // putCal が決めた出入り（"out" | "in"）。moveCal が片づける
+  let moveT = 0;
+  const panes = () => document.getElementById("panes");
+
+  function want(m) {
+    calMove = m;
+    /* show() の外で置かれたときは（組み直しなど）、流さずにその場で。 */
+    queueMicrotask(() => { if (calMove) moveCal(false); });
+  }
+
+  /** show() の終わりに呼ばれます（app.js）。`slide` は、横に流れる移り方か。 */
+  function moveCal(slide) {
+    const m = calMove;
+    calMove = null;
+    if (!m || !root) return;
+    const h = slide && !KN.motion.still() ? els.cal.offsetHeight : 0;
+    if (!h) { if (m === "out") els.cal.replaceChildren(); return; }
+    const p = panes();
+    [els.cal, p].forEach((e) => {
+      e.style.setProperty("--cal-move", `${h}px`);
+      e.classList.add(m === "out" ? "is-cal-out" : "is-cal-in");
+    });
+    clearTimeout(moveT);
+    moveT = setTimeout(endMove, KN.motion.ms("--m-nav") + 40);
+  }
+
+  /** 動かし終えた（または途中で次の移りが来た）。出ていった暦はここで外します。 */
+  function endMove() {
+    clearTimeout(moveT);
+    const p = panes();
+    if (els.cal.classList.contains("is-cal-out")) els.cal.replaceChildren();
+    [els.cal, p].forEach((e) => {
+      if (!e) return;
+      e.classList.remove("is-cal-out", "is-cal-in");
+      e.style.removeProperty("--cal-move");
+    });
   }
 
   /* ---------------- 席を移るとき、印だけをふわっと替える（段4） ----------------
@@ -571,5 +629,5 @@
     if (document.visibilityState === "visible") queueDot();
   });
 
-  KN.head = { els, mine, enter, snapFor, putCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
+  KN.head = { els, mine, enter, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
 })();

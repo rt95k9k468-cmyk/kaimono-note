@@ -1,10 +1,11 @@
-/* ノート（daily の裏）の段1「書けて、残る」。決めごとは docs/notes.md。
+/* ノート（五つめの席）の段1「書けて、残る」。決めごとは docs/notes.md。
 
    書く→読み直しても残る／題なしでも残る／閉じずに残る（打ち終わりの少しあと）／
    隠れる瞬間に書き切る／★／消す→最近削除→戻す（30日で消える）／空のまま閉じた
    新しいノートは残らない／書き出しに noteBook が入る／importJSON は noteBook を
    記録に入れない／ノートを書いても localStorage の大きさが変わらない／
-   daily⇄notes の行き来（帯・本物のタッチで頭を上へ）／ほかのタブへ移って戻る。
+   五つめの席（帯・暦なし・題 Notes・設定は notes の見出しだけ・暦の出入りは横の流れと同じ一拍）／
+   ほかのタブへ移って戻る／#notes で起動するとノート。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes.js */
 const fs = require("fs");
@@ -13,16 +14,6 @@ const { open, checker } = require("./lib");
 (async () => {
   const t = checker("notes");
   const { browser, ctx, page, errors } = await open();
-  const cdp = await ctx.newCDPSession(page);
-  const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
-  const drag = async (x, y0, dy, steps = 14) => {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(x, y0) });
-    for (let i = 1; i <= steps; i++) {
-      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(x, y0 + (dy * i) / steps) });
-      await page.waitForTimeout(16);
-    }
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  };
 
   const active = () => page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen);
   /* 紙が滑り終わった（前の印が外れた）まで待ちます。 */
@@ -34,8 +25,7 @@ const { open, checker } = require("./lib");
   const parked = () => page.$eval("#screen-archive", (e) => e.classList.contains("is-face-parked"));
   const toNotes = async () => {
     if ((await active()) === "notes") return;
-    if ((await active()) !== "archive") { await tab("archive"); await settled("archive"); }
-    await tab("archive");
+    await tab("notes");
     await settled("notes");
   };
   const sheetOpen = () => page.$(".sheet.is-note.is-open");
@@ -81,27 +71,17 @@ const { open, checker } = require("./lib");
     return n;
   });
 
-  /* ---- daily ⇄ notes の行き来 ---- */
+  /* ---- 五つめの席（2026年10月11日まで daily の裏） ---- */
+  t.check("帯は daily / notes / tasks / shopping / health の五席",
+    (await page.$$eval("#tabbar .tab", (bs) => bs.map((b) => b.dataset.tab + ":" + b.querySelector(".tab-label").textContent).join(",")))
+      === "archive:daily,notes:notes,todo:tasks,list:shopping,diet:health");
   await page.evaluate(() => KN.app.showScreen("archive"));
   await settled("archive");
-  t.check("daily に居るとき、席は daily", (await label()) === "daily", await label());
-  await tab("archive");
+  await tab("notes");
   await settled("notes");
-  t.check("daily で daily の席を押すと、ノートが出る", (await active()) === "notes");
-  t.check("daily の紙は頭を残して留まる", await parked());
-  t.check("ノートに居るあいだ、席は notes と note-pencil",
-    (await label()) === "notes"
-    && (await page.$eval('.tab[data-tab="archive"] .tab-ico-face', (e) => e.dataset.sig)) === "notes");
+  t.check("notes の席を押すとノートが出る（daily の紙は留まらない）", (await active()) === "notes" && !(await parked()));
+  t.check("daily の席は daily のまま", (await label()) === "daily", await label());
   t.check("ノートの＋が出ている", !!(await page.$("#dock .add-fab")));
-  const gripPos = await page.$eval("#screen-archive .tl-grip", (e) => {
-    const r = e.getBoundingClientRect();
-    const bar = document.getElementById("tabbar").getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2, bottom: r.bottom, barTop: bar.top,
-      label: e.getAttribute("aria-label") };
-  });
-  t.check("留まった頭は下の帯のすぐ上", Math.abs(gripPos.bottom - gripPos.barTop) <= 2,
-    `${gripPos.bottom} / ${gripPos.barTop}`);
-  t.check("留まった掴み手の名札は daily へ戻る", /daily へ戻る/.test(gripPos.label || ""), gripPos.label);
   /* 二週間の絵は既定で畳んである（3.1 の S4）。ノートで消えるのを見るために出す。 */
   await page.evaluate(() => KN.store.update((s) => { s.settings.showUpcoming = true; }));
   const headLook = () => page.evaluate(() => {
@@ -114,56 +94,95 @@ const { open, checker } = require("./lib");
       name: vis(document.querySelector(".head-name")),
       date: vis(document.querySelector(".topbar-day")),
       upcoming: vis(document.querySelector(".js-upcoming")),
+      search: vis(document.querySelector("#head .js-search-btn")),
+      gear: vis(document.querySelector("#head .js-settings")),
     };
   });
+  const calGone = () => page.waitForFunction(() => !document.querySelector(".is-cal-out, .is-cal-in"), null, { timeout: 3000 });
+  await calGone();
   const inNotes = await headLook();
-  t.check("ノートでは暦をしまい、中身が帯のすぐ下から", !inNotes.cal && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
-  t.check("ノートの題は Notes、日付と暦の絵は出ない",
-    inNotes.name && !inNotes.date && !inNotes.upcoming, JSON.stringify(inNotes));
+  t.check("ノートに暦は無く、中身が帯のすぐ下から", !inNotes.cal && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
+  t.check("ノートの帯は題 Notes・さがす・設定だけ",
+    inNotes.name && !inNotes.date && !inNotes.upcoming && inNotes.search && inNotes.gear, JSON.stringify(inNotes));
   await page.click("#head .js-settings");
   await settled("settings");
   await page.waitForTimeout(700);
+  t.check("ノートの設定は notes の見出しだけ（daily の行は出ない）", await page.evaluate(() => {
+    const t = document.getElementById("screen-settings").innerText;
+    return /notes/.test(t) && /並び/.test(t) && /ロック/.test(t) && !/「あの日」を出す/.test(t);
+  }));
   await page.evaluate(() => KN.app.backScreen());
   await settled("notes");
   await page.waitForTimeout(700);
   const fromSet = await headLook();
-  t.check("設定から戻っても、暦はしまったまま・題は Notes・頭は留まったまま",
-    (await active()) === "notes" && (await parked()) && !fromSet.cal && fromSet.name && !fromSet.date
+  t.check("設定から戻っても、暦は無く題は Notes", (await active()) === "notes" && !fromSet.cal && fromSet.name && !fromSet.date
     && Math.abs(fromSet.gap) <= 2, JSON.stringify(fromSet));
-  await tab("archive");
-  await settled("archive");
-  t.check("もう一度押すと daily へ戻る", (await active()) === "archive" && !(await parked()) && (await label()) === "daily");
-  const back = await headLook();
-  t.check("daily へ戻ると暦・日付・暦の絵が戻る",
-    back.cal && back.date && back.upcoming && !back.name, JSON.stringify(back));
-  await tab("archive");
-  await settled("notes");
-  const g2 = await page.$eval("#screen-archive .tl-grip", (e) => {
-    const r = e.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  });
-  await drag(g2.x, g2.y, -420);
-  await settled("archive");
-  t.check("留まった頭を本物のタッチで上へ引くと daily へ戻る", (await active()) === "archive" && !(await parked()));
 
-  /* ---- ほかのタブへ移って戻る ---- */
-  await toNotes();
+  /* 暦の出入りは横の流れと同じ一拍で（毎フレーム並べ直さない。js/head.js の moveCal） */
+  await tab("todo");
+  const moving = await page.evaluate(() => ({
+    cal: document.querySelector("#head .head-cal").className,
+    panes: document.getElementById("panes").className,
+    slide: document.querySelector("#screen-todo").classList.contains("is-in-r"),
+    names: document.getAnimations().map((a) => a.animationName).filter(Boolean),
+  }));
+  t.check("ノート → やること：暦は入ってくる・画面は流れる・同じ一拍",
+    /is-cal-in/.test(moving.cal) && /is-cal-in/.test(moving.panes) && moving.slide
+    && moving.names.includes("cal-in") && moving.names.includes("panes-drop") && moving.names.includes("scr-in-r"), JSON.stringify(moving));
+  await settled("todo");
+  await calGone();
+  const back = await headLook();
+  t.check("やることへ移ると暦・日付が戻る", back.cal && back.date && !back.name, JSON.stringify(back));
+  await tab("notes");
+  const leaving = await page.evaluate(() => {
+    const c = document.querySelector("#head .head-cal");
+    return { cls: c.className, kids: c.childElementCount, pos: getComputedStyle(c).position,
+      names: document.getAnimations().map((a) => a.animationName).filter(Boolean) };
+  });
+  t.check("やること → ノート：暦は流れの外で上へしまわれる",
+    /is-cal-out/.test(leaving.cls) && leaving.kids === 1 && leaving.pos === "absolute"
+    && leaving.names.includes("cal-out") && leaving.names.includes("panes-rise") && leaving.names.includes("scr-in-l"), JSON.stringify(leaving));
+  await settled("notes");
+  await calGone();
+  t.check("しまい終えた暦は外れる", await page.evaluate(() => !document.querySelector("#head .head-cal").childElementCount));
+  /* 途中で戻っても、暦は一枚・行き着いた先は元どおり */
+  await tab("todo");
+  await page.waitForTimeout(60);
+  await tab("notes");
+  await page.waitForTimeout(60);
   await tab("todo");
   await settled("todo");
-  t.check("ノートからやることへ移ると、daily の紙は片づく", !(await parked()) && (await label()) === "daily");
+  await calGone();
+  const again = await headLook();
+  t.check("行き来の途中で押し直しても、暦は一枚で帯のすぐ下", again.cal && await page.evaluate(() =>
+    document.querySelectorAll("#head .head-cal > .cal").length === 1
+    && Math.abs(document.getElementById("panes").getBoundingClientRect().top - document.querySelector("#head .head-cal").getBoundingClientRect().bottom) <= 1),
+    JSON.stringify(again));
+
+  /* ---- ほかのタブへ移って戻る・買うもの⇄価格の裏はそのまま ---- */
   await tab("archive");
   await settled("archive");
-  t.check("戻ると daily（ノートではない）", (await active()) === "archive");
+  t.check("daily の席を押しても daily のまま（裏へ回らない）", await (async () => {
+    await tab("archive");
+    await page.waitForTimeout(500);
+    return (await active()) === "archive" && !(await parked());
+  })());
   await tab("list");
   await settled("list");
   await tab("list");
   await settled("prices");
   t.check("買うもの⇄価格の裏はそのまま（帯で価格へ）", (await active()) === "prices"
     && await page.$eval("#screen-list", (e) => e.classList.contains("is-face-parked")));
-  await tab("archive");
-  await settled("archive");
-  t.check("価格から daily へ移ると、買うものの紙も片づく",
+  await tab("notes");
+  await settled("notes");
+  t.check("価格からノートへ移ると、買うものの紙も片づく",
     !(await page.$eval("#screen-list", (e) => e.classList.contains("is-face-parked"))));
+  await page.evaluate(() => { KN.app.showScreen("todo"); history.replaceState(null, "", "#notes"); });
+  await page.reload();
+  await page.waitForFunction(() => window.KN && KN.app && document.querySelector(".screen.is-active"));
+  await settled("notes");
+  t.check("#notes で開くとノートのまま（daily へ降ろさない）", (await active()) === "notes"
+    && (await page.$eval('.tab[data-tab="notes"]', (e) => e.getAttribute("aria-selected"))) === "true");
 
   /* ---- 書く → 読み直しても残る ---- */
   await toNotes();

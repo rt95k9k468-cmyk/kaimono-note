@@ -35,12 +35,10 @@
      ——毎日そこへ「行く」ものではなく、何かを直したいときに開くもの。
      各タブの右上の歯車へ戻して、席は daily に譲ります。 */
   const TABS = [
-    /* **ノートも daily の裏です**（docs/notes.md）。価格と同じく、daily に居て
-       この席を押すと紙が下がって後ろのノートが出ます。`names` は「出ている
-       あいだ、席がその面の名前と絵を名乗る画面」——ノートの面には札も題の
-       入れ替わりも無いので、帯が言わないと、いまどこに居るかを言うものが
-       ありません（価格は札の帯が言うので、席は shopping のまま）。 */
-    { id: "archive", holds: ["notes"], names: ["notes"], label: "daily", icon: "book" },
+    { id: "archive", label: "daily", icon: "book" },
+    /* **ノートは五つめの席**（2026年10月11日まで daily の紙の裏。docs/notes.md）。
+       裏へ回る一手が、毎日書くものには重かったので。 */
+    { id: "notes", label: "notes", icon: "notes" },
     { id: "todo", label: "tasks", icon: "checklist" },
     /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
        そこへは、買うものに居るところでこの席を押して、紙を下げて行きます
@@ -677,7 +675,7 @@
      並びは**下の帯の並び**です。買うもの と 価格 は同じ一つのタブの表と裏
      なので、同じ番号を持たせます——ふた面をめくるのは横へ動くことでは
      ないので、そこは流しません（これまでどおりの入りかた）。 */
-  const SLIDE = { archive: 0, notes: 0, todo: 1, list: 2, prices: 2, diet: 3, settings: 4 };
+  const SLIDE = { archive: 0, notes: 1, todo: 2, list: 3, prices: 3, diet: 4, settings: 5 };
   /* 流れ終わった面を片づけるまでの待ち時間。**CSS から読みます**
      ——動かしているのは base.css の `--m-nav`（席を移る）と `--m-push`
      （引き出しが押しのける）で、ここに数字を持つと二重帳簿になります。
@@ -724,13 +722,12 @@
   /* 少ししか引いていなくても、ぱっと払った指は「めくる」と言っています
      （day-swipe / edge-back と同じ決めごと）。 */
   const { FLING_V: FACE_FLING_V, FLING_MIN: FACE_FLING_MIN } = KN.gesture;
-  /* 紙と、その後ろの地の組（2026年10月1日から二組。docs/notes.md）。前は
-     `FRONT = "list", BACK = "prices"` の決め打ちでした。いま動かしている組は
-     `pair` で、帯を押したとき・掴み手を引いたときに、その席・その紙の組へ
-     切り替えます。`home` は留まった掴み手の名札。 */
+  /* 紙と、その後ろの地の組。前は `FRONT = "list", BACK = "prices"` の決め打ちでした。
+     いま動かしている組は `pair` で、帯を押したとき・掴み手を引いたときに、その席・
+     その紙の組へ切り替えます。`home` は留まった掴み手の名札。daily とノートの組は
+     2026年10月11日に外しました（ノートは五つめの席。docs/notes.md）。 */
   const PAIRS = [
     { front: "list", back: "prices", home: "買うものへ戻る（上へ引いても戻ります）" },
-    { front: "archive", back: "notes", home: "daily へ戻る（上へ引いても戻ります）" },
   ];
   const pairOf = (id) => PAIRS.find((x) => x.front === id || x.back === id) || null;
   let pair = PAIRS[0];
@@ -775,11 +772,8 @@
        留まっているところ（p=1）から掴み直しても同じ道のりになるように。 */
     const p = faceVar("--face-p") || 0;
     const d0 = faceVar("--face-d") || 0;
-    /* ノートの組では、暦が `--face-p` に合わせて上へしまわれ、そのぶん面ごと
-       上がります（`--face-lift`）。測るのは**しまいきった姿の**頭の位置。 */
-    const lift = (faceVar("--face-lift") || 0) * (1 - p);
     const hb = head.getBoundingClientRect();
-    const rest = hb.top - p * d0 - lift;
+    const rest = hb.top - p * d0;
     /* のぞかせる量は**掴み手そのものの高さ**。CSS の余白を変えたら、ここも
        黙って付いてきます（数字を二か所に書くと、片方だけ直した日にずれる）。
        留まった紙を頭の高さで切るのにも同じ数を使うので、書き出しておきます。 */
@@ -791,7 +785,7 @@
        （実測：マスクあり 240,239,243 ／ なし 218,217,221。影が消えた）。
        面の箱を基準にした数はここでしか分からないので、ここで出します。 */
     box.style.setProperty("--face-cut",
-      (floor - front.getBoundingClientRect().top + lift).toFixed(1) + "px");
+      (floor - front.getBoundingClientRect().top).toFixed(1) + "px");
     return Math.max(1, floor - peek - rest);
   }
 
@@ -813,14 +807,6 @@
     back.classList.add("is-face-back");
     front.classList.add("is-face-front");
     front.classList.remove("is-face-settle");
-    /* **ノートでは暦を上へしまいます**（docs/notes.md「ノートでは暦をしまう」）。
-       しまう丈は、暦が出ているうちに一度だけ測ります（留まっているあいだは
-       測り直さない——もうしまってあるので 0 になる）。 */
-    if (pair.back === "notes" && !box.classList.contains("is-notes-lift")) {
-      const cal = document.querySelector("#head .head-cal");
-      box.style.setProperty("--face-lift", (cal ? cal.getBoundingClientRect().height : 0).toFixed(1) + "px");
-      box.classList.add("is-notes-lift");
-    }
     /* 道のりは、**取ると決めた時に一度だけ**測ります。途中で測り直すと、
        指の下で速さが変わります（暦の `span` と同じ決めごと）。
        留まっている印は、測ったあとで外すこと——先に外すと紙が跳んで、
@@ -859,8 +845,6 @@
     if (box) {
       box.style.removeProperty("--face-p");
       box.style.removeProperty("--face-d");
-      box.style.removeProperty("--face-lift");
-      box.classList.remove("is-notes-lift");
     }
     /* 掴み手の名札も言い直します（価格からよそのタブへ移ったとき、ここを
        通るだけで faceSettle を通らないので）。 */
@@ -1120,8 +1104,8 @@
        ダイエットの上に残っていては嘘になります。 */
     const inPair = pairOf(id);
     /* ただし**引き出し（設定）は別**。開けたところへ帰る画面なので、紙は
-       留めたまま潜ります——片づけると、ノートへ帰ったとき暦と日付が出て、
-       戻り道の頭も消えていました。よそのタブへ移れば、そこで片づきます。 */
+       留めたまま潜ります——片づけると、帰ったとき戻り道の頭が消えていました。
+       よそのタブへ移れば、そこで片づきます。 */
     if ((!inPair || inPair !== pair) && !OFF_BAR.includes(id)) faceUnpark();
     if (inPair) pair = inPair;
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
@@ -1271,6 +1255,10 @@
     }
 
     paintTabs();
+    /* 暦の出入り（ノートの席は暦を持たない）。横の流れと同じ一拍で動かします。
+       測るのは組み終えたここで一度だけ——直前の paintTabs が席の箱を測って
+       並べ直したばかりなので、もう一度は並べ直しません（js/head.js の moveCal）。 */
+    KN.head.moveCal(dir !== 0);
     haptic();
 
     if (location.hash.slice(1) !== id) {
@@ -1340,9 +1328,6 @@
     /* 印の無い起動（閉じられたあと）は控えの席へ。印があれば印が勝ち、席の違う控えは捨てます。 */
     if (place && !fromHash) fromHash = place.seat;
     if (place && place.seat !== fromHash) place = null;
-    /* ノートは daily の紙の裏。留まった紙の無いところへ直に降ろすと戻り道が
-       無いので、daily から（docs/notes.md）。 */
-    if (fromHash === "notes") fromHash = "archive";
     /* 見ていた日は、組む前に共通の日へ（各画面が render() の頭で引き取る）。 */
     if (place && place.day) KN.util.dayShare.set(place.day);
     /* 設定は、潜ってきたタブも戻します（戻る道と、出す設定の中身が決まる）。 */

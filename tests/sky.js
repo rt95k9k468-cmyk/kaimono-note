@@ -273,11 +273,14 @@ function rgbOf(s) {
 
   /* ---- ノートへ移る途中：上がった暦は帯の中に見えない ---- */
   await page.evaluate(() => document.getElementById("head").setAttribute("data-sky", "night"));
+  /* 暦の出入り（head.js の moveCal）を半ばで止めて撮る。 */
   await page.evaluate(() => {
-    const s = document.getElementById("screens");
-    s.style.setProperty("--face-lift", document.querySelector("#head .head-cal").getBoundingClientRect().height + "px");
-    s.style.setProperty("--face-p", "0.5");
-    s.classList.add("is-notes-lift");
+    const c = document.querySelector("#head .head-cal");
+    c.style.setProperty("--cal-move", c.getBoundingClientRect().height + "px");
+    c.classList.add("is-cal-out");
+    const a = c.getAnimations().find((x) => x.animationName === "cal-out");
+    a.pause();
+    a.currentTime = a.effect.getComputedTiming().duration / 2;
   });
   await wait(100);
   const tb = await page.evaluate(() => { const r = document.querySelector("#head > .topbar").getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
@@ -292,9 +295,9 @@ function rgbOf(s) {
   const diff = Math.max(...pa.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - pb[i][k])))));
   c.check("ノートへ移る途中、上がった暦は帯の中に見えない", diff <= 3, `最大の差 ${diff}`);
   await page.evaluate(() => {
-    const s = document.getElementById("screens");
-    s.classList.remove("is-notes-lift");
-    ["--face-lift", "--face-p"].forEach((k) => s.style.removeProperty(k));
+    const c = document.querySelector("#head .head-cal");
+    c.classList.remove("is-cal-out");
+    c.style.removeProperty("--cal-move");
   });
 
   /* ---- 紙の丸角の外にも空（帯の後ろの一枚が紙の角の半径だけ下へはみ出す。地の色の白い角を作らない） ---- */

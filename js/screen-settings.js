@@ -491,16 +491,13 @@
 
      中身の関数は、このファイルより後に読まれる settings-*.js にあります。
      読み込んだ時点ではまだ居ないので、組むときに `S` から引きます。 */
-  /* ノートは daily の席を分け合う（docs/notes.md）ので、daily のすぐ下に
-     notes の見出しで並べます（`more`）。daily から開いても、ノートの面から
-     開いても同じ順。 */
-  const NOTES = { label: "notes", rows: () => S.notesRows() };
+  /* ノートは五つめの席（2026年10月11日まで daily の裏で、daily の下に並べていた）。 */
   const TAB = {
     todo:    { label: "tasks",    rows: () => S.todoRows() },
     list:    { label: "shopping", rows: () => S.listRows() },
     prices:  { label: "shopping", rows: () => S.listRows() },
-    archive: { label: "daily",    rows: () => S.dailyRows(), more: NOTES },
-    notes:   { label: "daily",    rows: () => S.dailyRows(), more: NOTES },
+    archive: { label: "daily",    rows: () => S.dailyRows() },
+    notes:   { label: "notes",    rows: () => S.notesRows() },
     diet:    { label: "health",   rows: () => S.dietRows() },
   };
 
@@ -613,10 +610,6 @@
     const tab = TAB[fromTab] || TAB.archive;
     L.body.append(head(tab.label));
     put(tab.rows());
-    if (tab.more) {
-      L.body.append(head(tab.more.label));
-      put(tab.more.rows());
-    }
     /* 上の見出しは席の名前（tab.label ＝ shopping など）。その続きなので、
        ここも同じ系列の言葉にします。 */
     L.body.append(head("General"));

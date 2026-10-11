@@ -19,12 +19,8 @@ const { open, checker } = require("./lib");
     document.querySelector(".screen.is-active").dataset.screen === i
     && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
   const toNotes = async () => {
-    if ((await active()) === "notes") return;
-    if ((await active()) !== "archive") {
-      await page.evaluate(() => KN.app.showScreen("archive"));
-      await settled("archive");
-    }
-    await page.click('.tab[data-tab="archive"]');
+    if ((await page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen)) === "notes") return;
+    await page.click('.tab[data-tab="notes"]');
     await settled("notes");
   };
   const closeSheet = async () => {

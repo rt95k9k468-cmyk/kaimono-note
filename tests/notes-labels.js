@@ -6,7 +6,7 @@
    選ぶ紙で新しいタグ（打って閉じても付く）・使われているタグを押して付け外し／
    「⋯」→ノートブック／付けても並びと更新日は動かない／置く前の新しいノートにも
    付けられる／読み直しても残る・書き出しに入る／localStorage が変わらない／
-   ほかのタブの虫めがねから「ノート」に出て、押すと daily の裏でそのノートが開く。
+   ほかのタブの虫めがねから「ノート」に出て、押すとノートの席でそのノートが開く。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-labels.js */
 const { open, checker } = require("./lib");
@@ -21,9 +21,8 @@ const { open, checker } = require("./lib");
     && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
   const tab = (id) => page.click(`.tab[data-tab="${id}"]`);
   const toNotes = async () => {
-    if ((await active()) === "notes") return;
-    if ((await active()) !== "archive") { await tab("archive"); await settled("archive"); }
-    await tab("archive");
+    if ((await page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen)) === "notes") return;
+    await page.click('.tab[data-tab="notes"]');
     await settled("notes");
   };
   const reload = async () => {
@@ -311,7 +310,7 @@ const { open, checker } = require("./lib");
   await page.click('.sa-group[data-place="notes"] .sa-row');
   await settled("notes");
   await page.waitForSelector(".sheet.is-note.is-open", { timeout: 3000 });
-  t.check("押すと daily の裏でそのノートが開く",
+  t.check("押すとノートの席でそのノートが開く",
     (await active()) === "notes" && (await page.$eval(".sheet.is-note .note-title-in", (e) => e.value)) === "読書メモ");
   await escTop();
   await page.fill("#screen-todo .js-search", "").catch(() => {});
