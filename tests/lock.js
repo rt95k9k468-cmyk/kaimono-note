@@ -1,9 +1,9 @@
 /* daily・ノートの鍵（js/lock.js、docs/daily.md の「鍵」）。
 
    既定は鍵なし・覆いなし。設定（daily の歯車 → ロック ›）でパスコードを決めると、
-   開き直したとき daily に覆いが出る・全体の検索は daily とノートを探さない・
+   開き直したとき daily に覆いが出る・全体の検索は daily を探さない・ノートは既定で鍵なし・
    違う数字では開かない・正しい数字で開く・tasks へ移れば覆いは消える・裏へ回ると
-   閉じる・ノートにも覆いが出る・Face ID（仮の認証器）で開く・外すときはパスコード・
+   閉じる・ノートも鍵を入れれば覆いが出る・設定で daily の鍵を外して戻せる・Face ID（仮の認証器）で開く・外すときはパスコード・
    記録は一つも変わらない・絵文字なし。
    V27：新しい番号は4桁か6桁だけ・Face ID があれば「開ける」が主で鍵盤は「番号」で
    開く・下の帯は覆いの上で押せる・窓が手を離れたら（blur）覆いだけ被せて戻れば外す。
@@ -49,7 +49,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   };
   const plain = () => page.evaluate(() => {
     const s = JSON.parse(JSON.stringify(KN.store.get()));
-    delete s.settings.lock;
+    delete s.settings.lock; delete s.settings.lockDaily; delete s.settings.lockNotes;
     return JSON.stringify(s);
   });
 
@@ -103,7 +103,8 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     return r.top <= 0 && r.left <= 0 && r.width >= innerWidth && r.height >= innerHeight;
   }));
   const groups = await page.evaluate(() => KN.searchAll.find("しおかぜ", "todo").groups.map((g) => g.id));
-  t.check("閉じているあいだ検索は daily を探さない", !groups.includes("daily") && !groups.includes("notes"), groups.join(","));
+  t.check("閉じているあいだ検索は daily を探さない", !groups.includes("daily"), groups.join(","));
+  t.check("ノートは既定で鍵なし（検索も探す）", await page.evaluate(() => !KN.lock.covers("notes") && !KN.lock.hides("notes")));
 
   const vis = (sel) => page.evaluate((s) => {
     const e = document.querySelector(s);
@@ -135,7 +136,9 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   t.check("下の帯で tasks へ・覆いは消える",
     (await page.evaluate(() => KN.app.activeScreen())) === "todo" && !(await veilOn()));
   await show("notes");
-  t.check("ノートにも覆いが出る", await veilOn());
+  t.check("ノートは既定で覆わない", !(await veilOn()));
+  await page.evaluate(() => KN.lock.setPlace("notes", true));
+  t.check("ノートにも鍵をかけると覆いが出る", await veilOn());
 
   /* ---- Face ID で開く ---- */
   await cdp.send("WebAuthn.setUserVerified", { authenticatorId: authId, isUserVerified: true });
@@ -159,6 +162,13 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.locator(".set-choose").getByRole("button", { name: "5分", exact: true }).click();
   await page.waitForTimeout(400);
   t.check("設定で 5分 を選べる", await page.evaluate(() => KN.store.get().settings.lockGrace === 300));
+  const placeSw = (name) => page.locator(`${top} .set-row.is-sw`, { hasText: name }).filter({ hasNotText: "ロック" });
+  await placeSw("daily").click();
+  await page.waitForTimeout(300);
+  t.check("設定で daily の鍵を外せる", await page.evaluate(() => KN.store.get().settings.lockDaily === false && !KN.lock.covers("daily")));
+  await placeSw("daily").click();
+  await page.waitForTimeout(300);
+  t.check("設定で daily の鍵を戻せる", await page.evaluate(() => KN.lock.covers("daily") && KN.lock.covers("notes")));
   await show("notes");
   await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
   await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));

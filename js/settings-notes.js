@@ -34,7 +34,7 @@
      `settings.notesOrder` のまま。ノートブック・タグは、一つも無ければ行ごと
      出しません（中身の無い一枚になるので。絞り込みのチップと同じ）。
      数は出しません——ノートも daily と同じく評価しない（tests/daily-rules.js）。
-     鍵は daily と一つ（js/lock.js）なので、ここからも同じ一枚へ。 */
+     鍵の番号は daily と一つ（js/lock.js）なので、ここからも同じ一枚へ。かけるかは場所ごと。 */
   function notesRows() {
     const created = store.get().settings.notesOrder === "created";
     return [
@@ -60,7 +60,7 @@
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
-          value: KN.lock && KN.lock.enabled() ? "オン" : "オフ", onTap: () => go("lock") })
+          value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
       ),
       /* 季節の絵（3.0 の E1）。ノートの地の後ろの、今日の候の色と広重『名所江戸百景』。既定は入。
          出典は NDL の求める一行を頭に、畳んで（daily は写真。docs/season-art.md）。 */
