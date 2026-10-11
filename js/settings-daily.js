@@ -41,12 +41,12 @@
         navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") }),
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
-          value: KN.lock && KN.lock.enabled() ? "オン" : "オフ", onTap: () => go("lock") })
+          value: KN.lock && KN.lock.covers("daily") ? "オン" : "オフ", onTap: () => go("lock") })
       ),
     ];
   }
 
-  /** ロック（daily とノートの鍵。中身は js/lock.js）。 */
+  /** ロック（daily とノートの鍵。番号は一つ、かけるかは場所ごと。中身は js/lock.js）。 */
   function lockRows() {
     const L = KN.lock;
     if (!L || !L.supported()) return [foot("この端末では使えません。")];
@@ -56,6 +56,8 @@
       onTap: (v) => (v ? L.turnOn() : L.turnOff()).then(done),
     }))];
     if (!L.enabled()) return rows;
+    const place = (p, title) => switchRow({ title, on: L.covers(p), onTap: (v) => { L.setPlace(p, v); done(); } });
+    rows.push(card(place("daily", "daily"), place("notes", "ノート")));
     const bio = switchRow({
       title: "Face ID・Touch ID", on: L.hasBio(),
       onTap: (v) => { if (v) L.bioOn().then(done); else { L.bioOff(); done(); } },

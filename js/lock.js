@@ -18,7 +18,9 @@
      （`settings.lockGrace`、秒。無ければ 0＝すぐ）を決めていれば、裏へ回った時刻を
      覚えておき、表へ戻ったときに猶予を過ぎていたら閉じます。
      立ち上げたときは猶予にかかわらず閉じたところから。
-   - 覆いは daily・ノートと、そこから潜った設定の上にだけ出します。
+   - 番号と Face ID は daily とノートで一つ。かけるかどうかは場所ごと
+     （`settings.lockDaily`：無ければ入、`settings.lockNotes`：無ければ切）。
+   - 覆いは鍵をかけた daily・ノートと、そこから潜った設定の上にだけ出します。
      下の帯は覆いの上に残すので、ほかのタブへはそこから（設定の上では
      帯が無いので左上の絵から）。
    - アプリ切り替えの絵に中身が写らないよう、窓が手を離れた瞬間（`blur`）にも
@@ -32,8 +34,8 @@
   const KN = window.KN;
   const { html, node, icon, haptic } = KN.util;
 
-  const GUARDED = ["archive", "notes"];
-  const SEARCH_PLACES = ["daily", "notes"];
+  /* 画面の id → 場所。daily の画面は "archive"。 */
+  const PLACE_OF = { archive: "daily", notes: "notes" };
   const DEV_KEY = "kaimono-note-lock-dev";
   const ITER = 100000;
 
@@ -56,6 +58,18 @@
   /* 崩す道具（crypto.subtle）が無い所では確かめられないので、閉じません
      ——閉じたまま開けなくなるより、表の鍵が効かないほうを取ります。 */
   const enabled = () => supported() && !!conf();
+  /** その場所（"daily" / "notes"）に鍵をかけるか。番号が無ければ false。 */
+  function placeOn(place) {
+    const st = KN.store.get().settings;
+    if (place === "daily") return st.lockDaily !== false;
+    if (place === "notes") return st.lockNotes === true;
+    return false;
+  }
+  const covers = (place) => enabled() && placeOn(place);
+  function setPlace(place, on) {
+    KN.store.update((s) => { s.settings[place === "notes" ? "lockNotes" : "lockDaily"] = !!on; });
+    paint();
+  }
 
   const b64 = (u8) => btoa(String.fromCharCode(...u8));
   const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -214,8 +228,8 @@
   }
 
   function guards(id) {
-    if (GUARDED.includes(id)) return true;
-    return id === "settings" && KN.app.openedFrom && GUARDED.includes(KN.app.openedFrom());
+    if (id === "settings" && KN.app.openedFrom) id = KN.app.openedFrom();
+    return !!PLACE_OF[id] && placeOn(PLACE_OF[id]);
   }
 
   /** 覆いを出す・しまう。`id` はいま出ている画面（省けば app に聞く）。 */
@@ -351,11 +365,11 @@
   }
 
   KN.lock = {
-    supported, enabled, bioAvailable, hasBio: () => !!devId(),
+    supported, enabled, covers, setPlace, bioAvailable, hasBio: () => !!devId(),
     turnOn, turnOff, changeCode, bioOn, bioOff: forget,
     paint, enter, close, GRACES, grace,
     isLocked: () => enabled() && locked,
     /** 全体の検索が、その場所を探してよいか。 */
-    hides: (place) => enabled() && locked && SEARCH_PLACES.includes(place),
+    hides: (place) => locked && covers(place),
   };
 })();

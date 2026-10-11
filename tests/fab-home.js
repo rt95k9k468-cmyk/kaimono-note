@@ -74,7 +74,9 @@ const { open, checker } = require("./lib");
     const f = document.querySelector("#dock .add-fab").getBoundingClientRect();
     const sc = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
     KN.ui.toast("試験");
-    const toast = document.querySelector("#toast-root .toast").getBoundingClientRect();
+    const tEl = document.querySelector("#toast-root .toast");
+    tEl.getAnimations().forEach((a) => a.finish());
+    const toast = tEl.getBoundingClientRect();
     return { capR, capTop, padR: getComputedStyle(bar).paddingRight, f: { top: f.top, bottom: f.bottom, right: f.right },
       floor: innerHeight - parseFloat(getComputedStyle(sc).paddingBottom), toastBottom: toast.bottom, w: innerWidth };
   });
@@ -82,7 +84,8 @@ const { open, checker } = require("./lib");
   t.check("置き場：＋の右端はカプセルの右端", Math.abs(geo.f.right - geo.capR) < 1, JSON.stringify(geo));
   t.check("置き場：＋はカプセル上端から 8px 上", Math.abs(geo.capTop - geo.f.bottom - 8) < 1, JSON.stringify(geo));
   t.check("置き場：一覧の底は＋より上", geo.floor < geo.f.top, JSON.stringify(geo));
-  t.check("置き場：トーストは＋より上", geo.toastBottom < geo.f.top, JSON.stringify(geo));
+  t.check("置き場：トーストは低く（＋に重なってよい・帯にはかからない）",
+    geo.toastBottom > geo.f.top && geo.toastBottom <= geo.capTop + 1, JSON.stringify(geo));
   await page.evaluate(() => document.querySelectorAll("#toast-root .toast").forEach((e) => e.remove()));
 
   /* ---- やること：＋から ---- */

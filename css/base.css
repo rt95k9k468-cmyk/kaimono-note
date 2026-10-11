@@ -2208,8 +2208,8 @@ a { color: var(--c-primary); }
    帯を縮める規則（`.has-fab .tabbar` の `padding-right` と、カプセルの形を
    した四つの `right`）は無くなりました。
 
-   ＋ が帯の上に立つので、一覧の底の余白とトーストは ＋ のぶん（`--fab-room`）
-   上がります。＋ の無い画面では 0。 */
+   ＋ が帯の上に立つので、一覧の底の余白は ＋ のぶん（`--fab-room`）
+   上がります（トーストは上げない。＋ に重ねて低く）。＋ の無い画面では 0。 */
 :root { --fab-size: 56px; --fab-gap: 8px; --fab-room: 0px; }
 .has-fab { --fab-room: calc(var(--fab-size) + var(--fab-gap)); }
 
