@@ -12,6 +12,9 @@
 | localStorage `kaimono-note-snapshots` | 前の自動の控え。大きな保存場所へ写したあとは**書き足さない**（写せない日だけ使う） | `backup.js` |
 | IndexedDB `kaimono-note`（**大きな保存場所**） | `diary`（日記の本文の写し。一日一件、キーは日付）・`snaps`（控えの見出し）・`snapBodies`（控えの中身と、B3 からノート）・`meta`（移し替えの記録・番号・外した記録 `diaryOut`・**記録の写し `live`・開いた記録 `journal`**） | `diary-idb.js`・`backup.js`・`live-idb.js` |
 
+- ほかに別の入れ物が三つ：ノート `kaimono-note-notes`（docs/notes.md）・ノートの画像 `kaimono-note-images`
+  （段5。版1の決め打ち。自動の控え・「バックアップを保存」には載せず、端末の外は Dropbox の `images/` だけ。
+  docs/image-design.md）・鳴らす役 `kaimono-note-bell`（下）。
 - 大きな保存場所が使えない端末・使えなかった日は、**前のまま**（localStorage だけ）で
   動く。どちらのモジュールも、失敗したら「前のまま」が行き先。
 - `idb.js` は版を決め打ちにしない。版を持たずに開き、棚が足りなければ版を一つ上げて

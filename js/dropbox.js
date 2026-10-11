@@ -33,6 +33,9 @@
   const LATEST = "/kurashi-latest.json";
   const DAILY_DIR = "/daily";
   const DAILY_RE = /^kurashi-(\d{4}-\d{2}-\d{2})\.json$/;
+  /* ノートの画像（段5。docs/image-design.md）。一枚ずつ一度だけ、上書きしない形で。 */
+  const IMG_DIR = "/images";
+  const IMG_RE = /^([0-9a-f]{16})\.jpg$/;
   const KEEP = 30;
   const MONTHS = 12;                 // 月の背骨（2026年10月8日、docs/log/data-check.md の案A）
   const SOON = 2 * 60 * 1000;        // 書き換えてから送るまで（その間の書き換えはまとめて一度）
@@ -343,6 +346,7 @@
         cfg.error = "記録が見当たらないので、上書きを見合わせています";
         cfg.errorAt = new Date().toISOString();
         save();
+        await sendImages();   // 上書きしない形なので、送ってよい
         return "held";
       }
     }
@@ -375,7 +379,7 @@
       + (extra.noteBook ? canon(extra.noteBook) : ""));
     const day = dayKey(new Date());
     const same = hash && hash === cfg.lastHash;
-    if (same && cfg.lastDay === day) return "same";
+    if (same && cfg.lastDay === day) { await sendImages(); return "same"; }
 
     const at = new Date().toISOString();
     const text = store.exportJSON(at, extra);
@@ -392,6 +396,7 @@
       delete cfg.error;
       delete cfg.errorAt;
       save();
+      await sendImages();
       return "sent";
     } catch (err) {
       dirty = true;
@@ -399,6 +404,23 @@
       cfg.errorAt = new Date().toISOString();
       save();
       return "failed";
+    }
+  }
+
+  /** JSON のあとに、まだ送っていない画像を一枚ずつ `images/<id>.jpg`（mode "add"）。同じ名前が
+      もう在れば送れた扱い。落ちたら次の回（JSON の「前と同じなら送らない」には入れない）。 */
+  async function sendImages() {
+    const I = KN.noteImg;
+    if (!I) return;
+    try {
+      for (const id of await I.unsent()) {
+        const rec = await I.get(id);
+        if (!rec || !rec.bytes) continue;
+        await upload(`${IMG_DIR}/${id}.jpg`, rec.bytes, "add");
+        await I.markSent(id);
+      }
+    } catch (err) {
+      console.warn("images not sent", err);
     }
   }
 
@@ -424,17 +446,19 @@
     return out;
   }
 
-  /** 控えの中身（字）。上の二つの形の名前だけ読む。 */
+  /** 控えの中身（字）。上の二つの形の名前だけ読む。三つめの形 `images/<id>.jpg`（段5）は
+      中身を ArrayBuffer で。 */
   async function download(path) {
     const p = String(path || "");
-    if (p !== LATEST && !(p.startsWith(`${DAILY_DIR}/`) && DAILY_RE.test(p.slice(DAILY_DIR.length + 1)))) {
+    const img = p.startsWith(`${IMG_DIR}/`) && IMG_RE.test(p.slice(IMG_DIR.length + 1));
+    if (!img && p !== LATEST && !(p.startsWith(`${DAILY_DIR}/`) && DAILY_RE.test(p.slice(DAILY_DIR.length + 1)))) {
       throw new Error("戻せる控えの名前ではありません");
     }
     await recovered;
     if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
     const r = await call(CONTENT, "/2/files/download", { arg: { path: p }, raw: true });
     if (!r.res.ok) throw new Error(summary(r));
-    return r.res.text();
+    return img ? r.res.arrayBuffer() : r.res.text();
   }
 
   /** 書き換えがあった。SOON のあとに一度だけ送る（その間の書き換えはまとめる）。 */

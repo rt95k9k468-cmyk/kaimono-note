@@ -5655,6 +5655,27 @@ textarea.note-title-in {
 .nv-b { font-weight: var(--fw-bold); }
 .nv-hr { padding: .55em 0; }
 .nv-hr hr { margin: 0; border: 0; border-top: 1px solid var(--c-border-2); }
+/* 画像の行（段5。docs/image-design.md）。幅いっぱい・角丸。読み込むまでと、見つからないときは
+   灰色の枠に絵だけ（比は画像の比、分からなければ 4:3）。 */
+.nv-img {
+  margin: .35em 0;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--c-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-3);
+}
+.nv-img.is-on { background: none; cursor: zoom-in; }
+.nv-img img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.nv-img svg { width: 32px; height: 32px; }  /* 入れもの：見つからない画像の枠 */
+/* 全体の一枚：黒地。下へ払って閉じる（ui.js の pull）。 */
+.sheet.is-pic { background: #000; color: #fff; }
+.sheet.is-pic .sheet-body { display: flex; align-items: center; justify-content: center; }
+.note-pic img { display: block; max-width: 100%; max-height: calc(var(--vvh, 100dvh) * .8); object-fit: contain; }
+.note-tool[hidden] { display: none; }
 
 /* 道具の帯（書いているあいだだけ）。キーボードのすぐ上に**浮く**ガラスの
    丸い一本（段4.2。貼りついた白い帯は「ダサい」と言われた）。材は下の帯と

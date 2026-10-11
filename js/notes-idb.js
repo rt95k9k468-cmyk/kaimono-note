@@ -251,6 +251,25 @@
     });
   }
 
+  /** すべてのノートの前の版の本文（画像の掃除が参照を数える。js/note-img.js）。読むだけ。
+      読めなければ断ります——数えそこねた参照を「無い」と読まないため。 */
+  function versionBodies() {
+    if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
+    return conn().then((d) => new Promise((resolve, reject) => {
+      const t = d.transaction(["meta"], "readonly");
+      const req = t.objectStore("meta").getAll();
+      t.oncomplete = () => resolve(req.result || []);
+      t.onerror = t.onabort = () => reject(t.error || new Error("読めませんでした"));
+    })).then((rows) => {
+      const out = [];
+      rows.forEach((r) => {
+        if (r && String(r.k).startsWith("ver:") && Array.isArray(r.list)) r.list.forEach((v) => { if (v) out.push(String(v.body || "")); });
+      });
+      pendVer.forEach((list) => list.forEach((v) => out.push(String(v.body || ""))));
+      return out;
+    });
+  }
+
   /** 前の版へ戻します。いまの中身は、戻す前に版へ残します（戻したことも
       戻せるように）。 */
   function revert(id, v) {
@@ -492,7 +511,7 @@
     settled: () => phase === "on" || phase === "off",
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
-    begin, versions, revert, merge,
+    begin, versions, versionBodies, revert, merge,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };

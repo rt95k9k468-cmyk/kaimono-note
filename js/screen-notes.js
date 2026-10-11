@@ -132,7 +132,8 @@
   const byCreated = () => (KN.store.get().settings || {}).notesOrder === "created";
 
   /* 窓の字は、題・本文に加えてノートブックとタグの名前にも当てます。 */
-  const hit = (n, q) => !q || U.foldKana(`${n.title}\n${n.body}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q);
+  /* 画像の参照の行（段5）は探さない。 */
+  const hit = (n, q) => !q || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q);
 
   const picked = (n) => !pick
     || (pick.k === "fav" ? n.fav
@@ -504,7 +505,34 @@
        同期に focus します**（iOS はそうしないとキーボードを出さない）。
        欄から出たら（キーボードを閉じた・題へ移った）、また整えた姿へ。 */
     let writing = false;
-    const paintView = () => { F.render(textIn.value, viewEl); };
+    const paintView = () => { F.render(textIn.value, viewEl); paintPics(); };
+    /* 画像の行（段5。docs/image-design.md）：幅いっぱいの画像。見つからない・入れ物が開かない日は、
+       灰色の枠に絵だけ（行は残る）。読むのは開いたノートが参照するものだけ。 */
+    const showPic = (el, v) => {
+      el.classList.remove("is-gone");
+      el.textContent = "";
+      if (v.w && v.h) el.style.aspectRatio = `${v.w} / ${v.h}`;
+      const im = document.createElement("img");
+      im.alt = "";
+      im.src = v.url;
+      el.append(im);
+      el.classList.add("is-on");
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", "画像");
+    };
+    const paintPics = () => {
+      const I = KN.noteImg;
+      viewEl.querySelectorAll(".nv-img").forEach((el) => {
+        const id = el.dataset.img;
+        const v = I && I.known(id);
+        if (v) { showPic(el, v); return; }
+        (I ? I.look(id) : Promise.resolve(null)).then((got) => {
+          if (!el.isConnected) return;
+          if (got) showPic(el, got);
+          else { el.classList.add("is-gone"); el.innerHTML = icon("image"); }
+        });
+      });
+    };
     /* 整えた姿と書く欄は、見出しの大きさや印のぶん行の高さが違う。入れ替わる
        ときは、カーソルの行が画面の同じ高さに留まるよう送り直す（でないと、
        キーボードを閉じたとたんに読んでいたところがずれる）。 */
@@ -532,6 +560,14 @@
       paintTools();
     };
     viewEl.addEventListener("click", (e) => {
+      /* 画像は、黒地の一枚で全体（書く欄へは入らない）。 */
+      const pic = e.target.closest(".nv-img.is-on");
+      if (pic) {
+        e.stopPropagation();
+        KN.motion.fire("select");
+        openPicture(pic.dataset.img);
+        return;
+      }
       /* チェックの四角は、整えた姿のまま付け外し（書く欄へは入らない）。 */
       const box = e.target.closest(".js-tick");
       if (box) {
@@ -679,6 +715,7 @@
         run: () => apply(F.shift(textIn.value, textIn.selectionStart, textIn.selectionEnd, -1), "tool") },
       { k: "indent", ico: "indent", label: "下げる",
         run: () => apply(F.shift(textIn.value, textIn.selectionStart, textIn.selectionEnd, 1), "tool") },
+      { k: "image", ico: "image", label: "画像", run: () => pickImage() },
     ];
     const tools = node(html`
       <div class="note-tools" role="toolbar" aria-label="装飾">
@@ -705,6 +742,37 @@
       if (t.run) t.run();
       else apply(F.setKind(textIn.value, textIn.selectionStart, textIn.selectionEnd, k), "tool");
     });
+    /* ---- 画像（段5）。押した流れで選ぶ口を開く（iOS はカメラ・写真を選ばせる）。縮めて書けたと
+       分かってから、カーソルの行の下に参照の一行。書いているあいだは帯の絵を薄くするだけ。 ---- */
+    const fileIn = node(html`<input type="file" accept="image/*" multiple hidden class="js-pic-in">`);
+    body.append(fileIn);
+    let picking = false;
+    let pickAt = 0;
+    const pickImage = () => {
+      if (picking || !KN.noteImg || KN.noteImg.state() !== "on") return;
+      pickAt = textIn.selectionEnd;
+      fileIn.value = "";
+      fileIn.click();
+    };
+    fileIn.addEventListener("change", async () => {
+      const files = [...(fileIn.files || [])];
+      fileIn.value = "";
+      if (!files.length || picking) return;
+      picking = true;
+      paintTools();
+      let at = Math.min(pickAt, textIn.value.length);
+      for (const f of files) {
+        let id = null;
+        try { id = await KN.noteImg.add(f); } catch (_) { id = null; }
+        if (closed) break;
+        if (!id) { KN.ui.toast("画像を保存できませんでした"); break; }
+        const r = F.putLine(textIn.value, Math.min(at, textIn.value.length), KN.noteImg.refLine(id));
+        apply(r, "tool");
+        at = r.s;
+      }
+      picking = false;
+      if (!closed) paintTools();
+    });
     let lastSel = [textIn.value.length, textIn.value.length];
     const paintTools = () => {
       if (document.activeElement === textIn) lastSel = [textIn.selectionStart, textIn.selectionEnd];
@@ -713,6 +781,10 @@
       tools.querySelectorAll(".js-tool").forEach((b) => {
         const k = b.dataset.k;
         if (k === "undo" || k === "redo") b.setAttribute("aria-disabled", String(!can[k]));
+        else if (k === "image") {
+          b.hidden = !KN.noteImg || KN.noteImg.state() !== "on";
+          b.setAttribute("aria-disabled", String(picking));
+        }
         else if (k === "bold") b.setAttribute("aria-pressed", String(F.boldAt(textIn.value, textIn.selectionStart)));
         else if (["head", "bullet", "num", "task", "quote"].includes(k)) b.setAttribute("aria-pressed", String(kind === k));
       });
@@ -956,6 +1028,15 @@
     return h;
   }
 
+  /** 画像を黒地の一枚で全体に（段5）。下へ払って閉じる。 */
+  function openPicture(id) {
+    const v = KN.noteImg && KN.noteImg.known(id);
+    if (!v) return;
+    const body = node(html`<div class="note-pic"><img alt="" src="${v.url}"></div>`);
+    const h = KN.ui.sheet({ title: "", content: body, cls: "is-pic", pull: () => true });
+    h.el.setAttribute("aria-label", "画像");
+  }
+
   /* 「⋯」とタグ・ノートブック・作った日の小窓は KN.ui.popMenu / popOver（2026年10月2日に
      やることの詳細の紙と共用にした）。 */
   const popMenu = (anchor, items) => KN.ui.popMenu(anchor, items);
@@ -1178,7 +1259,7 @@
     const paint = () => {
       const w = U.foldKana(q.value.trim());
       rows.innerHTML = "";
-      N().list().filter((n) => !w || U.foldKana(`${n.title}\n${n.body}`).includes(w)).forEach((n) => {
+      N().list().filter((n) => !w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w)).forEach((n) => {
         const r = node(html`
           <button class="note-open note-ver" data-id="${n.id}">
             <span class="note-d">${stampOf(n.updatedAt)}</span>

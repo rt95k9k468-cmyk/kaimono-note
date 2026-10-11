@@ -281,13 +281,21 @@
     `);
     KN.ui.sheet({ title: "ノートを書き出す", content: body, footer: foot });
 
+    /* zip に詰める画像（段5）は、紙を開いたときに読んでおきます（押した流れで await しない）。 */
+    let pics = null;
+    const I = KN.noteImg;
+    const ids = I ? N().list().flatMap((n) => I.idsIn(n.body)) : [];
+    if (!ids.length) pics = new Map();
+    else I.readMany(ids).then((m) => { pics = m; }, () => { pics = new Map(); });
+
     /* 押した流れの中で組んで渡します（共有シートの前で await しない）。 */
     const run = (fmt) => {
       if (exportBlocked()) return;
       const list = notesIn(scope);
       if (!list.length) { KN.ui.toast("書き出すノートがありません"); return; }
+      if (fmt === "zip" && !pics) { KN.ui.toast("画像を読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
       const name = fileName(scope, fmt === "zip" ? "zip" : "md");
-      if (fmt === "zip") hand(name, zipNotes(list), "application/zip");
+      if (fmt === "zip") hand(name, zipNotes(list, pics), "application/zip");
       else hand(name, new Blob([oneFile(list)], { type: "text/markdown;charset=utf-8" }), "text/markdown");
     };
     foot.querySelector(".js-zip").addEventListener("click", () => run("zip"));
@@ -373,10 +381,14 @@
     }).join("\n\n");
   }
 
-  function zipNotes(list) {
+  /** pics … 画像（段5）。id → { bytes, at }。`images/<id>.jpg` に同梱し、md の参照の行を
+      相対の道へ差し替えます。手元に無い画像の行は、打ったまま。 */
+  function zipNotes(list, pics) {
     const used = new Set();
     const dirs = new Set();
     const files = [];
+    const put = new Set();
+    const imgs = pics || new Map();
     list.forEach((n) => {
       const dir = n.notebook ? `${safeName(n.notebook)}/` : "";
       if (dir && !dirs.has(dir)) { dirs.add(dir); files.push({ name: dir, text: "", date: n.updatedAt, dir: true }); }
@@ -384,8 +396,17 @@
       let name = `${base}.md`;
       for (let i = 2; used.has(name.toLowerCase()); i++) name = `${base} (${i}).md`;
       used.add(name.toLowerCase());
-      files.push({ name, text: noteFile(n), date: n.updatedAt });
+      const text = noteFile(n).replace(/^!\[\]\(img:([0-9a-f]{16})\)$/gm, (line, id) => {
+        if (!imgs.has(id)) return line;
+        put.add(id);
+        return `![](${dir ? "../" : ""}images/${id}.jpg)`;
+      });
+      files.push({ name, text, date: n.updatedAt });
     });
+    if (put.size) {
+      files.push({ name: "images/", text: "", date: new Date().toISOString(), dir: true });
+      put.forEach((id) => files.push({ name: `images/${id}.jpg`, bytes: imgs.get(id).bytes, date: imgs.get(id).at }));
+    }
     return zip(files);
   }
 
@@ -423,7 +444,7 @@
     let offset = 0;
     files.forEach((f) => {
       const name = enc.encode(f.name);
-      const data = enc.encode(f.text || "");
+      const data = f.bytes || enc.encode(f.text || "");
       const crc = f.dir ? 0 : crc32(data);
       const { time, date } = dosTime(f.date);
       const local = new DataView(new ArrayBuffer(30));

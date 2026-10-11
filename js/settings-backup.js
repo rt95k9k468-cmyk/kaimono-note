@@ -998,7 +998,10 @@
           KN.ui.toast(`読み込めませんでした（${String((err && err.message) || err)}）`, { long: true });
           return;
         }
-        if ((await restoreText(text)) && h) h.close();
+        if (!(await restoreText(text))) return;
+        if (h) h.close();
+        /* ノートを合わせたあと、参照があって手元に無い画像だけ Dropbox から読む（段5）。 */
+        if (KN.noteImg) KN.noteImg.pullMissing().catch(() => {});
       });
       rows.append(row);
     });

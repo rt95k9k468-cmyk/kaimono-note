@@ -46,6 +46,7 @@ const ASSETS = [
   "js/diary-idb.js",
   "js/note-format.js",
   "js/notes-idb.js",
+  "js/note-img.js",
   "js/ui.js",
   "js/reorder.js",
   "js/keypad.js",

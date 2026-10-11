@@ -25,6 +25,9 @@
   const BULLET = /^(\s*)([-*]) (.*)$/;
   const NUM = /^(\s*)(\d{1,9})\. (.*)$/;
   const QUOTE = /^> ?(.*)$/;
+  /* 画像の参照（段5。docs/image-design.md）。一行に一つだけ、ほかの字なし。それ以外の
+     「![...](...)」は素の文字（打った http の画像を画像にしない＝外へ読みに行かない）。 */
+  const IMG = /^!\[\]\(img:([0-9a-f]{16})\)$/;
   /* 太字。「**」のすぐ内側は空白でない（「2 ** 3 ** 4」を拾わない）。行をまたがない。 */
   const BOLD = /\*\*(\S(?:[^\n]*?\S)?)\*\*/g;
 
@@ -51,6 +54,7 @@
     let m;
     if (!line.trim()) return { kind: "blank", text: "", lead: line.length };
     if (RULE.test(line)) return { kind: "rule", text: "", lead: line.length };
+    if ((m = IMG.exec(line))) return { kind: "img", id: m[1], text: "", lead: line.length };
     if ((m = HEAD.exec(line))) return { kind: "head", level: m[1].length, text: m[2], lead: m[1].length + 1 };
     if ((m = TASK.exec(line))) {
       const text = m[4] || "";
@@ -65,11 +69,14 @@
     return { kind: "para", text: line, lead: 0 };
   }
 
-  /** 印を除いた一行（一覧の冒頭・題の代わり）。区切りと空の行は "" 。 */
+  /** 印を除いた一行（一覧の冒頭・題の代わり）。区切り・空の行・画像の行は "" 。 */
   function plain(line) {
     const p = parse(String(line || ""));
-    return p.kind === "rule" || p.kind === "blank" ? "" : unbold(p.text).trim();
+    return p.kind === "rule" || p.kind === "blank" || p.kind === "img" ? "" : unbold(p.text).trim();
   }
+
+  /** 画像の行を空にした本文（検索が参照の字を拾わないように。保存の形は変えない）。 */
+  const searchable = (body) => String(body || "").split("\n").map((l) => (IMG.test(l) ? "" : l)).join("\n");
 
   /** 見出し（`# ` `## ` `### `）の並び。line は render の data-line と同じ数え方。保存の形は読むだけ。 */
   function headings(body) {
@@ -103,6 +110,11 @@
       } else if (p.kind === "blank") {
         el = document.createElement("div");
         el.className = "nv-blank";
+      } else if (p.kind === "img") {
+        /* 中身（画像か、見つからない枠）は画面の側が入れる（screen-notes.js）。 */
+        el = document.createElement("div");
+        el.className = "nv-img";
+        el.dataset.img = p.id;
       } else {
         el = document.createElement("div");
         const t = document.createElement("span");
@@ -174,7 +186,7 @@
     v.split("\n").forEach((line, i) => {
       if (i) box.append("\n");
       const p = parse(line);
-      if (p.kind === "rule") { put("nh-mark", line); return; }
+      if (p.kind === "rule" || p.kind === "img") { put("nh-mark", line); return; }
       if (p.kind === "blank" || p.kind === "para") { inline(line, ""); return; }
       put("nh-mark", line.slice(0, p.lead));
       inline(line.slice(p.lead), p.kind === "head" ? "nh-head"
@@ -272,6 +284,16 @@
     const eat = tail.startsWith("\n") ? 1 : 0;
     const c = from + text.length;
     return { from, to: to + eat, text, s: c, e: c };
+  }
+
+  /** 一行を置く（画像の参照）。カーソルの行が空ならその行に、そうでなければ行の下に。
+      カーソルは置いた行の終わり。 */
+  function putLine(v, s, text) {
+    const from = lineStart(v, s);
+    const to = lineEnd(v, s);
+    if (!v.slice(from, to).trim()) return { from, to, text, s: from + text.length, e: from + text.length };
+    const c = to + 1 + text.length;
+    return { from: to, to, text: `\n${text}`, s: c, e: c };
   }
 
   /** 一段下げる／上げる（選んでいる行ぜんぶ。空白2つで一段）。 */
@@ -440,5 +462,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, unbold, headings, render, ink, toggleTask, setKind, bold, boldAt, rule, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, searchable, unbold, headings, render, ink, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();

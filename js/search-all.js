@@ -197,14 +197,16 @@
   function findNotes(s, q) {
     const N = KN.notes;
     if (!N || N.state() !== "on") return [];
+    /* 画像の参照の行（段5）は探さない。 */
+    const text = (n) => (KN.noteFormat ? KN.noteFormat.searchable(n.body) : n.body);
     return N.list()
-      .filter((n) => fold(`${n.title}\n${n.body}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q))
+      .filter((n) => fold(`${n.title}\n${text(n)}\n${n.notebook}\n${n.tags.join("\n")}`).includes(q))
       .map((n) => {
         const head = N.headOf(n);
         const inHead = fold(head).includes(q);
         const d = new Date(n.updatedAt);
         return {
-          title: inHead || !fold(n.body).includes(q) ? (head || "（題なし）") : around(n.body, q),
+          title: inHead || !fold(text(n)).includes(q) ? (head || "（題なし）") : around(text(n), q),
           sub: [isNaN(d.getTime()) ? "" : dayLabel(U.dayKey(d)), n.notebook].filter(Boolean).join("・"),
           go: { screen: "notes", note: n.id },
         };
