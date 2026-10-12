@@ -3656,17 +3656,23 @@ a.btn { text-decoration: none; }
 
 /* ---- 思考のホーム・時刻ごとの日記（docs/thinking.md） ----
    三枚の札（日記に書く・ノートを書く・問いから考える）と今日の問い。水彩の絵は img/think/。字は要る一語だけ。
-   札の地は絵の色を面の色に混ぜる（暗い面でも同じ式で沈む）。 */
-.think-home { --tone-a: 70%; --tone-b: 30%; margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+   札の地は絵の色を面の色に混ぜる（暗い面でも同じ式で沈む）。地は --think-a だけ透かして後ろをぼかす（10月12日・利用者
+   「半透明に」。「あの日」と同じ。ぼかしが効かない・コントラストを上げる環境は透かさない）。 */
+.think-home { --tone-a: 70%; --tone-b: 30%; --think-a: 62%; margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .think-home { --tone-a: 22%; --tone-b: 10%; } }
 :root[data-theme="dark"] .think-home { --tone-a: 22%; --tone-b: 10%; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .think-home { --think-a: 100%; } }
+@media (prefers-contrast: more) { .think-home { --think-a: 100%; } }
 .think-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--sp-2); }
 .think-card {
   --tone: #cfe7ea;
   min-width: 0; min-height: 148px; padding: var(--sp-2) var(--sp-3);
   display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)), color-mix(in srgb, var(--tone) var(--tone-b), var(--c-surface)));
-  border: 1px solid color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)); border-radius: var(--r-lg);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)) var(--think-a), transparent),
+    color-mix(in srgb, color-mix(in srgb, var(--tone) var(--tone-b), var(--c-surface)) var(--think-a), transparent));
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid color-mix(in srgb, var(--tone) var(--tone-a), transparent); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
   transition: opacity var(--m-state) var(--ease);
 }
@@ -3683,8 +3689,9 @@ a.btn { text-decoration: none; }
 
 .think-today {
   position: relative; padding: var(--sp-3) var(--sp-4) var(--sp-4); border-radius: var(--r-xl); overflow: hidden;
-  background: color-mix(in srgb, #cfe7ea var(--tone-b), var(--c-surface));
-  border: 1px solid color-mix(in srgb, #cfe7ea var(--tone-a), var(--c-surface)); box-shadow: var(--shadow-1);
+  background: color-mix(in srgb, color-mix(in srgb, #cfe7ea var(--tone-b), var(--c-surface)) var(--think-a), transparent);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid color-mix(in srgb, #cfe7ea var(--tone-a), transparent); box-shadow: var(--shadow-1);
 }
 .think-today-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .think-today-t { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--c-primary); font-size: var(--fs-lg); font-weight: var(--fw-bold); }
