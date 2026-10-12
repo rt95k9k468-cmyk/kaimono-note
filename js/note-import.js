@@ -1,12 +1,13 @@
 /* =========================================================
-   くらしノート — ノートの取り込み（Evernote の .enex。notes-unify.md 段3「取り込み」）
+   くらしノート — ノートの取り込み（Evernote の .enex・Notion の zip。notes-unify.md 段3「取り込み」）
 
    - 流れ：設定 → ノート → 取り込む → ファイルを選ぶ → **先に見せる紙**（件数・画像・PDF・表・落ちるもの。
      数を出すのはこの紙の中だけ）→ 控え → 取り込む。
    - 取り込んだノートは `src: {from, key, batch}`。`key` が同じものは二度目に飛ばす（途中で閉じても、
      同じファイルをもう一度選べば続きから）。`batch` は取り込みを始めた時刻（ISO）——「取り消す」は
      その時刻より後に直したノートを残す（`KN.notes.unimport`）。
-   - ノートブックは .enex（ファイル）ごと。名前は先に見せる紙で変えられる。
+   - ノートブックは .enex（ファイル）ごと、Notion は一つ。名前は先に見せる紙で変えられる。
+   - Notion の zip を読む・ページの形にするのは note-notion.js。
    - 本文は Markdown（見出し・箇条・番号・チェック・引用・線・太字・リンク）。表とコードはそのままの行。
      暗号化した文は一行の印。画像は縮めて画像の入れ物へ、PDF は files/ へ。ほかの添付は名前の行。
    - 読めないノート・ファイルがあっても、ほかは取り込み、読めなかったものの名前を残す。
@@ -267,15 +268,16 @@
     }
   }
 
-  /** いま持っているノートの key（取り消した印のものは除く——取り消したら、また取り込める）。 */
-  function haveKeys() {
+  /** いま持っているノートの key → id（取り消した印のものは除く——取り消したら、また取り込める）。 */
+  function haveIds() {
     const N = KN.notes;
-    const out = new Set();
-    N.list().concat(N.trash()).forEach((n) => {
-      if (n.src && n.src.key && !(n.deletedAt && n.src.undone)) out.add(n.src.key);
+    const out = new Map();
+    N.trash().concat(N.list()).forEach((n) => {
+      if (n.src && n.src.key && !(n.deletedAt && n.src.undone)) out.set(n.src.key, n.id);
     });
     return out;
   }
+  const haveKeys = () => new Set(haveIds().keys());
 
   /** 先に見せる紙の数。 */
   function count(book, have) {
@@ -311,7 +313,7 @@
   }
 
   /** 一件のノートを、入れ物に置く形に（添付を先に書く）。 */
-  async function build(n, nb, batch, fails) {
+  async function build(n, nb, batch, fails, id) {
     const byHash = new Map();
     n.res.forEach((r) => {
       try { r.bytes = bytesOf64(r.data); r.hash = md5(r.bytes); byHash.set(r.hash, r); } catch (_) { r.bytes = null; }
@@ -331,7 +333,7 @@
     n.res.forEach((r) => { r.bytes = null; r.data = ""; });
     const at = n.created || batch;
     return {
-      id: U.uid("n"), title: n.title, body: lines.join("\n"), notebook: nb, tags: KN.notes.cleanTags(n.tags), fav: false,
+      id, title: n.title, body: lines.join("\n"), notebook: nb, tags: KN.notes.cleanTags(n.tags), fav: false,
       createdAt: at, updatedAt: n.updated && n.updated <= batch ? n.updated : at <= batch ? at : batch, deletedAt: null,
       src: { from: "evernote", key: n.key, batch },
     };
@@ -340,16 +342,20 @@
   /** books を取り込む。進みは step(済んだ数, 全部)。stop() が真なら一件の区切りで止める（続きは同じファイルで）。 */
   async function run(books, step, stop) {
     const batch = U.today();
-    const have = haveKeys();
+    const ids = haveIds();
     const todo = [];
-    books.forEach((b) => b.notes.forEach((n) => { if (!have.has(n.key)) todo.push([n, b.notebook.trim()]); }));
+    books.forEach((b) => b.notes.forEach((n) => { if (!ids.has(n.key)) todo.push([n, b.notebook.trim()]); }));
+    todo.forEach(([n]) => ids.set(n.key, U.uid("n")));
     const fails = [];
     let done = 0;
     let pend = [];
     const write = async () => { if (pend.length) { await KN.notes.addMany(pend); pend = []; } };
     for (const [n, nb] of todo) {
       if (stop && stop()) break;
-      pend.push(await build(n, nb, batch, fails));
+      /* Notion は日付が残らない → 取り込んだ時刻から 1ms ずつ前（子の並びは作った日の順）。 */
+      const at = new Date(Date.parse(batch) - (todo.length - done)).toISOString();
+      pend.push(await (n.from === "notion" ? KN.noteNotion.build(n, nb, { batch, at, ids, fails, carry })
+        : build(n, nb, batch, fails, ids.get(n.key))));
       done++;
       if (pend.length >= CHUNK) await write();
       if (step) step(done, todo.length);
@@ -366,7 +372,7 @@
     <div class="set-row"><span class="set-title">${title}</span><span class="set-val">${String(val)}</span></div>`);
 
   function pick() {
-    const inp = node(html`<input type="file" accept=".enex" multiple hidden>`);
+    const inp = node(html`<input type="file" accept=".enex,.zip" multiple hidden>`);
     document.body.append(inp);
     inp.addEventListener("change", () => {
       const files = [...(inp.files || [])];
@@ -378,7 +384,13 @@
 
   async function show(files) {
     const books = [];
+    const zips = files.filter((f) => /\.zip$/i.test(f.name));
+    if (zips.length && KN.noteNotion) {
+      KN.ui.toast("読んでいます");
+      books.push(await KN.noteNotion.read(zips).catch(() => ({ kind: "notion", notebook: "", notes: [], bad: zips.map((f) => f.name) })));
+    }
     for (const f of files) {
+      if (zips.includes(f)) continue;
       let b;
       try { b = parse(await f.text(), f.name); } catch (_) { b = { file: f.name, notebook: "", notes: [], bad: [f.name] }; }
       await keysOf(b);
@@ -405,7 +417,7 @@
         row("ノート", c.notes),
         c.img ? row("画像", c.img) : null,
         c.pdf ? row("PDF", c.pdf) : null,
-        c.table ? row("表のあるノート", c.table) : null,
+        c.table ? row(b.kind === "notion" ? "表" : "表のあるノート", c.table) : null,
         c.had ? row("取り込み済み", c.had) : null
       ));
       const drop = P.card(

@@ -90,6 +90,7 @@ const ASSETS = [
   "js/settings-todo.js",
   "js/settings-list.js",
   "js/settings-daily.js",
+  "js/note-notion.js",
   "js/note-import.js",
   "js/settings-notes.js",
   "js/settings-diet.js",
