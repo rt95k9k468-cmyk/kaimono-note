@@ -290,6 +290,11 @@
       });
     }
     rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    /* まだの問い：今日の問いの元（KN.askList）のうち、まだどこにも「？」で書いていないもの。押せば答える紙。 */
+    const done = new Set(rows.map((r) => askKey(r.text)));
+    const yet = (KN.askList || []).filter((q) => !done.has(askKey(q)));
+    if (!rows.length && !yet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
+    if (rows.length && yet.length) box.append(secTitle("書いた問い"));
     const list = node(html`<div class="notes-list notes-asks"></div>`);
     rows.forEach((r) => {
       const where = r.n ? (headOf(r.n) || "ノート") : `${U.formatDate(`${r.day}T00:00`)} の日記`;
@@ -312,7 +317,20 @@
       });
       list.append(el);
     });
-    box.append(list);
+    if (rows.length) box.append(list);
+    if (!yet.length) return;
+    box.append(secTitle("まだの問い"));
+    const more = node(html`<div class="notes-list notes-asks is-yet"></div>`);
+    yet.forEach((q) => {
+      const el = node(html`
+        <div class="note-row is-card is-ask is-yet">
+          <button class="note-open js-answer"><span class="note-t">${q}</span></button>
+        </div>
+      `);
+      el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(q); });
+      more.append(el);
+    });
+    box.append(more);
   }
 
   /** 問いの面へ（daily の思考のホームの札から）。 */
@@ -1712,6 +1730,89 @@
     h = KN.ui.sheet({ title: "最近削除した項目", content: box });
   }
 
+  /* ---------------- 問いに答える紙（docs/thinking.md） ---------------- */
+
+  const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
+  /** その問いの答えのノート：頭の行が「？問い」のノート（新しく直した順の一冊め）。 */
+  function answerNote(q) {
+    const k = askKey(q);
+    return N().list().filter((n) => { const a = KN.noteFormat.asks(n.body)[0]; return a && a.line === 0 && askKey(a.text) === k; })
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0] || null;
+  }
+
+  /**
+   * 問いに答える紙。問いは欄の外に出す（答えの字に混ざらない・消せない）。保存は閉じたとき（裏へ回る瞬間も）：
+   * 頭の行を「？問い」にした新しいノート。同じ問いのノートがあれば、その終わりに日付と時刻の行をはさんで足す。
+   * ノートが開けないときは null（呼ぶ側が日記の紙で代わる）。
+   */
+  function answer(q) {
+    if (N().state() !== "on") return null;
+    const hidden = !!(KN.lock && KN.lock.hides("notes"));
+    const box = node(html`
+      <div class="stack gap-3">
+        <p class="ask-sheet-q">${q}</p>
+        <label class="field"><textarea class="textarea js-a" rows="6" aria-label="答え" placeholder="思いついたことから"></textarea></label>
+      </div>
+    `);
+    const ta = box.querySelector(".js-a");
+    const at = new Date();
+    const pad = (v) => String(v).padStart(2, "0");
+    const stamp = `${at.getMonth() + 1}月${at.getDate()}日(${U.weekdayJa(U.dayKey(at))}) ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+    const compose = (prev, text) => (prev == null ? `？${q}\n${text}` : `${prev.replace(/\s+$/, "")}\n\n${stamp}\n${text}`);
+    /* wrote … 書いたノートと、書く前の本文（新しいノートは null）・書いた本文。 */
+    let wrote = null;
+    const write = () => {
+      const text = ta.value.replace(/^\s*\n/, "").replace(/\s+$/, "");
+      if (!text.trim()) return;
+      if (wrote) {
+        const n = N().get(wrote.id);
+        if (n && !n.deletedAt && n.body === wrote.body) {
+          const b = compose(wrote.prev, text);
+          if (b !== n.body && N().edit(n.id, { body: b })) wrote.body = b;
+          return;
+        }
+        wrote = null;                         // ほかで直した：上書きせず、もう一度足す
+      }
+      const home = hidden ? null : answerNote(q);
+      if (home) {
+        const b = compose(home.body, text);
+        if (N().edit(home.id, { body: b })) wrote = { id: home.id, prev: home.body, body: b };
+        return;
+      }
+      const n = N().draft();
+      n.body = compose(null, text);
+      if (N().put(n)) wrote = { id: n.id, prev: null, body: n.body };
+    };
+    const hide = () => { write(); N().flush(); };
+    const onVis = () => { if (document.visibilityState === "hidden") hide(); };
+    window.addEventListener("pagehide", hide);
+    document.addEventListener("visibilitychange", onVis);
+    const close = async () => {
+      window.removeEventListener("pagehide", hide);
+      document.removeEventListener("visibilitychange", onVis);
+      write();
+      if (!wrote) return;
+      const id = wrote.id;
+      await N().flush();
+      if (N().pending(id)) { KN.ui.toast("ノートに保存できませんでした"); return; }
+      KN.ui.toast("保存しました", { action: { label: "開く", onClick: () => openNote(id) } });
+      /* ノートの onChange は書いたときには来ない：問いの面が出ていれば組み直す（答えた問いを「書いた問い」へ）。 */
+      if (root && page().k === "ask") renderBody();
+    };
+    const h = KN.ui.sheet({
+      title: "問い",
+      content: box,
+      cls: "is-card",
+      clear: true,
+      guard: false,
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">保存する</button>`),
+      onClose: close,
+    });
+    h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });
+    KN.ui.focusNow(ta);
+    return h;
+  }
+
   /* ---------------- ノートを選ぶ紙 ---------------- */
 
   /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。
@@ -1779,5 +1880,5 @@
 
   KN.screens = KN.screens || {};
   KN.screens.notes = { mount, render, dockButton, again, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
-    pick: pickNote, asks };
+    pick: pickNote, asks, answer };
 })();

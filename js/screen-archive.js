@@ -1109,7 +1109,7 @@
     return { text: base[k % base.length] || "" };
   }
 
-  /** daily の冒頭：日記に書く・ノートを書く・問いから考える の三枚と、今日の問い。説明は書かない。 */
+  /** daily の冒頭：日記に書く・ノートを書く・問い一覧 の三枚と、今日の問い。説明は書かない。 */
   function thinkHome(day) {
     const canAsk = !!(KN.screens.notes && KN.screens.notes.asks);
     const card = (cls, tone, img, a, b) => html`
@@ -1123,7 +1123,7 @@
         <div class="think-cards">
           ${card("js-think-write", "sea", "diary", "日記に", "書く")}
           ${card("js-think-note", "leaf", "note", "ノートを", "書く")}
-          ${canAsk ? card("js-think-ask", "sun", "ask", "問いから", "考える") : ""}
+          ${canAsk ? card("js-think-ask", "sun", "ask", "問い", "一覧") : ""}
         </div>
         <section class="think-today">
           <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
@@ -1159,10 +1159,11 @@
       askTurn = { day, n: (askTurn.day === day ? askTurn.n : 0) + 1 };
       paint();
     });
-    /* 問いは「？」の行として一件の頭に置く（ノートの「問い」の面に並ぶ）。打つまでは書かない。
-       自分の問いは写さず、書いたところ（そのノートの行・その日）へ。 */
+    /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
+       日記の紙。打つまでは書かない。自分の問いは写さず、書いたところ（そのノートの行・その日）へ。 */
     el.querySelector(".js-think-today").addEventListener("click", () => {
-      if (!cur.mine) { openPost(day, null, `？${cur.text}\n`); return; }
+      const NS = KN.screens.notes;
+      if (!cur.mine) { if (!(NS && NS.answer && NS.answer(cur.text))) openPost(day, null, `？${cur.text}\n`); return; }
       KN.motion.fire("select");
       if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line }); }
       else goDayTo(cur.day);
@@ -1247,7 +1248,7 @@
     const body = node(html`
       <div class="stack gap-4">
         <label class="field arc-memo-field">
-          <textarea class="textarea js-memo" rows="5" aria-label="日記">${fresh ? seed || "" : item.text}</textarea>
+          <textarea class="textarea js-memo" rows="5" aria-label="日記" placeholder="いまのことを一行から">${fresh ? seed || "" : item.text}</textarea>
         </label>
       </div>
     `);
@@ -1343,7 +1344,7 @@
       clear: true,
       // 打った先から残しているので、閉じるときに引き止めません。
       guard: false,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "送る" : "閉じる"}</button>`),
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "保存する" : "閉じる"}</button>`),
       onClose: close,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => {

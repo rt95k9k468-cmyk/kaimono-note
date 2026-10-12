@@ -80,27 +80,31 @@ const AT = new Date(2026, 9, 6, 12, 34);
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
-  t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・問いから考える）", home.home && home.first
-    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|問いから考える", JSON.stringify(home));
+  t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・問い一覧）", home.home && home.first
+    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|問い一覧", JSON.stringify(home));
   t.check("問いの札がある", home.ask);
   t.check("今日の問いがあり、絵が読めた", /？$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
   t.check("空の日の一行は「この日のことを書く」のまま", home.blank === "この日のことを書く", String(home.blank));
   t.check("絵文字なし", !home.emoji);
 
   /* ---- 書く口：種類を選ばずに書く紙。打った先から残る ---- */
-  /* ---- 今日の問い：「別の問い」で替わる。この問いから考える＝「？」の行を頭に置いた紙。打つまで書かない ---- */
+  /* ---- 今日の問い：「別の問い」で替わる。この問いから考える＝答える紙（問いは欄の外）。打つまで書かない ---- */
   {
     const q0 = await page.textContent("#screen-archive .js-think-q");
     await page.click("#screen-archive .js-think-other");
     const q1 = await page.textContent("#screen-archive .js-think-q");
     t.check("別の問いで替わる", q0 && q1 && q0 !== q1, `${q0} → ${q1}`);
     const before0 = await memo();
+    await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
+    const notes0 = await page.evaluate(() => KN.notes.list().length);
     await page.click("#screen-archive .js-think-today");
-    await sheetOpen();
-    const v = await page.evaluate(() => { const m = document.querySelector(".sheet.is-open .js-memo"); return { v: m.value, end: m.selectionStart === m.value.length }; });
-    t.check("紙の頭に「？」と問い・カーソルは終わり", v.v === `？${q1}\n` && v.end, JSON.stringify(v));
+    await page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 });
+    const v = await page.evaluate(() => { const s = document.querySelector(".sheet.is-open"), a = s.querySelector(".js-a");
+      return { q: s.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a }; });
+    t.check("答える紙：問いは欄の外・欄は空・カーソルは欄", v.q === q1 && v.v === "" && v.focus, JSON.stringify(v));
     await closeSheet();
-    t.check("打たずに閉じれば書かない", (await memo()) === before0);
+    t.check("打たずに閉じれば書かない", (await memo()) === before0
+      && (await page.evaluate(() => KN.notes.list().length)) === notes0);
   }
 
   await page.click("#screen-archive .js-think-write");
@@ -108,10 +112,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const s1 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
     return { focused: document.activeElement === s.querySelector(".js-memo"), pick: !!s.querySelector(".js-pick, .arc-pick-b"),
-      ok: s.querySelector(".js-ok").textContent.trim(), title: s.querySelector(".sheet-title").textContent.trim() };
+      ok: s.querySelector(".js-ok").textContent.trim(), title: s.querySelector(".sheet-title").textContent.trim(),
+      ph: s.querySelector(".js-memo").placeholder };
   });
   t.check("書く紙は欄にカーソル・種類の札なし", s1.focused && !s1.pick, JSON.stringify(s1));
-  t.check("ボタンは「送る」・題はその日", s1.ok === "送る" && /10月6日/.test(s1.title), JSON.stringify(s1));
+  t.check("ボタンは「保存する」・空の欄に短い案内・題はその日", s1.ok === "保存する" && !!s1.ph && /10月6日/.test(s1.title), JSON.stringify(s1));
   await page.keyboard.insertText("一件目の字");
   await page.waitForTimeout(800);
   const m1 = await memo();

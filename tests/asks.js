@@ -5,7 +5,9 @@
    - 読むときは「？」の行の字だけ主色（印は打ったまま。保存の形は変わらない）
    - タグの小窓に、まだ使っていなくても「種」「問い」
    - 「⋯」の「読んだところ」：終わりに「### 月日 p.」を足して書く欄へ（種をまくは外した）
-   - daily の問いの札からノートの問いの面へ
+   - daily の問いの札（問い一覧）からノートの問いの面へ
+   - 問いの面の「まだの問い」（今日の問いの元のうち書いていないもの）→ 答える紙（問いは欄の外）→ 「？問い」を頭にした
+     ノート。同じ問いは同じノートの終わりに日付と時刻の行をはさんで。打たずに閉じれば書かない
    - 今日の問い：前の日に書いた問いは引かない・自分で書いた「？」の問いが「あなたの問い」で混ざり、押すと書いた日へ
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/asks.js */
@@ -29,7 +31,7 @@ const { open, checker } = require("./lib");
   });
   await page.evaluate(() => KN.notes.flush());
 
-  const asksText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks .note-row")]
+  const asksText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks:not(.is-yet) .note-row")]
     .map((r) => r.querySelector(".note-t").textContent.trim()));
 
   /* ---- daily の問いの札 → ノートの問いの面 ---- */
@@ -122,6 +124,45 @@ const { open, checker } = require("./lib");
     return b ? b.textContent.trim() : null;
   });
   t.check("ノートのホームに「問い」の行", homeRow === "問い", String(homeRow));
+
+  /* ---- まだの問い → 答える紙 → 「？問い」を頭にしたノート ---- */
+  {
+    const yetText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-yet .note-t")].map((x) => x.textContent.trim()));
+    await page.evaluate(() => { KN.app.showScreen("notes"); KN.screens.notes.asks(); });
+    await page.waitForSelector("#screen-notes .notes-asks.is-yet", { timeout: 4000 });
+    const q = await page.evaluate(() => KN.askList[0]);
+    const sec = await page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-sec")].map((x) => x.textContent.trim()));
+    t.check("問いの面に「書いた問い」と「まだの問い」", sec.includes("書いた問い") && sec.includes("まだの問い") && (await yetText()).includes(q), JSON.stringify(sec));
+    const answerOpen = () => page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 });
+    const ok = async () => {
+      await page.click(".sheet.is-open .js-ok");
+      await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 }).catch(() => {});
+      await page.waitForTimeout(400);
+    };
+    const bodies = () => page.evaluate((q) => KN.notes.list().filter((n) => n.body.startsWith(`？${q}\n`)).map((n) => n.body), q);
+    await page.locator("#screen-notes .notes-asks.is-yet .note-row", { hasText: q }).first().locator(".js-answer").click();
+    await answerOpen();
+    const s = await page.evaluate(() => { const el = document.querySelector(".sheet.is-open"), a = el.querySelector(".js-a");
+      return { q: el.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a, ok: el.querySelector(".js-ok").textContent.trim() }; });
+    t.check("答える紙：問いは欄の外・欄は空・「保存する」", s.q === q && s.v === "" && s.focus && s.ok === "保存する", JSON.stringify(s));
+    await page.keyboard.insertText("答えの字");
+    await ok();
+    const b1 = await bodies();
+    t.check("保存すると「？問い」を頭にしたノート", b1.length === 1 && b1[0] === `？${q}\n答えの字`, JSON.stringify(b1));
+    t.check("答えた問いは「書いた問い」へ移る", (await asksText()).includes(q) && !(await yetText()).includes(q));
+    await page.evaluate((q) => KN.screens.notes.answer(q), q);
+    await answerOpen();
+    await page.keyboard.insertText("二度めの字");
+    await ok();
+    const b2 = await bodies();
+    t.check("同じ問いは同じノートの終わりに、日付と時刻の行をはさんで", b2.length === 1
+      && b2[0] === `？${q}\n答えの字\n\n10月6日(火) 12:34\n二度めの字`, JSON.stringify(b2));
+    const n0 = await page.evaluate(() => KN.notes.list().length);
+    await page.evaluate(() => KN.screens.notes.answer(KN.askList[1]));
+    await answerOpen();
+    await ok();
+    t.check("打たずに閉じれば書かない", (await page.evaluate(() => KN.notes.list().length)) === n0);
+  }
 
   /* ---- 今日の問い：前の日に「？問い」を書いた問いは引かない・自分で書いた問いも混ざる ---- */
   const yest = await page.evaluate(() => {
