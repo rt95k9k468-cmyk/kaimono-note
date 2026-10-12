@@ -5425,7 +5425,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-tree-row:active { background: var(--press-sink); }
 @media (hover: hover) { .notes-tree-row:not([aria-current="true"]):hover { background: var(--c-surface); } }
 .notes-tree-twist { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
-.notes-tree-twist svg { width: 14px; height: 14px; transition: rotate var(--m-state) var(--ease); }
+.notes-tree-twist svg { width: var(--ico-sm); height: var(--ico-sm); transition: rotate var(--m-state) var(--ease); }
 [aria-expanded="true"] > .notes-tree-twist svg { rotate: 90deg; }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
 .notes-chips { margin-top: var(--sp-2); }
