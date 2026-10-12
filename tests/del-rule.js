@@ -23,7 +23,8 @@ const hits = (re) => src.flatMap(([f, s]) => s.split("\n").filter((l) => re.test
 const RM = /store\.remove(Entry|Weight|Meal|Drink|Urge)\(/;
 const calls = hits(RM);
 const loose = calls.filter((l) => !/KN\.ui\.delMenu\(/.test(l));
-t.check("一件の記録の remove* は ⋯ の delMenu から", calls.length >= 5 && !loose.length, loose.join(" / ") || String(calls.length));
+/* 積み上げの紙（removeEntry）は2026年10月12日に外した。残るのはダイエットの四つ。 */
+t.check("一件の記録の remove* は ⋯ の delMenu から", calls.length >= 4 && !loose.length, loose.join(" / ") || String(calls.length));
 
 const ps = read("product-sheet.js");
 t.check("価格の一件も ⋯ の delMenu から", /KN\.ui\.delMenu\(removePrice,/.test(ps));

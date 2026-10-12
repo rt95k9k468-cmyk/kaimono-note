@@ -2,7 +2,7 @@
 
    一、JS・index.html に `type="number"` の欄が無い（iOS の number は「e」や桁区切りを受け、空と 0 の区別が崩れる）。
    二、`inputmode="decimal|numeric"` の欄が四つより多くある（数の欄はこちらで書く）。
-   三、daily の記録の紙は数を `U.parseNum` で読む。
+   （三の「daily の記録の紙は U.parseNum で読む」は、積み上げの紙ごと外した。2026年10月12日）
    画面は開かない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/num-fields.js */
@@ -28,7 +28,5 @@ t.check("type=\"number\" の欄が無い", !bad.length, bad.join("\n      "));
 let modes = 0;
 for (const s of Object.values(src)) modes += (s.match(/inputmode="(decimal|numeric)"/g) || []).length;
 t.check("inputmode=\"decimal|numeric\" の欄が四つより多い", modes > 4, `${modes} 個`);
-
-t.check("daily の記録の紙は数を U.parseNum で読む", /U\.parseNum\(/.test(src["screen-archive.js"]));
 
 t.done();

@@ -61,8 +61,8 @@ const VIEWS = [{ width: 390, height: 844 }, { width: 375, height: 667 }];
     const one = await page.evaluate(() => KN.store.get().todos.find((t) => t.title === "読書『こころ』").id);
     await page.locator(`.tl-row[data-todo-id="${one}"] button.check:visible`).first().click();
     await wait(1200);
-    const got = await page.evaluate((i) => !!KN.store.actEntry(KN.store.getTodo(i)), one);
-    c.check(`${tag}：活動を済ませるのは一押し（積み上げが生まれる）`, got);
+    const got = await page.evaluate((i) => { const t = KN.store.getTodo(i); return t.done && !KN.store.actEntry(t); }, one);
+    c.check(`${tag}：活動を済ませるのは一押し（積み上げは作らない）`, got);
 
     /* 3.0 の紙の打ちこむ欄 */
     const fields = await page.evaluate(async () => {
