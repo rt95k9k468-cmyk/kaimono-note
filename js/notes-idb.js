@@ -381,10 +381,93 @@
   function setLabels(id, patch) {
     const n = byId.get(id);
     if (!n || phase !== "on") return;
-    if ("notebook" in patch) n.notebook = String(patch.notebook || "").trim();
+    if ("notebook" in patch) {
+      const nb = String(patch.notebook || "").trim();
+      /* ノートブックを替える＝そのノートブックの一番上へ移す。子孫も同じ札に（段1）。 */
+      if (nb !== n.notebook) { delete n.parent; under(id).forEach((k) => { k.notebook = nb; dirty.add(k.id); }); }
+      n.notebook = nb;
+    }
     if ("tags" in patch) n.tags = cleanTags(patch.tags);
     touch(id);
     emit();
+  }
+
+  /* ---------------- 階層（段1。docs/notes-unify.md「形」） ----------------
+     `parent` は親のノートの id。欄が無い・親が見つからない・親を消した → 一番上に並べるだけで、
+     書き換えません。子は親と同じ `notebook` を持つ（読む側は今のまま `notebook` だけ見ればよい）。 */
+
+  /** 子孫（消したものも）。親の欄をそのままたどる。輪があっても一度ずつ。 */
+  function under(id) {
+    const out = [];
+    const seen = new Set([id]);
+    for (let i = -1; i < out.length; i++) {
+      const at = i < 0 ? id : out[i].id;
+      byId.forEach((n) => {
+        if (String(n.parent || "") === at && !seen.has(n.id)) { seen.add(n.id); out.push(n); }
+      });
+    }
+    return out;
+  }
+
+  /** 消していないノートの木を、その時の一枚で（画面を組むたびに一度）。
+      二台が同時に移して輪になったら、輪の中で id の一番小さいノートを一番上へ（どの端末でも同じ答え。
+      データは書き換えない）。 */
+  function tree() {
+    const live = [...byId.values()].filter((n) => !n.deletedAt);
+    const up = new Map();
+    live.forEach((n) => {
+      const p = n.parent ? byId.get(String(n.parent)) : null;
+      up.set(n.id, p && !p.deletedAt && p.id !== n.id ? p.id : null);
+    });
+    const seen = new Map();          // id → 1 たどっている途中・2 済み
+    live.forEach((n) => {
+      const chain = [];
+      let at = n.id;
+      while (at != null && !seen.has(at)) { seen.set(at, 1); chain.push(at); at = up.get(at); }
+      if (at != null && seen.get(at) === 1) {
+        const ring = chain.slice(chain.indexOf(at));
+        up.set(ring.reduce((a, b) => (a < b ? a : b)), null);
+      }
+      chain.forEach((c) => seen.set(c, 2));
+    });
+    const kids = new Map();
+    const old = (a, b) => String(a.createdAt).localeCompare(String(b.createdAt));
+    live.forEach((n) => {
+      const p = up.get(n.id);
+      if (!kids.has(p)) kids.set(p, []);
+      kids.get(p).push(n);
+    });
+    kids.forEach((l) => l.sort(old));
+    const parentOf = (id) => { const p = up.get(id); return p ? byId.get(p) : null; };
+    return {
+      parentOf,
+      /** 中のノート（作った順）。 */
+      kids: (id) => kids.get(id) || [],
+      /** ノートブックの一番上のノート（作った順）。 */
+      tops: (nb) => (kids.get(null) || []).filter((n) => n.notebook === nb),
+      /** 親たち（一番上から）。 */
+      path(id) {
+        const a = [];
+        for (let p = parentOf(id); p; p = parentOf(p.id)) a.unshift(p);
+        return a;
+      },
+    };
+  }
+
+  /** 移す。to … 親にするノートの id、null なら nb の一番上へ。自分・自分の子孫の下へは移さない。
+      子孫まで同じノートブックに。★・ラベルと同じく、更新日も並びも動かさず、前の版も取りません。 */
+  function move(id, to, nb) {
+    const n = byId.get(id);
+    if (!n || phase !== "on") return false;
+    const p = to ? byId.get(to) : null;
+    if (to && (!p || p.deletedAt || to === id || under(id).some((k) => k.id === to))) return false;
+    const book = p ? p.notebook : String(nb == null ? n.notebook : nb).trim();
+    if (p) n.parent = p.id; else delete n.parent;
+    n.notebook = book;
+    under(id).forEach((k) => { k.notebook = book; dirty.add(k.id); });
+    touch(id);
+    emit();
+    return true;
   }
 
   /** 作った日時を差し替えます（Evernote から移した過去のノート）。★と
@@ -448,28 +531,32 @@
     return line || "";
   }
 
-  /** 消す → 最近削除した項目へ。 */
+  /** 消す → 最近削除した項目へ。中のノートも同じ時刻の印で（先に消してあったものはそのまま）。 */
   function remove(id) {
     const n = byId.get(id);
     if (!n || phase !== "on") return;
-    n.deletedAt = U.today();
-    dirty.add(id);
+    const at = U.today();
+    [n].concat(under(id).filter((k) => !k.deletedAt)).forEach((k) => { k.deletedAt = at; dirty.add(k.id); });
     writeNow();
     emit();
   }
 
+  /** 戻す。一緒に消した（同じ時刻の印の）中のノートも一緒に。 */
   function restore(id) {
     const n = byId.get(id);
     if (!n || phase !== "on") return;
-    n.deletedAt = null;
-    dirty.add(id);
+    const at = n.deletedAt;
+    const along = at ? under(id).filter((k) => k.deletedAt === at) : [];
+    [n].concat(along).forEach((k) => { k.deletedAt = null; dirty.add(k.id); });
     writeNow();
     emit();
   }
 
-  /** 本当に消します。使うのは、何も書かずに閉じた新しいノートだけ。 */
+  /** 本当に消します。使うのは、何も書かずに閉じた新しいノートだけ。中にノートがあれば消しません
+      （中のノートが親を失う）。 */
   function drop(id) {
     if (!byId.has(id) || phase !== "on") return;
+    if (under(id).length) return;
     byId.delete(id);
     dirty.add(id);
     writeNow();
@@ -512,7 +599,7 @@
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
     begin, versions, versionBodies, revert, merge,
-    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel,
+    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 

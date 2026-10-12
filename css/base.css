@@ -1078,6 +1078,12 @@ a { color: var(--c-primary); }
   pointer-events: none;
 }
 .head.is-notes .head-name { opacity: 1; }
+/* 降りた面（段1）：‹ と面の名前。押せるのはこのときだけ。 */
+.head-name.is-sub { display: inline-flex; align-items: center; gap: var(--sp-1); max-width: 100%;
+  left: calc(-1 * var(--sp-2)); }
+.head.is-notes .head-name.is-sub { pointer-events: auto; }
+.head-name-t { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; overflow: hidden; }
+.head-name-t > span:last-child { overflow: hidden; text-overflow: ellipsis; }
 .head.is-notes :is(.topbar-day, .js-go-today) { opacity: 0; pointer-events: none; }
 .head.is-notes .js-upcoming { display: none; }
 .head:has(> .head-cal:is(.is-cal-out, .is-cal-in)) :is(.head-name, .topbar-day, .js-go-today) {

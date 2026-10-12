@@ -629,5 +629,18 @@
     if (document.visibilityState === "visible") queueDot();
   });
 
-  KN.head = { els, mine, enter, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
+  /** ノートの帯の題（段1）。ホームは「Notes」、降りた面はその名前と戻る ‹（inner は html）。 */
+  function notesTitle(inner, back) {
+    if (!els.name) return;
+    els.name.innerHTML = "";
+    els.name.classList.toggle("is-sub", !!back);
+    if (back) {
+      const b = node(html`<button class="icon-btn head-back js-notes-back" aria-label="戻る">${icon("chevron-left")}</button>`);
+      b.addEventListener("click", () => { KN.motion.fire("select"); back(); });
+      els.name.append(b);
+    }
+    els.name.append(node(html`<span class="head-name-t">${inner || "Notes"}</span>`));
+  }
+
+  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
 })();

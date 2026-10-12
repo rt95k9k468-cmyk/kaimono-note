@@ -23,10 +23,18 @@ const { open, checker } = require("./lib");
   const tab = (id) => page.click(`.tab[data-tab="${id}"]`);
   const label = () => page.$eval('.tab[data-tab="archive"] .tab-label', (e) => e.textContent);
   const parked = () => page.$eval("#screen-archive", (e) => e.classList.contains("is-face-parked"));
+  /* 一覧の試験は「すべてのノート」で（段1から最初の面はホーム。docs/notes-unify.md）。 */
+  const toList = async () => {
+    const all = await page.$("#screen-notes .notes-books .js-all");
+    if (!all) return;
+    await all.click();
+    await page.waitForFunction(() => !document.querySelector("#screen-notes .notes-books"));
+  };
   const toNotes = async () => {
-    if ((await active()) === "notes") return;
+    if ((await active()) === "notes") return toList();
     await tab("notes");
     await settled("notes");
+    await toList();
   };
   const sheetOpen = () => page.$(".sheet.is-note.is-open");
   const closeSheet = async () => {

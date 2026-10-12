@@ -21,6 +21,12 @@
      記憶だけに持ちます（localStorage には書きません）。
      { k: "fav" } ／ { k: "nb", v: 名前 } ／ { k: "tag", v: 名前 } */
   let pick = null;
+  /* 面の重なり（段1。docs/notes-unify.md「画面」）。いちばん下はホーム。記憶だけに持ちます。
+     { k: "home" } ／ { k: "list" }（すべてのノート＝今の一覧）／ { k: "nb", v: 名前 }。y は降りる前の送り。 */
+  let pages = [{ k: "home" }];
+  const page = () => pages[pages.length - 1];
+  /* 開いている書く紙（重ねた順）。道すじの親へ戻るとき、重ねた紙にあればそこまで閉じる。 */
+  const papers = [];
 
   const N = () => KN.notes;
 
@@ -140,9 +146,10 @@
       : pick.k === "nb" ? n.notebook === pick.v
         : n.tags.includes(pick.v));
 
-  function renderBody() {
+  function renderBody(jump) {
     if (!els.body) return;
     const box = els.body;
+    paintTitle();
     /* チップの列は組み直しても横の位置を保ちます（右のほうのチップを押した
        とたんに、列が頭へ戻らないように）。 */
     const was = box.querySelector(".notes-chips");
@@ -159,23 +166,88 @@
     }
     if (st !== "on") return;
 
+    const t = N().tree();
+    const p = page();
+    /* 探しているあいだは、どの面からでも今の一覧（平らに全部）。 */
+    if (query || p.k === "list") listBody(box, t, keepX);
+    else if (p.k === "home") homeBody(box, t);
+    else box.append(cards(t.tops(p.v), t));
+    const y = jump == null ? keepY : jump;
+    if (sc && sc.scrollTop !== y) sc.scrollTop = y;
+  }
+
+  /** 今の一覧そのまま（すべてのノート）：絞り込みのチップ・カード・最近削除した項目。 */
+  function listBody(box, t, keepX) {
     let all = N().list();
     if (byCreated()) all = all.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     const chips = chipRow(all);
     if (chips) { box.append(chips); chips.scrollLeft = keepX; }
 
-    const rows = all.filter((n) => picked(n) && hit(n, query));
-    const list = node(html`<div class="notes-list"></div>`);
-    rows.forEach((n) => list.append(row(n)));
-    box.append(list);
+    box.append(cards(all.filter((n) => picked(n) && hit(n, query)), t));
 
     /* 最近削除した項目は、探していないときだけ、いちばん下に一行。 */
     if (!query && N().trash().length) {
-      const t = node(html`<button class="notes-trash-row js-trash">最近削除した項目</button>`);
-      t.addEventListener("click", () => { KN.motion.fire("select"); openTrash(); });
-      box.append(t);
+      const b = node(html`<button class="notes-trash-row js-trash">最近削除した項目</button>`);
+      b.addEventListener("click", () => { KN.motion.fire("select"); openTrash(); });
+      box.append(b);
     }
-    if (sc && sc.scrollTop !== keepY) sc.scrollTop = keepY;
+  }
+
+  /* ---------------- 面（段1） ---------------- */
+
+  const secTitle = (text) => node(html`<div class="notes-sec"><div class="section-title">${text}</div></div>`);
+
+  /** ホーム：★・最近直した・ノートブックの行（頭に「すべてのノート」）。数は出しません。 */
+  function homeBody(box, t) {
+    const all = N().list();
+    const favs = all.filter((n) => n.fav);
+    if (favs.length) { box.append(secTitle("★")); box.append(cards(favs, t)); }
+    if (all.length) { box.append(secTitle("最近直した")); box.append(cards(all.slice(0, 5), t)); }
+    box.append(secTitle("ノートブック"));
+    const rows = node(html`<div class="notes-books"></div>`);
+    const line = (label, mark, to, cls) => {
+      const b = node(html`<button class="notes-book ${cls}">${mark}<span>${label}</span>${icon("chevron")}</button>`);
+      b.addEventListener("click", () => { KN.motion.fire("select"); go(to); });
+      rows.append(b);
+    };
+    line("すべてのノート", icon("notes"), { k: "list" }, "js-all");
+    N().notebooks().forEach((nb) => line(nb, book(nb), { k: "nb", v: nb }, "js-book"));
+    box.append(rows);
+  }
+
+  /** 面を降りる・戻る。降りる前の送りを持っておき、戻ったらそこへ。 */
+  function go(p) {
+    const sc = root ? KN.app.scrollerOf(root) : null;
+    page().y = sc ? sc.scrollTop : 0;
+    pages.push(p);
+    pick = null;
+    renderBody(0);
+  }
+  function back() {
+    if (pages.length < 2) return;
+    pages.pop();
+    renderBody(page().y || 0);
+  }
+  /** 帯の題：ホームは「Notes」、降りた面はその名前と ‹。 */
+  function paintTitle() {
+    if (!KN.head.notesTitle) return;
+    const p = page();
+    KN.head.notesTitle(p.k === "list" ? "すべてのノート" : p.k === "nb" ? html`${book(p.v)}<span>${p.v}</span>` : "",
+      pages.length > 1 ? back : null);
+  }
+  /** 席をもう一度押したら、ホームへ。ホームに居れば断る（今までどおり）。 */
+  function again() {
+    if (pages.length < 2) return false;
+    pages = [pages[0]];
+    renderBody(pages[0].y || 0);
+    return true;
+  }
+
+  /** カードの並び。o … { open(n, el) } 押したとき（無ければ書く紙を重ねる）。 */
+  function cards(list, t, o) {
+    const box = node(html`<div class="notes-list"></div>`);
+    list.forEach((n) => box.append(row(n, t, o)));
+    return box;
   }
 
   /* ---------------- 絞り込みのチップ（段3・roadmap-2.0 の V20） ----------------
@@ -249,9 +321,12 @@
     p.place();
   }
 
-  function row(n) {
+  function row(n, t, o) {
     const head = headOf(n);
     const lead = leadOf(n);
+    /* 中のノートには、親の題を小さく添えます（段1）。 */
+    const up = t ? t.parentOf(n.id) : null;
+    const where = [n.notebook, up ? headOf(up) : ""].filter(Boolean).join(" › ");
     const el = node(html`
       <div class="note-row is-card" data-id="${n.id}">
         <button class="note-open js-open">
@@ -259,7 +334,7 @@
           ${lead ? html`<span class="note-x">${lead}</span>` : ""}
           <span class="note-foot">
             <span class="note-d">${whenOf(n)}</span>
-            ${n.notebook ? html`<span class="note-nb">${book(n.notebook)}<span>${n.notebook}</span></span>` : ""}
+            ${where ? html`<span class="note-nb">${n.notebook ? book(n.notebook) : ""}<span>${where}</span></span>` : ""}
             ${n.tags.map((t) => html`<span class="note-tag">${dot(t)}<span>${t}</span></span>`)}
           </span>
         </button>
@@ -267,7 +342,7 @@
                 aria-label="${head || "ノート"} に★を付ける">${icon("star")}</button>
       </div>
     `);
-    el.querySelector(".js-open").addEventListener("click", () => openNote(n.id, el));
+    el.querySelector(".js-open").addEventListener("click", () => (o && o.open ? o.open(n, el) : openNote(n.id, el)));
     el.querySelector(".fav").addEventListener("click", (e) => {
       e.stopPropagation();
       U.haptic();
@@ -281,8 +356,11 @@
      ＋も一覧の行も、同じ紙を開きます（読む画面と編集ボタンは作りません）。
      保存は黙って：記憶は打つたびに直し、入れ物へは打ち終わりの少しあと
      （notes-idb.js）。閉じても払っても、閉じた拍に書き切ります。 */
-  /* from … 押した一覧のカード。紙はそのカードから膨らむ（段4.3）。 */
-  function openNote(id, from) {
+  /* from … 押した一覧のカード。紙はそのカードから膨らむ（段4.3）。
+     o … { parent: 親の id（中に足す）, nb: ノートブック（その面の＋）, within: 戻り先のカードを探す場所,
+           after: 閉じたあとに }（段1） */
+  function openNote(id, from, o) {
+    o = o || {};
     const st = N().state();
     if (st !== "on") {
       KN.ui.toast(st === "off" ? "ノートを開けませんでした" : "ノートを読み込んでいるところです");
@@ -292,6 +370,11 @@
     const fresh = !id;
     const note = fresh ? N().draft() : N().get(id);
     if (!note) return;
+    if (fresh) {
+      const up = o.parent ? N().get(o.parent) : null;
+      if (up) { note.parent = up.id; note.notebook = up.notebook; }
+      else if (o.nb) note.notebook = o.nb;
+    }
     let stored = !fresh;
     /* 閉じたときの「更新しました」は、開いたときと比べて決めます。 */
     const look = (n) => JSON.stringify(n ? [n.title, n.body, n.notebook, n.tags, !!n.fav, n.createdAt, !!n.noTime] : null);
@@ -307,6 +390,7 @@
        出ると、書く場所が狭い）。 */
     const body = node(html`
       <div class="note-edit">
+        <nav class="note-path js-path" aria-label="道すじ" hidden></nav>
         <textarea class="note-title-in grow-field js-title" placeholder="タイトル" aria-label="タイトル"
                   rows="1" autocomplete="off" enterkeyhint="next"></textarea>
         <div class="note-sub">
@@ -319,6 +403,7 @@
           <textarea class="note-body-in grow-field js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
           <div class="note-hl js-hl" aria-hidden="true"></div>
         </div>
+        <section class="note-kids js-kids"></section>
       </div>
     `);
     /* 頭の行のまん中：ノートブック。下へ送って大きな題が隠れたら、その
@@ -835,10 +920,15 @@
     const setLabels = (patch) => {
       if (stored) N().setLabels(note.id, patch);
       else {
-        if ("notebook" in patch) note.notebook = String(patch.notebook || "").trim();
+        if ("notebook" in patch) {
+          const nb = String(patch.notebook || "").trim();
+          if (nb !== note.notebook) delete note.parent;
+          note.notebook = nb;
+        }
         if ("tags" in patch) note.tags = N().cleanTags(patch.tags);
       }
       paintLabels();
+      paintPath();
     };
     const paintLabels = () => {
       nbBtn.querySelector(".js-nb-name").textContent = note.notebook || "ノートブック";
@@ -876,6 +966,60 @@
       });
     });
 
+    /* ---- 道すじと中のノート（段1。docs/notes-unify.md「画面」） ----
+       道すじは親があるときだけ、題の上に（ノートブック › 親 › …）。三つより深ければ真ん中を「…」に畳み、
+       押すと全部出す。本文の下に中のノートのカード（作った順）。 */
+    const me = { id: note.id, h: null };
+    const pathEl = body.querySelector(".js-path");
+    const kidsEl = body.querySelector(".js-kids");
+    let pathOpen = false;
+    const paintPath = () => {
+      const up = note.parent ? N().get(note.parent) : null;
+      const ups = !up || up.deletedAt ? [] : stored ? N().tree().path(note.id) : N().tree().path(up.id).concat(up);
+      pathEl.innerHTML = "";
+      pathEl.hidden = !ups.length;
+      if (!ups.length) return;
+      let parts = (note.notebook ? [{ nb: note.notebook }] : []).concat(ups.map((n) => ({ n })));
+      if (!pathOpen && parts.length > 3) parts = [parts[0], { more: true }, parts[parts.length - 1]];
+      parts.forEach((x, i) => {
+        if (i) pathEl.append(node(html`<span class="note-path-sep" aria-hidden="true">›</span>`));
+        const b = x.more ? node(html`<button type="button" aria-label="道すじをすべて出す"><span>…</span></button>`)
+          : x.nb ? node(html`<button type="button">${book(x.nb)}<span>${x.nb}</span></button>`)
+            : node(html`<button type="button"><span>${headOf(x.n) || "ノート"}</span></button>`);
+        b.addEventListener("click", () => {
+          KN.motion.fire("select");
+          if (x.more) { pathOpen = true; paintPath(); }
+          else if (x.nb) toBook(x.nb);
+          else toNote(x.n.id);
+        });
+        pathEl.append(b);
+      });
+    };
+    const paintKids = () => {
+      if (closed) return;
+      kidsEl.innerHTML = "";
+      const t = stored ? N().tree() : null;
+      const kids = t ? t.kids(note.id) : [];
+      if (!kids.length) return;
+      kidsEl.append(node(html`<div class="section-title">中のノート</div>`));
+      kidsEl.append(cards(kids, null, {
+        open: (n, el) => { sync(); openNote(n.id, el, { within: kidsEl, after: paintKids }); },
+      }));
+    };
+    /* ★・消した・戻した・移したら（打つたびには来ません）。 */
+    const offKids = N().onChange(() => { if (!closed) { paintKids(); paintPath(); } });
+    /* 中に足す・移すは、まだ置いていない新しいノートなら先に置きます（空なら閉じたときに消える）。 */
+    const settle = () => {
+      if (!stored) {
+        if (!N().put(note)) return false;
+        stored = true;
+      }
+      sync();
+      return true;
+    };
+    paintPath();
+    paintKids();
+
     const finish = () => {
       closed = true;
       if (fold) fold.disconnect();
@@ -884,10 +1028,14 @@
       document.removeEventListener("selectionchange", onSel);
       sync();
       if (offBridge) offBridge();
+      offKids();
+      const at = papers.indexOf(me);
+      if (at >= 0) papers.splice(at, 1);
       /* 何も書かずに閉じた新しいノートは残しません。つながった記録があれば残す（段6の橋）。 */
       if (fresh && stored && blank() && !KN.store.entriesOfNote(note.id).length) N().drop(note.id);
       N().flush();
       renderBody();
+      if (o.after) o.after();
       /* 消したとき（最近削除へ移した）は、そちらの知らせ（元に戻す）を残します。 */
       const now = stored ? N().get(note.id) : null;
       if (now && !now.deletedAt && look(now) !== opened) KN.ui.toast(fresh ? "保存しました" : "更新しました");
@@ -912,6 +1060,21 @@
             textIn.value = v.body;
             paintHeadT();
             changed();
+          });
+        } },
+      { icon: "plus", label: "中にノートを足す",
+        onPick: () => {
+          if (!settle()) return;
+          openNote(null, null, { parent: note.id, within: kidsEl, after: paintKids });
+        } },
+      { icon: "indent", label: "移す",
+        onPick: () => {
+          if (!settle()) return;
+          pickPlace(note, (to, nb) => {
+            if (!N().move(note.id, to, nb)) return;
+            paintLabels();
+            paintPath();
+            KN.ui.toast("移しました");
           });
         } },
       { icon: "trash", label: "消す", danger: true,
@@ -998,7 +1161,11 @@
       clear: true,
       grow: {
         from: from || null,
-        back: () => (root && root.querySelector(`.notes-list .note-row[data-id="${CSS.escape(note.id)}"]`)) || null,
+        back: () => {
+          /* 中のノートは、親の紙の「中のノート」のカードへ戻る（段1）。 */
+          const at = o.within && o.within.isConnected ? o.within : root;
+          return (at && at.querySelector(`.notes-list .note-row[data-id="${CSS.escape(note.id)}"]`)) || null;
+        },
       },
       /* V19：一番上まで送ってあれば、中身を下へ引いても閉じる。書いているあいだは
          取らない（キーボードを出して打っている途中に、上へ戻そうと引いた指で
@@ -1025,6 +1192,8 @@
         }),
       });
     }
+    me.h = h;
+    papers.push(me);
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
     /* 頭：左に戻る ‹、右に ⋯（Evernote の並び）。閉じ方は紙のまま
@@ -1237,6 +1406,57 @@
 
   /* ---------------- 最近削除した項目 ---------------- */
 
+  /* ---------------- 道すじから・移す先（段1） ---------------- */
+
+  /** 道すじの親へ：重ねた紙にあれば、その上の紙を閉じて戻る。無ければ上に重ねる。 */
+  function toNote(id) {
+    const at = papers.findIndex((x) => x.id === id);
+    if (at < 0) { openNote(id); return; }
+    papers.slice(at + 1).reverse().forEach((x) => x.h.close());
+  }
+
+  /** 道すじのノートブックへ：紙を全部閉じて、そのノートブックの面へ。 */
+  function toBook(nb) {
+    papers.slice().reverse().forEach((x) => x.h.close());
+    const p = page();
+    if (!(p.k === "nb" && p.v === nb)) go({ k: "nb", v: nb });
+  }
+
+  /** 移す先を選ぶ紙：ノートブックの行と、その中の木。自分と自分の中のノートは選べない。
+      done(親の id か null, ノートブック)。 */
+  function pickPlace(note, done) {
+    const t = N().tree();
+    const box = node(html`<div class="notes-place" role="tree"></div>`);
+    let h = null;
+    const pick = (to, nb) => { KN.motion.fire("select"); if (h) h.close(); done(to, nb); };
+    const line = (n, d, off) => {
+      const here = n.id === note.parent;
+      const b = node(html`
+        <button class="notes-place-row" role="treeitem" style="--d:${d}" data-id="${n.id}"
+                ${off ? html`aria-disabled="true"` : ""} ${here ? html`aria-current="true"` : ""}>
+          <span>${headOf(n) || "ノート"}</span>
+        </button>`);
+      if (!off) b.addEventListener("click", () => pick(n.id));
+      box.append(b);
+      t.kids(n.id).forEach((k) => line(k, d + 1, off || k.id === note.id));
+    };
+    const books = N().notebooks();
+    if (!books.includes(note.notebook) && note.notebook) books.push(note.notebook);
+    if (t.tops("").length || !note.notebook) books.unshift("");
+    books.forEach((nb) => {
+      const top = !note.parent && note.notebook === nb;
+      const b = node(html`
+        <button class="notes-place-row is-book" role="treeitem" style="--d:0" ${top ? html`aria-current="true"` : ""}>
+          ${nb ? book(nb) : icon("notes")}<span>${nb || "ノートブックなし"}</span>
+        </button>`);
+      b.addEventListener("click", () => pick(null, nb));
+      box.append(b);
+      t.tops(nb).forEach((n) => line(n, 1, n.id === note.id));
+    });
+    h = KN.ui.sheet({ title: "移す先", content: box });
+    return h;
+  }
+
   function openTrash() {
     const box = node(html`<div class="notes-trash"></div>`);
     let h = null;
@@ -1323,12 +1543,14 @@
     `);
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
-      openNote(null);
+      /* ノートブックの面の＋は、そのノートブックに（段1）。 */
+      const p = page();
+      openNote(null, null, p.k === "nb" && !query ? { nb: p.v } : null);
     });
     return fab;
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.notes = { mount, render, dockButton, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
+  KN.screens.notes = { mount, render, dockButton, again, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
     find: findNote, pick: pickNote };
 })();

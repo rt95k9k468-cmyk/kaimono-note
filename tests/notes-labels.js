@@ -20,10 +20,18 @@ const { open, checker } = require("./lib");
     document.querySelector(".screen.is-active").dataset.screen === i
     && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
   const tab = (id) => page.click(`.tab[data-tab="${id}"]`);
+  /* 一覧の試験は「すべてのノート」で（段1から最初の面はホーム。docs/notes-unify.md）。 */
+  const toList = async () => {
+    const all = await page.$("#screen-notes .notes-books .js-all");
+    if (!all) return;
+    await all.click();
+    await page.waitForFunction(() => !document.querySelector("#screen-notes .notes-books"));
+  };
   const toNotes = async () => {
-    if ((await page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen)) === "notes") return;
+    if ((await page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen)) === "notes") return toList();
     await page.click('.tab[data-tab="notes"]');
     await settled("notes");
+    await toList();
   };
   const reload = async () => {
     await page.reload();

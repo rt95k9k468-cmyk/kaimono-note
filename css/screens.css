@@ -5367,6 +5367,41 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* ホーム（段1。docs/notes-unify.md「画面」）：★・最近直した・ノートブックの行。 */
+.notes-sec { padding: var(--sp-5) var(--sp-4) 0; }
+.notes-books { margin: var(--sp-2) var(--sp-4) 0; background: var(--c-surface); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1); overflow: hidden; }
+#screen-notes[data-season] .notes-books { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
+.notes-book { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--row-h);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4); font-size: var(--fs-lg); color: var(--c-text);
+  text-align: left; position: relative; transition: background var(--m-state) var(--ease); }
+.notes-book + .notes-book::before { content: ""; position: absolute; left: var(--sp-4); right: 0; top: 0; height: 1px; background: var(--c-border); }
+.notes-book:active { background: var(--press-sink); transition-delay: var(--m-press); }
+.notes-book > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes-book > svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; color: var(--c-text-3); }
+.notes-book.js-all { font-weight: var(--fw-bold); }
+/* 書く紙の道すじ（題の上）と中のノート（本文の下）。 */
+.note-path { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-1); margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm); color: var(--c-text-2); }
+.note-path button { display: inline-flex; align-items: center; gap: 6px; max-width: 14em; min-height: 28px; color: inherit; }
+.note-path button svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.note-path button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-path button:active { opacity: var(--press-fade); }
+.note-path-sep { color: var(--c-text-3); }
+.note-kids:not(:empty) { margin-top: var(--sp-6); }
+.note-edit:has(.note-kids:not(:empty)) .note-view { min-height: 0; }
+.note-kids .notes-list { padding: var(--sp-2) 0 0; }
+.note-kids .note-row.is-card { box-shadow: var(--shadow-1), 0 0 0 1px var(--c-border); }
+/* 移す先の紙：ノートブックの行と、その中の木。 */
+.notes-place { display: flex; flex-direction: column; }
+.notes-place-row { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: var(--row-h-compact); border-radius: var(--r-sm);
+  padding: 0 var(--sp-2) 0 calc(var(--sp-2) + var(--d, 0) * var(--sp-4)); color: var(--c-text); text-align: left; }
+.notes-place-row > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes-place-row svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.notes-place-row.is-book { font-weight: var(--fw-bold); margin-top: var(--sp-2); }
+.notes-place-row[aria-current="true"] { background: var(--c-primary-soft); }
+.notes-place-row[aria-disabled="true"] { color: var(--c-text-3); }
+.notes-place-row:not([aria-disabled="true"]):active { background: var(--press-sink); }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
 .notes-chips { margin-top: var(--sp-2); }
 .notes-chips .chip svg,
