@@ -343,16 +343,23 @@
     const ids = I ? N().list().flatMap((n) => I.idsIn(n.body)) : [];
     if (!ids.length) pics = new Map();
     else I.readMany(ids).then((m) => { pics = m; }, () => { pics = new Map(); });
+    /* ファイル（PDF）も同じく。zip の `files/<id>` へ。 */
+    let docs = null;
+    const D = KN.noteFile;
+    const fids = D ? N().list().flatMap((n) => D.idsIn(n.body)) : [];
+    if (!fids.length) docs = new Map();
+    else D.readMany(fids).then((m) => { docs = m; }, () => { docs = new Map(); });
 
     /* 押した流れの中で組んで渡します（共有シートの前で await しない）。 */
     const run = (fmt) => {
       if (exportBlocked()) return;
       const list = notesIn(scope);
       if (!list.length) { KN.ui.toast("書き出すノートがありません"); return; }
+      if (fmt === "zip" && !docs) { KN.ui.toast("ファイルを読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
       if (fmt !== "md" && !pics) { KN.ui.toast("画像を読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
       if (fmt === "pdf") { printNotes(list, pics); return; }
       const name = fileName(scope, fmt === "zip" ? "zip" : "md");
-      if (fmt === "zip") hand(name, zipNotes(list, pics), "application/zip");
+      if (fmt === "zip") hand(name, zipNotes(list, pics, docs), "application/zip");
       else hand(name, new Blob([oneFile(list)], { type: "text/markdown;charset=utf-8" }), "text/markdown");
     };
     foot.querySelector(".js-zip").addEventListener("click", () => run("zip"));
@@ -447,12 +454,14 @@
       相対の道へ差し替えます。手元に無い画像の行は、打ったまま。
       中のノートは親と同じ名前のフォルダへ（段1b。`親.md` と `親/子.md`。Obsidian・Notion の取り込みが
       読む入れ子）。親を書き出さないときも、親の名前のフォルダに入れます（どこにあったかを落とさない）。 */
-  function zipNotes(list, pics) {
-    const used = new Set(["images"]);
+  function zipNotes(list, pics, docs) {
+    const used = new Set(["images", "files"]);
     const dirs = new Set();
     const files = [];
     const put = new Set();
     const imgs = pics || new Map();
+    const fs = docs || new Map();
+    const putF = new Set();
     const t = N().tree();
     const bases = new Map();
     N().notebooks().forEach((nb) => used.add(safeName(nb).toLowerCase()));
@@ -480,12 +489,20 @@
         if (!imgs.has(id)) return line;
         put.add(id);
         return `![](${"../".repeat(parts.length - 1)}images/${id}.jpg)`;
+      }).replace(/^\[([^\[\]\n]*)\]\(file:([0-9a-f]{64}\.[a-z0-9]{1,8})\)$/gm, (line, name, id) => {
+        if (!fs.has(id)) return line;
+        putF.add(id);
+        return `[${name}](${"../".repeat(parts.length - 1)}files/${id})`;
       });
       files.push({ name, text, date: n.updatedAt });
     });
     if (put.size) {
       files.push({ name: "images/", text: "", date: new Date().toISOString(), dir: true });
       put.forEach((id) => files.push({ name: `images/${id}.jpg`, bytes: imgs.get(id).bytes, date: imgs.get(id).at }));
+    }
+    if (putF.size) {
+      files.push({ name: "files/", text: "", date: new Date().toISOString(), dir: true });
+      putF.forEach((id) => files.push({ name: `files/${id}`, bytes: fs.get(id).bytes, date: fs.get(id).at }));
     }
     return zip(files);
   }

@@ -28,6 +28,8 @@
   /* 画像の参照（段5。docs/image-design.md）。一行に一つだけ、ほかの字なし。それ以外の
      「![...](...)」は素の文字（打った http の画像を画像にしない＝外へ読みに行かない）。 */
   const IMG = /^!\[\]\(img:([0-9a-f]{16})\)$/;
+  /* ファイルの参照（PDF。note-file.js）。同じく一行に一つだけ。名前は見せるためだけ。 */
+  const FILE = /^\[([^\[\]\n]*)\]\(file:([0-9a-f]{64}\.[a-z0-9]{1,8})\)$/;
   /* 太字。「**」のすぐ内側は空白でない（「2 ** 3 ** 4」を拾わない）。行をまたがない。 */
   const BOLD = /\*\*(\S(?:[^\n]*?\S)?)\*\*/g;
 
@@ -55,6 +57,7 @@
     if (!line.trim()) return { kind: "blank", text: "", lead: line.length };
     if (RULE.test(line)) return { kind: "rule", text: "", lead: line.length };
     if ((m = IMG.exec(line))) return { kind: "img", id: m[1], text: "", lead: line.length };
+    if ((m = FILE.exec(line))) return { kind: "file", id: m[2], text: m[1], lead: line.length };
     if ((m = HEAD.exec(line))) return { kind: "head", level: m[1].length, text: m[2], lead: m[1].length + 1 };
     if ((m = TASK.exec(line))) {
       const text = m[4] || "";
@@ -75,8 +78,12 @@
     return p.kind === "rule" || p.kind === "blank" || p.kind === "img" ? "" : unbold(p.text).trim();
   }
 
-  /** 画像の行を空にした本文（検索が参照の字を拾わないように。保存の形は変えない）。 */
-  const searchable = (body) => String(body || "").split("\n").map((l) => (IMG.test(l) ? "" : l)).join("\n");
+  /** 画像の行を空に、ファイルの行を名前だけにした本文（検索が参照の字を拾わないように。保存の形は変えない）。 */
+  const searchable = (body) => String(body || "").split("\n").map((l) => {
+    if (IMG.test(l)) return "";
+    const m = FILE.exec(l);
+    return m ? m[1] : l;
+  }).join("\n");
 
   /** 見出し（`# ` `## ` `### `）の並び。line は render の data-line と同じ数え方。保存の形は読むだけ。 */
   function headings(body) {
@@ -115,6 +122,18 @@
         el = document.createElement("div");
         el.className = "nv-img";
         el.dataset.img = p.id;
+      } else if (p.kind === "file") {
+        /* 押すと開く（screen-notes.js）。手元に無ければ薄く。 */
+        el = document.createElement("div");
+        el.className = "nv-file";
+        el.dataset.file = p.id;
+        const mark = document.createElement("span");
+        mark.className = "nv-file-i";
+        mark.innerHTML = KN.icons ? KN.icons.svg("paper") : "";
+        const t = document.createElement("span");
+        t.className = "nv-t";
+        t.textContent = p.text || " ";
+        el.append(mark, t);
       } else {
         el = document.createElement("div");
         const t = document.createElement("span");
@@ -186,7 +205,7 @@
     v.split("\n").forEach((line, i) => {
       if (i) box.append("\n");
       const p = parse(line);
-      if (p.kind === "rule" || p.kind === "img") { put("nh-mark", line); return; }
+      if (p.kind === "rule" || p.kind === "img" || p.kind === "file") { put("nh-mark", line); return; }
       if (p.kind === "blank" || p.kind === "para") { inline(line, ""); return; }
       put("nh-mark", line.slice(0, p.lead));
       inline(line.slice(p.lead), p.kind === "head" ? "nh-head"

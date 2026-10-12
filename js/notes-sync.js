@@ -306,8 +306,31 @@
     return { files, gone, cursor: r.body.cursor || "", whole: !cursor };
   }
 
+  /** 本文が参照する画像・ファイルのうち、まだ送っていないものを先に（add。名前＝中身なので上書きしない）。
+      参照だけがほかの端末へ着いて、中身がどこにも無い時を作らない。落ちたらこの .md も送らない。 */
+  async function carry(body) {
+    const kinds = [[KN.noteImg, (id) => `/images/${id}.jpg`], [KN.noteFile, (id) => `/files/${id}`]];
+    for (const [M, path] of kinds) {
+      if (!M || !M.unsent) continue;
+      const want = new Set(M.idsIn(body));
+      if (!want.size) continue;
+      for (const id of await M.unsent()) {
+        if (!want.has(id)) continue;
+        const rec = await M.get(id);
+        if (!rec || !rec.bytes) continue;
+        const r = await call("content", "/2/files/upload", {
+          arg: { path: path(id), mode: "add", autorename: false, mute: true },
+          body: new Blob([rec.bytes], { type: "application/octet-stream" }),
+        });
+        if (!r.ok && !/conflict/.test(r.err)) throw new Error(r.err);
+        await M.markSent(id);
+      }
+    }
+  }
+
   /** 送る。at … 覚えたファイル（無ければ新しく置く）。置けた版の metadata、ほかの端末が先に直していたら "conflict"。 */
   async function send(n, at) {
+    if (!n.deletedAt) await carry(n.body);
     const text = fileOf(n);
     if (!at) {
       for (const p of namesFor(n)) {

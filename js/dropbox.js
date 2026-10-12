@@ -37,6 +37,9 @@
   /* ノートの画像（段5。docs/image-design.md）。一枚ずつ一度だけ、上書きしない形で。 */
   const IMG_DIR = "/images";
   const IMG_RE = /^([0-9a-f]{16})\.jpg$/;
+  /* ノートのファイル（PDF。note-file.js）。名前＝中身なので、同じく上書きしない形で。 */
+  const FILE_DIR = "/files";
+  const FILE_RE = /^[0-9a-f]{64}\.[a-z0-9]{1,8}$/;
   const KEEP = 30;
   const MONTHS = 12;                 // 月の背骨（2026年10月8日、docs/log/data-check.md の案A）
   const SOON = 2 * 60 * 1000;        // 書き換えてから送るまで（その間の書き換えはまとめて一度）
@@ -483,19 +486,21 @@
   }
 
   /** JSON のあとに、まだ送っていない画像を一枚ずつ `images/<id>.jpg`（mode "add"）。同じ名前が
-      もう在れば送れた扱い。落ちたら次の回（JSON の「前と同じなら送らない」には入れない）。 */
+      もう在れば送れた扱い。落ちたら次の回（JSON の「前と同じなら送らない」には入れない）。
+      ノートのファイル（PDF）も同じ形で `files/<id>`。 */
   async function sendImages() {
-    const I = KN.noteImg;
-    if (!I) return;
-    try {
-      for (const id of await I.unsent()) {
-        const rec = await I.get(id);
-        if (!rec || !rec.bytes) continue;
-        await upload(`${IMG_DIR}/${id}.jpg`, rec.bytes, "add");
-        await I.markSent(id);
+    for (const [M, path] of [[KN.noteImg, (id) => `${IMG_DIR}/${id}.jpg`], [KN.noteFile, (id) => `${FILE_DIR}/${id}`]]) {
+      if (!M) continue;
+      try {
+        for (const id of await M.unsent()) {
+          const rec = await M.get(id);
+          if (!rec || !rec.bytes) continue;
+          await upload(path(id), rec.bytes, "add");
+          await M.markSent(id);
+        }
+      } catch (err) {
+        console.warn("images not sent", err);
       }
-    } catch (err) {
-      console.warn("images not sent", err);
     }
   }
 
@@ -521,11 +526,12 @@
     return out;
   }
 
-  /** 控えの中身（字）。上の二つの形の名前だけ読む。三つめの形 `images/<id>.jpg`（段5）は
-      中身を ArrayBuffer で。 */
+  /** 控えの中身（字）。上の二つの形の名前だけ読む。三つめの形 `images/<id>.jpg`（段5）と
+      四つめの `files/<id>`（ノートのファイル）は中身を ArrayBuffer で。 */
   async function download(path) {
     const p = String(path || "");
-    const img = p.startsWith(`${IMG_DIR}/`) && IMG_RE.test(p.slice(IMG_DIR.length + 1));
+    const img = (p.startsWith(`${IMG_DIR}/`) && IMG_RE.test(p.slice(IMG_DIR.length + 1)))
+      || (p.startsWith(`${FILE_DIR}/`) && FILE_RE.test(p.slice(FILE_DIR.length + 1)));
     if (!img && p !== LATEST && !(p.startsWith(`${DAILY_DIR}/`) && DAILY_RE.test(p.slice(DAILY_DIR.length + 1)))) {
       throw new Error("戻せる控えの名前ではありません");
     }

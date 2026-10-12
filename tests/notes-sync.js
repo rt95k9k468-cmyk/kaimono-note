@@ -25,6 +25,7 @@ const { open, checker } = require("./lib");
   const log = [];                // 変わった道（小文字）。cursor はここの長さ
   let revN = 0, idN = 0, busy = 0, notify = false;   // notify … longpoll が変わったと言う（ほかの節を乱さないよう、その節だけ）
   const calls = [];
+  const blobs = new Map();       // images/・files/ の中身（字にしない）
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
   const json = (route, status, obj) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
   const meta = (f) => ({ ".tag": "file", id: f.id, rev: f.rev, name: f.path.split("/").pop(), path_display: f.path,
@@ -52,6 +53,11 @@ const { open, checker } = require("./lib");
       case "/2/files/upload": {
         if (busy > 0) { busy--; return json(route, 429, { error_summary: "too_many_write_operations/", error: { reason: { ".tag": "too_many_write_operations" }, retry_after: 1 } }); }
         const low = arg.path.toLowerCase();
+        if (/^\/(files|images)\//.test(low)) {
+          if (arg.mode === "add" && blobs.has(low)) return json(route, 409, { error_summary: "path/conflict/file/" });
+          blobs.set(low, req.postDataBuffer());
+          return json(route, 200, { ".tag": "file", name: low.split("/").pop(), path_display: arg.path });
+        }
         const has = files.get(low);
         if (arg.mode === "add" && has) return json(route, 409, { error_summary: "path/conflict/file/" });
         if (arg.mode && arg.mode[".tag"] === "update" && (!has || has.rev !== arg.mode.update)) return json(route, 409, { error_summary: "path/conflict/file/" });
@@ -59,6 +65,7 @@ const { open, checker } = require("./lib");
       }
       case "/2/files/download": {
         const p = arg.path;
+        if (blobs.has(p.toLowerCase())) return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: blobs.get(p.toLowerCase()) });
         const text = p.startsWith("rev:") ? hist.get(p.slice(4)) : (files.get(p.toLowerCase()) || {}).text;
         if (text == null) return json(route, 409, { error_summary: "path/not_found/" });
         return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: Buffer.from(text, "utf8") });
@@ -268,6 +275,35 @@ const { open, checker } = require("./lib");
   await a.evaluate(() => KN.notesSync.now());
   await b.evaluate(() => KN.notesSync.now());
   t.check("変わっていなければ送らない（送り返し合わない）", uploads() === u0, `${uploads()} / ${u0}`);
+
+  /* ---------- ファイル（PDF）：中身を先に files/ へ、ほかの端末は開いたときに取る ---------- */
+  const pdf = await a.evaluate(async () => {
+    const u = new TextEncoder().encode("%PDF-1.4\n%\u00e2\u00e3\n試験の中身\n%%EOF\n");
+    const bin = new Uint8Array(u.length + 4); bin.set(u); bin.set([0, 255, 128, 7], u.length);
+    const got = await KN.noteFile.add(new File([bin], "見積.pdf", { type: "application/pdf" }));
+    const n = { ...KN.notes.draft(), title: "PDF のノート", body: `前\n${KN.noteFile.refLine(got.id, got.name)}\n後` };
+    KN.notes.put(n);
+    await KN.notes.flush();
+    return { id: got.id, note: n.id, size: bin.length };
+  });
+  const cf = calls.length;
+  const rp = await a.evaluate(() => KN.notesSync.now());
+  const after = calls.slice(cf).filter((c) => c.path === "/2/files/upload").map((c) => c.arg.path);
+  const fAt = after.indexOf(`/files/${pdf.id}`);
+  const mAt = after.findIndex((p) => /^\/notes\/PDF のノート /.test(p));
+  t.check("ファイルは .md より先に files/<SHA-256>.pdf へ（add・中身はそのまま）",
+    rp === "done" && fAt >= 0 && mAt > fAt && (blobs.get(`/files/${pdf.id}`) || []).length === pdf.size
+      && calls.slice(cf).find((c) => c.arg && c.arg.path === `/files/${pdf.id}`).arg.mode === "add", JSON.stringify([rp, after]));
+  await a.evaluate(() => KN.notesSync.now());
+  t.check("送ったファイルは二度送らない", calls.filter((c) => c.arg && c.arg.path === `/files/${pdf.id}`).length === 1);
+  await b.evaluate(() => KN.notesSync.now());
+  const bp = await b.evaluate(async ([id, nid]) => {
+    const had = !!(await KN.noteFile.get(id));
+    const ok = await KN.noteFile.pull(id, "見積.pdf");
+    const r = await KN.noteFile.get(id);
+    return { had, ok, n: r ? r.bytes.byteLength : 0, body: (KN.notes.get(nid) || {}).body || "" };
+  }, [pdf.id, pdf.note]);
+  t.check("ほかの端末：参照は来て、中身は取ってから同じ", !bp.had && bp.ok && bp.n === pdf.size && bp.body.includes(`(file:${pdf.id})`), JSON.stringify(bp));
 
   /* ---------- 色を直すと、ほかの端末へ ---------- */
   await b.evaluate(() => KN.notes.setColors((all) => { all.tag["料理"] = "#d4695f"; }));

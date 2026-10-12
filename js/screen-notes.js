@@ -660,7 +660,22 @@
       el.setAttribute("role", "button");
       el.setAttribute("aria-label", "画像");
     };
+    /* ファイルの行（PDF）。手元に無ければ薄くして Dropbox から取る（開いたときに取っておく）。 */
+    const paintFiles = () => {
+      const D = KN.noteFile;
+      viewEl.querySelectorAll(".nv-file").forEach((el) => {
+        const id = el.dataset.file;
+        if (D && D.known(id)) return;
+        el.classList.add("is-away");
+        if (!D) return;
+        const name = el.textContent;
+        D.look(id).then((url) => url || D.pull(id, name).then((ok) => (ok ? D.look(id) : null))).then((url) => {
+          if (url && el.isConnected) el.classList.remove("is-away");
+        });
+      });
+    };
     const paintPics = () => {
+      paintFiles();
       const I = KN.noteImg;
       viewEl.querySelectorAll(".nv-img").forEach((el) => {
         const id = el.dataset.img;
@@ -728,6 +743,13 @@
         e.stopPropagation();
         KN.motion.fire("select");
         openPicture(pic.dataset.img);
+        return;
+      }
+      /* ファイルは、端末の見る口で開く（書く欄へは入らない）。 */
+      const doc = e.target.closest(".nv-file");
+      if (doc) {
+        e.stopPropagation();
+        if (!openFile(doc.dataset.file, doc.textContent)) KN.ui.toast("まだ届いていません");
         return;
       }
       /* チェックの四角は、整えた姿のまま付け外し（書く欄へは入らない）。 */
@@ -915,7 +937,7 @@
     });
     /* ---- 画像（段5）。押した流れで選ぶ口を開く（iOS はカメラ・写真を選ばせる）。縮めて書けたと
        分かってから、カーソルの行の下に参照の一行。書いているあいだは帯の絵を薄くするだけ。 ---- */
-    const fileIn = node(html`<input type="file" accept="image/*" multiple hidden class="js-pic-in">`);
+    const fileIn = node(html`<input type="file" accept="image/*,application/pdf" multiple hidden class="js-pic-in">`);
     body.append(fileIn);
     let picking = false;
     let pickAt = 0;
@@ -933,11 +955,16 @@
       paintTools();
       let at = Math.min(pickAt, textIn.value.length);
       for (const f of files) {
-        let id = null;
-        try { id = await KN.noteImg.add(f); } catch (_) { id = null; }
+        /* PDF はそのまま（note-file.js）、ほかは縮めた画像に。 */
+        const D = KN.noteFile && KN.noteFile.takes(f) ? KN.noteFile : null;
+        let line = null;
+        try {
+          if (D) { const got = await D.add(f); line = D.refLine(got.id, got.name); }
+          else line = KN.noteImg.refLine(await KN.noteImg.add(f));
+        } catch (_) { line = null; }
         if (closed) break;
-        if (!id) { KN.ui.toast("画像を保存できませんでした"); break; }
-        const r = F.putLine(textIn.value, Math.min(at, textIn.value.length), KN.noteImg.refLine(id));
+        if (!line) { KN.ui.toast(D ? "ファイルを保存できませんでした" : "画像を保存できませんでした"); break; }
+        const r = F.putLine(textIn.value, Math.min(at, textIn.value.length), line);
         apply(r, "tool");
         at = r.s;
       }
@@ -1283,6 +1310,23 @@
       toView();
     }
     return h;
+  }
+
+  /** ファイル（PDF）を端末の見る口で開く。押した流れのまま（await しない。iOS が窓を止める）。
+      ホーム画面のアプリ（iOS）は新しい窓を持てないので、保存の口（見る画面と共有が出る）へ。
+      手元にまだ無ければ false。 */
+  function openFile(id, name) {
+    const url = KN.noteFile && KN.noteFile.known(id);
+    if (!url) return false;
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    if (navigator.standalone === true) a.download = String(name || "").trim() || id;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    return true;
   }
 
   /** 画像を黒地の一枚で全体に（段5）。下へ払って閉じる。 */
