@@ -91,6 +91,21 @@ const { open, checker } = require("./lib");
   t.check("ノート：きわを押すと紙が上へ", before > 0 && after.sheet === 0, `${before} → ${JSON.stringify(after)}`);
   t.check("押したあとも、次の一押しのために 1px 待つ", after.parked);
 
+  /* 紙を閉じた拍に窓が 0 へ戻っても（iPhone はキーボードが下りるとき戻す）、後ろの一覧は送らない。 */
+  const listY = await page.evaluate(() => {
+    for (let i = 0; i < 40; i++) KN.notes.put({ ...KN.notes.draft(), id: `n-tt${i}`, title: `送り${i}`, body: "本文" });
+    KN.screens.notes.render();
+    const el = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
+    el.scrollTop = 800;
+    return el.scrollTop;
+  });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(150);
+  await tapBar();
+  await page.waitForTimeout(1600);
+  const listAfter = await page.evaluate(() => KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop);
+  t.check("紙を閉じた拍に窓が 0 へ戻っても、一覧は頭へ送らない", listY > 0 && listAfter === listY, `${listY} → ${listAfter}`);
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();

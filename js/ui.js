@@ -947,6 +947,7 @@
          which is what left the tab bar hidden after a sheet was closed.
          Say goodbye while the field is still there to hear it. */
       if (el.contains(document.activeElement)) document.activeElement.blur();
+      if (KN.app.hushTopTap) KN.app.hushTopTap();
       KN.app.remeasure && KN.app.remeasure();
       const idx = openSheets.indexOf(handle);
       if (idx >= 0) openSheets.splice(idx, 1);

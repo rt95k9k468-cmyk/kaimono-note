@@ -147,6 +147,10 @@
        とたんに、列が頭へ戻らないように）。 */
     const was = box.querySelector(".notes-chips");
     const keepX = was ? was.scrollLeft : 0;
+    /* 縦の送りも保ちます。空にした瞬間に器が縮んで 0 へ詰められ、読んで
+       戻ると一覧の頭へ飛ばされていました（2026年10月11日、利用者）。 */
+    const sc = root ? KN.app.scrollerOf(root) : null;
+    const keepY = sc ? sc.scrollTop : 0;
     box.innerHTML = "";
     const st = N().state();
     if (st === "off") {
@@ -171,6 +175,7 @@
       t.addEventListener("click", () => { KN.motion.fire("select"); openTrash(); });
       box.append(t);
     }
+    if (sc && sc.scrollTop !== keepY) sc.scrollTop = keepY;
   }
 
   /* ---------------- 絞り込みのチップ（段3・roadmap-2.0 の V20） ----------------
@@ -559,6 +564,28 @@
       if (h) h.el.classList.add("is-writing");
       paintTools();
     };
+    /** 押した点の字が、行の中身（.nv-t）の何字めか。と、その字の高さの真ん中。 */
+    const pointIn = (ln, x, y) => {
+      const t = ln.querySelector(".nv-t");
+      if (!t) return null;
+      let node = null;
+      let off = 0;
+      if (document.caretRangeFromPoint) {
+        const c = document.caretRangeFromPoint(x, y);
+        if (c) { node = c.startContainer; off = c.startOffset; }
+      } else if (document.caretPositionFromPoint) {
+        const c = document.caretPositionFromPoint(x, y);
+        if (c) { node = c.offsetNode; off = c.offset; }
+      }
+      if (!node || !t.contains(node)) return null;
+      const rg = document.createRange();
+      rg.setStart(t, 0);
+      rg.setEnd(node, off);
+      const k = rg.toString().length;
+      rg.setStart(node, off);
+      const box = rg.getClientRects()[0] || rg.getBoundingClientRect();
+      return { k, mid: box && box.height ? (box.top + box.bottom) / 2 : y };
+    };
     viewEl.addEventListener("click", (e) => {
       /* 画像は、黒地の一枚で全体（書く欄へは入らない）。 */
       const pic = e.target.closest(".nv-img.is-on");
@@ -580,14 +607,23 @@
         return;
       }
       const ln = e.target.closest("[data-at]");
-      /* 押した行の高さを、入れ替わる前に測っておき、書く欄でも同じ高さに
-         その行が来るよう送る（見出しは整えた姿のほうが大きいので、そのまま
-         だと行がずれる）。 */
-      const was = ln ? ln.getBoundingClientRect().top : null;
-      const at = ln ? Number(ln.dataset.end) : textIn.value.length;
+      /* カーソルは押した字に（行の終わりにすると、長い段落では何行も下へ
+         飛んでいた。2026年10月12日）。字が取れなければ行の終わり。 */
+      const hit = ln ? pointIn(ln, e.clientX, e.clientY) : null;
+      const start = ln ? Number(ln.dataset.at) : 0;
+      const at = hit ? start + F.sourceAt(textIn.value.slice(start, Number(ln.dataset.end)), hit.k)
+        : ln ? Number(ln.dataset.end) : textIn.value.length;
+      /* 押した字（取れなければ行の頭）の高さを、入れ替わる前に測っておき、書く欄
+         でも同じ高さに来るよう送る（見出しは整えた姿のほうが大きいので、そのまま
+         だと行がずれる）。高さは行の真ん中で比べる（字の箱と行の箱は上端が違う）。 */
+      const r = ln ? ln.getBoundingClientRect() : null;
+      const was = hit ? hit.mid : r ? r.top : null;
       toWrite(at);
       const sc = scroller();
-      if (was != null && sc) sc.scrollTop += textIn.getBoundingClientRect().top + caretBox(at).top - was;
+      if (was != null && sc) {
+        const c = caretBox(hit ? at : start);
+        sc.scrollTop += textIn.getBoundingClientRect().top + (hit ? (c.top + c.bottom) / 2 : c.top) - was;
+      }
       afterKeyboard(showCaret);
     });
 
