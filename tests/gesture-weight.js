@@ -6,8 +6,8 @@
      HOLD_SLOP より動けば送り（持ち上がらない）・持ち上げて下へ運べば onDrop(0, 2)。
      買うものの行も HOLD で持ち上がる。
    - 左端から：EDGE より内側から始めた指は取らない・ゆっくり少し引いて離すと戻らない・
-     同じ長さでも速く払えば戻る・速くても BACK_FLING_MIN に届かなければ戻らない・
-     ゆっくりでも幅の 1/3 引けば戻る。 */
+     同じ長さでも速く払えば戻る・速くても FLING_MIN に届かなければ戻らない・
+     ゆっくりでも幅の 1/4 引けば戻る。 */
 const { open, checker } = require("./lib.js");
 
 (async () => {
@@ -128,11 +128,11 @@ const { open, checker } = require("./lib.js");
   await pull(4, 60, 4, 4);     // 速く払う
   c.check("同じ長さでも速く払えば戻る", (await ended()) && (await last()) === "begin,commit");
 
-  await pull(4, G.BACK_FLING_MIN - 2, 2, 2);
-  c.check("速くても BACK_FLING_MIN に届かなければ戻らない", (await ended()) && (await last()) === "begin,cancel");
+  await pull(4, G.FLING_MIN - 2, 2, 2);
+  c.check("速くても FLING_MIN に届かなければ戻らない", (await ended()) && (await last()) === "begin,cancel");
 
-  await pull(4, Math.ceil(W / 3) + 12, 20, 40);
-  c.check("ゆっくりでも幅の 1/3 引けば戻る", (await ended()) && (await last()) === "begin,commit");
+  await pull(4, Math.ceil(W / 4) + 12, 20, 40);
+  c.check("ゆっくりでも幅の 1/4 引けば戻る", (await ended()) && (await last()) === "begin,commit");
   await page.evaluate(() => document.getElementById("t-edge").remove());
 
   c.check("エラーが無い", !errors.length, errors.join(" | "));

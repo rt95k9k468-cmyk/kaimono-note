@@ -278,8 +278,8 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | 名前 | 値 | 使う所 |
 |---|---|---|
 | `HOLD`・`HOLD_SLOP` | 380ms・8px | 持ち上げ：並べ替え（`reorder.js`）・時間割（`DRAG_HOLD`）・道（`CARRY_HOLD`） |
-| `FLING_V`・`FLING_MIN` | 0.35px/ms・8px | **行き先へ送る払い**：日（day-swipe）・暦の段（cal-peek）・面（app.js の `FACE_*`） |
-| `BACK_FLING_V`・`BACK_FLING_MIN` | 0.4px/ms・10px | **閉じる・戻る払い**：紙（ui.js）・左端から（edge-back） |
+| `FLING_V`・`FLING_MIN` | 0.35px/ms・8px | **行き先へ送る払い**：日（day-swipe）・暦の段（cal-peek）・面（app.js の `FACE_*`）・戻る（edge-back。閉じる重さは固かった） |
+| `BACK_FLING_V`・`BACK_FLING_MIN` | 0.4px/ms・10px | **閉じる払い**：紙（ui.js） |
 | `AXIS` | 6px | 向きを決める：day-swipe の横・cal-swipe・edge-back・cal-peek |
 | `WHEEL_ROW` | 40px | 車輪の一行（`.note-wheel-row` の高さと同じ） |
 

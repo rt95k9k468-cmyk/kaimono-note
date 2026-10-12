@@ -37,9 +37,11 @@
   const KN = (window.KN = window.KN || {});
 
   const EDGE     = 24;    // ここより内側から始まった指は、戻る手つきではない
-  const COMMIT   = 0.33;  // 画面の幅の、これだけ引けば戻る
-  /* 向きを決める動き・短くても戻る払いは KN.gesture から（紙を閉じる払いと同じ重さ）。 */
-  const { AXIS, BACK_FLING_V: FLING_V, BACK_FLING_MIN: FLING_MIN } = KN.gesture;
+  const COMMIT   = 0.22;  // 画面の幅の、これだけ引けば戻る（1/3 は固かった。10月12日「もっと和らげて」）
+  /* 向きを決める動き・短くても戻る払いは KN.gesture から。払いは送る払いと同じ軽さ（紙を閉じる重さは
+     固かった）。斜めの親指も横に取る（SLANT。横が縦のこれだけ倍あれば横）。 */
+  const { AXIS, FLING_V, FLING_MIN } = KN.gesture;
+  const SLANT    = 0.6;
   /* 離したあとの滑りは、**残りの道のりと指の勢いから**（`KN.motion.glide`）。
      ここには 260ms と直に書いてありました。 */
   const PARALLAX = 0.28;  // 後ろの一枚が控えている深さ
@@ -159,7 +161,7 @@
         if (Math.abs(mx) < AXIS && Math.abs(my) < AXIS) return;
         /* 右向きの横だけ。左へ引くのは戻ることではないので、縦と同じく
            そのまま渡します。 */
-        axis = (mx >= Math.abs(my) * 0.85 && mx > 0) ? "x" : "y";
+        axis = (mx >= Math.abs(my) * SLANT && mx > 0) ? "x" : "y";
         if (axis !== "x") { id = null; return; }
         if (o.busy && o.busy()) { id = null; axis = null; return; }
         live = o.begin();
