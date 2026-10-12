@@ -277,9 +277,12 @@
     paintScope();
 
     const foot = node(html`
-      <div class="btn-row">
-        <button class="btn btn-soft js-one grow">${icon("book")}1つにまとめる</button>
-        <button class="btn btn-primary js-zip grow">${icon("download")}1件ずつ（zip）</button>
+      <div class="stack" style="gap: var(--sp-2)">
+        <button class="btn btn-soft js-pdf">${icon("paper")}印刷・PDF</button>
+        <div class="btn-row">
+          <button class="btn btn-soft js-one grow">${icon("book")}1つにまとめる</button>
+          <button class="btn btn-primary js-zip grow">${icon("download")}1件ずつ（zip）</button>
+        </div>
       </div>
     `);
     KN.ui.sheet({ title: "ノートを書き出す", content: body, footer: foot });
@@ -296,13 +299,15 @@
       if (exportBlocked()) return;
       const list = notesIn(scope);
       if (!list.length) { KN.ui.toast("書き出すノートがありません"); return; }
-      if (fmt === "zip" && !pics) { KN.ui.toast("画像を読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
+      if (fmt !== "md" && !pics) { KN.ui.toast("画像を読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
+      if (fmt === "pdf") { printNotes(list, pics); return; }
       const name = fileName(scope, fmt === "zip" ? "zip" : "md");
       if (fmt === "zip") hand(name, zipNotes(list, pics), "application/zip");
       else hand(name, new Blob([oneFile(list)], { type: "text/markdown;charset=utf-8" }), "text/markdown");
     };
     foot.querySelector(".js-zip").addEventListener("click", () => run("zip"));
     foot.querySelector(".js-one").addEventListener("click", () => run("md"));
+    foot.querySelector(".js-pdf").addEventListener("click", () => run("pdf"));
   }
 
   /** 書き出すノート（消していないもの）。並びは一覧と同じ。 */
@@ -413,6 +418,75 @@
     return zip(files);
   }
 
+  /* ---------------- 印刷（PDF に保存） ----------------
+
+     年の本（js/yearbook.js）と同じ手：別の窓は開かず、body の直下に一枚を置き、
+     印刷のあいだだけそれ以外を隠します（components.css の「ノートの印刷」）。
+     本文は読むときと同じ整え方（note-format.js の render）。題の無いノートは
+     見出しを足さない（zip と同じ）。画像は読み終えてから print を呼びます。 */
+  function printBody(list, pics) {
+    const imgs = pics || new Map();
+    const urls = [];
+    const box = document.createElement("div");
+    list.forEach((n) => {
+      const sec = document.createElement("section");
+      sec.className = "np-note";
+      if (String(n.title || "").trim()) {
+        const h = document.createElement("h2");
+        h.textContent = n.title.trim();
+        sec.append(h);
+      }
+      const meta = [whenText(n), n.notebook, n.tags.map((t) => `#${t}`).join(" ")].filter(Boolean).join(" ・ ");
+      if (meta) {
+        const p = document.createElement("p");
+        p.className = "np-meta";
+        p.textContent = meta;
+        sec.append(p);
+      }
+      const body = document.createElement("div");
+      body.className = "np-body";
+      KN.noteFormat.render(n.body, body);
+      body.querySelectorAll(".nv-box").forEach((b) => b.setAttribute("tabindex", "-1"));
+      body.querySelectorAll(".nv-img").forEach((el) => {
+        const got = imgs.get(el.dataset.img);
+        if (!got) { el.classList.add("is-gone"); el.innerHTML = icon("image"); return; }
+        const url = URL.createObjectURL(new Blob([got.bytes], { type: "image/jpeg" }));
+        urls.push(url);
+        const im = document.createElement("img");
+        im.alt = "";
+        im.src = url;
+        el.append(im);
+        el.classList.add("is-on");
+      });
+      sec.append(body);
+      box.append(sec);
+    });
+    return { box, urls };
+  }
+
+  function printNotes(list, pics) {
+    const old = document.getElementById("notes-print");
+    if (old) old.remove();
+    const { box, urls } = printBody(list, pics);
+    box.id = "notes-print";
+    box.setAttribute("aria-hidden", "true");
+    document.body.append(box);
+    const root = document.documentElement;
+    root.classList.add("is-printing-notes");
+    const done = () => {
+      root.classList.remove("is-printing-notes");
+      box.remove();
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      window.removeEventListener("afterprint", done);
+    };
+    window.addEventListener("afterprint", done);
+    /* 画像が描ける前に紙へ写すと空白になる。読み終える（か、4秒）まで待つ。 */
+    const ims = [...box.querySelectorAll("img")];
+    if (!ims.length) { window.print(); return; }
+    const ready = ims.map((im) => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()));
+    Promise.race([Promise.all(ready), new Promise((r) => setTimeout(r, 4000))]).then(() => window.print());
+  }
+
   /* ---------------- zip（縮めない、そのまま詰める） ----------------
 
      ライブラリを持ち込まずに済む、いちばん素朴な zip。名前は UTF-8 の印
@@ -512,5 +586,5 @@
 
   Object.assign(S, { notesRows, notesLabelList, noteLabelTitle, noteLabelRows });
   /* 試験が中身を確かめるための口（画面からは使いません）。 */
-  KN.notesExport = { notesIn, noteFile, oneFile, zipNotes };
+  KN.notesExport = { notesIn, noteFile, oneFile, zipNotes, printNotes };
 })();

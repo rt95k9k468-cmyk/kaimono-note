@@ -1989,6 +1989,39 @@ button.hero-node:active { scale: var(--press-dot); }
   #yearbook-print li .yb-text { color: #333; }
 }
 
+/* ---------------- ノートの印刷（js/settings-notes.js の printNotes） ----------------
+   年の本と同じ手。本文の整え（.nv-*）は screens.css のものを使い、色の名前だけ紙の色に
+   置きかえる（var() は使う要素の上で解決されるので、一枚の上で書けば中まで届く）。 */
+#notes-print { display: none; }
+@media print {
+  html.is-printing-notes, html.is-printing-notes body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  html.is-printing-notes body > *:not(#notes-print) { display: none !important; }
+  html.is-printing-notes #notes-print {
+    display: block;
+    --c-text: #000;
+    --c-text-2: #555;
+    --c-text-3: #777;
+    --c-border-2: #bbb;
+    --c-primary: #444;
+    --c-surface-2: #eee;
+    color: #000;
+    font-size: 11pt;
+    line-height: 1.7;
+    font-weight: var(--fw-regular);
+  }
+  #notes-print .np-note + .np-note { border-top: 1px solid #bbb; margin-top: 18pt; padding-top: 14pt; }
+  #notes-print h2 { font-size: 15pt; font-weight: var(--fw-bold); margin: 0 0 2pt; break-after: avoid; }
+  #notes-print .np-meta { color: #555; font-size: 9pt; margin: 0 0 8pt; break-after: avoid; }
+  #notes-print .np-body > * { break-inside: avoid; }
+  #notes-print .nv-img { aspect-ratio: auto; display: block; background: none; margin: 6pt 0; }
+  #notes-print .nv-img img { width: auto; height: auto; max-width: 100%; max-height: 20cm; margin: 0 auto; }
+  #notes-print .nv-img.is-gone { height: 3em; display: flex; background: #eee; }
+}
+
 /* ---------------- daily・ノートの鍵（js/lock.js） ----------------
    紙もトーストも隠すので、画面ぜんぶを覆います。下の帯だけは覆いの上に残し、
    ほかのタブへはそこから（帯の無い設定の上では、左上の絵から）。 */

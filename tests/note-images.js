@@ -371,6 +371,50 @@ const IMG_DB = "kaimono-note-images";
     (zipped.out["旅/画像の試験.md"] || "").includes(`![](img:${P})`) && !zn.includes(`images/${P}.jpg`));
   t.check("1つにまとめる md は参照の行のまま", zipped.one.includes(`![](img:${A})`) && !zipped.one.includes("images/"));
 
+  /* ---- 10b. 印刷・PDF（複数のノートを一枚に。画像は描けてから print） ---- */
+  const pr = await page.evaluate(async () => {
+    window.__printed = 0;
+    window.__print0 = window.print;
+    window.print = () => { window.__printed++; };
+    const extra = { ...KN.notes.draft(), title: "字だけのノート", body: "一行目\n- 二行目" };
+    KN.notes.put(extra);
+    window.__extra = extra.id;
+    const list = KN.notes.list().filter((n) => n.title !== "古い");
+    const pics = await KN.noteImg.readMany(list.flatMap((n) => KN.noteImg.idsIn(n.body)));
+    KN.notesExport.printNotes(list, pics);
+    const t0 = Date.now();
+    while (!window.__printed && Date.now() - t0 < 6000) await new Promise((r) => setTimeout(r, 50));
+    const el = document.getElementById("notes-print");
+    const ims = [...el.querySelectorAll("img")];
+    return {
+      printed: window.__printed,
+      notes: el.querySelectorAll(".np-note").length,
+      count: list.length,
+      drawn: ims.length > 0 && ims.every((i) => i.complete && i.naturalWidth > 0),
+      gone: el.querySelectorAll(".nv-img.is-gone").length,
+      screenHidden: getComputedStyle(el).display === "none",
+      marked: document.documentElement.classList.contains("is-printing-notes"),
+    };
+  });
+  t.check("印刷：print は一度・ノートは全部が一枚に", pr.printed === 1 && pr.notes === pr.count && pr.count > 1, JSON.stringify(pr));
+  t.check("印刷：画像は描けてから", pr.drawn, JSON.stringify(pr));
+  t.check("印刷：手元に無い画像は枠", pr.gone >= 1, JSON.stringify(pr));
+  t.check("印刷：画面には出ない", pr.screenHidden && pr.marked);
+  await page.emulateMedia({ media: "print" });
+  const pm = await page.evaluate(() => ({
+    book: getComputedStyle(document.getElementById("notes-print")).display,
+    app: [...document.body.children].filter((c) => c.id !== "notes-print" && getComputedStyle(c).display !== "none").length,
+  }));
+  t.check("印刷のあいだは一枚だけ", pm.book === "block" && pm.app === 0, JSON.stringify(pm));
+  await page.emulateMedia({ media: "screen" });
+  const cleaned = await page.evaluate(() => {
+    window.dispatchEvent(new Event("afterprint"));
+    window.print = window.__print0;
+    KN.notes.drop(window.__extra);
+    return !document.getElementById("notes-print") && !document.documentElement.classList.contains("is-printing-notes");
+  });
+  t.check("印刷が済めば一枚は消える", cleaned);
+
   /* ---- 11. Dropbox ---- */
   await page.evaluate(() => KN.dropbox.setAppKey("testkey"));
   await page.waitForFunction(() => !!KN.dropbox.authUrl());
