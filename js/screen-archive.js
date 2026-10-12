@@ -1073,47 +1073,41 @@
   };
   const memoOf = (day) => String((store.dayLog(day) || {}).memo || "");
 
-  /* 今日の問い：日ごとに一つ（日付で引く。どこにもしまわない）。「別の問い」は開いているあいだだけ送る。
-     評価の言葉（tests/daily-rules.js）・できた／できないを問う言い方は入れない。 */
-  const ASKS = [
-    "「続けたい」と思えることって、今の自分にとってどんな意味があるだろう？",
-    "最近、時間を忘れていたのはどんなとき？",
-    "いま気になっていることを一つ挙げるなら？",
-    "今日、ふと目に留まったものは何だろう？",
-    "最近読んだ・聞いた言葉で、残っているものは？",
-    "もし一日だけ自由に使えるなら、何をする？",
-    "このところ、よく考えていることは何だろう？",
-    "最近「なぜだろう」と思ったことは？",
-    "今の自分が大切にしたいことは何だろう？",
-    "子どものころ好きだったことで、今も好きなものは？",
-    "最近、誰かに言われてうれしかった言葉は？",
-    "いま手放してもいいと思えるものは何だろう？",
-    "季節が変わるころに、思い出すことは？",
-    "最近、新しく知ったことは何だろう？",
-    "もっと知りたいと思っていることは？",
-    "いまの暮らしで、気に入っているところは？",
-    "最近、心が動いたのはどんな場面？",
-    "誰かに聞いてみたい問いはある？",
-    "一年前の自分に伝えたいことは？",
-    "いま読みたい本、調べたいことは？",
-    "まだうまく言葉にできていない気持ちはある？",
-    "ゆっくりできる時間があったら、何をしたい？",
-    "最近、意外だったことは？",
-    "いまの考えが変わるとしたら、何がきっかけになりそう？",
-    "好きな場所の、どんなところが好き？",
-    "最近、ありがたいと思ったことは？",
-    "やってみたいけれど、まだ始めていないことは？",
-    "今日のなかで、覚えておきたい瞬間は？",
-    "いま、何に興味が向いている？",
-    "自分らしいと感じるのは、どんなとき？",
-  ];
+  /* 今日の問い（KN.askList）：日付で引き、どこにもしまわない。その日より前に「？問い」の行を書いた問いは引かない
+     （全部書いたら一周して元の並び）。三つに一つは、その日より前に自分で書いた「？」の問い（元の並びに無いもの）。
+     「別の問い」は開いているあいだだけ送る。 */
+  const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
+  /** その日より前に書いた「？」の行：日記（その日より前の日）とノート（作った日がその日より前）。鍵のかかったノートは引かない。 */
+  function pastAsks(day) {
+    const F = KN.noteFormat, out = [];
+    if (!F) return out;
+    if (!KN.diaryIdb || KN.diaryIdb.body() === "ok") {
+      (store.get().archive.days || []).forEach((d) => {
+        if (d.date < day) F.asks(d.memo || "").forEach((a) => out.push({ text: a.text, day: d.date }));
+      });
+    }
+    if (KN.notes && KN.notes.state() === "on" && !(KN.lock && KN.lock.hides("notes"))) {
+      KN.notes.list().forEach((n) => {
+        if (U.dayKey(new Date(n.createdAt)) < day) F.asks(n.body).forEach((a) => out.push({ text: a.text, note: n.id, line: a.line }));
+      });
+    }
+    return out;
+  }
   let askTurn = { day: "", n: 0 };
-  const askOf = (day) => {
+  function askOf(day, past) {
+    const all = KN.askList || [];
+    const known = new Set(all.map(askKey));
+    const done = new Set(past.map((a) => askKey(a.text)));
+    const fresh = all.filter((q) => !done.has(askKey(q)));
+    const base = fresh.length ? fresh : all;
+    const seen = new Set();
+    const mine = past.filter((a) => { const k = askKey(a.text); if (known.has(k) || seen.has(k)) return false; seen.add(k); return true; });
     let h = 0;
     for (const c of String(day)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const n = askTurn.day === day ? askTurn.n : 0;
-    return ASKS[(h + n) % ASKS.length];
-  };
+    const k = h + (askTurn.day === day ? askTurn.n : 0);
+    if (mine.length && k % 3 === 2) return { ...mine[Math.floor(k / 3) % mine.length], mine: true };
+    return { text: base[k % base.length] || "" };
+  }
 
   /** daily の冒頭：日記に書く・ノートを書く・問いから考える の三枚と、今日の問い。説明は書かない。 */
   function thinkHome(day) {
@@ -1134,10 +1128,10 @@
         <section class="think-today">
           <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
           <div class="think-today-head">
-            <span class="think-today-t">${icon("thought")}<span>今日の問い</span></span>
+            <span class="think-today-t">${icon("thought")}<span class="js-think-t"></span></span>
             <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
           </div>
-          <p class="think-today-q js-think-q">${askOf(day)}</p>
+          <p class="think-today-q js-think-q"></p>
           <button type="button" class="think-today-go js-think-today">${icon("edit")}<span>この問いから考える</span>${icon("chevron")}</button>
         </section>
       </div>
@@ -1155,14 +1149,24 @@
       KN.app.showScreen("notes");
       KN.screens.notes.asks();
     });
-    const q = el.querySelector(".js-think-q");
+    const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
+    const past = pastAsks(day);
+    let cur;
+    const paint = () => { cur = askOf(day, past); q.textContent = cur.text; qt.textContent = cur.mine ? "あなたの問い" : "今日の問い"; };
+    paint();
     el.querySelector(".js-think-other").addEventListener("click", () => {
       KN.motion.fire("select");
       askTurn = { day, n: (askTurn.day === day ? askTurn.n : 0) + 1 };
-      q.textContent = askOf(day);
+      paint();
     });
-    /* 問いは「？」の行として一件の頭に置く（ノートの「問い」の面に並ぶ）。打つまでは書かない。 */
-    el.querySelector(".js-think-today").addEventListener("click", () => openPost(day, null, `？${askOf(day)}\n`));
+    /* 問いは「？」の行として一件の頭に置く（ノートの「問い」の面に並ぶ）。打つまでは書かない。
+       自分の問いは写さず、書いたところ（そのノートの行・その日）へ。 */
+    el.querySelector(".js-think-today").addEventListener("click", () => {
+      if (!cur.mine) { openPost(day, null, `？${cur.text}\n`); return; }
+      KN.motion.fire("select");
+      if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line }); }
+      else goDayTo(cur.day);
+    });
     return el;
   }
 

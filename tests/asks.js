@@ -6,6 +6,7 @@
    - タグの小窓に、まだ使っていなくても「種」「問い」
    - 「⋯」の「読んだところ」：終わりに「### 月日 p.」を足して書く欄へ（種をまくは外した）
    - daily の問いの札からノートの問いの面へ
+   - 今日の問い：前の日に書いた問いは引かない・自分で書いた「？」の問いが「あなたの問い」で混ざり、押すと書いた日へ
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/asks.js */
 const { open, checker } = require("./lib");
@@ -121,6 +122,48 @@ const { open, checker } = require("./lib");
     return b ? b.textContent.trim() : null;
   });
   t.check("ノートのホームに「問い」の行", homeRow === "問い", String(homeRow));
+
+  /* ---- 今日の問い：前の日に「？問い」を書いた問いは引かない・自分で書いた問いも混ざる ---- */
+  const yest = await page.evaluate(() => {
+    const U = KN.util, b = U.dayDate(U.todayKey());
+    const y = new Date(b.getFullYear(), b.getMonth(), b.getDate() - 1);
+    return `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+  });
+  const left = await page.evaluate((y) => {
+    const all = KN.askList;
+    KN.store.setDayLog(y, { memo: "12:00\n" + all.slice(1).map((q) => `？${q}`).join("\n") });
+    KN.app.showScreen("archive");
+    return all[0];
+  }, yest);
+  await page.waitForTimeout(500);
+  const qs = [];
+  for (let i = 0; i < 3; i++) {
+    qs.push(await page.textContent("#screen-archive .js-think-q"));
+    await page.click("#screen-archive .js-think-other");
+  }
+  t.check("前の日に書いた問いは引かず、残りの問いだけ", qs.every((x) => x === left), JSON.stringify(qs));
+
+  await page.evaluate((y) => {
+    const d = (KN.store.get().archive.days || []).find((x) => x.date === y);
+    KN.store.setDayLog(y, { memo: `${d.memo}\n？ 試験の自分の問い` });
+  }, yest);
+  await page.waitForTimeout(500);
+  let mine = null;
+  for (let i = 0; i < 3 && !mine; i++) {
+    const got = await page.evaluate(() => {
+      const h = document.querySelector("#screen-archive .think-today");
+      return { t: h.querySelector(".js-think-t").textContent, q: h.querySelector(".js-think-q").textContent };
+    });
+    if (got.t === "あなたの問い") mine = got;
+    else await page.click("#screen-archive .js-think-other");
+  }
+  t.check("自分で書いた問いが「あなたの問い」として出る", !!mine && mine.q === "試験の自分の問い", JSON.stringify(mine));
+  const memoBefore = await page.evaluate((y) => (KN.store.get().archive.days.find((x) => x.date === y) || {}).memo, yest);
+  await page.click("#screen-archive .js-think-today");
+  await page.waitForTimeout(500);
+  const after = await page.evaluate((y) => ({ memo: (KN.store.get().archive.days.find((x) => x.date === y) || {}).memo,
+    screen: document.querySelector(".screen.is-active").dataset.screen }), yest);
+  t.check("自分の問いは写さず、書いた日へ", after.screen === "archive" && after.memo === memoBefore, after.screen);
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();

@@ -61,6 +61,7 @@ const JS = [
   "js/diary-idb.js",
   "js/note-format.js",
   "js/diary-posts.js",
+  "js/ask-list.js",
   "js/notes-idb.js",
   "js/entries-note.js",
   "js/note-img.js",
