@@ -30,6 +30,8 @@
   const IMG = /^!\[\]\(img:([0-9a-f]{16})\)$/;
   /* ファイルの参照（PDF。note-file.js）。同じく一行に一つだけ。名前は見せるためだけ。 */
   const FILE = /^\[([^\[\]\n]*)\]\(file:([0-9a-f]{64}\.[a-z0-9]{1,8})\)$/;
+  /* 画像の原本（取り込んだもの。note-file.js の isPic と同じ）。画像の行のすぐ下なら畳み、画像を押すと原本。 */
+  const PIC = /\.(jpg|png|gif|webp|heic|heif|bmp|avif|tif)$/;
   /* 太字。「**」のすぐ内側は空白でない（「2 ** 3 ** 4」を拾わない）。行をまたがない。 */
   const BOLD = /\*\*(\S(?:[^\n]*?\S)?)\*\*/g;
 
@@ -75,14 +77,16 @@
   /** 印を除いた一行（一覧の冒頭・題の代わり）。区切り・空の行・画像の行は "" 。 */
   function plain(line) {
     const p = parse(String(line || ""));
-    return p.kind === "rule" || p.kind === "blank" || p.kind === "img" ? "" : unbold(p.text).trim();
+    return p.kind === "rule" || p.kind === "blank" || p.kind === "img" || (p.kind === "file" && PIC.test(p.id)) ? "" : unbold(p.text).trim();
   }
 
-  /** 画像の行を空に、ファイルの行を名前だけにした本文（検索が参照の字を拾わないように。保存の形は変えない）。 */
+  /** 画像の行を空に、ファイルの行を名前（と PDF の字）にした本文（検索が参照の字を拾わないように。保存の形は変えない）。 */
   const searchable = (body) => String(body || "").split("\n").map((l) => {
     if (IMG.test(l)) return "";
     const m = FILE.exec(l);
-    return m ? m[1] : l;
+    if (!m) return l;
+    const ft = KN.noteFile && KN.noteFile.textOf ? KN.noteFile.textOf(m[2]) : "";
+    return ft ? `${m[1]}\n${ft}` : m[1];
   }).join("\n");
 
   /** 見出し（`# ` `## ` `### `）の並び。line は render の data-line と同じ数え方。保存の形は読むだけ。 */
@@ -107,10 +111,17 @@
     box.textContent = "";
     const lines = String(body || "").split("\n");
     let at = 0;
+    let prev = null;
     lines.forEach((line, i) => {
       const p = parse(line);
       let el;
-      if (p.kind === "rule") {
+      if (p.kind === "file" && PIC.test(p.id) && prev && prev.className === "nv-img") {
+        /* 画像の原本：画像に預けて、行は出さない（位置の数えは残す）。 */
+        el = document.createElement("div");
+        el.className = "nv-orig";
+        prev.dataset.orig = p.id;
+        prev.dataset.origName = p.text;
+      } else if (p.kind === "rule") {
         el = document.createElement("div");
         el.className = "nv-hr";
         el.append(document.createElement("hr"));
@@ -168,6 +179,7 @@
       el.dataset.end = String(at + line.length);
       el.dataset.line = String(i);
       box.append(el);
+      prev = el;
       at += line.length + 1;
     });
     return box;

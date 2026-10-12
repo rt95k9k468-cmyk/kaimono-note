@@ -9,7 +9,9 @@
    - ノートブックは .enex（ファイル）ごと、Notion は一つ。名前は先に見せる紙で変えられる。
    - Notion の zip を読む・ページの形にするのは note-notion.js。
    - 本文は Markdown（見出し・箇条・番号・チェック・引用・線・太字・リンク）。表とコードはそのままの行。
-     暗号化した文は一行の印。画像は縮めて画像の入れ物へ、PDF は files/ へ。ほかの添付は名前の行。
+     暗号化した文は一行の印。画像は縮めて画像の入れ物へ、原本はそのすぐ下の行で files/ へ。PDF は files/
+     へ置き、字を pdf.js で一度だけ取り出す（検索に。meta `ft:<id>`）。ほかの添付は名前の行。
+   - 取り込み終えたら、選んだファイルをそのまま Dropbox の `imports/<日>/` へ（つないでいれば。裏で）。
    - 読めないノート・ファイルがあっても、ほかは取り込み、読めなかったものの名前を残す。
    - 外へのリンクは字のまま（fetch しない）。
    ========================================================= */
@@ -293,23 +295,65 @@
     return c;
   }
 
+  /* ---------------- PDF の字（pdf.js は tools/vendor のもの。取り込むときだけ読む） ---------------- */
+
+  let pdfjsP = null;
+  function pdfjs() {
+    const at = (f) => new URL(`tools/vendor/${f}`, document.baseURI).href;
+    if (!pdfjsP) {
+      pdfjsP = import(at("pdf.min.mjs")).then((m) => { m.GlobalWorkerOptions.workerSrc = at("pdf.worker.min.mjs"); return m; });
+      pdfjsP.catch(() => { pdfjsP = null; });
+    }
+    return pdfjsP;
+  }
+
+  /** PDF の字（ページごとに改行）。pdf.js は渡した中身を手放すので写しを渡す。 */
+  async function pdfText(bytes) {
+    const lib = await pdfjs();
+    const doc = await lib.getDocument({ data: new Uint8Array(bytes).slice(), isEvalSupported: false }).promise;
+    const out = [];
+    try {
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const tc = await page.getTextContent();
+        out.push(tc.items.map((x) => (x.str || "") + (x.hasEOL ? "\n" : "")).join(""));
+        page.cleanup();
+      }
+    } finally {
+      doc.destroy();
+    }
+    return out.join("\n");
+  }
+
   /* ---------------- 取り込む ---------------- */
 
-  /** 添付を入れ物へ。返すのは本文に置く一行。書けなければ名前の行（落ちたものとして数える）。 */
-  async function carry(r, fails) {
+  /** 添付を入れ物へ。返すのは本文に置く行（pre は引用などの頭）。画像は縮めたものの行と、すぐ下に原本の行
+      （files/。置けなければ縮めたものだけ——原本は imports/ の元のファイルに残る）。PDF は字を一度だけ
+      取り出す。どれも書けなければ名前の行（落ちたものとして数える）。 */
+  async function carry(r, fails, pre = "") {
     const name = r.name || (kindOf(r) === "pdf" ? "file.pdf" : r.mime || "file");
     const k = kindOf(r);
+    const F = KN.noteFile;
     try {
       const bytes = r.bytes || bytesOf64(r.data);
-      if (k === "img" && KN.noteImg) return KN.noteImg.refLine(await KN.noteImg.add(new Blob([bytes], { type: r.mime })));
-      if (k === "pdf" && KN.noteFile) {
-        const got = await KN.noteFile.add(new File([bytes], /\.pdf$/i.test(name) ? name : `${name}.pdf`, { type: "application/pdf" }));
-        return KN.noteFile.refLine(got.id, got.name);
+      if (k === "img") {
+        const blob = new Blob([bytes], { type: r.mime });
+        const small = KN.noteImg ? await KN.noteImg.add(blob).catch(() => null) : null;
+        const orig = F ? await F.keep(blob, r.name || "image").catch(() => null) : null;
+        const lines = [small && KN.noteImg.refLine(small), orig && F.refLine(orig.id, orig.name)].filter(Boolean);
+        if (lines.length) return lines.map((l) => pre + l).join("\n");
       }
-    } catch (_) {
-      fails.push(name);
-    }
-    return `[${name.replace(/[[\]]/g, "")}]`;
+      if (k === "pdf" && F) {
+        const got = await F.add(new File([bytes], /\.pdf$/i.test(name) ? name : `${name}.pdf`, { type: "application/pdf" }));
+        if (!F.hasText(got.id)) {
+          const text = await pdfText(bytes).catch(() => null);
+          if (text != null) await F.setText(got.id, text).catch(() => {});
+        }
+        return pre + F.refLine(got.id, got.name);
+      }
+    } catch (_) { /* 下で名前の行に */ }
+    if (k !== "other") fails.push(name);
+    return `${pre}[${name.replace(/[[\]]/g, "")}]`;
   }
 
   /** 一件のノートを、入れ物に置く形に（添付を先に書く）。 */
@@ -326,7 +370,7 @@
       const r = byHash.get(m[2]) || n.res.find((x) => !used.has(x));
       if (!r || used.has(r)) continue;
       used.add(r);
-      lines.push(m[1] + (await carry(r, fails)));
+      lines.push(await carry(r, fails, m[1]));
     }
     /* 本文で指していない添付は末尾に。 */
     for (const r of n.res) if (!used.has(r)) lines.push(await carry(r, fails));
@@ -458,6 +502,7 @@
         if (!closed) h.close();
         return;
       }
+      if (res.done === res.total) keepOriginals(files, res.batch);
       if (!res.fails.length) {
         if (!closed) h.close();
         KN.ui.toast(res.done < res.total ? "途中まで取り込みました" : "取り込みました");
@@ -468,6 +513,15 @@
       body.append(P.card(row("読めない添付", res.fails.length)), P.more("読めない添付", res.fails.join(" ／ ")));
       word.textContent = "取り込みました";
     });
+  }
+
+  /** 選んだファイルをそのまま Dropbox の `imports/<取り込んだ日>/` へ（裏で。つないでいなければ置かない）。 */
+  function keepOriginals(files, batch) {
+    const D = KN.dropbox;
+    if (!D || !D.putImport || !D.status().connected) return;
+    const day = U.dayKey(new Date(batch));
+    (async () => { for (const f of files) await D.putImport(day, f); })()
+      .catch(() => KN.ui.toast("元のファイルを Dropbox に置けませんでした", { long: true }));
   }
 
   /** 取り込みの一覧（取り消せるノートのあるものだけ。新しい順）。 */
@@ -510,5 +564,5 @@
     h = KN.ui.sheet({ title: "取り込む", content: body });
   }
 
-  KN.noteImport = { md5, enml, parse, keysOf, count, run, batches, open, show };
+  KN.noteImport = { md5, enml, parse, keysOf, count, run, batches, open, show, pdfText, keepOriginals };
 })();

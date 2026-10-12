@@ -1,5 +1,5 @@
 /* =========================================================
-   くらしノート — ノートのファイル（PDF。IndexedDB `kaimono-note-files`）
+   くらしノート — ノートのファイル（PDF・取り込んだ原本。IndexedDB `kaimono-note-files`）
 
    設計は docs/notes-unify.md「置き場」の `files/` と「files/ で決めたこと」。
 
@@ -12,6 +12,9 @@
    - ファイルを先に書き、書けたと分かってから参照を入れる（screen-notes.js）。
    - 手元に無いファイル（ほかの端末が貼った）は、開いたノートが参照したとき Dropbox から取る。
    - 参照が無くなったファイルは印を付け、さらに30日出てこなければ消す（sweep）。
+   - 取り込み（note-import.js）は画像の原本・表の CSV も置く（`keep`）。貼る口は PDF だけのまま。
+     画像の原本の行は、縮めた画像の行のすぐ下（note-format.js が畳む）。
+   - PDF の字（meta `ft:<id>`、取り込むとき一度だけ）は検索に。Dropbox では `files/<id>.txt`。
    ========================================================= */
 (function () {
   "use strict";
@@ -26,7 +29,10 @@
   const ID = /^[0-9a-f]{64}\.[a-z0-9]{1,8}$/;
   const REF = /^\[([^\[\]\n]*)\]\(file:([0-9a-f]{64}\.[a-z0-9]{1,8})\)$/;
   const REFS = /^\[[^\[\]\n]*\]\(file:([0-9a-f]{64}\.[a-z0-9]{1,8})\)$/gm;
-  const TYPES = { pdf: "application/pdf" };
+  const TYPES = { pdf: "application/pdf", csv: "text/csv", jpg: "image/jpeg", png: "image/png", gif: "image/gif",
+    webp: "image/webp", heic: "image/heic", heif: "image/heif", bmp: "image/bmp", avif: "image/avif", tif: "image/tiff" };
+  const PIC = /\.(jpg|png|gif|webp|heic|heif|bmp|avif|tif)$/;
+  const FT_MAX = 100000;                  // PDF の字の上限（検索のたびに全部を折るので）
 
   /* idle → loading → on / off。 */
   let phase = "idle";
@@ -34,6 +40,7 @@
   let readyP = null;
   let sweptP = null;
   const looks = new Map();                // id → object URL（読んだもの）
+  const texts = new Map();                // id → PDF の字（meta `ft:<id>`。開いたとき全部読む）
   const pulls = new Map();                // id → 取っている途中の Promise
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => { try { fn(); } catch (_) { /* 一つ落ちても続けます */ } });
@@ -94,7 +101,7 @@
         settle();
         emit();
       }, OPEN_WAIT);
-      conn().then(() => { phase = "on"; }, () => { phase = "off"; }).finally(() => {
+      conn().then(loadTexts).then(() => { phase = "on"; }, () => { phase = "off"; }).finally(() => {
         clearTimeout(wait);
         settle();
         emit();
@@ -114,6 +121,16 @@
     || String(id || "").split(".").pop().toUpperCase();
   const refLine = (id, name) => `[${nameOf(name, id)}](file:${id})`;
   const typeOf = (id) => TYPES[String(id).split(".").pop()] || "application/octet-stream";
+  /** 画像の原本か（files/ の画像は取り込んだ原本だけ）。 */
+  const isPic = (id) => PIC.test(String(id));
+  /** 持てる種類なら拡張子（名前の拡張子、無ければ種類から）。 */
+  function extFor(blob, name) {
+    let e = String((/\.([a-z0-9]{1,8})$/i.exec(String(name || "")) || [])[1] || "").toLowerCase();
+    e = { jpeg: "jpg", tiff: "tif" }[e] || e;
+    if (TYPES[e]) return e;
+    const t = String((blob && blob.type) || "").toLowerCase();
+    return Object.keys(TYPES).find((k) => TYPES[k] === t) || (t === "image/jpg" ? "jpg" : "");
+  }
 
   /** 貼れるファイルか（いまは PDF だけ。画像は note-img.js が縮めて持つ）。 */
   const takes = (f) => !!f && (f.type === "application/pdf" || /\.pdf$/i.test(f.name || ""));
@@ -174,10 +191,23 @@
   /** ファイルをそのまま書き、{ id, name } を返します。書けなければ断る（参照は呼ぶ側が入れない）。 */
   async function add(file) {
     await start();
-    if (phase !== "on" || !takes(file) || !(file.size <= MAX)) throw fail();
+    if (phase !== "on" || !takes(file)) throw fail();
+    return save(file, file.name, "pdf");
+  }
+
+  /** 取り込んだ原本（画像・CSV・PDF）。持てない種類は断る。 */
+  async function keep(blob, name) {
+    await start();
+    const ext = extFor(blob, name);
+    if (phase !== "on" || !ext) throw fail();
+    return save(blob, name, ext);
+  }
+
+  async function save(file, fileName, ext) {
+    if (!(file.size <= MAX)) throw fail();
     const bytes = await bytesOf(file);
-    const id = `${await hex(bytes)}.pdf`;
-    const name = nameOf(file.name, id);
+    const id = `${await hex(bytes)}.${ext}`;
+    const name = nameOf(fileName, id);
     const had = await get(id).catch(() => null);
     if (had) {
       await run(["meta"], "readwrite", (t) => dropMark(t, id)).catch(() => {});
@@ -222,6 +252,10 @@
         await put({ id, type: typeOf(id), name: nameOf(name, id), size: buf.byteLength, at: new Date().toISOString(), bytes: buf });
         await markSent(id);
       } catch (_) { return false; }
+      if (/\.pdf$/.test(id) && !texts.has(id)) {
+        const t = await D.download(`/files/${id}.txt`).catch(() => null);
+        if (typeof t === "string") await setText(id, t, true).catch(() => {});
+      }
       emit();
       return true;
     })().finally(() => pulls.delete(id));
@@ -280,17 +314,46 @@
           if (used.has(id)) return;
           const t0 = Number(was[id]);
           if (!t0) at[id] = now;
-          else if (now - t0 > KEEP_ORPHAN) { st.delete(id); gone.push(id); }
+          else if (now - t0 > KEEP_ORPHAN) { st.delete(id); meta.delete(`ft:${id}`); gone.push(id); }
           else at[id] = t0;
         });
         meta.put({ k: "orphan", at });
       };
     });
     gone.forEach((id) => {
+      texts.delete(id);
       const url = looks.get(id);
       if (url) { URL.revokeObjectURL(url); looks.delete(id); }
     });
     return { gone: gone.length };
+  }
+
+  /* ---------------- PDF の字（検索に） ---------------- */
+
+  function loadTexts() {
+    return run(["meta"], "readonly", (t) => {
+      const r = t.objectStore("meta").getAll(IDBKeyRange.bound("ft:", "ft:\uffff"));
+      return () => r.result || [];
+    }).then((list) => list.forEach((m) => texts.set(m.k.slice(3), String(m.text || ""))), () => {});
+  }
+
+  const textOf = (id) => texts.get(id) || "";
+  const hasText = (id) => texts.has(id);
+
+  /** PDF の字を覚える（空でも覚える＝二度と取り出さない）。取り込みで覚えたものは送る列へ戻す
+      （PDF をもう送っていても、`.txt` を一緒に送り直すため。PDF は add なので同じものが在ってよい）。 */
+  function setText(id, text, came) {
+    const s = String(text || "").replace(/[ \t\u3000]+/g, " ").replace(/\s*\n\s*/g, "\n").trim().slice(0, FT_MAX);
+    return run(["meta"], "readwrite", (t) => {
+      const meta = t.objectStore("meta");
+      meta.put({ k: `ft:${id}`, text: s });
+      if (came) return;
+      const r = meta.get("sent");
+      r.onsuccess = () => {
+        const ids = (r.result && r.result.ids) || [];
+        if (ids.includes(id)) meta.put({ k: "sent", ids: ids.filter((x) => x !== id) });
+      };
+    }).then(() => { texts.set(id, s); });
   }
 
   /* ---------------- Dropbox（送る列） ---------------- */
@@ -322,7 +385,8 @@
     ready: () => start(),
     state: () => phase,
     DIR: "/files",
-    refOf, idsIn, refLine, takes, add, get, look, known, pull, readMany,
+    refOf, idsIn, refLine, takes, isPic, add, keep, get, look, known, pull, readMany,
+    textOf, hasText, setText: (id, text) => setText(id, text, false),
     sweep, swept: () => sweptP, unsent, markSent,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };

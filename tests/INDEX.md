@@ -174,3 +174,4 @@
 | `notes-sync.js` | ノートの同期（notes-unify.md 段2）：偽の Dropbox を二台で。.md の形・色を入れ物へ写す・足し合わせ・三方・二つの版・題でファイルが動く・.trash・本当に消す・大量に消えたら止まる・開いている紙・429・送り返さない |
 | `note-import.js` | ノートの取り込み（notes-unify.md 段3）：MD5・ENML → Markdown（見出し・箇条・チェック二通り・太字・リンク・表・コード・引用・暗号化）・設定の「取り込む」→先に見せる紙（件数・落ちるもの・読めないもの・ノートブックの名前）→控え→src の from/key/batch・日付・画像と PDF の参照・二度目は飛ばす・取り消す（直したものは残る）→もう一度取り込める |
 | `note-notion.js` | ノートの取り込み：Notion の zip（notes-unify.md 段3）：zip の中の zip・deflate と無圧縮・壊れた zip／フォルダ → 親子・key は32字／CSV → 表のノート（_all.csv・引用符・改行）・行のページはその子／中のリンク（相対・notion.so）→ note:・外は字のまま・無いものは字だけ／画像・PDF は入れ物へ・ほかの添付は名前の行／字下げ4→2・aside・details／先に見せる紙 → 控え → 取り込む（ノートブック Notion・日付は取り込んだ時刻より前・親が先）／二度目は飛ばす／取り消す |
+| `note-import-files.js` | ノートの取り込み：原本・PDF の字・imports/（notes-unify.md 段3）：画像の行のすぐ下に原本の行（files/<SHA>.png・中身のまま）・読む姿で畳む・押すと原本・冒頭に出さない／PDF の字を pdf.js で一度（meta ft:・検索に当たる）・files/<id>.txt を送る・取る／Notion の表の CSV を files/ へ（BOM のまま）／imports/<日>/ へ（32MB を超えると分けて送る・同じ名前は番号） |

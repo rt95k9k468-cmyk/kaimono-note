@@ -7,6 +7,7 @@
      （行は表の行。`_all.csv` があればそちら）、行のページはその子。大きいワークスペースは zip の中に zip。
    - 中のリンク（`題%20<id>.md`・notion.so の URL）は `[題](note:<id>)` に。zip の中の画像・PDF は
      note-import の carry で入れ物へ、ほかの添付は名前の行。外へのリンクは字のまま（fetch しない）。
+   - 表のノートは、CSV の原本を files/ へ置いた参照の一行と、表の行（読むときの表は段5）。
    - 日付は残らない → 取り込んだ時刻から 1ms ずつ前（並びは親が先・同じ段は名前順）。
    ========================================================= */
 (function () {
@@ -218,7 +219,7 @@
         if (w.path) {
           const r = { mime: mimeOf(w.path), name: baseOf(w.path) };
           try { r.bytes = new Uint8Array(await (await files.get(w.path)()).arrayBuffer()); } catch (_) { r.bytes = null; }
-          if (r.bytes) { out.push(m[1] + (await carry(r, fails))); continue; }
+          if (r.bytes) { out.push(await carry(r, fails, m[1])); continue; }
           fails.push(r.name);
           out.push(`${m[1]}[${word(r.name)}]`);
           continue;
@@ -271,7 +272,7 @@
       const body = rows ? tableOf(rows) : md.body;
       notes.push({
         from: "notion", key: p.key, title: (md.title != null ? md.title : p.name).replace(/\s+/g, " ").trim(), body, dir, path: p.path,
-        parentKey, files, tags: [], table: rows ? 1 : 0, crypt: 0, reminder: false, res: rows ? [] : refsOf(body, dir, files),
+        parentKey, files, csv: rows ? p.csv : null, tags: [], table: rows ? 1 : 0, crypt: 0, reminder: false, res: rows ? [] : refsOf(body, dir, files),
       });
     }
     /* 親が先（途中で止めても、書いた子の親はもう在る）。同じ段は名前順。 */
@@ -281,7 +282,14 @@
 
   /** 一件を入れ物に置く形に。ids は key → ノートの id（取り込み済みも、これから置くものも）。 */
   async function build(n, nb, o) {
-    const body = n.table ? n.body : await relink(n.body, n.dir, n.files, o.ids, o.carry, o.fails);
+    let body = n.table ? n.body : await relink(n.body, n.dir, n.files, o.ids, o.carry, o.fails);
+    if (n.table && n.csv && KN.noteFile) {
+      const name = `${n.title || "表"}.csv`;
+      try {
+        const got = await KN.noteFile.keep(await n.csv(), name);
+        body = `${KN.noteFile.refLine(got.id, got.name)}\n${body}`;
+      } catch (_) { o.fails.push(name); }
+    }
     const parent = n.parentKey ? o.ids.get(n.parentKey) : null;
     n.body = "";
     return {

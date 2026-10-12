@@ -133,11 +133,12 @@ const ZIP = zip([
   t.check("親子：フォルダ → 親・行のページは表の子", kid.parent === trip.id && row.parent === db.id && !trip.parent && !db.parent);
   t.check("ノートブック・日付（取り込んだ時刻より前・親が先）", all.every((n) => n.notebook === "Notion" && n.updatedAt === n.createdAt && n.updatedAt < n.src.batch)
     && trip.createdAt < kid.createdAt && db.createdAt < row.createdAt);
-  const want = new RegExp(`^本文\\n\\n- 一\\n  - 二\\n\\n!\\[\\]\\(img:[0-9a-f]{16}\\)\\n\\n\\[子のページ\\]\\(note:${kid.id}\\) と \\[外\\]\\(https://example\\.com\\)\\n\\nメモ\\n\\n`
+  const want = new RegExp(`^本文\\n\\n- 一\\n  - 二\\n\\n!\\[\\]\\(img:[0-9a-f]{16}\\)\\n\\[[^\\]]*\\]\\(file:[0-9a-f]{64}\\.png\\)\\n\\n\\[子のページ\\]\\(note:${kid.id}\\) と \\[外\\]\\(https://example\\.com\\)\\n\\nメモ\\n\\n`
     + "\\[契約\\.pdf\\]\\(file:[0-9a-f]{64}\\.pdf\\)\\n\\n\\[声\\.wav\\]\\n\\n無い$");
   t.check("本文：画像・PDF は入れ物へ・中のリンク・外は字のまま・aside・ほかの添付は名前・無いものは字だけ", want.test(trip.body), JSON.stringify(trip.body));
   t.check("中のリンク（notion.so・CSV への相対）→ note:", kid.body === `[親へ](note:${trip.id})\n\n[表へ](note:${db.id})`, JSON.stringify(kid.body));
-  t.check("表のノート：_all.csv の行", db.body === "| 名前 | 著者 | メモ |\n| --- | --- | --- |\n| 本A | 某 | 一行め 二行め |\n| 本B, 上 | 誰 | 引用 \"と\" \\| |", JSON.stringify(db.body));
+  t.check("表のノート：CSV の原本（files/）の行と _all.csv の行", /^\[蔵書\.csv\]\(file:[0-9a-f]{64}\.csv\)\n/.test(db.body)
+    && db.body.replace(/^.*\n/, "") === "| 名前 | 著者 | メモ |\n| --- | --- | --- |\n| 本A | 某 | 一行め 二行め |\n| 本B, 上 | 誰 | 引用 \"と\" \\| |", JSON.stringify(db.body));
   t.check("行のページ：属性の行も本文に", row.body === "著者: 某\n\n感想", JSON.stringify(row.body));
   t.check("画像は入れ物に", await page.evaluate(async (body) => !!(await KN.noteImg.get(KN.noteImg.idsIn(body)[0])), trip.body));
   const after = await rows();
