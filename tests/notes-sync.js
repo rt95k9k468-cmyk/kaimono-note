@@ -317,10 +317,11 @@ const { open, checker } = require("./lib");
 
   /* ---------- 合わせられないまま3日で歯車に点 ---------- */
   const dotOf = () => a.evaluate(() => { const el = document.querySelector(".js-settings"); return !!el && el.classList.contains("has-dot"); });
+  await a.evaluate(() => KN.notesSync.now());              // 書いたあとの一回（soon）を先に済ませる。あとで走ると時刻が今に戻る
   const fresh = await a.evaluate(() => { const s = KN.notesSync._.st(); s.err = "x"; s.at = new Date(Date.now() - 86400000).toISOString(); return KN.notesSync.stale(); });
   t.check("1日ではまだ点を出さない", fresh === null && !(await dotOf()));
   await a.evaluate(() => { KN.notesSync._.st().at = new Date(Date.now() - 4 * 86400000).toISOString(); KN.store.update(() => {}); });
-  await a.waitForTimeout(100);
+  await a.waitForFunction(() => document.querySelector(".js-settings.has-dot"), null, { timeout: 3000 }).catch(() => {});
   t.check("合わせられないまま3日で歯車に点", await dotOf());
 
   /* ---------- 設定の行 ---------- */
