@@ -277,7 +277,7 @@
     paintScope();
 
     const foot = node(html`
-      <div class="stack" style="gap: var(--sp-2)">
+      <div class="stack gap-2">
         <button class="btn btn-soft js-pdf">${icon("paper")}印刷・PDF</button>
         <div class="btn-row">
           <button class="btn btn-soft js-one grow">${icon("book")}1つにまとめる</button>
