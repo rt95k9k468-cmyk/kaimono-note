@@ -3,7 +3,7 @@
    MD5（en-media の hash）／ENML → Markdown（見出し・箇条・番号・入れ子・チェック二通り・太字・リンク・表・
    コード・引用・暗号化・空の行・`<en-media/>` の後ろの字）／設定のノートの「取り込む」でファイルを選ぶ →
    先に見せる紙（件数・画像・PDF・落ちるもの・読めないもの。ノートブックの名前を変えられる）→ 控え
-   （「取り込む前」）→ 取り込む（src の from・key・batch、日付、タグ、画像と PDF の参照、ほかの添付は名前の行）
+   （「取り込む前」）→ 取り込む（src の from・key・batch、日付、タグ、画像と原本と PDF の参照、ほかの添付は名前の行）
    ／二度目は飛ばす／取り消す（直したノートは残る・最近削除へ）→ 取り消した分はもう一度取り込める。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-import.js */
@@ -107,7 +107,7 @@ ${note({ title: "", created: "20210101T000000Z", content: "<div>題の無いノ�
   t.check("ノートブック・題・タグ", got.every((n) => n.notebook === "Evernote 旅") && a.title === "旅の支度 & 地図" && a.tags.join() === "旅,準備" && c.title === "");
   t.check("日付は元の作った日・直した日", a.createdAt === "2019-05-01T11:20:00.000Z" && a.updatedAt === "2019-05-02T01:00:00.000Z"
     && b.updatedAt === "2020-01-01T00:00:00.000Z");
-  t.check("画像は参照の行（本文の場所に）・後ろの字も", /^持ち物\n!\[\]\(img:[0-9a-f]{16}\)\n写真の下\n\n- \[x\] 切符$/.test(a.body), JSON.stringify(a.body));
+  t.check("画像は参照の行（本文の場所に）・すぐ下に原本の行・後ろの字も", new RegExp(`^持ち物\\n!\\[\\]\\(img:[0-9a-f]{16}\\)\\n\\[map\\.png\\]\\(file:${crypto.createHash("sha256").update(Buffer.from(PNG, "base64")).digest("hex")}\\.png\\)\\n写真の下\\n\\n- \\[x\\] 切符$`).test(a.body), JSON.stringify(a.body));
   t.check("PDF は files の参照・ほかの添付は名前の行", /^控え\n\[契約\.pdf\]\(file:[0-9a-f]{64}\.pdf\)\n\[声\.wav\]$/.test(b.body), JSON.stringify(b.body));
   t.check("暗号化した文は一行の印", c.body === "題の無いノート\n[暗号化した文]", JSON.stringify(c.body));
   const stored = await page.evaluate(async (body) => {

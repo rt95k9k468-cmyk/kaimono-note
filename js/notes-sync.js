@@ -323,6 +323,14 @@
           body: new Blob([rec.bytes], { type: "application/octet-stream" }),
         });
         if (!r.ok && !/conflict/.test(r.err)) throw new Error(r.err);
+        const ft = M.textOf && M.textOf(id);
+        if (ft) {
+          const t = await call("content", "/2/files/upload", {
+            arg: { path: `${path(id)}.txt`, mode: "add", autorename: false, mute: true },
+            body: new Blob([ft], { type: "application/octet-stream" }),
+          });
+          if (!t.ok && !/conflict/.test(t.err)) throw new Error(t.err);
+        }
         await M.markSent(id);
       }
     }

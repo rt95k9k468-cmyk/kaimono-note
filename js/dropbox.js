@@ -40,6 +40,9 @@
   /* ノートのファイル（PDF。note-file.js）。名前＝中身なので、同じく上書きしない形で。 */
   const FILE_DIR = "/files";
   const FILE_RE = /^[0-9a-f]{64}\.[a-z0-9]{1,8}$/;
+  const FT_RE = /^[0-9a-f]{64}\.pdf\.txt$/;     // PDF の字（note-file.js）
+  const IMPORT_DIR = "/imports";                  // 取り込んだ元のファイル（note-import.js）
+  const PART = 32 * 1024 * 1024;                  // 分けて送る一切れ（一度の upload は 150MB まで）
   const KEEP = 30;
   const MONTHS = 12;                 // 月の背骨（2026年10月8日、docs/log/data-check.md の案A）
   const SOON = 2 * 60 * 1000;        // 書き換えてから送るまで（その間の書き換えはまとめて一度）
@@ -496,6 +499,8 @@
           const rec = await M.get(id);
           if (!rec || !rec.bytes) continue;
           await upload(path(id), rec.bytes, "add");
+          const ft = M.textOf && M.textOf(id);
+          if (ft) await upload(`${path(id)}.txt`, ft, "add");
           await M.markSent(id);
         }
       } catch (err) {
@@ -527,12 +532,13 @@
   }
 
   /** 控えの中身（字）。上の二つの形の名前だけ読む。三つめの形 `images/<id>.jpg`（段5）と
-      四つめの `files/<id>`（ノートのファイル）は中身を ArrayBuffer で。 */
+      四つめの `files/<id>`（ノートのファイル）は中身を ArrayBuffer で。PDF の字 `files/<id>.txt` は字。 */
   async function download(path) {
     const p = String(path || "");
     const img = (p.startsWith(`${IMG_DIR}/`) && IMG_RE.test(p.slice(IMG_DIR.length + 1)))
       || (p.startsWith(`${FILE_DIR}/`) && FILE_RE.test(p.slice(FILE_DIR.length + 1)));
-    if (!img && p !== LATEST && !(p.startsWith(`${DAILY_DIR}/`) && DAILY_RE.test(p.slice(DAILY_DIR.length + 1)))) {
+    const ft = p.startsWith(`${FILE_DIR}/`) && FT_RE.test(p.slice(FILE_DIR.length + 1));
+    if (!img && !ft && p !== LATEST && !(p.startsWith(`${DAILY_DIR}/`) && DAILY_RE.test(p.slice(DAILY_DIR.length + 1)))) {
       throw new Error("戻せる控えの名前ではありません");
     }
     await recovered;
@@ -578,5 +584,30 @@
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
   /* `api` はノートの同期（js/notes-sync.js）が呼ぶ口。鍵の取り直しはこちらに任せる。 */
   const api = { call, summary, API, CONTENT, ready: () => recovered.then(() => connected() && !!cfg.appKey) };
-  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, KEEP, api };
+  /** 取り込んだ元のファイル（.enex・zip）を `imports/<日>/<名前>` へそのまま。同じ名前で中身が違えば
+      Dropbox が番号を足す（同じ中身なら置いた扱い）。大きいものは分けて送る。429 は retry_after だけ待つ。 */
+  async function putImport(day, file) {
+    await recovered;
+    if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
+    const name = String(file.name || "").normalize("NFC").replace(/[\\/:*?"<>|]/g, "_").replace(/^[\s.]+|[\s.]+$/g, "") || "file";
+    const commit = { path: `${IMPORT_DIR}/${day}/${name}`, mode: "add", autorename: true, mute: true };
+    const post = async (path, arg, body) => {
+      for (let tries = 0; ; tries++) {
+        const r = await call(CONTENT, path, { arg, body });
+        if (r.res.ok) return r.body;
+        const wait = r.res.status === 429 && r.body && r.body.error && r.body.error.retry_after;
+        if (!wait || tries >= 3) throw new Error(summary(r));
+        await new Promise((ok) => setTimeout(ok, wait * 1000));
+      }
+    };
+    if (file.size <= PART) { await post("/2/files/upload", commit, file); return; }
+    const { session_id } = await post("/2/files/upload_session/start", { close: false }, file.slice(0, PART));
+    let at = PART;
+    for (; at + PART < file.size; at += PART) {
+      await post("/2/files/upload_session/append_v2", { cursor: { session_id, offset: at }, close: false }, file.slice(at, at + PART));
+    }
+    await post("/2/files/upload_session/finish", { cursor: { session_id, offset: at }, commit }, file.slice(at));
+  }
+
+  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, KEEP, api };
 })();

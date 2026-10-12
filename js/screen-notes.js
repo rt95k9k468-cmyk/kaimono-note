@@ -799,7 +799,7 @@
       if (pic) {
         e.stopPropagation();
         KN.motion.fire("select");
-        openPicture(pic.dataset.img);
+        openPicture(pic.dataset.img, pic.dataset.orig, pic.dataset.origName);
         return;
       }
       /* ファイルは、端末の見る口で開く（書く欄へは入らない）。 */
@@ -1406,11 +1406,21 @@
     return true;
   }
 
-  /** 画像を黒地の一枚で全体に（段5）。下へ払って閉じる。 */
-  function openPicture(id) {
+  /** 画像を黒地の一枚で全体に（段5）。下へ払って閉じる。原本（取り込んだもの。files/）があれば、
+      手元か Dropbox から取れしだい差しかえる（ブラウザが描けない種類なら縮めたもののまま）。 */
+  function openPicture(id, orig, origName) {
     const v = KN.noteImg && KN.noteImg.known(id);
     if (!v) return;
     const body = node(html`<div class="note-pic"><img alt="" src="${v.url}"></div>`);
+    const D = KN.noteFile;
+    if (orig && D) {
+      D.look(orig).then((url) => url || D.pull(orig, origName).then((ok) => (ok ? D.look(orig) : null))).then((url) => {
+        if (!url || !body.isConnected) return;
+        const big = new Image();
+        big.onload = () => { const im = body.querySelector("img"); if (im) im.src = url; };
+        big.src = url;
+      });
+    }
     const h = KN.ui.sheet({ title: "", content: body, cls: "is-pic", pull: () => true });
     h.el.setAttribute("aria-label", "画像");
   }
