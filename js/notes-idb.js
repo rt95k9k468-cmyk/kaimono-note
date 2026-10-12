@@ -392,6 +392,31 @@
     });
   }
 
+  /* ---------------- 取り込み（js/note-import.js。notes-unify.md「取り込み」） ---------------- */
+
+  /** 新しいノートをまとめて足します（一つの取引。ほかの端末へも行く）。書けなければ断る。 */
+  function addMany(list) {
+    if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
+    const ids = list.map((raw) => { const n = shape(raw); byId.set(n.id, n); quiet.delete(n.id); dirty.add(n.id); return n.id; });
+    return writeNow().then(() => {
+      if (ids.some((id) => dirty.has(id))) throw new Error("書けませんでした");
+      emit();
+    });
+  }
+
+  /** 取り込みを取り消す → 消した印（最近削除・30日）。取り込んだあと直したノート（更新日が取り込みより
+      あと）と、ほかのノートを中に持つノートは残します。二度目に取り込めるよう `src.undone` を付ける。 */
+  function unimport(batch) {
+    if (phase !== "on" || !batch) return 0;
+    const at = U.today();
+    const hit = [...byId.values()].filter((n) => !n.deletedAt && n.src && n.src.batch === batch && String(n.updatedAt) <= batch);
+    const set = new Set(hit.map((n) => n.id));
+    const out = hit.filter((n) => !under(n.id).some((k) => !k.deletedAt && !set.has(k.id)));
+    out.forEach((n) => { n.deletedAt = at; n.src = { ...n.src, undone: at }; dirty.add(n.id); });
+    if (out.length) { writeNow(); emit(); }
+    return out.length;
+  }
+
   /** meta の記録を、頭の字で（`sync:` など）。 */
   function metaAll(prefix) {
     if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
@@ -698,7 +723,7 @@
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
     begin, end, versions, versionBodies, revert, merge,
-    absorb, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
+    absorb, addMany, unimport, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };

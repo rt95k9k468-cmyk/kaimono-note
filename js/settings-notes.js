@@ -59,6 +59,7 @@
         names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
+        KN.noteImport ? navRow({ ico: "paper", tint: TINT.sub, title: "取り込む", onTap: KN.noteImport.open }) : null,
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
           value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
       ),
