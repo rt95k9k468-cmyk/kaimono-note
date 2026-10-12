@@ -1446,7 +1446,7 @@
     books.forEach((nb) => {
       const top = !note.parent && note.notebook === nb;
       const b = node(html`
-        <button class="notes-place-row is-book" role="treeitem" style="--d:0" ${top ? html`aria-current="true"` : ""}>
+        <button class="notes-place-row is-book" role="treeitem" ${top ? html`aria-current="true"` : ""}>
           ${nb ? book(nb) : icon("notes")}<span>${nb || "ノートブックなし"}</span>
         </button>`);
       b.addEventListener("click", () => pick(null, nb));
