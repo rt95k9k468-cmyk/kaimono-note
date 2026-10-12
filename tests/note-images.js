@@ -42,6 +42,12 @@ const IMG_DB = "kaimono-note-images";
       return json(route, 200, { name: arg.path.split("/").pop() });
     }
     if (u.pathname === "/2/files/list_folder") return json(route, 200, { entries: [], has_more: false, cursor: "c" });
+    /* 送る役を決める（js/dropbox.js の role）。無ければ本物と同じく not_found——{} を返すと「二台め」と読む。 */
+    if (u.pathname === "/2/files/get_metadata") {
+      const { path } = JSON.parse(req.postData());
+      if (!files.has(path)) return json(route, 409, { error_summary: "path/not_found/.." });
+      return json(route, 200, { ".tag": "file", name: path.slice(1) });
+    }
     if (u.pathname === "/2/files/download") {
       if (!files.has(arg.path)) return json(route, 409, { error_summary: "path/not_found/.." });
       return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: files.get(arg.path) });
