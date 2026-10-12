@@ -1,6 +1,6 @@
 /* 年の本（R10・2026年9月29日）。docs/daily.md の「年の本」。
 
-   一年ぶんを、**事実だけ**の一冊にします——積み上げ・初めて買ったもの・
+   一年ぶんを、**事実だけ**の一冊にします——初めて買ったもの・
    よく買ったもの・その年の日記（本人の字）。置き場は daily ではなく書き出し
    （設定 → daily → 書き出し）。印刷（PDF に保存）と Markdown の二つ。
 
@@ -8,9 +8,8 @@
      書き出すそのときに引いて組むだけ（Daily Log の「写さず引く」と同じ）。
    - 比べない・率を出さない・目標を言わない。数を言うのは「よく買ったもの」の
      回数だけ（その年に買った回数そのもの。前の年とは並べない）。
-     日記の日の数・積み上げの件数は言いません（daily は数えない）。
-   - 積み上げの種類「達成」は、ここでは「やったこと」と書きます。daily の
-     禁止語（tests/daily-rules.js）に当たるので。記録の種類そのものは変えません。
+     日記の日の数は言いません（daily は数えない）。
+   - 積み上げの章は外した（2026年10月12日に積み上げをやめ、一冊のノートへ。docs/thinking.md）。
    - 空の章は章ごと出しません（「ありません」と書くと、無いことの一覧になる）。 */
 (() => {
   const KN = window.KN;
@@ -18,7 +17,6 @@
   const U = KN.util;
 
   const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
-  const TYPE_LABEL = { done: "やったこと" };
 
   /** 時刻つきの値（checkedAt は UTC の ISO）を、端末の日付に。 */
   function localDay(v) {
@@ -55,7 +53,6 @@
     const s = store.get();
     const arc = s.archive || {};
     const set = new Set();
-    (arc.entries || []).forEach((e) => { if (e.date) set.add(String(e.date).slice(0, 4)); });
     (arc.days || []).forEach((d) => { if (d.date && (hasMemo(d) || store.memoOut(d))) set.add(String(d.date).slice(0, 4)); });
     boughtAll().forEach((b) => set.add(b.day.slice(0, 4)));
     return [...set].filter((y) => /^\d{4}$/.test(y)).sort().reverse();
@@ -67,24 +64,6 @@
     const s = store.get();
     const arc = s.archive || {};
     const inYear = (day) => String(day || "").slice(0, 4) === y;
-
-    const stacks = store.ARCHIVE_TYPES.map((t) => ({
-      id: t.id,
-      label: TYPE_LABEL[t.id] || t.label,
-      items: (arc.entries || [])
-        .filter((e) => e.type === t.id && inYear(e.date))
-        .sort((a, b) => String(a.date).localeCompare(String(b.date))
-          || String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
-        .map((e) => {
-          const memo = String(e.memo || "").trim();
-          const title = String(e.title || "").trim() || memo.split("\n")[0].trim();
-          return {
-            day: e.date, title,
-            author: String(e.author || "").trim(),
-            memo: memo && memo !== title ? memo : "",
-          };
-        }),
-    })).filter((g) => g.items.length);
 
     const bought = boughtAll();
     const firstOf = new Map();
@@ -106,7 +85,7 @@
       .sort((a, b) => String(a.date).localeCompare(String(b.date)))
       .map((d) => ({ day: d.date, text: hasMemo(d) ? String(d.memo).replace(/\s+$/, "") : null }));
 
-    return { year: y, madeOn: U.todayKey(), stacks, firsts, often, diary };
+    return { year: y, madeOn: U.todayKey(), firsts, often, diary };
   }
 
   const MISSING = "（本文を読めませんでした）";
@@ -118,16 +97,6 @@
     const out = [`# くらしノート ${b.year}年`, "", `書き出した日：${fullDay(b.madeOn)}`];
     const indent = (t) => t.split("\n").map((l) => `  ${l}`).join("\n");
 
-    if (b.stacks.length) {
-      out.push("", "## 積み上げ");
-      b.stacks.forEach((g) => {
-        out.push("", `### ${g.label}`, "");
-        g.items.forEach((e) => {
-          out.push(`- ${md(e.day)}　${e.title}${e.author ? `（${e.author}）` : ""}`);
-          if (e.memo) out.push(indent(e.memo));
-        });
-      });
-    }
     if (b.firsts.length) {
       out.push("", "## 初めて買ったもの", "");
       b.firsts.forEach((f) => out.push(`- ${md(f.day)}　${f.name}`));
@@ -158,15 +127,6 @@
     const b = build(year);
     const e = U.escapeHtml;
     const parts = [`<h1>くらしノート ${e(b.year)}年</h1>`, `<p class="yb-made">書き出した日：${e(fullDay(b.madeOn))}</p>`];
-    if (b.stacks.length) {
-      parts.push("<h2>積み上げ</h2>");
-      b.stacks.forEach((g) => {
-        parts.push(`<h3>${e(g.label)}</h3><ul>`);
-        g.items.forEach((x) => parts.push(`<li><span class="yb-day">${e(md(x.day))}</span>${e(x.title)}${x.author ? e(`（${x.author}）`) : ""}`
-          + (x.memo ? `<div class="yb-text">${e(x.memo)}</div>` : "") + "</li>"));
-        parts.push("</ul>");
-      });
-    }
     if (b.firsts.length) {
       parts.push("<h2>初めて買ったもの</h2><ul>");
       b.firsts.forEach((f) => parts.push(`<li><span class="yb-day">${e(md(f.day))}</span>${e(f.name)}</li>`));

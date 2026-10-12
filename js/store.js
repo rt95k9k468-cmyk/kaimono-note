@@ -1789,7 +1789,7 @@
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
     const rec = {
-      // 活動（3.0 の A1）。積み上げの種類を持つ予定。結ぶ記録は済ませたときに生まれる。
+      // 活動（3.0 の A1）。種類（読書・学習・種）を持つ予定。
       ...actField(act),
       id: uid("t"),
       title: name,
@@ -2101,27 +2101,14 @@
     s.todos.forEach((t) => {
       if (!t.done && !t.archived) return;
       if (t.repeat || t.trace) return;
-      /* 活動を済ませたもの（3.0 の A1）は、結んだ積み上げのほうが言う（同じことを二度並べない）。 */
-      if (actEntry(t)) return;
+      /* 前は、積み上げと結んだ活動をここで外していた（二度並べない）。積み上げを出さなくなったので、ここが言う。 */
       const at = todoClosedAt(t);
       if (!at || dayOfStamp(at) !== key) return;
       out.push({ src: "todo", id: t.id, at, title: t.title, icon: t.icon || null,
                  minutes: t.minutes || null, repeat: false, trace: false });
     });
 
-    /* ② その日の「積み上げ」。
-
-       種はタイトルを持ちません（メモそのものが記録なので）。持っていない
-       ものの題を空のまま出すと、種の行だけ名無しで並びます。書いた本人に
-       とっては、そのメモが題です——一行目を借ります。 */
-    (s.archive.entries || []).forEach((e) => {
-      if (dayOfStamp(e.date) !== key) return;
-      const memo = String(e.memo || "");
-      const title = e.title || memo.split("\n")[0].trim();
-      out.push({ src: "entry", id: e.id, at: e.createdAt || e.date,
-                 title, type: e.type, memo,
-                 amount: e.amount, unit: e.unit, minutes: e.minutes || null });
-    });
+    /* 積み上げ（`archive.entries`）は出さない（2026年10月12日にやめた。一冊のノートへ。docs/thinking.md）。 */
 
     /* ③ その日に買ったもの。 */
     (s.items || []).forEach((i) => {
@@ -2556,14 +2543,11 @@
     });
 
     const doneId = was.done ? null : repeating ? (before.due ? traceId : null) : id;
-    const entry = actDone(doneId);
     return {
       repeated: repeating,
       due: repeating ? due : null,
       /* 済ませた時刻を直すときの宛先（くり返しなら、その日に残した写し）。 */
       doneId,
-      /* 活動を済ませて生まれた積み上げ（3.0 の A1）。無ければ null。 */
-      entry: entry ? entry.id : null,
       undo: () => update((s) => {
         const t = s.todos.find((x) => x.id === id);
         if (!t) return;
@@ -2572,21 +2556,15 @@
         t.due = was.due;
         // 戻すなら、やった記録も一緒に取り消します。
         if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
-        /* 生まれた積み上げも（済ませた直後の「元に戻す」なので、まだ誰も書き足していない）。 */
-        if (entry) {
-          s.archive.entries = s.archive.entries.filter((x) => x.id !== entry.id);
-          if (t.act && t.act.entry === entry.id) t.act.entry = null;
-        }
       }),
     };
   }
 
   /* ---------------- 活動（3.0 の A1。docs/roadmap-3.0.md） ----------------
 
-     一つの活動を、予定（`act` 付きのやること）と実績（`minutes`・`at` 付きの積み上げ）で
-     持ちます。二つは互いの id で結ばれ（`act.entry` と `entry.todo`）、**両方が指し合って
-     いるときだけ**結びとして読みます。片方が消えたら、ふつうの用事・ふつうの記録に戻るだけ
-     （相手を一緒に消さない）。題は「読書『…』」の形で、中の題が積み上げの題。 */
+     活動は `act` 付きのやること。済ませても積み上げは作らない（2026年10月12日にやめた。
+     docs/thinking.md）。前からの結び（`act.entry` と `entry.todo`）は**両方が指し合って
+     いるときだけ**読み、道が前の長さと時刻を描くのに使うだけ。題は「読書『…』」の形。 */
   const actLabel = (type) => archiveType(type).label;
   function actTitle(type, name) { return `${actLabel(type)}『${String(name || "").trim()}』`; }
   /** 予定の題から、積み上げの題を引きます（「読書『坊っちゃん』」→「坊っちゃん」）。 */
@@ -2605,40 +2583,6 @@
     if (!e || !e.todo) return null;
     const t = getTodo(e.todo);
     return t && t.act && t.act.entry === e.id ? t : null;
-  }
-
-  /* 済ませた活動から、積み上げを一件。長さは予定の長さ（決めていなければ30分）、始まりは
-     決めた時刻（済ませた時刻より後なら、済ませた時刻から長さぶん前）。**タイマーは持たない**
-     ——違えば知らせの「直す」から長さだけ直す。メモは空のまま。もう結んであれば作らない
-     （外して、また済ませたとき）。 */
-  function actDone(id) {
-    const t = id && getTodo(id);
-    if (!t || !t.act || !t.done || actEntry(t)) return null;
-    const minutes = cleanMinutes(t.minutes) || 30;
-    const end = t.doneAt ? new Date(t.doneAt) : null;
-    const endOk = end && !isNaN(end.getTime());
-    const date = t.due || (endOk ? KN.util.dayKey(end) : todayKey());
-    const same = endOk && KN.util.dayKey(end) === date;
-    const endMin = same ? end.getHours() * 60 + end.getMinutes() : null;
-    const planned = KN.util.isTime(t.time) ? Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3, 5)) : null;
-    const startMin = planned != null && (endMin == null || planned <= endMin) ? planned
-      : endMin != null ? Math.max(0, endMin - minutes) : null;
-    const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-    const name = actName(t);
-    const book = t.act.type === "reading"
-      ? readingCandidates().find((c) => foldKana(c.title.trim()) === foldKana(name.trim())) : null;
-    const row = addEntry({
-      type: t.act.type, title: name, date,
-      kind: t.act.type === "reading" ? (book ? book.kind : "book") : null,
-      author: book ? book.author : null,
-      minutes, at: startMin != null ? hm(startMin) : null, todo: t.id,
-      note: t.act.note || null,
-    });
-    update((s) => {
-      const x = s.todos.find((y) => y.id === t.id);
-      if (x && x.act) x.act.entry = row.id;
-    });
-    return row;
   }
 
   /**
@@ -4636,14 +4580,13 @@
     });
   }
 
-  /** その日に何か書いてあるか（記録か、地の文か）。出さない日は null。 */
+  /** その日に地の文があるか。出さない日は null（積み上げはやめたので見ない）。 */
   function thenOfDay(date, label) {
     if (isQuietDay(date)) return null;
-    const rows = entriesOfDay(date);
     const log = dayLog(date);
     const memo = log && String(log.memo || "").trim();
-    if (!rows.length && !memo) return null;
-    return { date, label, entries: rows, memo: memo || "" };
+    if (!memo) return null;
+    return { date, label, memo };
   }
 
   /**
@@ -4661,10 +4604,8 @@
        ——数えると「◯日ぶん貯まりました」が書きたくなるので、並びから
        一つ取るだけにします。選ぶ位置は今日の日付から決めるので、同じ日の
        あいだは動かず、明くる日には別の日になります。 */
-    const past = [...new Set([
-      ...archive().entries.map((e) => e.date),
-      ...archive().days.filter((d) => String(d.memo || "").trim()).map((d) => d.date),
-    ])].filter((d) => d && d < today && !isQuietDay(d)).sort();
+    const past = [...new Set(archive().days.filter((d) => String(d.memo || "").trim()).map((d) => d.date))]
+      .filter((d) => d && d < today && !isQuietDay(d)).sort();
     if (!past.length) return null;
     const seed = Number(String(today).replace(/-/g, "")) % past.length;
     const pick = past[seed];
@@ -4703,8 +4644,6 @@
       ym,
       exportedAt: stamp(),
       days: daysOfMonth(ym),
-      entries: entriesOfMonth(ym),
-      counts: monthCounts(ym),
     };
   }
 
@@ -4716,9 +4655,6 @@
     const [a, b] = String(from) <= String(to) ? [from, to] : [to, from];
     const inside = (d) => { const k = String(d).slice(0, 10); return k >= a && k <= b; };
     const bare = (x) => { const { createdAt, updatedAt, ...rest } = x; return rest; };
-    const entries = archive().entries.filter((e) => inside(e.date)).slice().sort(byRecent);
-    const counts = {};
-    entries.forEach((e) => { counts[e.type] = (counts[e.type] || 0) + 1; });
     return {
       app: "kaimono-note",
       kind: "daily-range",
@@ -4727,8 +4663,6 @@
       exportedAt: stamp(),
       days: archive().days.filter((d) => inside(d.date))
         .slice().sort((x, y) => String(y.date).localeCompare(String(x.date))).map(bare),
-      entries: entries.map(bare),
-      counts,
     };
   }
 

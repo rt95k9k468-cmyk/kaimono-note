@@ -700,7 +700,6 @@
                  aria-label="やること">${editing ? t.title : (opts && opts.title) || ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
-          <button type="button" class="dest-chip js-act-src" hidden></button>
           <button type="button" class="dest-chip js-act-note" hidden></button>
           <span class="unf-hint js-unfold-hint" hidden>
             <button type="button" class="dest-chip js-unfold-go">AIにほどいてもらう</button>
@@ -1752,17 +1751,6 @@
       });
       titleEl.addEventListener("input", paintDest);
     }
-    /* 活動（3.0 の A1）。結んだ積み上げがあれば、頭に「積み上げ『…』」の札（押せば元の記録へ）。 */
-    const srcEntry = editing ? store.actEntry(t) : null;
-    if (srcEntry && KN.screens.archive) {
-      const chip = hero.querySelector(".js-act-src");
-      chip.hidden = false;
-      chip.textContent = `積み上げ『${srcEntry.title || store.archiveType(srcEntry.type).label}』`;
-      chip.addEventListener("click", () => {
-        handle.close();
-        setTimeout(() => KN.screens.archive.openEntry(srcEntry.id), 40);
-      });
-    }
     /* ノートから置いた活動（3.0 の A2）は「ノート『…』」。押せばノートが開き、閉じればこの画面へ戻る。
        ノートが消えていれば出さない。 */
     const srcNote = editing && t.act && KN.activity ? KN.activity.noteOf(t.act.note) : null;
@@ -2454,15 +2442,6 @@
   /* 済ませたら、**押した時刻**を言って、その場で直せるようにします（2026年10月3日、
      利用者の声「完了を押し忘れていたことがよくある」）。くり返しは次の日も言います。 */
   function sayDone(t, res) {
-    /* 活動は、予定の長さで積み上げを一件残した（store の toggleTodo）。違えば「直す」から長さだけ。 */
-    const born = res.entry && store.get().archive.entries.find((x) => x.id === res.entry);
-    if (born && KN.activity) {
-      KN.ui.toast(`${KN.plan.humanSpan(born.minutes || 30)}で残しました`, { actions: [
-        { label: "直す", onClick: () => KN.activity.fixLength(born.id) },
-        { label: "元に戻す", onClick: res.undo },
-      ] });
-      return;
-    }
     const d = res.doneId && store.getTodo(res.doneId);
     const at = d ? doneClock(d.doneAt) : "";
     const msg = res.repeated
@@ -2845,10 +2824,13 @@
       plan, today: isToday, wake: log && log.wake ? KN.plan.toMin(log.wake) : null,
       sleep: log && log.sleep ? KN.plan.toMin(log.sleep) : null, tomorrow: isToday ? firstStopOn(KN.util.shiftDay(day, 1)) : null,
       someday,
-      /* 記録（`arc:`）は記録の紙へ。 */
+      /* 前からの積み上げ（`arc:`）は、積み上げをまとめたノートへ（無ければ何もしない）。 */
       open: (id) => {
-        const eid = act && act.entryIdOf(id);
-        if (eid) { if (KN.screens.archive) KN.screens.archive.openEntry(eid); return; }
+        if (act && act.entryIdOf(id)) {
+          const n = KN.entriesNote && act.noteOf(KN.entriesNote.id());
+          if (n) act.openNote(n.id);
+          return;
+        }
         openSheet(id);
       },
       markOf: (t) => { const sil = silOf(t); return sil ? maskUrl(sil) : ""; },

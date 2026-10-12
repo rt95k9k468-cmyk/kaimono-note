@@ -68,13 +68,6 @@
   /* 日で絞っているとき、その日。null は「月ぜんぶ」。 */
   let viewDay = null;
 
-  /* ④の見せ方。並び替え・絞り込み・お気に入りだけ・文字さがし。
-     ページを分けない代わりに、ここで探します。 */
-  let typeFilter = "all";
-  let sortMode = "recent";     // recent | favorite | date
-  let favOnly = false;
-  let query = "";
-
   /** daily の見え方の設定。まとめてここから読みます（既定はぜんぶ「出す」）。 */
   const S = () => store.get().settings;
 
@@ -476,14 +469,6 @@
      log だけあって積み上げが無い日は、灰色の小さな一粒にします——書いた
      ことは書いたことなので、何も出さないと「その日は空白」に見えて
      しまいます。 */
-  function markIconsHtml(types) {
-    return [...new Set(types || [])].slice(0, 3)
-      .map((t) => {
-        const at = store.archiveType(t);
-        return `<i class="cal-mark" style="--cat:${at.color}">${icon(at.icon)}</i>`;
-      }).join("");
-  }
-
   /**
    * @param {Element} sec  組む先の `.cal`
    * @param {{year:number,month:number}} [only]  その月で組みます。渡すのは
@@ -495,29 +480,15 @@
     const today = U.todayKey();
     const { year, month } = only || shownMonth();
     const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
-    /* 隣の月へはみ出すマス（lead/trail）の絵も出すため、前後の月ぶんも
-       一緒に集めます。 */
-    const prevYm = U.shiftMonth(`${ym}-01`, -1).slice(0, 7);
-    const nextYm = U.shiftMonth(`${ym}-01`, 1).slice(0, 7);
-    const byDay = {};
-    [prevYm, ym, nextYm].forEach((m) => {
-      store.entriesOfMonth(m).forEach((e) => { (byDay[e.date] = byDay[e.date] || []).push(e.type); });
-    });
     const logged = {};
     store.daysOfMonth(ym).forEach((d) => { logged[d.date] = true; });
 
-    /* 日の印は、その日に書いた記録の種類の絵（三つまで）。無ければ log の点。
-       隣の月のマス（週で見るときだけ姿を見せる）にも絵を出します——空のままだと
-       「よその月の頭は何も無い」と嘘をつくことになるので（やることと同じ理由）。 */
+    /* 日の印は log の点だけ（積み上げの種類の絵は、積み上げをやめて外した。2026年10月12日）。 */
     const grid = KN.calGrid.fill(sec, {
       year, month, here: viewDay || today,
       mark: (key, out) => {
-        if (out) return { html: markIconsHtml(byDay[key]) };
-        const kinds = [...new Set(byDay[key] || [])].slice(0, 3);
-        return {
-          html: kinds.length ? markIconsHtml(kinds) : (logged[key] ? '<i class="is-log"></i>' : ""),
-          label: `${kinds.length ? ` 記録${kinds.length}種` : ""}${logged[key] ? " log あり" : ""}`,
-        };
+        if (out) return { html: "" };
+        return { html: logged[key] ? '<i class="is-log"></i>' : "", label: logged[key] ? " log あり" : "" };
       },
       /* 押せば、その日へ移ります。その月のマスは先に輪だけ動かします。 */
       pick: (key, cell, out) => {
@@ -588,11 +559,7 @@
   function yearsCard(years) {
     const dt = U.dayDate(years[0].date);
     const md = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日` : "";
-    const rowText = (y) => {
-      if (y.memo) return diaryBody() === "off" ? null : y.memo;
-      const shown = y.entries.slice(0, 2).map((e) => e.title || store.archiveType(e.type).label);
-      return shown.join("・") + (y.entries.length > shown.length ? "　ほかにも" : "");
-    };
+    const rowText = (y) => (diaryBody() === "off" ? null : y.memo);
     const sec = node(html`
       <div class="card arc-then is-years">
         <span class="arc-then-head">
@@ -628,12 +595,6 @@
     const dt = U.dayDate(then.date);
     const when = dt ? `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日 ${U.weekdayJa(then.date)}` : then.date;
 
-    /* 記録は多くても二つまで。三つ目からは数を出さずに畳みます——
-       「ほか3件」と数えると、その日の量の話になってしまうので、
-       押せば全部見られることだけを言います。 */
-    const shown = then.entries.slice(0, 2);
-    const more = then.entries.length > shown.length;
-
     const sec = node(html`
       <button type="button" class="card arc-then" data-day="${then.date}">
         <span class="arc-then-head">
@@ -642,20 +603,9 @@
           ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
         </span>
         <span class="arc-then-date">${when}</span>
-        ${!then.memo ? "" : diaryBody() === "off"
+        ${diaryBody() === "off"
           ? html`<span class="arc-then-memo is-blank">${UNREAD}</span>`
           : html`<span class="arc-then-memo">${then.memo}</span>`}
-        ${shown.length ? html`
-          <span class="arc-then-rows">
-            ${U.raw(shown.map((e) => {
-              const t = store.archiveType(e.type);
-              const ico = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
-              return `<span class="arc-then-row" style="--arc-c:${t.color}">`
-                + `<i class="arc-then-row-ico">${icon(ico, "is-sub").value}</i>`
-                + `<em>${U.escapeHtml(e.title || t.label)}</em></span>`;
-            }).join(""))}
-            ${more ? html`<span class="arc-then-more">ほかにも</span>` : ""}
-          </span>` : ""}
       </button>
     `);
     sec.addEventListener("click", () => {
@@ -853,10 +803,10 @@
      押すと、それぞれの元へ行きます。積み上げはその記録の紙が開き、
      やること・買うものはそのタブへ移ります——「ここで直せそうに見えて、
      直しても元に伝わらない」という形にだけはしないためです。 */
-  const FEED_LABEL = { todo: "やること", entry: "積み上げ", item: "買うもの" };
+  const FEED_LABEL = { todo: "やること", item: "買うもの" };
   /* 出す順番。その日の並びは時刻順ですが、**枠は種類ごと**にまとまるので、
      枠そのものの順は決めておきます（日によって入れ替わると読みにくい）。 */
-  const FEED_ORDER = ["todo", "entry", "item"];
+  const FEED_ORDER = ["todo", "item"];
 
   /** 時刻つきの記録の「何時何分」。ローカルの時計で読みます——
       しまってあるのは UTC の ISO なので、文字を切ると9時間ずれます。 */
@@ -885,11 +835,9 @@
          （5件なら 1,2,3 が左、4,5 が右）。一件のときは分けません
          ——一列に一件だけ置いて右を空けても、幅が余るだけなので。 */
       const twoCol = rows.length >= 2;
-      /* その日の活動の合計（3.0 の A1。事実だけ。月比べ・平均は出さない）。 */
-      const sum = src === "entry" ? rows.reduce((n, f) => n + (Number(f.minutes) > 0 ? Number(f.minutes) : 0), 0) : 0;
       const box = node(html`
         <section class="arc-feed-box ${twoCol ? "is-split" : ""}" data-src="${src}">
-          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}${sum ? html`<span class="arc-feed-sum">${KN.plan.humanSpan(sum)}</span>` : ""}</h4>
+          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}</h4>
           <div class="arc-feed-list"></div>
         </section>
       `);
@@ -902,23 +850,13 @@
       rows.forEach((f) => {
         const at = feedClock(f.at);
         const row = node(html`
-          ${/* **data-id は使いません。** 積み上げの行（.arc-row-body）が同じ
-                名前で同じidを持っていて、[data-id="…"] で引くと、こちらの
-                行のほうが先に当たることがあります（そこから .arc-row を
-                辿ると null）。同じ元を指す札が二つある以上、名前は分けます。 */""}
-          <button type="button" class="arc-feed-row ${f.src === "entry" && f.minutes ? "has-len" : ""}" data-src="${f.src}" data-feed-id="${f.id}">
+          <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
             <span class="arc-feed-when">${at}</span>
             <span class="arc-feed-title">${f.title}</span>
-            ${f.src === "entry" && f.minutes ? html`<span class="arc-feed-len">${KN.plan.humanSpan(f.minutes)}</span>` : ""}
           </button>
         `);
         row.addEventListener("click", () => {
           KN.motion.fire("select");
-          if (f.src === "entry") {
-            const e = store.get().archive.entries.find((x) => x.id === f.id);
-            if (e) openEntrySheet(e);
-            return;
-          }
           /* やること・買うものは、それぞれのタブが本体です。 */
           KN.app.showScreen(f.src === "todo" ? "todo" : "list");
         });
@@ -949,7 +887,6 @@
     const { month } = ymParts(ym);
     const bits = [];
     if (d.bySrc.todo) bits.push({ label: "やること", n: d.bySrc.todo });
-    if (d.bySrc.entry) bits.push({ label: "積み上げ", n: d.bySrc.entry });
     if (d.bySrc.item) bits.push({ label: "買うもの", n: d.bySrc.item });
 
     return node(html`
@@ -1404,626 +1341,6 @@
   }
 
   /* ================================================================
-     ④積み上げ項目 — 読書・学習・種・達成・変化
-     ================================================================ */
-
-  /* **月ぜんぶを常に出します**（その日だけに絞りません）。日を送っている
-     最中の一枚（`daySlide`）は、ここが読む `ym` だけを頼りに組みます——
-     外側の `viewDay` を読むと、前の日から今日へ払って戻ったときに
-     ちょうど今日の紙を組んでいる瞬間はまだ「前の日」のままで、前の日に
-     積み上げが無ければ、そのまま「まだ記録はありません」が今日の紙に
-     焼き付いて残っていました（払いきった紙は組み直さないので、次に
-     全体を組み直すまでそのままでした）。月で読めば `ym` は毎回その紙の
-     ものなので、この揺れが起きません。未来の日を持ち込まれたときも、
-     同じ月ぶんが出ます——その日だけを見せると、月に入っている積み上げが
-     急に消えて見えるので。 */
-  function visibleEntries(ym) {
-    let list;
-    if (query.trim()) {
-      list = store.searchEntries(query);
-    } else {
-      list = store.entriesOfMonth(ym);
-    }
-    if (typeFilter !== "all") list = list.filter((e) => e.type === typeFilter);
-    if (favOnly) list = list.filter((e) => e.favorite);
-
-    const sorter = sortMode === "favorite" ? cmpFavorite : (sortMode === "date" ? cmpDate : cmpRecent);
-    return list.slice().sort(sorter);
-  }
-  // store 側の並びに乗るので、ここでは再現だけします（同じ関数を二重に
-  // 持たない代わりに、store が要らないと言った並びだけこちらで足します）。
-  const cmpRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
-  const cmpFavorite = (a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || cmpRecent(a, b);
-  const cmpDate = (a, b) => String(b.date).localeCompare(String(a.date)) || cmpRecent(a, b);
-
-  function readingSubtitle(e, t) {
-    const bits = [];
-    if (e.author) bits.push(e.author);
-    if (e.pageFrom != null || e.pageTo != null) {
-      bits.push(`${orDash(e.pageFrom)}→${orDash(e.pageTo)}${e.amount != null ? `（${e.amount}ページ）` : ""}`);
-    }
-    return bits;
-  }
-
-  function entryRow(e) {
-    const t = store.archiveType(e.type);
-    const dt = U.dayDate(e.date);
-    const when = dt ? `${dt.getMonth() + 1}/${dt.getDate()}` : "";
-    const edited = e.updatedAt && e.createdAt && String(e.updatedAt).slice(0, 16) !== String(e.createdAt).slice(0, 16);
-
-    const subBits = [t.label, when];
-    if (e.type === "reading") {
-      subBits.push(...readingSubtitle(e, t));
-    } else if (e.amount != null) {
-      subBits.push(`${e.amount}${e.unit || t.unit || ""}`);
-    }
-    /* 道の上の長さ（3.0 の A1）。 */
-    if (e.minutes > 0) subBits.push(KN.plan.humanSpan(e.minutes));
-    if (edited) subBits.push(`直: ${U.formatStamp(e.updatedAt)}`);
-
-    const typeIcon = e.type === "reading" ? (e.kind === "paper" ? "paper" : "book") : t.icon;
-
-    const row = node(html`
-      ${/* data-flip は、組み直しの前後で同じ行かどうかの目印です
-            （ui.js の flipRows）。並べ替え・お気に入り・一件足したときに、
-            行が「もといた場所」から滑ってきます。 */""}
-      <div class="arc-row" data-flip="${e.id}" style="--arc-c:${t.color}">
-        ${/* 種は、達成に変える丸を持ちません。種はメモとしての記録で、
-              「できた・できていない」を測るものではないので。 */""}
-        <button class="fav ${e.favorite ? "is-on" : ""} js-favbtn" aria-pressed="${String(!!e.favorite)}"
-                aria-label="「${e.title}」をお気に入りにする">${icon("star")}</button>
-        <button class="arc-row-body" data-id="${e.id}">
-          <span class="arc-ico">${icon(typeIcon, "is-sub")}</span>
-          <span class="arc-main">
-            <span class="arc-title">${e.title || t.label}</span>
-            <span class="arc-sub">${U.raw(subBits.map((b) => `<span>${U.escapeHtml ? U.escapeHtml(b) : b}</span>`).join(""))}</span>
-            ${/* メモの無い積み上げには、段ごと出しません（R27）。前は「-」が一つ
-                  置かれていて、書かなかったことを指さす印に見えました。 */""}
-            ${e.memo ? html`<span class="arc-memo ${S().entryFull === false ? "is-clamped" : ""}">${e.memo}</span>` : ""}
-          </span>
-        </button>
-      </div>
-    `);
-    row.querySelector(".arc-row-body").addEventListener("click", () => openEntrySheet(e));
-    row.querySelector(".js-favbtn").addEventListener("click", () => {
-      KN.motion.fire("select");
-      store.toggleFavorite(e.id);
-      // 出ている daily は store の subscribe がもう組み直した（上の日記の紙の save と同じ）。
-      if (!root || !root.classList.contains("is-active")) render();
-    });
-    return row;
-  }
-
-  /* 並び順は三つだけです。三つを札の一列にすると、絞り込みの札と合わせて
-     二段——記録が一件も見えないうちに 110px を使っていました。
-
-     見出しの右へ、いまの並びを名乗るボタンとして畳みます。押すと次へ回り、
-     三回で一周。隠れるのではなく **いまどれなのかが常に書いてある** ので、
-     押す前に読めます（menu にすると、開くまで分かりません）。 */
-  const SORTS = [
-    { id: "recent",   label: "更新順" },
-    { id: "date",     label: "日付順" },
-    { id: "favorite", label: "お気に入り順" },
-  ];
-  const sortLabel = (id) => (SORTS.find((s) => s.id === id) || SORTS[0]).label;
-  const nextSort = (id) => SORTS[(SORTS.findIndex((s) => s.id === id) + 1) % SORTS.length].id;
-
-  function entriesSection(ym) {
-    const sec = node(html`
-      <section class="arc-stack">
-        <header class="arc-stack-head">
-          <h2>積み上げ</h2>
-          <button type="button" class="arc-sort js-sort"
-                  aria-label="並び順を変える（いまは${sortLabel(sortMode)}）">
-            ${icon("rows", "is-sub")}<span>${sortLabel(sortMode)}</span>
-          </button>
-          <button type="button" class="fav js-favonly ${favOnly ? "is-on" : ""}"
-                  aria-pressed="${String(favOnly)}" aria-label="お気に入りだけ見る">${icon("star")}</button>
-        </header>
-        <div class="js-typechips"></div>
-        <div class="js-rows stack"></div>
-      </section>
-    `);
-
-    /* 数は札のほうへ。上にあった「◯月の積み上がり」の一行と同じ内訳です
-       ——数えるほうと押すほうを、一つにまとめました。ゼロは書きません
-       （「種 0」は、無いことを数えた字なので）。
-
-       **札は、あるものだけ並べます。** 五種類ぜんぶを always 出していた
-       ので、一件も書いていない月でも「すべて・読書・学習・種・達成・変化」
-       と六つの丸が並び、その下は空でした。**中身より操作のほうが多い**
-       画面で、それがこの一段の見た目を重くしていた正体です。 */
-    const counts = store.monthCounts(ym);
-    const kinds = store.ARCHIVE_TYPES.filter((t) => counts[t.id]);
-    const chips = sec.querySelector(".js-typechips");
-    if (kinds.length > 1) {
-      KN.ui.chipRow(chips,
-        [{ id: "all", label: "すべて" },
-         ...kinds.map((t) => ({ id: t.id, label: t.label, color: t.color, count: counts[t.id] }))],
-        { activeId: typeFilter, onPick: (id) => { typeFilter = id; KN.motion.fire("select"); render(); } });
-    } else {
-      /* 一種類しか無ければ、絞る相手がいません。 */
-      if (typeFilter !== "all") typeFilter = "all";
-      chips.remove();
-    }
-
-    sec.querySelector(".js-sort").addEventListener("click", () => {
-      sortMode = nextSort(sortMode); KN.motion.fire("select"); render();
-    });
-
-    sec.querySelector(".js-favonly").addEventListener("click", () => {
-      favOnly = !favOnly; KN.motion.fire("select"); render();
-    });
-
-    const rows = sec.querySelector(".js-rows");
-    const list = visibleEntries(ym);
-    /* 並べ替えとお気に入りも、**並べる相手がいるときだけ**。一件も無い
-       ところに「更新順 ☆」が浮いていても、押せることしか言いません。
-       （お気に入りだけ見ているときは、戻れなくなるので残します。） */
-    if (list.length < 2 && !favOnly) {
-      sec.querySelector(".js-sort").remove();
-      sec.querySelector(".js-favonly").remove();
-    }
-    if (!list.length) {
-      rows.append(node(html`
-        <div class="empty is-quiet">
-          ${/* 枠（.empty-art）に入れます。裸で置くと大きさの決まりが効かず、
-                原寸のまま出ます——「アイコンが大きすぎる」の正体はこれでした。 */""}
-          <div class="empty-art">${U.raw(KN.emptyArt.notebook)}</div>
-          ${/* 説明の一文は外しました。「読んだ本・学んだこと…」は、＋を
-                押せば出てくる欄がそのまま言っていることで、ここでは
-                空きの下に字を一段増やしているだけでした。 */""}
-          <p class="empty-title">${query.trim() ? "見つかりませんでした" : "まだ記録はありません"}</p>
-        </div>
-      `));
-    } else {
-      const card = node(html`<div class="card arc-list"></div>`);
-      list.forEach((e) => card.append(entryRow(e)));
-      rows.append(card);
-    }
-    return sec;
-  }
-
-  /* ---------------- 一つ書く／直すシート ----------------
-
-     「くわしく」は畳みません。任意の欄も最初から出したままにします——
-     開かないと見えない欄は、開かれないままのことが多いので。 */
-  /* opts.under … 下に開いているノートの id（ノートの小窓から来た）。opts.seedOf … そのノートでまく新しい種
-     （段6の橋。docs/bridge-design.md）。 */
-  function openEntrySheet(existing, opts = {}) {
-    const e = existing || null;
-    const seedOf = !e && opts.seedOf ? opts.seedOf : null;
-    let type = e ? e.type : (seedOf ? "seed" : "reading");
-    let kind = e ? (e.kind || "book") : "book";
-    /* 自動で埋めた欄には ×。人が打ち直したら消えます。 */
-    let titleAuto = false, authorAuto = false;
-
-    const body = node(html`
-      <div class="stack gap-2">
-        <div class="arc-bridge js-bridge" hidden></div>
-        <div class="arc-pick js-pick"></div>
-
-        <div class="js-reading-fields" hidden>
-          <div class="stack gap-2">
-            <div class="arc-kind js-kind"></div>
-            <label class="field">
-              <span class="field-label">タイトル</span>
-              <div class="ta-wrap">
-                <input type="text" class="input input-lg js-title" value="${e ? e.title : ""}"
-                       enterkeyhint="next" autocomplete="off">
-                <button type="button" class="ta-clear js-title-clear" hidden aria-label="消す">${icon("close")}</button>
-              </div>
-              <div class="js-title-ac"></div>
-            </label>
-            <label class="field">
-              <span class="field-label">作者・著者</span>
-              <div class="ta-wrap">
-                <input type="text" class="input input-lg js-author" value="${e ? (e.author || "") : ""}"
-                       enterkeyhint="next" autocomplete="off">
-                <button type="button" class="ta-clear js-author-clear" hidden aria-label="消す">${icon("close")}</button>
-              </div>
-              <div class="js-author-ac"></div>
-            </label>
-            <div class="arc-pages js-pages-row">
-              <label class="field">
-                <span class="field-label">開始ページ</span>
-                <input type="text" inputmode="numeric" class="input js-pagefrom"
-                       value="${e && e.pageFrom != null ? e.pageFrom : ""}">
-              </label>
-              <label class="field">
-                <span class="field-label">終了ページ</span>
-                <input type="text" inputmode="numeric" class="input js-pageto"
-                       value="${e && e.pageTo != null ? e.pageTo : ""}">
-              </label>
-              <p class="arc-pages-hint js-pages-calc">-</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="js-generic-fields">
-          <div class="stack gap-2">
-            ${/* 種だけは、タイトル・数・単位を持ちません。種はメモそのものが
-                  記録で、日付とメモの二つだけで足ります。数を測るものでは
-                  ないので、単位も要りません。 */""}
-            <label class="field js-title-generic-field">
-              <span class="field-label">タイトル</span>
-              <input type="text" class="input js-title-generic" value="${e && e.type !== "reading" ? e.title : ""}"
-                     enterkeyhint="done">
-            </label>
-            <div class="arc-times js-amount-fields">
-              <label class="field">
-                <span class="field-label">数</span>
-                <input type="text" inputmode="numeric" class="input js-amount"
-                       value="${e && e.type !== "reading" && e.amount != null ? e.amount : ""}">
-              </label>
-              <label class="field">
-                <span class="field-label">単位</span>
-                <input type="text" class="input js-unit"
-                       value="${e && e.type !== "reading" && e.unit ? e.unit : ""}">
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <label class="field arc-date-field">
-          <span class="field-label">日付</span>
-          <input type="hidden" data-when="day" class="input js-date" value="${e ? e.date : (viewDay || U.todayKey())}">
-        </label>
-
-        <label class="field arc-memo-field">
-          <span class="field-label">メモ</span>
-          <textarea class="textarea js-memo" rows="2">${e ? e.memo : ""}</textarea>
-        </label>
-      </div>
-    `);
-
-    const readingFields = body.querySelector(".js-reading-fields");
-    const genericFields = body.querySelector(".js-generic-fields");
-    const titleReading = body.querySelector(".js-title");
-    const titleGeneric = body.querySelector(".js-title-generic");
-    const authorInput = body.querySelector(".js-author");
-    const pageFrom = body.querySelector(".js-pagefrom");
-    const pageTo = body.querySelector(".js-pageto");
-    const pagesCalc = body.querySelector(".js-pages-calc");
-    const titleClear = body.querySelector(".js-title-clear");
-    const authorClear = body.querySelector(".js-author-clear");
-
-    /* 数の欄は type="text"（roadmap-unify の U9）。全角も読み、読めなければ空と同じ。 */
-    const numOf = (el) => { const n = U.parseNum(el.value.normalize("NFKC")); return isFinite(n) ? n : null; };
-    const paintPages = () => {
-      const a = numOf(pageFrom);
-      const b = numOf(pageTo);
-      pagesCalc.textContent = (a != null && b != null && b >= a) ? `${b - a + 1}ページ` : "-";
-    };
-    pageFrom.addEventListener("input", paintPages);
-    pageTo.addEventListener("input", paintPages);
-    paintPages();
-
-    const paintClears = () => {
-      titleClear.hidden = !titleAuto;
-      authorClear.hidden = !authorAuto;
-    };
-    /* 新規の読書だけ、前回の名前・著者を下敷きにします。直したら ×は消えます。
-       書籍と論文は別々に覚えます（2026年10月6日・利用者）——札を切り替えると、その種類の
-       前回（書きかけならそれ）に入れ替わる。直すときは入れ替えない（種類の付け直しなので）。 */
-    const drafts = {};
-    const keepDraft = (k) => { drafts[k] = { title: titleReading.value, author: authorInput.value, titleAuto, authorAuto }; };
-    const takeDraft = (k) => {
-      const d = drafts[k];
-      titleReading.value = d.title; authorInput.value = d.author;
-      titleAuto = d.titleAuto; authorAuto = d.authorAuto;
-      paintClears();
-    };
-    if (!e) {
-      const last = store.lastReading();
-      if (last) kind = last.kind || "book";
-      ["book", "paper"].forEach((k) => {
-        const l = store.lastReading(k);
-        drafts[k] = l ? { title: l.title, author: l.author || "", titleAuto: true, authorAuto: !!l.author }
-          : { title: "", author: "", titleAuto: false, authorAuto: false };
-      });
-      takeDraft(kind);
-    }
-    paintClears();
-    titleReading.addEventListener("input", () => { titleAuto = false; paintClears(); renderTitleAc(); });
-    authorInput.addEventListener("input", () => { authorAuto = false; paintClears(); renderAuthorAc(); });
-    titleClear.addEventListener("click", () => {
-      titleReading.value = ""; titleAuto = false; paintClears(); titleReading.focus();
-    });
-    authorClear.addEventListener("click", () => {
-      authorInput.value = ""; authorAuto = false; paintClears(); authorInput.focus();
-    });
-
-    /* 候補（前に打った名前・著者）。選んだら両方いっぺんに埋めます
-       ——同じ本の続きを書くときに、著者を打ち直させないためです。 */
-    const titleAcHost = body.querySelector(".js-title-ac");
-    const authorAcHost = body.querySelector(".js-author-ac");
-    function renderTitleAc() {
-      const q = U.foldKana(titleReading.value.trim());
-      if (!q) { titleAcHost.innerHTML = ""; return; }
-      const hits = store.readingCandidates(kind)
-        .filter((c) => U.foldKana(c.title).includes(q)).slice(0, 5);
-      paintAc(titleAcHost, hits, (c) => `${c.title}`, (c) => c.author || "著者なし", (c) => {
-        titleReading.value = c.title;
-        if (c.author) { authorInput.value = c.author; authorAuto = false; }
-        titleAuto = false; paintClears();
-        titleAcHost.innerHTML = "";
-      });
-    }
-    function renderAuthorAc() {
-      const q = U.foldKana(authorInput.value.trim());
-      if (!q) { authorAcHost.innerHTML = ""; return; }
-      const seen = new Set();
-      const hits = store.readingCandidates(kind)
-        .filter((c) => c.author && U.foldKana(c.author).includes(q))
-        .filter((c) => { const k = U.foldKana(c.author); if (seen.has(k)) return false; seen.add(k); return true; })
-        .slice(0, 5);
-      paintAc(authorAcHost, hits, (c) => c.author, (c) => `${c.title} の著者`, (c) => {
-        authorInput.value = c.author; authorAuto = false; paintClears();
-        authorAcHost.innerHTML = "";
-      });
-    }
-    function paintAc(host, rows, mainOf, subOf, onPick) {
-      host.innerHTML = "";
-      if (!rows.length) return;
-      const box = node(html`<div class="ac" role="listbox"></div>`);
-      rows.forEach((r) => {
-        const item = node(html`
-          <button type="button" class="ac-item" role="option">
-            <span class="ac-main"><span class="ac-name">${mainOf(r)}</span>
-              <span class="ac-sub">${subOf(r)}</span></span>
-          </button>
-        `);
-        item.addEventListener("mousedown", (ev) => ev.preventDefault());
-        item.addEventListener("click", () => onPick(r));
-        box.append(item);
-      });
-      host.append(box);
-    }
-
-    /* 書籍／論文の切り替え。論文は開始・終了ページを持たない（2026年10月6日・利用者）。 */
-    const kindHost = body.querySelector(".js-kind");
-    const pagesRow = body.querySelector(".js-pages-row");
-    const paintKind = () => {
-      kindHost.innerHTML = "";
-      pagesRow.hidden = kind === "paper";
-      [{ id: "book", label: "書籍", icon: "book" }, { id: "paper", label: "論文", icon: "paper" }].forEach((k) => {
-        const b = node(html`
-          <button type="button" class="arc-kind-b ${k.id === kind ? "is-on" : ""}" data-k="${k.id}">
-            ${icon(k.icon, "is-sub")}<span>${k.label}</span>
-          </button>
-        `);
-        b.addEventListener("click", () => {
-          if (!e && k.id !== kind) {
-            keepDraft(kind); takeDraft(k.id);
-            titleAcHost.innerHTML = ""; authorAcHost.innerHTML = "";
-          }
-          kind = k.id; KN.motion.fire("select"); paintKind();
-        });
-        kindHost.append(b);
-      });
-    };
-    paintKind();
-
-    /* 種類の札。読書だけ専用の欄に切り替わります。
-
-       新しく書くときだけ、並びの先頭に**日記**の札を置きます（＋が記録の紙を
-       先に開くので、日記への入口はここ）。種類とは別の行き先なので、同じ
-       大きさで並べると埋もれる——一回り大きく、主色の字で、区切りの余白を
-       あけて先頭に。押すと紙を閉じて（書きかけがあれば、ほかの閉じ方と
-       同じく保存を試みて）、その日の日記を開きます。 */
-    const pick = body.querySelector(".js-pick");
-    let toDiary = false;
-    const paintPick = () => {
-      pick.innerHTML = "";
-      if (!e) {
-        const d = node(html`
-          <button type="button" class="arc-pick-diary js-to-diary">
-            ${icon("edit", "is-sub")}<span>日記</span>
-          </button>
-        `);
-        d.addEventListener("click", () => {
-          KN.motion.fire("select");
-          toDiary = true;
-          h.tryClose();
-          setTimeout(() => { toDiary = false; }, 400);
-        });
-        pick.append(d);
-      }
-      /* 「変化」は書く札から外した（2026年10月2日・利用者の希望。札が一段減る）。種類そのもの
-         と書いた記録は残す——store の ARCHIVE_TYPES から消すと、読み直しで「達成」に化ける。
-         変化の記録を直すときだけ札を出す。 */
-      /* 達成・変化は書かない（思考のホーム。docs/thinking.md）。その種類の記録を直すときだけ札が出る。 */
-      store.ARCHIVE_TYPES.filter((t) => (t.id !== "change" && t.id !== "done") || (e && e.type === t.id)).forEach((t) => {
-        const b = node(html`
-          <button type="button" class="arc-pick-b ${t.id === type ? "is-on" : ""}"
-                  style="--arc-c:${t.color}" data-t="${t.id}">
-            ${icon(t.icon, "is-sub")}<span>${t.label}</span>
-          </button>
-        `);
-        b.addEventListener("click", () => { type = t.id; KN.motion.fire("select"); paintPick(); paintMode(); });
-        pick.append(b);
-      });
-    };
-    const titleGenericField = body.querySelector(".js-title-generic-field");
-    const amountFields = body.querySelector(".js-amount-fields");
-    const paintMode = () => {
-      const isReading = type === "reading";
-      const isSeed = type === "seed";
-      /* 道に置くのは読書・学習だけ。道に記録するのは種・変化のほか。 */
-      if (roadBtn) roadBtn.hidden = e ? (isSeed || type === "change") : !KN.activity.PLANNED.includes(type);
-      readingFields.hidden = !isReading;
-      genericFields.hidden = isReading;
-      /* 種だけ、タイトルと数・単位を隠します。書くのは日付とメモだけ。 */
-      titleGenericField.hidden = isSeed;
-      amountFields.hidden = isSeed;
-    };
-    /* 道へ（3.0 の A1）。新しく書くときは「道に置く」（その日に活動の予定を一つ。記録はまだ
-       書かない——済ませたときに生まれる）、前の記録は「道に記録する」（始めた時刻と長さだけ）。 */
-    const roadLabel = e ? "道に記録する" : "道に置く";
-    const footer = node(html`
-      <div style="display:flex;gap:8px">
-        ${KN.activity ? html`<button type="button" class="btn btn-soft js-road">${icon("clock", "is-sub")}<span>${roadLabel}</span></button>` : ""}
-        <button class="btn btn-primary js-ok grow">${e ? "保存" : "書く"}</button>
-      </div>
-    `);
-    const roadBtn = footer.querySelector(".js-road");
-    /* つながるノート（段6の橋。前からの A2・A3 の札もここ）。見つかれば札、見つからなければ
-       「つなぎ直す／外す」、入れ物が開いていなければ何も出さない。見つからなくても欄は消さない。 */
-    const NS = () => (KN.screens.notes && KN.screens.notes.find ? KN.screens.notes : null);
-    let draftLink = seedOf;   // 新しい種のつながり（書くまで記録が無い）
-    const rowNow = () => (e ? store.get().archive.entries.find((x) => x.id === e.id) || e : null);
-    const linkOf = () => (e ? rowNow().note || null : draftLink);
-    const fromOf = () => (e ? rowNow().fromNote || null : seedOf);
-    const setLink = (id) => {
-      if (e) store.setEntryNote(e.id, id);
-      else draftLink = id;
-      paintBridge();
-    };
-    const relink = () => { const ns = NS(); if (ns) ns.pick(setLink); };
-    const unlink = () => {
-      const was = linkOf();
-      setLink(null);
-      KN.ui.toast("外しました", { action: { label: "元に戻す", onClick: () => setLink(was) } });
-    };
-    const goNote = (id) => {
-      KN.motion.fire("select");
-      h.tryClose();
-      if (id !== opts.under) setTimeout(() => KN.screens.notes.open(id), 120);
-    };
-    const bridgeEl = body.querySelector(".js-bridge");
-    function paintBridge() {
-      if (!bridgeEl.isConnected && h) return;
-      bridgeEl.innerHTML = "";
-      const ns = NS();
-      const cur = ns ? ns.find(linkOf()) : null;
-      if (cur && cur.state === "found") {
-        const b = node(html`<button type="button" class="dest-chip arc-note-src js-note-src">ノート『${cur.title}』</button>`);
-        b.addEventListener("click", () => goNote(cur.id));
-        bridgeEl.append(b);
-      } else if (cur) {
-        const re = node(html`<button type="button" class="dest-chip js-relink">つなぎ直す</button>`);
-        const un = node(html`<button type="button" class="dest-chip js-unlink">外す</button>`);
-        re.addEventListener("click", relink);
-        un.addEventListener("click", unlink);
-        bridgeEl.append(re, un);
-      }
-      const from = fromOf();
-      const src = ns && from && from !== linkOf() ? ns.find(from) : null;
-      if (src && src.state === "found") {
-        const b = node(html`<button type="button" class="dest-chip arc-note-from js-note-from" aria-label="生まれたノート『${src.title}』">${icon("sprout", "is-sub")}<span>${src.title}</span></button>`);
-        b.addEventListener("click", () => goNote(src.id));
-        bridgeEl.append(b);
-      }
-      bridgeEl.hidden = !bridgeEl.childElementCount;
-    }
-    let h = null;
-    paintBridge();
-    const offNotes = KN.notes && KN.notes.onChange ? KN.notes.onChange(paintBridge) : null;
-    paintPick();
-    paintMode();
-
-    /* 「⋯」：入れ物が開いているときだけ、消すの前に「ノートにつなぐ」か「つなぎ直す」「外す」。
-       ui.js の紙は開いたときの配列を持つので、押す直前に中身を入れ替える（ui.js は変えない）。 */
-    const del = e ? KN.ui.delMenu(() => store.removeEntry(e.id), { sheet: () => h, after: render }) : null;
-    const menu = del ? del.slice() : null;
-    const bridgeItems = () => (!NS() || !KN.notes || KN.notes.state() !== "on" ? []
-      : !linkOf() ? [{ icon: "notes", label: "ノートにつなぐ", onPick: relink }]
-        : [{ icon: "notes", label: "つなぎ直す", onPick: relink }, { icon: "minus", label: "外す", onPick: unlink }]);
-
-    KN.ui.whenFields(body);
-    h = KN.ui.sheet({ title: e ? "記録を直す" : "記録を書く", content: body, footer, guard: true,
-      menu,
-      cls: "is-card", clear: true,   // 日記と同じカード（openLogSheet）
-      onClose: () => {
-        if (offNotes) offNotes();
-        if (toDiary) { toDiary = false; setTimeout(() => openLogSheet(writeDay()), 0); }
-        if (toRoad) {
-          toRoad = false;
-          const now = store.get().archive.entries.find((x) => x.id === e.id);
-          if (now) setTimeout(() => KN.activity.recordOnRoad(now, render), 0);
-        }
-      } });
-    let toRoad = false;
-    if (menu) h.el.addEventListener("click", (ev) => {
-      if (ev.target.closest(".js-menu")) menu.splice(0, menu.length, ...bridgeItems(), ...del);
-    }, true);
-    /* ノートから種をまくときは、押した流れのままメモへ（iOS はここで同期に focus しないとキーボードを出さない）。 */
-    if (seedOf) KN.ui.focusNow(body.querySelector(".js-memo"));
-
-    footer.querySelector(".js-ok").addEventListener("click", () => {
-      const isReading = type === "reading";
-      const isSeed = type === "seed";
-      const memoVal = body.querySelector(".js-memo").value;
-      /* 種は、タイトルではなく**メモ**が中身です。求めるのはメモのほう。
-         前からある種の題（道具箱の「思考」・ノートの題・「…について考える」。3.0 の A2・A3）は
-         残す——書く欄は無いので、空にすると道の上の名前が消える。題のある種はメモが無くてよい。 */
-      const title = isSeed ? (e && e.type === "seed" ? String(e.title || "").trim() : "")
-        : (isReading ? titleReading.value : titleGeneric.value).trim();
-      if (isSeed) {
-        if (!memoVal.trim() && !title) { KN.ui.toast("メモを書いてください"); return; }
-      } else if (!title) {
-        KN.ui.toast("タイトルを入れてください"); return;
-      }
-      const patch = {
-        type,
-        title,
-        date: body.querySelector(".js-date").value || U.todayKey(),
-        memo: memoVal,
-      };
-      if (isReading) {
-        patch.kind = kind;
-        patch.author = authorInput.value.trim() || null;
-        /* 論文はページを持たない。前から持っている論文のページは消さずに残す。 */
-        const paper = kind === "paper";
-        patch.pageFrom = paper ? (e && e.kind === "paper" ? e.pageFrom : null) : numOf(pageFrom);
-        patch.pageTo = paper ? (e && e.kind === "paper" ? e.pageTo : null) : numOf(pageTo);
-        patch.amount = null;   // applyReadingPages が計算し直します
-        patch.unit = null;
-      } else if (isSeed) {
-        patch.kind = null;
-        patch.author = null;
-        patch.pageFrom = null;
-        patch.pageTo = null;
-        patch.amount = null;
-        patch.unit = null;
-      } else {
-        patch.kind = null;
-        patch.author = null;
-        patch.pageFrom = null;
-        patch.pageTo = null;
-        patch.amount = numOf(body.querySelector(".js-amount"));
-        patch.unit = body.querySelector(".js-unit").value.trim() || null;
-      }
-      if (e) store.updateEntry(e.id, patch);
-      else store.addEntry(seedOf ? { ...patch, note: draftLink, fromNote: seedOf } : patch);
-      KN.motion.fire("select");
-      h.close();
-      render();
-      KN.ui.toast(e ? "保存しました" : "書きました");
-    });
-
-    if (roadBtn) roadBtn.addEventListener("click", () => {
-      KN.motion.fire("select");
-      if (e) {
-        /* 道に記録する：その記録に始めた時刻と長さを書く。用事は作らない。直しかけがあれば、
-           ほかの閉じ方と同じく先に保存する（閉じたら聞く。onClose）。 */
-        toRoad = true;
-        h.tryClose();
-        setTimeout(() => { toRoad = false; }, 400);
-        return;
-      }
-      const title = (type === "reading" ? titleReading.value : titleGeneric.value).trim();
-      if (!title) { KN.ui.toast("タイトルを入れてください"); return; }
-      const day = body.querySelector(".js-date").value || U.todayKey();
-      /* 記録はまだ書かない（済ませたときに生まれる）。打ったメモは予定のメモへ渡す。 */
-      const memo = body.querySelector(".js-memo").value;
-      h.close();
-      setTimeout(() => KN.activity.placeOnRoad({ type, title, day, memo }), 40);
-    });
-  }
-
-  /* ================================================================
      画面
      ================================================================ */
 
@@ -2068,7 +1385,8 @@
 
     /* ほかの三画面とまったく同じ配線です。バーは題の裏に隠してあって、
        少し下へ引くと出てきます（ui.js の parkSearch）。 */
-    KN.ui.wireSearch(els, () => render(), (q) => { query = q; });
+    /* 打った字は「ぜんぶをさがす」へ渡すだけ（この画面で絞っていた積み上げはやめた）。 */
+    KN.ui.wireSearch(els, () => render(), () => {});
 
     /* 題を押すと、暦が月ぜんぶに開きます（やることの「›」と同じ役目）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
@@ -2170,13 +1488,10 @@
     const ym = day.slice(0, 7);
     const el = node(html`<div class="day-slide"></div>`);
 
-    /* Daily Log と積み上げのどちらを上にするか。日誌として使う人は
-       その日の文が先で、集めるものとして使う人は積み上げが先です。
-       どちらが上かは、その人の使い方でしか決まりません。 */
     /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
        「その月の成績」に見えるので、必ず地の文の隣に並べる、という
        決めごとです（daily-rules.js が見張っています）。 */
-    const log = dailyLog(ym, day), entries = entriesSection(ym);
+    const log = dailyLog(ym, day);
     /* まとめは設定で出し入れできます。出すときは、上か下かのどちらか一方
        ——日の間には決して挟みません。挟むと「その日のまとめ」に見えます。 */
     const digest = S().showDigest === false ? null : monthDigest(ym);
@@ -2184,12 +1499,11 @@
     if (digest && S().digestPos === "top") logBlock.append(digest);
     logBlock.append(log);
     if (digest && S().digestPos !== "top") logBlock.append(digest);
-    /* 「あの日」は積み上げのすぐ上（Daily Log の外）。出すのは今日の紙だけ、出すかどうかは設定で
+    /* 「あの日」は Daily Log の下（外）。出すのは今日の紙だけ、出すかどうかは設定で
        （2026年10月10日・利用者。Daily Log の中に入れたら起床・就寝や幅が崩れた）。 */
     const then = day === U.todayKey() && S().showThen !== false ? thenCard() : null;
-    const tail = then ? [then, entries] : [entries];
-    if (S().dailyOrder === "entries") el.append(...tail, logBlock);
-    else el.append(logBlock, ...tail);
+    el.append(logBlock);
+    if (then) el.append(then);
     /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
@@ -2366,9 +1680,5 @@
   });
 
   KN.screens.archive = { mount, render, dockButton, prepare, onEnter, day: () => focusDay(),
-    goDay: (d) => goDayTo(d),
-    /* 記録の紙を、ほかの画面から（道の活動の札・道の上の記録。3.0 の A1）。 */
-    openEntry: (id, o) => { const e = store.get().archive.entries.find((x) => x.id === id); if (e) return openEntrySheet(e, o); },
-    /* ノートでまく種（段6の橋）。閉じればノートへ戻る。 */
-    seedFromNote: (noteId) => openEntrySheet(null, { seedOf: noteId, under: noteId }) };
+    goDay: (d) => goDayTo(d) };
 })();

@@ -295,19 +295,9 @@ const AT = new Date(2026, 9, 6, 12, 34);
   });
   t.check("設定がなければ時刻ごと（設定の行にも）", /日記\s*時刻ごと/.test(row), row.slice(0, 80));
 
-  /* ---- 記録の紙：達成・変化の札は前からの記録を直すときだけ ---- */
-  const chips = await page.evaluate(async () => {
-    const e = KN.store.addEntry({ type: "reading", kind: "book", title: "試験の本", date: KN.util.todayKey(), memo: "" });
-    const id = (e && e.id) || KN.store.get().archive.entries[0].id;
-    KN.app.showScreen("archive");
-    await new Promise((r) => setTimeout(r, 300));
-    KN.screens.archive.openEntry(id);
-    await new Promise((r) => setTimeout(r, 500));
-    const ts = [...document.querySelectorAll(".sheet.is-open .arc-pick-b")].map((b) => b.dataset.t);
-    document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click());
-    return ts;
-  });
-  t.check("読書の記録を直す紙に達成・変化の札は無い", chips.length > 0 && !chips.includes("done") && !chips.includes("change"), chips.join(","));
+  /* ---- 積み上げはやめた：記録の紙を開く口は無い ---- */
+  const gone = await page.evaluate(() => ({ open: typeof KN.screens.archive.openEntry, seed: typeof KN.screens.archive.seedFromNote }));
+  t.check("記録の紙を開く口は無い", gone.open === "undefined" && gone.seed === "undefined", JSON.stringify(gone));
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();

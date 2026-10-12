@@ -1,8 +1,8 @@
 /* 同じ日の年々と、出さない日（R9）。
 
    時計を 2026年9月29日に止め、前から使っている人の保存（archive に quiet の鍵が
-   無い）を置く。同じ月日の記録は 2023（積み上げだけ）・2024・2025（地の文）、
-   2022 は何も無い。
+   無い）を置く。同じ月日の記録は 2023（積み上げだけ。積み上げはやめたので出ない）・
+   2024・2025（地の文）、2022 は何も無い。
 
    - reconcile：鍵の無い保存は quiet が空（どの日も今までどおり出る・移行なし）。
    - 二年以上あれば「あの日」は年ごとの一行（遠い年から）。記録の無い年は行ごと出ない。
@@ -48,8 +48,8 @@ const FORBIDDEN = [
   }));
   t.check("鍵の無い保存は quiet が空（reconcile・移行なし）",
     Array.isArray(base.quiet) && base.quiet.length === 0, JSON.stringify(base.quiet));
-  t.check("年々は 2023・2024・2025 の三つ、遠い年から（2022 は無い）",
-    JSON.stringify(base.years) === JSON.stringify(["2023-09-29", "2024-09-29", "2025-09-29"]), base.years.join(","));
+  t.check("年々は 2024・2025 の二つ、遠い年から（積み上げだけの 2023・何も無い 2022 は無い）",
+    JSON.stringify(base.years) === JSON.stringify(["2024-09-29", "2025-09-29"]), base.years.join(","));
 
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(400);
@@ -69,10 +69,10 @@ const FORBIDDEN = [
   });
   let c = await card();
   t.check("二年以上あるので、年ごとの一枚が出る（いつもの一枚は出ない）", c.years && !c.single);
-  t.check("行は 2023年・2024年・2025年（記録の無い年は行ごと出ない）",
-    JSON.stringify(c.rows) === JSON.stringify(["2023年", "2024年", "2025年"]), c.rows.join(","));
+  t.check("行は 2024年・2025年（地の文の無い年は行ごと出ない）",
+    JSON.stringify(c.rows) === JSON.stringify(["2024年", "2025年"]), c.rows.join(","));
   t.check("枠はボタンではなく、行がボタン", c.isButton === "DIV");
-  t.check("積み上げだけの年は、その題が出る", c.text.includes("試験の本"));
+  t.check("積み上げだけの年は出ない（題も）", !c.text.includes("試験の本"));
   t.check("年の数を言わない（◯年分・◯件・◯回）", !/年分|件|回/.test(c.text), c.text);
   const hits = FORBIDDEN.filter((w) => c.text.includes(w));
   t.check("daily の禁止語に当たらない", !hits.length, hits.join(","));
@@ -99,7 +99,7 @@ const FORBIDDEN = [
   await page.evaluate(() => { KN.util.dayShare.set("2026-09-28"); KN.util.dayShare.set(KN.util.todayKey()); KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
   c = await card();
-  t.check("前に付いた印は効かない（三年ぶんのまま）", c.years && c.rows.length === 3, c.rows.join(","));
+  t.check("前に付いた印は効かない（二年ぶんのまま）", c.years && c.rows.length === 2, c.rows.join(","));
   const pickAny = await page.evaluate(() => KN.store.isQuietDay("2024-09-29"));
   t.check("isQuietDay はいつも出す", pickAny === false);
   await page.reload();

@@ -137,9 +137,10 @@ window.__diff = function (a, b, p) {
   /* 読み直しで動くのは、決まりどおりの二つだけ：
        ① 過ぎた用事の日が今日へ（rescheduleOverdue。段3から、運んだ印 carried と
           時刻を外すのも。3.0 の B2 から置き直しの控え slips を一つ書き、B1 から待つ・いつかを外す）
-       ② 今日の空の日の行（ensureDayLog） */
+       ② 今日の空の日の行（ensureDayLog）
+       ③ 前からの積み上げを一冊のノートへ移した印（entries-note.js。記録そのものは動かない） */
   const KNOWN = [/^\.todos\.\d+\.(due|carried|time|shelf|waitFor):/, /^\.todos\.\d+\.slips(\.\d+)?:/,
-                 /^\.archive\.days\.\d+: undefined ->/];
+                 /^\.archive\.days\.\d+: undefined ->/, /^\.settings\.entriesNote: undefined ->/];
   const drift = B.drift.filter((d) => !KNOWN.some((re) => re.test(d)));
   t.check("B. 読み直しても、戻した中身が残っている（決まりどおりの動きを除く）", drift.length === 0, drift.slice(0, 6).join("\n      "));
   t.check("B. 試験中にエラーが出ていない", B.errors.length === 0, B.errors.join("\n"));

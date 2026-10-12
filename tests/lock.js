@@ -58,7 +58,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   t.check("既定では覆いが出ない", !(await veilOn()));
 
   /* 試験用の無難な字 */
-  await page.evaluate(() => KN.store.addEntry({ date: KN.util.todayKey(), title: "しおかぜ", memo: "" }));
+  await page.evaluate(() => KN.store.setDayLog(KN.util.todayKey(), { memo: "しおかぜ" }));
   const before = await plain();
 
   /* ---- 設定でパスコードを決める ---- */

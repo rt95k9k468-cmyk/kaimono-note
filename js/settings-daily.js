@@ -86,7 +86,6 @@
     const s = store.get().settings;
     const full = s.logFull !== false;
     const lines = s.logLines === 3 ? 3 : 5;
-    const entryFull = s.entryFull !== false;
     const page = s.diaryView === "page";
     return [
       card(
@@ -132,28 +131,6 @@
               });
               render();
             },
-          }),
-        }),
-        pickRow({
-          title: "積み上げのメモ", value: entryFull ? "全文" : "数行",
-          onTap: () => choose({
-            title: "積み上げのメモの見せ方", value: entryFull ? "full" : "short",
-            options: [
-              { id: "full",  label: "全文" },
-              { id: "short", label: "数行" },
-            ],
-            onPick: (v) => dailySet("entryFull", v === "full"),
-          }),
-        }),
-        pickRow({
-          title: "上に出すもの", value: s.dailyOrder === "entries" ? "積み上げ" : "Daily Log",
-          onTap: () => choose({
-            title: "上に出すもの", value: s.dailyOrder === "entries" ? "entries" : "log",
-            options: [
-              { id: "log",     label: "Daily Log" },
-              { id: "entries", label: "積み上げ" },
-            ],
-            onPick: (v) => dailySet("dailyOrder", v),
           }),
         })
       ),
@@ -242,9 +219,8 @@
      空の月を書き出しても意味がないので、選べるのは中身のある月だけです。 */
   function openMonthExport() {
     if (monthExportBlocked()) return;
-    const arc = store.get().archive || { entries: [], days: [] };
+    const arc = store.get().archive || { days: [] };
     const months = new Set();
-    (arc.entries || []).forEach((e) => { if (e.date) months.add(String(e.date).slice(0, 7)); });
     (arc.days || []).forEach((d) => { if (d.date) months.add(String(d.date).slice(0, 7)); });
     const list = [...months].sort().reverse();
 
@@ -257,12 +233,12 @@
     let handle = null;
     list.forEach((ym) => {
       const n = store.exportMonth(ym);
-      const days = (n.days || []).length, entries = (n.entries || []).length;
+      const days = (n.days || []).length;
       const row = node(html`
         <button class="row">
           <span class="row-main">
             <span class="row-title">${ym.replace("-", "年") + "月"}</span>
-            <span class="row-sub">Daily Log ${String(days)}日 ・ 積み上げ ${String(entries)}件</span>
+            <span class="row-sub">Daily Log ${String(days)}日</span>
           </span>
           <span class="row-chevron">${icon("download")}</span>
         </button>
@@ -310,8 +286,8 @@
       fromEl.querySelector(".js-v").textContent = U.formatDay(from);
       toEl.querySelector(".js-v").textContent = U.formatDay(to);
       const n = store.exportRange(from, to);
-      body.querySelector(".js-n").textContent = `Daily Log ${n.days.length}日 ・ 積み上げ ${n.entries.length}件`;
-      foot.disabled = !n.days.length && !n.entries.length;
+      body.querySelector(".js-n").textContent = `Daily Log ${n.days.length}日`;
+      foot.disabled = !n.days.length;
     };
     const span = [Math.min(1990, Number(from.slice(0, 4))), Number(to.slice(0, 4))];
     fromEl.addEventListener("click", () => KN.ui.popDate(fromEl, {

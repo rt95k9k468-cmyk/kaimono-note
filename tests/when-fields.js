@@ -5,7 +5,6 @@
    - 体重・食事：日だけ変えて閉じる → 保存／時刻だけ変えて閉じる → 保存／何も変えずに閉じる → 聞かれない
    - お酒：時刻だけ変えて閉じる → 保存
    - 目標日（遠い日＝年月日のドラム）：回して閉じる → 保存／何も変えずに閉じる → 聞かれない／× で外す → 保存
-   - daily の記録：日だけ変えて閉じる → 保存／全角のページも数で保存（U9）
    - 用事の「日付」：暦で選ぶ → 日付の紙が閉じ、保存すると その日
    - 見える字：今日は「今日 10/7(水)」、時刻は頭の0を落とす（7:05）。「なし」で空へ戻せる欄は「--:--」
    時計は 2026年10月7日 9:00 に止める。
@@ -125,34 +124,6 @@ const { open, checker } = require("./lib");
   await page.locator(`${S} .js-td-clear`).click(); await wait(200);
   await closeSheet();
   t.check("目標日：× で外して閉じる → 保存", (await goal()) === null, String(await goal()));
-
-  /* ---- daily の記録 ---- */
-  await page.evaluate(() => KN.app.showScreen("archive"));
-  await wait(400);
-  const eid = await page.evaluate(() => {
-    const e = KN.store.addEntry({ type: "reading", date: "2026-10-07", title: "本", memo: "" });
-    return e && e.id;
-  });
-  if (eid) {
-    await page.evaluate((id) => KN.screens.archive.openEntry(id), eid);
-    await page.waitForSelector(S); await wait(400);
-    await pickDay(".js-date", "2026-10-04");
-    await closeSheet();
-    const e = await page.evaluate((id) => KN.store.get().archive.entries.find((x) => x.id === id), eid);
-    t.check("daily の記録：日だけ変えて閉じる → 保存", (await sheets()) === 0 && e && e.date === "2026-10-04", JSON.stringify(e && e.date));
-    /* 数の欄は type="text"（U9）：全角で入れても数で残る */
-    await page.evaluate((id) => KN.screens.archive.openEntry(id), eid);
-    await page.waitForSelector(S); await wait(400);
-    await page.locator(`${S} .js-pagefrom`).fill("１２");
-    await page.locator(`${S} .js-pageto`).fill("20");
-    t.check("daily の記録：ページの数が出る", (await page.locator(`${S} .js-pages-calc`).textContent()) === "9ページ");
-    await closeSheet();
-    const p = await page.evaluate((id) => KN.store.get().archive.entries.find((x) => x.id === id), eid);
-    t.check("daily の記録：全角のページも数で保存", p && p.pageFrom === 12 && p.pageTo === 20 && p.amount === 9,
-      JSON.stringify(p && [p.pageFrom, p.pageTo, p.amount]));
-  } else {
-    t.check("daily の記録：一件つくれた", false);
-  }
 
   /* ---- 用事の「日付」 ---- */
   await page.evaluate(() => KN.app.showScreen("todo"));

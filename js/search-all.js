@@ -163,13 +163,7 @@
         }
       });
     }
-    (arc.entries || []).forEach((e) => {
-      if (!e) return;
-      const inTitle = fold(e.title).includes(q);
-      if (!inTitle && !fold(e.memo).includes(q)) return;
-      out.push({ title: inTitle ? e.title : around(e.memo, q), sub: dayLabel(e.date), day: e.date,
-        go: { screen: "archive", day: e.date } });
-    });
+    /* 積み上げはやめた（一冊のノートへ。ノートの検索が引く）。 */
     return out.sort(byDayDesc);
   }
 

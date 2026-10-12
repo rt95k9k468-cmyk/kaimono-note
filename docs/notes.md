@@ -683,6 +683,9 @@ theme-color とページの地は変えない・押したカードの箱から�
 
 ## 段6：積み上げとの橋（2026年10月11日。設計と壊れないことの確かめは docs/bridge-design.md）
 
+**10月12日に外した**（積み上げをやめた。docs/thinking.md）。札・小窓・`find` の口・`tests/bridge.js` は無い。
+`entry.note`/`fromNote` は記録に残るだけ。下は経緯。
+
 - つながりは記録の側だけ（`entry.note`＝つながる1冊、`entry.fromNote`＝生まれた元）。ノートは
   `store.entriesOfNote` で逆引き。つなぐ・外すは `store.setEntryNote`（★と同じく `updatedAt` も並びも動かさない）。
 - 見つからない（無い・最近削除）ノートを指す記録は欄を消さず、記録の紙に「つなぎ直す／外す」。入れ物が開いて

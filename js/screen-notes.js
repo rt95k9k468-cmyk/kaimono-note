@@ -503,7 +503,6 @@
         <div class="note-sub">
           <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt, note.noTime)}</button>
           <div class="note-labels js-labels"></div>
-          <button type="button" class="note-bridge js-bridge" aria-label="つながる記録" hidden>${icon("sprout")}</button>
         </div>
         <div class="note-view js-view" hidden></div>
         <div class="note-ink js-ink">
@@ -1161,12 +1160,11 @@
       if (vv) vv.removeEventListener("resize", onViewport);
       document.removeEventListener("selectionchange", onSel);
       sync();
-      if (offBridge) offBridge();
       offKids();
       const at = papers.indexOf(me);
       if (at >= 0) papers.splice(at, 1);
-      /* 何も書かずに閉じた新しいノートは残しません。つながった記録があれば残す（段6の橋）。 */
-      if (fresh && stored && blank() && !KN.store.entriesOfNote(note.id).length) N().drop(note.id);
+      /* 何も書かずに閉じた新しいノートは残しません。 */
+      if (fresh && stored && blank()) N().drop(note.id);
       N().flush();
       N().end(note.id);
       renderBody();
@@ -1248,32 +1246,6 @@
         toWrite(textIn.value.length);
         changed();
       } }]);
-
-    /* つながる記録の札（日時・タグの行）。あるときだけ、絵だけ・数なし。押すと小窓に記録の行。 */
-    const bridgeBtn = body.querySelector(".js-bridge");
-    const paintBridge = () => { bridgeBtn.hidden = !stored || !KN.store.entriesOfNote(note.id).length; };
-    bridgeBtn.addEventListener("click", () => {
-      KN.motion.fire("select");
-      const p = popOver(bridgeBtn, { role: "menu", side: "right", label: "つながる記録" });
-      const types = KN.store.ARCHIVE_TYPES;
-      KN.store.entriesOfNote(note.id).forEach((x) => {
-        const t = types.find((y) => y.id === x.type) || types[0];
-        const ico = x.type === "reading" ? (x.kind === "paper" ? "paper" : "book") : t.icon;
-        const head = x.type === "seed" ? (String(x.memo || "").split("\n").find((l) => l.trim()) || x.title || t.label)
-          : (x.title || t.label);
-        const r = node(html`
-          <button class="note-pop-item note-bridge-row" role="menuitem" data-id="${x.id}">${icon(ico)}<span class="note-pop-main"><span>${head}</span><small class="note-pop-sub">${U.formatDate(`${x.date}T00:00`)}</small></span></button>`);
-        r.addEventListener("click", () => {
-          KN.motion.fire("select");
-          p.close();
-          KN.screens.archive.openEntry(x.id, { under: note.id });
-        });
-        p.el.append(r);
-      });
-      p.place();
-    });
-    paintBridge();
-    const offBridge = KN.store.subscribe(paintBridge);
 
     /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
        姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
@@ -1740,15 +1712,7 @@
     h = KN.ui.sheet({ title: "最近削除した項目", content: box });
   }
 
-  /* ---------------- 積み上げ⇄ノートの橋（段6。docs/bridge-design.md） ---------------- */
-
-  /** 記録が指すノートを引く。見つかる `{ state: "found", id, title }`・見つからない（無い／最近削除）
-      `{ state: "missing", id }`・入れ物が開いていない日は null（何も出さず、何も書かない）。 */
-  function findNote(id) {
-    if (!id || N().state() !== "on") return null;
-    const n = N().get(id);
-    return n && !n.deletedAt ? { state: "found", id, title: headOf(n) || "ノート" } : { state: "missing", id };
-  }
+  /* ---------------- ノートを選ぶ紙 ---------------- */
 
   /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。
       o … { title, fresh: 頭に足す「新しいノート」の字（押すと onPick(null)）}（日記の一件をノートへ移す。
@@ -1815,5 +1779,5 @@
 
   KN.screens = KN.screens || {};
   KN.screens.notes = { mount, render, dockButton, again, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
-    find: findNote, pick: pickNote, asks };
+    pick: pickNote, asks };
 })();

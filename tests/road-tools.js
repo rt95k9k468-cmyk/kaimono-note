@@ -2,14 +2,14 @@
    長期タスクを八つ置く。指はどれも本物のタッチ（CDP の Input.dispatchTouchEvent）。
    1. 道具箱：読書・思考・ノートの丸が、19時台と21時台の段のあいだの右（右下）に、薄い台と並ぶ
    2. 札・くぼみの長期タスクが道具箱をよける（重ならない・道具箱のくぼみに長期タスクが居ない）
-   3. 思考を長押し → 歩いたぶん（7:00）へ：狙い・札「7:00から30分」・下書き → 離す：種の記録（題「思考」・
-      7:00・30分）、用事は作らない、道に済んだ活動、知らせ「思考 7:00から30分」、元に戻すで消える
+   3. 思考を長押し → 歩いたぶん（7:00）へ：狙い・札「7:00から30分」・下書き → 離す：済んだ用事（題「思考」・
+      種・7:00・30分）、積み上げは作らない（2026年10月12日にやめた）、道に済んだ活動、知らせ「思考 7:00から30分」、元に戻すで消える
    4. 長さは「いま」で止まる（9:00 に置けば10分）
    5. 読書をこれから（13:00）へ：読書の予定（題「読書」・act 付き）、記録は作らない
    6. 長さは次の停留所の頭で止まる（14:45 なら15分）
    7. 道の外・動かさずに離す：何も書かない
    8. 短く押す：時刻と長さの紙
-   9. 過ぎた日（前の日）に置く：記録 */
+   9. 過ぎた日（前の日）に置く：済んだ用事 */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-30";
@@ -63,10 +63,10 @@ const PREV = "2026-09-29";
   const counts = () => page.evaluate(() => ({
     todos: KN.store.get().todos.length, entries: KN.store.get().archive.entries.length,
   }));
-  const lastEntry = () => page.evaluate(() => {
-    const e = KN.store.get().archive.entries.slice(-1)[0];
-    return e ? { id: e.id, type: e.type, title: e.title, at: e.at || null, minutes: e.minutes || null,
-                 date: e.date, todo: e.todo || null } : null;
+  /* 歩いたぶん・過ぎた日に置いた済んだ用事（いちばん新しいもの。addTodo は頭に足す）。 */
+  const lastDone = () => page.evaluate(() => {
+    const t = KN.store.get().todos.filter((x) => x.act && x.done)[0];
+    return t ? { id: t.id, type: t.act.type, title: t.title, at: t.time, minutes: t.minutes, date: t.due, done: t.done } : null;
   });
   const state = () => page.evaluate(() => ({
     carrying: KN.dayRoad.carrying(),
@@ -132,28 +132,28 @@ const PREV = "2026-09-29";
   c.check("7:00 の上で、狙い・札「7:00から30分」・下書き",
     r3.over.aim && r3.over.tag === "7:00から30分" && r3.over.draft, JSON.stringify(r3.over));
   let n1 = await counts();
-  let e = await lastEntry();
-  c.check("離すと種の記録（思考・7:00・30分・その日）", n1.entries === n0.entries + 1 && e.type === "seed"
+  let e = await lastDone();
+  c.check("離すと済んだ用事（思考・種・7:00・30分・その日）", n1.todos === n0.todos + 1 && !!e && e.type === "seed"
     && e.title === "思考" && e.at === "07:00" && e.minutes === 30 && e.date === DAY, JSON.stringify(e));
-  c.check("歩いたぶんでは用事を作らない", n1.todos === n0.todos, JSON.stringify([n0, n1]));
+  c.check("積み上げは作らない", n1.entries === n0.entries, JSON.stringify([n0, n1]));
   const s3 = await state();
   c.check("離したら写し・狙い・下書きが消える", !s3.carrying && !s3.ghost && !s3.aim && !s3.draft, JSON.stringify(s3));
   const onRoad = await page.evaluate((id) => {
     const st = document.querySelector("#screen-todo .day-road").__road;
-    return st.stops.some((s) => s.t.id === `arc:${id}` && s.act);
+    return st.stops.some((s) => s.t.id === id && s.act && s.t.done);
   }, e.id);
-  c.check("道に済んだ活動として描かれる（arc:）", onRoad);
+  c.check("道に済んだ活動として描かれる", onRoad);
   c.check("知らせ「思考 7:00から30分」", (await toastText()) === "思考 7:00から30分", await toastText());
   const acts = await page.evaluate(() => [...document.querySelectorAll(".toast-action")].map((b) => b.textContent));
-  c.check("知らせに「直す」「元に戻す」", acts.join() === "直す,元に戻す", JSON.stringify(acts));
+  c.check("知らせに「元に戻す」", acts.join() === "元に戻す", JSON.stringify(acts));
   c.check("紙は開かない", !(await page.evaluate(() => !!document.querySelector(".sheet.is-open"))));
   await page.evaluate(() => [...document.querySelectorAll(".toast-action")].find((b) => b.textContent === "元に戻す").click());
   await wait(300);
-  c.check("元に戻すで記録が消える", (await counts()).entries === n0.entries);
+  c.check("元に戻すで用事が消える", (await counts()).todos === n0.todos);
 
   /* ---- 4. 「いま」で止める ---- */
   await carryTo("思考", await roadPoint(9 * 60));
-  e = await lastEntry();
+  e = await lastDone();
   c.check("9:00 に置けば、いま（9:10）までの10分", e.at === "09:00" && e.minutes === 10, JSON.stringify(e));
 
   /* ---- 5. 読書をこれからへ ---- */
@@ -210,9 +210,9 @@ const PREV = "2026-09-29";
     n0 = await counts();
     await carryTo("読書", await roadPoint(20 * 60));
     n1 = await counts();
-    e = await lastEntry();
-    c.check("過ぎた日は記録（読書・20:00・題は空）", n1.entries === n0.entries + 1 && n1.todos === n0.todos
-      && e.type === "reading" && e.title === "" && e.at === "20:00" && e.date === PREV, JSON.stringify(e));
+    e = await lastDone();
+    c.check("過ぎた日は済んだ用事（読書・20:00）", n1.todos === n0.todos + 1 && n1.entries === n0.entries
+      && e.type === "reading" && e.title === "読書" && e.at === "20:00" && e.date === PREV, JSON.stringify(e));
   }
 
   c.check("ページのエラーなし", errors.length === 0, errors.join(" | "));

@@ -139,31 +139,7 @@ const { open, checker } = require("./lib");
   });
   t.check("消すと戻す関数が返り、同じものが同じ場所へ一つだけ戻る", Object.values(back).every((v) => v === true), JSON.stringify(back));
 
-  /* ---- daily の記録を画面から消して戻す ---- */
-  const id = await page.evaluate(() => {
-    KN.store.addEntry({ type: "done", day: KN.util.todayKey(), title: "V18 画面" });
-    const l = KN.store.get().archive.entries;
-    return l[l.length - 1].id;
-  });
-  await page.evaluate(() => KN.app.showScreen("archive"));
-  await page.waitForTimeout(800);
-  const row = page.locator(`[data-id="${id}"]`).first();
-  if (await row.count()) {
-    await row.click();
-    await page.waitForSelector(".sheet.is-open .js-menu", { timeout: 3000 });
-    await page.click(".sheet.is-open .js-menu");
-    await page.click(".note-pop-item.is-danger");   // ⋯ の「消す」。確かめずに消える（U11）
-    await page.waitForSelector(".toast .toast-action");
-    const msg = await page.$eval(".toast", (e) => e.textContent.replace(/\s+/g, ""));
-    const goneUi = await page.evaluate((i) => !KN.store.get().archive.entries.some((x) => x.id === i), id);
-    t.check("daily の記録を消すと「消しました」「元に戻す」", goneUi && /消しました/.test(msg) && /元に戻す/.test(msg), msg);
-    await page.click(".toast .toast-action");
-    await page.waitForTimeout(300);
-    t.check("「元に戻す」で記録が戻る", await page.evaluate((i) => KN.store.get().archive.entries.some((x) => x.id === i), id));
-  } else {
-    t.check("daily の記録の行が見つかる", false, id);
-  }
-  await page.evaluate((i) => KN.store.removeEntry(i), id);
+  /* daily の記録の行を画面から消す口は、積み上げをやめて無くなった（2026年10月12日）。 */
 
   const after = await page.evaluate(() => JSON.stringify(KN.store.get()));
   const strip = (x) => { const o = JSON.parse(x || "{}"); delete o.savedAt; return o; };

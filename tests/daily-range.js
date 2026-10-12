@@ -43,14 +43,13 @@ const { open, checker } = require("./lib");
   });
   t.check("両端の日を含む", JSON.stringify(st.r.days.map((x) => x.memo)) === JSON.stringify(["二日前", "五日前"]),
     JSON.stringify(st.r.days.map((x) => x.date)));
-  t.check("積み上げも期間の中だけ", st.r.entries.length === 2 && st.r.entries.every((e) => e.title !== "九日前"),
-    JSON.stringify(st.r.entries.map((e) => e.title)));
-  t.check("種類ごとの数", st.r.counts.done === 1 && st.r.counts.reading === 1, JSON.stringify(st.r.counts));
+  t.check("積み上げは書き出さない（2026年10月12日にやめた。一冊のノートへ）", !("entries" in st.r) && !("counts" in st.r),
+    Object.keys(st.r).join(","));
   t.check("形：kind・from・to", st.r.app === "kaimono-note" && st.r.kind === "daily-range" && st.r.from === st.from && st.r.to === st.to);
   t.check("逆に渡しても同じ期間", st.rev.from === st.from && st.rev.to === st.to && st.rev.days.length === 2);
   t.check("書き出しで記録は変わらない", st.same);
-  t.check("機械の時刻は外す（V22 の後半）", [...st.r.days, ...st.r.entries].every((x) => !("createdAt" in x) && !("updatedAt" in x))
-    && st.r.days.every((x) => x.date && "memo" in x) && st.r.entries.every((x) => x.id && x.title),
+  t.check("機械の時刻は外す（V22 の後半）", st.r.days.every((x) => !("createdAt" in x) && !("updatedAt" in x))
+    && st.r.days.every((x) => x.date && "memo" in x),
     JSON.stringify(st.r.days[0]));
   t.check("月ぶんは前のまま", st.mKind === "daily-month" && /^\d{4}-\d{2}$/.test(st.mYm));
   t.check("期間の書き出しはバックアップとして読まない", st.bad.ok === false && /バックアップではありません/.test(st.bad.reason),
@@ -74,7 +73,7 @@ const { open, checker } = require("./lib");
     return s ? s.innerText.replace(/\s+/g, " ").trim() : null;
   });
   const s0 = await sheetText();
-  t.check("始まり・終わり・中身の数", s0 && /始まり/.test(s0) && /終わり/.test(s0) && /Daily Log \d+日 ・ 積み上げ \d+件/.test(s0), s0);
+  t.check("始まり・終わり・中身の数", s0 && /始まり/.test(s0) && /終わり/.test(s0) && /Daily Log \d+日/.test(s0) && !/積み上げ/.test(s0), s0);
   t.check("説明文を置かない・評価しない・絵文字なし", s0 && !/できなかった|目標|達成|連続|比べ/.test(s0)
     && !/\p{Extended_Pictographic}/u.test(s0), s0);
 
@@ -114,7 +113,7 @@ const { open, checker } = require("./lib");
   await pick(".js-from", st.from);
   await pick(".js-to", st.to);
   const s1 = await sheetText();
-  t.check("選んだ期間の数に変わる", /Daily Log 2日 ・ 積み上げ 2件/.test(s1), s1);
+  t.check("選んだ期間の数に変わる", /Daily Log 2日/.test(s1) && !/積み上げ/.test(s1), s1);
 
   // 始まりを終わりより後にすると、終わりが追う
   const today = await page.evaluate(() => KN.util.todayKey());

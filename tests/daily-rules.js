@@ -129,23 +129,17 @@ const FORBIDDEN = [
   const hits2 = FORBIDDEN.filter((w) => month.text.includes(w));
   t.check("月ぜんぶでも評価の言葉が出ない", !hits2.length, hits2.join(","));
 
-  /* ---- メモの無い積み上げに「-」を出さない（R27）：書かなかったことを指さない ---- */
-  const ids = await page.evaluate((d) => {
+  /* ---- 積み上げはやめた（2026年10月12日。docs/thinking.md）：前からの記録があっても daily に出さない ---- */
+  await page.evaluate((d) => {
     KN.store.update((s) => { s.settings.dailyScope = "day"; });
-    const a = KN.store.addEntry({ date: d.today, type: "done", title: "メモなしの試験" });
-    const b = KN.store.addEntry({ date: d.today, type: "done", title: "メモありの試験", memo: "ひとこと" });
-    return [a.id, b.id];
+    KN.store.addEntry({ date: d.today, type: "done", title: "前からの試験の記録", memo: "ひとこと" });
   }, days);
   await page.waitForTimeout(400);
-  const memo = await page.evaluate(([a, b]) => {
-    const row = (id) => document.querySelector(`#screen-archive .arc-row[data-flip="${id}"]`);
-    const ra = row(a), rb = row(b);
-    return { found: !!ra && !!rb, a: ra && ra.querySelector(".arc-memo"),
-      aText: ra ? ra.innerText : "", b: rb ? (rb.querySelector(".arc-memo") || {}).textContent : null };
-  }, ids);
-  t.check("メモの無い積み上げには「-」の段を出さない", memo.found && !memo.a && !/(^|\n)\s*-\s*($|\n)/.test(memo.aText),
-    JSON.stringify(memo));
-  t.check("メモのある積み上げには、メモが出る", memo.b === "ひとこと", String(memo.b));
+  const old = await page.evaluate(() => {
+    const sc = document.querySelector("#screen-archive");
+    return { rows: sc.querySelectorAll(".arc-row, .arc-entries").length, text: sc.innerText.includes("前からの試験の記録") };
+  });
+  t.check("前からの積み上げは daily に出さない", !old.rows && !old.text, JSON.stringify(old));
 
   /* ---- ノート（五つめの席。docs/notes.md）も daily と同じ：数えない・比べない ---- */
   await page.evaluate(async () => {

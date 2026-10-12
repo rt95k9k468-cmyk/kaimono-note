@@ -1,7 +1,7 @@
 /* 年の本（R10・2026年9月29日、docs/daily.md の「年の本」）。
 
-   前半は中身（KN.yearbook）：記録のある年だけ・積み上げは種類ごとに日付の順・
-   「達成」は「やったこと」・初めて買ったものは前の年に買ったものを入れない・
+   前半は中身（KN.yearbook）：記録のある年だけ・積み上げの章は無い（2026年10月12日にやめた）・
+   初めて買ったものは前の年に買ったものを入れない・
    よく買ったものは二回から回数つき・日記は日付の順で本文そのまま・ほかの年が
    混ざらない・禁止語と割合が無い・記録は増えない（書き出しても state が同じ）。
    後半は画面：設定（daily の歯車）→ 書き出し → 年の本・年の札・Markdown が
@@ -69,13 +69,7 @@ const FORBIDDEN = [
 
   t.check("記録のある年だけ、新しい順", JSON.stringify(r.years.filter((y) => y === "2025" || y === "2024")) === '["2025","2024"]'
     && r.years.every((y, i) => i === 0 || r.years[i - 1] > y), r.years.join(","));
-  const reading = r.b.stacks.find((g) => g.id === "reading");
-  t.check("積み上げは種類ごと・日付の順（1月の本が先）",
-    reading && reading.items.map((e) => e.title).join("|") === "試験の古い本|試験の本");
-  t.check("読書は著者も", reading && reading.items[1].author === "試験の著者");
-  const done = r.b.stacks.find((g) => g.id === "done");
-  t.check("「達成」は「やったこと」", done && done.label === "やったこと" && r.md.includes("### やったこと"));
-  t.check("積み上げのメモは本人の字のまま", r.md.includes("  試験のひとこと"));
+  t.check("積み上げの章は無い（前からの記録があっても）", !("stacks" in r.b) && !/積み上げ|試験の本|試験のひとこと/.test(r.md + r.html));
   t.check("初めて買ったもの：前の年に買った牛乳は入らず、パンだけ",
     JSON.stringify(r.b.firsts.map((f) => f.name)) === '["試験のパン"]', JSON.stringify(r.b.firsts));
   t.check("よく買ったもの：二回からで回数つき（一回のパンは出ない）",
@@ -84,13 +78,13 @@ const FORBIDDEN = [
     r.b.diary.map((d) => d.day).join(",") === "2025-01-05,2025-07-02"
     && r.md.includes("### 7月2日（水）\n\n晴れの試験の一行\n二行目"), r.b.diary.map((d) => d.day).join(","));
   t.check("ほかの年が混ざらない", !/前の年/.test(r.md) && !/前の年/.test(r.html));
-  t.check("章の並び：積み上げ → 初めて買った → よく買った → 日記",
-    ["## 積み上げ", "## 初めて買ったもの", "## よく買ったもの", "## 日記"].map((h) => r.md.indexOf(h))
+  t.check("章の並び：初めて買った → よく買った → 日記",
+    ["## 初めて買ったもの", "## よく買ったもの", "## 日記"].map((h) => r.md.indexOf(h))
       .every((v, i, a) => v >= 0 && (i === 0 || a[i - 1] < v)));
   const hits = FORBIDDEN.filter((w) => r.md.includes(w) || r.html.includes(w));
   t.check("禁止語が無い（Markdown・印刷とも）", !hits.length, hits.join(","));
   t.check("割合（%）が無い", !/\d\s*[%％]/.test(r.md + r.html));
-  t.check("日記の日の数・積み上げの件数を言わない", !/\d+\s*(日ぶん|日分|件|冊)/.test(r.md));
+  t.check("日記の日の数を言わない", !/\d+\s*(日ぶん|日分|件|冊)/.test(r.md));
   t.check("書き出しても記録は変わらない", before === after);
   t.check("archive の器は entries・days・quiet のまま", JSON.stringify(r.arc) === '["days","entries","quiet"]', r.arc.join(","));
 
