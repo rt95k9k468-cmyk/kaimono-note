@@ -587,10 +587,13 @@
     if (up) up.hidden = !(KN.store && KN.store.get().settings.showUpcoming === true);
     const btn = root && root.querySelector(".js-settings");
     if (!btn || !KN.backup || !KN.backup.offDeviceStale) return;
-    const on = !!KN.backup.offDeviceStale();
-    if (btn.classList.contains("has-dot") === on) return;
+    /* ノートの同期が合わせられないまま3日も、同じ点（js/notes-sync.js の stale）。 */
+    const notes = !!(KN.notesSync && KN.notesSync.stale());
+    const on = notes || !!KN.backup.offDeviceStale();
+    if (btn.classList.contains("has-dot") === on && btn.dataset.dot === String(notes)) return;
     btn.classList.toggle("has-dot", on);
-    btn.setAttribute("aria-label", on ? "設定（端末の外の控えが古くなっています）" : "設定");
+    btn.dataset.dot = String(notes);
+    btn.setAttribute("aria-label", !on ? "設定" : notes ? "設定（ノートを合わせられていません）" : "設定（端末の外の控えが古くなっています）");
   }
   function queueDot() {
     if (dotQueued) return;
@@ -625,6 +628,7 @@
   mount();
   paintDot();
   if (KN.store) KN.store.subscribe(queueDot);
+  if (KN.notesSync) KN.notesSync.onChange(queueDot);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") queueDot();
   });

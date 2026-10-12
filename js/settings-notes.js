@@ -185,19 +185,35 @@
     };
     return card(
       switchRow({ title: "同期", on: s.on, onTap: (v) => { Y.setOn(v).then(render, render); render(); } }),
-      s.on && s.halt ? pickRow({
-        title: "合わせ直す", value: "止めています",
-        onTap: () => KN.ui.confirm({
-          title: "Dropbox のノートが一度にたくさん無くなっています",
-          message: "手元のノートは消さずに、足し合わせます。",
-          okLabel: "合わせ直す",
-        }).then((ok) => { if (ok) Y.restart().then(render, render); }),
-      }) : null,
+      s.on && s.halt ? pickRow({ title: "合わせ直す", value: "止めています", onTap: askRestart }) : null,
       s.on && !s.halt ? pickRow({
         title: "今すぐ合わせる", value: s.error ? "合わせられません" : s.at ? when(s.at) : "",
         onTap: () => { haptic(); Y.now().then(render, render); },
       }) : null
     );
+  }
+
+  function askRestart() {
+    KN.ui.confirm({
+      title: "Dropbox のノートが一度にたくさん無くなっています",
+      message: "手元のノートは消さずに、足し合わせます。",
+      okLabel: "合わせ直す",
+    }).then((ok) => { if (ok) KN.notesSync.restart().then(render, render); });
+  }
+
+  /** 歯車の点（合わせられないまま3日）の中身を、設定の頭に一行。どの席の歯車からも出るので、押すとその場で直す。 */
+  function notesSyncAlert() {
+    const Y = KN.notesSync;
+    const x = Y && Y.stale && Y.stale();
+    if (!x) return null;
+    return card(navRow({
+      ico: "upload", tint: TINT.data, title: `ノートを${x.days}日合わせられていません`,
+      onTap: () => {
+        if (!KN.dropbox.status().connected) go("dropbox");
+        else if (x.halt) askRestart();
+        else { haptic(); Y.now().then(render, render); }
+      },
+    }));
   }
 
   /* 色の置き場はノートの入れ物（`KN.notes.colors()` = { nb: {名前: 色}, tag: {名前: 色} }。
@@ -640,7 +656,7 @@
     KN.ui.toast("ノートを書き出しました");
   }
 
-  Object.assign(S, { notesRows, notesLabelList, noteLabelTitle, noteLabelRows });
+  Object.assign(S, { notesRows, notesSyncAlert, notesLabelList, noteLabelTitle, noteLabelRows });
   /* 試験が中身を確かめるための口（画面からは使いません）。 */
   KN.notesExport = { notesIn, noteFile, oneFile, zipNotes, printNotes };
 })();

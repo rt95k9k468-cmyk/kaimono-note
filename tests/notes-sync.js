@@ -10,7 +10,10 @@
    - 題を変えるとファイルが動く（同じファイルの id のまま）。消した印は .trash へ。
    - 本当に消した端末のファイルは消え、ほかの端末は最近削除に残したまま送り返さない。
    - 一度にたくさん無くなったら止まる → 合わせ直すと足し合わせで戻る。
-   - 開いて書いているノートには、閉じてから。id の無い .md に触れない。429 を待つ。送り返さない。 */
+   - 開いて書いているノートには、閉じてから。id の無い .md に触れない。429 を待つ。送り返さない。
+   - 新しい端末は写し（pack.json）から、rev の違うものだけ取る。写しは1日1回まで。
+   - 見えているあいだは longpoll で、向こうの直しが黙って来る。
+   - 合わせられないまま3日で、歯車に点と設定の頭に一行。 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -20,16 +23,16 @@ const { open, checker } = require("./lib");
   const files = new Map();       // 小文字の道 → { path, id, rev, text }
   const hist = new Map();        // rev → 中身
   const log = [];                // 変わった道（小文字）。cursor はここの長さ
-  let revN = 0, idN = 0, busy = 0;
+  let revN = 0, idN = 0, busy = 0, notify = false;   // notify … longpoll が変わったと言う（ほかの節を乱さないよう、その節だけ）
   const calls = [];
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
   const json = (route, status, obj) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
   const meta = (f) => ({ ".tag": "file", id: f.id, rev: f.rev, name: f.path.split("/").pop(), path_display: f.path,
-    path_lower: f.path.toLowerCase(), server_modified: "2026-10-12T03:00:00Z", size: Buffer.byteLength(f.text) });
+    path_lower: f.path.toLowerCase(), server_modified: f.at, size: Buffer.byteLength(f.text) });
   const write = (path, text) => {
     const low = path.toLowerCase();
     const old = files.get(low);
-    const f = { path, id: old ? old.id : `id:${++idN}`, rev: `r${++revN}`, text };
+    const f = { path, id: old ? old.id : `id:${++idN}`, rev: `r${++revN}`, text, at: new Date().toISOString().replace(/\.\d+Z$/, "Z") };
     files.set(low, f); hist.set(f.rev, text); log.push(low);
     return f;
   };
@@ -93,14 +96,20 @@ const { open, checker } = require("./lib");
         files.delete(body.path.toLowerCase()); log.push(body.path.toLowerCase());
         return json(route, 200, { metadata: meta(f) });
       }
-      case "/2/files/list_folder/longpoll": return json(route, 200, { changes: false });
+      case "/2/files/list_folder/longpoll": {
+        const [dir, at] = body.cursor.split("|");
+        const moved = () => log.slice(Number(at)).some((low) => low === dir.toLowerCase() || under(low, dir));
+        const end = Date.now() + 1500;
+        while (Date.now() < end && !(notify && moved())) await new Promise((r) => setTimeout(r, 100));
+        return json(route, 200, { changes: notify && moved() });
+      }
       default: return json(route, 404, { error_summary: "unknown" });
     }
   };
   const device = async () => {
     const d = await open({
       before: async (ctx, page) => {
-        await page.route(/https:\/\/(api|content)\.dropboxapi\.com\/.*/, handler);
+        await page.route(/https:\/\/(api|content|notify)\.dropboxapi\.com\/.*/, handler);
         await ctx.addInitScript(() => {
           if (!localStorage.getItem("kaimono-note-dropbox")) localStorage.setItem("kaimono-note-dropbox", JSON.stringify({ appKey: "k", refresh: "ref" }));
         });
@@ -278,6 +287,42 @@ const { open, checker } = require("./lib");
   const rr = await a.evaluate(() => KN.notesSync.restart());
   t.check("合わせ直すと足し合わせで戻す", rr === "done" && more.every((id) => !!fileOfId(id)) && !!fileOfId(ids.p) && !(await a.evaluate(() => KN.notesSync.status().halt)), rr);
 
+  /* ---------- 写し（pack.json）：新しい端末は rev の違うものだけ取る ---------- */
+  await a.evaluate(() => { for (let i = 0; i < 8; i++) KN.notes.put({ ...KN.notes.draft(), title: `束${i}`, body: `束の本文${i}` }); });
+  await a.evaluate(() => KN.notesSync.now());
+  const pk = files.get("/notes-sync/pack.json");
+  const pkN = pk ? JSON.parse(pk.text).notes.length : 0;
+  t.check("合わせ終えた端末が写しを書く（ファイルのぶんだけ）", !!pk && pkN === notesFiles().filter((f) => /id: /.test(f.text)).length, `${pkN} / ${notesFiles().length}`);
+  await a.evaluate((id) => { KN.notes.begin(id); KN.notes.edit(id, { body: "写しのあとの直し" }); KN.notes.end(id); }, ids.p);
+  await a.evaluate(() => KN.notesSync.now());
+  t.check("写しは1日1回まで（すぐには書き直さない）", files.get("/notes-sync/pack.json").rev === pk.rev);
+  const noteRevs = new Set(notesFiles().map((f) => f.rev));
+  const c0 = calls.length;
+  const C = await device();
+  const r3 = await C.page.evaluate(() => KN.notesSync.setOn(true));
+  const pulled = calls.slice(c0).filter((c) => c.path === "/2/files/download" && /^rev:/.test(c.arg.path) && noteRevs.has(c.arg.path.slice(4)));
+  const cGot = await C.page.evaluate((id) => ({ n: KN.notes.list().length + KN.notes.trash().length, p: (KN.notes.get(id) || {}).body }), ids.p);
+  t.check("新しい端末は写しから入り、rev の違うものだけ取る（写しよりファイルが正）",
+    r3 === "done" && pulled.length === 1 && cGot.p === "写しのあとの直し" && cGot.n >= pkN, JSON.stringify([r3, pulled.length, cGot]));
+  const errsC = C.errors.slice();
+  await C.browser.close();
+
+  /* ---------- 見えているあいだは longpoll ---------- */
+  notify = true;
+  await a.evaluate((id) => { KN.notes.begin(id); KN.notes.edit(id, { body: "longpoll で来る" }); KN.notes.end(id); }, ids.p);
+  await a.evaluate(() => KN.notesSync.now());
+  const came = await b.waitForFunction((id) => KN.notes.get(id).body === "longpoll で来る", ids.p, { timeout: 15000 }).then(() => true, () => false);
+  notify = false;
+  t.check("見えているあいだは、合わせを押さなくても向こうの直しが来る", came);
+
+  /* ---------- 合わせられないまま3日で歯車に点 ---------- */
+  const dotOf = () => a.evaluate(() => { const el = document.querySelector(".js-settings"); return !!el && el.classList.contains("has-dot"); });
+  const fresh = await a.evaluate(() => { const s = KN.notesSync._.st(); s.err = "x"; s.at = new Date(Date.now() - 86400000).toISOString(); return KN.notesSync.stale(); });
+  t.check("1日ではまだ点を出さない", fresh === null && !(await dotOf()));
+  await a.evaluate(() => { KN.notesSync._.st().at = new Date(Date.now() - 4 * 86400000).toISOString(); KN.store.update(() => {}); });
+  await a.waitForTimeout(100);
+  t.check("合わせられないまま3日で歯車に点", await dotOf());
+
   /* ---------- 設定の行 ---------- */
   await a.click('.tab[data-tab="notes"]');
   await a.waitForTimeout(600);
@@ -285,9 +330,14 @@ const { open, checker } = require("./lib");
   await a.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await a.waitForTimeout(400);
   const rowText = await a.evaluate(() => [...document.querySelectorAll(".set-row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()));
+  t.check("点の中身を設定の頭に一行", rowText[0] === "ノートを4日合わせられていません", rowText[0]);
   t.check("設定のノートに「同期」と「今すぐ合わせる」", rowText.some((x) => x.startsWith("同期")) && rowText.some((x) => x.startsWith("今すぐ合わせる")), rowText.filter((x) => /同期|合わせ/.test(x)).join(" / "));
 
-  const errs = A.errors.concat(B.errors);
+  await a.evaluate(() => KN.notesSync.now());
+  await a.waitForTimeout(100);
+  t.check("合わせられたら点は消える", !(await a.evaluate(() => KN.notesSync.stale())) && !(await dotOf()));
+
+  const errs = A.errors.concat(B.errors, errsC);
   t.check("エラーが無い", !errs.length, errs.join(" | "));
   await A.browser.close();
   await B.browser.close();

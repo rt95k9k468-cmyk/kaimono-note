@@ -594,6 +594,7 @@
       ico: "download", tint: TINT.data, title: staleText(stale),
       onTap: () => go("data"),
     })));
+    if (S.notesSyncAlert) put([S.notesSyncAlert()]);
     /* 開いたときの点検（B4、backup.js の doubt）：記録が写しや控えより大きく少ない。
        記録は「自動バックアップから戻す」へ。ノートは、その控えから消さずに合わせる。 */
     const doubt = KN.backup.doubt && KN.backup.doubt();

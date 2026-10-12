@@ -14,6 +14,10 @@
      （本当には消さない）。一度にたくさん無くなったら止めて訊く（`halt`）。
    - 開いて書いているノートは、紙を閉じてから（`KN.notes.isOpen`）。
    - 一度に一本。取るのは同時に PULL 本まで、書くのは一本ずつ。429 は retry_after だけ待つ。
+   - 新しい端末は写し（`notes-sync/pack.json`）から。rev が同じものだけ写しを使い、違うものは取る
+     （写しよりファイルが正）。写しは合わせ終えた端末が1日1回まで書き直す。
+   - 見えているあいだは longpoll（notify。鍵は要らない）で待ち、変わったら一回。
+   - 入れてあるのに合わせられないまま3日 → 歯車に点（`stale`。今の控えと同じ）。
    ========================================================= */
 (function () {
   "use strict";
@@ -23,11 +27,18 @@
   const DIR = "/notes";
   const TRASH = "/notes/.trash";
   const LABELS = "/notes-sync/labels.json";
+  const PACK = "/notes-sync/pack.json";
+  const NOTIFY = "https://notify.dropboxapi.com";
   const SOON = 4000;                 // 書いてから合わせるまで
-  const EVERY = 3 * 60 * 1000;       // 開いているあいだ、これごとに見る
+  const EVERY = 10 * 60 * 1000;      // 開いているあいだ、これごとに見る（ノートは longpoll が先に。色はこれで）
+  const WAIT = 120;                  // longpoll で待つ秒
+  const GAP = 5000;                  // longpoll のあいだは少なくともこれだけ空ける
   const FIRST = 9000;                // 開いてすぐは起動の邪魔をしない（dropbox.js の 8 秒のあと）
   const PULL = 4;                    // 取るのは同時にこれだけ
   const MANY = 3;                    // これだけ、かつ生きている覚えの 1/5 以上が一度に無くなったら止まる
+  const PACK_MIN = 8;                // 元の無いファイルがこれだけあれば写しを読む（少なければ書かない）
+  const DAY = 86400000;
+  const STUCK = 3;                   // 合わせられないまま、これだけの日で歯車に点
   const ST = "sync-state";
   const LB = "sync-labels";
   /* 三方で合わせる欄（題は本文と一つの「字」として合わせる）。 */
@@ -177,9 +188,10 @@
   const blank = (n) => !String(n.title || "").trim() && !String(n.body || "").trim();
   const later = (a, b) => String(a || "") > String(b || "");
 
-  /** 元の記録。at … 向こうのファイル {fid, path, rev}（無ければ null：向こうに無いと知っている）。 */
+  /** 元の記録。at … 向こうのファイル {fid, path, rev}（無ければ null：向こうに無いと知っている）。
+      u … そのときの updatedAt（写しに入れてよいかを見るだけ。無い元は写しに入れない）。 */
   const baseOf = (id, at, n) => ({ k: `sync:${id}`, id, fid: at ? at.fid : null, path: at ? at.path : null,
-    rev: at ? at.rev : null, f: fieldsOf(n), x: textOf(n) });
+    rev: at ? at.rev : null, f: fieldsOf(n), x: textOf(n), u: n.updatedAt || null });
 
   /** 三方で合わせる。b … 元（無ければ足し合わせ）。返すのは合わせた一件と、本文から外れた側の版。 */
   function merge3(b, L, R) {
@@ -320,6 +332,37 @@
     throw new Error(r.err);
   }
 
+  /* ---------------- 写し（pack.json。作り直せる） ---------------- */
+
+  /** 写しを読む。fid → { rev, note }。無い・読めない → null（1件ずつ取る）。 */
+  async function readPack() {
+    const r = await call("content", "/2/files/download", { arg: { path: PACK }, raw: true });
+    if (!r.ok) return null;
+    try {
+      const v = JSON.parse(await r.res.text());
+      if (!v || Number(v.format) !== 1 || !Array.isArray(v.notes)) return null;
+      return new Map(v.notes.filter((x) => x && x.fid && x.rev && x.note && x.note.id).map((x) => [x.fid, x]));
+    } catch (_) { return null; }
+  }
+
+  /** 合わせ終えたら、1日1回まで書き直す（誰が書いてもよい）。手元が元のままのノートだけ。 */
+  async function writePack() {
+    if (st.packAt && Date.now() - new Date(st.packAt).getTime() < DAY) return;
+    const local = new Map(N().list().concat(N().trash()).map((n) => [n.id, n]));
+    const notes = [];
+    (await N().metaAll("sync:")).forEach((b) => {
+      const n = b && b.fid && b.rev && b.u && local.get(b.id);
+      const L = n && norm(n);
+      if (L && !changed(b, L) && L.updatedAt === b.u) notes.push({ fid: b.fid, rev: b.rev, note: L });
+    });
+    if (notes.length < PACK_MIN) return;
+    const m = await rpc("/2/files/get_metadata", { path: PACK });
+    if (m.ok && Date.now() - new Date(m.body.server_modified).getTime() < DAY) { st.packAt = m.body.server_modified; return; }
+    if (!m.ok && !/not_found/.test(m.err)) return;
+    const r = await upload(PACK, JSON.stringify({ format: 1, at: new Date().toISOString(), notes }), "overwrite");
+    if (r.ok) st.packAt = new Date().toISOString();
+  }
+
   /* ---------------- 覚え（入れ物の meta） ---------------- */
 
   function loadState() {
@@ -339,7 +382,8 @@
     if (!st || !st.on || st.halt) return "off";
     if (N().state() !== "on") return "off";
     const api = D();
-    if (!api || !(await api.ready())) return "off";
+    if (!api) return "off";
+    if (!(await api.ready())) throw new Error("Dropbox につながっていません");
 
     /* つないだ Dropbox が替わっていたら、覚えたものを捨ててここから（足し合わせ）。 */
     if (!checked) {
@@ -378,10 +422,19 @@
       }
       pull.push(e);
     });
+    /* 新しい端末（元の無いファイルが多い）は写しから。rev が同じものだけ。 */
+    const pack = pull.filter((e) => !byFid.has(e.id)).length >= PACK_MIN ? await readPack() : null;
+    const fromPack = (e) => {
+      const x = pack && pack.get(e.id);
+      if (!x || x.rev !== e.rev) return null;
+      try { return parse(fileOf(x.note), e.server_modified); } catch (_) { return null; }
+    };
     const remote = new Map();
     for (let i = 0; i < pull.length; i += PULL) {
-      const got = await Promise.all(pull.slice(i, i + PULL).map((e) => download(e.rev)
-        .then((text) => ({ e, n: parse(text, e.server_modified) }), () => ({ e, n: null }))));
+      const got = await Promise.all(pull.slice(i, i + PULL).map((e) => {
+        const n = fromPack(e);
+        return n ? { e, n } : download(e.rev).then((text) => ({ e, n: parse(text, e.server_modified) }), () => ({ e, n: null }));
+      }));
       got.forEach(({ e, n }) => {
         if (!n) return;                                  // 読まず・消さず・上書きせず
         const had = remote.get(n.id);
@@ -483,6 +536,7 @@
     if (out.length) await N().absorb([], out);
 
     await labelsRound();
+    if (!again && !held) { try { await writePack(); } catch (_) { /* 写しは作り直せる。書けない日は書かない */ } }
 
     st.cursor = listed.cursor;
     st.full = held;
@@ -567,8 +621,57 @@
         if (!again || res !== "done") break;
       }
       return res;
-    })().finally(() => { running = null; emit(); });
+    })().finally(() => { running = null; emit(); if (!polling) poll(); });
     return running;
+  }
+
+  /* ---------------- 開いているあいだは longpoll ---------------- */
+
+  let pollGen = 0;
+  let pollCtl = null;
+  let polling = false;
+  function stopPoll() {
+    pollGen++;
+    if (pollCtl) pollCtl.abort();
+    pollCtl = null;
+    polling = false;
+  }
+  async function poll() {
+    stopPoll();
+    const g = pollGen;
+    const live = () => g === pollGen && !!st && st.on && !st.halt && !!st.cursor && document.visibilityState === "visible";
+    if (!live()) return;
+    polling = true;
+    while (live()) {
+      const t0 = Date.now();
+      let ok = false, body = null;
+      const ctl = (pollCtl = new AbortController());
+      try {
+        const res = await fetch(`${NOTIFY}/2/files/list_folder/longpoll`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cursor: st.cursor, timeout: WAIT }), signal: ctl.signal,
+        });
+        ok = res.ok;
+        body = await res.json().catch(() => null);
+      } catch (_) { /* 切れた・隠れた */ }
+      if (!live()) return;
+      /* 変わった・古い cursor（reset）は合わせる一回が直す。sync の終わりがここを呼び直す。 */
+      if (!ok) await wait(60000);
+      if (!live()) return;
+      if (!ok || (body && body.changes)) { polling = false; sync(); return; }
+      await wait(Math.max(body && body.backoff ? body.backoff * 1000 : 0, GAP - (Date.now() - t0)));
+    }
+    if (g === pollGen) polling = false;
+  }
+
+  /** 入れてあるのに、合わせられないまま STUCK 日。{ days, halt } か null（歯車の点）。 */
+  function stale(now) {
+    if (!st || !st.on || !(st.err || st.halt)) return null;
+    const last = st.at || st.onAt;
+    const t = last ? new Date(last).getTime() : NaN;
+    if (!isFinite(t)) return null;
+    const days = Math.floor(((now || Date.now()) - t) / DAY);
+    return days >= STUCK ? { days, halt: !!st.halt } : null;
   }
 
   /** 書いた。少しあとに一度（その間の書き換えはまとめる）。 */
@@ -581,7 +684,7 @@
   async function setOn(on) {
     await loadState();
     st.on = !!on;
-    if (on) { st.full = true; delete st.err; }
+    if (on) { st.full = true; delete st.err; if (!st.onAt) st.onAt = new Date().toISOString(); } else stopPoll();
     await saveState();
     emit();
     return on ? sync() : "off";
@@ -607,16 +710,16 @@
 
   document.addEventListener("visibilitychange", () => {
     if (!st || !st.on) return;
-    if (document.visibilityState === "hidden") { if (timer) sync(); }
+    if (document.visibilityState === "hidden") { stopPoll(); if (timer) sync(); }
     else sync();
   });
   setInterval(() => { if (st && st.on && document.visibilityState === "visible") sync(); }, EVERY);
   setTimeout(() => { loadState().then(() => { if (st && st.on) sync(); emit(); }); }, FIRST);
 
   KN.notesSync = {
-    status, setOn, restart, soon, now: sync, ready: loadState,
+    status, setOn, restart, soon, stale, now: sync, ready: loadState,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /* 試験の口（台本が形を確かめる） */
-    _: { fileOf, parse, merge3, namesFor },
+    _: { fileOf, parse, merge3, namesFor, st: () => st },
   };
 })();
