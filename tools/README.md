@@ -67,6 +67,15 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
   にアプリの記録がある）。足すときもこの約束を守る。検討の経緯と懸念は `docs/notes-unify.md`。
 - 決まったら消す。
 
+## notes-proto2.html — 見本2（ホーム・すべて・ノートブック・道すじ・中のノート）
+
+`docs/notes-unify.md` の段0。今のアプリの見た目（`css/` をそのまま読む）で、最初の面を決めるために触るページ。
+`.../tools/notes-proto2.html`、最初の面を今の一覧にするなら `?start=list`。幅900px からは左に木。
+
+- 読むのは保存に触れない部品だけ（`util.js`・`icons.js`・`icons-phosphor.js`・季節の絵。`KN.store` は記憶だけの身代わり）。
+  上の見本と同じく、保存の道具は一つも呼ばない。偽のノートは閉じると消える。
+- 決まったら消す。
+
 ## vendor/
 
 - `pdf.min.mjs` / `pdf.worker.min.mjs` — Mozilla の pdf.js v4.10.38。
