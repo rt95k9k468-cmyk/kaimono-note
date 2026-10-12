@@ -57,6 +57,16 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 1枚25KBまで）にし、平均の色を出す。`photo` を付けると写真（`tools/season-photo-src/` → `img/season-photo/`）、`sky` で帯の空（`tools/sky-src/` → `img/sky/`）。
 写真と空の大きさ・上限は道具の頭の定数（2026年10月8日に画質を上げた）。Playwright の Chromium の canvas で処理する。手順と対応表は `docs/season-art.md`。
 
+## notes-proto.html — ノートの見本（Notion・Evernote から移るかを決めるため）
+
+階層・検索・見やすさ・表・書き出しを、iPad・パソコン・iPhone で触って確かめるページ。
+`.../tools/notes-proto.html`、数を変えるなら `?n=30000`（200〜30000、ふだん3000）。
+
+- 中身は偽物（決まった種から毎回同じ）。直したものは記憶の中だけで、閉じると消える。
+- **本物のデータには触れない**：localStorage・IndexedDB・キャッシュを一つも呼ばない（同じ origin
+  にアプリの記録がある）。足すときもこの約束を守る。検討の経緯と懸念は `docs/notes-unify.md`。
+- 決まったら消す。
+
 ## vendor/
 
 - `pdf.min.mjs` / `pdf.worker.min.mjs` — Mozilla の pdf.js v4.10.38。
