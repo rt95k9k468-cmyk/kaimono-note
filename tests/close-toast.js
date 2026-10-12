@@ -17,8 +17,8 @@ const { open, checker } = require("./lib");
   });
   const gone = (sel) => page.waitForFunction((s) => !document.querySelector(s), sel, { timeout: 3000 });
 
-  /* ---- daily の log ---- */
-  await page.evaluate(() => KN.app.showScreen("archive"));
+  /* ---- daily の log（一枚の紙。時刻ごとの書く紙は tests/diary-chat.js） ---- */
+  await page.evaluate(() => { KN.store.update((s) => { s.settings.diaryView = "page"; }); KN.app.showScreen("archive"); });
   await page.waitForTimeout(600);
   await page.click("#screen-archive .arc-log-row");
   await page.waitForTimeout(600);

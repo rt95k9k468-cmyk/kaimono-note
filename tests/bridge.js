@@ -81,8 +81,8 @@ const TODAY = "2026-10-08";
   await page.waitForSelector(".sheet.is-note.is-open .js-note-more");
   await wait(300);
   t.check("1 何もつながらないノートには札を出さない", await page.$eval(".sheet.is-note.is-open .js-bridge", (b) => b.hidden));
-  await page.click(".sheet.is-note.is-open .js-note-more");
-  await page.locator(".note-pop.is-open .note-pop-item", { hasText: "種をまく" }).click();
+  /* ノートの「⋯」の「種をまく」は外した（種はタグ。docs/thinking.md）。前からの種の橋の決まりは、口から確かめる。 */
+  await page.evaluate(() => KN.screens.archive.seedFromNote("n-a"));
   await page.waitForSelector(`${TOP} .js-memo`);
   await wait(250);
   t.check("1 種の紙はメモへカーソル・頭にノートの札", await page.evaluate((s) => document.activeElement && document.activeElement.matches(`${s} .js-memo`), TOP)

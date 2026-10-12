@@ -3597,7 +3597,7 @@ a.btn { text-decoration: none; }
   transition: opacity var(--m-state) var(--ease);
 }
 /* 地を持たない字の行なので、押したら薄まる。一拍おいてから（送り始めの指で瞬かない）。 */
-.arc-log-row:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.arc-log-row:active:not(.is-chat) { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 30px; flex: none; padding-top: 1px; }
 .arc-log-day b { font-size: var(--fs-xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -3653,6 +3653,41 @@ a.btn { text-decoration: none; }
   padding: 1px 6px;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- 思考のホーム・時刻ごとの日記（docs/thinking.md） ----
+   書く口は欄の顔をした押すもの（押すと書く紙）。字は要る一語だけ。 */
+.think-home { margin: 0 var(--sp-4); display: flex; align-items: center; gap: var(--sp-2); }
+.think-write {
+  flex: 1; min-width: 0; height: 48px; padding: 0 var(--sp-4);
+  display: flex; align-items: center; gap: var(--sp-2);
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  color: var(--c-text-3); font-size: var(--fs-lg); text-align: left;
+  transition: opacity var(--m-state) var(--ease);
+}
+.think-write svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); stroke-width: var(--ico-w); }
+.think-write:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.think-ask { flex: none; height: 48px; }
+.think-ask svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+/* 一件ずつ：時刻の小さな行と本文。線も吹き出しの地も持たない——一枚のときと同じ字の面を、空きで分ける。
+   本文は一枚のときと同じ字（16px・行の高さ 1.85・両端揃え）で、選べる。行そのものは押すものではない
+   （押して薄まるのは一枚の行だけ：上の .arc-log-row:active:not(.is-chat)）。 */
+.arc-log-row.is-chat { cursor: default; }
+.arc-posts { display: flex; flex-direction: column; gap: var(--sp-4); }
+.arc-post {
+  display: flex; flex-direction: column; gap: 2px; cursor: pointer;
+  transition: opacity var(--m-state) var(--ease);
+}
+.arc-post:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.arc-post-at { font-family: var(--font-num); font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.arc-post-text {
+  font-size: var(--fs-lg); line-height: 1.85; color: var(--c-text); white-space: pre-wrap;
+  text-align: justify; word-break: normal; overflow-wrap: anywhere; line-break: strict;
+  user-select: text; -webkit-user-select: text; -webkit-touch-callout: default;
+}
+.arc-post.is-blank .arc-post-text { color: var(--c-text-3); }
+.arc-log-row.is-chat .js-times { cursor: pointer; align-self: flex-start; transition: opacity var(--m-state) var(--ease); }
+.arc-log-row.is-chat .js-times:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -5437,6 +5472,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-chips .chip svg,
 .note-labels .chip svg,
 .note-pick .chip svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+/* 問い（docs/thinking.md）：「？」で始まる行は字だけ主色に（印は打った「？」のまま）。一覧の問いは三行まで。 */
+.note-view .is-ask .nv-t { color: var(--c-primary); }
+.note-row.is-ask .note-t { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.note-fresh { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.note-fresh svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
 /* 書く紙の頭の行（段4.2）：‹ の隣にノートブック。下へ送って大きな題が
    隠れたら（.is-folded）、その上に題を小さく（Notion の形）。 */
 .sheet.is-note .sheet-title { display: none; }

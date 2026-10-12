@@ -85,6 +85,23 @@
     return m ? m[1] : l;
   }).join("\n");
 
+  /* 問い（思考のホーム。docs/thinking.md）：行の中身（行頭の印のあと）が「？」か「?」で始まる行。印は足さない
+     ——打った「？」がそのまま印なので、どこへ持ち出しても読める。日記の本文も同じ決まりで引く。 */
+  const ASK = /^[？?][\s\u3000]*(\S[\s\S]*)$/;
+  /** 問いの行なら、その問い（「？」と太字の印を外した字）。違えば null。 */
+  function askOf(line) {
+    const p = parse(String(line || ""));
+    if (p.kind === "rule" || p.kind === "blank" || p.kind === "img" || p.kind === "file") return null;
+    const m = ASK.exec(unbold(p.text).trim());
+    return m ? m[1].trim() : null;
+  }
+  /** 本文の問いの並び（line は render の data-line と同じ数え方）。 */
+  function asks(body) {
+    const out = [];
+    String(body || "").split("\n").forEach((l, i) => { const t = askOf(l); if (t) out.push({ line: i, text: t }); });
+    return out;
+  }
+
   /** 見出し（`# ` `## ` `### `）の並び。line は render の data-line と同じ数え方。保存の形は読むだけ。 */
   function headings(body) {
     const out = [];
@@ -164,6 +181,7 @@
         }
         el.append(t);
       }
+      if (askOf(line)) el.classList.add("is-ask");
       el.dataset.at = String(at);
       el.dataset.end = String(at + line.length);
       el.dataset.line = String(i);
@@ -499,5 +517,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, searchable, unbold, headings, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, searchable, unbold, askOf, asks, headings, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();

@@ -89,6 +89,9 @@
   const focusDay = () => viewDay || (isThisMonth() ? U.todayKey() : `${curYm()}-01`);
   /** 一日ぶんだけ出すか、月ぜんぶを並べるか。**既定は一日ぶん**。 */
   const oneDayLog = () => S().dailyScope !== "month";
+  /* 日記を時刻ごとに見せるか（思考のホーム。既定は時刻ごと、設定で「一枚」。docs/thinking.md）。
+     本文の形はどちらも同じ一つの文字。変わるのは見せ方と書く紙だけ。 */
+  const chatView = () => S().diaryView !== "page";
 
   /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
   const writeDay = () => (viewDay && viewDay <= U.todayKey() ? viewDay : U.todayKey());
@@ -750,6 +753,14 @@
        書いてあったかも分からないので、いまからその形に揃えておきます。 */
     const unread = diaryBody() === "off";
     days.forEach((d) => {
+      /* 時刻ごと（既定）：書いた日は一件ずつ。空の日・読めない日・本文を外した日は下の一行のまま
+         （押せば書く紙。言うことも色も一枚のときと同じ）。 */
+      if (chatView() && !d.isBlank && !unread && !outText(d)) {
+        body.append(chatRow(d));
+        const feed = feedRows(d.date);
+        if (feed) body.append(feed);
+        return;
+      }
       const dt = U.dayDate(d.date);
       const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
       const out = unread ? null : outText(d);
@@ -795,16 +806,18 @@
       `);
       /* 選び終えて指を離すと click も鳴ります。そこで紙を開くと、選んだ
          そばから選択が消えます——選んでいるときは、開きません。 */
+      /* 時刻ごとのときは、空の日の一行も書く紙（新しい一件）へ。 */
+      const write = () => (chatView() && d.isBlank && diaryBody() === "ok" ? openPost(d.date, null) : openLogSheet(d.date));
       row.addEventListener("click", () => {
         const sel = window.getSelection && window.getSelection();
         if (sel && sel.rangeCount && !sel.isCollapsed
             && row.contains(sel.anchorNode)) return;
-        openLogSheet(d.date);
+        write();
       });
       row.addEventListener("keydown", (e) => {
         if (!KN.util.isEnter(e) && e.key !== " ") return;
         e.preventDefault();
-        openLogSheet(d.date);
+        write();
       });
       body.append(row);
       /* 上を切ったときだけ、頭を薄くして「続きは上に」を見せます。 */
@@ -1110,6 +1123,284 @@
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* time 欄などでは投げます */ }
     memo.scrollTop = memo.scrollHeight;
+  }
+
+  /* ================================================================
+     思考のホーム・時刻ごとの日記（docs/thinking.md）
+     本文は一つの文字のまま（KN.diaryPosts）。一件は「時刻だけの行」から次の時刻の行の前まで。
+     ================================================================ */
+
+  const dayLabel = (day) => {
+    const dt = U.dayDate(day);
+    return dt ? `${dt.getMonth() + 1}月${dt.getDate()}日(${U.weekdayJa(day)})` : day;
+  };
+  const memoOf = (day) => String((store.dayLog(day) || {}).memo || "");
+
+  /** daily の冒頭：書く口と、問いの一覧への札。説明は書かない。 */
+  function thinkHome(day) {
+    const el = node(html`
+      <div class="think-home">
+        <button type="button" class="think-write js-think-write">${icon("edit")}<span>書く</span></button>
+        ${KN.screens.notes && KN.screens.notes.asks ? html`
+        <button type="button" class="chip think-ask js-think-ask">${icon("thought")}<span>問い</span></button>` : ""}
+      </div>
+    `);
+    el.querySelector(".js-think-write").addEventListener("click", () => openPost(day, null));
+    const ask = el.querySelector(".js-think-ask");
+    if (ask) ask.addEventListener("click", () => {
+      KN.motion.fire("select");
+      KN.app.showScreen("notes");
+      KN.screens.notes.asks();
+    });
+    return el;
+  }
+
+  /** 時刻ごとの日記の行。一件ずつ押せば、その一件を直す紙。本文の字は足し引きせず、切って並べるだけ。 */
+  function chatRow(d) {
+    const dt = U.dayDate(d.date);
+    const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+    const items = KN.diaryPosts.parse(d.memo || "");
+    const row = node(html`
+      <div class="arc-log-row is-chat ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
+        <span class="arc-log-day">
+          <b>${String(dt ? dt.getDate() : "")}</b>
+          <i>${dt ? U.weekdayJa(d.date) : ""}</i>
+        </span>
+        <span class="arc-log-text">
+          <span class="arc-posts">${items.length ? items.map((x, k) => html`
+            <span role="button" tabindex="0" class="arc-post ${x.mark ? "" : "is-head"}" data-k="${k}"
+              >${x.mark ? html`<span class="arc-post-at">${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-text">${x.text}</span></span>`)
+            : html`<span role="button" tabindex="0" class="arc-post is-blank" data-k="-1"><span class="arc-post-text">この日のことを書く</span></span>`}</span>
+          ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
+              S().showDayTimes === false ? "" : html`
+            <span class="arc-log-times js-times" role="button" tabindex="0">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
+          ${S().showStamps === false ? "" : html`
+            <span class="arc-log-meta">
+              <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
+              ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
+            </span>`}
+        </span>
+      </div>
+    `);
+    const times = row.querySelector(".js-times");
+    if (times) {
+      times.addEventListener("click", () => openLogSheet(d.date));
+      times.addEventListener("keydown", (e) => {
+        if (!KN.util.isEnter(e) && e.key !== " ") return;
+        e.preventDefault();
+        openLogSheet(d.date);
+      });
+    }
+    row.querySelectorAll(".arc-post").forEach((el) => {
+      const k = Number(el.dataset.k);
+      const go = () => openPost(d.date, k < 0 ? null : items[k]);
+      /* 選んでいるあいだは開かない（一枚の行と同じ。選んだそばから選択が消えないように）。 */
+      el.addEventListener("click", () => {
+        const sel = window.getSelection && window.getSelection();
+        if (sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode)) return;
+        go();
+      });
+      el.addEventListener("keydown", (e) => {
+        if (!KN.util.isEnter(e) && e.key !== " ") return;
+        e.preventDefault();
+        go();
+      });
+    });
+    return row;
+  }
+
+  /**
+   * 時刻ごとの一件を書く・直す紙。item が無ければ新しい一件（時刻は打ち始めた時）。
+   * 足すのは本文の終わりに。直すのは、開いたときの字が同じ場所にまだあるときだけ
+   * ——無ければ上書きせず、新しい一件として残す（どちらに転んでも字は消えない）。
+   * 打った先から残す（日記の紙と同じ：手が止まって 500ms、最初の一字から 3 秒まで）。
+   * 直しても時刻の行は打ったときのまま。
+   */
+  function openPost(day, item) {
+    if (bodyBlocked()) return;
+    const P = KN.diaryPosts;
+    if (store.memoOut(store.dayLog(day))) { KN.ui.toast(MISSING); return; }
+    const fresh = !item;
+    /* 開いたときの一件が、もう同じ場所に無い（ほかで直した）なら、開かずに組み直す。 */
+    if (!fresh && !P.still(memoOf(day), item)) { KN.ui.toast("日記が変わっていました"); render(); return; }
+    /* wrote … この紙が本文に書いた（直す前は、開いたときの）字と場所。text は一件の中身。 */
+    let wrote = fresh ? null : { at: P.chunkAt(item), chunk: P.chunkOf(memoOf(day), item), mark: item.mark, text: item.text };
+    let before = null, after = null, started = null;
+    /* 前からの一件は、打ったときだけ書く（開いて閉じただけで本文の形を変えない）。 */
+    let touched = false, changed = false;
+
+    const body = node(html`
+      <div class="stack gap-4">
+        <label class="field arc-memo-field">
+          <textarea class="textarea js-memo" rows="5" aria-label="日記">${fresh ? "" : item.text}</textarea>
+        </label>
+      </div>
+    `);
+    const memo = body.querySelector(".js-memo");
+
+    let timer = 0, since = 0;
+    const save = () => {
+      clearTimeout(timer); timer = 0;
+      /* 書かないのは、まだ打っていないときだけ（読めない日は開く前に断っている。一枚の紙と同じ）。 */
+      if (!touched) return;
+      const text = P.clean(memo.value);
+      if (!text) return;                      // 空のうちは書かない（閉じたときに決める）
+      const m = memoOf(day);
+      if (!wrote) {
+        const mk = P.mark(started || new Date(), day);
+        /* 本文の無い日は、頭に日付と育休の行（日記の紙の下書きと同じもの。コピーが日付を言わないので）。 */
+        const r = P.add(m, text, mk, m.trim() ? "" : dailyStamp(day));
+        if (!r) return;
+        if (before == null) before = m;
+        store.setDayLog(day, { memo: r.memo });
+        wrote = { at: r.at, chunk: r.chunk, mark: mk, text };
+        after = r.memo;
+        return;
+      }
+      const next = P.chunk(wrote, text);
+      if (next === wrote.chunk) return;
+      const out = P.swap(m, wrote.at, wrote.chunk, next);
+      /* 書いた場所に、書いた字がもう無い：上書きせず、新しい一件として残す。 */
+      if (out == null) { wrote = null; save(); return; }
+      store.setDayLog(day, { memo: out });
+      wrote.chunk = next;
+      wrote.text = text;
+      after = out;
+      changed = true;
+    };
+    const queue = () => {
+      touched = true;
+      if (!started) started = new Date();
+      clearTimeout(timer);
+      if (!timer) since = Date.now();
+      timer = setTimeout(save, Math.max(0, Math.min(500, since + 3000 - Date.now())));
+    };
+    memo.addEventListener("input", queue);
+    memo.addEventListener("blur", save);
+    /* 裏へ回る・閉じられる瞬間は、待っている分をその場で（日記の紙と同じ）。 */
+    const hide = () => { if (timer) { save(); store.flush(); } };
+    const onVis = () => { if (document.visibilityState === "hidden") hide(); };
+    window.addEventListener("pagehide", hide);
+    document.addEventListener("visibilitychange", onVis);
+
+    /** 一件を外す（空にして閉じた・「消す」）。この紙で書いた一件は書く前の本文へ戻し、
+        前からの一件は「元に戻す」を出す。 */
+    let gone = false;
+    const drop = (loud) => {
+      if (gone || !wrote) return;
+      gone = true;
+      const m = memoOf(day);
+      const out = fresh && after != null && m === after ? before : P.take(m, wrote.at, wrote.chunk);
+      if (out == null) return;
+      store.setDayLog(day, { memo: out });
+      /* 新しく書いて空にしたのは、書かなかったのと同じ（黙って戻す）。それ以外は「元に戻す」。 */
+      if (fresh && !loud) return;
+      KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: () => {
+        if (memoOf(day) === out) store.setDayLog(day, { memo: m });
+      } } });
+    };
+    let toNote = false, toPage = false;
+    const close = () => {
+      window.removeEventListener("pagehide", hide);
+      document.removeEventListener("visibilitychange", onVis);
+      save();
+      if (gone) return;
+      if (touched && !P.clean(memo.value)) { drop(false); return; }
+      if (toNote && wrote) { const c = Object.assign({}, wrote); setTimeout(() => moveToNote(day, c), 0); return; }
+      /* 一枚で開く：本文ぜんぶと起床・就寝の紙へ（書いた一件は残してから）。 */
+      if (toPage) { setTimeout(() => openLogSheet(day), 0); return; }
+      /* 書いた先から残す紙の一言（docs/look.md）：新しい一件は「保存しました」、直したら「更新しました」。 */
+      if (fresh ? !!wrote : changed) KN.ui.toast(fresh ? "保存しました" : "更新しました");
+    };
+
+    let h = null;
+    const menu = [
+      { icon: "notes", label: "ノートへ移す", onPick: () => { toNote = true; h.close(); } },
+      { icon: "edit", label: "一枚で開く", onPick: () => { toPage = true; h.close(); } },
+      { icon: "trash", label: "消す", danger: true, onPick: () => { save(); drop(true); h.close(); } },
+    ];
+    const at = item && item.mark ? ` ${item.date ? `${item.date} ` : ""}${item.at}` : "";
+    h = KN.ui.sheet({
+      title: `${dayLabel(day)}${at}`,
+      content: body,
+      menu,
+      cls: "is-card",
+      clear: true,
+      // 打った先から残しているので、閉じるときに引き止めません。
+      guard: false,
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "送る" : "閉じる"}</button>`),
+      onClose: close,
+    });
+    h.el.querySelector(".js-ok").addEventListener("click", () => {
+      save();
+      KN.motion.fire("select");
+      h.close();
+    });
+    /* 新しい一件は、押した流れのまま欄へ（iOS は同期で focus しないとキーボードを出さない）。
+       前からの一件は日記の紙と同じく、カーソルを終わりに置くだけ。 */
+    if (fresh) { KN.ui.focusNow(memo); return; }
+    const end = memo.value.length;
+    try { memo.setSelectionRange(end, end); } catch (_) { /* 投げる端末がある */ }
+  }
+
+  /** 一件の時刻（ノートの作った日へ）。時刻の無い頭は、その日のまま（時刻を作らない）。 */
+  function postTime(day, c) {
+    const dt = U.dayDate(day);
+    const m = c.mark ? KN.diaryPosts.markOf(c.mark) : null;
+    if (!dt || !m) return null;
+    let y = dt.getFullYear(), mo = dt.getMonth(), d = dt.getDate();
+    if (m.date) {
+      const [mm, dd] = m.date.split("/").map(Number);
+      /* 日記の日より前の月日なら、年をまたいで書いた（12/31 の日記を 1/2 に）。 */
+      if (mm - 1 < mo || (mm - 1 === mo && dd < d)) y += 1;
+      mo = mm - 1; d = dd;
+    }
+    const [hh, mi] = m.at.split(":").map(Number);
+    return new Date(y, mo, d, hh, mi).toISOString();
+  }
+
+  /**
+   * 一件をノートへ移す。新しいノートか、選んだノートの終わりへ（日付と時刻の行をはさむ）。
+   * **ノートに書けたと確かめてから**日記から外す——書けなければ日記はそのまま。
+   * 日記がそのあいだに変わっていたら外さない（同じ字が二か所にあっても、消えるよりよい）。
+   */
+  function moveToNote(day, c) {
+    const N = KN.notes;
+    const NS = KN.screens.notes;
+    if (!N || N.state() !== "on" || !NS || !NS.pick) { KN.ui.toast("ノートを開けませんでした"); return; }
+    const text = KN.diaryPosts.clean(c.text);
+    if (!text) return;
+    const put = async (id) => {
+      let note, back;
+      if (!id) {
+        note = N.draft();
+        note.body = text;
+        const iso = postTime(day, c);
+        if (iso) note.createdAt = iso;
+        if (!N.put(note)) { KN.ui.toast("ノートを開けませんでした"); return; }
+        back = () => { const n = N.get(note.id); if (n && n.body === text && !n.title) N.drop(note.id); else N.remove(note.id); };
+      } else {
+        note = N.get(id);
+        if (!note || note.deletedAt) return;
+        const prev = note.body;
+        const mk = c.mark ? KN.diaryPosts.markOf(c.mark) : null;
+        const src = `${dayLabel(day)}${mk ? ` ${mk.date ? `${mk.date} ` : ""}${mk.at}` : ""}`;
+        const next = `${prev.replace(/\s+$/, "")}${prev.trim() ? "\n\n" : ""}${src}\n${text}`;
+        if (!N.edit(id, { body: next })) { KN.ui.toast("ノートを開けませんでした"); return; }
+        back = () => { const n = N.get(id); if (n && n.body === next) N.edit(id, { body: prev }); };
+      }
+      await N.flush();
+      if (N.pending(note.id)) { KN.ui.toast("ノートに保存できませんでした"); return; }
+      const m = memoOf(day);
+      const out = KN.diaryPosts.take(m, c.at, c.chunk);
+      if (out == null || diaryBody() !== "ok") { KN.ui.toast("ノートに写しました"); return; }
+      store.setDayLog(day, { memo: out });
+      KN.ui.toast("ノートへ移しました", { actions: [
+        { label: "開く", onClick: () => NS.open(note.id) },
+        { label: "元に戻す", onClick: () => { if (memoOf(day) === out) store.setDayLog(day, { memo: m }); back(); } },
+      ] });
+    };
+    NS.pick((id) => { put(id); }, { title: "ノートへ移す", fresh: "新しいノート" });
   }
 
   /* ================================================================
@@ -1542,7 +1833,8 @@
       /* 「変化」は書く札から外した（2026年10月2日・利用者の希望。札が一段減る）。種類そのもの
          と書いた記録は残す——store の ARCHIVE_TYPES から消すと、読み直しで「達成」に化ける。
          変化の記録を直すときだけ札を出す。 */
-      store.ARCHIVE_TYPES.filter((t) => t.id !== "change" || (e && e.type === "change")).forEach((t) => {
+      /* 達成・変化は書かない（思考のホーム。docs/thinking.md）。その種類の記録を直すときだけ札が出る。 */
+      store.ARCHIVE_TYPES.filter((t) => (t.id !== "change" && t.id !== "done") || (e && e.type === t.id)).forEach((t) => {
         const b = node(html`
           <button type="button" class="arc-pick-b ${t.id === type ? "is-on" : ""}"
                   style="--arc-c:${t.color}" data-t="${t.id}">
@@ -1902,6 +2194,8 @@
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
     if (day > U.todayKey()) { el.inert = true; el.classList.add("is-ahead"); }
+    /* 思考のホームは冒頭に（時刻ごとのときだけ。一枚のときは今までの紙のまま）。まだ来ていない日は書けないので出さない。 */
+    else if (chatView()) el.prepend(thinkHome(day));
     return el;
   }
 
@@ -2008,9 +2302,12 @@
         <button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button>
       </div>
     `);
+    /* ＋は分けずに書く（思考のホーム。docs/thinking.md）。種類を選ぶ記録の紙は、前からの記録を直すときだけ。
+       時刻ごとなら新しい一件、一枚ならその日の日記の紙。 */
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
-      openEntrySheet(null);
+      if (chatView()) openPost(writeDay(), null);
+      else openLogSheet(writeDay());
     });
     return fab;
   }

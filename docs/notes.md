@@ -687,8 +687,8 @@ theme-color とページの地は変えない・押したカードの箱から�
   `store.entriesOfNote` で逆引き。つなぐ・外すは `store.setEntryNote`（★と同じく `updatedAt` も並びも動かさない）。
 - 見つからない（無い・最近削除）ノートを指す記録は欄を消さず、記録の紙に「つなぎ直す／外す」。入れ物が開いて
   いない日は何も出さない。引く口は `KN.screens.notes.find`・選ぶ紙は `.pick`。
-- ノートの「⋯」に「種をまく」（書いたノートだけ）→ 記録の紙（`KN.screens.archive.seedFromNote`）。日時の行の
-  芽の札 → 小窓に記録の行。空のまま閉じた新しいノートも、つながった記録があれば `drop` しない。
+- ノートの「⋯」の「種をまく」は外した（2026年10月12日。種はタグ。docs/thinking.md）。`seedFromNote` の口は残す。
+  日時の行の芽の札 → 小窓に記録の行。空のまま閉じた新しいノートも、つながった記録があれば `drop` しない。
 - 試験は `tests/bridge.js`。
 
 ## 段5：画像（2026年10月11日。設計と壊れないことの確かめは docs/image-design.md）
@@ -704,3 +704,10 @@ theme-color とページの地は変えない・押したカードの箱から�
 - 書き出しの zip は `images/<id>.jpg` を同梱（紙を開いたときに読んでおく。押した流れで await しない）。Dropbox は
   JSON のあとに `images/<id>.jpg` を add で一度だけ。Dropbox の控えから戻したあと `pullMissing`。
 - 道具の帯は12個（画像の絵が右端。入れ物が on でない日は出さない）。試験は `tests/note-images.js`。
+
+## 思考のホーム：問い・種・読んだところ（2026年10月12日。くわしくは docs/thinking.md）
+
+- 問い＝行の中身が「？」で始まる行（ノート・日記）＋タグ「問い」のノート。ホームの「問い」の行・daily の札から一覧
+  （`{k:"ask"}` の面）。押すと元のノートのその行へ（`openNote(id, el, {line})`）／その日の daily へ。しまわずに引く。
+- タグの小窓に、まだ使っていなくても「種」「問い」。「⋯」に「読んだところ」（「### 月日 p.」を終わりに足して続きへ）。
+- 日記の一件をノートへ移す紙は `pick(onPick, {title, fresh})`。書けたかは `KN.notes.pending(id)`。試験は `tests/asks.js`。

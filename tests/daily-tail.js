@@ -22,7 +22,8 @@ const LINES = Array.from({ length: 12 }, (_, i) => `試験の行${i + 1}`).join(
         if (sessionStorage.getItem("__seeded")) return;
         sessionStorage.setItem("__seeded", "1");
         localStorage.setItem("kaimono-note-v2", JSON.stringify({
-          schema: 2, settings: { theme: "auto", logFull: false },
+          /* 一枚の紙の「終わりの数行」なので、日記は一枚で（docs/thinking.md）。 */
+          schema: 2, settings: { theme: "auto", logFull: false, diaryView: "page" },
           archive: {
             entries: [],
             days: [

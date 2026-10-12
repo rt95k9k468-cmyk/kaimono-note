@@ -87,8 +87,21 @@
     const full = s.logFull !== false;
     const lines = s.logLines === 3 ? 3 : 5;
     const entryFull = s.entryFull !== false;
+    const page = s.diaryView === "page";
     return [
       card(
+        /* 日記の見せ方（思考のホーム。docs/thinking.md）。本文の形はどちらも同じ一つの文字。 */
+        pickRow({
+          title: "日記", value: page ? "一枚" : "時刻ごと",
+          onTap: () => choose({
+            title: "日記の見せ方", value: page ? "page" : "chat",
+            options: [
+              { id: "chat", label: "時刻ごと" },
+              { id: "page", label: "一枚" },
+            ],
+            onPick: (v) => dailySet("diaryView", v),
+          }),
+        }),
         pickRow({
           title: "出す範囲", value: s.dailyScope === "month" ? "月ぜんぶ" : "1日",
           onTap: () => choose({
@@ -101,8 +114,9 @@
             onPick: (v) => dailySet("dailyScope", v),
           }),
         }),
-        pickRow({
-          /* 数行は終わりから。行数は logLines（3／5、無ければ5）。logFull はそのまま使う。 */
+        /* 数行は終わりから。行数は logLines（3／5、無ければ5）。logFull はそのまま使う。一枚のときだけ効くので、
+           時刻ごとのときは出さない（値は消さない）。 */
+        !page ? null : pickRow({
           title: "見せ方", value: full ? "全文" : `${lines}行`,
           onTap: () => choose({
             title: "Daily Log の見せ方", value: full ? "full" : String(lines),

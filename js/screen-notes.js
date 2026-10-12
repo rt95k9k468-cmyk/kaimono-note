@@ -34,6 +34,11 @@
 
   const N = () => KN.notes;
 
+  /* 種と問いは、独り立ちの入力にしないでタグ（思考のホーム。docs/thinking.md）。タグの小窓には、まだ
+     どのノートにも無くてもこの二つを並べる（押せば付く）。問いの一覧は「問い」のノートも引く。 */
+  const SEED_TAG = "種";
+  const ASK_TAG = "問い";
+
   /* タグの色。名前から決まった一色を引きます（色を選ばせない＝どこにも
      しまわない）。色は買うもののカテゴリと同じ並び（灰の「その他」は外す
      ——丸が見えなくなるので）。 */
@@ -223,6 +228,7 @@
   function fill(box, t, p, keepX) {
     if (query || p.k === "list") listBody(box, t, keepX);
     else if (p.k === "home") homeBody(box, t);
+    else if (p.k === "ask") askBody(box);
     else box.append(cards(t.tops(p.v), t));
   }
 
@@ -261,8 +267,58 @@
       rows.append(b);
     };
     line("すべてのノート", icon("notes"), { k: "list" }, "js-all");
+    line("問い", icon("thought"), { k: "ask" }, "js-asks");
     N().notebooks().forEach((nb) => line(nb, book(nb), { k: "nb", v: nb }, "js-book"));
     box.append(rows);
+  }
+
+  /**
+   * 問い（思考のホーム。docs/thinking.md）：ノートの「？」で始まる行・タグ「問い」のノート・日記の「？」で
+   * 始まる行。どこにもしまわず、開くたびに引く（写さず引く）。数は出さない。押すと元のノート（その行へ）か、
+   * その日の daily へ。日記は、鍵で伏せている日・本文を読めない日は引かない。
+   */
+  function askBody(box) {
+    const F = KN.noteFormat;
+    const rows = [];
+    N().list().forEach((n) => {
+      if (n.tags.includes(ASK_TAG)) rows.push({ n, text: headOf(n) || "", at: n.updatedAt });
+      F.asks(n.body).forEach((a) => rows.push({ n, line: a.line, text: a.text, at: n.updatedAt }));
+    });
+    if (!(KN.lock && KN.lock.hides("daily")) && (!KN.diaryIdb || KN.diaryIdb.body() === "ok")) {
+      (KN.store.get().archive.days || []).forEach((d) => {
+        F.asks(d.memo || "").forEach((a) => rows.push({ day: d.date, text: a.text, at: d.date }));
+      });
+    }
+    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const list = node(html`<div class="notes-list notes-asks"></div>`);
+    rows.forEach((r) => {
+      const where = r.n ? (headOf(r.n) || "ノート") : `${U.formatDate(`${r.day}T00:00`)} の日記`;
+      const el = node(html`
+        <div class="note-row is-card is-ask">
+          <button class="note-open js-open">
+            <span class="note-t">${r.text}</span>
+            <span class="note-foot">
+              <span class="note-d">${r.n ? whenOf(r.n) : U.formatDate(`${r.day}T00:00`)}</span>
+              <span class="note-nb">${r.n ? icon("notes") : icon("edit")}<span>${where}</span></span>
+            </span>
+          </button>
+        </div>
+      `);
+      el.querySelector(".js-open").addEventListener("click", () => {
+        KN.motion.fire("select");
+        if (r.n) { openNote(r.n.id, el, r.line != null ? { line: r.line } : null); return; }
+        KN.app.showScreen("archive");
+        if (KN.screens.archive && KN.screens.archive.goDay) KN.screens.archive.goDay(r.day);
+      });
+      list.append(el);
+    });
+    box.append(list);
+  }
+
+  /** 問いの面へ（daily の思考のホームの札から）。 */
+  function asks() {
+    if (page().k === "ask") { renderBody(0); return; }
+    go({ k: "ask" });
   }
 
   /** 面を降りる・戻る。降りる前の送りを持っておき、戻ったらそこへ。 */
@@ -282,7 +338,8 @@
   function paintTitle() {
     if (!KN.head.notesTitle) return;
     const p = page();
-    KN.head.notesTitle(p.k === "list" ? html`<span>すべてのノート</span>` : p.k === "nb" ? html`${book(p.v)}<span>${p.v}</span>` : "",
+    KN.head.notesTitle(p.k === "list" ? html`<span>すべてのノート</span>` : p.k === "ask" ? html`<span>問い</span>`
+      : p.k === "nb" ? html`${book(p.v)}<span>${p.v}</span>` : "",
       pages.length > 1 ? back : null, again);
   }
   /** 席をもう一度押したら、ホームへ。ホームに居れば断る（今までどおり）。 */
@@ -1178,10 +1235,19 @@
         KN.activity.noteToRoad({ id: note.id, title: N().headOf(N().get(note.id) || note), day: U.todayKey() });
       } }]);
 
-    /* 種をまく（段6の橋。docs/bridge-design.md）。書いたノートだけ（道に置くと同じ条件）。種の記録の紙が
-       重なって開き、閉じればノートへ戻る。 */
-    const seedItem = () => (!stored || blank() || !KN.screens.archive || !KN.screens.archive.seedFromNote ? []
-      : [{ icon: "sprout", label: "種をまく", onPick: () => { sync(); KN.screens.archive.seedFromNote(note.id); } }]);
+    /* 読んだところ（思考のホーム。docs/thinking.md）。終わりに「### 10月12日 p.」の見出しを足し、押した流れの
+       まま続きへ（ページは任意。論文のタグなら「p.」を付けない）。下に書くのは自分の気づき・問い・やってみること
+       ——要約の欄は作らない。前の「種をまく」（段6）は外した：種はタグ。つながった記録の札・小窓は今のまま。 */
+    const readItem = () => (!stored || blank() ? [] : [{ icon: "book", label: "読んだところ",
+      onPick: () => {
+        const d = new Date();
+        const line = `### ${d.getMonth() + 1}月${d.getDate()}日${note.tags.includes("論文") ? " " : " p."}`;
+        const v = textIn.value.replace(/\s+$/, "");
+        hist.note("read", true);
+        textIn.value = `${v}${v ? "\n\n" : ""}${line}`;
+        toWrite(textIn.value.length);
+        changed();
+      } }]);
 
     /* つながる記録の札（日時・タグの行）。あるときだけ、絵だけ・数なし。押すと小窓に記録の行。 */
     const bridgeBtn = body.querySelector(".js-bridge");
@@ -1281,7 +1347,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), seedItem(), menu.slice(2), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
@@ -1308,6 +1374,17 @@
       KN.ui.focusNow(textIn);
     } else {
       toView();
+      /* 問いの一覧から：その行へ送る（紙が育ちきってからもう一度。育つあいだは測りがずれる）。 */
+      if (o.line != null) {
+        const jump = () => {
+          const el = viewEl.querySelector(`[data-line="${o.line}"]`);
+          const sc = h.el.querySelector(".sheet-body");
+          if (!el || !sc || closed) return;
+          sc.scrollTop += el.getBoundingClientRect().top - sc.getBoundingClientRect().top - sc.clientHeight / 4;
+        };
+        requestAnimationFrame(jump);
+        setTimeout(jump, KN.motion.ms("--m-sheet-grow") + 40);
+      }
     }
     return h;
   }
@@ -1368,7 +1445,7 @@
     const input = nameField("新しいタグ");
     box.append(input);
     const paint = () => {
-      const names = [...new Set(N().tagNames().concat(mine))].sort((a, b) => a.localeCompare(b, "ja"));
+      const names = [...new Set(N().tagNames().concat(mine, [SEED_TAG, ASK_TAG]))].sort((a, b) => a.localeCompare(b, "ja"));
       chipsEl.innerHTML = "";
       chipsEl.hidden = !names.length;
       names.forEach((t) => {
@@ -1663,25 +1740,34 @@
     return n && !n.deletedAt ? { state: "found", id, title: headOf(n) || "ノート" } : { state: "missing", id };
   }
 
-  /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。 */
-  function pickNote(onPick) {
+  /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。
+      o … { title, fresh: 頭に足す「新しいノート」の字（押すと onPick(null)）}（日記の一件をノートへ移す。
+      docs/thinking.md）。鍵でノートを伏せているあいだは、題を並べない（新しいノートだけ）。 */
+  function pickNote(onPick, o) {
+    o = o || {};
     if (N().state() !== "on") return null;
+    const hidden = !!(KN.lock && KN.lock.hides("notes"));
     const box = node(html`
       <div class="stack gap-2">
+        ${o.fresh ? html`<button class="note-open note-ver note-fresh js-fresh">${icon("plus")}<span class="note-t">${o.fresh}</span></button>` : ""}
+        ${hidden ? "" : html`
         <div class="search-bar">
           ${icon("search")}
           <input class="search-input js-q" placeholder="ノートをさがす" aria-label="ノートをさがす"
                  autocomplete="off" spellcheck="false" enterkeyhint="search">
-        </div>
+        </div>`}
         <div class="notes-versions js-rows"></div>
       </div>
     `);
     const q = box.querySelector(".js-q");
     const rows = box.querySelector(".js-rows");
     let h = null;
+    const fresh = box.querySelector(".js-fresh");
+    if (fresh) fresh.addEventListener("click", () => { KN.motion.fire("select"); if (h) h.close(); onPick(null); });
     const paint = () => {
-      const w = U.foldKana(q.value.trim());
       rows.innerHTML = "";
+      if (hidden) return;
+      const w = U.foldKana(q.value.trim());
       N().list().filter((n) => !w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w)).forEach((n) => {
         const r = node(html`
           <button class="note-open note-ver" data-id="${n.id}">
@@ -1693,9 +1779,9 @@
         rows.append(r);
       });
     };
-    q.addEventListener("input", paint);
+    if (q) q.addEventListener("input", paint);
     paint();
-    h = KN.ui.sheet({ title: "ノートにつなぐ", content: box });
+    h = KN.ui.sheet({ title: o.title || "ノートにつなぐ", content: box });
     return h;
   }
 
@@ -1719,5 +1805,5 @@
 
   KN.screens = KN.screens || {};
   KN.screens.notes = { mount, render, dockButton, again, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
-    find: findNote, pick: pickNote };
+    find: findNote, pick: pickNote, asks };
 })();

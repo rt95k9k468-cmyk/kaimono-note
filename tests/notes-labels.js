@@ -222,8 +222,9 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => !document.querySelector(".note-pop.is-pick"), null, { timeout: 3000 });
   await page.click(".sheet.is-note .note-tag-add");
   await popOpen();
-  t.check("使われているタグが並ぶ", (await page.evaluate(() =>
-    [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).sort().join(","))) === ["京都", "予定", "本"].sort().join(","));
+  /* 種・問いは、まだ使っていなくても並ぶ（思考のホーム。docs/thinking.md）。 */
+  t.check("使われているタグが並ぶ（と、種・問い）", (await page.evaluate(() =>
+    [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).sort().join(","))) === ["京都", "予定", "本", "種", "問い"].sort().join(","));
   await page.fill(".note-pick .js-new", "家");
   await page.keyboard.press("Enter");
   await page.waitForTimeout(100);

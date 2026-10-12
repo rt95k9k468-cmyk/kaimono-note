@@ -1,11 +1,11 @@
 /* どの＋からでも、行き先を言い直せる（R4）・Siri の受け箱を「なんでも」に（R5）・
-   daily の＋は記録の紙から（2026年9月28日）。
+   daily の＋は種類を選ばずに書く紙（docs/thinking.md。前は記録の紙から）。
 
    前半は表：言葉と行き先（js/capture.js の guess。絵の辞書を使うので画面の中で
    測る。icon-eval.json と同じく、外れてほしい言葉＝null の列が本体）と、声の
    「と」切り（voiceSplit）。後半は画面：買うものの＋で「明日 19:00 歯医者」に札が
    出て、押すとやることへ・やることの＋で「牛乳」に札が出て買うものへ・用事の形には
-   出さない・覚えた言葉・reconcile（鍵の無い保存）・受け箱の @ 印・daily の＋。
+   出さない・覚えた言葉・reconcile（鍵の無い保存）・受け箱の @ 印・daily の＋（書く紙）。
 
    中継所には繋がない（relay.invalid を page.route で受ける）。
 
@@ -229,79 +229,36 @@ const SEP = "\u001E";
   const tel = after.todos.find((x) => /田中/.test(x.title));
   t.check("@ で推せない字は、今日のやること", tel && tel.due === after.today, JSON.stringify(after.todos));
 
-  /* ---- daily の＋：記録の紙から、日記の札は先頭で一回り大きい ---- */
+  /* ---- daily の＋：種類を選ばずに書く紙（思考のホーム。docs/thinking.md。前は記録の紙から） ---- */
   await tab("archive");
+  const memoBefore = await page.evaluate(() => JSON.stringify(KN.store.dayLog(KN.util.todayKey()) || null));
   await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
-  await page.waitForTimeout(400);
-  const d = await page.evaluate(() => {
-    const menu = !!document.querySelector(".fab-menu");
-    const sheet = document.querySelector(".sheet");
-    const title = sheet ? sheet.textContent : "";
-    const pick = document.querySelector(".sheet .js-pick");
-    const first = pick && pick.firstElementChild;
-    const other = pick && pick.querySelector(".arc-pick-b");
-    const on = pick && pick.querySelector(".arc-pick-b.is-on");
-    return {
-      menu, rec: /記録を書く/.test(title),
-      first: first ? first.className : "",
-      bigger: first && other ? first.getBoundingClientRect().height > other.getBoundingClientRect().height : false,
-      on: on ? on.dataset.t : "",
-      card: !!sheet && sheet.classList.contains("is-card"),
-      oneRow: !!pick && new Set([...pick.children].map((b) => Math.round(b.getBoundingClientRect().bottom))).size <= 2
-        && [...pick.children].every((b) => b.getBoundingClientRect().top < pick.firstElementChild.getBoundingClientRect().bottom),
-    };
-  });
-  t.check("＋で二択は出ない", !d.menu);
-  t.check("＋で記録の紙が開く", d.rec);
-  t.check("日記の札が先頭", /arc-pick-diary/.test(d.first), d.first);
-  t.check("日記の札はほかより大きい", d.bigger);
-  t.check("種類は読書から", d.on === "reading", d.on);
-  t.check("記録の紙は四隅の丸いカード", d.card);
-  t.check("日記と種類の札は一列", d.oneRow);
-  await page.click(".sheet .js-to-diary");
   await page.waitForTimeout(700);
-  const log = await page.evaluate(() => {
-    const s = [...document.querySelectorAll(".sheet")].pop();
+  const d = await page.evaluate(() => {
+    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
     const r = s && s.getBoundingClientRect(), m = s && s.querySelector(".js-memo");
-    return { n: document.querySelectorAll(".sheet").length, text: s ? s.textContent : "",
+    return {
+      menu: !!document.querySelector(".fab-menu"),
+      n: document.querySelectorAll(".sheet.is-open").length,
+      pick: !!(s && s.querySelector(".js-pick, .arc-pick-b, .arc-pick-diary")),
+      rec: !!s && /記録を書く/.test(s.textContent),
+      focused: !!m && document.activeElement === m,
       // 透ける灰の地（rgba）ではなく、塗りきった地
       card: !!s && s.classList.contains("is-card") && /^rgb\(/.test(getComputedStyle(s).backgroundColor),
       bottomGap: r ? Math.round(innerHeight - r.bottom) : -1,
       memoTall: !!m && m.getBoundingClientRect().height > innerHeight / 2,
-      entries: KN.store.get().archive.entries.length };
+    };
   });
-  t.check("日記の札で日記の紙へ（記録の紙は閉じる）", log.n === 1 && !/記録を書く/.test(log.text), JSON.stringify({ n: log.n }));
-  t.check("記録は勝手に増えない", log.entries === 0, String(log.entries));
-  t.check("日記の紙は塗りきった四隅の丸いカード（底が浮く）", log.card && log.bottomGap > 0, JSON.stringify({ card: log.card, gap: log.bottomGap }));
-  t.check("日記の本文の欄は紙の半分より高い", log.memoTall);
-
-  /* ---- 書籍と論文は、タイトル・著者を別々に覚える。論文はページを持たない（2026年10月6日） ---- */
-  await page.evaluate(() => {
-    document.querySelectorAll(".sheet .js-close").forEach((b) => b.click());
-    const day = KN.util.todayKey();
-    KN.store.addEntry({ type: "reading", kind: "book", title: "書籍のA", author: "著者A", date: day, memo: "" });
-    KN.store.addEntry({ type: "reading", kind: "paper", title: "論文のB", author: "著者B", date: day, memo: "" });
-  });
+  t.check("＋で二択は出ない", !d.menu);
+  t.check("＋で書く紙が開く（種類の札・記録の紙は出ない）", d.n === 1 && !d.pick && !d.rec, JSON.stringify(d));
+  t.check("書く紙は欄にカーソル", d.focused);
+  t.check("書く紙は塗りきった四隅の丸いカード（底が浮く）", d.card && d.bottomGap > 0, JSON.stringify({ card: d.card, gap: d.bottomGap }));
+  t.check("書く欄は紙の半分より高い", d.memoTall);
+  await page.evaluate(() => document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click()));
   await page.waitForTimeout(500);
-  await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
-  await page.waitForTimeout(700);
-  const kd = () => page.evaluate(() => {
-    const s = document.querySelector(".sheet");
-    return { kind: s.querySelector(".arc-kind-b.is-on").textContent.trim(), title: s.querySelector(".js-title").value,
-      author: s.querySelector(".js-author").value, pages: !s.querySelector(".js-pages-row").hidden,
-      ac: s.querySelector(".js-title-ac").textContent.replace(/\s+/g, " ").trim() };
-  });
-  const k1 = await kd();
-  t.check("新規は前回の種類（論文）の下敷き・ページの欄なし", k1.kind === "論文" && k1.title === "論文のB" && !k1.pages, JSON.stringify(k1));
-  await page.click('.sheet .arc-kind-b[data-k="book"]');
-  await page.waitForTimeout(200);
-  const k2 = await kd();
-  t.check("書籍へ切り替えると書籍の前回・ページの欄あり", k2.kind === "書籍" && k2.title === "書籍のA" && k2.author === "著者A" && k2.pages, JSON.stringify(k2));
-  await page.click('.sheet .arc-kind-b[data-k="paper"]');
-  await page.fill(".sheet .js-title", "の");
-  await page.waitForTimeout(200);
-  const k3 = await kd();
-  t.check("論文の候補に書籍は出ない", /論文のB/.test(k3.ac) && !/書籍のA/.test(k3.ac), k3.ac);
+  const shut = await page.evaluate(() => ({ log: JSON.stringify(KN.store.dayLog(KN.util.todayKey()) || null),
+    entries: KN.store.get().archive.entries.length }));
+  t.check("何も打たずに閉じれば、記録も日記も増えない", shut.entries === 0 && shut.log === memoBefore, JSON.stringify(shut));
 
   t.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

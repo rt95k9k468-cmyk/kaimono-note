@@ -47,7 +47,7 @@
 紙・`scrollerOf`・`pull-refresh.js`・`--kb` → sheet-scroll ／ `day-swipe`・`cal-swipe`・`cal-peek`・暦 → calendar-swipe ／
 設定・`edge-back.js`・中継所の紙 → settings ／ `app.js` の `show`・帯・`dayTitleBar` → screens-nav ／
 全タブ共通の上の帯と暦 → shared-header、その空（`sky.js`）→ sky ／ 下の帯・`tab-lens.js` → tabbar ／ 買うもの・価格 → shopping ／
-ダイエット・中継所・`bell.js`・push → health ／ daily → daily ／ ノート → notes ／ 季節の絵・七十二候 → season-art ／
+ダイエット・中継所・`bell.js`・push → health ／ daily → daily、書く口・時刻ごとの日記・問い → thinking ／ ノート → notes ／ 季節の絵・七十二候 → season-art ／
 保存・`backup.js`・`idb.js`・日記の写し → storage ／ 動き → motion ／ ガラス → glass ／ 色・字・`--z-*`・絵文字 → look ／
 絵：系統 → icons、描く → icons-drawing、引き当て → icons-matching ／ 開発・テスト → dev
 

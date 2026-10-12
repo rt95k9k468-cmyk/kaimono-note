@@ -494,6 +494,8 @@ async function tapMonthExport(page) {
       },
     });
     await settled(page);
+    /* 行の本文（.arc-log-memo）で、どちらの本文が勝ったかを読むので、日記は一枚で（docs/thinking.md）。 */
+    await page.evaluate(() => KN.store.update((s) => { s.settings.diaryView = "page"; }));
     const today = await page.evaluate(() => KN.util.todayKey());
     const MEMO = "読めない日の試験の一行";
     await page.evaluate(({ today, MEMO }) => KN.store.setDayLog(today, { memo: MEMO, wake: "06:30" }), { today, MEMO });

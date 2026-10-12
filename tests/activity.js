@@ -5,8 +5,8 @@
    - 元に戻すと積み上げも消える。外してまた済ませても二件目は作らない
    - 道は実績を引く：結んだ積み上げの時刻と長さで描く。縁取りの丸薬（is-act・種類の色・塗らない）
    - 詳細の紙の頭に「積み上げ『…』」の札。押せば記録の紙
-   - 記録の紙：新しく書くときは「道に置く」（時刻と長さ → その日に act 付きの用事、記録は作らない）、
-     前の記録は「道に記録する」（at・minutes を書くだけ、用事は作らない）→ その日の道に描く
+   - 道に置く（時刻と長さ → その日に act 付きの用事、記録は作らない。新しく書く記録の紙は外した——
+     docs/thinking.md）、前の記録は「道に記録する」（at・minutes を書くだけ、用事は作らない）→ その日の道に描く
    - 道の空きを押すと「活動」の行（覚えている本）。選べばその時刻に置く
    - 片方を消しても、もう片方は残る（ふつうの用事・ふつうの記録に戻る）
    - daily：積み上げの行に「50分」、枠の頭にその日の合計。結んだ用事は二度並べない
@@ -141,15 +141,9 @@ const NEXT = "2026-10-07";
   await wait(600);
   const nTodos = await page.evaluate(() => KN.store.get().todos.length);
   const nEnt = (await entries()).length;
-  await page.evaluate(() => KN.screens.archive.dockButton().querySelector(".js-open-add").click());
-  await wait(600);
-  const roadBtn = await page.evaluate(() => {
-    const b = [...document.querySelectorAll(".sheet.is-open .js-road")].pop();
-    return b && !b.hidden ? b.textContent.trim() : null;
-  });
-  c.check("新しく書く紙に「道に置く」", roadBtn === "道に置く", String(roadBtn));
-  await page.locator(".sheet.is-open .js-title").last().fill("こころ");
-  await page.locator(".sheet.is-open .js-road").last().click();
+  /* ＋は種類を選ばずに書く紙になった（docs/thinking.md）ので、新しく書く記録の紙の「道に置く」は無い。
+     置く紙そのもの（KN.activity.placeOnRoad。道の空き・ノートからも開く）を、口から確かめる。 */
+  await page.evaluate(() => KN.activity.placeOnRoad({ type: "reading", title: "こころ", day: KN.util.todayKey(), memo: "" }));
   await wait(600);
   sh = await topSheet();
   c.check("時刻と長さの紙（車輪二つ・長さの札）", !!sh && sh.title === "道に置く" && await page.evaluate(() => {

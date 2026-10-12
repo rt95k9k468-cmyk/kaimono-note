@@ -36,10 +36,12 @@ const H = 844;
 
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
-  await page.click("#screen-archive .js-open-add, .js-open-add");
+  /* ＋は書く紙になった（docs/thinking.md）。記録の紙は、前からの記録を直すときに開く。 */
+  await page.evaluate(() => {
+    const e = KN.store.addEntry({ type: "seed", memo: "試験の種", date: KN.util.todayKey() });
+    KN.screens.archive.openEntry(e.id);
+  });
   await page.waitForTimeout(700);
-  await page.click('.sheet.is-card .arc-pick-b[data-t="seed"]');
-  await page.waitForTimeout(200);
 
   /* 日付の見える欄は `.when-btn`（U8 から。`.js-date` は値を持つだけの hidden）。 */
   const look = () => page.evaluate(() => {

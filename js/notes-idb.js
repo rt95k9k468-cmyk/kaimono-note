@@ -722,6 +722,9 @@
     settled: () => phase === "on" || phase === "off",
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
+    /** まだ入れ物に書けていないか（flush のあとに見る。日記の一件をノートへ移すとき、
+        書けたと確かめてから日記から外すため。docs/thinking.md）。 */
+    pending: (id) => dirty.has(id),
     begin, end, versions, versionBodies, revert, merge,
     absorb, addMany, unimport, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move,
