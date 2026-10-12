@@ -629,8 +629,9 @@
     if (document.visibilityState === "visible") queueDot();
   });
 
-  /** ノートの帯の題（段1）。ホームは「Notes」、降りた面はその名前と戻る ‹（inner は html）。 */
-  function notesTitle(inner, back) {
+  /** ノートの帯の題（段1）。ホームは「Notes」、降りた面は ‹・道すじ「Notes ›」・その名前（inner は html。
+      段1b、iPhone で「今いるページの階層を示して」）。home … Notes を押したとき。 */
+  function notesTitle(inner, back, home) {
     if (!els.name) return;
     els.name.innerHTML = "";
     els.name.classList.toggle("is-sub", !!back);
@@ -639,7 +640,13 @@
       b.addEventListener("click", () => { KN.motion.fire("select"); back(); });
       els.name.append(b);
     }
-    els.name.append(node(html`<span class="head-name-t">${inner || "Notes"}</span>`));
+    const t = node(html`<span class="head-name-t">${inner || "Notes"}</span>`);
+    if (back) {
+      const h = node(html`<button type="button" class="head-crumb js-notes-home">Notes</button>`);
+      h.addEventListener("click", () => { KN.motion.fire("select"); (home || back)(); });
+      t.prepend(h, node(html`<span class="head-crumb-sep" aria-hidden="true">›</span>`));
+    }
+    els.name.append(t);
   }
 
   KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };

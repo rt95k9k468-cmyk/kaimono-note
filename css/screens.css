@@ -5402,6 +5402,31 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-place-row[aria-current="true"] { background: var(--c-primary-soft); }
 .notes-place-row[aria-disabled="true"] { color: var(--c-text-3); }
 .notes-place-row:not([aria-disabled="true"]):active { background: var(--press-sink); }
+/* 左の木（段1b）。幅のある画面で、ノートの席が出ているときだけ、アプリの列の左の余白に。列は動かさない。
+   紙・覆い・鍵より下（--z-bar）。js/screen-notes.js の paintTree。 */
+.notes-tree { display: none; }
+@media (min-width: 1080px) {
+  html:not(.is-locked) body:has(#screen-notes.is-active) .notes-tree {
+    display: block; position: fixed; top: 0; bottom: 0; left: 0; z-index: var(--z-bar);
+    width: min(300px, calc((100vw - var(--maxw)) / 2));
+    padding: calc(var(--sp-4) + env(safe-area-inset-top)) var(--sp-2) var(--sp-6) calc(var(--sp-2) + env(safe-area-inset-left));
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+}
+@media print { .notes-tree { display: none !important; } }
+.notes-tree > [role="tree"] { display: flex; flex-direction: column; }
+.notes-tree-row { display: flex; align-items: center; gap: var(--sp-1); width: 100%; min-height: var(--row-h-compact); border-radius: var(--r-sm);
+  padding: 0 var(--sp-2) 0 calc(var(--d, 0) * var(--sp-4)); color: var(--c-text); font-size: var(--fs-md); text-align: left; }
+.notes-tree-row > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes-tree-row > svg, .notes-tree-row .nb-ico svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.notes-tree-row.is-head { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary); }
+.notes-tree-row.is-book { font-weight: var(--fw-bold); margin-top: var(--sp-2); }
+.notes-tree-row[aria-current="true"] { background: var(--c-primary-soft); }
+.notes-tree-row:active { background: var(--press-sink); }
+@media (hover: hover) { .notes-tree-row:not([aria-current="true"]):hover { background: var(--c-surface); } }
+.notes-tree-twist { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
+.notes-tree-twist svg { width: 14px; height: 14px; transition: rotate var(--m-state) var(--ease); }
+[aria-expanded="true"] > .notes-tree-twist svg { rotate: 90deg; }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
 .notes-chips { margin-top: var(--sp-2); }
 .notes-chips .chip svg,

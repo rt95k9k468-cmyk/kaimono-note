@@ -27,6 +27,10 @@
   const page = () => pages[pages.length - 1];
   /* 開いている書く紙（重ねた順）。道すじの親へ戻るとき、重ねた紙にあればそこまで閉じる。 */
   const papers = [];
+  /* 左の木を出す幅（段1b）。アプリの列（--maxw）の左に、木が入るだけの余白がある画面（iPad の横・パソコン）。 */
+  const WIDE = "(min-width: 1080px)";
+  const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。記憶だけに持ちます
+  let treeEl = null;
 
   const N = () => KN.notes;
 
@@ -87,6 +91,34 @@
     /* 読み終えた・★・消した・戻した。打つたびには来ません（紙を閉じたときに
        組み直します）。 */
     N().onChange(() => { if (root) renderBody(); });
+
+    /* 降りた面は、左端から引いても戻る（段1b。iPhone で「‹ しかない」）。後ろの面は組んでいないので、
+       引いた面だけが指について右へ。戻ると決めたら一つ上の面を組み、控えの位置から滑り込ませる。 */
+    if (KN.edgeBack) {
+      KN.edgeBack.wire({
+        el: root,
+        busy: () => pages.length < 2 || !!query || !!document.querySelector(".sheet"),
+        begin: () => ({
+          top: els.body, under: null,
+          commit: () => { back(); slideIn(els.body); },
+          cancel: () => KN.edgeBack.clear(els.body),
+        }),
+      });
+    }
+    window.matchMedia(WIDE).addEventListener("change", paintTree);
+  }
+
+  /** 戻った面を、控えの位置（edge-back の PARALLAX）から 0 へ。 */
+  function slideIn(el) {
+    KN.edgeBack.clear(el);
+    if (KN.motion.still()) return;
+    const ms = KN.motion.ms("--m-push");
+    KN.edgeBack.rest(el);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.transition = `transform ${ms}ms ${KN.motion.ease("--push-e")}`;
+      el.style.transform = "";
+      setTimeout(() => { el.style.transition = ""; }, ms + 20);
+    }));
   }
 
   function render() {
@@ -174,6 +206,7 @@
     else box.append(cards(t.tops(p.v), t));
     const y = jump == null ? keepY : jump;
     if (sc && sc.scrollTop !== y) sc.scrollTop = y;
+    paintTree();
   }
 
   /** 今の一覧そのまま（すべてのノート）：絞り込みのチップ・カード・最近削除した項目。 */
@@ -232,8 +265,8 @@
   function paintTitle() {
     if (!KN.head.notesTitle) return;
     const p = page();
-    KN.head.notesTitle(p.k === "list" ? "すべてのノート" : p.k === "nb" ? html`${book(p.v)}<span>${p.v}</span>` : "",
-      pages.length > 1 ? back : null);
+    KN.head.notesTitle(p.k === "list" ? html`<span>すべてのノート</span>` : p.k === "nb" ? html`${book(p.v)}<span>${p.v}</span>` : "",
+      pages.length > 1 ? back : null, again);
   }
   /** 席をもう一度押したら、ホームへ。ホームに居れば断る（今までどおり）。 */
   function again() {
@@ -1194,6 +1227,7 @@
     }
     me.h = h;
     papers.push(me);
+    paintTree();
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
     /* 頭：左に戻る ‹、右に ⋯（Evernote の並び）。閉じ方は紙のまま
@@ -1417,9 +1451,80 @@
 
   /** 道すじのノートブックへ：紙を全部閉じて、そのノートブックの面へ。 */
   function toBook(nb) {
-    papers.slice().reverse().forEach((x) => x.h.close());
+    closePapers();
     const p = page();
     if (!(p.k === "nb" && p.v === nb)) go({ k: "nb", v: nb });
+  }
+
+  /* ---------------- 左の木（段1b。幅のある画面だけ。docs/notes-unify.md「画面」） ----------------
+     Notes（ホーム）・すべてのノート・ノートブック（中に一番上のノート、その中…）・ノートブックの無いノート。
+     開いている紙のノート、紙が無ければ今の面に印。そこまでの枝は開く。数は出さない。
+     画面は transform で動くので、木は body の子（fixed がアプリの列でなく画面に効くように）。
+     出す・隠すは CSS（幅とノートの席が出ているか）。 */
+  function paintTree() {
+    if (!window.matchMedia(WIDE).matches) return;
+    if (!treeEl) {
+      treeEl = node(html`<nav class="notes-tree" aria-label="ノートの木"><div role="tree"></div></nav>`);
+      document.body.append(treeEl);
+    }
+    const box = treeEl.firstElementChild;
+    const keep = treeEl.scrollTop;
+    box.innerHTML = "";
+    if (N().state() !== "on") return;
+    const t = N().tree();
+    const cur = papers.length ? papers[papers.length - 1].id : null;
+    const curNote = cur ? N().get(cur) : null;
+    if (curNote) {
+      if (curNote.notebook) treeOpen.add(`nb:${curNote.notebook}`);
+      t.path(cur).forEach((n) => treeOpen.add(n.id));
+    }
+    const p = page();
+    if (!cur && p.k === "nb") treeOpen.add(`nb:${p.v}`);
+    const at = (k, v) => !cur && (query ? k === "list" : p.k === k && p.v === v);
+    const line = (inner, d, on, key, has, act, cls) => {
+      const b = node(html`
+        <button type="button" class="notes-tree-row ${cls || ""}" role="treeitem" style="--d:${d}"
+                ${on ? html`aria-current="true"` : ""} ${has ? html`aria-expanded="${String(treeOpen.has(key))}"` : ""}>
+          ${has ? html`<span class="notes-tree-twist">${icon("chevron")}</span>` : html`<span class="notes-tree-twist"></span>`}${inner}
+        </button>`);
+      b.addEventListener("click", (e) => {
+        KN.motion.fire("select");
+        if (has && e.target.closest(".notes-tree-twist")) {
+          if (treeOpen.has(key)) treeOpen.delete(key); else treeOpen.add(key);
+          paintTree();
+          return;
+        }
+        act();
+      });
+      box.append(b);
+    };
+    const noteLine = (n, d) => {
+      const kids = t.kids(n.id);
+      line(html`<span>${headOf(n) || "ノート"}</span>`, d, n.id === cur, n.id, kids.length, () => fromTree(n.id), "js-tree-note");
+      if (treeOpen.has(n.id)) kids.forEach((k) => noteLine(k, d + 1));
+    };
+    line(html`<span>Notes</span>`, 0, at("home"), "", 0, () => { closePapers(); again(); }, "is-head js-tree-home");
+    line(html`${icon("notes")}<span>すべてのノート</span>`, 0, at("list"), "", 0, () => {
+      closePapers();
+      if (page().k !== "list") go({ k: "list" });
+    }, "is-book js-tree-all");
+    N().notebooks().forEach((nb) => {
+      const key = `nb:${nb}`;
+      const tops = t.tops(nb);
+      line(html`${book(nb)}<span>${nb}</span>`, 0, at("nb", nb), key, tops.length, () => { treeOpen.add(key); toBook(nb); }, "is-book js-tree-book");
+      if (treeOpen.has(key)) tops.forEach((n) => noteLine(n, 1));
+    });
+    t.tops("").forEach((n) => noteLine(n, 0));
+    treeEl.scrollTop = keep;
+  }
+
+  function closePapers() { papers.slice().reverse().forEach((x) => x.h.close()); }
+
+  /** 木のノートへ：重ねた紙にあればそこまで戻る。無ければ紙を閉じて、そのノートを開く。 */
+  function fromTree(id) {
+    if (papers.some((x) => x.id === id)) { toNote(id); return; }
+    closePapers();
+    openNote(id);
   }
 
   /** 移す先を選ぶ紙：ノートブックの行と、その中の木。自分と自分の中のノートは選べない。

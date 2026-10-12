@@ -365,14 +365,18 @@
   const q = (s) => JSON.stringify(String(s));
   const withEnd = (s) => (!s || s.endsWith("\n") ? s : s + "\n");
 
-  /** 1件ずつのときの、一つの .md。 */
-  function noteFile(n) {
+  /** 1件ずつのときの、一つの .md。up … 木での親の id（消した・見つからない親は書かない）。 */
+  function noteFile(n, up) {
     const lines = ["---"];
     lines.push(`created: ${n.noTime ? KN.util.dayKey(n.createdAt) : localIso(n.createdAt)}`);
     lines.push(`updated: ${localIso(n.updatedAt)}`);
     if (n.notebook) lines.push(`notebook: ${q(n.notebook)}`);
     if (n.tags.length) lines.push(`tags: [${n.tags.map(q).join(", ")}]`);
     if (n.fav) lines.push("favorite: true");
+    /* 移った先で並び・親を保てるように（notes-unify.md「出口」）。 */
+    lines.push(`id: ${q(n.id)}`);
+    const parent = up === undefined ? n.parent : up;
+    if (parent) lines.push(`parent: ${q(parent)}`);
     lines.push("---");
     const title = String(n.title || "").trim();
     return `${lines.join("\n")}\n\n${title ? `# ${title}\n\n` : ""}${withEnd(n.body)}`;
@@ -390,24 +394,42 @@
   }
 
   /** pics … 画像（段5）。id → { bytes, at }。`images/<id>.jpg` に同梱し、md の参照の行を
-      相対の道へ差し替えます。手元に無い画像の行は、打ったまま。 */
+      相対の道へ差し替えます。手元に無い画像の行は、打ったまま。
+      中のノートは親と同じ名前のフォルダへ（段1b。`親.md` と `親/子.md`。Obsidian・Notion の取り込みが
+      読む入れ子）。親を書き出さないときも、親の名前のフォルダに入れます（どこにあったかを落とさない）。 */
   function zipNotes(list, pics) {
-    const used = new Set();
+    const used = new Set(["images"]);
     const dirs = new Set();
     const files = [];
     const put = new Set();
     const imgs = pics || new Map();
+    const t = N().tree();
+    const bases = new Map();
+    N().notebooks().forEach((nb) => used.add(safeName(nb).toLowerCase()));
+    /* 拡張子の無い道（「仕事/親/子」）。同じ場所の同じ名前は「 (2)」。親から先に決める。 */
+    const baseOf = (n) => {
+      if (bases.has(n.id)) return bases.get(n.id);
+      const up = t.parentOf(n.id);
+      const dir = up ? `${baseOf(up)}/` : n.notebook ? `${safeName(n.notebook)}/` : "";
+      const b0 = dir + safeName(N().headOf(n));
+      let b = b0;
+      for (let i = 2; used.has(b.toLowerCase()); i++) b = `${b0} (${i})`;
+      used.add(b.toLowerCase());
+      bases.set(n.id, b);
+      return b;
+    };
     list.forEach((n) => {
-      const dir = n.notebook ? `${safeName(n.notebook)}/` : "";
-      if (dir && !dirs.has(dir)) { dirs.add(dir); files.push({ name: dir, text: "", date: n.updatedAt, dir: true }); }
-      const base = dir + safeName(N().headOf(n));
-      let name = `${base}.md`;
-      for (let i = 2; used.has(name.toLowerCase()); i++) name = `${base} (${i}).md`;
-      used.add(name.toLowerCase());
-      const text = noteFile(n).replace(/^!\[\]\(img:([0-9a-f]{16})\)$/gm, (line, id) => {
+      const name = `${baseOf(n)}.md`;
+      const parts = name.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        const dir = `${parts.slice(0, i).join("/")}/`;
+        if (!dirs.has(dir)) { dirs.add(dir); files.push({ name: dir, text: "", date: n.updatedAt, dir: true }); }
+      }
+      const up = t.parentOf(n.id);
+      const text = noteFile(n, up ? up.id : null).replace(/^!\[\]\(img:([0-9a-f]{16})\)$/gm, (line, id) => {
         if (!imgs.has(id)) return line;
         put.add(id);
-        return `![](${dir ? "../" : ""}images/${id}.jpg)`;
+        return `![](${"../".repeat(parts.length - 1)}images/${id}.jpg)`;
       });
       files.push({ name, text, date: n.updatedAt });
     });

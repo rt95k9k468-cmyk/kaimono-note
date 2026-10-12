@@ -1079,11 +1079,16 @@ a { color: var(--c-primary); }
 }
 .head.is-notes .head-name { opacity: 1; }
 /* 降りた面（段1）：‹ と面の名前。押せるのはこのときだけ。 */
-.head-name.is-sub { display: inline-flex; align-items: center; gap: var(--sp-1); max-width: 100%;
+.head-name.is-sub { display: inline-flex; align-items: center; gap: var(--sp-1);
+  /* 日付の行（約200px）より広く、右のさがす・設定の手前まで（段1b。道すじ「Notes ›」のぶん）。 */
+  max-width: calc(min(100vw, var(--maxw)) - 128px);
   left: calc(-1 * var(--sp-2)); }
 .head.is-notes .head-name.is-sub { pointer-events: auto; }
 .head-name-t { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; overflow: hidden; }
 .head-name-t > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+/* 道すじ「Notes ›」（段1b）。今の面の名前より小さく薄く。押すとホーム。 */
+.head-crumb { flex: none; font-size: .7em; font-weight: var(--fw-regular); color: var(--c-text-2); padding: var(--sp-1) 0; }
+.head-crumb-sep { flex: none; font-size: .7em; font-weight: var(--fw-regular); color: var(--c-text-3); }
 .head.is-notes :is(.topbar-day, .js-go-today) { opacity: 0; pointer-events: none; }
 .head.is-notes .js-upcoming { display: none; }
 .head:has(> .head-cal:is(.is-cal-out, .is-cal-in)) :is(.head-name, .topbar-day, .js-go-today) {
