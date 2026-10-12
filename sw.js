@@ -52,6 +52,7 @@ const ASSETS = [
   "js/keypad.js",
   "js/backup.js",
   "js/dropbox.js",
+  "js/notes-sync.js",
   "js/audit.js",
   "js/insights.js",
   "js/pull-refresh.js",

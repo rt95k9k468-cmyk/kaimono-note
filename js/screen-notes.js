@@ -45,11 +45,10 @@
     return TAG_COLORS[h % TAG_COLORS.length];
   }
   /* 設定（notes →「ノートブック」「タグ」）で選んだ色があればそれ。無ければ
-     名前から決まった一色。置き場は `settings.noteColors = { nb: {名前: 色},
-     tag: {名前: 色} }`——無い・知らない色は名前の色へ戻る（移行なし）。
-     kind は "nb"・"tag"。 */
+     名前から決まった一色。置き場は `KN.notes.colors()`（ノートの入れ物。読めない日は前の
+     `settings.noteColors`）——無い・知らない色は名前の色へ戻る。kind は "nb"・"tag"。 */
   function colorOf(kind, name) {
-    const all = (KN.store.get().settings || {}).noteColors;
+    const all = KN.notes ? KN.notes.colors() : (KN.store.get().settings || {}).noteColors;
     const m = all && typeof all === "object" ? all[kind] : null;
     const c = m && typeof m === "object" && Object.prototype.hasOwnProperty.call(m, name) ? m[name] : null;
     return TAG_COLORS.includes(c) ? c : hashColor(name);
@@ -1085,6 +1084,7 @@
       /* 何も書かずに閉じた新しいノートは残しません。つながった記録があれば残す（段6の橋）。 */
       if (fresh && stored && blank() && !KN.store.entriesOfNote(note.id).length) N().drop(note.id);
       N().flush();
+      N().end(note.id);
       renderBody();
       if (o.after) o.after();
       /* 消したとき（最近削除へ移した）は、そちらの知らせ（元に戻す）を残します。 */
@@ -1425,7 +1425,7 @@
     list.forEach((v) => {
       const r = node(html`
         <button class="note-open note-ver">
-          <span class="note-d">${stampOf(v.at)}</span>
+          <span class="note-d">${stampOf(v.at)}${v.two ? "・二つの版" : ""}</span>
           <span class="note-t">${headOf(v) || " "}</span>
           ${leadOf(v) ? html`<span class="note-x">${leadOf(v)}</span>` : ""}
         </button>

@@ -6,7 +6,7 @@
 
    ノートは daily の席を分け合うので、daily のすぐ下に notes の見出しで並びます
    （screen-settings.js の `TAB.more`）。中身は `KN.notes`（js/notes-idb.js）が
-   持っていて、ここから書くのは名前の付け替えだけ。色と並びは store の設定。
+   持っていて、ここから書くのは名前の付け替えと色。並びは store の設定。
    ========================================================= */
 (function () {
   "use strict";
@@ -62,6 +62,7 @@
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
           value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
       ),
+      syncCard(),
       /* 季節の絵（3.0 の E1）。ノートの地の後ろの、今日の候の色と広重『名所江戸百景』。既定は入。
          出典は NDL の求める一行を頭に、畳んで（daily は写真。docs/season-art.md）。 */
       card(
@@ -168,9 +169,42 @@
     });
   }
 
-  /* 色の置き場は `settings.noteColors = { nb: {名前: 色}, tag: {名前: 色} }`。
+  /* ---------------- 同期（js/notes-sync.js。docs/notes-unify.md「同期」） ----------------
+     既定は切り。入れた端末だけ合わせる。合わせている最中の印は出さない（最後に合わせた時刻だけ）。
+     Dropbox につないでいなければ、つなぐ紙へ。 */
+  function syncCard() {
+    const Y = KN.notesSync;
+    if (!Y || !KN.dropbox) return null;
+    const s = Y.status();
+    if (!KN.dropbox.status().connected) {
+      return card(navRow({ ico: "upload", tint: TINT.data, title: "同期", value: "Dropbox につなぐ", onTap: () => go("dropbox") }));
+    }
+    const when = (iso) => {
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? "" : `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+    return card(
+      switchRow({ title: "同期", on: s.on, onTap: (v) => { Y.setOn(v).then(render, render); render(); } }),
+      s.on && s.halt ? pickRow({
+        title: "合わせ直す", value: "止めています",
+        onTap: () => KN.ui.confirm({
+          title: "Dropbox のノートが一度にたくさん無くなっています",
+          message: "手元のノートは消さずに、足し合わせます。",
+          okLabel: "合わせ直す",
+        }).then((ok) => { if (ok) Y.restart().then(render, render); }),
+      }) : null,
+      s.on && !s.halt ? pickRow({
+        title: "今すぐ合わせる", value: s.error ? "合わせられません" : s.at ? when(s.at) : "",
+        onTap: () => { haptic(); Y.now().then(render, render); },
+      }) : null
+    );
+  }
+
+  /* 色の置き場はノートの入れ物（`KN.notes.colors()` = { nb: {名前: 色}, tag: {名前: 色} }。
+     同期の labels.json と合わせる）。読めない日だけ、前の置き場 `settings.noteColors` に。
      無い名前は名前から決まった一色（screen-notes.js の colorOf）。 */
   function setColors(kind, fn) {
+    if (N() && N().setColors && N().setColors((all) => fn(all[kind]))) return;
     store.update((s) => {
       const raw = s.settings.noteColors;
       const all = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
@@ -184,7 +218,7 @@
   /** 付け替えた名前へ色を持っていく（to が null なら捨てるだけ）。まとめた
       ときは、まとめ先の色のまま。 */
   function moveColor(kind, from, to) {
-    const all = store.get().settings.noteColors;
+    const all = N() ? N().colors() : store.get().settings.noteColors;
     if (!all || !own(all[kind], from)) return;
     setColors(kind, (m) => {
       if (to && !own(m, to)) m[to] = m[from];

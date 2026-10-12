@@ -153,11 +153,11 @@ print(json.dumps(out, ensure_ascii=False))
   await page.locator(`${top} .note-colors .accent-dot`).nth(3).click();
   await page.waitForTimeout(300);
   const col = await page.evaluate(() => ({
-    saved: KN.store.get().settings.noteColors,
+    saved: KN.notes.colors(),
     now: KN.screens.notes.colorOf("nb", "旅行"),
     on: document.querySelector(".set-layer:last-child .note-colors .accent-dot.is-on").getAttribute("aria-label"),
   }));
-  t.check("色を選ぶと noteColors に入る", col.saved.nb["旅行"] === "#5b9bd5" && col.now === "#5b9bd5", JSON.stringify(col.saved));
+  t.check("色を選ぶとノートの入れ物の色に入る", col.saved.nb["旅行"] === "#5b9bd5" && col.now === "#5b9bd5", JSON.stringify(col.saved));
   t.check("選んだ色に輪", col.on === "青", col.on);
 
   /* もうある名前へ → 訊いてからまとめる */
@@ -166,7 +166,7 @@ print(json.dumps(out, ensure_ascii=False))
   await confirmOk("まとめる");
   const mg = await page.evaluate((x) => ({
     a: KN.notes.get(x.a).notebook, c: KN.notes.get(x.c).notebook,
-    books: KN.notes.notebooks(), colors: KN.store.get().settings.noteColors.nb,
+    books: KN.notes.notebooks(), colors: KN.notes.colors().nb,
   }), ids);
   t.check("まとめると一つのノートブックに", mg.books.join() === "仕事" && mg.a === "仕事" && mg.c === "仕事", JSON.stringify(mg));
   t.check("まとめた側の色は捨てる", !("旅行" in mg.colors), JSON.stringify(mg.colors));
@@ -194,7 +194,7 @@ print(json.dumps(out, ensure_ascii=False))
 
   /* 一覧のカードは選んだ色（仕事に色を付けて確かめる）。 */
   await page.evaluate(() => {
-    KN.store.update((s) => { s.settings.noteColors = { nb: { "仕事": "#e07fa8" } }; });
+    KN.notes.setColors((all) => { all.nb = { "仕事": "#e07fa8" }; });
     KN.screens.notes.render();
   });
   const card = await page.evaluate(() => {

@@ -16,6 +16,9 @@
    - 段2：前の版（meta の `ver:<id>`）と、復元で合わせる（`merge`）。
    - 段3：ノートブックとタグ（`setLabels`）。欄は段1から一件ずつにあるので、
      入れ物の版も形も変えていません。
+   - 同期（notes-unify.md 段2。js/notes-sync.js）：覚えた版は meta の `sync:*`。外から来た中身
+     （`absorb`）は、その覚えと**同じ取引で**書き、送り返しの合図を出しません。
+     色は meta の `labels`（はじめて開いたとき `settings.noteColors` から写す。元は残す）。
    ========================================================= */
 (function () {
   "use strict";
@@ -45,6 +48,11 @@
   let settle = null;
   let failAt = 0;
   const listeners = new Set();
+  const pendMeta = new Map();             // k → まだ書いていない meta（null は消す）
+  const quiet = new Set();                // 外から来た中身（書いても同期へ合図しない）
+  const opened = new Set();               // いま紙で開いているノート（同期は閉じてから合わせる）
+  let labels = null;                      // { nb: {名前: 色}, tag: {名前: 色} }
+  let quietLab = false;
 
   const emit = () => listeners.forEach((fn) => { try { fn(); } catch (_) { /* 一つ落ちても続けます */ } });
 
@@ -96,12 +104,16 @@
 
   function readAll() {
     return conn().then((d) => new Promise((resolve, reject) => {
-      const t = d.transaction(["notes"], "readonly");
+      const t = d.transaction(["notes", "meta"], "readonly");
       const req = t.objectStore("notes").getAll();
-      t.oncomplete = () => resolve(req.result || []);
+      const lab = t.objectStore("meta").get("labels");
+      t.oncomplete = () => resolve({ rows: req.result || [], labels: lab.result || null });
       t.onerror = t.onabort = () => reject(t.error || new Error("読めませんでした"));
     }));
   }
+
+  const mapOf = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+  const colorsIn = (v) => ({ nb: { ...mapOf(mapOf(v).nb) }, tag: { ...mapOf(mapOf(v).tag) } });
 
   function start() {
     if (phase !== "idle") return readyP;
@@ -120,10 +132,17 @@
       settle();
       emit();
     }, OPEN_WAIT);
-    readAll().then((rows) => {
+    readAll().then(({ rows, labels: lab }) => {
       byId.clear();
       rows.forEach((n) => { if (n && n.id) byId.set(String(n.id), shape(n)); });
       phase = "on";
+      /* 色は入れ物へ写す（はじめて開いたときだけ。記録の settings.noteColors は消さない）。 */
+      if (lab) labels = colorsIn(lab);
+      else {
+        labels = colorsIn(KN.store && (KN.store.get().settings || {}).noteColors);
+        pendMeta.set("labels", { k: "labels", ...labels });
+        dirty.add("");
+      }
       purge();
     }).catch(() => {
       phase = "off";
@@ -164,9 +183,14 @@
   function writeNow(retried) {
     clearTimeout(timer);
     timer = null;
-    if (!dirty.size || phase !== "on") return Promise.resolve();
-    const ids = [...dirty];
+    if (!(dirty.size || pendMeta.size) || phase !== "on") return Promise.resolve();
+    const ids = [...dirty].filter(Boolean);
     dirty.clear();
+    const metas = new Map(pendMeta);
+    pendMeta.clear();
+    const loud = ids.some((id) => !quiet.has(id)) || (metas.has("labels") && !quietLab);
+    quietLab = false;
+    ids.forEach((id) => quiet.delete(id));
     const vers = new Map();
     ids.forEach((id) => { if (pendVer.has(id)) { vers.set(id, pendVer.get(id)); pendVer.delete(id); } });
     const wrote = new Map();
@@ -178,6 +202,7 @@
         const n = byId.get(id);
         if (n) st.put(n); else { st.delete(id); meta.delete(`ver:${id}`); }
       });
+      metas.forEach((rec, k) => { if (rec) meta.put(rec); else meta.delete(k); });
       vers.forEach((add, id) => {
         if (!byId.has(id)) return;
         const req = meta.get(`ver:${id}`);
@@ -193,8 +218,10 @@
       wrote.forEach((list, id) => verCache.set(id, list));
       ids.forEach((id) => { if (!byId.has(id)) verCache.delete(id); });
       if (KN.dropbox && KN.dropbox.soon) KN.dropbox.soon();
+      if (loud && KN.notesSync) KN.notesSync.soon();
     }, (err) => {
       ids.forEach((id) => dirty.add(id));
+      metas.forEach((rec, k) => { if (!pendMeta.has(k)) pendMeta.set(k, rec); });
       vers.forEach((add, id) => pendVer.set(id, add.concat(pendVer.get(id) || [])));
       /* つなぎが裏で切れていた（iOS が閉じた）なら、開き直して一度だけ。 */
       if (!retried) {
@@ -207,7 +234,7 @@
     });
   }
 
-  const touch = (id) => { dirty.add(id); schedule(); };
+  const touch = (id) => { quiet.delete(id); dirty.add(id); schedule(); };
 
   /* ---------------- 前の版 ---------------- */
 
@@ -221,7 +248,9 @@
     add.concat(old)
       .filter((v) => v && typeof v.body === "string" && typeof v.title === "string")
       .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
-      .forEach((v) => { if (!out.some((o) => same(o, v))) out.push({ at: v.at || "", title: v.title, body: v.body }); });
+      .forEach((v) => {
+        if (!out.some((o) => same(o, v))) out.push({ at: v.at || "", title: v.title, body: v.body, ...(v.two ? { two: true } : {}) });
+      });
     return out.slice(0, KEEP_VERS);
   }
 
@@ -233,7 +262,13 @@
   }
 
   /** 書く紙を開いたとき。この回で最初に直したときに、直す前を版に残します。 */
-  function begin(id) { kept.delete(id); }
+  function begin(id) { kept.delete(id); opened.add(id); }
+
+  /** 書く紙を閉じたとき。開いているあいだに来た変更を、ここで合わせる。 */
+  function end(id) {
+    opened.delete(id);
+    if (KN.notesSync) KN.notesSync.soon();
+  }
 
   /** 前の版（新しい順）。入れ物から読むので約束で返ります。 */
   function versions(id) {
@@ -322,9 +357,72 @@
         dirty.add(inc.id);
         res.changed++;
       });
+      if (book.colors && labels) {
+        const inc = colorsIn(book.colors);
+        setColors((all) => ["nb", "tag"].forEach((kind) => Object.keys(inc[kind]).forEach((name) => {
+          if (!Object.prototype.hasOwnProperty.call(all[kind], name)) all[kind][name] = inc[kind][name];
+        })), true);
+        quietLab = false;
+      }
       purge(true);
       return writeNow().then(() => { emit(); return res; });
     });
+  }
+
+  /* ---------------- 同期（js/notes-sync.js） ---------------- */
+
+  /** 外から来た中身を書きます。notes … [id, patch|null, 前の版?]（patch の undefined は欄を外す。
+      null は本当に消す）。meta … [k, 記録|null]。どれも同じ取引で書き、送り返しの合図は出しません。
+      ノートは置きかえず、同じ入れ物の欄を直します（開いている紙が同じ一件を持っている）。 */
+  function absorb(notes, meta) {
+    if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
+    (notes || []).forEach(([id, patch, ver]) => {
+      const n = byId.get(id);
+      if (!patch) { byId.delete(id); verCache.delete(id); }
+      else if (!n) byId.set(id, shape(Object.fromEntries(Object.entries({ id, ...patch }).filter(([, v]) => v !== undefined))));
+      else Object.entries(patch).forEach(([k, v]) => { if (v === undefined) delete n[k]; else n[k] = v; });
+      if (ver && patch) pendVer.set(id, [ver].concat(pendVer.get(id) || []));
+      quiet.add(id);
+      dirty.add(id);
+    });
+    (meta || []).forEach(([k, rec]) => pendMeta.set(k, rec));
+    return writeNow().then(() => {
+      if ((notes || []).some(([id]) => dirty.has(id)) || (meta || []).some(([k]) => pendMeta.has(k))) throw new Error("書けませんでした");
+      if (notes && notes.length) emit();
+    });
+  }
+
+  /** meta の記録を、頭の字で（`sync:` など）。 */
+  function metaAll(prefix) {
+    if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
+    return conn().then((d) => new Promise((resolve, reject) => {
+      const t = d.transaction(["meta"], "readonly");
+      const req = t.objectStore("meta").getAll(IDBKeyRange.bound(prefix, prefix + "\uffff"));
+      t.oncomplete = () => resolve(req.result || []);
+      t.onerror = t.onabort = () => reject(t.error || new Error("読めませんでした"));
+    })).then((rows) => {
+      const out = new Map(rows.map((r) => [r.k, r]));
+      pendMeta.forEach((rec, k) => { if (k.startsWith(prefix)) { if (rec) out.set(k, rec); else out.delete(k); } });
+      return [...out.values()];
+    });
+  }
+
+  /** 色。読めない日は記録の settings.noteColors（前のまま）。 */
+  function colors() {
+    return labels || colorsIn(KN.store && (KN.store.get().settings || {}).noteColors);
+  }
+
+  /** 色を直します。fn(all) … all.nb・all.tag をその場で直す。外から（同期）なら quietly。 */
+  function setColors(fn, quietly) {
+    if (phase !== "on" || !labels) return false;
+    const next = colorsIn(labels);
+    fn(next);
+    labels = colorsIn(next);
+    pendMeta.set("labels", { k: "labels", ...labels });
+    if (quietly) { quietLab = true; return true; }
+    writeNow();
+    emit();
+    return true;
   }
 
   /* ---------------- 外から ---------------- */
@@ -579,7 +677,8 @@
   function forExport() {
     if (phase !== "on") return {};
     const notes = [...byId.values()].sort(byNew("updatedAt")).map((n) => ({ ...n, tags: n.tags.slice() }));
-    return { noteBook: { v: 1, notes } };
+    /* 色も（同期で入れ物へ写した。控えから戻すとき、こちらに無い名前だけ足す） */
+    return { noteBook: { v: 1, notes, ...(labels ? { colors: colorsIn(labels) } : {}) } };
   }
 
   const flush = () => writeNow();
@@ -598,7 +697,8 @@
     settled: () => phase === "on" || phase === "off",
     get: (id) => byId.get(id) || null,
     draft, put, edit, setFav, remove, restore, drop, list, trash, forExport, flush,
-    begin, versions, versionBodies, revert, merge,
+    begin, end, versions, versionBodies, revert, merge,
+    absorb, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };

@@ -221,7 +221,8 @@
       const token = await accessToken(tries > 0);
       const headers = { Authorization: `Bearer ${token}` };
       if (arg) {
-        headers["Dropbox-API-Arg"] = JSON.stringify(arg);
+        /* 頭書きは ASCII だけ（日本語の名前は \uXXXX に。Dropbox の決まり）。 */
+        headers["Dropbox-API-Arg"] = JSON.stringify(arg).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
         if (!raw) headers["Content-Type"] = "application/octet-stream";
       } else if (json) {
         headers["Content-Type"] = "application/json";
@@ -569,5 +570,7 @@
   setTimeout(() => { prepare(); sync(); }, FIRST);
 
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
-  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, KEEP };
+  /* `api` はノートの同期（js/notes-sync.js）が呼ぶ口。鍵の取り直しはこちらに任せる。 */
+  const api = { call, summary, API, CONTENT, ready: () => recovered.then(() => connected() && !!cfg.appKey) };
+  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, KEEP, api };
 })();
