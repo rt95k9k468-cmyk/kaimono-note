@@ -71,12 +71,19 @@
     return false;
   };
 
-  const clear = (el) => { if (el) { el.style.transition = ""; el.style.transform = ""; } };
+  const clear = (el) => { if (el) { el.style.transition = ""; el.style.transform = ""; el.style.clipPath = ""; } };
+
+  /* `clip` … 後ろの一枚を、上の一枚の左の縁より左だけに切ります。上の一枚に地が無い
+     （ノートの面は季節の絵の上にカードだけ）と、カードの隙間から後ろの面が透けるので。
+     uw は後ろの一枚の幅。dx に比例するので、離したあとの滑りも transform と同じ曲線で揃う。 */
+  const cut = (el, dx, w, uw) => {
+    if (el) el.style.clipPath = `inset(0 ${Math.max(0, uw - dx - (w - dx) * PARALLAX)}px 0 0)`;
+  };
 
   /**
    * @param {object} o
    * @param {Element}  o.el      指を見る器（その画面そのもの）
-   * @param {Function} o.begin   () => {top, under, commit, cancel, here?} または null。
+   * @param {Function} o.begin   () => {top, under, commit, cancel, here?, clip?} または null。
    *                             横だと決まった瞬間に一度だけ呼ばれます。
    *                             **後ろの一枚を出すのも、ここの仕事**です。
    * @param {Function} [o.busy]  () => true なら、この指は取りません
@@ -89,13 +96,14 @@
     if (!host) return;
 
     let id = null, x0 = 0, y0 = 0, dx = 0, axis = null, frame = 0, w = 0;
-    let lastT = 0, lastX = 0, vx = 0, live = null;
+    let lastT = 0, lastX = 0, vx = 0, live = null, uw = 0;
 
     const paint = () => {
       frame = 0;
       if (!live) return;
       put(live.top, dx);
       put(live.under, underAt(dx, w));
+      if (live.clip) cut(live.under, dx, w, uw);
     };
 
     /** 行き先まで滑らせる。0 は戻らない、w は戻る。
@@ -107,10 +115,11 @@
       if (!live) { done(); return; }
       const g = KN.motion.glide(to - dx, vx, { span: w });
       [live.top, live.under].forEach((el) => {
-        if (el) el.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}` : "";
+        if (el) el.style.transition = g.ms ? `transform ${g.ms}ms ${g.ease}, clip-path ${g.ms}ms ${g.ease}` : "";
       });
       put(live.top, to);
       put(live.under, underAt(to, w));
+      if (live.clip) cut(live.under, to, w, uw);
       setTimeout(done, g.ms + 20);
     });
 
@@ -155,6 +164,7 @@
         if (o.busy && o.busy()) { id = null; axis = null; return; }
         live = o.begin();
         if (!live) { id = null; axis = null; return; }
+        uw = live.under ? live.under.offsetWidth : 0;
         try { host.setPointerCapture(id); } catch (err) { /* Safari が投げることがあります */ }
         host.classList.add("is-edge");
         [live.top, live.under].forEach((el) => { if (el) el.style.transition = ""; });

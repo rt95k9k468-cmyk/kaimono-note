@@ -5323,6 +5323,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    （価格の地と同じ理由——末尾の余白が中身の後ろに付いてくるように）。 */
 #screen-notes > .stack { flex: 1; min-height: 0; }
 .notes-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + 56px + var(--sp-6)); }
+/* 右へ払って一つ上の面へ（screen-notes.js）。縦はブラウザに、横はこちらに——無いと iPhone は横に動いた指を
+   送りとして取り（pointercancel）、引いた面が途中で戻されていた。 */
+#screen-notes { touch-action: pan-y; }
+/* 引くあいだ後ろに見せる一つ上の面の写し。見えている高さだけ（送る器の中身を伸ばさない）。 */
+.notes-under { position: absolute; overflow: hidden; pointer-events: none; }
 .notes-list { display: flex; flex-direction: column; }
 /* 行のあいだに線は引きません（余白だけで分かれる。価格の行と同じ）。 */
 .note-row {

@@ -10,6 +10,9 @@ const { open, checker } = require("./lib");
   const { browser, page, errors } = await open();
 
   const files = new Map();       // path → 中身
+  const revs = new Map();        // path → 版（rev）
+  let revN = 0;
+  const bump = (path) => { revs.set(path, `r${++revN}`); return revs.get(path); };
   const calls = [];              // { path, arg, body }
   let tokenBodies = [];
   let expireNext = false;        // 次の upload で 401 を返す
@@ -43,8 +46,11 @@ const { open, checker } = require("./lib");
       if (expireNext) { expireNext = false; return json(route, 401, { error_summary: "expired_access_token/" }); }
       const arg = JSON.parse(h["dropbox-api-arg"]);
       if (arg.mode === "add" && files.has(arg.path)) return json(route, 409, { error_summary: "path/conflict/file/.." });
+      if (arg.mode && arg.mode[".tag"] === "update" && revs.get(arg.path) !== arg.mode.update) {
+        return json(route, 409, { error_summary: "path/conflict/file/.." });
+      }
       files.set(arg.path, req.postData());
-      return json(route, 200, { name: arg.path.split("/").pop() });
+      return json(route, 200, { name: arg.path.split("/").pop(), rev: bump(arg.path) });
     }
     if (u.pathname === "/2/files/list_folder") {
       const entries = [...files.keys()].filter((p) => p.startsWith("/daily/"))
@@ -54,7 +60,7 @@ const { open, checker } = require("./lib");
     if (u.pathname === "/2/files/get_metadata") {
       const { path } = JSON.parse(req.postData());
       if (!files.has(path)) return json(route, 409, { error_summary: "path/not_found/.." });
-      return json(route, 200, { ".tag": "file", name: path.slice(1), server_modified: "2026-10-06T03:00:00Z", size: files.get(path).length });
+      return json(route, 200, { ".tag": "file", name: path.slice(1), rev: revs.get(path), server_modified: "2026-10-06T03:00:00Z", size: files.get(path).length });
     }
     if (u.pathname === "/2/files/download") {
       const arg = JSON.parse(h["dropbox-api-arg"]);
@@ -105,8 +111,8 @@ const { open, checker } = require("./lib");
   t.check("コードの交換：合言葉の指紋が URL の challenge と合う",
     tb.code === "the-code" && tb.client_id === "testkey123" && want === auth.searchParams.get("code_challenge"));
   t.check("つないだら送る（sent）", r1 === "sent", r1);
-  t.check("最新は上書き・日付は add で、同じ中身",
-    uploads().length === 2 && uploads()[0].arg.path === "/kurashi-latest.json" && uploads()[0].arg.mode === "overwrite"
+  t.check("はじめての端末で Dropbox が空なら、最新も日付も add で、同じ中身",
+    uploads().length === 2 && uploads()[0].arg.path === "/kurashi-latest.json" && uploads()[0].arg.mode === "add"
       && /^\/daily\/kurashi-\d{4}-\d{2}-\d{2}\.json$/.test(uploads()[1].arg.path) && uploads()[1].arg.mode === "add"
       && uploads()[0].body === uploads()[1].body, JSON.stringify(uploads().map((u) => u.arg)));
   const sent = JSON.parse(files.get("/kurashi-latest.json"));
@@ -128,6 +134,8 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.store.update((s) => { s.settings.dropboxTestMark = 1; }));
   const r3 = await page.evaluate(() => KN.dropbox.sync());
   t.check("書き換えたら最新だけ送る", r3 === "sent" && uploads().length === 3 && uploads()[2].arg.path === "/kurashi-latest.json", r3);
+  t.check("最新は覚えた版で上書き（update）", uploads()[2].arg.mode[".tag"] === "update" && uploads()[2].arg.mode.update === "r1",
+    JSON.stringify(uploads()[2].arg.mode));
   t.check("日付の控えはその日はじめての中身のまま", files.get(uploads()[1].arg.path) === dayBody);
 
   // 6. 日が変わる：日付の控えを足し、新しい30個と月の背骨（各月で最初の一つを12か月）を残す（ほかの名前は消さない）
@@ -174,13 +182,25 @@ const { open, checker } = require("./lib");
   t.check("日付の控えは30個＋背骨10個・ほかの名前は残る", dailyNames.length === 40 && files.has("/daily/my-notes.json"),
     dailyNames.length + " " + dailyNames[0]);
 
-  // 7. 鍵が古い（401）→ 取り直してもう一度
+  // 7. 前の版から上がった端末（送ったことはあるが、役も版も覚えていない＝今の iPhone）は、送る役のまま
+  await page.evaluate(() => {
+    const v = JSON.parse(localStorage.getItem("kaimono-note-dropbox"));
+    delete v.sender; delete v.latestRev;
+    localStorage.setItem("kaimono-note-dropbox", JSON.stringify(v));
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.KN && KN.dropbox && KN.store);
+  await page.waitForTimeout(300);
+  // 鍵が古い（401）→ 取り直してもう一度
   expireNext = true;
   await page.evaluate(() => KN.store.update((s) => { s.settings.dropboxTestMark = 2; }));
   const nTok = tokenBodies.length;
   const r5 = await page.evaluate(() => KN.dropbox.sync());
   t.check("401 なら鍵を取り直して送る", r5 === "sent" && tokenBodies.length === nTok + 1
     && tokenBodies[nTok].grant_type === "refresh_token" && tokenBodies[nTok].refresh_token === "ref-1", r5);
+  t.check("前の版から上がった送る端末は送り続ける（最初は上書き、そこから版を覚える）",
+    uploads()[uploads().length - 1].arg.mode === "overwrite" && (await page.evaluate(() => KN.dropbox.status().sender)),
+    JSON.stringify(uploads()[uploads().length - 1].arg.mode));
 
   // 8. 本文を外した日が残っているあいだは、上書きしない
   const n8 = uploads().length;
@@ -218,7 +238,11 @@ const { open, checker } = require("./lib");
 
   // 12. Dropbox の控えから戻す（B2）：並び（最新が先・日付は新しい順・ほかの名前は出ない）→ 読む → 確かめて戻す
   await page.waitForFunction(() => !!KN.dropbox.authUrl());
-  await page.evaluate(() => KN.dropbox.finish("code-3"));
+  const backupsSent = () => uploads().filter((u) => /^\/(kurashi-latest|daily\/)/.test(u.arg.path)).length;
+  const n12 = backupsSent();
+  const r12 = await page.evaluate(() => KN.dropbox.finish("code-3"));
+  t.check("二台め：Dropbox に最新の控えが在れば、つないでも控えを送らない",
+    r12 === "other" && backupsSent() === n12 && (await page.evaluate(() => KN.dropbox.status().sender)) === false, r12);
   const list = await page.evaluate(() => KN.dropbox.backups());
   const nList = 1 + [...files.keys()].filter((p) => /^\/daily\/kurashi-/.test(p)).length;   // 最新＋日付の控え（背骨も）
   t.check("控えの並び：最新が先、日付の控えは新しい順、ほかの名前は出ない",
@@ -253,6 +277,33 @@ const { open, checker } = require("./lib");
     kept: KN.backup.list().some((s) => s.reason === "復元前"),
   }));
   t.check("戻すと Dropbox の中身になり、戻す前は控えに", after12.n === before12 && after12.gone && after12.kept, JSON.stringify(after12));
+  await page.evaluate(() => KN.store.update((s) => { s.settings.dropboxTestMark = 4; }));
+  t.check("二台め：書き換えても控えは送らない", (await page.evaluate(() => KN.dropbox.sync())) === "other" && backupsSent() === n12);
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox へ自動で送る" }).first().click();
+  await page.waitForTimeout(400);
+  const rows13 = await page.locator(".set-layer:last-child .set-row").allTextContents();
+  t.check("二台めの紙は「いま送る」の代わりに「この端末から控えを送る」",
+    rows13.some((r) => r.includes("この端末から控えを送る")) && !rows13.some((r) => r.includes("いま送る")), rows13.join(" / "));
+
+  // 13. 役を取る：最新を上書きし、覚えた版で送り続ける
+  const latestBefore = files.get("/kurashi-latest.json");
+  const r13 = await page.evaluate(() => KN.dropbox.claim());
+  t.check("この端末から送ると決めたら、最新を上書きして役を取る",
+    r13 === "sent" && uploads().some((u) => u.arg.path === "/kurashi-latest.json" && u.arg.mode === "overwrite")
+      && files.get("/kurashi-latest.json") !== latestBefore && (await page.evaluate(() => KN.dropbox.status().sender)), r13);
+
+  // 14. ほかの端末が役を取った（最新の版が変わった）→ 上書きせずに降りる
+  files.set("/kurashi-latest.json", "{\"app\":\"kaimono-note\",\"other\":1}");
+  bump("/kurashi-latest.json");
+  await page.evaluate(() => KN.store.update((s) => { s.settings.dropboxTestMark = 5; }));
+  const r14 = await page.evaluate(() => KN.dropbox.sync());
+  t.check("ほかの端末が最新を置いていたら、上書きせずに送る役を降りる",
+    r14 === "other" && files.get("/kurashi-latest.json").includes("\"other\":1")
+      && (await page.evaluate(() => KN.dropbox.status().sender)) === false, r14);
 
   t.check("ページのエラーが無い", errors.length === 0, errors.join("\n"));
   await browser.close();

@@ -8,7 +8,7 @@
    画面：最初の面はホーム（★・最近直した・ノートブックの行。頭に「すべてのノート」＝今の一覧）／ノートブックの面は
    一番上のノートだけ／帯に ‹ と面の名前／一覧の子のカードに親の題／書く紙の道すじ・中のノート・紙を重ねる／
    「⋯」の中にノートを足す・移す／席をもう一度押すとホーム／ホームで探すと一覧。
-   段1b：帯の道すじ「Notes ›」／左端から引いて戻る／書き出しはフォルダの入れ子（頭に id・parent）／幅のある画面の木。
+   段1b：帯の道すじ「Notes ›」／右へ払って戻る（どこからでも）／書き出しはフォルダの入れ子（頭に id・parent）／幅のある画面の木。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-tree.js */
 const { open, checker } = require("./lib");
@@ -152,23 +152,42 @@ const { open, checker } = require("./lib");
   t.check("帯にノートブックの名前と ‹", (await headName()) === "暮らし");
   const crumb = await page.$eval("#head .head-name", (e) => e.textContent.replace(/\s+/g, ""));
   t.check("帯に道すじ「Notes › 暮らし」", crumb === "Notes›暮らし", crumb);
-  /* 左端から引いて戻る（段1b。iPhone で「‹ しかない」） */
-  const edge = await page.$eval("#screen-notes", (e) => { const r = e.getBoundingClientRect(); return { x: r.left + 6, y: r.top + r.height * 0.6 }; });
-  await page.mouse.move(edge.x, edge.y);
+  /* 右へ払って戻る（段1b。左端でなくても、面のどこからでも） */
+  t.check("ノートの画面は縦だけブラウザに（横を取られない）",
+    (await page.$eval("#screen-notes", (e) => getComputedStyle(e).touchAction)) === "pan-y");
+  const mid = await page.$eval("#screen-notes", (e) => { const r = e.getBoundingClientRect(); return { x: r.left + r.width * 0.4, y: r.top + r.height * 0.6 }; });
+  await page.mouse.move(mid.x, mid.y);
   await page.mouse.down();
-  await page.mouse.move(edge.x + 280, edge.y + 4, { steps: 14 });
+  for (let i = 1; i <= 8; i++) { await page.mouse.move(mid.x + i * 15, mid.y + 2); await page.waitForTimeout(16); }
+  await page.waitForTimeout(60);
+  const half = await page.evaluate(() => {
+    const u = document.querySelector("#screen-notes .notes-under");
+    return { under: !!(u && u.querySelector(".notes-books")), moved: !!document.querySelector("#screen-notes .js-body").style.transform };
+  });
+  t.check("引くあいだ後ろに一つ上の面（ホーム）が見え、いまの面は指について動く", half.under && half.moved, JSON.stringify(half));
+  for (let i = 9; i <= 20; i++) { await page.mouse.move(mid.x + i * 15, mid.y + 4); await page.waitForTimeout(16); }
   await page.mouse.up();
   await page.waitForFunction(() => !document.querySelector("#head .js-notes-back"), null, { timeout: 4000 });
   await page.waitForFunction(() => !document.querySelector("#screen-notes .js-body").style.transform, null, { timeout: 4000 });
-  t.check("左端から引くと一つ上の面へ（面は元の位置に）", !!(await page.$("#screen-notes .notes-books")));
+  t.check("真ん中から払っても一つ上の面へ（面は元の位置・写しは残らない）",
+    !!(await page.$("#screen-notes .js-body .notes-books")) && !(await page.$("#screen-notes .notes-under")));
   await page.click('#screen-notes .notes-book.js-book:has-text("暮らし")');
   await page.waitForFunction(() => document.querySelector("#head .js-notes-back"));
-  await page.mouse.move(edge.x + 120, edge.y);
+  /* 少しだけ・ゆっくり引いて離す → 戻らない */
+  await page.mouse.move(mid.x, mid.y);
   await page.mouse.down();
-  await page.mouse.move(edge.x + 400, edge.y + 4, { steps: 14 });
+  for (let i = 1; i <= 6; i++) { await page.mouse.move(mid.x + i * 10, mid.y); await page.waitForTimeout(40); }
+  await page.waitForTimeout(200);
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  t.check("少し引いて離すと戻らない（写しは消える）", !!(await page.$("#head .js-notes-back")) && !(await page.$("#screen-notes .notes-under")));
+  /* 縦に動かした指は取らない */
+  await page.mouse.move(mid.x, mid.y);
+  await page.mouse.down();
+  await page.mouse.move(mid.x + 30, mid.y - 200, { steps: 10 });
   await page.mouse.up();
   await page.waitForTimeout(400);
-  t.check("左端でなければ引いても戻らない", !!(await page.$("#head .js-notes-back")));
+  t.check("縦の指では戻らない", !!(await page.$("#head .js-notes-back")) && !(await page.$("#screen-notes .notes-under")));
   await page.click("#head .js-notes-back");
   await page.waitForFunction(() => !document.querySelector("#head .js-notes-back"));
   t.check("‹ でホームへ", !!(await page.$("#screen-notes .notes-books")));

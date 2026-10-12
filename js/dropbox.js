@@ -14,6 +14,7 @@
      控えまで道連れにしないため。新しいほうから KEEP 個と、月の背骨（各月で
      最初の一つを MONTHS か月ぶん）を残して、ほかの古いものは消します。消すのは
      この名前の形のものだけ。
+   - 送るのは一台だけ（下の「控えを送る端末は一台だけ」）。ほかの端末はノートの画像だけ。
    - いつ送るか：開いたとき・前に出てきたとき・書き換えてから SOON のあと・
      隠れるとき。中身が前回送ったものと同じなら送りません。閉じているあいだは
      動けません（iPhone のホーム画面アプリに、その仕組みが無い）——が、記録が
@@ -174,7 +175,7 @@
 
   async function disconnect() {
     const token = cfg.access;
-    ["refresh", "access", "expires", "lastHash", "lastDay", "lastAt", "error", "errorAt", "needsAuth", "pending"]
+    ["refresh", "access", "expires", "lastHash", "lastDay", "lastAt", "error", "errorAt", "needsAuth", "pending", "sender", "latestRev"]
       .forEach((k) => { delete cfg[k]; });
     save();
     prepare();
@@ -245,7 +246,7 @@
       arg: { path, mode, autorename: false, mute: true },
       body: new Blob([text], { type: "application/octet-stream" }),
     });
-    if (r.res.ok) return "ok";
+    if (r.res.ok) { lastRev = (r.body && r.body.rev) || ""; return "ok"; }
     /* 日付の控えがもう在る（同じ日にほかの端末・前の版が置いた）。上書き
        しないのが決まりなので、それでよい。 */
     if (mode === "add" && r.res.status === 409 && /conflict/.test(summary(r))) return "exists";
@@ -321,6 +322,71 @@
   let again = false;
   let timer = null;
   let dirty = false;
+  let lastRev = "";
+
+  /* ---- 控えを送る端末は一台だけ（docs/notes-unify.md「守り」。ノートの同期の前に） ----
+
+     ノートのために iPad・パソコンをつなぐと、記録の空に近い端末が kurashi-latest.json を
+     上書きし、その日の daily/ を先取りしうる。送るのは `cfg.sender` の端末だけ。
+
+     - 前から送っていた端末（lastAt がある＝今の iPhone）はそのまま送る。
+     - はじめてつなぐ端末は、Dropbox に kurashi-latest.json が在れば送らない。無ければ
+       "add" で置き、置けた端末が送る役（二台が同時でも一台だけ）。
+     - 送る役は、最後に置いた版（rev）を覚えて `update` で上書きする。間にほかの端末が
+       置いていたら断られる → 送る役を降りる（あとから「この端末から送る」と決めた端末が勝つ。
+       古い端末が古い記録で上書きし続けない）。
+     - 役を移すのは利用者が設定で押したときだけ（`claim`）。 */
+  async function role() {
+    if (cfg.sender === true || cfg.sender === false) return cfg.sender;
+    if (cfg.lastAt) { cfg.sender = true; save(); return true; }
+    const m = await call(API, "/2/files/get_metadata", { json: { path: LATEST } });
+    if (m.res.ok) { cfg.sender = false; save(); return false; }
+    if (/not_found/.test(summary(m))) return "first";
+    throw new Error(summary(m));
+  }
+
+  /** 送る役を降りる（ほかの端末が kurashi-latest.json を置いた）。 */
+  function stepDown() {
+    cfg.sender = false;
+    delete cfg.latestRev;
+    delete cfg.error;
+    delete cfg.errorAt;
+    save();
+    return "other";
+  }
+
+  /** 送る役として kurashi-latest.json を置く。ほかの端末が置いていたら false。 */
+  async function putLatest(text, first) {
+    const mode = first ? "add" : cfg.latestRev ? { ".tag": "update", update: cfg.latestRev } : "overwrite";
+    try {
+      if ((await upload(LATEST, text, mode)) === "exists") return false;
+    } catch (err) {
+      if (/conflict/.test(String(err && err.message))) return false;
+      throw err;
+    }
+    cfg.sender = true;
+    if (lastRev) cfg.latestRev = lastRev;
+    save();
+    return true;
+  }
+
+  /** 前と同じ中身で日だけ変わったとき。置かれている版が覚えたものか（ほかの端末が置いていないか）。 */
+  async function stillMine() {
+    if (!cfg.latestRev) return true;
+    const m = await call(API, "/2/files/get_metadata", { json: { path: LATEST } });
+    if (m.res.ok) return !!(m.body && m.body.rev === cfg.latestRev);
+    if (/not_found/.test(summary(m))) return true;
+    throw new Error(summary(m));
+  }
+
+  /** この端末から控えを送る（設定で押したとき）。次に送るとき上書きして役を取る。 */
+  function claim() {
+    cfg.sender = true;
+    delete cfg.latestRev;
+    delete cfg.lastHash;
+    save();
+    return sync();
+  }
 
   /** 送るべきなら送る。重なったら、いま走っているのが済んでからもう一度。 */
   function sync(opts) {
@@ -374,6 +440,9 @@
        kurashi-latest.json と今日の日付の控えを埋めないため——その端末へは、
        Dropbox の控えから戻す（下の backups / download）。 */
     if (store.isBlank(store.get()) && !(extra.noteBook && extra.noteBook.notes.length)) return "empty";
+    let mine;
+    try { mine = await role(); } catch (err) { return failed(err); }
+    if (mine === false) { dirty = false; await sendImages(); return "other"; }
     dirty = false;
     const hash = await sha(canon(store.get())
       + (extra.noteBook ? canon(extra.noteBook) : ""));
@@ -384,7 +453,8 @@
     const at = new Date().toISOString();
     const text = store.exportJSON(at, extra);
     try {
-      if (!same) await upload(LATEST, text, "overwrite");
+      const ok = same ? await stillMine() : await putLatest(text, mine === "first");
+      if (!ok) { await sendImages(); return stepDown(); }
       if (cfg.lastDay !== day) {
         await upload(`${DAILY_DIR}/kurashi-${day}.json`, text, "add");
         cfg.lastDay = day;
@@ -399,12 +469,16 @@
       await sendImages();
       return "sent";
     } catch (err) {
-      dirty = true;
-      cfg.error = String((err && err.message) || err);
-      cfg.errorAt = new Date().toISOString();
-      save();
-      return "failed";
+      return failed(err);
     }
+  }
+
+  function failed(err) {
+    dirty = true;
+    cfg.error = String((err && err.message) || err);
+    cfg.errorAt = new Date().toISOString();
+    save();
+    return "failed";
   }
 
   /** JSON のあとに、まだ送っていない画像を一枚ずつ `images/<id>.jpg`（mode "add"）。同じ名前が
@@ -476,6 +550,8 @@
       ready: !!cfg.pending,
       needsAuth: !!cfg.needsAuth,
       lastAt: cfg.lastAt || "",
+      /* false … 控えはほかの端末が送っている（この端末はノートの画像だけ） */
+      sender: cfg.sender !== false,
       error: cfg.error || "",
       errorAt: cfg.errorAt || "",
       keep: KEEP,
@@ -493,5 +569,5 @@
   setTimeout(() => { prepare(); sync(); }, FIRST);
 
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
-  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, onChange, backups, download, KEEP };
+  KN.dropbox = { status, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, KEEP };
 })();

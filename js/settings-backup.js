@@ -935,20 +935,37 @@
     }
     const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
     const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。` : "";
+    /* 控えを送るのは一台だけ（js/dropbox.js「控えを送る端末は一台だけ」）。ほかの端末は役を取れるだけ。 */
+    const send = s.sender
+      ? navRow({
+        ico: "upload", tint: TINT.data, title: "いま送る",
+        onTap: async () => {
+          const r = await db.sync();
+          KN.ui.toast(r === "sent" ? "送りました" : r === "same" ? "前に送ったものと同じです"
+            : r === "empty" ? "記録が空なので送りません" : r === "other" ? "控えはほかの端末から送っています" : "送れませんでした");
+          render();
+        },
+      })
+      : navRow({
+        ico: "upload", tint: TINT.data, title: "この端末から控えを送る",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "この端末から送りますか？",
+            message: "Dropbox の最新の控えを、この端末の記録で上書きします。ほかの端末からは送らなくなります。",
+            okLabel: "送る",
+          });
+          if (!ok) return;
+          const r = await db.claim();
+          KN.ui.toast(r === "sent" ? "送りました" : r === "empty" ? "記録が空なので送りません" : "送れませんでした");
+          render();
+        },
+      });
     return [
       card(
-        navRow({
-          ico: "upload", tint: TINT.data, title: "いま送る",
-          onTap: async () => {
-            const r = await db.sync();
-            KN.ui.toast(r === "sent" ? "送りました" : r === "same" ? "前に送ったものと同じです"
-              : r === "empty" ? "記録が空なので送りません" : "送れませんでした");
-            render();
-          },
-        }),
+        send,
         navRow({ ico: "undo", tint: TINT.sub, title: "Dropbox の控えから戻す", onTap: openDropboxBackups })
       ),
-      foot(last + err),
+      foot(s.sender ? last + err : "控えはほかの端末から送っています。"),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",
         onTap: async () => {

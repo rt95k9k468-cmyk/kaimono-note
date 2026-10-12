@@ -92,33 +92,49 @@
        組み直します）。 */
     N().onChange(() => { if (root) renderBody(); });
 
-    /* 降りた面は、左端から引いても戻る（段1b。iPhone で「‹ しかない」）。後ろの面は組んでいないので、
-       引いた面だけが指について右へ。戻ると決めたら一つ上の面を組み、控えの位置から滑り込ませる。 */
+    /* 降りた面は、右へ払って戻る（段1b。iPhone で「‹ しかない」）。左端でなくても、面のどこからでも（段2の前、
+       利用者「左から右へどこからでも」）。引くあいだ一つ上の面を後ろに組んで見せ、戻ると決めたら写しを外して
+       その場で組み直す（前は空いた後ろへ滑り出てから、組み直した面を滑り込ませていて、ぎこちなかった）。 */
     if (KN.edgeBack) {
       KN.edgeBack.wire({
         el: root,
+        edge: Infinity,
         busy: () => pages.length < 2 || !!query || !!document.querySelector(".sheet"),
-        begin: () => ({
-          top: els.body, under: null,
-          commit: () => { back(); slideIn(els.body); },
-          cancel: () => KN.edgeBack.clear(els.body),
-        }),
+        begin: () => {
+          const under = underPage();
+          const off = () => { if (under) under.remove(); KN.edgeBack.clear(els.body); };
+          return { top: els.body, under, clip: !!under, commit: () => { off(); back(); }, cancel: off };
+        },
       });
     }
     window.matchMedia(WIDE).addEventListener("change", paintTree);
   }
 
-  /** 戻った面を、控えの位置（edge-back の PARALLAX）から 0 へ。 */
-  function slideIn(el) {
-    KN.edgeBack.clear(el);
-    if (KN.motion.still()) return;
-    const ms = KN.motion.ms("--m-push");
-    KN.edgeBack.rest(el);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      el.style.transition = `transform ${ms}ms ${KN.motion.ease("--push-e")}`;
-      el.style.transform = "";
-      setTimeout(() => { el.style.transition = ""; }, ms + 20);
-    }));
+  /** 引くあいだ後ろに見せる、一つ上の面の写し（押せない）。戻ったときの送りの位置に合わせ、
+      見えている高さだけに切る（送る器の中身を伸ばさない）。 */
+  function underPage() {
+    const sc = KN.app.scrollerOf(root);
+    const below = pages[pages.length - 2];
+    if (!sc || !below || N().state() !== "on") return null;
+    /* 測るのは書く前に、まとめて（docs/traps.md） */
+    const sr = sc.getBoundingClientRect(), br = els.body.getBoundingClientRect();
+    const top = sc.scrollTop, ch = sc.clientHeight, sh = sc.scrollHeight, hc = els.body.offsetHeight;
+    const wrap = node(html`<div class="notes-under" aria-hidden="true"><div class="notes-ground"></div></div>`);
+    const box = wrap.firstElementChild;
+    fill(box, N().tree(), below, 0);
+    wrap.style.clipPath = "inset(0 100% 0 0)";
+    sc.append(wrap);
+    /* 組み直すと送りは below.y へ。中身が短ければブラウザが詰めるので、同じだけ詰めておく。 */
+    const y = Math.min(below.y || 0, Math.max(0, sh - hc + box.offsetHeight - ch));
+    const at = br.top - sr.top;            // いまの面の頭（見えている枠の中で）
+    const cut = Math.max(0, at);           // それより上（さがす窓）には写さない
+    wrap.style.top = `${top + cut}px`;
+    wrap.style.height = `${ch - cut}px`;
+    wrap.style.left = `${br.left - sr.left}px`;
+    wrap.style.width = `${br.width}px`;
+    box.style.marginTop = `${at + top - y - cut}px`;
+    KN.edgeBack.rest(wrap);
+    return wrap;
   }
 
   function render() {
@@ -198,15 +214,17 @@
     }
     if (st !== "on") return;
 
-    const t = N().tree();
-    const p = page();
-    /* 探しているあいだは、どの面からでも今の一覧（平らに全部）。 */
-    if (query || p.k === "list") listBody(box, t, keepX);
-    else if (p.k === "home") homeBody(box, t);
-    else box.append(cards(t.tops(p.v), t));
+    fill(box, N().tree(), page(), keepX);
     const y = jump == null ? keepY : jump;
     if (sc && sc.scrollTop !== y) sc.scrollTop = y;
     paintTree();
+  }
+
+  /** 面 p の中身を box へ。探しているあいだは、どの面からでも今の一覧（平らに全部）。 */
+  function fill(box, t, p, keepX) {
+    if (query || p.k === "list") listBody(box, t, keepX);
+    else if (p.k === "home") homeBody(box, t);
+    else box.append(cards(t.tops(p.v), t));
   }
 
   /** 今の一覧そのまま（すべてのノート）：絞り込みのチップ・カード・最近削除した項目。 */
