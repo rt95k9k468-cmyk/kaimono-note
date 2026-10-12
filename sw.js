@@ -105,6 +105,10 @@ const ASSETS = [
   "icons/icon.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",
+  "img/think/diary.webp",
+  "img/think/note.webp",
+  "img/think/ask.webp",
+  "img/think/today.webp",
 ];
 
 /* 入口をネットで待つのはここまで。来なければ控えの入口で開く（roadmap-seamless の N2。

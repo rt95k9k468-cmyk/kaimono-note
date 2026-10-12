@@ -3655,20 +3655,56 @@ a.btn { text-decoration: none; }
 }
 
 /* ---- 思考のホーム・時刻ごとの日記（docs/thinking.md） ----
-   書く口は欄の顔をした押すもの（押すと書く紙）。字は要る一語だけ。 */
-.think-home { margin: 0 var(--sp-4); display: flex; align-items: center; gap: var(--sp-2); }
-.think-write {
-  flex: 1; min-width: 0; height: 48px; padding: 0 var(--sp-4);
-  display: flex; align-items: center; gap: var(--sp-2);
-  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
-  color: var(--c-text-3); font-size: var(--fs-lg); text-align: left;
+   三枚の札（日記に書く・ノートを書く・問いから考える）と今日の問い。水彩の絵は img/think/。字は要る一語だけ。
+   札の地は絵の色を面の色に混ぜる（暗い面でも同じ式で沈む）。 */
+.think-home { --tone-a: 70%; --tone-b: 30%; margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .think-home { --tone-a: 22%; --tone-b: 10%; } }
+:root[data-theme="dark"] .think-home { --tone-a: 22%; --tone-b: 10%; }
+.think-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--sp-2); }
+.think-card {
+  --tone: #cfe7ea;
+  min-width: 0; min-height: 148px; padding: var(--sp-2) var(--sp-3);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)), color-mix(in srgb, var(--tone) var(--tone-b), var(--c-surface)));
+  border: 1px solid color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
   transition: opacity var(--m-state) var(--ease);
 }
-.think-write svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); stroke-width: var(--ico-w); }
-.think-write:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.think-ask { flex: none; height: 48px; }
-.think-ask svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.think-card.is-leaf { --tone: #dcebd3; }
+.think-card.is-sun { --tone: #fbe3c8; }
+.think-card:active, .think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.think-card-art { width: 100%; height: 64px; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.think-card-t { color: var(--c-primary); font-size: var(--fs-md); font-weight: 700; line-height: 1.35; word-break: keep-all; }
+.think-card-go {
+  margin-top: auto; align-self: flex-end; width: 26px; height: 26px; border-radius: var(--r-full);
+  display: grid; place-items: center; background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1);
+}
+.think-card-go svg { width: 13px; height: 13px; }
+
+.think-today {
+  position: relative; padding: var(--sp-3) var(--sp-4) var(--sp-4); border-radius: var(--r-xl); overflow: hidden;
+  background: color-mix(in srgb, #cfe7ea var(--tone-b), var(--c-surface));
+  border: 1px solid color-mix(in srgb, #cfe7ea var(--tone-a), var(--c-surface)); box-shadow: var(--shadow-1);
+}
+.think-today-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.think-today-t { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--c-primary); font-size: var(--fs-lg); font-weight: 700; }
+.think-today-t svg { width: var(--ico); height: var(--ico); flex: none; }
+.think-today-other {
+  display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 36px; margin-right: calc(-1 * var(--sp-2)); padding: 0 var(--sp-2);
+  color: var(--c-primary); font-size: var(--fs-sm); transition: opacity var(--m-state) var(--ease);
+}
+.think-today-other svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.think-today-q { position: relative; margin: var(--sp-2) 0 var(--sp-3); color: var(--c-text); font-size: var(--fs-lg); line-height: 1.6; }
+.think-today-go {
+  position: relative; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-4);
+  border-radius: var(--r-full); background: var(--c-primary); color: #fff; font-size: var(--fs-md); font-weight: 700;
+  box-shadow: var(--shadow-1); transition: opacity var(--m-state) var(--ease);
+}
+.think-today-go svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.think-today-art {
+  position: absolute; right: calc(-1 * var(--sp-2)); bottom: calc(-1 * var(--sp-1)); width: 132px; height: auto;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+}
 /* 一件ずつ：時刻の小さな行と本文。線も吹き出しの地も持たない——一枚のときと同じ字の面を、空きで分ける。
    本文は一枚のときと同じ字（16px・行の高さ 1.85・両端揃え）で、選べる。行そのものは押すものではない
    （押して薄まるのは一枚の行だけ：上の .arc-log-row:active:not(.is-chat)）。 */

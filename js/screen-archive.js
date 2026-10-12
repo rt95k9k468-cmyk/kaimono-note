@@ -1073,22 +1073,96 @@
   };
   const memoOf = (day) => String((store.dayLog(day) || {}).memo || "");
 
-  /** daily の冒頭：書く口と、問いの一覧への札。説明は書かない。 */
+  /* 今日の問い：日ごとに一つ（日付で引く。どこにもしまわない）。「別の問い」は開いているあいだだけ送る。
+     評価の言葉（tests/daily-rules.js）・できた／できないを問う言い方は入れない。 */
+  const ASKS = [
+    "「続けたい」と思えることって、今の自分にとってどんな意味があるだろう？",
+    "最近、時間を忘れていたのはどんなとき？",
+    "いま気になっていることを一つ挙げるなら？",
+    "今日、ふと目に留まったものは何だろう？",
+    "最近読んだ・聞いた言葉で、残っているものは？",
+    "もし一日だけ自由に使えるなら、何をする？",
+    "このところ、よく考えていることは何だろう？",
+    "最近「なぜだろう」と思ったことは？",
+    "今の自分が大切にしたいことは何だろう？",
+    "子どものころ好きだったことで、今も好きなものは？",
+    "最近、誰かに言われてうれしかった言葉は？",
+    "いま手放してもいいと思えるものは何だろう？",
+    "季節が変わるころに、思い出すことは？",
+    "最近、新しく知ったことは何だろう？",
+    "もっと知りたいと思っていることは？",
+    "いまの暮らしで、気に入っているところは？",
+    "最近、心が動いたのはどんな場面？",
+    "誰かに聞いてみたい問いはある？",
+    "一年前の自分に伝えたいことは？",
+    "いま読みたい本、調べたいことは？",
+    "まだうまく言葉にできていない気持ちはある？",
+    "ゆっくりできる時間があったら、何をしたい？",
+    "最近、意外だったことは？",
+    "いまの考えが変わるとしたら、何がきっかけになりそう？",
+    "好きな場所の、どんなところが好き？",
+    "最近、ありがたいと思ったことは？",
+    "やってみたいけれど、まだ始めていないことは？",
+    "今日のなかで、覚えておきたい瞬間は？",
+    "いま、何に興味が向いている？",
+    "自分らしいと感じるのは、どんなとき？",
+  ];
+  let askTurn = { day: "", n: 0 };
+  const askOf = (day) => {
+    let h = 0;
+    for (const c of String(day)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const n = askTurn.day === day ? askTurn.n : 0;
+    return ASKS[(h + n) % ASKS.length];
+  };
+
+  /** daily の冒頭：日記に書く・ノートを書く・問いから考える の三枚と、今日の問い。説明は書かない。 */
   function thinkHome(day) {
+    const canAsk = !!(KN.screens.notes && KN.screens.notes.asks);
+    const card = (cls, tone, img, a, b) => html`
+      <button type="button" class="think-card is-${tone} ${cls}">
+        <img class="think-card-art" src="img/think/${img}.webp" alt="" decoding="async" draggable="false">
+        <span class="think-card-t">${a}<wbr>${b}</span>
+        <span class="think-card-go" aria-hidden="true">${icon("chevron")}</span>
+      </button>`;
     const el = node(html`
       <div class="think-home">
-        <button type="button" class="think-write js-think-write">${icon("edit")}<span>書く</span></button>
-        ${KN.screens.notes && KN.screens.notes.asks ? html`
-        <button type="button" class="chip think-ask js-think-ask">${icon("thought")}<span>問い</span></button>` : ""}
+        <div class="think-cards">
+          ${card("js-think-write", "sea", "diary", "日記に", "書く")}
+          ${card("js-think-note", "leaf", "note", "ノートを", "書く")}
+          ${canAsk ? card("js-think-ask", "sun", "ask", "問いから", "考える") : ""}
+        </div>
+        <section class="think-today">
+          <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
+          <div class="think-today-head">
+            <span class="think-today-t">${icon("thought")}<span>今日の問い</span></span>
+            <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
+          </div>
+          <p class="think-today-q js-think-q">${askOf(day)}</p>
+          <button type="button" class="think-today-go js-think-today">${icon("edit")}<span>この問いから考える</span>${icon("chevron")}</button>
+        </section>
       </div>
     `);
+    /* 題は語の切れ目（<wbr>）でだけ折る。絵が届かない（一枚の書き出し・控えに無い）ときは、字だけの札にする。 */
+    el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => im.remove(), { once: true }));
     el.querySelector(".js-think-write").addEventListener("click", () => openPost(day, null));
+    el.querySelector(".js-think-note").addEventListener("click", () => {
+      KN.motion.fire("select");
+      if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(null);
+    });
     const ask = el.querySelector(".js-think-ask");
     if (ask) ask.addEventListener("click", () => {
       KN.motion.fire("select");
       KN.app.showScreen("notes");
       KN.screens.notes.asks();
     });
+    const q = el.querySelector(".js-think-q");
+    el.querySelector(".js-think-other").addEventListener("click", () => {
+      KN.motion.fire("select");
+      askTurn = { day, n: (askTurn.day === day ? askTurn.n : 0) + 1 };
+      q.textContent = askOf(day);
+    });
+    /* 問いは「？」の行として一件の頭に置く（ノートの「問い」の面に並ぶ）。打つまでは書かない。 */
+    el.querySelector(".js-think-today").addEventListener("click", () => openPost(day, null, `？${askOf(day)}\n`));
     return el;
   }
 
@@ -1153,7 +1227,7 @@
    * 打った先から残す（日記の紙と同じ：手が止まって 500ms、最初の一字から 3 秒まで）。
    * 直しても時刻の行は打ったときのまま。
    */
-  function openPost(day, item) {
+  function openPost(day, item, seed) {
     if (bodyBlocked()) return;
     const P = KN.diaryPosts;
     if (store.memoOut(store.dayLog(day))) { KN.ui.toast(MISSING); return; }
@@ -1169,7 +1243,7 @@
     const body = node(html`
       <div class="stack gap-4">
         <label class="field arc-memo-field">
-          <textarea class="textarea js-memo" rows="5" aria-label="日記">${fresh ? "" : item.text}</textarea>
+          <textarea class="textarea js-memo" rows="5" aria-label="日記">${fresh ? seed || "" : item.text}</textarea>
         </label>
       </div>
     `);
@@ -1275,7 +1349,8 @@
     });
     /* 新しい一件は、押した流れのまま欄へ（iOS は同期で focus しないとキーボードを出さない）。
        前からの一件は日記の紙と同じく、カーソルを終わりに置くだけ。 */
-    if (fresh) { KN.ui.focusNow(memo); return; }
+    if (fresh) KN.ui.focusNow(memo);
+    if (fresh && !seed) return;
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* 投げる端末がある */ }
   }

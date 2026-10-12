@@ -75,14 +75,34 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const blank = root.querySelector(".arc-log-row.is-today .arc-log-memo");
     return { home: !!h, first: !!(h && slide && slide.firstElementChild === h), write: h ? h.querySelector(".js-think-write").textContent.trim() : "",
       ask: !!(h && h.querySelector(".js-think-ask")), blank: blank ? blank.textContent.trim() : null,
+      cards: h ? [...h.querySelectorAll(".think-card-t")].map((x) => x.textContent.trim()) : [],
+      q: h ? (h.querySelector(".js-think-q") || {}).textContent : "",
+      arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
-  t.check("daily の冒頭に書く口", home.home && home.first && home.write === "書く", JSON.stringify(home));
+  t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・問いから考える）", home.home && home.first
+    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|問いから考える", JSON.stringify(home));
   t.check("問いの札がある", home.ask);
+  t.check("今日の問いがあり、絵が読めた", /？$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
   t.check("空の日の一行は「この日のことを書く」のまま", home.blank === "この日のことを書く", String(home.blank));
   t.check("絵文字なし", !home.emoji);
 
   /* ---- 書く口：種類を選ばずに書く紙。打った先から残る ---- */
+  /* ---- 今日の問い：「別の問い」で替わる。この問いから考える＝「？」の行を頭に置いた紙。打つまで書かない ---- */
+  {
+    const q0 = await page.textContent("#screen-archive .js-think-q");
+    await page.click("#screen-archive .js-think-other");
+    const q1 = await page.textContent("#screen-archive .js-think-q");
+    t.check("別の問いで替わる", q0 && q1 && q0 !== q1, `${q0} → ${q1}`);
+    const before0 = await memo();
+    await page.click("#screen-archive .js-think-today");
+    await sheetOpen();
+    const v = await page.evaluate(() => { const m = document.querySelector(".sheet.is-open .js-memo"); return { v: m.value, end: m.selectionStart === m.value.length }; });
+    t.check("紙の頭に「？」と問い・カーソルは終わり", v.v === `？${q1}\n` && v.end, JSON.stringify(v));
+    await closeSheet();
+    t.check("打たずに閉じれば書かない", (await memo()) === before0);
+  }
+
   await page.click("#screen-archive .js-think-write");
   await sheetOpen();
   const s1 = await page.evaluate(() => {
