@@ -28,6 +28,11 @@ const { open, checker } = require("./lib");
     await page.waitForFunction(() => !document.querySelector(".sheet.is-note.is-open"), null, { timeout: 3000 });
   };
   const openRow = async (id) => {
+    /* カードは「すべてのノート」に（③）。 */
+    if (await page.$("#screen-notes .notes-books .js-all")) {
+      await page.click("#screen-notes .notes-books .js-all");
+      await page.waitForFunction(() => !document.querySelector("#screen-notes .notes-books"));
+    }
     await page.click(`#screen-notes .note-row[data-id="${id}"] .js-open`);
     await page.waitForSelector(".sheet.is-note.is-open");
   };

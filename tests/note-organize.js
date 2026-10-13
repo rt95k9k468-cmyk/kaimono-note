@@ -6,9 +6,9 @@
    更新日は動かない・自分のノートは変わらない・二度目は何もしない／同期のファイルに head・organized。
    戻す：前の冊・親・日時へ（整理のあと中に足したノートは親の冊へ・入れ物は消す／自分のノートが中にあれば残す）。
    取り消す（取り込み）・取り込みのあと（その取り込みの分だけ・整理した親の下の新しいページは親の冊へ）。
-   画面：設定の「取り込む」→ 整理する（先に見せる・控え）→ 整理を戻す（訊く・控え）／ノートブックの面の頭に頭の
-   カード・中のページは Notion の並び・カードに頭の名前を重ねない／道すじに頭を出さない／最近直したに取り込んだ
-   まま触っていないノートを出さない。
+   画面：設定の「取り込む」→ 整理する（先に見せる・控え）→ 整理を戻す（訊く・控え）／ホームの木で冊を開くと頭の
+   中が一番上（Notion の並び）・冊の名前で頭の紙・カードに頭の名前を重ねない／道すじに頭を出さない／最近直したに
+   取り込んだまま触っていないノートを出さない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-organize.js */
 const { open, checker } = require("./lib");
@@ -131,15 +131,28 @@ function seed() {
   await page.waitForSelector("#screen-notes .notes-books");
   const recent = await page.evaluate(() => {
     const sec = [...document.querySelectorAll("#screen-notes .notes-sec")].find((e) => e.textContent.includes("最近直した"));
-    return sec ? [...sec.nextElementSibling.querySelectorAll(".note-t")].map((e) => e.textContent.trim()) : [];
+    return sec ? [...sec.nextElementSibling.querySelectorAll(".nt-name")].map((e) => e.textContent.trim()) : [];
   });
   t.check("最近直した：取り込んだまま触っていないものは出さない", recent.includes("行事") && !recent.includes("授業") && !recent.includes("肉じゃが"), recent.join());
-  await page.click('#screen-notes .notes-book.js-book:has-text("仕事")');
-  await page.waitForFunction(() => document.querySelectorAll("#screen-notes .note-row").length >= 4);
-  const cards = await page.$$eval("#screen-notes .note-row .note-t", (r) => r.map((e) => e.textContent.trim()));
-  t.check("ノートブックの面：頭のカード、続けて Notion の並び", cards.join() === "仕事,行事,授業,来年", cards.join());
+  await page.click('#screen-notes .js-book[data-nb="仕事"] .nt-twist');
+  await page.waitForSelector('#screen-notes .js-tree-note[data-id="n-gyoji"]');
+  const inTree = await page.$$eval('#screen-notes .js-book[data-nb="仕事"] ~ .nt-grp > .js-tree-note .nt-name', (r) => r.map((e) => e.textContent.trim()));
+  t.check("ホームの木：冊を開くと頭の中が一番上（Notion の並び・頭そのものは並べない）", inTree.join() === "行事,授業,来年", inTree.join());
+  await page.click('#screen-notes .js-book[data-nb="仕事"] .nt-name');
+  await page.waitForSelector(".sheet.is-note.is-open .note-kids .nt-row");
+  const headSheet = await page.evaluate(() => ({
+    title: document.querySelector(".sheet.is-note.is-open .js-title").value,
+    kids: [...document.querySelectorAll(".sheet.is-note.is-open .note-kids .nt-grp > .nt-row .nt-name")].map((e) => e.textContent.trim()),
+  }));
+  t.check("冊の名前で頭の紙（中のノートは Notion の並び）", headSheet.title === "仕事" && headSheet.kids.join() === "行事,授業,来年", JSON.stringify(headSheet));
+  await page.click(".sheet.is-note.is-open .js-close");
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note"));
+  await page.click("#screen-notes .notes-book.js-all");
+  await page.waitForSelector('#screen-notes .note-row[data-id="n-jugyo"]');
   const where = await page.$eval('#screen-notes .note-row[data-id="n-jugyo"] .note-nb', (e) => e.textContent.trim());
   t.check("カードに頭の名前を重ねない", where === "仕事", where);
+  await page.click("#head .js-notes-back");
+  await page.waitForFunction(() => !document.querySelector("#head .js-notes-back"));
   await page.evaluate(() => KN.screens.notes.open("n-kokugo"));
   await page.waitForSelector(".sheet.is-note.is-open .note-path button");
   const crumbs = await page.$$eval(".sheet.is-note .note-path button", (bs) => bs.map((b) => b.textContent.trim()));

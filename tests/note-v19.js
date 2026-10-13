@@ -33,6 +33,9 @@ const { open, checker } = require("./lib");
   };
   await write("V19 長い\n" + Array.from({ length: 80 }, (_, i) => `行 ${i + 1}`).join("\n"));
   await write("V19 短い");
+  /* カードは「すべてのノート」に（③）。 */
+  await page.click("#screen-notes .notes-books .js-all");
+  await page.waitForSelector("#screen-notes .notes-list .note-row:nth-child(2)");
   const lsBefore = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length);
 
   const first = ".notes-list .note-row";

@@ -198,6 +198,9 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
   await page.keyboard.press("Escape");
   await gone();
+  /* カードは「すべてのノート」に（③）。 */
+  await page.click("#screen-notes .notes-books .js-all");
+  await page.waitForSelector("#screen-notes .notes-list .note-row .note-t");
   const card = await page.$eval("#screen-notes .notes-list .note-row .note-t", (e) => e.textContent.trim());
   t.check("一覧の題は太字の印を外す", card === "大きな見出し", card);
 

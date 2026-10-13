@@ -526,7 +526,7 @@
     if ("notebook" in patch) {
       const nb = String(patch.notebook || "").trim();
       /* ノートブックを替える＝そのノートブックの一番上へ移す。子孫も同じ札に（段1）。 */
-      if (nb !== n.notebook) { delete n.parent; under(id).forEach((k) => { k.notebook = nb; dirty.add(k.id); }); }
+      if (nb !== n.notebook) { delete n.parent; unhead(n); under(id).forEach((k) => { k.notebook = nb; dirty.add(k.id); }); }
       n.notebook = nb;
     }
     if ("tags" in patch) n.tags = cleanTags(patch.tags);
@@ -553,6 +553,14 @@
 
   /* 表のノートの一行め：CSV の原本への参照（js/note-notion.js の build）。 */
   const TABLE = /^\[[^\]\n]*\]\(file:[0-9a-f]{64}\.csv\)$/;
+  /** 表のノート（Notion のデータベース）か。 */
+  const isTable = (n) => !!n && TABLE.test(String(n.body || "").split("\n", 1)[0]);
+  /** 頭（ノートブックの頭）を別の場所へ移したら、もう頭ではない。整理の「頭が落ちたら戻す」も外す（notes-unify.md「整理」）。 */
+  function unhead(n) {
+    if (n.head !== true) return;
+    delete n.head;
+    if (n.org && n.org.h) { const r = { ...n.org }; delete r.h; n.org = r; }
+  }
 
   /** 消していないノートの木を、その時の一枚で（画面を組むたびに一度）。
       二台が同時に移して輪になったら、輪の中で id の一番小さいノートを一番上へ（どの端末でも同じ答え。
@@ -593,7 +601,7 @@
       /** 中のノート（作った順）。 */
       kids: (id) => kids.get(id) || [],
       /** 木に並べる中のノート。表のノート（Notion のデータベース）の行は並べない（表の中で見る）。 */
-      branch: (id) => { const n = byId.get(id); return n && TABLE.test(String(n.body || "").split("\n", 1)[0]) ? [] : kids.get(id) || []; },
+      branch: (id) => (isTable(byId.get(id)) ? [] : kids.get(id) || []),
       /** ノートブックの一番上のノート（作った順）。頭があれば、頭の中のノートと、頭の外の一番上のノート。 */
       tops: (nb) => {
         const h = heads.get(nb);
@@ -620,6 +628,7 @@
     const p = to ? byId.get(to) : null;
     if (to && (!p || p.deletedAt || to === id || under(id).some((k) => k.id === to))) return false;
     const book = p ? p.notebook : String(nb == null ? n.notebook : nb).trim();
+    if (p || book !== n.notebook) unhead(n);
     if (p) n.parent = p.id; else delete n.parent;
     n.notebook = book;
     under(id).forEach((k) => { k.notebook = book; dirty.add(k.id); });
@@ -762,7 +771,7 @@
     pending: (id) => dirty.has(id),
     begin, end, versions, versionBodies, revert, merge,
     absorb, addMany, unimport, reshape, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
-    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move,
+    setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move, isTable,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 

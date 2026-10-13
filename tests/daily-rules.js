@@ -162,7 +162,8 @@ const FORBIDDEN = [
       const b = document.querySelector(`.tab[data-tab="${id}"] .tab-badge`);
       return !!b && !b.hidden && b.textContent.trim();
     };
-    return { rows: root.querySelectorAll(".note-row").length, text: root.innerText + "\n" + document.getElementById("head").innerText,
+    /* ホームの「最近直した」の行（③でカードから行に）。 */
+    return { rows: root.querySelectorAll(".notes-flat .nt-row").length, text: root.innerText + "\n" + document.getElementById("head").innerText,
       badge: badge("archive") || badge("notes") };
   });
   t.check("ノートの面が出ている（3件）", nf.rows === 3, String(nf.rows));

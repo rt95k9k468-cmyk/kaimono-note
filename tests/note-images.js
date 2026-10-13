@@ -486,6 +486,9 @@ const IMG_DB = "kaimono-note-images";
   const cards = await page.evaluate(() => [...document.querySelectorAll("#screen-notes .note-row")].map((r) => r.dataset.id));
   t.check("ノートの検索が参照の字を拾わない", cards.length === 1 && cards[0] === ids.b, cards.join(" "));
   await page.fill("#screen-notes .js-search", "");
+  /* カードは「すべてのノート」に（③）。探すのをやめるとホームへ戻る。 */
+  await page.waitForSelector("#screen-notes .notes-books .js-all", { timeout: 3000 });
+  await page.click("#screen-notes .notes-books .js-all");
   await page.waitForSelector(`#screen-notes .note-row[data-id="${ids.a}"]`, { timeout: 3000 }).catch(() => {});
   const cardA = await page.$eval(`#screen-notes .note-row[data-id="${ids.a}"]`, (r) => r.textContent).catch(() => "");
   t.check("カードの冒頭に参照の字が出ない", cardA.includes("一行目") && !cardA.includes("img:"), cardA);

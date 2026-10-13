@@ -41,3 +41,5 @@
   （`isComposing`、古い WebKit は `keyCode 229` だけ）で手順が増えたり題が閉じたりする。打つ欄には出来事で
   `enterkeyhint`（続けて書く `next`・決めて閉じる `done`・足して続ける `enter`・さがす `search`）。
   `tests/ime-enter.js`（門）が見張る。（roadmap-seamless の N5）
+- **`position: sticky` の祖先に `overflow: hidden` を置かない。** hidden の箱は送る器になり、外の器を送っても
+  留まらない。角を丸く切るだけなら `overflow: clip`（送る器にならない）。（notes-unify の「画面」）

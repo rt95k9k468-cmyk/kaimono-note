@@ -5488,19 +5488,44 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* ホーム（段1。docs/notes-unify.md「画面」）：★・最近直した・ノートブックの行。 */
+/* ホーム（段1・③。docs/notes-unify.md「画面」）：★・最近直した（行）と、ノートブックの木。白い箱に行。
+   箱は clip（hidden だと送る器になり、木の行が上に留まらない）。 */
 .notes-sec { padding: var(--sp-5) var(--sp-4) 0; }
-.notes-books { margin: var(--sp-2) var(--sp-4) 0; background: var(--c-surface); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1); overflow: hidden; }
+.notes-books { margin: var(--sp-2) var(--sp-4) 0; padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .notes-books { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
-.notes-book { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--row-h);
-  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4); font-size: var(--fs-lg); color: var(--c-text);
-  text-align: left; position: relative; transition: background var(--m-state) var(--ease); }
-.notes-book + .notes-book::before { content: ""; position: absolute; left: var(--sp-4); right: 0; top: 0; height: 1px; background: var(--c-border); }
-.notes-book:active { background: var(--press-sink); transition-delay: var(--m-press); }
-.notes-book > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notes-book > svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; color: var(--c-text-3); }
-.notes-book.js-all { font-weight: var(--fw-bold); }
+/* 木の行（ホーム・左の木・紙の中のノート。js/screen-notes.js の treeRows・bookRows）。字下げは --u 段ぶん
+   （5段目から半分ずつ）、縦の線は先祖の ▸ の真ん中に一本ずつ（行の style が background-image と位置を持つ）。 */
+.nt-row { --nt-base: 2px; --nt-step: 18px; --nt-mid: 16px; --nt-h: var(--row-h-compact);
+  --nt-line: linear-gradient(var(--c-border), var(--c-border));
+  display: flex; align-items: center; gap: var(--sp-1); width: 100%; min-height: var(--nt-h);
+  padding: 0 var(--sp-1) 0 calc(var(--nt-base) + var(--u, 0) * var(--nt-step));
+  border-radius: var(--r-sm); color: var(--c-text); font-size: var(--fs-lg); text-align: left;
+  background-repeat: no-repeat; background-size: 1px 100%;
+  transition: background-color var(--m-state) var(--ease); }
+@media (pointer: fine) { .nt-row { --nt-base: 4px; --nt-step: 16px; --nt-mid: 12px; --nt-h: 36px; font-size: var(--fs-md); } }
+.nt-row:active { background-color: var(--press-sink); transition-delay: var(--m-press); }
+.nt-row[aria-current="true"] { background-color: var(--c-primary-soft); }
+@media (hover: hover) { .nt-row:not([aria-current="true"]):hover { background-color: var(--c-surface-2); } }
+/* 開いた枝の三段までは、その枝を送るあいだ上に留まる（群 .nt-grp の中だけ）。透かさない。 */
+.nt-row.is-stick { position: sticky; top: calc(var(--d, 0) * var(--nt-h)); z-index: calc(var(--z-stick) + 3 - var(--d, 0));
+  background-color: var(--c-surface); }
+.nt-row.is-stick[aria-current="true"] { background-color: var(--c-primary-soft); }
+.nt-row.is-stick:active { background-color: var(--press-sink); }
+.nt-row.is-book, .nt-row.js-all { font-weight: var(--fw-bold); }
+.nt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-twist { width: 32px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
+@media (pointer: fine) { .nt-twist { width: 24px; height: 24px; } }
+.nt-twist svg { width: var(--ico-sm); height: var(--ico-sm); transition: rotate var(--m-state) var(--ease); }
+[aria-expanded="true"] > .nt-twist svg { rotate: 90deg; }
+.nt-row > svg, .nt-row .nb-ico svg, .nt-ico svg, .nt-add svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.nt-row > svg:last-child { color: var(--c-text-3); margin-right: var(--sp-2); }
+.nt-row .nb-ico { margin-right: var(--sp-1); }
+.nt-ico { display: inline-flex; flex: none; color: var(--c-text-3); }
+.nt-add { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
+.nt-add:active { background-color: var(--press-sink); }
+.nt-dot { margin: 0 var(--sp-2) 0 var(--sp-3); }
+.nt-dot.is-blank { visibility: hidden; }
 /* 書く紙の道すじ（題の上）と中のノート（本文の下）。 */
 .note-path { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-1); margin: 0 0 var(--sp-1);
   font-size: var(--fs-sm); color: var(--c-text-2); }
@@ -5511,8 +5536,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-path-sep { color: var(--c-text-3); }
 .note-kids:not(:empty) { margin-top: var(--sp-6); }
 .note-edit:has(.note-kids:not(:empty)) .note-view { min-height: 0; }
-.note-kids .notes-list { padding: var(--sp-2) 0 0; }
-.note-kids .note-row.is-card { box-shadow: var(--shadow-1), 0 0 0 1px var(--c-border); }
+.note-kids .nt-tree { display: flex; flex-direction: column; padding-top: var(--sp-2); margin: 0 calc(-1 * var(--sp-2)); }
 /* 移す先の紙：ノートブックの行と、その中の木。 */
 .notes-place { display: flex; flex-direction: column; }
 .notes-place-row { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: var(--row-h-compact); border-radius: var(--r-sm);
@@ -5536,18 +5560,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 @media print { .notes-tree { display: none !important; } }
 .notes-tree > [role="tree"] { display: flex; flex-direction: column; }
-.notes-tree-row { display: flex; align-items: center; gap: var(--sp-1); width: 100%; min-height: var(--row-h-compact); border-radius: var(--r-sm);
-  padding: 0 var(--sp-2) 0 calc(var(--d, 0) * var(--sp-4)); color: var(--c-text); font-size: var(--fs-md); text-align: left; }
-.notes-tree-row > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notes-tree-row > svg, .notes-tree-row .nb-ico svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
-.notes-tree-row.is-head { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary); }
-.notes-tree-row.is-book { font-weight: var(--fw-bold); margin-top: var(--sp-2); }
-.notes-tree-row[aria-current="true"] { background: var(--c-primary-soft); }
-.notes-tree-row:active { background: var(--press-sink); }
-@media (hover: hover) { .notes-tree-row:not([aria-current="true"]):hover { background: var(--c-surface); } }
-.notes-tree-twist { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
-.notes-tree-twist svg { width: var(--ico-sm); height: var(--ico-sm); transition: rotate var(--m-state) var(--ease); }
-[aria-expanded="true"] > .notes-tree-twist svg { rotate: 90deg; }
+/* 左の木の行はホームの木と同じ（.nt-row）。ここは地の上なので、押したとき・寄せたときは白。 */
+.notes-tree .nt-row { font-size: var(--fs-md); }
+.notes-tree .nt-row.is-head { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary); }
+.notes-tree .nt-grp:has(> .nt-row.is-book) { margin-top: var(--sp-2); }
+@media (hover: hover) { .notes-tree .nt-row:not([aria-current="true"]):hover { background-color: var(--c-surface); } }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
 .notes-chips { margin-top: var(--sp-2); }
 .notes-chips .chip svg,
