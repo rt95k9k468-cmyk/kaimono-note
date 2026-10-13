@@ -108,7 +108,8 @@ const t = checker("smooth");
   await page.waitForTimeout(400);
 
   /* ---- 紙の中で打っているあいだ、後ろは組み直さない ---- */
-  await page.click("#screen-archive .arc-log-row");
+  /* 時刻ごとでは、一件を直す紙は左の余白の「直す」から（吹き出しを押すと伸び縮み）。 */
+  await page.click("#screen-archive .arc-log-row .js-post-edit");
   await page.waitForSelector(".sheet.is-card .js-memo");
   await page.waitForTimeout(600);
   await page.focus(".sheet.is-card .js-memo");

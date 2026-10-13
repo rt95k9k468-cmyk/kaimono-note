@@ -3715,21 +3715,35 @@ a.btn { text-decoration: none; }
 /* 一件ずつ：小さな時刻の下に、控えめな吹き出し（10月13日・利用者の見本の C 案）。一列・左揃え・影なし・相手役なし。
    地は透かして後ろの絵を見せる（利用者の頼み）。件数が多いので backdrop-filter は掛けない（送るたびに重い）。
    コントラストを上げる環境は透かさない。本文は一枚のときと同じ字（16px・行の高さ 1.85・両端揃え）で、選べる。
-   長い一件は五行で畳み（.is-folded）、あふれたときだけ「続きを読む」（.can-more。測るのは JS の watchFold）。
-   行そのものは押すものではない（押して薄まるのは一枚の行だけ：上の .arc-log-row:active:not(.is-chat)）。 */
+   長い一件は五行で畳み（.is-folded）、長いとき（.can-more。測るのは JS の watchFold）だけ吹き出しを押すと伸び縮み。
+   直す・コピーは吹き出しの左の余白（日付の欄の幅）に縦に二つ、吹き出しの高さのまん中。吹き出しの幅は変えない。
+   一件目は日付の字の下まで下げる。行そのものは押すものではない（押して薄まるのは一枚の行だけ）。 */
 .arc-log-row.is-chat { cursor: default; }
 .arc-posts { --post-a: 58%; display: flex; flex-direction: column; gap: var(--sp-4); }
 @media (prefers-contrast: more) { .arc-posts { --post-a: 100%; } }
-.arc-post { display: flex; flex-direction: column; gap: var(--sp-1); cursor: pointer; }
+.arc-post { display: flex; flex-direction: column; gap: var(--sp-1); }
 .arc-post-at { padding-left: var(--sp-1); font-family: var(--font-num); font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .arc-post-body {
+  position: relative;
   display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1);
   padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg);
   background: color-mix(in srgb, color-mix(in srgb, var(--c-text) 5%, var(--c-surface)) var(--post-a), transparent);
   border: 1px solid color-mix(in srgb, var(--c-text) 7%, transparent);
   transition: opacity var(--m-state) var(--ease);
 }
-.arc-post:active .arc-post-body { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.arc-post.can-more .arc-post-body { cursor: pointer; }
+.arc-post.can-more .arc-post-body:active:not(:has(.arc-post-act:active)) { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.arc-post-acts {
+  position: absolute; top: 50%; translate: 0 -50%; right: calc(100% + var(--sp-4) + 1px); width: 30px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.arc-post:first-child .arc-post-acts { top: max(50%, 52px); }
+.arc-post-act {
+  width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--r-full); color: var(--c-text-3);
+  transition: opacity var(--m-state) var(--ease);
+}
+.arc-post-act svg { width: var(--ico-sm); height: var(--ico-sm); }
+.arc-post-act:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-post-text {
   align-self: stretch;
   font-size: var(--fs-lg); line-height: 1.85; color: var(--c-text); white-space: pre-wrap;
@@ -3741,8 +3755,10 @@ a.btn { text-decoration: none; }
   display: none; align-self: center; align-items: center; gap: var(--sp-1);
   min-height: 32px; padding: 0 var(--sp-2); color: var(--c-text-2); font-size: var(--fs-sm);
 }
-.arc-post-more svg { width: var(--ico-sm); height: var(--ico-sm); }
-.arc-post.is-folded.can-more .arc-post-more { display: inline-flex; }
+.arc-post-more svg { width: var(--ico-sm); height: var(--ico-sm); transition: rotate var(--m-state) var(--ease); }
+.arc-post.can-more .arc-post-more { display: inline-flex; }
+.arc-post.can-more:not(.is-folded) .arc-post-more span { display: none; }
+.arc-post.can-more:not(.is-folded) .arc-post-more svg { rotate: 180deg; }
 .arc-post.is-blank .arc-post-text { color: var(--c-text-3); }
 .arc-log-row.is-chat .js-times { cursor: pointer; align-self: flex-start; transition: opacity var(--m-state) var(--ease); }
 .arc-log-row.is-chat .js-times:active { opacity: var(--press-fade); transition-delay: var(--m-press); }

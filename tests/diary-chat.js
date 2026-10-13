@@ -1,7 +1,8 @@
 /* 思考のホーム・時刻ごとの日記（docs/thinking.md）。
    - 本文は一つの文字のまま：一件は「このアプリが書いた時刻の行」（見えない印 U+2060 つき）から。
      印の無い時刻の行（前からの本文・取り込んだ本文・10月12〜13日の版の一件）は分けず、一字も変わらない
-   - 一件は吹き出し。長い一件は五行で畳み、「続きを読む」でその場で開く（押しても書く紙は開かない）
+   - 一件は吹き出し。長い一件は五行で畳み、押すと伸び縮み（書く紙は開かない）。直す・コピーは左の余白のボタン
+     （日付と育休の行だけの頭には出さない）
    - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
    - daily の冒頭に書く口と問いの札。＋も書く口も、種類を選ばずに書く紙（新しい一件）
    - 打った先から残る（時刻は打ち始めた時）。直しても時刻の行は変わらない。空にすると外れ、元に戻せる
@@ -163,7 +164,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("二件目は終わりに", m2.endsWith(tag("\n\n12:34\n一件目の字\n\n12:34\n二件目の字")), JSON.stringify(m2));
 
   /* ---- 一件を直す：時刻の行もほかの一件も変わらない ---- */
-  await page.click("#screen-archive .arc-post:nth-child(2)");
+  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
   await sheetOpen();
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
@@ -183,13 +184,13 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const odd = tag("前からの地の文。\n\n\n12:00\n\n空行のある一件\n\n\n13:00\nもう一件");
   await setMemo(odd);
   await page.waitForTimeout(300);
-  await page.click("#screen-archive .arc-post:nth-child(2)");
+  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
   await sheetOpen();
   await closeSheet();
   t.check("開いて閉じただけなら一字も変わらない", (await memo()) === odd, JSON.stringify(await memo()));
 
   /* ---- 空にして閉じると外れる → 元に戻す ---- */
-  await page.click("#screen-archive .arc-post:nth-child(2)");
+  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
   await sheetOpen();
   await page.fill(".sheet.is-open .js-memo", "");
   await page.dispatchEvent(".sheet.is-open .js-memo", "input");
@@ -201,7 +202,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("元に戻すで戻る", undo && (await memo()) === odd, JSON.stringify(await memo()));
 
   /* ---- 「消す」（⋯） ---- */
-  await page.click("#screen-archive .arc-post:nth-child(3)");
+  await page.click("#screen-archive .arc-post:nth-child(3) .js-post-edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "消す" }).click();
@@ -229,7 +230,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- ノートへ移す：新しいノート ---- */
   await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
-  await page.click("#screen-archive .arc-post:nth-child(2)");
+  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "ノートへ移す" }).click();
@@ -265,7 +266,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return n.id;
   });
   await page.evaluate(() => KN.notes.flush());
-  await page.click("#screen-archive .arc-post:nth-child(3)");
+  await page.click("#screen-archive .arc-post:nth-child(3) .js-post-edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "ノートへ移す" }).click();
@@ -284,7 +285,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     wake: !!document.querySelector(".sheet.is-open .js-wake"), v: document.querySelector(".sheet.is-open .js-memo").value }));
   t.check("起床・就寝の行を押すと一枚の紙（時刻の欄・本文ぜんぶ）", / の log/.test(viaTimes.t) && viaTimes.wake && viaTimes.v === base, JSON.stringify(viaTimes));
   await closeSheet();
-  await page.click("#screen-archive .arc-post:nth-child(2)");
+  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "一枚で開く" }).click();
@@ -311,7 +312,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await setMemo(base);
   await page.waitForTimeout(200);
 
-  /* ---- 吹き出し：長い一件は五行で畳み、「続きを読む」でその場で開く ---- */
+  /* ---- 吹き出し：長い一件は五行で畳み、押すと伸び縮み。直す・コピーは左の余白のボタン ---- */
   const long = "長い一件の字です。".repeat(80);
   await setMemo(tag(`2026.10.06（火）\n\n08:00\n短い一件\n\n12:34\n${long}`));
   await page.waitForTimeout(400);
@@ -333,6 +334,40 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.evaluate((d) => KN.store.setDayLog(d, { wake: "06:10" }), day);
   await page.waitForTimeout(300);
   t.check("組み直しても開いたまま", await page.evaluate(() => !document.querySelector("#screen-archive .arc-post:nth-child(3)").classList.contains("is-folded")));
+  const tapState = () => page.evaluate(() => ({ sheet: !!document.querySelector(".sheet.is-open"),
+    folded: [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => p.classList.contains("is-folded")) }));
+  await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-text");
+  await page.waitForTimeout(200);
+  const tap1 = await tapState();
+  t.check("長い吹き出しを押すと縮む（書く紙は開かない）", !tap1.sheet && tap1.folded[2] === true, JSON.stringify(tap1));
+  await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-text");
+  await page.waitForTimeout(200);
+  const tap2 = await tapState();
+  t.check("もう一度押すと伸びる", !tap2.sheet && tap2.folded[2] === false, JSON.stringify(tap2));
+  await page.click("#screen-archive .arc-post:nth-child(2) .arc-post-text");
+  await page.waitForTimeout(200);
+  const tap3 = await tapState();
+  t.check("短い吹き出しは押しても何も起きない", !tap3.sheet && tap3.folded[1] === false, JSON.stringify(tap3));
+  const acts = await page.evaluate(() => {
+    const ps = [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")];
+    const posts = document.querySelector("#screen-archive .arc-log-row.is-chat .arc-posts").getBoundingClientRect();
+    const day = document.querySelector("#screen-archive .arc-log-row.is-chat .arc-log-day").getBoundingClientRect();
+    return ps.map((p) => {
+      const a = p.querySelector(".arc-post-acts"), b = p.querySelector(".arc-post-body").getBoundingClientRect();
+      const r = a && a.getBoundingClientRect();
+      return { has: !!a, wide: Math.abs(b.width - posts.width) < 1, gutter: !r || (r.right <= b.left && r.left >= day.left - 1 && r.top >= day.bottom - 1) };
+    });
+  });
+  t.check("日付と育休の行だけの頭には、直す・コピーのボタンが無い", !acts[0].has && acts[1].has && acts[2].has, JSON.stringify(acts));
+  t.check("ボタンは左の余白に（吹き出しの幅は変えない・日付の字の下）", acts.every((a) => a.wide && a.gutter), JSON.stringify(acts));
+  const one = await page.evaluate(async () => {
+    let got = null;
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (s) => { got = s; return Promise.resolve(); } } });
+    document.querySelector("#screen-archive .arc-post:nth-child(2) .js-post-copy").click();
+    await new Promise((r) => setTimeout(r, 200));
+    return got;
+  });
+  t.check("コピーはその一件の字だけ", one === "短い一件", JSON.stringify(one));
 
   /* ---- 前からの本文・取り込んだ本文は分けない ---- */
   const imported = "2025.03.02（日）\n\n08:30\n起きた。\n\n\n１２：００\n昼。\n\n10/12 08:52\n前の版の一件\n" + "長い段落".repeat(60);
@@ -340,7 +375,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.waitForTimeout(300);
   const ip = await posts();
   t.check("印の無い時刻の行は分けず、時刻なしの吹き出し一つ", ip.length === 1 && ip[0].at === null && ip[0].text === imported, JSON.stringify(ip.map((x) => x.at)));
-  await page.click("#screen-archive .arc-post:nth-child(1) .arc-post-text");
+  await page.click("#screen-archive .arc-post:nth-child(1) .js-post-edit");
   await sheetOpen();
   await closeSheet();
   t.check("開いて閉じても一字も変わらない", (await memo()) === imported);

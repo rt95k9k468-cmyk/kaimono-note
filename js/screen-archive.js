@@ -1171,23 +1171,38 @@
     return el;
   }
 
-  /* 長い一件は五行で畳み、「続きを読む」でその場で開く。畳むかどうかは置かれてから測る（隣の日の紙は
-     document の外で組むので、組んだときには測れない）。見張りは行ごと（捨てた行と一緒に消える）。
-     開いた一件は覚えておき、組み直しても開いたまま。 */
+  /* 長い一件は五行で畳み、吹き出しを押すと伸びる・もう一度で縮む（10月13日・利用者）。直す・コピーは左の余白の
+     ボタンで（押す先が被らないように）。畳むかどうかは置かれてから測る（隣の日の紙は document の外で組むので、
+     組んだときには測れない）。見張りは行ごと（捨てた行と一緒に消える）。開いた一件は覚えておき、組み直しても
+     開いたまま——測るまでは畳んでおき、長いと分かってから開く（短い一件に「縮む」が出ないように）。 */
   const postOpen = new Set();
-  function watchFold(texts) {
-    if (!texts.length) return;
-    if (typeof ResizeObserver !== "function") { texts.forEach((t) => t.closest(".arc-post").classList.remove("is-folded")); return; }
+  function watchFold(posts) {
+    if (!posts.length) return;
+    if (typeof ResizeObserver !== "function") { posts.forEach((p) => p.classList.remove("is-folded")); return; }
     const ro = new ResizeObserver((list) => {
       /* 測るのはまとめて先に、書くのはあと（traps の「測るのは書く前に」）。 */
       const seen = list.filter((e) => e.target.clientWidth > 0)
         .map((e) => [e.target, e.target.scrollHeight > e.target.clientHeight + 1]);
-      seen.forEach(([t, more]) => { ro.unobserve(t); t.closest(".arc-post").classList.toggle("can-more", more); });
+      seen.forEach(([t, long]) => {
+        ro.unobserve(t);
+        const p = t.closest(".arc-post");
+        p.classList.toggle("can-more", long);
+        if (!long || postOpen.has(p.dataset.key)) setFold(p, false);
+      });
     });
-    texts.forEach((t) => ro.observe(t));
+    posts.forEach((p) => ro.observe(p.querySelector(".arc-post-text")));
   }
+  function setFold(p, folded) {
+    p.classList.toggle("is-folded", folded);
+    const more = p.querySelector(".arc-post-more");
+    if (more) { more.setAttribute("aria-expanded", String(!folded)); more.setAttribute("aria-label", folded ? "続きを読む" : "たたむ"); }
+    if (folded) postOpen.delete(p.dataset.key); else if (p.classList.contains("can-more")) postOpen.add(p.dataset.key);
+  }
+  /* 頭が日付と育休の行だけ（日記の下書きの字）なら、直す・コピーのボタンは出さない（直す要が無い）。 */
+  const stampOnly = (text) => String(text).split("\n").every((l) => !l.trim()
+    || /^\d{4}\.\d{1,2}\.\d{1,2}（[日月火水木金土]）$/.test(l.trim()) || /^育休完了まであと\d+日$/.test(l.trim()));
 
-  /** 時刻ごとの日記の行。一件ずつ押せば、その一件を直す紙。本文の字は足し引きせず、切って並べるだけ。 */
+  /** 時刻ごとの日記の行。本文の字は足し引きせず、切って並べるだけ。 */
   function chatRow(d) {
     const dt = U.dayDate(d.date);
     const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
@@ -1200,10 +1215,13 @@
         </span>
         <span class="arc-log-text">
           <span class="arc-posts">${items.length ? items.map((x, k) => html`
-            <span class="arc-post ${x.mark ? "" : "is-head"} ${postOpen.has(`${d.date}|${x.start}`) ? "" : "is-folded"}" data-k="${k}"
+            <span class="arc-post is-folded ${x.mark ? "" : "is-head"}" data-k="${k}" data-key="${d.date}|${x.start}"
               >${x.mark ? html`<span class="arc-post-at">${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-body"
-                ><span class="arc-post-text" role="button" tabindex="0">${x.text}</span
-                ><button type="button" class="arc-post-more">${icon("chevron-down")}<span>続きを読む</span></button></span></span>`)
+                >${!x.mark && stampOnly(x.text) ? "" : html`<span class="arc-post-acts"
+                  ><button type="button" class="arc-post-act js-post-edit" aria-label="直す">${icon("edit")}</button
+                  ><button type="button" class="arc-post-act js-post-copy" aria-label="コピー">${icon("copy")}</button></span>`
+                }<span class="arc-post-text">${x.text}</span
+                ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="続きを読む">${icon("chevron-down")}<span>続きを読む</span></button></span></span>`)
             : html`<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
           ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
               S().showDayTimes === false ? "" : html`
@@ -1225,32 +1243,44 @@
         openLogSheet(d.date);
       });
     }
+    /* 選んでいるあいだは押したことにしない（選んだそばから選択が消えないように）。 */
+    const selecting = (el) => {
+      const sel = window.getSelection && window.getSelection();
+      return !!(sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode));
+    };
     row.querySelectorAll(".arc-post").forEach((el) => {
       const k = Number(el.dataset.k);
-      const go = () => openPost(d.date, k < 0 ? null : items[k]);
-      const text = el.querySelector(".arc-post-text");
-      const more = el.querySelector(".arc-post-more");
-      if (more) {
-        more.addEventListener("click", (e) => {
-          e.stopPropagation();
-          postOpen.add(`${d.date}|${items[k].start}`);
-          el.classList.remove("is-folded", "can-more");
-          text.focus({ preventScroll: true });
-        });
+      const body = el.querySelector(".arc-post-body");
+      if (k < 0) {
+        const text = el.querySelector(".arc-post-text");
+        const go = () => openPost(d.date, null);
+        text.addEventListener("click", go);
+        text.addEventListener("keydown", (e) => { if (!KN.util.isEnter(e) && e.key !== " ") return; e.preventDefault(); go(); });
+        return;
       }
-      /* 選んでいるあいだは開かない（一枚の行と同じ。選んだそばから選択が消えないように）。 */
-      el.addEventListener("click", () => {
-        const sel = window.getSelection && window.getSelection();
-        if (sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode)) return;
-        go();
+      const x = items[k];
+      const edit = el.querySelector(".js-post-edit");
+      if (edit) edit.addEventListener("click", (e) => { e.stopPropagation(); openPost(d.date, x); });
+      const copy = el.querySelector(".js-post-copy");
+      if (copy) copy.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (bodyBlocked()) return;
+        copyText(x.text).then((ok) => {
+          KN.motion.fire("select");
+          KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
+        });
       });
-      text.addEventListener("keydown", (e) => {
-        if (!KN.util.isEnter(e) && e.key !== " ") return;
-        e.preventDefault();
-        go();
+      /* 長い一件だけ、押すと伸び縮み（「続きを読む」も同じ。キーで押せるのはこちら）。 */
+      el.querySelector(".arc-post-more").addEventListener("click", (e) => {
+        e.stopPropagation();
+        setFold(el, !el.classList.contains("is-folded"));
+      });
+      body.addEventListener("click", () => {
+        if (!el.classList.contains("can-more") || selecting(el)) return;
+        setFold(el, !el.classList.contains("is-folded"));
       });
     });
-    watchFold([...row.querySelectorAll(".arc-post.is-folded .arc-post-text")]);
+    watchFold([...row.querySelectorAll(".arc-post.is-folded")]);
     return row;
   }
 
