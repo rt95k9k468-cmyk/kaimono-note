@@ -950,7 +950,7 @@
         e.preventDefault();
         KN.motion.fire("select");
         const to = N().get(link.dataset.note);
-        if (!to || to.deletedAt) { KN.ui.toast("ノートが見つかりません"); return; }
+        if (!to || to.deletedAt) { KN.ui.toast("ノートが見つかりませんでした"); return; }
         sync();
         toNote(to.id);
         return;
