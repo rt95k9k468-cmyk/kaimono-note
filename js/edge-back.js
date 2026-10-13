@@ -149,6 +149,7 @@
       const edge = o.edge == null ? EDGE : o.edge;
       if (e.clientX - box.left > edge) return;
       if (edge > EDGE && sidesOf(e.target, host)) return;
+      if (KN.util.selecting(e)) return;      // 字を選んでいる指は戻る指ではない
       w = box.width;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       lastT = performance.now(); lastX = e.clientX; vx = 0;
@@ -156,6 +157,7 @@
 
     host.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
+      if (KN.util.selecting(e)) { abort(); return; }   // 選びはじめたら元へ
       const mx = e.clientX - x0, my = e.clientY - y0;
       if (!axis) {
         if (Math.abs(mx) < AXIS && Math.abs(my) < AXIS) return;
@@ -184,6 +186,7 @@
 
     const end = (e) => {
       if (e.pointerId !== id) return;
+      if (KN.util.selecting(e)) { abort(); return; }
       const wasX = axis === "x";
       const moved = dx;
       const fling = vx > FLING_V && moved >= FLING_MIN;
@@ -196,11 +199,16 @@
     host.addEventListener("pointerup", end);
     host.addEventListener("pointercancel", (e) => {
       if (e.pointerId !== id) return;
+      abort();
+    });
+
+    /** この指をやめて、元の位置へ戻します（取られた・字を選びはじめた）。 */
+    function abort() {
       const wasX = axis === "x";
       id = null; axis = null;
       if (!wasX || !live) return;
       finish(false);
-    });
+    }
   }
 
   /** 指を使わずに、押して一段動かすとき（「›」と戻るボタン）。

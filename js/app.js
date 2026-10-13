@@ -1881,11 +1881,7 @@
 
       選択が残っているあいだは、その指は払いではありません。 */
   function isSelectingText() {
-    const a = document.activeElement;
-    if (a && typeof a.selectionStart === "number"
-        && a.selectionStart !== a.selectionEnd) return true;
-    const sel = window.getSelection && window.getSelection();
-    return !!(sel && sel.rangeCount && !sel.isCollapsed);
+    return KN.util.selecting();
   }
 
   function dismissKeyboardOnSwipeDown() {

@@ -514,6 +514,8 @@
       if (o.busy && o.busy()) return;
       // 中の書ける欄は、書けるままにします。
       if (e.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      // 字を選んでいる指は、払いではありません（KN.util.selecting）。
+      if (KN.util.selecting(e)) return;
       if (o.ignore && e.target.closest(o.ignore)) return;
       pageW = viewport.getBoundingClientRect().width;
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; mx = 0; axis = null;
@@ -522,6 +524,8 @@
 
     surface.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
+      // 途中で字を選びはじめたら、送りかけた紙も元へ戻します。
+      if (KN.util.selecting(e)) { abort(); return; }
       /* mx は、滑っている最中に掴み直したとき `regrab` が引き直します
          ——引き直した位置を、同じ一回の中で古い値が上書きしないこと
          （実測：160px 跳んだ）。 */
@@ -574,6 +578,7 @@
 
     const end = (e) => {
       if (e.pointerId !== id) return;
+      if (KN.util.selecting(e)) { abort(); return; }
       const wasX = axis === "x";
       const moved = mx, v = velocity(e.timeStamp);
       id = null; axis = null;
@@ -636,14 +641,18 @@
     }, true);
 
     surface.addEventListener("pointerup", end);
-    surface.addEventListener("pointercancel", (e) => {
-      if (e.pointerId !== id) return;
+    /** この指をやめて、紙を元の位置へ戻します（取られた・字を選びはじめた）。 */
+    function abort() {
       const wasX = axis === "x";
       id = null; axis = null;
       unpaint();
       if (!wasX) return;
       if (nudge) home(0);
       else back(0);
+    }
+    surface.addEventListener("pointercancel", (e) => {
+      if (e.pointerId !== id) return;
+      abort();
     });
 
     /* 組み上がったこの拍では、まだ画面が出そろっていないことがあります

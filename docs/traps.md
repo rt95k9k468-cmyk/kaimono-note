@@ -22,6 +22,9 @@
 - **設定の画面が出ているあいだ、`KN.ui.sheet` は紙ではなく一枚を押しのける**
   （`as: "dialog"` などは紙のまま）。（settings）
 - **`.tl` は二つの別物。** 長期タスクから時間割への落とし先は `.tl-list`。（todo-timeline）
+- **選んでいる指は送らない。** 払う・引く・送るの身ぶりは、置いたときと動くたび・離すときに
+  `KN.util.selecting(e)` を見て、true なら始めない・送りかけたものは元へ戻す（字の選択・取っ手・
+  カーソルを持った打つ欄）。新しい身ぶりも同じ判定を通す。（calendar-swipe）
 - **払う・引くの隣の紙は DOM に居ない**（控えは `document` の外）。`.cal-day` /
   `.tl-sheet` / `.js-now` のように複数の画面にあるものは、出ている画面に絞って
   掴む。（calendar-swipe・todo-timeline）

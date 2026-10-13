@@ -361,6 +361,7 @@
          ——読んでいて下を見ようとするたびに暦が伸びてきます。掴み手は
          そのぶん広く取ってあります（見えている棒は5px、掴めるのは29px）。 */
       if (!byGrip) return;
+      if (KN.util.selecting(e)) return;      // 字を選んでいる指は引く指ではない
       pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
       p0 = at(o); p = p0;
       lastT = performance.now(); lastY = e.clientY; vy = 0;
@@ -372,8 +373,16 @@
       if (byGrip) { try { el.setPointerCapture(pid); } catch (_) { /* だめでも続けます */ } }
     }, { passive: true });
 
+    /* 字を選びはじめた指は、出ていた段へ戻して放します。 */
+    const abort = () => {
+      const was = on, mm = m, pp = p, from = p0, sp = span;
+      drop();
+      if (was) settle(o, mm, from, { v: 0, span: sp, from: pp });
+    };
+
     el.addEventListener("pointermove", (e) => {
       if (!live || e.pointerId !== pid) return;
+      if (KN.util.selecting(e)) { abort(); return; }
       if (o.busy && o.busy()) { if (on) settle(o, m, p0 === 1); drop(); return; }
       const dy = e.clientY - y0, dx = e.clientX - x0;
       if (!on) {
@@ -409,6 +418,7 @@
 
     const up = (e) => {
       if (!live || e.pointerId !== pid) return;
+      if (KN.util.selecting(e)) { abort(); return; }
       const was = on, mm = m, pp = p, from = p0, a = lo, b = hi;
       const v = vy, sp = span, dy = e.clientY - y0;
       drop();

@@ -1108,7 +1108,8 @@
     [head, handleBar].forEach((zone) => {
       if (!zone) return;
       zone.addEventListener("touchstart", (e) => {
-        if (!isBottomSheet()) { startY = null; return; }
+        // 字を選んでいる指は払いではない（KN.util.selecting）。
+        if (!isBottomSheet() || KN.util.selecting(e)) { startY = null; return; }
         startY = e.touches[0].clientY;
         dy = 0; lastT = performance.now(); lastY = startY; vy = 0;
         el.style.transition = "none";          // ① 指につかせる
@@ -1116,6 +1117,7 @@
 
       zone.addEventListener("touchmove", (e) => {
         if (startY == null) return;
+        if (KN.util.selecting(e)) { release(false); return; }   // 選びはじめたら戻す
         follow(e.touches[0].clientY);
       }, { passive: true });
 
@@ -1133,11 +1135,13 @@
       body.addEventListener("touchstart", (e) => {
         p0 = null;
         if (e.touches.length !== 1 || !isBottomSheet() || !opts.pull()) return;
+        if (KN.util.selecting(e)) return;
         if (body.scrollTop > 0) return;
         p0 = e.touches[0].clientY; px0 = e.touches[0].clientX;
       }, { passive: true });
       body.addEventListener("touchmove", (e) => {
         if (p0 == null) return;
+        if (KN.util.selecting(e)) { p0 = null; release(false); return; }
         const y = e.touches[0].clientY;
         if (startY == null) {
           const my = y - p0, mx = e.touches[0].clientX - px0;
@@ -2471,6 +2475,7 @@
 
     card.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (KN.util.selecting(e)) return;      // 字を選んでいる指は払いではない
       pointerId = e.pointerId;
       startX = e.clientX;
       startY = e.clientY;
@@ -2485,6 +2490,8 @@
       // Held still long enough to lift the row out of the list — from there the
       // gesture belongs to the reorder.
       if (KN.reorder && KN.reorder.isActive && KN.reorder.isActive()) return;
+      // 字を選びはじめたら、何もせずに戻します。
+      if (KN.util.selecting(e)) { armed = false; finish(e); return; }
       const mx = e.clientX - startX;
       const my = e.clientY - startY;
 
@@ -2516,6 +2523,7 @@
 
     const finish = (e) => {
       if (e.pointerId !== pointerId) return;
+      if (KN.util.selecting(e)) armed = false;
       pointerId = null;
       if (!dragging) return;
 

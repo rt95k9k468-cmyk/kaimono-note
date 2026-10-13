@@ -805,6 +805,32 @@
     return isFinite(out) ? out : null;
   }
 
+  /* ---------- 選んでいる指 ---------- */
+
+  const TEXT_FIELD = "textarea, [contenteditable]:not([contenteditable='false']), input:not([type=checkbox])"
+    + ":not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file])"
+    + ":not([type=range]):not([type=color])";
+
+  /**
+   * いま、文字を選んでいる指か。払う・引く・送るは、これが true なら始めない・
+   * 動きだしていても元へ戻す（docs/traps.md「選んでいる指は送らない」）。
+   * 選択の取っ手を動かしているあいだは選択が空にならないので、`isCollapsed` で拾える。
+   * マウスで引けば字が選ばれるのはふつうなので、マウスは置いた瞬間の選択だけを見る。
+   * @param {Event} [e] 指の出来事。置いた出来事（pointerdown・touchstart）の target が
+   *   カーソルを持っている打つ欄の中なら、それだけで true（欄の中のカーソル送りも選択と同じ。
+   *   カーソルの無い欄の上からの払いは、ふつうの払い——ノートの紙は中身から引いて閉じる）
+   */
+  function selecting(e) {
+    const a = document.activeElement;
+    const start = !!e && (e.type === "pointerdown" || e.type === "touchstart");
+    const field = start && e.target && e.target.closest ? e.target.closest(TEXT_FIELD) : null;
+    if (field && a && field.contains(a)) return true;
+    if (e && e.pointerType === "mouse" && !start) return false;
+    if (a && typeof a.selectionStart === "number" && a.selectionStart !== a.selectionEnd) return true;
+    const sel = window.getSelection && window.getSelection();
+    return !!(sel && sel.rangeCount && !sel.isCollapsed);
+  }
+
   /* ---------- feedback ---------- */
 
   function haptic(ms) {
@@ -873,6 +899,6 @@
     slideWeek, otherWeek,
     perItemPrice, formatSize, UNITS, COUNTED_UNITS, isCounted,
     calc, isExpression,
-    icon, haptic, copy, isEnter,
+    icon, haptic, copy, isEnter, selecting,
   };
 })();

@@ -197,6 +197,7 @@
       if (o.busy && o.busy()) return;
       // 矢印はボタンです。押せるままにします。
       if (e.target.closest && e.target.closest("button.cal-arrow, button.cal-more")) return;
+      if (KN.util.selecting(e)) return;      // 字を選んでいる指は払いではない
       id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; axis = null;
       lastT = performance.now(); lastX = e.clientX; vx = 0;
       grid.style.transition = "";
@@ -204,6 +205,7 @@
 
     sec.addEventListener("pointermove", (e) => {
       if (e.pointerId !== id) return;
+      if (KN.util.selecting(e)) { abort(); return; }   // 選びはじめたら元へ
       const mx = e.clientX - x0, my = e.clientY - y0;
       if (!axis) {
         if (Math.abs(mx) < AXIS_LOCK && Math.abs(my) < AXIS_LOCK) return;
@@ -232,6 +234,7 @@
 
     const end = async (e) => {
       if (e.pointerId !== id) return;
+      if (KN.util.selecting(e)) { abort(); return; }
       const wasX = axis === "x";
       const moved = dx;
       id = null; axis = null;
@@ -263,13 +266,17 @@
     };
 
     sec.addEventListener("pointerup", end);
-    sec.addEventListener("pointercancel", (e) => {
-      if (e.pointerId !== id) return;
+    /** この指をやめて、元の位置へ戻します（取られた・字を選びはじめた）。 */
+    function abort() {
       const wasX = axis === "x";
       id = null; axis = null;
-      if (!wasX) return;
+      if (!wasX) { if (track) unmount(); return; }
       if (track) { settle(1).then(unmount); return; }
       resetMonth();
+    }
+    sec.addEventListener("pointercancel", (e) => {
+      if (e.pointerId !== id) return;
+      abort();
     });
   }
 

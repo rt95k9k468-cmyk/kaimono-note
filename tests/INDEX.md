@@ -176,3 +176,4 @@
 | `asks.js` | 問い・種・読んだところ（docs/thinking.md）：「？」で始まる行（ノート・日記）とタグ「問い」のノートの一覧・元のノートのその行へ／その日の daily へ・daily を伏せたら日記の問いは引かない・問いの行の色・タグの小窓に種と問い・「⋯」の読んだところ（種をまくは外した） |
 | `note-notion.js` | ノートの取り込み：Notion の zip（notes-unify.md 段3）：zip の中の zip・deflate と無圧縮・壊れた zip／フォルダ → 親子・key は32字／CSV → 表のノート（_all.csv・引用符・改行）・行のページはその子／中のリンク（相対・notion.so）→ note:・外は字のまま・無いものは字だけ／画像・PDF は入れ物へ・ほかの添付は名前の行／字下げ4→2・aside・details／先に見せる紙 → 控え → 取り込む（ノートブック Notion・日付は取り込んだ時刻より前・親が先）／二度目は飛ばす／取り消す |
 | `note-import-files.js` | ノートの取り込み：原本・PDF の字・imports/（notes-unify.md 段3）：画像の行のすぐ下に原本の行（files/<SHA>.png・中身のまま）・読む姿で畳む・押すと原本・冒頭に出さない／PDF の字を pdf.js で一度（meta ft:・検索に当たる）・files/<id>.txt を送る・取る／Notion の表の CSV を files/ へ（BOM のまま）／imports/<日>/ へ（32MB を超えると分けて送る・同じ名前は番号） |
+| `select-no-swipe.js` | 字を選んでいる指は送らない（KN.util.selecting）：吹き出しを選んだまま払っても日は動かない・払いの途中で選ぶと元へ戻る・カーソルを持った欄から払っても動かない・解けば払える・暦の週も同じ |

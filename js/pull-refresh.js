@@ -120,6 +120,7 @@
     armed = engaged = false;
     edge = null;
     if (e.touches.length !== 1 || blocked()) return;
+    if (KN.util.selecting(e)) return;        // 字を選んでいる指は引く指ではない
 
     /* **測るのは「実際に送っている器」です。**
 
@@ -161,6 +162,8 @@
     /* 道で連れを持ち上げた指も同じ（day-road.js の段8）。持ち上がるのは指を
        置いてから 0.38秒後なので、ここでも見る。 */
     if (KN.dayRoad && KN.dayRoad.carrying()) { armed = false; return; }
+    // 字を選びはじめたら、伸ばしかけた帯も戻します。
+    if (KN.util.selecting(e)) { onEnd(); return; }
     const t = e.touches[0];
     const dy = t.clientY - startY;
     const dx = t.clientX - startX;
