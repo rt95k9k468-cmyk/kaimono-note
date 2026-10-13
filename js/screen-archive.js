@@ -1173,18 +1173,20 @@
     return el;
   }
 
-  /* 長い一件は五行で畳み、吹き出しを押すと伸びる・もう一度で縮む（10月13日・利用者）。直す・コピーは左の余白の
+  /* 長い一件は頭の三行と終わりの三行だけ見せて畳み（どこまで書いたかがすぐ読めるように）、吹き出しを押すと
+     伸びる・もう一度で縮む（10月13日・利用者）。終わりの三行は同じ字の写し（.arc-post-tail。読み上げない）。直す・コピーは左の余白の
      ボタンで（押す先が被らないように）。畳むかどうかは置かれてから測る（隣の日の紙は document の外で組むので、
      組んだときには測れない）。見張りは行ごと（捨てた行と一緒に消える）。開いた一件は覚えておき、組み直しても
      開いたまま——測るまでは畳んでおき、長いと分かってから開く（短い一件に「縮む」が出ないように）。 */
   const postOpen = new Set();
+  const FOLD_OVER = 8; /* 畳むのは八行より長いときだけ（隠すのが二行以下なら畳まない） */
   function watchFold(posts) {
     if (!posts.length) return;
     if (typeof ResizeObserver !== "function") { posts.forEach((p) => p.classList.remove("is-folded")); return; }
     const ro = new ResizeObserver((list) => {
       /* 測るのはまとめて先に、書くのはあと（traps の「測るのは書く前に」）。 */
       const seen = list.filter((e) => e.target.clientWidth > 0)
-        .map((e) => [e.target, e.target.scrollHeight > e.target.clientHeight + 1]);
+        .map((e) => [e.target, e.target.scrollHeight > e.target.clientHeight * FOLD_OVER / 3 + 1]);
       seen.forEach(([t, long]) => {
         ro.unobserve(t);
         const p = t.closest(".arc-post");
@@ -1197,7 +1199,7 @@
   function setFold(p, folded) {
     p.classList.toggle("is-folded", folded);
     const more = p.querySelector(".arc-post-more");
-    if (more) { more.setAttribute("aria-expanded", String(!folded)); more.setAttribute("aria-label", folded ? "続きを読む" : "たたむ"); }
+    if (more) { more.setAttribute("aria-expanded", String(!folded)); more.setAttribute("aria-label", folded ? "全文を読む" : "たたむ"); }
     if (folded) postOpen.delete(p.dataset.key); else if (p.classList.contains("can-more")) postOpen.add(p.dataset.key);
   }
   /* 頭が日付と育休の行だけ（日記の下書きの字）なら、直す・コピーのボタンは出さない（直す要が無い）。 */
@@ -1223,7 +1225,8 @@
                   ><button type="button" class="arc-post-act js-post-edit" aria-label="直す">${icon("edit")}</button
                   ><button type="button" class="arc-post-act js-post-copy" aria-label="コピー">${icon("copy")}</button></span>`
                 }<span class="arc-post-text">${x.text}</span
-                ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="続きを読む">${icon("chevron-down")}<span>続きを読む</span></button></span></span>`)
+                ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="全文を読む">${icon("chevron-down")}<span>全文を読む</span></button
+                ><span class="arc-post-tail" aria-hidden="true">${x.text}</span></span></span>`)
             : html`<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
           ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
               S().showDayTimes === false ? "" : html`
@@ -1272,7 +1275,7 @@
           KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
         });
       });
-      /* 長い一件だけ、押すと伸び縮み（「続きを読む」も同じ。キーで押せるのはこちら）。 */
+      /* 長い一件だけ、押すと伸び縮み（「全文を読む」も同じ。キーで押せるのはこちら）。 */
       el.querySelector(".arc-post-more").addEventListener("click", (e) => {
         e.stopPropagation();
         setFold(el, !el.classList.contains("is-folded"));

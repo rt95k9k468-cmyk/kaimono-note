@@ -3715,7 +3715,8 @@ a.btn { text-decoration: none; }
 /* 一件ずつ：小さな時刻の下に、控えめな吹き出し（10月13日・利用者の見本の C 案）。一列・左揃え・影なし・相手役なし。
    地は透かして後ろの絵を見せる（利用者の頼み）。件数が多いので backdrop-filter は掛けない（送るたびに重い）。
    コントラストを上げる環境は透かさない。本文は一枚のときと同じ字（16px・行の高さ 1.85・両端揃え）で、選べる。
-   長い一件は五行で畳み（.is-folded）、長いとき（.can-more。測るのは JS の watchFold）だけ吹き出しを押すと伸び縮み。
+   長い一件は頭の三行と終わりの三行で畳み（.is-folded。終わりは写しの .arc-post-tail を下揃えで切る）、長いとき
+   （.can-more。測るのは JS の watchFold）だけ吹き出しを押すと伸び縮み。
    直す・コピーは吹き出しの左の余白（日付の欄の幅）に縦に二つ、吹き出しの高さのまん中。吹き出しの幅は変えない。
    一件目は日付の字の下まで下げる。行そのものは押すものではない（押して薄まるのは一枚の行だけ）。 */
 .arc-log-row.is-chat { cursor: default; }
@@ -3750,7 +3751,13 @@ a.btn { text-decoration: none; }
   text-align: justify; word-break: normal; overflow-wrap: anywhere; line-break: strict;
   user-select: text; -webkit-user-select: text; -webkit-touch-callout: default;
 }
-.arc-post.is-folded .arc-post-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
+.arc-post.is-folded .arc-post-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.arc-post-tail {
+  display: none; align-self: stretch; flex-direction: column; justify-content: flex-end; max-height: calc(1.85em * 3); overflow: hidden;
+  font-size: var(--fs-lg); line-height: 1.85; color: var(--c-text); white-space: pre-wrap;
+  text-align: justify; word-break: normal; overflow-wrap: anywhere; line-break: strict;
+}
+.arc-post.can-more.is-folded .arc-post-tail { display: flex; }
 .arc-post-more {
   display: none; align-self: center; align-items: center; gap: var(--sp-1);
   min-height: 32px; padding: 0 var(--sp-2); color: var(--c-text-2); font-size: var(--fs-sm);

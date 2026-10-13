@@ -1,7 +1,7 @@
 /* 思考のホーム・時刻ごとの日記（docs/thinking.md）。
    - 本文は一つの文字のまま：一件は「このアプリが書いた時刻の行」（見えない印 U+2060 つき）から。
      印の無い時刻の行（前からの本文・取り込んだ本文・10月12〜13日の版の一件）は分けず、一字も変わらない
-   - 一件は吹き出し。長い一件は五行で畳み、押すと伸び縮み（書く紙は開かない）。直す・コピーは左の余白のボタン
+   - 一件は吹き出し。長い一件は頭と終わりの三行ずつで畳み、押すと伸び縮み（書く紙は開かない）。直す・コピーは左の余白のボタン
      （日付と育休の行だけの頭には出さない）
    - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
    - daily の冒頭に書く口と問いの札。＋も書く口も、種類を選ばずに書く紙（新しい一件）
@@ -312,17 +312,24 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await setMemo(base);
   await page.waitForTimeout(200);
 
-  /* ---- 吹き出し：長い一件は五行で畳み、押すと伸び縮み。直す・コピーは左の余白のボタン ---- */
+  /* ---- 吹き出し：長い一件は頭と終わりの三行ずつで畳み、押すと伸び縮み。直す・コピーは左の余白のボタン ---- */
   const long = "長い一件の字です。".repeat(80);
   await setMemo(tag(`2026.10.06（火）\n\n08:00\n短い一件\n\n12:34\n${long}`));
   await page.waitForTimeout(400);
   const fold = await page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => {
     const tx = p.querySelector(".arc-post-text"), mo = p.querySelector(".arc-post-more");
     return { folded: p.classList.contains("is-folded"), more: !!mo && getComputedStyle(mo).display !== "none",
-      clamp: tx.scrollHeight > tx.clientHeight + 1, bg: getComputedStyle(p.querySelector(".arc-post-body")).backgroundColor };
+      clamp: tx.scrollHeight > tx.clientHeight + 1, lines: Math.round(tx.clientHeight / parseFloat(getComputedStyle(tx).lineHeight)),
+      tail: (() => { const tl = p.querySelector(".arc-post-tail"); if (getComputedStyle(tl).display === "none") return 0;
+        const r = tl.getBoundingClientRect(), mr = mo.getBoundingClientRect();
+        const rg = document.createRange(), tn = tl.firstChild; rg.setStart(tn, tn.length - 1); rg.setEnd(tn, tn.length);
+        const lr = rg.getBoundingClientRect();
+        return mr.bottom <= r.top + 1 && tx.scrollHeight > tl.clientHeight * 2 && lr.bottom <= r.bottom + 1 && lr.top >= r.top - 1 ? Math.round(tl.clientHeight / parseFloat(getComputedStyle(tl).lineHeight)) : -1; })(),
+      bg: getComputedStyle(p.querySelector(".arc-post-body")).backgroundColor };
   }));
-  t.check("短い一件に「続きを読む」は出ない", fold.length === 3 && !fold[1].more, JSON.stringify(fold));
-  t.check("長い一件は畳まれ「続きを読む」", fold[2] && fold[2].folded && fold[2].clamp && fold[2].more, JSON.stringify(fold[2]));
+  t.check("短い一件に「全文を読む」は出ない", fold.length === 3 && !fold[1].more, JSON.stringify(fold));
+  t.check("長い一件は畳まれ「全文を読む」", fold[2] && fold[2].folded && fold[2].clamp && fold[2].more, JSON.stringify(fold[2]));
+  t.check("畳むと頭の三行・ボタン・終わりの三行", fold[2] && fold[2].lines === 3 && fold[2].tail === 3 && fold[1].tail === 0, JSON.stringify(fold));
   t.check("吹き出しの地は透ける", /rgba?\(.*,\s*0?\.\d+\)$|color\(.*\/\s*0?\.\d+\)$/.test(fold[2].bg), fold[2].bg);
   await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-more");
   await page.waitForTimeout(200);
@@ -330,7 +337,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const p = document.querySelector("#screen-archive .arc-post:nth-child(3)"), tx = p.querySelector(".arc-post-text");
     return { sheet: !!document.querySelector(".sheet.is-open"), folded: p.classList.contains("is-folded"), full: tx.scrollHeight <= tx.clientHeight + 1 };
   });
-  t.check("「続きを読む」はその場で開く（書く紙は開かない）", !opened.sheet && !opened.folded && opened.full, JSON.stringify(opened));
+  t.check("「全文を読む」はその場で開く（書く紙は開かない）", !opened.sheet && !opened.folded && opened.full, JSON.stringify(opened));
   await page.evaluate((d) => KN.store.setDayLog(d, { wake: "06:10" }), day);
   await page.waitForTimeout(300);
   t.check("組み直しても開いたまま", await page.evaluate(() => !document.querySelector("#screen-archive .arc-post:nth-child(3)").classList.contains("is-folded")));
