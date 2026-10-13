@@ -422,6 +422,8 @@
     if (!(opts && opts.keep)) { render(); return; }
     /* 払って着いた紙は、もうこの日の紙です（次に組み直すとき、読んでいた位置へ返す相手）。 */
     laidDay = focusDay();
+    /* 組み直さないので、季節の絵もここで着いた日の候へ（払うと前の候のままだった）。 */
+    if (KN.seasonArt) KN.seasonArt.apply(root, laidDay, "daily");
     const here = viewDay || U.todayKey();
     if (els.cal) {
       markWeek(els.cal, here);

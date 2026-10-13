@@ -160,6 +160,28 @@ const ROOT = path.resolve(__dirname, "..");
     c.check("過去の日を開けば、その日の候の色", false, "KN.screens.archive.goDay がない");
   }
 
+  /* 紙を払って日を移しても（組み直さない道）、着いた日の候の写真に。10/7（秋分の末候）→ 10/8（寒露の初候） */
+  await page.evaluate(() => KN.screens.archive.goDay("2026-10-07"));
+  await wait(1400);
+  const cdp = await page.context().newCDPSession(page);
+  const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
+  const at = await page.evaluate(() => {
+    const h = document.querySelector("#screen-archive .tl-sheet.is-daily .arc-log, #screen-archive .tl-sheet.is-daily");
+    const b = h.getBoundingClientRect();
+    return { x: b.left + b.width * 0.7, y: b.top + 12 };
+  });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(at.x, at.y) });
+  for (let i = 1; i <= 12; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(at.x - (200 * i) / 12, at.y) });
+    await wait(16);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await wait(1500);
+  r = await read();
+  const kSw = await page.evaluate(() => KN.season.of("2026-10-08").k);
+  c.check("払って次の候の日へ移れば、その候の写真", (await page.evaluate(() => KN.screens.archive.day())) === "2026-10-08"
+    && r.k === String(kSw) && r.bg.includes(`season-photo/k${String(kSw).padStart(2, "0")}.webp`), JSON.stringify({ k: r.k, kSw, bg: r.bg.slice(-60) }));
+
   /* 絵があれば重ねる（試験のあいだだけ表に一つ足す。無い絵は読めず、色だけのまま） */
   const withImg = await page.evaluate(async () => {
     const A = KN.seasonArt;
