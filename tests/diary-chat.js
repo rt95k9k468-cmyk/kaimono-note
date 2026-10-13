@@ -1,5 +1,8 @@
 /* 思考のホーム・時刻ごとの日記（docs/thinking.md）。
-   - 本文は一つの文字のまま：一件は「時刻だけの行」から。前からの本文（時刻の行なし）は一字も変わらない
+   - 本文は一つの文字のまま：一件は「このアプリが書いた時刻の行」（見えない印 U+2060 つき）から。
+     印の無い時刻の行（前からの本文・取り込んだ本文・10月12〜13日の版の一件）は分けず、一字も変わらない
+   - 一件は吹き出し。長い一件は五行で畳み、「続きを読む」でその場で開く（押しても書く紙は開かない）
+   - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
    - daily の冒頭に書く口と問いの札。＋も書く口も、種類を選ばずに書く紙（新しい一件）
    - 打った先から残る（時刻は打ち始めた時）。直しても時刻の行は変わらない。空にすると外れ、元に戻せる
    - 開いて閉じただけでは本文の形を変えない（空行の多い一件でも）
@@ -18,6 +21,9 @@ require(path.join(__dirname, "..", "js", "diary-posts.js"));
 const P = global.KN.diaryPosts;
 
 const t = checker("diary-chat");
+/* 印。tag は、字の中の「時刻だけの行」に印を付ける（このアプリが書いた形）。 */
+const W = P.TAG;
+const tag = (s) => s.replace(/^((?:\d{1,2}\/\d{1,2} )?\d{1,2}:\d\d)$/gm, `$1${W}`);
 const AT = new Date(2026, 9, 6, 12, 34);
 
 /* ---- 文字だけ（純粋） ---- */
@@ -25,27 +31,46 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const legacy = "2026.10.06（火）\n\n前からの地の文。\n\n6:30\n起きた時刻の行も地の文のうち";
   const items = P.parse("前からの地の文。");
   t.check("時刻の行の無い本文は、頭の一件だけ", items.length === 1 && items[0].mark === null && items[0].text === "前からの地の文。");
-  const a = P.add("前からの地の文。\n\n", "  一件目\n二行目\n\n", "12:34");
-  t.check("足すと空の行一つをはさんで終わりに", a.memo === "前からの地の文。\n\n12:34\n  一件目\n二行目", JSON.stringify(a.memo));
-  t.check("本文の無い日は頭の字を置いてから", P.add("", "はじめて", "08:00", "2026.10.06（火）\n\n").memo === "2026.10.06（火）\n\n08:00\nはじめて");
-  t.check("空は足さない", P.add("x", " \n ", "08:00") === null);
-  const two = P.add(a.memo, "二件目", "13:00").memo;
+  const a = P.add("前からの地の文。\n\n", "  一件目\n二行目\n\n", tag("12:34"));
+  t.check("足すと空の行一つをはさんで終わりに", a.memo === tag("前からの地の文。\n\n12:34\n  一件目\n二行目"), JSON.stringify(a.memo));
+  t.check("本文の無い日は頭の字を置いてから", P.add("", "はじめて", tag("08:00"), "2026.10.06（火）\n\n").memo === tag("2026.10.06（火）\n\n08:00\nはじめて"));
+  t.check("空は足さない", P.add("x", " \n ", tag("08:00")) === null);
+  const two = P.add(a.memo, "二件目", tag("13:00")).memo;
   const it = P.parse(two)[1];
   const ed = P.swap(two, P.chunkAt(it), P.chunkOf(two, it), P.chunk(it, "一件目を直した"));
-  t.check("直すのはその一件だけ（時刻の行・ほかはそのまま）", ed === "前からの地の文。\n\n12:34\n一件目を直した\n\n13:00\n二件目", JSON.stringify(ed));
+  t.check("直すのはその一件だけ（時刻の行・ほかはそのまま）", ed === tag("前からの地の文。\n\n12:34\n一件目を直した\n\n13:00\n二件目"), JSON.stringify(ed));
   t.check("開いたときの字が無ければ書かない", P.swap(two, P.chunkAt(it), "ちがう字", "x") === null);
   const mid = P.parse(ed)[1];
-  t.check("まん中を外すと継ぎ目は空の行一つ", P.take(ed, P.chunkAt(mid), P.chunkOf(ed, mid)) === "前からの地の文。\n\n13:00\n二件目");
+  t.check("まん中を外すと継ぎ目は空の行一つ", P.take(ed, P.chunkAt(mid), P.chunkOf(ed, mid)) === tag("前からの地の文。\n\n13:00\n二件目"));
   const last = P.parse(ed)[2];
-  t.check("終わりを外すと空白を残さない", P.take(ed, P.chunkAt(last), P.chunkOf(ed, last)) === "前からの地の文。\n\n12:34\n一件目を直した");
+  t.check("終わりを外すと空白を残さない", P.take(ed, P.chunkAt(last), P.chunkOf(ed, last)) === tag("前からの地の文。\n\n12:34\n一件目を直した"));
   const head = P.parse(ed)[0];
-  t.check("頭を外すと一件目から", P.take(ed, P.chunkAt(head), P.chunkOf(ed, head)) === "12:34\n一件目を直した\n\n13:00\n二件目");
-  const wide = P.parse("１０/７ ０７：０５\n次の日に書いた");
+  t.check("頭を外すと一件目から", P.take(ed, P.chunkAt(head), P.chunkOf(ed, head)) === tag("12:34\n一件目を直した\n\n13:00\n二件目"));
+  const wide = P.parse(`１０/７ ０７：０５${W}\n次の日に書いた`);
   t.check("全角・ほかの日の時刻の行も読む", wide.length === 1 && wide[0].at === "07:05" && wide[0].date === "10/7");
-  t.check("書いた日が違えば日付も", P.mark(new Date(2026, 9, 7, 7, 5), "2026-10-06") === "10/7 07:05"
-    && P.mark(new Date(2026, 9, 6, 7, 5), "2026-10-06") === "07:05");
+  t.check("書いた日が違えば日付も（印つき）", P.mark(new Date(2026, 9, 7, 7, 5), "2026-10-06") === `10/7 07:05${W}`
+    && P.mark(new Date(2026, 9, 6, 7, 5), "2026-10-06") === `07:05${W}`);
   const lg = P.parse(legacy);
-  t.check("「6:30」だけの行は時刻の行として読む（見せ方だけ。本文は変えない）", lg.length === 2 && lg[1].at === "06:30");
+  t.check("印の無い「6:30」だけの行は分けない（地の文のまま）", lg.length === 1 && lg[0].text === legacy.trim(), JSON.stringify(lg));
+}
+
+/* ---- 前からの本文・取り込んだ本文は分けない（印の無い時刻の行） ---- */
+{
+  const old = "2025.03.02（日）\n\n\n08:30\n起きた。\n\n１２：００\n昼。\n\n10/12 08:52\n前の版の一件\n\n\n\n"
+    + "長い段落".repeat(200) + "\n  字下げの行\n21:30";
+  const it = P.parse(old);
+  t.check("時刻らしい行・全角・日付つき・空行・長文があっても一件（頭）のまま", it.length === 1 && it[0].mark === null
+    && it[0].text === old.replace(/^\s+|\s+$/g, ""), JSON.stringify(it.map((x) => x.mark)));
+  t.check("印の無い時刻の行は時刻の行として読まない", P.markOf("08:30") === null && P.markOf("10/12 08:52") === null
+    && P.markOf(`08:30${W}`).at === "08:30" && P.markOf(`０８：３０${W}  `).at === "08:30");
+  t.check("行のなかの印は時刻の行にしない", P.markOf(`08:30${W}あと`) === null && P.markOf(`${W}08:30`) === null);
+  const r = P.add(old, "新しい一件", P.mark(new Date(2026, 9, 13, 9, 5), "2026-10-13"));
+  t.check("前からの本文に足しても、前の字は一字も変わらない", r.memo.startsWith(old.replace(/\s+$/, "")), "");
+  const two = P.parse(r.memo);
+  t.check("足した一件だけが分かれる", two.length === 2 && two[1].at === "09:05" && two[1].text === "新しい一件");
+  t.check("足した一件を外すと前の本文に戻る（終わりの空白だけ落ちる）",
+    P.take(r.memo, P.chunkAt(two[1]), P.chunkOf(r.memo, two[1])) === old.replace(/\s+$/, ""));
+  t.check("JSON を通っても印は残る", P.parse(JSON.parse(JSON.stringify(r.memo))).length === 2);
 }
 
 (async () => {
@@ -121,7 +146,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.waitForTimeout(800);
   const m1 = await memo();
   const said = () => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((x) => x.textContent).join("|"));
-  t.check("打った先から残る（頭に日付の行・時刻の行）", /^2026\.10\.06（火）\n/.test(m1) && m1.endsWith("\n\n12:34\n一件目の字"), JSON.stringify(m1));
+  t.check("打った先から残る（頭に日付の行・時刻の行）", /^2026\.10\.06（火）\n/.test(m1) && m1.endsWith(tag("\n\n12:34\n一件目の字")), JSON.stringify(m1));
   await closeSheet();
   t.check("新しい一件を閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
@@ -135,7 +160,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.keyboard.insertText("二件目の字");
   await closeSheet();
   const m2 = await memo();
-  t.check("二件目は終わりに", m2.endsWith("\n\n12:34\n一件目の字\n\n12:34\n二件目の字"), JSON.stringify(m2));
+  t.check("二件目は終わりに", m2.endsWith(tag("\n\n12:34\n一件目の字\n\n12:34\n二件目の字")), JSON.stringify(m2));
 
   /* ---- 一件を直す：時刻の行もほかの一件も変わらない ---- */
   await page.click("#screen-archive .arc-post:nth-child(2)");
@@ -152,10 +177,10 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await closeSheet();
   t.check("直して閉じたら「更新しました」", /更新しました/.test(await said()), await said());
   const m3 = await memo();
-  t.check("直したのはその一件だけ", m3 === m2.replace("12:34\n一件目の字", "12:34\n一件目の字を直した"), JSON.stringify(m3));
+  t.check("直したのはその一件だけ", m3 === m2.replace(tag("12:34\n一件目の字"), tag("12:34\n一件目の字を直した")), JSON.stringify(m3));
 
   /* ---- 開いて閉じただけでは形を変えない（空行の多い一件） ---- */
-  const odd = "前からの地の文。\n\n\n12:00\n\n空行のある一件\n\n\n13:00\nもう一件";
+  const odd = tag("前からの地の文。\n\n\n12:00\n\n空行のある一件\n\n\n13:00\nもう一件");
   await setMemo(odd);
   await page.waitForTimeout(300);
   await page.click("#screen-archive .arc-post:nth-child(2)");
@@ -170,7 +195,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.dispatchEvent(".sheet.is-open .js-memo", "input");
   await closeSheet();
   const m4 = await memo();
-  t.check("空にすると、その一件だけ外れる", m4 === "前からの地の文。\n\n13:00\nもう一件", JSON.stringify(m4));
+  t.check("空にすると、その一件だけ外れる", m4 === tag("前からの地の文。\n\n13:00\nもう一件"), JSON.stringify(m4));
   const undo = await page.evaluate(() => { const b = [...document.querySelectorAll(".toast-action")].find((x) => x.textContent === "元に戻す"); if (b) b.click(); return !!b; });
   await page.waitForTimeout(200);
   t.check("元に戻すで戻る", undo && (await memo()) === odd, JSON.stringify(await memo()));
@@ -182,10 +207,10 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "消す" }).click();
   await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(150);
-  t.check("⋯ の「消す」で外れる", (await memo()) === "前からの地の文。\n\n\n12:00\n\n空行のある一件", JSON.stringify(await memo()));
+  t.check("⋯ の「消す」で外れる", (await memo()) === tag("前からの地の文。\n\n\n12:00\n\n空行のある一件"), JSON.stringify(await memo()));
 
   /* ---- コピーは前のまま（本文はそのまま、済んだやること） ---- */
-  await setMemo("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件");
+  await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件"));
   const copied = await page.evaluate(async () => {
     const S = KN.store;
     const todo = S.addTodo({ title: "試験のやること", due: KN.util.todayKey() });
@@ -199,7 +224,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return got;
   });
   t.check("コピーは本文そのまま＋完了したこと", copied != null
-    && copied.startsWith("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件\n\n")
+    && copied.startsWith(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件\n\n"))
     && /完了したこと（この日にやり終えたもの）\n・試験のやること/.test(copied), JSON.stringify(copied));
 
   /* ---- ノートへ移す：新しいノート ---- */
@@ -220,7 +245,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   }, day);
   t.check("新しいノートに、その一件の字", moved.n, JSON.stringify(moved));
   t.check("作った日はその一件の時刻（8:00）", moved.local === 800, JSON.stringify(moved));
-  t.check("日記からは外れる", moved.memo === "2026.10.06（火）\n\n12:34\n昼の一件", JSON.stringify(moved.memo));
+  t.check("日記からは外れる", moved.memo === tag("2026.10.06（火）\n\n12:34\n昼の一件"), JSON.stringify(moved.memo));
   const idb = await page.evaluate((id) => new Promise((res) => {
     const r = indexedDB.open("kaimono-note-notes");
     r.onsuccess = () => { const g = r.result.transaction("notes").objectStore("notes").get(id); g.onsuccess = () => res(g.result ? g.result.body : null); };
@@ -230,7 +255,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.evaluate(() => { const b = [...document.querySelectorAll(".toast-action")].find((x) => x.textContent === "元に戻す"); if (b) b.click(); });
   await page.waitForTimeout(300);
   const back = await page.evaluate(([d, id]) => ({ memo: (KN.store.dayLog(d) || {}).memo, note: !!KN.notes.get(id) }), [day, moved.id]);
-  t.check("元に戻すで、日記に戻りノートは消える", back.memo === "2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件" && !back.note, JSON.stringify(back));
+  t.check("元に戻すで、日記に戻りノートは消える", back.memo === tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件") && !back.note, JSON.stringify(back));
 
   /* ---- ノートへ移す：前からのノートの終わりへ ---- */
   const nid = await page.evaluate(() => {
@@ -249,7 +274,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.waitForFunction(() => [...document.querySelectorAll(".toast-msg")].some((x) => x.textContent === "ノートへ移しました"), null, { timeout: 4000 }).catch(() => {});
   const app = await page.evaluate(([d, id]) => ({ body: KN.notes.get(id).body, memo: (KN.store.dayLog(d) || {}).memo }), [day, nid]);
   t.check("前からのノートの終わりに日付と時刻の行と字", app.body === "前からの本文\n\n10月6日(火) 12:34\n昼の一件", JSON.stringify(app.body));
-  t.check("日記からは外れる（頭と一件目は残る）", app.memo === "2026.10.06（火）\n\n08:00\n朝の一件", JSON.stringify(app.memo));
+  t.check("日記からは外れる（頭と一件目は残る）", app.memo === tag("2026.10.06（火）\n\n08:00\n朝の一件"), JSON.stringify(app.memo));
 
   /* ---- 起床・就寝の行・「一枚で開く」は一枚の紙へ（時刻の欄と本文ぜんぶ） ---- */
   const base = await memo();
@@ -279,10 +304,65 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "消す" }).click();
   await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(150);
-  t.check("書いたばかりの一件を消す", withNew.endsWith("\n\n12:34\nすぐ消す一件") && (await memo()) === base, JSON.stringify(await memo()));
+  t.check("書いたばかりの一件を消す", withNew.endsWith(tag("\n\n12:34\nすぐ消す一件")) && (await memo()) === base, JSON.stringify(await memo()));
   await page.evaluate(() => { const b = [...document.querySelectorAll(".toast-action")].find((x) => x.textContent === "元に戻す"); if (b) b.click(); });
   await page.waitForTimeout(200);
   t.check("…元に戻せる", (await memo()) === withNew, JSON.stringify(await memo()));
+  await setMemo(base);
+  await page.waitForTimeout(200);
+
+  /* ---- 吹き出し：長い一件は五行で畳み、「続きを読む」でその場で開く ---- */
+  const long = "長い一件の字です。".repeat(80);
+  await setMemo(tag(`2026.10.06（火）\n\n08:00\n短い一件\n\n12:34\n${long}`));
+  await page.waitForTimeout(400);
+  const fold = await page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => {
+    const tx = p.querySelector(".arc-post-text"), mo = p.querySelector(".arc-post-more");
+    return { folded: p.classList.contains("is-folded"), more: !!mo && getComputedStyle(mo).display !== "none",
+      clamp: tx.scrollHeight > tx.clientHeight + 1, bg: getComputedStyle(p.querySelector(".arc-post-body")).backgroundColor };
+  }));
+  t.check("短い一件に「続きを読む」は出ない", fold.length === 3 && !fold[1].more, JSON.stringify(fold));
+  t.check("長い一件は畳まれ「続きを読む」", fold[2] && fold[2].folded && fold[2].clamp && fold[2].more, JSON.stringify(fold[2]));
+  t.check("吹き出しの地は透ける", /rgba?\(.*,\s*0?\.\d+\)$|color\(.*\/\s*0?\.\d+\)$/.test(fold[2].bg), fold[2].bg);
+  await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-more");
+  await page.waitForTimeout(200);
+  const opened = await page.evaluate(() => {
+    const p = document.querySelector("#screen-archive .arc-post:nth-child(3)"), tx = p.querySelector(".arc-post-text");
+    return { sheet: !!document.querySelector(".sheet.is-open"), folded: p.classList.contains("is-folded"), full: tx.scrollHeight <= tx.clientHeight + 1 };
+  });
+  t.check("「続きを読む」はその場で開く（書く紙は開かない）", !opened.sheet && !opened.folded && opened.full, JSON.stringify(opened));
+  await page.evaluate((d) => KN.store.setDayLog(d, { wake: "06:10" }), day);
+  await page.waitForTimeout(300);
+  t.check("組み直しても開いたまま", await page.evaluate(() => !document.querySelector("#screen-archive .arc-post:nth-child(3)").classList.contains("is-folded")));
+
+  /* ---- 前からの本文・取り込んだ本文は分けない ---- */
+  const imported = "2025.03.02（日）\n\n08:30\n起きた。\n\n\n１２：００\n昼。\n\n10/12 08:52\n前の版の一件\n" + "長い段落".repeat(60);
+  await setMemo(imported);
+  await page.waitForTimeout(300);
+  const ip = await posts();
+  t.check("印の無い時刻の行は分けず、時刻なしの吹き出し一つ", ip.length === 1 && ip[0].at === null && ip[0].text === imported, JSON.stringify(ip.map((x) => x.at)));
+  await page.click("#screen-archive .arc-post:nth-child(1) .arc-post-text");
+  await sheetOpen();
+  await closeSheet();
+  t.check("開いて閉じても一字も変わらない", (await memo()) === imported);
+  await page.click("#screen-archive .js-think-write");
+  await sheetOpen();
+  await page.keyboard.insertText("取り込んだ日に足す");
+  await closeSheet();
+  const im2 = await memo();
+  t.check("足しても前の字はそのまま・足した一件だけ分かれる", im2 === `${imported}\n\n${tag("12:34")}\n取り込んだ日に足す`
+    && (await posts()).length === 2, JSON.stringify(im2.slice(-40)));
+
+  /* ---- 印は写し（diary-idb）と書き出し→取り込みに乗る ---- */
+  const inBox = await page.waitForFunction(([d, m]) => KN.diaryIdb.delivered(d, m), [day, im2], { timeout: 6000 }).then(() => true, () => false);
+  t.check("写しに印ごと届く", inBox);
+  const round = await page.evaluate(([d, m]) => {
+    const j = KN.store.exportJSON();
+    KN.store.setDayLog(d, { memo: "上書き" });
+    KN.store.importJSON(j);
+    const got = (KN.store.dayLog(d) || {}).memo;
+    return { same: got === m, n: KN.diaryPosts.parse(got).length };
+  }, [day, im2]);
+  t.check("書き出し→取り込みで本文は同じ（印も）・一件のまま", round.same && round.n === 2, JSON.stringify(round));
   await setMemo(base);
   await page.waitForTimeout(200);
 
@@ -303,13 +383,13 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const m = root.querySelector(".arc-log-row .arc-log-memo");
     return { home: !!root.querySelector(".think-home"), chat: !!root.querySelector(".arc-log-row.is-chat"), memo: m ? m.textContent : null };
   });
-  t.check("一枚：冒頭の口は出さず、本文は一枚のまま（時刻の行も字のまま）", !pg.home && !pg.chat && pg.memo === "2026.10.06（火）\n\n08:00\n朝の一件", JSON.stringify(pg));
+  t.check("一枚：冒頭の口は出さず、本文は一枚のまま（時刻の行も字のまま）", !pg.home && !pg.chat && pg.memo === tag("2026.10.06（火）\n\n08:00\n朝の一件"), JSON.stringify(pg));
   await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
   await sheetOpen();
   const pgSheet = await page.evaluate(() => ({ v: document.querySelector(".sheet.is-open .js-memo").value, t: document.querySelector(".sheet.is-open .sheet-title").textContent }));
-  t.check("一枚：＋はその日の日記の紙（本文ぜんぶ）", pgSheet.v === "2026.10.06（火）\n\n08:00\n朝の一件" && / の log/.test(pgSheet.t), JSON.stringify(pgSheet));
+  t.check("一枚：＋はその日の日記の紙（本文ぜんぶ）", pgSheet.v === tag("2026.10.06（火）\n\n08:00\n朝の一件") && / の log/.test(pgSheet.t), JSON.stringify(pgSheet));
   await closeSheet();
-  t.check("一枚の紙を開いて閉じても本文は同じ", (await memo()) === "2026.10.06（火）\n\n08:00\n朝の一件");
+  t.check("一枚の紙を開いて閉じても本文は同じ", (await memo()) === tag("2026.10.06（火）\n\n08:00\n朝の一件"));
 
   /* ---- 設定の行 ---- */
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.diaryView; }));
@@ -319,6 +399,10 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return box.textContent.replace(/\s+/g, " ");
   });
   t.check("設定がなければ時刻ごと（設定の行にも）", /日記\s*時刻ごと/.test(row), row.slice(0, 80));
+  await page.waitForTimeout(400);
+  const backChat = await posts();
+  t.check("一枚から時刻ごとへ戻すと吹き出しに・本文は同じ", backChat.length === 2 && backChat[1].at === "08:00"
+    && (await memo()) === tag("2026.10.06（火）\n\n08:00\n朝の一件"), JSON.stringify(backChat));
 
   /* ---- 積み上げはやめた：記録の紙を開く口は無い ---- */
   const gone = await page.evaluate(() => ({ open: typeof KN.screens.archive.openEntry, seed: typeof KN.screens.archive.seedFromNote }));

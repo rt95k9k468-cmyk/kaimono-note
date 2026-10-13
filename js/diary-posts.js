@@ -2,8 +2,9 @@
    くらしノート — 日記を時刻ごとに（思考のホーム。docs/thinking.md）
 
    日記の本文（archive.days[].memo）は**一つの文字のまま**持ちます。時刻ごとの
-   一件は「時刻だけの行」（`08:52`。書いた日が日記の日と違えば `10/12 08:52`）
-   から、次の時刻だけの行の前まで。一件目の時刻より前は「頭」（日付と育休の
+   一件は「このアプリが書いた時刻の行」（`08:52`＋見えない印 U+2060。書いた日が
+   日記の日と違えば `10/12 08:52`＋印）から、次のその行の前まで。印の無い時刻の
+   行（前からの本文・取り込んだ本文の `6:30` など）は地の文のまま——分けない。一件目の時刻より前は「頭」（日付と育休の
    行・前からの地の文）。保存の形は前のままなので、写し（diary-idb）・控え・
    書き出し・取り込み・コピーは、何も変えずに同じ本文を運びます。
 
@@ -16,12 +17,17 @@
 
   const KN = (window.KN = window.KN || {});
 
-  /* 時刻だけの行。全角の字（PDF から戻った本文など）も読めるように、見るときだけ NFKC。 */
+  /* 時刻だけの行。全角の字（PDF から戻った本文など）も読めるように、見るときだけ NFKC。
+     一件の頭になるのは、終わりに印（U+2060。見えない・NFKC でも trim でも落ちない）のある行だけ。
+     印はよそのアプリで落ちても字は失われない（分けずに一件で見えるだけ）。 */
+  const TAG = "\u2060";
   const MARK = /^(?:(\d{1,2})\/(\d{1,2})\s+)?([01]?\d|2[0-3]):([0-5]\d)$/;
   const norm = (s) => (String.prototype.normalize ? s.normalize("NFKC") : s).trim();
 
   function markOf(line) {
-    const m = MARK.exec(norm(String(line || "")));
+    const l = String(line || "").replace(/[ \t\u3000\r]+$/, "");
+    if (!l.endsWith(TAG)) return null;
+    const m = MARK.exec(norm(l.slice(0, -TAG.length)));
     if (!m) return null;
     return {
       date: m[1] ? `${Number(m[1])}/${Number(m[2])}` : null,
@@ -36,7 +42,7 @@
   function mark(when, day) {
     const d = when instanceof Date ? when : new Date(when);
     const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    return day && keyOf(d) !== day ? `${d.getMonth() + 1}/${d.getDate()} ${hm}` : hm;
+    return (day && keyOf(d) !== day ? `${d.getMonth() + 1}/${d.getDate()} ${hm}` : hm) + TAG;
   }
 
   /** 打った字を一件の中身に：改行をそろえ、頭の空行と終わりの空白を落とす（中はそのまま）。 */
@@ -142,5 +148,5 @@
   /** 開いたときの一件が、いまの本文の同じ場所にまだあるか。 */
   const still = (memo, item) => parse(memo).some((x) => x.start === item.start && x.mark === item.mark && x.text === item.text);
 
-  KN.diaryPosts = { parse, markOf, mark, clean, add, swap, take, still, chunkOf, chunk, chunkAt };
+  KN.diaryPosts = { TAG, parse, markOf, mark, clean, add, swap, take, still, chunkOf, chunk, chunkAt };
 })();

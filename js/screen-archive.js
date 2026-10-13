@@ -1064,7 +1064,7 @@
 
   /* ================================================================
      思考のホーム・時刻ごとの日記（docs/thinking.md）
-     本文は一つの文字のまま（KN.diaryPosts）。一件は「時刻だけの行」から次の時刻の行の前まで。
+     本文は一つの文字のまま（KN.diaryPosts）。一件は「このアプリが書いた時刻の行」（見えない印つき）から次のその行の前まで。
      ================================================================ */
 
   const dayLabel = (day) => {
@@ -1171,6 +1171,22 @@
     return el;
   }
 
+  /* 長い一件は五行で畳み、「続きを読む」でその場で開く。畳むかどうかは置かれてから測る（隣の日の紙は
+     document の外で組むので、組んだときには測れない）。見張りは行ごと（捨てた行と一緒に消える）。
+     開いた一件は覚えておき、組み直しても開いたまま。 */
+  const postOpen = new Set();
+  function watchFold(texts) {
+    if (!texts.length) return;
+    if (typeof ResizeObserver !== "function") { texts.forEach((t) => t.closest(".arc-post").classList.remove("is-folded")); return; }
+    const ro = new ResizeObserver((list) => {
+      /* 測るのはまとめて先に、書くのはあと（traps の「測るのは書く前に」）。 */
+      const seen = list.filter((e) => e.target.clientWidth > 0)
+        .map((e) => [e.target, e.target.scrollHeight > e.target.clientHeight + 1]);
+      seen.forEach(([t, more]) => { ro.unobserve(t); t.closest(".arc-post").classList.toggle("can-more", more); });
+    });
+    texts.forEach((t) => ro.observe(t));
+  }
+
   /** 時刻ごとの日記の行。一件ずつ押せば、その一件を直す紙。本文の字は足し引きせず、切って並べるだけ。 */
   function chatRow(d) {
     const dt = U.dayDate(d.date);
@@ -1184,9 +1200,11 @@
         </span>
         <span class="arc-log-text">
           <span class="arc-posts">${items.length ? items.map((x, k) => html`
-            <span role="button" tabindex="0" class="arc-post ${x.mark ? "" : "is-head"}" data-k="${k}"
-              >${x.mark ? html`<span class="arc-post-at">${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-text">${x.text}</span></span>`)
-            : html`<span role="button" tabindex="0" class="arc-post is-blank" data-k="-1"><span class="arc-post-text">この日のことを書く</span></span>`}</span>
+            <span class="arc-post ${x.mark ? "" : "is-head"} ${postOpen.has(`${d.date}|${x.start}`) ? "" : "is-folded"}" data-k="${k}"
+              >${x.mark ? html`<span class="arc-post-at">${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-body"
+                ><span class="arc-post-text" role="button" tabindex="0">${x.text}</span
+                ><button type="button" class="arc-post-more">${icon("chevron-down")}<span>続きを読む</span></button></span></span>`)
+            : html`<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
           ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
               S().showDayTimes === false ? "" : html`
             <span class="arc-log-times js-times" role="button" tabindex="0">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
@@ -1210,18 +1228,29 @@
     row.querySelectorAll(".arc-post").forEach((el) => {
       const k = Number(el.dataset.k);
       const go = () => openPost(d.date, k < 0 ? null : items[k]);
+      const text = el.querySelector(".arc-post-text");
+      const more = el.querySelector(".arc-post-more");
+      if (more) {
+        more.addEventListener("click", (e) => {
+          e.stopPropagation();
+          postOpen.add(`${d.date}|${items[k].start}`);
+          el.classList.remove("is-folded", "can-more");
+          text.focus({ preventScroll: true });
+        });
+      }
       /* 選んでいるあいだは開かない（一枚の行と同じ。選んだそばから選択が消えないように）。 */
       el.addEventListener("click", () => {
         const sel = window.getSelection && window.getSelection();
         if (sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode)) return;
         go();
       });
-      el.addEventListener("keydown", (e) => {
+      text.addEventListener("keydown", (e) => {
         if (!KN.util.isEnter(e) && e.key !== " ") return;
         e.preventDefault();
         go();
       });
     });
+    watchFold([...row.querySelectorAll(".arc-post.is-folded .arc-post-text")]);
     return row;
   }
 
