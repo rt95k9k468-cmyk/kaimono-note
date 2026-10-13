@@ -3,7 +3,7 @@
    MD5（en-media の hash）／ENML → Markdown（見出し・箇条・番号・入れ子・チェック二通り・太字・リンク・表・
    コード・引用・暗号化・空の行・`<en-media/>` の後ろの字）／設定のノートの「取り込む」でファイルを選ぶ →
    先に見せる紙（件数・画像・PDF・落ちるもの・読めないもの。ノートブックの名前を変えられる）→ 控え
-   （「取り込む前」）→ 取り込む（src の from・key・batch、日付、タグ、画像と原本と PDF の参照、ほかの添付は名前の行）
+   （「取り込む前」）→ 取り込む（整理した形：一冊「Evernote」に元の冊の入れ物。src の from・key・batch、日付、タグ、画像と原本と PDF の参照、ほかの添付は名前の行）
    ／二度目は飛ばす／取り消す（直したノートは残る・最近削除へ）→ 取り消した分はもう一度取り込める。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-import.js */
@@ -96,15 +96,19 @@ ${note({ title: "", created: "20210101T000000Z", content: "<div>題の無いノ�
   t.check("ノートブックはファイルの名前", (await page.inputValue(".field .input")) === "旅のノート");
   await page.fill(".field .input", "Evernote 旅");
   await page.click(".js-go");
-  await page.waitForFunction(() => KN.notes.list().filter((n) => n.src).length === 3, null, { timeout: 15000 });
+  /* 取り込んだノート（key が en:）と、整理した形の入れ物（enbook:）。 */
+  await page.waitForFunction(() => KN.notes.list().filter((n) => n.src && /^en:/.test(n.src.key)).length === 3
+    && KN.notes.list().some((n) => n.src && /^enbook:/.test(n.src.key)), null, { timeout: 15000 });
   await page.evaluate(() => KN.notes.flush());
 
   t.check("控え（取り込む前）を先に", takes.includes("取り込む前"), JSON.stringify(takes));
-  const got = await page.evaluate(() => KN.notes.list().filter((n) => n.src).sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+  const got = await page.evaluate(() => KN.notes.list().filter((n) => n.src && /^en:/.test(n.src.key)).sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+  const box = await page.evaluate(() => KN.notes.list().find((n) => n.src && /^enbook:/.test(n.src.key)));
   const [a, b, c] = got;
   t.check("src：from・key・batch", got.every((n) => n.src.from === "evernote" && /^en:[0-9a-f]{32}$/.test(n.src.key) && n.src.batch === got[0].src.batch)
     && new Set(got.map((n) => n.src.key)).size === 3, JSON.stringify(got.map((n) => n.src)));
-  t.check("ノートブック・題・タグ", got.every((n) => n.notebook === "Evernote 旅") && a.title === "旅の支度 & 地図" && a.tags.join() === "旅,準備" && c.title === "");
+  t.check("ノートブック（一冊「Evernote」の中の、元の冊の入れ物）・題・タグ", box.title === "Evernote 旅" && box.notebook === "Evernote"
+    && got.every((n) => n.notebook === "Evernote" && n.parent === box.id) && a.title === "旅の支度 & 地図" && a.tags.join() === "旅,準備" && c.title === "");
   t.check("日付は元の作った日・直した日", a.createdAt === "2019-05-01T11:20:00.000Z" && a.updatedAt === "2019-05-02T01:00:00.000Z"
     && b.updatedAt === "2020-01-01T00:00:00.000Z");
   t.check("画像は参照の行（本文の場所に）・すぐ下に原本の行・後ろの字も", new RegExp(`^持ち物\\n!\\[\\]\\(img:[0-9a-f]{16}\\)\\n\\[map\\.png\\]\\(file:${crypto.createHash("sha256").update(Buffer.from(PNG, "base64")).digest("hex")}\\.png\\)\\n写真の下\\n\\n- \\[x\\] 切符$`).test(a.body), JSON.stringify(a.body));
@@ -128,7 +132,7 @@ ${note({ title: "", created: "20210101T000000Z", content: "<div>題の無いノ�
   const second = await rows();
   t.check("二度目：取り込み済み3・押せない", has(second, "ノート 0") && has(second, "取り込み済み 3")
     && (await page.evaluate(() => document.querySelector(".js-go").disabled)), JSON.stringify(second));
-  t.check("二度目：増えない", (await page.evaluate(() => KN.notes.list().filter((n) => n.src).length)) === 3);
+  t.check("二度目：増えない", (await page.evaluate(() => KN.notes.list().filter((n) => n.src && /^en:/.test(n.src.key)).length)) === 3);
 
   /* ---- 取り消す ---- */
   await page.evaluate(() => KN.ui.closeAll && KN.ui.closeAll());
@@ -137,7 +141,8 @@ ${note({ title: "", created: "20210101T000000Z", content: "<div>題の無いノ�
   t.check("取り込みの一覧に一つ", batches.length === 1 && batches[0].books.join() === "Evernote 旅", JSON.stringify(batches));
   const n = await page.evaluate((bt) => KN.notes.unimport(bt), batches[0].batch);
   const after = await page.evaluate(() => ({ live: KN.notes.list().filter((x) => x.src).map((x) => x.title), trash: KN.notes.trash().filter((x) => x.src).length }));
-  t.check("取り消す：直したノートは残る・ほかは最近削除へ", n === 2 && after.live.join() === "旅の支度 & 地図" && after.trash === 2, JSON.stringify(after));
+  t.check("取り消す：直したノートとその入れ物は残る・ほかは最近削除へ", n === 2 && after.live.slice().sort().join() === ["Evernote 旅", "旅の支度 & 地図"].sort().join()
+    && after.trash === 2, JSON.stringify(after));
   t.check("取り消すものが無ければ一覧に出ない", (await page.evaluate(() => KN.noteImport.batches().length)) === 0);
   const again = await page.evaluate(async (text) => {
     const b = KN.noteImport.parse(text, "旅のノート.enex");

@@ -417,6 +417,25 @@
     return out.length;
   }
 
+  /** 整理（js/note-organize.js）：新しいノート（made）と、欄の直し（patches … [id, patch]。undefined は欄を外す）を
+      一つの取引で。移すと同じく、更新日は動かさず、前の版も取りません。書けなければ断る。 */
+  function reshape(made, patches) {
+    if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
+    const ids = [];
+    (made || []).forEach((raw) => { const n = shape(raw); byId.set(n.id, n); ids.push(n.id); });
+    (patches || []).forEach(([id, patch]) => {
+      const n = byId.get(id);
+      if (!n) return;
+      Object.entries(patch).forEach(([k, v]) => { if (v === undefined) delete n[k]; else n[k] = v; });
+      ids.push(id);
+    });
+    ids.forEach((id) => { quiet.delete(id); dirty.add(id); });
+    return writeNow().then(() => {
+      if (ids.some((id) => dirty.has(id))) throw new Error("書けませんでした");
+      emit();
+    });
+  }
+
   /** meta の記録を、頭の字で（`sync:` など）。 */
   function metaAll(prefix) {
     if (phase !== "on") return Promise.reject(new Error("ノートを読めていません"));
@@ -532,6 +551,9 @@
     return out;
   }
 
+  /* 表のノートの一行め：CSV の原本への参照（js/note-notion.js の build）。 */
+  const TABLE = /^\[[^\]\n]*\]\(file:[0-9a-f]{64}\.csv\)$/;
+
   /** 消していないノートの木を、その時の一枚で（画面を組むたびに一度）。
       二台が同時に移して輪になったら、輪の中で id の一番小さいノートを一番上へ（どの端末でも同じ答え。
       データは書き換えない）。 */
@@ -562,12 +584,25 @@
     });
     kids.forEach((l) => l.sort(old));
     const parentOf = (id) => { const p = up.get(id); return p ? byId.get(p) : null; };
+    /* ノートブックの頭（notes-unify.md「整理」）：`head` の印を持つ一番上のノート（二つあれば古いほう）。
+       頭の中のノートは、そのノートブックの一番上として並べる（頭そのものは並べない）。 */
+    const heads = new Map();
+    (kids.get(null) || []).forEach((n) => { if (n.head === true && !heads.has(n.notebook)) heads.set(n.notebook, n); });
     return {
       parentOf,
       /** 中のノート（作った順）。 */
       kids: (id) => kids.get(id) || [],
-      /** ノートブックの一番上のノート（作った順）。 */
-      tops: (nb) => (kids.get(null) || []).filter((n) => n.notebook === nb),
+      /** 木に並べる中のノート。表のノート（Notion のデータベース）の行は並べない（表の中で見る）。 */
+      branch: (id) => { const n = byId.get(id); return n && TABLE.test(String(n.body || "").split("\n", 1)[0]) ? [] : kids.get(id) || []; },
+      /** ノートブックの一番上のノート（作った順）。頭があれば、頭の中のノートと、頭の外の一番上のノート。 */
+      tops: (nb) => {
+        const h = heads.get(nb);
+        const list = (kids.get(null) || []).filter((n) => n.notebook === nb && n !== h);
+        return h ? (kids.get(h.id) || []).concat(list).sort(old) : list;
+      },
+      /** ノートブックの頭（無ければ null）。 */
+      head: (nb) => heads.get(nb) || null,
+      isHead: (id) => { const n = byId.get(id); return !!n && heads.get(n.notebook) === n; },
       /** 親たち（一番上から）。 */
       path(id) {
         const a = [];
@@ -726,7 +761,7 @@
         書けたと確かめてから日記から外すため。docs/thinking.md）。 */
     pending: (id) => dirty.has(id),
     begin, end, versions, versionBodies, revert, merge,
-    absorb, addMany, unimport, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
+    absorb, addMany, unimport, reshape, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };

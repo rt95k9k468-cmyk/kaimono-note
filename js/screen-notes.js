@@ -229,7 +229,12 @@
     if (query || p.k === "list") listBody(box, t, keepX);
     else if (p.k === "home") homeBody(box, t);
     else if (p.k === "ask") askBody(box);
-    else box.append(cards(t.tops(p.v), t));
+    else {
+      /* ノートブックの頭（取り込んだ Notion の一番上のページ。notes-unify.md「整理」）は頭に一枚。 */
+      const h = t.head(p.v);
+      if (h) box.append(cards([h], t));
+      box.append(cards(t.tops(p.v), t));
+    }
   }
 
   /** 今の一覧そのまま（すべてのノート）：絞り込みのチップ・カード・最近削除した項目。 */
@@ -258,7 +263,9 @@
     const all = N().list();
     const favs = all.filter((n) => n.fav);
     if (favs.length) { box.append(secTitle("★")); box.append(cards(favs, t)); }
-    if (all.length) { box.append(secTitle("最近直した")); box.append(cards(all.slice(0, 5), t)); }
+    /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
+    const recent = all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch));
+    if (recent.length) { box.append(secTitle("最近直した")); box.append(cards(recent.slice(0, 5), t)); }
     box.append(secTitle("ノートブック"));
     const rows = node(html`<div class="notes-books"></div>`);
     const line = (label, mark, to, cls) => {
@@ -451,7 +458,7 @@
     const lead = leadOf(n);
     /* 中のノートには、親の題を小さく添えます（段1）。 */
     const up = t ? t.parentOf(n.id) : null;
-    const where = [n.notebook, up ? headOf(up) : ""].filter(Boolean).join(" › ");
+    const where = [n.notebook, up && !t.isHead(up.id) ? headOf(up) : ""].filter(Boolean).join(" › ");
     const el = node(html`
       <div class="note-row is-card" data-id="${n.id}">
         <button class="note-open js-open">
@@ -1126,7 +1133,8 @@
     let pathOpen = false;
     const paintPath = () => {
       const up = note.parent ? N().get(note.parent) : null;
-      const ups = !up || up.deletedAt ? [] : stored ? N().tree().path(note.id) : N().tree().path(up.id).concat(up);
+      const tr = N().tree();
+      const ups = (!up || up.deletedAt ? [] : stored ? tr.path(note.id) : tr.path(up.id).concat(up)).filter((n) => !tr.isHead(n.id));
       pathEl.innerHTML = "";
       pathEl.hidden = !ups.length;
       if (!ups.length) return;
@@ -1638,7 +1646,7 @@
       box.append(b);
     };
     const noteLine = (n, d) => {
-      const kids = t.kids(n.id);
+      const kids = t.branch(n.id);
       line(html`<span>${headOf(n) || "ノート"}</span>`, d, n.id === cur, n.id, kids.length, () => fromTree(n.id), "js-tree-note");
       if (treeOpen.has(n.id)) kids.forEach((k) => noteLine(k, d + 1));
     };
@@ -1682,7 +1690,7 @@
         </button>`);
       if (!off) b.addEventListener("click", () => pick(n.id));
       box.append(b);
-      t.kids(n.id).forEach((k) => line(k, d + 1, off || k.id === note.id));
+      t.branch(n.id).forEach((k) => line(k, d + 1, off || k.id === note.id));
     };
     const books = N().notebooks();
     if (!books.includes(note.notebook) && note.notebook) books.push(note.notebook);

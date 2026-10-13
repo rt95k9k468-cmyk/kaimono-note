@@ -42,7 +42,7 @@
   const ST = "sync-state";
   const LB = "sync-labels";
   /* 三方で合わせる欄（題は本文と一つの「字」として合わせる）。 */
-  const FIELDS = ["notebook", "tags", "fav", "parent", "deletedAt", "createdAt", "noTime", "emoji", "src"];
+  const FIELDS = ["notebook", "tags", "fav", "parent", "deletedAt", "createdAt", "noTime", "emoji", "src", "head", "org"];
 
   const N = () => KN.notes;
   const D = () => KN.dropbox && KN.dropbox.api;
@@ -92,6 +92,8 @@
     if (n.noTime) L.push("no_time: true");
     if (n.emoji) L.push(`emoji: ${q(String(n.emoji))}`);
     if (n.src && typeof n.src === "object") L.push(`source: ${q(n.src)}`);
+    if (n.head === true) L.push("head: true");
+    if (n.org && typeof n.org === "object") L.push(`organized: ${q(n.org)}`);
     L.push("format: 1", "---", "");
     return `${L.join("\n")}\n${String(n.body || "")}`;
   }
@@ -155,6 +157,8 @@
       noTime: y.no_time === true ? true : undefined,
       emoji: y.emoji ? String(y.emoji) : undefined,
       src: y.source && typeof y.source === "object" && !Array.isArray(y.source) ? y.source : undefined,
+      head: y.head === true ? true : undefined,
+      org: y.organized && typeof y.organized === "object" && !Array.isArray(y.organized) ? y.organized : undefined,
     };
   }
 

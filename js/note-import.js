@@ -502,7 +502,11 @@
         if (!closed) h.close();
         return;
       }
-      if (res.done === res.total) keepOriginals(files, res.batch);
+      if (res.done === res.total) {
+        keepOriginals(files, res.batch);
+        /* 整理した形で（notes-unify.md「整理」）。控えは取り込む前に取ってある。書けなければ、設定の「整理する」に残る。 */
+        if (KN.noteOrganize) await KN.noteOrganize.after(res.batch).catch(() => null);
+      }
       if (!res.fails.length) {
         if (!closed) h.close();
         KN.ui.toast(res.done < res.total ? "途中まで取り込みました" : "取り込みました");
@@ -524,14 +528,18 @@
       .catch(() => KN.ui.toast("元のファイルを Dropbox に置けませんでした", { long: true }));
   }
 
-  /** 取り込みの一覧（取り消せるノートのあるものだけ。新しい順）。 */
+  /** 取り込みの一覧（取り消せるノートのあるものだけ。新しい順）。名前は冊の名前（Evernote の入れ物の中は、
+      元の冊＝入れ物の題）。入れ物そのものは数えない（中のノートと一緒に消える）。 */
   function batches() {
     const by = new Map();
-    KN.notes.list().forEach((n) => {
+    const list = KN.notes.list();
+    const box = new Map(list.filter((n) => n.src && /^enbook:/.test(String(n.src.key || ""))).map((n) => [n.id, n]));
+    list.forEach((n) => {
       const b = n.src && n.src.batch;
-      if (!b || String(n.updatedAt) > b) return;
+      if (!b || String(n.updatedAt) > b || box.has(n.id)) return;
       if (!by.has(b)) by.set(b, new Set());
-      by.get(b).add(n.notebook);
+      const up = n.parent ? box.get(String(n.parent)) : null;
+      by.get(b).add(up ? up.title : n.notebook);
     });
     return [...by.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([batch, nbs]) => ({ batch, books: [...nbs].filter(Boolean) }));
   }
@@ -541,17 +549,24 @@
     return `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
-  /** 設定の「取り込む」。取り消せる取り込みが無ければ、そのままファイルを選ぶ。 */
+  /** 設定の「取り込む」。取り消せる取り込みも、整理するもの・戻せる整理も無ければ、そのままファイルを選ぶ。 */
   function open() {
     if (!KN.notes || KN.notes.state() !== "on") { KN.ui.toast("ノートを読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
     const list = batches();
-    if (!list.length) { pick(); return; }
+    const O = KN.noteOrganize;
+    const tidy = !!O && !O.empty(O.plan());
+    const runs = O ? O.runs() : [];
+    if (!list.length && !tidy && !runs.length) { pick(); return; }
     const P = S();
     let h = null;
+    const shut = () => { if (h) h.close(); };
     const body = node(html`<div class="stack"></div>`);
-    body.append(P.card(P.navRow({ ico: "paper", tint: P.TINT.sub, title: "ファイルを選ぶ", onTap: () => { if (h) h.close(); pick(); } })));
-    body.append(P.card(list.map((b) => P.dangerRow({
-      ico: "undo", title: `${whenOf(b.batch)}${b.books.length ? `（${b.books.join("・")}）` : ""}を取り消す`,
+    body.append(P.card(P.navRow({ ico: "paper", tint: P.TINT.sub, title: "ファイルを選ぶ", onTap: () => { shut(); pick(); } })));
+    if (tidy) body.append(P.card(P.navRow({ ico: "book", tint: P.TINT.cat, title: "取り込んだノートを整理する", onTap: () => { shut(); O.preview(); } })));
+    if (runs.length) body.append(P.card(runs.map((at) => P.dangerRow({ ico: "undo", title: `${whenOf(at)}の整理を戻す`, onTap: () => O.undo(at, shut) }))));
+    const named = (bs) => (bs.length > 3 ? `${bs.slice(0, 3).join("・")} ほか` : bs.join("・"));
+    if (list.length) body.append(P.card(list.map((b) => P.dangerRow({
+      ico: "undo", title: `${whenOf(b.batch)}${b.books.length ? `（${named(b.books)}）` : ""}を取り消す`,
       onTap: () => KN.ui.confirm({
         title: "この取り込みを取り消す", message: "取り込んだあと直したノートは残します。", okLabel: "取り消す", danger: true,
       }).then((ok) => {

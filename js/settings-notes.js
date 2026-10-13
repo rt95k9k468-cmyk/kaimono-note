@@ -435,6 +435,7 @@
     lines.push(`id: ${q(n.id)}`);
     const parent = up === undefined ? n.parent : up;
     if (parent) lines.push(`parent: ${q(parent)}`);
+    if (n.head === true) lines.push("head: true");
     lines.push("---");
     const title = String(n.title || "").trim();
     return `${lines.join("\n")}\n\n${title ? `# ${title}\n\n` : ""}${withEnd(n.body)}`;

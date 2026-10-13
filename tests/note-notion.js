@@ -4,7 +4,8 @@
    同じ名前のフォルダ → 親子（key は32字）／CSV → 表のノート（`_all.csv` を選ぶ・引用符・改行・カンマ）、
    行のページはその子／中のリンク（相対・notion.so）→ `[題](note:<id>)`、外は字のまま、見つからないものは字だけ
    ／画像・PDF は入れ物へ、ほかの添付は名前の行／字下げ4→2・`<aside>` を外す／先に見せる紙（件数・落ちる・
-   読めない）→ 控え → 取り込む（ノートブック「Notion」・日付は取り込んだ時刻より前・親が先）／二度目は飛ばす／取り消す。
+   読めない）→ 控え → 取り込む（整理した形：中を持つ一番上のページはその題の一冊の頭、ほかは「Notion」。
+   日付は取り込んだ時刻より前・親が先）／二度目は飛ばす／取り消す。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-notion.js */
 const zlib = require("zlib");
@@ -120,7 +121,7 @@ const ZIP = zip([
   t.check("先に見せる：落ちる添付1・読めないもの1（壊れた zip）", has(first, "落ちる：ほかの添付 1") && has(first, "読めないもの 1"), JSON.stringify(first));
   t.check("ノートブックは「Notion」", (await page.inputValue(".field .input")) === "Notion");
   await page.click(".js-go");
-  await page.waitForFunction(() => KN.notes.list().filter((n) => n.src).length === 4, null, { timeout: 15000 });
+  await page.waitForFunction(() => KN.notes.list().filter((n) => n.src).length === 4 && KN.notes.list().some((n) => n.head === true), null, { timeout: 15000 });
   await page.evaluate(() => KN.notes.flush());
   t.check("控え（取り込む前）を先に", takes.includes("取り込む前"), JSON.stringify(takes));
 
@@ -131,7 +132,9 @@ const ZIP = zip([
   t.check("src：from・key（32字）・batch", all.every((n) => n.src.from === "notion" && n.src.batch === trip.src.batch)
     && trip.src.key === "1".repeat(32) && db.src.key === "3".repeat(32), JSON.stringify(all.map((n) => n.src)));
   t.check("親子：フォルダ → 親・行のページは表の子", kid.parent === trip.id && row.parent === db.id && !trip.parent && !db.parent);
-  t.check("ノートブック・日付（取り込んだ時刻より前・親が先）", all.every((n) => n.notebook === "Notion" && n.updatedAt === n.createdAt && n.updatedAt < n.src.batch)
+  t.check("ノートブック（中を持つ一番上のページはその題の一冊の頭・表は「Notion」）", trip.notebook === "旅 (下書き)" && trip.head === true
+    && kid.notebook === "旅 (下書き)" && db.notebook === "Notion" && !db.head && row.notebook === "Notion", JSON.stringify(all.map((n) => [n.notebook, n.head])));
+  t.check("日付（取り込んだ時刻より前・親が先）", all.every((n) => n.updatedAt === n.createdAt && n.updatedAt < n.src.batch)
     && trip.createdAt < kid.createdAt && db.createdAt < row.createdAt);
   const want = new RegExp(`^本文\\n\\n- 一\\n  - 二\\n\\n!\\[\\]\\(img:[0-9a-f]{16}\\)\\n\\[[^\\]]*\\]\\(file:[0-9a-f]{64}\\.png\\)\\n\\n\\[子のページ\\]\\(note:${kid.id}\\) と \\[外\\]\\(https://example\\.com\\)\\n\\nメモ\\n\\n`
     + "\\[契約\\.pdf\\]\\(file:[0-9a-f]{64}\\.pdf\\)\\n\\n\\[声\\.wav\\]\\n\\n無い$");
@@ -155,7 +158,7 @@ const ZIP = zip([
 
   /* ---- 取り消す ---- */
   const bs = await page.evaluate(() => KN.noteImport.batches());
-  t.check("取り込みの一覧に一つ（Notion）", bs.length === 1 && bs[0].books.join() === "Notion", JSON.stringify(bs));
+  t.check("取り込みの一覧に一つ（冊の名前）", bs.length === 1 && bs[0].books.slice().sort().join() === ["Notion", "旅 (下書き)"].sort().join(), JSON.stringify(bs));
   const n = await page.evaluate((bt) => KN.notes.unimport(bt), bs[0].batch);
   t.check("取り消す：4件とも最近削除へ", n === 4 && (await page.evaluate(() => KN.notes.list().filter((x) => x.src).length)) === 0);
 
