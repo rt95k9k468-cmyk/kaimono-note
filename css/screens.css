@@ -5570,6 +5570,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-chips .chip svg,
 .note-labels .chip svg,
 .note-pick .chip svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+/* 読む姿のリンク（js/note-format.js の fill）。字の色は変えず、下線で分かる。 */
+.note-view .nv-link { color: inherit; text-decoration: underline; text-decoration-color: var(--c-text-3);
+  text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.note-view .nv-link:active { opacity: var(--press-fade); }
 /* 問い（docs/thinking.md）：「？」で始まる行は字だけ主色に（印は打った「？」のまま）。一覧の問いは三行まで。 */
 .note-view .is-ask .nv-t { color: var(--c-primary); }
 .note-row.is-ask .note-t { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }

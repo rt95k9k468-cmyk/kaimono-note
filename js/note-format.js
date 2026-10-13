@@ -46,6 +46,32 @@
   /** 太字の印を外した字。 */
   const unbold = (t) => String(t).replace(BOLD, "$1");
 
+  /* リンク（`[字](先)`。先は note:・http(s)://・mailto: だけ。画像の `![` は字のまま。先の中のかっこは一段だけ）。
+     読む姿では字だけを見せ、押すと開く（中のノートは紙を重ねる・外は新しい窓。fetch しない）。notes-unify.md 段4。 */
+  const LINK = /(!?)\[([^\[\]\n]*)\]\(((?:note:|https?:\/\/|mailto:)(?:[^()\s]|\([^()\s]*\))+)\)/g;
+  /** 行の中の飾り（太字・リンク）の並び。a〜b は印込み、s〜e は見せる字。重ならない（リンクと重なる太字は字のまま）。 */
+  function marksOf(t) {
+    const out = [];
+    let m;
+    LINK.lastIndex = 0;
+    while ((m = LINK.exec(t))) {
+      if (m[1] || !m[2]) continue;
+      out.push({ a: m.index, b: m.index + m[0].length, s: m.index + 1, e: m.index + 1 + m[2].length, kind: "link", href: m[3] });
+    }
+    boldSpans(t).forEach(({ a, b }) => {
+      if (!out.some((x) => x.kind === "link" && a < x.b && b > x.a)) out.push({ a, b, s: a + 2, e: b - 2, kind: "bold" });
+    });
+    return out.sort((x, y) => x.a - y.a);
+  }
+  /** 太字とリンクの印を外した字。 */
+  function unmark(t) {
+    const s = String(t);
+    let out = "";
+    let at = 0;
+    marksOf(s).forEach((x) => { out += s.slice(at, x.a) + s.slice(x.s, x.e); at = x.b; });
+    return out + s.slice(at);
+  }
+
   /** 字下げの段（空白2つ、またはタブ1つで一段）。 */
   const levelOf = (sp) => Math.min(6, Math.floor(sp.replace(/\t/g, "  ").length / 2));
 
@@ -77,14 +103,15 @@
   /** 印を除いた一行（一覧の冒頭・題の代わり）。区切り・空の行・画像の行は "" 。 */
   function plain(line) {
     const p = parse(String(line || ""));
-    return p.kind === "rule" || p.kind === "blank" || p.kind === "img" || (p.kind === "file" && PIC.test(p.id)) ? "" : unbold(p.text).trim();
+    return p.kind === "rule" || p.kind === "blank" || p.kind === "img" || (p.kind === "file" && PIC.test(p.id)) ? "" : unmark(p.text).trim();
   }
 
   /** 画像の行を空に、ファイルの行を名前（と PDF の字）にした本文（検索が参照の字を拾わないように。保存の形は変えない）。 */
   const searchable = (body) => String(body || "").split("\n").map((l) => {
     if (IMG.test(l)) return "";
     const m = FILE.exec(l);
-    if (!m) return l;
+    /* 中のノートへのリンクは字だけ（id を拾わない）。外へのリンクは先も探せるまま。 */
+    if (!m) return l.replace(/\[([^\[\]\n]*)\]\(note:[^()\s]+\)/g, "$1");
     const ft = KN.noteFile && KN.noteFile.textOf ? KN.noteFile.textOf(m[2]) : "";
     return ft ? `${m[1]}\n${ft}` : m[1];
   }).join("\n");
@@ -96,7 +123,7 @@
   function askOf(line) {
     const p = parse(String(line || ""));
     if (p.kind === "rule" || p.kind === "blank" || p.kind === "img" || p.kind === "file") return null;
-    const m = ASK.exec(unbold(p.text).trim());
+    const m = ASK.exec(unmark(p.text).trim());
     return m ? m[1].trim() : null;
   }
   /** 本文の問いの並び（line は render の data-line と同じ数え方）。 */
@@ -111,7 +138,7 @@
     const out = [];
     String(body || "").split("\n").forEach((l, line) => {
       const p = parse(l);
-      if (p.kind === "head" && p.text.trim()) out.push({ line, level: p.level, text: unbold(p.text).trim() });
+      if (p.kind === "head" && p.text.trim()) out.push({ line, level: p.level, text: unmark(p.text).trim() });
     });
     return out;
   }
@@ -246,34 +273,44 @@
     return box;
   }
 
-  /** 整えた姿の行で k 字め（印・「**」を外した字の数え方）が、本文の行では何字めか。
+  /** 整えた姿の行で k 字め（印・「**」・リンクの「[」「](先)」を外した字の数え方）が、本文の行では何字めか。
       押した字にカーソルを入れるため（2026年10月12日、利用者「全然違うところに飛ぶ」）。 */
   function sourceAt(line, k) {
     const p = parse(String(line || ""));
     const t = p.text || "";
     let src = 0;
     let shown = 0;
-    for (const { a, b } of boldSpans(t)) {
-      if (k <= shown + a - src) break;
-      shown += a - src;
-      src = a + 2;
-      if (k <= shown + b - 2 - src) break;
-      shown += b - 2 - src;
-      src = b;
+    for (const x of marksOf(t)) {
+      if (k <= shown + x.a - src) break;
+      shown += x.a - src;
+      src = x.s;
+      if (k <= shown + x.e - x.s) break;
+      shown += x.e - x.s;
+      src = x.b;
     }
     return p.lead + Math.min(t.length, src + Math.max(0, k - shown));
   }
 
-  /** 一行の中身を入れる。太字は <strong>、字はどれも textContent。 */
+  /** 一行の中身を入れる。太字は <strong>、リンクは <a>（中のノートは data-note、外は href と新しい窓）。
+      字はどれも textContent。 */
   function fill(el, text) {
     let at = 0;
-    boldSpans(text).forEach(({ a, b }) => {
-      if (a > at) el.append(text.slice(at, a));
-      const st = document.createElement("strong");
-      st.className = "nv-b";
-      st.textContent = text.slice(a + 2, b - 2);
-      el.append(st);
-      at = b;
+    marksOf(text).forEach((x) => {
+      if (x.a > at) el.append(text.slice(at, x.a));
+      const shown = text.slice(x.s, x.e);
+      let m;
+      if (x.kind === "bold") {
+        m = document.createElement("strong");
+        m.className = "nv-b";
+      } else {
+        m = document.createElement("a");
+        m.className = "nv-link";
+        if (x.href.startsWith("note:")) m.dataset.note = x.href.slice(5);
+        else { m.href = x.href; m.target = "_blank"; m.rel = "noopener noreferrer"; }
+      }
+      m.textContent = shown;
+      el.append(m);
+      at = x.b;
     });
     if (at < text.length) el.append(text.slice(at));
   }
@@ -529,5 +566,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, searchable, unbold, askOf, asks, headings, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, searchable, unbold, unmark, askOf, asks, headings, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();

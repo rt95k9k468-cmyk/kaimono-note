@@ -10,6 +10,8 @@
    localStorage は変わらない。
    段4.3：書く紙は帯のすぐ下からのカード（上が丸角・持ち手・暗幕なし）／一覧のカードから
    膨らみ、閉じると（‹・本物のタッチで払う）先頭へ移ったカードへ縮む／動きを減らす設定。
+   リンク（notes-unify 段4の一部）：読む姿は字だけ・中のノートは紙を重ねる・外は新しい窓・見つからなければ開かない・
+   押した字にカーソル・題と冒頭は字だけ・探すときは中のノートの id を拾わない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-format.js */
 const { open, checker } = require("./lib");
@@ -567,6 +569,63 @@ const { open, checker } = require("./lib");
   }));
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
+
+  /* ---- リンク（段4の一部）：読む姿は字だけ・押すと開く・押した字にカーソル・題と冒頭は印を外す ---- */
+  const lk = await page.evaluate(() => {
+    const F = KN.noteFormat;
+    const line = "前の字[リンク先](note:abc)後ろ目";
+    return {
+      at: [F.sourceAt(line, 9), F.sourceAt(line, 4), F.sourceAt("**太**[a](https://e.com/x)b", 2)].join(),
+      plain: F.plain("- [題](note:x) と **太** と ![絵](https://e.com/p.png)"),
+      search: F.searchable("[題](note:n-zzz) と [外](https://e.com/q)"),
+    };
+  });
+  t.check("リンク：押した字の位置（印を外した数え方 → 本文の位置）", lk.at === "21,5,7", lk.at);
+  t.check("リンク：題と冒頭は字だけ（画像の形は字のまま）", lk.plain === "題 と 太 と ![絵](https://e.com/p.png)", lk.plain);
+  t.check("リンク：探すときは中のノートの id を拾わない（外の先は探せる）", lk.search === "題 と [外](https://e.com/q)", lk.search);
+  const target = await page.evaluate(() => { const n = KN.notes.draft(); n.title = "リンクの先"; n.body = "先の本文"; KN.notes.put(n); return n.id; });
+  const src = await page.evaluate((id) => {
+    const n = KN.notes.draft();
+    n.title = "リンクの元";
+    n.body = `前の字[リンク先](note:${id})後ろ目\n[外の頁](https://example.com/a)\n[消えた](note:n-none)`;
+    KN.notes.put(n);
+    return n.id;
+  }, target);
+  await page.evaluate((id) => KN.screens.notes.open(id), src);
+  await page.waitForSelector(".sheet.is-note.is-open .nv-link");
+  const links = await page.$$eval(".sheet.is-note.is-open .nv-link", (r) => r.map((e) => ({ t: e.textContent, note: e.dataset.note || "", href: e.getAttribute("href") || "", tg: e.target })));
+  t.check("リンク：読む姿は字だけ（中は data-note、外は新しい窓）", links.length === 3 && links[0].t === "リンク先" && links[0].note === target
+    && links[1].href === "https://example.com/a" && links[1].tg === "_blank" && !links[0].href
+    && !(await page.$eval(".sheet.is-note.is-open .note-view", (e) => e.textContent.includes("note:"))), JSON.stringify(links));
+  await page.click('.sheet.is-note.is-open .nv-link:has-text("リンク先")');
+  await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 2);
+  t.check("リンク：中のノートは紙を重ねて開く（書く欄へは入らない）", (await page.$$eval(".sheet.is-note.is-open .js-title", (r) => r.map((e) => e.value))).join() === "リンクの元,リンクの先"
+    && !(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains("note-body-in"))));
+  await page.locator(".sheet.is-note.is-open .js-close").last().click();
+  await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 1);
+  await page.click('.sheet.is-note.is-open .nv-link:has-text("消えた")');
+  await page.waitForTimeout(300);
+  t.check("リンク：見つからないノートは紙を開かない", (await page.$$eval(".sheet.is-note.is-open", (r) => r.length)) === 1);
+  {
+    const eyeAt = await page.evaluate(() => {
+      const root = document.querySelector(".sheet.is-note.is-open .note-view");
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        const i = n.nodeValue.indexOf("目");
+        if (i < 0) continue;
+        const r = document.createRange();
+        r.setStart(n, i); r.setEnd(n, i + 1);
+        const b = r.getBoundingClientRect();
+        return { x: b.left + 1, y: (b.top + b.bottom) / 2 };
+      }
+      return null;
+    });
+    await page.mouse.click(eyeAt.x, eyeAt.y);
+  }
+  await page.waitForFunction(() => document.activeElement && document.activeElement.classList.contains("note-body-in"));
+  const lf = await field();
+  t.check("リンクのある行でも、押した字のところにカーソル", lf.s === lf.v.indexOf("目"), `${lf.s} / ${lf.v.indexOf("目")}`);
+  await closeSheet();
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));

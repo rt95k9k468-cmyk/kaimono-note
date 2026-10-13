@@ -941,6 +941,20 @@
         openPicture(pic.dataset.img, pic.dataset.orig, pic.dataset.origName);
         return;
       }
+      /* リンク（段4の一部）：中のノートは紙を重ねる（重ねた紙にあればそこまで戻る）、外は新しい窓（a の既定の動き）。
+         どちらも書く欄へは入らない。 */
+      const link = e.target.closest(".nv-link");
+      if (link) {
+        e.stopPropagation();
+        if (!link.dataset.note) return;
+        e.preventDefault();
+        KN.motion.fire("select");
+        const to = N().get(link.dataset.note);
+        if (!to || to.deletedAt) { KN.ui.toast("ノートが見つかりません"); return; }
+        sync();
+        toNote(to.id);
+        return;
+      }
       /* ファイルは、端末の見る口で開く（書く欄へは入らない）。 */
       const doc = e.target.closest(".nv-file");
       if (doc) {
