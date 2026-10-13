@@ -8,7 +8,8 @@
    - 中のリンク（`題%20<id>.md`・notion.so の URL）は `[題](note:<id>)` に。zip の中の画像・PDF は
      note-import の carry で入れ物へ、ほかの添付は名前の行。外へのリンクは字のまま（fetch しない）。
    - 表のノートは、CSV の原本を files/ へ置いた参照の一行と、表の行（読むときの表は段5）。
-   - 日付は残らない → 取り込んだ時刻から 1ms ずつ前（並びは親が先・同じ段は名前順）。
+   - 日付は残らない → 取り込んだ時刻から 1ms ずつ前（並びは親が先・同じ段は名前順。Notion の並びは整理で。note-organize.js）。
+   - フォルダ無しの書き出しは親子が読めない（flat）→ 先に見せる紙に。
    ========================================================= */
 (function () {
   "use strict";
@@ -277,7 +278,20 @@
     }
     /* 親が先（途中で止めても、書いた子の親はもう在る）。同じ段は名前順。 */
     notes.sort((a, b) => depthOf(a.path) - depthOf(b.path) || a.path.localeCompare(b.path, "ja", { numeric: true }));
-    return { kind: "notion", file: zips.map((f) => f.name).join("・"), notebook: "Notion", notes, bad };
+    return { kind: "notion", file: zips.map((f) => f.name).join("・"), notebook: "Notion", notes, bad, flat: flatOf(notes, files) };
+  }
+
+  /** フォルダ無しの書き出し（Notion の「サブページ用のフォルダを作成」を切ったもの。Windows で zip を開けないときの
+      対処として勧められている）：親子が読めない。どのページも別のページのフォルダの中に無く、それでいて同じ場所の
+      ページへの一行のリンク（中のページの書き方）がある。先に見せる紙で「落ちる：階層」に。 */
+  function flatOf(notes, files) {
+    if (notes.length < 2 || notes.some((n) => n.parentKey)) return false;
+    const here = new Map(notes.map((n) => [n.key, n.dir]));
+    return notes.some((n) => !n.table && String(n.body || "").split("\n").some((line) => {
+      const m = WHOLE.exec(line);
+      const w = m && where(m[4], n.dir, files);
+      return !!(w && w.page && !w.out && w.page !== n.key && here.has(w.page) && here.get(w.page) === n.dir);
+    }));
   }
 
   /** 一件を入れ物に置く形に。ids は key → ノートの id（取り込み済みも、これから置くものも）。 */

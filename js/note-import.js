@@ -465,11 +465,15 @@
         c.had ? row("取り込み済み", c.had) : null
       ));
       const drop = P.card(
+        b.flat ? row("落ちる：階層", "") : null,
         c.other ? row("落ちる：ほかの添付", c.other) : null,
         c.crypt ? row("落ちる：暗号化した文", c.crypt) : null,
         c.reminder ? row("落ちる：リマインダー", c.reminder) : null
       );
       if (drop) body.append(drop);
+      /* フォルダ無しの書き出し（js/note-notion.js の flatOf）。取り込んでから書き出し直すと、取り込み済みは飛ばすので
+         階層は直らない——先に言う。 */
+      if (b.flat) body.append(P.more("階層ごと取り込むには", "Notion の書き出しで「サブページ用のフォルダを作成（Create folders for subpages）」を入れて書き出し直し、zip は開かずにそのまま選ぶ"));
       if (c.others.length) body.append(P.more("ほかの添付", c.others.join(" ／ ")));
     });
     if (bad.length) body.append(P.card(row("読めないもの", bad.length)), P.more("読めないもの", bad.join(" ／ ")));

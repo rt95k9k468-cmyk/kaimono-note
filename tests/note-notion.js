@@ -5,7 +5,7 @@
    行のページはその子／中のリンク（相対・notion.so）→ `[題](note:<id>)`、外は字のまま、見つからないものは字だけ
    ／画像・PDF は入れ物へ、ほかの添付は名前の行／字下げ4→2・`<aside>` を外す／先に見せる紙（件数・落ちる・
    読めない）→ 控え → 取り込む（整理した形：中を持つ一番上のページはその題の一冊の頭、ほかは「Notion」。
-   日付は取り込んだ時刻より前・親が先）／二度目は飛ばす／取り消す。
+   日付は取り込んだ時刻より前・親が先）／二度目は飛ばす／取り消す／フォルダ無しの書き出しは「落ちる：階層」。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-notion.js */
 const zlib = require("zlib");
@@ -161,6 +161,25 @@ const ZIP = zip([
   t.check("取り込みの一覧に一つ（冊の名前）", bs.length === 1 && bs[0].books.slice().sort().join() === ["Notion", "旅 (下書き)"].sort().join(), JSON.stringify(bs));
   const n = await page.evaluate((bt) => KN.notes.unimport(bt), bs[0].batch);
   t.check("取り消す：4件とも最近削除へ", n === 4 && (await page.evaluate(() => KN.notes.list().filter((x) => x.src).length)) === 0);
+
+  /* ---- フォルダ無しの書き出し（「サブページ用のフォルダを作成」を切ったもの）：階層が読めない → 先に見せる紙に ---- */
+  const FA = "5".repeat(32), FB = "6".repeat(32);
+  const FLAT = zip([
+    { name: `親 ${FA}.md`, data: `# 親\n\n[子](${enc(`子 ${FB}.md`)})\n` },
+    { name: `子 ${FB}.md`, data: "# 子\n\n本文\n" },
+  ]);
+  const flat = await page.evaluate(async ([a, b]) => {
+    const f = (b64, name) => new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], name);
+    return [(await KN.noteNotion.read([f(a, "flat.zip")])).flat, (await KN.noteNotion.read([f(b, "Export-x.zip")])).flat];
+  }, [FLAT.toString("base64"), ZIP.toString("base64")]);
+  t.check("フォルダ無しの書き出しを見分ける（フォルダのあるものは違う）", flat.join() === "true,false", flat.join());
+  await page.evaluate(() => KN.ui.closeAll && KN.ui.closeAll());
+  await page.evaluate((b64) => KN.noteImport.show([new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], "flat.zip")]), FLAT.toString("base64"));
+  await page.waitForSelector(".js-go");
+  await page.waitForTimeout(300);
+  const flatRows = await rows();
+  t.check("先に見せる紙に「落ちる：階層」", has(flatRows, "落ちる：階層"), JSON.stringify(flatRows));
+  await page.evaluate(() => KN.ui.closeAll && KN.ui.closeAll());
 
   t.check("頁の誤りなし", !errors.length, errors.join("\n"));
   await browser.close();
