@@ -8,7 +8,11 @@
   ・Evernote は一冊「Evernote」、元のノートブックは中の一段。Notion は一番上のページごとに一冊、そのページの本文は
     ノートブックの面の頭に。データベースは表のノート（行は子のノート）。
   ・「最近直した」から、取り込んだまま触っていないノートを外す。
-  ・?rows=table で表の行を木に並べない（ホームの下の切り替えでも）。?start=list で最初の面を「すべてのノート」に。
+  ・木は一本で、どこもその場に開く（10月13日、利用者「> で下の階層が続けて見える方が」）：冊も ▸ でその場に。
+    冊の名前を押すと、頭のある冊は頭の紙、無い冊はその場で開く。段ごとに縦の線。開いた親の行は、その枝を送るあいだ
+    上に留まる（三段まで）。5段目から先は字下げを半分ずつ（深くても題が読める幅を残す）。紙を閉じると、そのノートの
+    行に印を付けて木の中に見せる（枝を開いて、画面の真ん中へ）。
+  ・表の行は木に並べない（答えの13）。?rows=tree で並べて見比べる（ホームの下の切り替えでも）。?start=list で最初の面を「すべてのノート」に。
   ・本物のデータ（localStorage・IndexedDB・キャッシュ）には読みも書きもしない。偽のノートは記憶の中だけで、閉じると消える。
 -->
 <html lang="ja" class="has-fab" data-icons="phosphor">
@@ -33,22 +37,27 @@
 /* 木の箱（ホーム・ノートブックの面）。行は Notion の左の欄の形。 */
 .np-box { margin: var(--sp-2) var(--sp-4) 0; padding: var(--sp-1); background: var(--c-surface);
   border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
-.np-row { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 34px; border-radius: 8px;
-  padding: 0 8px 0 calc(4px + var(--d, 0) * 16px); font-size: 14.5px; color: var(--c-text); text-align: left;
-  transition: background var(--m-state) var(--ease); }
+.np-row { --np-base: 4px; --np-step: 16px; --np-mid: 11px; --np-h: 34px; --np-line: linear-gradient(var(--c-border), var(--c-border));
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: var(--np-h); border-radius: 8px;
+  padding: 0 8px 0 calc(var(--np-base) + var(--u, 0) * var(--np-step)); font-size: 14.5px; color: var(--c-text); text-align: left;
+  background-repeat: no-repeat; background-size: 1px 100%;
+  transition: background-color var(--m-state) var(--ease); }
+/* 開いた親の行は、その枝を送るあいだ上に留まる（三段まで。枝が過ぎれば一緒に流れる）。 */
+.np-row.is-stick { position: sticky; top: calc(var(--d, 0) * var(--np-h)); z-index: calc(var(--z-stick) + 3 - var(--d, 0));
+  background-color: var(--c-surface); }
 .np-row > .np-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .np-row.is-book, .np-row.is-all { font-weight: var(--fw-bold); }
-.np-row.is-current { background: var(--c-primary-soft); }
-.np-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
+.np-row.is-current { background-color: var(--c-primary-soft); }
+.np-row:active { background-color: var(--press-sink); transition-delay: var(--m-press); }
 .np-row > .chip-dot { width: 10px; height: 10px; margin: 0 6px; flex: none; }
 .np-row > .chip-dot.np-blank { visibility: hidden; }
 .np-row > .np-ico { width: var(--ico-sm); height: var(--ico-sm); color: var(--c-text-3); flex: none; }
 .np-twist, .np-pad { width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 6px; color: var(--c-text-2); }
 .np-twist svg { width: 14px; height: 14px; transition: transform var(--m-state) var(--ease); }
 .np-twist.is-open svg { transform: rotate(90deg); }
-@media (hover: hover) { .np-row:hover { background: var(--c-surface-2); } .np-row.is-current:hover { background: var(--c-primary-soft); } }
+@media (hover: hover) { .np-row:hover { background-color: var(--c-surface-2); } .np-row.is-current:hover { background-color: var(--c-primary-soft); } }
 @media (pointer: coarse) {
-  .np-row { min-height: 42px; font-size: 16px; padding-left: calc(2px + var(--d, 0) * 18px); }
+  .np-row { --np-base: 2px; --np-step: 18px; --np-mid: 16px; --np-h: 42px; font-size: 16px; }
   .np-twist, .np-pad { width: 32px; height: 36px; }
 }
 .np-switch { padding: var(--sp-6) var(--sp-4) var(--sp-4); }
@@ -271,12 +280,12 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
   });
   const byId = new Map(notes.map((n) => [n.id, n]));
 
-  /* 表の行を木に並べるか（見比べる切り替え） */
-  let rowsInTree = new URLSearchParams(location.search).get("rows") !== "table";
+  /* 表の行を木に並べるか（見比べる切り替え。並べないのが答えの13） */
+  let rowsInTree = new URLSearchParams(location.search).get("rows") === "tree";
   function setRows(on) {
     rowsInTree = on;
     const q = new URLSearchParams(location.search);
-    if (on) q.delete("rows"); else q.set("rows", "table");
+    if (on) q.set("rows", "tree"); else q.delete("rows");
     history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : ""));
     refresh();
   }
@@ -392,31 +401,51 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
   const twist = (t, key, has) => has
     ? node(html`<span class="np-twist ${t.open.has(key) ? "is-open" : ""}" role="button" aria-label="開く" aria-expanded="${String(t.open.has(key))}">${icon("chevron")}</span>`)
     : node(html`<span class="np-pad"></span>`);
+  /* 段の字下げ：4段までは一段ずつ、その先は半分ずつ（深くても題が読める幅を残す）。 */
+  const unit = (d) => (d <= 4 ? d : 4 + (d - 4) / 2);
+  /* 行の形：字下げと、先祖の段ごとの縦線（その段の ▸ の真ん中）。開いた枝の三段までは上に留まる。 */
+  function rowAttrs(d, open) {
+    const at = [];
+    for (let k = 0; k < d; k++) at.push(`calc(var(--np-base) + ${unit(k)} * var(--np-step) + var(--np-mid)) 0`);
+    const lines = d ? `background-image:${Array(d).fill("var(--np-line)").join(",")};background-position:${at.join(",")};` : "";
+    return { cls: open && d < 3 ? "is-stick" : "", style: `--d:${d};--u:${unit(d)};${lines}` };
+  }
+  /* 一つのノートは、行と開いた中身を一つの群に（留まる行は群の中だけで留まる）。 */
   function noteRows(box, list, d, t) {
     list.forEach((n) => {
       const kids = kidsOf(n);
-      const r = node(html`<button class="np-row ${t.cur === n ? "is-current" : ""}" role="treeitem" style="--d:${d}">${n.table ? html`<span class="np-ico">${icon("rows")}</span>` : ""}<span class="np-name">${headOf(n) || "（無題）"}</span></button>`);
+      const open = kids.length > 0 && t.open.has(n.id);
+      const a = rowAttrs(d, open);
+      const g = node(html`<div class="np-grp" role="none"></div>`);
+      const r = node(html`<button class="np-row ${a.cls} ${t.cur === n ? "is-current" : ""}" role="treeitem" style="${a.style}" data-id="${n.id}">${n.table ? html`<span class="np-ico">${icon("rows")}</span>` : ""}<span class="np-name">${headOf(n) || "（無題）"}</span></button>`);
       r.prepend(twist(t, n.id, kids.length));
       r.addEventListener("click", (e) => {
         if (e.target.closest(".np-twist")) { flip(t, n.id); return; }
         t.onNote(n);
       });
-      box.append(r);
-      if (kids.length && t.open.has(n.id)) noteRows(box, kids, d + 1, t);
+      g.append(r);
+      if (open) noteRows(g, kids, d + 1, t);
+      box.append(g);
     });
   }
+  /* 冊の行：▸ でその場に開く。名前は、頭のある冊なら頭の紙、無ければその場で開く。 */
   function bookRows(box, t) {
     books().forEach((nb) => {
       const key = "nb:" + nb;
       const tops = topsOf(nb);
-      const r = node(html`<button class="np-row is-book ${t.curNb === nb ? "is-current" : ""}" role="treeitem" style="--d:0">${dot(nb)}<span class="np-name">${nb}</span></button>`);
+      const open = tops.length > 0 && opened(t, key);
+      const a = rowAttrs(0, open);
+      const g = node(html`<div class="np-grp" role="none"></div>`);
+      const r = node(html`<button class="np-row is-book ${a.cls} ${t.curNb === nb ? "is-current" : ""}" role="treeitem" style="${a.style}" data-nb="${nb}">${dot(nb)}<span class="np-name">${nb}</span></button>`);
       r.prepend(twist(t, key, tops.length));
       r.addEventListener("click", (e) => {
-        if (e.target.closest(".np-twist")) { flip(t, key); return; }
-        t.onBook(nb);
+        const h = headOfBook(nb);
+        if (e.target.closest(".np-twist") || !h) { if (tops.length) flip(t, key); return; }
+        t.onBook(nb, h);
       });
-      box.append(r);
-      if (opened(t, key)) noteRows(box, tops, 1, t);
+      g.append(r);
+      if (open) noteRows(g, tops, 1, t);
+      box.append(g);
     });
     noteRows(box, topsOf(""), 0, t);
   }
@@ -439,7 +468,7 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
   let query = "";
   let searchOpen = false;
   const homeOpen = new Set();
-  const bookOpen = new Set();
+  let homeCur = null;          // 最後に閉じた紙のノート（木で印を付けて見せる）
 
   function go(p) { pages.push(p); query = ""; searchOpen = false; pick = null; render(true); }
   function back() { if (pages.length > 1) { pages.pop(); query = ""; searchOpen = false; render(true); } }
@@ -449,7 +478,18 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
     else { searchOpen = !searchOpen; if (!searchOpen) query = ""; render(); }
     if (searchOpen) $(".js-search", screen).focus();
   });
-  const toBook = (nb) => { closeAll(true); if (!(page().k === "nb" && page().nb === nb)) go({ k: "nb", nb }); };
+  /* 道すじの冊：頭のある冊は頭の紙へ。無ければ紙を閉じて、木の中のその冊を開いて見せる。 */
+  const toBook = (nb) => {
+    const h = headOfBook(nb);
+    if (h) { toNote(h); return; }
+    closeAll(true);
+    homeOpen.add("nb:" + nb);
+    homeCur = null;
+    pages.length = 1;
+    render(true);
+    const r = screen.querySelector(`.np-row.is-book[data-nb="${CSS.escape(nb)}"]`);
+    if (r) { r.classList.add("is-current"); r.scrollIntoView({ block: "center" }); }
+  };
 
   function render(top) {
     const p = page();
@@ -461,8 +501,7 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
     const stack = node(html`<div class="stack"></div>`);
     const ground = node(html`<div class="notes-ground js-body"></div>`);
     if (p.k === "home") homePage(ground);
-    else if (p.k === "list") listPage(stack, ground);
-    else bookPage(ground, p.nb);
+    else listPage(stack, ground);
     stack.append(ground);
     screen.append(stack);
     screen.scrollTop = top ? 0 : keepY;
@@ -487,7 +526,9 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
     box.append(flatRows(recent().filter(touched).slice(0, 5)));
     box.append(secTitle("ノートブック"));
     const tree = node(html`<div class="np-box" role="tree"></div>`);
-    const t = { open: homeOpen, cur: null, onNote: (n) => openNote(n.id, { fresh: true }), onBook: (nb) => go({ k: "nb", nb }), redraw: () => render() };
+    const c = homeCur && !homeCur.gone ? homeCur : null;
+    const t = { open: homeOpen, cur: c && !c.head ? c : null, curNb: c && c.head ? c.notebook : null,
+      onNote: (n) => openNote(n.id, { fresh: true }), onBook: (nb, h) => openNote(h.id, { fresh: true }), redraw: () => render() };
     const all = node(html`<button class="np-row is-all" role="treeitem" style="--d:0"><span class="np-pad"></span><span class="np-name">すべてのノート</span></button>`);
     all.addEventListener("click", () => go({ k: "list" }));
     tree.append(all);
@@ -506,21 +547,6 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
     a.addEventListener("click", () => setRows(true));
     b.addEventListener("click", () => setRows(false));
     return sw;
-  }
-
-  /* ノートブックの面：Notion の頭のページの本文、そのあと一番上のノートの木 */
-  function bookPage(box, nb) {
-    const h = headOfBook(nb);
-    if (h && h.body.trim()) {
-      const hp = node(html`<div class="np-headpage" role="button"></div>`);
-      hp.innerHTML = view(h);
-      linkify(hp);
-      hp.addEventListener("click", () => openNote(h.id));
-      box.append(hp);
-    }
-    const tree = node(html`<div class="np-box" role="tree"></div>`);
-    noteRows(tree, topsOf(nb), 0, { open: bookOpen, cur: null, onNote: (n) => openNote(n.id, { fresh: true }), redraw: () => render() });
-    box.append(tree);
   }
 
   /* すべてのノート：今の一覧そのまま（すべて・★・ノートブック ⌄・タグ ⌄、さがす、カード） */
@@ -734,7 +760,7 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
   function paintKids(it) {
     const box = $(".js-kids", it.el);
     box.innerHTML = "";
-    const kids = it.n.head ? [] : kidsOf(it.n).filter((k) => !k.row);
+    const kids = it.n.head && /\[\[/.test(it.n.body) ? [] : kidsOf(it.n).filter((k) => !k.row);
     if (!kids.length) return;
     const tree = node(html`<div role="tree"></div>`);
     noteRows(tree, kids, 0, { open: it.open, cur: null, onNote: (k) => openNote(k.id), redraw: () => paintKids(it) });
@@ -767,7 +793,20 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
       b.classList.remove("is-open");
       setTimeout(() => b.remove(), 450);
     }
+    if (!sheets.length && !it.n.gone && !quick) reveal(it.n);
     refresh();
+    if (!sheets.length && homeCur && page().k === "home") {
+      const r = screen.querySelector(".np-box .np-row.is-current");
+      if (r) r.scrollIntoView({ block: "center" });
+    }
+  }
+  /* 閉じたノートを木の中に：枝を開いて印を付ける（表の行なら表のノート、頭なら冊の行）。 */
+  function reveal(n) {
+    let at = n;
+    if (!inTree(at)) at = parentOf(at) || at;
+    homeCur = at;
+    if (at.notebook) homeOpen.add("nb:" + at.notebook);
+    pathOf(at).forEach((p) => homeOpen.add(p.id));
   }
   function closeAll(quick) { while (sheets.length) closeTop(quick); }
   $(".js-open-add").addEventListener("click", () => addNote(null));
@@ -820,9 +859,9 @@ window.KN = { store: { get: () => ({ settings: {} }) } };
     const keep = treeBody.scrollTop;
     treeBody.innerHTML = "";
     bookRows(treeBody, {
-      open: sideOpen, cur, curNb: !cur && page().k === "nb" ? page().nb : null,
+      open: sideOpen, cur, curNb: cur && cur.head ? cur.notebook : null,
       onNote: (n) => openNote(n.id, { fresh: true }),
-      onBook: (nb) => { toBook(nb); sideOpen.add("nb:" + nb); renderTree(); },
+      onBook: (nb, h) => openNote(h.id, { fresh: true }),
       redraw: renderTree,
     });
     treeBody.scrollTop = keep;
