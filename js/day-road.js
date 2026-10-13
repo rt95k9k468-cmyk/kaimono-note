@@ -1486,6 +1486,9 @@
       const full = tw + 4 + textW(title, FS) + 1 + extra;
       const min = tw + 4 + FS * 1.6 + extra;
       const dir = right ? -1 : 1;
+      /* 上下の段の通りを先に作っておく。まだ無い通りには箱を控えられず、あとから
+         そこへ置いた札が角の札に重なっていた（2026年10月13日、「朝のBaby」と「朝のルーティン」）。 */
+      ["u", "d"].forEach((side) => { lane(i, side); if (i + 1 < g.rows) lane(i + 1, side); });
       for (const mode of ["full", "min", "time"]) {
         for (const y of ys) {
           const dy = y - cy;
