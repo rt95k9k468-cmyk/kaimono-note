@@ -1142,6 +1142,8 @@
       body.addEventListener("touchmove", (e) => {
         if (p0 == null) return;
         if (KN.util.selecting(e)) { p0 = null; release(false); return; }
+        /* 長押しで持ち上げた行（ノートの中のノート）を運ぶ指は、引いて閉じる指ではない。 */
+        if (KN.reorder && KN.reorder.isActive()) { p0 = null; release(false); return; }
         const y = e.touches[0].clientY;
         if (startY == null) {
           const my = y - p0, mx = e.touches[0].clientX - px0;

@@ -204,6 +204,7 @@
 
   function renderBody(jump) {
     if (!els.body) return;
+    if (carrying()) { owedPaint = true; return; }
     const box = els.body;
     paintTitle();
     /* チップの列は組み直しても横の位置を保ちます（右のほうのチップを押した
@@ -265,7 +266,11 @@
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
     const recent = all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch));
     if (recent.length) { box.append(secTitle("最近直した")); box.append(flatRows(recent.slice(0, 5))); }
-    box.append(secTitle("ノートブック"));
+    const sec = node(html`
+      <div class="notes-sec has-add"><div class="section-title">ノートブック</div>
+        <button type="button" class="icon-btn is-sm js-new-book" aria-label="ノートブックを追加">${icon("plus")}</button></div>`);
+    sec.querySelector(".js-new-book").addEventListener("click", () => { KN.motion.fire("select"); newBook(); });
+    box.append(sec);
     const tree = node(html`<div class="notes-books" role="tree" aria-label="ノートブック"></div>`);
     const line = (label, mark, to, cls) => {
       const b = node(html`
@@ -284,6 +289,18 @@
       redraw: () => renderBody(),
     });
     box.append(tree);
+    carry(tree, { scope: "books", open: treeOpen, scroller: () => KN.app.scrollerOf(root),
+      root: () => root && root.querySelector(TREE_ROW.replace(" .nt-row", "")) });
+  }
+
+  /** 空のノートブックを作る（名前を訊いて、終わりに。docs/notes-unify.md「並び」）。作った名前を返す。 */
+  function newBook() {
+    return KN.ui.prompt({ title: "ノートブックを追加", label: "名前", okLabel: "追加" }).then((v) => {
+      const nb = String(v || "").trim();
+      if (!nb || N().state() !== "on" || !N().addBook(nb)) return null;
+      U.haptic();
+      return nb;
+    });
   }
 
   /** 行だけの短い並び（★・最近直した）：ノートブックの色の丸と題。押すと紙（閉じるとこの行へ縮んで戻る）。 */
@@ -326,7 +343,8 @@
       const look = rowLook(d, open, o.stick);
       const g = node(html`<div class="nt-grp" role="none"></div>`);
       const r = node(html`
-        <button type="button" class="nt-row js-tree-note ${look.cls}" role="treeitem" data-id="${n.id}" style="${look.style}"
+        <button type="button" class="nt-row js-tree-note ${look.cls}" role="treeitem" data-id="${n.id}" data-d="${d}" style="${look.style}"
+                ${N().isTable(n) ? html`data-table="1"` : ""}
                 ${n.id === o.cur ? html`aria-current="true"` : ""} ${kids.length ? html`aria-expanded="${String(open)}"` : ""}>
           ${twistOf(kids.length, open)}${N().isTable(n) ? html`<span class="nt-ico">${icon("rows")}</span>` : ""}<span class="nt-name">${headOf(n) || "ノート"}</span>
         </button>`);
@@ -337,9 +355,30 @@
       });
       g.append(r);
       if (open) treeRows(g, kids, d + 1, o);
+      else if (kids.length) springs.set(r, () => { o.open.add(n.id); opened(r); treeRows(g, kids, d + 1, o); });
       box.append(g);
     });
   }
+
+  /* 運んでいるあいだ、閉じた枝をその場で開く口（js/note-drag.js の expand。組み直すと運んでいる行が外れる）。 */
+  const springs = new WeakMap();
+  const opened = (r) => {
+    r.setAttribute("aria-expanded", "true");
+    const tw = r.querySelector(".nt-twist");
+    if (tw) tw.setAttribute("aria-label", "閉じる");
+  };
+  /** 木の器に、つまんで運ぶ・キーで動かすを付ける（docs/notes-unify.md「並び」）。 */
+  function carry(box, o) {
+    if (!KN.noteDrag) return;
+    KN.noteDrag.attach(box, {
+      ...o,
+      expand: (r) => { const f = springs.get(r); if (f) { springs.delete(r); f(); } },
+      done: () => { if (owedPaint) { owedPaint = false; renderBody(); } },
+    });
+  }
+  /* 運んでいるあいだに来た組み直し（store の変わり目など）は、離してから一度。 */
+  let owedPaint = false;
+  const carrying = () => !!(KN.noteDrag && KN.noteDrag.isActive());
 
   /** ノートブックの行と、その中の木（表の行は並べない）。名前は、頭のある冊なら頭の紙、無ければその場で開く。
       ＋でその冊に書く（頭のある冊は頭の中に）。終わりにノートブックの無いノートの木。
@@ -354,7 +393,7 @@
       const look = rowLook(0, open, o.stick);
       const g = node(html`<div class="nt-grp" role="none"></div>`);
       const r = node(html`
-        <button type="button" class="nt-row is-book js-book ${look.cls}" role="treeitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""} style="${look.style}"
+        <button type="button" class="nt-row is-book js-book ${look.cls}" role="treeitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""} data-d="0" style="${look.style}"
                 ${o.curNb === nb ? html`aria-current="true"` : ""} ${tops.length ? html`aria-expanded="${String(open)}"` : ""}>
           ${twistOf(tops.length, open)}${book(nb)}<span class="nt-name">${nb}</span><span class="nt-add" role="button" aria-label="${nb} に書く">${icon("plus")}</span>
         </button>`);
@@ -366,6 +405,7 @@
       });
       g.append(r);
       if (open) treeRows(g, tops, 1, sub);
+      else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, tops, 1, sub); });
       box.append(g);
     });
     treeRows(box, t.tops(""), 0, sub);
@@ -506,7 +546,7 @@
      ものが無ければ、列ごと出しません。 */
   function chipRow(all) {
     const hasFav = all.some((n) => n.fav);
-    const books = N().notebooks();
+    const books = N().notebooks({ used: true });
     const tags = N().tagNames();
     /* 選んでいたものが無くなっていたら（最後の★を外した・名前を消した）、すべてへ。 */
     if (pick && !(pick.k === "fav" ? hasFav : pick.k === "nb" ? books.includes(pick.v) : tags.includes(pick.v))) pick = null;
@@ -1299,6 +1339,7 @@
         onNote: (n, el) => { sync(); openNote(n.id, el, { within: kidsEl, after: paintKids, back: ".nt-row" }); },
       });
       kidsEl.append(box);
+      carry(box, { scope: note.id, open: kidsOpen, scroller: () => box.closest(".sheet-body"), root: () => kidsEl.querySelector(".nt-tree") });
     };
     /* ★・消した・戻した・移したら（打つたびには来ません）。 */
     const offKids = N().onChange(() => { if (!closed) { paintKids(); paintPath(); } });
@@ -1757,9 +1798,11 @@
      出す・隠すは CSS（幅とノートの席が出ているか）。 */
   function paintTree() {
     if (!window.matchMedia(WIDE).matches) return;
+    if (carrying()) { owedPaint = true; return; }
     if (!treeEl) {
       treeEl = node(html`<nav class="notes-tree" aria-label="ノートの木"><div role="tree"></div></nav>`);
       document.body.append(treeEl);
+      carry(treeEl.firstElementChild, { scope: "books", open: treeOpen, scroller: () => treeEl, root: () => treeEl.firstElementChild });
     }
     const box = treeEl.firstElementChild;
     const keep = treeEl.scrollTop;
@@ -2018,5 +2061,5 @@
 
   KN.screens = KN.screens || {};
   KN.screens.notes = { mount, render, dockButton, again, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
-    pick: pickNote, asks, answer };
+    pick: pickNote, asks, answer, newBook };
 })();

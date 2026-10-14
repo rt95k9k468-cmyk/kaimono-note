@@ -165,7 +165,8 @@
            そのまま渡します。 */
         axis = (mx >= Math.abs(my) * SLANT && mx > 0) ? "x" : "y";
         if (axis !== "x") { id = null; return; }
-        if (o.busy && o.busy()) { id = null; axis = null; return; }
+        /* 持ち上げた行を運んでいる指（並べ替え・ノートの木）は戻る指ではない。 */
+        if ((o.busy && o.busy()) || (KN.reorder && KN.reorder.isActive())) { id = null; axis = null; return; }
         live = o.begin();
         if (!live) { id = null; axis = null; return; }
         uw = live.under ? live.under.offsetWidth : 0;

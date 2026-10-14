@@ -26,9 +26,14 @@
   const DROP   = 190;   // how long the row takes to settle into its gap
 
   let drag = null;
+  /* The notes tree carries its rows with its own lift (js/note-drag.js — a tree,
+     not a flat list); while it holds one, everything that stands down for a
+     lifted row here stands down for that too. */
+  let held = false;
 
   /** True while a row is lifted — other gesture handlers stand down on this. */
-  const isActive = () => !!drag;
+  const isActive = () => !!drag || held;
+  const hold = (on) => { held = !!on; };
 
   /**
    * @param {Element} container  the list; only its direct children move
@@ -299,5 +304,5 @@
     });
   }
 
-  KN.reorder = { attach, isActive, applyOrder };
+  KN.reorder = { attach, isActive, applyOrder, hold };
 })();

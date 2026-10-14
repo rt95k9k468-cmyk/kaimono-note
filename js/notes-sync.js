@@ -42,7 +42,9 @@
   const ST = "sync-state";
   const LB = "sync-labels";
   /* 三方で合わせる欄（題は本文と一つの「字」として合わせる）。 */
-  const FIELDS = ["notebook", "tags", "fav", "parent", "deletedAt", "createdAt", "noTime", "emoji", "src", "head", "org"];
+  const FIELDS = ["notebook", "tags", "fav", "parent", "deletedAt", "createdAt", "noTime", "emoji", "src", "head", "org", "pos"];
+  /* 並び（notes-idb.js の POS と同じ形。外で書いた変な字は読まない＝作った順のまま）。 */
+  const POS = /^[\x21-\x7e]{1,200}$/;
 
   const N = () => KN.notes;
   const D = () => KN.dropbox && KN.dropbox.api;
@@ -88,6 +90,7 @@
     if (n.tags && n.tags.length) L.push(`tags: ${q(n.tags)}`);
     if (n.fav) L.push("favorite: true");
     if (n.parent) L.push(`parent: ${q(String(n.parent))}`);
+    if (typeof n.pos === "string" && POS.test(n.pos)) L.push(`pos: ${q(n.pos)}`);
     if (n.deletedAt) L.push(`deleted: ${localIso(n.deletedAt)}`);
     if (n.noTime) L.push("no_time: true");
     if (n.emoji) L.push(`emoji: ${q(String(n.emoji))}`);
@@ -151,6 +154,7 @@
       tags: N().cleanTags(tagsOf(y.tags)),
       fav: y.favorite === true,
       parent: y.parent ? String(y.parent) : undefined,
+      pos: typeof y.pos === "string" && POS.test(y.pos) ? y.pos : undefined,
       deletedAt: isoOf(y.deleted),
       createdAt: isoOf(y.created) || updatedAt,
       updatedAt,
@@ -582,10 +586,23 @@
     return "done";
   }
 
-  /* ---------------- 色（labels.json） ---------------- */
+  /* ---------------- 色・ノートブックの並び（labels.json） ---------------- */
+
+  /** ノートブックの並び（空のノートブックも。notes-idb.js の `books`）を三方で。向こうに `books` が無い
+      （古い版が書いた labels.json）なら、向こうは何も言っていない＝こちらのまま。両方で変えたら、こちらの順に
+      向こうで足した名前を足し、どちらかで外した名前は外す。 */
+  function mergeBooks(b, l, r) {
+    if (!Array.isArray(r)) return l;
+    const k = (v) => (v || []).join("\n");
+    if (k(l) === k(r)) return l;
+    if (Array.isArray(b) && k(b) === k(l)) return r.slice();
+    if (Array.isArray(b) && k(b) === k(r)) return l;
+    const gone = new Set((b || []).filter((x) => !l.includes(x) || !r.includes(x)));
+    return l.concat(r.filter((x) => !l.includes(x))).filter((x) => !gone.has(x));
+  }
 
   function mergeLabels(b, l, r) {
-    const out = { nb: {}, tag: {} };
+    const out = { nb: {}, tag: {}, books: mergeBooks(b && b.books, l.books || [], r.books) };
     ["nb", "tag"].forEach((kind) => {
       const B = (b && b[kind]) || {}, Lk = l[kind] || {}, Rk = r[kind] || {};
       new Set([...Object.keys(Lk), ...Object.keys(Rk), ...Object.keys(B)]).forEach((name) => {
@@ -607,22 +624,27 @@
     else if (rev) {
       try {
         const v = JSON.parse(await download(rev));
-        if (v && typeof v === "object") rem = { nb: { ...(v.nb || {}) }, tag: { ...(v.tag || {}) } };
+        if (v && typeof v === "object") {
+          rem = { nb: { ...(v.nb || {}) }, tag: { ...(v.tag || {}) } };
+          if (Array.isArray(v.books)) rem.books = v.books.map(String);
+        }
       } catch (_) { return; }                        // 読めない labels.json は上書きしない
     }
-    const mine = N().colors();
+    const here = () => ({ ...N().colors(), books: N().books() });
+    const mine = here();
     const before = canon(mine);
     const next = rem ? mergeLabels(lb && lb.data, mine, rem) : mine;
     const metas = [];
     if (canon(next) !== before) {
-      if (canon(N().colors()) !== before) { again = true; return; }
+      if (canon(here()) !== before) { again = true; return; }
       N().setColors((all) => { all.nb = { ...next.nb }; all.tag = { ...next.tag }; }, true);
+      if (canon(next.books) !== canon(mine.books)) N().setBooks(next.books, true);
     }
     if (rem) metas.push([LB, { k: LB, rev, data: rem }]);
     if (metas.length || canon(next) !== before) await N().absorb([], metas);
     if (rem && canon(next) === canon(rem)) return;
-    if (!rem && !Object.keys(next.nb).length && !Object.keys(next.tag).length) return;
-    const r = await upload(LABELS, JSON.stringify({ format: 1, nb: next.nb, tag: next.tag }, null, 1),
+    if (!rem && !Object.keys(next.nb).length && !Object.keys(next.tag).length && !next.books.length) return;
+    const r = await upload(LABELS, JSON.stringify({ format: 1, nb: next.nb, tag: next.tag, books: next.books }, null, 1),
       rev ? { ".tag": "update", update: rev } : "add");
     if (!r.ok) { if (/conflict/.test(r.err)) { again = true; return; } throw new Error(r.err); }
     await N().absorb([], [[LB, { k: LB, rev: r.body.rev, data: next }]]);
@@ -755,6 +777,6 @@
     status, setOn, restart, soon, stale, now: sync, ready: loadState,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /* 試験の口（台本が形を確かめる） */
-    _: { fileOf, parse, merge3, namesFor, st: () => st },
+    _: { fileOf, parse, merge3, namesFor, mergeLabels, st: () => st },
   };
 })();

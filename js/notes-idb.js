@@ -19,6 +19,8 @@
    - 同期（notes-unify.md 段2。js/notes-sync.js）：覚えた版は meta の `sync:*`。外から来た中身
      （`absorb`）は、その覚えと**同じ取引で**書き、送り返しの合図を出しません。
      色は meta の `labels`（はじめて開いたとき `settings.noteColors` から写す。元は残す）。
+   - 並び（notes-unify.md「並び」）：兄弟の順はノートの `pos`（無ければ作った日時）。ノートブックの順と
+     空のノートブックは meta の `books`。
    ========================================================= */
 (function () {
   "use strict";
@@ -53,8 +55,14 @@
   const opened = new Set();               // いま紙で開いているノート（同期は閉じてから合わせる）
   let labels = null;                      // { nb: {名前: 色}, tag: {名前: 色} }
   let quietLab = false;
+  let books = null;                       // 並べた・作ったノートブックの名前（順に。meta の `books`）
+  let holding = false;                    // 木の行を運んでいるあいだ、知らせは運び終えてから一度（js/note-drag.js）
+  let owed = false;
 
-  const emit = () => listeners.forEach((fn) => { try { fn(); } catch (_) { /* 一つ落ちても続けます */ } });
+  const emit = () => {
+    if (holding) { owed = true; return; }
+    listeners.forEach((fn) => { try { fn(); } catch (_) { /* 一つ落ちても続けます */ } });
+  };
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -107,7 +115,8 @@
       const t = d.transaction(["notes", "meta"], "readonly");
       const req = t.objectStore("notes").getAll();
       const lab = t.objectStore("meta").get("labels");
-      t.oncomplete = () => resolve({ rows: req.result || [], labels: lab.result || null });
+      const bk = t.objectStore("meta").get("books");
+      t.oncomplete = () => resolve({ rows: req.result || [], labels: lab.result || null, books: bk.result || null });
       t.onerror = t.onabort = () => reject(t.error || new Error("読めませんでした"));
     }));
   }
@@ -132,9 +141,10 @@
       settle();
       emit();
     }, OPEN_WAIT);
-    readAll().then(({ rows, labels: lab }) => {
+    readAll().then(({ rows, labels: lab, books: bk }) => {
       byId.clear();
       rows.forEach((n) => { if (n && n.id) byId.set(String(n.id), shape(n)); });
+      books = cleanBooks(bk && bk.list);
       phase = "on";
       /* 色は入れ物へ写す（はじめて開いたときだけ。記録の settings.noteColors は消さない）。 */
       if (lab) labels = colorsIn(lab);
@@ -188,7 +198,7 @@
     dirty.clear();
     const metas = new Map(pendMeta);
     pendMeta.clear();
-    const loud = ids.some((id) => !quiet.has(id)) || (metas.has("labels") && !quietLab);
+    const loud = ids.some((id) => !quiet.has(id)) || ((metas.has("labels") || metas.has("books")) && !quietLab);
     quietLab = false;
     ids.forEach((id) => quiet.delete(id));
     const vers = new Map();
@@ -364,6 +374,11 @@
         })), true);
         quietLab = false;
       }
+      /* ノートブックの並び：こちらの順のまま、こちらに無い名前だけ終わりに足す（色と同じ考え）。 */
+      if (Array.isArray(book.books) && books) {
+        const add = cleanBooks(book.books).filter((nb) => !books.includes(nb));
+        if (add.length) { books = books.concat(add); pendMeta.set("books", { k: "books", list: books.slice() }); }
+      }
       purge(true);
       return writeNow().then(() => { emit(); return res; });
     });
@@ -525,8 +540,9 @@
     if (!n || phase !== "on") return;
     if ("notebook" in patch) {
       const nb = String(patch.notebook || "").trim();
-      /* ノートブックを替える＝そのノートブックの一番上へ移す。子孫も同じ札に（段1）。 */
-      if (nb !== n.notebook) { delete n.parent; unhead(n); under(id).forEach((k) => { k.notebook = nb; dirty.add(k.id); }); }
+      /* ノートブックを替える＝そのノートブックの一番上へ移す。子孫も同じ札に（段1）。並びは作った順へ
+         （前の兄弟のあいだの `pos` は、移った先では意味が無い）。 */
+      if (nb !== n.notebook) { delete n.parent; delete n.pos; unhead(n); under(id).forEach((k) => { k.notebook = nb; dirty.add(k.id); }); }
       n.notebook = nb;
     }
     if ("tags" in patch) n.tags = cleanTags(patch.tags);
@@ -584,13 +600,12 @@
       chain.forEach((c) => seen.set(c, 2));
     });
     const kids = new Map();
-    const old = (a, b) => String(a.createdAt).localeCompare(String(b.createdAt));
     live.forEach((n) => {
       const p = up.get(n.id);
       if (!kids.has(p)) kids.set(p, []);
       kids.get(p).push(n);
     });
-    kids.forEach((l) => l.sort(old));
+    kids.forEach((l) => l.sort(byPos));
     const parentOf = (id) => { const p = up.get(id); return p ? byId.get(p) : null; };
     /* ノートブックの頭（notes-unify.md「整理」）：`head` の印を持つ一番上のノート（二つあれば古いほう）。
        頭の中のノートは、そのノートブックの一番上として並べる（頭そのものは並べない）。 */
@@ -598,15 +613,15 @@
     (kids.get(null) || []).forEach((n) => { if (n.head === true && !heads.has(n.notebook)) heads.set(n.notebook, n); });
     return {
       parentOf,
-      /** 中のノート（作った順）。 */
+      /** 中のノート（並びの順。`pos` が無ければ作った順）。 */
       kids: (id) => kids.get(id) || [],
       /** 木に並べる中のノート。表のノート（Notion のデータベース）の行は並べない（表の中で見る）。 */
       branch: (id) => (isTable(byId.get(id)) ? [] : kids.get(id) || []),
-      /** ノートブックの一番上のノート（作った順）。頭があれば、頭の中のノートと、頭の外の一番上のノート。 */
+      /** ノートブックの一番上のノート（並びの順）。頭があれば、頭の中のノートと、頭の外の一番上のノート。 */
       tops: (nb) => {
         const h = heads.get(nb);
         const list = (kids.get(null) || []).filter((n) => n.notebook === nb && n !== h);
-        return h ? (kids.get(h.id) || []).concat(list).sort(old) : list;
+        return h ? (kids.get(h.id) || []).concat(list).sort(byPos) : list;
       },
       /** ノートブックの頭（無ければ null）。 */
       head: (nb) => heads.get(nb) || null,
@@ -631,9 +646,197 @@
     if (p || book !== n.notebook) unhead(n);
     if (p) n.parent = p.id; else delete n.parent;
     n.notebook = book;
+    /* 移った先では作った順に（`pos` は前の兄弟のあいだの字）。手で置くのは place。 */
+    delete n.pos;
     under(id).forEach((k) => { k.notebook = book; dirty.add(k.id); });
     touch(id);
     emit();
+    return true;
+  }
+
+  /* ---------------- 並び（docs/notes-unify.md「並び」） ----------------
+     同じ親の中（ノートブックの一番上も）は `pos` の字の順。`pos` の無いノートは作った日時の字を代わりに使う
+     ——前からのノートは作った順のまま（移行なし）。`pos` も作った日時も同じ物差し（字のコードの順）で比べるので、
+     有るものと無いものが混ざっても一本の順になる（同じ字なら今までどおり入れ物の順＝並べ替えない）。
+     動かすと、前後のあいだの字を一つ作って**動かしたノートだけ**に書く。終わりへ置く字は「いま」より前に作る
+     ——あとから書いた新しいノートが、その下に来るように。あいだが無い（同じ字が並んだ・字が長くなりすぎた）
+     ときだけ、その兄弟をまとめて振り直す（"0" で始まる字。どの作った日時よりも前）。 */
+  const POS = /^[\x21-\x7e]{1,200}$/;
+  const posOf = (n) => (typeof n.pos === "string" && POS.test(n.pos) ? n.pos : null);
+  const keyOf = (n) => posOf(n) || String(n.createdAt || "");
+  function byPos(a, b) {
+    const x = keyOf(a), y = keyOf(b);
+    return x === y ? 0 : x < y ? -1 : 1;
+  }
+  /* あいだに置く字。"0" は終わりに置かない（その前に入る字が無くなる）。 */
+  const DIG = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const B62 = "0" + DIG;
+
+  /** a と b のあいだの字（a は "" で頭の前、b は null で終わりの先）。作れなければ null。 */
+  function between(a, b) {
+    let s = "";
+    for (let i = 0; i < 240; i++) {
+      const ca = i < a.length ? a.charCodeAt(i) : -1;
+      const cb = b == null ? 0x7f : i < b.length ? b.charCodeAt(i) : -1;
+      if (ca === cb) { if (ca < 0) return null; s += a[i]; continue; }
+      if (ca > cb) return null;
+      const mid = [...DIG].filter((c) => c.charCodeAt(0) > ca && c.charCodeAt(0) < cb);
+      if (mid.length) return s + mid[mid.length >> 1];
+      if (ca >= 0) { s += a[i]; b = null; }            // a の字を写し、あとは a の残りより上なら何でも
+      else if (cb > 48) { s += "0"; b = null; }         // a は尽きた。"0" は b の字より下
+      else s += b[i];                                   // b の字が "0" 以下：b について降りる
+    }
+    return null;
+  }
+
+  /** 振り直しの字（count 個、間を空けて）。どれも "0" で始まり、"0" で終わらない。 */
+  function spaced(count) {
+    let w = 1;
+    while (62 ** w < (count + 1) * 2) w++;
+    const step = Math.floor(62 ** w / (count + 1));
+    const out = [];
+    for (let i = 1; i <= count; i++) {
+      let v = i * step + (i * step % 62 === 0 ? 1 : 0);
+      let s = "";
+      for (let k = 0; k < w; k++) { s = B62[v % 62] + s; v = Math.floor(v / 62); }
+      out.push("0" + s);
+    }
+    return out;
+  }
+
+  /* 置いた場所の欄（戻すための控えに取るもの）。 */
+  const PLACE = ["parent", "notebook", "pos", "head", "org"];
+  const snapOf = (list) => list.map((k) => [k.id, Object.fromEntries(PLACE.map((f) => [f, k[f]]))]);
+
+  /** 置く（木の行をつまんで運んだ・Tab・Alt+↑↓。js/note-drag.js）。
+      to … { parent: 親のノートの id（無ければ nb の一番上）, nb, after / before: 隣に来る兄弟の id（無ければ終わり） }。
+      親とノートブックは移すと同じ（自分・子孫の下へは置かない・子孫まで同じノートブック・頭は外れる）。
+      頭のある冊の一番上＝頭の中。★と同じく更新日は動かさず、前の版も取りません。
+      戻すための控え（unplace へ）を返す。置けない・動かないなら null。 */
+  function place(id, to) {
+    const n = byId.get(id);
+    if (!n || n.deletedAt || phase !== "on" || !to) return null;
+    const t = tree();
+    let p = to.parent ? byId.get(String(to.parent)) : null;
+    if (to.parent && (!p || p.deletedAt || p.id === id || under(id).some((k) => k.id === p.id))) return null;
+    const nb = p ? p.notebook : String(to.nb == null ? n.notebook : to.nb).trim();
+    if (!p && nb) { const h = t.head(nb); if (h && h.id !== id) p = h; }
+    const top = !p || t.isHead(p.id);
+    const all = top ? t.tops(nb) : t.kids(p.id);
+    const group = all.filter((k) => k.id !== id);
+    let at = group.length;
+    const i = (x) => group.findIndex((k) => k.id === x);
+    if (to.after && i(to.after) >= 0) at = i(to.after) + 1;
+    else if (to.before && i(to.before) >= 0) at = i(to.before);
+    /* 同じ群の同じ場所なら動かさない。 */
+    if (n.notebook === nb && all.includes(n) && all.indexOf(n) === at) return null;
+    const prev = group[at - 1], next = group[at];
+    let key = null;
+    const renum = [];
+    if (prev || next) {
+      if (next) key = between(prev ? keyOf(prev) : "", keyOf(next));
+      else { const a = keyOf(prev), now = U.today(); key = between(a, a < now ? now : null); }
+      if (key == null || key.length > 120) {
+        const order = group.slice(0, at).concat(n, group.slice(at));
+        const keys = spaced(order.length);
+        order.forEach((k, j) => { if (k === n) key = keys[j]; else if (k.pos !== keys[j]) renum.push([k, keys[j]]); });
+      }
+    }
+    const subtree = under(id);
+    const was = snapOf([n].concat(subtree, renum.map(([k]) => k)));
+    if (p || nb !== n.notebook) unhead(n);
+    if (p) n.parent = p.id; else delete n.parent;
+    n.notebook = nb;
+    if (key) n.pos = key; else delete n.pos;
+    subtree.forEach((k) => { if (k.notebook !== nb) { k.notebook = nb; quiet.delete(k.id); dirty.add(k.id); } });
+    renum.forEach(([k, v]) => { k.pos = v; quiet.delete(k.id); dirty.add(k.id); });
+    touch(id);
+    emit();
+    return was;
+  }
+
+  /** place の控えのとおりに戻します（「元に戻す」）。 */
+  function unplace(was) {
+    if (phase !== "on" || !Array.isArray(was)) return false;
+    let any = false;
+    was.forEach(([id, f]) => {
+      const k = byId.get(id);
+      if (!k || !f) return;
+      PLACE.forEach((x) => { if (f[x] === undefined) delete k[x]; else k[x] = f[x]; });
+      quiet.delete(id);
+      dirty.add(id);
+      any = true;
+    });
+    if (any) { schedule(); emit(); }
+    return any;
+  }
+
+  /** 木の順（ノートブックの並び → 一番上から深さ順。ノートブックの無いノートは終わり）。書き出しの並び。 */
+  function inOrder(list) {
+    const t = tree();
+    const rank = new Map();
+    const walk = (ns) => ns.forEach((n) => { if (!rank.has(n.id)) { rank.set(n.id, rank.size); walk(t.kids(n.id)); } });
+    notebooks().concat("").forEach((nb) => {
+      const h = nb ? t.head(nb) : null;
+      if (h) rank.set(h.id, rank.size);
+      walk(t.tops(nb));
+    });
+    const r = (n) => (rank.has(n.id) ? rank.get(n.id) : rank.size);
+    return list.slice().sort((a, b) => r(a) - r(b));
+  }
+
+  /** 兄弟の中で何番目か（1から。書き出しの `order`）。 */
+  function orderOf(id) {
+    const n = byId.get(id);
+    if (!n || n.deletedAt) return 0;
+    const t = tree();
+    const up = t.parentOf(id);
+    const list = !up || t.isHead(up.id) ? t.tops(n.notebook) : t.kids(up.id);
+    return list.indexOf(n) + 1;
+  }
+
+  /* ---------------- ノートブックの並び・空のノートブック（docs/notes-unify.md「並び」） ----------------
+     ノートブックは名前の札のまま。並べた・作った名前を meta の `books`（{k, list}）に順に持つ。一覧はその順の
+     あとに、そこに無い使われている名前（名前の順）。`books` に居る名前は、中のノートが無くても残る（空の
+     ノートブック）。外すのは設定（renameLabel で ""）。 */
+  function cleanBooks(v) {
+    const out = [];
+    (Array.isArray(v) ? v : []).forEach((x) => {
+      const s = String(x == null ? "" : x).trim();
+      if (s && !out.includes(s)) out.push(s);
+    });
+    return out;
+  }
+
+  /** 並びを書きます。外から（同期）なら quietly。 */
+  function setBooks(list, quietly) {
+    if (phase !== "on") return false;
+    books = cleanBooks(list);
+    pendMeta.set("books", { k: "books", list: books.slice() });
+    if (quietly) { quietLab = true; return true; }
+    writeNow();
+    emit();
+    return true;
+  }
+
+  /** ノートブックを before の前へ（null なら終わりへ）。戻すための前の並びを返す（動かなければ null）。 */
+  function moveBook(nb, before) {
+    const was = notebooks();
+    if (phase !== "on" || !was.includes(nb) || nb === before) return null;
+    const list = was.filter((x) => x !== nb);
+    const at = before ? list.indexOf(before) : -1;
+    list.splice(at < 0 ? list.length : at, 0, nb);
+    if (list.join("\n") === was.join("\n")) return null;
+    setBooks(list);
+    return was;
+  }
+
+  /** 空のノートブックを作ります（終わりに）。もうある名前なら何もしない。 */
+  function addBook(name) {
+    const s = String(name == null ? "" : name).trim();
+    if (!s || phase !== "on") return false;
+    const all = notebooks();
+    if (!all.includes(s)) setBooks(all.concat(s));
     return true;
   }
 
@@ -674,18 +877,32 @@
       dirty.add(n.id);
       count++;
     });
-    if (count) { writeNow(); emit(); }
+    /* ノートブックの並びも（空のノートブックは、ここでだけ名前が変わる・外れる）。 */
+    let moved = false;
+    if (kind === "nb" && books && books.includes(from)) {
+      books = cleanBooks(books.map((x) => (x === from ? to : x)));
+      pendMeta.set("books", { k: "books", list: books.slice() });
+      moved = true;
+    }
+    if (count || moved) { writeNow(); emit(); }
     return count;
   }
 
   /** いま使われているノートブック・タグの名前（消していないノートから、
-      そのつど組み立てます。入れ物は持ちません）。名前の順。 */
+      そのつど組み立てます）。名前の順。 */
   function namesOf(pick) {
     const set = new Set();
     byId.forEach((n) => { if (!n.deletedAt) pick(n).forEach((x) => { if (x) set.add(x); }); });
     return [...set].sort((a, b) => a.localeCompare(b, "ja"));
   }
-  const notebooks = () => namesOf((n) => [n.notebook]);
+  /** ノートブック：並べた・作った順（`books`）のあとに、そこに無い使われている名前（名前の順）。
+      o.used … 中にノートのあるものだけ（絞り込み・書き出しのチップ）。 */
+  function notebooks(o) {
+    const used = namesOf((n) => [n.notebook]);
+    const out = (books || []).slice();
+    used.forEach((nb) => { if (!out.includes(nb)) out.push(nb); });
+    return o && o.used ? out.filter((nb) => used.includes(nb)) : out;
+  }
   const tagNames = () => namesOf((n) => n.tags);
 
   /** 題。無ければ本文の一行目（一覧と、ぜんぶをさがすの行に）。 */
@@ -747,7 +964,8 @@
     if (phase !== "on") return {};
     const notes = [...byId.values()].sort(byNew("updatedAt")).map((n) => ({ ...n, tags: n.tags.slice() }));
     /* 色も（同期で入れ物へ写した。控えから戻すとき、こちらに無い名前だけ足す） */
-    return { noteBook: { v: 1, notes, ...(labels ? { colors: colorsIn(labels) } : {}) } };
+    return { noteBook: { v: 1, notes, ...(labels ? { colors: colorsIn(labels) } : {}),
+      ...(books && books.length ? { books: books.slice() } : {}) } };
   }
 
   const flush = () => writeNow();
@@ -772,6 +990,13 @@
     begin, end, versions, versionBodies, revert, merge,
     absorb, addMany, unimport, reshape, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move, isTable,
+    place, unplace, inOrder, orderOf, setBooks, moveBook, addBook,
+    /** 並べた・作ったノートブック（`books` そのもの。同期が運ぶ）。 */
+    books: () => (books || []).slice(),
+    /** 木の行を運んでいるあいだ、知らせ（onChange）を待たせる。離したら一度だけ。 */
+    hold(on) { holding = !!on; if (!holding && owed) { owed = false; emit(); } },
+    /** 試験の口 */
+    _: { between, spaced, keyOf },
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };
 

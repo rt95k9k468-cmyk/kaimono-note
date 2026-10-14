@@ -89,10 +89,32 @@
   let editing = null;   // { kind, name }
 
   function notesLabelList(kind) {
-    return [card(names(kind).map((name) => navRow({
+    const list = names(kind);
+    const rows = card(list.map((name) => navRow({
       ico: KIND[kind].ico, tint: NS().colorOf(kind, name), title: name,
       onTap: () => { editing = { kind, name }; go("noteLabel"); },
-    })))];
+    })));
+    if (kind !== "nb") return [rows];
+    /* ノートブックは長押しで並べ替え（ホームの木と同じ並び。docs/notes-unify.md「並び」）・空のノートブックを作る。 */
+    if (rows) {
+      KN.reorder.attach(rows, {
+        item: ".set-row",
+        onDrop: (from, to) => {
+          const was = N().moveBook(list[from], (to < from ? list[to] : list[to + 1]) || null);
+          if (was) { render(); repaintNotes(); }
+        },
+      });
+    }
+    const add = node(html`
+      <div class="set-card">
+        <button type="button" class="set-row is-add">
+          <span class="set-glyph">${icon("plus")}</span>
+          <span class="set-title">ノートブックを追加</span>
+        </button>
+      </div>
+    `);
+    add.querySelector("button").addEventListener("click", () => NS().newBook().then((nb) => { if (nb) render(); }));
+    return [rows, add];
   }
 
   const noteLabelTitle = () => (editing ? editing.name : "");
@@ -294,7 +316,7 @@
     const paintScope = () => {
       const host = body.querySelector(".js-scope");
       const all = N().list();
-      const books = N().notebooks();
+      const books = N().notebooks({ used: true });
       const tags = N().tagNames();
       const hasFav = all.some((n) => n.fav);
       host.innerHTML = "";
@@ -360,7 +382,7 @@
       if (fmt !== "md" && !pics) { KN.ui.toast("画像を読み込んでいるところです。少し待ってから、もう一度押してください"); return; }
       if (fmt === "pdf") { printNotes(list, pics); return; }
       const name = fileName(scope, fmt === "zip" ? "zip" : "md");
-      if (fmt === "zip") hand(name, zipNotes(list, pics, docs), "application/zip");
+      if (fmt === "zip") hand(name, zipNotes(list, pics, docs, !scope), "application/zip");
       else hand(name, new Blob([oneFile(list)], { type: "text/markdown;charset=utf-8" }), "text/markdown");
     };
     foot.querySelector(".js-zip").addEventListener("click", () => run("zip"));
@@ -368,12 +390,10 @@
     foot.querySelector(".js-pdf").addEventListener("click", () => run("pdf"));
   }
 
-  /** 書き出すノート（消していないもの）。並びは一覧と同じ。 */
+  /** 書き出すノート（消していないもの）。並びは木の順（ノートブックの並び → 一番上から深さ順。
+      docs/notes-unify.md「並び」）。 */
   function notesIn(scope) {
-    let all = N().list();
-    if (store.get().settings.notesOrder === "created") {
-      all = all.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    }
+    const all = N().inOrder(N().list());
     if (!scope) return all;
     if (scope.k === "fav") return all.filter((n) => n.fav);
     if (scope.k === "nb") return all.filter((n) => n.notebook === scope.v);
@@ -423,8 +443,9 @@
   const q = (s) => JSON.stringify(String(s));
   const withEnd = (s) => (!s || s.endsWith("\n") ? s : s + "\n");
 
-  /** 1件ずつのときの、一つの .md。up … 木での親の id（消した・見つからない親は書かない）。 */
-  function noteFile(n, up) {
+  /** 1件ずつのときの、一つの .md。up … 木での親の id（消した・見つからない親は書かない）。
+      order … 兄弟の中で何番目か（1から。並びを移った先で保てるように）。 */
+  function noteFile(n, up, order) {
     const lines = ["---"];
     lines.push(`created: ${n.noTime ? KN.util.dayKey(n.createdAt) : localIso(n.createdAt)}`);
     lines.push(`updated: ${localIso(n.updatedAt)}`);
@@ -435,6 +456,7 @@
     lines.push(`id: ${q(n.id)}`);
     const parent = up === undefined ? n.parent : up;
     if (parent) lines.push(`parent: ${q(parent)}`);
+    if (order) lines.push(`order: ${order}`);
     if (n.head === true) lines.push("head: true");
     lines.push("---");
     const title = String(n.title || "").trim();
@@ -456,7 +478,7 @@
       相対の道へ差し替えます。手元に無い画像の行は、打ったまま。
       中のノートは親と同じ名前のフォルダへ（段1b。`親.md` と `親/子.md`。Obsidian・Notion の取り込みが
       読む入れ子）。親を書き出さないときも、親の名前のフォルダに入れます（どこにあったかを落とさない）。 */
-  function zipNotes(list, pics, docs) {
+  function zipNotes(list, pics, docs, whole) {
     const used = new Set(["images", "files"]);
     const dirs = new Set();
     const files = [];
@@ -487,7 +509,7 @@
         if (!dirs.has(dir)) { dirs.add(dir); files.push({ name: dir, text: "", date: n.updatedAt, dir: true }); }
       }
       const up = t.parentOf(n.id);
-      const text = noteFile(n, up ? up.id : null).replace(/^!\[\]\(img:([0-9a-f]{16})\)$/gm, (line, id) => {
+      const text = noteFile(n, up ? up.id : null, N().orderOf(n.id)).replace(/^!\[\]\(img:([0-9a-f]{16})\)$/gm, (line, id) => {
         if (!imgs.has(id)) return line;
         put.add(id);
         return `![](${"../".repeat(parts.length - 1)}images/${id}.jpg)`;
@@ -498,6 +520,13 @@
       });
       files.push({ name, text, date: n.updatedAt });
     });
+    /* すべてを書き出すときは、空のノートブックもフォルダに（ノートブックの形を落とさない）。 */
+    if (whole) {
+      N().notebooks().forEach((nb) => {
+        const dir = `${safeName(nb)}/`;
+        if (!dirs.has(dir)) { dirs.add(dir); files.push({ name: dir, text: "", date: new Date().toISOString(), dir: true }); }
+      });
+    }
     if (put.size) {
       files.push({ name: "images/", text: "", date: new Date().toISOString(), dir: true });
       put.forEach((id) => files.push({ name: `images/${id}.jpg`, bytes: imgs.get(id).bytes, date: imgs.get(id).at }));

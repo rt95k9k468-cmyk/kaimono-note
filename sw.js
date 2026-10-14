@@ -53,6 +53,7 @@ const ASSETS = [
   "js/note-file.js",
   "js/ui.js",
   "js/reorder.js",
+  "js/note-drag.js",
   "js/keypad.js",
   "js/backup.js",
   "js/dropbox.js",

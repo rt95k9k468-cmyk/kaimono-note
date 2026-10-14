@@ -5526,6 +5526,19 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-add:active { background-color: var(--press-sink); }
 .nt-dot { margin: 0 var(--sp-2) 0 var(--sp-3); }
 .nt-dot.is-blank { visibility: hidden; }
+/* つまんで運ぶ（js/note-drag.js。docs/notes-unify.md「並び」）。長押しで字を選ばない・呼び出しを出さない。
+   運ぶあいだは行を上に留めない（測った位置が動かないように）。運ぶ群は薄く残し、指には写し、行き先は線か色。 */
+.nt-row.js-tree-note, .nt-row.js-book { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.is-carrying .nt-row.is-stick { position: static; }
+.nt-grp.is-carried { opacity: .35; }
+.nt-row.is-drop-into, .nt-row.is-drop-into.is-stick { background-color: var(--c-primary-soft); box-shadow: inset 0 0 0 2px var(--c-primary-fill); }
+.nt-carry { position: fixed; z-index: var(--z-lift); margin: 0; pointer-events: none; scale: 1.025;
+  background-color: var(--c-surface); box-shadow: var(--shadow-3); opacity: .94; transition: none; }
+.nt-drop { position: fixed; z-index: var(--z-lift); height: 2px; border-radius: 1px; background: var(--c-primary-fill); pointer-events: none; }
+.nt-drop::before { content: ""; position: absolute; left: -6px; top: -3px; width: 8px; height: 8px; box-sizing: border-box;
+  border: 2px solid var(--c-primary-fill); border-radius: 50%; background: var(--c-surface); }
+.notes-sec.has-add { display: flex; align-items: center; justify-content: space-between; padding-right: var(--sp-3); }
+.notes-sec.has-add .section-title { margin: 0; }
 /* 書く紙の道すじ（題の上）と中のノート（本文の下）。 */
 .note-path { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-1); margin: 0 0 var(--sp-1);
   font-size: var(--fs-sm); color: var(--c-text-2); }
