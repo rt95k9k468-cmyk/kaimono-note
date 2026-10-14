@@ -1097,18 +1097,22 @@
   }
   let askTurn = { day: "", n: 0 };
   function askOf(day, past) {
-    const all = KN.askList || [];
-    const known = new Set(all.map(askKey));
+    const all = KN.askItems || (KN.askList || []).map((q) => ({ q }));
+    const known = new Set(all.map((a) => askKey(a.q)));
     const done = new Set(past.map((a) => askKey(a.text)));
-    const fresh = all.filter((q) => !done.has(askKey(q)));
-    const base = fresh.length ? fresh : all;
+    const fresh = all.filter((a) => !done.has(askKey(a.q)));
+    /* 重さは引く日を選ぶだけ（平日は重い問いを外し、休みの日は軽い問いを外す）。出さない。 */
+    const dt = U.dayDate(day), off = dt && (dt.getDay() === 0 || dt.getDay() === 6);
+    const fit = (list) => { const f = list.filter((a) => (off ? a.w !== 1 : a.w !== 3)); return f.length ? f : list; };
+    const base = fit(fresh.length ? fresh : all);
     const seen = new Set();
     const mine = past.filter((a) => { const k = askKey(a.text); if (known.has(k) || seen.has(k)) return false; seen.add(k); return true; });
     let h = 0;
     for (const c of String(day)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const k = h + (askTurn.day === day ? askTurn.n : 0);
     if (mine.length && k % 3 === 2) return { ...mine[Math.floor(k / 3) % mine.length], mine: true };
-    return { text: base[k % base.length] || "" };
+    const a = base[k % base.length] || {};
+    return { text: a.q || "", hint: a.hint || "" };
   }
 
   /** daily の冒頭：日記に書く・ノートを書く・問い一覧 の三枚と、今日の問い。説明は書かない。 */
@@ -1134,6 +1138,7 @@
             <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
           </div>
           <p class="think-today-q js-think-q"></p>
+          <details class="think-today-hint js-think-hint" hidden><summary>ひとこと</summary><p class="js-think-hint-t"></p></details>
           <button type="button" class="think-today-go js-think-today">${icon("edit")}<span>この問いから考える</span>${icon("chevron")}</button>
         </section>
       </div>
@@ -1154,7 +1159,11 @@
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
     let cur;
-    const paint = () => { cur = askOf(day, past); q.textContent = cur.text; qt.textContent = cur.mine ? "あなたの問い" : "今日の問い"; };
+    const hint = el.querySelector(".js-think-hint");
+    const paint = () => {
+      cur = askOf(day, past); q.textContent = cur.text; qt.textContent = cur.mine ? "あなたの問い" : "今日の問い";
+      hint.hidden = !cur.hint; hint.open = false; hint.querySelector(".js-think-hint-t").textContent = cur.hint || "";
+    };
     paint();
     el.querySelector(".js-think-other").addEventListener("click", () => {
       KN.motion.fire("select");

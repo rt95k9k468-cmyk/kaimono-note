@@ -127,6 +127,13 @@ const { open, checker } = require("./lib");
 
   /* ---- まだの問い → 答える紙 → 「？問い」を頭にしたノート ---- */
   {
+    const shape = await page.evaluate(() => {
+      const I = KN.askItems || [];
+      return { n: I.length, same: I.every((a, i) => a.q === KN.askList[i]) && I.length === KN.askList.length,
+        ok: I.every((a) => a.q && a.g && [1, 2, 3].includes(a.w) && typeof a.from === "string" && typeof a.hint === "string"),
+        uniq: new Set(I.map((a) => a.q)).size === I.length };
+    });
+    t.check("問いの元：分け・重さ・出典・ひとこと付き、askList は本文だけの写し", shape.n > 0 && shape.same && shape.ok && shape.uniq, JSON.stringify(shape));
     const yetText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-yet .note-t")].map((x) => x.textContent.trim()));
     await page.evaluate(() => { KN.app.showScreen("notes"); KN.screens.notes.asks(); });
     await page.waitForSelector("#screen-notes .notes-asks.is-yet", { timeout: 4000 });
