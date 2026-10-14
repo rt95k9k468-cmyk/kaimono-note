@@ -1025,7 +1025,7 @@
       const rows = urges.filter((u) => (u[field] || []).length);
       if (rows.length < URGE_MIN) return null;
       const n = new Map();
-      rows.forEach((u) => u[field].forEach((w) => n.set(w, (n.get(w) || 0) + 1)));
+      rows.forEach((u) => urgeCats(u, field).forEach((w) => n.set(w, (n.get(w) || 0) + 1)));
       const top = [...n].sort((a, b) => b[1] - a[1]).filter(([, c]) => c >= 2).slice(0, 3);
       return top.length ? { rows: rows.length, top } : null;
     };
@@ -1036,7 +1036,7 @@
         id: "urge-cause",
         title: "飲みたくなったとき",
         text: (sc ? `場面を書いた ${sc.rows}件で多かったのは ${words(sc.top)}。` : "")
-          + (tg ? `気持ちを書いた ${tg.rows}件では ${words(tg.top)}でした。` : ""),
+          + (tg ? `求めているものを書いた ${tg.rows}件では ${words(tg.top)}でした。` : ""),
         tone: "info", n: Math.max(sc ? sc.rows : 0, tg ? tg.rows : 0),
       });
     }
@@ -1059,7 +1059,7 @@
     }
 
     const byTried = new Map();
-    settled.forEach((u) => (u.tried || []).forEach((w) => {
+    settled.forEach((u) => urgeCats(u, "tried").forEach((w) => {
       if (!byTried.has(w)) byTried.set(w, []);
       byTried.get(w).push(u);
     }));
@@ -1547,7 +1547,55 @@
     return out.concat(rows.map((r) => dayLine(r, lineOpts))).join("\n");
   }
 
+  /* --- 飲みたくなったときの札（固定）と、旧い札の読みかえ ---
+
+     候補は固定で、打った言葉が札に増えることはありません。前の版は自由に
+     打てて、打った言葉が札になっていました——その記録は**書き換えません**。
+     表示と集計のときだけ、この表で新しい札に読みかえます。表に無い言葉は
+     「その他（旧）」。旧い結果「もう少し待つ」（outcome "wait"）は、試した
+     ことの「少し待つ」として読みます。 */
+  const URGE_OLD = "その他（旧）";
+  const URGE = {
+    trigger: ["ストレス・疲れをほぐしたい", "ご褒美・区切りがほしい", "暇・手持ちぶさた",
+              "習慣・いつもの流れ", "喉の渇き・空腹", "その他"],
+    scene: ["帰宅後", "食事の前後", "家事のあと", "お風呂のあと", "スマホ・くつろぎ中",
+            "飲んでいる途中", "その他"],
+    tried: ["別の飲み物", "何か食べる", "歯みがき", "お風呂・シャワー", "体を動かす・歩く",
+            "好きな作業", "少し待つ", "人と話す"],
+    OLD: URGE_OLD,
+    legacy: {
+      trigger: {
+        "疲れた": "ストレス・疲れをほぐしたい", "いらいら": "ストレス・疲れをほぐしたい",
+        "落ち着かない": "ストレス・疲れをほぐしたい", "ごほうび": "ご褒美・区切りがほしい",
+        "手持ちぶさた": "暇・手持ちぶさた", "習慣": "習慣・いつもの流れ", "空腹": "喉の渇き・空腹",
+      },
+      scene: {
+        "仕事終わり": "帰宅後", "食事のとき": "食事の前後",
+      },
+      tried: {
+        "水を飲む": "別の飲み物", "炭酸水": "別の飲み物", "お茶": "別の飲み物", "ノンアル": "別の飲み物",
+        "歯をみがく": "歯みがき", "お風呂": "お風呂・シャワー",
+        "散歩": "体を動かす・歩く", "体を動かす": "体を動かす・歩く",
+        "音楽": "好きな作業", "動画・ゲーム": "好きな作業",
+      },
+    },
+  };
+  /** 保存されている一語を、いまの札に。 */
+  function urgeCat(field, w) {
+    if (URGE[field].includes(w)) return w;
+    return URGE.legacy[field][w] || URGE_OLD;
+  }
+  /** 一件の、ある欄の札（重なりは落とす）。 */
+  function urgeCats(u, field) {
+    const out = [...new Set((u[field] || []).map((w) => urgeCat(field, w)))];
+    if (field === "tried" && u.outcome === "wait" && !out.includes("少し待つ")) out.push("少し待つ");
+    return out;
+  }
+  /** 結果。旧い "wait" は結果ではなく試したことなので、まだ書いていない扱い。 */
+  const urgeOutcome = (u) => (u.outcome === "none" || u.outcome === "drank" ? u.outcome : null);
+
   KN.diet = {
+    URGE, urgeCat, urgeCats, urgeOutcome,
     burnedOf,
     daysBetween, weightPoints, movingAverage, trendLine, slopePerWeek,
     weightSummary, projection, neededPace,

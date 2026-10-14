@@ -1294,19 +1294,24 @@
      ことの記録です。ここが点数を付けはじめたら、点の悪い晩は**書かれなく
      なります**——そして書かれなかった晩こそ、あとで読み返したいものです。
 
-     ■ 二段に分けてあります
+     ■ 手軽さが先です
 
-     五つを一枚に並べません。「しばらく経った後の強さ」と「最終的に
-     どうしたか」は、**飲みたくなった瞬間にはまだ起きていない**からです。
-     一枚に並べると、後ろの二つは空欄か、その場で作った数になります。
-     そして飲みたくなっている人は、たいてい疲れているかいらだっている。
-     そこで五項目を求めれば、三日でやめます（drinks.js の頭と同じ反省）。
+     飲みたくなっている人は、たいてい疲れているかいらだっている。そこで
+     五項目を求めれば、三日でやめます（drinks.js の頭と同じ反省）。
 
-       一段目（その瞬間） … 強さだけ必須。**押すもの一つで保存できます**
-       二段目（あとで）   … 行を押すと、試したこと・いまの強さ・結果が出る
+       はじめの紙 … 強さ（必須）と「いま何を求めている？」（任意・一つ）だけ。
+                    **強さを押して「記録する」の二回で保存できます**
+       詳細       … 場面・試したこと・メモ。畳んであり、開けば書けます
+       あとで記入 … 結果がまだの一件は日の紙の上に並び、押せば
+                    しばらく後の強さと結果だけの小さな紙が開きます
 
-     二段目は**書かなくてかまいません**。書かれなかった記録は「未完」では
-     なく、そこまでしか書かなかった晩です。
+     記録するときに結果は聞きません。**飲みたくなった瞬間には、まだ起きて
+     いない**からです。書かれなかった記録は「未完」ではなく、そこまでしか
+     書かなかった晩です。
+
+     札は固定です（`KN.diet.URGE`）。「その他」に打った一言は保存しますが、
+     札にはしません——札が増えると、数えるときに同じ場面が割れます。前の版の
+     自由な言葉は書き換えず、表示と集計のときだけ読みかえます（`urgeCats`）。
 
      ■ 20分は、線ではありません
 
@@ -1314,87 +1319,14 @@
      です。出すのは**経過した分数という事実**だけ——タイマーも通知も
      ありません（ホーム画面のWebアプリでは、どちらも当てになりません）。 */
 
+  const UC = KN.diet.URGE;
+  const urgeCat = KN.diet.urgeCat, urgeCats = KN.diet.urgeCats, urgeOutcome = KN.diet.urgeOutcome;
+
   const URGE_OUTCOMES = [
     { id: "none",  label: "飲まなかった" },
-    { id: "wait",  label: "もう少し待つ" },
     { id: "drank", label: "飲んだ" },
   ];
   const urgeOutcomeLabel = (id) => (URGE_OUTCOMES.find((o) => o.id === id) || {}).label || "";
-
-  /* 三つの欄と、その候補。
-
-     **候補を出すかどうかは、欄ごとに理由が違います。** 前はどの欄にも
-     出していませんでした（「用意した八つを並べると、その八つの中から
-     選ぶことになる」——drinks の気分の札と同じ理由）。いまは欄ごとに
-     分けています：
-
-     - **どんなとき（`scene`）は候補を出す。** 外側のできごと——時計と
-       段取りの話で、気持ちのように人それぞれの言い方があるものでは
-       ありません。そして**あとで数えるには、言葉が揃っている必要が
-       あります**：自由記述だけだと「帰宅後」「帰ってから」「帰宅して
-       すぐ」が別の札になり、同じ場面が三つに割れて、傾向が見えなく
-       なります。「こういうときは、こうする」と段取りを決めるやり方
-       （implementation intentions）も、場面の名前が毎回同じでないと
-       組めません。
-     - **どんな気持ち（`trigger`）も候補を出す。** ただし並べるのは
-       HALT——空腹・いらだち・さみしさ・疲れ——という、飲酒に戻りやすい
-       状態として繰り返し挙げられてきた四つを軸にしたものだけ。思いつきの
-       八語ではありません。**自分の言葉が先に並び**、候補はそのあとです。
-     - **試したこと（`tried`）は、候補そのものが道具です。** 飲みたくなって
-       いるその場で「代わりに何をしようか」を思いつくのは難しいので、
-       あらかじめ並べておく（対処カードと呼ばれるやり方）。ここで候補を
-       出さないのは、いちばん要るときに白紙を渡すことになります。
-
-     どの欄も**自由に打てます**。打った言葉は次から自分の札になり、
-     候補より前に並びます。きっかけの語彙は**飲んだ記録の気分の札と
-     分け合う**ので、すでにお酒を記録している人には自分の言葉が出ます。
-
-     **段の下の説明文（`note`）は、どんなとき・試したことからは外しました。**
-     見出し（絵＋題）と候補の札だけで用は足りていて、字が増えるほど紙が
-     長くなる——理由はこのコメントに書いてあれば足ります。 */
-  const URGE_FIELDS = {
-    scene: {
-      title: "どんなとき", ico: "clock",
-      ph: "ほかにもあれば打ってください",
-      hints: ["仕事終わり", "帰宅後", "食事のとき", "一段落したとき", "お風呂のあと",
-              "寝る前", "一人のとき", "人といるとき", "休みの日"],
-    },
-    trigger: {
-      title: "どんな気持ち", ico: "heart",
-      ph: "自分の言葉で打てます",
-      hints: ["疲れた", "いらいら", "さみしい", "空腹", "手持ちぶさた",
-              "ごほうび", "習慣", "落ち着かない"],
-    },
-    tried: {
-      title: "試したこと", ico: "sprout",
-      ph: "ほかにもあれば打ってください",
-      hints: ["水を飲む", "炭酸水", "お茶", "歯をみがく", "お風呂", "散歩",
-              "体を動かす", "何か食べる", "横になる", "音楽", "動画・ゲーム",
-              "人と話す", "ノンアル"],
-    },
-  };
-
-  function urgeWords(field, max) {
-    const d = store.get().diet;
-    const pairs = (d.urges || []).map((u) => ({ words: u[field] || [], at: u.at }));
-    if (field === "trigger") {
-      (d.drinks || []).forEach((dr) => {
-        const w = (dr.moodTags || []).slice();
-        const m = String(dr.mood || "").trim();
-        if (m && m.length <= DR.MOOD_MAX_LEN && !w.includes(m)) w.push(m);
-        if (w.length) pairs.push({ words: w, at: dr.at });
-      });
-    }
-    const n = new Map(), last = new Map();
-    pairs.forEach(({ words, at }) => (words || []).forEach((w) => {
-      n.set(w, (n.get(w) || 0) + 1);
-      if (!last.has(w) || String(at) > String(last.get(w))) last.set(w, at);
-    }));
-    return [...n.keys()]
-      .sort((a, b) => n.get(b) - n.get(a)
-                   || String(last.get(b) || "").localeCompare(String(last.get(a) || "")))
-      .slice(0, max || 6);
-  }
 
   /** 書かれた時刻。直していなければ、書いた瞬間のものを使います。 */
   function urgeTime(u) {
@@ -1418,12 +1350,8 @@
   const urgeSpan = (min) => (min < 60 ? `${min}分`
     : `${Math.floor(min / 60)}時間${min % 60 ? (min % 60) + "分" : ""}`);
 
-  /* 一段の入れもの。見出し（絵＋題）と、中身と、添えの一行。
-
-     前は `.field-label` が 12px の薄い字で並んでいるだけで、どこからどこ
-     までが一つの問いなのかが絵に出ていませんでした。**近いものは近く、
-     別のものは遠く**——段の中は 10px、段と段のあいだは 26px にして、
-     見出しを一段大きく（15.5px・太字）します。 */
+  /* 一段の入れもの。見出し（絵＋題）と、中身。
+     **近いものは近く、別のものは遠く**——段の中は 10px、段と段のあいだは 26px。 */
   function urgeSec(title, ico, opts) {
     const o = opts || {};
     return node(html`
@@ -1433,13 +1361,13 @@
           <span class="urge-sec-title">${title}</span>
           ${o.optional ? html`<span class="urge-sec-opt">任意</span>` : ""}
         </div>
-        ${o.note ? html`<p class="urge-sec-note">${o.note}</p>` : ""}
         <div class="urge-sec-body"></div>
       </section>
     `);
   }
 
-  /** 1〜5 を押して決める段。色は一つ——強いほど赤く、はしません（それは採点）。 */
+  /** 1〜5 を押して決める段。色は一つ——強いほど赤く、はしません（それは採点）。
+      押し直すと外れます（必須なことは保存ボタンの活き死にが言います）。 */
   function urgeScale(host, value, onPick, opts) {
     const o = opts || {};
     host.innerHTML = "";
@@ -1448,12 +1376,7 @@
       const on = value === i;
       const b = node(html`<button type="button" class="urge-lv ${on ? "is-on" : ""}"
         aria-pressed="${String(on)}" aria-label="${i}">${i}</button>`);
-      b.addEventListener("click", () => {
-        // 押し直すと外れます（「まだ言っていない」へ戻る道。一段目の
-        // 強さだけは外せません——それが無いと記録になりません）。
-        onPick(on && o.clearable ? null : i);
-        KN.motion.fire("select");
-      });
+      b.addEventListener("click", () => { onPick(on ? null : i); KN.motion.fire("select"); });
       row.append(b);
     }
     host.append(row);
@@ -1461,83 +1384,67 @@
   }
 
   /**
-   * 言葉の欄ひとつぶん。札（自分の言葉 → 候補）と、自由に打つ欄。
+   * 固定の札の欄ひとつぶん。`raw` は保存されている言葉そのもの（旧い言葉も
+   * 入ったまま）。札の点き消しは読みかえた札で決め、押されるまで `raw` には
+   * 触りません——開いて閉じただけで旧い記録が書き換わらないように。
    *
-   * **自分の言葉が先**です。候補を先に置くと、毎回そこから選ぶことになって、
-   * 自分の言い方がいつまでも札になりません。
+   * 一つだけ（`single`）の欄は、押した札で丸ごと置きかえます。旧い言葉で
+   * 表に無いものは「その他（旧）」の札にまとめ、押せば外せます。
+   * 「その他」を選ぶと一言の欄が出ます（札にはなりません）。
    */
-  function urgeWordField(field, picked) {
-    const F = URGE_FIELDS[field];
-    const sec = urgeSec(F.title, F.ico, { optional: true, note: F.note });
+  function urgePick(field, raw, opts) {
+    const o = opts || {};
+    const sec = urgeSec(o.title, o.ico, { optional: true });
     const host = sec.querySelector(".urge-sec-body");
-    host.append(node(html`
-      <div class="urge-words">
-        <div class="diet-chips js-tags"></div>
-        <input class="input js-w" placeholder="${F.ph}"
-               autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="enter">
-      </div>
-    `));
-    const input = host.querySelector(".js-w");
-    const tagHost = host.querySelector(".js-tags");
-
-    function paintTags() {
-      // 選んでいるもの → 自分の言葉 → 候補。重なりは落とします。
-      const words = [...new Set(picked.concat(urgeWords(field, 6), F.hints))];
-      tagHost.innerHTML = "";
-      words.forEach((w) => {
-        const on = picked.includes(w);
-        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
-          aria-pressed="${String(on)}">${w}</button>`);
-        chip.addEventListener("click", () => {
-          const i = picked.indexOf(w);
-          if (i >= 0) picked.splice(i, 1); else picked.push(w);
-          paintTags(); KN.motion.fire("select");
-        });
-        tagHost.append(chip);
-      });
-    }
-    /* 打った言葉は、欄を離れたときに札になります。一文字ごとに拾うと、
-       「疲れた」と打っている途中の「疲」が札として残ります。 */
-    const take = () => {
-      const v = input.value.trim().slice(0, 24);
-      input.value = "";
-      if (!v || picked.includes(v)) return;
-      picked.push(v); paintTags();
+    const chips = node(html`<div class="diet-chips"></div>`);
+    host.append(chips);
+    const other = o.other != null ? node(html`<input class="input js-other" maxlength="24"
+      value="${o.other}" placeholder="その他" autocomplete="off" enterkeyhint="done">`) : null;
+    if (other) host.append(other);
+    const has = (label) => raw.some((w) => urgeCat(field, w) === label) || (o.extraOn && o.extraOn(label));
+    const drop = (label) => {
+      for (let i = raw.length - 1; i >= 0; i--) if (urgeCat(field, raw[i]) === label) raw.splice(i, 1);
+      if (o.onDrop) o.onDrop(label);
     };
-    input.addEventListener("change", take);
-    input.addEventListener("blur", take);
-    input.addEventListener("keydown", (e) => {
-      if (KN.util.isEnter(e)) { e.preventDefault(); take(); }
-    });
-    paintTags();
-    return { sec, flush: take };
+    function paint() {
+      chips.innerHTML = "";
+      const labels = UC[field].concat(raw.some((w) => urgeCat(field, w) === UC.OLD) ? [UC.OLD] : []);
+      labels.forEach((label) => {
+        const on = has(label);
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${label}</button>`);
+        chip.addEventListener("click", () => {
+          if (on) drop(label);
+          else if (label !== UC.OLD) { if (o.single) raw.splice(0, raw.length); raw.push(label); }
+          paint(); KN.motion.fire("select");
+        });
+        chips.append(chip);
+      });
+      if (other) other.hidden = !raw.includes("その他");
+    }
+    paint();
+    return { sec, otherText: () => (other && raw.includes("その他") ? other.value.trim() : "") };
   }
 
   /**
    * 飲みたくなったときの紙。
    *
-   * 欄は**いつも全部あります**。ちがうのは、開いたときに続きが畳まれて
-   * いるかどうかだけ——新しく書くときは畳んであり、「詳細を書く」を押せば
-   * その場で最後まで書けます。行を押して開いたときは、はじめから開いて
-   * います（続きを書きに来たので）。
-   *
-   * **畳んであるのは、隠すためではなく順番のため**です。飲みたくなった
-   * その瞬間にできるのは強さを押すことくらいで、そこに七つの欄が並んで
-   * いると、いちばん大事な一つ目を押す前に閉じられます。かといって
-   * 「保存してからでないと続きが書けない」のは、いま全部書ける人の
-   * 邪魔をしていました。畳むだけにして、鍵はかけません。
+   * はじめに見えるのは強さと「いま何を求めている？」の二段だけ。ほかは
+   * 「詳細」に畳みます（鍵はかけません——いま全部書ける人の邪魔をしないため）。
+   * 行を押して開いたときは、はじめから開いていて、結果の段もあります。
    */
   function openUrgeSheet(day0, editId) {
     const day = day0 || U.todayKey();
-    const editing = editId ? store.urgesOfDay(day).find((u) => u.id === editId) : null;
+    const editing = editId ? (store.get().diet.urges || []).find((u) => u.id === editId) : null;
 
     let before  = editing ? editing.before : null;
     let after   = editing ? editing.after : null;
-    let outcome = editing ? editing.outcome : null;
-    const scene   = editing ? editing.scene.slice() : [];
+    let outcome = editing ? urgeOutcome(editing) : null;
+    const wasWait = !!editing && editing.outcome === "wait";
+    let waitOff = false;   // 旧い「もう少し待つ」を、試したことから外したか
     const trigger = editing ? editing.trigger.slice() : [];
+    const scene   = editing ? editing.scene.slice() : [];
     const tried   = editing ? editing.tried.slice() : [];
-    // 続きを書きに来た紙は、はじめから開けておきます。
     let open = !!editing;
 
     const elapsed = editing ? urgeElapsed(editing) : null;
@@ -1545,33 +1452,25 @@
     const body = node(html`
       <div class="urge-form">
         <div class="urge-top">
-          <b class="urge-top-day">${U.formatDay(day)}</b>
-          ${/* 時刻は打たせません。「いつのことか」を尋ねると、飲みたくなった
-                瞬間なのか、続きを書いているいまなのかが読み手には分からず、
-                実際にそう聞かれました。答えは常に一つ——**その段を押した瞬間**
-                です（`addUrge`/`updateUrge` が押した瞬間の時計を控えます）。
-                ここは、その控えを**見せるだけ**の場所にします。
-                続きが決まっている一件は記録した時刻を、まだの一件は経過分数を。
-                両方は要りません——決まった瞬間、「あと何分」より「何時何分に
-                どうなったか」のほうが読み返すときに要る情報だからです。 */
+          <b class="urge-top-day">${U.formatDay(editing ? editing.day : day)}</b>
+          ${/* 時刻は打たせません。答えは常に一つ——押した瞬間（addUrge が控える）。
+                ここはそれを見せるだけ。決まった一件は時刻、まだの一件は経過分数。 */
             editing ? html`<span class="urge-since">${icon("clock")}${
-              editing.outcome ? urgeTime(editing) + "の記録"
+              outcome ? urgeTime(editing) + "の記録"
                 : (elapsed != null ? urgeSpan(elapsed) + "たちました" : urgeTime(editing))
             }</span>` : ""}
         </div>
         <div class="js-now"></div>
-        <div class="js-scene"></div>
-        <div class="js-trigger"></div>
+        <div class="js-want"></div>
         <button type="button" class="urge-more js-more" aria-expanded="false">
           <span class="urge-more-t"></span>
           <span class="urge-more-c">${icon("chevron")}</span>
         </button>
         <div class="urge-rest js-rest" hidden>
+          <div class="js-scene"></div>
           <div class="js-tried"></div>
-          <div class="js-after"></div>
-          <div class="js-outcome"></div>
-          <div class="js-link"></div>
           <div class="js-memo"></div>
+          ${editing ? html`<div class="js-after"></div><div class="js-outcome"></div><div class="js-link"></div>` : ""}
         </div>
         <div class="js-list"></div>
       </div>
@@ -1583,82 +1482,29 @@
       content: body, footer: foot, guard: true,
       menu: editing ? KN.ui.delMenu(() => store.removeUrge(editing.id), { sheet: () => h, after: render }) : null,
     });
+    const syncSave = () => { foot.disabled = before == null; };
 
-    const saveBtn = foot;
-    const syncSave = () => { saveBtn.disabled = before == null; };
-
-    /* ---- いまの強さ（これだけが必須） ---- */
-    const nowSec = urgeSec(editing ? "そのとき、どれくらい飲みたかったか" : "いま、どれくらい飲みたいか",
-      "drop", {
-        /* 波の話は**情報として**置きます。「20分待てたら成功」にはしません
-           ——条件は採点だからです。飲みたさは山を越えて引いていくもので、
-           その山がどれくらい続くかを知っていること自体が、待つときの支えに
-           なります（Marlatt のいう urge surfing の考え方）。 */
-      });
+    /* ---- 強さ（これだけが必須） ---- */
+    const nowSec = urgeSec(editing ? "そのとき、どれくらい飲みたかったか" : "いま、どれくらい飲みたいか", "drop");
     body.querySelector(".js-now").append(nowSec);
-    /* **押し直せば外れます**（`clearable`）。強さが必須なことは保存ボタンの
-       活き死に（`syncSave`）が言うので、段のほうまで「外せない」にする
-       必要はありません——外せないと、他の四つ（気持ち・場面・試したこと・
-       あとの強さ）と手ざわりが揃わず、「押し直しても戻らない」が不具合に
-       見えます（実際そう報告されました）。 */
     const paintBefore = () => urgeScale(nowSec.querySelector(".urge-sec-body"), before, (v) => {
       before = v; paintBefore(); syncSave();
-    }, { label: "飲みたい強さ", clearable: true });
+    }, { label: "飲みたい強さ" });
     paintBefore();
     syncSave();
 
-    /* ---- 外側と内側。機能分析が分けているのと同じ切り方で、二つの欄に ---- */
-    const sceneField = urgeWordField("scene", scene);
+    const wantField = urgePick("trigger", trigger, { title: "いま何を求めている？", ico: "heart",
+      single: true, other: editing ? editing.triggerOther || "" : "" });
+    body.querySelector(".js-want").append(wantField.sec);
+
+    /* ---- 詳細 ---- */
+    const sceneField = urgePick("scene", scene, { title: "場面", ico: "clock",
+      single: true, other: editing ? editing.sceneOther || "" : "" });
     body.querySelector(".js-scene").append(sceneField.sec);
-    const trigField = urgeWordField("trigger", trigger);
-    body.querySelector(".js-trigger").append(trigField.sec);
-
-    /* ---- 続き ---- */
-    const triedField = urgeWordField("tried", tried);
+    const triedField = urgePick("tried", tried, { title: "試したこと", ico: "sprout",
+      extraOn: (label) => label === "少し待つ" && wasWait && !waitOff,
+      onDrop: (label) => { if (label === "少し待つ") waitOff = true; } });
     body.querySelector(".js-tried").append(triedField.sec);
-
-    /* 頭の段も「いま、どれくらい飲みたいか」なので、ここを「いま」で
-       始めると同じ問いが二つ並んで見えます。時間の隔たりのほうを題に。 */
-    const afterSec = urgeSec("しばらくして、どれくらいか", "drop", { optional: true });
-    body.querySelector(".js-after").append(afterSec);
-    const paintAfter = () => urgeScale(afterSec.querySelector(".urge-sec-body"), after, (v) => {
-      after = v; paintAfter();
-    }, { label: "いまの強さ", clearable: true });
-    paintAfter();
-
-    const outSec = urgeSec("どうなったか", "flag", { optional: true });
-    body.querySelector(".js-outcome").append(outSec);
-    const outHost = outSec.querySelector(".urge-sec-body");
-    outHost.append(node(html`<div class="diet-chips js-out"></div>`));
-    const linkHost = body.querySelector(".js-link");
-
-    const paintOutcome = () => {
-      const host = outHost.querySelector(".js-out");
-      host.innerHTML = "";
-      URGE_OUTCOMES.forEach((o) => {
-        const on = outcome === o.id;
-        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
-          aria-pressed="${String(on)}">${o.label}</button>`);
-        chip.addEventListener("click", () => {
-          outcome = on ? null : o.id;
-          paintOutcome(); paintLink(); KN.motion.fire("select");
-        });
-        host.append(chip);
-      });
-    };
-    /* 「飲んだ」のときだけ、飲んだ記録への道を出します。**勝手には
-       書きません**——量も種類もこちらは知らないので、書けば嘘になります。
-       押した人だけが、いつもの紙へ行きます。 */
-    const paintLink = () => {
-      linkHost.innerHTML = "";
-      if (outcome !== "drank") return;
-      const b = node(html`
-        <button type="button" class="btn btn-soft btn-block js-go-drink">${icon("drink")}飲んだものも記録する</button>`);
-      b.addEventListener("click", () => { save({ then: () => openDrinkSheet(day) }); });
-      linkHost.append(b);
-    };
-    paintOutcome();
-    paintLink();
 
     const memoSec = urgeSec("メモ", "paper", { optional: true });
     body.querySelector(".js-memo").append(memoSec);
@@ -1666,22 +1512,30 @@
       <input class="input js-memo-in" value="${editing ? editing.memo || "" : ""}"
              placeholder="あとで読み返したときの手がかり">`));
 
-    /* ---- 続きの開け閉め ---- */
+    /* 結果の段は、書いたあとの紙にだけ。記録するときには聞きません。 */
+    if (editing) {
+      const res = urgeResultFields(body, { after, outcome, day,
+        onAfter: (v) => { after = v; }, onOutcome: (v) => { outcome = v; },
+        goDrink: () => save({ then: () => openDrinkSheet(day) }) });
+      body.querySelector(".js-after").append(res.afterSec);
+      body.querySelector(".js-outcome").append(res.outSec);
+    }
+
+    /* ---- 詳細の開け閉め ---- */
     const rest = body.querySelector(".js-rest");
     const more = body.querySelector(".js-more");
     function paintMore() {
       rest.hidden = !open;
       more.setAttribute("aria-expanded", String(open));
       more.classList.toggle("is-open", open);
-      more.querySelector(".urge-more-t").textContent = open ? "詳細をとじる" : "詳細を書く";
+      more.querySelector(".urge-more-t").textContent = open ? "詳細をとじる" : "詳細";
     }
     more.addEventListener("click", () => { open = !open; paintMore(); KN.motion.fire("select"); });
     paintMore();
 
-    /* その日のぶん。ここから続きを書きにいけます。 */
-    function paintList() {
+    /* その日のぶん。ここから書き足しにいけます。 */
+    (function paintList() {
       const list = body.querySelector(".js-list");
-      list.innerHTML = "";
       const mine = store.urgesOfDay(day).filter((u) => !editing || u.id !== editing.id);
       if (!mine.length) return;
       list.append(node(html`<div class="section-title">この日の記録</div>`));
@@ -1692,7 +1546,7 @@
             <span class="row-main">
               <span class="row-title">${urgeTime(u)}　飲みたい ${u.before}${
                 u.after != null ? " → " + u.after : ""}</span>
-              <span class="row-sub">${urgeSummary(u) || "続きはまだ書かれていません"}</span>
+              <span class="row-sub">${urgeSummary(u) || "—"}</span>
             </span>
             <span class="row-chevron">${icon("edit")}</span>
           </button>
@@ -1701,21 +1555,18 @@
         rows.append(row);
       });
       list.append(rows);
-    }
-    paintList();
+    })();
 
     function save(opts) {
       if (before == null) { KN.ui.toast("飲みたい強さを選んでください"); return; }
-      // 打ちかけの字を札に落としてから拾います（書いたのに消える欄を作らない）。
-      sceneField.flush(); trigField.flush(); triedField.flush();
-      /* `time` は渡しません。新規なら `addUrge` が押した瞬間の時計を
-         控え、続きを書くだけなら元の記録の時刻（＝飲みたくなった瞬間）が
-         そのまま残ります——ここで上書きすると、続きを書いた時刻で
-         「いつ飲みたくなったか」が塗り替わってしまいます。 */
+      /* `time` は渡しません。新規なら addUrge が押した瞬間の時計を控え、
+         書き足すだけなら元の時刻（＝飲みたくなった瞬間）が残ります。 */
       const patch = {
-        day, before, scene, trigger, tried, after, outcome,
+        day: editing ? editing.day : day, before, trigger, scene, tried,
+        triggerOther: wantField.otherText(), sceneOther: sceneField.otherText(),
         memo: body.querySelector(".js-memo-in").value,
       };
+      if (editing) Object.assign(patch, { after }, waitPatch(editing, outcome, tried, waitOff));
       if (editing) store.updateUrge(editing.id, patch);
       else store.addUrge(patch);
       h.close();
@@ -1724,64 +1575,152 @@
       if (opts && opts.then) { opts.then(); return; }
       KN.ui.toast(editing ? "書きました" : "記録しました");
     }
-
-    saveBtn.addEventListener("click", () => save());
+    foot.addEventListener("click", () => save());
   }
 
-  /** 行の下に出す一行。書かれたことだけを、書かれた順に並べます。 */
+  /**
+   * 結果の書き方と、旧い「もう少し待つ」の扱い。
+   * 結果を選ばなければ "wait" のまま残します（触らない記録は書き換えない）。
+   * 結果を選んだら、その「待つ」は試したことの「少し待つ」へ移します。
+   */
+  function waitPatch(u, outcome, tried, waitOff) {
+    const wasWait = u.outcome === "wait" && !waitOff;
+    if (outcome) {
+      if (wasWait && !tried.some((w) => urgeCat("tried", w) === "少し待つ")) tried.push("少し待つ");
+      return { outcome, tried };
+    }
+    return { outcome: wasWait ? "wait" : null, tried };
+  }
+
+  /** しばらく後の強さと結果の二段。書き足しの紙と、詳細の紙で同じものを使います。 */
+  function urgeResultFields(body, o) {
+    let after = o.after, outcome = o.outcome;
+    const afterSec = urgeSec("しばらく後の強さ", "drop", { optional: true });
+    const paintAfter = () => urgeScale(afterSec.querySelector(".urge-sec-body"), after, (v) => {
+      after = v; o.onAfter(v); paintAfter();
+    }, { label: "しばらく後の強さ" });
+    paintAfter();
+
+    const outSec = urgeSec("結果", "flag", { optional: true });
+    const outHost = outSec.querySelector(".urge-sec-body");
+    const chipHost = node(html`<div class="diet-chips js-out"></div>`);
+    const linkHost = node(html`<div class="js-link"></div>`);
+    outHost.append(chipHost, linkHost);
+    const paint = () => {
+      chipHost.innerHTML = "";
+      URGE_OUTCOMES.forEach((x) => {
+        const on = outcome === x.id;
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${x.label}</button>`);
+        chip.addEventListener("click", () => {
+          outcome = on ? null : x.id; o.onOutcome(outcome);
+          paint(); KN.motion.fire("select");
+        });
+        chipHost.append(chip);
+      });
+      /* 「飲んだ」のときだけ、飲んだ記録への道。勝手には書きません——量も
+         種類もこちらは知らないので、書けば嘘になります。 */
+      linkHost.innerHTML = "";
+      if (outcome === "drank") {
+        const b = node(html`
+          <button type="button" class="btn btn-soft btn-block js-go-drink">${icon("drink")}飲んだものも記録する</button>`);
+        b.addEventListener("click", o.goDrink);
+        linkHost.append(b);
+      }
+    };
+    paint();
+    return { afterSec, outSec };
+  }
+
+  /** 「あとで記入」の小さな紙。しばらく後の強さと結果だけ。 */
+  function openUrgeLater(u) {
+    let after = u.after, outcome = urgeOutcome(u);
+    const body = node(html`
+      <div class="urge-form">
+        <div class="urge-top">
+          <b class="urge-top-day">${U.formatDay(u.day)}</b>
+          <span class="urge-since">${icon("clock")}${urgeTime(u)}　飲みたい ${u.before}</span>
+        </div>
+        <div class="js-res"></div>
+        <button type="button" class="urge-more js-full">
+          <span class="urge-more-t">詳細</span>
+          <span class="urge-more-c">${icon("chevron")}</span>
+        </button>
+      </div>
+    `);
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
+    const h = KN.ui.sheet({ title: "あとで記入", content: body, footer: foot, guard: true });
+    const save = (then) => {
+      const tried = u.tried.slice();
+      store.updateUrge(u.id, { after, ...waitPatch(u, outcome, tried, false) });
+      h.close(); render(); KN.motion.fire("save");
+      if (then) then(); else KN.ui.toast("書きました");
+    };
+    const res = urgeResultFields(body, { after, outcome,
+      onAfter: (v) => { after = v; }, onOutcome: (v) => { outcome = v; },
+      goDrink: () => save(() => openDrinkSheet(u.day)) });
+    body.querySelector(".js-res").append(res.afterSec, res.outSec);
+    body.querySelector(".js-full").addEventListener("click", () => { h.close(); openUrgeSheet(u.day, u.id); });
+    foot.addEventListener("click", () => save());
+  }
+
+  /** 行の下に出す一行。読みかえた札を、書かれた順に並べます。 */
   function urgeSummary(u) {
-    const parts = [];
-    // どんなときか（外側）が先。行を目で追うとき、時刻の次に手がかりに
-    // なるのは場面のほうです（「帰宅後」「寝る前」は並べると筋が見える）。
-    if ((u.scene || []).length) parts.push(u.scene.join("・"));
-    if (u.trigger.length) parts.push(u.trigger.join("・"));
-    if (u.tried.length) parts.push(u.tried.join("・"));
-    if (u.outcome) parts.push(urgeOutcomeLabel(u.outcome));
+    const words = (field, otherKey) => urgeCats(u, field)
+      .map((c) => (c === "その他" && u[otherKey] ? `その他（${u[otherKey]}）` : c)).join("・");
+    const parts = [words("scene", "sceneOther"), words("trigger", "triggerOther"), words("tried")]
+      .filter(Boolean);
+    if (urgeOutcome(u)) parts.push(urgeOutcomeLabel(urgeOutcome(u)));
     return parts.join(" ・ ");
   }
 
   /* 入口。からだの輪のすぐ下——飲酒の輪と同じ一日の、同じ面の話なので。
 
-     日の紙に出すのは**回数だけ**です。「うち◯回は飲まなかった」は事実の
-     記述ですが、並べた瞬間に分子と分母の顔をして達成率になります。 */
+     結果がまだの一件は、上に「あとで記入」として並べます。今日の紙には
+     前の晩のぶんも（夜の一件を書き足すのは、たいてい翌朝なので）。**急かし
+     ません**——警告色を使わず、書けば消えるだけ。書かないままでもかまいません。
+     日の紙に出すのは回数だけ：「うち◯回は飲まなかった」は並べた瞬間に
+     達成率になります。 */
   function renderUrges(host, card) {
     const rows = card.urges || [];
-    const canAdd = card.day <= U.todayKey();
+    const today = U.todayKey();
+    const canAdd = card.day <= today;
+    const prev = card.day === today ? store.urgesOfDay(U.shiftDay(today, -1)) : [];
+    const later = prev.concat(rows).filter((u) => !urgeOutcome(u));
+    const done = rows.filter((u) => urgeOutcome(u));
     if (!canAdd && !rows.length) return;
 
     const sec = node(html`
       <div class="urge-bar">
+        ${later.length ? html`<div class="urge-later"><div class="urge-later-t">あとで記入</div>
+          <div class="urge-rows js-later"></div></div>` : ""}
         ${canAdd ? html`
           <button class="btn btn-soft btn-block js-urge">${icon("clock")}飲みたくなった</button>` : ""}
-        ${rows.length ? html`<div class="urge-rows"></div>` : ""}
+        ${done.length ? html`<div class="urge-rows js-done"></div>` : ""}
       </div>
     `);
 
     const add = sec.querySelector(".js-urge");
     if (add) add.addEventListener("click", () => { KN.motion.fire("select"); openUrgeSheet(card.day); });
 
-    const list = sec.querySelector(".urge-rows");
-    if (list) rows.forEach((u) => {
-      const open = !u.outcome;
+    const row = (u, onTap) => {
       const el = node(html`
         <button class="urge-row" type="button">
-          <span class="urge-row-time mono-num">${urgeTime(u)}</span>
-          ${/* 矢は絵なので raw で通します——`html` は補間した値を escape するので、
-                そのまま書くと「4<i>→</i>2」という字が出ます（実際に出しました）。 */""}
+          <span class="urge-row-time mono-num">${u.day !== card.day ? "昨日 " : ""}${urgeTime(u)}</span>
+          ${/* 矢は絵なので raw で通します——`html` は補間した値を escape します。 */""}
           <span class="urge-row-lv mono-num">${u.before}${
             KN.util.raw(u.after != null ? `<i>→</i>${u.after}` : "")}</span>
           <span class="urge-row-text">${urgeSummary(u)}</span>
-          ${/* まだ結果を書いていない行にだけ。続きを書く道はここにしかないので、
-                押せると分からないと、二段目が一度も書かれません。**急かしません**
-                ——小さく、警告色を使わず、書けば消えるだけ。書かないままでも
-                その記録は完成しています（そういう晩だった、ということなので）。 */""}
-          ${open ? html`<span class="urge-row-open">続きを書く</span>` : ""}
           <span class="urge-row-go" aria-hidden="true">${icon("chevron")}</span>
         </button>
       `);
-      el.addEventListener("click", () => { KN.motion.fire("select"); openUrgeSheet(card.day, u.id); });
-      list.append(el);
-    });
+      el.addEventListener("click", () => { KN.motion.fire("select"); onTap(); });
+      return el;
+    };
+    const laterHost = sec.querySelector(".js-later");
+    if (laterHost) later.forEach((u) => laterHost.append(row(u, () => openUrgeLater(u))));
+    const doneHost = sec.querySelector(".js-done");
+    if (doneHost) done.forEach((u) => doneHost.append(row(u, () => openUrgeSheet(u.day, u.id))));
 
     host.append(sec);
   }

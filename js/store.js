@@ -455,6 +455,10 @@
       scene: words(u.scene),
       trigger: words(u.trigger),
       tried: words(u.tried),
+      /* 「その他」を選んだときの一言。札にはしません（候補は固定）。
+         持っていない古い記録は空で足すだけです。 */
+      triggerOther: String(u.triggerOther || "").trim().slice(0, 24),
+      sceneOther: String(u.sceneOther || "").trim().slice(0, 24),
       after: lv(u.after),
       outcome: OUTCOMES.includes(u.outcome) ? u.outcome : null,
       memo: String(u.memo || "").trim().slice(0, 200),

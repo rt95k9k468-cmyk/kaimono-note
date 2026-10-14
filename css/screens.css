@@ -3004,14 +3004,9 @@ button.section-note:active { opacity: var(--press-fade); }
   background: var(--c-surface-2); border-radius: var(--r-full);
   padding: 2px 7px; line-height: 1.5;
 }
-.urge-sec-note {
-  font-size: var(--fs-md); color: var(--c-text-2);
-  line-height: var(--lh-ui); margin: -2px 0 0;
-}
 .urge-sec-body { display: flex; flex-direction: column; gap: 10px; }
 /* 札は段の中では少しゆったり（既定の 6px だと、40pxの札が詰まって見える）。 */
 .urge-sec .diet-chips { gap: var(--sp-2); }
-.urge-words { display: flex; flex-direction: column; gap: 10px; }
 
 /* ---- 1〜5 ---- */
 
@@ -3095,11 +3090,10 @@ button.section-note:active { opacity: var(--press-fade); }
   flex: 1 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 続きの道。小さく、警告色を使わず、書けば消えます。`--c-text-3` では
-   薄すぎて手がかりにならず、赤や太字では急かすことになるので、その間を取って
-   このアプリが「押せる字」に使っている色（`--c-primary`）を、いちばん小さい
-   大きさで置きます。 */
-.urge-row-open { flex: none; font-size: var(--fs-xs); color: var(--c-primary); }
+/* 結果がまだの一件。急かさない——警告色も太字も使わず、小さな題を一つ
+   置くだけ。題の色は「押せる字」の `--c-primary`（書けば消えます）。 */
+.urge-later { display: flex; flex-direction: column; }
+.urge-later-t { font-size: var(--fs-xs); color: var(--c-primary); padding: 2px 2px 0; }
 .urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
 .urge-row-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 
