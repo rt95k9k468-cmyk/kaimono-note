@@ -1686,8 +1686,11 @@
     const today = U.todayKey();
     const canAdd = card.day <= today;
     const prev = card.day === today ? store.urgesOfDay(U.shiftDay(today, -1)) : [];
-    const later = prev.concat(rows).filter((u) => !urgeOutcome(u));
-    const done = rows.filter((u) => urgeOutcome(u));
+    /* 書き足しが一つでもあれば（あとの強さだけでも）並べません。前の版で
+       あとの強さまで書いた一件が、結果が空なだけで残り続けていました。 */
+    const isLater = (u) => !urgeOutcome(u) && u.after == null;
+    const later = prev.concat(rows).filter(isLater);
+    const done = rows.filter((u) => !isLater(u));
     if (!canAdd && !rows.length) return;
 
     const sec = node(html`

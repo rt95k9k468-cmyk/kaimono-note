@@ -113,6 +113,14 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("あとから強さと結果を書き足せる（ほかの欄はそのまま）", u[0].after === 2 && u[0].outcome === "none"
     && !!u[0].closedAt && u[0].before === 4 && u[0].time === "21:00", JSON.stringify(u[0]));
   t.check("書けば「あとで記入」から消える", (await later()) === 1);
+  // あとの強さだけ書いた一件（結果は空）は並べない（前の版の記録で残り続けていた）
+  await page.evaluate(() => {
+    const id = KN.store.get().diet.urges[1].id;
+    KN.store.updateUrge(id, { after: 1 });
+    KN.app.showScreen("diet");
+  });
+  await page.waitForTimeout(300);
+  t.check("あとの強さだけ書いた一件は「あとで記入」に残らない", (await later()) === 0, String(await later()));
   const warn = await page.evaluate(() => {
     const el = document.querySelector("#screen-diet .urge-bar");
     return /成功|失敗|連続|達成/.test(el.innerText) || !!el.querySelector(".is-warn, .is-bad, .is-good");
