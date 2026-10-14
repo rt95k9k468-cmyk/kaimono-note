@@ -771,6 +771,63 @@
     return any;
   }
 
+  /* 目次の行：リンクだけの行（Notion は中のページをこう書き出す。js/note-organize.js の LINE と同じ）。
+     文の途中のリンクは参照なので拾わない。 */
+  const TOC = /^\s*(?:(?:[-*+]|\d+\.)\s+|>\s?)*\[[^\]\n]*\]\(note:([^)\s]+)\)\s*$/;
+
+  /** 本文の目次の行が指すノート（行の順・一度ずつ）。消した・無い・自分・上の段は外す。表のノートは空。 */
+  function linked(id) {
+    const n = byId.get(id);
+    if (!n || n.deletedAt || isTable(n)) return [];
+    const skip = new Set([id].concat(tree().path(id).map((p) => p.id)));
+    const out = [];
+    String(n.body || "").split("\n").forEach((l) => {
+      const m = TOC.exec(l);
+      const k = m && byId.get(m[1]);
+      if (k && !k.deletedAt && !skip.has(k.id)) { skip.add(k.id); out.push(k); }
+    });
+    return out;
+  }
+
+  /** リンク先を中へ（「⋯」）：目次の行が指すノートを、このノートの中の頭へ行の順に置く（子孫ごと）。
+      中にまだ無いものが一つも無ければ null。置き方は place と同じ（更新日・前の版は動かさない）。
+      戻すための控え（ungather へ）と移した数を返す。 */
+  function gather(id) {
+    const list = linked(id);
+    if (phase !== "on" || !list.some((k) => k.parent !== id)) return null;
+    const out = { was: [], moved: list.filter((k) => k.parent !== id).length };
+    const held = holding;
+    holding = true;
+    try {
+      const t = tree();
+      const mine = new Set(list.map((k) => k.id));
+      const first = (t.isHead(id) ? t.tops(byId.get(id).notebook) : t.kids(id)).find((k) => !mine.has(k.id));
+      let prev = null;
+      list.forEach((k) => {
+        const w = place(k.id, prev ? { parent: id, after: prev } : { parent: id, before: first && first.id });
+        if (w) out.was.push(w);
+        prev = k.id;
+      });
+    } finally {
+      holding = held;
+      if (!holding && owed) { owed = false; emit(); }
+    }
+    return out;
+  }
+
+  /** gather を戻す（置いたのと逆の順に）。 */
+  function ungather(was) {
+    if (!Array.isArray(was)) return false;
+    const held = holding;
+    holding = true;
+    let any = false;
+    try { was.slice().reverse().forEach((w) => { if (unplace(w)) any = true; }); } finally {
+      holding = held;
+      if (!holding && owed) { owed = false; emit(); }
+    }
+    return any;
+  }
+
   /** 木の順（ノートブックの並び → 一番上から深さ順。ノートブックの無いノートは終わり）。書き出しの並び。 */
   function inOrder(list) {
     const t = tree();
@@ -990,7 +1047,7 @@
     begin, end, versions, versionBodies, revert, merge,
     absorb, addMany, unimport, reshape, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move, isTable,
-    place, unplace, inOrder, orderOf, setBooks, moveBook, addBook,
+    place, unplace, linked, gather, ungather, inOrder, orderOf, setBooks, moveBook, addBook,
     /** 並べた・作ったノートブック（`books` そのもの。同期が運ぶ）。 */
     books: () => (books || []).slice(),
     /** 木の行を運んでいるあいだ、知らせ（onChange）を待たせる。離したら一度だけ。 */

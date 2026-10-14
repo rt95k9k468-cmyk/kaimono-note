@@ -8,7 +8,7 @@
    order・空のノートブックのフォルダ／localStorage が変わらない。
    画面（マウス・幅のある画面）：押すだけなら開く／行のあいだへ・行の上で中へ・右へずらして段を下げる／元に戻す／
    閉じた枝の上で待つと開く／ノートブックの行の並べ替え／左の木でも運べる／＋で空のノートブック／
-   Tab・Shift+Tab・Alt+↑↓・↑↓。
+   Tab・Shift+Tab・Alt+↑↓・↑↓／「⋯」のリンク先を中へ（目次の行だけ・行の順・子孫ごと・控え・元に戻す）。
    画面（指・電話の幅）：長押しで持ち上げて運ぶ／運んでいるあいだ器は送らない／紙の中のノートを右へずらしても紙は戻らない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-drag.js */
@@ -290,6 +290,40 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   await page.click(".sheet.is-open .js-ok");
   t.check("＋で空のノートブック（木の終わりに）", await page.waitForSelector(book("新しい棚"), { timeout: 3000 }).then(() => true, () => false)
     && await page.evaluate(() => KN.notes.notebooks().slice(-1)[0]) === "新しい棚");
+
+  /* リンク先を中へ（「⋯」）：目次の行（リンクだけの行）が指すノートを、行の順に中の頭へ。文の途中・上の段・消したものは外す */
+  await page.evaluate((list) => KN.notes.addMany(list), [
+    nb("m-p", "上", "棚", AT(4, 1)),
+    nb("m-top", "目次", "棚", AT(4, 2), { parent: "m-p",
+      body: "- [甲](note:m-a)\n文の中の [乙](note:m-b) は参照\n[丙](note:m-c)\n[消](note:m-gone)\n[上](note:m-p)\n- [甲](note:m-a)" }),
+    nb("m-k", "前から中", "棚", AT(4, 3), { parent: "m-top" }),
+    nb("m-a", "甲", "家", AT(4, 4)), nb("m-b", "乙", "棚", AT(4, 5)), nb("m-c", "丙", "棚", AT(4, 6)),
+    nb("m-c1", "丙の子", "棚", AT(4, 7), { parent: "m-c" }), nb("m-gone", "消", "棚", AT(4, 8), { deletedAt: AT(4, 9) }),
+  ]);
+  t.check("目次の行だけ・一度ずつ・上の段と消したものは外す", await page.evaluate(() => KN.notes.linked("m-top").map((n) => n.id).join()) === "m-a,m-c");
+  const u0 = await page.evaluate(() => KN.notes.get("m-a").updatedAt);
+  await page.evaluate(() => { const take = KN.backup.take; window.__took = []; KN.backup.take = (r, o) => { window.__took.push(r); return take(r, o); }; });
+  await page.evaluate(() => KN.screens.notes.open("m-top"));
+  await page.waitForSelector(".sheet.is-note.is-open .js-note-more");
+  await page.click(".sheet.is-note.is-open .js-note-more");
+  await page.locator(".note-pop.is-open .note-pop-item", { hasText: "リンク先を中へ" }).click();
+  const kidsOf = () => page.evaluate(() => KN.notes.tree().kids("m-top").map((n) => n.title).join());
+  await page.waitForFunction(() => KN.notes.tree().kids("m-top").length === 3, null, { timeout: 4000 }).catch(() => {});
+  t.check("リンク先を中へ：行の順に頭へ、前からの中はそのあと", (await kidsOf()) === "甲,丙,前から中", await kidsOf());
+  t.check("子孫ごと・冊もそろう・更新日は動かない", await page.evaluate((u) => {
+    const N = KN.notes;
+    return N.get("m-c1").parent === "m-c" && N.get("m-a").notebook === "棚" && N.get("m-a").updatedAt === u && N.get("m-b").parent == null;
+  }, u0));
+  t.check("紙の中のノートにも出る", await page.waitForSelector(".sheet.is-note.is-open .note-kids .js-tree-note[data-id='m-a']", { timeout: 3000 }).then(() => true, () => false));
+  t.check("控えを取ってから", await page.evaluate(() => window.__took.includes("リンク先を中へ移す前")));
+  await page.click(".toast .toast-action");
+  t.check("元に戻す", (await kidsOf()) === "前から中" && await page.evaluate(() => KN.notes.get("m-a").notebook === "家" && !("pos" in KN.notes.get("m-a"))), await kidsOf());
+  await page.evaluate(() => KN.notes.gather("m-top"));
+  await page.click(".sheet.is-note.is-open .js-note-more");
+  await page.waitForSelector(".note-pop.is-open .note-pop-item");
+  t.check("みな中に居れば「⋯」に出さない", !(await page.$$eval(".note-pop.is-open .note-pop-item", (xs) => xs.some((x) => x.textContent.includes("リンク先を中へ")))));
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
   t.check("落ちずに", !errors.length, errors.join(" / "));
   await browser.close();
 

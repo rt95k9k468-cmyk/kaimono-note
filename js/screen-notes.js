@@ -1429,6 +1429,20 @@
         } },
     ];
 
+    /* リンク先を中へ（docs/notes-unify.md「並び」）：目次の行（リンクだけの行）が指すノートを、このノートの中へ
+       行の順に。まだ中に無いものがあるときだけ出す。控えを取ってから・「元に戻す」で戻る。 */
+    const gatherItem = () => (!stored || !N().linked(note.id).some((k) => k.parent !== note.id) ? [] : [{
+      icon: "indent", label: "リンク先を中へ",
+      onPick: async () => {
+        sync();
+        const snap = KN.backup && KN.backup.take ? await KN.backup.take("リンク先を中へ移す前", { force: true }).catch(() => "failed") : "failed";
+        if (snap === "failed") { KN.ui.toast("控えを取れなかったので、何も変えていません", { long: true }); return; }
+        const r = N().gather(note.id);
+        if (!r) return;
+        KN.motion.fire("drop");
+        KN.ui.toast(`${r.moved}件を中へ移しました`, { action: { label: "元に戻す", onClick: () => N().ungather(r.was) } });
+      } }]);
+
     /* 道に置く（3.0 の A2）。このノートについて考える時間を、今日の道に一つ（js/activity.js）。
        書いたノートだけ（何も書いていないノートは閉じれば消えるので）。 */
     /* 既定で畳む（roadmap-3.1 の S4。設定のノートから戻せる）。 */
@@ -1525,7 +1539,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), menu.slice(4), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
