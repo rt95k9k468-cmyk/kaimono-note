@@ -52,6 +52,16 @@ function seed() {
   ];
 }
 
+/* 設定の「取り込む」は外した。押した流れ（ファイルを選ぶのに要る）を作るため、その場のボタンから開く。 */
+const importBtn = (page) => page.evaluate(() => {
+  let b = document.querySelector(".js-test-import");
+  if (!b) {
+    b = Object.assign(document.createElement("button"), { className: "js-test-import", textContent: "取り込む" });
+    b.style.cssText = "position:fixed;left:0;top:0;z-index:2147483647";
+    b.addEventListener("click", () => { b.remove(); KN.noteImport.open(); });
+    document.body.append(b);
+  }
+}).then(() => page.click(".js-test-import"));
 (async () => {
   const t = checker("note-organize");
   const { browser, page, errors } = await open();
@@ -73,7 +83,8 @@ function seed() {
   await page.exposeFunction("tookSnap", (r) => takes.push(r));
   await page.evaluate(() => { const was = KN.backup.take; KN.backup.take = (r, o) => { window.tookSnap(r); return was(r, o); }; });
   const rows = () => page.evaluate(() => [...document.querySelectorAll(".set-layer:last-child .set-row, .sheet.is-open .set-row")].map((r) => r.textContent.replace(/\s+/g, "")));
-  await page.locator(".set-layer:last-child .set-row", { hasText: "取り込む" }).first().click();
+  t.check("設定に「取り込む」は出ない", !(await page.$$eval(".set-layer .set-row", (xs) => xs.some((x) => x.textContent.trim() === "取り込む"))));
+  await importBtn(page);
   await page.waitForSelector('.set-layer:last-child .set-row:has-text("取り込んだノートを整理する")');
   await page.waitForTimeout(300);
   await page.click('.set-layer:last-child .set-row:has-text("取り込んだノートを整理する")');
@@ -175,7 +186,7 @@ function seed() {
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings");
   await page.waitForTimeout(300);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "取り込む" }).first().click();
+  await importBtn(page);
   await page.waitForSelector('.set-layer:last-child .set-row:has-text("の整理を戻す")');
   await page.waitForTimeout(300);
   await page.click('.set-layer:last-child .set-row:has-text("の整理を戻す")');

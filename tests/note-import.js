@@ -35,6 +35,16 @@ ${note({ title: "書類", created: "20200101T000000Z", content: `<div>控え</di
 ${note({ title: "", created: "20210101T000000Z", content: "<div>題の無いノート</div><en-crypt>abc</en-crypt>" })}
 </en-export>`;
 
+/* 設定の「取り込む」は外した。押した流れ（ファイルを選ぶのに要る）を作るため、その場のボタンから開く。 */
+const importBtn = (page) => page.evaluate(() => {
+  let b = document.querySelector(".js-test-import");
+  if (!b) {
+    b = Object.assign(document.createElement("button"), { className: "js-test-import", textContent: "取り込む" });
+    b.style.cssText = "position:fixed;left:0;top:0;z-index:2147483647";
+    b.addEventListener("click", () => { b.remove(); KN.noteImport.open(); });
+    document.body.append(b);
+  }
+}).then(() => page.click(".js-test-import"));
 (async () => {
   const t = checker("note-import");
   const { browser, page, errors } = await open();
@@ -78,7 +88,7 @@ ${note({ title: "", created: "20210101T000000Z", content: "<div>題の無いノ�
   const chooseFile = async () => {
     const [fc] = await Promise.all([
       page.waitForEvent("filechooser"),
-      page.locator(".set-layer:last-child .set-row", { hasText: "取り込む" }).first().click(),
+      importBtn(page),
     ]);
     await fc.setFiles({ name: "旅のノート.enex", mimeType: "application/xml", buffer: Buffer.from(ENEX) });
     await page.waitForSelector(".js-go");

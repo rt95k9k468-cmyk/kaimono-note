@@ -85,6 +85,16 @@ const ZIP = zip([
   { name: "壊れ.zip", data: Buffer.from("not a zip"), store: true },
 ]);
 
+/* 設定の「取り込む」は外した。押した流れ（ファイルを選ぶのに要る）を作るため、その場のボタンから開く。 */
+const importBtn = (page) => page.evaluate(() => {
+  let b = document.querySelector(".js-test-import");
+  if (!b) {
+    b = Object.assign(document.createElement("button"), { className: "js-test-import", textContent: "取り込む" });
+    b.style.cssText = "position:fixed;left:0;top:0;z-index:2147483647";
+    b.addEventListener("click", () => { b.remove(); KN.noteImport.open(); });
+    document.body.append(b);
+  }
+}).then(() => page.click(".js-test-import"));
 (async () => {
   const t = checker("note-notion");
   const { browser, page, errors } = await open();
@@ -109,7 +119,7 @@ const ZIP = zip([
   await page.evaluate(() => { const was = KN.backup.take; KN.backup.take = (r, o) => { window.tookSnap(r); return was(r, o); }; });
   const [fc] = await Promise.all([
     page.waitForEvent("filechooser"),
-    page.locator(".set-layer:last-child .set-row", { hasText: "取り込む" }).first().click(),
+    importBtn(page),
   ]);
   await fc.setFiles({ name: "Export-x.zip", mimeType: "application/zip", buffer: ZIP });
   await page.waitForSelector(".js-go");

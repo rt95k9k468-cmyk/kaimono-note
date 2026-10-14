@@ -59,7 +59,7 @@
         names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
-        KN.noteImport ? navRow({ ico: "paper", tint: TINT.sub, title: "取り込む", onTap: KN.noteImport.open }) : null,
+        /* 「取り込む」は外した（10月14日、利用者：もう取り込まない。KN.noteImport.open は残す。docs/notes-unify.md「取り込み」）。 */
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
           value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
       ),
