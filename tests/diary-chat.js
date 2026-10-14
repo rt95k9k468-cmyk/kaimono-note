@@ -109,7 +109,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・問い一覧）", home.home && home.first
     && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|問い一覧", JSON.stringify(home));
   t.check("問いの札がある", home.ask);
-  t.check("今日の問いがあり、絵が読めた", /？$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
+  t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
   t.check("空の日の一行は「この日のことを書く」のまま", home.blank === "この日のことを書く", String(home.blank));
   t.check("絵文字なし", !home.emoji);
 

@@ -455,7 +455,7 @@
     rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
     /* まだの問い：今日の問いの元（KN.askList）のうち、まだどこにも「？」で書いていないもの。押せば答える紙。 */
     const done = new Set(rows.map((r) => askKey(r.text)));
-    const yet = (KN.askList || []).filter((q) => !done.has(askKey(q)));
+    const yet = askItems().filter((a) => !done.has(askKey(a.q)));
     if (!rows.length && !yet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
     if (rows.length && yet.length) box.append(secTitle("書いた問い"));
     const list = node(html`<div class="notes-list notes-asks"></div>`);
@@ -483,17 +483,23 @@
     if (rows.length) box.append(list);
     if (!yet.length) return;
     box.append(secTitle("まだの問い"));
-    const more = node(html`<div class="notes-list notes-asks is-yet"></div>`);
-    yet.forEach((q) => {
+    /* 分け（g）ごとに小さな見出し。出典（from）があれば足に。 */
+    let more = null, g = null;
+    yet.forEach((a) => {
+      if (!more || a.g !== g) {
+        g = a.g;
+        if (g) box.append(node(html`<div class="notes-sec is-sub"><div class="section-title">${g}</div></div>`));
+        more = node(html`<div class="notes-list notes-asks is-yet"></div>`);
+        box.append(more);
+      }
       const el = node(html`
         <div class="note-row is-card is-ask is-yet">
-          <button class="note-open js-answer"><span class="note-t">${q}</span></button>
+          <button class="note-open js-answer"><span class="note-t">${a.q}</span>${a.from ? html`<span class="note-foot"><span class="note-d">${a.from}</span></span>` : ""}</button>
         </div>
       `);
-      el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(q); });
+      el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(a.q); });
       more.append(el);
     });
-    box.append(more);
   }
 
   /** 問いの面へ（daily の思考のホームの札から）。 */
@@ -1930,6 +1936,9 @@
 
   const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
   /** その問いの答えのノート：頭の行が「？問い」のノート（新しく直した順の一冊め）。 */
+  /** 問いの元（ask-list.js）。古い字だけの形でも同じ形にそろえる。 */
+  function askItems() { return KN.askItems || (KN.askList || []).map((q) => ({ q })); }
+
   function answerNote(q) {
     const k = askKey(q);
     return N().list().filter((n) => { const a = KN.noteFormat.asks(n.body)[0]; return a && a.line === 0 && askKey(a.text) === k; })
@@ -1944,9 +1953,11 @@
   function answer(q) {
     if (N().state() !== "on") return null;
     const hidden = !!(KN.lock && KN.lock.hides("notes"));
+    const hint = (askItems().find((a) => askKey(a.q) === askKey(q)) || {}).hint || "";
     const box = node(html`
       <div class="stack gap-3">
         <p class="ask-sheet-q">${q}</p>
+        ${hint ? html`<details class="think-today-hint"><summary>ひとこと</summary><p>${hint}</p></details>` : ""}
         <label class="field"><textarea class="textarea js-a" rows="6" aria-label="答え" placeholder="思いついたことから"></textarea></label>
       </div>
     `);

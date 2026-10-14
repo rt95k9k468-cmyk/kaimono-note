@@ -3702,6 +3702,10 @@ a.btn { text-decoration: none; }
 }
 .think-today-other svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 .think-today-q { position: relative; margin: var(--sp-2) 0 var(--sp-3); color: var(--c-text); font-size: var(--fs-lg); line-height: var(--lh-ui); }
+/* ひとこと（問いの手がかり）。ふだんは畳む。 */
+.think-today-hint { position: relative; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); color: var(--c-text-2); font-size: var(--fs-sm); line-height: var(--lh-ui); }
+.think-today-hint > summary { color: var(--c-primary); cursor: pointer; }
+.think-today-hint > p { margin: var(--sp-1) 0 0; }
 .think-today-go {
   position: relative; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-4);
   border-radius: var(--r-full); background: var(--c-primary); color: var(--c-text-on); font-size: var(--fs-md); font-weight: var(--fw-bold);
@@ -5491,6 +5495,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* ホーム（段1・③。docs/notes-unify.md「画面」）：★・最近直した（行）と、ノートブックの木。白い箱に行。
    箱は clip（hidden だと送る器になり、木の行が上に留まらない）。 */
 .notes-sec { padding: var(--sp-5) var(--sp-4) 0; }
+.notes-sec.is-sub { padding-top: var(--sp-3); }
+.notes-sec.is-sub .section-title { color: var(--c-text-3); font-weight: var(--fw-regular); }
 .notes-books { margin: var(--sp-2) var(--sp-4) 0; padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .notes-books { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
