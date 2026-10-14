@@ -184,6 +184,90 @@
     return { at, made, patches: [...patches.entries()], books, ev, order, fixed, moved };
   }
 
+  /**
+   * リンクのとおりに中へ（Notion 全体。docs/notes-unify.md「並び」）。平らに来たページ（親の無い一番上・
+   * まだ整理していない・頭でない）を、目次の行（LINE）で指しているただ一つのページの中へ、子孫ごと親の冊へ。
+   * 二つ以上から指されている・輪になる・中に整理したものを持つページは迷うので触らない（unsure）。
+   * 中の並びは目次の行の順（移したもののあいだで作った日時を入れ替える）。org に前を残す →「整理を戻す」。
+   * 返すのは { at, made: [], patches, moved, pairs: [[子, 親]], unsure: [題] }。
+   */
+  function linkPlan(notes, o) {
+    o = o || {};
+    const at = o.at || U.today();
+    const live = (notes || all()).filter((n) => !n.deletedAt);
+    const by = new Map(live.map((n) => [n.id, n]));
+    const upOf = (n) => { const p = n.parent ? by.get(String(n.parent)) : null; return p && p.id !== n.id ? p : null; };
+    const loose = (n) => from(n, "notion") && !n.org && n.head !== true && !upOf(n);
+    const kidsOf = new Map();
+    live.forEach((n) => { const p = upOf(n); if (p) { if (!kidsOf.has(p.id)) kidsOf.set(p.id, []); kidsOf.get(p.id).push(n); } });
+    const under = (id) => {
+      const out = [];
+      const seen = new Set([id]);
+      for (let i = -1; i < out.length; i++) {
+        (kidsOf.get(i < 0 ? id : out[i].id) || []).forEach((k) => { if (!seen.has(k.id)) { seen.add(k.id); out.push(k); } });
+      }
+      return out;
+    };
+    const title = (n) => oneLine(n.title) || oneLine(KN.notes && KN.notes.headOf ? KN.notes.headOf(n) : "") || "無題";
+
+    /* 子 → { 親: 目次の何行め } */
+    const pointed = new Map();
+    live.forEach((p) => {
+      if (!from(p, "notion") || isTable(p)) return;
+      String(p.body || "").split("\n").forEach((line, i) => {
+        const m = LINE.exec(line);
+        const c = m && by.get(m[1]);
+        if (!c || c.id === p.id || !loose(c)) return;
+        if (!pointed.has(c.id)) pointed.set(c.id, new Map());
+        if (!pointed.get(c.id).has(p.id)) pointed.get(c.id).set(p.id, i);
+      });
+    });
+    const to = new Map();
+    const unsure = [];
+    [...pointed.keys()].map((id) => by.get(id)).sort(old).forEach((c) => {
+      const ps = pointed.get(c.id);
+      const pid = ps.size === 1 ? [...ps.keys()][0] : null;
+      let ok = !!pid && !under(c.id).some((k) => k.org);
+      /* 輪：親から上へ（決めた親・今の親）たどって自分に着くなら置かない。 */
+      for (let q = pid, seen = new Set(); ok && q && !seen.has(q); ) {
+        if (q === c.id) ok = false;
+        seen.add(q);
+        const n = by.get(q);
+        q = to.has(q) ? to.get(q) : n && upOf(n) ? upOf(n).id : null;
+      }
+      if (ok) to.set(c.id, pid); else unsure.push(title(c));
+    });
+    const nbOf = (id) => (to.has(id) ? nbOf(to.get(id)) : by.get(id).notebook);
+
+    const patches = new Map();
+    const set = (n, k, v) => {
+      if (n[k] === v) return;
+      if (!patches.has(n.id)) patches.set(n.id, { org: { at } });
+      const p = patches.get(n.id);
+      p.org[{ notebook: "nb", parent: "p", createdAt: "c" }[k]] = k === "parent" ? String(n.parent || "") : n[k];
+      p[k] = v;
+    };
+    const pairs = [];
+    const into = new Map();
+    to.forEach((pid, cid) => {
+      const c = by.get(cid);
+      const nb = nbOf(pid);
+      set(c, "parent", pid);
+      set(c, "notebook", nb);
+      under(cid).forEach((k) => set(k, "notebook", nb));
+      pairs.push([title(c), title(by.get(pid))]);
+      if (!into.has(pid)) into.set(pid, []);
+      into.get(pid).push(c);
+    });
+    /* 中の並び：目次の行の順に。 */
+    into.forEach((cs, pid) => {
+      const want = cs.slice().sort((a, b) => pointed.get(a.id).get(pid) - pointed.get(b.id).get(pid));
+      const times = cs.map((k) => k.createdAt).sort();
+      want.forEach((k, i) => set(k, "createdAt", times[i]));
+    });
+    return { at, made: [], patches: [...patches.entries()], moved: to.size, pairs, unsure };
+  }
+
   const empty = (p) => !p || (!p.made.length && !p.patches.length);
 
   /** 計画を書く（一つの取引）。 */
@@ -294,6 +378,39 @@
     return h;
   }
 
+  /** リンクのとおりに中へ：先に見せる紙 → 控え → 移す。戻すのは「…の整理を戻す」（その場の「元に戻す」も）。 */
+  function linkPreview() {
+    const p = linkPlan();
+    if (empty(p)) { KN.ui.toast("中へ移すものはありません"); return null; }
+    const P = S();
+    const body = node(html`<div class="stack"></div>`);
+    body.append(P.card(row("中へ移す", p.moved)), P.more("どこへ", p.pairs.map(([c, up]) => `${up} › ${c}`).join(" ／ ")));
+    if (p.unsure.length) body.append(P.card(row("迷うのでそのまま", p.unsure.length)), P.more("いくつもから指されている・輪になる", p.unsure.join(" ／ ")));
+    const foot = node(html`<div class="stack gap-2"><button class="btn btn-primary js-tidy"><span class="js-word">中へ移す</span></button></div>`);
+    const go = foot.querySelector(".js-tidy");
+    const word = foot.querySelector(".js-word");
+    let busy = false;
+    const h = KN.ui.sheet({ title: "リンクのとおりに中へ", content: body, footer: foot });
+    go.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      go.disabled = true;
+      word.textContent = "控えを取っています";
+      if (!(await guard("リンクのとおりに中へ移す前"))) { busy = false; go.disabled = false; word.textContent = "中へ移す"; return; }
+      let done = null;
+      try {
+        done = await apply(linkPlan());
+      } catch (_) {
+        KN.ui.toast("ノートを保存できませんでした", { long: true });
+        h.close();
+        return;
+      }
+      h.close();
+      KN.ui.toast("中へ移しました", { action: { label: "元に戻す", onClick: () => undo(done.at) } });
+    });
+    return h;
+  }
+
   /** 「整理を戻す」：訊いてから、控えを取って戻す。 */
   function undo(at, done) {
     return KN.ui.confirm({ title: "整理を戻す", message: "整理する前の場所と並びに戻します。", okLabel: "戻す" }).then(async (ok) => {
@@ -311,5 +428,5 @@
     });
   }
 
-  KN.noteOrganize = { plan, apply, after, undoPlan, runs, empty, preview, undo };
+  KN.noteOrganize = { plan, linkPlan, linkPreview, apply, after, undoPlan, runs, empty, preview, undo };
 })();

@@ -559,14 +559,16 @@
     const list = batches();
     const O = KN.noteOrganize;
     const tidy = !!O && !O.empty(O.plan());
+    const linkable = !!O && !O.empty(O.linkPlan());
     const runs = O ? O.runs() : [];
-    if (!list.length && !tidy && !runs.length) { pick(); return; }
+    if (!list.length && !tidy && !linkable && !runs.length) { pick(); return; }
     const P = S();
     let h = null;
     const shut = () => { if (h) h.close(); };
     const body = node(html`<div class="stack"></div>`);
     body.append(P.card(P.navRow({ ico: "paper", tint: P.TINT.sub, title: "ファイルを選ぶ", onTap: () => { shut(); pick(); } })));
     if (tidy) body.append(P.card(P.navRow({ ico: "book", tint: P.TINT.cat, title: "取り込んだノートを整理する", onTap: () => { shut(); O.preview(); } })));
+    if (linkable) body.append(P.card(P.navRow({ ico: "indent", tint: P.TINT.cat, title: "リンクのとおりに中へ", onTap: () => { shut(); O.linkPreview(); } })));
     if (runs.length) body.append(P.card(runs.map((at) => P.dangerRow({ ico: "undo", title: `${whenOf(at)}の整理を戻す`, onTap: () => O.undo(at, shut) }))));
     const named = (bs) => (bs.length > 3 ? `${bs.slice(0, 3).join("・")} ほか` : bs.join("・"));
     if (list.length) body.append(P.card(list.map((b) => P.dangerRow({

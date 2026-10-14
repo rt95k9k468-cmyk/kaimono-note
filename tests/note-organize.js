@@ -10,6 +10,7 @@
    中が一番上（Notion の並び）・冊の名前で頭の紙・カードに頭の名前を重ねない／道すじに頭を出さない／最近直したに
    取り込んだまま触っていないノートを出さない。
 
+   リンクのとおりに中へ（Notion 全体）：目次の行だけ・迷うもの・先に見せる・控え・並び・子孫ごと・更新日・元に戻す。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-organize.js */
 const { open, checker } = require("./lib");
 
@@ -219,6 +220,47 @@ function seed() {
   t.check("取り込みのあと：その取り込みの分だけ（新しい一冊・整理した親の下は親の冊）", nw[0].notebook === "新しい" && nw[0].head === true
     && nw[1].notebook === "新しい" && nw[2].notebook === "仕事" && JSON.stringify(pick(await get("n-tandoku"))) === JSON.stringify(tandoku0),
   JSON.stringify(nw.map(pick)));
+
+  /* ---------------- リンクのとおりに中へ（Notion 全体。平らに来たページ） ---------------- */
+  const B5 = "2026-10-14T02:00:00.000Z";
+  const flat = [
+    { id: "f-top", title: "目次", ms: 10, body: "- [甲](note:f-a)\n[乙](note:f-b)\n文の中の [丙](note:f-c) も\n[丁](note:f-d)" },
+    { id: "f-b", title: "乙", ms: 9, body: "[丁](note:f-d)" },
+    { id: "f-c", title: "丙", ms: 8 }, { id: "f-d", title: "丁", ms: 7 },
+    { id: "f-x", title: "輪X", ms: 6, body: "[輪Y](note:f-y)" }, { id: "f-y", title: "輪Y", ms: 5, body: "[輪X](note:f-x)" },
+    { id: "f-a", title: "甲", ms: 4, nb: "別" }, { id: "f-a1", title: "甲の子", ms: 3, nb: "別", parent: "f-a" },
+  ].map((x) => ({ id: x.id, title: x.title, body: x.body || "", notebook: x.nb || "Notion", tags: [], fav: false, deletedAt: null,
+    createdAt: new Date(Date.parse(B5) - x.ms).toISOString(), updatedAt: new Date(Date.parse(B5) - x.ms).toISOString(),
+    ...(x.parent ? { parent: x.parent } : {}), src: { from: "notion", key: x.id.padEnd(32, "0"), batch: B5 } }));
+  await page.evaluate((list) => KN.notes.addMany(list), flat);
+  const lp = await page.evaluate(() => { const p = KN.noteOrganize.linkPlan(); return { moved: p.moved, unsure: p.unsure.slice().sort().join() }; });
+  t.check("リンクのとおりに：目次の行だけ・二つから指されたものと輪の片方は迷う", lp.moved === 3 && lp.unsure === ["丁", "輪Y"].sort().join(), JSON.stringify(lp));
+  const flat0 = (await page.evaluate((ids) => ids.map((i) => KN.notes.get(i)), flat.map((n) => n.id))).map(pick);
+  await page.evaluate(() => KN.noteOrganize.linkPreview());
+  await page.waitForSelector(".js-tidy");
+  await page.waitForTimeout(300);
+  const lshown = await rows();
+  t.check("先に見せる：中へ移す3・迷う2", lshown.includes("中へ移す3") && lshown.includes("迷うのでそのまま2"), JSON.stringify(lshown));
+  await page.click(".js-tidy");
+  await page.waitForFunction(() => KN.notes.get("f-a").parent === "f-top", null, { timeout: 8000 });
+  t.check("控え（リンクのとおりに中へ移す前）を先に", takes.includes("リンクのとおりに中へ移す前"), JSON.stringify(takes));
+  const lk = await page.evaluate(() => {
+    const N = KN.notes;
+    return { kids: N.tree().kids("f-top").map((n) => n.title).join(), a1: N.get("f-a1").notebook, a: N.get("f-a").notebook,
+      c: N.get("f-c").parent || "", d: N.get("f-d").parent || "", x: N.get("f-x").parent || "" };
+  });
+  t.check("目次の行の順に中へ・子孫ごと親の冊へ・文の中のリンクと迷うものはそのまま",
+    lk.kids === "甲,乙" && lk.a === "Notion" && lk.a1 === "Notion" && !lk.c && !lk.d && lk.x === "f-y", JSON.stringify(lk));
+  const flat1 = (await page.evaluate((ids) => ids.map((i) => KN.notes.get(i)), flat.map((n) => n.id)));
+  t.check("更新日は動かない", flat1.every((n, i) => n.updatedAt === flat0[i].updatedAt));
+  t.check("二度目は何もしない", await page.evaluate(() => KN.noteOrganize.empty(KN.noteOrganize.linkPlan())));
+  await page.click(".toast .toast-action");
+  await page.waitForSelector(".js-ok");
+  await page.waitForTimeout(200);
+  await page.click(".js-ok");
+  await page.waitForFunction(() => !KN.notes.get("f-a").parent, null, { timeout: 8000 });
+  const flat2 = (await page.evaluate((ids) => ids.map((i) => KN.notes.get(i)), flat.map((n) => n.id))).map(pick);
+  t.check("元に戻す：冊・親・日時が前のとおり", JSON.stringify(flat2) === JSON.stringify(flat0), JSON.stringify(flat2));
 
   t.check("頁の誤りなし", !errors.length, errors.join("\n"));
   await browser.close();
