@@ -46,7 +46,7 @@
    * @param {object} o
    * @param {string} o.scope   "books"（ホーム・左の木：ノートブックの行と、ノートブックの無いノートが一番上）
    *                           か、紙の根のノートの id（紙の中の「中のノート」）
-   * @param {Set} o.open       開いた枝（落とした先の親を開く）
+   * @param {Set} o.open       開いた枝（運ぶ先で閉じた枝をその場で開くのにだけ使う）
    * @param {Function} o.root  () => いまの器（組み直したあと、キーで動かした行へ戻る）
    * @param {Function} [o.scroller]  () => 送る器
    * @param {Function} [o.expand]    (行) => 閉じた枝をその場で開く（組み直さない）
@@ -319,13 +319,9 @@
         if (was) undo = () => N().setBooks(was);
       } else if (a) {
         const to = a.into ? (a.into.book ? { parent: null, nb: a.into.nb } : { parent: a.into.id }) : a.to;
-        /* 置いた先が見えるように、親の枝を開いておく（組み直しは hold を外したとき）。 */
-        const key = to.parent || (to.nb ? `nb:${to.nb}` : null);
-        const had = key ? d.o.open.has(key) : true;
-        if (key) d.o.open.add(key);
+        /* 置いた先の枝は開かない（続けて何冊も入れるとき、>が開いたまま残って邪魔になる）。 */
         const was = N().place(d.row.id, to);
         if (was) undo = () => N().unplace(was);
-        else if (!had) d.o.open.delete(key);
       }
     } finally {
       N().hold(false);
@@ -400,10 +396,7 @@
     if (dir > 0) {
       const p = sibs[sibs.findIndex((k) => k.id === n.id) - 1];
       if (!p || N().isTable(p)) return;
-      const had = o.open.has(p.id);
-      o.open.add(p.id);
       was = N().place(n.id, { parent: p.id });
-      if (!was && !had) o.open.delete(p.id);
     } else {
       if (!up || up.id === o.scope) return;
       const g = t.parentOf(up.id);

@@ -228,7 +228,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
 
   await carry(row("n-x4"), async () => { const b = await box(row("n-x1")); return [b.x + b.width / 2, b.y + b.height / 2]; });
   t.check("行の上（まん中）へ：その中の終わり", await page.evaluate(() => KN.notes.tree().kids("n-x1").map((n) => n.title).join()) === "四");
-  t.check("落とした先の枝が開いている", (await page.$eval(row("n-x1"), (e) => e.getAttribute("aria-expanded"))) === "true");
+  t.check("落とした先の枝は開かない", (await page.$eval(row("n-x1"), (e) => e.getAttribute("aria-expanded"))) === "false");
 
   /* 右へずらして段を下げる：三 を 三 の下の隙間で一段右へ → 二 の中（二の子の次） */
   await page.click(`${row("n-x2")} .nt-twist`);
