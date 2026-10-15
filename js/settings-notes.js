@@ -59,6 +59,7 @@
         names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
+        navRow({ ico: "copy", tint: TINT.sub, title: "題の木をコピー", onTap: copyTitles }),
         /* 「取り込む」は外した（10月14日、利用者：もう取り込まない。KN.noteImport.open は残す。docs/notes-unify.md「取り込み」）。 */
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
           value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
@@ -306,6 +307,34 @@
       KN.ui.toast("ノートを開けない日なので、書き出せません（何も書き出していません）", { long: true });
     }
     return true;
+  }
+
+  /* 題の木（本文は入れない）。ノートブック → 木の順に一行ずつ、字下げで深さ。
+     行の尻に id の頭6字、本文が空なら「□」、頭なら「頭」、取り込みなら元（en/notion）。
+     整理の相談に貼るためのもの（docs/notes.md「題の木」）。 */
+  function titleTree() {
+    const t = N().tree();
+    const out = [];
+    const line = (n, d) => {
+      const tail = [n.id.slice(0, 6), String(n.body || "").trim() ? "" : "□", t.isHead(n.id) ? "頭" : "",
+        n.src && n.src.from ? n.src.from : ""].filter(Boolean).join(" ");
+      out.push("  ".repeat(d) + (n.title || "（題なし）") + " ·" + tail);
+    };
+    const walk = (ns, d) => ns.forEach((n) => { line(n, d); walk(t.kids(n.id), d + 1); });
+    N().notebooks().concat("").forEach((nb) => {
+      const h = nb ? t.head(nb) : null;
+      const tops = t.tops(nb);
+      if (!h && !tops.length) { if (nb) out.push("[" + nb + "]（空）"); return; }
+      out.push("[" + (nb || "ノートブックなし") + "]");
+      if (h) line(h, 1);
+      walk(tops, 1);
+    });
+    return out.join("\n");
+  }
+
+  function copyTitles() {
+    if (exportBlocked()) return;
+    KN.util.copy(titleTree(), { show: true }).then((ok) => { if (ok) KN.ui.toast("題の木をコピーしました"); });
   }
 
   function openExport() {
@@ -706,5 +735,5 @@
 
   Object.assign(S, { notesRows, notesSyncAlert, notesLabelList, noteLabelTitle, noteLabelRows });
   /* 試験が中身を確かめるための口（画面からは使いません）。 */
-  KN.notesExport = { notesIn, noteFile, oneFile, zipNotes, printNotes };
+  KN.notesExport = { notesIn, noteFile, oneFile, zipNotes, printNotes, titleTree };
 })();
