@@ -301,6 +301,10 @@
       if ("p" in r) p.parent = r.p ? r.p : undefined;
       if ("c" in r) p.createdAt = r.c;
       if (r.h) p.head = undefined;
+      /* 6つに分ける（下の six）：題・並び・その前の整理の記録も戻す。 */
+      if ("t" in r) p.title = r.t;
+      if ("o" in r) p.pos = r.o == null ? undefined : r.o;
+      if (r.prev) p.org = r.prev;
       if (r.made && !n.deletedAt && String(n.updatedAt) <= at
         && !live.some((k) => String(k.parent || "") === n.id && !set.has(k.id))) p.deletedAt = stamp;
       patches.set(n.id, p);
@@ -428,5 +432,140 @@
     });
   }
 
-  KN.noteOrganize = { plan, linkPlan, linkPreview, apply, after, undoPlan, runs, empty, preview, undo };
+  /* ---------------- 6つに分ける（2026年10月15日、利用者が決めた。docs/notes.md「6つの棚」） ----------------
+     決めた表のとおりに、冊と親を付け替えるだけ（本文・作った日・直した日は動かさない）。Evernote の5冊だけ題に
+     「(Evernote)」を足し、reading の中に空の「論文」を一つ作る。元の冊・親・題・並び・前の整理の記録は org に
+     （k: "six"）。戻すのは undoPlan。題は字と数だけで引き当てる（絵文字・括弧・空白の違いで外れない）。 */
+  const SHELVES = ["thinking", "reading", "teaching", "learning", "living", "archive"];
+  const PW = "philosophy&work";
+  const PAPERS = "論文";
+  const ev = (t) => ["archive", EV, [t], `${t}(${EV})`];
+  const SIX = [
+    ...["アファーマティブアクションについて", "一日ひとつの成長を", "メタファーの遍在性", "学びのモジュール化",
+      "拾い物言説", "能力主義を超えて"].map((t) => ["thinking", "思考・読書", [t]]),
+    ["reading", "思考・読書", ["読了まとめ"]], ["reading", "思考・読書", ["読みたい本"]], ["reading", PAPERS, null],
+    ["teaching", "Notion", [PW, "【子どもの様子】"]], ["teaching", "Notion", [PW, "【教育全般】"]],
+    ...["授業【国語】", "授業【算数】", "活動【社会見学】", "授業【自立活動】", "授業【特別活動】", "授業【体育】", "授業【総合】"]
+      .map((t) => ["teaching", "Notion", [PW, "【教育全般】", t]]),
+    ["learning", "Notion", [PW, "【語彙】"]], ["learning", "Notion", [PW, "【言語学】"]], ["learning", "Notion", ["【learningDB】"]],
+    ["learning", "思考・読書", ["【もっと学びたいこと】"]],
+    ["living", "private", ["A30歳anniversaryディナー候補"]], ["living", "private", ["Messages"]],
+    ["living", "Notion", ["【learningDB】", "【自身の保険・投資について】"]],
+    ev("学習用"), ev("教員職務"), ev("教採対策"), ev("思考"), ev("修士論文"),
+    ["archive", EV, ["積み上げ"], null, (n) => n.id === "n-tsumiage"],
+    ["archive", "Notion", ["全体構想"]],
+  ];
+  const keyOf = (s) => String(s || "").normalize("NFKC").replace(/[^\p{L}\p{N}]/gu, "");
+
+  /** 計画。返すのは { at, made, patches, moved, missing, by: {冊: 数} }。o.at・o.uid … 試験で決め打つとき。 */
+  function sixPlan(o) {
+    const opt = o || {};
+    const at = opt.at || U.today();
+    const t = KN.notes.tree();
+    const live = KN.notes.list();
+    const by = new Map(live.map((n) => [n.id, n]));
+    /* 冊の一番上から題の道すじで一つに決まるときだけ（同じ題が並ぶ段は触らない）。 */
+    const find = (nb, path, test) => {
+      let level = t.tops(nb);
+      let n = null;
+      for (const title of path) {
+        const hits = level.filter((k) => keyOf(k.title) === keyOf(title));
+        if (hits.length !== 1) return test ? live.find((k) => k.notebook === nb && test(k)) || null : null;
+        n = hits[0];
+        level = t.kids(n.id);
+      }
+      return n;
+    };
+    const made = [];
+    const patches = new Map();
+    const missing = [];
+    const idx = {};
+    const pos = (nb) => { idx[nb] = (idx[nb] || 0) + 1; return "0" + String(idx[nb]).padStart(3, "0"); };
+    const mark = (n, r) => Object.assign({ at, k: "six" }, r, n.org ? { prev: n.org } : {});
+    SIX.forEach(([to, nb, path, title, test]) => {
+      if (!path) {
+        const kids = t.tops(nb);
+        if (!kids.length) { missing.push(nb); return; }
+        const f = Object.assign(KN.notes.draft(), { id: opt.uid ? opt.uid() : U.uid("n"), title: nb, notebook: to,
+          createdAt: at, updatedAt: at, pos: pos(to), org: { at, k: "six", made: true } });
+        made.push(f);
+        kids.forEach((n) => patches.set(n.id, { notebook: to, parent: f.id, org: mark(n, { nb: n.notebook, p: n.parent || "" }) }));
+        return;
+      }
+      const n = find(nb, path, test);
+      if (!n || patches.has(n.id)) { missing.push(`${nb} › ${path.join(" › ")}`); return; }
+      const r = { nb: n.notebook, p: n.parent || "", o: n.pos == null ? null : n.pos };
+      const p = { notebook: to, parent: undefined, pos: pos(to) };
+      if (title && n.title !== title) { r.t = n.title; p.title = title; }
+      p.org = mark(n, r);
+      patches.set(n.id, p);
+    });
+    /* 子は親と同じ冊（docs/notes-unify.md「形」）。付け替えたあとの親をたどって一番上の冊に。 */
+    const made1 = new Map(made.map((f) => [f.id, f]));
+    const val = (n, k) => (patches.has(n.id) && k in patches.get(n.id) ? patches.get(n.id)[k] : n[k]);
+    const up = (n) => { const id = val(n, "parent"); return id ? by.get(String(id)) || made1.get(String(id)) || null : null; };
+    live.forEach((n) => {
+      if (patches.has(n.id)) return;
+      let r = n;
+      const seen = new Set([n.id]);
+      for (let q = up(r); q && !seen.has(q.id); q = up(q)) { seen.add(q.id); r = q; }
+      const nb = made1.has(r.id) ? r.notebook : val(r, "notebook");
+      if (nb !== n.notebook) patches.set(n.id, { notebook: nb, org: mark(n, { nb: n.notebook }) });
+    });
+    const count = {};
+    patches.forEach((p) => { if (SHELVES.includes(p.notebook)) count[p.notebook] = (count[p.notebook] || 0) + 1; });
+    return { at, made, patches: [...patches.entries()], moved: patches.size, missing, by: count };
+  }
+
+  /** 書く：ノートを一度に、それから冊の並びを6つを頭に。 */
+  async function sixApply(p) {
+    if (!p.moved) return p;
+    await KN.notes.reshape(p.made, p.patches);
+    const rest = KN.notes.notebooks().filter((nb) => !SHELVES.includes(nb));
+    KN.notes.setBooks(SHELVES.concat(rest));
+    return p;
+  }
+
+  /** 6つに分けた回（戻せるもの。新しい順）。 */
+  function sixRuns() {
+    const set = new Set();
+    KN.notes.list().forEach((n) => { if (n.org && n.org.k === "six") set.add(n.org.at); });
+    return [...set].sort().reverse();
+  }
+
+  /** 先に見せる紙 → 控え → 分ける。 */
+  function sixPreview(done) {
+    const p = sixPlan();
+    if (!p.moved) { KN.ui.toast("分けるものはありません"); return null; }
+    const P = S();
+    const body = node(html`<div class="stack"></div>`);
+    body.append(P.card(SHELVES.filter((nb) => p.by[nb]).map((nb) => row(nb, p.by[nb]))));
+    if (p.missing.length) body.append(P.card(row("見つからないのでそのまま", p.missing.length)), P.more("どれ", p.missing.join(" ／ ")));
+    const foot = node(html`<div class="stack gap-2"><button class="btn btn-primary js-tidy"><span class="js-word">分ける</span></button></div>`);
+    const go = foot.querySelector(".js-tidy");
+    const word = foot.querySelector(".js-word");
+    let busy = false;
+    const h = KN.ui.sheet({ title: "6つに分ける", content: body, footer: foot });
+    go.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      go.disabled = true;
+      word.textContent = "控えを取っています";
+      if (!(await guard("6つに分ける前"))) { busy = false; go.disabled = false; word.textContent = "分ける"; return; }
+      try {
+        await sixApply(sixPlan());
+      } catch (_) {
+        KN.ui.toast("ノートを保存できませんでした", { long: true });
+        h.close();
+        return;
+      }
+      h.close();
+      if (done) done();
+      KN.ui.toast("分けました");
+    });
+    return h;
+  }
+
+  KN.noteOrganize = { plan, linkPlan, linkPreview, apply, after, undoPlan, runs, empty, preview, undo,
+    SHELVES, sixPlan, sixApply, sixRuns, sixPreview };
 })();

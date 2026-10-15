@@ -60,6 +60,7 @@
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
         navRow({ ico: "copy", tint: TINT.sub, title: "題の木をコピー", onTap: copyTitles }),
+        ...sixRows(),
         /* 「取り込む」は外した（10月14日、利用者：もう取り込まない。KN.noteImport.open は残す。docs/notes-unify.md「取り込み」）。 */
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
           value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
@@ -310,13 +311,13 @@
   }
 
   /* 題の木（本文は入れない）。ノートブック → 木の順に一行ずつ、字下げで深さ。
-     行の尻に id の頭6字、本文が空なら「□」、頭なら「頭」、取り込みなら元（en/notion）。
+     行の尻に id の尻6字、本文が空なら「□」、頭なら「頭」、取り込みなら元（en/notion）。
      整理の相談に貼るためのもの（docs/notes.md「題の木」）。 */
   function titleTree() {
     const t = N().tree();
     const out = [];
     const line = (n, d) => {
-      const tail = [n.id.slice(0, 6), String(n.body || "").trim() ? "" : "□", t.isHead(n.id) ? "頭" : "",
+      const tail = [n.id.slice(-6),String(n.body || "").trim() ? "" : "□", t.isHead(n.id) ? "頭" : "",
         n.src && n.src.from ? n.src.from : ""].filter(Boolean).join(" ");
       out.push("  ".repeat(d) + (n.title || "（題なし）") + " ·" + tail);
     };
@@ -330,6 +331,17 @@
       walk(tops, 1);
     });
     return out.join("\n");
+  }
+
+  /* 6つに分ける・戻す（docs/notes.md「6つの棚」）。分けるものが無く、戻せる回も無ければ出さない。 */
+  function sixRows() {
+    const O = KN.noteOrganize;
+    if (!ready() || !O || !O.sixPlan) return [];
+    const out = [];
+    if (O.sixPlan().moved) out.push(navRow({ ico: "book", tint: TINT.cat, title: "6つに分ける", onTap: () => O.sixPreview(render) }));
+    const at = O.sixRuns()[0];
+    if (at) out.push(dangerRow({ title: "6つに分けたのを戻す", onTap: () => O.undo(at, render) }));
+    return out;
   }
 
   function copyTitles() {
