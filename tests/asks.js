@@ -131,9 +131,10 @@ const { open, checker } = require("./lib");
       const I = KN.askItems || [];
       return { n: I.length, same: I.every((a, i) => a.q === KN.askList[i]) && I.length === KN.askList.length,
         ok: I.every((a) => a.q && a.g && [1, 2, 3].includes(a.w) && typeof a.from === "string" && typeof a.hint === "string"),
+        filled: I.every((a) => a.from.trim() && a.hint.trim()),
         uniq: new Set(I.map((a) => a.q)).size === I.length };
     });
-    t.check("問いの元：分け・重さ・出典・ひとこと付き、askList は本文だけの写し", shape.n > 0 && shape.same && shape.ok && shape.uniq, JSON.stringify(shape));
+    t.check("問いの元：分け・重さ・出典・文脈付き、askList は本文だけの写し", shape.n > 0 && shape.same && shape.ok && shape.filled && shape.uniq, JSON.stringify(shape));
     const yetText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-yet .note-t")].map((x) => x.textContent.trim()));
     await page.evaluate(() => { KN.app.showScreen("notes"); KN.screens.notes.asks(); });
     await page.waitForSelector("#screen-notes .notes-asks.is-yet", { timeout: 4000 });
@@ -150,8 +151,11 @@ const { open, checker } = require("./lib");
     await page.locator("#screen-notes .notes-asks.is-yet .note-row", { hasText: q }).first().locator(".js-answer").click();
     await answerOpen();
     const s = await page.evaluate(() => { const el = document.querySelector(".sheet.is-open"), a = el.querySelector(".js-a");
-      return { q: el.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a, ok: el.querySelector(".js-ok").textContent.trim() }; });
+      const c = el.querySelector(".ask-ctx"), it = KN.askItems[0];
+      return { q: el.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a, ok: el.querySelector(".js-ok").textContent.trim(),
+        ctx: !!c && c.offsetHeight > 0 && c.querySelector(".ask-ctx-from").textContent === it.from && c.querySelector(".ask-ctx-t").textContent === it.hint }; });
     t.check("答える紙：問いは欄の外・欄は空・「保存する」", s.q === q && s.v === "" && s.focus && s.ok === "保存する", JSON.stringify(s));
+    t.check("答える紙：問いの下に出典と文脈（畳まない）", s.ctx, JSON.stringify(s));
     await page.keyboard.insertText("答えの字");
     await ok();
     const b1 = await bodies();
@@ -190,6 +194,13 @@ const { open, checker } = require("./lib");
     await page.click("#screen-archive .js-think-other");
   }
   t.check("前の日に書いた問いは引かず、残りの問いだけ", qs.every((x) => x === left), JSON.stringify(qs));
+  const ctx = await page.evaluate(() => {
+    const c = document.querySelector("#screen-archive .think-today .js-think-ctx"), it = KN.askItems[0];
+    return { shown: !!c && !c.hidden && c.offsetHeight > 0, from: c && c.querySelector(".js-think-from").textContent === it.from,
+      hint: c && c.querySelector(".js-think-hint").textContent === it.hint,
+      big: parseFloat(getComputedStyle(document.querySelector("#screen-archive .js-think-q")).fontWeight) >= 600 };
+  });
+  t.check("今日の問い：問いは太く、下に出典と文脈（畳まない）", ctx.shown && ctx.from && ctx.hint && ctx.big, JSON.stringify(ctx));
 
   await page.evaluate((y) => {
     const d = (KN.store.get().archive.days || []).find((x) => x.date === y);
@@ -200,12 +211,12 @@ const { open, checker } = require("./lib");
   for (let i = 0; i < 3 && !mine; i++) {
     const got = await page.evaluate(() => {
       const h = document.querySelector("#screen-archive .think-today");
-      return { t: h.querySelector(".js-think-t").textContent, q: h.querySelector(".js-think-q").textContent };
+      return { t: h.querySelector(".js-think-t").textContent, q: h.querySelector(".js-think-q").textContent, ctx: !h.querySelector(".js-think-ctx").hidden };
     });
     if (got.t === "あなたの問い") mine = got;
     else await page.click("#screen-archive .js-think-other");
   }
-  t.check("自分で書いた問いが「あなたの問い」として出る", !!mine && mine.q === "試験の自分の問い", JSON.stringify(mine));
+  t.check("自分で書いた問いが「あなたの問い」として出る（出典・文脈は無い）", !!mine && mine.q === "試験の自分の問い" && !mine.ctx, JSON.stringify(mine));
   const memoBefore = await page.evaluate((y) => (KN.store.get().archive.days.find((x) => x.date === y) || {}).memo, yest);
   await page.click("#screen-archive .js-think-today");
   await page.waitForTimeout(500);

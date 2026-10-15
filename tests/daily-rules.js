@@ -191,6 +191,11 @@ const FORBIDDEN = [
   t.check("コピーに先の予定・長期タスクが入らない", copied != null
     && !copied.includes("試験の先の予定") && !copied.includes("試験の長期タスク") && !copied.includes("参考"), String(copied));
 
+  /* 今日の問いは daily の頭に出る（問い・出典・文脈とも畳まない）ので、元の字にも評価の言葉を入れない。 */
+  const askBad = await page.evaluate((words) => (KN.askItems || [])
+    .flatMap((a, i) => words.filter((w) => `${a.q}${a.from}${a.hint}`.includes(w)).map((w) => `${i + 1}:${w}`)), FORBIDDEN);
+  t.check("今日の問いの元（問い・出典・文脈）に評価の言葉が無い", !askBad.length, askBad.join(" "));
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();

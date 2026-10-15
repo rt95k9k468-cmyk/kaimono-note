@@ -1989,11 +1989,12 @@
   function answer(q) {
     if (N().state() !== "on") return null;
     const hidden = !!(KN.lock && KN.lock.hides("notes"));
-    const hint = (askItems().find((a) => askKey(a.q) === askKey(q)) || {}).hint || "";
+    /* 問いの下に出典と文脈（畳まない）。 */
+    const it = askItems().find((a) => askKey(a.q) === askKey(q)) || {};
     const box = node(html`
       <div class="stack gap-3">
         <p class="ask-sheet-q">${q}</p>
-        ${hint ? html`<details class="think-today-hint"><summary>ひとこと</summary><p>${hint}</p></details>` : ""}
+        ${it.from || it.hint ? html`<div class="ask-ctx">${it.from ? html`<p class="ask-ctx-from">${it.from}</p>` : ""}${it.hint ? html`<p class="ask-ctx-t">${it.hint}</p>` : ""}</div>` : ""}
         <label class="field"><textarea class="textarea js-a" rows="6" aria-label="答え" placeholder="思いついたことから"></textarea></label>
       </div>
     `);

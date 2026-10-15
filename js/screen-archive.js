@@ -1129,7 +1129,7 @@
     const k = h + (askTurn.day === day ? askTurn.n : 0);
     if (mine.length && k % 3 === 2) return { ...mine[Math.floor(k / 3) % mine.length], mine: true };
     const a = base[k % base.length] || {};
-    return { text: a.q || "", hint: a.hint || "" };
+    return { text: a.q || "", hint: a.hint || "", from: a.from || "" };
   }
 
   /** daily の冒頭：日記に書く・ノートを書く・問い一覧 の三枚と、今日の問い。説明は書かない。 */
@@ -1155,7 +1155,7 @@
             <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
           </div>
           <p class="think-today-q js-think-q"></p>
-          <details class="think-today-hint js-think-hint" hidden><summary>ひとこと</summary><p class="js-think-hint-t"></p></details>
+          <div class="ask-ctx js-think-ctx" hidden><p class="ask-ctx-from js-think-from"></p><p class="ask-ctx-t js-think-hint"></p></div>
           <button type="button" class="think-today-go js-think-today">${icon("edit")}<span>この問いから考える</span>${icon("chevron")}</button>
         </section>
       </div>
@@ -1176,10 +1176,13 @@
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
     let cur;
-    const hint = el.querySelector(".js-think-hint");
+    /* 問いの下に出典と文脈（そのときのこと）。思い出すきっかけなので畳まない。自分の問いには無い。 */
+    const ctx = el.querySelector(".js-think-ctx"), from = el.querySelector(".js-think-from"), hint = el.querySelector(".js-think-hint");
     const paint = () => {
       cur = askOf(day, past); q.textContent = cur.text; qt.textContent = cur.mine ? "あなたの問い" : "今日の問い";
-      hint.hidden = !cur.hint; hint.open = false; hint.querySelector(".js-think-hint-t").textContent = cur.hint || "";
+      from.textContent = cur.from || ""; from.hidden = !cur.from;
+      hint.textContent = cur.hint || ""; hint.hidden = !cur.hint;
+      ctx.hidden = !cur.from && !cur.hint;
     };
     paint();
     el.querySelector(".js-think-other").addEventListener("click", () => {
