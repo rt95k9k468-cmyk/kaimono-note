@@ -112,9 +112,35 @@ const { open, checker } = require("./lib");
   t.check("題が変わるのは Evernote の5冊だけ", same("title").length === 5, same("title").join());
   t.check("二度目は分けるものが無い", (await page.evaluate(() => KN.noteOrganize.sixPlan().moved)) === 0);
 
-  /* 設定の行 */
+  /* 棚のカード（ホーム） */
   await page.click('.tab[data-tab="notes"]');
-  await page.waitForTimeout(600);
+  await page.waitForFunction(() => document.querySelector(".nt-shelf"));
+  const shelves = () => page.$$eval(".notes-books .nt-shelf", (gs) => gs.map((g) => {
+    const r = g.querySelector(":scope > .nt-row");
+    return `${g.dataset.shelf}:${r.getAttribute("aria-expanded")}`;
+  }).join());
+  t.check("棚は6つ・この順・archive だけ閉じて始まる", (await shelves()) === "thinking:true,reading:true,teaching:true,learning:true,living:true,archive:false", await shelves());
+  const look = await page.evaluate(() => {
+    const g = document.querySelector('.nt-shelf[data-shelf="thinking"]');
+    const top = document.querySelector(".notes-books[role=tree] > .nt-plain");
+    return { desc: g.querySelector(".nt-shelf-desc").textContent, ico: !!g.querySelector(".nt-shelf-ico svg"),
+      bg: getComputedStyle(g).backgroundColor, ink: getComputedStyle(g.querySelector(".nt-row")).color,
+      top: top ? top.innerText.replace(/\s+/g, " ").trim() : "",
+      firstShelf: [...document.querySelector(".notes-books[role=tree]").children].findIndex((c) => c.classList.contains("nt-shelf")) };
+  });
+  t.check("見出しの下に一行の説明・絵", look.desc === "自分の問いと主張" && look.ico, JSON.stringify(look));
+  t.check("カードは色つき・見出しは濃い色", look.bg !== "rgba(0, 0, 0, 0)" && look.ink !== look.bg, `${look.bg} / ${look.ink}`);
+  t.check("すべてのノート・問いが棚の上", /^すべてのノート 問い/.test(look.top) && look.firstShelf === 1, JSON.stringify(look));
+  await page.click('.nt-shelf[data-shelf="thinking"] > .nt-row .nt-twist');
+  await page.waitForTimeout(300);
+  await page.click('.nt-shelf[data-shelf="archive"] > .nt-row .nt-twist');
+  await page.waitForTimeout(300);
+  t.check("開け閉めは覚える", (await page.evaluate(() => JSON.stringify(KN.store.get().settings.notesShelfOpen))) === '{"thinking":false,"archive":true}');
+  t.check("開け閉めが画面に出る", /^thinking:false,.*archive:true$/.test(await shelves()), await shelves());
+  await page.click('.nt-shelf[data-shelf="thinking"] > .nt-row .nt-twist');
+  await page.waitForTimeout(300);
+
+  /* 設定の行 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
   const rows = await page.locator(".set-layer:last-child").innerText();

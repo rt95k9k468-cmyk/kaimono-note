@@ -271,18 +271,22 @@
         <button type="button" class="icon-btn is-sm js-new-book" aria-label="ノートブックを追加">${icon("plus")}</button></div>`);
     sec.querySelector(".js-new-book").addEventListener("click", () => { KN.motion.fire("select"); newBook(); });
     box.append(sec);
-    const tree = node(html`<div class="notes-books" role="tree" aria-label="ノートブック"></div>`);
+    /* 6つの棚があれば、棚ごとに色のカード（上の二行と、ほかの冊は白いカードのまま）。 */
+    const shelves = N().notebooks().some((nb) => SHELF[nb]);
+    const tree = node(html`<div class="notes-books ${shelves ? "has-shelves" : ""}" role="tree" aria-label="ノートブック"></div>`);
+    const top = shelves ? node(html`<div class="nt-plain" role="none"></div>`) : tree;
+    if (shelves) tree.append(top);
     const line = (label, mark, to, cls) => {
       const b = node(html`
         <button type="button" class="nt-row notes-book ${cls}" role="treeitem"><span class="nt-twist is-leaf" aria-hidden="true"></span>${mark}<span class="nt-name">${label}</span>${icon("chevron")}</button>`);
       b.addEventListener("click", () => { KN.motion.fire("select"); go(to); });
-      tree.append(b);
+      top.append(b);
     };
     line("すべてのノート", icon("notes"), { k: "list" }, "js-all");
     line("問い", icon("thought"), { k: "ask" }, "js-asks");
     const c = homeCur ? N().get(homeCur) : null;
     bookRows(tree, t, {
-      open: treeOpen, stick: true,
+      open: treeOpen, stick: true, shelves,
       cur: c && !t.isHead(c.id) ? c.id : null,
       curNb: homeNb != null ? homeNb : c && t.isHead(c.id) ? c.notebook : null,
       onNote: (n, el) => openNote(n.id, el, { tree: true, back: TREE_ROW }),
@@ -385,30 +389,62 @@
       o … treeRows と同じ（kids は要らない）＋ curNb（印を付けるノートブック）。 */
   function bookRows(box, t, o) {
     const sub = { ...o, kids: (n) => t.branch(n.id) };
-    N().notebooks().forEach((nb) => {
+    /* 棚のカード（o.shelves。ホームだけ）：6つの棚が先に、ほかの冊とノートブックの無いノートは白いカードに。 */
+    const rest = o.shelves ? node(html`<div class="nt-plain" role="none"></div>`) : box;
+    const all = N().notebooks();
+    const order = o.shelves ? all.filter((nb) => SHELF[nb]).concat(all.filter((nb) => !SHELF[nb])) : all;
+    order.forEach((nb) => {
       const key = `nb:${nb}`;
+      const shelf = o.shelves ? SHELF[nb] : null;
+      if (shelf) seedShelf(nb, key, o.open);
       const tops = t.tops(nb);
       const h = t.head(nb);
       const open = tops.length > 0 && o.open.has(key);
       const look = rowLook(0, open, o.stick);
-      const g = node(html`<div class="nt-grp" role="none"></div>`);
+      const g = node(html`<div class="nt-grp ${shelf ? "nt-shelf" : ""}" role="none" ${shelf ? html`data-shelf="${nb}"` : ""}></div>`);
       const r = node(html`
         <button type="button" class="nt-row is-book js-book ${look.cls}" role="treeitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""} data-d="0" style="${look.style}"
                 ${o.curNb === nb ? html`aria-current="true"` : ""} ${tops.length ? html`aria-expanded="${String(open)}"` : ""}>
-          ${twistOf(tops.length, open)}${book(nb)}<span class="nt-name">${nb}</span><span class="nt-add" role="button" aria-label="${nb} に書く">${icon("plus")}</span>
+          ${twistOf(tops.length, open)}${shelf ? html`<span class="nt-shelf-ico">${shelfIcon(shelf.ico)}</span>` : book(nb)}<span class="nt-name">${nb}</span><span class="nt-add" role="button" aria-label="${nb} に書く">${icon("plus")}</span>
         </button>`);
       r.addEventListener("click", (e) => {
         KN.motion.fire("select");
         if (e.target.closest(".nt-add")) { openNote(null, r, { ...(h ? { parent: h.id } : { nb }), tree: true, back: TREE_ROW }); return; }
         if (h && !e.target.closest(".nt-twist")) { o.onNote(h, r); return; }
-        if (tops.length) { flip(o.open, key); o.redraw(); }
+        if (tops.length) { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); }
       });
       g.append(r);
+      if (shelf) g.append(node(html`<div class="nt-shelf-desc">${shelf.word}</div>`));
       if (open) treeRows(g, tops, 1, sub);
       else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, tops, 1, sub); });
-      box.append(g);
+      (shelf ? box : rest).append(g);
     });
-    treeRows(box, t.tops(""), 0, sub);
+    treeRows(rest, t.tops(""), 0, sub);
+    if (rest !== box && rest.childElementCount) box.append(rest);
+  }
+
+  /* 6つの棚（docs/notes.md「6つの棚」）。開け閉めは設定 notesShelfOpen に（無ければ archive だけ閉じる）。
+     ほかの冊の開け閉めは今までどおり記憶だけ。 */
+  const SHELF = {
+    thinking: { ico: "bulb", word: "自分の問いと主張" },
+    reading: { ico: "study", word: "本・論文・動画の記録" },
+    teaching: { ico: "chalkboard", word: "授業と子どもの記録" },
+    learning: { ico: "sprout", word: "身につけたいことを育てる" },
+    living: { ico: "home", word: "くらしと家族のこと" },
+    archive: { ico: "tidyBox", word: "〜2026年10月の記録" },
+  };
+  const shelfIcon = (k) => { const s = KN.iconsTodo && KN.iconsTodo.byKey(`do-${k}`); return s ? U.raw(s) : icon(k); };
+  const seeded = new Set();
+  function seedShelf(nb, key, open) {
+    if (seeded.has(nb)) return;
+    seeded.add(nb);
+    const m = (KN.store.get().settings || {}).notesShelfOpen || {};
+    if (nb in m ? !!m[nb] : nb !== "archive") open.add(key); else open.delete(key);
+  }
+  /** 開け閉めを覚える。ノートの面が出ていれば store の subscribe が組み直すので true（自分では組まない）。 */
+  function keepShelf(nb, on) {
+    KN.store.update((s) => { s.settings.notesShelfOpen = { ...(s.settings.notesShelfOpen || {}), [nb]: on }; });
+    return KN.app.activeScreen() === "notes";
   }
 
   /** 木から開いた紙を閉じたら、ホームの木のその行に印（枝を開く。表の行なら表のノート、頭なら冊の行）。 */
