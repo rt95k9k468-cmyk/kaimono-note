@@ -5508,13 +5508,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   --shelf-ink: color-mix(in srgb, var(--shelf-c) 70%, var(--shelf-to, #000));
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
-:is(.nt-shelf, .nt-dot)[data-shelf="thinking"] { --shelf: #745399; }
-:is(.nt-shelf, .nt-dot)[data-shelf="reading"] { --shelf: #007B43; }
-:is(.nt-shelf, .nt-dot)[data-shelf="teaching"] { --shelf: #ED6D3D; }
-:is(.nt-shelf, .nt-dot)[data-shelf="learning"] { --shelf: #00A3AF; }
-:is(.nt-shelf, .nt-dot)[data-shelf="living"] { --shelf: #F0908D; }
-:is(.nt-shelf, .nt-dot)[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
-.nt-dot[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="thinking"] { --shelf: #745399; }
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="reading"] { --shelf: #007B43; }
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="teaching"] { --shelf: #ED6D3D; }
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="learning"] { --shelf: #00A3AF; }
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="living"] { --shelf: #F0908D; }
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
+:is(.nt-dot, .nb-ico)[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shelf-x: 1.8; --shelf-to: #fff; } }
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
 .nt-shelf .nt-row { --nt-h: calc(var(--row-h-compact) + 6px); }
@@ -5684,6 +5684,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-tag-add { color: var(--c-text-2); }
 /* 選ぶ紙：使われている名前のチップと、新しい名前の欄。 */
 .note-pick { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* ノートブックは二列で一目に（送らずに選ぶ。2026年10月15日）。 */
+.note-pick-books { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.note-pick-books .chip { justify-content: flex-start; min-width: 0; margin: 0; }
+.note-pick-books .chip > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-pick-books .chip:last-child:nth-child(odd) { grid-column: 1 / -1; justify-content: center; }
 .note-name-in { font-size: var(--fs-lg); }
 .note-open {
   flex: 1;

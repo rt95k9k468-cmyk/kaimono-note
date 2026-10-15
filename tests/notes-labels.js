@@ -260,8 +260,8 @@ const { open, checker } = require("./lib");
       left: Math.abs(p.left - Math.min(a.left, innerWidth - 8 - p.width)) < 2, pl: p.left, al: a.left, pw: p.width, label: document.querySelector(".note-pop.is-pick").getAttribute("aria-label") };
   });
   t.check("ノートブックも口のすぐ下の小窓（左そろえ・画面の内）", np.sheets === 1 && np.below && np.left && np.label === "ノートブック", JSON.stringify(np));
-  t.check("ノートブックの紙に、なし・使われている名前", (await page.evaluate(() =>
-    [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).join(","))) === "なし,旅");
+  t.check("ノートブックの紙に、使われている名前・なし（終わり）", (await page.evaluate(() =>
+    [...document.querySelectorAll(".note-pick .chip")].map((c) => c.textContent.trim()).join(","))) === "旅,なし");
   await page.fill(".note-pick .js-new", "家のこと");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => !document.querySelector(".note-pop-cover"));
@@ -292,6 +292,34 @@ const { open, checker } = require("./lib");
   await popEsc();
   await escTop();
   t.check("タグだけ付けて何も書かずに閉じたノートは残らない", (await page.evaluate(() => KN.notes.list().length)) === 4);
+
+  /* ---- ＋は先にノートブック（2026年10月15日）。棚は棚の絵と色、二列で送らずに選べる。選ぶと本文へ ---- */
+  await page.evaluate(() => {
+    sessionStorage.removeItem("kn-book-first");
+    for (const b of ["thinking", "reading", "teaching", "learning", "living", "archive"]) KN.notes.addBook(b);
+  });
+  await page.click("#dock .add-fab");
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await popOpen();
+  const bf = await page.evaluate(() => {
+    const pop = document.querySelector(".note-pop.is-pick");
+    const chips = [...pop.querySelectorAll(".note-pick-books .chip")];
+    const th = chips.find((c) => c.textContent.trim() === "thinking");
+    const ico = th && th.querySelector(".nb-ico");
+    return { cols: getComputedStyle(pop.querySelector(".note-pick-books")).gridTemplateColumns.split(" ").length,
+      scroll: pop.scrollHeight <= pop.clientHeight + 1, shelf: ico && ico.dataset.shelf, color: ico && getComputedStyle(ico).color,
+      last: chips[chips.length - 1].textContent.trim(), n: chips.length };
+  });
+  t.check("＋で先にノートブックの小窓が出る・二列", bf.cols === 2, JSON.stringify(bf));
+  t.check("送らずに全部見える", bf.scroll, JSON.stringify(bf));
+  t.check("棚は棚の絵と色", bf.shelf === "thinking" && bf.color !== "rgb(0, 0, 0)", JSON.stringify(bf));
+  t.check("「なし」は終わり", bf.last === "なし", JSON.stringify(bf));
+  await page.evaluate(() => [...document.querySelectorAll(".note-pick .chip")].find((c) => c.textContent.trim() === "thinking").click());
+  await page.waitForFunction(() => !document.querySelector(".note-pop-cover"), null, { timeout: 3000 });
+  t.check("選ぶと本文にカーソル", await page.evaluate(() => document.activeElement && document.activeElement.classList.contains("js-text")));
+  t.check("頭の口も棚の絵", await page.$eval(".sheet.is-note .js-nb", (e) => e.textContent.trim() === "thinking" && e.querySelector(".nb-ico").dataset.shelf === "thinking"));
+  await escTop();
+  await page.evaluate(() => sessionStorage.setItem("kn-book-first", "off"));
   t.check("閉じたら上の帯（theme-color）は元の灰へ", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).join() === "#f0eff3,#121216");
 
   /* ---- 残る・書き出し・localStorage ---- */

@@ -64,7 +64,9 @@
   }
   const dot = (t) => html`<span class="chip-dot" style="--cat:${colorOf("tag", t)}"></span>`;
   /* ノートブックの本の絵にも色（2026年10月1日、利用者が「それぞれに色が欲しい」）。 */
-  const book = (b) => html`<span class="nb-ico" style="--cat:${colorOf("nb", b)}">${icon("book")}</span>`;
+  /* 6つの棚は棚の絵と色（2026年10月15日、利用者の頼み）。 */
+  const book = (b) => (SHELF[b] ? html`<span class="nb-ico" data-shelf="${b}">${shelfIcon(SHELF[b].ico)}</span>`
+    : html`<span class="nb-ico" style="--cat:${colorOf("nb", b)}">${icon("book")}</span>`);
 
   function mount(el) {
     root = el;
@@ -739,7 +741,7 @@
     const mid = node(html`
       <div class="note-head-mid">
         <span class="note-head-t js-head-t" aria-hidden="true"></span>
-        <button class="note-nb-btn js-nb"><span class="nb-ico js-nb-ico">${icon("book")}</span><span class="js-nb-name"></span></button>
+        <button class="note-nb-btn js-nb"><span class="nb-ico">${icon("book")}</span><span class="js-nb-name"></span></button>
       </div>
     `);
     const headT = mid.querySelector(".js-head-t");
@@ -1304,6 +1306,7 @@
       if (note.notebook) nbBtn.style.setProperty("--cat", colorOf("nb", note.notebook));
       else nbBtn.style.removeProperty("--cat");
       nbBtn.classList.toggle("is-empty", !note.notebook);
+      nbBtn.querySelector(".nb-ico").replaceWith(note.notebook ? node(book(note.notebook)) : node(html`<span class="nb-ico">${icon("book")}</span>`));
       labelsEl.innerHTML = "";
       labelsEl.append(node(html`
         <div class="note-labels-in">
@@ -1605,7 +1608,16 @@
       h.el.classList.add("is-writing");
       grow();
       paintTools();
-      KN.ui.focusNow(textIn);
+      /* ＋からは先にノートブックを選ぶ（2026年10月15日、利用者が改めた）。選んだ押しのまま本文へ。 */
+      /* 試験の台本は sessionStorage の kn-book-first=off で今までどおり本文から（tests/lib.js）。 */
+      let skip = false;
+      try { skip = sessionStorage.getItem("kn-book-first") === "off"; } catch (_) {}
+      if (note.notebook || skip) KN.ui.focusNow(textIn);
+      else {
+        setTimeout(() => {
+          if (!closed) pickNotebook(nbBtn, note, (name) => setLabels({ notebook: name }), () => KN.ui.focusNow(textIn));
+        }, KN.motion.ms("--m-sheet-grow"));
+      }
     } else {
       toView();
       /* 問いの一覧から：その行へ送る（紙が育ちきってからもう一度。育つあいだは測りがずれる）。 */
@@ -1719,8 +1731,9 @@
     p.place();
   }
 
-  function pickNotebook(anchor, note, done) {
-    const box = node(html`<div class="note-pick"><div class="chip-row js-chips"></div></div>`);
+  /** then … 選んで閉じたあと（＋から開いた紙で本文へ）。棚・ほかの冊・なしの順に、二列で一目に。 */
+  function pickNotebook(anchor, note, done, then) {
+    const box = node(html`<div class="note-pick"><div class="note-pick-books js-chips"></div></div>`);
     const chipsEl = box.querySelector(".js-chips");
     const input = nameField("新しいノートブック");
     box.append(input);
@@ -1730,12 +1743,14 @@
       settled = true;
       done(name);
       if (p) p.close();
+      if (then) then();
     };
-    const names = N().notebooks();
-    if (note.notebook && !names.includes(note.notebook)) names.push(note.notebook);
-    [""].concat(names).forEach((nb) => {
+    const all = N().notebooks();
+    if (note.notebook && !all.includes(note.notebook)) all.push(note.notebook);
+    const names = all.filter((nb) => SHELF[nb]).concat(all.filter((nb) => !SHELF[nb]));
+    names.concat([""]).forEach((nb) => {
       const b = node(html`
-        <button class="chip" aria-pressed="${String(note.notebook === nb)}">
+        <button class="chip" aria-pressed="${String(note.notebook === nb && !(then && !nb))}">
           ${nb ? html`${book(nb)}<span>${nb}</span>` : "なし"}
         </button>`);
       b.addEventListener("click", () => { U.haptic(); choose(nb); });
