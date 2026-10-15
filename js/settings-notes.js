@@ -339,6 +339,7 @@
     if (!ready() || !O || !O.sixPlan) return [];
     const out = [];
     if (O.sixPlan().moved) out.push(navRow({ ico: "book", tint: TINT.cat, title: "6つに分ける", onTap: () => O.sixPreview(render) }));
+    else if (O.oldPlan().books.length) out.push(navRow({ ico: "trash", tint: TINT.cat, title: "使っていない冊を片付ける", onTap: () => O.oldPreview(render) }));
     const at = O.sixRuns()[0];
     if (at) out.push(dangerRow({ title: "6つに分けたのを戻す", onTap: () => O.undo(at, render) }));
     return out;

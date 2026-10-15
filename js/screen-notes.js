@@ -271,14 +271,13 @@
         <button type="button" class="icon-btn is-sm js-new-book" aria-label="ノートブックを追加">${icon("plus")}</button></div>`);
     sec.querySelector(".js-new-book").addEventListener("click", () => { KN.motion.fire("select"); newBook(); });
     box.append(sec);
-    /* 6つの棚があれば、棚ごとに色のカード（上の二行と、ほかの冊は白いカードのまま）。 */
+    /* 6つの棚があれば、棚ごとに色のカード。「すべてのノート」「問い」は木の下、枠の外（10月15日、利用者）。 */
     const shelves = N().notebooks().some((nb) => SHELF[nb]);
     const tree = node(html`<div class="notes-books ${shelves ? "has-shelves" : ""}" role="tree" aria-label="ノートブック"></div>`);
-    const top = shelves ? node(html`<div class="nt-plain" role="none"></div>`) : tree;
-    if (shelves) tree.append(top);
+    const top = shelves ? node(html`<div class="notes-books nt-out" role="list"></div>`) : tree;
     const line = (label, mark, to, cls) => {
       const b = node(html`
-        <button type="button" class="nt-row notes-book ${cls}" role="treeitem"><span class="nt-twist is-leaf" aria-hidden="true"></span>${mark}<span class="nt-name">${label}</span>${icon("chevron")}</button>`);
+        <button type="button" class="nt-row notes-book ${cls}" role="${shelves ? "listitem" : "treeitem"}"><span class="nt-twist is-leaf" aria-hidden="true"></span>${mark}<span class="nt-name">${label}</span>${icon("chevron")}</button>`);
       b.addEventListener("click", () => { KN.motion.fire("select"); go(to); });
       top.append(b);
     };
@@ -293,6 +292,7 @@
       redraw: () => renderBody(),
     });
     box.append(tree);
+    if (shelves) box.append(top);
     carry(tree, { scope: "books", open: treeOpen, scroller: () => KN.app.scrollerOf(root),
       root: () => root && root.querySelector(TREE_ROW.replace(" .nt-row", "")) });
   }
@@ -313,7 +313,8 @@
     list.forEach((n) => {
       const r = node(html`
         <button type="button" class="nt-row is-flat" role="listitem" data-id="${n.id}">
-          <span class="chip-dot nt-dot ${n.notebook ? "" : "is-blank"}" style="--cat:${n.notebook ? colorOf("nb", n.notebook) : "transparent"}"></span><span class="nt-name">${headOf(n) || "ノート"}</span>
+          ${SHELF[n.notebook] ? html`<span class="chip-dot nt-dot" data-shelf="${n.notebook}"></span>`
+            : html`<span class="chip-dot nt-dot ${n.notebook ? "" : "is-blank"}" style="--cat:${n.notebook ? colorOf("nb", n.notebook) : "transparent"}"></span>`}<span class="nt-name">${headOf(n) || "ノート"}</span>
         </button>`);
       r.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, r, { back: ".notes-flat .nt-row" }); });
       box.append(r);
@@ -414,7 +415,6 @@
         if (tops.length) { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); }
       });
       g.append(r);
-      if (shelf) g.append(node(html`<div class="nt-shelf-desc">${shelf.word}</div>`));
       if (open) treeRows(g, tops, 1, sub);
       else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, tops, 1, sub); });
       (shelf ? box : rest).append(g);
@@ -426,12 +426,12 @@
   /* 6つの棚（docs/notes.md「6つの棚」）。開け閉めは設定 notesShelfOpen に（無ければ archive だけ閉じる）。
      ほかの冊の開け閉めは今までどおり記憶だけ。 */
   const SHELF = {
-    thinking: { ico: "bulb", word: "自分の問いと主張" },
-    reading: { ico: "study", word: "本・論文・動画の記録" },
-    teaching: { ico: "chalkboard", word: "授業と子どもの記録" },
-    learning: { ico: "sprout", word: "身につけたいことを育てる" },
-    living: { ico: "home", word: "くらしと家族のこと" },
-    archive: { ico: "tidyBox", word: "〜2026年10月の記録" },
+    thinking: { ico: "bulb" },
+    reading: { ico: "study" },
+    teaching: { ico: "chalkboard" },
+    learning: { ico: "sprout" },
+    living: { ico: "home" },
+    archive: { ico: "tidyBox" },
   };
   const shelfIcon = (k) => { const s = KN.iconsTodo && KN.iconsTodo.byKey(`do-${k}`); return s ? U.raw(s) : icon(k); };
   const seeded = new Set();

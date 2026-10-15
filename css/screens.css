@@ -5494,9 +5494,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-books { margin: var(--sp-2) var(--sp-4) 0; padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .notes-books { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
-/* 6つの棚（docs/notes.md「6つの棚」。js/screen-notes.js の SHELF）：棚ごとに和色のごく薄いカード、見出しと絵は濃いほう、
-   説明は小さく控えめ。色は灰を混ぜて彩度を抑える（地の浮世絵に合わせて）。上の二行・ほかの冊は白いカード（.nt-plain）。
-   暗い面は塗りを濃く、字は白へ寄せる（--shelf-x・--shelf-to）。archive は閉じて始まり、ほかより控えめ。 */
+/* 6つの棚（docs/notes.md「6つの棚」。js/screen-notes.js の SHELF）：棚ごとに和色のごく薄いカード、見出しと絵は濃いほう。
+   色は灰を混ぜて彩度を抑える（地の浮世絵に合わせて）。暗い面は塗りを濃く、字は白へ寄せる（--shelf-x・--shelf-to）。
+   archive は閉じて始まり、ほかより控えめ。★・最近直した・「すべてのノート」「問い」は枠に入れない（棚と見分ける）。 */
+.notes-books:is(.notes-flat, .nt-out), #screen-notes[data-season] .notes-books:is(.notes-flat, .nt-out) {
+  padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.notes-books.nt-out { margin-top: var(--sp-6); }
 .notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { display: flex; flex-direction: column; gap: var(--sp-4);
   padding: 0; background: none; box-shadow: none; overflow: visible; }
 .nt-plain { padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
@@ -5504,15 +5507,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-shelf { --shelf-a: 8%; --shelf-c: color-mix(in srgb, var(--shelf) 85%, #888);
   --shelf-ink: color-mix(in srgb, var(--shelf-c) 70%, var(--shelf-to, #000));
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
-  --shelf-in: calc(2px + 32px + var(--ico) + var(--sp-1) * 3);
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
-@media (pointer: fine) { .nt-shelf { --shelf-in: calc(4px + 24px + var(--ico) + var(--sp-1) * 3); } }
-.nt-shelf[data-shelf="thinking"] { --shelf: #745399; }
-.nt-shelf[data-shelf="reading"] { --shelf: #007B43; }
-.nt-shelf[data-shelf="teaching"] { --shelf: #ED6D3D; }
-.nt-shelf[data-shelf="learning"] { --shelf: #00A3AF; }
-.nt-shelf[data-shelf="living"] { --shelf: #F0908D; }
-.nt-shelf[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
+:is(.nt-shelf, .nt-dot)[data-shelf="thinking"] { --shelf: #745399; }
+:is(.nt-shelf, .nt-dot)[data-shelf="reading"] { --shelf: #007B43; }
+:is(.nt-shelf, .nt-dot)[data-shelf="teaching"] { --shelf: #ED6D3D; }
+:is(.nt-shelf, .nt-dot)[data-shelf="learning"] { --shelf: #00A3AF; }
+:is(.nt-shelf, .nt-dot)[data-shelf="living"] { --shelf: #F0908D; }
+:is(.nt-shelf, .nt-dot)[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
+.nt-dot[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shelf-x: 1.8; --shelf-to: #fff; } }
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
 .nt-shelf .nt-row { --nt-h: calc(var(--row-h-compact) + 6px); }
@@ -5521,8 +5523,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-shelf > .nt-row.is-book, .nt-shelf > .nt-row.is-book .nt-twist { color: var(--shelf-ink); }
 .nt-shelf-ico { display: inline-flex; flex: none; margin-right: var(--sp-1); color: var(--shelf-ink); }
 .nt-shelf-ico svg { width: var(--ico); height: var(--ico); }
-.nt-shelf-desc { margin: calc(-1 * var(--sp-1)) 0 var(--sp-1); padding: 0 var(--sp-3) 0 var(--shelf-in);
-  font-size: var(--fs-sm); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nt-shelf[data-shelf="archive"] > .nt-row.is-book, .nt-shelf[data-shelf="archive"] > .nt-row.is-book .nt-twist,
 .nt-shelf[data-shelf="archive"] .nt-shelf-ico { color: var(--c-text-3); }
 /* 木の行（ホーム・左の木・紙の中のノート。js/screen-notes.js の treeRows・bookRows）。字下げは --u 段ぶん

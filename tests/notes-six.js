@@ -2,7 +2,9 @@
 
    表のとおりに冊と親だけ付け替える（本文・作った日・直した日は動かない）／子は親の冊についていく／
    授業7つは teaching の一番上・【自身の保険・投資について】は living／Evernote の5冊は題に「(Evernote)」／
-   reading に空の「論文」を一つ作り中へ／冊の並びは6つが頭／前の整理の記録は戻すと戻る／
+   reading に空の「論文」を一つ作り中へ／冊の並びは6つが頭／
+   ホーム：棚は絵と名前だけ・「すべてのノート」「問い」は木の下の枠の外・最近直したも枠なし／
+   使っていない冊を消す（残りは archive へ・冊は並びから外す）／前の整理の記録は戻すと戻る／
    戻すと冊・親・題・並びが元どおり・作った「論文」は消した印／二度目は分けるものが無い／
    設定の行（分ける → 戻す）。
 
@@ -60,6 +62,7 @@ const { open, checker } = require("./lib");
     mk("1984 (角川文庫)", "思考・読書", done);
     mk("無題のノート", "Evernote", mk("思考の中", "Evernote", null));
     await KN.notes.addMany(L);
+    KN.notes.setBooks(["Notion", "private", "論文", "Evernote", "思考・読書"]);
   });
   const snap = () => page.evaluate(() => KN.notes.list().concat(KN.notes.trash())
     .map((n) => ({ id: n.id, title: n.title, body: n.body, notebook: n.notebook, parent: n.parent || "", pos: n.pos || "",
@@ -122,15 +125,20 @@ const { open, checker } = require("./lib");
   t.check("棚は6つ・この順・archive だけ閉じて始まる", (await shelves()) === "thinking:true,reading:true,teaching:true,learning:true,living:true,archive:false", await shelves());
   const look = await page.evaluate(() => {
     const g = document.querySelector('.nt-shelf[data-shelf="thinking"]');
-    const top = document.querySelector(".notes-books[role=tree] > .nt-plain");
-    return { desc: g.querySelector(".nt-shelf-desc").textContent, ico: !!g.querySelector(".nt-shelf-ico svg"),
+    const tree = document.querySelector(".notes-books[role=tree]");
+    const out = document.querySelector(".notes-books.nt-out");
+    const flat = document.querySelector(".notes-flat");
+    return { desc: !!g.querySelector(".nt-shelf-desc"), ico: !!g.querySelector(".nt-shelf-ico svg"),
       bg: getComputedStyle(g).backgroundColor, ink: getComputedStyle(g.querySelector(".nt-row")).color,
-      top: top ? top.innerText.replace(/\s+/g, " ").trim() : "",
-      firstShelf: [...document.querySelector(".notes-books[role=tree]").children].findIndex((c) => c.classList.contains("nt-shelf")) };
+      out: out ? out.innerText.replace(/\s+/g, " ").trim() : "", below: !!out && tree.compareDocumentPosition(out) === Node.DOCUMENT_POSITION_FOLLOWING,
+      inTree: !!tree.querySelector(".js-all"), outBg: out ? getComputedStyle(out).backgroundColor : "",
+      flatBg: flat ? getComputedStyle(flat).backgroundColor : "none" };
   });
-  t.check("見出しの下に一行の説明・絵", look.desc === "自分の問いと主張" && look.ico, JSON.stringify(look));
+  t.check("見出しは絵と名前だけ（説明の行は無い）", !look.desc && look.ico, JSON.stringify(look));
   t.check("カードは色つき・見出しは濃い色", look.bg !== "rgba(0, 0, 0, 0)" && look.ink !== look.bg, `${look.bg} / ${look.ink}`);
-  t.check("すべてのノート・問いが棚の上", /^すべてのノート 問い/.test(look.top) && look.firstShelf === 1, JSON.stringify(look));
+  t.check("すべてのノート・問いは木の下、枠の外", look.out === "すべてのノート 問い" && look.below && !look.inTree
+    && look.outBg === "rgba(0, 0, 0, 0)", JSON.stringify(look));
+  t.check("最近直したは枠に入れない", look.flatBg === "rgba(0, 0, 0, 0)" || look.flatBg === "none", look.flatBg);
   await page.click('.nt-shelf[data-shelf="thinking"] > .nt-row .nt-twist');
   await page.waitForTimeout(300);
   await page.click('.nt-shelf[data-shelf="archive"] > .nt-row .nt-twist');
@@ -146,7 +154,25 @@ const { open, checker } = require("./lib");
   const rows = await page.locator(".set-layer:last-child").innerText();
   t.check("設定：分けたあとは「戻す」だけ", /6つに分けたのを戻す/.test(rows) && !/6つに分ける\n/.test(rows + "\n"), rows);
 
-  /* 戻す */
+  /* 使っていない冊を消す：残りのノートは archive の終わりへ・冊は並びから外す */
+  t.check("設定：「使っていない冊を片付ける」", /使っていない冊を片付ける/.test(rows), rows);
+  await page.waitForTimeout(5);
+  const old = await page.evaluate(async () => {
+    const O = KN.noteOrganize;
+    const p = O.oldPlan();
+    const books = p.books.join();
+    await O.oldApply(O.oldPlan());
+    const t = KN.notes.tree();
+    return { books, tops: t.tops("archive").map((n) => n.title).join(), pw: KN.notes.get("n-t1").notebook,
+      left: KN.notes.notebooks().join(), again: O.oldPlan().books.length, runs: O.sixRuns().length };
+  });
+  t.check("消す冊", old.books === "Notion,private,論文,Evernote,思考・読書", old.books);
+  t.check("残っていたノートは archive の終わりへ", /全体構想,🔸philosophy&work,思考の中$/.test(old.tops) && old.pw === "archive", old.tops);
+  t.check("冊の一覧は6つだけ", old.left === "thinking,reading,teaching,learning,living,archive" && !old.again, old.left);
+  t.check("戻せる回は二つ", old.runs === 2, String(old.runs));
+
+  /* 戻す（新しい回から） */
+  await page.evaluate(() => KN.notes.reshape([], KN.noteOrganize.undoPlan(KN.noteOrganize.sixRuns()[0])));
   await page.evaluate(() => KN.notes.reshape([], KN.noteOrganize.undoPlan(KN.noteOrganize.sixRuns()[0])));
   const after = await snap();
   const diff = before.filter((b) => {

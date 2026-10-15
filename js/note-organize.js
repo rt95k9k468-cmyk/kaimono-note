@@ -305,6 +305,7 @@
       if ("t" in r) p.title = r.t;
       if ("o" in r) p.pos = r.o == null ? undefined : r.o;
       if (r.prev) p.org = r.prev;
+      if (r.hd) p.head = true;
       if (r.made && !n.deletedAt && String(n.updatedAt) <= at
         && !live.some((k) => String(k.parent || "") === n.id && !set.has(k.id))) p.deletedAt = stamp;
       patches.set(n.id, p);
@@ -526,6 +527,72 @@
     return p;
   }
 
+  /* 使っていない冊を消す（10月15日、利用者「もう使ってないよね？消して」）。ノートは消さない：残っていたノートは
+     archive の一番上の終わりへ（中ごと）。冊の名前は並び（books）から外す。戻すのは「6つに分けたのを戻す」（同じ k）。 */
+  const OLD = ["Notion", "private", PAPERS, EV, "思考・読書"];
+  function oldPlan(o) {
+    const at = (o && o.at) || U.today();
+    const live = KN.notes.list();
+    const books = KN.notes.notebooks().filter((nb) => OLD.includes(nb));
+    const mine = live.filter((n) => OLD.includes(n.notebook));
+    const ids = new Set(mine.map((n) => n.id));
+    let k = KN.notes.tree().tops("archive").length;
+    const mark = (n, r) => Object.assign({ at, k: "six" }, r, n.org ? { prev: n.org } : {});
+    const patches = [];
+    const moved = [];
+    mine.slice().sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((n) => {
+      const top = !n.parent || !ids.has(String(n.parent));
+      const r = { nb: n.notebook };
+      const p = { notebook: "archive" };
+      if (top) {
+        k += 1;
+        Object.assign(r, { p: n.parent || "", o: n.pos == null ? null : n.pos });
+        Object.assign(p, { parent: undefined, pos: "0" + String(k).padStart(3, "0") });
+        moved.push(n.title || "ノート");
+      }
+      if (n.head) { r.hd = true; p.head = undefined; }
+      p.org = mark(n, r);
+      patches.push([n.id, p]);
+    });
+    return { at, patches, books, moved };
+  }
+  async function oldApply(p) {
+    if (p.patches.length) await KN.notes.reshape([], p.patches);
+    KN.notes.setBooks(KN.notes.notebooks().filter((nb) => !OLD.includes(nb)));
+    return p;
+  }
+  function oldPreview(done) {
+    const p = oldPlan();
+    if (!p.books.length) return null;
+    const P = S();
+    const body = node(html`<div class="stack"></div>`);
+    body.append(P.card(p.books.map((nb) => node(html`<div class="set-row"><span class="set-title">${nb}</span></div>`))));
+    if (p.moved.length) body.append(P.card(row("archive へ", p.moved.length)), P.more("どれ", p.moved.join(" ／ ")));
+    const foot = node(html`<div class="stack gap-2"><button class="btn btn-primary js-tidy"><span class="js-word">消す</span></button></div>`);
+    const go = foot.querySelector(".js-tidy");
+    const word = foot.querySelector(".js-word");
+    let busy = false;
+    const h = KN.ui.sheet({ title: "使っていない冊を消しますか？", content: body, footer: foot });
+    go.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      go.disabled = true;
+      word.textContent = "控えを取っています";
+      if (!(await guard("使っていない冊を消す前"))) { busy = false; go.disabled = false; word.textContent = "消す"; return; }
+      try {
+        await oldApply(oldPlan());
+      } catch (_) {
+        KN.ui.toast("ノートを保存できませんでした", { long: true });
+        h.close();
+        return;
+      }
+      h.close();
+      if (done) done();
+      KN.ui.toast("消しました");
+    });
+    return h;
+  }
+
   /** 6つに分けた回（戻せるもの。新しい順）。 */
   function sixRuns() {
     const set = new Set();
@@ -567,5 +634,5 @@
   }
 
   KN.noteOrganize = { plan, linkPlan, linkPreview, apply, after, undoPlan, runs, empty, preview, undo,
-    SHELVES, sixPlan, sixApply, sixRuns, sixPreview };
+    SHELVES, sixPlan, sixApply, sixRuns, sixPreview, oldPlan, oldApply, oldPreview };
 })();
