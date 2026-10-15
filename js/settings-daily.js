@@ -41,12 +41,12 @@
         navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") }),
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
-          value: KN.lock && KN.lock.covers("daily") ? "オン" : "オフ", onTap: () => go("lock") })
+          value: KN.lock && (KN.lock.covers("daily") || KN.lock.covers("diary")) ? "オン" : "オフ", onTap: () => go("lock") })
       ),
     ];
   }
 
-  /** ロック（daily とノートの鍵。番号は一つ、かけるかは場所ごと。中身は js/lock.js）。 */
+  /** ロック（日記・daily・ノートの鍵。番号は一つ、かけるかは場所ごと。中身は js/lock.js）。 */
   function lockRows() {
     const L = KN.lock;
     if (!L || !L.supported()) return [foot("この端末では使えません。")];
@@ -57,7 +57,7 @@
     }))];
     if (!L.enabled()) return rows;
     const place = (p, title) => switchRow({ title, on: L.covers(p), onTap: (v) => { L.setPlace(p, v); done(); } });
-    rows.push(card(place("daily", "daily"), place("notes", "ノート")));
+    rows.push(card(place("diary", "日記"), place("daily", "daily"), place("notes", "ノート")));
     const bio = switchRow({
       title: "Face ID・Touch ID", on: L.hasBio(),
       onTap: (v) => { if (v) L.bioOn().then(done); else { L.bioOff(); done(); } },
@@ -203,7 +203,12 @@
      突き合わせが済む前は、写しから戻るはずの本文がまだ入っていないことがあり、
      大きな保存場所を読めない日は本文を出さない日です。daily 画面の月の書き出し
      （bodyBlocked）と同じ門。できないときは理由を言って true を返します。 */
-  function monthExportBlocked(what = "月ぶん") {
+  function monthExportBlocked(what = "月ぶん", again) {
+    /* 日記だけの鍵（js/lock.js）が閉じていれば、開けてから（入口は開けたらそのまま続ける）。 */
+    if (KN.lock && KN.lock.hides("diary")) {
+      KN.lock.ask().then((ok) => { if (ok && again) again(); });
+      return true;
+    }
     const b = KN.diaryIdb ? KN.diaryIdb.body() : "ok";
     if (b === "ok") return false;
     if (b === "loading") {
@@ -218,7 +223,7 @@
   /* 書き出す月を選ぶ紙。記録のある月だけを、新しい順に並べます——
      空の月を書き出しても意味がないので、選べるのは中身のある月だけです。 */
   function openMonthExport() {
-    if (monthExportBlocked()) return;
+    if (monthExportBlocked("月ぶん", openMonthExport)) return;
     const arc = store.get().archive || { days: [] };
     const months = new Set();
     (arc.days || []).forEach((d) => { if (d.date) months.add(String(d.date).slice(0, 7)); });
@@ -260,7 +265,7 @@
      ドラムの小窓で（V27、利用者の声）選び、その間（両端を含む）を月ぶんと同じ形で。既定は今月の一日から今日。
      本文が入るので、月ぶんと同じ門。読む用だけで、バックアップの形には触れない。 */
   function openRangeExport() {
-    if (monthExportBlocked("期間ぶん")) return;
+    if (monthExportBlocked("期間ぶん", openRangeExport)) return;
     const U = KN.util;
     let to = U.todayKey();
     let from = `${to.slice(0, 7)}-01`;
@@ -314,7 +319,7 @@
      本文が入るので、月ぶんと同じ門（突き合わせの前・読めない日は断る）。
      紙に言うのは中身の種類だけで、数は言いません（daily は数えない）。 */
   function openYearbook() {
-    if (monthExportBlocked("年の本")) return;
+    if (monthExportBlocked("年の本", openYearbook)) return;
     const list = KN.yearbook.years();
     const body = node(html`
       <div class="stack">

@@ -2081,6 +2081,23 @@ button.hero-node:active { scale: var(--press-dot); }
   color: var(--c-text-2);
 }
 .lock-away svg { width: 22px; height: 22px; }  /* 入れもの：44の丸 */
+/* 日記だけの鍵（js/lock.js の ask）：画面の上ではなく、日記を開ける一度だけ。やめれば元の画面。 */
+.lock-cancel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 16px;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-text-2);
+}
+.lock-cancel svg { width: 22px; height: 22px; }  /* 入れもの：44の丸 */
+.lock-veil:not(.is-ask) .lock-cancel,
+.lock-veil.is-ask .lock-away { display: none; }
+/* 閉じた日記の行（Daily Log）。押せば開ける。 */
+.arc-diary-shut { display: inline-flex; align-items: center; gap: 6px; color: var(--c-primary); }
+.arc-diary-shut svg { width: 18px; height: 18px; }  /* 入れもの：字の高さ */
 .lock-ico svg { width: 44px; height: 44px; color: var(--c-primary); }  /* 入れもの：鍵の画面の目印 */
 .lock-dots { display: flex; gap: 14px; min-height: 14px; }
 .lock-dot {

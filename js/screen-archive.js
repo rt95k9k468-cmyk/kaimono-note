@@ -44,6 +44,11 @@
     const b = diaryBody();
     return b === "loading" ? "読み込み中" : b === "off" ? UNREAD : MISSING;
   }
+  /* 日記だけの鍵（js/lock.js）。閉じているあいだ本文は出さず、読む・写す手前で開けてもらう。 */
+  const diaryShut = () => !!(KN.lock && KN.lock.hides("diary"));
+  const askDiary = () => (KN.lock ? KN.lock.ask() : Promise.resolve(true));
+  const SHUT = html`<span class="arc-diary-shut">${icon("lock")}開ける</span>`;
+
   /** 本文に触る操作の前に。できないときは理由を言って true を返します。 */
   function bodyBlocked() {
     const b = diaryBody();
@@ -589,6 +594,7 @@
   }
 
   function thenCard() {
+    if (diaryShut()) return null;
     const years = store.archiveYears();
     if (years) return yearsCard(years);
     const then = store.archiveThen();
@@ -690,6 +696,7 @@
     const body = sec.querySelector(".arc-log-body");
     const copyBtn = sec.querySelector(".js-log-copy");
     if (copyBtn) copyBtn.addEventListener("click", () => {
+      if (diaryShut()) { askDiary(); return; }   // 開けたら、もう一度押して写す
       if (bodyBlocked()) return;   // 写しから戻るはずの本文が、まだ入っていないことがある
       copyText(dailyCopyText(only)).then((ok) => {
         KN.motion.fire("select");
@@ -704,10 +711,12 @@
        いない日も同じ字にします——元から本文を外したあと（次の段）は、どの日に
        書いてあったかも分からないので、いまからその形に揃えておきます。 */
     const unread = diaryBody() === "off";
+    const shutNow = diaryShut();
     days.forEach((d) => {
+      const shut = shutNow && !d.isBlank && !unread && !!(String(d.memo || "").trim() || store.memoOut(d));
       /* 時刻ごと（既定）：書いた日は一件ずつ。空の日・読めない日・本文を外した日は下の一行のまま
          （押せば書く紙。言うことも色も一枚のときと同じ）。 */
-      if (chatView() && !d.isBlank && !unread && !outText(d)) {
+      if (chatView() && !d.isBlank && !unread && !outText(d) && !shut) {
         body.append(chatRow(d));
         const feed = feedRows(d.date);
         if (feed) body.append(feed);
@@ -740,7 +749,7 @@
                   並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
             <span class="arc-log-memo ${S().logFull === false ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
                   style="--tail-n: ${S().logLines === 3 ? 3 : 5}"
-                  ><span>${unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
+                  ><span>${shut ? SHUT : unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
@@ -759,7 +768,7 @@
       /* 選び終えて指を離すと click も鳴ります。そこで紙を開くと、選んだ
          そばから選択が消えます——選んでいるときは、開きません。 */
       /* 時刻ごとのときは、空の日の一行も書く紙（新しい一件）へ。 */
-      const write = () => (chatView() && d.isBlank && diaryBody() === "ok" ? openPost(d.date, null) : openLogSheet(d.date));
+      const write = () => (shut ? askDiary() : chatView() && d.isBlank && diaryBody() === "ok" ? openPost(d.date, null) : openLogSheet(d.date));
       row.addEventListener("click", () => {
         const sel = window.getSelection && window.getSelection();
         if (sel && sel.rangeCount && !sel.isCollapsed
@@ -928,6 +937,10 @@
     /* 開いた直後（写しとの突き合わせの途中）は開きません。大きな保存場所を
        読めなかった日は、本文の欄を出さずに開きます——起きた・寝たは本文では
        ないので、書けます（本文だけ「読めません」）。 */
+    if (diaryShut() && (memoOf(day).trim() || store.memoOut(store.dayLog(day) || {}))) {
+      askDiary().then((ok) => { if (ok) openLogSheet(day); });
+      return;
+    }
     const can = diaryBody();
     if (can === "loading") { bodyBlocked(); return; }
     if (can !== "ok") KN.diaryIdb.retry();
@@ -1027,7 +1040,9 @@
     const onVis = () => { if (document.visibilityState === "hidden") hide(); };
     window.addEventListener("pagehide", hide);
     document.addEventListener("visibilitychange", onVis);
+    let unwatch = () => {};
     const close = () => {
+      unwatch();
       window.removeEventListener("pagehide", hide);
       document.removeEventListener("visibilitychange", onVis);
       save();
@@ -1047,6 +1062,8 @@
       footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
       onClose: close,
     });
+    /* 日記だけの鍵が閉じたら、この紙も閉じる（閉じれば残す）。 */
+    if (KN.lock) unwatch = KN.lock.diarySheet(() => h.close());
     h.el.querySelector(".js-ok").addEventListener("click", () => {
       save();
       KN.motion.fire("select");
@@ -1083,7 +1100,7 @@
   function pastAsks(day) {
     const F = KN.noteFormat, out = [];
     if (!F) return out;
-    if (!KN.diaryIdb || KN.diaryIdb.body() === "ok") {
+    if ((!KN.diaryIdb || KN.diaryIdb.body() === "ok") && !diaryShut()) {
       (store.get().archive.days || []).forEach((d) => {
         if (d.date < day) F.asks(d.memo || "").forEach((a) => out.push({ text: a.text, day: d.date }));
       });
@@ -1306,6 +1323,7 @@
    * 直しても時刻の行は打ったときのまま。
    */
   function openPost(day, item, seed) {
+    if (item && diaryShut()) { askDiary().then((ok) => { if (ok) openPost(day, item, seed); }); return; }
     if (bodyBlocked()) return;
     const P = KN.diaryPosts;
     if (store.memoOut(store.dayLog(day))) { KN.ui.toast(MISSING); return; }
@@ -1389,7 +1407,9 @@
       } } });
     };
     let toNote = false, toPage = false;
+    let unwatch = () => {};
     const close = () => {
+      unwatch();
       window.removeEventListener("pagehide", hide);
       document.removeEventListener("visibilitychange", onVis);
       save();
@@ -1420,6 +1440,8 @@
       footer: node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "保存する" : "閉じる"}</button>`),
       onClose: close,
     });
+    /* 日記だけの鍵が閉じたら、この紙も閉じる（閉じれば残す）。 */
+    if (KN.lock) unwatch = KN.lock.diarySheet(() => h.close());
     h.el.querySelector(".js-ok").addEventListener("click", () => {
       save();
       KN.motion.fire("select");
@@ -1743,6 +1765,7 @@
    * 言葉にしてもらうときに、そのまま渡せる形にしてあります。
    */
   function exportThisMonth() {
+    if (diaryShut()) { askDiary().then((ok) => { if (ok) exportThisMonth(); }); return; }
     if (bodyBlocked()) return;   // 月の書き出しには日記の本文が入るので
     const ym = curYm();
     const data = store.exportMonth(ym);

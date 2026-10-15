@@ -19,7 +19,12 @@
      覚えておき、表へ戻ったときに猶予を過ぎていたら閉じます。
      立ち上げたときは猶予にかかわらず閉じたところから。
    - 番号と Face ID は daily とノートで一つ。かけるかどうかは場所ごと
-     （`settings.lockDaily`：無ければ入、`settings.lockNotes`：無ければ切）。
+     （`settings.lockDaily`：無ければ入、`settings.lockNotes`：無ければ切、
+     `settings.lockDiary`：無ければ切）。
+   - **日記だけ**（`lockDiary`）は画面を覆いません。日記の本文を出すところ
+     （Daily Log の行・「あの日」・問い・検索）は閉じているあいだ出さず、
+     読む・写す・書き出す手前で `ask()` が覆いを出して開けます。本文を出した
+     紙は `diarySheet()` で預かり、鍵が閉じたら閉じます（閉じれば紙が自分で残す）。
    - 覆いは鍵をかけた daily・ノートと、そこから潜った設定の上にだけ出します。
      下の帯は覆いの上に残すので、ほかのタブへはそこから（設定の上では
      帯が無いので左上の絵から）。
@@ -47,6 +52,8 @@
   let here = null;
   let shield = false;
   let padOpen = false;
+  let asking = null;
+  const diarySheets = new Set();
 
   /* ---------------- 鍵の形 ---------------- */
 
@@ -63,11 +70,14 @@
     const st = KN.store.get().settings;
     if (place === "daily") return st.lockDaily !== false;
     if (place === "notes") return st.lockNotes === true;
+    if (place === "diary") return st.lockDiary === true;
     return false;
   }
   const covers = (place) => enabled() && placeOn(place);
   function setPlace(place, on) {
-    KN.store.update((s) => { s.settings[place === "notes" ? "lockNotes" : "lockDaily"] = !!on; });
+    const key = { daily: "lockDaily", notes: "lockNotes", diary: "lockDiary" }[place];
+    if (!key) return;
+    KN.store.update((s) => { s.settings[key] = !!on; });
     paint();
   }
 
@@ -152,6 +162,7 @@
     veil = node(html`
       <div class="lock-veil" role="dialog" aria-modal="true" aria-label="ロック" hidden>
         <button type="button" class="lock-away" aria-label="tasks へ">${icon("checklist")}</button>
+        <button type="button" class="lock-cancel" aria-label="やめる">${icon("close")}</button>
         <div class="lock-ico">${icon("lock")}</div>
         <button type="button" class="lock-open">${icon("face-id")}<span>開ける</span></button>
         <div class="lock-dots" aria-hidden="true"></div>
@@ -171,6 +182,7 @@
     veil.querySelector(".lock-open").addEventListener("click", tryBio);
     veil.querySelector(".lock-num").addEventListener("click", () => { padOpen = true; dots(); });
     veil.querySelector(".lock-away").addEventListener("click", () => KN.app.showScreen("todo"));
+    veil.querySelector(".lock-cancel").addEventListener("click", () => settle(false));
     document.addEventListener("keydown", (e) => {
       if (!veil || veil.hidden || veil.classList.contains("is-shield")) return;
       if (/^[0-9]$/.test(e.key)) { press(e.key); e.preventDefault(); }
@@ -224,19 +236,37 @@
     locked = false;
     typed = "";
     padOpen = false;
+    settle(true);
+    if (placeOn("diary")) redraw();
+  }
+
+  /** 日記を開けるために出した覆いを、しまって答えます。 */
+  function settle(ok) {
+    const r = asking;
+    asking = null;
     paint();
+    if (r) r(ok);
+  }
+
+  /* 日記の本文の出し入れは、出ている画面を組み直して。 */
+  function redraw() {
+    const id = KN.app.activeScreen ? KN.app.activeScreen() : here;
+    const s = KN.screens && KN.screens[id];
+    if (s && s.render) s.render();
   }
 
   function guards(id) {
     if (id === "settings" && KN.app.openedFrom) id = KN.app.openedFrom();
     return !!PLACE_OF[id] && placeOn(PLACE_OF[id]);
   }
+  /* アプリ切り替えの絵に、開けた日記が写らないように。 */
+  const diaryShown = (id) => placeOn("diary") && (PLACE_OF[id] === "daily" || diarySheets.size > 0);
 
   /** 覆いを出す・しまう。`id` はいま出ている画面（省けば app に聞く）。 */
   function paint(id) {
     here = id || (KN.app.activeScreen ? KN.app.activeScreen() : here);
-    const shut = enabled() && locked && guards(here);
-    const on = shut || (enabled() && shield && guards(here));
+    const shut = enabled() && locked && (guards(here) || !!asking);
+    const on = shut || (enabled() && shield && (guards(here) || diaryShown(here)));
     if (on && !veil) build();
     if (!veil) return;
     if (on && veil.hidden) { typed = ""; dots(); }
@@ -244,12 +274,14 @@
     /* 被せただけ（閉じてはいない）ときは、鍵盤も出しません。 */
     veil.classList.toggle("is-shield", on && !shut);
     veil.classList.toggle("on-settings", here === "settings");
+    veil.classList.toggle("is-ask", shut && !!asking && !guards(here));
     document.documentElement.classList.toggle("is-locked", on);
   }
 
   /** タブを押して daily へ来たとき。押した一拍のうちなので、Face ID を
       そのまま呼べます（ブラウザの「操作のうちに」）。 */
   function enter(id) {
+    if (asking) { const r = asking; asking = null; r(false); }
     paint(id);
     if (veil && !veil.hidden && devId()) tryBio();
   }
@@ -260,6 +292,39 @@
     tried = false;
     padOpen = false;
     paint();
+    if (placeOn("diary")) {
+      diarySheets.forEach((f) => { try { f(); } catch (err) { /* 一枚が投げても、ほかは閉じる */ } });
+      diarySheets.clear();
+      redraw();
+    }
+  }
+
+  /** 日記を読む・写す・書き出す手前で。開いていれば（鍵が無ければ）すぐ true。
+      閉じていれば覆いを出し、開けたら true・やめたら false。押した一拍のうちに
+      呼べば、Face ID をそのまま出します。 */
+  function ask() {
+    if (!enabled() || !locked) return Promise.resolve(true);
+    return new Promise((res) => {
+      if (asking) asking(false);
+      asking = res;
+      tried = false;
+      padOpen = false;
+      paint();
+      if (devId()) tryBio();
+    });
+  }
+
+  /** 日記の本文を出した紙の閉じ方を預かります。返す関数で外します（紙を閉じたとき）。 */
+  function diarySheet(closeIt) {
+    diarySheets.add(closeIt);
+    return () => diarySheets.delete(closeIt);
+  }
+
+  /** 日記の本文を隠すか。daily ごと閉じているときも、日記だけのときも。 */
+  function hides(place) {
+    if (!locked) return false;
+    if (place === "daily" || place === "diary") return covers("daily") || covers("diary");
+    return covers(place);
   }
 
   /* 開いたとき・表へ戻ったときも、パスコードで待たずに Face ID を自分から
@@ -367,9 +432,9 @@
   KN.lock = {
     supported, enabled, covers, setPlace, bioAvailable, hasBio: () => !!devId(),
     turnOn, turnOff, changeCode, bioOn, bioOff: forget,
-    paint, enter, close, GRACES, grace,
+    paint, enter, close, GRACES, grace, ask, diarySheet,
     isLocked: () => enabled() && locked,
-    /** 全体の検索が、その場所を探してよいか。 */
-    hides: (place) => locked && covers(place),
+    /** その場所（"daily"・"diary" は日記の本文）を隠すか。全体の検索・問いも見ます。 */
+    hides,
   };
 })();
