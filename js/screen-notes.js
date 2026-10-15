@@ -474,30 +474,61 @@
   }
 
   /**
-   * 問い（思考のホーム。docs/thinking.md）：ノートの「？」で始まる行・タグ「問い」のノート・日記の「？」で
-   * 始まる行。どこにもしまわず、開くたびに引く（写さず引く）。数は出さない。押すと元のノート（その行へ）か、
-   * その日の daily へ。日記は、鍵で伏せている日・本文を読めない日は引かない。
+   * 問い（思考のホーム。docs/thinking.md「問いの面」）：ノートの「？」で始まる行・タグ「問い」のノート・日記の「？」で
+   * 始まる行。どこにもしまわず、開くたびに引く（写さず引く）。数は出さない。
+   * 答えのノート（頭の行が「？問い」）は答える紙で続きを書く。中身があれば「続きから考える」（最後に書いた順）、
+   * 頭の行だけ（＋でつくった問い）は「まだの問い」の頭。ほかの「？」の行は元のノート・その日の daily へ。
+   * 一区切り（設定 askRest。問いの字の鍵 → 時刻）は畳んだ段へ。日記は、鍵で伏せている日・本文を読めない日は引かない。
    */
-  function askBody(box) {
+  function askRows() {
     const F = KN.noteFormat;
     const rows = [];
     N().list().forEach((n) => {
       if (n.tags.includes(ASK_TAG)) rows.push({ n, text: headOf(n) || "", at: n.updatedAt });
-      F.asks(n.body).forEach((a) => rows.push({ n, line: a.line, text: a.text, at: n.updatedAt }));
+      F.asks(n.body).forEach((a) => {
+        const r = { n, line: a.line, text: a.text, at: n.updatedAt };
+        if (a.line === 0) r.go = n.body.split("\n").slice(1).join("\n").trim() ? "go" : "new";
+        rows.push(r);
+      });
     });
     if (!(KN.lock && KN.lock.hides("daily")) && (!KN.diaryIdb || KN.diaryIdb.body() === "ok")) {
       (KN.store.get().archive.days || []).forEach((d) => {
         F.asks(d.memo || "").forEach((a) => rows.push({ day: d.date, text: a.text, at: d.date }));
       });
     }
-    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
-    /* まだの問い：今日の問いの元（KN.askList）のうち、まだどこにも「？」で書いていないもの。押せば答える紙。 */
-    const done = new Set(rows.map((r) => askKey(r.text)));
-    const yet = askItems().filter((a) => !done.has(askKey(a.q)));
-    if (!rows.length && !yet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
-    if (rows.length && yet.length) box.append(secTitle("書いた問い"));
-    const list = node(html`<div class="notes-list notes-asks"></div>`);
-    rows.forEach((r) => {
+    return rows.sort((x, y) => String(y.at).localeCompare(String(x.at)));
+  }
+  const askRest = () => { const m = (KN.store.get().settings || {}).askRest; return m && typeof m === "object" && !Array.isArray(m) ? m : {}; };
+  function setRest(q, on) {
+    KN.store.update((s) => {
+      const m = { ...askRest() };
+      if (on) m[askKey(q)] = new Date().toISOString(); else delete m[askKey(q)];
+      s.settings.askRest = m;
+    });
+  }
+
+  function askBody(box) {
+    const rows = askRows();
+    const rest = askRest();
+    /* 同じ問いは一度だけ（答えのノートが先）。一区切りは畳んだ段へ。 */
+    const seen = new Set(), go = [], made = [], left = [], resting = [];
+    rows.filter((r) => r.go).concat(rows.filter((r) => !r.go)).forEach((r) => {
+      const k = askKey(r.text);
+      if (seen.has(k)) return;
+      seen.add(k);
+      if (rest[k]) resting.push(r);
+      else (r.go === "go" ? go : r.go === "new" ? made : left).push(r);
+    });
+    made.sort((x, y) => String(y.n.createdAt).localeCompare(String(x.n.createdAt)));
+    const yet = askItems().filter((a) => !seen.has(askKey(a.q)) && !rest[askKey(a.q)]);
+    const restYet = askItems().filter((a) => !seen.has(askKey(a.q)) && rest[askKey(a.q)]);
+
+    const add = node(html`<div class="notes-list notes-asks is-new"><div class="note-row is-card is-ask"><button class="note-open notes-ask-new js-ask-new">${icon("plus")}<span class="note-t">問いをつくる</span></button></div></div>`);
+    add.querySelector(".js-ask-new").addEventListener("click", () => { KN.motion.fire("select"); makeAsk(); });
+    box.append(add);
+    if (!rows.length && !yet.length && !restYet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
+
+    const card = (r) => {
       const where = r.n ? (headOf(r.n) || "ノート") : `${U.formatDate(`${r.day}T00:00`)} の日記`;
       const el = node(html`
         <div class="note-row is-card is-ask">
@@ -505,39 +536,99 @@
             <span class="note-t">${r.text}</span>
             <span class="note-foot">
               <span class="note-d">${r.n ? whenOf(r.n) : U.formatDate(`${r.day}T00:00`)}</span>
-              <span class="note-nb">${r.n ? icon("notes") : icon("edit")}<span>${where}</span></span>
+              ${r.go ? "" : html`<span class="note-nb">${r.n ? icon("notes") : icon("edit")}<span>${where}</span></span>`}
             </span>
           </button>
         </div>
       `);
       el.querySelector(".js-open").addEventListener("click", () => {
         KN.motion.fire("select");
+        if (r.go) { answer(r.text); return; }
         if (r.n) { openNote(r.n.id, el, r.line != null ? { line: r.line } : null); return; }
         KN.app.showScreen("archive");
         if (KN.screens.archive && KN.screens.archive.goDay) KN.screens.archive.goDay(r.day);
       });
-      list.append(el);
-    });
-    if (rows.length) box.append(list);
-    if (!yet.length) return;
-    box.append(secTitle("まだの問い"));
-    /* 分け（g）ごとに小さな見出し。出典（from）があれば足に。 */
-    let more = null, g = null;
-    yet.forEach((a) => {
-      if (!more || a.g !== g) {
-        g = a.g;
-        if (g) box.append(node(html`<div class="notes-sec is-sub"><div class="section-title">${g}</div></div>`));
-        more = node(html`<div class="notes-list notes-asks is-yet"></div>`);
-        box.append(more);
-      }
+      return el;
+    };
+    const yetCard = (a) => {
       const el = node(html`
         <div class="note-row is-card is-ask is-yet">
           <button class="note-open js-answer"><span class="note-t">${a.q}</span>${a.from ? html`<span class="note-foot"><span class="note-d">${a.from}</span></span>` : ""}</button>
         </div>
       `);
       el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(a.q); });
-      more.append(el);
+      return el;
+    };
+    const listOf = (cls, items, fn) => { const l = node(html`<div class="notes-list notes-asks ${cls}"></div>`); items.forEach((x) => l.append(fn(x))); return l; };
+
+    if (go.length) box.append(secTitle("続きから考える"), listOf("is-go", go, card));
+    if (made.length || yet.length) {
+      box.append(secTitle("まだの問い"));
+      if (made.length) box.append(listOf("is-yet is-made", made, card));
+      /* 分け（g）ごとに小さな見出し。出典（from）があれば足に。 */
+      let more = null, g = null;
+      yet.forEach((a) => {
+        if (!more || a.g !== g) {
+          g = a.g;
+          if (g) box.append(node(html`<div class="notes-sec is-sub"><div class="section-title">${g}</div></div>`));
+          more = node(html`<div class="notes-list notes-asks is-yet"></div>`);
+          box.append(more);
+        }
+        more.append(yetCard(a));
+      });
+    }
+    if (left.length) box.append(secTitle("ノート・日記に残した問い"), listOf("is-left", left, card));
+    if (resting.length || restYet.length) {
+      const d = node(html`<details class="notes-rest"><summary class="notes-sec"><span class="section-title">一区切り</span>${icon("chevron")}</summary></details>`);
+      d.append(listOf("is-rest", resting, card));
+      restYet.forEach((a) => d.lastElementChild.append(yetCard(a)));
+      box.append(d);
+    }
+  }
+
+  /** ＋問いをつくる：頭の行が「？問い」だけのノート（答えのノートと同じ形。同期・控え・書き出しはノートのまま）。
+      同じ問いがあればつくらず、その問いを開く。 */
+  function makeAsk() {
+    if (N().state() !== "on") return;
+    const box = node(html`<label class="field"><textarea class="textarea js-q" rows="3" aria-label="問い" placeholder="問い" enterkeyhint="done"></textarea></label>`);
+    const ta = box.querySelector(".js-q");
+    let dup = null;
+    const close = async () => {
+      const q = ta.value.replace(/\s+/g, " ").trim().replace(/^[？?]\s*/, "");
+      if (!q) return;
+      const k = askKey(q);
+      const hit = askRows().find((r) => askKey(r.text) === k);
+      const item = askItems().find((a) => askKey(a.q) === k);
+      if (hit || item) { dup = hit || { text: item.q, go: "yet" }; }
+      else {
+        const n = N().draft();
+        n.body = `？${q}`;
+        if (!N().put(n)) { KN.ui.toast("ノートに保存できませんでした"); return; }
+        await N().flush();
+        if (N().pending(n.id)) { KN.ui.toast("ノートに保存できませんでした"); return; }
+      }
+      if (dup) {
+        const d = dup;
+        KN.ui.toast("同じ問いがあります", { action: { label: "開く", onClick: () => {
+          if (d.go) answer(d.text);
+          else if (d.n) openNote(d.n.id, null, d.line != null ? { line: d.line } : null);
+          else { KN.app.showScreen("archive"); if (KN.screens.archive && KN.screens.archive.goDay) KN.screens.archive.goDay(d.day); }
+        } } });
+      }
+      if (root && page().k === "ask") renderBody();
+    };
+    onEnter(ta, () => h.close());
+    const h = KN.ui.sheet({
+      title: "問いをつくる",
+      content: box,
+      cls: "is-card",
+      clear: true,
+      guard: false,
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">保存する</button>`),
+      onClose: close,
     });
+    h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });
+    KN.ui.focusNow(ta);
   }
 
   /** 問いの面へ（daily の思考のホームの札から）。 */
@@ -2006,20 +2097,27 @@
     const hidden = !!(KN.lock && KN.lock.hides("notes"));
     /* 問いの下に出典と文脈（畳まない）。 */
     const it = askItems().find((a) => askKey(a.q) === askKey(q)) || {};
+    /* 前に書いた答え（読むだけ。答えのノートの頭の行のあと）。続きは下の欄から、終わりに足す。 */
+    const was = hidden ? null : answerNote(q);
+    const past = was ? was.body.split("\n").slice(1).join("\n").trim() : "";
+    const resting = !!askRest()[askKey(q)];
     const box = node(html`
       <div class="stack gap-3">
         <p class="ask-sheet-q">${q}</p>
         ${it.from || it.hint ? html`<div class="ask-ctx">${it.from ? html`<p class="ask-ctx-from">${it.from}</p>` : ""}${it.hint ? html`<p class="ask-ctx-t">${it.hint}</p>` : ""}</div>` : ""}
+        ${past ? html`<div class="ask-past js-past"></div>` : ""}
         <label class="field"><textarea class="textarea js-a" rows="6" aria-label="答え" placeholder="思いついたことから"></textarea></label>
       </div>
     `);
     const ta = box.querySelector(".js-a");
+    if (past) box.querySelector(".js-past").textContent = past;
     const at = new Date();
     const pad = (v) => String(v).padStart(2, "0");
     const stamp = `${at.getMonth() + 1}月${at.getDate()}日(${U.weekdayJa(U.dayKey(at))}) ${pad(at.getHours())}:${pad(at.getMinutes())}`;
     const compose = (prev, text) => (prev == null ? `？${q}\n${text}` : `${prev.replace(/\s+$/, "")}\n\n${stamp}\n${text}`);
     /* wrote … 書いたノートと、書く前の本文（新しいノートは null）・書いた本文。 */
     let wrote = null;
+    let flip = null;
     const write = () => {
       const text = ta.value.replace(/^\s*\n/, "").replace(/\s+$/, "");
       if (!text.trim()) return;
@@ -2050,7 +2148,13 @@
       window.removeEventListener("pagehide", hide);
       document.removeEventListener("visibilitychange", onVis);
       write();
-      if (!wrote) return;
+      /* 一区切り・再開は押したとき。続きを書いたら再開（一区切りを押して閉じたときは別）。 */
+      if (wrote && resting && !flip) setRest(q, false);
+      if (!wrote) {
+        if (flip) KN.ui.toast(flip === "rest" ? "一区切りにしました" : "再開しました", { action: { label: "元に戻す", onClick: () => setRest(q, flip !== "rest") } });
+        if (root && page().k === "ask") renderBody();
+        return;
+      }
       const id = wrote.id;
       await N().flush();
       if (N().pending(id)) { KN.ui.toast("ノートに保存できませんでした"); return; }
@@ -2064,10 +2168,16 @@
       cls: "is-card",
       clear: true,
       guard: false,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">保存する</button>`),
+      footer: node(html`<div class="ask-foot"><button class="btn btn-ghost js-rest">${resting ? "再開する" : "一区切り"}</button><button class="btn btn-primary js-ok">保存する</button></div>`),
       onClose: close,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });
+    h.el.querySelector(".js-rest").addEventListener("click", () => {
+      KN.motion.fire("select");
+      flip = resting ? "back" : "rest";
+      setRest(q, !resting);
+      h.close();
+    });
     KN.ui.focusNow(ta);
     return h;
   }
@@ -2137,6 +2247,6 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.notes = { mount, render, dockButton, again, open: openNote, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
+  KN.screens.notes = { mount, render, dockButton, again, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
     pick: pickNote, asks, answer, newBook };
 })();

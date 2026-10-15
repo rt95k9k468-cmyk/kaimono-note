@@ -1117,13 +1117,17 @@
     const all = KN.askItems || (KN.askList || []).map((q) => ({ q }));
     const known = new Set(all.map((a) => askKey(a.q)));
     const done = new Set(past.map((a) => askKey(a.text)));
-    const fresh = all.filter((a) => !done.has(askKey(a.q)));
+    /* 一区切りにした問い（設定 askRest）は引かない。 */
+    const rm = (store.get().settings || {}).askRest;
+    const rest = rm && typeof rm === "object" ? rm : {};
+    const fresh = all.filter((a) => !done.has(askKey(a.q)) && !rest[askKey(a.q)]);
     /* 重さは引く日を選ぶだけ（平日は重い問いを外し、休みの日は軽い問いを外す）。出さない。 */
     const dt = U.dayDate(day), off = dt && (dt.getDay() === 0 || dt.getDay() === 6);
     const fit = (list) => { const f = list.filter((a) => (off ? a.w !== 1 : a.w !== 3)); return f.length ? f : list; };
-    const base = fit(fresh.length ? fresh : all);
+    const awake = all.filter((a) => !rest[askKey(a.q)]);
+    const base = fit(fresh.length ? fresh : awake.length ? awake : all);
     const seen = new Set();
-    const mine = past.filter((a) => { const k = askKey(a.text); if (known.has(k) || seen.has(k)) return false; seen.add(k); return true; });
+    const mine = past.filter((a) => { const k = askKey(a.text); if (known.has(k) || seen.has(k) || rest[k]) return false; seen.add(k); return true; });
     let h = 0;
     for (const c of String(day)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const k = h + (askTurn.day === day ? askTurn.n : 0);
@@ -1196,6 +1200,8 @@
       const NS = KN.screens.notes;
       if (!cur.mine) { if (!(NS && NS.answer && NS.answer(cur.text))) openPost(day, null, `？${cur.text}\n`); return; }
       KN.motion.fire("select");
+      /* 答えのノート（頭の行が「？問い」。＋でつくった問いも）は答える紙で続きを。 */
+      if (cur.note && cur.line === 0 && NS && NS.answer && NS.answer(cur.text)) return;
       if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line }); }
       else goDayTo(cur.day);
     });

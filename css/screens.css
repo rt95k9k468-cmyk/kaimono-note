@@ -5621,6 +5621,19 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 問い（docs/thinking.md）：「？」で始まる行は字だけ主色に（印は打った「？」のまま）。一覧の問いは三行まで。 */
 .note-view .is-ask .nv-t { color: var(--c-primary); }
 .note-row.is-ask .note-t { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+/* 問いの面（docs/thinking.md「問いの面」）。一区切りは畳んだ段、答える紙は前の答えを読むだけで上に。 */
+.notes-asks.is-new { margin-top: var(--sp-2); }
+.note-open.notes-ask-new { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.notes-ask-new svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
+.notes-rest > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: var(--sp-1); }
+.notes-rest > summary svg { width: var(--ico-sm); height: var(--ico-sm); color: var(--c-text-3); transition: transform var(--m-state) var(--ease); }
+.notes-rest[open] > summary svg { transform: rotate(90deg); }
+.notes-rest > summary::-webkit-details-marker { display: none; }
+.notes-rest:not([open]) > summary .section-title { color: var(--c-text-3); }
+.ask-past { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--c-text-2); font-size: var(--fs-md); line-height: var(--lh-body, 1.7);
+  padding-left: var(--sp-3); border-left: 2px solid var(--c-border); }
+.ask-foot { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2); width: 100%; }
+.ask-foot .btn-primary { width: 100%; }
 .notes-asks-empty { margin: 0; padding: var(--sp-10) var(--sp-6); text-align: center; color: var(--c-text-2); font-size: var(--fs-md); }
 /* 問いに答える紙：問いは欄の外に大きく（docs/thinking.md）。 */
 .ask-sheet-q { margin: 0; color: var(--c-primary); font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: 1.5; }

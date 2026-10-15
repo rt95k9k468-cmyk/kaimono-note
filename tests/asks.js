@@ -8,7 +8,9 @@
    - daily の問いの札（問い一覧）からノートの問いの面へ
    - 問いの面の「まだの問い」（今日の問いの元のうち書いていないもの）→ 答える紙（問いは欄の外）→ 「？問い」を頭にした
      ノート。同じ問いは同じノートの終わりに日付と時刻の行をはさんで。打たずに閉じれば書かない
-   - 今日の問い：前の日に書いた問いは引かない・自分で書いた「？」の問いが「あなたの問い」で混ざり、押すと書いた日へ
+   - 問いの面：続きから考える（最後に書いた順・前の答えを読んで続きを足す）・＋問いをつくる（同じ問いはつくらない）・
+     一区切り（畳んだ段・消さない・読み込み直しても・再開）・空で閉じても変わらない
+   - 今日の問い：前の日に書いた問いは引かない・一区切りは引かない・自分で書いた「？」の問いが「あなたの問い」で混ざり、押すと書いた日へ
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/asks.js */
 const { open, checker } = require("./lib");
@@ -31,7 +33,7 @@ const { open, checker } = require("./lib");
   });
   await page.evaluate(() => KN.notes.flush());
 
-  const asksText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks:not(.is-yet) .note-row")]
+  const asksText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks:not(.is-yet):not(.is-new) .note-row")]
     .map((r) => r.querySelector(".note-t").textContent.trim()));
 
   /* ---- daily の問いの札 → ノートの問いの面 ---- */
@@ -140,7 +142,7 @@ const { open, checker } = require("./lib");
     await page.waitForSelector("#screen-notes .notes-asks.is-yet", { timeout: 4000 });
     const q = await page.evaluate(() => KN.askList[0]);
     const sec = await page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-sec")].map((x) => x.textContent.trim()));
-    t.check("問いの面に「書いた問い」と「まだの問い」", sec.includes("書いた問い") && sec.includes("まだの問い") && (await yetText()).includes(q), JSON.stringify(sec));
+    t.check("問いの面に「まだの問い」と「ノート・日記に残した問い」", sec.includes("ノート・日記に残した問い") && sec.includes("まだの問い") && (await yetText()).includes(q), JSON.stringify(sec));
     const answerOpen = () => page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 });
     const ok = async () => {
       await page.click(".sheet.is-open .js-ok");
@@ -160,7 +162,8 @@ const { open, checker } = require("./lib");
     await ok();
     const b1 = await bodies();
     t.check("保存すると「？問い」を頭にしたノート", b1.length === 1 && b1[0] === `？${q}\n答えの字`, JSON.stringify(b1));
-    t.check("答えた問いは「書いた問い」へ移る", (await asksText()).includes(q) && !(await yetText()).includes(q));
+    const goText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-go .note-t")].map((x) => x.textContent.trim()));
+    t.check("答えた問いは「続きから考える」へ移る", (await goText())[0] === q && !(await yetText()).includes(q), JSON.stringify(await goText()));
     await page.evaluate((q) => KN.screens.notes.answer(q), q);
     await answerOpen();
     await page.keyboard.insertText("二度めの字");
@@ -173,6 +176,80 @@ const { open, checker } = require("./lib");
     await answerOpen();
     await ok();
     t.check("打たずに閉じれば書かない", (await page.evaluate(() => KN.notes.list().length)) === n0);
+
+    /* ---- 続きから考える：開くと前の答え、続きは終わりに足す。最後に書いた問いが上 ---- */
+    const q1 = await page.evaluate(() => KN.askList[1]);
+    await page.clock.setFixedTime(new Date(2026, 9, 6, 12, 35));
+    await page.evaluate((x) => KN.screens.notes.answer(x), q1);
+    await answerOpen();
+    await page.keyboard.insertText("べつの答え");
+    await ok();
+    t.check("最後に書いた問いが「続きから考える」の一番上", (await goText()).slice(0, 2).join() === [q1, q].join(), JSON.stringify(await goText()));
+    await page.locator("#screen-notes .notes-asks.is-go .note-row", { hasText: q }).locator(".js-open").click();
+    await answerOpen();
+    const pastIn = await page.evaluate(() => { const el = document.querySelector(".sheet.is-open"); const p = el.querySelector(".js-past");
+      return { past: p ? p.textContent : null, v: el.querySelector(".js-a").value, rest: el.querySelector(".js-rest").textContent.trim() }; });
+    t.check("続きから開くと前の答えが読める・欄は空・「一区切り」", pastIn.past === "答えの字\n\n10月6日(火) 12:34\n二度めの字" && pastIn.v === "" && pastIn.rest === "一区切り", JSON.stringify(pastIn));
+    const upd0 = await page.evaluate((q) => KN.notes.list().find((n) => n.body.startsWith(`？${q}\n`)).updatedAt, q);
+    await ok();
+    t.check("空のまま閉じても変わらない（並び・本文）", (await page.evaluate((q) => KN.notes.list().find((n) => n.body.startsWith(`？${q}\n`)).updatedAt, q)) === upd0
+      && (await goText())[0] === q1);
+
+    /* ---- 一区切り → 畳んだ段・消さない → 再読み込みでも → 再開 ---- */
+    const before = (await bodies())[0];
+    await page.evaluate((x) => KN.screens.notes.answer(x), q);
+    await answerOpen();
+    await page.click(".sheet.is-open .js-rest");
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 });
+    await page.waitForTimeout(400);
+    const restIn = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-rest .note-t")].map((x) => x.textContent.trim()));
+    t.check("一区切り：続きから外れ、畳んだ段へ", !(await goText()).includes(q) && (await restIn()).includes(q)
+      && (await page.evaluate(() => !document.querySelector("#screen-notes .notes-rest").open)), JSON.stringify(await restIn()));
+    t.check("一区切りでも答えは消えない・変わらない", (await bodies())[0] === before);
+    await page.reload();
+    await page.waitForFunction(() => window.KN && KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
+    await page.evaluate(() => { KN.app.showScreen("notes"); KN.screens.notes.asks(); });
+    await page.waitForSelector("#screen-notes .notes-asks", { timeout: 4000 });
+    t.check("一区切りは読み込み直しても残る", (await restIn()).includes(q) && !(await goText()).includes(q));
+    await page.evaluate(() => { document.querySelector("#screen-notes .notes-rest").open = true; });
+    await page.locator("#screen-notes .notes-rest .note-row", { hasText: q }).locator(".js-open").click();
+    await answerOpen();
+    t.check("一区切りの問いも開ける・「再開する」", (await page.textContent(".sheet.is-open .js-rest")).trim() === "再開する");
+    await page.click(".sheet.is-open .js-rest");
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 });
+    await page.waitForTimeout(400);
+    t.check("再開すると続きから考えるへ戻る", (await goText()).includes(q) && !(await restIn()).includes(q)
+      && (await page.evaluate(() => Object.keys(KN.store.get().settings.askRest || {}).length)) === 0);
+
+    /* ---- ＋問いをつくる：まだの問いの頭・同じ問いはつくらない・答えると続きへ ---- */
+    const mk = async (text) => {
+      await page.click("#screen-notes .js-ask-new");
+      await page.waitForSelector(".sheet.is-open .js-q", { timeout: 4000 });
+      await page.keyboard.insertText(text);
+      await ok();
+    };
+    const n1 = await page.evaluate(() => KN.notes.list().length);
+    await mk("試験でつくった問い");
+    const made = await page.evaluate(() => KN.notes.list().filter((n) => n.body === "？試験でつくった問い").length);
+    const madeText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-made .note-t")].map((x) => x.textContent.trim()));
+    t.check("つくった問いは「？問い」だけのノート、まだの問いの頭", made === 1 && (await madeText())[0] === "試験でつくった問い"
+      && (await page.evaluate(() => KN.notes.list().length)) === n1 + 1, JSON.stringify(await madeText()));
+    await mk("？ 試験でつくった問い");
+    await mk(q);
+    t.check("同じ問い（今日の問いの元も）はつくらない", (await page.evaluate(() => KN.notes.list().length)) === n1 + 1);
+    await page.reload();
+    await page.waitForFunction(() => window.KN && KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
+    await page.evaluate(() => { KN.app.showScreen("notes"); KN.screens.notes.asks(); });
+    await page.waitForSelector("#screen-notes .notes-asks", { timeout: 4000 });
+    t.check("つくった問いは読み込み直しても残る", (await madeText())[0] === "試験でつくった問い");
+    await page.clock.setFixedTime(new Date(2026, 9, 6, 12, 36));
+    await page.locator("#screen-notes .notes-asks.is-made .note-row").first().locator(".js-open").click();
+    await answerOpen();
+    await page.keyboard.insertText("つくった問いの答え");
+    await ok();
+    const mb = await page.evaluate(() => KN.notes.list().filter((n) => n.body.startsWith("？試験でつくった問い")).map((n) => n.body));
+    t.check("つくった問いに答えると同じノートの終わりへ・続きの一番上", mb.length === 1 && mb[0] === "？試験でつくった問い\n\n10月6日(火) 12:36\nつくった問いの答え"
+      && (await goText())[0] === "試験でつくった問い" && !(await madeText()).length, JSON.stringify([mb, await goText(), await madeText()]));
   }
 
   /* ---- 今日の問い：前の日に「？問い」を書いた問いは引かない・自分で書いた問いも混ざる ---- */
@@ -194,6 +271,16 @@ const { open, checker } = require("./lib");
     await page.click("#screen-archive .js-think-other");
   }
   t.check("前の日に書いた問いは引かず、残りの問いだけ", qs.every((x) => x === left), JSON.stringify(qs));
+  await page.evaluate((q) => { const k = String(q).normalize("NFKC").replace(/\s+/g, ""); KN.store.update((s) => { s.settings.askRest = { [k]: "x" }; }); }, left);
+  await page.waitForTimeout(400);
+  const qr = [];
+  for (let i = 0; i < 3; i++) {
+    qr.push(await page.textContent("#screen-archive .js-think-q"));
+    await page.click("#screen-archive .js-think-other");
+  }
+  t.check("一区切りの問いは今日の問いに引かない", !qr.includes(left), JSON.stringify(qr));
+  await page.evaluate(() => KN.store.update((s) => { s.settings.askRest = {}; }));
+  await page.waitForTimeout(400);
   const ctx = await page.evaluate(() => {
     const c = document.querySelector("#screen-archive .think-today .js-think-ctx"), it = KN.askItems[0];
     return { shown: !!c && !c.hidden && c.offsetHeight > 0, from: c && c.querySelector(".js-think-from").textContent === it.from,
