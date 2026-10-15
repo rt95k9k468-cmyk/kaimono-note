@@ -334,7 +334,7 @@
 
   function copyTitles() {
     if (exportBlocked()) return;
-    KN.util.copy(titleTree(), { show: true }).then((ok) => { if (ok) KN.ui.toast("題の木をコピーしました"); });
+    KN.util.copy(titleTree(), { show: true }).then((ok) => { if (ok) KN.ui.toast("コピーしました"); });
   }
 
   function openExport() {
