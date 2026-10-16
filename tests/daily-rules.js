@@ -196,6 +196,12 @@ const FORBIDDEN = [
     .flatMap((a, i) => words.filter((w) => `${a.q}${a.from}${a.hint}`.includes(w)).map((w) => `${i + 1}:${w}`)), FORBIDDEN);
   t.check("今日の問いの元（問い・出典・文脈）に評価の言葉が無い", !askBad.length, askBad.join(" "));
 
+  /* 器は公開。人の呼び名（漢字・カナ＋ちゃん・くん・さん…）を入れない（妻・娘・父のように続き柄で書く）。 */
+  const askName = await page.evaluate(() => (KN.askItems || [])
+    .flatMap((a, i) => (`${a.q}${a.from}${a.hint}`.match(/[一-龥々ァ-ヶー]{1,4}(ちゃん|くん|君|さん|様)/g) || [])
+      .filter((m) => !/^(赤ちゃん|皆さん|[父母兄姉爺婆]さん)$/.test(m)).map((m) => `${i + 1}:${m.length}字`)));
+  t.check("今日の問いの元に人の呼び名が無い", !askName.length, askName.join(" "));
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();
