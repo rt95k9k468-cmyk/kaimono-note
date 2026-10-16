@@ -151,4 +151,18 @@ function checker(title) {
   };
 }
 
-module.exports = { open, checker, ensureServer, noFit, noAnchor, URL, ROOT };
+/* 試験用の問いの元（store.asks）。本物は利用者の端末にだけあり、配る器には無い（docs/thinking.md）。
+   page.evaluate((a) => KN.store.setAsks(a), ASKS) で入れる。字は無難なものだけ。 */
+const ASKS = [
+  ["考える", 1, "試験の出典A", "試験の文脈A", "いま気になっている本の一文を一つ。"],
+  ["考える", 2, "試験の出典B", "試験の文脈B", "最近、考えが変わったことは何か？"],
+  ["考える", 3, "試験の出典C", "試験の文脈C", "十年後に読み返したい問いは何か？"],
+  ["暮らし", 1, "試験の出典D", "試験の文脈D", "今週いちばん静かだった時間はいつか？"],
+  ["暮らし", 2, "試験の出典E", "試験の文脈E", "部屋の中で手放せるものは何か？"],
+  ["暮らし", 3, "試験の出典F", "試験の文脈F", "暮らしの中で守りたい決まりは何か？"],
+  ["働く", 1, "試験の出典G", "試験の文脈G", "今日の仕事で楽しかった場面は？"],
+  ["働く", 2, "試験の出典H", "試験の文脈H", "人に教えるとき大事にしていることは？"],
+  ["働く", 3, "試験の出典I", "試験の文脈I", "仕事は人生の中の何なのか？"],
+].map(([g, w, from, hint, q]) => ({ g, w, from, hint, q }));
+
+module.exports = { open, checker, ensureServer, noFit, noAnchor, URL, ROOT, ASKS };

@@ -1092,7 +1092,7 @@
   };
   const memoOf = (day) => String((store.dayLog(day) || {}).memo || "");
 
-  /* 今日の問い（KN.askList）：日付で引き、どこにもしまわない。その日より前に「？問い」の行を書いた問いは引かない
+  /* 今日の問い（store.asks。この端末の記録にだけある）：日付で引き、どこにもしまわない。その日より前に「？問い」の行を書いた問いは引かない
      （全部書いたら一周して元の並び）。三つに一つは、その日より前に自分で書いた「？」の問い（元の並びに無いもの）。
      「別の問い」は開いているあいだだけ、出た問いを避けてでたらめに飛ぶ（決まった順に回さない）。 */
   const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
@@ -1114,7 +1114,7 @@
   }
   let askTurn = { day: "", n: 0, seen: new Set() };
   function askOf(day, past, turn) {
-    const all = KN.askItems || (KN.askList || []).map((q) => ({ q }));
+    const all = store.get().asks || [];
     const known = new Set(all.map((a) => askKey(a.q)));
     const done = new Set(past.map((a) => askKey(a.text)));
     /* 一区切りにした問い（設定 askRest）は引かない。 */
@@ -1188,7 +1188,9 @@
       ctx.hidden = !cur.from && !cur.hint;
     };
     paint();
-    el.querySelector(".js-think-other").addEventListener("click", () => {
+    /* 問いの元が無い端末（取り込む前・ほかの人）で、自分の問いも無いときは、札ごと出さない。 */
+    if (!cur.text) el.querySelector(".think-today").remove();
+    else el.querySelector(".js-think-other").addEventListener("click", () => {
       KN.motion.fire("select");
       if (askTurn.day !== day) askTurn = { day, n: 0, seen: new Set() };
       askTurn.seen.add(cur.text);
@@ -1204,7 +1206,8 @@
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
        日記の紙。打つまでは書かない。自分の問いは写さず、書いたところ（そのノートの行・その日）へ。 */
-    el.querySelector(".js-think-today").addEventListener("click", () => {
+    const go = el.querySelector(".js-think-today");
+    if (go) go.addEventListener("click", () => {
       const NS = KN.screens.notes;
       if (!cur.mine) { if (!(NS && NS.answer && NS.answer(cur.text))) openPost(day, null, `？${cur.text}\n`); return; }
       KN.motion.fire("select");

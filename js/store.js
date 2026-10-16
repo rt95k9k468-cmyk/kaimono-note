@@ -71,6 +71,9 @@
          済むのと、この機能を使わない人の保存データに空の配列が二つ散らばらない
          ようにするためです。 */
       archive: emptyArchive(),
+      /* 今日の問いの元（docs/thinking.md）。利用者の記述から書いた字なので、配る器（js/）には
+         載せず、この端末の記録にだけ持つ。{ g, w, from, hint, q }。既定は空。 */
+      asks: [],
       /* アイコンの言い換え（自分だけの上書き）。買うもの・やることは記録
          そのものに `icon` 欄を持てますが、食事メモは自由記述の一文なので
          そういう入れ物がありません。かわりに**入力した文字列そのもの**を
@@ -762,7 +765,8 @@
         }))
       : [];
     out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
-    out.learned  = (s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
+    out.asks     = cleanAsks(s.asks);
+    out.learned  =(s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
     out.iconOverrides = (s.iconOverrides && typeof s.iconOverrides === "object" && !Array.isArray(s.iconOverrides)) ? s.iconOverrides : {};
     out.iconReports = Array.isArray(s.iconReports)
       ? s.iconReports.filter((r) => r && r.id && r.text).map(cleanIconReport)
@@ -4574,6 +4578,35 @@
   function isQuietDay() {
     return false;
   }
+  /* 問いの元。本文（q）の無いもの・同じ本文の二つ目は落とす。function 宣言なのは reconcile（load の途中）から呼ぶため。 */
+  function cleanAsks(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    return list.filter((a) => a && typeof a === "object" && typeof a.q === "string" && a.q.trim())
+      .filter((a) => !seen.has(a.q.trim()) && seen.add(a.q.trim()))
+      .map((a) => ({
+        g: typeof a.g === "string" ? a.g : "",
+        w: [1, 2, 3].includes(a.w) ? a.w : 2,
+        from: typeof a.from === "string" ? a.from : "",
+        hint: typeof a.hint === "string" ? a.hint : "",
+        q: a.q.trim(),
+      }));
+  }
+
+  /** 問いの元を入れ替える（取り込み）。入れた数を返す。答えたかは本文で照らすので、同じ本文なら答えは残る。 */
+  function setAsks(list) {
+    const next = cleanAsks(list);
+    update((s) => { s.asks = next; });
+    return next.length;
+  }
+
+  /** 前の版が js/ask-list.js で配っていた問いを、この端末にまだ無ければ一度だけ写す。 */
+  function adoptAsks() {
+    const old = KN.askItems;
+    if (state.asks.length || !Array.isArray(old) || !old.length) return 0;
+    return setAsks(old);
+  }
+
   function setQuietDay(date, on) {
     const day = toDayKey(date);
     if (!day) return;
@@ -4921,6 +4954,7 @@
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
+    setAsks, adoptAsks,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };
 })();
