@@ -1521,7 +1521,7 @@
         { label: "元に戻す", onClick: () => { if (memoOf(day) === out) store.setDayLog(day, { memo: m }); back(); } },
       ] });
     };
-    NS.pick((id) => { put(id); }, { title: "ノートへ移す", fresh: "新しいノート" });
+    NS.pick((id) => { put(id); }, { title: "ノートへ移す", fresh: "新しいノート", topics: "thinking" });
   }
 
   /* ================================================================

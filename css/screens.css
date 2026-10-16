@@ -5662,6 +5662,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .ask-sheet-q + .ask-ctx { margin: calc(-1 * var(--sp-1)) 0 0; }
 .note-fresh { flex-direction: row; align-items: center; gap: var(--sp-2); }
 .note-fresh svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
+/* 束ねる紙（docs/notes-structure.md の段2）：選んだ行に印。 */
+.note-bundle-row { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.note-check { display: grid; place-items: center; width: 20px; flex: none; color: var(--c-primary); }
+.note-check svg { width: var(--ico); height: var(--ico); visibility: hidden; }
+.note-bundle-row[aria-pressed="true"] .note-check svg { visibility: visible; }
 /* 書く紙の頭の行（段4.2）：‹ の隣にノートブック。下へ送って大きな題が
    隠れたら（.is-folded）、その上に題を小さく（Notion の形）。 */
 .sheet.is-note .sheet-title { display: none; }
@@ -6191,6 +6196,8 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 /* 前の版：並びと、読むだけの一枚。 */
 .notes-versions { display: flex; flex-direction: column; }
+/* ノートへ移す紙の「話題」「すべて」の見出し（段2）。行の左にそろえる。 */
+.notes-versions > .notes-sec { padding: var(--sp-3) 0 0; }
 .note-read { min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ダイエットの紙。**面（白い地）は持ちません**——中の「今日のからだ」が

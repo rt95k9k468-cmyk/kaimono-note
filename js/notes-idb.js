@@ -828,6 +828,58 @@
     return any;
   }
 
+  /** 束ねる（「⋯」。docs/notes-structure.md の段2）：同じ群のノートを、新しい話題（親）の下へ並びの順に置く（子孫ごと）。
+      話題は群の中の一番前のノートの場所に。置き方は place と同じ（本文・更新日・前の版は動かさない）。
+      群の違うものは外す。題が空・一つも無ければ null。戻すための控え（unbundle へ）と話題の id を返す。 */
+  function bundle(ids, title) {
+    const head = String(title || "").trim();
+    const lead = byId.get(ids && ids[0]);
+    if (phase !== "on" || !head || !lead || lead.deletedAt) return null;
+    const t = tree();
+    const group = lead.parent && !t.isHead(lead.parent) ? t.kids(lead.parent) : t.tops(lead.notebook);
+    const want = new Set(ids);
+    const list = group.filter((k) => want.has(k.id));
+    if (!list.length) return null;
+    const out = { id: "", was: [] };
+    const held = holding;
+    holding = true;
+    try {
+      const n = draft();
+      n.title = head;
+      n.notebook = lead.notebook;
+      if (lead.parent) n.parent = lead.parent;
+      put(n);
+      out.id = n.id;
+      place(n.id, { parent: lead.parent || null, nb: lead.notebook, before: list[0].id });
+      let prev = null;
+      list.forEach((k) => {
+        const w = place(k.id, prev ? { parent: n.id, after: prev } : { parent: n.id });
+        if (w) out.was.push(w);
+        prev = k.id;
+      });
+    } finally {
+      holding = held;
+      if (!holding && owed) { owed = false; emit(); }
+    }
+    return out;
+  }
+
+  /** bundle を戻す（置いたのと逆の順に）。話題は空なら最近削除へ（同期に消したと伝わるように）。 */
+  function unbundle(r) {
+    if (!r || !Array.isArray(r.was)) return false;
+    const held = holding;
+    holding = true;
+    try {
+      r.was.slice().reverse().forEach((w) => unplace(w));
+      const n = byId.get(r.id);
+      if (n && !n.deletedAt && !under(n.id).length && !String(n.body || "").trim()) remove(n.id);
+    } finally {
+      holding = held;
+      if (!holding && owed) { owed = false; emit(); }
+    }
+    return true;
+  }
+
   /** 木の順（ノートブックの並び → 一番上から深さ順。ノートブックの無いノートは終わり）。書き出しの並び。 */
   function inOrder(list) {
     const t = tree();
@@ -1047,7 +1099,7 @@
     begin, end, versions, versionBodies, revert, merge,
     absorb, addMany, unimport, reshape, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move, isTable,
-    place, unplace, linked, gather, ungather, inOrder, orderOf, setBooks, moveBook, addBook,
+    place, unplace, linked, gather, ungather, bundle, unbundle, inOrder, orderOf, setBooks, moveBook, addBook,
     /** 並べた・作ったノートブック（`books` そのもの。同期が運ぶ）。 */
     books: () => (books || []).slice(),
     /** 木の行を運んでいるあいだ、知らせ（onChange）を待たせる。離したら一度だけ。 */

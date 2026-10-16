@@ -1672,6 +1672,22 @@
         KN.ui.toast(`${r.moved}件を中へ移しました`, { action: { label: "元に戻す", onClick: () => N().ungather(r.was) } });
       } }]);
 
+    /* 束ねる（docs/notes-structure.md の段2）：同じ段のノートを選び、新しい話題の下へ。控えを取ってから・「元に戻す」で戻る。 */
+    const bundleItem = () => (!stored || blank() ? [] : [{
+      icon: "folder", label: "束ねる",
+      onPick: () => {
+        if (!settle()) return;
+        pickBundle(note, async (ids, title) => {
+          const snap = KN.backup && KN.backup.take ? await KN.backup.take("束ねる前", { force: true }).catch(() => "failed") : "failed";
+          if (snap === "failed") { KN.ui.toast("控えを取れなかったので、何も変えていません", { long: true }); return; }
+          const r = N().bundle(ids, title);
+          if (!r) return;
+          KN.motion.fire("drop");
+          paintPath();
+          KN.ui.toast("束ねました", { action: { label: "元に戻す", onClick: () => { N().unbundle(r); paintPath(); } } });
+        });
+      } }]);
+
     /* 道に置く（3.0 の A2）。このノートについて考える時間を、今日の道に一つ（js/activity.js）。
        書いたノートだけ（何も書いていないノートは閉じれば消えるので）。 */
     /* 既定で畳む（roadmap-3.1 の S4。設定のノートから戻せる）。 */
@@ -1768,7 +1784,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), menu.slice(4), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
@@ -2138,6 +2154,63 @@
     return h;
   }
 
+  /** 束ねる紙（docs/notes-structure.md の段2）。同じ段（同じ親・同じ冊の一番上）のノートを並びの順に、このノートは
+      選んだまま始まる。話題の題と一つ以上で「束ねる」→ done(ids, title)。 */
+  function pickBundle(note, done) {
+    const t = N().tree();
+    const group = note.parent && !t.isHead(note.parent) ? t.kids(note.parent) : t.tops(note.notebook);
+    const on = new Set([note.id]);
+    const box = node(html`
+      <div class="stack gap-2">
+        <input class="input js-topic" placeholder="話題" aria-label="話題" autocomplete="off" enterkeyhint="done">
+        <div class="search-bar">
+          ${icon("search")}
+          <input class="search-input js-q" placeholder="ノートをさがす" aria-label="ノートをさがす"
+                 autocomplete="off" spellcheck="false" enterkeyhint="search">
+        </div>
+        <div class="notes-versions js-rows"></div>
+      </div>
+    `);
+    const topic = box.querySelector(".js-topic");
+    const q = box.querySelector(".js-q");
+    const rows = box.querySelector(".js-rows");
+    const ok = node(html`<button class="btn btn-primary btn-block js-ok" disabled>束ねる</button>`);
+    const ready = () => { ok.disabled = !topic.value.trim() || !on.size; };
+    const paint = () => {
+      rows.innerHTML = "";
+      const w = U.foldKana(q.value.trim());
+      group.filter((n) => on.has(n.id) || !w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w)).forEach((n) => {
+        const r = node(html`
+          <button class="note-open note-bundle-row" data-id="${n.id}" aria-pressed="${String(on.has(n.id))}">
+            <span class="note-check">${icon("check")}</span>
+            <span class="note-t">${headOf(n) || "ノート"}</span>
+          </button>
+        `);
+        r.addEventListener("click", () => {
+          KN.motion.fire("select");
+          if (on.has(n.id)) on.delete(n.id); else on.add(n.id);
+          r.setAttribute("aria-pressed", String(on.has(n.id)));
+          ready();
+        });
+        rows.append(r);
+      });
+    };
+    topic.addEventListener("input", ready);
+    onEnter(topic, () => topic.blur());
+    q.addEventListener("input", paint);
+    paint();
+    const h = KN.ui.sheet({ title: "束ねる", content: box, footer: ok });
+    ok.addEventListener("click", () => {
+      if (ok.disabled) return;
+      KN.motion.fire("select");
+      const ids = group.filter((n) => on.has(n.id)).map((n) => n.id);
+      h.close();
+      done(ids, topic.value.trim());
+    });
+    KN.ui.focusNow(topic);
+    return h;
+  }
+
   function openTrash() {
     const box = node(html`<div class="notes-trash"></div>`);
     let h = null;
@@ -2277,8 +2350,21 @@
 
   /* ---------------- ノートを選ぶ紙 ---------------- */
 
+  /** 話題（docs/notes-structure.md の段2）：冊 nb の束（子のあるノート）と、問いの形の話題（答えのノート＝頭の行が
+      「？問い」で中身のあるもの。問いの面の「続きから考える」）。最近足した順（中のノートも含めて一番新しく直した日）。 */
+  function topicsOf(nb) {
+    const t = N().tree();
+    const last = (n) => t.kids(n.id).reduce((m, k) => { const x = last(k); return x > m ? x : m; }, String(n.updatedAt || ""));
+    return N().list().filter((n) => {
+      if (n.notebook === nb && t.kids(n.id).length) return true;
+      const a = KN.noteFormat.asks(n.body)[0];
+      return !!a && a.line === 0 && !!n.body.split("\n").slice(1).join("\n").trim();
+    }).map((n) => ({ n, at: last(n) })).sort((a, b) => b.at.localeCompare(a.at));
+  }
+
   /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。
-      o … { title, fresh: 頭に足す「新しいノート」の字（押すと onPick(null)）}（日記の一件をノートへ移す。
+      o … { title, fresh: 頭に足す「新しいノート」の字（押すと onPick(null)）, topics: 冊の名（さがす前は、その冊の
+      話題を先に。topicsOf）}（日記の一件をノートへ移す。
       docs/thinking.md）。鍵でノートを伏せているあいだは、題を並べない（新しいノートだけ）。 */
   function pickNote(onPick, o) {
     o = o || {};
@@ -2301,20 +2387,29 @@
     let h = null;
     const fresh = box.querySelector(".js-fresh");
     if (fresh) fresh.addEventListener("click", () => { KN.motion.fire("select"); if (h) h.close(); onPick(null); });
+    const row = (n, at) => {
+      const r = node(html`
+        <button class="note-open note-ver" data-id="${n.id}">
+          <span class="note-d">${stampOf(at || n.updatedAt)}</span>
+          <span class="note-t">${headOf(n) || " "}</span>
+        </button>
+      `);
+      r.addEventListener("click", () => { KN.motion.fire("select"); if (h) h.close(); onPick(n.id); });
+      rows.append(r);
+    };
     const paint = () => {
       rows.innerHTML = "";
       if (hidden) return;
       const w = U.foldKana(q.value.trim());
-      N().list().filter((n) => !w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w)).forEach((n) => {
-        const r = node(html`
-          <button class="note-open note-ver" data-id="${n.id}">
-            <span class="note-d">${stampOf(n.updatedAt)}</span>
-            <span class="note-t">${headOf(n) || " "}</span>
-          </button>
-        `);
-        r.addEventListener("click", () => { KN.motion.fire("select"); if (h) h.close(); onPick(n.id); });
-        rows.append(r);
-      });
+      const all = N().list().filter((n) => !w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w));
+      const tops = o.topics && !w ? topicsOf(o.topics) : [];
+      if (tops.length) {
+        const mine = new Set(tops.map((x) => x.n.id));
+        rows.append(secTitle("話題"));
+        tops.forEach((x) => row(x.n, x.at));
+        rows.append(secTitle("すべて"));
+        all.filter((n) => !mine.has(n.id)).forEach((n) => row(n));
+      } else all.forEach((n) => row(n));
     };
     if (q) q.addEventListener("input", paint);
     paint();
