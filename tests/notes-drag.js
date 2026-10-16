@@ -194,6 +194,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   const row = (id) => `#screen-notes .notes-books[role="tree"] .js-tree-note[data-id="${id}"]`;
   await page.click(`${book("庭")} .nt-twist`);
   await page.waitForSelector(row("n-x1"));
+  await page.waitForTimeout(400);   // 枝が伸び終わるまで（--m-grow）
   const garden = () => page.evaluate(() => KN.notes.tree().tops("庭").map((n) => n.title).join());
   const box = async (sel) => page.locator(sel).first().boundingBox();
   /* マウスで運ぶ：押して少し動かすと持ち上がる。to(x, y) で離す。 */
@@ -233,6 +234,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   /* 右へずらして段を下げる：三 を 三 の下の隙間で一段右へ → 二 の中（二の子の次） */
   await page.click(`${row("n-x2")} .nt-twist`);
   await page.waitForSelector(row("n-x2k"));
+  await page.waitForTimeout(400);   // 枝が伸び終わるまで（--m-grow）
   const step = await page.$eval(row("n-x3"), (e) => parseFloat(getComputedStyle(e).getPropertyValue("--nt-step")));
   const yUnder = await gapY(row("n-x2k"), row("n-x3"));
   await carry(row("n-x3"), (x) => [x - step * 0.2, yUnder]);
@@ -246,6 +248,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   /* 閉じた枝の上で待つと開く */
   await page.click(`${row("n-x2")} .nt-twist`);
   await page.waitForFunction((s) => document.querySelector(s).getAttribute("aria-expanded") === "false", row("n-x2"));
+  await page.waitForTimeout(400);   // 枝が縮み終わるまで（--m-grow）
   let sprang = false;
   await carry(row("n-x3"), async () => { const b = await box(row("n-x2")); return [b.x + b.width / 2, b.y + b.height / 2]; }, async () => {
     sprang = await page.waitForFunction((s) => document.querySelector(s).getAttribute("aria-expanded") === "true", row("n-x2"), { timeout: 2000 }).then(() => true, () => false);
@@ -339,6 +342,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   await P.waitForSelector('#screen-notes .js-book[data-nb="指"]');
   await P.tap('#screen-notes .js-book[data-nb="指"] .nt-twist');
   await P.waitForSelector('#screen-notes .js-tree-note[data-id="n-f4"]');
+  await P.waitForTimeout(400);   // 枝が伸び終わるまで（--m-grow）
   const cdp = await m.ctx.newCDPSession(P);
   const touch = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y, radiusX: 8, radiusY: 8, force: 1 }] });
   const fbox = async (sel) => P.locator(sel).first().boundingBox();

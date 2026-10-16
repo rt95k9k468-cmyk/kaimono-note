@@ -5508,7 +5508,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   --shelf-ink: color-mix(in srgb, var(--shelf-c) 70%, var(--shelf-to, #000));
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="thinking"] { --shelf: #745399; }
+/* thinking は灰の archive と並ぶので、赤みの紫を濃いめに（10月16日、利用者「見分けづらい」）。 */
+:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
 :is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="reading"] { --shelf: #007B43; }
 :is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="teaching"] { --shelf: #ED6D3D; }
 :is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="learning"] { --shelf: #00A3AF; }
@@ -5557,6 +5558,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-add:active { background-color: var(--press-sink); }
 .nt-dot { margin: 0 var(--sp-2) 0 var(--sp-3); }
 .nt-dot.is-blank { visibility: hidden; }
+/* ★・最近直した：色の丸ではなく、ノートブックの絵を小さく（10月16日、利用者）。 */
+.nt-row.is-flat .nb-ico { margin: 0 var(--sp-2) 0 var(--sp-3); }
+.nt-row.is-flat .nb-ico svg { width: calc(var(--ico-sm) - 2px); height: calc(var(--ico-sm) - 2px); }
+.nt-row.is-flat .nb-ico.is-blank { visibility: hidden; }
 /* つまんで運ぶ（js/note-drag.js。docs/notes-unify.md「並び」）。長押しで字を選ばない・呼び出しを出さない。
    運ぶあいだは行を上に留めない（測った位置が動かないように）。運ぶ群は薄く残し、指には写し、行き先は線か色。 */
 .nt-row.js-tree-note, .nt-row.js-book { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }

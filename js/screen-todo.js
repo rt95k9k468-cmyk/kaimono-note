@@ -525,7 +525,10 @@
     // 「済ませてから◯日」の◯。ほかの種類のあいだも覚えておく（選び直したとき用）。
     let repeatEvery = editing && t.repeatEvery ? t.repeatEvery : 7;
     let flagged = editing ? !!t.flagged : false;
-    let minutes = editing ? (t.minutes || null) : null;
+    /* 新しい用事は30分から（2026年10月16日、利用者）。くり返しは長さに触らなければ null のまま
+       保存する（いつもの長さ＝段4を殺さないため。`newMins`）。 */
+    let minutes = editing ? (t.minutes || null) : KN.plan.DEFAULT_MINUTES;
+    let minsPicked = false;
     // 出る時刻の「前に◯分」（段7）。時刻を決めたときだけ欄が出る。
     let lead = editing ? (t.lead || null) : null;
     /* くり返しの用事の、いつもの長さ（段4。済ませた記録から引く。言えなければ null）。
@@ -581,6 +584,17 @@
             <span class="d-value js-repeat-value"></span>
             <span class="d-go">${icon("chevron")}</span>
           </button>
+          ${editing ? "" : html`
+          <div class="d-row tw-row js-row-done">
+            <span class="d-ico">${icon("check")}</span>
+            <span class="d-label">済ませた</span>
+            <span class="tw-field js-done-cell" hidden>
+              <button type="button" class="tw-input js-done-at" aria-label="済ませた時刻"></button>
+            </span>
+            <button type="button" class="tw-sw js-done-sw" role="switch" aria-checked="false" aria-label="済ませた">
+              <span class="toggle" aria-hidden="true"><span class="toggle-mark"></span><span class="toggle-knob"></span></span>
+            </button>
+          </div>`}
         </div>
 
         ${/* 通知とカレンダーは頭の「⋯」の中（2026年10月2日・利用者の希望。知らせるは
@@ -1186,6 +1200,7 @@
           activeId: minutes ? String(minutes) : "",
           onPick: (id) => {
             minutes = id ? Number(id) : null;
+            minsPicked = true;
             haptic();
             paintMins();
             paintRows();
@@ -1418,6 +1433,30 @@
       });
     }
     limitEl.addEventListener("click", openLimitPicker);
+    /* 作ってすぐ済ませる（新しい用事だけ。2026年10月16日、利用者）。入れると今の時刻、押すと車輪で直す。 */
+    let doneAt = null;
+    const doneSw = body.pick(".js-done-sw");
+    function paintDone() {
+      if (!doneSw) return;
+      body.pick(".js-done-cell").hidden = !doneAt;
+      body.pick(".js-done-at").textContent = doneAt ? tlClock(doneAt) : "";
+      doneSw.setAttribute("aria-checked", String(!!doneAt));
+    }
+    if (doneSw) {
+      doneSw.addEventListener("click", () => { doneAt = doneAt ? null : KN.util.nowTime(); haptic(); paintDone(); });
+      body.pick(".js-done-at").addEventListener("click", (e) => KN.ui.popTime(e.currentTarget, {
+        value: doneAt, label: "済ませた時刻", cls: "done-at-pop", onPick: (v) => { doneAt = v; paintDone(); } }));
+    }
+    /** 足した用事を、決めた時刻に済ませる。元に戻すは、済ませたのと足したのを両方。 */
+    function doneNow(rec) {
+      if (!rec || !doneAt) return null;
+      const res = store.toggleTodo(rec.id);
+      if (res.doneId) store.setDoneTime(res.doneId, Number(doneAt.slice(0, 2)), Number(doneAt.slice(3, 5)));
+      return () => { res.undo(); store.removeTodo(rec.id); };
+    }
+    /** 新しい用事に書く長さ（上の minutes の但し書き）。 */
+    const newMins = (rule) => (rule && !minsPicked ? null : minutes);
+
     limitSw.addEventListener("click", () => {
       limitAsked = !limitAsked;
       if (!limitAsked) deadline = null;
@@ -1696,7 +1735,7 @@
       setTitle(res.title);
       if (res.due) due = res.due;
       if (res.time) time = res.time;
-      if (res.minutes) minutes = res.minutes;
+      if (res.minutes) { minutes = res.minutes; minsPicked = true; }
       if (res.deadline) deadline = res.deadline;
       if (res.repeat) {
         repeat = res.repeat;
@@ -1841,9 +1880,11 @@
         return;
       } else {
         const rec = store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
-          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
+          repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes: newMins(repeat),
           lead: at ? lead : null, subs, icon: iconKey });
-        KN.ui.toast(fixed
+        const undoDone = doneNow(rec);
+        if (undoDone) KN.ui.toast(`「${title}」を済ませました ${tlClock(doneAt)}`, { action: { label: "元に戻す", onClick: undoDone } });
+        else KN.ui.toast(fixed
           ? `「${title}」を${when}までに`
           : `「${title}」を追加しました`,
           rec ? { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } } : undefined);
@@ -1860,7 +1901,7 @@
       const W = KN.whenParse;
       const made = [];
       lines.forEach((line) => {
-        let v = { title: line, due, time, minutes, part, deadline, repeat, repeatDays, repeatNth, repeatEvery };
+        let v = { title: line, due, time, minutes: minsPicked ? minutes : null, part, deadline, repeat, repeatDays, repeatNth, repeatEvery };
         const res = W ? W.parse(line) : null;
         if (res && W.found(res)) {
           v.title = res.title;
@@ -1881,8 +1922,8 @@
         const rec = store.addTodo({ title: v.title, due: fx, deadline: v.deadline,
           part: fx ? v.part : null, time: fx ? v.time : null,
           repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth,
-          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes });
-        if (rec) made.push(rec.id);
+          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes || (v.repeat ? null : KN.plan.DEFAULT_MINUTES) });
+        if (rec) { doneNow(rec); made.push(rec.id); }
       });
       haptic(12);
       handle.close();
@@ -1896,9 +1937,9 @@
             made.forEach((id) => store.removeTodo(id));
             const title = lines.join("、");
             const fixed = due ? store.snapToRule({ repeat, repeatDays, repeatNth }, due) : due;
-            store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null,
+            doneNow(store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null,
               time: fixed ? time : null, repeat, repeatDays, repeatNth, repeatEvery,
-              memo, flagged, minutes, icon: iconKey });
+              memo, flagged, minutes: newMins(repeat), icon: iconKey }));
             KN.ui.toast(`「${title}」ひとつにしました`);
           },
         },
@@ -3008,7 +3049,7 @@
       e.preventDefault();
       const title = input.value.trim();
       if (!title) return;
-      const rec = store.addTodo({ title });
+      const rec = store.addTodo({ title, minutes: KN.plan.DEFAULT_MINUTES });
       haptic(12);
       KN.ui.toast(`「${title}」をこれからへ`,
         rec ? { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } } : undefined);

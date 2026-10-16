@@ -73,6 +73,7 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | `FEEL` | 押す | 主な押すもの | 端末の震え（iPhone） | — | — | 震える（動きではない） |
 | `fire` / `.is-m-*` | 状態 | 出来事 | 上の名前の class | 出来事ごと | — | class を付けない |
 | `arrive` / `onArrive` | 状態 | タブを開く・戻る | `.is-m-arrive` の中・輪と数 | `--m-fill`・`--m-draw` | 塗 | 付けない |
+| `slide`（枝） | 変わる | ノートの木の ▸ を押す | 群の高さ・▸ の向き（`screen-notes.js`） | `--m-grow`（曲線は `--ease`） | **重**（群の `height`） | 動かさない（`still()`） |
 | `flipRows` | 変わる | 組み直し | 行 | `--m-settle` | — | 見送る |
 | `morphPill` / `morphBack` | 変わる | 行→紙の頭／帰り（やること・品物＝U15） | 丸薬の影 | `--m-sheet-grow`・`--m-settle` | — | 育てない |
 | `growCard` / `shrinkCard` | 変わる | カード・やることの行→紙／帰り | 紙（`clip-path`。外の行へは `translate` も） | `--m-sheet-grow`・`--m-sheet-close` | 塗 | 育てない |

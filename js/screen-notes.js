@@ -309,14 +309,13 @@
     });
   }
 
-  /** 行だけの短い並び（★・最近直した）：ノートブックの色の丸と題。押すと紙（閉じるとこの行へ縮んで戻る）。 */
+  /** 行だけの短い並び（★・最近直した）：ノートブックの小さな絵と題。押すと紙（閉じるとこの行へ縮んで戻る）。 */
   function flatRows(list) {
     const box = node(html`<div class="notes-books notes-flat" role="list"></div>`);
     list.forEach((n) => {
       const r = node(html`
         <button type="button" class="nt-row is-flat" role="listitem" data-id="${n.id}">
-          ${SHELF[n.notebook] ? html`<span class="chip-dot nt-dot" data-shelf="${n.notebook}"></span>`
-            : html`<span class="chip-dot nt-dot ${n.notebook ? "" : "is-blank"}" style="--cat:${n.notebook ? colorOf("nb", n.notebook) : "transparent"}"></span>`}<span class="nt-name">${headOf(n) || "ノート"}</span>
+          ${n.notebook ? book(n.notebook) : html`<span class="nb-ico is-blank">${icon("book")}</span>`}<span class="nt-name">${headOf(n) || "ノート"}</span>
         </button>`);
       r.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, r, { back: ".notes-flat .nt-row" }); });
       box.append(r);
@@ -357,7 +356,7 @@
         </button>`);
       r.addEventListener("click", (e) => {
         KN.motion.fire("select");
-        if (kids.length && e.target.closest(".nt-twist")) { flip(o.open, n.id); o.redraw(); return; }
+        if (kids.length && e.target.closest(".nt-twist")) { slide(r, () => { flip(o.open, n.id); o.redraw(); }); return; }
         o.onNote(n, r);
       });
       g.append(r);
@@ -365,6 +364,34 @@
       else if (kids.length) springs.set(r, () => { o.open.add(n.id); opened(r); treeRows(g, kids, d + 1, o); });
       box.append(g);
     });
+  }
+
+  /* ▸ の開け閉めは、枝が下へ伸び縮みする（--m-grow。docs/motion.md の JS の表「枝」）。決めごとと組み直しは
+     その場で（run）、動きは組み直したあとの群の高さだけ。畳むときは前の中身を一時借りて縮め、終わったら外す。 */
+  function slide(r, run) {
+    const was = r.getAttribute("aria-expanded") === "true";
+    const kept = was ? [...r.parentElement.children].filter((x) => x !== r) : [];
+    const sel = r.dataset.nb != null ? `.js-book[data-nb="${CSS.escape(r.dataset.nb)}"]` : `.js-tree-note[data-id="${CSS.escape(r.dataset.id || "")}"]`;
+    const ups = [];
+    for (let a = r.parentElement; a; a = a.parentElement) ups.push(a);
+    run();
+    if (KN.motion.still()) return;
+    const at = ups.find((a) => a.isConnected);
+    const r1 = at && at.querySelector(sel);
+    if (!r1 || r1 === r) return;
+    const g = r1.parentElement;
+    if (was) { kept.forEach((x) => { x.inert = true; }); g.append(...kept); }
+    if (g.lastElementChild === r1) return;
+    const full = g.getBoundingClientRect().height;
+    const shut = full - (g.lastElementChild.getBoundingClientRect().bottom - r1.getBoundingClientRect().bottom);
+    const opt = { duration: KN.motion.ms("--m-grow"), easing: KN.motion.ease("--ease") };
+    g.style.overflow = "clip";
+    const anim = g.animate([{ height: `${was ? full : shut}px` }, { height: `${was ? shut : full}px` }], opt);
+    const tw = r1.querySelector(".nt-twist svg");
+    if (tw) tw.animate([{ rotate: was ? "90deg" : "0deg" }, { rotate: was ? "0deg" : "90deg" }], opt);
+    const end = () => { g.style.overflow = ""; kept.forEach((x) => x.remove()); };
+    anim.onfinish = end;
+    anim.oncancel = end;
   }
 
   /* 運んでいるあいだ、閉じた枝をその場で開く口（js/note-drag.js の expand。組み直すと運んでいる行が外れる）。 */
@@ -414,7 +441,7 @@
         KN.motion.fire("select");
         if (e.target.closest(".nt-add")) { openNote(null, r, { ...(h ? { parent: h.id } : { nb }), tree: true, back: TREE_ROW }); return; }
         if (h && !e.target.closest(".nt-twist")) { o.onNote(h, r); return; }
-        if (tops.length) { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); }
+        if (tops.length) slide(r, () => { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); });
       });
       g.append(r);
       if (open) treeRows(g, tops, 1, sub);
@@ -431,7 +458,7 @@
     thinking: { ico: "bulb" },
     reading: { ico: "study" },
     teaching: { ico: "chalkboard" },
-    learning: { ico: "sprout" },
+    learning: { ico: "gradCap" },
     living: { ico: "home" },
     archive: { ico: "tidyBox" },
   };
