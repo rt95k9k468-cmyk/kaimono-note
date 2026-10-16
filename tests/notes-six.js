@@ -3,7 +3,7 @@
    表のとおりに冊と親だけ付け替える（本文・作った日・直した日は動かない）／子は親の冊についていく／
    授業7つは teaching の一番上・【自身の保険・投資について】は living／Evernote の5冊は題に「(Evernote)」／
    reading に空の「論文」を一つ作り中へ／冊の並びは6つが頭／
-   ホーム：棚は絵と名前だけ・▸ は右端で＋は無い・「すべてのノート」「問い」は一番上に二枚・最近直したは3件で枠なし／
+   ホーム：棚は絵と名前だけ・▸ は右端で＋は無い・「すべてのノート」「問い」は一番上・最近直したは3件で枠なし（すべてのノート・問いも塗りなし）／
    使っていない冊を消す（残りは archive へ・冊は並びから外す）／前の整理の記録は戻すと戻る／
    戻すと冊・親・題・並びが元どおり・作った「論文」は消した印／二度目は分けるものが無い／
    設定の行（分ける → 戻す）。
@@ -134,7 +134,7 @@ const { open, checker } = require("./lib");
       bg: getComputedStyle(g).backgroundColor, ink: getComputedStyle(head).color,
       twistLast: head.lastElementChild.classList.contains("nt-twist"), add: !!tree.querySelector(".nt-shelf .nt-add"),
       newBook: !!document.querySelector("#screen-notes .js-new-book"), heading: /ノートブック/.test(body.innerText),
-      gates: gates ? gates.innerText.replace(/\s+/g, " ").trim() : "", first: body.firstElementChild === gates,
+      gateBg: gates ? getComputedStyle(gates.firstElementChild).backgroundColor : "", gates: gates ? gates.innerText.replace(/\s+/g, " ").trim() : "", first: body.firstElementChild === gates,
       inTree: !!tree.querySelector(".js-all"), recent: flat ? flat.querySelectorAll(".nt-row").length : 0,
       flatBg: flat ? getComputedStyle(flat).backgroundColor : "none" };
   });
@@ -142,7 +142,7 @@ const { open, checker } = require("./lib");
   t.check("カードは色つき・見出しは濃い色", look.bg !== "rgba(0, 0, 0, 0)" && look.ink !== look.bg, `${look.bg} / ${look.ink}`);
   t.check("棚の見出しは ▸ が右端・＋は無い", look.twistLast && !look.add, JSON.stringify(look));
   t.check("見出し「ノートブック」とその＋は無い", !look.newBook && !look.heading, JSON.stringify(look));
-  t.check("すべてのノート・問いは一番上に二枚", look.gates === "すべてのノート 問い" && look.first && !look.inTree, JSON.stringify(look));
+  t.check("すべてのノート・問いは一番上、塗りなし", look.gates === "すべてのノート 問い" && look.gateBg === "rgba(0, 0, 0, 0)" && look.first && !look.inTree, JSON.stringify(look));
   t.check("最近直したは3件まで", look.recent > 0 && look.recent <= 3, String(look.recent));
   t.check("最近直したは枠に入れない", look.flatBg === "rgba(0, 0, 0, 0)" || look.flatBg === "none", look.flatBg);
   await page.click('.nt-shelf[data-shelf="thinking"] > .nt-row .nt-twist');

@@ -208,7 +208,6 @@
     if (!els.body) return;
     if (carrying()) { owedPaint = true; return; }
     const box = els.body;
-    unwatchTabs();
     paintTitle();
     /* チップの列は組み直しても横の位置を保ちます（右のほうのチップを押した
        とたんに、列が頭へ戻らないように）。 */
@@ -260,7 +259,7 @@
 
   const secTitle = (text) => node(html`<div class="notes-sec"><div class="section-title">${text}</div></div>`);
 
-  /** ホーム：「すべてのノート」「問い」の二枚・★・最近直した（行）・棚の札・ノートブックの木。数は出しません。
+  /** ホーム：「すべてのノート」「問い」・★・最近直した（行）・ノートブックの木。数は出しません。
       ノートブックを足すのは設定、新しいノートは右下の＋（docs/notes.md「6つの棚」）。 */
   function homeBody(box, t) {
     const all = N().list();
@@ -278,12 +277,9 @@
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
     const recent = all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch));
     if (recent.length) { box.append(secTitle("最近直した")); box.append(flatRows(recent.slice(0, 3))); }
-    /* 6つの棚があれば、棚ごとに色のカードと、その上に棚の札。 */
-    const names = N().notebooks().filter((nb) => SHELF[nb]);
-    const shelves = names.length > 0;
+    /* 6つの棚があれば、棚ごとに色のカード。 */
+    const shelves = N().notebooks().some((nb) => SHELF[nb]);
     const tree = node(html`<div class="notes-books ${shelves ? "has-shelves" : ""}" role="tree" aria-label="ノートブック"></div>`);
-    const bar = shelves ? tabsBar(names) : null;
-    if (bar) box.append(...bar);
     const c = homeCur ? N().get(homeCur) : null;
     bookRows(tree, t, {
       open: treeOpen, stick: true, shelves,
@@ -293,70 +289,8 @@
       redraw: () => renderBody(),
     });
     box.append(tree);
-    if (bar && box === els.body) watchTabs(bar[1], bar[0], tree);
     carry(tree, { scope: "books", open: treeOpen, scroller: () => KN.app.scrollerOf(root),
       root: () => root && root.querySelector(TREE_ROW.replace(" .nt-row", "")) });
-  }
-
-  /* 棚の札（docs/notes.md「6つの棚」）：棚の絵を一列に。送ると上の帯のすぐ下に留まり（棚の見出しはその下。
-     css の --nt-tabs-h）、押すとその棚の見出しが札のすぐ下へ。留まっているあいだ、札のすぐ下の棚が灯る。
-     返すのは [留まったかを見る印, 札]。 */
-  function tabsBar(names) {
-    const at = node(html`<div class="nt-tabs-at" aria-hidden="true"></div>`);
-    const bar = node(html`<div class="nt-tabs" role="toolbar" aria-label="棚"></div>`);
-    names.forEach((nb) => {
-      const b = node(html`<button type="button" class="nt-tab" data-shelf="${nb}" aria-label="${nb}">${shelfIcon(SHELF[nb].ico)}</button>`);
-      b.addEventListener("click", () => toShelf(nb));
-      bar.append(b);
-    });
-    return [at, bar];
-  }
-  /** 札を押す：閉じていれば先に開き（見出しを押したのと同じ道）、組み直したあとで送る。運ぶあいだは押せない。 */
-  function toShelf(nb) {
-    if (carrying() || (KN.reorder && KN.reorder.isActive())) return;
-    KN.motion.fire("select");
-    const key = `nb:${nb}`;
-    if (N().tree().tops(nb).length && !treeOpen.has(key)) {
-      treeOpen.add(key);
-      if (!keepShelf(nb, true)) renderBody();
-    }
-    const sc = root ? KN.app.scrollerOf(root) : null;
-    const bar = els.body.querySelector(".nt-tabs");
-    const g = els.body.querySelector(`.nt-shelf[data-shelf="${CSS.escape(nb)}"]`);
-    if (!sc || !bar || !g) return;
-    const y = sc.scrollTop + g.getBoundingClientRect().top - sc.getBoundingClientRect().top - bar.offsetHeight;
-    sc.scrollTo({ top: Math.max(0, y), behavior: KN.motion.still() ? "auto" : "smooth" });
-  }
-  /* 灯す見張り。組み直しのたびに外して付け直す（renderBody の頭で外す）。書くのは札の class だけ。 */
-  let tabsWatch = null;
-  function unwatchTabs() {
-    if (tabsWatch) tabsWatch.forEach((io) => io.disconnect());
-    tabsWatch = null;
-  }
-  function watchTabs(bar, at, tree) {
-    unwatchTabs();
-    const sc = root ? KN.app.scrollerOf(root) : null;
-    if (!sc || typeof IntersectionObserver !== "function") return;
-    /* 測るのは書く前に、まとめて（docs/traps.md） */
-    const h = bar.offsetHeight, ch = sc.clientHeight;
-    let stuck = false, lit = null;
-    const paint = () => bar.querySelectorAll(".nt-tab").forEach((b) => b.classList.toggle("is-lit", stuck && b.dataset.shelf === lit));
-    const up = new IntersectionObserver((es) => {
-      const e = es[es.length - 1];
-      const was = stuck;
-      stuck = !e.isIntersecting && !!e.rootBounds && e.boundingClientRect.top < e.rootBounds.top;
-      if (stuck !== was) { bar.classList.toggle("is-stuck", stuck); paint(); }
-    }, { root: sc });
-    /* 札のすぐ下の 1px の帯にかかる群。棚のあいだの隙間では前のまま。 */
-    const under = new IntersectionObserver((es) => {
-      const e = es.filter((x) => x.isIntersecting).pop();
-      if (!e) return;
-      lit = e.target.dataset.shelf || null;
-      paint();
-    }, { root: sc, rootMargin: `-${h}px 0px -${Math.max(0, ch - h - 1)}px 0px` });
-    up.observe(at);
-    [...tree.children].forEach((g) => under.observe(g));
-    tabsWatch = [up, under];
   }
 
   /** 空のノートブックを作る（名前を訊いて、終わりに。docs/notes-unify.md「並び」）。作った名前を返す。 */
@@ -558,11 +492,8 @@
     if (!sc || !r) return;
     const a = sc.getBoundingClientRect();
     const b = r.getBoundingClientRect();
-    /* 棚の札に隠れる高さは見えていない（留まった札は帯のすぐ下）。 */
-    const bar = els.body.querySelector(".nt-tabs");
-    const cover = bar ? Math.max(0, bar.getBoundingClientRect().bottom - a.top) : 0;
-    if (b.top >= a.top + cover && b.bottom <= a.bottom - 96) return;
-    sc.scrollTop += b.top - a.top - cover - (a.height - cover - b.height) / 2;
+    if (b.top >= a.top && b.bottom <= a.bottom - 96) return;
+    sc.scrollTop += b.top - a.top - (a.height - b.height) / 2;
   }
 
   /**
