@@ -102,12 +102,14 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return { home: !!h, first: !!(h && slide && slide.firstElementChild === h), write: h ? h.querySelector(".js-think-write").textContent.trim() : "",
       ask: !!(h && h.querySelector(".js-think-ask")), blank: blank ? blank.textContent.trim() : null,
       cards: h ? [...h.querySelectorAll(".think-card-t")].map((x) => x.textContent.trim()) : [],
+      cardIcons: h ? h.querySelectorAll(".think-card svg").length : -1,
       q: h ? (h.querySelector(".js-think-q") || {}).textContent : "",
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
   t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・問い一覧）", home.home && home.first
     && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|問い一覧", JSON.stringify(home));
+  t.check("札に「＞」は付けない", home.cardIcons === 0, String(home.cardIcons));
   t.check("問いの札がある", home.ask);
   t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
   t.check("空の日の一行は「この日のことを書く」のまま", home.blank === "この日のことを書く", String(home.blank));

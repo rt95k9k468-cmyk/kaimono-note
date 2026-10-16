@@ -1143,7 +1143,6 @@
       <button type="button" class="think-card is-${tone} ${cls}">
         <img class="think-card-art" src="img/think/${img}.webp" alt="" decoding="async" draggable="false">
         <span class="think-card-t">${a}<wbr>${b}</span>
-        <span class="think-card-go" aria-hidden="true">${icon("chevron")}</span>
       </button>`;
     const el = node(html`
       <div class="think-home">
