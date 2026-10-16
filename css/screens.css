@@ -5503,11 +5503,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    （10月16日、利用者「無駄に目立つ」）。字は大きく太く。絵の列は最近直した・棚の見出しにそろえる。 */
 .notes-books.nt-gates { display: flex; flex-wrap: wrap; gap: 0 var(--sp-6); margin-top: var(--sp-3); overflow: visible; }
 .nt-gate { display: flex; align-items: center; gap: var(--sp-1); min-height: 44px; min-width: 0; padding: 0 var(--sp-2) 0 2px;
-  border-radius: var(--r-sm); color: var(--c-text); font-size: var(--fs-xl); font-weight: var(--fw-bold); text-align: left;
+  border-radius: var(--r-sm); color: var(--c-text); font-size: var(--nt-fs); font-weight: var(--fw-bold); text-align: left;
   transition: background-color var(--m-state) var(--ease); }
-@media (pointer: fine) { .nt-gate { padding-left: 4px; font-size: var(--fs-lg); } }
+@media (pointer: fine) { .nt-gate { padding-left: 4px; } }
 .nt-gate:active { background-color: var(--press-sink); transition-delay: var(--m-press); }
-.nt-gate > svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-text-2); margin: 0 var(--sp-1); }
+.nt-gate > svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; color: var(--c-text-2);
+  margin: 0 calc(var(--sp-1) + (var(--ico) - var(--ico-sm)) / 2); }
 .notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { display: flex; flex-direction: column; gap: var(--sp-4);
   margin-top: var(--sp-6); padding: 0; background: none; box-shadow: none; overflow: visible; }
 .nt-plain { padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
@@ -5526,10 +5527,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 :is(.nt-dot, .nb-ico)[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shelf-x: 1.8; --shelf-to: #fff; } }
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
-/* ホームの木は詰める（10月16日、利用者「Notion くらい狭く」。閉じなくても全体が見える）。 */
-.notes-books .nt-row { --nt-h: 34px; }
+/* ホームの木は詰める（10月16日、利用者「Notion くらい狭く」。閉じなくても全体が見える）。字はほかの面より一回り大きく
+   （同じ日、利用者「全体的にもう少しだけ大きく」。すべてのノート・問いも同じ大きさ）。 */
+.notes-ground { --nt-fs: calc(17px * var(--fs-k)); }
+@media (pointer: fine) { .notes-ground { --nt-fs: calc(15px * var(--fs-k)); } }
+.notes-books .nt-row { --nt-h: 38px; font-size: var(--nt-fs); }
 .notes-books .nt-row :is(.nt-twist, .nt-add) { height: var(--nt-h); }
-@media (pointer: fine) { .notes-books .nt-row { --nt-h: 30px; } }
+@media (pointer: fine) { .notes-books .nt-row { --nt-h: 32px; } }
+.notes-ground .notes-sec .section-title { font-size: var(--fs-md); }
 .nt-shelf .nt-row.is-stick:not([aria-current="true"]):not(:active) { background-color: var(--shelf-bg); }
 .nt-shelf > .nt-row.is-book, .nt-shelf > .nt-row.is-book .nt-twist { color: var(--shelf-ink); }
 .nt-shelf-ico { display: inline-flex; flex: none; margin-right: var(--sp-1); color: var(--shelf-ink); }
