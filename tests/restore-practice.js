@@ -58,6 +58,7 @@ window.__diff = function (a, b, p) {
     S.setDayLog("2026-09-01", { memo: "試験の日記です。", wake: "07:00", sleep: "23:00" });
     S.setDayLog("2026-09-02", { memo: "二日目。" });
     S.setQuietDay("2026-09-03", true);
+    S.setAsks([{ g: "試験", w: 2, from: "試験の出典", hint: "試験の文脈", q: "試験の問いは何か。" }]);
     S.update((s) => { s.settings.theme = "dark"; s.settings.captureDest = { 試験: "todo" }; });
     const st = S.get();
     const emptyKeys = Object.keys(JSON.parse(S.exportJSON())).filter((k) => k !== "exportedAt" && k !== "app");
