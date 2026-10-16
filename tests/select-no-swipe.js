@@ -52,6 +52,9 @@ const { open, checker } = require("./lib");
   }, sel);
 
   c.check("吹き出しがある", !!(await page.$(BUBBLE)));
+  /* 今日の問い（出典・文脈つき）の下で吹き出しが画面の外に出る。なぞる前に画面の中へ。 */
+  await page.evaluate((s) => document.querySelector(s).scrollIntoView({ block: "center" }), BUBBLE);
+  await page.waitForTimeout(300);
   const day0 = await title();
   let p = await at(BUBBLE);
 
