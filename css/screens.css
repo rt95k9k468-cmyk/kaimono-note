@@ -5499,18 +5499,17 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    archive は閉じて始まり、ほかより控えめ。★・最近直した・「すべてのノート」「問い」は枠に入れない（棚と見分ける）。 */
 .notes-books:is(.notes-flat, .nt-gates), #screen-notes[data-season] .notes-books:is(.notes-flat, .nt-gates) {
   padding: 0; background: none; box-shadow: none; border-radius: 0; }
-/* 「すべてのノート」「問い」は一番上に横並び。枠も塗りも持たない（10月16日、利用者「無駄に目立つ」）。
-   絵の列は最近直した・棚の見出しにそろえる。 */
-.notes-books.nt-gates { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-top: var(--sp-3); overflow: visible; }
-.nt-gate { display: flex; align-items: center; gap: var(--sp-1); min-height: 44px; min-width: 0; padding: 0 var(--sp-1) 0 2px;
-  border-radius: var(--r-sm); color: var(--c-text); font-size: var(--fs-lg); text-align: left;
+/* 「すべてのノート」「問い」は一番上に、左へ詰めて横並び（半分ずつに割ると問いが真ん中に浮く）。枠も塗りも持たない
+   （10月16日、利用者「無駄に目立つ」）。字は大きく太く。絵の列は最近直した・棚の見出しにそろえる。 */
+.notes-books.nt-gates { display: flex; flex-wrap: wrap; gap: 0 var(--sp-6); margin-top: var(--sp-3); overflow: visible; }
+.nt-gate { display: flex; align-items: center; gap: var(--sp-1); min-height: 44px; min-width: 0; padding: 0 var(--sp-2) 0 2px;
+  border-radius: var(--r-sm); color: var(--c-text); font-size: var(--fs-xl); font-weight: var(--fw-bold); text-align: left;
   transition: background-color var(--m-state) var(--ease); }
-@media (pointer: fine) { .nt-gate { padding-left: 4px; font-size: var(--fs-md); } }
+@media (pointer: fine) { .nt-gate { padding-left: 4px; font-size: var(--fs-lg); } }
 .nt-gate:active { background-color: var(--press-sink); transition-delay: var(--m-press); }
-.nt-gate > svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; color: var(--c-text-2);
-  margin: 0 calc(var(--sp-1) + (var(--ico) - var(--ico-sm)) / 2); }
+.nt-gate > svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-text-2); margin: 0 var(--sp-1); }
 .notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { display: flex; flex-direction: column; gap: var(--sp-4);
-  padding: 0; background: none; box-shadow: none; overflow: visible; }
+  margin-top: var(--sp-6); padding: 0; background: none; box-shadow: none; overflow: visible; }
 .nt-plain { padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .nt-plain { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
 .nt-shelf { --shelf-a: 8%; --shelf-c: color-mix(in srgb, var(--shelf) 85%, #888);
