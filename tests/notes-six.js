@@ -3,7 +3,7 @@
    表のとおりに冊と親だけ付け替える（本文・作った日・直した日は動かない）／子は親の冊についていく／
    授業7つは teaching の一番上・【自身の保険・投資について】は living／Evernote の5冊は題に「(Evernote)」／
    reading に空の「論文」を一つ作り中へ／冊の並びは6つが頭／
-   ホーム：棚は絵と名前だけ・「すべてのノート」「問い」は木の下の枠の外・最近直したも枠なし／
+   ホーム：棚は絵と名前だけ・▸ は右端で＋は無い・「すべてのノート」「問い」は一番上に二枚・最近直したは3件で枠なし／
    使っていない冊を消す（残りは archive へ・冊は並びから外す）／前の整理の記録は戻すと戻る／
    戻すと冊・親・題・並びが元どおり・作った「論文」は消した印／二度目は分けるものが無い／
    設定の行（分ける → 戻す）。
@@ -126,18 +126,24 @@ const { open, checker } = require("./lib");
   const look = await page.evaluate(() => {
     const g = document.querySelector('.nt-shelf[data-shelf="thinking"]');
     const tree = document.querySelector(".notes-books[role=tree]");
-    const out = document.querySelector(".notes-books.nt-out");
+    const gates = document.querySelector(".notes-books.nt-gates");
     const flat = document.querySelector(".notes-flat");
+    const head = g.querySelector(":scope > .nt-row");
+    const body = document.querySelector("#screen-notes .js-body");
     return { desc: !!g.querySelector(".nt-shelf-desc"), ico: !!g.querySelector(".nt-shelf-ico svg"),
-      bg: getComputedStyle(g).backgroundColor, ink: getComputedStyle(g.querySelector(".nt-row")).color,
-      out: out ? out.innerText.replace(/\s+/g, " ").trim() : "", below: !!out && tree.compareDocumentPosition(out) === Node.DOCUMENT_POSITION_FOLLOWING,
-      inTree: !!tree.querySelector(".js-all"), outBg: out ? getComputedStyle(out).backgroundColor : "",
+      bg: getComputedStyle(g).backgroundColor, ink: getComputedStyle(head).color,
+      twistLast: head.lastElementChild.classList.contains("nt-twist"), add: !!tree.querySelector(".nt-shelf .nt-add"),
+      newBook: !!document.querySelector("#screen-notes .js-new-book"), heading: /ノートブック/.test(body.innerText),
+      gates: gates ? gates.innerText.replace(/\s+/g, " ").trim() : "", first: body.firstElementChild === gates,
+      inTree: !!tree.querySelector(".js-all"), recent: flat ? flat.querySelectorAll(".nt-row").length : 0,
       flatBg: flat ? getComputedStyle(flat).backgroundColor : "none" };
   });
   t.check("見出しは絵と名前だけ（説明の行は無い）", !look.desc && look.ico, JSON.stringify(look));
   t.check("カードは色つき・見出しは濃い色", look.bg !== "rgba(0, 0, 0, 0)" && look.ink !== look.bg, `${look.bg} / ${look.ink}`);
-  t.check("すべてのノート・問いは木の下、枠の外", look.out === "すべてのノート 問い" && look.below && !look.inTree
-    && look.outBg === "rgba(0, 0, 0, 0)", JSON.stringify(look));
+  t.check("棚の見出しは ▸ が右端・＋は無い", look.twistLast && !look.add, JSON.stringify(look));
+  t.check("見出し「ノートブック」とその＋は無い", !look.newBook && !look.heading, JSON.stringify(look));
+  t.check("すべてのノート・問いは一番上に二枚", look.gates === "すべてのノート 問い" && look.first && !look.inTree, JSON.stringify(look));
+  t.check("最近直したは3件まで", look.recent > 0 && look.recent <= 3, String(look.recent));
   t.check("最近直したは枠に入れない", look.flatBg === "rgba(0, 0, 0, 0)" || look.flatBg === "none", look.flatBg);
   await page.click('.nt-shelf[data-shelf="thinking"] > .nt-row .nt-twist');
   await page.waitForTimeout(300);

@@ -286,12 +286,12 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   await page.keyboard.press("Alt+ArrowDown");
   t.check("ノートブックの行は Alt+↓ で並び", await page.evaluate(() => KN.notes.notebooks()[1]) === "庭");
 
-  /* ＋で空のノートブック */
-  await page.click("#screen-notes .js-new-book");
+  /* 空のノートブック（ホームの＋は外した。設定と同じ口） */
+  await page.evaluate(() => { KN.screens.notes.newBook(); });
   await page.waitForSelector(".sheet.is-open .js-input");
   await page.fill(".sheet.is-open .js-input", "新しい棚");
   await page.click(".sheet.is-open .js-ok");
-  t.check("＋で空のノートブック（木の終わりに）", await page.waitForSelector(book("新しい棚"), { timeout: 3000 }).then(() => true, () => false)
+  t.check("空のノートブック（木の終わりに）", await page.waitForSelector(book("新しい棚"), { timeout: 3000 }).then(() => true, () => false)
     && await page.evaluate(() => KN.notes.notebooks().slice(-1)[0]) === "新しい棚");
 
   /* リンク先を中へ（「⋯」）：目次の行（リンクだけの行）が指すノートを、行の順に中の頭へ。文の途中・上の段・消したものは外す */

@@ -5,7 +5,7 @@
    更新日は動かない）／ノートブックを替えると一番上へ／消すと子孫も同じ時刻の印・戻すと一緒に戻る
    （先に消した子はそのまま）／中にノートがあれば空でも drop しない／書き出しに parent・復元で合わせても
    今あるノートの親はこちらのまま／localStorage が変わらない。
-   画面：最初の面はホーム（★・最近直した（行）・ノートブックの木。頭に「すべてのノート」＝今の一覧と「問い」）／
+   画面：最初の面はホーム（一番上に「すべてのノート」＝今の一覧と「問い」の二枚・★・最近直した（行・3件）・ノートブックの木）／
    ③：ノートブックはその場に開く（面は移らない）・▸ で開け閉め・段の縦線・開いた枝の三段は上に留まる・5段目から
    字下げは半分ずつ・木から開いた紙を閉じるとその行に印（移したら移した先で）・頭のある冊は名前で頭の紙・＋はその冊に
    （頭の中に）・道すじの冊（頭なし）はホームの木に印／帯に ‹ と面の名前／一覧の子のカードに親の題（頭は重ねない）／
@@ -150,13 +150,15 @@ const { open, checker } = require("./lib");
   t.check("最初の面はホーム（チップは無い）", !(await page.$("#screen-notes .notes-chips")) && !!(await page.$("#screen-notes .notes-books .js-all")));
   t.check("帯はホームでは Notes だけ", (await headName()) === "Notes" && !(await page.$("#head .js-notes-back")));
   const secs = await ground(".notes-sec");
-  t.check("ホームに★・最近直した・ノートブック", secs.join() === "★,最近直した,ノートブック", secs.join());
+  t.check("ホームに★・最近直した（見出し「ノートブック」は無い）", secs.join() === "★,最近直した", secs.join());
   const nRecent = await page.evaluate(() => document.querySelectorAll("#screen-notes .notes-sec")[1].nextElementSibling.children.length);
-  t.check("最近直したは5件まで（行。カードは「すべてのノート」だけ）", nRecent === 5 && !(await page.$("#screen-notes .notes-books .note-row")), String(nRecent));
+  t.check("最近直したは3件まで（行。カードは「すべてのノート」だけ）", nRecent === 3 && !(await page.$("#screen-notes .notes-books .note-row")), String(nRecent));
   const treeTop = '.notes-books[role="tree"] > .nt-row, .notes-books[role="tree"] > .nt-grp > .nt-row';
   const heads = await ground(treeTop);
-  t.check("ノートブックの木：頭に「すべてのノート」「問い」、続けてノートブック", heads[0] === "すべてのノート" && heads[1] === "問い"
-    && heads.includes("暮らし") && heads.includes("仕事"), heads.join());
+  const gates = await ground(".nt-gates > .nt-gate");
+  const first = await page.evaluate(() => document.querySelector("#screen-notes .js-body").firstElementChild.classList.contains("nt-gates"));
+  t.check("一番上に「すべてのノート」「問い」の二枚、木はノートブック", gates.join() === "すべてのノート,問い" && first
+    && !heads.includes("すべてのノート") && heads.includes("暮らし") && heads.includes("仕事"), `${gates.join()} / ${heads.join()}`);
   const book = (nb) => `#screen-notes .js-book[data-nb="${nb}"]`;
   const note = (title) => `#screen-notes .notes-books[role="tree"] .js-tree-note:has(> .nt-name:text-is("${title}"))`;
 
