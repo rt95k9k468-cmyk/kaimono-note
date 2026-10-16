@@ -436,7 +436,8 @@
   /* ---------------- 6つに分ける（2026年10月15日、利用者が決めた。docs/notes.md「6つの棚」） ----------------
      決めた表のとおりに、冊と親を付け替えるだけ（本文・作った日・直した日は動かさない）。Evernote の5冊だけ題に
      「(Evernote)」を足し、reading の中に空の「論文」を一つ作る。元の冊・親・題・並び・前の整理の記録は org に
-     （k: "six"）。戻すのは undoPlan。題は字と数だけで引き当てる（絵文字・括弧・空白の違いで外れない）。 */
+     （k: "six"）。戻すのは undoPlan。題は字と数だけで引き当てる（絵文字・括弧・空白の違いで外れない）。
+     人の名前が入る題は名前を除いた末尾の正規表現で（リポジトリに名前を置かない）。 */
   const SHELVES = ["thinking", "reading", "teaching", "learning", "living", "archive"];
   const PW = "philosophy&work";
   const PAPERS = "論文";
@@ -450,7 +451,7 @@
       .map((t) => ["teaching", "Notion", [PW, "【教育全般】", t]]),
     ["learning", "Notion", [PW, "【語彙】"]], ["learning", "Notion", [PW, "【言語学】"]], ["learning", "Notion", ["【learningDB】"]],
     ["learning", "思考・読書", ["【もっと学びたいこと】"]],
-    ["living", "private", ["A30歳anniversaryディナー候補"]], ["living", "private", ["Messages"]],
+    ["living", "private", [/30歳anniversaryディナー候補$/]], ["living", "private", ["Messages"]],
     ["living", "Notion", ["【learningDB】", "【自身の保険・投資について】"]],
     ev("学習用"), ev("教員職務"), ev("教採対策"), ev("思考"), ev("修士論文"),
     ["archive", EV, ["積み上げ"], null, (n) => n.id === "n-tsumiage"],
@@ -470,7 +471,7 @@
       let level = t.tops(nb);
       let n = null;
       for (const title of path) {
-        const hits = level.filter((k) => keyOf(k.title) === keyOf(title));
+        const hits = level.filter((k) => (title instanceof RegExp ? title.test(keyOf(k.title)) : keyOf(k.title) === keyOf(title)));
         if (hits.length !== 1) return test ? live.find((k) => k.notebook === nb && test(k)) || null : null;
         n = hits[0];
         level = t.kids(n.id);
