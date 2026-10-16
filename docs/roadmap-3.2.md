@@ -1,0 +1,263 @@
+# くらしノート 3.2（見張りを戻す・空の画面・問いをつくる・軽くする）
+
+2026年10月17日（土）0時台（日本時間）に書いた。利用者の頼み「くらしノートを総点検して。他のアプリやサイトを調べ尽くして。
+その上で、改善点や、改定の方針、よりよくできるところなどを。全力で」に、main の `a60b976` までのコード・docs・試験と、
+Web の調べ（出典は最後）を突き合わせた**方針の案**。コードは変えていない。
+
+- 前の調べ（roadmap 3節・2026-10 2節・3.0 3節・3.1 2節・seamless 2節と10節・notes-structure）で見たアプリ約60・研究約40は
+  **調べ直していない**。ここに書くのは、そこに無いものと、10月10日の総点検のあとに入ったもの（約60コミット：ノートの構造・
+  問い・daily の冒頭・飲みたくなった）。
+- roadmap-seamless の11節（やらないこと・断られたもの）は全部生きている。ここの案は、どれもそこに当たらないことを確かめた。
+- **ここにある項目は、どれもデータの移行を含まない。**
+- **項目に手を付けるセッションは、4節の表と、その項目の節だけ読む。** 手を付けたら表の「状態」を書き換える。
+
+---
+
+## 1. 一言でいうと
+
+**足す前に、見張りを戻す。足すなら、問いをつくる手間だけ。次のセッションを軽くする。**
+
+1. **見張り**——毎朝の全部が10月16日朝（#8）から赤。Actions の土台（Node 20）は9月に外された。WebKit で回す手段が無く、
+   iPhone の手の確かめが積もる。
+2. **空の画面**——「説明を書かない」からこぼれたものが三つ。一つは画面の作りの崩れ（白い紙が空のまま）。
+3. **問い**——「問いをつくる」は一度に一つ。問いをつくる方法（QFT）の芯は「たくさん・答えずに・そのまま書く」。
+4. **軽く**——道のり8本（3,584行）に状態の表が散る。計画を見るセッションほど、読むだけで重い。
+
+---
+
+## 2. 総点検（2026年10月16〜17日）
+
+### 2.1 見たもの
+
+| 見たもの | やり方 |
+|---|---|
+| 計画 | 道のり8本の表・seamless の5節と11節・notes-structure・thinking・dev |
+| 全部の試験 | `run-all.js`（手元、162本）・GitHub の毎朝の全部（#5〜#8）。落ちた台本は単独・4本同時でも回した |
+| 画面 | 390×844、明暗、空のときと見本を入れたとき（daily・ノート・やること・買うもの・価格・からだ） |
+| 起動 | CPU を4倍遅くした Chromium で、DOMContentLoaded・長い仕事・起動で動いた JS の割合 |
+| コード | 横断で引いた（空の画面・問いをつくる・`text-wrap`・Actions の版） |
+| 外 | 前の表に無いアプリ・方法・研究・足もと（3節） |
+
+### 2.2 見つけたこと
+
+| # | 見つけたこと | どこ | 根拠 | → |
+|---|---|---|---|---|
+| 1 | 毎朝の全部が #8（`120b4e5`、10月16日朝）から赤。いま残るのは `pill-morph` の「そのまま閉じる：頭の丸薬の箱から出る」一つ（`select-no-swipe` は10月16日に台本を直して通る）。手元の全部（162本）でも同じ一つだけ落ちた。単独では10回とも通る（4本同時でも） | `tests/pill-morph.js` 170行あたり | #7 緑（`0167c05`）・#8 赤・手元の全部 161/162 | G1 |
+| 2 | Actions の `checkout@v4`・`setup-node@v4` は Node 20 向け。GitHub は6月16日から Node 24 を既定にし、9月23日に Node 20 を外した。いまは Node 24 で強制的に動かされ、毎回警告が出る | `.github/workflows/` の2本 | #8 のログ・GitHub の告知 | G2 |
+| 3 | WebKit で回す手段が無い（手元も門も Chromium だけ）。Safari でだけ違う動き（錨・伸びる欄・和文と数字のあいだ）は iPhone の手でしか見られず、iphone-check に結果待ちが積もる | `tests/lib.js` の `open()` | 3.1 の S1・J2 | G3 |
+| 4 | やることに用事が一つも無いと、白い紙（`.tl-sheet`、高さ約445px）が空のまま出て、「やることはありません」はその**外**の下。説明の一行「下の＋から追加できます。」は下の帯の裏に隠れる | `screen-todo.js` 2669〜2683行 | 画像・`elementFromPoint` | H1 |
+| 5 | 空の画面の説明文：買うもの「下の欄に商品名を入れるだけ。」（その欄は画面に無い）・価格「買うものに入れた商品が、ここに並びます。」（二行目が「す。」だけ）。`text-wrap` はどこにも使っていない | `screen-list.js` ほか・css 3本 | 画像・look の「説明は書かない」 | H2 |
+| 6 | 「問いをつくる」は一度に一つ（改行は空白に畳まれ、Enter で閉じる） | `screen-notes.js` の `makeAsk` | QFT | Q1 |
+| 7 | 起動（CPU 4倍遅く）：DOMContentLoaded 1.5秒・長い仕事2つ（計221ms、最長155ms）。JS 約290万字のうち起動で動くのは45%。絵の辞書2本（`icons-food`・`icons-goods`、約45万字）は起動で全部動く | — | Chromium の測り | S3 の材料（直さない） |
+| 8 | 道のり8本・3,584行（docs 全体は38本・14,805行）。状態の表は道のりごとで、全体は seamless の5節に手で集める。この文書でまた一本増える | docs | `wc` | L1 |
+
+### 2.3 見て、直さないもの（守られている）
+
+- 起動でエラー0（`pageerror`・CSP）。見た6画面に絵文字なし。明暗とも字は地から読める（数では測っていない——N15 の測りのまま）。
+- 起動の長い仕事は200ms台（R14 の約1秒は iOS 側を含む）。S3（iPhone で測り直す）までは何もしない。
+- 絵の辞書を起動で組むのは、行の絵をすぐ出すため。S3 で遅いと出たときだけ、最初の候補にする（「初めて使うときに組む」。束ねる・`defer` とは別）。
+
+---
+
+## 3. 調べたこと（前の表に無いもの）
+
+### 3-1. 足もと
+
+| 変わったこと | くらしノートでは |
+|---|---|
+| Safari 27.0（9月18日、報道）：機能58・直し525。**Safari の MCP**（Mac の Safari を、コーディングの手先が動かせる。DOM・通信・画面・コンソール。外へは通信しないと WebKit）。見た目を変えられる `<select>` | MCP は Mac の Safari を動かす。iPhone の手の確かめのうち、エンジン由来のもの（錨・伸びる欄・字の組み）を Mac で見る道になる。利用者が Mac で Claude Code を使うときだけ（X21）。`<select>` は 3.1 のとおり新しく作るものだけ |
+| ホーム画面のウェブアプリの新しい力 | 今回も見つからない。X1 のまま |
+| GitHub Actions：Node 24 が6月16日から既定、Node 20 は9月23日に外した | G2 |
+| Playwright の WebKit は GitHub の Ubuntu で入る（`npx playwright install --with-deps webkit`。Ubuntu 24.04 では古い Playwright が入らない報告あり——版は新しく） | G3。Linux の WebKit は iOS の Safari と同じではない（キーボード・ホーム画面の器・触り方・ヒラギノは出ない）。エンジンの CSS・送り・字の組みは近い |
+| `text-wrap: balance`（Safari 17.5〜）・`pretty`（WebKit は段落全体で整える。2025年4月に STP、26で改良——二次情報） | 短い字（空の画面・題）の「す。」だけの行を防ぐ（H2）。幅は変えないので、J2 の落ち方（字のあいだが増えて幅を越える）とは別。見比べで決める |
+
+### 3-2. ほかのアプリ・方法
+
+| もの | していること | 借りる | 借りない |
+|---|---|---|---|
+| QFT（Right Question Institute。Rothstein & Santana 2011） | 問いをつくる四つの決まり：できるだけ多く・話し合わず評価せず答えず・言われたとおりに書く・言い切りは問いに直す。あとで閉じた／開いた問いに分け、選ぶ | 一度にいくつも・答えずに（Q1） | 閉じた／開いたの札・順位（印と数を足さない） |
+| Interstitial journaling（Stubblebine。Ness Labs ほか） | 仕事の切れ目ごとに、時刻と数行 | —（時刻ごとの日記が同じ形。裏づけ） | 切れ目ごとの促し（通知を増やさない） |
+| NotePlan | 日のノートを自動で作り、日付の付いた用事がその日に出る。用事を道へ引いて時間を取る。中身は素の Markdown のファイル | —（daily の写さず引く・道へ置く・.md の書き出しがもうある） | 端末のカレンダーへの書き込み（暦を重ねない） |
+| ほぼ日手帳2027（26年目。2026年版は110万部）とアプリ | 一日一頁の下に出典つきの短い言葉（＊知識から）。アプリは基本無料、書き出し・写真の預けは有料（検索の要約） | —（今日の問いの出典と文脈が同じ形） | 書き出しを有料の側に置く（書き出しは端末の中で、いつでも） |
+| Q&A a Day（5年日記） | 毎年同じ日に同じ問い。5年分が一頁に並ぶ | — | 同じ日に同じ問い（今日の問いの「書いたら引かない・一周」とぶつかる。呼び戻す口は要らないと決めた） |
+| Lifebear・ジョルテ（2026年の手帳アプリの順位で1位・3位） | 予定・やること・メモを一つに | — | 新しいものは見当たらない |
+
+### 3-3. 研究
+
+| 考え | 出典 | ここでは |
+|---|---|---|
+| 寝る前の5分に、これからのやることを書くと、済んだことを書くより早く眠れた（約9分。具体的に多く書くほど早い。若い健康な57人・睡眠検査） | Scullin et al. (2018) *J. Exp. Psychol. Gen.* 147(1)（巻号は知識から） | 裏づけ（もうある：暦で明日へ払って入れる）。夜の面は作らない（feature fatigue） |
+| 問いをつくる段と、答える・選ぶ段を分ける | Rothstein & Santana (2011) *Make Just One Change* | Q1 |
+
+---
+
+## 4. 方針（前の柱に足す三つ）
+
+### 柱10 見張りは緑に
+
+赤の毎朝の全部は、そのセッションで**全部**直す（seamless X20 の「赤なら先に直す」）。単独で通る赤も揺れとして、台本の側で
+直す——赤が残ると、次の本物の赤に気づけない（Parasuraman & Riley 1997、seamless 10節）。見張れない所（WebKit）は、
+見張れる形を一つ足す。
+
+### 柱11 つくる手間を下げる（中身は増やさない）
+
+問いは、つくる段と答える段を分ける（QFT）。つくる紙は、答えも評価も求めない。
+
+### 柱12 次のセッションを軽く
+
+計画を探す手間を減らす。毎回の読み込み（制限）に直に効く。
+
+---
+
+## 5. 道のり
+
+| 段 | ID | 名前 | 大きさ | データ | 先に読む docs | 状態 |
+|---|---|---|---|---|---|---|
+| 見張り | G1 | `pill-morph` の揺れを台本の側で直す | 小 | なし | tests/README（試験の罠）・motion | 案 |
+| 見張り | G2 | Actions を Node 24 の版へ | 小 | なし | dev（流し方） | 案 |
+| 見張り | G3 | 毎朝の全部に WebKit の列（知らせるだけ・選んだ台本） | 中 | なし | dev・tests/README | 案（X22） |
+| 画面 | H1 | やることの空の画面を紙の中へ | 小 | なし | todo-timeline・look | 案 |
+| 画面 | H2 | 空の画面の説明文を外す・短い字に `text-wrap: balance` | 小 | なし | look | 案（見比べ） |
+| 問い | Q1 | 問いをつくる：改行ごとに一つ | 小 | なし（問いのノートが増えるだけ。形は今のまま） | thinking | 案（X23） |
+| 軽く | L1 | 計画を一枚に（新しい道のりの文書を増やさない） | 小 | なし | dev | 案（X24） |
+
+**おすすめの順**：**G1**（赤を消す）→ **G2**（土台。数行）→ **H1** → **L1**（このあと調べるセッションが軽くなる）→ **Q1** →
+**H2**（見比べ）→ **G3**。
+
+### 時期の決まっているもの（前の道のりから。変わりなし）
+
+| 時期 | すること |
+|---|---|
+| 2026年10月27日ごろ | 崩れ方（3.0 の D1）：溜まった控えで分け方を見直す |
+| 2026年12月 | 年の本（R10）を iPhone で一度出す |
+| 2027年2月 | 内閣府が2028年の祝日を載せる。K1 を照らす |
+| 2027年3月ごろ | 保存を軽くする（R26）を決め直す |
+
+### G1 `pill-morph` の揺れを台本の側で直す
+
+- なぜ：毎朝の全部を赤にしている唯一の台本。#8（GitHub）と手元の全部（3本ずつ）で、同じ確かめだけが落ちる。単独・4本同時では10回とも通る。
+- 見立て：落ちる確かめは「閉じる動きの最初のコマが、頭の丸薬の箱から出る」。重い回し方では、台本が拾える最初のコマが
+  動きの途中になる（落ちた回は、箱より 26.6px 下・16.7px 高い所を拾っていた）。アプリの動きではなく、コマの拾い方の揺れ。
+- 何を：最初のコマを毎フレームの見張りで拾わず、動きそのものから読む（`getAnimations()` の始めのキーフレーム、または
+  `currentTime = 0` で止めて測る）。同じ拾い方をしている確かめが台本にあれば揃える。
+- 確かめ：全部（`run-all.js`）を2回。単独では再現しないので、直す前に全部で落ちる形を一度見てから。
+- 厳密に言うと：二分探索は揺れに引かれて `a60b976`（daily の冒頭）を指したが、その版でも単独では通る——無関係。
+
+### G2 Actions を Node 24 の版へ
+
+- なぜ：2.2 の2。今は動くが、毎回の警告と、次に GitHub が締めたときに止まる。
+- 何を：`pages.yml`・`tests-daily.yml` の `actions/checkout`・`actions/setup-node` を Node 24 の版（v5 以上）へ。
+  `configure-pages`・`upload-pages-artifact`・`deploy-pages` も、そのとき出ている版を確かめて揃える。
+- 確かめ：push のあとの門（`pages.yml`）と、手で一度回す毎朝の全部（`workflow_dispatch`）のログに
+  「Node.js 20 is deprecated」が出ないこと。
+
+### G3 毎朝の全部に WebKit の列
+
+- なぜ：2.2 の3。iPhone で跳ねた・落ちた（J2）ものは、試験の Chromium では見えなかった。
+- 何を：`tests-daily.yml` に二つ目の仕事（`npx playwright install --with-deps webkit`）。`lib.js` の `open()` は
+  `KN_BROWSER=webkit` のとき WebKit で開く。回すのは、エンジンで違いが出る台本だけ（`scroll-anchor`・`fit-fields`・
+  `typeface`・`text-size`・`top-tap`・`feel-3` から始める）。**知らせるだけ**（落ちても門・配るのは止めない）。
+- 厳密に言うと：CDP・`page.coverage` は Chromium だけ——使う台本は外す。Linux の WebKit で落ちても、iPhone で確かめるまで
+  アプリは直さない（字の形・キーボード・ホーム画面の器が違う）。
+
+### H1 やることの空の画面を紙の中へ
+
+- なぜ：2.2 の4。初めて開いた日と、用事を全部消した日に、白い紙が空のまま出る。
+- 何を：用事が一つも無いときの `.empty` を、紙（`.tl-sheet`）の中へ入れる（さがしているときは今のまま `els.body`）。
+  「下の＋から追加できます。」は外す（look の「説明は書かない」。＋は画面にある）。
+- 試験：その文を見ている台本が無いか grep。空のときの紙の高さと、`.empty` が紙の中にあることを一本に。
+
+### H2 空の画面の説明文を外す・短い字に `text-wrap: balance`
+
+- なぜ：2.2 の5。
+- 何を：買うものの「下の欄に商品名を入れるだけ。」・価格の「買うものに入れた商品が、ここに並びます。」を外す（題と
+  「サンプルを入れて試す」は残す）。`.empty-title`・`.empty-text` と、二行に折れる短い題に `text-wrap: balance`。
+- 確かめ：前と後の画像を利用者が選ぶ（J2 と同じ決め方）。375×667 でも見る（`tests/feel-3.js`）。
+
+### Q1 問いをつくる：改行ごとに一つ
+
+- なぜ：2.2 の6。思いついた問いは続けて出る（QFT の「できるだけ多く・答えずに」）。一つずつ紙を開き直すと、出かけた次の問いが消える。
+- 何を：つくる紙で、改行ごとに一つの問い（一行一冊の「？問い」のノート。今の `makeAsk` を行ごとに）。Enter は改行
+  （`enterkeyhint="enter"`）、閉じたら全部を保存。同じ問いは今と同じく作らず、知らせは一度だけ。
+- データ：なし（今と同じ形のノートが行の数だけ）。
+- 厳密に言うと：Enter で閉じる今の手ざわりが変わる。だから分かれ道（X23）。
+
+### L1 計画を一枚に
+
+- なぜ：2.2 の8。計画を見るセッションは、seamless の5節（開いているもの）と11節（やらないこと）と、各道のりの表を読む。
+  総点検のたびに道のりが一本増え、同じ「やらないこと」を何か所も足す。
+- 何を：`docs/plan.md` を一枚。中身は三つだけ：開いているもの（全部の道のりから。ID・一行・状態・どこ）・時期の決まっているもの・
+  やらないこと（seamless の11節をここへ移し、11節には「plan.md へ」の一行）。次からの総点検は、新しい道のりの文書を作らず、
+  plan.md に行を足し、項目の細かいことだけを docs の該当する文書へ。古い道のりは今の場所のまま（コードのコメントが指している）。
+- 厳密に言うと：CLAUDE.md の docs の行に「計画・やらないこと → plan」を足す（数文字。「太らせない」の範囲で）。
+
+---
+
+## 6. 分かれ道（決めるのは利用者）
+
+**X21 Mac の Safari で確かめるか**
+- (a) Mac で Claude Code を使うときに、Safari の MCP で iPhone の確かめのうちエンジン由来のもの（iphone-check の錨・伸びる欄・
+  字の組み）を先に見る
+- (b) 今のまま（iPhone の手と G3）
+- おすすめ：**Mac を使っているなら (a)**。iPhone でしか出ないもの（キーボード・ホーム画面・触り方）は、どちらでも iPhone の手。
+
+**X22 WebKit の列を足すか（G3）**
+- (a) 知らせるだけで足す　(b) 門にも入れる　(c) 作らない
+- おすすめ：**(a)**。門に入れると、Linux の WebKit だけの違いで配るのが止まる。
+
+**X23 問いをつくる紙の Enter（Q1）**
+- (a) Enter は改行、改行ごとに一つの問い　(b) 今のまま（Enter で閉じる・一つずつ）
+- おすすめ：**問いが続けて浮かぶことがあるなら (a)**。一つずつで困っていなければ (b)。
+
+**X24 計画を一枚にするか（L1）**
+- (a) plan.md を作り、新しい道のりの文書は増やさない　(b) 今のまま（総点検ごとに一本）
+- おすすめ：**(a)**。この文書が最後の一本になる。
+
+---
+
+## 7. やらないこと（今回の調べで新しく出たもの）
+
+| やらないこと | 理由 |
+|---|---|
+| 同じ日に同じ問い（Q&A a Day） | 今日の問いの「書いたら引かない・一周」とぶつかる。呼び戻す口は要らないと決めた（notes-structure） |
+| 仕事の切れ目・済ませたときに一言を促す（interstitial） | 通知・促しを増やさない。時刻ごとの日記がもう受け止める |
+| 問いに閉じた／開いたの札・順位（QFT の後半） | 印と数を足さない |
+| 夜に「明日のやること」の面（Scullin） | 暦で明日へ払えば入れられる。面を増やさない |
+| 起動で動かない JS を後から読む（2.2 の7） | 束ねる・`defer` を外したのと同じ理由（読み込み順・TDZ・3か所の登録）。S3 で遅いと出るまで |
+| WebKit の列を門に入れる | Linux の WebKit だけの違いで配るのが止まる（X22） |
+| 書き出しを有料・会員の側に置く（ほぼ日のアプリ） | 書き出しはアプリが無くても読める形で、いつでも（seamless 10.3） |
+
+---
+
+## 8. 進め方（制限の節約）
+
+- **1セッション1項目**（G1＋G2 は一つでよい）。終わったら5節の表の状態を書き換え、main まで流す。
+- **モデル**：G1 は重いモデル・中（動きの台本。原因は見立てがある）。G2・H1・H2・L1 は軽いモデル・中。Q1 は軽いモデル・中
+  （ノートの紙の中だけ）。G3 は重いモデル・中（`lib.js` は全部の台本の土台——触ったら全部を一度）。
+- 全体の目安：**5〜6 セッション**（X21 は利用者の手。セッションは要らない）。いちばん効くのは G1。
+- 次のセッションに貼る文の型：
+
+```
+docs/roadmap-3.2.md の G1 と G2 をやって。この文書は5節の表・G1・G2 の節・4節の柱10だけ読む。
+docs は表の「先に読む docs」だけ。データの形は変えない。pill-morph は直す前に run-all で一度落ちる形を見て、
+直したら run-all を2回。workflow を変えたら門のログに Node 20 の警告が無いことを見て、main まで流して。
+終わったら roadmap-3.2.md の状態を書き換える。
+```
+
+---
+
+## 出典（2026年10月16〜17日に確かめた）
+
+検索の要約で確かめたものを含む（webkit.org の Safari 27.0 の本文は開けていない）。**＊は知識から書いた**。
+
+- Safari 27.0：[Technobezz](https://www.technobezz.com/news/safari-27-safari-mcp-844-fixes)・[Blake Crosley「Why Safari 27 Ships 525 Fixes」](https://blakecrosley.com/blog/webkit-lab-how-safari-ships)・[WWDC26 セッション204](https://developer.apple.com/videos/play/wwdc2026/204/)・[MacRumors「iOS 27: All the New Safari Features」](https://macrumors.com/guide/ios-27-safari)
+- GitHub Actions の Node 20：[GitHub Changelog（2026年9月23日）](https://github.blog/changelog/2026-09-23-deprecation-of-node-20-on-github-actions-runners/)・[同（2026年3月19日）](https://github.blog/changelog/2026-03-19-deprecation-of-node-20-on-github-actions-runners/)
+- Playwright の CI：[microsoft/playwright-github-action（CLI を使う案内）](https://github.com/microsoft/playwright-github-action)・[Ubuntu 24.04 の依存の報告（ygkn）](https://scrapbox.io/ygkn/playwright_install_%E3%81%8C_GitHub_Actions_%E3%81%A72024%E5%B9%B412%E6%9C%88%E4%BB%A5%E9%99%8D%E6%80%A5%E3%81%AB%E5%8B%95%E3%81%8B%E3%81%AA%E3%81%8F%E3%81%AA%E3%81%A3%E3%81%9F%E3%82%89_Playwright_%E3%82%92%E3%82%A2%E3%83%83%E3%83%97%E3%83%87%E3%83%BC%E3%83%88%E3%81%97%E3%82%88%E3%81%86)
+- text-wrap：[Daring Fireball（2025年4月）](https://daringfireball.net/2025/04/webkit_textwrap_pretty)・[modern-css.com](https://modern-css.com/pretty-paragraph-wrapping-without-orphan-words/)・[MDN「text-wrap」](https://developer.mozilla.org/docs/Web/CSS/text-wrap)
+- QFT：[Edutopia「Are Questions the Answer?」](https://www.edutopia.org/article/are-questions-answer/)・[Rothstein & Santana (2011)](https://www.fisme.science.uu.nl/publicaties/literatuur/2011_rothstein_santana_questioning.pdf)
+- Interstitial journaling：[hamatti](https://notes.hamatti.org/note-taking/journaling/interstitial-journaling)・[dsebastien](https://concepts.dsebastien.net/concept/interstitial-journaling/)
+- NotePlan：[Daily planning](https://noteplan.co/daily-planning)・[v3.8 の時間を取る動き](https://noteplan.co/changelog/v3.8-checklists-and-new-time-blocking-actions)
+- ほぼ日手帳2027：[PR TIMES（Game*Spark、2026年9月25日）](https://www.gamespark.jp/release/prtimes/20260925/316504.html)・[DIME](https://dime.jp/genre/2148460/)（アプリの料金は検索の要約）
+- Q&A a Day：[One Question a Day](https://wordupbooks.com/book/9781250108869)・[Q&A a Day Spots](https://eagleeyebooks.com/book/9780593580202)
+- Lifebear・ジョルテ：[スマートログ（2026年3月）](https://smartlog.jp/177371)・[アプリブ](https://app-liv.jp/359207/reviews/?cur_page=3)
+- Scullin et al. (2018)：[Baylor 大学（2018年）](https://news.web.baylor.edu/news/story/2018/can-writing-your-dos-help-you-doze-baylor-study-suggests-jotting-down-tasks-can)
