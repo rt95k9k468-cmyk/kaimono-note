@@ -4600,13 +4600,6 @@
     return next.length;
   }
 
-  /** 前の版が js/ask-list.js で配っていた問いを、この端末にまだ無ければ一度だけ写す。 */
-  function adoptAsks() {
-    const old = KN.askItems;
-    if (state.asks.length || !Array.isArray(old) || !old.length) return 0;
-    return setAsks(old);
-  }
-
   function setQuietDay(date, on) {
     const day = toDayKey(date);
     if (!day) return;
@@ -4954,7 +4947,7 @@
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
-    setAsks, adoptAsks,
+    setAsks,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };
 })();

@@ -21,9 +21,8 @@ const { open, checker, ASKS } = require("./lib");
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 12, 34)); },
   });
   await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
-  /* 配る器に問いの元は無い。前の版が配っていた分（KN.askItems）だけ、起動で端末の記録へ一度写る。 */
-  const adopt = await page.evaluate(() => ({ stored: KN.store.get().asks.length, shipped: (KN.askItems || []).length }));
-  t.check("問いの元は端末の記録（store.asks）。配っていた分だけ写る", adopt.stored === adopt.shipped, JSON.stringify(adopt));
+  /* 問いの元は端末の記録（store.asks）にだけある。初めて開いた端末では空。 */
+  t.check("初めて開いた端末に問いの元は無い", await page.evaluate(() => KN.store.get().asks.length === 0 && !KN.askItems));
   await page.evaluate((a) => KN.store.setAsks(a), ASKS);
 
   const ids = await page.evaluate(() => {

@@ -15,8 +15,7 @@ const { checker } = require("./lib");
 
 const t = checker("words");
 const dir = path.join(__dirname, "..", "js");
-/* ask-list.js は問いの本文（画面の言葉ではない）。 */
-const src = fs.readdirSync(dir).filter((f) => f.endsWith(".js") && f !== "relay-code.js" && f !== "ask-list.js")
+const src = fs.readdirSync(dir).filter((f) => f.endsWith(".js") && f !== "relay-code.js")
   .map((f) => [f, fs.readFileSync(path.join(dir, f), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")]);
 

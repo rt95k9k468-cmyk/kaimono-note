@@ -191,16 +191,13 @@ const FORBIDDEN = [
   t.check("コピーに先の予定・長期タスクが入らない", copied != null
     && !copied.includes("試験の先の予定") && !copied.includes("試験の長期タスク") && !copied.includes("参考"), String(copied));
 
-  /* 今日の問いは daily の頭に出る（問い・出典・文脈とも畳まない）ので、元の字にも評価の言葉を入れない。 */
-  const askBad = await page.evaluate((words) => (KN.askItems || [])
-    .flatMap((a, i) => words.filter((w) => `${a.q}${a.from}${a.hint}`.includes(w)).map((w) => `${i + 1}:${w}`)), FORBIDDEN);
-  t.check("今日の問いの元（問い・出典・文脈）に評価の言葉が無い", !askBad.length, askBad.join(" "));
-
-  /* 器は公開。人の呼び名（漢字・カナ＋ちゃん・くん・さん…）を入れない（妻・娘・父のように続き柄で書く）。 */
-  const askName = await page.evaluate(() => (KN.askItems || [])
-    .flatMap((a, i) => (`${a.q}${a.from}${a.hint}`.match(/[一-龥々ァ-ヶー]{1,4}(ちゃん|くん|君|さん|様)/g) || [])
-      .filter((m) => !/^(赤ちゃん|皆さん|[父母兄姉爺婆]さん)$/.test(m)).map((m) => `${i + 1}:${m.length}字`)));
-  t.check("今日の問いの元に人の呼び名が無い", !askName.length, askName.join(" "));
+  /* 問いの元は利用者の記述から書いた字。配る器（js/。GitHub Pages で誰でも読める）に載せず、端末の記録
+     （store.asks。設定の「問いの元を取り込む」）にだけ持つ（docs/thinking.md）。出力は場所だけ（字を出さない）。 */
+  const fs = require("fs"), path = require("path"), jsDir = path.join(__dirname, "..", "js");
+  const shipped = fs.readdirSync(jsDir).filter((f) => f.endsWith(".js"))
+    .filter((f) => /\bhint:\s*["'`][^"'`]{10,}/.test(fs.readFileSync(path.join(jsDir, f), "utf8")));
+  t.check("配る器に問いの元（出典・文脈つきの問い）が無い", !shipped.length, shipped.join(" "));
+  t.check("初めて開いた端末に問いの元は無い", await page.evaluate(() => KN.store.get().asks.length === 0 && !KN.askItems));
 
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();

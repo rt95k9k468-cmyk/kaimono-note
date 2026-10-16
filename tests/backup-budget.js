@@ -63,7 +63,7 @@ const { open, checker } = require("./lib");
 
   /* 設定の「◯件まで」も同じ上限で数える（いまの控えの見出しから）。 */
   const u = await page.evaluate(async () => {
-    KN.store.setAsks([]);   // 小さな記録で（前の版が配っていた問いの元を写した分を外す）
+    KN.store.setAsks([]);   // 小さな記録で（問いの元も空に）
     await KN.backup.ready();
     await KN.backup.take("自動", { force: true });
     const x = KN.backup.usage();
