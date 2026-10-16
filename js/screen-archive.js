@@ -1094,7 +1094,7 @@
 
   /* 今日の問い（KN.askList）：日付で引き、どこにもしまわない。その日より前に「？問い」の行を書いた問いは引かない
      （全部書いたら一周して元の並び）。三つに一つは、その日より前に自分で書いた「？」の問い（元の並びに無いもの）。
-     「別の問い」は開いているあいだだけ送る。 */
+     「別の問い」は開いているあいだだけ、出た問いを避けてでたらめに飛ぶ（決まった順に回さない）。 */
   const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
   /** その日より前に書いた「？」の行：日記（その日より前の日）とノート（作った日がその日より前）。鍵のかかったノートは引かない。 */
   function pastAsks(day) {
@@ -1112,8 +1112,8 @@
     }
     return out;
   }
-  let askTurn = { day: "", n: 0 };
-  function askOf(day, past) {
+  let askTurn = { day: "", n: 0, seen: new Set() };
+  function askOf(day, past, turn) {
     const all = KN.askItems || (KN.askList || []).map((q) => ({ q }));
     const known = new Set(all.map((a) => askKey(a.q)));
     const done = new Set(past.map((a) => askKey(a.text)));
@@ -1130,7 +1130,7 @@
     const mine = past.filter((a) => { const k = askKey(a.text); if (known.has(k) || seen.has(k) || rest[k]) return false; seen.add(k); return true; });
     let h = 0;
     for (const c of String(day)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const k = h + (askTurn.day === day ? askTurn.n : 0);
+    const k = h + (turn != null ? turn : askTurn.day === day ? askTurn.n : 0);
     if (mine.length && k % 3 === 2) return { ...mine[Math.floor(k / 3) % mine.length], mine: true };
     const a = base[k % base.length] || {};
     return { text: a.q || "", hint: a.hint || "", from: a.from || "" };
@@ -1191,7 +1191,16 @@
     paint();
     el.querySelector(".js-think-other").addEventListener("click", () => {
       KN.motion.fire("select");
-      askTurn = { day, n: (askTurn.day === day ? askTurn.n : 0) + 1 };
+      if (askTurn.day !== day) askTurn = { day, n: 0, seen: new Set() };
+      askTurn.seen.add(cur.text);
+      /* でたらめに引き、出た問いは避ける。出尽くしたら今の問いだけ避けて一周し直す。 */
+      let pick = null, other = null;
+      for (let i = 0; i < 40 && !pick; i++) {
+        const n = Math.floor(Math.random() * 1e6) + 1, t = askOf(day, past, n).text;
+        if (t && t !== cur.text) { other = other || n; if (!askTurn.seen.has(t)) pick = n; }
+      }
+      if (!pick && other) { askTurn.seen = new Set([cur.text]); pick = other; }
+      if (pick) askTurn.n = pick;
       paint();
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
