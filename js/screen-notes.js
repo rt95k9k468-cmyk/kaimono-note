@@ -365,7 +365,8 @@
   function slide(r, run) {
     const was = r.getAttribute("aria-expanded") === "true";
     const kept = was ? [...r.parentElement.children].filter((x) => x !== r) : [];
-    const sel = r.dataset.nb != null ? `.js-book[data-nb="${CSS.escape(r.dataset.nb)}"]` : `.js-tree-note[data-id="${CSS.escape(r.dataset.id || "")}"]`;
+    const sel = r.dataset.nb != null ? `.js-book[data-nb="${CSS.escape(r.dataset.nb)}"]`
+      : r.dataset.fold != null ? `[data-fold="${CSS.escape(r.dataset.fold)}"]` : `.js-tree-note[data-id="${CSS.escape(r.dataset.id || "")}"]`;
     const ups = [];
     for (let a = r.parentElement; a; a = a.parentElement) ups.push(a);
     run();
@@ -440,12 +441,81 @@
         if (tops.length) slide(r, () => { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); });
       });
       g.append(r);
-      if (open) treeRows(g, tops, 1, sub);
-      else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, tops, 1, sub); });
+      const fold = shelf && FOLD[nb] ? splitOld(tops, t, FOLD[nb]) : null;
+      const shown = fold ? fold.keep : tops;
+      const tail = () => { if (fold && fold.old.length) foldRows(g, nb, fold.old, o); };
+      if (open) { treeRows(g, shown, 1, sub); tail(); }
+      else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, shown, 1, sub); tail(); });
       (shelf ? box : rest).append(g);
     });
     treeRows(rest, t.tops(""), 0, sub);
     if (rest !== box && rest.childElementCount) box.append(rest);
+  }
+
+  /* 前のもの（docs/notes-structure.md の段1）：棚の一段目で、★でも束でもなく、決めた日数触っていないノートを、
+     棚の終わりの一行に畳む。開けば月ごと（新しい月から、月の中は並びの順）。見せ方だけ——並び・データは動かさず、
+     直せば元の位置へ戻る。取り込んだまま触っていないものも畳む（「最近直した」と同じ見方）。数は出さない。
+     畳んだ行は運ばない（.js-tree-note を付けない＝note-drag の的にも隣にもならない）。 */
+  const FOLD = { thinking: 30 };
+  const DAY_MS = 86400000;
+  function splitOld(tops, t, days) {
+    const edge = new Date(Date.now() - days * DAY_MS).toISOString();
+    const keep = [], old = [];
+    tops.forEach((n) => {
+      const idle = (n.src && n.src.batch && String(n.updatedAt) <= String(n.src.batch)) || String(n.updatedAt || "") < edge;
+      (!n.fav && !t.kids(n.id).length && idle ? old : keep).push(n);
+    });
+    return { keep, old };
+  }
+  function monthOf(n) {
+    const d = new Date(n.updatedAt);
+    if (Number.isNaN(d.getTime())) return { key: "", label: "日付なし" };
+    const y = d.getFullYear(), m = d.getMonth() + 1;
+    return { key: `${y}-${String(m).padStart(2, "0")}`, label: y === new Date().getFullYear() ? `${m}月` : `${y}年${m}月` };
+  }
+  function foldRows(box, nb, old, o) {
+    const key = `old:${nb}`;
+    if (old.some((n) => n.id === o.cur)) o.open.add(key);
+    const months = new Map();
+    old.forEach((n) => {
+      const m = monthOf(n);
+      if (!months.has(m.key)) months.set(m.key, { ...m, list: [] });
+      months.get(m.key).list.push(n);
+      if (n.id === o.cur) o.open.add(`${key}:${m.key}`);
+    });
+    const fold = (into, k, d, label, cls, fill) => {
+      const open = o.open.has(k);
+      const look = rowLook(d, open, o.stick);
+      const g = node(html`<div class="nt-grp" role="none"></div>`);
+      const r = node(html`
+        <button type="button" class="nt-row ${cls} ${look.cls}" role="treeitem" data-fold="${k}" data-d="${d}" style="${look.style}" aria-expanded="${String(open)}">
+          ${twistOf(true, open)}<span class="nt-name">${label}</span>
+        </button>`);
+      r.addEventListener("click", () => {
+        KN.motion.fire("select");
+        slide(r, () => { flip(o.open, k); o.redraw(); });
+      });
+      g.append(r);
+      if (open) fill(g);
+      into.append(g);
+    };
+    fold(box, key, 1, "前のもの", "is-fold", (g) => {
+      [...months.values()].sort((a, b) => (a.key < b.key ? 1 : -1)).forEach((m) => {
+        fold(g, `${key}:${m.key}`, 2, m.label, "is-month", (mg) => m.list.forEach((n) => mg.append(oldRow(n, o))));
+      });
+    });
+  }
+  function oldRow(n, o) {
+    const look = rowLook(3, false, false);
+    const r = node(html`
+      <button type="button" class="nt-row js-old-note" role="treeitem" data-id="${n.id}" data-d="3" style="${look.style}"
+              ${n.id === o.cur ? html`aria-current="true"` : ""}>
+        ${twistOf(0, false)}<span class="nt-name">${headOf(n) || "ノート"}</span>
+      </button>`);
+    r.addEventListener("click", () => { KN.motion.fire("select"); o.onNote(n, r); });
+    const g = node(html`<div class="nt-grp" role="none"></div>`);
+    g.append(r);
+    return g;
   }
 
   /* 6つの棚（docs/notes.md「6つの棚」）。開け閉めは設定 notesShelfOpen に（無ければ archive だけ閉じる）。

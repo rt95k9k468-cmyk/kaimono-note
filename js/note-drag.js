@@ -360,12 +360,13 @@
     }
   }
 
-  /** いまの兄弟と、同じ群へ置き直す to。 */
-  function groupOf(n) {
+  /** いまの兄弟と、同じ群へ置き直す to。兄弟は器に出ている行だけ（ホームの「前のもの」に畳んだ行は飛ばす）。 */
+  function groupOf(n, box) {
     const t = N().tree();
     const up = t.parentOf(n.id);
-    if (up && !t.isHead(up.id)) return { t, up, sibs: t.kids(up.id), to: { parent: up.id } };
-    return { t, up: null, sibs: t.tops(n.notebook), to: { parent: null, nb: n.notebook } };
+    const shown = (l) => l.filter((k) => k.id === n.id || box.querySelector(`.js-tree-note[data-id="${CSS.escape(k.id)}"]`));
+    if (up && !t.isHead(up.id)) return { t, up, sibs: shown(t.kids(up.id)), to: { parent: up.id } };
+    return { t, up: null, sibs: shown(t.tops(n.notebook)), to: { parent: null, nb: n.notebook } };
   }
 
   /** Alt+↑↓：兄弟の中で一つ上・下へ（ノートブックの行はノートブックの並び）。 */
@@ -380,7 +381,7 @@
     }
     const n = N().get(row.id);
     if (!n) return;
-    const { sibs, to } = groupOf(n);
+    const { sibs, to } = groupOf(n, box);
     const nx = sibs[sibs.findIndex((k) => k.id === n.id) + dir];
     if (!nx) return;
     const was = N().place(n.id, { ...to, [dir < 0 ? "before" : "after"]: nx.id });
@@ -391,7 +392,7 @@
   function indent(box, o, row, dir) {
     const n = N().get(row.id);
     if (!n) return;
-    const { t, up, sibs } = groupOf(n);
+    const { t, up, sibs } = groupOf(n, box);
     let was = null;
     if (dir > 0) {
       const p = sibs[sibs.findIndex((k) => k.id === n.id) - 1];

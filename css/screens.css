@@ -5562,6 +5562,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-row.is-stick[aria-current="true"] { background-color: var(--c-primary-soft); }
 .nt-row.is-stick:active { background-color: var(--press-sink); }
 .nt-row.is-book, .nt-row.js-all { font-weight: var(--fw-bold); }
+/* 前のもの（docs/notes-structure.md の段1）：畳んだ行と月は一段控えめの字。 */
+.nt-row:is(.is-fold, .is-month) { color: var(--c-text-2); }
 .nt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nt-twist { width: 32px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
 @media (pointer: fine) { .nt-twist { width: 24px; height: 24px; } }
