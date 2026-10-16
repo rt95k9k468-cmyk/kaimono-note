@@ -2244,8 +2244,8 @@
 
   const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
   /** その問いの答えのノート：頭の行が「？問い」のノート（新しく直した順の一冊め）。 */
-  /** 問いの元（ask-list.js）。古い字だけの形でも同じ形にそろえる。 */
-  function askItems() { return KN.askItems || (KN.askList || []).map((q) => ({ q })); }
+  /** 問いの元（この端末の記録 store.asks。配る器には無い）。 */
+  function askItems() { return KN.store.get().asks || []; }
 
   function answerNote(q) {
     const k = askKey(q);

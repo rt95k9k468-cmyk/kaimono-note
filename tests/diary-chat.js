@@ -15,7 +15,7 @@
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-chat.js */
 const path = require("path");
-const { open, checker } = require("./lib");
+const { open, checker, ASKS } = require("./lib");
 
 global.window = global;
 require(path.join(__dirname, "..", "js", "diary-posts.js"));
@@ -78,6 +78,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const { browser, page, errors } = await open({
     before: async (cx, p) => { await p.clock.setFixedTime(AT); },
   });
+  await page.evaluate((a) => KN.store.setAsks(a), ASKS);   // 問いの元は端末の記録にだけある
   const day = await page.evaluate(() => KN.util.todayKey());
   const memo = () => page.evaluate((d) => (KN.store.dayLog(d) || {}).memo || "", day);
   const setMemo = (m) => page.evaluate(([d, v]) => KN.store.setDayLog(d, { memo: v }), [day, m]);

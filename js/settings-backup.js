@@ -479,6 +479,29 @@
      空けておきます。 */
   const DIARY_LIVE_LIMIT = 2000000;
 
+  /* ---------------- 問いの元を取り込む（docs/thinking.md） ----------------
+     問いの元は配る器に載せず、この端末の記録（store.asks）にだけ持つ。入れ替えはこの口から：
+     { kind: "asks", asks: [{ g, w, from, hint, q }] }（並びだけでも読む）。入れ替える前に控えを取る。 */
+  function asksImportInput() {
+    const file = node(html`<input type="file" accept="application/json,.json" class="js-asks-file" hidden>`);
+    file.addEventListener("change", async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      let text = "";
+      try { text = await f.text(); } catch (err) { text = ""; }
+      file.value = "";
+      let p = null;
+      try { p = JSON.parse(text); } catch (err) { p = null; }
+      const list = Array.isArray(p) ? p : p && p.kind === "asks" && Array.isArray(p.asks) ? p.asks : null;
+      const n = list ? list.filter((a) => a && typeof a.q === "string" && a.q.trim()).length : 0;
+      if (!n) { KN.ui.toast("問いの元のファイルではありません（何も変えていません）", { long: true }); return; }
+      const ok = await KN.ui.confirm({ title: "問いの元を入れ替える", message: `${n}問にします。`, okLabel: "入れ替える" });
+      if (!ok || !(await keepBefore("問いの元の入れ替え前"))) return;
+      KN.ui.toast(`問いの元を${KN.store.setAsks(list)}問にしました`);
+    });
+    return file;
+  }
+
   function diaryImportInput() {
     const file = node(html`<input type="file" accept="application/json,.json" class="js-diary-file" hidden>`);
     file.addEventListener("change", async () => {
@@ -832,6 +855,7 @@
     const file = importInput();
     const verify = verifyInput();
     const diaryFile = diaryImportInput();
+    const asksFile = asksImportInput();
     const snaps = KN.backup.list();
     const gone = store.goneList();
     return [
@@ -862,12 +886,15 @@
          と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
       card(
         navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() }),
-        diaryOutRows()
+        diaryOutRows(),
+        navRow({ ico: "thought", tint: TINT.sub, title: "問いの元を取り込む",
+          value: KN.store.get().asks.length ? `${KN.store.get().asks.length}問` : "なし", onTap: () => asksFile.click() })
       ),
       foot(`本文の無い日と、書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
       file,
       verify,
       diaryFile,
+      asksFile,
     ];
   }
 

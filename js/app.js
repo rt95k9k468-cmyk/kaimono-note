@@ -1289,6 +1289,7 @@
   /* ---------------- boot ---------------- */
 
   function boot() {
+    store.adoptAsks();   // 前の版が配っていた問いの元を、この端末の記録へ（一度だけ）
     applyTheme(store.get().settings.theme || "auto");
     applyAccent(store.get().settings.accent || "orange");
     applyTextSize(store.get().settings.textSize || "std");
