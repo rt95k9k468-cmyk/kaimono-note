@@ -1629,12 +1629,11 @@
     paintAfter();
     /* 感じた時刻。なければ空。あとで思い出して書くときも自分で選べる。 */
     const timeRow = node(html`
-      <div class="time-row">
-        <span class="time-label">時刻</span>
+      <span class="urge-sec-time">
         <input type="hidden" class="input js-after-time" data-when="time" data-clear
                aria-label="しばらく後の時刻" value="${o.afterTime || ""}">
-      </div>`);
-    afterSec.querySelector(".urge-sec-body").append(timeRow);
+      </span>`);
+    afterSec.querySelector(".urge-sec-head").append(timeRow);
     KN.ui.whenFields(timeRow);
     timeRow.querySelector(".js-after-time").addEventListener("change", (e) => {
       o.onAfterTime(e.target.value || null);
