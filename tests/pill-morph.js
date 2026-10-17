@@ -38,19 +38,35 @@ const { open, checker } = require("./lib");
   const near = (a, b, tol = 2) => ["x", "y", "w", "h"].every((k) => Math.abs(a[k] - b[k]) <= tol);
   const fmt = (r) => r && `${r.x.toFixed(1)},${r.y.toFixed(1)} ${r.w.toFixed(1)}×${r.h.toFixed(1)}`;
 
+  /* 動きの始め・終わりの箱と写しの濃さは、毎フレームの見張りで拾わず、動きそのものを
+     止めて測る（`__at`。測ったら元の時刻へ戻す）。重い回し方では拾える最初のコマが動きの
+     途中になり、閉じる影武者を頭の箱より 26.6px 下で拾って落ちた（毎朝の全部の #8・G1）。
+     コマがまばらなら、最後のコマも着く前になる。 */
+  await page.evaluate(() => {
+    window.__at = (g, end) => {
+      const all = g.getAnimations({ subtree: true });
+      const was = all.map((a) => a.currentTime);
+      all.forEach((a) => { a.currentTime = end ? a.effect.getComputedTiming().endTime - 0.5 : 0; });
+      const r = g.getBoundingClientRect();
+      const out = { x: r.left, y: r.top, w: r.width, h: r.height, under: +getComputedStyle(g.lastElementChild).opacity };
+      all.forEach((a, i) => { a.currentTime = was[i]; });
+      return out;
+    };
+  });
+
   /* 影武者の箱を毎フレーム控える。消えたら止まる。 */
   const record = () => page.evaluate(() => new Promise((ok) => {
-    const out = { frames: [], hidden: [], colors: [], under: [], marks: [] };
+    const out = { frames: [], hidden: [], colors: [], marks: [], start: null, end: null };
     const t0 = performance.now();
     const tick = () => {
       const g = document.querySelector(".hero-node.sheet-morph");
       if (g) {
+        if (!out.start) out.start = window.__at(g, false);
+        out.end = window.__at(g, true);
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
         out.colors.push(getComputedStyle(g).color);
         out.marks.push(g.firstElementChild ? g.firstElementChild.getBoundingClientRect().width : 0);
-        const u = g.lastElementChild;
-        out.under.push(u && u !== g.firstElementChild ? +getComputedStyle(u).opacity : -1);
         const hero = document.querySelector(".sheet .js-hero-node");
         const node = document.querySelector(".screen.is-active .tl-row .tl-node[style*='visibility']");
         out.hidden.push(!!(hero && hero.style.visibility === "hidden") && !!node);
@@ -71,19 +87,17 @@ const { open, checker } = require("./lib");
     const rec = record();
     await page.mouse.down();
     await page.mouse.up();
-    const { frames, hidden, colors, under, marks } = await rec;
+    const { frames, hidden, colors, marks, start, end } = await rec;
     const hero = await rectOf(page.locator(".sheet.is-open .js-hero-node"));
     const heroColor = await page.locator(".sheet.is-open .js-hero-node")
       .evaluate((el) => getComputedStyle(el).color);
     t.check(`${label}：影武者が出る`, frames.length > 5, `frames=${frames.length}`);
     if (frames.length) {
-      /* 最初に控えられるのは動き出して一コマ目。--push-e は出だしが速いので、
-         道のりの1割までを「出たところ」と見る。 */
+      /* 始めは動きの 0、終わりは動きの終わりで測る（上の `__at`）。許す幅は前のまま。 */
       const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.w - b.w, a.h - b.h);
-      t.check(`${label}：行の丸薬の箱から出る`, d(frames[0], from) < d(from, hero) * 0.1,
-        `${fmt(frames[0])} / ${fmt(from)}`);
-      t.check(`${label}：頭の丸薬の箱に着く`, near(frames[frames.length - 1], hero, 1.5),
-        `${fmt(frames[frames.length - 1])} / ${fmt(hero)}`);
+      t.check(`${label}：行の丸薬の箱から出る`, d(start, from) < d(from, hero) * 0.1,
+        `${fmt(start)} / ${fmt(from)}`);
+      t.check(`${label}：頭の丸薬の箱に着く`, near(end, hero, 1.5), `${fmt(end)} / ${fmt(hero)}`);
       t.check(`${label}：途中は間を通る`, frames.some((f) => !near(f, from, 3) && !near(f, hero, 3)));
       t.check(`${label}：飛んでいるあいだ本物の二つは隠れる`, hidden.every(Boolean));
       t.check(`${label}：絵は頭と同じ色のまま（黒くならない）`,
@@ -92,9 +106,8 @@ const { open, checker } = require("./lib");
          2.4 倍に膨らんでいた（一瞬の大きな黒いシルエット）。 */
       t.check(`${label}：絵は膨らまない（32〜38px）`,
         marks.every((w) => w > 30 && w < 40), `${Math.min(...marks).toFixed(1)}〜${Math.max(...marks).toFixed(1)}`);
-      t.check(`${label}：出だしは行の丸薬の写しが上にある`, under[0] > 0.8, `under=${under[0]}`);
-      t.check(`${label}：写しは薄まっていく`, under[under.length - 1] < 0.1,
-        `under=${under[under.length - 1]}`);
+      t.check(`${label}：出だしは行の丸薬の写しが上にある`, start.under > 0.8, `under=${start.under}`);
+      t.check(`${label}：写しは薄まっていく`, end.under < 0.1, `under=${end.under}`);
     }
     t.check(`${label}：着いたら影武者は消える`, (await page.locator(".hero-node.sheet-morph").count()) === 0);
     t.check(`${label}：頭の丸薬が見えている`,
@@ -110,14 +123,16 @@ const { open, checker } = require("./lib");
 
   /* ---- 閉じると、頭の丸薬が行の丸薬へ帰る ---- */
   const recordBack = () => page.evaluate(() => new Promise((ok) => {
-    const out = { frames: [], under: [], rowHidden: [] };
+    const out = { frames: [], rowHidden: [], start: null, end: null };
     const t0 = performance.now();
     const tick = () => {
       const g = document.querySelector(".hero-node.sheet-morph");
       if (g) {
+        /* 終わりは毎フレーム測り直す：行き先は行を追って書き換わる（morphBack の follow）。 */
+        if (!out.start) out.start = window.__at(g, false);
+        out.end = window.__at(g, true);
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
-        out.under.push(+getComputedStyle(g.lastElementChild).opacity);
         const n = document.querySelector(".screen.is-active .tl-row[data-todo-id] .tl-node[style*='hidden']");
         out.rowHidden.push(!!n);
       }
@@ -149,17 +164,16 @@ const { open, checker } = require("./lib");
     const rec = recordBack();
     if (before) await page.evaluate(before, idOf);
     await page.keyboard.press("Escape");
-    const { frames, under, rowHidden } = await rec;
+    const { frames, rowHidden, start, end } = await rec;
     const home = await rectOf(nodeOf());
     t.check(`${label}：影武者が出る`, frames.length > 5, `frames=${frames.length}`);
     if (frames.length > 5) {
       const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.w - b.w, a.h - b.h);
-      t.check(`${label}：頭の丸薬の箱から出る`, d(frames[0], hero) < d(hero, home) * 0.15,
-        `${fmt(frames[0])} / ${fmt(hero)}`);
-      t.check(`${label}：行の丸薬の箱に着く`, near(frames[frames.length - 1], home, 1.5),
-        `${fmt(frames[frames.length - 1])} / ${fmt(home)}`);
-      t.check(`${label}：色は頭から行へ薄めて移る`, under[0] < 0.2 && under[under.length - 1] > 0.9,
-        `${under[0]} → ${under[under.length - 1]}`);
+      t.check(`${label}：頭の丸薬の箱から出る`, d(start, hero) < d(hero, home) * 0.15,
+        `${fmt(start)} / ${fmt(hero)}`);
+      t.check(`${label}：行の丸薬の箱に着く`, near(end, home, 1.5), `${fmt(end)} / ${fmt(home)}`);
+      t.check(`${label}：色は頭から行へ薄めて移る`, start.under < 0.2 && end.under > 0.9,
+        `${start.under} → ${end.under}`);
       t.check(`${label}：飛んでいるあいだ行の丸薬は隠れる`, rowHidden.every(Boolean));
     }
     t.check(`${label}：着いたら影武者は消える`, (await page.locator(".hero-node.sheet-morph").count()) === 0);

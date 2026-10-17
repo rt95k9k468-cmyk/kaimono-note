@@ -26,9 +26,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
 
@@ -50,13 +50,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Requires Pages to be on: Settings → Pages → Source: GitHub Actions.
       # `enablement: true` cannot do it for us — GITHUB_TOKEN is not allowed to
       # create a Pages site ("Resource not accessible by integration").
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       # Names the worker's cache after the commit and versions every css/js URL.
       # The URL versioning is what reaches an app already carrying an older
@@ -72,12 +72,13 @@ jobs:
       - name: Leave the test scripts out of the site
         run: rm -rf tests
 
+      # Since v4 dotfiles (.nojekyll, .claude/) stay out; an Actions deploy runs no Jekyll.
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           # The app is static — publish the repository root as-is.
           path: .
 
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

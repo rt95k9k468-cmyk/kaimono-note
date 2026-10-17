@@ -59,6 +59,9 @@ const { open, checker, URL: APP } = require("./lib");
     return { a: a.id, b: b.id, c: c.id, day, time };
   });
 
+  /* 閉じたかは .is-open で見る。閉じた紙は帰り終えるまで DOM に残り（tests/README の試験の罠）、片づけの
+     setTimeout が混んだ機械で決め打ちの待ちを越えると、閉じた紙を数えて落ちた（UTC+14 の回・G1）。 */
+  const dueOpen = () => page.evaluate(() => !!document.querySelector(".sheet.is-open .due-list"));
   const sheetText = () => page.evaluate(() => {
     const s = [...document.querySelectorAll(".sheet")].pop();
     return s && s.querySelector(".due-list") ? s.innerText : "";
@@ -85,7 +88,7 @@ const { open, checker, URL: APP } = require("./lib");
     const x = KN.store.getTodo(id);
     const plan = KN.bell.plan().filter((p) => p.id === id);
     return { due: x.due, time: x.time, plan, syncs: window.__syncs, toast: (document.querySelector(".toast") || {}).innerText || "",
-      sheet: !!document.querySelector(".sheet .due-list") };
+      sheet: !!document.querySelector(".sheet.is-open .due-list") };
   }, ids.a);
   const want = new Date(before + 15 * 60 * 1000);
   const pad = (n) => String(n).padStart(2, "0");
@@ -129,14 +132,14 @@ const { open, checker, URL: APP } = require("./lib");
   const cc = await page.evaluate((o) => KN.store.getTodo(o.c), ids);
   t.check("明日 → 明日の同じ時刻", cc.due === (await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), 1))) && cc.time === ids.time,
     JSON.stringify({ due: cc.due, time: cc.time }));
-  t.check("ぜんぶ片づけたら紙は閉じる", !(await page.evaluate(() => !!document.querySelector(".sheet .due-list"))));
+  t.check("ぜんぶ片づけたら紙は閉じる", !(await dueOpen()));
 
   /* もう片づいた用事の通知を、あとから押した。 */
   await page.waitForTimeout(3800);   // トーストが引くのを待つ
   await page.evaluate((id) => { location.hash = "due=" + id; }, ids.a);
   await page.waitForTimeout(600);
   t.check("済んだ用事なら紙は出さず、ひとこと",
-    !(await page.evaluate(() => !!document.querySelector(".sheet .due-list")))
+    !(await dueOpen())
     && (await page.evaluate(() => (document.querySelector(".toast") || {}).innerText || "")).includes("もう片づいています"));
 
   /* 閉じていたところを通知が起こした（起動の道）。 */
@@ -155,7 +158,7 @@ const { open, checker, URL: APP } = require("./lib");
   await page.click(".due-row .js-open");
   await page.waitForTimeout(700);
   t.check("「用事の紙を開く」でいつもの紙へ",
-    await page.evaluate(() => !document.querySelector(".sheet .due-list") && !!document.querySelector(".sheet")));
+    await page.evaluate(() => !document.querySelector(".sheet.is-open .due-list") && !!document.querySelector(".sheet.is-open")));
 
   /* 開いているときの通知（tick）も、用事の id を持つ。 */
   const shown = await page.evaluate(async () => {
@@ -212,7 +215,7 @@ const { open, checker, URL: APP } = require("./lib");
   await putNote([f], 11 * 60000);       // 11分前の控え
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(900);
-  t.check("10分より古い控えは使わない", !(await page.evaluate(() => !!document.querySelector(".sheet .due-list"))));
+  t.check("10分より古い控えは使わない", !(await dueOpen()));
 
   t.check("頁の誤りが無い", !errors.length, errors.join("\n"));
   await ctx.close();
