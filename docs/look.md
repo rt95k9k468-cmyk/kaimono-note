@@ -332,6 +332,7 @@ CLAUDE.md の実測は「副題と左の時刻は #636363」なので、`--c-tex
 - **小見出し**は `.section-title` の字（`--fs-sm`・太字・`--c-text-2`・字間なし）。買ったもの `.day-bought-head`・取り込みの
   `.diet-got-head` も同じ字へ寄せた（text-3・`--fs-xs` から）。大きな見出しの `.is-block-head` は別。
 - **空の画面**は `.empty`（絵あり）と `.empty.is-quiet`（字だけ・一行）の二つ。紙のある画面では紙（`.tl-sheet`）の中に置く（外だと空の紙が残る）。「見つかりませんでした」は `.empty.is-quiet`
+  買うもの・価格の空の画面も説明の一文は置かない（H2）。`.empty-title`・`.empty-text` は `text-wrap: balance`。
   （価格の「〜に一致する商品はありません」もこの言葉へ。U10 の表）。
 - **インラインの `style=`** は札のクラスで書く（`screens.css` のいちばん後ろ）：`.grow`（flex:1）・`.btn-row`（足もとの並び）・
   `.gap-2/3/4`・`.mt-1/2/3`・`.sheet-text`（紙の地の文）・`.fine-note`（11px の添え字）・`.icon-btn.is-sm`（検索の×）。

@@ -142,7 +142,6 @@
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.priceTag)}</div>
           <h2 class="empty-title">商品がまだありません</h2>
-          <p class="empty-text">買うものに入れた商品が、ここに並びます。</p>
         </div>
       `));
       return;
