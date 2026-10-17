@@ -209,7 +209,8 @@ const { open, checker } = require("./lib");
 
   /* ---------- 両方が本文を直した ---------- */
   await a.evaluate((id) => { KN.notes.begin(id); KN.notes.edit(id, { body: "一台めの字" }); KN.notes.end(id); }, ids.p);
-  await a.waitForTimeout(20);
+  /* KN_CLOCK では頁ごとに時計を差し込むので、二台の時計が数十ms ずれる（20ms では揺れた。10月17日、T1）。 */
+  await a.waitForTimeout(300);
   await b.evaluate((id) => { KN.notes.begin(id); KN.notes.edit(id, { body: "二台めの字（あと）" }); KN.notes.end(id); }, ids.p);
   await a.evaluate(() => KN.notesSync.now());
   await b.evaluate(() => KN.notesSync.now());

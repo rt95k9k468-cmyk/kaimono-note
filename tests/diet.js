@@ -97,6 +97,10 @@ const { open, checker } = require("./lib");
   W = await page.evaluate(() => KN.store.get().diet.weights.length);
   h = await heroKg();
   t.check("消すと記録が無くなり、頭は「—」", W === 0 && h.kg === "—", JSON.stringify({ W, h }));
+  /* 「元に戻す」付きの知らせ（30秒）は ＋ の真ん中に重なる（決めた形）。待つと Playwright の30秒と競って、重い機械で
+     落ちる（10月17日、T1）。人と同じく知らせの字を押して下げる。 */
+  await page.locator(".toast").first().click({ position: { x: 16, y: 16 } });
+  await page.waitForFunction(() => !document.querySelector(".toast"), null, { timeout: 3000 });
 
   /* ---- 食事を一行 ---- */
   await plusPick("今日の食事");

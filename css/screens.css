@@ -5511,8 +5511,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   margin-top: var(--sp-6); padding: 0; background: none; box-shadow: none; overflow: visible; }
 .nt-plain { padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .nt-plain { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
+/* 見出しの字は 66%（70% では明るい面の living・暗い面の thinking が 4.5:1 に届かなかった。10月17日、T1）。 */
 .nt-shelf { --shelf-a: 8%; --shelf-c: color-mix(in srgb, var(--shelf) 85%, #888);
-  --shelf-ink: color-mix(in srgb, var(--shelf-c) 70%, var(--shelf-to, #000));
+  --shelf-ink: color-mix(in srgb, var(--shelf-c) 66%, var(--shelf-to, #000));
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
 /* thinking は灰の archive と並ぶので、赤みの紫を濃いめに（10月16日、利用者「見分けづらい」）。 */

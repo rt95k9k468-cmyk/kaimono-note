@@ -58,12 +58,18 @@ function iosFocus() {
   }, true);
 }
 
-/** "HH:MM[:SS]" → 今日のその時刻（手元の時間帯）。 */
+/** "HH:MM[:SS]" → 今日のその時刻（手元の時間帯）。一つの台本の頁はみな一本の時計に：最初に決めた時刻から、そのあと
+    経った時間だけ進めて始める（あとで開いた二台めの時計が一台めより遅れて、「あと」の直しが古く見えた。
+    10月17日、T1 の notes-sync）。 */
+let clock0 = null;
 function clockAt(hms) {
-  const [h, m, s] = hms.split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m || 0, s || 0, 0);
-  return d;
+  if (!clock0) {
+    const [h, m, s] = hms.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m || 0, s || 0, 0);
+    clock0 = { at: d.getTime(), real: Date.now() };
+  }
+  return new Date(clock0.at + (Date.now() - clock0.real));
 }
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }

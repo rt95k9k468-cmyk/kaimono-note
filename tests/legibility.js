@@ -87,13 +87,24 @@ function measure() {
     S.addTodo({ title: "病院の予約", due: day(0), time: "10:00", minutes: 30 });
     S.addTodo({ title: "買いもの", due: day(0), time: "17:00", minutes: 30 });
   });
+  /* ノートの6つの棚（見出しの字は棚の色。空のホームには出ないので数えていなかった。10月17日、T1）。 */
+  await page.evaluate(() => KN.notes.ready());
+  await page.waitForFunction(() => KN.notes.state() === "on");
+  await page.evaluate(async () => {
+    const at = new Date().toISOString();
+    await KN.notes.addMany(KN.noteOrganize.SHELVES.map((nb, i) => ({ id: `n-shelf${i}`, title: "ノート", body: "x", notebook: nb,
+      tags: [], fav: false, createdAt: at, updatedAt: at, deletedAt: null })));
+    KN.notes.setBooks(KN.noteOrganize.SHELVES);
+  });
 
   for (const theme of ["light", "dark"]) {
     for (const size of ["std", "xl"]) {
       await page.evaluate(({ theme, size }) => {
         if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
         else document.documentElement.removeAttribute("data-theme");
+        /* 記録に書くだけでは --fs-k が付かない（付けるのは設定の画面と立ち上げ）。10月17日まで特大の回は標準を数えていた。 */
         KN.store.update((st) => { st.settings.textSize = size; });
+        KN.app.applyTextSize(size);
       }, { theme, size });
       await page.waitForTimeout(1500); // 色の移り変わりが終わるまで
       for (const id of SCREENS) {
@@ -120,7 +131,7 @@ function measure() {
     const root = getComputedStyle(document.documentElement);
     return { glass, t2: root.getPropertyValue("--c-text-2").trim(), t3: root.getPropertyValue("--c-text-3").trim() };
   };
-  await page.evaluate(() => KN.store.update((st) => { st.settings.textSize = "std"; }));
+  await page.evaluate(() => { KN.store.update((st) => { st.settings.textSize = "std"; }); KN.app.applyTextSize("std"); });
   for (const theme of ["light", "dark"]) {
     await page.evaluate((theme) => {
       if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
